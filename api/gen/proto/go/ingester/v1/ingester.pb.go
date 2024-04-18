@@ -1654,6 +1654,187 @@ func (x *BlockHints) GetDeduplication() bool {
 	return false
 }
 
+type GetBlockStatsRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Ulids []string `protobuf:"bytes,1,rep,name=ulids,proto3" json:"ulids,omitempty"`
+}
+
+func (x *GetBlockStatsRequest) Reset() {
+	*x = GetBlockStatsRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_ingester_v1_ingester_proto_msgTypes[26]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *GetBlockStatsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetBlockStatsRequest) ProtoMessage() {}
+
+func (x *GetBlockStatsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_ingester_v1_ingester_proto_msgTypes[26]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetBlockStatsRequest.ProtoReflect.Descriptor instead.
+func (*GetBlockStatsRequest) Descriptor() ([]byte, []int) {
+	return file_ingester_v1_ingester_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *GetBlockStatsRequest) GetUlids() []string {
+	if x != nil {
+		return x.Ulids
+	}
+	return nil
+}
+
+type GetBlockStatsResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	BlockStats []*BlockStats `protobuf:"bytes,1,rep,name=block_stats,json=blockStats,proto3" json:"block_stats,omitempty"`
+}
+
+func (x *GetBlockStatsResponse) Reset() {
+	*x = GetBlockStatsResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_ingester_v1_ingester_proto_msgTypes[27]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *GetBlockStatsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetBlockStatsResponse) ProtoMessage() {}
+
+func (x *GetBlockStatsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_ingester_v1_ingester_proto_msgTypes[27]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetBlockStatsResponse.ProtoReflect.Descriptor instead.
+func (*GetBlockStatsResponse) Descriptor() ([]byte, []int) {
+	return file_ingester_v1_ingester_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *GetBlockStatsResponse) GetBlockStats() []*BlockStats {
+	if x != nil {
+		return x.BlockStats
+	}
+	return nil
+}
+
+type BlockStats struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	NumSeries     uint64 `protobuf:"varint,2,opt,name=num_series,json=numSeries,proto3" json:"num_series,omitempty"`
+	NumProfiles   uint64 `protobuf:"varint,3,opt,name=num_profiles,json=numProfiles,proto3" json:"num_profiles,omitempty"`
+	NumSamples    uint64 `protobuf:"varint,4,opt,name=num_samples,json=numSamples,proto3" json:"num_samples,omitempty"`
+	IndexBytes    uint64 `protobuf:"varint,5,opt,name=index_bytes,json=indexBytes,proto3" json:"index_bytes,omitempty"`
+	ProfilesBytes uint64 `protobuf:"varint,6,opt,name=profiles_bytes,json=profilesBytes,proto3" json:"profiles_bytes,omitempty"`
+	SymbolsBytes  uint64 `protobuf:"varint,7,opt,name=symbols_bytes,json=symbolsBytes,proto3" json:"symbols_bytes,omitempty"`
+}
+
+func (x *BlockStats) Reset() {
+	*x = BlockStats{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_ingester_v1_ingester_proto_msgTypes[28]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *BlockStats) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BlockStats) ProtoMessage() {}
+
+func (x *BlockStats) ProtoReflect() protoreflect.Message {
+	mi := &file_ingester_v1_ingester_proto_msgTypes[28]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BlockStats.ProtoReflect.Descriptor instead.
+func (*BlockStats) Descriptor() ([]byte, []int) {
+	return file_ingester_v1_ingester_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *BlockStats) GetNumSeries() uint64 {
+	if x != nil {
+		return x.NumSeries
+	}
+	return 0
+}
+
+func (x *BlockStats) GetNumProfiles() uint64 {
+	if x != nil {
+		return x.NumProfiles
+	}
+	return 0
+}
+
+func (x *BlockStats) GetNumSamples() uint64 {
+	if x != nil {
+		return x.NumSamples
+	}
+	return 0
+}
+
+func (x *BlockStats) GetIndexBytes() uint64 {
+	if x != nil {
+		return x.IndexBytes
+	}
+	return 0
+}
+
+func (x *BlockStats) GetProfilesBytes() uint64 {
+	if x != nil {
+		return x.ProfilesBytes
+	}
+	return 0
+}
+
+func (x *BlockStats) GetSymbolsBytes() uint64 {
+	if x != nil {
+		return x.SymbolsBytes
+	}
+	return 0
+}
+
 var File_ingester_v1_ingester_proto protoreflect.FileDescriptor
 
 var file_ingester_v1_ingester_proto_rawDesc = []byte{
@@ -1877,14 +2058,36 @@ var file_ingester_v1_ingester_proto_rawDesc = []byte{
 	0x6c, 0x69, 0x64, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x09, 0x52, 0x05, 0x75, 0x6c, 0x69, 0x64,
 	0x73, 0x12, 0x24, 0x0a, 0x0d, 0x64, 0x65, 0x64, 0x75, 0x70, 0x6c, 0x69, 0x63, 0x61, 0x74, 0x69,
 	0x6f, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28, 0x08, 0x52, 0x0d, 0x64, 0x65, 0x64, 0x75, 0x70, 0x6c,
-	0x69, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2a, 0x6b, 0x0a, 0x16, 0x53, 0x74, 0x61, 0x63, 0x6b,
+	0x69, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x22, 0x2c, 0x0a, 0x14, 0x47, 0x65, 0x74, 0x42, 0x6c,
+	0x6f, 0x63, 0x6b, 0x53, 0x74, 0x61, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12,
+	0x14, 0x0a, 0x05, 0x75, 0x6c, 0x69, 0x64, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x09, 0x52, 0x05,
+	0x75, 0x6c, 0x69, 0x64, 0x73, 0x22, 0x51, 0x0a, 0x15, 0x47, 0x65, 0x74, 0x42, 0x6c, 0x6f, 0x63,
+	0x6b, 0x53, 0x74, 0x61, 0x74, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x38,
+	0x0a, 0x0b, 0x62, 0x6c, 0x6f, 0x63, 0x6b, 0x5f, 0x73, 0x74, 0x61, 0x74, 0x73, 0x18, 0x01, 0x20,
+	0x03, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x69, 0x6e, 0x67, 0x65, 0x73, 0x74, 0x65, 0x72, 0x2e, 0x76,
+	0x31, 0x2e, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x53, 0x74, 0x61, 0x74, 0x73, 0x52, 0x0a, 0x62, 0x6c,
+	0x6f, 0x63, 0x6b, 0x53, 0x74, 0x61, 0x74, 0x73, 0x22, 0xdc, 0x01, 0x0a, 0x0a, 0x42, 0x6c, 0x6f,
+	0x63, 0x6b, 0x53, 0x74, 0x61, 0x74, 0x73, 0x12, 0x1d, 0x0a, 0x0a, 0x6e, 0x75, 0x6d, 0x5f, 0x73,
+	0x65, 0x72, 0x69, 0x65, 0x73, 0x18, 0x02, 0x20, 0x01, 0x28, 0x04, 0x52, 0x09, 0x6e, 0x75, 0x6d,
+	0x53, 0x65, 0x72, 0x69, 0x65, 0x73, 0x12, 0x21, 0x0a, 0x0c, 0x6e, 0x75, 0x6d, 0x5f, 0x70, 0x72,
+	0x6f, 0x66, 0x69, 0x6c, 0x65, 0x73, 0x18, 0x03, 0x20, 0x01, 0x28, 0x04, 0x52, 0x0b, 0x6e, 0x75,
+	0x6d, 0x50, 0x72, 0x6f, 0x66, 0x69, 0x6c, 0x65, 0x73, 0x12, 0x1f, 0x0a, 0x0b, 0x6e, 0x75, 0x6d,
+	0x5f, 0x73, 0x61, 0x6d, 0x70, 0x6c, 0x65, 0x73, 0x18, 0x04, 0x20, 0x01, 0x28, 0x04, 0x52, 0x0a,
+	0x6e, 0x75, 0x6d, 0x53, 0x61, 0x6d, 0x70, 0x6c, 0x65, 0x73, 0x12, 0x1f, 0x0a, 0x0b, 0x69, 0x6e,
+	0x64, 0x65, 0x78, 0x5f, 0x62, 0x79, 0x74, 0x65, 0x73, 0x18, 0x05, 0x20, 0x01, 0x28, 0x04, 0x52,
+	0x0a, 0x69, 0x6e, 0x64, 0x65, 0x78, 0x42, 0x79, 0x74, 0x65, 0x73, 0x12, 0x25, 0x0a, 0x0e, 0x70,
+	0x72, 0x6f, 0x66, 0x69, 0x6c, 0x65, 0x73, 0x5f, 0x62, 0x79, 0x74, 0x65, 0x73, 0x18, 0x06, 0x20,
+	0x01, 0x28, 0x04, 0x52, 0x0d, 0x70, 0x72, 0x6f, 0x66, 0x69, 0x6c, 0x65, 0x73, 0x42, 0x79, 0x74,
+	0x65, 0x73, 0x12, 0x23, 0x0a, 0x0d, 0x73, 0x79, 0x6d, 0x62, 0x6f, 0x6c, 0x73, 0x5f, 0x62, 0x79,
+	0x74, 0x65, 0x73, 0x18, 0x07, 0x20, 0x01, 0x28, 0x04, 0x52, 0x0c, 0x73, 0x79, 0x6d, 0x62, 0x6f,
+	0x6c, 0x73, 0x42, 0x79, 0x74, 0x65, 0x73, 0x2a, 0x6b, 0x0a, 0x16, 0x53, 0x74, 0x61, 0x63, 0x6b,
 	0x74, 0x72, 0x61, 0x63, 0x65, 0x73, 0x4d, 0x65, 0x72, 0x67, 0x65, 0x46, 0x6f, 0x72, 0x6d, 0x61,
 	0x74, 0x12, 0x1c, 0x0a, 0x18, 0x4d, 0x45, 0x52, 0x47, 0x45, 0x5f, 0x46, 0x4f, 0x52, 0x4d, 0x41,
 	0x54, 0x5f, 0x55, 0x4e, 0x53, 0x50, 0x45, 0x43, 0x49, 0x46, 0x49, 0x45, 0x44, 0x10, 0x00, 0x12,
 	0x1c, 0x0a, 0x18, 0x4d, 0x45, 0x52, 0x47, 0x45, 0x5f, 0x46, 0x4f, 0x52, 0x4d, 0x41, 0x54, 0x5f,
 	0x53, 0x54, 0x41, 0x43, 0x4b, 0x54, 0x52, 0x41, 0x43, 0x45, 0x53, 0x10, 0x01, 0x12, 0x15, 0x0a,
 	0x11, 0x4d, 0x45, 0x52, 0x47, 0x45, 0x5f, 0x46, 0x4f, 0x52, 0x4d, 0x41, 0x54, 0x5f, 0x54, 0x52,
-	0x45, 0x45, 0x10, 0x02, 0x32, 0xb6, 0x08, 0x0a, 0x0f, 0x49, 0x6e, 0x67, 0x65, 0x73, 0x74, 0x65,
+	0x45, 0x45, 0x10, 0x02, 0x32, 0x90, 0x09, 0x0a, 0x0f, 0x49, 0x6e, 0x67, 0x65, 0x73, 0x74, 0x65,
 	0x72, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x35, 0x0a, 0x04, 0x50, 0x75, 0x73, 0x68,
 	0x12, 0x14, 0x2e, 0x70, 0x75, 0x73, 0x68, 0x2e, 0x76, 0x31, 0x2e, 0x50, 0x75, 0x73, 0x68, 0x52,
 	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x15, 0x2e, 0x70, 0x75, 0x73, 0x68, 0x2e, 0x76, 0x31,
@@ -1951,19 +2154,25 @@ var file_ingester_v1_ingester_proto_rawDesc = []byte{
 	0x31, 0x2e, 0x47, 0x65, 0x74, 0x50, 0x72, 0x6f, 0x66, 0x69, 0x6c, 0x65, 0x53, 0x74, 0x61, 0x74,
 	0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x21, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73,
 	0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65, 0x74, 0x50, 0x72, 0x6f, 0x66, 0x69, 0x6c, 0x65, 0x53, 0x74,
-	0x61, 0x74, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x42, 0xb3, 0x01,
-	0x0a, 0x0f, 0x63, 0x6f, 0x6d, 0x2e, 0x69, 0x6e, 0x67, 0x65, 0x73, 0x74, 0x65, 0x72, 0x2e, 0x76,
-	0x31, 0x42, 0x0d, 0x49, 0x6e, 0x67, 0x65, 0x73, 0x74, 0x65, 0x72, 0x50, 0x72, 0x6f, 0x74, 0x6f,
-	0x50, 0x01, 0x5a, 0x44, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x67,
-	0x72, 0x61, 0x66, 0x61, 0x6e, 0x61, 0x2f, 0x70, 0x79, 0x72, 0x6f, 0x73, 0x63, 0x6f, 0x70, 0x65,
-	0x2f, 0x61, 0x70, 0x69, 0x2f, 0x67, 0x65, 0x6e, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x67,
-	0x6f, 0x2f, 0x69, 0x6e, 0x67, 0x65, 0x73, 0x74, 0x65, 0x72, 0x2f, 0x76, 0x31, 0x3b, 0x69, 0x6e,
-	0x67, 0x65, 0x73, 0x74, 0x65, 0x72, 0x76, 0x31, 0xa2, 0x02, 0x03, 0x49, 0x58, 0x58, 0xaa, 0x02,
-	0x0b, 0x49, 0x6e, 0x67, 0x65, 0x73, 0x74, 0x65, 0x72, 0x2e, 0x56, 0x31, 0xca, 0x02, 0x0b, 0x49,
-	0x6e, 0x67, 0x65, 0x73, 0x74, 0x65, 0x72, 0x5c, 0x56, 0x31, 0xe2, 0x02, 0x17, 0x49, 0x6e, 0x67,
-	0x65, 0x73, 0x74, 0x65, 0x72, 0x5c, 0x56, 0x31, 0x5c, 0x47, 0x50, 0x42, 0x4d, 0x65, 0x74, 0x61,
-	0x64, 0x61, 0x74, 0x61, 0xea, 0x02, 0x0c, 0x49, 0x6e, 0x67, 0x65, 0x73, 0x74, 0x65, 0x72, 0x3a,
-	0x3a, 0x56, 0x31, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x61, 0x74, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x58, 0x0a,
+	0x0d, 0x47, 0x65, 0x74, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x53, 0x74, 0x61, 0x74, 0x73, 0x12, 0x21,
+	0x2e, 0x69, 0x6e, 0x67, 0x65, 0x73, 0x74, 0x65, 0x72, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65, 0x74,
+	0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x53, 0x74, 0x61, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
+	0x74, 0x1a, 0x22, 0x2e, 0x69, 0x6e, 0x67, 0x65, 0x73, 0x74, 0x65, 0x72, 0x2e, 0x76, 0x31, 0x2e,
+	0x47, 0x65, 0x74, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x53, 0x74, 0x61, 0x74, 0x73, 0x52, 0x65, 0x73,
+	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x42, 0xb3, 0x01, 0x0a, 0x0f, 0x63, 0x6f, 0x6d, 0x2e,
+	0x69, 0x6e, 0x67, 0x65, 0x73, 0x74, 0x65, 0x72, 0x2e, 0x76, 0x31, 0x42, 0x0d, 0x49, 0x6e, 0x67,
+	0x65, 0x73, 0x74, 0x65, 0x72, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a, 0x44, 0x67, 0x69,
+	0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x67, 0x72, 0x61, 0x66, 0x61, 0x6e, 0x61,
+	0x2f, 0x70, 0x79, 0x72, 0x6f, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x67,
+	0x65, 0x6e, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x67, 0x6f, 0x2f, 0x69, 0x6e, 0x67, 0x65,
+	0x73, 0x74, 0x65, 0x72, 0x2f, 0x76, 0x31, 0x3b, 0x69, 0x6e, 0x67, 0x65, 0x73, 0x74, 0x65, 0x72,
+	0x76, 0x31, 0xa2, 0x02, 0x03, 0x49, 0x58, 0x58, 0xaa, 0x02, 0x0b, 0x49, 0x6e, 0x67, 0x65, 0x73,
+	0x74, 0x65, 0x72, 0x2e, 0x56, 0x31, 0xca, 0x02, 0x0b, 0x49, 0x6e, 0x67, 0x65, 0x73, 0x74, 0x65,
+	0x72, 0x5c, 0x56, 0x31, 0xe2, 0x02, 0x17, 0x49, 0x6e, 0x67, 0x65, 0x73, 0x74, 0x65, 0x72, 0x5c,
+	0x56, 0x31, 0x5c, 0x47, 0x50, 0x42, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0xea, 0x02,
+	0x0c, 0x49, 0x6e, 0x67, 0x65, 0x73, 0x74, 0x65, 0x72, 0x3a, 0x3a, 0x56, 0x31, 0x62, 0x06, 0x70,
+	0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -1979,7 +2188,7 @@ func file_ingester_v1_ingester_proto_rawDescGZIP() []byte {
 }
 
 var file_ingester_v1_ingester_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_ingester_v1_ingester_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
+var file_ingester_v1_ingester_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
 var file_ingester_v1_ingester_proto_goTypes = []interface{}{
 	(StacktracesMergeFormat)(0),              // 0: ingester.v1.StacktracesMergeFormat
 	(*ProfileTypesRequest)(nil),              // 1: ingester.v1.ProfileTypesRequest
@@ -2008,81 +2217,87 @@ var file_ingester_v1_ingester_proto_goTypes = []interface{}{
 	(*BlockMetadataResponse)(nil),            // 24: ingester.v1.BlockMetadataResponse
 	(*Hints)(nil),                            // 25: ingester.v1.Hints
 	(*BlockHints)(nil),                       // 26: ingester.v1.BlockHints
-	(*v1.ProfileType)(nil),                   // 27: types.v1.ProfileType
-	(*v1.Labels)(nil),                        // 28: types.v1.Labels
-	(v1.TimeSeriesAggregationType)(0),        // 29: types.v1.TimeSeriesAggregationType
-	(*v1.LabelPair)(nil),                     // 30: types.v1.LabelPair
-	(*v1.StackTraceSelector)(nil),            // 31: types.v1.StackTraceSelector
-	(*v1.Series)(nil),                        // 32: types.v1.Series
-	(*v1.BlockInfo)(nil),                     // 33: types.v1.BlockInfo
-	(*v11.PushRequest)(nil),                  // 34: push.v1.PushRequest
-	(*v1.LabelValuesRequest)(nil),            // 35: types.v1.LabelValuesRequest
-	(*v1.LabelNamesRequest)(nil),             // 36: types.v1.LabelNamesRequest
-	(*v1.GetProfileStatsRequest)(nil),        // 37: types.v1.GetProfileStatsRequest
-	(*v11.PushResponse)(nil),                 // 38: push.v1.PushResponse
-	(*v1.LabelValuesResponse)(nil),           // 39: types.v1.LabelValuesResponse
-	(*v1.LabelNamesResponse)(nil),            // 40: types.v1.LabelNamesResponse
-	(*v1.GetProfileStatsResponse)(nil),       // 41: types.v1.GetProfileStatsResponse
+	(*GetBlockStatsRequest)(nil),             // 27: ingester.v1.GetBlockStatsRequest
+	(*GetBlockStatsResponse)(nil),            // 28: ingester.v1.GetBlockStatsResponse
+	(*BlockStats)(nil),                       // 29: ingester.v1.BlockStats
+	(*v1.ProfileType)(nil),                   // 30: types.v1.ProfileType
+	(*v1.Labels)(nil),                        // 31: types.v1.Labels
+	(v1.TimeSeriesAggregationType)(0),        // 32: types.v1.TimeSeriesAggregationType
+	(*v1.LabelPair)(nil),                     // 33: types.v1.LabelPair
+	(*v1.StackTraceSelector)(nil),            // 34: types.v1.StackTraceSelector
+	(*v1.Series)(nil),                        // 35: types.v1.Series
+	(*v1.BlockInfo)(nil),                     // 36: types.v1.BlockInfo
+	(*v11.PushRequest)(nil),                  // 37: push.v1.PushRequest
+	(*v1.LabelValuesRequest)(nil),            // 38: types.v1.LabelValuesRequest
+	(*v1.LabelNamesRequest)(nil),             // 39: types.v1.LabelNamesRequest
+	(*v1.GetProfileStatsRequest)(nil),        // 40: types.v1.GetProfileStatsRequest
+	(*v11.PushResponse)(nil),                 // 41: push.v1.PushResponse
+	(*v1.LabelValuesResponse)(nil),           // 42: types.v1.LabelValuesResponse
+	(*v1.LabelNamesResponse)(nil),            // 43: types.v1.LabelNamesResponse
+	(*v1.GetProfileStatsResponse)(nil),       // 44: types.v1.GetProfileStatsResponse
 }
 var file_ingester_v1_ingester_proto_depIdxs = []int32{
-	27, // 0: ingester.v1.ProfileTypesResponse.profile_types:type_name -> types.v1.ProfileType
-	28, // 1: ingester.v1.SeriesResponse.labels_set:type_name -> types.v1.Labels
-	27, // 2: ingester.v1.SelectProfilesRequest.type:type_name -> types.v1.ProfileType
+	30, // 0: ingester.v1.ProfileTypesResponse.profile_types:type_name -> types.v1.ProfileType
+	31, // 1: ingester.v1.SeriesResponse.labels_set:type_name -> types.v1.Labels
+	30, // 2: ingester.v1.SelectProfilesRequest.type:type_name -> types.v1.ProfileType
 	25, // 3: ingester.v1.SelectProfilesRequest.hints:type_name -> ingester.v1.Hints
-	29, // 4: ingester.v1.SelectProfilesRequest.aggregation:type_name -> types.v1.TimeSeriesAggregationType
+	32, // 4: ingester.v1.SelectProfilesRequest.aggregation:type_name -> types.v1.TimeSeriesAggregationType
 	7,  // 5: ingester.v1.MergeProfilesStacktracesRequest.request:type_name -> ingester.v1.SelectProfilesRequest
 	0,  // 6: ingester.v1.MergeProfilesStacktracesResult.format:type_name -> ingester.v1.StacktracesMergeFormat
 	18, // 7: ingester.v1.MergeProfilesStacktracesResult.stacktraces:type_name -> ingester.v1.StacktraceSample
 	15, // 8: ingester.v1.MergeProfilesStacktracesResponse.selectedProfiles:type_name -> ingester.v1.ProfileSets
 	9,  // 9: ingester.v1.MergeProfilesStacktracesResponse.result:type_name -> ingester.v1.MergeProfilesStacktracesResult
-	27, // 10: ingester.v1.SelectSpanProfileRequest.type:type_name -> types.v1.ProfileType
+	30, // 10: ingester.v1.SelectSpanProfileRequest.type:type_name -> types.v1.ProfileType
 	25, // 11: ingester.v1.SelectSpanProfileRequest.hints:type_name -> ingester.v1.Hints
 	11, // 12: ingester.v1.MergeSpanProfileRequest.request:type_name -> ingester.v1.SelectSpanProfileRequest
 	15, // 13: ingester.v1.MergeSpanProfileResponse.selectedProfiles:type_name -> ingester.v1.ProfileSets
 	14, // 14: ingester.v1.MergeSpanProfileResponse.result:type_name -> ingester.v1.MergeSpanProfileResult
-	28, // 15: ingester.v1.ProfileSets.labelsSets:type_name -> types.v1.Labels
+	31, // 15: ingester.v1.ProfileSets.labelsSets:type_name -> types.v1.Labels
 	16, // 16: ingester.v1.ProfileSets.profiles:type_name -> ingester.v1.SeriesProfile
-	27, // 17: ingester.v1.Profile.type:type_name -> types.v1.ProfileType
-	30, // 18: ingester.v1.Profile.labels:type_name -> types.v1.LabelPair
+	30, // 17: ingester.v1.Profile.type:type_name -> types.v1.ProfileType
+	33, // 18: ingester.v1.Profile.labels:type_name -> types.v1.LabelPair
 	18, // 19: ingester.v1.Profile.stacktraces:type_name -> ingester.v1.StacktraceSample
 	7,  // 20: ingester.v1.MergeProfilesLabelsRequest.request:type_name -> ingester.v1.SelectProfilesRequest
-	31, // 21: ingester.v1.MergeProfilesLabelsRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	34, // 21: ingester.v1.MergeProfilesLabelsRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
 	15, // 22: ingester.v1.MergeProfilesLabelsResponse.selectedProfiles:type_name -> ingester.v1.ProfileSets
-	32, // 23: ingester.v1.MergeProfilesLabelsResponse.series:type_name -> types.v1.Series
+	35, // 23: ingester.v1.MergeProfilesLabelsResponse.series:type_name -> types.v1.Series
 	7,  // 24: ingester.v1.MergeProfilesPprofRequest.request:type_name -> ingester.v1.SelectProfilesRequest
-	31, // 25: ingester.v1.MergeProfilesPprofRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	34, // 25: ingester.v1.MergeProfilesPprofRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
 	15, // 26: ingester.v1.MergeProfilesPprofResponse.selectedProfiles:type_name -> ingester.v1.ProfileSets
-	33, // 27: ingester.v1.BlockMetadataResponse.blocks:type_name -> types.v1.BlockInfo
+	36, // 27: ingester.v1.BlockMetadataResponse.blocks:type_name -> types.v1.BlockInfo
 	26, // 28: ingester.v1.Hints.block:type_name -> ingester.v1.BlockHints
-	34, // 29: ingester.v1.IngesterService.Push:input_type -> push.v1.PushRequest
-	35, // 30: ingester.v1.IngesterService.LabelValues:input_type -> types.v1.LabelValuesRequest
-	36, // 31: ingester.v1.IngesterService.LabelNames:input_type -> types.v1.LabelNamesRequest
-	1,  // 32: ingester.v1.IngesterService.ProfileTypes:input_type -> ingester.v1.ProfileTypesRequest
-	3,  // 33: ingester.v1.IngesterService.Series:input_type -> ingester.v1.SeriesRequest
-	5,  // 34: ingester.v1.IngesterService.Flush:input_type -> ingester.v1.FlushRequest
-	8,  // 35: ingester.v1.IngesterService.MergeProfilesStacktraces:input_type -> ingester.v1.MergeProfilesStacktracesRequest
-	19, // 36: ingester.v1.IngesterService.MergeProfilesLabels:input_type -> ingester.v1.MergeProfilesLabelsRequest
-	21, // 37: ingester.v1.IngesterService.MergeProfilesPprof:input_type -> ingester.v1.MergeProfilesPprofRequest
-	12, // 38: ingester.v1.IngesterService.MergeSpanProfile:input_type -> ingester.v1.MergeSpanProfileRequest
-	23, // 39: ingester.v1.IngesterService.BlockMetadata:input_type -> ingester.v1.BlockMetadataRequest
-	37, // 40: ingester.v1.IngesterService.GetProfileStats:input_type -> types.v1.GetProfileStatsRequest
-	38, // 41: ingester.v1.IngesterService.Push:output_type -> push.v1.PushResponse
-	39, // 42: ingester.v1.IngesterService.LabelValues:output_type -> types.v1.LabelValuesResponse
-	40, // 43: ingester.v1.IngesterService.LabelNames:output_type -> types.v1.LabelNamesResponse
-	2,  // 44: ingester.v1.IngesterService.ProfileTypes:output_type -> ingester.v1.ProfileTypesResponse
-	4,  // 45: ingester.v1.IngesterService.Series:output_type -> ingester.v1.SeriesResponse
-	6,  // 46: ingester.v1.IngesterService.Flush:output_type -> ingester.v1.FlushResponse
-	10, // 47: ingester.v1.IngesterService.MergeProfilesStacktraces:output_type -> ingester.v1.MergeProfilesStacktracesResponse
-	20, // 48: ingester.v1.IngesterService.MergeProfilesLabels:output_type -> ingester.v1.MergeProfilesLabelsResponse
-	22, // 49: ingester.v1.IngesterService.MergeProfilesPprof:output_type -> ingester.v1.MergeProfilesPprofResponse
-	13, // 50: ingester.v1.IngesterService.MergeSpanProfile:output_type -> ingester.v1.MergeSpanProfileResponse
-	24, // 51: ingester.v1.IngesterService.BlockMetadata:output_type -> ingester.v1.BlockMetadataResponse
-	41, // 52: ingester.v1.IngesterService.GetProfileStats:output_type -> types.v1.GetProfileStatsResponse
-	41, // [41:53] is the sub-list for method output_type
-	29, // [29:41] is the sub-list for method input_type
-	29, // [29:29] is the sub-list for extension type_name
-	29, // [29:29] is the sub-list for extension extendee
-	0,  // [0:29] is the sub-list for field type_name
+	29, // 29: ingester.v1.GetBlockStatsResponse.block_stats:type_name -> ingester.v1.BlockStats
+	37, // 30: ingester.v1.IngesterService.Push:input_type -> push.v1.PushRequest
+	38, // 31: ingester.v1.IngesterService.LabelValues:input_type -> types.v1.LabelValuesRequest
+	39, // 32: ingester.v1.IngesterService.LabelNames:input_type -> types.v1.LabelNamesRequest
+	1,  // 33: ingester.v1.IngesterService.ProfileTypes:input_type -> ingester.v1.ProfileTypesRequest
+	3,  // 34: ingester.v1.IngesterService.Series:input_type -> ingester.v1.SeriesRequest
+	5,  // 35: ingester.v1.IngesterService.Flush:input_type -> ingester.v1.FlushRequest
+	8,  // 36: ingester.v1.IngesterService.MergeProfilesStacktraces:input_type -> ingester.v1.MergeProfilesStacktracesRequest
+	19, // 37: ingester.v1.IngesterService.MergeProfilesLabels:input_type -> ingester.v1.MergeProfilesLabelsRequest
+	21, // 38: ingester.v1.IngesterService.MergeProfilesPprof:input_type -> ingester.v1.MergeProfilesPprofRequest
+	12, // 39: ingester.v1.IngesterService.MergeSpanProfile:input_type -> ingester.v1.MergeSpanProfileRequest
+	23, // 40: ingester.v1.IngesterService.BlockMetadata:input_type -> ingester.v1.BlockMetadataRequest
+	40, // 41: ingester.v1.IngesterService.GetProfileStats:input_type -> types.v1.GetProfileStatsRequest
+	27, // 42: ingester.v1.IngesterService.GetBlockStats:input_type -> ingester.v1.GetBlockStatsRequest
+	41, // 43: ingester.v1.IngesterService.Push:output_type -> push.v1.PushResponse
+	42, // 44: ingester.v1.IngesterService.LabelValues:output_type -> types.v1.LabelValuesResponse
+	43, // 45: ingester.v1.IngesterService.LabelNames:output_type -> types.v1.LabelNamesResponse
+	2,  // 46: ingester.v1.IngesterService.ProfileTypes:output_type -> ingester.v1.ProfileTypesResponse
+	4,  // 47: ingester.v1.IngesterService.Series:output_type -> ingester.v1.SeriesResponse
+	6,  // 48: ingester.v1.IngesterService.Flush:output_type -> ingester.v1.FlushResponse
+	10, // 49: ingester.v1.IngesterService.MergeProfilesStacktraces:output_type -> ingester.v1.MergeProfilesStacktracesResponse
+	20, // 50: ingester.v1.IngesterService.MergeProfilesLabels:output_type -> ingester.v1.MergeProfilesLabelsResponse
+	22, // 51: ingester.v1.IngesterService.MergeProfilesPprof:output_type -> ingester.v1.MergeProfilesPprofResponse
+	13, // 52: ingester.v1.IngesterService.MergeSpanProfile:output_type -> ingester.v1.MergeSpanProfileResponse
+	24, // 53: ingester.v1.IngesterService.BlockMetadata:output_type -> ingester.v1.BlockMetadataResponse
+	44, // 54: ingester.v1.IngesterService.GetProfileStats:output_type -> types.v1.GetProfileStatsResponse
+	28, // 55: ingester.v1.IngesterService.GetBlockStats:output_type -> ingester.v1.GetBlockStatsResponse
+	43, // [43:56] is the sub-list for method output_type
+	30, // [30:43] is the sub-list for method input_type
+	30, // [30:30] is the sub-list for extension type_name
+	30, // [30:30] is the sub-list for extension extendee
+	0,  // [0:30] is the sub-list for field type_name
 }
 
 func init() { file_ingester_v1_ingester_proto_init() }
@@ -2403,6 +2618,42 @@ func file_ingester_v1_ingester_proto_init() {
 				return nil
 			}
 		}
+		file_ingester_v1_ingester_proto_msgTypes[26].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*GetBlockStatsRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_ingester_v1_ingester_proto_msgTypes[27].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*GetBlockStatsResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_ingester_v1_ingester_proto_msgTypes[28].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*BlockStats); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	file_ingester_v1_ingester_proto_msgTypes[6].OneofWrappers = []interface{}{}
 	file_ingester_v1_ingester_proto_msgTypes[7].OneofWrappers = []interface{}{}
@@ -2416,7 +2667,7 @@ func file_ingester_v1_ingester_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_ingester_v1_ingester_proto_rawDesc,
 			NumEnums:      1,
-			NumMessages:   26,
+			NumMessages:   29,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

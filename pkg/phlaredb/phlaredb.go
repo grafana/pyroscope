@@ -8,6 +8,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 	"time"
 
@@ -579,4 +580,33 @@ func getProfileStatsFromBounds(minTimes, maxTimes []model.Time) (*typesv1.GetPro
 		}
 	}
 	return response, nil
+}
+
+func (f *PhlareDB) GetBlockStats(ctx context.Context, req *connect.Request[ingestv1.GetBlockStatsRequest]) (*connect.Response[ingestv1.GetBlockStatsResponse], error) {
+	sp, _ := opentracing.StartSpanFromContext(ctx, "PhlareDB GetBlockStats")
+	defer sp.Finish()
+
+	res := &ingestv1.GetBlockStatsResponse{}
+	f.headLock.RLock()
+	for _, h := range f.heads {
+		if slices.Contains(req.Msg.GetUlids(), h.meta.ULID.String()) {
+			res.BlockStats = append(res.BlockStats, h.GetMetaStats().Convert())
+		}
+	}
+	for _, h := range f.flushing {
+		if slices.Contains(req.Msg.GetUlids(), h.meta.ULID.String()) {
+			res.BlockStats = append(res.BlockStats, h.GetMetaStats().Convert())
+		}
+	}
+	f.headLock.RUnlock()
+
+	f.blockQuerier.queriersLock.RLock()
+	for _, q := range f.blockQuerier.queriers {
+		if slices.Contains(req.Msg.GetUlids(), q.meta.ULID.String()) {
+			res.BlockStats = append(res.BlockStats, q.GetMetaStats().Convert())
+		}
+	}
+	f.blockQuerier.queriersLock.RUnlock()
+
+	return connect.NewResponse(res), nil
 }

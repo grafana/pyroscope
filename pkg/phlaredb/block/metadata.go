@@ -8,6 +8,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/go-kit/log"
@@ -20,6 +21,7 @@ import (
 	"github.com/prometheus/prometheus/tsdb"
 	"github.com/prometheus/prometheus/tsdb/fileutil"
 
+	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
@@ -105,6 +107,17 @@ type BlockDesc struct {
 	ULID    ulid.ULID  `json:"ulid"`
 	MinTime model.Time `json:"minTime"`
 	MaxTime model.Time `json:"maxTime"`
+}
+
+type MetaStats struct {
+	BlockStats
+	FileStats      []FileStats
+	TotalSizeBytes uint64
+}
+
+type FileStats struct {
+	RelPath   string
+	SizeBytes uint64
 }
 
 // BlockMetaCompaction holds information about compactions a block went through.
@@ -326,6 +339,48 @@ func (meta *Meta) TSDBBlockMeta() tsdb.BlockMeta {
 		MinTime: int64(meta.MinTime),
 		MaxTime: int64(meta.MaxTime),
 	}
+}
+
+func (meta *Meta) GetStats() MetaStats {
+	fileStats := make([]FileStats, 0, len(meta.Files))
+	totalSizeBytes := uint64(0)
+	for _, file := range meta.Files {
+		fileStats = append(fileStats, FileStats{
+			RelPath:   file.RelPath,
+			SizeBytes: file.SizeBytes,
+		})
+		totalSizeBytes += file.SizeBytes
+	}
+
+	return MetaStats{
+		BlockStats:     meta.Stats,
+		FileStats:      fileStats,
+		TotalSizeBytes: totalSizeBytes,
+	}
+}
+
+func (stats MetaStats) Convert() *ingestv1.BlockStats {
+	indexBytes := uint64(0)
+	profilesBytes := uint64(0)
+	symbolsBytes := uint64(0)
+	for _, f := range stats.FileStats {
+		if f.RelPath == IndexFilename {
+			indexBytes = f.SizeBytes
+		} else if f.RelPath == "profiles.parquet" {
+			profilesBytes += f.SizeBytes
+		} else if strings.HasPrefix(f.RelPath, "symbols") {
+			symbolsBytes += f.SizeBytes
+		}
+	}
+	blockStats := &ingestv1.BlockStats{
+		NumSeries:     stats.NumSeries,
+		NumProfiles:   stats.NumProfiles,
+		NumSamples:    stats.NumSamples,
+		IndexBytes:    indexBytes,
+		ProfilesBytes: profilesBytes,
+		SymbolsBytes:  symbolsBytes,
+	}
+	return blockStats
 }
 
 // ReadMetaFromDir reads the given meta from <dir>/meta.json.

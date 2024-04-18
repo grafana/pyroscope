@@ -33,6 +33,7 @@ type IngesterQueryClient interface {
 	MergeSpanProfile(ctx context.Context) clientpool.BidiClientMergeSpanProfile
 	BlockMetadata(ctx context.Context, req *connect.Request[ingestv1.BlockMetadataRequest]) (*connect.Response[ingestv1.BlockMetadataResponse], error)
 	GetProfileStats(ctx context.Context, req *connect.Request[typesv1.GetProfileStatsRequest]) (*connect.Response[typesv1.GetProfileStatsResponse], error)
+	GetBlockStats(ctx context.Context, req *connect.Request[ingestv1.GetBlockStatsRequest]) (*connect.Response[ingestv1.GetBlockStatsResponse], error)
 }
 
 // IngesterQuerier helps with querying the ingesters.

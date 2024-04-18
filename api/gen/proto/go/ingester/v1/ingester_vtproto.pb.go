@@ -700,6 +700,73 @@ func (m *BlockHints) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
+func (m *GetBlockStatsRequest) CloneVT() *GetBlockStatsRequest {
+	if m == nil {
+		return (*GetBlockStatsRequest)(nil)
+	}
+	r := &GetBlockStatsRequest{}
+	if rhs := m.Ulids; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.Ulids = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *GetBlockStatsRequest) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *GetBlockStatsResponse) CloneVT() *GetBlockStatsResponse {
+	if m == nil {
+		return (*GetBlockStatsResponse)(nil)
+	}
+	r := &GetBlockStatsResponse{}
+	if rhs := m.BlockStats; rhs != nil {
+		tmpContainer := make([]*BlockStats, len(rhs))
+		for k, v := range rhs {
+			tmpContainer[k] = v.CloneVT()
+		}
+		r.BlockStats = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *GetBlockStatsResponse) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *BlockStats) CloneVT() *BlockStats {
+	if m == nil {
+		return (*BlockStats)(nil)
+	}
+	r := &BlockStats{
+		NumSeries:     m.NumSeries,
+		NumProfiles:   m.NumProfiles,
+		NumSamples:    m.NumSamples,
+		IndexBytes:    m.IndexBytes,
+		ProfilesBytes: m.ProfilesBytes,
+		SymbolsBytes:  m.SymbolsBytes,
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *BlockStats) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
 func (this *ProfileTypesRequest) EqualVT(that *ProfileTypesRequest) bool {
 	if this == that {
 		return true
@@ -1548,6 +1615,98 @@ func (this *BlockHints) EqualMessageVT(thatMsg proto.Message) bool {
 	}
 	return this.EqualVT(that)
 }
+func (this *GetBlockStatsRequest) EqualVT(that *GetBlockStatsRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if len(this.Ulids) != len(that.Ulids) {
+		return false
+	}
+	for i, vx := range this.Ulids {
+		vy := that.Ulids[i]
+		if vx != vy {
+			return false
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *GetBlockStatsRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*GetBlockStatsRequest)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *GetBlockStatsResponse) EqualVT(that *GetBlockStatsResponse) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if len(this.BlockStats) != len(that.BlockStats) {
+		return false
+	}
+	for i, vx := range this.BlockStats {
+		vy := that.BlockStats[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &BlockStats{}
+			}
+			if q == nil {
+				q = &BlockStats{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *GetBlockStatsResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*GetBlockStatsResponse)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *BlockStats) EqualVT(that *BlockStats) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.NumSeries != that.NumSeries {
+		return false
+	}
+	if this.NumProfiles != that.NumProfiles {
+		return false
+	}
+	if this.NumSamples != that.NumSamples {
+		return false
+	}
+	if this.IndexBytes != that.IndexBytes {
+		return false
+	}
+	if this.ProfilesBytes != that.ProfilesBytes {
+		return false
+	}
+	if this.SymbolsBytes != that.SymbolsBytes {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *BlockStats) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*BlockStats)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
@@ -1573,6 +1732,7 @@ type IngesterServiceClient interface {
 	BlockMetadata(ctx context.Context, in *BlockMetadataRequest, opts ...grpc.CallOption) (*BlockMetadataResponse, error)
 	// GetProfileStats returns profile stats for the current tenant.
 	GetProfileStats(ctx context.Context, in *v1.GetProfileStatsRequest, opts ...grpc.CallOption) (*v1.GetProfileStatsResponse, error)
+	GetBlockStats(ctx context.Context, in *GetBlockStatsRequest, opts ...grpc.CallOption) (*GetBlockStatsResponse, error)
 }
 
 type ingesterServiceClient struct {
@@ -1779,6 +1939,15 @@ func (c *ingesterServiceClient) GetProfileStats(ctx context.Context, in *v1.GetP
 	return out, nil
 }
 
+func (c *ingesterServiceClient) GetBlockStats(ctx context.Context, in *GetBlockStatsRequest, opts ...grpc.CallOption) (*GetBlockStatsResponse, error) {
+	out := new(GetBlockStatsResponse)
+	err := c.cc.Invoke(ctx, "/ingester.v1.IngesterService/GetBlockStats", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // IngesterServiceServer is the server API for IngesterService service.
 // All implementations must embed UnimplementedIngesterServiceServer
 // for forward compatibility
@@ -1798,6 +1967,7 @@ type IngesterServiceServer interface {
 	BlockMetadata(context.Context, *BlockMetadataRequest) (*BlockMetadataResponse, error)
 	// GetProfileStats returns profile stats for the current tenant.
 	GetProfileStats(context.Context, *v1.GetProfileStatsRequest) (*v1.GetProfileStatsResponse, error)
+	GetBlockStats(context.Context, *GetBlockStatsRequest) (*GetBlockStatsResponse, error)
 	mustEmbedUnimplementedIngesterServiceServer()
 }
 
@@ -1840,6 +2010,9 @@ func (UnimplementedIngesterServiceServer) BlockMetadata(context.Context, *BlockM
 }
 func (UnimplementedIngesterServiceServer) GetProfileStats(context.Context, *v1.GetProfileStatsRequest) (*v1.GetProfileStatsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetProfileStats not implemented")
+}
+func (UnimplementedIngesterServiceServer) GetBlockStats(context.Context, *GetBlockStatsRequest) (*GetBlockStatsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetBlockStats not implemented")
 }
 func (UnimplementedIngesterServiceServer) mustEmbedUnimplementedIngesterServiceServer() {}
 
@@ -2102,6 +2275,24 @@ func _IngesterService_GetProfileStats_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _IngesterService_GetBlockStats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetBlockStatsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IngesterServiceServer).GetBlockStats(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/ingester.v1.IngesterService/GetBlockStats",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IngesterServiceServer).GetBlockStats(ctx, req.(*GetBlockStatsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // IngesterService_ServiceDesc is the grpc.ServiceDesc for IngesterService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -2140,6 +2331,10 @@ var IngesterService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetProfileStats",
 			Handler:    _IngesterService_GetProfileStats_Handler,
+		},
+		{
+			MethodName: "GetBlockStats",
+			Handler:    _IngesterService_GetBlockStats_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
@@ -3723,6 +3918,156 @@ func (m *BlockHints) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *GetBlockStatsRequest) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *GetBlockStatsRequest) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *GetBlockStatsRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.Ulids) > 0 {
+		for iNdEx := len(m.Ulids) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.Ulids[iNdEx])
+			copy(dAtA[i:], m.Ulids[iNdEx])
+			i = encodeVarint(dAtA, i, uint64(len(m.Ulids[iNdEx])))
+			i--
+			dAtA[i] = 0xa
+		}
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *GetBlockStatsResponse) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *GetBlockStatsResponse) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *GetBlockStatsResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.BlockStats) > 0 {
+		for iNdEx := len(m.BlockStats) - 1; iNdEx >= 0; iNdEx-- {
+			size, err := m.BlockStats[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarint(dAtA, i, uint64(size))
+			i--
+			dAtA[i] = 0xa
+		}
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *BlockStats) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *BlockStats) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *BlockStats) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.SymbolsBytes != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.SymbolsBytes))
+		i--
+		dAtA[i] = 0x38
+	}
+	if m.ProfilesBytes != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.ProfilesBytes))
+		i--
+		dAtA[i] = 0x30
+	}
+	if m.IndexBytes != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.IndexBytes))
+		i--
+		dAtA[i] = 0x28
+	}
+	if m.NumSamples != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.NumSamples))
+		i--
+		dAtA[i] = 0x20
+	}
+	if m.NumProfiles != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.NumProfiles))
+		i--
+		dAtA[i] = 0x18
+	}
+	if m.NumSeries != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.NumSeries))
+		i--
+		dAtA[i] = 0x10
+	}
+	return len(dAtA) - i, nil
+}
+
 func encodeVarint(dAtA []byte, offset int, v uint64) int {
 	offset -= sov(v)
 	base := offset
@@ -4320,6 +4665,66 @@ func (m *BlockHints) SizeVT() (n int) {
 	}
 	if m.Deduplication {
 		n += 2
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *GetBlockStatsRequest) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if len(m.Ulids) > 0 {
+		for _, s := range m.Ulids {
+			l = len(s)
+			n += 1 + l + sov(uint64(l))
+		}
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *GetBlockStatsResponse) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if len(m.BlockStats) > 0 {
+		for _, e := range m.BlockStats {
+			l = e.SizeVT()
+			n += 1 + l + sov(uint64(l))
+		}
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *BlockStats) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.NumSeries != 0 {
+		n += 1 + sov(uint64(m.NumSeries))
+	}
+	if m.NumProfiles != 0 {
+		n += 1 + sov(uint64(m.NumProfiles))
+	}
+	if m.NumSamples != 0 {
+		n += 1 + sov(uint64(m.NumSamples))
+	}
+	if m.IndexBytes != 0 {
+		n += 1 + sov(uint64(m.IndexBytes))
+	}
+	if m.ProfilesBytes != 0 {
+		n += 1 + sov(uint64(m.ProfilesBytes))
+	}
+	if m.SymbolsBytes != 0 {
+		n += 1 + sov(uint64(m.SymbolsBytes))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -7808,6 +8213,339 @@ func (m *BlockHints) UnmarshalVT(dAtA []byte) error {
 				}
 			}
 			m.Deduplication = bool(v != 0)
+		default:
+			iNdEx = preIndex
+			skippy, err := skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *GetBlockStatsRequest) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: GetBlockStatsRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: GetBlockStatsRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Ulids", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Ulids = append(m.Ulids, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *GetBlockStatsResponse) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: GetBlockStatsResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: GetBlockStatsResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockStats", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockStats = append(m.BlockStats, &BlockStats{})
+			if err := m.BlockStats[len(m.BlockStats)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *BlockStats) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: BlockStats: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: BlockStats: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NumSeries", wireType)
+			}
+			m.NumSeries = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.NumSeries |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NumProfiles", wireType)
+			}
+			m.NumProfiles = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.NumProfiles |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NumSamples", wireType)
+			}
+			m.NumSamples = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.NumSamples |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field IndexBytes", wireType)
+			}
+			m.IndexBytes = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.IndexBytes |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 6:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ProfilesBytes", wireType)
+			}
+			m.ProfilesBytes = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.ProfilesBytes |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 7:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SymbolsBytes", wireType)
+			}
+			m.SymbolsBytes = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.SymbolsBytes |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])

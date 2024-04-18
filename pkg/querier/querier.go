@@ -354,7 +354,7 @@ func (q *Querier) blockSelect(ctx context.Context, start, end model.Time) (block
 
 	results := newReplicasPerBlockID(q.logger)
 
-	// get first all blocks from store gateways, as they should be querier with a priority and also aret the only ones containing duplicated blocks because of replication
+	// get first all blocks from store gateways, as they should be querier with a priority and also are the only ones containing duplicated blocks because of replication
 	if q.storeGatewayQuerier != nil {
 		res, err := q.blockSelectFromStoreGateway(ctx, ingesterReq)
 		if err != nil {
@@ -575,7 +575,92 @@ func (q *Querier) GetProfileStats(ctx context.Context, req *connect.Request[type
 func (q *Querier) AnalyzeQuery(ctx context.Context, req *connect.Request[querierv1.AnalyzeQueryRequest]) (*connect.Response[querierv1.AnalyzeQueryResponse], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "AnalyzeQuery")
 	defer sp.Finish()
-	return nil, nil
+
+	plan, err := q.blockSelect(ctx, model.Time(req.Msg.Start), model.Time(req.Msg.End))
+	if err != nil {
+		return nil, err
+	}
+
+	storeGatewayReplicationSet, err := q.storeGatewayQuerier.ring.GetReplicationSetForOperation(readNoExtend)
+	if err != nil {
+		return nil, err
+	}
+	ingesterReplicationSet, err := q.ingesterQuerier.ring.GetReplicationSetForOperation(readNoExtend)
+	if err != nil {
+		return nil, err
+	}
+	storeGatewayQueryScope := &querierv1.QueryScope{
+		ComponentType: "long-term-storage",
+	}
+	ingesterQueryScope := &querierv1.QueryScope{
+		ComponentType: "short-term-storage",
+	}
+	ingesterBlockUlids := make([]string, 0)
+	storeGatewayBlockUlids := make([]string, 0)
+	for replica, blockHints := range plan {
+		if storeGatewayReplicationSet.Includes(replica) {
+			storeGatewayQueryScope.ComponentCount += 1
+			storeGatewayQueryScope.NumBlocks += uint64(len(blockHints.Ulids))
+			storeGatewayBlockUlids = append(storeGatewayBlockUlids, blockHints.Ulids...)
+		} else if ingesterReplicationSet.Includes(replica) {
+			ingesterQueryScope.ComponentCount += 1
+			ingesterQueryScope.NumBlocks += uint64(len(blockHints.Ulids))
+			ingesterBlockUlids = append(ingesterBlockUlids, blockHints.Ulids...)
+		}
+	}
+
+	var responses []ResponseFromReplica[*ingestv1.GetBlockStatsResponse]
+	responses, err = forAllPlannedIngesters(ctx, q.ingesterQuerier, plan, func(ctx context.Context, iq IngesterQueryClient, hint *ingestv1.Hints) (*ingestv1.GetBlockStatsResponse, error) {
+		stats, err := iq.GetBlockStats(ctx, connect.NewRequest(&ingestv1.GetBlockStatsRequest{Ulids: ingesterBlockUlids}))
+		return stats.Msg, err
+	})
+	for _, r := range responses {
+		for _, stats := range r.response.BlockStats {
+			ingesterQueryScope.NumSeries += stats.NumSeries
+			ingesterQueryScope.NumProfiles += stats.NumProfiles
+			ingesterQueryScope.NumSamples += stats.NumSamples
+			ingesterQueryScope.IndexBytes += stats.IndexBytes
+			ingesterQueryScope.ProfileBytes += stats.ProfilesBytes
+			ingesterQueryScope.SymbolBytes += stats.SymbolsBytes
+		}
+	}
+
+	tenantId, err := tenant.TenantID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	responses, err = forAllPlannedStoreGateways(ctx, tenantId, q.storeGatewayQuerier, plan, func(ctx context.Context, sq StoreGatewayQueryClient, hint *ingestv1.Hints) (*ingestv1.GetBlockStatsResponse, error) {
+		stats, err := sq.GetBlockStats(ctx, connect.NewRequest(&ingestv1.GetBlockStatsRequest{Ulids: ingesterBlockUlids}))
+		return stats.Msg, err
+	})
+	for _, r := range responses {
+		for _, stats := range r.response.BlockStats {
+			storeGatewayQueryScope.NumSeries += stats.NumSeries
+			storeGatewayQueryScope.NumProfiles += stats.NumProfiles
+			storeGatewayQueryScope.NumSamples += stats.NumSamples
+			storeGatewayQueryScope.IndexBytes += stats.IndexBytes
+			storeGatewayQueryScope.ProfileBytes += stats.ProfilesBytes
+			storeGatewayQueryScope.SymbolBytes += stats.SymbolsBytes
+		}
+	}
+	totalBytes := ingesterQueryScope.IndexBytes +
+		ingesterQueryScope.ProfileBytes +
+		ingesterQueryScope.SymbolBytes +
+		storeGatewayQueryScope.IndexBytes +
+		storeGatewayQueryScope.ProfileBytes +
+		storeGatewayQueryScope.SymbolBytes
+
+	res := &querierv1.AnalyzeQueryResponse{
+		QueryValidationErrors: nil,
+		QueryScopes:           []*querierv1.QueryScope{storeGatewayQueryScope, ingesterQueryScope},
+		QueryImpact: &querierv1.QueryImpact{
+			Type:               querierv1.QueryImpactType_MEDIUM, // TODO
+			TotalBytesRead:     totalBytes,
+			EstimatedTimeNanos: 0, // TODO
+		},
+	}
+
+	return connect.NewResponse(res), nil
 }
 
 func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Request[querierv1.SelectMergeStacktracesRequest]) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {

@@ -155,15 +155,12 @@ message SelectSeriesResponse {
 message AnalyzeQueryRequest {
   QueryType type = 1;
 
-  ProfileTypesRequest profile_types_request = 2;
-  types.v1.LabelNamesRequest label_names_request = 3;
-  types.v1.LabelValuesRequest label_values_request = 4;
-  SeriesRequest series_request = 5;
-  SelectMergeStacktracesRequest flamegraph_request = 6;
-  SelectMergeSpanProfileRequest span_profile_flamegraph_request = 7;
-  SelectMergeProfileRequest pprof_request = 8;
-  SelectSeriesRequest timeseries_request = 9;
-  DiffRequest diff_request = 10;
+  // Milliseconds since epoch. If missing or zero, only the ingesters will be
+  // queried.
+  int64 start = 2;
+  // Milliseconds since epoch. If missing or zero, only the ingesters will be
+  // queried.
+  int64 end = 3;
 }
 
 enum QueryType {
@@ -189,20 +186,19 @@ message QueryScope {
   string component_type = 1; // high level, e.g., "short term" or "long term" storage
   int64 component_count = 2; // how many components of this type will work on the query
 
-  int64 num_blocks = 3;
-  int64 num_series = 4;
-  int64 num_profiles = 5;
-  int64 num_samples = 6;
-  int64 index_bytes = 7;
-  int64 profile_bytes = 8;
-  int64 symbol_bytes = 9;
+  uint64 num_blocks = 3;
+  uint64 num_series = 4;
+  uint64 num_profiles = 5;
+  uint64 num_samples = 6;
+  uint64 index_bytes = 7;
+  uint64 profile_bytes = 8;
+  uint64 symbol_bytes = 9;
 }
 
 message QueryImpact {
   QueryImpactType type = 1;
-  int64 sub_query_count = 2;
-  int64 total_bytes_read = 3;
-  int64 estimated_time_nanos = 4; // not sure how we can do this yet, but it would be a formula based on the query scopes above
+  uint64 total_bytes_read = 2;
+  int64 estimated_time_nanos = 3;
 }
 
 enum QueryImpactType {

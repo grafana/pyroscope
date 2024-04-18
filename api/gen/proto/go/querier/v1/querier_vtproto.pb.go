@@ -444,28 +444,9 @@ func (m *AnalyzeQueryRequest) CloneVT() *AnalyzeQueryRequest {
 		return (*AnalyzeQueryRequest)(nil)
 	}
 	r := &AnalyzeQueryRequest{
-		Type:                         m.Type,
-		ProfileTypesRequest:          m.ProfileTypesRequest.CloneVT(),
-		SeriesRequest:                m.SeriesRequest.CloneVT(),
-		FlamegraphRequest:            m.FlamegraphRequest.CloneVT(),
-		SpanProfileFlamegraphRequest: m.SpanProfileFlamegraphRequest.CloneVT(),
-		PprofRequest:                 m.PprofRequest.CloneVT(),
-		TimeseriesRequest:            m.TimeseriesRequest.CloneVT(),
-		DiffRequest:                  m.DiffRequest.CloneVT(),
-	}
-	if rhs := m.LabelNamesRequest; rhs != nil {
-		if vtpb, ok := interface{}(rhs).(interface{ CloneVT() *v1.LabelNamesRequest }); ok {
-			r.LabelNamesRequest = vtpb.CloneVT()
-		} else {
-			r.LabelNamesRequest = proto.Clone(rhs).(*v1.LabelNamesRequest)
-		}
-	}
-	if rhs := m.LabelValuesRequest; rhs != nil {
-		if vtpb, ok := interface{}(rhs).(interface{ CloneVT() *v1.LabelValuesRequest }); ok {
-			r.LabelValuesRequest = vtpb.CloneVT()
-		} else {
-			r.LabelValuesRequest = proto.Clone(rhs).(*v1.LabelValuesRequest)
-		}
+		Type:  m.Type,
+		Start: m.Start,
+		End:   m.End,
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -540,7 +521,6 @@ func (m *QueryImpact) CloneVT() *QueryImpact {
 	}
 	r := &QueryImpact{
 		Type:               m.Type,
-		SubQueryCount:      m.SubQueryCount,
 		TotalBytesRead:     m.TotalBytesRead,
 		EstimatedTimeNanos: m.EstimatedTimeNanos,
 	}
@@ -1106,43 +1086,10 @@ func (this *AnalyzeQueryRequest) EqualVT(that *AnalyzeQueryRequest) bool {
 	if this.Type != that.Type {
 		return false
 	}
-	if !this.ProfileTypesRequest.EqualVT(that.ProfileTypesRequest) {
+	if this.Start != that.Start {
 		return false
 	}
-	if equal, ok := interface{}(this.LabelNamesRequest).(interface {
-		EqualVT(*v1.LabelNamesRequest) bool
-	}); ok {
-		if !equal.EqualVT(that.LabelNamesRequest) {
-			return false
-		}
-	} else if !proto.Equal(this.LabelNamesRequest, that.LabelNamesRequest) {
-		return false
-	}
-	if equal, ok := interface{}(this.LabelValuesRequest).(interface {
-		EqualVT(*v1.LabelValuesRequest) bool
-	}); ok {
-		if !equal.EqualVT(that.LabelValuesRequest) {
-			return false
-		}
-	} else if !proto.Equal(this.LabelValuesRequest, that.LabelValuesRequest) {
-		return false
-	}
-	if !this.SeriesRequest.EqualVT(that.SeriesRequest) {
-		return false
-	}
-	if !this.FlamegraphRequest.EqualVT(that.FlamegraphRequest) {
-		return false
-	}
-	if !this.SpanProfileFlamegraphRequest.EqualVT(that.SpanProfileFlamegraphRequest) {
-		return false
-	}
-	if !this.PprofRequest.EqualVT(that.PprofRequest) {
-		return false
-	}
-	if !this.TimeseriesRequest.EqualVT(that.TimeseriesRequest) {
-		return false
-	}
-	if !this.DiffRequest.EqualVT(that.DiffRequest) {
+	if this.End != that.End {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -1250,9 +1197,6 @@ func (this *QueryImpact) EqualVT(that *QueryImpact) bool {
 		return false
 	}
 	if this.Type != that.Type {
-		return false
-	}
-	if this.SubQueryCount != that.SubQueryCount {
 		return false
 	}
 	if this.TotalBytesRead != that.TotalBytesRead {
@@ -2738,119 +2682,15 @@ func (m *AnalyzeQueryRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if m.DiffRequest != nil {
-		size, err := m.DiffRequest.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = encodeVarint(dAtA, i, uint64(size))
+	if m.End != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.End))
 		i--
-		dAtA[i] = 0x52
+		dAtA[i] = 0x18
 	}
-	if m.TimeseriesRequest != nil {
-		size, err := m.TimeseriesRequest.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = encodeVarint(dAtA, i, uint64(size))
+	if m.Start != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.Start))
 		i--
-		dAtA[i] = 0x4a
-	}
-	if m.PprofRequest != nil {
-		size, err := m.PprofRequest.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = encodeVarint(dAtA, i, uint64(size))
-		i--
-		dAtA[i] = 0x42
-	}
-	if m.SpanProfileFlamegraphRequest != nil {
-		size, err := m.SpanProfileFlamegraphRequest.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = encodeVarint(dAtA, i, uint64(size))
-		i--
-		dAtA[i] = 0x3a
-	}
-	if m.FlamegraphRequest != nil {
-		size, err := m.FlamegraphRequest.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = encodeVarint(dAtA, i, uint64(size))
-		i--
-		dAtA[i] = 0x32
-	}
-	if m.SeriesRequest != nil {
-		size, err := m.SeriesRequest.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = encodeVarint(dAtA, i, uint64(size))
-		i--
-		dAtA[i] = 0x2a
-	}
-	if m.LabelValuesRequest != nil {
-		if vtmsg, ok := interface{}(m.LabelValuesRequest).(interface {
-			MarshalToSizedBufferVT([]byte) (int, error)
-		}); ok {
-			size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarint(dAtA, i, uint64(size))
-		} else {
-			encoded, err := proto.Marshal(m.LabelValuesRequest)
-			if err != nil {
-				return 0, err
-			}
-			i -= len(encoded)
-			copy(dAtA[i:], encoded)
-			i = encodeVarint(dAtA, i, uint64(len(encoded)))
-		}
-		i--
-		dAtA[i] = 0x22
-	}
-	if m.LabelNamesRequest != nil {
-		if vtmsg, ok := interface{}(m.LabelNamesRequest).(interface {
-			MarshalToSizedBufferVT([]byte) (int, error)
-		}); ok {
-			size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarint(dAtA, i, uint64(size))
-		} else {
-			encoded, err := proto.Marshal(m.LabelNamesRequest)
-			if err != nil {
-				return 0, err
-			}
-			i -= len(encoded)
-			copy(dAtA[i:], encoded)
-			i = encodeVarint(dAtA, i, uint64(len(encoded)))
-		}
-		i--
-		dAtA[i] = 0x1a
-	}
-	if m.ProfileTypesRequest != nil {
-		size, err := m.ProfileTypesRequest.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = encodeVarint(dAtA, i, uint64(size))
-		i--
-		dAtA[i] = 0x12
+		dAtA[i] = 0x10
 	}
 	if m.Type != 0 {
 		i = encodeVarint(dAtA, i, uint64(m.Type))
@@ -3037,15 +2877,10 @@ func (m *QueryImpact) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.EstimatedTimeNanos != 0 {
 		i = encodeVarint(dAtA, i, uint64(m.EstimatedTimeNanos))
 		i--
-		dAtA[i] = 0x20
+		dAtA[i] = 0x18
 	}
 	if m.TotalBytesRead != 0 {
 		i = encodeVarint(dAtA, i, uint64(m.TotalBytesRead))
-		i--
-		dAtA[i] = 0x18
-	}
-	if m.SubQueryCount != 0 {
-		i = encodeVarint(dAtA, i, uint64(m.SubQueryCount))
 		i--
 		dAtA[i] = 0x10
 	}
@@ -3469,53 +3304,11 @@ func (m *AnalyzeQueryRequest) SizeVT() (n int) {
 	if m.Type != 0 {
 		n += 1 + sov(uint64(m.Type))
 	}
-	if m.ProfileTypesRequest != nil {
-		l = m.ProfileTypesRequest.SizeVT()
-		n += 1 + l + sov(uint64(l))
+	if m.Start != 0 {
+		n += 1 + sov(uint64(m.Start))
 	}
-	if m.LabelNamesRequest != nil {
-		if size, ok := interface{}(m.LabelNamesRequest).(interface {
-			SizeVT() int
-		}); ok {
-			l = size.SizeVT()
-		} else {
-			l = proto.Size(m.LabelNamesRequest)
-		}
-		n += 1 + l + sov(uint64(l))
-	}
-	if m.LabelValuesRequest != nil {
-		if size, ok := interface{}(m.LabelValuesRequest).(interface {
-			SizeVT() int
-		}); ok {
-			l = size.SizeVT()
-		} else {
-			l = proto.Size(m.LabelValuesRequest)
-		}
-		n += 1 + l + sov(uint64(l))
-	}
-	if m.SeriesRequest != nil {
-		l = m.SeriesRequest.SizeVT()
-		n += 1 + l + sov(uint64(l))
-	}
-	if m.FlamegraphRequest != nil {
-		l = m.FlamegraphRequest.SizeVT()
-		n += 1 + l + sov(uint64(l))
-	}
-	if m.SpanProfileFlamegraphRequest != nil {
-		l = m.SpanProfileFlamegraphRequest.SizeVT()
-		n += 1 + l + sov(uint64(l))
-	}
-	if m.PprofRequest != nil {
-		l = m.PprofRequest.SizeVT()
-		n += 1 + l + sov(uint64(l))
-	}
-	if m.TimeseriesRequest != nil {
-		l = m.TimeseriesRequest.SizeVT()
-		n += 1 + l + sov(uint64(l))
-	}
-	if m.DiffRequest != nil {
-		l = m.DiffRequest.SizeVT()
-		n += 1 + l + sov(uint64(l))
+	if m.End != 0 {
+		n += 1 + sov(uint64(m.End))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -3593,9 +3386,6 @@ func (m *QueryImpact) SizeVT() (n int) {
 	_ = l
 	if m.Type != 0 {
 		n += 1 + sov(uint64(m.Type))
-	}
-	if m.SubQueryCount != 0 {
-		n += 1 + sov(uint64(m.SubQueryCount))
 	}
 	if m.TotalBytesRead != 0 {
 		n += 1 + sov(uint64(m.TotalBytesRead))
@@ -5897,10 +5687,10 @@ func (m *AnalyzeQueryRequest) UnmarshalVT(dAtA []byte) error {
 				}
 			}
 		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ProfileTypesRequest", wireType)
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Start", wireType)
 			}
-			var msglen int
+			m.Start = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflow
@@ -5910,33 +5700,16 @@ func (m *AnalyzeQueryRequest) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				msglen |= int(b&0x7F) << shift
+				m.Start |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			if msglen < 0 {
-				return ErrInvalidLength
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.ProfileTypesRequest == nil {
-				m.ProfileTypesRequest = &ProfileTypesRequest{}
-			}
-			if err := m.ProfileTypesRequest.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
 		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field LabelNamesRequest", wireType)
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field End", wireType)
 			}
-			var msglen int
+			m.End = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflow
@@ -5946,296 +5719,11 @@ func (m *AnalyzeQueryRequest) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				msglen |= int(b&0x7F) << shift
+				m.End |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			if msglen < 0 {
-				return ErrInvalidLength
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.LabelNamesRequest == nil {
-				m.LabelNamesRequest = &v1.LabelNamesRequest{}
-			}
-			if unmarshal, ok := interface{}(m.LabelNamesRequest).(interface {
-				UnmarshalVT([]byte) error
-			}); ok {
-				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.LabelNamesRequest); err != nil {
-					return err
-				}
-			}
-			iNdEx = postIndex
-		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field LabelValuesRequest", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLength
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.LabelValuesRequest == nil {
-				m.LabelValuesRequest = &v1.LabelValuesRequest{}
-			}
-			if unmarshal, ok := interface{}(m.LabelValuesRequest).(interface {
-				UnmarshalVT([]byte) error
-			}); ok {
-				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.LabelValuesRequest); err != nil {
-					return err
-				}
-			}
-			iNdEx = postIndex
-		case 5:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field SeriesRequest", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLength
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.SeriesRequest == nil {
-				m.SeriesRequest = &SeriesRequest{}
-			}
-			if err := m.SeriesRequest.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 6:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field FlamegraphRequest", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLength
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.FlamegraphRequest == nil {
-				m.FlamegraphRequest = &SelectMergeStacktracesRequest{}
-			}
-			if err := m.FlamegraphRequest.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 7:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field SpanProfileFlamegraphRequest", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLength
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.SpanProfileFlamegraphRequest == nil {
-				m.SpanProfileFlamegraphRequest = &SelectMergeSpanProfileRequest{}
-			}
-			if err := m.SpanProfileFlamegraphRequest.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 8:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field PprofRequest", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLength
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.PprofRequest == nil {
-				m.PprofRequest = &SelectMergeProfileRequest{}
-			}
-			if err := m.PprofRequest.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 9:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field TimeseriesRequest", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLength
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.TimeseriesRequest == nil {
-				m.TimeseriesRequest = &SelectSeriesRequest{}
-			}
-			if err := m.TimeseriesRequest.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 10:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field DiffRequest", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLength
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.DiffRequest == nil {
-				m.DiffRequest = &DiffRequest{}
-			}
-			if err := m.DiffRequest.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])
@@ -6505,7 +5993,7 @@ func (m *QueryScope) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.NumBlocks |= int64(b&0x7F) << shift
+				m.NumBlocks |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -6524,7 +6012,7 @@ func (m *QueryScope) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.NumSeries |= int64(b&0x7F) << shift
+				m.NumSeries |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -6543,7 +6031,7 @@ func (m *QueryScope) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.NumProfiles |= int64(b&0x7F) << shift
+				m.NumProfiles |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -6562,7 +6050,7 @@ func (m *QueryScope) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.NumSamples |= int64(b&0x7F) << shift
+				m.NumSamples |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -6581,7 +6069,7 @@ func (m *QueryScope) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.IndexBytes |= int64(b&0x7F) << shift
+				m.IndexBytes |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -6600,7 +6088,7 @@ func (m *QueryScope) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.ProfileBytes |= int64(b&0x7F) << shift
+				m.ProfileBytes |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -6619,7 +6107,7 @@ func (m *QueryScope) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.SymbolBytes |= int64(b&0x7F) << shift
+				m.SymbolBytes |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -6696,25 +6184,6 @@ func (m *QueryImpact) UnmarshalVT(dAtA []byte) error {
 			}
 		case 2:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field SubQueryCount", wireType)
-			}
-			m.SubQueryCount = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.SubQueryCount |= int64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 3:
-			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field TotalBytesRead", wireType)
 			}
 			m.TotalBytesRead = 0
@@ -6727,12 +6196,12 @@ func (m *QueryImpact) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.TotalBytesRead |= int64(b&0x7F) << shift
+				m.TotalBytesRead |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-		case 4:
+		case 3:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field EstimatedTimeNanos", wireType)
 			}

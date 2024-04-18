@@ -562,7 +562,7 @@ func (h *Head) flush(ctx context.Context) error {
 		return errors.Wrap(err, "flushing symdb")
 	}
 	for _, file := range h.symdb.Files() {
-		// Files' path is relative to the symdb dir.
+		// FileStats' path is relative to the symdb dir.
 		file.RelPath = filepath.Join(symdb.DefaultDirName, file.RelPath)
 		files = append(files, file)
 		blockSize += file.SizeBytes
@@ -637,4 +637,10 @@ func (h *Head) updateSymbolsMemUsage(memStats *symdb.MemoryStats) {
 	m.WithLabelValues("functions").Set(float64(memStats.FunctionsSize))
 	m.WithLabelValues("mappings").Set(float64(memStats.MappingsSize))
 	m.WithLabelValues("strings").Set(float64(memStats.StringsSize))
+}
+
+func (h *Head) GetMetaStats() block.MetaStats {
+	h.metaLock.RLock()
+	defer h.metaLock.RUnlock()
+	return h.meta.GetStats()
 }

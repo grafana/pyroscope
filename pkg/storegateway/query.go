@@ -3,6 +3,7 @@ package storegateway
 import (
 	"context"
 	"io"
+	"slices"
 
 	"connectrpc.com/connect"
 	"github.com/pkg/errors"
@@ -137,6 +138,25 @@ func (s *StoreGateway) BlockMetadata(ctx context.Context, req *connect.Request[i
 		res = &ingestv1.BlockMetadataResponse{}
 	}
 
+	return connect.NewResponse(res), nil
+}
+
+func (s *StoreGateway) GetBlockStats(ctx context.Context, req *connect.Request[ingestv1.GetBlockStatsRequest]) (*connect.Response[ingestv1.GetBlockStatsResponse], error) {
+	res := &ingestv1.GetBlockStatsResponse{}
+	_, err := s.forBucketStore(ctx, func(bs *BucketStore) error {
+		bs.blocksMx.RLock()
+		defer bs.blocksMx.RUnlock()
+
+		for ulid, block := range bs.blocks {
+			if slices.Contains(req.Msg.Ulids, ulid.String()) {
+				res.BlockStats = append(res.BlockStats, block.meta.GetStats().Convert())
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
 	return connect.NewResponse(res), nil
 }
 

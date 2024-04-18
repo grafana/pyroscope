@@ -34,7 +34,7 @@ GENERAL
   Build ID:           %s
   Build Time:         %s
   Git SHA:            %s
-  Git Dirty Files:    %d
+  Git Dirty FileStats:    %d
   Embedded Assets:    %t
 `
 
