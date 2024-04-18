@@ -12,7 +12,7 @@ aliases:
 Enhance your Node.js application's performance with our Node.js Profiler. Seamlessly integrated with Pyroscope, it provides real-time insights into your application’s operation, helping you identify and resolve performance bottlenecks. This integration is key for Node.js developers aiming to boost efficiency, reduce latency, and maintain optimal application performance.
 
 {{< admonition type="note" >}}
-Refer to [Available profiling types]({{< relref "../../view-and-analyze-profile-data/profiling-types/#available-profile-types" >}}) for a list of profile types supported by each language.
+Refer to [Available profiling types]({{< relref "../../view-and-analyze-profile-data/profiling-types#available-profile-types" >}}) for a list of profile types supported by each language.
 {{< /admonition >}}
 
 ## Before you begin
