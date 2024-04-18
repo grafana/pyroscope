@@ -58,5 +58,9 @@ The following languages SDKs provide support for sending profiles from your appl
    </tr>
 </table>
 
-If you're interested in integrating other ecosystems, please reach out to us on [github](https://github.com/grafana/pyroscope/).
+{{< admonition type="note" >}}
+Refer to [Available profiling types](../../view-and-analyze-profile-data/profiling-types/#available-profile-types) for a list of profile types supported by each language.
+{{< /admonition >}}
+
+If you're interested in integrating other ecosystems, reach out to us on [github](https://github.com/grafana/pyroscope/).
 

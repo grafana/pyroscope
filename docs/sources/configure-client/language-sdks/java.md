@@ -9,8 +9,13 @@ aliases:
 
 # Java
 
-The Java Profiler, integrated with Pyroscope, offers a comprehensive solution for performance analysis in Java applications. It provides real-time insights, enabling developers to understand and optimize their Java codebase effectively. This tool is crucial for improving application responsiveness, reducing resource consumption, and ensuring top-notch performance in Java environments.
+The Java Profiler, integrated with Pyroscope, offers a comprehensive solution for performance analysis in Java applications.
+It provides real-time insights, enabling developers to understand and optimize their Java codebase effectively.
+This tool is crucial for improving application responsiveness, reducing resource consumption, and ensuring top-notch performance in Java environments.
 
+{{< admonition type="note" >}}
+Refer to [Available profiling types](../../view-and-analyze-profile-data/profiling-types/#available-profile-types) for a list of profile types supported by each language.
+{{< /admonition >}}
 
 ## Before you begin
 
@@ -28,7 +33,7 @@ Supported platforms include:
 * MacOS on x64
 * MacOS on ARM64
 
-Visit our GitHub [releases](https://github.com/pyroscope-io/pyroscope-java/releases) page to download the latest version of `pyroscope.jar`.
+Visit the GitHub [releases](https://github.com/pyroscope-io/pyroscope-java/releases) page to download the latest version of `pyroscope.jar`.
 
 The latest release is also available on [Maven Central](https://search.maven.org/artifact/io.pyroscope/agent).
 

@@ -13,7 +13,12 @@ Our Go Profiler is a cutting-edge tool designed to optimize Golang applications.
 By integrating with Pyroscope, the profiler offers developers an in-depth view of their Go codebase, enabling real-time performance analysis.
 This powerful tool is crucial for pinpointing inefficiencies, streamlining code execution, and ensuring peak performance in Go applications.
 
-Pyroscope uses the standard `runtime/pprof` package to collect profiling data. Refer to [the official documentation](https://golang.org/doc/diagnostics#profiling) for details.
+Pyroscope uses the standard `runtime/pprof` package to collect profiling data.
+Refer to [the official documentation](https://golang.org/doc/diagnostics#profiling) for details.
+
+{{< admonition type="note" >}}
+Refer to [Available profiling types](../../view-and-analyze-profile-data/profiling-types/#available-profile-types) for a list of profile types supported by Go.
+{{< /admonition >}}
 
 ## Before you begin
 
