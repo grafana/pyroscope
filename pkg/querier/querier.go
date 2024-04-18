@@ -572,6 +572,12 @@ func (q *Querier) GetProfileStats(ctx context.Context, req *connect.Request[type
 	return connect.NewResponse(response), nil
 }
 
+func (q *Querier) AnalyzeQuery(ctx context.Context, req *connect.Request[querierv1.AnalyzeQueryRequest]) (*connect.Response[querierv1.AnalyzeQueryResponse], error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "AnalyzeQuery")
+	defer sp.Finish()
+	return nil, nil
+}
+
 func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Request[querierv1.SelectMergeStacktracesRequest]) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeStacktraces")
 	level.Info(spanlogger.FromContext(ctx, q.logger)).Log(

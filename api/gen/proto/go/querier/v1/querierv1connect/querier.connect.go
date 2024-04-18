@@ -63,6 +63,9 @@ const (
 	// QuerierServiceGetProfileStatsProcedure is the fully-qualified name of the QuerierService's
 	// GetProfileStats RPC.
 	QuerierServiceGetProfileStatsProcedure = "/querier.v1.QuerierService/GetProfileStats"
+	// QuerierServiceAnalyzeQueryProcedure is the fully-qualified name of the QuerierService's
+	// AnalyzeQuery RPC.
+	QuerierServiceAnalyzeQueryProcedure = "/querier.v1.QuerierService/AnalyzeQuery"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -78,6 +81,7 @@ var (
 	querierServiceSelectSeriesMethodDescriptor           = querierServiceServiceDescriptor.Methods().ByName("SelectSeries")
 	querierServiceDiffMethodDescriptor                   = querierServiceServiceDescriptor.Methods().ByName("Diff")
 	querierServiceGetProfileStatsMethodDescriptor        = querierServiceServiceDescriptor.Methods().ByName("GetProfileStats")
+	querierServiceAnalyzeQueryMethodDescriptor           = querierServiceServiceDescriptor.Methods().ByName("AnalyzeQuery")
 )
 
 // QuerierServiceClient is a client for the querier.v1.QuerierService service.
@@ -102,6 +106,7 @@ type QuerierServiceClient interface {
 	Diff(context.Context, *connect.Request[v1.DiffRequest]) (*connect.Response[v1.DiffResponse], error)
 	// GetProfileStats returns profile stats for the current tenant.
 	GetProfileStats(context.Context, *connect.Request[v11.GetProfileStatsRequest]) (*connect.Response[v11.GetProfileStatsResponse], error)
+	AnalyzeQuery(context.Context, *connect.Request[v1.AnalyzeQueryRequest]) (*connect.Response[v1.AnalyzeQueryResponse], error)
 }
 
 // NewQuerierServiceClient constructs a client for the querier.v1.QuerierService service. By
@@ -174,6 +179,12 @@ func NewQuerierServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(querierServiceGetProfileStatsMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		analyzeQuery: connect.NewClient[v1.AnalyzeQueryRequest, v1.AnalyzeQueryResponse](
+			httpClient,
+			baseURL+QuerierServiceAnalyzeQueryProcedure,
+			connect.WithSchema(querierServiceAnalyzeQueryMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -189,6 +200,7 @@ type querierServiceClient struct {
 	selectSeries           *connect.Client[v1.SelectSeriesRequest, v1.SelectSeriesResponse]
 	diff                   *connect.Client[v1.DiffRequest, v1.DiffResponse]
 	getProfileStats        *connect.Client[v11.GetProfileStatsRequest, v11.GetProfileStatsResponse]
+	analyzeQuery           *connect.Client[v1.AnalyzeQueryRequest, v1.AnalyzeQueryResponse]
 }
 
 // ProfileTypes calls querier.v1.QuerierService.ProfileTypes.
@@ -241,6 +253,11 @@ func (c *querierServiceClient) GetProfileStats(ctx context.Context, req *connect
 	return c.getProfileStats.CallUnary(ctx, req)
 }
 
+// AnalyzeQuery calls querier.v1.QuerierService.AnalyzeQuery.
+func (c *querierServiceClient) AnalyzeQuery(ctx context.Context, req *connect.Request[v1.AnalyzeQueryRequest]) (*connect.Response[v1.AnalyzeQueryResponse], error) {
+	return c.analyzeQuery.CallUnary(ctx, req)
+}
+
 // QuerierServiceHandler is an implementation of the querier.v1.QuerierService service.
 type QuerierServiceHandler interface {
 	// ProfileType returns a list of the existing profile types.
@@ -263,6 +280,7 @@ type QuerierServiceHandler interface {
 	Diff(context.Context, *connect.Request[v1.DiffRequest]) (*connect.Response[v1.DiffResponse], error)
 	// GetProfileStats returns profile stats for the current tenant.
 	GetProfileStats(context.Context, *connect.Request[v11.GetProfileStatsRequest]) (*connect.Response[v11.GetProfileStatsResponse], error)
+	AnalyzeQuery(context.Context, *connect.Request[v1.AnalyzeQueryRequest]) (*connect.Response[v1.AnalyzeQueryResponse], error)
 }
 
 // NewQuerierServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -331,6 +349,12 @@ func NewQuerierServiceHandler(svc QuerierServiceHandler, opts ...connect.Handler
 		connect.WithSchema(querierServiceGetProfileStatsMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	querierServiceAnalyzeQueryHandler := connect.NewUnaryHandler(
+		QuerierServiceAnalyzeQueryProcedure,
+		svc.AnalyzeQuery,
+		connect.WithSchema(querierServiceAnalyzeQueryMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/querier.v1.QuerierService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case QuerierServiceProfileTypesProcedure:
@@ -353,6 +377,8 @@ func NewQuerierServiceHandler(svc QuerierServiceHandler, opts ...connect.Handler
 			querierServiceDiffHandler.ServeHTTP(w, r)
 		case QuerierServiceGetProfileStatsProcedure:
 			querierServiceGetProfileStatsHandler.ServeHTTP(w, r)
+		case QuerierServiceAnalyzeQueryProcedure:
+			querierServiceAnalyzeQueryHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -400,4 +426,8 @@ func (UnimplementedQuerierServiceHandler) Diff(context.Context, *connect.Request
 
 func (UnimplementedQuerierServiceHandler) GetProfileStats(context.Context, *connect.Request[v11.GetProfileStatsRequest]) (*connect.Response[v11.GetProfileStatsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("querier.v1.QuerierService.GetProfileStats is not implemented"))
+}
+
+func (UnimplementedQuerierServiceHandler) AnalyzeQuery(context.Context, *connect.Request[v1.AnalyzeQueryRequest]) (*connect.Response[v1.AnalyzeQueryResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("querier.v1.QuerierService.AnalyzeQuery is not implemented"))
 }

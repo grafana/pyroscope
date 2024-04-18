@@ -28,6 +28,7 @@ service QuerierService {
 
   // GetProfileStats returns profile stats for the current tenant.
   rpc GetProfileStats(types.v1.GetProfileStatsRequest) returns (types.v1.GetProfileStatsResponse) {}
+  rpc AnalyzeQuery(AnalyzeQueryRequest) returns (AnalyzeQueryResponse) {}
 }
 
 message ProfileTypesRequest {
@@ -149,4 +150,63 @@ message SelectSeriesRequest {
 
 message SelectSeriesResponse {
   repeated types.v1.Series series = 1;
+}
+
+message AnalyzeQueryRequest {
+  QueryType type = 1;
+
+  ProfileTypesRequest profile_types_request = 2;
+  types.v1.LabelNamesRequest label_names_request = 3;
+  types.v1.LabelValuesRequest label_values_request = 4;
+  SeriesRequest series_request = 5;
+  SelectMergeStacktracesRequest flamegraph_request = 6;
+  SelectMergeSpanProfileRequest span_profile_flamegraph_request = 7;
+  SelectMergeProfileRequest pprof_request = 8;
+  SelectSeriesRequest timeseries_request = 9;
+  DiffRequest diff_request = 10;
+}
+
+enum QueryType {
+  PROFILE_TYPES = 0;
+  LABEL_NAMES = 1;
+  LABEL_VALUES = 2;
+  SERIES = 3;
+  FLAME_GRAPH = 4;
+  SPAN_PROFILE_FLAME_GRAPH = 5;
+  PPROF = 6;
+  TIME_SERIES = 7;
+  DIFF = 8;
+}
+
+message AnalyzeQueryResponse {
+  repeated string queryValidationErrors = 1;
+
+  repeated QueryScope query_scopes = 2; // detailed view of what the query will require
+  QueryImpact query_impact = 3; // summary of the query impact / performance
+}
+
+message QueryScope {
+  string component_type = 1; // high level, e.g., "short term" or "long term" storage
+  int64 component_count = 2; // how many components of this type will work on the query
+
+  int64 num_blocks = 3;
+  int64 num_series = 4;
+  int64 num_profiles = 5;
+  int64 num_samples = 6;
+  int64 index_bytes = 7;
+  int64 profile_bytes = 8;
+  int64 symbol_bytes = 9;
+}
+
+message QueryImpact {
+  QueryImpactType type = 1;
+  int64 sub_query_count = 2;
+  int64 total_bytes_read = 3;
+  int64 estimated_time_nanos = 4; // not sure how we can do this yet, but it would be a formula based on the query scopes above
+}
+
+enum QueryImpactType {
+  LOW = 0;
+  MEDIUM = 1;
+  HIGH = 2;
 }
