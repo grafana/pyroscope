@@ -12,7 +12,7 @@ aliases:
 Our .NET Profiler is a powerful tool designed to enhance the performance analysis and optimization of .NET applications. It seamlessly integrates with Pyroscope, offering real-time insights into the resource usage and bottlenecks within your .NET codebase. This integration empowers developers to pinpoint inefficiencies, improve application speed, and ensure resource-efficient operation.
 
 {{< admonition type="note" >}}
-Refer to [Available profiling types]({{< relref "../../view-and-analyze-profile-data/profiling-types#available-profile-types" >}}) for a list of profile types supported by each language.
+Refer to [Available profiling types]({{< relref "../../view-and-analyze-profile-data/profiling-types#available-profiling-types" >}}) for a list of profile types supported by each language.
 {{< /admonition >}}
 
 ## Supported profiling types

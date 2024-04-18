@@ -17,7 +17,7 @@ Pyroscope uses the standard `runtime/pprof` package to collect profiling data.
 Refer to [the official documentation](https://golang.org/doc/diagnostics#profiling) for details.
 
 {{< admonition type="note" >}}
-Refer to [Available profiling types]({{< relref "../../view-and-analyze-profile-data/profiling-types#available-profile-types" >}}) for a list of profile types supported by Go.
+Refer to [Available profiling types]({{< relref "../../view-and-analyze-profile-data/profiling-types#available-profiling-types" >}}) for a list of profile types supported by Go.
 {{< /admonition >}}
 
 ## Before you begin

@@ -16,7 +16,7 @@ With the introduction of support for eBPF and continuing support for Golang in p
 This document provides an overview of these two modes of profiling and guides users on setting them up.
 
 {{< admonition type="note" >}}
-Refer to [Available profiling types]({{< relref "../../view-and-analyze-profile-data/profiling-types#available-profile-types" >}}) for a list of profile types supported.
+Refer to [Available profiling types]({{< relref "../../view-and-analyze-profile-data/profiling-types#available-profiling-types" >}}) for a list of profile types supported.
 {{< /admonition >}}
 
 

@@ -14,7 +14,7 @@ This combination provides unparalleled real-time insights into your Python codeb
 It's an essential tool for Python developers focused on enhancing code efficiency and application speed.
 
 {{< admonition type="note" >}}
-Refer to [Available profiling types]({{< relref "../../view-and-analyze-profile-data/profiling-types#available-profile-types" >}}) for a list of profile types supported by each language.
+Refer to [Available profiling types]({{< relref "../../view-and-analyze-profile-data/profiling-types#available-profiling-types" >}}) for a list of profile types supported by each language.
 {{< /admonition >}}
 
 ## Before you begin
