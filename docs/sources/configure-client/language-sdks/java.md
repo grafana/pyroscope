@@ -14,7 +14,7 @@ It provides real-time insights, enabling developers to understand and optimize t
 This tool is crucial for improving application responsiveness, reducing resource consumption, and ensuring top-notch performance in Java environments.
 
 {{< admonition type="note" >}}
-Refer to [Available profiling types](../../view-and-analyze-profile-data/profiling-types/#available-profile-types) for a list of profile types supported by each language.
+Refer to [Available profiling types]({{< relref "../../view-and-analyze-profile-data/profiling-types/#available-profile-types" >}}) for a list of profile types supported by each language.
 {{< /admonition >}}
 
 ## Before you begin
