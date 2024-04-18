@@ -212,6 +212,26 @@ If you need to send data to Grafana Cloud, you'll have to configure HTTP Basic a
 
 If your Pyroscope server has multi-tenancy enabled, you'll need to configure a tenant ID. Replace `<TenantID>` with your Pyroscope tenant ID.
 
+#### Example configurations
+
+The following configuration sets application name, Pyroscope format, profiling interval, event, and lock.
+This example is an excerpt from the [`rideshare` Dockerfile](https://github.com/grafana/pyroscope/blob/main/examples/language-sdk-instrumentation/java/rideshare/Dockerfile#L24-L34) available in the Pyroscope repository.
+
+```
+ENV PYROSCOPE_APPLICATION_NAME=rideshare.java.push.app
+ENV PYROSCOPE_FORMAT=jfr
+ENV PYROSCOPE_PROFILING_INTERVAL=10ms
+ENV PYROSCOPE_PROFILER_EVENT=itimer
+ENV PYROSCOPE_PROFILER_LOCK=10ms
+```
+
+This configuration excerpt enables allocation and lock profiling:
+
+```
+PYROSCOPE_PROFILER_ALLOC=512k
+PYROSCOPE_PROFILER_LOCK=10ms
+```
+
 ## Java profiling examples
 
 Check out the following resources to learn more about Java profiling:
