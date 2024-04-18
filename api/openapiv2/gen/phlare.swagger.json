@@ -760,6 +760,14 @@
         }
       }
     },
+    "v1GithubRefreshResponse": {
+      "type": "object",
+      "properties": {
+        "cookie": {
+          "type": "string"
+        }
+      }
+    },
     "v1Hints": {
       "type": "object",
       "properties": {

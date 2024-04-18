@@ -23,7 +23,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
-	"github.com/prometheus/common/version"
+	"github.com/prometheus/client_golang/prometheus/collectors/version"
 	objstoretracing "github.com/thanos-io/objstore/tracing/opentracing"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"

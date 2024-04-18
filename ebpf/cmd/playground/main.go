@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -197,17 +198,18 @@ func convertSessionOptions() ebpfspy.SessionOptions {
 		VerifierLogSize:           1024 * 1024 * 20,
 		PythonBPFErrorLogEnabled:  config.PythonBPFLogErr,
 		PythonBPFDebugLogEnabled:  config.PythonBPFLogDebug,
+		BPFMapsOptions:            config.BPFMapsOptions,
 	}
 }
 
 func getConfig() *Config {
 	flag.Parse()
 
-	if *configFile == "" {
-		panic("config file not specified")
-	}
 	var config = new(Config)
 	*config = defaultConfig
+	if *configFile == "" {
+		return config
+	}
 	configBytes, err := os.ReadFile(*configFile)
 	if err != nil {
 		panic(err)
@@ -252,6 +254,10 @@ var defaultConfig = Config{
 	RelabelConfig:      nil,
 	PythonBPFLogErr:    true,
 	PythonBPFLogDebug:  true,
+	BPFMapsOptions: ebpfspy.BPFMapsOptions{
+		PIDMapSize:     2048,
+		SymbolsMapSize: 16384,
+	},
 }
 
 type Config struct {
@@ -269,6 +275,7 @@ type Config struct {
 	RelabelConfig             []*RelabelConfig
 	PythonBPFLogErr           bool
 	PythonBPFLogDebug         bool
+	BPFMapsOptions            ebpfspy.BPFMapsOptions
 }
 
 type RelabelConfig struct {
@@ -332,9 +339,9 @@ func getProcessTargets() []sd.DiscoveryTarget {
 		target := sd.DiscoveryTarget{
 			"__process_pid__":       spid,
 			"__meta_process_cwd":    cwd,
-			"__meta_process_exe":    exe,
-			"__meta_process_comm":   string(comm),
-			"__meta_process_cgroup": string(cgroup),
+			"__meta_process_exe":    strings.TrimSpace(exe),
+			"__meta_process_comm":   strings.TrimSpace(string(comm)),
+			"__meta_process_cgroup": strings.TrimSpace(string(cgroup)),
 			"pid":                   spid,
 			"exe":                   exe,
 		}
@@ -363,6 +370,7 @@ func relabelProcessTargets(targets []sd.DiscoveryTarget, cfg []*RelabelConfig) [
 	for _, target := range targets {
 		lbls := labels.FromMap(target)
 		lbls, keep := relabel.Process(lbls, promConfig...)
+
 		if !keep {
 			continue
 		}

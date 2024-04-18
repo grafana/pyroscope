@@ -39,7 +39,7 @@ The latest release is also available on [Maven Central](https://search.maven.org
 
 ## Configure the Java client
 
-You can start Pyroscope either from your apps's Java code or attach it as javaagent.
+You can start Pyroscope either from your application's code or attach it as javaagent.
 
 ### Start Pyroscope from app's Java code
 

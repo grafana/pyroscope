@@ -41,7 +41,7 @@ To build:
 make go/bin
 ```
 
-To run the unit tests suite:
+To run the unit test suite:
 
 ```
 make go/test
@@ -124,7 +124,7 @@ will be able to interact with it.
 ### Dependency management
 
 We use [Go modules](https://golang.org/cmd/go/#hdr-Modules__module_versions__and_more) to manage dependencies on external packages.
-However we don't commit the `vendor/` folder.
+However, we don't commit the `vendor/` folder.
 
 To add or update a new dependency, use the `go get` command:
 
@@ -150,4 +150,4 @@ The Grafana Pyroscope documentation is compiled into a website published at [gra
 
 To start the website locally you can use `make docs/docs` and follow console instructions to access the website.
 
-Note: if you attempt to view pages on Github, it's likely that you might find broken links or pages. That is expected and should not be addressed unless it is causing issues with the site that occur as part of the build.
+Note: if you attempt to view pages on GitHub, it's likely that you might find broken links or pages. That is expected and should not be addressed unless it is causing issues with the site that occur as part of the build.

@@ -30,7 +30,7 @@ The following query parameters are accepted:
 | `sampleRate`       | sample rate used in Hz                  | optional (default is `100` Hz) |
 | `spyName`          | name of the spy used                    | optional                       |
 | `units`            | name of the profiling data unit         | optional (default is `samples` |
-| `aggregrationType` | type of aggregration to merge profiles  | optional (default is `sum`)    |
+| `aggregrationType` | type of aggregation to merge profiles   | optional (default is `sum`)    |
 
 
 `name` specifies application name. For example:
@@ -218,20 +218,20 @@ curl -X POST \
 There is one primary endpoint for querying profile data: `GET /pyroscope/render`.
 
 The search input is provided via query parameters.
-The output is typically a JSON object containing one or more time series and a flamegraph.
+The output is typically a JSON object containing one or more time series and a flame graph.
 
 ### Query parameters
 
 Here is an overview of the accepted query parameters:
 
-| Name           | Description                                                                           | Notes                                                |
-|:---------------|:--------------------------------------------------------------------------------------|:-----------------------------------------------------|
-| `query`        | contains the profile type and label selectors                                         | required                                             |
-| `from`         | UNIX time for the start of the search window                                          | required                                             |
-| `until`        | UNIX time for the end of the search window                                            | optional (default is `now`)                          |
-| `format`       | format of the profiling data                                                          | optional (default is `json`)                         |
-| `maxNodes`     | the maximum number of nodes the resulting flamegraph will contain                     | optional (default is `max_flamegraph_nodes_default`) |
-| `groupBy`      | one or more label names to group the time series by (doesn't apply to the flamegraph) | optional (default is no grouping)                    |
+| Name       | Description                                                                            | Notes                                                |
+|:-----------|:---------------------------------------------------------------------------------------|:-----------------------------------------------------|
+| `query`    | contains the profile type and label selectors                                          | required                                             |
+| `from`     | UNIX time for the start of the search window                                           | required                                             |
+| `until`    | UNIX time for the end of the search window                                             | optional (default is `now`)                          |
+| `format`   | format of the profiling data                                                           | optional (default is `json`)                         |
+| `maxNodes` | the maximum number of nodes the resulting flame graph will contain                     | optional (default is `max_flamegraph_nodes_default`) |
+| `groupBy`  | one or more label names to group the time series by (doesn't apply to the flame graph) | optional (default is no grouping)                    |
 
 #### `query`
 
@@ -331,8 +331,8 @@ type FlamebearerProfileV1 struct {
 
 #### `flamebearer`
 
-The `flamebearer` field contains data in a form suitable for rendering a flamegraph.
-Data within the flamebearer is organized in separate arrays containing the profile symbols and the sample values.
+The `flamebearer` field contains data in a form suitable for rendering a flame graph.
+Data within the `flamebearer` is organized in separate arrays containing the profile symbols and the sample values.
 
 #### `metadata`
 

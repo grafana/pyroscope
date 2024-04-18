@@ -9,6 +9,7 @@ aliases:
 
 # Grafana Agent
 
+ 
 {{< docs/shared lookup="agent-deprecation.md" source="alloy" version="next" >}}
 
 Grafana Agent is a powerful tool for collecting and forwarding profiling data.
@@ -19,7 +20,8 @@ This document provides an overview of these two modes of profiling and guides us
 Refer to [Available profiling types](../../view-and-analyze-profile-data/profiling-types/#available-profile-types) for a list of profile types supported.
 {{< /admonition >}}
 
-## eBPF Profiling with Grafana Agent
+
+## eBPF profiling with Grafana Agent
 
 eBPF (Extended Berkeley Packet Filter) is a modern Linux kernel technology that allows for safe, efficient, and customizable tracing of system and application behaviors without modifying the source code or restarting processes.
 
@@ -29,7 +31,7 @@ Benefits of eBPF profiling:
 - Versatile: eBPF can trace system calls, network packets, and even user-space application logic.
 - Dynamic: No need to recompile or restart applications. eBPF allows for live tracing.
 
-### Set Up eBPF profiling with Grafana Agent:
+ ### Set Up eBPF profiling with Grafana Agent:
 
 1. Ensure your system runs a Linux kernel version 4.9 or newer.
 1. Install Grafana Agent on the target machine or container.
@@ -40,7 +42,7 @@ Benefits of eBPF profiling:
 
 In pull mode, Grafana Agent periodically retrieves profiles from Golang applications, specifically targeting the pprof endpoints.
 
-Benefits of Golang profiling in pull mode:
+### Benefits of Golang profiling in pull mode
 
 - Non-intrusive: No need to modify your application’s source code.
 - Centralized profiling: Suitable for environments with multiple Golang applications or microservices.

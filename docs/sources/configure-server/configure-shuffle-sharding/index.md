@@ -36,7 +36,7 @@ Shuffle sharding provides the following benefits:
 - A misbehaving tenant only affects its shard instances.
   Assuming that each tenant shard is relatively small compared to the total number of instances in the cluster, it’s likely that any other tenant runs on different instances or that only a subset of instances match the affected instances.
 
-Using shuffle sharding doesn’t require more resources, but can result in unbalanced instances.
+Using shuffle sharding doesn't require more resources, but can result in unbalanced instances.
 
 ### Low overlapping instances probability
 

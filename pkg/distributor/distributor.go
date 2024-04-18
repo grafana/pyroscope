@@ -230,14 +230,18 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 }
 
 func (d *Distributor) GetProfileLanguage(series *distributormodel.ProfileSeries) string {
+	if series.Language != "" {
+		return series.Language
+	}
 	if len(series.Samples) == 0 {
 		return "unknown"
 	}
 	lang := series.GetLanguage()
-	if lang != "" {
-		return lang
+	if lang == "" {
+		lang = pprof.GetLanguage(series.Samples[0].Profile, d.logger)
 	}
-	return pprof.GetLanguage(series.Samples[0].Profile, d.logger)
+	series.Language = lang
+	return series.Language
 }
 
 func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.PushRequest) (resp *connect.Response[pushv1.PushResponse], err error) {
@@ -280,9 +284,6 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 				d.metrics.receivedCompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(len(raw.RawProfile)))
 			}
 			p := raw.Profile
-			if profLanguage == "go" {
-				p.Profile = pprof.FixGoProfile(p.Profile)
-			}
 			decompressedSize := p.SizeVT()
 			d.metrics.receivedDecompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(decompressedSize))
 			d.metrics.receivedSamples.WithLabelValues(profName, tenantID).Observe(float64(len(p.Sample)))
@@ -309,6 +310,9 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 	// therefore it should be done after the rate limit check.
 	for _, series := range req.Series {
 		for _, sample := range series.Samples {
+			if series.Language == "go" {
+				sample.Profile.Profile = pprof.FixGoProfile(sample.Profile.Profile)
+			}
 			sample.Profile.Normalize()
 		}
 	}

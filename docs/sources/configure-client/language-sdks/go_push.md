@@ -22,7 +22,7 @@ Refer to [Available profiling types](../../view-and-analyze-profile-data/profili
 
 ## Before you begin
 
-To capture and analyze profiling data, you need either a hosted Pyroscope OSS server or a hosted [Pryoscope instance with Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/) (requires a free Grafana Cloud account).
+To capture and analyze profiling data, you need either a hosted Pyroscope OSS server or a hosted [Pyroscope instance with Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/) (requires a free Grafana Cloud account).
 
 The Pyroscope server can be a local server for development or a remote server for production use.
 
@@ -102,7 +102,7 @@ pprof.Do(context.Background(), pprof.Labels("controller", "slow_controller"), fu
 
 ### Mutex profiling
 
-Mutex profiling is useful for finding sources of contention within your application. It helps you to find out which mutexes are being held by which goroutines.
+Mutex profiling is useful for finding sources of contention within your application. It helps you find out which mutexes are being held by which goroutines.
 
 To enable mutex profiling, you need to add the following code to your application:
 

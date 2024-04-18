@@ -62,7 +62,7 @@ What this block does, is:
 2. execute the `find_nearest_vehicle()` function
 3. Before the block ends it will (behind the scenes) remove the `{ "vehicle" => "car" }` from the application since that block is complete
 
-## Resulting flamegraph / performance results from the example
+## Resulting flame graph / performance results from the example
 
 ### Running the example
 
@@ -79,7 +79,7 @@ docker-compose up --build
 # docker-compose down
 ```
 
-What this example will do is run all the code mentioned above and also send some mock-load to the 3 servers as well as their respective 3 endpoints. If you select our application: `ride-sharing-app.cpu` from the dropdown, you should see a flamegraph that looks like this (below). After we give 20-30 seconds for the flamegraph to update and then click the refresh button we see our 3 functions at the bottom of the flamegraph taking CPU resources _proportional to the size_ of their respective `search_radius` parameters.
+What this example will do is run all the code mentioned above and also send some mock-load to the 3 servers as well as their respective 3 endpoints. If you select our application: `ride-sharing-app.cpu` from the dropdown, you should see a flame graph that looks like this (below). After we give 20-30 seconds for the flame graph to update and then click the refresh button we see our 3 functions at the bottom of the flame graph taking CPU resources _proportional to the size_ of their respective `search_radius` parameters.
 
 ## Where's the performance bottleneck?
 
@@ -94,23 +94,23 @@ The benefit of using Pyroscope, is that by tagging both `region` and `vehicle` a
 - Something is wrong with the `/car` endpoint code where `car` vehicle tag is consuming **68% of CPU**
 - Something is wrong with one of our regions where `eu-north` region tag is consuming **54% of CPU**
 
-From the flamegraph we can see that for the `eu-north` tag the biggest performance impact comes from the `find_nearest_vehicle()` function which consumes close to **68% of cpu**. To analyze this we can go directly to the comparison page using the comparison dropdown.
+From the flame graph we can see that for the `eu-north` tag the biggest performance impact comes from the `find_nearest_vehicle()` function which consumes close to **68% of cpu**. To analyze this we can go directly to the comparison page using the comparison dropdown.
 
 ## Comparing two time periods
 
-Using Pyroscope's "comparison view" we can actually select two different queries and compare the resulting flamegraphs:
-- Left flamegraph: `{ region != "eu-north", ... }`
-- Right flamegraph: `{ region = "eu-north", ... }`
+Using Pyroscope's "comparison view" we can actually select two different queries and compare the resulting flame graphs:
+- Left flame graph: `{ region != "eu-north", ... }`
+- Right flame graph: `{ region = "eu-north", ... }`
 
 When we select a period of low-cpu utilization and a period of high-cpu utilization we can see that there is clearly different behavior in the `find_nearest_vehicle()` function where it takes:
-- Left flamegraph: **22% of CPU** when `{ region != "eu-north", ... }`
-- right flamgraph: **82% of CPU** when `{ region = "eu-north", ... }`
+- Left flame graph: **22% of CPU** when `{ region != "eu-north", ... }`
+- right flame graph: **82% of CPU** when `{ region = "eu-north", ... }`
 
 ![python_pop_out_library_comparison_00](https://user-images.githubusercontent.com/23323466/191374975-d374db02-4cb1-48d5-bc1a-6194193a9f09.png)
 
-## Visualizing Diff Between Two Flamegraphs
+## Visualizing diff between two flame graphs
 
-While the difference _in this case_ is stark enough to see in the comparison view, sometimes the diff between the two flamegraphs is better visualized with them overlayed over each other. Without changing any parameters, we can simply select the diff view tab and see the difference represented in a color-coded diff flamegraph.
+While the difference _in this case_ is stark enough to see in the comparison view, sometimes the diff between the two flame graphs is better visualized with them overlayed over each other. Without changing any parameters, we can simply select the diff view tab and see the difference represented in a color-coded diff flame graph.
 ![find_nearest_vehicle_diff](https://user-images.githubusercontent.com/23323466/191320888-b49eb7de-06d5-4e6b-b9ac-198d7c9e2fcf.png)
 
 
