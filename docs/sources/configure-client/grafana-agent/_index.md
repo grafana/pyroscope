@@ -30,7 +30,7 @@ Benefits of eBPF profiling:
 - Versatile: eBPF can trace system calls, network packets, and even user-space application logic.
 - Dynamic: No need to recompile or restart applications. eBPF allows for live tracing.
 
- ### Set Up eBPF profiling with Grafana Agent:
+### Set up eBPF profiling with Grafana Agent
 
 1. Ensure your system runs a Linux kernel version 4.9 or newer.
 1. Install Grafana Agent on the target machine or container.
@@ -47,7 +47,7 @@ In pull mode, Grafana Agent periodically retrieves profiles from Golang applicat
 - Centralized profiling: Suitable for environments with multiple Golang applications or microservices.
 - Automatic: The agent handles the pulling and sending of profiles, requiring minimal configuration.
 
-### Set Up Golang profiling in pull mode
+### Set up Golang profiling in pull mode
 
 1. Ensure your Golang application exposes pprof endpoints.
 1. Install and configure the Grafana Agent on the same machine or container where your application runs.
@@ -56,5 +56,5 @@ In pull mode, Grafana Agent periodically retrieves profiles from Golang applicat
 
 ## Next steps
 
-Whether using eBPF for versatile system and application profiling or relying on Golang's built-in pprof endpoints in pull mode, Grafana Agent offers a streamlined process to gather essential profiling data.
+Whether using eBPF for versatile system and application profiling or relying on Golang's built-in pprof endpoints in pull mode, Grafana Agent and Grafana Alloy offer streamlined processes to gather essential profiling data.
 Choose the method that best fits your application and infrastructure needs.
