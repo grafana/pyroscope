@@ -22,7 +22,7 @@ In Pyroscope, profiling types refer to different dimensions of application perfo
 
 For information on auto-instrumentation and supported language SDKs, refer to [Configure the client]({{< relref "../../configure-client" >}}).
 
-### Available profile types
+### Available profiling types
 
 Various languages support different profiling types.
 Pyroscope supports the following profiling types:
