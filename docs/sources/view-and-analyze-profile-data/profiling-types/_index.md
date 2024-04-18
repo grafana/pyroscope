@@ -20,9 +20,12 @@ Profiling is an essential tool for understanding and optimizing application perf
 
 In Pyroscope, profiling types refer to different dimensions of application performance analysis, focusing on specific aspects like CPU usage, memory allocation, or thread synchronization.
 
-## Available profile types
+For information on auto-instrumentation and supported language SDKs, refer to [Configure the client]({{< relref "../../configure-client" >}}).
 
-Various languages support different profiling types. Pyroscope supports the following profiling types as of `v1.4.0`:
+### Available profile types
+
+Various languages support different profiling types.
+Pyroscope supports the following profiling types:
 
 | Profile Type       | Go    | Java  | .NET  | Ruby  | Python | Rust  | Node.js | eBPF (Go) | eBPF (Python) |
 |--------------------|-------|-------|-------|-------|--------|-------|---------|-----------|--------------|
