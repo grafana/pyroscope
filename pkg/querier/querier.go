@@ -691,7 +691,7 @@ func (q *Querier) AnalyzeQuery(ctx context.Context, req *connect.Request[querier
 
 	res := &querierv1.AnalyzeQueryResponse{
 		QueryValidationErrors: nil,
-		QueryScopes:           []*querierv1.QueryScope{storeGatewayQueryScope, ingesterQueryScope},
+		QueryScopes:           []*querierv1.QueryScope{ingesterQueryScope, storeGatewayQueryScope},
 		QueryImpact: &querierv1.QueryImpact{
 			Type:               querierv1.QueryImpactType_MEDIUM, // TODO
 			TotalBytesRead:     totalBytes,
