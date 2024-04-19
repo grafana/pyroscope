@@ -21,6 +21,10 @@ import (
 	"github.com/grafana/dskit/middleware"
 	"github.com/grafana/dskit/server"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/weaveworks/common/middleware"
+	"github.com/weaveworks/common/server"
+
+	pprofileotlp "github.com/grafana/pyroscope/api/otlp/collector/profiles/v1experimental"
 
 	"github.com/grafana/pyroscope/public"
 
@@ -227,7 +231,8 @@ func (a *API) RegisterDistributor(d *distributor.Distributor) {
 		{Desc: "Ring status", Path: "/distributor/ring"},
 	})
 
-	pprofileotlp.RegisterGRPCServer(a.server.GRPC, otlpHandler)
+	pprofileotlp.RegisterProfilesServiceServer(a.server.GRPC, otlpHandler)
+	// pprofileotlp.RegisterGRPCServer(a.server.GRPC, otlpHandler)
 
 	// TODO(@petethepig): implement http/protobuf and http/json support
 	// a.RegisterRoute("/v1/profiles", otlpHandler, true, true, "POST")
