@@ -13,12 +13,12 @@ weight: 103
 
 Your applications must be instrumented for profiling and tracing before you can use span profiles.
 
-* Profiling: Your application must be instrumented with Pyroscope's .NET instrumentation library. If you haven't done this yet, please refer to the [.NET]({{< relref "../language-sdks/dotnet" >}}) guide.
-* Tracing: Your application must be instrumented with OpenTelemetry traces. If you haven't done this yet, please refer to the [OpenTelemetry](https://opentelemetry.io/docs/net/getting-started/) guide.
+* Profiling: Your application must be instrumented with Pyroscope's .NET instrumentation library. Refer to the [.NET]({{< relref "../language-sdks/dotnet" >}}) guide for instructions.
+* Tracing: Your application must be instrumented with OpenTelemetry traces. Refer to the [OpenTelemetry](https://opentelemetry.io/docs/net/getting-started/) guide for isntructions.
 
 {{< admonition type="note" >}}
-Currently only [OpenTelemetry manual instrumentation](https://opentelemetry.io/docs/languages/net/instrumentation/) is supported for span profiles in .NET.
-This limitation is there because Pyroscope's .NET profiler and OpenTelemetry's auto instrumentation are based on separate .NET CLR profilers.
+Span profiles in .NET are only supported using [OpenTelemetry manual instrumentation](https://opentelemetry.io/docs/languages/net/instrumentation/)
+because Pyroscope's .NET profiler and OpenTelemetry's auto instrumentation are based on separate .NET CLR profilers.
 {{< /admonition >}}
 
 ## OpenTelemetry support
