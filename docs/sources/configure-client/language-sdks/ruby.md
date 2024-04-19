@@ -9,7 +9,13 @@ aliases:
 
 # Ruby
 
-The Ruby Profiler revolutionizes performance tuning in Ruby applications. Integrated with Pyroscope, it offers real-time performance data, allowing developers to delve deep into their Ruby codebase. This tool is essential for identifying performance issues, optimizing code efficiency, and enhancing the overall speed and reliability of Ruby applications.
+The Ruby Profiler revolutionizes performance tuning in Ruby applications.
+Integrated with Pyroscope, it offers real-time performance data, allowing developers to delve deep into their Ruby codebase.
+This tool is essential for identifying performance issues, optimizing code efficiency, and enhancing the overall speed and reliability of Ruby applications.
+
+{{< admonition type="note" >}}
+Refer to [Available profiling types]({{< relref "../../view-and-analyze-profile-data/profiling-types#available-profiling-types" >}}) for a list of profile types supported by Ruby.
+{{< /admonition >}}
 
 ## Before you begin
 
