@@ -597,7 +597,7 @@ func (q *Querier) AnalyzeQuery(ctx context.Context, req *connect.Request[querier
 
 	joinedResults := newReplicasPerBlockID(q.logger)
 	joinedResults.add(blockSelectStoreGateways, storeGatewayInstance)
-	joinedResults.add(blockSelectStoreGateways, ingesterInstance)
+	joinedResults.add(blockSelectIngesters, ingesterInstance)
 	plan := joinedResults.blockPlan(ctx)
 
 	storeGatewayReplicationSet, err := q.storeGatewayQuerier.ring.GetReplicationSetForOperation(readNoExtend)
@@ -648,6 +648,9 @@ func (q *Querier) AnalyzeQuery(ctx context.Context, req *connect.Request[querier
 	var responses []ResponseFromReplica[*ingestv1.GetBlockStatsResponse]
 	responses, err = forAllPlannedIngesters(ctx, q.ingesterQuerier, plan, func(ctx context.Context, iq IngesterQueryClient, hint *ingestv1.Hints) (*ingestv1.GetBlockStatsResponse, error) {
 		stats, err := iq.GetBlockStats(ctx, connect.NewRequest(&ingestv1.GetBlockStatsRequest{Ulids: ingesterBlockUlids}))
+		if err != nil {
+			return nil, err
+		}
 		return stats.Msg, err
 	})
 	for _, r := range responses {
