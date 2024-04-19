@@ -9,7 +9,13 @@ aliases:
 
 # Python
 
-Our Python Profiler, when integrated with Pyroscope, transforms the way you analyze and optimize Python applications. This combination provides unparalleled real-time insights into your Python codebase, allowing for precise identification of performance issues. It is an essential tool for Python developers focused on enhancing code efficiency and application speed.
+The Python profiler, when integrated with Pyroscope, transforms the way you analyze and optimize Python applications.
+This combination provides unparalleled real-time insights into your Python codebase, allowing for precise identification of performance issues
+It's an essential tool for Python developers focused on enhancing code efficiency and application speed.
+
+{{< admonition type="note" >}}
+Refer to [Available profiling types]({{< relref "../../view-and-analyze-profile-data/profiling-types#available-profiling-types" >}}) for a list of profile types supported by each language.
+{{< /admonition >}}
 
 ## Before you begin
 
