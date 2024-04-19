@@ -669,7 +669,7 @@ func (q *Querier) AnalyzeQuery(ctx context.Context, req *connect.Request[querier
 		return nil, err
 	}
 	responses, err = forAllPlannedStoreGateways(ctx, tenantId, q.storeGatewayQuerier, plan, func(ctx context.Context, sq StoreGatewayQueryClient, hint *ingestv1.Hints) (*ingestv1.GetBlockStatsResponse, error) {
-		stats, err := sq.GetBlockStats(ctx, connect.NewRequest(&ingestv1.GetBlockStatsRequest{Ulids: ingesterBlockUlids}))
+		stats, err := sq.GetBlockStats(ctx, connect.NewRequest(&ingestv1.GetBlockStatsRequest{Ulids: storeGatewayBlockUlids}))
 		return stats.Msg, err
 	})
 	for _, r := range responses {
