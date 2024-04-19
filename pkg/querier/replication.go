@@ -454,3 +454,10 @@ func (r *replicasPerBlockID) blockPlan(ctx context.Context) map[string]*ingestv1
 
 	return plan
 }
+
+func (r *replicasPerBlockID) contains(ulid string) bool {
+	if replicas, ok := r.m[ulid]; ok {
+		return len(replicas) > 0
+	}
+	return false
+}

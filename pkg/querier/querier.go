@@ -576,10 +576,29 @@ func (q *Querier) AnalyzeQuery(ctx context.Context, req *connect.Request[querier
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "AnalyzeQuery")
 	defer sp.Finish()
 
-	plan, err := q.blockSelect(ctx, model.Time(req.Msg.Start), model.Time(req.Msg.End))
+	ingesterReq := &ingestv1.BlockMetadataRequest{
+		Start: req.Msg.Start,
+		End:   req.Msg.End,
+	}
+
+	resultsIngesters := newReplicasPerBlockID(q.logger)
+	blockSelectIngesters, err := q.blockSelectFromIngesters(ctx, ingesterReq)
 	if err != nil {
 		return nil, err
 	}
+	resultsIngesters.add(blockSelectIngesters, ingesterInstance)
+
+	resultsStoreGateways := newReplicasPerBlockID(q.logger)
+	blockSelectStoreGateways, err := q.blockSelectFromStoreGateway(ctx, ingesterReq)
+	if err != nil {
+		return nil, err
+	}
+	resultsStoreGateways.add(blockSelectStoreGateways, storeGatewayInstance)
+
+	joinedResults := newReplicasPerBlockID(q.logger)
+	joinedResults.add(blockSelectStoreGateways, storeGatewayInstance)
+	joinedResults.add(blockSelectStoreGateways, ingesterInstance)
+	plan := joinedResults.blockPlan(ctx)
 
 	storeGatewayReplicationSet, err := q.storeGatewayQuerier.ring.GetReplicationSetForOperation(readNoExtend)
 	if err != nil {
@@ -590,15 +609,32 @@ func (q *Querier) AnalyzeQuery(ctx context.Context, req *connect.Request[querier
 		return nil, err
 	}
 	storeGatewayQueryScope := &querierv1.QueryScope{
-		ComponentType: "long-term-storage",
+		ComponentType:  "long-term-storage",
+		ComponentCount: 0,
 	}
 	ingesterQueryScope := &querierv1.QueryScope{
-		ComponentType: "short-term-storage",
+		ComponentType:  "short-term-storage",
+		ComponentCount: 0,
 	}
 	ingesterBlockUlids := make([]string, 0)
 	storeGatewayBlockUlids := make([]string, 0)
 	for replica, blockHints := range plan {
-		if storeGatewayReplicationSet.Includes(replica) {
+		if len(blockHints.Ulids) == 0 {
+			continue
+		}
+		if storeGatewayReplicationSet.Includes(replica) && ingesterReplicationSet.Includes(replica) { // -target=all
+			for _, ulid := range blockHints.Ulids {
+				if resultsIngesters.contains(ulid) {
+					ingesterQueryScope.ComponentCount += 1
+					ingesterQueryScope.NumBlocks += 1
+					ingesterBlockUlids = append(ingesterBlockUlids, ulid)
+				} else if resultsStoreGateways.contains(ulid) {
+					storeGatewayQueryScope.ComponentCount += 1
+					storeGatewayQueryScope.NumBlocks += 1
+					storeGatewayBlockUlids = append(storeGatewayBlockUlids, ulid)
+				}
+			}
+		} else if storeGatewayReplicationSet.Includes(replica) {
 			storeGatewayQueryScope.ComponentCount += 1
 			storeGatewayQueryScope.NumBlocks += uint64(len(blockHints.Ulids))
 			storeGatewayBlockUlids = append(storeGatewayBlockUlids, blockHints.Ulids...)
