@@ -444,9 +444,10 @@ func (m *AnalyzeQueryRequest) CloneVT() *AnalyzeQueryRequest {
 		return (*AnalyzeQueryRequest)(nil)
 	}
 	r := &AnalyzeQueryRequest{
-		Type:  m.Type,
-		Start: m.Start,
-		End:   m.End,
+		Type:          m.Type,
+		Start:         m.Start,
+		End:           m.End,
+		LabelSelector: m.LabelSelector,
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -465,11 +466,6 @@ func (m *AnalyzeQueryResponse) CloneVT() *AnalyzeQueryResponse {
 	}
 	r := &AnalyzeQueryResponse{
 		QueryImpact: m.QueryImpact.CloneVT(),
-	}
-	if rhs := m.QueryValidationErrors; rhs != nil {
-		tmpContainer := make([]string, len(rhs))
-		copy(tmpContainer, rhs)
-		r.QueryValidationErrors = tmpContainer
 	}
 	if rhs := m.QueryScopes; rhs != nil {
 		tmpContainer := make([]*QueryScope, len(rhs))
@@ -522,7 +518,7 @@ func (m *QueryImpact) CloneVT() *QueryImpact {
 	r := &QueryImpact{
 		Type:               m.Type,
 		TotalBytesRead:     m.TotalBytesRead,
-		EstimatedTimeNanos: m.EstimatedTimeNanos,
+		TotalQueriedSeries: m.TotalQueriedSeries,
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -1092,6 +1088,9 @@ func (this *AnalyzeQueryRequest) EqualVT(that *AnalyzeQueryRequest) bool {
 	if this.End != that.End {
 		return false
 	}
+	if this.LabelSelector != that.LabelSelector {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
@@ -1107,15 +1106,6 @@ func (this *AnalyzeQueryResponse) EqualVT(that *AnalyzeQueryResponse) bool {
 		return true
 	} else if this == nil || that == nil {
 		return false
-	}
-	if len(this.QueryValidationErrors) != len(that.QueryValidationErrors) {
-		return false
-	}
-	for i, vx := range this.QueryValidationErrors {
-		vy := that.QueryValidationErrors[i]
-		if vx != vy {
-			return false
-		}
 	}
 	if len(this.QueryScopes) != len(that.QueryScopes) {
 		return false
@@ -1202,7 +1192,7 @@ func (this *QueryImpact) EqualVT(that *QueryImpact) bool {
 	if this.TotalBytesRead != that.TotalBytesRead {
 		return false
 	}
-	if this.EstimatedTimeNanos != that.EstimatedTimeNanos {
+	if this.TotalQueriedSeries != that.TotalQueriedSeries {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -2682,6 +2672,13 @@ func (m *AnalyzeQueryRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if len(m.LabelSelector) > 0 {
+		i -= len(m.LabelSelector)
+		copy(dAtA[i:], m.LabelSelector)
+		i = encodeVarint(dAtA, i, uint64(len(m.LabelSelector)))
+		i--
+		dAtA[i] = 0x22
+	}
 	if m.End != 0 {
 		i = encodeVarint(dAtA, i, uint64(m.End))
 		i--
@@ -2738,7 +2735,7 @@ func (m *AnalyzeQueryResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) 
 		i -= size
 		i = encodeVarint(dAtA, i, uint64(size))
 		i--
-		dAtA[i] = 0x1a
+		dAtA[i] = 0x12
 	}
 	if len(m.QueryScopes) > 0 {
 		for iNdEx := len(m.QueryScopes) - 1; iNdEx >= 0; iNdEx-- {
@@ -2748,15 +2745,6 @@ func (m *AnalyzeQueryResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) 
 			}
 			i -= size
 			i = encodeVarint(dAtA, i, uint64(size))
-			i--
-			dAtA[i] = 0x12
-		}
-	}
-	if len(m.QueryValidationErrors) > 0 {
-		for iNdEx := len(m.QueryValidationErrors) - 1; iNdEx >= 0; iNdEx-- {
-			i -= len(m.QueryValidationErrors[iNdEx])
-			copy(dAtA[i:], m.QueryValidationErrors[iNdEx])
-			i = encodeVarint(dAtA, i, uint64(len(m.QueryValidationErrors[iNdEx])))
 			i--
 			dAtA[i] = 0xa
 		}
@@ -2874,8 +2862,8 @@ func (m *QueryImpact) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if m.EstimatedTimeNanos != 0 {
-		i = encodeVarint(dAtA, i, uint64(m.EstimatedTimeNanos))
+	if m.TotalQueriedSeries != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.TotalQueriedSeries))
 		i--
 		dAtA[i] = 0x18
 	}
@@ -3310,6 +3298,10 @@ func (m *AnalyzeQueryRequest) SizeVT() (n int) {
 	if m.End != 0 {
 		n += 1 + sov(uint64(m.End))
 	}
+	l = len(m.LabelSelector)
+	if l > 0 {
+		n += 1 + l + sov(uint64(l))
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -3320,12 +3312,6 @@ func (m *AnalyzeQueryResponse) SizeVT() (n int) {
 	}
 	var l int
 	_ = l
-	if len(m.QueryValidationErrors) > 0 {
-		for _, s := range m.QueryValidationErrors {
-			l = len(s)
-			n += 1 + l + sov(uint64(l))
-		}
-	}
 	if len(m.QueryScopes) > 0 {
 		for _, e := range m.QueryScopes {
 			l = e.SizeVT()
@@ -3390,8 +3376,8 @@ func (m *QueryImpact) SizeVT() (n int) {
 	if m.TotalBytesRead != 0 {
 		n += 1 + sov(uint64(m.TotalBytesRead))
 	}
-	if m.EstimatedTimeNanos != 0 {
-		n += 1 + sov(uint64(m.EstimatedTimeNanos))
+	if m.TotalQueriedSeries != 0 {
+		n += 1 + sov(uint64(m.TotalQueriedSeries))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -5724,6 +5710,38 @@ func (m *AnalyzeQueryRequest) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LabelSelector", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.LabelSelector = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])
@@ -5777,38 +5795,6 @@ func (m *AnalyzeQueryResponse) UnmarshalVT(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field QueryValidationErrors", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLength
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.QueryValidationErrors = append(m.QueryValidationErrors, string(dAtA[iNdEx:postIndex]))
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field QueryScopes", wireType)
 			}
 			var msglen int
@@ -5841,7 +5827,7 @@ func (m *AnalyzeQueryResponse) UnmarshalVT(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 3:
+		case 2:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field QueryImpact", wireType)
 			}
@@ -6203,9 +6189,9 @@ func (m *QueryImpact) UnmarshalVT(dAtA []byte) error {
 			}
 		case 3:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field EstimatedTimeNanos", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field TotalQueriedSeries", wireType)
 			}
-			m.EstimatedTimeNanos = 0
+			m.TotalQueriedSeries = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflow
@@ -6215,7 +6201,7 @@ func (m *QueryImpact) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.EstimatedTimeNanos |= int64(b&0x7F) << shift
+				m.TotalQueriedSeries |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}

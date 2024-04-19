@@ -454,12 +454,6 @@
     "v1AnalyzeQueryResponse": {
       "type": "object",
       "properties": {
-        "queryValidationErrors": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
         "queryScopes": {
           "type": "array",
           "items": {
@@ -1124,9 +1118,9 @@
           "type": "string",
           "format": "uint64"
         },
-        "estimatedTimeNanos": {
+        "totalQueriedSeries": {
           "type": "string",
-          "format": "int64"
+          "format": "uint64"
         }
       }
     },

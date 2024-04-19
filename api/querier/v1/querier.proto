@@ -161,6 +161,8 @@ message AnalyzeQueryRequest {
   // Milliseconds since epoch. If missing or zero, only the ingesters will be
   // queried.
   int64 end = 3;
+
+  string label_selector = 4;
 }
 
 enum QueryType {
@@ -176,10 +178,8 @@ enum QueryType {
 }
 
 message AnalyzeQueryResponse {
-  repeated string queryValidationErrors = 1;
-
-  repeated QueryScope query_scopes = 2; // detailed view of what the query will require
-  QueryImpact query_impact = 3; // summary of the query impact / performance
+  repeated QueryScope query_scopes = 1; // detailed view of what the query will require
+  QueryImpact query_impact = 2; // summary of the query impact / performance
 }
 
 message QueryScope {
@@ -198,7 +198,7 @@ message QueryScope {
 message QueryImpact {
   QueryImpactType type = 1;
   uint64 total_bytes_read = 2;
-  int64 estimated_time_nanos = 3;
+  uint64 total_queried_series = 3;
 }
 
 enum QueryImpactType {

@@ -670,6 +670,9 @@ func (q *Querier) AnalyzeQuery(ctx context.Context, req *connect.Request[querier
 	}
 	responses, err = forAllPlannedStoreGateways(ctx, tenantId, q.storeGatewayQuerier, plan, func(ctx context.Context, sq StoreGatewayQueryClient, hint *ingestv1.Hints) (*ingestv1.GetBlockStatsResponse, error) {
 		stats, err := sq.GetBlockStats(ctx, connect.NewRequest(&ingestv1.GetBlockStatsRequest{Ulids: storeGatewayBlockUlids}))
+		if err != nil {
+			return nil, err
+		}
 		return stats.Msg, err
 	})
 	for _, r := range responses {
@@ -690,13 +693,23 @@ func (q *Querier) AnalyzeQuery(ctx context.Context, req *connect.Request[querier
 		storeGatewayQueryScope.SymbolBytes
 
 	res := &querierv1.AnalyzeQueryResponse{
-		QueryValidationErrors: nil,
-		QueryScopes:           []*querierv1.QueryScope{ingesterQueryScope, storeGatewayQueryScope},
+		QueryScopes: []*querierv1.QueryScope{ingesterQueryScope, storeGatewayQueryScope},
 		QueryImpact: &querierv1.QueryImpact{
-			Type:               querierv1.QueryImpactType_MEDIUM, // TODO
-			TotalBytesRead:     totalBytes,
-			EstimatedTimeNanos: 0, // TODO
+			Type:           querierv1.QueryImpactType_MEDIUM, // TODO
+			TotalBytesRead: totalBytes,
 		},
+	}
+
+	if req.Msg.LabelSelector != "" {
+		resSeries, err := q.Series(ctx, connect.NewRequest(&querierv1.SeriesRequest{
+			Matchers: []string{req.Msg.LabelSelector},
+			Start:    req.Msg.Start,
+			End:      req.Msg.End,
+		}))
+		if err != nil {
+			return nil, err
+		}
+		res.QueryImpact.TotalQueriedSeries = uint64(len(resSeries.Msg.LabelsSet))
 	}
 
 	return connect.NewResponse(res), nil
