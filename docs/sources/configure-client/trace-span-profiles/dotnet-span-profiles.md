@@ -23,14 +23,13 @@ because Pyroscope's .NET profiler and OpenTelemetry's auto instrumentation are b
 
 ## OpenTelemetry support
 
-Pyroscope can integrate with distributed tracing systems supporting the [**OpenTelemetry**](https://opentelemetry.io/docs/instrumentation/net/getting-started/) standard which allows you to
-link traces with the profiling data, and find resource usage for specific lines of code for your trace spans
+Pyroscope integrates with distributed tracing systems supporting the [**OpenTelemetry**](https://opentelemetry.io/docs/instrumentation/net/getting-started/) standard.
+This integration lets you link traces with the profiling data and find resource usage for specific lines of code for your trace spans
 
 {{< admonition type="note" >}}
 * Only CPU profiling is supported at the moment.
 * Because of how sampling profilers work, spans shorter than the sample interval may not be captured.
 {{< /admonition >}}
-
 
 ## Configure the `Pyroscope.OpenTelemetry` package
 
