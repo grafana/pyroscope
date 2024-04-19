@@ -59,4 +59,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.load-generator
-
+    depends_on:
+      - pyroscope
+      - us-east
+      - eu-north
+      - ap-south
+      - ap-south-alpine
