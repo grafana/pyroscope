@@ -77,17 +77,21 @@ func Test_StringsEncoding(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.description, func(t *testing.T) {
-			var output bytes.Buffer
-			e := newSymbolsEncoder[string](&output, new(stringsBlockEncoder))
+			var buf bytes.Buffer
+			e := newSymbolsEncoder[string](new(stringsBlockEncoder))
 			if tc.blockSize > 0 {
 				e.bs = tc.blockSize
 			}
-			require.NoError(t, e.Encode(tc.strings))
-			d := newSymbolsDecoder[string](&output, new(stringsBlockDecoder))
-			n, err := d.Open()
-			require.NoError(t, err)
-			out := make([]string, n)
-			require.NoError(t, d.Decode(out))
+			require.NoError(t, e.Encode(&buf, tc.strings))
+
+			h := SymbolsBlockHeader{
+				Length:    uint32(len(tc.strings)),
+				BlockSize: uint32(e.bs),
+			}
+			d := newSymbolsDecoder[string](h, new(stringsBlockDecoder))
+
+			out := make([]string, h.Length)
+			require.NoError(t, d.Decode(out, &buf))
 			require.Equal(t, tc.strings, out)
 		})
 	}

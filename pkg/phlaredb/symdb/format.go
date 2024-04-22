@@ -171,13 +171,10 @@ func (h *TOCEntry) unmarshal(b []byte) {
 type PartitionHeaders []*PartitionHeader
 
 type PartitionHeader struct {
-	Partition uint64
-
+	Partition   uint64
 	Stacktraces []StacktraceBlockHeader
-	Locations   []SymbolsBlockReference
-	Mappings    []SymbolsBlockReference
-	Functions   []SymbolsBlockReference
-	Strings     []SymbolsBlockReference
+	V2          *PartitionHeaderV2
+	V3          *PartitionHeaderV3
 }
 
 func (h *PartitionHeaders) Size() int64 {
@@ -194,33 +191,17 @@ func (h *PartitionHeaders) WriteTo(dst io.Writer) (_ int64, err error) {
 	binary.BigEndian.PutUint32(buf, uint32(len(*h)))
 	w.write(buf)
 	for _, p := range *h {
-		s := p.Size()
-		if int(s) > cap(buf) {
-			buf = make([]byte, s)
+		if p.V3 == nil {
+			return 0, fmt.Errorf("v2 format is not supported")
 		}
-		buf = buf[:s]
+		buf = slices.GrowLen(buf, int(p.Size()))
 		p.marshal(buf)
 		w.write(buf)
 	}
 	return w.offset, w.err
 }
 
-func (h *PartitionHeaders) Unmarshal(b []byte) error {
-	partitions := binary.BigEndian.Uint32(b[0:4])
-	b = b[4:]
-	*h = make(PartitionHeaders, partitions)
-	for i := range *h {
-		var p PartitionHeader
-		if err := p.unmarshal(b); err != nil {
-			return err
-		}
-		b = b[p.Size():]
-		(*h)[i] = &p
-	}
-	return nil
-}
-
-func (h *PartitionHeaders) fromChunks(b []byte) error {
+func (h *PartitionHeaders) UnmarshalV1(b []byte) error {
 	s := len(b)
 	if s%stacktraceBlockHeaderSize > 0 {
 		return ErrInvalidSize
@@ -241,70 +222,109 @@ func (h *PartitionHeaders) fromChunks(b []byte) error {
 	return nil
 }
 
+func (h *PartitionHeaders) UnmarshalV2(b []byte) error { return h.unmarshal(b, FormatV2) }
+
+func (h *PartitionHeaders) UnmarshalV3(b []byte) error { return h.unmarshal(b, FormatV3) }
+
+func (h *PartitionHeaders) unmarshal(b []byte, version int) error {
+	partitions := binary.BigEndian.Uint32(b[0:4])
+	b = b[4:]
+	*h = make(PartitionHeaders, partitions)
+	for i := range *h {
+		var p PartitionHeader
+		if err := p.unmarshal(b, version); err != nil {
+			return err
+		}
+		b = b[p.Size():]
+		(*h)[i] = &p
+	}
+	return nil
+}
+
 func (h *PartitionHeader) marshal(buf []byte) {
 	binary.BigEndian.PutUint64(buf[0:8], h.Partition)
 	binary.BigEndian.PutUint32(buf[8:12], uint32(len(h.Stacktraces)))
-	binary.BigEndian.PutUint32(buf[12:16], uint32(len(h.Locations)))
-	binary.BigEndian.PutUint32(buf[16:20], uint32(len(h.Mappings)))
-	binary.BigEndian.PutUint32(buf[20:24], uint32(len(h.Functions)))
-	binary.BigEndian.PutUint32(buf[24:28], uint32(len(h.Strings)))
-	n := 28
+	n := 12
 	for i := range h.Stacktraces {
 		h.Stacktraces[i].marshal(buf[n:])
 		n += stacktraceBlockHeaderSize
 	}
-	n += marshalSymbolsBlockReferences(buf[n:], h.Locations)
-	n += marshalSymbolsBlockReferences(buf[n:], h.Mappings)
-	n += marshalSymbolsBlockReferences(buf[n:], h.Functions)
-	marshalSymbolsBlockReferences(buf[n:], h.Strings)
+	n += marshalSymbolsBlockReferences(buf[n:], h.V3.Locations)
+	n += marshalSymbolsBlockReferences(buf[n:], h.V3.Mappings)
+	n += marshalSymbolsBlockReferences(buf[n:], h.V3.Functions)
+	marshalSymbolsBlockReferences(buf[n:], h.V3.Strings)
 }
 
-func (h *PartitionHeader) unmarshal(buf []byte) (err error) {
+func (h *PartitionHeader) unmarshal(buf []byte, version int) (err error) {
 	h.Partition = binary.BigEndian.Uint64(buf[0:8])
 	h.Stacktraces = make([]StacktraceBlockHeader, int(binary.BigEndian.Uint32(buf[8:12])))
-	h.Locations = make([]SymbolsBlockReference, int(binary.BigEndian.Uint32(buf[12:16])))
-	h.Mappings = make([]SymbolsBlockReference, int(binary.BigEndian.Uint32(buf[16:20])))
-	h.Functions = make([]SymbolsBlockReference, int(binary.BigEndian.Uint32(buf[20:24])))
-	h.Strings = make([]SymbolsBlockReference, int(binary.BigEndian.Uint32(buf[24:28])))
-
-	buf = buf[28:]
-	stacktracesSize := len(h.Stacktraces) * stacktraceBlockHeaderSize
-	if err = h.unmarshalStacktraceChunks(buf[:stacktracesSize]); err != nil {
-		return err
+	switch version {
+	case FormatV2:
+		h.V2 = new(PartitionHeaderV2)
+		h.V2.Locations = make([]RowRangeReference, int(binary.BigEndian.Uint32(buf[12:16])))
+		h.V2.Mappings = make([]RowRangeReference, int(binary.BigEndian.Uint32(buf[16:20])))
+		h.V2.Functions = make([]RowRangeReference, int(binary.BigEndian.Uint32(buf[20:24])))
+		h.V2.Strings = make([]RowRangeReference, int(binary.BigEndian.Uint32(buf[24:28])))
+		buf = buf[28:]
+		stacktracesSize := len(h.Stacktraces) * stacktraceBlockHeaderSize
+		if err = h.unmarshalStacktraceBlockHeaders(buf[:stacktracesSize]); err != nil {
+			return err
+		}
+		err = h.V2.unmarshal(buf[stacktracesSize:])
+	case FormatV3:
+		buf = buf[12:]
+		stacktracesSize := len(h.Stacktraces) * stacktraceBlockHeaderSize
+		if err = h.unmarshalStacktraceBlockHeaders(buf[:stacktracesSize]); err != nil {
+			return err
+		}
+		h.V3 = new(PartitionHeaderV3)
+		err = h.V3.unmarshal(buf[stacktracesSize:])
+	default:
+		return fmt.Errorf("bug: unsupported version: %d", version)
 	}
-	buf = buf[stacktracesSize:]
-	locationsSize := len(h.Locations) * symbolsBlockReferenceSize
-	if err = h.unmarshalSymbolsBlockReferences(h.Locations, buf[:locationsSize]); err != nil {
-		return err
-	}
-	buf = buf[locationsSize:]
-	mappingsSize := len(h.Mappings) * symbolsBlockReferenceSize
-	if err = h.unmarshalSymbolsBlockReferences(h.Mappings, buf[:mappingsSize]); err != nil {
-		return err
-	}
-	buf = buf[mappingsSize:]
-	functionsSize := len(h.Functions) * symbolsBlockReferenceSize
-	if err = h.unmarshalSymbolsBlockReferences(h.Functions, buf[:functionsSize]); err != nil {
-		return err
-	}
-	buf = buf[functionsSize:]
-	stringsSize := len(h.Strings) * symbolsBlockReferenceSize
-	if err = h.unmarshalSymbolsBlockReferences(h.Strings, buf[:stringsSize]); err != nil {
-		return err
-	}
-
-	return nil
+	// TODO(kolesnikovae): Validate headers.
+	return err
 }
 
 func (h *PartitionHeader) Size() int64 {
-	s := 28
+	s := 12 // Partition 8b + number of stacktrace blocks.
 	s += len(h.Stacktraces) * stacktraceBlockHeaderSize
-	r := len(h.Locations) + len(h.Mappings) + len(h.Functions) + len(h.Strings)
-	s += r * symbolsBlockReferenceSize
+	if h.V3 != nil {
+		s += h.V3.size()
+	}
+	if h.V2 != nil {
+		s += h.V2.size()
+	}
 	return int64(s)
 }
 
-func (h *PartitionHeader) unmarshalStacktraceChunks(b []byte) error {
+type PartitionHeaderV3 struct {
+	Locations SymbolsBlockHeader
+	Mappings  SymbolsBlockHeader
+	Functions SymbolsBlockHeader
+	Strings   SymbolsBlockHeader
+}
+
+const partitionHeaderV3Size = int(unsafe.Sizeof(PartitionHeaderV3{}))
+
+func (h *PartitionHeaderV3) size() int { return partitionHeaderV3Size }
+
+func (h *PartitionHeaderV3) unmarshal(buf []byte) (err error) {
+	s := len(buf)
+	if s%symbolsBlockReferenceSize > 0 {
+		return ErrInvalidSize
+	}
+	h.Locations.unmarshal(buf[:symbolsBlockReferenceSize])
+	buf = buf[symbolsBlockReferenceSize:]
+	h.Mappings.unmarshal(buf[:symbolsBlockReferenceSize])
+	buf = buf[symbolsBlockReferenceSize:]
+	h.Functions.unmarshal(buf[:symbolsBlockReferenceSize])
+	buf = buf[symbolsBlockReferenceSize:]
+	h.Strings.unmarshal(buf[:symbolsBlockReferenceSize])
+	return nil
+}
+
+func (h *PartitionHeader) unmarshalStacktraceBlockHeaders(b []byte) error {
 	s := len(b)
 	if s%stacktraceBlockHeaderSize > 0 {
 		return ErrInvalidSize
@@ -316,19 +336,42 @@ func (h *PartitionHeader) unmarshalStacktraceChunks(b []byte) error {
 	return nil
 }
 
-func (h *PartitionHeader) unmarshalSymbolsBlockReferences(refs []SymbolsBlockReference, b []byte) error {
-	s := len(b)
-	if s%symbolsBlockReferenceSize > 0 {
-		return ErrInvalidSize
-	}
-	for i := range refs {
-		off := i * symbolsBlockReferenceSize
-		refs[i].unmarshal(b[off : off+symbolsBlockReferenceSize])
-	}
-	return nil
+// SymbolsBlockHeader describes a collection of elements encoded in a
+// content-specific way: symbolic information such as locations, functions,
+// mappings, and strings is represented as Array of Structures in memory,
+// and is encoded as Structure of Arrays when written on disk.
+type SymbolsBlockHeader struct {
+	// Offset in the data file.
+	Offset uint64
+	// Size of the section.
+	Size uint32
+	// Checksum of the section.
+	CRC uint32
+	// Length denotes the total number of items encoded.
+	Length uint32
+	// BlockSize denotes the number of items per block.
+	BlockSize uint32
 }
 
-func marshalSymbolsBlockReferences(b []byte, refs []SymbolsBlockReference) int {
+const symbolsBlockReferenceSize = int(unsafe.Sizeof(SymbolsBlockHeader{}))
+
+func (h *SymbolsBlockHeader) marshal(b []byte) {
+	binary.BigEndian.PutUint64(b[0:8], h.Offset)
+	binary.BigEndian.PutUint32(b[8:12], h.Size)
+	binary.BigEndian.PutUint32(b[12:16], h.CRC)
+	binary.BigEndian.PutUint32(b[16:20], h.Length)
+	binary.BigEndian.PutUint32(b[20:24], h.BlockSize)
+}
+
+func (h *SymbolsBlockHeader) unmarshal(b []byte) {
+	h.Offset = binary.BigEndian.Uint64(b[0:8])
+	h.Size = binary.BigEndian.Uint32(b[8:12])
+	h.CRC = binary.BigEndian.Uint32(b[12:16])
+	h.Length = binary.BigEndian.Uint32(b[16:20])
+	h.BlockSize = binary.BigEndian.Uint32(b[20:24])
+}
+
+func marshalSymbolsBlockReferences(b []byte, refs ...SymbolsBlockHeader) int {
 	var off int
 	for i := range refs {
 		refs[i].marshal(b[off : off+symbolsBlockReferenceSize])
@@ -337,33 +380,55 @@ func marshalSymbolsBlockReferences(b []byte, refs []SymbolsBlockReference) int {
 	return off
 }
 
-type SymbolsBlockReference struct {
-	Offset uint32
-	Size   uint32
-	CRC    uint32
+type PartitionHeaderV2 struct {
+	Locations []RowRangeReference
+	Mappings  []RowRangeReference
+	Functions []RowRangeReference
+	Strings   []RowRangeReference
 }
 
-const symbolsBlockReferenceSize = int(unsafe.Sizeof(SymbolsBlockReference{}))
-
-func (r *SymbolsBlockReference) marshal(b []byte) {
-	binary.BigEndian.PutUint32(b[0:4], r.Offset)
-	binary.BigEndian.PutUint32(b[4:8], r.Size)
-	binary.BigEndian.PutUint32(b[8:12], r.CRC)
+func (h *PartitionHeaderV2) size() int {
+	s := 16 // Length of row ranges per type.
+	r := len(h.Locations) + len(h.Mappings) + len(h.Functions) + len(h.Strings)
+	return s + rowRangeReferenceSize*r
 }
 
-func (r *SymbolsBlockReference) unmarshal(b []byte) {
-	r.Offset = binary.BigEndian.Uint32(b[0:4])
-	r.Size = binary.BigEndian.Uint32(b[4:8])
-	r.CRC = binary.BigEndian.Uint32(b[8:12])
-}
-
-func (r *SymbolsBlockReference) AsRowRange() RowRangeReference {
-	return RowRangeReference{
-		RowGroup: r.Offset,
-		Index:    r.Size,
-		Rows:     r.CRC,
+func (h *PartitionHeaderV2) unmarshal(buf []byte) (err error) {
+	locationsSize := len(h.Locations) * rowRangeReferenceSize
+	if err = h.unmarshalRowRangeReferences(h.Locations, buf[:locationsSize]); err != nil {
+		return err
 	}
+	buf = buf[locationsSize:]
+	mappingsSize := len(h.Mappings) * rowRangeReferenceSize
+	if err = h.unmarshalRowRangeReferences(h.Mappings, buf[:mappingsSize]); err != nil {
+		return err
+	}
+	buf = buf[mappingsSize:]
+	functionsSize := len(h.Functions) * rowRangeReferenceSize
+	if err = h.unmarshalRowRangeReferences(h.Functions, buf[:functionsSize]); err != nil {
+		return err
+	}
+	buf = buf[functionsSize:]
+	stringsSize := len(h.Strings) * rowRangeReferenceSize
+	if err = h.unmarshalRowRangeReferences(h.Strings, buf[:stringsSize]); err != nil {
+		return err
+	}
+	return nil
 }
+
+func (h *PartitionHeaderV2) unmarshalRowRangeReferences(refs []RowRangeReference, b []byte) error {
+	s := len(b)
+	if s%rowRangeReferenceSize > 0 {
+		return ErrInvalidSize
+	}
+	for i := range refs {
+		off := i * rowRangeReferenceSize
+		refs[i].unmarshal(b[off : off+rowRangeReferenceSize])
+	}
+	return nil
+}
+
+const rowRangeReferenceSize = int(unsafe.Sizeof(RowRangeReference{}))
 
 type RowRangeReference struct {
 	RowGroup uint32
@@ -371,11 +436,16 @@ type RowRangeReference struct {
 	Rows     uint32
 }
 
-// SymbolsBlockReferencesAsRows re-interprets SymbolsBlockReference as
-// RowRangeReference, that used to describe parquet table row ranges (v2).
-// Both types have identical binary layouts but different semantics.
-func SymbolsBlockReferencesAsRows(s []SymbolsBlockReference) []RowRangeReference {
-	return *(*[]RowRangeReference)(unsafe.Pointer(&s))
+func (r *RowRangeReference) marshal(b []byte) {
+	binary.BigEndian.PutUint32(b[0:4], r.RowGroup)
+	binary.BigEndian.PutUint32(b[4:8], r.Index)
+	binary.BigEndian.PutUint32(b[8:12], r.Rows)
+}
+
+func (r *RowRangeReference) unmarshal(b []byte) {
+	r.RowGroup = binary.BigEndian.Uint32(b[0:4])
+	r.Index = binary.BigEndian.Uint32(b[4:8])
+	r.Rows = binary.BigEndian.Uint32(b[8:12])
 }
 
 func ReadIndexFile(b []byte) (f IndexFile, err error) {
@@ -394,22 +464,28 @@ func ReadIndexFile(b []byte) (f IndexFile, err error) {
 		return f, fmt.Errorf("unmarshal table of contents: %w", err)
 	}
 
+	// TODO: validate TOC
+
 	// Version-specific data section.
 	switch f.Header.Version {
 	default:
-		// Must never happen: the version is verified
-		// when the file header is read.
-		panic("bug: invalid version")
+		return f, fmt.Errorf("bug: unsupported version: %d", f.Header.Version)
 
 	case FormatV1:
 		sch := f.TOC.Entries[tocEntryStacktraceChunkHeaders]
-		if err = f.PartitionHeaders.fromChunks(b[sch.Offset : sch.Offset+sch.Size]); err != nil {
+		if err = f.PartitionHeaders.UnmarshalV1(b[sch.Offset : sch.Offset+sch.Size]); err != nil {
 			return f, fmt.Errorf("unmarshal stacktraces: %w", err)
 		}
 
-	case FormatV2, FormatV3:
+	case FormatV2:
 		ph := f.TOC.Entries[tocEntryPartitionHeaders]
-		if err = f.PartitionHeaders.Unmarshal(b[ph.Offset : ph.Offset+ph.Size]); err != nil {
+		if err = f.PartitionHeaders.UnmarshalV2(b[ph.Offset : ph.Offset+ph.Size]); err != nil {
+			return f, fmt.Errorf("reading partition headers: %w", err)
+		}
+
+	case FormatV3:
+		ph := f.TOC.Entries[tocEntryPartitionHeaders]
+		if err = f.PartitionHeaders.UnmarshalV3(b[ph.Offset : ph.Offset+ph.Size]); err != nil {
 			return f, fmt.Errorf("reading partition headers: %w", err)
 		}
 	}
@@ -512,152 +588,60 @@ func (h *StacktraceBlockHeader) unmarshal(b []byte) {
 	h.CRC = binary.BigEndian.Uint32(b[60:64])
 }
 
-// symbolic information such as locations, functions, mappings,
-// and strings is represented as Array of Structures in memory,
-// and is encoded as Structure of Arrays when written on disk.
-//
-// The common structure of the encoded symbolic data is as follows:
-//
-// [Header]
-// [Data encoded in blocks]
-// [CRC32]
-//
-// Where the block format depends on the contents.
-//
-// Note that the data is decoded in a stream fashion, therefore
-// any error in the data will be detected only after all the blocks
-// are read in and decoded.
-type symbolsBlockHeader struct {
-	Magic   [4]byte
-	Version uint32
-	// Length denotes the total number of items encoded.
-	Length uint32
-	// BlockSize denotes the number of items per block.
-	BlockSize uint32
-}
-
-const symbolsBlockHeaderSize = int(unsafe.Sizeof(symbolsBlockHeader{}))
-
-func newSymbolsBlockHeader(n, bs int) symbolsBlockHeader {
-	return symbolsBlockHeader{
-		Magic:     symdbMagic,
-		Version:   1,
-		Length:    uint32(n),
-		BlockSize: uint32(bs),
-	}
-}
-
-func (h *symbolsBlockHeader) marshal(b []byte) {
-	b[0], b[1], b[2], b[3] = h.Magic[0], h.Magic[1], h.Magic[2], h.Magic[3]
-	binary.BigEndian.PutUint32(b[4:8], h.Version)
-	binary.BigEndian.PutUint32(b[8:12], h.Length)
-	binary.BigEndian.PutUint32(b[12:16], h.BlockSize)
-}
-
-func (h *symbolsBlockHeader) unmarshal(b []byte) {
-	h.Magic[0], h.Magic[1], h.Magic[2], h.Magic[3] = b[0], b[1], b[2], b[3]
-	h.Version = binary.BigEndian.Uint32(b[4:8])
-	h.Length = binary.BigEndian.Uint32(b[8:12])
-	h.BlockSize = binary.BigEndian.Uint32(b[12:16])
-}
-
-func (h *symbolsBlockHeader) validate() error {
-	if !bytes.Equal(h.Magic[:], symdbMagic[:]) {
-		return ErrInvalidMagic
-	}
-	if h.Version >= 2 {
-		return ErrUnknownVersion
-	}
-	if h.Length >= 1<<20 && h.BlockSize >= 1<<20 {
-		return ErrInvalidSize
-	}
-	return nil
-}
-
-func writeSymbolsBlockHeader(w io.Writer, buf []byte, h symbolsBlockHeader) ([]byte, error) {
-	if err := h.validate(); err != nil {
-		return buf, err
-	}
-	buf = slices.GrowLen(buf, symbolsBlockHeaderSize)
-	h.marshal(buf)
-	_, err := w.Write(buf)
-	return buf, err
-}
-
-func readSymbolsBlockHeader(r io.Reader, buf []byte, h *symbolsBlockHeader) ([]byte, error) {
-	buf = slices.GrowLen(buf, symbolsBlockHeaderSize)
-	if _, err := io.ReadFull(r, buf); err != nil {
-		return buf, err
-	}
-	h.unmarshal(buf)
-	return buf, h.validate()
-}
-
 type symbolsBlockEncoder[T any] interface {
 	encode(w io.Writer, block []T) error
 }
 
 type symbolsEncoder[T any] struct {
-	w   io.Writer
-	e   symbolsBlockEncoder[T]
-	bs  int
-	buf []byte
+	e  symbolsBlockEncoder[T]
+	bs int
 }
 
 const defaultSymbolsBlockSize = 1 << 10
 
-func newSymbolsEncoder[T any](w io.Writer, e symbolsBlockEncoder[T]) *symbolsEncoder[T] {
-	return &symbolsEncoder[T]{w: w, e: e, bs: defaultSymbolsBlockSize}
+func newSymbolsEncoder[T any](e symbolsBlockEncoder[T]) *symbolsEncoder[T] {
+	return &symbolsEncoder[T]{e: e, bs: defaultSymbolsBlockSize}
 }
 
-func (e *symbolsEncoder[T]) Encode(items []T) (err error) {
-	h := newSymbolsBlockHeader(len(items), e.bs)
-	if e.buf, err = writeSymbolsBlockHeader(e.w, e.buf, h); err != nil {
-		return err
-	}
-	for i := uint32(0); i < h.Length; i += h.BlockSize {
-		block := items[i:math.Min(i+h.BlockSize, h.Length)]
-		if err = e.e.encode(e.w, block); err != nil {
+func (e *symbolsEncoder[T]) Encode(w io.Writer, items []T) (err error) {
+	l := len(items)
+	for i := 0; i < l; i += e.bs {
+		block := items[i:math.Min(i+e.bs, l)]
+		if err = e.e.encode(w, block); err != nil {
 			return err
 		}
 	}
 	return nil
 }
-
-func (e *symbolsEncoder[T]) Reset(w io.Writer) { e.w = w }
 
 type symbolsBlockDecoder[T any] interface {
 	decode(r io.Reader, block []T) error
 }
 
 type symbolsDecoder[T any] struct {
-	r io.Reader
-	h symbolsBlockHeader
+	h SymbolsBlockHeader
 	d symbolsBlockDecoder[T]
-
-	buf []byte
 }
 
-func newSymbolsDecoder[T any](r io.Reader, d symbolsBlockDecoder[T]) *symbolsDecoder[T] {
-	return &symbolsDecoder[T]{r: r, d: d}
+func newSymbolsDecoder[T any](h SymbolsBlockHeader, d symbolsBlockDecoder[T]) *symbolsDecoder[T] {
+	return &symbolsDecoder[T]{h: h, d: d}
 }
 
-func (d *symbolsDecoder[T]) Open() (n int, err error) {
-	d.buf, err = readSymbolsBlockHeader(d.r, d.buf, &d.h)
-	return int(d.h.Length), err
-}
-
-func (d *symbolsDecoder[T]) Decode(items []T) error {
+func (d *symbolsDecoder[T]) Decode(dst []T, r io.Reader) error {
+	if d.h.BlockSize == 0 || d.h.Length == 0 {
+		return nil
+	}
+	if len(dst) < int(d.h.Length) {
+		return fmt.Errorf("%w: buffer too short", ErrInvalidSize)
+	}
 	blocks := int((d.h.Length + d.h.BlockSize - 1) / d.h.BlockSize)
 	for i := 0; i < blocks; i++ {
 		lo := i * int(d.h.BlockSize)
 		hi := math.Min(lo+int(d.h.BlockSize), int(d.h.Length))
-		block := items[lo:hi]
-		if err := d.d.decode(d.r, block); err != nil {
+		block := dst[lo:hi]
+		if err := d.d.decode(r, block); err != nil {
 			return err
 		}
 	}
 	return nil
 }
-
-func (d *symbolsDecoder[T]) Reset(r io.Reader) { d.r = r }

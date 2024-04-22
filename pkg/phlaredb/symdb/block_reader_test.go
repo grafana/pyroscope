@@ -16,6 +16,7 @@ var testBlockMeta = &block.Meta{
 	Files: []block.File{
 		{RelPath: IndexFileName},
 		{RelPath: StacktracesFileName},
+		{RelPath: DataFileName},
 		{RelPath: "locations.parquet"},
 		{RelPath: "mappings.parquet"},
 		{RelPath: "functions.parquet"},

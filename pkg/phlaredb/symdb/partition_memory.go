@@ -368,16 +368,16 @@ func (p *PartitionWriter) Release() {
 }
 
 func (p *PartitionWriter) writeTo(w *writer) (err error) {
-	if p.header.Strings, err = writeSymbolBlocks(w.dataFile, p.strings.slice, w.stringsEncoder); err != nil {
+	if p.header.V3.Strings, err = writeSymbolsBlock(w.dataFile, p.strings.slice, w.stringsEncoder); err != nil {
 		return err
 	}
-	if p.header.Mappings, err = writeSymbolBlocks(w.dataFile, p.mappings.slice, w.mappingsEncoder); err != nil {
+	if p.header.V3.Mappings, err = writeSymbolsBlock(w.dataFile, p.mappings.slice, w.mappingsEncoder); err != nil {
 		return err
 	}
-	if p.header.Functions, err = writeSymbolBlocks(w.dataFile, p.functions.slice, w.functionsEncoder); err != nil {
+	if p.header.V3.Functions, err = writeSymbolsBlock(w.dataFile, p.functions.slice, w.functionsEncoder); err != nil {
 		return err
 	}
-	if p.header.Locations, err = writeSymbolBlocks(w.dataFile, p.locations.slice, w.locationsEncoder); err != nil {
+	if p.header.V3.Locations, err = writeSymbolsBlock(w.dataFile, p.locations.slice, w.locationsEncoder); err != nil {
 		return err
 	}
 	for ci, c := range p.stacktraces.chunks {
@@ -404,25 +404,16 @@ func (p *PartitionWriter) writeTo(w *writer) (err error) {
 	return nil
 }
 
-func writeSymbolBlocks[T any](f *fileWriter, s []T, e *symbolsEncoder[T]) ([]SymbolsBlockReference, error) {
-	// TODO(kolesnikovae): Split into blocks (< 1M).
-	h, err := writeSymbolsBlock(f, func(w io.Writer) error {
-		e.Reset(w)
-		err := e.Encode(s)
-		e.Reset(nil)
-		return err
-	})
-	return []SymbolsBlockReference{h}, err
-}
-
-func writeSymbolsBlock(w *fileWriter, fn func(io.Writer) error) (h SymbolsBlockReference, err error) {
-	h.Offset = uint32(w.w.offset)
+func writeSymbolsBlock[T any](w *fileWriter, s []T, e *symbolsEncoder[T]) (h SymbolsBlockHeader, err error) {
+	h.Offset = uint64(w.w.offset)
 	crc := crc32.New(castagnoli)
 	mw := io.MultiWriter(crc, w.w)
-	if err = fn(mw); err != nil {
+	if err = e.Encode(mw, s); err != nil {
 		return h, err
 	}
-	h.Size = uint32(w.w.offset) - h.Offset
+	h.Size = uint32(w.w.offset) - uint32(h.Offset)
 	h.CRC = crc.Sum32()
+	h.Length = uint32(len(s))
+	h.BlockSize = uint32(e.bs)
 	return h, nil
 }

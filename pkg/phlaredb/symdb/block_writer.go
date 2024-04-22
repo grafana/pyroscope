@@ -37,10 +37,11 @@ func newWriter(c *Config) *writer {
 			},
 		},
 
-		stringsEncoder:   newSymbolsEncoder[string](nil, new(stringsBlockEncoder)),
-		mappingsEncoder:  newSymbolsEncoder[v1.InMemoryMapping](nil, new(mappingsBlockEncoder)),
-		functionsEncoder: newSymbolsEncoder[v1.InMemoryFunction](nil, new(functionsBlockEncoder)),
-		locationsEncoder: newSymbolsEncoder[v1.InMemoryLocation](nil, new(locationsBlockEncoder)),
+		// TODO(kolesnikovae): encoder pool.
+		stringsEncoder:   newSymbolsEncoder[string](new(stringsBlockEncoder)),
+		mappingsEncoder:  newSymbolsEncoder[v1.InMemoryMapping](new(mappingsBlockEncoder)),
+		functionsEncoder: newSymbolsEncoder[v1.InMemoryFunction](new(functionsBlockEncoder)),
+		locationsEncoder: newSymbolsEncoder[v1.InMemoryLocation](new(locationsBlockEncoder)),
 	}
 }
 

@@ -3,7 +3,6 @@ package symdb
 import (
 	"bufio"
 	"context"
-	"errors"
 	"fmt"
 	"hash/crc32"
 	"io"
@@ -14,11 +13,9 @@ import (
 	"github.com/grafana/dskit/multierror"
 	"github.com/opentracing/opentracing-go"
 	otlog "github.com/opentracing/opentracing-go/log"
-	"github.com/parquet-go/parquet-go"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/grafana/pyroscope/pkg/objstore"
-	parquetobj "github.com/grafana/pyroscope/pkg/objstore/parquet"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/util/refctr"
@@ -29,44 +26,36 @@ type Reader struct {
 	files  map[string]block.File
 	meta   *block.Meta
 
-	chunkFetchBufferSize int
+	// TODO: fetch buffer pool
+	fetchBufferSize int
 
 	index         IndexFile
 	partitions    []*partition
 	partitionsMap map[uint64]*partition
 
-	locations parquetobj.File
-	mappings  parquetobj.File
-	functions parquetobj.File
-	strings   parquetobj.File
+	parquetFiles *parquetFiles
 }
 
-const defaultChunkFetchBufferSize = 4096
+const defaultFetchBufferSize = 4096
 
 func Open(ctx context.Context, b objstore.BucketReader, m *block.Meta) (*Reader, error) {
-	r := Reader{
+	r := &Reader{
 		bucket: b,
 		meta:   m,
 		files:  make(map[string]block.File),
 
-		chunkFetchBufferSize: defaultChunkFetchBufferSize,
+		fetchBufferSize: defaultFetchBufferSize,
 	}
-	if err := r.open(ctx); err != nil {
-		return nil, err
-	}
-	return &r, nil
-}
-
-func (r *Reader) open(ctx context.Context) (err error) {
 	for _, f := range r.meta.Files {
 		r.files[filepath.Base(f.RelPath)] = f
 	}
+	var err error
 	if err = r.openIndexFile(ctx); err != nil {
-		return fmt.Errorf("opening index file: %w", err)
+		return nil, fmt.Errorf("opening index file: %w", err)
 	}
 	if r.index.Header.Version == FormatV2 {
-		if err = r.openParquetFiles(ctx); err != nil {
-			return err
+		if err = openParquetFiles(ctx, r); err != nil {
+			return nil, err
 		}
 	}
 	r.partitionsMap = make(map[uint64]*partition, len(r.index.PartitionHeaders))
@@ -75,6 +64,16 @@ func (r *Reader) open(ctx context.Context) (err error) {
 		ph := r.partitionReader(h)
 		r.partitionsMap[h.Partition] = ph
 		r.partitions[i] = ph
+	}
+	return r, nil
+}
+
+func (r *Reader) Close() error {
+	if r == nil {
+		return nil
+	}
+	if r.parquetFiles != nil {
+		return r.parquetFiles.Close()
 	}
 	return nil
 }
@@ -96,39 +95,6 @@ func (r *Reader) openIndexFile(ctx context.Context) error {
 	return err
 }
 
-const parquetReadBufferSize = 256 << 10 // 256KB
-
-func (r *Reader) openParquetFiles(ctx context.Context) error {
-	options := []parquet.FileOption{
-		parquet.SkipBloomFilters(true), // we don't use bloom filters
-		parquet.FileReadMode(parquet.ReadModeAsync),
-		parquet.ReadBufferSize(parquetReadBufferSize),
-	}
-
-	m := map[string]*parquetobj.File{
-		new(schemav1.LocationPersister).Name() + block.ParquetSuffix: &r.locations,
-		new(schemav1.MappingPersister).Name() + block.ParquetSuffix:  &r.mappings,
-		new(schemav1.FunctionPersister).Name() + block.ParquetSuffix: &r.functions,
-		new(schemav1.StringPersister).Name() + block.ParquetSuffix:   &r.strings,
-	}
-	g, ctx := errgroup.WithContext(ctx)
-	for n, fp := range m {
-		n := n
-		fp := fp
-		g.Go(func() error {
-			fm, err := r.file(n)
-			if err != nil {
-				return err
-			}
-			if err = fp.Open(ctx, r.bucket, fm, options...); err != nil {
-				return fmt.Errorf("openning file %q: %w", n, err)
-			}
-			return nil
-		})
-	}
-	return g.Wait()
-}
-
 func (r *Reader) file(name string) (block.File, error) {
 	f, ok := r.files[name]
 	if !ok {
@@ -138,43 +104,15 @@ func (r *Reader) file(name string) (block.File, error) {
 }
 
 func (r *Reader) partitionReader(h *PartitionHeader) *partition {
-	p := &partition{
-		reader: r,
-		locations: parquetTableRange[schemav1.InMemoryLocation, schemav1.LocationPersister]{
-			bucket:  r.bucket,
-			headers: SymbolsBlockReferencesAsRows(h.Locations),
-			file:    &r.locations,
-		},
-		mappings: parquetTableRange[schemav1.InMemoryMapping, schemav1.MappingPersister]{
-			bucket:  r.bucket,
-			headers: SymbolsBlockReferencesAsRows(h.Mappings),
-			file:    &r.mappings,
-		},
-		functions: parquetTableRange[schemav1.InMemoryFunction, schemav1.FunctionPersister]{
-			bucket:  r.bucket,
-			headers: SymbolsBlockReferencesAsRows(h.Functions),
-			file:    &r.functions,
-		},
-		strings: parquetTableRange[string, schemav1.StringPersister]{
-			bucket:  r.bucket,
-			headers: SymbolsBlockReferencesAsRows(h.Strings),
-			file:    &r.strings,
-		},
+	p := &partition{reader: r}
+	if r.index.Header.Version == FormatV2 {
+		p.initParquetTables(h)
 	}
-	p.setStacktracesChunks(h.Stacktraces)
+	if r.index.Header.Version == FormatV3 {
+		p.initTables(h)
+	}
+	p.initStacktraces(h.Stacktraces)
 	return p
-}
-
-func (r *Reader) Close() error {
-	if r == nil {
-		return nil
-	}
-	return multierror.New(
-		r.locations.Close(),
-		r.mappings.Close(),
-		r.functions.Close(),
-		r.strings.Close()).
-		Err()
 }
 
 var ErrPartitionNotFound = fmt.Errorf("partition not found")
@@ -192,7 +130,7 @@ func (r *Reader) partition(ctx context.Context, partition uint64) (*partition, e
 	if !ok {
 		return nil, ErrPartitionNotFound
 	}
-	if err := p.init(ctx); err != nil {
+	if err := p.fetch(ctx); err != nil {
 		return nil, err
 	}
 	return p, nil
@@ -201,14 +139,19 @@ func (r *Reader) partition(ctx context.Context, partition uint64) (*partition, e
 type partition struct {
 	reader *Reader
 
-	stacktraceChunks []*stacktraceChunkReader
-	locations        parquetTableRange[schemav1.InMemoryLocation, schemav1.LocationPersister]
-	mappings         parquetTableRange[schemav1.InMemoryMapping, schemav1.MappingPersister]
-	functions        parquetTableRange[schemav1.InMemoryFunction, schemav1.FunctionPersister]
-	strings          parquetTableRange[string, schemav1.StringPersister]
+	stacktraces []*stacktraceBlock
+	locations   table[schemav1.InMemoryLocation]
+	mappings    table[schemav1.InMemoryMapping]
+	functions   table[schemav1.InMemoryFunction]
+	strings     table[string]
 }
 
-func (p *partition) init(ctx context.Context) (err error) {
+type table[T any] interface {
+	fetchable
+	slice() []T
+}
+
+func (p *partition) fetch(ctx context.Context) (err error) {
 	return p.tx().fetch(ctx)
 }
 
@@ -217,68 +160,115 @@ func (p *partition) Release() {
 }
 
 func (p *partition) tx() *fetchTx {
-	tx := make(fetchTx, 0, len(p.stacktraceChunks)+4)
-	for _, c := range p.stacktraceChunks {
+	tx := make(fetchTx, 0, len(p.stacktraces)+4)
+	for _, c := range p.stacktraces {
 		tx.append(c)
 	}
 	if p.reader.index.Header.Version > FormatV1 {
-		tx.append(&p.locations)
-		tx.append(&p.mappings)
-		tx.append(&p.functions)
-		tx.append(&p.strings)
+		tx.append(p.locations)
+		tx.append(p.mappings)
+		tx.append(p.functions)
+		tx.append(p.strings)
 	}
 	return &tx
+}
+
+func (p *partition) initParquetTables(h *PartitionHeader) {
+	p.locations = &parquetTable[schemav1.InMemoryLocation, schemav1.LocationPersister]{
+		bucket:  p.reader.bucket,
+		headers: h.V2.Locations,
+		file:    &p.reader.parquetFiles.locations,
+	}
+	p.mappings = &parquetTable[schemav1.InMemoryMapping, schemav1.MappingPersister]{
+		bucket:  p.reader.bucket,
+		headers: h.V2.Mappings,
+		file:    &p.reader.parquetFiles.mappings,
+	}
+	p.functions = &parquetTable[schemav1.InMemoryFunction, schemav1.FunctionPersister]{
+		bucket:  p.reader.bucket,
+		headers: h.V2.Functions,
+		file:    &p.reader.parquetFiles.functions,
+	}
+	p.strings = &parquetTable[string, schemav1.StringPersister]{
+		bucket:  p.reader.bucket,
+		headers: h.V2.Strings,
+		file:    &p.reader.parquetFiles.strings,
+	}
+}
+
+func (p *partition) initTables(h *PartitionHeader) {
+	// TODO(kolesnikovae): decoder pool.
+	p.locations = &rawTable[schemav1.InMemoryLocation]{
+		reader: p.reader,
+		header: h.V3.Locations,
+		dec:    newSymbolsDecoder[schemav1.InMemoryLocation](h.V3.Locations, new(locationsBlockDecoder)),
+	}
+	p.mappings = &rawTable[schemav1.InMemoryMapping]{
+		reader: p.reader,
+		header: h.V3.Mappings,
+		dec:    newSymbolsDecoder[schemav1.InMemoryMapping](h.V3.Mappings, new(mappingsBlockDecoder)),
+	}
+	p.functions = &rawTable[schemav1.InMemoryFunction]{
+		reader: p.reader,
+		header: h.V3.Functions,
+		dec:    newSymbolsDecoder[schemav1.InMemoryFunction](h.V3.Functions, new(functionsBlockDecoder)),
+	}
+	p.strings = &rawTable[string]{
+		reader: p.reader,
+		header: h.V3.Strings,
+		dec:    newSymbolsDecoder[string](h.V3.Strings, new(stringsBlockDecoder)),
+	}
 }
 
 func (p *partition) Symbols() *Symbols {
 	return &Symbols{
 		Stacktraces: p,
-		Locations:   p.locations.s,
-		Mappings:    p.mappings.s,
-		Functions:   p.functions.s,
-		Strings:     p.strings.s,
+		Locations:   p.locations.slice(),
+		Mappings:    p.mappings.slice(),
+		Functions:   p.functions.slice(),
+		Strings:     p.strings.slice(),
 	}
 }
 
 func (p *partition) WriteStats(s *PartitionStats) {
 	var nodes uint32
-	for _, c := range p.stacktraceChunks {
+	for _, c := range p.stacktraces {
 		s.StacktracesTotal += int(c.header.Stacktraces)
 		nodes += c.header.StacktraceNodes
 	}
 	s.MaxStacktraceID = int(nodes)
-	s.LocationsTotal = len(p.locations.s)
-	s.MappingsTotal = len(p.mappings.s)
-	s.FunctionsTotal = len(p.functions.s)
-	s.StringsTotal = len(p.strings.s)
+	s.LocationsTotal = len(p.locations.slice())
+	s.MappingsTotal = len(p.mappings.slice())
+	s.FunctionsTotal = len(p.functions.slice())
+	s.StringsTotal = len(p.strings.slice())
 }
 
 var ErrInvalidStacktraceRange = fmt.Errorf("invalid range: stack traces can't be resolved")
 
 func (p *partition) LookupLocations(dst []uint64, stacktraceID uint32) []uint64 {
 	dst = dst[:0]
-	if len(p.stacktraceChunks) == 0 {
+	if len(p.stacktraces) == 0 {
 		return dst
 	}
-	nodesPerChunk := p.stacktraceChunks[0].header.StacktraceMaxNodes
+	nodesPerChunk := p.stacktraces[0].header.StacktraceMaxNodes
 	chunkID := stacktraceID / nodesPerChunk
 	localSID := stacktraceID % nodesPerChunk
-	if localSID == 0 || int(chunkID) > len(p.stacktraceChunks) {
+	if localSID == 0 || int(chunkID) > len(p.stacktraces) {
 		return dst
 	}
-	return p.stacktraceChunks[chunkID].t.resolveUint64(dst, localSID)
+	return p.stacktraces[chunkID].t.resolveUint64(dst, localSID)
 }
 
 func (p *partition) ResolveStacktraceLocations(ctx context.Context, dst StacktraceInserter, s []uint32) (err error) {
 	if len(s) == 0 {
 		return nil
 	}
-	if len(p.stacktraceChunks) == 0 {
+	if len(p.stacktraces) == 0 {
 		return ErrInvalidStacktraceRange
 	}
 	// First, we determine the chunks needed for the range.
 	// All chunks in a block must have the same StacktraceMaxNodes.
-	sr := SplitStacktraces(s, p.stacktraceChunks[0].header.StacktraceMaxNodes)
+	sr := SplitStacktraces(s, p.stacktraces[0].header.StacktraceMaxNodes)
 	for _, c := range sr {
 		if err = p.lookupStacktraces(ctx, dst, c).do(); err != nil {
 			return err
@@ -287,19 +277,19 @@ func (p *partition) ResolveStacktraceLocations(ctx context.Context, dst Stacktra
 	return nil
 }
 
-func (p *partition) setStacktracesChunks(chunks []StacktraceBlockHeader) {
-	p.stacktraceChunks = make([]*stacktraceChunkReader, len(chunks))
+func (p *partition) initStacktraces(chunks []StacktraceBlockHeader) {
+	p.stacktraces = make([]*stacktraceBlock, len(chunks))
 	for i, c := range chunks {
-		p.stacktraceChunks[i] = &stacktraceChunkReader{
+		p.stacktraces[i] = &stacktraceBlock{
 			reader: p.reader,
 			header: c,
 		}
 	}
 }
 
-func (p *partition) stacktraceChunkReader(i uint32) *stacktraceChunkReader {
-	if int(i) < len(p.stacktraceChunks) {
-		return p.stacktraceChunks[i]
+func (p *partition) stacktraceChunkReader(i uint32) *stacktraceBlock {
+	if int(i) < len(p.stacktraces) {
+		return p.stacktraces[i]
 	}
 	return nil
 }
@@ -337,7 +327,7 @@ func (r *stacktracesLookup) do() error {
 	return nil
 }
 
-type stacktraceChunkReader struct {
+type stacktraceBlock struct {
 	reader *Reader
 	header StacktraceBlockHeader
 
@@ -345,8 +335,8 @@ type stacktraceChunkReader struct {
 	t *parentPointerTree
 }
 
-func (c *stacktraceChunkReader) fetch(ctx context.Context) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "stacktraceChunkReader.fetch")
+func (c *stacktraceBlock) fetch(ctx context.Context) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "stacktraceBlock.fetch")
 	span.LogFields(
 		otlog.Int64("size", c.header.Size),
 		otlog.Uint32("nodes", c.header.StacktraceNodes),
@@ -354,7 +344,11 @@ func (c *stacktraceChunkReader) fetch(ctx context.Context) error {
 	)
 	defer span.Finish()
 	return c.r.Inc(func() error {
-		f, err := c.reader.file(StacktracesFileName)
+		filename := DataFileName
+		if c.reader.index.Header.Version < 3 {
+			filename = StacktracesFileName
+		}
+		f, err := c.reader.file(filename)
 		if err != nil {
 			return err
 		}
@@ -365,12 +359,11 @@ func (c *stacktraceChunkReader) fetch(ctx context.Context) error {
 		defer func() {
 			err = multierror.New(err, rc.Close()).Err()
 		}()
-		// Consider pooling the buffer.
-		return c.readFrom(bufio.NewReaderSize(rc, c.reader.chunkFetchBufferSize))
+		return c.readFrom(bufio.NewReaderSize(rc, c.reader.fetchBufferSize))
 	})
 }
 
-func (c *stacktraceChunkReader) readFrom(r io.Reader) error {
+func (c *stacktraceBlock) readFrom(r *bufio.Reader) error {
 	// NOTE(kolesnikovae): Pool of node chunks could reduce
 	//   the alloc size, but it may affect memory locality.
 	//   Although, properly aligned chunks of, say, 1-4K nodes
@@ -393,94 +386,59 @@ func (c *stacktraceChunkReader) readFrom(r io.Reader) error {
 	return nil
 }
 
-func (c *stacktraceChunkReader) release() {
+func (c *stacktraceBlock) release() {
 	c.r.Dec(func() {
 		c.t = nil
 	})
 }
 
-type parquetTableRange[M schemav1.Models, P schemav1.Persister[M]] struct {
-	headers   []RowRangeReference
-	bucket    objstore.BucketReader
-	persister P
-
-	file *parquetobj.File
-
-	r refctr.Counter
-	s []M
+type rawTable[T any] struct {
+	reader *Reader
+	header SymbolsBlockHeader
+	dec    *symbolsDecoder[T]
+	r      refctr.Counter
+	s      []T
 }
 
-// parquet.CopyRows uses hardcoded buffer size:
-// defaultRowBufferSize = 42
-const inMemoryReaderRowsBufSize = 1 << 10
-
-func (t *parquetTableRange[M, P]) fetch(ctx context.Context) (err error) {
-	span, _ := opentracing.StartSpanFromContext(ctx, "parquetTableRange.fetch", opentracing.Tags{
-		"table_name": t.persister.Name(),
-		"row_groups": len(t.headers),
-	})
+func (t *rawTable[T]) fetch(ctx context.Context) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "symbolsTable.fetch")
+	span.LogFields(
+		otlog.Uint32("size", t.header.Size),
+		otlog.Uint32("length", t.header.Length),
+	)
 	defer span.Finish()
 	return t.r.Inc(func() error {
-		var s uint32
-		for _, h := range t.headers {
-			s += h.Rows
+		f, err := t.reader.file(DataFileName)
+		if err != nil {
+			return err
 		}
-		buf := make([]parquet.Row, inMemoryReaderRowsBufSize)
-		t.s = make([]M, s)
-		var offset int
-		// TODO(kolesnikovae): Row groups could be fetched in parallel.
-		rgs := t.file.RowGroups()
-		for _, h := range t.headers {
-			span.LogFields(
-				otlog.Uint32("row_group", h.RowGroup),
-				otlog.Uint32("index_row", h.Index),
-				otlog.Uint32("rows", h.Rows),
-			)
-			rg := rgs[h.RowGroup]
-			rows := rg.Rows()
-			if err := rows.SeekToRow(int64(h.Index)); err != nil {
-				return err
-			}
-			dst := t.s[offset : offset+int(h.Rows)]
-			if err := t.readRows(dst, buf, rows); err != nil {
-				return fmt.Errorf("reading row group from parquet file %q: %w", t.file.Path(), err)
-			}
-			offset += int(h.Rows)
+		rc, err := t.reader.bucket.GetRange(ctx, f.RelPath, int64(t.header.Offset), int64(t.header.Size))
+		if err != nil {
+			return err
 		}
-		return nil
+		defer func() {
+			err = multierror.New(err, rc.Close()).Err()
+		}()
+		return t.readFrom(bufio.NewReaderSize(rc, t.reader.fetchBufferSize))
 	})
 }
 
-func (t *parquetTableRange[M, P]) readRows(dst []M, buf []parquet.Row, rows parquet.Rows) (err error) {
-	defer func() {
-		err = multierror.New(err, rows.Close()).Err()
-	}()
-	for i := 0; i < len(dst); {
-		n, err := rows.ReadRows(buf)
-		if n > 0 {
-			for _, row := range buf[:n] {
-				if i == len(dst) {
-					return nil
-				}
-				_, v, err := t.persister.Reconstruct(row)
-				if err != nil {
-					return err
-				}
-				dst[i] = v
-				i++
-			}
-		}
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				return nil
-			}
-			return err
-		}
+func (t *rawTable[T]) readFrom(r *bufio.Reader) error {
+	crc := crc32.New(castagnoli)
+	tee := io.TeeReader(r, crc)
+	t.s = make([]T, t.header.Length)
+	if err := t.dec.Decode(t.s, tee); err != nil {
+		return fmt.Errorf("failed to decode symbols: %w", err)
+	}
+	if t.header.CRC != crc.Sum32() {
+		return ErrInvalidCRC
 	}
 	return nil
 }
 
-func (t *parquetTableRange[M, P]) release() {
+func (t *rawTable[T]) slice() []T { return t.s }
+
+func (t *rawTable[T]) release() {
 	t.r.Dec(func() {
 		t.s = nil
 	})
@@ -488,14 +446,14 @@ func (t *parquetTableRange[M, P]) release() {
 
 // fetchTx facilitates fetching multiple objects in a transactional manner:
 // if one of the objects has failed, all the remaining ones are released.
-type fetchTx []fetch
+type fetchTx []fetchable
 
-type fetch interface {
+type fetchable interface {
 	fetch(context.Context) error
 	release()
 }
 
-func (tx *fetchTx) append(x fetch) { *tx = append(*tx, x) }
+func (tx *fetchTx) append(x fetchable) { *tx = append(*tx, x) }
 
 func (tx *fetchTx) fetch(ctx context.Context) (err error) {
 	defer func() {

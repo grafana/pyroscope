@@ -165,7 +165,7 @@ func (s *SymDB) PartitionWriter(partition uint64) *PartitionWriter {
 
 func (s *SymDB) newPartition(partition uint64) *PartitionWriter {
 	p := PartitionWriter{
-		header:      PartitionHeader{Partition: partition},
+		header:      PartitionHeader{Partition: partition, V3: new(PartitionHeaderV3)},
 		stacktraces: newStacktracesPartition(s.config.Stacktraces.MaxNodesPerChunk),
 	}
 	p.strings.init()
