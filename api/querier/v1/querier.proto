@@ -162,7 +162,7 @@ message AnalyzeQueryRequest {
   // queried.
   int64 end = 3;
 
-  string label_selector = 4;
+  string query = 4;
 }
 
 enum QueryType {

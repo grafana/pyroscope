@@ -444,10 +444,10 @@ func (m *AnalyzeQueryRequest) CloneVT() *AnalyzeQueryRequest {
 		return (*AnalyzeQueryRequest)(nil)
 	}
 	r := &AnalyzeQueryRequest{
-		Type:          m.Type,
-		Start:         m.Start,
-		End:           m.End,
-		LabelSelector: m.LabelSelector,
+		Type:  m.Type,
+		Start: m.Start,
+		End:   m.End,
+		Query: m.Query,
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -1088,7 +1088,7 @@ func (this *AnalyzeQueryRequest) EqualVT(that *AnalyzeQueryRequest) bool {
 	if this.End != that.End {
 		return false
 	}
-	if this.LabelSelector != that.LabelSelector {
+	if this.Query != that.Query {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -2672,10 +2672,10 @@ func (m *AnalyzeQueryRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if len(m.LabelSelector) > 0 {
-		i -= len(m.LabelSelector)
-		copy(dAtA[i:], m.LabelSelector)
-		i = encodeVarint(dAtA, i, uint64(len(m.LabelSelector)))
+	if len(m.Query) > 0 {
+		i -= len(m.Query)
+		copy(dAtA[i:], m.Query)
+		i = encodeVarint(dAtA, i, uint64(len(m.Query)))
 		i--
 		dAtA[i] = 0x22
 	}
@@ -3298,7 +3298,7 @@ func (m *AnalyzeQueryRequest) SizeVT() (n int) {
 	if m.End != 0 {
 		n += 1 + sov(uint64(m.End))
 	}
-	l = len(m.LabelSelector)
+	l = len(m.Query)
 	if l > 0 {
 		n += 1 + l + sov(uint64(l))
 	}
@@ -5712,7 +5712,7 @@ func (m *AnalyzeQueryRequest) UnmarshalVT(dAtA []byte) error {
 			}
 		case 4:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field LabelSelector", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Query", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -5740,7 +5740,7 @@ func (m *AnalyzeQueryRequest) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.LabelSelector = string(dAtA[iNdEx:postIndex])
+			m.Query = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

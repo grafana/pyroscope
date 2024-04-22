@@ -23,6 +23,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
@@ -700,9 +701,21 @@ func (q *Querier) AnalyzeQuery(ctx context.Context, req *connect.Request[querier
 		},
 	}
 
-	if req.Msg.LabelSelector != "" {
+	if req.Msg.Query != "" {
+		parsedSelector, err := parser.ParseMetricSelector(req.Msg.Query)
+		if err != nil {
+			return nil, err
+		}
+		newSelector := make([]*labels.Matcher, 0, len(parsedSelector))
+		for _, selector := range parsedSelector {
+			if selector.Name == labels.MetricName {
+				newSelector = append(newSelector, &labels.Matcher{Type: labels.MatchEqual, Name: phlaremodel.LabelNameProfileType, Value: selector.Value})
+			} else {
+				newSelector = append(newSelector, selector)
+			}
+		}
 		resSeries, err := q.Series(ctx, connect.NewRequest(&querierv1.SeriesRequest{
-			Matchers: []string{req.Msg.LabelSelector},
+			Matchers: []string{convertMatchersToString(newSelector)},
 			Start:    req.Msg.Start,
 			End:      req.Msg.End,
 		}))
