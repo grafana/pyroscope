@@ -21,10 +21,11 @@ Key benefits and features:
 Get started:
 
 - Configure Pyroscope: Begin sending profiling data to unlock the full potential of Span Profiles
-- Client-Side Packages: Easily link traces and profiles using available packages for Go, Ruby, and Java
+- Client-Side Packages: Easily link traces and profiles using available packages for Go, Java, Ruby and .NET
   - Go: [Span profiles with Traces to profiles (Go)]({{< relref "./go-span-profiles" >}})
   - Java: [Span profiles with Traces to profiles (Java)]({{< relref "./java-span-profiles" >}})
   - Ruby: [Span profiles with Traces to profiles (Ruby)]({{< relref "./ruby-span-profiles" >}})
+  - .NET: [Span profiles with Traces to profiles (.NET)]({{< relref "./dotnet-span-profiles" >}})
 - Grafana Tempo: Visualize and analyze Span Profiles within the Grafana using a Tempo data source.
 
 To learn more, check out our product announcement blog: [Introducing Span Profiles](/blog/2024/02/06/combining-tracing-and-profiling-for-enhanced-observability-introducing-span-profiles/).

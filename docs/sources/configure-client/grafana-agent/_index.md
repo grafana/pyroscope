@@ -9,11 +9,16 @@ aliases:
 
 # Grafana Agent
 
+{{< docs/shared lookup="agent-deprecation.md" source="alloy" version="next" >}}
+
 Grafana Agent is a powerful tool for collecting and forwarding profiling data.
 With the introduction of support for eBPF and continuing support for Golang in pull mode, Grafana Agent has become even more versatile in its capabilities.
 This document provides an overview of these two modes of profiling and guides users on setting them up.
 
-{{< docs/shared lookup="agent-deprecation.md" source="alloy" version="next" >}}
+{{< admonition type="note" >}}
+Refer to [Available profiling types]({{< relref "../../view-and-analyze-profile-data/profiling-types#available-profiling-types" >}}) for a list of profile types supported.
+{{< /admonition >}}
+
 
 ## eBPF profiling with Grafana Agent
 
@@ -28,9 +33,9 @@ Benefits of eBPF profiling:
 ### Set up eBPF profiling with Grafana Agent
 
 1. Ensure your system runs a Linux kernel version 4.9 or newer.
-1. Install Grafana Agent or Grafana Alloy on the target machine or container.
-1. Configure the agent to use eBPF for profiling. Refer to the [eBPF documentation](/docs/pyroscope/latest/configure-client/grafana-agent/ebpf) for detailed steps.
-1. After it's configured, the agent starts collecting eBPF profiles and sends them to the Pyroscope server.
+1. Install Grafana Agent on the target machine or container.
+1. Configure the Agent to use eBPF for profiling. Refer to the [eBPF documentation](/docs/pyroscope/latest/configure-client/grafana-agent/ebpf) for detailed steps.
+1. The Agent collects eBPF profiles and sends them to the Pyroscope server.
 
 ## Golang profiling in pull mode with Grafana Agent
 
@@ -45,11 +50,11 @@ In pull mode, Grafana Agent periodically retrieves profiles from Golang applicat
 ### Set up Golang profiling in pull mode
 
 1. Ensure your Golang application exposes pprof endpoints.
-2. Install and configure Grafana Agent on the same machine or container where your application runs.
-3. Ensure the agent is set to pull mode and targeting the correct pprof endpoints. For step-by-step instructions, visit the [Go (Pull Mode)](/docs/pyroscope/latest/configure-client/grafana-agent/go_pull) docs.
-4. The agent starta querying the pprof endpoints of your Golang application, collecting the profiles, and forwarding them to the Pyroscope server.
+1. Install and configure the Grafana Agent on the same machine or container where your application runs.
+1. Ensure the Agent is set to pull mode and targeting the correct pprof endpoints. For step-by-step instructions, visit the [Go (Pull Mode)](/docs/pyroscope/latest/configure-client/grafana-agent/go_pull) docs.
+1. The Agent queries the pprof endpoints of your Golang application, collects the profiles, and forwards them to the Pyroscope server.
 
 ## Next steps
 
-Whether using eBPF for versatile system and application profiling or relying on Golang's built-in pprof endpoints in pull mode, Grafana Agent and Grafana Alloy offer a streamlined process to gather essential profiling data. Choose the method that best fits your application and infrastructure needs.
-
+Whether using eBPF for versatile system and application profiling or relying on Golang's built-in pprof endpoints in pull mode, Grafana Agent and Grafana Alloy offer streamlined processes to gather essential profiling data.
+Choose the method that best fits your application and infrastructure needs.
