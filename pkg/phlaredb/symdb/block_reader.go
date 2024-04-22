@@ -35,10 +35,6 @@ type Reader struct {
 	partitions    []*partition
 	partitionsMap map[uint64]*partition
 
-	// Indicates whether the block reader was loaded.
-	// Loaded partitions are not released.
-	loaded bool
-
 	locations parquetobj.File
 	mappings  parquetobj.File
 	functions parquetobj.File
@@ -196,10 +192,8 @@ func (r *Reader) partition(ctx context.Context, partition uint64) (*partition, e
 	if !ok {
 		return nil, ErrPartitionNotFound
 	}
-	if !r.loaded {
-		if err := p.init(ctx); err != nil {
-			return nil, err
-		}
+	if err := p.init(ctx); err != nil {
+		return nil, err
 	}
 	return p, nil
 }
@@ -219,9 +213,7 @@ func (p *partition) init(ctx context.Context) (err error) {
 }
 
 func (p *partition) Release() {
-	if !p.reader.loaded {
-		p.tx().release()
-	}
+	p.tx().release()
 }
 
 func (p *partition) tx() *fetchTx {

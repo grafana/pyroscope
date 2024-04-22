@@ -9,11 +9,17 @@ aliases:
 
 # Ruby
 
-The Ruby Profiler revolutionizes performance tuning in Ruby applications. Integrated with Pyroscope, it offers real-time performance data, allowing developers to delve deep into their Ruby codebase. This tool is essential for identifying performance issues, optimizing code efficiency, and enhancing the overall speed and reliability of Ruby applications.
+The Ruby Profiler revolutionizes performance tuning in Ruby applications.
+Integrated with Pyroscope, it offers real-time performance data, allowing developers to delve deep into their Ruby codebase.
+This tool is essential for identifying performance issues, optimizing code efficiency, and enhancing the overall speed and reliability of Ruby applications.
+
+{{< admonition type="note" >}}
+Refer to [Available profiling types]({{< relref "../../view-and-analyze-profile-data/profiling-types#available-profiling-types" >}}) for a list of profile types supported by Ruby.
+{{< /admonition >}}
 
 ## Before you begin
 
-To capture and analyze profiling data, you need either a hosted Pyroscope OSS server or a hosted [Pryoscope instance with Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/) (requires a free Grafana Cloud account).
+To capture and analyze profiling data, you need either a hosted Pyroscope OSS server or a hosted [Pyroscope instance with Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/) (requires a free Grafana Cloud account).
 
 The Pyroscope server can be a local server for development or a remote server for production use.
 

@@ -20,28 +20,26 @@ To learn more about Span Profiles, refer to [Combining tracing and profiling for
 
 ![span-profiles screenshot](https://grafana.com/static/img/docs/tempo/profiles/tempo-profiles-Span-link-profile-data-source.png)
 
+Pyroscope can integrate with distributed tracing systems supporting the [**OpenTelemetry**](https://opentelemetry.io/docs/instrumentation/go/getting-started/) standard.
+This integration lets you link traces with the profiling data and find resource usage for specific lines of code for your trace spans.
+
+{{% admonition type="note"%}}
+* Only CPU profiling is supported.
+* Because of how sampling profilers work, spans shorter than the sample interval may not be captured. Go CPU profiler probes stack traces 100 times per second, meaning that spans shorter than 10ms may not be captured.
+{{% /admonition %}}
+
 To use Span Profiles, you need to:
 
 * [Configure Pyroscope to send profiling data]({{< relref "../../configure-client" >}})
 * Configure a client-side package to link traces and profiles: [Go](https://github.com/grafana/otel-profiling-go)
-* [Configure Tempo data source in Grafana or Grafana Cloud to discover linked traces and profiles](/grafana-cloud/connect-externally-hosted/data-sources/tempo/configure-tempo-data-source/)
+* [Configure the Tempo data source in Grafana or Grafana Cloud to discover linked traces and profiles](/grafana-cloud/connect-externally-hosted/data-sources/tempo/configure-tempo-data-source/)
 
 ## Before you begin
 
 Your applications must be instrumented for profiling and tracing before you can use span profiles.
 
-* Profiling: Your application must be instrumented with Pyroscopes Go SDK. If you haven't done this yet, please refer to the [Go (push mode)]({{< relref "../language-sdks/go_push" >}}) guide.
+* Profiling: Your application must be instrumented with Pyroscope's Go SDK. If you haven't done this yet, please refer to the [Go (push mode)]({{< relref "../language-sdks/go_push" >}}) guide.
 * Tracing: Your application must be instrumented with OpenTelemetry traces. If you haven't done this yet, please refer to the [OpenTelemetry](https://opentelemetry.io/docs/go/getting-started/) guide.
-
-### OpenTelemetry support
-
-Pyroscope can integrate with distributed tracing systems supporting [**OpenTelemetry**](https://opentelemetry.io/docs/instrumentation/go/getting-started/) standard, which allows you to
-link traces with the profiling data, and find resource usage for specific lines of code for your trace spans.
-
-{{% admonition type="note"%}}
- * Only CPU profiling is supported.
- * Because of how sampling profilers work, spans shorter than the sample interval may not be captured. Go CPU profiler probes stack traces 100 times per second, meaning that spans shorter than 10ms may not be captured.
-{{% /admonition %}}
 
 ## Configure the `otel-profiling-go` package
 
@@ -99,12 +97,11 @@ To learn how to set up Traces to profiles and view the span profiles, refer to [
 
 ## Examples
 
-Check out the [examples directory](https://github.com/grafana/pyroscope/tree/main/examples/tracing/tempo) in the Pyroscope GitHub repository to
-find a complete example application that demonstrates tracing integration features.
+Check out the [examples](https://github.com/grafana/pyroscope/tree/main/examples/tracing/tempo) directory for a complete demo application that shows tracing integration features.
 
 <!-- ## Using tracing exemplars manually
 
-If you're not using open telemetry integration you can still use exemplars storage to store profiles associated with some execution context (e.g individual HTTP / GRPC request). To create exemplars you need to tag specific parts of your code with a special `profile_id` tag, for example, in golang you could do this:
+If you're not using open telemetry integration you can still use exemplars storage to store profiles associated with some execution context (e.g. individual HTTP / GRPC request). To create exemplars you need to tag specific parts of your code with a special `profile_id` tag, for example, in golang you could do this:
 ```golang
 pprof.Do(ctx, pprof.Labels("profile_id", "8474e98b95013e4f"), func(ctx context.Context) {
   slowRequest()

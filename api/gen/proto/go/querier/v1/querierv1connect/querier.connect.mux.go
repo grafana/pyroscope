@@ -64,4 +64,9 @@ func RegisterQuerierServiceHandler(mux *mux.Router, svc QuerierServiceHandler, o
 		svc.Diff,
 		opts...,
 	))
+	mux.Handle("/querier.v1.QuerierService/GetProfileStats", connect.NewUnaryHandler(
+		"/querier.v1.QuerierService/GetProfileStats",
+		svc.GetProfileStats,
+		opts...,
+	))
 }

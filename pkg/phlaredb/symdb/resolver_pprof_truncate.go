@@ -262,6 +262,10 @@ func createLocationStub(profile *googlev1.Profile) {
 		SystemName: stubNodeNameIdx,
 	}
 	profile.Function = append(profile.Function, stubFn)
+	// in the case there is no mapping, we need to create one
+	if len(profile.Mapping) == 0 {
+		profile.Mapping = append(profile.Mapping, &googlev1.Mapping{Id: 1})
+	}
 	stubLoc := &googlev1.Location{
 		Id:        uint64(len(profile.Location) + 1),
 		Line:      []*googlev1.Line{{FunctionId: stubFn.Id}},

@@ -9,8 +9,13 @@ aliases:
 
 # Java
 
-The Java Profiler, integrated with Pyroscope, offers a comprehensive solution for performance analysis in Java applications. It provides real-time insights, enabling developers to understand and optimize their Java codebase effectively. This tool is crucial for improving application responsiveness, reducing resource consumption, and ensuring top-notch performance in Java environments.
+The Java Profiler, integrated with Pyroscope, offers a comprehensive solution for performance analysis in Java applications.
+It provides real-time insights, enabling developers to understand and optimize their Java codebase effectively.
+This tool is crucial for improving application responsiveness, reducing resource consumption, and ensuring top-notch performance in Java environments.
 
+{{< admonition type="note" >}}
+Refer to [Available profiling types]({{< relref "../../view-and-analyze-profile-data/profiling-types#available-profiling-types" >}}) for a list of profile types supported by each language.
+{{< /admonition >}}
 
 ## Before you begin
 
@@ -28,13 +33,13 @@ Supported platforms include:
 * MacOS on x64
 * MacOS on ARM64
 
-Visit our GitHub [releases](https://github.com/pyroscope-io/pyroscope-java/releases) page to download the latest version of `pyroscope.jar`.
+Visit the GitHub [releases](https://github.com/pyroscope-io/pyroscope-java/releases) page to download the latest version of `pyroscope.jar`.
 
 The latest release is also available on [Maven Central](https://search.maven.org/artifact/io.pyroscope/agent).
 
 ## Configure the Java client
 
-You can start Pyroscope either from your apps's Java code or attach it as javaagent.
+You can start Pyroscope either from your application's code or attach it as javaagent.
 
 ### Start Pyroscope from app's Java code
 
@@ -46,12 +51,12 @@ First, add the Pyroscope dependency:
 <dependency>
   <groupId>io.pyroscope</groupId>
   <artifactId>agent</artifactId>
-  <version>0.13.0</version>
+  <version>0.13.1</version>
 </dependency>
 ```
 
 ```gradle
-implementation("io.pyroscope:agent:0.13.0")
+implementation("io.pyroscope:agent:0.13.1")
 ```
 
 {{< /code >}}
@@ -206,6 +211,26 @@ To configure the Java SDK to send data to Pyroscope, replace the `<URL>` placeho
 If you need to send data to Grafana Cloud, you'll have to configure HTTP Basic authentication. Replace `<User>` with your Grafana Cloud stack user and `<Password>` with your Grafana Cloud API key.
 
 If your Pyroscope server has multi-tenancy enabled, you'll need to configure a tenant ID. Replace `<TenantID>` with your Pyroscope tenant ID.
+
+#### Example configurations
+
+The following configuration sets application name, Pyroscope format, profiling interval, event, and lock.
+This example is an excerpt from the [`rideshare` Dockerfile](https://github.com/grafana/pyroscope/blob/main/examples/language-sdk-instrumentation/java/rideshare/Dockerfile#L24-L34) available in the Pyroscope repository.
+
+```
+ENV PYROSCOPE_APPLICATION_NAME=rideshare.java.push.app
+ENV PYROSCOPE_FORMAT=jfr
+ENV PYROSCOPE_PROFILING_INTERVAL=10ms
+ENV PYROSCOPE_PROFILER_EVENT=itimer
+ENV PYROSCOPE_PROFILER_LOCK=10ms
+```
+
+This configuration excerpt enables allocation and lock profiling:
+
+```
+PYROSCOPE_PROFILER_ALLOC=512k
+PYROSCOPE_PROFILER_LOCK=10ms
+```
 
 ## Java profiling examples
 

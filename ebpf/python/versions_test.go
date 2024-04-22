@@ -1,12 +1,12 @@
 package python
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/grafana/pyroscope/ebpf/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/slices"
 )
 
 func TestGlibcVersions(t *testing.T) {

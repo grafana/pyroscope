@@ -1,6 +1,6 @@
 # Migrating from standard pprof to Pyroscope in a Go application
 
-This README provides a comprehensive guide on migrating from the standard pprof library to Pyroscope in a Go application. The example demonstrates the transition within a detective-themed Go application, enhancing the process of profiling with Pyroscope's advanced capabilities. The actual changes needed to migrate from standard `pprof` to using the Pyroscope SDK is very simple (it extends the standard pprof library with extra functionality and performance improvements).
+This README provides a comprehensive guide on migrating from the standard pprof library to Pyroscope in a Go application. The example demonstrates the transition within a detective-themed Go application, enhancing the process of profiling with Pyroscope's advanced capabilities. The actual changes needed to migrate from standard `pprof` to using the Pyroscope SDK is very simple (it extends the standard pprof library with extra functionality and performance improvements). If you would like to use standard `pprof` _algonside_ the pyroscope go sdk simultaneously see the [example here](https://github.com/grafana/pyroscope-go/tree/main/example/http). 
 
 See link to [source PR here](https://github.com/grafana/pyroscope/pull/2830)
 <img width="1426" alt="image" src="https://github.com/grafana/pyroscope/assets/23323466/f094399a-4a4d-4b47-9f03-5a15b4085fab">
@@ -40,5 +40,4 @@ To view the exact changes made during the migration, refer to our [pull request]
 ## Conclusion
 
 Migrating to Pyroscope SDK in a Go application is a straightforward process that significantly enhances profiling capabilities. By following the steps outlined in this guide and reviewing the provided PR, developers can easily switch from standard pprof to Pyroscope, benefiting from real-time, continuous profiling and advanced performance insights.
-
 

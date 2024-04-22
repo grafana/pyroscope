@@ -9,7 +9,7 @@ weight: 30
 
 Applications often have many instances deployed. While Pyroscope is designed to handle large amounts of profiling data, you may want only a subset of the application's instances to be scraped.
 
-For example, the volume of profiling data your application generates may make it unreasonable to profile every instance or you might be targeting cost-reduction.
+For example, the volume of profiling data your application generates may make it unreasonable to profile every instance, or you might be targeting cost-reduction.
 
 Through configuration of the Grafana Agent, Pyroscope can sample scrape targets.
 
@@ -61,4 +61,4 @@ discovery.relabel "profile_pods" {
 
 This strategy does not guarantee precise sampling. Due to its reliance on an MD5 hash, there is not a perfectly uniform distribution of scrape targets into shards. Larger numbers of scrape targets will yield increasingly accurate sampling.
 
-Keep in mind, if the label being hashed is deterministic, you will see deterministic sharding and thereby deterministic sampling of scrape targets. Similarly, if the the label being hashed is non-deterministic, you will see scrape targets being sampled in a non-deterministic fashion.
+Keep in mind, if the label being hashed is deterministic, you will see deterministic sharding and thereby deterministic sampling of scrape targets. Similarly, if the label being hashed is non-deterministic, you will see scrape targets being sampled in a non-deterministic fashion.

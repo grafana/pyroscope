@@ -3,10 +3,9 @@ package pprof
 import (
 	"bytes"
 	"reflect"
+	"slices"
 	"sort"
 	"unsafe"
-
-	"golang.org/x/exp/slices"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 )

@@ -64,6 +64,7 @@ type profileStore struct {
 	flushWg        sync.WaitGroup
 	flushBuffer    []schemav1.InMemoryProfile
 	flushBufferLbs []phlaremodel.Labels
+	onFlush        func()
 }
 
 func newParquetProfileWriter(writer io.Writer, options ...parquet.WriterOption) *parquet.GenericWriter[*schemav1.Profile] {
@@ -428,6 +429,9 @@ func (s *profileStore) cutRowGroupLoop() {
 			level.Error(s.logger).Log("msg", "cutting row group", "err", err)
 		}
 		s.flushing.Store(false)
+		if s.onFlush != nil {
+			s.onFlush()
+		}
 	}
 }
 

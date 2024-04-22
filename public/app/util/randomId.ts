@@ -1,6 +1,6 @@
 /**
  * generates a random ID to be used outside react-land (eg jquery)
- * it's mandatory to generate it once, preferrably on a function's body
+ * it's mandatory to generate it once, preferably on a function's body
  * IMPORTANT: it does NOT:
  * - generate unique ids across server/client
  *   use `useId` instead (https://reactjs.org/docs/hooks-reference.html#useid)

@@ -98,6 +98,7 @@ int BPF_KPROBE(disassociate_ctty, int on_exit) {
     if (pid == 0) {
         return 0;
     }
+    bpf_map_delete_elem(&pids, &pid);
     struct pid_event event = {
         .op  = OP_PID_DEAD,
         .pid = pid

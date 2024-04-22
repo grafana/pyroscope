@@ -13,11 +13,16 @@ Our Go Profiler is a cutting-edge tool designed to optimize Golang applications.
 By integrating with Pyroscope, the profiler offers developers an in-depth view of their Go codebase, enabling real-time performance analysis.
 This powerful tool is crucial for pinpointing inefficiencies, streamlining code execution, and ensuring peak performance in Go applications.
 
-Pyroscope uses the standard `runtime/pprof` package to collect profiling data. Refer to [the official documentation](https://golang.org/doc/diagnostics#profiling) for details.
+Pyroscope uses the standard `runtime/pprof` package to collect profiling data.
+Refer to [the official documentation](https://golang.org/doc/diagnostics#profiling) for details.
+
+{{< admonition type="note" >}}
+Refer to [Available profiling types]({{< relref "../../view-and-analyze-profile-data/profiling-types#available-profiling-types" >}}) for a list of profile types supported by Go.
+{{< /admonition >}}
 
 ## Before you begin
 
-To capture and analyze profiling data, you need either a hosted Pyroscope OSS server or a hosted [Pryoscope instance with Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/) (requires a free Grafana Cloud account).
+To capture and analyze profiling data, you need either a hosted Pyroscope OSS server or a hosted [Pyroscope instance with Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/) (requires a free Grafana Cloud account).
 
 The Pyroscope server can be a local server for development or a remote server for production use.
 
@@ -97,7 +102,7 @@ pprof.Do(context.Background(), pprof.Labels("controller", "slow_controller"), fu
 
 ### Mutex profiling
 
-Mutex profiling is useful for finding sources of contention within your application. It helps you to find out which mutexes are being held by which goroutines.
+Mutex profiling is useful for finding sources of contention within your application. It helps you find out which mutexes are being held by which goroutines.
 
 To enable mutex profiling, you need to add the following code to your application:
 

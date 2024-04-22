@@ -29,8 +29,7 @@ Pyroscope.init({
   tags: { region },
 });
 
-Pyroscope.startCpuProfiling();
-Pyroscope.startHeapProfiling();
+Pyroscope.start();
 
 app.get('/bike', function bikeSearchHandler(req, res) {
   return genericSearchHandler(0.5)(req, res);

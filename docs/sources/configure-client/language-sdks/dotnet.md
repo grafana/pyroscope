@@ -11,7 +11,11 @@ aliases:
 
 Our .NET Profiler is a powerful tool designed to enhance the performance analysis and optimization of .NET applications. It seamlessly integrates with Pyroscope, offering real-time insights into the resource usage and bottlenecks within your .NET codebase. This integration empowers developers to pinpoint inefficiencies, improve application speed, and ensure resource-efficient operation.
 
-### Supported profiling types
+{{< admonition type="note" >}}
+Refer to [Available profiling types]({{< relref "../../view-and-analyze-profile-data/profiling-types#available-profiling-types" >}}) for a list of profile types supported by each language.
+{{< /admonition >}}
+
+## Supported profiling types
 
 The .NET Profiler supports the following profiling types:
 
@@ -31,7 +35,7 @@ Our .NET profiler works with the following .NET versions:
 
 ## Before you begin
 
-To capture and analyze profiling data, you need either a hosted Pyroscope OSS server or a hosted [Pryoscope instance with Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/) (requires a free Grafana Cloud account).
+To capture and analyze profiling data, you need either a hosted Pyroscope OSS server or a hosted [Pyroscope instance with Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/) (requires a free Grafana Cloud account).
 
 The Pyroscope server can be a local server for development or a remote server for production use.
 
@@ -143,7 +147,7 @@ It is possible to dynamically change authorization credentials:
 Pyroscope.Profiler.Instance.SetBasicAuth(basicAuthUser, BasicAuthPassword);
 ```
 
-Here is a simple [example](https://github.com/grafana/pyroscope/blob/main/examples/language-sdk-instrumentation/dotnet/rideshare/example/Program.cs) exposing this APIs as an http endpoint.
+Here is a simple [example](https://github.com/grafana/pyroscope/blob/main/examples/language-sdk-instrumentation/dotnet/rideshare/example/Program.cs) exposing these APIs as HTTP endpoints.
 
 ### Configuration options
 

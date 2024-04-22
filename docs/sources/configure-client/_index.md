@@ -19,17 +19,19 @@ This document explains these two techniques and guide you when to choose each on
 
 ## About auto-instrumentation with Grafana Agent
 
+{{< docs/shared lookup="agent-deprecation.md" source="alloy" version="next" >}}
+
 The Grafana Agent is a component that runs alongside your application and periodically gathers profiling data from it.
 This method is suitable when you want to collect profiles from existing applications without modifying their source code.
 This approach is simplified with the eBPF profiling option that doesn't necessitate pull or push mechanisms.
 
 Here's how it works:
 
-1. Install and configure the Grafana Agent on the same machine or container where your application is running
+1. Install and configure Grafana Agent on the same machine or container where your application is running
 2. The Agent periodically retrieves your application's performance profiling data, regardless of the language or technology stack your application is using
 3. The captured profiles are then sent to the Pyroscope server for storage and analysis
 
-Using the Grafana Agent provides a hassle-free option, especially when dealing with multiple applications or microservices, allowing you to centralize the profiling process without changing your application's codebase.
+Using Grafana Agent provides a hassle-free option, especially when dealing with multiple applications or microservices, allowing you to centralize the profiling process without changing your application's codebase.
 
 ## About instrumentation with Pyroscope SDKs
 
@@ -52,7 +54,7 @@ The method you choose depends on your specific use case and requirements.
 
 Here are some factors to consider when making the choice:
 
-- Ease of setup: The Grafana Agent is an ideal choice for a quick and straightforward setup without modifying your application's code. Note that eBPF profiling supports some languages (for example, Golang) better than others. More robust support for Python, Java, and other languages is coming soon!
+- Ease of setup: The Grafana Agent is an ideal choice for a quick and straightforward setup without modifying your application's code. Note that eBPF profiling supports some languages (for example, Golang) better than others. More robust support for Python, Java, and other languages are in development.
 - Language support: If you want more control over the profiling process and your application is written in a language supported by the Pyroscope SDKs, consider using the SDKs.
 - Flexibility: The Pyroscope SDKs offer greater flexibility in terms of customizing the profiling process and capturing specific sections of code with labels. If you have particular profiling needs or want to fine-tune the data collection process, the SDKs would be your best bet.
 
@@ -97,7 +99,7 @@ To get started, choose one of the integrations below:
           <a href="https://github.com/grafana/pyroscope/tree/main/examples/language-sdk-instrumentation/ruby" title="ruby-examples">Examples</a>
       </td>
       <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/nodejs/"><img src="https://user-images.githubusercontent.com/23323466/178160551-a79ee6ff-a5d6-419e-89e6-39047cb08126.png" width="100px;" alt=""/><br />
-        <b>NodeJS</b></a><br />
+        <b>Node.js</b></a><br />
           <a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/nodejs/" title="Documentation">Documentation</a><br />
           <a href="https://github.com/grafana/pyroscope/tree/main/examples/language-sdk-instrumentation/nodejs/express" title="examples">Examples</a>
       </td>
@@ -113,8 +115,8 @@ To get started, choose one of the integrations below:
 
 You can add tags to your profiles to help correlate them with your other telemetry signals. Some common tags that are used are version, region, environment, request types, etc. You have the ability to add tags using both the SDK and the agent.
 
-Valid tag formats may contain ASCII letters and digits, as well as underscores. It must match the regex `[a-zA-Z_][a-zA-Z0-9_]`. 
-In Pyroscope, a period (`.`) is not a valid character inside of tags and labels. 
+Valid tag formats may contain ASCII letters and digits, as well as underscores. It must match the regex `[a-zA-Z_][a-zA-Z0-9_]`.
+In Pyroscope, a period (`.`) is not a valid character inside of tags and labels.
 
 ## Assistance with Pyroscope
 

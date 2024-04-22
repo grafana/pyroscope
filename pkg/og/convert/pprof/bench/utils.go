@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strings"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	"golang.org/x/exp/slices"
 )
 
 func ReadGzipFile(f string) ([]byte, error) {

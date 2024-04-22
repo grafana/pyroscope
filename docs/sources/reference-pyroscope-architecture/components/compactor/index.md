@@ -106,7 +106,7 @@ The compactor allows configuring of the compaction jobs order via the `-compacto
 
 ## Blocks deletion
 
-Following a successful compaction, the original blocks are deleted from the storage. Block deletion is not immediate; it follows a two step process:
+Following a successful compaction, the original blocks are deleted from the storage. Block deletion is not immediate; it follows a two-step process:
 
 1. An original block is marked for deletion; this is a soft delete
 1. Once a block has been marked for deletion for longer than the configurable `-compactor.deletion-delay`, the block is deleted from storage; this is a hard delete

@@ -2,12 +2,12 @@ package symdb
 
 import (
 	"context"
+	"slices"
 	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/slices"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -235,6 +235,195 @@ func Test_Resolver_pprof_options(t *testing.T) {
 			for _, x := range p.Sample {
 				sum += x.Value[0]
 			}
+		})
+	}
+}
+
+// The test examines how strings are copied from the Symbols
+// to the Profile at resolve.
+//
+// We used to have an issue that the first string is not empty,
+// as it's required by the pprof format:
+// https://github.com/grafana/pyroscope/issues/3199
+func Test_Resolver_pprof_strings(t *testing.T) {
+	type testCase struct {
+		name     string
+		symbols  []string
+		profile  *googlev1.Profile
+		expected *googlev1.Profile
+	}
+
+	testCases := []testCase{
+		{
+			name:    "normal_sparse",
+			symbols: []string{"", "foo", "baz", "bar"},
+			profile: &googlev1.Profile{
+				Mapping: []*googlev1.Mapping{{
+					Filename: 1, // foo
+					BuildId:  0, // ""
+				}},
+				Function: []*googlev1.Function{{
+					Name:       3, // bar
+					SystemName: 3,
+					Filename:   3,
+				}},
+			},
+			expected: &googlev1.Profile{
+				StringTable: []string{"", "foo", "bar"},
+				Mapping: []*googlev1.Mapping{{
+					Filename: 1, // foo
+					BuildId:  0,
+				}},
+				Function: []*googlev1.Function{{
+					Name:       2, // bar
+					SystemName: 2,
+					Filename:   2,
+				}},
+			},
+		},
+		{
+			name:    "normal_dense",
+			symbols: []string{"", "foo", "bar"},
+			profile: &googlev1.Profile{
+				Mapping: []*googlev1.Mapping{{
+					Filename: 1, // foo
+					BuildId:  0, // ""
+				}},
+				Function: []*googlev1.Function{{
+					Name:       2, // bar
+					SystemName: 2,
+					Filename:   2,
+				}},
+			},
+			expected: &googlev1.Profile{
+				StringTable: []string{"", "foo", "bar"},
+				Mapping: []*googlev1.Mapping{{
+					Filename: 1, // foo
+					BuildId:  0,
+				}},
+				Function: []*googlev1.Function{{
+					Name:       2, // bar
+					SystemName: 2,
+					Filename:   2,
+				}},
+			},
+		},
+		{
+			name:    "no_zero_sparse",
+			symbols: []string{"foo", "baz", "fred", "bar"},
+			profile: &googlev1.Profile{
+				Mapping: []*googlev1.Mapping{{
+					Filename: 0, // foo
+					BuildId:  1, // baz
+				}},
+				Function: []*googlev1.Function{{
+					Name:       3, // bar
+					SystemName: 3,
+					Filename:   3,
+				}},
+			},
+			expected: &googlev1.Profile{
+				StringTable: []string{"", "foo", "baz", "bar"},
+				Mapping: []*googlev1.Mapping{{
+					Filename: 1, // foo
+					BuildId:  2, // baz
+				}},
+				Function: []*googlev1.Function{{
+					Name:       3, // bar
+					SystemName: 3,
+					Filename:   3,
+				}},
+			},
+		},
+		{
+			name:    "no_zero_dense",
+			symbols: []string{"foo", "baz", "bar"},
+			profile: &googlev1.Profile{
+				Mapping: []*googlev1.Mapping{{
+					Filename: 0, // foo
+					BuildId:  1, // baz
+				}},
+				Function: []*googlev1.Function{{
+					Name:       2, // bar
+					SystemName: 2,
+					Filename:   2,
+				}},
+			},
+			expected: &googlev1.Profile{
+				StringTable: []string{"", "foo", "baz", "bar"},
+				Mapping: []*googlev1.Mapping{{
+					Filename: 1, // foo
+					BuildId:  2, // baz
+				}},
+				Function: []*googlev1.Function{{
+					Name:       3, // bar
+					SystemName: 3,
+					Filename:   3,
+				}},
+			},
+		},
+		{
+			name:    "unordered_dense",
+			symbols: []string{"foo", "baz", "", "bar"},
+			profile: &googlev1.Profile{
+				Mapping: []*googlev1.Mapping{{
+					Filename: 0, // foo
+					BuildId:  2, // ""
+				}},
+				Function: []*googlev1.Function{{
+					Name:       3, // bar
+					SystemName: 3,
+					Filename:   3,
+				}},
+			},
+			expected: &googlev1.Profile{
+				StringTable: []string{"", "foo", "bar"},
+				Mapping: []*googlev1.Mapping{{
+					Filename: 1, // foo
+					BuildId:  0, //
+				}},
+				Function: []*googlev1.Function{{
+					Name:       2, // bar
+					SystemName: 2,
+					Filename:   2,
+				}},
+			},
+		},
+		{
+			name:    "unordered_sparse",
+			symbols: []string{"foo", "fred", "baz", "", "bar"},
+			profile: &googlev1.Profile{
+				Mapping: []*googlev1.Mapping{{
+					Filename: 0, // foo
+					BuildId:  3, // ""
+				}},
+				Function: []*googlev1.Function{{
+					Name:       4, // bar
+					SystemName: 4,
+					Filename:   4,
+				}},
+			},
+			expected: &googlev1.Profile{
+				StringTable: []string{"", "foo", "bar"},
+				Mapping: []*googlev1.Mapping{{
+					Filename: 1, // foo
+					BuildId:  0, //
+				}},
+				Function: []*googlev1.Function{{
+					Name:       2, // bar
+					SystemName: 2,
+					Filename:   2,
+				}},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			s := &Symbols{Strings: tc.symbols}
+			copyStrings(tc.profile, s, nil)
+			require.Equal(t, tc.expected, tc.profile)
 		})
 	}
 }

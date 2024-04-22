@@ -86,10 +86,7 @@ func compact(ctx context.Context, src, dst string, metas []*block.Meta, shards i
 	for _, b := range blocks {
 		b := b
 		g.Go(func() error {
-			if err := b.Open(groupCtx); err != nil {
-				return err
-			}
-			return b.Symbols().Load(groupCtx)
+			return b.Open(groupCtx)
 		})
 	}
 	if err := g.Wait(); err != nil {

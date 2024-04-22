@@ -6,7 +6,7 @@ weight: 30
 ---
 
 
-## Configuration
+## Configuration reference
 
 Grafana Agent supports eBPF profiling in [Flow mode](/docs/agent/latest/flow/). The configuration file is written in the [River](/docs/agent/latest/flow/config-language/) language and is composed of components that are used to collect, transform, and send data.
 
@@ -121,6 +121,6 @@ The `pyroscope.ebpf` component exposes the following Prometheus metrics:
 
 Check out the following resources to learn more about eBPF profiling:
 
-- [The pros and cons of eBPF profiling](https://pyroscope.io/blog/ebpf-profiling-pros-cons) blog post (for more context on flamegraphs below)
+- [The pros and cons of eBPF profiling](https://pyroscope.io/blog/ebpf-profiling-pros-cons) blog post (for more context on flame graphs below)
 - [Demo](https://play-pyroscope.grafana.org) showing breakdown of our examples cluster
 - Grafana Agent documentation for [pyroscope.ebpf](/docs/agent/latest/flow/reference/components/pyroscope.ebpf/), [pyroscope.write](/docs/agent/latest/flow/reference/components/pyroscope.write/), [discovery.kubernetes](/docs/agent/latest/flow/reference/components/discovery.kubernetes/), [discovery.relabel](/docs/agent/latest/flow/reference/components/discovery.relabel/) components

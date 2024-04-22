@@ -1001,13 +1001,16 @@ type QuerierServiceClient interface {
 	Series(ctx context.Context, in *SeriesRequest, opts ...grpc.CallOption) (*SeriesResponse, error)
 	// SelectMergeStacktraces returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
 	SelectMergeStacktraces(ctx context.Context, in *SelectMergeStacktracesRequest, opts ...grpc.CallOption) (*SelectMergeStacktracesResponse, error)
-	// SelectMergeSpans returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
+	// SelectMergeSpanProfile returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
 	SelectMergeSpanProfile(ctx context.Context, in *SelectMergeSpanProfileRequest, opts ...grpc.CallOption) (*SelectMergeSpanProfileResponse, error)
 	// SelectMergeProfile returns matching profiles aggregated in pprof format. It will contain all information stored (so including filenames and line number, if ingested).
 	SelectMergeProfile(ctx context.Context, in *SelectMergeProfileRequest, opts ...grpc.CallOption) (*v11.Profile, error)
 	// SelectSeries returns a time series for the total sum of the requested profiles.
 	SelectSeries(ctx context.Context, in *SelectSeriesRequest, opts ...grpc.CallOption) (*SelectSeriesResponse, error)
+	// Diff returns a diff of two profiles
 	Diff(ctx context.Context, in *DiffRequest, opts ...grpc.CallOption) (*DiffResponse, error)
+	// GetProfileStats returns profile stats for the current tenant.
+	GetProfileStats(ctx context.Context, in *v1.GetProfileStatsRequest, opts ...grpc.CallOption) (*v1.GetProfileStatsResponse, error)
 }
 
 type querierServiceClient struct {
@@ -1099,6 +1102,15 @@ func (c *querierServiceClient) Diff(ctx context.Context, in *DiffRequest, opts .
 	return out, nil
 }
 
+func (c *querierServiceClient) GetProfileStats(ctx context.Context, in *v1.GetProfileStatsRequest, opts ...grpc.CallOption) (*v1.GetProfileStatsResponse, error) {
+	out := new(v1.GetProfileStatsResponse)
+	err := c.cc.Invoke(ctx, "/querier.v1.QuerierService/GetProfileStats", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // QuerierServiceServer is the server API for QuerierService service.
 // All implementations must embed UnimplementedQuerierServiceServer
 // for forward compatibility
@@ -1113,13 +1125,16 @@ type QuerierServiceServer interface {
 	Series(context.Context, *SeriesRequest) (*SeriesResponse, error)
 	// SelectMergeStacktraces returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
 	SelectMergeStacktraces(context.Context, *SelectMergeStacktracesRequest) (*SelectMergeStacktracesResponse, error)
-	// SelectMergeSpans returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
+	// SelectMergeSpanProfile returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
 	SelectMergeSpanProfile(context.Context, *SelectMergeSpanProfileRequest) (*SelectMergeSpanProfileResponse, error)
 	// SelectMergeProfile returns matching profiles aggregated in pprof format. It will contain all information stored (so including filenames and line number, if ingested).
 	SelectMergeProfile(context.Context, *SelectMergeProfileRequest) (*v11.Profile, error)
 	// SelectSeries returns a time series for the total sum of the requested profiles.
 	SelectSeries(context.Context, *SelectSeriesRequest) (*SelectSeriesResponse, error)
+	// Diff returns a diff of two profiles
 	Diff(context.Context, *DiffRequest) (*DiffResponse, error)
+	// GetProfileStats returns profile stats for the current tenant.
+	GetProfileStats(context.Context, *v1.GetProfileStatsRequest) (*v1.GetProfileStatsResponse, error)
 	mustEmbedUnimplementedQuerierServiceServer()
 }
 
@@ -1153,6 +1168,9 @@ func (UnimplementedQuerierServiceServer) SelectSeries(context.Context, *SelectSe
 }
 func (UnimplementedQuerierServiceServer) Diff(context.Context, *DiffRequest) (*DiffResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Diff not implemented")
+}
+func (UnimplementedQuerierServiceServer) GetProfileStats(context.Context, *v1.GetProfileStatsRequest) (*v1.GetProfileStatsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetProfileStats not implemented")
 }
 func (UnimplementedQuerierServiceServer) mustEmbedUnimplementedQuerierServiceServer() {}
 
@@ -1329,6 +1347,24 @@ func _QuerierService_Diff_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
+func _QuerierService_GetProfileStats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(v1.GetProfileStatsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QuerierServiceServer).GetProfileStats(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/querier.v1.QuerierService/GetProfileStats",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QuerierServiceServer).GetProfileStats(ctx, req.(*v1.GetProfileStatsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // QuerierService_ServiceDesc is the grpc.ServiceDesc for QuerierService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1371,6 +1407,10 @@ var QuerierService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Diff",
 			Handler:    _QuerierService_Diff_Handler,
+		},
+		{
+			MethodName: "GetProfileStats",
+			Handler:    _QuerierService_GetProfileStats_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

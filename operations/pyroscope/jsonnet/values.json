@@ -72,7 +72,7 @@
     "image": {
       "pullPolicy": "IfNotPresent",
       "repository": "grafana/pyroscope",
-      "tag": "1.4.0"
+      "tag": ""
     },
     "imagePullSecrets": [],
     "initContainers": [],

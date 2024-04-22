@@ -1,5 +1,7 @@
 package pyrobpf
 
+const MapNamePIDs = "pids"
+
 type ProfilingType uint8
 
 //#define PROFILING_TYPE_UNKNOWN 1

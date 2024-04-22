@@ -153,7 +153,7 @@ func (dc *diskCleaner) DeleteUploadedBlocks(ctx context.Context) int {
 		}
 
 		for _, block := range blocks {
-			if !dc.isBlockDeletable(block) {
+			if !block.Uploaded || !dc.isExpired(block) {
 				continue
 			}
 
@@ -233,7 +233,7 @@ func (dc *diskCleaner) CleanupBlocksWhenHighDiskUtilization(ctx context.Context)
 	prevVolumeStats := &diskutil.VolumeStats{}
 	filesDeleted := 0
 	for _, block := range blocks {
-		if !dc.isBlockDeletable(block) {
+		if !dc.isExpired(block) {
 			continue
 		}
 
@@ -289,12 +289,12 @@ func (dc *diskCleaner) CleanupBlocksWhenHighDiskUtilization(ctx context.Context)
 }
 
 // isBlockDeletable returns true if this block can be deleted.
-func (dc *diskCleaner) isBlockDeletable(block *tenantBlock) bool {
+func (dc *diskCleaner) isExpired(block *tenantBlock) bool {
 	// TODO(kolesnikovae):
 	//  Expiry defaults to -querier.query-store-after which should be deprecated,
 	//  blocks-storage.bucket-store.ignore-blocks-within can be used instead.
 	expiryTs := time.Now().Add(-dc.policy.Expiry)
-	return block.Uploaded && ulid.Time(block.ID.Time()).Before(expiryTs)
+	return ulid.Time(block.ID.Time()).Before(expiryTs)
 }
 
 // blocksByUploadAndAge implements sorting tenantBlock by uploaded then by age
@@ -359,6 +359,32 @@ type realFSBlockManager struct {
 	FS      fileSystem
 }
 
+func (bm *realFSBlockManager) getUploadedBlockIds(tenantID string) (map[ulid.ULID]struct{}, error) {
+	localDirPath := filepath.Join(bm.Root, tenantID, phlareDBLocalPath)
+
+	shipperPath := filepath.Join(localDirPath, shipper.MetaFilename)
+	bytes, err := fs.ReadFile(bm.FS, shipperPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return make(map[ulid.ULID]struct{}), nil
+		}
+		return nil, err
+	}
+
+	var meta shipper.Meta
+	err = json.Unmarshal(bytes, &meta)
+	if err != nil {
+		return nil, err
+	}
+
+	uploadedBlockIDs := make(map[ulid.ULID]struct{}, len(meta.Uploaded))
+	for _, id := range meta.Uploaded {
+		uploadedBlockIDs[id] = struct{}{}
+	}
+
+	return uploadedBlockIDs, nil
+}
+
 func (bm *realFSBlockManager) GetTenantIDs(ctx context.Context) ([]string, error) {
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
@@ -391,21 +417,9 @@ func (bm *realFSBlockManager) GetBlocksForTenant(ctx context.Context, tenantID s
 		return nil, err
 	}
 
-	shipperPath := filepath.Join(localDirPath, shipper.MetaFilename)
-	bytes, err := fs.ReadFile(bm.FS, shipperPath)
+	uploadedBlockIDs, err := bm.getUploadedBlockIds(tenantID)
 	if err != nil {
 		return nil, err
-	}
-
-	var meta shipper.Meta
-	err = json.Unmarshal(bytes, &meta)
-	if err != nil {
-		return nil, err
-	}
-
-	uploadedBlockIDs := make(map[ulid.ULID]struct{}, len(meta.Uploaded))
-	for _, id := range meta.Uploaded {
-		uploadedBlockIDs[id] = struct{}{}
 	}
 
 	// Read blocks.
