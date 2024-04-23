@@ -42,5 +42,3 @@ This is a CPU profile, but profiles can represent many other types of resource s
 To learn more about the flame graph in the Pyroscope UI, refer to [Pyrosceop UI]({{< relref "./pyroscope-ui" >}}.
 
 To learn more about the flame graph user interface in Grafana, refer to [Flame graph visualization panel](https://grafana.com/docs/grafana-cloud/visualizations/panels-visualizations/visualizations/flame-graph).
-
-To learn more about the flame graph user interface in Grafana, refer to [Flame graph visualization panel](https://grafana.com/docs/grafana-cloud/visualizations/panels-visualizations/visualizations/flame-graph).
