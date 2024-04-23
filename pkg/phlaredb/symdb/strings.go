@@ -27,17 +27,13 @@ type stringsBlockHeader struct {
 }
 
 func (h *stringsBlockHeader) marshal(b []byte) {
-	binary.LittleEndian.PutUint32(b[0:4], h.StringsLen)
+	binary.BigEndian.PutUint32(b[0:4], h.StringsLen)
 	b[5] = h.BlockEncoding
 }
 
 func (h *stringsBlockHeader) unmarshal(b []byte) {
-	h.StringsLen = binary.LittleEndian.Uint32(b[0:4])
+	h.StringsLen = binary.BigEndian.Uint32(b[0:4])
 	h.BlockEncoding = b[5]
-}
-
-func (h *stringsBlockHeader) isValid() bool {
-	return h.StringsLen < 1<<20 && h.BlockEncoding == 8 || h.BlockEncoding == 16
 }
 
 type stringsBlockEncoder struct {
@@ -56,9 +52,7 @@ func (e *stringsBlockEncoder) encode(w io.Writer, strings []string) error {
 		}
 	case 16:
 		for j, s := range strings {
-			// binary.LittleEndian.PutUint16. // TODO: BigEndian
-			e.tmp[j*2] = byte(len(s))
-			e.tmp[j*2+1] = byte(len(s) >> 8)
+			binary.BigEndian.PutUint16(e.tmp[j*2:], uint16(len(s)))
 		}
 	}
 	if _, err := e.buf.Write(e.tmp[:len(strings)*int(e.header.BlockEncoding)/8]); err != nil {
@@ -108,39 +102,34 @@ type stringsBlockDecoder struct {
 func (d *stringsBlockDecoder) readHeader(r io.Reader) error {
 	d.tmp = slices.GrowLen(d.tmp, stringsBlockHeaderSize)
 	if _, err := io.ReadFull(r, d.tmp); err != nil {
-		return nil
+		return err
 	}
 	d.header.unmarshal(d.tmp)
-	if !d.header.isValid() {
-		return ErrInvalidSize
+	if d.header.BlockEncoding == 8 || d.header.BlockEncoding == 16 {
+		return nil
 	}
-	return nil
+	return fmt.Errorf("invalid string block encoding: %d", d.header.BlockEncoding)
 }
 
 func (d *stringsBlockDecoder) decode(r io.Reader, strings []string) (err error) {
 	if err = d.readHeader(r); err != nil {
 		return err
 	}
-	if d.header.StringsLen < uint32(len(strings)) {
-		return fmt.Errorf("strings buffer is too short")
+	if d.header.StringsLen != uint32(len(strings)) {
+		return fmt.Errorf("invalid string buffer size")
 	}
-	switch d.header.BlockEncoding {
-	case 8:
+	if d.header.BlockEncoding == 8 {
 		return d.decodeStrings8(r, strings)
-	case 16:
-		return d.decodeStrings16(r, strings)
-	default:
-		// Header validation ensures this never happens.
 	}
-	return nil
+	return d.decodeStrings16(r, strings)
 }
 
 func (d *stringsBlockDecoder) decodeStrings8(r io.Reader, dst []string) (err error) {
-	d.tmp = slices.GrowLen(d.tmp, int(d.header.StringsLen)) // 1 byte per string.
+	d.tmp = slices.GrowLen(d.tmp, len(dst)) // 1 byte per string.
 	if _, err = io.ReadFull(r, d.tmp); err != nil {
 		return err
 	}
-	for i := uint32(0); i < d.header.StringsLen; i++ {
+	for i := 0; i < len(dst); i++ {
 		s := make([]byte, d.tmp[i])
 		if _, err = io.ReadFull(r, s); err != nil {
 			return err
@@ -151,12 +140,12 @@ func (d *stringsBlockDecoder) decodeStrings8(r io.Reader, dst []string) (err err
 }
 
 func (d *stringsBlockDecoder) decodeStrings16(r io.Reader, dst []string) (err error) {
-	d.tmp = slices.GrowLen(d.tmp, int(d.header.StringsLen)*2) // 2 bytes per string.
+	d.tmp = slices.GrowLen(d.tmp, len(dst)*2) // 2 bytes per string.
 	if _, err = io.ReadFull(r, d.tmp); err != nil {
 		return err
 	}
-	for i := uint32(0); i < d.header.StringsLen; i++ {
-		l := uint16(d.tmp[i*2]) | uint16(d.tmp[i*2+1])<<8
+	for i := 0; i < len(dst); i++ {
+		l := binary.BigEndian.Uint16(d.tmp[i*2:])
 		s := make([]byte, l)
 		if _, err = io.ReadFull(r, s); err != nil {
 			return err

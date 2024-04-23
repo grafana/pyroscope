@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"hash/crc32"
 	"io"
 	"unsafe"
 
@@ -31,33 +32,28 @@ type locationsBlockHeader struct {
 	// Optional, might be empty.
 	AddrSize     uint32 // Size of the encoded slice of addresses
 	IsFoldedSize uint32 // Size of the encoded slice of is_folded
-}
-
-func (h *locationsBlockHeader) isValid() bool {
-	return h.LocationsLen > 0 && h.LocationsLen < 1<<20 &&
-		h.MappingSize > 0 && h.MappingSize < 1<<20 &&
-		h.LinesLen > 0 && h.LinesLen < 1<<20 &&
-		h.LinesSize > 0 && h.LinesSize < 1<<20 &&
-		h.AddrSize < 1<<20 &&
-		h.IsFoldedSize < 1<<20
+	CRC          uint32 // Header CRC.
 }
 
 func (h *locationsBlockHeader) marshal(b []byte) {
-	binary.LittleEndian.PutUint32(b[0:4], h.LocationsLen)
-	binary.LittleEndian.PutUint32(b[4:8], h.MappingSize)
-	binary.LittleEndian.PutUint32(b[8:12], h.LinesLen)
-	binary.LittleEndian.PutUint32(b[12:16], h.LinesSize)
-	binary.LittleEndian.PutUint32(b[16:20], h.AddrSize)
-	binary.LittleEndian.PutUint32(b[20:24], h.IsFoldedSize)
+	binary.BigEndian.PutUint32(b[0:4], h.LocationsLen)
+	binary.BigEndian.PutUint32(b[4:8], h.MappingSize)
+	binary.BigEndian.PutUint32(b[8:12], h.LinesLen)
+	binary.BigEndian.PutUint32(b[12:16], h.LinesSize)
+	binary.BigEndian.PutUint32(b[16:20], h.AddrSize)
+	binary.BigEndian.PutUint32(b[20:24], h.IsFoldedSize)
+	h.CRC = crc32.Checksum(b[0:24], castagnoli)
+	binary.BigEndian.PutUint32(b[24:28], h.CRC)
 }
 
 func (h *locationsBlockHeader) unmarshal(b []byte) {
-	h.LocationsLen = binary.LittleEndian.Uint32(b[0:4])
-	h.MappingSize = binary.LittleEndian.Uint32(b[4:8])
-	h.LinesLen = binary.LittleEndian.Uint32(b[8:12])
-	h.LinesSize = binary.LittleEndian.Uint32(b[12:16])
-	h.AddrSize = binary.LittleEndian.Uint32(b[16:20])
-	h.IsFoldedSize = binary.LittleEndian.Uint32(b[20:24])
+	h.LocationsLen = binary.BigEndian.Uint32(b[0:4])
+	h.MappingSize = binary.BigEndian.Uint32(b[4:8])
+	h.LinesLen = binary.BigEndian.Uint32(b[8:12])
+	h.LinesSize = binary.BigEndian.Uint32(b[12:16])
+	h.AddrSize = binary.BigEndian.Uint32(b[16:20])
+	h.IsFoldedSize = binary.BigEndian.Uint32(b[20:24])
+	h.CRC = binary.BigEndian.Uint32(b[24:28])
 }
 
 type locationsBlockEncoder struct {
@@ -169,11 +165,11 @@ type locationsBlockDecoder struct {
 func (d *locationsBlockDecoder) readHeader(r io.Reader) error {
 	d.tmp = slices.GrowLen(d.tmp, locationsBlockHeaderSize)
 	if _, err := io.ReadFull(r, d.tmp); err != nil {
-		return nil
+		return err
 	}
 	d.header.unmarshal(d.tmp)
-	if !d.header.isValid() {
-		return ErrInvalidSize
+	if crc32.Checksum(d.tmp[:locationsBlockHeaderSize-4], castagnoli) != d.header.CRC {
+		return ErrInvalidCRC
 	}
 	return nil
 }
@@ -182,8 +178,8 @@ func (d *locationsBlockDecoder) decode(r io.Reader, locations []v1.InMemoryLocat
 	if err = d.readHeader(r); err != nil {
 		return err
 	}
-	if d.header.LocationsLen > uint32(len(locations)) {
-		return fmt.Errorf("locations buffer is too short")
+	if d.header.LocationsLen != uint32(len(locations)) {
+		return fmt.Errorf("locations buffer: %w", ErrInvalidSize)
 	}
 
 	var enc delta.BinaryPackedEncoding

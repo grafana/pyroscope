@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"hash/crc32"
 	"io"
 	"unsafe"
 
@@ -29,33 +30,30 @@ type mappingsBlockHeader struct {
 	MemoryStartSize uint32
 	MemoryLimitSize uint32
 	FileOffsetSize  uint32
+	CRC             uint32
 }
 
 func (h *mappingsBlockHeader) marshal(b []byte) {
-	binary.LittleEndian.PutUint32(b[0:4], h.MappingsLen)
-	binary.LittleEndian.PutUint32(b[4:8], h.FileNameSize)
-	binary.LittleEndian.PutUint32(b[8:12], h.BuildIDSize)
-	binary.LittleEndian.PutUint32(b[12:16], h.FlagsSize)
-	binary.LittleEndian.PutUint32(b[16:20], h.MemoryStartSize)
-	binary.LittleEndian.PutUint32(b[20:24], h.MemoryLimitSize)
-	binary.LittleEndian.PutUint32(b[24:28], h.FileOffsetSize)
+	binary.BigEndian.PutUint32(b[0:4], h.MappingsLen)
+	binary.BigEndian.PutUint32(b[4:8], h.FileNameSize)
+	binary.BigEndian.PutUint32(b[8:12], h.BuildIDSize)
+	binary.BigEndian.PutUint32(b[12:16], h.FlagsSize)
+	binary.BigEndian.PutUint32(b[16:20], h.MemoryStartSize)
+	binary.BigEndian.PutUint32(b[20:24], h.MemoryLimitSize)
+	binary.BigEndian.PutUint32(b[24:28], h.FileOffsetSize)
+	h.CRC = crc32.Checksum(b[0:28], castagnoli)
+	binary.BigEndian.PutUint32(b[28:32], h.CRC)
 }
 
 func (h *mappingsBlockHeader) unmarshal(b []byte) {
-	h.MappingsLen = binary.LittleEndian.Uint32(b[0:4])
-	h.FileNameSize = binary.LittleEndian.Uint32(b[4:8])
-	h.BuildIDSize = binary.LittleEndian.Uint32(b[8:12])
-	h.FlagsSize = binary.LittleEndian.Uint32(b[12:16])
-	h.MemoryStartSize = binary.LittleEndian.Uint32(b[16:20])
-	h.MemoryLimitSize = binary.LittleEndian.Uint32(b[20:24])
-	h.FileOffsetSize = binary.LittleEndian.Uint32(b[24:28])
-}
-
-// isValid reports whether the header contains sane values.
-// This is important as the block might be read before the
-// checksum validation.
-func (h *mappingsBlockHeader) isValid() bool {
-	return h.MappingsLen < 1<<20
+	h.MappingsLen = binary.BigEndian.Uint32(b[0:4])
+	h.FileNameSize = binary.BigEndian.Uint32(b[4:8])
+	h.BuildIDSize = binary.BigEndian.Uint32(b[8:12])
+	h.FlagsSize = binary.BigEndian.Uint32(b[12:16])
+	h.MemoryStartSize = binary.BigEndian.Uint32(b[16:20])
+	h.MemoryLimitSize = binary.BigEndian.Uint32(b[20:24])
+	h.FileOffsetSize = binary.BigEndian.Uint32(b[24:28])
+	h.CRC = binary.BigEndian.Uint32(b[28:32])
 }
 
 type mappingsBlockEncoder struct {
@@ -175,10 +173,9 @@ func (d *mappingsBlockDecoder) readHeader(r io.Reader) error {
 		return nil
 	}
 	d.header.unmarshal(d.tmp)
-	if !d.header.isValid() {
-		return ErrInvalidSize
+	if crc32.Checksum(d.tmp[:mappingsBlockHeaderSize-4], castagnoli) != d.header.CRC {
+		return ErrInvalidCRC
 	}
-	// TODO: Scale tmp
 	return nil
 }
 

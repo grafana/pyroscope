@@ -310,8 +310,7 @@ const partitionHeaderV3Size = int(unsafe.Sizeof(PartitionHeaderV3{}))
 func (h *PartitionHeaderV3) size() int { return partitionHeaderV3Size }
 
 func (h *PartitionHeaderV3) unmarshal(buf []byte) (err error) {
-	s := len(buf)
-	if s%symbolsBlockReferenceSize > 0 {
+	if len(buf) < symbolsBlockReferenceSize {
 		return ErrInvalidSize
 	}
 	h.Locations.unmarshal(buf[:symbolsBlockReferenceSize])
@@ -614,8 +613,9 @@ func (e *symbolsEncoder[T]) Encode(w io.Writer, items []T) (err error) {
 	return nil
 }
 
+// TODO: args order
 type symbolsBlockDecoder[T any] interface {
-	decode(r io.Reader, block []T) error
+	decode(r io.Reader, dst []T) error
 }
 
 type symbolsDecoder[T any] struct {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"hash/crc32"
 	"io"
 	"unsafe"
 
@@ -26,29 +27,26 @@ type functionsBlockHeader struct {
 	SystemNameSize uint32
 	FileNameSize   uint32
 	StartLineSize  uint32
+	CRC            uint32
 }
 
 func (h *functionsBlockHeader) marshal(b []byte) {
-	binary.LittleEndian.PutUint32(b[0:4], h.FunctionsLen)
-	binary.LittleEndian.PutUint32(b[4:8], h.NameSize)
-	binary.LittleEndian.PutUint32(b[8:12], h.SystemNameSize)
-	binary.LittleEndian.PutUint32(b[12:16], h.FileNameSize)
-	binary.LittleEndian.PutUint32(b[16:20], h.StartLineSize)
+	binary.BigEndian.PutUint32(b[0:4], h.FunctionsLen)
+	binary.BigEndian.PutUint32(b[4:8], h.NameSize)
+	binary.BigEndian.PutUint32(b[8:12], h.SystemNameSize)
+	binary.BigEndian.PutUint32(b[12:16], h.FileNameSize)
+	binary.BigEndian.PutUint32(b[16:20], h.StartLineSize)
+	h.CRC = crc32.Checksum(b[0:20], castagnoli)
+	binary.BigEndian.PutUint32(b[20:24], h.CRC)
 }
 
 func (h *functionsBlockHeader) unmarshal(b []byte) {
-	h.FunctionsLen = binary.LittleEndian.Uint32(b[0:4])
-	h.NameSize = binary.LittleEndian.Uint32(b[4:8])
-	h.SystemNameSize = binary.LittleEndian.Uint32(b[8:12])
-	h.FileNameSize = binary.LittleEndian.Uint32(b[12:16])
-	h.StartLineSize = binary.LittleEndian.Uint32(b[16:20])
-}
-
-// isValid reports whether the header contains sane values.
-// This is important as the block might be read before the
-// checksum validation.
-func (h *functionsBlockHeader) isValid() bool {
-	return h.FunctionsLen < 1<<20
+	h.FunctionsLen = binary.BigEndian.Uint32(b[0:4])
+	h.NameSize = binary.BigEndian.Uint32(b[4:8])
+	h.SystemNameSize = binary.BigEndian.Uint32(b[8:12])
+	h.FileNameSize = binary.BigEndian.Uint32(b[12:16])
+	h.StartLineSize = binary.BigEndian.Uint32(b[16:20])
+	h.CRC = binary.BigEndian.Uint32(b[20:24])
 }
 
 type functionsBlockEncoder struct {
@@ -126,7 +124,7 @@ func (d *functionsBlockDecoder) readHeader(r io.Reader) error {
 		return nil
 	}
 	d.header.unmarshal(d.tmp)
-	if !d.header.isValid() {
+	if crc32.Checksum(d.tmp[:functionsBlockHeaderSize-4], castagnoli) != d.header.CRC {
 		return ErrInvalidSize
 	}
 	return nil

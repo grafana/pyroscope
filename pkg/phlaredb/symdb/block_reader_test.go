@@ -2,6 +2,7 @@ package symdb
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/mock"
@@ -22,6 +23,50 @@ var testBlockMeta = &block.Meta{
 		{RelPath: "functions.parquet"},
 		{RelPath: "strings.parquet"},
 	},
+}
+
+func Test_write_block_fixture(t *testing.T) {
+	t.Skip()
+	b := newBlockSuite(t, [][]string{
+		{"testdata/profile.pb.gz"},
+		{"testdata/profile.pb.gz"},
+	})
+	const fixtureDir = "testdata/symbols/v3"
+	require.NoError(t, os.RemoveAll(fixtureDir))
+	require.NoError(t, os.Rename(b.config.Dir, fixtureDir))
+}
+
+func Test_Reader_Open_v3(t *testing.T) {
+	// The block contains two partitions (0 and 1), each partition
+	// stores symbols of the testdata/profile.pb.gz profile
+	b, err := filesystem.NewBucket("testdata/symbols/v3")
+	require.NoError(t, err)
+	x, err := Open(context.Background(), b, testBlockMeta)
+	require.NoError(t, err)
+
+	r := NewResolver(context.Background(), x)
+	defer r.Release()
+	r.AddSamples(0, schemav1.Samples{
+		StacktraceIDs: []uint32{1, 2, 3, 4, 5},
+		Values:        []uint64{1, 1, 1, 1, 1},
+	})
+	r.AddSamples(1, schemav1.Samples{
+		StacktraceIDs: []uint32{1, 2, 3, 4, 5},
+		Values:        []uint64{1, 1, 1, 1, 1},
+	})
+
+	resolved, err := r.Tree()
+	require.NoError(t, err)
+	expected := `.
+├── github.com/pyroscope-io/pyroscope/pkg/agent.(*ProfileSession).takeSnapshots: self 2 total 8
+│   └── github.com/pyroscope-io/pyroscope/pkg/agent/gospy.(*GoSpy).Snapshot: self 2 total 6
+│       └── github.com/pyroscope-io/pyroscope/pkg/convert.ParsePprof: self 0 total 4
+│           └── io/ioutil.ReadAll: self 2 total 4
+│               └── io.ReadAll: self 2 total 2
+└── net/http.(*conn).serve: self 2 total 2
+`
+
+	require.Equal(t, expected, resolved.String())
 }
 
 func Test_Reader_Open_v2(t *testing.T) {
