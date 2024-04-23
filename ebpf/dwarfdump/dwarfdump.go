@@ -2,8 +2,9 @@ package dwarfdump
 
 import (
 	"debug/dwarf"
-	"debug/elf"
+	"debug/macho"
 	"fmt"
+	"io"
 	"reflect"
 	"strings"
 )
@@ -192,20 +193,53 @@ type FieldDump struct {
 	Offset int
 }
 
-func Dump(elfPath string, fields []Need) []FieldDump {
+func openMach(p string) (io.Closer, *dwarf.Data, error) {
+	var f *macho.File
 	var err error
+	var d *dwarf.Data
+	f, err = macho.Open(p)
+	if err != nil {
+		return nil, nil, err
+	}
+	d, err = f.DWARF()
+	if err != nil {
+		return nil, nil, err
+	}
+	return f, d, nil
+}
 
-	f, err := elf.Open(elfPath)
+func openElf(p string) (io.Closer, *dwarf.Data, error) {
+	var f *macho.File
+	var err error
+	var d *dwarf.Data
+	f, err = macho.Open(p)
+	if err != nil {
+		return nil, nil, err
+	}
+	d, err = f.DWARF()
+	if err != nil {
+		return nil, nil, err
+	}
+	return f, d, nil
+}
+func open(p string) (io.Closer, *dwarf.Data, error) {
+	f, d, elfErr := openElf(p)
+	if elfErr == nil {
+		return f, d, nil
+	}
+	f, d, machErr := openMach(p)
+	if machErr == nil {
+		return f, d, nil
+	}
+	return nil, nil, fmt.Errorf("open fail %s: %w %w", p, elfErr, machErr)
+}
+
+func Dump(elfPath string, fields []Need) []FieldDump {
+	f, d, err := open(elfPath)
 	if err != nil {
 		panic(err)
 	}
 	defer f.Close()
-
-	d, err := f.DWARF()
-	if err != nil {
-		panic(err)
-
-	}
 
 	types, err := structMemberOffsetsFromDwarf(d)
 	if err != nil {
