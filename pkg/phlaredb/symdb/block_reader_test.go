@@ -141,3 +141,19 @@ type mockStacktraceInserter struct{ mock.Mock }
 func (m *mockStacktraceInserter) InsertStacktrace(stacktraceID uint32, locations []int32) {
 	m.Called(stacktraceID, locations)
 }
+
+func Benchmark_Reader_ResolvePprof(b *testing.B) {
+	ctx := context.Background()
+	s := newBlockSuite(b, [][]string{
+		{"testdata/big-profile.pb.gz"},
+	})
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		r := NewResolver(ctx, s.reader)
+		r.AddSamples(0, s.indexed[0][0].Samples)
+		_, err := r.Pprof()
+		require.NoError(b, err)
+		r.Release()
+	}
+}

@@ -26,9 +26,6 @@ type Reader struct {
 	files  map[string]block.File
 	meta   *block.Meta
 
-	// TODO: fetch buffer pool
-	fetchBufferSize int
-
 	index         IndexFile
 	partitions    []*partition
 	partitionsMap map[uint64]*partition
@@ -36,15 +33,11 @@ type Reader struct {
 	parquetFiles *parquetFiles
 }
 
-const defaultFetchBufferSize = 4096
-
 func Open(ctx context.Context, b objstore.BucketReader, m *block.Meta) (*Reader, error) {
 	r := &Reader{
 		bucket: b,
 		meta:   m,
 		files:  make(map[string]block.File),
-
-		fetchBufferSize: defaultFetchBufferSize,
 	}
 	for _, f := range r.meta.Files {
 		r.files[filepath.Base(f.RelPath)] = f
@@ -356,10 +349,12 @@ func (c *stacktraceBlock) fetch(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+		r := getFetchBufReader(rc)
 		defer func() {
+			putFetchBufReader(r)
 			err = multierror.New(err, rc.Close()).Err()
 		}()
-		return c.readFrom(bufio.NewReaderSize(rc, c.reader.fetchBufferSize))
+		return c.readFrom(r)
 	})
 }
 
@@ -416,10 +411,12 @@ func (t *rawTable[T]) fetch(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+		r := getFetchBufReader(rc)
 		defer func() {
+			putFetchBufReader(r)
 			err = multierror.New(err, rc.Close()).Err()
 		}()
-		return t.readFrom(bufio.NewReaderSize(rc, t.reader.fetchBufferSize))
+		return t.readFrom(r)
 	})
 }
 
@@ -489,4 +486,23 @@ func (tx *fetchTx) release() {
 		}()
 	}
 	wg.Wait()
+}
+
+const defaultFetchBufferSize = 64 << 10
+
+var fetchBufReaderPool = sync.Pool{
+	New: func() any {
+		return bufio.NewReaderSize(nil, defaultFetchBufferSize)
+	},
+}
+
+func getFetchBufReader(r io.Reader) *bufio.Reader {
+	b := fetchBufReaderPool.Get().(*bufio.Reader)
+	b.Reset(r)
+	return b
+}
+
+func putFetchBufReader(b *bufio.Reader) {
+	b.Reset(nil)
+	fetchBufReaderPool.Put(b)
 }

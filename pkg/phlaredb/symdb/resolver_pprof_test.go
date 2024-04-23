@@ -53,9 +53,7 @@ func Benchmark_Resolver_ResolvePprof_Small(b *testing.B) {
 }
 
 func Benchmark_Resolver_ResolvePprof_Big(b *testing.B) {
-	s := memSuite{t: b, files: [][]string{{"testdata/big-profile.pb.gz"}}}
-	s.config = DefaultConfig().WithDirectory(b.TempDir())
-	s.init()
+	s := newMemSuite(b, [][]string{{"testdata/big-profile.pb.gz"}})
 	samples := s.indexed[0][0].Samples
 	b.Run("0", benchmarkResolverResolvePprof(s.db, samples, 0))
 	b.Run("8K", benchmarkResolverResolvePprof(s.db, samples, 8<<10))
