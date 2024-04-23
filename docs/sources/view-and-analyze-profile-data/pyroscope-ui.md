@@ -74,7 +74,7 @@ The Single View page in Pyroscope's UI is built for in-depth profile analysis. H
 <!-- Visual Placeholder:** *Screenshots demonstrating each view option in the Single View page.* -->
 
 Let's say that your app has a spike in memory usage.
-Without profiling, you would go from a memory spike to digging through code or guessing the cause.
+Without profiling, you would go from a spike CPU usage metric to digging through code or guessing the cause.
 However, with profiling, you can use the flame graph and table to see exactly which function is most responsible for the spike.
 Often, this shows up as a single node taking up a noticeably disproportionate width in the flame graph as seen below with the `checkDriverAvailability` function.
 
@@ -87,8 +87,13 @@ In this case, you can use the sandwich view to see that a logging function calle
 
 ## Comparison page
 
-The Comparison page facilitates side-by-side comparison of profiles either based on different label sets, different time periods, or both.
-This feature is extremely valuable for understanding the impact of changes or differences between do distinct queries of your application.
+The Comparison view facilitates side-by-side comparison of profiles either based on different label sets, different time periods, or both.
+This feature is valuable for understanding the impact of changes or differences between two distinct queries of your application.
+
+You can use Comparison view to compare different time ranges whether or not the labels are the same.
+For example, in investigating the cause of a memory leak, the timeline might show a steadily increasing amount of memory allocations over time.
+You can use the Comparison view to compare the memory allocations between two different time periods where allocations were low and where allocations were high.
+This information helps you identify the function that's causing the memory leak.
 
 ![Pyroscope Comparison view](/media/docs/pyroscope/screenshot-pyroscope-comparison-view.png)
 
@@ -111,13 +116,6 @@ Release analysis
 
 Region
 : Compare `region:us-east-1` vs. `region:us-west-1`
-
-Another example where time is more important than labels is when you want to compare two different time periods.
-For example, in investigating the cause of a memory leak you would see something like the following where the timeline shows a steadily increasing amount of memory allocations over time. This is a clear indicator of a memory leak.
-
-You can then use the comparison page to compare the memory allocations between two different time periods where allocations were low and where allocations were high which would allow you to identify the function that's causing the memory leak.
-
-![comparison-ui](https://grafana.com/static/img/pyroscope/pyroscope-ui-comparison-2023-11-30.png)
 
 ## Diff page: Identify changes with differential analysis
 
