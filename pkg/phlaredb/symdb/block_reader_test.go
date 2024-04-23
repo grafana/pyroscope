@@ -144,16 +144,22 @@ func (m *mockStacktraceInserter) InsertStacktrace(stacktraceID uint32, locations
 
 func Benchmark_Reader_ResolvePprof(b *testing.B) {
 	ctx := context.Background()
-	s := newBlockSuite(b, [][]string{
-		{"testdata/big-profile.pb.gz"},
-	})
+	s := memSuite{t: b, files: [][]string{{"testdata/big-profile.pb.gz"}}}
+	s.config = DefaultConfig().WithDirectory(b.TempDir())
+	s.init()
+	bs := blockSuite{memSuite: &s}
+	bs.flush()
+
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		r := NewResolver(ctx, s.reader)
+		r := NewResolver(ctx, bs.reader)
 		r.AddSamples(0, s.indexed[0][0].Samples)
 		_, err := r.Pprof()
 		require.NoError(b, err)
 		r.Release()
 	}
+
+	b.ReportMetric(float64(bs.testBucket.getRangeCount.Load())/float64(b.N), "get_range_calls/op")
+	b.ReportMetric(float64(bs.testBucket.getRangeSize.Load())/float64(b.N), "get_range_bytes/op")
 }

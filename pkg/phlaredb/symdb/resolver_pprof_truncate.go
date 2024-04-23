@@ -174,6 +174,8 @@ func (r *pprofProtoTruncatedSymbols) addSample(n truncatedStacktraceSample) {
 	}
 	// If this is a new stack trace, copy locations, create
 	// the sample, and add the stack trace to the map.
+	// TODO(kolesnikovae): Do not allocate new slices per sample.
+	//  Instead, pre-allocated slabs and reference samples from them.
 	locationsCopy := make([]uint64, len(r.locationsBuf))
 	copy(locationsCopy, r.locationsBuf)
 	s := &googlev1.Sample{LocationId: locationsCopy, Value: []int64{n.value}}

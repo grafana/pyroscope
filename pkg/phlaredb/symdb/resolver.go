@@ -247,7 +247,7 @@ func (r *Resolver) Pprof() (*googlev1.Profile, error) {
 		}
 		lock.Lock()
 		defer lock.Unlock()
-		return p.Merge(resolved)
+		return p.MergeNoClone(resolved)
 	})
 	if err != nil {
 		return nil, err

@@ -22,6 +22,8 @@ func (r *pprofProtoSymbols) init(symbols *Symbols, samples schemav1.Samples) {
 
 func (r *pprofProtoSymbols) InsertStacktrace(_ uint32, locations []int32) {
 	s := &googlev1.Sample{
+		// TODO(kolesnikovae): Do not allocate new slices per sample.
+		//  Instead, pre-allocated slabs and reference samples from them.
 		LocationId: make([]uint64, len(locations)),
 		Value:      []int64{int64(r.samples.Values[r.cur])},
 	}

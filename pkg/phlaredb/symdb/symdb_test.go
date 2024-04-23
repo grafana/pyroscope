@@ -2,11 +2,14 @@ package symdb
 
 import (
 	"context"
+	"io"
 	"sort"
+	"sync/atomic"
 	"testing"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/stretchr/testify/require"
+	"github.com/thanos-io/objstore"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
@@ -28,6 +31,7 @@ type memSuite struct {
 type blockSuite struct {
 	*memSuite
 	reader *Reader
+	testBucket
 }
 
 func newMemSuite(t testing.TB, files [][]string) *memSuite {
@@ -77,7 +81,10 @@ func (s *memSuite) writeProfileFromFile(p uint64, f string) {
 
 func (s *blockSuite) flush() {
 	require.NoError(s.t, s.db.Flush())
-	b, err := filesystem.NewBucket(s.config.Dir)
+	b, err := filesystem.NewBucket(s.config.Dir, func(x objstore.Bucket) (objstore.Bucket, error) {
+		s.testBucket.Bucket = x
+		return &s.testBucket, nil
+	})
 	require.NoError(s.t, err)
 	s.reader, err = Open(context.Background(), b, testBlockMeta)
 	require.NoError(s.t, err)
@@ -85,6 +92,18 @@ func (s *blockSuite) flush() {
 
 func (s *blockSuite) teardown() {
 	require.NoError(s.t, s.reader.Close())
+}
+
+type testBucket struct {
+	getRangeCount atomic.Int64
+	getRangeSize  atomic.Int64
+	objstore.Bucket
+}
+
+func (b *testBucket) GetRange(ctx context.Context, name string, off, length int64) (io.ReadCloser, error) {
+	b.getRangeCount.Add(1)
+	b.getRangeSize.Add(length)
+	return b.Bucket.GetRange(ctx, name, off, length)
 }
 
 //nolint:unparam
