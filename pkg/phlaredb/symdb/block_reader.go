@@ -98,10 +98,12 @@ func (r *Reader) file(name string) (block.File, error) {
 
 func (r *Reader) partitionReader(h *PartitionHeader) *partition {
 	p := &partition{reader: r}
-	if r.index.Header.Version == FormatV2 {
+	switch r.index.Header.Version {
+	case FormatV1:
+		p.initEmptyTables(h)
+	case FormatV2:
 		p.initParquetTables(h)
-	}
-	if r.index.Header.Version == FormatV3 {
+	case FormatV3:
 		p.initTables(h)
 	}
 	p.initStacktraces(h.Stacktraces)
@@ -166,6 +168,15 @@ func (p *partition) tx() *fetchTx {
 	return &tx
 }
 
+// Format V1.
+func (p *partition) initEmptyTables(*PartitionHeader) {
+	p.locations = emptyTable[schemav1.InMemoryLocation]{}
+	p.mappings = emptyTable[schemav1.InMemoryMapping]{}
+	p.functions = emptyTable[schemav1.InMemoryFunction]{}
+	p.strings = emptyTable[string]{}
+}
+
+// Format V2.
 func (p *partition) initParquetTables(h *PartitionHeader) {
 	p.locations = &parquetTable[schemav1.InMemoryLocation, schemav1.LocationPersister]{
 		bucket:  p.reader.bucket,
@@ -189,6 +200,7 @@ func (p *partition) initParquetTables(h *PartitionHeader) {
 	}
 }
 
+// Format V3.
 func (p *partition) initTables(h *PartitionHeader) {
 	// TODO(kolesnikovae): decoder pool.
 	p.locations = &rawTable[schemav1.InMemoryLocation]{
@@ -440,6 +452,15 @@ func (t *rawTable[T]) release() {
 		t.s = nil
 	})
 }
+
+// This is a stub for versions without tables in the block (format v1).
+type emptyTable[T any] struct{}
+
+func (emptyTable[T]) fetch(context.Context) error { return nil }
+
+func (emptyTable[T]) release() {}
+
+func (emptyTable[T]) slice() []T { return nil }
 
 // fetchTx facilitates fetching multiple objects in a transactional manner:
 // if one of the objects has failed, all the remaining ones are released.

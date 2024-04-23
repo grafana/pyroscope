@@ -370,40 +370,12 @@ func TestHeadFlush(t *testing.T) {
 					},
 				},
 				{
-					RelPath: "symbols/functions.parquet",
-					Parquet: &block.ParquetFile{
-						NumRowGroups: 2,
-						NumRows:      1423,
-					},
+					RelPath:   "symbols/data.symdb",
+					SizeBytes: 159203,
 				},
 				{
 					RelPath:   "symbols/index.symdb",
-					SizeBytes: 308,
-				},
-				{
-					RelPath: "symbols/locations.parquet",
-					Parquet: &block.ParquetFile{
-						NumRowGroups: 2,
-						NumRows:      2469,
-					},
-				},
-				{
-					RelPath: "symbols/mappings.parquet",
-					Parquet: &block.ParquetFile{
-						NumRowGroups: 2,
-						NumRows:      3,
-					},
-				},
-				{
-					RelPath:   "symbols/stacktraces.symdb",
-					SizeBytes: 60366,
-				},
-				{
-					RelPath: "symbols/strings.parquet",
-					Parquet: &block.ParquetFile{
-						NumRowGroups: 2,
-						NumRows:      1722,
-					},
+					SizeBytes: 384,
 				},
 			},
 			Compaction: block.BlockMetaCompaction{

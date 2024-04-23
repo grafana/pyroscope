@@ -114,7 +114,7 @@ func (e *locationsBlockEncoder) encode(w io.Writer, locations []v1.InMemoryLocat
 	}
 
 	if folded {
-		e.tmp = slices.GrowLen(e.tmp, len(e.folded)/8)
+		e.tmp = slices.GrowLen(e.tmp, len(e.folded)/8+1)
 		encodeBoolean(e.tmp, e.folded)
 		e.header.IsFoldedSize = uint32(len(e.tmp))
 		e.buf.Write(e.tmp)
