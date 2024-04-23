@@ -96,7 +96,7 @@ func TestDelete(t *testing.T) {
 			})
 
 			require.NoError(t, block.Upload(ctx, log.NewNopLogger(), bkt, path.Join(dir, meta.ULID.String())))
-			require.Equal(t, 9, len(objects(t, bkt, meta.ULID)))
+			require.Equal(t, 5, len(objects(t, bkt, meta.ULID)))
 
 			markedForDeletion := promauto.With(prometheus.NewRegistry()).NewCounter(prometheus.CounterOpts{Name: "test"})
 			require.NoError(t, block.MarkForDeletion(ctx, log.NewNopLogger(), bkt, meta.ULID, "", false, markedForDeletion))
@@ -116,7 +116,7 @@ func TestDelete(t *testing.T) {
 				}
 			})
 			require.NoError(t, block.Upload(ctx, log.NewNopLogger(), bkt, path.Join(tmpDir, b2.ULID.String())))
-			require.Equal(t, 9, len(objects(t, bkt, b2.ULID)))
+			require.Equal(t, 5, len(objects(t, bkt, b2.ULID)))
 
 			// Remove meta.json and check if delete can delete it.
 			require.NoError(t, bkt.Delete(ctx, path.Join(b2.ULID.String(), block.MetaFilename)))
@@ -196,7 +196,7 @@ func TestUpload(t *testing.T) {
 
 	t.Run("full block", func(t *testing.T) {
 		require.NoError(t, block.Upload(ctx, log.NewNopLogger(), bkt, path.Join(tmpDir, b1.ULID.String())))
-		require.Equal(t, 9, len(bkt.Objects()))
+		require.Equal(t, 5, len(bkt.Objects()))
 		objs := bkt.Objects()
 		require.Contains(t, objs, path.Join(b1.ULID.String(), block.MetaFilename))
 		require.Contains(t, objs, path.Join(b1.ULID.String(), block.IndexFilename))
@@ -205,7 +205,7 @@ func TestUpload(t *testing.T) {
 
 	t.Run("upload is idempotent", func(t *testing.T) {
 		require.NoError(t, block.Upload(ctx, log.NewNopLogger(), bkt, path.Join(tmpDir, b1.ULID.String())))
-		require.Equal(t, 9, len(bkt.Objects()))
+		require.Equal(t, 5, len(bkt.Objects()))
 		objs := bkt.Objects()
 		require.Contains(t, objs, path.Join(b1.ULID.String(), block.MetaFilename))
 		require.Contains(t, objs, path.Join(b1.ULID.String(), block.IndexFilename))
@@ -355,7 +355,7 @@ func TestUploadCleanup(t *testing.T) {
 		require.ErrorIs(t, uploadErr, errUploadFailed)
 
 		// If upload of meta.json fails, nothing is cleaned up.
-		require.Equal(t, 9, len(bkt.Objects()))
+		require.Equal(t, 5, len(bkt.Objects()))
 		require.Greater(t, len(bkt.Objects()[path.Join(b1.String(), block.IndexFilename)]), 0)
 		require.Greater(t, len(bkt.Objects()[path.Join(b1.String(), block.MetaFilename)]), 0)
 	}
