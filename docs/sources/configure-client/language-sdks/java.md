@@ -235,6 +235,5 @@ PYROSCOPE_PROFILER_LOCK=10ms
 ## Java profiling examples
 
 Check out the following resources to learn more about Java profiling:
-- [Java examples](https://github.com/grafana/pyroscope/tree/main/examples/language-sdk-instrumentaiton/java/rideshare)
-- [Java Demo](https://demo.pyroscope.io/?query=rideshare-app-java.itimer%7B%7D) showing Java example with tags
-- [Java blog post](https://github.com/grafana/pyroscope/tree/main/examples/language-sdk-instrumentation/java/rideshare#readme)
+- [Java examples](https://github.com/grafana/pyroscope/tree/main/examples/language-sdk-instrumentation/java/rideshare)
+- [Java Demo](https://play.grafana.org/a/grafana-pyroscope-app/single?query=process_cpu%3Acpu%3Ananoseconds%3Acpu%3Ananoseconds%7Bservice_name%3D%22pyroscope-rideshare-java%22%7D&from=now-1h&until=now) showing Java example with tags
