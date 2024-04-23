@@ -85,7 +85,7 @@ In this case, you can use the sandwich view to see that a logging function calle
 
 ![example-sandwich-view](https://grafana.com/static/img/pyroscope/sandwich-view-2023-11-30.png)
 
-## Comparison page
+## Comparison view
 
 The Comparison view facilitates side-by-side comparison of profiles either based on different label sets, different time periods, or both.
 This feature is valuable for understanding the impact of changes or differences between two distinct queries of your application.
