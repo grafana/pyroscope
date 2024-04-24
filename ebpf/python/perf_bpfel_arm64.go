@@ -110,6 +110,7 @@ type PerfPyTypecheckData struct {
 	PyDictType                     uint64
 	PyNoneType                     uint64
 	PyModuleType                   uint64
+	PyTupleType                    uint64
 	O_PyThreadStateDict            uint64
 	O_PyThreadStateInterp          uint64
 	SizePyThreadState              uint64

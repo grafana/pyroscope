@@ -5,6 +5,28 @@
 #ifndef PYROEBPF_PYOFFSETS_H
 #define PYROEBPF_PYOFFSETS_H
 
+#include "stacks.h"
+
+
+#define try_read(dst, src) \
+    {if (bpf_probe_read_user(&(dst), sizeof((dst)), (src))) { \
+        log_error("read failed  %llx (%s : %d)", (src), __FILE__, __LINE__); \
+        return -1; \
+    }}
+
+#define try(code) \
+    {if ((code)) { \
+        log_error("try failed  %s : %d", __FILE__, __LINE__); \
+        return -1; \
+    }}
+
+
+#define PYTHON_STACK_FRAMES_PER_PROG 32
+#define PYTHON_STACK_PROG_CNT 3
+#define PYTHON_STACK_MAX_LEN (PYTHON_STACK_FRAMES_PER_PROG * PYTHON_STACK_PROG_CNT)
+#define PYTHON_CLASS_NAME_LEN 32
+#define PYTHON_FUNCTION_NAME_LEN 64
+#define PYTHON_FILE_NAME_LEN 128
 
 
 enum frame_owner {
@@ -52,6 +74,7 @@ typedef struct {
     uint64_t PyDict_Type;
     uint64_t PyNone_Type;
     uint64_t PyModule_Type;
+    uint64_t PyTuple_Type;
 
     uint64_t o_PyThreadState_dict;
     uint64_t o_PyThreadState_interp;
@@ -63,5 +86,49 @@ typedef struct {
     uint64_t size_PyInterpreterState_tstate;
 
 } py_typecheck_data;
+
+
+typedef uint32_t py_symbol_id;
+
+typedef struct {
+    struct sample_key k;
+    uint32_t stack_len;
+    // instead of storing symbol name here directly, we add it to another
+    // hashmap with Symbols and only store the ids here
+    py_symbol_id stack[PYTHON_STACK_MAX_LEN];
+} py_event;
+
+struct py_str_type {
+    uint8_t type;
+    uint8_t size_codepoints;
+} ;
+
+typedef struct {
+    char classname[PYTHON_CLASS_NAME_LEN];
+    char name[PYTHON_FUNCTION_NAME_LEN];
+    char file[PYTHON_FILE_NAME_LEN];
+
+    struct py_str_type classname_type;
+    struct py_str_type name_type;
+    struct py_str_type file_type;
+    struct py_str_type __padding;
+
+    // NOTE: PyFrameObject also has line number but it is typically just the
+    // first line of that function and PyCode_Addr2Line needs to be called
+    // to get the actual line
+} py_symbol;
+
+typedef struct {
+    int64_t symbol_counter;
+    py_offset_config offsets;
+    py_typecheck_data typecheck;
+    uint32_t cur_cpu;
+    uint64_t frame_ptr;
+    int64_t python_stack_prog_call_cnt;
+    py_symbol sym;
+    py_event event;
+    uint64_t padding;// satisfy verifier for hash function
+} py_sample_state_t;
+
 
 #endif //PYROEBPF_PYOFFSETS_H

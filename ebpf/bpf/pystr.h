@@ -6,6 +6,7 @@
 #define PYROEBPF_PYSTR_H
 
 #include "pyoffsets.h"
+#include "pytypecheck.h"
 
 #define PYSTR_TYPE_1BYTE  1
 #define PYSTR_TYPE_2BYTE  2
@@ -15,10 +16,7 @@
 #define PYSTR_TYPE_NOT_COMPACT  32
 
 
-struct py_str_type {
-    uint8_t type;
-    uint8_t size_codepoints;
-} ;
+
 
 
 struct _object {
@@ -47,11 +45,12 @@ typedef struct {
 } PyASCIIObject;
 
 // Read compact strings from PyASCIIObject or PyCompactUnicodeObject
-static __always_inline int pystr_read(void *str, py_offset_config *offsets, char *buf, u64 buf_size, struct py_str_type *typ) {
+static __always_inline int pystr_read(void *str, py_sample_state_t *state, char *buf, u64 buf_size, struct py_str_type *typ) {
+    try(pytypecheck_unicode(state, str))
     PyASCIIObject pystr = {};
-    if (bpf_probe_read_user(&pystr, sizeof(PyASCIIObject), str)) {
-        return -1;
-    }
+    try (bpf_probe_read_user(&pystr, sizeof(PyASCIIObject), str))
+    log_debug("pystr_read: compact=%d ascii=%d kind=%d length=%d", pystr.state.compact, pystr.state.ascii, pystr.state.kind, pystr.length);
+
     if (pystr.state.compact == 0) { // not implemented, skip
         typ->type = PYSTR_TYPE_NOT_COMPACT;
         return 0;
@@ -66,15 +65,13 @@ static __always_inline int pystr_read(void *str, py_offset_config *offsets, char
     void *data;
     if (pystr.state.ascii) {
         typ->type = pystr.state.kind | PYSTR_TYPE_ASCII;
-        data = str + offsets->PyASCIIObject_size;
+        data = str + state->offsets.PyASCIIObject_size;
     } else {
         typ->type = pystr.state.kind;
-        data = str + offsets->PyCompactUnicodeObject_size;
+        data = str + state->offsets.PyCompactUnicodeObject_size;
     }
 
-    if (bpf_probe_read_user(buf, sz_bytes, data)) {
-        return -1;
-    };
+    try (bpf_probe_read_user(buf, sz_bytes, data))
     return 0;
 }
 

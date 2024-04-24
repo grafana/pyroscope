@@ -139,8 +139,8 @@ static __always_inline int pytypecheck_thread_state(py_sample_state_t *state, vo
 
 
 static __always_inline int pytypecheck_frame(py_sample_state_t *state, void *f) {
-    log_debug("ptc f %llx", f);
     if (f == 0) {
+        log_debug("ptc f %llx", f);
         return 0;
     }
     if (pytypecheck_obj(f, state->typecheck.PyFrame_Type)) {
@@ -151,8 +151,8 @@ static __always_inline int pytypecheck_frame(py_sample_state_t *state, void *f) 
 }
 
 static __always_inline int pytypecheck_code(py_sample_state_t *state, void *code) {
-    log_debug("ptc code %llx", code);
     if (code == 0) {
+        log_debug("ptc code %llx null", code);
         return 0;
     }
     if (pytypecheck_obj(code, state->typecheck.PyCode_Type)) {
@@ -161,6 +161,32 @@ static __always_inline int pytypecheck_code(py_sample_state_t *state, void *code
     log_debug("ptc code %llx ok", code);
     return 0;
 }
+
+static __always_inline int pytypecheck_tuple(py_sample_state_t *state, void *tuple) {
+    if (tuple == 0) {
+        log_debug("ptc tuple %llx null", tuple);
+        return 0;
+    }
+    if (pytypecheck_obj(tuple, state->typecheck.PyTuple_Type)) {
+        return -1;
+    }
+    log_debug("ptc tuple %llx ok", tuple);
+    return 0;
+}
+
+static __always_inline int pytypecheck_unicode(py_sample_state_t *state, void *tuple) {
+    if (tuple == 0) {
+        log_debug("ptc unicode %llx null", tuple);
+        return 0;
+    }
+    if (pytypecheck_obj(tuple, state->typecheck.PyUnicode_Type)) {
+        return -1;
+    }
+    log_debug("ptc unicode %llx ok", tuple);
+    return 0;
+}
+
+
 
 
 #else

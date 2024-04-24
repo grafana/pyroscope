@@ -82,6 +82,7 @@ func GetPyPerfPidData(l log.Logger, pid uint32, collectKernel bool) (*PerfPyPidD
 	bind("PyDict_Type", &typecheck.PyDictType)
 	bind("_PyNone_Type", &typecheck.PyNoneType)
 	bind("PyModule_Type", &typecheck.PyModuleType)
+	bind("PyTuple_Type", &typecheck.PyTupleType)
 
 	for _, symbol := range symbols {
 		if addr, ok := symbolsBind[symbol.Name]; ok {
