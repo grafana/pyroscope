@@ -40,6 +40,13 @@ var (
 			needsGoHeapFix:     true,
 		},
 		{
+			profile:            repoRoot + "pkg/pprof/testdata/heap_delta",
+			expectStatusPush:   200,
+			expectStatusIngest: 200,
+			metrics:            golangHeap,
+			needsGoHeapFix:     true,
+		},
+		{
 			profile:            repoRoot + "pkg/pprof/testdata/profile_java",
 			expectStatusIngest: 200,
 			expectStatusPush:   200,
