@@ -158,6 +158,7 @@ func (e *locationsBlockEncoder) initWrite(locations int) {
 }
 
 type locationsBlockDecoder struct {
+	format SymbolsBlockFormat
 	header locationsBlockHeader
 
 	mappings  []int32
@@ -167,23 +168,23 @@ type locationsBlockDecoder struct {
 	address []int64
 	folded  []bool
 
-	tmp []byte
+	buf []byte
 }
 
 func locationsDecoder(h SymbolsBlockHeader) (*symbolsDecoder[v1.InMemoryLocation], error) {
 	if h.Format == BlockLocationsV1 {
-		return newSymbolsDecoder[v1.InMemoryLocation](h, new(locationsBlockDecoder)), nil
+		return newSymbolsDecoder[v1.InMemoryLocation](h, &locationsBlockDecoder{format: h.Format}), nil
 	}
 	return nil, fmt.Errorf("%w: unknown locations format: %d", ErrUnknownVersion, h.Format)
 }
 
 func (d *locationsBlockDecoder) readHeader(r io.Reader) error {
-	d.tmp = slices.GrowLen(d.tmp, locationsBlockHeaderSize)
-	if _, err := io.ReadFull(r, d.tmp); err != nil {
+	d.buf = slices.GrowLen(d.buf, locationsBlockHeaderSize)
+	if _, err := io.ReadFull(r, d.buf); err != nil {
 		return err
 	}
-	d.header.unmarshal(d.tmp)
-	if crc32.Checksum(d.tmp[:locationsBlockHeaderSize-4], castagnoli) != d.header.CRC {
+	d.header.unmarshal(d.buf)
+	if crc32.Checksum(d.buf[:locationsBlockHeaderSize-4], castagnoli) != d.header.CRC {
 		return ErrInvalidCRC
 	}
 	return nil
@@ -199,11 +200,11 @@ func (d *locationsBlockDecoder) decode(r io.Reader, locations []v1.InMemoryLocat
 
 	var enc delta.BinaryPackedEncoding
 	// First we decode mapping_id and assign them to locations.
-	d.tmp = slices.GrowLen(d.tmp, int(d.header.MappingSize))
-	if _, err = io.ReadFull(r, d.tmp); err != nil {
+	d.buf = slices.GrowLen(d.buf, int(d.header.MappingSize))
+	if _, err = io.ReadFull(r, d.buf); err != nil {
 		return err
 	}
-	d.mappings, err = enc.DecodeInt32(d.mappings, d.tmp)
+	d.mappings, err = enc.DecodeInt32(d.mappings, d.buf)
 	if err != nil {
 		return err
 	}
@@ -219,12 +220,12 @@ func (d *locationsBlockDecoder) decode(r io.Reader, locations []v1.InMemoryLocat
 	// sub-slices. But it has to be allocated as we can't
 	// reference d.lines, which is reusable.
 	lines := make([]v1.InMemoryLine, d.header.LinesLen)
-	d.tmp = slices.GrowLen(d.tmp, int(d.header.LinesSize))
-	if _, err = io.ReadFull(r, d.tmp); err != nil {
+	d.buf = slices.GrowLen(d.buf, int(d.header.LinesSize))
+	if _, err = io.ReadFull(r, d.buf); err != nil {
 		return err
 	}
 	d.lines = slices.GrowLen(d.lines, int(d.header.LinesLen))
-	d.lines, err = enc.DecodeInt32(d.lines, d.tmp)
+	d.lines, err = enc.DecodeInt32(d.lines, d.buf)
 	if err != nil {
 		return err
 	}
@@ -244,23 +245,23 @@ func (d *locationsBlockDecoder) decode(r io.Reader, locations []v1.InMemoryLocat
 
 	// Otherwise, inspect all the optional fields.
 	if int(d.header.AddrSize) > 0 {
-		d.tmp = slices.GrowLen(d.tmp, int(d.header.AddrSize))
-		if _, err = io.ReadFull(r, d.tmp); err != nil {
+		d.buf = slices.GrowLen(d.buf, int(d.header.AddrSize))
+		if _, err = io.ReadFull(r, d.buf); err != nil {
 			return err
 		}
 		d.address = slices.GrowLen(d.address, int(d.header.LocationsLen))
-		d.address, err = enc.DecodeInt64(d.address, d.tmp)
+		d.address, err = enc.DecodeInt64(d.address, d.buf)
 		if err != nil {
 			return err
 		}
 	}
 	if int(d.header.IsFoldedSize) > 0 {
-		d.tmp = slices.GrowLen(d.tmp, int(d.header.IsFoldedSize))
-		if _, err = io.ReadFull(r, d.tmp); err != nil {
+		d.buf = slices.GrowLen(d.buf, int(d.header.IsFoldedSize))
+		if _, err = io.ReadFull(r, d.buf); err != nil {
 			return err
 		}
 		d.folded = slices.GrowLen(d.folded, int(d.header.LocationsLen))
-		decodeBoolean(d.folded, d.tmp)
+		decodeBoolean(d.folded, d.buf)
 	}
 
 	var o int // Offset within the lines slice.

@@ -168,27 +168,28 @@ func (e *mappingsBlockEncoder) initWrite(mappings int) {
 }
 
 type mappingsBlockDecoder struct {
+	format SymbolsBlockFormat
 	header mappingsBlockHeader
 
 	ints   []int32
 	ints64 []int64
-	tmp    []byte
+	buf    []byte
 }
 
 func mappingsDecoder(h SymbolsBlockHeader) (*symbolsDecoder[v1.InMemoryMapping], error) {
 	if h.Format == BlockMappingsV1 {
-		return newSymbolsDecoder[v1.InMemoryMapping](h, new(mappingsBlockDecoder)), nil
+		return newSymbolsDecoder[v1.InMemoryMapping](h, &mappingsBlockDecoder{format: h.Format}), nil
 	}
 	return nil, fmt.Errorf("%w: unknown mappings format: %d", ErrUnknownVersion, h.Format)
 }
 
 func (d *mappingsBlockDecoder) readHeader(r io.Reader) error {
-	d.tmp = slices.GrowLen(d.tmp, mappingsBlockHeaderSize)
-	if _, err := io.ReadFull(r, d.tmp); err != nil {
+	d.buf = slices.GrowLen(d.buf, mappingsBlockHeaderSize)
+	if _, err := io.ReadFull(r, d.buf); err != nil {
 		return nil
 	}
-	d.header.unmarshal(d.tmp)
-	if crc32.Checksum(d.tmp[:mappingsBlockHeaderSize-4], castagnoli) != d.header.CRC {
+	d.header.unmarshal(d.buf)
+	if crc32.Checksum(d.buf[:mappingsBlockHeaderSize-4], castagnoli) != d.header.CRC {
 		return ErrInvalidCRC
 	}
 	return nil
@@ -205,11 +206,11 @@ func (d *mappingsBlockDecoder) decode(r io.Reader, mappings []v1.InMemoryMapping
 	var enc delta.BinaryPackedEncoding
 	d.ints = slices.GrowLen(d.ints, int(d.header.MappingsLen))
 
-	d.tmp = slices.GrowLen(d.tmp, int(d.header.FileNameSize))
-	if _, err = io.ReadFull(r, d.tmp); err != nil {
+	d.buf = slices.GrowLen(d.buf, int(d.header.FileNameSize))
+	if _, err = io.ReadFull(r, d.buf); err != nil {
 		return err
 	}
-	d.ints, err = enc.DecodeInt32(d.ints, d.tmp)
+	d.ints, err = enc.DecodeInt32(d.ints, d.buf)
 	if err != nil {
 		return err
 	}
@@ -217,11 +218,11 @@ func (d *mappingsBlockDecoder) decode(r io.Reader, mappings []v1.InMemoryMapping
 		mappings[i].Filename = uint32(v)
 	}
 
-	d.tmp = slices.GrowLen(d.tmp, int(d.header.BuildIDSize))
-	if _, err = io.ReadFull(r, d.tmp); err != nil {
+	d.buf = slices.GrowLen(d.buf, int(d.header.BuildIDSize))
+	if _, err = io.ReadFull(r, d.buf); err != nil {
 		return err
 	}
-	d.ints, err = enc.DecodeInt32(d.ints, d.tmp)
+	d.ints, err = enc.DecodeInt32(d.ints, d.buf)
 	if err != nil {
 		return err
 	}
@@ -229,11 +230,11 @@ func (d *mappingsBlockDecoder) decode(r io.Reader, mappings []v1.InMemoryMapping
 		mappings[i].BuildId = uint32(v)
 	}
 
-	d.tmp = slices.GrowLen(d.tmp, int(d.header.FlagsSize))
-	if _, err = io.ReadFull(r, d.tmp); err != nil {
+	d.buf = slices.GrowLen(d.buf, int(d.header.FlagsSize))
+	if _, err = io.ReadFull(r, d.buf); err != nil {
 		return err
 	}
-	d.ints, err = enc.DecodeInt32(d.ints, d.tmp)
+	d.ints, err = enc.DecodeInt32(d.ints, d.buf)
 	if err != nil {
 		return err
 	}
@@ -246,11 +247,11 @@ func (d *mappingsBlockDecoder) decode(r io.Reader, mappings []v1.InMemoryMapping
 
 	if d.header.MemoryStartSize > 0 {
 		d.ints64 = slices.GrowLen(d.ints64, int(d.header.MappingsLen))
-		d.tmp = slices.GrowLen(d.tmp, int(d.header.MemoryStartSize))
-		if _, err = io.ReadFull(r, d.tmp); err != nil {
+		d.buf = slices.GrowLen(d.buf, int(d.header.MemoryStartSize))
+		if _, err = io.ReadFull(r, d.buf); err != nil {
 			return err
 		}
-		d.ints64, err = enc.DecodeInt64(d.ints64, d.tmp)
+		d.ints64, err = enc.DecodeInt64(d.ints64, d.buf)
 		if err != nil {
 			return err
 		}
@@ -260,11 +261,11 @@ func (d *mappingsBlockDecoder) decode(r io.Reader, mappings []v1.InMemoryMapping
 	}
 	if d.header.MemoryLimitSize > 0 {
 		d.ints64 = slices.GrowLen(d.ints64, int(d.header.MappingsLen))
-		d.tmp = slices.GrowLen(d.tmp, int(d.header.MemoryLimitSize))
-		if _, err = io.ReadFull(r, d.tmp); err != nil {
+		d.buf = slices.GrowLen(d.buf, int(d.header.MemoryLimitSize))
+		if _, err = io.ReadFull(r, d.buf); err != nil {
 			return err
 		}
-		d.ints64, err = enc.DecodeInt64(d.ints64, d.tmp)
+		d.ints64, err = enc.DecodeInt64(d.ints64, d.buf)
 		if err != nil {
 			return err
 		}
@@ -274,11 +275,11 @@ func (d *mappingsBlockDecoder) decode(r io.Reader, mappings []v1.InMemoryMapping
 	}
 	if d.header.FileOffsetSize > 0 {
 		d.ints64 = slices.GrowLen(d.ints64, int(d.header.MappingsLen))
-		d.tmp = slices.GrowLen(d.tmp, int(d.header.FileOffsetSize))
-		if _, err = io.ReadFull(r, d.tmp); err != nil {
+		d.buf = slices.GrowLen(d.buf, int(d.header.FileOffsetSize))
+		if _, err = io.ReadFull(r, d.buf); err != nil {
 			return err
 		}
-		d.ints64, err = enc.DecodeInt64(d.ints64, d.tmp)
+		d.ints64, err = enc.DecodeInt64(d.ints64, d.buf)
 		if err != nil {
 			return err
 		}

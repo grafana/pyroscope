@@ -120,26 +120,27 @@ func (e *functionsBlockEncoder) initWrite(functions int) {
 }
 
 type functionsBlockDecoder struct {
+	format SymbolsBlockFormat
 	header functionsBlockHeader
 
 	ints []int32
-	tmp  []byte
+	buf  []byte
 }
 
 func functionsDecoder(h SymbolsBlockHeader) (*symbolsDecoder[v1.InMemoryFunction], error) {
 	if h.Format == BlockFunctionsV1 {
-		return newSymbolsDecoder[v1.InMemoryFunction](h, new(functionsBlockDecoder)), nil
+		return newSymbolsDecoder[v1.InMemoryFunction](h, &functionsBlockDecoder{format: h.Format}), nil
 	}
 	return nil, fmt.Errorf("%w: unknown functions format: %d", ErrUnknownVersion, h.Format)
 }
 
 func (d *functionsBlockDecoder) readHeader(r io.Reader) error {
-	d.tmp = slices.GrowLen(d.tmp, functionsBlockHeaderSize)
-	if _, err := io.ReadFull(r, d.tmp); err != nil {
+	d.buf = slices.GrowLen(d.buf, functionsBlockHeaderSize)
+	if _, err := io.ReadFull(r, d.buf); err != nil {
 		return nil
 	}
-	d.header.unmarshal(d.tmp)
-	if crc32.Checksum(d.tmp[:functionsBlockHeaderSize-4], castagnoli) != d.header.CRC {
+	d.header.unmarshal(d.buf)
+	if crc32.Checksum(d.buf[:functionsBlockHeaderSize-4], castagnoli) != d.header.CRC {
 		return ErrInvalidSize
 	}
 	return nil
@@ -155,11 +156,11 @@ func (d *functionsBlockDecoder) decode(r io.Reader, functions []v1.InMemoryFunct
 
 	var enc delta.BinaryPackedEncoding
 	d.ints = slices.GrowLen(d.ints, int(d.header.FunctionsLen))
-	d.tmp = slices.GrowLen(d.tmp, int(d.header.NameSize))
-	if _, err = io.ReadFull(r, d.tmp); err != nil {
+	d.buf = slices.GrowLen(d.buf, int(d.header.NameSize))
+	if _, err = io.ReadFull(r, d.buf); err != nil {
 		return err
 	}
-	d.ints, err = enc.DecodeInt32(d.ints, d.tmp)
+	d.ints, err = enc.DecodeInt32(d.ints, d.buf)
 	if err != nil {
 		return err
 	}
@@ -167,11 +168,11 @@ func (d *functionsBlockDecoder) decode(r io.Reader, functions []v1.InMemoryFunct
 		functions[i].Name = uint32(v)
 	}
 
-	d.tmp = slices.GrowLen(d.tmp, int(d.header.SystemNameSize))
-	if _, err = io.ReadFull(r, d.tmp); err != nil {
+	d.buf = slices.GrowLen(d.buf, int(d.header.SystemNameSize))
+	if _, err = io.ReadFull(r, d.buf); err != nil {
 		return err
 	}
-	d.ints, err = enc.DecodeInt32(d.ints, d.tmp)
+	d.ints, err = enc.DecodeInt32(d.ints, d.buf)
 	if err != nil {
 		return err
 	}
@@ -179,11 +180,11 @@ func (d *functionsBlockDecoder) decode(r io.Reader, functions []v1.InMemoryFunct
 		functions[i].SystemName = uint32(v)
 	}
 
-	d.tmp = slices.GrowLen(d.tmp, int(d.header.FileNameSize))
-	if _, err = io.ReadFull(r, d.tmp); err != nil {
+	d.buf = slices.GrowLen(d.buf, int(d.header.FileNameSize))
+	if _, err = io.ReadFull(r, d.buf); err != nil {
 		return err
 	}
-	d.ints, err = enc.DecodeInt32(d.ints, d.tmp)
+	d.ints, err = enc.DecodeInt32(d.ints, d.buf)
 	if err != nil {
 		return err
 	}
@@ -191,11 +192,11 @@ func (d *functionsBlockDecoder) decode(r io.Reader, functions []v1.InMemoryFunct
 		functions[i].Filename = uint32(v)
 	}
 
-	d.tmp = slices.GrowLen(d.tmp, int(d.header.StartLineSize))
-	if _, err = io.ReadFull(r, d.tmp); err != nil {
+	d.buf = slices.GrowLen(d.buf, int(d.header.StartLineSize))
+	if _, err = io.ReadFull(r, d.buf); err != nil {
 		return err
 	}
-	d.ints, err = enc.DecodeInt32(d.ints, d.tmp)
+	d.ints, err = enc.DecodeInt32(d.ints, d.buf)
 	if err != nil {
 		return err
 	}
