@@ -12,7 +12,7 @@ import (
 	"github.com/cilium/ebpf"
 )
 
-type PerfErrorStats struct{ Errors [15]uint32 }
+type PerfErrorStats struct{ Errors [19]uint32 }
 
 type PerfGlobalConfigT struct {
 	BpfLogErr   uint8

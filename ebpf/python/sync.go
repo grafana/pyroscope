@@ -11,6 +11,7 @@ enum {
     STACK_STATUS_TRUNCATED = 2,
 };
 
+
 enum {
     PY_ERROR_GENERIC = 1,
     PY_ERROR_THREAD_STATE = 2,
@@ -24,9 +25,14 @@ enum {
     PY_ERROR_CLASS_NAME = 10,
     PY_ERROR_FILE_NAME = 11,
     PY_ERROR_NAME = 12,
+    PY_ERROR_FRAME_OWNER = 13,
+    PY_ERROR_FRAME_OWNER_INVALID = 14,
+    PY_ERROR_FRAME_TYPECHECK = 15,
+    PY_ERROR_CODE_TYPECHECK = 16,
+    PY_ERROR_RESERVED2 = 17,
+    PY_ERROR_RESERVED3 = 18,
 
-
-
+    __PY_ERROR_TOTAL_NUMBER_OF_ERRORS = 19, // not an error
 };
 */
 
@@ -54,18 +60,25 @@ func (s StackStatus) String() string {
 type PyError uint8
 
 var (
-	PyErrorGeneric         PyError = 1
-	PyErrorThreadState     PyError = 2
-	PyErrorThreadStateNull PyError = 3
-	PyErrorTopFrame        PyError = 4
-	PyErrorFrameCode       PyError = 5
-	PyErrorFramePrev       PyError = 6
-	PyErrorSymbol          PyError = 7
-	PyErrorTlsbase         PyError = 8
-	PyErrorFirstArg        PyError = 9
-	PyErrorClassName       PyError = 10
-	PyErrorFileName        PyError = 11
-	PyErrorName            PyError = 12
+	PyErrorGeneric             PyError = 1
+	PyErrorThreadState         PyError = 2
+	PyErrorThreadStateNull     PyError = 3
+	PyErrorTopFrame            PyError = 4
+	PyErrorFrameCode           PyError = 5
+	PyErrorFramePrev           PyError = 6
+	PyErrorSymbol              PyError = 7
+	PyErrorTlsbase             PyError = 8
+	PyErrorFirstArg            PyError = 9
+	PyErrorClassName           PyError = 10
+	PyErrorFileName            PyError = 11
+	PyErrorName                PyError = 12
+	PyErrorFrameOwner          PyError = 13
+	PyErrorFrameOwnerInvalid   PyError = 14
+	PyErrorFrameTypecheck      PyError = 15
+	PyErrorCodeTypecheck       PyError = 16
+	PyErrorReserved2           PyError = 17
+	PyErrorReserved3           PyError = 18
+	PyErrorTotalNumberOfErrors PyError = 19
 )
 
 func (e PyError) String() string {
@@ -94,6 +107,20 @@ func (e PyError) String() string {
 		return "PyErrorFileName"
 	case PyErrorName:
 		return "PyErrorName"
+	case PyErrorFrameOwner:
+		return "PyErrorFrameOwner"
+	case PyErrorFrameOwnerInvalid:
+		return "PyErrorFrameOwnerInvalid"
+	case PyErrorFrameTypecheck:
+		return "PyErrorFrameTypecheck"
+	case PyErrorCodeTypecheck:
+		return "PyErrorCodeTypecheck"
+	case PyErrorReserved2:
+		return "PyErrorReserved2"
+	case PyErrorReserved3:
+		return "PyErrorReserved3"
+	case PyErrorTotalNumberOfErrors:
+		return "PyErrorTotalNumberOfErrors"
 	default:
 		return fmt.Sprintf("PyError(%d)", e)
 	}

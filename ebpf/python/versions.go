@@ -95,6 +95,7 @@ type UserOffsets struct {
 	PyFrameObject_f_back              int16
 	PyFrameObject_f_code              int16
 	PyFrameObject_f_localsplus        int16
+	PyFrameObjectSize                 int16
 	PyCodeObject_co_filename          int16
 	PyCodeObject_co_name              int16
 	PyCodeObject_co_varnames          int16

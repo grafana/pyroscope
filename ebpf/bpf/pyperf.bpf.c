@@ -15,6 +15,12 @@ const volatile struct global_config_t global_config;
 #define log_error(fmt, ...) if (global_config.bpf_log_err) bpf_printk("[pyperf error] " fmt, ##__VA_ARGS__)
 #define log_debug(fmt, ...) if (global_config.bpf_log_debug) bpf_printk("[pyperf debug] "fmt, ##__VA_ARGS__)
 
+#define try_read(dst, src) \
+    {if (bpf_probe_read_user(&(dst), sizeof((dst)), (src))) { \
+        log_error("read failed  %llx", (src));   \
+        return -1; \
+    }}
+
 #include "pthread.bpf.h"
 #include "pid.h"
 #include "stacks.h"
@@ -44,8 +50,12 @@ enum {
     PY_ERROR_NAME = 12,
     PY_ERROR_FRAME_OWNER = 13,
     PY_ERROR_FRAME_OWNER_INVALID = 14,
+    PY_ERROR_FRAME_TYPECHECK = 15,
+    PY_ERROR_CODE_TYPECHECK = 16,
+    PY_ERROR_RESERVED2 = 17,
+    PY_ERROR__RESERVED3 = 18,
 
-    __PY_ERROR_TOTAL_NUMBER_OF_ERRORS = 15, // not an error
+    __PY_ERROR_TOTAL_NUMBER_OF_ERRORS = 19, // not an error
 };
 
 struct error_stats {
@@ -234,30 +244,15 @@ static __always_inline int get_top_frame(py_pid_data *pid_data, py_sample_state_
     if (pid_data->offsets.PyThreadState_frame == -1) {
         // >= py311 && <= py312
         void *cframe;
-        if (bpf_probe_read_user(
-                &cframe,
-                sizeof(void *),
-                thread_state + pid_data->offsets.PyThreadState_cframe)) {
-            return -1;
-        }
+        try_read(cframe, thread_state + pid_data->offsets.PyThreadState_cframe)
         if (cframe == 0) {
             return -1;
         }
-        if (bpf_probe_read_user(
-                &state->frame_ptr,
-                sizeof(void *),
-                cframe + pid_data->offsets.PyCFrame_current_frame)) {
-            return -1;
-        }
+        try_read(state->frame_ptr, cframe + pid_data->offsets.PyCFrame_current_frame)
         return 0;
     }
     // < py311 && >= py313
-    if (bpf_probe_read_user(
-            &state->frame_ptr,
-            sizeof(void *),
-            thread_state + pid_data->offsets.PyThreadState_frame)) {
-        return -1;
-    }
+    try_read(state->frame_ptr, thread_state + pid_data->offsets.PyThreadState_frame)
     return 0;
 }
 
@@ -303,6 +298,9 @@ static __always_inline int pyperf_collect_impl(struct bpf_perf_event_data* ctx, 
             return submit_error_sample(PY_ERROR_TOP_FRAME);
         }
         log_debug("top frame %lx", state->frame_ptr);
+        if (pytypecheck_frame(state, (void*)state->frame_ptr)) {
+            return submit_error_sample(PY_ERROR_TOP_FRAME);
+        }
         // jump to reading first set of Python frames
         bpf_tail_call(ctx, &py_progs, PYTHON_PROG_IDX_READ_PYTHON_STACK);
         // we won't ever get here
@@ -594,11 +592,12 @@ static __always_inline int get_names(
 // since 311 frame_ptr is pointing to _PyInterpreterFrame
 // returns -PY_ERR_XXX on error, 1 on success, 0 if no more frames
 static __always_inline int get_frame_data(
-        void **frame_ptr,
-        py_offset_config *offsets,
+        py_sample_state_t *state,
         py_symbol *symbol,
         // ctx is only used to call helper to clear symbol, see documentation below
         void *ctx) {
+    void **frame_ptr = (void **) &state->frame_ptr;
+    py_offset_config *offsets = &state->offsets;
     void *code_ptr;
     void *cur_frame = *frame_ptr;
     if (!cur_frame) {
@@ -637,6 +636,9 @@ static __always_inline int get_frame_data(
     log_debug("code %lx", code_ptr);
     if (!code_ptr) {
         return 0; // todo learn when this happens, c extension?
+    }
+    if (pytypecheck_code(state, (void*)code_ptr)) {
+        return -PY_ERROR_CODE_TYPECHECK;
     }
 
     int res = get_names(cur_frame, code_ptr, offsets, symbol, ctx);
@@ -701,8 +703,10 @@ int read_python_stack(struct bpf_perf_event_data *ctx) {
 #pragma unroll
     for (int i = 0; i < PYTHON_STACK_FRAMES_PER_PROG; i++) {
         log_debug("------- frame %d %lx ---------- ", sample->stack_len, state->frame_ptr);
-
-        last_res = get_frame_data((void **) &state->frame_ptr, &state->offsets, sym, ctx);
+        if (pytypecheck_frame(state, (void*)state->frame_ptr)) {
+            return submit_error_sample(PY_ERROR_FRAME_TYPECHECK);
+        }
+        last_res = get_frame_data(state, sym, ctx);
         if (last_res < 0) {
             return submit_error_sample((uint8_t) (-last_res));
         }
