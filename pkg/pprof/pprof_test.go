@@ -74,20 +74,20 @@ func TestNormalizeProfile(t *testing.T) {
 			{Type: 3, Unit: 4},
 		},
 		Sample: []*profilev1.Sample{
-			{LocationId: []uint64{2, 3}, Value: []int64{0, 1}, Label: []*profilev1.Label{}},
+			{LocationId: []uint64{1, 2}, Value: []int64{0, 1}, Label: []*profilev1.Label{}},
 		},
 		Mapping: []*profilev1.Mapping{{
 			Id:           1,
 			HasFunctions: true,
 		}},
 		Location: []*profilev1.Location{
+			{Id: 1, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1, Line: 1}, {FunctionId: 2, Line: 3}}},
 			{Id: 2, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 2, Line: 1}, {FunctionId: 3, Line: 3}}},
-			{Id: 3, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 3, Line: 1}, {FunctionId: 4, Line: 3}}},
 		},
 		Function: []*profilev1.Function{
-			{Id: 2, Name: 6, SystemName: 7, Filename: 8, StartLine: 1},
-			{Id: 3, Name: 9, SystemName: 10, Filename: 11, StartLine: 1},
-			{Id: 4, Name: 12, SystemName: 13, Filename: 5, StartLine: 1},
+			{Id: 1, Name: 6, SystemName: 7, Filename: 8, StartLine: 1},
+			{Id: 2, Name: 9, SystemName: 10, Filename: 11, StartLine: 1},
+			{Id: 3, Name: 12, SystemName: 13, Filename: 5, StartLine: 1},
 		},
 		StringTable: []string{
 			"",

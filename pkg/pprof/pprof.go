@@ -361,9 +361,6 @@ func (p *Profile) Normalize() {
 		p.TimeNanos = currentTime().UnixNano()
 	}
 
-	sanitizeProfile(p.Profile)
-	p.clearAddresses()
-
 	// Non-string labels are not supported.
 	for _, sample := range p.Sample {
 		sample.Label = slices.RemoveInPlace(sample.Label, func(label *profilev1.Label, i int) bool {
@@ -404,6 +401,8 @@ func (p *Profile) Normalize() {
 
 	// Remove references to removed samples.
 	p.clearSampleReferences(removedSamples)
+	sanitizeProfile(p.Profile)
+	p.clearAddresses()
 }
 
 // Removes addresses from symbolized profiles.
