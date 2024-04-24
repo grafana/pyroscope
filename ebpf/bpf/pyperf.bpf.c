@@ -286,7 +286,7 @@ static __always_inline int pyperf_collect_impl(struct bpf_perf_event_data* ctx, 
 
 
     // Read PyThreadState of this Thread from TLS
-    void *thread_state;
+    void *thread_state = NULL;
     if (get_thread_state(pid_data, &thread_state)) {
         return submit_error_sample(PY_ERROR_THREAD_STATE);
     }

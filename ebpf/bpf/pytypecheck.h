@@ -11,26 +11,26 @@ struct py_object_header {
 };
 
 #define pytypecheck_read(dst, src) \
-    if (bpf_probe_read_user(&(dst), sizeof((dst)), src)) { \
-        /* log_error("ptc _read failed  %llx", src); */  \
+    {if (bpf_probe_read_user(&(dst), sizeof((dst)), src)) { \
+        log_error("ptc _read failed  %llx", src);   \
         return -1; \
-    }
+    }}
 
 
 static __always_inline int pytypecheck_obj(void *o, uint64_t typ) {
     if (typ == 0 || o == 0) {
-//        log_error("ptc _obj expected type is null");
+        log_error("ptc _obj expected type is null");
         return -1;
     }
     struct py_object_header obj = {};
     pytypecheck_read(obj, o)
-    log_debug("ptc _obj ob_type=%llx refcount =%llx o=%llx", obj.ob_type, obj.ob_refcnt, o);
+    log_debug("ptc obj o=%llx ob_type=%llx refcount =%llx ", o, obj.ob_type, obj.ob_refcnt);
     if (obj.ob_refcnt < 0) {
-//        log_error("ptc _obj uaf");
+        log_error("ptc _obj uaf");
         return -1;
     }
     if (obj.ob_type != (void *) typ) {
-        log_error("ptc _obj type mismatch %llx %llx", obj.ob_type, typ);
+        log_error("ptc obj type mismatch %llx %llx", obj.ob_type, typ);
         return -1;
     }
 
@@ -38,50 +38,45 @@ static __always_inline int pytypecheck_obj(void *o, uint64_t typ) {
     return 0;
 }
 
-static __always_inline int pytypecheck_glibc_header_size(py_sample_state_t *state, void *o, uint64_t allocationSize) {
+static __always_inline int pytypecheck_glibc_header_size(void *o, uint64_t allocationSize) {
     u64 mchunk_sz;
     pytypecheck_read(mchunk_sz, o - 0x8)
 //#define chunksize(p) (chunksize_nomask (p) & ~(SIZE_BITS))
     mchunk_sz = mchunk_sz & ~(0x7);
-//    log_debug("ptc _thread_state mchunk_sz=%llx", mchunk_sz);
 
 
     allocationSize += 0x8;
     if (allocationSize & 0xf) {
         allocationSize += 0x8;
     }
-//    log_debug("ptc _thread_state allocationSize=%llx", allocationSize);
     if (mchunk_sz != allocationSize) {
-//        log_error("ptc malloc sz %llx %llx %llx", mchunk_sz, allocationSize, o);
+        log_error("ptc o=%llx  allocationSize=%llx mchunk_sz=%llx", o, allocationSize, mchunk_sz);
         return -1;
     }
+    log_debug("ptc o=%llx  allocationSize=%llx mchunk_sz=%llx", o, allocationSize, mchunk_sz);
     return 0;
+
 }
 
-static __always_inline int pytypecheck_interpreter_state(py_sample_state_t *state, void *interp) {
-    log_debug("is = %llx", interp);
+static __always_inline int pytypecheck_interpreter_state(py_sample_state_t *state, void *is) {
+    log_debug("is = %llx", is);
     void *tstate_head;
     void *modules;
     void *importlib;
     uint32_t finalizing;
-//    log_debug("o_tshead = %llx o_modules = %llx o_importlib = %llx o_finalizing = %llx",
-//              state->typecheck.o_PyInterpreterState_tstate_head,
-//              state->typecheck.o_PyInterpreterState_modules,
-//              state->typecheck.o_PyInterpreterState_importlib,
-//              state->typecheck.o_PyInterpreterState_finalizing);
-    pytypecheck_read(tstate_head, interp + state->typecheck.o_PyInterpreterState_tstate_head)
-    log_debug("tstate_head = %llx", tstate_head);
-    pytypecheck_read(modules, interp + state->typecheck.o_PyInterpreterState_modules)
-    log_debug("modules = %llx", modules);
-    pytypecheck_read(importlib, interp + state->typecheck.o_PyInterpreterState_importlib)
-    log_debug("importlib = %llx", importlib);
-    pytypecheck_read(finalizing, interp + state->typecheck.o_PyInterpreterState_finalizing)
-    log_debug("finalizing = %x", finalizing);
+
+    pytypecheck_read(tstate_head, is + state->typecheck.o_PyInterpreterState_tstate_head)
+    pytypecheck_read(modules, is + state->typecheck.o_PyInterpreterState_modules)
+    pytypecheck_read(importlib, is + state->typecheck.o_PyInterpreterState_importlib)
+    pytypecheck_read(finalizing, is + state->typecheck.o_PyInterpreterState_finalizing)
+
+    log_debug("ts = %llx modules = %llx importlib = %llx", tstate_head, modules, importlib);
 
     if (finalizing) {
+        log_error("interpreter is finalizing");
         return -1;
     }
-    if (pytypecheck_glibc_header_size(state, interp, state->typecheck.size_PyInterpreterState_tstate)) {
+    if (pytypecheck_glibc_header_size(is, state->typecheck.size_PyInterpreterState_tstate)) {
         return -1;
     }
 
@@ -115,27 +110,27 @@ static __always_inline int pytypecheck_interpreter_state(py_sample_state_t *stat
                 return -1;
             }
         }
-        if (pytypecheck_glibc_header_size(state, tstate_head, state->typecheck.size_PyThreadState)) {
+        if (pytypecheck_glibc_header_size(tstate_head, state->typecheck.size_PyThreadState)) {
             return -1;
         }
     }
-    log_debug("is = ok");
+    log_debug("is %llx ok", is);
     return 0;
 }
 
-static __always_inline int pytypecheck_thread_state(py_sample_state_t *state, void *PyThreadState, bool check_interp) {
-    log_debug("ts = %llx", PyThreadState);
+static __always_inline int pytypecheck_thread_state(py_sample_state_t *state, void *ts, bool check_interp) {
+    log_debug("ts %llx", ts);
     void *dict, *interp;
-    pytypecheck_read(dict, PyThreadState + state->typecheck.o_PyThreadState_dict)
-    pytypecheck_read(interp, PyThreadState + state->typecheck.o_PyThreadState_interp)
-//    log_debug("ptc _thread_state dict=%llx interp=%llx", dict, interp);
+    pytypecheck_read(dict, ts + state->typecheck.o_PyThreadState_dict)
+    pytypecheck_read(interp, ts + state->typecheck.o_PyThreadState_interp)
+    log_debug("ptc %llx dict=%llx interp=%llx", dict, interp);
     if (dict != 0) {
         if (pytypecheck_obj(dict, state->typecheck.PyDict_Type)) {
             return -1;
         };
     }
 
-    if (pytypecheck_glibc_header_size(state, PyThreadState, state->typecheck.size_PyThreadState)) {
+    if (pytypecheck_glibc_header_size(ts, state->typecheck.size_PyThreadState)) {
         return -1;
     }
     if (check_interp) {
@@ -143,6 +138,7 @@ static __always_inline int pytypecheck_thread_state(py_sample_state_t *state, vo
             return -1;
         }
     }
+    log_debug("ts %llx ok", ts);
 
     return 0;
 }
