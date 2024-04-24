@@ -1187,6 +1187,7 @@ func sanitizeProfile(p *profilev1.Profile) {
 	for i, s := range p.StringTable {
 		if s == "" {
 			z = int64(i)
+			break
 		}
 	}
 	if z == -1 {

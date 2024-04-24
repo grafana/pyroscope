@@ -249,6 +249,29 @@ func Test_sanitizeReferences(t *testing.T) {
 			},
 		},
 		{
+			name: "multiple_zero_strings",
+			profile: &profilev1.Profile{
+				SampleType: []*profilev1.ValueType{{}},
+				Sample: []*profilev1.Sample{
+					{LocationId: []uint64{1}, Value: []int64{1}, Label: []*profilev1.Label{{Key: 1, Str: 5}}},
+				},
+				Location:    []*profilev1.Location{{Id: 1, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1}}}},
+				Function:    []*profilev1.Function{{Id: 1, Name: 1, SystemName: 1, Filename: 2}},
+				Mapping:     []*profilev1.Mapping{{Id: 1, Filename: 1}},
+				StringTable: []string{"", "foo", "", "", "", "bar"},
+			},
+			expected: &profilev1.Profile{
+				SampleType: []*profilev1.ValueType{{}},
+				Sample: []*profilev1.Sample{
+					{LocationId: []uint64{1}, Value: []int64{1}, Label: []*profilev1.Label{{Key: 1, Str: 5}}},
+				},
+				Location:    []*profilev1.Location{{Id: 1, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1}}}},
+				Function:    []*profilev1.Function{{Id: 1, Name: 1, SystemName: 1, Filename: 2}},
+				Mapping:     []*profilev1.Mapping{{Id: 1, Filename: 1}},
+				StringTable: []string{"", "foo", "", "", "", "bar"},
+			},
+		},
+		{
 			name: "mapping_reference",
 			profile: &profilev1.Profile{
 				Sample: []*profilev1.Sample{
