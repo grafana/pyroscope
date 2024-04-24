@@ -29,12 +29,12 @@ python/dwarfdump:
 	git submodule update --init --recursive
 
 	echo "//go:build amd64 && linux" > python/python_offsets_gen_amd64.go
-	go run cmd/python_dwarfdump/main.go $(shell find testdata/python-x64 -name libpy\*.so\*) \
+	go run cmd/python_dwarfdump/main.go $(shell find testdata/python-x64 -name libpy\*.so\* | grep -v pyston) \
 	 	$(shell find testdata/python-x64  | grep -E "/python3\\.[0-9]+") >> python/python_offsets_gen_amd64.go
 	go fmt python/python_offsets_gen_amd64.go
 
 	echo "//go:build arm64 && linux" > python/python_offsets_gen_arm64.go
-	go run cmd/python_dwarfdump/main.go $(shell find testdata/python-arm64 -name libpy\*.so\*) \
+	go run cmd/python_dwarfdump/main.go $(shell find testdata/python-arm64 -name libpy\*.so\* | grep -v pyston) \
 	 	$(shell find testdata/python-arm64  | grep -E "/python3\\.[0-9]+") >> python/python_offsets_gen_arm64.go
 	go fmt python/python_offsets_gen_arm64.go
 

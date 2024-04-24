@@ -17,7 +17,8 @@ type PerfErrorStats struct{ Errors [15]uint32 }
 type PerfGlobalConfigT struct {
 	BpfLogErr   uint8
 	BpfLogDebug uint8
-	_           [6]byte
+	Typecheck   uint8
+	_           [5]byte
 	NsPidIno    uint64
 }
 
@@ -56,9 +57,10 @@ type PerfPyOffsetConfig struct {
 }
 
 type PerfPyPidData struct {
-	Offsets PerfPyOffsetConfig
-	_       [2]byte
-	Version struct {
+	Offsets   PerfPyOffsetConfig
+	_         [6]byte
+	Typecheck PerfPyTypecheckData
+	Version   struct {
 		Major uint32
 		Minor uint32
 		Patch uint32
@@ -67,14 +69,16 @@ type PerfPyPidData struct {
 	_             [2]byte
 	TssKey        int32
 	CollectKernel uint8
-	_             [3]byte
+	_             [7]byte
 }
 
 type PerfPySampleStateT struct {
 	SymbolCounter          int64
 	Offsets                PerfPyOffsetConfig
-	_                      [2]byte
+	_                      [6]byte
+	Typecheck              PerfPyTypecheckData
 	CurCpu                 uint32
+	_                      [4]byte
 	FramePtr               uint64
 	PythonStackProgCallCnt int64
 	Sym                    PerfPySymbol
@@ -95,6 +99,25 @@ type PerfPySymbol struct {
 	NameType      PerfPyStrType
 	FileType      PerfPyStrType
 	Padding       PerfPyStrType
+}
+
+type PerfPyTypecheckData struct {
+	PyCodeType                     uint64
+	PyFrameType                    uint64
+	PyBytesType                    uint64
+	PyUnicodeType                  uint64
+	PyTypeType                     uint64
+	PyDictType                     uint64
+	PyNoneType                     uint64
+	PyModuleType                   uint64
+	O_PyThreadStateDict            uint64
+	O_PyThreadStateInterp          uint64
+	SizePyThreadState              uint64
+	O_PyInterpreterStateTstateHead uint64
+	O_PyInterpreterStateFinalizing uint64
+	O_PyInterpreterStateModules    uint64
+	O_PyInterpreterStateImportlib  uint64
+	SizePyInterpreterStateTstate   uint64
 }
 
 type PerfSampleKey struct {

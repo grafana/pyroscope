@@ -7,6 +7,7 @@
 struct global_config_t {
     uint8_t bpf_log_err;
     uint8_t bpf_log_debug;
+    uint8_t typecheck;
     uint64_t ns_pid_ino;
 };
 
@@ -66,6 +67,7 @@ typedef struct {
 
 typedef struct {
     py_offset_config offsets;
+    py_typecheck_data typecheck;
     py_version version;
     struct libc libc;
     int32_t tssKey;
@@ -111,6 +113,7 @@ FAIL_COMPILATION_IF(HASH_LIMIT != PYTHON_STACK_MAX_LEN * sizeof(py_symbol_id))
 typedef struct {
     int64_t symbol_counter;
     py_offset_config offsets;
+    py_typecheck_data typecheck;
     uint32_t cur_cpu;
     uint64_t frame_ptr;
     int64_t python_stack_prog_call_cnt;
@@ -148,6 +151,9 @@ struct {
     __type(value, py_pid_data);
     __uint(max_entries, 10240);
 } py_pid_config SEC(".maps");
+
+#include "pytypecheck.h"
+
 
 #define PYTHON_PROG_IDX_READ_PYTHON_STACK 0
 
@@ -264,6 +270,9 @@ static __always_inline int pyperf_collect_impl(struct bpf_perf_event_data* ctx, 
     GET_STATE();
 
     state->offsets = pid_data->offsets;
+#if defined(PY_TYPECHECK_ENABLED)
+    state->typecheck = pid_data->typecheck;
+#endif
     state->cur_cpu = bpf_get_smp_processor_id();
     state->python_stack_prog_call_cnt = 0;
 
@@ -282,6 +291,9 @@ static __always_inline int pyperf_collect_impl(struct bpf_perf_event_data* ctx, 
         return submit_error_sample(PY_ERROR_THREAD_STATE);
     }
     log_debug("thread_state %lx", thread_state);
+    if (pytypecheck_thread_state(state, thread_state, /* check_interp= */ true)) {
+        return submit_error_sample(PY_ERROR_THREAD_STATE);
+    }
 
     // pre-initialize event struct in case any subprogram below fails
     event->stack_len = 0;

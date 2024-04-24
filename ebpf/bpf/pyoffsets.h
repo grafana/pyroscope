@@ -43,4 +43,25 @@ typedef struct {
 
 } py_offset_config;
 
+typedef struct {
+    uint64_t PyCode_Type;
+    uint64_t PyFrame_Type;
+    uint64_t PyBytes_Type;
+    uint64_t PyUnicode_Type;
+    uint64_t PyType_Type;
+    uint64_t PyDict_Type;
+    uint64_t PyNone_Type;
+    uint64_t PyModule_Type;
+
+    uint64_t o_PyThreadState_dict;
+    uint64_t o_PyThreadState_interp;
+    uint64_t size_PyThreadState;
+    uint64_t o_PyInterpreterState_tstate_head;
+    uint64_t o_PyInterpreterState_finalizing;
+    uint64_t o_PyInterpreterState_modules;
+    uint64_t o_PyInterpreterState_importlib;
+    uint64_t size_PyInterpreterState_tstate;
+
+} py_typecheck_data;
+
 #endif //PYROEBPF_PYOFFSETS_H

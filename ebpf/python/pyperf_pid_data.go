@@ -5,6 +5,7 @@ import (
 	"debug/elf"
 	"fmt"
 	"os"
+	"reflect"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -61,23 +62,46 @@ func GetPyPerfPidData(l log.Logger, pid uint32, collectKernel bool) (*PerfPyPidD
 	data := &PerfPyPidData{}
 	var (
 		autoTLSkeyAddr, pyRuntimeAddr uint64
+		typecheck                     PerfPyTypecheckData
 	)
 	baseAddr := base_.StartAddr
 	if ef.FileHeader.Type == elf.ET_EXEC {
 		baseAddr = 0
 	}
+	symbolsBind := map[string]*uint64{}
+	bind := func(name string, addr *uint64) {
+		symbolsBind[name] = addr
+	}
+	bind("autoTLSkey", &autoTLSkeyAddr)
+	bind("_PyRuntime", &pyRuntimeAddr)
+	bind("PyCode_Type", &typecheck.PyCodeType)
+	bind("PyFrame_Type", &typecheck.PyFrameType)
+	bind("PyBytes_Type", &typecheck.PyBytesType)
+	bind("PyUnicode_Type", &typecheck.PyUnicodeType)
+	bind("PyType_Type", &typecheck.PyTypeType)
+	bind("PyDict_Type", &typecheck.PyDictType)
+	bind("_PyNone_Type", &typecheck.PyNoneType)
+	bind("PyModule_Type", &typecheck.PyModuleType)
+
 	for _, symbol := range symbols {
-		switch symbol.Name {
-		case "autoTLSkey":
-			autoTLSkeyAddr = baseAddr + symbol.Value
-		case "_PyRuntime":
-			pyRuntimeAddr = baseAddr + symbol.Value
-		default:
-			continue
+		if addr, ok := symbolsBind[symbol.Name]; ok {
+			*addr = baseAddr + symbol.Value
 		}
 	}
 	if pyRuntimeAddr == 0 && autoTLSkeyAddr == 0 {
 		return nil, fmt.Errorf("missing symbols pyRuntimeAddr autoTLSkeyAddr %s %v", pythonPath, version)
+	}
+	typecheck.O_PyThreadStateDict = uint64(offsets.PyThreadState_dict)
+	typecheck.O_PyThreadStateInterp = uint64(offsets.PyThreadState_interp)
+	typecheck.SizePyThreadState = uint64(offsets.PyThreadStateSize)
+	typecheck.O_PyInterpreterStateTstateHead = uint64(offsets.PyInterpreterState_tstate_head)
+	typecheck.O_PyInterpreterStateFinalizing = uint64(offsets.PyInterpreterState_finalizing)
+	typecheck.O_PyInterpreterStateModules = uint64(offsets.PyInterpreterState_modules)
+	typecheck.O_PyInterpreterStateImportlib = uint64(offsets.PyInterpreterState_importlib)
+	typecheck.SizePyInterpreterStateTstate = uint64(offsets.PyInterpreterStateSize)
+
+	if err := validateTypeCheck(typecheck); err != nil {
+		return nil, fmt.Errorf("failed to validate typecheck %w", err)
 	}
 
 	data.Version.Major = uint32(version.Major)
@@ -146,10 +170,25 @@ func GetPyPerfPidData(l log.Logger, pid uint32, collectKernel bool) (*PerfPyPidD
 		PyObjectObType:                offsets.PyObject_ob_type,
 		PyTypeObjectTpName:            offsets.PyTypeObject_tp_name,
 	}
+	data.Typecheck = typecheck
 	if collectKernel {
 		data.CollectKernel = 1
 	} else {
 		data.CollectKernel = 0
 	}
 	return data, nil
+}
+
+func validateTypeCheck(tc PerfPyTypecheckData) error {
+	v := reflect.ValueOf(tc)
+	for i := 0; i < v.NumField(); i++ {
+		name := v.Type().Field(i).Name
+		vv := uint64(v.Field(i).Uint())
+		fmt.Printf("tc %s %v\n", name, vv)
+		i2 := int64(-1)
+		if vv == 0 || vv == uint64(i2) {
+			return fmt.Errorf("field %s is not found", name)
+		}
+	}
+	return nil
 }

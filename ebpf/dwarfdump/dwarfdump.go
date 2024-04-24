@@ -4,6 +4,7 @@ import (
 	"debug/dwarf"
 	"debug/elf"
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 )
@@ -193,6 +194,7 @@ type FieldDump struct {
 }
 
 func Dump(elfPath string, fields []Need) []FieldDump {
+	os.Stderr.WriteString("Dumping " + elfPath + "\n")
 	var err error
 
 	f, err := elf.Open(elfPath)

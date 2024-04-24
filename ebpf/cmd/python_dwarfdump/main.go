@@ -66,10 +66,12 @@ var pythonFields = []dwarfdump.Need{
 	{Name: "_typeobject", PrettyName: "PyTypeObject", Fields: []dwarfdump.NeedField{
 		{"tp_name", "PyTypeObject_tp_name"},
 	}},
-	{Name: "PyThreadState", Fields: []dwarfdump.NeedField{
+	{Name: "PyThreadState", Size: true, Fields: []dwarfdump.NeedField{
 		{"frame", "PyThreadState_frame"},
 		{"cframe", "PyThreadState_cframe"},
 		{"current_frame", "PyThreadState_current_frame"},
+		{"dict", "PyThreadState_dict"},
+		{"interp", "PyThreadState_interp"},
 	}},
 	{Name: "_PyCFrame", Fields: []dwarfdump.NeedField{
 		{"current_frame", "PyCFrame_current_frame"},
@@ -110,5 +112,13 @@ var pythonFields = []dwarfdump.Need{
 	{Name: "PyASCIIObject", PrettyName: "PyASCIIObject", Size: true},
 	{Name: "PyCompactUnicodeObject", PrettyName: "PyCompactUnicodeObject", Size: true},
 
-	//{Name: "_is", PrettyName: "PyInterpreterState", Fields: []string{}},
+	{Name: "_is", PrettyName: "PyInterpreterState", Size: true, Fields: []dwarfdump.NeedField{
+		{"finalizing", "PyInterpreterState_finalizing"},
+		{"modules", "PyInterpreterState_modules"},
+		{"tstate_head", "PyInterpreterState_tstate_head"},
+		{"importlib", "PyInterpreterState_importlib"},
+	}},
+	{Name: "PyConfig", Fields: []dwarfdump.NeedField{
+		{Name: "executable", PrintName: "PyConfig_executable"},
+	}},
 }

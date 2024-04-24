@@ -88,6 +88,9 @@ type UserOffsets struct {
 	PyThreadState_frame               int16
 	PyThreadState_cframe              int16
 	PyThreadState_current_frame       int16
+	PyThreadState_dict                int16
+	PyThreadState_interp              int16
+	PyThreadStateSize                 int16
 	PyCFrame_current_frame            int16
 	PyFrameObject_f_back              int16
 	PyFrameObject_f_code              int16
@@ -110,6 +113,12 @@ type UserOffsets struct {
 	PyTssTSize                        int16
 	PyASCIIObjectSize                 int16
 	PyCompactUnicodeObjectSize        int16
+	PyInterpreterState_tstate_head    int16
+	PyInterpreterState_finalizing     int16
+	PyInterpreterState_modules        int16
+	PyInterpreterState_importlib      int16
+	PyInterpreterStateSize            int32
+	PyConfig_executable               int16
 }
 
 type GlibcOffsets struct {

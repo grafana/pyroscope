@@ -266,6 +266,7 @@ func defaultConfig() Config {
 			DefaultTarget:      nil,
 			ContainerCacheSize: 1024,
 		},
+		RelabelConfig: nil,
 	}
 }
 
