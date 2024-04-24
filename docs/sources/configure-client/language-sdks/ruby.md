@@ -106,4 +106,4 @@ If your Pyroscope server has multi-tenancy enabled, you'll need to configure a t
 
 Check out the following resources to learn more about Ruby profiling:
 - [Ruby examples](https://github.com/pyroscope-io/pyroscope/tree/main/examples/language-sdk-instrumentation/ruby)
-- [Ruby Demo](https://demo.pyroscope.io/?query=rideshare-app-ruby.cpu%7B%7D) showing Ruby example with tags
+- [Ruby Demo](https://play.grafana.org/a/grafana-pyroscope-app/single?query=process_cpu%3Asamples%3Acount%3A%3Amilliseconds%7Bservice_name%3D%22pyroscope-rideshare-ruby%22%7D&from=now-1h&until=now) showing Ruby example with tags

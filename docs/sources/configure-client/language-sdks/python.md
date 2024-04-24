@@ -99,4 +99,4 @@ If your Pyroscope server has multi-tenancy enabled, you'll need to configure a t
 
 Check out the following resources to learn more about Python profiling:
 - [Python examples](https://github.com/pyroscope-io/pyroscope/tree/main/examples/language-sdk-instrumentation/python)
-- [Python demo](https://demo.pyroscope.io/?query=rideshare-app-python.cpu%7B%7D) showing Python example with tags
+- [Python demo](https://play.grafana.org/a/grafana-pyroscope-app/single?query=process_cpu%3Asamples%3Acount%3A%3Amilliseconds%7Bservice_name%3D%22pyroscope-rideshare-python%22%7D&from=now-1h&until=now) showing Python example with tags
