@@ -54,9 +54,12 @@ func Open(ctx context.Context, b objstore.BucketReader, m *block.Meta) (*Reader,
 	r.partitionsMap = make(map[uint64]*partition, len(r.index.PartitionHeaders))
 	r.partitions = make([]*partition, len(r.index.PartitionHeaders))
 	for i, h := range r.index.PartitionHeaders {
-		ph := r.partitionReader(h)
-		r.partitionsMap[h.Partition] = ph
-		r.partitions[i] = ph
+		var p *partition
+		if p, err = r.partitionReader(h); err != nil {
+			return nil, err
+		}
+		r.partitionsMap[h.Partition] = p
+		r.partitions[i] = p
 	}
 	return r, nil
 }
@@ -96,7 +99,7 @@ func (r *Reader) file(name string) (block.File, error) {
 	return f, nil
 }
 
-func (r *Reader) partitionReader(h *PartitionHeader) *partition {
+func (r *Reader) partitionReader(h *PartitionHeader) (*partition, error) {
 	p := &partition{reader: r}
 	switch r.index.Header.Version {
 	case FormatV1:
@@ -104,10 +107,12 @@ func (r *Reader) partitionReader(h *PartitionHeader) *partition {
 	case FormatV2:
 		p.initParquetTables(h)
 	case FormatV3:
-		p.initTables(h)
+		if err := p.initTables(h); err != nil {
+			return nil, err
+		}
 	}
 	p.initStacktraces(h.Stacktraces)
-	return p
+	return p, nil
 }
 
 var ErrPartitionNotFound = fmt.Errorf("partition not found")
@@ -201,28 +206,43 @@ func (p *partition) initParquetTables(h *PartitionHeader) {
 }
 
 // Format V3.
-func (p *partition) initTables(h *PartitionHeader) {
-	// TODO(kolesnikovae): decoder pool.
-	p.locations = &rawTable[schemav1.InMemoryLocation]{
+func (p *partition) initTables(h *PartitionHeader) (err error) {
+	locations := &rawTable[schemav1.InMemoryLocation]{
 		reader: p.reader,
 		header: h.V3.Locations,
-		dec:    newSymbolsDecoder[schemav1.InMemoryLocation](h.V3.Locations, new(locationsBlockDecoder)),
 	}
-	p.mappings = &rawTable[schemav1.InMemoryMapping]{
+	if locations.dec, err = locationsDecoder(h.V3.Locations); err != nil {
+		return err
+	}
+	p.locations = locations
+
+	mappings := &rawTable[schemav1.InMemoryMapping]{
 		reader: p.reader,
 		header: h.V3.Mappings,
-		dec:    newSymbolsDecoder[schemav1.InMemoryMapping](h.V3.Mappings, new(mappingsBlockDecoder)),
 	}
-	p.functions = &rawTable[schemav1.InMemoryFunction]{
+	if mappings.dec, err = mappingsDecoder(h.V3.Mappings); err != nil {
+		return err
+	}
+	p.mappings = mappings
+
+	functions := &rawTable[schemav1.InMemoryFunction]{
 		reader: p.reader,
 		header: h.V3.Functions,
-		dec:    newSymbolsDecoder[schemav1.InMemoryFunction](h.V3.Functions, new(functionsBlockDecoder)),
 	}
-	p.strings = &rawTable[string]{
+	if functions.dec, err = functionsDecoder(h.V3.Functions); err != nil {
+		return err
+	}
+	p.functions = functions
+
+	strings := &rawTable[string]{
 		reader: p.reader,
 		header: h.V3.Strings,
-		dec:    newSymbolsDecoder[string](h.V3.Strings, new(stringsBlockDecoder)),
 	}
+	if strings.dec, err = stringsDecoder(h.V3.Strings); err != nil {
+		return err
+	}
+	p.strings = strings
+	return nil
 }
 
 func (p *partition) Symbols() *Symbols {
@@ -436,7 +456,7 @@ func (t *rawTable[T]) readFrom(r *bufio.Reader) error {
 	crc := crc32.New(castagnoli)
 	tee := io.TeeReader(r, crc)
 	t.s = make([]T, t.header.Length)
-	if err := t.dec.Decode(t.s, tee); err != nil {
+	if err := t.dec.decode(t.s, tee); err != nil {
 		return fmt.Errorf("failed to decode symbols: %w", err)
 	}
 	if t.header.CRC != crc.Sum32() {

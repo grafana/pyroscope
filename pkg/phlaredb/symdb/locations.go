@@ -74,6 +74,14 @@ type locationsBlockEncoder struct {
 	buf bytes.Buffer
 }
 
+func newLocationsEncoder() *symbolsEncoder[v1.InMemoryLocation] {
+	return newSymbolsEncoder[v1.InMemoryLocation](new(locationsBlockEncoder))
+}
+
+func (e *locationsBlockEncoder) format() SymbolsBlockFormat {
+	return BlockLocationsV1
+}
+
 func (e *locationsBlockEncoder) encode(w io.Writer, locations []v1.InMemoryLocation) error {
 	e.initWrite(len(locations))
 	var addr int64
@@ -160,6 +168,13 @@ type locationsBlockDecoder struct {
 	folded  []bool
 
 	tmp []byte
+}
+
+func locationsDecoder(h SymbolsBlockHeader) (*symbolsDecoder[v1.InMemoryLocation], error) {
+	if h.Format == BlockLocationsV1 {
+		return newSymbolsDecoder[v1.InMemoryLocation](h, new(locationsBlockDecoder)), nil
+	}
+	return nil, fmt.Errorf("%w: unknown locations format: %d", ErrUnknownVersion, h.Format)
 }
 
 func (d *locationsBlockDecoder) readHeader(r io.Reader) error {

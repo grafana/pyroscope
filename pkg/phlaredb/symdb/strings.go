@@ -42,6 +42,14 @@ type stringsBlockEncoder struct {
 	tmp    []byte
 }
 
+func newStringsEncoder() *symbolsEncoder[string] {
+	return newSymbolsEncoder[string](new(stringsBlockEncoder))
+}
+
+func (e *stringsBlockEncoder) format() SymbolsBlockFormat {
+	return BlockStringsV1
+}
+
 func (e *stringsBlockEncoder) encode(w io.Writer, strings []string) error {
 	e.initWrite(len(strings))
 	e.header.BlockEncoding = e.blockEncoding(strings)
@@ -97,6 +105,13 @@ func (e *stringsBlockEncoder) initWrite(strings int) {
 type stringsBlockDecoder struct {
 	header stringsBlockHeader
 	tmp    []byte
+}
+
+func stringsDecoder(h SymbolsBlockHeader) (*symbolsDecoder[string], error) {
+	if h.Format == BlockStringsV1 {
+		return newSymbolsDecoder[string](h, new(stringsBlockDecoder)), nil
+	}
+	return nil, fmt.Errorf("%w: unknown strings format: %d", ErrUnknownVersion, h.Format)
 }
 
 func (d *stringsBlockDecoder) readHeader(r io.Reader) error {

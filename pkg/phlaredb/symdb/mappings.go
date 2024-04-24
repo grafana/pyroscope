@@ -65,6 +65,14 @@ type mappingsBlockEncoder struct {
 	ints64 []int64
 }
 
+func newMappingsEncoder() *symbolsEncoder[v1.InMemoryMapping] {
+	return newSymbolsEncoder[v1.InMemoryMapping](new(mappingsBlockEncoder))
+}
+
+func (e *mappingsBlockEncoder) format() SymbolsBlockFormat {
+	return BlockMappingsV1
+}
+
 func (e *mappingsBlockEncoder) encode(w io.Writer, mappings []v1.InMemoryMapping) error {
 	e.initWrite(len(mappings))
 	var enc delta.BinaryPackedEncoding
@@ -165,6 +173,13 @@ type mappingsBlockDecoder struct {
 	ints   []int32
 	ints64 []int64
 	tmp    []byte
+}
+
+func mappingsDecoder(h SymbolsBlockHeader) (*symbolsDecoder[v1.InMemoryMapping], error) {
+	if h.Format == BlockMappingsV1 {
+		return newSymbolsDecoder[v1.InMemoryMapping](h, new(mappingsBlockDecoder)), nil
+	}
+	return nil, fmt.Errorf("%w: unknown mappings format: %d", ErrUnknownVersion, h.Format)
 }
 
 func (d *mappingsBlockDecoder) readHeader(r io.Reader) error {

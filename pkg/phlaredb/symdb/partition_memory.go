@@ -408,12 +408,13 @@ func writeSymbolsBlock[T any](w *fileWriter, s []T, e *symbolsEncoder[T]) (h Sym
 	h.Offset = uint64(w.w.offset)
 	crc := crc32.New(castagnoli)
 	mw := io.MultiWriter(crc, w.w)
-	if err = e.Encode(mw, s); err != nil {
+	if err = e.encode(mw, s); err != nil {
 		return h, err
 	}
 	h.Size = uint32(w.w.offset) - uint32(h.Offset)
 	h.CRC = crc.Sum32()
 	h.Length = uint32(len(s))
-	h.BlockSize = uint32(e.bs)
+	h.BlockSize = uint32(e.blockSize)
+	h.Format = e.format()
 	return h, nil
 }

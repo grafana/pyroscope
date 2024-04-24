@@ -350,7 +350,19 @@ type SymbolsBlockHeader struct {
 	Length uint32
 	// BlockSize denotes the number of items per block.
 	BlockSize uint32
+	// Format of the encoded data.
+	Format SymbolsBlockFormat
 }
+
+type SymbolsBlockFormat uint32
+
+const (
+	_ SymbolsBlockFormat = iota
+	BlockLocationsV1
+	BlockFunctionsV1
+	BlockMappingsV1
+	BlockStringsV1
+)
 
 const symbolsBlockReferenceSize = int(unsafe.Sizeof(SymbolsBlockHeader{}))
 
@@ -360,6 +372,7 @@ func (h *SymbolsBlockHeader) marshal(b []byte) {
 	binary.BigEndian.PutUint32(b[12:16], h.CRC)
 	binary.BigEndian.PutUint32(b[16:20], h.Length)
 	binary.BigEndian.PutUint32(b[20:24], h.BlockSize)
+	binary.BigEndian.PutUint32(b[24:28], uint32(h.Format))
 }
 
 func (h *SymbolsBlockHeader) unmarshal(b []byte) {
@@ -368,6 +381,7 @@ func (h *SymbolsBlockHeader) unmarshal(b []byte) {
 	h.CRC = binary.BigEndian.Uint32(b[12:16])
 	h.Length = binary.BigEndian.Uint32(b[16:20])
 	h.BlockSize = binary.BigEndian.Uint32(b[20:24])
+	h.Format = SymbolsBlockFormat(binary.BigEndian.Uint32(b[24:28]))
 }
 
 func marshalSymbolsBlockReferences(b []byte, refs ...SymbolsBlockHeader) int {
@@ -589,31 +603,35 @@ func (h *StacktraceBlockHeader) unmarshal(b []byte) {
 
 type symbolsBlockEncoder[T any] interface {
 	encode(w io.Writer, block []T) error
+	format() SymbolsBlockFormat
 }
 
 type symbolsEncoder[T any] struct {
-	e  symbolsBlockEncoder[T]
-	bs int
+	blockEncoder symbolsBlockEncoder[T]
+	blockSize    int
 }
 
 const defaultSymbolsBlockSize = 1 << 10
 
 func newSymbolsEncoder[T any](e symbolsBlockEncoder[T]) *symbolsEncoder[T] {
-	return &symbolsEncoder[T]{e: e, bs: defaultSymbolsBlockSize}
+	return &symbolsEncoder[T]{blockEncoder: e, blockSize: defaultSymbolsBlockSize}
 }
 
-func (e *symbolsEncoder[T]) Encode(w io.Writer, items []T) (err error) {
+func (e *symbolsEncoder[T]) encode(w io.Writer, items []T) (err error) {
 	l := len(items)
-	for i := 0; i < l; i += e.bs {
-		block := items[i:math.Min(i+e.bs, l)]
-		if err = e.e.encode(w, block); err != nil {
+	for i := 0; i < l; i += e.blockSize {
+		block := items[i:math.Min(i+e.blockSize, l)]
+		if err = e.blockEncoder.encode(w, block); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// TODO: args order
+func (e *symbolsEncoder[T]) format() SymbolsBlockFormat {
+	return e.blockEncoder.format()
+}
+
 type symbolsBlockDecoder[T any] interface {
 	decode(r io.Reader, dst []T) error
 }
@@ -627,7 +645,7 @@ func newSymbolsDecoder[T any](h SymbolsBlockHeader, d symbolsBlockDecoder[T]) *s
 	return &symbolsDecoder[T]{h: h, d: d}
 }
 
-func (d *symbolsDecoder[T]) Decode(dst []T, r io.Reader) error {
+func (d *symbolsDecoder[T]) decode(dst []T, r io.Reader) error {
 	if d.h.BlockSize == 0 || d.h.Length == 0 {
 		return nil
 	}

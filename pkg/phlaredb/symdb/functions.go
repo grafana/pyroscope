@@ -57,6 +57,14 @@ type functionsBlockEncoder struct {
 	ints []int32
 }
 
+func newFunctionsEncoder() *symbolsEncoder[v1.InMemoryFunction] {
+	return newSymbolsEncoder[v1.InMemoryFunction](new(functionsBlockEncoder))
+}
+
+func (e *functionsBlockEncoder) format() SymbolsBlockFormat {
+	return BlockFunctionsV1
+}
+
 func (e *functionsBlockEncoder) encode(w io.Writer, functions []v1.InMemoryFunction) error {
 	e.initWrite(len(functions))
 	var enc delta.BinaryPackedEncoding
@@ -116,6 +124,13 @@ type functionsBlockDecoder struct {
 
 	ints []int32
 	tmp  []byte
+}
+
+func functionsDecoder(h SymbolsBlockHeader) (*symbolsDecoder[v1.InMemoryFunction], error) {
+	if h.Format == BlockFunctionsV1 {
+		return newSymbolsDecoder[v1.InMemoryFunction](h, new(functionsBlockDecoder)), nil
+	}
+	return nil, fmt.Errorf("%w: unknown functions format: %d", ErrUnknownVersion, h.Format)
 }
 
 func (d *functionsBlockDecoder) readHeader(r io.Reader) error {
