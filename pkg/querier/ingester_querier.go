@@ -115,7 +115,7 @@ func (q *Querier) selectTreeFromIngesters(ctx context.Context, req *querierv1.Se
 	g, gCtx := errgroup.WithContext(ctx)
 	for idx := range responses {
 		r := responses[idx]
-		hints, ok := plan[r.addr]
+		planEntry, ok := plan[r.addr]
 		if !ok && plan != nil {
 			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("no hints found for replica %s", r.addr))
 		}
@@ -127,7 +127,7 @@ func (q *Querier) selectTreeFromIngesters(ctx context.Context, req *querierv1.Se
 					Start:         req.Start,
 					End:           req.End,
 					Type:          profileType,
-					Hints:         &ingestv1.Hints{Block: hints},
+					Hints:         &ingestv1.Hints{Block: planEntry.BlockHints},
 				},
 				MaxNodes: req.MaxNodes,
 			})
@@ -172,7 +172,7 @@ func (q *Querier) selectProfileFromIngesters(ctx context.Context, req *querierv1
 	g, gCtx := errgroup.WithContext(ctx)
 	for idx := range responses {
 		r := responses[idx]
-		hints, ok := plan[r.addr]
+		planEntry, ok := plan[r.addr]
 		if !ok && plan != nil {
 			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("no hints found for replica %s", r.addr))
 		}
@@ -184,7 +184,7 @@ func (q *Querier) selectProfileFromIngesters(ctx context.Context, req *querierv1
 					Start:         req.Start,
 					End:           req.End,
 					Type:          profileType,
-					Hints:         &ingestv1.Hints{Block: hints},
+					Hints:         &ingestv1.Hints{Block: planEntry.BlockHints},
 				},
 				MaxNodes:           req.MaxNodes,
 				StackTraceSelector: req.StackTraceSelector,
@@ -200,7 +200,7 @@ func (q *Querier) selectProfileFromIngesters(ctx context.Context, req *querierv1
 	return selectMergePprofProfile(gCtx, profileType, responses)
 }
 
-func (q *Querier) selectSeriesFromIngesters(ctx context.Context, req *ingesterv1.MergeProfilesLabelsRequest, plan map[string]*ingestv1.BlockHints) ([]ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels], error) {
+func (q *Querier) selectSeriesFromIngesters(ctx context.Context, req *ingesterv1.MergeProfilesLabelsRequest, plan map[string]*blockPlanEntry) ([]ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectSeries Ingesters")
 	defer sp.Finish()
 	var responses []ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels]
@@ -222,13 +222,13 @@ func (q *Querier) selectSeriesFromIngesters(ctx context.Context, req *ingesterv1
 	g, _ := errgroup.WithContext(ctx)
 	for _, r := range responses {
 		r := r
-		hints, ok := plan[r.addr]
+		planEntry, ok := plan[r.addr]
 		if !ok && plan != nil {
 			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("no hints found for replica %s", r.addr))
 		}
 		g.Go(util.RecoverPanic(func() error {
 			req := req.CloneVT()
-			req.Request.Hints = &ingestv1.Hints{Block: hints}
+			req.Request.Hints = &ingestv1.Hints{Block: planEntry.BlockHints}
 			return r.response.Send(req)
 		}))
 	}
@@ -294,7 +294,7 @@ func (q *Querier) seriesFromIngesters(ctx context.Context, req *ingesterv1.Serie
 	return responses, nil
 }
 
-func (q *Querier) selectSpanProfileFromIngesters(ctx context.Context, req *querierv1.SelectMergeSpanProfileRequest, plan map[string]*ingestv1.BlockHints) (*phlaremodel.Tree, error) {
+func (q *Querier) selectSpanProfileFromIngesters(ctx context.Context, req *querierv1.SelectMergeSpanProfileRequest, plan map[string]*blockPlanEntry) (*phlaremodel.Tree, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeSpanProfile Ingesters")
 	defer sp.Finish()
 	profileType, err := phlaremodel.ParseProfileTypeSelector(req.ProfileTypeID)
@@ -325,7 +325,7 @@ func (q *Querier) selectSpanProfileFromIngesters(ctx context.Context, req *queri
 	g, gCtx := errgroup.WithContext(ctx)
 	for idx := range responses {
 		r := responses[idx]
-		hints, ok := plan[r.addr]
+		planEntry, ok := plan[r.addr]
 		if !ok && plan != nil {
 			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("no hints found for replica %s", r.addr))
 		}
@@ -338,7 +338,7 @@ func (q *Querier) selectSpanProfileFromIngesters(ctx context.Context, req *queri
 					End:           req.End,
 					Type:          profileType,
 					SpanSelector:  req.SpanSelector,
-					Hints:         &ingestv1.Hints{Block: hints},
+					Hints:         &ingestv1.Hints{Block: planEntry.BlockHints},
 				},
 				MaxNodes: req.MaxNodes,
 			})

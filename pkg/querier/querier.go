@@ -577,72 +577,30 @@ func (q *Querier) AnalyzeQuery(ctx context.Context, req *connect.Request[querier
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "AnalyzeQuery")
 	defer sp.Finish()
 
-	blockMetadataReq := &ingestv1.BlockMetadataRequest{
-		Start: req.Msg.Start,
-		End:   req.Msg.End,
-	}
-
-	ingesterBlockMetadata := newReplicasPerBlockID(q.logger)
-	blockSelectIngesters, err := q.blockSelectFromIngesters(ctx, blockMetadataReq)
-	if err != nil {
-		return nil, err
-	}
-	ingesterBlockMetadata.add(blockSelectIngesters, ingesterInstance)
-
-	storeGatewayBlockMetadata := newReplicasPerBlockID(q.logger)
-	blockSelectStoreGateways, err := q.blockSelectFromStoreGateway(ctx, blockMetadataReq)
-	if err != nil {
-		return nil, err
-	}
-	storeGatewayBlockMetadata.add(blockSelectStoreGateways, storeGatewayInstance)
-
-	blockMetadata := newReplicasPerBlockID(q.logger)
-	blockMetadata.add(blockSelectStoreGateways, storeGatewayInstance)
-	blockMetadata.add(blockSelectIngesters, ingesterInstance)
-	plan := blockMetadata.blockPlan(ctx)
-
-	ingesterReplicationSet, err := q.ingesterQuerier.ring.GetReplicationSetForOperation(readNoExtend)
-	if err != nil {
-		return nil, err
-	}
-	storeGatewayReplicationSet, err := q.storeGatewayQuerier.ring.GetReplicationSetForOperation(readNoExtend)
-	if err != nil {
-		return nil, err
-	}
+	plan, err := q.blockSelect(ctx, model.Time(req.Msg.Start), model.Time(req.Msg.End))
 
 	ingesterQueryScope := &querierv1.QueryScope{
-		ComponentType: "short-term-storage",
+		ComponentType: "Short term storage",
 	}
 	storeGatewayQueryScope := &querierv1.QueryScope{
-		ComponentType: "long-term-storage",
+		ComponentType: "Long term storage",
 	}
 	ingesterBlockIds := make([]string, 0)
 	storeGatewayBlockIds := make([]string, 0)
-	for replica, blockHints := range plan {
-		if len(blockHints.Ulids) == 0 {
+	deduplicationNeeded := false
+	for _, planEntry := range plan {
+		if len(planEntry.Ulids) == 0 {
 			continue
 		}
-		// running locally or with -target=all
-		if ingesterReplicationSet.Includes(replica) && storeGatewayReplicationSet.Includes(replica) {
-			for _, blockId := range blockHints.Ulids {
-				if ingesterBlockMetadata.contains(blockId) {
-					ingesterQueryScope.ComponentCount += 1
-					ingesterQueryScope.NumBlocks += 1
-					ingesterBlockIds = append(ingesterBlockIds, blockId)
-				} else if storeGatewayBlockMetadata.contains(blockId) {
-					storeGatewayQueryScope.ComponentCount += 1
-					storeGatewayQueryScope.NumBlocks += 1
-					storeGatewayBlockIds = append(storeGatewayBlockIds, blockId)
-				}
-			}
-		} else if ingesterReplicationSet.Includes(replica) {
+		deduplicationNeeded = deduplicationNeeded || planEntry.Deduplication
+		if planEntry.InstanceType == ingesterInstance {
 			ingesterQueryScope.ComponentCount += 1
-			ingesterQueryScope.NumBlocks += uint64(len(blockHints.Ulids))
-			ingesterBlockIds = append(ingesterBlockIds, blockHints.Ulids...)
-		} else if storeGatewayReplicationSet.Includes(replica) {
+			ingesterQueryScope.NumBlocks += uint64(len(planEntry.Ulids))
+			ingesterBlockIds = append(ingesterBlockIds, planEntry.Ulids...)
+		} else {
 			storeGatewayQueryScope.ComponentCount += 1
-			storeGatewayQueryScope.NumBlocks += uint64(len(blockHints.Ulids))
-			storeGatewayBlockIds = append(storeGatewayBlockIds, blockHints.Ulids...)
+			storeGatewayQueryScope.NumBlocks += uint64(len(planEntry.Ulids))
+			storeGatewayBlockIds = append(storeGatewayBlockIds, planEntry.Ulids...)
 		}
 	}
 
@@ -696,8 +654,9 @@ func (q *Querier) AnalyzeQuery(ctx context.Context, req *connect.Request[querier
 	res := &querierv1.AnalyzeQueryResponse{
 		QueryScopes: []*querierv1.QueryScope{ingesterQueryScope, storeGatewayQueryScope},
 		QueryImpact: &querierv1.QueryImpact{
-			Type:           querierv1.QueryImpactType_MEDIUM, // TODO
-			TotalBytesRead: totalBytes,
+			Type:                querierv1.QueryImpactType_MEDIUM, // TODO
+			TotalBytesRead:      totalBytes,
+			DeduplicationNeeded: deduplicationNeeded,
 		},
 	}
 
@@ -1116,7 +1075,7 @@ func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querier
 	}), nil
 }
 
-func (q *Querier) selectSeries(ctx context.Context, req *connect.Request[querierv1.SelectSeriesRequest], plan map[string]*ingestv1.BlockHints) ([]ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels], error) {
+func (q *Querier) selectSeries(ctx context.Context, req *connect.Request[querierv1.SelectSeriesRequest], plan map[string]*blockPlanEntry) ([]ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels], error) {
 	stepMs := time.Duration(req.Msg.Step * float64(time.Second)).Milliseconds()
 	sort.Strings(req.Msg.GroupBy)
 

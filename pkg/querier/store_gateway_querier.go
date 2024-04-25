@@ -146,7 +146,7 @@ func forAllStoreGateways[T any](ctx context.Context, tenantID string, storegatew
 }
 
 // forAllPlannedStoreGatway runs f, in parallel, for all store-gateways part of the plan
-func forAllPlannedStoreGateways[T any](ctx context.Context, _ string, storegatewayQuerier *StoreGatewayQuerier, plan map[string]*ingestv1.BlockHints, f QueryReplicaWithHintsFn[T, StoreGatewayQueryClient]) ([]ResponseFromReplica[T], error) {
+func forAllPlannedStoreGateways[T any](ctx context.Context, _ string, storegatewayQuerier *StoreGatewayQuerier, plan map[string]*blockPlanEntry, f QueryReplicaWithHintsFn[T, StoreGatewayQueryClient]) ([]ResponseFromReplica[T], error) {
 	replicationSet, err := storegatewayQuerier.ring.GetReplicationSetForOperation(readNoExtend)
 	if err != nil {
 		return nil, err
@@ -175,7 +175,7 @@ func GetShuffleShardingSubring(ring ring.ReadRing, userID string, limits StoreGa
 	return ring.ShuffleShard(userID, shardSize)
 }
 
-func (q *Querier) selectTreeFromStoreGateway(ctx context.Context, req *querierv1.SelectMergeStacktracesRequest, plan map[string]*ingestv1.BlockHints) (*phlaremodel.Tree, error) {
+func (q *Querier) selectTreeFromStoreGateway(ctx context.Context, req *querierv1.SelectMergeStacktracesRequest, plan map[string]*blockPlanEntry) (*phlaremodel.Tree, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectTree StoreGateway")
 	defer sp.Finish()
 	profileType, err := phlaremodel.ParseProfileTypeSelector(req.ProfileTypeID)
@@ -210,7 +210,7 @@ func (q *Querier) selectTreeFromStoreGateway(ctx context.Context, req *querierv1
 	g, gCtx := errgroup.WithContext(ctx)
 	for _, r := range responses {
 		r := r
-		hints, ok := plan[r.addr]
+		planEntry, ok := plan[r.addr]
 		if !ok && plan != nil {
 			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("no hints found for replica %s", r.addr))
 		}
@@ -221,7 +221,7 @@ func (q *Querier) selectTreeFromStoreGateway(ctx context.Context, req *querierv1
 					Start:         req.Start,
 					End:           req.End,
 					Type:          profileType,
-					Hints:         &ingestv1.Hints{Block: hints},
+					Hints:         &ingestv1.Hints{Block: planEntry.BlockHints},
 				},
 				MaxNodes: req.MaxNodes,
 			})
@@ -235,7 +235,7 @@ func (q *Querier) selectTreeFromStoreGateway(ctx context.Context, req *querierv1
 	return selectMergeTree(gCtx, responses)
 }
 
-func (q *Querier) selectProfileFromStoreGateway(ctx context.Context, req *querierv1.SelectMergeProfileRequest, plan map[string]*ingestv1.BlockHints) (*googlev1.Profile, error) {
+func (q *Querier) selectProfileFromStoreGateway(ctx context.Context, req *querierv1.SelectMergeProfileRequest, plan map[string]*blockPlanEntry) (*googlev1.Profile, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectProfile StoreGateway")
 	defer sp.Finish()
 	profileType, err := phlaremodel.ParseProfileTypeSelector(req.ProfileTypeID)
@@ -270,7 +270,7 @@ func (q *Querier) selectProfileFromStoreGateway(ctx context.Context, req *querie
 	g, gCtx := errgroup.WithContext(ctx)
 	for _, r := range responses {
 		r := r
-		hints, ok := plan[r.addr]
+		planEntry, ok := plan[r.addr]
 		if !ok && plan != nil {
 			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("no hints found for replica %s", r.addr))
 		}
@@ -281,7 +281,7 @@ func (q *Querier) selectProfileFromStoreGateway(ctx context.Context, req *querie
 					Start:         req.Start,
 					End:           req.End,
 					Type:          profileType,
-					Hints:         &ingestv1.Hints{Block: hints},
+					Hints:         &ingestv1.Hints{Block: planEntry.BlockHints},
 				},
 				MaxNodes:           req.MaxNodes,
 				StackTraceSelector: req.StackTraceSelector,
@@ -296,7 +296,7 @@ func (q *Querier) selectProfileFromStoreGateway(ctx context.Context, req *querie
 	return selectMergePprofProfile(gCtx, profileType, responses)
 }
 
-func (q *Querier) selectSeriesFromStoreGateway(ctx context.Context, req *ingesterv1.MergeProfilesLabelsRequest, plan map[string]*ingestv1.BlockHints) ([]ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels], error) {
+func (q *Querier) selectSeriesFromStoreGateway(ctx context.Context, req *ingesterv1.MergeProfilesLabelsRequest, plan map[string]*blockPlanEntry) ([]ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectSeries StoreGateway")
 	defer sp.Finish()
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
@@ -321,13 +321,13 @@ func (q *Querier) selectSeriesFromStoreGateway(ctx context.Context, req *ingeste
 	g, _ := errgroup.WithContext(ctx)
 	for _, r := range responses {
 		r := r
-		hints, ok := plan[r.addr]
+		planEntry, ok := plan[r.addr]
 		if !ok && plan != nil {
 			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("no hints found for replica %s", r.addr))
 		}
 		g.Go(util.RecoverPanic(func() error {
 			req := req.CloneVT()
-			req.Request.Hints = &ingestv1.Hints{Block: hints}
+			req.Request.Hints = &ingestv1.Hints{Block: planEntry.BlockHints}
 			return r.response.Send(req)
 		}))
 	}
@@ -403,7 +403,7 @@ func (q *Querier) seriesFromStoreGateway(ctx context.Context, req *ingestv1.Seri
 	return responses, nil
 }
 
-func (q *Querier) selectSpanProfileFromStoreGateway(ctx context.Context, req *querierv1.SelectMergeSpanProfileRequest, plan map[string]*ingestv1.BlockHints) (*phlaremodel.Tree, error) {
+func (q *Querier) selectSpanProfileFromStoreGateway(ctx context.Context, req *querierv1.SelectMergeSpanProfileRequest, plan map[string]*blockPlanEntry) (*phlaremodel.Tree, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectSpanProfile StoreGateway")
 	defer sp.Finish()
 	profileType, err := phlaremodel.ParseProfileTypeSelector(req.ProfileTypeID)
@@ -438,7 +438,7 @@ func (q *Querier) selectSpanProfileFromStoreGateway(ctx context.Context, req *qu
 	g, gCtx := errgroup.WithContext(ctx)
 	for _, r := range responses {
 		r := r
-		hints, ok := plan[r.addr]
+		planEntry, ok := plan[r.addr]
 		if !ok && plan != nil {
 			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("no hints found for replica %s", r.addr))
 		}
@@ -450,7 +450,7 @@ func (q *Querier) selectSpanProfileFromStoreGateway(ctx context.Context, req *qu
 					End:           req.End,
 					Type:          profileType,
 					SpanSelector:  req.SpanSelector,
-					Hints:         &ingestv1.Hints{Block: hints},
+					Hints:         &ingestv1.Hints{Block: planEntry.BlockHints},
 				},
 				MaxNodes: req.MaxNodes,
 			})

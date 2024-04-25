@@ -516,9 +516,10 @@ func (m *QueryImpact) CloneVT() *QueryImpact {
 		return (*QueryImpact)(nil)
 	}
 	r := &QueryImpact{
-		Type:               m.Type,
-		TotalBytesRead:     m.TotalBytesRead,
-		TotalQueriedSeries: m.TotalQueriedSeries,
+		Type:                m.Type,
+		TotalBytesRead:      m.TotalBytesRead,
+		TotalQueriedSeries:  m.TotalQueriedSeries,
+		DeduplicationNeeded: m.DeduplicationNeeded,
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -1193,6 +1194,9 @@ func (this *QueryImpact) EqualVT(that *QueryImpact) bool {
 		return false
 	}
 	if this.TotalQueriedSeries != that.TotalQueriedSeries {
+		return false
+	}
+	if this.DeduplicationNeeded != that.DeduplicationNeeded {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -2862,6 +2866,16 @@ func (m *QueryImpact) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.DeduplicationNeeded {
+		i--
+		if m.DeduplicationNeeded {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x20
+	}
 	if m.TotalQueriedSeries != 0 {
 		i = encodeVarint(dAtA, i, uint64(m.TotalQueriedSeries))
 		i--
@@ -3378,6 +3392,9 @@ func (m *QueryImpact) SizeVT() (n int) {
 	}
 	if m.TotalQueriedSeries != 0 {
 		n += 1 + sov(uint64(m.TotalQueriedSeries))
+	}
+	if m.DeduplicationNeeded {
+		n += 2
 	}
 	n += len(m.unknownFields)
 	return n
@@ -6206,6 +6223,26 @@ func (m *QueryImpact) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DeduplicationNeeded", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.DeduplicationNeeded = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])

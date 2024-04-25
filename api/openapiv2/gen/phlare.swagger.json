@@ -1121,6 +1121,9 @@
         "totalQueriedSeries": {
           "type": "string",
           "format": "uint64"
+        },
+        "deduplicationNeeded": {
+          "type": "boolean"
         }
       }
     },

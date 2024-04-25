@@ -199,6 +199,7 @@ message QueryImpact {
   QueryImpactType type = 1;
   uint64 total_bytes_read = 2;
   uint64 total_queried_series = 3;
+  bool deduplication_needed = 4;
 }
 
 enum QueryImpactType {
