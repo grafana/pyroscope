@@ -317,8 +317,8 @@ func cString(bs []byte) string {
 }
 
 type ElfDebugInfo struct {
-	SymbolsCount int    `river:"symbols_count,attr,optional"`
-	File         string `river:"file,attr,optional"`
+	SymbolsCount int    `alloy:"symbols_count,attr,optional" river:"symbols_count,attr,optional"`
+	File         string `alloy:"file,attr,optional" river:"file,attr,optional"`
 }
 
 func (et *ElfTable) DebugInfo() elf2.SymTabDebugInfo {
