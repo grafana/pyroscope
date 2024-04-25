@@ -50,7 +50,7 @@ static __always_inline int pyro_pthread_getspecific(struct libc *libc, int32_t k
 }
 
 static __always_inline int pthread_getspecific_glibc(const struct libc *libc, int32_t key, void **out, const void *fsbase) {
-    void *tmp = NULL;
+    void *tmp[2] = {NULL, NULL};
     if (key >= 32) {
         return -1; // it is possible to implement this branch, but it's not needed as autoTLSkey is almost always 0
     }
@@ -65,12 +65,12 @@ static __always_inline int pthread_getspecific_glibc(const struct libc *libc, in
     if (bpf_probe_read_user(
             &tmp,
             sizeof(tmp),
-            thread_self + libc->pthread_specific1stblock + key * 0x10 + 0x08)) {
+            thread_self + libc->pthread_specific1stblock + key * 0x10)) {
         log_error("pthread_getspecific_glibc(amd64) err 1");
         return -1;
     }
-    log_debug("pthread_getspecific_glibc(amd64) res=%llx", tmp);
-    *out = tmp;
+    log_debug("pthread_getspecific_glibc(amd64) res=%llx %llx", tmp[0], tmp[1]);
+    *out = tmp[1];
     return 0;
 }
 
