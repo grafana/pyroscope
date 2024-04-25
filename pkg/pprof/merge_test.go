@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -23,8 +24,15 @@ func Test_Merge_Single(t *testing.T) {
 	p, err := OpenFile("testdata/go.cpu.labels.pprof")
 	require.NoError(t, err)
 	var m ProfileMerge
-	require.NoError(t, m.Merge(p.Profile))
+	require.NoError(t, m.Merge(p.Profile.CloneVT()))
+	sortLabels(p.Profile)
 	testhelper.EqualProto(t, p.Profile, m.Profile())
+}
+
+func sortLabels(p *profilev1.Profile) {
+	for _, s := range p.Sample {
+		sort.Sort(LabelsByKeyValue(s.Label))
+	}
 }
 
 type fuzzEvent byte
@@ -183,8 +191,8 @@ func Test_Merge_Self(t *testing.T) {
 	p, err := OpenFile("testdata/go.cpu.labels.pprof")
 	require.NoError(t, err)
 	var m ProfileMerge
-	require.NoError(t, m.Merge(p.Profile))
-	require.NoError(t, m.Merge(p.Profile))
+	require.NoError(t, m.Merge(p.Profile.CloneVT()))
+	require.NoError(t, m.Merge(p.Profile.CloneVT()))
 	for i := range p.Sample {
 		s := p.Sample[i]
 		for j := range s.Value {
@@ -192,6 +200,7 @@ func Test_Merge_Self(t *testing.T) {
 		}
 	}
 	p.DurationNanos *= 2
+	sortLabels(p.Profile)
 	testhelper.EqualProto(t, p.Profile, m.Profile())
 }
 
@@ -211,8 +220,10 @@ func Test_Merge_Halves(t *testing.T) {
 
 	// Merge with self for normalisation.
 	var sm ProfileMerge
-	require.NoError(t, sm.Merge(p.Profile))
+	require.NoError(t, sm.Merge(p.Profile.CloneVT()))
 	p.DurationNanos *= 2
+
+	sortLabels(p.Profile)
 	testhelper.EqualProto(t, p.Profile, m.Profile())
 }
 
@@ -588,22 +599,11 @@ func TestMergeEmpty(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// Benchmark_Merge_self/pprof.MergeNoClone-10         	    4174	    290190 ns/op
 // Benchmark_Merge_self/pprof.Merge-10                	    2722	    421419 ns/op
 // Benchmark_Merge_self/profile.Merge-10              	     802	   1417907 ns/op
 func Benchmark_Merge_self(b *testing.B) {
 	d, err := os.ReadFile("testdata/go.cpu.labels.pprof")
 	require.NoError(b, err)
-
-	b.Run("pprof.MergeNoClone", func(b *testing.B) {
-		p, err := RawFromBytes(d)
-		require.NoError(b, err)
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			var m ProfileMerge
-			require.NoError(b, m.MergeNoClone(p.Profile.CloneVT()))
-		}
-	})
 
 	b.Run("pprof.Merge", func(b *testing.B) {
 		p, err := RawFromBytes(d)
