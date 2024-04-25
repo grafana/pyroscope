@@ -44,6 +44,7 @@ type PerfPyOffsetConfig struct {
 	PyCodeObjectCoName            int16
 	PyCodeObjectCoVarnames        int16
 	PyCodeObjectCoLocalsplusnames int16
+	PyCodeObjectCoNlocals         int16
 	PyTupleObjectObItem           int16
 	PyVarObjectObSize             int16
 	PyObjectObType                int16
@@ -58,7 +59,7 @@ type PerfPyOffsetConfig struct {
 
 type PerfPyPidData struct {
 	Offsets   PerfPyOffsetConfig
-	_         [6]byte
+	_         [4]byte
 	Typecheck PerfPyTypecheckData
 	Version   struct {
 		Major uint32
@@ -75,7 +76,7 @@ type PerfPyPidData struct {
 type PerfPySampleStateT struct {
 	SymbolCounter int64
 	Offsets       PerfPyOffsetConfig
-	_             [6]byte
+	_             [4]byte
 	Typecheck     PerfPyTypecheckData
 	Version       struct {
 		Major uint32

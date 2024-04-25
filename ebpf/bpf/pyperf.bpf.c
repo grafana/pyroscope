@@ -258,7 +258,7 @@ static __always_inline int pyperf_collect_impl(struct bpf_perf_event_data* ctx, 
     }
     log_debug("top frame %lx", state->frame_ptr);
     if (pytypecheck_frame(state, (void*)state->frame_ptr)) {
-        return submit_error_sample(PY_ERROR_TOP_FRAME);
+        return submit_error_sample(PY_ERROR_FRAME_TYPECHECK);
     }
     // jump to reading first set of Python frames
     bpf_tail_call(ctx, &py_progs, PYTHON_PROG_IDX_READ_PYTHON_STACK);
@@ -275,7 +275,11 @@ int pyperf_collect(struct bpf_perf_event_data *ctx) {
         return 0;
     }
 #if defined(__TARGET_ARCH_x86)
-    log_debug("pid %d userpace=%d (%d)", pid, ctx->regs.cs == 0x33, ctx->regs.cs);
+
+    uint64_t pid_tgid = bpf_get_current_pid_tgid();
+    u32 hostpid = (u32)(pid_tgid >> 32);
+
+    log_debug("pid %d | %d userspace=%d cs=0x%x)", pid, hostpid, ctx->regs.cs == 0x33, ctx->regs.cs);
 #elif defined(__TARGET_ARCH_arm64)
 
 #else
@@ -414,8 +418,8 @@ static __always_inline int get_class_name( void *cur_frame,
                                            void *code_ptr,
                                            py_sample_state_t *state,
                                            py_symbol *symbol) {
-    bool first_self;
-    bool first_cls;
+    bool first_self = false;
+    bool first_cls = false;
     log_debug("get_names");
     if (check_first_arg(code_ptr, state, &first_self, &first_cls)) {
 
@@ -432,9 +436,17 @@ static __always_inline int get_class_name( void *cur_frame,
     if (!first_self && !first_cls) {
         return 0;
     }
-
+    int co_nlocals = 0;
+    try_read(co_nlocals, code_ptr + state->offsets.PyCodeObject_co_nlocals)
+    log_debug("co_nlocals %d", co_nlocals);
+    if (co_nlocals < 1) {
+        *((u64 *) symbol->classname) = 0x31736c436f4e; // NoCls1
+        symbol->classname_type.type = PYSTR_TYPE_1BYTE | PYSTR_TYPE_ASCII;
+        symbol->classname_type.size_codepoints = 7;
+        return 0;
+    }
     // Read class name from $frame->f_localsplus[0]->ob_type->tp_name.
-    void *ptr;
+    void *ptr = NULL;
     if (bpf_probe_read_user(
             &ptr, sizeof(void *), (void *) (cur_frame + state->offsets.VFrame_localsplus))) {
         log_error("failed to read f_localsplus at %lx", cur_frame);
@@ -448,6 +460,7 @@ static __always_inline int get_class_name( void *cur_frame,
         return -PY_ERROR_CLASS_NAME;
 #endif
     }
+    log_debug("first local %llx", ptr);
     if (ptr) {
         if (first_self) {
             // we are working with an instance, first we need to get type
@@ -463,6 +476,16 @@ static __always_inline int get_class_name( void *cur_frame,
                 return -PY_ERROR_CLASS_NAME;
 #endif
             }
+            log_debug("ob_type %lx", ptr);
+            if (ptr == NULL) {
+                // never seen, added just in case
+                log_error("NilCls2");
+                *((u64 *) symbol->classname) = 0x32736c436c694e; // NilCls2
+                symbol->classname_type.type = PYSTR_TYPE_1BYTE | PYSTR_TYPE_ASCII;
+                symbol->classname_type.size_codepoints = 7;
+                return 0;
+            }
+
         }
         // https://github.com/python/cpython/blob/d73501602f863a54c872ce103cd3fa119e38bac9/Include/cpython/object.h#L106
         if (bpf_probe_read_user(&ptr, sizeof(void *), ptr + state->offsets.PyTypeObject_tp_name)) {
@@ -477,6 +500,7 @@ static __always_inline int get_class_name( void *cur_frame,
             return -PY_ERROR_CLASS_NAME;
 #endif
         }
+        log_debug("tp_name %lx", ptr);
         long len = bpf_probe_read_user_str(&symbol->classname, sizeof(symbol->classname), ptr);
         if (len < 0) {
             log_error("failed to read class name at %lx", ptr);
@@ -587,7 +611,7 @@ static __always_inline int get_frame_data(
     if (!code_ptr) {
         return 0; // todo learn when this happens, c extension?
     }
-    if (pytypecheck_code(state, (void*)code_ptr)) {
+    if (pytypecheck_code(state, (void*)code_ptr, (void*)cur_frame)) {
         return -PY_ERROR_CODE_TYPECHECK;
     }
 

@@ -99,6 +99,7 @@ type UserOffsets struct {
 	PyFrameObjectSize                 int16
 	PyCodeObject_co_filename          int16
 	PyCodeObject_co_name              int16
+	PyCodeObject_co_nlocals           int16
 	PyCodeObject_co_varnames          int16
 	PyCodeObject_co_localsplusnames   int16
 	PyTupleObject_ob_item             int16

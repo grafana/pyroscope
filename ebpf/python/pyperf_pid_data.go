@@ -166,6 +166,7 @@ func GetPyPerfPidData(l log.Logger, pid uint32, collectKernel bool) (*PerfPyPidD
 		PyCodeObjectCoName:            offsets.PyCodeObject_co_name,
 		PyCodeObjectCoVarnames:        offsets.PyCodeObject_co_varnames,
 		PyCodeObjectCoLocalsplusnames: offsets.PyCodeObject_co_localsplusnames,
+		PyCodeObjectCoNlocals:         offsets.PyCodeObject_co_nlocals,
 		PyTupleObjectObItem:           offsets.PyTupleObject_ob_item,
 		VFrameCode:                    vframeCode,
 		VFramePrevious:                vframeBack,

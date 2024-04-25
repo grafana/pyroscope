@@ -146,7 +146,7 @@ static __always_inline int pytypecheck_frame(py_sample_state_t *state, void *f) 
     return 0;
 }
 
-static __always_inline int pytypecheck_code(py_sample_state_t *state, void *code) {
+static __always_inline int pytypecheck_code(py_sample_state_t *state, void *code, void *frame) {
     pytypecheck_version_check(state)
     if (code == 0) {
         log_debug("[pytypecheck] code %llx null", code);
@@ -182,6 +182,20 @@ static __always_inline int pytypecheck_unicode(py_sample_state_t *state, void *t
         return -1;
     }
     log_debug("[pytypecheck] unicode %llx ok", tuple);
+    return 0;
+}
+
+//PyTypeObject
+static __always_inline int pytypecheck_typeobject(py_sample_state_t *state, void *typ) {
+    pytypecheck_version_check(state)
+    if (typ == 0) {
+        log_debug("[pytypecheck] PyTypeObject null");
+        return 0;
+    }
+    if (pytypecheck_obj(typ, state->typecheck.PyType_Type)) {
+        return -1;
+    }
+    log_debug("[pytypecheck] PyTypeObject %llx ok", typ);
     return 0;
 }
 

@@ -88,6 +88,7 @@ var pythonFields = []dwarfdump.Need{
 	{Name: "PyCodeObject", Fields: []dwarfdump.NeedField{
 		{"co_filename", "PyCodeObject_co_filename"},
 		{"co_name", "PyCodeObject_co_name"},
+		{"co_nlocals", "PyCodeObject_co_nlocals"},
 		{"co_varnames", "PyCodeObject_co_varnames"},
 		{"co_localsplusnames", "PyCodeObject_co_localsplusnames"},
 	}},
