@@ -12,6 +12,21 @@ import (
 	"github.com/grafana/pyroscope/ebpf/symtab"
 )
 
+func printOSRelease(l log.Logger, pid uint32) {
+	osReleasePath := fmt.Sprintf("/proc/%d/root/etc/os-release", pid)
+	osReleaseFile, err := os.Open(osReleasePath)
+	if err != nil {
+		level.Debug(l).Log("msg", "could not open os-release", "path", osReleasePath)
+		return
+	}
+	defer osReleaseFile.Close()
+	scanner := bufio.NewScanner(osReleaseFile)
+	for scanner.Scan() {
+		level.Debug(l).Log("msg", scanner.Text())
+	}
+
+}
+
 func GetPyPerfPidData(l log.Logger, pid uint32, collectKernel bool) (*PerfPyPidData, error) {
 	mapsFD, err := os.Open(fmt.Sprintf("/proc/%d/maps", pid))
 	if err != nil {
@@ -19,6 +34,7 @@ func GetPyPerfPidData(l log.Logger, pid uint32, collectKernel bool) (*PerfPyPidD
 	}
 	defer mapsFD.Close()
 	l = log.With(l, "pid", pid)
+	printOSRelease(l, pid)
 	info, err := GetProcInfo(l, bufio.NewScanner(mapsFD))
 
 	if err != nil {
