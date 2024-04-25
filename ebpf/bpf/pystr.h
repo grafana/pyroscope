@@ -49,7 +49,8 @@ static __always_inline int pystr_read(void *str, py_sample_state_t *state, char 
     try(pytypecheck_unicode(state, str))
     PyASCIIObject pystr = {};
     try (bpf_probe_read_user(&pystr, sizeof(PyASCIIObject), str))
-    log_debug("pystr_read: compact=%d ascii=%d kind=%d length=%d", pystr.state.compact, pystr.state.ascii, pystr.state.kind, pystr.length);
+    log_debug("pystr_read: compact=%d ascii=%d ", pystr.state.compact, pystr.state.ascii);
+    log_debug("pystr_read: kind=%d length=%d", pystr.state.kind, pystr.length);
 
     if (pystr.state.compact == 0) { // not implemented, skip
         typ->type = PYSTR_TYPE_NOT_COMPACT;

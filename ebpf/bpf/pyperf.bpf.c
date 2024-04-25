@@ -279,7 +279,8 @@ int pyperf_collect(struct bpf_perf_event_data *ctx) {
     uint64_t pid_tgid = bpf_get_current_pid_tgid();
     u32 hostpid = (u32)(pid_tgid >> 32);
 
-    log_debug("pid %d | %d userspace=%d cs=0x%x)", pid, hostpid, ctx->regs.cs == 0x33, ctx->regs.cs);
+    log_debug("pid %d | %d )", pid, hostpid);
+    log_debug("userspace=%d cs=0x%x)", ctx->regs.cs == 0x33, ctx->regs.cs);
 #elif defined(__TARGET_ARCH_arm64)
 
 #else

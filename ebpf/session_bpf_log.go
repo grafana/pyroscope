@@ -56,6 +56,7 @@ func (s *session) printBpfLog() {
 			return
 		}
 	}
+	level.Debug(s.logger).Log("msg", "printing BPF log", "from", f.Name())
 	s.mutex.Lock()
 	if !s.started {
 		s.mutex.Unlock()
@@ -63,7 +64,7 @@ func (s *session) printBpfLog() {
 	}
 	s.bpflogFile = f
 	s.mutex.Unlock()
-	defer f.Close()
+	defer f.Close() //todo there is a race here racing with stop
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		fmt.Println(scanner.Text())
