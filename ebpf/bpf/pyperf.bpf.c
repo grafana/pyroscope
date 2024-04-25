@@ -29,7 +29,7 @@ const volatile struct global_config_t global_config;
 enum {
     PY_ERROR_GENERIC = 1,
     PY_ERROR_THREAD_STATE = 2,
-    PY_ERROR_THREAD_STATE_NULL = 3,
+//    PY_ERROR_THREAD_STATE_NULL = 3,
     PY_ERROR_TOP_FRAME = 4,
     PY_ERROR_FRAME_CODE = 5,
     PY_ERROR_FRAME_PREV = 6,
@@ -250,19 +250,20 @@ static __always_inline int pyperf_collect_impl(struct bpf_perf_event_data* ctx, 
     // pre-initialize event struct in case any subprogram below fails
     event->stack_len = 0;
 
-    if (thread_state != 0) {
-        if (get_top_frame(pid_data, state, thread_state)) {
-            return submit_error_sample(PY_ERROR_TOP_FRAME);
-        }
-        log_debug("top frame %lx", state->frame_ptr);
-        if (pytypecheck_frame(state, (void*)state->frame_ptr)) {
-            return submit_error_sample(PY_ERROR_TOP_FRAME);
-        }
-        // jump to reading first set of Python frames
-        bpf_tail_call(ctx, &py_progs, PYTHON_PROG_IDX_READ_PYTHON_STACK);
-        // we won't ever get here
+    if (thread_state == 0) {
+        return 0;// not a python thread or not initialized or finalized thread
     }
-    return submit_error_sample(PY_ERROR_THREAD_STATE_NULL);
+    if (get_top_frame(pid_data, state, thread_state)) {
+        return submit_error_sample(PY_ERROR_TOP_FRAME);
+    }
+    log_debug("top frame %lx", state->frame_ptr);
+    if (pytypecheck_frame(state, (void*)state->frame_ptr)) {
+        return submit_error_sample(PY_ERROR_TOP_FRAME);
+    }
+    // jump to reading first set of Python frames
+    bpf_tail_call(ctx, &py_progs, PYTHON_PROG_IDX_READ_PYTHON_STACK);
+    // we won't ever get here
+    return 0;
 }
 
 SEC("perf_event")
