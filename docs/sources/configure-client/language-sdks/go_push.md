@@ -160,6 +160,5 @@ If your Pyroscope server has multi-tenancy enabled, you'll need to configure a t
 
 Check out the following resources to learn more about Golang profiling:
 
-* [Golang examples](https://github.com/grafana/pyroscope-go/blob/main/example/main.go)
-* [Golang Demo](https://demo.pyroscope.io/?query=rideshare-app-golang.cpu%7B%7D) showing golang example with tags
-* [Golang blog post](https://pyroscope.io/blog/profiling-go-apps-with-pyroscope)
+* [Golang examples](https://github.com/grafana/pyroscope/tree/main/examples/language-sdk-instrumentation/golang-push)
+* [Golang Demo](https://play.grafana.org/a/grafana-pyroscope-app/single?query=process_cpu%3Acpu%3Ananoseconds%3Acpu%3Ananoseconds%7Bservice_name%3D%22pyroscope-rideshare-go%22%7D&from=now-1h&until=now) showing golang example with tags

@@ -65,6 +65,7 @@ type API struct {
 	grpcGatewayMux     *grpcgw.ServeMux
 	grpcAuthMiddleware connect.Option
 	grpcLogMiddleware  connect.Option
+	recoveryMiddleware connect.Option
 
 	cfg       Config
 	logger    log.Logger
@@ -81,6 +82,7 @@ func New(cfg Config, s *server.Server, grpcGatewayMux *grpcgw.ServeMux, logger l
 		grpcGatewayMux:     grpcGatewayMux,
 		grpcAuthMiddleware: cfg.GrpcAuthMiddleware,
 		grpcLogMiddleware:  connect.WithInterceptors(util.NewLogInterceptor(logger)),
+		recoveryMiddleware: connect.WithInterceptors(util.RecoveryInterceptor),
 	}
 
 	// If no authentication middleware is present in the config, use the default authentication middleware.
@@ -196,7 +198,7 @@ func (a *API) RegisterRuntimeConfig(runtimeConfigHandler http.HandlerFunc, userL
 }
 
 func (a *API) RegisterTenantSettings(ts *settings.TenantSettings) {
-	settingsv1connect.RegisterSettingsServiceHandler(a.server.HTTP, ts, a.grpcAuthMiddleware)
+	settingsv1connect.RegisterSettingsServiceHandler(a.server.HTTP, ts, a.grpcAuthMiddleware, a.recoveryMiddleware)
 }
 
 // RegisterOverridesExporter registers the endpoints associated with the overrides exporter.
@@ -212,7 +214,7 @@ func (a *API) RegisterDistributor(d *distributor.Distributor) {
 	pyroscopeHandler := pyroscope.NewPyroscopeIngestHandler(d, a.logger)
 	a.RegisterRoute("/ingest", pyroscopeHandler, true, true, "POST")
 	a.RegisterRoute("/pyroscope/ingest", pyroscopeHandler, true, true, "POST")
-	pushv1connect.RegisterPusherServiceHandler(a.server.HTTP, d, a.grpcAuthMiddleware)
+	pushv1connect.RegisterPusherServiceHandler(a.server.HTTP, d, a.grpcAuthMiddleware, a.recoveryMiddleware)
 	a.RegisterRoute("/distributor/ring", d, false, true, "GET", "POST")
 	a.indexPage.AddLinks(defaultWeight, "Distributor", []IndexPageLink{
 		{Desc: "Ring status", Path: "/distributor/ring"},
@@ -242,8 +244,8 @@ type QuerierSvc interface {
 
 // RegisterQuerier registers the endpoints associated with the querier.
 func (a *API) RegisterQuerier(svc QuerierSvc) {
-	querierv1connect.RegisterQuerierServiceHandler(a.server.HTTP, svc, a.grpcAuthMiddleware, a.grpcLogMiddleware)
-	vcsv1connect.RegisterVCSServiceHandler(a.server.HTTP, svc, a.grpcAuthMiddleware, a.grpcLogMiddleware)
+	querierv1connect.RegisterQuerierServiceHandler(a.server.HTTP, svc, a.grpcAuthMiddleware, a.grpcLogMiddleware, a.recoveryMiddleware)
+	vcsv1connect.RegisterVCSServiceHandler(a.server.HTTP, svc, a.grpcAuthMiddleware, a.grpcLogMiddleware, a.recoveryMiddleware)
 }
 
 func (a *API) RegisterPyroscopeHandlers(client querierv1connect.QuerierServiceClient) {
@@ -255,11 +257,11 @@ func (a *API) RegisterPyroscopeHandlers(client querierv1connect.QuerierServiceCl
 
 // RegisterIngester registers the endpoints associated with the ingester.
 func (a *API) RegisterIngester(svc *ingester.Ingester) {
-	ingesterv1connect.RegisterIngesterServiceHandler(a.server.HTTP, svc, a.grpcAuthMiddleware)
+	ingesterv1connect.RegisterIngesterServiceHandler(a.server.HTTP, svc, a.grpcAuthMiddleware, a.recoveryMiddleware)
 }
 
 func (a *API) RegisterStoreGateway(svc *storegateway.StoreGateway) {
-	storegatewayv1connect.RegisterStoreGatewayServiceHandler(a.server.HTTP, svc, a.grpcAuthMiddleware)
+	storegatewayv1connect.RegisterStoreGatewayServiceHandler(a.server.HTTP, svc, a.grpcAuthMiddleware, a.recoveryMiddleware)
 
 	a.indexPage.AddLinks(defaultWeight, "Store-gateway", []IndexPageLink{
 		{Desc: "Ring status", Path: "/store-gateway/ring"},
@@ -280,18 +282,18 @@ func (a *API) RegisterCompactor(c *compactor.MultitenantCompactor) {
 
 // RegisterQueryFrontend registers the endpoints associated with the query frontend.
 func (a *API) RegisterQueryFrontend(frontendSvc *frontend.Frontend) {
-	frontendpbconnect.RegisterFrontendForQuerierHandler(a.server.HTTP, frontendSvc, a.grpcAuthMiddleware)
+	frontendpbconnect.RegisterFrontendForQuerierHandler(a.server.HTTP, frontendSvc, a.grpcAuthMiddleware, a.recoveryMiddleware)
 }
 
 // RegisterVersion registers the endpoints associated with the versions service.
 func (a *API) RegisterVersion(svc versionv1connect.VersionHandler) {
-	versionv1connect.RegisterVersionHandler(a.server.HTTP, svc)
+	versionv1connect.RegisterVersionHandler(a.server.HTTP, svc, a.recoveryMiddleware)
 }
 
 // RegisterQueryScheduler registers the endpoints associated with the query scheduler.
 func (a *API) RegisterQueryScheduler(s *scheduler.Scheduler) {
-	schedulerpbconnect.RegisterSchedulerForFrontendHandler(a.server.HTTP, s)
-	schedulerpbconnect.RegisterSchedulerForQuerierHandler(a.server.HTTP, s)
+	schedulerpbconnect.RegisterSchedulerForFrontendHandler(a.server.HTTP, s, a.recoveryMiddleware)
+	schedulerpbconnect.RegisterSchedulerForQuerierHandler(a.server.HTTP, s, a.recoveryMiddleware)
 }
 
 // RegisterFlags registers api-related flags.
@@ -310,5 +312,5 @@ func (a *API) RegisterAdmin(ad *operations.Admin) {
 }
 
 func (a *API) RegisterAdHocProfiles(ahp *adhocprofiles.AdHocProfiles) {
-	adhocprofilesv1connect.RegisterAdHocProfileServiceHandler(a.server.HTTP, ahp, a.grpcAuthMiddleware)
+	adhocprofilesv1connect.RegisterAdHocProfileServiceHandler(a.server.HTTP, ahp, a.grpcAuthMiddleware, a.recoveryMiddleware)
 }
