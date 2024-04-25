@@ -10,7 +10,7 @@ import (
 )
 
 // TODO(kolesnikovae):
-//   Add Clean function that incorporates Merge and Normalize.
+//   Add a function that incorporates Merge and Normalize.
 //   Both functions perform some sanity checks but none of them
 //   is enough to "vet" the profile completely.
 //   Specifically:
