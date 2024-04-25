@@ -577,84 +577,84 @@ func (q *Querier) AnalyzeQuery(ctx context.Context, req *connect.Request[querier
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "AnalyzeQuery")
 	defer sp.Finish()
 
-	ingesterReq := &ingestv1.BlockMetadataRequest{
+	blockMetadataReq := &ingestv1.BlockMetadataRequest{
 		Start: req.Msg.Start,
 		End:   req.Msg.End,
 	}
 
-	resultsIngesters := newReplicasPerBlockID(q.logger)
-	blockSelectIngesters, err := q.blockSelectFromIngesters(ctx, ingesterReq)
+	ingesterBlockMetadata := newReplicasPerBlockID(q.logger)
+	blockSelectIngesters, err := q.blockSelectFromIngesters(ctx, blockMetadataReq)
 	if err != nil {
 		return nil, err
 	}
-	resultsIngesters.add(blockSelectIngesters, ingesterInstance)
+	ingesterBlockMetadata.add(blockSelectIngesters, ingesterInstance)
 
-	resultsStoreGateways := newReplicasPerBlockID(q.logger)
-	blockSelectStoreGateways, err := q.blockSelectFromStoreGateway(ctx, ingesterReq)
+	storeGatewayBlockMetadata := newReplicasPerBlockID(q.logger)
+	blockSelectStoreGateways, err := q.blockSelectFromStoreGateway(ctx, blockMetadataReq)
 	if err != nil {
 		return nil, err
 	}
-	resultsStoreGateways.add(blockSelectStoreGateways, storeGatewayInstance)
+	storeGatewayBlockMetadata.add(blockSelectStoreGateways, storeGatewayInstance)
 
-	joinedResults := newReplicasPerBlockID(q.logger)
-	joinedResults.add(blockSelectStoreGateways, storeGatewayInstance)
-	joinedResults.add(blockSelectIngesters, ingesterInstance)
-	plan := joinedResults.blockPlan(ctx)
+	blockMetadata := newReplicasPerBlockID(q.logger)
+	blockMetadata.add(blockSelectStoreGateways, storeGatewayInstance)
+	blockMetadata.add(blockSelectIngesters, ingesterInstance)
+	plan := blockMetadata.blockPlan(ctx)
 
-	storeGatewayReplicationSet, err := q.storeGatewayQuerier.ring.GetReplicationSetForOperation(readNoExtend)
-	if err != nil {
-		return nil, err
-	}
 	ingesterReplicationSet, err := q.ingesterQuerier.ring.GetReplicationSetForOperation(readNoExtend)
 	if err != nil {
 		return nil, err
 	}
-	storeGatewayQueryScope := &querierv1.QueryScope{
-		ComponentType:  "long-term-storage",
-		ComponentCount: 0,
+	storeGatewayReplicationSet, err := q.storeGatewayQuerier.ring.GetReplicationSetForOperation(readNoExtend)
+	if err != nil {
+		return nil, err
 	}
+
 	ingesterQueryScope := &querierv1.QueryScope{
-		ComponentType:  "short-term-storage",
-		ComponentCount: 0,
+		ComponentType: "short-term-storage",
 	}
-	ingesterBlockUlids := make([]string, 0)
-	storeGatewayBlockUlids := make([]string, 0)
+	storeGatewayQueryScope := &querierv1.QueryScope{
+		ComponentType: "long-term-storage",
+	}
+	ingesterBlockIds := make([]string, 0)
+	storeGatewayBlockIds := make([]string, 0)
 	for replica, blockHints := range plan {
 		if len(blockHints.Ulids) == 0 {
 			continue
 		}
-		if storeGatewayReplicationSet.Includes(replica) && ingesterReplicationSet.Includes(replica) { // -target=all
-			for _, ulid := range blockHints.Ulids {
-				if resultsIngesters.contains(ulid) {
+		// running locally or with -target=all
+		if ingesterReplicationSet.Includes(replica) && storeGatewayReplicationSet.Includes(replica) {
+			for _, blockId := range blockHints.Ulids {
+				if ingesterBlockMetadata.contains(blockId) {
 					ingesterQueryScope.ComponentCount += 1
 					ingesterQueryScope.NumBlocks += 1
-					ingesterBlockUlids = append(ingesterBlockUlids, ulid)
-				} else if resultsStoreGateways.contains(ulid) {
+					ingesterBlockIds = append(ingesterBlockIds, blockId)
+				} else if storeGatewayBlockMetadata.contains(blockId) {
 					storeGatewayQueryScope.ComponentCount += 1
 					storeGatewayQueryScope.NumBlocks += 1
-					storeGatewayBlockUlids = append(storeGatewayBlockUlids, ulid)
+					storeGatewayBlockIds = append(storeGatewayBlockIds, blockId)
 				}
 			}
-		} else if storeGatewayReplicationSet.Includes(replica) {
-			storeGatewayQueryScope.ComponentCount += 1
-			storeGatewayQueryScope.NumBlocks += uint64(len(blockHints.Ulids))
-			storeGatewayBlockUlids = append(storeGatewayBlockUlids, blockHints.Ulids...)
 		} else if ingesterReplicationSet.Includes(replica) {
 			ingesterQueryScope.ComponentCount += 1
 			ingesterQueryScope.NumBlocks += uint64(len(blockHints.Ulids))
-			ingesterBlockUlids = append(ingesterBlockUlids, blockHints.Ulids...)
+			ingesterBlockIds = append(ingesterBlockIds, blockHints.Ulids...)
+		} else if storeGatewayReplicationSet.Includes(replica) {
+			storeGatewayQueryScope.ComponentCount += 1
+			storeGatewayQueryScope.NumBlocks += uint64(len(blockHints.Ulids))
+			storeGatewayBlockIds = append(storeGatewayBlockIds, blockHints.Ulids...)
 		}
 	}
 
-	var responses []ResponseFromReplica[*ingestv1.GetBlockStatsResponse]
-	responses, err = forAllPlannedIngesters(ctx, q.ingesterQuerier, plan, func(ctx context.Context, iq IngesterQueryClient, hint *ingestv1.Hints) (*ingestv1.GetBlockStatsResponse, error) {
-		stats, err := iq.GetBlockStats(ctx, connect.NewRequest(&ingestv1.GetBlockStatsRequest{Ulids: ingesterBlockUlids}))
+	var blockStatsFromReplicas []ResponseFromReplica[*ingestv1.GetBlockStatsResponse]
+	blockStatsFromReplicas, err = forAllPlannedIngesters(ctx, q.ingesterQuerier, plan, func(ctx context.Context, iq IngesterQueryClient, hint *ingestv1.Hints) (*ingestv1.GetBlockStatsResponse, error) {
+		stats, err := iq.GetBlockStats(ctx, connect.NewRequest(&ingestv1.GetBlockStatsRequest{Ulids: ingesterBlockIds}))
 		if err != nil {
 			return nil, err
 		}
 		return stats.Msg, err
 	})
-	for _, r := range responses {
+	for _, r := range blockStatsFromReplicas {
 		for _, stats := range r.response.BlockStats {
 			ingesterQueryScope.NumSeries += stats.NumSeries
 			ingesterQueryScope.NumProfiles += stats.NumProfiles
@@ -669,14 +669,14 @@ func (q *Querier) AnalyzeQuery(ctx context.Context, req *connect.Request[querier
 	if err != nil {
 		return nil, err
 	}
-	responses, err = forAllPlannedStoreGateways(ctx, tenantId, q.storeGatewayQuerier, plan, func(ctx context.Context, sq StoreGatewayQueryClient, hint *ingestv1.Hints) (*ingestv1.GetBlockStatsResponse, error) {
-		stats, err := sq.GetBlockStats(ctx, connect.NewRequest(&ingestv1.GetBlockStatsRequest{Ulids: storeGatewayBlockUlids}))
+	blockStatsFromReplicas, err = forAllPlannedStoreGateways(ctx, tenantId, q.storeGatewayQuerier, plan, func(ctx context.Context, sq StoreGatewayQueryClient, hint *ingestv1.Hints) (*ingestv1.GetBlockStatsResponse, error) {
+		stats, err := sq.GetBlockStats(ctx, connect.NewRequest(&ingestv1.GetBlockStatsRequest{Ulids: storeGatewayBlockIds}))
 		if err != nil {
 			return nil, err
 		}
 		return stats.Msg, err
 	})
-	for _, r := range responses {
+	for _, r := range blockStatsFromReplicas {
 		for _, stats := range r.response.BlockStats {
 			storeGatewayQueryScope.NumSeries += stats.NumSeries
 			storeGatewayQueryScope.NumProfiles += stats.NumProfiles
@@ -702,20 +702,17 @@ func (q *Querier) AnalyzeQuery(ctx context.Context, req *connect.Request[querier
 	}
 
 	if req.Msg.Query != "" {
-		parsedSelector, err := parser.ParseMetricSelector(req.Msg.Query)
+		matchers, err := parser.ParseMetricSelector(req.Msg.Query)
 		if err != nil {
 			return nil, err
 		}
-		newSelector := make([]*labels.Matcher, 0, len(parsedSelector))
-		for _, selector := range parsedSelector {
-			if selector.Name == labels.MetricName {
-				newSelector = append(newSelector, &labels.Matcher{Type: labels.MatchEqual, Name: phlaremodel.LabelNameProfileType, Value: selector.Value})
-			} else {
-				newSelector = append(newSelector, selector)
+		for _, matcher := range matchers {
+			if matcher.Name == labels.MetricName {
+				matcher.Name = phlaremodel.LabelNameProfileType
 			}
 		}
 		resSeries, err := q.Series(ctx, connect.NewRequest(&querierv1.SeriesRequest{
-			Matchers: []string{convertMatchersToString(newSelector)},
+			Matchers: []string{convertMatchersToString(matchers)},
 			Start:    req.Msg.Start,
 			End:      req.Msg.End,
 		}))
