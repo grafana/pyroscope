@@ -119,4 +119,22 @@ int BPF_KPROBE(exec, void *_) {
     return 0;
 }
 
+//// sched_process_exit
+//SEC("kprobe/sched_process_exit")
+//int BPF_KPROBE(sched_process_exit, struct task_struct *task) {
+//    u32 pid = 0;
+//    bpf_core_read(&pid, sizeof(pid), &task->pid);
+//    bpf_printk("sched_process_exit pid=%d\n", pid);
+//    return 0;
+//}
+//
+//// kernel_clone_args
+//SEC("kprobe/kernel_clone")
+//int BPF_KPROBE(kernel_clone, struct kernel_clone_args *args) {
+//    u32 pid = 0;
+//    bpf_core_read(&pid, sizeof(pid), &args->child_tid);
+//    bpf_printk("kernel_clone pid=%d\n", pid);
+//    return 0;
+//}
+
 char _license[] SEC("license") = "GPL";

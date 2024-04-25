@@ -92,6 +92,7 @@ type UserOffsets struct {
 	PyThreadState_interp              int16
 	PyThreadStateSize                 int16
 	PyCFrame_current_frame            int16
+	Pythreads__head                   int16
 	PyFrameObject_f_back              int16
 	PyFrameObject_f_code              int16
 	PyFrameObject_f_localsplus        int16
@@ -115,6 +116,7 @@ type UserOffsets struct {
 	PyASCIIObjectSize                 int16
 	PyCompactUnicodeObjectSize        int16
 	PyInterpreterState_tstate_head    int16
+	PyInterpreterState_threads        int16
 	PyInterpreterState_finalizing     int16
 	PyInterpreterState_modules        int16
 	PyInterpreterState_importlib      int16

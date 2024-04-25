@@ -12,8 +12,8 @@ struct global_config_t {
 };
 
 const volatile struct global_config_t global_config;
-#define log_error(fmt, ...) if (global_config.bpf_log_err) bpf_printk("[pyperf error] " fmt, ##__VA_ARGS__)
-#define log_debug(fmt, ...) if (global_config.bpf_log_debug) bpf_printk("[pyperf debug] "fmt, ##__VA_ARGS__)
+#define log_error(fmt, ...) if (global_config.bpf_log_err) bpf_printk("[pyperf *error*] " fmt, ##__VA_ARGS__)
+#define log_debug(fmt, ...) if (global_config.bpf_log_debug) bpf_printk("[pyperf  debug ] "fmt, ##__VA_ARGS__)
 
 
 
@@ -60,11 +60,7 @@ struct {
     __type(value, struct error_stats);
 } py_errors SEC(".maps");
 
-typedef struct {
-    uint32_t major;
-    uint32_t minor;
-    uint32_t patch;
-} py_version;
+
 
 typedef struct {
     py_offset_config offsets;
@@ -204,6 +200,7 @@ static __always_inline int get_top_frame(py_pid_data *pid_data, py_sample_state_
         // >= py311 && <= py312
         void *cframe;
         try_read(cframe, thread_state + pid_data->offsets.PyThreadState_cframe)
+        log_debug("cframe %lx", cframe);
         if (cframe == 0) {
             return -1;
         }
@@ -227,6 +224,7 @@ static __always_inline int pyperf_collect_impl(struct bpf_perf_event_data* ctx, 
 #if defined(PY_TYPECHECK_ENABLED)
     state->typecheck = pid_data->typecheck;
 #endif
+    state->version = pid_data->version;
     state->cur_cpu = bpf_get_smp_processor_id();
     state->python_stack_prog_call_cnt = 0;
 
@@ -270,11 +268,19 @@ static __always_inline int pyperf_collect_impl(struct bpf_perf_event_data* ctx, 
 SEC("perf_event")
 int pyperf_collect(struct bpf_perf_event_data *ctx) {
     log_debug(" ================ collect sample ================ ");
-    u32 pid;
+    u32 pid = 0;
     current_pid(global_config.ns_pid_ino, &pid);
     if (pid == 0) {
         return 0;
     }
+#if defined(__TARGET_ARCH_x86)
+    log_debug("pid %d userpace=%d (%d)", pid, ctx->regs.cs == 0x33, ctx->regs.cs);
+#elif defined(__TARGET_ARCH_arm64)
+
+#else
+#error "Unknown architecture"
+#endif
+
     return pyperf_collect_impl(ctx, (pid_t) pid);
 }
 

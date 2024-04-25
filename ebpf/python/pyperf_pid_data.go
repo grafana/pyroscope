@@ -61,15 +61,15 @@ func GetPyPerfPidData(l log.Logger, pid uint32, collectKernel bool) (*PerfPyPidD
 
 	data := &PerfPyPidData{}
 	var (
-		autoTLSkeyAddr, pyRuntimeAddr uint64
+		autoTLSkeyAddr, pyRuntimeAddr int64
 		typecheck                     PerfPyTypecheckData
 	)
 	baseAddr := base_.StartAddr
 	if ef.FileHeader.Type == elf.ET_EXEC {
 		baseAddr = 0
 	}
-	symbolsBind := map[string]*uint64{}
-	bind := func(name string, addr *uint64) {
+	symbolsBind := map[string]*int64{}
+	bind := func(name string, addr *int64) {
 		symbolsBind[name] = addr
 	}
 	bind("autoTLSkey", &autoTLSkeyAddr)
@@ -86,20 +86,26 @@ func GetPyPerfPidData(l log.Logger, pid uint32, collectKernel bool) (*PerfPyPidD
 
 	for _, symbol := range symbols {
 		if addr, ok := symbolsBind[symbol.Name]; ok {
-			*addr = baseAddr + symbol.Value
+			*addr = int64(baseAddr) + int64(symbol.Value)
 		}
 	}
 	if pyRuntimeAddr == 0 && autoTLSkeyAddr == 0 {
 		return nil, fmt.Errorf("missing symbols pyRuntimeAddr autoTLSkeyAddr %s %v", pythonPath, version)
 	}
-	typecheck.O_PyThreadStateDict = uint64(offsets.PyThreadState_dict)
-	typecheck.O_PyThreadStateInterp = uint64(offsets.PyThreadState_interp)
-	typecheck.SizePyThreadState = uint64(offsets.PyThreadStateSize)
-	typecheck.O_PyInterpreterStateTstateHead = uint64(offsets.PyInterpreterState_tstate_head)
-	typecheck.O_PyInterpreterStateFinalizing = uint64(offsets.PyInterpreterState_finalizing)
-	typecheck.O_PyInterpreterStateModules = uint64(offsets.PyInterpreterState_modules)
-	typecheck.O_PyInterpreterStateImportlib = uint64(offsets.PyInterpreterState_importlib)
-	typecheck.SizePyInterpreterStateTstate = uint64(offsets.PyInterpreterStateSize)
+	typecheck.O_PyThreadStateDict = int64(offsets.PyThreadState_dict)
+	typecheck.O_PyThreadStateInterp = int64(offsets.PyThreadState_interp)
+	typecheck.SizePyThreadState = int64(offsets.PyThreadStateSize)
+	typecheck.O_PyInterpreterStateTstateHead = int64(offsets.PyInterpreterState_tstate_head)
+	typecheck.O_PyInterpreterStateFinalizing = int64(offsets.PyInterpreterState_finalizing)
+	typecheck.O_PyInterpreterStateModules = int64(offsets.PyInterpreterState_modules)
+	typecheck.O_PyInterpreterStateImportlib = int64(offsets.PyInterpreterState_importlib)
+	typecheck.SizePyInterpreterState = int64(offsets.PyInterpreterStateSize)
+	if typecheck.O_PyInterpreterStateTstateHead == -1 &&
+		offsets.PyInterpreterState_threads != -1 && offsets.Pythreads__head != -1 {
+		// moved in 3.11
+		// https://github.com/python/cpython/commit/313f92a57bc3887026ec16adb536bb2b7580ce47
+		typecheck.O_PyInterpreterStateTstateHead = int64(offsets.PyInterpreterState_threads) + int64(offsets.Pythreads__head)
+	}
 
 	if err := validateTypeCheck(typecheck); err != nil {
 		return nil, fmt.Errorf("failed to validate typecheck %w", err)
@@ -112,7 +118,7 @@ func GetPyPerfPidData(l log.Logger, pid uint32, collectKernel bool) (*PerfPyPidD
 	if err != nil {
 		return nil, fmt.Errorf("failed to get python process libc %w", err)
 	}
-	data.TssKey, err = GetTSSKey(pid, version, offsets, autoTLSkeyAddr, pyRuntimeAddr, &data.Libc)
+	data.TssKey, err = GetTSSKey(pid, version, offsets, uint64(autoTLSkeyAddr), uint64(pyRuntimeAddr), &data.Libc)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get python tss key %w", err)
 	}
@@ -184,7 +190,7 @@ func validateTypeCheck(tc PerfPyTypecheckData) error {
 	v := reflect.ValueOf(tc)
 	for i := 0; i < v.NumField(); i++ {
 		name := v.Type().Field(i).Name
-		vv := uint64(v.Field(i).Uint())
+		vv := uint64(v.Field(i).Int())
 		fmt.Printf("tc %s %v\n", name, vv)
 		i2 := int64(-1)
 		if vv == 0 || vv == uint64(i2) {

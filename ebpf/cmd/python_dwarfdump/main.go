@@ -76,6 +76,9 @@ var pythonFields = []dwarfdump.Need{
 	{Name: "_PyCFrame", Fields: []dwarfdump.NeedField{
 		{"current_frame", "PyCFrame_current_frame"},
 	}},
+	{Name: "pythreads", Fields: []dwarfdump.NeedField{
+		{"head", "Pythreads__head"},
+	}},
 	//typedef struct _frame PyFrameObject;
 	{Name: "_frame", PrettyName: "PyFrameObject", Fields: []dwarfdump.NeedField{
 		{"f_back", "PyFrameObject_f_back"},
@@ -116,6 +119,7 @@ var pythonFields = []dwarfdump.Need{
 		{"finalizing", "PyInterpreterState_finalizing"},
 		{"modules", "PyInterpreterState_modules"},
 		{"tstate_head", "PyInterpreterState_tstate_head"},
+		{"threads", "PyInterpreterState_threads"},
 		{"importlib", "PyInterpreterState_importlib"},
 	}},
 	{Name: "PyConfig", Fields: []dwarfdump.NeedField{

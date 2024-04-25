@@ -73,12 +73,16 @@ type PerfPyPidData struct {
 }
 
 type PerfPySampleStateT struct {
-	SymbolCounter          int64
-	Offsets                PerfPyOffsetConfig
-	_                      [6]byte
-	Typecheck              PerfPyTypecheckData
+	SymbolCounter int64
+	Offsets       PerfPyOffsetConfig
+	_             [6]byte
+	Typecheck     PerfPyTypecheckData
+	Version       struct {
+		Major uint32
+		Minor uint32
+		Patch uint32
+	}
 	CurCpu                 uint32
-	_                      [4]byte
 	FramePtr               uint64
 	PythonStackProgCallCnt int64
 	Sym                    PerfPySymbol
@@ -102,23 +106,23 @@ type PerfPySymbol struct {
 }
 
 type PerfPyTypecheckData struct {
-	PyCodeType                     uint64
-	PyFrameType                    uint64
-	PyBytesType                    uint64
-	PyUnicodeType                  uint64
-	PyTypeType                     uint64
-	PyDictType                     uint64
-	PyNoneType                     uint64
-	PyModuleType                   uint64
-	PyTupleType                    uint64
-	O_PyThreadStateDict            uint64
-	O_PyThreadStateInterp          uint64
-	SizePyThreadState              uint64
-	O_PyInterpreterStateTstateHead uint64
-	O_PyInterpreterStateFinalizing uint64
-	O_PyInterpreterStateModules    uint64
-	O_PyInterpreterStateImportlib  uint64
-	SizePyInterpreterStateTstate   uint64
+	PyCodeType                     int64
+	PyFrameType                    int64
+	PyBytesType                    int64
+	PyUnicodeType                  int64
+	PyTypeType                     int64
+	PyDictType                     int64
+	PyNoneType                     int64
+	PyModuleType                   int64
+	PyTupleType                    int64
+	O_PyThreadStateDict            int64
+	O_PyThreadStateInterp          int64
+	SizePyThreadState              int64
+	O_PyInterpreterStateTstateHead int64
+	O_PyInterpreterStateFinalizing int64
+	O_PyInterpreterStateModules    int64
+	O_PyInterpreterStateImportlib  int64
+	SizePyInterpreterState         int64
 }
 
 type PerfSampleKey struct {

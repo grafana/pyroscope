@@ -66,25 +66,24 @@ typedef struct {
 } py_offset_config;
 
 typedef struct {
-    uint64_t PyCode_Type;
-    uint64_t PyFrame_Type;
-    uint64_t PyBytes_Type;
-    uint64_t PyUnicode_Type;
-    uint64_t PyType_Type;
-    uint64_t PyDict_Type;
-    uint64_t PyNone_Type;
-    uint64_t PyModule_Type;
-    uint64_t PyTuple_Type;
+    int64_t PyCode_Type;
+    int64_t PyFrame_Type;
+    int64_t PyBytes_Type;
+    int64_t PyUnicode_Type;
+    int64_t PyType_Type;
+    int64_t PyDict_Type;
+    int64_t PyNone_Type;
+    int64_t PyModule_Type;
+    int64_t PyTuple_Type;
 
-    uint64_t o_PyThreadState_dict;
-    uint64_t o_PyThreadState_interp;
-    uint64_t size_PyThreadState;
-    uint64_t o_PyInterpreterState_tstate_head;
-    uint64_t o_PyInterpreterState_finalizing;
-    uint64_t o_PyInterpreterState_modules;
-    uint64_t o_PyInterpreterState_importlib;
-    uint64_t size_PyInterpreterState_tstate;
-
+    int64_t o_PyThreadState_dict;
+    int64_t o_PyThreadState_interp;
+    int64_t size_PyThreadState;
+    int64_t o_PyInterpreterState_tstate_head;
+    int64_t o_PyInterpreterState_finalizing;
+    int64_t o_PyInterpreterState_modules;
+    int64_t o_PyInterpreterState_importlib;
+    int64_t size_PyInterpreterState;
 } py_typecheck_data;
 
 
@@ -102,6 +101,12 @@ struct py_str_type {
     uint8_t type;
     uint8_t size_codepoints;
 } ;
+
+typedef struct {
+    uint32_t major;
+    uint32_t minor;
+    uint32_t patch;
+} py_version;
 
 typedef struct {
     char classname[PYTHON_CLASS_NAME_LEN];
@@ -122,6 +127,7 @@ typedef struct {
     int64_t symbol_counter;
     py_offset_config offsets;
     py_typecheck_data typecheck;
+    py_version version;
     uint32_t cur_cpu;
     uint64_t frame_ptr;
     int64_t python_stack_prog_call_cnt;
