@@ -24,7 +24,7 @@ static __always_inline int pytypecheck_obj(void *o, uint64_t typ) {
     }
     struct py_object_header obj = {};
     try_read(obj, o)
-    log_debug("[pytypecheck] obj o=%llx ob_type=%llx refcount =%llx ", o, obj.ob_type, obj.ob_refcnt);
+    log_debug("[pytypecheck] obj o=%llx ob_type = %llx refcount = %llx ", o, obj.ob_type, obj.ob_refcnt);
     if (obj.ob_refcnt < 0) {
         log_error("[pytypecheck] obj uaf");
         return -1;
@@ -110,7 +110,7 @@ static __always_inline int pytypecheck_interpreter_state(py_sample_state_t *stat
 static __always_inline int pytypecheck_thread_state(py_sample_state_t *state, void *ts, bool check_interp) {
     pytypecheck_version_check(state)
     log_debug("[pytypecheck] ts %llx", ts);
-    void *dict, *interp;
+    void *dict=NULL, *interp=NULL;
     try_read(dict, ts + state->typecheck.o_PyThreadState_dict)
     try_read(interp, ts + state->typecheck.o_PyThreadState_interp)
     log_debug("[pytypecheck] %llx dict=%llx interp=%llx", ts, dict, interp);

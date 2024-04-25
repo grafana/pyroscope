@@ -18,8 +18,8 @@ func GetPyPerfPidData(l log.Logger, pid uint32, collectKernel bool) (*PerfPyPidD
 		return nil, fmt.Errorf("reading proc maps %d: %w", pid, err)
 	}
 	defer mapsFD.Close()
-
-	info, err := GetProcInfo(bufio.NewScanner(mapsFD))
+	l = log.With(l, "pid", pid)
+	info, err := GetProcInfo(l, bufio.NewScanner(mapsFD))
 
 	if err != nil {
 		return nil, fmt.Errorf("GetPythonProcInfo error %s: %w", fmt.Sprintf("/proc/%d/maps", pid), err)

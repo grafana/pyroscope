@@ -3,6 +3,8 @@ package python
 import (
 	"bufio"
 	"fmt"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -22,11 +24,13 @@ type ProcInfo struct {
 var rePython = regexp.MustCompile("/.*/((?:lib)?python)(\\d+)\\.(\\d+)(?:[mu]?(-pyston\\d.\\d)?(?:\\.so)?)?(?:.1.0)?$")
 
 // GetProcInfo parses /proc/pid/map of a python process.
-func GetProcInfo(s *bufio.Scanner) (ProcInfo, error) {
+func GetProcInfo(l log.Logger, s *bufio.Scanner) (ProcInfo, error) {
 	res := ProcInfo{}
 	i := 0
 	for s.Scan() {
 		line := s.Bytes()
+		level.Debug(l).Log("map", string(line))
+
 		m, err := symtab.ParseProcMapLine(line, false)
 		if err != nil {
 			return res, err
