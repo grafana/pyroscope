@@ -1,11 +1,11 @@
 ---
-title: Span profiles with Traces to profiles for .NET
-menuTitle: Span profiles with Traces to profiles (.NET)
-description: Learn about and configure Span profiles with Traces to profiles in Grafana for .NET applications.
-weight: 103
+title: Span profiles with Traces to profiles for Python
+menuTitle: Span profiles with Traces to profiles (Python)
+description: Learn about and configure Span profiles with Traces to profiles in Grafana for Python applications.
+weight: 104
 ---
 
-# Span profiles with Traces to profiles for .NET
+# Span profiles with Traces to profiles for Python
 
 Span Profiles represents a major shift in profiling methodology, enabling deeper analysis of both tracing and profiling data.
 Traditional continuous profiling provides an application-wide view over fixed intervals.
@@ -17,7 +17,7 @@ To learn more about Span Profiles, refer to [Combining tracing and profiling for
 
 ![span-profiles screenshot](https://grafana.com/static/img/docs/tempo/profiles/tempo-profiles-Span-link-profile-data-source.png)
 
-Pyroscope integrates with distributed tracing systems supporting the [**OpenTelemetry**](https://opentelemetry.io/docs/languages/net/getting-started/) standard.
+Pyroscope integrates with distributed tracing systems supporting the [**OpenTelemetry**](https://opentelemetry.io/docs/languages/python/getting-started/) standard.
 This integration lets you link traces with the profiling data and find resource usage for specific lines of code for your trace spans.
 
 {{< admonition type="note" >}}
@@ -28,45 +28,44 @@ This integration lets you link traces with the profiling data and find resource 
 To use Span Profiles, you need to:
 
 * [Configure Pyroscope to send profiling data]({{< relref "../../configure-client" >}})
-* Configure a client-side package to link traces and profiles: [.NET](https://github.com/grafana/pyroscope-dotnet/tree/main/Pyroscope/Pyroscope.OpenTelemetry)
+* Configure a client-side package to link traces and profiles: [Python](https://github.com/grafana/otel-profiling-python)
 * [Configure the Tempo data source in Grafana or Grafana Cloud to discover linked traces and profiles](/grafana-cloud/connect-externally-hosted/data-sources/tempo/configure-tempo-data-source/)
 
 ## Before you begin
 
 Your applications must be instrumented for profiling and tracing before you can use span profiles.
 
-* Profiling: Your application must be instrumented with Pyroscope's .NET instrumentation library. Refer to the [.NET]({{< relref "../language-sdks/dotnet" >}}) guide for instructions.
-* Tracing: Your application must be instrumented with OpenTelemetry traces. Refer to the [OpenTelemetry](https://opentelemetry.io/docs/languages/net/getting-started/) guide for isntructions.
+* Profiling: Your application must be instrumented with Pyroscope's Python instrumentation library. Refer to the [Python]({{< relref "../language-sdks/python" >}}) guide for instructions.
+* Tracing: Your application must be instrumented with OpenTelemetry traces. Refer to the [OpenTelemetry](https://opentelemetry.io/docs/languages/python/getting-started/) guide for isntructions.
 
-{{< admonition type="note" >}}
-Span profiles in .NET are only supported using [OpenTelemetry manual instrumentation](https://opentelemetry.io/docs/languages/net/instrumentation/)
-because Pyroscope's .NET profiler and OpenTelemetry's auto instrumentation are based on separate .NET CLR profilers.
-{{< /admonition >}}
+## Configure the `pyroscope-otel` package
 
-## Configure the `Pyroscope.OpenTelemetry` package
+To start collecting Span Profiles for your Python application, you need to include [pyroscope-otel](https://github.com/grafana/otel-profiling-python) in your code.
 
-To start collecting Span Profiles for your .NET application, you need to include [Pyroscope.OpenTelemetry](https://github.com/grafana/pyroscope-dotnet/tree/main/Pyroscope/Pyroscope.OpenTelemetry) in your code.
-
-This package provides a [`SpanProcessor`](https://github.com/open-telemetry/opentelemetry-dotnet/blob/main/src/OpenTelemetry/BaseProcessor.cs) implementation, which connects the two telemetry signals (traces and profiles) together.
+This package provides a [`SpanProcessor`](https://github.com/open-telemetry/opentelemetry-python/blob/d213e02941039d4383abc3608b75404ce84725b1/opentelemetry-sdk/src/opentelemetry/sdk/trace/__init__.py#L85) implementation, which connects the two telemetry signals (traces and profiles) together.
 
 ```shell
-dotnet add package Pyroscope.OpenTelemetry
+pip install pyroscope-otel
 ```
 
 Next, create and register the `PyroscopeSpanProcessor`:
-```csharp
-builder.Services.AddOpenTelemetry()
-    .WithTracing(b =>
-    {
-        b
-        .AddAspNetCoreInstrumentation()
-        .AddConsoleExporter()
-        .AddOtlpExporter()
-        .AddProcessor(new Pyroscope.OpenTelemetry.PyroscopeSpanProcessor());
-    });
+```python
+# import span processor
+from pyroscope-otel import PyroscopeSpanProcessor
+
+# obtain a OpenTelemetry tracer provider
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+provider = TracerProvider()
+
+# register the span processor
+provider.add_span_processor(PyroscopeSpanProcessor())
+
+# register the tracer provider
+trace.set_tracer_provider(provider)
 ```
 
-With the span processor registered, spans created automatically (for example, HTTP handlers) and manually (`ActivitySource.StartActivity()`) have profiling data associated with them.
+With the span processor registered, spans created automatically (for example, HTTP handlers) and manually will have profiling data associated with them.
 
 ## View the span profiles in Grafana Tempo
 
