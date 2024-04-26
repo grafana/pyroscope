@@ -21,7 +21,7 @@ Key benefits and features:
 Get started:
 
 - Configure Pyroscope: Begin sending profiling data to unlock the full potential of Span Profiles
-- Client-side packages: Easily link traces and profiles using available packages for Go, Java, Ruby, .NET and Python
+- Client-side packages: Easily link traces and profiles using available packages for Go, Java, Ruby, .NET, and Python
   - Go: [Span profiles with Traces to profiles (Go)]({{< relref "./go-span-profiles" >}})
   - Java: [Span profiles with Traces to profiles (Java)]({{< relref "./java-span-profiles" >}})
   - Ruby: [Span profiles with Traces to profiles (Ruby)]({{< relref "./ruby-span-profiles" >}})
