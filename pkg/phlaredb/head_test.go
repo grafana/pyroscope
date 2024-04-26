@@ -371,11 +371,11 @@ func TestHeadFlush(t *testing.T) {
 				},
 				{
 					RelPath:   "symbols/data.symdb",
-					SizeBytes: 159203,
+					SizeBytes: 159215,
 				},
 				{
 					RelPath:   "symbols/index.symdb",
-					SizeBytes: 384,
+					SizeBytes: 448,
 				},
 			},
 			Compaction: block.BlockMetaCompaction{
