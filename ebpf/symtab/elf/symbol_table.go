@@ -143,8 +143,8 @@ func (st *SymbolTable) symbolName(idx int) (string, error) {
 }
 
 type SymTabDebugInfo struct {
-	Name          string `river:"name,attr,optional"`
-	Size          int    `river:"symbol_count,attr,optional"`
-	File          string `river:"file,attr,optional"`
-	LastUsedRound int    `river:"last_used_round,attr,optional"`
+	Name          string `alloy:"name,attr,optional" river:"name,attr,optional"`
+	Size          int    `alloy:"symbol_count,attr,optional" river:"symbol_count,attr,optional"`
+	File          string `alloy:"file,attr,optional" river:"file,attr,optional"`
+	LastUsedRound int    `alloy:"last_used_round,attr,optional" river:"last_used_round,attr,optional"`
 }
