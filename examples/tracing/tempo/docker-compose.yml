@@ -62,6 +62,24 @@ services:
       context: ../../language-sdk-instrumentation/dotnet/rideshare
       dockerfile: Dockerfile
 
+  rideshare-python-eu-east:
+    ports:
+      - 5000
+    hostname: rideshare-python-eu-east
+    environment:
+      <<: *env
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4317
+      OTEL_SERVICE_NAME: rideshare.python.push.app
+      OTEL_METRICS_EXPORTER: none
+      OTEL_TRACES_SAMPLER: always_on
+      OTEL_PROPAGATORS: tracecontext
+      PYROSCOPE_LABELS: hostname=rideshare-python-us-east
+      REGION: us-east
+    build:
+      context: ../../language-sdk-instrumentation/python/rideshare/flask
+      dockerfile: Dockerfile
+
   load-generator:
     environment: *env
     build:
@@ -73,6 +91,7 @@ services:
       - http://rideshare-go-eu-north:5000
       - http://rideshare-java-us-east:5000
       - http://rideshare-dotnet-eu-west:5000
+      - http://rideshare-python-eu-east:5000
 
   grafana:
     image: grafana/grafana-dev:10.3.0-151740
