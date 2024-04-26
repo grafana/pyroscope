@@ -154,7 +154,7 @@ func Benchmark_Reader_ResolvePprof(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		r := NewResolver(ctx, bs.reader)
-		r.AddSamples(0, s.indexed[0][0].Samples)
+		r.AddSamples(0, schemav1.Samples{})
 		_, err := r.Pprof()
 		require.NoError(b, err)
 		r.Release()
