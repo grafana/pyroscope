@@ -73,7 +73,7 @@ The Single View page in Pyroscope's UI is built for in-depth profile analysis. H
 
 <!-- Visual Placeholder:** *Screenshots demonstrating each view option in the Single View page.* -->
 
-Let's say that your app has a spike in memory usage.
+This screenshot shows a spike in CPU usage.
 Without profiling, you would go from a spike CPU usage metric to digging through code or guessing the cause.
 However, with profiling, you can use the flame graph and table to see exactly which function is most responsible for the spike.
 Often, this shows up as a single node taking up a noticeably disproportionate width in the flame graph as seen below with the `checkDriverAvailability` function.
