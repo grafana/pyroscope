@@ -35,10 +35,16 @@ To use Span Profiles, you need to:
 
 Your applications must be instrumented for profiling and tracing before you can use span profiles.
 
-* Profiling: Your application must be instrumented with Pyroscope's Java client SDK. Refer to the [Java]({{< relref "../language-sdks/java" >}}) guide for instructions.
+* Profiling: Your application must be instrumented with Pyroscope's Java client SDK. These two environment variables need to be configured:
+  ```yaml
+  PYROSCOPE_PROFILER_ALLOC=512k
+  PYROSCOPE_PROFILER_LOCK=10ms
+  ```
+  Refer to the [Java]({{< relref "../language-sdks/java" >}}) guide for instructions.
+
 * Tracing: Your application must be instrumented with OpenTelemetry traces. Refer to the [OpenTelemetry](https://opentelemetry.io/docs/java/getting-started/) guide for instructions.
 
-## Configure the otel-profiling-java package
+## Configure the `otel-profiling-java` package
 
 To start collecting Span Profiles for your Java application, you need to include [otel-profiling-java](https://github.com/pyroscope-io/otel-profiling-java) in your code.
 
@@ -58,6 +64,7 @@ java -jar ./build/libs/rideshare-1.0-SNAPSHOT.jar \
 ```
 
 Next, you need to create and configure the tracer provider:
+
 ```java
 implementation("io.pyroscope:otel:0.10.1.11")
 
@@ -70,10 +77,9 @@ PyroscopeOtelConfiguration pyroscopeTelemetryConfig = new PyroscopeOtelConfigura
   .setRootSpanOnly(true)
   .build();
 tpBuilder.addSpanProcessor(new PyroscopeOtelSpanProcessor(pyroscopeOtelConfig));
-
 ```
 
-Now that we set up the tracer, we can create a new trace from anywhere and the profiler will automatically capture profiles for it.
+Now that the tracer is set up, you can create a new trace from anywhere and the profiler automatically captures profiles for it.
 ```java
 Span span = tracer.spanBuilder("findNearestVehicle").startSpan();
 try (Scope s = span.makeCurrent()){
