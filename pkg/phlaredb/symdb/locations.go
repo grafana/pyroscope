@@ -60,7 +60,7 @@ type locationsBlockEncoder struct {
 	header locationsBlockHeader
 
 	mapping []int32
-	// Assuming there is no locations with more than 255 lines.
+	// Assuming there are no locations with more than 255 lines.
 	// We could even use a nibble (4 bits), but there are locations
 	// with 10 and more functions, therefore there is a change that
 	// capacity of 2^4 is not enough in all cases.
@@ -89,7 +89,6 @@ func (e *locationsBlockEncoder) encode(w io.Writer, locations []v1.InMemoryLocat
 	for i, loc := range locations {
 		e.mapping[i] = int32(loc.MappingId)
 		e.lineCount[i] = byte(len(loc.Line))
-		// Append lines but the first one.
 		for j := 0; j < len(loc.Line) && j < maxLocationLines; j++ {
 			e.lines = append(e.lines,
 				int32(loc.Line[j].FunctionId),
