@@ -7,8 +7,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/grafana/dskit/multierror"
-
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
@@ -20,6 +18,7 @@ type writer struct {
 	indexFile *fileWriter
 	dataFile  *fileWriter
 	files     []block.File
+	footer    Footer
 
 	stringsEncoder   *symbolsEncoder[string]
 	mappingsEncoder  *symbolsEncoder[v1.InMemoryMapping]
@@ -31,10 +30,14 @@ func newWriter(c *Config) *writer {
 	return &writer{
 		config: c,
 		index: IndexFile{
-			Header: Header{
+			Header: IndexHeader{
 				Magic:   symdbMagic,
 				Version: FormatV3,
 			},
+		},
+		footer: Footer{
+			Magic:   symdbMagic,
+			Version: FormatV3,
 		},
 
 		stringsEncoder:   newStringsEncoder(),
@@ -45,51 +48,30 @@ func newWriter(c *Config) *writer {
 }
 
 func (w *writer) writePartitions(partitions []*PartitionWriter) (err error) {
-	if w.dataFile, err = w.newFile(DataFileName); err != nil {
+	if err = os.MkdirAll(w.config.Dir, 0o755); err != nil {
+		return fmt.Errorf("failed to create directory %q: %w", w.config.Dir, err)
+	}
+	if w.dataFile, err = w.newFile(DefaultFileName); err != nil {
 		return err
 	}
 	defer func() {
 		err = w.dataFile.Close()
+		w.files = []block.File{w.dataFile.meta()}
 	}()
 	for _, p := range partitions {
 		if err = p.writeTo(w); err != nil {
-			return err
+			return fmt.Errorf("failed to write partition: %w", err)
 		}
 		w.index.PartitionHeaders = append(w.index.PartitionHeaders, &p.header)
 	}
-	return nil
-}
-
-func (w *writer) Flush() (err error) {
-	if err = w.writeIndexFile(); err != nil {
-		return err
+	w.footer.IndexOffset = uint64(w.dataFile.w.offset)
+	if _, err = w.index.WriteTo(w.dataFile); err != nil {
+		return fmt.Errorf("failed to write index: %w", err)
 	}
-	w.files = []block.File{
-		w.indexFile.meta(),
-		w.dataFile.meta(),
+	if _, err = w.dataFile.Write(w.footer.MarshalBinary()); err != nil {
+		return fmt.Errorf("failed to write footer: %w", err)
 	}
 	return nil
-}
-
-func (w *writer) createDir() error {
-	if err := os.MkdirAll(w.config.Dir, 0o755); err != nil {
-		return fmt.Errorf("failed to create directory %q: %w", w.config.Dir, err)
-	}
-	return nil
-}
-
-func (w *writer) writeIndexFile() (err error) {
-	// Write the index file only after all the files were flushed.
-	if w.indexFile, err = w.newFile(IndexFileName); err != nil {
-		return err
-	}
-	defer func() {
-		err = multierror.New(err, w.indexFile.Close()).Err()
-	}()
-	if _, err = w.index.WriteTo(w.indexFile); err != nil {
-		return fmt.Errorf("failed to write index file: %w", err)
-	}
-	return err
 }
 
 func (w *writer) newFile(path string) (f *fileWriter, err error) {
@@ -129,7 +111,7 @@ func (f *fileWriter) Write(p []byte) (n int, err error) {
 	return f.w.Write(p)
 }
 
-func (f *fileWriter) sync() (err error) {
+func (f *fileWriter) Flush() (err error) {
 	if err = f.buf.Flush(); err != nil {
 		return err
 	}
@@ -137,7 +119,7 @@ func (f *fileWriter) sync() (err error) {
 }
 
 func (f *fileWriter) Close() (err error) {
-	if err = f.sync(); err != nil {
+	if err = f.Flush(); err != nil {
 		return err
 	}
 	return f.f.Close()

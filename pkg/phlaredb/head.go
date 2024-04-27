@@ -124,12 +124,7 @@ func NewHead(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*Hea
 		}
 	}
 
-	h.symdb = symdb.NewSymDB(symdb.DefaultConfig().
-		WithDirectory(filepath.Join(h.headPath, symdb.DefaultDirName)).
-		WithParquetConfig(symdb.ParquetConfig{
-			MaxBufferRowCount: h.parquetConfig.MaxBufferRowCount,
-		}))
-
+	h.symdb = symdb.NewSymDB(symdb.DefaultConfig().WithDirectory(h.headPath))
 	h.wg.Add(1)
 	go h.loop()
 
@@ -562,8 +557,6 @@ func (h *Head) flush(ctx context.Context) error {
 		return errors.Wrap(err, "flushing symdb")
 	}
 	for _, file := range h.symdb.Files() {
-		// Files' path is relative to the symdb dir.
-		file.RelPath = filepath.Join(symdb.DefaultDirName, file.RelPath)
 		files = append(files, file)
 		blockSize += file.SizeBytes
 		h.metrics.flushedFileSizeBytes.WithLabelValues(file.RelPath).Observe(float64(file.SizeBytes))

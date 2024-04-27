@@ -198,13 +198,12 @@ func (d *locationsBlockDecoder) decode(r io.Reader, locations []v1.InMemoryLocat
 		return fmt.Errorf("locations buffer: %w", ErrInvalidSize)
 	}
 
-	var enc delta.BinaryPackedEncoding
 	// First we decode mapping_id and assign them to locations.
 	d.buf = slices.GrowLen(d.buf, int(d.header.MappingSize))
 	if _, err = io.ReadFull(r, d.buf); err != nil {
 		return err
 	}
-	d.mappings, err = enc.DecodeInt32(d.mappings, d.buf)
+	d.mappings, err = decodeBinaryPackedInt32(d.mappings, d.buf, int(d.header.LocationsLen))
 	if err != nil {
 		return err
 	}
@@ -224,8 +223,8 @@ func (d *locationsBlockDecoder) decode(r io.Reader, locations []v1.InMemoryLocat
 	if _, err = io.ReadFull(r, d.buf); err != nil {
 		return err
 	}
-	d.lines = slices.GrowLen(d.lines, int(d.header.LinesLen))
-	d.lines, err = enc.DecodeInt32(d.lines, d.buf)
+	// Lines are encoded as pairs of uint32 (function_id and line number).
+	d.lines, err = decodeBinaryPackedInt32(d.lines, d.buf, int(d.header.LinesLen)*2)
 	if err != nil {
 		return err
 	}
@@ -234,9 +233,15 @@ func (d *locationsBlockDecoder) decode(r io.Reader, locations []v1.InMemoryLocat
 	// In most cases we end up here.
 	if d.header.AddrSize == 0 && d.header.IsFoldedSize == 0 {
 		var o int // Offset within the lines slice.
+		// In case if the block is malformed, an invalid
+		// line count may cause an out-of-bounds panic.
+		maxLines := len(lines)
 		for i := 0; i < len(locations); i++ {
 			locations[i].MappingId = uint32(d.mappings[i])
 			n := o + int(d.lineCount[i])
+			if n > maxLines {
+				return fmt.Errorf("%w: location lines out of bounds", ErrInvalidSize)
+			}
 			locations[i].Line = lines[o:n]
 			o = n
 		}
@@ -249,8 +254,7 @@ func (d *locationsBlockDecoder) decode(r io.Reader, locations []v1.InMemoryLocat
 		if _, err = io.ReadFull(r, d.buf); err != nil {
 			return err
 		}
-		d.address = slices.GrowLen(d.address, int(d.header.LocationsLen))
-		d.address, err = enc.DecodeInt64(d.address, d.buf)
+		d.address, err = decodeBinaryPackedInt64(d.address, d.buf, int(d.header.LocationsLen))
 		if err != nil {
 			return err
 		}

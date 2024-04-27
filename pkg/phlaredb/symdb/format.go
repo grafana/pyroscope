@@ -8,40 +8,65 @@ import (
 	"io"
 	"unsafe"
 
+	"github.com/parquet-go/parquet-go/encoding/delta"
+
 	"github.com/grafana/pyroscope/pkg/slices"
 	"github.com/grafana/pyroscope/pkg/util/math"
 )
 
+// V1 and V2:
+//
 // The database is a collection of files. The only file that is guaranteed
 // to be present is the index file: it indicates the version of the format,
 // and the structure of the database contents. The file is supposed to be
-// read into memory entirely and opened with a ReadIndexFile call.
+// read into memory entirely and opened with an OpenIndex call.
+
+// V3:
 //
-// Big endian order is used unless otherwise noted.
+// The database is a single file. The file consists of the following sections:
+//  [Data  ]
+//  [Index ]
+//  [Footer]
 //
-// Layout of the index file (single-pass write):
+// The file is supposed to be open with Open call: it reads the footer, locates
+// index section, and fetches it into memory.
 //
-// [Header] Header defines the format version and denotes the content type.
+// Data section is version specific.
+//   v3: Partitions.
 //
-// [TOC]    Table of contents. Its entries refer to the Data section.
-//          It is of a fixed size for a given version (number of entries).
+// Index section is structured in the following way:
 //
-// [Data]   Data is an arbitrary structured section. The exact structure is
-//          defined by the TOC and Header (version, flags, etc).
+// [IndexHeader] Header defines the format version and denotes the content type.
+// [TOC        ] Table of contents. Its entries refer to the Data section.
+//               It is of a fixed size for a given version (number of entries).
+// [Data       ] Data is an arbitrary structured section. The exact structure is
+//               defined by the TOC and Header (version, flags, etc).
+//                 v1: StacktraceChunkHeaders.
+//                 v2: PartitionHeadersV2.
+//                 v3: PartitionHeadersV3.
+// [CRC32      ] Checksum.
 //
-// [CRC32]  Checksum.
-//
+// Footer section is version agnostic and is only needed to locate
+// the index offset within the file.
+
+// In all version big endian order is used unless otherwise noted.
 
 const (
-	DefaultDirName = "symbols"
+	DefaultFileName = "symbols.symdb" // Added in v3.
 
+	// Pre-v3 assets. Left for compatibility reasons.
+
+	DefaultDirName      = "symbols"
 	IndexFileName       = "index.symdb"
-	StacktracesFileName = "stacktraces.symdb" // Used in v1 and v2.
-	DataFileName        = "data.symdb"        // Added in v3.
+	StacktracesFileName = "stacktraces.symdb"
 )
 
+type FormatVersion uint32
+
 const (
-	_ = iota
+	// Within a database, the same format version
+	// must be used in all places.
+	_ FormatVersion = iota
 
 	FormatV1
 	FormatV2
@@ -52,9 +77,14 @@ const (
 
 const (
 	// TOC entries are version-specific.
+	// The constants point to the entry index in the TOC.
 	tocEntryStacktraceChunkHeaders = 0
 	tocEntryPartitionHeaders       = 0
-	tocEntries                     = 1
+
+	// Total number of entries in the current version.
+	// TODO(kolesnikovae): TOC size is version specific,
+	//   but at the moment, all versions have the same size: 1.
+	tocEntriesTotal = 1
 )
 
 // https://en.wikipedia.org/wiki/List_of_file_signatures
@@ -81,41 +111,82 @@ func (e *FormatError) Error() string {
 }
 
 type IndexFile struct {
-	Header Header
+	Header IndexHeader
 	TOC    TOC
 
-	// Version-specific parts.
+	// Version-specific.
 	PartitionHeaders PartitionHeaders
 
-	CRC uint32
+	CRC uint32 // Checksum of the index.
 }
 
-type Header struct {
-	Magic    [4]byte
-	Version  uint32
-	Reserved [8]byte // Reserved for future use.
+// NOTE(kolesnikovae): IndexHeader is rudimentary and is left for compatibility.
+
+type IndexHeader struct {
+	Magic   [4]byte
+	Version FormatVersion
+	_       [4]byte // Reserved for future use.
+	_       [4]byte // Reserved for future use.
 }
 
-const HeaderSize = int(unsafe.Sizeof(Header{}))
+const IndexHeaderSize = int(unsafe.Sizeof(IndexHeader{}))
 
-func (h *Header) MarshalBinary() ([]byte, error) {
-	b := make([]byte, HeaderSize)
+func (h *IndexHeader) MarshalBinary() []byte {
+	b := make([]byte, IndexHeaderSize)
 	copy(b[0:4], h.Magic[:])
-	binary.BigEndian.PutUint32(b[4:8], h.Version)
-	binary.BigEndian.PutUint32(b[HeaderSize-4:], crc32.Checksum(b[:HeaderSize-4], castagnoli))
-	return b, nil
+	binary.BigEndian.PutUint32(b[4:8], uint32(h.Version))
+	return b
 }
 
-func (h *Header) UnmarshalBinary(b []byte) error {
-	if len(b) != HeaderSize {
+func (h *IndexHeader) UnmarshalBinary(b []byte) error {
+	if len(b) != IndexHeaderSize {
 		return ErrInvalidSize
 	}
 	if copy(h.Magic[:], b[0:4]); !bytes.Equal(h.Magic[:], symdbMagic[:]) {
 		return ErrInvalidMagic
 	}
-	// Reserved space may change from version to version.
-	if h.Version = binary.BigEndian.Uint32(b[4:8]); h.Version >= unknownVersion {
+	h.Version = FormatVersion(binary.BigEndian.Uint32(b[4:8]))
+	if h.Version >= unknownVersion {
 		return ErrUnknownVersion
+	}
+	return nil
+}
+
+type Footer struct {
+	Magic       [4]byte
+	Version     FormatVersion
+	IndexOffset uint64  // Index header offset in the file.
+	_           [4]byte // Reserved for future use.
+	CRC         uint32  // CRC of the footer.
+}
+
+const FooterSize = int(unsafe.Sizeof(Footer{}))
+
+func (f *Footer) MarshalBinary() []byte {
+	b := make([]byte, FooterSize)
+	copy(b[0:4], f.Magic[:])
+	binary.BigEndian.PutUint32(b[4:8], uint32(f.Version))
+	binary.BigEndian.PutUint64(b[8:16], f.IndexOffset)
+	binary.BigEndian.PutUint32(b[16:20], 0)
+	binary.BigEndian.PutUint32(b[20:24], crc32.Checksum(b[0:20], castagnoli))
+	return b
+}
+
+func (f *Footer) UnmarshalBinary(b []byte) error {
+	if len(b) != FooterSize {
+		return ErrInvalidSize
+	}
+	if copy(f.Magic[:], b[0:4]); !bytes.Equal(f.Magic[:], symdbMagic[:]) {
+		return ErrInvalidMagic
+	}
+	f.Version = FormatVersion(binary.BigEndian.Uint32(b[4:8]))
+	if f.Version >= unknownVersion {
+		return ErrUnknownVersion
+	}
+	f.IndexOffset = binary.BigEndian.Uint64(b[8:16])
+	f.CRC = binary.BigEndian.Uint32(b[20:24])
+	if crc32.Checksum(b[0:20], castagnoli) != f.CRC {
+		return ErrInvalidCRC
 	}
 	return nil
 }
@@ -128,13 +199,15 @@ type TOC struct {
 	Entries []TOCEntry
 }
 
+// TOCEntry refers to a section within the index.
+// Offset is relative to the header offset.
 type TOCEntry struct {
 	Offset int64
 	Size   int64
 }
 
 func (toc *TOC) Size() int {
-	return tocEntrySize * tocEntries
+	return tocEntrySize * tocEntriesTotal
 }
 
 func (toc *TOC) MarshalBinary() ([]byte, error) {
@@ -171,7 +244,8 @@ func (h *TOCEntry) unmarshal(b []byte) {
 type PartitionHeaders []*PartitionHeader
 
 type PartitionHeader struct {
-	Partition   uint64
+	Partition uint64
+	// TODO(kolesnikovae): Switch to SymbolsBlock encoding.
 	Stacktraces []StacktraceBlockHeader
 	V2          *PartitionHeaderV2
 	V3          *PartitionHeaderV3
@@ -192,7 +266,7 @@ func (h *PartitionHeaders) WriteTo(dst io.Writer) (_ int64, err error) {
 	w.write(buf)
 	for _, p := range *h {
 		if p.V3 == nil {
-			return 0, fmt.Errorf("v2 format is not supported")
+			return 0, fmt.Errorf("only v3 format is supported")
 		}
 		buf = slices.GrowLen(buf, int(p.Size()))
 		p.marshal(buf)
@@ -226,7 +300,7 @@ func (h *PartitionHeaders) UnmarshalV2(b []byte) error { return h.unmarshal(b, F
 
 func (h *PartitionHeaders) UnmarshalV3(b []byte) error { return h.unmarshal(b, FormatV3) }
 
-func (h *PartitionHeaders) unmarshal(b []byte, version int) error {
+func (h *PartitionHeaders) unmarshal(b []byte, version FormatVersion) error {
 	partitions := binary.BigEndian.Uint32(b[0:4])
 	b = b[4:]
 	*h = make(PartitionHeaders, partitions)
@@ -255,7 +329,7 @@ func (h *PartitionHeader) marshal(buf []byte) {
 	marshalSymbolsBlockReferences(buf[n:], h.V3.Strings)
 }
 
-func (h *PartitionHeader) unmarshal(buf []byte, version int) (err error) {
+func (h *PartitionHeader) unmarshal(buf []byte, version FormatVersion) (err error) {
 	h.Partition = binary.BigEndian.Uint64(buf[0:8])
 	h.Stacktraces = make([]StacktraceBlockHeader, int(binary.BigEndian.Uint32(buf[8:12])))
 	switch version {
@@ -461,7 +535,7 @@ func (r *RowRangeReference) unmarshal(b []byte) {
 	r.Rows = binary.BigEndian.Uint32(b[8:12])
 }
 
-func ReadIndexFile(b []byte) (f IndexFile, err error) {
+func OpenIndex(b []byte) (f IndexFile, err error) {
 	s := len(b)
 	if !f.assertSizeIsValid(b) {
 		return f, ErrInvalidSize
@@ -470,10 +544,10 @@ func ReadIndexFile(b []byte) (f IndexFile, err error) {
 	if f.CRC != crc32.Checksum(b[:s+indexChecksumOffset], castagnoli) {
 		return f, ErrInvalidCRC
 	}
-	if err = f.Header.UnmarshalBinary(b[:HeaderSize]); err != nil {
+	if err = f.Header.UnmarshalBinary(b[:IndexHeaderSize]); err != nil {
 		return f, fmt.Errorf("unmarshal header: %w", err)
 	}
-	if err = f.TOC.UnmarshalBinary(b[HeaderSize:f.dataOffset()]); err != nil {
+	if err = f.TOC.UnmarshalBinary(b[IndexHeaderSize:f.dataOffset()]); err != nil {
 		return f, fmt.Errorf("unmarshal table of contents: %w", err)
 	}
 
@@ -507,22 +581,21 @@ func ReadIndexFile(b []byte) (f IndexFile, err error) {
 }
 
 func (f *IndexFile) assertSizeIsValid(b []byte) bool {
-	return len(b) >= HeaderSize+f.TOC.Size()+checksumSize
+	return len(b) >= IndexHeaderSize+f.TOC.Size()+checksumSize
 }
 
 func (f *IndexFile) dataOffset() int {
-	return HeaderSize + f.TOC.Size()
+	return IndexHeaderSize + f.TOC.Size()
 }
 
 func (f *IndexFile) WriteTo(dst io.Writer) (n int64, err error) {
 	checksum := crc32.New(castagnoli)
 	w := withWriterOffset(io.MultiWriter(dst, checksum), 0)
-	headerBytes, _ := f.Header.MarshalBinary()
-	if _, err = w.Write(headerBytes); err != nil {
+	if _, err = w.Write(f.Header.MarshalBinary()); err != nil {
 		return w.offset, fmt.Errorf("header write: %w", err)
 	}
 
-	toc := TOC{Entries: make([]TOCEntry, tocEntries)}
+	toc := TOC{Entries: make([]TOCEntry, tocEntriesTotal)}
 	toc.Entries[tocEntryPartitionHeaders] = TOCEntry{
 		Offset: int64(f.dataOffset()),
 		Size:   f.PartitionHeaders.Size(),
@@ -650,7 +723,7 @@ func (d *symbolsDecoder[T]) decode(dst []T, r io.Reader) error {
 		return nil
 	}
 	if len(dst) < int(d.h.Length) {
-		return fmt.Errorf("%w: buffer too short", ErrInvalidSize)
+		return fmt.Errorf("decoder buffer too short (format %d)", d.h.Format)
 	}
 	blocks := int((d.h.Length + d.h.BlockSize - 1) / d.h.BlockSize)
 	for i := 0; i < blocks; i++ {
@@ -658,8 +731,37 @@ func (d *symbolsDecoder[T]) decode(dst []T, r io.Reader) error {
 		hi := math.Min(lo+int(d.h.BlockSize), int(d.h.Length))
 		block := dst[lo:hi]
 		if err := d.d.decode(r, block); err != nil {
-			return err
+			return fmt.Errorf("malformed block (format %d): %w", d.h.Format, err)
 		}
 	}
 	return nil
+}
+
+// NOTE(kolesnikovae): delta.BinaryPackedEncoding may
+// silently fail on malformed data, producing empty slice.
+
+func decodeBinaryPackedInt32(dst []int32, data []byte, length int) ([]int32, error) {
+	var enc delta.BinaryPackedEncoding
+	var err error
+	dst, err = enc.DecodeInt32(dst, data)
+	if err != nil {
+		return dst, err
+	}
+	if len(dst) != length {
+		return dst, fmt.Errorf("%w: binary packed: expected %d, got %d", ErrInvalidSize, length, len(dst))
+	}
+	return dst, nil
+}
+
+func decodeBinaryPackedInt64(dst []int64, data []byte, length int) ([]int64, error) {
+	var enc delta.BinaryPackedEncoding
+	var err error
+	dst, err = enc.DecodeInt64(dst, data)
+	if err != nil {
+		return dst, err
+	}
+	if len(dst) != length {
+		return dst, fmt.Errorf("%w: binary packed: expected %d, got %d", ErrInvalidSize, length, len(dst))
+	}
+	return dst, nil
 }

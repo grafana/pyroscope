@@ -1,29 +1,46 @@
 package symdb
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"github.com/thanos-io/objstore"
 
+	pystore "github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
-var testBlockMeta = &block.Meta{
-	Files: []block.File{
-		{RelPath: IndexFileName},
-		{RelPath: StacktracesFileName},
-		{RelPath: DataFileName},
-		{RelPath: "locations.parquet"},
-		{RelPath: "mappings.parquet"},
-		{RelPath: "functions.parquet"},
-		{RelPath: "strings.parquet"},
-	},
-}
+var (
+	testBlockMeta = &block.Meta{
+		Files: []block.File{
+			{RelPath: DefaultFileName},
+		},
+	}
+
+	testBlockMetaV1 = &block.Meta{
+		Files: []block.File{
+			{RelPath: IndexFileName},
+			{RelPath: StacktracesFileName},
+		},
+	}
+
+	testBlockMetaV2 = &block.Meta{
+		Files: []block.File{
+			{RelPath: IndexFileName},
+			{RelPath: StacktracesFileName},
+			{RelPath: "locations.parquet"},
+			{RelPath: "mappings.parquet"},
+			{RelPath: "functions.parquet"},
+			{RelPath: "strings.parquet"},
+		},
+	}
+)
 
 func Test_write_block_fixture(t *testing.T) {
 	t.Skip()
@@ -36,9 +53,8 @@ func Test_write_block_fixture(t *testing.T) {
 	require.NoError(t, os.Rename(b.config.Dir, fixtureDir))
 }
 
-func Fuzz_ReadIndexFile(f *testing.F) {
+func Fuzz_ReadIndexFile_v12(f *testing.F) {
 	files := []string{
-		"testdata/symbols/v3/index.symdb",
 		"testdata/symbols/v2/index.symdb",
 		"testdata/symbols/v1/index.symdb",
 	}
@@ -48,7 +64,7 @@ func Fuzz_ReadIndexFile(f *testing.F) {
 		f.Add(data)
 	}
 	f.Fuzz(func(_ *testing.T, b []byte) {
-		_, _ = ReadIndexFile(b)
+		_, _ = OpenIndex(b)
 	})
 }
 
@@ -85,12 +101,54 @@ func Test_Reader_Open_v3(t *testing.T) {
 	require.Equal(t, expected, resolved.String())
 }
 
+func Test_Reader_Open_v3_fuzz(t *testing.T) {
+	// Make sure the test is valid.
+	corpus, err := os.ReadFile("testdata/symbols/v3/symbols.symdb")
+	require.NoError(t, err)
+	ctx := context.Background()
+
+	bucket := pystore.NewBucket(objstore.NewInMemBucket())
+	require.NoError(t, bucket.Upload(ctx, DefaultFileName, bytes.NewReader(corpus)))
+	b, err := Open(ctx, bucket, testBlockMeta)
+	require.NoError(t, err)
+
+	r := NewResolver(context.Background(), b)
+	defer r.Release()
+	r.AddSamples(0, schemav1.Samples{})
+	r.AddSamples(1, schemav1.Samples{})
+	_, err = r.Pprof()
+	require.NoError(t, err)
+}
+
+func Fuzz_Reader_Open_v3(f *testing.F) {
+	corpus, err := os.ReadFile("testdata/symbols/v3/symbols.symdb")
+	require.NoError(f, err)
+	ctx := context.Background()
+
+	f.Add(corpus)
+	f.Fuzz(func(t *testing.T, data []byte) {
+		bucket := pystore.NewBucket(objstore.NewInMemBucket())
+		require.NoError(t, bucket.Upload(ctx, DefaultFileName, bytes.NewReader(data)))
+
+		b, err := Open(context.Background(), bucket, testBlockMeta)
+		if err != nil {
+			return
+		}
+
+		r := NewResolver(context.Background(), b)
+		defer r.Release()
+		r.AddSamples(0, schemav1.Samples{})
+		r.AddSamples(1, schemav1.Samples{})
+		_, _ = r.Pprof()
+	})
+}
+
 func Test_Reader_Open_v2(t *testing.T) {
 	// The block contains two partitions (0 and 1), each partition
 	// stores symbols of the testdata/profile.pb.gz profile
 	b, err := filesystem.NewBucket("testdata/symbols/v2")
 	require.NoError(t, err)
-	x, err := Open(context.Background(), b, testBlockMeta)
+	x, err := Open(context.Background(), b, testBlockMetaV2)
 	require.NoError(t, err)
 
 	r := NewResolver(context.Background(), x)
@@ -120,7 +178,7 @@ func Test_Reader_Open_v2(t *testing.T) {
 func Test_Reader_Open_v1(t *testing.T) {
 	b, err := filesystem.NewBucket("testdata/symbols/v1")
 	require.NoError(t, err)
-	x, err := Open(context.Background(), b, testBlockMeta)
+	x, err := Open(context.Background(), b, testBlockMetaV1)
 	require.NoError(t, err)
 	r, err := x.partition(context.Background(), 1)
 	require.NoError(t, err)

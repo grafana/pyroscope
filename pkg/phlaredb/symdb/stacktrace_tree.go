@@ -260,6 +260,9 @@ func (d *treeDecoder) unmarshal(t *parentPointerTree, r io.Reader) error {
 			}
 			eof = true
 		}
+		// len(b) is always >= b.Buffered(),
+		// therefore Discard does not invalidate
+		// the buffer.
 		if _, err = buf.Discard(len(b)); err != nil {
 			return err
 		}
@@ -272,12 +275,14 @@ func (d *treeDecoder) unmarshal(t *parentPointerTree, r io.Reader) error {
 			xn := len(t.nodes) - np // remaining nodes
 			// Note that g should always be a multiple of 4.
 			g = g[:math.Min((xn+xn%2)*2, d.groupBuffer)]
-			var gp int
-
+			if len(g)%4 != 0 {
+				return io.ErrUnexpectedEOF
+			}
 			// Check if there is a remainder. If this is the case,
 			// decode the group and advance gp.
+			var gp int
 			if len(rb) > 0 {
-				// It's expected that r contains a single complete group.
+				// It's expected that rb contains a single complete group.
 				m := groupvarint.BytesUsed[rb[0]] - len(rb)
 				if m >= (len(b) + len(rb)) {
 					return io.ErrUnexpectedEOF
@@ -295,11 +300,14 @@ func (d *treeDecoder) unmarshal(t *parentPointerTree, r io.Reader) error {
 			// Re-fill g.
 			gi, n, rn := decodeU32Groups(g[gp:], b[read:])
 			gp += gi
-			read += n + rn // Mark remainder bytes as read, we copy them.
+			read += n + rn // Mark the remaining bytes as read; we copy them.
 			if rn > 0 {
 				// If there is a remainder, it is copied and decoded on
 				// the next Peek. This should not be possible with eof.
 				rb = append(rb, b[len(b)-rn:]...)
+			}
+			if len(g) == 0 && len(rb) == 0 {
+				break
 			}
 
 			// g is full, or no more data in buf.

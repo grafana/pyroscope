@@ -734,14 +734,9 @@ type symbolsCompactor struct {
 }
 
 func newSymbolsCompactor(path string) *symbolsCompactor {
-	dst := filepath.Join(path, symdb.DefaultDirName)
 	return &symbolsCompactor{
-		w: symdb.NewSymDB(symdb.DefaultConfig().
-			WithDirectory(dst).
-			WithParquetConfig(symdb.ParquetConfig{
-				MaxBufferRowCount: defaultParquetConfig.MaxBufferRowCount,
-			})),
-		dst:       dst,
+		w:         symdb.NewSymDB(symdb.DefaultConfig().WithDirectory(path)),
+		dst:       path,
 		rewriters: make(map[BlockReader]*symdb.Rewriter),
 	}
 }
@@ -772,7 +767,9 @@ func (s *symbolsRewriter) Close() (uint64, error) {
 	if err := s.symbolsCompactor.Flush(); err != nil {
 		return 0, err
 	}
-	return s.numSamples, util.CopyDir(s.symbolsCompactor.dst, filepath.Join(s.dst, symdb.DefaultDirName))
+	dst := filepath.Join(s.dst, symdb.DefaultFileName)
+	src := filepath.Join(s.symbolsCompactor.dst, symdb.DefaultFileName)
+	return s.numSamples, util.CopyFile(src, dst)
 }
 
 func (s *symbolsCompactor) ReWriteRow(profile profileRow) (uint64, error) {
@@ -814,7 +811,7 @@ func (s *symbolsCompactor) Flush() error {
 }
 
 func (s *symbolsCompactor) Close() error {
-	return os.RemoveAll(s.dst)
+	return os.RemoveAll(filepath.Join(s.dst, symdb.DefaultFileName))
 }
 
 func (s *symbolsCompactor) loadStacktracesID(values []parquet.Value) {

@@ -23,13 +23,16 @@ import (
 
 type Reader struct {
 	bucket objstore.BucketReader
-	files  map[string]block.File
-	meta   *block.Meta
+	file   block.File
+	index  IndexFile
+	footer Footer
 
-	index         IndexFile
 	partitions    []*partition
 	partitionsMap map[uint64]*partition
 
+	// Not used in v3; left for compatibility.
+	meta         *block.Meta
+	files        map[string]block.File
 	parquetFiles *parquetFiles
 }
 
@@ -38,65 +41,56 @@ func Open(ctx context.Context, b objstore.BucketReader, m *block.Meta) (*Reader,
 		bucket: b,
 		meta:   m,
 		files:  make(map[string]block.File),
+		file:   block.File{RelPath: DefaultFileName},
 	}
 	for _, f := range r.meta.Files {
 		r.files[filepath.Base(f.RelPath)] = f
 	}
-	var err error
-	if err = r.openIndexFile(ctx); err != nil {
-		return nil, fmt.Errorf("opening index file: %w", err)
+	if err := r.open(ctx); err != nil {
+		return nil, err
+	}
+	if err := r.buildPartitions(); err != nil {
+		return nil, err
+	}
+	return r, nil
+}
+
+func (r *Reader) open(ctx context.Context) (err error) {
+	if r.file, err = r.lookupFile(r.file.RelPath); err == nil {
+		if err = r.openIndex(ctx); err != nil {
+			return fmt.Errorf("opening index section: %w", err)
+		}
+		return nil
+	}
+	if err = r.openIndexV12(ctx); err != nil {
+		return fmt.Errorf("opening index file: %w", err)
 	}
 	if r.index.Header.Version == FormatV2 {
 		if err = openParquetFiles(ctx, r); err != nil {
-			return nil, err
+			return fmt.Errorf("opening parquet files: %w", err)
 		}
 	}
+	return nil
+}
+
+func (r *Reader) buildPartitions() (err error) {
 	r.partitionsMap = make(map[uint64]*partition, len(r.index.PartitionHeaders))
 	r.partitions = make([]*partition, len(r.index.PartitionHeaders))
 	for i, h := range r.index.PartitionHeaders {
 		var p *partition
 		if p, err = r.partitionReader(h); err != nil {
-			return nil, err
+			return err
 		}
 		r.partitionsMap[h.Partition] = p
 		r.partitions[i] = p
 	}
-	return r, nil
-}
-
-func (r *Reader) Close() error {
-	if r == nil {
-		return nil
-	}
-	if r.parquetFiles != nil {
-		return r.parquetFiles.Close()
+	// Cleanup the index to not retain unused objects.
+	r.index = IndexFile{
+		Header: IndexHeader{
+			Version: r.index.Header.Version,
+		},
 	}
 	return nil
-}
-
-func (r *Reader) openIndexFile(ctx context.Context) error {
-	f, err := r.file(IndexFileName)
-	if err != nil {
-		return err
-	}
-	o, err := r.bucket.Get(ctx, f.RelPath)
-	if err != nil {
-		return err
-	}
-	b, err := io.ReadAll(o)
-	if err != nil {
-		return err
-	}
-	r.index, err = ReadIndexFile(b)
-	return err
-}
-
-func (r *Reader) file(name string) (block.File, error) {
-	f, ok := r.files[name]
-	if !ok {
-		return block.File{}, fmt.Errorf("%q: %w", name, os.ErrNotExist)
-	}
-	return f, nil
 }
 
 func (r *Reader) partitionReader(h *PartitionHeader) (*partition, error) {
@@ -113,6 +107,110 @@ func (r *Reader) partitionReader(h *PartitionHeader) (*partition, error) {
 	}
 	p.initStacktraces(h.Stacktraces)
 	return p, nil
+}
+
+// openIndex locates footer and loads the index section from
+// the file into the memory.
+//
+// NOTE(kolesnikovae): Pre-fetch: we could speculatively fetch
+// the footer and the index section into a larger buffer rather
+// than retrieving them synchronously.
+//
+// NOTE(kolesnikovae): It is possible to skip the footer, if it
+// was cached, and the index section offset and size are known.
+func (r *Reader) openIndex(ctx context.Context) error {
+	if r.file.SizeBytes == 0 {
+		attrs, err := r.bucket.Attributes(ctx, r.file.RelPath)
+		if err != nil {
+			return fmt.Errorf("fetching file attributes: %w", err)
+		}
+		r.file.SizeBytes = uint64(attrs.Size)
+	}
+	// Read footer.
+	offset := int64(r.file.SizeBytes) - int64(FooterSize)
+	if offset < int64(IndexHeaderSize) {
+		return fmt.Errorf("%w: footer offset: %d", ErrInvalidSize, offset)
+	}
+	if err := r.readFooter(ctx, offset, int64(FooterSize)); err != nil {
+		return err
+	}
+	indexSize := offset - int64(r.footer.IndexOffset)
+	if indexSize < int64(IndexHeaderSize) {
+		return fmt.Errorf("%w: index section size: %d", ErrInvalidSize, indexSize)
+	}
+	return r.readIndexSection(ctx, int64(r.footer.IndexOffset), indexSize)
+}
+
+func (r *Reader) readFooter(ctx context.Context, offset, size int64) error {
+	o, err := r.bucket.GetRange(ctx, r.file.RelPath, offset, size)
+	if err != nil {
+		return fmt.Errorf("fetching footer: %w", err)
+	}
+	defer func() {
+		_ = o.Close()
+	}()
+	buf := make([]byte, size)
+	if _, err = io.ReadFull(o, buf); err != nil {
+		return fmt.Errorf("reading footer: %w", err)
+	}
+	if err = r.footer.UnmarshalBinary(buf); err != nil {
+		return fmt.Errorf("unmarshaling footer: %w", err)
+	}
+	return nil
+}
+
+func (r *Reader) readIndexSection(ctx context.Context, offset, size int64) error {
+	o, err := r.bucket.GetRange(ctx, r.file.RelPath, offset, size)
+	if err != nil {
+		return fmt.Errorf("fetching index: %w", err)
+	}
+	defer func() {
+		_ = o.Close()
+	}()
+	buf := make([]byte, int(size))
+	if _, err = io.ReadFull(o, buf); err != nil {
+		return fmt.Errorf("reading index: %w", err)
+	}
+	r.index, err = OpenIndex(buf)
+	if err != nil {
+		return fmt.Errorf("openning index: %w", err)
+	}
+	return nil
+}
+
+func (r *Reader) openIndexV12(ctx context.Context) error {
+	f, err := r.lookupFile(IndexFileName)
+	if err != nil {
+		return err
+	}
+	o, err := r.bucket.Get(ctx, f.RelPath)
+	if err != nil {
+		return err
+	}
+	b, err := io.ReadAll(o)
+	if err != nil {
+		return err
+	}
+	r.index, err = OpenIndex(b)
+	return err
+}
+
+func (r *Reader) lookupFile(name string) (block.File, error) {
+	f, ok := r.files[name]
+	if !ok {
+		return block.File{}, fmt.Errorf("%q: %w", name, os.ErrNotExist)
+	}
+	return f, nil
+}
+
+func (r *Reader) Close() error {
+	if r == nil {
+		return nil
+	}
+	if r.parquetFiles != nil {
+		return r.parquetFiles.Close()
+	}
+	return nil
 }
 
 var ErrPartitionNotFound = fmt.Errorf("partition not found")
@@ -369,15 +467,11 @@ func (c *stacktraceBlock) fetch(ctx context.Context) error {
 	)
 	defer span.Finish()
 	return c.r.Inc(func() error {
-		filename := DataFileName
-		if c.reader.index.Header.Version < 3 {
-			filename = StacktracesFileName
-		}
-		f, err := c.reader.file(filename)
+		path, err := c.stacktracesFile()
 		if err != nil {
 			return err
 		}
-		rc, err := c.reader.bucket.GetRange(ctx, f.RelPath, c.header.Offset, c.header.Size)
+		rc, err := c.reader.bucket.GetRange(ctx, path, c.header.Offset, c.header.Size)
 		if err != nil {
 			return err
 		}
@@ -388,6 +482,17 @@ func (c *stacktraceBlock) fetch(ctx context.Context) error {
 		}()
 		return c.readFrom(r)
 	})
+}
+
+func (c *stacktraceBlock) stacktracesFile() (string, error) {
+	f := c.reader.file
+	if c.reader.index.Header.Version < 3 {
+		var err error
+		if f, err = c.reader.lookupFile(StacktracesFileName); err != nil {
+			return "", err
+		}
+	}
+	return f.RelPath, nil
 }
 
 func (c *stacktraceBlock) readFrom(r *bufio.Reader) error {
@@ -435,11 +540,10 @@ func (t *rawTable[T]) fetch(ctx context.Context) error {
 	)
 	defer span.Finish()
 	return t.r.Inc(func() error {
-		f, err := t.reader.file(DataFileName)
-		if err != nil {
-			return err
-		}
-		rc, err := t.reader.bucket.GetRange(ctx, f.RelPath, int64(t.header.Offset), int64(t.header.Size))
+		rc, err := t.reader.bucket.GetRange(ctx,
+			t.reader.file.RelPath,
+			int64(t.header.Offset),
+			int64(t.header.Size))
 		if err != nil {
 			return err
 		}

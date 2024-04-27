@@ -2,7 +2,6 @@ package symdb
 
 import (
 	"context"
-	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -78,15 +77,10 @@ type SymDB struct {
 type Config struct {
 	Dir         string
 	Stacktraces StacktracesConfig
-	Parquet     ParquetConfig
 }
 
 type StacktracesConfig struct {
 	MaxNodesPerChunk uint32
-}
-
-type ParquetConfig struct {
-	MaxBufferRowCount int
 }
 
 type MemoryStats struct {
@@ -109,26 +103,17 @@ const statsUpdateInterval = 5 * time.Second
 
 func DefaultConfig() *Config {
 	return &Config{
-		Dir: DefaultDirName,
 		Stacktraces: StacktracesConfig{
 			// At the moment chunks are loaded in memory at once.
 			// Due to the fact that chunking causes some duplication,
 			// it's better to keep them large.
 			MaxNodesPerChunk: 4 << 20,
 		},
-		Parquet: ParquetConfig{
-			MaxBufferRowCount: 100 << 10,
-		},
 	}
 }
 
 func (c *Config) WithDirectory(dir string) *Config {
 	c.Dir = dir
-	return c
-}
-
-func (c *Config) WithParquetConfig(pc ParquetConfig) *Config {
-	c.Parquet = pc
 	return c
 }
 
@@ -262,13 +247,7 @@ func (s *SymDB) Flush() error {
 	sort.Slice(partitions, func(i, j int) bool {
 		return partitions[i].header.Partition < partitions[j].header.Partition
 	})
-	if err := s.writer.createDir(); err != nil {
-		return err
-	}
-	if err := s.writer.writePartitions(partitions); err != nil {
-		return fmt.Errorf("writing partitions: %w", err)
-	}
-	return s.writer.Flush()
+	return s.writer.writePartitions(partitions)
 }
 
 func (s *SymDB) Files() []block.File {

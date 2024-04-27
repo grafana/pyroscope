@@ -19,6 +19,8 @@ import (
 	"github.com/grafana/pyroscope/pkg/util/refctr"
 )
 
+// Used in v2. Left for compatibility.
+
 type parquetTable[M schemav1.Models, P schemav1.Persister[M]] struct {
 	headers   []RowRangeReference
 	bucket    objstore.BucketReader
@@ -145,7 +147,7 @@ func openParquetFiles(ctx context.Context, r *Reader) error {
 		n := n
 		fp := fp
 		g.Go(func() error {
-			fm, err := r.file(n)
+			fm, err := r.lookupFile(n)
 			if err != nil {
 				return err
 			}

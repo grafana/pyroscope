@@ -203,14 +203,13 @@ func (d *mappingsBlockDecoder) decode(r io.Reader, mappings []v1.InMemoryMapping
 		return fmt.Errorf("mappings buffer is too short")
 	}
 
-	var enc delta.BinaryPackedEncoding
 	d.ints = slices.GrowLen(d.ints, int(d.header.MappingsLen))
 
 	d.buf = slices.GrowLen(d.buf, int(d.header.FileNameSize))
 	if _, err = io.ReadFull(r, d.buf); err != nil {
 		return err
 	}
-	d.ints, err = enc.DecodeInt32(d.ints, d.buf)
+	d.ints, err = decodeBinaryPackedInt32(d.ints, d.buf, int(d.header.MappingsLen))
 	if err != nil {
 		return err
 	}
@@ -222,7 +221,7 @@ func (d *mappingsBlockDecoder) decode(r io.Reader, mappings []v1.InMemoryMapping
 	if _, err = io.ReadFull(r, d.buf); err != nil {
 		return err
 	}
-	d.ints, err = enc.DecodeInt32(d.ints, d.buf)
+	d.ints, err = decodeBinaryPackedInt32(d.ints, d.buf, int(d.header.MappingsLen))
 	if err != nil {
 		return err
 	}
@@ -234,7 +233,7 @@ func (d *mappingsBlockDecoder) decode(r io.Reader, mappings []v1.InMemoryMapping
 	if _, err = io.ReadFull(r, d.buf); err != nil {
 		return err
 	}
-	d.ints, err = enc.DecodeInt32(d.ints, d.buf)
+	d.ints, err = decodeBinaryPackedInt32(d.ints, d.buf, int(d.header.MappingsLen))
 	if err != nil {
 		return err
 	}
@@ -246,12 +245,11 @@ func (d *mappingsBlockDecoder) decode(r io.Reader, mappings []v1.InMemoryMapping
 	}
 
 	if d.header.MemoryStartSize > 0 {
-		d.ints64 = slices.GrowLen(d.ints64, int(d.header.MappingsLen))
 		d.buf = slices.GrowLen(d.buf, int(d.header.MemoryStartSize))
 		if _, err = io.ReadFull(r, d.buf); err != nil {
 			return err
 		}
-		d.ints64, err = enc.DecodeInt64(d.ints64, d.buf)
+		d.ints64, err = decodeBinaryPackedInt64(d.ints64, d.buf, int(d.header.MappingsLen))
 		if err != nil {
 			return err
 		}
@@ -260,12 +258,11 @@ func (d *mappingsBlockDecoder) decode(r io.Reader, mappings []v1.InMemoryMapping
 		}
 	}
 	if d.header.MemoryLimitSize > 0 {
-		d.ints64 = slices.GrowLen(d.ints64, int(d.header.MappingsLen))
 		d.buf = slices.GrowLen(d.buf, int(d.header.MemoryLimitSize))
 		if _, err = io.ReadFull(r, d.buf); err != nil {
 			return err
 		}
-		d.ints64, err = enc.DecodeInt64(d.ints64, d.buf)
+		d.ints64, err = decodeBinaryPackedInt64(d.ints64, d.buf, int(d.header.MappingsLen))
 		if err != nil {
 			return err
 		}
@@ -274,12 +271,11 @@ func (d *mappingsBlockDecoder) decode(r io.Reader, mappings []v1.InMemoryMapping
 		}
 	}
 	if d.header.FileOffsetSize > 0 {
-		d.ints64 = slices.GrowLen(d.ints64, int(d.header.MappingsLen))
 		d.buf = slices.GrowLen(d.buf, int(d.header.FileOffsetSize))
 		if _, err = io.ReadFull(r, d.buf); err != nil {
 			return err
 		}
-		d.ints64, err = enc.DecodeInt64(d.ints64, d.buf)
+		d.ints64, err = decodeBinaryPackedInt64(d.ints64, d.buf, int(d.header.MappingsLen))
 		if err != nil {
 			return err
 		}

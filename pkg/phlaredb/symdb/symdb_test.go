@@ -53,9 +53,6 @@ func (s *memSuite) init() {
 			Stacktraces: StacktracesConfig{
 				MaxNodesPerChunk: 1 << 10,
 			},
-			Parquet: ParquetConfig{
-				MaxBufferRowCount: 512,
-			},
 		}
 	}
 	if s.db == nil {
@@ -154,9 +151,6 @@ func Test_Stats(t *testing.T) {
 			Dir: t.TempDir(),
 			Stacktraces: StacktracesConfig{
 				MaxNodesPerChunk: 4 << 20,
-			},
-			Parquet: ParquetConfig{
-				MaxBufferRowCount: 100 << 10,
 			},
 		},
 	}

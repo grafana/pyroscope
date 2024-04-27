@@ -154,13 +154,12 @@ func (d *functionsBlockDecoder) decode(r io.Reader, functions []v1.InMemoryFunct
 		return fmt.Errorf("functions buffer is too short")
 	}
 
-	var enc delta.BinaryPackedEncoding
 	d.ints = slices.GrowLen(d.ints, int(d.header.FunctionsLen))
 	d.buf = slices.GrowLen(d.buf, int(d.header.NameSize))
 	if _, err = io.ReadFull(r, d.buf); err != nil {
 		return err
 	}
-	d.ints, err = enc.DecodeInt32(d.ints, d.buf)
+	d.ints, err = decodeBinaryPackedInt32(d.ints, d.buf, int(d.header.FunctionsLen))
 	if err != nil {
 		return err
 	}
@@ -172,7 +171,7 @@ func (d *functionsBlockDecoder) decode(r io.Reader, functions []v1.InMemoryFunct
 	if _, err = io.ReadFull(r, d.buf); err != nil {
 		return err
 	}
-	d.ints, err = enc.DecodeInt32(d.ints, d.buf)
+	d.ints, err = decodeBinaryPackedInt32(d.ints, d.buf, int(d.header.FunctionsLen))
 	if err != nil {
 		return err
 	}
@@ -184,7 +183,7 @@ func (d *functionsBlockDecoder) decode(r io.Reader, functions []v1.InMemoryFunct
 	if _, err = io.ReadFull(r, d.buf); err != nil {
 		return err
 	}
-	d.ints, err = enc.DecodeInt32(d.ints, d.buf)
+	d.ints, err = decodeBinaryPackedInt32(d.ints, d.buf, int(d.header.FunctionsLen))
 	if err != nil {
 		return err
 	}
@@ -196,7 +195,7 @@ func (d *functionsBlockDecoder) decode(r io.Reader, functions []v1.InMemoryFunct
 	if _, err = io.ReadFull(r, d.buf); err != nil {
 		return err
 	}
-	d.ints, err = enc.DecodeInt32(d.ints, d.buf)
+	d.ints, err = decodeBinaryPackedInt32(d.ints, d.buf, int(d.header.FunctionsLen))
 	if err != nil {
 		return err
 	}
