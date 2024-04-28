@@ -1,3 +1,4 @@
+//nolint:unused
 package symdb
 
 import (
@@ -521,12 +522,6 @@ type RowRangeReference struct {
 	RowGroup uint32
 	Index    uint32
 	Rows     uint32
-}
-
-func (r *RowRangeReference) marshal(b []byte) {
-	binary.BigEndian.PutUint32(b[0:4], r.RowGroup)
-	binary.BigEndian.PutUint32(b[4:8], r.Index)
-	binary.BigEndian.PutUint32(b[8:12], r.Rows)
 }
 
 func (r *RowRangeReference) unmarshal(b []byte) {

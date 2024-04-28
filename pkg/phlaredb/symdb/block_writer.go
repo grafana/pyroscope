@@ -14,11 +14,10 @@ import (
 type writer struct {
 	config *Config
 
-	index     IndexFile
-	indexFile *fileWriter
-	dataFile  *fileWriter
-	files     []block.File
-	footer    Footer
+	index    IndexFile
+	dataFile *fileWriter
+	files    []block.File
+	footer   Footer
 
 	stringsEncoder   *symbolsEncoder[string]
 	mappingsEncoder  *symbolsEncoder[v1.InMemoryMapping]
