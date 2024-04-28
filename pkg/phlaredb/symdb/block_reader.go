@@ -309,7 +309,7 @@ func (p *partition) initTables(h *PartitionHeader) (err error) {
 		reader: p.reader,
 		header: h.V3.Locations,
 	}
-	if locations.dec, err = locationsDecoder(h.V3.Locations); err != nil {
+	if locations.dec, err = newLocationsDecoder(h.V3.Locations); err != nil {
 		return err
 	}
 	p.locations = locations
@@ -318,7 +318,7 @@ func (p *partition) initTables(h *PartitionHeader) (err error) {
 		reader: p.reader,
 		header: h.V3.Mappings,
 	}
-	if mappings.dec, err = mappingsDecoder(h.V3.Mappings); err != nil {
+	if mappings.dec, err = newMappingsDecoder(h.V3.Mappings); err != nil {
 		return err
 	}
 	p.mappings = mappings
@@ -327,7 +327,7 @@ func (p *partition) initTables(h *PartitionHeader) (err error) {
 		reader: p.reader,
 		header: h.V3.Functions,
 	}
-	if functions.dec, err = functionsDecoder(h.V3.Functions); err != nil {
+	if functions.dec, err = newFunctionsDecoder(h.V3.Functions); err != nil {
 		return err
 	}
 	p.functions = functions
@@ -336,7 +336,7 @@ func (p *partition) initTables(h *PartitionHeader) (err error) {
 		reader: p.reader,
 		header: h.V3.Strings,
 	}
-	if strings.dec, err = stringsDecoder(h.V3.Strings); err != nil {
+	if strings.dec, err = newStringsDecoder(h.V3.Strings); err != nil {
 		return err
 	}
 	p.strings = strings

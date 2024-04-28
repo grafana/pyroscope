@@ -176,7 +176,7 @@ type mappingsBlockDecoder struct {
 	buf    []byte
 }
 
-func mappingsDecoder(h SymbolsBlockHeader) (*symbolsDecoder[v1.InMemoryMapping], error) {
+func newMappingsDecoder(h SymbolsBlockHeader) (*symbolsDecoder[v1.InMemoryMapping], error) {
 	if h.Format == BlockMappingsV1 {
 		return newSymbolsDecoder[v1.InMemoryMapping](h, &mappingsBlockDecoder{format: h.Format}), nil
 	}

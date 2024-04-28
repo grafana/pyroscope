@@ -113,7 +113,7 @@ type stringsBlockDecoder struct {
 	buf    []byte
 }
 
-func stringsDecoder(h SymbolsBlockHeader) (*symbolsDecoder[string], error) {
+func newStringsDecoder(h SymbolsBlockHeader) (*symbolsDecoder[string], error) {
 	if h.Format == BlockStringsV1 {
 		return newSymbolsDecoder[string](h, &stringsBlockDecoder{format: h.Format}), nil
 	}

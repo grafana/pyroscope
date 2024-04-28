@@ -103,6 +103,10 @@ func (b *testBucket) GetRange(ctx context.Context, name string, off, length int6
 	return b.Bucket.GetRange(ctx, name, off, length)
 }
 
+func newTestFileWriter(w io.Writer) *fileWriter {
+	return &fileWriter{w: &writerOffset{Writer: w}}
+}
+
 //nolint:unparam
 func pprofFingerprint(p *googlev1.Profile, typ int) [][2]uint64 {
 	m := make(map[uint64]uint64, len(p.Sample))

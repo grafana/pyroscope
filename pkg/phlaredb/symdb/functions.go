@@ -127,7 +127,7 @@ type functionsBlockDecoder struct {
 	buf  []byte
 }
 
-func functionsDecoder(h SymbolsBlockHeader) (*symbolsDecoder[v1.InMemoryFunction], error) {
+func newFunctionsDecoder(h SymbolsBlockHeader) (*symbolsDecoder[v1.InMemoryFunction], error) {
 	if h.Format == BlockFunctionsV1 {
 		return newSymbolsDecoder[v1.InMemoryFunction](h, &functionsBlockDecoder{format: h.Format}), nil
 	}

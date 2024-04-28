@@ -53,21 +53,6 @@ func Test_write_block_fixture(t *testing.T) {
 	require.NoError(t, os.Rename(b.config.Dir, fixtureDir))
 }
 
-func Fuzz_ReadIndexFile_v12(f *testing.F) {
-	files := []string{
-		"testdata/symbols/v2/index.symdb",
-		"testdata/symbols/v1/index.symdb",
-	}
-	for _, path := range files {
-		data, err := os.ReadFile(path)
-		require.NoError(f, err)
-		f.Add(data)
-	}
-	f.Fuzz(func(_ *testing.T, b []byte) {
-		_, _ = OpenIndex(b)
-	})
-}
-
 func Test_Reader_Open_v3(t *testing.T) {
 	// The block contains two partitions (0 and 1), each partition
 	// stores symbols of the testdata/profile.pb.gz profile
@@ -192,6 +177,21 @@ func Test_Reader_Open_v1(t *testing.T) {
 
 	err = r.ResolveStacktraceLocations(context.Background(), dst, []uint32{3, 2, 11, 16, 18})
 	require.NoError(t, err)
+}
+
+func Fuzz_ReadIndexFile_v12(f *testing.F) {
+	files := []string{
+		"testdata/symbols/v2/index.symdb",
+		"testdata/symbols/v1/index.symdb",
+	}
+	for _, path := range files {
+		data, err := os.ReadFile(path)
+		require.NoError(f, err)
+		f.Add(data)
+	}
+	f.Fuzz(func(_ *testing.T, b []byte) {
+		_, _ = OpenIndex(b)
+	})
 }
 
 type mockStacktraceInserter struct{ mock.Mock }

@@ -84,7 +84,7 @@ func (e *locationsBlockEncoder) format() SymbolsBlockFormat {
 
 func (e *locationsBlockEncoder) encode(w io.Writer, locations []v1.InMemoryLocation) error {
 	e.initWrite(len(locations))
-	var addr int64
+	var addr uint64
 	var folded bool
 	for i, loc := range locations {
 		e.mapping[i] = int32(loc.MappingId)
@@ -94,7 +94,7 @@ func (e *locationsBlockEncoder) encode(w io.Writer, locations []v1.InMemoryLocat
 				int32(loc.Line[j].FunctionId),
 				loc.Line[j].Line)
 		}
-		addr |= int64(loc.Address)
+		addr |= loc.Address
 		e.addr[i] = int64(loc.Address)
 		folded = folded || loc.IsFolded
 		e.folded[i] = loc.IsFolded
@@ -170,7 +170,7 @@ type locationsBlockDecoder struct {
 	buf []byte
 }
 
-func locationsDecoder(h SymbolsBlockHeader) (*symbolsDecoder[v1.InMemoryLocation], error) {
+func newLocationsDecoder(h SymbolsBlockHeader) (*symbolsDecoder[v1.InMemoryLocation], error) {
 	if h.Format == BlockLocationsV1 {
 		return newSymbolsDecoder[v1.InMemoryLocation](h, &locationsBlockDecoder{format: h.Format}), nil
 	}
@@ -248,6 +248,8 @@ func (d *locationsBlockDecoder) decode(r io.Reader, locations []v1.InMemoryLocat
 	}
 
 	// Otherwise, inspect all the optional fields.
+	d.address = slices.GrowLen(d.address, int(d.header.LocationsLen))
+	d.folded = slices.GrowLen(d.folded, int(d.header.LocationsLen))
 	if int(d.header.AddrSize) > 0 {
 		d.buf = slices.GrowLen(d.buf, int(d.header.AddrSize))
 		if _, err = io.ReadFull(r, d.buf); err != nil {
@@ -263,7 +265,6 @@ func (d *locationsBlockDecoder) decode(r io.Reader, locations []v1.InMemoryLocat
 		if _, err = io.ReadFull(r, d.buf); err != nil {
 			return err
 		}
-		d.folded = slices.GrowLen(d.folded, int(d.header.LocationsLen))
 		decodeBoolean(d.folded, d.buf)
 	}
 

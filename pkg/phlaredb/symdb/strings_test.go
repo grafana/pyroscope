@@ -12,7 +12,6 @@ func Test_StringsEncoding(t *testing.T) {
 	type testCase struct {
 		description string
 		strings     []string
-		blockSize   int
 	}
 
 	testCases := []testCase{
@@ -26,7 +25,6 @@ func Test_StringsEncoding(t *testing.T) {
 				"a",
 				"b",
 			},
-			blockSize: 4,
 		},
 		{
 			description: "exact block size",
@@ -36,7 +34,6 @@ func Test_StringsEncoding(t *testing.T) {
 				"cde",
 				"def",
 			},
-			blockSize: 4,
 		},
 		{
 			description: "greater than block size",
@@ -47,7 +44,6 @@ func Test_StringsEncoding(t *testing.T) {
 				"def",
 				"e",
 			},
-			blockSize: 4,
 		},
 		{
 			description: "mixed encoding",
@@ -56,7 +52,6 @@ func Test_StringsEncoding(t *testing.T) {
 				"bcd",
 				strings.Repeat("e", 256),
 			},
-			blockSize: 4,
 		},
 		{
 			description: "mixed encoding exact block",
@@ -70,7 +65,6 @@ func Test_StringsEncoding(t *testing.T) {
 				strings.Repeat("j", 256),
 				strings.Repeat("h", 256),
 			},
-			blockSize: 4,
 		},
 	}
 
@@ -78,18 +72,14 @@ func Test_StringsEncoding(t *testing.T) {
 		tc := tc
 		t.Run(tc.description, func(t *testing.T) {
 			var buf bytes.Buffer
-			e := newSymbolsEncoder[string](new(stringsBlockEncoder))
-			if tc.blockSize > 0 {
-				e.blockSize = tc.blockSize
-			}
-			require.NoError(t, e.encode(&buf, tc.strings))
+			w := newTestFileWriter(&buf)
+			e := newStringsEncoder()
+			e.blockSize = 4
+			h, err := writeSymbolsBlock(w, tc.strings, e)
+			require.NoError(t, err)
 
-			h := SymbolsBlockHeader{
-				Length:    uint32(len(tc.strings)),
-				BlockSize: uint32(e.blockSize),
-			}
-			d := newSymbolsDecoder[string](h, new(stringsBlockDecoder))
-
+			d, err := newStringsDecoder(h)
+			require.NoError(t, err)
 			out := make([]string, h.Length)
 			require.NoError(t, d.decode(out, &buf))
 			require.Equal(t, tc.strings, out)
