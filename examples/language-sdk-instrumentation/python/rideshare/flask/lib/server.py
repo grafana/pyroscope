@@ -1,10 +1,26 @@
 import os
-import time
+
 import pyroscope
 from flask import Flask
+
+# OpenTelemetry
+from opentelemetry.instrumentation.flask import FlaskInstrumentor
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from pyroscope.otel import PyroscopeSpanProcessor
+
 from bike.bike import order_bike
 from car.car import order_car
 from scooter.scooter import order_scooter
+
+provider = TracerProvider()
+provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
+provider.add_span_processor(PyroscopeSpanProcessor())
+
+# Sets the global default tracer provider
+trace.set_tracer_provider(provider)
 
 app_name = os.getenv("PYROSCOPE_APPLICATION_NAME", "flask-ride-sharing-app")
 server_addr = os.getenv("PYROSCOPE_SERVER_ADDRESS", "http://pyroscope:4040")
@@ -23,6 +39,7 @@ pyroscope.configure(
 )
 
 app = Flask(__name__)
+FlaskInstrumentor().instrument_app(app)
 
 @app.route("/bike")
 def bike():
