@@ -15,10 +15,10 @@
 #error "Wrong architecture"
 #endif
 
-static int pthread_getspecific_musl(const struct libc *libc, int32_t key, void **out, const void *fsbase);
-static int pthread_getspecific_glibc(const struct libc *libc, int32_t key, void **out, const void *fsbase);
+static int pthread_getspecific_musl(void *ctx, const struct libc *libc, int32_t key, void **out, const void *fsbase);
+static int pthread_getspecific_glibc(void *ctx, const struct libc *libc, int32_t key, void **out, const void *fsbase);
 
-static __always_inline int pyro_pthread_getspecific(struct libc *libc, int32_t key, void **out) {
+static __always_inline int pyro_pthread_getspecific(void *ctx, struct libc *libc, int32_t key, void **out) {
     if (key == -1) {
         return -1;
     }
@@ -42,39 +42,30 @@ static __always_inline int pyro_pthread_getspecific(struct libc *libc, int32_t k
 
 
     if (libc->musl) {
-        return pthread_getspecific_musl(libc, key, out, tls_base);
+        return pthread_getspecific_musl(ctx, libc, key, out, tls_base);
 
     }
-    return pthread_getspecific_glibc(libc, key, out, tls_base);
+    return pthread_getspecific_glibc(ctx, libc, key, out, tls_base);
 
 }
 
-static __always_inline int pthread_getspecific_glibc(const struct libc *libc, int32_t key, void **out, const void *fsbase) {
+static __always_inline int pthread_getspecific_glibc(void *ctx, const struct libc *libc, int32_t key, void **out, const void *fsbase) {
     void *tmp[2] = {NULL, NULL};
     if (key >= 32) {
         return -1; // it is possible to implement this branch, but it's not needed as autoTLSkey is almost always 0
     }
     void *thread_self = NULL;
-    if (bpf_probe_read_user(&thread_self, sizeof(thread_self), fsbase + 0x10)) {
-        log_error("pthread_getspecific_glibc(amd64) err 0");
-        return -1;
-    }
+    try_read(thread_self,  fsbase + 0x10);
     log_debug("pthread_getspecific_glibc(amd64) thread_self=%llx", thread_self);
     // This assumes autoTLSkey < 32, which means that the TLS is stored in
 //   pthread->specific_1stblock[autoTLSkey]
-    if (bpf_probe_read_user(
-            &tmp,
-            sizeof(tmp),
-            thread_self + libc->pthread_specific1stblock + key * 0x10)) {
-        log_error("pthread_getspecific_glibc(amd64) err 1");
-        return -1;
-    }
+    try_read(tmp, thread_self + libc->pthread_specific1stblock + key * 0x10)
     log_debug("pthread_getspecific_glibc(amd64) res=%llx %llx", tmp[0], tmp[1]);
     *out = tmp[1];
     return 0;
 }
 
-static __always_inline int pthread_getspecific_musl(const struct libc *libc, int32_t key, void **out,
+static __always_inline int pthread_getspecific_musl(void *ctx, const struct libc *libc, int32_t key, void **out,
                                     const void *fsbase) {
     // example from musl 1.2.4 from alpine 3.18
 //        static void *__pthread_getspecific(pthread_key_t k)
@@ -100,20 +91,11 @@ static __always_inline int pthread_getspecific_musl(const struct libc *libc, int
 //   56409:       48 8b 04 f8             mov    rax,QWORD PTR [rax+rdi*8]
 //   5640d:       c3                      ret
     void *tmp = NULL;
-    if (bpf_probe_read_user(&tmp, sizeof(tmp), fsbase)) {
-        log_error("pthread_getspecific_musl(amd64) err 1");
-        return -1;
-    }
+    try_read(tmp, fsbase)
     log_debug("pthread_getspecific_musl(amd64) tmp=%llx", tmp);
-    if (bpf_probe_read_user(&tmp, sizeof(tmp), tmp + libc->pthread_specific1stblock)) {
-        log_error("pthread_getspecific_musl(amd64) err 2");
-        return -1;
-    }
+    try_read(tmp, tmp + libc->pthread_specific1stblock)
     log_debug("pthread_getspecific_musl(amd64) tmp2=%llx", tmp);
-    if (bpf_probe_read_user(&tmp, sizeof(tmp), tmp + key * 0x8)) {
-        log_error("pthread_getspecific_musl(amd64) err 3");
-        return -1;
-    }
+    try_read(tmp, tmp + key * 0x8)
     log_debug("pthread_getspecific_musl(amd64) res=%llx", tmp);
     *out = tmp;
     return 0;

@@ -11,6 +11,7 @@
 #define try_read(dst, src) \
     {if (bpf_probe_read_user(&(dst), sizeof((dst)), (src))) { \
         log_error("read failed  %llx (%s : %d)", (src), __FILE__, __LINE__); \
+        submit_fault_event(ctx, (src));                   \
         return -1; \
     }}
 

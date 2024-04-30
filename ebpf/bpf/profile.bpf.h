@@ -17,18 +17,6 @@ struct pid_config {
     uint8_t padding_;
 };
 
-#define OP_REQUEST_UNKNOWN_PROCESS_INFO 1
-#define OP_PID_DEAD 2
-#define OP_REQUEST_EXEC_PROCESS_INFO 3
-
-struct pid_event {
-    uint32_t op;
-    uint32_t pid;
-};
-struct pid_event e__;
-
-
-
 
 
 
@@ -40,11 +28,6 @@ struct {
 } pids SEC(".maps");
 
 
-struct {
-    __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
-    __uint(key_size, sizeof(u32));
-    __uint(value_size, sizeof(u32));
-} events SEC(".maps");
 
 
 struct {

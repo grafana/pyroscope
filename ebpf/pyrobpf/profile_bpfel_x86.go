@@ -26,6 +26,12 @@ type ProfilePidEvent struct {
 	Pid uint32
 }
 
+type ProfilePidEventFault struct {
+	Op        uint32
+	Pid       uint32
+	FaultAddr uint64
+}
+
 type ProfileSampleKey struct {
 	Pid       uint32
 	Flags     uint32

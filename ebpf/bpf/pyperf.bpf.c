@@ -138,9 +138,10 @@ struct {
 
 
 static __always_inline int get_thread_state(
+        void *ctx,
         py_pid_data *pid_data,
         void **out_thread_state) {
-    return pyro_pthread_getspecific(&pid_data->libc, pid_data->tssKey, out_thread_state);
+    return pyro_pthread_getspecific(ctx, &pid_data->libc, pid_data->tssKey, out_thread_state);
 }
 
 static __always_inline int submit_sample(
@@ -195,7 +196,7 @@ static __always_inline py_sample_state_t *get_state() {
     return -1; /* should never happen */ \
   }
 
-static __always_inline int get_top_frame(py_pid_data *pid_data, py_sample_state_t *state, void *thread_state) {
+static __always_inline int get_top_frame(void *ctx, py_pid_data *pid_data, py_sample_state_t *state, void *thread_state) {
     if (pid_data->offsets.PyThreadState_frame == -1) {
         // >= py311 && <= py312
         void *cframe;
@@ -239,7 +240,7 @@ static __always_inline int pyperf_collect_impl(struct bpf_perf_event_data* ctx, 
 
     // Read PyThreadState of this Thread from TLS
     void *thread_state = NULL;
-    if (get_thread_state(pid_data, &thread_state)) {
+    if (get_thread_state(ctx, pid_data, &thread_state)) {
         return submit_error_sample(PY_ERROR_THREAD_STATE);
     }
     log_debug("thread_state %llx", thread_state);
@@ -253,7 +254,7 @@ static __always_inline int pyperf_collect_impl(struct bpf_perf_event_data* ctx, 
     if (thread_state == 0) {
         return 0;// not a python thread or not initialized or finalized thread
     }
-    if (get_top_frame(pid_data, state, thread_state)) {
+    if (get_top_frame(ctx, pid_data, state, thread_state)) {
         return submit_error_sample(PY_ERROR_TOP_FRAME);
     }
     log_debug("top frame %llx", state->frame_ptr);
@@ -291,7 +292,7 @@ int pyperf_collect(struct bpf_perf_event_data *ctx) {
 }
 
 
-static __always_inline int check_first_arg(void *code_ptr,
+static __always_inline int check_first_arg(void *ctx, void *code_ptr,
                                            py_sample_state_t *state,
                                            bool *out_first_self,
                                            bool *out_first_cls) {
@@ -330,7 +331,7 @@ static __always_inline int check_first_arg(void *code_ptr,
     log_debug("ob_item %llx", args_ptr);
     uint64_t symbol_name = 0;
     struct py_str_type symbol_name_type = {};
-    try (pystr_read(args_ptr, state, (char *)&symbol_name, sizeof(symbol_name), &symbol_name_type))
+    try (pystr_read(ctx, args_ptr, state, (char *)&symbol_name, sizeof(symbol_name), &symbol_name_type))
     // compare strings as ints to save instructions
     char self_str[4] = {'s', 'e', 'l', 'f'};
     char cls_str[4] = {'c', 'l', 's', '\0'};
@@ -343,14 +344,13 @@ static __always_inline int check_first_arg(void *code_ptr,
 #define IGNORE_NAMES_ERROR 1
 
 
-static __always_inline int get_code_name( void *cur_frame,
-                                          void *code_ptr,
+static __always_inline int get_code_name(void *ctx, void *code_ptr,
                                           py_sample_state_t *state,
                                           py_symbol *symbol) {
     void *pystr_ptr;
 
     // read PyCodeObject's name into symbol
-    if (bpf_probe_read_user(
+    if (read_user_faulty(ctx,
             &pystr_ptr, sizeof(void *), code_ptr + state->offsets.PyCodeObject_co_name)) {
         log_error("failed to read co_name at %llx", code_ptr);
 #if defined(IGNORE_NAMES_ERROR)
@@ -363,7 +363,7 @@ static __always_inline int get_code_name( void *cur_frame,
         return -PY_ERROR_NAME;
 #endif
     }
-    if (pystr_read(pystr_ptr, state, symbol->name, sizeof(symbol->name), &symbol->name_type)) {
+    if (pystr_read(ctx,pystr_ptr, state, symbol->name, sizeof(symbol->name), &symbol->name_type)) {
         log_error("failed to read name at %llx", pystr_ptr);
 #if defined(IGNORE_NAMES_ERROR)
         log_error("CodErr2");
@@ -377,13 +377,13 @@ static __always_inline int get_code_name( void *cur_frame,
     }
     return 0;
 }
-static __always_inline int get_file_name( void *cur_frame,
+static __always_inline int get_file_name(void *ctx,
                                            void *code_ptr,
                                            py_sample_state_t *state,
                                            py_symbol *symbol) {
     void *pystr_ptr;
     // read PyCodeObject's filename into symbol
-    if (bpf_probe_read_user(
+    if (read_user_faulty(ctx,
             &pystr_ptr, sizeof(void *), code_ptr + state->offsets.PyCodeObject_co_filename)) {
         log_error("failed to read co_filename at %llx", code_ptr);
 #if defined(IGNORE_NAMES_ERROR)
@@ -400,7 +400,7 @@ static __always_inline int get_file_name( void *cur_frame,
         log_error("null file name");
         return 0;
     }
-    if (pystr_read(pystr_ptr, state, symbol->file, sizeof(symbol->file), &symbol->file_type)) {
+    if (pystr_read(ctx, pystr_ptr, state, symbol->file, sizeof(symbol->file), &symbol->file_type)) {
         log_error("failed to read file name at %llx", pystr_ptr);
 #if defined(IGNORE_NAMES_ERROR)
         log_error("FilErr2");
@@ -415,14 +415,14 @@ static __always_inline int get_file_name( void *cur_frame,
     return 0;
 
 }
-static __always_inline int get_class_name( void *cur_frame,
+static __always_inline int get_class_name(void *ctx, void *cur_frame,
                                            void *code_ptr,
                                            py_sample_state_t *state,
                                            py_symbol *symbol) {
     bool first_self = false;
     bool first_cls = false;
     log_debug("get_names");
-    if (check_first_arg(code_ptr, state, &first_self, &first_cls)) {
+    if (check_first_arg(ctx, code_ptr, state, &first_self, &first_cls)) {
 
 #if defined(IGNORE_NAMES_ERROR)
         log_debug("ignore_names_error check_first_arg");
@@ -448,7 +448,7 @@ static __always_inline int get_class_name( void *cur_frame,
     }
     // Read class name from $frame->f_localsplus[0]->ob_type->tp_name.
     void *ptr = NULL;
-    if (bpf_probe_read_user(
+    if (read_user_faulty(ctx,
             &ptr, sizeof(void *), (void *) (cur_frame + state->offsets.VFrame_localsplus))) {
         log_error("failed to read f_localsplus at %llx", cur_frame);
 #if defined(IGNORE_NAMES_ERROR)
@@ -465,7 +465,7 @@ static __always_inline int get_class_name( void *cur_frame,
     if (ptr) {
         if (first_self) {
             // we are working with an instance, first we need to get type
-            if (bpf_probe_read_user(&ptr, sizeof(void *), ptr + state->offsets.PyObject_ob_type)) {
+            if (read_user_faulty(ctx, &ptr, sizeof(void *), ptr + state->offsets.PyObject_ob_type)) {
                 log_error("failed to read ob_type at %llx", ptr);
 #if defined(IGNORE_NAMES_ERROR)
                 log_error("ErrCls2");
@@ -489,7 +489,7 @@ static __always_inline int get_class_name( void *cur_frame,
 
         }
         // https://github.com/python/cpython/blob/d73501602f863a54c872ce103cd3fa119e38bac9/Include/cpython/object.h#L106
-        if (bpf_probe_read_user(&ptr, sizeof(void *), ptr + state->offsets.PyTypeObject_tp_name)) {
+        if (read_user_faulty(ctx, &ptr, sizeof(void *), ptr + state->offsets.PyTypeObject_tp_name)) {
             log_error("failed to read tp_name at %llx", ptr);
 #if defined(IGNORE_NAMES_ERROR)
             log_error("ErrCls3");
@@ -504,6 +504,7 @@ static __always_inline int get_class_name( void *cur_frame,
         log_debug("tp_name %llx", ptr);
         long len = bpf_probe_read_user_str(&symbol->classname, sizeof(symbol->classname), ptr);
         if (len < 0) {
+            submit_fault_event(ctx, (void *) ptr);
             log_error("failed to read class name at %llx", ptr);
 #if defined(IGNORE_NAMES_ERROR)
             log_error("ErrCls4");
@@ -547,16 +548,15 @@ static __always_inline int get_names(
     // compilation time using the FAIL_COMPILATION_IF macro.
     bpf_perf_prog_read_value(ctx, (struct bpf_perf_event_value *) symbol, sizeof(py_symbol));
 
-    if (get_class_name(cur_frame, code_ptr, state, symbol)) {
+    if (get_class_name(ctx, cur_frame, code_ptr, state, symbol)) {
         return -PY_ERROR_CLASS_NAME;
     }
 
-    void *pystr_ptr;
-    if (get_file_name(cur_frame, code_ptr, state, symbol)) {
+    if (get_file_name(ctx, code_ptr, state, symbol)) {
         return -PY_ERROR_FILE_NAME;
     }
 
-    if (get_code_name(cur_frame, code_ptr, state, symbol)) {
+    if (get_code_name(ctx, code_ptr, state, symbol)) {
         return -PY_ERROR_NAME;
     }
     return 0;
@@ -582,13 +582,13 @@ static __always_inline int get_frame_data(
     if (offsets->PyInterpreterFrame_owner != -1) {
         // https://github.com/python/cpython/blob/e7331365b488382d906ce6733ab1349ded49c928/Python/traceback.c#L991
         char owner = 0;
-        if (bpf_probe_read_user(
+        if (read_user_faulty(ctx,
                 &owner, sizeof(owner), (void *) (cur_frame + offsets->PyInterpreterFrame_owner))) {
             return -PY_ERROR_FRAME_OWNER;
         }
         log_debug("frame owner %llx", owner);
         if (owner == FRAME_OWNED_BY_CSTACK) {
-            if (bpf_probe_read_user(
+            if (read_user_faulty(ctx,
                     frame_ptr, sizeof(void *), (void *) (cur_frame + offsets->VFrame_previous))) {
                 return -PY_ERROR_FRAME_PREV;
             }
@@ -604,7 +604,7 @@ static __always_inline int get_frame_data(
         }
     }
     // read PyCodeObject first, if that fails, then no point reading next frame
-    if (bpf_probe_read_user(
+    if (read_user_faulty(ctx,
             &code_ptr, sizeof(void *), (void *) (cur_frame + offsets->VFrame_code))) {
         return -PY_ERROR_FRAME_CODE;
     }
@@ -625,7 +625,7 @@ static __always_inline int get_frame_data(
     log_debug("sym cls  %s", symbol->classname);
 
     // read next PyFrameObject/PyInterpreterFrame pointer, update in place
-    if (bpf_probe_read_user(
+    if (read_user_faulty(ctx,
             frame_ptr, sizeof(void *), (void *) (cur_frame + offsets->VFrame_previous))) {
         log_error("failed to read f_back at %llx", cur_frame);
         return -PY_ERROR_FRAME_PREV;

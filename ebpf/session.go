@@ -120,6 +120,10 @@ type session struct {
 	pids            pids
 	pidExecRequests chan uint32
 	bpflogFile      *os.File
+
+	faultEvents          chan pyrobpf.ProfilePidEventFault
+	faultWarmupPages     map[uint64]struct{}
+	faultWarmupPagesLock sync.Mutex
 }
 
 func NewSession(
@@ -144,6 +148,7 @@ func NewSession(
 			dead:    make(map[uint32]struct{}),
 			all:     make(map[uint32]procInfoLite),
 		},
+		faultWarmupPages: make(map[uint64]struct{}),
 	}, nil
 }
 
@@ -210,14 +215,16 @@ func (s *session) Start() error {
 	pidInfoRequests := make(chan uint32, 1024)
 	pidExecRequests := make(chan uint32, 1024)
 	deadPIDsEvents := make(chan uint32, 1024)
+	faultEvents := make(chan pyrobpf.ProfilePidEventFault, 1024)
 	s.pidInfoRequests = pidInfoRequests
 	s.pidExecRequests = pidExecRequests
 	s.deadPIDEvents = deadPIDsEvents
-	s.wg.Add(5)
+	s.faultEvents = faultEvents
+	s.wg.Add(6)
 	s.started = true
 	go func() {
 		defer s.wg.Done()
-		s.readEvents(eventsReader, pidInfoRequests, pidExecRequests, deadPIDsEvents)
+		s.readEvents(eventsReader, pidInfoRequests, pidExecRequests, deadPIDsEvents, faultEvents)
 	}()
 	go func() {
 		defer s.wg.Done()
@@ -236,6 +243,10 @@ func (s *session) Start() error {
 		if s.printBPFLogEnabled() {
 			go s.printBpfLog()
 		}
+	}()
+	go func() {
+		defer s.wg.Done()
+		s.processFaultEvents(faultEvents)
 	}()
 	return nil
 }
@@ -470,6 +481,10 @@ func (s *session) stopLocked() {
 		close(s.pidExecRequests)
 		s.pidExecRequests = nil
 	}
+	if s.pidExecRequests != nil {
+		close(s.pidExecRequests)
+		s.pidExecRequests = nil
+	}
 	if s.bpflogFile != nil {
 		_ = s.bpflogFile.Close()
 		s.bpflogFile = nil
@@ -588,7 +603,9 @@ func (s *session) WalkStack(sb *stackBuilder, stack []byte, resolver symtab.Symb
 func (s *session) readEvents(events *perf.Reader,
 	pidConfigRequest chan<- uint32,
 	pidExecRequest chan<- uint32,
-	deadPIDsEvents chan<- uint32) {
+	deadPIDsEvents chan<- uint32,
+	faultEvents chan<- pyrobpf.ProfilePidEventFault,
+) {
 	defer events.Close()
 	for {
 		record, err := events.Read()
@@ -610,7 +627,7 @@ func (s *session) readEvents(events *perf.Reader,
 				_ = level.Error(s.logger).Log("msg", "perf event record too small", "len", len(record.RawSample))
 				continue
 			}
-			e := pyrobpf.ProfilePidEvent{}
+			e := pyrobpf.ProfilePidEventFault{}
 			e.Op = binary.LittleEndian.Uint32(record.RawSample[0:4])
 			e.Pid = binary.LittleEndian.Uint32(record.RawSample[4:8])
 			//_ = level.Debug(s.logger).Log("msg", "perf event record", "op", e.Op, "pid", e.Pid)
@@ -632,6 +649,17 @@ func (s *session) readEvents(events *perf.Reader,
 				case pidExecRequest <- e.Pid:
 				default:
 					_ = level.Error(s.logger).Log("msg", "pid exec request queue full, dropping event", "pid", e.Pid)
+				}
+			} else if e.Op == uint32(pyrobpf.PidOpRequestFault) {
+				if len(record.RawSample) < 16 {
+					_ = level.Error(s.logger).Log("msg", "perf event record too small for fault", "len", len(record.RawSample))
+					continue
+				}
+				e.FaultAddr = binary.LittleEndian.Uint64(record.RawSample[8:16])
+				select {
+				case faultEvents <- e:
+				default:
+					_ = level.Error(s.logger).Log("msg", "faultEvents queue full, dropping event", "pid", e.Pid)
 				}
 			} else {
 				_ = level.Error(s.logger).Log("msg", "unknown perf event record", "op", e.Op, "pid", e.Pid)
@@ -765,6 +793,58 @@ func (s *session) processPIDExecRequests(requests chan uint32) {
 	}
 }
 
+func (s *session) processFaultEvents(events chan pyrobpf.ProfilePidEventFault) {
+	for e := range events {
+		s.warmupPage(e)
+	}
+}
+
+func (s *session) checkWarmupPages(addr uint64) bool {
+	s.faultWarmupPagesLock.Lock()
+	defer s.faultWarmupPagesLock.Unlock()
+	_, ok := s.faultWarmupPages[addr]
+	if ok {
+		return false
+	}
+	s.faultWarmupPages[addr] = struct{}{}
+	return true
+}
+func (s *session) warmupPage(e pyrobpf.ProfilePidEventFault) {
+	addr := e.FaultAddr
+	addr &= 0xfffffffffffff000
+	if !s.checkWarmupPages(addr) {
+		return
+	}
+	hexAddr := fmt.Sprintf("%x", addr)
+	_ = level.Debug(s.logger).Log("msg", "warmup page", "addr", hexAddr)
+
+	f, err := os.OpenFile(fmt.Sprintf("/proc/%d/mem", e.Pid), os.O_RDONLY, 0)
+	if err != nil {
+		_ = level.Error(s.logger).Log("msg", "open mem", "err", err)
+		return
+	}
+	defer f.Close()
+	_, err = f.Seek(int64(addr), os.SEEK_SET)
+	if err != nil {
+		_ = level.Error(s.logger).Log("msg", "seek mem", "err", err)
+		return
+	}
+	buf := [8]byte{}
+	_, err = f.Read(buf[:])
+	if err != nil {
+		_ = level.Error(s.logger).Log("msg", "read mem", "err",
+			err)
+		return
+	}
+	level.Debug(s.logger).Log("msg", "warmup page ok", "addr", hexAddr)
+}
+
+func (s *session) clearWarmupPages() {
+	s.faultWarmupPagesLock.Lock()
+	defer s.faultWarmupPagesLock.Unlock()
+	s.faultWarmupPages = make(map[uint64]struct{})
+}
+
 func (s *session) linkKProbes() error {
 	type hook struct {
 		kprobe   string
@@ -820,6 +900,7 @@ func (s *session) cleanup() {
 	if s.roundNumber%10 == 0 {
 		s.checkStalePids()
 	}
+	s.clearWarmupPages()
 }
 
 // iterate over all pids and check if they are alive

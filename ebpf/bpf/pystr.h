@@ -45,7 +45,7 @@ typedef struct {
 } PyASCIIObject;
 
 // Read compact strings from PyASCIIObject or PyCompactUnicodeObject
-static __always_inline int pystr_read(void *str, py_sample_state_t *state, char *buf, u64 buf_size, struct py_str_type *typ) {
+static __always_inline int pystr_read(void *ctx, void *str, py_sample_state_t *state, char *buf, u64 buf_size, struct py_str_type *typ) {
     try(pytypecheck_unicode(state, str))
     PyASCIIObject pystr = {};
     try (bpf_probe_read_user(&pystr, sizeof(PyASCIIObject), str))

@@ -114,6 +114,7 @@ func (s *session) loadPyPerf(cause *sd.Target) (*python.Perf, error) {
 		MapReplacements: map[string]*ebpf.Map{
 			"stacks": s.bpf.Stacks,
 			"counts": s.bpf.ProfileMaps.Counts,
+			"events": s.bpf.ProfileMaps.Events,
 		},
 	}
 	spec, err := python.LoadPerf()

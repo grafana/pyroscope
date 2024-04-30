@@ -33,4 +33,51 @@ struct {
 } counts SEC(".maps");
 
 
+
+#define OP_REQUEST_UNKNOWN_PROCESS_INFO 1
+#define OP_PID_DEAD 2
+#define OP_REQUEST_EXEC_PROCESS_INFO 3
+#define OP_REQUEST_FAULT 4
+
+struct pid_event {
+    uint32_t op;
+    uint32_t pid;
+};
+
+struct pid_event_fault {
+    uint32_t op;
+    uint32_t pid;
+    uint64_t fault_addr;
+};
+
+
+struct pid_event e__;
+struct pid_event_fault e___;
+
+
+struct {
+    __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
+    __uint(key_size, sizeof(u32));
+    __uint(value_size, sizeof(u32));
+} events SEC(".maps");
+
+
+static void submit_fault_event(void *ctx, const void *src);
+
+static __always_inline int read_user_faulty(void *ctx, void *dst,  __u32 size, void *src) {
+    if (bpf_probe_read_user(dst, size, src) != 0) {
+        submit_fault_event(ctx, src);
+        return -1;
+    }
+    return 0;
+}
+
+static __always_inline void submit_fault_event(void *ctx, const void *src) {
+    struct pid_event_fault e;
+    e.op = OP_REQUEST_FAULT;
+    e.pid = bpf_get_current_pid_tgid();//todo use namespaced pid
+    e.fault_addr = (u64)src;
+    bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &e, sizeof(e));
+}
+
 #endif

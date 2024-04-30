@@ -183,6 +183,7 @@ type PerfProgramSpecs struct {
 // It can be passed ebpf.CollectionSpec.Assign.
 type PerfMapSpecs struct {
 	Counts       *ebpf.MapSpec `ebpf:"counts"`
+	Events       *ebpf.MapSpec `ebpf:"events"`
 	PyErrors     *ebpf.MapSpec `ebpf:"py_errors"`
 	PyPidConfig  *ebpf.MapSpec `ebpf:"py_pid_config"`
 	PyProgs      *ebpf.MapSpec `ebpf:"py_progs"`
@@ -212,6 +213,7 @@ func (o *PerfObjects) Close() error {
 // It can be passed to LoadPerfObjects or ebpf.CollectionSpec.LoadAndAssign.
 type PerfMaps struct {
 	Counts       *ebpf.Map `ebpf:"counts"`
+	Events       *ebpf.Map `ebpf:"events"`
 	PyErrors     *ebpf.Map `ebpf:"py_errors"`
 	PyPidConfig  *ebpf.Map `ebpf:"py_pid_config"`
 	PyProgs      *ebpf.Map `ebpf:"py_progs"`
@@ -224,6 +226,7 @@ type PerfMaps struct {
 func (m *PerfMaps) Close() error {
 	return _PerfClose(
 		m.Counts,
+		m.Events,
 		m.PyErrors,
 		m.PyPidConfig,
 		m.PyProgs,
