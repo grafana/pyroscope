@@ -1,7 +1,7 @@
 #ifndef PYROEBPF_PYTYPECHECK_H
 #define PYROEBPF_PYTYPECHECK_H
 
-#define PY_TYPECHECK_ENABLED
+//#define PY_TYPECHECK_ENABLED
 
 #if defined(PY_TYPECHECK_ENABLED)
 
@@ -203,6 +203,18 @@ static __always_inline int pytypecheck_typeobject(py_sample_state_t *state, void
 
 
 #else
+
+#define pytypecheck_version_supported(state) 1
+#define pytypecheck_version_check(state) 1
+#define pytypecheck_obj(o, typ) 0
+#define pytypecheck_glibc_header_size(o, allocationSize) 0
+#define pytypecheck_interpreter_state(state, is) 0
+#define pytypecheck_thread_state(state, ts, check_interp) 0
+#define pytypecheck_frame(state, f) 0
+#define pytypecheck_code(state, code, frame) 0
+#define pytypecheck_tuple(state, tuple) 0
+#define pytypecheck_unicode(state, tuple) 0
+#define pytypecheck_typeobject(state, typ) 0
 
 
 #endif
