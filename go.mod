@@ -266,10 +266,3 @@ replace (
 	// + https://github.com/go-yaml/yaml/pull/876
 	gopkg.in/yaml.v3 => github.com/colega/go-yaml-yaml v0.0.0-20220720105220-255a8d16d094
 )
-
-require (
-	github.com/jzelinskie/must v0.0.1
-	go.opentelemetry.io/collector/pdata v1.0.0-rcv0012
-)
-
-replace go.opentelemetry.io/collector/pdata => ../opentelemetry-collector/pdata

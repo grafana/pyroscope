@@ -21,8 +21,6 @@ import (
 	"github.com/grafana/dskit/middleware"
 	"github.com/grafana/dskit/server"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/weaveworks/common/middleware"
-	"github.com/weaveworks/common/server"
 
 	pprofileotlp "github.com/grafana/pyroscope/api/otlp/collector/profiles/v1experimental"
 
