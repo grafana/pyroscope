@@ -664,7 +664,7 @@ func (q *Querier) getQueriedSeriesCount(ctx context.Context, req *querierv1.Anal
 	var matchers []*labels.Matcher
 	var err error
 	if req.Query != "" {
-		matchers, err = parser.ParseMetricSelector(query)
+		matchers, err = parser.ParseMetricSelector(req.Query)
 		if err != nil {
 			return 0, err
 		}
