@@ -3,6 +3,7 @@ package python
 import (
 	"bufio"
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -58,7 +59,7 @@ func GetProcInfo(s *bufio.Scanner) (ProcInfo, error) {
 				strings.Contains(m.Pathname, "/lib/ld-musl-aarch64.so.1") {
 				res.Musl = append(res.Musl, m)
 			}
-			if strings.HasSuffix(m.Pathname, "/libc.so.6") || strings.HasSuffix(m.Pathname, "/libc-2") {
+			if strings.HasSuffix(m.Pathname, "/libc.so.6") || strings.HasPrefix(filepath.Base(m.Pathname), "libc-2.") {
 				res.Glibc = append(res.Glibc, m)
 			}
 		}
