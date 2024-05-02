@@ -11,6 +11,8 @@ import (
 	"github.com/go-kit/log"
 	giturl "github.com/kubescape/go-git-url"
 	"github.com/kubescape/go-git-url/apis"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"golang.org/x/oauth2"
 
 	vcsv1 "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1"
@@ -23,11 +25,28 @@ var _ vcsv1connect.VCSServiceHandler = (*Service)(nil)
 
 type Service struct {
 	logger log.Logger
+
+	githubAPIDuration  *prometheus.HistogramVec
+	githubAPIRateLimit prometheus.Gauge
 }
 
-func New(logger log.Logger) *Service {
+func New(logger log.Logger, reg prometheus.Registerer) *Service {
 	return &Service{
 		logger: logger,
+		githubAPIDuration: promauto.With(reg).NewHistogramVec(
+			prometheus.HistogramOpts{
+				Namespace: "pyroscope",
+				Name:      "vcs_github_request_duration",
+				Help:      "Duration of GitHub API requests in seconds",
+				Buckets:   prometheus.ExponentialBucketsRange(0.1, 10, 8),
+			},
+			[]string{"path"},
+		),
+		githubAPIRateLimit: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Namespace: "pyroscope",
+			Name:      "vcs_github_rate_limit",
+			Help:      "Remaining GitHub API requests before rate limiting occurs",
+		}),
 	}
 }
 
@@ -44,7 +63,9 @@ func (q *Service) GithubLogin(ctx context.Context, req *connect.Request[vcsv1.Gi
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to authorize with GitHub"))
 	}
 
+	start := time.Now()
 	token, err := cfg.Exchange(ctx, req.Msg.AuthorizationCode)
+	q.githubAPIDuration.WithLabelValues("/login/oauth/authorize").Observe(time.Since(start).Seconds())
 	if err != nil {
 		q.logger.Log("err", err, "msg", "failed to exchange authorization code with GitHub")
 		return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("failed to authorize with GitHub"))
@@ -75,7 +96,9 @@ func (q *Service) GithubRefresh(ctx context.Context, req *connect.Request[vcsv1.
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to refresh token"))
 	}
 
+	start := time.Now()
 	githubToken, err := refreshGithubToken(githubRequest)
+	q.githubAPIDuration.WithLabelValues("/login/oauth/access_token").Observe(time.Since(start).Seconds())
 	if err != nil {
 		q.logger.Log("err", err, "msg", "failed to refresh token with GitHub")
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to refresh token"))
@@ -118,7 +141,7 @@ func (q *Service) GetFile(ctx context.Context, req *connect.Request[vcsv1.GetFil
 	}
 
 	// todo: we can support multiple provider: bitbucket, gitlab, etc.
-	ghClient, err := client.GithubClient(ctx, token)
+	ghClient, err := client.GithubClient(ctx, token, q.githubAPIDuration, q.githubAPIRateLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +184,7 @@ func (q *Service) GetCommit(ctx context.Context, req *connect.Request[vcsv1.GetC
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("only GitHub repositories are supported"))
 	}
 
-	ghClient, err := client.GithubClient(ctx, token)
+	ghClient, err := client.GithubClient(ctx, token, q.githubAPIDuration, q.githubAPIRateLimit)
 	if err != nil {
 		return nil, err
 	}

@@ -125,7 +125,7 @@ func New(params *NewQuerierParams) (*Querier, error) {
 			params.IngestersRing,
 		),
 		storeGatewayQuerier:  storeGatewayQuerier,
-		VCSServiceHandler:    vcs.New(params.Logger),
+		VCSServiceHandler:    vcs.New(params.Logger, params.Reg),
 		storageBucket:        params.StorageBucket,
 		tenantConfigProvider: params.CfgProvider,
 	}
