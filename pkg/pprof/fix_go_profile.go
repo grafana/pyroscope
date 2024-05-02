@@ -56,7 +56,7 @@ func DropGoTypeParameters(p *profilev1.Profile) *profilev1.Profile {
 	var m ProfileMerge
 	// We safely ignore the error as the only case when it can
 	// happen is when merged profiles are of different types.
-	_ = m.MergeNoClone(p)
+	_ = m.Merge(p)
 	return m.Profile()
 }
 

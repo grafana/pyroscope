@@ -32,7 +32,7 @@ const (
 	// from a column at once. Note that the batched rows
 	// are buffered in-memory, but not reference pages
 	// they were read from.
-	defaultRepeatedRowIteratorBatchSize = 128
+	defaultRepeatedRowIteratorBatchSize = 32
 
 	// The value specifies how many individual values to be
 	// read (decoded) from the page.

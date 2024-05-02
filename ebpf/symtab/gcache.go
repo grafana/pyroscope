@@ -151,11 +151,11 @@ func (g *GCache[K, V]) Remove(k K) {
 }
 
 type GCacheDebugInfo[T any] struct {
-	LRUSize      int `river:"lru_size,attr,optional"`
-	RoundSize    int `river:"round_size,attr,optional"`
-	CurrentRound int `river:"current_round,attr,optional"`
-	LRUDump      []T `river:"lru_dump,block,optional"`
-	RoundDump    []T `river:"round_dump,block,optional"`
+	LRUSize      int `alloy:"lru_size,attr,optional" river:"lru_size,attr,optional"`
+	RoundSize    int `alloy:"round_size,attr,optional" river:"round_size,attr,optional"`
+	CurrentRound int `alloy:"current_round,attr,optional" river:"current_round,attr,optional"`
+	LRUDump      []T `alloy:"lru_dump,block,optional" river:"lru_dump,block,optional"`
+	RoundDump    []T `alloy:"round_dump,block,optional" river:"round_dump,block,optional"`
 }
 
 func DebugInfo[K comparable, V Resource, D any](g *GCache[K, V], ff func(K, V, int) D) GCacheDebugInfo[D] {

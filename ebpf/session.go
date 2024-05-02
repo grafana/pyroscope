@@ -66,10 +66,10 @@ type Session interface {
 }
 
 type SessionDebugInfo struct {
-	ElfCache symtab.ElfCacheDebugInfo                          `river:"elf_cache,attr,optional"`
-	PidCache symtab.GCacheDebugInfo[symtab.ProcTableDebugInfo] `river:"pid_cache,attr,optional"`
-	Arch     string                                            `river:"arch,attr"`
-	Kernel   string                                            `river:"kernel,attr"`
+	ElfCache symtab.ElfCacheDebugInfo                          `alloy:"elf_cache,attr,optional" river:"elf_cache,attr,optional"`
+	PidCache symtab.GCacheDebugInfo[symtab.ProcTableDebugInfo] `alloy:"pid_cache,attr,optional" river:"pid_cache,attr,optional"`
+	Arch     string                                            `alloy:"arch,attr" river:"arch,attr"`
+	Kernel   string                                            `alloy:"kernel,attr" river:"kernel,attr"`
 }
 
 type pids struct {

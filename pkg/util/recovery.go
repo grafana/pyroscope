@@ -1,14 +1,15 @@
 package util
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
 	"runtime"
 
+	"connectrpc.com/connect"
 	"github.com/grafana/dskit/httpgrpc"
 	"github.com/grafana/dskit/middleware"
-	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
@@ -34,8 +35,8 @@ var (
 			next.ServeHTTP(w, req)
 		})
 	})
-	RecoveryGRPCStreamInterceptor = grpc_recovery.StreamServerInterceptor(grpc_recovery.WithRecoveryHandler(panicError))
-	RecoveryGRPCUnaryInterceptor  = grpc_recovery.UnaryServerInterceptor(grpc_recovery.WithRecoveryHandler(panicError))
+
+	RecoveryInterceptor recoveryInterceptor
 )
 
 func panicError(p interface{}) error {
@@ -57,4 +58,32 @@ func RecoverPanic(f func() error) func() error {
 		}()
 		return f()
 	}
+}
+
+type recoveryInterceptor struct{}
+
+func (recoveryInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
+	return func(ctx context.Context, req connect.AnyRequest) (resp connect.AnyResponse, err error) {
+		defer func() {
+			if p := recover(); p != nil {
+				err = connect.NewError(connect.CodeInternal, panicError(p))
+			}
+		}()
+		return next(ctx, req)
+	}
+}
+
+func (recoveryInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
+	return func(ctx context.Context, conn connect.StreamingHandlerConn) (err error) {
+		defer func() {
+			if p := recover(); p != nil {
+				err = connect.NewError(connect.CodeInternal, panicError(p))
+			}
+		}()
+		return next(ctx, conn)
+	}
+}
+
+func (recoveryInterceptor) WrapStreamingClient(next connect.StreamingClientFunc) connect.StreamingClientFunc {
+	return next
 }

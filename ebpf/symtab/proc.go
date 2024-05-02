@@ -25,10 +25,10 @@ type ProcTable struct {
 }
 
 type ProcTableDebugInfo struct {
-	ElfTables     map[string]elf.SymTabDebugInfo `river:"elfs,block,optional"`
-	Size          int                            `river:"size,attr,optional"`
-	Pid           int                            `river:"pid,attr,optional"`
-	LastUsedRound int                            `river:"last_used_round,attr,optional"`
+	ElfTables     map[string]elf.SymTabDebugInfo `alloy:"elfs,block,optional" river:"elfs,block,optional"`
+	Size          int                            `alloy:"size,attr,optional" river:"size,attr,optional"`
+	Pid           int                            `alloy:"pid,attr,optional" river:"pid,attr,optional"`
+	LastUsedRound int                            `alloy:"last_used_round,attr,optional" river:"last_used_round,attr,optional"`
 }
 
 func (p *ProcTable) DebugInfo() ProcTableDebugInfo {
