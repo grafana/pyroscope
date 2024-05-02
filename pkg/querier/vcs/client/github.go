@@ -9,33 +9,28 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/google/go-github/v58/github"
-	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/oauth2"
 
 	vcsv1 "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1"
 )
 
 // GithubClient returns a github client.
-func GithubClient(ctx context.Context, token *oauth2.Token, apiDuration *prometheus.HistogramVec, apiRateLimit prometheus.Gauge) (*githubClient, error) {
+func GithubClient(ctx context.Context, token *oauth2.Token, metrics Metrics) (*githubClient, error) {
 	return &githubClient{
-		client:       github.NewClient(nil).WithAuthToken(token.AccessToken),
-		apiDuration:  apiDuration,
-		apiRateLimit: apiRateLimit,
+		client:  github.NewClient(nil).WithAuthToken(token.AccessToken),
+		metrics: metrics,
 	}, nil
 }
 
 type githubClient struct {
-	client *github.Client
-
-	apiDuration  *prometheus.HistogramVec
-	apiRateLimit prometheus.Gauge
+	client  *github.Client
+	metrics Metrics
 }
 
 func (gh *githubClient) GetCommit(ctx context.Context, owner, repo, ref string) (*vcsv1.GetCommitResponse, error) {
 	start := time.Now()
 	commit, res, err := gh.client.Repositories.GetCommit(ctx, owner, repo, ref, nil)
-	gh.apiDuration.WithLabelValues("/repos/{owner}/{repo}/commits/{ref}").Observe(time.Since(start).Seconds())
-	gh.apiRateLimit.Set(float64(res.Rate.Remaining))
+	gh.metrics.GetCommitObserve(time.Since(start), res, err)
 	if err != nil {
 		return nil, err
 	}
@@ -58,8 +53,7 @@ func (gh *githubClient) GetFile(ctx context.Context, req FileRequest) (File, err
 
 	start := time.Now()
 	file, _, res, err := gh.client.Repositories.GetContents(ctx, req.Owner, req.Repo, req.Path, &github.RepositoryContentGetOptions{Ref: req.Ref})
-	gh.apiDuration.WithLabelValues("/repos/{owner}/{repo}/contents/{path}").Observe(time.Since(start).Seconds())
-	gh.apiRateLimit.Set(float64(res.Rate.Remaining))
+	gh.metrics.GetFileObserve(time.Since(start), res, err)
 	if err != nil {
 		var githubErr *github.ErrorResponse
 		if errors.As(err, &githubErr) && githubErr.Response.StatusCode == http.StatusNotFound {
