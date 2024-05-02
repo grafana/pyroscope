@@ -589,9 +589,6 @@ func (q *Querier) AnalyzeQuery(ctx context.Context, req *connect.Request[querier
 	storeGatewayBlockIds := make([]string, 0)
 	deduplicationNeeded := false
 	for _, planEntry := range plan {
-		if len(planEntry.Ulids) == 0 {
-			continue
-		}
 		deduplicationNeeded = deduplicationNeeded || planEntry.Deduplication
 		if planEntry.InstanceType == ingesterInstance {
 			ingesterQueryScope.ComponentCount += 1
@@ -612,16 +609,7 @@ func (q *Querier) AnalyzeQuery(ctx context.Context, req *connect.Request[querier
 		}
 		return stats.Msg, err
 	})
-	for _, r := range blockStatsFromReplicas {
-		for _, stats := range r.response.BlockStats {
-			ingesterQueryScope.NumSeries += stats.NumSeries
-			ingesterQueryScope.NumProfiles += stats.NumProfiles
-			ingesterQueryScope.NumSamples += stats.NumSamples
-			ingesterQueryScope.IndexBytes += stats.IndexBytes
-			ingesterQueryScope.ProfileBytes += stats.ProfilesBytes
-			ingesterQueryScope.SymbolBytes += stats.SymbolsBytes
-		}
-	}
+	addBlockStatsToQueryScope(blockStatsFromReplicas, ingesterQueryScope)
 
 	tenantId, err := tenant.TenantID(ctx)
 	if err != nil {
@@ -634,16 +622,7 @@ func (q *Querier) AnalyzeQuery(ctx context.Context, req *connect.Request[querier
 		}
 		return stats.Msg, err
 	})
-	for _, r := range blockStatsFromReplicas {
-		for _, stats := range r.response.BlockStats {
-			storeGatewayQueryScope.NumSeries += stats.NumSeries
-			storeGatewayQueryScope.NumProfiles += stats.NumProfiles
-			storeGatewayQueryScope.NumSamples += stats.NumSamples
-			storeGatewayQueryScope.IndexBytes += stats.IndexBytes
-			storeGatewayQueryScope.ProfileBytes += stats.ProfilesBytes
-			storeGatewayQueryScope.SymbolBytes += stats.SymbolsBytes
-		}
-	}
+	addBlockStatsToQueryScope(blockStatsFromReplicas, storeGatewayQueryScope)
 	totalBytes := ingesterQueryScope.IndexBytes +
 		ingesterQueryScope.ProfileBytes +
 		ingesterQueryScope.SymbolBytes +
@@ -654,34 +633,56 @@ func (q *Querier) AnalyzeQuery(ctx context.Context, req *connect.Request[querier
 	res := &querierv1.AnalyzeQueryResponse{
 		QueryScopes: []*querierv1.QueryScope{ingesterQueryScope, storeGatewayQueryScope},
 		QueryImpact: &querierv1.QueryImpact{
-			Type:                querierv1.QueryImpactType_MEDIUM, // TODO
 			TotalBytesRead:      totalBytes,
 			DeduplicationNeeded: deduplicationNeeded,
 		},
 	}
 
-	if req.Msg.Query != "" {
-		matchers, err := parser.ParseMetricSelector(req.Msg.Query)
-		if err != nil {
-			return nil, err
-		}
-		for _, matcher := range matchers {
-			if matcher.Name == labels.MetricName {
-				matcher.Name = phlaremodel.LabelNameProfileType
-			}
-		}
-		resSeries, err := q.Series(ctx, connect.NewRequest(&querierv1.SeriesRequest{
-			Matchers: []string{convertMatchersToString(matchers)},
-			Start:    req.Msg.Start,
-			End:      req.Msg.End,
-		}))
-		if err != nil {
-			return nil, err
-		}
-		res.QueryImpact.TotalQueriedSeries = uint64(len(resSeries.Msg.LabelsSet))
+	queriedSeries, err := q.getQueriedSeriesCount(ctx, req.Msg)
+	if err != nil {
+		return nil, err
 	}
+	res.QueryImpact.TotalQueriedSeries = queriedSeries
 
 	return connect.NewResponse(res), nil
+}
+
+func addBlockStatsToQueryScope(blockStatsFromReplicas []ResponseFromReplica[*ingestv1.GetBlockStatsResponse], ingesterQueryScope *querierv1.QueryScope) {
+	for _, r := range blockStatsFromReplicas {
+		for _, stats := range r.response.BlockStats {
+			ingesterQueryScope.NumSeries += stats.NumSeries
+			ingesterQueryScope.NumProfiles += stats.NumProfiles
+			ingesterQueryScope.NumSamples += stats.NumSamples
+			ingesterQueryScope.IndexBytes += stats.IndexBytes
+			ingesterQueryScope.ProfileBytes += stats.ProfilesBytes
+			ingesterQueryScope.SymbolBytes += stats.SymbolsBytes
+		}
+	}
+}
+
+func (q *Querier) getQueriedSeriesCount(ctx context.Context, req *querierv1.AnalyzeQueryRequest) (uint64, error) {
+	var matchers []*labels.Matcher
+	var err error
+	if req.Query != "" {
+		matchers, err = parser.ParseMetricSelector(query)
+		if err != nil {
+			return 0, err
+		}
+	}
+	for _, matcher := range matchers {
+		if matcher.Name == labels.MetricName {
+			matcher.Name = phlaremodel.LabelNameProfileType
+		}
+	}
+	resSeries, err := q.Series(ctx, connect.NewRequest(&querierv1.SeriesRequest{
+		Matchers: []string{convertMatchersToString(matchers)},
+		Start:    req.Start,
+		End:      req.End,
+	}))
+	if err != nil {
+		return 0, err
+	}
+	return uint64(len(resSeries.Msg.LabelsSet)), nil
 }
 
 func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Request[querierv1.SelectMergeStacktracesRequest]) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
