@@ -7,13 +7,13 @@ weight: 10
 
 # Set up Go profiling in pull mode
 
-In pull mode, the collector, whether Grafana Alloy or Grafana Agent (legacy), periodically retrieves profiles from Golang applications, specifically targeting the
+In pull mode, the collector, whether Grafana Alloy (preferred) or Grafana Agent (legacy), periodically retrieves profiles from Golang applications, specifically targeting the
 `/debug/pprof/*` endpoints.
 
 To set up Golang profiling in pull mode, you need to:
 
 1. Expose pprof endpoints
-2. Install a collector, either Grafana Alloy (preferred) or Grafana Agent
+2. Install a collector, either Grafana Alloy (preferred) or Grafana Agent (legacy)
 3. Prepare the collector's configuration file
 4. Start the collector
 
@@ -39,7 +39,7 @@ Ensure your Golang application exposes pprof endpoints.
 [//]: # (TODO&#40;korniltsev&#41; What should go here?)
 
 This procedure can be used with either Grafana Alloy or Grafana Agent collector.
-The collector sends data to Pyroscope using an example River configuration file.
+You can use the sample collector configuration file to send data to Pyroscope.
 This configuration file works for either Grafana Alloy or Grafana Agent in Flow mode.
 
 Grafana Alloy is the preferred collector.
@@ -237,18 +237,18 @@ router.PathPrefix("/debug/pprof").Handler(http.DefaultServeMux)
 
 ### Grafana Alloy
 
-[Grafana Alloy](https://grafana.com/docs/alloy/latest/)
-[pyroscope.scrape](/docs/alloy/latest/flow/reference/components/pyroscope.scrape/)
-[pyroscope.write](/docs/alloy/latest/flow/reference/components/pyroscope.write/)
-[discovery.kubernetes](/docs/alloy/latest/flow/reference/components/discovery.kubernetes/)
-[discovery.docker](/docs/alloy/latest/flow/reference/components/discovery.docker/)
-[discovery.relabel](/docs/alloy/latest/flow/reference/components/discovery.relabel/)
+- [Grafana Alloy](https://grafana.com/docs/alloy/latest/)
+- [pyroscope.scrape](/docs/alloy/latest/flow/reference/components/pyroscope.scrape/)
+- [pyroscope.write](/docs/alloy/latest/flow/reference/components/pyroscope.write/)
+- [discovery.kubernetes](/docs/alloy/latest/flow/reference/components/discovery.kubernetes/)
+- [discovery.docker](/docs/alloy/latest/flow/reference/components/discovery.docker/)
+- [discovery.relabel](/docs/alloy/latest/flow/reference/components/discovery.relabel/)
 
 ### Grafana Agent
 
-[Example using grafana-agent](https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent-auto-instrumentation).
-[pyroscope.scrape](/docs/agent/latest/flow/reference/components/pyroscope.scrape/)
-[pyroscope.write](/docs/agent/latest/flow/reference/components/pyroscope.write/)
+- [Example using grafana-agent](https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent-auto-instrumentation).
+- [pyroscope.scrape](/docs/agent/latest/flow/reference/components/pyroscope.scrape/)
+- [pyroscope.write](/docs/agent/latest/flow/reference/components/pyroscope.write/)
 [discovery.kubernetes](/docs/agent/latest/flow/reference/components/discovery.kubernetes/)
 [discovery.docker](/docs/agent/latest/flow/reference/components/discovery.docker/)
 [discovery.relabel](/docs/agent/latest/flow/reference/components/discovery.relabel/)
