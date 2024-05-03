@@ -97,14 +97,14 @@ func forGivenPlan[Result any, Querier any](ctx context.Context, plan map[string]
 		result = make([]ResponseFromReplica[Result], len(plan))
 	)
 
-	for replica, hints := range plan {
+	for replica, planEntry := range plan {
 		if !replicationSet.Includes(replica) {
 			continue
 		}
 		var (
 			i = idx
 			r = replica
-			h = hints
+			h = planEntry.BlockHints
 		)
 		idx++
 		g.Go(func() error {
@@ -113,7 +113,7 @@ func forGivenPlan[Result any, Querier any](ctx context.Context, plan map[string]
 				return err
 			}
 
-			resp, err := f(ctx, client, &ingestv1.Hints{Block: h.BlockHints})
+			resp, err := f(ctx, client, &ingestv1.Hints{Block: h})
 			if err != nil {
 				return err
 			}
