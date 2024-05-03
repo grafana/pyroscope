@@ -1,0 +1,18 @@
+name: go/fuzz
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: '0 0 * * 1-5' # Run every weekday at midnight
+
+jobs:
+  go-fuzz-merge-single:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.21.9
+      - name: Run Fuzz_Merge_Single
+        run: go test -fuzz=Fuzz_Merge_Single --fuzztime 1h -run '^$' -v ./pkg/pprof/

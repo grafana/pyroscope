@@ -3,6 +3,7 @@ package integration
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -180,7 +181,7 @@ func expectedPPROFFile(testdatum jfrTestData, metric expectedMetric) string {
 	ls := lbls.Labels()
 	h := ls.Hash()
 
-	return fmt.Sprintf("%s.%s.%d.pb.gz", testdatum.jfr, metric.name, h)
+	return fmt.Sprintf("%s.%s.%d.pb.gz", testdatum.jfr, strings.ReplaceAll(metric.name, ":", "_"), h)
 }
 
 func TestCorruptedJFR422(t *testing.T) {

@@ -144,7 +144,7 @@ type containerID string
 type TargetFinder interface {
 	FindTarget(pid uint32) *Target
 	RemoveDeadPID(pid uint32)
-	DebugInfo() []string
+	DebugInfo() []map[string]string
 	Update(args TargetsOptions)
 }
 type TargetsOptions struct {
@@ -250,14 +250,15 @@ func (tf *targetFinder) resizeContainerIDCache(size int) {
 	tf.containerIDCache.Resize(size)
 }
 
-func (tf *targetFinder) DebugInfo() []string {
+func (tf *targetFinder) DebugInfo() []map[string]string {
 	tf.sync.Lock()
 	defer tf.sync.Unlock()
 
-	debugTargets := make([]string, 0, len(tf.cid2target))
+	debugTargets := make([]map[string]string, 0, len(tf.cid2target))
 	for _, target := range tf.cid2target {
+
 		_, ls := target.Labels()
-		debugTargets = append(debugTargets, ls.String())
+		debugTargets = append(debugTargets, ls.Map())
 	}
 	return debugTargets
 }

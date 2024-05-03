@@ -9,6 +9,19 @@ import (
 	"github.com/grafana/pyroscope/pkg/slices"
 )
 
+// TODO(kolesnikovae):
+//   Add a function that incorporates Merge and Normalize.
+//   Both functions perform some sanity checks but none of them
+//   is enough to "vet" the profile completely.
+//   Specifically:
+//    - it's possible that unreferenced objects will remain in the
+//      profile, and therefore will be written to the storage.
+//    - Normalize does not remove duplicates and unreferenced objects
+//      except samples.
+//    - Merge does not remove unreferenced objects at all.
+//    - Merge is fairly expensive: allocated capacities should be
+//      reused and the number of allocs decreased.
+
 type ProfileMerge struct {
 	profile *profilev1.Profile
 	tmp     []uint32
@@ -23,23 +36,14 @@ type ProfileMerge struct {
 // Merge adds p to the profile merge, cloning new objects.
 // Profile p is modified in place but not retained by the function.
 func (m *ProfileMerge) Merge(p *profilev1.Profile) error {
-	return m.merge(p, true)
-}
-
-// MergeNoClone adds p to the profile merge, borrowing objects.
-// Profile p is modified in place and retained by the function.
-func (m *ProfileMerge) MergeNoClone(p *profilev1.Profile) error {
-	return m.merge(p, false)
-}
-
-func (m *ProfileMerge) merge(p *profilev1.Profile, clone bool) error {
-	if p == nil || len(p.StringTable) < 2 {
+	if p == nil || len(p.Sample) == 0 || len(p.StringTable) < 2 {
 		return nil
 	}
-	ConvertIDsToIndices(p)
+
+	sanitizeProfile(p)
 	var initial bool
 	if m.profile == nil {
-		m.init(p, clone)
+		m.init(p)
 		initial = true
 	}
 
@@ -110,7 +114,7 @@ func (m *ProfileMerge) Profile() *profilev1.Profile {
 	return m.profile
 }
 
-func (m *ProfileMerge) init(x *profilev1.Profile, clone bool) {
+func (m *ProfileMerge) init(x *profilev1.Profile) {
 	factor := 2
 	m.stringTable = NewRewriteTable(
 		factor*len(x.StringTable),
@@ -118,35 +122,21 @@ func (m *ProfileMerge) init(x *profilev1.Profile, clone bool) {
 		func(s string) string { return s },
 	)
 
-	if clone {
-		m.functionTable = NewRewriteTable[FunctionKey, *profilev1.Function, *profilev1.Function](
-			factor*len(x.Function), GetFunctionKey, cloneVT[*profilev1.Function])
+	m.functionTable = NewRewriteTable[FunctionKey, *profilev1.Function, *profilev1.Function](
+		factor*len(x.Function), GetFunctionKey, cloneVT[*profilev1.Function])
 
-		m.mappingTable = NewRewriteTable[MappingKey, *profilev1.Mapping, *profilev1.Mapping](
-			factor*len(x.Mapping), GetMappingKey, cloneVT[*profilev1.Mapping])
+	m.mappingTable = NewRewriteTable[MappingKey, *profilev1.Mapping, *profilev1.Mapping](
+		factor*len(x.Mapping), GetMappingKey, cloneVT[*profilev1.Mapping])
 
-		m.locationTable = NewRewriteTable[LocationKey, *profilev1.Location, *profilev1.Location](
-			factor*len(x.Location), GetLocationKey, cloneVT[*profilev1.Location])
+	m.locationTable = NewRewriteTable[LocationKey, *profilev1.Location, *profilev1.Location](
+		factor*len(x.Location), GetLocationKey, cloneVT[*profilev1.Location])
 
-		m.sampleTable = NewRewriteTable[SampleKey, *profilev1.Sample, *profilev1.Sample](
-			factor*len(x.Sample), GetSampleKey, func(sample *profilev1.Sample) *profilev1.Sample {
-				c := sample.CloneVT()
-				slices.Clear(c.Value)
-				return c
-			})
-	} else {
-		m.functionTable = NewRewriteTable[FunctionKey, *profilev1.Function, *profilev1.Function](
-			factor*len(x.Function), GetFunctionKey, noClone[*profilev1.Function])
-
-		m.mappingTable = NewRewriteTable[MappingKey, *profilev1.Mapping, *profilev1.Mapping](
-			factor*len(x.Mapping), GetMappingKey, noClone[*profilev1.Mapping])
-
-		m.locationTable = NewRewriteTable[LocationKey, *profilev1.Location, *profilev1.Location](
-			factor*len(x.Location), GetLocationKey, noClone[*profilev1.Location])
-
-		m.sampleTable = NewRewriteTable[SampleKey, *profilev1.Sample, *profilev1.Sample](
-			factor*len(x.Sample), GetSampleKey, noClone[*profilev1.Sample])
-	}
+	m.sampleTable = NewRewriteTable[SampleKey, *profilev1.Sample, *profilev1.Sample](
+		factor*len(x.Sample), GetSampleKey, func(sample *profilev1.Sample) *profilev1.Sample {
+			c := sample.CloneVT()
+			slices.Clear(c.Value)
+			return c
+		})
 
 	m.profile = &profilev1.Profile{
 		SampleType: make([]*profilev1.ValueType, len(x.SampleType)),
@@ -164,8 +154,6 @@ func (m *ProfileMerge) init(x *profilev1.Profile, clone bool) {
 		m.profile.SampleType[i] = st.CloneVT()
 	}
 }
-
-func noClone[T any](t T) T { return t }
 
 func cloneVT[T interface{ CloneVT() T }](t T) T { return t.CloneVT() }
 
@@ -213,6 +201,9 @@ func compatible(a, b *profilev1.Profile) error {
 // equalValueType returns true if the two value types are semantically
 // equal. It ignores the internal fields used during encode/decode.
 func equalValueType(st1, st2 *profilev1.ValueType) bool {
+	if st1 == nil || st2 == nil {
+		return false
+	}
 	return st1.Type == st2.Type && st1.Unit == st2.Unit
 }
 
@@ -242,11 +233,13 @@ func RewriteStrings(p *profilev1.Profile, n []uint32) {
 	}
 	p.DropFrames = int64(n[p.DropFrames])
 	p.KeepFrames = int64(n[p.KeepFrames])
-	if p.PeriodType.Type != 0 {
-		p.PeriodType.Type = int64(n[p.PeriodType.Type])
-	}
-	if p.PeriodType.Unit != 0 {
-		p.PeriodType.Unit = int64(n[p.PeriodType.Unit])
+	if p.PeriodType != nil {
+		if p.PeriodType.Type != 0 {
+			p.PeriodType.Type = int64(n[p.PeriodType.Type])
+		}
+		if p.PeriodType.Unit != 0 {
+			p.PeriodType.Unit = int64(n[p.PeriodType.Unit])
+		}
 	}
 	for i, x := range p.Comment {
 		p.Comment[i] = int64(n[x])
@@ -257,21 +250,27 @@ func RewriteStrings(p *profilev1.Profile, n []uint32) {
 func RewriteFunctions(p *profilev1.Profile, n []uint32) {
 	for _, loc := range p.Location {
 		for _, line := range loc.Line {
-			line.FunctionId = uint64(n[line.FunctionId-1]) + 1
+			if line.FunctionId > 0 {
+				line.FunctionId = uint64(n[line.FunctionId-1]) + 1
+			}
 		}
 	}
 }
 
 func RewriteMappings(p *profilev1.Profile, n []uint32) {
 	for _, loc := range p.Location {
-		loc.MappingId = uint64(n[loc.MappingId-1]) + 1
+		if loc.MappingId > 0 {
+			loc.MappingId = uint64(n[loc.MappingId-1]) + 1
+		}
 	}
 }
 
 func RewriteLocations(p *profilev1.Profile, n []uint32) {
 	for _, s := range p.Sample {
 		for i, loc := range s.LocationId {
-			s.LocationId[i] = uint64(n[loc-1]) + 1
+			if loc > 0 {
+				s.LocationId[i] = uint64(n[loc-1]) + 1
+			}
 		}
 	}
 }
@@ -425,88 +424,3 @@ func (t *RewriteTable[K, V, M]) Append(values []V) {
 }
 
 func (t *RewriteTable[K, V, M]) Values() []M { return t.s }
-
-func ConvertIDsToIndices(p *profilev1.Profile) {
-	denseMappings := hasDenseMappings(p)
-	denseLocations := hasDenseLocations(p)
-	denseFunctions := hasDenseFunctions(p)
-	if denseMappings && denseLocations && denseFunctions {
-		// In most cases IDs are dense (do match the element index),
-		// therefore the function does not change anything.
-		return
-	}
-	// NOTE(kolesnikovae):
-	// In some cases IDs is a non-monotonically increasing sequence,
-	// therefore the same map can be reused to avoid re-allocations.
-	t := make(map[uint64]uint64, len(p.Location))
-	if !denseMappings {
-		for i, x := range p.Mapping {
-			idx := uint64(i + 1)
-			x.Id, t[x.Id] = idx, idx
-		}
-		RewriteMappingsWithMap(p, t)
-	}
-	if !denseLocations {
-		for i, x := range p.Location {
-			idx := uint64(i + 1)
-			x.Id, t[x.Id] = idx, idx
-		}
-		RewriteLocationsWithMap(p, t)
-	}
-	if !denseFunctions {
-		for i, x := range p.Function {
-			idx := uint64(i + 1)
-			x.Id, t[x.Id] = idx, idx
-		}
-		RewriteFunctionsWithMap(p, t)
-	}
-}
-
-func hasDenseFunctions(p *profilev1.Profile) bool {
-	for i, f := range p.Function {
-		if f.Id != uint64(i+1) {
-			return false
-		}
-	}
-	return true
-}
-
-func hasDenseLocations(p *profilev1.Profile) bool {
-	for i, loc := range p.Location {
-		if loc.Id != uint64(i+1) {
-			return false
-		}
-	}
-	return true
-}
-
-func hasDenseMappings(p *profilev1.Profile) bool {
-	for i, m := range p.Mapping {
-		if m.Id != uint64(i+1) {
-			return false
-		}
-	}
-	return true
-}
-
-func RewriteFunctionsWithMap(p *profilev1.Profile, n map[uint64]uint64) {
-	for _, loc := range p.Location {
-		for _, line := range loc.Line {
-			line.FunctionId = n[line.FunctionId]
-		}
-	}
-}
-
-func RewriteMappingsWithMap(p *profilev1.Profile, n map[uint64]uint64) {
-	for _, loc := range p.Location {
-		loc.MappingId = n[loc.MappingId]
-	}
-}
-
-func RewriteLocationsWithMap(p *profilev1.Profile, n map[uint64]uint64) {
-	for _, s := range p.Sample {
-		for i, loc := range s.LocationId {
-			s.LocationId[i] = n[loc]
-		}
-	}
-}

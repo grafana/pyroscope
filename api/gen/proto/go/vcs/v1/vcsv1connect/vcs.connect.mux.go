@@ -29,6 +29,11 @@ func RegisterVCSServiceHandler(mux *mux.Router, svc VCSServiceHandler, opts ...c
 		svc.GithubLogin,
 		opts...,
 	))
+	mux.Handle("/vcs.v1.VCSService/GithubRefresh", connect.NewUnaryHandler(
+		"/vcs.v1.VCSService/GithubRefresh",
+		svc.GithubRefresh,
+		opts...,
+	))
 	mux.Handle("/vcs.v1.VCSService/GetFile", connect.NewUnaryHandler(
 		"/vcs.v1.VCSService/GetFile",
 		svc.GetFile,
