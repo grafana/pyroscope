@@ -630,15 +630,8 @@ func (q *Querier) AnalyzeQuery(ctx context.Context, req *connect.Request[querier
 		storeGatewayQueryScope.ProfileBytes +
 		storeGatewayQueryScope.SymbolBytes
 
-	filteredQueryScopes := make([]*querierv1.QueryScope, 0)
-	if ingesterQueryScope.ComponentCount > 0 {
-		filteredQueryScopes = append(filteredQueryScopes, ingesterQueryScope)
-	}
-	if storeGatewayQueryScope.ComponentCount > 0 {
-		filteredQueryScopes = append(filteredQueryScopes, storeGatewayQueryScope)
-	}
 	res := &querierv1.AnalyzeQueryResponse{
-		QueryScopes: filteredQueryScopes,
+		QueryScopes: []*querierv1.QueryScope{ingesterQueryScope, storeGatewayQueryScope},
 		QueryImpact: &querierv1.QueryImpact{
 			TotalBytesRead:      totalBytes,
 			DeduplicationNeeded: deduplicationNeeded,
