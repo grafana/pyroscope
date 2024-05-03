@@ -444,7 +444,6 @@ func (m *AnalyzeQueryRequest) CloneVT() *AnalyzeQueryRequest {
 		return (*AnalyzeQueryRequest)(nil)
 	}
 	r := &AnalyzeQueryRequest{
-		Type:  m.Type,
 		Start: m.Start,
 		End:   m.End,
 		Query: m.Query,
@@ -516,7 +515,6 @@ func (m *QueryImpact) CloneVT() *QueryImpact {
 		return (*QueryImpact)(nil)
 	}
 	r := &QueryImpact{
-		Type:                  m.Type,
 		TotalBytesInTimeRange: m.TotalBytesInTimeRange,
 		TotalQueriedSeries:    m.TotalQueriedSeries,
 		DeduplicationNeeded:   m.DeduplicationNeeded,
@@ -1080,9 +1078,6 @@ func (this *AnalyzeQueryRequest) EqualVT(that *AnalyzeQueryRequest) bool {
 	} else if this == nil || that == nil {
 		return false
 	}
-	if this.Type != that.Type {
-		return false
-	}
 	if this.Start != that.Start {
 		return false
 	}
@@ -1185,9 +1180,6 @@ func (this *QueryImpact) EqualVT(that *QueryImpact) bool {
 	if this == that {
 		return true
 	} else if this == nil || that == nil {
-		return false
-	}
-	if this.Type != that.Type {
 		return false
 	}
 	if this.TotalBytesInTimeRange != that.TotalBytesInTimeRange {
@@ -2693,11 +2685,6 @@ func (m *AnalyzeQueryRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x10
 	}
-	if m.Type != 0 {
-		i = encodeVarint(dAtA, i, uint64(m.Type))
-		i--
-		dAtA[i] = 0x8
-	}
 	return len(dAtA) - i, nil
 }
 
@@ -2885,11 +2872,6 @@ func (m *QueryImpact) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i = encodeVarint(dAtA, i, uint64(m.TotalBytesInTimeRange))
 		i--
 		dAtA[i] = 0x10
-	}
-	if m.Type != 0 {
-		i = encodeVarint(dAtA, i, uint64(m.Type))
-		i--
-		dAtA[i] = 0x8
 	}
 	return len(dAtA) - i, nil
 }
@@ -3303,9 +3285,6 @@ func (m *AnalyzeQueryRequest) SizeVT() (n int) {
 	}
 	var l int
 	_ = l
-	if m.Type != 0 {
-		n += 1 + sov(uint64(m.Type))
-	}
 	if m.Start != 0 {
 		n += 1 + sov(uint64(m.Start))
 	}
@@ -3384,9 +3363,6 @@ func (m *QueryImpact) SizeVT() (n int) {
 	}
 	var l int
 	_ = l
-	if m.Type != 0 {
-		n += 1 + sov(uint64(m.Type))
-	}
 	if m.TotalBytesInTimeRange != 0 {
 		n += 1 + sov(uint64(m.TotalBytesInTimeRange))
 	}
@@ -5670,25 +5646,6 @@ func (m *AnalyzeQueryRequest) UnmarshalVT(dAtA []byte) error {
 			return fmt.Errorf("proto: AnalyzeQueryRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Type", wireType)
-			}
-			m.Type = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Type |= QueryType(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
 		case 2:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Start", wireType)
@@ -6166,25 +6123,6 @@ func (m *QueryImpact) UnmarshalVT(dAtA []byte) error {
 			return fmt.Errorf("proto: QueryImpact: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Type", wireType)
-			}
-			m.Type = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Type |= QueryImpactType(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
 		case 2:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field TotalBytesInTimeRange", wireType)

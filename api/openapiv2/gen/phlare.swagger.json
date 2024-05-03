@@ -1111,9 +1111,6 @@
     "v1QueryImpact": {
       "type": "object",
       "properties": {
-        "type": {
-          "$ref": "#/definitions/v1QueryImpactType"
-        },
         "totalBytesInTimeRange": {
           "type": "string",
           "format": "uint64"
@@ -1126,15 +1123,6 @@
           "type": "boolean"
         }
       }
-    },
-    "v1QueryImpactType": {
-      "type": "string",
-      "enum": [
-        "LOW",
-        "MEDIUM",
-        "HIGH"
-      ],
-      "default": "LOW"
     },
     "v1QueryScope": {
       "type": "object",
@@ -1177,21 +1165,6 @@
           "format": "uint64"
         }
       }
-    },
-    "v1QueryType": {
-      "type": "string",
-      "enum": [
-        "PROFILE_TYPES",
-        "LABEL_NAMES",
-        "LABEL_VALUES",
-        "SERIES",
-        "FLAME_GRAPH",
-        "SPAN_PROFILE_FLAME_GRAPH",
-        "PPROF",
-        "TIME_SERIES",
-        "DIFF"
-      ],
-      "default": "PROFILE_TYPES"
     },
     "v1RawProfileSeries": {
       "type": "object",
