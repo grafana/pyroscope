@@ -359,7 +359,7 @@ func (meta *Meta) GetStats() MetaStats {
 	}
 }
 
-func (stats MetaStats) Convert() *ingestv1.BlockStats {
+func (stats MetaStats) ConvertToBlockStats() *ingestv1.BlockStats {
 	indexBytes := uint64(0)
 	profilesBytes := uint64(0)
 	symbolsBytes := uint64(0)

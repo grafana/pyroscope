@@ -149,7 +149,7 @@ func (s *StoreGateway) GetBlockStats(ctx context.Context, req *connect.Request[i
 
 		for ulid, block := range bs.blocks {
 			if slices.Contains(req.Msg.Ulids, ulid.String()) {
-				res.BlockStats = append(res.BlockStats, block.meta.GetStats().Convert())
+				res.BlockStats = append(res.BlockStats, block.meta.GetStats().ConvertToBlockStats())
 			}
 		}
 		return nil

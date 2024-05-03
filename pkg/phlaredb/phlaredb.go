@@ -590,12 +590,12 @@ func (f *PhlareDB) GetBlockStats(ctx context.Context, req *connect.Request[inges
 	f.headLock.RLock()
 	for _, h := range f.heads {
 		if slices.Contains(req.Msg.GetUlids(), h.meta.ULID.String()) {
-			res.BlockStats = append(res.BlockStats, h.GetMetaStats().Convert())
+			res.BlockStats = append(res.BlockStats, h.GetMetaStats().ConvertToBlockStats())
 		}
 	}
 	for _, h := range f.flushing {
 		if slices.Contains(req.Msg.GetUlids(), h.meta.ULID.String()) {
-			res.BlockStats = append(res.BlockStats, h.GetMetaStats().Convert())
+			res.BlockStats = append(res.BlockStats, h.GetMetaStats().ConvertToBlockStats())
 		}
 	}
 	f.headLock.RUnlock()
@@ -603,7 +603,7 @@ func (f *PhlareDB) GetBlockStats(ctx context.Context, req *connect.Request[inges
 	f.blockQuerier.queriersLock.RLock()
 	for _, q := range f.blockQuerier.queriers {
 		if slices.Contains(req.Msg.GetUlids(), q.meta.ULID.String()) {
-			res.BlockStats = append(res.BlockStats, q.GetMetaStats().Convert())
+			res.BlockStats = append(res.BlockStats, q.GetMetaStats().ConvertToBlockStats())
 		}
 	}
 	f.blockQuerier.queriersLock.RUnlock()
