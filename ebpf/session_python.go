@@ -5,9 +5,11 @@ package ebpfspy
 import (
 	"encoding/binary"
 	"fmt"
+	"github.com/go-kit/log"
 	"os"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/btf"
@@ -180,6 +182,7 @@ func (s *session) WalkPythonStack(sb *stackBuilder, stack []byte, target *sd.Tar
 	}
 
 	svc := target.ServiceName()
+	l := level.Error(log.With(s.logger, "svc", svc))
 
 	begin := len(sb.stack)
 	for len(stack) > 0 {
@@ -208,6 +211,17 @@ func (s *session) WalkPythonStack(sb *stackBuilder, stack []byte, target *sd.Tar
 				frame = filename + " " + name
 			} else {
 				frame = filename + " " + classname + "." + name
+			}
+			if !utf8.ValidString(frame) {
+				if !utf8.ValidString(filename) {
+					l.Log("msg", "invalid utf8 filename", "filename", filename)
+				}
+				if !utf8.ValidString(classname) {
+					l.Log("msg", "invalid utf8 classname", "classname", classname)
+				}
+				if !utf8.ValidString(name) {
+					l.Log("msg", "invalid utf8 name", "name", name)
+				}
 			}
 			sb.append(frame)
 			stats.known += 1
