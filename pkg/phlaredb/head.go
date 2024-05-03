@@ -562,7 +562,7 @@ func (h *Head) flush(ctx context.Context) error {
 		return errors.Wrap(err, "flushing symdb")
 	}
 	for _, file := range h.symdb.Files() {
-		// FileStats' path is relative to the symdb dir.
+		// Files' path is relative to the symdb dir.
 		file.RelPath = filepath.Join(symdb.DefaultDirName, file.RelPath)
 		files = append(files, file)
 		blockSize += file.SizeBytes
