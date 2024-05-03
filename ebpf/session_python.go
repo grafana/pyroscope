@@ -212,7 +212,10 @@ func (s *session) WalkPythonStack(sb *stackBuilder, stack []byte, target *sd.Tar
 			} else {
 				frame = filename + " " + classname + "." + name
 			}
+			sb.append(frame)
 			if !utf8.ValidString(frame) {
+				debugstack := strings.Join(sb.stack, ";")
+				l = log.With(l, "debugstack", debugstack)
 				if !utf8.ValidString(filename) {
 					l.Log("msg", "invalid utf8 filename", "filename", filename)
 				}
@@ -223,7 +226,6 @@ func (s *session) WalkPythonStack(sb *stackBuilder, stack []byte, target *sd.Tar
 					l.Log("msg", "invalid utf8 name", "name", name)
 				}
 			}
-			sb.append(frame)
 			stats.known += 1
 		} else {
 			sb.append("pyperf_unknown")
