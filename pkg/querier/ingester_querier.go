@@ -2,7 +2,6 @@ package querier
 
 import (
 	"context"
-	"fmt"
 
 	"connectrpc.com/connect"
 	"github.com/grafana/dskit/ring"
@@ -115,9 +114,9 @@ func (q *Querier) selectTreeFromIngesters(ctx context.Context, req *querierv1.Se
 	g, gCtx := errgroup.WithContext(ctx)
 	for idx := range responses {
 		r := responses[idx]
-		planEntry, ok := plan[r.addr]
-		if !ok && plan != nil {
-			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("no hints found for replica %s", r.addr))
+		blockHints, err := BlockHints(plan, r.addr)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
 		}
 
 		g.Go(util.RecoverPanic(func() error {
@@ -127,7 +126,7 @@ func (q *Querier) selectTreeFromIngesters(ctx context.Context, req *querierv1.Se
 					Start:         req.Start,
 					End:           req.End,
 					Type:          profileType,
-					Hints:         &ingestv1.Hints{Block: planEntry.BlockHints},
+					Hints:         &ingestv1.Hints{Block: blockHints},
 				},
 				MaxNodes: req.MaxNodes,
 			})
@@ -172,9 +171,9 @@ func (q *Querier) selectProfileFromIngesters(ctx context.Context, req *querierv1
 	g, gCtx := errgroup.WithContext(ctx)
 	for idx := range responses {
 		r := responses[idx]
-		planEntry, ok := plan[r.addr]
-		if !ok && plan != nil {
-			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("no hints found for replica %s", r.addr))
+		blockHints, err := BlockHints(plan, r.addr)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
 		}
 
 		g.Go(util.RecoverPanic(func() error {
@@ -184,7 +183,7 @@ func (q *Querier) selectProfileFromIngesters(ctx context.Context, req *querierv1
 					Start:         req.Start,
 					End:           req.End,
 					Type:          profileType,
-					Hints:         &ingestv1.Hints{Block: planEntry.BlockHints},
+					Hints:         &ingestv1.Hints{Block: blockHints},
 				},
 				MaxNodes:           req.MaxNodes,
 				StackTraceSelector: req.StackTraceSelector,
@@ -222,13 +221,13 @@ func (q *Querier) selectSeriesFromIngesters(ctx context.Context, req *ingesterv1
 	g, _ := errgroup.WithContext(ctx)
 	for _, r := range responses {
 		r := r
-		planEntry, ok := plan[r.addr]
-		if !ok && plan != nil {
-			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("no hints found for replica %s", r.addr))
+		blockHints, err := BlockHints(plan, r.addr)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
 		}
 		g.Go(util.RecoverPanic(func() error {
 			req := req.CloneVT()
-			req.Request.Hints = &ingestv1.Hints{Block: planEntry.BlockHints}
+			req.Request.Hints = &ingestv1.Hints{Block: blockHints}
 			return r.response.Send(req)
 		}))
 	}
@@ -325,9 +324,9 @@ func (q *Querier) selectSpanProfileFromIngesters(ctx context.Context, req *queri
 	g, gCtx := errgroup.WithContext(ctx)
 	for idx := range responses {
 		r := responses[idx]
-		planEntry, ok := plan[r.addr]
-		if !ok && plan != nil {
-			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("no hints found for replica %s", r.addr))
+		blockHints, err := BlockHints(plan, r.addr)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
 		}
 
 		g.Go(util.RecoverPanic(func() error {
@@ -338,7 +337,7 @@ func (q *Querier) selectSpanProfileFromIngesters(ctx context.Context, req *queri
 					End:           req.End,
 					Type:          profileType,
 					SpanSelector:  req.SpanSelector,
-					Hints:         &ingestv1.Hints{Block: planEntry.BlockHints},
+					Hints:         &ingestv1.Hints{Block: blockHints},
 				},
 				MaxNodes: req.MaxNodes,
 			})

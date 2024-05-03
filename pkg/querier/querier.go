@@ -23,7 +23,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
@@ -571,118 +570,6 @@ func (q *Querier) GetProfileStats(ctx context.Context, req *connect.Request[type
 	}
 
 	return connect.NewResponse(response), nil
-}
-
-func (q *Querier) AnalyzeQuery(ctx context.Context, req *connect.Request[querierv1.AnalyzeQueryRequest]) (*connect.Response[querierv1.AnalyzeQueryResponse], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "AnalyzeQuery")
-	defer sp.Finish()
-
-	plan, err := q.blockSelect(ctx, model.Time(req.Msg.Start), model.Time(req.Msg.End))
-
-	ingesterQueryScope := &querierv1.QueryScope{
-		ComponentType: "Short term storage",
-	}
-	storeGatewayQueryScope := &querierv1.QueryScope{
-		ComponentType: "Long term storage",
-	}
-	ingesterBlockIds := make([]string, 0)
-	storeGatewayBlockIds := make([]string, 0)
-	deduplicationNeeded := false
-	for _, planEntry := range plan {
-		deduplicationNeeded = deduplicationNeeded || planEntry.Deduplication
-		if planEntry.InstanceType == ingesterInstance {
-			ingesterQueryScope.ComponentCount += 1
-			ingesterQueryScope.NumBlocks += uint64(len(planEntry.Ulids))
-			ingesterBlockIds = append(ingesterBlockIds, planEntry.Ulids...)
-		} else {
-			storeGatewayQueryScope.ComponentCount += 1
-			storeGatewayQueryScope.NumBlocks += uint64(len(planEntry.Ulids))
-			storeGatewayBlockIds = append(storeGatewayBlockIds, planEntry.Ulids...)
-		}
-	}
-
-	var blockStatsFromReplicas []ResponseFromReplica[*ingestv1.GetBlockStatsResponse]
-	blockStatsFromReplicas, err = forAllPlannedIngesters(ctx, q.ingesterQuerier, plan, func(ctx context.Context, iq IngesterQueryClient, hint *ingestv1.Hints) (*ingestv1.GetBlockStatsResponse, error) {
-		stats, err := iq.GetBlockStats(ctx, connect.NewRequest(&ingestv1.GetBlockStatsRequest{Ulids: ingesterBlockIds}))
-		if err != nil {
-			return nil, err
-		}
-		return stats.Msg, err
-	})
-	addBlockStatsToQueryScope(blockStatsFromReplicas, ingesterQueryScope)
-
-	tenantId, err := tenant.TenantID(ctx)
-	if err != nil {
-		return nil, err
-	}
-	blockStatsFromReplicas, err = forAllPlannedStoreGateways(ctx, tenantId, q.storeGatewayQuerier, plan, func(ctx context.Context, sq StoreGatewayQueryClient, hint *ingestv1.Hints) (*ingestv1.GetBlockStatsResponse, error) {
-		stats, err := sq.GetBlockStats(ctx, connect.NewRequest(&ingestv1.GetBlockStatsRequest{Ulids: storeGatewayBlockIds}))
-		if err != nil {
-			return nil, err
-		}
-		return stats.Msg, err
-	})
-	addBlockStatsToQueryScope(blockStatsFromReplicas, storeGatewayQueryScope)
-	totalBytes := ingesterQueryScope.IndexBytes +
-		ingesterQueryScope.ProfileBytes +
-		ingesterQueryScope.SymbolBytes +
-		storeGatewayQueryScope.IndexBytes +
-		storeGatewayQueryScope.ProfileBytes +
-		storeGatewayQueryScope.SymbolBytes
-
-	res := &querierv1.AnalyzeQueryResponse{
-		QueryScopes: []*querierv1.QueryScope{ingesterQueryScope, storeGatewayQueryScope},
-		QueryImpact: &querierv1.QueryImpact{
-			TotalBytesRead:      totalBytes,
-			DeduplicationNeeded: deduplicationNeeded,
-		},
-	}
-
-	queriedSeries, err := q.getQueriedSeriesCount(ctx, req.Msg)
-	if err != nil {
-		return nil, err
-	}
-	res.QueryImpact.TotalQueriedSeries = queriedSeries
-
-	return connect.NewResponse(res), nil
-}
-
-func addBlockStatsToQueryScope(blockStatsFromReplicas []ResponseFromReplica[*ingestv1.GetBlockStatsResponse], ingesterQueryScope *querierv1.QueryScope) {
-	for _, r := range blockStatsFromReplicas {
-		for _, stats := range r.response.BlockStats {
-			ingesterQueryScope.NumSeries += stats.NumSeries
-			ingesterQueryScope.NumProfiles += stats.NumProfiles
-			ingesterQueryScope.NumSamples += stats.NumSamples
-			ingesterQueryScope.IndexBytes += stats.IndexBytes
-			ingesterQueryScope.ProfileBytes += stats.ProfilesBytes
-			ingesterQueryScope.SymbolBytes += stats.SymbolsBytes
-		}
-	}
-}
-
-func (q *Querier) getQueriedSeriesCount(ctx context.Context, req *querierv1.AnalyzeQueryRequest) (uint64, error) {
-	var matchers []*labels.Matcher
-	var err error
-	if req.Query != "" {
-		matchers, err = parser.ParseMetricSelector(req.Query)
-		if err != nil {
-			return 0, err
-		}
-	}
-	for _, matcher := range matchers {
-		if matcher.Name == labels.MetricName {
-			matcher.Name = phlaremodel.LabelNameProfileType
-		}
-	}
-	resSeries, err := q.Series(ctx, connect.NewRequest(&querierv1.SeriesRequest{
-		Matchers: []string{convertMatchersToString(matchers)},
-		Start:    req.Start,
-		End:      req.End,
-	}))
-	if err != nil {
-		return 0, err
-	}
-	return uint64(len(resSeries.Msg.LabelsSet)), nil
 }
 
 func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Request[querierv1.SelectMergeStacktracesRequest]) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {

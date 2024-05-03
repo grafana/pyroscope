@@ -2,7 +2,6 @@ package querier
 
 import (
 	"context"
-	"fmt"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
@@ -210,9 +209,9 @@ func (q *Querier) selectTreeFromStoreGateway(ctx context.Context, req *querierv1
 	g, gCtx := errgroup.WithContext(ctx)
 	for _, r := range responses {
 		r := r
-		planEntry, ok := plan[r.addr]
-		if !ok && plan != nil {
-			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("no hints found for replica %s", r.addr))
+		blockHints, err := BlockHints(plan, r.addr)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
 		}
 		g.Go(util.RecoverPanic(func() error {
 			return r.response.Send(&ingestv1.MergeProfilesStacktracesRequest{
@@ -221,7 +220,7 @@ func (q *Querier) selectTreeFromStoreGateway(ctx context.Context, req *querierv1
 					Start:         req.Start,
 					End:           req.End,
 					Type:          profileType,
-					Hints:         &ingestv1.Hints{Block: planEntry.BlockHints},
+					Hints:         &ingestv1.Hints{Block: blockHints},
 				},
 				MaxNodes: req.MaxNodes,
 			})
@@ -270,9 +269,9 @@ func (q *Querier) selectProfileFromStoreGateway(ctx context.Context, req *querie
 	g, gCtx := errgroup.WithContext(ctx)
 	for _, r := range responses {
 		r := r
-		planEntry, ok := plan[r.addr]
-		if !ok && plan != nil {
-			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("no hints found for replica %s", r.addr))
+		blockHints, err := BlockHints(plan, r.addr)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
 		}
 		g.Go(util.RecoverPanic(func() error {
 			return r.response.Send(&ingestv1.MergeProfilesPprofRequest{
@@ -281,7 +280,7 @@ func (q *Querier) selectProfileFromStoreGateway(ctx context.Context, req *querie
 					Start:         req.Start,
 					End:           req.End,
 					Type:          profileType,
-					Hints:         &ingestv1.Hints{Block: planEntry.BlockHints},
+					Hints:         &ingestv1.Hints{Block: blockHints},
 				},
 				MaxNodes:           req.MaxNodes,
 				StackTraceSelector: req.StackTraceSelector,
@@ -321,13 +320,13 @@ func (q *Querier) selectSeriesFromStoreGateway(ctx context.Context, req *ingeste
 	g, _ := errgroup.WithContext(ctx)
 	for _, r := range responses {
 		r := r
-		planEntry, ok := plan[r.addr]
-		if !ok && plan != nil {
-			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("no hints found for replica %s", r.addr))
+		blockHints, err := BlockHints(plan, r.addr)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
 		}
 		g.Go(util.RecoverPanic(func() error {
 			req := req.CloneVT()
-			req.Request.Hints = &ingestv1.Hints{Block: planEntry.BlockHints}
+			req.Request.Hints = &ingestv1.Hints{Block: blockHints}
 			return r.response.Send(req)
 		}))
 	}
@@ -438,9 +437,9 @@ func (q *Querier) selectSpanProfileFromStoreGateway(ctx context.Context, req *qu
 	g, gCtx := errgroup.WithContext(ctx)
 	for _, r := range responses {
 		r := r
-		planEntry, ok := plan[r.addr]
-		if !ok && plan != nil {
-			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("no hints found for replica %s", r.addr))
+		blockHints, err := BlockHints(plan, r.addr)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
 		}
 		g.Go(util.RecoverPanic(func() error {
 			return r.response.Send(&ingestv1.MergeSpanProfileRequest{
@@ -450,7 +449,7 @@ func (q *Querier) selectSpanProfileFromStoreGateway(ctx context.Context, req *qu
 					End:           req.End,
 					Type:          profileType,
 					SpanSelector:  req.SpanSelector,
-					Hints:         &ingestv1.Hints{Block: planEntry.BlockHints},
+					Hints:         &ingestv1.Hints{Block: blockHints},
 				},
 				MaxNodes: req.MaxNodes,
 			})

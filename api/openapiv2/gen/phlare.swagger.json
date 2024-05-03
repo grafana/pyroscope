@@ -1114,7 +1114,7 @@
         "type": {
           "$ref": "#/definitions/v1QueryImpactType"
         },
-        "totalBytesRead": {
+        "totalBytesInTimeRange": {
           "type": "string",
           "format": "uint64"
         },

@@ -516,10 +516,10 @@ func (m *QueryImpact) CloneVT() *QueryImpact {
 		return (*QueryImpact)(nil)
 	}
 	r := &QueryImpact{
-		Type:                m.Type,
-		TotalBytesRead:      m.TotalBytesRead,
-		TotalQueriedSeries:  m.TotalQueriedSeries,
-		DeduplicationNeeded: m.DeduplicationNeeded,
+		Type:                  m.Type,
+		TotalBytesInTimeRange: m.TotalBytesInTimeRange,
+		TotalQueriedSeries:    m.TotalQueriedSeries,
+		DeduplicationNeeded:   m.DeduplicationNeeded,
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -1190,7 +1190,7 @@ func (this *QueryImpact) EqualVT(that *QueryImpact) bool {
 	if this.Type != that.Type {
 		return false
 	}
-	if this.TotalBytesRead != that.TotalBytesRead {
+	if this.TotalBytesInTimeRange != that.TotalBytesInTimeRange {
 		return false
 	}
 	if this.TotalQueriedSeries != that.TotalQueriedSeries {
@@ -2881,8 +2881,8 @@ func (m *QueryImpact) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x18
 	}
-	if m.TotalBytesRead != 0 {
-		i = encodeVarint(dAtA, i, uint64(m.TotalBytesRead))
+	if m.TotalBytesInTimeRange != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.TotalBytesInTimeRange))
 		i--
 		dAtA[i] = 0x10
 	}
@@ -3387,8 +3387,8 @@ func (m *QueryImpact) SizeVT() (n int) {
 	if m.Type != 0 {
 		n += 1 + sov(uint64(m.Type))
 	}
-	if m.TotalBytesRead != 0 {
-		n += 1 + sov(uint64(m.TotalBytesRead))
+	if m.TotalBytesInTimeRange != 0 {
+		n += 1 + sov(uint64(m.TotalBytesInTimeRange))
 	}
 	if m.TotalQueriedSeries != 0 {
 		n += 1 + sov(uint64(m.TotalQueriedSeries))
@@ -6187,9 +6187,9 @@ func (m *QueryImpact) UnmarshalVT(dAtA []byte) error {
 			}
 		case 2:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field TotalBytesRead", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field TotalBytesInTimeRange", wireType)
 			}
-			m.TotalBytesRead = 0
+			m.TotalBytesInTimeRange = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflow
@@ -6199,7 +6199,7 @@ func (m *QueryImpact) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.TotalBytesRead |= uint64(b&0x7F) << shift
+				m.TotalBytesInTimeRange |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}

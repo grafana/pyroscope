@@ -327,6 +327,17 @@ type blockPlanEntry struct {
 
 type blockPlan map[string]*blockPlanEntry
 
+func BlockHints(p blockPlan, replica string) (*ingestv1.BlockHints, error) {
+	entry, ok := p[replica]
+	if !ok && p != nil {
+		return nil, fmt.Errorf("no hints found for replica %s", replica)
+	}
+	if entry == nil {
+		return nil, nil
+	}
+	return entry.BlockHints, nil
+}
+
 func (p blockPlan) String() string {
 	data, _ := json.Marshal(p)
 	return string(data)
