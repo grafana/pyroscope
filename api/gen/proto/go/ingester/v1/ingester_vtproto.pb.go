@@ -749,12 +749,12 @@ func (m *BlockStats) CloneVT() *BlockStats {
 		return (*BlockStats)(nil)
 	}
 	r := &BlockStats{
-		NumSeries:     m.NumSeries,
-		NumProfiles:   m.NumProfiles,
-		NumSamples:    m.NumSamples,
-		IndexBytes:    m.IndexBytes,
-		ProfilesBytes: m.ProfilesBytes,
-		SymbolsBytes:  m.SymbolsBytes,
+		SeriesCount:  m.SeriesCount,
+		ProfileCount: m.ProfileCount,
+		SampleCount:  m.SampleCount,
+		IndexBytes:   m.IndexBytes,
+		ProfileBytes: m.ProfileBytes,
+		SymbolBytes:  m.SymbolBytes,
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -1679,22 +1679,22 @@ func (this *BlockStats) EqualVT(that *BlockStats) bool {
 	} else if this == nil || that == nil {
 		return false
 	}
-	if this.NumSeries != that.NumSeries {
+	if this.SeriesCount != that.SeriesCount {
 		return false
 	}
-	if this.NumProfiles != that.NumProfiles {
+	if this.ProfileCount != that.ProfileCount {
 		return false
 	}
-	if this.NumSamples != that.NumSamples {
+	if this.SampleCount != that.SampleCount {
 		return false
 	}
 	if this.IndexBytes != that.IndexBytes {
 		return false
 	}
-	if this.ProfilesBytes != that.ProfilesBytes {
+	if this.ProfileBytes != that.ProfileBytes {
 		return false
 	}
-	if this.SymbolsBytes != that.SymbolsBytes {
+	if this.SymbolBytes != that.SymbolBytes {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -4035,13 +4035,13 @@ func (m *BlockStats) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if m.SymbolsBytes != 0 {
-		i = encodeVarint(dAtA, i, uint64(m.SymbolsBytes))
+	if m.SymbolBytes != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.SymbolBytes))
 		i--
 		dAtA[i] = 0x38
 	}
-	if m.ProfilesBytes != 0 {
-		i = encodeVarint(dAtA, i, uint64(m.ProfilesBytes))
+	if m.ProfileBytes != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.ProfileBytes))
 		i--
 		dAtA[i] = 0x30
 	}
@@ -4050,18 +4050,18 @@ func (m *BlockStats) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x28
 	}
-	if m.NumSamples != 0 {
-		i = encodeVarint(dAtA, i, uint64(m.NumSamples))
+	if m.SampleCount != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.SampleCount))
 		i--
 		dAtA[i] = 0x20
 	}
-	if m.NumProfiles != 0 {
-		i = encodeVarint(dAtA, i, uint64(m.NumProfiles))
+	if m.ProfileCount != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.ProfileCount))
 		i--
 		dAtA[i] = 0x18
 	}
-	if m.NumSeries != 0 {
-		i = encodeVarint(dAtA, i, uint64(m.NumSeries))
+	if m.SeriesCount != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.SeriesCount))
 		i--
 		dAtA[i] = 0x10
 	}
@@ -4708,23 +4708,23 @@ func (m *BlockStats) SizeVT() (n int) {
 	}
 	var l int
 	_ = l
-	if m.NumSeries != 0 {
-		n += 1 + sov(uint64(m.NumSeries))
+	if m.SeriesCount != 0 {
+		n += 1 + sov(uint64(m.SeriesCount))
 	}
-	if m.NumProfiles != 0 {
-		n += 1 + sov(uint64(m.NumProfiles))
+	if m.ProfileCount != 0 {
+		n += 1 + sov(uint64(m.ProfileCount))
 	}
-	if m.NumSamples != 0 {
-		n += 1 + sov(uint64(m.NumSamples))
+	if m.SampleCount != 0 {
+		n += 1 + sov(uint64(m.SampleCount))
 	}
 	if m.IndexBytes != 0 {
 		n += 1 + sov(uint64(m.IndexBytes))
 	}
-	if m.ProfilesBytes != 0 {
-		n += 1 + sov(uint64(m.ProfilesBytes))
+	if m.ProfileBytes != 0 {
+		n += 1 + sov(uint64(m.ProfileBytes))
 	}
-	if m.SymbolsBytes != 0 {
-		n += 1 + sov(uint64(m.SymbolsBytes))
+	if m.SymbolBytes != 0 {
+		n += 1 + sov(uint64(m.SymbolBytes))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -8434,9 +8434,9 @@ func (m *BlockStats) UnmarshalVT(dAtA []byte) error {
 		switch fieldNum {
 		case 2:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field NumSeries", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field SeriesCount", wireType)
 			}
-			m.NumSeries = 0
+			m.SeriesCount = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflow
@@ -8446,16 +8446,16 @@ func (m *BlockStats) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.NumSeries |= uint64(b&0x7F) << shift
+				m.SeriesCount |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
 		case 3:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field NumProfiles", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field ProfileCount", wireType)
 			}
-			m.NumProfiles = 0
+			m.ProfileCount = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflow
@@ -8465,16 +8465,16 @@ func (m *BlockStats) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.NumProfiles |= uint64(b&0x7F) << shift
+				m.ProfileCount |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
 		case 4:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field NumSamples", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field SampleCount", wireType)
 			}
-			m.NumSamples = 0
+			m.SampleCount = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflow
@@ -8484,7 +8484,7 @@ func (m *BlockStats) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.NumSamples |= uint64(b&0x7F) << shift
+				m.SampleCount |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -8510,9 +8510,9 @@ func (m *BlockStats) UnmarshalVT(dAtA []byte) error {
 			}
 		case 6:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ProfilesBytes", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field ProfileBytes", wireType)
 			}
-			m.ProfilesBytes = 0
+			m.ProfileBytes = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflow
@@ -8522,16 +8522,16 @@ func (m *BlockStats) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.ProfilesBytes |= uint64(b&0x7F) << shift
+				m.ProfileBytes |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
 		case 7:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field SymbolsBytes", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field SymbolBytes", wireType)
 			}
-			m.SymbolsBytes = 0
+			m.SymbolBytes = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflow
@@ -8541,7 +8541,7 @@ func (m *BlockStats) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.SymbolsBytes |= uint64(b&0x7F) << shift
+				m.SymbolBytes |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}

@@ -68,11 +68,11 @@ func getDataFromPlan(plan blockPlan) (ingesterQueryScope *queryScope, storeGatew
 		deduplicationNeeded = deduplicationNeeded || planEntry.Deduplication
 		if planEntry.InstanceType == ingesterInstance {
 			ingesterQueryScope.ComponentCount += 1
-			ingesterQueryScope.NumBlocks += uint64(len(planEntry.Ulids))
+			ingesterQueryScope.BlockCount += uint64(len(planEntry.Ulids))
 			ingesterQueryScope.blockIds = append(ingesterQueryScope.blockIds, planEntry.Ulids...)
 		} else {
 			storeGatewayQueryScope.ComponentCount += 1
-			storeGatewayQueryScope.NumBlocks += uint64(len(planEntry.Ulids))
+			storeGatewayQueryScope.BlockCount += uint64(len(planEntry.Ulids))
 			storeGatewayQueryScope.blockIds = append(storeGatewayQueryScope.blockIds, planEntry.Ulids...)
 		}
 	}
@@ -109,12 +109,12 @@ func (q *Querier) getBlockStatsFromStoreGateways(ctx context.Context, plan block
 func addBlockStatsToQueryScope(blockStatsFromReplicas []ResponseFromReplica[*ingestv1.GetBlockStatsResponse], queryScope *queryScope) {
 	for _, r := range blockStatsFromReplicas {
 		for _, stats := range r.response.BlockStats {
-			queryScope.NumSeries += stats.NumSeries
-			queryScope.NumProfiles += stats.NumProfiles
-			queryScope.NumSamples += stats.NumSamples
+			queryScope.SeriesCount += stats.SeriesCount
+			queryScope.ProfileCount += stats.ProfileCount
+			queryScope.SampleCount += stats.SampleCount
 			queryScope.IndexBytes += stats.IndexBytes
-			queryScope.ProfileBytes += stats.ProfilesBytes
-			queryScope.SymbolBytes += stats.SymbolsBytes
+			queryScope.ProfileBytes += stats.ProfileBytes
+			queryScope.SymbolBytes += stats.SymbolBytes
 		}
 	}
 }

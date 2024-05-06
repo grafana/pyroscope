@@ -547,15 +547,15 @@
     "v1BlockStats": {
       "type": "object",
       "properties": {
-        "numSeries": {
+        "seriesCount": {
           "type": "string",
           "format": "uint64"
         },
-        "numProfiles": {
+        "profileCount": {
           "type": "string",
           "format": "uint64"
         },
-        "numSamples": {
+        "sampleCount": {
           "type": "string",
           "format": "uint64"
         },
@@ -563,11 +563,11 @@
           "type": "string",
           "format": "uint64"
         },
-        "profilesBytes": {
+        "profileBytes": {
           "type": "string",
           "format": "uint64"
         },
-        "symbolsBytes": {
+        "symbolBytes": {
           "type": "string",
           "format": "uint64"
         }
@@ -1129,26 +1129,26 @@
       "properties": {
         "componentType": {
           "type": "string",
-          "title": "high level, e.g., \"short term\" or \"long term\" storage"
+          "title": "a descriptive high level name of the component processing one part of the query (e.g., \"short term storage\")"
         },
         "componentCount": {
           "type": "string",
-          "format": "int64",
-          "title": "how many components of this type will work on the query"
+          "format": "uint64",
+          "title": "how many components of this type will process the query (indicator of read-path replication)"
         },
-        "numBlocks": {
+        "blockCount": {
           "type": "string",
           "format": "uint64"
         },
-        "numSeries": {
+        "seriesCount": {
           "type": "string",
           "format": "uint64"
         },
-        "numProfiles": {
+        "profileCount": {
           "type": "string",
           "format": "uint64"
         },
-        "numSamples": {
+        "sampleCount": {
           "type": "string",
           "format": "uint64"
         },

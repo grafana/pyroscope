@@ -491,10 +491,10 @@ func (m *QueryScope) CloneVT() *QueryScope {
 	r := &QueryScope{
 		ComponentType:  m.ComponentType,
 		ComponentCount: m.ComponentCount,
-		NumBlocks:      m.NumBlocks,
-		NumSeries:      m.NumSeries,
-		NumProfiles:    m.NumProfiles,
-		NumSamples:     m.NumSamples,
+		BlockCount:     m.BlockCount,
+		SeriesCount:    m.SeriesCount,
+		ProfileCount:   m.ProfileCount,
+		SampleCount:    m.SampleCount,
 		IndexBytes:     m.IndexBytes,
 		ProfileBytes:   m.ProfileBytes,
 		SymbolBytes:    m.SymbolBytes,
@@ -1145,16 +1145,16 @@ func (this *QueryScope) EqualVT(that *QueryScope) bool {
 	if this.ComponentCount != that.ComponentCount {
 		return false
 	}
-	if this.NumBlocks != that.NumBlocks {
+	if this.BlockCount != that.BlockCount {
 		return false
 	}
-	if this.NumSeries != that.NumSeries {
+	if this.SeriesCount != that.SeriesCount {
 		return false
 	}
-	if this.NumProfiles != that.NumProfiles {
+	if this.ProfileCount != that.ProfileCount {
 		return false
 	}
-	if this.NumSamples != that.NumSamples {
+	if this.SampleCount != that.SampleCount {
 		return false
 	}
 	if this.IndexBytes != that.IndexBytes {
@@ -2788,23 +2788,23 @@ func (m *QueryScope) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x38
 	}
-	if m.NumSamples != 0 {
-		i = encodeVarint(dAtA, i, uint64(m.NumSamples))
+	if m.SampleCount != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.SampleCount))
 		i--
 		dAtA[i] = 0x30
 	}
-	if m.NumProfiles != 0 {
-		i = encodeVarint(dAtA, i, uint64(m.NumProfiles))
+	if m.ProfileCount != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.ProfileCount))
 		i--
 		dAtA[i] = 0x28
 	}
-	if m.NumSeries != 0 {
-		i = encodeVarint(dAtA, i, uint64(m.NumSeries))
+	if m.SeriesCount != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.SeriesCount))
 		i--
 		dAtA[i] = 0x20
 	}
-	if m.NumBlocks != 0 {
-		i = encodeVarint(dAtA, i, uint64(m.NumBlocks))
+	if m.BlockCount != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.BlockCount))
 		i--
 		dAtA[i] = 0x18
 	}
@@ -3332,17 +3332,17 @@ func (m *QueryScope) SizeVT() (n int) {
 	if m.ComponentCount != 0 {
 		n += 1 + sov(uint64(m.ComponentCount))
 	}
-	if m.NumBlocks != 0 {
-		n += 1 + sov(uint64(m.NumBlocks))
+	if m.BlockCount != 0 {
+		n += 1 + sov(uint64(m.BlockCount))
 	}
-	if m.NumSeries != 0 {
-		n += 1 + sov(uint64(m.NumSeries))
+	if m.SeriesCount != 0 {
+		n += 1 + sov(uint64(m.SeriesCount))
 	}
-	if m.NumProfiles != 0 {
-		n += 1 + sov(uint64(m.NumProfiles))
+	if m.ProfileCount != 0 {
+		n += 1 + sov(uint64(m.ProfileCount))
 	}
-	if m.NumSamples != 0 {
-		n += 1 + sov(uint64(m.NumSamples))
+	if m.SampleCount != 0 {
+		n += 1 + sov(uint64(m.SampleCount))
 	}
 	if m.IndexBytes != 0 {
 		n += 1 + sov(uint64(m.IndexBytes))
@@ -5934,16 +5934,16 @@ func (m *QueryScope) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.ComponentCount |= int64(b&0x7F) << shift
+				m.ComponentCount |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
 		case 3:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field NumBlocks", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockCount", wireType)
 			}
-			m.NumBlocks = 0
+			m.BlockCount = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflow
@@ -5953,16 +5953,16 @@ func (m *QueryScope) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.NumBlocks |= uint64(b&0x7F) << shift
+				m.BlockCount |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
 		case 4:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field NumSeries", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field SeriesCount", wireType)
 			}
-			m.NumSeries = 0
+			m.SeriesCount = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflow
@@ -5972,16 +5972,16 @@ func (m *QueryScope) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.NumSeries |= uint64(b&0x7F) << shift
+				m.SeriesCount |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
 		case 5:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field NumProfiles", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field ProfileCount", wireType)
 			}
-			m.NumProfiles = 0
+			m.ProfileCount = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflow
@@ -5991,16 +5991,16 @@ func (m *QueryScope) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.NumProfiles |= uint64(b&0x7F) << shift
+				m.ProfileCount |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
 		case 6:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field NumSamples", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field SampleCount", wireType)
 			}
-			m.NumSamples = 0
+			m.SampleCount = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflow
@@ -6010,7 +6010,7 @@ func (m *QueryScope) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.NumSamples |= uint64(b&0x7F) << shift
+				m.SampleCount |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}

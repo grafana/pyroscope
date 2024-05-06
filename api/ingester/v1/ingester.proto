@@ -239,10 +239,10 @@ message GetBlockStatsResponse {
 }
 
 message BlockStats {
-  uint64 num_series = 2;
-  uint64 num_profiles = 3;
-  uint64 num_samples = 4;
+  uint64 series_count = 2;
+  uint64 profile_count = 3;
+  uint64 sample_count = 4;
   uint64 index_bytes = 5;
-  uint64 profiles_bytes = 6;
-  uint64 symbols_bytes = 7;
+  uint64 profile_bytes = 6;
+  uint64 symbol_bytes = 7;
 }

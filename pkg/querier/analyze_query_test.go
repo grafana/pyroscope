@@ -1,9 +1,11 @@
 package querier
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
@@ -11,24 +13,28 @@ import (
 
 func Test_getDataFromPlan(t *testing.T) {
 	tests := []struct {
-		name                       string
-		plan                       blockPlan
-		wantIngesterQueryScope     *queryScope
-		wantStoreGatewayQueryScope *queryScope
-		wantDeduplicationNeeded    bool
+		name                         string
+		plan                         blockPlan
+		verifyIngesterQueryScope     func(t *testing.T, scope *queryScope)
+		verifyStoreGatewayQueryScope func(t *testing.T, scope *queryScope)
+		wantDeduplicationNeeded      bool
 	}{
 		{
 			name: "empty plan",
 			plan: blockPlan{},
-			wantIngesterQueryScope: &queryScope{
-				QueryScope: &querierv1.QueryScope{
-					ComponentType: "Short term storage",
-				},
+			verifyIngesterQueryScope: func(t *testing.T, scope *queryScope) {
+				require.Equal(t, &queryScope{
+					QueryScope: &querierv1.QueryScope{
+						ComponentType: "Short term storage",
+					},
+				}, scope)
 			},
-			wantStoreGatewayQueryScope: &queryScope{
-				QueryScope: &querierv1.QueryScope{
-					ComponentType: "Long term storage",
-				},
+			verifyStoreGatewayQueryScope: func(t *testing.T, scope *queryScope) {
+				require.Equal(t, &queryScope{
+					QueryScope: &querierv1.QueryScope{
+						ComponentType: "Long term storage",
+					},
+				}, scope)
 			},
 			wantDeduplicationNeeded: false,
 		},
@@ -44,18 +50,15 @@ func Test_getDataFromPlan(t *testing.T) {
 					InstanceType: ingesterInstance,
 				},
 			},
-			wantIngesterQueryScope: &queryScope{
-				QueryScope: &querierv1.QueryScope{
-					ComponentType:  "Short term storage",
-					ComponentCount: 2,
-					NumBlocks:      4,
-				},
-				blockIds: []string{"block A", "block B", "block C", "block D"},
+			verifyIngesterQueryScope: func(t *testing.T, scope *queryScope) {
+				require.Equal(t, uint64(2), scope.ComponentCount)
+				require.Equal(t, uint64(4), scope.BlockCount)
+				for _, block := range []string{"block A", "block B", "block C", "block D"} {
+					require.True(t, slices.Contains(scope.blockIds, block))
+				}
 			},
-			wantStoreGatewayQueryScope: &queryScope{
-				QueryScope: &querierv1.QueryScope{
-					ComponentType: "Long term storage",
-				},
+			verifyStoreGatewayQueryScope: func(t *testing.T, scope *queryScope) {
+				require.Equal(t, uint64(0), scope.ComponentCount)
 			},
 			wantDeduplicationNeeded: true,
 		},
@@ -75,21 +78,19 @@ func Test_getDataFromPlan(t *testing.T) {
 					InstanceType: storeGatewayInstance,
 				},
 			},
-			wantIngesterQueryScope: &queryScope{
-				QueryScope: &querierv1.QueryScope{
-					ComponentType:  "Short term storage",
-					ComponentCount: 2,
-					NumBlocks:      4,
-				},
-				blockIds: []string{"block A", "block B", "block C", "block D"},
+			verifyIngesterQueryScope: func(t *testing.T, scope *queryScope) {
+				require.Equal(t, uint64(2), scope.ComponentCount)
+				require.Equal(t, uint64(4), scope.BlockCount)
+				for _, block := range []string{"block A", "block B", "block C", "block D"} {
+					require.True(t, slices.Contains(scope.blockIds, block))
+				}
 			},
-			wantStoreGatewayQueryScope: &queryScope{
-				QueryScope: &querierv1.QueryScope{
-					ComponentType:  "Long term storage",
-					ComponentCount: 1,
-					NumBlocks:      2,
-				},
-				blockIds: []string{"block E", "block F"},
+			verifyStoreGatewayQueryScope: func(t *testing.T, scope *queryScope) {
+				require.Equal(t, uint64(1), scope.ComponentCount)
+				require.Equal(t, uint64(2), scope.BlockCount)
+				for _, block := range []string{"block E", "block F"} {
+					require.True(t, slices.Contains(scope.blockIds, block))
+				}
 			},
 			wantDeduplicationNeeded: true,
 		},
@@ -97,8 +98,8 @@ func Test_getDataFromPlan(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotIngesterQueryScope, gotStoreGatewayQueryScope, gotDeduplicationNeeded := getDataFromPlan(tt.plan)
-			assert.Equalf(t, tt.wantIngesterQueryScope, gotIngesterQueryScope, "getDataFromPlan(%v)", tt.plan)
-			assert.Equalf(t, tt.wantStoreGatewayQueryScope, gotStoreGatewayQueryScope, "getDataFromPlan(%v)", tt.plan)
+			tt.verifyIngesterQueryScope(t, gotIngesterQueryScope)
+			tt.verifyStoreGatewayQueryScope(t, gotStoreGatewayQueryScope)
 			assert.Equalf(t, tt.wantDeduplicationNeeded, gotDeduplicationNeeded, "getDataFromPlan(%v)", tt.plan)
 		})
 	}
@@ -121,9 +122,9 @@ func Test_addBlockStatsToQueryScope(t *testing.T) {
 				queryScope:             &queryScope{QueryScope: &querierv1.QueryScope{}},
 			},
 			verifyExpectations: func(t *testing.T, s *queryScope) {
-				assert.Equalf(t, uint64(0), s.NumSeries, "addBlockStatsToQueryScope(%v)", s)
-				assert.Equalf(t, uint64(0), s.NumProfiles, "addBlockStatsToQueryScope(%v)", s)
-				assert.Equalf(t, uint64(0), s.NumSamples, "addBlockStatsToQueryScope(%v)", s)
+				assert.Equalf(t, uint64(0), s.SeriesCount, "addBlockStatsToQueryScope(%v)", s)
+				assert.Equalf(t, uint64(0), s.ProfileCount, "addBlockStatsToQueryScope(%v)", s)
+				assert.Equalf(t, uint64(0), s.SampleCount, "addBlockStatsToQueryScope(%v)", s)
 				assert.Equalf(t, uint64(0), s.IndexBytes, "addBlockStatsToQueryScope(%v)", s)
 				assert.Equalf(t, uint64(0), s.ProfileBytes, "addBlockStatsToQueryScope(%v)", s)
 				assert.Equalf(t, uint64(0), s.SymbolBytes, "addBlockStatsToQueryScope(%v)", s)
@@ -138,20 +139,20 @@ func Test_addBlockStatsToQueryScope(t *testing.T) {
 						response: &ingestv1.GetBlockStatsResponse{
 							BlockStats: []*ingestv1.BlockStats{
 								{
-									NumSeries:     50,
-									NumProfiles:   100,
-									NumSamples:    2000,
-									IndexBytes:    1024,
-									ProfilesBytes: 4096,
-									SymbolsBytes:  65536,
+									SeriesCount:  50,
+									ProfileCount: 100,
+									SampleCount:  2000,
+									IndexBytes:   1024,
+									ProfileBytes: 4096,
+									SymbolBytes:  65536,
 								},
 								{
-									NumSeries:     100,
-									NumProfiles:   200,
-									NumSamples:    4000,
-									IndexBytes:    2048,
-									ProfilesBytes: 8192,
-									SymbolsBytes:  131072,
+									SeriesCount:  100,
+									ProfileCount: 200,
+									SampleCount:  4000,
+									IndexBytes:   2048,
+									ProfileBytes: 8192,
+									SymbolBytes:  131072,
 								},
 							},
 						},
@@ -161,12 +162,12 @@ func Test_addBlockStatsToQueryScope(t *testing.T) {
 						response: &ingestv1.GetBlockStatsResponse{
 							BlockStats: []*ingestv1.BlockStats{
 								{
-									NumSeries:     50,
-									NumProfiles:   100,
-									NumSamples:    2000,
-									IndexBytes:    1024,
-									ProfilesBytes: 4096,
-									SymbolsBytes:  65536,
+									SeriesCount:  50,
+									ProfileCount: 100,
+									SampleCount:  2000,
+									IndexBytes:   1024,
+									ProfileBytes: 4096,
+									SymbolBytes:  65536,
 								},
 							},
 						},
@@ -175,9 +176,9 @@ func Test_addBlockStatsToQueryScope(t *testing.T) {
 				queryScope: &queryScope{QueryScope: &querierv1.QueryScope{}},
 			},
 			verifyExpectations: func(t *testing.T, s *queryScope) {
-				assert.Equalf(t, uint64(200), s.NumSeries, "addBlockStatsToQueryScope(%v)", s)
-				assert.Equalf(t, uint64(400), s.NumProfiles, "addBlockStatsToQueryScope(%v)", s)
-				assert.Equalf(t, uint64(8000), s.NumSamples, "addBlockStatsToQueryScope(%v)", s)
+				assert.Equalf(t, uint64(200), s.SeriesCount, "addBlockStatsToQueryScope(%v)", s)
+				assert.Equalf(t, uint64(400), s.ProfileCount, "addBlockStatsToQueryScope(%v)", s)
+				assert.Equalf(t, uint64(8000), s.SampleCount, "addBlockStatsToQueryScope(%v)", s)
 				assert.Equalf(t, uint64(4096), s.IndexBytes, "addBlockStatsToQueryScope(%v)", s)
 				assert.Equalf(t, uint64(16384), s.ProfileBytes, "addBlockStatsToQueryScope(%v)", s)
 				assert.Equalf(t, uint64(262144), s.SymbolBytes, "addBlockStatsToQueryScope(%v)", s)

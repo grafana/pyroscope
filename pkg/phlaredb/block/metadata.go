@@ -361,24 +361,24 @@ func (meta *Meta) GetStats() MetaStats {
 
 func (stats MetaStats) ConvertToBlockStats() *ingestv1.BlockStats {
 	indexBytes := uint64(0)
-	profilesBytes := uint64(0)
-	symbolsBytes := uint64(0)
+	profileBytes := uint64(0)
+	symbolBytes := uint64(0)
 	for _, f := range stats.FileStats {
 		if f.RelPath == IndexFilename {
 			indexBytes = f.SizeBytes
 		} else if f.RelPath == "profiles.parquet" {
-			profilesBytes += f.SizeBytes
+			profileBytes += f.SizeBytes
 		} else if strings.HasPrefix(f.RelPath, "symbols") {
-			symbolsBytes += f.SizeBytes
+			symbolBytes += f.SizeBytes
 		}
 	}
 	blockStats := &ingestv1.BlockStats{
-		NumSeries:     stats.NumSeries,
-		NumProfiles:   stats.NumProfiles,
-		NumSamples:    stats.NumSamples,
-		IndexBytes:    indexBytes,
-		ProfilesBytes: profilesBytes,
-		SymbolsBytes:  symbolsBytes,
+		SeriesCount:  stats.NumSeries,
+		ProfileCount: stats.NumProfiles,
+		SampleCount:  stats.NumSamples,
+		IndexBytes:   indexBytes,
+		ProfileBytes: profileBytes,
+		SymbolBytes:  symbolBytes,
 	}
 	return blockStats
 }
