@@ -159,6 +159,10 @@ Usage of ./pyroscope:
     	Limit how far back in profiling data can be queried, up until lookback duration ago. This limit is enforced in the query frontend. If the requested time range is outside the allowed range, the request will not fail, but will be modified to only query data within the allowed time range. 0 to disable, default to 7d. (default 1w)
   -querier.max-query-parallelism int
     	Maximum number of queries that will be scheduled in parallel by the frontend.
+  -querier.query-analysis-enabled
+    	Whether query analysis is enabled in the query frontend. If disabled, the /AnalyzeQuery endpoint will return an empty response. (default true)
+  -querier.query-analysis-series-enabled
+    	Whether the series portion of query analysis is enabled. If disabled, no series data (e.g., series count) will be calculated by the /AnalyzeQuery endpoint. (default true)
   -querier.split-queries-by-interval duration
     	Split queries by a time interval and execute in parallel. The value 0 disables splitting by time
   -query-scheduler.max-outstanding-requests-per-tenant int

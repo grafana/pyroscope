@@ -120,6 +120,13 @@ func addBlockStatsToQueryScope(blockStatsFromReplicas []ResponseFromReplica[*ing
 }
 
 func (q *Querier) getQueriedSeriesCount(ctx context.Context, req *querierv1.AnalyzeQueryRequest) (uint64, error) {
+	tenantId, err := tenant.TenantID(ctx)
+	if err != nil {
+		return 0, err
+	}
+	if !q.limits.QueryAnalysisSeriesEnabled(tenantId) {
+		return 0, nil
+	}
 	matchers, err := createMatchersFromQuery(req.Query)
 	if err != nil {
 		return 0, err

@@ -21,6 +21,15 @@ func (f *Frontend) AnalyzeQuery(ctx context.Context,
 ) {
 	opentracing.SpanFromContext(ctx)
 
+	tenantID, err := tenant.TenantID(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	if !f.limits.QueryAnalysisEnabled(tenantID) {
+		return connect.NewResponse(&querierv1.AnalyzeQueryResponse{}), nil
+	}
+
 	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)

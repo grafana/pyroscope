@@ -55,9 +55,11 @@ type Limits struct {
 	MaxGlobalSeriesPerTenant int `yaml:"max_global_series_per_tenant" json:"max_global_series_per_tenant"`
 
 	// Querier enforced limits.
-	MaxQueryLookback    model.Duration `yaml:"max_query_lookback" json:"max_query_lookback"`
-	MaxQueryLength      model.Duration `yaml:"max_query_length" json:"max_query_length"`
-	MaxQueryParallelism int            `yaml:"max_query_parallelism" json:"max_query_parallelism"`
+	MaxQueryLookback           model.Duration `yaml:"max_query_lookback" json:"max_query_lookback"`
+	MaxQueryLength             model.Duration `yaml:"max_query_length" json:"max_query_length"`
+	MaxQueryParallelism        int            `yaml:"max_query_parallelism" json:"max_query_parallelism"`
+	QueryAnalysisEnabled       bool           `yaml:"query_analysis_enabled" json:"query_analysis_enabled"`
+	QueryAnalysisSeriesEnabled bool           `yaml:"query_analysis_series_enabled" json:"query_analysis_series_enabled"`
 
 	// Flame graph enforced limits.
 	MaxFlameGraphNodesDefault int `yaml:"max_flamegraph_nodes_default" json:"max_flamegraph_nodes_default"`
@@ -123,6 +125,9 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.Var(&l.QuerySplitDuration, "querier.split-queries-by-interval", "Split queries by a time interval and execute in parallel. The value 0 disables splitting by time")
 
 	f.IntVar(&l.MaxQueryParallelism, "querier.max-query-parallelism", 0, "Maximum number of queries that will be scheduled in parallel by the frontend.")
+
+	f.BoolVar(&l.QueryAnalysisEnabled, "querier.query-analysis-enabled", true, "Whether query analysis is enabled in the query frontend. If disabled, the /AnalyzeQuery endpoint will return an empty response.")
+	f.BoolVar(&l.QueryAnalysisSeriesEnabled, "querier.query-analysis-series-enabled", true, "Whether the series portion of query analysis is enabled. If disabled, no series data (e.g., series count) will be calculated by the /AnalyzeQuery endpoint.")
 
 	f.IntVar(&l.MaxProfileSizeBytes, "validation.max-profile-size-bytes", 4*1024*1024, "Maximum size of a profile in bytes. This is based off the uncompressed size. 0 to disable.")
 	f.IntVar(&l.MaxProfileStacktraceSamples, "validation.max-profile-stacktrace-samples", 16000, "Maximum number of samples in a profile. 0 to disable.")
@@ -409,6 +414,17 @@ func (o *Overrides) RejectNewerThan(tenantID string) time.Duration {
 // RejectOlderThan will ensure that profiles that are older than the return value are rejected.
 func (o *Overrides) RejectOlderThan(tenantID string) time.Duration {
 	return time.Duration(o.getOverridesForTenant(tenantID).RejectOlderThan)
+}
+
+// QueryAnalysisEnabled can be used to disable the query analysis endpoint in the query frontend.
+func (o *Overrides) QueryAnalysisEnabled(tenantID string) bool {
+	return o.getOverridesForTenant(tenantID).QueryAnalysisEnabled
+}
+
+// QueryAnalysisSeriesEnabled can be used to disable the series portion of the query analysis endpoint in the query frontend.
+// To be used for tenants where calculating series can be expensive.
+func (o *Overrides) QueryAnalysisSeriesEnabled(tenantID string) bool {
+	return o.getOverridesForTenant(tenantID).QueryAnalysisSeriesEnabled
 }
 
 func (o *Overrides) DefaultLimits() *Limits {
