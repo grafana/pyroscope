@@ -127,7 +127,7 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.IntVar(&l.MaxQueryParallelism, "querier.max-query-parallelism", 0, "Maximum number of queries that will be scheduled in parallel by the frontend.")
 
 	f.BoolVar(&l.QueryAnalysisEnabled, "querier.query-analysis-enabled", true, "Whether query analysis is enabled in the query frontend. If disabled, the /AnalyzeQuery endpoint will return an empty response.")
-	f.BoolVar(&l.QueryAnalysisSeriesEnabled, "querier.query-analysis-series-enabled", true, "Whether the series portion of query analysis is enabled. If disabled, no series data (e.g., series count) will be calculated by the /AnalyzeQuery endpoint.")
+	f.BoolVar(&l.QueryAnalysisSeriesEnabled, "querier.query-analysis-series-enabled", false, "Whether the series portion of query analysis is enabled. If disabled, no series data (e.g., series count) will be calculated by the /AnalyzeQuery endpoint.")
 
 	f.IntVar(&l.MaxProfileSizeBytes, "validation.max-profile-size-bytes", 4*1024*1024, "Maximum size of a profile in bytes. This is based off the uncompressed size. 0 to disable.")
 	f.IntVar(&l.MaxProfileStacktraceSamples, "validation.max-profile-stacktrace-samples", 16000, "Maximum number of samples in a profile. 0 to disable.")
