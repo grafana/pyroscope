@@ -66,7 +66,7 @@ var pythonFields = []dwarfdump.Need{
 	{Name: "_typeobject", PrettyName: "PyTypeObject", Fields: []dwarfdump.NeedField{
 		{"tp_name", "PyTypeObject_tp_name"},
 	}},
-	{Name: "PyThreadState", Fields: []dwarfdump.NeedField{
+	{Name: "_ts", Fields: []dwarfdump.NeedField{
 		{"frame", "PyThreadState_frame"},
 		{"cframe", "PyThreadState_cframe"},
 		{"current_frame", "PyThreadState_current_frame"},
