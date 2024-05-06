@@ -451,6 +451,23 @@
         }
       }
     },
+    "v1AnalyzeQueryResponse": {
+      "type": "object",
+      "properties": {
+        "queryScopes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1QueryScope"
+          },
+          "title": "detailed view of what the query will require"
+        },
+        "queryImpact": {
+          "$ref": "#/definitions/v1QueryImpact",
+          "title": "summary of the query impact / performance"
+        }
+      }
+    },
     "v1BlockCompaction": {
       "type": "object",
       "properties": {
@@ -524,6 +541,35 @@
             "$ref": "#/definitions/v1BlockInfo"
           },
           "title": "Blocks that are present on the instance for the start to end period"
+        }
+      }
+    },
+    "v1BlockStats": {
+      "type": "object",
+      "properties": {
+        "seriesCount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "profileCount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "sampleCount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "indexBytes": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "profileBytes": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "symbolBytes": {
+          "type": "string",
+          "format": "uint64"
         }
       }
     },
@@ -638,6 +684,18 @@
           "type": "string",
           "format": "int64",
           "description": "Line number in source file."
+        }
+      }
+    },
+    "v1GetBlockStatsResponse": {
+      "type": "object",
+      "properties": {
+        "blockStats": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1BlockStats"
+          }
         }
       }
     },
@@ -1049,6 +1107,64 @@
     },
     "v1PushResponse": {
       "type": "object"
+    },
+    "v1QueryImpact": {
+      "type": "object",
+      "properties": {
+        "totalBytesInTimeRange": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "totalQueriedSeries": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "deduplicationNeeded": {
+          "type": "boolean"
+        }
+      }
+    },
+    "v1QueryScope": {
+      "type": "object",
+      "properties": {
+        "componentType": {
+          "type": "string",
+          "title": "a descriptive high level name of the component processing one part of the query (e.g., \"short term storage\")"
+        },
+        "componentCount": {
+          "type": "string",
+          "format": "uint64",
+          "title": "how many components of this type will process the query (indicator of read-path replication)"
+        },
+        "blockCount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "seriesCount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "profileCount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "sampleCount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "indexBytes": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "profileBytes": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "symbolBytes": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
     },
     "v1RawProfileSeries": {
       "type": "object",

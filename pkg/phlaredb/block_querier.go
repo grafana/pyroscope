@@ -547,6 +547,10 @@ func (b *singleBlockQuerier) Bounds() (model.Time, model.Time) {
 	return b.meta.MinTime, b.meta.MaxTime
 }
 
+func (b *singleBlockQuerier) GetMetaStats() block.MetaStats {
+	return b.meta.GetStats()
+}
+
 type Profile interface {
 	RowNumber() int64
 	StacktracePartition() uint64

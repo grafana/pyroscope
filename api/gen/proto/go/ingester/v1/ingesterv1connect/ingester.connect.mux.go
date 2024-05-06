@@ -79,4 +79,9 @@ func RegisterIngesterServiceHandler(mux *mux.Router, svc IngesterServiceHandler,
 		svc.GetProfileStats,
 		opts...,
 	))
+	mux.Handle("/ingester.v1.IngesterService/GetBlockStats", connect.NewUnaryHandler(
+		"/ingester.v1.IngesterService/GetBlockStats",
+		svc.GetBlockStats,
+		opts...,
+	))
 }

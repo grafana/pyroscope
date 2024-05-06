@@ -22,6 +22,7 @@ service IngesterService {
   rpc BlockMetadata(BlockMetadataRequest) returns (BlockMetadataResponse) {}
   // GetProfileStats returns profile stats for the current tenant.
   rpc GetProfileStats(types.v1.GetProfileStatsRequest) returns (types.v1.GetProfileStatsResponse) {}
+  rpc GetBlockStats(GetBlockStatsRequest) returns (GetBlockStatsResponse) {}
 }
 
 message ProfileTypesRequest {
@@ -227,4 +228,21 @@ message BlockHints {
   repeated string ulids = 1;
   // When all blocks are compacted, there is no effect of the replication factor, hence we do not need to run deduplication.
   bool deduplication = 2;
+}
+
+message GetBlockStatsRequest {
+  repeated string ulids = 1;
+}
+
+message GetBlockStatsResponse {
+  repeated BlockStats block_stats = 1;
+}
+
+message BlockStats {
+  uint64 series_count = 2;
+  uint64 profile_count = 3;
+  uint64 sample_count = 4;
+  uint64 index_bytes = 5;
+  uint64 profile_bytes = 6;
+  uint64 symbol_bytes = 7;
 }
