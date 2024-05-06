@@ -554,7 +554,7 @@ Usage of ./pyroscope:
   -querier.query-analysis-enabled
     	Whether query analysis is enabled in the query frontend. If disabled, the /AnalyzeQuery endpoint will return an empty response. (default true)
   -querier.query-analysis-series-enabled
-    	Whether the series portion of query analysis is enabled. If disabled, no series data (e.g., series count) will be calculated by the /AnalyzeQuery endpoint. (default true)
+    	Whether the series portion of query analysis is enabled. If disabled, no series data (e.g., series count) will be calculated by the /AnalyzeQuery endpoint.
   -querier.query-store-after duration
     	The time after which a metric should be queried from storage and not just ingesters. 0 means all queries are sent to store. If this option is enabled, the time range of the query sent to the store-gateway will be manipulated to ensure the query end is not more recent than 'now - query-store-after'. (default 4h0m0s)
   -querier.split-queries-by-interval duration
