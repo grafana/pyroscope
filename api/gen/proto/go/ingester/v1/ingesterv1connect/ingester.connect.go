@@ -68,6 +68,9 @@ const (
 	// IngesterServiceGetProfileStatsProcedure is the fully-qualified name of the IngesterService's
 	// GetProfileStats RPC.
 	IngesterServiceGetProfileStatsProcedure = "/ingester.v1.IngesterService/GetProfileStats"
+	// IngesterServiceGetBlockStatsProcedure is the fully-qualified name of the IngesterService's
+	// GetBlockStats RPC.
+	IngesterServiceGetBlockStatsProcedure = "/ingester.v1.IngesterService/GetBlockStats"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -85,6 +88,7 @@ var (
 	ingesterServiceMergeSpanProfileMethodDescriptor         = ingesterServiceServiceDescriptor.Methods().ByName("MergeSpanProfile")
 	ingesterServiceBlockMetadataMethodDescriptor            = ingesterServiceServiceDescriptor.Methods().ByName("BlockMetadata")
 	ingesterServiceGetProfileStatsMethodDescriptor          = ingesterServiceServiceDescriptor.Methods().ByName("GetProfileStats")
+	ingesterServiceGetBlockStatsMethodDescriptor            = ingesterServiceServiceDescriptor.Methods().ByName("GetBlockStats")
 )
 
 // IngesterServiceClient is a client for the ingester.v1.IngesterService service.
@@ -104,6 +108,7 @@ type IngesterServiceClient interface {
 	BlockMetadata(context.Context, *connect.Request[v1.BlockMetadataRequest]) (*connect.Response[v1.BlockMetadataResponse], error)
 	// GetProfileStats returns profile stats for the current tenant.
 	GetProfileStats(context.Context, *connect.Request[v12.GetProfileStatsRequest]) (*connect.Response[v12.GetProfileStatsResponse], error)
+	GetBlockStats(context.Context, *connect.Request[v1.GetBlockStatsRequest]) (*connect.Response[v1.GetBlockStatsResponse], error)
 }
 
 // NewIngesterServiceClient constructs a client for the ingester.v1.IngesterService service. By
@@ -188,6 +193,12 @@ func NewIngesterServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(ingesterServiceGetProfileStatsMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		getBlockStats: connect.NewClient[v1.GetBlockStatsRequest, v1.GetBlockStatsResponse](
+			httpClient,
+			baseURL+IngesterServiceGetBlockStatsProcedure,
+			connect.WithSchema(ingesterServiceGetBlockStatsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -205,6 +216,7 @@ type ingesterServiceClient struct {
 	mergeSpanProfile         *connect.Client[v1.MergeSpanProfileRequest, v1.MergeSpanProfileResponse]
 	blockMetadata            *connect.Client[v1.BlockMetadataRequest, v1.BlockMetadataResponse]
 	getProfileStats          *connect.Client[v12.GetProfileStatsRequest, v12.GetProfileStatsResponse]
+	getBlockStats            *connect.Client[v1.GetBlockStatsRequest, v1.GetBlockStatsResponse]
 }
 
 // Push calls ingester.v1.IngesterService.Push.
@@ -267,6 +279,11 @@ func (c *ingesterServiceClient) GetProfileStats(ctx context.Context, req *connec
 	return c.getProfileStats.CallUnary(ctx, req)
 }
 
+// GetBlockStats calls ingester.v1.IngesterService.GetBlockStats.
+func (c *ingesterServiceClient) GetBlockStats(ctx context.Context, req *connect.Request[v1.GetBlockStatsRequest]) (*connect.Response[v1.GetBlockStatsResponse], error) {
+	return c.getBlockStats.CallUnary(ctx, req)
+}
+
 // IngesterServiceHandler is an implementation of the ingester.v1.IngesterService service.
 type IngesterServiceHandler interface {
 	Push(context.Context, *connect.Request[v11.PushRequest]) (*connect.Response[v11.PushResponse], error)
@@ -284,6 +301,7 @@ type IngesterServiceHandler interface {
 	BlockMetadata(context.Context, *connect.Request[v1.BlockMetadataRequest]) (*connect.Response[v1.BlockMetadataResponse], error)
 	// GetProfileStats returns profile stats for the current tenant.
 	GetProfileStats(context.Context, *connect.Request[v12.GetProfileStatsRequest]) (*connect.Response[v12.GetProfileStatsResponse], error)
+	GetBlockStats(context.Context, *connect.Request[v1.GetBlockStatsRequest]) (*connect.Response[v1.GetBlockStatsResponse], error)
 }
 
 // NewIngesterServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -364,6 +382,12 @@ func NewIngesterServiceHandler(svc IngesterServiceHandler, opts ...connect.Handl
 		connect.WithSchema(ingesterServiceGetProfileStatsMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	ingesterServiceGetBlockStatsHandler := connect.NewUnaryHandler(
+		IngesterServiceGetBlockStatsProcedure,
+		svc.GetBlockStats,
+		connect.WithSchema(ingesterServiceGetBlockStatsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/ingester.v1.IngesterService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case IngesterServicePushProcedure:
@@ -390,6 +414,8 @@ func NewIngesterServiceHandler(svc IngesterServiceHandler, opts ...connect.Handl
 			ingesterServiceBlockMetadataHandler.ServeHTTP(w, r)
 		case IngesterServiceGetProfileStatsProcedure:
 			ingesterServiceGetProfileStatsHandler.ServeHTTP(w, r)
+		case IngesterServiceGetBlockStatsProcedure:
+			ingesterServiceGetBlockStatsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -445,4 +471,8 @@ func (UnimplementedIngesterServiceHandler) BlockMetadata(context.Context, *conne
 
 func (UnimplementedIngesterServiceHandler) GetProfileStats(context.Context, *connect.Request[v12.GetProfileStatsRequest]) (*connect.Response[v12.GetProfileStatsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ingester.v1.IngesterService.GetProfileStats is not implemented"))
+}
+
+func (UnimplementedIngesterServiceHandler) GetBlockStats(context.Context, *connect.Request[v1.GetBlockStatsRequest]) (*connect.Response[v1.GetBlockStatsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ingester.v1.IngesterService.GetBlockStats is not implemented"))
 }

@@ -84,6 +84,12 @@ data:
     	}
 
     	rule {
+    		source_labels = ["__meta_kubernetes_pod_container_port_number"]
+    		target_label  = "__meta_kubernetes_pod_annotation_profiles_grafana_com_{{.}}_port"
+    		action        = "keepequal"
+    	}
+
+    	rule {
     		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_{{.}}_scheme"]
     		action        = "replace"
     		regex         = "(https?)"
