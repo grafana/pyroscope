@@ -55,11 +55,12 @@ type PerfPyOffsetConfig struct {
 	PyInterpreterFrameOwner       int16
 	PyASCIIObjectSize             int16
 	PyCompactUnicodeObjectSize    int16
+	_                             [4]byte
+	Base                          uint64
 }
 
 type PerfPyPidData struct {
 	Offsets   PerfPyOffsetConfig
-	_         [4]byte
 	Typecheck PerfPyTypecheckData
 	Version   struct {
 		Major uint32
@@ -76,7 +77,6 @@ type PerfPyPidData struct {
 type PerfPySampleStateT struct {
 	SymbolCounter int64
 	Offsets       PerfPyOffsetConfig
-	_             [4]byte
 	Typecheck     PerfPyTypecheckData
 	Version       struct {
 		Major uint32

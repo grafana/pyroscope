@@ -65,7 +65,7 @@ typedef struct {
     int16_t PyInterpreterFrame_owner;
     int16_t PyASCIIObject_size; // sizeof(PyASCIIObject)
     int16_t PyCompactUnicodeObject_size; // sizeof(PyCompactUnicodeObject)
-
+    uint64_t Base;
 } py_offset_config;
 
 typedef struct {

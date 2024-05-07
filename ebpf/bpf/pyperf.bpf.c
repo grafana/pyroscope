@@ -243,7 +243,7 @@ static __always_inline int pyperf_collect_impl(struct bpf_perf_event_data* ctx, 
     if (get_thread_state(ctx, pid_data, &thread_state)) {
         return submit_error_sample(PY_ERROR_THREAD_STATE);
     }
-    log_debug("thread_state %llx", thread_state);
+    log_debug("thread_state %llx base %llx", thread_state, pid_data->offsets.Base);
     if (pytypecheck_thread_state(state, thread_state, /* check_interp= */ true)) {
         return submit_error_sample(PY_ERROR_THREAD_STATE);
     }
@@ -419,6 +419,8 @@ static __always_inline int get_class_name(void *ctx, void *cur_frame,
                                            void *code_ptr,
                                            py_sample_state_t *state,
                                            py_symbol *symbol) {
+    uint64_t objheader[2] = {0, 0};
+    
     bool first_self = false;
     bool first_cls = false;
     log_debug("get_names");
@@ -461,7 +463,8 @@ static __always_inline int get_class_name(void *ctx, void *cur_frame,
         return -PY_ERROR_CLASS_NAME;
 #endif
     }
-    log_debug("first local %llx", ptr);
+    bpf_probe_read_user(&objheader, sizeof(objheader), ptr);
+    log_debug("first local %llx | %llx %llx", ptr, objheader[0], objheader[1]);
     if (ptr) {
         if (first_self) {
             // we are working with an instance, first we need to get type
@@ -486,7 +489,8 @@ static __always_inline int get_class_name(void *ctx, void *cur_frame,
                 symbol->classname_type.size_codepoints = 7;
                 return 0;
             }
-
+            bpf_probe_read_user(&objheader, sizeof(objheader), ptr);
+            log_debug("    first local->ob_type %llx | %llx %llx", ptr, objheader[0], objheader[1]);
         }
         // https://github.com/python/cpython/blob/d73501602f863a54c872ce103cd3fa119e38bac9/Include/cpython/object.h#L106
         if (read_user_faulty(ctx, &ptr, sizeof(void *), ptr + state->offsets.PyTypeObject_tp_name)) {
@@ -571,6 +575,7 @@ static __always_inline int get_frame_data(
         py_symbol *symbol,
         // ctx is only used to call helper to clear symbol, see documentation below
         void *ctx) {
+    uint64_t objheader[2] = {0, 0};
     void **frame_ptr = (void **) &state->frame_ptr;
     py_offset_config *offsets = &state->offsets;
     void *code_ptr;
@@ -608,10 +613,13 @@ static __always_inline int get_frame_data(
             &code_ptr, sizeof(void *), (void *) (cur_frame + offsets->VFrame_code))) {
         return -PY_ERROR_FRAME_CODE;
     }
-    log_debug("code %llx", code_ptr);
     if (!code_ptr) {
         return 0; // todo learn when this happens, c extension?
     }
+    bpf_probe_read_user(&objheader[0], sizeof (objheader), code_ptr);
+    log_debug("code %llx | %llx %llx", code_ptr, objheader[0], objheader[1]);
+
+
     if (pytypecheck_code(state, (void*)code_ptr, (void*)cur_frame)) {
         return -PY_ERROR_CODE_TYPECHECK;
     }

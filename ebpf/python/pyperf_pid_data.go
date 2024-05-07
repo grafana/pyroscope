@@ -193,6 +193,7 @@ func GetPyPerfPidData(l log.Logger, pid uint32, collectKernel bool) (*PerfPyPidD
 		PyVarObjectObSize:             offsets.PyVarObject_ob_size,
 		PyObjectObType:                offsets.PyObject_ob_type,
 		PyTypeObjectTpName:            offsets.PyTypeObject_tp_name,
+		Base:                          baseAddr,
 	}
 	data.Typecheck = typecheck
 	if collectKernel {
