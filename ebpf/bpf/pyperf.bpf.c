@@ -44,8 +44,8 @@ struct global_config_t {
 };
 
 const volatile struct global_config_t global_config;
-#define log_error(fmt, ...) if (global_config.bpf_log_err) bpf_printk(fmt, ##__VA_ARGS__)
-#define log_debug(fmt, ...) if (global_config.bpf_log_debug) bpf_printk(fmt, ##__VA_ARGS__)
+#define log_error(fmt, ...) if (global_config.bpf_log_err)   bpf_printk("[> error <] " fmt, ##__VA_ARGS__)
+#define log_debug(fmt, ...) if (global_config.bpf_log_debug) bpf_printk("[  debug  ] " fmt, ##__VA_ARGS__)
 
 typedef struct {
     uint32_t major;
@@ -261,6 +261,7 @@ static __always_inline int pyperf_collect_impl(struct bpf_perf_event_data* ctx, 
     if (get_thread_state(pid_data, &thread_state)) {
         return submit_error_sample(PY_ERROR_THREAD_STATE);
     }
+    log_debug("thread_state %llx", thread_state);
 
     // pre-initialize event struct in case any subprogram below fails
     event->stack_len = 0;
@@ -329,6 +330,7 @@ static __always_inline int check_first_arg(void *code_ptr,
             &args_ptr, sizeof(void *), args_ptr + offsets->PyTupleObject_ob_item)) {
         return -1;
     }
+    *((uint64_t *)&symbol->name) = 0;
     if (pystr_read(args_ptr, offsets, symbol->name, sizeof(symbol->name), &symbol->name_type)) {
         return -1;
     }
@@ -337,6 +339,8 @@ static __always_inline int check_first_arg(void *code_ptr,
     char cls_str[4] = {'c', 'l', 's', '\0'};
     *out_first_self = *(int32_t *) symbol->name == *(int32_t *) self_str;
     *out_first_cls = *(int32_t *) symbol->name == *(int32_t *) cls_str;
+    log_debug("first arg %s ", symbol->name);
+
 
     return 0;
 }
@@ -367,7 +371,7 @@ static __always_inline int get_names(
 
     // Read class name from $frame->f_localsplus[0]->ob_type->tp_name.
     if (first_self || first_cls) {
-        void *ptr;
+        void *ptr = NULL, *ptr_ob_type = NULL;
         if (bpf_probe_read_user(
                 &ptr, sizeof(void *), (void *) (cur_frame + offsets->VFrame_localsplus))) {
             bpf_dbg_printk("failed to read f_localsplus at %x\n", cur_frame + offsets->VFrame_localsplus);
@@ -381,6 +385,19 @@ static __always_inline int get_names(
                     return -PY_ERROR_CLASS_NAME;
                 }
             }
+            if (bpf_probe_read_user(&ptr_ob_type, sizeof(void *), ptr + offsets->PyObject_ob_type)) {
+                log_error("failed to read ob_type at %x", ptr);
+                return -PY_ERROR_CLASS_NAME;
+            }
+            if (ptr_ob_type == (void*) offsets->PyCell_Type) {
+                log_debug("cell type %llx", ptr);
+                if (bpf_probe_read_user(&ptr, sizeof(void *), ptr + offsets->PyCellObject_ob_ref)) {
+                    log_error("failed to read cell ref at %x\n", ptr);
+                    return -PY_ERROR_CLASS_NAME;
+                }
+                log_debug("ob_ref %Llx", ptr);
+            }
+
             // https://github.com/python/cpython/blob/d73501602f863a54c872ce103cd3fa119e38bac9/Include/cpython/object.h#L106
             if (bpf_probe_read_user(&ptr, sizeof(void *), ptr + offsets->PyTypeObject_tp_name)) {
                 bpf_dbg_printk("failed to read tp_name at %x\n", ptr);
@@ -388,9 +405,10 @@ static __always_inline int get_names(
             }
             long len = bpf_probe_read_user_str(&symbol->classname, sizeof(symbol->classname), ptr);
             if (len < 0) {
-                bpf_dbg_printk("failed to read class name at %x\n", ptr);
+                log_error("failed to read class name at %x\n", ptr);
                 return -PY_ERROR_CLASS_NAME;
             }
+            log_debug("class name %s", symbol->classname);
             symbol->classname_type.type = PYSTR_TYPE_UTF8;
             symbol->classname_type.size_codepoints = len - 1;
         } else {
@@ -473,7 +491,7 @@ static __always_inline int get_frame_data(
     if (!code_ptr) {
         return 0; // todo learn when this happens, c extension?
     }
-
+    log_debug("code %llx", code_ptr);
     int res = get_names(cur_frame, code_ptr, offsets, symbol, ctx);
     if (res < 0) {
         return res;
@@ -530,6 +548,7 @@ int read_python_stack(struct bpf_perf_event_data *ctx) {
     py_symbol *sym = &state->sym;
 #pragma unroll
     for (int i = 0; i < PYTHON_STACK_FRAMES_PER_PROG; i++) {
+        log_debug("frame %d %llx", sample->stack_len, state->frame_ptr);
         last_res = get_frame_data((void **) &state->frame_ptr, &state->offsets, sym, ctx);
         if (last_res < 0) {
             return submit_error_sample((uint8_t) (-last_res));

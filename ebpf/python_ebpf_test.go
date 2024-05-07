@@ -176,5 +176,6 @@ func loadgen(t *testing.T, l log.Logger, url string, n int) {
 		orderVehicle("bike")
 		orderVehicle("car")
 		orderVehicle("scooter")
+		orderVehicle("cell_cls_issue")
 	}
 }

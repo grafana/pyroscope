@@ -109,6 +109,9 @@ var pythonFields = []dwarfdump.Need{
 	}},
 	{Name: "PyASCIIObject", PrettyName: "PyASCIIObject", Size: true},
 	{Name: "PyCompactUnicodeObject", PrettyName: "PyCompactUnicodeObject", Size: true},
+	{Name: "PyCellObject", Fields: []dwarfdump.NeedField{
+		{"ob_ref", "PyCellObject__ob_ref"},
+	}},
 
 	//{Name: "_is", PrettyName: "PyInterpreterState", Fields: []string{}},
 }

@@ -40,7 +40,10 @@ typedef struct {
     int16_t PyInterpreterFrame_owner;
     int16_t PyASCIIObject_size; // sizeof(PyASCIIObject)
     int16_t PyCompactUnicodeObject_size; // sizeof(PyCompactUnicodeObject)
+    int16_t PyCellObject_ob_ref;
 
+    uint64_t base;
+    uint64_t PyCell_Type;// absolute address of PyCell_Type
 } py_offset_config;
 
 #endif //PYROEBPF_PYOFFSETS_H
