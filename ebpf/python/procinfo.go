@@ -54,11 +54,8 @@ func GetProcInfo(s *bufio.Scanner) (ProcInfo, error) {
 				}
 
 				i += 1
-			} else if m.Pathname == "/home/korniltsev/github/cpython/python" {
-				res.Version.Major = 3
-				res.Version.Minor = 9
-				res.PythonMaps = append(res.PythonMaps, m)
 			}
+
 			if strings.Contains(m.Pathname, "/lib/ld-musl-x86_64.so.1") ||
 				strings.Contains(m.Pathname, "/lib/ld-musl-aarch64.so.1") {
 				res.Musl = append(res.Musl, m)
