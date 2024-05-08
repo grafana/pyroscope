@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -22,11 +23,10 @@ import (
 //go:embed python_ebpf_expected.txt
 var pythonEBPFExpected []byte
 
-//go:embed python_ebpf_expected_3.11.txt
-var pythonEBPFExpected311 []byte
-
-//go:embed python3_ebpf_expected.txt
-var python3EBPFExpected []byte
+func pythonEBPFExpectedUbuntu() []byte {
+	re := regexp.MustCompile("(?m)^python;")
+	return re.ReplaceAll(pythonEBPFExpected, []byte("python3;"))
+}
 
 func TestEBPFPythonProfiler(t *testing.T) {
 	var testdata = []struct {
@@ -36,17 +36,17 @@ func TestEBPFPythonProfiler(t *testing.T) {
 		{"pyroscope/ebpf-testdata-rideshare:3.8-slim", pythonEBPFExpected},
 		{"pyroscope/ebpf-testdata-rideshare:3.9-slim", pythonEBPFExpected},
 		{"pyroscope/ebpf-testdata-rideshare:3.10-slim", pythonEBPFExpected},
-		{"pyroscope/ebpf-testdata-rideshare:3.11-slim", pythonEBPFExpected311},
-		{"pyroscope/ebpf-testdata-rideshare:3.12-slim", pythonEBPFExpected311},
-		{"pyroscope/ebpf-testdata-rideshare:3.13-rc-slim", pythonEBPFExpected311},
+		{"pyroscope/ebpf-testdata-rideshare:3.11-slim", pythonEBPFExpected},
+		{"pyroscope/ebpf-testdata-rideshare:3.12-slim", pythonEBPFExpected},
+		{"pyroscope/ebpf-testdata-rideshare:3.13-rc-slim", pythonEBPFExpected},
 		{"pyroscope/ebpf-testdata-rideshare:3.8-alpine", pythonEBPFExpected},
 		{"pyroscope/ebpf-testdata-rideshare:3.9-alpine", pythonEBPFExpected},
 		{"pyroscope/ebpf-testdata-rideshare:3.10-alpine", pythonEBPFExpected},
-		{"pyroscope/ebpf-testdata-rideshare:3.11-alpine", pythonEBPFExpected311},
-		{"pyroscope/ebpf-testdata-rideshare:3.12-alpine", pythonEBPFExpected311},
-		{"pyroscope/ebpf-testdata-rideshare:3.13-rc-alpine", pythonEBPFExpected311},
-		{"pyroscope/ebpf-testdata-rideshare:ubuntu-20.04", python3EBPFExpected},
-		{"pyroscope/ebpf-testdata-rideshare:ubuntu-22.04", python3EBPFExpected},
+		{"pyroscope/ebpf-testdata-rideshare:3.11-alpine", pythonEBPFExpected},
+		{"pyroscope/ebpf-testdata-rideshare:3.12-alpine", pythonEBPFExpected},
+		{"pyroscope/ebpf-testdata-rideshare:3.13-rc-alpine", pythonEBPFExpected},
+		{"pyroscope/ebpf-testdata-rideshare:ubuntu-20.04", pythonEBPFExpectedUbuntu()},
+		{"pyroscope/ebpf-testdata-rideshare:ubuntu-22.04", pythonEBPFExpectedUbuntu()},
 	}
 
 	const ridesharePort = "5000"
