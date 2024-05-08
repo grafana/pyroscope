@@ -62,6 +62,11 @@ const volatile struct global_config_t global_config;
     return -(err);                                     \
 }
 
+#define try_or_fail(expr) if (expr) {              \
+    log_error("try failed %s:%d", __FILE__, __LINE__); \
+    return -1;                                     \
+}
+
 
 typedef struct {
     uint32_t major;
@@ -414,6 +419,49 @@ static __always_inline int get_first_arg_cell(void *frame_ptr, void *code_ptr, p
     return 0;
 }
 
+static __always_inline int
+get_class_name(void *cur_frame, void *code_ptr, py_offset_config *offsets, bool first_self, py_symbol *symbol) {
+    void *ptr = NULL, *ptr_ob_type = NULL;
+    // Read class name from $frame->f_localsplus[0]->ob_type->tp_name.
+    try_read_or_fail(ptr, cur_frame + offsets->VFrame_localsplus)
+    if (!ptr) {
+        try_or_fail(get_first_arg_cell(cur_frame, code_ptr, offsets, &ptr))
+    }
+    if (!ptr) {
+        log_debug("first arg NULL");
+        symbol->classname_type.type = PYSTR_TYPE_1BYTE | PYSTR_TYPE_ASCII;
+        symbol->classname_type.size_codepoints = 0;
+        return 0;
+    }
+    try_read_or_fail(ptr_ob_type, ptr + offsets->PyObject_ob_type)
+    if (ptr_ob_type == (void *) offsets->PyCell_Type) {
+        try_read_or_fail(ptr, ptr + offsets->PyCellObject_ob_ref)
+        log_debug("ob_ref %Llx", ptr);
+        if (!ptr) {
+            symbol->classname_type.type = PYSTR_TYPE_1BYTE | PYSTR_TYPE_ASCII;
+            symbol->classname_type.size_codepoints = 0;
+            return 0;
+        }
+    }
+    if (first_self) {
+        // we are working with an instance, first we need to get type
+        try_read_or_fail(ptr, ptr + offsets->PyObject_ob_type)
+    }
+    // todo consider typechecking  ptr is _typeobject somehow (note: ob_type may be not `type`)
+
+    // https://github.com/python/cpython/blob/d73501602f863a54c872ce103cd3fa119e38bac9/Include/cpython/object.h#L106
+    try_read_or_fail(ptr, ptr + offsets->PyTypeObject_tp_name);
+    long len = bpf_probe_read_user_str(&symbol->classname, sizeof(symbol->classname), ptr);
+    if (len < 0) {
+        log_error("failed to read class name at %x\n", ptr);
+        return -1;
+    }
+    symbol->classname_type.type = PYSTR_TYPE_UTF8;
+    symbol->classname_type.size_codepoints = len - 1;
+
+    log_debug("cls  %s", symbol->classname);
+    return 0;
+}
 
 // return -PY_ERR_XX on error, 0 on success
 static __always_inline int get_names(
@@ -422,7 +470,6 @@ static __always_inline int get_names(
         py_offset_config *offsets,
         py_symbol *symbol,
         void *ctx) {
-    void *ptr = NULL, *ptr_ob_type = NULL;
     void *pystr_ptr = NULL;
     bool first_self = false;
     bool first_cls = false;
@@ -438,39 +485,8 @@ static __always_inline int get_names(
     // compilation time using the FAIL_COMPILATION_IF macro.
     bpf_perf_prog_read_value(ctx, (struct bpf_perf_event_value *) symbol, sizeof(py_symbol));
 
-    // Read class name from $frame->f_localsplus[0]->ob_type->tp_name.
     if (first_self || first_cls) {
-        try_read_or_err(ptr, cur_frame + offsets->VFrame_localsplus, PY_ERROR_CLASS_NAME)
-        if (!ptr) {
-            try_or_err(get_first_arg_cell(cur_frame, code_ptr, offsets, &ptr), PY_ERROR_CLASS_NAME);
-        }
-        if (ptr) {
-            try_read_or_err(ptr_ob_type, ptr + offsets->PyObject_ob_type, PY_ERROR_CLASS_NAME)
-            if (ptr_ob_type == (void*) offsets->PyCell_Type) {
-                try_read_or_err(ptr,  ptr + offsets->PyCellObject_ob_ref, PY_ERROR_CLASS_NAME)
-                log_debug("ob_ref %Llx", ptr);
-            }
-            if (first_self) {
-                // we are working with an instance, first we need to get type
-                try_read_or_err(ptr,  ptr + offsets->PyObject_ob_type, PY_ERROR_CLASS_NAME)
-            }
-            // todo consider typechecking  ptr is _typeobject somehow (note: ob_type may be not `type`)
-
-
-            // https://github.com/python/cpython/blob/d73501602f863a54c872ce103cd3fa119e38bac9/Include/cpython/object.h#L106
-            try_read_or_err(ptr, ptr + offsets->PyTypeObject_tp_name, PY_ERROR_CLASS_NAME);
-            long len = bpf_probe_read_user_str(&symbol->classname, sizeof(symbol->classname), ptr);
-            if (len < 0) {
-                log_error("failed to read class name at %x\n", ptr);
-                return -PY_ERROR_CLASS_NAME;
-            }
-            symbol->classname_type.type = PYSTR_TYPE_UTF8;
-            symbol->classname_type.size_codepoints = len - 1;
-        } else {
-            symbol->classname_type.type = PYSTR_TYPE_1BYTE | PYSTR_TYPE_ASCII;
-            symbol->classname_type.size_codepoints = 0;
-        }
-        log_debug("cls  %s", symbol->classname);
+        try_or_err(get_class_name(cur_frame, code_ptr, offsets, first_self, symbol), PY_ERROR_CLASS_NAME)
     }
 
     try_read_or_err(pystr_ptr,  code_ptr + offsets->PyCodeObject_co_filename, PY_ERROR_FILE_NAME)
