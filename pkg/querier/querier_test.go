@@ -748,6 +748,22 @@ func (f *fakeQuerierIngester) GetProfileStats(ctx context.Context, req *connect.
 	return res, err
 }
 
+func (f *fakeQuerierIngester) GetBlockStats(ctx context.Context, req *connect.Request[ingestv1.GetBlockStatsRequest]) (*connect.Response[ingestv1.GetBlockStatsResponse], error) {
+	var (
+		args = f.Called(ctx, req)
+		res  *connect.Response[ingestv1.GetBlockStatsResponse]
+		err  error
+	)
+	if args[0] != nil {
+		res = args[0].(*connect.Response[ingestv1.GetBlockStatsResponse])
+	}
+	if args[1] != nil {
+		err = args.Get(1).(error)
+	}
+
+	return res, err
+}
+
 type testProfile struct {
 	Ts     int64
 	Labels *typesv1.Labels
@@ -1334,7 +1350,7 @@ func Test_splitQueryToStores(t *testing.T) {
 			start:           model.TimeFromUnixNano(int64(30 * time.Minute)),
 			end:             model.TimeFromUnixNano(int64(45*time.Minute) + int64(3*time.Hour)),
 			queryStoreAfter: 30 * time.Minute,
-			plan:            blockPlan{"replica-a": &ingestv1.BlockHints{Ulids: []string{"block-a", "block-b"}}},
+			plan:            blockPlan{"replica-a": &blockPlanEntry{InstanceType: ingesterInstance, BlockHints: &ingestv1.BlockHints{Ulids: []string{"block-a", "block-b"}}}},
 
 			expected: storeQueries{
 				queryStoreAfter: 0,

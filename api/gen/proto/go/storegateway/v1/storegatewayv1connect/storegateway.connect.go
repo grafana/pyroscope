@@ -62,6 +62,9 @@ const (
 	// StoreGatewayServiceBlockMetadataProcedure is the fully-qualified name of the
 	// StoreGatewayService's BlockMetadata RPC.
 	StoreGatewayServiceBlockMetadataProcedure = "/storegateway.v1.StoreGatewayService/BlockMetadata"
+	// StoreGatewayServiceGetBlockStatsProcedure is the fully-qualified name of the
+	// StoreGatewayService's GetBlockStats RPC.
+	StoreGatewayServiceGetBlockStatsProcedure = "/storegateway.v1.StoreGatewayService/GetBlockStats"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -76,6 +79,7 @@ var (
 	storeGatewayServiceLabelNamesMethodDescriptor               = storeGatewayServiceServiceDescriptor.Methods().ByName("LabelNames")
 	storeGatewayServiceSeriesMethodDescriptor                   = storeGatewayServiceServiceDescriptor.Methods().ByName("Series")
 	storeGatewayServiceBlockMetadataMethodDescriptor            = storeGatewayServiceServiceDescriptor.Methods().ByName("BlockMetadata")
+	storeGatewayServiceGetBlockStatsMethodDescriptor            = storeGatewayServiceServiceDescriptor.Methods().ByName("GetBlockStats")
 )
 
 // StoreGatewayServiceClient is a client for the storegateway.v1.StoreGatewayService service.
@@ -91,6 +95,7 @@ type StoreGatewayServiceClient interface {
 	LabelNames(context.Context, *connect.Request[v12.LabelNamesRequest]) (*connect.Response[v12.LabelNamesResponse], error)
 	Series(context.Context, *connect.Request[v11.SeriesRequest]) (*connect.Response[v11.SeriesResponse], error)
 	BlockMetadata(context.Context, *connect.Request[v11.BlockMetadataRequest]) (*connect.Response[v11.BlockMetadataResponse], error)
+	GetBlockStats(context.Context, *connect.Request[v11.GetBlockStatsRequest]) (*connect.Response[v11.GetBlockStatsResponse], error)
 }
 
 // NewStoreGatewayServiceClient constructs a client for the storegateway.v1.StoreGatewayService
@@ -157,6 +162,12 @@ func NewStoreGatewayServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(storeGatewayServiceBlockMetadataMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		getBlockStats: connect.NewClient[v11.GetBlockStatsRequest, v11.GetBlockStatsResponse](
+			httpClient,
+			baseURL+StoreGatewayServiceGetBlockStatsProcedure,
+			connect.WithSchema(storeGatewayServiceGetBlockStatsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -171,6 +182,7 @@ type storeGatewayServiceClient struct {
 	labelNames               *connect.Client[v12.LabelNamesRequest, v12.LabelNamesResponse]
 	series                   *connect.Client[v11.SeriesRequest, v11.SeriesResponse]
 	blockMetadata            *connect.Client[v11.BlockMetadataRequest, v11.BlockMetadataResponse]
+	getBlockStats            *connect.Client[v11.GetBlockStatsRequest, v11.GetBlockStatsResponse]
 }
 
 // MergeProfilesStacktraces calls storegateway.v1.StoreGatewayService.MergeProfilesStacktraces.
@@ -218,6 +230,11 @@ func (c *storeGatewayServiceClient) BlockMetadata(ctx context.Context, req *conn
 	return c.blockMetadata.CallUnary(ctx, req)
 }
 
+// GetBlockStats calls storegateway.v1.StoreGatewayService.GetBlockStats.
+func (c *storeGatewayServiceClient) GetBlockStats(ctx context.Context, req *connect.Request[v11.GetBlockStatsRequest]) (*connect.Response[v11.GetBlockStatsResponse], error) {
+	return c.getBlockStats.CallUnary(ctx, req)
+}
+
 // StoreGatewayServiceHandler is an implementation of the storegateway.v1.StoreGatewayService
 // service.
 type StoreGatewayServiceHandler interface {
@@ -232,6 +249,7 @@ type StoreGatewayServiceHandler interface {
 	LabelNames(context.Context, *connect.Request[v12.LabelNamesRequest]) (*connect.Response[v12.LabelNamesResponse], error)
 	Series(context.Context, *connect.Request[v11.SeriesRequest]) (*connect.Response[v11.SeriesResponse], error)
 	BlockMetadata(context.Context, *connect.Request[v11.BlockMetadataRequest]) (*connect.Response[v11.BlockMetadataResponse], error)
+	GetBlockStats(context.Context, *connect.Request[v11.GetBlockStatsRequest]) (*connect.Response[v11.GetBlockStatsResponse], error)
 }
 
 // NewStoreGatewayServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -294,6 +312,12 @@ func NewStoreGatewayServiceHandler(svc StoreGatewayServiceHandler, opts ...conne
 		connect.WithSchema(storeGatewayServiceBlockMetadataMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	storeGatewayServiceGetBlockStatsHandler := connect.NewUnaryHandler(
+		StoreGatewayServiceGetBlockStatsProcedure,
+		svc.GetBlockStats,
+		connect.WithSchema(storeGatewayServiceGetBlockStatsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/storegateway.v1.StoreGatewayService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case StoreGatewayServiceMergeProfilesStacktracesProcedure:
@@ -314,6 +338,8 @@ func NewStoreGatewayServiceHandler(svc StoreGatewayServiceHandler, opts ...conne
 			storeGatewayServiceSeriesHandler.ServeHTTP(w, r)
 		case StoreGatewayServiceBlockMetadataProcedure:
 			storeGatewayServiceBlockMetadataHandler.ServeHTTP(w, r)
+		case StoreGatewayServiceGetBlockStatsProcedure:
+			storeGatewayServiceGetBlockStatsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -357,4 +383,8 @@ func (UnimplementedStoreGatewayServiceHandler) Series(context.Context, *connect.
 
 func (UnimplementedStoreGatewayServiceHandler) BlockMetadata(context.Context, *connect.Request[v11.BlockMetadataRequest]) (*connect.Response[v11.BlockMetadataResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("storegateway.v1.StoreGatewayService.BlockMetadata is not implemented"))
+}
+
+func (UnimplementedStoreGatewayServiceHandler) GetBlockStats(context.Context, *connect.Request[v11.GetBlockStatsRequest]) (*connect.Response[v11.GetBlockStatsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("storegateway.v1.StoreGatewayService.GetBlockStats is not implemented"))
 }

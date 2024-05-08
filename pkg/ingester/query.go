@@ -68,9 +68,14 @@ func (i *Ingester) MergeSpanProfile(ctx context.Context, stream *connect.BidiStr
 	})
 }
 
-// GetProfileStats returns
 func (i *Ingester) GetProfileStats(ctx context.Context, req *connect.Request[typesv1.GetProfileStatsRequest]) (*connect.Response[typesv1.GetProfileStatsResponse], error) {
 	return forInstanceUnary(ctx, i, func(instance *instance) (*connect.Response[typesv1.GetProfileStatsResponse], error) {
 		return instance.GetProfileStats(ctx, req)
+	})
+}
+
+func (i *Ingester) GetBlockStats(ctx context.Context, req *connect.Request[ingestv1.GetBlockStatsRequest]) (*connect.Response[ingestv1.GetBlockStatsResponse], error) {
+	return forInstanceUnary(ctx, i, func(instance *instance) (*connect.Response[ingestv1.GetBlockStatsResponse], error) {
+		return instance.GetBlockStats(ctx, req)
 	})
 }

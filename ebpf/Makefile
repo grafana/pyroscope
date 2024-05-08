@@ -1,6 +1,6 @@
 GO ?= go
-RIDESHARE_REPO ?= korniltsev
-RIDESHARE="testdata/rideshare-flask-no-pip"
+RIDESHARE_REPO ?= pyroscope
+RIDESHARE=testdata/rideshare-flask-no-pip
 
 ifeq ($(shell uname -s),Linux)
 ifeq ($(shell uname -m),x86_64)
@@ -29,12 +29,12 @@ python/dwarfdump:
 	git submodule update --init --recursive
 
 	echo "//go:build amd64 && linux" > python/python_offsets_gen_amd64.go
-	go run cmd/python_dwarfdump/main.go $(shell find testdata/python-x64 -name libpy\*.so\*) \
+	go run cmd/python_dwarfdump/main.go $(shell find testdata/python-x64 -name libpy\*.so\* | grep -v pyston) \
 	 	$(shell find testdata/python-x64  | grep -E "/python3\\.[0-9]+") >> python/python_offsets_gen_amd64.go
 	go fmt python/python_offsets_gen_amd64.go
 
 	echo "//go:build arm64 && linux" > python/python_offsets_gen_arm64.go
-	go run cmd/python_dwarfdump/main.go $(shell find testdata/python-arm64 -name libpy\*.so\*) \
+	go run cmd/python_dwarfdump/main.go $(shell find testdata/python-arm64 -name libpy\*.so\* | grep -v pyston) \
 	 	$(shell find testdata/python-arm64  | grep -E "/python3\\.[0-9]+") >> python/python_offsets_gen_arm64.go
 	go fmt python/python_offsets_gen_arm64.go
 
@@ -90,6 +90,7 @@ go/test/arm64: ebpf.arm64.test
 	uname -m | grep aarch64
 	./ebpf.arm64.test
 
+
 .phony: rideshare/gen
 rideshare/gen:
 	git submodule update --init --recursive
@@ -105,3 +106,5 @@ rideshare/gen:
 	docker buildx build --platform=linux/amd64,linux/arm64 --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:3.11-alpine     --build-arg="PYTHON_VERSION=3.11-alpine"    $(RIDESHARE)
 	docker buildx build --platform=linux/amd64,linux/arm64 --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:3.12-alpine     --build-arg="PYTHON_VERSION=3.12-alpine"    $(RIDESHARE)
 	docker buildx build --platform=linux/amd64,linux/arm64 --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:3.13-rc-alpine  --build-arg="PYTHON_VERSION=3.13-rc-alpine" $(RIDESHARE)
+	docker buildx build --platform=linux/amd64,linux/arm64 --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:ubuntu-20.04  --build-arg="BASE=ubuntu:20.04" --build-arg="FLASK_VERSION=3.0.3" -f $(RIDESHARE)/ubuntu.Dockerfile $(RIDESHARE)
+	docker buildx build --platform=linux/amd64,linux/arm64 --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:ubuntu-22.04  --build-arg="BASE=ubuntu:22.04" --build-arg="FLASK_VERSION=3.0.3" -f $(RIDESHARE)/ubuntu.Dockerfile $(RIDESHARE)

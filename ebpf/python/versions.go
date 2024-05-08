@@ -110,6 +110,7 @@ type UserOffsets struct {
 	PyTssTSize                        int16
 	PyASCIIObjectSize                 int16
 	PyCompactUnicodeObjectSize        int16
+	PyCellObject__ob_ref              int16
 }
 
 type GlibcOffsets struct {

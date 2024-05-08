@@ -638,3 +638,9 @@ func (h *Head) updateSymbolsMemUsage(memStats *symdb.MemoryStats) {
 	m.WithLabelValues("mappings").Set(float64(memStats.MappingsSize))
 	m.WithLabelValues("strings").Set(float64(memStats.StringsSize))
 }
+
+func (h *Head) GetMetaStats() block.MetaStats {
+	h.metaLock.RLock()
+	defer h.metaLock.RUnlock()
+	return h.meta.GetStats()
+}

@@ -56,6 +56,10 @@ func (cfg *Config) RegisterFlags(fs *flag.FlagSet) {
 	fs.DurationVar(&cfg.QueryStoreAfter, "querier.query-store-after", 4*time.Hour, "The time after which a metric should be queried from storage and not just ingesters. 0 means all queries are sent to store. If this option is enabled, the time range of the query sent to the store-gateway will be manipulated to ensure the query end is not more recent than 'now - query-store-after'.")
 }
 
+type Limits interface {
+	QueryAnalysisSeriesEnabled(string) bool
+}
+
 type Querier struct {
 	services.Service
 	subservices        *services.Manager
@@ -71,6 +75,8 @@ type Querier struct {
 
 	storageBucket        phlareobj.Bucket
 	tenantConfigProvider phlareobj.TenantConfigProvider
+
+	limits Limits
 }
 
 // TODO(kolesnikovae): For backwards compatibility.
@@ -128,6 +134,7 @@ func New(params *NewQuerierParams) (*Querier, error) {
 		VCSServiceHandler:    vcs.New(params.Logger, params.Reg),
 		storageBucket:        params.StorageBucket,
 		tenantConfigProvider: params.CfgProvider,
+		limits:               params.Overrides,
 	}
 
 	svcs := []services.Service{q.ingesterQuerier.pool}
@@ -354,7 +361,7 @@ func (q *Querier) blockSelect(ctx context.Context, start, end model.Time) (block
 
 	results := newReplicasPerBlockID(q.logger)
 
-	// get first all blocks from store gateways, as they should be querier with a priority and also aret the only ones containing duplicated blocks because of replication
+	// get first all blocks from store gateways, as they should be querier with a priority and also are the only ones containing duplicated blocks because of replication
 	if q.storeGatewayQuerier != nil {
 		res, err := q.blockSelectFromStoreGateway(ctx, ingesterReq)
 		if err != nil {
@@ -963,7 +970,7 @@ func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querier
 	}), nil
 }
 
-func (q *Querier) selectSeries(ctx context.Context, req *connect.Request[querierv1.SelectSeriesRequest], plan map[string]*ingestv1.BlockHints) ([]ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels], error) {
+func (q *Querier) selectSeries(ctx context.Context, req *connect.Request[querierv1.SelectSeriesRequest], plan map[string]*blockPlanEntry) ([]ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels], error) {
 	stepMs := time.Duration(req.Msg.Step * float64(time.Second)).Milliseconds()
 	sort.Strings(req.Msg.GroupBy)
 
