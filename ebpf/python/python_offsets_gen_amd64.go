@@ -34,6 +34,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        -1,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.5.1 testdata/python-x64/3.5.1/lib/libpython3.5m.so.1.0
 	{3, 5, 1}: {
@@ -65,6 +66,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        -1,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.5.2 testdata/python-x64/3.5.2/lib/libpython3.5m.so.1.0
 	{3, 5, 2}: {
@@ -96,6 +98,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        -1,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.5.3 testdata/python-x64/3.5.3/lib/libpython3.5m.so.1.0
 	{3, 5, 3}: {
@@ -127,6 +130,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        -1,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.5.4 testdata/python-x64/3.5.4/lib/libpython3.5m.so.1.0
 	{3, 5, 4}: {
@@ -158,6 +162,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        -1,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.5.5 testdata/python-x64/3.5.5/lib/libpython3.5m.so.1.0
 	{3, 5, 5}: {
@@ -189,6 +194,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        -1,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.5.6 testdata/python-x64/3.5.6/lib/libpython3.5m.so.1.0
 	{3, 5, 6}: {
@@ -220,6 +226,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        -1,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.5.7 testdata/python-x64/3.5.7/lib/libpython3.5m.so.1.0
 	{3, 5, 7}: {
@@ -251,6 +258,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        -1,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.5.8 testdata/python-x64/3.5.8/lib/libpython3.5m.so.1.0
 	{3, 5, 8}: {
@@ -282,6 +290,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        -1,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.5.9 testdata/python-x64/3.5.9/lib/libpython3.5m.so.1.0
 	{3, 5, 9}: {
@@ -313,6 +322,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        -1,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.5.10 testdata/python-x64/3.5.10/lib/libpython3.5m.so.1.0
 	{3, 5, 10}: {
@@ -344,6 +354,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        -1,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.6.0 testdata/python-x64/3.6.0/lib/libpython3.6m.so.1.0
 	{3, 6, 0}: {
@@ -375,6 +386,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        -1,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.6.1 testdata/python-x64/3.6.1/lib/libpython3.6m.so.1.0
 	{3, 6, 1}: {
@@ -406,6 +418,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        -1,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.6.2 testdata/python-x64/3.6.2/lib/libpython3.6m.so.1.0
 	{3, 6, 2}: {
@@ -437,6 +450,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        -1,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.6.3 testdata/python-x64/3.6.3/lib/libpython3.6m.so.1.0
 	{3, 6, 3}: {
@@ -468,6 +482,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        -1,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.6.4 testdata/python-x64/3.6.4/lib/libpython3.6m.so.1.0
 	{3, 6, 4}: {
@@ -499,6 +514,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        -1,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.6.5 testdata/python-x64/3.6.5/lib/libpython3.6m.so.1.0
 	{3, 6, 5}: {
@@ -530,6 +546,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        -1,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.6.6 testdata/python-x64/3.6.6/lib/libpython3.6m.so.1.0
 	{3, 6, 6}: {
@@ -561,6 +578,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        -1,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.6.7 testdata/python-x64/3.6.7/lib/libpython3.6m.so.1.0
 	{3, 6, 7}: {
@@ -592,6 +610,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        -1,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.6.8 testdata/python-x64/3.6.8/lib/libpython3.6m.so.1.0
 	{3, 6, 8}: {
@@ -623,6 +642,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        -1,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.6.9 testdata/python-x64/3.6.9/lib/libpython3.6m.so.1.0
 	{3, 6, 9}: {
@@ -654,6 +674,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        -1,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.6.10 testdata/python-x64/3.6.10/lib/libpython3.6m.so.1.0
 	{3, 6, 10}: {
@@ -685,6 +706,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        -1,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.6.11 testdata/python-x64/3.6.11/lib/libpython3.6m.so.1.0
 	{3, 6, 11}: {
@@ -716,6 +738,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        -1,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.6.12 testdata/python-x64/3.6.12/lib/libpython3.6m.so.1.0
 	{3, 6, 12}: {
@@ -747,6 +770,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        -1,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.6.13 testdata/python-x64/3.6.13/lib/libpython3.6m.so.1.0
 	{3, 6, 13}: {
@@ -778,6 +802,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        -1,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.6.14 testdata/python-x64/3.6.14/lib/libpython3.6m.so.1.0
 	{3, 6, 14}: {
@@ -809,6 +834,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        -1,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.6.15 testdata/python-x64/3.6.15/lib/libpython3.6m.so.1.0
 	{3, 6, 15}: {
@@ -840,6 +866,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        -1,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.7.0 testdata/python-x64/3.7.0/lib/libpython3.7m.so.1.0
 	{3, 7, 0}: {
@@ -871,6 +898,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.7.1 testdata/python-x64/3.7.1/lib/libpython3.7m.so.1.0
 	{3, 7, 1}: {
@@ -902,6 +930,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.7.2 testdata/python-x64/3.7.2/lib/libpython3.7m.so.1.0
 	{3, 7, 2}: {
@@ -933,6 +962,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.7.3 testdata/python-x64/3.7.3/lib/libpython3.7m.so.1.0
 	{3, 7, 3}: {
@@ -964,6 +994,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.7.4 testdata/python-x64/3.7.4/lib/libpython3.7m.so.1.0
 	{3, 7, 4}: {
@@ -995,6 +1026,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.7.5 testdata/python-x64/3.7.5/lib/libpython3.7m.so.1.0
 	{3, 7, 5}: {
@@ -1026,6 +1058,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.7.6 testdata/python-x64/3.7.6/lib/libpython3.7m.so.1.0
 	{3, 7, 6}: {
@@ -1057,6 +1090,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.7.7 testdata/python-x64/3.7.7/lib/libpython3.7m.so.1.0
 	{3, 7, 7}: {
@@ -1088,6 +1122,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.7.8 testdata/python-x64/3.7.8/lib/libpython3.7m.so.1.0
 	{3, 7, 8}: {
@@ -1119,6 +1154,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.7.9 testdata/python-x64/3.7.9/lib/libpython3.7m.so.1.0
 	{3, 7, 9}: {
@@ -1150,6 +1186,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.7.10 testdata/python-x64/3.7.10/lib/libpython3.7m.so.1.0
 	{3, 7, 10}: {
@@ -1181,6 +1218,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.7.11 testdata/python-x64/3.7.11/lib/libpython3.7m.so.1.0
 	{3, 7, 11}: {
@@ -1212,6 +1250,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.7.12 testdata/python-x64/3.7.12/lib/libpython3.7m.so.1.0
 	{3, 7, 12}: {
@@ -1243,6 +1282,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.7.13 testdata/python-x64/3.7.13/lib/libpython3.7m.so.1.0
 	{3, 7, 13}: {
@@ -1274,6 +1314,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.7.14 testdata/python-x64/3.7.14/lib/libpython3.7m.so.1.0
 	{3, 7, 14}: {
@@ -1305,6 +1346,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.7.15 testdata/python-x64/3.7.15/lib/libpython3.7m.so.1.0
 	{3, 7, 15}: {
@@ -1336,6 +1378,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.7.16 testdata/python-x64/3.7.16/lib/libpython3.7m.so.1.0
 	{3, 7, 16}: {
@@ -1367,6 +1410,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.7.17 testdata/python-x64/3.7.17/lib/libpython3.7m.so.1.0
 	{3, 7, 17}: {
@@ -1398,6 +1442,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.8.0 testdata/python-x64/3.8.0/lib/libpython3.8.so.1.0
 	{3, 8, 0}: {
@@ -1429,6 +1474,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.8.1 testdata/python-x64/3.8.1/lib/libpython3.8.so.1.0
 	{3, 8, 1}: {
@@ -1460,6 +1506,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.8.2 testdata/python-x64/3.8.2/lib/libpython3.8.so.1.0
 	{3, 8, 2}: {
@@ -1491,6 +1538,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.8.3 testdata/python-x64/3.8.3/lib/libpython3.8.so.1.0
 	{3, 8, 3}: {
@@ -1522,6 +1570,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.8.4 testdata/python-x64/3.8.4/lib/libpython3.8.so.1.0
 	{3, 8, 4}: {
@@ -1553,6 +1602,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.8.5 testdata/python-x64/3.8.5/lib/libpython3.8.so.1.0
 	{3, 8, 5}: {
@@ -1584,6 +1634,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.8.6 testdata/python-x64/3.8.6/lib/libpython3.8.so.1.0
 	{3, 8, 6}: {
@@ -1615,6 +1666,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.8.7 testdata/python-x64/3.8.7/lib/libpython3.8.so.1.0
 	{3, 8, 7}: {
@@ -1646,6 +1698,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.8.8 testdata/python-x64/3.8.8/lib/libpython3.8.so.1.0
 	{3, 8, 8}: {
@@ -1677,6 +1730,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.8.9 testdata/python-x64/3.8.9/lib/libpython3.8.so.1.0
 	{3, 8, 9}: {
@@ -1708,6 +1762,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.8.10 testdata/python-x64/3.8.10/lib/libpython3.8.so.1.0
 	{3, 8, 10}: {
@@ -1739,6 +1794,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.8.11 testdata/python-x64/3.8.11/lib/libpython3.8.so.1.0
 	{3, 8, 11}: {
@@ -1770,6 +1826,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.8.12 testdata/python-x64/3.8.12/lib/libpython3.8.so.1.0
 	{3, 8, 12}: {
@@ -1801,6 +1858,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.8.13 testdata/python-x64/3.8.13/lib/libpython3.8.so.1.0
 	{3, 8, 13}: {
@@ -1832,6 +1890,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.8.14 testdata/python-x64/3.8.14/lib/libpython3.8.so.1.0
 	{3, 8, 14}: {
@@ -1863,6 +1922,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.8.15 testdata/python-x64/3.8.15/lib/libpython3.8.so.1.0
 	{3, 8, 15}: {
@@ -1894,6 +1954,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.8.16 testdata/python-x64/3.8.16/lib/libpython3.8.so.1.0
 	{3, 8, 16}: {
@@ -1925,6 +1986,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.8.17 testdata/python-x64/3.8.17/lib/libpython3.8.so.1.0
 	{3, 8, 17}: {
@@ -1956,6 +2018,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.8.18 testdata/python-x64/3.8.18/lib/libpython3.8.so.1.0
 	{3, 8, 18}: {
@@ -1987,6 +2050,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.9.0 testdata/python-x64/3.9.0/lib/libpython3.9.so.1.0
 	{3, 9, 0}: {
@@ -2018,6 +2082,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.9.1 testdata/python-x64/3.9.1/lib/libpython3.9.so.1.0
 	{3, 9, 1}: {
@@ -2049,6 +2114,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.9.2 testdata/python-x64/3.9.2/lib/libpython3.9.so.1.0
 	{3, 9, 2}: {
@@ -2080,6 +2146,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.9.4 testdata/python-x64/3.9.4/lib/libpython3.9.so.1.0
 	{3, 9, 4}: {
@@ -2111,6 +2178,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.9.5 testdata/python-x64/3.9.5/lib/libpython3.9.so.1.0
 	{3, 9, 5}: {
@@ -2142,6 +2210,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.9.6 testdata/python-x64/3.9.6/lib/libpython3.9.so.1.0
 	{3, 9, 6}: {
@@ -2173,6 +2242,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.9.7 testdata/python-x64/3.9.7/lib/libpython3.9.so.1.0
 	{3, 9, 7}: {
@@ -2204,6 +2274,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.9.8 testdata/python-x64/3.9.8/lib/libpython3.9.so.1.0
 	{3, 9, 8}: {
@@ -2235,6 +2306,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.9.9 testdata/python-x64/3.9.9/lib/libpython3.9.so.1.0
 	{3, 9, 9}: {
@@ -2266,6 +2338,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.9.10 testdata/python-x64/3.9.10/lib/libpython3.9.so.1.0
 	{3, 9, 10}: {
@@ -2297,6 +2370,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.9.11 testdata/python-x64/3.9.11/lib/libpython3.9.so.1.0
 	{3, 9, 11}: {
@@ -2328,6 +2402,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.9.12 testdata/python-x64/3.9.12/lib/libpython3.9.so.1.0
 	{3, 9, 12}: {
@@ -2359,6 +2434,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.9.13 testdata/python-x64/3.9.13/lib/libpython3.9.so.1.0
 	{3, 9, 13}: {
@@ -2390,6 +2466,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.9.14 testdata/python-x64/3.9.14/lib/libpython3.9.so.1.0
 	{3, 9, 14}: {
@@ -2421,6 +2498,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.9.15 testdata/python-x64/3.9.15/lib/libpython3.9.so.1.0
 	{3, 9, 15}: {
@@ -2452,6 +2530,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.9.16 testdata/python-x64/3.9.16/lib/libpython3.9.so.1.0
 	{3, 9, 16}: {
@@ -2483,6 +2562,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.9.17 testdata/python-x64/3.9.17/lib/libpython3.9.so.1.0
 	{3, 9, 17}: {
@@ -2514,6 +2594,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.9.18 testdata/python-x64/3.9.18/lib/libpython3.9.so.1.0
 	{3, 9, 18}: {
@@ -2545,6 +2626,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.10.0 testdata/python-x64/3.10.0/lib/libpython3.10.so.1.0
 	{3, 10, 0}: {
@@ -2576,6 +2658,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.10.1 testdata/python-x64/3.10.1/lib/libpython3.10.so.1.0
 	{3, 10, 1}: {
@@ -2607,6 +2690,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.10.2 testdata/python-x64/3.10.2/lib/libpython3.10.so.1.0
 	{3, 10, 2}: {
@@ -2638,6 +2722,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.10.3 testdata/python-x64/3.10.3/lib/libpython3.10.so.1.0
 	{3, 10, 3}: {
@@ -2669,6 +2754,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.10.4 testdata/python-x64/3.10.4/lib/libpython3.10.so.1.0
 	{3, 10, 4}: {
@@ -2700,6 +2786,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.10.5 testdata/python-x64/3.10.5/lib/libpython3.10.so.1.0
 	{3, 10, 5}: {
@@ -2731,6 +2818,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.10.6 testdata/python-x64/3.10.6/lib/libpython3.10.so.1.0
 	{3, 10, 6}: {
@@ -2762,6 +2850,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.10.7 testdata/python-x64/3.10.7/lib/libpython3.10.so.1.0
 	{3, 10, 7}: {
@@ -2793,6 +2882,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.10.8 testdata/python-x64/3.10.8/lib/libpython3.10.so.1.0
 	{3, 10, 8}: {
@@ -2824,6 +2914,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.10.9 testdata/python-x64/3.10.9/lib/libpython3.10.so.1.0
 	{3, 10, 9}: {
@@ -2855,6 +2946,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.10.10 testdata/python-x64/3.10.10/lib/libpython3.10.so.1.0
 	{3, 10, 10}: {
@@ -2886,6 +2978,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.10.11 testdata/python-x64/3.10.11/lib/libpython3.10.so.1.0
 	{3, 10, 11}: {
@@ -2917,6 +3010,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.10.12 testdata/python-x64/3.10.12/lib/libpython3.10.so.1.0
 	{3, 10, 12}: {
@@ -2948,6 +3042,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.10.13 testdata/python-x64/3.10.13/lib/libpython3.10.so.1.0
 	{3, 10, 13}: {
@@ -2979,6 +3074,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.11.0 testdata/python-x64/3.11.0/lib/libpython3.11.so.1.0
 	{3, 11, 0}: {
@@ -3010,6 +3106,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.11.1 testdata/python-x64/3.11.1/lib/libpython3.11.so.1.0
 	{3, 11, 1}: {
@@ -3041,6 +3138,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.11.2 testdata/python-x64/3.11.2/lib/libpython3.11.so.1.0
 	{3, 11, 2}: {
@@ -3072,6 +3170,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.11.3 testdata/python-x64/3.11.3/lib/libpython3.11.so.1.0
 	{3, 11, 3}: {
@@ -3103,6 +3202,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.11.4 testdata/python-x64/3.11.4/lib/libpython3.11.so.1.0
 	{3, 11, 4}: {
@@ -3134,6 +3234,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.11.5 testdata/python-x64/3.11.5/lib/libpython3.11.so.1.0
 	{3, 11, 5}: {
@@ -3165,6 +3266,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.11.6 testdata/python-x64/3.11.6/lib/libpython3.11.so.1.0
 	{3, 11, 6}: {
@@ -3196,6 +3298,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.11.7 testdata/python-x64/3.11.7/lib/libpython3.11.so.1.0
 	{3, 11, 7}: {
@@ -3227,6 +3330,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.11.8 testdata/python-x64/3.11.8/lib/libpython3.11.so.1.0
 	{3, 11, 8}: {
@@ -3258,6 +3362,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 48,
 		PyCompactUnicodeObjectSize:        72,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.12.0 testdata/python-x64/3.12.0/lib/libpython3.12.so.1.0
 	{3, 12, 0}: {
@@ -3289,6 +3394,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 40,
 		PyCompactUnicodeObjectSize:        56,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.12.1 testdata/python-x64/3.12.1/lib/libpython3.12.so.1.0
 	{3, 12, 1}: {
@@ -3320,6 +3426,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 40,
 		PyCompactUnicodeObjectSize:        56,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.12.2 testdata/python-x64/3.12.2/lib/libpython3.12.so.1.0
 	{3, 12, 2}: {
@@ -3351,6 +3458,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 40,
 		PyCompactUnicodeObjectSize:        56,
+		PyCellObject__ob_ref:              16,
 	},
 	// 3.13.0 testdata/python-x64/3.13.0a6/libpython3.13.so.1.0
 	{3, 13, 0}: {
@@ -3382,5 +3490,6 @@ var pyVersions = map[Version]*UserOffsets{
 		PyTssTSize:                        8,
 		PyASCIIObjectSize:                 40,
 		PyCompactUnicodeObjectSize:        56,
+		PyCellObject__ob_ref:              16,
 	},
 }
