@@ -68,7 +68,7 @@ func TestEBPFPythonProfiler(t *testing.T) {
 			profiler := startPythonProfiler(t, l, rideshare.ContainerID)
 			defer profiler.Stop()
 
-			loadgen(t, l, rideshare.Url(), 1)
+			loadgen(t, l, rideshare.Url(), 2)
 
 			profiles := collectProfiles(t, l, profiler)
 
