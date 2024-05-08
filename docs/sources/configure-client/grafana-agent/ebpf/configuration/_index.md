@@ -26,7 +26,7 @@ The `forward_to` parameter should point to a `pyroscope.write` component to send
 | `targets`                 | `list(map(string))`      | List of targets to group profiles by container id            |         | yes      |
 | `forward_to`              | `list(ProfilesReceiver)` | List of receivers to send collected profiles to.             |         | yes      |
 | `collect_interval`        | `duration`               | How frequently to collect profiles                           | `15s`   | no       |
-| `sample_rate`             | `int`                    | How many times per second to collect profile samples         | 97      | no       |
+| `sample_rate`             | `int`                    | How many times per second to collect profile samples         | 100     | no       |
 | `pid_cache_size`          | `int`                    | The size of the pid -> proc symbols table LRU cache          | 32      | no       |
 | `build_id_cache_size`     | `int`                    | The size of the elf file build id -> symbols table LRU cache | 64      | no       |
 | `same_file_cache_size`    | `int`                    | The size of the elf file -> symbols table LRU cache          | 8       | no       |
