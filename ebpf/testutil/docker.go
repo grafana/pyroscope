@@ -93,6 +93,7 @@ func (c *Container) WaitForPort() {
 
 func (c *Container) execute(cmd ...string) ([]byte, error) {
 	cc := exec.Command(cmd[0], cmd[1:]...)
+	c.L.Log("cmd", cc.String())
 	out, err := cc.CombinedOutput()
 	_ = c.L.Log("cmd", cc.String(), "output", string(out), "err", err)
 	if err != nil {
