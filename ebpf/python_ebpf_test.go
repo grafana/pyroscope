@@ -8,6 +8,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/go-kit/log"
@@ -48,14 +49,18 @@ func TestEBPFPythonProfiler(t *testing.T) {
 		{"pyroscope/ebpf-testdata-rideshare:ubuntu-20.04", pythonEBPFExpectedUbuntu()},
 		{"pyroscope/ebpf-testdata-rideshare:ubuntu-22.04", pythonEBPFExpectedUbuntu()},
 	}
-
 	const ridesharePort = "5000"
+
+	l := log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
+	l = log.With(l, "ts", log.DefaultTimestampUTC, "caller", log.Caller(5))
+
+	pullImages(t, testdata, l)
 
 	for _, testdatum := range testdata {
 		testdatum := testdatum
 		t.Run(testdatum.image, func(t *testing.T) {
-			l := log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
-			l = log.With(l, "test", t.Name())
+
+			l := log.With(l, "test", t.Name())
 
 			rideshare := testutil.RunContainerWithPort(t, l, testdatum.image, ridesharePort)
 			defer rideshare.Kill()
@@ -63,7 +68,7 @@ func TestEBPFPythonProfiler(t *testing.T) {
 			profiler := startPythonProfiler(t, l, rideshare.ContainerID)
 			defer profiler.Stop()
 
-			loadgen(t, l, rideshare.Url(), 2)
+			loadgen(t, l, rideshare.Url(), 1)
 
 			profiles := collectProfiles(t, l, profiler)
 
@@ -71,6 +76,21 @@ func TestEBPFPythonProfiler(t *testing.T) {
 		})
 	}
 
+}
+
+func pullImages(t *testing.T, testdata []struct {
+	image    string
+	expected []byte
+}, l log.Logger) {
+	wg := sync.WaitGroup{}
+	for _, testdatum := range testdata {
+		wg.Add(1)
+		go func(img string) {
+			defer wg.Done()
+			testutil.PullImage(t, l, img)
+		}(testdatum.image)
+	}
+	wg.Wait()
 }
 
 func compareProfiles(t *testing.T, l log.Logger, expected []byte, actual map[string]struct{}) {

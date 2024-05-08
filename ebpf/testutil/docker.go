@@ -21,13 +21,20 @@ type Container struct {
 	hostPort      string
 }
 
+func PullImage(t *testing.T, l log.Logger, image string) {
+	container := &Container{
+		T: t,
+		L: log.With(l, "component", "docker pull"),
+	}
+	_, err := container.execute("docker", "pull", image)
+	require.NoError(t, err)
+}
+
 func RunContainerWithPort(t *testing.T, l log.Logger, image string, port string) *Container {
 	container := &Container{
 		T: t,
 		L: log.With(l, "component", "docker"),
 	}
-	_, err := container.execute("docker", "pull", image)
-	require.NoError(t, err)
 
 	container.Run("docker", "run", "--rm", "-tid", "-p", port, image)
 
