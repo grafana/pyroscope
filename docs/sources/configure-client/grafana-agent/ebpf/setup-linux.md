@@ -113,7 +113,7 @@ If you need to send data to Grafana Cloud, you'll have to configure HTTP Basic a
 If you're using your own Pyroscope server, you can remove the `basic_auth` section altogether.
 {{% /admonition %}}
 
-For more information, refer to the [Configure the Grafana Pyroscope data source documentation](/docs/grafana-cloud/connect-externally-hosted/data-sources/grafana-pyroscope#configure-the-grafana-pyroscope-data-source).
+For more information, refer to the [Configure the Grafana Pyroscope data source documentation](/docs/grafana-cloud/connect-externally-hosted/data-sources/pyroscope/configure-pyroscope-data-source/).
 
 ## Start the Grafana Agent
 
