@@ -1,6 +1,7 @@
 package vcs
 
 import (
+	"context"
 	"encoding/base64"
 	"net/http"
 	"net/url"
@@ -12,6 +13,7 @@ import (
 	"golang.org/x/oauth2"
 
 	vcsv1 "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1"
+	"github.com/grafana/pyroscope/pkg/tenant"
 )
 
 func Test_getStringValueFrom(t *testing.T) {
@@ -133,8 +135,14 @@ func Test_getDurationValueFrom(t *testing.T) {
 }
 
 func Test_tokenFromRequest(t *testing.T) {
+	ctx := newTestContext()
+
 	t.Run("token exists in request", func(t *testing.T) {
-		gitSessionSecret = []byte("16_byte_key_XXXX")
+		githubSessionSecret = []byte("16_byte_key_XXXX")
+
+		derivedKey, err := deriveEncryptionKeyForContext(ctx)
+		require.NoError(t, err)
+
 		wantToken := &oauth2.Token{
 			AccessToken:  "my_access_token",
 			TokenType:    "my_token_type",
@@ -144,28 +152,33 @@ func Test_tokenFromRequest(t *testing.T) {
 
 		// The type of request here doesn't matter.
 		req := connect.NewRequest(&vcsv1.GetFileRequest{})
-		req.Header().Add("Cookie", testEncodeCookie(t, wantToken).String())
+		req.Header().Add("Cookie", testEncodeCookie(t, derivedKey, wantToken).String())
 
-		gotToken, err := tokenFromRequest(req)
+		gotToken, err := tokenFromRequest(ctx, req)
 		require.NoError(t, err)
 		require.Equal(t, *wantToken, *gotToken)
 	})
 
 	t.Run("token does not exist in request", func(t *testing.T) {
-		gitSessionSecret = []byte("16_byte_key_XXXX")
+		githubSessionSecret = []byte("16_byte_key_XXXX")
 		wantErr := "failed to read cookie GitSession: http: named cookie not present"
 
 		// The type of request here doesn't matter.
 		req := connect.NewRequest(&vcsv1.GetFileRequest{})
 
-		_, err := tokenFromRequest(req)
+		_, err := tokenFromRequest(ctx, req)
 		require.Error(t, err)
 		require.EqualError(t, err, wantErr)
 	})
 }
 
 func Test_encodeToken(t *testing.T) {
-	gitSessionSecret = []byte("16_byte_key_XXXX")
+	githubSessionSecret = []byte("16_byte_key_XXXX")
+	ctx := newTestContext()
+
+	derivedKey, err := deriveEncryptionKeyForContext(ctx)
+	require.NoError(t, err)
+
 	token := &oauth2.Token{
 		AccessToken:  "my_access_token",
 		TokenType:    "my_token_type",
@@ -173,7 +186,7 @@ func Test_encodeToken(t *testing.T) {
 		Expiry:       time.Unix(1713298947, 0).UTC(), // 2024-04-16T20:22:27.346Z
 	}
 
-	got, err := encodeToken(token)
+	got, err := encodeToken(token, derivedKey)
 	require.NoError(t, err)
 	require.Equal(t, sessionCookieName, got.Name)
 	require.NotEmpty(t, got.Value)
@@ -183,7 +196,11 @@ func Test_encodeToken(t *testing.T) {
 }
 
 func Test_decodeToken(t *testing.T) {
-	gitSessionSecret = []byte("16_byte_key_XXXX")
+	githubSessionSecret = []byte("16_byte_key_XXXX")
+
+	ctx := newTestContext()
+	derivedKey, err := deriveEncryptionKeyForContext(ctx)
+	require.NoError(t, err)
 
 	t.Run("valid token", func(t *testing.T) {
 		want := &oauth2.Token{
@@ -192,9 +209,9 @@ func Test_decodeToken(t *testing.T) {
 			RefreshToken: "my_refresh_token",
 			Expiry:       time.Unix(1713298947, 0).UTC(), // 2024-04-16T20:22:27.346Z
 		}
-		cookie := testEncodeCookie(t, want)
+		cookie := testEncodeCookie(t, derivedKey, want)
 
-		got, err := decodeToken(cookie.Value)
+		got, err := decodeToken(cookie.Value, derivedKey)
 		require.NoError(t, err)
 		require.Equal(t, want, got)
 	})
@@ -206,9 +223,9 @@ func Test_decodeToken(t *testing.T) {
 			RefreshToken: "my_refresh_token",
 			Expiry:       time.Unix(1713298947, 0).UTC(), // 2024-04-16T20:22:27.346Z
 		}
-		cookie := testEncodeLegacyCookie(t, want)
+		cookie := testEncodeLegacyCookie(t, derivedKey, want)
 
-		got, err := decodeToken(cookie.Value)
+		got, err := decodeToken(cookie.Value, derivedKey)
 		require.NoError(t, err)
 		require.Equal(t, want, got)
 	})
@@ -216,7 +233,7 @@ func Test_decodeToken(t *testing.T) {
 	t.Run("invalid base64 encoding", func(t *testing.T) {
 		illegalBase64Encoding := "xx==="
 
-		_, err := decodeToken(illegalBase64Encoding)
+		_, err := decodeToken(illegalBase64Encoding, derivedKey)
 		require.Error(t, err)
 		require.EqualError(t, err, "illegal base64 data at input byte 4")
 	})
@@ -224,25 +241,73 @@ func Test_decodeToken(t *testing.T) {
 	t.Run("invalid json encoding", func(t *testing.T) {
 		illegalJSON := base64.StdEncoding.EncodeToString([]byte("illegal json value"))
 
-		_, err := decodeToken(illegalJSON)
+		_, err := decodeToken(illegalJSON, derivedKey)
 		require.Error(t, err)
 		require.EqualError(t, err, "invalid character 'i' looking for beginning of value")
 	})
 }
 
-func testEncodeCookie(t *testing.T, token *oauth2.Token) *http.Cookie {
+func Test_tenantIsolation(t *testing.T) {
+	githubSessionSecret = []byte("16_byte_key_XXXX")
+
+	var (
+		ctxA = newTestContextWithTenantID("tenant_a")
+		ctxB = newTestContextWithTenantID("tenant_b")
+	)
+
+	derivedKeyA, err := deriveEncryptionKeyForContext(ctxA)
+	require.NoError(t, err)
+
+	encodedTokenA, err := encodeToken(&oauth2.Token{
+		AccessToken: "so_secret",
+	}, derivedKeyA)
+	require.NoError(t, err)
+
+	req := connect.NewRequest(&vcsv1.GetFileRequest{})
+	req.Header().Add("Cookie", encodedTokenA.String())
+
+	tA, err := tokenFromRequest(ctxA, req)
+	require.NoError(t, err)
+	require.Equal(t, "so_secret", tA.AccessToken)
+
+	_, err = tokenFromRequest(ctxB, req)
+	require.ErrorContains(t, err, "message authentication failed")
+
+}
+
+func Test_StillCompatbile(t *testing.T) {
+	githubSessionSecret = []byte("16_byte_key_XXXX")
+
+	ctx := newTestContextWithTenantID("tenant_a")
+	req := connect.NewRequest(&vcsv1.GetFileRequest{})
+	req.Header().Add("Cookie", "GitSession=eyJtZXRhZGF0YSI6Im12N0d1OHlIanZxdWdQMmF5TnJaYXd1SXNyQXFmUUVIMVhGS1RkejVlZWtob1NRV1JUM3hVZGRuMndUemhQZ05oWktRVkpjcVh5SVJDSnFmTTV3WTJyNmR3R21rZkRhL2FORjhRZ0lJcU1oa1hPbGFEdXNwcFE9PSJ9Cg==")
+
+	realToken, err := tokenFromRequest(ctx, req)
+	require.NoError(t, err)
+	require.Equal(t, "so_secret", realToken.AccessToken)
+}
+
+func newTestContext() context.Context {
+	return newTestContextWithTenantID("test_tenant_id")
+}
+
+func newTestContextWithTenantID(tenantID string) context.Context {
+	return tenant.InjectTenantID(context.Background(), tenantID)
+}
+
+func testEncodeCookie(t *testing.T, key []byte, token *oauth2.Token) *http.Cookie {
 	t.Helper()
 
-	encoded, err := encodeToken(token)
+	encoded, err := encodeToken(token, key)
 	require.NoError(t, err)
 
 	return encoded
 }
 
-func testEncodeLegacyCookie(t *testing.T, token *oauth2.Token) *http.Cookie {
+func testEncodeLegacyCookie(t *testing.T, key []byte, token *oauth2.Token) *http.Cookie {
 	t.Helper()
 
-	encrypted, err := encryptToken(token, gitSessionSecret)
+	encrypted, err := encryptToken(token, key)
 	require.NoError(t, err)
 
 	return &http.Cookie{
