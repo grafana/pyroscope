@@ -66,8 +66,10 @@ func (f *poolFactory) FromInstance(inst ring.InstanceDesc) (ring_client.PoolClie
 	if err != nil {
 		return nil, err
 	}
+
+	httpClient := util.InstrumentedDefaultHTTPClient(util.WithTracingTransport())
 	return &storeGatewayPoolClient{
-		StoreGatewayServiceClient: storegatewayv1connect.NewStoreGatewayServiceClient(util.InstrumentedHTTPClient(), "http://"+inst.Addr, f.options...),
+		StoreGatewayServiceClient: storegatewayv1connect.NewStoreGatewayServiceClient(httpClient, "http://"+inst.Addr, f.options...),
 		HealthClient:              grpc_health_v1.NewHealthClient(conn),
 		Closer:                    conn,
 	}, nil

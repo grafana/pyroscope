@@ -49,20 +49,33 @@ func (f RoundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 	return f(req)
 }
 
-// InstrumentedHTTPClient returns a HTTP client with tracing instrumented default RoundTripper.
-func InstrumentedHTTPClient() *http.Client {
+type RoundTripperInstrumentFunc func(next http.RoundTripper) http.RoundTripper
+
+// InstrumentedDefaultHTTPClient returns an http client configured with some
+// default settings which is wrapped with a variety of instrumented
+// RoundTrippers.
+func InstrumentedDefaultHTTPClient(instruments ...RoundTripperInstrumentFunc) *http.Client {
+	transport := defaultTransport
+
+	for i := len(instruments) - 1; i >= 0; i-- {
+		transport = instruments[i](transport)
+	}
+
 	return &http.Client{
-		Transport: WrapWithInstrumentedHTTPTransport(defaultTransport),
+		Transport: transport,
 	}
 }
 
-// WrapWithInstrumentedHTTPTransport wraps the given RoundTripper with an tracing instrumented one.
-func WrapWithInstrumentedHTTPTransport(next http.RoundTripper) http.RoundTripper {
-	next = &nethttp.Transport{RoundTripper: next}
-	return RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
-		req = nethttp.TraceRequest(opentracing.GlobalTracer(), req)
-		return next.RoundTrip(req)
-	})
+// WithTracingTransport wraps the given RoundTripper with a tracing instrumented
+// one.
+func WithTracingTransport() RoundTripperInstrumentFunc {
+	return func(next http.RoundTripper) http.RoundTripper {
+		next = &nethttp.Transport{RoundTripper: next}
+		return RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
+			req = nethttp.TraceRequest(opentracing.GlobalTracer(), req)
+			return next.RoundTrip(req)
+		})
+	}
 }
 
 // WriteYAMLResponse writes some YAML as a HTTP response.
