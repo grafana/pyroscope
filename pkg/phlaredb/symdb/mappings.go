@@ -13,9 +13,8 @@ import (
 
 	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/slices"
+	"github.com/grafana/pyroscope/pkg/util/math"
 )
-
-const mappingsBlockHeaderSize = int(unsafe.Sizeof(mappingsBlockHeader{}))
 
 var (
 	_ symbolsBlockEncoder[v1.InMemoryMapping] = (*mappingsBlockEncoder)(nil)
@@ -42,6 +41,8 @@ func (h *mappingsBlockHeader) marshal(b []byte) {
 	binary.BigEndian.PutUint32(b[16:20], h.MemoryStartSize)
 	binary.BigEndian.PutUint32(b[20:24], h.MemoryLimitSize)
 	binary.BigEndian.PutUint32(b[24:28], h.FileOffsetSize)
+	// Fields can be added here in the future.
+	// CRC must be the last four bytes.
 	h.CRC = crc32.Checksum(b[0:28], castagnoli)
 	binary.BigEndian.PutUint32(b[28:32], h.CRC)
 }
@@ -54,8 +55,12 @@ func (h *mappingsBlockHeader) unmarshal(b []byte) {
 	h.MemoryStartSize = binary.BigEndian.Uint32(b[16:20])
 	h.MemoryLimitSize = binary.BigEndian.Uint32(b[20:24])
 	h.FileOffsetSize = binary.BigEndian.Uint32(b[24:28])
+	// In future versions, new fields are decoded here;
+	// if pos < len(b)-checksumSize, then there are more fields.
 	h.CRC = binary.BigEndian.Uint32(b[28:32])
 }
+
+func (h *mappingsBlockHeader) checksum() uint32 { return h.CRC }
 
 type mappingsBlockEncoder struct {
 	header mappingsBlockHeader
@@ -70,9 +75,9 @@ func newMappingsEncoder() *symbolsEncoder[v1.InMemoryMapping] {
 	return newSymbolsEncoder[v1.InMemoryMapping](new(mappingsBlockEncoder))
 }
 
-func (e *mappingsBlockEncoder) format() SymbolsBlockFormat {
-	return BlockMappingsV1
-}
+func (e *mappingsBlockEncoder) format() SymbolsBlockFormat { return BlockMappingsV1 }
+
+func (e *mappingsBlockEncoder) headerSize() uintptr { return unsafe.Sizeof(mappingsBlockHeader{}) }
 
 func (e *mappingsBlockEncoder) encode(w io.Writer, mappings []v1.InMemoryMapping) error {
 	e.initWrite(len(mappings))
@@ -145,7 +150,7 @@ func (e *mappingsBlockEncoder) encode(w io.Writer, mappings []v1.InMemoryMapping
 		e.buf.Write(e.tmp)
 	}
 
-	e.tmp = slices.GrowLen(e.tmp, mappingsBlockHeaderSize)
+	e.tmp = slices.GrowLen(e.tmp, int(e.headerSize()))
 	e.header.marshal(e.tmp)
 	if _, err := w.Write(e.tmp); err != nil {
 		return err
@@ -169,8 +174,8 @@ func (e *mappingsBlockEncoder) initWrite(mappings int) {
 }
 
 type mappingsBlockDecoder struct {
-	format SymbolsBlockFormat
-	header mappingsBlockHeader
+	headerSize uint16
+	header     mappingsBlockHeader
 
 	ints   []int32
 	ints64 []int64
@@ -179,25 +184,18 @@ type mappingsBlockDecoder struct {
 
 func newMappingsDecoder(h SymbolsBlockHeader) (*symbolsDecoder[v1.InMemoryMapping], error) {
 	if h.Format == BlockMappingsV1 {
-		return newSymbolsDecoder[v1.InMemoryMapping](h, &mappingsBlockDecoder{format: h.Format}), nil
+		headerSize := math.Max(mappingsBlockHeaderMinSize, h.BlockHeaderSize)
+		return newSymbolsDecoder[v1.InMemoryMapping](h, &mappingsBlockDecoder{headerSize: headerSize}), nil
 	}
 	return nil, fmt.Errorf("%w: unknown mappings format: %d", ErrUnknownVersion, h.Format)
 }
 
-func (d *mappingsBlockDecoder) readHeader(r io.Reader) error {
-	d.buf = slices.GrowLen(d.buf, mappingsBlockHeaderSize)
-	if _, err := io.ReadFull(r, d.buf); err != nil {
-		return nil
-	}
-	d.header.unmarshal(d.buf)
-	if crc32.Checksum(d.buf[:mappingsBlockHeaderSize-4], castagnoli) != d.header.CRC {
-		return ErrInvalidCRC
-	}
-	return nil
-}
+// In early versions, block header size is not specified. Must not change.
+const mappingsBlockHeaderMinSize = 32
 
 func (d *mappingsBlockDecoder) decode(r io.Reader, mappings []v1.InMemoryMapping) (err error) {
-	if err = d.readHeader(r); err != nil {
+	d.buf = slices.GrowLen(d.buf, int(d.headerSize))
+	if err = readSymbolsBlockHeader(d.buf, r, &d.header); err != nil {
 		return err
 	}
 	if d.header.MappingsLen > uint32(len(mappings)) {

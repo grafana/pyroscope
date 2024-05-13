@@ -13,12 +13,10 @@ import (
 
 	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/slices"
+	"github.com/grafana/pyroscope/pkg/util/math"
 )
 
-const (
-	maxLocationLines         = 255
-	locationsBlockHeaderSize = int(unsafe.Sizeof(locationsBlockHeader{}))
-)
+const maxLocationLines = 255
 
 var (
 	_ symbolsBlockEncoder[v1.InMemoryLocation] = (*locationsBlockEncoder)(nil)
@@ -43,6 +41,8 @@ func (h *locationsBlockHeader) marshal(b []byte) {
 	binary.BigEndian.PutUint32(b[12:16], h.LinesSize)
 	binary.BigEndian.PutUint32(b[16:20], h.AddrSize)
 	binary.BigEndian.PutUint32(b[20:24], h.IsFoldedSize)
+	// Fields can be added here in the future.
+	// CRC must be the last four bytes.
 	h.CRC = crc32.Checksum(b[0:24], castagnoli)
 	binary.BigEndian.PutUint32(b[24:28], h.CRC)
 }
@@ -54,8 +54,12 @@ func (h *locationsBlockHeader) unmarshal(b []byte) {
 	h.LinesSize = binary.BigEndian.Uint32(b[12:16])
 	h.AddrSize = binary.BigEndian.Uint32(b[16:20])
 	h.IsFoldedSize = binary.BigEndian.Uint32(b[20:24])
+	// In future versions, new fields are decoded here;
+	// if pos < len(b)-checksumSize, then there are more fields.
 	h.CRC = binary.BigEndian.Uint32(b[24:28])
 }
+
+func (h *locationsBlockHeader) checksum() uint32 { return h.CRC }
 
 type locationsBlockEncoder struct {
 	header locationsBlockHeader
@@ -79,9 +83,9 @@ func newLocationsEncoder() *symbolsEncoder[v1.InMemoryLocation] {
 	return newSymbolsEncoder[v1.InMemoryLocation](new(locationsBlockEncoder))
 }
 
-func (e *locationsBlockEncoder) format() SymbolsBlockFormat {
-	return BlockLocationsV1
-}
+func (e *locationsBlockEncoder) format() SymbolsBlockFormat { return BlockLocationsV1 }
+
+func (e *locationsBlockEncoder) headerSize() uintptr { return unsafe.Sizeof(locationsBlockHeader{}) }
 
 func (e *locationsBlockEncoder) encode(w io.Writer, locations []v1.InMemoryLocation) error {
 	e.initWrite(len(locations))
@@ -128,7 +132,7 @@ func (e *locationsBlockEncoder) encode(w io.Writer, locations []v1.InMemoryLocat
 		e.buf.Write(e.tmp)
 	}
 
-	e.tmp = slices.GrowLen(e.tmp, locationsBlockHeaderSize)
+	e.tmp = slices.GrowLen(e.tmp, int(e.headerSize()))
 	e.header.marshal(e.tmp)
 	if _, err := w.Write(e.tmp); err != nil {
 		return err
@@ -158,8 +162,8 @@ func (e *locationsBlockEncoder) initWrite(locations int) {
 }
 
 type locationsBlockDecoder struct {
-	format SymbolsBlockFormat
-	header locationsBlockHeader
+	headerSize uint16
+	header     locationsBlockHeader
 
 	mappings  []int32
 	lineCount []byte
@@ -173,25 +177,18 @@ type locationsBlockDecoder struct {
 
 func newLocationsDecoder(h SymbolsBlockHeader) (*symbolsDecoder[v1.InMemoryLocation], error) {
 	if h.Format == BlockLocationsV1 {
-		return newSymbolsDecoder[v1.InMemoryLocation](h, &locationsBlockDecoder{format: h.Format}), nil
+		headerSize := math.Max(locationsBlockHeaderMinSize, h.BlockHeaderSize)
+		return newSymbolsDecoder[v1.InMemoryLocation](h, &locationsBlockDecoder{headerSize: headerSize}), nil
 	}
 	return nil, fmt.Errorf("%w: unknown locations format: %d", ErrUnknownVersion, h.Format)
 }
 
-func (d *locationsBlockDecoder) readHeader(r io.Reader) error {
-	d.buf = slices.GrowLen(d.buf, locationsBlockHeaderSize)
-	if _, err := io.ReadFull(r, d.buf); err != nil {
-		return err
-	}
-	d.header.unmarshal(d.buf)
-	if crc32.Checksum(d.buf[:locationsBlockHeaderSize-4], castagnoli) != d.header.CRC {
-		return ErrInvalidCRC
-	}
-	return nil
-}
+// In early versions, block header size is not specified. Must not change.
+const locationsBlockHeaderMinSize = 28
 
 func (d *locationsBlockDecoder) decode(r io.Reader, locations []v1.InMemoryLocation) (err error) {
-	if err = d.readHeader(r); err != nil {
+	d.buf = slices.GrowLen(d.buf, int(d.headerSize))
+	if err = readSymbolsBlockHeader(d.buf, r, &d.header); err != nil {
 		return err
 	}
 	if d.header.LocationsLen != uint32(len(locations)) {

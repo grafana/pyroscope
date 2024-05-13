@@ -425,11 +425,19 @@ type SymbolsBlockHeader struct {
 	Length uint32
 	// BlockSize denotes the number of items per block.
 	BlockSize uint32
+	// BlockSize denotes the encoder block header size in bytes.
+	// This enables forward compatibility within the same format version:
+	// as long as fields are not removed, or reordered, and the encoding
+	// scheme does not change, the format can be extended with no change
+	// of the format version. Decoder is able to read the whole header and
+	// skip unknown fields.
+	BlockHeaderSize uint16
 	// Format of the encoded data.
+	// Change of the format _version_ may break forward compatibility.
 	Format SymbolsBlockFormat
 }
 
-type SymbolsBlockFormat uint32
+type SymbolsBlockFormat uint16
 
 const (
 	_ SymbolsBlockFormat = iota
@@ -439,6 +447,22 @@ const (
 	BlockStringsV1
 )
 
+type headerUnmarshaler interface {
+	unmarshal([]byte)
+	checksum() uint32
+}
+
+func readSymbolsBlockHeader(buf []byte, r io.Reader, v headerUnmarshaler) error {
+	if _, err := io.ReadFull(r, buf); err != nil {
+		return err
+	}
+	v.unmarshal(buf)
+	if crc32.Checksum(buf[:len(buf)-checksumSize], castagnoli) != v.checksum() {
+		return ErrInvalidSize
+	}
+	return nil
+}
+
 const symbolsBlockReferenceSize = int(unsafe.Sizeof(SymbolsBlockHeader{}))
 
 func (h *SymbolsBlockHeader) marshal(b []byte) {
@@ -447,7 +471,8 @@ func (h *SymbolsBlockHeader) marshal(b []byte) {
 	binary.BigEndian.PutUint32(b[12:16], h.CRC)
 	binary.BigEndian.PutUint32(b[16:20], h.Length)
 	binary.BigEndian.PutUint32(b[20:24], h.BlockSize)
-	binary.BigEndian.PutUint32(b[24:28], uint32(h.Format))
+	binary.BigEndian.PutUint16(b[24:26], h.BlockHeaderSize)
+	binary.BigEndian.PutUint16(b[26:28], uint16(h.Format))
 }
 
 func (h *SymbolsBlockHeader) unmarshal(b []byte) {
@@ -456,7 +481,8 @@ func (h *SymbolsBlockHeader) unmarshal(b []byte) {
 	h.CRC = binary.BigEndian.Uint32(b[12:16])
 	h.Length = binary.BigEndian.Uint32(b[16:20])
 	h.BlockSize = binary.BigEndian.Uint32(b[20:24])
-	h.Format = SymbolsBlockFormat(binary.BigEndian.Uint32(b[24:28]))
+	h.BlockHeaderSize = binary.BigEndian.Uint16(b[24:26])
+	h.Format = SymbolsBlockFormat(binary.BigEndian.Uint16(b[26:28]))
 }
 
 func marshalSymbolsBlockReferences(b []byte, refs ...SymbolsBlockHeader) int {
@@ -672,6 +698,7 @@ func (h *StacktraceBlockHeader) unmarshal(b []byte) {
 type symbolsBlockEncoder[T any] interface {
 	encode(w io.Writer, block []T) error
 	format() SymbolsBlockFormat
+	headerSize() uintptr
 }
 
 type symbolsEncoder[T any] struct {
@@ -694,10 +721,6 @@ func (e *symbolsEncoder[T]) encode(w io.Writer, items []T) (err error) {
 		}
 	}
 	return nil
-}
-
-func (e *symbolsEncoder[T]) format() SymbolsBlockFormat {
-	return e.blockEncoder.format()
 }
 
 type symbolsBlockDecoder[T any] interface {

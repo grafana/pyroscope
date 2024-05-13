@@ -13,9 +13,8 @@ import (
 
 	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/slices"
+	"github.com/grafana/pyroscope/pkg/util/math"
 )
-
-const functionsBlockHeaderSize = int(unsafe.Sizeof(functionsBlockHeader{}))
 
 var (
 	_ symbolsBlockEncoder[v1.InMemoryFunction] = (*functionsBlockEncoder)(nil)
@@ -37,6 +36,8 @@ func (h *functionsBlockHeader) marshal(b []byte) {
 	binary.BigEndian.PutUint32(b[8:12], h.SystemNameSize)
 	binary.BigEndian.PutUint32(b[12:16], h.FileNameSize)
 	binary.BigEndian.PutUint32(b[16:20], h.StartLineSize)
+	// Fields can be added here in the future.
+	// CRC must be the last four bytes.
 	h.CRC = crc32.Checksum(b[0:20], castagnoli)
 	binary.BigEndian.PutUint32(b[20:24], h.CRC)
 }
@@ -47,8 +48,12 @@ func (h *functionsBlockHeader) unmarshal(b []byte) {
 	h.SystemNameSize = binary.BigEndian.Uint32(b[8:12])
 	h.FileNameSize = binary.BigEndian.Uint32(b[12:16])
 	h.StartLineSize = binary.BigEndian.Uint32(b[16:20])
-	h.CRC = binary.BigEndian.Uint32(b[20:24])
+	// In future versions, new fields are decoded here;
+	// if pos < len(b)-checksumSize, then there are more fields.
+	h.CRC = binary.BigEndian.Uint32(b[len(b)-checksumSize:])
 }
+
+func (h *functionsBlockHeader) checksum() uint32 { return h.CRC }
 
 type functionsBlockEncoder struct {
 	header functionsBlockHeader
@@ -62,9 +67,9 @@ func newFunctionsEncoder() *symbolsEncoder[v1.InMemoryFunction] {
 	return newSymbolsEncoder[v1.InMemoryFunction](new(functionsBlockEncoder))
 }
 
-func (e *functionsBlockEncoder) format() SymbolsBlockFormat {
-	return BlockFunctionsV1
-}
+func (e *functionsBlockEncoder) format() SymbolsBlockFormat { return BlockFunctionsV1 }
+
+func (e *functionsBlockEncoder) headerSize() uintptr { return unsafe.Sizeof(functionsBlockHeader{}) }
 
 func (e *functionsBlockEncoder) encode(w io.Writer, functions []v1.InMemoryFunction) error {
 	e.initWrite(len(functions))
@@ -98,7 +103,7 @@ func (e *functionsBlockEncoder) encode(w io.Writer, functions []v1.InMemoryFunct
 	e.header.StartLineSize = uint32(len(e.tmp))
 	e.buf.Write(e.tmp)
 
-	e.tmp = slices.GrowLen(e.tmp, functionsBlockHeaderSize)
+	e.tmp = slices.GrowLen(e.tmp, int(e.headerSize()))
 	e.header.marshal(e.tmp)
 	if _, err := w.Write(e.tmp); err != nil {
 		return err
@@ -121,8 +126,8 @@ func (e *functionsBlockEncoder) initWrite(functions int) {
 }
 
 type functionsBlockDecoder struct {
-	format SymbolsBlockFormat
-	header functionsBlockHeader
+	headerSize uint16
+	header     functionsBlockHeader
 
 	ints []int32
 	buf  []byte
@@ -130,25 +135,18 @@ type functionsBlockDecoder struct {
 
 func newFunctionsDecoder(h SymbolsBlockHeader) (*symbolsDecoder[v1.InMemoryFunction], error) {
 	if h.Format == BlockFunctionsV1 {
-		return newSymbolsDecoder[v1.InMemoryFunction](h, &functionsBlockDecoder{format: h.Format}), nil
+		headerSize := math.Max(functionsBlockHeaderMinSize, h.BlockHeaderSize)
+		return newSymbolsDecoder[v1.InMemoryFunction](h, &functionsBlockDecoder{headerSize: headerSize}), nil
 	}
 	return nil, fmt.Errorf("%w: unknown functions format: %d", ErrUnknownVersion, h.Format)
 }
 
-func (d *functionsBlockDecoder) readHeader(r io.Reader) error {
-	d.buf = slices.GrowLen(d.buf, functionsBlockHeaderSize)
-	if _, err := io.ReadFull(r, d.buf); err != nil {
-		return nil
-	}
-	d.header.unmarshal(d.buf)
-	if crc32.Checksum(d.buf[:functionsBlockHeaderSize-4], castagnoli) != d.header.CRC {
-		return ErrInvalidSize
-	}
-	return nil
-}
+// In early versions, block header size is not specified. Must not change.
+const functionsBlockHeaderMinSize = 24
 
 func (d *functionsBlockDecoder) decode(r io.Reader, functions []v1.InMemoryFunction) (err error) {
-	if err = d.readHeader(r); err != nil {
+	d.buf = slices.GrowLen(d.buf, int(d.headerSize))
+	if err = readSymbolsBlockHeader(d.buf, r, &d.header); err != nil {
 		return err
 	}
 	if d.header.FunctionsLen > uint32(len(functions)) {

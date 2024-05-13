@@ -415,6 +415,7 @@ func writeSymbolsBlock[T any](w *fileWriter, s []T, e *symbolsEncoder[T]) (h Sym
 	h.CRC = crc.Sum32()
 	h.Length = uint32(len(s))
 	h.BlockSize = uint32(e.blockSize)
-	h.Format = e.format()
+	h.BlockHeaderSize = uint16(e.blockEncoder.headerSize())
+	h.Format = e.blockEncoder.format()
 	return h, nil
 }
