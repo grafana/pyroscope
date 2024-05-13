@@ -64,7 +64,7 @@ type StacktraceInserter interface {
 
 type SymDB struct {
 	config *Config
-	writer *writer
+	writer blockWriter
 	stats  MemoryStats
 
 	m          sync.RWMutex
@@ -76,11 +76,17 @@ type SymDB struct {
 
 type Config struct {
 	Dir         string
+	Version     FormatVersion
 	Stacktraces StacktracesConfig
+	Parquet     ParquetConfig
 }
 
 type StacktracesConfig struct {
 	MaxNodesPerChunk uint32
+}
+
+type ParquetConfig struct {
+	MaxBufferRowCount int
 }
 
 type MemoryStats struct {
@@ -103,11 +109,15 @@ const statsUpdateInterval = 5 * time.Second
 
 func DefaultConfig() *Config {
 	return &Config{
+		Version: FormatV2,
 		Stacktraces: StacktracesConfig{
 			// At the moment chunks are loaded in memory at once.
 			// Due to the fact that chunking causes some duplication,
 			// it's better to keep them large.
 			MaxNodesPerChunk: 4 << 20,
+		},
+		Parquet: ParquetConfig{
+			MaxBufferRowCount: 100 << 10,
 		},
 	}
 }
@@ -117,15 +127,26 @@ func (c *Config) WithDirectory(dir string) *Config {
 	return c
 }
 
+func (c *Config) WithParquetConfig(pc ParquetConfig) *Config {
+	c.Parquet = pc
+	return c
+}
+
 func NewSymDB(c *Config) *SymDB {
 	if c == nil {
 		c = DefaultConfig()
 	}
 	db := &SymDB{
 		config:     c,
-		writer:     newWriter(c),
 		partitions: make(map[uint64]*PartitionWriter),
 		stop:       make(chan struct{}),
+	}
+	switch c.Version {
+	case FormatV3:
+		db.writer = newWriterV3(c)
+	default:
+		c.Version = FormatV2
+		db.writer = newWriterV2(c)
 	}
 	db.wg.Add(1)
 	go db.updateStatsLoop()
@@ -150,8 +171,14 @@ func (s *SymDB) PartitionWriter(partition uint64) *PartitionWriter {
 
 func (s *SymDB) newPartition(partition uint64) *PartitionWriter {
 	p := PartitionWriter{
-		header:      PartitionHeader{Partition: partition, V3: new(PartitionHeaderV3)},
+		header:      PartitionHeader{Partition: partition},
 		stacktraces: newStacktracesPartition(s.config.Stacktraces.MaxNodesPerChunk),
+	}
+	switch s.config.Version {
+	case FormatV2:
+		p.header.V2 = new(PartitionHeaderV2)
+	case FormatV3:
+		p.header.V3 = new(PartitionHeaderV3)
 	}
 	p.strings.init()
 	p.mappings.init()
@@ -251,5 +278,5 @@ func (s *SymDB) Flush() error {
 }
 
 func (s *SymDB) Files() []block.File {
-	return s.writer.files
+	return s.writer.meta()
 }

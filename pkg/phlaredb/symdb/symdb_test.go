@@ -14,6 +14,7 @@ import (
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/pprof"
 )
@@ -53,6 +54,9 @@ func (s *memSuite) init() {
 			Stacktraces: StacktracesConfig{
 				MaxNodesPerChunk: 1 << 10,
 			},
+			Parquet: ParquetConfig{
+				MaxBufferRowCount: 512,
+			},
 		}
 	}
 	if s.db == nil {
@@ -83,7 +87,7 @@ func (s *blockSuite) flush() {
 		return &s.testBucket, nil
 	})
 	require.NoError(s.t, err)
-	s.reader, err = Open(context.Background(), b, testBlockMeta)
+	s.reader, err = Open(context.Background(), b, &block.Meta{Files: s.db.Files()})
 	require.NoError(s.t, err)
 }
 
@@ -155,6 +159,9 @@ func Test_Stats(t *testing.T) {
 			Dir: t.TempDir(),
 			Stacktraces: StacktracesConfig{
 				MaxNodesPerChunk: 4 << 20,
+			},
+			Parquet: ParquetConfig{
+				MaxBufferRowCount: 100 << 10,
 			},
 		},
 	}

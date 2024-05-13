@@ -2,8 +2,6 @@ package symdb
 
 import (
 	"context"
-	"fmt"
-	"hash/crc32"
 	"io"
 	"sync"
 
@@ -365,57 +363,4 @@ func (p *PartitionWriter) WriteStats(s *PartitionStats) {
 
 func (p *PartitionWriter) Release() {
 	// Noop. Satisfies PartitionReader interface.
-}
-
-func (p *PartitionWriter) writeTo(w *writer) (err error) {
-	if p.header.V3.Strings, err = writeSymbolsBlock(w.dataFile, p.strings.slice, w.stringsEncoder); err != nil {
-		return err
-	}
-	if p.header.V3.Mappings, err = writeSymbolsBlock(w.dataFile, p.mappings.slice, w.mappingsEncoder); err != nil {
-		return err
-	}
-	if p.header.V3.Functions, err = writeSymbolsBlock(w.dataFile, p.functions.slice, w.functionsEncoder); err != nil {
-		return err
-	}
-	if p.header.V3.Locations, err = writeSymbolsBlock(w.dataFile, p.locations.slice, w.locationsEncoder); err != nil {
-		return err
-	}
-	for ci, c := range p.stacktraces.chunks {
-		stacks := c.stacks
-		if stacks == 0 {
-			stacks = uint32(len(p.stacktraces.hashToIdx))
-		}
-		h := StacktraceBlockHeader{
-			Offset:             w.dataFile.w.offset,
-			Partition:          p.header.Partition,
-			BlockIndex:         uint16(ci),
-			Encoding:           StacktraceEncodingGroupVarint,
-			Stacktraces:        stacks,
-			StacktraceNodes:    c.tree.len(),
-			StacktraceMaxNodes: c.partition.maxNodesPerChunk,
-		}
-		crc := crc32.New(castagnoli)
-		if h.Size, err = c.WriteTo(io.MultiWriter(crc, w.dataFile)); err != nil {
-			return fmt.Errorf("writing stacktrace chunk data: %w", err)
-		}
-		h.CRC = crc.Sum32()
-		p.header.Stacktraces = append(p.header.Stacktraces, h)
-	}
-	return nil
-}
-
-func writeSymbolsBlock[T any](w *fileWriter, s []T, e *symbolsEncoder[T]) (h SymbolsBlockHeader, err error) {
-	h.Offset = uint64(w.w.offset)
-	crc := crc32.New(castagnoli)
-	mw := io.MultiWriter(crc, w.w)
-	if err = e.encode(mw, s); err != nil {
-		return h, err
-	}
-	h.Size = uint32(w.w.offset) - uint32(h.Offset)
-	h.CRC = crc.Sum32()
-	h.Length = uint32(len(s))
-	h.BlockSize = uint32(e.blockSize)
-	h.BlockHeaderSize = uint16(e.blockEncoder.headerSize())
-	h.Format = e.blockEncoder.format()
-	return h, nil
 }

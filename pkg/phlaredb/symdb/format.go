@@ -260,17 +260,31 @@ func (h *PartitionHeaders) Size() int64 {
 	return s
 }
 
-func (h *PartitionHeaders) WriteTo(dst io.Writer) (_ int64, err error) {
+func (h *PartitionHeaders) MarshalV3To(dst io.Writer) (_ int64, err error) {
 	w := withWriterOffset(dst, 0)
 	buf := make([]byte, 4, 128)
 	binary.BigEndian.PutUint32(buf, uint32(len(*h)))
 	w.write(buf)
 	for _, p := range *h {
-		if p.V3 == nil {
-			return 0, fmt.Errorf("only v3 format is supported")
-		}
 		buf = slices.GrowLen(buf, int(p.Size()))
-		p.marshal(buf)
+		p.marshalV3(buf)
+		w.write(buf)
+	}
+	return w.offset, w.err
+}
+
+func (h *PartitionHeaders) MarshalV2To(dst io.Writer) (_ int64, err error) {
+	w := withWriterOffset(dst, 0)
+	buf := make([]byte, 4, 128)
+	binary.BigEndian.PutUint32(buf, uint32(len(*h)))
+	w.write(buf)
+	for _, p := range *h {
+		s := p.Size()
+		if int(s) > cap(buf) {
+			buf = make([]byte, s)
+		}
+		buf = buf[:s]
+		p.marshalV2(buf)
 		w.write(buf)
 	}
 	return w.offset, w.err
@@ -316,7 +330,25 @@ func (h *PartitionHeaders) unmarshal(b []byte, version FormatVersion) error {
 	return nil
 }
 
-func (h *PartitionHeader) marshal(buf []byte) {
+func (h *PartitionHeader) marshalV2(buf []byte) {
+	binary.BigEndian.PutUint64(buf[0:8], h.Partition)
+	binary.BigEndian.PutUint32(buf[8:12], uint32(len(h.Stacktraces)))
+	binary.BigEndian.PutUint32(buf[12:16], uint32(len(h.V2.Locations)))
+	binary.BigEndian.PutUint32(buf[16:20], uint32(len(h.V2.Mappings)))
+	binary.BigEndian.PutUint32(buf[20:24], uint32(len(h.V2.Functions)))
+	binary.BigEndian.PutUint32(buf[24:28], uint32(len(h.V2.Strings)))
+	n := 28
+	for i := range h.Stacktraces {
+		h.Stacktraces[i].marshal(buf[n:])
+		n += stacktraceBlockHeaderSize
+	}
+	n += marshalRowRangeReferences(buf[n:], h.V2.Locations)
+	n += marshalRowRangeReferences(buf[n:], h.V2.Mappings)
+	n += marshalRowRangeReferences(buf[n:], h.V2.Functions)
+	marshalRowRangeReferences(buf[n:], h.V2.Strings)
+}
+
+func (h *PartitionHeader) marshalV3(buf []byte) {
 	binary.BigEndian.PutUint64(buf[0:8], h.Partition)
 	binary.BigEndian.PutUint32(buf[8:12], uint32(len(h.Stacktraces)))
 	n := 12
@@ -542,12 +574,27 @@ func (h *PartitionHeaderV2) unmarshalRowRangeReferences(refs []RowRangeReference
 	return nil
 }
 
+func marshalRowRangeReferences(b []byte, refs []RowRangeReference) int {
+	var off int
+	for i := range refs {
+		refs[i].marshal(b[off : off+rowRangeReferenceSize])
+		off += rowRangeReferenceSize
+	}
+	return off
+}
+
 const rowRangeReferenceSize = int(unsafe.Sizeof(RowRangeReference{}))
 
 type RowRangeReference struct {
 	RowGroup uint32
 	Index    uint32
 	Rows     uint32
+}
+
+func (r *RowRangeReference) marshal(b []byte) {
+	binary.BigEndian.PutUint32(b[0:4], r.RowGroup)
+	binary.BigEndian.PutUint32(b[4:8], r.Index)
+	binary.BigEndian.PutUint32(b[8:12], r.Rows)
 }
 
 func (r *RowRangeReference) unmarshal(b []byte) {
@@ -625,7 +672,14 @@ func (f *IndexFile) WriteTo(dst io.Writer) (n int64, err error) {
 	if _, err = w.Write(tocBytes); err != nil {
 		return w.offset, fmt.Errorf("toc write: %w", err)
 	}
-	if _, err = f.PartitionHeaders.WriteTo(w); err != nil {
+
+	switch f.Header.Version {
+	case FormatV3:
+		_, err = f.PartitionHeaders.MarshalV3To(w)
+	default:
+		_, err = f.PartitionHeaders.MarshalV2To(w)
+	}
+	if err != nil {
 		return w.offset, fmt.Errorf("partitions headers: %w", err)
 	}
 
