@@ -63,7 +63,7 @@ type StacktraceInserter interface {
 }
 
 type SymDB struct {
-	config *Config
+	config Config
 	writer blockWriter
 	stats  MemoryStats
 
@@ -142,7 +142,7 @@ func NewSymDB(c *Config) *SymDB {
 		c = DefaultConfig()
 	}
 	db := &SymDB{
-		config:     c,
+		config:     *c,
 		partitions: make(map[uint64]*PartitionWriter),
 		stop:       make(chan struct{}),
 	}
@@ -150,7 +150,7 @@ func NewSymDB(c *Config) *SymDB {
 	case FormatV3:
 		db.writer = newWriterV3(c)
 	default:
-		c.Version = FormatV2
+		db.config.Version = FormatV2
 		db.writer = newWriterV2(c)
 	}
 	db.wg.Add(1)
@@ -284,4 +284,8 @@ func (s *SymDB) Flush() error {
 
 func (s *SymDB) Files() []block.File {
 	return s.writer.meta()
+}
+
+func (s *SymDB) FormatVersion() FormatVersion {
+	return s.config.Version
 }
