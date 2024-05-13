@@ -124,7 +124,13 @@ func NewHead(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*Hea
 		}
 	}
 
-	h.symdb = symdb.NewSymDB(symdb.DefaultConfig().WithDirectory(h.headPath))
+	h.symdb = symdb.NewSymDB(symdb.DefaultConfig().
+		WithVersion(symdb.FormatV2).
+		WithDirectory(filepath.Join(h.headPath, symdb.DefaultDirName)).
+		WithParquetConfig(symdb.ParquetConfig{
+			MaxBufferRowCount: h.parquetConfig.MaxBufferRowCount,
+		}))
+
 	h.wg.Add(1)
 	go h.loop()
 

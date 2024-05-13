@@ -100,7 +100,7 @@ func CompactWithSplitting(ctx context.Context, opts CompactWithSplittingOpts) (
 		srcMetas[i] = b.Meta()
 	}
 
-	symbolsCompactor := newSymbolsCompactor(opts.Dst)
+	symbolsCompactor := newSymbolsCompactor(opts.Dst, symdb.FormatV2)
 	defer runutil.CloseWithLogOnErr(util.Logger, symbolsCompactor, "close symbols compactor")
 
 	outMeta := compactMetas(srcMetas...)
@@ -725,6 +725,7 @@ func (it *dedupeProfileRowIterator) Next() bool {
 }
 
 type symbolsCompactor struct {
+	version     symdb.FormatVersion
 	rewriters   map[BlockReader]*symdb.Rewriter
 	w           *symdb.SymDB
 	stacktraces []uint32
@@ -733,10 +734,27 @@ type symbolsCompactor struct {
 	flushed bool
 }
 
-func newSymbolsCompactor(path string) *symbolsCompactor {
+func newSymbolsCompactor(path string, version symdb.FormatVersion) *symbolsCompactor {
+	if version == symdb.FormatV3 {
+		return &symbolsCompactor{
+			version: version,
+			w: symdb.NewSymDB(symdb.DefaultConfig().
+				WithVersion(symdb.FormatV3).
+				WithDirectory(path)),
+			dst:       path,
+			rewriters: make(map[BlockReader]*symdb.Rewriter),
+		}
+	}
+	dst := filepath.Join(path, symdb.DefaultDirName)
 	return &symbolsCompactor{
-		w:         symdb.NewSymDB(symdb.DefaultConfig().WithDirectory(path)),
-		dst:       path,
+		version: symdb.FormatV2,
+		w: symdb.NewSymDB(symdb.DefaultConfig().
+			WithVersion(symdb.FormatV2).
+			WithDirectory(dst).
+			WithParquetConfig(symdb.ParquetConfig{
+				MaxBufferRowCount: defaultParquetConfig.MaxBufferRowCount,
+			})),
+		dst:       dst,
 		rewriters: make(map[BlockReader]*symdb.Rewriter),
 	}
 }
@@ -767,9 +785,13 @@ func (s *symbolsRewriter) Close() (uint64, error) {
 	if err := s.symbolsCompactor.Flush(); err != nil {
 		return 0, err
 	}
-	dst := filepath.Join(s.dst, symdb.DefaultFileName)
-	src := filepath.Join(s.symbolsCompactor.dst, symdb.DefaultFileName)
-	return s.numSamples, util.CopyFile(src, dst)
+	if s.version == symdb.FormatV3 {
+		dst := filepath.Join(s.dst, symdb.DefaultFileName)
+		src := filepath.Join(s.symbolsCompactor.dst, symdb.DefaultFileName)
+		return s.numSamples, util.CopyFile(src, dst)
+	} else {
+		return s.numSamples, util.CopyDir(s.symbolsCompactor.dst, filepath.Join(s.dst, symdb.DefaultDirName))
+	}
 }
 
 func (s *symbolsCompactor) ReWriteRow(profile profileRow) (uint64, error) {
@@ -811,7 +833,10 @@ func (s *symbolsCompactor) Flush() error {
 }
 
 func (s *symbolsCompactor) Close() error {
-	return os.RemoveAll(filepath.Join(s.dst, symdb.DefaultFileName))
+	if s.version == symdb.FormatV3 {
+		return os.RemoveAll(filepath.Join(s.dst, symdb.DefaultFileName))
+	}
+	return os.RemoveAll(s.dst)
 }
 
 func (s *symbolsCompactor) loadStacktracesID(values []parquet.Value) {

@@ -27,6 +27,7 @@ import (
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/phlaredb/sharding"
+	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 )
@@ -197,7 +198,7 @@ func TestCompactWithSplitting(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	require.NoFileExists(t, dst)
+	require.NoDirExists(t, filepath.Join(dst, symdb.DefaultDirName))
 
 	// 4 shards one per series.
 	require.Equal(t, 4, len(compacted))
@@ -627,10 +628,15 @@ func TestFlushMeta(t *testing.T) {
 	require.Equal(t, uint64(3), b.Meta().Stats.NumSeries)
 	require.Equal(t, uint64(3), b.Meta().Stats.NumSamples)
 	require.Equal(t, uint64(3), b.Meta().Stats.NumProfiles)
-	require.Len(t, b.Meta().Files, 3)
+	require.Len(t, b.Meta().Files, 8)
 	require.Equal(t, "index.tsdb", b.Meta().Files[0].RelPath)
 	require.Equal(t, "profiles.parquet", b.Meta().Files[1].RelPath)
-	require.Equal(t, "symbols.symdb", b.Meta().Files[2].RelPath)
+	require.Equal(t, "symbols/functions.parquet", b.Meta().Files[2].RelPath)
+	require.Equal(t, "symbols/index.symdb", b.Meta().Files[3].RelPath)
+	require.Equal(t, "symbols/locations.parquet", b.Meta().Files[4].RelPath)
+	require.Equal(t, "symbols/mappings.parquet", b.Meta().Files[5].RelPath)
+	require.Equal(t, "symbols/stacktraces.symdb", b.Meta().Files[6].RelPath)
+	require.Equal(t, "symbols/strings.parquet", b.Meta().Files[7].RelPath)
 }
 
 func newBlock(t testing.TB, generator func() []*testhelper.ProfileBuilder) *singleBlockQuerier {

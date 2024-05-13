@@ -132,6 +132,11 @@ func (c *Config) WithParquetConfig(pc ParquetConfig) *Config {
 	return c
 }
 
+func (c *Config) WithVersion(v FormatVersion) *Config {
+	c.Version = v
+	return c
+}
+
 func NewSymDB(c *Config) *SymDB {
 	if c == nil {
 		c = DefaultConfig()
