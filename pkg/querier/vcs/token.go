@@ -1,8 +1,11 @@
 package vcs
 
 import (
+	"context"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -12,19 +15,41 @@ import (
 
 	"connectrpc.com/connect"
 	"golang.org/x/oauth2"
+
+	"github.com/grafana/pyroscope/pkg/tenant"
 )
 
 const (
 	sessionCookieName = "GitSession"
 )
 
-var (
-	gitSessionSecret = []byte(os.Getenv("GITHUB_SESSION_SECRET"))
-)
-
 type gitSessionTokenCookie struct {
 	Metadata        string `json:"metadata"`
 	ExpiryTimestamp int64  `json:"expiry"`
+}
+
+const envVarGithubSessionSecret = "GITHUB_SESSION_SECRET"
+
+var githubSessionSecret = []byte(os.Getenv(envVarGithubSessionSecret))
+
+// derives a per tenant key from the global session secret using sha256
+func deriveEncryptionKeyForContext(ctx context.Context) ([]byte, error) {
+	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(tenantID) == 0 {
+		return nil, errors.New("tenantID is empty")
+	}
+
+	if len(githubSessionSecret) == 0 {
+		return nil, errors.New(envVarGithubSessionSecret + " is empty")
+	}
+	h := sha256.New()
+	h.Write(githubSessionSecret)
+	h.Write([]byte{':'})
+	h.Write([]byte(tenantID))
+	return h.Sum(nil), nil
 }
 
 // getStringValueFrom gets a string value from url.Values. It will fail if the
@@ -59,13 +84,18 @@ func getDurationValueFrom(values url.Values, key string, scalar time.Duration) (
 }
 
 // tokenFromRequest decodes an OAuth token from a request.
-func tokenFromRequest(req connect.AnyRequest) (*oauth2.Token, error) {
+func tokenFromRequest(ctx context.Context, req connect.AnyRequest) (*oauth2.Token, error) {
 	cookie, err := (&http.Request{Header: req.Header()}).Cookie(sessionCookieName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read cookie %s: %w", sessionCookieName, err)
 	}
 
-	token, err := decodeToken(cookie.Value)
+	derivedKey, err := deriveEncryptionKeyForContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	token, err := decodeToken(cookie.Value, derivedKey)
 	if err != nil {
 		return nil, err
 	}
@@ -73,8 +103,8 @@ func tokenFromRequest(req connect.AnyRequest) (*oauth2.Token, error) {
 }
 
 // encodeToken encrypts then base64 encodes an OAuth token.
-func encodeToken(token *oauth2.Token) (*http.Cookie, error) {
-	encrypted, err := encryptToken(token, gitSessionSecret)
+func encodeToken(token *oauth2.Token, key []byte) (*http.Cookie, error) {
+	encrypted, err := encryptToken(token, key)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +130,7 @@ func encodeToken(token *oauth2.Token) (*http.Cookie, error) {
 }
 
 // decodeToken base64 decodes and decrypts a OAuth token.
-func decodeToken(value string) (*oauth2.Token, error) {
+func decodeToken(value string, key []byte) (*oauth2.Token, error) {
 	var token *oauth2.Token
 
 	decoded, err := base64.StdEncoding.DecodeString(value)
@@ -114,7 +144,7 @@ func decodeToken(value string) (*oauth2.Token, error) {
 		// This may be a legacy cookie. Legacy cookies aren't base64 encoded
 		// JSON objects, but rather a base64 encoded crypto hash.
 		var innerErr error
-		token, innerErr = decryptToken(value, gitSessionSecret)
+		token, innerErr = decryptToken(value, key)
 		if innerErr != nil {
 			// Legacy fallback failed, return the original error.
 			return nil, err
@@ -122,7 +152,7 @@ func decodeToken(value string) (*oauth2.Token, error) {
 		return token, nil
 	}
 
-	token, err = decryptToken(sessionToken.Metadata, gitSessionSecret)
+	token, err = decryptToken(sessionToken.Metadata, key)
 	if err != nil {
 		return nil, err
 	}
