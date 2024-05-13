@@ -29,7 +29,7 @@ func newFileWriter(path string) (*fileWriter, error) {
 	// There is no particular reason to use
 	// a buffer larger than the default 4K.
 	b := bufio.NewWriterSize(f, 4096)
-	w := withWriterOffset(b, 0)
+	w := withWriterOffset(b)
 	fw := fileWriter{
 		path: path,
 		buf:  b,
@@ -71,8 +71,8 @@ type writerOffset struct {
 	err    error
 }
 
-func withWriterOffset(w io.Writer, base int64) *writerOffset {
-	return &writerOffset{Writer: w, offset: base}
+func withWriterOffset(w io.Writer) *writerOffset {
+	return &writerOffset{Writer: w}
 }
 
 func (w *writerOffset) write(p []byte) {

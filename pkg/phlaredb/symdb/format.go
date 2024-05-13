@@ -261,7 +261,7 @@ func (h *PartitionHeaders) Size() int64 {
 }
 
 func (h *PartitionHeaders) MarshalV3To(dst io.Writer) (_ int64, err error) {
-	w := withWriterOffset(dst, 0)
+	w := withWriterOffset(dst)
 	buf := make([]byte, 4, 128)
 	binary.BigEndian.PutUint32(buf, uint32(len(*h)))
 	w.write(buf)
@@ -274,7 +274,7 @@ func (h *PartitionHeaders) MarshalV3To(dst io.Writer) (_ int64, err error) {
 }
 
 func (h *PartitionHeaders) MarshalV2To(dst io.Writer) (_ int64, err error) {
-	w := withWriterOffset(dst, 0)
+	w := withWriterOffset(dst)
 	buf := make([]byte, 4, 128)
 	binary.BigEndian.PutUint32(buf, uint32(len(*h)))
 	w.write(buf)
@@ -658,7 +658,7 @@ func (f *IndexFile) dataOffset() int {
 
 func (f *IndexFile) WriteTo(dst io.Writer) (n int64, err error) {
 	checksum := crc32.New(castagnoli)
-	w := withWriterOffset(io.MultiWriter(dst, checksum), 0)
+	w := withWriterOffset(io.MultiWriter(dst, checksum))
 	if _, err = w.Write(f.Header.MarshalBinary()); err != nil {
 		return w.offset, fmt.Errorf("header write: %w", err)
 	}
