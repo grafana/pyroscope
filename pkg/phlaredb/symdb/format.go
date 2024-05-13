@@ -457,11 +457,11 @@ type SymbolsBlockHeader struct {
 	Length uint32
 	// BlockSize denotes the number of items per block.
 	BlockSize uint32
-	// BlockSize denotes the encoder block header size in bytes.
+	// BlockHeaderSize denotes the encoder block header size in bytes.
 	// This enables forward compatibility within the same format version:
-	// as long as fields are not removed, or reordered, and the encoding
-	// scheme does not change, the format can be extended with no change
-	// of the format version. Decoder is able to read the whole header and
+	// as long as fields are not removed or reordered, and the encoding
+	// scheme does not change, the format can be extended without updating
+	// the format version. Decoder is able to read the whole header and
 	// skip unknown fields.
 	BlockHeaderSize uint16
 	// Format of the encoded data.
@@ -490,7 +490,7 @@ func readSymbolsBlockHeader(buf []byte, r io.Reader, v headerUnmarshaler) error 
 	}
 	v.unmarshal(buf)
 	if crc32.Checksum(buf[:len(buf)-checksumSize], castagnoli) != v.checksum() {
-		return ErrInvalidSize
+		return ErrInvalidCRC
 	}
 	return nil
 }
