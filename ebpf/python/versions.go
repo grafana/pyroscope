@@ -96,6 +96,9 @@ type UserOffsets struct {
 	PyCodeObject_co_name              int16
 	PyCodeObject_co_varnames          int16
 	PyCodeObject_co_localsplusnames   int16
+	PyCodeObject__co_cell2arg         int16
+	PyCodeObject__co_cellvars         int16
+	PyCodeObject__co_nlocals          int16
 	PyTupleObject_ob_item             int16
 	PyInterpreterFrame_f_code         int16
 	PyInterpreterFrame_f_executable   int16
@@ -110,6 +113,7 @@ type UserOffsets struct {
 	PyTssTSize                        int16
 	PyASCIIObjectSize                 int16
 	PyCompactUnicodeObjectSize        int16
+	PyCellObject__ob_ref              int16
 }
 
 type GlibcOffsets struct {

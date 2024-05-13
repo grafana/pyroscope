@@ -28,6 +28,9 @@ typedef struct {
     int16_t PyCodeObject_co_name;
     int16_t PyCodeObject_co_varnames;
     int16_t PyCodeObject_co_localsplusnames;
+    int16_t PyCodeObject__co_cell2arg;
+    int16_t PyCodeObject__co_cellvars;
+    int16_t PyCodeObject__co_nlocals;
     int16_t PyTupleObject_ob_item;
 
     int16_t PyVarObject_ob_size;
@@ -40,7 +43,10 @@ typedef struct {
     int16_t PyInterpreterFrame_owner;
     int16_t PyASCIIObject_size; // sizeof(PyASCIIObject)
     int16_t PyCompactUnicodeObject_size; // sizeof(PyCompactUnicodeObject)
+    int16_t PyCellObject_ob_ref;
 
+    uint64_t base;
+    uint64_t PyCell_Type;// absolute address of PyCell_Type
 } py_offset_config;
 
 #endif //PYROEBPF_PYOFFSETS_H

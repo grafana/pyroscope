@@ -90,6 +90,7 @@ go/test/arm64: ebpf.arm64.test
 	uname -m | grep aarch64
 	./ebpf.arm64.test
 
+
 .phony: rideshare/gen
 rideshare/gen:
 	git submodule update --init --recursive
