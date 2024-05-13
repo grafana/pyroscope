@@ -1883,6 +1883,17 @@ The `limits` block configures default and per-tenant limits imposed by component
 # CLI flag: -querier.max-query-parallelism
 [max_query_parallelism: <int> | default = 0]
 
+# Whether query analysis is enabled in the query frontend. If disabled, the
+# /AnalyzeQuery endpoint will return an empty response.
+# CLI flag: -querier.query-analysis-enabled
+[query_analysis_enabled: <boolean> | default = true]
+
+# Whether the series portion of query analysis is enabled. If disabled, no
+# series data (e.g., series count) will be calculated by the /AnalyzeQuery
+# endpoint.
+# CLI flag: -querier.query-analysis-series-enabled
+[query_analysis_series_enabled: <boolean> | default = false]
+
 # Maximum number of flame graph nodes by default. 0 to disable.
 # CLI flag: -querier.max-flamegraph-nodes-default
 [max_flamegraph_nodes_default: <int> | default = 8192]

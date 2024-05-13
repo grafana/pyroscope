@@ -3352,14 +3352,14 @@ var pyVersions = map[Version]*UserOffsets{
 		PyASCIIObjectSize:                 40,
 		PyCompactUnicodeObjectSize:        56,
 	},
-	// 3.13.0 testdata/python-x64/3.13.0a4/libpython3.13.so.1.0
+	// 3.13.0 testdata/python-x64/3.13.0a6/libpython3.13.so.1.0
 	{3, 13, 0}: {
 		PyVarObject_ob_size:               16,
 		PyObject_ob_type:                  8,
 		PyTypeObject_tp_name:              24,
 		PyThreadState_frame:               -1,
 		PyThreadState_cframe:              -1,
-		PyThreadState_current_frame:       64,
+		PyThreadState_current_frame:       72,
 		PyCFrame_current_frame:            -1,
 		PyFrameObject_f_back:              16,
 		PyFrameObject_f_code:              -1,
@@ -3374,8 +3374,8 @@ var pyVersions = map[Version]*UserOffsets{
 		PyInterpreterFrame_previous:       8,
 		PyInterpreterFrame_localsplus:     72,
 		PyInterpreterFrame_owner:          70,
-		PyRuntimeState_gilstate:           3128,
-		PyRuntimeState_autoTSSkey:         1864,
+		PyRuntimeState_gilstate:           3160,
+		PyRuntimeState_autoTSSkey:         1896,
 		Gilstate_runtime_state_autoTSSkey: -1,
 		PyTssT_is_initialized:             0,
 		PyTssT_key:                        4,

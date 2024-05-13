@@ -28,6 +28,7 @@ service QuerierService {
 
   // GetProfileStats returns profile stats for the current tenant.
   rpc GetProfileStats(types.v1.GetProfileStatsRequest) returns (types.v1.GetProfileStatsResponse) {}
+  rpc AnalyzeQuery(AnalyzeQueryRequest) returns (AnalyzeQueryResponse) {}
 }
 
 message ProfileTypesRequest {
@@ -149,4 +150,34 @@ message SelectSeriesRequest {
 
 message SelectSeriesResponse {
   repeated types.v1.Series series = 1;
+}
+
+message AnalyzeQueryRequest {
+  int64 start = 2;
+  int64 end = 3;
+  string query = 4;
+}
+
+message AnalyzeQueryResponse {
+  repeated QueryScope query_scopes = 1; // detailed view of what the query will require
+  QueryImpact query_impact = 2; // summary of the query impact / performance
+}
+
+message QueryScope {
+  string component_type = 1; // a descriptive high level name of the component processing one part of the query (e.g., "short term storage")
+  uint64 component_count = 2; // how many components of this type will process the query (indicator of read-path replication)
+
+  uint64 block_count = 3;
+  uint64 series_count = 4;
+  uint64 profile_count = 5;
+  uint64 sample_count = 6;
+  uint64 index_bytes = 7;
+  uint64 profile_bytes = 8;
+  uint64 symbol_bytes = 9;
+}
+
+message QueryImpact {
+  uint64 total_bytes_in_time_range = 2;
+  uint64 total_queried_series = 3;
+  bool deduplication_needed = 4;
 }

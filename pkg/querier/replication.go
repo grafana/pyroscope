@@ -89,7 +89,7 @@ func forGivenReplicationSet[Result any, Querier any](ctx context.Context, client
 }
 
 // forGivenPlan runs f, in parallel, for given plan.
-func forGivenPlan[Result any, Querier any](ctx context.Context, plan map[string]*ingestv1.BlockHints, clientFactory func(string) (Querier, error), replicationSet ring.ReplicationSet, f QueryReplicaWithHintsFn[Result, Querier]) ([]ResponseFromReplica[Result], error) {
+func forGivenPlan[Result any, Querier any](ctx context.Context, plan map[string]*blockPlanEntry, clientFactory func(string) (Querier, error), replicationSet ring.ReplicationSet, f QueryReplicaWithHintsFn[Result, Querier]) ([]ResponseFromReplica[Result], error) {
 	g, _ := errgroup.WithContext(ctx)
 
 	var (
@@ -97,14 +97,14 @@ func forGivenPlan[Result any, Querier any](ctx context.Context, plan map[string]
 		result = make([]ResponseFromReplica[Result], len(plan))
 	)
 
-	for replica, hints := range plan {
+	for replica, planEntry := range plan {
 		if !replicationSet.Includes(replica) {
 			continue
 		}
 		var (
 			i = idx
 			r = replica
-			h = hints
+			h = planEntry.BlockHints
 		)
 		idx++
 		g.Go(func() error {
@@ -320,21 +320,37 @@ func (r *replicasPerBlockID) pruneSupersededBlocks(sharded bool) error {
 	return nil
 }
 
-type blockPlan map[string]*ingestv1.BlockHints
+type blockPlanEntry struct {
+	*ingestv1.BlockHints
+	InstanceType instanceType
+}
+
+type blockPlan map[string]*blockPlanEntry
+
+func BlockHints(p blockPlan, replica string) (*ingestv1.BlockHints, error) {
+	entry, ok := p[replica]
+	if !ok && p != nil {
+		return nil, fmt.Errorf("no hints found for replica %s", replica)
+	}
+	if entry == nil {
+		return nil, nil
+	}
+	return entry.BlockHints, nil
+}
 
 func (p blockPlan) String() string {
 	data, _ := json.Marshal(p)
 	return string(data)
 }
 
-func (r *replicasPerBlockID) blockPlan(ctx context.Context) map[string]*ingestv1.BlockHints {
+func (r *replicasPerBlockID) blockPlan(ctx context.Context) map[string]*blockPlanEntry {
 	sp, _ := opentracing.StartSpanFromContext(ctx, "blockPlan")
 	defer sp.Finish()
 
 	var (
 		deduplicate             = false
 		hash                    = xxhash.New()
-		plan                    = make(map[string]*ingestv1.BlockHints)
+		plan                    = make(map[string]*blockPlanEntry)
 		smallestCompactionLevel = int32(0)
 	)
 
@@ -406,7 +422,10 @@ func (r *replicasPerBlockID) blockPlan(ctx context.Context) map[string]*ingestv1
 		// add block to plan
 		p, exists := plan[selectedReplica]
 		if !exists {
-			p = &ingestv1.BlockHints{}
+			p = &blockPlanEntry{
+				BlockHints:   &ingestv1.BlockHints{},
+				InstanceType: r.instanceType[selectedReplica],
+			}
 			plan[selectedReplica] = p
 		}
 		p.Ulids = append(p.Ulids, blockID)
@@ -422,14 +441,14 @@ func (r *replicasPerBlockID) blockPlan(ctx context.Context) map[string]*ingestv1
 		}
 	}
 
-	var plannedIngesterBlocks, plannedStoreGatwayBlocks int
+	var plannedIngesterBlocks, plannedStoreGatewayBlocks int
 	for replica, blocks := range plan {
 		t, ok := r.instanceType[replica]
 		if !ok {
 			continue
 		}
 		if t == storeGatewayInstance {
-			plannedStoreGatwayBlocks += len(blocks.Ulids)
+			plannedStoreGatewayBlocks += len(blocks.Ulids)
 		}
 		if t == ingesterInstance {
 			plannedIngesterBlocks += len(blocks.Ulids)
@@ -440,7 +459,7 @@ func (r *replicasPerBlockID) blockPlan(ctx context.Context) map[string]*ingestv1
 		otlog.Bool("deduplicate", deduplicate),
 		otlog.Int32("smallest_compaction_level", smallestCompactionLevel),
 		otlog.Int("planned_blocks_ingesters", plannedIngesterBlocks),
-		otlog.Int("planned_blocks_store_gateways", plannedStoreGatwayBlocks),
+		otlog.Int("planned_blocks_store_gateways", plannedStoreGatewayBlocks),
 	)
 
 	level.Debug(spanlogger.FromContext(ctx, r.logger)).Log(
@@ -448,7 +467,7 @@ func (r *replicasPerBlockID) blockPlan(ctx context.Context) map[string]*ingestv1
 		"deduplicate", deduplicate,
 		"smallest_compaction_level", smallestCompactionLevel,
 		"planned_blocks_ingesters", plannedIngesterBlocks,
-		"planned_blocks_store_gateways", plannedStoreGatwayBlocks,
+		"planned_blocks_store_gateways", plannedStoreGatewayBlocks,
 		"plan", blockPlan(plan),
 	)
 

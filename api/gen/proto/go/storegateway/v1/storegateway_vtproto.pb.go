@@ -41,6 +41,7 @@ type StoreGatewayServiceClient interface {
 	LabelNames(ctx context.Context, in *v11.LabelNamesRequest, opts ...grpc.CallOption) (*v11.LabelNamesResponse, error)
 	Series(ctx context.Context, in *v1.SeriesRequest, opts ...grpc.CallOption) (*v1.SeriesResponse, error)
 	BlockMetadata(ctx context.Context, in *v1.BlockMetadataRequest, opts ...grpc.CallOption) (*v1.BlockMetadataResponse, error)
+	GetBlockStats(ctx context.Context, in *v1.GetBlockStatsRequest, opts ...grpc.CallOption) (*v1.GetBlockStatsResponse, error)
 }
 
 type storeGatewayServiceClient struct {
@@ -220,6 +221,15 @@ func (c *storeGatewayServiceClient) BlockMetadata(ctx context.Context, in *v1.Bl
 	return out, nil
 }
 
+func (c *storeGatewayServiceClient) GetBlockStats(ctx context.Context, in *v1.GetBlockStatsRequest, opts ...grpc.CallOption) (*v1.GetBlockStatsResponse, error) {
+	out := new(v1.GetBlockStatsResponse)
+	err := c.cc.Invoke(ctx, "/storegateway.v1.StoreGatewayService/GetBlockStats", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // StoreGatewayServiceServer is the server API for StoreGatewayService service.
 // All implementations must embed UnimplementedStoreGatewayServiceServer
 // for forward compatibility
@@ -235,6 +245,7 @@ type StoreGatewayServiceServer interface {
 	LabelNames(context.Context, *v11.LabelNamesRequest) (*v11.LabelNamesResponse, error)
 	Series(context.Context, *v1.SeriesRequest) (*v1.SeriesResponse, error)
 	BlockMetadata(context.Context, *v1.BlockMetadataRequest) (*v1.BlockMetadataResponse, error)
+	GetBlockStats(context.Context, *v1.GetBlockStatsRequest) (*v1.GetBlockStatsResponse, error)
 	mustEmbedUnimplementedStoreGatewayServiceServer()
 }
 
@@ -268,6 +279,9 @@ func (UnimplementedStoreGatewayServiceServer) Series(context.Context, *v1.Series
 }
 func (UnimplementedStoreGatewayServiceServer) BlockMetadata(context.Context, *v1.BlockMetadataRequest) (*v1.BlockMetadataResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method BlockMetadata not implemented")
+}
+func (UnimplementedStoreGatewayServiceServer) GetBlockStats(context.Context, *v1.GetBlockStatsRequest) (*v1.GetBlockStatsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetBlockStats not implemented")
 }
 func (UnimplementedStoreGatewayServiceServer) mustEmbedUnimplementedStoreGatewayServiceServer() {}
 
@@ -476,6 +490,24 @@ func _StoreGatewayService_BlockMetadata_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _StoreGatewayService_GetBlockStats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(v1.GetBlockStatsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StoreGatewayServiceServer).GetBlockStats(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/storegateway.v1.StoreGatewayService/GetBlockStats",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StoreGatewayServiceServer).GetBlockStats(ctx, req.(*v1.GetBlockStatsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // StoreGatewayService_ServiceDesc is the grpc.ServiceDesc for StoreGatewayService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -502,6 +534,10 @@ var StoreGatewayService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "BlockMetadata",
 			Handler:    _StoreGatewayService_BlockMetadata_Handler,
+		},
+		{
+			MethodName: "GetBlockStats",
+			Handler:    _StoreGatewayService_GetBlockStats_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
