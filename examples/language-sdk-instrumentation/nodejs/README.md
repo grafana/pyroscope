@@ -53,4 +53,5 @@ docker-compose up --build
 docker-compose down
 ```
 
-This example will run all the code mentioned above and also send some mock-load to the 3 servers as well as their respective 3 endpoints. If you select our application: `nodejs.wall` from the dropdown, you should see a flame graph that looks like this (below). After we give 20-30 seconds for the flame graph to update and then click the refresh button we see our 3 functions at the bottom of the flame graph taking CPU resources _proportional to the size_ of their respective `search_radius` parameters.
+This example runs all the code mentioned above and also sends some mock-load to the 3 servers as well as their respective 3 endpoints. If you select `nodejs.wall` from the dropdown, you should see a flame graph that looks like this (below).
+After 20-30 seconds, the flame graph updates. Click the refresh button. We see our 3 functions at the bottom of the flame graph taking CPU resources _proportional to the size_ of their respective `search_radius` parameters.
