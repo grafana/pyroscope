@@ -38,7 +38,7 @@ There are 3 examples:
 * `express-ts` - type script example
 * `express-pull` — pull mode example
 
-To run any of them example run the following commands:
+To use any of the examples, run the following commands:
 ```shell
 # change directory
 cd express # or cd express-ts / cs express-pull
