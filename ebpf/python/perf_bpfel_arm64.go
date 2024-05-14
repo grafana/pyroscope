@@ -41,6 +41,9 @@ type PerfPyOffsetConfig struct {
 	PyCodeObjectCoName            int16
 	PyCodeObjectCoVarnames        int16
 	PyCodeObjectCoLocalsplusnames int16
+	PyCodeObjectCoCell2arg        int16
+	PyCodeObjectCoCellvars        int16
+	PyCodeObjectCoNlocals         int16
 	PyTupleObjectObItem           int16
 	PyVarObjectObSize             int16
 	PyObjectObType                int16
@@ -51,11 +54,14 @@ type PerfPyOffsetConfig struct {
 	PyInterpreterFrameOwner       int16
 	PyASCIIObjectSize             int16
 	PyCompactUnicodeObjectSize    int16
+	PyCellObjectObRef             int16
+	_                             [6]byte
+	Base                          uint64
+	PyCellType                    uint64
 }
 
 type PerfPyPidData struct {
 	Offsets PerfPyOffsetConfig
-	_       [2]byte
 	Version struct {
 		Major uint32
 		Minor uint32
@@ -65,14 +71,14 @@ type PerfPyPidData struct {
 	_             [2]byte
 	TssKey        int32
 	CollectKernel uint8
-	_             [3]byte
+	_             [7]byte
 }
 
 type PerfPySampleStateT struct {
 	SymbolCounter          int64
 	Offsets                PerfPyOffsetConfig
-	_                      [2]byte
 	CurCpu                 uint32
+	_                      [4]byte
 	FramePtr               uint64
 	PythonStackProgCallCnt int64
 	Sym                    PerfPySymbol
