@@ -6,7 +6,7 @@
 Note: For documentation on Pyroscope's Node integration visit [our website](https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/nodejs/).
 
 ## Background
-In this example we show a simplified, basic use case of Pyroscope. We simulate a "ride share" company which has three endpoints found in `main.js`:
+In this example, we show a simplified, basic use case of Pyroscope. We simulate a "ride share" company which has three endpoints found in `main.js`:
 - `/bike`    : calls the `bikeSearchHandler()` function to order a bike
 - `/car`     : calls the `carSearchHandler()` function to order a car
 - `/scooter` : calls the `scooterSearchHandler()` function to order a scooter
