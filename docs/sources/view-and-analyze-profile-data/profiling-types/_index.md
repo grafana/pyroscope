@@ -20,9 +20,12 @@ Profiling is an essential tool for understanding and optimizing application perf
 
 In Pyroscope, profiling types refer to different dimensions of application performance analysis, focusing on specific aspects like CPU usage, memory allocation, or thread synchronization.
 
-## Available profile types
+For information on auto-instrumentation and supported language SDKs, refer to [Configure the client]({{< relref "../../configure-client" >}}).
 
-Various languages support different profiling types. Pyroscope supports the following profiling types as of `v1.4.0`:
+### Available profiling types
+
+Various languages support different profiling types.
+Pyroscope supports the following profiling types:
 
 | Profile Type       | Go    | Java  | .NET  | Ruby  | Python | Rust  | Node.js | eBPF (Go) | eBPF (Python) |
 |--------------------|-------|-------|-------|-------|--------|-------|---------|-----------|--------------|
@@ -46,12 +49,14 @@ Various languages support different profiling types. Pyroscope supports the foll
 
 <!-- We can link to each of these from within the Pyroscope UI in the little (i) icon. -->
 
-CPU profiling measures the amount of CPU time consumed by different parts of your application code. High CPU usage can indicate inefficient code, leading to poor performance and increased operational costs. It's used to identify and optimize CPU-intensive functions in your application.
+CPU profiling measures the amount of CPU time consumed by different parts of your application code.
+High CPU usage can indicate inefficient code, leading to poor performance and increased operational costs.
+It's used to identify and optimize CPU-intensive functions in your application.
 
 - **When to use**: To identify and optimize CPU-intensive functions
 - **Flame graph insight**: The width of blocks indicates the CPU time consumed by each function
 
-As you can see here, the UI is showing a spike in CPU along with the flame graph associated with that spike.
+As you can see here, the UI shows a spike in CPU along with the flame graph associated with that spike.
 Often times without profiling you may get similar insights from metrics, but with profiling you have more details into the specific cause of a spike in CPU usage at the line level
 
 ![example flame graph](https://grafana.com/static/img/pyroscope/pyroscope-ui-single-2023-11-30.png)
@@ -79,14 +84,17 @@ Without profiling, this may be something that's exhibited in metrics or out-of-m
 
 ## Goroutine profiling
 
-Goroutines are lightweight threads in Go, used for concurrent operations. Goroutine profiling measures the usage and performance of these threads. Poor management can lead to issues like deadlocks and excessive resource usage.
+Goroutines are lightweight threads in Go, used for concurrent operations.
+Goroutine profiling measures the usage and performance of these threads.
+Poor management can lead to issues like deadlocks and excessive resource usage.
 
 - **When to use**: Especially useful in Go applications for concurrency management
 - **Flame graph insight**: Provides a view of goroutine distribution and issues
 
 ## Mutex profiling
 
-Mutex profiling involves analyzing mutex (mutual exclusion) locks, used to prevent simultaneous access to shared resources. Excessive or long-duration mutex locks can cause delays and reduced application throughput.
+Mutex profiling involves analyzing mutex (mutual exclusion) locks, used to prevent simultaneous access to shared resources.
+Excessive or long-duration mutex locks can cause delays and reduced application throughput.
 
 - **Types**: Mutex Count, Mutex Duration
 - **When to use**: To optimize thread synchronization and reduce lock contention
@@ -94,10 +102,9 @@ Mutex profiling involves analyzing mutex (mutual exclusion) locks, used to preve
 
 ## Block profiling
 
-Block profiling measures the frequency and duration of blocking operations, where a thread is paused or delayed. Blocking can significantly slow down application processes, leading to performance bottlenecks.
+Block profiling measures the frequency and duration of blocking operations, where a thread is paused or delayed.
+Blocking can significantly slow down application processes, leading to performance bottlenecks.
 
 - **Types**: Block Count, Block Duration
 - **When to use**: To identify and reduce blocking delays
 - **Flame graph insight**: Identifies where and how long threads are blocked
-
-<!-- # Next Steps: Exploring Pyroscope's UI(link to ui analysis docs) -->

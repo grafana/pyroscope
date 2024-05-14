@@ -66,7 +66,7 @@ var pythonFields = []dwarfdump.Need{
 	{Name: "_typeobject", PrettyName: "PyTypeObject", Fields: []dwarfdump.NeedField{
 		{"tp_name", "PyTypeObject_tp_name"},
 	}},
-	{Name: "PyThreadState", Fields: []dwarfdump.NeedField{
+	{Name: "_ts", Fields: []dwarfdump.NeedField{
 		{"frame", "PyThreadState_frame"},
 		{"cframe", "PyThreadState_cframe"},
 		{"current_frame", "PyThreadState_current_frame"},
@@ -85,6 +85,9 @@ var pythonFields = []dwarfdump.Need{
 		{"co_name", "PyCodeObject_co_name"},
 		{"co_varnames", "PyCodeObject_co_varnames"},
 		{"co_localsplusnames", "PyCodeObject_co_localsplusnames"},
+		{"co_cell2arg", "PyCodeObject__co_cell2arg"},
+		{"co_cellvars", "PyCodeObject__co_cellvars"},
+		{"co_nlocals", "PyCodeObject__co_nlocals"},
 	}},
 	{Name: "PyTupleObject", Fields: []dwarfdump.NeedField{
 		{"ob_item", "PyTupleObject_ob_item"},
@@ -109,6 +112,9 @@ var pythonFields = []dwarfdump.Need{
 	}},
 	{Name: "PyASCIIObject", PrettyName: "PyASCIIObject", Size: true},
 	{Name: "PyCompactUnicodeObject", PrettyName: "PyCompactUnicodeObject", Size: true},
+	{Name: "PyCellObject", Fields: []dwarfdump.NeedField{
+		{"ob_ref", "PyCellObject__ob_ref"},
+	}},
 
 	//{Name: "_is", PrettyName: "PyInterpreterState", Fields: []string{}},
 }

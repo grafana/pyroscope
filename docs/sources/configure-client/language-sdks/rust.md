@@ -9,7 +9,13 @@ aliases:
 
 # Rust
 
-Optimize your Rust applications with our advanced Rust Profiler. In collaboration with Pyroscope, it offers real-time profiling capabilities, shedding light on the intricacies of your Rust codebase. This integration is invaluable for developers seeking to enhance performance, reduce resource usage, and achieve efficient code execution in Rust applications.
+Optimize your Rust applications with our advanced Rust Profiler.
+In collaboration with Pyroscope, it offers real-time profiling capabilities, shedding light on the intricacies of your Rust codebase.
+This integration is invaluable for developers seeking to enhance performance, reduce resource usage, and achieve efficient code execution in Rust applications.
+
+{{< admonition type="note" >}}
+Refer to [Available profiling types]({{< relref "../../view-and-analyze-profile-data/profiling-types#available-profiling-types" >}}) for a list of profile types supported by Rust.
+{{< /admonition >}}
 
 ## Before you begin
 

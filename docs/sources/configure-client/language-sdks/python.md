@@ -9,7 +9,13 @@ aliases:
 
 # Python
 
-Our Python Profiler, when integrated with Pyroscope, transforms the way you analyze and optimize Python applications. This combination provides unparalleled real-time insights into your Python codebase, allowing for precise identification of performance issues. It is an essential tool for Python developers focused on enhancing code efficiency and application speed.
+The Python profiler, when integrated with Pyroscope, transforms the way you analyze and optimize Python applications.
+This combination provides unparalleled real-time insights into your Python codebase, allowing for precise identification of performance issues
+It's an essential tool for Python developers focused on enhancing code efficiency and application speed.
+
+{{< admonition type="note" >}}
+Refer to [Available profiling types]({{< relref "../../view-and-analyze-profile-data/profiling-types#available-profiling-types" >}}) for a list of profile types supported by each language.
+{{< /admonition >}}
 
 ## Before you begin
 
@@ -93,4 +99,4 @@ If your Pyroscope server has multi-tenancy enabled, you'll need to configure a t
 
 Check out the following resources to learn more about Python profiling:
 - [Python examples](https://github.com/pyroscope-io/pyroscope/tree/main/examples/language-sdk-instrumentation/python)
-- [Python demo](https://demo.pyroscope.io/?query=rideshare-app-python.cpu%7B%7D) showing Python example with tags
+- [Python demo](https://play.grafana.org/a/grafana-pyroscope-app/single?query=process_cpu%3Asamples%3Acount%3A%3Amilliseconds%7Bservice_name%3D%22pyroscope-rideshare-python%22%7D&from=now-1h&until=now) showing Python example with tags

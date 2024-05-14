@@ -64,4 +64,9 @@ func RegisterStoreGatewayServiceHandler(mux *mux.Router, svc StoreGatewayService
 		svc.BlockMetadata,
 		opts...,
 	))
+	mux.Handle("/storegateway.v1.StoreGatewayService/GetBlockStats", connect.NewUnaryHandler(
+		"/storegateway.v1.StoreGatewayService/GetBlockStats",
+		svc.GetBlockStats,
+		opts...,
+	))
 }

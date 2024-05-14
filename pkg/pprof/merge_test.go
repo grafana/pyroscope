@@ -1,8 +1,19 @@
 package pprof
 
 import (
+	"crypto/md5"
+	"encoding/hex"
+	"fmt"
+	"net"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+	"sync"
 	"testing"
+	"time"
 
+	"github.com/google/pprof/profile"
 	"github.com/stretchr/testify/require"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -13,16 +24,175 @@ func Test_Merge_Single(t *testing.T) {
 	p, err := OpenFile("testdata/go.cpu.labels.pprof")
 	require.NoError(t, err)
 	var m ProfileMerge
-	require.NoError(t, m.Merge(p.Profile))
+	require.NoError(t, m.Merge(p.Profile.CloneVT()))
+	sortLabels(p.Profile)
 	testhelper.EqualProto(t, p.Profile, m.Profile())
+}
+
+func sortLabels(p *profilev1.Profile) {
+	for _, s := range p.Sample {
+		sort.Sort(LabelsByKeyValue(s.Label))
+	}
+}
+
+type fuzzEvent byte
+
+const (
+	fuzzEventUnknown fuzzEvent = iota
+	fuzzEventPostDecode
+	fuzzEventPostMerge
+)
+
+type eventSocket struct {
+	lck  sync.Mutex
+	fMap map[string]net.Conn
+}
+
+var eventWriter = &eventSocket{
+	fMap: make(map[string]net.Conn),
+}
+
+func eventWrite(t *testing.T, msg []byte) {
+	eventWriter.lck.Lock()
+	c, ok := eventWriter.fMap[eventName(t)]
+	if !ok {
+		var err error
+		c, err = net.Dial("unix", eventPath(t))
+		if err != nil {
+			eventWriter.lck.Unlock()
+			t.Fatalf("error connecting: %v", err)
+			return
+		}
+		eventWriter.fMap[eventName(t)] = c
+	}
+	eventWriter.lck.Unlock()
+	_, err := c.Write(msg)
+
+	require.NoError(t, err)
+}
+
+func eventName(t testing.TB) string {
+	return strings.Split(t.Name(), "/")[0]
+}
+
+func eventPath(t testing.TB) string {
+	hash := md5.Sum([]byte(eventName(t)))
+	p := filepath.Join(os.TempDir(), hex.EncodeToString(hash[:])+"-fuzz-events.sock")
+	return p
+}
+
+func isFuzzWorker() bool {
+	for _, arg := range os.Args {
+		if arg == "-test.fuzzworker" {
+			return true
+		}
+		if arg == "-fuzzworker" {
+			return true
+		}
+	}
+	return false
+}
+
+// runEventsGatherer starts a server that listens for events from the fuzzing worker processes. This allows us to gather additional metrics on how successful the fuzzing is with finding valid profiles.
+func runEventsGatherer(t testing.TB) {
+	fPath := eventPath(t)
+	_ = os.Remove(fPath)
+	socket, err := net.Listen("unix", fPath)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		socket.Close()
+		_ = os.Remove(fPath)
+	})
+
+	eventCh := make(chan fuzzEvent, 32)
+	go func() {
+		for {
+			conn, err := socket.Accept()
+			if err != nil {
+				return
+			}
+			go func(conn net.Conn) {
+				defer conn.Close()
+				buf := make([]byte, 1024)
+				for {
+					n, err := conn.Read(buf)
+					if err != nil {
+						return
+					}
+					for _, b := range buf[:n] {
+						eventCh <- fuzzEvent(b)
+					}
+				}
+			}(conn)
+		}
+	}()
+
+	go func() {
+		ticker := time.NewTicker(3 * time.Second)
+		stdout := os.Stdout
+		defer ticker.Stop()
+		var totalPostDecode, totalPostMerge int64
+		var lastPostDecode, lastPostMerge int64
+		for {
+			select {
+			case <-ticker.C:
+				fmt.Fprintf(stdout, "postDecode: %d/%d (last 3s, total) postMerge %d/%d (last 3s, total)\n", totalPostDecode-lastPostDecode, totalPostDecode, totalPostMerge-lastPostMerge, totalPostMerge)
+				lastPostDecode = totalPostDecode
+				lastPostMerge = totalPostMerge
+			case event := <-eventCh:
+				switch event {
+				case fuzzEventPostDecode:
+					totalPostDecode += 1
+				case fuzzEventPostMerge:
+					totalPostMerge += 1
+				}
+			}
+		}
+	}()
+}
+
+func Fuzz_Merge_Single(f *testing.F) {
+	// setup event handler (only in main process)
+	if !isFuzzWorker() {
+		runEventsGatherer(f)
+	}
+
+	for _, file := range []string{
+		"testdata/go.cpu.labels.pprof",
+		"testdata/heap",
+		"testdata/profile_java",
+		"testdata/profile_rust",
+	} {
+		raw, err := OpenFile(file)
+		require.NoError(f, err)
+		data, err := raw.MarshalVT()
+		require.NoError(f, err)
+		f.Add(data)
+	}
+
+	f.Fuzz(func(t *testing.T, data []byte) {
+		var p profilev1.Profile
+		err := p.UnmarshalVT(data)
+		if err != nil {
+			return
+		}
+
+		eventWrite(t, []byte{byte(fuzzEventPostDecode)})
+		var m ProfileMerge
+		err = m.Merge(&p)
+		if err != nil {
+			return
+		}
+		eventWrite(t, []byte{byte(fuzzEventPostMerge)})
+	})
 }
 
 func Test_Merge_Self(t *testing.T) {
 	p, err := OpenFile("testdata/go.cpu.labels.pprof")
 	require.NoError(t, err)
 	var m ProfileMerge
-	require.NoError(t, m.Merge(p.Profile))
-	require.NoError(t, m.Merge(p.Profile))
+	require.NoError(t, m.Merge(p.Profile.CloneVT()))
+	require.NoError(t, m.Merge(p.Profile.CloneVT()))
 	for i := range p.Sample {
 		s := p.Sample[i]
 		for j := range s.Value {
@@ -30,6 +200,7 @@ func Test_Merge_Self(t *testing.T) {
 		}
 	}
 	p.DurationNanos *= 2
+	sortLabels(p.Profile)
 	testhelper.EqualProto(t, p.Profile, m.Profile())
 }
 
@@ -49,8 +220,10 @@ func Test_Merge_Halves(t *testing.T) {
 
 	// Merge with self for normalisation.
 	var sm ProfileMerge
-	require.NoError(t, sm.Merge(p.Profile))
+	require.NoError(t, sm.Merge(p.Profile.CloneVT()))
 	p.DurationNanos *= 2
+
+	sortLabels(p.Profile)
 	testhelper.EqualProto(t, p.Profile, m.Profile())
 }
 
@@ -424,4 +597,31 @@ func TestMergeEmpty(t *testing.T) {
 		StringTable: []string{"", "bar", "nanoseconds", "cpu"},
 	})
 	require.NoError(t, err)
+}
+
+// Benchmark_Merge_self/pprof.Merge-10                	    2722	    421419 ns/op
+// Benchmark_Merge_self/profile.Merge-10              	     802	   1417907 ns/op
+func Benchmark_Merge_self(b *testing.B) {
+	d, err := os.ReadFile("testdata/go.cpu.labels.pprof")
+	require.NoError(b, err)
+
+	b.Run("pprof.Merge", func(b *testing.B) {
+		p, err := RawFromBytes(d)
+		require.NoError(b, err)
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			var m ProfileMerge
+			require.NoError(b, m.Merge(p.Profile.CloneVT()))
+		}
+	})
+
+	b.Run("profile.Merge", func(b *testing.B) {
+		p, err := profile.ParseData(d)
+		require.NoError(b, err)
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, err = profile.Merge([]*profile.Profile{p.Copy()})
+			require.NoError(b, err)
+		}
+	})
 }

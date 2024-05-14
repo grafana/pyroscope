@@ -5,13 +5,15 @@ import (
 )
 
 type MockLimits struct {
-	QuerySplitDurationValue     time.Duration
-	MaxQueryParallelismValue    int
-	MaxQueryLengthValue         time.Duration
-	MaxQueryLookbackValue       time.Duration
-	MaxLabelNameLengthValue     int
-	MaxLabelValueLengthValue    int
-	MaxLabelNamesPerSeriesValue int
+	QuerySplitDurationValue         time.Duration
+	MaxQueryParallelismValue        int
+	MaxQueryLengthValue             time.Duration
+	MaxQueryLookbackValue           time.Duration
+	QueryAnalysisEnabledValue       bool
+	QueryAnalysisSeriesEnabledValue bool
+	MaxLabelNameLengthValue         int
+	MaxLabelValueLengthValue        int
+	MaxLabelNamesPerSeriesValue     int
 
 	MaxFlameGraphNodesDefaultValue int
 	MaxFlameGraphNodesMaxValue     int
@@ -33,6 +35,10 @@ func (m MockLimits) QuerySplitDuration(string) time.Duration        { return m.Q
 func (m MockLimits) MaxQueryParallelism(string) int                 { return m.MaxQueryParallelismValue }
 func (m MockLimits) MaxQueryLength(tenantID string) time.Duration   { return m.MaxQueryLengthValue }
 func (m MockLimits) MaxQueryLookback(tenantID string) time.Duration { return m.MaxQueryLookbackValue }
+func (m MockLimits) QueryAnalysisEnabled(tenantID string) bool      { return m.QueryAnalysisEnabledValue }
+func (m MockLimits) QueryAnalysisSeriesEnabled(tenantID string) bool {
+	return m.QueryAnalysisSeriesEnabledValue
+}
 
 func (m MockLimits) MaxFlameGraphNodesDefault(string) int { return m.MaxFlameGraphNodesDefaultValue }
 func (m MockLimits) MaxFlameGraphNodesMax(string) int     { return m.MaxFlameGraphNodesMaxValue }

@@ -11,7 +11,6 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
-	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/phlaredb/sharding"
 )
@@ -71,13 +70,13 @@ func (b *blockInfo) info() *typesv1.BlockInfo {
 	return &b.i
 }
 
-type validatorFunc func(t *testing.T, plan map[string]*ingestv1.BlockHints)
+type validatorFunc func(t *testing.T, plan map[string]*blockPlanEntry)
 
 func validatePlanBlockIDs(expBlockIDs ...string) validatorFunc {
-	return func(t *testing.T, plan map[string]*ingestv1.BlockHints) {
+	return func(t *testing.T, plan map[string]*blockPlanEntry) {
 		var blockIDs []string
-		for _, hints := range plan {
-			blockIDs = append(blockIDs, hints.Ulids...)
+		for _, planEntry := range plan {
+			blockIDs = append(blockIDs, planEntry.Ulids...)
 		}
 		sort.Strings(blockIDs)
 		require.Equal(t, expBlockIDs, blockIDs)
@@ -85,11 +84,11 @@ func validatePlanBlockIDs(expBlockIDs ...string) validatorFunc {
 }
 
 func validatePlanBlocksOnReplica(replica string, blocks ...string) validatorFunc {
-	return func(t *testing.T, plan map[string]*ingestv1.BlockHints) {
-		blockHints, ok := plan[replica]
+	return func(t *testing.T, plan map[string]*blockPlanEntry) {
+		planEntry, ok := plan[replica]
 		require.True(t, ok, fmt.Sprintf("replica %s not found in plan", replica))
 		for _, block := range blocks {
-			require.Contains(t, blockHints.Ulids, block, "block %s not found in replica's %s plan", block, replica)
+			require.Contains(t, planEntry.Ulids, block, "block %s not found in replica's %s plan", block, replica)
 		}
 	}
 }

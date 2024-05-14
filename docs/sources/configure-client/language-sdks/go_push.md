@@ -13,7 +13,12 @@ Our Go Profiler is a cutting-edge tool designed to optimize Golang applications.
 By integrating with Pyroscope, the profiler offers developers an in-depth view of their Go codebase, enabling real-time performance analysis.
 This powerful tool is crucial for pinpointing inefficiencies, streamlining code execution, and ensuring peak performance in Go applications.
 
-Pyroscope uses the standard `runtime/pprof` package to collect profiling data. Refer to [the official documentation](https://golang.org/doc/diagnostics#profiling) for details.
+Pyroscope uses the standard `runtime/pprof` package to collect profiling data.
+Refer to [the official documentation](https://golang.org/doc/diagnostics#profiling) for details.
+
+{{< admonition type="note" >}}
+Refer to [Available profiling types]({{< relref "../../view-and-analyze-profile-data/profiling-types#available-profiling-types" >}}) for a list of profile types supported by Go.
+{{< /admonition >}}
 
 ## Before you begin
 
@@ -155,6 +160,5 @@ If your Pyroscope server has multi-tenancy enabled, you'll need to configure a t
 
 Check out the following resources to learn more about Golang profiling:
 
-* [Golang examples](https://github.com/grafana/pyroscope-go/blob/main/example/main.go)
-* [Golang Demo](https://demo.pyroscope.io/?query=rideshare-app-golang.cpu%7B%7D) showing golang example with tags
-* [Golang blog post](https://pyroscope.io/blog/profiling-go-apps-with-pyroscope)
+* [Golang examples](https://github.com/grafana/pyroscope/tree/main/examples/language-sdk-instrumentation/golang-push)
+* [Golang Demo](https://play.grafana.org/a/grafana-pyroscope-app/single?query=process_cpu%3Acpu%3Ananoseconds%3Acpu%3Ananoseconds%7Bservice_name%3D%22pyroscope-rideshare-go%22%7D&from=now-1h&until=now) showing golang example with tags

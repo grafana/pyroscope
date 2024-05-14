@@ -40,11 +40,11 @@ This how one would configure a bucket in the AWS region `eu-west-2`:
 storage:
   backend: s3
   s3:
-    bucket_name: grafana-pyroscope-data
+    bucket_name: #REPLACE_WITH_BUCKET_NAME
     region: eu-west-2
     endpoint: s3.eu-west-2.amazonaws.com
-    access_key_id: MY_ACCESS_KEY
-    secret_access_key: MY_SECRET_KEY
+    access_key_id: #REPLACE_WITH_ACCESS_KEY
+    secret_access_key: #REPLACE_WITH_SECRET_KEY
 ```
 
 ### Example using a S3 compatible Bucket

@@ -20,11 +20,19 @@ To learn more about Span Profiles, refer to [Combining tracing and profiling for
 
 ![span-profiles screenshot](https://grafana.com/static/img/docs/tempo/profiles/tempo-profiles-Span-link-profile-data-source.png)
 
+Pyroscope can integrate with distributed tracing systems supporting the [**OpenTelemetry**](https://opentelemetry.io/docs/instrumentation/go/getting-started/) standard.
+This integration lets you link traces with the profiling data and find resource usage for specific lines of code for your trace spans.
+
+{{% admonition type="note"%}}
+* Only CPU profiling is supported.
+* Because of how sampling profilers work, spans shorter than the sample interval may not be captured. Go CPU profiler probes stack traces 100 times per second, meaning that spans shorter than 10ms may not be captured.
+{{% /admonition %}}
+
 To use Span Profiles, you need to:
 
 * [Configure Pyroscope to send profiling data]({{< relref "../../configure-client" >}})
 * Configure a client-side package to link traces and profiles: [Go](https://github.com/grafana/otel-profiling-go)
-* [Configure Tempo data source in Grafana or Grafana Cloud to discover linked traces and profiles](/grafana-cloud/connect-externally-hosted/data-sources/tempo/configure-tempo-data-source/)
+* [Configure the Tempo data source in Grafana or Grafana Cloud to discover linked traces and profiles](/docs/grafana-cloud/connect-externally-hosted/data-sources/tempo/configure-tempo-data-source/)
 
 ## Before you begin
 
@@ -32,16 +40,6 @@ Your applications must be instrumented for profiling and tracing before you can 
 
 * Profiling: Your application must be instrumented with Pyroscope's Go SDK. If you haven't done this yet, please refer to the [Go (push mode)]({{< relref "../language-sdks/go_push" >}}) guide.
 * Tracing: Your application must be instrumented with OpenTelemetry traces. If you haven't done this yet, please refer to the [OpenTelemetry](https://opentelemetry.io/docs/go/getting-started/) guide.
-
-### OpenTelemetry support
-
-Pyroscope can integrate with distributed tracing systems supporting [**OpenTelemetry**](https://opentelemetry.io/docs/instrumentation/go/getting-started/) standard, which allows you to
-link traces with the profiling data, and find resource usage for specific lines of code for your trace spans.
-
-{{% admonition type="note"%}}
- * Only CPU profiling is supported.
- * Because of how sampling profilers work, spans shorter than the sample interval may not be captured. Go CPU profiler probes stack traces 100 times per second, meaning that spans shorter than 10ms may not be captured.
-{{% /admonition %}}
 
 ## Configure the `otel-profiling-go` package
 

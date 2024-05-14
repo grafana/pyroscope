@@ -56,6 +56,7 @@ ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsysca
 	info, err := GetProcInfo(bufio.NewScanner(bytes.NewReader([]byte(maps))))
 	require.NoError(t, err)
 	require.Nil(t, info.Musl)
+	require.NotNil(t, info.Glibc)
 	require.Equal(t, info.Version, Version{3, 6, 0})
 	require.NotNil(t, info.PythonMaps)
 	require.NotNil(t, info.LibPythonMaps)
@@ -116,6 +117,7 @@ ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsysca
 	info, err = GetProcInfo(bufio.NewScanner(bytes.NewReader([]byte(maps))))
 	require.NoError(t, err)
 	require.NotNil(t, info.Musl)
+	require.Nil(t, info.Glibc)
 	require.Equal(t, info.Version, Version{3, 11, 0})
 	require.NotNil(t, info.PythonMaps)
 	require.NotNil(t, info.LibPythonMaps)
@@ -128,6 +130,7 @@ ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsysca
 	info, err = GetProcInfo(bufio.NewScanner(bytes.NewReader([]byte(maps))))
 	require.NoError(t, err)
 	require.Nil(t, info.Musl)
+	require.Nil(t, info.Glibc)
 	require.Equal(t, info.Version, Version{3, 7, 0})
 	require.NotNil(t, info.PythonMaps)
 	require.Nil(t, info.LibPythonMaps)
@@ -160,6 +163,7 @@ fffff8c25000-fffff8c53000 rw-p 00000000 00:00 0                          [stack]
 	info, err = GetProcInfo(bufio.NewScanner(bytes.NewReader([]byte(maps))))
 	require.NoError(t, err)
 	require.Nil(t, info.Musl)
+	require.NotNil(t, info.Glibc)
 	require.Equal(t, info.Version, Version{3, 8, 0})
 	require.Nil(t, info.PythonMaps)
 	require.NotNil(t, info.LibPythonMaps)
@@ -294,6 +298,7 @@ func TestPython(t *testing.T) {
 		testdataPath + "python-x64/3.8.11/lib/libpython3.8.so.1.0",
 		testdataPath + "python-x64/3.8.10/lib/libpython3.8.so.1.0",
 		testdataPath + "python-x64/3.8.12/lib/libpython3.8-pyston2.3.so.1.0",
+		testdataPath + "python-x64/3.13.0a6/libpython3.13.so.1.0",
 		testdataPath + "python-arm64/3.7.12/lib/libpython3.7m.so.1.0",
 		testdataPath + "python-arm64/3.5.1/lib/libpython3.5m.so.1.0",
 		testdataPath + "python-arm64/3.9.15/lib/libpython3.9.so.1.0",
@@ -345,7 +350,7 @@ func TestPython(t *testing.T) {
 		testdataPath + "python-arm64/3.5.3/lib/libpython3.5m.so.1.0",
 		testdataPath + "python-arm64/3.9.8/lib/libpython3.9.so.1.0",
 		testdataPath + "python-arm64/3.10.8/lib/libpython3.10.so.1.0",
-		testdataPath + "python-arm64/3.13.0a1/lib/libpython3.13.so.1.0",
+		testdataPath + "python-arm64/3.13.0a6/libpython3.13.so.1.0",
 		testdataPath + "python-arm64/3.9.14/lib/libpython3.9.so.1.0",
 		testdataPath + "python-arm64/3.7.11/lib/libpython3.7m.so.1.0",
 		testdataPath + "python-arm64/3.6.5/lib/libpython3.6m.so.1.0",

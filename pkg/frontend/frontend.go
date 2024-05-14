@@ -99,6 +99,7 @@ type Limits interface {
 	MaxQueryParallelism(string) int
 	MaxQueryLength(tenantID string) time.Duration
 	MaxQueryLookback(tenantID string) time.Duration
+	QueryAnalysisEnabled(string) bool
 	validation.FlameGraphLimits
 }
 

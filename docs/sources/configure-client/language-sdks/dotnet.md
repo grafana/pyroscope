@@ -11,7 +11,11 @@ aliases:
 
 Our .NET Profiler is a powerful tool designed to enhance the performance analysis and optimization of .NET applications. It seamlessly integrates with Pyroscope, offering real-time insights into the resource usage and bottlenecks within your .NET codebase. This integration empowers developers to pinpoint inefficiencies, improve application speed, and ensure resource-efficient operation.
 
-### Supported profiling types
+{{< admonition type="note" >}}
+Refer to [Available profiling types]({{< relref "../../view-and-analyze-profile-data/profiling-types#available-profiling-types" >}}) for a list of profile types supported by each language.
+{{< /admonition >}}
+
+## Supported profiling types
 
 The .NET Profiler supports the following profiling types:
 
@@ -60,7 +64,16 @@ CORECLR_PROFILER_PATH=Pyroscope.Profiler.Native.so
 LD_PRELOAD=Pyroscope.Linux.ApiWrapper.x64.so
 ```
 
-&nbsp;
+{{< admonition type="note" >}}
+Since .NET version 8 the environment variable `DOTNET_EnableDiagnostics=0` (or its legacy equivalent `COMPlus_EnableDiagnostics=0`) will also disable the profiler. In order to get the previous behaviour (allowing profiling, but switch off IPC and Debugging) the following environment variables should be set instead:
+
+```shell
+DOTNET_EnableDiagnostics=1
+DOTNET_EnableDiagnostics_IPC=0
+DOTNET_EnableDiagnostics_Debugger=0
+DOTNET_EnableDiagnostics_Profiler=1
+```
+{{< /admonition >}}
 
 ### .NET Profiler API
 

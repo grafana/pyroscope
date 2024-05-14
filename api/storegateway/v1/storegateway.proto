@@ -19,4 +19,5 @@ service StoreGatewayService {
   rpc LabelNames(types.v1.LabelNamesRequest) returns (types.v1.LabelNamesResponse) {}
   rpc Series(ingester.v1.SeriesRequest) returns (ingester.v1.SeriesResponse) {}
   rpc BlockMetadata(ingester.v1.BlockMetadataRequest) returns (ingester.v1.BlockMetadataResponse) {}
+  rpc GetBlockStats(ingester.v1.GetBlockStatsRequest) returns (ingester.v1.GetBlockStatsResponse) {}
 }

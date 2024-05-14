@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus"
 	"os"
 	"strconv"
 	"strings"
@@ -30,7 +31,6 @@ import (
 	"github.com/grafana/pyroscope/ebpf/pprof"
 	"github.com/grafana/pyroscope/ebpf/sd"
 	"github.com/grafana/pyroscope/ebpf/symtab"
-	"github.com/prometheus/client_golang/prometheus"
 	commonconfig "github.com/prometheus/common/config"
 )
 
@@ -47,7 +47,6 @@ var collectFreq = flag.Duration("collect.freq",
 var (
 	config  *Config
 	logger  log.Logger
-	metrics *ebpfmetrics.Metrics
 	session ebpfspy.Session
 )
 
@@ -74,7 +73,6 @@ func (s splitLog) Log(keyvals ...interface{}) error {
 
 func main() {
 	config = getConfig()
-	metrics = ebpfmetrics.New(prometheus.DefaultRegisterer)
 
 	logger = &splitLog{
 		err:  log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr)),
@@ -114,7 +112,7 @@ func main() {
 
 func collectProfiles(profiles chan *pushv1.PushRequest) {
 	builders := pprof.NewProfileBuilders(pprof.BuildersOptions{
-		SampleRate:    int64(config.SampleRate),
+		SampleRate:    int64(config.SessionOptions.SampleRate),
 		PerPIDProfile: true,
 	})
 	err := pprof.Collect(builders, session)
@@ -177,29 +175,14 @@ func ingest(profiles chan *pushv1.PushRequest) {
 }
 
 func convertTargetOptions() sd.TargetsOptions {
-	return sd.TargetsOptions{
-		TargetsOnly:        config.TargetsOnly,
-		Targets:            relabelProcessTargets(getProcessTargets(), config.RelabelConfig),
-		DefaultTarget:      config.DefaultTarget,
-		ContainerCacheSize: config.ContainerCacheSize,
-	}
+	targets := relabelProcessTargets(getProcessTargets(), config.RelabelConfig)
+	o := config.TargetsOptions
+	o.Targets = targets
+	return o
 }
 
 func convertSessionOptions() ebpfspy.SessionOptions {
-	return ebpfspy.SessionOptions{
-		CollectUser:               config.CollectUser,
-		CollectKernel:             config.CollectKernel,
-		SampleRate:                config.SampleRate,
-		UnknownSymbolAddress:      config.UnknownSymbolAddress,
-		UnknownSymbolModuleOffset: config.UnknownSymbolModuleOffset,
-		PythonEnabled:             config.PythonEnabled,
-		Metrics:                   metrics,
-		CacheOptions:              config.CacheOptions,
-		VerifierLogSize:           1024 * 1024 * 20,
-		PythonBPFErrorLogEnabled:  config.PythonBPFLogErr,
-		PythonBPFDebugLogEnabled:  config.PythonBPFLogDebug,
-		BPFMapsOptions:            config.BPFMapsOptions,
-	}
+	return config.SessionOptions
 }
 
 func getConfig() *Config {
@@ -222,60 +205,55 @@ func getConfig() *Config {
 }
 
 var defaultConfig = Config{
-	CollectUser:               true,
-	CollectKernel:             true,
-	UnknownSymbolModuleOffset: true,
-	UnknownSymbolAddress:      true,
-	PythonEnabled:             true,
-	SymbolOptions: symtab.SymbolOptions{
-		GoTableFallback:    true,
-		PythonFullFilePath: false,
-		DemangleOptions:    demangle.DemangleFull,
+	TargetsOptions: sd.TargetsOptions{
+		Targets:            nil,
+		TargetsOnly:        true,
+		DefaultTarget:      nil,
+		ContainerCacheSize: 1024,
 	},
-	CacheOptions: symtab.CacheOptions{
+	RelabelConfig: nil,
+	SessionOptions: ebpfspy.SessionOptions{
+		CollectUser:               true,
+		CollectKernel:             true,
+		UnknownSymbolModuleOffset: true,
+		UnknownSymbolAddress:      true,
+		PythonEnabled:             true,
+		CacheOptions: symtab.CacheOptions{
 
-		PidCacheOptions: symtab.GCacheOptions{
-			Size:       239,
-			KeepRounds: 8,
+			PidCacheOptions: symtab.GCacheOptions{
+				Size:       239,
+				KeepRounds: 8,
+			},
+			BuildIDCacheOptions: symtab.GCacheOptions{
+				Size:       239,
+				KeepRounds: 8,
+			},
+			SameFileCacheOptions: symtab.GCacheOptions{
+				Size:       239,
+				KeepRounds: 8,
+			},
 		},
-		BuildIDCacheOptions: symtab.GCacheOptions{
-			Size:       239,
-			KeepRounds: 8,
+		SymbolOptions: symtab.SymbolOptions{
+			GoTableFallback:    true,
+			PythonFullFilePath: false,
+			DemangleOptions:    demangle.DemangleFull,
 		},
-		SameFileCacheOptions: symtab.GCacheOptions{
-			Size:       239,
-			KeepRounds: 8,
+		Metrics:                  ebpfmetrics.New(prometheus.DefaultRegisterer),
+		SampleRate:               97,
+		VerifierLogSize:          1024 * 1024 * 1024,
+		PythonBPFErrorLogEnabled: true,
+		PythonBPFDebugLogEnabled: true,
+		BPFMapsOptions: ebpfspy.BPFMapsOptions{
+			PIDMapSize:     2048,
+			SymbolsMapSize: 16384,
 		},
-	},
-	SampleRate:         97,
-	TargetsOnly:        true,
-	DefaultTarget:      nil,
-	ContainerCacheSize: 1024,
-	RelabelConfig:      nil,
-	PythonBPFLogErr:    true,
-	PythonBPFLogDebug:  true,
-	BPFMapsOptions: ebpfspy.BPFMapsOptions{
-		PIDMapSize:     2048,
-		SymbolsMapSize: 16384,
 	},
 }
 
 type Config struct {
-	CollectUser               bool
-	CollectKernel             bool
-	UnknownSymbolModuleOffset bool
-	UnknownSymbolAddress      bool
-	PythonEnabled             bool
-	SymbolOptions             symtab.SymbolOptions
-	CacheOptions              symtab.CacheOptions
-	SampleRate                int
-	TargetsOnly               bool
-	DefaultTarget             map[string]string
-	ContainerCacheSize        int
-	RelabelConfig             []*RelabelConfig
-	PythonBPFLogErr           bool
-	PythonBPFLogDebug         bool
-	BPFMapsOptions            ebpfspy.BPFMapsOptions
+	TargetsOptions sd.TargetsOptions
+	RelabelConfig  []*RelabelConfig
+	SessionOptions ebpfspy.SessionOptions
 }
 
 type RelabelConfig struct {
@@ -317,6 +295,8 @@ func getProcessTargets() []sd.DiscoveryTarget {
 			}
 			continue
 		}
+		cwd = strings.TrimSpace(cwd)
+
 		exe, err := os.Readlink(fmt.Sprintf("/proc/%s/exe", spid))
 		if err != nil {
 			if !errors.Is(err, os.ErrNotExist) {
@@ -330,20 +310,21 @@ func getProcessTargets() []sd.DiscoveryTarget {
 				_ = level.Error(logger).Log("err", err, "msg", "reading comm", "pid", spid)
 			}
 		}
-		cgroup, err := os.ReadFile(fmt.Sprintf("/proc/%s/cgroup", spid))
+		cmdline, err := os.ReadFile(fmt.Sprintf("/proc/%s/cmdline", spid))
 		if err != nil {
 			if !errors.Is(err, os.ErrNotExist) {
-				_ = level.Error(logger).Log("err", err, "msg", "reading cgroup", "pid", spid)
+				_ = level.Error(logger).Log("err", err, "msg", "reading cmdline", "pid", spid)
 			}
+		} else {
+			cmdline = bytes.ReplaceAll(cmdline, []byte{0}, []byte(" "))
 		}
 		target := sd.DiscoveryTarget{
-			"__process_pid__":       spid,
-			"__meta_process_cwd":    cwd,
-			"__meta_process_exe":    strings.TrimSpace(exe),
-			"__meta_process_comm":   strings.TrimSpace(string(comm)),
-			"__meta_process_cgroup": strings.TrimSpace(string(cgroup)),
-			"pid":                   spid,
-			"exe":                   exe,
+			"__process_pid__": spid,
+			"cwd":             cwd,
+			"comm":            strings.TrimSpace(string(comm)),
+			"pid":             spid,
+			"exe":             exe,
+			"service_name":    fmt.Sprintf("%s @ %s", cmdline, cwd),
 		}
 		res = append(res, target)
 	}

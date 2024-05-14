@@ -93,7 +93,7 @@ func (f *MMapedElfFile) GNUBuildID() (BuildID, error) {
 		return BuildID{}, fmt.Errorf(".note.gnu.build-id is not a GNU build-id : %s", hex.EncodeToString(data))
 	}
 	rawBuildID := data[16:]
-	if len(rawBuildID) != 20 && len(rawBuildID) != 8 { // 8 is xxhash, for example in Container-Optimized OS
+	if len(rawBuildID) < 8 {
 		return BuildID{}, fmt.Errorf(".note.gnu.build-id has wrong size %s : %s ", f.fpath, hex.EncodeToString(data))
 	}
 	buildIDHex := hex.EncodeToString(rawBuildID)

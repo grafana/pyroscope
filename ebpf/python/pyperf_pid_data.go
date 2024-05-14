@@ -60,7 +60,7 @@ func GetPyPerfPidData(l log.Logger, pid uint32, collectKernel bool) (*PerfPyPidD
 
 	data := &PerfPyPidData{}
 	var (
-		autoTLSkeyAddr, pyRuntimeAddr uint64
+		autoTLSkeyAddr, pyRuntimeAddr, PyCellType uint64
 	)
 	baseAddr := base_.StartAddr
 	if ef.FileHeader.Type == elf.ET_EXEC {
@@ -72,6 +72,8 @@ func GetPyPerfPidData(l log.Logger, pid uint32, collectKernel bool) (*PerfPyPidD
 			autoTLSkeyAddr = baseAddr + symbol.Value
 		case "_PyRuntime":
 			pyRuntimeAddr = baseAddr + symbol.Value
+		case "PyCell_Type":
+			PyCellType = baseAddr + symbol.Value
 		default:
 			continue
 		}
@@ -132,6 +134,9 @@ func GetPyPerfPidData(l log.Logger, pid uint32, collectKernel bool) (*PerfPyPidD
 		PyCodeObjectCoName:            offsets.PyCodeObject_co_name,
 		PyCodeObjectCoVarnames:        offsets.PyCodeObject_co_varnames,
 		PyCodeObjectCoLocalsplusnames: offsets.PyCodeObject_co_localsplusnames,
+		PyCodeObjectCoCell2arg:        offsets.PyCodeObject__co_cell2arg,
+		PyCodeObjectCoCellvars:        offsets.PyCodeObject__co_cellvars,
+		PyCodeObjectCoNlocals:         offsets.PyCodeObject__co_nlocals,
 		PyTupleObjectObItem:           offsets.PyTupleObject_ob_item,
 		VFrameCode:                    vframeCode,
 		VFramePrevious:                vframeBack,
@@ -142,6 +147,9 @@ func GetPyPerfPidData(l log.Logger, pid uint32, collectKernel bool) (*PerfPyPidD
 		PyVarObjectObSize:             offsets.PyVarObject_ob_size,
 		PyObjectObType:                offsets.PyObject_ob_type,
 		PyTypeObjectTpName:            offsets.PyTypeObject_tp_name,
+		PyCellObjectObRef:             offsets.PyCellObject__ob_ref,
+		Base:                          baseAddr,
+		PyCellType:                    PyCellType,
 	}
 	if collectKernel {
 		data.CollectKernel = 1

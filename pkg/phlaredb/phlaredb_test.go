@@ -145,6 +145,10 @@ func (i *ingesterHandlerPhlareDB) GetProfileStats(context.Context, *connect.Requ
 	return nil, errors.New("not implemented")
 }
 
+func (i *ingesterHandlerPhlareDB) GetBlockStats(context.Context, *connect.Request[ingestv1.GetBlockStatsRequest]) (*connect.Response[ingestv1.GetBlockStatsResponse], error) {
+	return nil, errors.New("not implemented")
+}
+
 func TestMergeProfilesStacktraces(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
