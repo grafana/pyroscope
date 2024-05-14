@@ -117,7 +117,8 @@ and `pyroscope.scrape`.
     ```
 
 2. Start the collector:
-  * To start Grafana Alloy, replace `configuration.alloy` with your configuration file name: <br> `alloy run configuration.alloy`
+  * To start Grafana Alloy, replace `configuration.alloy` with your configuration file name: <br> `alloy run --stability.level=public-preview configuration.alloy`
+    The `stability.level` option is required for `pyroscope.scrape`. For more information about `stability.level`, refer to [The run command](https://grafana.com/docs/alloy/latest/reference/cli/run/#permitted-stability-levels) documentation.
   * To start Grafana Agent, replace `configuration.river` with your configuration file name: <br> ` grafana-agent-flow run configuration.river`
 
 3. Open a browser to http://localhost:4040. The page should list profiles.
