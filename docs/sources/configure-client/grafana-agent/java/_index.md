@@ -73,15 +73,19 @@ see [profiler-options](https://github.com/async-profiler/async-profiler?tab=read
 
 ### Set privileges for the collector
 
-You must run the collector, either Grafana Alloy (recommended) or Agent (legacy) as root and inside host `pid` namespace for the `pyroscope.java`
+You must run the collector, either Grafana Alloy (recommended) or Agent (legacy), as root and inside host `pid` namespace for the `pyroscope.java`
 and `discover.process` components to work.
 
 ### Start the collector
 
-To start Grafana Alloy, replace `configuration.alloy` with your configuration file name: <br> `alloy run --stability.level=public-preview configuration.alloy`
-    The `stability.level` option is required for `pyroscope.scrape`. For more information about `stability.level`, refer to [The run command](https://grafana.com/docs/alloy/latest/reference/cli/run/#permitted-stability-levels) documentation.
+To start Grafana Alloy, replace `configuration.alloy` with your configuration file name: 
 
-To start Grafana Agent, replace `configuration.river` with your configuration file name: <br> ` grafana-agent-flow run configuration.river`
+`alloy run --stability.level=public-preview configuration.alloy`
+
+The `stability.level` option is required for `pyroscope.scrape`. For more information about `stability.level`, refer to [The run command](https://grafana.com/docs/alloy/latest/reference/cli/run/#permitted-stability-levels) documentation.
+
+To start Grafana Agent, replace `configuration.river` with your configuration file name:
+  ` grafana-agent-flow run configuration.river`
 
 ### Send data to Grafana Cloud Profiles
 
