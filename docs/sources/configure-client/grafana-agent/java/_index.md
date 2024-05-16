@@ -1,13 +1,14 @@
 ---
-title: "Profiling Java using the Grafana Agent"
-menuTitle: "Profiling Java using the Grafana Agent"
-description: "Learn about using Grafana Agent for continuous profiling Java processes for performance optimization."
+title: "Profiling Java using Grafana Alloy or Agent"
+menuTitle: "Profiling Java using Alloy or Agent"
+description: "Learn about using Grafana Alloy or Agent for continuous profiling Java processes for performance optimization."
 weight: 20
 ---
 
-# Profiling Java using the Grafana Agent
+# Profiling Java using Grafana Alloy or Agent
 
-Grafana Agent supports Java profiling in [Flow mode](/docs/agent/latest/flow/).
+Grafana Alloy and Grafana Agent in [Flow mode](/docs/agent/latest/flow/) support Java profiling.
+
 Written in the
 [River](/docs/agent/latest/flow/config-language/) language, the configuration file is composed of components that are used to collect,
 transform, and send data.
@@ -70,10 +71,21 @@ The following arguments are supported:
 For more information on async-profiler configuration,
 see [profiler-options](https://github.com/async-profiler/async-profiler?tab=readme-ov-file#profiler-options).
 
-### Set privileges for the Agent
+### Set privileges for the collector
 
-You must run the agent as root and inside host pid namespace for the `pyroscope.java`
+You must run the collector, either Grafana Alloy (recommended) or Agent (legacy), as root and inside host `pid` namespace for the `pyroscope.java`
 and `discover.process` components to work.
+
+### Start the collector
+
+To start Grafana Alloy, replace `configuration.alloy` with your configuration file name: 
+
+`alloy run --stability.level=public-preview configuration.alloy`
+
+The `stability.level` option is required for `pyroscope.scrape`. For more information about `stability.level`, refer to [The run command](https://grafana.com/docs/alloy/latest/reference/cli/run/#permitted-stability-levels) documentation.
+
+To start Grafana Agent, replace `configuration.river` with your configuration file name:
+  ` grafana-agent-flow run configuration.river`
 
 ### Send data to Grafana Cloud Profiles
 
@@ -182,7 +194,7 @@ pyroscope.write "example" {
 }
 ```
 
-### Profiling kubernetes pods
+### Profiling Kubernetes pods
 
 ```river
 
@@ -265,6 +277,18 @@ pyroscope.write "example" {
 For more information:
 
 * [Examples](https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent-auto-instrumentation/java)
+
+### Grafana Alloy
+
+- [Grafana Alloy](https://grafana.com/docs/alloy/latest/)
+- [pyroscope.scrape](/docs/alloy/latest/flow/reference/components/pyroscope.scrape/)
+- [pyroscope.write](/docs/alloy/latest/flow/reference/components/pyroscope.write/)
+- [discovery.kubernetes](/docs/alloy/latest/flow/reference/components/discovery.kubernetes/)
+- [discovery.docker](/docs/alloy/latest/flow/reference/components/discovery.docker/)
+- [discovery.relabel](/docs/alloy/latest/flow/reference/components/discovery.relabel/)
+
+### Grafana Agent
+
 * [`pyroscope.java`](/docs/agent/next/flow/reference/components/pyroscope.java/)
 * [`discovery.process`](/docs/agent/next/flow/reference/components/discovery.process/)
 * [`discovery.kubernetes`](/docs/agent/next/flow/reference/components/discovery.kubernetes/)
