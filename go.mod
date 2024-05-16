@@ -3,7 +3,7 @@ module github.com/grafana/pyroscope
 go 1.21
 
 require (
-	connectrpc.com/connect v1.14.0
+	connectrpc.com/connect v1.16.2
 	connectrpc.com/grpchealth v1.3.0
 	github.com/PuerkitoBio/goquery v1.8.1
 	github.com/aybabtme/rgbterm v0.0.0-20170906152045-cc83f3b3ce59

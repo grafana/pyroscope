@@ -18,7 +18,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/util"
 )
 
-func NeStoreGatewayPool(ring ring.ReadRing, factory ring_client.PoolFactory, clientsMetric prometheus.Gauge, logger log.Logger, options ...connect.ClientOption) *ring_client.Pool {
+func NewStoreGatewayPool(ring ring.ReadRing, factory ring_client.PoolFactory, clientsMetric prometheus.Gauge, logger log.Logger, options ...connect.ClientOption) *ring_client.Pool {
 	if factory == nil {
 		factory = newStoreGatewayPoolFactory(options...)
 	}
