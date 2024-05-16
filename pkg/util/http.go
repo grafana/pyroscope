@@ -122,13 +122,13 @@ func (l Log) logWithRequest(r *http.Request) log.Logger {
 // measure request body size
 type reqBody struct {
 	b    io.ReadCloser
-	read uint64
+	read byteSize
 }
 
 func (w *reqBody) Read(p []byte) (int, error) {
 	n, err := w.b.Read(p)
 	if n > 0 {
-		w.read += uint64(n)
+		w.read += byteSize(n)
 	}
 	return n, err
 }
@@ -137,8 +137,10 @@ func (w *reqBody) Close() error {
 	return w.b.Close()
 }
 
-func (w *reqBody) String() string {
-	return humanize.Bytes(w.read)
+type byteSize uint64
+
+func (bs byteSize) String() string {
+	return strings.Replace(humanize.IBytes(uint64(bs)), " ", "", 1)
 }
 
 // Wrap implements Middleware
@@ -207,7 +209,10 @@ func (l Log) Wrap(next http.Handler) http.Handler {
 
 		statusCode, writeErr := httpCode, httpErr.Err()
 
-		requestLogD := log.With(requestLog, "method", r.Method, "uri", uri, "status", statusCode, "duration", time.Since(begin), "request_body_size", rBody)
+		requestLogD := log.With(requestLog, "method", r.Method, "uri", uri, "status", statusCode, "duration", time.Since(begin))
+		if rBody.read > 0 {
+			requestLogD = log.With(requestLogD, "request_body_size", rBody.read)
+		}
 
 		if writeErr != nil {
 			if errors.Is(writeErr, context.Canceled) {
@@ -224,9 +229,9 @@ func (l Log) Wrap(next http.Handler) http.Handler {
 		}
 		if 100 <= statusCode && statusCode < 500 {
 			if l.LogRequestAtInfoLevel {
-				level.Info(requestLogD).Log("msg", "")
+				level.Info(requestLogD).Log("msg", "http request processed")
 			} else {
-				level.Debug(requestLogD).Log("msg", "")
+				level.Debug(requestLogD).Log("msg", "http request processed")
 			}
 			if l.LogRequestHeaders && headers != nil {
 				if l.LogRequestAtInfoLevel {
