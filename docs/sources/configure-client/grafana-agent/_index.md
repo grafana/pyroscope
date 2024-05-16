@@ -1,13 +1,23 @@
 ---
-title: "Grafana Agent"
-menuTitle: "Grafana Agent"
-description: "Send data from your application via the Grafana Agent"
+title: "Grafana Alloy and Grafana Agent"
+menuTitle: "Grafana Alloy and Grafana Agent"
+description: "Send data from your application via using Grafana Alloy or Grafana Agent."
 weight: 10
 aliases:
   - /docs/phlare/latest/configure-client/grafana-agent/
 ---
 
-# Grafana Agent
+# Grafana Alloy and Grafana Agent
+
+You can send data from your application using Grafana Alloy or Grafana Agent collectors.
+Both collectors support profiling with eBPF, Java, and Golang in pull mode.
+
+[Grafana Alloy](https://grafana.com/docs/alloy/latest/) is a vendor-neutral distribution of the OpenTelemetry (OTel) Collector.
+Alloy uniquely combines the very best OSS observability signals in the community.
+Grafana Alloy uses configuration file written using River.
+
+Alloy is the recommended collector instead of Grafana Agent.
+New installations should use Alloy.
 
 {{< docs/shared lookup="agent-deprecation.md" source="alloy" version="next" >}}
 
@@ -19,8 +29,7 @@ This document provides an overview of these two modes of profiling and guides us
 Refer to [Available profiling types]({{< relref "../../view-and-analyze-profile-data/profiling-types#available-profiling-types" >}}) for a list of profile types supported.
 {{< /admonition >}}
 
-
-## eBPF profiling with Grafana Agent
+## eBPF profiling
 
 eBPF (Extended Berkeley Packet Filter) is a modern Linux kernel technology that allows for safe, efficient, and customizable tracing of system and application behaviors without modifying the source code or restarting processes.
 
@@ -30,16 +39,16 @@ Benefits of eBPF profiling:
 - Versatile: eBPF can trace system calls, network packets, and even user-space application logic.
 - Dynamic: No need to recompile or restart applications. eBPF allows for live tracing.
 
-### Set up eBPF profiling with Grafana Agent
+### Set up eBPF profiling
 
 1. Ensure your system runs a Linux kernel version 4.9 or newer.
-1. Install Grafana Agent on the target machine or container.
+1. Install a collector, such as Grafana Alloy (preferred) or Grafana Agent (legacy), on the target machine or container.
 1. Configure the Agent to use eBPF for profiling. Refer to the [eBPF documentation](/docs/pyroscope/latest/configure-client/grafana-agent/ebpf) for detailed steps.
-1. The Agent collects eBPF profiles and sends them to the Pyroscope server.
+1. The collector collects eBPF profiles and sends them to the Pyroscope server.
 
-## Golang profiling in pull mode with Grafana Agent
+## Golang profiling in pull mode
 
-In pull mode, Grafana Agent periodically retrieves profiles from Golang applications, specifically targeting the pprof endpoints.
+In pull mode, the collector periodically retrieves profiles from Golang applications, specifically targeting the pprof endpoints.
 
 ### Benefits of Golang profiling in pull mode
 
@@ -50,11 +59,11 @@ In pull mode, Grafana Agent periodically retrieves profiles from Golang applicat
 ### Set up Golang profiling in pull mode
 
 1. Ensure your Golang application exposes pprof endpoints.
-1. Install and configure the Grafana Agent on the same machine or container where your application runs.
-1. Ensure the Agent is set to pull mode and targeting the correct pprof endpoints. For step-by-step instructions, visit the [Go (Pull Mode)](/docs/pyroscope/latest/configure-client/grafana-agent/go_pull) docs.
-1. The Agent queries the pprof endpoints of your Golang application, collects the profiles, and forwards them to the Pyroscope server.
+1. Install and configure the collector, either Alloy or Agent, on the same machine or container where your application runs.
+1. Ensure the collector is set to pull mode and targeting the correct pprof endpoints. For step-by-step instructions, visit the [Go (Pull Mode)](/docs/pyroscope/latest/configure-client/grafana-agent/go_pull) documentation.
+1. The collector queries the pprof endpoints of your Golang application, collects the profiles, and forwards them to the Pyroscope server.
 
 ## Next steps
 
-Whether using eBPF for versatile system and application profiling or relying on Golang's built-in pprof endpoints in pull mode, Grafana Agent and Grafana Alloy offer streamlined processes to gather essential profiling data.
+Whether using eBPF for versatile system and application profiling or relying on Golang's built-in pprof endpoints in pull mode, Grafana Agent and Grafana Alloy collectors offer streamlined processes to gather essential profiling data.
 Choose the method that best fits your application and infrastructure needs.
