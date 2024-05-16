@@ -5,6 +5,8 @@ import (
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/proto"
+
+	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 )
 
 // Name is the name registered for the proto compressor.
@@ -85,6 +87,8 @@ func (vtprotoCodec) MarshalAppend(data []byte, v any) ([]byte, error) {
 
 func (vtprotoCodec) Unmarshal(data []byte, v any) error {
 	switch v := v.(type) {
+	case *pushv1.PushRequest:
+		return v.UnmarshalVTUnsafe(data)
 	case vtprotoMessage:
 		return v.UnmarshalVT(data)
 	case proto.Message:
