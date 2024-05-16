@@ -66,7 +66,7 @@ func Test_refreshGithubToken(t *testing.T) {
 	req, err := http.NewRequest("POST", fakeGithubAPI.URL, nil)
 	require.NoError(t, err)
 
-	got, err := refreshGithubToken(req)
+	got, err := refreshGithubToken(req, http.DefaultClient)
 	require.NoError(t, err)
 	require.Equal(t, want, *got)
 }

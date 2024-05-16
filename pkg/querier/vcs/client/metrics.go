@@ -2,102 +2,83 @@ package client
 
 import (
 	"fmt"
+	"net/http"
+	"regexp"
 	"time"
 
-	"github.com/google/go-github/v58/github"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
-// Metrics can record events surrounding various client actions, like logging in
-// or fetching a file.
-type Metrics interface {
-	LoginObserve(elapsed time.Duration, err error)
-	RefreshObserve(elapsed time.Duration, err error)
-	GetCommitObserve(elapsed time.Duration, res *github.Response, err error)
-	GetFileObserve(elapsed time.Duration, res *github.Response, err error)
-}
+var (
+	githubRouteMatchers = map[string]*regexp.Regexp{
+		// Get repository contents.
+		// https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28#get-repository-content
+		"/repos/{owner}/{repo}/contents/{path}": regexp.MustCompile(`^\/repos\/\S+\/\S+\/contents\/\S+$`),
 
-func NewMetrics(reg prometheus.Registerer) Metrics {
-	return &githubMetrics{
-		APIDuration: promauto.With(reg).NewHistogramVec(
-			prometheus.HistogramOpts{
-				Namespace: "pyroscope",
-				Name:      "vcs_github_request_duration",
-				Help:      "Duration of GitHub API requests in seconds",
-				Buckets:   prometheus.ExponentialBucketsRange(0.1, 10, 8),
-			},
-			[]string{"path", "status"},
-		),
-		APIRateLimit: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+		// Get a commit.
+		// https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28#get-a-commit
+		"/repos/{owner}/{repo}/commits/{ref}": regexp.MustCompile(`^\/repos\/\S+\/\S+\/commits\/\S+$`),
+
+		// Refresh auth token.
+		// https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/refreshing-user-access-tokens#refreshing-a-user-access-token-with-a-refresh-token
+		"/login/oauth/access_token": regexp.MustCompile(`^\/login\/oauth\/access_token$`),
+	}
+)
+
+func InstrumentedHTTPClient(logger log.Logger, reg prometheus.Registerer) *http.Client {
+	apiDuration := promauto.With(reg).NewHistogramVec(
+		prometheus.HistogramOpts{
 			Namespace: "pyroscope",
-			Name:      "vcs_github_rate_limit",
-			Help:      "Remaining GitHub API requests before rate limiting occurs",
-		}),
+			Name:      "vcs_github_request_duration",
+			Help:      "Duration of GitHub API requests in seconds",
+			Buckets:   prometheus.ExponentialBucketsRange(0.1, 10, 8),
+		},
+		[]string{"method", "route", "status_code"},
+	)
+
+	defaultClient := &http.Client{
+		Timeout:   10 * time.Second,
+		Transport: http.DefaultTransport,
+	}
+	client := util.InstrumentedHTTPClient(defaultClient, withGitHubMetricsTransport(logger, apiDuration))
+	return client
+}
+
+// withGitHubMetricsTransport wraps a transport with a client to track GitHub
+// API usage.
+func withGitHubMetricsTransport(logger log.Logger, hv *prometheus.HistogramVec) util.RoundTripperInstrumentFunc {
+	return func(next http.RoundTripper) http.RoundTripper {
+		return util.RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
+			route := matchGitHubAPIRoute(req.URL.Path)
+			statusCode := ""
+			start := time.Now()
+
+			res, err := next.RoundTrip(req)
+			if err == nil {
+				statusCode = fmt.Sprintf("%d", res.StatusCode)
+			}
+
+			if route == "unknown_route" {
+				level.Warn(logger).Log("path", req.URL.Path, "msg", "unknown GitHub API route")
+			}
+			hv.WithLabelValues(req.Method, route, statusCode).Observe(time.Since(start).Seconds())
+
+			return res, err
+		})
 	}
 }
 
-type githubMetrics struct {
-	APIDuration  *prometheus.HistogramVec
-	APIRateLimit prometheus.Gauge
-}
-
-func (m *githubMetrics) LoginObserve(elapsed time.Duration, err error) {
-	// We technically don't know the true status codes of the OAuth login flow,
-	// but we'll assume "no error" means 200 and "an error" means 400. A 400 is
-	// chosen because that's what we report to the user.
-	status := "200"
-	if err != nil {
-		status = "400"
+func matchGitHubAPIRoute(path string) string {
+	for route, regex := range githubRouteMatchers {
+		if regex.MatchString(path) {
+			return route
+		}
 	}
 
-	m.APIDuration.
-		WithLabelValues("/login/oauth/authorize", status).
-		Observe(elapsed.Seconds())
-}
-
-func (m *githubMetrics) RefreshObserve(elapsed time.Duration, err error) {
-	// We technically don't know the true status codes of the OAuth login flow,
-	// but we'll assume "no error" means 200 and "an error" means 400. A 400 is
-	// chosen because that's what we report to the user.
-	status := "200"
-	if err != nil {
-		status = "400"
-	}
-
-	m.APIDuration.
-		WithLabelValues("/login/oauth/access_token", status).
-		Observe(elapsed.Seconds())
-}
-
-func (m *githubMetrics) GetCommitObserve(elapsed time.Duration, res *github.Response, err error) {
-	var status string
-	if res != nil {
-		status = fmt.Sprintf("%d", res.StatusCode)
-		m.APIRateLimit.Set(float64(res.Rate.Remaining))
-	}
-
-	if err != nil {
-		status = "500"
-	}
-
-	m.APIDuration.
-		WithLabelValues("/repos/{owner}/{repo}/commits/{ref}", status).
-		Observe(elapsed.Seconds())
-}
-
-func (m *githubMetrics) GetFileObserve(elapsed time.Duration, res *github.Response, err error) {
-	var status string
-	if res != nil {
-		status = fmt.Sprintf("%d", res.StatusCode)
-		m.APIRateLimit.Set(float64(res.Rate.Remaining))
-	}
-
-	if err != nil {
-		status = "500"
-	}
-
-	m.APIDuration.
-		WithLabelValues("/repos/{owner}/{repo}/contents/{path}", status).
-		Observe(elapsed.Seconds())
+	return "unknown_route"
 }

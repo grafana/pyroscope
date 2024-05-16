@@ -15,22 +15,18 @@ import (
 )
 
 // GithubClient returns a github client.
-func GithubClient(ctx context.Context, token *oauth2.Token, metrics Metrics) (*githubClient, error) {
+func GithubClient(ctx context.Context, token *oauth2.Token, client *http.Client) (*githubClient, error) {
 	return &githubClient{
-		client:  github.NewClient(nil).WithAuthToken(token.AccessToken),
-		metrics: metrics,
+		client: github.NewClient(client).WithAuthToken(token.AccessToken),
 	}, nil
 }
 
 type githubClient struct {
-	client  *github.Client
-	metrics Metrics
+	client *github.Client
 }
 
 func (gh *githubClient) GetCommit(ctx context.Context, owner, repo, ref string) (*vcsv1.GetCommitResponse, error) {
-	start := time.Now()
-	commit, res, err := gh.client.Repositories.GetCommit(ctx, owner, repo, ref, nil)
-	gh.metrics.GetCommitObserve(time.Since(start), res, err)
+	commit, _, err := gh.client.Repositories.GetCommit(ctx, owner, repo, ref, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -51,9 +47,7 @@ func (gh *githubClient) GetFile(ctx context.Context, req FileRequest) (File, err
 	// git clone https://x-access-token:<token>@github.com/owner/repo.git
 	// For now we use the github client.
 
-	start := time.Now()
-	file, _, res, err := gh.client.Repositories.GetContents(ctx, req.Owner, req.Repo, req.Path, &github.RepositoryContentGetOptions{Ref: req.Ref})
-	gh.metrics.GetFileObserve(time.Since(start), res, err)
+	file, _, _, err := gh.client.Repositories.GetContents(ctx, req.Owner, req.Repo, req.Path, &github.RepositoryContentGetOptions{Ref: req.Ref})
 	if err != nil {
 		var githubErr *github.ErrorResponse
 		if errors.As(err, &githubErr) && githubErr.Response.StatusCode == http.StatusNotFound {

@@ -23,14 +23,16 @@ import (
 var _ vcsv1connect.VCSServiceHandler = (*Service)(nil)
 
 type Service struct {
-	logger  log.Logger
-	metrics client.Metrics
+	logger     log.Logger
+	httpClient *http.Client
 }
 
 func New(logger log.Logger, reg prometheus.Registerer) *Service {
+	httpClient := client.InstrumentedHTTPClient(logger, reg)
+
 	return &Service{
-		logger:  logger,
-		metrics: client.NewMetrics(reg),
+		logger:     logger,
+		httpClient: httpClient,
 	}
 }
 
@@ -47,9 +49,7 @@ func (q *Service) GithubLogin(ctx context.Context, req *connect.Request[vcsv1.Gi
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to authorize with GitHub"))
 	}
 
-	start := time.Now()
 	token, err := cfg.Exchange(ctx, req.Msg.AuthorizationCode)
-	q.metrics.LoginObserve(time.Since(start), err)
 	if err != nil {
 		q.logger.Log("err", err, "msg", "failed to exchange authorization code with GitHub")
 		return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("failed to authorize with GitHub"))
@@ -80,9 +80,7 @@ func (q *Service) GithubRefresh(ctx context.Context, req *connect.Request[vcsv1.
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to refresh token"))
 	}
 
-	start := time.Now()
-	githubToken, err := refreshGithubToken(githubRequest)
-	q.metrics.RefreshObserve(time.Since(start), err)
+	githubToken, err := refreshGithubToken(githubRequest, q.httpClient)
 	if err != nil {
 		q.logger.Log("err", err, "msg", "failed to refresh token with GitHub")
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to refresh token"))
@@ -125,7 +123,7 @@ func (q *Service) GetFile(ctx context.Context, req *connect.Request[vcsv1.GetFil
 	}
 
 	// todo: we can support multiple provider: bitbucket, gitlab, etc.
-	ghClient, err := client.GithubClient(ctx, token, q.metrics)
+	ghClient, err := client.GithubClient(ctx, token, q.httpClient)
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +166,7 @@ func (q *Service) GetCommit(ctx context.Context, req *connect.Request[vcsv1.GetC
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("only GitHub repositories are supported"))
 	}
 
-	ghClient, err := client.GithubClient(ctx, token, q.metrics)
+	ghClient, err := client.GithubClient(ctx, token, q.httpClient)
 	if err != nil {
 		return nil, err
 	}

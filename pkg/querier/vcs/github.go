@@ -65,10 +65,7 @@ func githubOAuthConfig() (*oauth2.Config, error) {
 
 // refreshGithubToken sends a request configured for the GitHub API and marshals
 // the response into a githubAuthToken.
-func refreshGithubToken(req *http.Request) (*githubAuthToken, error) {
-	client := http.Client{
-		Timeout: 10 * time.Second,
-	}
+func refreshGithubToken(req *http.Request, client *http.Client) (*githubAuthToken, error) {
 	res, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to make request: %w", err)
