@@ -29,7 +29,7 @@ To use Span Profiles, you need to:
 
 * [Configure Pyroscope to send profiling data]({{< relref "../../configure-client" >}})
 * Configure a client-side package to link traces and profiles: [Python](https://github.com/grafana/otel-profiling-python)
-* [Configure the Tempo data source in Grafana or Grafana Cloud to discover linked traces and profiles](/grafana-cloud/connect-externally-hosted/data-sources/tempo/configure-tempo-data-source/)
+* [Configure the Tempo data source in Grafana or Grafana Cloud to discover linked traces and profiles](/docs/grafana-cloud/connect-externally-hosted/data-sources/tempo/configure-tempo-data-source/)
 
 ## Before you begin
 

@@ -6,7 +6,9 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/go-kit/log"
@@ -22,11 +24,10 @@ import (
 //go:embed python_ebpf_expected.txt
 var pythonEBPFExpected []byte
 
-//go:embed python_ebpf_expected_3.11.txt
-var pythonEBPFExpected311 []byte
-
-//go:embed python3_ebpf_expected.txt
-var python3EBPFExpected []byte
+func pythonEBPFExpectedUbuntu() []byte {
+	re := regexp.MustCompile("(?m)^python;")
+	return re.ReplaceAll(pythonEBPFExpected, []byte("python3;"))
+}
 
 func TestEBPFPythonProfiler(t *testing.T) {
 	var testdata = []struct {
@@ -36,26 +37,30 @@ func TestEBPFPythonProfiler(t *testing.T) {
 		{"pyroscope/ebpf-testdata-rideshare:3.8-slim", pythonEBPFExpected},
 		{"pyroscope/ebpf-testdata-rideshare:3.9-slim", pythonEBPFExpected},
 		{"pyroscope/ebpf-testdata-rideshare:3.10-slim", pythonEBPFExpected},
-		{"pyroscope/ebpf-testdata-rideshare:3.11-slim", pythonEBPFExpected311},
-		{"pyroscope/ebpf-testdata-rideshare:3.12-slim", pythonEBPFExpected311},
-		{"pyroscope/ebpf-testdata-rideshare:3.13-rc-slim", pythonEBPFExpected311},
+		{"pyroscope/ebpf-testdata-rideshare:3.11-slim", pythonEBPFExpected},
+		{"pyroscope/ebpf-testdata-rideshare:3.12-slim", pythonEBPFExpected},
+		{"pyroscope/ebpf-testdata-rideshare:3.13-rc-slim", pythonEBPFExpected},
 		{"pyroscope/ebpf-testdata-rideshare:3.8-alpine", pythonEBPFExpected},
 		{"pyroscope/ebpf-testdata-rideshare:3.9-alpine", pythonEBPFExpected},
 		{"pyroscope/ebpf-testdata-rideshare:3.10-alpine", pythonEBPFExpected},
-		{"pyroscope/ebpf-testdata-rideshare:3.11-alpine", pythonEBPFExpected311},
-		{"pyroscope/ebpf-testdata-rideshare:3.12-alpine", pythonEBPFExpected311},
-		{"pyroscope/ebpf-testdata-rideshare:3.13-rc-alpine", pythonEBPFExpected311},
-		{"pyroscope/ebpf-testdata-rideshare:ubuntu-20.04", python3EBPFExpected},
-		{"pyroscope/ebpf-testdata-rideshare:ubuntu-22.04", python3EBPFExpected},
+		{"pyroscope/ebpf-testdata-rideshare:3.11-alpine", pythonEBPFExpected},
+		{"pyroscope/ebpf-testdata-rideshare:3.12-alpine", pythonEBPFExpected},
+		{"pyroscope/ebpf-testdata-rideshare:3.13-rc-alpine", pythonEBPFExpected},
+		{"pyroscope/ebpf-testdata-rideshare:ubuntu-20.04", pythonEBPFExpectedUbuntu()},
+		{"pyroscope/ebpf-testdata-rideshare:ubuntu-22.04", pythonEBPFExpectedUbuntu()},
 	}
-
 	const ridesharePort = "5000"
+
+	l := log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
+	l = log.With(l, "ts", log.DefaultTimestampUTC, "caller", log.Caller(5))
+
+	pullImages(t, testdata, l)
 
 	for _, testdatum := range testdata {
 		testdatum := testdatum
 		t.Run(testdatum.image, func(t *testing.T) {
-			l := log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
-			l = log.With(l, "test", t.Name())
+
+			l := log.With(l, "test", t.Name())
 
 			rideshare := testutil.RunContainerWithPort(t, l, testdatum.image, ridesharePort)
 			defer rideshare.Kill()
@@ -71,6 +76,21 @@ func TestEBPFPythonProfiler(t *testing.T) {
 		})
 	}
 
+}
+
+func pullImages(t *testing.T, testdata []struct {
+	image    string
+	expected []byte
+}, l log.Logger) {
+	wg := sync.WaitGroup{}
+	for _, testdatum := range testdata {
+		wg.Add(1)
+		go func(img string) {
+			defer wg.Done()
+			testutil.PullImage(t, l, img)
+		}(testdatum.image)
+	}
+	wg.Wait()
 }
 
 func compareProfiles(t *testing.T, l log.Logger, expected []byte, actual map[string]struct{}) {
@@ -177,5 +197,6 @@ func loadgen(t *testing.T, l log.Logger, url string, n int) {
 		orderVehicle("car")
 		orderVehicle("scooter")
 		orderVehicle("cell_cls_issue")
+		orderVehicle("cell_self_issue")
 	}
 }

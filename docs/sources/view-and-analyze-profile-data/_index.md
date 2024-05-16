@@ -4,7 +4,7 @@ menuTitle: View and analyze profile data
 description: How to use Pyroscope to view and analyze profile data.
 aliases:
   - ../ingest-and-analyze-profile-data/
-weight: 50
+weight: 500
 keywords:
   - pyroscope
   - UI
@@ -40,4 +40,4 @@ For more information on using profiles in Grafana, refer to [Pyroscope and profi
 
 The Pyroscope app plugin works for Grafana Cloud.
 
-For more information on configuring these data sources, refer to the Pyroscope data source documentation in [Grafana Cloud](/docs/grafana-cloud/connect-externally-hosted/data-sources/grafana-pyroscope/) and [Grafana](/docs/grafana/latest/datasources/grafana-pyroscope/).
+For more information on configuring these data sources, refer to the Pyroscope data source documentation in [Grafana Cloud](/docs/grafana-cloud/connect-externally-hosted/data-sources/pyroscope/) and [Grafana](/docs/grafana/latest/datasources/grafana-pyroscope/).

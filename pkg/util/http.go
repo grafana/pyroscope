@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/felixge/httpsnoop"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -135,6 +136,30 @@ func (l Log) logWithRequest(r *http.Request) log.Logger {
 	return localLog
 }
 
+// measure request body size
+type reqBody struct {
+	b    io.ReadCloser
+	read byteSize
+}
+
+func (w *reqBody) Read(p []byte) (int, error) {
+	n, err := w.b.Read(p)
+	if n > 0 {
+		w.read += byteSize(n)
+	}
+	return n, err
+}
+
+func (w *reqBody) Close() error {
+	return w.b.Close()
+}
+
+type byteSize uint64
+
+func (bs byteSize) String() string {
+	return strings.Replace(humanize.IBytes(uint64(bs)), " ", "", 1)
+}
+
 // Wrap implements Middleware
 func (l Log) Wrap(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -187,28 +212,43 @@ func (l Log) Wrap(next http.Handler) http.Handler {
 				}
 			},
 		})
+
+		origBody := r.Body
+		defer func() {
+			// No need to leak our Body wrapper beyond the scope of this handler.
+			r.Body = origBody
+		}()
+
+		rBody := &reqBody{b: origBody}
+		r.Body = rBody
+
 		next.ServeHTTP(wrapped, r)
 
 		statusCode, writeErr := httpCode, httpErr.Err()
 
+		requestLogD := log.With(requestLog, "method", r.Method, "uri", uri, "status", statusCode, "duration", time.Since(begin))
+		if rBody.read > 0 {
+			requestLogD = log.With(requestLogD, "request_body_size", rBody.read)
+		}
+
 		if writeErr != nil {
 			if errors.Is(writeErr, context.Canceled) {
 				if l.LogRequestAtInfoLevel {
-					level.Info(requestLog).Log("msg", dslog.LazySprintf("%s %s %s, request cancelled: %s ws: %v; %s", r.Method, uri, time.Since(begin), writeErr, IsWSHandshakeRequest(r), headers))
+					level.Info(requestLogD).Log("msg", dslog.LazySprintf("request cancelled: %s ws: %v; %s", writeErr, IsWSHandshakeRequest(r), headers))
 				} else {
-					level.Debug(requestLog).Log("msg", dslog.LazySprintf("%s %s %s, request cancelled: %s ws: %v; %s", r.Method, uri, time.Since(begin), writeErr, IsWSHandshakeRequest(r), headers))
+					level.Debug(requestLogD).Log("msg", dslog.LazySprintf("request cancelled: %s ws: %v; %s", writeErr, IsWSHandshakeRequest(r), headers))
 				}
 			} else {
-				level.Warn(requestLog).Log("msg", dslog.LazySprintf("%s %s %s, error: %s ws: %v; %s", r.Method, uri, time.Since(begin), writeErr, IsWSHandshakeRequest(r), headers))
+				level.Warn(requestLogD).Log("msg", dslog.LazySprintf("error: %s ws: %v; %s", writeErr, IsWSHandshakeRequest(r), headers))
 			}
 
 			return
 		}
 		if 100 <= statusCode && statusCode < 500 {
 			if l.LogRequestAtInfoLevel {
-				level.Info(requestLog).Log("msg", dslog.LazySprintf("%s %s (%d) %s", r.Method, uri, statusCode, time.Since(begin)))
+				level.Info(requestLogD).Log("msg", "http request processed")
 			} else {
-				level.Debug(requestLog).Log("msg", dslog.LazySprintf("%s %s (%d) %s", r.Method, uri, statusCode, time.Since(begin)))
+				level.Debug(requestLogD).Log("msg", "http request processed")
 			}
 			if l.LogRequestHeaders && headers != nil {
 				if l.LogRequestAtInfoLevel {

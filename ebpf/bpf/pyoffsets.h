@@ -28,6 +28,9 @@ typedef struct {
     int16_t PyCodeObject_co_name;
     int16_t PyCodeObject_co_varnames;
     int16_t PyCodeObject_co_localsplusnames;
+    int16_t PyCodeObject__co_cell2arg;
+    int16_t PyCodeObject__co_cellvars;
+    int16_t PyCodeObject__co_nlocals;
     int16_t PyTupleObject_ob_item;
 
     int16_t PyVarObject_ob_size;
