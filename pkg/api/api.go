@@ -22,6 +22,8 @@ import (
 	"github.com/grafana/dskit/server"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 
+	pprofileotlp "github.com/grafana/pyroscope/api/otlp/collector/profiles/v1experimental"
+
 	"github.com/grafana/pyroscope/public"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/adhocprofiles/v1/adhocprofilesv1connect"
@@ -40,6 +42,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/frontend/frontendpb/frontendpbconnect"
 	"github.com/grafana/pyroscope/pkg/ingester"
+	"github.com/grafana/pyroscope/pkg/ingester/otlp"
 	"github.com/grafana/pyroscope/pkg/ingester/pyroscope"
 	"github.com/grafana/pyroscope/pkg/operations"
 	"github.com/grafana/pyroscope/pkg/querier"
@@ -212,6 +215,7 @@ func (a *API) RegisterOverridesExporter(oe *exporter.OverridesExporter) {
 // RegisterDistributor registers the endpoints associated with the distributor.
 func (a *API) RegisterDistributor(d *distributor.Distributor) {
 	pyroscopeHandler := pyroscope.NewPyroscopeIngestHandler(d, a.logger)
+	otlpHandler := otlp.NewOTLPIngestHandler(d, a.logger)
 	a.RegisterRoute("/ingest", pyroscopeHandler, true, true, "POST")
 	a.RegisterRoute("/pyroscope/ingest", pyroscopeHandler, true, true, "POST")
 	pushv1connect.RegisterPusherServiceHandler(a.server.HTTP, d, a.grpcAuthMiddleware, a.recoveryMiddleware)
@@ -219,6 +223,12 @@ func (a *API) RegisterDistributor(d *distributor.Distributor) {
 	a.indexPage.AddLinks(defaultWeight, "Distributor", []IndexPageLink{
 		{Desc: "Ring status", Path: "/distributor/ring"},
 	})
+
+	pprofileotlp.RegisterProfilesServiceServer(a.server.GRPC, otlpHandler)
+	// pprofileotlp.RegisterGRPCServer(a.server.GRPC, otlpHandler)
+
+	// TODO(@petethepig): implement http/protobuf and http/json support
+	// a.RegisterRoute("/v1/profiles", otlpHandler, true, true, "POST")
 }
 
 // RegisterMemberlistKV registers the endpoints associated with the memberlist KV store.

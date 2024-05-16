@@ -429,3 +429,6 @@ docs/%:
 .PHONY: run
 run: ## Run the pyroscope binary (pass parameters with 'make run PARAMS=-myparam')
 	./pyroscope $(PARAMS)
+
+# OTLP Protobuf generation
+include api/otlp/Makefile
