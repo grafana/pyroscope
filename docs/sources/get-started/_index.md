@@ -6,7 +6,7 @@ aliases:
 description: Learn how to get started with Pyroscope.
 menuTitle: Get started
 title: Get started with Pyroscope
-weight: 30
+weight: 250
 ---
 
 # Get started with Pyroscope

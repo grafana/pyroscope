@@ -2,7 +2,7 @@
 title: Introduction
 menuTitle: Introduction
 description: Learn about Pyrsocope and profiling.
-weight: 10
+weight: 200
 keywords:
   - Pyroscope
   - Profiling

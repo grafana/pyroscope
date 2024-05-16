@@ -4,7 +4,7 @@ menuTitle: View and analyze profile data
 description: How to use Pyroscope to view and analyze profile data.
 aliases:
   - ../ingest-and-analyze-profile-data/
-weight: 50
+weight: 500
 keywords:
   - pyroscope
   - UI
