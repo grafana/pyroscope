@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/prometheus/client_golang/prometheus"
 	"os"
 	"strconv"
 	"strings"
@@ -16,14 +15,16 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/grafana/pyroscope/ebpf/cpp/demangle"
 	ebpfmetrics "github.com/grafana/pyroscope/ebpf/metrics"
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
+	commonconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 
-	"github.com/go-kit/log/level"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -31,7 +32,6 @@ import (
 	"github.com/grafana/pyroscope/ebpf/pprof"
 	"github.com/grafana/pyroscope/ebpf/sd"
 	"github.com/grafana/pyroscope/ebpf/symtab"
-	commonconfig "github.com/prometheus/common/config"
 )
 
 var configFile = flag.String("config", "", "config file path")

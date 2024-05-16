@@ -34,6 +34,7 @@ import (
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/clientpool"
 	"github.com/grafana/pyroscope/pkg/distributor/aggregator"
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
@@ -126,6 +127,11 @@ type Limits interface {
 }
 
 func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactory, limits Limits, reg prometheus.Registerer, logger log.Logger, clientsOptions ...connect.ClientOption) (*Distributor, error) {
+	clientsOptions = append(
+		connectapi.DefaultClientOptions(),
+		clientsOptions...,
+	)
+
 	clients := promauto.With(reg).NewGauge(prometheus.GaugeOpts{
 		Namespace: "pyroscope",
 		Name:      "distributor_ingester_clients",

@@ -85,7 +85,7 @@ func newStoreGatewayQuerier(
 		Help:        "The current number of store-gateway clients in the pool.",
 		ConstLabels: map[string]string{"client": "querier"},
 	})
-	pool := clientpool.NeStoreGatewayPool(storesRing, factory, clientsMetrics, logger, clientsOptions...)
+	pool := clientpool.NewStoreGatewayPool(storesRing, factory, clientsMetrics, logger, clientsOptions...)
 
 	s := &StoreGatewayQuerier{
 		ring:               storesRing,

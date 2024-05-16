@@ -22,6 +22,7 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/testhelper"
 )
@@ -80,13 +81,13 @@ func (f *fakeBidiServerMergeProfilesStacktraces) Receive() (*ingestv1.MergeProfi
 
 func (q Queriers) ingesterClient() (ingesterv1connect.IngesterServiceClient, func()) {
 	mux := http.NewServeMux()
-	mux.Handle(ingesterv1connect.NewIngesterServiceHandler(&ingesterHandlerPhlareDB{q}))
+	mux.Handle(ingesterv1connect.NewIngesterServiceHandler(&ingesterHandlerPhlareDB{q}, connectapi.DefaultHandlerOptions()...))
 	serv := testhelper.NewInMemoryServer(mux)
 
 	var httpClient *http.Client = serv.Client()
 
 	client := ingesterv1connect.NewIngesterServiceClient(
-		httpClient, serv.URL(),
+		httpClient, serv.URL(), connectapi.DefaultClientOptions()...,
 	)
 
 	return client, serv.Close
