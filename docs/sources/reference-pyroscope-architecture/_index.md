@@ -2,7 +2,7 @@
 title: "Pyroscope architecture"
 menuTitle: "Reference: Pyroscope Architecture"
 description: "Learn about the Pyroscope architecture components and services."
-weight: 60
+weight: 600
 ---
 
 # Pyroscope architecture
