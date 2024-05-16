@@ -55,15 +55,19 @@ type RoundTripperInstrumentFunc func(next http.RoundTripper) http.RoundTripper
 // default settings which is wrapped with a variety of instrumented
 // RoundTrippers.
 func InstrumentedDefaultHTTPClient(instruments ...RoundTripperInstrumentFunc) *http.Client {
-	transport := defaultTransport
+	client := &http.Client{
+		Transport: defaultTransport,
+	}
+	return InstrumentedHTTPClient(client, instruments...)
+}
 
+// InstrumentedHTTPClient adds the associated instrumentation middlewares to the
+// provided http client.
+func InstrumentedHTTPClient(client *http.Client, instruments ...RoundTripperInstrumentFunc) *http.Client {
 	for i := len(instruments) - 1; i >= 0; i-- {
-		transport = instruments[i](transport)
+		client.Transport = instruments[i](client.Transport)
 	}
-
-	return &http.Client{
-		Transport: transport,
-	}
+	return client
 }
 
 // WithTracingTransport wraps the given RoundTripper with a tracing instrumented
