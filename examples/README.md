@@ -20,7 +20,7 @@ When sending profiles to Pyroscope, you can choose between two primary methods: 
 
 ![Pyroscope agent server diagram](https://grafana.com/media/docs/pyroscope/pyroscope_client_server_diagram.png)
 
-## About auto-instrumentation with Grafana Alloy or Agent collectors
+### About auto-instrumentation with Grafana Alloy or Agent collectors
 
 You can send data from your application using Grafana Alloy or Grafana Agent collectors.
 Both collectors support profiling with eBPF, Java, and Golang in pull mode.
@@ -42,7 +42,7 @@ Here's how it works:
 
 Using a collector provides a hassle-free option, especially when dealing with multiple applications or microservices, allowing you to centralize the profiling process without changing your application's codebase.
 
-## About instrumentation with Pyroscope SDKs
+### About instrumentation with Pyroscope SDKs
 
 Alternatively, Pyroscope SDKs offer you the ability to instrument your application directly for more precise profiling.
 Use the SDKs when you want complete control over the profiling process or when the application you are profiling is written in a language supported by the SDKs (for example, Java, Python, .NET, and others).
@@ -56,14 +56,14 @@ Here's how to use Pyroscope SDKs:
 By using the Pyroscope SDKs, you have the flexibility to customize the profiling process according to your application's specific requirements.
 You can selectively profile specific sections of code or send profiles at different intervals, depending on your needs.
 
-## Choose Grafana Agent or Pyroscope SDK to send profiles
+### Choose a Grafana collector or Pyroscope SDK to send profiles
 
-You can use Grafana Agent for auto-instrumentation or the Pyroscope instrumentation SDKs.
+You can use Grafana Alloy (recommended) or Grafana Agent (legacy) collectors for auto-instrumentation or the Pyroscope instrumentation SDKs.
 The method you choose depends on your specific use case and requirements.
 
 Here are some factors to consider when making the choice:
 
-- Ease of setup: The Grafana Agent is an ideal choice for a quick and straightforward setup without modifying your application's code. Note that eBPF profiling supports some languages (for example, Golang) better than others. More robust support for Python, Java, and other languages are in development.
+- Ease of setup: The Grafana Alloy/Agent collector is an ideal choice for a quick and straightforward setup without modifying your application's code. Note that eBPF profiling supports some languages (for example, Golang) better than others. More robust support for Python, Java, and other languages are in development.
 - Language support: If you want more control over the profiling process and your application is written in a language supported by the Pyroscope SDKs, consider using the SDKs.
 - Flexibility: The Pyroscope SDKs offer greater flexibility in terms of customizing the profiling process and capturing specific sections of code with labels. If you have particular profiling needs or want to fine-tune the data collection process, the SDKs would be your best bet.
 
