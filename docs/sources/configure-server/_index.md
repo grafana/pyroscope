@@ -8,7 +8,7 @@ keywords:
   - Pyroscope server configuration
 menuTitle: Configure the server
 title: Configure the Pyroscope server
-weight: 40
+weight: 500
 ---
 
 # Configure the Pyroscope server

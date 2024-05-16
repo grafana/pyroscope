@@ -1,7 +1,7 @@
 ---
 title: Release notes
 description: Release notes for Grafana Pyroscope
-weight: 2
+weight: 100
 ---
 
 # Release notes
