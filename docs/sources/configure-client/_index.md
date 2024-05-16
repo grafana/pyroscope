@@ -3,35 +3,45 @@ aliases:
   - /docs/phlare/latest/operators-guide/configure-agent/
   - /docs/phlare/latest/configure-client/
 title: "Configure the client to send profiles"
-menuTitle: "Configure the client"
+menuTitle: "Configure the client to send profiles"
 description: "Learn how to configure the client to send profiles from your application."
-weight: 35
+weight: 300
 ---
 
 # Configure the client to send profiles
 
 Pyroscope is a continuous profiling database that allows you to analyze the performance of your applications.
-When sending profiles to Pyroscope, you can choose between two primary methods: SDK Instrumentation and auto-instrumentation using the Grafana Agent.
+When sending profiles to Pyroscope, you can choose between two primary methods: SDK instrumentation and auto-instrumentation using Grafana Alloy or Grafana Agent.
 
 This document explains these two techniques and guide you when to choose each one.
 
 ![Pyroscope agent server diagram](https://grafana.com/media/docs/pyroscope/pyroscope_client_server_diagram.png)
 
-## About auto-instrumentation with Grafana Agent
+## About auto-instrumentation with Grafana Alloy or Agent collectors
+
+You can send data from your application using Grafana Alloy or Grafana Agent collectors.
+Both collectors support profiling with eBPF, Java, and Golang in pull mode.
+
+[Grafana Alloy](https://grafana.com/docs/alloy/latest/) is a vendor-neutral distribution of the OpenTelemetry (OTel) Collector.
+Alloy uniquely combines the very best OSS observability signals in the community.
+Grafana Alloy uses configuration file written using River.
+
+Alloy is the recommended collector instead of Grafana Agent.
+New installations should use Alloy.
 
 {{< docs/shared lookup="agent-deprecation.md" source="alloy" version="next" >}}
 
-The Grafana Agent is a component that runs alongside your application and periodically gathers profiling data from it.
+The Grafana collectors is a component that runs alongside your application and periodically gathers profiling data from it.
 This method is suitable when you want to collect profiles from existing applications without modifying their source code.
 This approach is simplified with the eBPF profiling option that doesn't necessitate pull or push mechanisms.
 
 Here's how it works:
 
-1. Install and configure Grafana Agent on the same machine or container where your application is running
-2. The Agent periodically retrieves your application's performance profiling data, regardless of the language or technology stack your application is using
-3. The captured profiles are then sent to the Pyroscope server for storage and analysis
+1. Install and configure the collector on the same machine or container where your application is running.
+2. The collector periodically retrieves your application's performance profiling data, regardless of the language or technology stack your application is using.
+3. The captured profiles are then sent to the Pyroscope server for storage and analysis.
 
-Using Grafana Agent provides a hassle-free option, especially when dealing with multiple applications or microservices, allowing you to centralize the profiling process without changing your application's codebase.
+Using a collector provides a hassle-free option, especially when dealing with multiple applications or microservices, allowing you to centralize the profiling process without changing your application's codebase.
 
 ## About instrumentation with Pyroscope SDKs
 
@@ -40,14 +50,16 @@ Use the SDKs when you want complete control over the profiling process or when t
 
 Here's how to use Pyroscope SDKs:
 
-1. Install the relevant Pyroscope SDK for your application's programming language (for example, pip package, npm package, Ruby gem).
-2. Instrument your application's code using the SDK to capture the necessary profiling data
-3. SDK automatically periodically push the captured profiles to the Pyroscope server for storage and analysis
+1. Install the relevant Pyroscope SDK for your application's programming language (for example, `pip` package, `npm` package, Ruby gem).
+2. Instrument your application's code using the SDK to capture the necessary profiling data.
+3. SDK automatically periodically pushes the captured profiles to the Pyroscope server for storage and analysis.
 
 By using the Pyroscope SDKs, you have the flexibility to customize the profiling process according to your application's specific requirements.
 You can selectively profile specific sections of code or send profiles at different intervals, depending on your needs.
 
 ## Choose Grafana Agent or Pyroscope SDK to send profiles
+
+{{< docs/shared lookup="agent-deprecation.md" source="alloy" version="next" >}}
 
 You can use Grafana Agent for auto-instrumentation or the Pyroscope instrumentation SDKs.
 The method you choose depends on your specific use case and requirements.
@@ -120,4 +132,4 @@ In Pyroscope, a period (`.`) is not a valid character inside of tags and labels.
 
 ## Assistance with Pyroscope
 
-If you have more questions, feel free to reach out in [our Slack channel](https://grafana.slack.com/) or create an [issue on GitHub](https://github.com/grafana/pyroscope) and the Pyroscope team will help!
+If you have more questions, feel free to reach out in [the community Slack channel](https://grafana.slack.com/) or create an [issue on GitHub](https://github.com/grafana/pyroscope).
