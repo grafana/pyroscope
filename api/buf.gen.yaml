@@ -15,7 +15,7 @@ plugins:
     out: gen/proto/go
     opt:
       - paths=source_relative
-      - features=marshal+unmarshal+size+grpc+clone+equal
+      - features=marshal+unmarshal+size+grpc+clone+equal+unmarshal_unsafe
 
   - name: connect-go
     out: gen/proto/go
