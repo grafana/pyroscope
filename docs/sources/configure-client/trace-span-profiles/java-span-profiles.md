@@ -89,7 +89,7 @@ try (Scope s = span.makeCurrent()){
 
 To view the span profiles in Grafana Tempo, you need to have a Grafana instance running and a data source configured to link trace spans and profiles.
 
-Refer to the [data source configuration documentation](/docs/grafana/datasources/tempo/configure-tempo-data-source) to see how to configure the visualization to link trace spans with profiles.
+Refer to the [data source configuration documentation](https://grafana.com/docs/grafana/latest/datasources/tempo/configure-tempo-data-source/) to see how to configure the visualization to link trace spans with profiles.
 
 To use a simple configuration, follow these steps:
 
