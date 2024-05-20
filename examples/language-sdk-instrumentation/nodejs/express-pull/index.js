@@ -1,7 +1,7 @@
 /* eslint-disable */
 const Pyroscope = require('@pyroscope/nodejs');
 
-const { expressMiddleware } = Pyroscope;
+const { expressMiddleware } = Pyroscope.default;
 
 const port = process.env['PORT'] || 5000;
 

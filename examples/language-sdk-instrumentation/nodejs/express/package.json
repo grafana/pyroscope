@@ -4,13 +4,14 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "Apache-2.0",
   "dependencies": {
-    "@pyroscope/nodejs": "0.3.3",
-    "express": "^4.17.3",
+    "@pyroscope/nodejs": "0.3.9",
+    "express": "^4.19.2",
     "morgan": "^1.10.0"
   },
   "resolutions": {

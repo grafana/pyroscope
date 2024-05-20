@@ -2,7 +2,8 @@
 import express from 'express';
 import morgan from 'morgan';
 
-import Pyroscope, { SourceMapper } from '@pyroscope/nodejs';
+import Pyroscope from '@pyroscope/nodejs';
+const SourceMapper = Pyroscope.SourceMapper;
 
 const port = process.env['PORT'] || 5000;
 
