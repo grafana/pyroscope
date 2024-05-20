@@ -11,6 +11,7 @@ import (
 	"github.com/go-kit/log"
 	giturl "github.com/kubescape/go-git-url"
 	"github.com/kubescape/go-git-url/apis"
+	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/oauth2"
 
 	vcsv1 "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1"
@@ -22,12 +23,16 @@ import (
 var _ vcsv1connect.VCSServiceHandler = (*Service)(nil)
 
 type Service struct {
-	logger log.Logger
+	logger     log.Logger
+	httpClient *http.Client
 }
 
-func New(logger log.Logger) *Service {
+func New(logger log.Logger, reg prometheus.Registerer) *Service {
+	httpClient := client.InstrumentedHTTPClient(logger, reg)
+
 	return &Service{
-		logger: logger,
+		logger:     logger,
+		httpClient: httpClient,
 	}
 }
 
@@ -81,7 +86,7 @@ func (q *Service) GithubRefresh(ctx context.Context, req *connect.Request[vcsv1.
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to refresh token"))
 	}
 
-	githubToken, err := refreshGithubToken(githubRequest)
+	githubToken, err := refreshGithubToken(githubRequest, q.httpClient)
 	if err != nil {
 		q.logger.Log("err", err, "msg", "failed to refresh token with GitHub")
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to refresh token"))
@@ -130,7 +135,7 @@ func (q *Service) GetFile(ctx context.Context, req *connect.Request[vcsv1.GetFil
 	}
 
 	// todo: we can support multiple provider: bitbucket, gitlab, etc.
-	ghClient, err := client.GithubClient(ctx, token)
+	ghClient, err := client.GithubClient(ctx, token, q.httpClient)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +178,7 @@ func (q *Service) GetCommit(ctx context.Context, req *connect.Request[vcsv1.GetC
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("only GitHub repositories are supported"))
 	}
 
-	ghClient, err := client.GithubClient(ctx, token)
+	ghClient, err := client.GithubClient(ctx, token, q.httpClient)
 	if err != nil {
 		return nil, err
 	}
