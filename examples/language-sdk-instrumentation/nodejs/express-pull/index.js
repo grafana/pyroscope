@@ -31,13 +31,19 @@ Pyroscope.init({ tags: { region } });
 app.use(expressMiddleware());
 
 app.get('/bike', function bikeSearchHandler(req, res) {
-  return genericSearchHandler(0.5)(req, res);
+  Pyroscope.wrapWithLabels({ vehicle: 'bike' }, () =>
+    genericSearchHandler(0.5)(req, res)
+  );
 });
 app.get('/car', function carSearchHandler(req, res) {
-  return genericSearchHandler(1)(req, res);
+  Pyroscope.wrapWithLabels({ vehicle: 'car' }, () =>
+    genericSearchHandler(1)(req, res)
+  );
 });
 app.get('/scooter', function scooterSearchHandler(req, res) {
-  return genericSearchHandler(0.25)(req, res);
+  Pyroscope.wrapWithLabels({ vehicle: 'scooter' }, () =>
+    genericSearchHandler(0.25)(req, res)
+  );
 });
 
 app.listen(port, () => {

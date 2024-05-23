@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -28,14 +29,46 @@ func main() {
 	updateJava()
 	updateRuby()
 	updatePython()
-	udpateDotnet()
+	updateDotnet()
+	updateNodeJS()
 }
 
 func getGHToken() {
 	ghToken, _ = s.sh("gh auth token")
 }
 
-func udpateDotnet() {
+func extractNodeJSVersion(tag Tag) *version {
+	re := regexp.MustCompile("(v)(\\d+).(\\d+).(\\d+)")
+	match := re.FindStringSubmatch(tag.Name)
+	if match != nil {
+		if match[1] == "v" {
+			major, err := strconv.Atoi(match[2])
+			requireNoError(err, "strconv")
+			minor, err := strconv.Atoi(match[3])
+			requireNoError(err, "strconv")
+			patch, err := strconv.Atoi(match[4])
+			requireNoError(err, "strconv")
+			return &version{major: major, minor: minor, patch: patch, tag: tag}
+		}
+	}
+	return nil
+}
+
+func updateNodeJS() {
+	tags := getTagsV("grafana/pyroscope-nodejs", extractNodeJSVersion)
+	last := tags[len(tags)-1]
+	fmt.Println(last)
+
+	replPackageJson := fmt.Sprintf(`    "@pyroscope/nodejs": "v%s",`, last.version())
+	rePackageJson := regexp.MustCompile(`    "@pyroscope/nodejs": "[^"]+",`)
+	for _, x := range []string{"express", "express-pull", "express-ts", "express-ts-inline"} {
+		path := filepath.Join("examples/language-sdk-instrumentation/nodejs", x)
+		replaceInplace(rePackageJson, filepath.Join(path, "package.json"), replPackageJson)
+		s.sh(fmt.Sprintf(`cd "%s"       && yarn`, path))
+	}
+}
+
+func updateDotnet() {
 	tags := getTagsV("grafana/pyroscope-dotnet", extractDotnetVersion())
 	last := tags[len(tags)-1]
 	fmt.Println(last)
