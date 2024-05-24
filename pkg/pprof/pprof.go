@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"io"
 	"os"
-	"reflect"
 	"sort"
 	"strings"
 	"sync"
@@ -578,12 +577,8 @@ func uint64Bytes(s []uint64) []byte {
 	if len(s) == 0 {
 		return nil
 	}
-	var bs []byte
-	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&bs))
-	hdr.Len = len(s) * 8
-	hdr.Cap = hdr.Len
-	hdr.Data = uintptr(unsafe.Pointer(&s[0]))
-	return bs
+	p := (*byte)(unsafe.Pointer(&s[0]))
+	return unsafe.Slice(p, len(s)*8)
 }
 
 type SamplesByLabels []*profilev1.Sample

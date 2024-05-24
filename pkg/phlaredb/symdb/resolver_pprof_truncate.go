@@ -1,7 +1,6 @@
 package symdb
 
 import (
-	"reflect"
 	"unsafe"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -228,13 +227,11 @@ func truncateLocations(locations []uint64, functions []int32, offset int, symbol
 }
 
 func uint64sliceString(u []uint64) string {
-	var s string
-	if len(u) != 0 {
-		hdr := (*reflect.SliceHeader)(unsafe.Pointer(&s))
-		hdr.Data = uintptr(unsafe.Pointer(&u[0]))
-		hdr.Len = len(u) * 8
+	if len(u) == 0 {
+		return ""
 	}
-	return s
+	p := (*byte)(unsafe.Pointer(&u[0]))
+	return unsafe.String(p, len(u)*8)
 }
 
 func (r *pprofProtoTruncatedSymbols) createStubSample() {
