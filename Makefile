@@ -201,7 +201,7 @@ docker-image/pyroscope/build: frontend/build go/bin
 docker-image/pyroscope/push: GOOS=linux
 docker-image/pyroscope/push: GOARCH=amd64
 docker-image/pyroscope/push: frontend/build go/bin
-	$(call docker_buildx,--push)
+	$(call docker_buildx,--push,)
 
 define UPDATER_CONFIG_JSON
 {
