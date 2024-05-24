@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"container/heap"
 	"io"
-	"reflect"
 	"sync"
 	"unsafe"
 
@@ -303,11 +302,5 @@ func (t *StacktraceTree) Bytes(dst io.Writer, maxNodes int64, funcs []string) {
 }
 
 func unsafeStringBytes(s string) []byte {
-	p := unsafe.Pointer((*reflect.StringHeader)(unsafe.Pointer(&s)).Data)
-	var b []byte
-	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&b))
-	hdr.Data = uintptr(p)
-	hdr.Cap = len(s)
-	hdr.Len = len(s)
-	return b
+	return unsafe.Slice(unsafe.StringData(s), len(s))
 }

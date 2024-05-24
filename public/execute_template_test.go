@@ -6,8 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/grafana/pyroscope/public"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/grafana/pyroscope/public"
 )
 
 func TestInjectingBaseURL(t *testing.T) {
