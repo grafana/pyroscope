@@ -23,6 +23,7 @@ import (
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
+	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/cfg"
 	"github.com/grafana/pyroscope/pkg/phlare"
 )
@@ -337,6 +338,7 @@ func (c *Cluster) QueryClient() querierv1connect.QuerierServiceClient {
 	return querierv1connect.NewQuerierServiceClient(
 		c.httpClient,
 		"http://querier",
+		connectapi.DefaultClientOptions()...,
 	)
 }
 
@@ -344,6 +346,7 @@ func (c *Cluster) PushClient() pushv1connect.PusherServiceClient {
 	return pushv1connect.NewPusherServiceClient(
 		c.httpClient,
 		"http://push",
+		connectapi.DefaultClientOptions()...,
 	)
 }
 

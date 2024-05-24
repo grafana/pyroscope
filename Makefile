@@ -268,7 +268,7 @@ $(BIN)/protoc-gen-go: Makefile go.mod
 
 $(BIN)/protoc-gen-connect-go: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install connectrpc.com/connect/cmd/protoc-gen-connect-go@v1.14.0
+	GOBIN=$(abspath $(@D)) $(GO) install connectrpc.com/connect/cmd/protoc-gen-connect-go@v1.16.2
 
 $(BIN)/protoc-gen-connect-go-mux: Makefile go.mod
 	@mkdir -p $(@D)

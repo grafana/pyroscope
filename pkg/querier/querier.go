@@ -32,6 +32,7 @@ import (
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1/vcsv1connect"
+	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/clientpool"
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
@@ -100,6 +101,8 @@ type NewQuerierParams struct {
 }
 
 func New(params *NewQuerierParams) (*Querier, error) {
+	params.ClientOptions = append(connectapi.DefaultClientOptions(), params.ClientOptions...)
+
 	// disable gzip compression for querier-ingester communication as most of payload are not benefit from it.
 	clientsMetrics := promauto.With(params.Reg).NewGauge(prometheus.GaugeOpts{
 		Namespace: "pyroscope",

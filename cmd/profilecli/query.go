@@ -20,6 +20,7 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/storegateway/v1/storegatewayv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/operations"
 	"github.com/k0kubun/pp/v3"
 	"github.com/klauspost/compress/gzip"
@@ -37,6 +38,7 @@ func (c *phlareClient) queryClient() querierv1connect.QuerierServiceClient {
 	return querierv1connect.NewQuerierServiceClient(
 		c.httpClient(),
 		c.URL,
+		connectapi.DefaultClientOptions()...,
 	)
 }
 
@@ -44,6 +46,7 @@ func (c *phlareClient) storeGatewayClient() storegatewayv1connect.StoreGatewaySe
 	return storegatewayv1connect.NewStoreGatewayServiceClient(
 		c.httpClient(),
 		c.URL,
+		connectapi.DefaultClientOptions()...,
 	)
 }
 
@@ -51,6 +54,7 @@ func (c *phlareClient) ingesterClient() ingesterv1connect.IngesterServiceClient 
 	return ingesterv1connect.NewIngesterServiceClient(
 		c.httpClient(),
 		c.URL,
+		connectapi.DefaultClientOptions()...,
 	)
 }
 

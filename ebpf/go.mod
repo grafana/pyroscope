@@ -3,7 +3,7 @@ module github.com/grafana/pyroscope/ebpf
 go 1.21
 
 require (
-	connectrpc.com/connect v1.14.0
+	connectrpc.com/connect v1.16.2
 	github.com/avvmoto/buf-readerat v0.0.0-20171115124131-a17c8cb89270
 	github.com/cespare/xxhash/v2 v2.2.0
 	github.com/cilium/ebpf v0.11.0

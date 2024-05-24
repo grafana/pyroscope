@@ -3,7 +3,7 @@ module github.com/grafana/pyroscope/api
 go 1.21
 
 require (
-	connectrpc.com/connect v1.14.0
+	connectrpc.com/connect v1.16.2
 	github.com/gorilla/mux v1.8.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.0
 	github.com/planetscale/vtprotobuf v0.6.0
