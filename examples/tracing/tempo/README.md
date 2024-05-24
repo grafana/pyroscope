@@ -34,7 +34,7 @@ less than the sample interval (10ms).
  - `rideshare` demo application instrumented with OpenTelemetry:
    - Go [OTel integration](https://github.com/grafana/otel-profiling-go)
    - Java [OTel integration](https://github.com/grafana/otel-profiling-java) 
- - `pyroscope` itself is instrumented with `opentracing-go` SDK and [`spanprofiler`](../../../pkg/util/spanprofiler) for profiling integration.
+ - `pyroscope` itself is instrumented with `opentracing-go` SDK and [`spanprofiler`](https://github.com/grafana/dskit/tree/main/spanprofiler) for profiling integration.
 
 ### Grafana Tempo configuration
 
