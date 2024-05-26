@@ -1,12 +1,10 @@
 name: image_fix
 
 on:
-  workflow_dispatch:
-
-permissions:
-  contents: write
-  packages: write
-  # issues: write
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   image_fix:
