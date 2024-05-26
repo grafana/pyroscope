@@ -1,0 +1,20 @@
+name: image_fix
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+  # issues: write
+
+jobs:
+  image_fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - run: docker buildx imagetools create --tag grafana/pyroscope:1.5.0 grafana/pyroscope:latest
