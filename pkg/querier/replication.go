@@ -144,26 +144,25 @@ const (
 // map of block ID to replicas containing the block, when empty replicas, the
 // block is already contained by a higher compaction level block in full.
 type replicasPerBlockID struct {
-	m            map[string][]string
-	meta         map[string]*typesv1.BlockInfo
-	instanceType map[string]instanceType
-	logger       log.Logger
+	m             map[string][]string
+	meta          map[string]*typesv1.BlockInfo
+	instanceTypes map[string][]instanceType
+	logger        log.Logger
 }
 
 func newReplicasPerBlockID(logger log.Logger) *replicasPerBlockID {
 	return &replicasPerBlockID{
-		m:            make(map[string][]string),
-		meta:         make(map[string]*typesv1.BlockInfo),
-		instanceType: make(map[string]instanceType),
-		logger:       logger,
+		m:             make(map[string][]string),
+		meta:          make(map[string]*typesv1.BlockInfo),
+		instanceTypes: make(map[string][]instanceType),
+		logger:        logger,
 	}
 }
 
 func (r *replicasPerBlockID) add(result []ResponseFromReplica[[]*typesv1.BlockInfo], t instanceType) {
 	for _, replica := range result {
-		// mark the replica's instance type
-		// TODO: Figure out if that breaks in single binary mode
-		r.instanceType[replica.addr] = t
+		// mark the replica's instance types (in single binary we can have the same replica have multiple types)
+		r.instanceTypes[replica.addr] = append(r.instanceTypes[replica.addr], t)
 
 		for _, block := range replica.response {
 			// add block to map
@@ -322,7 +321,7 @@ func (r *replicasPerBlockID) pruneSupersededBlocks(sharded bool) error {
 
 type blockPlanEntry struct {
 	*ingestv1.BlockHints
-	InstanceType instanceType
+	InstanceTypes []instanceType
 }
 
 type blockPlan map[string]*blockPlanEntry
@@ -397,11 +396,16 @@ func (r *replicasPerBlockID) blockPlan(ctx context.Context) map[string]*blockPla
 
 		// only get store gateways replicas
 		sgReplicas := lo.Filter(replicas, func(replica string, _ int) bool {
-			t, ok := r.instanceType[replica]
+			instanceTypes, ok := r.instanceTypes[replica]
 			if !ok {
 				return false
 			}
-			return t == storeGatewayInstance
+			for _, t := range instanceTypes {
+				if t == storeGatewayInstance {
+					return true
+				}
+			}
+			return false
 		})
 
 		if len(sgReplicas) > 0 {
@@ -423,8 +427,8 @@ func (r *replicasPerBlockID) blockPlan(ctx context.Context) map[string]*blockPla
 		p, exists := plan[selectedReplica]
 		if !exists {
 			p = &blockPlanEntry{
-				BlockHints:   &ingestv1.BlockHints{},
-				InstanceType: r.instanceType[selectedReplica],
+				BlockHints:    &ingestv1.BlockHints{},
+				InstanceTypes: r.instanceTypes[selectedReplica],
 			}
 			plan[selectedReplica] = p
 		}
@@ -443,15 +447,17 @@ func (r *replicasPerBlockID) blockPlan(ctx context.Context) map[string]*blockPla
 
 	var plannedIngesterBlocks, plannedStoreGatewayBlocks int
 	for replica, blocks := range plan {
-		t, ok := r.instanceType[replica]
+		instanceTypes, ok := r.instanceTypes[replica]
 		if !ok {
 			continue
 		}
-		if t == storeGatewayInstance {
-			plannedStoreGatewayBlocks += len(blocks.Ulids)
-		}
-		if t == ingesterInstance {
-			plannedIngesterBlocks += len(blocks.Ulids)
+		for _, t := range instanceTypes {
+			if t == storeGatewayInstance {
+				plannedStoreGatewayBlocks += len(blocks.Ulids)
+			}
+			if t == ingesterInstance {
+				plannedIngesterBlocks += len(blocks.Ulids)
+			}
 		}
 	}
 

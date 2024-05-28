@@ -66,14 +66,16 @@ func getDataFromPlan(plan blockPlan) (ingesterQueryScope *queryScope, storeGatew
 	deduplicationNeeded = false
 	for _, planEntry := range plan {
 		deduplicationNeeded = deduplicationNeeded || planEntry.Deduplication
-		if planEntry.InstanceType == ingesterInstance {
-			ingesterQueryScope.ComponentCount += 1
-			ingesterQueryScope.BlockCount += uint64(len(planEntry.Ulids))
-			ingesterQueryScope.blockIds = append(ingesterQueryScope.blockIds, planEntry.Ulids...)
-		} else {
-			storeGatewayQueryScope.ComponentCount += 1
-			storeGatewayQueryScope.BlockCount += uint64(len(planEntry.Ulids))
-			storeGatewayQueryScope.blockIds = append(storeGatewayQueryScope.blockIds, planEntry.Ulids...)
+		for _, t := range planEntry.InstanceTypes {
+			if t == ingesterInstance {
+				ingesterQueryScope.ComponentCount += 1
+				ingesterQueryScope.BlockCount += uint64(len(planEntry.Ulids))
+				ingesterQueryScope.blockIds = append(ingesterQueryScope.blockIds, planEntry.Ulids...)
+			} else {
+				storeGatewayQueryScope.ComponentCount += 1
+				storeGatewayQueryScope.BlockCount += uint64(len(planEntry.Ulids))
+				storeGatewayQueryScope.blockIds = append(storeGatewayQueryScope.blockIds, planEntry.Ulids...)
+			}
 		}
 	}
 	return ingesterQueryScope, storeGatewayQueryScope, deduplicationNeeded
