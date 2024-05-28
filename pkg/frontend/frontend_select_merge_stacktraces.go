@@ -40,7 +40,9 @@ func (f *Frontend) SelectMergeStacktraces(ctx context.Context,
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	if validated.IsEmpty {
-		return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{}), nil
+		return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{
+			Flamegraph: &querierv1.FlameGraph{},
+		}), nil
 	}
 	maxNodes, err := validation.ValidateMaxNodes(f.limits, tenantIDs, c.Msg.GetMaxNodes())
 	if err != nil {
