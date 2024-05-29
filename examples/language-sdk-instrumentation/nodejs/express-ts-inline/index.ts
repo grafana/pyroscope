@@ -26,16 +26,22 @@ const genericSearchHandler = (p: number) => (req: any, res: any) => {
 };
 
 app.get('/bike', function bikeSearchHandler(req, res) {
-  return genericSearchHandler(0.2)(req, res);
+  Pyroscope.wrapWithLabels({ vehicle: 'bike' }, () =>
+    genericSearchHandler(0.2)(req, res)
+  );
 });
 app.get('/car', function carSearchHandler(req, res) {
-  return genericSearchHandler(1)(req, res);
+  Pyroscope.wrapWithLabels({ vehicle: 'car' }, () =>
+    genericSearchHandler(1)(req, res)
+  );
 });
 app.get('/scooter', function scooterSearchHandler(req, res) {
-  return genericSearchHandler(0.5)(req, res);
+  Pyroscope.wrapWithLabels({ vehicle: 'scooter' }, () =>
+    genericSearchHandler(0.5)(req, res)
+  );
 });
 
-SourceMapper.create(["."])
+SourceMapper.create(['.'])
   .then((sourceMapper) => {
     Pyroscope.init({
       appName: 'nodejs',
@@ -46,8 +52,8 @@ SourceMapper.create(["."])
     Pyroscope.start();
   })
   .catch((e) => {
-    console.error(e)
-  })
+    console.error(e);
+  });
 
 app.listen(port, () => {
   console.log(
