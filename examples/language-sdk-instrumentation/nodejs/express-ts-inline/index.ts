@@ -5,8 +5,6 @@ import morgan from 'morgan';
 const Pyroscope = require('@pyroscope/nodejs');
 const SourceMapper = Pyroscope.default.SourceMapper;
 
-SourceMapper.create(["."])
-
 const port = process.env['PORT'] || 5000;
 
 const region = process.env['REGION'] || 'default';
