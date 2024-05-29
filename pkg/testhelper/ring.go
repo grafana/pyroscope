@@ -20,7 +20,7 @@ func NewMockRing(ingesters []ring.InstanceDesc, replicationFactor uint32) ring.R
 
 func (r MockRing) Get(key uint32, op ring.Operation, buf []ring.InstanceDesc, _ []string, _ []string) (ring.ReplicationSet, error) {
 	result := ring.ReplicationSet{
-		MaxErrors: 1,
+		MaxErrors: r.maxError(),
 		Instances: buf[:0],
 	}
 
@@ -31,6 +31,13 @@ func (r MockRing) Get(key uint32, op ring.Operation, buf []ring.InstanceDesc, _ 
 	return result, nil
 }
 
+func (r MockRing) maxError() int {
+	if r.replicationFactor >= 3 {
+		return 1
+	}
+	return 0
+}
+
 func (r MockRing) GetAllHealthy(op ring.Operation) (ring.ReplicationSet, error) {
 	return r.GetReplicationSetForOperation(op)
 }
@@ -38,7 +45,7 @@ func (r MockRing) GetAllHealthy(op ring.Operation) (ring.ReplicationSet, error) 
 func (r MockRing) GetReplicationSetForOperation(op ring.Operation) (ring.ReplicationSet, error) {
 	return ring.ReplicationSet{
 		Instances: r.ingesters,
-		MaxErrors: 1,
+		MaxErrors: r.maxError(),
 	}, nil
 }
 
