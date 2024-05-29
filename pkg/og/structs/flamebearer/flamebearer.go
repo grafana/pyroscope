@@ -291,6 +291,9 @@ func (fb FlamebearerProfileV1) Validate() error {
 			if l[i] >= len(fb.Flamebearer.Names) {
 				return fmt.Errorf("invalid name index %d, it should be smaller than %d", l[i], len(fb.Flamebearer.Levels))
 			}
+			if l[i] < 0 {
+				return fmt.Errorf("invalid name index %d, it should be a non-negative value", l[i])
+			}
 		}
 	}
 	return nil
