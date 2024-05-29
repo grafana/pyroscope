@@ -344,6 +344,21 @@ var _ = Describe("Checking profile validation", func() {
 		})
 	})
 
+	When("the name index is negative", func() {
+		Context("and we validate a single profile", func() {
+			var fb FlamebearerProfile
+			BeforeEach(func() {
+				fb.Metadata.Format = "single"
+				fb.Flamebearer.Names = []string{"name"}
+				fb.Flamebearer.Levels = [][]int{{0, 0, 0, -1}}
+			})
+
+			It("returns an error", func() {
+				Expect(fb.Validate()).To(MatchError("invalid name index -1, it should be a non-negative value"))
+			})
+		})
+	})
+
 	When("everything is valid", func() {
 		Context("and we validate a single profile", func() {
 			var fb FlamebearerProfile
