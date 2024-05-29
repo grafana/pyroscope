@@ -98,9 +98,9 @@ Pyroscope.init({
 Pyroscope.start()
 ```
 
-#### Dynamic labels for wall/cpu profiles
+#### Dynamic labels for Wall/CPU profiles
 
-In WAL/CPU profiles, labels can also be attached dynamically and help to separate different code paths:
+In Wall/CPU profiles, labels can also be attached dynamically and help to separate different code paths:
 
 ```javascript
 Pyroscope.wrapWithLabels({ vehicle: 'bike' }, () =>
