@@ -17,7 +17,7 @@ K6_READ_TOKEN="token" K6_TENANT_ID="tenant" K6_BASE_URL="url" k6 run tools/k6/re
 In order to run the load tests, you need an API token with a read scope. Once you have this token, you can use this command to kick off load tests with default settings:
 
 ```
-K6_BASE_URL="url" k6 run tools/k6/reads.js
+K6_READ_TOKEN="token" K6_TENANT_ID="tenant" K6_BASE_URL="url" k6 run tools/k6/reads.js
 ```
 
 This will run the load test locally against the specified Pyroscope deployment. Alternatively, you can trigger the test to run with k6 cloud executors by running:
