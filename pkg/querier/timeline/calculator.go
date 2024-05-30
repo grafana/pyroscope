@@ -8,7 +8,7 @@ import (
 
 var (
 	DefaultRes         int64 = 1500
-	DefaultMinInterval       = time.Second * 10
+	DefaultMinInterval       = time.Second * 15
 )
 
 // CalcPointInterval calculates the appropriate interval between each point (aka step)
