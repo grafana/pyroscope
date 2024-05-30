@@ -6,10 +6,10 @@ This directory contains load test scripts and helpers. Load test scripts are sto
 
 ### TL;DR
 
-To run load tests against `firedev001`, run this command:
+Use this command to run load tests:
 
 ```
-K6_READ_TOKEN="token" k6 run tools/k6/reads.js
+K6_READ_TOKEN="token" K6_TENANT_ID="tenant" K6_BASE_URL="url" k6 run tools/k6/reads.js
 ```
 
 ### Triggering a test
@@ -17,27 +17,26 @@ K6_READ_TOKEN="token" k6 run tools/k6/reads.js
 In order to run the load tests, you need an API token with a read scope. Once you have this token, you can use this command to kick off load tests with default settings:
 
 ```
-K6_READ_TOKEN="token" k6 run tools/k6/reads.js
+K6_BASE_URL="url" k6 run tools/k6/reads.js
 ```
 
-This will run the load test locally against the `firedev001` cell. Alternatively, you can trigger the test to run with k6 cloud executors by running:
+This will run the load test locally against the specified Pyroscope deployment. Alternatively, you can trigger the test to run with k6 cloud executors by running:
 
 ```
-k6 cloud load.js -e "K6_READ_TOKEN=token"
+k6 cloud load.js -e "K6_READ_TOKEN=token K6_TENANT_ID=tenant K6_BASE_URL=url"
 ```
 
 ### Configuration options
 
 By default, the tests are configured to run with one VU for 30 seconds. You can tune this from the commandline by using the `--vus N` and `--duration T` parameters, respectively. See the [k6 docs](https://k6.io/docs/using-k6/k6-options/reference/) for more options.
 
-Also by default, the tests will run against `firedev001` using the `1218` tenant. This can be changed by specifying the `K6_BASE_URL` and `K6_TENANT_ID` environment variables. For example, to run a test against a local Pyroscope instance, you could do:
+The `K6_BASE_URL` environment variable is required. It specifies the Pyroscope instance to run the load test against. This is the url that is used to push profiles. For example, to run a test against a local Pyroscope instance, you would do:
 
 ```
-K6_READ_TOKEN="xxx" K6_BASE_URL="http://localhost:4040" k6 run tools/k6/reads.js
+K6_BASE_URL="http://localhost:4040" k6 run tools/k6/reads.js
 ```
 
-> [!NOTE]
-> `K6_READ_TOKEN` must always be specified. However, when running locally, its value doesn't matter.
+The `K6_READ_TOKEN` and `K6_TENANT_ID` environment variables are used when running load tests against a Pyroscope deployment that requires authentication.
 
 ## Tests
 
