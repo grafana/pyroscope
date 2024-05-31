@@ -17,8 +17,16 @@ export const options = {
     },
   },
 
-  vus: 1,
-  duration: '30s',
+  scenarios: {
+    even_reads: {
+      executor: 'constant-arrival-rate',
+      duration: '15m',
+      rate: 5,
+      timeUnit: '1m',
+      preAllocatedVUs: 3,
+      maxVUs: 10,
+    },
+  },
 
   thresholds: {
     checks: ['rate>0.9'],
