@@ -34,11 +34,13 @@ func (q *Querier) AnalyzeQuery(ctx context.Context, req *connect.Request[querier
 	}
 	addBlockStatsToQueryScope(blockStatsFromReplicas, ingesterQueryScope)
 
-	blockStatsFromReplicas, err = q.getBlockStatsFromStoreGateways(ctx, plan, storeGatewayQueryScope.blockIds)
-	if err != nil {
-		return nil, err
+	if q.storeGatewayQuerier != nil {
+		blockStatsFromReplicas, err = q.getBlockStatsFromStoreGateways(ctx, plan, storeGatewayQueryScope.blockIds)
+		if err != nil {
+			return nil, err
+		}
+		addBlockStatsToQueryScope(blockStatsFromReplicas, storeGatewayQueryScope)
 	}
-	addBlockStatsToQueryScope(blockStatsFromReplicas, storeGatewayQueryScope)
 
 	queriedSeries, err := q.getQueriedSeriesCount(ctx, req.Msg)
 	if err != nil {
