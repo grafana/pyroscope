@@ -34,11 +34,13 @@ func (q *Querier) AnalyzeQuery(ctx context.Context, req *connect.Request[querier
 	}
 	addBlockStatsToQueryScope(blockStatsFromReplicas, ingesterQueryScope)
 
-	blockStatsFromReplicas, err = q.getBlockStatsFromStoreGateways(ctx, plan, storeGatewayQueryScope.blockIds)
-	if err != nil {
-		return nil, err
+	if q.storeGatewayQuerier != nil {
+		blockStatsFromReplicas, err = q.getBlockStatsFromStoreGateways(ctx, plan, storeGatewayQueryScope.blockIds)
+		if err != nil {
+			return nil, err
+		}
+		addBlockStatsToQueryScope(blockStatsFromReplicas, storeGatewayQueryScope)
 	}
-	addBlockStatsToQueryScope(blockStatsFromReplicas, storeGatewayQueryScope)
 
 	queriedSeries, err := q.getQueriedSeriesCount(ctx, req.Msg)
 	if err != nil {
@@ -66,14 +68,16 @@ func getDataFromPlan(plan blockPlan) (ingesterQueryScope *queryScope, storeGatew
 	deduplicationNeeded = false
 	for _, planEntry := range plan {
 		deduplicationNeeded = deduplicationNeeded || planEntry.Deduplication
-		if planEntry.InstanceType == ingesterInstance {
-			ingesterQueryScope.ComponentCount += 1
-			ingesterQueryScope.BlockCount += uint64(len(planEntry.Ulids))
-			ingesterQueryScope.blockIds = append(ingesterQueryScope.blockIds, planEntry.Ulids...)
-		} else {
-			storeGatewayQueryScope.ComponentCount += 1
-			storeGatewayQueryScope.BlockCount += uint64(len(planEntry.Ulids))
-			storeGatewayQueryScope.blockIds = append(storeGatewayQueryScope.blockIds, planEntry.Ulids...)
+		for _, t := range planEntry.InstanceTypes {
+			if t == ingesterInstance {
+				ingesterQueryScope.ComponentCount += 1
+				ingesterQueryScope.BlockCount += uint64(len(planEntry.Ulids))
+				ingesterQueryScope.blockIds = append(ingesterQueryScope.blockIds, planEntry.Ulids...)
+			} else {
+				storeGatewayQueryScope.ComponentCount += 1
+				storeGatewayQueryScope.BlockCount += uint64(len(planEntry.Ulids))
+				storeGatewayQueryScope.blockIds = append(storeGatewayQueryScope.blockIds, planEntry.Ulids...)
+			}
 		}
 	}
 	return ingesterQueryScope, storeGatewayQueryScope, deduplicationNeeded

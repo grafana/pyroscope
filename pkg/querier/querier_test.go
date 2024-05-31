@@ -1350,7 +1350,7 @@ func Test_splitQueryToStores(t *testing.T) {
 			start:           model.TimeFromUnixNano(int64(30 * time.Minute)),
 			end:             model.TimeFromUnixNano(int64(45*time.Minute) + int64(3*time.Hour)),
 			queryStoreAfter: 30 * time.Minute,
-			plan:            blockPlan{"replica-a": &blockPlanEntry{InstanceType: ingesterInstance, BlockHints: &ingestv1.BlockHints{Ulids: []string{"block-a", "block-b"}}}},
+			plan:            blockPlan{"replica-a": &blockPlanEntry{InstanceTypes: []instanceType{ingesterInstance}, BlockHints: &ingestv1.BlockHints{Ulids: []string{"block-a", "block-b"}}}},
 
 			expected: storeQueries{
 				queryStoreAfter: 0,
