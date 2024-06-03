@@ -18,6 +18,7 @@ import (
 	"github.com/grafana/dskit/runtimeconfig"
 	"github.com/grafana/dskit/server"
 	"github.com/grafana/dskit/services"
+	"github.com/grafana/pyroscope-go"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
@@ -485,7 +486,9 @@ func (f *Phlare) initServer() (services.Service, error) {
 		httpMetric,
 		objstoreTracerMiddleware,
 	}
-	f.Server.HTTPServer.Handler = middleware.Merge(defaultHTTPMiddleware...).Wrap(f.Server.HTTP)
+
+	serverHTTPHandler := pyroscope.LabelsFromBaggageHandler(f.Server.HTTP, pyroscope.K6Options()...)
+	f.Server.HTTPServer.Handler = middleware.Merge(defaultHTTPMiddleware...).Wrap(serverHTTPHandler)
 
 	s := NewServerService(f.Server, servicesToWaitFor, f.logger)
 	// todo configure http2

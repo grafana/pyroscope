@@ -3,6 +3,8 @@ package querier
 import (
 	"net/http"
 
+	"github.com/grafana/pyroscope-go"
+
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	vcsv1connect "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1/vcsv1connect"
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
@@ -18,5 +20,5 @@ func NewGRPCHandler(svc QuerierSvc) connectgrpc.GRPCHandler {
 	mux := http.NewServeMux()
 	mux.Handle(querierv1connect.NewQuerierServiceHandler(svc, connectapi.DefaultHandlerOptions()...))
 	mux.Handle(vcsv1connect.NewVCSServiceHandler(svc, connectapi.DefaultHandlerOptions()...))
-	return connectgrpc.NewHandler(mux)
+	return connectgrpc.NewHandler(pyroscope.LabelsFromBaggageHandler(mux, pyroscope.K6Options()...))
 }

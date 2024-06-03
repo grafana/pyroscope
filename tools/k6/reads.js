@@ -1,4 +1,5 @@
 import { group } from 'k6';
+import pyroscope from 'https://jslib.k6.io/http-instrumentation-pyroscope/1.0.0/index.js';
 
 import {
   doLabelNamesRequest,
@@ -54,6 +55,9 @@ export const options = {
 //    28    0.18   /querier.v1.QuerierService/LabelValues             ❌
 //    26    0.17   /querier.v1.QuerierService/SelectMergeSpanProfile  ❌
 //     1    0.01   /querier.v1.QuerierService/GetProfileStats         ❌
+
+// Enable Pyroscope auto-labeling.
+pyroscope.instrumentHTTP();
 
 export default function() {
   group('reads last 1h', function() {
