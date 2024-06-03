@@ -37,6 +37,12 @@ func New(logger log.Logger, reg prometheus.Registerer) *Service {
 }
 
 func (q *Service) GithubApp(ctx context.Context, req *connect.Request[vcsv1.GithubAppRequest]) (*connect.Response[vcsv1.GithubAppResponse], error) {
+	err := isGitHubIntegrationConfigured()
+	if err != nil {
+		q.logger.Log("err", err, "msg", "GitHub integration is not configured")
+		return nil, connect.NewError(connect.CodeUnimplemented, fmt.Errorf("GitHub integration is not configured"))
+	}
+
 	return connect.NewResponse(&vcsv1.GithubAppResponse{
 		ClientID: githubAppClientID,
 	}), nil
