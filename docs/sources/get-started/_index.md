@@ -95,7 +95,7 @@ Verify that you have installed [Docker](https://docs.docker.com/engine/install/)
    | Field | Value                                                                |
    | ----- | -------------------------------------------------------------------- |
    | Name  | Pyroscope                                                            |
-   | URL   | [http://pyroscope:4040/](http://pyroscope:4040/)                     |
+   | URL   | [http://pyroscope:4040/](http://pyroscope:4040/) OR [http://host.docker.internal:4040/](http://host.docker.internal:4040/) if running via docker                   |
 
   To learn more about adding data sources, see [Add a data source](/docs/grafana/latest/datasources/add-a-data-source/).
 
