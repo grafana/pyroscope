@@ -127,15 +127,16 @@ func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1
 		if len(l.Value) > limits.MaxLabelValueLength(tenantID) {
 			return NewErrorf(LabelValueTooLong, LabelValueTooLongErrorMsg, phlaremodel.LabelPairsString(ls), l.Value)
 		}
+		var origName string
 		var ok bool
-		if l.Name, ok = SanitizeLabelName(l.Name); !ok {
-			return NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "invalid label name '"+l.Name+"'")
+		if origName, l.Name, ok = SanitizeLabelName(l.Name); !ok {
+			return NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "invalid label name '"+origName+"'")
 		}
 		if !model.LabelValue(l.Value).IsValid() {
 			return NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "invalid label value '"+l.Value+"'")
 		}
 		if cmp := strings.Compare(lastLabelName, l.Name); cmp == 0 {
-			return NewErrorf(DuplicateLabelNames, DuplicateLabelNamesErrorMsg, phlaremodel.LabelPairsString(ls), l.Name)
+			return NewErrorf(DuplicateLabelNames, DuplicateLabelNamesErrorMsg, phlaremodel.LabelPairsString(ls), origName)
 		}
 		lastLabelName = l.Name
 	}
@@ -147,9 +148,9 @@ func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1
 // and returns the sanitized value.
 //
 // The only change the function makes is replacing dots with underscores.
-func SanitizeLabelName(ln string) (string, bool) {
+func SanitizeLabelName(ln string) (old, sanitized string, ok bool) {
 	if len(ln) == 0 {
-		return ln, false
+		return ln, ln, false
 	}
 	hasDots := false
 	for i, b := range ln {
@@ -157,12 +158,12 @@ func SanitizeLabelName(ln string) (string, bool) {
 			if b == '.' {
 				hasDots = true
 			} else {
-				return ln, false
+				return ln, ln, false
 			}
 		}
 	}
 	if !hasDots {
-		return ln, true
+		return ln, ln, true
 	}
 	r := []rune(ln)
 	for i, b := range r {
@@ -170,7 +171,7 @@ func SanitizeLabelName(ln string) (string, bool) {
 			r[i] = '_'
 		}
 	}
-	return string(r), true
+	return ln, string(r), true
 }
 
 type ProfileValidationLimits interface {
