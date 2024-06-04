@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -397,6 +398,39 @@ func TestValidateFlamegraphMaxNodes(t *testing.T) {
 			v, err := ValidateMaxNodes(tc.limits, []string{"tenant"}, tc.maxNodes)
 			require.Equal(t, tc.err, err)
 			require.Equal(t, tc.validated, v)
+		})
+	}
+}
+
+func Test_SanitizeLabelName(t *testing.T) {
+	for _, tc := range []struct {
+		input    string
+		expected string
+		valid    bool
+	}{
+		{"", "", false},
+		{".", "_", true},
+		{".a", "_a", true},
+		{"a.", "a_", true},
+		{"..", "__", true},
+		{"..a", "__a", true},
+		{"a..", "a__", true},
+		{"a.a", "a_a", true},
+		{".a.", "_a_", true},
+		{"..a..", "__a__", true},
+		{"世界", "世界", false},
+		{"界世_a", "界世_a", false},
+		{"界世__a", "界世__a", false},
+		{"a_世界", "a_世界", false},
+		{"_", "_", true},
+		{"__a", "__a", true},
+		{"__a__", "__a__", true},
+	} {
+		tc := tc
+		t.Run("", func(t *testing.T) {
+			actual, valid := SanitizeLabelName(tc.input)
+			assert.Equal(t, tc.expected, actual)
+			assert.Equal(t, tc.valid, valid)
 		})
 	}
 }

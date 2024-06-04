@@ -123,19 +123,54 @@ func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1
 	for _, l := range ls {
 		if len(l.Name) > limits.MaxLabelNameLength(tenantID) {
 			return NewErrorf(LabelNameTooLong, LabelNameTooLongErrorMsg, phlaremodel.LabelPairsString(ls), l.Name)
-		} else if len(l.Value) > limits.MaxLabelValueLength(tenantID) {
+		}
+		if len(l.Value) > limits.MaxLabelValueLength(tenantID) {
 			return NewErrorf(LabelValueTooLong, LabelValueTooLongErrorMsg, phlaremodel.LabelPairsString(ls), l.Value)
-		} else if !model.LabelName(l.Name).IsValid() {
+		}
+		var ok bool
+		if l.Name, ok = SanitizeLabelName(l.Name); !ok {
 			return NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "invalid label name '"+l.Name+"'")
-		} else if !model.LabelValue(l.Value).IsValid() {
+		}
+		if !model.LabelValue(l.Value).IsValid() {
 			return NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "invalid label value '"+l.Value+"'")
-		} else if cmp := strings.Compare(lastLabelName, l.Name); cmp == 0 {
+		}
+		if cmp := strings.Compare(lastLabelName, l.Name); cmp == 0 {
 			return NewErrorf(DuplicateLabelNames, DuplicateLabelNamesErrorMsg, phlaremodel.LabelPairsString(ls), l.Name)
 		}
 		lastLabelName = l.Name
 	}
 
 	return nil
+}
+
+// SanitizeLabelName reports whether the label name is valid,
+// and returns the sanitized value.
+//
+// The only change the function makes is replacing dots with underscores.
+func SanitizeLabelName(ln string) (string, bool) {
+	if len(ln) == 0 {
+		return ln, false
+	}
+	hasDots := false
+	for i, b := range ln {
+		if !((b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || b == '_' || (b >= '0' && b <= '9' && i > 0)) {
+			if b == '.' {
+				hasDots = true
+			} else {
+				return ln, false
+			}
+		}
+	}
+	if !hasDots {
+		return ln, true
+	}
+	r := []rune(ln)
+	for i, b := range r {
+		if b == '.' {
+			r[i] = '_'
+		}
+	}
+	return string(r), true
 }
 
 type ProfileValidationLimits interface {
