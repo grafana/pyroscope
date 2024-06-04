@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -50,7 +51,7 @@ func TestValidateLabels(t *testing.T) {
 				{Name: "foo3", Value: "bar"},
 				{Name: "foo4", Value: "bar"},
 			},
-			expectedErr:    `profile series '{foo1="bar", foo2="bar", foo3="bar", foo4="bar", service_name="svc"}' has 5 label names; limit 3`,
+			expectedErr:    `profile series '{foo1="bar", foo2="bar", foo3="bar", foo4="bar", service_name="svc"}' has 5 label names; limit 4`,
 			expectedReason: MaxLabelNamesPerSeries,
 		},
 		{
@@ -112,10 +113,22 @@ func TestValidateLabels(t *testing.T) {
 			expectedReason: DuplicateLabelNames,
 			expectedErr:    "profile with labels '{__name__=\"qux\", service_name=\"svc\", service_name=\"svc\"}' has duplicate label name: 'service_name'",
 		},
+
+		{
+			name: "dupe sanitized",
+			lbs: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "qux"},
+				{Name: "label.name", Value: "foo"},
+				{Name: "label.name", Value: "bar"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+			},
+			expectedReason: DuplicateLabelNames,
+			expectedErr:    "profile with labels '{__name__=\"qux\", label_name=\"foo\", label_name=\"bar\", service_name=\"svc\"}' has duplicate label name: 'label.name'",
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			err := ValidateLabels(MockLimits{
-				MaxLabelNamesPerSeriesValue: 3,
+				MaxLabelNamesPerSeriesValue: 4,
 				MaxLabelNameLengthValue:     12,
 				MaxLabelValueLengthValue:    10,
 			}, "foo", tt.lbs)
@@ -397,6 +410,44 @@ func TestValidateFlamegraphMaxNodes(t *testing.T) {
 			v, err := ValidateMaxNodes(tc.limits, []string{"tenant"}, tc.maxNodes)
 			require.Equal(t, tc.err, err)
 			require.Equal(t, tc.validated, v)
+		})
+	}
+}
+
+func Test_SanitizeLabelName(t *testing.T) {
+	for _, tc := range []struct {
+		input    string
+		expected string
+		valid    bool
+	}{
+		{"", "", false},
+		{".", "_", true},
+		{".a", "_a", true},
+		{"a.", "a_", true},
+		{"..", "__", true},
+		{"..a", "__a", true},
+		{"a..", "a__", true},
+		{"a.a", "a_a", true},
+		{".a.", "_a_", true},
+		{"..a..", "__a__", true},
+		{"世界", "世界", false},
+		{"界世_a", "界世_a", false},
+		{"界世__a", "界世__a", false},
+		{"a_世界", "a_世界", false},
+		{"0.a", "0.a", false},
+		{"0a", "0a", false},
+		{"a.0", "a_0", true},
+		{"a0", "a0", true},
+		{"_", "_", true},
+		{"__a", "__a", true},
+		{"__a__", "__a__", true},
+	} {
+		tc := tc
+		t.Run("", func(t *testing.T) {
+			origName, actual, valid := SanitizeLabelName(tc.input)
+			assert.Equal(t, tc.input, origName)
+			assert.Equal(t, tc.expected, actual)
+			assert.Equal(t, tc.valid, valid)
 		})
 	}
 }
