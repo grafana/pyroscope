@@ -42,3 +42,4 @@ yarn-error.log
 /.docker-image-id-pyroscope
 
 /.tmp
+tools/k6/.env
