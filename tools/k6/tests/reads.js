@@ -8,21 +8,21 @@ import {
   doSelectMergeProfileRequest,
   doSelectMergeStacktracesRequest,
   doSeriesRequest,
-} from './lib/request.js';
+} from '../lib/request.js';
 
 export const options = {
   ext: {
     loadimpact: {
-      projectID: 3542013,
-      name: 'pyroscope',
+      projectID: 3700226,
+      name: 'reads',
     },
   },
 
   scenarios: {
     even_reads: {
       executor: 'constant-arrival-rate',
-      duration: '15m',
-      rate: 5,
+      duration: '5m',
+      rate: 10,
       timeUnit: '1m',
       preAllocatedVUs: 3,
       maxVUs: 10,
@@ -60,29 +60,35 @@ export const options = {
 pyroscope.instrumentHTTP();
 
 export default function() {
-  group('reads last 1h', function() {
-    const { start, end } = newRelativeTimeRange(1, 'h');
-    doAllQueryRequests(start, end);
+  const timeRanges = (__ENV.K6_QUERY_DURATIONS || '1h').split(',').map((s) => {
+    return [
+      parseInt(s.slice(0, -1)),
+      s.slice(-1),
+    ];
   });
 
-  group('reads last 24h', function() {
-    const { start, end } = newRelativeTimeRange(24, 'h');
-    doAllQueryRequests(start, end);
-  });
+  const serviceName = __ENV.K6_QUERY_SERVICE_NAME || 'fire-dev-001/ingester';
+
+  for (const [scalar, unit] of timeRanges) {
+    group(`reads last ${scalar}${unit}`, () => {
+      const { start, end } = newRelativeTimeRange(scalar, unit);
+      doAllQueryRequests(serviceName, start, end);
+    });
+  }
 }
 
-function doAllQueryRequests(start, end) {
+function doAllQueryRequests(serviceName, start, end) {
   doSelectMergeProfileRequest({
     start,
     end,
     profile_typeID: 'process_cpu:cpu:nanoseconds:cpu:nanoseconds',
-    label_selector: '{service_name="fire-dev-001/ingester"}',
+    label_selector: `{service_name="${serviceName}"}`,
   });
 
   doRenderRequest({
     from: start,
     until: end,
-    query: 'process_cpu:cpu:nanoseconds:cpu:nanoseconds{service_name="fire-dev-001/ingester"}',
+    query: `process_cpu:cpu:nanoseconds:cpu:nanoseconds{service_name="${serviceName}"}`,
     aggregation: 'sum',
     format: 'json',
     'max-nodes': 16384,
@@ -92,7 +98,7 @@ function doAllQueryRequests(start, end) {
     start,
     end,
     profile_typeID: 'process_cpu:cpu:nanoseconds:cpu:nanoseconds',
-    label_selector: '{service_name="fire-dev-001/ingester"}',
+    label_selector: `{service_name="${serviceName}"}`,
     'max-nodes': 16384,
   });
 
@@ -100,7 +106,7 @@ function doAllQueryRequests(start, end) {
     start,
     end,
     matchers: [
-      '{__profile_type__="process_cpu:cpu:nanoseconds:cpu:nanoseconds", service_name="fire-dev-001/ingester"}',
+      `{__profile_type__="process_cpu:cpu:nanoseconds:cpu:nanoseconds", service_name="${serviceName}"}`,
     ],
   });
 
@@ -112,17 +118,16 @@ function doAllQueryRequests(start, end) {
   });
 
   doRenderDiffRequest({
-    rightQuery: 'process_cpu:cpu:nanoseconds:cpu:nanoseconds{service_name="fire-dev-001/ingester"}',
+    rightQuery: `process_cpu:cpu:nanoseconds:cpu:nanoseconds{service_name="${serviceName}"}`,
     rightFrom: start,
     rightUntil: end,
-    leftQuery: 'process_cpu:cpu:nanoseconds:cpu:nanoseconds{service_name="fire-dev-001/ingester"}',
+    leftQuery: `process_cpu:cpu:nanoseconds:cpu:nanoseconds{service_name="${serviceName}"}`,
     leftFrom: start - (end - start), // Whatever the right query range is, we want to go back the same amount.
     leftUntil: start,
     format: 'json',
     'max-nodes': 16384,
   });
 }
-
 
 function newRelativeTimeRange(scalar, unit) {
   const end = Date.now();
