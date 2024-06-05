@@ -295,17 +295,6 @@ func FixFunctionNamesForScriptingLanguages(p *pprof.Profile, md ingestion.Metada
 			line.FunctionId = newFunc.Id
 		}
 	}
-	//for _, fn := range p.Function {
-	//	// obtaining correct line number will require rewriting functions and slices
-	//	// lets not do it and wait until we render line numbers on frontend
-	//	const lineNumber = -1
-	//	name := fmt.Sprintf("%s:%d - %s",
-	//		p.StringTable[fn.Filename],
-	//		lineNumber,
-	//		p.StringTable[fn.Name])
-	//	sid := addString(name)
-	//	fn.Name = int64(sid)
-	//}
 }
 
 func fixSampleTypes(profile *profilev1.Profile) {
