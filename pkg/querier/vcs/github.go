@@ -2,6 +2,7 @@ package vcs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -147,4 +148,22 @@ func githubAuthTokenFromFormURLEncoded(values url.Values) (*githubAuthToken, err
 	}
 
 	return token, nil
+}
+
+func isGitHubIntegrationConfigured() error {
+	var errs []error
+
+	if githubAppClientID == "" {
+		errs = append(errs, fmt.Errorf("missing GITHUB_CLIENT_ID environment variable"))
+	}
+
+	if githubAppClientSecret == "" {
+		errs = append(errs, fmt.Errorf("missing GITHUB_CLIENT_SECRET environment variable"))
+	}
+
+	if len(githubSessionSecret) == 0 {
+		errs = append(errs, fmt.Errorf("missing GITHUB_SESSION_SECRET environment variable"))
+	}
+
+	return errors.Join(errs...)
 }
