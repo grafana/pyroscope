@@ -40,49 +40,52 @@ Your applications must be instrumented for profiling and tracing before you can 
 
 ## Configure the otel-profiling-java package
 
-To start collecting Span Profiles for your Java application, you need to include [otel-profiling-java](https://github.com/pyroscope-io/otel-profiling-java) in your code.
+To start collecting Span Profiles for your Java application, you need to include [otel-profiling-java](https://github.com/pyroscope-io/otel-profiling-java) as an extension to your application.
 
-This package is a `TracerProvider` implementation, that labels profiling data with span IDs which makes it possible to query for span-specific profiling data in Grafana Tempo UI.
+Let's assume you have this sample application docker image:
 
-```shell
-java -jar ./build/libs/rideshare-1.0-SNAPSHOT.jar \
-    -javaagent:./opentelemetry-javaagent.jar \
-    -Dotel.javaagent.extensions=./pyroscope-otel.jar \
-    -Dotel.pyroscope.start.profiling=true \
-    -Dpyroscope.application.name=ride-sharing-app-java-instrumentation  \
-    -Dpyroscope.format=jfr \
-    -Dpyroscope.profiler.event=itimer \
-    -Dpyroscope.server.address=$PYROSCOPE_SERVER_ADDRESS \
-    # rest of your otel-java-instrumentation configuration
+```Dockerfile
+# [...]
 
+EXPOSE 5000
+
+CMD ["java", "-Dserver.port=5000", "-jar", "./my-app.jar" ]
 ```
 
-Next, you need to create and configure the tracer provider:
-```java
-implementation("io.pyroscope:otel:0.10.1.11")
+Now by adding the OTEL Java agent and our Pyroscope Otel Java Agent extensions, you can enrich your profiles with span IDs which makes it possible to query for span-specific profiling data in Grafana Tempo UI:
 
-// obtain SdkTracerProviderBuilder
-SdkTracerProviderBuilder tpBuilder = ...
+```Dockerfile
+# [...]
 
-// Add PyroscopeOtelSpanProcessor to SdkTracerProviderBuilder
-PyroscopeOtelConfiguration pyroscopeTelemetryConfig = new PyroscopeOtelConfiguration.Builder()
-  .setAddSpanName(true)
-  .setRootSpanOnly(true)
-  .build();
-tpBuilder.addSpanProcessor(new PyroscopeOtelSpanProcessor(pyroscopeOtelConfig));
+EXPOSE 5000
 
-```
+## Add required libararies
+ADD https://github.com/grafana/pyroscope-java/releases/download/v0.12.2/pyroscope.jar ./pyroscope.jar
+ADD https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v1.17.0/opentelemetry-javaagent.jar opentelemetry-javaagent.jar
+ADD https://repo1.maven.org/maven2/io/pyroscope/otel/0.10.1.11/otel-0.10.1.11.jar pyroscope-otel.jar
 
-Now that we set up the tracer, we can create a new trace from anywhere and the profiler will automatically capture profiles for it.
-```java
-Span span = tracer.spanBuilder("findNearestVehicle").startSpan();
-try (Scope s = span.makeCurrent()){
-    // Your code goes here.
-} finally {
-    span.end();
-}
+ENV PYROSCOPE_APPLICATION_NAME=my-app
+ENV PYROSCOPE_FORMAT=jfr
+ENV PYROSCOPE_PROFILING_INTERVAL=10ms
+ENV PYROSCOPE_PROFILER_EVENT=itimer
+ENV PYROSCOPE_PROFILER_LOCK=10ms
+ENV PYROSCOPE_PROFILER_ALLOC=512k
+ENV PYROSCOPE_UPLOAD_INTERVAL=15s
+ENV OTEL_JAVAAGENT_EXTENSIONS=./pyroscope-otel.jar
+ENV OTEL_PYROSCOPE_ADD_PROFILE_URL=false
+ENV OTEL_PYROSCOPE_ADD_PROFILE_BASELINE_URL=false
+ENV OTEL_PYROSCOPE_START_PROFILING=true
 
-// Your code goes here.
+## Useful for debugging
+# ENV PYROSCOPE_LOG_LEVEL=debug
+
+## Those environment variables need to be overwritten at runtime, if you are using Grafana Cloud 
+ENV PYROSCOPE_SERVER_ADDRESS=http://localhost:4040
+# ENV PYROSCOPE_BASIC_AUTH_USER=123     ## Grafana Cloud Username
+# ENV PYROSCOPE_BASIC_AUTH_PASSWORD=glc_secret ## Grafana Cloud Password / API Token
+
+## Add the pyroscope and the opentelemetry java-agents
+CMD ["java", "-Dserver.port=5000", "-javaagent:./opentelemetry-javaagent.jar", "-javaagent:pyroscope.jar", "-jar", "./my-app.jar" ]
 ```
 
 ## View the span profiles in Grafana Tempo
