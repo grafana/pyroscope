@@ -27,6 +27,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grafana/pyroscope/pkg/model/relabel"
 	testhelper2 "github.com/grafana/pyroscope/pkg/pprof/testhelper"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -423,9 +424,12 @@ func Test_Sessions_Limit(t *testing.T) {
 
 func Test_SampleLabels(t *testing.T) {
 	type testCase struct {
-		description string
-		pushReq     *distributormodel.PushRequest
-		series      []*distributormodel.ProfileSeries
+		description           string
+		pushReq               *distributormodel.PushRequest
+		series                []*distributormodel.ProfileSeries
+		relabelRules          []*relabel.Config
+		expectBytesDropped    float64
+		expectProfilesDropped float64
 	}
 
 	testCases := []testCase{
@@ -655,7 +659,9 @@ func Test_SampleLabels(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.description, func(t *testing.T) {
-			series := extractSampleSeries(tc.pushReq)
+			series, actualBytesDropped, actualProfilesDropped := extractSampleSeries(tc.pushReq, tc.relabelRules)
+			assert.Equal(t, tc.expectBytesDropped, actualBytesDropped)
+			assert.Equal(t, tc.expectProfilesDropped, actualProfilesDropped)
 			require.Len(t, series, len(tc.series))
 			for i, actualSeries := range series {
 				expectedSeries := tc.series[i]

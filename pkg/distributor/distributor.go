@@ -39,6 +39,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/distributor/aggregator"
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/model/relabel"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/slices"
 	"github.com/grafana/pyroscope/pkg/tenant"
@@ -123,6 +124,7 @@ type Limits interface {
 	MaxProfileSymbolValueLength(tenantID string) int
 	MaxSessionsPerSeries(tenantID string) int
 	EnforceLabelsOrder(tenantID string) bool
+	IngestionRelabelingRules(tenantID string) []*relabel.Config
 	validation.ProfileValidationLimits
 	aggregator.Limits
 }
@@ -399,8 +401,11 @@ func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.Pu
 		series.Labels = d.limitMaxSessionsPerSeries(maxSessionsPerSeries, series.Labels)
 	}
 
-	// Next we split profiles by labels.
-	profileSeries := extractSampleSeries(req)
+	// Next we split profiles by labels and apply relabel rules.
+	profileSeries, bytesRelabelDropped, profilesRelabelDropped := extractSampleSeries(req, d.limits.IngestionRelabelingRules(tenantID))
+	validation.DiscardedBytes.WithLabelValues(string(validation.RelabelRules), tenantID).Add(bytesRelabelDropped)
+	validation.DiscardedProfiles.WithLabelValues(string(validation.RelabelRules), tenantID).Add(profilesRelabelDropped)
+
 	// Filter our series and profiles without samples.
 	for _, series := range profileSeries {
 		series.Samples = slices.RemoveInPlace(series.Samples, func(sample *distributormodel.ProfileSample, _ int) bool {
@@ -633,7 +638,46 @@ func (d *Distributor) HealthyInstancesCount() int {
 	return int(d.healthyInstancesCount.Load())
 }
 
-func extractSampleSeries(req *distributormodel.PushRequest) []*distributormodel.ProfileSeries {
+type groupsWithFingerprints struct {
+	labelSets    []phlaremodel.Labels
+	groups       []pprof.SampleGroup
+	fingerprints map[uint64][]int
+}
+
+func newGroupsWithFingerprints(n int) *groupsWithFingerprints {
+	return &groupsWithFingerprints{
+		labelSets:    make([]phlaremodel.Labels, 0, n),
+		groups:       make([]pprof.SampleGroup, 0, n),
+		fingerprints: make(map[uint64][]int),
+	}
+}
+
+func (g *groupsWithFingerprints) add(lbls phlaremodel.Labels, group pprof.SampleGroup) {
+	fp := lbls.Hash()
+	idxs, ok := g.fingerprints[fp]
+	if ok {
+		// fingerprint matches, check if the labels arethe same
+		for _, idx := range idxs {
+			if phlaremodel.CompareLabelPairs(g.labelSets[idx], lbls) == 0 {
+				// append samples to the group
+				g.groups[idx].Samples = append(g.groups[idx].Samples, group.Samples...)
+				return
+			}
+		}
+	}
+
+	// add the labels to the list
+	g.fingerprints[fp] = append(g.fingerprints[fp], len(g.labelSets))
+	g.labelSets = append(g.labelSets, lbls)
+	g.groups = append(g.groups, group)
+
+}
+
+func extractSampleSeries(req *distributormodel.PushRequest, relabelRules []*relabel.Config) (result []*distributormodel.ProfileSeries, bytesRelabelDropped, profilesRelabelDropped float64) {
+	var (
+		lblbuilder = phlaremodel.NewLabelsBuilder(phlaremodel.EmptyLabels())
+	)
+
 	profileSeries := make([]*distributormodel.ProfileSeries, 0, len(req.Series))
 	for _, series := range req.Series {
 		s := &distributormodel.ProfileSeries{
@@ -643,24 +687,64 @@ func extractSampleSeries(req *distributormodel.PushRequest) []*distributormodel.
 		for _, raw := range series.Samples {
 			pprof.RenameLabel(raw.Profile.Profile, pprof.ProfileIDLabelName, pprof.SpanIDLabelName)
 			groups := pprof.GroupSamplesWithoutLabels(raw.Profile.Profile, pprof.SpanIDLabelName)
+
 			if len(groups) == 0 || (len(groups) == 1 && len(groups[0].Labels) == 0) {
 				// No sample labels in the profile.
+
+				// relabel the labels of the series
+				lblbuilder.Reset(series.Labels)
+				if len(relabelRules) > 0 {
+					keep := relabel.ProcessBuilder(lblbuilder, relabelRules...)
+					if !keep {
+						bytesRelabelDropped += float64(raw.Profile.SizeVT())
+						profilesRelabelDropped++ // in this case we dropped a whole profile
+						continue
+					}
+				}
+
+				// Copy over the labels from the builder
+				s.Labels = lblbuilder.Labels()
+
 				// We do not modify the request.
 				s.Samples = append(s.Samples, raw)
+
 				continue
 			}
+
 			e := pprof.NewSampleExporter(raw.Profile.Profile)
+
+			// iterate through groups relabel them and find relevant overlapping labelsets
+			groupsKept := newGroupsWithFingerprints(len(groups))
 			for _, group := range groups {
+				lblbuilder.Reset(series.Labels)
+				addSampleLabelsToLabelsBuilder(lblbuilder, raw.Profile.Profile, group.Labels)
+				if len(relabelRules) > 0 {
+					keep := relabel.ProcessBuilder(lblbuilder, relabelRules...)
+					if !keep {
+						// not too sure if this is worth doing, as it might be quite expensive
+						bytesRelabelDropped += float64(exportSamples(e, group.Samples).SizeVT())
+						continue
+					}
+				}
+
+				// add the group to the list
+				groupsKept.add(lblbuilder.Labels(), group)
+			}
+
+			if len(groupsKept.groups) == 0 {
+				// no groups kept, count the whole profile as dropped
+				profilesRelabelDropped++
+			}
+
+			for idx, group := range groupsKept.groups {
 				// exportSamples creates a new profile with the samples provided.
 				// The samples are obtained via GroupSamples call, which means
 				// the underlying capacity is referenced by the source profile.
 				// Therefore, the slice has to be copied and samples zeroed to
 				// avoid ownership issues.
 				profile := exportSamples(e, group.Samples)
-				// Note that group.Labels reference strings from the source profile.
-				labels := mergeSeriesAndSampleLabels(raw.Profile.Profile, series.Labels, group.Labels)
 				profileSeries = append(profileSeries, &distributormodel.ProfileSeries{
-					Labels:  labels,
+					Labels:  groupsKept.labelSets[idx],
 					Samples: []*distributormodel.ProfileSample{{Profile: profile}},
 				})
 			}
@@ -669,7 +753,7 @@ func extractSampleSeries(req *distributormodel.PushRequest) []*distributormodel.
 			profileSeries = append(profileSeries, s)
 		}
 	}
-	return profileSeries
+	return profileSeries, bytesRelabelDropped, profilesRelabelDropped
 }
 
 func (d *Distributor) limitMaxSessionsPerSeries(maxSessionsPerSeries int, labels phlaremodel.Labels) phlaremodel.Labels {
@@ -712,18 +796,21 @@ func (d *Distributor) rateLimit(tenantID string, req *distributormodel.PushReque
 	return nil
 }
 
-// mergeSeriesAndSampleLabels merges sample labels with
-// series labels. Series labels take precedence.
-func mergeSeriesAndSampleLabels(p *googlev1.Profile, sl []*typesv1.LabelPair, pl []*googlev1.Label) []*typesv1.LabelPair {
-	m := phlaremodel.Labels(sl).Clone()
+// addSampleLabelsToLabelsBuilder: adds sample label that don't exists yet on the profile builder. So the existing labels take precedence.
+func addSampleLabelsToLabelsBuilder(b *phlaremodel.LabelsBuilder, p *googlev1.Profile, pl []*googlev1.Label) {
+	var name string
 	for _, l := range pl {
-		m = append(m, &typesv1.LabelPair{
-			Name:  p.StringTable[l.Key],
-			Value: p.StringTable[l.Str],
-		})
+		name = p.StringTable[l.Key]
+		if l.Str <= 0 {
+			// skip if label value is not a string
+			continue
+		}
+		if b.Get(name) != "" {
+			// do nothing if label name already exists
+			continue
+		}
+		b.Set(name, p.StringTable[l.Str])
 	}
-	sort.Stable(m)
-	return m.Unique()
 }
 
 func exportSamples(e *pprof.SampleExporter, samples []*googlev1.Sample) *pprof.Profile {
