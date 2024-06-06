@@ -82,7 +82,7 @@ type FlamebearerMetadataV1 struct {
 	Format string `json:"format"`
 	// Name of the spy / profiler used to generate the profile, if any.
 	SpyName string `json:"spyName"`
-	// Sample rate at which the profiler was operating.
+	// Sample rate at which the profiler was operating. Note: This unit is not related to the Units field and is measured in samples per second.
 	SampleRate uint32 `json:"sampleRate"`
 	// The unit of measurement for the profiled data.
 	Units metadata.Units `json:"units"`
