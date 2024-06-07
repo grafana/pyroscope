@@ -12,6 +12,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 	"github.com/oklog/ulid"
+	"github.com/parquet-go/parquet-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
@@ -523,6 +524,89 @@ func TestIsStale(t *testing.T) {
 	require.True(t, head.isStale(now.UnixNano(), now.Add(2*StaleGracePeriod)))
 	// Should not be stale if maxT is not passed.
 	require.False(t, head.isStale(now.Add(2*StaleGracePeriod).UnixNano(), now.Add(2*StaleGracePeriod)))
+}
+
+func profileWithID(id int) (*profilev1.Profile, uuid.UUID) {
+	p := newProfileFoo()
+	p.TimeNanos = int64(id)
+	return p, uuid.MustParse(fmt.Sprintf("00000000-0000-0000-0000-%012d", id))
+}
+
+func TestHead_ProfileOrder(t *testing.T) {
+	head := newTestHead(t)
+
+	p, u := profileWithID(1)
+	require.NoError(t, head.Ingest(
+		context.Background(),
+		p,
+		u,
+		&typesv1.LabelPair{Name: phlaremodel.LabelNameProfileName, Value: "memory"},
+		&typesv1.LabelPair{Name: phlaremodel.LabelNameOrder, Value: phlaremodel.LabelOrderEnforced},
+		&typesv1.LabelPair{Name: phlaremodel.LabelNameServiceName, Value: "service-a"},
+	))
+
+	p, u = profileWithID(2)
+	require.NoError(t, head.Ingest(
+		context.Background(),
+		p,
+		u,
+		&typesv1.LabelPair{Name: phlaremodel.LabelNameProfileName, Value: "memory"},
+		&typesv1.LabelPair{Name: phlaremodel.LabelNameOrder, Value: phlaremodel.LabelOrderEnforced},
+		&typesv1.LabelPair{Name: phlaremodel.LabelNameServiceName, Value: "service-b"},
+		&typesv1.LabelPair{Name: "____Label", Value: "important"},
+	))
+
+	p, u = profileWithID(3)
+	require.NoError(t, head.Ingest(
+		context.Background(),
+		p,
+		u,
+		&typesv1.LabelPair{Name: phlaremodel.LabelNameProfileName, Value: "memory"},
+		&typesv1.LabelPair{Name: phlaremodel.LabelNameOrder, Value: phlaremodel.LabelOrderEnforced},
+		&typesv1.LabelPair{Name: phlaremodel.LabelNameServiceName, Value: "service-c"},
+		&typesv1.LabelPair{Name: "AAALabel", Value: "important"},
+	))
+
+	p, u = profileWithID(4)
+	require.NoError(t, head.Ingest(
+		context.Background(),
+		p,
+		u,
+		&typesv1.LabelPair{Name: phlaremodel.LabelNameProfileName, Value: "cpu"},
+		&typesv1.LabelPair{Name: phlaremodel.LabelNameOrder, Value: phlaremodel.LabelOrderEnforced},
+		&typesv1.LabelPair{Name: phlaremodel.LabelNameServiceName, Value: "service-a"},
+		&typesv1.LabelPair{Name: "000Label", Value: "important"},
+	))
+
+	p, u = profileWithID(5)
+	require.NoError(t, head.Ingest(
+		context.Background(),
+		p,
+		u,
+		&typesv1.LabelPair{Name: phlaremodel.LabelNameProfileName, Value: "cpu"},
+		&typesv1.LabelPair{Name: phlaremodel.LabelNameOrder, Value: phlaremodel.LabelOrderEnforced},
+		&typesv1.LabelPair{Name: phlaremodel.LabelNameServiceName, Value: "service-b"},
+	))
+
+	p, u = profileWithID(6)
+	require.NoError(t, head.Ingest(
+		context.Background(),
+		p,
+		u,
+		&typesv1.LabelPair{Name: phlaremodel.LabelNameProfileName, Value: "cpu"},
+		&typesv1.LabelPair{Name: phlaremodel.LabelNameOrder, Value: phlaremodel.LabelOrderEnforced},
+		&typesv1.LabelPair{Name: phlaremodel.LabelNameServiceName, Value: "service-b"},
+	))
+
+	head.Flush(context.Background())
+
+	// test that the profiles are ordered correctly
+	type row struct{ TimeNanos uint64 }
+	rows, err := parquet.ReadFile[row](filepath.Join(head.headPath, "profiles.parquet"))
+	require.NoError(t, err)
+	require.Equal(t, []row{
+		{4}, {5}, {6}, {1}, {2}, {3},
+	}, rows)
 }
 
 func BenchmarkHeadIngestProfiles(t *testing.B) {
