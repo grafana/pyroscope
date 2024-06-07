@@ -1044,22 +1044,22 @@ func rangeSeries(it iter.Iterator[ProfileValue], start, end, step int64, aggrega
 Outer:
 	for currentStep := start; currentStep <= end; currentStep += step {
 		for {
-			aggregator, ok := aggregators[it.At().LabelsHash]
+			aggregator, ok := aggregators[it.At().LabelsHash()]
 			if !ok {
 				aggregator = NewTimeSeriesAggregator(aggregation)
-				aggregators[it.At().LabelsHash] = aggregator
+				aggregators[it.At().LabelsHash()] = aggregator
 			}
 			if it.At().Ts > currentStep {
 				if !aggregator.IsEmpty() {
-					series := seriesMap[it.At().LabelsHash]
+					series := seriesMap[it.At().LabelsHash()]
 					series.Points = append(series.Points, aggregator.GetAndReset())
 				}
 				break // no more profiles for the currentStep
 			}
 			// find or create series
-			series, ok := seriesMap[it.At().LabelsHash]
+			series, ok := seriesMap[it.At().LabelsHash()]
 			if !ok {
-				seriesMap[it.At().LabelsHash] = &typesv1.Series{
+				seriesMap[it.At().LabelsHash()] = &typesv1.Series{
 					Labels: it.At().Lbs,
 					Points: []*typesv1.Point{},
 				}

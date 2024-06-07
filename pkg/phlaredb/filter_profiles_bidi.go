@@ -11,7 +11,6 @@ import (
 	"github.com/prometheus/common/model"
 
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 )
@@ -45,16 +44,16 @@ func (pqi *indexedProfileIterator) At() ProfileWithIndex {
 
 type filterRequest interface {
 	*ingestv1.MergeProfilesStacktracesRequest |
-		*ingestv1.MergeProfilesLabelsRequest |
-		*ingestv1.MergeProfilesPprofRequest |
-		*ingestv1.MergeSpanProfileRequest
+	*ingestv1.MergeProfilesLabelsRequest |
+	*ingestv1.MergeProfilesPprofRequest |
+	*ingestv1.MergeSpanProfileRequest
 }
 
 type filterResponse interface {
 	*ingestv1.MergeProfilesStacktracesResponse |
-		*ingestv1.MergeProfilesLabelsResponse |
-		*ingestv1.MergeProfilesPprofResponse |
-		*ingestv1.MergeSpanProfileResponse
+	*ingestv1.MergeProfilesLabelsResponse |
+	*ingestv1.MergeProfilesPprofResponse |
+	*ingestv1.MergeSpanProfileResponse
 }
 
 func rewriteEOFError(err error) error {
@@ -72,8 +71,8 @@ func filterProfiles[B BidiServerMerge[Res, Req], Res filterResponse, Req filterR
 	defer sp.Finish()
 	selection := make([][]Profile, len(profiles))
 	selectProfileResult := &ingestv1.ProfileSets{
-		Profiles:   make([]*ingestv1.SeriesProfile, 0, batchProfileSize),
-		LabelsSets: make([]*typesv1.Labels, 0, batchProfileSize),
+		Profiles:     make([]*ingestv1.SeriesProfile, 0, batchProfileSize),
+		LabelsHashes: make([]uint64, 0, batchProfileSize),
 	}
 	its := make([]iter.Iterator[ProfileWithIndex], len(profiles))
 	for i, iter := range profiles {
@@ -93,7 +92,7 @@ func filterProfiles[B BidiServerMerge[Res, Req], Res filterResponse, Req filterR
 		)
 
 		seriesByFP := map[model.Fingerprint]labelWithIndex{}
-		selectProfileResult.LabelsSets = selectProfileResult.LabelsSets[:0]
+		selectProfileResult.LabelsHashes = selectProfileResult.LabelsHashes[:0]
 		selectProfileResult.Profiles = selectProfileResult.Profiles[:0]
 
 		for _, profile := range batch {
@@ -103,10 +102,10 @@ func filterProfiles[B BidiServerMerge[Res, Req], Res filterResponse, Req filterR
 			if !ok {
 				lblsIdx = labelWithIndex{
 					Labels: profile.Labels(),
-					index:  len(selectProfileResult.LabelsSets),
+					index:  len(selectProfileResult.LabelsHashes),
 				}
 				seriesByFP[profile.Fingerprint()] = lblsIdx
-				selectProfileResult.LabelsSets = append(selectProfileResult.LabelsSets, &typesv1.Labels{Labels: profile.Labels()})
+				selectProfileResult.LabelsHashes = append(selectProfileResult.LabelsHashes, uint64(profile.Fingerprint()))
 			}
 			selectProfileResult.Profiles = append(selectProfileResult.Profiles, &ingestv1.SeriesProfile{
 				LabelIndex: int32(lblsIdx.index),

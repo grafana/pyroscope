@@ -138,6 +138,7 @@ message MergeSpanProfileResult {
 message ProfileSets {
   repeated types.v1.Labels labelsSets = 1;
   repeated SeriesProfile profiles = 2;
+  repeated uint64 labelsHashes = 3;
 }
 
 message SeriesProfile {

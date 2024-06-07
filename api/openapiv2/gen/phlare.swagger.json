@@ -1079,6 +1079,13 @@
             "type": "object",
             "$ref": "#/definitions/v1SeriesProfile"
           }
+        },
+        "labelsHashes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uint64"
+          }
         }
       }
     },

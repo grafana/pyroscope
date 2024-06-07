@@ -1478,7 +1478,8 @@ func Series(ctx context.Context, req *ingestv1.SeriesRequest, blockGetter BlockG
 }
 
 var maxBlockProfile Profile = BlockProfile{
-	timestamp: model.Time(math.MaxInt64),
+	timestamp:   model.Time(math.MaxInt64),
+	fingerprint: model.Fingerprint(math.MaxUint64),
 }
 
 type BlockProfile struct {

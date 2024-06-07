@@ -28,6 +28,7 @@ import (
 type ProfileWithLabels struct {
 	Timestamp int64
 	phlaremodel.Labels
+	LabelsHash   uint64
 	IngesterAddr string
 }
 
@@ -40,16 +41,16 @@ type BidiClientMerge[Req any, Res any] interface {
 
 type Request interface {
 	*ingestv1.MergeProfilesStacktracesRequest |
-		*ingestv1.MergeProfilesLabelsRequest |
-		*ingestv1.MergeProfilesPprofRequest |
-		*ingestv1.MergeSpanProfileRequest
+	*ingestv1.MergeProfilesLabelsRequest |
+	*ingestv1.MergeProfilesPprofRequest |
+	*ingestv1.MergeSpanProfileRequest
 }
 
 type Response interface {
 	*ingestv1.MergeProfilesStacktracesResponse |
-		*ingestv1.MergeProfilesLabelsResponse |
-		*ingestv1.MergeProfilesPprofResponse |
-		*ingestv1.MergeSpanProfileResponse
+	*ingestv1.MergeProfilesLabelsResponse |
+	*ingestv1.MergeProfilesPprofResponse |
+	*ingestv1.MergeSpanProfileResponse
 }
 
 type MergeResult[R any] interface {
@@ -86,9 +87,9 @@ type mergeIterator[R any, Req Request, Res Response] struct {
 // Merging or querying profiles sample values is expensive, we only merge the sample of the profiles that are kept.
 // On creating the iterator, we send a request to ingesters to fetch the first batch.
 func NewMergeIterator[
-	R any,
-	Req Request,
-	Res Response,
+R any,
+Req Request,
+Res Response,
 ](ctx context.Context, r ResponseFromReplica[BidiClientMerge[Req, Res]],
 ) *mergeIterator[R, Req, Res] {
 	it := &mergeIterator[R, Req, Res]{
@@ -140,12 +141,22 @@ func (s *mergeIterator[R, Req, Res]) Next() bool {
 		}
 		s.currIdx = 0
 		s.currentProfile.Timestamp = s.curr.Profiles[s.currIdx].Timestamp
-		s.currentProfile.Labels = s.curr.LabelsSets[s.curr.Profiles[s.currIdx].LabelIndex].Labels
+		if len(s.curr.LabelsSets) > 0 {
+			s.currentProfile.Labels = s.curr.LabelsSets[s.curr.Profiles[s.currIdx].LabelIndex].Labels
+		}
+		if len(s.curr.LabelsHashes) > 0 {
+			s.currentProfile.LabelsHash = s.curr.LabelsHashes[s.curr.Profiles[s.currIdx].LabelIndex]
+		}
 		return true
 	}
 	s.currIdx++
 	s.currentProfile.Timestamp = s.curr.Profiles[s.currIdx].Timestamp
-	s.currentProfile.Labels = s.curr.LabelsSets[s.curr.Profiles[s.currIdx].LabelIndex].Labels
+	if len(s.curr.LabelsSets) > 0 {
+		s.currentProfile.Labels = s.curr.LabelsSets[s.curr.Profiles[s.currIdx].LabelIndex].Labels
+	}
+	if len(s.curr.LabelsHashes) > 0 {
+		s.currentProfile.LabelsHash = s.curr.LabelsHashes[s.curr.Profiles[s.currIdx].LabelIndex]
+	}
 	return true
 }
 
@@ -244,16 +255,17 @@ func skipDuplicates(ctx context.Context, its []MergeIterator) error {
 	var errors multierror.MultiError
 	tree := loser.New(its,
 		&ProfileWithLabels{
-			Timestamp: math.MaxInt64,
+			Timestamp:  math.MaxInt64,
+			LabelsHash: math.MaxUint64,
 		},
 		func(s MergeIterator) *ProfileWithLabels {
 			return s.At()
 		},
 		func(p1, p2 *ProfileWithLabels) bool {
-			if p1.Timestamp == p2.Timestamp {
-				return phlaremodel.CompareLabelPairs(p1.Labels, p2.Labels) < 0
+			if p1.LabelsHash == p2.LabelsHash {
+				return p1.Timestamp < p2.Timestamp
 			}
-			return p1.Timestamp < p2.Timestamp
+			return p1.LabelsHash < p2.LabelsHash
 		},
 		func(s MergeIterator) {
 			if err := s.Close(); err != nil {
@@ -266,13 +278,15 @@ func skipDuplicates(ctx context.Context, its []MergeIterator) error {
 	total := 0
 	previousTs := int64(-1)
 	previousLabels := phlaremodel.Labels{}
+	previousLabelsHash := uint64(0)
 	for tree.Next() {
 		next := tree.Winner()
 		profile := next.At()
 		total++
-		if previousTs != profile.Timestamp || phlaremodel.CompareLabelPairs(previousLabels, profile.Labels) != 0 {
+		if previousTs != profile.Timestamp || previousLabelsHash != profile.LabelsHash || phlaremodel.CompareLabelPairs(previousLabels, profile.Labels) != 0 {
 			previousTs = profile.Timestamp
 			previousLabels = profile.Labels
+			previousLabelsHash = profile.LabelsHash
 			next.Keep()
 			continue
 		}
@@ -417,10 +431,10 @@ func selectMergePprofProfile(ctx context.Context, ty *typesv1.ProfileType, respo
 }
 
 type ProfileValue struct {
-	Ts         int64
-	Lbs        []*typesv1.LabelPair
-	LabelsHash uint64
-	Value      float64
+	Ts    int64
+	Lbs   []*typesv1.LabelPair
+	Fp    model.Fingerprint
+	Value float64
 }
 
 func (p ProfileValue) Labels() phlaremodel.Labels {
@@ -429,6 +443,14 @@ func (p ProfileValue) Labels() phlaremodel.Labels {
 
 func (p ProfileValue) Timestamp() model.Time {
 	return model.Time(p.Ts)
+}
+
+func (p ProfileValue) Fingerprint() model.Fingerprint {
+	return p.Fp
+}
+
+func (p ProfileValue) LabelsHash() uint64 {
+	return uint64(p.Fp)
 }
 
 // selectMergeSeries selects the  profile from each ingester by deduping them and request merges of total values.
@@ -546,8 +568,8 @@ func newSeriesIterator(lbs []*typesv1.LabelPair, points []*typesv1.Point) *serie
 		point: points,
 
 		curr: ProfileValue{
-			Lbs:        lbs,
-			LabelsHash: phlaremodel.Labels(lbs).Hash(),
+			Lbs: lbs,
+			Fp:  model.Fingerprint(phlaremodel.Labels(lbs).Hash()),
 		},
 	}
 }

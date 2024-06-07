@@ -4,7 +4,6 @@ import (
 	"github.com/grafana/dskit/multierror"
 	"github.com/prometheus/common/model"
 
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/util/loser"
 )
 
@@ -13,16 +12,15 @@ type Timestamp interface {
 }
 
 type Profile interface {
-	Labels() phlaremodel.Labels
 	Timestamp
+	Fingerprint() model.Fingerprint
 }
 
 func lessProfile(p1, p2 Profile) bool {
-	if p1.Timestamp() == p2.Timestamp() {
-		// todo we could compare SeriesRef here
-		return phlaremodel.CompareLabelPairs(p1.Labels(), p2.Labels()) < 0
+	if p1.Fingerprint() == p2.Fingerprint() {
+		return p1.Timestamp() < p2.Timestamp()
 	}
-	return p1.Timestamp() < p2.Timestamp()
+	return p1.Fingerprint() < p2.Fingerprint()
 }
 
 type MergeIterator[P Profile] struct {
@@ -33,8 +31,8 @@ type MergeIterator[P Profile] struct {
 }
 
 // NewMergeIterator returns an iterator that k-way merges the given iterators.
-// The given iterators must be sorted by timestamp and labels themselves.
-// Optionally, the iterator can deduplicate profiles with the same timestamp and labels.
+// The given iterators must be sorted by series fingerprint and timestamp themselves.
+// Optionally, the iterator can deduplicate profiles with the same fingerprints and timestamps.
 func NewMergeIterator[P Profile](max P, deduplicate bool, iters ...Iterator[P]) Iterator[P] {
 	if len(iters) == 0 {
 		return NewEmptyIterator[P]()
@@ -73,8 +71,8 @@ func (i *MergeIterator[P]) Next() bool {
 			i.current = next.At()
 			return true
 		}
-		if next.At().Timestamp() != i.current.Timestamp() ||
-			phlaremodel.CompareLabelPairs(next.At().Labels(), i.current.Labels()) != 0 {
+		if next.At().Fingerprint() != i.current.Fingerprint() ||
+			next.At().Timestamp() != i.current.Timestamp() {
 			i.current = next.At()
 			return true
 		}
