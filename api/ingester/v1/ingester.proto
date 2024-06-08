@@ -136,8 +136,10 @@ message MergeSpanProfileResult {
 }
 
 message ProfileSets {
+  // DEPRECATED: Use fingerprints instead.
   repeated types.v1.Labels labelsSets = 1;
   repeated SeriesProfile profiles = 2;
+  repeated uint64 fingerprints = 3;
 }
 
 message SeriesProfile {

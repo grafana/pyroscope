@@ -26,9 +26,10 @@ import (
 )
 
 type ProfileWithLabels struct {
-	Timestamp int64
-	phlaremodel.Labels
+	Timestamp    int64
+	Fingerprint  uint64
 	IngesterAddr string
+	phlaremodel.Labels
 }
 
 type BidiClientMerge[Req any, Res any] interface {
@@ -139,14 +140,23 @@ func (s *mergeIterator[R, Req, Res]) Next() bool {
 			return false
 		}
 		s.currIdx = 0
-		s.currentProfile.Timestamp = s.curr.Profiles[s.currIdx].Timestamp
-		s.currentProfile.Labels = s.curr.LabelsSets[s.curr.Profiles[s.currIdx].LabelIndex].Labels
+		s.setCurrentProfile()
 		return true
 	}
 	s.currIdx++
-	s.currentProfile.Timestamp = s.curr.Profiles[s.currIdx].Timestamp
-	s.currentProfile.Labels = s.curr.LabelsSets[s.curr.Profiles[s.currIdx].LabelIndex].Labels
+	s.setCurrentProfile()
 	return true
+}
+
+func (s *mergeIterator[R, Req, Res]) setCurrentProfile() {
+	p := s.curr.Profiles[s.currIdx]
+	s.currentProfile.Timestamp = p.Timestamp
+	if len(s.curr.LabelsSets) > 0 {
+		s.currentProfile.Labels = s.curr.LabelsSets[p.LabelIndex].Labels
+	}
+	if len(s.curr.Fingerprints) > 0 {
+		s.currentProfile.Fingerprint = s.curr.Fingerprints[p.LabelIndex]
+	}
 }
 
 func (s *mergeIterator[R, Req, Res]) fetchBatch() {
@@ -250,10 +260,7 @@ func skipDuplicates(ctx context.Context, its []MergeIterator) error {
 			return s.At()
 		},
 		func(p1, p2 *ProfileWithLabels) bool {
-			if p1.Timestamp == p2.Timestamp {
-				return phlaremodel.CompareLabelPairs(p1.Labels, p2.Labels) < 0
-			}
-			return p1.Timestamp < p2.Timestamp
+			return p1.Timestamp <= p2.Timestamp
 		},
 		func(s MergeIterator) {
 			if err := s.Close(); err != nil {
@@ -262,17 +269,21 @@ func skipDuplicates(ctx context.Context, its []MergeIterator) error {
 		})
 
 	defer tree.Close()
+	// We rely on the fact that profiles are ordered by timestamp.
+	// In order to deduplicate profiles, we only keep the first profile
+	// with a given fingerprint for a given timestamp.
+	fingerprints := newTimestampedFingerprints()
 	duplicates := 0
 	total := 0
-	previousTs := int64(-1)
-	previousLabels := phlaremodel.Labels{}
 	for tree.Next() {
 		next := tree.Winner()
 		profile := next.At()
 		total++
-		if previousTs != profile.Timestamp || phlaremodel.CompareLabelPairs(previousLabels, profile.Labels) != 0 {
-			previousTs = profile.Timestamp
-			previousLabels = profile.Labels
+		fingerprint := profile.Fingerprint
+		if fingerprint == 0 && len(profile.Labels) > 0 {
+			fingerprint = profile.Labels.Hash()
+		}
+		if fingerprints.keep(profile.Timestamp, fingerprint) {
 			next.Keep()
 			continue
 		}
@@ -285,6 +296,61 @@ func skipDuplicates(ctx context.Context, its []MergeIterator) error {
 	}
 
 	return errors.Err()
+}
+
+func newTimestampedFingerprints() *timestampedFingerprints {
+	return &timestampedFingerprints{
+		timestamp:    math.MaxInt64,
+		fingerprints: make([]uint64, 0, 3),
+	}
+}
+
+type timestampedFingerprints struct {
+	timestamp    int64
+	fingerprints []uint64
+}
+
+// keep reports whether the profile has unique fingerprint for the timestamp.
+func (p *timestampedFingerprints) keep(ts int64, fingerprint uint64) bool {
+	if p.timestamp != ts {
+		p.reset(ts, fingerprint)
+		return true
+	}
+	return !p.fingerprintSeen(fingerprint)
+}
+
+func (p *timestampedFingerprints) reset(ts int64, fingerprint uint64) {
+	p.timestamp = ts
+	p.fingerprints = p.fingerprints[:1]
+	p.fingerprints[0] = fingerprint
+}
+
+func (p *timestampedFingerprints) fingerprintSeen(fingerprint uint64) (seen bool) {
+	// Typically, the number of profile replicas is less than 4,
+	// therefore, these cases are handled specially to avoid
+	// iterating through the fingerprints slice.
+	switch len(p.fingerprints) {
+	case 0:
+		panic("wrong use of timestampedFingerprints")
+	case 1:
+		seen = p.fingerprints[0] == fingerprint
+	case 2:
+		seen = p.fingerprints[0] == fingerprint || p.fingerprints[1] == fingerprint
+	case 3:
+		seen = p.fingerprints[0] == fingerprint || p.fingerprints[1] == fingerprint || p.fingerprints[2] == fingerprint
+	default:
+		for _, f := range p.fingerprints {
+			if f == fingerprint {
+				seen = true
+				break
+			}
+		}
+	}
+	if seen {
+		return true
+	}
+	p.fingerprints = append(p.fingerprints, fingerprint)
+	return false
 }
 
 // selectMergeTree selects the  profile from each ingester by deduping them and
