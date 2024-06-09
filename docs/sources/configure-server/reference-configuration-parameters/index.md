@@ -1815,6 +1815,10 @@ The `limits` block configures default and per-tenant limits imposed by component
 # CLI flag: -validation.max-sessions-per-series
 [max_sessions_per_series: <int> | default = 0]
 
+# Enforce labels order optimization.
+# CLI flag: -validation.enforce-labels-order
+[enforce_labels_order: <boolean> | default = false]
+
 # Maximum size of a profile in bytes. This is based off the uncompressed size. 0
 # to disable.
 # CLI flag: -validation.max-profile-size-bytes
