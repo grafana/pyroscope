@@ -15,7 +15,7 @@ const (
 
 	tokens    = 8
 	tokenLen  = 16
-	suffixLen = tokens + tokenLen
+	suffixLen = tokens + tokenLen // stacktraces shorter than suffixLen are not considered as truncated or missing stacks copied from
 
 	tokenBytesLen  = tokenLen * 8
 	suffixBytesLen = suffixLen * 8
@@ -112,7 +112,7 @@ func RepairGoTruncatedStacktraces(p *profilev1.Profile) {
 		if i+1 < len(groups) {
 			n = groups[i+1]
 		}
-		if s := n - g; s < minGroupSize {
+		if s := n - g; s < (minGroupSize - 1) {
 			continue
 		}
 		// We take suffix of the first sample in the group.
