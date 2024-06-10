@@ -315,13 +315,12 @@ func (r *Symbols) Tree(
 	maxNodes int64,
 ) (*model.Tree, error) {
 	t := treeSymbolsFromPool()
-	t.maxNodes = maxNodes
 	defer t.reset()
 	t.init(r, samples)
 	if err := r.Stacktraces.ResolveStacktraceLocations(ctx, t, samples.StacktraceIDs); err != nil {
 		return nil, err
 	}
-	return t.buildTree(), nil
+	return t.tree.Tree(maxNodes, t.symbols.Strings), nil
 }
 
 // findCallSite returns the stack trace of the call site

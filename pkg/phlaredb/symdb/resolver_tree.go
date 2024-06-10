@@ -1,7 +1,6 @@
 package symdb
 
 import (
-	"bytes"
 	"sync"
 
 	"github.com/grafana/pyroscope/pkg/model"
@@ -9,12 +8,11 @@ import (
 )
 
 type treeSymbols struct {
-	symbols  *Symbols
-	samples  *schemav1.Samples
-	tree     *model.StacktraceTree
-	maxNodes int64
-	lines    []int32
-	cur      int
+	symbols *Symbols
+	samples *schemav1.Samples
+	tree    *model.StacktraceTree
+	lines   []int32
+	cur     int
 }
 
 var treeSymbolsPool = sync.Pool{
@@ -54,15 +52,4 @@ func (r *treeSymbols) InsertStacktrace(_ uint32, locations []int32) {
 	}
 	r.tree.Insert(r.lines, int64(r.samples.Values[r.cur]))
 	r.cur++
-}
-
-func (r *treeSymbols) buildTree() *model.Tree {
-	// TODO(kolesnikovae): Eliminate intermediate serialization.
-	var buf bytes.Buffer
-	r.tree.Bytes(&buf, r.maxNodes, r.symbols.Strings)
-	t, err := model.UnmarshalTree(buf.Bytes())
-	if err != nil {
-		panic(err)
-	}
-	return t
 }
