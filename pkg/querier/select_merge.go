@@ -41,16 +41,16 @@ type BidiClientMerge[Req any, Res any] interface {
 
 type Request interface {
 	*ingestv1.MergeProfilesStacktracesRequest |
-		*ingestv1.MergeProfilesLabelsRequest |
-		*ingestv1.MergeProfilesPprofRequest |
-		*ingestv1.MergeSpanProfileRequest
+	*ingestv1.MergeProfilesLabelsRequest |
+	*ingestv1.MergeProfilesPprofRequest |
+	*ingestv1.MergeSpanProfileRequest
 }
 
 type Response interface {
 	*ingestv1.MergeProfilesStacktracesResponse |
-		*ingestv1.MergeProfilesLabelsResponse |
-		*ingestv1.MergeProfilesPprofResponse |
-		*ingestv1.MergeSpanProfileResponse
+	*ingestv1.MergeProfilesLabelsResponse |
+	*ingestv1.MergeProfilesPprofResponse |
+	*ingestv1.MergeSpanProfileResponse
 }
 
 type MergeResult[R any] interface {
@@ -87,9 +87,9 @@ type mergeIterator[R any, Req Request, Res Response] struct {
 // Merging or querying profiles sample values is expensive, we only merge the sample of the profiles that are kept.
 // On creating the iterator, we send a request to ingesters to fetch the first batch.
 func NewMergeIterator[
-	R any,
-	Req Request,
-	Res Response,
+R any,
+Req Request,
+Res Response,
 ](ctx context.Context, r ResponseFromReplica[BidiClientMerge[Req, Res]],
 ) *mergeIterator[R, Req, Res] {
 	it := &mergeIterator[R, Req, Res]{
@@ -301,13 +301,13 @@ func skipDuplicates(ctx context.Context, its []MergeIterator) error {
 func newTimestampedFingerprints() *timestampedFingerprints {
 	return &timestampedFingerprints{
 		timestamp:    math.MaxInt64,
-		fingerprints: make([]uint64, 0, 3),
+		fingerprints: make(map[uint64]struct{}),
 	}
 }
 
 type timestampedFingerprints struct {
 	timestamp    int64
-	fingerprints []uint64
+	fingerprints map[uint64]struct{}
 }
 
 // keep reports whether the profile has unique fingerprint for the timestamp.
@@ -321,35 +321,16 @@ func (p *timestampedFingerprints) keep(ts int64, fingerprint uint64) bool {
 
 func (p *timestampedFingerprints) reset(ts int64, fingerprint uint64) {
 	p.timestamp = ts
-	p.fingerprints = p.fingerprints[:1]
-	p.fingerprints[0] = fingerprint
+	p.fingerprints = make(map[uint64]struct{})
+	p.fingerprints[fingerprint] = struct{}{}
 }
 
 func (p *timestampedFingerprints) fingerprintSeen(fingerprint uint64) (seen bool) {
-	// Typically, the number of profile replicas is less than 4,
-	// therefore, these cases are handled specially to avoid
-	// iterating through the fingerprints slice.
-	switch len(p.fingerprints) {
-	case 0:
-		panic("wrong use of timestampedFingerprints")
-	case 1:
-		seen = p.fingerprints[0] == fingerprint
-	case 2:
-		seen = p.fingerprints[0] == fingerprint || p.fingerprints[1] == fingerprint
-	case 3:
-		seen = p.fingerprints[0] == fingerprint || p.fingerprints[1] == fingerprint || p.fingerprints[2] == fingerprint
-	default:
-		for _, f := range p.fingerprints {
-			if f == fingerprint {
-				seen = true
-				break
-			}
-		}
-	}
+	_, seen = p.fingerprints[fingerprint]
 	if seen {
 		return true
 	}
-	p.fingerprints = append(p.fingerprints, fingerprint)
+	p.fingerprints[fingerprint] = struct{}{}
 	return false
 }
 
