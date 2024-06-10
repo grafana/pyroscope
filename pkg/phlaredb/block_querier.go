@@ -894,13 +894,8 @@ func MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[in
 		return err
 	}
 
-	var buf bytes.Buffer
-	if err = t.MarshalTruncate(&buf, r.GetMaxNodes()); err != nil {
-		return err
-	}
-
 	// sends the final result to the client.
-	treeBytes := buf.Bytes()
+	treeBytes := t.Bytes(r.GetMaxNodes())
 	sp.LogFields(
 		otlog.String("msg", "sending the final result to the client"),
 		otlog.Int("tree_bytes", len(treeBytes)),
@@ -1042,13 +1037,8 @@ func MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.M
 		return err
 	}
 
-	var buf bytes.Buffer
-	if err = t.MarshalTruncate(&buf, r.GetMaxNodes()); err != nil {
-		return err
-	}
-
 	// sends the final result to the client.
-	treeBytes := buf.Bytes()
+	treeBytes := t.Bytes(r.GetMaxNodes())
 	sp.LogFields(
 		otlog.String("msg", "sending the final result to the client"),
 		otlog.Int("tree_bytes", len(treeBytes)),

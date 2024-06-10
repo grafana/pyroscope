@@ -1,6 +1,7 @@
 package model
 
 import (
+	"bytes"
 	"container/heap"
 	"fmt"
 	"io"
@@ -325,6 +326,15 @@ func (h *minHeap) Pop() interface{} {
 }
 
 const truncatedNodeName = "other"
+
+// Bytes returns marshaled tree byte representation; the number of nodes
+// is limited to maxNodes. The function modifies the tree: truncated nodes
+// are removed from the tree in place.
+func (t *Tree) Bytes(maxNodes int64) []byte {
+	var buf bytes.Buffer
+	_ = t.MarshalTruncate(&buf, maxNodes)
+	return buf.Bytes()
+}
 
 // MarshalTruncate writes tree byte representation to the writer provider,
 // the number of nodes is limited to maxNodes. The function modifies

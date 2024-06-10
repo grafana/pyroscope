@@ -1063,6 +1063,15 @@
         }
       }
     },
+    "v1ProfileFormat": {
+      "type": "string",
+      "enum": [
+        "PROFILE_FORMAT_UNSPECIFIED",
+        "PROFILE_FORMAT_FLAMEGRAPH",
+        "PROFILE_FORMAT_TREE"
+      ],
+      "default": "PROFILE_FORMAT_UNSPECIFIED"
+    },
     "v1ProfileSets": {
       "type": "object",
       "properties": {
@@ -1238,6 +1247,11 @@
       "properties": {
         "flamegraph": {
           "$ref": "#/definitions/v1FlameGraph"
+        },
+        "tree": {
+          "type": "string",
+          "format": "byte",
+          "description": "Pyroscope tree bytes."
         }
       }
     },
@@ -1264,6 +1278,10 @@
           "type": "string",
           "format": "int64",
           "title": "Limit the nodes returned to only show the node with the max_node's biggest total"
+        },
+        "format": {
+          "$ref": "#/definitions/v1ProfileFormat",
+          "description": "Profile format specifies the format of profile to be returned.\nIf not specified, the profile will be returned in flame graph format."
         }
       }
     },
@@ -1272,6 +1290,11 @@
       "properties": {
         "flamegraph": {
           "$ref": "#/definitions/v1FlameGraph"
+        },
+        "tree": {
+          "type": "string",
+          "format": "byte",
+          "description": "Pyroscope tree bytes."
         }
       }
     },

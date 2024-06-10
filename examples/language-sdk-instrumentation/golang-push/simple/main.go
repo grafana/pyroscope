@@ -25,7 +25,7 @@ func fastFunction(c context.Context) {
 
 func slowFunction(c context.Context) {
 	// standard pprof.Do wrappers work as well
-	pprof.Do(c, pprof.Labels("function", "slow"), func(c context.Context) {
+	pprof.Do(c, pprof.Labels("function", "slow", "A_label", "a_value"), func(c context.Context) {
 		work(80000000)
 	})
 }
