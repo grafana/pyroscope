@@ -20,7 +20,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 )
 
-func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*phlaremodel.Tree, error) {
+func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile], maxNodes int64) (*phlaremodel.Tree, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
@@ -32,7 +32,7 @@ func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.I
 	defer b.queries.Done()
 
 	ctx = query.AddMetricsToContext(ctx, b.metrics.query)
-	r := symdb.NewResolver(ctx, b.symbols)
+	r := symdb.NewResolver(ctx, b.symbols, symdb.WithResolverMaxNodes(maxNodes))
 	defer r.Release()
 	if err := mergeByStacktraces(ctx, b.profileSourceTable().file, rows, r); err != nil {
 		return nil, err

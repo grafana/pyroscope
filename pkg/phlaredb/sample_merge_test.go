@@ -125,7 +125,7 @@ func TestMergeSampleByStacktraces(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			r, err := q.queriers[0].MergeByStacktraces(ctx, profiles)
+			r, err := q.queriers[0].MergeByStacktraces(ctx, profiles, 0)
 			require.NoError(t, err)
 			require.Equal(t, expected.String(), r.String())
 		})
@@ -220,7 +220,7 @@ func TestHeadMergeSampleByStacktraces(t *testing.T) {
 				End:   int64(model.TimeFromUnixNano(int64(1 * time.Minute))),
 			})
 			require.NoError(t, err)
-			r, err := db.queriers()[0].MergeByStacktraces(ctx, profiles)
+			r, err := db.queriers()[0].MergeByStacktraces(ctx, profiles, 0)
 			require.NoError(t, err)
 			require.Equal(t, expected.String(), r.String())
 		})

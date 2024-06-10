@@ -223,7 +223,7 @@ func (r *Resolver) Tree() (*model.Tree, error) {
 	var lock sync.Mutex
 	tree := new(model.Tree)
 	err := r.withSymbols(ctx, func(symbols *Symbols, samples schemav1.Samples) error {
-		resolved, err := symbols.Tree(ctx, samples)
+		resolved, err := symbols.Tree(ctx, samples, r.maxNodes)
 		if err != nil {
 			return err
 		}
@@ -309,14 +309,19 @@ func (r *Symbols) Pprof(
 	return b.buildPprof(), nil
 }
 
-func (r *Symbols) Tree(ctx context.Context, samples schemav1.Samples) (*model.Tree, error) {
+func (r *Symbols) Tree(
+	ctx context.Context,
+	samples schemav1.Samples,
+	maxNodes int64,
+) (*model.Tree, error) {
 	t := treeSymbolsFromPool()
+	t.maxNodes = maxNodes
 	defer t.reset()
 	t.init(r, samples)
 	if err := r.Stacktraces.ResolveStacktraceLocations(ctx, t, samples.StacktraceIDs); err != nil {
 		return nil, err
 	}
-	return t.tree, nil
+	return t.buildTree(), nil
 }
 
 // findCallSite returns the stack trace of the call site

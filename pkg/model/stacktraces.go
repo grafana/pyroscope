@@ -140,6 +140,18 @@ func NewStacktraceTree(size int) *StacktraceTree {
 	return &t
 }
 
+func (t *StacktraceTree) Reset() {
+	if cap(t.Nodes) < 1 {
+		*t = *(NewStacktraceTree(0))
+		return
+	}
+	t.Nodes = t.Nodes[:1]
+	t.Nodes[0] = StacktraceNode{
+		FirstChild:  sentinel,
+		NextSibling: sentinel,
+	}
+}
+
 const sentinel = -1
 
 func (t *StacktraceTree) Insert(locations []int32, value int64) int32 {
@@ -225,7 +237,7 @@ func (t *StacktraceTree) MinValue(maxNodes int64) int64 {
 type StacktraceTreeTraverseFn = func(index int32, children []int32) error
 
 func (t *StacktraceTree) Traverse(maxNodes int64, fn StacktraceTreeTraverseFn) error {
-	min := t.MinValue(maxNodes)
+	minValue := t.MinValue(maxNodes)
 	children := make([]int32, 0, 128) // Children per node.
 	nodesSize := maxNodes             // Depth search buffer.
 	if nodesSize < 1 || nodesSize > 10<<10 {
@@ -243,7 +255,7 @@ func (t *StacktraceTree) Traverse(maxNodes int64, fn StacktraceTreeTraverseFn) e
 
 		for x := n.FirstChild; x > 0; {
 			child := &t.Nodes[x]
-			if child.Total >= min && child.Location != sentinel {
+			if child.Total >= minValue && child.Location != sentinel {
 				children = append(children, x)
 			} else {
 				truncated += child.Total
