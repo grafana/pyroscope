@@ -33,6 +33,7 @@ type Limits struct {
 	MaxLabelValueLength    int     `yaml:"max_label_value_length" json:"max_label_value_length"`
 	MaxLabelNamesPerSeries int     `yaml:"max_label_names_per_series" json:"max_label_names_per_series"`
 	MaxSessionsPerSeries   int     `yaml:"max_sessions_per_series" json:"max_sessions_per_series"`
+	EnforceLabelsOrder     bool    `yaml:"enforce_labels_order" json:"enforce_labels_order"`
 
 	MaxProfileSizeBytes              int `yaml:"max_profile_size_bytes" json:"max_profile_size_bytes"`
 	MaxProfileStacktraceSamples      int `yaml:"max_profile_stacktrace_samples" json:"max_profile_stacktrace_samples"`
@@ -109,6 +110,7 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.IntVar(&l.MaxLabelValueLength, "validation.max-length-label-value", 2048, "Maximum length accepted for label value. This setting also applies to the metric name.")
 	f.IntVar(&l.MaxLabelNamesPerSeries, "validation.max-label-names-per-series", 30, "Maximum number of label names per series.")
 	f.IntVar(&l.MaxSessionsPerSeries, "validation.max-sessions-per-series", 0, "Maximum number of sessions per series. 0 to disable.")
+	f.BoolVar(&l.EnforceLabelsOrder, "validation.enforce-labels-order", false, "Enforce labels order optimization.")
 
 	f.IntVar(&l.MaxLocalSeriesPerTenant, "ingester.max-local-series-per-tenant", 0, "Maximum number of active series of profiles per tenant, per ingester. 0 to disable.")
 	f.IntVar(&l.MaxGlobalSeriesPerTenant, "ingester.max-global-series-per-tenant", 5000, "Maximum number of active series of profiles per tenant, across the cluster. 0 to disable. When the global limit is enabled, each ingester is configured with a dynamic local limit based on the replication factor and the current number of healthy ingesters, and is kept updated whenever the number of ingesters change.")
@@ -284,6 +286,10 @@ func (o *Overrides) MaxProfileSymbolValueLength(tenantID string) int {
 // MaxSessionsPerSeries returns the maximum number of sessions per single series.
 func (o *Overrides) MaxSessionsPerSeries(tenantID string) int {
 	return o.getOverridesForTenant(tenantID).MaxSessionsPerSeries
+}
+
+func (o *Overrides) EnforceLabelsOrder(tenantID string) bool {
+	return o.getOverridesForTenant(tenantID).EnforceLabelsOrder
 }
 
 func (o *Overrides) DistributorAggregationWindow(tenantID string) model.Duration {

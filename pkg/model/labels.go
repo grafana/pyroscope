@@ -22,21 +22,24 @@ import (
 var seps = []byte{'\xff'}
 
 const (
-	LabelNameProfileType = "__profile_type__"
-	LabelNameType        = "__type__"
-	LabelNameUnit        = "__unit__"
-	LabelNamePeriodType  = "__period_type__"
-	LabelNamePeriodUnit  = "__period_unit__"
-	LabelNameDelta       = "__delta__"
-	LabelNameProfileName = pmodel.MetricNameLabel
-	LabelNameSessionID   = "__session_id__"
+	LabelNameProfileType        = "__profile_type__"
+	LabelNameServiceNamePrivate = "__service_name__"
+	LabelNameDelta              = "__delta__"
+	LabelNameProfileName        = pmodel.MetricNameLabel
+	LabelNamePeriodType         = "__period_type__"
+	LabelNamePeriodUnit         = "__period_unit__"
+	LabelNameSessionID          = "__session_id__"
+	LabelNameType               = "__type__"
+	LabelNameUnit               = "__unit__"
 
+	LabelNameServiceGitRef     = "service_git_ref"
 	LabelNameServiceName       = "service_name"
 	LabelNameServiceRepository = "service_repository"
-	LabelNameServiceGitRef     = "service_git_ref"
 
-	LabelNamePyroscopeSpy   = "pyroscope_spy"
-	LabelNameServiceNameK8s = "__meta_kubernetes_pod_annotation_pyroscope_io_service_name"
+	LabelNameOrder     = "__order__"
+	LabelOrderEnforced = "enforced"
+
+	LabelNamePyroscopeSpy = "pyroscope_spy"
 
 	labelSep = '\xfe'
 )
@@ -48,6 +51,30 @@ type Labels []*typesv1.LabelPair
 func (ls Labels) Len() int           { return len(ls) }
 func (ls Labels) Swap(i, j int)      { ls[i], ls[j] = ls[j], ls[i] }
 func (ls Labels) Less(i, j int) bool { return ls[i].Name < ls[j].Name }
+
+// LabelsEnforcedOrder is a sort order of labels, where profile type and
+// service name labels always go first. This is crucial for query performance
+// as labels determine the physical order of the profiling data.
+type LabelsEnforcedOrder []*typesv1.LabelPair
+
+func (ls LabelsEnforcedOrder) Len() int      { return len(ls) }
+func (ls LabelsEnforcedOrder) Swap(i, j int) { ls[i], ls[j] = ls[j], ls[i] }
+
+func (ls LabelsEnforcedOrder) Less(i, j int) bool {
+	if ls[i].Name[0] == '_' || ls[j].Name[0] == '_' {
+		leftType := ls[i].Name == LabelNameProfileType
+		rightType := ls[j].Name == LabelNameProfileType
+		if leftType || rightType {
+			return leftType || !rightType
+		}
+		leftService := ls[i].Name == LabelNameServiceNamePrivate
+		rightService := ls[j].Name == LabelNameServiceNamePrivate
+		if leftService || rightService {
+			return leftService || !rightService
+		}
+	}
+	return ls[i].Name < ls[j].Name
+}
 
 // Hash returns a hash value for the label set.
 func (ls Labels) Hash() uint64 {
@@ -192,12 +219,39 @@ func (ls Labels) GetLabel(name string) (*typesv1.LabelPair, bool) {
 	return nil, false
 }
 
-// Delete removes the first label encountered with the name given.
-// A copy of the label set without the label is returned.
+// Delete removes the first label encountered with the name given in place.
 func (ls Labels) Delete(name string) Labels {
 	return slices.RemoveInPlace(ls, func(pair *typesv1.LabelPair, i int) bool {
 		return pair.Name == name
 	})
+}
+
+// Insert adds the given label to the set of labels.
+// It assumes the labels are ordered
+func (ls *Labels) Insert(name, value string) {
+	// Find the index where the new label should be inserted
+	index := -1
+	for i, label := range *ls {
+		if label.Name > name {
+			index = i
+			break
+		}
+		if label.Name == name {
+			label.Value = value
+			return
+		}
+	}
+	// Insert the new label at the found index
+	l := &typesv1.LabelPair{
+		Name:  name,
+		Value: value,
+	}
+	*ls = append(*ls, l)
+	if index == -1 {
+		return
+	}
+	copy((*ls)[index+1:], (*ls)[index:])
+	(*ls)[index] = l
 }
 
 func (ls Labels) Clone() Labels {
@@ -277,19 +331,7 @@ func LabelsFromStrings(ss ...string) Labels {
 	return res
 }
 
-// CloneLabelPairs clones the label pairs.
-func CloneLabelPairs(lbs []*typesv1.LabelPair) []*typesv1.LabelPair {
-	result := make([]*typesv1.LabelPair, len(lbs))
-	for i, l := range lbs {
-		result[i] = &typesv1.LabelPair{
-			Name:  l.Name,
-			Value: l.Value,
-		}
-	}
-	return result
-}
-
-// Compare compares the two label sets.
+// CompareLabelPairs compares the two label sets.
 // The result will be 0 if a==b, <0 if a < b, and >0 if a > b.
 func CompareLabelPairs(a []*typesv1.LabelPair, b []*typesv1.LabelPair) int {
 	l := len(a)
@@ -377,6 +419,16 @@ func (b *LabelsBuilder) Set(n, v string) *LabelsBuilder {
 // Labels returns the labels from the builder. If no modifications
 // were made, the original labels are returned.
 func (b *LabelsBuilder) Labels() Labels {
+	res := b.LabelsUnsorted()
+	sort.Sort(res)
+	return res
+}
+
+// LabelsUnsorted returns the labels from the builder. If no modifications
+// were made, the original labels are returned.
+//
+// The order is not deterministic.
+func (b *LabelsBuilder) LabelsUnsorted() Labels {
 	if len(b.del) == 0 && len(b.add) == 0 {
 		return b.base
 	}
@@ -398,10 +450,8 @@ Outer:
 		}
 		res = append(res, l)
 	}
-	res = append(res, b.add...)
-	sort.Sort(res)
 
-	return res
+	return append(res, b.add...)
 }
 
 // StableHash is a labels hashing implementation which is guaranteed to not change over time.
