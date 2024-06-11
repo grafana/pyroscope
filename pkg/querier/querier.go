@@ -604,9 +604,14 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 		return nil, err
 	}
 
-	return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{
-		Flamegraph: phlaremodel.NewFlameGraph(t, req.Msg.GetMaxNodes()),
-	}), nil
+	var resp querierv1.SelectMergeStacktracesResponse
+	switch req.Msg.Format {
+	default:
+		resp.Flamegraph = phlaremodel.NewFlameGraph(t, req.Msg.GetMaxNodes())
+	case querierv1.ProfileFormat_PROFILE_FORMAT_TREE:
+		resp.Tree = t.Bytes(req.Msg.GetMaxNodes())
+	}
+	return connect.NewResponse(&resp), nil
 }
 
 func (q *Querier) SelectMergeSpanProfile(ctx context.Context, req *connect.Request[querierv1.SelectMergeSpanProfileRequest]) (*connect.Response[querierv1.SelectMergeSpanProfileResponse], error) {
@@ -631,9 +636,14 @@ func (q *Querier) SelectMergeSpanProfile(ctx context.Context, req *connect.Reque
 		return nil, err
 	}
 
-	return connect.NewResponse(&querierv1.SelectMergeSpanProfileResponse{
-		Flamegraph: phlaremodel.NewFlameGraph(t, req.Msg.GetMaxNodes()),
-	}), nil
+	var resp querierv1.SelectMergeSpanProfileResponse
+	switch req.Msg.Format {
+	default:
+		resp.Flamegraph = phlaremodel.NewFlameGraph(t, req.Msg.GetMaxNodes())
+	case querierv1.ProfileFormat_PROFILE_FORMAT_TREE:
+		resp.Tree = t.Bytes(req.Msg.GetMaxNodes())
+	}
+	return connect.NewResponse(&resp), nil
 }
 
 func isEndpointNotExistingErr(err error) bool {
@@ -718,6 +728,7 @@ func (sq storeQuery) MergeStacktracesRequest(req *querierv1.SelectMergeStacktrac
 		LabelSelector: req.LabelSelector,
 		ProfileTypeID: req.ProfileTypeID,
 		MaxNodes:      req.MaxNodes,
+		Format:        req.Format,
 	}
 }
 
@@ -743,6 +754,7 @@ func (sq storeQuery) MergeSpanProfileRequest(req *querierv1.SelectMergeSpanProfi
 		LabelSelector: req.LabelSelector,
 		SpanSelector:  req.SpanSelector,
 		MaxNodes:      req.MaxNodes,
+		Format:        req.Format,
 	}
 }
 
