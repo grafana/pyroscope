@@ -11,7 +11,7 @@ import (
 
 const (
 	minGroupSize      = 2
-	maxRecursiveDepth = 16 // Profiles with deeply recursive stack traces are ignored.
+	maxRecursiveDepth = 56 // Profiles with deeply recursive stack traces are ignored.
 
 	tokens    = 8
 	tokenLen  = 16
