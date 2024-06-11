@@ -207,6 +207,17 @@ func (m *FlameGraphMerger) MergeFlameGraph(src *querierv1.FlameGraph) {
 	}
 }
 
+func (m *FlameGraphMerger) MergeTreeBytes(src []byte) error {
+	t, err := UnmarshalTree(src)
+	if err != nil {
+		return err
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.t.Merge(t)
+	return nil
+}
+
 func (m *FlameGraphMerger) Tree() *Tree { return m.t }
 
 func (m *FlameGraphMerger) FlameGraph(maxNodes int64) *querierv1.FlameGraph {

@@ -22,6 +22,24 @@ func (f *Frontend) SelectMergeStacktraces(ctx context.Context,
 	c *connect.Request[querierv1.SelectMergeStacktracesRequest]) (
 	*connect.Response[querierv1.SelectMergeStacktracesResponse], error,
 ) {
+	t, err := f.selectMergeStacktracesTree(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+	var resp querierv1.SelectMergeStacktracesResponse
+	switch c.Msg.Format {
+	default:
+		resp.Flamegraph = phlaremodel.NewFlameGraph(t, c.Msg.GetMaxNodes())
+	case querierv1.ProfileFormat_PROFILE_FORMAT_TREE:
+		resp.Tree = t.Bytes(c.Msg.GetMaxNodes())
+	}
+	return connect.NewResponse(&resp), nil
+}
+
+func (f *Frontend) selectMergeStacktracesTree(ctx context.Context,
+	c *connect.Request[querierv1.SelectMergeStacktracesRequest]) (
+	*phlaremodel.Tree, error,
+) {
 	opentracing.SpanFromContext(ctx).
 		SetTag("start", model.Time(c.Msg.Start).Time().String()).
 		SetTag("end", model.Time(c.Msg.End).Time().String()).
@@ -40,9 +58,7 @@ func (f *Frontend) SelectMergeStacktraces(ctx context.Context,
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	if validated.IsEmpty {
-		return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{
-			Flamegraph: &querierv1.FlameGraph{},
-		}), nil
+		return new(phlaremodel.Tree), nil
 	}
 	maxNodes, err := validation.ValidateMaxNodes(f.limits, tenantIDs, c.Msg.GetMaxNodes())
 	if err != nil {
@@ -67,6 +83,7 @@ func (f *Frontend) SelectMergeStacktraces(ctx context.Context,
 				Start:         r.Start.UnixMilli(),
 				End:           r.End.UnixMilli(),
 				MaxNodes:      &maxNodes,
+				Format:        querierv1.ProfileFormat_PROFILE_FORMAT_TREE,
 			})
 			resp, err := connectgrpc.RoundTripUnary[
 				querierv1.SelectMergeStacktracesRequest,
@@ -74,8 +91,13 @@ func (f *Frontend) SelectMergeStacktraces(ctx context.Context,
 			if err != nil {
 				return err
 			}
-			m.MergeFlameGraph(resp.Msg.Flamegraph)
-			return nil
+			if len(resp.Msg.Tree) > 0 {
+				err = m.MergeTreeBytes(resp.Msg.Tree)
+			} else if resp.Msg.Flamegraph != nil {
+				// For backward compatibility.
+				m.MergeFlameGraph(resp.Msg.Flamegraph)
+			}
+			return err
 		})
 	}
 
@@ -83,8 +105,5 @@ func (f *Frontend) SelectMergeStacktraces(ctx context.Context,
 		return nil, err
 	}
 
-	t := m.Tree()
-	return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{
-		Flamegraph: phlaremodel.NewFlameGraph(t, c.Msg.GetMaxNodes()),
-	}), nil
+	return m.Tree(), nil
 }

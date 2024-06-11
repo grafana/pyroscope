@@ -49,7 +49,7 @@ import (
 )
 
 const (
-	defaultBatchSize = 4096
+	defaultBatchSize = 64 << 10
 
 	// This controls the buffer size for reads to a parquet io.Reader. This value should be small for memory or
 	// disk backed readers, but when the reader is backed by network storage a larger size will be advantageous.
@@ -894,13 +894,8 @@ func MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[in
 		return err
 	}
 
-	var buf bytes.Buffer
-	if err = t.MarshalTruncate(&buf, r.GetMaxNodes()); err != nil {
-		return err
-	}
-
 	// sends the final result to the client.
-	treeBytes := buf.Bytes()
+	treeBytes := t.Bytes(r.GetMaxNodes())
 	sp.LogFields(
 		otlog.String("msg", "sending the final result to the client"),
 		otlog.Int("tree_bytes", len(treeBytes)),
@@ -1042,13 +1037,8 @@ func MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.M
 		return err
 	}
 
-	var buf bytes.Buffer
-	if err = t.MarshalTruncate(&buf, r.GetMaxNodes()); err != nil {
-		return err
-	}
-
 	// sends the final result to the client.
-	treeBytes := buf.Bytes()
+	treeBytes := t.Bytes(r.GetMaxNodes())
 	sp.LogFields(
 		otlog.String("msg", "sending the final result to the client"),
 		otlog.Int("tree_bytes", len(treeBytes)),

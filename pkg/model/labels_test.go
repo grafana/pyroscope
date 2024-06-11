@@ -158,6 +158,27 @@ func TestLabels_LabelsEnforcedOrder(t *testing.T) {
 	})
 }
 
+func TestLabels_LabelsEnforcedOrder_BytesWithLabels(t *testing.T) {
+	labels := Labels{
+		{Name: LabelNameProfileType, Value: "cpu"},
+		{Name: LabelNameServiceNamePrivate, Value: "service"},
+		{Name: "__request_id__", Value: "mess"},
+		{Name: "A_label", Value: "bad"},
+		{Name: "foo", Value: "bar"},
+	}
+	sort.Sort(LabelsEnforcedOrder(labels))
+
+	assert.NotEqual(t,
+		labels.BytesWithLabels(nil, "A_label"),
+		labels.BytesWithLabels(nil, "not_a_label"),
+	)
+
+	assert.Equal(t,
+		labels.BytesWithLabels(nil, "A_label"),
+		Labels{{Name: "A_label", Value: "bad"}}.BytesWithLabels(nil, "A_label"),
+	)
+}
+
 func permute[T any](s []T, f func([]T)) {
 	n := len(s)
 	stack := make([]int, n)
@@ -256,8 +277,7 @@ func TestInsert(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			test.labels.Insert(test.insertName, test.insertValue)
-			assert.Equal(t, test.expected, test.labels)
+			assert.Equal(t, test.expected, test.labels.InsertSorted(test.insertName, test.insertValue))
 		})
 	}
 }
