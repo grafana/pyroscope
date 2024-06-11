@@ -12,17 +12,11 @@ import (
 
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	"github.com/grafana/pyroscope/pkg/iter"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 )
 
 type BidiServerMerge[Res any, Req any] interface {
 	Send(Res) error
 	Receive() (Req, error)
-}
-
-type labelWithIndex struct {
-	phlaremodel.Labels
-	index int
 }
 
 type ProfileWithIndex struct {
