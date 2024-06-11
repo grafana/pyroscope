@@ -267,6 +267,57 @@ func TestIngest(t *testing.T) {
 	}
 }
 
+func TestIngestPPROFFixPythonLinenumbers(t *testing.T) {
+	p := PyroscopeTest{}
+	p.Start(t)
+	defer p.Stop(t)
+	profile := pprof.RawFromProto(&profilev1.Profile{
+		SampleType: []*profilev1.ValueType{{
+			Type: 5,
+			Unit: 6,
+		}},
+		PeriodType: &profilev1.ValueType{
+			Type: 5, Unit: 6,
+		},
+		StringTable: []string{"", "main", "func1", "func2", "qwe.py", "cpu", "nanoseconds"},
+		Period:      1000000000,
+		Function: []*profilev1.Function{
+			{Id: 1, Name: 1, Filename: 4, SystemName: 1, StartLine: 239},
+			{Id: 2, Name: 2, Filename: 4, SystemName: 2, StartLine: 42},
+			{Id: 3, Name: 3, Filename: 4, SystemName: 3, StartLine: 7},
+		},
+		Location: []*profilev1.Location{
+			{Id: 1, Line: []*profilev1.Line{{FunctionId: 1, Line: 242}}},
+			{Id: 2, Line: []*profilev1.Line{{FunctionId: 2, Line: 50}}},
+			{Id: 3, Line: []*profilev1.Line{{FunctionId: 3, Line: 8}}},
+		},
+		Sample: []*profilev1.Sample{
+			{LocationId: []uint64{2, 1}, Value: []int64{10}},
+			{LocationId: []uint64{3, 1}, Value: []int64{13}},
+		},
+	})
+
+	tempProfileFile, err := os.CreateTemp("", "profile")
+	require.NoError(t, err)
+	_, err = profile.WriteTo(tempProfileFile)
+	assert.NoError(t, err)
+	tempProfileFile.Close()
+	defer os.Remove(tempProfileFile.Name())
+
+	rb := p.NewRequestBuilder(t).
+		Spy("pyspy")
+	req := rb.IngestPPROFRequest(tempProfileFile.Name(), "", "")
+	p.Ingest(t, req, 200)
+
+	renderedProfile := rb.SelectMergeProfile("process_cpu:cpu:nanoseconds:cpu:nanoseconds", nil)
+	actual := bench.StackCollapseProto(renderedProfile.Msg, 0, 1)
+	expected := []string{
+		"qwe.py:242 - main;qwe.py:50 - func1 10",
+		"qwe.py:242 - main;qwe.py:8 - func2 13",
+	}
+	assert.Equal(t, expected, actual)
+}
+
 func TestPush(t *testing.T) {
 	p := new(PyroscopeTest)
 	p.Start(t)

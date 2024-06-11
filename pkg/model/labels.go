@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -12,31 +13,32 @@ import (
 	"github.com/cespare/xxhash/v2"
 	pmodel "github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/promql/parser"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/slices"
 	"github.com/grafana/pyroscope/pkg/util"
 )
 
 var seps = []byte{'\xff'}
 
 const (
-	LabelNameProfileType = "__profile_type__"
-	LabelNameType        = "__type__"
-	LabelNameUnit        = "__unit__"
-	LabelNamePeriodType  = "__period_type__"
-	LabelNamePeriodUnit  = "__period_unit__"
-	LabelNameDelta       = "__delta__"
-	LabelNameProfileName = pmodel.MetricNameLabel
-	LabelNameSessionID   = "__session_id__"
+	LabelNameProfileType        = "__profile_type__"
+	LabelNameServiceNamePrivate = "__service_name__"
+	LabelNameDelta              = "__delta__"
+	LabelNameProfileName        = pmodel.MetricNameLabel
+	LabelNamePeriodType         = "__period_type__"
+	LabelNamePeriodUnit         = "__period_unit__"
+	LabelNameSessionID          = "__session_id__"
+	LabelNameType               = "__type__"
+	LabelNameUnit               = "__unit__"
 
+	LabelNameServiceGitRef     = "service_git_ref"
 	LabelNameServiceName       = "service_name"
 	LabelNameServiceRepository = "service_repository"
-	LabelNameServiceGitRef     = "service_git_ref"
 
-	LabelNamePyroscopeSpy   = "pyroscope_spy"
-	LabelNameServiceNameK8s = "__meta_kubernetes_pod_annotation_pyroscope_io_service_name"
+	LabelNameOrder     = "__order__"
+	LabelOrderEnforced = "enforced"
+
+	LabelNamePyroscopeSpy = "pyroscope_spy"
 
 	labelSep = '\xfe'
 )
@@ -48,6 +50,30 @@ type Labels []*typesv1.LabelPair
 func (ls Labels) Len() int           { return len(ls) }
 func (ls Labels) Swap(i, j int)      { ls[i], ls[j] = ls[j], ls[i] }
 func (ls Labels) Less(i, j int) bool { return ls[i].Name < ls[j].Name }
+
+// LabelsEnforcedOrder is a sort order of labels, where profile type and
+// service name labels always go first. This is crucial for query performance
+// as labels determine the physical order of the profiling data.
+type LabelsEnforcedOrder []*typesv1.LabelPair
+
+func (ls LabelsEnforcedOrder) Len() int      { return len(ls) }
+func (ls LabelsEnforcedOrder) Swap(i, j int) { ls[i], ls[j] = ls[j], ls[i] }
+
+func (ls LabelsEnforcedOrder) Less(i, j int) bool {
+	if ls[i].Name[0] == '_' || ls[j].Name[0] == '_' {
+		leftType := ls[i].Name == LabelNameProfileType
+		rightType := ls[j].Name == LabelNameProfileType
+		if leftType || rightType {
+			return leftType || !rightType
+		}
+		leftService := ls[i].Name == LabelNameServiceNamePrivate
+		rightService := ls[j].Name == LabelNameServiceNamePrivate
+		if leftService || rightService {
+			return leftService || !rightService
+		}
+	}
+	return ls[i].Name < ls[j].Name
+}
 
 // Hash returns a hash value for the label set.
 func (ls Labels) Hash() uint64 {
@@ -75,52 +101,25 @@ func (ls Labels) Hash() uint64 {
 	return xxhash.Sum64(b)
 }
 
-// HashForLabels returns a hash value for the labels matching the provided names.
-// 'names' have to be sorted in ascending order.
-func (ls Labels) HashForLabels(b []byte, names ...string) (uint64, []byte) {
-	b = b[:0]
-	i, j := 0, 0
-	for i < len(ls) && j < len(names) {
-		if names[j] < ls[i].Name {
-			j++
-		} else if ls[i].Name < names[j] {
-			i++
-		} else {
-			b = append(b, ls[i].Name...)
-			b = append(b, seps[0])
-			b = append(b, ls[i].Value...)
-			b = append(b, seps[0])
-			i++
-			j++
-		}
-	}
-	return xxhash.Sum64(b), b
-}
-
 // BytesWithLabels is just as Bytes(), but only for labels matching names.
-// 'names' have to be sorted in ascending order.
 // It uses an byte invalid character as a separator and so should not be used for printing.
 func (ls Labels) BytesWithLabels(buf []byte, names ...string) []byte {
-	b := bytes.NewBuffer(buf[:0])
-	b.WriteByte(labelSep)
-	i, j := 0, 0
-	for i < len(ls) && j < len(names) {
-		if names[j] < ls[i].Name {
-			j++
-		} else if ls[i].Name < names[j] {
-			i++
-		} else {
-			if b.Len() > 1 {
-				b.WriteByte(seps[0])
+	buf = buf[:0]
+	buf = append(buf, labelSep)
+	for _, name := range names {
+		for _, l := range ls {
+			if l.Name == name {
+				if len(buf) > 1 {
+					buf = append(buf, seps[0])
+				}
+				buf = append(buf, l.Name...)
+				buf = append(buf, seps[0])
+				buf = append(buf, l.Value...)
+				break
 			}
-			b.WriteString(ls[i].Name)
-			b.WriteByte(seps[0])
-			b.WriteString(ls[i].Value)
-			i++
-			j++
 		}
 	}
-	return b.Bytes()
+	return buf
 }
 
 func (ls Labels) ToPrometheusLabels() labels.Labels {
@@ -153,22 +152,18 @@ func IsLabelAllowedForIngestion(name string) bool {
 	return allowed
 }
 
-// WithLabels returns a subset of Labels that matches match with the provided label names.
+// WithLabels returns a subset of Labels that match with the provided label names.
 func (ls Labels) WithLabels(names ...string) Labels {
-	matchedLabels := Labels{}
-
-	nameSet := make(map[string]struct{}, len(names))
-	for _, n := range names {
-		nameSet[n] = struct{}{}
-	}
-
-	for _, v := range ls {
-		if _, ok := nameSet[v.Name]; ok {
-			matchedLabels = append(matchedLabels, v)
+	matched := make(Labels, 0, len(names))
+	for _, name := range names {
+		for _, l := range ls {
+			if l.Name == name {
+				matched = append(matched, l)
+				break
+			}
 		}
 	}
-
-	return matchedLabels
+	return matched
 }
 
 // Get returns the value for the label with the given name.
@@ -192,12 +187,44 @@ func (ls Labels) GetLabel(name string) (*typesv1.LabelPair, bool) {
 	return nil, false
 }
 
-// Delete removes the first label encountered with the name given.
-// A copy of the label set without the label is returned.
+// Delete removes the first label encountered with the name given in place.
 func (ls Labels) Delete(name string) Labels {
-	return slices.RemoveInPlace(ls, func(pair *typesv1.LabelPair, i int) bool {
-		return pair.Name == name
-	})
+	for i, l := range ls {
+		if l.Name == name {
+			return slices.Delete(ls, i, i+1)
+		}
+	}
+	return ls
+}
+
+// InsertSorted adds the given label to the set of labels.
+// It assumes the labels are sorted lexicographically.
+func (ls Labels) InsertSorted(name, value string) Labels {
+	// Find the index where the new label should be inserted.
+	// TODO: Use binary search on large label sets.
+	index := -1
+	for i, label := range ls {
+		if label.Name > name {
+			index = i
+			break
+		}
+		if label.Name == name {
+			label.Value = value
+			return ls
+		}
+	}
+	// Insert the new label at the found index.
+	l := &typesv1.LabelPair{
+		Name:  name,
+		Value: value,
+	}
+	c := append(ls, l)
+	if index == -1 {
+		return c
+	}
+	copy((c)[index+1:], (c)[index:])
+	(c)[index] = l
+	return c
 }
 
 func (ls Labels) Clone() Labels {
@@ -247,22 +274,6 @@ func LabelPairsString(lbs []*typesv1.LabelPair) string {
 	return b.String()
 }
 
-// StringToLabelsPairs converts a string representation of label pairs to a slice of label pairs.
-func StringToLabelsPairs(s string) ([]*typesv1.LabelPair, error) {
-	matchers, err := parser.ParseMetricSelector(s)
-	if err != nil {
-		return nil, err
-	}
-	result := make([]*typesv1.LabelPair, len(matchers))
-	for i := range matchers {
-		result[i] = &typesv1.LabelPair{
-			Name:  matchers[i].Name,
-			Value: matchers[i].Value,
-		}
-	}
-	return result, nil
-}
-
 // LabelsFromStrings creates new labels from pairs of strings.
 func LabelsFromStrings(ss ...string) Labels {
 	if len(ss)%2 != 0 {
@@ -277,19 +288,7 @@ func LabelsFromStrings(ss ...string) Labels {
 	return res
 }
 
-// CloneLabelPairs clones the label pairs.
-func CloneLabelPairs(lbs []*typesv1.LabelPair) []*typesv1.LabelPair {
-	result := make([]*typesv1.LabelPair, len(lbs))
-	for i, l := range lbs {
-		result[i] = &typesv1.LabelPair{
-			Name:  l.Name,
-			Value: l.Value,
-		}
-	}
-	return result
-}
-
-// Compare compares the two label sets.
+// CompareLabelPairs compares the two label sets.
 // The result will be 0 if a==b, <0 if a < b, and >0 if a > b.
 func CompareLabelPairs(a []*typesv1.LabelPair, b []*typesv1.LabelPair) int {
 	l := len(a)
@@ -377,6 +376,16 @@ func (b *LabelsBuilder) Set(n, v string) *LabelsBuilder {
 // Labels returns the labels from the builder. If no modifications
 // were made, the original labels are returned.
 func (b *LabelsBuilder) Labels() Labels {
+	res := b.LabelsUnsorted()
+	sort.Sort(res)
+	return res
+}
+
+// LabelsUnsorted returns the labels from the builder. If no modifications
+// were made, the original labels are returned.
+//
+// The order is not deterministic.
+func (b *LabelsBuilder) LabelsUnsorted() Labels {
 	if len(b.del) == 0 && len(b.add) == 0 {
 		return b.base
 	}
@@ -398,37 +407,8 @@ Outer:
 		}
 		res = append(res, l)
 	}
-	res = append(res, b.add...)
-	sort.Sort(res)
 
-	return res
-}
-
-// StableHash is a labels hashing implementation which is guaranteed to not change over time.
-// This function should be used whenever labels hashing backward compatibility must be guaranteed.
-func StableHash(ls labels.Labels) uint64 {
-	// Use xxhash.Sum64(b) for fast path as it's faster.
-	b := make([]byte, 0, 1024)
-	for i, v := range ls {
-		if len(b)+len(v.Name)+len(v.Value)+2 >= cap(b) {
-			// If labels entry is 1KB+ do not allocate whole entry.
-			h := xxhash.New()
-			_, _ = h.Write(b)
-			for _, v := range ls[i:] {
-				_, _ = h.WriteString(v.Name)
-				_, _ = h.Write(seps)
-				_, _ = h.WriteString(v.Value)
-				_, _ = h.Write(seps)
-			}
-			return h.Sum64()
-		}
-
-		b = append(b, v.Name...)
-		b = append(b, seps[0])
-		b = append(b, v.Value...)
-		b = append(b, seps[0])
-	}
-	return xxhash.Sum64(b)
+	return append(res, b.add...)
 }
 
 type SessionID uint64

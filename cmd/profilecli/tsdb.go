@@ -44,7 +44,7 @@ func tsdbSeries(ctx context.Context, path string) error {
 			return fmt.Errorf("error retrieving seriesRef: %w", err)
 		}
 
-		line.Labels, err = lbls.ToPrometheusLabels().MarshalJSON()
+		line.Labels, err = json.Marshal(lbls)
 		if err != nil {
 			return fmt.Errorf("error marshalling labels: %w", err)
 		}

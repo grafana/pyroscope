@@ -1,6 +1,7 @@
 package model
 
 import (
+	"bytes"
 	"container/heap"
 	"fmt"
 	"io"
@@ -129,6 +130,14 @@ func (t *Tree) IterateStacks(cb func(name string, self int64, stack []string)) {
 const defaultDFSSize = 128
 
 func (t *Tree) Merge(src *Tree) {
+	if t.Total() == 0 && src.Total() > 0 {
+		*t = *src
+		return
+	}
+	if src.Total() == 0 {
+		return
+	}
+
 	srcNodes := make([]*node, 0, defaultDFSSize)
 	srcRoot := &node{children: src.root}
 	srcNodes = append(srcNodes, srcRoot)
@@ -325,6 +334,17 @@ func (h *minHeap) Pop() interface{} {
 }
 
 const truncatedNodeName = "other"
+
+var truncatedNodeNameBytes = []byte(truncatedNodeName)
+
+// Bytes returns marshaled tree byte representation; the number of nodes
+// is limited to maxNodes. The function modifies the tree: truncated nodes
+// are removed from the tree in place.
+func (t *Tree) Bytes(maxNodes int64) []byte {
+	var buf bytes.Buffer
+	_ = t.MarshalTruncate(&buf, maxNodes)
+	return buf.Bytes()
+}
 
 // MarshalTruncate writes tree byte representation to the writer provider,
 // the number of nodes is limited to maxNodes. The function modifies

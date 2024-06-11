@@ -38,26 +38,16 @@ func (f *Frontend) Diff(ctx context.Context,
 
 	var left, right *phlaremodel.Tree
 	g.Go(func() error {
-		resp, err := f.SelectMergeStacktraces(ctx, connect.NewRequest(c.Msg.Left))
-		if err != nil {
-			return err
-		}
-		m := phlaremodel.NewFlameGraphMerger()
-		m.MergeFlameGraph(resp.Msg.Flamegraph)
-		left = m.Tree()
-		return err
+		var leftErr error
+		left, leftErr = f.selectMergeStacktracesTree(ctx, connect.NewRequest(c.Msg.Left))
+		return leftErr
 	})
 	g.Go(func() error {
-		resp, err := f.SelectMergeStacktraces(ctx, connect.NewRequest(c.Msg.Right))
-		if err != nil {
-			return err
-		}
-		m := phlaremodel.NewFlameGraphMerger()
-		m.MergeFlameGraph(resp.Msg.Flamegraph)
-		right = m.Tree()
-		return err
+		var rightErr error
+		right, rightErr = f.selectMergeStacktracesTree(ctx, connect.NewRequest(c.Msg.Right))
+		return rightErr
 	})
-	if err := g.Wait(); err != nil {
+	if err = g.Wait(); err != nil {
 		return nil, err
 	}
 

@@ -68,10 +68,21 @@ message SelectMergeStacktracesRequest {
   int64 end = 4;
   // Limit the nodes returned to only show the node with the max_node's biggest total
   optional int64 max_nodes = 5;
+  // Profile format specifies the format of profile to be returned.
+  // If not specified, the profile will be returned in flame graph format.
+  ProfileFormat format = 6;
+}
+
+enum ProfileFormat {
+  PROFILE_FORMAT_UNSPECIFIED = 0;
+  PROFILE_FORMAT_FLAMEGRAPH = 1;
+  PROFILE_FORMAT_TREE = 2;
 }
 
 message SelectMergeStacktracesResponse {
   FlameGraph flamegraph = 1;
+  // Pyroscope tree bytes.
+  bytes tree = 2;
 }
 
 message SelectMergeSpanProfileRequest {
@@ -84,10 +95,15 @@ message SelectMergeSpanProfileRequest {
   int64 end = 5;
   // Limit the nodes returned to only show the node with the max_node's biggest total
   optional int64 max_nodes = 6;
+  // Profile format specifies the format of profile to be returned.
+  // If not specified, the profile will be returned in flame graph format.
+  ProfileFormat format = 7;
 }
 
 message SelectMergeSpanProfileResponse {
   FlameGraph flamegraph = 1;
+  // Pyroscope tree bytes.
+  bytes tree = 2;
 }
 
 message DiffRequest {

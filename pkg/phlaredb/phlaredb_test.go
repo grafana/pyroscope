@@ -195,7 +195,7 @@ func TestMergeProfilesStacktraces(t *testing.T) {
 		resp, err := bidi.Receive()
 		require.NoError(t, err)
 		require.Nil(t, resp.Result)
-		require.Len(t, resp.SelectedProfiles.LabelsSets, 1)
+		require.Len(t, resp.SelectedProfiles.Fingerprints, 1)
 		require.Len(t, resp.SelectedProfiles.Profiles, 5)
 
 		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{
@@ -325,7 +325,7 @@ func TestMergeProfilesPprof(t *testing.T) {
 		resp, err := bidi.Receive()
 		require.NoError(t, err)
 		require.Nil(t, resp.Result)
-		require.Len(t, resp.SelectedProfiles.LabelsSets, 1)
+		require.Len(t, resp.SelectedProfiles.Fingerprints, 1)
 		require.Len(t, resp.SelectedProfiles.Profiles, 5)
 
 		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesPprofRequest{
