@@ -19,7 +19,7 @@ func FixGoProfile(p *profilev1.Profile) *profilev1.Profile {
 	// Now that the profile is normalized, we can try to repair
 	// truncated stack traces, if any. Note that repaired stacks
 	// are not deduplicated, so the caller need to normalize the
-	if MayHaveGoTruncatedStacktraces(p) {
+	if PotentialTruncatedGoStacktraces(p) {
 		RepairGoTruncatedStacktraces(p)
 	}
 	return p

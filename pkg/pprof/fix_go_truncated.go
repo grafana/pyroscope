@@ -21,9 +21,9 @@ const (
 	suffixBytesLen = suffixLen * 8
 )
 
-// MayHaveGoTruncatedStacktraces reports whether there are
+// PotentialTruncatedGoStacktraces reports whether there are
 // any chances that the profile may have truncated stack traces.
-func MayHaveGoTruncatedStacktraces(p *profilev1.Profile) bool {
+func PotentialTruncatedGoStacktraces(p *profilev1.Profile) bool {
 	var minDepth int
 	var maxDepth int
 
