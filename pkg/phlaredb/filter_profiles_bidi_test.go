@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
@@ -39,34 +38,36 @@ func TestFilterProfiles(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 2, len(filtered[0]))
 	require.Equal(t, 3, len(bidi.profilesSent))
-	testhelper.EqualProto(t, []*ingestv1.ProfileSets{
+
+	expectedSent := []*ingestv1.ProfileSets{
 		{
-			LabelsSets: lo.Times(5, func(i int) *typesv1.Labels {
-				return &typesv1.Labels{Labels: phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", i))}
+			Fingerprints: lo.Times(5, func(i int) uint64 {
+				return phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", i)).Hash()
 			}),
 			Profiles: lo.Times(5, func(i int) *ingestv1.SeriesProfile {
 				return &ingestv1.SeriesProfile{Timestamp: int64(model.TimeFromUnixNano(int64(i * int(time.Minute)))), LabelIndex: int32(i)}
 			}),
 		},
 		{
-			LabelsSets: lo.Times(5, func(i int) *typesv1.Labels {
-				return &typesv1.Labels{Labels: phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", i+5))}
+			Fingerprints: lo.Times(5, func(i int) uint64 {
+				return phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", i+5)).Hash()
 			}),
 			Profiles: lo.Times(5, func(i int) *ingestv1.SeriesProfile {
 				return &ingestv1.SeriesProfile{Timestamp: int64(model.TimeFromUnixNano(int64((i + 5) * int(time.Minute)))), LabelIndex: int32(i)}
 			}),
 		},
 		{
-			LabelsSets: lo.Times(1, func(i int) *typesv1.Labels {
-				return &typesv1.Labels{Labels: phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", i+10))}
+			Fingerprints: lo.Times(1, func(i int) uint64 {
+				return phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", i+10)).Hash()
 			}),
 			Profiles: lo.Times(1, func(i int) *ingestv1.SeriesProfile {
 				return &ingestv1.SeriesProfile{Timestamp: int64(model.TimeFromUnixNano(int64((i + 10) * int(time.Minute)))), LabelIndex: int32(i)}
 			}),
 		},
-	}, bidi.profilesSent)
+	}
+	testhelper.EqualProto(t, expectedSent, bidi.profilesSent)
 
-	require.Equal(t, []Profile{
+	expectedFiltered := []Profile{
 		ProfileWithLabels{
 			profile: &schemav1.InMemoryProfile{TimeNanos: int64(5 * int(time.Minute))},
 			lbs:     phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", 5)),
@@ -77,5 +78,6 @@ func TestFilterProfiles(t *testing.T) {
 			lbs:     phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", 10)),
 			fp:      model.Fingerprint(phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", 10)).Hash()),
 		},
-	}, filtered[0])
+	}
+	require.Equal(t, expectedFiltered, filtered[0])
 }

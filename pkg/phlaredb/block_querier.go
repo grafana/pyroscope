@@ -49,7 +49,7 @@ import (
 )
 
 const (
-	defaultBatchSize = 4096
+	defaultBatchSize = 64 << 10
 
 	// This controls the buffer size for reads to a parquet io.Reader. This value should be small for memory or
 	// disk backed readers, but when the reader is backed by network storage a larger size will be advantageous.

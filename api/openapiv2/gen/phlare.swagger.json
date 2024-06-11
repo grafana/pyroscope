@@ -1080,13 +1080,21 @@
           "items": {
             "type": "object",
             "$ref": "#/definitions/v1Labels"
-          }
+          },
+          "description": "DEPRECATED: Use fingerprints instead."
         },
         "profiles": {
           "type": "array",
           "items": {
             "type": "object",
             "$ref": "#/definitions/v1SeriesProfile"
+          }
+        },
+        "fingerprints": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uint64"
           }
         }
       }
