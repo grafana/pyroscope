@@ -14,7 +14,7 @@ import (
 
 func NewProfileSchema(p *profilev1.Profile, name string) ([]schemav1.InMemoryProfile, []phlaremodel.Labels) {
 	var (
-		lbls, seriesRefs = labels.CreateProfileLabels(p, &typesv1.LabelPair{Name: model.MetricNameLabel, Value: name})
+		lbls, seriesRefs = labels.CreateProfileLabels(true, p, &typesv1.LabelPair{Name: model.MetricNameLabel, Value: name})
 		ps               = make([]schemav1.InMemoryProfile, len(lbls))
 	)
 	for idxType := range lbls {

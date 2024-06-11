@@ -1163,7 +1163,7 @@ func TestSelectMergeStacktraces(t *testing.T) {
 		},
 		Start: 0,
 		End:   int64(model.TimeFromUnixNano(math.MaxInt64)),
-	})
+	}, 16<<10)
 	require.NoError(t, err)
 	expected := phlaremodel.Tree{}
 	expected.InsertStack(1000, "baz", "bar", "foo")
@@ -1293,6 +1293,14 @@ func genPoints(count int) []*typesv1.Point {
 }
 
 func TestSelectMergeByStacktracesRace(t *testing.T) {
+	testSelectMergeByStacktracesRace(t, 30)
+}
+
+func BenchmarkSelectMergeByStacktracesRace(b *testing.B) {
+	testSelectMergeByStacktracesRace(b, b.N)
+}
+
+func testSelectMergeByStacktracesRace(t testing.TB, times int) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
 	ctx := context.Background()
@@ -1323,7 +1331,12 @@ func TestSelectMergeByStacktracesRace(t *testing.T) {
 	tree := new(phlaremodel.Tree)
 	var m sync.Mutex
 
-	for i := 0; i < 30; i++ {
+	if b, ok := t.(*testing.B); ok {
+		b.ResetTimer()
+		b.ReportAllocs()
+	}
+
+	for i := 0; i < times; i++ {
 		g.Go(func() error {
 			it, err := querier.SelectMatchingProfiles(ctx, &ingesterv1.SelectProfilesRequest{
 				LabelSelector: `{}`,
@@ -1359,7 +1372,7 @@ func TestSelectMergeByStacktracesRace(t *testing.T) {
 				},
 				Start: 0,
 				End:   int64(model.TimeFromUnixNano(math.MaxInt64)),
-			})
+			}, 16<<10)
 			if err != nil {
 				return err
 			}
