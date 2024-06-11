@@ -71,7 +71,8 @@ func filterProfiles[B BidiServerMerge[Res, Req], Res filterResponse, Req filterR
 	defer sp.Finish()
 	selection := make([][]Profile, len(profiles))
 	selectProfileResult := &ingestv1.ProfileSets{
-		Profiles: make([]*ingestv1.SeriesProfile, 0, batchProfileSize),
+		Profiles:     make([]*ingestv1.SeriesProfile, 0, batchProfileSize),
+		Fingerprints: make([]uint64, 0, batchProfileSize),
 	}
 	its := make([]iter.Iterator[ProfileWithIndex], len(profiles))
 	for i, iter := range profiles {
@@ -92,6 +93,7 @@ func filterProfiles[B BidiServerMerge[Res, Req], Res filterResponse, Req filterR
 
 		seriesByFP := map[model.Fingerprint]int{}
 		selectProfileResult.Profiles = selectProfileResult.Profiles[:0]
+		selectProfileResult.Fingerprints = selectProfileResult.Fingerprints[:0]
 
 		for _, profile := range batch {
 			var ok bool
