@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
 func Test_memory_Resolver_ResolveTree(t *testing.T) {
@@ -30,26 +32,34 @@ func Test_block_Resolver_ResolveTree(t *testing.T) {
 	require.Equal(t, expectedFingerprint, treeFingerprint(resolved))
 }
 
-func Benchmark_block_Resolver_ResolveTree_Small(t *testing.B) {
-	s := newMemSuite(t, [][]string{{"testdata/profile.pb.gz"}})
-	t.ResetTimer()
-	t.ReportAllocs()
-	for i := 0; i < t.N; i++ {
-		r := NewResolver(context.Background(), s.db)
-		r.AddSamples(0, s.indexed[0][0].Samples)
-		_, _ = r.Tree()
-	}
+func Benchmark_Resolver_ResolveTree_Small(b *testing.B) {
+	s := newMemSuite(b, [][]string{{"testdata/profile.pb.gz"}})
+	samples := s.indexed[0][0].Samples
+	b.Run("0", benchmarkResolverResolveTree(s.db, samples, 0))
+	b.Run("1K", benchmarkResolverResolveTree(s.db, samples, 1<<10))
+	b.Run("8K", benchmarkResolverResolveTree(s.db, samples, 8<<10))
 }
 
-func Benchmark_block_Resolver_ResolveTree_Big(b *testing.B) {
+func Benchmark_Resolver_ResolveTree_Big(b *testing.B) {
 	s := memSuite{t: b, files: [][]string{{"testdata/big-profile.pb.gz"}}}
 	s.config = DefaultConfig().WithDirectory(b.TempDir())
 	s.init()
-	b.ResetTimer()
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		r := NewResolver(context.Background(), s.db)
-		r.AddSamples(0, s.indexed[0][0].Samples)
-		_, _ = r.Tree()
+	samples := s.indexed[0][0].Samples
+	b.Run("0", benchmarkResolverResolveTree(s.db, samples, 0))
+	b.Run("8K", benchmarkResolverResolveTree(s.db, samples, 8<<10))
+	b.Run("16K", benchmarkResolverResolveTree(s.db, samples, 16<<10))
+	b.Run("32K", benchmarkResolverResolveTree(s.db, samples, 32<<10))
+	b.Run("64K", benchmarkResolverResolveTree(s.db, samples, 64<<10))
+}
+
+func benchmarkResolverResolveTree(sym SymbolsReader, samples v1.Samples, n int64) func(b *testing.B) {
+	return func(b *testing.B) {
+		b.ResetTimer()
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			r := NewResolver(context.Background(), sym, WithResolverMaxNodes(n))
+			r.AddSamples(0, samples)
+			_, _ = r.Tree()
+		}
 	}
 }

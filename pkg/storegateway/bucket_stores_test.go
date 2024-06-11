@@ -66,7 +66,7 @@ func TestBucketStores_BlockMetricsRegistration(t *testing.T) {
 		},
 		Start: 0,
 		End:   time.Now().UnixMilli(),
-	})
+	}, 0)
 	require.NoError(t, err)
 	require.NotNil(t, r)
 

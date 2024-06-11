@@ -81,7 +81,7 @@ func TestCompact(t *testing.T) {
 
 	it, err = querier.SelectMatchingProfiles(ctx, matchAll)
 	require.NoError(t, err)
-	res, err := querier.MergeByStacktraces(ctx, it)
+	res, err := querier.MergeByStacktraces(ctx, it, 0)
 	require.NoError(t, err)
 	require.NotNil(t, res)
 
@@ -148,7 +148,7 @@ func TestCompactWithDownsampling(t *testing.T) {
 
 	it, err = querier.SelectMatchingProfiles(ctx, matchAll)
 	require.NoError(t, err)
-	res, err := querier.MergeByStacktraces(ctx, it)
+	res, err := querier.MergeByStacktraces(ctx, it, 0)
 	require.NoError(t, err)
 	require.NotNil(t, res)
 
@@ -156,7 +156,7 @@ func TestCompactWithDownsampling(t *testing.T) {
 	expected.InsertStack(3, "baz", "bar", "foo")
 	require.Equal(t, expected.String(), res.String())
 
-	res, err = querier.SelectMergeByStacktraces(ctx, matchAll)
+	res, err = querier.SelectMergeByStacktraces(ctx, matchAll, 0)
 	require.NoError(t, err)
 	require.NotNil(t, res)
 	require.Equal(t, expected.String(), res.String())
@@ -281,7 +281,7 @@ func TestCompactWithSplitting(t *testing.T) {
 	// Finally test some stacktraces resolution.
 	it, err = queriers[1].SelectMatchingProfiles(ctx, matchAll)
 	require.NoError(t, err)
-	res, err := queriers[1].MergeByStacktraces(ctx, it)
+	res, err := queriers[1].MergeByStacktraces(ctx, it, 0)
 	require.NoError(t, err)
 
 	expected := new(phlaremodel.Tree)
