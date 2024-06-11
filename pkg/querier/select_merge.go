@@ -41,16 +41,16 @@ type BidiClientMerge[Req any, Res any] interface {
 
 type Request interface {
 	*ingestv1.MergeProfilesStacktracesRequest |
-	*ingestv1.MergeProfilesLabelsRequest |
-	*ingestv1.MergeProfilesPprofRequest |
-	*ingestv1.MergeSpanProfileRequest
+		*ingestv1.MergeProfilesLabelsRequest |
+		*ingestv1.MergeProfilesPprofRequest |
+		*ingestv1.MergeSpanProfileRequest
 }
 
 type Response interface {
 	*ingestv1.MergeProfilesStacktracesResponse |
-	*ingestv1.MergeProfilesLabelsResponse |
-	*ingestv1.MergeProfilesPprofResponse |
-	*ingestv1.MergeSpanProfileResponse
+		*ingestv1.MergeProfilesLabelsResponse |
+		*ingestv1.MergeProfilesPprofResponse |
+		*ingestv1.MergeSpanProfileResponse
 }
 
 type MergeResult[R any] interface {
@@ -87,9 +87,9 @@ type mergeIterator[R any, Req Request, Res Response] struct {
 // Merging or querying profiles sample values is expensive, we only merge the sample of the profiles that are kept.
 // On creating the iterator, we send a request to ingesters to fetch the first batch.
 func NewMergeIterator[
-R any,
-Req Request,
-Res Response,
+	R any,
+	Req Request,
+	Res Response,
 ](ctx context.Context, r ResponseFromReplica[BidiClientMerge[Req, Res]],
 ) *mergeIterator[R, Req, Res] {
 	it := &mergeIterator[R, Req, Res]{
@@ -321,7 +321,7 @@ func (p *timestampedFingerprints) keep(ts int64, fingerprint uint64) bool {
 
 func (p *timestampedFingerprints) reset(ts int64, fingerprint uint64) {
 	p.timestamp = ts
-	p.fingerprints = make(map[uint64]struct{})
+	clear(p.fingerprints)
 	p.fingerprints[fingerprint] = struct{}{}
 }
 
