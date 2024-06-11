@@ -419,9 +419,7 @@ func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.Pu
 	enforceLabelsOrder := d.limits.EnforceLabelsOrder(tenantID)
 	for i, series := range profileSeries {
 		if enforceLabelsOrder {
-			labels := phlaremodel.Labels(series.Labels)
-			labels.Insert(phlaremodel.LabelNameOrder, phlaremodel.LabelOrderEnforced)
-			series.Labels = labels
+			series.Labels = phlaremodel.Labels(series.Labels).InsertSorted(phlaremodel.LabelNameOrder, phlaremodel.LabelOrderEnforced)
 		}
 		if err = validation.ValidateLabels(d.limits, tenantID, series.Labels); err != nil {
 			validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(req.TotalProfiles))
