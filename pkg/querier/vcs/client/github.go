@@ -15,9 +15,9 @@ import (
 )
 
 // GithubClient returns a github client.
-func GithubClient(ctx context.Context, token *oauth2.Token) (*githubClient, error) {
+func GithubClient(ctx context.Context, token *oauth2.Token, client *http.Client) (*githubClient, error) {
 	return &githubClient{
-		client: github.NewClient(nil).WithAuthToken(token.AccessToken),
+		client: github.NewClient(client).WithAuthToken(token.AccessToken),
 	}, nil
 }
 
@@ -30,6 +30,7 @@ func (gh *githubClient) GetCommit(ctx context.Context, owner, repo, ref string) 
 	if err != nil {
 		return nil, err
 	}
+
 	return &vcsv1.GetCommitResponse{
 		Sha:     toString(commit.SHA),
 		Message: toString(commit.Commit.Message),
@@ -45,25 +46,30 @@ func (gh *githubClient) GetFile(ctx context.Context, req FileRequest) (File, err
 	// We could abstract away git provider using git protocol
 	// git clone https://x-access-token:<token>@github.com/owner/repo.git
 	// For now we use the github client.
+
 	file, _, _, err := gh.client.Repositories.GetContents(ctx, req.Owner, req.Repo, req.Path, &github.RepositoryContentGetOptions{Ref: req.Ref})
 	if err != nil {
 		var githubErr *github.ErrorResponse
-		if ok := errors.As(err, &githubErr); ok && githubErr.Response.StatusCode == http.StatusNotFound {
+		if errors.As(err, &githubErr) && githubErr.Response.StatusCode == http.StatusNotFound {
 			return File{}, fmt.Errorf("%w: %s", ErrNotFound, err)
 		}
 		return File{}, err
 	}
+
 	if file == nil {
 		return File{}, ErrNotFound
 	}
+
 	// We only support files retrieval.
 	if file.Type != nil && *file.Type != "file" {
 		return File{}, connect.NewError(connect.CodeInvalidArgument, errors.New("path is not a file"))
 	}
+
 	content, err := file.GetContent()
 	if err != nil {
 		return File{}, err
 	}
+
 	return File{
 		Content: content,
 		URL:     toString(file.HTMLURL),

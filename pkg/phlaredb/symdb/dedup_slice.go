@@ -4,7 +4,6 @@ package symdb
 import (
 	"fmt"
 	"hash/maphash"
-	"reflect"
 	"sort"
 	"sync"
 	"unsafe"
@@ -424,11 +423,8 @@ func hashLines(s []schemav1.InMemoryLine) uint64 {
 	if len(s) == 0 {
 		return 0
 	}
-	var b []byte
-	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&b))
-	hdr.Len = len(s) * int(lineSize)
-	hdr.Cap = hdr.Len
-	hdr.Data = uintptr(unsafe.Pointer(&s[0]))
+	p := (*byte)(unsafe.Pointer(&s[0]))
+	b := unsafe.Slice(p, len(s)*int(lineSize))
 	return maphash.Bytes(mapHashSeed, b)
 }
 
@@ -436,11 +432,8 @@ func hashLocations(s []uint64) uint64 {
 	if len(s) == 0 {
 		return 0
 	}
-	var b []byte
-	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&b))
-	hdr.Len = len(s) * 8
-	hdr.Cap = hdr.Len
-	hdr.Data = uintptr(unsafe.Pointer(&s[0]))
+	p := (*byte)(unsafe.Pointer(&s[0]))
+	b := unsafe.Slice(p, len(s)*8)
 	return maphash.Bytes(mapHashSeed, b)
 }
 

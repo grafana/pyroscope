@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/felixge/httpsnoop"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -49,20 +50,37 @@ func (f RoundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 	return f(req)
 }
 
-// InstrumentedHTTPClient returns a HTTP client with tracing instrumented default RoundTripper.
-func InstrumentedHTTPClient() *http.Client {
-	return &http.Client{
-		Transport: WrapWithInstrumentedHTTPTransport(defaultTransport),
+type RoundTripperInstrumentFunc func(next http.RoundTripper) http.RoundTripper
+
+// InstrumentedDefaultHTTPClient returns an http client configured with some
+// default settings which is wrapped with a variety of instrumented
+// RoundTrippers.
+func InstrumentedDefaultHTTPClient(instruments ...RoundTripperInstrumentFunc) *http.Client {
+	client := &http.Client{
+		Transport: defaultTransport,
 	}
+	return InstrumentedHTTPClient(client, instruments...)
 }
 
-// WrapWithInstrumentedHTTPTransport wraps the given RoundTripper with an tracing instrumented one.
-func WrapWithInstrumentedHTTPTransport(next http.RoundTripper) http.RoundTripper {
-	next = &nethttp.Transport{RoundTripper: next}
-	return RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
-		req = nethttp.TraceRequest(opentracing.GlobalTracer(), req)
-		return next.RoundTrip(req)
-	})
+// InstrumentedHTTPClient adds the associated instrumentation middlewares to the
+// provided http client.
+func InstrumentedHTTPClient(client *http.Client, instruments ...RoundTripperInstrumentFunc) *http.Client {
+	for i := len(instruments) - 1; i >= 0; i-- {
+		client.Transport = instruments[i](client.Transport)
+	}
+	return client
+}
+
+// WithTracingTransport wraps the given RoundTripper with a tracing instrumented
+// one.
+func WithTracingTransport() RoundTripperInstrumentFunc {
+	return func(next http.RoundTripper) http.RoundTripper {
+		next = &nethttp.Transport{RoundTripper: next}
+		return RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
+			req = nethttp.TraceRequest(opentracing.GlobalTracer(), req)
+			return next.RoundTrip(req)
+		})
+	}
 }
 
 // WriteYAMLResponse writes some YAML as a HTTP response.
@@ -118,6 +136,30 @@ func (l Log) logWithRequest(r *http.Request) log.Logger {
 	return localLog
 }
 
+// measure request body size
+type reqBody struct {
+	b    io.ReadCloser
+	read byteSize
+}
+
+func (w *reqBody) Read(p []byte) (int, error) {
+	n, err := w.b.Read(p)
+	if n > 0 {
+		w.read += byteSize(n)
+	}
+	return n, err
+}
+
+func (w *reqBody) Close() error {
+	return w.b.Close()
+}
+
+type byteSize uint64
+
+func (bs byteSize) String() string {
+	return strings.Replace(humanize.IBytes(uint64(bs)), " ", "", 1)
+}
+
 // Wrap implements Middleware
 func (l Log) Wrap(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -170,28 +212,43 @@ func (l Log) Wrap(next http.Handler) http.Handler {
 				}
 			},
 		})
+
+		origBody := r.Body
+		defer func() {
+			// No need to leak our Body wrapper beyond the scope of this handler.
+			r.Body = origBody
+		}()
+
+		rBody := &reqBody{b: origBody}
+		r.Body = rBody
+
 		next.ServeHTTP(wrapped, r)
 
 		statusCode, writeErr := httpCode, httpErr.Err()
 
+		requestLogD := log.With(requestLog, "method", r.Method, "uri", uri, "status", statusCode, "duration", time.Since(begin))
+		if rBody.read > 0 {
+			requestLogD = log.With(requestLogD, "request_body_size", rBody.read)
+		}
+
 		if writeErr != nil {
 			if errors.Is(writeErr, context.Canceled) {
 				if l.LogRequestAtInfoLevel {
-					level.Info(requestLog).Log("msg", dslog.LazySprintf("%s %s %s, request cancelled: %s ws: %v; %s", r.Method, uri, time.Since(begin), writeErr, IsWSHandshakeRequest(r), headers))
+					level.Info(requestLogD).Log("msg", dslog.LazySprintf("request cancelled: %s ws: %v; %s", writeErr, IsWSHandshakeRequest(r), headers))
 				} else {
-					level.Debug(requestLog).Log("msg", dslog.LazySprintf("%s %s %s, request cancelled: %s ws: %v; %s", r.Method, uri, time.Since(begin), writeErr, IsWSHandshakeRequest(r), headers))
+					level.Debug(requestLogD).Log("msg", dslog.LazySprintf("request cancelled: %s ws: %v; %s", writeErr, IsWSHandshakeRequest(r), headers))
 				}
 			} else {
-				level.Warn(requestLog).Log("msg", dslog.LazySprintf("%s %s %s, error: %s ws: %v; %s", r.Method, uri, time.Since(begin), writeErr, IsWSHandshakeRequest(r), headers))
+				level.Warn(requestLogD).Log("msg", dslog.LazySprintf("error: %s ws: %v; %s", writeErr, IsWSHandshakeRequest(r), headers))
 			}
 
 			return
 		}
 		if 100 <= statusCode && statusCode < 500 {
 			if l.LogRequestAtInfoLevel {
-				level.Info(requestLog).Log("msg", dslog.LazySprintf("%s %s (%d) %s", r.Method, uri, statusCode, time.Since(begin)))
+				level.Info(requestLogD).Log("msg", "http request processed")
 			} else {
-				level.Debug(requestLog).Log("msg", dslog.LazySprintf("%s %s (%d) %s", r.Method, uri, statusCode, time.Since(begin)))
+				level.Debug(requestLogD).Log("msg", "http request processed")
 			}
 			if l.LogRequestHeaders && headers != nil {
 				if l.LogRequestAtInfoLevel {

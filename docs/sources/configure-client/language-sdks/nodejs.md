@@ -47,11 +47,44 @@ Pyroscope.init({
 Pyroscope.start()
 ```
 
-Note: If you'd prefer to use Pull mode you can do so using the [Grafana Agent]({{< relref "../grafana-agent" >}}).
+[comment]: <> (TODO This needs its own page like https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/go_pull/)
+{{< admonition type="note" >}}
+If you'd prefer, you can use Pull mode using [Grafana Alloy](https://grafana.com/docs/alloy/latest/) (recommended) or [Grafana Agent]({{< relref "../grafana-agent" >}}) (legacy).
+{{< /admonition >}}
+
+
+### Configuration options
+
+| Init parameter                | ENVIRONMENT VARIABLE                      | Type           | DESCRIPTION                                                                       |
+|-------------------------------|-------------------------------------------|----------------|-----------------------------------------------------------------------------------|
+| `appName:                     | `PYROSCOPE_APPLICATION_NAME`              | String         | Sets the `service_name` label                                                     |
+| `serverAddress:`              | `PYROSCOPE_SERVER_ADDRESS`                | String         | URL of the Pyroscope Server                                                       |
+| `basicAuthUser:`              | n/a                                       | String         | Username for basic auth / Grafana Cloud stack user ID (Default `""`)              |
+| `basicAuthPassword:`          | n/a                                       | String         | Password for basic auth / Grafana Cloud API key (Default `""`)                    |
+| `flushIntervalMs:`            | `PYROSCOPE_FLUSH_INTERVAL_MS`             | Number         | Interval when profiles are sent to the server (Default `60000`)                   |
+| `heapSamplingIntervalBytes`   | `PYROSCOPE_HEAP_SAMPLING_INTERVAL_BYTES`  | Number         | Average number of bytes between samples. (Default `524288`)                       |
+| `heapStackDepth:`             | `PYROSCOPE_HEAP_STACK_DEPTH`              | Number         | Maximum stack depth for heap samples (Default `64`)                               |
+| `wallSamplingDurationMs:`     | `PYROSCOPE_WALL_SAMPLING_DURATION_MS`     | Number         | Duration of a single wall profile (Default `60000`)                               |
+| `wallSamplingIntervalMicros:` | `PYROSCOPE_WALL_SAMPLING_INTERVAL_MICROS` | Number         | Interval of how often wall samples are collected (Default `10000`                 |
+| `wallCollectCpuTime:`         | `PYROSCOPE_WALL_COLLECT_CPU_TIME`         | Boolean        | Enable CPU time collection for wall profiles (Default `false`)                    |
+| `tags:`                       | n/a                                       | [LabelSet]     | Static labels applying to all profiles collected (Default `{}`)                   |
+| `sourceMapper:`               | n/a                                       | [SourceMapper] | Provide source file mapping information (Default `undefined`)                     |
+
+[LabelSet]:https://github.com/DataDog/pprof-nodejs/blob/v5.3.0/ts/src/v8-types.ts#L59-L61
+[SourceMapper]:https://github.com/DataDog/pprof-nodejs/blob/v5.3.0/ts/src/sourcemapper/sourcemapper.ts#L152
+
 
 ### Add profiling labels to Node.js applications
 
-It is possible to add tags (labels) to the profiling data. These tags can be used to filter the data in the UI. Dynamic tagging isn't supported yet.
+#### Static labels
+
+You can add static labels to the profiling data.
+These labels can be used to filter the data in the UI and apply for all profiles collected.
+Common static labels include:
+
+* `hostname`
+* `region`
+* `team`
 
 ```javascript
 Pyroscope.init({
@@ -63,6 +96,16 @@ Pyroscope.init({
 });
 
 Pyroscope.start()
+```
+
+#### Dynamic labels for Wall/CPU profiles
+
+In Wall/CPU profiles, labels can also be attached dynamically and help to separate different code paths:
+
+```javascript
+Pyroscope.wrapWithLabels({ vehicle: 'bike' }, () =>
+  slowCode()
+);
 ```
 
 ## Send data to Pyroscope OSS or Grafana Cloud

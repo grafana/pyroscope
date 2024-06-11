@@ -2,6 +2,7 @@ package vcs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -65,10 +66,7 @@ func githubOAuthConfig() (*oauth2.Config, error) {
 
 // refreshGithubToken sends a request configured for the GitHub API and marshals
 // the response into a githubAuthToken.
-func refreshGithubToken(req *http.Request) (*githubAuthToken, error) {
-	client := http.Client{
-		Timeout: 10 * time.Second,
-	}
+func refreshGithubToken(req *http.Request, client *http.Client) (*githubAuthToken, error) {
 	res, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to make request: %w", err)
@@ -150,4 +148,22 @@ func githubAuthTokenFromFormURLEncoded(values url.Values) (*githubAuthToken, err
 	}
 
 	return token, nil
+}
+
+func isGitHubIntegrationConfigured() error {
+	var errs []error
+
+	if githubAppClientID == "" {
+		errs = append(errs, fmt.Errorf("missing GITHUB_CLIENT_ID environment variable"))
+	}
+
+	if githubAppClientSecret == "" {
+		errs = append(errs, fmt.Errorf("missing GITHUB_CLIENT_SECRET environment variable"))
+	}
+
+	if len(githubSessionSecret) == 0 {
+		errs = append(errs, fmt.Errorf("missing GITHUB_SESSION_SECRET environment variable"))
+	}
+
+	return errors.Join(errs...)
 }

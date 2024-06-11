@@ -1,7 +1,6 @@
 package labels
 
 import (
-	"sort"
 	"testing"
 
 	"github.com/prometheus/common/model"
@@ -21,12 +20,12 @@ func TestLabelsForProfiles(t *testing.T) {
 			"default",
 			phlaremodel.Labels{{Name: model.MetricNameLabel, Value: "cpu"}},
 			phlaremodel.Labels{
-				{Name: model.MetricNameLabel, Value: "cpu"},
-				{Name: phlaremodel.LabelNameUnit, Value: "unit"},
 				{Name: phlaremodel.LabelNameProfileType, Value: "cpu:type:unit:type:unit"},
-				{Name: phlaremodel.LabelNameType, Value: "type"},
+				{Name: model.MetricNameLabel, Value: "cpu"},
 				{Name: phlaremodel.LabelNamePeriodType, Value: "type"},
 				{Name: phlaremodel.LabelNamePeriodUnit, Value: "unit"},
+				{Name: phlaremodel.LabelNameType, Value: "type"},
+				{Name: phlaremodel.LabelNameUnit, Value: "unit"},
 			},
 		},
 		{
@@ -36,21 +35,20 @@ func TestLabelsForProfiles(t *testing.T) {
 				{Name: phlaremodel.LabelNameServiceName, Value: "service_name"},
 			},
 			phlaremodel.Labels{
-				{Name: model.MetricNameLabel, Value: "cpu"},
-				{Name: phlaremodel.LabelNameUnit, Value: "unit"},
 				{Name: phlaremodel.LabelNameProfileType, Value: "cpu:type:unit:type:unit"},
-				{Name: phlaremodel.LabelNameType, Value: "type"},
+				{Name: phlaremodel.LabelNameServiceNamePrivate, Value: "service_name"},
+				{Name: model.MetricNameLabel, Value: "cpu"},
 				{Name: phlaremodel.LabelNamePeriodType, Value: "type"},
 				{Name: phlaremodel.LabelNamePeriodUnit, Value: "unit"},
-				{Name: labelNameServiceName, Value: "service_name"},
+				{Name: phlaremodel.LabelNameType, Value: "type"},
+				{Name: phlaremodel.LabelNameUnit, Value: "unit"},
 				{Name: phlaremodel.LabelNameServiceName, Value: "service_name"},
 			},
 		},
 	} {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			sort.Sort(tt.expected)
-			result, fps := CreateProfileLabels(newProfileFoo(), tt.in...)
+			result, fps := CreateProfileLabels(true, newProfileFoo(), tt.in...)
 			require.Equal(t, tt.expected, result[0])
 			require.Equal(t, model.Fingerprint(tt.expected.Hash()), fps[0])
 		})

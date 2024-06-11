@@ -38,6 +38,7 @@ import (
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/clientpool"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/testhelper"
@@ -51,6 +52,11 @@ var ringConfig = util.CommonRingConfig{
 	InstanceAddr: "127.0.0.1",
 	ListenPort:   8080,
 }
+
+var (
+	clientOptions  = append(connectapi.DefaultClientOptions(), connect.WithInterceptors(tenant.NewAuthInterceptor(true)))
+	handlerOptions = append(connectapi.DefaultHandlerOptions(), connect.WithInterceptors(tenant.NewAuthInterceptor(true)))
+)
 
 type poolFactory struct {
 	f func(addr string) (client.PoolClient, error)
@@ -72,12 +78,11 @@ func Test_ConnectPush(t *testing.T) {
 	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
 
 	require.NoError(t, err)
-	mux.Handle(pushv1connect.NewPusherServiceHandler(d, connect.WithInterceptors(tenant.NewAuthInterceptor(true))))
+	mux.Handle(pushv1connect.NewPusherServiceHandler(d, handlerOptions...))
 	s := httptest.NewServer(mux)
 	defer s.Close()
 
-	client := pushv1connect.NewPusherServiceClient(http.DefaultClient, s.URL, connect.WithInterceptors(tenant.NewAuthInterceptor(true)))
-
+	client := pushv1connect.NewPusherServiceClient(http.DefaultClient, s.URL, clientOptions...)
 	resp, err := client.Push(tenant.InjectTenantID(context.Background(), "foo"), connect.NewRequest(&pushv1.PushRequest{
 		Series: []*pushv1.RawProfileSeries{
 			{
@@ -325,11 +330,11 @@ func Test_Limits(t *testing.T) {
 			}
 			m1 := metricsDump(expectedMetricDelta)
 
-			mux.Handle(pushv1connect.NewPusherServiceHandler(d, connect.WithInterceptors(tenant.NewAuthInterceptor(true))))
+			mux.Handle(pushv1connect.NewPusherServiceHandler(d, handlerOptions...))
 			s := httptest.NewServer(mux)
 			defer s.Close()
 
-			client := pushv1connect.NewPusherServiceClient(http.DefaultClient, s.URL, connect.WithInterceptors(tenant.NewAuthInterceptor(true)))
+			client := pushv1connect.NewPusherServiceClient(http.DefaultClient, s.URL, clientOptions...)
 			resp, err := client.Push(tenant.InjectTenantID(context.Background(), "user-1"), connect.NewRequest(tc.pushReq))
 			require.Error(t, err)
 			require.Equal(t, tc.expectedCode, connect.CodeOf(err))
@@ -410,7 +415,8 @@ func Test_Sessions_Limit(t *testing.T) {
 				}), nil, log.NewLogfmtLogger(os.Stdout))
 
 			require.NoError(t, err)
-			assert.Equal(t, tc.expectedLabels, d.limitMaxSessionsPerSeries("user-1", tc.seriesLabels))
+			limit := d.limits.MaxSessionsPerSeries("user-1")
+			assert.Equal(t, tc.expectedLabels, d.limitMaxSessionsPerSeries(limit, tc.seriesLabels))
 		})
 	}
 }
@@ -676,11 +682,11 @@ func TestBadPushRequest(t *testing.T) {
 	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
 
 	require.NoError(t, err)
-	mux.Handle(pushv1connect.NewPusherServiceHandler(d, connect.WithInterceptors(tenant.NewAuthInterceptor(true))))
+	mux.Handle(pushv1connect.NewPusherServiceHandler(d, handlerOptions...))
 	s := httptest.NewServer(mux)
 	defer s.Close()
 
-	client := pushv1connect.NewPusherServiceClient(http.DefaultClient, s.URL, connect.WithInterceptors(tenant.NewAuthInterceptor(true)))
+	client := pushv1connect.NewPusherServiceClient(http.DefaultClient, s.URL, clientOptions...)
 
 	_, err = client.Push(tenant.InjectTenantID(context.Background(), "foo"), connect.NewRequest(&pushv1.PushRequest{
 		Series: []*pushv1.RawProfileSeries{
@@ -757,11 +763,11 @@ func TestPush_ShuffleSharding(t *testing.T) {
 	require.NoError(t, err)
 
 	mux := http.NewServeMux()
-	mux.Handle(pushv1connect.NewPusherServiceHandler(d, connect.WithInterceptors(tenant.NewAuthInterceptor(true))))
+	mux.Handle(pushv1connect.NewPusherServiceHandler(d, handlerOptions...))
 	s := httptest.NewServer(mux)
 	defer s.Close()
 
-	client := pushv1connect.NewPusherServiceClient(http.DefaultClient, s.URL, connect.WithInterceptors(tenant.NewAuthInterceptor(true)))
+	client := pushv1connect.NewPusherServiceClient(http.DefaultClient, s.URL, clientOptions...)
 
 	// Empty profiles are discarded before sending to ingesters.
 	var buf bytes.Buffer

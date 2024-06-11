@@ -18,8 +18,8 @@ func Test_CalcPointInterval(t *testing.T) {
 		end   time.Time
 		want  int64
 	}{
-		{name: "1 second", start: TestDate, end: TestDate.Add(1 * time.Second), want: 10},
-		{name: "1 hour", start: TestDate, end: TestDate.Add(1 * time.Hour), want: 10},
+		{name: "1 second", start: TestDate, end: TestDate.Add(1 * time.Second), want: 15},
+		{name: "1 hour", start: TestDate, end: TestDate.Add(1 * time.Hour), want: 15},
 		{name: "7 days", start: TestDate, end: TestDate.Add(7 * 24 * time.Hour), want: 300},
 		{name: "30 days", start: TestDate, end: TestDate.Add(30 * 24 * time.Hour), want: 1800},
 		{name: "90 days", start: TestDate, end: TestDate.Add(30 * 24 * time.Hour), want: 1800},

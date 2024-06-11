@@ -29,6 +29,7 @@ import (
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/cfg"
 	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
 	"github.com/grafana/pyroscope/pkg/phlare"
@@ -340,6 +341,7 @@ func (b *RequestBuilder) QueryClient() querierv1connect.QuerierServiceClient {
 	return querierv1connect.NewQuerierServiceClient(
 		http.DefaultClient,
 		b.url,
+		connectapi.DefaultClientOptions()...,
 	)
 }
 
@@ -347,6 +349,7 @@ func (b *RequestBuilder) PushClient() pushv1connect.PusherServiceClient {
 	return pushv1connect.NewPusherServiceClient(
 		http.DefaultClient,
 		b.url,
+		connectapi.DefaultClientOptions()...,
 	)
 }
 

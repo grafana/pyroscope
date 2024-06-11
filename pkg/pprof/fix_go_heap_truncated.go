@@ -2,7 +2,6 @@ package pprof
 
 import (
 	"bytes"
-	"reflect"
 	"slices"
 	"sort"
 	"unsafe"
@@ -224,11 +223,8 @@ func topToken(s []uint64) []byte {
 }
 
 func locBytes(s []uint64) []byte {
-	size := len(s) * 8
-	h := (*reflect.SliceHeader)(unsafe.Pointer(&s))
-	h.Len = size
-	h.Cap = size
-	return *(*[]byte)(unsafe.Pointer(h))
+	p := (*byte)(unsafe.Pointer(&s[0]))
+	return unsafe.Slice(p, len(s)*8)
 }
 
 func unsafeString(b []byte) string {

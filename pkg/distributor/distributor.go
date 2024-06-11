@@ -34,6 +34,7 @@ import (
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/clientpool"
 	"github.com/grafana/pyroscope/pkg/distributor/aggregator"
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
@@ -121,11 +122,17 @@ type Limits interface {
 	MaxProfileStacktraceDepth(tenantID string) int
 	MaxProfileSymbolValueLength(tenantID string) int
 	MaxSessionsPerSeries(tenantID string) int
+	EnforceLabelsOrder(tenantID string) bool
 	validation.ProfileValidationLimits
 	aggregator.Limits
 }
 
 func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactory, limits Limits, reg prometheus.Registerer, logger log.Logger, clientsOptions ...connect.ClientOption) (*Distributor, error) {
+	clientsOptions = append(
+		connectapi.DefaultClientOptions(),
+		clientsOptions...,
+	)
+
 	clients := promauto.With(reg).NewGauge(prometheus.GaugeOpts{
 		Namespace: "pyroscope",
 		Name:      "distributor_ingester_clients",
@@ -387,8 +394,9 @@ func (d *Distributor) sendAggregatedProfile(ctx context.Context, req *distributo
 
 func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.PushRequest, tenantID string) (resp *connect.Response[pushv1.PushResponse], err error) {
 	// Reduce cardinality of session_id label.
+	maxSessionsPerSeries := d.limits.MaxSessionsPerSeries(tenantID)
 	for _, series := range req.Series {
-		series.Labels = d.limitMaxSessionsPerSeries(tenantID, series.Labels)
+		series.Labels = d.limitMaxSessionsPerSeries(maxSessionsPerSeries, series.Labels)
 	}
 
 	// Next we split profiles by labels.
@@ -408,7 +416,13 @@ func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.Pu
 
 	// Validate the labels again and generate tokens for shuffle sharding.
 	keys := make([]uint32, len(profileSeries))
+	enforceLabelsOrder := d.limits.EnforceLabelsOrder(tenantID)
 	for i, series := range profileSeries {
+		if enforceLabelsOrder {
+			labels := phlaremodel.Labels(series.Labels)
+			labels.Insert(phlaremodel.LabelNameOrder, phlaremodel.LabelOrderEnforced)
+			series.Labels = labels
+		}
 		if err = validation.ValidateLabels(d.limits, tenantID, series.Labels); err != nil {
 			validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(req.TotalProfiles))
 			validation.DiscardedBytes.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(req.TotalBytesUncompressed))
@@ -660,8 +674,7 @@ func extractSampleSeries(req *distributormodel.PushRequest) []*distributormodel.
 	return profileSeries
 }
 
-func (d *Distributor) limitMaxSessionsPerSeries(tenantID string, labels phlaremodel.Labels) phlaremodel.Labels {
-	maxSessionsPerSeries := d.limits.MaxSessionsPerSeries(tenantID)
+func (d *Distributor) limitMaxSessionsPerSeries(maxSessionsPerSeries int, labels phlaremodel.Labels) phlaremodel.Labels {
 	if maxSessionsPerSeries == 0 {
 		return labels.Delete(phlaremodel.LabelNameSessionID)
 	}

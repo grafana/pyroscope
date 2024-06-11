@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"container/heap"
 	"io"
-	"reflect"
 	"sync"
 	"unsafe"
 
@@ -141,6 +140,18 @@ func NewStacktraceTree(size int) *StacktraceTree {
 	return &t
 }
 
+func (t *StacktraceTree) Reset() {
+	if cap(t.Nodes) < 1 {
+		*t = *(NewStacktraceTree(0))
+		return
+	}
+	t.Nodes = t.Nodes[:1]
+	t.Nodes[0] = StacktraceNode{
+		FirstChild:  sentinel,
+		NextSibling: sentinel,
+	}
+}
+
 const sentinel = -1
 
 func (t *StacktraceTree) Insert(locations []int32, value int64) int32 {
@@ -202,6 +213,7 @@ func (t *StacktraceTree) LookupLocations(dst []uint64, idx int32) []uint64 {
 
 // MinValue returns the minimum "total" value a node in a tree has to have.
 func (t *StacktraceTree) MinValue(maxNodes int64) int64 {
+	// TODO(kolesnikovae): Consider quickselect.
 	if maxNodes < 1 || maxNodes >= int64(len(t.Nodes)) {
 		return 0
 	}
@@ -226,7 +238,7 @@ func (t *StacktraceTree) MinValue(maxNodes int64) int64 {
 type StacktraceTreeTraverseFn = func(index int32, children []int32) error
 
 func (t *StacktraceTree) Traverse(maxNodes int64, fn StacktraceTreeTraverseFn) error {
-	min := t.MinValue(maxNodes)
+	minValue := t.MinValue(maxNodes)
 	children := make([]int32, 0, 128) // Children per node.
 	nodesSize := maxNodes             // Depth search buffer.
 	if nodesSize < 1 || nodesSize > 10<<10 {
@@ -244,7 +256,7 @@ func (t *StacktraceTree) Traverse(maxNodes int64, fn StacktraceTreeTraverseFn) e
 
 		for x := n.FirstChild; x > 0; {
 			child := &t.Nodes[x]
-			if child.Total >= min && child.Location != sentinel {
+			if child.Total >= minValue && child.Location != sentinel {
 				children = append(children, x)
 			} else {
 				truncated += child.Total
@@ -275,8 +287,6 @@ func (t *StacktraceTree) Traverse(maxNodes int64, fn StacktraceTreeTraverseFn) e
 	return nil
 }
 
-var lostDuringSerializationNameBytes = []byte(truncatedNodeName)
-
 func (t *StacktraceTree) Bytes(dst io.Writer, maxNodes int64, funcs []string) {
 	if len(t.Nodes) == 0 || len(funcs) == 0 {
 		return
@@ -291,9 +301,8 @@ func (t *StacktraceTree) Bytes(dst io.Writer, maxNodes int64, funcs []string) {
 			// and the byte slice backing capacity is managed by GC.
 			name = unsafeStringBytes(funcs[n.Location])
 		case sentinel:
-			name = lostDuringSerializationNameBytes
+			name = truncatedNodeNameBytes
 		}
-
 		_, _ = vw.Write(dst, uint64(len(name)))
 		_, _ = dst.Write(name)
 		_, _ = vw.Write(dst, uint64(n.Value))
@@ -303,11 +312,43 @@ func (t *StacktraceTree) Bytes(dst io.Writer, maxNodes int64, funcs []string) {
 }
 
 func unsafeStringBytes(s string) []byte {
-	p := unsafe.Pointer((*reflect.StringHeader)(unsafe.Pointer(&s)).Data)
-	var b []byte
-	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&b))
-	hdr.Data = uintptr(p)
-	hdr.Cap = len(s)
-	hdr.Len = len(s)
-	return b
+	return unsafe.Slice(unsafe.StringData(s), len(s))
+}
+
+func (t *StacktraceTree) Tree(maxNodes int64, names []string) *Tree {
+	if len(t.Nodes) < 2 || len(names) == 0 {
+		// stack trace tree has root at 0: trees with less
+		// than 2 nodes are considered empty.
+		return new(Tree)
+	}
+
+	nodesSize := maxNodes
+	if nodesSize < 1 || nodesSize > 10<<10 {
+		nodesSize = 1 << 10 // Sane default.
+	}
+	root := new(node) // Virtual root node.
+	nodes := make([]*node, 1, nodesSize)
+	nodes[0] = root
+	var current *node
+
+	_ = t.Traverse(maxNodes, func(index int32, children []int32) error {
+		current, nodes = nodes[len(nodes)-1], nodes[:len(nodes)-1]
+		sn := &t.Nodes[index]
+		var name string
+		if sn.Location < 0 {
+			name = truncatedNodeName
+		} else {
+			name = names[sn.Location]
+		}
+		n := current.insert(name)
+		n.self = sn.Value
+		n.total = sn.Total
+		n.children = make([]*node, 0, len(children))
+		for i := 0; i < len(children); i++ {
+			nodes = append(nodes, n)
+		}
+		return nil
+	})
+
+	return &Tree{root: root.children[0].children}
 }

@@ -42,12 +42,12 @@ func Test_getDataFromPlan(t *testing.T) {
 			name: "plan with ingesters only",
 			plan: blockPlan{
 				"replica 1": &blockPlanEntry{
-					BlockHints:   &ingestv1.BlockHints{Ulids: []string{"block A", "block B"}, Deduplication: true},
-					InstanceType: ingesterInstance,
+					BlockHints:    &ingestv1.BlockHints{Ulids: []string{"block A", "block B"}, Deduplication: true},
+					InstanceTypes: []instanceType{ingesterInstance},
 				},
 				"replica 2": &blockPlanEntry{
-					BlockHints:   &ingestv1.BlockHints{Ulids: []string{"block C", "block D"}, Deduplication: true},
-					InstanceType: ingesterInstance,
+					BlockHints:    &ingestv1.BlockHints{Ulids: []string{"block C", "block D"}, Deduplication: true},
+					InstanceTypes: []instanceType{ingesterInstance},
 				},
 			},
 			verifyIngesterQueryScope: func(t *testing.T, scope *queryScope) {
@@ -66,16 +66,16 @@ func Test_getDataFromPlan(t *testing.T) {
 			name: "plan with ingesters and store gateways",
 			plan: blockPlan{
 				"replica 1": &blockPlanEntry{
-					BlockHints:   &ingestv1.BlockHints{Ulids: []string{"block A", "block B"}, Deduplication: true},
-					InstanceType: ingesterInstance,
+					BlockHints:    &ingestv1.BlockHints{Ulids: []string{"block A", "block B"}, Deduplication: true},
+					InstanceTypes: []instanceType{ingesterInstance},
 				},
 				"replica 2": &blockPlanEntry{
-					BlockHints:   &ingestv1.BlockHints{Ulids: []string{"block C", "block D"}, Deduplication: true},
-					InstanceType: ingesterInstance,
+					BlockHints:    &ingestv1.BlockHints{Ulids: []string{"block C", "block D"}, Deduplication: true},
+					InstanceTypes: []instanceType{ingesterInstance},
 				},
 				"replica 3": &blockPlanEntry{
-					BlockHints:   &ingestv1.BlockHints{Ulids: []string{"block E", "block F"}, Deduplication: true},
-					InstanceType: storeGatewayInstance,
+					BlockHints:    &ingestv1.BlockHints{Ulids: []string{"block E", "block F"}, Deduplication: true},
+					InstanceTypes: []instanceType{storeGatewayInstance},
 				},
 			},
 			verifyIngesterQueryScope: func(t *testing.T, scope *queryScope) {
@@ -89,6 +89,30 @@ func Test_getDataFromPlan(t *testing.T) {
 				require.Equal(t, uint64(1), scope.ComponentCount)
 				require.Equal(t, uint64(2), scope.BlockCount)
 				for _, block := range []string{"block E", "block F"} {
+					require.True(t, slices.Contains(scope.blockIds, block))
+				}
+			},
+			wantDeduplicationNeeded: true,
+		},
+		{
+			name: "plan with a single replica with dual instance types (standalone binary)",
+			plan: blockPlan{
+				"replica 1": &blockPlanEntry{
+					BlockHints:    &ingestv1.BlockHints{Ulids: []string{"block A"}, Deduplication: true},
+					InstanceTypes: []instanceType{ingesterInstance, storeGatewayInstance},
+				},
+			},
+			verifyIngesterQueryScope: func(t *testing.T, scope *queryScope) {
+				require.Equal(t, uint64(1), scope.ComponentCount)
+				require.Equal(t, uint64(1), scope.BlockCount)
+				for _, block := range []string{"block A"} {
+					require.True(t, slices.Contains(scope.blockIds, block))
+				}
+			},
+			verifyStoreGatewayQueryScope: func(t *testing.T, scope *queryScope) {
+				require.Equal(t, uint64(1), scope.ComponentCount)
+				require.Equal(t, uint64(1), scope.BlockCount)
+				for _, block := range []string{"block A"} {
 					require.True(t, slices.Contains(scope.blockIds, block))
 				}
 			},

@@ -21,9 +21,9 @@ To set up eBPF profiling with Grafana Agent on Kubernetes, you need to:
 
 Before you begin, you need:
 
-- [helm][helm] and [kubectl][kubectl] installed with access to your Kubernetes cluster.
-- A Pyroscope server where the agent will send profiling data.
-- Access to Grafana with the [Grafana Pyroscope datasource][pyroscope-ds] provisioned.
+- [Helm][helm] and [kubectl][kubectl] installed with access to your Kubernetes cluster.
+- A Pyroscope server where the Agent will send profiling data.
+- Access to Grafana with the [Grafana Pyroscope data source][pyroscope-ds] provisioned.
 
 {{< admonition type="note" >}}
 If you don't have a Grafana and/or a Pyroscope server, you can use the [Grafana Cloud][gcloud] free plan to get started.
@@ -52,7 +52,7 @@ helm repo add grafana https://grafana.github.io/helm-charts
 helm repo update
 ```
 
-You can verify that the repository was added successfully by running:
+Verify that the repository was added successfully by running:
 
 ```shell
 helm search repo grafana/grafana-agent
@@ -118,7 +118,7 @@ To install the Grafana Agent, run:
 helm install pyroscope-ebpf grafana/grafana-agent -f values.yaml
 ```
 
-Once configured, the Agent will start collecting eBPF profiles and send them to the Pyroscope server.
+Once configured, the Agent starts collecting eBPF profiles and send them to the Pyroscope server.
 
 ## Verify profiles are received
 
