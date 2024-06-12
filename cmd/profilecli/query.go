@@ -7,17 +7,21 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log/level"
 	gprofile "github.com/google/pprof/profile"
 	"github.com/grafana/dskit/runutil"
 	"github.com/k0kubun/pp/v3"
 	"github.com/klauspost/compress/gzip"
 	"github.com/mattn/go-isatty"
+	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
@@ -315,4 +319,85 @@ func querySeries(ctx context.Context, params *querySeriesParams) (err error) {
 
 	return nil
 
+}
+
+type queryLabelValuesCardinalityParams struct {
+	*queryParams
+	TopN uint64
+}
+
+func addQueryLabelValuesCardinalityParams(queryCmd commander) *queryLabelValuesCardinalityParams {
+	params := new(queryLabelValuesCardinalityParams)
+	params.queryParams = addQueryParams(queryCmd)
+	queryCmd.Flag("top-n", "Show the top N high cardinality label values").Default("20").Uint64Var(&params.TopN)
+	return params
+}
+
+func queryLabelValuesCardinality(ctx context.Context, params *queryLabelValuesCardinalityParams) (err error) {
+	from, to, err := params.parseFromTo()
+	if err != nil {
+		return err
+	}
+
+	level.Info(logger).Log("msg", "query label names", "url", params.URL, "from", from, "to", to)
+
+	qc := params.phlareClient.queryClient()
+	resp, err := qc.LabelNames(ctx, connect.NewRequest(&typesv1.LabelNamesRequest{
+		Start:    from.UnixMilli(),
+		End:      to.UnixMilli(),
+		Matchers: []string{params.Query},
+	}))
+	if err != nil {
+		return errors.Wrap(err, "failed to query")
+	}
+
+	level.Info(logger).Log("msg", fmt.Sprintf("received %d label names", len(resp.Msg.Names)))
+
+	g, gctx := errgroup.WithContext(ctx)
+	g.SetLimit(8)
+	result := make([]struct {
+		count int
+		name  string
+	}, len(resp.Msg.Names))
+
+	for idx := range resp.Msg.Names {
+		idx := idx
+		g.Go(func() error {
+			name := resp.Msg.Names[idx]
+			resp, err := qc.LabelValues(gctx, connect.NewRequest(&typesv1.LabelValuesRequest{
+				Name:     name,
+				Start:    from.UnixMilli(),
+				End:      to.UnixMilli(),
+				Matchers: []string{params.Query},
+			}))
+			if err != nil {
+				return fmt.Errorf("failed to query label values for %s: %w", name, err)
+			}
+
+			result[idx].name = name
+			result[idx].count = len(resp.Msg.Names)
+
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
+	// sort the result
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].count > result[j].count
+	})
+
+	table := tablewriter.NewWriter(output(ctx))
+	table.SetHeader([]string{"LabelName", "Value count"})
+	if len(result) > int(params.TopN) {
+		result = result[:params.TopN]
+	}
+	for _, r := range result {
+		table.Append([]string{r.name, humanize.FormatInteger("#,###.", r.count)})
+	}
+	table.Render()
+
+	return nil
 }
