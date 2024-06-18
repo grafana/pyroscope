@@ -19,7 +19,7 @@ type batch[T any] struct {
 	done     chan struct{}
 }
 
-const minBatchSize = 64
+const minBatchSize = 2
 
 func NewAsyncBatchIterator[T, N any](
 	iterator Iterator[T],
