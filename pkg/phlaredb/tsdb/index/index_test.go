@@ -584,3 +584,18 @@ func TestDecoder_Postings_WrongInput(t *testing.T) {
 	_, _, err := (&Decoder{}).Postings([]byte("the cake is a lie"))
 	require.Error(t, err)
 }
+
+func TestWriter_ShouldReturnErrorOnSeriesWithDuplicatedLabelNames(t *testing.T) {
+	w, err := NewWriter(context.Background(), filepath.Join(t.TempDir(), "index"))
+	require.NoError(t, err)
+
+	require.NoError(t, w.AddSymbol("__name__"))
+	require.NoError(t, w.AddSymbol("metric_1"))
+	require.NoError(t, w.AddSymbol("metric_2"))
+
+	require.NoError(t, w.AddSeries(0, phlaremodel.LabelsFromStrings("__name__", "metric_1", "__name__", "metric_2"), 0))
+
+	err = w.Close()
+	require.Error(t, err)
+	require.ErrorContains(t, err, "corruption detected when writing postings to index")
+}
