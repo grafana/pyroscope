@@ -10,7 +10,7 @@ import (
 )
 
 func Test_FixGoProfile(t *testing.T) {
-	p, err := OpenFile("testdata/goheapfix/heap_go_truncated_4.pb.gz")
+	p, err := OpenFile("testdata/gotruncatefix/heap_go_truncated_4.pb.gz")
 	require.NoError(t, err)
 
 	f := FixGoProfile(p.Profile)

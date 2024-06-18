@@ -10,30 +10,49 @@ import (
 )
 
 const (
-	minGroupSize = 2
+	minGroupSize      = 2
+	maxRecursiveDepth = 56 // Profiles with deeply recursive stack traces are ignored.
 
 	tokens    = 8
 	tokenLen  = 16
-	suffixLen = tokens + tokenLen
+	suffixLen = tokens + tokenLen // stacktraces shorter than suffixLen are not considered as truncated or missing stacks copied from
 
 	tokenBytesLen  = tokenLen * 8
 	suffixBytesLen = suffixLen * 8
 )
 
-// MayHaveGoHeapTruncatedStacktraces reports whether there are
+// PotentialTruncatedGoStacktraces reports whether there are
 // any chances that the profile may have truncated stack traces.
-func MayHaveGoHeapTruncatedStacktraces(p *profilev1.Profile) bool {
-	if !hasGoHeapSampleTypes(p) {
+func PotentialTruncatedGoStacktraces(p *profilev1.Profile) bool {
+	var minDepth int
+	var maxDepth int
+
+	if hasGoHeapSampleTypes(p) {
+		minDepth = 32
+
+		// Go heap profiles in Go 1.23+ have a depth limit of 128 frames. Let's not try to fix truncation if we see any longer stacks.
+		maxDepth = 33
+	} else if hasGoCPUSampleTypes(p) {
+		minDepth = 64
+	} else {
 		return false
 	}
-	// Some truncated stacks have depth less than the depth limit (32).
-	const minDepth = 28
+
+	// Some truncated heap stacks have depth less than the depth limit.
+	// https://github.com/golang/go/blob/f7c330eac7777612574d8a1652fd415391f6095e/src/runtime/mprof.go#L446
+	minDepth -= 4
+
+	deepEnough := false
 	for _, s := range p.Sample {
 		if len(s.LocationId) >= minDepth {
-			return true
+			deepEnough = true
+		}
+		// when it's too deep we no longer perform reassemlbing of truncated stacktraces
+		if maxDepth != 0 && len(s.LocationId) >= maxDepth {
+			return false
 		}
 	}
-	return false
+	return deepEnough
 }
 
 func hasGoHeapSampleTypes(p *profilev1.Profile) bool {
@@ -50,7 +69,18 @@ func hasGoHeapSampleTypes(p *profilev1.Profile) bool {
 	return false
 }
 
-// RepairGoHeapTruncatedStacktraces repairs truncated stack traces
+func hasGoCPUSampleTypes(p *profilev1.Profile) bool {
+	for _, st := range p.SampleType {
+		switch p.StringTable[st.Type] {
+		case
+			"cpu":
+			return true
+		}
+	}
+	return false
+}
+
+// RepairGoTruncatedStacktraces repairs truncated stack traces
 // in Go heap profiles.
 //
 // Go heap profile has a depth limit of 32 frames, which often
@@ -66,7 +96,7 @@ func hasGoHeapSampleTypes(p *profilev1.Profile) bool {
 // one by at least 16 frames in a row from the top, and has frames
 // above its root, stack S considered truncated, and the missing part
 // is copied from R.
-func RepairGoHeapTruncatedStacktraces(p *profilev1.Profile) {
+func RepairGoTruncatedStacktraces(p *profilev1.Profile) {
 	// Group stack traces by bottom (closest to the root) locations.
 	// Typically, there are very few groups (a hundred or two).
 	samples, groups := split(p)
@@ -82,7 +112,7 @@ func RepairGoHeapTruncatedStacktraces(p *profilev1.Profile) {
 		if i+1 < len(groups) {
 			n = groups[i+1]
 		}
-		if s := n - g; s < minGroupSize {
+		if s := n - g; s < (minGroupSize - 1) {
 			continue
 		}
 		// We take suffix of the first sample in the group.
@@ -168,8 +198,7 @@ func RepairGoHeapTruncatedStacktraces(p *profilev1.Profile) {
 			}
 			c = n
 			j++
-			if j == tokenLen {
-				// Profiles with deeply recursive stack traces are ignored.
+			if j == maxRecursiveDepth {
 				return
 			}
 		}

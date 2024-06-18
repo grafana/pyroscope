@@ -28,12 +28,6 @@ type repeatedRowIterator[T any] struct {
 }
 
 const (
-	// Batch size specifies how many rows to be read
-	// from a column at once. Note that the batched rows
-	// are buffered in-memory, but not reference pages
-	// they were read from.
-	defaultRepeatedRowIteratorBatchSize = 32
-
 	// The value specifies how many individual values to be
 	// read (decoded) from the page.
 	//
@@ -57,8 +51,14 @@ func NewRepeatedRowIterator[T any](
 		rows: rows,
 		columns: NewMultiColumnIterator(ctx,
 			WrapWithRowNumber(rowNumbers),
-			defaultRepeatedRowIteratorBatchSize,
-			rowGroups, columns...),
+			// Batch size specifies how many rows to be read
+			// from a column at once. Note that the batched rows
+			// are buffered in-memory, but not reference pages
+			// they were read from.
+			4,
+			rowGroups,
+			columns...,
+		),
 	}
 }
 

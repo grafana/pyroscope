@@ -187,7 +187,10 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 	delta := phlaremodel.Labels(externalLabels).Get(phlaremodel.LabelNameDelta) != "false"
 	externalLabels = phlaremodel.Labels(externalLabels).Delete(phlaremodel.LabelNameDelta)
 
-	lbls, seriesFingerprints := phlarelabels.CreateProfileLabels(p, externalLabels...)
+	enforceLabelOrder := phlaremodel.Labels(externalLabels).Get(phlaremodel.LabelNameOrder) == phlaremodel.LabelOrderEnforced
+	externalLabels = phlaremodel.Labels(externalLabels).Delete(phlaremodel.LabelNameOrder)
+
+	lbls, seriesFingerprints := phlarelabels.CreateProfileLabels(enforceLabelOrder, p, externalLabels...)
 
 	for i, fp := range seriesFingerprints {
 		if err := h.limiter.AllowProfile(fp, lbls[i], p.TimeNanos); err != nil {

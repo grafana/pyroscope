@@ -298,7 +298,6 @@ func (shard *indexShard) add(metric []*typesv1.LabelPair, fp model.Fingerprint) 
 		values.fps[fingerprints.value] = fingerprints
 		internedLabels[i] = &typesv1.LabelPair{Name: values.name, Value: fingerprints.value}
 	}
-	sort.Sort(internedLabels)
 	return internedLabels
 }
 

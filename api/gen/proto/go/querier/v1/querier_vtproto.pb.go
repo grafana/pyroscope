@@ -136,6 +136,7 @@ func (m *SelectMergeStacktracesRequest) CloneVT() *SelectMergeStacktracesRequest
 	r.LabelSelector = m.LabelSelector
 	r.Start = m.Start
 	r.End = m.End
+	r.Format = m.Format
 	if rhs := m.MaxNodes; rhs != nil {
 		tmpVal := *rhs
 		r.MaxNodes = &tmpVal
@@ -157,6 +158,11 @@ func (m *SelectMergeStacktracesResponse) CloneVT() *SelectMergeStacktracesRespon
 	}
 	r := new(SelectMergeStacktracesResponse)
 	r.Flamegraph = m.Flamegraph.CloneVT()
+	if rhs := m.Tree; rhs != nil {
+		tmpBytes := make([]byte, len(rhs))
+		copy(tmpBytes, rhs)
+		r.Tree = tmpBytes
+	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -177,6 +183,7 @@ func (m *SelectMergeSpanProfileRequest) CloneVT() *SelectMergeSpanProfileRequest
 	r.LabelSelector = m.LabelSelector
 	r.Start = m.Start
 	r.End = m.End
+	r.Format = m.Format
 	if rhs := m.SpanSelector; rhs != nil {
 		tmpContainer := make([]string, len(rhs))
 		copy(tmpContainer, rhs)
@@ -203,6 +210,11 @@ func (m *SelectMergeSpanProfileResponse) CloneVT() *SelectMergeSpanProfileRespon
 	}
 	r := new(SelectMergeSpanProfileResponse)
 	r.Flamegraph = m.Flamegraph.CloneVT()
+	if rhs := m.Tree; rhs != nil {
+		tmpBytes := make([]byte, len(rhs))
+		copy(tmpBytes, rhs)
+		r.Tree = tmpBytes
+	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -671,6 +683,9 @@ func (this *SelectMergeStacktracesRequest) EqualVT(that *SelectMergeStacktracesR
 	if p, q := this.MaxNodes, that.MaxNodes; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
 		return false
 	}
+	if this.Format != that.Format {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
@@ -688,6 +703,9 @@ func (this *SelectMergeStacktracesResponse) EqualVT(that *SelectMergeStacktraces
 		return false
 	}
 	if !this.Flamegraph.EqualVT(that.Flamegraph) {
+		return false
+	}
+	if string(this.Tree) != string(that.Tree) {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -730,6 +748,9 @@ func (this *SelectMergeSpanProfileRequest) EqualVT(that *SelectMergeSpanProfileR
 	if p, q := this.MaxNodes, that.MaxNodes; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
 		return false
 	}
+	if this.Format != that.Format {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
@@ -747,6 +768,9 @@ func (this *SelectMergeSpanProfileResponse) EqualVT(that *SelectMergeSpanProfile
 		return false
 	}
 	if !this.Flamegraph.EqualVT(that.Flamegraph) {
+		return false
+	}
+	if string(this.Tree) != string(that.Tree) {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -1905,6 +1929,11 @@ func (m *SelectMergeStacktracesRequest) MarshalToSizedBufferVT(dAtA []byte) (int
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.Format != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Format))
+		i--
+		dAtA[i] = 0x30
+	}
 	if m.MaxNodes != nil {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(*m.MaxNodes))
 		i--
@@ -1967,6 +1996,13 @@ func (m *SelectMergeStacktracesResponse) MarshalToSizedBufferVT(dAtA []byte) (in
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if len(m.Tree) > 0 {
+		i -= len(m.Tree)
+		copy(dAtA[i:], m.Tree)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Tree)))
+		i--
+		dAtA[i] = 0x12
+	}
 	if m.Flamegraph != nil {
 		size, err := m.Flamegraph.MarshalToSizedBufferVT(dAtA[:i])
 		if err != nil {
@@ -2009,6 +2045,11 @@ func (m *SelectMergeSpanProfileRequest) MarshalToSizedBufferVT(dAtA []byte) (int
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.Format != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Format))
+		i--
+		dAtA[i] = 0x38
 	}
 	if m.MaxNodes != nil {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(*m.MaxNodes))
@@ -2080,6 +2121,13 @@ func (m *SelectMergeSpanProfileResponse) MarshalToSizedBufferVT(dAtA []byte) (in
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.Tree) > 0 {
+		i -= len(m.Tree)
+		copy(dAtA[i:], m.Tree)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Tree)))
+		i--
+		dAtA[i] = 0x12
 	}
 	if m.Flamegraph != nil {
 		size, err := m.Flamegraph.MarshalToSizedBufferVT(dAtA[:i])
@@ -2971,6 +3019,9 @@ func (m *SelectMergeStacktracesRequest) SizeVT() (n int) {
 	if m.MaxNodes != nil {
 		n += 1 + protohelpers.SizeOfVarint(uint64(*m.MaxNodes))
 	}
+	if m.Format != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.Format))
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -2983,6 +3034,10 @@ func (m *SelectMergeStacktracesResponse) SizeVT() (n int) {
 	_ = l
 	if m.Flamegraph != nil {
 		l = m.Flamegraph.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	l = len(m.Tree)
+	if l > 0 {
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	n += len(m.unknownFields)
@@ -3018,6 +3073,9 @@ func (m *SelectMergeSpanProfileRequest) SizeVT() (n int) {
 	if m.MaxNodes != nil {
 		n += 1 + protohelpers.SizeOfVarint(uint64(*m.MaxNodes))
 	}
+	if m.Format != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.Format))
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -3030,6 +3088,10 @@ func (m *SelectMergeSpanProfileResponse) SizeVT() (n int) {
 	_ = l
 	if m.Flamegraph != nil {
 		l = m.Flamegraph.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	l = len(m.Tree)
+	if l > 0 {
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	n += len(m.unknownFields)
@@ -3928,6 +3990,25 @@ func (m *SelectMergeStacktracesRequest) UnmarshalVT(dAtA []byte) error {
 				}
 			}
 			m.MaxNodes = &v
+		case 6:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Format", wireType)
+			}
+			m.Format = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Format |= ProfileFormat(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
@@ -4013,6 +4094,40 @@ func (m *SelectMergeStacktracesResponse) UnmarshalVT(dAtA []byte) error {
 			}
 			if err := m.Flamegraph.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Tree", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Tree = append(m.Tree[:0], dAtA[iNdEx:postIndex]...)
+			if m.Tree == nil {
+				m.Tree = []byte{}
 			}
 			iNdEx = postIndex
 		default:
@@ -4220,6 +4335,25 @@ func (m *SelectMergeSpanProfileRequest) UnmarshalVT(dAtA []byte) error {
 				}
 			}
 			m.MaxNodes = &v
+		case 7:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Format", wireType)
+			}
+			m.Format = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Format |= ProfileFormat(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
@@ -4305,6 +4439,40 @@ func (m *SelectMergeSpanProfileResponse) UnmarshalVT(dAtA []byte) error {
 			}
 			if err := m.Flamegraph.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Tree", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Tree = append(m.Tree[:0], dAtA[iNdEx:postIndex]...)
+			if m.Tree == nil {
+				m.Tree = []byte{}
 			}
 			iNdEx = postIndex
 		default:

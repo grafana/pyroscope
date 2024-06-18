@@ -415,7 +415,8 @@ func Test_Sessions_Limit(t *testing.T) {
 				}), nil, log.NewLogfmtLogger(os.Stdout))
 
 			require.NoError(t, err)
-			assert.Equal(t, tc.expectedLabels, d.limitMaxSessionsPerSeries("user-1", tc.seriesLabels))
+			limit := d.limits.MaxSessionsPerSeries("user-1")
+			assert.Equal(t, tc.expectedLabels, d.limitMaxSessionsPerSeries(limit, tc.seriesLabels))
 		})
 	}
 }

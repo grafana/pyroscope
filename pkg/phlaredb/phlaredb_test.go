@@ -195,7 +195,7 @@ func TestMergeProfilesStacktraces(t *testing.T) {
 		resp, err := bidi.Receive()
 		require.NoError(t, err)
 		require.Nil(t, resp.Result)
-		require.Len(t, resp.SelectedProfiles.LabelsSets, 1)
+		require.Len(t, resp.SelectedProfiles.Fingerprints, 1)
 		require.Len(t, resp.SelectedProfiles.Profiles, 5)
 
 		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{
@@ -281,6 +281,35 @@ func TestMergeProfilesStacktraces(t *testing.T) {
 	})
 }
 
+// See https://github.com/grafana/pyroscope/pull/3356
+func Test_HeadFlush_DuplicateLabels(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	// ingest some sample data
+	var (
+		ctx     = testContext(t)
+		testDir = contextDataDir(ctx)
+		end     = time.Unix(0, int64(time.Hour))
+		start   = end.Add(-time.Minute)
+		step    = 15 * time.Second
+	)
+
+	db, err := New(ctx, Config{
+		DataPath:         testDir,
+		MaxBlockDuration: time.Duration(100000) * time.Minute,
+	}, NoLimit, ctx.localBucketClient)
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, db.Close())
+	}()
+
+	ingestProfiles(t, db, cpuProfileGenerator, start.UnixNano(), end.UnixNano(), step,
+		&typesv1.LabelPair{Name: "namespace", Value: "my-namespace"},
+		&typesv1.LabelPair{Name: "pod", Value: "my-pod"},
+		&typesv1.LabelPair{Name: "pod", Value: "not-my-pod"},
+	)
+}
+
 func TestMergeProfilesPprof(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
@@ -325,7 +354,7 @@ func TestMergeProfilesPprof(t *testing.T) {
 		resp, err := bidi.Receive()
 		require.NoError(t, err)
 		require.Nil(t, resp.Result)
-		require.Len(t, resp.SelectedProfiles.LabelsSets, 1)
+		require.Len(t, resp.SelectedProfiles.Fingerprints, 1)
 		require.Len(t, resp.SelectedProfiles.Profiles, 5)
 
 		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesPprofRequest{

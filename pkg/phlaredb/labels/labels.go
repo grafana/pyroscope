@@ -1,7 +1,7 @@
 package labels
 
 import (
-	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/prometheus/common/model"
@@ -11,9 +11,7 @@ import (
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 )
 
-var labelNameServiceName = fmt.Sprintf("__%s__", phlaremodel.LabelNameServiceName)
-
-func CreateProfileLabels(p *profilev1.Profile, externalLabels ...*typesv1.LabelPair) ([]phlaremodel.Labels, []model.Fingerprint) {
+func CreateProfileLabels(enforceOrder bool, p *profilev1.Profile, externalLabels ...*typesv1.LabelPair) ([]phlaremodel.Labels, []model.Fingerprint) {
 	// build label set per sample type before references are rewritten
 	var (
 		sb                                             strings.Builder
@@ -24,8 +22,8 @@ func CreateProfileLabels(p *profilev1.Profile, externalLabels ...*typesv1.LabelP
 
 	// Inject into labels the __service_name__ label if it exists
 	// This allows better locality of the data in parquet files (row group are sorted by).
-	if serviceName := lbls.Labels().Get(phlaremodel.LabelNameServiceName); serviceName != "" {
-		lbls.Set(labelNameServiceName, serviceName)
+	if serviceName := phlaremodel.Labels(externalLabels).Get(phlaremodel.LabelNameServiceName); serviceName != "" {
+		lbls.Set(phlaremodel.LabelNameServiceNamePrivate, serviceName)
 	}
 
 	// set common labels
@@ -56,7 +54,13 @@ func CreateProfileLabels(p *profilev1.Profile, externalLabels ...*typesv1.LabelP
 		_, _ = sb.WriteString(periodUnit)
 		t := sb.String()
 		lbls.Set(phlaremodel.LabelNameProfileType, t)
-		lbs := lbls.Labels().Clone()
+		lbs := lbls.LabelsUnsorted().Clone()
+		if enforceOrder {
+			sort.Sort(phlaremodel.LabelsEnforcedOrder(lbs))
+		} else {
+			sort.Sort(lbs)
+		}
+		lbs = lbs.Unique()
 		profilesLabels[pos] = lbs
 		seriesRefs[pos] = model.Fingerprint(lbs.Hash())
 

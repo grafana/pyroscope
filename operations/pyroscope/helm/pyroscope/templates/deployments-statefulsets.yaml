@@ -17,7 +17,7 @@ spec:
   serviceName: {{ $values.name }}-headless
   podManagementPolicy: Parallel
 {{- end }}
-{{- if hasKey $values "replicaCount" }}
+{{- if and (hasKey $values "replicaCount") (not ($values.autoscaling).enabled) }}
   replicas: {{ $values.replicaCount }}
 {{- end }}
   selector:
