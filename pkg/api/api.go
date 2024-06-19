@@ -178,8 +178,12 @@ func (a *API) RegisterCatchAll() error {
 	if err != nil {
 		return fmt.Errorf("unable to initialize the ui: %w", err)
 	}
-	// Serve index to all other pages
-	a.RegisterRoutesWithPrefix("/", uiIndexHandler, false, true, "GET")
+
+	// Serve index to known paths
+	// This should be kept in sync with routes in public/app/pages/routes.ts
+	for _, path := range []string{"/", "/explore", "/comparison", "/comparison-diff"} {
+		a.RegisterRoute(path, uiIndexHandler, false, true, "GET")
+	}
 
 	a.indexPage.AddLinks(defaultWeight, "User interface", []IndexPageLink{
 		{Desc: "User interface", Path: "/"},
