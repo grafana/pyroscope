@@ -23,6 +23,16 @@ type PartitionReader interface {
 	Release()
 }
 
+type ParentPointerTree interface {
+	Nodes() []Node
+}
+
+type Node struct {
+	Parent   int32
+	Location int32
+	Value    int64
+}
+
 type Symbols struct {
 	Stacktraces StacktraceResolver
 	Locations   []*schemav1.InMemoryLocation

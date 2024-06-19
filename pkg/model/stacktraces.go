@@ -337,6 +337,7 @@ func (t *StacktraceTree) Tree(maxNodes int64, names []string) *Tree {
 		var name string
 		if sn.Location < 0 {
 			name = truncatedNodeName
+			sn.Total = sn.Value
 		} else {
 			name = names[sn.Location]
 		}
@@ -350,5 +351,11 @@ func (t *StacktraceTree) Tree(maxNodes int64, names []string) *Tree {
 		return nil
 	})
 
-	return &Tree{root: root.children[0].children}
+	// Roots should not have parents.
+	s := root.children[0].children
+	for _, n := range s {
+		n.parent.parent = nil
+	}
+
+	return &Tree{root: s}
 }

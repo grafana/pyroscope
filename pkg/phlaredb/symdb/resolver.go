@@ -70,7 +70,7 @@ type lazyPartition struct {
 	id uint64
 
 	m       sync.Mutex
-	samples map[uint32]int64
+	samples *SampleAppender
 
 	fetchOnce sync.Once
 	resolver  *Resolver
@@ -129,36 +129,47 @@ func (r *Resolver) Release() {
 // AddSamples adds a collection of stack trace samples to the resolver.
 // Samples can be added to partitions concurrently.
 func (r *Resolver) AddSamples(partition uint64, s schemav1.Samples) {
-	r.WithPartitionSamples(partition, func(samples map[uint32]int64) {
+	r.withPartitionSamples(partition, func(samples *SampleAppender) {
+		samples.AppendMany(s.StacktraceIDs, s.Values)
+	})
+}
+
+func (r *Resolver) AddSamplesWithSpanSelector(partition uint64, s schemav1.Samples, spanSelector model.SpanSelector) {
+	r.withPartitionSamples(partition, func(samples *SampleAppender) {
 		for i, sid := range s.StacktraceIDs {
-			if sid > 0 {
-				samples[sid] += int64(s.Values[i])
+			if _, ok := spanSelector[s.Spans[i]]; ok && sid > 0 {
+				samples.Append(sid, s.Values[i])
 			}
 		}
 	})
 }
 
 func (r *Resolver) AddSamplesFromParquetRow(partition uint64, stacktraceIDs, values []parquet.Value) {
-	r.WithPartitionSamples(partition, func(samples map[uint32]int64) {
+	r.withPartitionSamples(partition, func(samples *SampleAppender) {
 		for i, sid := range stacktraceIDs {
 			if s := sid.Uint32(); s > 0 {
-				samples[s] += values[i].Int64()
+				samples.Append(s, values[i].Uint64())
 			}
 		}
 	})
 }
 
-func (r *Resolver) AddSamplesWithSpanSelector(partition uint64, s schemav1.Samples, spanSelector model.SpanSelector) {
-	r.WithPartitionSamples(partition, func(samples map[uint32]int64) {
-		for i, sid := range s.StacktraceIDs {
-			if _, ok := spanSelector[s.Spans[i]]; ok && sid > 0 {
-				samples[sid] += int64(s.Values[i])
+func (r *Resolver) AddSamplesWithSpanSelectorFromParquetRow(partition uint64, stacktraces, values, spans []parquet.Value, spanSelector model.SpanSelector) {
+	r.withPartitionSamples(partition, func(samples *SampleAppender) {
+		for i, sid := range stacktraces {
+			spanID := spans[i].Uint64()
+			stackID := sid.Uint32()
+			if spanID == 0 || stackID == 0 {
+				continue
+			}
+			if _, ok := spanSelector[spanID]; ok {
+				samples.Append(stackID, values[i].Uint64())
 			}
 		}
 	})
 }
 
-func (r *Resolver) WithPartitionSamples(partition uint64, fn func(map[uint32]int64)) {
+func (r *Resolver) withPartitionSamples(partition uint64, fn func(*SampleAppender)) {
 	p := r.partition(partition)
 	p.m.Lock()
 	defer p.m.Unlock()
@@ -203,7 +214,7 @@ func (r *Resolver) partition(partition uint64) *lazyPartition {
 	}
 	p = &lazyPartition{
 		id:       partition,
-		samples:  make(map[uint32]int64),
+		samples:  NewSampleAppender(16<<10, 16<<10),
 		resolver: r,
 	}
 	r.p[partition] = p
@@ -222,8 +233,8 @@ func (r *Resolver) Tree() (*model.Tree, error) {
 	defer span.Finish()
 	var lock sync.Mutex
 	tree := new(model.Tree)
-	err := r.withSymbols(ctx, func(symbols *Symbols, samples schemav1.Samples) error {
-		resolved, err := symbols.Tree(ctx, samples, r.maxNodes)
+	err := r.withSymbols(ctx, func(symbols *Symbols, appender *SampleAppender) error {
+		resolved, err := symbols.Tree(ctx, appender, r.maxNodes)
 		if err != nil {
 			return err
 		}
@@ -240,8 +251,8 @@ func (r *Resolver) Pprof() (*googlev1.Profile, error) {
 	defer span.Finish()
 	var lock sync.Mutex
 	var p pprof.ProfileMerge
-	err := r.withSymbols(ctx, func(symbols *Symbols, samples schemav1.Samples) error {
-		resolved, err := symbols.Pprof(ctx, samples, r.maxNodes, SelectStackTraces(symbols, r.sts))
+	err := r.withSymbols(ctx, func(symbols *Symbols, appender *SampleAppender) error {
+		resolved, err := symbols.Pprof(ctx, appender, r.maxNodes, SelectStackTraces(symbols, r.sts))
 		if err != nil {
 			return err
 		}
@@ -255,7 +266,7 @@ func (r *Resolver) Pprof() (*googlev1.Profile, error) {
 	return p.Profile(), nil
 }
 
-func (r *Resolver) withSymbols(ctx context.Context, fn func(*Symbols, schemav1.Samples) error) error {
+func (r *Resolver) withSymbols(ctx context.Context, fn func(*Symbols, *SampleAppender) error) error {
 	g, _ := errgroup.WithContext(ctx)
 	g.SetLimit(r.c)
 	for _, p := range r.p {
@@ -264,8 +275,7 @@ func (r *Resolver) withSymbols(ctx context.Context, fn func(*Symbols, schemav1.S
 			if err := p.fetch(ctx); err != nil {
 				return err
 			}
-			m := schemav1.NewSamplesFromMap(p.samples)
-			return fn(p.reader.Symbols(), m)
+			return fn(p.reader.Symbols(), p.samples)
 		})
 	}
 	return g.Wait()
@@ -279,7 +289,7 @@ type pprofBuilder interface {
 
 func (r *Symbols) Pprof(
 	ctx context.Context,
-	samples schemav1.Samples,
+	appender *SampleAppender,
 	maxNodes int64,
 	selection *SelectedStackTraces,
 ) (*googlev1.Profile, error) {
@@ -302,6 +312,7 @@ func (r *Symbols) Pprof(
 			selection: selection,
 		}
 	}
+	samples := appender.Samples()
 	b.init(r, samples)
 	if err := r.Stacktraces.ResolveStacktraceLocations(ctx, b, samples.StacktraceIDs); err != nil {
 		return nil, err
@@ -311,9 +322,45 @@ func (r *Symbols) Pprof(
 
 func (r *Symbols) Tree(
 	ctx context.Context,
-	samples schemav1.Samples,
+	appender *SampleAppender,
 	maxNodes int64,
 ) (*model.Tree, error) {
+	samples := appender.Samples()
+	if true {
+		var x ParentPointerTree
+		result := new(model.Tree)
+		var offset int
+		if p, ok := r.Stacktraces.(*partition); ok {
+			x = p.stacktraceChunks[0].t
+			ranges := SplitStacktraces(samples.StacktraceIDs, p.stacktraceChunks[0].header.StacktraceMaxNodes)
+			for _, rr := range ranges {
+				c := p.stacktraceChunks[rr.chunk]
+				x = c.t
+				v := stacktraceIDRange{
+					offset:  offset,
+					Samples: samples,
+					ids:     rr.ids,
+				}
+				offset += len(rr.ids)
+				result.Merge(buildTree(x, v, r, maxNodes))
+			}
+		}
+		if p, ok := r.Stacktraces.(*PartitionWriter); ok {
+			ranges := SplitStacktraces(samples.StacktraceIDs, p.stacktraces.chunks[0].partition.maxNodesPerChunk)
+			for _, sr := range ranges {
+				c := p.stacktraces.chunks[sr.chunk]
+				x = c.tree
+				v := stacktraceIDRange{
+					offset:  offset,
+					Samples: samples,
+					ids:     sr.ids,
+				}
+				offset += len(sr.ids)
+				result.Merge(buildTree(x, v, r, maxNodes))
+			}
+		}
+		return result, nil
+	}
 	t := treeSymbolsFromPool()
 	defer t.reset()
 	t.init(r, samples)

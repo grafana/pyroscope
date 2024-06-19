@@ -443,7 +443,7 @@ func generateSamples(n int) []*Sample {
 }
 
 func Test_SamplesFromMap(t *testing.T) {
-	m := map[uint32]int64{
+	m := map[uint32]uint64{
 		1: 2,
 		0: 0,
 		2: 3,

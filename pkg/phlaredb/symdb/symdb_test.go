@@ -47,7 +47,7 @@ func (s *memSuite) init() {
 		s.config = &Config{
 			Dir: s.t.TempDir(),
 			Stacktraces: StacktracesConfig{
-				MaxNodesPerChunk: 1 << 10,
+				MaxNodesPerChunk: 100 << 20,
 			},
 			Parquet: ParquetConfig{
 				MaxBufferRowCount: 512,
