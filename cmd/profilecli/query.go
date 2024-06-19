@@ -28,17 +28,39 @@ import (
 	"github.com/pkg/errors"
 )
 
+type protocolType string
+
 const (
 	outputConsole = "console"
 	outputRaw     = "raw"
 	outputPprof   = "pprof="
+
+	protocolTypeGRPC    = "grpc"
+	protocolTypeGRPCWeb = "grpc-web"
+	protocolTypeJSON    = "json"
 )
+
+func (c *phlareClient) protocolOption() connect.ClientOption {
+	switch c.protocol {
+	case protocolTypeGRPC:
+		return connect.WithGRPC()
+	case protocolTypeGRPCWeb:
+		return connect.WithGRPCWeb()
+	case protocolTypeJSON:
+		return connect.WithProtoJSON()
+	default:
+		return connect.WithGRPC()
+	}
+}
 
 func (c *phlareClient) queryClient() querierv1connect.QuerierServiceClient {
 	return querierv1connect.NewQuerierServiceClient(
 		c.httpClient(),
 		c.URL,
-		connectapi.DefaultClientOptions()...,
+		append(
+			connectapi.DefaultClientOptions(),
+			c.protocolOption(),
+		)...,
 	)
 }
 
@@ -46,7 +68,10 @@ func (c *phlareClient) storeGatewayClient() storegatewayv1connect.StoreGatewaySe
 	return storegatewayv1connect.NewStoreGatewayServiceClient(
 		c.httpClient(),
 		c.URL,
-		connectapi.DefaultClientOptions()...,
+		append(
+			connectapi.DefaultClientOptions(),
+			c.protocolOption(),
+		)...,
 	)
 }
 
@@ -54,7 +79,10 @@ func (c *phlareClient) ingesterClient() ingesterv1connect.IngesterServiceClient 
 	return ingesterv1connect.NewIngesterServiceClient(
 		c.httpClient(),
 		c.URL,
-		connectapi.DefaultClientOptions()...,
+		append(
+			connectapi.DefaultClientOptions(),
+			c.protocolOption(),
+		)...,
 	)
 }
 

@@ -23,6 +23,7 @@ type phlareClient struct {
 	}
 	defaultTransport http.RoundTripper
 	client           *http.Client
+	protocol         protocolType
 }
 
 type authRoundTripper struct {
@@ -69,5 +70,6 @@ func addPhlareClient(cmd commander) *phlareClient {
 	cmd.Flag("tenant-id", "The tenant ID to be used for the X-Scope-OrgID header.").Default("").Envar(envPrefix + "TENANT_ID").StringVar(&client.TenantID)
 	cmd.Flag("username", "The username to be used for basic auth.").Default("").Envar(envPrefix + "USERNAME").StringVar(&client.BasicAuth.Username)
 	cmd.Flag("password", "The password to be used for basic auth.").Default("").Envar(envPrefix + "PASSWORD").StringVar(&client.BasicAuth.Password)
+	cmd.Flag("protocol", "The protocol to be used for communicating with the server.").Default(protocolTypeGRPC).EnumVar(&client.BasicAuth.Password, protocolTypeGRPC, protocolTypeGRPCWeb, protocolTypeJSON)
 	return client
 }
