@@ -1,46 +1,51 @@
 package symdb
 
 import (
+	"context"
+
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/slices"
 )
 
-type pprofProtoSymbols struct {
-	profile googlev1.Profile
-	symbols *Symbols
-	samples *schemav1.Samples
-	lut     []uint32
-	cur     int
+type pprofBuilder interface {
+	StacktraceInserter
+	init(*Symbols, schemav1.Samples)
+	buildPprof() *googlev1.Profile
 }
 
-func (r *pprofProtoSymbols) init(symbols *Symbols, samples schemav1.Samples) {
-	r.symbols = symbols
-	r.samples = &samples
-	r.profile.Sample = make([]*googlev1.Sample, samples.Len())
-}
-
-func (r *pprofProtoSymbols) InsertStacktrace(_ uint32, locations []int32) {
-	s := &googlev1.Sample{
-		LocationId: make([]uint64, len(locations)),
-		Value:      []int64{int64(r.samples.Values[r.cur])},
+func buildPprof(
+	ctx context.Context,
+	symbols *Symbols,
+	samples schemav1.Samples,
+	maxNodes int64,
+	selection *SelectedStackTraces,
+) (*googlev1.Profile, error) {
+	// By default, we use a builder that's optimized for the most
+	// basic case: we take all the source stack traces unchanged.
+	var b pprofBuilder = new(pprofFull)
+	switch {
+	// Go PGO selector; the stack traces are trimmed in the way
+	// that only the first KeepLocations are retained. Optionally,
+	// samples are aggregated by the callee, ignoring the leaf
+	// location line number.
+	case selection.gopgo != nil:
+		b = &pprofGoPGO{pgo: selection.gopgo}
+	// If a stack trace selector is specified, check if such a
+	// profile can exist. Otherwise, build an empty profile.
+	case !selection.HasValidCallSite():
+		return b.buildPprof(), nil
+	// Truncation is applicable when there is an explicit
+	// limit on the number of the nodes in the profile, or
+	// if stack traces should be filtered by the call site.
+	case maxNodes > 0 || len(selection.callSite) > 0:
+		b = &pprofTree{maxNodes: maxNodes, callSite: selection.callSite}
 	}
-	for i, v := range locations {
-		s.LocationId[i] = uint64(v)
+	b.init(symbols, samples)
+	if err := symbols.Stacktraces.ResolveStacktraceLocations(ctx, b, samples.StacktraceIDs); err != nil {
+		return nil, err
 	}
-	r.profile.Sample[r.cur] = s
-	r.cur++
-}
-
-func (r *pprofProtoSymbols) buildPprof() *googlev1.Profile {
-	createSampleTypeStub(&r.profile)
-	if r.symbols != nil {
-		copyLocations(&r.profile, r.symbols, r.lut)
-		copyFunctions(&r.profile, r.symbols, r.lut)
-		copyMappings(&r.profile, r.symbols, r.lut)
-		copyStrings(&r.profile, r.symbols, r.lut)
-	}
-	return &r.profile
+	return b.buildPprof(), nil
 }
 
 func createSampleTypeStub(profile *googlev1.Profile) {

@@ -219,6 +219,62 @@ func Test_Resolver_pprof_options(t *testing.T) {
 				}),
 			},
 		},
+		{
+			name:     "StackTraceSelector GoPGO empty",
+			expected: samplesTotal,
+			options: []ResolverOption{
+				WithResolverStackTraceSelector(&typesv1.StackTraceSelector{
+					GoPgo: &typesv1.GoPGO{},
+				}),
+			},
+		},
+		{
+			name:     "StackTraceSelector GoPGO takes precedence",
+			expected: 414,
+			options: []ResolverOption{
+				WithResolverMaxNodes(10),
+				WithResolverStackTraceSelector(&typesv1.StackTraceSelector{
+					CallSite: []*typesv1.Location{{Name: "runtime.main"}},
+					GoPgo: &typesv1.GoPGO{
+						KeepLocations: 5,
+					},
+				}),
+			},
+		},
+		{
+			name:     "GoPGO KeepLocations 5",
+			expected: 414,
+			options: []ResolverOption{
+				WithResolverStackTraceSelector(&typesv1.StackTraceSelector{
+					GoPgo: &typesv1.GoPGO{
+						KeepLocations: 5,
+					},
+				}),
+			},
+		},
+		{
+			name:     "GoPGO AggregateCallees",
+			expected: 442,
+			options: []ResolverOption{
+				WithResolverStackTraceSelector(&typesv1.StackTraceSelector{
+					GoPgo: &typesv1.GoPGO{
+						AggregateCallees: true,
+					},
+				}),
+			},
+		},
+		{
+			name:     "GoPGO AggregateCallees KeepLocations 5",
+			expected: 316,
+			options: []ResolverOption{
+				WithResolverStackTraceSelector(&typesv1.StackTraceSelector{
+					GoPgo: &typesv1.GoPGO{
+						KeepLocations:    5,
+						AggregateCallees: true,
+					},
+				}),
+			},
+		},
 	}
 
 	for _, tc := range testCases {
