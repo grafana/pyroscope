@@ -29,6 +29,8 @@ type MockLimits struct {
 	MaxProfileStacktraceDepthValue        int
 	MaxProfileStacktraceSampleLabelsValue int
 	MaxProfileSymbolValueLengthValue      int
+
+	MaxQueriersPerTenantValue int
 }
 
 func (m MockLimits) QuerySplitDuration(string) time.Duration        { return m.QuerySplitDurationValue }
@@ -68,6 +70,10 @@ func (m MockLimits) MaxProfileStacktraceSampleLabels(userID string) int {
 
 func (m MockLimits) MaxProfileSymbolValueLength(userID string) int {
 	return m.MaxProfileSymbolValueLengthValue
+}
+
+func (m MockLimits) MaxQueriersPerTenant(_ string) int {
+	return m.MaxQueriersPerTenantValue
 }
 
 func (m MockLimits) RejectOlderThan(userID string) time.Duration {
