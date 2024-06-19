@@ -14,6 +14,11 @@ import (
 	"github.com/go-kit/log/level"
 	gprofile "github.com/google/pprof/profile"
 	"github.com/grafana/dskit/runutil"
+	"github.com/k0kubun/pp/v3"
+	"github.com/klauspost/compress/gzip"
+	"github.com/mattn/go-isatty"
+	"github.com/pkg/errors"
+
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
@@ -22,36 +27,13 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/operations"
-	"github.com/k0kubun/pp/v3"
-	"github.com/klauspost/compress/gzip"
-	"github.com/mattn/go-isatty"
-	"github.com/pkg/errors"
 )
-
-type protocolType string
 
 const (
 	outputConsole = "console"
 	outputRaw     = "raw"
 	outputPprof   = "pprof="
-
-	protocolTypeGRPC    = "grpc"
-	protocolTypeGRPCWeb = "grpc-web"
-	protocolTypeJSON    = "json"
 )
-
-func (c *phlareClient) protocolOption() connect.ClientOption {
-	switch c.protocol {
-	case protocolTypeGRPC:
-		return connect.WithGRPC()
-	case protocolTypeGRPCWeb:
-		return connect.WithGRPCWeb()
-	case protocolTypeJSON:
-		return connect.WithProtoJSON()
-	default:
-		return connect.WithGRPC()
-	}
-}
 
 func (c *phlareClient) queryClient() querierv1connect.QuerierServiceClient {
 	return querierv1connect.NewQuerierServiceClient(

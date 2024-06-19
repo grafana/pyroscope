@@ -4,12 +4,17 @@ import (
 	"fmt"
 	"net/http"
 
+	"connectrpc.com/connect"
 	"github.com/prometheus/common/version"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 const (
 	envPrefix = "PROFILECLI_"
+
+	protocolTypeGRPC    = "grpc"
+	protocolTypeGRPCWeb = "grpc-web"
+	protocolTypeJSON    = "json"
 )
 
 var userAgentHeader = fmt.Sprintf("pyroscope/%s", version.Version)
@@ -23,7 +28,7 @@ type phlareClient struct {
 	}
 	defaultTransport http.RoundTripper
 	client           *http.Client
-	protocol         protocolType
+	protocol         string
 }
 
 type authRoundTripper struct {
@@ -58,6 +63,19 @@ func (c *phlareClient) httpClient() *http.Client {
 	return c.client
 }
 
+func (c *phlareClient) protocolOption() connect.ClientOption {
+	switch c.protocol {
+	case protocolTypeGRPC:
+		return connect.WithGRPC()
+	case protocolTypeGRPCWeb:
+		return connect.WithGRPCWeb()
+	case protocolTypeJSON:
+		return connect.WithProtoJSON()
+	default:
+		return connect.WithProtoJSON()
+	}
+}
+
 type commander interface {
 	Flag(name, help string) *kingpin.FlagClause
 	Arg(name, help string) *kingpin.ArgClause
@@ -70,6 +88,6 @@ func addPhlareClient(cmd commander) *phlareClient {
 	cmd.Flag("tenant-id", "The tenant ID to be used for the X-Scope-OrgID header.").Default("").Envar(envPrefix + "TENANT_ID").StringVar(&client.TenantID)
 	cmd.Flag("username", "The username to be used for basic auth.").Default("").Envar(envPrefix + "USERNAME").StringVar(&client.BasicAuth.Username)
 	cmd.Flag("password", "The password to be used for basic auth.").Default("").Envar(envPrefix + "PASSWORD").StringVar(&client.BasicAuth.Password)
-	cmd.Flag("protocol", "The protocol to be used for communicating with the server.").Default(protocolTypeGRPC).EnumVar(&client.BasicAuth.Password, protocolTypeGRPC, protocolTypeGRPCWeb, protocolTypeJSON)
+	cmd.Flag("protocol", "The protocol to be used for communicating with the server.").Default(protocolTypeJSON).EnumVar(&client.protocol, protocolTypeGRPC, protocolTypeGRPCWeb, protocolTypeJSON)
 	return client
 }
