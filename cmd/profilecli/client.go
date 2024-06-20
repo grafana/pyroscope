@@ -12,9 +12,9 @@ import (
 const (
 	envPrefix = "PROFILECLI_"
 
+	protocolTypeConnect = "connect"
 	protocolTypeGRPC    = "grpc"
 	protocolTypeGRPCWeb = "grpc-web"
-	protocolTypeJSON    = "json"
 )
 
 var userAgentHeader = fmt.Sprintf("pyroscope/%s", version.Version)
@@ -69,10 +69,10 @@ func (c *phlareClient) protocolOption() connect.ClientOption {
 		return connect.WithGRPC()
 	case protocolTypeGRPCWeb:
 		return connect.WithGRPCWeb()
-	case protocolTypeJSON:
-		return connect.WithProtoJSON()
+	case protocolTypeConnect:
+		return connect.WithClientOptions()
 	default:
-		return connect.WithProtoJSON()
+		return connect.WithClientOptions()
 	}
 }
 
@@ -88,6 +88,7 @@ func addPhlareClient(cmd commander) *phlareClient {
 	cmd.Flag("tenant-id", "The tenant ID to be used for the X-Scope-OrgID header.").Default("").Envar(envPrefix + "TENANT_ID").StringVar(&client.TenantID)
 	cmd.Flag("username", "The username to be used for basic auth.").Default("").Envar(envPrefix + "USERNAME").StringVar(&client.BasicAuth.Username)
 	cmd.Flag("password", "The password to be used for basic auth.").Default("").Envar(envPrefix + "PASSWORD").StringVar(&client.BasicAuth.Password)
-	cmd.Flag("protocol", "The protocol to be used for communicating with the server.").Default(protocolTypeJSON).EnumVar(&client.protocol, protocolTypeGRPC, protocolTypeGRPCWeb, protocolTypeJSON)
+	cmd.Flag("protocol", "The protocol to be used for communicating with the server.").Default(protocolTypeConnect).EnumVar(&client.protocol,
+		protocolTypeConnect, protocolTypeGRPC, protocolTypeGRPCWeb)
 	return client
 }
