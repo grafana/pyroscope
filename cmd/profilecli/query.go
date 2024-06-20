@@ -207,6 +207,7 @@ func queryGoPGO(ctx context.Context, params *queryGoPGOParams, outputFlag string
 		"from", from,
 		"to", to,
 		"type", params.ProfileType,
+		"output", outputFlag,
 		"keep-locations", params.KeepLocations,
 		"aggregate-callees", params.AggregateCallees,
 	)
