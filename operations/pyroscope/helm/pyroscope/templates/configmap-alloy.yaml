@@ -1,14 +1,13 @@
-{{- /* Note this config file is depreacted, use the alloy one instead */}}
-{{- if and (.Values.agent.enabled) (not .Values.agent.agent.configMap.create)  }}
+{{- if and (.Values.alloy.enabled) (not .Values.alloy.alloy.configMap.create)  }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ .Values.agent.agent.configMap.name }}
+  name: {{ .Values.alloy.alloy.configMap.name }}
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "pyroscope.labels" . | nindent 4 }}
 data:
-  config.river: |
+  config.alloy: |
     logging {
     	level  = "info"
     	format = "logfmt"
