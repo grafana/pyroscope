@@ -52,17 +52,13 @@ jobs:
         with:
           app_id: ${{ secrets.APP_ID }}
           private_key: ${{ secrets.APP_PRIVATE_KEY }}
-      - uses: goreleaser/goreleaser-action@v4
+      - uses: goreleaser/goreleaser-action@v6
         with:
-          # either 'goreleaser' (default) or 'goreleaser-pro':
-          distribution: goreleaser
-          version: latest
+          # ensure this aligns with the version specified in the /Makefile
+          version: v2.0.1
           args: release --clean --timeout 60m
         env:
           GITHUB_TOKEN: ${{ steps.app-goreleaser.outputs.token }}
-          # Your GoReleaser Pro key, if you are using the 'goreleaser-pro'
-          # distribution:
-          # GORELEASER_KEY: ${{ secrets.GORELEASER_KEY }}
 
       # make generate-formulas expects PYROSCOPE_TAG to be set
       - name: Set PYROSCOPE_TAG
