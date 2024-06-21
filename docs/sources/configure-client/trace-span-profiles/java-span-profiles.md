@@ -42,7 +42,7 @@ Your applications must be instrumented for profiling and tracing before you can 
 
 To start collecting Span Profiles for your Java application, you need to include [otel-profiling-java](https://github.com/pyroscope-io/otel-profiling-java) as an extension to your application.
 
-Let's assume you have this sample application docker image:
+Assuming you have this sample application Docker image:
 
 ```Dockerfile
 # [...]
