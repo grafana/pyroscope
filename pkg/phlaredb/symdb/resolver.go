@@ -14,6 +14,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/model"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/pprof"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 // Resolver converts stack trace samples to one of the profile
@@ -214,16 +215,16 @@ func (r *Resolver) partition(partition uint64) *lazyPartition {
 	}
 	p = &lazyPartition{
 		id:       partition,
-		samples:  NewSampleAppender(16<<10, 16<<10),
+		samples:  NewSampleAppender(),
 		resolver: r,
 	}
 	r.p[partition] = p
 	r.m.Unlock()
 	// Fetch partition in the background, not blocking the caller.
 	// p.reader must be accessed only after p.fetch returns.
-	r.g.Go(func() error {
+	r.g.Go(util.RecoverPanic(func() error {
 		return p.fetch(r.ctx)
-	})
+	}))
 	// r.g.Wait() is called at Resolver.Release.
 	return p
 }
@@ -271,12 +272,12 @@ func (r *Resolver) withSymbols(ctx context.Context, fn func(*Symbols, *SampleApp
 	g.SetLimit(r.c)
 	for _, p := range r.p {
 		p := p
-		g.Go(func() error {
+		g.Go(util.RecoverPanic(func() error {
 			if err := p.fetch(ctx); err != nil {
 				return err
 			}
 			return fn(p.reader.Symbols(), p.samples)
-		})
+		}))
 	}
 	return g.Wait()
 }
@@ -287,7 +288,7 @@ func (r *Symbols) Pprof(
 	maxNodes int64,
 	selection *SelectedStackTraces,
 ) (*googlev1.Profile, error) {
-	return buildPprof(ctx, r, samples, maxNodes, selection)
+	return buildPprof(ctx, r, appender.Samples(), maxNodes, selection)
 }
 
 func (r *Symbols) Tree(
@@ -295,79 +296,5 @@ func (r *Symbols) Tree(
 	appender *SampleAppender,
 	maxNodes int64,
 ) (*model.Tree, error) {
-	samples := appender.Samples()
-	if true {
-		var x ParentPointerTree
-		result := new(model.Tree)
-		var offset int
-		if p, ok := r.Stacktraces.(*partition); ok {
-			x = p.stacktraceChunks[0].t
-			ranges := SplitStacktraces(samples.StacktraceIDs, p.stacktraceChunks[0].header.StacktraceMaxNodes)
-			for _, rr := range ranges {
-				c := p.stacktraceChunks[rr.chunk]
-				x = c.t
-				v := stacktraceIDRange{
-					offset:  offset,
-					Samples: samples,
-					ids:     rr.ids,
-				}
-				offset += len(rr.ids)
-				result.Merge(buildTree(x, v, r, maxNodes))
-			}
-		}
-		if p, ok := r.Stacktraces.(*PartitionWriter); ok {
-			ranges := SplitStacktraces(samples.StacktraceIDs, p.stacktraces.chunks[0].partition.maxNodesPerChunk)
-			for _, sr := range ranges {
-				c := p.stacktraces.chunks[sr.chunk]
-				x = c.tree
-				v := stacktraceIDRange{
-					offset:  offset,
-					Samples: samples,
-					ids:     sr.ids,
-				}
-				offset += len(sr.ids)
-				result.Merge(buildTree(x, v, r, maxNodes))
-			}
-		}
-		return result, nil
-	}
-	t := treeSymbolsFromPool()
-	defer t.reset()
-	t.init(r, samples)
-	if err := r.Stacktraces.ResolveStacktraceLocations(ctx, t, samples.StacktraceIDs); err != nil {
-		return nil, err
-	}
-	return t.tree.Tree(maxNodes, t.symbols.Strings), nil
-}
-
-// findCallSite returns the stack trace of the call site
-// where each element in the stack trace is represented by
-// the function ID. Call site is the last element.
-// TODO(kolesnikovae): Location should also include the line number.
-func findCallSite(symbols *Symbols, locations []*typesv1.Location) []uint32 {
-	if len(locations) == 0 {
-		return nil
-	}
-	m := make(map[string]uint32, len(locations))
-	for _, loc := range locations {
-		m[loc.Name] = 0
-	}
-	c := len(m) // Only count unique names.
-	for f := 0; f < len(symbols.Functions) && c > 0; f++ {
-		s := symbols.Strings[symbols.Functions[f].Name]
-		if _, ok := m[s]; ok {
-			// We assume that no functions have the same name.
-			// Otherwise, the last one takes precedence.
-			m[s] = uint32(f) // f is FunctionId
-			c--
-		}
-	}
-	if c > 0 {
-		return nil
-	}
-	callSite := make([]uint32, len(locations))
-	for i, loc := range locations {
-		callSite[i] = m[loc.Name]
-	}
-	return callSite
+	return buildTree(ctx, r, appender, maxNodes)
 }

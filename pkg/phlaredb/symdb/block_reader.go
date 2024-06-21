@@ -17,6 +17,7 @@ import (
 	"github.com/parquet-go/parquet-go"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/grafana/pyroscope/pkg/iter"
 	"github.com/grafana/pyroscope/pkg/objstore"
 	parquetobj "github.com/grafana/pyroscope/pkg/objstore/parquet"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
@@ -287,6 +288,22 @@ func (p *partition) ResolveStacktraceLocations(ctx context.Context, dst Stacktra
 	return nil
 }
 
+func (p *partition) SplitStacktraceIDRanges(appender *SampleAppender) iter.Iterator[*StacktraceIDRange] {
+	if len(p.stacktraceChunks) == 0 {
+		return iter.NewEmptyIterator[*StacktraceIDRange]()
+	}
+	var n int
+	samples := appender.Samples()
+	ranges := SplitStacktraces(samples.StacktraceIDs, p.stacktraceChunks[0].header.StacktraceMaxNodes)
+	for _, sr := range ranges {
+		c := p.stacktraceChunks[sr.chunk]
+		sr.ParentPointerTree = c.t
+		sr.Samples = samples.Range(n, n+len(sr.IDs))
+		n += len(sr.IDs)
+	}
+	return iter.NewSliceIterator(ranges)
+}
+
 func (p *partition) setStacktracesChunks(chunks []StacktraceChunkHeader) {
 	p.stacktraceChunks = make([]*stacktraceChunkReader, len(chunks))
 	for i, c := range chunks {
@@ -304,7 +321,7 @@ func (p *partition) stacktraceChunkReader(i uint32) *stacktraceChunkReader {
 	return nil
 }
 
-func (p *partition) lookupStacktraces(ctx context.Context, dst StacktraceInserter, c StacktracesRange) *stacktracesLookup {
+func (p *partition) lookupStacktraces(ctx context.Context, dst StacktraceInserter, c *StacktraceIDRange) *stacktracesLookup {
 	return &stacktracesLookup{
 		ctx: ctx,
 		dst: dst,
@@ -317,7 +334,7 @@ func (p *partition) lookupStacktraces(ctx context.Context, dst StacktraceInserte
 type stacktracesLookup struct {
 	ctx context.Context
 	dst StacktraceInserter
-	c   StacktracesRange
+	c   *StacktraceIDRange
 	r   *partition
 }
 
@@ -328,8 +345,8 @@ func (r *stacktracesLookup) do() error {
 	}
 	s := stacktraceLocations.get()
 	// Restore the original stacktrace ID.
-	off := r.c.offset()
-	for _, sid := range r.c.ids {
+	off := r.c.Offset()
+	for _, sid := range r.c.IDs {
 		s = cr.t.resolve(s, sid)
 		r.dst.InsertStacktrace(off+sid, s)
 	}

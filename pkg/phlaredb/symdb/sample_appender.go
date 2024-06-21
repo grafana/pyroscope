@@ -6,25 +6,48 @@ import (
 	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
+// SampleAppender is a dynamic data structure that accumulates
+// samples, by summing them up by stack trace ID.
+//
+// It has two underlying implementations:
+//   - map: a hash table is used for small sparse data sets (16k by default).
+//     This representation is optimal for small profiles, like span profile,
+//     or a short time range profile of a specific service/series.
+//   - chunked sparse set: stack trace IDs serve as indices in a sparse set.
+//     Provided that the stack trace IDs are dense (as they point to the node
+//     index in the parent pointer tree), this representation is significantly
+//     more performant, but may require more space, if the stack trace IDs set
+//     is very sparse. In order to reduce memory consumption, the set is split
+//     into chunks (16k by default), that are allocated once at least one ID
+//     matches the chunk range. In addition, values are ordered by stack trace
+//     ID without being sorted explicitly.
 type SampleAppender struct {
 	// Max number of elements in the map.
 	// Once the limit is exceeded, values
 	// are migrated to the chunked set.
 	maxMapSize uint32
 	hashmap    map[uint32]uint64
-	chunkSize  uint32     // Must be a power of 2.
-	chunks     [][]uint64 // We could use a sparse set instead.
+	chunkSize  uint32 // Must be a power of 2.
+	chunks     [][]uint64
 	size       int
 
 	Append     func(stacktrace uint32, value uint64)
 	AppendMany func(stacktraces []uint32, values []uint64)
 }
 
-type SampleValues interface {
-	SetNodeValues(dst []Node)
+// Hashmap is used for small data sets (<= 16k elements, be default).
+// Once the limit is exceeded, the data is migrated to the chunked set.
+// Chunk set size is 16k (128k) by default.
+const (
+	defaultSampleAppenderSize = 16 << 10
+	defaultChunkSize          = 16 << 10
+)
+
+func NewSampleAppender() *SampleAppender {
+	return NewSampleAppenderSize(defaultSampleAppenderSize, defaultChunkSize)
 }
 
-func NewSampleAppender(maxMapSize, chunkSize uint32) *SampleAppender {
+func NewSampleAppenderSize(maxMapSize, chunkSize uint32) *SampleAppender {
 	if chunkSize == 0 || (chunkSize&(chunkSize-1)) != 0 {
 		panic("chunk size must be a power of 2")
 	}
@@ -86,7 +109,9 @@ func (s *SampleAppender) setAppend(stacktrace uint32, value uint64) {
 	}
 	v := c[vi]
 	c[vi] += value
-	s.size += int((v | -v) >> 63) // Skip zero.
+	if v == 0 {
+		s.size++
+	}
 }
 
 func (s *SampleAppender) setAppendMany(stacktraces []uint32, values []uint64) {
@@ -109,15 +134,23 @@ func (s *SampleAppender) setAppendMany(stacktraces []uint32, values []uint64) {
 		}
 		v := c[vi]
 		c[vi] += value
-		s.size += int((v | -v) >> 63) // Skip zero.
+		if v == 0 {
+			s.size++
+		}
 	}
+}
+
+func (s *SampleAppender) Len() int {
+	// +1 for the stack trace ID 0, which points to the tree root
+	// and is never used in the samples.
+	return s.size + 1
 }
 
 func (s *SampleAppender) Samples() v1.Samples {
 	if len(s.hashmap) > 0 {
 		return v1.NewSamplesFromMap(s.hashmap)
 	}
-	samples := v1.NewSamples(int(s.size) + 1)
+	samples := v1.NewSamples(s.Len())
 	chunks := uint32(len(s.chunks))
 	var x uint32
 	for i := uint32(0); i < chunks; i++ {
@@ -131,20 +164,4 @@ func (s *SampleAppender) Samples() v1.Samples {
 		}
 	}
 	return samples
-}
-
-type stacktraceIDRange struct {
-	offset int
-	ids    []uint32
-	v1.Samples
-}
-
-func (s stacktraceIDRange) SetNodeValues(dst []Node) {
-	for i := s.offset; i < len(s.ids); i++ {
-		x := s.StacktraceIDs[i]
-		v := int64(s.Values[i])
-		if x > 0 && v > 0 {
-			dst[x].Value = v
-		}
-	}
 }

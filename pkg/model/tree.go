@@ -473,6 +473,16 @@ func NewTreeMerger() *TreeMerger {
 	return new(TreeMerger)
 }
 
+func (m *TreeMerger) MergeTree(t *Tree) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.t != nil {
+		m.t.Merge(t)
+	} else {
+		m.t = t
+	}
+}
+
 func (m *TreeMerger) MergeTreeBytes(b []byte) error {
 	// TODO(kolesnikovae): Ideally, we should not have
 	// the intermediate tree t but update m.t reading
@@ -481,13 +491,7 @@ func (m *TreeMerger) MergeTreeBytes(b []byte) error {
 	if err != nil {
 		return err
 	}
-	m.mu.Lock()
-	if m.t != nil {
-		m.t.Merge(t)
-	} else {
-		m.t = t
-	}
-	m.mu.Unlock()
+	m.MergeTree(t)
 	return nil
 }
 

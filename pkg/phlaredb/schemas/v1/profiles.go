@@ -364,6 +364,17 @@ func (s Samples) Clone() Samples {
 	return cloneSamples(s)
 }
 
+func (s Samples) Range(n, m int) Samples {
+	x := Samples{
+		StacktraceIDs: s.StacktraceIDs[n:m],
+		Values:        s.Values[n:m],
+	}
+	if len(s.Spans) > 0 {
+		x.Spans = s.Spans[n:m]
+	}
+	return x
+}
+
 func trimDuplicateSamples(samples Samples) Samples {
 	sort.Sort(samples)
 	n := 0

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	"github.com/grafana/pyroscope/pkg/iter"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
@@ -21,16 +22,6 @@ type PartitionReader interface {
 	WriteStats(s *PartitionStats)
 	Symbols() *Symbols
 	Release()
-}
-
-type ParentPointerTree interface {
-	Nodes() []Node
-}
-
-type Node struct {
-	Parent   int32
-	Location int32
-	Value    int64
 }
 
 type Symbols struct {
@@ -61,6 +52,25 @@ type StacktraceResolver interface {
 	// Stacktraces slice might be modified during the call.
 	ResolveStacktraceLocations(ctx context.Context, dst StacktraceInserter, stacktraces []uint32) error
 	LookupLocations(dst []uint64, stacktraceID uint32) []uint64
+
+	// Optional:
+	// StacktraceIDRangeIterator
+}
+
+// StacktraceIDRangeIterator provides low level access
+// to stack traces, stored in painter point trees.
+type StacktraceIDRangeIterator interface {
+	SplitStacktraceIDRanges(*SampleAppender) iter.Iterator[*StacktraceIDRange]
+}
+
+type ParentPointerTree interface {
+	Nodes() []Node
+}
+
+type Node struct {
+	Parent   int32
+	Location int32
+	Value    int64
 }
 
 // StacktraceInserter accepts resolved locations for a given stack
