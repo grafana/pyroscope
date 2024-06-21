@@ -14,7 +14,7 @@ const (
 	truncatedNodeName = "other"
 )
 
-type pprofProtoTruncatedSymbols struct {
+type pprofTree struct {
 	symbols *Symbols
 	samples *schemav1.Samples
 	profile googlev1.Profile
@@ -31,8 +31,8 @@ type pprofProtoTruncatedSymbols struct {
 	functionsBuf []int32
 	locationsBuf []uint64
 
-	selection *SelectedStackTraces
-	fnNames   func(locations []int32) ([]int32, bool)
+	callSite []uint32
+	fnNames  func(locations []int32) ([]int32, bool)
 
 	// After truncation many samples will have the same stack trace.
 	// The map is used to deduplicate them. The key is sample.LocationId
@@ -49,7 +49,7 @@ type truncatedStacktraceSample struct {
 	value           int64
 }
 
-func (r *pprofProtoTruncatedSymbols) init(symbols *Symbols, samples schemav1.Samples) {
+func (r *pprofTree) init(symbols *Symbols, samples schemav1.Samples) {
 	r.symbols = symbols
 	r.samples = &samples
 	// We optimistically assume that each stacktrace has only
@@ -57,14 +57,14 @@ func (r *pprofProtoTruncatedSymbols) init(symbols *Symbols, samples schemav1.Sam
 	r.functionTree = model.NewStacktraceTree(samples.Len() * 2)
 	r.stacktraces = make([]truncatedStacktraceSample, 0, samples.Len())
 	r.sampleMap = make(map[string]*googlev1.Sample, samples.Len())
-	if r.selection != nil && len(r.selection.callSite) > 0 {
+	if len(r.callSite) > 0 {
 		r.fnNames = r.locFunctionsFiltered
 	} else {
 		r.fnNames = r.locFunctions
 	}
 }
 
-func (r *pprofProtoTruncatedSymbols) InsertStacktrace(stacktraceID uint32, locations []int32) {
+func (r *pprofTree) InsertStacktrace(stacktraceID uint32, locations []int32) {
 	value := int64(r.samples.Values[r.cur])
 	r.cur++
 	functions, ok := r.fnNames(locations)
@@ -78,7 +78,7 @@ func (r *pprofProtoTruncatedSymbols) InsertStacktrace(stacktraceID uint32, locat
 	}
 }
 
-func (r *pprofProtoTruncatedSymbols) locFunctions(locations []int32) ([]int32, bool) {
+func (r *pprofTree) locFunctions(locations []int32) ([]int32, bool) {
 	r.functionsBuf = r.functionsBuf[:0]
 	for i := 0; i < len(locations); i++ {
 		lines := r.symbols.Locations[locations[i]].Line
@@ -89,10 +89,10 @@ func (r *pprofProtoTruncatedSymbols) locFunctions(locations []int32) ([]int32, b
 	return r.functionsBuf, true
 }
 
-func (r *pprofProtoTruncatedSymbols) locFunctionsFiltered(locations []int32) ([]int32, bool) {
+func (r *pprofTree) locFunctionsFiltered(locations []int32) ([]int32, bool) {
 	r.functionsBuf = r.functionsBuf[:0]
 	var pos int
-	pathLen := len(r.selection.callSite)
+	pathLen := len(r.callSite)
 	// Even if len(locations) < pathLen, we still
 	// need to inspect locations line by line.
 	for i := len(locations) - 1; i >= 0; i-- {
@@ -100,7 +100,7 @@ func (r *pprofProtoTruncatedSymbols) locFunctionsFiltered(locations []int32) ([]
 		for j := len(lines) - 1; j >= 0; j-- {
 			f := lines[j].FunctionId
 			if pos < pathLen {
-				if r.selection.callSite[pos] != f {
+				if r.callSite[pos] != f {
 					return nil, false
 				}
 				pos++
@@ -115,7 +115,7 @@ func (r *pprofProtoTruncatedSymbols) locFunctionsFiltered(locations []int32) ([]
 	return r.functionsBuf, true
 }
 
-func (r *pprofProtoTruncatedSymbols) buildPprof() *googlev1.Profile {
+func (r *pprofTree) buildPprof() *googlev1.Profile {
 	r.markNodesForTruncation()
 	for _, n := range r.stacktraces {
 		r.addSample(n)
@@ -132,7 +132,7 @@ func (r *pprofProtoTruncatedSymbols) buildPprof() *googlev1.Profile {
 	return &r.profile
 }
 
-func (r *pprofProtoTruncatedSymbols) markNodesForTruncation() {
+func (r *pprofTree) markNodesForTruncation() {
 	minValue := r.functionTree.MinValue(r.maxNodes)
 	if minValue == 0 {
 		return
@@ -145,7 +145,7 @@ func (r *pprofProtoTruncatedSymbols) markNodesForTruncation() {
 	}
 }
 
-func (r *pprofProtoTruncatedSymbols) addSample(n truncatedStacktraceSample) {
+func (r *pprofTree) addSample(n truncatedStacktraceSample) {
 	// Find the original stack trace and remove truncated
 	// locations based on the truncated functions.
 	var off int
@@ -180,7 +180,7 @@ func (r *pprofProtoTruncatedSymbols) addSample(n truncatedStacktraceSample) {
 	r.sampleMap[uint64sliceString(locationsCopy)] = s
 }
 
-func (r *pprofProtoTruncatedSymbols) buildFunctionsStack(funcs []int32, idx int32) ([]int32, int) {
+func (r *pprofTree) buildFunctionsStack(funcs []int32, idx int32) ([]int32, int) {
 	offset := -1
 	funcs = funcs[:0]
 	for i := idx; i > 0; i = r.functionTree.Nodes[i].Parent {
@@ -194,7 +194,7 @@ func (r *pprofProtoTruncatedSymbols) buildFunctionsStack(funcs []int32, idx int3
 	return funcs, offset
 }
 
-func (r *pprofProtoTruncatedSymbols) createSamples() {
+func (r *pprofTree) createSamples() {
 	samples := len(r.sampleMap)
 	r.profile.Sample = make([]*googlev1.Sample, samples, samples+1)
 	var i int
@@ -234,7 +234,7 @@ func uint64sliceString(u []uint64) string {
 	return unsafe.String(p, len(u)*8)
 }
 
-func (r *pprofProtoTruncatedSymbols) createStubSample() {
+func (r *pprofTree) createStubSample() {
 	r.profile.Sample = append(r.profile.Sample, &googlev1.Sample{
 		LocationId: []uint64{truncationMark},
 		Value:      []int64{r.fullyTruncated},

@@ -41,31 +41,35 @@ const (
 )
 
 type SelectedStackTraces struct {
-	symbols   *Symbols
-	selector  []*typesv1.Location
-	relations map[uint32]stackTraceLocationRelation
-	callSite  []uint32 // stack trace of the call site
-	location  uint32   // stack trace leaf
-	depth     uint32
-	buf       []uint64
+	symbols *Symbols
+	// Go PGO filter.
+	gopgo *typesv1.GoPGO
+	// call_site filter
+	relations        map[uint32]stackTraceLocationRelation
+	callSiteSelector []*typesv1.Location
+	callSite         []uint32 // stack trace of the call site
+	location         uint32   // stack trace leaf
+	depth            uint32
+	buf              []uint64
 }
 
 func SelectStackTraces(symbols *Symbols, selector *typesv1.StackTraceSelector) *SelectedStackTraces {
 	x := &SelectedStackTraces{
-		symbols:  symbols,
-		selector: selector.GetCallSite(),
+		symbols:          symbols,
+		callSiteSelector: selector.GetCallSite(),
+		gopgo:            selector.GetGoPgo(),
 	}
-	x.callSite = findCallSite(symbols, x.selector)
+	x.callSite = findCallSite(symbols, x.callSiteSelector)
 	if x.depth = uint32(len(x.callSite)); x.depth > 0 {
 		x.location = x.callSite[x.depth-1]
 	}
 	return x
 }
 
-// IsValid reports whether any stack traces match the selector.
+// HasValidCallSite reports whether any stack traces match the selector.
 // An empty selector results in a valid empty selection.
-func (x *SelectedStackTraces) IsValid() bool {
-	return len(x.selector) == 0 || len(x.selector) != 0 && len(x.callSite) != 0
+func (x *SelectedStackTraces) HasValidCallSite() bool {
+	return len(x.callSiteSelector) == 0 || len(x.callSiteSelector) != 0 && len(x.callSite) != 0
 }
 
 // CallSiteValues writes the call site statistics for

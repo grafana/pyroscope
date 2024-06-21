@@ -119,18 +119,19 @@ func queryMerge(ctx context.Context, params *queryMergeParams, outputFlag string
 	if err != nil {
 		return err
 	}
-
 	level.Info(logger).Log("msg", "query aggregated profile from profile store", "url", params.URL, "from", from, "to", to, "query", params.Query, "type", params.ProfileType)
+	return selectMergeProfile(ctx, params.phlareClient, outputFlag,
+		&querierv1.SelectMergeProfileRequest{
+			ProfileTypeID: params.ProfileType,
+			Start:         from.UnixMilli(),
+			End:           to.UnixMilli(),
+			LabelSelector: params.Query,
+		})
+}
 
-	qc := params.phlareClient.queryClient()
-
-	resp, err := qc.SelectMergeProfile(ctx, connect.NewRequest(&querierv1.SelectMergeProfileRequest{
-		ProfileTypeID: params.ProfileType,
-		Start:         from.UnixMilli(),
-		End:           to.UnixMilli(),
-		LabelSelector: params.Query,
-	}))
-
+func selectMergeProfile(ctx context.Context, client *phlareClient, outputFlag string, req *querierv1.SelectMergeProfileRequest) error {
+	qc := client.queryClient()
+	resp, err := qc.SelectMergeProfile(ctx, connect.NewRequest(req))
 	if err != nil {
 		return errors.Wrap(err, "failed to query")
 	}
@@ -188,6 +189,50 @@ func queryMerge(ctx context.Context, params *queryMergeParams, outputFlag string
 	}
 
 	return errors.Errorf("unknown output %s", outputFlag)
+}
+
+type queryGoPGOParams struct {
+	*queryMergeParams
+	KeepLocations    uint32
+	AggregateCallees bool
+}
+
+func addQueryGoPGOParams(queryCmd commander) *queryGoPGOParams {
+	params := new(queryGoPGOParams)
+	params.queryMergeParams = addQueryMergeParams(queryCmd)
+	queryCmd.Flag("keep-locations", "Number of leaf locations to keep.").Default("5").Uint32Var(&params.KeepLocations)
+	queryCmd.Flag("aggregate-callees", "Aggregate samples for the same callee by ignoring the line numbers in the leaf locations.").Default("true").BoolVar(&params.AggregateCallees)
+	return params
+}
+
+func queryGoPGO(ctx context.Context, params *queryGoPGOParams, outputFlag string) (err error) {
+	from, to, err := params.parseFromTo()
+	if err != nil {
+		return err
+	}
+	level.Info(logger).Log("msg", "querying pprof profile for Go PGO",
+		"url", params.URL,
+		"query", params.Query,
+		"from", from,
+		"to", to,
+		"type", params.ProfileType,
+		"output", outputFlag,
+		"keep-locations", params.KeepLocations,
+		"aggregate-callees", params.AggregateCallees,
+	)
+	return selectMergeProfile(ctx, params.phlareClient, outputFlag,
+		&querierv1.SelectMergeProfileRequest{
+			ProfileTypeID: params.ProfileType,
+			Start:         from.UnixMilli(),
+			End:           to.UnixMilli(),
+			LabelSelector: params.Query,
+			StackTraceSelector: &typesv1.StackTraceSelector{
+				GoPgo: &typesv1.GoPGO{
+					KeepLocations:    params.KeepLocations,
+					AggregateCallees: params.AggregateCallees,
+				},
+			},
+		})
 }
 
 type querySeriesParams struct {
