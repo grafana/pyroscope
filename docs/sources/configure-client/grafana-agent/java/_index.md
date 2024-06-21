@@ -52,21 +52,21 @@ Pyroscope Server or [Grafana Cloud](/products/cloud/).
 The special label `__process_pid__` _must always_ be present in each target of `targets` and corresponds to the `PID` of
 the process to profile.
 
-The special label `service_name` is required and must always be present. If `service_name` is not specified, `pyroscope.java`
-attempts to infer it from discovery meta labels. If `service_name` is not specified and could not be inferred, then it is
-set to `unspecified`.
+The special label `service_name` is required and must always be present.
+If `service_name` isn't specified, `pyroscope.java` attempts to infer it from discovery meta labels.
+If `service_name` isn't specified and couldn't be inferred, then it's set to `unspecified`.
 
 The `profiling_config` block describes how async-profiler is invoked.
 
-The following arguments are supported:
+It supports the following arguments:
 
 | Name          | Type       | Description                                                                                              | Default | Required |
 |---------------|------------|----------------------------------------------------------------------------------------------------------|---------|----------|
 | `interval`    | `duration` | How frequently to collect profiles from the targets.                                                     | "60s"   | no       |
-| `cpu`         | `bool`     | A flag to enable cpu profiling, using `itimer` async-profiler event.                                     | true    | no       |
-| `sample_rate` | `int`      | CPU profiling sample rate. It is converted from Hz to interval and passed as `-i` arg to async-profiler. | 100     | no       |
-| `alloc`       | `string`   | Allocation profiling sampling configuration  It is passed as `--alloc` arg to async-profiler.            | "512k"  | no       |
-| `lock`        | `string`   | Lock profiling sampling configuration. It is passed as `--lock` arg to async-profiler.                   | "10ms"  | no       |
+| `cpu`         | `bool`     | A flag to enable CPU profiling, using `itimer` async-profiler event.                                     | true    | no       |
+| `sample_rate` | `int`      | CPU profiling sample rate. It's converted from Hz to interval and passed as `-i` arg to async-profiler. | 100     | no       |
+| `alloc`       | `string`   | Allocation profiling sampling configuration  It's passed as `--alloc` arg to async-profiler.            | "512k"  | no       |
+| `lock`        | `string`   | Lock profiling sampling configuration. It's passed as `--lock` arg to async-profiler.                   | "10ms"  | no       |
 
 For more information on async-profiler configuration,
 see [profiler-options](https://github.com/async-profiler/async-profiler?tab=readme-ov-file#profiler-options).
@@ -78,13 +78,27 @@ and `discover.process` components to work.
 
 ### Start the collector
 
-To start Grafana Alloy, replace `configuration.alloy` with your configuration file name: 
+To start Grafana Alloy v1.2: Replace `configuration.alloy` with your configuration file name:
+
+```bash
+alloy run configuration.alloy
+```
+
+To start Grafana Alloy v1.0/1.1: Replace `configuration.alloy` with your configuration file name:
+
+```bash
+alloy run --stability.level=public-preview configuration.alloy
+```
+
+The `stability.level` option is required for `pyroscope.scrape` with Alloy v1.0 or v1.1. For more information about `stability.level`, refer to [The run command](https://grafana.com/docs/alloy/latest/reference/cli/run/#permitted-stability-levels) documentation.
+
+To start Grafana Alloy, replace `configuration.alloy` with your configuration filename:
 
 `alloy run --stability.level=public-preview configuration.alloy`
 
 The `stability.level` option is required for `pyroscope.scrape`. For more information about `stability.level`, refer to [The run command](https://grafana.com/docs/alloy/latest/reference/cli/run/#permitted-stability-levels) documentation.
 
-To start Grafana Agent, replace `configuration.river` with your configuration file name:
+To start Grafana Agent, replace `configuration.river` with your configuration filename:
   ` grafana-agent-flow run configuration.river`
 
 ### Send data to Grafana Cloud Profiles
