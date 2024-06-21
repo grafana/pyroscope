@@ -275,7 +275,8 @@ By default it looks for samples within the last hour, though this can be control
 ### Exporting a profile for Go PGO
 
 You can use the `profilecli query go-pgo` command to retrieve an aggregated profile from a Pyroscope server for use with Go PGO.
-Profiles retrieved with `profilecli query merge` include all samples found in the profile store, resulting in a large profile size, which may cause issues with network transfer and slow down the PGO process.
+Profiles retrieved with `profilecli query merge` include all samples found in the profile store, resulting in a large profile size.
+The profile size may cause issues with network transfer and slow down the PGO process.
 In contrast, profiles retrieved with `profilecli query go-pgo` include only the information used in Go PGO, making them significantly smaller and more efficient to handle.
 By default, it looks for samples within the last hour, though this can be controlled with the `--from` and `--to` flags. The source data can be narrowed down with the `--query` flag in the same way as with the `query` command.
 
