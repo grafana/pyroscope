@@ -20,7 +20,10 @@ func (c *phlareClient) pusherClient() pushv1connect.PusherServiceClient {
 	return pushv1connect.NewPusherServiceClient(
 		c.httpClient(),
 		c.URL,
-		connectapi.DefaultClientOptions()...,
+		append(
+			connectapi.DefaultClientOptions(),
+			c.protocolOption(),
+		)...,
 	)
 }
 

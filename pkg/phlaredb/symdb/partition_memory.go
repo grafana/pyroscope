@@ -54,7 +54,6 @@ type stacktracesPartition struct {
 	m         sync.RWMutex
 	hashToIdx map[uint64]uint32
 	chunks    []*stacktraceChunk
-	header    []StacktraceChunkHeader
 }
 
 func newStacktracesPartition(maxNodesPerChunk uint32) *stacktracesPartition {
@@ -72,7 +71,7 @@ func newStacktracesPartition(maxNodesPerChunk uint32) *stacktracesPartition {
 func (p *stacktracesPartition) size() uint64 {
 	p.m.RLock()
 	// TODO: map footprint isn't accounted
-	v := len(p.header) * stacktraceChunkHeaderSize
+	v := 0
 	for _, c := range p.chunks {
 		v += stacktraceTreeNodeSize * cap(c.tree.nodes)
 	}

@@ -68,6 +68,9 @@ func main() {
 	queryMergeCmd := queryCmd.Command("merge", "Request merged profile.")
 	queryMergeOutput := queryMergeCmd.Flag("output", "How to output the result, examples: console, raw, pprof=./my.pprof").Default("console").String()
 	queryMergeParams := addQueryMergeParams(queryMergeCmd)
+	queryGoPGOCmd := queryCmd.Command("go-pgo", "Request profile for Go PGO.")
+	queryGoPGOOutput := queryGoPGOCmd.Flag("output", "How to output the result, examples: console, raw, pprof=./my.pprof").Default("pprof=./default.pgo").String()
+	queryGoPGOParams := addQueryGoPGOParams(queryGoPGOCmd)
 	querySeriesCmd := queryCmd.Command("series", "Request series labels.")
 	querySeriesParams := addQuerySeriesParams(querySeriesCmd)
 
@@ -109,6 +112,10 @@ func main() {
 		}
 	case queryMergeCmd.FullCommand():
 		if err := queryMerge(ctx, queryMergeParams, *queryMergeOutput); err != nil {
+			os.Exit(checkError(err))
+		}
+	case queryGoPGOCmd.FullCommand():
+		if err := queryGoPGO(ctx, queryGoPGOParams, *queryGoPGOOutput); err != nil {
 			os.Exit(checkError(err))
 		}
 	case querySeriesCmd.FullCommand():
