@@ -52,7 +52,7 @@ EXPOSE 5000
 CMD ["java", "-Dserver.port=5000", "-jar", "./my-app.jar" ]
 ```
 
-Now by adding the OTEL Java agent and our Pyroscope Otel Java Agent extensions, you can enrich your profiles with span IDs which makes it possible to query for span-specific profiling data in Grafana Tempo UI:
+By adding the OTel Java agent and the Pyroscope OTel Java Agent extensions, you can enrich your profiles with span IDs. This makes it possible to query for span-specific profiling data in Grafana Tempo:
 
 ```Dockerfile
 # [...]
