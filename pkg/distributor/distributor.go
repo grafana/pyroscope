@@ -12,6 +12,7 @@ import (
 	"sort"
 	"sync"
 	"time"
+	"unsafe"
 
 	"connectrpc.com/connect"
 	"github.com/dustin/go-humanize"
@@ -31,7 +32,7 @@ import (
 	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"
 
-	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
@@ -496,8 +497,20 @@ func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.Pu
 	}
 }
 
+// sampleSize returns the size of a samples in bytes.
+func sampleSize(stringTable []string, samplesSlice []*profilev1.Sample) int64 {
+	var size int64
+	for _, s := range samplesSlice {
+		size += int64(s.SizeVT())
+		for _, l := range s.Label {
+			size += int64(len(stringTable[l.Key]) + len(stringTable[l.Str]) + len(stringTable[l.NumUnit]))
+		}
+	}
+	return size
+}
+
 // profileSizeBytes returns the size of symbols and samples in bytes.
-func profileSizeBytes(p *googlev1.Profile) (symbols, samples int64) {
+func profileSizeBytes(p *profilev1.Profile) (symbols, samples int64) {
 	fullSize := p.SizeVT()
 	// remove samples
 	samplesSlice := p.Sample
@@ -521,7 +534,7 @@ func profileSizeBytes(p *googlev1.Profile) (symbols, samples int64) {
 	return
 }
 
-func (d *Distributor) maybeAggregate(tenantID string, labels phlaremodel.Labels, profile *googlev1.Profile) (func() (*pprof.ProfileMerge, error), bool, error) {
+func (d *Distributor) maybeAggregate(tenantID string, labels phlaremodel.Labels, profile *profilev1.Profile) (func() (*pprof.ProfileMerge, error), bool, error) {
 	a, ok := d.aggregator.AggregatorForTenant(tenantID)
 	if !ok {
 		return nil, false, nil
@@ -539,7 +552,7 @@ func (d *Distributor) maybeAggregate(tenantID string, labels phlaremodel.Labels,
 	return r.Handler(), true, nil
 }
 
-func mergeProfile(profile *googlev1.Profile) aggregator.AggregateFn[*pprof.ProfileMerge] {
+func mergeProfile(profile *profilev1.Profile) aggregator.AggregateFn[*pprof.ProfileMerge] {
 	return func(m *pprof.ProfileMerge) (*pprof.ProfileMerge, error) {
 		if m == nil {
 			m = new(pprof.ProfileMerge)
@@ -638,39 +651,99 @@ func (d *Distributor) HealthyInstancesCount() int {
 	return int(d.healthyInstancesCount.Load())
 }
 
-type groupsWithFingerprints struct {
-	labelSets    []phlaremodel.Labels
-	groups       []pprof.SampleGroup
-	fingerprints map[uint64][]int
+type sampleKey struct {
+	stacktrace string
+	// note this is an index into the string table, rather than span ID
+	spanIDIdx int64
 }
 
-func newGroupsWithFingerprints(n int) *groupsWithFingerprints {
-	return &groupsWithFingerprints{
-		labelSets:    make([]phlaremodel.Labels, 0, n),
-		groups:       make([]pprof.SampleGroup, 0, n),
-		fingerprints: make(map[uint64][]int),
+func sampleKeyFromSample(stringTable []string, s *profilev1.Sample) sampleKey {
+	var k sampleKey
+
+	// populate spanID if present
+	for _, l := range s.Label {
+		if stringTable[int(l.Key)] == pprof.SpanIDLabelName {
+			k.spanIDIdx = l.Str
+		}
 	}
+	if len(s.LocationId) > 0 {
+		k.stacktrace = unsafe.String(
+			(*byte)(unsafe.Pointer(&s.LocationId[0])),
+			len(s.LocationId)*8,
+		)
+	}
+	return k
 }
 
-func (g *groupsWithFingerprints) add(lbls phlaremodel.Labels, group pprof.SampleGroup) {
-	fp := lbls.Hash()
-	idxs, ok := g.fingerprints[fp]
-	if ok {
-		// fingerprint matches, check if the labels arethe same
-		for _, idx := range idxs {
-			if phlaremodel.CompareLabelPairs(g.labelSets[idx], lbls) == 0 {
-				// append samples to the group
-				g.groups[idx].Samples = append(g.groups[idx].Samples, group.Samples...)
-				return
-			}
+type lazyGroup struct {
+	sampleGroup pprof.SampleGroup
+	// The map is only initialized when the group is being modified. Key is the
+	// string representation (unsafe) of the sample stack trace and its potential
+	// span ID.
+	sampleMap map[sampleKey]*profilev1.Sample
+	labels    phlaremodel.Labels
+}
+
+func (g *lazyGroup) addSampleGroup(stringTable []string, sg pprof.SampleGroup) {
+	if len(g.sampleGroup.Samples) == 0 {
+		g.sampleGroup = sg
+		return
+	}
+
+	// If the group is already initialized, we need to merge the samples.
+	if g.sampleMap == nil {
+		g.sampleMap = make(map[sampleKey]*profilev1.Sample)
+		for _, s := range g.sampleGroup.Samples {
+			g.sampleMap[sampleKeyFromSample(stringTable, s)] = s
 		}
 	}
 
-	// add the labels to the list
-	g.fingerprints[fp] = append(g.fingerprints[fp], len(g.labelSets))
-	g.labelSets = append(g.labelSets, lbls)
-	g.groups = append(g.groups, group)
+	for _, s := range sg.Samples {
+		k := sampleKeyFromSample(stringTable, s)
+		if _, ok := g.sampleMap[k]; !ok {
+			g.sampleGroup.Samples = append(g.sampleGroup.Samples, s)
+			g.sampleMap[k] = s
+		} else {
+			// merge the samples
+			for idx := range s.Value {
+				g.sampleMap[k].Value[idx] += s.Value[idx]
+			}
+		}
+	}
+}
 
+type groupsWithFingerprints struct {
+	m     map[uint64][]lazyGroup
+	order []uint64
+}
+
+func newGroupsWithFingerprints() *groupsWithFingerprints {
+	return &groupsWithFingerprints{
+		m: make(map[uint64][]lazyGroup),
+	}
+}
+
+func (g *groupsWithFingerprints) add(stringTable []string, lbls phlaremodel.Labels, group pprof.SampleGroup) {
+	fp := lbls.Hash()
+	idxs, ok := g.m[fp]
+	if ok {
+		// fingerprint matches, check if the labels are the same
+		for _, idx := range idxs {
+			if phlaremodel.CompareLabelPairs(idx.labels, lbls) == 0 {
+				// append samples to the group
+				idx.addSampleGroup(stringTable, group)
+				return
+			}
+		}
+	} else {
+		g.order = append(g.order, fp)
+	}
+
+	// add the labels to the list
+	g.m[fp] = append(g.m[fp], lazyGroup{
+		sampleGroup: group,
+		labels:      lbls,
+	})
 }
 
 func extractSampleSeries(req *distributormodel.PushRequest, relabelRules []*relabel.Config) (result []*distributormodel.ProfileSeries, bytesRelabelDropped, profilesRelabelDropped float64) {
@@ -711,42 +784,43 @@ func extractSampleSeries(req *distributormodel.PushRequest, relabelRules []*rela
 				continue
 			}
 
-			e := pprof.NewSampleExporter(raw.Profile.Profile)
-
 			// iterate through groups relabel them and find relevant overlapping labelsets
-			groupsKept := newGroupsWithFingerprints(len(groups))
+			groupsKept := newGroupsWithFingerprints()
 			for _, group := range groups {
 				lblbuilder.Reset(series.Labels)
 				addSampleLabelsToLabelsBuilder(lblbuilder, raw.Profile.Profile, group.Labels)
 				if len(relabelRules) > 0 {
 					keep := relabel.ProcessBuilder(lblbuilder, relabelRules...)
 					if !keep {
-						// not too sure if this is worth doing, as it might be quite expensive
-						bytesRelabelDropped += float64(exportSamples(e, group.Samples).SizeVT())
+						bytesRelabelDropped += float64(sampleSize(raw.Profile.Profile.StringTable, group.Samples))
 						continue
 					}
 				}
 
 				// add the group to the list
-				groupsKept.add(lblbuilder.Labels(), group)
+				groupsKept.add(raw.Profile.StringTable, lblbuilder.Labels(), group)
 			}
 
-			if len(groupsKept.groups) == 0 {
+			if len(groupsKept.m) == 0 {
 				// no groups kept, count the whole profile as dropped
 				profilesRelabelDropped++
+				continue
 			}
 
-			for idx, group := range groupsKept.groups {
-				// exportSamples creates a new profile with the samples provided.
-				// The samples are obtained via GroupSamples call, which means
-				// the underlying capacity is referenced by the source profile.
-				// Therefore, the slice has to be copied and samples zeroed to
-				// avoid ownership issues.
-				profile := exportSamples(e, group.Samples)
-				profileSeries = append(profileSeries, &distributormodel.ProfileSeries{
-					Labels:  groupsKept.labelSets[idx],
-					Samples: []*distributormodel.ProfileSample{{Profile: profile}},
-				})
+			e := pprof.NewSampleExporter(raw.Profile.Profile)
+			for _, idx := range groupsKept.order {
+				for _, group := range groupsKept.m[idx] {
+					// exportSamples creates a new profile with the samples provided.
+					// The samples are obtained via GroupSamples call, which means
+					// the underlying capacity is referenced by the source profile.
+					// Therefore, the slice has to be copied and samples zeroed to
+					// avoid ownership issues.
+					profile := exportSamples(e, group.sampleGroup.Samples)
+					profileSeries = append(profileSeries, &distributormodel.ProfileSeries{
+						Labels:  group.labels,
+						Samples: []*distributormodel.ProfileSample{{Profile: profile}},
+					})
+				}
 			}
 		}
 		if len(s.Samples) > 0 {
@@ -797,7 +871,7 @@ func (d *Distributor) rateLimit(tenantID string, req *distributormodel.PushReque
 }
 
 // addSampleLabelsToLabelsBuilder: adds sample label that don't exists yet on the profile builder. So the existing labels take precedence.
-func addSampleLabelsToLabelsBuilder(b *phlaremodel.LabelsBuilder, p *googlev1.Profile, pl []*googlev1.Label) {
+func addSampleLabelsToLabelsBuilder(b *phlaremodel.LabelsBuilder, p *profilev1.Profile, pl []*profilev1.Label) {
 	var name string
 	for _, l := range pl {
 		name = p.StringTable[l.Key]
@@ -813,8 +887,8 @@ func addSampleLabelsToLabelsBuilder(b *phlaremodel.LabelsBuilder, p *googlev1.Pr
 	}
 }
 
-func exportSamples(e *pprof.SampleExporter, samples []*googlev1.Sample) *pprof.Profile {
-	samplesCopy := make([]*googlev1.Sample, len(samples))
+func exportSamples(e *pprof.SampleExporter, samples []*profilev1.Sample) *pprof.Profile {
+	samplesCopy := make([]*profilev1.Sample, len(samples))
 	copy(samplesCopy, samples)
 	slices.Clear(samples)
 	n := pprof.NewProfile()
