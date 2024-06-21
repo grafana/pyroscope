@@ -62,6 +62,20 @@ pyroscope:
         requests:
           memory: 64Mi
           cpu: 20m
+      initContainers:
+        - name: create-bucket
+          image: minio/mc
+          command:
+            - /bin/sh
+            - -c
+            - |
+              export MC_CONFIG_DIR="/tmp/mc"
+              mkdir -p "$MC_CONFIG_DIR"
+              until mc config host add myminio http://pyroscope-minio:9000 grafana-pyroscope supersecret; do
+                echo "Waiting for Minio to be available..."
+                sleep 5
+              done
+              mc mb myminio/grafana-pyroscope-data --ignore-existing
 
 minio:
   enabled: true
