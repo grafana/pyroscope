@@ -49,18 +49,14 @@ jobs:
         with:
           app_id: ${{ secrets.APP_ID }}
           private_key: ${{ secrets.APP_PRIVATE_KEY }}
-      - uses: goreleaser/goreleaser-action@v4
+      - uses: goreleaser/goreleaser-action@v6
         with:
-          # either 'goreleaser' (default) or 'goreleaser-pro':
-          distribution: goreleaser
-          version: latest
+          # ensure this aligns with the version specified in the /Makefile
+          version: v2.0.1
           args: release --clean --skip=publish --timeout 60m
         env:
           GITHUB_TOKEN: ${{ steps.app-releaser.outputs.token }}
-          # Your GoReleaser Pro key, if you are using the 'goreleaser-pro'
-          # distribution:
-          # GORELEASER_KEY: ${{ secrets.GORELEASER_KEY }}
-          #
+
       - name: Push per architecture images and create multi-arch manifest
         run: |
           set +x
