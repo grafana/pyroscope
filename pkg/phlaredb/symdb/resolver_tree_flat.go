@@ -6,22 +6,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/model"
 )
 
-func (t *stacktraceTree) Nodes() []Node {
-	dst := make([]Node, len(t.nodes))
-	for i := 0; i < len(dst) && i < len(t.nodes); i++ { // BCE
-		dst[i] = Node{Parent: t.nodes[i].p, Location: t.nodes[i].r}
-	}
-	return dst
-}
-
-func (t *parentPointerTree) Nodes() []Node {
-	dst := make([]Node, len(t.nodes))
-	for i := 0; i < len(dst) && i < len(t.nodes); i++ { // BCE
-		dst[i] = Node{Parent: t.nodes[i].p, Location: t.nodes[i].r}
-	}
-	return dst
-}
-
 func buildTree(
 	tree ParentPointerTree,
 	values SampleValues,
