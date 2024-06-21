@@ -92,11 +92,6 @@ alloy run --stability.level=public-preview configuration.alloy
 
 The `stability.level` option is required for `pyroscope.scrape` with Alloy v1.0 or v1.1. For more information about `stability.level`, refer to [The run command](https://grafana.com/docs/alloy/latest/reference/cli/run/#permitted-stability-levels) documentation.
 
-To start Grafana Alloy, replace `configuration.alloy` with your configuration filename:
-
-`alloy run --stability.level=public-preview configuration.alloy`
-
-The `stability.level` option is required for `pyroscope.scrape`. For more information about `stability.level`, refer to [The run command](https://grafana.com/docs/alloy/latest/reference/cli/run/#permitted-stability-levels) documentation.
 
 To start Grafana Agent, replace `configuration.river` with your configuration filename:
   ` grafana-agent-flow run configuration.river`
