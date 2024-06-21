@@ -57,7 +57,7 @@ jobs:
           # either 'goreleaser' (default) or 'goreleaser-pro':
           distribution: goreleaser
           version: latest
-          args: release --rm-dist --timeout 60m
+          args: release --clean --timeout 60m
         env:
           GITHUB_TOKEN: ${{ steps.app-goreleaser.outputs.token }}
           # Your GoReleaser Pro key, if you are using the 'goreleaser-pro'
