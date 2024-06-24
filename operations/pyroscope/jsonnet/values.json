@@ -21,6 +21,31 @@
       "replicas": 1,
       "type": "statefulset"
     },
+    "enabled": false
+  },
+  "alloy": {
+    "alloy": {
+      "clustering": {
+        "enabled": true
+      },
+      "configMap": {
+        "create": false,
+        "name": "alloy-config-pyroscope"
+      },
+      "stabilityLevel": "public-preview"
+    },
+    "controller": {
+      "podAnnotations": {
+        "profiles.grafana.com/cpu.port_name": "http-metrics",
+        "profiles.grafana.com/cpu.scrape": "true",
+        "profiles.grafana.com/goroutine.port_name": "http-metrics",
+        "profiles.grafana.com/goroutine.scrape": "true",
+        "profiles.grafana.com/memory.port_name": "http-metrics",
+        "profiles.grafana.com/memory.scrape": "true"
+      },
+      "replicas": 1,
+      "type": "statefulset"
+    },
     "enabled": true
   },
   "ingress": {

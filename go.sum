@@ -370,6 +370,8 @@ github.com/gorilla/mux v1.8.0 h1:i40aqfkR1h2SlN9hojwV5ZA91wcXFOvkdNIeFDP5koI=
 github.com/gorilla/mux v1.8.0/go.mod h1:DVbg23sWSpFRCP0SfiEN6jmj59UnW/n46BH5rLB71So=
 github.com/gorilla/websocket v1.5.0 h1:PPwGk2jz7EePpoHN/+ClbZu8SPxiqlu12wZP/3sWmnc=
 github.com/gorilla/websocket v1.5.0/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
+github.com/grafana/alloy/syntax v0.1.0 h1:+1xQakvQPH6N0y9+q2Fu5QePyzrve6i1wMNuXdWd1rQ=
+github.com/grafana/alloy/syntax v0.1.0/go.mod h1:8H9ToCc1M8F6A+je4rIH6saIe1MUCmjSk+Uje+LNLEo=
 github.com/grafana/dskit v0.0.0-20231221015914-de83901bf4d6 h1:Z78JZ7pa6InQ5BcMB27M+NMTZ7LV+MXgOd3dZPfEdG4=
 github.com/grafana/dskit v0.0.0-20231221015914-de83901bf4d6/go.mod h1:kkWM4WUV230bNG3urVRWPBnSJHs64y/0RmWjftnnn0c=
 github.com/grafana/jfr-parser v0.8.1-0.20240228024232-8abcb81c304c h1:vNY68kvB3UYSeh7zHehOpfqk6CCpLYmuYKnF53GTpSk=
@@ -386,8 +388,6 @@ github.com/grafana/pyroscope-go/godeltaprof v0.1.7 h1:C11j63y7gymiW8VugJ9ZW0pWfx
 github.com/grafana/pyroscope-go/godeltaprof v0.1.7/go.mod h1:Tk376Nbldo4Cha9RgiU7ik8WKFkNpfds98aUzS8omLE=
 github.com/grafana/regexp v0.0.0-20221123153739-15dc172cd2db h1:7aN5cccjIqCLTzedH7MZzRZt5/lsAHch6Z3L2ZGn5FA=
 github.com/grafana/regexp v0.0.0-20221123153739-15dc172cd2db/go.mod h1:M5qHK+eWfAv8VR/265dIuEpL3fNfeC21tXXp9itM24A=
-github.com/grafana/river v0.3.0 h1:6TsaR/vkkcppUM9I0muGbPIUedCtpPu6OWreE5+CE6g=
-github.com/grafana/river v0.3.0/go.mod h1:icSidCSHYXJUYy6TjGAi/D+X7FsP7Gc7cxvBUIwYMmY=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.0 h1:Wqo399gCIufwto+VfwCSvsnfGpF/w5E9CNxSwbpD6No=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.0/go.mod h1:qmOFXW2epJhM0qSnUUYpldc7gVz2KMQwJ/QYCDIa7XU=
 github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645/go.mod h1:6iZfnjpejD4L/4DwD7NryNaJyCQdzwWwH2MWhCA90Kw=

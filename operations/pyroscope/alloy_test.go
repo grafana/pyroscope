@@ -9,9 +9,9 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/grafana/river/diag"
-	"github.com/grafana/river/parser"
-	"github.com/grafana/river/printer"
+	"github.com/grafana/alloy/syntax/diag"
+	"github.com/grafana/alloy/syntax/parser"
+	"github.com/grafana/alloy/syntax/printer"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
@@ -26,12 +26,12 @@ func Test_FormatAgentRiverConfig(t *testing.T) {
 	configString := ``
 	dec := yaml.NewDecoder(fdata)
 	for dec.Decode(&values) == nil {
-		if values["metadata"].(map[string]interface{})["name"] == "grafana-agent-config-pyroscope" {
-			configString = values["data"].(map[string]interface{})["config.river"].(string)
+		if values["metadata"].(map[string]interface{})["name"] == "alloy-config-pyroscope" {
+			configString = values["data"].(map[string]interface{})["config.alloy"].(string)
 			break
 		}
 	}
-	fileName := fmt.Sprintf("%s/config.river", t.TempDir())
+	fileName := fmt.Sprintf("%s/config.alloy", t.TempDir())
 	require.NoError(t, os.WriteFile(fileName, []byte(configString), 0o644))
 	fi, err := os.Stat(fileName)
 	require.NoError(t, err)
