@@ -1,6 +1,6 @@
 module github.com/grafana/pyroscope
 
-go 1.21
+go 1.21.0
 
 require (
 	connectrpc.com/connect v1.16.2
@@ -27,13 +27,13 @@ require (
 	github.com/google/pprof v0.0.0-20240227163752-401108e1b7e7
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.0
+	github.com/grafana/alloy/syntax v0.1.0
 	github.com/grafana/dskit v0.0.0-20231221015914-de83901bf4d6
 	github.com/grafana/jfr-parser/pprof v0.0.0-20240228024232-8abcb81c304c
 	github.com/grafana/pyroscope-go v1.0.3
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.7
 	github.com/grafana/pyroscope/api v0.4.0
 	github.com/grafana/regexp v0.0.0-20221123153739-15dc172cd2db
-	github.com/grafana/river v0.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/json-iterator/go v1.1.12
