@@ -219,25 +219,17 @@ func (*ProfilePersister) Schema() *parquet.Schema {
 	return ProfilesSchema
 }
 
-func (*ProfilePersister) SortingColumns() parquet.SortingOption {
-	return parquet.SortingColumns(
-		parquet.Ascending("SeriesIndex"),
-		parquet.Ascending("TimeNanos"),
-		parquet.Ascending("Samples", "list", "element", "StacktraceID"),
-	)
-}
-
-func (*ProfilePersister) Deconstruct(row parquet.Row, id uint64, s *Profile) parquet.Row {
+func (*ProfilePersister) Deconstruct(row parquet.Row, s *Profile) parquet.Row {
 	row = ProfilesSchema.Deconstruct(row, s)
 	return row
 }
 
-func (*ProfilePersister) Reconstruct(row parquet.Row) (id uint64, s *Profile, err error) {
+func (*ProfilePersister) Reconstruct(row parquet.Row) (s *Profile, err error) {
 	var profile Profile
 	if err := ProfilesSchema.Reconstruct(&profile, row); err != nil {
-		return 0, nil, err
+		return nil, err
 	}
-	return 0, &profile, nil
+	return &profile, nil
 }
 
 type SliceRowReader[T any] struct {

@@ -2,6 +2,7 @@ package v1
 
 import (
 	"bytes"
+	"io"
 	"strings"
 	"testing"
 
@@ -256,21 +257,17 @@ func (*pprofLocationPersister) Name() string { return "locations" }
 
 func (*pprofLocationPersister) Schema() *parquet.Schema { return protoLocationsSchema }
 
-func (*pprofLocationPersister) SortingColumns() parquet.SortingOption {
-	return parquet.SortingColumns()
-}
-
-func (*pprofLocationPersister) Deconstruct(row parquet.Row, _ uint64, loc *profilev1.Location) parquet.Row {
+func (*pprofLocationPersister) Deconstruct(row parquet.Row, loc *profilev1.Location) parquet.Row {
 	row = protoLocationsSchema.Deconstruct(row, loc)
 	return row
 }
 
-func (*pprofLocationPersister) Reconstruct(row parquet.Row) (uint64, *profilev1.Location, error) {
+func (*pprofLocationPersister) Reconstruct(row parquet.Row) (*profilev1.Location, error) {
 	var loc profilev1.Location
 	if err := protoLocationsSchema.Reconstruct(&loc, row); err != nil {
-		return 0, nil, err
+		return nil, err
 	}
-	return 0, &loc, nil
+	return &loc, nil
 }
 
 func TestFunctionsRoundTrip(t *testing.T) {
@@ -329,21 +326,17 @@ func (*pprofFunctionPersister) Name() string { return "functions" }
 
 func (*pprofFunctionPersister) Schema() *parquet.Schema { return protoFunctionSchema }
 
-func (*pprofFunctionPersister) SortingColumns() parquet.SortingOption {
-	return parquet.SortingColumns()
-}
-
-func (*pprofFunctionPersister) Deconstruct(row parquet.Row, _ uint64, loc *profilev1.Function) parquet.Row {
+func (*pprofFunctionPersister) Deconstruct(row parquet.Row, loc *profilev1.Function) parquet.Row {
 	row = protoFunctionSchema.Deconstruct(row, loc)
 	return row
 }
 
-func (*pprofFunctionPersister) Reconstruct(row parquet.Row) (uint64, *profilev1.Function, error) {
+func (*pprofFunctionPersister) Reconstruct(row parquet.Row) (*profilev1.Function, error) {
 	var fn profilev1.Function
 	if err := protoFunctionSchema.Reconstruct(&fn, row); err != nil {
-		return 0, nil, err
+		return nil, err
 	}
-	return 0, &fn, nil
+	return &fn, nil
 }
 
 func TestMappingsRoundTrip(t *testing.T) {
@@ -422,17 +415,68 @@ func (*pprofMappingPersister) Name() string { return "mappings" }
 
 func (*pprofMappingPersister) Schema() *parquet.Schema { return protoMappingSchema }
 
-func (*pprofMappingPersister) SortingColumns() parquet.SortingOption { return parquet.SortingColumns() }
-
-func (*pprofMappingPersister) Deconstruct(row parquet.Row, _ uint64, loc *profilev1.Mapping) parquet.Row {
+func (*pprofMappingPersister) Deconstruct(row parquet.Row, loc *profilev1.Mapping) parquet.Row {
 	row = protoMappingSchema.Deconstruct(row, loc)
 	return row
 }
 
-func (*pprofMappingPersister) Reconstruct(row parquet.Row) (uint64, *profilev1.Mapping, error) {
+func (*pprofMappingPersister) Reconstruct(row parquet.Row) (*profilev1.Mapping, error) {
 	var m profilev1.Mapping
 	if err := protoMappingSchema.Reconstruct(&m, row); err != nil {
-		return 0, nil, err
+		return nil, err
 	}
-	return 0, &m, nil
+	return &m, nil
+}
+
+type ReadWriter[T any, P Persister[T]] struct {
+}
+
+func (r *ReadWriter[T, P]) WriteParquetFile(file io.Writer, elements []T) error {
+	var (
+		persister P
+		rows      = make([]parquet.Row, len(elements))
+	)
+
+	buffer := parquet.NewBuffer(persister.Schema())
+
+	for pos := range rows {
+		rows[pos] = persister.Deconstruct(rows[pos], elements[pos])
+	}
+
+	if _, err := buffer.WriteRows(rows); err != nil {
+		return err
+	}
+
+	writer := parquet.NewWriter(file, persister.Schema())
+	if _, err := parquet.CopyRows(writer, buffer.Rows()); err != nil {
+		return err
+	}
+
+	return writer.Close()
+}
+
+func (*ReadWriter[T, P]) ReadParquetFile(file io.ReaderAt) ([]T, error) {
+	var (
+		persister P
+		reader    = parquet.NewReader(file, persister.Schema())
+	)
+	defer reader.Close()
+
+	rows := make([]parquet.Row, reader.NumRows())
+	if _, err := reader.ReadRows(rows); err != nil {
+		return nil, err
+	}
+
+	var (
+		elements = make([]T, reader.NumRows())
+		err      error
+	)
+	for pos := range elements {
+		elements[pos], err = persister.Reconstruct(rows[pos])
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return elements, nil
 }
