@@ -9,7 +9,6 @@ weight: 20
 
 Grafana Alloy and Grafana Agent in [Flow mode](/docs/agent/latest/flow/) support Java profiling.
 
-Written
 
 The collector configuration file is composed of components that are used to collect,
 transform, and send data.
