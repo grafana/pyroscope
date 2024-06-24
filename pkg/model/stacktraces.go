@@ -2,13 +2,13 @@ package model
 
 import (
 	"bytes"
-	"container/heap"
 	"io"
 	"sync"
 	"unsafe"
 
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	"github.com/grafana/pyroscope/pkg/og/util/varint"
+	"github.com/grafana/pyroscope/pkg/util/minheap"
 )
 
 // TODO(kolesnikovae): Remove support for StacktracesMergeFormat_MERGE_FORMAT_STACKTRACES.
@@ -213,26 +213,24 @@ func (t *StacktraceTree) LookupLocations(dst []uint64, idx int32) []uint64 {
 
 // MinValue returns the minimum "total" value a node in a tree has to have.
 func (t *StacktraceTree) MinValue(maxNodes int64) int64 {
-	// TODO(kolesnikovae): Consider quickselect.
 	if maxNodes < 1 || maxNodes >= int64(len(t.Nodes)) {
 		return 0
 	}
-	s := make(minHeap, 0, maxNodes)
-	h := &s
+	h := make([]int64, 0, maxNodes)
 	for _, n := range t.Nodes {
-		if h.Len() >= int(maxNodes) {
-			if n.Total > (*h)[0] {
-				heap.Pop(h)
+		if len(h) >= int(maxNodes) {
+			if n.Total > h[0] {
+				h = minheap.Pop(h)
 			} else {
 				continue
 			}
 		}
-		heap.Push(h, n.Total)
+		h = minheap.Push(h, n.Total)
 	}
-	if h.Len() < int(maxNodes) {
+	if len(h) < int(maxNodes) {
 		return 0
 	}
-	return (*h)[0]
+	return h[0]
 }
 
 type StacktraceTreeTraverseFn = func(index int32, children []int32) error

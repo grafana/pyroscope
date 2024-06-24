@@ -1,7 +1,6 @@
 package symdb
 
 import (
-	"container/heap"
 	"context"
 	"sync"
 
@@ -10,6 +9,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/model"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/pkg/util/minheap"
 )
 
 func buildTree(
@@ -214,36 +214,20 @@ func minValue(nodes []Node, maxNodes int64) int64 {
 	if maxNodes < 1 || maxNodes >= int64(len(nodes)) {
 		return 0
 	}
-	s := make(minHeap, 0, maxNodes)
-	h := &s
+	h := make([]int64, 0, maxNodes)
 	for i := range nodes {
 		v := nodes[i].Value
-		if h.Len() >= int(maxNodes) {
-			if v > (*h)[0] {
-				heap.Pop(h)
+		if len(h) >= int(maxNodes) {
+			if v > h[0] {
+				h = minheap.Pop(h)
 			} else {
 				continue
 			}
 		}
-		heap.Push(h, v)
+		h = minheap.Push(h, v)
 	}
-	if h.Len() < int(maxNodes) {
+	if len(h) < int(maxNodes) {
 		return 0
 	}
-	return (*h)[0]
-}
-
-type minHeap []int64
-
-func (h minHeap) Len() int            { return len(h) }
-func (h minHeap) Less(i, j int) bool  { return h[i] < h[j] }
-func (h minHeap) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
-func (h *minHeap) Push(x interface{}) { *h = append(*h, x.(int64)) }
-
-func (h *minHeap) Pop() interface{} {
-	old := *h
-	n := len(old)
-	x := old[n-1]
-	*h = old[0 : n-1]
-	return x
+	return h[0]
 }
