@@ -447,7 +447,7 @@ func Test_SamplesFromMap(t *testing.T) {
 		1: 2,
 		0: 0,
 		2: 3,
-		3: -1,
+		3: 0,
 	}
 	samples := NewSamplesFromMap(m)
 	assert.Equal(t, len(m), cap(samples.Values))

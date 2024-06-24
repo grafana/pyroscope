@@ -37,7 +37,7 @@ type SampleAppender struct {
 
 // Hashmap is used for small data sets (<= 16k elements, be default).
 // Once the limit is exceeded, the data is migrated to the chunked set.
-// Chunk set size is 16k (128k) by default.
+// Chunk size is 16k (128KiB) by default.
 const (
 	defaultSampleAppenderSize = 16 << 10
 	defaultChunkSize          = 16 << 10
