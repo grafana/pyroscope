@@ -9,9 +9,12 @@ weight: 20
 
 Grafana Alloy and Grafana Agent in [Flow mode](/docs/agent/latest/flow/) support Java profiling.
 
-Written in the
-[River](/docs/agent/latest/flow/config-language/) language, the configuration file is composed of components that are used to collect,
+Written
+
+The collector configuration file is composed of components that are used to collect,
 transform, and send data.
+Alloy configuration files use [configuration syntax](https://grafana.com/docs/alloy/latest/concepts/configuration-syntax/).
+Agent Flow files use the [River](/docs/agent/latest/flow/config-language/) language.
 
 {{< docs/shared lookup="agent-deprecation.md" source="alloy" version="next" >}}
 
