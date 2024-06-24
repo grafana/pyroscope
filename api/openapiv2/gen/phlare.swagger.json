@@ -826,6 +826,20 @@
         }
       }
     },
+    "v1GoPGO": {
+      "type": "object",
+      "properties": {
+        "keepLocations": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Specifies the number of leaf locations to keep."
+        },
+        "aggregateCallees": {
+          "type": "boolean",
+          "description": "Aggregate callees causes the leaf location line number to be ignored,\nthus aggregating all callee samples (but not callers)."
+        }
+      }
+    },
     "v1Hints": {
       "type": "object",
       "properties": {
@@ -1446,6 +1460,10 @@
             "$ref": "#/definitions/typesv1Location"
           },
           "description": "Stack trace of the call site. Root at call_site[0].\nOnly stack traces having the prefix provided will be selected.\nIf empty, the filter is ignored."
+        },
+        "goPgo": {
+          "$ref": "#/definitions/v1GoPGO",
+          "description": "Stack trace selector for profiles purposed for Go PGO.\nIf set, call_site is ignored."
         }
       },
       "description": "StackTraceSelector is used for filtering stack traces by locations."

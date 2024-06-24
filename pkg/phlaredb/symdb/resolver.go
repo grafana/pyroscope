@@ -271,42 +271,13 @@ func (r *Resolver) withSymbols(ctx context.Context, fn func(*Symbols, schemav1.S
 	return g.Wait()
 }
 
-type pprofBuilder interface {
-	StacktraceInserter
-	init(*Symbols, schemav1.Samples)
-	buildPprof() *googlev1.Profile
-}
-
 func (r *Symbols) Pprof(
 	ctx context.Context,
 	samples schemav1.Samples,
 	maxNodes int64,
 	selection *SelectedStackTraces,
 ) (*googlev1.Profile, error) {
-	// By default, we use a builder that's optimized
-	// for the simplest case: we take all the source
-	// stack traces unchanged.
-	var b pprofBuilder = new(pprofProtoSymbols)
-	// If a stack trace selector is specified,
-	// check if such a profile can exist at all.
-	if !selection.IsValid() {
-		// Build an empty profile.
-		return b.buildPprof(), nil
-	}
-	// Truncation is applicable when there is an explicit
-	// limit on the number of the nodes in the profile, or
-	// if stack traces should be filtered.
-	if maxNodes > 0 || len(selection.callSite) > 0 {
-		b = &pprofProtoTruncatedSymbols{
-			maxNodes:  maxNodes,
-			selection: selection,
-		}
-	}
-	b.init(r, samples)
-	if err := r.Stacktraces.ResolveStacktraceLocations(ctx, b, samples.StacktraceIDs); err != nil {
-		return nil, err
-	}
-	return b.buildPprof(), nil
+	return buildPprof(ctx, r, samples, maxNodes, selection)
 }
 
 func (r *Symbols) Tree(
