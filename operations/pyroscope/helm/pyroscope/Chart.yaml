@@ -10,6 +10,11 @@ dependencies:
     version: "0.25.0"
     repository: https://grafana.github.io/helm-charts
     condition: agent.enabled
+  - name: alloy
+    alias: alloy
+    version: "0.3.2"
+    repository: https://grafana.github.io/helm-charts
+    condition: alloy.enabled
   - name: minio
     alias: minio
     version: 4.0.12

@@ -146,17 +146,21 @@ spec:
       app.kubernetes.io/instance: pyroscope-dev
       app.kubernetes.io/component: "store-gateway"
 ---
-# Source: pyroscope/charts/agent/templates/serviceaccount.yaml
+# Source: pyroscope/charts/alloy/templates/serviceaccount.yaml
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: pyroscope-dev-agent
+  name: pyroscope-dev-alloy
+  namespace: default
   labels:
-    helm.sh/chart: agent-0.25.0
-    app.kubernetes.io/name: agent
+    helm.sh/chart: alloy-0.3.2
+    app.kubernetes.io/name: alloy
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v0.36.2"
+    
+    app.kubernetes.io/version: "v1.1.1"
     app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: alloy
+    app.kubernetes.io/component: rbac
 ---
 # Source: pyroscope/charts/minio/templates/serviceaccount.yaml
 apiVersion: v1
@@ -512,11 +516,11 @@ data:
     scheme=http
     connectToMinio $scheme
 ---
-# Source: pyroscope/templates/configmap-agent.yaml
+# Source: pyroscope/templates/configmap-alloy.yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: grafana-agent-config-pyroscope
+  name: alloy-config-pyroscope
   namespace: default
   labels:
     helm.sh/chart: pyroscope-1.6.1
@@ -525,7 +529,7 @@ metadata:
     app.kubernetes.io/version: "1.6.1"
     app.kubernetes.io/managed-by: Helm
 data:
-  config.river: |
+  config.alloy: |
     logging {
     	level  = "info"
     	format = "logfmt"
@@ -1392,17 +1396,20 @@ data:
         insecure: true
         secret_access_key: supersecret
 ---
-# Source: pyroscope/charts/agent/templates/rbac.yaml
+# Source: pyroscope/charts/alloy/templates/rbac.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: pyroscope-dev-agent
+  name: pyroscope-dev-alloy
   labels:
-    helm.sh/chart: agent-0.25.0
-    app.kubernetes.io/name: agent
+    helm.sh/chart: alloy-0.3.2
+    app.kubernetes.io/name: alloy
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v0.36.2"
+    
+    app.kubernetes.io/version: "v1.1.1"
     app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: alloy
+    app.kubernetes.io/component: rbac
 rules:
   # Rules which allow discovery.kubernetes to function.
   - apiGroups:
@@ -1472,6 +1479,22 @@ rules:
       - get
       - list
       - watch
+  # needed for remote.kubernetes.*
+  - apiGroups: [""]
+    resources:
+      - "configmaps"
+      - "secrets"
+    verbs:
+      - get
+      - list
+      - watch
+  # needed for otelcol.processor.k8sattributes
+  - apiGroups: ["apps"]
+    resources: ["replicasets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["extensions"]
+    resources: ["replicasets"]
+    verbs: ["get", "list", "watch"]
 ---
 # Source: pyroscope/templates/rbac.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -1500,24 +1523,27 @@ rules:
   verbs:
   - get
 ---
-# Source: pyroscope/charts/agent/templates/rbac.yaml
+# Source: pyroscope/charts/alloy/templates/rbac.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: pyroscope-dev-agent
+  name: pyroscope-dev-alloy
   labels:
-    helm.sh/chart: agent-0.25.0
-    app.kubernetes.io/name: agent
+    helm.sh/chart: alloy-0.3.2
+    app.kubernetes.io/name: alloy
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v0.36.2"
+    
+    app.kubernetes.io/version: "v1.1.1"
     app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: alloy
+    app.kubernetes.io/component: rbac
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: pyroscope-dev-agent
+  name: pyroscope-dev-alloy
 subjects:
   - kind: ServiceAccount
-    name: pyroscope-dev-agent
+    name: pyroscope-dev-alloy
     namespace: default
 ---
 # Source: pyroscope/templates/rbac.yaml
@@ -1541,22 +1567,25 @@ subjects:
     name: pyroscope-dev
     namespace: default
 ---
-# Source: pyroscope/charts/agent/templates/cluster_service.yaml
+# Source: pyroscope/charts/alloy/templates/cluster_service.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: pyroscope-dev-agent-cluster
+  name: pyroscope-dev-alloy-cluster
   labels:
-    helm.sh/chart: agent-0.25.0
-    app.kubernetes.io/name: agent
+    helm.sh/chart: alloy-0.3.2
+    app.kubernetes.io/name: alloy
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v0.36.2"
+    
+    app.kubernetes.io/version: "v1.1.1"
     app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: alloy
+    app.kubernetes.io/component: networking
 spec:
   type: ClusterIP
   clusterIP: 'None'
   selector:
-    app.kubernetes.io/name: agent
+    app.kubernetes.io/name: alloy
     app.kubernetes.io/instance: pyroscope-dev
   ports:
     # Do not include the -metrics suffix in the port name, otherwise metrics
@@ -1566,30 +1595,34 @@ spec:
     # This service should only be used for clustering, and not metric
     # collection.
     - name: http
-      port: 80
-      targetPort: 80
+      port: 12345
+      targetPort: 12345
       protocol: "TCP"
 ---
-# Source: pyroscope/charts/agent/templates/service.yaml
+# Source: pyroscope/charts/alloy/templates/service.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: pyroscope-dev-agent
+  name: pyroscope-dev-alloy
   labels:
-    helm.sh/chart: agent-0.25.0
-    app.kubernetes.io/name: agent
+    helm.sh/chart: alloy-0.3.2
+    app.kubernetes.io/name: alloy
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v0.36.2"
+    
+    app.kubernetes.io/version: "v1.1.1"
     app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: alloy
+    app.kubernetes.io/component: networking
 spec:
   type: ClusterIP
   selector:
-    app.kubernetes.io/name: agent
+    app.kubernetes.io/name: alloy
     app.kubernetes.io/instance: pyroscope-dev
+  internalTrafficPolicy: Cluster
   ports:
     - name: http-metrics
-      port: 80
-      targetPort: 80
+      port: 12345
+      targetPort: 12345
       protocol: "TCP"
 ---
 # Source: pyroscope/charts/minio/templates/console-service.yaml
@@ -2531,29 +2564,32 @@ spec:
           type: Utilization
           averageUtilization: 40
 ---
-# Source: pyroscope/charts/agent/templates/controllers/statefulset.yaml
+# Source: pyroscope/charts/alloy/templates/controllers/statefulset.yaml
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: pyroscope-dev-agent
+  name: pyroscope-dev-alloy
   labels:
-    helm.sh/chart: agent-0.25.0
-    app.kubernetes.io/name: agent
+    helm.sh/chart: alloy-0.3.2
+    app.kubernetes.io/name: alloy
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v0.36.2"
+    
+    app.kubernetes.io/version: "v1.1.1"
     app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: alloy
 spec:
   replicas: 1
   podManagementPolicy: Parallel
   minReadySeconds: 10
-  serviceName: pyroscope-dev-agent
+  serviceName: pyroscope-dev-alloy
   selector:
     matchLabels:
-      app.kubernetes.io/name: agent
+      app.kubernetes.io/name: alloy
       app.kubernetes.io/instance: pyroscope-dev
   template:
     metadata:
       annotations:
+        kubectl.kubernetes.io/default-container: alloy
         profiles.grafana.com/cpu.port_name: http-metrics
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http-metrics
@@ -2561,48 +2597,51 @@ spec:
         profiles.grafana.com/memory.port_name: http-metrics
         profiles.grafana.com/memory.scrape: "true"
       labels:
-        app.kubernetes.io/name: agent
+        app.kubernetes.io/name: alloy
         app.kubernetes.io/instance: pyroscope-dev
     spec:
-      serviceAccountName: pyroscope-dev-agent
+      serviceAccountName: pyroscope-dev-alloy
       containers:
-        - name: grafana-agent
-          image: docker.io/grafana/agent:v0.36.2
+        - name: alloy
+          image: docker.io/grafana/alloy:v1.1.1
           imagePullPolicy: IfNotPresent
           args:
             - run
-            - /etc/agent/config.river
-            - --storage.path=/tmp/agent
-            - --server.http.listen-addr=0.0.0.0:80
+            - /etc/alloy/config.alloy
+            - --storage.path=/tmp/alloy
+            - --server.http.listen-addr=0.0.0.0:12345
+            - --server.http.ui-path-prefix=/
             - --cluster.enabled=true
-            - --cluster.join-addresses=pyroscope-dev-agent-cluster
+            - --cluster.join-addresses=pyroscope-dev-alloy-cluster
+            - --stability.level=public-preview
           env:
-            - name: AGENT_MODE
-              value: flow
+            - name: ALLOY_DEPLOY_MODE
+              value: "helm"
             - name: HOSTNAME
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
           ports:
-            - containerPort: 80
+            - containerPort: 12345
               name: http-metrics
           readinessProbe:
             httpGet:
               path: /-/ready
-              port: 80
+              port: 12345
+              scheme: HTTP
             initialDelaySeconds: 10
             timeoutSeconds: 1
           volumeMounts:
             - name: config
-              mountPath: /etc/agent
+              mountPath: /etc/alloy
         - name: config-reloader
-          image: docker.io/jimmidyson/configmap-reload:v0.8.0
+          image: ghcr.io/jimmidyson/configmap-reload:v0.12.0
           args:
-            - --volume-dir=/etc/agent
-            - --webhook-url=http://localhost:80/-/reload
+            - --volume-dir=/etc/alloy
+            - --webhook-url=http://localhost:12345/-/reload
           volumeMounts:
             - name: config
-              mountPath: /etc/agent
+              mountPath: /etc/alloy
           resources:
             requests:
               cpu: 1m
@@ -2611,7 +2650,7 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: grafana-agent-config-pyroscope
+            name: alloy-config-pyroscope
 ---
 # Source: pyroscope/charts/minio/templates/statefulset.yaml
 apiVersion: apps/v1
