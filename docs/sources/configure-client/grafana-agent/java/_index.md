@@ -12,7 +12,7 @@ Grafana Alloy and Grafana Agent in [Flow mode](/docs/agent/latest/flow/) support
 
 The collector configuration file is composed of components that are used to collect,
 transform, and send data.
-Alloy configuration files use [configuration syntax](https://grafana.com/docs/alloy/latest/concepts/configuration-syntax/).
+Alloy configuration files use the Alloy [configuration syntax](https://grafana.com/docs/alloy/latest/concepts/configuration-syntax/).
 Agent Flow files use the [River](/docs/agent/latest/flow/config-language/) language.
 
 {{< docs/shared lookup="agent-deprecation.md" source="alloy" version="next" >}}
