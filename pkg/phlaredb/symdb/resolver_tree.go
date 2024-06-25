@@ -6,6 +6,7 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
+	"github.com/grafana/pyroscope/pkg/iter"
 	"github.com/grafana/pyroscope/pkg/model"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/util"
@@ -18,30 +19,20 @@ func buildTree(
 	appender *SampleAppender,
 	maxNodes int64,
 ) (*model.Tree, error) {
-	// If the number of samples is large and the StacktraceResolver
-	// implements the range iterator, we will be building the tree
-	// based on the parent pointer tree of the partition.
-	// This is significantly more efficient than building the tree
-	// from the ground up by inserting each stack trace.
+	// If the number of samples is large (> 128K) and the StacktraceResolver
+	// implements the range iterator, we will be building the tree based on
+	// the parent pointer tree of the partition (a copy of). The only exception
+	// is when the number of nodes is not limited, or is close to the number of
+	// nodes in the original tree: the optimization is still beneficial in terms
+	// of CPU, but is very expensive in terms of memory.
 	iterator, ok := symbols.Stacktraces.(StacktraceIDRangeIterator)
-	if ok && appender.Len() > 1<<20 {
-		m := model.NewTreeMerger()
-		g, _ := errgroup.WithContext(ctx)
+	if ok && shouldCopyTree(appender, maxNodes) {
 		ranges := iterator.SplitStacktraceIDRanges(appender)
-		for ranges.Next() {
-			sr := ranges.At()
-			g.Go(util.RecoverPanic(func() error {
-				m.MergeTree(buildTreeForStacktraceIDRange(sr, symbols, maxNodes))
-				return nil
-			}))
-		}
-		if err := g.Wait(); err != nil {
-			return nil, err
-		}
-		return m.Tree(), nil
+		return buildTreeFromParentPointerTrees(ctx, ranges, symbols, maxNodes)
 	}
 	// Otherwise, use the basic approach: resolve each stack trace
-	// and insert them into the new tree one by one.
+	// and insert them into the new tree one by one. The method
+	// performs best on small sample sets.
 	samples := appender.Samples()
 	t := treeSymbolsFromPool()
 	defer t.reset()
@@ -50,6 +41,12 @@ func buildTree(
 		return nil, err
 	}
 	return t.tree.Tree(maxNodes, t.symbols.Strings), nil
+}
+
+func shouldCopyTree(appender *SampleAppender, maxNodes int64) bool {
+	const copyThreshold = 128 << 10
+	expensiveTruncation := maxNodes <= 0 || maxNodes > int64(appender.Len())
+	return appender.Len() > copyThreshold && !expensiveTruncation
 }
 
 type treeSymbols struct {
@@ -99,21 +96,99 @@ func (r *treeSymbols) InsertStacktrace(_ uint32, locations []int32) {
 	r.cur++
 }
 
+func buildTreeFromParentPointerTrees(
+	ctx context.Context,
+	ranges iter.Iterator[*StacktraceIDRange],
+	symbols *Symbols,
+	maxNodes int64,
+) (*model.Tree, error) {
+	m := model.NewTreeMerger()
+	g, _ := errgroup.WithContext(ctx)
+	for ranges.Next() {
+		sr := ranges.At()
+		g.Go(util.RecoverPanic(func() error {
+			m.MergeTree(buildTreeForStacktraceIDRange(sr, symbols, maxNodes))
+			return nil
+		}))
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+	return m.Tree(), nil
+}
+
 func buildTreeForStacktraceIDRange(
 	stacktraces *StacktraceIDRange,
 	symbols *Symbols,
 	maxNodes int64,
 ) *model.Tree {
+	// Get the parent pointer tree for the range. The tree is
+	// not specific to the samples we've collected and includes
+	// all the stack traces.
 	nodes := stacktraces.Nodes()
+	// SetNodeValues sets values to the nodes that match the
+	// samples we've collected; those are not always leaves:
+	// a node may have its own value (self) and children.
 	stacktraces.SetNodeValues(nodes)
+	// Propagate the values to the parent nodes. This is required
+	// to identify the nodes that should be removed from the tree.
+	// For each node, the value should be a sum of all the child
+	// nodes (total).
 	propagateNodeValues(nodes)
+	// Next step is truncation: we need to mark leaf nodes of the
+	// stack traces we want to keep, and ensure that their values
+	// reflect their own weight (total for truncated leaves, self
+	// for the true leaves).
 	// We preserve more nodes than requested to preserve more
 	// locations with inlined functions. The multiplier is
 	// chosen empirically; it should be roughly equal to the
 	// ratio of nodes in the location tree to the nodes in the
 	// function tree (after truncation).
 	markNodesForTruncation(nodes, maxNodes*4)
+	// We now build an intermediate tree from the marked stack
+	// traces. The reason is that the intermediate tree is
+	// substantially bigger than the final one. The intermediate
+	// tree is optimized for inserts and lookups, while the output
+	// tree is optimized for merge operations.
 	t := model.NewStacktraceTree(int(maxNodes))
+	insertStacktraces(t, nodes, symbols)
+	// Finally, we convert the stack trace tree into the function
+	// tree, dropping insignificant functions, and symbolizing the
+	// nodes (function names).
+	return t.Tree(maxNodes, symbols.Strings)
+}
+
+func propagateNodeValues(nodes []Node) {
+	for i := len(nodes) - 1; i >= 1; i-- {
+		if p := nodes[i].Parent; p > 0 {
+			nodes[p].Value += nodes[i].Value
+		}
+	}
+}
+
+func markNodesForTruncation(nodes []Node, maxNodes int64) {
+	m := minValue(nodes, maxNodes)
+	for i := 1; i < len(nodes); i++ {
+		p := nodes[i].Parent
+		v := nodes[i].Value
+		if v < m {
+			nodes[i].Location |= truncationMark
+			// Preserve values of truncated locations. The weight
+			// of the truncated chain is accounted in the parent.
+			if p >= 0 && nodes[p].Location&truncationMark != 0 {
+				continue
+			}
+		}
+		// Subtract the value of the location from the parent:
+		// by doing so we ensure that the transient nodes have zero
+		// weight, and then will be ignored by the tree builder.
+		if p >= 0 {
+			nodes[p].Value -= v
+		}
+	}
+}
+
+func insertStacktraces(t *model.StacktraceTree, nodes []Node, symbols *Symbols) {
 	l := int32(len(nodes))
 	s := make([]int32, 0, 64)
 	for i := int32(1); i < l; i++ {
@@ -123,73 +198,6 @@ func buildTreeForStacktraceIDRange(
 			s = resolveStack(s, nodes, i, symbols)
 			t.Insert(s, v)
 		}
-	}
-	return t.Tree(maxNodes, symbols.Strings)
-}
-
-func propagateNodeValues(nodes []Node) {
-	// Step 1: Set leaf values.
-	// This is already done in SetNodeValues.
-	// Presence of the value does not indicate
-	// that the node is a leaf: it may have its
-	// own value and children.
-
-	// Step 2: Propagate values to the direct
-	// parent. We iterate the nodes in reverse
-	// order to ensure that all the descendants
-	// have been processed before the parent,
-	// and its value includes all the children.
-	for i := len(nodes) - 1; i >= 1; i-- {
-		if p := nodes[i].Parent; p > 0 {
-			nodes[p].Value += nodes[i].Value
-		}
-	}
-	// Step 3: Find edge nodes: ones that have
-	// children, but do not have a value.
-	// Sum up the values of the children and
-	// mark the node – their values are to
-	// be propagated to the parent chain at
-	// the next step.
-	const mark = 1 << 30
-	for i := len(nodes) - 1; i >= 1; i-- {
-		if p := nodes[i].Parent; p > 0 && nodes[p].Value == 0 {
-			nodes[p].Value += nodes[i].Value
-			nodes[p].Location |= mark
-		}
-	}
-	// Step 4: Propagate the edge node values
-	// to the parent chain. Propagation stops
-	// once we find another edge node in the
-	// chain: we add own value to it, which will
-	// be propagated further, after all the
-	// downstream edges converge.
-	for i := len(nodes) - 1; i >= 1; i-- {
-		if nodes[i].Location&mark > 0 {
-			nodes[i].Location &= ^mark
-			v := nodes[i].Value
-			j := nodes[i].Parent
-			for j >= 0 {
-				nodes[j].Value += v
-				if nodes[j].Location&mark != 0 {
-					break
-				}
-				j = nodes[j].Parent
-			}
-		}
-	}
-}
-
-func markNodesForTruncation(dst []Node, maxNodes int64) {
-	m := minValue(dst, maxNodes)
-	for i := 1; i < len(dst); i++ {
-		if dst[i].Value < m {
-			dst[i].Location |= truncationMark
-			// Preserve value of the truncated location on leaves.
-			if dst[dst[i].Parent].Location&truncationMark != 0 {
-				continue
-			}
-		}
-		dst[dst[i].Parent].Value -= dst[i].Value
 	}
 }
 

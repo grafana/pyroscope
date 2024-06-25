@@ -54,7 +54,7 @@ func NewSampleAppenderSize(maxMapSize, chunkSize uint32) *SampleAppender {
 	s := &SampleAppender{
 		chunkSize:  chunkSize,
 		maxMapSize: maxMapSize,
-		hashmap:    make(map[uint32]uint64, maxMapSize),
+		hashmap:    make(map[uint32]uint64),
 	}
 	s.Append = s.mapAppend
 	s.AppendMany = s.mapAppendMany
@@ -62,7 +62,7 @@ func NewSampleAppenderSize(maxMapSize, chunkSize uint32) *SampleAppender {
 }
 
 func (s *SampleAppender) mapAppend(stacktrace uint32, value uint64) {
-	if len(s.hashmap)+1 < int(s.maxMapSize) {
+	if len(s.hashmap) < int(s.maxMapSize) {
 		s.hashmap[stacktrace] += value
 		return
 	}
