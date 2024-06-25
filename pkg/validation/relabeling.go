@@ -40,6 +40,14 @@ var (
 			Replacement:  "process_cpu",
 			TargetLabel:  "__name__",
 		},
+		{
+			SourceLabels: []model.LabelName{"service_name", "tenant"},
+			Separator:    "/",
+			Regex:        relabel.MustNewRegexp(`loki-.+\/ingester\/.+`),
+			Action:       relabel.Replace,
+			Replacement:  "<aggregated>",
+			TargetLabel:  "tenant",
+		},
 	}
 )
 
