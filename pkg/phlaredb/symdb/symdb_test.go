@@ -44,15 +44,7 @@ func newBlockSuite(t testing.TB, files [][]string) *blockSuite {
 
 func (s *memSuite) init() {
 	if s.config == nil {
-		s.config = &Config{
-			Dir: s.t.TempDir(),
-			Stacktraces: StacktracesConfig{
-				MaxNodesPerChunk: 1 << 10,
-			},
-			Parquet: ParquetConfig{
-				MaxBufferRowCount: 512,
-			},
-		}
+		s.config = DefaultConfig().WithDirectory(s.t.TempDir())
 	}
 	if s.db == nil {
 		s.db = NewSymDB(s.config)

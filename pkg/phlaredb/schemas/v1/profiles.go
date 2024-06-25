@@ -365,6 +365,9 @@ func (s Samples) Clone() Samples {
 }
 
 func (s Samples) Range(n, m int) Samples {
+	if n < 0 || n > m || m > s.Len() {
+		return Samples{}
+	}
 	x := Samples{
 		StacktraceIDs: s.StacktraceIDs[n:m],
 		Values:        s.Values[n:m],

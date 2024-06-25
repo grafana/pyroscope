@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
@@ -18,6 +19,31 @@ func Test_memory_Resolver_ResolveTree(t *testing.T) {
 	resolved, err := r.Tree()
 	require.NoError(t, err)
 	require.Equal(t, expectedFingerprint, treeFingerprint(resolved))
+}
+
+func Test_memory_Resolver_ResolveTree_copied_nodes(t *testing.T) {
+	s := newMemSuite(t, [][]string{{"testdata/big-profile.pb.gz"}})
+	samples := s.indexed[0][0].Samples
+
+	resolve := func(options ...ResolverOption) (nodes, total int64) {
+		r := NewResolver(context.Background(), s.db, options...)
+		defer r.Release()
+		r.AddSamples(0, samples)
+		resolved, err := r.Tree()
+		require.NoError(t, err)
+		resolved.FormatNodeNames(func(s string) string {
+			nodes++
+			return s
+		})
+		return nodes, resolved.Total()
+	}
+
+	const maxNodes int64 = 1 << 16
+	nodesFull, totalFull := resolve()
+	nodesTrunc, totalTrunc := resolve(WithResolverMaxNodes(maxNodes))
+	assert.Equal(t, totalFull, totalTrunc)
+	assert.Equal(t, nodesFull, 1585462)
+	assert.Equal(t, nodesTrunc, 22407)
 }
 
 func Test_block_Resolver_ResolveTree(t *testing.T) {
@@ -41,9 +67,7 @@ func Benchmark_Resolver_ResolveTree_Small(b *testing.B) {
 }
 
 func Benchmark_Resolver_ResolveTree_Big(b *testing.B) {
-	s := memSuite{t: b, files: [][]string{{"testdata/big-profile.pb.gz"}}}
-	s.config = DefaultConfig().WithDirectory(b.TempDir())
-	s.init()
+	s := newMemSuite(b, [][]string{{"testdata/big-profile.pb.gz"}})
 	samples := s.indexed[0][0].Samples
 	b.Run("0", benchmarkResolverResolveTree(s.db, samples, 0))
 	b.Run("8K", benchmarkResolverResolveTree(s.db, samples, 8<<10))

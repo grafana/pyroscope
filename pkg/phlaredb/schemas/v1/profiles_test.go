@@ -453,3 +453,92 @@ func Test_SamplesFromMap(t *testing.T) {
 	assert.Equal(t, len(m), cap(samples.Values))
 	assert.Equal(t, 2, len(samples.Values))
 }
+
+func Test_SamplesRange(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    Samples
+		n, m     int
+		expected Samples
+	}{
+		{
+			name: "empty spans",
+			input: Samples{
+				StacktraceIDs: []uint32{1, 2, 3, 4, 5},
+				Values:        []uint64{10, 20, 30, 40, 50},
+			},
+			n: 1,
+			m: 3,
+			expected: Samples{
+				StacktraceIDs: []uint32{2, 3},
+				Values:        []uint64{20, 30},
+			},
+		},
+		{
+			name: "non-empty Spans",
+			input: Samples{
+				StacktraceIDs: []uint32{1, 2, 3, 4, 5},
+				Values:        []uint64{10, 20, 30, 40, 50},
+				Spans:         []uint64{100, 200, 300, 400, 500},
+			},
+			n: 1,
+			m: 4,
+			expected: Samples{
+				StacktraceIDs: []uint32{2, 3, 4},
+				Values:        []uint64{20, 30, 40},
+				Spans:         []uint64{200, 300, 400},
+			},
+		},
+		{
+			name: "all",
+			input: Samples{
+				StacktraceIDs: []uint32{1, 2, 3},
+				Values:        []uint64{10, 20, 30},
+				Spans:         []uint64{100, 200, 300},
+			},
+			n: 0,
+			m: 3,
+			expected: Samples{
+				StacktraceIDs: []uint32{1, 2, 3},
+				Values:        []uint64{10, 20, 30},
+				Spans:         []uint64{100, 200, 300},
+			},
+		},
+		{
+			name: "oob: n < 0",
+			input: Samples{
+				StacktraceIDs: []uint32{1, 2, 3},
+				Values:        []uint64{10, 20, 30},
+			},
+			n: -1,
+			m: 3,
+		},
+		{
+			name: "oob: m > n",
+			input: Samples{
+				StacktraceIDs: []uint32{1, 2, 3},
+				Values:        []uint64{10, 20, 30},
+			},
+			n: 3,
+			m: 1,
+		},
+		{
+			name: "oob: m > len",
+			input: Samples{
+				StacktraceIDs: []uint32{1, 2, 3},
+				Values:        []uint64{10, 20, 30},
+			},
+			n: 3,
+			m: 5,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.input.Range(tt.n, tt.m)
+			assert.Equal(t, tt.expected.StacktraceIDs, result.StacktraceIDs)
+			assert.Equal(t, tt.expected.Values, result.Values)
+			assert.Equal(t, tt.expected.Spans, result.Spans)
+		})
+	}
+}

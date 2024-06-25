@@ -140,11 +140,7 @@ func (s *SampleAppender) setAppendMany(stacktraces []uint32, values []uint64) {
 	}
 }
 
-func (s *SampleAppender) Len() int {
-	// +1 for the stack trace ID 0, which points to the tree root
-	// and is never used in the samples.
-	return s.size + 1
-}
+func (s *SampleAppender) Len() int { return s.size + len(s.hashmap) }
 
 func (s *SampleAppender) Samples() v1.Samples {
 	if len(s.hashmap) > 0 {
@@ -152,14 +148,16 @@ func (s *SampleAppender) Samples() v1.Samples {
 	}
 	samples := v1.NewSamples(s.Len())
 	chunks := uint32(len(s.chunks))
-	var x uint32
+	x := 0
 	for i := uint32(0); i < chunks; i++ {
 		values := uint32(len(s.chunks[i]))
 		for j := uint32(0); j < values; j++ {
 			if v := s.chunks[i][j]; v != 0 {
+				if sid := i*s.chunkSize + j; sid > 0 {
+					samples.StacktraceIDs[x] = sid
+					samples.Values[x] = v
+				}
 				x++
-				samples.StacktraceIDs[x] = i*s.chunkSize + j
-				samples.Values[x] = v
 			}
 		}
 	}
