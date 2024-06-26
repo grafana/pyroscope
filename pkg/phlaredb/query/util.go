@@ -1,6 +1,7 @@
 package query
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/colega/zeropool"
@@ -86,9 +87,7 @@ var parquetValuesPool = zeropool.New(func() []parquet.Value { return nil })
 
 func CloneParquetValues(values []parquet.Value) []parquet.Value {
 	p := parquetValuesPool.Get()
-	if l := len(values); cap(p) < l {
-		p = make([]parquet.Value, 0, 2*l)
-	}
+	p = slices.Grow(p, len(values))
 	p = p[:len(values)]
 	for i, v := range values {
 		p[i] = v.Clone()

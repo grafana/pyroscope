@@ -78,10 +78,21 @@ message StackTraceSelector {
   // Only stack traces having the prefix provided will be selected.
   // If empty, the filter is ignored.
   repeated Location call_site = 1;
+  // Stack trace selector for profiles purposed for Go PGO.
+  // If set, call_site is ignored.
+  GoPGO go_pgo = 2;
 }
 
 message Location {
   string name = 1;
+}
+
+message GoPGO {
+  // Specifies the number of leaf locations to keep.
+  uint32 keep_locations = 1;
+  // Aggregate callees causes the leaf location line number to be ignored,
+  // thus aggregating all callee samples (but not callers).
+  bool aggregate_callees = 2;
 }
 
 message GetProfileStatsRequest {}

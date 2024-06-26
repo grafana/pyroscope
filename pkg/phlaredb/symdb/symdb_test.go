@@ -22,8 +22,10 @@ import (
 type memSuite struct {
 	t testing.TB
 
-	config   *Config
-	db       *SymDB
+	config *Config
+	db     *SymDB
+
+	// partition => sample type index => object
 	files    [][]string
 	profiles map[uint64]*googlev1.Profile
 	indexed  map[uint64][]v1.InMemoryProfile
@@ -49,15 +51,7 @@ func newBlockSuite(t testing.TB, files [][]string) *blockSuite {
 
 func (s *memSuite) init() {
 	if s.config == nil {
-		s.config = &Config{
-			Dir: s.t.TempDir(),
-			Stacktraces: StacktracesConfig{
-				MaxNodesPerChunk: 1 << 10,
-			},
-			Parquet: ParquetConfig{
-				MaxBufferRowCount: 512,
-			},
-		}
+		s.config = DefaultConfig().WithDirectory(s.t.TempDir())
 	}
 	if s.db == nil {
 		s.db = NewSymDB(s.config)

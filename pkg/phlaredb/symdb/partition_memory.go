@@ -5,6 +5,7 @@ import (
 	"io"
 	"sync"
 
+	"github.com/grafana/pyroscope/pkg/iter"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
@@ -23,16 +24,10 @@ func (p *PartitionWriter) AppendStacktraces(dst []uint32, s []*schemav1.Stacktra
 }
 
 func (p *PartitionWriter) ResolveStacktraceLocations(_ context.Context, dst StacktraceInserter, stacktraces []uint32) error {
-	// TODO(kolesnikovae): Add option to do resolve concurrently.
-	//   Depends on StacktraceInserter implementation.
 	if len(stacktraces) == 0 {
 		return nil
 	}
 	return p.stacktraces.resolve(dst, stacktraces)
-}
-
-func (p *PartitionWriter) ResolveChunk(dst StacktraceInserter, sr StacktracesRange) error {
-	return p.stacktraces.ResolveChunk(dst, sr)
 }
 
 func (p *PartitionWriter) LookupLocations(dst []uint64, stacktraceID uint32) []uint64 {
@@ -54,7 +49,22 @@ type stacktracesPartition struct {
 	m         sync.RWMutex
 	hashToIdx map[uint64]uint32
 	chunks    []*stacktraceChunk
-	header    []StacktraceBlockHeader
+}
+
+func (p *PartitionWriter) SplitStacktraceIDRanges(appender *SampleAppender) iter.Iterator[*StacktraceIDRange] {
+	if len(p.stacktraces.chunks) == 0 {
+		return iter.NewEmptyIterator[*StacktraceIDRange]()
+	}
+	var n int
+	samples := appender.Samples()
+	ranges := SplitStacktraces(samples.StacktraceIDs, p.stacktraces.maxNodesPerChunk)
+	for _, sr := range ranges {
+		c := p.stacktraces.chunks[sr.chunk]
+		sr.ParentPointerTree = c.tree
+		sr.Samples = samples.Range(n, n+len(sr.IDs))
+		n += len(sr.IDs)
+	}
+	return iter.NewSliceIterator(ranges)
 }
 
 func newStacktracesPartition(maxNodesPerChunk uint32) *stacktracesPartition {
@@ -72,7 +82,7 @@ func newStacktracesPartition(maxNodesPerChunk uint32) *stacktracesPartition {
 func (p *stacktracesPartition) size() uint64 {
 	p.m.RLock()
 	// TODO: map footprint isn't accounted
-	v := len(p.header) * stacktraceBlockHeaderSize
+	v := 0
 	for _, c := range p.chunks {
 		v += stacktraceTreeNodeSize * cap(c.tree.nodes)
 	}
@@ -211,7 +221,7 @@ func (p *stacktracesPartition) resolve(dst StacktraceInserter, stacktraces []uin
 //  slice, or an n-ary tree: the stacktraceTree should be one of
 //  the options, the package provides.
 
-func (p *stacktracesPartition) ResolveChunk(dst StacktraceInserter, sr StacktracesRange) error {
+func (p *stacktracesPartition) ResolveChunk(dst StacktraceInserter, sr *StacktraceIDRange) error {
 	p.m.RLock()
 	c, found := p.stacktraceChunkForRead(int(sr.chunk))
 	if !found {
@@ -230,8 +240,8 @@ func (p *stacktracesPartition) ResolveChunk(dst StacktraceInserter, sr Stacktrac
 	p.m.RUnlock()
 	s := stacktraceLocations.get()
 	// Restore the original stacktrace ID.
-	off := sr.offset()
-	for _, sid := range sr.ids {
+	off := sr.Offset()
+	for _, sid := range sr.IDs {
 		s = t.resolve(s, sid)
 		dst.InsertStacktrace(off+sid, s)
 	}
@@ -248,67 +258,6 @@ type stacktraceChunk struct {
 
 func (s *stacktraceChunk) WriteTo(dst io.Writer) (int64, error) {
 	return s.tree.WriteTo(dst)
-}
-
-type StacktracesRange struct {
-	ids   []uint32
-	chunk uint32 // Chunk index.
-	m     uint32 // Max nodes per chunk.
-}
-
-func (r StacktracesRange) offset() uint32 { return r.m * r.chunk }
-
-// SplitStacktraces splits the range of stack trace IDs by limit n into
-// sub-ranges matching to the corresponding chunks and shifts the values
-// accordingly. Note that the input s is modified in place.
-//
-// stack trace ID 0 is reserved and is not expected at the input.
-// stack trace ID % max_nodes == 0 is not expected as well.
-func SplitStacktraces(s []uint32, n uint32) []StacktracesRange {
-	if s[len(s)-1] < n || n == 0 {
-		// Fast path, just one chunk: the highest stack trace ID
-		// is less than the chunk size, or the size is not limited.
-		// It's expected that in most cases we'll end up here.
-		return []StacktracesRange{{m: n, ids: s}}
-	}
-
-	var (
-		loi int
-		lov = (s[0] / n) * n // Lowest possible value for the current chunk.
-		hiv = lov + n        // Highest possible value for the current chunk.
-		p   uint32           // Previous value (to derive chunk index).
-		// 16 chunks should be more than enough in most cases.
-		cs = make([]StacktracesRange, 0, 16)
-	)
-
-	for i, v := range s {
-		if v < hiv {
-			// The stack belongs to the current chunk.
-			s[i] -= lov
-			p = v
-			continue
-		}
-		lov = (v / n) * n
-		hiv = lov + n
-		s[i] -= lov
-		cs = append(cs, StacktracesRange{
-			chunk: p / n,
-			ids:   s[loi:i],
-			m:     n,
-		})
-		loi = i
-		p = v
-	}
-
-	if t := s[loi:]; len(t) > 0 {
-		cs = append(cs, StacktracesRange{
-			chunk: p / n,
-			ids:   t,
-			m:     n,
-		})
-	}
-
-	return cs
 }
 
 func (p *PartitionWriter) AppendLocations(dst []uint32, locations []schemav1.InMemoryLocation) {

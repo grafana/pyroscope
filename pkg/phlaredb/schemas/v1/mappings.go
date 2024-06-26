@@ -14,9 +14,7 @@ func (MappingPersister) Name() string { return "mappings" }
 
 func (MappingPersister) Schema() *parquet.Schema { return mappingsSchema }
 
-func (MappingPersister) SortingColumns() parquet.SortingOption { return parquet.SortingColumns() }
-
-func (MappingPersister) Deconstruct(row parquet.Row, _ uint64, m InMemoryMapping) parquet.Row {
+func (MappingPersister) Deconstruct(row parquet.Row, m *InMemoryMapping) parquet.Row {
 	if cap(row) < 10 {
 		row = make(parquet.Row, 0, 10)
 	}
@@ -34,7 +32,7 @@ func (MappingPersister) Deconstruct(row parquet.Row, _ uint64, m InMemoryMapping
 	return row
 }
 
-func (MappingPersister) Reconstruct(row parquet.Row) (uint64, InMemoryMapping, error) {
+func (MappingPersister) Reconstruct(row parquet.Row) (*InMemoryMapping, error) {
 	mapping := InMemoryMapping{
 		Id:              row[0].Uint64(),
 		MemoryStart:     row[1].Uint64(),
@@ -47,7 +45,7 @@ func (MappingPersister) Reconstruct(row parquet.Row) (uint64, InMemoryMapping, e
 		HasLineNumbers:  row[8].Boolean(),
 		HasInlineFrames: row[9].Boolean(),
 	}
-	return 0, mapping, nil
+	return &mapping, nil
 }
 
 type InMemoryMapping struct {

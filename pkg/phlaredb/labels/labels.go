@@ -60,6 +60,7 @@ func CreateProfileLabels(enforceOrder bool, p *profilev1.Profile, externalLabels
 		} else {
 			sort.Sort(lbs)
 		}
+		lbs = lbs.Unique()
 		profilesLabels[pos] = lbs
 		seriesRefs[pos] = model.Fingerprint(lbs.Hash())
 

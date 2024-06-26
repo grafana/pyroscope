@@ -233,7 +233,7 @@ By default it looks for samples within the last hour, though this can be control
    - You can provide a custom time range using the `--from` and `--to` flags, for example, `--from="now-3h" --to="now"`.
    - You can specify the profile type via the `--profile-type` flag. The available profile types are listed in the output of the `profilecli query series` command.
 
-1. Construct and execute the Query Merge command.
+2. Construct and execute the Query Merge command.
 
    - Here's a basic command template:
      ```bash
@@ -271,3 +271,38 @@ By default it looks for samples within the last hour, though this can be control
        115366240: 107 13 14 15 16 17 1 2 3
      ...
      ```
+
+### Exporting a profile for Go PGO
+
+You can use the `profilecli query go-pgo` command to retrieve an aggregated profile from a Pyroscope server for use with Go PGO.
+Profiles retrieved with `profilecli query merge` include all samples found in the profile store, resulting in a large profile size.
+The profile size may cause issues with network transfer and slow down the PGO process.
+In contrast, profiles retrieved with `profilecli query go-pgo` include only the information used in Go PGO, making them significantly smaller and more efficient to handle.
+By default, it looks for samples within the last hour, though this can be controlled with the `--from` and `--to` flags. The source data can be narrowed down with the `--query` flag in the same way as with the `query` command.
+
+1. Specify optional flags.
+
+    - You can provide a label selector using the `--query` flag, for example, `--query='{service_name="my_application_name"}'`.
+    - You can provide a custom time range using the `--from` and `--to` flags, for example, `--from="now-3h" --to="now"`.
+    - You can specify the profile type via the `--profile-type` flag. The available profile types are listed in the output of the `profilecli query series` command.
+    - You can specify the number of leaf locations to keep via the `--keep-locations` flag. The default value is `5`. Go compiler does not use the full stack trace. Reducing the number helps to minimize the profile size. 
+    - You can specify whether the callee aggregation should be used via the `--aggregate-callees` flag. By default, samples are aggregated by the leaf location, ignoring callee line number. Go compiler ignores this information. 
+
+2. Construct and execute the command.
+
+    - Example command:
+      ```bash
+      export PROFILECLI_URL=https://profiles-prod-001.grafana.net
+      export PROFILECLI_USERNAME=my_username
+      export PROFILECLI_PASSWORD=my_password
+ 
+      profilecli query go-pgo \
+          --query='{service_name="my_service"}' \
+          --from="now-1h" --to="now"
+      ```
+
+    - Example output:
+      ```bash
+      level=info msg="querying pprof profile for Go PGO" url=https://localhost:4040 query="{service_name=\"my_service\"}" from=2024-06-20T12:32:20+08:00 to=2024-06-20T15:24:40+08:00 type=process_cpu:cpu:nanoseconds:cpu:nanoseconds output="pprof=default.pgo" keep-locations=5 aggregate-callees=true
+      # By default, the profile is saved to the current directory as `default.pgo`
+      ```

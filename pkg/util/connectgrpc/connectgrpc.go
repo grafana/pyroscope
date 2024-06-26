@@ -166,12 +166,30 @@ func removeContentHeaders(h http.Header) http.Header {
 	return h
 }
 
+// filterHeader filters headers, which would expose details about the implementation details of the connectgrpc implementation
+func filterHeader(name string) bool {
+	if strings.ToLower(name) == "content-type" {
+		return true
+	}
+	if strings.ToLower(name) == "accept-encoding" {
+		return true
+	}
+	if strings.ToLower(name) == "content-encoding" {
+		return true
+	}
+	return false
+}
+
 func decodeResponse[Resp any](r *httpgrpc.HTTPResponse) (*connect.Response[Resp], error) {
 	if err := decompressResponse(r); err != nil {
 		return nil, err
 	}
 	resp := &connect.Response[Resp]{Msg: new(Resp)}
 	for _, h := range r.Headers {
+		if filterHeader(h.Key) {
+			continue
+		}
+
 		for _, v := range h.Values {
 			resp.Header().Add(h.Key, v)
 		}

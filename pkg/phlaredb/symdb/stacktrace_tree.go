@@ -116,6 +116,14 @@ func (t *stacktraceTree) resolveUint64(dst []uint64, id uint32) []uint64 {
 	return dst
 }
 
+func (t *stacktraceTree) Nodes() []Node {
+	dst := make([]Node, len(t.nodes))
+	for i := 0; i < len(dst) && i < len(t.nodes); i++ { // BCE
+		dst[i] = Node{Parent: t.nodes[i].p, Location: t.nodes[i].r}
+	}
+	return dst
+}
+
 const (
 	maxGroupSize = 17 // 4 * uint32 + control byte
 	// minGroupSize = 5  // 4 * byte + control byte
@@ -166,6 +174,14 @@ func (t *parentPointerTree) resolveUint64(dst []uint64, id uint32) []uint64 {
 	for n.p >= 0 {
 		dst = append(dst, uint64(n.r))
 		n = t.nodes[n.p]
+	}
+	return dst
+}
+
+func (t *parentPointerTree) Nodes() []Node {
+	dst := make([]Node, len(t.nodes))
+	for i := 0; i < len(dst) && i < len(t.nodes); i++ { // BCE
+		dst[i] = Node{Parent: t.nodes[i].p, Location: t.nodes[i].r}
 	}
 	return dst
 }
