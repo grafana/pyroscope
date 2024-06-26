@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package settings.v1;
 
+import "types/v1/types.proto";
+
 service SettingsService {
   rpc Get(GetSettingsRequest) returns (GetSettingsResponse) {}
   rpc Set(SetSettingsRequest) returns (SetSettingsResponse) {}
@@ -25,4 +27,94 @@ message Setting {
   string name = 1;
   string value = 2;
   int64 modifiedAt = 3;
+}
+
+// CollectionRuleAction is the action to be performed on relabeling.
+// aligns to https://github.com/prometheus/prometheus/blob/f24ce00320f8605add7c7c5e69f722193c066672/model/relabel/relabel.go#L40-L66
+enum CollectionRuleAction {
+  COLLECTION_RULE_ACTION_UNSPECIFIED = 0;
+  // Replace performs a regex replacement.
+  COLLECTION_RULE_ACTION_REPLACE = 1;
+  // Keep drops targets for which the input does not match the regex.
+  COLLECTION_RULE_ACTION_KEEP = 2;
+  // Drop drops targets for which the input does match the regex.
+  COLLECTION_RULE_ACTION_DROP = 3;
+  // KeepEqual drops targets for which the input does not match the target.
+  COLLECTION_RULE_ACTION_KEEP_EQUAL = 4;
+  // DropEqual drops targets for which the input does match the target.
+  COLLECTION_RULE_ACTION_DROP_EQUAL = 5;
+  // HashMod sets a label to the modulus of a hash of labels.
+  COLLECTION_RULE_ACTION_HASHMOD = 6;
+  // LabelMap copies labels to other labelnames based on a regex.
+  COLLECTION_RULE_ACTION_LABELMAP = 7;
+  // LabelDrop drops any label matching the regex.
+  COLLECTION_RULE_ACTION_LABELDROP = 8;
+  // LabelKeep drops any label not matching the regex.
+  COLLECTION_RULE_ACTION_LABELKEEP = 9;
+  // Lowercase maps input letters to their lower case.
+  COLLECTION_RULE_ACTION_LOWERCASE = 10;
+  // Uppercase maps input letters to their upper case.
+  COLLECTION_RULE_ACTION_UPPERCASE = 11;
+}
+
+// CollectionRule is the configuration for relabeling of target label sets.
+// aligns to https://github.com/prometheus/prometheus/blob/f24ce00320f8605add7c7c5e69f722193c066672/model/relabel/relabel.go#L82C1-L100C2
+message CollectionRule {
+  int64 id = 1;
+  // A list of labels from which values are taken and concatenated
+  // with the configured separator in order.
+  repeated string source_labels = 2;
+  // separator is the string between concatenated values from the source labels.
+  optional string separator = 3;
+  // regex against which the concatenation is matched.
+  optional string regex = 4;
+  // modulus to take of the hash of concatenated values from the source labels.
+  optional uint64 modulus = 5;
+  // target_label is the label to which the resulting string is written in a replacement.
+  // Regexp interpolation is allowed for the replace action.
+  optional string target_label = 6;
+  // replacement is the regex replacement pattern to be used.
+  optional string replacement = 7;
+  // action is the action to be performed for the relabeling.
+  CollectionRuleAction action = 8;
+}
+
+message CollectionTarget {
+  repeated types.v1.LabelPair labels = 1;
+}
+
+// CollectionInstance represents a single instance of the collection agent (generally Grafana Alloy)
+message CollectionInstance {
+  string hostname = 1;
+  repeated CollectionTarget targets = 2;
+  int64 last_updated = 3;
+}
+
+message CollectionMessage {
+  // TODO: Status, ID
+  oneof payload {
+    CollectionPayloadSubscribe payload_subscribe = 1;
+    CollectionPayloadSubscribe payload_unsubscribe = 2;
+    CollectionPayloadData payload_data = 3;
+    CollectionPayloadRuleInsert payload_rule_insert = 4;
+    CollectionPayloadRuleDelete payload_rule_delete = 5;
+  }
+}
+
+message CollectionPayloadSubscribe {
+  repeated string topics = 1;
+}
+
+message CollectionPayloadData {
+  repeated CollectionRule rules = 1;
+  repeated CollectionInstance instances = 2;
+}
+
+message CollectionPayloadRuleInsert {
+  CollectionRule rule = 1;
+  optional int64 after = 2;
+}
+
+message CollectionPayloadRuleDelete {
+  int64 id = 1;
 }
