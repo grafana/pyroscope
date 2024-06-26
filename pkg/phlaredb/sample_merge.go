@@ -150,21 +150,13 @@ func mergeBySpans[T interface{ StacktracePartition() uint64 }](ctx context.Conte
 	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
 	for profiles.Next() {
 		p := profiles.At()
-		partition := p.Row.StacktracePartition()
-		stacktraces := p.Values[0]
-		values := p.Values[1]
-		spans := p.Values[2]
-		r.WithPartitionSamples(partition, func(samples map[uint32]int64) {
-			for i, sid := range stacktraces {
-				spanID := spans[i].Uint64()
-				if spanID == 0 {
-					continue
-				}
-				if _, ok := spanSelector[spanID]; ok {
-					samples[sid.Uint32()] += values[i].Int64()
-				}
-			}
-		})
+		r.AddSamplesWithSpanSelectorFromParquetRow(
+			p.Row.StacktracePartition(),
+			p.Values[0],
+			p.Values[1],
+			p.Values[2],
+			spanSelector,
+		)
 	}
 	return profiles.Err()
 }
