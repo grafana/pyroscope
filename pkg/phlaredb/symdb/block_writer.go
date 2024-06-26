@@ -339,7 +339,7 @@ func (s *parquetWriter[M, P]) fillBatch(values []M) int {
 	s.rowsBatch = s.rowsBatch[:m]
 	for i := 0; i < m; i++ {
 		row := s.rowsBatch[i][:0]
-		s.rowsBatch[i] = s.persister.Deconstruct(row, 0, values[i])
+		s.rowsBatch[i] = s.persister.Deconstruct(row, values[i])
 	}
 	return m
 }

@@ -278,7 +278,7 @@ func (r *inMemoryparquetReader[M, P]) readRG(dst []M, rg parquet.RowGroup) (err 
 		n, err := rr.ReadRows(buf)
 		if n > 0 {
 			for _, row := range buf[:n] {
-				_, v, err := r.persister.Reconstruct(row)
+				v, err := r.persister.Reconstruct(row)
 				if err != nil {
 					return err
 				}
