@@ -69,7 +69,7 @@ func newStrings() []string {
 func TestStringsRoundTrip(t *testing.T) {
 	var (
 		s   = newStrings()
-		w   = &ReadWriter[string, *StringPersister]{}
+		w   = &ReadWriter[string, StringPersister]{}
 		buf bytes.Buffer
 	)
 
@@ -201,7 +201,7 @@ func TestLocationsRoundTrip(t *testing.T) {
 		},
 	}
 
-	mem := []*InMemoryLocation{
+	mem := []InMemoryLocation{
 		{
 			Id:        8,
 			Address:   9,
@@ -237,14 +237,14 @@ func TestLocationsRoundTrip(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	require.NoError(t, new(ReadWriter[*profilev1.Location, *pprofLocationPersister]).WriteParquetFile(&buf, raw))
-	actual, err := new(ReadWriter[*InMemoryLocation, *LocationPersister]).ReadParquetFile(bytes.NewReader(buf.Bytes()))
+	require.NoError(t, new(ReadWriter[*profilev1.Location, pprofLocationPersister]).WriteParquetFile(&buf, raw))
+	actual, err := new(ReadWriter[InMemoryLocation, LocationPersister]).ReadParquetFile(bytes.NewReader(buf.Bytes()))
 	require.NoError(t, err)
 	assert.Equal(t, mem, actual)
 
 	buf.Reset()
-	require.NoError(t, new(ReadWriter[*InMemoryLocation, *LocationPersister]).WriteParquetFile(&buf, mem))
-	actual, err = new(ReadWriter[*InMemoryLocation, *LocationPersister]).ReadParquetFile(bytes.NewReader(buf.Bytes()))
+	require.NoError(t, new(ReadWriter[InMemoryLocation, LocationPersister]).WriteParquetFile(&buf, mem))
+	actual, err = new(ReadWriter[InMemoryLocation, LocationPersister]).ReadParquetFile(bytes.NewReader(buf.Bytes()))
 	require.NoError(t, err)
 	assert.Equal(t, mem, actual)
 }
@@ -253,16 +253,16 @@ var protoLocationsSchema = parquet.SchemaOf(&profilev1.Location{})
 
 type pprofLocationPersister struct{}
 
-func (*pprofLocationPersister) Name() string { return "locations" }
+func (pprofLocationPersister) Name() string { return "locations" }
 
-func (*pprofLocationPersister) Schema() *parquet.Schema { return protoLocationsSchema }
+func (pprofLocationPersister) Schema() *parquet.Schema { return protoLocationsSchema }
 
-func (*pprofLocationPersister) Deconstruct(row parquet.Row, loc *profilev1.Location) parquet.Row {
+func (pprofLocationPersister) Deconstruct(row parquet.Row, loc *profilev1.Location) parquet.Row {
 	row = protoLocationsSchema.Deconstruct(row, loc)
 	return row
 }
 
-func (*pprofLocationPersister) Reconstruct(row parquet.Row) (*profilev1.Location, error) {
+func (pprofLocationPersister) Reconstruct(row parquet.Row) (*profilev1.Location, error) {
 	var loc profilev1.Location
 	if err := protoLocationsSchema.Reconstruct(&loc, row); err != nil {
 		return nil, err
@@ -288,7 +288,7 @@ func TestFunctionsRoundTrip(t *testing.T) {
 		},
 	}
 
-	mem := []*InMemoryFunction{
+	mem := []InMemoryFunction{
 		{
 			Id:         6,
 			Name:       7,
@@ -307,13 +307,13 @@ func TestFunctionsRoundTrip(t *testing.T) {
 
 	var buf bytes.Buffer
 	require.NoError(t, new(ReadWriter[*profilev1.Function, *pprofFunctionPersister]).WriteParquetFile(&buf, raw))
-	actual, err := new(ReadWriter[*InMemoryFunction, *FunctionPersister]).ReadParquetFile(bytes.NewReader(buf.Bytes()))
+	actual, err := new(ReadWriter[InMemoryFunction, FunctionPersister]).ReadParquetFile(bytes.NewReader(buf.Bytes()))
 	require.NoError(t, err)
 	assert.Equal(t, mem, actual)
 
 	buf.Reset()
-	require.NoError(t, new(ReadWriter[*InMemoryFunction, *FunctionPersister]).WriteParquetFile(&buf, mem))
-	actual, err = new(ReadWriter[*InMemoryFunction, *FunctionPersister]).ReadParquetFile(bytes.NewReader(buf.Bytes()))
+	require.NoError(t, new(ReadWriter[InMemoryFunction, FunctionPersister]).WriteParquetFile(&buf, mem))
+	actual, err = new(ReadWriter[InMemoryFunction, FunctionPersister]).ReadParquetFile(bytes.NewReader(buf.Bytes()))
 	require.NoError(t, err)
 	assert.Equal(t, mem, actual)
 }
@@ -367,7 +367,7 @@ func TestMappingsRoundTrip(t *testing.T) {
 		},
 	}
 
-	mem := []*InMemoryMapping{
+	mem := []InMemoryMapping{
 		{
 			Id:              7,
 			MemoryStart:     8,
@@ -396,7 +396,7 @@ func TestMappingsRoundTrip(t *testing.T) {
 
 	var buf bytes.Buffer
 	require.NoError(t, new(ReadWriter[*profilev1.Mapping, *pprofMappingPersister]).WriteParquetFile(&buf, raw))
-	actual, err := new(ReadWriter[*InMemoryMapping, *MappingPersister]).ReadParquetFile(bytes.NewReader(buf.Bytes()))
+	actual, err := new(ReadWriter[InMemoryMapping, MappingPersister]).ReadParquetFile(bytes.NewReader(buf.Bytes()))
 	require.NoError(t, err)
 	assert.Equal(t, mem, actual)
 
@@ -428,8 +428,7 @@ func (*pprofMappingPersister) Reconstruct(row parquet.Row) (*profilev1.Mapping, 
 	return &m, nil
 }
 
-type ReadWriter[T any, P Persister[T]] struct {
-}
+type ReadWriter[T any, P Persister[T]] struct{}
 
 func (r *ReadWriter[T, P]) WriteParquetFile(file io.Writer, elements []T) error {
 	var (

@@ -2,7 +2,6 @@ package symdb
 
 import (
 	"context"
-	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -26,9 +25,9 @@ type PartitionReader interface {
 
 type Symbols struct {
 	Stacktraces StacktraceResolver
-	Locations   []*schemav1.InMemoryLocation
-	Mappings    []*schemav1.InMemoryMapping
-	Functions   []*schemav1.InMemoryFunction
+	Locations   []schemav1.InMemoryLocation
+	Mappings    []schemav1.InMemoryMapping
+	Functions   []schemav1.InMemoryFunction
 	Strings     []string
 }
 
@@ -84,8 +83,8 @@ type StacktraceInserter interface {
 }
 
 type SymDB struct {
-	config *Config
-	writer *writer
+	config Config
+	writer blockWriter
 	stats  MemoryStats
 
 	m          sync.RWMutex
@@ -97,6 +96,7 @@ type SymDB struct {
 
 type Config struct {
 	Dir         string
+	Version     FormatVersion
 	Stacktraces StacktracesConfig
 	Parquet     ParquetConfig
 }
@@ -129,7 +129,7 @@ const statsUpdateInterval = 5 * time.Second
 
 func DefaultConfig() *Config {
 	return &Config{
-		Dir: DefaultDirName,
+		Version: FormatV2,
 		Stacktraces: StacktracesConfig{
 			// At the moment chunks are loaded in memory at once.
 			// Due to the fact that chunking causes some duplication,
@@ -152,15 +152,26 @@ func (c *Config) WithParquetConfig(pc ParquetConfig) *Config {
 	return c
 }
 
+func (c *Config) WithVersion(v FormatVersion) *Config {
+	c.Version = v
+	return c
+}
+
 func NewSymDB(c *Config) *SymDB {
 	if c == nil {
 		c = DefaultConfig()
 	}
 	db := &SymDB{
-		config:     c,
-		writer:     newWriter(c),
+		config:     *c,
 		partitions: make(map[uint64]*PartitionWriter),
 		stop:       make(chan struct{}),
+	}
+	switch c.Version {
+	case FormatV3:
+		db.writer = newWriterV3(c)
+	default:
+		db.config.Version = FormatV2
+		db.writer = newWriterV2(c)
 	}
 	db.wg.Add(1)
 	go db.updateStatsLoop()
@@ -187,6 +198,12 @@ func (s *SymDB) newPartition(partition uint64) *PartitionWriter {
 	p := PartitionWriter{
 		header:      PartitionHeader{Partition: partition},
 		stacktraces: newStacktracesPartition(s.config.Stacktraces.MaxNodesPerChunk),
+	}
+	switch s.config.Version {
+	case FormatV2:
+		p.header.V2 = new(PartitionHeaderV2)
+	case FormatV3:
+		p.header.V3 = new(PartitionHeaderV3)
 	}
 	p.strings.init()
 	p.mappings.init()
@@ -282,15 +299,13 @@ func (s *SymDB) Flush() error {
 	sort.Slice(partitions, func(i, j int) bool {
 		return partitions[i].header.Partition < partitions[j].header.Partition
 	})
-	if err := s.writer.createDir(); err != nil {
-		return err
-	}
-	if err := s.writer.writePartitions(partitions); err != nil {
-		return fmt.Errorf("writing partitions: %w", err)
-	}
-	return s.writer.Flush()
+	return s.writer.writePartitions(partitions)
 }
 
 func (s *SymDB) Files() []block.File {
-	return s.writer.files
+	return s.writer.meta()
+}
+
+func (s *SymDB) FormatVersion() FormatVersion {
+	return s.config.Version
 }

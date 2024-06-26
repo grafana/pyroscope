@@ -2,15 +2,19 @@ package symdb
 
 import (
 	"context"
+	"io"
 	"sort"
+	"sync/atomic"
 	"testing"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/stretchr/testify/require"
+	"github.com/thanos-io/objstore"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/pprof"
 )
@@ -30,6 +34,7 @@ type memSuite struct {
 type blockSuite struct {
 	*memSuite
 	reader *Reader
+	testBucket
 }
 
 func newMemSuite(t testing.TB, files [][]string) *memSuite {
@@ -71,14 +76,33 @@ func (s *memSuite) writeProfileFromFile(p uint64, f string) {
 
 func (s *blockSuite) flush() {
 	require.NoError(s.t, s.db.Flush())
-	b, err := filesystem.NewBucket(s.config.Dir)
+	b, err := filesystem.NewBucket(s.config.Dir, func(x objstore.Bucket) (objstore.Bucket, error) {
+		s.testBucket.Bucket = x
+		return &s.testBucket, nil
+	})
 	require.NoError(s.t, err)
-	s.reader, err = Open(context.Background(), b, testBlockMeta)
+	s.reader, err = Open(context.Background(), b, &block.Meta{Files: s.db.Files()})
 	require.NoError(s.t, err)
 }
 
 func (s *blockSuite) teardown() {
 	require.NoError(s.t, s.reader.Close())
+}
+
+type testBucket struct {
+	getRangeCount atomic.Int64
+	getRangeSize  atomic.Int64
+	objstore.Bucket
+}
+
+func (b *testBucket) GetRange(ctx context.Context, name string, off, length int64) (io.ReadCloser, error) {
+	b.getRangeCount.Add(1)
+	b.getRangeSize.Add(length)
+	return b.Bucket.GetRange(ctx, name, off, length)
+}
+
+func newTestFileWriter(w io.Writer) *fileWriter {
+	return &fileWriter{w: &writerOffset{Writer: w}}
 }
 
 //nolint:unparam

@@ -88,7 +88,6 @@ func Test_stacktrace_tree_encoding_group(t *testing.T) {
 }
 
 func Test_stacktrace_tree_encoding_rand(t *testing.T) {
-	// TODO: Fuzzing.
 	nodes := make([]node, 1<<20)
 	for i := range nodes {
 		nodes[i] = node{

@@ -191,10 +191,10 @@ func (p *symbolsPartition) Release() {
 }
 
 type inMemoryParquetTables struct {
-	strings   inMemoryparquetReader[string, *schemav1.StringPersister]
-	functions inMemoryparquetReader[*schemav1.InMemoryFunction, *schemav1.FunctionPersister]
-	locations inMemoryparquetReader[*schemav1.InMemoryLocation, *schemav1.LocationPersister]
-	mappings  inMemoryparquetReader[*schemav1.InMemoryMapping, *schemav1.MappingPersister]
+	strings   inMemoryparquetReader[string, schemav1.StringPersister]
+	functions inMemoryparquetReader[schemav1.InMemoryFunction, schemav1.FunctionPersister]
+	locations inMemoryparquetReader[schemav1.InMemoryLocation, schemav1.LocationPersister]
+	mappings  inMemoryparquetReader[schemav1.InMemoryMapping, schemav1.MappingPersister]
 }
 
 func openInMemoryParquetTables(ctx context.Context, r phlareobj.BucketReader, meta *block.Meta) (*inMemoryParquetTables, error) {

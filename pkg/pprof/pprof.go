@@ -1084,18 +1084,23 @@ func GetLanguage(profile *Profile, logger log.Logger) string {
 // SetProfileMetadata sets the metadata on the profile.
 func SetProfileMetadata(p *profilev1.Profile, ty *typesv1.ProfileType, timeNanos int64, period int64) {
 	m := map[string]int64{
-		ty.SampleUnit: 0,
-		ty.SampleType: 0,
-		ty.PeriodType: 0,
-		ty.PeriodUnit: 0,
+		ty.SampleUnit: -1,
+		ty.SampleType: -1,
+		ty.PeriodType: -1,
+		ty.PeriodUnit: -1,
 	}
 	for i, s := range p.StringTable {
-		if _, ok := m[s]; !ok {
+		if _, ok := m[s]; ok {
 			m[s] = int64(i)
 		}
 	}
-	for k, v := range m {
-		if v == 0 {
+	for _, k := range []string{
+		ty.SampleUnit,
+		ty.SampleType,
+		ty.PeriodType,
+		ty.PeriodUnit,
+	} {
+		if m[k] == -1 {
 			i := int64(len(p.StringTable))
 			p.StringTable = append(p.StringTable, k)
 			m[k] = i
