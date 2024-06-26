@@ -18,8 +18,10 @@ import (
 type memSuite struct {
 	t testing.TB
 
-	config   *Config
-	db       *SymDB
+	config *Config
+	db     *SymDB
+
+	// partition => sample type index => object
 	files    [][]string
 	profiles map[uint64]*googlev1.Profile
 	indexed  map[uint64][]v1.InMemoryProfile
