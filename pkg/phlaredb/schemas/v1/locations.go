@@ -59,7 +59,7 @@ func (LocationPersister) Deconstruct(row parquet.Row, loc InMemoryLocation) parq
 	return row
 }
 
-func (LocationPersister) Reconstruct(row parquet.Row) (*InMemoryLocation, error) {
+func (LocationPersister) Reconstruct(row parquet.Row) (InMemoryLocation, error) {
 	loc := InMemoryLocation{
 		Id:        row[0].Uint64(),
 		MappingId: uint32(row[1].Uint64()),
@@ -74,7 +74,7 @@ func (LocationPersister) Reconstruct(row parquet.Row) (*InMemoryLocation, error)
 	for i, v := range lines[len(lines)/2:] {
 		loc.Line[i].Line = int32(v.Uint64())
 	}
-	return &loc, nil
+	return loc, nil
 }
 
 type InMemoryLocation struct {

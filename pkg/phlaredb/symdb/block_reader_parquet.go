@@ -88,7 +88,7 @@ func (t *parquetTable[M, P]) readRows(dst []M, buf []parquet.Row, rows parquet.R
 				if i == len(dst) {
 					return nil
 				}
-				_, v, err := t.persister.Reconstruct(row)
+				v, err := t.persister.Reconstruct(row)
 				if err != nil {
 					return err
 				}

@@ -428,7 +428,7 @@ func (*pprofMappingPersister) Reconstruct(row parquet.Row) (*profilev1.Mapping, 
 	return &m, nil
 }
 
-type ReadWriter[T any, P Persister[T]] struct {}
+type ReadWriter[T any, P Persister[T]] struct{}
 
 func (r *ReadWriter[T, P]) WriteParquetFile(file io.Writer, elements []T) error {
 	var (

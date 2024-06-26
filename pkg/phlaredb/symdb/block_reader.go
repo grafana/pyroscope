@@ -403,14 +403,14 @@ func (p *partition) ResolveStacktraceLocations(ctx context.Context, dst Stacktra
 }
 
 func (p *partition) SplitStacktraceIDRanges(appender *SampleAppender) iter.Iterator[*StacktraceIDRange] {
-	if len(p.stacktraceChunks) == 0 {
+	if len(p.stacktraces) == 0 {
 		return iter.NewEmptyIterator[*StacktraceIDRange]()
 	}
 	var n int
 	samples := appender.Samples()
-	ranges := SplitStacktraces(samples.StacktraceIDs, p.stacktraceChunks[0].header.StacktraceMaxNodes)
+	ranges := SplitStacktraces(samples.StacktraceIDs, p.stacktraces[0].header.StacktraceMaxNodes)
 	for _, sr := range ranges {
-		c := p.stacktraceChunks[sr.chunk]
+		c := p.stacktraces[sr.chunk]
 		sr.ParentPointerTree = c.t
 		sr.Samples = samples.Range(n, n+len(sr.IDs))
 		n += len(sr.IDs)

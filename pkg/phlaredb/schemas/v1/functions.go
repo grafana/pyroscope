@@ -14,7 +14,7 @@ func (FunctionPersister) Name() string { return "functions" }
 
 func (FunctionPersister) Schema() *parquet.Schema { return functionsSchema }
 
-func (FunctionPersister) Deconstruct(row parquet.Row, _ uint64, fn InMemoryFunction) parquet.Row {
+func (FunctionPersister) Deconstruct(row parquet.Row, fn InMemoryFunction) parquet.Row {
 	if cap(row) < 5 {
 		row = make(parquet.Row, 0, 5)
 	}
