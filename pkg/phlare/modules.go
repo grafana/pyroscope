@@ -3,6 +3,7 @@ package phlare
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"time"
@@ -118,7 +119,9 @@ func (f *Phlare) initRuntimeConfig() (services.Service, error) {
 		return nil, nil
 	}
 
-	f.Cfg.RuntimeConfig.Loader = loadRuntimeConfig
+	f.Cfg.RuntimeConfig.Loader = func(r io.Reader) (interface{}, error) {
+		return validation.LoadRuntimeConfig(r)
+	}
 
 	// make sure to set default limits before we start loading configuration into memory
 	validation.SetDefaultLimitsForYAMLUnmarshalling(f.Cfg.LimitsConfig)
