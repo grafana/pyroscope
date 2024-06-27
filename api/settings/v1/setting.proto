@@ -79,6 +79,12 @@ message CollectionRule {
   CollectionRuleAction action = 8;
 }
 
+// CollectionRuleStore is how the message gets stored in object store
+message CollectionRuleStore {
+  repeated CollectionRule rules = 1;
+  int64 last_updated = 2; // milliseconds unix time
+}
+
 message CollectionTarget {
   repeated types.v1.LabelPair labels = 1;
 }
@@ -87,7 +93,7 @@ message CollectionTarget {
 message CollectionInstance {
   string hostname = 1;
   repeated CollectionTarget targets = 2;
-  int64 last_updated = 3;
+  int64 last_updated = 3; // milliseconds unix time
 }
 
 enum Status {
