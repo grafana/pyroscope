@@ -1,6 +1,7 @@
 package collection
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -13,7 +14,9 @@ import (
 	"github.com/go-kit/log"
 	"github.com/gorilla/websocket"
 	"github.com/grafana/dskit/user"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thanos-io/objstore"
 	"go.uber.org/goleak"
 	"gopkg.in/yaml.v3"
 
@@ -67,17 +70,13 @@ func TestCollection_TwoCollectionInstances_OneRuleManager(t *testing.T) {
 	if testing.Verbose() {
 		logger = log.NewLogfmtLogger(os.Stderr)
 	}
-	c := New(Config{}, logger)
-	defer c.Stop()
+	c := New(Config{}, objstore.NewInMemBucket(), logger)
+	defer c.Stop(context.Background())
 
 	// Create test server with the echo handler.
 	mux := http.NewServeMux()
-	mux.HandleFunc("/collection", func(w http.ResponseWriter, r *http.Request) {
-		c.handleWS(w, r, RuleReceiver)
-	})
-	mux.HandleFunc("/manager", func(w http.ResponseWriter, r *http.Request) {
-		c.handleWS(w, r, RuleManager)
-	})
+	mux.Handle("/collection", c.HandleSettings(RuleReceiver))
+	mux.Handle("/manager", c.HandleSettings(RuleManager))
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		r = r.WithContext(user.InjectOrgID(r.Context(), "my-tenant"))
 		mux.ServeHTTP(w, r)
@@ -113,10 +112,13 @@ func TestCollection_TwoCollectionInstances_OneRuleManager(t *testing.T) {
 		}
 		c.lck.RUnlock()
 
-		h.lck.RLock()
-		defer h.lck.RUnlock()
+		rules, err := h.store.list(context.Background())
+		if err != nil {
+			assert.NoError(t, err)
+			return false
+		}
 
-		return len(h.rules) == 2
+		return len(rules) == 2
 	}, 500000*time.Millisecond, time.Millisecond)
 
 	// setup clients

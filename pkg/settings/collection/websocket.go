@@ -1,6 +1,8 @@
 package collection
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -47,11 +49,15 @@ func (c *client) isRuleManager() bool {
 func (c *client) readPump() {
 	defer func() {
 		c.hub.unregisterCh <- c
+		c.close()
 		c.conn.Close()
 	}()
 	var (
 		msg settingsv1.CollectionMessage
 	)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	for {
 		msg.Reset()
@@ -66,6 +72,24 @@ func (c *client) readPump() {
 			break
 		}
 
+		handleResult := func(messageID int64, err error) {
+			if messageID == 0 {
+				return
+			}
+			msg := &settingsv1.CollectionMessage{
+				Id:     messageID,
+				Status: settingsv1.Status_STATUS_OK,
+			}
+			if err != nil {
+				level.Error(c.logger).Log("error", err)
+				msg.Status = settingsv1.Status_STATUS_ERROR
+				errDetail := err.Error()
+				msg.Message = &errDetail
+			}
+			d, _ := json.Marshal(msg)
+			c.send <- d
+		}
+
 		if p := msg.PayloadSubscribe; p != nil {
 			c.subscribedTopics = p.Topics
 			level.Debug(c.logger).Log("msg", "client subscribing", "topics", fmt.Sprintf("%v", p.Topics))
@@ -73,9 +97,9 @@ func (c *client) readPump() {
 		} else if p := msg.PayloadData; p != nil {
 
 			for idx := range p.Instances {
-				a := p.Instances[idx]
-				level.Debug(c.logger).Log("msg", "received collection instance targets", "hostname", a.Hostname, "targets", len(a.Targets))
-				c.hub.agentCh <- a
+				i := p.Instances[idx]
+				level.Debug(c.logger).Log("msg", "received collection instance targets", "hostname", i.Hostname, "targets", len(i.Targets))
+				c.hub.instanceCh <- i
 			}
 		} else if p := msg.PayloadRuleDelete; p != nil {
 			if p.Id <= 0 {
@@ -89,7 +113,7 @@ func (c *client) readPump() {
 			level.Info(c.logger).Log("msg", "received rule delete", "id", p.Id)
 			id := p.Id
 			c.hub.rulesCh <- func(h *hub) {
-				h.deleteRule(id)
+				handleResult(msg.Id, h.deleteRule(ctx, id))
 			}
 		} else if p := msg.PayloadRuleInsert; p != nil {
 			if !c.isRuleManager() {
@@ -98,7 +122,7 @@ func (c *client) readPump() {
 			}
 			level.Info(c.logger).Log("msg", "received rule insert", "rule", p.Rule)
 			c.hub.rulesCh <- func(h *hub) {
-				h.insertRule(p)
+				handleResult(msg.Id, h.insertRule(ctx, p))
 			}
 		} else {
 			level.Warn(c.logger).Log("msg", "no known message type used")
