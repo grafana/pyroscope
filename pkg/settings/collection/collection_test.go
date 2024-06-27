@@ -1,6 +1,7 @@
 package collection
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -12,27 +13,26 @@ import (
 	"github.com/go-kit/log"
 	"github.com/gorilla/websocket"
 	"github.com/grafana/dskit/user"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
+	"gopkg.in/yaml.v3"
 
 	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
 )
 
 var (
-	payloadSubscribeRules = []byte(`{"Payload":{"PayloadSubscribe":{"topics":["rules"]}}}`)
+	payloadSubscribeRules = []byte(`{"payload_subscribe":{"topics":["rules"]}}`)
 )
 
-func ruleMsg(rule settingsv1.CollectionRule, after int64) *settingsv1.CollectionMessage {
+func ruleMsg(rule *settingsv1.CollectionRule, after int64) *settingsv1.CollectionMessage {
 	var afterPtr *int64
 	if after != 0 {
 		afterPtr = &after
 	}
 	return &settingsv1.CollectionMessage{
-		Payload: &settingsv1.CollectionMessage_PayloadRuleInsert{
-			PayloadRuleInsert: &settingsv1.CollectionPayloadRuleInsert{
-				Rule:  &rule,
-				After: afterPtr,
-			},
+		PayloadRuleInsert: &settingsv1.CollectionPayloadRuleInsert{
+			Rule:  rule,
+			After: afterPtr,
 		},
 	}
 }
@@ -41,13 +41,34 @@ func stringPtr(s string) *string {
 	return &s
 }
 
+func rulesToJson(t *testing.T, rules []*settingsv1.CollectionRule) string {
+	rc, err := CollectionRulesToRelabelConfigs(rules)
+	require.NoError(t, err)
+
+	// first we need to convert to yaml, to ensure the marshalling is correct
+	bYAML, err := yaml.Marshal(&rc)
+	require.NoError(t, err)
+
+	var m []interface{}
+	err = yaml.Unmarshal(bYAML, &m)
+	require.NoError(t, err)
+
+	// now finally time for json
+	bJSON, err := json.Marshal(m)
+	require.NoError(t, err)
+	return string(bJSON)
+}
+
 func TestCollection_TwoCollectionInstances_OneRuleManager(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
 	// Setup code here
 	var logger = log.NewNopLogger()
 	if testing.Verbose() {
 		logger = log.NewLogfmtLogger(os.Stderr)
 	}
 	c := New(Config{}, logger)
+	defer c.Stop()
 
 	// Create test server with the echo handler.
 	mux := http.NewServeMux()
@@ -68,19 +89,18 @@ func TestCollection_TwoCollectionInstances_OneRuleManager(t *testing.T) {
 	// setup rules
 	ruleManager, _, err := websocket.DefaultDialer.Dial(u+"/manager", nil)
 	require.NoError(t, err)
+	// drop everything else
+	require.NoError(t, ruleManager.WriteJSON(ruleMsg(
+		&settingsv1.CollectionRule{
+			Action: settingsv1.CollectionRuleAction_COLLECTION_RULE_ACTION_DROP,
+		}, 0)))
 
 	// keep loki service
 	require.NoError(t, ruleManager.WriteJSON(ruleMsg(
-		settingsv1.CollectionRule{
+		&settingsv1.CollectionRule{
 			Action:       settingsv1.CollectionRuleAction_COLLECTION_RULE_ACTION_KEEP,
 			SourceLabels: []string{"service_name"},
 			Regex:        stringPtr("loki-.*"),
-		}, 0)))
-
-	// drop everything else
-	require.NoError(t, ruleManager.WriteJSON(ruleMsg(
-		settingsv1.CollectionRule{
-			Action: settingsv1.CollectionRuleAction_COLLECTION_RULE_ACTION_DROP,
 		}, 0)))
 
 	// validate rules have been updated
@@ -97,15 +117,13 @@ func TestCollection_TwoCollectionInstances_OneRuleManager(t *testing.T) {
 		defer h.lck.RUnlock()
 
 		return len(h.rules) == 2
-	}, 50*time.Millisecond, time.Millisecond)
+	}, 500000*time.Millisecond, time.Millisecond)
 
 	// setup clients
 	collection1, _, err := websocket.DefaultDialer.Dial(u+"/collection", nil)
 	require.NoError(t, err)
 	collection2, _, err := websocket.DefaultDialer.Dial(u+"/collection", nil)
 	require.NoError(t, err)
-
-	// TODO: Add some rules to the collection
 
 	require.NoError(t, collection1.WriteMessage(websocket.TextMessage, payloadSubscribeRules))
 	require.NoError(t, collection2.WriteMessage(websocket.TextMessage, payloadSubscribeRules))
@@ -115,12 +133,16 @@ func TestCollection_TwoCollectionInstances_OneRuleManager(t *testing.T) {
 		defer wg.Done()
 		var msg settingsv1.CollectionMessage
 		for {
-			err := collection2.ReadJSON(&msg)
+			err := c.ReadJSON(&msg)
 			require.NoError(t, err)
 
-			if p, ok := msg.GetPayload().(*settingsv1.CollectionMessage_PayloadData); ok {
+			if p := msg.PayloadData; p != nil {
 				// validate rules
-				assert.Equal(t, 2, len(p.PayloadData.Rules), "expect two rules")
+				require.JSONEq(t, `[
+          {"action":"keep","regex":"loki-.*","replacement":"$1","separator":";","source_labels":["service_name"]},
+          {"action":"drop","regex":"(.*)","replacement":"$1","separator":";"}
+        ]`, rulesToJson(t, p.Rules))
+
 				break
 			}
 		}

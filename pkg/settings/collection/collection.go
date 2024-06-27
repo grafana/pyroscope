@@ -9,13 +9,17 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/gorilla/websocket"
-
 	"github.com/grafana/dskit/tenant"
-	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
 )
 
-type Config struct {
-}
+type Config struct{}
+
+const (
+	// topic for rule updates
+	topicRules = "rules"
+	// topic for instance updates
+	topicInstances = "instances"
+)
 
 // Collection handles the communication with Grafana Alloy, and ensures that subscribed instance received updates to rules.
 // For each tenant and scope a new hub is created.
@@ -23,12 +27,12 @@ type Collection struct {
 	cfg    Config
 	logger log.Logger
 	wg     sync.WaitGroup
+	stopCh chan struct{}
 
-	lck   sync.RWMutex
-	Rules []settingsv1.CollectionRule
+	lck sync.RWMutex
 
 	upgrader websocket.Upgrader
-	hubs     map[hubKey]*Hub
+	hubs     map[hubKey]*hub
 }
 
 func New(cfg Config, logger log.Logger) *Collection {
@@ -40,7 +44,8 @@ func New(cfg Config, logger log.Logger) *Collection {
 			WriteBufferSize: 1024,
 			CheckOrigin:     func(r *http.Request) bool { return true }, // TODO: check origin
 		},
-		hubs: make(map[hubKey]*Hub),
+		hubs:   make(map[hubKey]*hub),
+		stopCh: make(chan struct{}),
 	}
 }
 
@@ -55,6 +60,11 @@ var (
 	validScopeName      = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 	errInvalidScopeName = fmt.Errorf("invalid scope name, must match %s", validScopeName)
 )
+
+func (c *Collection) Stop() {
+	close(c.stopCh)
+	c.wg.Wait()
+}
 
 // serveWs handles websocket requests from the peer.
 func (c *Collection) handleWS(w http.ResponseWriter, r *http.Request, role Role) {
@@ -85,22 +95,37 @@ func (c *Collection) handleWS(w http.ResponseWriter, r *http.Request, role Role)
 
 	hub := c.getHub(hubKey{tenantID: tenantID, scope: scope})
 
-	client := &Client{
+	client := &client{
 		hub:  hub,
 		conn: conn,
 		send: make(chan []byte, 256),
 		role: role,
 	}
-	client.logger = log.With(c.logger, "remote", r.RemoteAddr, "user-agent", r.Header.Get("user-agent"), "client", fmt.Sprintf("%p", client))
-	level.Debug(client.logger).Log("msg", "new websocket client")
+	client.logger = log.With(hub.logger, "remote", r.RemoteAddr, "user-agent", r.Header.Get("user-agent"), "client", fmt.Sprintf("%p", client))
+	level.Debug(client.logger).Log("msg", "new websocket client", "is-rule-manager", client.isRuleManager())
+	hub.registerCh <- client
 
 	// Allow collection of memory referenced by the caller by doing all work in
 	// new goroutines.
-	go client.writePump()
-	go client.readPump()
+	c.wg.Add(2)
+	go func() {
+		defer c.wg.Done()
+		client.writePump()
+	}()
+	go func() {
+		defer c.wg.Done()
+		client.readPump()
+	}()
 }
 
-func (c *Collection) getHub(k hubKey) *Hub {
+func defaultTopics(h *hub) []*topic {
+	return []*topic{
+		newTopic(topicInstances, h.updateInstancesPayload),
+		newTopic(topicRules, h.updateRulesPayload),
+	}
+}
+
+func (c *Collection) getHub(k hubKey) *hub {
 	c.lck.RLock()
 	h, ok := c.hubs[k]
 	if ok {
@@ -117,7 +142,15 @@ func (c *Collection) getHub(k hubKey) *Hub {
 		return h
 	}
 
-	h = &Hub{}
+	h = newHub(
+		log.With(c.logger, "tenant", k.tenantID, "scope", k.scope),
+		defaultTopics,
+	)
+	c.wg.Add(1)
+	go func() {
+		defer c.wg.Done()
+		h.run(c.stopCh)
+	}()
 	c.hubs[k] = h
 	return h
 }
