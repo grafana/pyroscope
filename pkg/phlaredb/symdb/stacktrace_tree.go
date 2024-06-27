@@ -186,6 +186,37 @@ func (t *parentPointerTree) Nodes() []Node {
 	return dst
 }
 
+func (t *parentPointerTree) toStacktraceTree() *stacktraceTree {
+	l := int32(len(t.nodes))
+	x := stacktraceTree{nodes: make([]node, l)}
+	x.nodes[0] = node{
+		p:  sentinel,
+		fc: sentinel,
+		ns: sentinel,
+	}
+	lc := make([]int32, len(t.nodes))
+	var s int32
+	for i := int32(1); i < l; i++ {
+		n := t.nodes[i]
+		x.nodes[i] = node{
+			p:  n.p,
+			r:  n.r,
+			fc: sentinel,
+			ns: sentinel,
+		}
+		// Swap the last child of the parent with self.
+		// If this is the first child, update the parent.
+		// Otherwise, update the sibling.
+		s, lc[n.p] = lc[n.p], i
+		if s == 0 {
+			x.nodes[n.p].fc = i
+		} else {
+			x.nodes[s].ns = i
+		}
+	}
+	return &x
+}
+
 // ReadFrom decodes parent pointer tree from the reader.
 // The tree must have enough nodes.
 func (t *parentPointerTree) ReadFrom(r io.Reader) (int64, error) {
