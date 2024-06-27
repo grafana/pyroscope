@@ -1,3 +1,71 @@
 syntax = "proto3";
 
 package metastore.v1;
+
+service MetastoreService {
+  rpc AddBlock(AddBlockRequest) returns (AddBlockResponse) {}
+  rpc ListBlocks(ListBlocksRequest) returns (ListBlocksResponse) {}
+  rpc ListBlocksForQuery(ListBlocksForQueryRequest) returns (ListBlocksForQueryResponse) {}
+}
+
+message AddBlockRequest {
+  BlockMeta block = 1;
+}
+
+message AddBlockResponse {}
+
+message BlockMeta {
+  string id = 1;
+  uint64 min_time = 2;
+  uint64 max_time = 3;
+  uint64 shard = 4;
+  uint32 compaction_level = 5;
+  repeated TenantService services = 6;
+}
+
+// TenantService object points to the offset in the block at which
+// the tenant service data is located.
+message TenantService {
+  string tenant_id = 1;
+  string name = 2;
+  uint64 min_time = 3;
+  uint64 max_time = 4;
+
+  // Table of contents lists data sections within the tenant
+  // service region. The interpretation of the table of contents
+  // is specific to the metadata format version. By default, the
+  // sections are:
+  //  - 0: profiles.parquet
+  //  - 1: index.tsdb
+  //  - 2: symbols.symdb
+  repeated uint64 table_of_contents = 5;
+  // Size of the section in bytes.
+  uint64 size = 6;
+  // Profile types present in the tenant service data.
+  repeated string profile_types = 7;
+}
+
+message ListBlocksRequest {
+  // Optional.
+  // prefix and start_after allow to scope the list to kind,
+  // shard, tenant. Semantically, should be identical to:
+  // https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
+  string prefix = 1;
+  string start_after = 2;
+  uint32 batch_size = 3;
+}
+
+message ListBlocksResponse {
+  repeated BlockMeta blocks = 1;
+  string next_token = 2;
+}
+
+message ListBlocksForQueryRequest {
+  string start_time = 1;
+  string end_time = 2;
+  string query = 3;
+}
+
+message ListBlocksForQueryResponse {
+  repeated BlockMeta blocks = 1;
+}
