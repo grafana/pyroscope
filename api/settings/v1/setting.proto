@@ -90,13 +90,20 @@ message CollectionInstance {
   int64 last_updated = 3;
 }
 
+enum Status {
+  STATUS_UNSPECIFIED = 0;
+  STATUS_OK = 1;
+  STATUS_ERROR = 2;
+}
+
 message CollectionMessage {
-  // TODO: Status, ID
-    CollectionPayloadSubscribe payload_subscribe = 1;
-    CollectionPayloadSubscribe payload_unsubscribe = 2;
-    CollectionPayloadData payload_data = 3;
-    CollectionPayloadRuleInsert payload_rule_insert = 4;
-    CollectionPayloadRuleDelete payload_rule_delete = 5;
+  Status status = 1;
+  optional string message = 2;
+  int64 id = 3;
+  CollectionPayloadSubscribe payload_subscribe = 4;
+  CollectionPayloadData payload_data = 5;
+  CollectionPayloadRuleInsert payload_rule_insert = 6;
+  CollectionPayloadRuleDelete payload_rule_delete = 7;
 }
 
 message CollectionPayloadSubscribe {
