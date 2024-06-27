@@ -75,9 +75,9 @@ func (r *Rewriter) newRewriter(p uint64) (*partitionRewriter, error) {
 	var stats PartitionStats
 	reader.WriteStats(&stats)
 	n.stacktraces = newLookupTable[[]int32](stats.MaxStacktraceID)
-	n.locations = newLookupTable[*schemav1.InMemoryLocation](stats.LocationsTotal)
-	n.mappings = newLookupTable[*schemav1.InMemoryMapping](stats.MappingsTotal)
-	n.functions = newLookupTable[*schemav1.InMemoryFunction](stats.FunctionsTotal)
+	n.locations = newLookupTable[schemav1.InMemoryLocation](stats.LocationsTotal)
+	n.mappings = newLookupTable[schemav1.InMemoryMapping](stats.MappingsTotal)
+	n.functions = newLookupTable[schemav1.InMemoryFunction](stats.FunctionsTotal)
 	n.strings = newLookupTable[string](stats.StringsTotal)
 	return n, nil
 }
@@ -89,9 +89,9 @@ type partitionRewriter struct {
 	reader PartitionReader
 
 	stacktraces *lookupTable[[]int32]
-	locations   *lookupTable[*schemav1.InMemoryLocation]
-	mappings    *lookupTable[*schemav1.InMemoryMapping]
-	functions   *lookupTable[*schemav1.InMemoryFunction]
+	locations   *lookupTable[schemav1.InMemoryLocation]
+	mappings    *lookupTable[schemav1.InMemoryMapping]
+	functions   *lookupTable[schemav1.InMemoryFunction]
 	strings     *lookupTable[string]
 	current     []*schemav1.Stacktrace
 }
@@ -164,25 +164,25 @@ func (p *partitionRewriter) appendRewrite(stacktraces []uint32) error {
 	p.dst.AppendStrings(p.strings.buf, p.strings.values)
 	p.strings.updateResolved()
 
-	for _, v := range p.functions.values {
-		v.Name = p.strings.lookupResolved(v.Name)
-		v.Filename = p.strings.lookupResolved(v.Filename)
-		v.SystemName = p.strings.lookupResolved(v.SystemName)
+	for i := range p.functions.values {
+		p.functions.values[i].Name = p.strings.lookupResolved(p.functions.values[i].Name)
+		p.functions.values[i].Filename = p.strings.lookupResolved(p.functions.values[i].Filename)
+		p.functions.values[i].SystemName = p.strings.lookupResolved(p.functions.values[i].SystemName)
 	}
 	p.dst.AppendFunctions(p.functions.buf, p.functions.values)
 	p.functions.updateResolved()
 
-	for _, v := range p.mappings.values {
-		v.BuildId = p.strings.lookupResolved(v.BuildId)
-		v.Filename = p.strings.lookupResolved(v.Filename)
+	for i := range p.mappings.values {
+		p.mappings.values[i].BuildId = p.strings.lookupResolved(p.mappings.values[i].BuildId)
+		p.mappings.values[i].Filename = p.strings.lookupResolved(p.mappings.values[i].Filename)
 	}
 	p.dst.AppendMappings(p.mappings.buf, p.mappings.values)
 	p.mappings.updateResolved()
 
-	for _, v := range p.locations.values {
-		v.MappingId = p.mappings.lookupResolved(v.MappingId)
-		for j, line := range v.Line {
-			v.Line[j].FunctionId = p.functions.lookupResolved(line.FunctionId)
+	for i := range p.locations.values {
+		p.locations.values[i].MappingId = p.mappings.lookupResolved(p.locations.values[i].MappingId)
+		for j, line := range p.locations.values[i].Line {
+			p.locations.values[i].Line[j].FunctionId = p.functions.lookupResolved(line.FunctionId)
 		}
 	}
 	p.dst.AppendLocations(p.locations.buf, p.locations.values)
@@ -249,9 +249,9 @@ func (p *partitionRewriter) InsertStacktrace(stacktrace uint32, locations []int3
 func cloneSymbolsPartially(x *Symbols) *Symbols {
 	n := Symbols{
 		Stacktraces: x.Stacktraces,
-		Locations:   make([]*schemav1.InMemoryLocation, len(x.Locations)),
-		Mappings:    make([]*schemav1.InMemoryMapping, len(x.Mappings)),
-		Functions:   make([]*schemav1.InMemoryFunction, len(x.Functions)),
+		Locations:   make([]schemav1.InMemoryLocation, len(x.Locations)),
+		Mappings:    make([]schemav1.InMemoryMapping, len(x.Mappings)),
+		Functions:   make([]schemav1.InMemoryFunction, len(x.Functions)),
 		Strings:     x.Strings,
 	}
 	for i, l := range x.Locations {

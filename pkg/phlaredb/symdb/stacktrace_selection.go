@@ -173,3 +173,35 @@ func ge(a, b uint32) uint32 {
 	}
 	return 0
 }
+
+// findCallSite returns the stack trace of the call site
+// where each element in the stack trace is represented by
+// the function ID. Call site is the last element.
+// TODO(kolesnikovae): Location should also include the line number.
+func findCallSite(symbols *Symbols, locations []*typesv1.Location) []uint32 {
+	if len(locations) == 0 {
+		return nil
+	}
+	m := make(map[string]uint32, len(locations))
+	for _, loc := range locations {
+		m[loc.Name] = 0
+	}
+	c := len(m) // Only count unique names.
+	for f := 0; f < len(symbols.Functions) && c > 0; f++ {
+		s := symbols.Strings[symbols.Functions[f].Name]
+		if _, ok := m[s]; ok {
+			// We assume that no functions have the same name.
+			// Otherwise, the last one takes precedence.
+			m[s] = uint32(f) // f is FunctionId
+			c--
+		}
+	}
+	if c > 0 {
+		return nil
+	}
+	callSite := make([]uint32, len(locations))
+	for i, loc := range locations {
+		callSite[i] = m[loc.Name]
+	}
+	return callSite
+}

@@ -219,25 +219,17 @@ func (*ProfilePersister) Schema() *parquet.Schema {
 	return ProfilesSchema
 }
 
-func (*ProfilePersister) SortingColumns() parquet.SortingOption {
-	return parquet.SortingColumns(
-		parquet.Ascending("SeriesIndex"),
-		parquet.Ascending("TimeNanos"),
-		parquet.Ascending("Samples", "list", "element", "StacktraceID"),
-	)
-}
-
-func (*ProfilePersister) Deconstruct(row parquet.Row, id uint64, s *Profile) parquet.Row {
+func (*ProfilePersister) Deconstruct(row parquet.Row, s *Profile) parquet.Row {
 	row = ProfilesSchema.Deconstruct(row, s)
 	return row
 }
 
-func (*ProfilePersister) Reconstruct(row parquet.Row) (id uint64, s *Profile, err error) {
+func (*ProfilePersister) Reconstruct(row parquet.Row) (s *Profile, err error) {
 	var profile Profile
 	if err := ProfilesSchema.Reconstruct(&profile, row); err != nil {
-		return 0, nil, err
+		return nil, err
 	}
-	return 0, &profile, nil
+	return &profile, nil
 }
 
 type SliceRowReader[T any] struct {
@@ -325,12 +317,12 @@ type Samples struct {
 
 func NewSamples(size int) Samples {
 	return Samples{
-		StacktraceIDs: make([]uint32, 0, size),
-		Values:        make([]uint64, 0, size),
+		StacktraceIDs: make([]uint32, size),
+		Values:        make([]uint64, size),
 	}
 }
 
-func NewSamplesFromMap(m map[uint32]int64) Samples {
+func NewSamplesFromMap(m map[uint32]uint64) Samples {
 	s := Samples{
 		StacktraceIDs: make([]uint32, len(m)),
 		Values:        make([]uint64, len(m)),
@@ -339,7 +331,7 @@ func NewSamplesFromMap(m map[uint32]int64) Samples {
 	for k, v := range m {
 		if k != 0 && v > 0 {
 			s.StacktraceIDs[i] = k
-			s.Values[i] = uint64(v)
+			s.Values[i] = v
 			i++
 		}
 	}
@@ -362,6 +354,20 @@ func (s Samples) Compact(dedupe bool) Samples {
 
 func (s Samples) Clone() Samples {
 	return cloneSamples(s)
+}
+
+func (s Samples) Range(n, m int) Samples {
+	if n < 0 || n > m || m > s.Len() {
+		return Samples{}
+	}
+	x := Samples{
+		StacktraceIDs: s.StacktraceIDs[n:m],
+		Values:        s.Values[n:m],
+	}
+	if len(s.Spans) > 0 {
+		x.Spans = s.Spans[n:m]
+	}
+	return x
 }
 
 func trimDuplicateSamples(samples Samples) Samples {
@@ -452,41 +458,6 @@ func (s Samples) Sum() uint64 {
 		sum += v
 	}
 	return sum
-}
-
-// TODO(kolesnikovae): Consider map alternatives.
-
-// SampleMap is a map of partitioned samples structured
-// as follows: partition => stacktrace_id => value
-type SampleMap map[uint64]map[uint32]int64
-
-func (m SampleMap) Partition(p uint64) map[uint32]int64 {
-	s, ok := m[p]
-	if !ok {
-		s = make(map[uint32]int64, 128)
-		m[p] = s
-	}
-	return s
-}
-
-func (m SampleMap) AddSamples(partition uint64, samples Samples) {
-	p := m.Partition(partition)
-	for i, sid := range samples.StacktraceIDs {
-		p[sid] += int64(samples.Values[i])
-	}
-}
-
-func (m SampleMap) WriteSamples(partition uint64, dst *Samples) {
-	p, ok := m[partition]
-	if !ok {
-		return
-	}
-	dst.StacktraceIDs = dst.StacktraceIDs[:0]
-	dst.Values = dst.Values[:0]
-	for k, v := range p {
-		dst.StacktraceIDs = append(dst.StacktraceIDs, k)
-		dst.Values = append(dst.Values, uint64(v))
-	}
 }
 
 const profileSize = uint64(unsafe.Sizeof(InMemoryProfile{}))

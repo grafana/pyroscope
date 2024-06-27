@@ -124,11 +124,19 @@ func NewHead(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*Hea
 		}
 	}
 
-	h.symdb = symdb.NewSymDB(symdb.DefaultConfig().
-		WithDirectory(filepath.Join(h.headPath, symdb.DefaultDirName)).
-		WithParquetConfig(symdb.ParquetConfig{
+	symdbConfig := symdb.DefaultConfig()
+	if cfg.SymDBFormat == symdb.FormatV3 {
+		symdbConfig.Version = symdb.FormatV3
+		symdbConfig.Dir = h.headPath
+	} else {
+		symdbConfig.Version = symdb.FormatV2
+		symdbConfig.Dir = filepath.Join(h.headPath, symdb.DefaultDirName)
+		symdbConfig.Parquet = symdb.ParquetConfig{
 			MaxBufferRowCount: h.parquetConfig.MaxBufferRowCount,
-		}))
+		}
+	}
+
+	h.symdb = symdb.NewSymDB(symdbConfig)
 
 	h.wg.Add(1)
 	go h.loop()
@@ -566,7 +574,9 @@ func (h *Head) flush(ctx context.Context) error {
 	}
 	for _, file := range h.symdb.Files() {
 		// Files' path is relative to the symdb dir.
-		file.RelPath = filepath.Join(symdb.DefaultDirName, file.RelPath)
+		if h.symdb.FormatVersion() == symdb.FormatV2 {
+			file.RelPath = filepath.Join(symdb.DefaultDirName, file.RelPath)
+		}
 		files = append(files, file)
 		blockSize += file.SizeBytes
 		h.metrics.flushedFileSizeBytes.WithLabelValues(file.RelPath).Observe(float64(file.SizeBytes))

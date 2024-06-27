@@ -368,7 +368,7 @@ func (stats MetaStats) ConvertToBlockStats() *ingestv1.BlockStats {
 			indexBytes = f.SizeBytes
 		} else if f.RelPath == "profiles.parquet" {
 			profileBytes += f.SizeBytes
-		} else if strings.HasPrefix(f.RelPath, "symbols") {
+		} else if strings.HasPrefix(f.RelPath, "symbols") || filepath.Ext(f.RelPath) == ".symdb" {
 			symbolBytes += f.SizeBytes
 		}
 	}

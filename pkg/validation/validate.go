@@ -55,6 +55,9 @@ const (
 	MalformedProfile  Reason = "malformed_profile"
 	FlameGraphLimit   Reason = "flamegraph_limit"
 
+	// Those profiles were dropped because of relabeling rules
+	RelabelRules Reason = "dropped_by_relabel_rules"
+
 	SeriesLimitErrorMsg                 = "Maximum active series limit exceeded (%d/%d), reduce the number of active streams (reduce labels or reduce label values), or contact your administrator to see if the limit can be increased"
 	MissingLabelsErrorMsg               = "error at least one label pair is required per profile"
 	InvalidLabelsErrorMsg               = "invalid labels '%s' with error: %s"

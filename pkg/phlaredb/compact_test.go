@@ -697,7 +697,6 @@ func blockQuerierFromMeta(t *testing.T, dir string, m block.Meta) *singleBlockQu
 	require.NoError(t, err)
 	blk := NewSingleBlockQuerierFromMeta(ctx, bkt, &m)
 	require.NoError(t, blk.Open(ctx))
-	//	require.NoError(t, blk.symbols.Load(ctx))
 	return blk
 }
 
