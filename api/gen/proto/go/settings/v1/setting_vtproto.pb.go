@@ -216,11 +216,16 @@ func (m *CollectionMessage) CloneVT() *CollectionMessage {
 		return (*CollectionMessage)(nil)
 	}
 	r := new(CollectionMessage)
+	r.Status = m.Status
+	r.Id = m.Id
 	r.PayloadSubscribe = m.PayloadSubscribe.CloneVT()
-	r.PayloadUnsubscribe = m.PayloadUnsubscribe.CloneVT()
 	r.PayloadData = m.PayloadData.CloneVT()
 	r.PayloadRuleInsert = m.PayloadRuleInsert.CloneVT()
 	r.PayloadRuleDelete = m.PayloadRuleDelete.CloneVT()
+	if rhs := m.Message; rhs != nil {
+		tmpVal := *rhs
+		r.Message = &tmpVal
+	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -561,10 +566,16 @@ func (this *CollectionMessage) EqualVT(that *CollectionMessage) bool {
 	} else if this == nil || that == nil {
 		return false
 	}
-	if !this.PayloadSubscribe.EqualVT(that.PayloadSubscribe) {
+	if this.Status != that.Status {
 		return false
 	}
-	if !this.PayloadUnsubscribe.EqualVT(that.PayloadUnsubscribe) {
+	if p, q := this.Message, that.Message; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
+		return false
+	}
+	if this.Id != that.Id {
+		return false
+	}
+	if !this.PayloadSubscribe.EqualVT(that.PayloadSubscribe) {
 		return false
 	}
 	if !this.PayloadData.EqualVT(that.PayloadData) {
@@ -1283,7 +1294,7 @@ func (m *CollectionMessage) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= size
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
 		i--
-		dAtA[i] = 0x2a
+		dAtA[i] = 0x3a
 	}
 	if m.PayloadRuleInsert != nil {
 		size, err := m.PayloadRuleInsert.MarshalToSizedBufferVT(dAtA[:i])
@@ -1293,7 +1304,7 @@ func (m *CollectionMessage) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= size
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
 		i--
-		dAtA[i] = 0x22
+		dAtA[i] = 0x32
 	}
 	if m.PayloadData != nil {
 		size, err := m.PayloadData.MarshalToSizedBufferVT(dAtA[:i])
@@ -1303,17 +1314,7 @@ func (m *CollectionMessage) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= size
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
 		i--
-		dAtA[i] = 0x1a
-	}
-	if m.PayloadUnsubscribe != nil {
-		size, err := m.PayloadUnsubscribe.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
-		i--
-		dAtA[i] = 0x12
+		dAtA[i] = 0x2a
 	}
 	if m.PayloadSubscribe != nil {
 		size, err := m.PayloadSubscribe.MarshalToSizedBufferVT(dAtA[:i])
@@ -1323,7 +1324,24 @@ func (m *CollectionMessage) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= size
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
 		i--
-		dAtA[i] = 0xa
+		dAtA[i] = 0x22
+	}
+	if m.Id != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Id))
+		i--
+		dAtA[i] = 0x18
+	}
+	if m.Message != nil {
+		i -= len(*m.Message)
+		copy(dAtA[i:], *m.Message)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(*m.Message)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if m.Status != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Status))
+		i--
+		dAtA[i] = 0x8
 	}
 	return len(dAtA) - i, nil
 }
@@ -1680,12 +1698,18 @@ func (m *CollectionMessage) SizeVT() (n int) {
 	}
 	var l int
 	_ = l
-	if m.PayloadSubscribe != nil {
-		l = m.PayloadSubscribe.SizeVT()
+	if m.Status != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.Status))
+	}
+	if m.Message != nil {
+		l = len(*m.Message)
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
-	if m.PayloadUnsubscribe != nil {
-		l = m.PayloadUnsubscribe.SizeVT()
+	if m.Id != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.Id))
+	}
+	if m.PayloadSubscribe != nil {
+		l = m.PayloadSubscribe.SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	if m.PayloadData != nil {
@@ -2748,6 +2772,77 @@ func (m *CollectionMessage) UnmarshalVT(dAtA []byte) error {
 		}
 		switch fieldNum {
 		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Status", wireType)
+			}
+			m.Status = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Status |= Status(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Message", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			s := string(dAtA[iNdEx:postIndex])
+			m.Message = &s
+			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
+			}
+			m.Id = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Id |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field PayloadSubscribe", wireType)
 			}
@@ -2783,43 +2878,7 @@ func (m *CollectionMessage) UnmarshalVT(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field PayloadUnsubscribe", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.PayloadUnsubscribe == nil {
-				m.PayloadUnsubscribe = &CollectionPayloadSubscribe{}
-			}
-			if err := m.PayloadUnsubscribe.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 3:
+		case 5:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field PayloadData", wireType)
 			}
@@ -2855,7 +2914,7 @@ func (m *CollectionMessage) UnmarshalVT(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 4:
+		case 6:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field PayloadRuleInsert", wireType)
 			}
@@ -2891,7 +2950,7 @@ func (m *CollectionMessage) UnmarshalVT(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 5:
+		case 7:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field PayloadRuleDelete", wireType)
 			}
