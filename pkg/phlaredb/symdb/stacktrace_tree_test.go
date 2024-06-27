@@ -189,6 +189,26 @@ func Test_parentPointerTree_toStacktraceTree(t *testing.T) {
 	assert.Equal(t, x.nodes, restored.nodes)
 }
 
+func Test_parentPointerTree_toStacktraceTree_profile(t *testing.T) {
+	p, err := pprof.OpenFile("testdata/profile.pb.gz")
+	require.NoError(t, err)
+
+	x := newStacktraceTree(defaultStacktraceTreeSize)
+	m := make(map[uint32]int)
+	for i := range p.Sample {
+		m[x.insert(p.Sample[i].LocationId)] = i
+	}
+
+	var b bytes.Buffer
+	_, _ = x.WriteTo(&b)
+	ppt := newParentPointerTree(x.len())
+	_, err = ppt.ReadFrom(bytes.NewBuffer(b.Bytes()))
+	require.NoError(t, err)
+
+	restored := ppt.toStacktraceTree()
+	assert.Equal(t, x.nodes, restored.nodes)
+}
+
 func Benchmark_stacktrace_tree_insert(b *testing.B) {
 	p, err := pprof.OpenFile("testdata/profile.pb.gz")
 	require.NoError(b, err)
