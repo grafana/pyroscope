@@ -216,11 +216,11 @@ func (m *CollectionMessage) CloneVT() *CollectionMessage {
 		return (*CollectionMessage)(nil)
 	}
 	r := new(CollectionMessage)
-	if m.Payload != nil {
-		r.Payload = m.Payload.(interface {
-			CloneVT() isCollectionMessage_Payload
-		}).CloneVT()
-	}
+	r.PayloadSubscribe = m.PayloadSubscribe.CloneVT()
+	r.PayloadUnsubscribe = m.PayloadUnsubscribe.CloneVT()
+	r.PayloadData = m.PayloadData.CloneVT()
+	r.PayloadRuleInsert = m.PayloadRuleInsert.CloneVT()
+	r.PayloadRuleDelete = m.PayloadRuleDelete.CloneVT()
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -230,51 +230,6 @@ func (m *CollectionMessage) CloneVT() *CollectionMessage {
 
 func (m *CollectionMessage) CloneMessageVT() proto.Message {
 	return m.CloneVT()
-}
-
-func (m *CollectionMessage_PayloadSubscribe) CloneVT() isCollectionMessage_Payload {
-	if m == nil {
-		return (*CollectionMessage_PayloadSubscribe)(nil)
-	}
-	r := new(CollectionMessage_PayloadSubscribe)
-	r.PayloadSubscribe = m.PayloadSubscribe.CloneVT()
-	return r
-}
-
-func (m *CollectionMessage_PayloadUnsubscribe) CloneVT() isCollectionMessage_Payload {
-	if m == nil {
-		return (*CollectionMessage_PayloadUnsubscribe)(nil)
-	}
-	r := new(CollectionMessage_PayloadUnsubscribe)
-	r.PayloadUnsubscribe = m.PayloadUnsubscribe.CloneVT()
-	return r
-}
-
-func (m *CollectionMessage_PayloadData) CloneVT() isCollectionMessage_Payload {
-	if m == nil {
-		return (*CollectionMessage_PayloadData)(nil)
-	}
-	r := new(CollectionMessage_PayloadData)
-	r.PayloadData = m.PayloadData.CloneVT()
-	return r
-}
-
-func (m *CollectionMessage_PayloadRuleInsert) CloneVT() isCollectionMessage_Payload {
-	if m == nil {
-		return (*CollectionMessage_PayloadRuleInsert)(nil)
-	}
-	r := new(CollectionMessage_PayloadRuleInsert)
-	r.PayloadRuleInsert = m.PayloadRuleInsert.CloneVT()
-	return r
-}
-
-func (m *CollectionMessage_PayloadRuleDelete) CloneVT() isCollectionMessage_Payload {
-	if m == nil {
-		return (*CollectionMessage_PayloadRuleDelete)(nil)
-	}
-	r := new(CollectionMessage_PayloadRuleDelete)
-	r.PayloadRuleDelete = m.PayloadRuleDelete.CloneVT()
-	return r
 }
 
 func (m *CollectionPayloadSubscribe) CloneVT() *CollectionPayloadSubscribe {
@@ -606,17 +561,20 @@ func (this *CollectionMessage) EqualVT(that *CollectionMessage) bool {
 	} else if this == nil || that == nil {
 		return false
 	}
-	if this.Payload == nil && that.Payload != nil {
+	if !this.PayloadSubscribe.EqualVT(that.PayloadSubscribe) {
 		return false
-	} else if this.Payload != nil {
-		if that.Payload == nil {
-			return false
-		}
-		if !this.Payload.(interface {
-			EqualVT(isCollectionMessage_Payload) bool
-		}).EqualVT(that.Payload) {
-			return false
-		}
+	}
+	if !this.PayloadUnsubscribe.EqualVT(that.PayloadUnsubscribe) {
+		return false
+	}
+	if !this.PayloadData.EqualVT(that.PayloadData) {
+		return false
+	}
+	if !this.PayloadRuleInsert.EqualVT(that.PayloadRuleInsert) {
+		return false
+	}
+	if !this.PayloadRuleDelete.EqualVT(that.PayloadRuleDelete) {
+		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
@@ -628,131 +586,6 @@ func (this *CollectionMessage) EqualMessageVT(thatMsg proto.Message) bool {
 	}
 	return this.EqualVT(that)
 }
-func (this *CollectionMessage_PayloadSubscribe) EqualVT(thatIface isCollectionMessage_Payload) bool {
-	that, ok := thatIface.(*CollectionMessage_PayloadSubscribe)
-	if !ok {
-		return false
-	}
-	if this == that {
-		return true
-	}
-	if this == nil && that != nil || this != nil && that == nil {
-		return false
-	}
-	if p, q := this.PayloadSubscribe, that.PayloadSubscribe; p != q {
-		if p == nil {
-			p = &CollectionPayloadSubscribe{}
-		}
-		if q == nil {
-			q = &CollectionPayloadSubscribe{}
-		}
-		if !p.EqualVT(q) {
-			return false
-		}
-	}
-	return true
-}
-
-func (this *CollectionMessage_PayloadUnsubscribe) EqualVT(thatIface isCollectionMessage_Payload) bool {
-	that, ok := thatIface.(*CollectionMessage_PayloadUnsubscribe)
-	if !ok {
-		return false
-	}
-	if this == that {
-		return true
-	}
-	if this == nil && that != nil || this != nil && that == nil {
-		return false
-	}
-	if p, q := this.PayloadUnsubscribe, that.PayloadUnsubscribe; p != q {
-		if p == nil {
-			p = &CollectionPayloadSubscribe{}
-		}
-		if q == nil {
-			q = &CollectionPayloadSubscribe{}
-		}
-		if !p.EqualVT(q) {
-			return false
-		}
-	}
-	return true
-}
-
-func (this *CollectionMessage_PayloadData) EqualVT(thatIface isCollectionMessage_Payload) bool {
-	that, ok := thatIface.(*CollectionMessage_PayloadData)
-	if !ok {
-		return false
-	}
-	if this == that {
-		return true
-	}
-	if this == nil && that != nil || this != nil && that == nil {
-		return false
-	}
-	if p, q := this.PayloadData, that.PayloadData; p != q {
-		if p == nil {
-			p = &CollectionPayloadData{}
-		}
-		if q == nil {
-			q = &CollectionPayloadData{}
-		}
-		if !p.EqualVT(q) {
-			return false
-		}
-	}
-	return true
-}
-
-func (this *CollectionMessage_PayloadRuleInsert) EqualVT(thatIface isCollectionMessage_Payload) bool {
-	that, ok := thatIface.(*CollectionMessage_PayloadRuleInsert)
-	if !ok {
-		return false
-	}
-	if this == that {
-		return true
-	}
-	if this == nil && that != nil || this != nil && that == nil {
-		return false
-	}
-	if p, q := this.PayloadRuleInsert, that.PayloadRuleInsert; p != q {
-		if p == nil {
-			p = &CollectionPayloadRuleInsert{}
-		}
-		if q == nil {
-			q = &CollectionPayloadRuleInsert{}
-		}
-		if !p.EqualVT(q) {
-			return false
-		}
-	}
-	return true
-}
-
-func (this *CollectionMessage_PayloadRuleDelete) EqualVT(thatIface isCollectionMessage_Payload) bool {
-	that, ok := thatIface.(*CollectionMessage_PayloadRuleDelete)
-	if !ok {
-		return false
-	}
-	if this == that {
-		return true
-	}
-	if this == nil && that != nil || this != nil && that == nil {
-		return false
-	}
-	if p, q := this.PayloadRuleDelete, that.PayloadRuleDelete; p != q {
-		if p == nil {
-			p = &CollectionPayloadRuleDelete{}
-		}
-		if q == nil {
-			q = &CollectionPayloadRuleDelete{}
-		}
-		if !p.EqualVT(q) {
-			return false
-		}
-	}
-	return true
-}
-
 func (this *CollectionPayloadSubscribe) EqualVT(that *CollectionPayloadSubscribe) bool {
 	if this == that {
 		return true
@@ -1442,25 +1275,46 @@ func (m *CollectionMessage) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if vtmsg, ok := m.Payload.(interface {
-		MarshalToSizedBufferVT([]byte) (int, error)
-	}); ok {
-		size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
+	if m.PayloadRuleDelete != nil {
+		size, err := m.PayloadRuleDelete.MarshalToSizedBufferVT(dAtA[:i])
 		if err != nil {
 			return 0, err
 		}
 		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x2a
 	}
-	return len(dAtA) - i, nil
-}
-
-func (m *CollectionMessage_PayloadSubscribe) MarshalToVT(dAtA []byte) (int, error) {
-	size := m.SizeVT()
-	return m.MarshalToSizedBufferVT(dAtA[:size])
-}
-
-func (m *CollectionMessage_PayloadSubscribe) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
-	i := len(dAtA)
+	if m.PayloadRuleInsert != nil {
+		size, err := m.PayloadRuleInsert.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x22
+	}
+	if m.PayloadData != nil {
+		size, err := m.PayloadData.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if m.PayloadUnsubscribe != nil {
+		size, err := m.PayloadUnsubscribe.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x12
+	}
 	if m.PayloadSubscribe != nil {
 		size, err := m.PayloadSubscribe.MarshalToSizedBufferVT(dAtA[:i])
 		if err != nil {
@@ -1473,82 +1327,7 @@ func (m *CollectionMessage_PayloadSubscribe) MarshalToSizedBufferVT(dAtA []byte)
 	}
 	return len(dAtA) - i, nil
 }
-func (m *CollectionMessage_PayloadUnsubscribe) MarshalToVT(dAtA []byte) (int, error) {
-	size := m.SizeVT()
-	return m.MarshalToSizedBufferVT(dAtA[:size])
-}
 
-func (m *CollectionMessage_PayloadUnsubscribe) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.PayloadUnsubscribe != nil {
-		size, err := m.PayloadUnsubscribe.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
-		i--
-		dAtA[i] = 0x12
-	}
-	return len(dAtA) - i, nil
-}
-func (m *CollectionMessage_PayloadData) MarshalToVT(dAtA []byte) (int, error) {
-	size := m.SizeVT()
-	return m.MarshalToSizedBufferVT(dAtA[:size])
-}
-
-func (m *CollectionMessage_PayloadData) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.PayloadData != nil {
-		size, err := m.PayloadData.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
-		i--
-		dAtA[i] = 0x1a
-	}
-	return len(dAtA) - i, nil
-}
-func (m *CollectionMessage_PayloadRuleInsert) MarshalToVT(dAtA []byte) (int, error) {
-	size := m.SizeVT()
-	return m.MarshalToSizedBufferVT(dAtA[:size])
-}
-
-func (m *CollectionMessage_PayloadRuleInsert) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.PayloadRuleInsert != nil {
-		size, err := m.PayloadRuleInsert.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
-		i--
-		dAtA[i] = 0x22
-	}
-	return len(dAtA) - i, nil
-}
-func (m *CollectionMessage_PayloadRuleDelete) MarshalToVT(dAtA []byte) (int, error) {
-	size := m.SizeVT()
-	return m.MarshalToSizedBufferVT(dAtA[:size])
-}
-
-func (m *CollectionMessage_PayloadRuleDelete) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.PayloadRuleDelete != nil {
-		size, err := m.PayloadRuleDelete.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
-		i--
-		dAtA[i] = 0x2a
-	}
-	return len(dAtA) - i, nil
-}
 func (m *CollectionPayloadSubscribe) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
@@ -1901,73 +1680,30 @@ func (m *CollectionMessage) SizeVT() (n int) {
 	}
 	var l int
 	_ = l
-	if vtmsg, ok := m.Payload.(interface{ SizeVT() int }); ok {
-		n += vtmsg.SizeVT()
+	if m.PayloadSubscribe != nil {
+		l = m.PayloadSubscribe.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.PayloadUnsubscribe != nil {
+		l = m.PayloadUnsubscribe.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.PayloadData != nil {
+		l = m.PayloadData.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.PayloadRuleInsert != nil {
+		l = m.PayloadRuleInsert.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.PayloadRuleDelete != nil {
+		l = m.PayloadRuleDelete.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	n += len(m.unknownFields)
 	return n
 }
 
-func (m *CollectionMessage_PayloadSubscribe) SizeVT() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.PayloadSubscribe != nil {
-		l = m.PayloadSubscribe.SizeVT()
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-	}
-	return n
-}
-func (m *CollectionMessage_PayloadUnsubscribe) SizeVT() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.PayloadUnsubscribe != nil {
-		l = m.PayloadUnsubscribe.SizeVT()
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-	}
-	return n
-}
-func (m *CollectionMessage_PayloadData) SizeVT() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.PayloadData != nil {
-		l = m.PayloadData.SizeVT()
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-	}
-	return n
-}
-func (m *CollectionMessage_PayloadRuleInsert) SizeVT() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.PayloadRuleInsert != nil {
-		l = m.PayloadRuleInsert.SizeVT()
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-	}
-	return n
-}
-func (m *CollectionMessage_PayloadRuleDelete) SizeVT() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.PayloadRuleDelete != nil {
-		l = m.PayloadRuleDelete.SizeVT()
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-	}
-	return n
-}
 func (m *CollectionPayloadSubscribe) SizeVT() (n int) {
 	if m == nil {
 		return 0
@@ -3040,16 +2776,11 @@ func (m *CollectionMessage) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if oneof, ok := m.Payload.(*CollectionMessage_PayloadSubscribe); ok {
-				if err := oneof.PayloadSubscribe.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				v := &CollectionPayloadSubscribe{}
-				if err := v.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-				m.Payload = &CollectionMessage_PayloadSubscribe{PayloadSubscribe: v}
+			if m.PayloadSubscribe == nil {
+				m.PayloadSubscribe = &CollectionPayloadSubscribe{}
+			}
+			if err := m.PayloadSubscribe.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
 			}
 			iNdEx = postIndex
 		case 2:
@@ -3081,16 +2812,11 @@ func (m *CollectionMessage) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if oneof, ok := m.Payload.(*CollectionMessage_PayloadUnsubscribe); ok {
-				if err := oneof.PayloadUnsubscribe.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				v := &CollectionPayloadSubscribe{}
-				if err := v.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-				m.Payload = &CollectionMessage_PayloadUnsubscribe{PayloadUnsubscribe: v}
+			if m.PayloadUnsubscribe == nil {
+				m.PayloadUnsubscribe = &CollectionPayloadSubscribe{}
+			}
+			if err := m.PayloadUnsubscribe.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
 			}
 			iNdEx = postIndex
 		case 3:
@@ -3122,16 +2848,11 @@ func (m *CollectionMessage) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if oneof, ok := m.Payload.(*CollectionMessage_PayloadData); ok {
-				if err := oneof.PayloadData.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				v := &CollectionPayloadData{}
-				if err := v.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-				m.Payload = &CollectionMessage_PayloadData{PayloadData: v}
+			if m.PayloadData == nil {
+				m.PayloadData = &CollectionPayloadData{}
+			}
+			if err := m.PayloadData.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
 			}
 			iNdEx = postIndex
 		case 4:
@@ -3163,16 +2884,11 @@ func (m *CollectionMessage) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if oneof, ok := m.Payload.(*CollectionMessage_PayloadRuleInsert); ok {
-				if err := oneof.PayloadRuleInsert.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				v := &CollectionPayloadRuleInsert{}
-				if err := v.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-				m.Payload = &CollectionMessage_PayloadRuleInsert{PayloadRuleInsert: v}
+			if m.PayloadRuleInsert == nil {
+				m.PayloadRuleInsert = &CollectionPayloadRuleInsert{}
+			}
+			if err := m.PayloadRuleInsert.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
 			}
 			iNdEx = postIndex
 		case 5:
@@ -3204,16 +2920,11 @@ func (m *CollectionMessage) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if oneof, ok := m.Payload.(*CollectionMessage_PayloadRuleDelete); ok {
-				if err := oneof.PayloadRuleDelete.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				v := &CollectionPayloadRuleDelete{}
-				if err := v.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-				m.Payload = &CollectionMessage_PayloadRuleDelete{PayloadRuleDelete: v}
+			if m.PayloadRuleDelete == nil {
+				m.PayloadRuleDelete = &CollectionPayloadRuleDelete{}
+			}
+			if err := m.PayloadRuleDelete.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
 			}
 			iNdEx = postIndex
 		default:

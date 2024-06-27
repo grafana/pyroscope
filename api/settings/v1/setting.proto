@@ -92,13 +92,11 @@ message CollectionInstance {
 
 message CollectionMessage {
   // TODO: Status, ID
-  oneof payload {
     CollectionPayloadSubscribe payload_subscribe = 1;
     CollectionPayloadSubscribe payload_unsubscribe = 2;
     CollectionPayloadData payload_data = 3;
     CollectionPayloadRuleInsert payload_rule_insert = 4;
     CollectionPayloadRuleDelete payload_rule_delete = 5;
-  }
 }
 
 message CollectionPayloadSubscribe {
