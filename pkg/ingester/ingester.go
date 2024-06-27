@@ -4,32 +4,29 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"sync"
+	"github.com/google/uuid"
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	"github.com/grafana/pyroscope/pkg/pprof"
+	"github.com/grafana/pyroscope/pkg/tenant"
+	"github.com/grafana/pyroscope/pkg/validation"
 	"time"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/google/uuid"
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
-	"github.com/oklog/ulid"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 
-	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingesterv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
-	phlareobjclient "github.com/grafana/pyroscope/pkg/objstore/client"
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
-	"github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/usagestats"
 	"github.com/grafana/pyroscope/pkg/util"
-	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 var activeTenantsStats = usagestats.NewInt("ingester_active_tenants")
@@ -59,11 +56,10 @@ type Ingester struct {
 	subservices        *services.Manager
 	subservicesWatcher *services.FailureWatcher
 
-	localBucket   phlareobj.Bucket
 	storageBucket phlareobj.Bucket
 
-	instances    map[string]*instance
-	instancesMtx sync.RWMutex
+	limiters      *limiters
+	segmentWriter *segmentsWriter
 
 	limits Limits
 	reg    prometheus.Registerer
@@ -86,7 +82,6 @@ func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storag
 		phlarectx:     phlarectx,
 		logger:        phlarecontext.Logger(phlarectx),
 		reg:           phlarecontext.Registry(phlarectx),
-		instances:     map[string]*instance{},
 		dbConfig:      dbConfig,
 		storageBucket: storageBucket,
 		limits:        limits,
@@ -94,15 +89,8 @@ func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storag
 
 	// initialise the local bucket client
 	var (
-		localBucketCfg phlareobjclient.Config
-		err            error
+		err error
 	)
-	localBucketCfg.Backend = phlareobjclient.Filesystem
-	localBucketCfg.Filesystem.Directory = dbConfig.DataPath
-	i.localBucket, err = phlareobjclient.NewBucket(phlarectx, localBucketCfg, "local")
-	if err != nil {
-		return nil, err
-	}
 
 	i.lifecycler, err = ring.NewLifecycler(
 		cfg.LifecyclerConfig,
@@ -115,30 +103,15 @@ func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storag
 		return nil, err
 	}
 
-	retentionPolicy := defaultRetentionPolicy()
-
-	if dbConfig.EnforcementInterval > 0 {
-		retentionPolicy.EnforcementInterval = dbConfig.EnforcementInterval
-	}
-	if dbConfig.MinFreeDisk > 0 {
-		retentionPolicy.MinFreeDisk = dbConfig.MinFreeDisk
-	}
-	if dbConfig.MinDiskAvailablePercentage > 0 {
-		retentionPolicy.MinDiskAvailablePercentage = dbConfig.MinDiskAvailablePercentage
-	}
-	if queryStoreAfter > 0 {
-		retentionPolicy.Expiry = queryStoreAfter
-	}
-
-	if dbConfig.DisableEnforcement {
-		i.subservices, err = services.NewManager(i.lifecycler)
-	} else {
-		dc := newDiskCleaner(phlarecontext.Logger(phlarectx), i, retentionPolicy, dbConfig)
-		i.subservices, err = services.NewManager(i.lifecycler, dc)
-	}
+	i.subservices, err = services.NewManager(i.lifecycler)
 	if err != nil {
 		return nil, errors.Wrap(err, "services manager")
 	}
+	i.limiters = newLimiters(i.limitsForTenant)
+	if storageBucket == nil {
+		return nil, errors.New("storage bucket is required for segment writer")
+	}
+	i.segmentWriter = newSegmentWriter(i.phlarectx, i.logger, i.dbConfig, i.limiters, storageBucket)
 	i.subservicesWatcher = services.NewFailureWatcher()
 	i.subservicesWatcher.WatchManager(i.subservices)
 	i.Service = services.NewBasicService(i.starting, i.running, i.stopping)
@@ -161,110 +134,29 @@ func (i *Ingester) running(ctx context.Context) error {
 func (i *Ingester) stopping(_ error) error {
 	errs := multierror.New()
 	errs.Add(services.StopManagerAndAwaitStopped(context.Background(), i.subservices))
-	// stop all instances
-	i.instancesMtx.RLock()
-	defer i.instancesMtx.RUnlock()
-	for _, inst := range i.instances {
-		errs.Add(inst.Stop())
-	}
+	errs.Add(i.segmentWriter.Stop())
 	return errs.Err()
 }
 
-func (i *Ingester) GetOrCreateInstance(tenantID string) (*instance, error) { //nolint:revive
-	inst, ok := i.getInstanceByID(tenantID)
-	if ok {
-		return inst, nil
-	}
-
-	i.instancesMtx.Lock()
-	defer i.instancesMtx.Unlock()
-	inst, ok = i.instances[tenantID]
-	if !ok {
-		var err error
-
-		inst, err = newInstance(i.phlarectx, i.dbConfig, tenantID, i.localBucket, i.storageBucket, NewLimiter(tenantID, i.limits, i.lifecycler, i.cfg.LifecyclerConfig.RingConfig.ReplicationFactor))
-		if err != nil {
-			return nil, err
-		}
-		i.instances[tenantID] = inst
-		activeTenantsStats.Set(int64(len(i.instances)))
-	}
-	return inst, nil
-}
-
-func (i *Ingester) getInstanceByID(id string) (*instance, bool) {
-	i.instancesMtx.RLock()
-	defer i.instancesMtx.RUnlock()
-
-	inst, ok := i.instances[id]
-	return inst, ok
-}
-
-// forInstanceUnary executes the given function for the instance with the given tenant ID in the context.
-func forInstanceUnary[T any](ctx context.Context, i *Ingester, f func(*instance) (T, error)) (T, error) {
-	var res T
-	err := i.forInstance(ctx, func(inst *instance) error {
-		r, err := f(inst)
-		if err == nil {
-			res = r
-		}
-		return err
-	})
-	return res, err
-}
-
-// forInstance executes the given function for the instance with the given tenant ID in the context.
-func (i *Ingester) forInstance(ctx context.Context, f func(*instance) error) error {
+func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
 	if err != nil {
-		return connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	instance, err := i.GetOrCreateInstance(tenantID)
-	if err != nil {
-		return connect.NewError(connect.CodeInternal, err)
-	}
-	return f(instance)
-}
 
-func (i *Ingester) evictBlock(tenantID string, b ulid.ULID, fn func() error) (err error) {
-	// We lock instances map for writes to ensure that no new instances are
-	// created during the procedure. Otherwise, during initialization, the
-	// new PhlareDB instance may try to load a block that has already been
-	// deleted, or is being deleted.
-	i.instancesMtx.RLock()
-	defer i.instancesMtx.RUnlock()
-	// The map only contains PhlareDB instances that has been initialized since
-	// the process start, therefore there is no guarantee that we will find the
-	// discovered candidate block there. If it is the case, we have to ensure that
-	// the block won't be accessed, before and during deleting it from the disk.
-	var evicted bool
-	if tenantInstance, ok := i.instances[tenantID]; ok {
-		if evicted, err = tenantInstance.Evict(b, fn); err != nil {
-			return fmt.Errorf("failed to evict block %s/%s: %w", tenantID, b, err)
-		}
-	}
-	// If the instance is not found, or the querier is not aware of the block,
-	// and thus the callback has not been invoked, do it now.
-	if !evicted {
-		return fn()
-	}
-	return nil
-}
-
-func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
-	return forInstanceUnary(ctx, i, func(instance *instance) (*connect.Response[pushv1.PushResponse], error) {
+	err = i.segmentWriter.ingestAndWait(ctx, shardKey(0), func(segment *segment) error {
 		for _, series := range req.Msg.Series {
 			for _, sample := range series.Samples {
-				err := pprof.FromBytes(sample.RawProfile, func(p *profilev1.Profile, size int) error {
-					id, err := uuid.Parse(sample.ID)
-					if err != nil {
-						return err
-					}
-					if err = instance.Ingest(ctx, p, id, series.Labels...); err != nil {
+				id, err := uuid.Parse(sample.ID)
+				if err != nil {
+					return err
+				}
+				err = pprof.FromBytes(sample.RawProfile, func(p *profilev1.Profile, size int) error {
+					if err = segment.ingest(ctx, tenantID, p, id, series.Labels...); err != nil {
 						reason := validation.ReasonOf(err)
 						if reason != validation.Unknown {
-							validation.DiscardedProfiles.WithLabelValues(string(reason), instance.tenantID).Add(float64(1))
-							validation.DiscardedBytes.WithLabelValues(string(reason), instance.tenantID).Add(float64(size))
+							validation.DiscardedProfiles.WithLabelValues(string(reason), tenantID).Add(float64(1))
+							validation.DiscardedBytes.WithLabelValues(string(reason), tenantID).Add(float64(size))
 							switch validation.ReasonOf(err) {
 							case validation.SeriesLimit:
 								return connect.NewError(connect.CodeResourceExhausted, err)
@@ -274,21 +166,23 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 					return err
 				})
 				if err != nil {
-					return nil, err
+					return err
 				}
 			}
 		}
-		return connect.NewResponse(&pushv1.PushResponse{}), nil
+		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&pushv1.PushResponse{}), nil
+
 }
 
 func (i *Ingester) Flush(ctx context.Context, req *connect.Request[ingesterv1.FlushRequest]) (*connect.Response[ingesterv1.FlushResponse], error) {
-	i.instancesMtx.RLock()
-	defer i.instancesMtx.RUnlock()
-	for _, inst := range i.instances {
-		if err := inst.Flush(ctx, true, "api"); err != nil {
-			return nil, err
-		}
+	err := i.segmentWriter.Flush(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	return connect.NewResponse(&ingesterv1.FlushResponse{}), nil
@@ -306,4 +200,10 @@ func (i *Ingester) CheckReady(ctx context.Context) error {
 		return fmt.Errorf("ingester not ready: %v", s)
 	}
 	return i.lifecycler.CheckReady(ctx)
+}
+
+func (i *Ingester) limitsForTenant(tenantID string) Limiter {
+	return NewLimiter(tenantID, i.limits, i.lifecycler,
+		1, // i.cfg.LifecyclerConfig.RingConfig.ReplicationFactor
+	)
 }
