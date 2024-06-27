@@ -164,6 +164,7 @@ func Test_stacktrace_tree_pprof_locations(t *testing.T) {
 	}
 }
 
+// The test is helpful for debugging.
 func Test_parentPointerTree_toStacktraceTree(t *testing.T) {
 	x := newStacktraceTree(10)
 	for _, stack := range [][]uint64{
@@ -178,33 +179,25 @@ func Test_parentPointerTree_toStacktraceTree(t *testing.T) {
 	} {
 		x.insert(stack)
 	}
-
-	var b bytes.Buffer
-	_, _ = x.WriteTo(&b)
-	ppt := newParentPointerTree(x.len())
-	_, err := ppt.ReadFrom(bytes.NewBuffer(b.Bytes()))
-	require.NoError(t, err)
-
-	restored := ppt.toStacktraceTree()
-	assert.Equal(t, x.nodes, restored.nodes)
+	assertRestoredStacktraceTree(t, x)
 }
 
 func Test_parentPointerTree_toStacktraceTree_profile(t *testing.T) {
 	p, err := pprof.OpenFile("testdata/profile.pb.gz")
 	require.NoError(t, err)
-
 	x := newStacktraceTree(defaultStacktraceTreeSize)
-	m := make(map[uint32]int)
-	for i := range p.Sample {
-		m[x.insert(p.Sample[i].LocationId)] = i
+	for _, s := range p.Sample {
+		x.insert(s.LocationId)
 	}
+	assertRestoredStacktraceTree(t, x)
+}
 
+func assertRestoredStacktraceTree(t *testing.T, x *stacktraceTree) {
 	var b bytes.Buffer
 	_, _ = x.WriteTo(&b)
 	ppt := newParentPointerTree(x.len())
-	_, err = ppt.ReadFrom(bytes.NewBuffer(b.Bytes()))
+	_, err := ppt.ReadFrom(bytes.NewBuffer(b.Bytes()))
 	require.NoError(t, err)
-
 	restored := ppt.toStacktraceTree()
 	assert.Equal(t, x.nodes, restored.nodes)
 }
