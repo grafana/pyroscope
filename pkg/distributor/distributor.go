@@ -444,25 +444,25 @@ func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.Pu
 		profiles = append(profiles, &profileTracker{profile: series})
 	}
 
-	const maxExpectedReplicationSet = 5 // typical replication factor 3 plus one for inactive plus one for luck
-	var descs [maxExpectedReplicationSet]ring.InstanceDesc
+	var descs [1]ring.InstanceDesc
 
 	samplesByIngester := map[string][]*profileTracker{}
 	ingesterDescs := map[string]ring.InstanceDesc{}
+
 	for i, key := range keys {
-		// Get a subring if tenant has shuffle shard size configured.
-		subRing := d.ingestersRing.ShuffleShard(tenantID, d.limits.IngestionTenantShardSize(tenantID))
+		serviceName := phlaremodel.Labels(profiles[i].profile.Labels).Get(phlaremodel.LabelNameServiceName)
+		subRing := d.ingestersRing.ShuffleShard(tenantID+serviceName, d.limits.IngestionTenantShardSize(tenantID))
 
 		replicationSet, err := subRing.Get(key, ring.Write, descs[:0], nil, nil)
 		if err != nil {
 			return nil, err
 		}
-		profiles[i].minSuccess = len(replicationSet.Instances) - replicationSet.MaxErrors
-		profiles[i].maxFailures = replicationSet.MaxErrors
-		for _, ingester := range replicationSet.Instances {
-			samplesByIngester[ingester.Addr] = append(samplesByIngester[ingester.Addr], profiles[i])
-			ingesterDescs[ingester.Addr] = ingester
+		if len(replicationSet.Instances) != 1 {
+			return nil, connect.NewError(connect.CodeInternal, errors.New("misconfigured ingester ring"))
 		}
+		ingester := replicationSet.Instances[0]
+		samplesByIngester[ingester.Addr] = append(samplesByIngester[ingester.Addr], profiles[i])
+		ingesterDescs[ingester.Addr] = ingester
 	}
 	tracker := pushTracker{
 		done: make(chan struct{}, 1), // buffer avoids blocking if caller terminates - sendProfiles() only sends once on each
@@ -559,16 +559,12 @@ func (d *Distributor) sendProfiles(ctx context.Context, ingester ring.InstanceDe
 	// goroutine will write to either channel.
 	for i := range profileTrackers {
 		if err != nil {
-			if profileTrackers[i].failed.Inc() <= int32(profileTrackers[i].maxFailures) {
-				continue
-			}
+			profileTrackers[i].failed.Inc()
 			if pushTracker.samplesFailed.Inc() == 1 {
 				pushTracker.err <- err
 			}
 		} else {
-			if profileTrackers[i].succeeded.Inc() != int32(profileTrackers[i].minSuccess) {
-				continue
-			}
+			profileTrackers[i].succeeded.Inc()
 			if pushTracker.samplesPending.Dec() == 0 {
 				pushTracker.done <- struct{}{}
 			}
@@ -736,11 +732,9 @@ func exportSamples(e *pprof.SampleExporter, samples []*googlev1.Sample) *pprof.P
 }
 
 type profileTracker struct {
-	profile     *distributormodel.ProfileSeries
-	minSuccess  int
-	maxFailures int
-	succeeded   atomic.Int32
-	failed      atomic.Int32
+	profile   *distributormodel.ProfileSeries
+	succeeded atomic.Int32
+	failed    atomic.Int32
 }
 
 type pushTracker struct {

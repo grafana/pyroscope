@@ -362,6 +362,9 @@ func (f *Phlare) initMemberlistKV() (services.Service, error) {
 }
 
 func (f *Phlare) initRing() (_ services.Service, err error) {
+	f.Cfg.Ingester.LifecyclerConfig.RingConfig.ReplicationFactor = 1 // TODO aleks: can we disable replication elsewhere?
+	f.Cfg.Ingester.LifecyclerConfig.NumTokens = 4                    // TODO aleks: make this globally configurable
+
 	f.ring, err = ring.New(f.Cfg.Ingester.LifecyclerConfig.RingConfig, "ingester", "ring", log.With(f.logger, "component", "ring"), prometheus.WrapRegistererWithPrefix("pyroscope_", f.reg))
 	if err != nil {
 		return nil, err
