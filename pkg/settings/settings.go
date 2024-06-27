@@ -3,6 +3,7 @@ package settings
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"time"
 
 	"connectrpc.com/connect"
@@ -11,14 +12,22 @@ import (
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/tenant"
 	"github.com/pkg/errors"
+	"github.com/thanos-io/objstore"
 
 	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
+	"github.com/grafana/pyroscope/pkg/settings/collection"
 )
 
-func New(store Store, logger log.Logger) (*TenantSettings, error) {
+func New(bucket objstore.Bucket, logger log.Logger) (*TenantSettings, error) {
+	if bucket == nil {
+		bucket = objstore.NewInMemBucket()
+		level.Warn(logger).Log("msg", "using in-memory settings store, changes will be lost after shutdown")
+	}
+
 	ts := &TenantSettings{
-		store:  store,
-		logger: logger,
+		store:      newBucketStore(bucket),
+		logger:     logger,
+		collection: collection.New(collection.Config{}, bucket, logger),
 	}
 
 	ts.Service = services.NewBasicService(ts.starting, ts.running, ts.stopping)
@@ -29,12 +38,18 @@ func New(store Store, logger log.Logger) (*TenantSettings, error) {
 type TenantSettings struct {
 	services.Service
 
-	store  Store
+	store  store
 	logger log.Logger
+
+	collection *collection.Collection
 }
 
 func (ts *TenantSettings) starting(ctx context.Context) error {
 	return nil
+}
+
+func (ts *TenantSettings) HandleCollectionSettings(role collection.Role) http.Handler {
+	return ts.collection.HandleSettings(role)
 }
 
 func (ts *TenantSettings) running(ctx context.Context) error {
@@ -63,6 +78,8 @@ func (ts *TenantSettings) running(ctx context.Context) error {
 func (ts *TenantSettings) stopping(_ error) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+
+	ts.collection.Stop(ctx)
 
 	err := ts.store.Flush(ctx)
 	if err != nil {

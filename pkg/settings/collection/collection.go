@@ -1,6 +1,7 @@
 package collection
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -10,6 +11,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/gorilla/websocket"
 	"github.com/grafana/dskit/tenant"
+	"github.com/thanos-io/objstore"
 )
 
 type Config struct{}
@@ -25,6 +27,7 @@ const (
 // For each tenant and scope a new hub is created.
 type Collection struct {
 	cfg    Config
+	bucket objstore.Bucket
 	logger log.Logger
 	wg     sync.WaitGroup
 	stopCh chan struct{}
@@ -35,9 +38,10 @@ type Collection struct {
 	hubs     map[hubKey]*hub
 }
 
-func New(cfg Config, logger log.Logger) *Collection {
+func New(cfg Config, bucket objstore.Bucket, logger log.Logger) *Collection {
 	return &Collection{
 		cfg:    cfg,
+		bucket: bucket,
 		logger: logger,
 		upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,
@@ -61,12 +65,17 @@ var (
 	errInvalidScopeName = fmt.Errorf("invalid scope name, must match %s", validScopeName)
 )
 
-func (c *Collection) Stop() {
+func (c *Collection) Stop(ctx context.Context) {
 	close(c.stopCh)
 	c.wg.Wait()
 }
 
-// serveWs handles websocket requests from the peer.
+func (c *Collection) HandleSettings(role Role) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		c.handleWS(w, req, role)
+	})
+}
+
 func (c *Collection) handleWS(w http.ResponseWriter, r *http.Request, role Role) {
 	tenantID, err := tenant.TenantID(r.Context())
 	if err != nil {
@@ -144,6 +153,7 @@ func (c *Collection) getHub(k hubKey) *hub {
 
 	h = newHub(
 		log.With(c.logger, "tenant", k.tenantID, "scope", k.scope),
+		newBucketStore(c.bucket, k),
 		defaultTopics,
 	)
 	c.wg.Add(1)

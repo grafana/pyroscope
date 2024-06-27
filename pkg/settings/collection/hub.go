@@ -1,6 +1,7 @@
 package collection
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -19,14 +20,14 @@ const defaultScope = "profiles-collection"
 type topic struct {
 	name    string
 	ch      chan struct{}
-	update  func(*settingsv1.CollectionPayloadData) error
+	update  func(context.Context, *settingsv1.CollectionPayloadData) error
 	err     error
 	content *settingsv1.CollectionPayloadData
 	hash    uint64
 	clients map[*client]uint64
 }
 
-func newTopic(name string, f func(*settingsv1.CollectionPayloadData) error) *topic {
+func newTopic(name string, f func(context.Context, *settingsv1.CollectionPayloadData) error) *topic {
 	return &topic{
 		name:    name,
 		ch:      make(chan struct{}),
@@ -42,8 +43,8 @@ type buf struct {
 	hasher xxhash.Digest
 }
 
-func (t *topic) get(b *buf) {
-	t.err = t.update(t.content)
+func (t *topic) get(ctx context.Context, b *buf) {
+	t.err = t.update(ctx, t.content)
 	if t.err != nil {
 		return
 	}
@@ -72,19 +73,23 @@ type hubKey struct {
 	scope    string
 }
 
-type hub struct {
-	logger     log.Logger
-	lck        sync.RWMutex
-	nextRuleID int64
-	rules      []*settingsv1.CollectionRule
+func (k hubKey) path() string {
+	return fmt.Sprintf("%s/settings/collection.%s", k.tenantID, k.scope)
+}
 
+type hub struct {
+	logger log.Logger
+
+	store *bucketStore
+
+	lck    sync.RWMutex // TODO: Figure out why?
 	topics map[string]*topic
 
 	clients map[*client]struct{}
 
-	agentsPublishing       map[*client]bool // are particular grafana agents publishing their targets
-	agentsPublishingActive bool             // is agent publishing requested
-	agents                 map[string]*settingsv1.CollectionInstance
+	instancesPublishing       map[*client]bool // are particular instances publishing their targets
+	instancesPublishingActive bool             // is instance targets publishing requested
+	instances                 map[string]*settingsv1.CollectionInstance
 
 	// Register requests from the clients.
 	registerCh chan *client
@@ -92,8 +97,8 @@ type hub struct {
 	// Unregister requests from clients.
 	unregisterCh chan *client
 
-	// Update agent targets
-	agentCh chan *settingsv1.CollectionInstance
+	// Update instance targets
+	instanceCh chan *settingsv1.CollectionInstance
 
 	// Update rules
 	rulesCh chan func(*hub)
@@ -102,17 +107,18 @@ type hub struct {
 	buf buf
 }
 
-func newHub(logger log.Logger, topicsF func(*hub) []*topic) *hub {
+func newHub(logger log.Logger, store *bucketStore, topicsF func(*hub) []*topic) *hub {
 	h := &hub{
-		logger:           logger,
-		topics:           make(map[string]*topic),
-		clients:          make(map[*client]struct{}),
-		agentsPublishing: make(map[*client]bool),
-		agents:           make(map[string]*settingsv1.CollectionInstance),
-		agentCh:          make(chan *settingsv1.CollectionInstance),
-		registerCh:       make(chan *client),
-		unregisterCh:     make(chan *client),
-		rulesCh:          make(chan func(*hub), 32),
+		logger:              logger,
+		store:               store,
+		topics:              make(map[string]*topic),
+		clients:             make(map[*client]struct{}),
+		instancesPublishing: make(map[*client]bool),
+		instances:           make(map[string]*settingsv1.CollectionInstance),
+		instanceCh:          make(chan *settingsv1.CollectionInstance),
+		registerCh:          make(chan *client),
+		unregisterCh:        make(chan *client),
+		rulesCh:             make(chan func(*hub), 32),
 	}
 
 	for _, topic := range topicsF(h) {
@@ -123,7 +129,7 @@ func newHub(logger log.Logger, topicsF func(*hub) []*topic) *hub {
 }
 
 // check data for topics to sent
-func (h *hub) updateClientTopicsToPublish(client *client) error {
+func (h *hub) updateClientTopicsToPublish(ctx context.Context, client *client) error {
 	var payload []*settingsv1.CollectionPayloadData
 	for _, t := range h.topics {
 		clientHash, ok := t.clients[client]
@@ -132,7 +138,7 @@ func (h *hub) updateClientTopicsToPublish(client *client) error {
 		}
 
 		if t.hash == 0 {
-			t.get(&h.buf)
+			t.get(ctx, &h.buf)
 		}
 
 		if clientHash == t.hash {
@@ -157,19 +163,19 @@ func (h *hub) updateClientTopicsToPublish(client *client) error {
 	return nil
 }
 
-// check if agent needs toggle publishing
-func (h *hub) updateClientToggleAgentSubscription(client *client) error {
-	active, ok := h.agentsPublishing[client]
+// check if instance needs toggle publishing
+func (h *hub) updateClientToggleInstanceSubscription(_ context.Context, client *client) error {
+	active, ok := h.instancesPublishing[client]
 	if !ok {
 		return nil
 	}
-	if active != h.agentsPublishingActive {
+	if active != h.instancesPublishingActive {
 
 		msg := settingsv1.CollectionMessage{
 			PayloadSubscribe: &settingsv1.CollectionPayloadSubscribe{},
 		}
 		if !active {
-			msg.PayloadSubscribe.Topics = []string{"agents"}
+			msg.PayloadSubscribe.Topics = []string{topicInstances}
 		}
 
 		data, err := json.Marshal(&msg)
@@ -177,86 +183,54 @@ func (h *hub) updateClientToggleAgentSubscription(client *client) error {
 			return err
 		}
 
-		level.Debug(client.logger).Log("request agent publishing", "client", fmt.Sprintf("%p", client), "data", string(data))
+		level.Debug(client.logger).Log("request instance target publishing", "client", fmt.Sprintf("%p", client), "data", string(data))
 		client.send <- data
 
-		h.agentsPublishing[client] = h.agentsPublishingActive
+		h.instancesPublishing[client] = h.instancesPublishingActive
 	}
 	return nil
 }
 
-func (h *hub) updateClient(client *client) {
-	if err := h.updateClientTopicsToPublish(client); err != nil {
+func (h *hub) updateClient(ctx context.Context, client *client) {
+	if err := h.updateClientTopicsToPublish(ctx, client); err != nil {
 		level.Error(client.logger).Log("msg", "error updating client topics to publish", "err", err)
 	}
-	if err := h.updateClientToggleAgentSubscription(client); err != nil {
-		level.Error(client.logger).Log("msg", "error updating client to subscribe to agents", "err", err)
+	if err := h.updateClientToggleInstanceSubscription(ctx, client); err != nil {
+		level.Error(client.logger).Log("msg", "error updating client to subscribe to instances", "err", err)
 	}
 }
 
-func (h *hub) updateAgents() {
-	t, ok := h.topics["agents"]
+func (h *hub) updateInstances(ctx context.Context) {
+	t, ok := h.topics[topicInstances]
 	if !ok {
 		return
 	}
-	t.get(&h.buf)
+	t.get(ctx, &h.buf)
 
-	// update frontend with new agents data
+	// update frontend with new instance data
 	for client := range t.clients {
-		h.updateClient(client)
+		h.updateClient(ctx, client)
 	}
 }
 
-func (a *hub) insertRule(data *settingsv1.CollectionPayloadRuleInsert) {
-	a.lck.Lock()
-	defer a.lck.Unlock()
-
-	if a.nextRuleID == 0 {
-		for _, r := range a.rules {
-			if r.Id > a.nextRuleID {
-				a.nextRuleID = r.Id
-			}
-		}
-		a.nextRuleID++
+func (a *hub) insertRule(ctx context.Context, data *settingsv1.CollectionPayloadRuleInsert) error {
+	rc, err := CollectionRuleToRelabelConfig(data.Rule)
+	if err != nil {
+		return err
+	}
+	if err := rc.Validate(); err != nil {
+		return err
 	}
 
-	pos := 0
-	// find position to insert
-	if data.After != nil {
-		after := *data.After
-		for i, r := range a.rules {
-			if r.Id == after {
-				pos = i + 1
-				break
-			}
-		}
-	}
-
-	// overwrite id
-	rule := data.Rule.CloneVT()
-	rule.Id = a.nextRuleID
-	a.nextRuleID++
-
-	// insert rule to correct position
-	a.rules = append(a.rules, nil)
-	copy(a.rules[pos+1:], a.rules[pos:])
-	a.rules[pos] = rule
-
+	return a.store.insertRule(ctx, data)
 }
 
-func (h *hub) deleteRule(id int64) {
-	h.lck.Lock()
-	defer h.lck.Unlock()
-
-	for i, r := range h.rules {
-		if r.Id == id {
-			h.rules = append(h.rules[:i], h.rules[i+1:]...)
-			break
-		}
-	}
+func (h *hub) deleteRule(ctx context.Context, id int64) error {
+	return h.store.deleteRule(ctx, id)
 }
 
 func (h *hub) run(stopCh <-chan struct{}) {
+	ctx := context.Background()
 	for {
 		select {
 		case client := <-h.registerCh:
@@ -274,32 +248,32 @@ func (h *hub) run(stopCh <-chan struct{}) {
 
 			}
 			if client.isRuleManager() {
-				h.agentsPublishing[client] = false
+				h.instancesPublishing[client] = false
 			}
 
-			// check if agents need toggle publishing
-			agentsTopic, ok := h.topics["agents"]
-			agentsPublishingRequested := false
+			// check if instance need toggle publishing
+			instanceTopic, ok := h.topics[topicInstances]
+			instancesPublishingRequested := false
 			if ok {
-				agentsPublishingRequested = len(agentsTopic.clients) != 0
+				instancesPublishingRequested = len(instanceTopic.clients) != 0
 			}
-			if agentsPublishingRequested != h.agentsPublishingActive {
-				if agentsPublishingRequested {
-					slog.Debug("agents publishing has been enabled")
+			if instancesPublishingRequested != h.instancesPublishingActive {
+				if instancesPublishingRequested {
+					slog.Debug("instance targets publishing has been enabled")
 				} else {
-					slog.Debug("agents publishing has been disabled")
+					slog.Debug("instance targets publishing has been disabled")
 				}
-				h.agentsPublishingActive = agentsPublishingRequested
-				// send message to all agents
-				for agent := range h.agentsPublishing {
-					h.updateClient(agent)
+				h.instancesPublishingActive = instancesPublishingRequested
+				// send message to all instances
+				for instance := range h.instancesPublishing {
+					h.updateClient(ctx, instance)
 				}
 			}
-			h.updateClient(client)
-		case agent := <-h.agentCh:
-			agent.LastUpdated = time.Now().UnixMilli()
-			h.agents[agent.Hostname] = agent
-			h.updateAgents()
+			h.updateClient(ctx, client)
+		case instance := <-h.instanceCh:
+			instance.LastUpdated = time.Now().UnixMilli()
+			h.instances[instance.Hostname] = instance
+			h.updateInstances(ctx)
 		case client := <-h.unregisterCh:
 			delete(h.clients, client)
 			for _, topic := range h.topics {
@@ -326,44 +300,45 @@ func (h *hub) run(stopCh <-chan struct{}) {
 			}
 		case f := <-h.rulesCh:
 			f(h)
-			t, ok := h.topics["rules"]
+			t, ok := h.topics[topicRules]
 			if !ok {
 				continue
 			}
-			t.get(&h.buf)
+			t.get(ctx, &h.buf)
 			// update all clients
 			for client := range t.clients {
-				h.updateClient(client)
+				h.updateClient(ctx, client)
 			}
 		}
 	}
 }
 
-func (h *hub) updateRulesPayload(p *settingsv1.CollectionPayloadData) error {
-	h.lck.RLock()
-	defer h.lck.RUnlock()
-
-	if cap(p.Rules) < len(h.rules) {
-		p.Rules = make([]*settingsv1.CollectionRule, 0, len(h.rules))
+func (h *hub) updateRulesPayload(ctx context.Context, p *settingsv1.CollectionPayloadData) error {
+	rules, err := h.store.list(ctx)
+	if err != nil {
+		return fmt.Errorf("error reading rules from store: %w", err)
+	}
+	if cap(p.Rules) < len(rules) {
+		p.Rules = make([]*settingsv1.CollectionRule, 0, len(rules))
 	} else {
 		p.Rules = p.Rules[:0]
 	}
-	for _, r := range h.rules {
+	for _, r := range rules {
 		p.Rules = append(p.Rules, r.CloneVT())
 	}
 	return nil
 }
 
-func (h *hub) updateInstancesPayload(p *settingsv1.CollectionPayloadData) error {
+func (h *hub) updateInstancesPayload(ctx context.Context, p *settingsv1.CollectionPayloadData) error {
 	h.lck.RLock()
 	defer h.lck.RUnlock()
 
-	if cap(p.Instances) < len(h.agents) {
-		p.Instances = make([]*settingsv1.CollectionInstance, 0, len(h.agents))
+	if cap(p.Instances) < len(h.instances) {
+		p.Instances = make([]*settingsv1.CollectionInstance, 0, len(h.instances))
 	} else {
 		p.Instances = p.Instances[:0]
 	}
-	for _, a := range h.agents {
+	for _, a := range h.instances {
 		p.Instances = append(p.Instances, a.CloneVT())
 	}
 	return nil

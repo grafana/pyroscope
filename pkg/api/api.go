@@ -55,6 +55,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/scheduler"
 	"github.com/grafana/pyroscope/pkg/scheduler/schedulerpb/schedulerpbconnect"
 	"github.com/grafana/pyroscope/pkg/settings"
+	"github.com/grafana/pyroscope/pkg/settings/collection"
 	"github.com/grafana/pyroscope/pkg/storegateway"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/gziphandler"
@@ -212,6 +213,8 @@ func (a *API) RegisterRuntimeConfig(runtimeConfigHandler http.HandlerFunc, userL
 
 func (a *API) RegisterTenantSettings(ts *settings.TenantSettings) {
 	settingsv1connect.RegisterSettingsServiceHandler(a.server.HTTP, ts, a.connectOptionsAuthRecovery()...)
+	a.RegisterRoute("/settings.v1.SettingsService/GetCollectionRules", ts.HandleCollectionSettings(collection.RuleReceiver), true, false, "GET")
+	a.RegisterRoute("/settings.v1.SettingsService/UpdateCollectionRules", ts.HandleCollectionSettings(collection.RuleManager), true, false, "GET")
 }
 
 // RegisterOverridesExporter registers the endpoints associated with the overrides exporter.

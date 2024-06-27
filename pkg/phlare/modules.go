@@ -148,21 +148,7 @@ func (f *Phlare) initRuntimeConfig() (services.Service, error) {
 }
 
 func (f *Phlare) initTenantSettings() (services.Service, error) {
-	var store settings.Store
-	var err error
-
-	switch {
-	case f.storageBucket != nil:
-		store, err = settings.NewBucketStore(f.storageBucket)
-	default:
-		store, err = settings.NewMemoryStore()
-		level.Warn(f.logger).Log("msg", "using in-memory settings store, changes will be lost after shutdown")
-	}
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to init settings store")
-	}
-
-	settings, err := settings.New(store, log.With(f.logger, "component", TenantSettings))
+	settings, err := settings.New(f.storageBucket, log.With(f.logger, "component", TenantSettings))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to init settings service")
 	}
