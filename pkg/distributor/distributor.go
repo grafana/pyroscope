@@ -453,16 +453,25 @@ func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.Pu
 		serviceName := phlaremodel.Labels(profiles[i].profile.Labels).Get(phlaremodel.LabelNameServiceName)
 		subRing := d.ingestersRing.ShuffleShard(tenantID+serviceName, d.limits.IngestionTenantShardSize(tenantID))
 
-		replicationSet, err := subRing.Get(key, ring.Write, descs[:0], nil, nil)
+		targetSet, err := subRing.Get(key, ring.Write, descs[:0], nil, nil)
 		if err != nil {
 			return nil, err
 		}
-		if len(replicationSet.Instances) != 1 {
+		if len(targetSet.Instances) != 1 {
 			return nil, connect.NewError(connect.CodeInternal, errors.New("misconfigured ingester ring"))
 		}
-		ingester := replicationSet.Instances[0]
+		ingester := targetSet.Instances[0]
 		samplesByIngester[ingester.Addr] = append(samplesByIngester[ingester.Addr], profiles[i])
 		ingesterDescs[ingester.Addr] = ingester
+
+		fallbackSet, err := subRing.GetAllHealthy(ring.Write)
+		if err != nil {
+			return nil, err
+		}
+		slices.RemoveInPlace(fallbackSet.Instances, func(desc ring.InstanceDesc, i int) bool {
+			return desc.Id == ingester.Addr
+		})
+		profiles[i].fallbackNodes = fallbackSet.Instances
 	}
 	tracker := pushTracker{
 		done: make(chan struct{}, 1), // buffer avoids blocking if caller terminates - sendProfiles() only sends once on each
@@ -481,13 +490,53 @@ func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.Pu
 			d.sendProfiles(localCtx, ingester, samples, &tracker)
 		}(ingesterDescs[ingester], samples)
 	}
-	select {
-	case err = <-tracker.err:
-		return nil, err
-	case <-tracker.done:
-		return connect.NewResponse(&pushv1.PushResponse{}), nil
-	case <-ctx.Done():
-		return nil, ctx.Err()
+	numRetries := 0
+	maxRetries := 1
+	for {
+		select {
+		case err = <-tracker.err:
+			// retry failed profiles using fallback nodes once
+			if numRetries < maxRetries {
+				return nil, err
+			}
+			samplesByIngester = map[string][]*profileTracker{}
+			ingesterDescs = map[string]ring.InstanceDesc{}
+			pending := int32(0)
+			for i, p := range profiles {
+				if p.failed.Load() > 0 {
+					if len(p.fallbackNodes) == 0 {
+						level.Warn(d.logger).Log("msg", "no fallback nodes to send failed profile to", "err", err)
+						continue
+					}
+					ingester := p.fallbackNodes[0]
+					samplesByIngester[ingester.Addr] = append(samplesByIngester[ingester.Addr], profiles[i])
+					ingesterDescs[ingester.Addr] = ingester
+					pending++
+				}
+			}
+			if pending > 0 {
+				tracker.samplesPending.Store(pending)
+				numRetries++
+				for ingester, samples := range samplesByIngester {
+					go func(ingester ring.InstanceDesc, samples []*profileTracker) {
+						// Use a background context to make sure all ingesters get samples even if we return early
+						localCtx, cancel := context.WithTimeout(context.Background(), d.cfg.PushTimeout)
+						defer cancel()
+						localCtx = tenant.InjectTenantID(localCtx, tenantID)
+						if sp := opentracing.SpanFromContext(ctx); sp != nil {
+							localCtx = opentracing.ContextWithSpan(localCtx, sp)
+						}
+						d.sendProfiles(localCtx, ingester, samples, &tracker)
+					}(ingesterDescs[ingester], samples)
+				}
+			} else {
+				level.Warn(d.logger).Log("msg", "error received but no profiles marked as failed", "err", err)
+			}
+		case <-tracker.done:
+			return connect.NewResponse(&pushv1.PushResponse{}), nil
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
 	}
 }
 
@@ -735,6 +784,9 @@ type profileTracker struct {
 	profile   *distributormodel.ProfileSeries
 	succeeded atomic.Int32
 	failed    atomic.Int32
+
+	shard         uint32
+	fallbackNodes []ring.InstanceDesc
 }
 
 type pushTracker struct {
