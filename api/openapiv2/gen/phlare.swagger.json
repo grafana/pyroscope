@@ -15,6 +15,9 @@
       "name": "IngesterService"
     },
     {
+      "name": "MetastoreService"
+    },
+    {
       "name": "QuerierService"
     },
     {
@@ -451,6 +454,9 @@
         }
       }
     },
+    "v1AddBlockResponse": {
+      "type": "object"
+    },
     "v1AnalyzeQueryResponse": {
       "type": "object",
       "properties": {
@@ -527,6 +533,37 @@
           "items": {
             "type": "object",
             "$ref": "#/definitions/v1LabelPair"
+          }
+        }
+      }
+    },
+    "v1BlockMeta": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "minTime": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "maxTime": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "shard": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "compactionLevel": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "services": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1TenantService"
           }
         }
       }
@@ -919,6 +956,33 @@
           "type": "string",
           "format": "int64",
           "description": "Line number in source code."
+        }
+      }
+    },
+    "v1ListBlocksForQueryResponse": {
+      "type": "object",
+      "properties": {
+        "blocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1BlockMeta"
+          }
+        }
+      }
+    },
+    "v1ListBlocksResponse": {
+      "type": "object",
+      "properties": {
+        "blocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1BlockMeta"
+          }
+        },
+        "nextToken": {
+          "type": "string"
         }
       }
     },
@@ -1492,6 +1556,39 @@
         "MERGE_FORMAT_TREE"
       ],
       "default": "MERGE_FORMAT_UNSPECIFIED"
+    },
+    "v1TenantService": {
+      "type": "object",
+      "properties": {
+        "tenantId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "minTime": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "maxTime": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "size": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Size of the section in bytes."
+        },
+        "tableOfContents": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uint64"
+          },
+          "title": "Table of contents lists data sections within the tenant\nservice region. The interpretation of the table of contents\nis specific to the metadata format version. By default, the\nsections are:\n - 0: profiles.parquet\n - 1: index.tsdb\n - 2: symbols.symdb"
+        }
+      },
+      "description": "TenantService object points to the offset in the block at which\nthe tenant service data is located. This will be an indirect\naccess: additional header/footer should be retrieved (given\nthe offset and the fixed section size) to figure out the data\nlayout and structure. The footer should be cached, ideally."
     },
     "v1TimeSeriesAggregationType": {
       "type": "string",
