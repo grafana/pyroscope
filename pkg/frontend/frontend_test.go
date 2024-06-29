@@ -85,7 +85,7 @@ func setupFrontendWithConcurrencyAndServerOptions(t *testing.T, reg prometheus.R
 	cfg.WorkerConcurrency = concurrency
 
 	logger := log.NewLogfmtLogger(os.Stdout)
-	f, err := NewFrontend(cfg, validation.MockLimits{MaxQueryParallelismValue: 1}, logger, reg)
+	f, err := NewFrontend(cfg, validation.MockLimits{MaxQueryParallelismValue: 1}, logger, reg, nil)
 	require.NoError(t, err)
 
 	frontendpbconnect.RegisterFrontendForQuerierHandler(mux, f)
@@ -256,7 +256,7 @@ func TestFrontendFullRoundtrip(t *testing.T) {
 
 	// initialize the frontend
 	fCfg := cfgFromURL(t, s.URL)
-	f, err := NewFrontend(fCfg, validation.MockLimits{MaxQueryParallelismValue: 1}, logger, reg)
+	f, err := NewFrontend(fCfg, validation.MockLimits{MaxQueryParallelismValue: 1}, logger, reg, nil)
 	require.NoError(t, err)
 	frontendpbconnect.RegisterFrontendForQuerierHandler(mux, f) // probably not needed
 	querierv1connect.RegisterQuerierServiceHandler(mux, f)

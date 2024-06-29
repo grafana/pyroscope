@@ -65,6 +65,8 @@ spec:
             - "-server.http-listen-port={{ $values.service.port }}"
             - "-memberlist.cluster-label={{ .Release.Namespace }}-{{ include "pyroscope.fullname" .}}"
             - "-memberlist.join=dns+{{ include "pyroscope.fullname" .}}-memberlist.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:{{ .Values.pyroscope.memberlist.port }}"
+            - "-metastore.address=dns:///{{ include "pyroscope.fullname" .}}-metastore-grpc.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:9095"
+            - "-metastore.raft.bootstrap-peers=dns:///{{ include "pyroscope.fullname" .}}-metastore-raft.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:9099"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
           {{- range $key, $value := $extraArgs }}
@@ -113,6 +115,12 @@ spec:
             - name: data
               mountPath: /data-compactor
               subPath: compactor
+            {{- end }}
+            {{- if eq $component "metastore" }}
+              subPath: default
+            - name: data
+              mountPath: /data-metastore
+              subPath: metastore
             {{- end }}
             {{- with $values.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}

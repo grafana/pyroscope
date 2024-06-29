@@ -26,9 +26,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/atomic"
+	"google.golang.org/grpc"
 
 	"github.com/grafana/dskit/tenant"
 
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/frontend/frontendpb"
 	"github.com/grafana/pyroscope/pkg/querier/stats"
 	"github.com/grafana/pyroscope/pkg/scheduler/schedulerdiscovery"
@@ -71,7 +73,6 @@ func (cfg *Config) Validate() error {
 	if cfg.QuerySchedulerDiscovery.Mode == schedulerdiscovery.ModeRing && cfg.SchedulerAddress != "" {
 		return fmt.Errorf("scheduler address cannot be specified when query-scheduler service discovery mode is set to '%s'", cfg.QuerySchedulerDiscovery.Mode)
 	}
-
 	return cfg.GRPCClientConfig.Validate()
 }
 
@@ -94,6 +95,8 @@ type Frontend struct {
 	schedulerWorkersWatcher *services.FailureWatcher
 	requests                *requestsInProgress
 	frontendpb.UnimplementedFrontendForQuerierServer
+
+	metastoreclient metastorev1.MetastoreServiceClient
 }
 
 type Limits interface {
@@ -134,7 +137,7 @@ type enqueueResult struct {
 }
 
 // NewFrontend creates a new frontend.
-func NewFrontend(cfg Config, limits Limits, log log.Logger, reg prometheus.Registerer) (*Frontend, error) {
+func NewFrontend(cfg Config, limits Limits, log log.Logger, reg prometheus.Registerer, metastorecc grpc.ClientConnInterface) (*Frontend, error) {
 	requestsCh := make(chan *frontendRequest)
 
 	schedulerWorkers, err := newFrontendSchedulerWorkers(cfg, fmt.Sprintf("%s:%d", cfg.Addr, cfg.Port), requestsCh, log, reg)
@@ -150,7 +153,13 @@ func NewFrontend(cfg Config, limits Limits, log log.Logger, reg prometheus.Regis
 		schedulerWorkers:        schedulerWorkers,
 		schedulerWorkersWatcher: services.NewFailureWatcher(),
 		requests:                newRequestsInProgress(),
+		metastoreclient:         metastorev1.NewMetastoreServiceClient(metastorecc),
 	}
+
+	if err != nil {
+		return nil, fmt.Errorf("metastoreclient.New: %w", err)
+	}
+
 	f.GRPCRoundTripper = &realFrontendRoundTripper{frontend: f}
 	// Randomize to avoid getting responses from queries sent before restart, which could lead to mixing results
 	// between different queries. Note that frontend verifies the user, so it cannot leak results between tenants.

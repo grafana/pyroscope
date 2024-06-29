@@ -15,12 +15,15 @@ message AddBlockRequest {
 message AddBlockResponse {}
 
 message BlockMeta {
-  string id = 1;
-  uint64 min_time = 2;
-  uint64 max_time = 3;
-  uint64 shard = 4;
-  uint32 compaction_level = 5;
-  repeated TenantService services = 6;
+  uint64 format_version = 1;
+  string id = 2;
+  int64 min_time = 3;
+  int64 max_time = 4;
+  uint64 shard = 5;
+  uint32 compaction_level = 6;
+
+  // TODO(kolesnikovae): Partitions with labels?
+  repeated TenantService tenant_services = 7;
 }
 
 // TenantService object points to the offset in the block at which
@@ -28,8 +31,8 @@ message BlockMeta {
 message TenantService {
   string tenant_id = 1;
   string name = 2;
-  uint64 min_time = 3;
-  uint64 max_time = 4;
+  int64 min_time = 3;
+  int64 max_time = 4;
 
   // Table of contents lists data sections within the tenant
   // service region. The interpretation of the table of contents
@@ -61,9 +64,10 @@ message ListBlocksResponse {
 }
 
 message ListBlocksForQueryRequest {
-  string start_time = 1;
-  string end_time = 2;
-  string query = 3;
+  repeated string tenant_id = 1;
+  int64 start_time = 2;
+  int64 end_time = 3;
+  string query = 4;
 }
 
 message ListBlocksForQueryResponse {

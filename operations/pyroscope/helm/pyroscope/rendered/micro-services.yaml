@@ -66,6 +66,27 @@ spec:
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
+  name: pyroscope-dev-metastore
+  namespace: default
+  labels:
+    helm.sh/chart: pyroscope-1.6.1
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "1.6.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "metastore"
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pyroscope
+      app.kubernetes.io/instance: pyroscope-dev
+      app.kubernetes.io/component: "metastore"
+---
+# Source: pyroscope/templates/deployments-statefulsets.yaml
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
   name: pyroscope-dev-querier
   namespace: default
   labels:
@@ -1693,7 +1714,7 @@ spec:
     app: minio
     release: pyroscope-dev
 ---
-# Source: pyroscope/templates/memberlist-service.yaml
+# Source: pyroscope/templates/service-memberlist.yaml
 apiVersion: v1
 kind: Service
 metadata:
@@ -1719,6 +1740,84 @@ spec:
     app.kubernetes.io/instance: pyroscope-dev
     # TODO: Ensure only services that offer memberlist register
     # pyroscope.grafana.com/memberlist: "true"
+---
+# Source: pyroscope/templates/service-metastore.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: pyroscope-dev-metastore-grpc
+  namespace: default
+  labels:
+    helm.sh/chart: pyroscope-1.6.1
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "1.6.1"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: metastore-grpc
+      port: 9095
+      protocol: TCP
+      targetPort: 9095
+  publishNotReadyAddresses: true
+  selector:
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/component: "metastore"
+---
+# Source: pyroscope/templates/service-metastore.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: pyroscope-dev-metastore-raft
+  namespace: default
+  labels:
+    helm.sh/chart: pyroscope-1.6.1
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "1.6.1"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: metastore-raft
+      port: 9099
+      protocol: TCP
+      targetPort: 9099
+  publishNotReadyAddresses: false
+  selector:
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/component: "metastore"
+---
+# Source: pyroscope/templates/service-query-worker.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: pyroscope-dev-query-worker
+  namespace: default
+  labels:
+    helm.sh/chart: pyroscope-1.6.1
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "1.6.1"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: query-worker
+      port: 9095
+      protocol: TCP
+      targetPort: 9095
+  publishNotReadyAddresses: false
+  selector:
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/component: "querier"
 ---
 # Source: pyroscope/templates/services.yaml
 apiVersion: v1
@@ -1872,6 +1971,57 @@ spec:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/component: "ingester"
+---
+# Source: pyroscope/templates/services.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: pyroscope-dev-metastore
+  namespace: default
+  labels:
+    helm.sh/chart: pyroscope-1.6.1
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "1.6.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "metastore"
+spec:
+  type: ClusterIP
+  ports:
+    - port: 4040
+      targetPort: http2
+      protocol: TCP
+      name: http2
+  selector:
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/component: "metastore"
+---
+# Source: pyroscope/templates/services.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: pyroscope-dev-metastore-headless
+  namespace: default
+  labels:
+    helm.sh/chart: pyroscope-1.6.1
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "1.6.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "metastore"
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - port: 4040
+      targetPort: http2
+      protocol: TCP
+      name: http2
+  selector:
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/component: "metastore"
 ---
 # Source: pyroscope/templates/services.yaml
 apiVersion: v1
@@ -2131,6 +2281,8 @@ spec:
             - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
+            - "-metastore.address=dns:///pyroscope-dev-metastore-grpc.default.svc.cluster.local.:9095"
+            - "-metastore.raft.bootstrap-peers=dns:///pyroscope-dev-metastore-raft.default.svc.cluster.local.:9099"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
@@ -2225,6 +2377,8 @@ spec:
             - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
+            - "-metastore.address=dns:///pyroscope-dev-metastore-grpc.default.svc.cluster.local.:9095"
+            - "-metastore.raft.bootstrap-peers=dns:///pyroscope-dev-metastore-raft.default.svc.cluster.local.:9099"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
@@ -2319,6 +2473,8 @@ spec:
             - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
+            - "-metastore.address=dns:///pyroscope-dev-metastore-grpc.default.svc.cluster.local.:9095"
+            - "-metastore.raft.bootstrap-peers=dns:///pyroscope-dev-metastore-raft.default.svc.cluster.local.:9099"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
@@ -2413,6 +2569,8 @@ spec:
             - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
+            - "-metastore.address=dns:///pyroscope-dev-metastore-grpc.default.svc.cluster.local.:9095"
+            - "-metastore.raft.bootstrap-peers=dns:///pyroscope-dev-metastore-raft.default.svc.cluster.local.:9099"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
@@ -2692,6 +2850,8 @@ spec:
             - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
+            - "-metastore.address=dns:///pyroscope-dev-metastore-grpc.default.svc.cluster.local.:9095"
+            - "-metastore.raft.bootstrap-peers=dns:///pyroscope-dev-metastore-raft.default.svc.cluster.local.:9099"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
@@ -2793,6 +2953,8 @@ spec:
             - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
+            - "-metastore.address=dns:///pyroscope-dev-metastore-grpc.default.svc.cluster.local.:9095"
+            - "-metastore.raft.bootstrap-peers=dns:///pyroscope-dev-metastore-raft.default.svc.cluster.local.:9099"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
@@ -2824,6 +2986,109 @@ spec:
               cpu: 1
               memory: 8Gi
       terminationGracePeriodSeconds: 600
+      volumes:
+        - name: config
+          configMap:
+            name: pyroscope-dev-config
+        - name: overrides-config
+          configMap:
+            name: pyroscope-dev-overrides-config
+        - name: data
+          emptyDir: {}
+---
+# Source: pyroscope/templates/deployments-statefulsets.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: pyroscope-dev-metastore
+  namespace: default
+  labels:
+    helm.sh/chart: pyroscope-1.6.1
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "1.6.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "metastore"
+spec:
+  serviceName: pyroscope-dev-metastore-headless
+  podManagementPolicy: Parallel
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pyroscope
+      app.kubernetes.io/instance: pyroscope-dev
+      app.kubernetes.io/component: "metastore"
+  template:
+    metadata:
+      annotations:
+        checksum/config: dde1479a6b672fba848d9db186796ead0de4454310cf8fdf8185339c47b35812
+        profiles.grafana.com/cpu.port_name: http2
+        profiles.grafana.com/cpu.scrape: "true"
+        profiles.grafana.com/goroutine.port_name: http2
+        profiles.grafana.com/goroutine.scrape: "true"
+        profiles.grafana.com/memory.port_name: http2
+        profiles.grafana.com/memory.scrape: "true"
+      labels:
+        app.kubernetes.io/name: pyroscope
+        app.kubernetes.io/instance: pyroscope-dev
+        app.kubernetes.io/component: "metastore"
+        name: "metastore"
+    spec:
+      serviceAccountName: pyroscope-dev
+      securityContext:
+        fsGroup: 10001
+        runAsNonRoot: true
+        runAsUser: 10001
+      dnsPolicy: ClusterFirst
+      containers:
+        - name: "metastore"
+          securityContext:
+            {}
+          image: "grafana/pyroscope:1.6.1"
+          imagePullPolicy: IfNotPresent
+          args:
+            - "-target=metastore"
+            - "-self-profiling.disable-push=true"
+            - "-server.http-listen-port=4040"
+            - "-memberlist.cluster-label=default-pyroscope-dev"
+            - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
+            - "-metastore.address=dns:///pyroscope-dev-metastore-grpc.default.svc.cluster.local.:9095"
+            - "-metastore.raft.bootstrap-peers=dns:///pyroscope-dev-metastore-raft.default.svc.cluster.local.:9099"
+            - "-config.file=/etc/pyroscope/config.yaml"
+            - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
+            - "-log.level=debug"
+            - "-store-gateway.sharding-ring.replication-factor=3"
+          ports:
+            - name: http2
+              containerPort: 4040
+              protocol: TCP
+            - name: memberlist
+              containerPort: 7946
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http2
+              scheme: HTTP
+          volumeMounts:
+            - name: config
+              mountPath: /etc/pyroscope/config.yaml
+              subPath: config.yaml
+            - name: overrides-config
+              mountPath: /etc/pyroscope/overrides/
+            - name: data
+              mountPath: /data
+              subPath: default
+            - name: data
+              mountPath: /data-metastore
+              subPath: metastore
+          resources:
+            limits:
+              memory: 8Gi
+            requests:
+              cpu: 2
+              memory: 8Gi
+      terminationGracePeriodSeconds: 1200
       volumes:
         - name: config
           configMap:
@@ -2890,6 +3155,8 @@ spec:
             - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
+            - "-metastore.address=dns:///pyroscope-dev-metastore-grpc.default.svc.cluster.local.:9095"
+            - "-metastore.raft.bootstrap-peers=dns:///pyroscope-dev-metastore-raft.default.svc.cluster.local.:9099"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"

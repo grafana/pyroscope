@@ -1151,7 +1151,7 @@ spec:
       targetPort: 12345
       protocol: "TCP"
 ---
-# Source: pyroscope/templates/memberlist-service.yaml
+# Source: pyroscope/templates/service-memberlist.yaml
 apiVersion: v1
 kind: Service
 metadata:
@@ -1177,6 +1177,84 @@ spec:
     app.kubernetes.io/instance: pyroscope-dev
     # TODO: Ensure only services that offer memberlist register
     # pyroscope.grafana.com/memberlist: "true"
+---
+# Source: pyroscope/templates/service-metastore.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: pyroscope-dev-metastore-grpc
+  namespace: default
+  labels:
+    helm.sh/chart: pyroscope-1.6.1
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "1.6.1"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: metastore-grpc
+      port: 9095
+      protocol: TCP
+      targetPort: 9095
+  publishNotReadyAddresses: true
+  selector:
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/component: "metastore"
+---
+# Source: pyroscope/templates/service-metastore.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: pyroscope-dev-metastore-raft
+  namespace: default
+  labels:
+    helm.sh/chart: pyroscope-1.6.1
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "1.6.1"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: metastore-raft
+      port: 9099
+      protocol: TCP
+      targetPort: 9099
+  publishNotReadyAddresses: false
+  selector:
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/component: "metastore"
+---
+# Source: pyroscope/templates/service-query-worker.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: pyroscope-dev-query-worker
+  namespace: default
+  labels:
+    helm.sh/chart: pyroscope-1.6.1
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "1.6.1"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: query-worker
+      port: 9095
+      protocol: TCP
+      targetPort: 9095
+  publishNotReadyAddresses: false
+  selector:
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/component: "querier"
 ---
 # Source: pyroscope/templates/services.yaml
 apiVersion: v1
@@ -1373,6 +1451,8 @@ spec:
             - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
+            - "-metastore.address=dns:///pyroscope-dev-metastore-grpc.default.svc.cluster.local.:9095"
+            - "-metastore.raft.bootstrap-peers=dns:///pyroscope-dev-metastore-raft.default.svc.cluster.local.:9099"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"

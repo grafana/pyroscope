@@ -38,6 +38,8 @@ import (
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/ingester"
+	"github.com/grafana/pyroscope/pkg/metastore"
+	metastoreclient "github.com/grafana/pyroscope/pkg/metastore/client"
 	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/pkg/operations"
@@ -78,6 +80,8 @@ const (
 	Admin             string = "admin"
 	TenantSettings    string = "tenant-settings"
 	AdHocProfiles     string = "ad-hoc-profiles"
+	Metastore         string = "metastore"
+	MetastoreClient   string = "metastore-client"
 
 	// QueryFrontendTripperware string = "query-frontend-tripperware"
 	// IndexGateway             string = "index-gateway"
@@ -100,7 +104,7 @@ func (f *Phlare) initQueryFrontend() (services.Service, error) {
 		f.Cfg.Frontend.Port = f.Cfg.Server.HTTPListenPort
 	}
 
-	frontendSvc, err := frontend.NewFrontend(f.Cfg.Frontend, f.Overrides, log.With(f.logger, "component", "frontend"), f.reg)
+	frontendSvc, err := frontend.NewFrontend(f.Cfg.Frontend, f.Overrides, log.With(f.logger, "component", "frontend"), f.reg, f.MetastoreClientConn)
 	if err != nil {
 		return nil, err
 	}
@@ -547,6 +551,28 @@ func (f *Phlare) initAdmin() (services.Service, error) {
 	f.admin = a
 	f.API.RegisterAdmin(a)
 	return a, nil
+}
+
+func (f *Phlare) initMetastore() (services.Service, error) {
+	m, err := metastore.New(f.Cfg.Metastore, nil, f.logger, f.reg)
+	if err != nil {
+		return nil, err
+	}
+	f.API.RegisterMetastore(m)
+	return m, nil
+}
+
+func (f *Phlare) initMetastoreClient() (services.Service, error) {
+	cc, err := metastoreclient.Dial(f.Cfg.MetastoreClient)
+	if err != nil {
+		return nil, err
+	}
+	f.MetastoreClientConn = cc
+	svc := services.NewIdleService(
+		func(_ context.Context) error { return nil },
+		func(_ error) error { return cc.Close() },
+	)
+	return svc, nil
 }
 
 type statusService struct {

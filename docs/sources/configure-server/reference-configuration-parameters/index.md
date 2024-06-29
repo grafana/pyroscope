@@ -149,6 +149,36 @@ runtime_config:
 # The compactor block configures the compactor.
 [compactor: <compactor>]
 
+metastore:
+  # CLI flag: -metastore.data-dir
+  [data_dir: <string> | default = "/data-metastore/data"]
+
+  raft:
+    # CLI flag: -metastore.raft.dir
+    [dir: <string> | default = "/data-metastore/raft"]
+
+    # CLI flag: -metastore.raft.bootstrap-peers
+    [bootstrap_peers: <list of strings> | default = []]
+
+    # CLI flag: -metastore.raft.server-id
+    [server_id: <string> | default = "localhost"]
+
+    # CLI flag: -metastore.raft.bind-address
+    [bind_address: <string> | default = ":9099"]
+
+    # CLI flag: -metastore.raft.advertise-address
+    [advertise_address: <string> | default = "localhost:9099"]
+
+metastore_client:
+  # CLI flag: -metastore.address
+  [address: <string> | default = "localhost:9095"]
+
+  # Configures the gRPC client used to communicate between the query-frontends
+  # and the query-schedulers.
+  # The CLI flags prefix for this block configuration is:
+  # metastore.grpc-client-config
+  [grpc_client_config: <grpc_client>]
+
 storage:
   # Backend storage to use. Supported backends are: s3, gcs, azure, swift,
   # filesystem, cos.
@@ -1445,6 +1475,7 @@ sharding_ring:
 
 The `grpc_client` block configures the gRPC client used to communicate between two Pyroscope components. The supported CLI flags `<prefix>` used to reference this configuration block are:
 
+- `metastore.grpc-client-config`
 - `querier.frontend-client`
 - `query-frontend.grpc-client-config`
 - `query-scheduler.grpc-client-config`

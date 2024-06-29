@@ -10,6 +10,7 @@ import (
 	"github.com/prometheus/common/model"
 	"golang.org/x/sync/errgroup"
 
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
@@ -68,6 +69,16 @@ func (f *Frontend) selectMergeStacktracesTree(ctx context.Context,
 	g, ctx := errgroup.WithContext(ctx)
 	if maxConcurrent := validationutil.SmallestPositiveNonZeroIntPerTenant(tenantIDs, f.limits.MaxQueryParallelism); maxConcurrent > 0 {
 		g.SetLimit(maxConcurrent)
+	}
+
+	_, err = f.metastoreclient.ListBlocksForQuery(ctx, &metastorev1.ListBlocksForQueryRequest{
+		TenantId:  tenantIDs,
+		StartTime: c.Msg.Start,
+		EndTime:   c.Msg.End,
+		Query:     c.Msg.LabelSelector,
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	m := phlaremodel.NewFlameGraphMerger()

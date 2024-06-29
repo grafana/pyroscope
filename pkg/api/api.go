@@ -22,6 +22,8 @@ import (
 	"github.com/grafana/dskit/server"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/pkg/metastore"
 	"github.com/grafana/pyroscope/public"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/adhocprofiles/v1/adhocprofilesv1connect"
@@ -283,6 +285,10 @@ func (a *API) RegisterCompactor(c *compactor.MultitenantCompactor) {
 		{Desc: "Ring status", Path: "/compactor/ring"},
 	})
 	a.RegisterRoute("/compactor/ring", http.HandlerFunc(c.RingHandler), false, true, "GET", "POST")
+}
+
+func (a *API) RegisterMetastore(svc *metastore.Metastore) {
+	metastorev1.RegisterMetastoreServiceServer(a.server.GRPC, svc)
 }
 
 // RegisterQueryFrontend registers the endpoints associated with the query frontend.
