@@ -19,7 +19,7 @@ message BlockMeta {
   string id = 2;
   int64 min_time = 3;
   int64 max_time = 4;
-  uint64 shard = 5;
+  uint32 shard = 5;
   uint32 compaction_level = 6;
 
   // TODO(kolesnikovae): Partitions with labels?

@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"sync"
 	"testing"
 	"time"
 
@@ -17,49 +16,60 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 )
 
-func Test_Metastore(t *testing.T) {
+func Test_Metastore_(t *testing.T) {
 	peers := []string{
 		"localhost:9100/localhost-0",
 		// "localhost:9101/localhost-1",
 		// "localhost:9102/localhost-2",
 	}
 
-	waitC := make(chan struct{})
-	shutdown := make(chan struct{})
-	var wg sync.WaitGroup
-	wg.Add(len(peers))
+	m := newReplica(t, 0, "./testdata/", peers)
+	time.Sleep(2 * time.Second)
 
-	go func() {
-		defer wg.Done()
-		m := newReplica(t, 0, peers)
-		<-waitC
-		for range time.NewTicker(time.Second).C {
-			_, err := m.AddBlock(context.Background(), &metastorev1.AddBlockRequest{
-				Block: &metastorev1.BlockMeta{
-					Id: "2", TenantServices: []*metastorev1.TenantService{{TenantId: "anon", Name: "svc-1"}},
-				},
-			})
-			assert.NoError(t, err)
-		}
+	_, err := m.AddBlock(context.Background(), &metastorev1.AddBlockRequest{
+		Block: &metastorev1.BlockMeta{
+			Id:    "my-block-id-1",
+			Shard: 0xF0F0,
+			TenantServices: []*metastorev1.TenantService{
+				{TenantId: "a-tenant", Name: "svc-1"},
+			},
+		},
+	})
+	assert.NoError(t, err)
 
-		<-shutdown
-		t.Log(m.ListBlocksForQuery(context.Background(), &metastorev1.ListBlocksForQueryRequest{
-			TenantId: []string{"anon"},
-			EndTime:  math.MaxInt64,
-			Query:    "{}",
-		}))
+	_, err = m.AddBlock(context.Background(), &metastorev1.AddBlockRequest{
+		Block: &metastorev1.BlockMeta{
+			Id:    "my-block-id-2",
+			Shard: 0xF0F1,
+			TenantServices: []*metastorev1.TenantService{
+				{TenantId: "a-tenant", Name: "svc-1"},
+			},
+		},
+	})
+	assert.NoError(t, err)
 
-		assert.NoError(t, m.Shutdown())
-	}()
+	t.Log(m.ListBlocksForQuery(context.Background(), &metastorev1.ListBlocksForQueryRequest{
+		TenantId: []string{"a-tenant"},
+		EndTime:  math.MaxInt64,
+		Query:    "{}",
+	}))
 
-	close(waitC)
-	time.Sleep(10 * time.Second)
-	close(shutdown)
-	wg.Wait()
+	t.Log("Shutdown")
+	assert.NoError(t, m.raft.Snapshot().Error())
+	assert.NoError(t, m.Shutdown())
+
+	m = newReplica(t, 0, "./testdata/", peers)
+	time.Sleep(2 * time.Second)
+	t.Log(m.ListBlocksForQuery(context.Background(), &metastorev1.ListBlocksForQueryRequest{
+		TenantId: []string{"a-tenant"},
+		EndTime:  math.MaxInt64,
+		Query:    "{}",
+	}))
+	assert.NoError(t, m.Shutdown())
 }
 
-func newReplica(t *testing.T, i int, peers []string) *Metastore {
-	dir := "./testdata/" + strconv.Itoa(i)
+func newReplica(t *testing.T, i int, dir string, peers []string) *Metastore {
+	dir = filepath.Join(dir, strconv.Itoa(i))
 	config := Config{
 		DataDir: filepath.Join(dir, "data"),
 		Raft: RaftConfig{
@@ -72,7 +82,7 @@ func newReplica(t *testing.T, i int, peers []string) *Metastore {
 		},
 	}
 
-	logger := log.NewLogfmtLogger(os.Stderr)
+	logger := log.NewLogfmtLogger(os.Stdout)
 	m, err := New(config, nil, logger, nil)
 	require.NoError(t, err)
 	require.NoError(t, m.starting(context.Background()))

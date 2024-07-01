@@ -556,8 +556,8 @@
           "format": "int64"
         },
         "shard": {
-          "type": "string",
-          "format": "uint64"
+          "type": "integer",
+          "format": "int64"
         },
         "compactionLevel": {
           "type": "integer",

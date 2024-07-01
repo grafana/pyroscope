@@ -25,7 +25,7 @@ var commandTypeMap = map[reflect.Type]raftlogpb.CommandType{
 // The map is used to determine the handler for the given command,
 // read from the Raft log entry.
 var commandHandlers = map[raftlogpb.CommandType]commandHandler{
-	raftlogpb.CommandType_COMMAND_TYPE_ADD_BLOCK: func(fsm *FSM, raw []byte) any {
+	raftlogpb.CommandType_COMMAND_TYPE_ADD_BLOCK: func(fsm *FSM, raw []byte) fsmResponse {
 		return handleCommand(raw, fsm.state.applyAddBlock)
 	},
 }
@@ -61,7 +61,12 @@ func (e *fsmError) Error() string {
 		e.log.Index, e.log.Term, e.log.AppendedAt, e.err)
 }
 
-type commandHandler func(*FSM, []byte) any
+type commandHandler func(*FSM, []byte) fsmResponse
+
+// TODO(kolesnikovae): replace commandCall with interface:
+// type command[Req, Resp proto.Message] interface {
+//   apply(Req) (Resp, error)
+// }
 
 type commandCall[Req, Resp proto.Message] func(Req) (Resp, error)
 
@@ -88,21 +93,9 @@ func (fsm *FSM) Apply(l *raft.Log) interface{} {
 	return nil
 }
 
-func (fsm *FSM) Snapshot() (raft.FSMSnapshot, error) {
-	// Snapshot should only capture a pointer to the state, and any
-	// expensive IO should happen as part of FSMSnapshot.Persist.
-	return fsm.db.createSnapshot()
-}
-
-func (fsm *FSM) Restore(snapshot io.ReadCloser) error {
-	_ = level.Info(fsm.logger).Log("msg", "restoring snapshot")
-	if err := fsm.db.restore(snapshot); err != nil {
-		return err
-	}
-	// TODO: restore in-memory state
-	return nil
-}
-
+// applyCommand receives raw command from the raft log (FSM.Apply),
+// and calls the corresponding handler on the _local_ FSM, based on
+// the command type.
 func (fsm *FSM) applyCommand(l *raft.Log) interface{} {
 	var e raftlogpb.RaftLogEntry
 	if err := proto.Unmarshal(l.Data, &e); err != nil {
@@ -114,6 +107,9 @@ func (fsm *FSM) applyCommand(l *raft.Log) interface{} {
 	return errResponse(l, fmt.Errorf("unknown command type: %v", e.Type.String()))
 }
 
+// handleCommand receives payload of the command from the raft log (FSM.Apply),
+// and the function that processes the command. Returned response is wrapped in
+// fsmResponse and is available to the FSM.Apply caller.
 func handleCommand[Req, Resp proto.Message](raw []byte, call commandCall[Req, Resp]) fsmResponse {
 	var resp fsmResponse
 	defer func() {
@@ -135,8 +131,28 @@ func newProto[T proto.Message]() T {
 	return reflect.New(msgType).Interface().(T)
 }
 
-// applyCommandFuture issues the command and returns the result
-// immediately after the log entry is written to the local log.
+func (fsm *FSM) Snapshot() (raft.FSMSnapshot, error) {
+	// Snapshot should only capture a pointer to the state, and any
+	// expensive IO should happen as part of FSMSnapshot.Persist.
+	return fsm.db.createSnapshot()
+}
+
+func (fsm *FSM) Restore(snapshot io.ReadCloser) error {
+	_ = level.Info(fsm.logger).Log("msg", "restoring snapshot")
+	defer func() {
+		_ = snapshot.Close()
+	}()
+	if err := fsm.db.restore(snapshot); err != nil {
+		return fmt.Errorf("failed to restore from snapshot: %w", err)
+	}
+	if err := fsm.state.restore(fsm.db); err != nil {
+		return fmt.Errorf("failed to restore state: %w", err)
+	}
+	return nil
+}
+
+// applyCommand issues the command to the raft log based on the request type,
+// and returns the response of FSM.Apply.
 func applyCommand[Req, Resp proto.Message](
 	log *raft.Raft,
 	req Req,

@@ -3,8 +3,8 @@ syntax = "proto3";
 package raft_log;
 
 message RaftLogEntry {
-    CommandType type = 1;
-    bytes payload = 2;
+  CommandType type = 1;
+  bytes payload = 2;
 }
 
 enum CommandType {

@@ -1,6 +1,7 @@
 package metastore
 
 import (
+	"encoding/binary"
 	"fmt"
 	"io"
 	"os"
@@ -36,7 +37,7 @@ func newDB(config Config, logger log.Logger) *boltdb {
 	}
 }
 
-func (db *boltdb) open() (err error) {
+func (db *boltdb) open(readOnly bool) (err error) {
 	defer func() {
 		if err != nil {
 			// If the initialization fails, initialized components
@@ -52,8 +53,21 @@ func (db *boltdb) open() (err error) {
 	if db.path == "" {
 		db.path = filepath.Join(db.config.DataDir, boltDBFileName)
 	}
-	if db.boltdb, err = bbolt.Open(db.path, 0644, bbolt.DefaultOptions); err != nil {
+
+	opts := *bbolt.DefaultOptions
+	opts.ReadOnly = readOnly
+	if db.boltdb, err = bbolt.Open(db.path, 0644, &opts); err != nil {
 		return fmt.Errorf("failed to open db: %w", err)
+	}
+
+	if !readOnly {
+		err = db.boltdb.Update(func(tx *bbolt.Tx) error {
+			_, err := tx.CreateBucketIfNotExists(blockMetadataBucketNameBytes)
+			return err
+		})
+		if err != nil {
+			return fmt.Errorf("failed to create bucket: %w", err)
+		}
 	}
 
 	return nil
@@ -75,7 +89,7 @@ func (db *boltdb) restore(snapshot io.Reader) error {
 		// First check the snapshot.
 		restored := *db
 		restored.path = path
-		err = restored.open()
+		err = restored.open(true)
 		// Also check applied index.
 		restored.shutdown()
 	}
@@ -87,30 +101,42 @@ func (db *boltdb) restore(snapshot io.Reader) error {
 	return db.openSnapshot(path)
 }
 
-func (db *boltdb) copySnapshot(snapshot io.Reader) (string, error) {
-	snapPath := filepath.Join(db.config.DataDir, boltDBSnapshotName)
-	snapFile, err := os.Create(snapPath)
+func (db *boltdb) copySnapshot(snapshot io.Reader) (path string, err error) {
+	path = filepath.Join(db.config.DataDir, boltDBSnapshotName)
+	snapFile, err := os.Create(path)
 	if err != nil {
 		return "", err
 	}
-	defer func() {
-		err = syncFD(snapFile)
-	}()
-	if _, err = io.Copy(snapFile, snapshot); err != nil {
-		return "", err
+	_, err = io.Copy(snapFile, snapshot)
+	if syncErr := syncFD(snapFile); err == nil {
+		err = syncErr
 	}
-	return snapPath, nil
+	return path, err
 }
 
 func (db *boltdb) openSnapshot(path string) (err error) {
 	db.shutdown()
-	defer func() {
-		err = db.open()
-	}()
-	if err = os.Rename(path, db.path); err == nil {
-		if err = syncPath(db.config.DataDir); err == nil {
-			db.path = path
-		}
+	if err = os.Rename(path, db.path); err != nil {
+		return err
+	}
+	if err = syncPath(db.path); err != nil {
+		return err
+	}
+	return db.open(false)
+}
+
+func syncPath(path string) (err error) {
+	d, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	return syncFD(d)
+}
+
+func syncFD(f *os.File) (err error) {
+	err = f.Sync()
+	if closeErr := f.Close(); err == nil {
+		return closeErr
 	}
 	return err
 }
@@ -154,18 +180,50 @@ func (s *snapshot) Release() {
 	}
 }
 
-func syncPath(path string) (err error) {
-	d, err := os.Open(path)
+func getOrCreateSubBucket(parent *bbolt.Bucket, name []byte) (*bbolt.Bucket, error) {
+	bucket := parent.Bucket(name)
+	if bucket == nil {
+		return parent.CreateBucket(name)
+	}
+	return bucket, nil
+}
+
+const blockMetadataBucketName = "block_metadata"
+
+var blockMetadataBucketNameBytes = []byte(blockMetadataBucketName)
+
+func getBlockMetadataBucket(tx *bbolt.Tx) (*bbolt.Bucket, error) {
+	mdb := tx.Bucket(blockMetadataBucketNameBytes)
+	if mdb == nil {
+		return nil, bbolt.ErrBucketNotFound
+	}
+	return mdb, nil
+}
+
+func updateBlockMetadataBucket(tx *bbolt.Tx, name []byte, fn func(*bbolt.Bucket) error) error {
+	mdb, err := getBlockMetadataBucket(tx)
 	if err != nil {
 		return err
 	}
-	return syncFD(d)
+	bucket, err := getOrCreateSubBucket(mdb, name)
+	if err != nil {
+		return err
+	}
+	return fn(bucket)
 }
 
-func syncFD(f *os.File) (err error) {
-	err = f.Sync()
-	if closeErr := f.Close(); err == nil {
-		return closeErr
+// Bucket           |Key
+// [4:shard]<tenant>|[block_id]
+func keyForBlockMeta(shard uint32, tenant string, id string) (bucket, key []byte) {
+	k := make([]byte, 4+len(tenant))
+	binary.BigEndian.PutUint32(k, shard)
+	copy(k[4:], tenant)
+	return k, []byte(id)
+}
+
+func parseBucketName(b []byte) (shard uint32, tenant string, ok bool) {
+	if len(b) >= 4 {
+		return binary.BigEndian.Uint32(b), string(b[4:]), true
 	}
-	return err
+	return 0, "", false
 }

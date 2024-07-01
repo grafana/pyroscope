@@ -93,9 +93,9 @@ func New(config Config, limits Limits, logger log.Logger, reg prometheus.Registe
 		logger: logger,
 		reg:    reg,
 		limits: limits,
-		state:  newMetastoreState(logger),
 		db:     newDB(config, logger),
 	}
+	m.state = newMetastoreState(logger, m.db)
 	m.Service = services.NewBasicService(m.starting, m.running, m.stopping)
 	return m, nil
 }
@@ -117,7 +117,7 @@ func (m *Metastore) Shutdown() error {
 }
 
 func (m *Metastore) starting(_ context.Context) error {
-	if err := m.db.open(); err != nil {
+	if err := m.db.open(false); err != nil {
 		return fmt.Errorf("failed to initialize database: %w", err)
 	}
 	if err := m.initRaft(); err != nil {
@@ -171,6 +171,7 @@ func (m *Metastore) initRaft() (err error) {
 	config.TrailingLogs = raftTrailingLogs
 	config.SnapshotThreshold = raftSnapshotThreshold
 	config.SnapshotInterval = raftSnapshotInterval
+	//	config.NoSnapshotRestoreOnStart = true
 	config.LocalID = raft.ServerID(m.config.Raft.ServerID)
 
 	fsm := newFSM(m.logger, m.db, m.state)
