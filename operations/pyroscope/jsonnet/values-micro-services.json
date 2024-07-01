@@ -48,6 +48,23 @@
         },
         "terminationGracePeriodSeconds": 600
       },
+      "metastore": {
+        "kind": "StatefulSet",
+        "persistence": {
+          "enabled": false
+        },
+        "replicaCount": 3,
+        "resources": {
+          "limits": {
+            "memory": "8Gi"
+          },
+          "requests": {
+            "cpu": 2,
+            "memory": "8Gi"
+          }
+        },
+        "terminationGracePeriodSeconds": 1200
+      },
       "querier": {
         "kind": "Deployment",
         "replicaCount": 3,

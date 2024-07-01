@@ -1,0 +1,41 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "pyroscope.fullname" . }}-metastore-grpc
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "pyroscope.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: metastore-grpc
+      port: 9095
+      protocol: TCP
+      targetPort: 9095
+  publishNotReadyAddresses: true
+  selector:
+    {{- include "pyroscope.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: "metastore"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "pyroscope.fullname" . }}-metastore-raft
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "pyroscope.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: metastore-raft
+      port: 9099
+      protocol: TCP
+      targetPort: 9099
+  publishNotReadyAddresses: false
+  selector:
+    {{- include "pyroscope.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: "metastore"

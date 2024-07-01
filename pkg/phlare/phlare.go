@@ -36,6 +36,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
 	"github.com/samber/lo"
+	"google.golang.org/grpc"
 
 	"github.com/grafana/pyroscope/pkg/api"
 	apiversion "github.com/grafana/pyroscope/pkg/api/version"
@@ -44,6 +45,8 @@ import (
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/ingester"
+	"github.com/grafana/pyroscope/pkg/metastore"
+	metastoreclient "github.com/grafana/pyroscope/pkg/metastore/client"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/operations"
@@ -81,6 +84,8 @@ type Config struct {
 	OverridesExporter exporter.Config        `yaml:"overrides_exporter" doc:"hidden"`
 	RuntimeConfig     runtimeconfig.Config   `yaml:"runtime_config"`
 	Compactor         compactor.Config       `yaml:"compactor"`
+	Metastore         metastore.Config       `yaml:"metastore"`
+	MetastoreClient   metastoreclient.Config `yaml:"metastore_client"`
 
 	Storage       StorageConfig       `yaml:"storage"`
 	SelfProfiling SelfProfilingConfig `yaml:"self_profiling,omitempty"`
@@ -148,6 +153,8 @@ func (c *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) 
 	c.Analytics.RegisterFlags(f)
 	c.LimitsConfig.RegisterFlags(f)
 	c.Compactor.RegisterFlags(f, log.NewLogfmtLogger(os.Stderr))
+	c.Metastore.RegisterFlags(f)
+	c.MetastoreClient.RegisterFlags(f)
 	c.API.RegisterFlags(f)
 }
 
@@ -233,6 +240,8 @@ type Phlare struct {
 	versions       *apiversion.Service
 	serviceManager *services.Manager
 
+	MetastoreClientConn *grpc.ClientConn
+
 	TenantLimits validation.TenantLimits
 
 	storageBucket phlareobj.Bucket
@@ -306,20 +315,22 @@ func (f *Phlare) setupModuleManager() error {
 	mm.RegisterModule(All, nil)
 	mm.RegisterModule(TenantSettings, f.initTenantSettings)
 	mm.RegisterModule(AdHocProfiles, f.initAdHocProfiles)
+	mm.RegisterModule(Metastore, f.initMetastore)
+	mm.RegisterModule(MetastoreClient, f.initMetastoreClient)
 
 	// Add dependencies
 	deps := map[string][]string{
-		All: {Ingester, Distributor, QueryScheduler, QueryFrontend, Querier, StoreGateway, Admin, TenantSettings, Compactor, AdHocProfiles},
+		All: {Ingester, Distributor, QueryScheduler, QueryFrontend, Querier, StoreGateway, Admin, TenantSettings, Compactor, AdHocProfiles, Metastore, MetastoreClient},
 
 		Server:            {GRPCGateway},
 		API:               {Server},
 		Distributor:       {Overrides, Ring, API, UsageReport},
 		Querier:           {Overrides, API, MemberlistKV, Ring, UsageReport, Version},
-		QueryFrontend:     {OverridesExporter, API, MemberlistKV, UsageReport, Version},
+		QueryFrontend:     {OverridesExporter, API, MemberlistKV, UsageReport, Version, MetastoreClient},
 		QueryScheduler:    {Overrides, API, MemberlistKV, UsageReport},
-		Ingester:          {Overrides, API, MemberlistKV, Storage, UsageReport, Version},
+		Ingester:          {Overrides, API, MemberlistKV, Storage, UsageReport, Version, MetastoreClient},
 		StoreGateway:      {API, Storage, Overrides, MemberlistKV, UsageReport, Admin, Version},
-		Compactor:         {API, Storage, Overrides, MemberlistKV, UsageReport},
+		Compactor:         {API, Storage, Overrides, MemberlistKV, UsageReport, MetastoreClient},
 		UsageReport:       {Storage, MemberlistKV},
 		Overrides:         {RuntimeConfig},
 		OverridesExporter: {Overrides, MemberlistKV},
@@ -330,6 +341,7 @@ func (f *Phlare) setupModuleManager() error {
 		Version:           {API, MemberlistKV},
 		TenantSettings:    {API, Storage},
 		AdHocProfiles:     {API, Overrides, Storage},
+		Metastore:         {API, Overrides, MetastoreClient},
 	}
 
 	for mod, targets := range deps {

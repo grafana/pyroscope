@@ -1,0 +1,35 @@
+pyroscope:
+  components:
+    querier:
+      kind: Deployment
+      replicaCount: 1
+    query-frontend:
+      kind: Deployment
+      replicaCount: 1
+    query-scheduler:
+      kind: Deployment
+      replicaCount: 1
+    distributor:
+      kind: Deployment
+      replicaCount: 1
+    ingester:
+      kind: StatefulSet
+      replicaCount: 3
+      terminationGracePeriodSeconds: 600
+    metastore:
+      kind: StatefulSet
+      replicaCount: 3
+      terminationGracePeriodSeconds: 1200
+    compactor:
+      kind: StatefulSet
+      replicaCount: 0
+      terminationGracePeriodSeconds: 1200
+      persistence:
+        enabled: false
+    store-gateway:
+      kind: StatefulSet
+      replicaCount: 3
+      persistence:
+        enabled: false
+minio:
+  enabled: true

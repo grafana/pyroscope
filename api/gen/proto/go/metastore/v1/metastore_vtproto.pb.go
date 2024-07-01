@@ -61,17 +61,18 @@ func (m *BlockMeta) CloneVT() *BlockMeta {
 		return (*BlockMeta)(nil)
 	}
 	r := new(BlockMeta)
+	r.FormatVersion = m.FormatVersion
 	r.Id = m.Id
 	r.MinTime = m.MinTime
 	r.MaxTime = m.MaxTime
 	r.Shard = m.Shard
 	r.CompactionLevel = m.CompactionLevel
-	if rhs := m.Services; rhs != nil {
+	if rhs := m.TenantServices; rhs != nil {
 		tmpContainer := make([]*TenantService, len(rhs))
 		for k, v := range rhs {
 			tmpContainer[k] = v.CloneVT()
 		}
-		r.Services = tmpContainer
+		r.TenantServices = tmpContainer
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -98,6 +99,11 @@ func (m *TenantService) CloneVT() *TenantService {
 		tmpContainer := make([]uint64, len(rhs))
 		copy(tmpContainer, rhs)
 		r.TableOfContents = tmpContainer
+	}
+	if rhs := m.ProfileTypes; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.ProfileTypes = tmpContainer
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -161,6 +167,11 @@ func (m *ListBlocksForQueryRequest) CloneVT() *ListBlocksForQueryRequest {
 	r.StartTime = m.StartTime
 	r.EndTime = m.EndTime
 	r.Query = m.Query
+	if rhs := m.TenantId; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.TenantId = tmpContainer
+	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -236,6 +247,9 @@ func (this *BlockMeta) EqualVT(that *BlockMeta) bool {
 	} else if this == nil || that == nil {
 		return false
 	}
+	if this.FormatVersion != that.FormatVersion {
+		return false
+	}
 	if this.Id != that.Id {
 		return false
 	}
@@ -251,11 +265,11 @@ func (this *BlockMeta) EqualVT(that *BlockMeta) bool {
 	if this.CompactionLevel != that.CompactionLevel {
 		return false
 	}
-	if len(this.Services) != len(that.Services) {
+	if len(this.TenantServices) != len(that.TenantServices) {
 		return false
 	}
-	for i, vx := range this.Services {
-		vy := that.Services[i]
+	for i, vx := range this.TenantServices {
+		vy := that.TenantServices[i]
 		if p, q := vx, vy; p != q {
 			if p == nil {
 				p = &TenantService{}
@@ -296,14 +310,23 @@ func (this *TenantService) EqualVT(that *TenantService) bool {
 	if this.MaxTime != that.MaxTime {
 		return false
 	}
-	if this.Size != that.Size {
-		return false
-	}
 	if len(this.TableOfContents) != len(that.TableOfContents) {
 		return false
 	}
 	for i, vx := range this.TableOfContents {
 		vy := that.TableOfContents[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if this.Size != that.Size {
+		return false
+	}
+	if len(this.ProfileTypes) != len(that.ProfileTypes) {
+		return false
+	}
+	for i, vx := range this.ProfileTypes {
+		vy := that.ProfileTypes[i]
 		if vx != vy {
 			return false
 		}
@@ -384,6 +407,15 @@ func (this *ListBlocksForQueryRequest) EqualVT(that *ListBlocksForQueryRequest) 
 		return true
 	} else if this == nil || that == nil {
 		return false
+	}
+	if len(this.TenantId) != len(that.TenantId) {
+		return false
+	}
+	for i, vx := range this.TenantId {
+		vy := that.TenantId[i]
+		if vx != vy {
+			return false
+		}
 	}
 	if this.StartTime != that.StartTime {
 		return false
@@ -707,44 +739,49 @@ func (m *BlockMeta) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if len(m.Services) > 0 {
-		for iNdEx := len(m.Services) - 1; iNdEx >= 0; iNdEx-- {
-			size, err := m.Services[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
+	if len(m.TenantServices) > 0 {
+		for iNdEx := len(m.TenantServices) - 1; iNdEx >= 0; iNdEx-- {
+			size, err := m.TenantServices[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
 			if err != nil {
 				return 0, err
 			}
 			i -= size
 			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
 			i--
-			dAtA[i] = 0x32
+			dAtA[i] = 0x3a
 		}
 	}
 	if m.CompactionLevel != 0 {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.CompactionLevel))
 		i--
-		dAtA[i] = 0x28
+		dAtA[i] = 0x30
 	}
 	if m.Shard != 0 {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Shard))
 		i--
-		dAtA[i] = 0x20
+		dAtA[i] = 0x28
 	}
 	if m.MaxTime != 0 {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.MaxTime))
 		i--
-		dAtA[i] = 0x18
+		dAtA[i] = 0x20
 	}
 	if m.MinTime != 0 {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.MinTime))
 		i--
-		dAtA[i] = 0x10
+		dAtA[i] = 0x18
 	}
 	if len(m.Id) > 0 {
 		i -= len(m.Id)
 		copy(dAtA[i:], m.Id)
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Id)))
 		i--
-		dAtA[i] = 0xa
+		dAtA[i] = 0x12
+	}
+	if m.FormatVersion != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.FormatVersion))
+		i--
+		dAtA[i] = 0x8
 	}
 	return len(dAtA) - i, nil
 }
@@ -779,6 +816,20 @@ func (m *TenantService) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if len(m.ProfileTypes) > 0 {
+		for iNdEx := len(m.ProfileTypes) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.ProfileTypes[iNdEx])
+			copy(dAtA[i:], m.ProfileTypes[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.ProfileTypes[iNdEx])))
+			i--
+			dAtA[i] = 0x3a
+		}
+	}
+	if m.Size != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Size))
+		i--
+		dAtA[i] = 0x30
+	}
 	if len(m.TableOfContents) > 0 {
 		var pksize2 int
 		for _, num := range m.TableOfContents {
@@ -797,12 +848,7 @@ func (m *TenantService) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		}
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(pksize2))
 		i--
-		dAtA[i] = 0x32
-	}
-	if m.Size != 0 {
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Size))
-		i--
-		dAtA[i] = 0x28
+		dAtA[i] = 0x2a
 	}
 	if m.MaxTime != 0 {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.MaxTime))
@@ -970,21 +1016,26 @@ func (m *ListBlocksForQueryRequest) MarshalToSizedBufferVT(dAtA []byte) (int, er
 		copy(dAtA[i:], m.Query)
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Query)))
 		i--
-		dAtA[i] = 0x1a
+		dAtA[i] = 0x22
 	}
-	if len(m.EndTime) > 0 {
-		i -= len(m.EndTime)
-		copy(dAtA[i:], m.EndTime)
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.EndTime)))
+	if m.EndTime != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.EndTime))
 		i--
-		dAtA[i] = 0x12
+		dAtA[i] = 0x18
 	}
-	if len(m.StartTime) > 0 {
-		i -= len(m.StartTime)
-		copy(dAtA[i:], m.StartTime)
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.StartTime)))
+	if m.StartTime != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.StartTime))
 		i--
-		dAtA[i] = 0xa
+		dAtA[i] = 0x10
+	}
+	if len(m.TenantId) > 0 {
+		for iNdEx := len(m.TenantId) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.TenantId[iNdEx])
+			copy(dAtA[i:], m.TenantId[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.TenantId[iNdEx])))
+			i--
+			dAtA[i] = 0xa
+		}
 	}
 	return len(dAtA) - i, nil
 }
@@ -1064,6 +1115,9 @@ func (m *BlockMeta) SizeVT() (n int) {
 	}
 	var l int
 	_ = l
+	if m.FormatVersion != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.FormatVersion))
+	}
 	l = len(m.Id)
 	if l > 0 {
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
@@ -1080,8 +1134,8 @@ func (m *BlockMeta) SizeVT() (n int) {
 	if m.CompactionLevel != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.CompactionLevel))
 	}
-	if len(m.Services) > 0 {
-		for _, e := range m.Services {
+	if len(m.TenantServices) > 0 {
+		for _, e := range m.TenantServices {
 			l = e.SizeVT()
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
@@ -1110,15 +1164,21 @@ func (m *TenantService) SizeVT() (n int) {
 	if m.MaxTime != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.MaxTime))
 	}
-	if m.Size != 0 {
-		n += 1 + protohelpers.SizeOfVarint(uint64(m.Size))
-	}
 	if len(m.TableOfContents) > 0 {
 		l = 0
 		for _, e := range m.TableOfContents {
 			l += protohelpers.SizeOfVarint(uint64(e))
 		}
 		n += 1 + protohelpers.SizeOfVarint(uint64(l)) + l
+	}
+	if m.Size != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.Size))
+	}
+	if len(m.ProfileTypes) > 0 {
+		for _, s := range m.ProfileTypes {
+			l = len(s)
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
 	}
 	n += len(m.unknownFields)
 	return n
@@ -1171,13 +1231,17 @@ func (m *ListBlocksForQueryRequest) SizeVT() (n int) {
 	}
 	var l int
 	_ = l
-	l = len(m.StartTime)
-	if l > 0 {
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	if len(m.TenantId) > 0 {
+		for _, s := range m.TenantId {
+			l = len(s)
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
 	}
-	l = len(m.EndTime)
-	if l > 0 {
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	if m.StartTime != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.StartTime))
+	}
+	if m.EndTime != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.EndTime))
 	}
 	l = len(m.Query)
 	if l > 0 {
@@ -1371,6 +1435,25 @@ func (m *BlockMeta) UnmarshalVT(dAtA []byte) error {
 		}
 		switch fieldNum {
 		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field FormatVersion", wireType)
+			}
+			m.FormatVersion = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.FormatVersion |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
 			}
@@ -1402,7 +1485,7 @@ func (m *BlockMeta) UnmarshalVT(dAtA []byte) error {
 			}
 			m.Id = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 2:
+		case 3:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field MinTime", wireType)
 			}
@@ -1416,12 +1499,12 @@ func (m *BlockMeta) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.MinTime |= uint64(b&0x7F) << shift
+				m.MinTime |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-		case 3:
+		case 4:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field MaxTime", wireType)
 			}
@@ -1435,12 +1518,12 @@ func (m *BlockMeta) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.MaxTime |= uint64(b&0x7F) << shift
+				m.MaxTime |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-		case 4:
+		case 5:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Shard", wireType)
 			}
@@ -1454,12 +1537,12 @@ func (m *BlockMeta) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Shard |= uint64(b&0x7F) << shift
+				m.Shard |= uint32(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-		case 5:
+		case 6:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field CompactionLevel", wireType)
 			}
@@ -1478,9 +1561,9 @@ func (m *BlockMeta) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
-		case 6:
+		case 7:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Services", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field TenantServices", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -1507,8 +1590,8 @@ func (m *BlockMeta) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Services = append(m.Services, &TenantService{})
-			if err := m.Services[len(m.Services)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+			m.TenantServices = append(m.TenantServices, &TenantService{})
+			if err := m.TenantServices[len(m.TenantServices)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -1641,7 +1724,7 @@ func (m *TenantService) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.MinTime |= uint64(b&0x7F) << shift
+				m.MinTime |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -1660,31 +1743,12 @@ func (m *TenantService) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.MaxTime |= uint64(b&0x7F) << shift
+				m.MaxTime |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
 		case 5:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Size", wireType)
-			}
-			m.Size = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Size |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 6:
 			if wireType == 0 {
 				var v uint64
 				for shift := uint(0); ; shift += 7 {
@@ -1760,6 +1824,57 @@ func (m *TenantService) UnmarshalVT(dAtA []byte) error {
 			} else {
 				return fmt.Errorf("proto: wrong wireType = %d for field TableOfContents", wireType)
 			}
+		case 6:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Size", wireType)
+			}
+			m.Size = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Size |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 7:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ProfileTypes", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ProfileTypes = append(m.ProfileTypes, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
@@ -2064,7 +2179,7 @@ func (m *ListBlocksForQueryRequest) UnmarshalVT(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field StartTime", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field TenantId", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -2092,13 +2207,13 @@ func (m *ListBlocksForQueryRequest) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.StartTime = string(dAtA[iNdEx:postIndex])
+			m.TenantId = append(m.TenantId, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field EndTime", wireType)
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field StartTime", wireType)
 			}
-			var stringLen uint64
+			m.StartTime = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return protohelpers.ErrIntOverflow
@@ -2108,25 +2223,31 @@ func (m *ListBlocksForQueryRequest) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
+				m.StartTime |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.EndTime = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
 		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field EndTime", wireType)
+			}
+			m.EndTime = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.EndTime |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Query", wireType)
 			}

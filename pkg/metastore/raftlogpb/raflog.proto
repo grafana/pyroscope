@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package raft_log;
+
+message RaftLogEntry {
+  CommandType type = 1;
+  bytes payload = 2;
+}
+
+enum CommandType {
+  COMMAND_TYPE_UNKNOWN = 0;
+  COMMAND_TYPE_ADD_BLOCK = 1;
+}
