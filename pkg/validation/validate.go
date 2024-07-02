@@ -329,7 +329,7 @@ type ValidatedRangeRequest struct {
 }
 
 func ValidateRangeRequest(limits RangeRequestLimits, tenantIDs []string, req model.Interval, now model.Time) (ValidatedRangeRequest, error) {
-	if req.Start == 0 && req.End == 0 {
+	if req.Start == 0 || req.End == 0 {
 		return ValidatedRangeRequest{}, NewErrorf(QueryMissingTimeRange, QueryMissingTimeRangeErrorMsg)
 	}
 
