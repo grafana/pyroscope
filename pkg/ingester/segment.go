@@ -1,6 +1,7 @@
 package ingester
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"fmt"
@@ -18,6 +19,7 @@ import (
 	"github.com/oklog/ulid"
 	"github.com/opentracing/opentracing-go"
 	"github.com/thanos-io/objstore"
+	"google.golang.org/grpc"
 	"os"
 	"path"
 	"path/filepath"
@@ -28,32 +30,45 @@ import (
 )
 
 const pathSegments = "segments"
+const pathAnon = "anon"
+
+// const pathDLQ = "dlq"
+const pathDLC = "dlc"
 const pathBlock = "block.bin"
-const pathMetaPB = "meta.pb"     // should we embed it in the block?
-const pathMetaJson = "meta.json" // for debugging
+const pathMetaPB = "meta.pb" // should we embed it in the block?
 
 type shardKey uint32
 
 type segmentsWriter struct {
-	phlarectx    context.Context
-	l            log.Logger
-	segments     map[shardKey]*segment
-	segmentsLock sync.RWMutex
-	cfg          phlaredb.Config
-	limiters     *limiters
-	bucket       objstore.Bucket
+	phlarectx       context.Context
+	l               log.Logger
+	segments        map[shardKey]*segment
+	segmentsLock    sync.RWMutex
+	cfg             phlaredb.Config
+	limiters        *limiters
+	bucket          objstore.Bucket
+	metastoreclient metastorev1.MetastoreServiceClient
+	wg              sync.WaitGroup
+	cancel          context.CancelFunc
 }
 
-func newSegmentWriter(phlarectx context.Context, l log.Logger, cfg phlaredb.Config, limiters *limiters, bucket objstore.Bucket) *segmentsWriter {
+func newSegmentWriter(phlarectx context.Context, l log.Logger, cfg phlaredb.Config, limiters *limiters, bucket objstore.Bucket, metastorecc grpc.ClientConnInterface) *segmentsWriter {
+	ctx, cancelFunc := context.WithCancel(context.Background())
 	sw := &segmentsWriter{
-		phlarectx: phlarectx,
-		l:         l,
-		bucket:    bucket,
-		limiters:  limiters,
-		cfg:       cfg,
-		segments:  make(map[shardKey]*segment),
+		phlarectx:       phlarectx,
+		l:               l,
+		bucket:          bucket,
+		limiters:        limiters,
+		cfg:             cfg,
+		segments:        make(map[shardKey]*segment),
+		metastoreclient: metastorev1.NewMetastoreServiceClient(metastorecc),
+		cancel:          cancelFunc,
 	}
-	go sw.loop()
+	sw.wg.Add(1)
+	go func() {
+		defer sw.wg.Done()
+		sw.loop(ctx)
+	}()
 	return sw
 }
 
@@ -99,14 +114,22 @@ func (sw *segmentsWriter) ingest(shard shardKey, fn func(head *segment) error) (
 }
 
 func (sw *segmentsWriter) Stop() error {
-	return nil // todo
+	sw.cancel()
+	sw.wg.Wait()
+	return nil
 }
 
-func (sw *segmentsWriter) loop() {
+func (sw *segmentsWriter) loop(ctx context.Context) {
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
-	for range ticker.C { // todo stop
-		sw.flushSegments(context.Background())
+	for {
+		select {
+		case <-ticker.C:
+			sw.flushSegments(context.Background())
+		case <-ctx.Done():
+			sw.flushSegments(context.Background())
+			return
+		}
 	}
 }
 
@@ -144,7 +167,7 @@ func (sw *segmentsWriter) flushSegments(ctx context.Context) {
 
 func (sw *segmentsWriter) newSegment(shard shardKey) *segment {
 	id := ulid.MustNew(ulid.Timestamp(time.Now()), rand.Reader)
-	dataPath := path.Join(sw.cfg.DataPath, pathSegments, fmt.Sprintf("%d", shard), "anon", id.String())
+	dataPath := path.Join(sw.cfg.DataPath, pathSegments, fmt.Sprintf("%d", shard), pathAnon, id.String())
 	s := &segment{
 		ulid:     id,
 		heads:    make(map[serviceKey]serviceHead),
@@ -153,7 +176,7 @@ func (sw *segmentsWriter) newSegment(shard shardKey) *segment {
 		dataPath: dataPath,
 		doneChan: make(chan struct{}),
 	}
-	_ = level.Debug(sw.l).Log("msg", "new segment", "ulid", s.ulid.String())
+	_ = level.Debug(sw.l).Log("msg", "new segment", "shard", shard, "segment-id", id.String())
 	return s
 }
 
@@ -161,7 +184,7 @@ func (s *segment) flush(ctx context.Context) error {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "segment flush")
 	defer sp.Finish()
 
-	_ = level.Debug(s.sw.l).Log("msg", "writing segment block", "ulid", s.ulid.String())
+	_ = level.Debug(s.sw.l).Log("msg", "writing segment block", "shard", s.shard, "segment-id", s.ulid.String())
 	defer func() {
 		s.cleanup()
 		close(s.doneChan)
@@ -177,15 +200,18 @@ func (s *segment) flush(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	err = s.sw.upload(ctx, blockPath)
+	err = s.sw.uploadBlock(ctx, blockPath)
 	if err != nil {
 		return err
 	}
 	err = s.sw.storeMeta(ctx, blockMeta)
 	if err != nil {
+		dlcErr := s.sw.uploadMeta(ctx, blockMeta)
+		if dlcErr != nil {
+			err = fmt.Errorf("failed to store meta: %w %w", err, fmt.Errorf("failed to upload meta: %w", dlcErr))
+		}
 		return err
 	}
-
 	return nil
 }
 
@@ -371,7 +397,7 @@ func (s *segment) headForIngest(k serviceKey) (*phlaredb.Head, error) {
 	if err != nil {
 		return nil, err
 	}
-	_ = level.Debug(s.sw.l).Log("msg", "new head", "ulid", nh.BlockID())
+	_ = level.Debug(s.sw.l).Log("msg", "new head", "head-id", nh.BlockID(), "segment-id", s.ulid.String(), "tenant", k.tenant, "service", k.service)
 
 	s.heads[k] = serviceHead{
 		key:  k,
@@ -387,8 +413,8 @@ func (s *segment) cleanup() {
 	}
 }
 
-func (sw *segmentsWriter) upload(ctx context.Context, blockPath string) error {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "segment upload")
+func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockPath string) error {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "segment uploadBlock")
 	defer sp.Finish()
 
 	dst, err := filepath.Rel(sw.cfg.DataPath, blockPath)
@@ -402,9 +428,48 @@ func (sw *segmentsWriter) upload(ctx context.Context, blockPath string) error {
 	return nil
 }
 
+func (sw *segmentsWriter) uploadMeta(ctx context.Context, meta *metastorev1.BlockMeta) error {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "segment uploadMeta")
+	defer sp.Finish()
+	data, err := meta.MarshalVT()
+	if err != nil {
+		return err
+	}
+	//dlc/{shard}/{tenant}/{block_id}/meta.pb
+	dst := fmt.Sprintf("%s/%d/%s/%s/meta.pb", pathDLC, meta.Shard, pathAnon, meta.Id)
+	err = sw.bucket.Upload(ctx, dst, bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+	sw.l.Log("msg", "uploaded meta", "segment-id", meta.Id, "shard", meta.Shard)
+	return nil
+}
+
 func (sw *segmentsWriter) storeMeta(ctx context.Context, meta *metastorev1.BlockMeta) error {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "segment store meta")
 	defer sp.Finish()
+
+	resp, err := sw.metastoreclient.AddBlock(ctx, &metastorev1.AddBlockRequest{
+		Block: meta,
+	})
+	if err != nil {
+		return err
+	}
+	_ = resp
+	//var tenants []string
+	//for _, svc := range meta.TenantServices {
+	//	tenants = append(tenants, svc.TenantId)
+	//}
+	//blocks, err := sw.metastoreclient.ListBlocksForQuery(ctx, &metastorev1.ListBlocksForQueryRequest{
+	//	TenantId:  tenants,
+	//	StartTime: time.Now().Add(-time.Hour).UnixMilli(),
+	//	EndTime:   time.Now().UnixMilli(),
+	//	Query:     "{}",
+	//})
+	//if err != nil {
+	//	return nil
+	//}
+	//_ = blocks
 
 	return nil
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/validation"
+	"google.golang.org/grpc"
 	"time"
 
 	"connectrpc.com/connect"
@@ -76,7 +77,7 @@ func (i *ingesterFlusherCompat) Flush() {
 	}
 }
 
-func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storageBucket phlareobj.Bucket, limits Limits, queryStoreAfter time.Duration) (*Ingester, error) {
+func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storageBucket phlareobj.Bucket, limits Limits, queryStoreAfter time.Duration, metastorecc grpc.ClientConnInterface) (*Ingester, error) {
 	i := &Ingester{
 		cfg:           cfg,
 		phlarectx:     phlarectx,
@@ -111,7 +112,10 @@ func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storag
 	if storageBucket == nil {
 		return nil, errors.New("storage bucket is required for segment writer")
 	}
-	i.segmentWriter = newSegmentWriter(i.phlarectx, i.logger, i.dbConfig, i.limiters, storageBucket)
+	if metastorecc == nil {
+		return nil, errors.New("metastore client connection is required for segment writer")
+	}
+	i.segmentWriter = newSegmentWriter(i.phlarectx, i.logger, i.dbConfig, i.limiters, storageBucket, metastorecc)
 	i.subservicesWatcher = services.NewFailureWatcher()
 	i.subservicesWatcher.WatchManager(i.subservices)
 	i.Service = services.NewBasicService(i.starting, i.running, i.stopping)
