@@ -9,7 +9,10 @@ import (
 	"fmt"
 	"hash/fnv"
 	"net/http"
+	"slices"
 	"sort"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -40,7 +43,7 @@ import (
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/grafana/pyroscope/pkg/slices"
+	phlareslices "github.com/grafana/pyroscope/pkg/slices"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/usagestats"
 	"github.com/grafana/pyroscope/pkg/util"
@@ -403,11 +406,11 @@ func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.Pu
 	profileSeries := extractSampleSeries(req)
 	// Filter our series and profiles without samples.
 	for _, series := range profileSeries {
-		series.Samples = slices.RemoveInPlace(series.Samples, func(sample *distributormodel.ProfileSample, _ int) bool {
+		series.Samples = phlareslices.RemoveInPlace(series.Samples, func(sample *distributormodel.ProfileSample, _ int) bool {
 			return len(sample.Profile.Sample) == 0
 		})
 	}
-	profileSeries = slices.RemoveInPlace(profileSeries, func(series *distributormodel.ProfileSeries, i int) bool {
+	profileSeries = phlareslices.RemoveInPlace(profileSeries, func(series *distributormodel.ProfileSeries, i int) bool {
 		return len(series.Samples) == 0
 	})
 	if len(profileSeries) == 0 {
@@ -468,10 +471,11 @@ func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.Pu
 		if err != nil {
 			return nil, err
 		}
-		slices.RemoveInPlace(fallbackSet.Instances, func(desc ring.InstanceDesc, i int) bool {
+		phlareslices.RemoveInPlace(fallbackSet.Instances, func(desc ring.InstanceDesc, i int) bool {
 			return desc.Id == ingester.Addr
 		})
 		profiles[i].fallbackNodes = fallbackSet.Instances
+		profiles[i].shard = getShard(&ingester, key, d.logger)
 	}
 	tracker := pushTracker{
 		done: make(chan struct{}, 1), // buffer avoids blocking if caller terminates - sendProfiles() only sends once on each
@@ -538,6 +542,27 @@ func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.Pu
 			return nil, ctx.Err()
 		}
 	}
+}
+
+func getShard(instance *ring.InstanceDesc, key uint32, logger log.Logger) uint32 {
+	parts := strings.Split(instance.Id, "-")
+	if len(parts) < 2 {
+		level.Warn(logger).Log("msg", "cannot determine shard, unexpected instance id", "instance_id", instance.Id)
+		return 0
+	}
+	instanceIdNum, err := strconv.Atoi(parts[len(parts)-1])
+	if err != nil {
+		level.Warn(logger).Log("msg", "cannot determine shard, unexpected instance id", "instance_id", instance.Id)
+		return 0
+	}
+	i, found := slices.BinarySearch(instance.Tokens, key)
+	if found {
+		i = i + 1
+	}
+	if i >= len(instance.Tokens) {
+		i = 0
+	}
+	return uint32(instanceIdNum*len(instance.Tokens) + i)
 }
 
 // profileSizeBytes returns the size of symbols and samples in bytes.
@@ -635,6 +660,7 @@ func (d *Distributor) sendProfilesErr(ctx context.Context, ingester ring.Instanc
 		series := &pushv1.RawProfileSeries{
 			Labels:  p.profile.Labels,
 			Samples: make([]*pushv1.RawSample, 0, len(p.profile.Samples)),
+			Shard:   &p.shard,
 		}
 		for _, sample := range p.profile.Samples {
 			series.Samples = append(series.Samples, &pushv1.RawSample{
@@ -774,7 +800,7 @@ func mergeSeriesAndSampleLabels(p *googlev1.Profile, sl []*typesv1.LabelPair, pl
 func exportSamples(e *pprof.SampleExporter, samples []*googlev1.Sample) *pprof.Profile {
 	samplesCopy := make([]*googlev1.Sample, len(samples))
 	copy(samplesCopy, samples)
-	slices.Clear(samples)
+	phlareslices.Clear(samples)
 	n := pprof.NewProfile()
 	e.ExportSamples(n.Profile, samplesCopy)
 	return n

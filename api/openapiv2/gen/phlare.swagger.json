@@ -1284,6 +1284,11 @@
             "$ref": "#/definitions/v1RawSample"
           },
           "title": "samples are the set of profile bytes"
+        },
+        "shard": {
+          "type": "integer",
+          "format": "int64",
+          "title": "the logical shard assigned to the profile"
         }
       },
       "title": "RawProfileSeries represents the pprof profile and its associated labels"
