@@ -733,6 +733,7 @@ func Test_SampleLabels(t *testing.T) {
 			series: []*distributormodel.ProfileSeries{
 				{
 					Labels: []*typesv1.LabelPair{
+						{Name: "__delta__", Value: "false"},
 						{Name: "__name__", Value: "memory"},
 						{Name: "__name_replaced__", Value: "godeltaprof_memory"},
 					},
