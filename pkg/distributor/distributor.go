@@ -562,7 +562,9 @@ func getShard(instance *ring.InstanceDesc, key uint32, logger log.Logger) uint32
 	if i >= len(instance.Tokens) {
 		i = 0
 	}
-	return uint32(instanceIdNum*len(instance.Tokens) + i)
+	shard := uint32(instanceIdNum*len(instance.Tokens) + i)
+	level.Debug(logger).Log("msg", "shard found", "shard", shard)
+	return shard
 }
 
 // profileSizeBytes returns the size of symbols and samples in bytes.
