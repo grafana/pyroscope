@@ -200,6 +200,30 @@ func Test_ValidateRangeRequest(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "empty start",
+			in: model.Interval{
+				Start: 0,
+				End:   now,
+			},
+			expectedErr: NewErrorf(QueryMissingTimeRange, QueryMissingTimeRangeErrorMsg),
+		},
+		{
+			name: "empty end",
+			in: model.Interval{
+				Start: now,
+				End:   0,
+			},
+			expectedErr: NewErrorf(QueryMissingTimeRange, QueryMissingTimeRangeErrorMsg),
+		},
+		{
+			name: "empty start and end",
+			in: model.Interval{
+				Start: 0,
+				End:   0,
+			},
+			expectedErr: NewErrorf(QueryMissingTimeRange, QueryMissingTimeRangeErrorMsg),
+		},
 	} {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
