@@ -36,7 +36,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
 	"github.com/samber/lo"
-	"google.golang.org/grpc"
 
 	"github.com/grafana/pyroscope/pkg/api"
 	apiversion "github.com/grafana/pyroscope/pkg/api/version"
@@ -227,20 +226,19 @@ type Phlare struct {
 	serviceMap    map[string]services.Service
 	deps          map[string][]string
 
-	API            *api.API
-	Server         *server.Server
-	SignalHandler  *signals.Handler
-	MemberlistKV   *memberlist.KVInitService
-	ring           *ring.Ring
-	usageReport    *usagestats.Reporter
-	RuntimeConfig  *runtimeconfig.Manager
-	Overrides      *validation.Overrides
-	Compactor      *compactor.MultitenantCompactor
-	admin          *operations.Admin
-	versions       *apiversion.Service
-	serviceManager *services.Manager
-
-	MetastoreClientConn *grpc.ClientConn
+	API             *api.API
+	Server          *server.Server
+	SignalHandler   *signals.Handler
+	MemberlistKV    *memberlist.KVInitService
+	ring            *ring.Ring
+	MetastoreClient *metastoreclient.Client
+	usageReport     *usagestats.Reporter
+	RuntimeConfig   *runtimeconfig.Manager
+	Overrides       *validation.Overrides
+	Compactor       *compactor.MultitenantCompactor
+	admin           *operations.Admin
+	versions        *apiversion.Service
+	serviceManager  *services.Manager
 
 	TenantLimits validation.TenantLimits
 

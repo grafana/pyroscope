@@ -28,6 +28,8 @@ import (
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/genproto/googleapis/api/httpbody"
+	"google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/protobuf/encoding/protojson"
 	"gopkg.in/yaml.v3"
 
@@ -104,7 +106,7 @@ func (f *Phlare) initQueryFrontend() (services.Service, error) {
 		f.Cfg.Frontend.Port = f.Cfg.Server.HTTPListenPort
 	}
 
-	frontendSvc, err := frontend.NewFrontend(f.Cfg.Frontend, f.Overrides, log.With(f.logger, "component", "frontend"), f.reg, f.MetastoreClientConn)
+	frontendSvc, err := frontend.NewFrontend(f.Cfg.Frontend, f.Overrides, log.With(f.logger, "component", "frontend"), f.reg, f.MetastoreClient)
 	if err != nil {
 		return nil, err
 	}
@@ -554,7 +556,11 @@ func (f *Phlare) initAdmin() (services.Service, error) {
 }
 
 func (f *Phlare) initMetastore() (services.Service, error) {
-	m, err := metastore.New(f.Cfg.Metastore, nil, f.logger, f.reg)
+	// TODO: Separate module.
+	hs := health.NewServer()
+	grpc_health_v1.RegisterHealthServer(f.Server.GRPC, hs)
+
+	m, err := metastore.New(f.Cfg.Metastore, nil, f.logger, f.reg, hs)
 	if err != nil {
 		return nil, err
 	}
@@ -563,16 +569,12 @@ func (f *Phlare) initMetastore() (services.Service, error) {
 }
 
 func (f *Phlare) initMetastoreClient() (services.Service, error) {
-	cc, err := metastoreclient.Dial(f.Cfg.MetastoreClient)
+	mc, err := metastoreclient.New(f.Cfg.MetastoreClient)
 	if err != nil {
 		return nil, err
 	}
-	f.MetastoreClientConn = cc
-	svc := services.NewIdleService(
-		func(_ context.Context) error { return nil },
-		func(_ error) error { return cc.Close() },
-	)
-	return svc, nil
+	f.MetastoreClient = mc
+	return mc.Service(), nil
 }
 
 type statusService struct {

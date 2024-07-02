@@ -20,7 +20,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/pkg/metastore/raftleader"
+	"github.com/grafana/pyroscope/pkg/util/health"
 )
+
+const metastoreRaftLeaderHealthServiceName = "pyroscope.metastore.raft_leader"
 
 type Config struct {
 	DataDir string     `yaml:"data_dir"`
@@ -73,10 +77,11 @@ type Metastore struct {
 	db *boltdb
 
 	// Raft module.
-	wal       *raftwal.WAL
-	snapshots *raft.FileSnapshotStore
-	transport *raft.NetworkTransport
-	raft      *raft.Raft
+	wal          *raftwal.WAL
+	snapshots    *raft.FileSnapshotStore
+	transport    *raft.NetworkTransport
+	raft         *raft.Raft
+	leaderhealth *raftleader.HealthObserver
 
 	logStore      raft.LogStore
 	stableStore   raft.StableStore
@@ -87,7 +92,7 @@ type Metastore struct {
 
 type Limits interface{}
 
-func New(config Config, limits Limits, logger log.Logger, reg prometheus.Registerer) (*Metastore, error) {
+func New(config Config, limits Limits, logger log.Logger, reg prometheus.Registerer, hs health.Server) (*Metastore, error) {
 	m := &Metastore{
 		config: config,
 		logger: logger,
@@ -95,19 +100,10 @@ func New(config Config, limits Limits, logger log.Logger, reg prometheus.Registe
 		limits: limits,
 		db:     newDB(config, logger),
 	}
+	m.leaderhealth = raftleader.NewRaftLeaderHealthObserver(hs)
 	m.state = newMetastoreState(logger, m.db)
 	m.Service = services.NewBasicService(m.starting, m.running, m.stopping)
 	return m, nil
-}
-
-func (m *Metastore) CheckReady(_ context.Context) error {
-	if s := m.State(); s != services.Running && s != services.Stopping {
-		return fmt.Errorf("not ready: %v", s)
-	}
-	// TODO(kolesnikovae):
-	//  On boot, get the leader commit index, and report readiness
-	//  only when the local _apply_ index matches one.
-	return nil
 }
 
 func (m *Metastore) Shutdown() error {
@@ -187,6 +183,7 @@ func (m *Metastore) initRaft() (err error) {
 		}
 	}
 
+	m.leaderhealth.Register(m.raft, metastoreRaftLeaderHealthServiceName)
 	return nil
 }
 
@@ -224,8 +221,12 @@ func (m *Metastore) createRaftDirs() (err error) {
 }
 
 func (m *Metastore) shutdownRaft() {
-	// If raft has been initialized, try to transfer leadership.
 	if m.raft != nil {
+		// If raft has been initialized, try to transfer leadership.
+		// Only after this we remove the leader health observer and
+		// shutdown the raft.
+		// There is a chance that client will still be trying to connect
+		// to this instance, therefore retrying is still required.
 		if err := m.raft.LeadershipTransfer().Error(); err != nil {
 			switch {
 			case errors.Is(err, raft.ErrNotLeader):
@@ -236,6 +237,7 @@ func (m *Metastore) shutdownRaft() {
 				_ = level.Error(m.logger).Log("msg", "failed to transfer leadership", "err", err)
 			}
 		}
+		m.leaderhealth.Deregister(m.raft, metastoreRaftLeaderHealthServiceName)
 		if err := m.raft.Shutdown().Error(); err != nil {
 			_ = level.Error(m.logger).Log("msg", "failed to shutdown raft", "err", err)
 		}
