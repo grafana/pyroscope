@@ -122,6 +122,7 @@ func Test_defaultRelabelRules(t *testing.T) {
 			expected: labels.FromStrings(
 				phlaremodel.LabelNameProfileName, "memory",
 				"__name_replaced__", "godeltaprof_memory",
+				"__delta__", "false",
 			),
 			kept: true,
 		},
