@@ -1,7 +1,6 @@
 package ingester
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
 	"fmt"
@@ -32,8 +31,7 @@ import (
 const pathSegments = "segments"
 const pathAnon = "anon"
 
-// const pathDLQ = "dlq"
-const pathDLC = "dlc"
+const pathDLQ = "dlq"
 const pathBlock = "block.bin"
 const pathMetaPB = "meta.pb" // should we embed it in the block?
 
@@ -206,10 +204,10 @@ func (s *segment) flush(ctx context.Context) error {
 	}
 	err = s.sw.storeMeta(ctx, blockMeta)
 	if err != nil {
-		dlcErr := s.sw.uploadMeta(ctx, blockMeta)
-		if dlcErr != nil {
-			err = fmt.Errorf("failed to store meta: %w %w", err, fmt.Errorf("failed to upload meta: %w", dlcErr))
-		}
+		//dlcErr := s.sw.uploadMeta(ctx, blockMeta)
+		//if dlcErr != nil {
+		//	err = fmt.Errorf("failed to store meta: %w %w", err, fmt.Errorf("failed to upload meta: %w", dlcErr))
+		//}
 		return err
 	}
 	return nil
@@ -428,22 +426,22 @@ func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockPath string) err
 	return nil
 }
 
-func (sw *segmentsWriter) uploadMeta(ctx context.Context, meta *metastorev1.BlockMeta) error {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "segment uploadMeta")
-	defer sp.Finish()
-	data, err := meta.MarshalVT()
-	if err != nil {
-		return err
-	}
-	//dlc/{shard}/{tenant}/{block_id}/meta.pb
-	dst := fmt.Sprintf("%s/%d/%s/%s/meta.pb", pathDLC, meta.Shard, pathAnon, meta.Id)
-	err = sw.bucket.Upload(ctx, dst, bytes.NewReader(data))
-	if err != nil {
-		return err
-	}
-	sw.l.Log("msg", "uploaded meta", "segment-id", meta.Id, "shard", meta.Shard)
-	return nil
-}
+//func (sw *segmentsWriter) uploadMeta(ctx context.Context, meta *metastorev1.BlockMeta) error {
+//	sp, ctx := opentracing.StartSpanFromContext(ctx, "segment uploadMeta")
+//	defer sp.Finish()
+//	data, err := meta.MarshalVT()
+//	if err != nil {
+//		return err
+//	}
+//	//dlc/{shard}/{tenant}/{block_id}/meta.pb
+//	dst := fmt.Sprintf("%s/%d/%s/%s/meta.pb", pathDLQ, meta.Shard, pathAnon, meta.Id)
+//	err = sw.bucket.Upload(ctx, dst, bytes.NewReader(data))
+//	if err != nil {
+//		return err
+//	}
+//	sw.l.Log("msg", "uploaded meta", "segment-id", meta.Id, "shard", meta.Shard)
+//	return nil
+//}
 
 func (sw *segmentsWriter) storeMeta(ctx context.Context, meta *metastorev1.BlockMeta) error {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "segment store meta")
