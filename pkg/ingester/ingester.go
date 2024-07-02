@@ -34,11 +34,15 @@ var activeTenantsStats = usagestats.NewInt("ingester_active_tenants")
 
 type Config struct {
 	LifecyclerConfig ring.LifecyclerConfig `yaml:"lifecycler,omitempty"`
+	SegmentDuration  time.Duration         `yaml:"segmentDuration,omitempty"`
+	Async            bool                  `yaml:"async,omitempty"`
 }
 
 // RegisterFlags registers the flags.
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	cfg.LifecyclerConfig.RegisterFlags(f, util.Logger)
+	f.DurationVar(&cfg.SegmentDuration, "ingester.segment.duration", 1*time.Second, "Timeout when flushing segments to bucket.")
+	f.BoolVar(&cfg.Async, "ingester.async", false, "Enable async mode for ingester.")
 }
 
 func (cfg *Config) Validate() error {
@@ -115,7 +119,7 @@ func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storag
 	if metastorecc == nil {
 		return nil, errors.New("metastore client connection is required for segment writer")
 	}
-	i.segmentWriter = newSegmentWriter(i.phlarectx, i.logger, i.dbConfig, i.limiters, storageBucket, metastorecc)
+	i.segmentWriter = newSegmentWriter(i.phlarectx, i.logger, i.dbConfig, i.limiters, storageBucket, cfg.SegmentDuration, metastorecc)
 	i.subservicesWatcher = services.NewFailureWatcher()
 	i.subservicesWatcher.WatchManager(i.subservices)
 	i.Service = services.NewBasicService(i.starting, i.running, i.stopping)
@@ -148,7 +152,7 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	err = i.segmentWriter.ingestAndWait(ctx, shardKey(0), func(segment *segment) error {
+	wait, err := i.segmentWriter.ingest(shardKey(0), func(segment segmentIngest) error {
 		for _, series := range req.Msg.Series {
 			for _, sample := range series.Samples {
 				id, err := uuid.Parse(sample.ID)
@@ -177,6 +181,12 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 		return nil
 	})
 	if err != nil {
+		return nil, err
+	}
+	if i.cfg.Async {
+		return connect.NewResponse(&pushv1.PushResponse{}), nil
+	}
+	if err = wait.waitFlushed(ctx); err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&pushv1.PushResponse{}), nil

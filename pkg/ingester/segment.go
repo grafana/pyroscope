@@ -38,6 +38,7 @@ const pathMetaPB = "meta.pb" // should we embed it in the block?
 type shardKey uint32
 
 type segmentsWriter struct {
+	segmentDuration time.Duration
 	phlarectx       context.Context
 	l               log.Logger
 	segments        map[shardKey]*segment
@@ -50,9 +51,10 @@ type segmentsWriter struct {
 	cancel          context.CancelFunc
 }
 
-func newSegmentWriter(phlarectx context.Context, l log.Logger, cfg phlaredb.Config, limiters *limiters, bucket objstore.Bucket, metastorecc grpc.ClientConnInterface) *segmentsWriter {
+func newSegmentWriter(phlarectx context.Context, l log.Logger, cfg phlaredb.Config, limiters *limiters, bucket objstore.Bucket, segmentDuration time.Duration, metastorecc grpc.ClientConnInterface) *segmentsWriter {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	sw := &segmentsWriter{
+		segmentDuration: segmentDuration,
 		phlarectx:       phlarectx,
 		l:               l,
 		bucket:          bucket,
@@ -70,27 +72,29 @@ func newSegmentWriter(phlarectx context.Context, l log.Logger, cfg phlaredb.Conf
 	return sw
 }
 
-func (sw *segmentsWriter) ingestAndWait(ctx context.Context, shard shardKey, fn func(head *segment) error) error {
-	doneChan, err := sw.ingest(shard, fn)
+func (sw *segmentsWriter) ingestAndWait(ctx context.Context, shard shardKey, fn func(head segmentIngest) error) error {
+	await, err := sw.ingest(shard, fn)
 	if err != nil {
 		return err
 	}
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-doneChan:
-		return nil
-	}
+	return await.waitFlushed(ctx)
+	//
+	//select {
+	//case <-ctx.Done():
+	//	return ctx.Err()
+	//case <-doneChan:
+	//	return nil
+	//}
 }
 
-func (sw *segmentsWriter) ingest(shard shardKey, fn func(head *segment) error) (doneChan <-chan struct{}, err error) {
+func (sw *segmentsWriter) ingest(shard shardKey, fn func(head segmentIngest) error) (await segmentWaitFlushed, err error) {
 	sw.segmentsLock.RLock()
 	s, ok := sw.segments[shard]
 	if ok {
 		s.inFlightProfiles.Add(1)
 		defer s.inFlightProfiles.Done()
 		sw.segmentsLock.RUnlock()
-		return s.doneChan, fn(s)
+		return s, fn(s)
 	}
 	sw.segmentsLock.RUnlock()
 
@@ -100,7 +104,7 @@ func (sw *segmentsWriter) ingest(shard shardKey, fn func(head *segment) error) (
 		s.inFlightProfiles.Add(1)
 		defer s.inFlightProfiles.Done()
 		sw.segmentsLock.Unlock()
-		return s.doneChan, fn(s)
+		return s, fn(s)
 	}
 
 	s = sw.newSegment(shard)
@@ -108,17 +112,19 @@ func (sw *segmentsWriter) ingest(shard shardKey, fn func(head *segment) error) (
 	s.inFlightProfiles.Add(1)
 	defer s.inFlightProfiles.Done()
 	sw.segmentsLock.Unlock()
-	return s.doneChan, fn(s)
+	return s, fn(s)
 }
 
 func (sw *segmentsWriter) Stop() error {
+	sw.l.Log("msg", "stopping segments writer")
 	sw.cancel()
 	sw.wg.Wait()
+	sw.l.Log("msg", "segments writer stopped")
 	return nil
 }
 
 func (sw *segmentsWriter) loop(ctx context.Context) {
-	ticker := time.NewTicker(1 * time.Second)
+	ticker := time.NewTicker(sw.segmentDuration)
 	defer ticker.Stop()
 	for {
 		select {
@@ -132,6 +138,7 @@ func (sw *segmentsWriter) loop(ctx context.Context) {
 }
 
 func (sw *segmentsWriter) Flush(ctx context.Context) error {
+	sw.flushSegments(ctx)
 	return nil
 }
 
@@ -354,6 +361,23 @@ type segment struct {
 	sw               *segmentsWriter
 	dataPath         string
 	doneChan         chan struct{}
+}
+
+type segmentIngest interface {
+	ingest(ctx context.Context, tenantID string, p *profilev1.Profile, id uuid.UUID, labels ...*typesv1.LabelPair) error
+}
+
+type segmentWaitFlushed interface {
+	waitFlushed(ctx context.Context) error
+}
+
+func (s *segment) waitFlushed(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-s.doneChan:
+		return nil
+	}
 }
 
 func (s *segment) ingest(ctx context.Context, tenantID string, p *profilev1.Profile, id uuid.UUID, labels ...*typesv1.LabelPair) error {
