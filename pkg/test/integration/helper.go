@@ -416,7 +416,7 @@ func (b *RequestBuilder) SelectMergeProfile(metric string, query map[string]stri
 	qc := b.QueryClient()
 	resp, err := qc.SelectMergeProfile(context.Background(), connect.NewRequest(&querierv1.SelectMergeProfileRequest{
 		ProfileTypeID: metric,
-		Start:         time.Unix(0, 0).UnixMilli(),
+		Start:         time.Unix(1, 0).UnixMilli(),
 		End:           time.Now().UnixMilli(),
 		LabelSelector: selector.String(),
 	}))
