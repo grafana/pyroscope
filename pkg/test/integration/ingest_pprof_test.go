@@ -2,10 +2,11 @@ package integration
 
 import (
 	"fmt"
-	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 
 	"connectrpc.com/connect"
 	"github.com/stretchr/testify/assert"
