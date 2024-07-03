@@ -206,8 +206,8 @@ func (c *Cluster) Prepare() (err error) {
 		comp.flags = append(comp.flags,
 			[]string{
 				"-tracing.enabled=false", // data race
-				"-distributor.replication-factor=3",
-				"-store-gateway.sharding-ring.replication-factor=3",
+				"-distributor.replication-factor=1",
+				"-store-gateway.sharding-ring.replication-factor=1",
 				fmt.Sprintf("-target=%s", comp.Target),
 				fmt.Sprintf("-memberlist.advertise-port=%d", comp.ports[2]),
 				fmt.Sprintf("-memberlist.bind-port=%d", comp.ports[2]),

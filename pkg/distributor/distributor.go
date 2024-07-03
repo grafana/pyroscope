@@ -471,10 +471,11 @@ func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.Pu
 		if err != nil {
 			return nil, err
 		}
-		phlareslices.RemoveInPlace(fallbackSet.Instances, func(desc ring.InstanceDesc, i int) bool {
+		profiles[i].fallbackNodes = make([]ring.InstanceDesc, 0, len(fallbackSet.Instances))
+		profiles[i].fallbackNodes = append(profiles[i].fallbackNodes, fallbackSet.Instances...)
+		phlareslices.RemoveInPlace(profiles[i].fallbackNodes, func(desc ring.InstanceDesc, i int) bool {
 			return desc.Id == ingester.Addr
 		})
-		profiles[i].fallbackNodes = fallbackSet.Instances
 		profiles[i].shard = getShard(&ingester, key, d.logger)
 	}
 	tracker := pushTracker{

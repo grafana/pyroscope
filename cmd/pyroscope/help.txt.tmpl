@@ -115,6 +115,22 @@ Usage of ./pyroscope:
     	Port to listen on for gossip messages. (default 7946)
   -memberlist.join string
     	Other cluster members to join. Can be specified multiple times. It can be an IP, hostname or an entry specified in the DNS Service Discovery format.
+  -metastore.address string
+    	 (default "localhost:9095")
+  -metastore.data-dir string
+    	 (default "./data-metastore/data")
+  -metastore.raft.advertise-address string
+    	 (default "localhost:9099")
+  -metastore.raft.apply-timeout duration
+    	 (default 5s)
+  -metastore.raft.bind-address string
+    	 (default ":9099")
+  -metastore.raft.bootstrap-peers string
+    	
+  -metastore.raft.dir string
+    	 (default "./data-metastore/raft")
+  -metastore.raft.server-id string
+    	 (default "localhost")
   -modules
     	List available modules that can be used as target and exit.
   -overrides-exporter.ring.consul.hostname string

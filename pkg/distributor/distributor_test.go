@@ -72,8 +72,8 @@ func Test_ConnectPush(t *testing.T) {
 	d, err := New(Config{
 		DistributorRing: ringConfig,
 	}, testhelper.NewMockRing([]ring.InstanceDesc{
-		{Addr: "foo"},
-	}, 3), &poolFactory{func(addr string) (client.PoolClient, error) {
+		{Addr: "foo", Id: "in-1"},
+	}, 1), &poolFactory{func(addr string) (client.PoolClient, error) {
 		return ing, nil
 	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
 
@@ -101,7 +101,7 @@ func Test_ConnectPush(t *testing.T) {
 	}))
 	require.NoError(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, 3, len(ing.requests[0].Series))
+	require.Equal(t, 1, len(ing.requests[0].Series))
 }
 
 func Test_Replication(t *testing.T) {
@@ -128,10 +128,10 @@ func Test_Replication(t *testing.T) {
 		},
 	})
 	d, err := New(Config{DistributorRing: ringConfig}, testhelper.NewMockRing([]ring.InstanceDesc{
-		{Addr: "1"},
-		{Addr: "2"},
-		{Addr: "3"},
-	}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
+		{Addr: "1", Id: "in-1"},
+		{Addr: "2", Id: "in-2"},
+		{Addr: "3", Id: "in-3"},
+	}, 1), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 		return ingesters[addr], nil
 	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
 	require.NoError(t, err)
@@ -152,7 +152,7 @@ func Test_Subservices(t *testing.T) {
 		PoolConfig:      clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Second},
 		DistributorRing: ringConfig,
 	}, testhelper.NewMockRing([]ring.InstanceDesc{
-		{Addr: "foo"},
+		{Addr: "foo", Id: "in-1"},
 	}, 1), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 		return ing, nil
 	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
@@ -317,8 +317,8 @@ func Test_Limits(t *testing.T) {
 			d, err := New(Config{
 				DistributorRing: ringConfig,
 			}, testhelper.NewMockRing([]ring.InstanceDesc{
-				{Addr: "foo"},
-			}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
+				{Addr: "foo", Id: "in-1"},
+			}, 1), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 				return ing, nil
 			}}, tc.overrides, nil, log.NewLogfmtLogger(os.Stdout))
 
@@ -406,7 +406,7 @@ func Test_Sessions_Limit(t *testing.T) {
 			ing := newFakeIngester(t, false)
 			d, err := New(
 				Config{DistributorRing: ringConfig},
-				testhelper.NewMockRing([]ring.InstanceDesc{{Addr: "foo"}}, 3),
+				testhelper.NewMockRing([]ring.InstanceDesc{{Addr: "foo", Id: "in-1"}}, 1),
 				&poolFactory{f: func(addr string) (client.PoolClient, error) { return ing, nil }},
 				validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
 					l := validation.MockDefaultLimits()
@@ -676,8 +676,8 @@ func TestBadPushRequest(t *testing.T) {
 	d, err := New(Config{
 		DistributorRing: ringConfig,
 	}, testhelper.NewMockRing([]ring.InstanceDesc{
-		{Addr: "foo"},
-	}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
+		{Addr: "foo", Id: "in-1"},
+	}, 1), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 		return ing, nil
 	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
 
@@ -723,6 +723,7 @@ func TestPush_ShuffleSharding(t *testing.T) {
 		ingesters[strconv.Itoa(pos)] = newFakeIngester(t, false)
 		ringDesc[pos] = ring.InstanceDesc{
 			Addr: strconv.Itoa(pos),
+			Id:   fmt.Sprintf("in-%d", pos),
 		}
 	}
 
@@ -752,7 +753,7 @@ func TestPush_ShuffleSharding(t *testing.T) {
 	})
 
 	// get distributor ready
-	d, err := New(Config{DistributorRing: ringConfig}, testhelper.NewMockRing(ringDesc, 3),
+	d, err := New(Config{DistributorRing: ringConfig}, testhelper.NewMockRing(ringDesc, 1),
 		&poolFactory{func(addr string) (client.PoolClient, error) {
 			return ingesters[addr], nil
 		}},
@@ -850,7 +851,7 @@ func TestPush_Aggregation(t *testing.T) {
 	ingesterClient := newFakeIngester(t, false)
 	d, err := New(
 		Config{DistributorRing: ringConfig, PushTimeout: time.Second * 10},
-		testhelper.NewMockRing([]ring.InstanceDesc{{Addr: "foo"}}, 3),
+		testhelper.NewMockRing([]ring.InstanceDesc{{Addr: "foo", Id: "in-1"}}, 1),
 		&poolFactory{f: func(addr string) (client.PoolClient, error) { return ingesterClient, nil }},
 		validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
 			l := validation.MockDefaultLimits()
@@ -923,7 +924,7 @@ func TestPush_Aggregation(t *testing.T) {
 	}
 
 	// RF * samples_per_profile * clients * requests
-	assert.Equal(t, int64(3*2*clients*requests), sum)
+	assert.Equal(t, int64(2*clients*requests), sum)
 	assert.Equal(t, len(sessions), maxSessions)
 }
 
