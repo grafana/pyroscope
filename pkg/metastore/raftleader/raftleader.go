@@ -30,11 +30,10 @@ func (hs *HealthObserver) Register(r *raft.Raft, service string) {
 	hs.mu.Lock()
 	defer hs.mu.Unlock()
 	k := serviceKey{raft: r, service: service}
-	svc, ok := hs.registered[k]
-	if ok {
+	if _, ok := hs.registered[k]; ok {
 		return
 	}
-	svc = &raftService{
+	svc := &raftService{
 		server:  hs.server,
 		logger:  log.With(hs.logger, "service", service),
 		service: service,

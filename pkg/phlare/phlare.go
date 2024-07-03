@@ -317,7 +317,7 @@ func (f *Phlare) setupModuleManager() error {
 	mm.RegisterModule(TenantSettings, f.initTenantSettings)
 	mm.RegisterModule(AdHocProfiles, f.initAdHocProfiles)
 	mm.RegisterModule(Metastore, f.initMetastore)
-	mm.RegisterModule(MetastoreClient, f.initMetastoreClient)
+	mm.RegisterModule(MetastoreClient, f.initMetastoreClient, modules.UserInvisibleModule)
 
 	// Add dependencies
 	deps := map[string][]string{

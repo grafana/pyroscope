@@ -1720,58 +1720,6 @@ spec:
     # TODO: Ensure only services that offer memberlist register
     # pyroscope.grafana.com/memberlist: "true"
 ---
-# Source: pyroscope/templates/service-metastore.yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: pyroscope-dev-metastore-grpc
-  namespace: default
-  labels:
-    helm.sh/chart: pyroscope-1.6.1
-    app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.6.1"
-    app.kubernetes.io/managed-by: Helm
-spec:
-  type: ClusterIP
-  clusterIP: None
-  ports:
-    - name: metastore-grpc
-      port: 9095
-      protocol: TCP
-      targetPort: 9095
-  publishNotReadyAddresses: true
-  selector:
-    app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/component: "metastore"
----
-# Source: pyroscope/templates/service-metastore.yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: pyroscope-dev-metastore-raft
-  namespace: default
-  labels:
-    helm.sh/chart: pyroscope-1.6.1
-    app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.6.1"
-    app.kubernetes.io/managed-by: Helm
-spec:
-  type: ClusterIP
-  clusterIP: None
-  ports:
-    - name: metastore-raft
-      port: 9099
-      protocol: TCP
-      targetPort: 9099
-  publishNotReadyAddresses: false
-  selector:
-    app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/component: "metastore"
----
 # Source: pyroscope/templates/service-query-worker.yaml
 apiVersion: v1
 kind: Service
@@ -2208,8 +2156,11 @@ spec:
             - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
-            - "-metastore.address=dns:///pyroscope-dev-metastore-grpc.default.svc.cluster.local.:9095"
-            - "-metastore.raft.bootstrap-peers=dns:///pyroscope-dev-metastore-raft.default.svc.cluster.local.:9099"
+            - "-metastore.raft.bind-address=:9099"
+            - "-metastore.raft.advertise-address=($HOSTNAME).pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.raft.server-id=($HOSTNAME).pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.raft.bootstrap-peers=dnssrvnoa+_raft._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.address=dns:///_grpc._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9095"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
@@ -2303,8 +2254,11 @@ spec:
             - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
-            - "-metastore.address=dns:///pyroscope-dev-metastore-grpc.default.svc.cluster.local.:9095"
-            - "-metastore.raft.bootstrap-peers=dns:///pyroscope-dev-metastore-raft.default.svc.cluster.local.:9099"
+            - "-metastore.raft.bind-address=:9099"
+            - "-metastore.raft.advertise-address=($HOSTNAME).pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.raft.server-id=($HOSTNAME).pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.raft.bootstrap-peers=dnssrvnoa+_raft._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.address=dns:///_grpc._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9095"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
@@ -2398,8 +2352,11 @@ spec:
             - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
-            - "-metastore.address=dns:///pyroscope-dev-metastore-grpc.default.svc.cluster.local.:9095"
-            - "-metastore.raft.bootstrap-peers=dns:///pyroscope-dev-metastore-raft.default.svc.cluster.local.:9099"
+            - "-metastore.raft.bind-address=:9099"
+            - "-metastore.raft.advertise-address=($HOSTNAME).pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.raft.server-id=($HOSTNAME).pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.raft.bootstrap-peers=dnssrvnoa+_raft._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.address=dns:///_grpc._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9095"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
@@ -2493,8 +2450,11 @@ spec:
             - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
-            - "-metastore.address=dns:///pyroscope-dev-metastore-grpc.default.svc.cluster.local.:9095"
-            - "-metastore.raft.bootstrap-peers=dns:///pyroscope-dev-metastore-raft.default.svc.cluster.local.:9099"
+            - "-metastore.raft.bind-address=:9099"
+            - "-metastore.raft.advertise-address=($HOSTNAME).pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.raft.server-id=($HOSTNAME).pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.raft.bootstrap-peers=dnssrvnoa+_raft._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.address=dns:///_grpc._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9095"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
@@ -2889,8 +2849,11 @@ spec:
             - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
-            - "-metastore.address=dns:///pyroscope-dev-metastore-grpc.default.svc.cluster.local.:9095"
-            - "-metastore.raft.bootstrap-peers=dns:///pyroscope-dev-metastore-raft.default.svc.cluster.local.:9099"
+            - "-metastore.raft.bind-address=:9099"
+            - "-metastore.raft.advertise-address=($HOSTNAME).pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.raft.server-id=($HOSTNAME).pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.raft.bootstrap-peers=dnssrvnoa+_raft._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.address=dns:///_grpc._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9095"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
@@ -2992,8 +2955,11 @@ spec:
             - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
-            - "-metastore.address=dns:///pyroscope-dev-metastore-grpc.default.svc.cluster.local.:9095"
-            - "-metastore.raft.bootstrap-peers=dns:///pyroscope-dev-metastore-raft.default.svc.cluster.local.:9099"
+            - "-metastore.raft.bind-address=:9099"
+            - "-metastore.raft.advertise-address=($HOSTNAME).pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.raft.server-id=($HOSTNAME).pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.raft.bootstrap-peers=dnssrvnoa+_raft._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.address=dns:///_grpc._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9095"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
@@ -3091,8 +3057,11 @@ spec:
             - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
-            - "-metastore.address=dns:///pyroscope-dev-metastore-grpc.default.svc.cluster.local.:9095"
-            - "-metastore.raft.bootstrap-peers=dns:///pyroscope-dev-metastore-raft.default.svc.cluster.local.:9099"
+            - "-metastore.raft.bind-address=:9099"
+            - "-metastore.raft.advertise-address=($HOSTNAME).pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.raft.server-id=($HOSTNAME).pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.raft.bootstrap-peers=dnssrvnoa+_raft._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.address=dns:///_grpc._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9095"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"

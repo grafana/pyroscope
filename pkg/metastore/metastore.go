@@ -52,13 +52,10 @@ func (cfg *RaftConfig) RegisterFlags(f *flag.FlagSet) {
 	const prefix = "metastore.raft."
 	f.StringVar(&cfg.Dir, prefix+"dir", "./data-metastore/raft", "")
 	f.Var((*flagext.StringSlice)(&cfg.BootstrapPeers), prefix+"bootstrap-peers", "")
-	f.StringVar(&cfg.ServerID, prefix+"server-id", "localhost", "")
-	f.StringVar(&cfg.BindAddress, prefix+"bind-address", ":9099", "")
+	f.StringVar(&cfg.BindAddress, prefix+"bind-address", "localhost:9099", "")
+	f.StringVar(&cfg.ServerID, prefix+"server-id", "localhost:9099", "")
 	f.StringVar(&cfg.AdvertiseAddress, prefix+"advertise-address", "localhost:9099", "")
 	f.DurationVar(&cfg.ApplyTimeout, prefix+"apply-timeout", 5*time.Second, "")
-	if len(cfg.BootstrapPeers) == 0 {
-		cfg.BootstrapPeers = []string{cfg.AdvertiseAddress + "/" + cfg.ServerID}
-	}
 }
 
 type Metastore struct {
