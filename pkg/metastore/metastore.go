@@ -24,7 +24,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/util/health"
 )
 
-const metastoreRaftLeaderHealthServiceName = "pyroscope.metastore.raft_leader"
+const metastoreRaftLeaderHealthServiceName = "metastore.v1.MetastoreService.RaftLeader"
 
 type Config struct {
 	DataDir string     `yaml:"data_dir"`

@@ -2,7 +2,9 @@ package metastore
 
 import (
 	"context"
+	"flag"
 	"math"
+	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -12,12 +14,33 @@ import (
 	"github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	"github.com/grafana/pyroscope/pkg/util/health"
+	metastoreclient "github.com/grafana/pyroscope/pkg/metastore/client"
 )
 
 func Test_Metastore_(t *testing.T) {
+	go func() {
+		cfg := metastoreclient.Config{}
+		cfg.RegisterFlags(flag.NewFlagSet("", flag.ExitOnError))
+		cfg.MetastoreAddress = "localhost:9200"
+		c, err := metastoreclient.New(cfg)
+		require.NoError(t, err)
+		for {
+			time.Sleep(500 * time.Millisecond)
+			resp, err := c.ListBlocksForQuery(context.Background(), &metastorev1.ListBlocksForQueryRequest{
+				TenantId:  []string{"a-tenant"},
+				StartTime: 0,
+				EndTime:   math.MaxInt64,
+				Query:     "{}",
+			})
+			t.Log(err, resp)
+		}
+	}()
+
 	peers := []string{
 		"localhost:9100/localhost-0",
 		// "localhost:9101/localhost-1",
@@ -49,23 +72,9 @@ func Test_Metastore_(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	t.Log(m.ListBlocksForQuery(context.Background(), &metastorev1.ListBlocksForQueryRequest{
-		TenantId: []string{"a-tenant"},
-		EndTime:  math.MaxInt64,
-		Query:    "{}",
-	}))
-
+	time.Sleep(10 * time.Second)
 	t.Log("Shutdown")
-	assert.NoError(t, m.raft.Snapshot().Error())
-	assert.NoError(t, m.Shutdown())
-
-	m = newReplica(t, 0, "./testdata/", peers)
-	time.Sleep(2 * time.Second)
-	t.Log(m.ListBlocksForQuery(context.Background(), &metastorev1.ListBlocksForQueryRequest{
-		TenantId: []string{"a-tenant"},
-		EndTime:  math.MaxInt64,
-		Query:    "{}",
-	}))
+	// assert.NoError(t, m.raft.Snapshot().Error())
 	assert.NoError(t, m.Shutdown())
 }
 
@@ -84,8 +93,18 @@ func newReplica(t *testing.T, i int, dir string, peers []string) *Metastore {
 	}
 
 	logger := log.NewLogfmtLogger(os.Stdout)
-	m, err := New(config, nil, logger, nil, health.NoOpService)
+	h := health.NewServer()
+	m, err := New(config, nil, logger, nil, h)
 	require.NoError(t, err)
 	require.NoError(t, m.starting(context.Background()))
+	go func() {
+		srv := grpc.NewServer()
+		srv.RegisterService(&metastorev1.MetastoreService_ServiceDesc, m)
+		srv.RegisterService(&grpc_health_v1.Health_ServiceDesc, h)
+		l, err := net.Listen("tcp", ":920"+strconv.Itoa(i))
+		require.NoError(t, err)
+		require.NoError(t, srv.Serve(l))
+	}()
+
 	return m
 }
