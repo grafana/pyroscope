@@ -2137,6 +2137,8 @@ spec:
             - "-metastore.address=dns:///_grpc._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9095"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
+            - "-ingester.num-tokens=4"
+            - "-distributor.replication-factor=1"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
           ports:
@@ -2235,6 +2237,8 @@ spec:
             - "-metastore.address=dns:///_grpc._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9095"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
+            - "-ingester.num-tokens=4"
+            - "-distributor.replication-factor=1"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
           ports:
@@ -2333,6 +2337,8 @@ spec:
             - "-metastore.address=dns:///_grpc._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9095"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
+            - "-ingester.num-tokens=4"
+            - "-distributor.replication-factor=1"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
           ports:
@@ -2431,6 +2437,8 @@ spec:
             - "-metastore.address=dns:///_grpc._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9095"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
+            - "-ingester.num-tokens=4"
+            - "-distributor.replication-factor=1"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
           ports:
@@ -2830,6 +2838,8 @@ spec:
             - "-metastore.address=dns:///_grpc._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9095"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
+            - "-ingester.num-tokens=4"
+            - "-distributor.replication-factor=1"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
           ports:
@@ -2936,6 +2946,8 @@ spec:
             - "-metastore.address=dns:///_grpc._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9095"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
+            - "-ingester.num-tokens=4"
+            - "-distributor.replication-factor=1"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
           ports:
@@ -3038,6 +3050,8 @@ spec:
             - "-metastore.address=dns:///_grpc._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9095"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
+            - "-ingester.num-tokens=4"
+            - "-distributor.replication-factor=1"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
           ports:
