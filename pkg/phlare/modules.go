@@ -28,7 +28,6 @@ import (
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/genproto/googleapis/api/httpbody"
-	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/protobuf/encoding/protojson"
 	"gopkg.in/yaml.v3"
@@ -54,6 +53,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/usagestats"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/build"
+	"github.com/grafana/pyroscope/pkg/util/health"
 	"github.com/grafana/pyroscope/pkg/validation"
 	"github.com/grafana/pyroscope/pkg/validation/exporter"
 )
@@ -465,6 +465,10 @@ func (f *Phlare) initServer() (services.Service, error) {
 
 	f.Server = serv
 
+	healthService := health.NewGRPCHealthService()
+	grpc_health_v1.RegisterHealthServer(f.Server.GRPC, healthService)
+	f.health = healthService
+
 	servicesToWaitFor := func() []services.Service {
 		svs := []services.Service(nil)
 		for m, s := range f.serviceMap {
@@ -556,11 +560,7 @@ func (f *Phlare) initAdmin() (services.Service, error) {
 }
 
 func (f *Phlare) initMetastore() (services.Service, error) {
-	// TODO: Separate module.
-	hs := health.NewServer()
-	grpc_health_v1.RegisterHealthServer(f.Server.GRPC, hs)
-
-	m, err := metastore.New(f.Cfg.Metastore, nil, f.logger, f.reg, hs)
+	m, err := metastore.New(f.Cfg.Metastore, nil, log.With(f.logger, "component", "metastore"), f.reg, f.health)
 	if err != nil {
 		return nil, err
 	}

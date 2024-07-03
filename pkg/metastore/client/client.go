@@ -56,7 +56,7 @@ func dial(cfg Config) (*grpc.ClientConn, error) {
 	if err != nil {
 		return nil, err
 	}
-	const grpcServiceConfig = `{{"healthCheckConfig": {"serviceName": "pyroscope.metastore.raft_leader"}, "loadBalancingPolicy":"round_robin"}`
+	const grpcServiceConfig = `{"healthCheckConfig": {"serviceName": "pyroscope.metastore.raft_leader"}, "loadBalancingPolicy":"round_robin"}`
 	options = append(options, grpc.WithDefaultServiceConfig(grpcServiceConfig))
 	return grpc.Dial(cfg.MetastoreAddress, options...)
 }

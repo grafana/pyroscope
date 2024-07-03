@@ -3,6 +3,8 @@ package raftleader
 import (
 	"sync"
 
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/hashicorp/raft"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
@@ -10,15 +12,16 @@ import (
 )
 
 type HealthObserver struct {
-	server health.Server
-
+	server     health.Service
+	logger     log.Logger
 	mu         sync.Mutex
 	registered map[serviceKey]*raftService
 }
 
-func NewRaftLeaderHealthObserver(hs health.Server) *HealthObserver {
+func NewRaftLeaderHealthObserver(hs health.Service, logger log.Logger) *HealthObserver {
 	return &HealthObserver{
 		server:     hs,
+		logger:     logger,
 		registered: make(map[serviceKey]*raftService),
 	}
 }
@@ -33,12 +36,14 @@ func (hs *HealthObserver) Register(r *raft.Raft, service string) {
 	}
 	svc = &raftService{
 		server:  hs.server,
+		logger:  log.With(hs.logger, "service", service),
 		service: service,
 		raft:    r,
 		c:       make(chan raft.Observation, 1),
 		stop:    make(chan struct{}),
 		done:    make(chan struct{}),
 	}
+	_ = level.Debug(svc.logger).Log("msg", "registering health check")
 	svc.updateStatus()
 	go svc.run()
 	svc.observer = raft.NewObserver(svc.c, true, func(o *raft.Observation) bool {
@@ -67,7 +72,8 @@ type serviceKey struct {
 }
 
 type raftService struct {
-	server   health.Server
+	server   health.Service
+	logger   log.Logger
 	service  string
 	raft     *raft.Raft
 	observer *raft.Observer
@@ -85,6 +91,7 @@ func (svc *raftService) run() {
 		case <-svc.c:
 			svc.updateStatus()
 		case <-svc.stop:
+			_ = level.Debug(svc.logger).Log("msg", "deregistering health check")
 			// We explicitly remove the service from serving when we stop observing it.
 			svc.server.SetServingStatus(svc.service, grpc_health_v1.HealthCheckResponse_NOT_SERVING)
 			svc.raft.DeregisterObserver(svc.observer)
@@ -98,5 +105,6 @@ func (svc *raftService) updateStatus() {
 	if svc.raft.State() == raft.Leader {
 		status = grpc_health_v1.HealthCheckResponse_SERVING
 	}
+	_ = level.Info(svc.logger).Log("msg", "updating health status", "status", status)
 	svc.server.SetServingStatus(svc.service, status)
 }

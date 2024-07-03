@@ -61,6 +61,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/usagestats"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/cli"
+	"github.com/grafana/pyroscope/pkg/util/health"
 	"github.com/grafana/pyroscope/pkg/validation"
 	"github.com/grafana/pyroscope/pkg/validation/exporter"
 )
@@ -221,6 +222,7 @@ type Phlare struct {
 	logger log.Logger
 	reg    prometheus.Registerer
 	tracer io.Closer
+	health health.Service
 
 	ModuleManager *modules.Manager
 	serviceMap    map[string]services.Service
@@ -258,6 +260,7 @@ func New(cfg Config) (*Phlare, error) {
 		Cfg:    cfg,
 		logger: logger,
 		reg:    prometheus.DefaultRegisterer,
+		health: health.NoOpService,
 	}
 	if err := cfg.Validate(); err != nil {
 		return nil, err

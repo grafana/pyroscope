@@ -92,7 +92,7 @@ type Metastore struct {
 
 type Limits interface{}
 
-func New(config Config, limits Limits, logger log.Logger, reg prometheus.Registerer, hs health.Server) (*Metastore, error) {
+func New(config Config, limits Limits, logger log.Logger, reg prometheus.Registerer, hs health.Service) (*Metastore, error) {
 	m := &Metastore{
 		config: config,
 		logger: logger,
@@ -100,7 +100,7 @@ func New(config Config, limits Limits, logger log.Logger, reg prometheus.Registe
 		limits: limits,
 		db:     newDB(config, logger),
 	}
-	m.leaderhealth = raftleader.NewRaftLeaderHealthObserver(hs)
+	m.leaderhealth = raftleader.NewRaftLeaderHealthObserver(hs, logger)
 	m.state = newMetastoreState(logger, m.db)
 	m.Service = services.NewBasicService(m.starting, m.running, m.stopping)
 	return m, nil
@@ -164,9 +164,13 @@ func (m *Metastore) initRaft() (err error) {
 	}
 
 	config := raft.DefaultConfig()
+	// TODO: Wrap gokit
+	//	config.Logger
 	config.TrailingLogs = raftTrailingLogs
 	config.SnapshotThreshold = raftSnapshotThreshold
 	config.SnapshotInterval = raftSnapshotInterval
+	// TODO: We don't need to restore the latest snapshot
+	//  on start, because the FSM is already disk-based.
 	//	config.NoSnapshotRestoreOnStart = true
 	config.LocalID = raft.ServerID(m.config.Raft.ServerID)
 

@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/pkg/util/health"
 )
 
 func Test_Metastore_(t *testing.T) {
@@ -83,7 +84,7 @@ func newReplica(t *testing.T, i int, dir string, peers []string) *Metastore {
 	}
 
 	logger := log.NewLogfmtLogger(os.Stdout)
-	m, err := New(config, nil, logger, nil)
+	m, err := New(config, nil, logger, nil, health.NoOpService)
 	require.NoError(t, err)
 	require.NoError(t, m.starting(context.Background()))
 	return m
