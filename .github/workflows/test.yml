@@ -2,8 +2,7 @@ name: ci
 on:
   push:
     branches:
-      - main
-      - r[0-9]+ # Trigger builds after a push to weekly branches
+      - experiment/new-architecture
   pull_request:
 
 concurrency:
@@ -134,7 +133,7 @@ jobs:
         run: |
           make docker-image/pyroscope/push "BUILDX_ARGS=--cache-from=type=gha --cache-to=type=gha"
 
-  deploy-dev-001:
+  deploy-dev-003:
     if: github.event_name == 'push' && github.repository == 'grafana/pyroscope'
     runs-on: ubuntu-latest
     needs: [build-push]
@@ -148,9 +147,9 @@ jobs:
           app_id: ${{ secrets.APP_ID }}
           private_key: ${{ secrets.APP_PRIVATE_KEY }}
           repository: grafana/deployment_tools
-      - name: Deploy to fire-dev-001
+      - name: Deploy to fire-dev-003
         run: |
           git config --global url."https://x-access-token:$(echo "${GITHUB_TOKEN}" | xargs)@github.com/grafana/deployment_tools".insteadOf "https://github.com/grafana/deployment_tools"
-          make docker-image/pyroscope/deploy-dev-001
+          make docker-image/pyroscope/deploy-dev-003
         env:
           GITHUB_TOKEN: ${{ steps.app-release.outputs.token }}
