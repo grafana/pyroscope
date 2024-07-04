@@ -90,6 +90,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			m.receivedSamplesBytes,
 			m.receivedSymbolsBytes,
 			m.replicationFactor,
+			m.distributedBytes,
 		)
 	}
 	return m
