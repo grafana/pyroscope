@@ -72,7 +72,7 @@ func Test_ConnectPush(t *testing.T) {
 	d, err := New(Config{
 		DistributorRing: ringConfig,
 	}, testhelper.NewMockRing([]ring.InstanceDesc{
-		{Addr: "foo", Id: "in-1"},
+		{Addr: "foo", Id: "in-1", Tokens: []uint32{10, 20, 30, 40}},
 	}, 1), &poolFactory{func(addr string) (client.PoolClient, error) {
 		return ing, nil
 	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
@@ -128,9 +128,9 @@ func Test_Replication(t *testing.T) {
 		},
 	})
 	d, err := New(Config{DistributorRing: ringConfig}, testhelper.NewMockRing([]ring.InstanceDesc{
-		{Addr: "1", Id: "in-1"},
-		{Addr: "2", Id: "in-2"},
-		{Addr: "3", Id: "in-3"},
+		{Addr: "1", Id: "in-1", Tokens: []uint32{10, 20}},
+		{Addr: "2", Id: "in-2", Tokens: []uint32{30, 40}},
+		{Addr: "3", Id: "in-3", Tokens: []uint32{50, 60}},
 	}, 1), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 		return ingesters[addr], nil
 	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
@@ -851,7 +851,7 @@ func TestPush_Aggregation(t *testing.T) {
 	ingesterClient := newFakeIngester(t, false)
 	d, err := New(
 		Config{DistributorRing: ringConfig, PushTimeout: time.Second * 10},
-		testhelper.NewMockRing([]ring.InstanceDesc{{Addr: "foo", Id: "in-1"}}, 1),
+		testhelper.NewMockRing([]ring.InstanceDesc{{Addr: "foo", Id: "in-1", Tokens: []uint32{10, 20}}}, 1),
 		&poolFactory{f: func(addr string) (client.PoolClient, error) { return ingesterClient, nil }},
 		validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
 			l := validation.MockDefaultLimits()
@@ -1119,64 +1119,5 @@ func expectMetricsChange(t *testing.T, m1, m2, expectedChange map[prometheus.Col
 	for counter, expectedDelta := range expectedChange {
 		delta := m2[counter] - m1[counter]
 		assert.Equal(t, expectedDelta, delta, "metric %s", counter)
-	}
-}
-
-func Test_getShard(t *testing.T) {
-	type args struct {
-		instance *ring.InstanceDesc
-		key      uint32
-	}
-	tests := []struct {
-		name string
-		args args
-		want uint32
-	}{
-		{
-			name: "happy path",
-			args: args{
-				instance: &ring.InstanceDesc{Id: "ingester-1", Tokens: []uint32{10, 20, 30, 40}},
-				key:      13,
-			},
-			want: 5,
-		},
-		{
-			name: "invalid instance id separator",
-			args: args{
-				instance: &ring.InstanceDesc{Id: "ingester1", Tokens: []uint32{10, 20, 30, 40}},
-				key:      15,
-			},
-			want: 0,
-		},
-		{
-			name: "invalid instance id format",
-			args: args{
-				instance: &ring.InstanceDesc{Id: "ingester-b", Tokens: []uint32{10, 20, 30, 40}},
-				key:      15,
-			},
-			want: 0,
-		},
-		{
-			name: "out of bounds (right) key is assigned to the first shard",
-			args: args{
-				instance: &ring.InstanceDesc{Id: "ingester-1", Tokens: []uint32{10, 20, 30, 40}},
-				key:      60,
-			},
-			want: 4,
-		},
-		{
-			name: "out of bounds (left) key is assigned the first shard",
-			args: args{
-				instance: &ring.InstanceDesc{Id: "ingester-1", Tokens: []uint32{10, 20, 30, 40}},
-				key:      0,
-			},
-			want: 4,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := getShard(tt.args.instance, tt.args.key, log.NewNopLogger())
-			assert.Equalf(t, tt.want, got, "getShard(%v, %v)", tt.args.instance, tt.args.key)
-		})
 	}
 }

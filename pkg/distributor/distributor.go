@@ -9,10 +9,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"net/http"
-	"slices"
 	"sort"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -476,7 +473,8 @@ func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.Pu
 		phlareslices.RemoveInPlace(profiles[i].fallbackNodes, func(desc ring.InstanceDesc, i int) bool {
 			return desc.Id == ingester.Addr
 		})
-		profiles[i].shard = getShard(&ingester, key, d.logger)
+		shardTotal := uint32(d.ingestersRing.InstancesCount() * len(ingester.Tokens))
+		profiles[i].shard = TokenFor(tenantID, serviceName) % shardTotal
 	}
 	tracker := pushTracker{
 		done: make(chan struct{}, 1), // buffer avoids blocking if caller terminates - sendProfiles() only sends once on each
@@ -543,29 +541,6 @@ func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.Pu
 			return nil, ctx.Err()
 		}
 	}
-}
-
-func getShard(instance *ring.InstanceDesc, key uint32, logger log.Logger) uint32 {
-	parts := strings.Split(instance.Id, "-")
-	if len(parts) < 2 {
-		level.Warn(logger).Log("msg", "cannot determine shard, unexpected instance id", "instance_id", instance.Id)
-		return 0
-	}
-	instanceIdNum, err := strconv.Atoi(parts[len(parts)-1])
-	if err != nil {
-		level.Warn(logger).Log("msg", "cannot determine shard, unexpected instance id", "instance_id", instance.Id)
-		return 0
-	}
-	i, found := slices.BinarySearch(instance.Tokens, key)
-	if found {
-		i = i + 1
-	}
-	if i >= len(instance.Tokens) {
-		i = 0
-	}
-	shard := uint32(instanceIdNum*len(instance.Tokens) + i)
-	level.Debug(logger).Log("msg", "shard found", "shard", shard)
-	return shard
 }
 
 // profileSizeBytes returns the size of symbols and samples in bytes.
