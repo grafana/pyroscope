@@ -3,9 +3,6 @@
 # Declare variables to be passed into your templates.
 
 pyroscope:
-  image:
-    repository: us.gcr.io/kubernetes-dev/pyroscope
-    tag: experiment-new-architecture-distribution-b6428db16-WIP
   components:
     querier:
       kind: Deployment
