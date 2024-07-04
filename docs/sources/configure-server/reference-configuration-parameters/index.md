@@ -161,10 +161,10 @@ metastore:
     [bootstrap_peers: <list of strings> | default = []]
 
     # CLI flag: -metastore.raft.server-id
-    [server_id: <string> | default = "localhost"]
+    [server_id: <string> | default = "localhost:9099"]
 
     # CLI flag: -metastore.raft.bind-address
-    [bind_address: <string> | default = ":9099"]
+    [bind_address: <string> | default = "localhost:9099"]
 
     # CLI flag: -metastore.raft.advertise-address
     [advertise_address: <string> | default = "localhost:9099"]
