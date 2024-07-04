@@ -215,14 +215,14 @@ define UPDATER_CONFIG_JSON
   "destination_branch": "master",
   "update_jsonnet_attribute_configs": [
     {
-      "file_path": "ksonnet/lib/pyroscope/releases/dev/images.libsonnet",
+      "file_path": "ksonnet/lib/pyroscope/releases/dev-003/images.libsonnet",
       "jsonnet_key": "pyroscope",
       "jsonnet_value": "$(IMAGE_PREFIX)pyroscope:$(IMAGE_TAG)"
     }
   ],
   "update_jsonnet_lib_configs": [
     {
-      "jsonnet_dir": "ksonnet/lib/pyroscope/releases/dev",
+      "jsonnet_dir": "ksonnet/lib/pyroscope/releases/dev-003",
       "dependencies": [
         {
           "owner": "grafana",
@@ -238,9 +238,9 @@ define UPDATER_CONFIG_JSON
 }
 endef
 
-.PHONY: docker-image/pyroscope/deploy-dev-001
-docker-image/pyroscope/deploy-dev-001: export CONFIG_JSON:=$(call UPDATER_CONFIG_JSON)
-docker-image/pyroscope/deploy-dev-001: $(BIN)/updater $(BIN)/jb
+.PHONY: docker-image/pyroscope/deploy-dev-003
+docker-image/pyroscope/deploy-dev-003: export CONFIG_JSON:=$(call UPDATER_CONFIG_JSON)
+docker-image/pyroscope/deploy-dev-003: $(BIN)/updater $(BIN)/jb
 	PATH=$(BIN):$(PATH) $(BIN)/updater
 
 .PHONY: clean
