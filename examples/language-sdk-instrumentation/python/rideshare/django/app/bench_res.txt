@@ -1,0 +1,55 @@
+============================== RESULTS ==============================
+ran ntests = 3 nworkers = 12 duration = 10
+
+
+No pyroscope, idle                                        user:   0.0, system:  0.0
+No pyroscope, loadgen                                     user:  79.0, system:  8.0
+
+Old pyroscope with syscalls, idle, samplerate=100         user:   2.2, system:  4.5
+Old pyroscope with syscalls, idle, samplerate=17          user:   0.5, system:  1.0
+Old pyroscope with syscalls, loadgen, samplerate=100      user:  80.4, system: 11.1   panics:  16
+Old pyroscope with syscalls, loadgen, samplerate=17       user:  80.9, system:  9.6
+
+New pyroscope direct mem read, idle, samplerate=100       user:   2.7, system:  2.6
+New pyroscope direct mem read, idle, samplerate=17        user:   0.6, system:  0.6
+New pyroscope direct mem read, loadgen, samplerate=100    user:  82.8, system:  9.7   panics:  16
+New pyroscope direct mem read, loadgen, samplerate=100    user:  82.1, system:  9.1
+
+
+
+[pid 314756] clock_nanosleep(CLOCK_REALTIME, 0, {tv_sec=0, tv_nsec=433662},  <unfinished ...>
+[pid 314756] <... clock_nanosleep resumed>0x7aa7b2bfa430) = 0
+[pid 314756] openat(AT_FDCWD, "/proc/314717/task", O_RDONLY|O_NONBLOCK|O_CLOEXEC|O_DIRECTORY) = 15
+[pid 314756] newfstatat(15, "", {st_mode=S_IFDIR|0555, st_size=0, ...}, AT_EMPTY_PATH) = 0
+[pid 314756] getdents64(15, 0x7aa79801f410 /* 11 entries */, 32768) = 336
+[pid 314756] getdents64(15, 0x7aa79801f410 /* 0 entries */, 32768) = 0
+[pid 314756] close(15)                  = 0
+[pid 314756] openat(AT_FDCWD, "/proc/314717/stat", O_RDONLY|O_CLOEXEC) = 15
+[pid 314756] read(15, "314717 (gunicorn) S 314675 31464"..., 512) = 349
+[pid 314756] close(15)                  = 0
+[pid 314756] openat(AT_FDCWD, "/proc/314752/stat", O_RDONLY|O_CLOEXEC) = 15
+[pid 314756] read(15, "314752 (gunicorn) S 314675 31464"..., 512) = 349
+[pid 314756] close(15)                  = 0
+[pid 314756] openat(AT_FDCWD, "/proc/314753/stat", O_RDONLY|O_CLOEXEC) = 15
+[pid 314756] read(15, "314753 (gunicorn) S 314675 31464"..., 512) = 349
+[pid 314756] close(15)                  = 0
+[pid 314756] openat(AT_FDCWD, "/proc/314754/stat", O_RDONLY|O_CLOEXEC) = 15
+[pid 314756] read(15, "314754 (gunicorn) S 314675 31464"..., 512) = 350
+[pid 314756] close(15)                  = 0
+[pid 314756] openat(AT_FDCWD, "/proc/314755/stat", O_RDONLY|O_CLOEXEC) = 15
+[pid 314756] read(15, "314755 (gunicorn) S 314675 31464"..., 512) = 350
+[pid 314756] close(15)                  = 0
+[pid 314756] openat(AT_FDCWD, "/proc/314756/stat", O_RDONLY|O_CLOEXEC) = 15
+[pid 314756] read(15, "314756 (gunicorn) R 314675 31464"..., 512) = 349
+[pid 314756] close(15)                  = 0
+[pid 314756] openat(AT_FDCWD, "/proc/314757/stat", O_RDONLY|O_CLOEXEC) = 15
+[pid 314756] read(15, "314757 (gunicorn) S 314675 31464"..., 512) = 349
+[pid 314756] close(15)                  = 0
+[pid 314756] openat(AT_FDCWD, "/proc/314758/stat", O_RDONLY|O_CLOEXEC) = 15
+[pid 314756] read(15, "314758 (gunicorn) S 314675 31464"..., 512) = 350
+[pid 314756] close(15)                  = 0
+[pid 314756] openat(AT_FDCWD, "/proc/314759/stat", O_RDONLY|O_CLOEXEC) = 15
+[pid 314756] read(15, "314759 (gunicorn) S 314675 31464"..., 512) = 349
+[pid 314756] close(15)                  = 0
+
+100 * 33 = 3300 syscalls

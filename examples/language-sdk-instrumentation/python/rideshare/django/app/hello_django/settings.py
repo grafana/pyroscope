@@ -11,7 +11,7 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 """
 
 import os
-import pyroscope
+# import pyroscope
 from pathlib import Path
 
 
@@ -143,12 +143,12 @@ server_addr = os.getenv("PYROSCOPE_SERVER_ADDRESS", "http://pyroscope:4040")
 basic_auth_username = os.getenv("PYROSCOPE_BASIC_AUTH_USER", "")
 basic_auth_password = os.getenv("PYROSCOPE_BASIC_AUTH_PASSWORD", "")
 
-pyroscope.configure(
-	application_name = app_name,
-	server_address   = server_addr,
-    basic_auth_username = basic_auth_username,
-    basic_auth_password = basic_auth_password,
-	# tags           = {
-    #     "region":   f'{os.getenv("REGION")}',
-	# }
-)
+# pyroscope.configure(
+# 	application_name = app_name,
+# 	server_address   = server_addr,
+#     basic_auth_username = basic_auth_username,
+#     basic_auth_password = basic_auth_password,
+# 	# tags           = {
+#     #     "region":   f'{os.getenv("REGION")}',
+# 	# }
+# )
