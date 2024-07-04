@@ -17,6 +17,8 @@ type metrics struct {
 	receivedSamplesBytes      *prometheus.HistogramVec
 	receivedSymbolsBytes      *prometheus.HistogramVec
 	replicationFactor         prometheus.Gauge
+
+	distributedBytes *prometheus.HistogramVec
 }
 
 func newMetrics(reg prometheus.Registerer) *metrics {
@@ -71,6 +73,14 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			},
 			[]string{"type", "tenant"},
 		),
+		distributedBytes: prometheus.NewHistogramVec(
+			prometheus.HistogramOpts{
+				Namespace: "pyroscope",
+				Name:      "distributor_distributed_bytes",
+				Help:      "The number of bytes distributed to ingesters.",
+				Buckets:   prometheus.ExponentialBucketsRange(minBytes, maxBytes, bucketsCount),
+			},
+			[]string{"tenant", "shard", "ingester"}),
 	}
 	if reg != nil {
 		reg.MustRegister(

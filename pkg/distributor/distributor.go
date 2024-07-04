@@ -630,6 +630,11 @@ func (d *Distributor) sendProfilesErr(ctx context.Context, ingester ring.Instanc
 		return err
 	}
 
+	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+	if err != nil {
+		return connect.NewError(connect.CodeUnauthenticated, err)
+	}
+
 	req := connect.NewRequest(&pushv1.PushRequest{
 		Series: make([]*pushv1.RawProfileSeries, 0, len(profileTrackers)),
 	})
@@ -645,6 +650,7 @@ func (d *Distributor) sendProfilesErr(ctx context.Context, ingester ring.Instanc
 				RawProfile: sample.RawProfile,
 				ID:         sample.ID,
 			})
+			d.metrics.distributedBytes.WithLabelValues(tenantID, fmt.Sprintf("%d", p.shard), ingester.Id).Observe(float64(sample.Profile.SizeVT()))
 		}
 		req.Msg.Series = append(req.Msg.Series, series)
 	}
