@@ -3048,8 +3048,18 @@ spec:
         - name: overrides-config
           configMap:
             name: pyroscope-dev-overrides-config
-        - name: data
-          emptyDir: {}
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+      annotations:
+        {}
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: "100Gi"
+      storageClassName:
 ---
 # Source: pyroscope/templates/deployments-statefulsets.yaml
 apiVersion: apps/v1
