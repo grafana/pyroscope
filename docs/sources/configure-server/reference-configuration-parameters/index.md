@@ -179,6 +179,9 @@ metastore_client:
   # metastore.grpc-client-config
   [grpc_client_config: <grpc_client>]
 
+query_backend:
+  [address: <string> | default = ""]
+
 storage:
   # Backend storage to use. Supported backends are: s3, gcs, azure, swift,
   # filesystem, cos.
