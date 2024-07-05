@@ -20,15 +20,12 @@ func (m *Metastore) bootstrap() error {
 	if err != nil {
 		return fmt.Errorf("failed to resolve peers: %w", err)
 	}
-	if len(peers) == 0 {
-		return fmt.Errorf("no peers found")
-	}
 	logger := log.With(m.logger,
 		"server_id", m.config.Raft.ServerID,
 		"advertise_address", m.config.Raft.AdvertiseAddress,
 		"peers", fmt.Sprint(peers))
 	if raft.ServerAddress(m.config.Raft.AdvertiseAddress) != peers[0].Address {
-		_ = level.Info(logger).Log("msg", "local state found, skipping raft bootstrap")
+		_ = level.Info(logger).Log("msg", "not the bootstrap node, skipping")
 		return nil
 	}
 	_ = level.Info(logger).Log("msg", "bootstrapping raft")
@@ -42,16 +39,13 @@ func (m *Metastore) bootstrap() error {
 }
 
 func (m *Metastore) bootstrapPeers() ([]raft.Server, error) {
-	// If no bootstrap peers are provided, we bootstrap a single-node cluster.
-	if len(m.config.Raft.BootstrapPeers) == 0 {
-		return []raft.Server{{
-			Suffrage: raft.Voter,
-			ID:       raft.ServerID(m.config.Raft.ServerID),
-			Address:  raft.ServerAddress(m.config.Raft.AdvertiseAddress),
-		}}, nil
-	}
-	// Otherwise, we build the list of peers, resolving the names if needed.
-	//
+	// The peer list always includes the local node.
+	peers := make([]raft.Server, 0, len(m.config.Raft.BootstrapPeers)+1)
+	peers = append(peers, raft.Server{
+		Suffrage: raft.Voter,
+		ID:       raft.ServerID(m.config.Raft.ServerID),
+		Address:  raft.ServerAddress(m.config.Raft.AdvertiseAddress),
+	})
 	// Note that raft requires stable node IDs, therefore we're using
 	// the node FQDN:port for both purposes: as the identifier and as the
 	// address. This requires a DNS SRV record lookup without further
@@ -60,7 +54,6 @@ func (m *Metastore) bootstrapPeers() ([]raft.Server, error) {
 	// Alternatively, peers may be specified explicitly in the
 	// "{addr}</{node_id}>" format, where the node is the optional node
 	// identifier.
-	var peers []raft.Server
 	var resolve []string
 	for _, peer := range m.config.Raft.BootstrapPeers {
 		if strings.Contains(peer, "+") {
@@ -69,22 +62,29 @@ func (m *Metastore) bootstrapPeers() ([]raft.Server, error) {
 			peers = append(peers, parsePeer(peer))
 		}
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	prov := dns.NewProvider(m.logger, m.reg, dns.GolangResolverType)
-	if err := prov.Resolve(ctx, resolve); err != nil {
-		return nil, fmt.Errorf("failed to resolve bootstrap peers: %w", err)
+	if len(resolve) > 0 {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		prov := dns.NewProvider(m.logger, m.reg, dns.MiekgdnsResolverType)
+		if err := prov.Resolve(ctx, resolve); err != nil {
+			return nil, fmt.Errorf("failed to resolve bootstrap peers: %w", err)
+		}
+		for _, peer := range prov.Addresses() {
+			peers = append(peers, raft.Server{
+				Suffrage: raft.Voter,
+				ID:       raft.ServerID(peer),
+				Address:  raft.ServerAddress(peer),
+			})
+		}
 	}
-	for _, peer := range prov.Addresses() {
-		peers = append(peers, raft.Server{
-			Suffrage: raft.Voter,
-			ID:       raft.ServerID(peer),
-			Address:  raft.ServerAddress(peer),
-		})
-	}
-	// Finally, we sort the peers: the first one is to boostrap the cluster.
+	// Finally, we sort and deduplicate the peers: the first one
+	// is to boostrap the cluster. If there are nodes with distinct
+	// IDs but the same address, bootstrapping will fail.
 	slices.SortFunc(peers, func(a, b raft.Server) int {
 		return strings.Compare(string(a.ID), string(b.ID))
+	})
+	peers = slices.CompactFunc(peers, func(a, b raft.Server) bool {
+		return a.ID == b.ID
 	})
 	return peers, nil
 }
