@@ -21,6 +21,9 @@
       "name": "QuerierService"
     },
     {
+      "name": "QueryBackendService"
+    },
+    {
       "name": "SettingsService"
     },
     {
@@ -891,6 +894,47 @@
       },
       "title": "Hints are used to propagate information about querying"
     },
+    "v1InvokeOptions": {
+      "type": "object",
+      "properties": {
+        "maxBlockReadsPerWorker": {
+          "type": "string",
+          "format": "int64",
+          "description": "Workers won't have access to the overrides,\ntherefore all the necessary options should be\npassed in the request."
+        },
+        "maxBlockMergesPerWorker": {
+          "type": "string",
+          "format": "int64",
+          "title": "int64 max_bytes_per_worker = ;\n int64 max_tenant_services_per_worker = ;"
+        }
+      }
+    },
+    "v1InvokeResponse": {
+      "type": "object",
+      "properties": {
+        "reports": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Report"
+          }
+        }
+      }
+    },
+    "v1LabelNamesQuery": {
+      "type": "object"
+    },
+    "v1LabelNamesReport": {
+      "type": "object",
+      "properties": {
+        "labelNames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "v1LabelNamesResponse": {
       "type": "object",
       "properties": {
@@ -909,6 +953,14 @@
           "type": "string"
         },
         "value": {
+          "type": "string"
+        }
+      }
+    },
+    "v1LabelValuesQuery": {
+      "type": "object",
+      "properties": {
+        "labelName": {
           "type": "string"
         }
       }
@@ -1132,6 +1184,62 @@
         }
       }
     },
+    "v1Metric": {
+      "type": "object",
+      "properties": {
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1LabelPair"
+          }
+        },
+        "timestamp": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "int64"
+          }
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      }
+    },
+    "v1MetricsQuery": {
+      "type": "object",
+      "properties": {
+        "step": {
+          "type": "number",
+          "format": "double"
+        },
+        "groupBy": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "aggregation": {
+          "$ref": "#/definitions/v1TimeSeriesAggregationType"
+        }
+      }
+    },
+    "v1MetricsReport": {
+      "type": "object",
+      "properties": {
+        "metrics": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Metric"
+          }
+        }
+      }
+    },
     "v1Point": {
       "type": "object",
       "properties": {
@@ -1207,6 +1315,27 @@
     },
     "v1PushResponse": {
       "type": "object"
+    },
+    "v1Query": {
+      "type": "object",
+      "properties": {
+        "labelNames": {
+          "$ref": "#/definitions/v1LabelNamesQuery"
+        },
+        "labelValues": {
+          "$ref": "#/definitions/v1LabelValuesQuery"
+        },
+        "series": {
+          "$ref": "#/definitions/v1SeriesQuery"
+        },
+        "metrics": {
+          "$ref": "#/definitions/v1MetricsQuery"
+        },
+        "tree": {
+          "$ref": "#/definitions/v1TreeQuery",
+          "description": "pprof\n function_details\n call_graph\n top_table\n ..."
+        }
+      }
     },
     "v1QueryImpact": {
       "type": "object",
@@ -1307,6 +1436,26 @@
         }
       },
       "title": "RawSample is the set of bytes that correspond to a pprof profile"
+    },
+    "v1Report": {
+      "type": "object",
+      "properties": {
+        "labelNames": {
+          "$ref": "#/definitions/v1LabelNamesReport"
+        },
+        "labelValues": {
+          "$ref": "#/definitions/v1LabelValuesQuery"
+        },
+        "series": {
+          "$ref": "#/definitions/v1SeriesReport"
+        },
+        "metrics": {
+          "$ref": "#/definitions/v1MetricsReport"
+        },
+        "tree": {
+          "$ref": "#/definitions/v1TreeReport"
+        }
+      }
     },
     "v1Sample": {
       "type": "object",
@@ -1501,6 +1650,29 @@
         }
       }
     },
+    "v1SeriesQuery": {
+      "type": "object",
+      "properties": {
+        "labelNames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v1SeriesReport": {
+      "type": "object",
+      "properties": {
+        "series": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Labels"
+          }
+        }
+      }
+    },
     "v1SetSettingsResponse": {
       "type": "object",
       "properties": {
@@ -1614,6 +1786,24 @@
         "TIME_SERIES_AGGREGATION_TYPE_AVERAGE"
       ],
       "default": "TIME_SERIES_AGGREGATION_TYPE_SUM"
+    },
+    "v1TreeQuery": {
+      "type": "object",
+      "properties": {
+        "maxNodes": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1TreeReport": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
     },
     "v1ValueType": {
       "type": "object",

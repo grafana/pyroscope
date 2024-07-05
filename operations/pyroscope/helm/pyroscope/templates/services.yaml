@@ -45,7 +45,12 @@ spec:
       targetPort: {{ $values.service.port_name }}
       protocol: TCP
       name: {{ $values.service.port_name }}
-    {{- if eq $component "metastore" }}
+    {{- if eq $component "query-worker" }}
+    - name: grpc
+      port: 9095
+      protocol: TCP
+      targetPort: 9095
+    {{- else if eq $component "metastore" }}
     - name: grpc
       port: 9095
       protocol: TCP

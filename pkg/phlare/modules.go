@@ -47,6 +47,8 @@ import (
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/querier"
 	"github.com/grafana/pyroscope/pkg/querier/worker"
+	"github.com/grafana/pyroscope/pkg/querybackend"
+	querybackendclient "github.com/grafana/pyroscope/pkg/querybackend/client"
 	"github.com/grafana/pyroscope/pkg/scheduler"
 	"github.com/grafana/pyroscope/pkg/settings"
 	"github.com/grafana/pyroscope/pkg/storegateway"
@@ -60,30 +62,32 @@ import (
 
 // The various modules that make up Pyroscope.
 const (
-	All               string = "all"
-	API               string = "api"
-	Version           string = "version"
-	Distributor       string = "distributor"
-	Server            string = "server"
-	Ring              string = "ring"
-	Ingester          string = "ingester"
-	MemberlistKV      string = "memberlist-kv"
-	Querier           string = "querier"
-	StoreGateway      string = "store-gateway"
-	GRPCGateway       string = "grpc-gateway"
-	Storage           string = "storage"
-	UsageReport       string = "usage-stats"
-	QueryFrontend     string = "query-frontend"
-	QueryScheduler    string = "query-scheduler"
-	RuntimeConfig     string = "runtime-config"
-	Overrides         string = "overrides"
-	OverridesExporter string = "overrides-exporter"
-	Compactor         string = "compactor"
-	Admin             string = "admin"
-	TenantSettings    string = "tenant-settings"
-	AdHocProfiles     string = "ad-hoc-profiles"
-	Metastore         string = "metastore"
-	MetastoreClient   string = "metastore-client"
+	All                string = "all"
+	API                string = "api"
+	Version            string = "version"
+	Distributor        string = "distributor"
+	Server             string = "server"
+	Ring               string = "ring"
+	Ingester           string = "ingester"
+	MemberlistKV       string = "memberlist-kv"
+	Querier            string = "querier"
+	StoreGateway       string = "store-gateway"
+	GRPCGateway        string = "grpc-gateway"
+	Storage            string = "storage"
+	UsageReport        string = "usage-stats"
+	QueryFrontend      string = "query-frontend"
+	QueryScheduler     string = "query-scheduler"
+	RuntimeConfig      string = "runtime-config"
+	Overrides          string = "overrides"
+	OverridesExporter  string = "overrides-exporter"
+	Compactor          string = "compactor"
+	Admin              string = "admin"
+	TenantSettings     string = "tenant-settings"
+	AdHocProfiles      string = "ad-hoc-profiles"
+	Metastore          string = "metastore"
+	MetastoreClient    string = "metastore-client"
+	QueryBackend       string = "query-worker" // TODO: query-backend
+	QueryBackendClient string = "query-backend-client"
 
 	// QueryFrontendTripperware string = "query-frontend-tripperware"
 	// IndexGateway             string = "index-gateway"
@@ -561,12 +565,13 @@ func (f *Phlare) initAdmin() (services.Service, error) {
 }
 
 func (f *Phlare) initMetastore() (services.Service, error) {
-	m, err := metastore.New(f.Cfg.Metastore, nil, log.With(f.logger, "component", "metastore"), f.reg, f.health)
+	logger := log.With(f.logger, "component", "metastore")
+	m, err := metastore.New(f.Cfg.Metastore, f.TenantLimits, logger, f.reg, f.health)
 	if err != nil {
 		return nil, err
 	}
 	f.API.RegisterMetastore(m)
-	return m, nil
+	return m.Service(), nil
 }
 
 func (f *Phlare) initMetastoreClient() (services.Service, error) {
@@ -576,6 +581,28 @@ func (f *Phlare) initMetastoreClient() (services.Service, error) {
 	}
 	f.MetastoreClient = mc
 	return mc.Service(), nil
+}
+
+func (f *Phlare) initQueryBackendClient() (services.Service, error) {
+	c, err := querybackendclient.New(querybackendclient.Config{
+		Address: f.Cfg.QueryBackend.Address,
+	})
+	if err != nil {
+		return nil, err
+	}
+	f.QueryBackendClient = c
+	return c.Service(), nil
+}
+
+func (f *Phlare) initQueryBackend() (services.Service, error) {
+	br := querybackend.NewBlockReader(f.storageBucket)
+	logger := log.With(f.logger, "component", "query-backend")
+	b, err := querybackend.New(f.Cfg.QueryBackend, logger, f.reg, f.QueryBackendClient, br)
+	if err != nil {
+		return nil, err
+	}
+	f.API.RegisterQueryBackend(b)
+	return b.Service(), nil
 }
 
 type statusService struct {

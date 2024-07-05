@@ -23,7 +23,9 @@ import (
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	querybackendv1 "github.com/grafana/pyroscope/api/gen/proto/go/querybackend/v1"
 	"github.com/grafana/pyroscope/pkg/metastore"
+	"github.com/grafana/pyroscope/pkg/querybackend"
 	"github.com/grafana/pyroscope/public"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/adhocprofiles/v1/adhocprofilesv1connect"
@@ -289,6 +291,10 @@ func (a *API) RegisterCompactor(c *compactor.MultitenantCompactor) {
 
 func (a *API) RegisterMetastore(svc *metastore.Metastore) {
 	metastorev1.RegisterMetastoreServiceServer(a.server.GRPC, svc)
+}
+
+func (a *API) RegisterQueryBackend(svc *querybackend.QueryBackend) {
+	querybackendv1.RegisterQueryBackendServiceServer(a.server.GRPC, svc)
 }
 
 // RegisterQueryFrontend registers the endpoints associated with the query frontend.

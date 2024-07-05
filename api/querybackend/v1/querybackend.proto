@@ -1,0 +1,100 @@
+syntax = "proto3";
+
+package querybackend.v1;
+
+import "google/v1/profile.proto";
+import "metastore/v1/metastore.proto";
+import "types/v1/types.proto";
+
+service QueryBackendService {
+  rpc Invoke(InvokeRequest) returns (InvokeResponse) {}
+}
+
+message InvokeOptions {
+  // Workers won't have access to the overrides,
+  // therefore all the necessary options should be
+  // passed in the request.
+  int64 max_block_reads_per_worker = 1;
+  int64 max_block_merges_per_worker = 2;
+  // int64 max_bytes_per_worker = ;
+  // int64 max_tenant_services_per_worker = ;
+}
+
+message InvokeRequest {
+  repeated string tenant = 1;
+  int64 start_time = 2;
+  int64 end_time = 3;
+  string label_selector = 4;
+  InvokeOptions options = 5;
+  repeated metastore.v1.BlockMeta blocks = 6;
+  repeated Query query = 7;
+}
+
+message InvokeResponse {
+  repeated Report reports = 1;
+}
+
+message Query {
+  oneof query_type {
+    LabelNamesQuery label_names = 1;
+    LabelValuesQuery label_values = 2;
+    SeriesQuery series = 3;
+    MetricsQuery metrics = 4;
+    TreeQuery tree = 5;
+    // pprof
+    // function_details
+    // call_graph
+    // top_table
+    // ...
+  }
+}
+
+message Report {
+  oneof report_type {
+    LabelNamesReport label_names = 1;
+    LabelValuesQuery label_values = 2;
+    SeriesReport series = 3;
+    MetricsReport metrics = 4;
+    TreeReport tree = 5;
+  }
+}
+
+message LabelNamesQuery {}
+
+message LabelNamesReport {
+  repeated string label_names = 1;
+}
+
+message LabelValuesQuery {
+  string label_name = 1;
+}
+
+message LabelValuesReport {
+  repeated string label_values = 1;
+}
+
+message SeriesQuery {
+  repeated string label_names = 1;
+}
+
+message SeriesReport {
+  repeated types.v1.Labels series = 2;
+}
+
+message MetricsQuery {
+  double step = 1;
+  repeated string group_by = 2;
+  optional types.v1.TimeSeriesAggregationType aggregation = 3;
+}
+
+message MetricsReport {
+  repeated types.v1.Metric metrics = 1;
+}
+
+message TreeQuery {
+  int64 max_nodes = 1;
+}
+
+message TreeReport {
+  bytes data = 1;
+}
