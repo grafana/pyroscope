@@ -90,6 +90,7 @@ import (
 // }
 
 func Test_QueryMetadata(t *testing.T) {
+	t.Skip("No querying from ingesters in the new architecture")
 	dbPath := t.TempDir()
 	logger := log.NewJSONLogger(os.Stdout)
 	reg := prometheus.NewRegistry()

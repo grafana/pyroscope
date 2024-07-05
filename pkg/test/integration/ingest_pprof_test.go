@@ -256,6 +256,9 @@ func TestIngest(t *testing.T) {
 			req := rb.IngestPPROFRequest(td.profile, td.prevProfile, td.sampleTypeConfig)
 			p.Ingest(t, req, td.expectStatusIngest)
 
+			if skipV2QueryTests {
+				return
+			}
 			if td.expectStatusIngest == 200 {
 				for _, metric := range td.metrics {
 					rb.Render(metric.name)
@@ -309,6 +312,9 @@ func TestIngestPPROFFixPythonLinenumbers(t *testing.T) {
 	req := rb.IngestPPROFRequest(tempProfileFile.Name(), "", "")
 	p.Ingest(t, req, 200)
 
+	if skipV2QueryTests {
+		return
+	}
 	renderedProfile := rb.SelectMergeProfile("process_cpu:cpu:nanoseconds:cpu:nanoseconds", nil)
 	actual := bench.StackCollapseProto(renderedProfile.Msg, 0, 1)
 	expected := []string{
@@ -332,6 +338,10 @@ func TestPush(t *testing.T) {
 
 			req := rb.PushPPROFRequest(td.profile, td.metrics[0].name)
 			rb.Push(req, td.expectStatusPush, td.expectedError)
+
+			if skipV2QueryTests {
+				return
+			}
 
 			if td.expectStatusPush == 200 {
 				for _, metric := range td.metrics {

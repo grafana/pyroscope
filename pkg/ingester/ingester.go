@@ -4,13 +4,15 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"time"
+
 	"github.com/google/uuid"
+
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	metastoreclient "github.com/grafana/pyroscope/pkg/metastore/client"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/validation"
-	"google.golang.org/grpc"
-	"time"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
@@ -26,11 +28,10 @@ import (
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
-	"github.com/grafana/pyroscope/pkg/usagestats"
 	"github.com/grafana/pyroscope/pkg/util"
 )
 
-var activeTenantsStats = usagestats.NewInt("ingester_active_tenants")
+//var activeTenantsStats = usagestats.NewInt("ingester_active_tenants")
 
 type Config struct {
 	LifecyclerConfig ring.LifecyclerConfig `yaml:"lifecycler,omitempty"`
@@ -81,7 +82,7 @@ func (i *ingesterFlusherCompat) Flush() {
 	}
 }
 
-func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storageBucket phlareobj.Bucket, limits Limits, queryStoreAfter time.Duration, metastorecc grpc.ClientConnInterface) (*Ingester, error) {
+func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storageBucket phlareobj.Bucket, limits Limits, queryStoreAfter time.Duration, metastoreClient *metastoreclient.Client) (*Ingester, error) {
 	i := &Ingester{
 		cfg:           cfg,
 		phlarectx:     phlarectx,
@@ -116,10 +117,10 @@ func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storag
 	if storageBucket == nil {
 		return nil, errors.New("storage bucket is required for segment writer")
 	}
-	if metastorecc == nil {
-		return nil, errors.New("metastore client connection is required for segment writer")
+	if metastoreClient == nil {
+		return nil, errors.New("metastore client is required for segment writer")
 	}
-	i.segmentWriter = newSegmentWriter(i.phlarectx, i.logger, i.dbConfig, i.limiters, storageBucket, cfg.SegmentDuration, metastorecc)
+	i.segmentWriter = newSegmentWriter(i.phlarectx, i.logger, i.dbConfig, i.limiters, storageBucket, cfg.SegmentDuration, metastoreClient)
 	i.subservicesWatcher = services.NewFailureWatcher()
 	i.subservicesWatcher.WatchManager(i.subservices)
 	i.Service = services.NewBasicService(i.starting, i.running, i.stopping)

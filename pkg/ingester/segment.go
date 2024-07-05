@@ -4,21 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
-	"github.com/google/uuid"
-	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/phlaredb"
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
-	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
-	"github.com/grafana/pyroscope/pkg/util/math"
-	"github.com/oklog/ulid"
-	"github.com/opentracing/opentracing-go"
-	"github.com/thanos-io/objstore"
-	"google.golang.org/grpc"
 	"os"
 	"path"
 	"path/filepath"
@@ -26,14 +11,32 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
+	"github.com/google/uuid"
+	"github.com/oklog/ulid"
+	"github.com/opentracing/opentracing-go"
+	"github.com/thanos-io/objstore"
+
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	metastoreclient "github.com/grafana/pyroscope/pkg/metastore/client"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/phlaredb"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
+	"github.com/grafana/pyroscope/pkg/util/math"
 )
 
 const pathSegments = "segments"
 const pathAnon = "anon"
 
-const pathDLQ = "dlq"
+// const pathDLQ = "dlq"
 const pathBlock = "block.bin"
-const pathMetaPB = "meta.pb" // should we embed it in the block?
+
+//const pathMetaPB = "meta.pb" // should we embed it in the block?
 
 type shardKey uint32
 
@@ -46,12 +49,12 @@ type segmentsWriter struct {
 	cfg             phlaredb.Config
 	limiters        *limiters
 	bucket          objstore.Bucket
-	metastoreclient metastorev1.MetastoreServiceClient
+	metastoreClient *metastoreclient.Client
 	wg              sync.WaitGroup
 	cancel          context.CancelFunc
 }
 
-func newSegmentWriter(phlarectx context.Context, l log.Logger, cfg phlaredb.Config, limiters *limiters, bucket objstore.Bucket, segmentDuration time.Duration, metastorecc grpc.ClientConnInterface) *segmentsWriter {
+func newSegmentWriter(phlarectx context.Context, l log.Logger, cfg phlaredb.Config, limiters *limiters, bucket objstore.Bucket, segmentDuration time.Duration, metastoreClient *metastoreclient.Client) *segmentsWriter {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	sw := &segmentsWriter{
 		segmentDuration: segmentDuration,
@@ -61,7 +64,7 @@ func newSegmentWriter(phlarectx context.Context, l log.Logger, cfg phlaredb.Conf
 		limiters:        limiters,
 		cfg:             cfg,
 		segments:        make(map[shardKey]*segment),
-		metastoreclient: metastorev1.NewMetastoreServiceClient(metastorecc),
+		metastoreClient: metastoreClient,
 		cancel:          cancelFunc,
 	}
 	sw.wg.Add(1)
@@ -72,20 +75,13 @@ func newSegmentWriter(phlarectx context.Context, l log.Logger, cfg phlaredb.Conf
 	return sw
 }
 
-func (sw *segmentsWriter) ingestAndWait(ctx context.Context, shard shardKey, fn func(head segmentIngest) error) error {
-	await, err := sw.ingest(shard, fn)
-	if err != nil {
-		return err
-	}
-	return await.waitFlushed(ctx)
-	//
-	//select {
-	//case <-ctx.Done():
-	//	return ctx.Err()
-	//case <-doneChan:
-	//	return nil
-	//}
-}
+//func (sw *segmentsWriter) ingestAndWait(ctx context.Context, shard shardKey, fn func(head segmentIngest) error) error {
+//	await, err := sw.ingest(shard, fn)
+//	if err != nil {
+//		return err
+//	}
+//	return await.waitFlushed(ctx)
+//}
 
 func (sw *segmentsWriter) ingest(shard shardKey, fn func(head segmentIngest) error) (await segmentWaitFlushed, err error) {
 	sw.segmentsLock.RLock()
@@ -157,15 +153,15 @@ func (sw *segmentsWriter) flushSegments(ctx context.Context) {
 	_ = level.Debug(sw.l).Log("msg", "writing segments", "count", len(prev))
 
 	var wg sync.WaitGroup
-	for shard, s := range prev {
+	for _, s := range prev {
 		wg.Add(1)
-		go func(shard shardKey, s *segment) {
+		go func(s *segment) {
 			defer wg.Done()
 			err := s.flush(ctx)
 			if err != nil {
 				_ = level.Error(sw.l).Log("msg", "failed to flush segment", "err", err)
 			}
-		}(shard, s)
+		}(s)
 	}
 	wg.Wait()
 }
@@ -223,6 +219,7 @@ func (s *segment) flush(ctx context.Context) error {
 func (s *segment) flushBlock(ctx context.Context, heads []serviceHead) (string, *metastorev1.BlockMeta, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "segment flush block")
 	defer sp.Finish()
+	_ = ctx
 	meta := &metastorev1.BlockMeta{
 		Id:              s.ulid.String(),
 		MinTime:         0,
@@ -438,6 +435,7 @@ func (s *segment) cleanup() {
 func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockPath string) error {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "segment uploadBlock")
 	defer sp.Finish()
+	_ = ctx
 
 	dst, err := filepath.Rel(sw.cfg.DataPath, blockPath)
 	if err != nil {
@@ -471,7 +469,7 @@ func (sw *segmentsWriter) storeMeta(ctx context.Context, meta *metastorev1.Block
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "segment store meta")
 	defer sp.Finish()
 
-	resp, err := sw.metastoreclient.AddBlock(ctx, &metastorev1.AddBlockRequest{
+	resp, err := sw.metastoreClient.AddBlock(ctx, &metastorev1.AddBlockRequest{
 		Block: meta,
 	})
 	if err != nil {

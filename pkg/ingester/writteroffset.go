@@ -1,29 +1,30 @@
 package ingester
 
 import (
-	"github.com/grafana/pyroscope/pkg/phlaredb"
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"io"
 	"os"
+
+	"github.com/grafana/pyroscope/pkg/phlaredb"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 )
 
 type writerOffset struct {
 	io.Writer
 	offset int64
-	err    error
+	//err    error
 }
 
 func withWriterOffset(w io.Writer) *writerOffset {
 	return &writerOffset{Writer: w}
 }
 
-func (w *writerOffset) write(p []byte) {
-	if w.err == nil {
-		n, err := w.Writer.Write(p)
-		w.offset += int64(n)
-		w.err = err
-	}
-}
+//func (w *writerOffset) write(p []byte) {
+//	if w.err == nil {
+//		n, err := w.Writer.Write(p)
+//		w.offset += int64(n)
+//		w.err = err
+//	}
+//}
 
 func (w *writerOffset) Write(p []byte) (n int, err error) {
 	n, err = w.Writer.Write(p)

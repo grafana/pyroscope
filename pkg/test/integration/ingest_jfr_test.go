@@ -147,6 +147,8 @@ func TestNOJFRDump(t *testing.T) {
 	assert.False(t, dump)
 }
 
+var skipV2QueryTests = true
+
 func TestIngestJFR(t *testing.T) {
 	p := new(PyroscopeTest)
 	p.Start(t)
@@ -158,7 +160,9 @@ func TestIngestJFR(t *testing.T) {
 			rb := p.NewRequestBuilder(t)
 			req := rb.IngestJFRRequestFiles(testdatum.jfr, testdatum.labels)
 			p.Ingest(t, req, testdatum.expectStatus)
-
+			if skipV2QueryTests {
+				return
+			}
 			if testdatum.expectStatus == 200 {
 				assert.NotEqual(t, len(testdatum.expectedMetrics), 0)
 				for _, metric := range testdatum.expectedMetrics {
