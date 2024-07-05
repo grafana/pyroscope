@@ -36,7 +36,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
 	"github.com/samber/lo"
-	"google.golang.org/grpc"
 
 	"github.com/grafana/pyroscope/pkg/api"
 	apiversion "github.com/grafana/pyroscope/pkg/api/version"
@@ -62,6 +61,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/usagestats"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/cli"
+	"github.com/grafana/pyroscope/pkg/util/health"
 	"github.com/grafana/pyroscope/pkg/validation"
 	"github.com/grafana/pyroscope/pkg/validation/exporter"
 )
@@ -222,25 +222,25 @@ type Phlare struct {
 	logger log.Logger
 	reg    prometheus.Registerer
 	tracer io.Closer
+	health health.Service
 
 	ModuleManager *modules.Manager
 	serviceMap    map[string]services.Service
 	deps          map[string][]string
 
-	API            *api.API
-	Server         *server.Server
-	SignalHandler  *signals.Handler
-	MemberlistKV   *memberlist.KVInitService
-	ring           *ring.Ring
-	usageReport    *usagestats.Reporter
-	RuntimeConfig  *runtimeconfig.Manager
-	Overrides      *validation.Overrides
-	Compactor      *compactor.MultitenantCompactor
-	admin          *operations.Admin
-	versions       *apiversion.Service
-	serviceManager *services.Manager
-
-	MetastoreClientConn *grpc.ClientConn
+	API             *api.API
+	Server          *server.Server
+	SignalHandler   *signals.Handler
+	MemberlistKV    *memberlist.KVInitService
+	ring            *ring.Ring
+	MetastoreClient *metastoreclient.Client
+	usageReport     *usagestats.Reporter
+	RuntimeConfig   *runtimeconfig.Manager
+	Overrides       *validation.Overrides
+	Compactor       *compactor.MultitenantCompactor
+	admin           *operations.Admin
+	versions        *apiversion.Service
+	serviceManager  *services.Manager
 
 	TenantLimits validation.TenantLimits
 
@@ -260,6 +260,7 @@ func New(cfg Config) (*Phlare, error) {
 		Cfg:    cfg,
 		logger: logger,
 		reg:    prometheus.DefaultRegisterer,
+		health: health.NoOpService,
 	}
 	if err := cfg.Validate(); err != nil {
 		return nil, err
@@ -316,7 +317,7 @@ func (f *Phlare) setupModuleManager() error {
 	mm.RegisterModule(TenantSettings, f.initTenantSettings)
 	mm.RegisterModule(AdHocProfiles, f.initAdHocProfiles)
 	mm.RegisterModule(Metastore, f.initMetastore)
-	mm.RegisterModule(MetastoreClient, f.initMetastoreClient)
+	mm.RegisterModule(MetastoreClient, f.initMetastoreClient, modules.UserInvisibleModule)
 
 	// Add dependencies
 	deps := map[string][]string{

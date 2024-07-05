@@ -65,15 +65,24 @@ spec:
             - "-server.http-listen-port={{ $values.service.port }}"
             - "-memberlist.cluster-label={{ .Release.Namespace }}-{{ include "pyroscope.fullname" .}}"
             - "-memberlist.join=dns+{{ include "pyroscope.fullname" .}}-memberlist.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:{{ .Values.pyroscope.memberlist.port }}"
-            - "-metastore.address=dns:///{{ include "pyroscope.fullname" .}}-metastore-grpc.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:9095"
-            - "-metastore.raft.bootstrap-peers=dns:///{{ include "pyroscope.fullname" .}}-metastore-raft.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:9099"
+            - "-metastore.raft.bind-address=:9099"
+            - "-metastore.raft.advertise-address=$(POD_NAME).{{ include "pyroscope.fullname" .}}-metastore-headless.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:9099"
+            - "-metastore.raft.server-id=$(POD_NAME).{{ include "pyroscope.fullname" .}}-metastore-headless.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:9099"
+            - "-metastore.raft.bootstrap-peers=dnssrvnoa+_raft._tcp.{{ include "pyroscope.fullname" .}}-metastore-headless.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:9099"
+            - "-metastore.address=dns:///_grpc._tcp.{{ include "pyroscope.fullname" .}}-metastore-headless.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:9095"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
+            - "-ingester.num-tokens=4"
+            - "-distributor.replication-factor=1"
           {{- range $key, $value := $extraArgs }}
             - "-{{ $key }}={{ $value }}"
           {{- end }}
-          {{- with $values.extraEnvVars }}
           env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          {{- with $values.extraEnvVars }}
           {{- range $key, $value := . }}
             - name: {{ $key }}
               {{- if kindIs "map" $value }}

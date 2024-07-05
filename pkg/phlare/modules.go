@@ -28,6 +28,7 @@ import (
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/genproto/googleapis/api/httpbody"
+	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/protobuf/encoding/protojson"
 	"gopkg.in/yaml.v3"
 
@@ -52,6 +53,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/usagestats"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/build"
+	"github.com/grafana/pyroscope/pkg/util/health"
 	"github.com/grafana/pyroscope/pkg/validation"
 	"github.com/grafana/pyroscope/pkg/validation/exporter"
 )
@@ -104,7 +106,7 @@ func (f *Phlare) initQueryFrontend() (services.Service, error) {
 		f.Cfg.Frontend.Port = f.Cfg.Server.HTTPListenPort
 	}
 
-	frontendSvc, err := frontend.NewFrontend(f.Cfg.Frontend, f.Overrides, log.With(f.logger, "component", "frontend"), f.reg, f.MetastoreClientConn)
+	frontendSvc, err := frontend.NewFrontend(f.Cfg.Frontend, f.Overrides, log.With(f.logger, "component", "frontend"), f.reg, f.MetastoreClient)
 	if err != nil {
 		return nil, err
 	}
@@ -360,6 +362,7 @@ func (f *Phlare) initMemberlistKV() (services.Service, error) {
 }
 
 func (f *Phlare) initRing() (_ services.Service, err error) {
+	f.Cfg.Ingester.LifecyclerConfig.RingConfig.ReplicationFactor = 1
 	f.ring, err = ring.New(f.Cfg.Ingester.LifecyclerConfig.RingConfig, "ingester", "ring", log.With(f.logger, "component", "ring"), prometheus.WrapRegistererWithPrefix("pyroscope_", f.reg))
 	if err != nil {
 		return nil, err
@@ -463,6 +466,10 @@ func (f *Phlare) initServer() (services.Service, error) {
 
 	f.Server = serv
 
+	healthService := health.NewGRPCHealthService()
+	grpc_health_v1.RegisterHealthServer(f.Server.GRPC, healthService)
+	f.health = healthService
+
 	servicesToWaitFor := func() []services.Service {
 		svs := []services.Service(nil)
 		for m, s := range f.serviceMap {
@@ -554,7 +561,7 @@ func (f *Phlare) initAdmin() (services.Service, error) {
 }
 
 func (f *Phlare) initMetastore() (services.Service, error) {
-	m, err := metastore.New(f.Cfg.Metastore, nil, f.logger, f.reg)
+	m, err := metastore.New(f.Cfg.Metastore, nil, log.With(f.logger, "component", "metastore"), f.reg, f.health)
 	if err != nil {
 		return nil, err
 	}
@@ -563,16 +570,12 @@ func (f *Phlare) initMetastore() (services.Service, error) {
 }
 
 func (f *Phlare) initMetastoreClient() (services.Service, error) {
-	cc, err := metastoreclient.Dial(f.Cfg.MetastoreClient)
+	mc, err := metastoreclient.New(f.Cfg.MetastoreClient)
 	if err != nil {
 		return nil, err
 	}
-	f.MetastoreClientConn = cc
-	svc := services.NewIdleService(
-		func(_ context.Context) error { return nil },
-		func(_ error) error { return cc.Close() },
-	)
-	return svc, nil
+	f.MetastoreClient = mc
+	return mc.Service(), nil
 }
 
 type statusService struct {

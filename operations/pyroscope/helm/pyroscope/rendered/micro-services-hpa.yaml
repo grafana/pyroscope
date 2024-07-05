@@ -1720,84 +1720,6 @@ spec:
     # TODO: Ensure only services that offer memberlist register
     # pyroscope.grafana.com/memberlist: "true"
 ---
-# Source: pyroscope/templates/service-metastore.yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: pyroscope-dev-metastore-grpc
-  namespace: default
-  labels:
-    helm.sh/chart: pyroscope-1.6.1
-    app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.6.1"
-    app.kubernetes.io/managed-by: Helm
-spec:
-  type: ClusterIP
-  clusterIP: None
-  ports:
-    - name: metastore-grpc
-      port: 9095
-      protocol: TCP
-      targetPort: 9095
-  publishNotReadyAddresses: true
-  selector:
-    app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/component: "metastore"
----
-# Source: pyroscope/templates/service-metastore.yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: pyroscope-dev-metastore-raft
-  namespace: default
-  labels:
-    helm.sh/chart: pyroscope-1.6.1
-    app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.6.1"
-    app.kubernetes.io/managed-by: Helm
-spec:
-  type: ClusterIP
-  clusterIP: None
-  ports:
-    - name: metastore-raft
-      port: 9099
-      protocol: TCP
-      targetPort: 9099
-  publishNotReadyAddresses: false
-  selector:
-    app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/component: "metastore"
----
-# Source: pyroscope/templates/service-query-worker.yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: pyroscope-dev-query-worker
-  namespace: default
-  labels:
-    helm.sh/chart: pyroscope-1.6.1
-    app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.6.1"
-    app.kubernetes.io/managed-by: Helm
-spec:
-  type: ClusterIP
-  clusterIP: None
-  ports:
-    - name: query-worker
-      port: 9095
-      protocol: TCP
-      targetPort: 9095
-  publishNotReadyAddresses: false
-  selector:
-    app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/component: "querier"
----
 # Source: pyroscope/templates/services.yaml
 apiVersion: v1
 kind: Service
@@ -2208,12 +2130,22 @@ spec:
             - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
-            - "-metastore.address=dns:///pyroscope-dev-metastore-grpc.default.svc.cluster.local.:9095"
-            - "-metastore.raft.bootstrap-peers=dns:///pyroscope-dev-metastore-raft.default.svc.cluster.local.:9099"
+            - "-metastore.raft.bind-address=:9099"
+            - "-metastore.raft.advertise-address=$(POD_NAME).pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.raft.server-id=$(POD_NAME).pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.raft.bootstrap-peers=dnssrvnoa+_raft._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.address=dns:///_grpc._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9095"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
+            - "-ingester.num-tokens=4"
+            - "-distributor.replication-factor=1"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
           ports:
             - name: http2
               containerPort: 4040
@@ -2303,12 +2235,22 @@ spec:
             - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
-            - "-metastore.address=dns:///pyroscope-dev-metastore-grpc.default.svc.cluster.local.:9095"
-            - "-metastore.raft.bootstrap-peers=dns:///pyroscope-dev-metastore-raft.default.svc.cluster.local.:9099"
+            - "-metastore.raft.bind-address=:9099"
+            - "-metastore.raft.advertise-address=$(POD_NAME).pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.raft.server-id=$(POD_NAME).pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.raft.bootstrap-peers=dnssrvnoa+_raft._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.address=dns:///_grpc._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9095"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
+            - "-ingester.num-tokens=4"
+            - "-distributor.replication-factor=1"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
           ports:
             - name: http2
               containerPort: 4040
@@ -2398,12 +2340,22 @@ spec:
             - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
-            - "-metastore.address=dns:///pyroscope-dev-metastore-grpc.default.svc.cluster.local.:9095"
-            - "-metastore.raft.bootstrap-peers=dns:///pyroscope-dev-metastore-raft.default.svc.cluster.local.:9099"
+            - "-metastore.raft.bind-address=:9099"
+            - "-metastore.raft.advertise-address=$(POD_NAME).pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.raft.server-id=$(POD_NAME).pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.raft.bootstrap-peers=dnssrvnoa+_raft._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.address=dns:///_grpc._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9095"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
+            - "-ingester.num-tokens=4"
+            - "-distributor.replication-factor=1"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
           ports:
             - name: http2
               containerPort: 4040
@@ -2493,12 +2445,22 @@ spec:
             - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
-            - "-metastore.address=dns:///pyroscope-dev-metastore-grpc.default.svc.cluster.local.:9095"
-            - "-metastore.raft.bootstrap-peers=dns:///pyroscope-dev-metastore-raft.default.svc.cluster.local.:9099"
+            - "-metastore.raft.bind-address=:9099"
+            - "-metastore.raft.advertise-address=$(POD_NAME).pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.raft.server-id=$(POD_NAME).pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.raft.bootstrap-peers=dnssrvnoa+_raft._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.address=dns:///_grpc._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9095"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
+            - "-ingester.num-tokens=4"
+            - "-distributor.replication-factor=1"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
           ports:
             - name: http2
               containerPort: 4040
@@ -2889,12 +2851,22 @@ spec:
             - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
-            - "-metastore.address=dns:///pyroscope-dev-metastore-grpc.default.svc.cluster.local.:9095"
-            - "-metastore.raft.bootstrap-peers=dns:///pyroscope-dev-metastore-raft.default.svc.cluster.local.:9099"
+            - "-metastore.raft.bind-address=:9099"
+            - "-metastore.raft.advertise-address=$(POD_NAME).pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.raft.server-id=$(POD_NAME).pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.raft.bootstrap-peers=dnssrvnoa+_raft._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.address=dns:///_grpc._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9095"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
+            - "-ingester.num-tokens=4"
+            - "-distributor.replication-factor=1"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
           ports:
             - name: http2
               containerPort: 4040
@@ -2992,12 +2964,22 @@ spec:
             - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
-            - "-metastore.address=dns:///pyroscope-dev-metastore-grpc.default.svc.cluster.local.:9095"
-            - "-metastore.raft.bootstrap-peers=dns:///pyroscope-dev-metastore-raft.default.svc.cluster.local.:9099"
+            - "-metastore.raft.bind-address=:9099"
+            - "-metastore.raft.advertise-address=$(POD_NAME).pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.raft.server-id=$(POD_NAME).pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.raft.bootstrap-peers=dnssrvnoa+_raft._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.address=dns:///_grpc._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9095"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
+            - "-ingester.num-tokens=4"
+            - "-distributor.replication-factor=1"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
           ports:
             - name: http2
               containerPort: 4040
@@ -3091,12 +3073,22 @@ spec:
             - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
-            - "-metastore.address=dns:///pyroscope-dev-metastore-grpc.default.svc.cluster.local.:9095"
-            - "-metastore.raft.bootstrap-peers=dns:///pyroscope-dev-metastore-raft.default.svc.cluster.local.:9099"
+            - "-metastore.raft.bind-address=:9099"
+            - "-metastore.raft.advertise-address=$(POD_NAME).pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.raft.server-id=$(POD_NAME).pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.raft.bootstrap-peers=dnssrvnoa+_raft._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+            - "-metastore.address=dns:///_grpc._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9095"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
+            - "-ingester.num-tokens=4"
+            - "-distributor.replication-factor=1"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
           ports:
             - name: http2
               containerPort: 4040

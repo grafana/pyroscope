@@ -21,17 +21,15 @@ import (
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/netutil"
 	"github.com/grafana/dskit/services"
+	"github.com/grafana/dskit/tenant"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/atomic"
-	"google.golang.org/grpc"
 
-	"github.com/grafana/dskit/tenant"
-
-	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/frontend/frontendpb"
+	metastoreclient "github.com/grafana/pyroscope/pkg/metastore/client"
 	"github.com/grafana/pyroscope/pkg/querier/stats"
 	"github.com/grafana/pyroscope/pkg/scheduler/schedulerdiscovery"
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
@@ -96,7 +94,7 @@ type Frontend struct {
 	requests                *requestsInProgress
 	frontendpb.UnimplementedFrontendForQuerierServer
 
-	metastoreclient metastorev1.MetastoreServiceClient
+	metastoreclient *metastoreclient.Client
 }
 
 type Limits interface {
@@ -137,7 +135,7 @@ type enqueueResult struct {
 }
 
 // NewFrontend creates a new frontend.
-func NewFrontend(cfg Config, limits Limits, log log.Logger, reg prometheus.Registerer, metastorecc grpc.ClientConnInterface) (*Frontend, error) {
+func NewFrontend(cfg Config, limits Limits, log log.Logger, reg prometheus.Registerer, mc *metastoreclient.Client) (*Frontend, error) {
 	requestsCh := make(chan *frontendRequest)
 
 	schedulerWorkers, err := newFrontendSchedulerWorkers(cfg, fmt.Sprintf("%s:%d", cfg.Addr, cfg.Port), requestsCh, log, reg)
@@ -153,7 +151,7 @@ func NewFrontend(cfg Config, limits Limits, log log.Logger, reg prometheus.Regis
 		schedulerWorkers:        schedulerWorkers,
 		schedulerWorkersWatcher: services.NewFailureWatcher(),
 		requests:                newRequestsInProgress(),
-		metastoreclient:         metastorev1.NewMetastoreServiceClient(metastorecc),
+		metastoreclient:         mc,
 	}
 
 	if err != nil {

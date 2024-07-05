@@ -51,7 +51,8 @@
       "metastore": {
         "kind": "StatefulSet",
         "persistence": {
-          "enabled": false
+          "enabled": true,
+          "size": "100Gi"
         },
         "replicaCount": 3,
         "resources": {

@@ -89,7 +89,8 @@ pyroscope:
       replicaCount: 3
       terminationGracePeriodSeconds: 1200
       persistence:
-        enabled: false
+        enabled: true
+        size: 100Gi
       resources:
         limits:
           memory: 8Gi

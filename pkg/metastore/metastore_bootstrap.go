@@ -5,13 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"net/url"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
+	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/grafana/dskit/dns"
 	"github.com/hashicorp/raft"
 )
 
@@ -20,15 +20,15 @@ func (m *Metastore) bootstrap() error {
 	if err != nil {
 		return fmt.Errorf("failed to resolve peers: %w", err)
 	}
-	if len(peers) == 0 {
-		return fmt.Errorf("no peers found")
-	}
-	if raft.ServerID(m.config.Raft.ServerID) != peers[0].ID {
-		_ = level.Info(m.logger).Log("msg", "skipping raft bootstrap",
-			"local", m.config.Raft.ServerID,
-			"peers", fmt.Sprint(peers))
+	logger := log.With(m.logger,
+		"server_id", m.config.Raft.ServerID,
+		"advertise_address", m.config.Raft.AdvertiseAddress,
+		"peers", fmt.Sprint(peers))
+	if raft.ServerAddress(m.config.Raft.AdvertiseAddress) != peers[0].Address {
+		_ = level.Info(logger).Log("msg", "not the bootstrap node, skipping")
 		return nil
 	}
+	_ = level.Info(logger).Log("msg", "bootstrapping raft")
 	bootstrap := m.raft.BootstrapCluster(raft.Configuration{Servers: peers})
 	if bootstrapErr := bootstrap.Error(); bootstrapErr != nil {
 		if !errors.Is(bootstrapErr, raft.ErrCantBootstrap) {
@@ -39,89 +39,79 @@ func (m *Metastore) bootstrap() error {
 }
 
 func (m *Metastore) bootstrapPeers() ([]raft.Server, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	var peers []raft.Server
-	for _, addr := range m.config.Raft.BootstrapPeers {
-		parsed, err := peerFromAddress(ctx, addr)
-		if err != nil {
-			return nil, err
+	// The peer list always includes the local node.
+	peers := make([]raft.Server, 0, len(m.config.Raft.BootstrapPeers)+1)
+	peers = append(peers, raft.Server{
+		Suffrage: raft.Voter,
+		ID:       raft.ServerID(m.config.Raft.ServerID),
+		Address:  raft.ServerAddress(m.config.Raft.AdvertiseAddress),
+	})
+	// Note that raft requires stable node IDs, therefore we're using
+	// the node FQDN:port for both purposes: as the identifier and as the
+	// address. This requires a DNS SRV record lookup without further
+	// resolution of A records (dnssrvnoa+).
+	//
+	// Alternatively, peers may be specified explicitly in the
+	// "{addr}</{node_id}>" format, where the node is the optional node
+	// identifier.
+	var resolve []string
+	for _, peer := range m.config.Raft.BootstrapPeers {
+		if strings.Contains(peer, "+") {
+			resolve = append(resolve, peer)
+		} else {
+			peers = append(peers, parsePeer(peer))
 		}
-		peers = append(peers, parsed...)
 	}
+	if len(resolve) > 0 {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		prov := dns.NewProvider(m.logger, m.reg, dns.MiekgdnsResolverType)
+		if err := prov.Resolve(ctx, resolve); err != nil {
+			return nil, fmt.Errorf("failed to resolve bootstrap peers: %w", err)
+		}
+		for _, peer := range prov.Addresses() {
+			peers = append(peers, raft.Server{
+				Suffrage: raft.Voter,
+				ID:       raft.ServerID(peer),
+				Address:  raft.ServerAddress(peer),
+			})
+		}
+	}
+	// Finally, we sort and deduplicate the peers: the first one
+	// is to boostrap the cluster. If there are nodes with distinct
+	// IDs but the same address, bootstrapping will fail.
 	slices.SortFunc(peers, func(a, b raft.Server) int {
 		return strings.Compare(string(a.ID), string(b.ID))
+	})
+	peers = slices.CompactFunc(peers, func(a, b raft.Server) bool {
+		return a.ID == b.ID
 	})
 	return peers, nil
 }
 
-func peerFromAddress(ctx context.Context, addr string) ([]raft.Server, error) {
-	if name, found := strings.CutPrefix(addr, "dns+"); found {
-		return lookupPeers(ctx, name)
+func parsePeer(raw string) raft.Server {
+	// The string may be "{addr}" or "{addr}/{node_id}".
+	parts := strings.SplitN(raw, "/", 2)
+	var addr string
+	var node string
+	if len(parts) == 2 {
+		addr = parts[0]
+		node = parts[1]
+	} else {
+		addr = raw
 	}
-	p, err := url.Parse(addr)
+	host, _, err := net.SplitHostPort(addr)
 	if err != nil {
-		return nil, err
+		// No port specified.
+		host = addr
 	}
-	if p.Scheme == "dns" {
-		// dns://[authority]/{host[:port]}
-		// DNS scheme uses the URL host for authority, and the actual target
-		// is in the path token, and the path (name) may have a leading slash.
-		return lookupPeers(ctx, strings.TrimPrefix(p.Path, "/"))
+	if node == "" {
+		// No node_id specified.
+		node = host
 	}
-	return parsePeer(addr)
-}
-
-func parsePeer(raw ...string) ([]raft.Server, error) {
-	peers := make([]raft.Server, 0, len(raw))
-	for _, str := range raw {
-		// The string may be "{addr}" or "{addr}/{node}".
-		parts := strings.SplitN(str, "/", 2)
-		var addr string
-		var node string
-		if len(parts) == 2 {
-			addr = parts[0]
-			node = parts[1]
-		} else {
-			addr = str
-		}
-		host, _, err := net.SplitHostPort(addr)
-		if err != nil {
-			return nil, err
-		}
-		if node == "" {
-			node = host
-		}
-		peers = append(peers, raft.Server{
-			Suffrage: raft.Voter,
-			ID:       raft.ServerID(node),
-			Address:  raft.ServerAddress(addr),
-		})
+	return raft.Server{
+		Suffrage: raft.Voter,
+		ID:       raft.ServerID(node),
+		Address:  raft.ServerAddress(addr),
 	}
-	return peers, nil
-}
-
-func lookupPeers(ctx context.Context, addr string) ([]raft.Server, error) {
-	host, port, err := net.SplitHostPort(addr)
-	if err != nil {
-		host, port = addr, ""
-	}
-	_, recs, err := net.DefaultResolver.LookupSRV(ctx, "", "", host)
-	if len(recs) == 0 && err != nil {
-		return nil, err
-	}
-	var peers []raft.Server
-	for _, r := range recs {
-		// The SRV record may have a port, but we prefer the one from the URL.
-		rPort := port
-		if rPort == "" {
-			rPort = strconv.Itoa(int(r.Port))
-		}
-		peers = append(peers, raft.Server{
-			Suffrage: raft.Voter,
-			ID:       raft.ServerID(r.Target),
-			Address:  raft.ServerAddress(net.JoinHostPort(r.Target, rPort)),
-		})
-	}
-	return peers, nil
 }
