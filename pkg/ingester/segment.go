@@ -15,10 +15,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
-	"github.com/oklog/ulid"
-	"github.com/opentracing/opentracing-go"
-	"github.com/thanos-io/objstore"
-
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -28,6 +24,9 @@ import (
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 	"github.com/grafana/pyroscope/pkg/util/math"
+	"github.com/oklog/ulid"
+	"github.com/opentracing/opentracing-go"
+	"github.com/thanos-io/objstore"
 )
 
 const pathSegments = "segments"
@@ -189,6 +188,7 @@ func (s *segment) flush(ctx context.Context) error {
 	defer func() {
 		s.cleanup()
 		close(s.doneChan)
+		_ = level.Debug(s.sw.l).Log("msg", "writing segment block done", "shard", s.shard, "segment-id", s.ulid.String())
 	}()
 
 	heads := s.flushHeads(ctx)
@@ -466,6 +466,10 @@ func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockPath string) err
 //}
 
 func (sw *segmentsWriter) storeMeta(ctx context.Context, meta *metastorev1.BlockMeta) error {
+	fmt.Printf("storing meta %+v\n", meta)
+	defer func() {
+		fmt.Printf("stored meta %+v\n", meta)
+	}()
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "segment store meta")
 	defer sp.Finish()
 

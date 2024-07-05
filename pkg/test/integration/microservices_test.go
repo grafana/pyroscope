@@ -58,7 +58,9 @@ func TestMicroServicesIntegration(t *testing.T) {
 		tc.runQueryTest(ctx, t)
 	})
 
-	componentsToStop := map[string]struct{}{"store-gateway": {}, "ingester": {}}
+	componentsToStop := map[string]struct{}{
+		//"store-gateway": {},
+		"ingester": {}}
 	g, gctx := errgroup.WithContext(ctx)
 	for _, comp := range c.Components {
 		if _, ok := componentsToStop[comp.Target]; ok {

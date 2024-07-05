@@ -3,7 +3,6 @@ package metastoreclient
 import (
 	"flag"
 	"fmt"
-
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/services"
 	"google.golang.org/grpc"

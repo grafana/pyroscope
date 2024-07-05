@@ -16,6 +16,9 @@ data/
 data-shared/
 data-compactor/
 data-metastore/
+data-metastore-1/
+data-metastore-2/
+data-metastore-3/
 .DS_Store
 **/dist
 
