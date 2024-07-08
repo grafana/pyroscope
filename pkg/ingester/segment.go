@@ -466,10 +466,6 @@ func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockPath string) err
 //}
 
 func (sw *segmentsWriter) storeMeta(ctx context.Context, meta *metastorev1.BlockMeta) error {
-	fmt.Printf("storing meta %+v\n", meta)
-	defer func() {
-		fmt.Printf("stored meta %+v\n", meta)
-	}()
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "segment store meta")
 	defer sp.Finish()
 
