@@ -51,7 +51,7 @@ func (f *Frontend) SelectSeries(ctx context.Context,
 		g.SetLimit(maxConcurrent)
 	}
 
-	m := phlaremodel.NewSeriesMerger(false)
+	m := phlaremodel.NewMetricsMerger(false)
 	interval := validationutil.MaxDurationOrZeroPerTenant(tenantIDs, f.limits.QuerySplitDuration)
 	intervals := NewTimeIntervalIterator(time.UnixMilli(c.Msg.Start), time.UnixMilli(c.Msg.End), interval,
 		WithAlignment(time.Second*time.Duration(c.Msg.Step)))
@@ -75,7 +75,7 @@ func (f *Frontend) SelectSeries(ctx context.Context,
 			if err != nil {
 				return err
 			}
-			m.MergeSeries(resp.Msg.Series)
+			m.MergeMetrics(resp.Msg.Series)
 			return nil
 		})
 	}
@@ -84,5 +84,5 @@ func (f *Frontend) SelectSeries(ctx context.Context,
 		return nil, err
 	}
 
-	return connect.NewResponse(&querierv1.SelectSeriesResponse{Series: m.Series()}), nil
+	return connect.NewResponse(&querierv1.SelectSeriesResponse{Series: m.Metrics()}), nil
 }

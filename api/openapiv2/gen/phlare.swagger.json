@@ -927,6 +927,9 @@
     "v1LabelNamesReport": {
       "type": "object",
       "properties": {
+        "query": {
+          "$ref": "#/definitions/v1LabelNamesQuery"
+        },
         "labelNames": {
           "type": "array",
           "items": {
@@ -962,6 +965,20 @@
       "properties": {
         "labelName": {
           "type": "string"
+        }
+      }
+    },
+    "v1LabelValuesReport": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "$ref": "#/definitions/v1LabelValuesQuery"
+        },
+        "labelValues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
@@ -1184,32 +1201,6 @@
         }
       }
     },
-    "v1Metric": {
-      "type": "object",
-      "properties": {
-        "labels": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1LabelPair"
-          }
-        },
-        "timestamp": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "format": "int64"
-          }
-        },
-        "values": {
-          "type": "array",
-          "items": {
-            "type": "number",
-            "format": "double"
-          }
-        }
-      }
-    },
     "v1MetricsQuery": {
       "type": "object",
       "properties": {
@@ -1231,11 +1222,15 @@
     "v1MetricsReport": {
       "type": "object",
       "properties": {
+        "query": {
+          "$ref": "#/definitions/v1MetricsQuery",
+          "description": "TODO: Metrics model."
+        },
         "metrics": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/v1Metric"
+            "$ref": "#/definitions/v1Series"
           }
         }
       }
@@ -1325,8 +1320,8 @@
         "labelValues": {
           "$ref": "#/definitions/v1LabelValuesQuery"
         },
-        "series": {
-          "$ref": "#/definitions/v1SeriesQuery"
+        "seriesLabels": {
+          "$ref": "#/definitions/v1SeriesLabelsQuery"
         },
         "metrics": {
           "$ref": "#/definitions/v1MetricsQuery"
@@ -1444,10 +1439,10 @@
           "$ref": "#/definitions/v1LabelNamesReport"
         },
         "labelValues": {
-          "$ref": "#/definitions/v1LabelValuesQuery"
+          "$ref": "#/definitions/v1LabelValuesReport"
         },
-        "series": {
-          "$ref": "#/definitions/v1SeriesReport"
+        "seriesLabels": {
+          "$ref": "#/definitions/v1SeriesLabelsReport"
         },
         "metrics": {
           "$ref": "#/definitions/v1MetricsReport"
@@ -1635,6 +1630,32 @@
         }
       }
     },
+    "v1SeriesLabelsQuery": {
+      "type": "object",
+      "properties": {
+        "labelNames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v1SeriesLabelsReport": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "$ref": "#/definitions/v1SeriesLabelsQuery"
+        },
+        "seriesLabels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Labels"
+          }
+        }
+      }
+    },
     "v1SeriesProfile": {
       "type": "object",
       "properties": {
@@ -1647,29 +1668,6 @@
           "type": "string",
           "format": "int64",
           "title": "timestamp in milliseconds"
-        }
-      }
-    },
-    "v1SeriesQuery": {
-      "type": "object",
-      "properties": {
-        "labelNames": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "v1SeriesReport": {
-      "type": "object",
-      "properties": {
-        "series": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1Labels"
-          }
         }
       }
     },
@@ -1799,6 +1797,9 @@
     "v1TreeReport": {
       "type": "object",
       "properties": {
+        "query": {
+          "$ref": "#/definitions/v1TreeQuery"
+        },
         "data": {
           "type": "string",
           "format": "byte"

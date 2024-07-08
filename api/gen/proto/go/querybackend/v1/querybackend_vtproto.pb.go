@@ -148,12 +148,12 @@ func (m *Query_LabelValues) CloneVT() isQuery_QueryType {
 	return r
 }
 
-func (m *Query_Series) CloneVT() isQuery_QueryType {
+func (m *Query_SeriesLabels) CloneVT() isQuery_QueryType {
 	if m == nil {
-		return (*Query_Series)(nil)
+		return (*Query_SeriesLabels)(nil)
 	}
-	r := new(Query_Series)
-	r.Series = m.Series.CloneVT()
+	r := new(Query_SeriesLabels)
+	r.SeriesLabels = m.SeriesLabels.CloneVT()
 	return r
 }
 
@@ -212,12 +212,12 @@ func (m *Report_LabelValues) CloneVT() isReport_ReportType {
 	return r
 }
 
-func (m *Report_Series) CloneVT() isReport_ReportType {
+func (m *Report_SeriesLabels) CloneVT() isReport_ReportType {
 	if m == nil {
-		return (*Report_Series)(nil)
+		return (*Report_SeriesLabels)(nil)
 	}
-	r := new(Report_Series)
-	r.Series = m.Series.CloneVT()
+	r := new(Report_SeriesLabels)
+	r.SeriesLabels = m.SeriesLabels.CloneVT()
 	return r
 }
 
@@ -260,6 +260,7 @@ func (m *LabelNamesReport) CloneVT() *LabelNamesReport {
 		return (*LabelNamesReport)(nil)
 	}
 	r := new(LabelNamesReport)
+	r.Query = m.Query.CloneVT()
 	if rhs := m.LabelNames; rhs != nil {
 		tmpContainer := make([]string, len(rhs))
 		copy(tmpContainer, rhs)
@@ -298,6 +299,7 @@ func (m *LabelValuesReport) CloneVT() *LabelValuesReport {
 		return (*LabelValuesReport)(nil)
 	}
 	r := new(LabelValuesReport)
+	r.Query = m.Query.CloneVT()
 	if rhs := m.LabelValues; rhs != nil {
 		tmpContainer := make([]string, len(rhs))
 		copy(tmpContainer, rhs)
@@ -314,11 +316,11 @@ func (m *LabelValuesReport) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
-func (m *SeriesQuery) CloneVT() *SeriesQuery {
+func (m *SeriesLabelsQuery) CloneVT() *SeriesLabelsQuery {
 	if m == nil {
-		return (*SeriesQuery)(nil)
+		return (*SeriesLabelsQuery)(nil)
 	}
-	r := new(SeriesQuery)
+	r := new(SeriesLabelsQuery)
 	if rhs := m.LabelNames; rhs != nil {
 		tmpContainer := make([]string, len(rhs))
 		copy(tmpContainer, rhs)
@@ -331,16 +333,17 @@ func (m *SeriesQuery) CloneVT() *SeriesQuery {
 	return r
 }
 
-func (m *SeriesQuery) CloneMessageVT() proto.Message {
+func (m *SeriesLabelsQuery) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
-func (m *SeriesReport) CloneVT() *SeriesReport {
+func (m *SeriesLabelsReport) CloneVT() *SeriesLabelsReport {
 	if m == nil {
-		return (*SeriesReport)(nil)
+		return (*SeriesLabelsReport)(nil)
 	}
-	r := new(SeriesReport)
-	if rhs := m.Series; rhs != nil {
+	r := new(SeriesLabelsReport)
+	r.Query = m.Query.CloneVT()
+	if rhs := m.SeriesLabels; rhs != nil {
 		tmpContainer := make([]*v11.Labels, len(rhs))
 		for k, v := range rhs {
 			if vtpb, ok := interface{}(v).(interface{ CloneVT() *v11.Labels }); ok {
@@ -349,7 +352,7 @@ func (m *SeriesReport) CloneVT() *SeriesReport {
 				tmpContainer[k] = proto.Clone(v).(*v11.Labels)
 			}
 		}
-		r.Series = tmpContainer
+		r.SeriesLabels = tmpContainer
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -358,7 +361,7 @@ func (m *SeriesReport) CloneVT() *SeriesReport {
 	return r
 }
 
-func (m *SeriesReport) CloneMessageVT() proto.Message {
+func (m *SeriesLabelsReport) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
@@ -393,13 +396,14 @@ func (m *MetricsReport) CloneVT() *MetricsReport {
 		return (*MetricsReport)(nil)
 	}
 	r := new(MetricsReport)
+	r.Query = m.Query.CloneVT()
 	if rhs := m.Metrics; rhs != nil {
-		tmpContainer := make([]*v11.Metric, len(rhs))
+		tmpContainer := make([]*v11.Series, len(rhs))
 		for k, v := range rhs {
-			if vtpb, ok := interface{}(v).(interface{ CloneVT() *v11.Metric }); ok {
+			if vtpb, ok := interface{}(v).(interface{ CloneVT() *v11.Series }); ok {
 				tmpContainer[k] = vtpb.CloneVT()
 			} else {
-				tmpContainer[k] = proto.Clone(v).(*v11.Metric)
+				tmpContainer[k] = proto.Clone(v).(*v11.Series)
 			}
 		}
 		r.Metrics = tmpContainer
@@ -437,6 +441,7 @@ func (m *TreeReport) CloneVT() *TreeReport {
 		return (*TreeReport)(nil)
 	}
 	r := new(TreeReport)
+	r.Query = m.Query.CloneVT()
 	if rhs := m.Data; rhs != nil {
 		tmpBytes := make([]byte, len(rhs))
 		copy(tmpBytes, rhs)
@@ -659,8 +664,8 @@ func (this *Query_LabelValues) EqualVT(thatIface isQuery_QueryType) bool {
 	return true
 }
 
-func (this *Query_Series) EqualVT(thatIface isQuery_QueryType) bool {
-	that, ok := thatIface.(*Query_Series)
+func (this *Query_SeriesLabels) EqualVT(thatIface isQuery_QueryType) bool {
+	that, ok := thatIface.(*Query_SeriesLabels)
 	if !ok {
 		return false
 	}
@@ -670,12 +675,12 @@ func (this *Query_Series) EqualVT(thatIface isQuery_QueryType) bool {
 	if this == nil && that != nil || this != nil && that == nil {
 		return false
 	}
-	if p, q := this.Series, that.Series; p != q {
+	if p, q := this.SeriesLabels, that.SeriesLabels; p != q {
 		if p == nil {
-			p = &SeriesQuery{}
+			p = &SeriesLabelsQuery{}
 		}
 		if q == nil {
-			q = &SeriesQuery{}
+			q = &SeriesLabelsQuery{}
 		}
 		if !p.EqualVT(q) {
 			return false
@@ -800,10 +805,10 @@ func (this *Report_LabelValues) EqualVT(thatIface isReport_ReportType) bool {
 	}
 	if p, q := this.LabelValues, that.LabelValues; p != q {
 		if p == nil {
-			p = &LabelValuesQuery{}
+			p = &LabelValuesReport{}
 		}
 		if q == nil {
-			q = &LabelValuesQuery{}
+			q = &LabelValuesReport{}
 		}
 		if !p.EqualVT(q) {
 			return false
@@ -812,8 +817,8 @@ func (this *Report_LabelValues) EqualVT(thatIface isReport_ReportType) bool {
 	return true
 }
 
-func (this *Report_Series) EqualVT(thatIface isReport_ReportType) bool {
-	that, ok := thatIface.(*Report_Series)
+func (this *Report_SeriesLabels) EqualVT(thatIface isReport_ReportType) bool {
+	that, ok := thatIface.(*Report_SeriesLabels)
 	if !ok {
 		return false
 	}
@@ -823,12 +828,12 @@ func (this *Report_Series) EqualVT(thatIface isReport_ReportType) bool {
 	if this == nil && that != nil || this != nil && that == nil {
 		return false
 	}
-	if p, q := this.Series, that.Series; p != q {
+	if p, q := this.SeriesLabels, that.SeriesLabels; p != q {
 		if p == nil {
-			p = &SeriesReport{}
+			p = &SeriesLabelsReport{}
 		}
 		if q == nil {
-			q = &SeriesReport{}
+			q = &SeriesLabelsReport{}
 		}
 		if !p.EqualVT(q) {
 			return false
@@ -909,6 +914,9 @@ func (this *LabelNamesReport) EqualVT(that *LabelNamesReport) bool {
 	} else if this == nil || that == nil {
 		return false
 	}
+	if !this.Query.EqualVT(that.Query) {
+		return false
+	}
 	if len(this.LabelNames) != len(that.LabelNames) {
 		return false
 	}
@@ -953,6 +961,9 @@ func (this *LabelValuesReport) EqualVT(that *LabelValuesReport) bool {
 	} else if this == nil || that == nil {
 		return false
 	}
+	if !this.Query.EqualVT(that.Query) {
+		return false
+	}
 	if len(this.LabelValues) != len(that.LabelValues) {
 		return false
 	}
@@ -972,7 +983,7 @@ func (this *LabelValuesReport) EqualMessageVT(thatMsg proto.Message) bool {
 	}
 	return this.EqualVT(that)
 }
-func (this *SeriesQuery) EqualVT(that *SeriesQuery) bool {
+func (this *SeriesLabelsQuery) EqualVT(that *SeriesLabelsQuery) bool {
 	if this == that {
 		return true
 	} else if this == nil || that == nil {
@@ -990,24 +1001,27 @@ func (this *SeriesQuery) EqualVT(that *SeriesQuery) bool {
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
-func (this *SeriesQuery) EqualMessageVT(thatMsg proto.Message) bool {
-	that, ok := thatMsg.(*SeriesQuery)
+func (this *SeriesLabelsQuery) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*SeriesLabelsQuery)
 	if !ok {
 		return false
 	}
 	return this.EqualVT(that)
 }
-func (this *SeriesReport) EqualVT(that *SeriesReport) bool {
+func (this *SeriesLabelsReport) EqualVT(that *SeriesLabelsReport) bool {
 	if this == that {
 		return true
 	} else if this == nil || that == nil {
 		return false
 	}
-	if len(this.Series) != len(that.Series) {
+	if !this.Query.EqualVT(that.Query) {
 		return false
 	}
-	for i, vx := range this.Series {
-		vy := that.Series[i]
+	if len(this.SeriesLabels) != len(that.SeriesLabels) {
+		return false
+	}
+	for i, vx := range this.SeriesLabels {
+		vy := that.SeriesLabels[i]
 		if p, q := vx, vy; p != q {
 			if p == nil {
 				p = &v11.Labels{}
@@ -1027,8 +1041,8 @@ func (this *SeriesReport) EqualVT(that *SeriesReport) bool {
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
-func (this *SeriesReport) EqualMessageVT(thatMsg proto.Message) bool {
-	that, ok := thatMsg.(*SeriesReport)
+func (this *SeriesLabelsReport) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*SeriesLabelsReport)
 	if !ok {
 		return false
 	}
@@ -1071,6 +1085,9 @@ func (this *MetricsReport) EqualVT(that *MetricsReport) bool {
 	} else if this == nil || that == nil {
 		return false
 	}
+	if !this.Query.EqualVT(that.Query) {
+		return false
+	}
 	if len(this.Metrics) != len(that.Metrics) {
 		return false
 	}
@@ -1078,12 +1095,12 @@ func (this *MetricsReport) EqualVT(that *MetricsReport) bool {
 		vy := that.Metrics[i]
 		if p, q := vx, vy; p != q {
 			if p == nil {
-				p = &v11.Metric{}
+				p = &v11.Series{}
 			}
 			if q == nil {
-				q = &v11.Metric{}
+				q = &v11.Series{}
 			}
-			if equal, ok := interface{}(p).(interface{ EqualVT(*v11.Metric) bool }); ok {
+			if equal, ok := interface{}(p).(interface{ EqualVT(*v11.Series) bool }); ok {
 				if !equal.EqualVT(q) {
 					return false
 				}
@@ -1125,6 +1142,9 @@ func (this *TreeReport) EqualVT(that *TreeReport) bool {
 	if this == that {
 		return true
 	} else if this == nil || that == nil {
+		return false
+	}
+	if !this.Query.EqualVT(that.Query) {
 		return false
 	}
 	if string(this.Data) != string(that.Data) {
@@ -1505,15 +1525,15 @@ func (m *Query_LabelValues) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	}
 	return len(dAtA) - i, nil
 }
-func (m *Query_Series) MarshalToVT(dAtA []byte) (int, error) {
+func (m *Query_SeriesLabels) MarshalToVT(dAtA []byte) (int, error) {
 	size := m.SizeVT()
 	return m.MarshalToSizedBufferVT(dAtA[:size])
 }
 
-func (m *Query_Series) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+func (m *Query_SeriesLabels) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	i := len(dAtA)
-	if m.Series != nil {
-		size, err := m.Series.MarshalToSizedBufferVT(dAtA[:i])
+	if m.SeriesLabels != nil {
+		size, err := m.SeriesLabels.MarshalToSizedBufferVT(dAtA[:i])
 		if err != nil {
 			return 0, err
 		}
@@ -1642,15 +1662,15 @@ func (m *Report_LabelValues) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	}
 	return len(dAtA) - i, nil
 }
-func (m *Report_Series) MarshalToVT(dAtA []byte) (int, error) {
+func (m *Report_SeriesLabels) MarshalToVT(dAtA []byte) (int, error) {
 	size := m.SizeVT()
 	return m.MarshalToSizedBufferVT(dAtA[:size])
 }
 
-func (m *Report_Series) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+func (m *Report_SeriesLabels) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	i := len(dAtA)
-	if m.Series != nil {
-		size, err := m.Series.MarshalToSizedBufferVT(dAtA[:i])
+	if m.SeriesLabels != nil {
+		size, err := m.SeriesLabels.MarshalToSizedBufferVT(dAtA[:i])
 		if err != nil {
 			return 0, err
 		}
@@ -1768,8 +1788,18 @@ func (m *LabelNamesReport) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 			copy(dAtA[i:], m.LabelNames[iNdEx])
 			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.LabelNames[iNdEx])))
 			i--
-			dAtA[i] = 0xa
+			dAtA[i] = 0x12
 		}
+	}
+	if m.Query != nil {
+		size, err := m.Query.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0xa
 	}
 	return len(dAtA) - i, nil
 }
@@ -1850,13 +1880,23 @@ func (m *LabelValuesReport) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 			copy(dAtA[i:], m.LabelValues[iNdEx])
 			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.LabelValues[iNdEx])))
 			i--
-			dAtA[i] = 0xa
+			dAtA[i] = 0x12
 		}
+	}
+	if m.Query != nil {
+		size, err := m.Query.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0xa
 	}
 	return len(dAtA) - i, nil
 }
 
-func (m *SeriesQuery) MarshalVT() (dAtA []byte, err error) {
+func (m *SeriesLabelsQuery) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -1869,12 +1909,12 @@ func (m *SeriesQuery) MarshalVT() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *SeriesQuery) MarshalToVT(dAtA []byte) (int, error) {
+func (m *SeriesLabelsQuery) MarshalToVT(dAtA []byte) (int, error) {
 	size := m.SizeVT()
 	return m.MarshalToSizedBufferVT(dAtA[:size])
 }
 
-func (m *SeriesQuery) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+func (m *SeriesLabelsQuery) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m == nil {
 		return 0, nil
 	}
@@ -1898,7 +1938,7 @@ func (m *SeriesQuery) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *SeriesReport) MarshalVT() (dAtA []byte, err error) {
+func (m *SeriesLabelsReport) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -1911,12 +1951,12 @@ func (m *SeriesReport) MarshalVT() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *SeriesReport) MarshalToVT(dAtA []byte) (int, error) {
+func (m *SeriesLabelsReport) MarshalToVT(dAtA []byte) (int, error) {
 	size := m.SizeVT()
 	return m.MarshalToSizedBufferVT(dAtA[:size])
 }
 
-func (m *SeriesReport) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+func (m *SeriesLabelsReport) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m == nil {
 		return 0, nil
 	}
@@ -1928,9 +1968,9 @@ func (m *SeriesReport) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if len(m.Series) > 0 {
-		for iNdEx := len(m.Series) - 1; iNdEx >= 0; iNdEx-- {
-			if vtmsg, ok := interface{}(m.Series[iNdEx]).(interface {
+	if len(m.SeriesLabels) > 0 {
+		for iNdEx := len(m.SeriesLabels) - 1; iNdEx >= 0; iNdEx-- {
+			if vtmsg, ok := interface{}(m.SeriesLabels[iNdEx]).(interface {
 				MarshalToSizedBufferVT([]byte) (int, error)
 			}); ok {
 				size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
@@ -1940,7 +1980,7 @@ func (m *SeriesReport) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 				i -= size
 				i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
 			} else {
-				encoded, err := proto.Marshal(m.Series[iNdEx])
+				encoded, err := proto.Marshal(m.SeriesLabels[iNdEx])
 				if err != nil {
 					return 0, err
 				}
@@ -1951,6 +1991,16 @@ func (m *SeriesReport) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 			i--
 			dAtA[i] = 0x12
 		}
+	}
+	if m.Query != nil {
+		size, err := m.Query.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0xa
 	}
 	return len(dAtA) - i, nil
 }
@@ -2059,8 +2109,18 @@ func (m *MetricsReport) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 				i = protohelpers.EncodeVarint(dAtA, i, uint64(len(encoded)))
 			}
 			i--
-			dAtA[i] = 0xa
+			dAtA[i] = 0x12
 		}
+	}
+	if m.Query != nil {
+		size, err := m.Query.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0xa
 	}
 	return len(dAtA) - i, nil
 }
@@ -2137,6 +2197,16 @@ func (m *TreeReport) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.Data)
 		copy(dAtA[i:], m.Data)
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Data)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if m.Query != nil {
+		size, err := m.Query.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -2260,14 +2330,14 @@ func (m *Query_LabelValues) SizeVT() (n int) {
 	}
 	return n
 }
-func (m *Query_Series) SizeVT() (n int) {
+func (m *Query_SeriesLabels) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	if m.Series != nil {
-		l = m.Series.SizeVT()
+	if m.SeriesLabels != nil {
+		l = m.SeriesLabels.SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	return n
@@ -2333,14 +2403,14 @@ func (m *Report_LabelValues) SizeVT() (n int) {
 	}
 	return n
 }
-func (m *Report_Series) SizeVT() (n int) {
+func (m *Report_SeriesLabels) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	if m.Series != nil {
-		l = m.Series.SizeVT()
+	if m.SeriesLabels != nil {
+		l = m.SeriesLabels.SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	return n
@@ -2385,6 +2455,10 @@ func (m *LabelNamesReport) SizeVT() (n int) {
 	}
 	var l int
 	_ = l
+	if m.Query != nil {
+		l = m.Query.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
 	if len(m.LabelNames) > 0 {
 		for _, s := range m.LabelNames {
 			l = len(s)
@@ -2415,6 +2489,10 @@ func (m *LabelValuesReport) SizeVT() (n int) {
 	}
 	var l int
 	_ = l
+	if m.Query != nil {
+		l = m.Query.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
 	if len(m.LabelValues) > 0 {
 		for _, s := range m.LabelValues {
 			l = len(s)
@@ -2425,7 +2503,7 @@ func (m *LabelValuesReport) SizeVT() (n int) {
 	return n
 }
 
-func (m *SeriesQuery) SizeVT() (n int) {
+func (m *SeriesLabelsQuery) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -2441,14 +2519,18 @@ func (m *SeriesQuery) SizeVT() (n int) {
 	return n
 }
 
-func (m *SeriesReport) SizeVT() (n int) {
+func (m *SeriesLabelsReport) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	if len(m.Series) > 0 {
-		for _, e := range m.Series {
+	if m.Query != nil {
+		l = m.Query.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if len(m.SeriesLabels) > 0 {
+		for _, e := range m.SeriesLabels {
 			if size, ok := interface{}(e).(interface {
 				SizeVT() int
 			}); ok {
@@ -2491,6 +2573,10 @@ func (m *MetricsReport) SizeVT() (n int) {
 	}
 	var l int
 	_ = l
+	if m.Query != nil {
+		l = m.Query.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
 	if len(m.Metrics) > 0 {
 		for _, e := range m.Metrics {
 			if size, ok := interface{}(e).(interface {
@@ -2526,6 +2612,10 @@ func (m *TreeReport) SizeVT() (n int) {
 	}
 	var l int
 	_ = l
+	if m.Query != nil {
+		l = m.Query.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
 	l = len(m.Data)
 	if l > 0 {
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
@@ -3086,7 +3176,7 @@ func (m *Query) UnmarshalVT(dAtA []byte) error {
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Series", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field SeriesLabels", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -3113,16 +3203,16 @@ func (m *Query) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if oneof, ok := m.QueryType.(*Query_Series); ok {
-				if err := oneof.Series.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+			if oneof, ok := m.QueryType.(*Query_SeriesLabels); ok {
+				if err := oneof.SeriesLabels.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 					return err
 				}
 			} else {
-				v := &SeriesQuery{}
+				v := &SeriesLabelsQuery{}
 				if err := v.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 					return err
 				}
-				m.QueryType = &Query_Series{Series: v}
+				m.QueryType = &Query_SeriesLabels{SeriesLabels: v}
 			}
 			iNdEx = postIndex
 		case 4:
@@ -3333,7 +3423,7 @@ func (m *Report) UnmarshalVT(dAtA []byte) error {
 					return err
 				}
 			} else {
-				v := &LabelValuesQuery{}
+				v := &LabelValuesReport{}
 				if err := v.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 					return err
 				}
@@ -3342,7 +3432,7 @@ func (m *Report) UnmarshalVT(dAtA []byte) error {
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Series", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field SeriesLabels", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -3369,16 +3459,16 @@ func (m *Report) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if oneof, ok := m.ReportType.(*Report_Series); ok {
-				if err := oneof.Series.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+			if oneof, ok := m.ReportType.(*Report_SeriesLabels); ok {
+				if err := oneof.SeriesLabels.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 					return err
 				}
 			} else {
-				v := &SeriesReport{}
+				v := &SeriesLabelsReport{}
 				if err := v.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 					return err
 				}
-				m.ReportType = &Report_Series{Series: v}
+				m.ReportType = &Report_SeriesLabels{SeriesLabels: v}
 			}
 			iNdEx = postIndex
 		case 4:
@@ -3567,6 +3657,42 @@ func (m *LabelNamesReport) UnmarshalVT(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Query", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Query == nil {
+				m.Query = &LabelNamesQuery{}
+			}
+			if err := m.Query.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field LabelNames", wireType)
 			}
 			var stringLen uint64
@@ -3733,6 +3859,42 @@ func (m *LabelValuesReport) UnmarshalVT(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Query", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Query == nil {
+				m.Query = &LabelValuesQuery{}
+			}
+			if err := m.Query.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field LabelValues", wireType)
 			}
 			var stringLen uint64
@@ -3785,7 +3947,7 @@ func (m *LabelValuesReport) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *SeriesQuery) UnmarshalVT(dAtA []byte) error {
+func (m *SeriesLabelsQuery) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -3808,10 +3970,10 @@ func (m *SeriesQuery) UnmarshalVT(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: SeriesQuery: wiretype end group for non-group")
+			return fmt.Errorf("proto: SeriesLabelsQuery: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: SeriesQuery: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: SeriesLabelsQuery: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -3868,7 +4030,7 @@ func (m *SeriesQuery) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *SeriesReport) UnmarshalVT(dAtA []byte) error {
+func (m *SeriesLabelsReport) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -3891,15 +4053,15 @@ func (m *SeriesReport) UnmarshalVT(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: SeriesReport: wiretype end group for non-group")
+			return fmt.Errorf("proto: SeriesLabelsReport: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: SeriesReport: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: SeriesLabelsReport: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
-		case 2:
+		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Series", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Query", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -3926,15 +4088,51 @@ func (m *SeriesReport) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Series = append(m.Series, &v11.Labels{})
-			if unmarshal, ok := interface{}(m.Series[len(m.Series)-1]).(interface {
+			if m.Query == nil {
+				m.Query = &SeriesLabelsQuery{}
+			}
+			if err := m.Query.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SeriesLabels", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.SeriesLabels = append(m.SeriesLabels, &v11.Labels{})
+			if unmarshal, ok := interface{}(m.SeriesLabels[len(m.SeriesLabels)-1]).(interface {
 				UnmarshalVT([]byte) error
 			}); ok {
 				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 					return err
 				}
 			} else {
-				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Series[len(m.Series)-1]); err != nil {
+				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.SeriesLabels[len(m.SeriesLabels)-1]); err != nil {
 					return err
 				}
 			}
@@ -4106,6 +4304,42 @@ func (m *MetricsReport) UnmarshalVT(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Query", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Query == nil {
+				m.Query = &MetricsQuery{}
+			}
+			if err := m.Query.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Metrics", wireType)
 			}
 			var msglen int
@@ -4133,7 +4367,7 @@ func (m *MetricsReport) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Metrics = append(m.Metrics, &v11.Metric{})
+			m.Metrics = append(m.Metrics, &v11.Series{})
 			if unmarshal, ok := interface{}(m.Metrics[len(m.Metrics)-1]).(interface {
 				UnmarshalVT([]byte) error
 			}); ok {
@@ -4268,6 +4502,42 @@ func (m *TreeReport) UnmarshalVT(dAtA []byte) error {
 		}
 		switch fieldNum {
 		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Query", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Query == nil {
+				m.Query = &TreeQuery{}
+			}
+			if err := m.Query.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Data", wireType)
 			}

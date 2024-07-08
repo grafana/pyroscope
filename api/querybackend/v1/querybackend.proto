@@ -38,7 +38,7 @@ message Query {
   oneof query_type {
     LabelNamesQuery label_names = 1;
     LabelValuesQuery label_values = 2;
-    SeriesQuery series = 3;
+    SeriesLabelsQuery series_labels = 3;
     MetricsQuery metrics = 4;
     TreeQuery tree = 5;
     // pprof
@@ -52,8 +52,8 @@ message Query {
 message Report {
   oneof report_type {
     LabelNamesReport label_names = 1;
-    LabelValuesQuery label_values = 2;
-    SeriesReport series = 3;
+    LabelValuesReport label_values = 2;
+    SeriesLabelsReport series_labels = 3;
     MetricsReport metrics = 4;
     TreeReport tree = 5;
   }
@@ -62,7 +62,8 @@ message Report {
 message LabelNamesQuery {}
 
 message LabelNamesReport {
-  repeated string label_names = 1;
+  LabelNamesQuery query = 1;
+  repeated string label_names = 2;
 }
 
 message LabelValuesQuery {
@@ -70,15 +71,17 @@ message LabelValuesQuery {
 }
 
 message LabelValuesReport {
-  repeated string label_values = 1;
+  LabelValuesQuery query = 1;
+  repeated string label_values = 2;
 }
 
-message SeriesQuery {
+message SeriesLabelsQuery {
   repeated string label_names = 1;
 }
 
-message SeriesReport {
-  repeated types.v1.Labels series = 2;
+message SeriesLabelsReport {
+  SeriesLabelsQuery query = 1;
+  repeated types.v1.Labels series_labels = 2;
 }
 
 message MetricsQuery {
@@ -88,7 +91,9 @@ message MetricsQuery {
 }
 
 message MetricsReport {
-  repeated types.v1.Metric metrics = 1;
+  // TODO: Metrics model.
+  MetricsQuery query = 1;
+  repeated types.v1.Series metrics = 2;
 }
 
 message TreeQuery {
@@ -96,5 +101,6 @@ message TreeQuery {
 }
 
 message TreeReport {
-  bytes data = 1;
+  TreeQuery query = 1;
+  bytes data = 2;
 }
