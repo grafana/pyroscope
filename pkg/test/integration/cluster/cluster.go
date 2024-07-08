@@ -58,6 +58,11 @@ func newComponent(target string) *Component {
 	}
 }
 
+func (c *Component) Configure(f func(cfg *phlare.Config)) *Component {
+	c.cfgf = f
+	return c
+}
+
 func NewMicroServiceCluster() *Cluster {
 	// use custom http client to resolve dynamically to healthy components
 
@@ -94,9 +99,24 @@ func NewMicroServiceCluster() *Cluster {
 		newComponent("ingester"),
 		newComponent("ingester"),
 		newComponent("ingester"),
-		newComponent("store-gateway"),
-		newComponent("store-gateway"),
-		newComponent("store-gateway"),
+		//newComponent("store-gateway"),
+		//newComponent("store-gateway"),
+		//newComponent("store-gateway"),
+		newComponent("metastore").Configure(func(cfg *phlare.Config) {
+			_ = os.RemoveAll("./data-metastore-1")
+			cfg.Metastore.DataDir = "./data-metastore-1/data"
+			cfg.Metastore.Raft.Dir = "./data-metastore-1/raft"
+		}),
+		newComponent("metastore").Configure(func(cfg *phlare.Config) {
+			_ = os.RemoveAll("./data-metastore-2")
+			cfg.Metastore.DataDir = "./data-metastore-2/data"
+			cfg.Metastore.Raft.Dir = "./data-metastore-2/raft"
+		}),
+		newComponent("metastore").Configure(func(cfg *phlare.Config) {
+			_ = os.RemoveAll("./data-metastore-3")
+			cfg.Metastore.DataDir = "./data-metastore-3/data"
+			cfg.Metastore.Raft.Dir = "./data-metastore-3/raft"
+		}),
 	}
 	return c
 }
@@ -167,7 +187,7 @@ func (c *Cluster) Prepare() (err error) {
 	}
 
 	// allocate two tcp ports per component
-	portsPerComponent := 3
+	portsPerComponent := 4
 	listenAddr := "127.0.0.1"
 	ports, err := getFreeTCPPorts(listenAddr, len(c.Components)*portsPerComponent)
 	if err != nil {
@@ -185,10 +205,11 @@ func (c *Cluster) Prepare() (err error) {
 	}
 
 	memberlistJoin := []string{}
-
-	for _, comp := range c.Components {
+	raftPeers := map[int]string{}
+	var metaStores []string
+	for idx, comp := range c.Components {
 		comp.ports = ports[0:portsPerComponent]
-		ports = ports[3:]
+		ports = ports[portsPerComponent:]
 		prefix := filepath.Join(c.tmpDir, comp.nodeName())
 		dataDir := filepath.Join(prefix, "data")
 		compactorDir := filepath.Join(prefix, "data-compactor")
@@ -203,18 +224,29 @@ func (c *Cluster) Prepare() (err error) {
 		comp.flags = append(
 			nodeNameFlags(comp.nodeName()),
 			listenAddrFlags("127.0.0.1")...)
+		httpPort := comp.ports[0]
+		grpcPort := comp.ports[1]
+		memberlistPort := comp.ports[2]
+		raftPort := comp.ports[3]
+		grpcAddress := fmt.Sprintf("127.0.0.1:%d", grpcPort)
+		raftAddress := fmt.Sprintf("127.0.0.1:%d", raftPort)
+
 		comp.flags = append(comp.flags,
 			[]string{
 				"-tracing.enabled=false", // data race
 				"-distributor.replication-factor=1",
 				"-store-gateway.sharding-ring.replication-factor=1",
+				fmt.Sprintf("-metastore.raft.bind-address=:%d", raftPort),
+				fmt.Sprintf("-metastore.raft.advertise-address=%s", raftAddress),
+				fmt.Sprintf("-metastore.raft.server-id=127.0.0.1:%d", raftPort),
+				//fmt.Sprintf("-metastore.raft.bootstrap-peers=127.0.0.1:%d", raftPort),
 				fmt.Sprintf("-target=%s", comp.Target),
-				fmt.Sprintf("-memberlist.advertise-port=%d", comp.ports[2]),
-				fmt.Sprintf("-memberlist.bind-port=%d", comp.ports[2]),
+				fmt.Sprintf("-memberlist.advertise-port=%d", memberlistPort),
+				fmt.Sprintf("-memberlist.bind-port=%d", memberlistPort),
 				fmt.Sprintf("-memberlist.bind-addr=%s", listenAddr),
-				fmt.Sprintf("-server.http-listen-port=%d", comp.ports[0]),
+				fmt.Sprintf("-server.http-listen-port=%d", httpPort),
 				fmt.Sprintf("-server.http-listen-address=%s", listenAddr),
-				fmt.Sprintf("-server.grpc-listen-port=%d", comp.ports[1]),
+				fmt.Sprintf("-server.grpc-listen-port=%d", grpcPort),
 				fmt.Sprintf("-server.grpc-listen-address=%s", listenAddr),
 				fmt.Sprintf("-blocks-storage.bucket-store.sync-dir=%s", syncDir),
 				fmt.Sprintf("-compactor.data-dir=%s", compactorDir),
@@ -222,13 +254,27 @@ func (c *Cluster) Prepare() (err error) {
 				"-storage.backend=filesystem",
 				fmt.Sprintf("-storage.filesystem.dir=%s", dataSharedDir),
 			}...)
+		if strings.Contains(comp.Target, "metastore") {
+			raftPeers[idx] = raftAddress
+			metaStores = append(metaStores, grpcAddress)
+		}
 
 		// handle memberlist join
 		for _, m := range memberlistJoin {
 			comp.flags = append(comp.flags, fmt.Sprintf("-memberlist.join=%s", m))
 		}
-		memberlistJoin = append(memberlistJoin, fmt.Sprintf("127.0.0.1:%d", comp.ports[2]))
+		memberlistJoin = append(memberlistJoin, fmt.Sprintf("127.0.0.1:%d", memberlistPort))
+	}
 
+	for _, comp := range c.Components {
+		if strings.Contains(comp.Target, "metastore") {
+			for _, peer := range raftPeers {
+				comp.flags = append(comp.flags, fmt.Sprintf("-metastore.raft.bootstrap-peers=%s/%s", peer, peer))
+			}
+		}
+
+		metastoreAddressFlag := fmt.Sprintf("-metastore.address=static:///%s", strings.Join(metaStores, ","))
+		comp.flags = append(comp.flags, metastoreAddressFlag)
 	}
 
 	return nil
@@ -358,6 +404,7 @@ type Component struct {
 	cfg     phlare.Config
 	p       *phlare.Phlare
 	reg     *prometheus.Registry
+	cfgf    func(cfg *phlare.Config)
 }
 
 type gatherCheck struct {
@@ -513,8 +560,8 @@ func (comp *Component) Stop() func(context.Context) error {
 }
 
 func (comp *Component) String() string {
-	if len(comp.ports) == 3 {
-		return fmt.Sprintf("[%s] http=%d grpc=%d memberlist=%d", comp.nodeName(), comp.ports[0], comp.ports[1], comp.ports[2])
+	if len(comp.ports) == 4 {
+		return fmt.Sprintf("[%s] http=%d grpc=%d memberlist=%d raft=%d", comp.nodeName(), comp.ports[0], comp.ports[1], comp.ports[2], comp.ports[3])
 	}
 	return fmt.Sprintf("[%s]", comp.nodeName())
 }
@@ -529,6 +576,9 @@ func (comp *Component) start(_ context.Context) (*phlare.Phlare, error) {
 	fs := flag.NewFlagSet(comp.nodeName(), flag.PanicOnError)
 	if err := cfg.DynamicUnmarshal(&comp.cfg, comp.flags, fs); err != nil {
 		return nil, err
+	}
+	if comp.cfgf != nil {
+		comp.cfgf(&comp.cfg)
 	}
 
 	// Hack to avoid clashing metrics, we should track down the use of globals

@@ -657,3 +657,11 @@ func (h *Head) GetMetaStats() block.MetaStats {
 	defer h.metaLock.RUnlock()
 	return h.meta.GetStats()
 }
+
+func (h *Head) Meta() *block.Meta {
+	return h.meta
+}
+
+func (h *Head) LocalPathFor(relPath string) string {
+	return filepath.Join(h.localPath, relPath)
+}
