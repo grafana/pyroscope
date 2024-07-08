@@ -15,6 +15,17 @@ type merger struct {
 	tree    *treeMerger
 }
 
+func newMerger() *merger {
+	return &merger{
+		// Mergers are initialized lazily on the first access.
+		// TODO: delay merger initialization until the second access
+		//   when a merge is actually required.
+		labels:  new(labelsMerger),
+		metrics: new(metricsMerger),
+		tree:    new(treeMerger),
+	}
+}
+
 func (m *merger) merge(resp *querybackendv1.InvokeResponse, err error) error {
 	if err != nil {
 		return err

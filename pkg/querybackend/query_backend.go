@@ -133,7 +133,7 @@ func (q *QueryBackend) invoke(
 		requests[i] = request.CloneVT()
 		requests[i].Blocks = parts[i]
 	}
-	m := new(merger)
+	m := newMerger()
 	g, ctx := errgroup.WithContext(ctx)
 	// TODO: Speculative retry.
 	for i := range requests {
