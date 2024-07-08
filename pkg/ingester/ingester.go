@@ -152,9 +152,13 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-
-	wait, err := i.segmentWriter.ingest(shardKey(0), func(segment segmentIngest) error {
-		for _, series := range req.Msg.Series {
+	var waits = make([]segmentWaitFlushed, len(req.Msg.Series))
+	for _, series := range req.Msg.Series {
+		var shard shardKey = 0
+		if series.Shard != nil {
+			shard = shardKey(*series.Shard)
+		}
+		wait, err := i.segmentWriter.ingest(shard, func(segment segmentIngest) error {
 			for _, sample := range series.Samples {
 				id, err := uuid.Parse(sample.ID)
 				if err != nil {
@@ -172,26 +176,28 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 							}
 						}
 					}
-					return err
+					return nil
 				})
 				if err != nil {
 					return err
 				}
 			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
 		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
+		waits = append(waits, wait)
 	}
 	if i.cfg.Async {
 		return connect.NewResponse(&pushv1.PushResponse{}), nil
 	}
-	if err = wait.waitFlushed(ctx); err != nil {
-		return nil, err
+	for _, wait := range waits {
+		if err = wait.waitFlushed(ctx); err != nil {
+			return nil, err
+		}
 	}
 	return connect.NewResponse(&pushv1.PushResponse{}), nil
-
 }
 
 func (i *Ingester) Flush(ctx context.Context, req *connect.Request[ingesterv1.FlushRequest]) (*connect.Response[ingesterv1.FlushResponse], error) {
