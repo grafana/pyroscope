@@ -2,9 +2,10 @@ package integration
 
 import (
 	"fmt"
-	"google.golang.org/grpc/resolver"
 	"net"
 	"strings"
+
+	"google.golang.org/grpc/resolver"
 )
 
 // From https://raw.githubusercontent.com/letsencrypt/boulder/main/grpc/resolver.go

@@ -15,6 +15,10 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
+	"github.com/oklog/ulid"
+	"github.com/opentracing/opentracing-go"
+	"github.com/thanos-io/objstore"
+
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -24,9 +28,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 	"github.com/grafana/pyroscope/pkg/util/math"
-	"github.com/oklog/ulid"
-	"github.com/opentracing/opentracing-go"
-	"github.com/thanos-io/objstore"
 )
 
 const pathSegments = "segments"
