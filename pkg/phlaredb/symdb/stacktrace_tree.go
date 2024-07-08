@@ -153,10 +153,10 @@ func newParentPointerTree(size uint32) *parentPointerTree {
 }
 
 func (t *parentPointerTree) resolve(dst []int32, id uint32) []int32 {
+	dst = dst[:0]
 	if id >= uint32(len(t.nodes)) {
 		return dst
 	}
-	dst = dst[:0]
 	n := t.nodes[id]
 	for n.p >= 0 {
 		dst = append(dst, n.r)
@@ -166,10 +166,10 @@ func (t *parentPointerTree) resolve(dst []int32, id uint32) []int32 {
 }
 
 func (t *parentPointerTree) resolveUint64(dst []uint64, id uint32) []uint64 {
+	dst = dst[:0]
 	if id >= uint32(len(t.nodes)) {
 		return dst
 	}
-	dst = dst[:0]
 	n := t.nodes[id]
 	for n.p >= 0 {
 		dst = append(dst, uint64(n.r))

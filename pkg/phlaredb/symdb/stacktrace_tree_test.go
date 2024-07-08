@@ -115,6 +115,16 @@ func Test_stacktrace_tree_encoding_rand(t *testing.T) {
 	}
 }
 
+func Test_stacktrace_tree_pprof_locations_(t *testing.T) {
+	x := newStacktraceTree(0)
+	assert.Len(t, x.resolve([]int32{0, 1, 2, 3}, 42), 0)
+	assert.Len(t, x.resolveUint64([]uint64{0, 1, 2, 3}, 42), 0)
+
+	p := newParentPointerTree(0)
+	assert.Len(t, p.resolve([]int32{0, 1, 2, 3}, 42), 0)
+	assert.Len(t, p.resolveUint64([]uint64{0, 1, 2, 3}, 42), 0)
+}
+
 func Test_stacktrace_tree_pprof_locations(t *testing.T) {
 	p, err := pprof.OpenFile("testdata/profile.pb.gz")
 	require.NoError(t, err)
