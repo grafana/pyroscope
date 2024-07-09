@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/hashicorp/raft"
 	"github.com/oklog/ulid"
 	"google.golang.org/protobuf/types/known/anypb"
 
@@ -27,6 +28,9 @@ func (m *Metastore) cleanupLoop() {
 		case <-m.done:
 			return
 		case <-t.C:
+			if m.raft.State() != raft.Leader {
+				continue
+			}
 			timestamp := uint64(time.Now().Add(-15 * time.Minute).UnixMilli())
 			req := &raftlogpb.TruncateCommand{Timestamp: timestamp}
 			_, _, err := applyCommand[*raftlogpb.TruncateCommand, *anypb.Any](m.raft, req, m.config.Raft.ApplyTimeout)
