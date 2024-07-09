@@ -183,14 +183,15 @@ func (sw *segmentsWriter) newSegment(shard shardKey) *segment {
 }
 
 func (s *segment) flush(ctx context.Context) error {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "segment flush")
-	defer sp.Finish()
+	//sp, ctx := opentracing.StartSpanFromContext(ctx, "segment flush")
+	//defer sp.Finish()
+	t1 := time.Now()
 
 	_ = level.Debug(s.sw.l).Log("msg", "writing segment block", "shard", s.shard, "segment-id", s.ulid.String())
 	defer func() {
 		s.cleanup()
 		close(s.doneChan)
-		_ = level.Debug(s.sw.l).Log("msg", "writing segment block done", "shard", s.shard, "segment-id", s.ulid.String())
+		_ = level.Debug(s.sw.l).Log("msg", "writing segment block done", "shard", s.shard, "segment-id", s.ulid.String(), "time-took", time.Since(t1))
 	}()
 
 	heads := s.flushHeads(ctx)
@@ -308,9 +309,15 @@ func concatSegmentHead(e serviceHead, w *writerOffset) (*metastorev1.TenantServi
 }
 
 func (s *segment) flushHeads(ctx context.Context) []serviceHead {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "segment flush heads")
-	defer sp.Finish()
+	//sp, ctx := opentracing.StartSpanFromContext(ctx, "segment flush heads")
+	//defer sp.Finish()
+	t1 := time.Now()
+	defer func() {
+		_ = level.Debug(s.sw.l).Log("msg", "flushed heads", "segment-id", s.ulid.String(), "time-took", time.Since(t1))
+	}()
 	s.inFlightProfiles.Wait()
+	_ = level.Debug(s.sw.l).Log("msg", "waited for inflight profiles",
+		"segment-id", s.ulid.String(), "time-took", time.Since(t1).String())
 	moved := make([]serviceHead, 0, len(s.heads))
 	for _, e := range s.heads {
 		if err := e.head.Flush(ctx); err != nil {
