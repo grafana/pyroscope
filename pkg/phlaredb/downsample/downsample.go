@@ -33,6 +33,7 @@ type state struct {
 	currentRow          parquet.Row
 	currentTime         int64
 	currentFp           model.Fingerprint
+	currentPartition    uint64
 	totalValue          int64
 	profileCount        int64
 	stackTraceIds       []uint64
@@ -208,14 +209,14 @@ func (d *Downsampler) AddRow(row schemav1.ProfileRow, fp model.Fingerprint) erro
 		s := d.states[i]
 		aggregationTime := rowTimeSeconds / c.interval.durationSeconds * c.interval.durationSeconds
 		if len(d.states[i].currentRow) == 0 {
-			d.initStateFromRow(s, row, aggregationTime, fp)
+			s.init(row, aggregationTime, fp)
 		}
-		if s.currentTime != aggregationTime || s.currentFp != fp {
+		if !s.matches(aggregationTime, fp, row.StacktracePartitionID()) {
 			err := d.flush(s, d.profileWriters[i], c)
 			if err != nil {
 				return err
 			}
-			d.initStateFromRow(s, row, aggregationTime, fp)
+			s.init(row, aggregationTime, fp)
 		}
 		s.profileCount++
 		row.ForStacktraceIdsAndValues(func(stacktraceIds []parquet.Value, values []parquet.Value) {
@@ -255,9 +256,10 @@ func (d *Downsampler) Close() error {
 	return nil
 }
 
-func (d *Downsampler) initStateFromRow(s *state, row schemav1.ProfileRow, aggregationTime int64, fp model.Fingerprint) {
+func (s *state) init(row schemav1.ProfileRow, aggregationTime int64, fp model.Fingerprint) {
 	s.currentTime = aggregationTime
 	s.currentFp = fp
+	s.currentPartition = row.StacktracePartitionID()
 	s.totalValue = 0
 	s.profileCount = 0
 	if s.values == nil {
@@ -289,4 +291,8 @@ func (d *Downsampler) initStateFromRow(s *state, row schemav1.ProfileRow, aggreg
 	}
 	s.currentRow = append(s.currentRow, parquet.Int32Value(int32(row.SeriesIndex())).Level(0, 0, newCol()))
 	s.currentRow = append(s.currentRow, parquet.Int64Value(int64(row.StacktracePartitionID())).Level(0, 0, newCol()))
+}
+
+func (s *state) matches(t int64, fp model.Fingerprint, sp uint64) bool {
+	return s.currentTime == t && s.currentFp == fp && s.currentPartition == sp
 }

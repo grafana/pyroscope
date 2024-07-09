@@ -1892,6 +1892,10 @@ The `limits` block configures default and per-tenant limits imposed by component
 # CLI flag: -distributor.aggregation-period
 [distributor_aggregation_period: <duration> | default = 0s]
 
+[ingestion_relabeling_rules: <relabel_config...> | default = ]
+
+[ingestion_relabeling_default_rules_position: <string> | default = ""]
+
 # The tenant's shard size used by shuffle-sharding. Must be set both on
 # ingesters and distributors. 0 disables shuffle sharding.
 # CLI flag: -distributor.ingestion-tenant-shard-size
