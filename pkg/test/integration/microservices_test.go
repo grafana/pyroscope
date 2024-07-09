@@ -52,9 +52,7 @@ func TestMicroServicesIntegration(t *testing.T) {
 	})
 
 	t.Run("HealthyCluster", func(t *testing.T) {
-		if skipV2QueryTests {
-			t.Skip("Skipping V2 query tests")
-		}
+		skipV2QueryTests(t)
 		tc.runQueryTest(ctx, t)
 	})
 

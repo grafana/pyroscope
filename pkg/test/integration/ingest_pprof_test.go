@@ -259,9 +259,7 @@ func TestIngest(t *testing.T) {
 			req := rb.IngestPPROFRequest(td.profile, td.prevProfile, td.sampleTypeConfig)
 			p.Ingest(t, req, td.expectStatusIngest)
 
-			if skipV2QueryTests {
-				return
-			}
+			skipV2QueryTests(t)
 			if td.expectStatusIngest == 200 {
 				for _, metric := range td.metrics {
 					rb.Render(metric.name)
@@ -315,9 +313,7 @@ func TestIngestPPROFFixPythonLinenumbers(t *testing.T) {
 	req := rb.IngestPPROFRequest(tempProfileFile.Name(), "", "")
 	p.Ingest(t, req, 200)
 
-	if skipV2QueryTests {
-		return
-	}
+	skipV2QueryTests(t)
 	renderedProfile := rb.SelectMergeProfile("process_cpu:cpu:nanoseconds:cpu:nanoseconds", nil)
 	actual := bench.StackCollapseProto(renderedProfile.Msg, 0, 1)
 	expected := []string{
@@ -350,6 +346,7 @@ func TestGodeltaprofRelabelPush(t *testing.T) {
 	rb := p.NewRequestBuilder(t)
 	rb.Push(rb.PushPPROFRequestFromBytes(p1, metric), 200, "")
 	rb.Push(rb.PushPPROFRequestFromBytes(p2, metric), 200, "")
+	skipV2QueryTests(t)
 	renderedProfile := rb.SelectMergeProfile("memory:alloc_objects:count:space:bytes", nil)
 	actual := bench.StackCollapseProto(renderedProfile.Msg, 0, 1)
 	expected := []string{
@@ -373,9 +370,7 @@ func TestPush(t *testing.T) {
 			req := rb.PushPPROFRequestFromFile(td.profile, td.metrics[0].name)
 			rb.Push(req, td.expectStatusPush, td.expectedError)
 
-			if skipV2QueryTests {
-				return
-			}
+			skipV2QueryTests(t)
 
 			if td.expectStatusPush == 200 {
 				for _, metric := range td.metrics {
