@@ -3,6 +3,7 @@ package ingester
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path"
@@ -316,6 +317,8 @@ func (s *segment) flushHeads(ctx context.Context) []serviceHead {
 			_ = level.Error(s.sw.l).Log("msg", "failed to flush head", "err", err, "head", e.head.BlockID())
 			continue
 		}
+		stats, _ := json.Marshal(e.head.GetMetaStats())
+		level.Debug(s.sw.l).Log("msg", "flushed head", "head", e.head.BlockID(), "stats", stats)
 		if err := e.head.Move(); err != nil {
 			_ = level.Error(s.sw.l).Log("msg", "failed to move head", "err", err, "head", e.head.BlockID())
 			continue
