@@ -177,6 +177,7 @@ func (sw *segmentsWriter) newSegment(shard shardKey) *segment {
 		heads:    make(map[serviceKey]serviceHead),
 		sw:       sw,
 		shard:    shard,
+		sshard:   fmt.Sprintf("%d", shard),
 		dataPath: dataPath,
 		doneChan: make(chan struct{}),
 	}
@@ -206,11 +207,11 @@ func (s *segment) flush(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	err = s.sw.uploadBlock(ctx, blockPath)
+	err = s.sw.uploadBlock(ctx, blockPath, s)
 	if err != nil {
 		return err
 	}
-	err = s.sw.storeMeta(ctx, blockMeta)
+	err = s.sw.storeMeta(ctx, blockMeta, s)
 	if err != nil {
 		//dlcErr := s.sw.uploadMeta(ctx, blockMeta)
 		//if dlcErr != nil {
@@ -222,9 +223,10 @@ func (s *segment) flush(ctx context.Context) error {
 }
 
 func (s *segment) flushBlock(ctx context.Context, heads []serviceHead) (string, *metastorev1.BlockMeta, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "segment flush block")
-	defer sp.Finish()
+	//sp, ctx := opentracing.StartSpanFromContext(ctx, "segment flush block")
+	//defer sp.Finish()
 	_ = ctx
+
 	meta := &metastorev1.BlockMeta{
 		Id:              s.ulid.String(),
 		MinTime:         0,
@@ -369,6 +371,7 @@ type serviceHead struct {
 type segment struct {
 	ulid             ulid.ULID
 	shard            shardKey
+	sshard           string
 	inFlightProfiles sync.WaitGroup
 	heads            map[serviceKey]serviceHead
 	headsLock        sync.RWMutex
@@ -400,7 +403,7 @@ func (s *segment) ingest(ctx context.Context, tenantID string, p *profilev1.Prof
 		tenant:  tenantID,
 		service: phlaremodel.Labels(labels).Get(phlaremodel.LabelNameServiceName),
 	}
-	s.sw.metrics.segmentIngestBytes.WithLabelValues(fmt.Sprintf("%d", s.shard), tenantID, k.service).Observe(float64(p.SizeVT()))
+	s.sw.metrics.segmentIngestBytes.WithLabelValues(s.sshard, tenantID, k.service).Observe(float64(p.SizeVT()))
 	h, err := s.headForIngest(k)
 	if err != nil {
 		return err
@@ -451,7 +454,7 @@ func (s *segment) cleanup() {
 	_ = level.Debug(s.sw.l).Log("msg", "cleaned up segment", "f", s.dataPath)
 }
 
-func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockPath string) error {
+func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockPath string, s *segment) error {
 	//sp, ctx := opentracing.StartSpanFromContext(ctx, "segment uploadBlock")
 	//defer sp.Finish()
 	t1 := time.Now()
@@ -464,7 +467,13 @@ func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockPath string) err
 	if err := objstore.UploadFile(sw.phlarectx, sw.l, sw.bucket, blockPath, dst); err != nil {
 		return err
 	}
+	st, _ := os.Stat(blockPath)
+	if st != nil {
+		sw.metrics.segmentBlockSizeBytes.WithLabelValues(s.sshard).Observe(float64(st.Size()))
+	}
+	sw.metrics.blockUploadDuration.WithLabelValues(s.sshard).Observe(time.Since(t1).Seconds())
 	sw.l.Log("msg", "uploaded block", "path", dst, "time-took", time.Since(t1))
+
 	return nil
 }
 
@@ -485,32 +494,19 @@ func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockPath string) err
 //	return nil
 //}
 
-func (sw *segmentsWriter) storeMeta(ctx context.Context, meta *metastorev1.BlockMeta) error {
+func (sw *segmentsWriter) storeMeta(ctx context.Context, meta *metastorev1.BlockMeta, s *segment) error {
 	//sp, ctx := opentracing.StartSpanFromContext(ctx, "segment store meta")
 	//defer sp.Finish()
 	t1 := time.Now()
 
-	resp, err := sw.metastoreClient.AddBlock(ctx, &metastorev1.AddBlockRequest{
+	_, err := sw.metastoreClient.AddBlock(ctx, &metastorev1.AddBlockRequest{
 		Block: meta,
 	})
 	if err != nil {
+		sw.metrics.storeMetaErrors.WithLabelValues(s.sshard).Inc()
 		return err
 	}
-	_ = resp
-	//var tenants []string
-	//for _, svc := range meta.TenantServices {
-	//	tenants = append(tenants, svc.TenantId)
-	//}
-	//blocks, err := sw.metastoreclient.ListBlocksForQuery(ctx, &metastorev1.ListBlocksForQueryRequest{
-	//	TenantId:  tenants,
-	//	StartTime: time.Now().Add(-time.Hour).UnixMilli(),
-	//	EndTime:   time.Now().UnixMilli(),
-	//	Query:     "{}",
-	//})
-	//if err != nil {
-	//	return nil
-	//}
-	//_ = blocks
+	sw.metrics.storeMetaDuration.WithLabelValues(s.sshard).Observe(time.Since(t1).Seconds())
 	sw.l.Log("msg", "stored meta", "segment-id", meta.Id, "shard", meta.Shard, "time-took", time.Since(t1))
 	return nil
 }

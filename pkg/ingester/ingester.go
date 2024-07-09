@@ -173,11 +173,14 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 	if i.cfg.Async {
 		return connect.NewResponse(&pushv1.PushResponse{}), nil
 	}
+	t1 := time.Now()
 	for _, wait := range waits {
 		if err = wait.waitFlushed(ctx); err != nil {
+			i.segmentWriter.metrics.segmentFlushTimeouts.WithLabelValues(tenantID).Inc()
 			return nil, err
 		}
 	}
+	i.segmentWriter.metrics.segmentFlushWaitDuration.WithLabelValues(tenantID).Observe(time.Since(t1).Seconds())
 	return connect.NewResponse(&pushv1.PushResponse{}), nil
 }
 
