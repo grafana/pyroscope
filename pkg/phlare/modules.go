@@ -595,7 +595,7 @@ func (f *Phlare) initQueryBackendClient() (services.Service, error) {
 }
 
 func (f *Phlare) initQueryBackend() (services.Service, error) {
-	br := querybackend.NewBlockReader(f.storageBucket)
+	br := querybackend.NewBlockReader(f.logger, f.storageBucket)
 	logger := log.With(f.logger, "component", "query-backend")
 	b, err := querybackend.New(f.Cfg.QueryBackend, logger, f.reg, f.QueryBackendClient, br)
 	if err != nil {

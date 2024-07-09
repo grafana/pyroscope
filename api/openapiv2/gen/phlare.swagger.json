@@ -566,6 +566,10 @@
           "type": "integer",
           "format": "int64"
         },
+        "tenantId": {
+          "type": "string",
+          "description": "Optional. Empty if compaction level is 0."
+        },
         "tenantServices": {
           "type": "array",
           "items": {

@@ -2,6 +2,7 @@ package querybackend
 
 import (
 	"fmt"
+	"reflect"
 	"sync"
 
 	querybackendv1 "github.com/grafana/pyroscope/api/gen/proto/go/querybackend/v1"
@@ -10,6 +11,9 @@ import (
 )
 
 type merger struct {
+	sm     sync.Mutex
+	staged map[reflect.Type]*querybackendv1.Report
+
 	labels  *labelsMerger
 	metrics *metricsMerger
 	tree    *treeMerger
@@ -17,16 +21,14 @@ type merger struct {
 
 func newMerger() *merger {
 	return &merger{
-		// Mergers are initialized lazily on the first access.
-		// TODO: delay merger initialization until the second access
-		//   when a merge is actually required.
+		staged:  make(map[reflect.Type]*querybackendv1.Report),
 		labels:  new(labelsMerger),
 		metrics: new(metricsMerger),
 		tree:    new(treeMerger),
 	}
 }
 
-func (m *merger) merge(resp *querybackendv1.InvokeResponse, err error) error {
+func (m *merger) mergeResponse(resp *querybackendv1.InvokeResponse, err error) error {
 	if err != nil {
 		return err
 	}
@@ -39,6 +41,38 @@ func (m *merger) merge(resp *querybackendv1.InvokeResponse, err error) error {
 }
 
 func (m *merger) mergeReport(r *querybackendv1.Report) (err error) {
+	if r == nil {
+		return nil
+	}
+	m.sm.Lock()
+	t := reflect.TypeOf(r.ReportType)
+	v, found := m.staged[t]
+	if !found {
+		// We delay the merge operation until we have
+		// at least two reports of the same type.
+		// Otherwise, we just store the report and will
+		// return it as is, if it is the only one.
+		m.staged[t] = v
+		m.sm.Unlock()
+		return nil
+	}
+	// Found a staged report of the same type.
+	if v != nil {
+		// It should be merged and removed from the
+		// table to not be merged again.
+		err = m.mergeReportNoCheck(v)
+		m.staged[t] = nil
+	}
+	m.sm.Unlock()
+	// Now, if everything is fine, we can merge the
+	// report that was just received.
+	if err != nil {
+		return err
+	}
+	return m.mergeReportNoCheck(r)
+}
+
+func (m *merger) mergeReportNoCheck(r *querybackendv1.Report) (err error) {
 	switch x := r.ReportType.(type) {
 	case *querybackendv1.Report_LabelNames:
 		m.labels.mergeNames(x.LabelNames)
@@ -56,8 +90,22 @@ func (m *merger) mergeReport(r *querybackendv1.Report) (err error) {
 	return err
 }
 
+func (m *merger) mergeStaged() error {
+	for _, r := range m.staged {
+		if r != nil {
+			if err := m.mergeReportNoCheck(r); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func (m *merger) response() (*querybackendv1.InvokeResponse, error) {
-	reports := make([]*querybackendv1.Report, 0, 4)
+	if err := m.mergeStaged(); err != nil {
+		return nil, err
+	}
+	reports := make([]*querybackendv1.Report, 0, len(m.staged))
 	reports = m.labels.append(reports)
 	reports = m.metrics.append(reports)
 	reports = m.tree.append(reports)

@@ -104,3 +104,6 @@ message TreeReport {
   TreeQuery query = 1;
   bytes data = 2;
 }
+
+// TODO: Diagnostic messages.
+

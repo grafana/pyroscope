@@ -38,6 +38,11 @@ type Reader struct {
 	parquetFiles *parquetFiles
 }
 
+func OpenReader(r io.Reader) (*Reader, error) {
+	// TODO
+	return nil, nil
+}
+
 func Open(ctx context.Context, b objstore.BucketReader, m *block.Meta) (*Reader, error) {
 	r := &Reader{
 		bucket: b,

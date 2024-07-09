@@ -21,9 +21,10 @@ message BlockMeta {
   int64 max_time = 4;
   uint32 shard = 5;
   uint32 compaction_level = 6;
-
+  // Optional. Empty if compaction level is 0.
+  string tenant_id = 7;
   // TODO(kolesnikovae): Partitions with labels?
-  repeated TenantService tenant_services = 7;
+  repeated TenantService tenant_services = 8;
 }
 
 // TenantService object points to the offset in the block at which

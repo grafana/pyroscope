@@ -139,7 +139,7 @@ func (q *QueryBackend) invoke(
 	for i := range requests {
 		i := i
 		g.Go(util.RecoverPanic(func() error {
-			return m.merge(handler.Invoke(ctx, requests[i]))
+			return m.mergeResponse(handler.Invoke(ctx, requests[i]))
 		}))
 	}
 	if err := g.Wait(); err != nil {
