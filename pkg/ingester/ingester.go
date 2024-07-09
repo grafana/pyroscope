@@ -152,40 +152,20 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	var waits = make([]segmentWaitFlushed, len(req.Msg.Series))
+	var waits = make([]segmentWaitFlushed, 0, len(req.Msg.Series))
 	for _, series := range req.Msg.Series {
 		var shard shardKey = 0
 		if series.Shard != nil {
 			shard = shardKey(*series.Shard)
 		}
 		wait, err := i.segmentWriter.ingest(shard, func(segment segmentIngest) error {
-			for _, sample := range series.Samples {
-				id, err := uuid.Parse(sample.ID)
-				if err != nil {
-					return err
-				}
-				err = pprof.FromBytes(sample.RawProfile, func(p *profilev1.Profile, size int) error {
-					if err = segment.ingest(ctx, tenantID, p, id, series.Labels...); err != nil {
-						reason := validation.ReasonOf(err)
-						if reason != validation.Unknown {
-							validation.DiscardedProfiles.WithLabelValues(string(reason), tenantID).Add(float64(1))
-							validation.DiscardedBytes.WithLabelValues(string(reason), tenantID).Add(float64(size))
-							switch validation.ReasonOf(err) {
-							case validation.SeriesLimit:
-								return connect.NewError(connect.CodeResourceExhausted, err)
-							}
-						}
-					}
-					return nil
-				})
-				if err != nil {
-					return err
-				}
-			}
-			return nil
+			return i.ingestToSegment(ctx, segment, series, tenantID)
 		})
 		if err != nil {
 			return nil, err
+		}
+		if wait == nil {
+			panic("wait is nil")
 		}
 		waits = append(waits, wait)
 	}
@@ -198,6 +178,33 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 		}
 	}
 	return connect.NewResponse(&pushv1.PushResponse{}), nil
+}
+
+func (i *Ingester) ingestToSegment(ctx context.Context, segment segmentIngest, series *pushv1.RawProfileSeries, tenantID string) error {
+	for _, sample := range series.Samples {
+		id, err := uuid.Parse(sample.ID)
+		if err != nil {
+			return err
+		}
+		err = pprof.FromBytes(sample.RawProfile, func(p *profilev1.Profile, size int) error {
+			if err = segment.ingest(ctx, tenantID, p, id, series.Labels...); err != nil {
+				reason := validation.ReasonOf(err)
+				if reason != validation.Unknown {
+					validation.DiscardedProfiles.WithLabelValues(string(reason), tenantID).Add(float64(1))
+					validation.DiscardedBytes.WithLabelValues(string(reason), tenantID).Add(float64(size))
+					switch validation.ReasonOf(err) {
+					case validation.SeriesLimit:
+						return connect.NewError(connect.CodeResourceExhausted, err)
+					}
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (i *Ingester) Flush(ctx context.Context, req *connect.Request[ingesterv1.FlushRequest]) (*connect.Response[ingesterv1.FlushResponse], error) {
