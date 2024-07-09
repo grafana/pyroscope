@@ -120,7 +120,8 @@ func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storag
 	if metastoreClient == nil {
 		return nil, errors.New("metastore client is required for segment writer")
 	}
-	i.segmentWriter = newSegmentWriter(i.phlarectx, i.logger, i.dbConfig, i.limiters, storageBucket, cfg.SegmentDuration, metastoreClient)
+	metrics := newSegmentMetrics(i.reg)
+	i.segmentWriter = newSegmentWriter(i.phlarectx, i.logger, metrics, i.dbConfig, i.limiters, storageBucket, cfg.SegmentDuration, metastoreClient)
 	i.subservicesWatcher = services.NewFailureWatcher()
 	i.subservicesWatcher.WatchManager(i.subservices)
 	i.Service = services.NewBasicService(i.starting, i.running, i.stopping)

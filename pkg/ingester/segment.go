@@ -53,11 +53,13 @@ type segmentsWriter struct {
 	metastoreClient *metastoreclient.Client
 	wg              sync.WaitGroup
 	cancel          context.CancelFunc
+	metrics         *segmentMetrics
 }
 
-func newSegmentWriter(phlarectx context.Context, l log.Logger, cfg phlaredb.Config, limiters *limiters, bucket objstore.Bucket, segmentDuration time.Duration, metastoreClient *metastoreclient.Client) *segmentsWriter {
+func newSegmentWriter(phlarectx context.Context, l log.Logger, metrics *segmentMetrics, cfg phlaredb.Config, limiters *limiters, bucket objstore.Bucket, segmentDuration time.Duration, metastoreClient *metastoreclient.Client) *segmentsWriter {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	sw := &segmentsWriter{
+		metrics:         metrics,
 		segmentDuration: segmentDuration,
 		phlarectx:       phlarectx,
 		l:               l,
@@ -398,6 +400,7 @@ func (s *segment) ingest(ctx context.Context, tenantID string, p *profilev1.Prof
 		tenant:  tenantID,
 		service: phlaremodel.Labels(labels).Get(phlaremodel.LabelNameServiceName),
 	}
+	s.sw.metrics.segmentIngestBytes.WithLabelValues(fmt.Sprintf("%d", s.shard), tenantID, k.service).Observe(float64(p.SizeVT()))
 	h, err := s.headForIngest(k)
 	if err != nil {
 		return err
