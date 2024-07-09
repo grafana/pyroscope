@@ -18,11 +18,16 @@ import (
 	"github.com/grafana/pyroscope/pkg/model"
 )
 
-func (m *Metastore) ListBlocksForQuery(ctx context.Context, request *metastorev1.ListBlocksForQueryRequest) (
+func (m *Metastore) ListBlocksForQuery(
+	ctx context.Context,
+	request *metastorev1.ListBlocksForQueryRequest,
+) (
 	*metastorev1.ListBlocksForQueryResponse, error,
 ) {
 	_ = level.Info(m.logger).Log("msg", "ListBlocksForQuery called")
-	// TODO(kolesnikovae): Follower read (ReadIndex).
+	// TODO(kolesnikovae):
+	//   Wait for Applied index to be on par with Committed (at the moment the request arrived).
+	//   Implement Follower read (ReadIndex).
 	return m.state.listBlocksForQuery(ctx, request)
 }
 
@@ -116,7 +121,10 @@ func cloneBlockForQuery(b *metastorev1.BlockMeta) *metastorev1.BlockMeta {
 	}
 }
 
-func (m *metastoreState) listBlocksForQuery(ctx context.Context, request *metastorev1.ListBlocksForQueryRequest) (
+func (m *metastoreState) listBlocksForQuery(
+	ctx context.Context,
+	request *metastorev1.ListBlocksForQueryRequest,
+) (
 	*metastorev1.ListBlocksForQueryResponse, error,
 ) {
 	q, err := newMetadataQuery(request)

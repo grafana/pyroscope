@@ -20,6 +20,7 @@ import (
 // when the request is converted to a Raft log entry.
 var commandTypeMap = map[reflect.Type]raftlogpb.CommandType{
 	reflect.TypeOf(new(metastorev1.AddBlockRequest)): raftlogpb.CommandType_COMMAND_TYPE_ADD_BLOCK,
+	reflect.TypeOf(new(raftlogpb.TruncateCommand)):   raftlogpb.CommandType_COMMAND_TYPE_TRUNCATE,
 }
 
 // The map is used to determine the handler for the given command,
@@ -28,7 +29,12 @@ var commandHandlers = map[raftlogpb.CommandType]commandHandler{
 	raftlogpb.CommandType_COMMAND_TYPE_ADD_BLOCK: func(fsm *FSM, raw []byte) fsmResponse {
 		return handleCommand(raw, fsm.state.applyAddBlock)
 	},
+	raftlogpb.CommandType_COMMAND_TYPE_TRUNCATE: func(fsm *FSM, raw []byte) fsmResponse {
+		return handleCommand(raw, fsm.state.applyTruncate)
+	},
 }
+
+// TODO: Add registration functions.
 
 type FSM struct {
 	logger log.Logger
