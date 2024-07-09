@@ -87,7 +87,7 @@ type Config struct {
 	RuntimeConfig     runtimeconfig.Config   `yaml:"runtime_config"`
 	Compactor         compactor.Config       `yaml:"compactor"`
 	Metastore         metastore.Config       `yaml:"metastore"`
-	MetastoreClient   metastoreclient.Config `yaml:"metastore_client"` // TODO: merge into Metastore
+	MetastoreClient   metastoreclient.Config `yaml:"metastore_client"` // TODO: merge into Metastore. See QueryBackend
 	QueryBackend      querybackend.Config    `yaml:"query_backend"`
 
 	Storage       StorageConfig       `yaml:"storage"`
@@ -158,6 +158,7 @@ func (c *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) 
 	c.Compactor.RegisterFlags(f, log.NewLogfmtLogger(os.Stderr))
 	c.Metastore.RegisterFlags(f)
 	c.MetastoreClient.RegisterFlags(f)
+	c.QueryBackend.RegisterFlags(f)
 	c.API.RegisterFlags(f)
 }
 

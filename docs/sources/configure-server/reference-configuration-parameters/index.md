@@ -180,7 +180,14 @@ metastore_client:
   [grpc_client_config: <grpc_client>]
 
 query_backend:
-  [address: <string> | default = ""]
+  # CLI flag: -query-backend.address
+  [address: <string> | default = "localhost:9095"]
+
+  # Configures the gRPC client used to communicate between the query-frontends
+  # and the query-schedulers.
+  # The CLI flags prefix for this block configuration is:
+  # query-backend.grpc-client-config
+  [grpc_client_config: <grpc_client>]
 
 storage:
   # Backend storage to use. Supported backends are: s3, gcs, azure, swift,
@@ -1488,6 +1495,7 @@ The `grpc_client` block configures the gRPC client used to communicate between t
 
 - `metastore.grpc-client-config`
 - `querier.frontend-client`
+- `query-backend.grpc-client-config`
 - `query-frontend.grpc-client-config`
 - `query-scheduler.grpc-client-config`
 

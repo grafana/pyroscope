@@ -52,7 +52,7 @@ func (m *merger) mergeReport(r *querybackendv1.Report) (err error) {
 		// at least two reports of the same type.
 		// Otherwise, we just store the report and will
 		// return it as is, if it is the only one.
-		m.staged[t] = v
+		m.staged[t] = r
 		m.sm.Unlock()
 		return nil
 	}

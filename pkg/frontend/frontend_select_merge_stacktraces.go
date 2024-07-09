@@ -2,17 +2,12 @@ package frontend
 
 import (
 	"context"
-	"fmt"
-	"strings"
 
 	"connectrpc.com/connect"
-	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/tenant"
 	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/promql/parser"
 
-	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
@@ -63,50 +58,13 @@ func (f *Frontend) selectMergeStacktracesTree(ctx context.Context,
 		return new(phlaremodel.Tree), nil
 	}
 
-	query, err := buildQuery(c.Msg.LabelSelector, c.Msg.ProfileTypeID)
+	query, err := buildQueryFromLabelSelectorAndProfileType(c.Msg.LabelSelector, c.Msg.ProfileTypeID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-
-	resp, err := f.metastoreclient.ListBlocksForQuery(ctx, &metastorev1.ListBlocksForQueryRequest{
-		TenantId:  tenantIDs,
-		StartTime: c.Msg.Start,
-		EndTime:   c.Msg.End,
-		Query:     query,
-	})
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+	if _, err = f.listMetadata(ctx, tenantIDs, c.Msg.Start, c.Msg.End, query); err != nil {
+		return nil, err
 	}
-
-	for _, b := range resp.Blocks {
-		_ = level.Info(f.log).Log("msg", "selecting block", "block", b.Id)
-	}
-
+	// TODO: Call query-backend.
 	return new(phlaremodel.Tree), nil
-}
-
-func buildQuery(labelSelector, profileTypeID string) (string, error) {
-	matchers, err := parser.ParseMetricSelector(labelSelector)
-	if err != nil {
-		return "", fmt.Errorf("parsing label selector: %w", err)
-	}
-	profileType, err := phlaremodel.ParseProfileTypeSelector(profileTypeID)
-	if err != nil {
-		return "", fmt.Errorf("parsing profile type ID: %w", err)
-	}
-	matchers = append(matchers, phlaremodel.SelectorFromProfileType(profileType))
-	var q strings.Builder
-	q.WriteByte('{')
-	for i, m := range matchers {
-		if i > 0 {
-			q.WriteByte(',')
-		}
-		q.WriteString(m.Name)
-		q.WriteString(m.Type.String())
-		q.WriteByte('"')
-		q.WriteString(m.Value)
-		q.WriteByte('"')
-	}
-	q.WriteByte('}')
-	return q.String(), nil
 }

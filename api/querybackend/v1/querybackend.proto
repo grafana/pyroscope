@@ -11,13 +11,9 @@ service QueryBackendService {
 }
 
 message InvokeOptions {
-  // Workers won't have access to the overrides,
-  // therefore all the necessary options should be
-  // passed in the request.
-  int64 max_block_reads_per_worker = 1;
-  int64 max_block_merges_per_worker = 2;
-  // int64 max_bytes_per_worker = ;
-  // int64 max_tenant_services_per_worker = ;
+  // Query workers might not have access to the tenant
+  // overrides, therefore all the necessary options should
+  // be listed in the request explicitly.
 }
 
 message InvokeRequest {
@@ -25,13 +21,26 @@ message InvokeRequest {
   int64 start_time = 2;
   int64 end_time = 3;
   string label_selector = 4;
-  InvokeOptions options = 5;
-  repeated metastore.v1.BlockMeta blocks = 6;
-  repeated Query query = 7;
+  repeated Query query = 5;
+  QueryPlan query_plan = 6;
+  InvokeOptions options = 7;
 }
 
-message InvokeResponse {
-  repeated Report reports = 1;
+// Query plan is represented by a DAG, where each node
+// might be either "merge" or "read" (leaves). Each node
+// references a range: merge nodes refer to other nodes,
+// while read nodes refer to the blocks.
+message QueryPlan {
+  // Each node is encoded with 3 values:
+  //  - node type: 0 - read, 1 - merge;
+  //  - range offset;
+  //  - range length.
+  repeated uint32 graph = 1;
+
+  // The blocks matching the query. Required.
+  // TODO: Use opaque byte array to avoid unnecessary
+  //  proto encoding/decoding overhead.
+  repeated metastore.v1.BlockMeta blocks = 2;
 }
 
 message Query {
@@ -48,6 +57,14 @@ message Query {
     // ...
   }
 }
+
+message InvokeResponse {
+  repeated Report reports = 1;
+  Diagnostics diagnostics = 2;
+}
+
+// Diagnostic messages, events, statistics, analytics, etc.
+message Diagnostics {}
 
 message Report {
   oneof report_type {
@@ -104,6 +121,3 @@ message TreeReport {
   TreeQuery query = 1;
   bytes data = 2;
 }
-
-// TODO: Diagnostic messages.
-

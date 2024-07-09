@@ -31,6 +31,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/frontend/frontendpb"
 	metastoreclient "github.com/grafana/pyroscope/pkg/metastore/client"
 	"github.com/grafana/pyroscope/pkg/querier/stats"
+	querybackendclient "github.com/grafana/pyroscope/pkg/querybackend/client"
 	"github.com/grafana/pyroscope/pkg/scheduler/schedulerdiscovery"
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
 	"github.com/grafana/pyroscope/pkg/util/httpgrpc"
@@ -94,7 +95,8 @@ type Frontend struct {
 	requests                *requestsInProgress
 	frontendpb.UnimplementedFrontendForQuerierServer
 
-	metastoreclient *metastoreclient.Client
+	metastoreclient    *metastoreclient.Client
+	querybackendclient *querybackendclient.Client
 }
 
 type Limits interface {
@@ -135,7 +137,14 @@ type enqueueResult struct {
 }
 
 // NewFrontend creates a new frontend.
-func NewFrontend(cfg Config, limits Limits, log log.Logger, reg prometheus.Registerer, mc *metastoreclient.Client) (*Frontend, error) {
+func NewFrontend(
+	cfg Config,
+	limits Limits,
+	log log.Logger,
+	reg prometheus.Registerer,
+	mc *metastoreclient.Client,
+	qbc *querybackendclient.Client,
+) (*Frontend, error) {
 	requestsCh := make(chan *frontendRequest)
 
 	schedulerWorkers, err := newFrontendSchedulerWorkers(cfg, fmt.Sprintf("%s:%d", cfg.Addr, cfg.Port), requestsCh, log, reg)
@@ -152,6 +161,7 @@ func NewFrontend(cfg Config, limits Limits, log log.Logger, reg prometheus.Regis
 		schedulerWorkersWatcher: services.NewFailureWatcher(),
 		requests:                newRequestsInProgress(),
 		metastoreclient:         mc,
+		querybackendclient:      qbc,
 	}
 
 	if err != nil {

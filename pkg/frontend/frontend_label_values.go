@@ -23,14 +23,13 @@ func (f *Frontend) LabelValues(ctx context.Context, c *connect.Request[typesv1.L
 		SetTag("name", c.Msg.Name)
 
 	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceLabelValuesProcedure)
+	tenantIDs, err := tenant.TenantIDs(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
 
 	interval, ok := phlaremodel.GetTimeRange(c.Msg)
 	if ok {
-		tenantIDs, err := tenant.TenantIDs(ctx)
-		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, err)
-		}
-
 		validated, err := validation.ValidateRangeRequest(f.limits, tenantIDs, interval, model.Now())
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -42,5 +41,13 @@ func (f *Frontend) LabelValues(ctx context.Context, c *connect.Request[typesv1.L
 		c.Msg.End = int64(validated.End)
 	}
 
-	return connectgrpc.RoundTripUnary[typesv1.LabelValuesRequest, typesv1.LabelValuesResponse](ctx, f, c)
+	query, err := buildQueryFromMatchers(c.Msg.Matchers)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	if _, err = f.listMetadata(ctx, tenantIDs, c.Msg.Start, c.Msg.End, query); err != nil {
+		return nil, err
+	}
+	// TODO: Call query-backend.
+	return connect.NewResponse(&typesv1.LabelValuesResponse{}), nil
 }

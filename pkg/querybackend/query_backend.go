@@ -2,23 +2,37 @@ package querybackend
 
 import (
 	"context"
-	"math"
+	"flag"
+	"fmt"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/errgroup"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	querybackendv1 "github.com/grafana/pyroscope/api/gen/proto/go/querybackend/v1"
+	"github.com/grafana/pyroscope/pkg/iter"
+	"github.com/grafana/pyroscope/pkg/querybackend/queryplan"
 	"github.com/grafana/pyroscope/pkg/util"
 )
 
 type Config struct {
-	// TODO: Type-specific configuration:
-	//   - worker-pool
-	//   - serverless
-	Address string
+	Address          string            `yaml:"address"`
+	GRPCClientConfig grpcclient.Config `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate between the query-frontends and the query-schedulers."`
+}
+
+func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
+	f.StringVar(&cfg.Address, "query-backend.address", "localhost:9095", "")
+	cfg.GRPCClientConfig.RegisterFlagsWithPrefix("query-backend.grpc-client-config", f)
+}
+
+func (cfg *Config) Validate() error {
+	if cfg.Address == "" {
+		return fmt.Errorf("query-backend.address is required")
+	}
+	return cfg.GRPCClientConfig.Validate()
 }
 
 type QueryHandler interface {
@@ -67,83 +81,51 @@ func (q *QueryBackend) Invoke(
 	//  exceeds the budget of the current instance: e.g,
 	//  100MB of in-flight data, or 30 queries/blocks, or
 	//  100 merges, or memory available, etc.
-	if n := ranges(req); n > 0 {
-		return q.invoke(ctx, req, q.backendClient, groupsOf(n))
+
+	p := queryplan.Open(req.QueryPlan)
+	if p == nil {
+		return new(querybackendv1.InvokeResponse), nil
 	}
-	return q.invoke(ctx, req, q.blockReader, eachBlock)
-}
 
-func ranges(req *querybackendv1.InvokeRequest) int64 {
-	if len(req.Blocks) > int(req.Options.MaxBlockReadsPerWorker) {
-		if len(req.Blocks) > int(req.Options.MaxBlockMergesPerWorker) {
-			return req.Options.MaxBlockReadsPerWorker
-		}
-		return req.Options.MaxBlockMergesPerWorker
-	}
-	return 0
-}
-
-type splitFunc func(*querybackendv1.InvokeRequest) [][]*metastorev1.BlockMeta
-
-func eachBlock(request *querybackendv1.InvokeRequest) [][]*metastorev1.BlockMeta {
-	groups := make([][]*metastorev1.BlockMeta, len(request.Blocks))
-	for i := range request.Blocks {
-		groups[i] = []*metastorev1.BlockMeta{request.Blocks[i]}
-	}
-	return groups
-}
-
-func groupsOf(n int64) splitFunc {
-	return func(request *querybackendv1.InvokeRequest) [][]*metastorev1.BlockMeta {
-		return uniformSplit(request.Blocks, n)
+	switch r := p.Root(); r.Type {
+	case queryplan.NodeMerge:
+		return q.merge(ctx, req, r.Children())
+	case queryplan.NodeRead:
+		return q.read(ctx, req, r.Blocks())
+	default:
+		panic("query plan: unknown node type")
 	}
 }
 
-func uniformSplit[T any](s []T, max int64) [][]T {
-	// Find number of parts.
-	n := math.Ceil(float64(len(s)) / float64(max))
-	// Find optimal part size.
-	o := int(math.Ceil(float64(len(s)) / n))
-	var ret [][]T // Prevent referencing the source slice.
-	for i := 0; i < len(s); i += o {
-		r := i + o
-		if r > len(s) {
-			r = len(s)
-		}
-		it := s[i:r]
-		ret = append(ret, it)
-	}
-	return ret
-}
-
-func (q *QueryBackend) invoke(
+func (q *QueryBackend) merge(
 	ctx context.Context,
 	request *querybackendv1.InvokeRequest,
-	handler QueryHandler,
-	split splitFunc,
+	children iter.Iterator[*queryplan.Node],
 ) (*querybackendv1.InvokeResponse, error) {
-	blocks := request.Blocks
-	parts := split(request)
-	request.Blocks = nil
-	defer func() {
-		request.Blocks = blocks
-	}()
-	requests := make([]*querybackendv1.InvokeRequest, len(parts))
-	for i := range requests {
-		requests[i] = request.CloneVT()
-		requests[i].Blocks = parts[i]
-	}
+	request.QueryPlan = nil
 	m := newMerger()
 	g, ctx := errgroup.WithContext(ctx)
-	// TODO: Speculative retry.
-	for i := range requests {
-		i := i
+	for children.Next() {
+		req := request.CloneVT()
+		req.QueryPlan = children.At().Plan()
 		g.Go(util.RecoverPanic(func() error {
-			return m.mergeResponse(handler.Invoke(ctx, requests[i]))
+			// TODO: Speculative retry.
+			return m.mergeResponse(q.backendClient.Invoke(ctx, req))
 		}))
 	}
 	if err := g.Wait(); err != nil {
 		return nil, err
 	}
 	return m.response()
+}
+
+func (q *QueryBackend) read(
+	ctx context.Context,
+	request *querybackendv1.InvokeRequest,
+	blocks iter.Iterator[*metastorev1.BlockMeta],
+) (*querybackendv1.InvokeResponse, error) {
+	request.QueryPlan = &querybackendv1.QueryPlan{
+		Blocks: iter.MustSlice(blocks),
+	}
+	return q.backendClient.Invoke(ctx, request)
 }

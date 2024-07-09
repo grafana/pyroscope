@@ -111,7 +111,15 @@ func (f *Phlare) initQueryFrontend() (services.Service, error) {
 		f.Cfg.Frontend.Port = f.Cfg.Server.HTTPListenPort
 	}
 
-	frontendSvc, err := frontend.NewFrontend(f.Cfg.Frontend, f.Overrides, log.With(f.logger, "component", "frontend"), f.reg, f.MetastoreClient)
+	logger := log.With(f.logger, "component", "frontend")
+	frontendSvc, err := frontend.NewFrontend(
+		f.Cfg.Frontend,
+		f.Overrides,
+		logger,
+		f.reg,
+		f.MetastoreClient,
+		f.QueryBackendClient,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -604,9 +612,10 @@ func (f *Phlare) initMetastoreClient() (services.Service, error) {
 }
 
 func (f *Phlare) initQueryBackendClient() (services.Service, error) {
-	c, err := querybackendclient.New(querybackendclient.Config{
-		Address: f.Cfg.QueryBackend.Address,
-	})
+	c, err := querybackendclient.New(
+		f.Cfg.QueryBackend.Address,
+		f.Cfg.QueryBackend.GRPCClientConfig,
+	)
 	if err != nil {
 		return nil, err
 	}
