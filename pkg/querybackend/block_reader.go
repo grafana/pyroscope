@@ -183,6 +183,7 @@ type queryContext struct {
 func (q *queryContext) execute(query *querybackendv1.Query) (*querybackendv1.Report, error) {
 	// TODO: Replace with a map type => handler?
 	_ = level.Info(q.log).Log("msg", "executing query", "query", query.QueryType)
+	// TODO: Implement query methods.
 	switch x := query.QueryType.(type) {
 	case *querybackendv1.Query_LabelNames:
 		return nil, nil

@@ -2,19 +2,21 @@ package frontend
 
 import (
 	"context"
-	"time"
+	"fmt"
+	"strings"
 
 	"connectrpc.com/connect"
+	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/tenant"
 	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/common/model"
-	"golang.org/x/sync/errgroup"
+	"github.com/prometheus/prometheus/promql/parser"
 
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
-	validationutil "github.com/grafana/pyroscope/pkg/util/validation"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
@@ -60,50 +62,51 @@ func (f *Frontend) selectMergeStacktracesTree(ctx context.Context,
 	if validated.IsEmpty {
 		return new(phlaremodel.Tree), nil
 	}
-	maxNodes, err := validation.ValidateMaxNodes(f.limits, tenantIDs, c.Msg.GetMaxNodes())
+
+	query, err := buildQuery(c.Msg.LabelSelector, c.Msg.ProfileTypeID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	g, ctx := errgroup.WithContext(ctx)
-	if maxConcurrent := validationutil.SmallestPositiveNonZeroIntPerTenant(tenantIDs, f.limits.MaxQueryParallelism); maxConcurrent > 0 {
-		g.SetLimit(maxConcurrent)
+	resp, err := f.metastoreclient.ListBlocksForQuery(ctx, &metastorev1.ListBlocksForQueryRequest{
+		TenantId:  tenantIDs,
+		StartTime: c.Msg.Start,
+		EndTime:   c.Msg.End,
+		Query:     query,
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	m := phlaremodel.NewFlameGraphMerger()
-	interval := validationutil.MaxDurationOrZeroPerTenant(tenantIDs, f.limits.QuerySplitDuration)
-	intervals := NewTimeIntervalIterator(time.UnixMilli(int64(validated.Start)), time.UnixMilli(int64(validated.End)), interval)
-
-	for intervals.Next() {
-		r := intervals.At()
-		g.Go(func() error {
-			req := connectgrpc.CloneRequest(c, &querierv1.SelectMergeStacktracesRequest{
-				ProfileTypeID: c.Msg.ProfileTypeID,
-				LabelSelector: c.Msg.LabelSelector,
-				Start:         r.Start.UnixMilli(),
-				End:           r.End.UnixMilli(),
-				MaxNodes:      &maxNodes,
-				Format:        querierv1.ProfileFormat_PROFILE_FORMAT_TREE,
-			})
-			resp, err := connectgrpc.RoundTripUnary[
-				querierv1.SelectMergeStacktracesRequest,
-				querierv1.SelectMergeStacktracesResponse](ctx, f, req)
-			if err != nil {
-				return err
-			}
-			if len(resp.Msg.Tree) > 0 {
-				err = m.MergeTreeBytes(resp.Msg.Tree)
-			} else if resp.Msg.Flamegraph != nil {
-				// For backward compatibility.
-				m.MergeFlameGraph(resp.Msg.Flamegraph)
-			}
-			return err
-		})
+	for _, b := range resp.Blocks {
+		_ = level.Info(f.log).Log("msg", "selecting block", "block", b.Id)
 	}
 
-	if err = g.Wait(); err != nil {
-		return nil, err
-	}
+	return new(phlaremodel.Tree), nil
+}
 
-	return m.Tree(), nil
+func buildQuery(labelSelector, profileTypeID string) (string, error) {
+	matchers, err := parser.ParseMetricSelector(labelSelector)
+	if err != nil {
+		return "", fmt.Errorf("parsing label selector: %w", err)
+	}
+	profileType, err := phlaremodel.ParseProfileTypeSelector(profileTypeID)
+	if err != nil {
+		return "", fmt.Errorf("parsing profile type ID: %w", err)
+	}
+	matchers = append(matchers, phlaremodel.SelectorFromProfileType(profileType))
+	var q strings.Builder
+	q.WriteByte('{')
+	for i, m := range matchers {
+		if i > 0 {
+			q.WriteByte(',')
+		}
+		q.WriteString(m.Name)
+		q.WriteString(m.Type.String())
+		q.WriteByte('"')
+		q.WriteString(m.Value)
+		q.WriteByte('"')
+	}
+	q.WriteByte('}')
+	return q.String(), nil
 }
