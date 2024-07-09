@@ -449,8 +449,9 @@ func (s *segment) cleanup() {
 }
 
 func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockPath string) error {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "segment uploadBlock")
-	defer sp.Finish()
+	//sp, ctx := opentracing.StartSpanFromContext(ctx, "segment uploadBlock")
+	//defer sp.Finish()
+	t1 := time.Now()
 	_ = ctx
 
 	dst, err := filepath.Rel(sw.cfg.DataPath, blockPath)
@@ -460,7 +461,7 @@ func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockPath string) err
 	if err := objstore.UploadFile(sw.phlarectx, sw.l, sw.bucket, blockPath, dst); err != nil {
 		return err
 	}
-	sw.l.Log("msg", "uploaded block", "path", dst)
+	sw.l.Log("msg", "uploaded block", "path", dst, "time-took", time.Since(t1))
 	return nil
 }
 
@@ -482,8 +483,9 @@ func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockPath string) err
 //}
 
 func (sw *segmentsWriter) storeMeta(ctx context.Context, meta *metastorev1.BlockMeta) error {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "segment store meta")
-	defer sp.Finish()
+	//sp, ctx := opentracing.StartSpanFromContext(ctx, "segment store meta")
+	//defer sp.Finish()
+	t1 := time.Now()
 
 	resp, err := sw.metastoreClient.AddBlock(ctx, &metastorev1.AddBlockRequest{
 		Block: meta,
@@ -506,7 +508,7 @@ func (sw *segmentsWriter) storeMeta(ctx context.Context, meta *metastorev1.Block
 	//	return nil
 	//}
 	//_ = blocks
-
+	sw.l.Log("msg", "stored meta", "segment-id", meta.Id, "shard", meta.Shard, "time-took", time.Since(t1))
 	return nil
 }
 
