@@ -410,7 +410,7 @@ func (s *segment) headForIngest(k serviceKey) (*phlaredb.Head, error) {
 
 	l := s.sw.limiters.get(k.tenant)
 	cfg := s.sw.cfg
-	cfg.DataPath = path.Join(s.dataPath, s.ulid.String())
+	cfg.DataPath = path.Join(s.dataPath)
 	cfg.SymDBFormat = symdb.FormatV3
 
 	nh, err := phlaredb.NewHead(s.sw.phlarectx, cfg, l)
