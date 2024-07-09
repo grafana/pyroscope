@@ -807,6 +807,14 @@ lifecycler:
   # ID to register in the ring.
   # CLI flag: -ingester.lifecycler.ID
   [id: <string> | default = "<hostname>"]
+
+# Timeout when flushing segments to bucket.
+# CLI flag: -ingester.segment.duration
+[segmentDuration: <duration> | default = 1s]
+
+# Enable async mode for ingester.
+# CLI flag: -ingester.async
+[async: <boolean> | default = false]
 ```
 
 ### querier

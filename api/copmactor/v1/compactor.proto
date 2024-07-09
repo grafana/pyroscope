@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+package compactor.v1;
+
+import "metastore/v1/metastore.proto";
+
+service CompactionPlanner {
+  rpc GetCompactionJobs(GetCompactionRequest) returns (GetCompactionResponse) {}
+  rpc UpdateJobStatus(UpdateJobStatusRequest) returns (UpdateJobStatusResponse) {}
+}
+
+message GetCompactionRequest {
+  CompactionJobSelector selector = 1;
+}
+
+message CompactionJobSelector {
+  // There could be listed criteria for the jobs, such as:
+  //  - block compaction levels
+  //  - time range
+  //  - tenants
+  //  - services
+  //  - block attributes
+  //
+  // The general idea is that we could potentially
+  // have multiple compaction worker pools, each
+  // handling a specific data set.
+}
+
+message GetCompactionResponse {
+  // Compaction jobs to execute. Compaction workers
+  // don't make any decisions on their own.
+  repeated CompactionJob compaction_jobs = 1;
+}
+
+// One compaction job may result in multiple output blocks.
+message CompactionJob {
+  // Unique name of the job.
+  string name = 1;
+  CompactionOptions options = 2;
+  // List of the input blocks.
+  repeated metastore.v1.BlockMeta blocks = 3;
+}
+
+message CompactionOptions {
+  // Compaction planner should instruct the compactor
+  // worker how to compact the blocks:
+  //  - Limits and tenant overrides.
+  //  - Feature flags.
+
+  // How often the compaction worker should update
+  // the job status. If overdue, the job ownership
+  // is revoked.
+  uint64 status_update_interval_seconds = 1;
+}
+
+message UpdateJobStatusRequest {
+  repeated CompactionJobStatus jobs = 1;
+}
+
+message CompactionJobStatus {
+  string name = 1;
+  // Status update allows the planner to keep
+  // track of the job ownership and compaction
+  // progress:
+  // - If the job status is other than IN_PROGRESS,
+  //   the ownership of the job is revoked.
+  // - FAILURE must only be sent if the failure is
+  //   persistent and the compaction can't be accomplished.
+  // - completed_job must be empty if the status is
+  //   other than SUCCESS, and vice-versa.
+  // - UNSPECIFIED must be sent if the worker rejects
+  //   or cancels the compaction job.
+  //
+  // Partial results/status is not allowed.
+  CompactionStatus status = 2;
+  CompletedJob completed_job = 3;
+}
+
+enum CompactionStatus {
+  COMPACTION_STATUS_UNSPECIFIED = 0;
+  COMPACTION_STATUS_IN_PROGRESS = 1;
+  COMPACTION_STATUS_SUCCESS = 2;
+  COMPACTION_STATUS_FAILURE = 3;
+}
+
+message CompletedJob {
+  repeated metastore.v1.BlockMeta blocks = 1;
+}
+
+message UpdateJobStatusResponse {}

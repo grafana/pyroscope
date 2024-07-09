@@ -9,13 +9,16 @@
       "name": "AdHocProfileService"
     },
     {
+      "name": "MetastoreService"
+    },
+    {
+      "name": "CompactionPlanner"
+    },
+    {
       "name": "PusherService"
     },
     {
       "name": "IngesterService"
-    },
-    {
-      "name": "MetastoreService"
     },
     {
       "name": "QuerierService"
@@ -628,6 +631,80 @@
         }
       }
     },
+    "v1CompactionJob": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Unique name of the job."
+        },
+        "options": {
+          "$ref": "#/definitions/v1CompactionOptions"
+        },
+        "blocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1BlockMeta"
+          },
+          "description": "List of the input blocks."
+        }
+      },
+      "description": "One compaction job may result in multiple output blocks."
+    },
+    "v1CompactionJobSelector": {
+      "type": "object",
+      "description": "The general idea is that we could potentially\n have multiple compaction worker pools, each\n handling a specific data set.",
+      "title": "There could be listed criteria for the jobs, such as:\n  - block compaction levels\n  - time range\n  - tenants\n  - services\n  - block attributes"
+    },
+    "v1CompactionJobStatus": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/v1CompactionStatus",
+          "description": "Status update allows the planner to keep\ntrack of the job ownership and compaction\nprogress:\n- If the job status is other than IN_PROGRESS,\n  the ownership of the job is revoked.\n- FAILURE must only be sent if the failure is\n  persistent and the compaction can't be accomplished.\n- completed_job must be empty if the status is\n  other than SUCCESS, and vice-versa.\n- UNSPECIFIED must be sent if the worker rejects\n  or cancels the compaction job.\n\nPartial results/status is not allowed."
+        },
+        "completedJob": {
+          "$ref": "#/definitions/v1CompletedJob"
+        }
+      }
+    },
+    "v1CompactionOptions": {
+      "type": "object",
+      "properties": {
+        "statusUpdateIntervalSeconds": {
+          "type": "string",
+          "format": "uint64",
+          "description": "How often the compaction worker should update\nthe job status. If overdue, the job ownership\nis revoked."
+        }
+      },
+      "description": "Compaction planner should instruct the compactor\n worker how to compact the blocks:\n  - Limits and tenant overrides.\n  - Feature flags."
+    },
+    "v1CompactionStatus": {
+      "type": "string",
+      "enum": [
+        "COMPACTION_STATUS_UNSPECIFIED",
+        "COMPACTION_STATUS_IN_PROGRESS",
+        "COMPACTION_STATUS_SUCCESS",
+        "COMPACTION_STATUS_FAILURE"
+      ],
+      "default": "COMPACTION_STATUS_UNSPECIFIED"
+    },
+    "v1CompletedJob": {
+      "type": "object",
+      "properties": {
+        "blocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1BlockMeta"
+          }
+        }
+      }
+    },
     "v1DiffResponse": {
       "type": "object",
       "properties": {
@@ -797,6 +874,19 @@
         "URL": {
           "type": "string",
           "title": "the full URL to the commit"
+        }
+      }
+    },
+    "v1GetCompactionResponse": {
+      "type": "object",
+      "properties": {
+        "compactionJobs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1CompactionJob"
+          },
+          "description": "Compaction jobs to execute. Compaction workers\ndon't make any decisions on their own."
         }
       }
     },
@@ -1614,6 +1704,9 @@
         "TIME_SERIES_AGGREGATION_TYPE_AVERAGE"
       ],
       "default": "TIME_SERIES_AGGREGATION_TYPE_SUM"
+    },
+    "v1UpdateJobStatusResponse": {
+      "type": "object"
     },
     "v1ValueType": {
       "type": "object",
