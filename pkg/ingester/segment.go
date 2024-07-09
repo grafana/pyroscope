@@ -434,6 +434,7 @@ func (s *segment) cleanup() {
 	if err := os.RemoveAll(s.dataPath); err != nil {
 		_ = level.Error(s.sw.l).Log("msg", "failed to cleanup segment", "err", err, "f", s.dataPath)
 	}
+	_ = level.Debug(s.sw.l).Log("msg", "cleaned up segment", "f", s.dataPath)
 }
 
 func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockPath string) error {
