@@ -1,6 +1,7 @@
 # See https://github.com/helm/chart-testing#configuration
 remote: origin
 target-branch: next
+kubeVersion: "1.22"
 chart-dirs:
   - operations/pyroscope/helm/
 chart-repos:

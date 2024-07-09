@@ -4,19 +4,6 @@
   },
   "pyroscope": {
     "components": {
-      "agent": {
-        "kind": "Deployment",
-        "replicaCount": 1,
-        "resources": {
-          "limits": {
-            "memory": "512Mi"
-          },
-          "requests": {
-            "cpu": "50m",
-            "memory": "128Mi"
-          }
-        }
-      },
       "distributor": {
         "kind": "Deployment",
         "replicaCount": 2,

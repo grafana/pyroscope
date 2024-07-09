@@ -4,7 +4,7 @@ import morgan from 'morgan';
 
 import Pyroscope from '@pyroscope/nodejs';
 
-const port = process.env['PORT'] || 3000;
+const port = process.env['PORT'] || 5000;
 
 const region = process.env['REGION'] || 'default';
 

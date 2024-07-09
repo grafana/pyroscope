@@ -24,9 +24,9 @@ The latest release is also available on [Maven Central](https://search.maven.org
 
 ## Profiling Java applications
 
-You can start pyroscope either from your apps's java code or attach it as javaagent
+You can start Pyroscope either from your apps's Java code or attach it as javaagent.
 
-## Start pyroscope from app's java code
+## Start Pyroscope from app's Java code
 First, add Pyroscope dependency
 
 ### Maven
@@ -51,8 +51,6 @@ PyroscopeAgent.start(
     .setProfilingEvent(EventType.ITIMER)
     .setFormat(Format.JFR)
     .setServerAddress("http://pyroscope-server:4040")
-    // Optionally, if authentication is enabled, specify the API key.
-    // .setAuthToken(System.getenv("PYROSCOPE_AUTH_TOKEN"))
     .build()
 );
 ```
@@ -63,7 +61,7 @@ PyroscopeAgent.start(
   new PyroscopeAgent.Options.Builder(config)
     .setExporter(snapshot -> {
       // Your custom export/upload logic may go here
-      // It is invoked every 10 seconds by default with snapshot of 
+      // It is invoked every 10 seconds by default with snapshot of
       // profiling data
     })
     .setLogger((l, msg, args) -> {
@@ -78,15 +76,12 @@ PyroscopeAgent.start(
 );
 ```
 
-## Start pyroscope as javaagent
+## Start Pyroscope as javaagent
 To start profiling a Java application, run your application with `pyroscope.jar` javaagent:
 
 ```shell
 export PYROSCOPE_APPLICATION_NAME=my.java.app
 export PYROSCOPE_SERVER_ADDRESS=http://pyroscope-server:4040
-
-# Optionally, if authentication is enabled, specify the API key.
-# export PYROSCOPE_AUTH_TOKEN={YOUR_API_KEY}
 
 java -javaagent:pyroscope.jar -jar app.jar
 ```
@@ -116,18 +111,18 @@ PyroscopeAgent.start(new Config.Builder()
 
 ## Java client configuration options
 
-When you start pyroscope as javaagent or obtain configuration by `Config.build()` pyroscope searches 
-for configuration in multiple sources: system properties, environment variables, pyroscope.properties file. Properties keys has same name as environment variables, but lowercased and replaced `_` with `.`, so `PYROSCOPE_FORMAT` becomes `pyroscope.format`
+When you start Pyroscope as javaagent or obtain configuration by `Config.build()` Pyroscope searches
+for configuration in multiple sources: system properties, environment variables, and `pyroscope.properties`. Property keys have same name as environment variables, but are lowercased and replace `_` with `.`. For example, `PYROSCOPE_FORMAT` becomes `pyroscope.format`
 
-Java integration supports JFR format to be able to support multiple events (JFR is the only output format that supports [multiple events in `async-profiler`](https://github.com/jvm-profiling-tools/async-profiler#multiple-events)). There are several environment variables that define how multiple event configuration works:
+The Java integration supports JFR format to be able to support multiple events (JFR is the only output format that supports [multiple events in `async-profiler`](https://github.com/jvm-profiling-tools/async-profiler#multiple-events)). There are several environment variables that define how multiple event configuration works:
 
 
 |Flag                                     |Description                                                                                                                                                                                                                                                                                                                                                                                 |
 |-----------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 |`PYROSCOPE_FORMAT`                       |sets the profiler output format. The default is `collapsed`, but in order to support multiple formats it must be set to `jfr`.                                                                                                                                                                                                                                                              |
 |`PYROSCOPE_PROFILER_EVENT`               |sets the profiler event. With JFR format enabled, this event refers to one of the possible CPU profiling events: `itimer`, `cpu`, `wall`. The default is `itimer`.                                                                                                                                                                                                                          |
-|`PYROSCOPE_PROFILER_ALLOC`               |sets the allocation threshold to register the events, in bytes (equivalent to `--alloc=` in `async-profiler`). The default value is "" - empty string, which means that allocation profiling is disabled. Setting it to `0` will register all the events.                                                                                                                                   |
-|`PYROSCOPE_PROFILER_LOCK`                |sets the lock threshold to register the events, in nanoseconds (equivalent to `--lock=` in `async-profiler`). The default value is "" - empty string, which means that lock profiling is disabled. Setting it to `0` will register all the events.                                                                                                                                          |
+|`PYROSCOPE_PROFILER_ALLOC`               |sets the allocation threshold to register the events, in bytes (equivalent to `--alloc=` in `async-profiler`). The default value is `""` - empty string, which means that allocation profiling is disabled. Setting it to `0` will register all the events.                                                                                                                                   |
+|`PYROSCOPE_PROFILER_LOCK`                |sets the lock threshold to register the events, in nanoseconds (equivalent to `--lock=` in `async-profiler`). The default value is `""` - empty string, which means that lock profiling is disabled. Setting it to `0` will register all the events.                                                                                                                                          |
 |`PYROSCOPE_CONFIGURATION_FILE`           |sets an additional properties configuration file. The default value is `pyroscope.properties`.                                                                                                                                                                                                                                                                                              |
 |`PYROSCOPE_BASIC_AUTH_USER`              |HTTP Basic authentication username. The default value is `""` - empty string, no authentication.                                                                                                                                                                                                                                                                                            |
 |`PYROSCOPE_BASIC_AUTH_PASSWORD`          |HTTP Basic authentication password. The default value is `""` - empty string, no authentication.                                                                                                                                                                                                                                                                                            |
@@ -144,7 +139,23 @@ Java integration supports JFR format to be able to support multiple events (JFR 
 
 ## Sending data to Pyroscope OSS or Grafana Cloud Profiles with Pyroscope java SDK
 
-To configure java sdk to send data to Pyroscope, replace the `<URL>` placeholder with the appropriate server URL. This could be the Grafana Cloud URL or your own custom Pyroscope server URL.
+Add the following code to your application:
+```java
+PyroscopeAgent.start(
+    new Config.Builder()
+        .setApplicationName("test-java-app")
+        .setProfilingEvent(EventType.ITIMER)
+        .setFormat(Format.JFR)
+        .setServerAddress("<URL>")
+        .setBasicAuthUser("<User>")
+        .setBasicAuthPassword("<Password>")
+        // Optional Pyroscope tenant ID (only needed if using multi-tenancy). Not needed for Grafana cloud.
+        // .setTenantID("<TenantID>")
+        .build()
+);
+```
+
+To configure the Java SDK to send data to Pyroscope, replace the `<URL>` placeholder with the appropriate server URL. This could be the Grafana Cloud URL or your own custom Pyroscope server URL.
 
 If you need to send data to Grafana Cloud, you'll have to configure HTTP Basic authentication. Replace `<User>` with your Grafana Cloud stack user and `<Password>` with your Grafana Cloud API key.
 
@@ -153,6 +164,6 @@ If your Pyroscope server has multi-tenancy enabled, you'll need to configure a t
 ## Java profiling examples
 
 Check out the following resources to learn more about Java profiling:
-- [Java examples](https://github.com/grafana/pyroscope/tree/main/examples/java-jfr/rideshare)
+- [Java examples](https://github.com/grafana/pyroscope/tree/main/examples/java/rideshare)
 - [Java Demo](https://demo.pyroscope.io/?query=rideshare-app-java.itimer%7B%7D) showing Java example with tags
-- [Java blog post](https://github.com/grafana/pyroscope/tree/main/examples/java-jfr/rideshare#readme)
+- [Java blog post](https://github.com/grafana/pyroscope/tree/main/examples/java/rideshare#readme)

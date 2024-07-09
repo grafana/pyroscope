@@ -3,21 +3,26 @@ package phlaredb
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/google/uuid"
+	"github.com/oklog/ulid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/tsdb"
 	"github.com/stretchr/testify/require"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/pprof"
 )
 
@@ -251,7 +256,7 @@ func mustParseProfileSelector(t testing.TB, selector string) *typesv1.ProfileTyp
 	return ps
 }
 
-func TestHeadIngestRealProfiles(t *testing.T) {
+func TestHeadFlush(t *testing.T) {
 	profilePaths := []string{
 		"testdata/heap",
 		"testdata/profile",
@@ -264,15 +269,97 @@ func TestHeadIngestRealProfiles(t *testing.T) {
 	ctx := context.Background()
 
 	for pos := range profilePaths {
-		path := profilePaths[pos]
-		t.Run(path, func(t *testing.T) {
-			profile := parseProfile(t, profilePaths[pos])
-			require.NoError(t, head.Ingest(ctx, profile, uuid.New()))
-		})
+		profile := parseProfile(t, profilePaths[pos])
+		require.NoError(t, head.Ingest(ctx, profile, uuid.New()))
 	}
 
 	require.NoError(t, head.Flush(ctx))
-	t.Logf("samples=%d symdb_size=%#v", head.totalSamples.Load(), head.symdb.MemorySize())
+	require.NoError(t, head.Move())
+
+	b, err := filesystem.NewBucket(filepath.Dir(head.localPath))
+	require.NoError(t, err)
+	q := NewBlockQuerier(ctx, b)
+	metas, err := q.BlockMetas(ctx)
+	require.NoError(t, err)
+
+	expectedMeta := []*block.Meta{
+		{
+			ULID:    head.meta.ULID,
+			MinTime: head.meta.MinTime,
+			MaxTime: head.meta.MaxTime,
+			Stats: block.BlockStats{
+				NumSamples:  9479,
+				NumSeries:   8,
+				NumProfiles: 11,
+			},
+			Files: []block.File{
+				{
+					RelPath:   "index.tsdb",
+					SizeBytes: 2484,
+					TSDB: &block.TSDBFile{
+						NumSeries: 8,
+					},
+				},
+				{
+					RelPath:   "profiles.parquet",
+					SizeBytes: 40728,
+					Parquet: &block.ParquetFile{
+						NumRowGroups: 1,
+						NumRows:      11,
+					},
+				},
+				{
+					RelPath:   "symbols/functions.parquet",
+					SizeBytes: 57957,
+					Parquet: &block.ParquetFile{
+						NumRowGroups: 2,
+						NumRows:      1423,
+					},
+				},
+				{
+					RelPath:   "symbols/index.symdb",
+					SizeBytes: 308,
+				},
+				{
+					RelPath:   "symbols/locations.parquet",
+					SizeBytes: 107486,
+					Parquet: &block.ParquetFile{
+						NumRowGroups: 2,
+						NumRows:      2469,
+					},
+				},
+				{
+					RelPath:   "symbols/mappings.parquet",
+					SizeBytes: 1866,
+					Parquet: &block.ParquetFile{
+						NumRowGroups: 2,
+						NumRows:      3,
+					},
+				},
+				{
+					RelPath:   "symbols/stacktraces.symdb",
+					SizeBytes: 60366,
+				},
+				{
+					RelPath:   "symbols/strings.parquet",
+					SizeBytes: 83838,
+					Parquet: &block.ParquetFile{
+						NumRowGroups: 2,
+						NumRows:      1723,
+					},
+				},
+			},
+			Compaction: tsdb.BlockMetaCompaction{
+				Level: 1,
+				Sources: []ulid.ULID{
+					head.meta.ULID,
+				},
+			},
+			Version: 3,
+		},
+	}
+
+	require.Equal(t, expectedMeta, metas)
 }
 
 // TestHead_Concurrent_Ingest_Querying tests that the head can handle concurrent reads and writes.

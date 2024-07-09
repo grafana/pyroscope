@@ -16,7 +16,7 @@ module.exports = {
   transformIgnorePatterns: [
     // force us to transpile these dependencies
     // https://stackoverflow.com/a/69150188
-    'node_modules/(?!(true-myth|d3|d3-array|internmap|d3-scale|react-notifications-component|graphviz-react|@react-hook))',
+    'node_modules/(?!(true-myth|d3|d3-array|internmap|d3-scale|react-notifications-component|@react-hook))',
   ],
 
   testPathIgnorePatterns: ['/node_modules/', '/og/'],

@@ -10,12 +10,9 @@ services:
       - 3000:3000
 
   pyroscope:
-    image: 'grafana/phlare:weekly-f22-06e09923'
+    image: 'grafana/pyroscope:latest'
     ports:
       - 4040:4040
-    command: -config.file=/etc/pyroscope/config.yaml
-    volumes:
-      - ./pyroscope/config.yaml:/etc/pyroscope/config.yaml
 
   agent:
     image: grafana/agent:latest

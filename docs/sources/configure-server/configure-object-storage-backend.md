@@ -10,7 +10,7 @@ aliases:
 # Configure Pyroscope object storage backend
 
 Pyroscope can use different object storage services to persist blocks containing the profiles data.
-Blocks are flushed by ingesters [on disk]({{<relref "./configure-disk-storage.md">}}) first then are uploaded to object store.
+Blocks are flushed by ingesters [on disk]({{<relref "./configure-disk-storage.md">}}) first then are uploaded to the object store.
 
 The supported backends are:
 
@@ -19,13 +19,13 @@ The supported backends are:
 - [Azure Blob Storage](https://azure.microsoft.com/es-es/services/storage/blobs/)
 - [Swift (OpenStack Object Storage)](https://wiki.openstack.org/wiki/Swift)
 
-> Under the hood Pyroscope uses [Thanos' object store client] library, so their stated limitations apply.
+> Internally, Pyroscope uses [Thanos' object store client] library, so their stated limitations apply.
 
 [Thanos' object store client]: https://github.com/thanos-io/objstore#supported-providers-clients
 
 ## Amazon S3
 
-To use an AWS S3 or S3-compatible bucket for long term storage, you can find Pyroscope's configuration parameters [in the reference config][aws_ref]. Apart from those it is also possible to supply configuration using [the well-known environment variables] of the AWS SDK.
+To use an AWS S3 or S3-compatible bucket for long term storage, you can find Pyroscope's configuration parameters [in the reference config][aws_ref]. Apart from those parameters, it is also possible to supply configuration  parameters using [the well-known environment variables][aws_enf] of the AWS SDK.
 
 At a minimum, you will need to provide a values for the `bucket_name`, `endpoint`, `access_key_id`, and `secret_access_key` keys.
 
@@ -38,13 +38,13 @@ This how one would configure a bucket in the AWS region `eu-west-2`:
 
 ```yaml
 storage:
- backend: s3
- s3:
-   bucket_name: grafana-pyroscope-data
-   region: eu-west-2
-   endpoint: s3.eu-west-2.amazonaws.com
-   access_key_id: MY_ACCESS_KEY
-   secret_access_key: MY_SECRET_KEY
+  backend: s3
+  s3:
+    bucket_name: grafana-pyroscope-data
+    region: eu-west-2
+    endpoint: s3.eu-west-2.amazonaws.com
+    access_key_id: MY_ACCESS_KEY
+    secret_access_key: MY_SECRET_KEY
 ```
 
 ### Example using a S3 compatible Bucket
@@ -53,13 +53,13 @@ This how one would configure a bucket on a locally running instance of [MinIO]:
 
 ```yaml
 storage:
- backend: s3
- s3:
-   bucket_name: grafana-pyroscope-data
-   endpoint: localhost:9000
-   insecure: true
-   access_key_id: grafana-pyroscope-data
-   secret_access_key: grafana-pyroscope-data
+  backend: s3
+  s3:
+    bucket_name: grafana-pyroscope-data
+    endpoint: localhost:9000
+    insecure: true
+    access_key_id: grafana-pyroscope-data
+    secret_access_key: grafana-pyroscope-data
 ```
 
 [MinIO]: https://min.io/docs/minio/container/index.html
@@ -85,23 +85,23 @@ storage:
   gcs:
     bucket_name: grafana-pyroscope-data
     service_account: |
-        {
-          "type": "service_account",
-          "project_id": "PROJECT_ID",
-          "private_key_id": "KEY_ID",
-          "private_key": "-----BEGIN PRIVATE KEY-----\nPRIVATE_KEY\n-----END PRIVATE KEY-----\n",
-          "client_email": "SERVICE_ACCOUNT_EMAIL",
-          "client_id": "CLIENT_ID",
-          "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-          "token_uri": "https://accounts.google.com/o/oauth2/token",
-          "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-          "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/SERVICE_ACCOUNT_EMAIL"
-        }
+      {
+        "type": "service_account",
+        "project_id": "PROJECT_ID",
+        "private_key_id": "KEY_ID",
+        "private_key": "-----BEGIN PRIVATE KEY-----\nPRIVATE_KEY\n-----END PRIVATE KEY-----\n",
+        "client_email": "SERVICE_ACCOUNT_EMAIL",
+        "client_id": "CLIENT_ID",
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://accounts.google.com/o/oauth2/token",
+        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+        "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/SERVICE_ACCOUNT_EMAIL"
+      }
 ```
 
 ## Azure Blob Storage
 
-To use a Google Cloud Storage (GCS) bucket for long term storage, you can find Pyroscope's configuration parameters [in the reference config][azure_ref].
+To use an Azure Blob Storage bucket for long term storage, you can find Pyroscope's configuration parameters [in the reference config][azure_ref].
 
 [azure_ref]: {{< relref "./reference-configuration-parameters/#azure_storage_backend" >}}
 

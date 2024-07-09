@@ -11,7 +11,7 @@ aliases:
 
 The ingester is a stateful component that writes incoming profiles first to [on disk storage]({{< relref "../about-grafana-pyroscope-architecture/index.md#long-term-storage" >}}) on the write path and returns series samples for queries on the read path.
 
-Incoming profiles from [distributors]({{< relref "distributor.md" >}}) are not immediately written to the long-term storage but are either kept in ingesters memory or offloaded to ingesters disk.
+Incoming profiles from [distributors]({{< relref "distributor.md" >}}) are not immediately written to the long-term storage but are either kept in the ingester's memory or offloaded to the ingester's disk.
 Eventually, all profiles are written to disk and periodically uploaded to the long-term storage.
 For this reason, the [queriers]({{< relref "querier.md" >}}) might need to fetch samples from both ingesters and long-term storage while executing a query on the read path.
 

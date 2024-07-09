@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Create a report to help us improve Phlare.
+about: Create a report to help us improve Pyroscope.
 title: ''
 labels: ''
 assignees: ''
@@ -13,7 +13,7 @@ A clear and concise description of what the bug is.
 #### To Reproduce
 Steps to reproduce the behavior:
 
-1. Start Phlare (SHA or version)
+1. Start Pyroscope (SHA or version)
 2. Perform Operations(Read/Write/Others)
 
 #### Expected behavior

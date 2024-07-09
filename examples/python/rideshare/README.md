@@ -70,7 +70,7 @@ To run the example run the following commands:
 
 ```shell
 # Pull latest pyroscope image:
-docker pull pyroscope/pyroscope:latest
+docker pull grafana/pyroscope:latest
 
 # Run the example project:
 docker-compose up --build

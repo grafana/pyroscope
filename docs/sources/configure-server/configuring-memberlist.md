@@ -11,33 +11,27 @@ aliases:
 # Configuring Pyroscope memberlist
 
 [Hash rings]({{< relref "../reference-pyroscope-architecture/hash-ring/index.md" >}}) are a distributed consistent hashing scheme and are widely used by Pyroscope for sharding and replication.
-
-Pyroscope only support hash ring via memberlist protocol.
-
-You can configure memberlist either via the CLI flag or its respective YAML [config option]({{< relref "reference-configuration-parameters/index.md#memberlist" >}}).
+Pyroscope only supports hash ring via the memberlist protocol.
+You can configure memberlist by either the CLI flag or its respective YAML [config option]({{< relref "reference-configuration-parameters/index.md#memberlist" >}}).
 
 ## Memberlist
 
 Pyroscope uses `memberlist` as the KV store backend.
-
 At startup, a Pyroscope instance connects to other Pyroscope replicas to join the cluster.
 A Pyroscope instance discovers the other replicas to join by resolving the addresses configured in `-memberlist.join`.
 The `-memberlist.join` CLI flag must resolve to other replicas in the cluster and can be specified multiple times.
 
-The `-memberlist.join` can be set to:
+The `-memberlist.join` can be set to an address in the following formats:
 
-- An address in the `<ip>:<port>` format.
-- An address in the `<hostname>:<port>` format.
-- An address in the [DNS service discovery](#supported-discovery-modes) format.
-
-The default port is `7946`.
+- `<ip>:<port>`
+- `<hostname>:<port>`
+- [DNS service discovery](#supported-discovery-modes)
 
 > **Note**: At a minimum, configure one or more addresses that resolve to a consistent subset of replicas (for example, all the ingesters).
 
-> **Note**: If you're running Pyroscope in Kubernetes, define a [headless Kubernetes Service](https://kubernetes.io/docs/concepts/services-networking/service/#headless-services) which resolves to the IP addresses of all Pyroscope pods. Then you set `-memberlist.join` to `dnssrv+<service name>.<namespace>.svc.cluster.local:<port>`.
+> **Note**: If you're running Pyroscope in Kubernetes, define a [headless Kubernetes Service](https://kubernetes.io/docs/concepts/services-networking/service/#headless-services) which resolves to the IP addresses of all Pyroscope pods, then set `-memberlist.join` to `dnssrv+<service name>.<namespace>.svc.cluster.local:<port>`.
 
 Pyroscope supports TLS for memberlist connections between its components.
-
 To see all supported configuration parameters, refer to [memberlist]({{< relref "reference-configuration-parameters/index.md#memberlist" >}}).
 
 #### Configuring the memberlist address and port

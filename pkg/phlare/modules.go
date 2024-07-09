@@ -30,9 +30,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"gopkg.in/yaml.v3"
 
-	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	statusv1 "github.com/grafana/pyroscope/api/gen/proto/go/status/v1"
-	"github.com/grafana/pyroscope/pkg/agent"
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/ingester"
@@ -50,10 +48,9 @@ import (
 	"github.com/grafana/pyroscope/pkg/validation/exporter"
 )
 
-// The various modules that make up Phlare.
+// The various modules that make up Pyroscope.
 const (
 	All               string = "all"
-	Agent             string = "agent"
 	API               string = "api"
 	Distributor       string = "distributor"
 	Server            string = "server"
@@ -191,8 +188,9 @@ func (f *Phlare) initQuerier() (services.Service, error) {
 		storeGatewayQuerier *querier.StoreGatewayQuerier
 		err                 error
 	)
-	// In microservices mode the store gateway is mandatory.
-	if f.Cfg.Target.String() != All {
+
+	// if a storage bucket is configure we need to create a store gateway querier
+	if f.storageBucket != nil {
 		storeGatewayQuerier, err = querier.NewStoreGatewayQuerier(f.Cfg.StoreGateway, nil, f.Overrides, log.With(f.logger, "component", "store-gateway-querier"), f.reg, f.auth)
 		if err != nil {
 			return nil, err
@@ -238,10 +236,6 @@ func (f *Phlare) initQuerier() (services.Service, error) {
 	}), nil
 }
 
-func (f *Phlare) getPusherClient() pushv1connect.PusherServiceClient {
-	return f.pusherClient
-}
-
 func (f *Phlare) initGRPCGateway() (services.Service, error) {
 	f.grpcGatewayMux = grpcgw.NewServeMux(
 		grpcgw.WithMarshalerOption("application/json+pretty", &grpcgw.JSONPb{
@@ -264,25 +258,8 @@ func (f *Phlare) initDistributor() (services.Service, error) {
 		return nil, err
 	}
 
-	// initialise direct pusher, this overwrites the default HTTP client
-	f.pusherClient = d
-
 	f.API.RegisterDistributor(d)
 	return d, nil
-}
-
-func (f *Phlare) initAgent() (services.Service, error) {
-	a, err := agent.New(&f.Cfg.AgentConfig, log.With(f.logger, "component", "agent"), f.getPusherClient)
-	if err != nil {
-		return nil, err
-	}
-	f.agent = a
-
-	if err := f.API.RegisterAgent(a); err != nil {
-		return nil, err
-	}
-
-	return a, nil
 }
 
 func (f *Phlare) initMemberlistKV() (services.Service, error) {
@@ -369,6 +346,9 @@ func (f *Phlare) initIngester() (_ services.Service, err error) {
 
 func (f *Phlare) initStoreGateway() (serv services.Service, err error) {
 	f.Cfg.StoreGateway.ShardingRing.ListenPort = f.Cfg.Server.HTTPListenPort
+	if f.storageBucket == nil {
+		return nil, nil
+	}
 
 	svc, err := storegateway.NewStoreGateway(f.Cfg.StoreGateway, f.storageBucket, f.Overrides, f.logger, f.reg)
 	if err != nil {

@@ -48,30 +48,6 @@ Verify that you have installed [Docker](https://docs.docker.com/engine/install/)
       curl -fL https://github.com/grafana/pyroscope/releases/download/v0.1.1/pyroscope.1.1_linux_amd64.tar.gz | tar xvz
       ```
 
-1. Start Pyroscope.
-
-    To run Pyroscope as a monolith and with local filesystem storage, you can create your own file, or use a demo configuration file.
-
-    - To create your own file, write the following YAML configuration to a file called `demo.yaml`:
-
-      ```yaml
-      # Do not use this configuration in production.
-      # It is for demonstration purposes only.
-      scrape_configs:
-        - job_name: "default"
-          scrape_interval: "15s"
-          static_configs:
-            - targets: ["127.0.0.1:4040"]
-              labels:
-                service_name: "service-demo"
-      ```
-
-    - To use a demo file, download our [demo configuration](https://raw.githubusercontent.com/grafana/pyroscope/main/cmd/pyroscope/pyroscope.yaml):
-
-      ```bash
-      curl -fLo demo.yaml https://raw.githubusercontent.com/grafana/pyroscope/main/cmd/pyroscope/pyroscope.yaml
-      ```
-
 1. Run Pyroscope.
 
     In a terminal, run one of the following commands:
@@ -80,13 +56,13 @@ Verify that you have installed [Docker](https://docs.docker.com/engine/install/)
 
         ```bash
         docker network create pyroscope-demo
-        docker run --rm --name pyroscope --network=pyroscope-demo -p 4040:4040 --volume "$(pwd)"/demo.yaml:/etc/pyroscope/demo.yaml grafana/pyroscope:latest --config.file=/etc/pyroscope/demo.yaml
+        docker run --rm --name pyroscope --network=pyroscope-demo -p 4040:4040 grafana/pyroscope:latest
         ```
 
       - Using a local binary:
 
         ```bash
-        ./pyroscope --config.file=./demo.yaml
+        ./pyroscope
         ```
 
 1. Verify that Pyroscope is ready. Pyroscope listens on port `4040`.
@@ -98,7 +74,7 @@ Verify that you have installed [Docker](https://docs.docker.com/engine/install/)
 1. Configure Pyroscope to scrape profiles.
 
     By default, Pyroscope is configured to scrape itself.
-    To scrape more profiles, you must configure the `scrape_configs` section of the [configuration file]({{< relref "../configure-server/reference-configuration-parameters/index.md#scrape-configs" >}}).
+    To collect more profiles, you must either instrument your application with an SDK or use the Grafana Agent.
 
     To learn more about language integrations and the Pyroscope agent, refer to [Pyroscope Agent]({{< relref "../configure-client/_index.md" >}}).
 

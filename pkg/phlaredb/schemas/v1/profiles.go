@@ -278,7 +278,7 @@ func (s Samples) Compact(dedupe bool) Samples {
 	if dedupe {
 		s = trimDuplicateSamples(s)
 	}
-	s = trimZeroSamples(s)
+	s = trimZeroAndNegativeSamples(s)
 	return s
 }
 
@@ -304,10 +304,10 @@ func trimDuplicateSamples(samples Samples) Samples {
 	}
 }
 
-func trimZeroSamples(samples Samples) Samples {
+func trimZeroAndNegativeSamples(samples Samples) Samples {
 	n := 0
 	for j, v := range samples.Values {
-		if v != 0 {
+		if v > 0 {
 			samples.Values[n] = v
 			samples.StacktraceIDs[n] = samples.StacktraceIDs[j]
 			n++

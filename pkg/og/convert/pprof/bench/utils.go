@@ -125,7 +125,7 @@ func ReadGzipFile(f string) ([]byte, error) {
 }
 
 func WriteGzipFile(f string, data []byte) error {
-	fd, err := os.OpenFile(f, os.O_CREATE|os.O_WRONLY, 0666)
+	fd, err := os.OpenFile(f, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
 	if err != nil {
 		return err
 	}

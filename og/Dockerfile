@@ -7,7 +7,7 @@
 # | |         | |       | |     __/ |
 # |_|         |_|       |_|    |___/
 
-FROM alpine:3.16 as phpspy-builder
+FROM alpine:3.18.3 as phpspy-builder
 RUN apk update && apk upgrade \
     && apk add --update alpine-sdk
 COPY Makefile Makefile
@@ -52,7 +52,7 @@ RUN EXTRA_METADATA=$EXTRA_METADATA make assets-release
 #  \___|_.__/| .__/|_|
 #            | |
 #            |_|
-FROM alpine:3.16 as ebpf-builder
+FROM alpine:3.18.3 as ebpf-builder
 RUN apk update && apk upgrade && \
     apk add cmake make binutils gcc g++ clang musl-dev linux-headers zlib-dev elfutils-dev libelf-static zlib-static git openssh
 ADD third_party/libbpf/Makefile /build/libbpf/
@@ -115,7 +115,7 @@ RUN ENABLED_SPIES_RELEASE="ebpfspy,phpspy,dotnetspy" \
 #                                           __/ |
 #                                          |___/
 
-FROM alpine:3.16
+FROM alpine:3.18.3
 
 LABEL maintainer="Pyroscope team <hello@pyroscope.io>"
 

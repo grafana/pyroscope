@@ -227,9 +227,9 @@ func (s *SymDB) updateStatsLoop() {
 		case <-s.stop:
 			return
 		case <-t.C:
-			s.m.RLock()
+			s.m.Lock()
 			s.updateStats()
-			s.m.RUnlock()
+			s.m.Unlock()
 		}
 	}
 }

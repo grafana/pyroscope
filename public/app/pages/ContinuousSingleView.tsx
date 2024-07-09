@@ -41,6 +41,7 @@ import { formatTitle } from './formatTitle';
 import ContextMenu from './continuous/contextMenu/ContextMenu';
 import AddAnnotationMenuItem from './continuous/contextMenu/AddAnnotation.menuitem';
 import { isLoadingOrReloading } from './loading';
+import { PageContentWrapper } from './layout';
 
 function ContinuousSingleView() {
   const dispatch = useAppDispatch();
@@ -160,7 +161,7 @@ function ContinuousSingleView() {
   return (
     <div>
       <PageTitle title={formatTitle('Single', query)} />
-      <div className="main-wrapper">
+      <PageContentWrapper>
         <Toolbar
           onSelectedApp={(query) => {
             dispatch(setQuery(query));
@@ -210,7 +211,7 @@ function ContinuousSingleView() {
             {flamegraphRenderer}
           </LoadingOverlay>
         </Box>
-      </div>
+      </PageContentWrapper>
     </div>
   );
 }

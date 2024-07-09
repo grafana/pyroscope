@@ -10,7 +10,6 @@ import React, {
 import classNames from 'classnames/bind';
 import { faUndo } from '@fortawesome/free-solid-svg-icons/faUndo';
 import { faCompressAlt } from '@fortawesome/free-solid-svg-icons/faCompressAlt';
-import { faProjectDiagram } from '@fortawesome/free-solid-svg-icons/faProjectDiagram';
 import { faEllipsisV } from '@fortawesome/free-solid-svg-icons/faEllipsisV';
 import { Maybe } from 'true-myth';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -196,7 +195,8 @@ const Toolbar = memo(
             />
           ),
           // sandwich view is hidden in diff view
-          width: TOOLBAR_SQUARE_WIDTH * (flamegraphType === 'single' ? 5 : 3), // 1px is to display divider
+          // Note that  that the toolbar sections width is hardcoded here in terms of the number of buttons expected -- 4x for one condition, and 3x for the other.
+          width: TOOLBAR_SQUARE_WIDTH * (flamegraphType === 'single' ? 4 : 3), // 1px is to display divider
         }
       : null;
     const exportDataItem = isValidElement(ExportData)
@@ -408,11 +408,6 @@ const getViewOptions = (
           Icon: FlamegraphIcon,
         },
         { label: 'Sandwich', value: 'sandwich', Icon: SandwichIcon },
-        {
-          label: 'GraphViz',
-          value: 'graphviz',
-          Icon: () => <FontAwesomeIcon icon={faProjectDiagram} />,
-        },
       ]
     : [
         { label: 'Table', value: 'table', Icon: TableIcon },

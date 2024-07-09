@@ -13,6 +13,7 @@ import { isExportToFlamegraphDotComEnabled } from '@pyroscope/util/features';
 import { formatTitle } from './formatTitle';
 
 import styles from './TracingSingleView.module.scss';
+import { PageContentWrapper } from './layout';
 
 function formatTime(t: string | undefined): string {
   return format(new Date(1000 * parseInt(t || '0', 10)), 'yyyy-MM-dd HH:mm:ss');
@@ -104,10 +105,10 @@ function TracingSingleView() {
   return (
     <div>
       <PageTitle title={formatTitle('Tracing')} />
-      <div className="main-wrapper">
+      <PageContentWrapper>
         <Box className={styles.header}>{header}</Box>
         <Box>{flamegraphRenderer}</Box>
-      </div>
+      </PageContentWrapper>
     </div>
   );
 }

@@ -1,0 +1,38 @@
+version: '3'
+services:
+  pyroscope:
+    image: grafana/pyroscope
+    ports:
+      - '4040:4040'
+
+  us-east:
+    ports:
+      - 8080
+    environment:
+      - REGION=us-east
+      - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
+    build:
+      context: .
+
+  eu-north:
+    ports:
+      - 8080
+    environment:
+      - REGION=eu-north
+      - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
+    build:
+      context: .
+
+  ap-south:
+    ports:
+      - 8080
+    environment:
+      - REGION=ap-south
+      - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
+    build:
+      context: .
+
+  load-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile.load-generator

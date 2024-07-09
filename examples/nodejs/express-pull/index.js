@@ -3,7 +3,7 @@ const Pyroscope = require('@pyroscope/nodejs');
 
 const { expressMiddleware } = Pyroscope;
 
-const port = process.env['PORT'] || 3000;
+const port = process.env['PORT'] || 5000;
 
 const region = process.env['REGION'] || 'default';
 

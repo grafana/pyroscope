@@ -18,6 +18,7 @@ import useColorMode from '@pyroscope/hooks/colorMode.hook';
 import { Tabs, Tab, TabPanel } from '@pyroscope/ui/Tabs';
 import FileUploader from './components/FileUploader';
 import adhocStyles from './Adhoc.module.scss';
+import { PageContentWrapper } from '../layout';
 
 function AdhocSingle() {
   const dispatch = useAppDispatch();
@@ -70,7 +71,7 @@ function AdhocSingle() {
   };
 
   return (
-    <div className="main-wrapper">
+    <PageContentWrapper>
       <Box>
         <Tabs value={currentTab} onChange={(e, value) => setCurrentTab(value)}>
           <Tab label="Upload" />
@@ -93,7 +94,7 @@ function AdhocSingle() {
         </TabPanel>
         {flame}
       </Box>
-    </div>
+    </PageContentWrapper>
   );
 }
 

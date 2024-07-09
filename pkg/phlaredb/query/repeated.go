@@ -285,7 +285,7 @@ type MultiRepeatedRow[T any] struct {
 
 type multiRepeatedPageIterator[T any] struct {
 	iters     []iter.Iterator[*RepeatedRow[T]]
-	asyncNext []chan bool
+	asyncNext []<-chan bool
 	err       error
 	curr      *MultiRepeatedRow[T]
 }
@@ -296,7 +296,7 @@ type multiRepeatedPageIterator[T any] struct {
 func NewMultiRepeatedPageIterator[T any](iters ...iter.Iterator[*RepeatedRow[T]]) iter.Iterator[*MultiRepeatedRow[T]] {
 	return &multiRepeatedPageIterator[T]{
 		iters:     iters,
-		asyncNext: make([]chan bool, len(iters)),
+		asyncNext: make([]<-chan bool, len(iters)),
 		curr: &MultiRepeatedRow[T]{
 			Values: make([][]parquet.Value, len(iters)),
 		},

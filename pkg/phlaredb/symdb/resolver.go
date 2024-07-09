@@ -122,6 +122,7 @@ func (r *Resolver) Tree() (*model.Tree, error) {
 			defer close(p.done)
 			select {
 			case <-ctx.Done():
+				return ctx.Err()
 			case symbols := <-p.c:
 				samples := schemav1.NewSamplesFromMap(p.samples)
 				rt, err := symbols.Tree(ctx, samples)

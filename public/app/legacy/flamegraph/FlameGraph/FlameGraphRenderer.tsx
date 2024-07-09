@@ -26,7 +26,6 @@ import styles from './FlamegraphRenderer.module.scss';
 import PyroscopeLogo from '../logo-v3-small.svg';
 import { FitModes } from '../fitMode/fitMode';
 import { ViewTypes } from './FlameGraphComponent/viewTypes';
-import { GraphVizPane } from './FlameGraphComponent/GraphVizPane';
 import { isSameFlamebearer } from './uniqueness';
 import { normalize } from './normalize';
 
@@ -511,8 +510,7 @@ class FlameGraphRenderer extends Component<
       this.state.view,
       flameGraphPane,
       tablePane,
-      sandwichPane,
-      <GraphVizPane flamebearer={this.state.flamebearer} />
+      sandwichPane
     );
 
     return (
@@ -572,8 +570,7 @@ function decidePanesOrder(
   view: FlamegraphRendererState['view'],
   flamegraphPane: JSX.Element | null,
   tablePane: JSX.Element,
-  sandwichPane: JSX.Element,
-  graphvizPane: JSX.Element
+  sandwichPane: JSX.Element
 ) {
   switch (view) {
     case 'table': {
@@ -590,9 +587,6 @@ function decidePanesOrder(
       return [tablePane, flamegraphPane];
     }
 
-    case 'graphviz': {
-      return [graphvizPane];
-    }
     default: {
       throw new Error(`Invalid view '${view}'`);
     }

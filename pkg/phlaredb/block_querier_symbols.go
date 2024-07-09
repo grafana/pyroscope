@@ -129,10 +129,14 @@ func (r *symbolsResolverV2) Load(ctx context.Context) error {
 }
 
 func (r *symbolsResolverV2) Close() error {
-	return multierror.New(
-		r.symbols.Close(),
-		r.inMemoryParquetTables.Close()).
-		Err()
+	err := multierror.New()
+	if r.symbols != nil {
+		err.Add(r.symbols.Close())
+	}
+	if r.inMemoryParquetTables != nil {
+		err.Add(r.inMemoryParquetTables.Close())
+	}
+	return err.Err()
 }
 
 func (r *symbolsResolverV2) Partition(ctx context.Context, partition uint64) (symdb.PartitionReader, error) {

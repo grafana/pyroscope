@@ -20,19 +20,19 @@ type SampleTypeConfig struct {
 //
 // TODO(kolesnikovae): We should find a way to eliminate collisions.
 //
-//  For example, both Go 'block' and 'mutex' profiles have
-//  'contentions' and 'delay' sample types - this means we can't
-//  override display name of the profile types and they would
-//  be indistinguishable for the server.
+//	For example, both Go 'block' and 'mutex' profiles have
+//	'contentions' and 'delay' sample types - this means we can't
+//	override display name of the profile types and they would
+//	be indistinguishable for the server.
 //
-//  The keys should have the following structure:
-//  	{origin}.{profile_type}.{sample_type}
+//	The keys should have the following structure:
+//		{origin}.{profile_type}.{sample_type}
 //
-//  Example names (can be a reserved label, e.g __type__):
-//    * go.cpu.samples
-//    * go.block.delay
-//    * go.mutex.delay
-//    * nodejs.heap.objects
+//	Example names (can be a reserved label, e.g __type__):
+//	  * go.cpu.samples
+//	  * go.block.delay
+//	  * go.mutex.delay
+//	  * nodejs.heap.objects
 //
 // Another problem is that in pull mode we don't have spy-name,
 // therefore we should solve this problem first.
@@ -97,6 +97,8 @@ type PprofMetadata struct {
 	Duration   time.Duration
 }
 
+const fakeMappingID = 1
+
 func (t *Tree) Pprof(mdata *PprofMetadata) *Profile {
 	t.RLock()
 	defer t.RUnlock()
@@ -109,7 +111,8 @@ func (t *Tree) Pprof(mdata *PprofMetadata) *Profile {
 			StringTable: []string{""},
 		},
 	}
-	p.profile.Mapping = []*Mapping{{Id: 0}} // a fake mapping
+
+	p.profile.Mapping = []*Mapping{{Id: fakeMappingID}} // a fake mapping
 	p.profile.SampleType = []*ValueType{{Type: p.newString(mdata.Type), Unit: p.newString(mdata.Unit)}}
 	p.profile.TimeNanos = mdata.StartTime.UnixNano()
 	p.profile.DurationNanos = mdata.Duration.Nanoseconds()
@@ -120,9 +123,10 @@ func (t *Tree) Pprof(mdata *PprofMetadata) *Profile {
 			Unit: p.newString(mdata.PeriodUnit),
 		}
 	}
+
 	t.IterateStacks(func(name string, self uint64, stack []string) {
 		value := []int64{int64(self)}
-		loc := []uint64{}
+		loc := make([]uint64, 0, len(stack))
 		for _, l := range stack {
 			loc = append(loc, p.newLocation(l))
 		}
@@ -148,8 +152,9 @@ func (p *pprof) newLocation(location string) uint64 {
 	if !ok {
 		id = uint64(len(p.profile.Location) + 1)
 		newLoc := &Location{
-			Id:   id,
-			Line: []*Line{{FunctionId: p.newFunction(location)}},
+			Id:        id,
+			Line:      []*Line{{FunctionId: p.newFunction(location)}},
+			MappingId: fakeMappingID,
 		}
 		p.profile.Location = append(p.profile.Location, newLoc)
 		p.locations[location] = newLoc.Id

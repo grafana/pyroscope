@@ -1,6 +1,6 @@
 # pyroscope
 
-![Version: 0.5.4](https://img.shields.io/badge/Version-0.5.4-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.5.1](https://img.shields.io/badge/AppVersion-0.5.1-informational?style=flat-square)
+![Version: 1.0.1](https://img.shields.io/badge/Version-1.0.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.0.0](https://img.shields.io/badge/AppVersion-1.0.0-informational?style=flat-square)
 
 🔥 horizontally-scalable, highly-available, multi-tenant continuous profiling aggregation system
 
@@ -9,11 +9,13 @@
 | Repository | Name | Version |
 |------------|------|---------|
 | https://charts.min.io/ | minio(minio) | 4.0.12 |
+| https://grafana.github.io/helm-charts | agent(grafana-agent) | >=0.21.0 |
 
 ## Values
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| agent | object | `{"agent":{"clustering":{"enabled":true},"configMap":{"create":false,"name":"grafana-agent-config-pyroscope"}},"controller":{"podAnnotations":{"profiles.grafana.com/cpu.port_name":"http-metrics","profiles.grafana.com/cpu.scrape":"true","profiles.grafana.com/goroutine.port_name":"http-metrics","profiles.grafana.com/goroutine.scrape":"true","profiles.grafana.com/memory.port_name":"http-metrics","profiles.grafana.com/memory.scrape":"true"},"replicas":1,"type":"statefulset"},"enabled":true}` | ----------------------------------- |
 | ingress.enabled | bool | `false` |  |
 | minio | object | `{"buckets":[{"name":"grafana-pyroscope-data","policy":"none","purge":false}],"drivesPerNode":2,"enabled":false,"persistence":{"size":"5Gi"},"podAnnotations":{"phlare.grafana.com/port":"9000","phlare.grafana.com/scrape":"true"},"replicas":1,"resources":{"requests":{"cpu":"100m","memory":"128Mi"}},"rootPassword":"supersecret","rootUser":"grafana-pyroscope"}` | ----------------------------------- |
 | pyroscope.affinity | object | `{}` |  |
@@ -27,8 +29,8 @@
 | pyroscope.extraVolumes | list | `[]` |  |
 | pyroscope.fullnameOverride | string | `""` |  |
 | pyroscope.image.pullPolicy | string | `"IfNotPresent"` |  |
-| pyroscope.image.repository | string | `"grafana/phlare"` |  |
-| pyroscope.image.tag | string | `"0.5.1"` |  |
+| pyroscope.image.repository | string | `"grafana/pyroscope"` |  |
+| pyroscope.image.tag | string | `"1.0.0"` |  |
 | pyroscope.imagePullSecrets | list | `[]` |  |
 | pyroscope.memberlist.port | int | `7946` |  |
 | pyroscope.memberlist.port_name | string | `"memberlist"` |  |

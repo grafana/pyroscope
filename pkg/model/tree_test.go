@@ -2,8 +2,10 @@ package model
 
 import (
 	"bytes"
+	"math"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -189,6 +191,33 @@ func Test_TreeMerge(t *testing.T) {
 			})
 		}
 	})
+}
+
+func Test_Tree_minValue(t *testing.T) {
+	x := newTree([]stacktraces{
+		{locations: []string{"c", "b", "a"}, value: 1},
+		{locations: []string{"c", "b", "a"}, value: 1},
+		{locations: []string{"c1", "b", "a"}, value: 1},
+		{locations: []string{"c", "b1", "a"}, value: 1},
+	})
+
+	type testCase struct {
+		desc     string
+		maxNodes int64
+		expected int64
+	}
+
+	testCases := []*testCase{
+		{desc: "tree greater than max nodes", maxNodes: 2, expected: 3},
+		{desc: "tree less than max nodes", maxNodes: math.MaxInt64, expected: 0},
+		{desc: "zero max nodes", maxNodes: 0, expected: 0},
+		{desc: "negative max nodes", maxNodes: -1, expected: 0},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			assert.Equal(t, tc.expected, x.minValue(tc.maxNodes))
+		})
+	}
 }
 
 func Test_Tree_MarshalUnmarshal(t *testing.T) {

@@ -570,31 +570,21 @@ func Test_FlushNotInitializedHead(t *testing.T) {
 		require.NoError(t, db.Close())
 	}()
 
-	require.Equal(t, db.headFlushCh(), db.stopCh)
+	ingestProfiles(t, db, cpuProfileGenerator, start.UnixNano(), end.UnixNano(), step,
+		&typesv1.LabelPair{Name: "namespace", Value: "my-namespace"},
+		&typesv1.LabelPair{Name: "pod", Value: "my-pod"},
+	)
+	require.NoError(t, db.Flush(ctx))
+	require.Zero(t, db.headSize())
+
+	require.NoError(t, db.Flush(ctx))
+	require.Zero(t, db.headSize())
+
 	ingestProfiles(t, db, cpuProfileGenerator, start.UnixNano(), end.UnixNano(), step,
 		&typesv1.LabelPair{Name: "namespace", Value: "my-namespace"},
 		&typesv1.LabelPair{Name: "pod", Value: "my-pod"},
 	)
 
-	c1 := db.headFlushCh()
-	require.NotEqual(t, db.stopCh, c1)
+	require.NotZero(t, db.headSize())
 	require.NoError(t, db.Flush(ctx))
-
-	// After flush and before the next head is initialized, stopCh is expected.
-	c2 := db.headFlushCh()
-	require.Equal(t, db.stopCh, c2)
-
-	// Once data is getting in, the head flush channel is updated.
-	require.Equal(t, db.headFlushCh(), db.stopCh)
-	ingestProfiles(t, db, cpuProfileGenerator, start.UnixNano(), end.UnixNano(), step,
-		&typesv1.LabelPair{Name: "namespace", Value: "my-namespace"},
-		&typesv1.LabelPair{Name: "pod", Value: "my-pod"},
-	)
-	c3 := db.headFlushCh()
-	require.NotEqual(t, c2, c3)
-	require.NotEqual(t, db.stopCh, c3)
-	require.NoError(t, db.Flush(ctx))
-
-	require.Equal(t, db.stopCh, db.headFlushCh())
-	require.NoError(t, db.Flush(ctx)) // Nil head flush does not cause errors.
 }

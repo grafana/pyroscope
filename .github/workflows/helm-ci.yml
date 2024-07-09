@@ -14,3 +14,4 @@ jobs:
       ct_configfile: operations/pyroscope/helm/ct.yaml
       ct_check_version_increment: false
       helm_version: v3.8.2
+      kubeVersion: "1.22"

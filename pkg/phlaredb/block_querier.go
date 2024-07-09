@@ -27,7 +27,6 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/samber/lo"
-	"github.com/thanos-io/objstore"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 
@@ -48,7 +47,7 @@ import (
 
 const (
 	defaultBatchSize      = 4096
-	parquetReadBufferSize = 2 * 1024 * 1024 // 2MB
+	parquetReadBufferSize = 256 << 10 // 256KB
 )
 
 type tableReader interface {
@@ -914,18 +913,41 @@ func (b *singleBlockQuerier) Sort(in []Profile) []Profile {
 	return in
 }
 
-func newByteSliceFromBucketReader(ctx context.Context, bucketReader objstore.BucketReader, path string) (index.RealByteSlice, error) {
-	f, err := bucketReader.Get(ctx, path)
+func (q *singleBlockQuerier) openTSDBIndex(ctx context.Context) error {
+	f, err := q.bucket.Get(ctx, block.IndexFilename)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("opening index.tsdb file: %w", err)
 	}
 
-	data, err := io.ReadAll(f)
+	var buf []byte
+	var tsdbIndexFile block.File
+	for _, mf := range q.meta.Files {
+		if mf.RelPath == block.IndexFilename {
+			tsdbIndexFile = mf
+			break
+		}
+	}
+	if tsdbIndexFile.SizeBytes > 0 {
+		// If index size is known beforehand, we can allocate
+		// a buffer of the exact size to save some space.
+		buf = make([]byte, tsdbIndexFile.SizeBytes)
+		_, err = io.ReadFull(f, buf)
+	} else {
+		// 32KB is the default buf size of io.Copy.
+		// It's unlikely that a tsdb index is less than that.
+		b := bytes.NewBuffer(make([]byte, 0, 32<<10))
+		_, err = io.Copy(b, f)
+		buf = b.Bytes()
+	}
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("reading tsdb index: %w", err)
 	}
 
-	return index.RealByteSlice(data), nil
+	q.index, err = index.NewReader(index.RealByteSlice(buf))
+	if err != nil {
+		return fmt.Errorf("opening tsdb index: %w", err)
+	}
+	return nil
 }
 
 func (q *singleBlockQuerier) Open(ctx context.Context) error {
@@ -955,30 +977,18 @@ func (q *singleBlockQuerier) openFiles(ctx context.Context) error {
 		)
 		sp.Finish()
 	}()
+
 	ctx = contextWithBlockMetrics(ctx, q.metrics)
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(util.RecoverPanic(func() error {
-		// open tsdb index
-		indexBytes, err := newByteSliceFromBucketReader(ctx, q.bucket, block.IndexFilename)
-		if err != nil {
-			return errors.Wrap(err, "error reading tsdb index")
-		}
-
-		q.index, err = index.NewReader(indexBytes)
-		if err != nil {
-			return errors.Wrap(err, "opening tsdb index")
-		}
-		return nil
+		return q.openTSDBIndex(ctx)
 	}))
 
 	// open parquet files
 	for _, tableReader := range q.tables {
 		tableReader := tableReader
 		g.Go(util.RecoverPanic(func() error {
-			if err := tableReader.open(ctx, q.bucket); err != nil {
-				return err
-			}
-			return nil
+			return tableReader.open(ctx, q.bucket)
 		}))
 	}
 

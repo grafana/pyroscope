@@ -1,16 +1,26 @@
 version: '3.9'
 services:
   pyroscope:
-    image: 'pyroscope/pyroscope:latest'
+    image: grafana/pyroscope
     ports:
       - 4040:4040
-    command:
-      - server
+
+  agent:
+    image: grafana/agent:latest
     volumes:
-      - ./server.yml:/etc/pyroscope/server.yml
+      - ./agent.config.river:/etc/agent-config/config.river
+    command:
+      - run
+      - /etc/agent-config/config.river
+      - --server.http.listen-addr=0.0.0.0:12345
+    environment:
+      HOSTNAME: agent
+      AGENT_MODE: flow
+    ports:
+      - "12345:12345"
 
   hotrod:
-    image: 'public.ecr.aws/pyroscope/hotrod-golang:latest'
+    image: 'pyroscope/hotrod-golang:latest'
     ports:
       - 8080:8080
       - 6060:6060

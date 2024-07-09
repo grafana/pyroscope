@@ -44,8 +44,8 @@ func TestFlagParsing(t *testing.T) {
 		},
 		"version": {
 			arguments:      []string{"-version"},
-			stdoutMessage:  "phlare, version",
-			stderrExcluded: "phlare, version",
+			stdoutMessage:  "pyroscope, version",
+			stderrExcluded: "pyroscope, version",
 		},
 		"unknown flag": {
 			arguments:      []string{"-unknown.flag"},
@@ -147,7 +147,7 @@ func testSingle(t *testing.T, arguments []string, stdoutMessage, stderrMessage, 
 		restored = true
 	}
 
-	arguments = append([]string{"./phlare"}, arguments...)
+	arguments = append([]string{"./pyroscope"}, arguments...)
 
 	os.Args = arguments
 	co := test.CaptureOutput(t)

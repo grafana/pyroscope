@@ -1,0 +1,11 @@
+---
+version: '3.9'
+services:
+  pyroscope:
+    image: grafana/pyroscope
+    ports:
+      - '4040:4040'
+
+  app:
+    build: .
+    privileged: true

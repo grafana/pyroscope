@@ -3,9 +3,7 @@ import requests
 import time
 
 HOSTS = [
-    'us-east',
-    'eu-north',
-    'ap-south',
+    'web',
 ]
 
 VEHICLES = [
@@ -23,7 +21,7 @@ if __name__ == "__main__":
         vehicle = VEHICLES[random.randint(0, len(VEHICLES) - 1)]
         print(f"requesting {vehicle} from {host}")
         try:
-            resp = requests.get(f'http://{host}:5000/{vehicle}')
+            resp = requests.get(f'http://{host}:8000/{vehicle}')
             resp.raise_for_status()
             print(f"received {resp}")
         except BaseException as e:
