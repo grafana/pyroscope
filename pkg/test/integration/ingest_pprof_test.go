@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
+
+	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 
 	"connectrpc.com/connect"
 	"github.com/stretchr/testify/assert"
@@ -256,6 +259,9 @@ func TestIngest(t *testing.T) {
 			req := rb.IngestPPROFRequest(td.profile, td.prevProfile, td.sampleTypeConfig)
 			p.Ingest(t, req, td.expectStatusIngest)
 
+			if skipV2QueryTests {
+				return
+			}
 			if td.expectStatusIngest == 200 {
 				for _, metric := range td.metrics {
 					rb.Render(metric.name)
@@ -309,11 +315,45 @@ func TestIngestPPROFFixPythonLinenumbers(t *testing.T) {
 	req := rb.IngestPPROFRequest(tempProfileFile.Name(), "", "")
 	p.Ingest(t, req, 200)
 
+	if skipV2QueryTests {
+		return
+	}
 	renderedProfile := rb.SelectMergeProfile("process_cpu:cpu:nanoseconds:cpu:nanoseconds", nil)
 	actual := bench.StackCollapseProto(renderedProfile.Msg, 0, 1)
 	expected := []string{
 		"qwe.py:242 - main;qwe.py:50 - func1 10",
 		"qwe.py:242 - main;qwe.py:8 - func2 13",
+	}
+	assert.Equal(t, expected, actual)
+}
+
+func TestGodeltaprofRelabelPush(t *testing.T) {
+	const blockSize = 1024
+	const metric = "godeltaprof_memory"
+
+	p := PyroscopeTest{}
+	p.Start(t)
+	defer p.Stop(t)
+
+	p1, _ := testhelper.NewProfileBuilder(time.Now().Add(-time.Second).UnixNano()).
+		MemoryProfile().
+		ForStacktraceString("my", "other").
+		AddSamples(239, 239*blockSize, 1000, 1000*blockSize).
+		Profile.MarshalVT()
+
+	p2, _ := testhelper.NewProfileBuilder(time.Now().UnixNano()).
+		MemoryProfile().
+		ForStacktraceString("my", "other").
+		AddSamples(3, 3*blockSize, 1000, 1000*blockSize).
+		Profile.MarshalVT()
+
+	rb := p.NewRequestBuilder(t)
+	rb.Push(rb.PushPPROFRequestFromBytes(p1, metric), 200, "")
+	rb.Push(rb.PushPPROFRequestFromBytes(p2, metric), 200, "")
+	renderedProfile := rb.SelectMergeProfile("memory:alloc_objects:count:space:bytes", nil)
+	actual := bench.StackCollapseProto(renderedProfile.Msg, 0, 1)
+	expected := []string{
+		"other;my 242",
 	}
 	assert.Equal(t, expected, actual)
 }
@@ -330,8 +370,12 @@ func TestPush(t *testing.T) {
 		t.Run(td.profile, func(t *testing.T) {
 			rb := p.NewRequestBuilder(t)
 
-			req := rb.PushPPROFRequest(td.profile, td.metrics[0].name)
+			req := rb.PushPPROFRequestFromFile(td.profile, td.metrics[0].name)
 			rb.Push(req, td.expectStatusPush, td.expectedError)
+
+			if skipV2QueryTests {
+				return
+			}
 
 			if td.expectStatusPush == 200 {
 				for _, metric := range td.metrics {

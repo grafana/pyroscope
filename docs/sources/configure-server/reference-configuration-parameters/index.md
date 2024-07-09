@@ -810,6 +810,14 @@ lifecycler:
   # ID to register in the ring.
   # CLI flag: -ingester.lifecycler.ID
   [id: <string> | default = "<hostname>"]
+
+# Timeout when flushing segments to bucket.
+# CLI flag: -ingester.segment.duration
+[segmentDuration: <duration> | default = 1s]
+
+# Enable async mode for ingester.
+# CLI flag: -ingester.async
+[async: <boolean> | default = false]
 ```
 
 ### querier
@@ -1886,6 +1894,10 @@ The `limits` block configures default and per-tenant limits imposed by component
 # be specified. 0 to disable.
 # CLI flag: -distributor.aggregation-period
 [distributor_aggregation_period: <duration> | default = 0s]
+
+[ingestion_relabeling_rules: <relabel_config...> | default = ]
+
+[ingestion_relabeling_default_rules_position: <string> | default = ""]
 
 # The tenant's shard size used by shuffle-sharding. Must be set both on
 # ingesters and distributors. 0 disables shuffle sharding.

@@ -165,6 +165,7 @@ func (m *Metastore) initRaft() (err error) {
 	config := raft.DefaultConfig()
 	// TODO: Wrap gokit
 	//	config.Logger
+	config.LogLevel = "debug"
 	config.TrailingLogs = raftTrailingLogs
 	config.SnapshotThreshold = raftSnapshotThreshold
 	config.SnapshotInterval = raftSnapshotInterval

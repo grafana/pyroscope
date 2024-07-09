@@ -3,6 +3,7 @@ package phlare
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"time"
@@ -128,7 +129,9 @@ func (f *Phlare) initRuntimeConfig() (services.Service, error) {
 		return nil, nil
 	}
 
-	f.Cfg.RuntimeConfig.Loader = loadRuntimeConfig
+	f.Cfg.RuntimeConfig.Loader = func(r io.Reader) (interface{}, error) {
+		return validation.LoadRuntimeConfig(r)
+	}
 
 	// make sure to set default limits before we start loading configuration into memory
 	validation.SetDefaultLimitsForYAMLUnmarshalling(f.Cfg.LimitsConfig)
@@ -397,6 +400,23 @@ func (f *Phlare) initStorage() (_ services.Service, err error) {
 	if f.Cfg.Target.String() != All && f.storageBucket == nil {
 		return nil, errors.New("storage bucket configuration is required when running in microservices mode")
 	}
+	if f.Cfg.Target.String() == All && f.storageBucket == nil {
+		level.Warn(f.logger).Log("msg", "no storage bucket configured, using filesystem bucket", "path", f.Cfg.PhlareDB.DataPath)
+		b, err := objstoreclient.NewBucket(f.context(), objstoreclient.Config{
+			StorageBackendConfig: objstoreclient.StorageBackendConfig{
+				Backend: objstoreclient.Filesystem,
+				Filesystem: filesystem.Config{
+					Directory: f.Cfg.PhlareDB.DataPath,
+				},
+			},
+			StoragePrefix: "all_objects",
+			Middlewares:   nil,
+		}, "storage")
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to initialise bucket")
+		}
+		f.storageBucket = b
+	}
 
 	return nil, nil
 }
@@ -410,7 +430,7 @@ func (f *Phlare) context() context.Context {
 func (f *Phlare) initIngester() (_ services.Service, err error) {
 	f.Cfg.Ingester.LifecyclerConfig.ListenPort = f.Cfg.Server.HTTPListenPort
 
-	svc, err := ingester.New(f.context(), f.Cfg.Ingester, f.Cfg.PhlareDB, f.storageBucket, f.Overrides, f.Cfg.Querier.QueryStoreAfter)
+	svc, err := ingester.New(f.context(), f.Cfg.Ingester, f.Cfg.PhlareDB, f.storageBucket, f.Overrides, f.Cfg.Querier.QueryStoreAfter, f.MetastoreClient)
 	if err != nil {
 		return nil, err
 	}

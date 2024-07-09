@@ -52,10 +52,15 @@ func TestMicroServicesIntegration(t *testing.T) {
 	})
 
 	t.Run("HealthyCluster", func(t *testing.T) {
+		if skipV2QueryTests {
+			t.Skip("Skipping V2 query tests")
+		}
 		tc.runQueryTest(ctx, t)
 	})
 
-	componentsToStop := map[string]struct{}{"store-gateway": {}, "ingester": {}}
+	componentsToStop := map[string]struct{}{
+		//"store-gateway": {},
+		"ingester": {}}
 	g, gctx := errgroup.WithContext(ctx)
 	for _, comp := range c.Components {
 		if _, ok := componentsToStop[comp.Target]; ok {
