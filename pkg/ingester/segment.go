@@ -320,6 +320,10 @@ func (s *segment) flushHeads(ctx context.Context) []serviceHead {
 		stats, _ := json.Marshal(e.head.GetMetaStats())
 		level.Debug(s.sw.l).Log("msg", "flushed head", "head", e.head.BlockID(), "stats", stats)
 		if err := e.head.Move(); err != nil {
+			if e.head.GetMetaStats().NumSamples == 0 {
+				_ = level.Debug(s.sw.l).Log("msg", "skipping empty head", "head", e.head.BlockID())
+				continue
+			}
 			_ = level.Error(s.sw.l).Log("msg", "failed to move head", "err", err, "head", e.head.BlockID())
 			continue
 		}
@@ -328,10 +332,10 @@ func (s *segment) flushHeads(ctx context.Context) []serviceHead {
 			_ = level.Error(s.sw.l).Log("msg", "failed to find files", "head", e.head.BlockID())
 			continue
 		}
-		if e.head.GetMetaStats().NumSamples == 0 {
-			_ = level.Debug(s.sw.l).Log("msg", "skipping empty head", "head", e.head.BlockID())
-			continue
-		}
+		//if e.head.GetMetaStats().NumSamples == 0 {
+		//	_ = level.Debug(s.sw.l).Log("msg", "skipping empty head", "head", e.head.BlockID())
+		//	continue
+		//}
 		moved = append(moved, e)
 	}
 	slices.SortFunc(moved, func(i, j serviceHead) int {
