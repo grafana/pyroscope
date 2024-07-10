@@ -58,13 +58,13 @@ func getStrategyForLevel(compactionLevel uint32) compactionLevelStrategy {
 func (s compactionLevelStrategy) shouldCreateJob(blocks []*metastorev1.BlockMeta) bool {
 	totalSizeBytes := getTotalSize(blocks)
 	enoughBlocks := len(blocks) >= s.minBlocks
-	enoughData := totalSizeBytes >= s.minTotalSizeBytes
+	enoughData := totalSizeBytes > 0 && totalSizeBytes >= s.minTotalSizeBytes
 	if enoughBlocks && enoughData {
 		return true
 	} else if enoughBlocks {
-		return len(blocks) >= s.maxBlocks
+		return s.maxBlocks > 0 && len(blocks) >= s.maxBlocks
 	} else if enoughData {
-		return totalSizeBytes >= s.maxTotalSizeBytes
+		return s.maxTotalSizeBytes > 0 && totalSizeBytes >= s.maxTotalSizeBytes
 	}
 	return false
 }
@@ -99,15 +99,11 @@ func (m *Metastore) GetCompactionJobs(_ context.Context, req *compactorv1.GetCom
 			resp.CompactionJobs = append(resp.CompactionJobs, job)
 		}
 	}
+
 	return resp, nil
 }
 
-func (m *Metastore) UpdateJobStatus(_ context.Context, req *compactorv1.UpdateJobStatusRequest) (*compactorv1.UpdateJobStatusResponse, error) {
-	_, resp, err := applyCommand[*compactorv1.UpdateJobStatusRequest, *compactorv1.UpdateJobStatusResponse](m.raft, req, m.config.Raft.ApplyTimeout)
-	return resp, err
-}
-
-func (m *metastoreState) addForCompaction(block *metastorev1.BlockMeta) *compactorv1.CompactionJob {
+func (m *metastoreState) tryCreateJob(block *metastorev1.BlockMeta) *compactorv1.CompactionJob {
 	plan := m.getOrCreatePlan(block.Shard)
 	plan.jobsMutex.Lock()
 	defer plan.jobsMutex.Unlock()
@@ -118,7 +114,6 @@ func (m *metastoreState) addForCompaction(block *metastorev1.BlockMeta) *compact
 	}
 
 	queuedBlocks := append(plan.queuedBlocksByLevel[block.CompactionLevel], block)
-	plan.queuedBlocksByLevel[block.CompactionLevel] = queuedBlocks
 
 	level.Debug(m.logger).Log(
 		"msg", "adding block for compaction",
@@ -134,11 +129,19 @@ func (m *metastoreState) addForCompaction(block *metastorev1.BlockMeta) *compact
 	var job *compactorv1.CompactionJob
 	if strategy.shouldCreateJob(queuedBlocks) {
 		job = &compactorv1.CompactionJob{
-			Name:   fmt.Sprintf("L%d-S%d-%d", block.CompactionLevel, block.Shard, calculateHash(queuedBlocks)),
-			Blocks: queuedBlocks,
+			Name:    fmt.Sprintf("L%d-S%d-%d", block.CompactionLevel, block.Shard, calculateHash(queuedBlocks)),
+			Options: &compactorv1.CompactionOptions{},
+			Blocks:  queuedBlocks,
 			Status: &compactorv1.CompactionJobStatus{
 				Status: compactorv1.CompactionStatus_COMPACTION_STATUS_UNSPECIFIED,
+				CompletedJob: &compactorv1.CompletedJob{
+					Blocks: make([]*metastorev1.BlockMeta, 0),
+				},
+				Shard:    block.Shard,
+				TenantId: block.TenantId,
 			},
+			Shard:    block.Shard,
+			TenantId: block.TenantId,
 		}
 		level.Info(m.logger).Log(
 			"msg", "created compaction job",
@@ -148,10 +151,26 @@ func (m *metastoreState) addForCompaction(block *metastorev1.BlockMeta) *compact
 			"shard", block.Shard,
 			"tenant", block.TenantId,
 			"compaction_level", block.CompactionLevel)
-		plan.jobsByName[job.Name] = job
-		plan.queuedBlocksByLevel[block.CompactionLevel] = plan.queuedBlocksByLevel[block.CompactionLevel][:0]
 	}
 	return job
+}
+
+func (m *metastoreState) addCompactionJob(job *compactorv1.CompactionJob) {
+	plan := m.getOrCreatePlan(job.Shard)
+	plan.jobsMutex.Lock()
+	defer plan.jobsMutex.Unlock()
+
+	plan.jobsByName[job.Name] = job
+	compactionLevel := job.Blocks[0].CompactionLevel
+	plan.queuedBlocksByLevel[compactionLevel] = plan.queuedBlocksByLevel[compactionLevel][:0]
+}
+
+func (m *metastoreState) addBlockToCompactionJobQueue(block *metastorev1.BlockMeta) {
+	plan := m.getOrCreatePlan(block.Shard)
+	plan.jobsMutex.Lock()
+	defer plan.jobsMutex.Unlock()
+
+	plan.queuedBlocksByLevel[block.CompactionLevel] = append(plan.queuedBlocksByLevel[block.CompactionLevel], block)
 }
 
 func getTotalSize(blocks []*metastorev1.BlockMeta) uint64 {

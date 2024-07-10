@@ -130,6 +130,14 @@ func (m *metastoreState) getOrCreatePlan(shardId uint32) *compactionPlan {
 	return plan
 }
 
+func (m *metastoreState) findJob(shardId uint32, name string) *compactorv1.CompactionJob {
+	plan := m.getOrCreatePlan(shardId)
+	plan.jobsMutex.Lock()
+	defer plan.jobsMutex.Unlock()
+
+	return plan.jobsByName[name]
+}
+
 func newMetastoreShard() *metastoreShard {
 	return &metastoreShard{
 		segments: make(map[string]*metastorev1.BlockMeta),
@@ -139,6 +147,12 @@ func newMetastoreShard() *metastoreShard {
 func (s *metastoreShard) putSegment(segment *metastorev1.BlockMeta) {
 	s.segmentsMutex.Lock()
 	s.segments[segment.Id] = segment
+	s.segmentsMutex.Unlock()
+}
+
+func (s *metastoreShard) deleteSegment(segment *metastorev1.BlockMeta) {
+	s.segmentsMutex.Lock()
+	delete(s.segments, segment.Id)
 	s.segmentsMutex.Unlock()
 }
 
@@ -169,4 +183,32 @@ func (p *compactionPlan) loadJobs(b *bbolt.Bucket) error {
 		// TODO aleks: restoring from a snapshot will lose "partial" jobs
 	}
 	return nil
+}
+
+func (m *metastoreState) getJobs(status compactorv1.CompactionStatus, fn func(job *compactorv1.CompactionJob) (exit bool)) <-chan *compactorv1.CompactionJob {
+	ch := make(chan *compactorv1.CompactionJob)
+	go func() {
+		defer close(ch)
+
+		m.compactionPlansMutex.Lock()
+		defer m.compactionPlansMutex.Unlock()
+
+		for _, plan := range m.compactionPlans {
+			plan.jobsMutex.Lock()
+			for _, job := range plan.jobsByName {
+				if job.Status.Status != status {
+					continue
+				}
+				exitCondition := fn(job)
+				if exitCondition {
+					plan.jobsMutex.Unlock()
+					return
+				}
+				ch <- job
+			}
+			plan.jobsMutex.Unlock()
+		}
+	}()
+
+	return ch
 }

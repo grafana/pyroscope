@@ -662,24 +662,50 @@
         },
         "status": {
           "$ref": "#/definitions/v1CompactionJobStatus"
+        },
+        "commitIndex": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Fencing token."
+        },
+        "shard": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Shard the blocks belong to."
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "Optional, empty for compaction level 0."
         }
       },
       "description": "One compaction job may result in multiple output blocks."
     },
-    "v1CompactionJobSelector": {
-      "type": "object",
-      "description": "The general idea is that we could potentially\n have multiple compaction worker pools, each\n handling a specific data set.",
-      "title": "There could be listed criteria for the jobs, such as:\n  - block compaction levels\n  - time range\n  - tenants\n  - services\n  - block attributes"
-    },
     "v1CompactionJobStatus": {
       "type": "object",
       "properties": {
+        "jobName": {
+          "type": "string"
+        },
         "status": {
           "$ref": "#/definitions/v1CompactionStatus",
           "description": "Status update allows the planner to keep\ntrack of the job ownership and compaction\nprogress:\n- If the job status is other than IN_PROGRESS,\n  the ownership of the job is revoked.\n- FAILURE must only be sent if the failure is\n  persistent and the compaction can't be accomplished.\n- completed_job must be empty if the status is\n  other than SUCCESS, and vice-versa.\n- UNSPECIFIED must be sent if the worker rejects\n  or cancels the compaction job.\n\nPartial results/status is not allowed."
         },
         "completedJob": {
           "$ref": "#/definitions/v1CompletedJob"
+        },
+        "commitIndex": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Fencing token."
+        },
+        "shard": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Shard the blocks belong to."
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "Optional, empty for compaction level 0."
         }
       }
     },
@@ -901,7 +927,7 @@
             "type": "object",
             "$ref": "#/definitions/v1CompactionJob"
           },
-          "description": "Compaction jobs to execute. Compaction workers\ndon't make any decisions on their own."
+          "title": "A list of all compaction jobs"
         }
       }
     },
@@ -1306,6 +1332,18 @@
           "type": "string",
           "format": "int64",
           "title": "Milliseconds unix timestamp"
+        }
+      }
+    },
+    "v1PollCompactionJobsResponse": {
+      "type": "object",
+      "properties": {
+        "compactionJobs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1CompactionJob"
+          }
         }
       }
     },
@@ -1952,9 +1990,6 @@
           "format": "byte"
         }
       }
-    },
-    "v1UpdateJobStatusResponse": {
-      "type": "object"
     },
     "v1ValueType": {
       "type": "object",

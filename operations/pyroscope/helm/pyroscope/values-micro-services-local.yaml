@@ -23,9 +23,9 @@ pyroscope:
     query-worker:
       kind: Deployment
       replicaCount: 1
-    # compactor-worker:
-    #   kind: Deployment
-    #   replicaCount: 3
+    compaction-worker:
+       kind: Deployment
+       replicaCount: 3
 
     # To be removed.
     query-scheduler:

@@ -2117,12 +2117,12 @@ http:
   # Maximum number of idle (keep-alive) connections across all hosts. 0 means no
   # limit.
   # CLI flag: -storage.s3.max-idle-connections
-  [max_idle_connections: <int> | default = 100]
+  [max_idle_connections: <int> | default = 0]
 
   # Maximum number of idle (keep-alive) connections to keep per-host. If 0, a
   # built-in default value is used.
   # CLI flag: -storage.s3.max-idle-connections-per-host
-  [max_idle_connections_per_host: <int> | default = 100]
+  [max_idle_connections_per_host: <int> | default = 1024]
 
   # Maximum number of connections per host. 0 means no limit.
   # CLI flag: -storage.s3.max-connections-per-host

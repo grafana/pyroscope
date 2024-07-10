@@ -1,0 +1,216 @@
+{
+  "blocks": [
+    {
+      "id": "01J2VJR31PT3X4NDJC4Q2BHWQ1",
+      "minTime": "1721060035611",
+      "maxTime": "1721060035611",
+      "shard": 1,
+      "tenantServices": [
+        {
+          "tenantId": "anonymous",
+          "name": "pyroscope-test/query-frontend",
+          "minTime": "1721060035611",
+          "maxTime": "1721060035611",
+          "tableOfContents": [
+            "0",
+            "4549",
+            "7747"
+          ],
+          "size": "19471"
+        }
+      ]
+    },
+    {
+      "id": "01J2VJQPYDC160REPAD2VN88XN",
+      "minTime": "1721060023235",
+      "maxTime": "1721060023235",
+      "shard": 1,
+      "tenantServices": [
+        {
+          "tenantId": "anonymous",
+          "name": "pyroscope-test/ingester",
+          "minTime": "1721060023235",
+          "maxTime": "1721060023235",
+          "tableOfContents": [
+            "0",
+            "3794",
+            "6281"
+          ],
+          "size": "22242"
+        }
+      ]
+    },
+    {
+      "id": "01J2VJQRGBK8YFWVV8K1MPRRWM",
+      "minTime": "1721060010831",
+      "maxTime": "1721060010831",
+      "shard": 1,
+      "tenantServices": [
+        {
+          "tenantId": "anonymous",
+          "name": "pyroscope-test/alloy",
+          "minTime": "1721060010831",
+          "maxTime": "1721060010831",
+          "tableOfContents": [
+            "0",
+            "3949",
+            "6565"
+          ],
+          "size": "17664"
+        }
+      ]
+    },
+    {
+      "id": "01J2VJQRTMSCY4VDYBP5N4N5JK",
+      "minTime": "1721060025159",
+      "maxTime": "1721060025159",
+      "shard": 1,
+      "tenantServices": [
+        {
+          "tenantId": "anonymous",
+          "name": "pyroscope-test/query-frontend",
+          "minTime": "1721060025159",
+          "maxTime": "1721060025159",
+          "tableOfContents": [
+            "0",
+            "3834",
+            "6029"
+          ],
+          "size": "21765"
+        }
+      ]
+    },
+    {
+      "id": "01J2VJQTJ3PGF7KB39ARR1BX3Y",
+      "minTime": "1721060026913",
+      "maxTime": "1721060026913",
+      "shard": 1,
+      "tenantServices": [
+        {
+          "tenantId": "anonymous",
+          "name": "pyroscope-test/ingester",
+          "minTime": "1721060026913",
+          "maxTime": "1721060026913",
+          "tableOfContents": [
+            "0",
+            "4808",
+            "8321"
+          ],
+          "size": "28169"
+        }
+      ]
+    },
+    {
+      "id": "01J2VJQV544TF571FDSK2H692P",
+      "minTime": "1721060013534",
+      "maxTime": "1721060013534",
+      "shard": 1,
+      "tenantServices": [
+        {
+          "tenantId": "anonymous",
+          "name": "pyroscope-test/query-frontend",
+          "minTime": "1721060013534",
+          "maxTime": "1721060013534",
+          "tableOfContents": [
+            "0",
+            "4201",
+            "6780"
+          ],
+          "size": "15785"
+        }
+      ]
+    },
+    {
+      "id": "01J2VJQX8DYHSEBK7BAQSCJBMG",
+      "minTime": "1721060015603",
+      "maxTime": "1721060015603",
+      "shard": 1,
+      "tenantServices": [
+        {
+          "tenantId": "anonymous",
+          "name": "pyroscope-test/ingester",
+          "minTime": "1721060015603",
+          "maxTime": "1721060015603",
+          "tableOfContents": [
+            "0",
+            "4543",
+            "7406"
+          ],
+          "size": "27431"
+        }
+      ]
+    },
+    {
+      "id": "01J2VJQYQVZTPZMMJKE7F2XC47",
+      "minTime": "1721060031203",
+      "maxTime": "1721060031203",
+      "shard": 1,
+      "tenantServices": [
+        {
+          "tenantId": "anonymous",
+          "name": "pyroscope-test/ingester",
+          "minTime": "1721060031203",
+          "maxTime": "1721060031203",
+          "tableOfContents": [
+            "0",
+            "5086",
+            "8600"
+          ],
+          "size": "36655"
+        }
+      ]
+    },
+    {
+      "id": "01J2VJQZPARDJQ779S1JMV0XQA",
+      "minTime": "1721060032190",
+      "maxTime": "1721060032190",
+      "shard": 1,
+      "tenantServices": [
+        {
+          "tenantId": "anonymous",
+          "name": "pyroscope-test/ingester",
+          "minTime": "1721060032190",
+          "maxTime": "1721060032190",
+          "tableOfContents": [
+            "0",
+            "3825",
+            "6312"
+          ],
+          "size": "24273"
+        }
+      ]
+    },
+    {
+      "id": "01J2VJR0R3NQS23SDADNA6XHCM",
+      "minTime": "1721060033248",
+      "maxTime": "1721060033802",
+      "shard": 1,
+      "tenantServices": [
+        {
+          "tenantId": "anonymous",
+          "name": "pyroscope-test/alloy",
+          "minTime": "1721060033248",
+          "maxTime": "1721060033248",
+          "tableOfContents": [
+            "0",
+            "4547",
+            "7152"
+          ],
+          "size": "27397"
+        },
+        {
+          "tenantId": "anonymous",
+          "name": "pyroscope-test/ingester",
+          "minTime": "1721060033680",
+          "maxTime": "1721060033802",
+          "tableOfContents": [
+            "27397",
+            "32839",
+            "37073"
+          ],
+          "size": "50561"
+        }
+      ]
+    }
+  ]
+}

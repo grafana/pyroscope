@@ -46,6 +46,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/ingester"
 	"github.com/grafana/pyroscope/pkg/metastore"
 	metastoreclient "github.com/grafana/pyroscope/pkg/metastore/client"
+	"github.com/grafana/pyroscope/pkg/metastore/compactionworker"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/operations"
@@ -247,6 +248,7 @@ type Phlare struct {
 
 	MetastoreClient    *metastoreclient.Client
 	QueryBackendClient *querybackendclient.Client
+	compactionWorker   *compactionworker.Worker
 
 	TenantLimits validation.TenantLimits
 
@@ -326,6 +328,7 @@ func (f *Phlare) setupModuleManager() error {
 	mm.RegisterModule(MetastoreClient, f.initMetastoreClient, modules.UserInvisibleModule)
 	mm.RegisterModule(QueryBackend, f.initQueryBackend)
 	mm.RegisterModule(QueryBackendClient, f.initQueryBackendClient, modules.UserInvisibleModule)
+	mm.RegisterModule(CompactionWorker, f.initCompactionWorker)
 
 	// Add dependencies
 	deps := map[string][]string{
@@ -352,6 +355,7 @@ func (f *Phlare) setupModuleManager() error {
 		AdHocProfiles:     {API, Overrides, Storage},
 		Metastore:         {API, Overrides, MetastoreClient},
 		QueryBackend:      {API, Storage, QueryBackendClient},
+		CompactionWorker:  {Storage, MemberlistKV, MetastoreClient},
 	}
 
 	for mod, targets := range deps {
@@ -580,6 +584,11 @@ func (f *Phlare) initVersion() (services.Service, error) {
 	}
 	f.API.RegisterVersion(f.versions)
 	return f.versions, nil
+}
+
+func (f *Phlare) initCompactionWorker() (svc services.Service, err error) {
+	f.compactionWorker, err = compactionworker.New(f.logger, f.MetastoreClient, f.storageBucket)
+	return f.compactionWorker, nil
 }
 
 func printRoutes(r *mux.Router) {
