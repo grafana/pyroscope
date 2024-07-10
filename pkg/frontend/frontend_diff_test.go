@@ -76,7 +76,7 @@ func Test_Frontend_Diff(t *testing.T) {
 				Left: &querierv1.SelectMergeStacktracesRequest{
 					ProfileTypeID: profileType,
 					LabelSelector: "{}",
-					Start:         0000,
+					Start:         1,
 					End:           1000,
 				},
 				Right: &querierv1.SelectMergeStacktracesRequest{

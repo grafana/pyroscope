@@ -672,6 +672,10 @@ func (p ProfileRow) SetSeriesIndex(v uint32) {
 	p[seriesIndexColIndex] = parquet.Int32Value(int32(v)).Level(0, 0, seriesIndexColIndex)
 }
 
+func (p ProfileRow) SetStacktracePartitionID(v uint64) {
+	p[stacktracePartitionColIndex] = parquet.Int64Value(int64(v)).Level(0, 0, stacktracePartitionColIndex)
+}
+
 func (p ProfileRow) ForStacktraceIDsValues(fn func([]parquet.Value)) {
 	start := -1
 	var i int

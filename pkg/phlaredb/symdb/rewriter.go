@@ -40,7 +40,7 @@ func (r *Rewriter) Rewrite(partition uint64, stacktraces []uint32) error {
 
 func (r *Rewriter) init(partition uint64) (p *partitionRewriter, err error) {
 	if r.partitions == nil {
-		r.partitions, _ = lru.NewWithEvict(2, func(_ uint64, p *partitionRewriter) {
+		r.partitions, _ = lru.NewWithEvict(8, func(_ uint64, p *partitionRewriter) {
 			p.reader.Release()
 		})
 	}

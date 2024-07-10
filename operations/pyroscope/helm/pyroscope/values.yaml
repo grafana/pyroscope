@@ -189,7 +189,7 @@ alloy:
       profiles.grafana.com/goroutine.scrape: "true"
       profiles.grafana.com/goroutine.port_name: "http-metrics"
   alloy:
-    stabilityLevel: "public-preview" # This needs to be set for some of our resources until verison v1.2 is released
+    stabilityLevel: "public-preview"  # This needs to be set for some of our resources until verison v1.2 is released
     configMap:
       create: false
       name: alloy-config-pyroscope

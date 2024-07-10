@@ -17,6 +17,13 @@ var (
 			Replacement:  "$0",
 		},
 		{
+			SourceLabels: []model.LabelName{"__name_replaced__"},
+			Action:       relabel.Replace,
+			Regex:        godeltaprof,
+			TargetLabel:  "__delta__",
+			Replacement:  "false",
+		},
+		{
 			SourceLabels: []model.LabelName{"__name__"},
 			Regex:        godeltaprof,
 			Action:       relabel.Replace,

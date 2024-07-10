@@ -47,13 +47,14 @@ const (
 	DuplicateLabelNames Reason = "duplicate_label_names"
 	// SeriesLimit is a reason for discarding lines when we can't create a new stream
 	// because the limit of active streams has been reached.
-	SeriesLimit       Reason = "series_limit"
-	QueryLimit        Reason = "query_limit"
-	SamplesLimit      Reason = "samples_limit"
-	ProfileSizeLimit  Reason = "profile_size_limit"
-	SampleLabelsLimit Reason = "sample_labels_limit"
-	MalformedProfile  Reason = "malformed_profile"
-	FlameGraphLimit   Reason = "flamegraph_limit"
+	SeriesLimit           Reason = "series_limit"
+	QueryLimit            Reason = "query_limit"
+	SamplesLimit          Reason = "samples_limit"
+	ProfileSizeLimit      Reason = "profile_size_limit"
+	SampleLabelsLimit     Reason = "sample_labels_limit"
+	MalformedProfile      Reason = "malformed_profile"
+	FlameGraphLimit       Reason = "flamegraph_limit"
+	QueryMissingTimeRange Reason = "missing_time_range"
 
 	// Those profiles were dropped because of relabeling rules
 	RelabelRules Reason = "dropped_by_relabel_rules"
@@ -72,6 +73,7 @@ const (
 	NotInIngestionWindowErrorMsg        = "profile with labels '%s' is outside of ingestion window (profile timestamp: %s, %s)"
 	MaxFlameGraphNodesErrorMsg          = "max flamegraph nodes limit %d is greater than allowed %d"
 	MaxFlameGraphNodesUnlimitedErrorMsg = "max flamegraph nodes limit must be set (max allowed %d)"
+	QueryMissingTimeRangeErrorMsg       = "missing time range in the query"
 )
 
 var (
@@ -327,6 +329,10 @@ type ValidatedRangeRequest struct {
 }
 
 func ValidateRangeRequest(limits RangeRequestLimits, tenantIDs []string, req model.Interval, now model.Time) (ValidatedRangeRequest, error) {
+	if req.Start == 0 || req.End == 0 {
+		return ValidatedRangeRequest{}, NewErrorf(QueryMissingTimeRange, QueryMissingTimeRangeErrorMsg)
+	}
+
 	if maxQueryLookback := validation.SmallestPositiveNonZeroDurationPerTenant(tenantIDs, limits.MaxQueryLookback); maxQueryLookback > 0 {
 		minStartTime := now.Add(-maxQueryLookback)
 

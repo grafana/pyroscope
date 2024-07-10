@@ -153,10 +153,10 @@ func newParentPointerTree(size uint32) *parentPointerTree {
 }
 
 func (t *parentPointerTree) resolve(dst []int32, id uint32) []int32 {
+	dst = dst[:0]
 	if id >= uint32(len(t.nodes)) {
 		return dst
 	}
-	dst = dst[:0]
 	n := t.nodes[id]
 	for n.p >= 0 {
 		dst = append(dst, n.r)
@@ -166,10 +166,10 @@ func (t *parentPointerTree) resolve(dst []int32, id uint32) []int32 {
 }
 
 func (t *parentPointerTree) resolveUint64(dst []uint64, id uint32) []uint64 {
+	dst = dst[:0]
 	if id >= uint32(len(t.nodes)) {
 		return dst
 	}
-	dst = dst[:0]
 	n := t.nodes[id]
 	for n.p >= 0 {
 		dst = append(dst, uint64(n.r))
@@ -184,6 +184,37 @@ func (t *parentPointerTree) Nodes() []Node {
 		dst[i] = Node{Parent: t.nodes[i].p, Location: t.nodes[i].r}
 	}
 	return dst
+}
+
+func (t *parentPointerTree) toStacktraceTree() *stacktraceTree {
+	l := int32(len(t.nodes))
+	x := stacktraceTree{nodes: make([]node, l)}
+	x.nodes[0] = node{
+		p:  sentinel,
+		fc: sentinel,
+		ns: sentinel,
+	}
+	lc := make([]int32, len(t.nodes))
+	var s int32
+	for i := int32(1); i < l; i++ {
+		n := t.nodes[i]
+		x.nodes[i] = node{
+			p:  n.p,
+			r:  n.r,
+			fc: sentinel,
+			ns: sentinel,
+		}
+		// Swap the last child of the parent with self.
+		// If this is the first child, update the parent.
+		// Otherwise, update the sibling.
+		s, lc[n.p] = lc[n.p], i
+		if s == 0 {
+			x.nodes[n.p].fc = i
+		} else {
+			x.nodes[s].ns = i
+		}
+	}
+	return &x
 }
 
 // ReadFrom decodes parent pointer tree from the reader.
