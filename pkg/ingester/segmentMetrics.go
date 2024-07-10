@@ -8,6 +8,7 @@ import (
 type segmentMetrics struct {
 	segmentIngestBytes         *prometheus.HistogramVec
 	segmentBlockSizeBytes      *prometheus.HistogramVec
+	headSizeBytes              *prometheus.HistogramVec
 	storeMetaDuration          *prometheus.HistogramVec
 	segmentFlushWaitDuration   *prometheus.HistogramVec
 	segmentFlushTimeouts       *prometheus.CounterVec
@@ -95,6 +96,12 @@ func newSegmentMetrics(reg prometheus.Registerer) *segmentMetrics {
 				Namespace: "pyroscope",
 				Name:      "segment_flush_service_head_empty_count",
 			}, []string{"shard", "tenant", "service"}),
+		headSizeBytes: prometheus.NewHistogramVec(
+			prometheus.HistogramOpts{
+				Namespace: "pyroscope",
+				Name:      "head_size_bytes",
+				Buckets:   prometheus.ExponentialBucketsRange(10*1024, 100*1024*1024, 30),
+			}, []string{"shard", "tenant", "service"}),
 	}
 
 	if reg != nil {
@@ -111,6 +118,7 @@ func newSegmentMetrics(reg prometheus.Registerer) *segmentMetrics {
 		reg.MustRegister(m.flushServiceHeadEmptyCount)
 		reg.MustRegister(m.flushSegmentDuration)
 		reg.MustRegister(m.flushSegmentsDuration)
+		reg.MustRegister(m.headSizeBytes)
 	}
 	return m
 }

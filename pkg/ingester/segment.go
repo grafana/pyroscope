@@ -262,7 +262,7 @@ func (s *segment) flushBlock(ctx context.Context, heads []serviceHead) (string, 
 			meta.MinTime = math.Min(meta.MinTime, svc.MinTime)
 			meta.MaxTime = math.Max(meta.MaxTime, svc.MaxTime)
 		}
-
+		s.sw.metrics.headSizeBytes.WithLabelValues(s.sshard, e.key.tenant, e.key.service).Observe(float64(svc.Size))
 		meta.TenantServices = append(meta.TenantServices, svc)
 	}
 
