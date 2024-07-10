@@ -67,22 +67,22 @@ func newSegmentMetrics(reg prometheus.Registerer) *segmentMetrics {
 		flushHeadsDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Namespace: "pyroscope",
 			Name:      "segment_flush_heads_duration_seconds",
-			Buckets:   prometheus.ExponentialBuckets(0.1, 1.5, 30),
+			Buckets:   prometheus.ExponentialBuckets(0.1, 1.22, 20),
 		}, []string{"shard"}),
 		flushServiceHeadDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Namespace: "pyroscope",
 			Name:      "segment_flush_service_head_duration_seconds",
-			Buckets:   prometheus.ExponentialBuckets(0.1, 1.5, 30),
+			Buckets:   prometheus.ExponentialBuckets(0.1, 1.22, 20),
 		}, []string{"shard", "tenant", "service"}),
 		flushSegmentDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Namespace: "pyroscope",
 			Name:      "segment_flush_segment_duration_seconds",
-			Buckets:   prometheus.ExponentialBuckets(0.1, 1.5, 30),
+			Buckets:   prometheus.ExponentialBuckets(0.1, 1.22, 20),
 		}, []string{"shard"}),
 		flushSegmentsDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
 			Namespace: "pyroscope",
 			Name:      "segment_flush_segments_duration_seconds",
-			Buckets:   prometheus.ExponentialBuckets(0.1, 1.5, 30),
+			Buckets:   prometheus.ExponentialBuckets(0.1, 1.22, 20),
 		}),
 
 		flushServiceHeadError: prometheus.NewCounterVec(
