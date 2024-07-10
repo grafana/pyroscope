@@ -17,7 +17,6 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
 	"github.com/oklog/ulid"
-	"github.com/opentracing/opentracing-go"
 	"github.com/thanos-io/objstore"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -142,8 +141,12 @@ func (sw *segmentsWriter) Flush(ctx context.Context) error {
 }
 
 func (sw *segmentsWriter) flushSegments(ctx context.Context) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "segments flush")
-	defer sp.Finish()
+	//sp, ctx := opentracing.StartSpanFromContext(ctx, "segments flush")
+	//defer sp.Finish()
+	t1 := time.Now()
+	defer func() {
+		sw.metrics.flushSegmentsDuration.Observe(time.Since(t1).Seconds())
+	}()
 
 	sw.segmentsLock.Lock()
 	prev := sw.segments
@@ -194,6 +197,7 @@ func (s *segment) flush(ctx context.Context) error {
 	defer func() {
 		s.cleanup()
 		close(s.doneChan)
+		s.sw.metrics.flushSegmentDuration.WithLabelValues(s.sshard).Observe(time.Since(t1).Seconds())
 		_ = level.Debug(s.sw.l).Log("msg", "writing segment block done", "shard", s.shard, "segment-id", s.ulid.String(), "time-took", time.Since(t1))
 	}()
 
@@ -317,6 +321,7 @@ func (s *segment) flushHeads(ctx context.Context) []serviceHead {
 	//defer sp.Finish()
 	t1 := time.Now()
 	defer func() {
+		s.sw.metrics.flushHeadsDuration.WithLabelValues(s.sshard).Observe(time.Since(t1).Seconds())
 		_ = level.Debug(s.sw.l).Log("msg", "flushed heads", "segment-id", s.ulid.String(), "time-took", time.Since(t1))
 	}()
 	s.inFlightProfiles.Wait()
@@ -324,10 +329,14 @@ func (s *segment) flushHeads(ctx context.Context) []serviceHead {
 		"segment-id", s.ulid.String(), "time-took", time.Since(t1).String())
 	moved := make([]serviceHead, 0, len(s.heads))
 	for _, e := range s.heads {
+		th := time.Now()
 		if err := e.head.Flush(ctx); err != nil {
+			s.sw.metrics.flushServiceHeadDuration.WithLabelValues(s.sshard, e.key.tenant, e.key.service).Observe(time.Since(th).Seconds())
 			_ = level.Error(s.sw.l).Log("msg", "failed to flush head", "err", err, "head", e.head.BlockID())
+			s.sw.metrics.flushServiceHeadError.WithLabelValues(s.sshard, e.key.tenant, e.key.service).Inc()
 			continue
 		}
+		s.sw.metrics.flushServiceHeadDuration.WithLabelValues(s.sshard, e.key.tenant, e.key.service).Observe(time.Since(th).Seconds())
 		stats, _ := json.Marshal(e.head.GetMetaStats())
 		level.Debug(s.sw.l).Log("msg", "flushed head", "head", e.head.BlockID(), "stats", stats)
 		if err := e.head.Move(); err != nil {
@@ -335,18 +344,16 @@ func (s *segment) flushHeads(ctx context.Context) []serviceHead {
 				_ = level.Debug(s.sw.l).Log("msg", "skipping empty head", "head", e.head.BlockID())
 				continue
 			}
+			s.sw.metrics.flushServiceHeadError.WithLabelValues(s.sshard, e.key.tenant, e.key.service).Inc()
 			_ = level.Error(s.sw.l).Log("msg", "failed to move head", "err", err, "head", e.head.BlockID())
 			continue
 		}
 		profiles, index, symbols := getFilesForSegment(e.head.Meta())
 		if profiles == nil || index == nil || symbols == nil {
+			s.sw.metrics.flushServiceHeadError.WithLabelValues(s.sshard, e.key.tenant, e.key.service).Inc()
 			_ = level.Error(s.sw.l).Log("msg", "failed to find files", "head", e.head.BlockID())
 			continue
 		}
-		//if e.head.GetMetaStats().NumSamples == 0 {
-		//	_ = level.Debug(s.sw.l).Log("msg", "skipping empty head", "head", e.head.BlockID())
-		//	continue
-		//}
 		moved = append(moved, e)
 	}
 	slices.SortFunc(moved, func(i, j serviceHead) int {
