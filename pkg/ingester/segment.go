@@ -407,7 +407,8 @@ func (s *segment) ingest(ctx context.Context, tenantID string, p *profilev1.Prof
 		tenant:  tenantID,
 		service: phlaremodel.Labels(labels).Get(phlaremodel.LabelNameServiceName),
 	}
-	s.sw.metrics.segmentIngestBytes.WithLabelValues(s.sshard, tenantID, k.service).Observe(float64(p.SizeVT()))
+	profileType := phlaremodel.Labels(labels).Get(phlaremodel.LabelNameProfileType)
+	s.sw.metrics.segmentIngestBytes.WithLabelValues(s.sshard, tenantID, k.service, profileType).Observe(float64(p.SizeVT()))
 	h, err := s.headForIngest(k)
 	if err != nil {
 		return err
