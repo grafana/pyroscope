@@ -99,7 +99,7 @@ func newSegmentMetrics(reg prometheus.Registerer) *segmentMetrics {
 		headSizeBytes: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
 				Namespace: "pyroscope",
-				Name:      "head_size_bytes",
+				Name:      "segment_head_size_bytes",
 				Buckets:   prometheus.ExponentialBucketsRange(10*1024, 100*1024*1024, 30),
 			}, []string{"shard", "tenant", "service"}),
 	}
