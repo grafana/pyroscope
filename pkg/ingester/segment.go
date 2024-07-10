@@ -266,10 +266,7 @@ func (s *segment) flushBlock(ctx context.Context, heads []serviceHead) (string, 
 		meta.TenantServices = append(meta.TenantServices, svc)
 	}
 
-	//err = s.dumpMeta(meta)
-	//if err != nil {
-	//  return err
-	//}
+	//_ = s.dumpMeta(meta)
 	return blockPath, meta, nil
 }
 
@@ -278,12 +275,12 @@ func (s *segment) flushBlock(ctx context.Context, heads []serviceHead) (string, 
 //	if err != nil {
 //		return err
 //	}
-//	err = os.WriteFile(path.Join(s.dataPath, pathMetaPB), bs, 0644)
+//	err = os.WriteFile(path.Join(s.dataPath, "meta.pb"), bs, 0644)
 //	if err != nil {
 //		return err
 //	}
 //	bs, err = json.Marshal(meta)
-//	err = os.WriteFile(path.Join(s.dataPath, pathMetaJson), []byte(bs), 0644)
+//	err = os.WriteFile(path.Join(s.dataPath, "meta.json"), []byte(bs), 0644)
 //	if err != nil {
 //		return err
 //	}
