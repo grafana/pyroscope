@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"github.com/prometheus/common/model"
 	"os"
 	"path"
 	"path/filepath"
@@ -407,8 +408,8 @@ func (s *segment) ingest(ctx context.Context, tenantID string, p *profilev1.Prof
 		tenant:  tenantID,
 		service: phlaremodel.Labels(labels).Get(phlaremodel.LabelNameServiceName),
 	}
-	profileType := phlaremodel.Labels(labels).Get(phlaremodel.LabelNameProfileType)
-	s.sw.metrics.segmentIngestBytes.WithLabelValues(s.sshard, tenantID, k.service, profileType).Observe(float64(p.SizeVT()))
+	metricName := phlaremodel.Labels(labels).Get(model.MetricNameLabel)
+	s.sw.metrics.segmentIngestBytes.WithLabelValues(s.sshard, tenantID, k.service, metricName).Observe(float64(p.SizeVT()))
 	h, err := s.headForIngest(k)
 	if err != nil {
 		return err

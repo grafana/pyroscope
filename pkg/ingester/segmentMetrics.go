@@ -30,7 +30,7 @@ func newSegmentMetrics(reg prometheus.Registerer) *segmentMetrics {
 				Name:      "segment_ingest_bytes",
 				Buckets:   prometheus.ExponentialBucketsRange(10*1024, 15*1024*1024, 30),
 			},
-			[]string{"shard", "tenant", "service", "profile_type"}),
+			[]string{"shard", "tenant", "service", "metric_name"}),
 		segmentBlockSizeBytes: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
 				Namespace: "pyroscope",
