@@ -22,16 +22,15 @@ import (
 	"github.com/grafana/dskit/server"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 
-	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	querybackendv1 "github.com/grafana/pyroscope/api/gen/proto/go/querybackend/v1"
-	"github.com/grafana/pyroscope/pkg/metastore"
-	"github.com/grafana/pyroscope/pkg/querybackend"
 	"github.com/grafana/pyroscope/public"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/adhocprofiles/v1/adhocprofilesv1connect"
+	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
+	querybackendv1 "github.com/grafana/pyroscope/api/gen/proto/go/querybackend/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/settings/v1/settingsv1connect"
 	statusv1 "github.com/grafana/pyroscope/api/gen/proto/go/status/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/storegateway/v1/storegatewayv1connect"
@@ -46,8 +45,10 @@ import (
 	"github.com/grafana/pyroscope/pkg/frontend/frontendpb/frontendpbconnect"
 	"github.com/grafana/pyroscope/pkg/ingester"
 	"github.com/grafana/pyroscope/pkg/ingester/pyroscope"
+	"github.com/grafana/pyroscope/pkg/metastore"
 	"github.com/grafana/pyroscope/pkg/operations"
 	"github.com/grafana/pyroscope/pkg/querier"
+	"github.com/grafana/pyroscope/pkg/querybackend"
 	"github.com/grafana/pyroscope/pkg/scheduler"
 	"github.com/grafana/pyroscope/pkg/scheduler/schedulerpb/schedulerpbconnect"
 	"github.com/grafana/pyroscope/pkg/settings"
@@ -291,6 +292,7 @@ func (a *API) RegisterCompactor(c *compactor.MultitenantCompactor) {
 
 func (a *API) RegisterMetastore(svc *metastore.Metastore) {
 	metastorev1.RegisterMetastoreServiceServer(a.server.GRPC, svc)
+	compactorv1.RegisterCompactionPlannerServer(a.server.GRPC, svc)
 }
 
 func (a *API) RegisterQueryBackend(svc *querybackend.QueryBackend) {

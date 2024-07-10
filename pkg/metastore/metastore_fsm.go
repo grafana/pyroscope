@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/raft"
 	"google.golang.org/protobuf/proto"
 
+	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/metastore/raftlogpb"
 	"github.com/grafana/pyroscope/pkg/util"
@@ -19,7 +20,8 @@ import (
 // The map is used to determine the type of the given command,
 // when the request is converted to a Raft log entry.
 var commandTypeMap = map[reflect.Type]raftlogpb.CommandType{
-	reflect.TypeOf(new(metastorev1.AddBlockRequest)): raftlogpb.CommandType_COMMAND_TYPE_ADD_BLOCK,
+	reflect.TypeOf(new(metastorev1.AddBlockRequest)):          raftlogpb.CommandType_COMMAND_TYPE_ADD_BLOCK,
+	reflect.TypeOf(new(compactorv1.AddCompactionJobsRequest)): raftlogpb.CommandType_COMMAND_TYPE_ADD_COMPACTION_JOBS,
 	reflect.TypeOf(new(raftlogpb.TruncateCommand)):   raftlogpb.CommandType_COMMAND_TYPE_TRUNCATE,
 }
 
@@ -28,6 +30,9 @@ var commandTypeMap = map[reflect.Type]raftlogpb.CommandType{
 var commandHandlers = map[raftlogpb.CommandType]commandHandler{
 	raftlogpb.CommandType_COMMAND_TYPE_ADD_BLOCK: func(fsm *FSM, raw []byte) fsmResponse {
 		return handleCommand(raw, fsm.state.applyAddBlock)
+	},
+	raftlogpb.CommandType_COMMAND_TYPE_ADD_COMPACTION_JOBS: func(fsm *FSM, raw []byte) fsmResponse {
+		return handleCommand(raw, fsm.state.applyAddCompactionJobs)
 	},
 	raftlogpb.CommandType_COMMAND_TYPE_TRUNCATE: func(fsm *FSM, raw []byte) fsmResponse {
 		return handleCommand(raw, fsm.state.applyTruncate)

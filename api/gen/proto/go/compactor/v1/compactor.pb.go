@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.34.1
 // 	protoc        (unknown)
-// source: copmactor/v1/compactor.proto
+// source: compactor/v1/compactor.proto
 
 package compactorv1
 
@@ -57,11 +57,11 @@ func (x CompactionStatus) String() string {
 }
 
 func (CompactionStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_copmactor_v1_compactor_proto_enumTypes[0].Descriptor()
+	return file_compactor_v1_compactor_proto_enumTypes[0].Descriptor()
 }
 
 func (CompactionStatus) Type() protoreflect.EnumType {
-	return &file_copmactor_v1_compactor_proto_enumTypes[0]
+	return &file_compactor_v1_compactor_proto_enumTypes[0]
 }
 
 func (x CompactionStatus) Number() protoreflect.EnumNumber {
@@ -70,7 +70,7 @@ func (x CompactionStatus) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use CompactionStatus.Descriptor instead.
 func (CompactionStatus) EnumDescriptor() ([]byte, []int) {
-	return file_copmactor_v1_compactor_proto_rawDescGZIP(), []int{0}
+	return file_compactor_v1_compactor_proto_rawDescGZIP(), []int{0}
 }
 
 type GetCompactionRequest struct {
@@ -84,7 +84,7 @@ type GetCompactionRequest struct {
 func (x *GetCompactionRequest) Reset() {
 	*x = GetCompactionRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_copmactor_v1_compactor_proto_msgTypes[0]
+		mi := &file_compactor_v1_compactor_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -97,7 +97,7 @@ func (x *GetCompactionRequest) String() string {
 func (*GetCompactionRequest) ProtoMessage() {}
 
 func (x *GetCompactionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_copmactor_v1_compactor_proto_msgTypes[0]
+	mi := &file_compactor_v1_compactor_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -110,7 +110,7 @@ func (x *GetCompactionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCompactionRequest.ProtoReflect.Descriptor instead.
 func (*GetCompactionRequest) Descriptor() ([]byte, []int) {
-	return file_copmactor_v1_compactor_proto_rawDescGZIP(), []int{0}
+	return file_compactor_v1_compactor_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *GetCompactionRequest) GetSelector() *CompactionJobSelector {
@@ -129,7 +129,7 @@ type CompactionJobSelector struct {
 func (x *CompactionJobSelector) Reset() {
 	*x = CompactionJobSelector{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_copmactor_v1_compactor_proto_msgTypes[1]
+		mi := &file_compactor_v1_compactor_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -142,7 +142,7 @@ func (x *CompactionJobSelector) String() string {
 func (*CompactionJobSelector) ProtoMessage() {}
 
 func (x *CompactionJobSelector) ProtoReflect() protoreflect.Message {
-	mi := &file_copmactor_v1_compactor_proto_msgTypes[1]
+	mi := &file_compactor_v1_compactor_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -155,7 +155,7 @@ func (x *CompactionJobSelector) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompactionJobSelector.ProtoReflect.Descriptor instead.
 func (*CompactionJobSelector) Descriptor() ([]byte, []int) {
-	return file_copmactor_v1_compactor_proto_rawDescGZIP(), []int{1}
+	return file_compactor_v1_compactor_proto_rawDescGZIP(), []int{1}
 }
 
 type GetCompactionResponse struct {
@@ -171,7 +171,7 @@ type GetCompactionResponse struct {
 func (x *GetCompactionResponse) Reset() {
 	*x = GetCompactionResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_copmactor_v1_compactor_proto_msgTypes[2]
+		mi := &file_compactor_v1_compactor_proto_msgTypes[2]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -184,7 +184,7 @@ func (x *GetCompactionResponse) String() string {
 func (*GetCompactionResponse) ProtoMessage() {}
 
 func (x *GetCompactionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_copmactor_v1_compactor_proto_msgTypes[2]
+	mi := &file_compactor_v1_compactor_proto_msgTypes[2]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -197,7 +197,7 @@ func (x *GetCompactionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCompactionResponse.ProtoReflect.Descriptor instead.
 func (*GetCompactionResponse) Descriptor() ([]byte, []int) {
-	return file_copmactor_v1_compactor_proto_rawDescGZIP(), []int{2}
+	return file_compactor_v1_compactor_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *GetCompactionResponse) GetCompactionJobs() []*CompactionJob {
@@ -223,7 +223,7 @@ type CompactionJob struct {
 func (x *CompactionJob) Reset() {
 	*x = CompactionJob{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_copmactor_v1_compactor_proto_msgTypes[3]
+		mi := &file_compactor_v1_compactor_proto_msgTypes[3]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -236,7 +236,7 @@ func (x *CompactionJob) String() string {
 func (*CompactionJob) ProtoMessage() {}
 
 func (x *CompactionJob) ProtoReflect() protoreflect.Message {
-	mi := &file_copmactor_v1_compactor_proto_msgTypes[3]
+	mi := &file_compactor_v1_compactor_proto_msgTypes[3]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -249,7 +249,7 @@ func (x *CompactionJob) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompactionJob.ProtoReflect.Descriptor instead.
 func (*CompactionJob) Descriptor() ([]byte, []int) {
-	return file_copmactor_v1_compactor_proto_rawDescGZIP(), []int{3}
+	return file_compactor_v1_compactor_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *CompactionJob) GetName() string {
@@ -287,7 +287,7 @@ type CompactionOptions struct {
 func (x *CompactionOptions) Reset() {
 	*x = CompactionOptions{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_copmactor_v1_compactor_proto_msgTypes[4]
+		mi := &file_compactor_v1_compactor_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -300,7 +300,7 @@ func (x *CompactionOptions) String() string {
 func (*CompactionOptions) ProtoMessage() {}
 
 func (x *CompactionOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_copmactor_v1_compactor_proto_msgTypes[4]
+	mi := &file_compactor_v1_compactor_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -313,7 +313,7 @@ func (x *CompactionOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompactionOptions.ProtoReflect.Descriptor instead.
 func (*CompactionOptions) Descriptor() ([]byte, []int) {
-	return file_copmactor_v1_compactor_proto_rawDescGZIP(), []int{4}
+	return file_compactor_v1_compactor_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *CompactionOptions) GetStatusUpdateIntervalSeconds() uint64 {
@@ -334,7 +334,7 @@ type UpdateJobStatusRequest struct {
 func (x *UpdateJobStatusRequest) Reset() {
 	*x = UpdateJobStatusRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_copmactor_v1_compactor_proto_msgTypes[5]
+		mi := &file_compactor_v1_compactor_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -347,7 +347,7 @@ func (x *UpdateJobStatusRequest) String() string {
 func (*UpdateJobStatusRequest) ProtoMessage() {}
 
 func (x *UpdateJobStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_copmactor_v1_compactor_proto_msgTypes[5]
+	mi := &file_compactor_v1_compactor_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -360,7 +360,7 @@ func (x *UpdateJobStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateJobStatusRequest.ProtoReflect.Descriptor instead.
 func (*UpdateJobStatusRequest) Descriptor() ([]byte, []int) {
-	return file_copmactor_v1_compactor_proto_rawDescGZIP(), []int{5}
+	return file_compactor_v1_compactor_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *UpdateJobStatusRequest) GetJobs() []*CompactionJobStatus {
@@ -396,7 +396,7 @@ type CompactionJobStatus struct {
 func (x *CompactionJobStatus) Reset() {
 	*x = CompactionJobStatus{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_copmactor_v1_compactor_proto_msgTypes[6]
+		mi := &file_compactor_v1_compactor_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -409,7 +409,7 @@ func (x *CompactionJobStatus) String() string {
 func (*CompactionJobStatus) ProtoMessage() {}
 
 func (x *CompactionJobStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_copmactor_v1_compactor_proto_msgTypes[6]
+	mi := &file_compactor_v1_compactor_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -422,7 +422,7 @@ func (x *CompactionJobStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompactionJobStatus.ProtoReflect.Descriptor instead.
 func (*CompactionJobStatus) Descriptor() ([]byte, []int) {
-	return file_copmactor_v1_compactor_proto_rawDescGZIP(), []int{6}
+	return file_compactor_v1_compactor_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *CompactionJobStatus) GetName() string {
@@ -457,7 +457,7 @@ type CompletedJob struct {
 func (x *CompletedJob) Reset() {
 	*x = CompletedJob{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_copmactor_v1_compactor_proto_msgTypes[7]
+		mi := &file_compactor_v1_compactor_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -470,7 +470,7 @@ func (x *CompletedJob) String() string {
 func (*CompletedJob) ProtoMessage() {}
 
 func (x *CompletedJob) ProtoReflect() protoreflect.Message {
-	mi := &file_copmactor_v1_compactor_proto_msgTypes[7]
+	mi := &file_compactor_v1_compactor_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -483,7 +483,7 @@ func (x *CompletedJob) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompletedJob.ProtoReflect.Descriptor instead.
 func (*CompletedJob) Descriptor() ([]byte, []int) {
-	return file_copmactor_v1_compactor_proto_rawDescGZIP(), []int{7}
+	return file_compactor_v1_compactor_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *CompletedJob) GetBlocks() []*v1.BlockMeta {
@@ -502,7 +502,7 @@ type UpdateJobStatusResponse struct {
 func (x *UpdateJobStatusResponse) Reset() {
 	*x = UpdateJobStatusResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_copmactor_v1_compactor_proto_msgTypes[8]
+		mi := &file_compactor_v1_compactor_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -515,7 +515,7 @@ func (x *UpdateJobStatusResponse) String() string {
 func (*UpdateJobStatusResponse) ProtoMessage() {}
 
 func (x *UpdateJobStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_copmactor_v1_compactor_proto_msgTypes[8]
+	mi := &file_compactor_v1_compactor_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -528,13 +528,98 @@ func (x *UpdateJobStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateJobStatusResponse.ProtoReflect.Descriptor instead.
 func (*UpdateJobStatusResponse) Descriptor() ([]byte, []int) {
-	return file_copmactor_v1_compactor_proto_rawDescGZIP(), []int{8}
+	return file_compactor_v1_compactor_proto_rawDescGZIP(), []int{8}
 }
 
-var File_copmactor_v1_compactor_proto protoreflect.FileDescriptor
+type AddCompactionJobsRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
 
-var file_copmactor_v1_compactor_proto_rawDesc = []byte{
-	0x0a, 0x1c, 0x63, 0x6f, 0x70, 0x6d, 0x61, 0x63, 0x74, 0x6f, 0x72, 0x2f, 0x76, 0x31, 0x2f, 0x63,
+	Jobs []*CompactionJob `protobuf:"bytes,1,rep,name=jobs,proto3" json:"jobs,omitempty"`
+}
+
+func (x *AddCompactionJobsRequest) Reset() {
+	*x = AddCompactionJobsRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_compactor_v1_compactor_proto_msgTypes[9]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *AddCompactionJobsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddCompactionJobsRequest) ProtoMessage() {}
+
+func (x *AddCompactionJobsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_compactor_v1_compactor_proto_msgTypes[9]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddCompactionJobsRequest.ProtoReflect.Descriptor instead.
+func (*AddCompactionJobsRequest) Descriptor() ([]byte, []int) {
+	return file_compactor_v1_compactor_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *AddCompactionJobsRequest) GetJobs() []*CompactionJob {
+	if x != nil {
+		return x.Jobs
+	}
+	return nil
+}
+
+type AddCompactionJobsResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *AddCompactionJobsResponse) Reset() {
+	*x = AddCompactionJobsResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_compactor_v1_compactor_proto_msgTypes[10]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *AddCompactionJobsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddCompactionJobsResponse) ProtoMessage() {}
+
+func (x *AddCompactionJobsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_compactor_v1_compactor_proto_msgTypes[10]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddCompactionJobsResponse.ProtoReflect.Descriptor instead.
+func (*AddCompactionJobsResponse) Descriptor() ([]byte, []int) {
+	return file_compactor_v1_compactor_proto_rawDescGZIP(), []int{10}
+}
+
+var File_compactor_v1_compactor_proto protoreflect.FileDescriptor
+
+var file_compactor_v1_compactor_proto_rawDesc = []byte{
+	0x0a, 0x1c, 0x63, 0x6f, 0x6d, 0x70, 0x61, 0x63, 0x74, 0x6f, 0x72, 0x2f, 0x76, 0x31, 0x2f, 0x63,
 	0x6f, 0x6d, 0x70, 0x61, 0x63, 0x74, 0x6f, 0x72, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x0c,
 	0x63, 0x6f, 0x6d, 0x70, 0x61, 0x63, 0x74, 0x6f, 0x72, 0x2e, 0x76, 0x31, 0x1a, 0x1c, 0x6d, 0x65,
 	0x74, 0x61, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x2f, 0x76, 0x31, 0x2f, 0x6d, 0x65, 0x74, 0x61, 0x73,
@@ -587,98 +672,108 @@ var file_copmactor_v1_compactor_proto_rawDesc = []byte{
 	0x6d, 0x65, 0x74, 0x61, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x42, 0x6c, 0x6f,
 	0x63, 0x6b, 0x4d, 0x65, 0x74, 0x61, 0x52, 0x06, 0x62, 0x6c, 0x6f, 0x63, 0x6b, 0x73, 0x22, 0x19,
 	0x0a, 0x17, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x4a, 0x6f, 0x62, 0x53, 0x74, 0x61, 0x74, 0x75,
-	0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x2a, 0x96, 0x01, 0x0a, 0x10, 0x43, 0x6f,
-	0x6d, 0x70, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x21,
-	0x0a, 0x1d, 0x43, 0x4f, 0x4d, 0x50, 0x41, 0x43, 0x54, 0x49, 0x4f, 0x4e, 0x5f, 0x53, 0x54, 0x41,
-	0x54, 0x55, 0x53, 0x5f, 0x55, 0x4e, 0x53, 0x50, 0x45, 0x43, 0x49, 0x46, 0x49, 0x45, 0x44, 0x10,
-	0x00, 0x12, 0x21, 0x0a, 0x1d, 0x43, 0x4f, 0x4d, 0x50, 0x41, 0x43, 0x54, 0x49, 0x4f, 0x4e, 0x5f,
-	0x53, 0x54, 0x41, 0x54, 0x55, 0x53, 0x5f, 0x49, 0x4e, 0x5f, 0x50, 0x52, 0x4f, 0x47, 0x52, 0x45,
-	0x53, 0x53, 0x10, 0x01, 0x12, 0x1d, 0x0a, 0x19, 0x43, 0x4f, 0x4d, 0x50, 0x41, 0x43, 0x54, 0x49,
-	0x4f, 0x4e, 0x5f, 0x53, 0x54, 0x41, 0x54, 0x55, 0x53, 0x5f, 0x53, 0x55, 0x43, 0x43, 0x45, 0x53,
-	0x53, 0x10, 0x02, 0x12, 0x1d, 0x0a, 0x19, 0x43, 0x4f, 0x4d, 0x50, 0x41, 0x43, 0x54, 0x49, 0x4f,
-	0x4e, 0x5f, 0x53, 0x54, 0x41, 0x54, 0x55, 0x53, 0x5f, 0x46, 0x41, 0x49, 0x4c, 0x55, 0x52, 0x45,
-	0x10, 0x03, 0x32, 0xd5, 0x01, 0x0a, 0x11, 0x43, 0x6f, 0x6d, 0x70, 0x61, 0x63, 0x74, 0x69, 0x6f,
-	0x6e, 0x50, 0x6c, 0x61, 0x6e, 0x6e, 0x65, 0x72, 0x12, 0x5e, 0x0a, 0x11, 0x47, 0x65, 0x74, 0x43,
-	0x6f, 0x6d, 0x70, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x4a, 0x6f, 0x62, 0x73, 0x12, 0x22, 0x2e,
-	0x63, 0x6f, 0x6d, 0x70, 0x61, 0x63, 0x74, 0x6f, 0x72, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65, 0x74,
-	0x43, 0x6f, 0x6d, 0x70, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
-	0x74, 0x1a, 0x23, 0x2e, 0x63, 0x6f, 0x6d, 0x70, 0x61, 0x63, 0x74, 0x6f, 0x72, 0x2e, 0x76, 0x31,
-	0x2e, 0x47, 0x65, 0x74, 0x43, 0x6f, 0x6d, 0x70, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x65,
-	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x60, 0x0a, 0x0f, 0x55, 0x70, 0x64, 0x61,
-	0x74, 0x65, 0x4a, 0x6f, 0x62, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x24, 0x2e, 0x63, 0x6f,
+	0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x4b, 0x0a, 0x18, 0x41, 0x64, 0x64,
+	0x43, 0x6f, 0x6d, 0x70, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x4a, 0x6f, 0x62, 0x73, 0x52, 0x65,
+	0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x2f, 0x0a, 0x04, 0x6a, 0x6f, 0x62, 0x73, 0x18, 0x01, 0x20,
+	0x03, 0x28, 0x0b, 0x32, 0x1b, 0x2e, 0x63, 0x6f, 0x6d, 0x70, 0x61, 0x63, 0x74, 0x6f, 0x72, 0x2e,
+	0x76, 0x31, 0x2e, 0x43, 0x6f, 0x6d, 0x70, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x4a, 0x6f, 0x62,
+	0x52, 0x04, 0x6a, 0x6f, 0x62, 0x73, 0x22, 0x1b, 0x0a, 0x19, 0x41, 0x64, 0x64, 0x43, 0x6f, 0x6d,
+	0x70, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x4a, 0x6f, 0x62, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f,
+	0x6e, 0x73, 0x65, 0x2a, 0x96, 0x01, 0x0a, 0x10, 0x43, 0x6f, 0x6d, 0x70, 0x61, 0x63, 0x74, 0x69,
+	0x6f, 0x6e, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x21, 0x0a, 0x1d, 0x43, 0x4f, 0x4d, 0x50,
+	0x41, 0x43, 0x54, 0x49, 0x4f, 0x4e, 0x5f, 0x53, 0x54, 0x41, 0x54, 0x55, 0x53, 0x5f, 0x55, 0x4e,
+	0x53, 0x50, 0x45, 0x43, 0x49, 0x46, 0x49, 0x45, 0x44, 0x10, 0x00, 0x12, 0x21, 0x0a, 0x1d, 0x43,
+	0x4f, 0x4d, 0x50, 0x41, 0x43, 0x54, 0x49, 0x4f, 0x4e, 0x5f, 0x53, 0x54, 0x41, 0x54, 0x55, 0x53,
+	0x5f, 0x49, 0x4e, 0x5f, 0x50, 0x52, 0x4f, 0x47, 0x52, 0x45, 0x53, 0x53, 0x10, 0x01, 0x12, 0x1d,
+	0x0a, 0x19, 0x43, 0x4f, 0x4d, 0x50, 0x41, 0x43, 0x54, 0x49, 0x4f, 0x4e, 0x5f, 0x53, 0x54, 0x41,
+	0x54, 0x55, 0x53, 0x5f, 0x53, 0x55, 0x43, 0x43, 0x45, 0x53, 0x53, 0x10, 0x02, 0x12, 0x1d, 0x0a,
+	0x19, 0x43, 0x4f, 0x4d, 0x50, 0x41, 0x43, 0x54, 0x49, 0x4f, 0x4e, 0x5f, 0x53, 0x54, 0x41, 0x54,
+	0x55, 0x53, 0x5f, 0x46, 0x41, 0x49, 0x4c, 0x55, 0x52, 0x45, 0x10, 0x03, 0x32, 0xd5, 0x01, 0x0a,
+	0x11, 0x43, 0x6f, 0x6d, 0x70, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x50, 0x6c, 0x61, 0x6e, 0x6e,
+	0x65, 0x72, 0x12, 0x5e, 0x0a, 0x11, 0x47, 0x65, 0x74, 0x43, 0x6f, 0x6d, 0x70, 0x61, 0x63, 0x74,
+	0x69, 0x6f, 0x6e, 0x4a, 0x6f, 0x62, 0x73, 0x12, 0x22, 0x2e, 0x63, 0x6f, 0x6d, 0x70, 0x61, 0x63,
+	0x74, 0x6f, 0x72, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65, 0x74, 0x43, 0x6f, 0x6d, 0x70, 0x61, 0x63,
+	0x74, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x23, 0x2e, 0x63, 0x6f,
+	0x6d, 0x70, 0x61, 0x63, 0x74, 0x6f, 0x72, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65, 0x74, 0x43, 0x6f,
+	0x6d, 0x70, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
+	0x22, 0x00, 0x12, 0x60, 0x0a, 0x0f, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x4a, 0x6f, 0x62, 0x53,
+	0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x24, 0x2e, 0x63, 0x6f, 0x6d, 0x70, 0x61, 0x63, 0x74, 0x6f,
+	0x72, 0x2e, 0x76, 0x31, 0x2e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x4a, 0x6f, 0x62, 0x53, 0x74,
+	0x61, 0x74, 0x75, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x25, 0x2e, 0x63, 0x6f,
 	0x6d, 0x70, 0x61, 0x63, 0x74, 0x6f, 0x72, 0x2e, 0x76, 0x31, 0x2e, 0x55, 0x70, 0x64, 0x61, 0x74,
-	0x65, 0x4a, 0x6f, 0x62, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
-	0x74, 0x1a, 0x25, 0x2e, 0x63, 0x6f, 0x6d, 0x70, 0x61, 0x63, 0x74, 0x6f, 0x72, 0x2e, 0x76, 0x31,
-	0x2e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x4a, 0x6f, 0x62, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73,
-	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x42, 0xbb, 0x01, 0x0a, 0x10, 0x63,
-	0x6f, 0x6d, 0x2e, 0x63, 0x6f, 0x6d, 0x70, 0x61, 0x63, 0x74, 0x6f, 0x72, 0x2e, 0x76, 0x31, 0x42,
-	0x0e, 0x43, 0x6f, 0x6d, 0x70, 0x61, 0x63, 0x74, 0x6f, 0x72, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50,
-	0x01, 0x5a, 0x46, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x67, 0x72,
-	0x61, 0x66, 0x61, 0x6e, 0x61, 0x2f, 0x70, 0x79, 0x72, 0x6f, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x2f,
-	0x61, 0x70, 0x69, 0x2f, 0x67, 0x65, 0x6e, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x67, 0x6f,
-	0x2f, 0x63, 0x6f, 0x70, 0x6d, 0x61, 0x63, 0x74, 0x6f, 0x72, 0x2f, 0x76, 0x31, 0x3b, 0x63, 0x6f,
-	0x6d, 0x70, 0x61, 0x63, 0x74, 0x6f, 0x72, 0x76, 0x31, 0xa2, 0x02, 0x03, 0x43, 0x58, 0x58, 0xaa,
-	0x02, 0x0c, 0x43, 0x6f, 0x6d, 0x70, 0x61, 0x63, 0x74, 0x6f, 0x72, 0x2e, 0x56, 0x31, 0xca, 0x02,
-	0x0c, 0x43, 0x6f, 0x6d, 0x70, 0x61, 0x63, 0x74, 0x6f, 0x72, 0x5c, 0x56, 0x31, 0xe2, 0x02, 0x18,
-	0x43, 0x6f, 0x6d, 0x70, 0x61, 0x63, 0x74, 0x6f, 0x72, 0x5c, 0x56, 0x31, 0x5c, 0x47, 0x50, 0x42,
-	0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0xea, 0x02, 0x0d, 0x43, 0x6f, 0x6d, 0x70, 0x61,
-	0x63, 0x74, 0x6f, 0x72, 0x3a, 0x3a, 0x56, 0x31, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x65, 0x4a, 0x6f, 0x62, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x22, 0x00, 0x42, 0xbb, 0x01, 0x0a, 0x10, 0x63, 0x6f, 0x6d, 0x2e, 0x63, 0x6f, 0x6d,
+	0x70, 0x61, 0x63, 0x74, 0x6f, 0x72, 0x2e, 0x76, 0x31, 0x42, 0x0e, 0x43, 0x6f, 0x6d, 0x70, 0x61,
+	0x63, 0x74, 0x6f, 0x72, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a, 0x46, 0x67, 0x69, 0x74,
+	0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x67, 0x72, 0x61, 0x66, 0x61, 0x6e, 0x61, 0x2f,
+	0x70, 0x79, 0x72, 0x6f, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x67, 0x65,
+	0x6e, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x67, 0x6f, 0x2f, 0x63, 0x6f, 0x6d, 0x70, 0x61,
+	0x63, 0x74, 0x6f, 0x72, 0x2f, 0x76, 0x31, 0x3b, 0x63, 0x6f, 0x6d, 0x70, 0x61, 0x63, 0x74, 0x6f,
+	0x72, 0x76, 0x31, 0xa2, 0x02, 0x03, 0x43, 0x58, 0x58, 0xaa, 0x02, 0x0c, 0x43, 0x6f, 0x6d, 0x70,
+	0x61, 0x63, 0x74, 0x6f, 0x72, 0x2e, 0x56, 0x31, 0xca, 0x02, 0x0c, 0x43, 0x6f, 0x6d, 0x70, 0x61,
+	0x63, 0x74, 0x6f, 0x72, 0x5c, 0x56, 0x31, 0xe2, 0x02, 0x18, 0x43, 0x6f, 0x6d, 0x70, 0x61, 0x63,
+	0x74, 0x6f, 0x72, 0x5c, 0x56, 0x31, 0x5c, 0x47, 0x50, 0x42, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61,
+	0x74, 0x61, 0xea, 0x02, 0x0d, 0x43, 0x6f, 0x6d, 0x70, 0x61, 0x63, 0x74, 0x6f, 0x72, 0x3a, 0x3a,
+	0x56, 0x31, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
-	file_copmactor_v1_compactor_proto_rawDescOnce sync.Once
-	file_copmactor_v1_compactor_proto_rawDescData = file_copmactor_v1_compactor_proto_rawDesc
+	file_compactor_v1_compactor_proto_rawDescOnce sync.Once
+	file_compactor_v1_compactor_proto_rawDescData = file_compactor_v1_compactor_proto_rawDesc
 )
 
-func file_copmactor_v1_compactor_proto_rawDescGZIP() []byte {
-	file_copmactor_v1_compactor_proto_rawDescOnce.Do(func() {
-		file_copmactor_v1_compactor_proto_rawDescData = protoimpl.X.CompressGZIP(file_copmactor_v1_compactor_proto_rawDescData)
+func file_compactor_v1_compactor_proto_rawDescGZIP() []byte {
+	file_compactor_v1_compactor_proto_rawDescOnce.Do(func() {
+		file_compactor_v1_compactor_proto_rawDescData = protoimpl.X.CompressGZIP(file_compactor_v1_compactor_proto_rawDescData)
 	})
-	return file_copmactor_v1_compactor_proto_rawDescData
+	return file_compactor_v1_compactor_proto_rawDescData
 }
 
-var file_copmactor_v1_compactor_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_copmactor_v1_compactor_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
-var file_copmactor_v1_compactor_proto_goTypes = []interface{}{
-	(CompactionStatus)(0),           // 0: compactor.v1.CompactionStatus
-	(*GetCompactionRequest)(nil),    // 1: compactor.v1.GetCompactionRequest
-	(*CompactionJobSelector)(nil),   // 2: compactor.v1.CompactionJobSelector
-	(*GetCompactionResponse)(nil),   // 3: compactor.v1.GetCompactionResponse
-	(*CompactionJob)(nil),           // 4: compactor.v1.CompactionJob
-	(*CompactionOptions)(nil),       // 5: compactor.v1.CompactionOptions
-	(*UpdateJobStatusRequest)(nil),  // 6: compactor.v1.UpdateJobStatusRequest
-	(*CompactionJobStatus)(nil),     // 7: compactor.v1.CompactionJobStatus
-	(*CompletedJob)(nil),            // 8: compactor.v1.CompletedJob
-	(*UpdateJobStatusResponse)(nil), // 9: compactor.v1.UpdateJobStatusResponse
-	(*v1.BlockMeta)(nil),            // 10: metastore.v1.BlockMeta
+var file_compactor_v1_compactor_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_compactor_v1_compactor_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_compactor_v1_compactor_proto_goTypes = []interface{}{
+	(CompactionStatus)(0),             // 0: compactor.v1.CompactionStatus
+	(*GetCompactionRequest)(nil),      // 1: compactor.v1.GetCompactionRequest
+	(*CompactionJobSelector)(nil),     // 2: compactor.v1.CompactionJobSelector
+	(*GetCompactionResponse)(nil),     // 3: compactor.v1.GetCompactionResponse
+	(*CompactionJob)(nil),             // 4: compactor.v1.CompactionJob
+	(*CompactionOptions)(nil),         // 5: compactor.v1.CompactionOptions
+	(*UpdateJobStatusRequest)(nil),    // 6: compactor.v1.UpdateJobStatusRequest
+	(*CompactionJobStatus)(nil),       // 7: compactor.v1.CompactionJobStatus
+	(*CompletedJob)(nil),              // 8: compactor.v1.CompletedJob
+	(*UpdateJobStatusResponse)(nil),   // 9: compactor.v1.UpdateJobStatusResponse
+	(*AddCompactionJobsRequest)(nil),  // 10: compactor.v1.AddCompactionJobsRequest
+	(*AddCompactionJobsResponse)(nil), // 11: compactor.v1.AddCompactionJobsResponse
+	(*v1.BlockMeta)(nil),              // 12: metastore.v1.BlockMeta
 }
-var file_copmactor_v1_compactor_proto_depIdxs = []int32{
+var file_compactor_v1_compactor_proto_depIdxs = []int32{
 	2,  // 0: compactor.v1.GetCompactionRequest.selector:type_name -> compactor.v1.CompactionJobSelector
 	4,  // 1: compactor.v1.GetCompactionResponse.compaction_jobs:type_name -> compactor.v1.CompactionJob
 	5,  // 2: compactor.v1.CompactionJob.options:type_name -> compactor.v1.CompactionOptions
-	10, // 3: compactor.v1.CompactionJob.blocks:type_name -> metastore.v1.BlockMeta
+	12, // 3: compactor.v1.CompactionJob.blocks:type_name -> metastore.v1.BlockMeta
 	7,  // 4: compactor.v1.UpdateJobStatusRequest.jobs:type_name -> compactor.v1.CompactionJobStatus
 	0,  // 5: compactor.v1.CompactionJobStatus.status:type_name -> compactor.v1.CompactionStatus
 	8,  // 6: compactor.v1.CompactionJobStatus.completed_job:type_name -> compactor.v1.CompletedJob
-	10, // 7: compactor.v1.CompletedJob.blocks:type_name -> metastore.v1.BlockMeta
-	1,  // 8: compactor.v1.CompactionPlanner.GetCompactionJobs:input_type -> compactor.v1.GetCompactionRequest
-	6,  // 9: compactor.v1.CompactionPlanner.UpdateJobStatus:input_type -> compactor.v1.UpdateJobStatusRequest
-	3,  // 10: compactor.v1.CompactionPlanner.GetCompactionJobs:output_type -> compactor.v1.GetCompactionResponse
-	9,  // 11: compactor.v1.CompactionPlanner.UpdateJobStatus:output_type -> compactor.v1.UpdateJobStatusResponse
-	10, // [10:12] is the sub-list for method output_type
-	8,  // [8:10] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	12, // 7: compactor.v1.CompletedJob.blocks:type_name -> metastore.v1.BlockMeta
+	4,  // 8: compactor.v1.AddCompactionJobsRequest.jobs:type_name -> compactor.v1.CompactionJob
+	1,  // 9: compactor.v1.CompactionPlanner.GetCompactionJobs:input_type -> compactor.v1.GetCompactionRequest
+	6,  // 10: compactor.v1.CompactionPlanner.UpdateJobStatus:input_type -> compactor.v1.UpdateJobStatusRequest
+	3,  // 11: compactor.v1.CompactionPlanner.GetCompactionJobs:output_type -> compactor.v1.GetCompactionResponse
+	9,  // 12: compactor.v1.CompactionPlanner.UpdateJobStatus:output_type -> compactor.v1.UpdateJobStatusResponse
+	11, // [11:13] is the sub-list for method output_type
+	9,  // [9:11] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
-func init() { file_copmactor_v1_compactor_proto_init() }
-func file_copmactor_v1_compactor_proto_init() {
-	if File_copmactor_v1_compactor_proto != nil {
+func init() { file_compactor_v1_compactor_proto_init() }
+func file_compactor_v1_compactor_proto_init() {
+	if File_compactor_v1_compactor_proto != nil {
 		return
 	}
 	if !protoimpl.UnsafeEnabled {
-		file_copmactor_v1_compactor_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
+		file_compactor_v1_compactor_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*GetCompactionRequest); i {
 			case 0:
 				return &v.state
@@ -690,7 +785,7 @@ func file_copmactor_v1_compactor_proto_init() {
 				return nil
 			}
 		}
-		file_copmactor_v1_compactor_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
+		file_compactor_v1_compactor_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*CompactionJobSelector); i {
 			case 0:
 				return &v.state
@@ -702,7 +797,7 @@ func file_copmactor_v1_compactor_proto_init() {
 				return nil
 			}
 		}
-		file_copmactor_v1_compactor_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
+		file_compactor_v1_compactor_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*GetCompactionResponse); i {
 			case 0:
 				return &v.state
@@ -714,7 +809,7 @@ func file_copmactor_v1_compactor_proto_init() {
 				return nil
 			}
 		}
-		file_copmactor_v1_compactor_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
+		file_compactor_v1_compactor_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*CompactionJob); i {
 			case 0:
 				return &v.state
@@ -726,7 +821,7 @@ func file_copmactor_v1_compactor_proto_init() {
 				return nil
 			}
 		}
-		file_copmactor_v1_compactor_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
+		file_compactor_v1_compactor_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*CompactionOptions); i {
 			case 0:
 				return &v.state
@@ -738,7 +833,7 @@ func file_copmactor_v1_compactor_proto_init() {
 				return nil
 			}
 		}
-		file_copmactor_v1_compactor_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
+		file_compactor_v1_compactor_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*UpdateJobStatusRequest); i {
 			case 0:
 				return &v.state
@@ -750,7 +845,7 @@ func file_copmactor_v1_compactor_proto_init() {
 				return nil
 			}
 		}
-		file_copmactor_v1_compactor_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
+		file_compactor_v1_compactor_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*CompactionJobStatus); i {
 			case 0:
 				return &v.state
@@ -762,7 +857,7 @@ func file_copmactor_v1_compactor_proto_init() {
 				return nil
 			}
 		}
-		file_copmactor_v1_compactor_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
+		file_compactor_v1_compactor_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*CompletedJob); i {
 			case 0:
 				return &v.state
@@ -774,8 +869,32 @@ func file_copmactor_v1_compactor_proto_init() {
 				return nil
 			}
 		}
-		file_copmactor_v1_compactor_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
+		file_compactor_v1_compactor_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*UpdateJobStatusResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_compactor_v1_compactor_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*AddCompactionJobsRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_compactor_v1_compactor_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*AddCompactionJobsResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -791,19 +910,19 @@ func file_copmactor_v1_compactor_proto_init() {
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: file_copmactor_v1_compactor_proto_rawDesc,
+			RawDescriptor: file_compactor_v1_compactor_proto_rawDesc,
 			NumEnums:      1,
-			NumMessages:   9,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_copmactor_v1_compactor_proto_goTypes,
-		DependencyIndexes: file_copmactor_v1_compactor_proto_depIdxs,
-		EnumInfos:         file_copmactor_v1_compactor_proto_enumTypes,
-		MessageInfos:      file_copmactor_v1_compactor_proto_msgTypes,
+		GoTypes:           file_compactor_v1_compactor_proto_goTypes,
+		DependencyIndexes: file_compactor_v1_compactor_proto_depIdxs,
+		EnumInfos:         file_compactor_v1_compactor_proto_enumTypes,
+		MessageInfos:      file_compactor_v1_compactor_proto_msgTypes,
 	}.Build()
-	File_copmactor_v1_compactor_proto = out.File
-	file_copmactor_v1_compactor_proto_rawDesc = nil
-	file_copmactor_v1_compactor_proto_goTypes = nil
-	file_copmactor_v1_compactor_proto_depIdxs = nil
+	File_compactor_v1_compactor_proto = out.File
+	file_compactor_v1_compactor_proto_rawDesc = nil
+	file_compactor_v1_compactor_proto_goTypes = nil
+	file_compactor_v1_compactor_proto_depIdxs = nil
 }

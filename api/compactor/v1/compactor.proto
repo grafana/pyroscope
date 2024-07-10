@@ -88,3 +88,9 @@ message CompletedJob {
 }
 
 message UpdateJobStatusResponse {}
+
+message AddCompactionJobsRequest {
+  repeated CompactionJob jobs = 1;
+}
+
+message AddCompactionJobsResponse {}
