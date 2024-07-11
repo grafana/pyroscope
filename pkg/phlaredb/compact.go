@@ -351,9 +351,12 @@ func newProfileWriter(path string) (*profilesWriter, error) {
 		return nil, err
 	}
 	return &profilesWriter{
-		GenericWriter: newParquetProfileWriter(profileFile, parquet.MaxRowsPerRowGroup(int64(defaultParquetConfig.MaxBufferRowCount))),
-		file:          profileFile,
-		buf:           make([]parquet.Row, 1),
+		GenericWriter: newParquetProfileWriter(profileFile,
+			parquet.MaxRowsPerRowGroup(int64(defaultParquetConfig.MaxBufferRowCount)),
+			parquet.PageBufferSize(BlocksParquetWriteBufferSize),
+		),
+		file: profileFile,
+		buf:  make([]parquet.Row, 1),
 	}, nil
 }
 

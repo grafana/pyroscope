@@ -27,7 +27,8 @@ import (
 )
 
 const (
-	parquetWriteBufferSize = 8 * 0x1000
+	SegmentsParquetWriteBufferSize = 8 * 0x1000
+	BlocksParquetWriteBufferSize   = 3 << 20 // 3MB
 )
 
 type profileStore struct {
@@ -68,7 +69,7 @@ type profileStore struct {
 }
 
 func newParquetProfileWriter(writer io.Writer, options ...parquet.WriterOption) *parquet.GenericWriter[*schemav1.Profile] {
-	options = append(options, parquet.PageBufferSize(parquetWriteBufferSize))
+	//options = append(options, parquet.PageBufferSize(parquetWriteBufferSize))
 	options = append(options, parquet.CreatedBy("github.com/grafana/pyroscope/", build.Version, build.Revision))
 	options = append(options, schemav1.ProfilesSchema)
 	return parquet.NewGenericWriter[*schemav1.Profile](
@@ -88,7 +89,9 @@ func newProfileStore(phlarectx context.Context) *profileStore {
 	go s.cutRowGroupLoop()
 	// Initialize writer on /dev/null
 	// TODO: Reuse parquet.Writer beyond life time of the head.
-	s.writer = newParquetProfileWriter(io.Discard)
+	s.writer = newParquetProfileWriter(io.Discard,
+		parquet.PageBufferSize(SegmentsParquetWriteBufferSize),
+	)
 
 	return s
 }
