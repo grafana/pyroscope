@@ -7,7 +7,7 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/prometheus/prometheus/model/relabel"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
 )
