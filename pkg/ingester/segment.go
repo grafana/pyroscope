@@ -13,8 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/prometheus/common/model"
-
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
@@ -264,7 +262,7 @@ func (s *segment) flushBlock(ctx context.Context, heads []serviceHead) (string, 
 			meta.MinTime = math.Min(meta.MinTime, svc.MinTime)
 			meta.MaxTime = math.Max(meta.MaxTime, svc.MaxTime)
 		}
-		s.sw.metrics.headSizeBytes.WithLabelValues(s.sshard, e.key.tenant, e.key.service).Observe(float64(svc.Size))
+		s.sw.metrics.headSizeBytes.WithLabelValues(s.sshard, e.key.tenant).Observe(float64(svc.Size))
 		meta.TenantServices = append(meta.TenantServices, svc)
 	}
 
@@ -330,12 +328,12 @@ func (s *segment) flushHeads(ctx context.Context) []serviceHead {
 	for _, e := range s.heads {
 		th := time.Now()
 		if err := e.head.Flush(ctx); err != nil {
-			s.sw.metrics.flushServiceHeadDuration.WithLabelValues(s.sshard, e.key.tenant, e.key.service).Observe(time.Since(th).Seconds())
+			s.sw.metrics.flushServiceHeadDuration.WithLabelValues(s.sshard, e.key.tenant).Observe(time.Since(th).Seconds())
 			_ = level.Error(s.sw.l).Log("msg", "failed to flush head", "err", err, "head", e.head.BlockID())
-			s.sw.metrics.flushServiceHeadError.WithLabelValues(s.sshard, e.key.tenant, e.key.service).Inc()
+			s.sw.metrics.flushServiceHeadError.WithLabelValues(s.sshard, e.key.tenant).Inc()
 			continue
 		}
-		s.sw.metrics.flushServiceHeadDuration.WithLabelValues(s.sshard, e.key.tenant, e.key.service).Observe(time.Since(th).Seconds())
+		s.sw.metrics.flushServiceHeadDuration.WithLabelValues(s.sshard, e.key.tenant).Observe(time.Since(th).Seconds())
 		stats, _ := json.Marshal(e.head.GetMetaStats())
 		level.Debug(s.sw.l).Log("msg", "flushed head", "head", e.head.BlockID(), "stats", stats)
 		if err := e.head.Move(); err != nil {
@@ -343,13 +341,13 @@ func (s *segment) flushHeads(ctx context.Context) []serviceHead {
 				_ = level.Debug(s.sw.l).Log("msg", "skipping empty head", "head", e.head.BlockID())
 				continue
 			}
-			s.sw.metrics.flushServiceHeadError.WithLabelValues(s.sshard, e.key.tenant, e.key.service).Inc()
+			s.sw.metrics.flushServiceHeadError.WithLabelValues(s.sshard, e.key.tenant).Inc()
 			_ = level.Error(s.sw.l).Log("msg", "failed to move head", "err", err, "head", e.head.BlockID())
 			continue
 		}
 		profiles, index, symbols := getFilesForSegment(e.head.Meta())
 		if profiles == nil || index == nil || symbols == nil {
-			s.sw.metrics.flushServiceHeadError.WithLabelValues(s.sshard, e.key.tenant, e.key.service).Inc()
+			s.sw.metrics.flushServiceHeadError.WithLabelValues(s.sshard, e.key.tenant).Inc()
 			_ = level.Error(s.sw.l).Log("msg", "failed to find files", "head", e.head.BlockID())
 			continue
 		}
@@ -409,8 +407,7 @@ func (s *segment) ingest(ctx context.Context, tenantID string, p *profilev1.Prof
 		tenant:  tenantID,
 		service: phlaremodel.Labels(labels).Get(phlaremodel.LabelNameServiceName),
 	}
-	metricName := phlaremodel.Labels(labels).Get(model.MetricNameLabel)
-	s.sw.metrics.segmentIngestBytes.WithLabelValues(s.sshard, tenantID, k.service, metricName).Observe(float64(p.SizeVT()))
+	s.sw.metrics.segmentIngestBytes.WithLabelValues(s.sshard, tenantID).Observe(float64(p.SizeVT()))
 	h, err := s.headForIngest(k)
 	if err != nil {
 		return err

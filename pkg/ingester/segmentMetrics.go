@@ -6,20 +6,19 @@ import (
 )
 
 type segmentMetrics struct {
-	segmentIngestBytes         *prometheus.HistogramVec
-	segmentBlockSizeBytes      *prometheus.HistogramVec
-	headSizeBytes              *prometheus.HistogramVec
-	storeMetaDuration          *prometheus.HistogramVec
-	segmentFlushWaitDuration   *prometheus.HistogramVec
-	segmentFlushTimeouts       *prometheus.CounterVec
-	storeMetaErrors            *prometheus.CounterVec
-	blockUploadDuration        *prometheus.HistogramVec
-	flushSegmentsDuration      prometheus.Histogram
-	flushSegmentDuration       *prometheus.HistogramVec
-	flushHeadsDuration         *prometheus.HistogramVec
-	flushServiceHeadDuration   *prometheus.HistogramVec
-	flushServiceHeadError      *prometheus.CounterVec
-	flushServiceHeadEmptyCount *prometheus.CounterVec
+	segmentIngestBytes       *prometheus.HistogramVec
+	segmentBlockSizeBytes    *prometheus.HistogramVec
+	headSizeBytes            *prometheus.HistogramVec
+	storeMetaDuration        *prometheus.HistogramVec
+	segmentFlushWaitDuration *prometheus.HistogramVec
+	segmentFlushTimeouts     *prometheus.CounterVec
+	storeMetaErrors          *prometheus.CounterVec
+	blockUploadDuration      *prometheus.HistogramVec
+	flushSegmentsDuration    prometheus.Histogram
+	flushSegmentDuration     *prometheus.HistogramVec
+	flushHeadsDuration       *prometheus.HistogramVec
+	flushServiceHeadDuration *prometheus.HistogramVec
+	flushServiceHeadError    *prometheus.CounterVec
 }
 
 func newSegmentMetrics(reg prometheus.Registerer) *segmentMetrics {
@@ -28,14 +27,14 @@ func newSegmentMetrics(reg prometheus.Registerer) *segmentMetrics {
 			prometheus.HistogramOpts{
 				Namespace: "pyroscope",
 				Name:      "segment_ingest_bytes",
-				Buckets:   prometheus.ExponentialBucketsRange(10*1024, 15*1024*1024, 30),
+				Buckets:   prometheus.ExponentialBucketsRange(10*1024, 15*1024*1024, 20),
 			},
-			[]string{"shard", "tenant", "service", "metric_name"}),
+			[]string{"shard", "tenant"}),
 		segmentBlockSizeBytes: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
 				Namespace: "pyroscope",
 				Name:      "segment_block_size_bytes",
-				Buckets:   prometheus.ExponentialBucketsRange(100*1024, 100*1024*1024, 30),
+				Buckets:   prometheus.ExponentialBucketsRange(100*1024, 100*1024*1024, 20),
 			},
 			[]string{"shard"}),
 		storeMetaDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
@@ -74,7 +73,7 @@ func newSegmentMetrics(reg prometheus.Registerer) *segmentMetrics {
 			Namespace: "pyroscope",
 			Name:      "segment_flush_service_head_duration_seconds",
 			Buckets:   prometheus.ExponentialBuckets(0.1, 1.22, 20),
-		}, []string{"shard", "tenant", "service"}),
+		}, []string{"shard", "tenant"}),
 		flushSegmentDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Namespace: "pyroscope",
 			Name:      "segment_flush_segment_duration_seconds",
@@ -90,18 +89,13 @@ func newSegmentMetrics(reg prometheus.Registerer) *segmentMetrics {
 			prometheus.CounterOpts{
 				Namespace: "pyroscope",
 				Name:      "segment_flush_service_head_errors",
-			}, []string{"shard", "tenant", "service"}),
-		flushServiceHeadEmptyCount: prometheus.NewCounterVec(
-			prometheus.CounterOpts{
-				Namespace: "pyroscope",
-				Name:      "segment_flush_service_head_empty_count",
-			}, []string{"shard", "tenant", "service"}),
+			}, []string{"shard", "tenant"}),
 		headSizeBytes: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
 				Namespace: "pyroscope",
 				Name:      "segment_head_size_bytes",
 				Buckets:   prometheus.ExponentialBucketsRange(10*1024, 100*1024*1024, 30),
-			}, []string{"shard", "tenant", "service"}),
+			}, []string{"shard", "tenant"}),
 	}
 
 	if reg != nil {
@@ -115,7 +109,6 @@ func newSegmentMetrics(reg prometheus.Registerer) *segmentMetrics {
 		reg.MustRegister(m.flushHeadsDuration)
 		reg.MustRegister(m.flushServiceHeadDuration)
 		reg.MustRegister(m.flushServiceHeadError)
-		reg.MustRegister(m.flushServiceHeadEmptyCount)
 		reg.MustRegister(m.flushSegmentDuration)
 		reg.MustRegister(m.flushSegmentsDuration)
 		reg.MustRegister(m.headSizeBytes)
