@@ -107,7 +107,7 @@ func (q *QueryBackend) merge(
 	g, ctx := errgroup.WithContext(ctx)
 	for children.Next() {
 		req := request.CloneVT()
-		req.QueryPlan = children.At().Plan()
+		req.QueryPlan = children.At().Plan().Proto()
 		g.Go(util.RecoverPanic(func() error {
 			// TODO: Speculative retry.
 			return m.mergeResponse(q.backendClient.Invoke(ctx, req))

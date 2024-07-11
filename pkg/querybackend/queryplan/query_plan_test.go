@@ -1,7 +1,12 @@
 package queryplan
 
 import (
+	"bytes"
+	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 )
@@ -24,21 +29,18 @@ func Test_Plan(t *testing.T) {
 	}
 
 	p := Build(blocks, 2, 3)
-	switch r := p.Root(); r.Type {
-	case NodeMerge:
-		t.Logf("merge: %+v", r.n)
-		c := r.Children()
-		for c.Next() {
-			n := c.At()
-			t.Logf(" - child %+v", n.n)
-			t.Logf("         %+v", n.Plan())
-		}
+	var buf bytes.Buffer
+	printPlan(&buf, "", p, true)
+	// Ensure that the plan has not been modified
+	// during traversal performed by printPlan.
+	assert.Equal(t, Build(blocks, 2, 3), p)
 
-	case NodeRead:
-		t.Logf("read: %+v", r.n)
-		t.Log(r.Blocks())
+	expected, err := os.ReadFile("testdata/plan.txt")
+	require.NoError(t, err)
+	assert.Equal(t, string(expected), buf.String())
 
-	default:
-		panic("unknown type")
-	}
+	// Root node (sub-)plan must be identical to the original plan.
+	buf.Reset()
+	printPlan(&buf, "", p.Root().Plan(), true)
+	assert.Equal(t, string(expected), buf.String())
 }
