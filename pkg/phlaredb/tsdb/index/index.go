@@ -56,6 +56,8 @@ const (
 
 	// store every 1024 series' fingerprints in the fingerprint offsets table
 	fingerprintInterval = 1 << 10
+
+	indexWriterBufSize = 0x1000 // small for segments
 )
 
 type indexWriterStage uint8
@@ -286,7 +288,7 @@ func NewFileWriter(name string) (*FileWriter, error) {
 	}
 	return &FileWriter{
 		f:    f,
-		fbuf: bufio.NewWriterSize(f, 1<<22),
+		fbuf: bufio.NewWriterSize(f, indexWriterBufSize),
 		pos:  0,
 		name: name,
 	}, nil
