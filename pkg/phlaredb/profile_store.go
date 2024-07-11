@@ -77,12 +77,6 @@ func newParquetProfileWriter(writer io.Writer, options ...parquet.WriterOption) 
 	)
 }
 
-var profileStoreWriterPool = sync.Pool{
-	New: func() interface{} {
-		return newParquetProfileWriter(io.Discard, parquet.PageBufferSize(SegmentsParquetWriteBufferSize))
-	},
-}
-
 func newProfileStore(phlarectx context.Context) *profileStore {
 	s := &profileStore{
 		logger:     phlarecontext.Logger(phlarectx),
@@ -95,10 +89,9 @@ func newProfileStore(phlarectx context.Context) *profileStore {
 	go s.cutRowGroupLoop()
 	// Initialize writer on /dev/null
 	// TODO: Reuse parquet.Writer beyond life time of the head.
-	//s.writer = newParquetProfileWriter(io.Discard,
-	//	parquet.PageBufferSize(SegmentsParquetWriteBufferSize),
-	//)
-	s.writer = profileStoreWriterPool.Get().(*parquet.GenericWriter[*schemav1.Profile])
+	s.writer = newParquetProfileWriter(io.Discard,
+		parquet.PageBufferSize(SegmentsParquetWriteBufferSize),
+	)
 
 	return s
 }
@@ -166,13 +159,6 @@ func (s *profileStore) RowGroups() (rowGroups []parquet.RowGroup) {
 // The call is thread-safe for reading but adding new profiles
 // should not be allowed during and after the call.
 func (s *profileStore) Flush(ctx context.Context) (numRows uint64, numRowGroups uint64, err error) {
-	defer func() {
-		if s.writer != nil {
-			profileStoreWriterPool.Put(s.writer)
-			s.writer.Reset(io.Discard)
-			s.writer = nil
-		}
-	}()
 	if err := s.Close(); err != nil {
 		return 0, 0, err
 	}
