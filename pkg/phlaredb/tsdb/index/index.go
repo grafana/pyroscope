@@ -250,8 +250,8 @@ func NewWriter(ctx context.Context, fn string, bufferSize int) (*Writer, error) 
 		stage: idxStageNone,
 
 		// Reusable memory.
-		buf1: encoding.EncWrap(tsdb_enc.Encbuf{B: make([]byte, 0, 1<<22)}),
-		buf2: encoding.EncWrap(tsdb_enc.Encbuf{B: make([]byte, 0, 1<<22)}),
+		buf1: encoding.EncWrap(tsdb_enc.Encbuf{B: make([]byte, 0, bufferSize)}),
+		buf2: encoding.EncWrap(tsdb_enc.Encbuf{B: make([]byte, 0, bufferSize)}),
 
 		symbolCache: make(map[string]symbolCacheEntry, 1<<8),
 		labelNames:  make(map[string]uint64, 1<<8),
