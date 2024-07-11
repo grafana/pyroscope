@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	parquetWriteBufferSize = 3 << 20 // 3MB
+	parquetWriteBufferSize = 256 * 1024
 )
 
 type profileStore struct {
