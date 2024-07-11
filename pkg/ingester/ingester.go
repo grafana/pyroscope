@@ -83,11 +83,14 @@ func (i *ingesterFlusherCompat) Flush() {
 }
 
 func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storageBucket phlareobj.Bucket, limits Limits, queryStoreAfter time.Duration, metastoreClient *metastoreclient.Client) (*Ingester, error) {
+	reg := phlarecontext.Registry(phlarectx)
+	log := phlarecontext.Logger(phlarectx)
+	phlarectx = phlaredb.ContextWithHeadMetrics(phlarectx, reg)
 	i := &Ingester{
 		cfg:           cfg,
 		phlarectx:     phlarectx,
-		logger:        phlarecontext.Logger(phlarectx),
-		reg:           phlarecontext.Registry(phlarectx),
+		logger:        log,
+		reg:           reg,
 		dbConfig:      dbConfig,
 		storageBucket: storageBucket,
 		limits:        limits,
@@ -121,6 +124,7 @@ func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storag
 		return nil, errors.New("metastore client is required for segment writer")
 	}
 	metrics := newSegmentMetrics(i.reg)
+
 	i.segmentWriter = newSegmentWriter(i.phlarectx, i.logger, metrics, i.dbConfig, i.limiters, storageBucket, cfg.SegmentDuration, metastoreClient)
 	i.subservicesWatcher = services.NewFailureWatcher()
 	i.subservicesWatcher.WatchManager(i.subservices)
