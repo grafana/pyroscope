@@ -57,8 +57,8 @@ const (
 	// store every 1024 series' fingerprints in the fingerprint offsets table
 	fingerprintInterval = 1 << 10
 
-	SegmentsIndexWriterBufSize = 0x1000  // small for segments
-	BlocksIndexWriterBufSize   = 1 << 22 // large for blocks
+	SegmentsIndexWriterBufSize = 2 * 0x1000 // small for segments
+	BlocksIndexWriterBufSize   = 1 << 22    // large for blocks
 )
 
 type indexWriterStage uint8
@@ -1079,7 +1079,10 @@ func (w *Writer) writePostings() error {
 		return err
 	}
 	// Don't need to calculate a checksum, so can copy directly.
-	n, err := io.CopyBuffer(w.f.fbuf, w.fP.f, make([]byte, 1<<20))
+	//n, err := io.CopyBuffer(w.f.fbuf, w.fP.f, make([]byte, 1<<20))
+	//buf := make([]byte, cap(w.buf1.B))
+	buf := w.buf1.B[:cap(w.buf1.B)]
+	n, err := io.CopyBuffer(w.f.fbuf, w.fP.f, buf)
 	if err != nil {
 		return err
 	}
