@@ -399,7 +399,7 @@ outer:
 
 // WriteTo writes the profiles tsdb index to the specified filepath.
 func (pi *profilesIndex) writeTo(ctx context.Context, path string) ([][]rowRangeWithSeriesIndex, error) {
-	writer, err := index.NewWriter(ctx, path)
+	writer, err := index.NewWriter(ctx, path, index.SegmentsIndexWriterBufSize)
 	if err != nil {
 		return nil, err
 	}

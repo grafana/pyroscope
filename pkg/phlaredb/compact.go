@@ -430,7 +430,7 @@ func (idxRw *indexRewriter) NumSeries() uint64 {
 
 // Close writes the index to given folder.
 func (idxRw *indexRewriter) Close(ctx context.Context) error {
-	indexw, err := index.NewWriter(ctx, filepath.Join(idxRw.path, block.IndexFilename))
+	indexw, err := index.NewWriter(ctx, filepath.Join(idxRw.path, block.IndexFilename), index.BlocksIndexWriterBufSize)
 	if err != nil {
 		return err
 	}

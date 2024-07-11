@@ -57,7 +57,8 @@ const (
 	// store every 1024 series' fingerprints in the fingerprint offsets table
 	fingerprintInterval = 1 << 10
 
-	indexWriterBufSize = 0x1000 // small for segments
+	SegmentsIndexWriterBufSize = 0x1000  // small for segments
+	BlocksIndexWriterBufSize   = 1 << 22 // large for blocks
 )
 
 type indexWriterStage uint8
@@ -209,7 +210,7 @@ func NewTOCFromByteSlice(bs ByteSlice) (*TOC, error) {
 }
 
 // NewWriter returns a new Writer to the given filename. It serializes data in format version 2.
-func NewWriter(ctx context.Context, fn string) (*Writer, error) {
+func NewWriter(ctx context.Context, fn string, bufferSize int) (*Writer, error) {
 	dir := filepath.Dir(fn)
 
 	df, err := fileutil.OpenDir(dir)
@@ -223,17 +224,17 @@ func NewWriter(ctx context.Context, fn string) (*Writer, error) {
 	}
 
 	// Main index file we are building.
-	f, err := NewFileWriter(fn)
+	f, err := NewFileWriter(fn, bufferSize)
 	if err != nil {
 		return nil, err
 	}
 	// Temporary file for postings.
-	fP, err := NewFileWriter(fn + "_tmp_p")
+	fP, err := NewFileWriter(fn+"_tmp_p", bufferSize)
 	if err != nil {
 		return nil, err
 	}
 	// Temporary file for posting offset table.
-	fPO, err := NewFileWriter(fn + "_tmp_po")
+	fPO, err := NewFileWriter(fn+"_tmp_po", bufferSize)
 	if err != nil {
 		return nil, err
 	}
@@ -281,14 +282,14 @@ type FileWriter struct {
 	name string
 }
 
-func NewFileWriter(name string) (*FileWriter, error) {
+func NewFileWriter(name string, bufferSize int) (*FileWriter, error) {
 	f, err := os.OpenFile(name, os.O_CREATE|os.O_RDWR, 0o666)
 	if err != nil {
 		return nil, err
 	}
 	return &FileWriter{
 		f:    f,
-		fbuf: bufio.NewWriterSize(f, indexWriterBufSize),
+		fbuf: bufio.NewWriterSize(f, bufferSize),
 		pos:  0,
 		name: name,
 	}, nil
