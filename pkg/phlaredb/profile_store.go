@@ -11,17 +11,13 @@ import (
 	"sync"
 
 	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/runutil"
 	"github.com/parquet-go/parquet-go"
-	"github.com/pkg/errors"
 	"go.uber.org/atomic"
 
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	phlareparquet "github.com/grafana/pyroscope/pkg/parquet"
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
-	"github.com/grafana/pyroscope/pkg/phlaredb/query"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/util/build"
 )
@@ -56,16 +52,16 @@ type profileStore struct {
 	// Store readers only access rowGroups and index.
 	rowsLock    sync.RWMutex
 	rowsFlushed uint64
-	rowGroups   []*rowGroupOnDisk
-	index       *profilesIndex
+	//rowGroups   []*rowGroupOnDisk
+	index *profilesIndex
 
-	flushing       *atomic.Bool
-	flushQueue     chan int // channel to signal that a flush is needed for slice[:n]
-	closeOnce      sync.Once
-	flushWg        sync.WaitGroup
+	//flushing       *atomic.Bool
+	//flushQueue     chan int // channel to signal that a flush is needed for slice[:n]
+	//closeOnce      sync.Once
+	//flushWg        sync.WaitGroup
 	flushBuffer    []schemav1.InMemoryProfile
 	flushBufferLbs []phlaremodel.Labels
-	onFlush        func()
+	//onFlush        func()
 }
 
 func newParquetProfileWriter(writer io.Writer, options ...parquet.WriterOption) *parquet.GenericWriter[*schemav1.Profile] {
@@ -79,14 +75,14 @@ func newParquetProfileWriter(writer io.Writer, options ...parquet.WriterOption) 
 
 func newProfileStore(phlarectx context.Context) *profileStore {
 	s := &profileStore{
-		logger:     phlarecontext.Logger(phlarectx),
-		metrics:    contextHeadMetrics(phlarectx),
-		persister:  &schemav1.ProfilePersister{},
-		flushing:   atomic.NewBool(false),
-		flushQueue: make(chan int),
+		logger:    phlarecontext.Logger(phlarectx),
+		metrics:   contextHeadMetrics(phlarectx),
+		persister: &schemav1.ProfilePersister{},
+		//flushing:   atomic.NewBool(false),
+		//flushQueue: make(chan int),
 	}
-	s.flushWg.Add(1)
-	go s.cutRowGroupLoop()
+	//s.flushWg.Add(1)
+	//go s.cutRowGroupLoop()
 	// Initialize writer on /dev/null
 	// TODO: Reuse parquet.Writer beyond life time of the head.
 	s.writer = newParquetProfileWriter(io.Discard,
@@ -114,10 +110,10 @@ func (s *profileStore) Init(path string, cfg *ParquetConfig, metrics *headMetric
 	if err := s.Close(); err != nil {
 		return err
 	}
-	s.flushQueue = make(chan int)
-	s.closeOnce = sync.Once{}
-	s.flushWg.Add(1)
-	go s.cutRowGroupLoop()
+	//s.flushQueue = make(chan int)
+	//s.closeOnce = sync.Once{}
+	//s.flushWg.Add(1)
+	//go s.cutRowGroupLoop()
 
 	// create index
 	s.index, err = newProfileIndex(32, s.metrics)
@@ -137,23 +133,23 @@ func (s *profileStore) Init(path string, cfg *ParquetConfig, metrics *headMetric
 }
 
 func (s *profileStore) Close() error {
-	if s.flushQueue != nil {
-		s.closeOnce.Do(func() {
-			close(s.flushQueue)
-		})
-
-		s.flushWg.Wait()
-	}
+	//if s.flushQueue != nil {
+	//	s.closeOnce.Do(func() {
+	//		close(s.flushQueue)
+	//	})
+	//
+	//	s.flushWg.Wait()
+	//}
 	return nil
 }
 
-func (s *profileStore) RowGroups() (rowGroups []parquet.RowGroup) {
-	rowGroups = make([]parquet.RowGroup, len(s.rowGroups))
-	for pos := range rowGroups {
-		rowGroups[pos] = s.rowGroups[pos]
-	}
-	return rowGroups
-}
+//func (s *profileStore) RowGroups() (rowGroups []parquet.RowGroup) {
+//	rowGroups = make([]parquet.RowGroup, len(s.rowGroups))
+//	for pos := range rowGroups {
+//		rowGroups[pos] = s.rowGroups[pos]
+//	}
+//	return rowGroups
+//}
 
 // Flush writes row groups and the index to files on disk.
 // The call is thread-safe for reading but adding new profiles
@@ -175,6 +171,9 @@ func (s *profileStore) Flush(ctx context.Context) (numRows uint64, numRowGroups 
 	if err != nil {
 		return 0, 0, err
 	}
+	if len(rowRangerPerRG) != 1 {
+		return 0, 0, fmt.Errorf("expected exactly one row group, got %d", len(rowRangerPerRG))
+	}
 
 	parquetPath := filepath.Join(
 		s.path,
@@ -182,11 +181,16 @@ func (s *profileStore) Flush(ctx context.Context) (numRows uint64, numRowGroups 
 	)
 
 	s.rowsLock.Lock()
-	for idx, ranges := range rowRangerPerRG {
-		s.rowGroups[idx].seriesIndexes = ranges
+	//for idx, ranges := range rowRangerPerRG {
+	//	s.rowGroups[idx].seriesIndexes = ranges
+	//}
+	var seriesIndexes rowRangesWithSeriesIndex = rowRangerPerRG[0]
+	for i := 0; i < len(s.flushBuffer); i++ {
+		s.flushBuffer[i].SeriesIndex = seriesIndexes.getSeriesIndex(int64(i))
 	}
+	//seriesIndexes rowRangesWithSeriesIndex
 	s.rowsLock.Unlock()
-	numRows, numRowGroups, err = s.writeRowGroups(parquetPath, s.RowGroups())
+	numRows, numRowGroups, err = s.writeRowGroup(parquetPath)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -194,17 +198,17 @@ func (s *profileStore) Flush(ctx context.Context) (numRows uint64, numRowGroups 
 	return numRows, numRowGroups, nil
 }
 
-func (s *profileStore) DeleteRowGroups() error {
-	s.rowsLock.Lock()
-	defer s.rowsLock.Unlock()
-	for _, rg := range s.rowGroups {
-		if err := rg.Close(); err != nil {
-			return err
-		}
-	}
-	s.rowGroups = s.rowGroups[:0]
-	return nil
-}
+//func (s *profileStore) DeleteRowGroups() error {
+//	s.rowsLock.Lock()
+//	defer s.rowsLock.Unlock()
+//	for _, rg := range s.rowGroups {
+//		if err := rg.Close(); err != nil {
+//			return err
+//		}
+//	}
+//	s.rowGroups = s.rowGroups[:0]
+//	return nil
+//}
 
 func (s *profileStore) prepareFile(path string) (f *os.File, err error) {
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
@@ -243,43 +247,43 @@ func (s *profileStore) cutRowGroup(count int) (err error) {
 		return nil
 	}
 
-	path := filepath.Join(
-		s.path,
-		fmt.Sprintf("%s.%d%s", s.persister.Name(), s.rowsFlushed, block.ParquetSuffix),
-	)
-	// Removes the file if it exists. This can happen if the previous
-	// cut attempt failed.
-	if err := os.Remove(path); err == nil {
-		level.Warn(s.logger).Log("msg", "deleting row group segment of a failed previous attempt", "path", path)
-	}
-	f, err := s.prepareFile(path)
-	if err != nil {
-		return err
-	}
-
-	n, err := parquet.CopyRows(s.writer, schemav1.NewInMemoryProfilesRowReader(s.flushBuffer))
-	if err != nil {
-		return errors.Wrap(err, "write row group segments to disk")
-	}
-
-	if err := s.writer.Close(); err != nil {
-		return errors.Wrap(err, "close row group segment writer")
-	}
-
-	if err := f.Close(); err != nil {
-		return errors.Wrap(err, "closing row group segment file")
-	}
-	s.metrics.writtenProfileSegments.WithLabelValues("success").Inc()
+	//path := filepath.Join(
+	//	s.path,
+	//	fmt.Sprintf("%s.%d%s", s.persister.Name(), s.rowsFlushed, block.ParquetSuffix),
+	//)
+	//// Removes the file if it exists. This can happen if the previous
+	//// cut attempt failed.
+	//if err := os.Remove(path); err == nil {
+	//	level.Warn(s.logger).Log("msg", "deleting row group segment of a failed previous attempt", "path", path)
+	//}
+	//f, err := s.prepareFile(path)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//n, err := parquet.CopyRows(s.writer, schemav1.NewInMemoryProfilesRowReader(s.flushBuffer))
+	//if err != nil {
+	//	return errors.Wrap(err, "write row group segments to disk")
+	//}
+	//
+	//if err := s.writer.Close(); err != nil {
+	//	return errors.Wrap(err, "close row group segment writer")
+	//}
+	//
+	//if err := f.Close(); err != nil {
+	//	return errors.Wrap(err, "closing row group segment file")
+	//}
+	//s.metrics.writtenProfileSegments.WithLabelValues("success").Inc()
 
 	// get row group segment size on disk
-	if stat, err := f.Stat(); err == nil {
-		s.metrics.writtenProfileSegmentsBytes.Observe(float64(stat.Size()))
-	}
+	//if stat, err := f.Stat(); err == nil {
+	//	s.metrics.writtenProfileSegmentsBytes.Observe(float64(stat.Size()))
+	//}
 
-	rowGroup, err := newRowGroupOnDisk(path)
-	if err != nil {
-		return err
-	}
+	//rowGroup, err := newRowGroupOnDisk(path)
+	//if err != nil {
+	//	return err
+	//}
 
 	// We need to make the new on-disk row group available to readers
 	// simultaneously with cutting the series from the index. Until that,
@@ -287,8 +291,10 @@ func (s *profileStore) cutRowGroup(count int) (err error) {
 	// held for long as it only performs in-memory operations,
 	// although blocking readers.
 	s.rowsLock.Lock()
-	s.rowsFlushed += uint64(n)
-	s.rowGroups = append(s.rowGroups, rowGroup)
+	// After the lock is released, rows/profiles should be read from the disk.
+	defer s.rowsLock.Unlock()
+	//s.rowsFlushed += uint64(1)
+	//s.rowGroups = append(s.rowGroups, rowGroup)
 	// Cutting the index is relatively quick op (no I/O).
 	err = s.index.cutRowGroup(s.flushBuffer)
 
@@ -304,10 +310,8 @@ func (s *profileStore) cutRowGroup(count int) (err error) {
 		return err
 	}
 
-	level.Debug(s.logger).Log("msg", "cut row group segment", "path", path, "numProfiles", n)
+	//level.Debug(s.logger).Log("msg", "cut row group segment", "path", path, "numProfiles", n)
 	s.metrics.sizeBytes.WithLabelValues(s.Name()).Set(float64(currentSize))
-	// After the lock is released, rows/profiles should be read from the disk.
-	s.rowsLock.Unlock()
 	return nil
 }
 
@@ -373,24 +377,45 @@ func (s *profileStore) loadProfilesToFlush(count int) uint64 {
 	return size
 }
 
-func (s *profileStore) writeRowGroups(path string, rowGroups []parquet.RowGroup) (n uint64, numRowGroups uint64, err error) {
+//func (s *profileStore) writeRowGroups(path string, rowGroups []parquet.RowGroup) (n uint64, numRowGroups uint64, err error) {
+//	fileCloser, err := s.prepareFile(path)
+//	if err != nil {
+//		return 0, 0, err
+//	}
+//	defer runutil.CloseWithErrCapture(&err, fileCloser, "closing parquet file")
+//	readers := make([]parquet.RowReader, len(rowGroups))
+//	for i, rg := range rowGroups {
+//		readers[i] = rg.Rows()
+//	}
+//	n, numRowGroups, err = phlareparquet.CopyAsRowGroups(s.writer, schemav1.NewMergeProfilesRowReader(readers), s.cfg.MaxBufferRowCount)
+//
+//	if err := s.writer.Close(); err != nil {
+//		return 0, 0, err
+//	}
+//
+//	s.rowsFlushed += n
+//
+//	return n, numRowGroups, nil
+//}
+
+func (s *profileStore) writeRowGroup(path string) (n uint64, numRowGroups uint64, err error) {
 	fileCloser, err := s.prepareFile(path)
 	if err != nil {
 		return 0, 0, err
 	}
 	defer runutil.CloseWithErrCapture(&err, fileCloser, "closing parquet file")
-	readers := make([]parquet.RowReader, len(rowGroups))
-	for i, rg := range rowGroups {
-		readers[i] = rg.Rows()
+	nrows, err := parquet.CopyRows(s.writer, schemav1.NewInMemoryProfilesRowReader(s.flushBuffer))
+	if err != nil {
+		return 0, 0, fmt.Errorf("write row group segments to disk %w", err)
 	}
-	n, numRowGroups, err = phlareparquet.CopyAsRowGroups(s.writer, schemav1.NewMergeProfilesRowReader(readers), s.cfg.MaxBufferRowCount)
 
 	if err := s.writer.Close(); err != nil {
 		return 0, 0, err
 	}
 
 	s.rowsFlushed += n
-
+	n = uint64(nrows)
+	numRowGroups = 1
 	return n, numRowGroups, nil
 }
 
@@ -399,14 +424,14 @@ func (s *profileStore) ingest(_ context.Context, profiles []schemav1.InMemoryPro
 	defer s.profilesLock.Unlock()
 
 	for pos, p := range profiles {
-		if !s.flushing.Load() {
-			// check if row group is full
-			if s.cfg.MaxBufferRowCount > 0 && len(s.slice) >= s.cfg.MaxBufferRowCount ||
-				s.cfg.MaxRowGroupBytes > 0 && s.size.Load() >= s.cfg.MaxRowGroupBytes {
-				s.flushing.Store(true)
-				s.flushQueue <- len(s.slice)
-			}
-		}
+		//if !s.flushing.Load() {
+		//	// check if row group is full
+		//	if s.cfg.MaxBufferRowCount > 0 && len(s.slice) >= s.cfg.MaxBufferRowCount ||
+		//		s.cfg.MaxRowGroupBytes > 0 && s.size.Load() >= s.cfg.MaxRowGroupBytes {
+		//		s.flushing.Store(true)
+		//		s.flushQueue <- len(s.slice)
+		//	}
+		//}
 
 		// add profile to the index
 		s.index.Add(&p, lbs, profileName)
@@ -425,132 +450,132 @@ func (s *profileStore) ingest(_ context.Context, profiles []schemav1.InMemoryPro
 	return nil
 }
 
-func (s *profileStore) cutRowGroupLoop() {
-	defer s.flushWg.Done()
-	for n := range s.flushQueue {
-		if err := s.cutRowGroup(n); err != nil {
-			level.Error(s.logger).Log("msg", "cutting row group", "err", err)
-		}
-		s.flushing.Store(false)
-		if s.onFlush != nil {
-			s.onFlush()
-		}
-	}
-}
+//func (s *profileStore) cutRowGroupLoop() {
+//	defer s.flushWg.Done()
+//	for n := range s.flushQueue {
+//		if err := s.cutRowGroup(n); err != nil {
+//			level.Error(s.logger).Log("msg", "cutting row group", "err", err)
+//		}
+//		s.flushing.Store(false)
+//		if s.onFlush != nil {
+//			s.onFlush()
+//		}
+//	}
+//}
 
-type rowGroupOnDisk struct {
-	parquet.RowGroup
-	file          *os.File
-	seriesIndexes rowRangesWithSeriesIndex
-}
+//type rowGroupOnDisk struct {
+//	parquet.RowGroup
+//	file          *os.File
+//	seriesIndexes rowRangesWithSeriesIndex
+//}
 
-func newRowGroupOnDisk(path string) (*rowGroupOnDisk, error) {
-	var (
-		r   = &rowGroupOnDisk{}
-		err error
-	)
+//func newRowGroupOnDisk(path string) (*rowGroupOnDisk, error) {
+//	var (
+//		r   = &rowGroupOnDisk{}
+//		err error
+//	)
+//
+//	// now open the row group file, so we are able to read the row group back in
+//	r.file, err = os.Open(path)
+//	if err != nil {
+//		return nil, errors.Wrapf(err, "opening row groups segment file %s", path)
+//	}
+//
+//	stats, err := r.file.Stat()
+//	if err != nil {
+//		return nil, errors.Wrapf(err, "getting stat of row groups segment file %s", path)
+//	}
+//
+//	segmentParquet, err := parquet.OpenFile(r.file, stats.Size())
+//	if err != nil {
+//		return nil, errors.Wrapf(err, "reading parquet of row groups segment file %s", path)
+//	}
+//
+//	rowGroups := segmentParquet.RowGroups()
+//	if len(rowGroups) != 1 {
+//		return nil, errors.Wrapf(err, "segement file expected to have exactly one row group (actual %d)", len(rowGroups))
+//	}
+//
+//	r.RowGroup = rowGroups[0]
+//
+//	return r, nil
+//}
+//
+//func (r *rowGroupOnDisk) RowGroups() []parquet.RowGroup {
+//	return []parquet.RowGroup{r.RowGroup}
+//}
+//
+//func (r *rowGroupOnDisk) Rows() parquet.Rows {
+//	rows := r.RowGroup.Rows()
+//	if len(r.seriesIndexes) == 0 {
+//		return rows
+//	}
+//
+//	return &seriesIDRowsRewriter{
+//		Rows:          rows,
+//		seriesIndexes: r.seriesIndexes,
+//	}
+//}
+//
+//func (r *rowGroupOnDisk) Close() error {
+//	if err := r.file.Close(); err != nil {
+//		return err
+//	}
+//
+//	if err := os.Remove(r.file.Name()); err != nil {
+//		return errors.Wrap(err, "deleting row group segment file")
+//	}
+//
+//	return nil
+//}
+//
+//func (r *rowGroupOnDisk) columnIter(ctx context.Context, columnName string, predicate query.Predicate, alias string) query.Iterator {
+//	column, found := r.RowGroup.Schema().Lookup(columnName)
+//	if !found {
+//		return query.NewErrIterator(fmt.Errorf("column '%s' not found in head row group segment '%s'", columnName, r.file.Name()))
+//	}
+//	return query.NewSyncIterator(ctx, []parquet.RowGroup{r.RowGroup}, column.ColumnIndex, columnName, 1000, predicate, alias)
+//}
 
-	// now open the row group file, so we are able to read the row group back in
-	r.file, err = os.Open(path)
-	if err != nil {
-		return nil, errors.Wrapf(err, "opening row groups segment file %s", path)
-	}
-
-	stats, err := r.file.Stat()
-	if err != nil {
-		return nil, errors.Wrapf(err, "getting stat of row groups segment file %s", path)
-	}
-
-	segmentParquet, err := parquet.OpenFile(r.file, stats.Size())
-	if err != nil {
-		return nil, errors.Wrapf(err, "reading parquet of row groups segment file %s", path)
-	}
-
-	rowGroups := segmentParquet.RowGroups()
-	if len(rowGroups) != 1 {
-		return nil, errors.Wrapf(err, "segement file expected to have exactly one row group (actual %d)", len(rowGroups))
-	}
-
-	r.RowGroup = rowGroups[0]
-
-	return r, nil
-}
-
-func (r *rowGroupOnDisk) RowGroups() []parquet.RowGroup {
-	return []parquet.RowGroup{r.RowGroup}
-}
-
-func (r *rowGroupOnDisk) Rows() parquet.Rows {
-	rows := r.RowGroup.Rows()
-	if len(r.seriesIndexes) == 0 {
-		return rows
-	}
-
-	return &seriesIDRowsRewriter{
-		Rows:          rows,
-		seriesIndexes: r.seriesIndexes,
-	}
-}
-
-func (r *rowGroupOnDisk) Close() error {
-	if err := r.file.Close(); err != nil {
-		return err
-	}
-
-	if err := os.Remove(r.file.Name()); err != nil {
-		return errors.Wrap(err, "deleting row group segment file")
-	}
-
-	return nil
-}
-
-func (r *rowGroupOnDisk) columnIter(ctx context.Context, columnName string, predicate query.Predicate, alias string) query.Iterator {
-	column, found := r.RowGroup.Schema().Lookup(columnName)
-	if !found {
-		return query.NewErrIterator(fmt.Errorf("column '%s' not found in head row group segment '%s'", columnName, r.file.Name()))
-	}
-	return query.NewSyncIterator(ctx, []parquet.RowGroup{r.RowGroup}, column.ColumnIndex, columnName, 1000, predicate, alias)
-}
-
-type seriesIDRowsRewriter struct {
-	parquet.Rows
-	pos           int64
-	seriesIndexes rowRangesWithSeriesIndex
-}
-
-func (r *seriesIDRowsRewriter) SeekToRow(pos int64) error {
-	if err := r.Rows.SeekToRow(pos); err != nil {
-		return err
-	}
-	r.pos += pos
-	return nil
-}
-
-var colIdxSeriesIndex = func() int {
-	p := &schemav1.ProfilePersister{}
-	colIdx, found := p.Schema().Lookup("SeriesIndex")
-	if !found {
-		panic("column SeriesIndex not found")
-	}
-	return colIdx.ColumnIndex
-}()
-
-func (r *seriesIDRowsRewriter) ReadRows(rows []parquet.Row) (int, error) {
-	n, err := r.Rows.ReadRows(rows)
-	if err != nil {
-		return n, err
-	}
-
-	for pos, row := range rows[:n] {
-		// actual row num
-		rowNum := r.pos + int64(pos)
-		row[colIdxSeriesIndex] = parquet.ValueOf(r.seriesIndexes.getSeriesIndex(rowNum)).Level(0, 0, colIdxSeriesIndex)
-	}
-
-	r.pos += int64(n)
-
-	return n, nil
-}
+//type seriesIDRowsRewriter struct {
+//	parquet.Rows
+//	pos           int64
+//	seriesIndexes rowRangesWithSeriesIndex
+//}
+//
+//func (r *seriesIDRowsRewriter) SeekToRow(pos int64) error {
+//	if err := r.Rows.SeekToRow(pos); err != nil {
+//		return err
+//	}
+//	r.pos += pos
+//	return nil
+//}
+//
+//var colIdxSeriesIndex = func() int {
+//	p := &schemav1.ProfilePersister{}
+//	colIdx, found := p.Schema().Lookup("SeriesIndex")
+//	if !found {
+//		panic("column SeriesIndex not found")
+//	}
+//	return colIdx.ColumnIndex
+//}()
+//
+//func (r *seriesIDRowsRewriter) ReadRows(rows []parquet.Row) (int, error) {
+//	n, err := r.Rows.ReadRows(rows)
+//	if err != nil {
+//		return n, err
+//	}
+//
+//	for pos, row := range rows[:n] {
+//		// actual row num
+//		rowNum := r.pos + int64(pos)
+//		row[colIdxSeriesIndex] = parquet.ValueOf(r.seriesIndexes.getSeriesIndex(rowNum)).Level(0, 0, colIdxSeriesIndex)
+//	}
+//
+//	r.pos += int64(n)
+//
+//	return n, nil
+//}
 
 func copySlice[T any](in []T) []T {
 	out := make([]T, len(in))

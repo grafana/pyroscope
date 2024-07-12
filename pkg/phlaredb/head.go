@@ -361,18 +361,19 @@ func (h *Head) Bounds() (mint, maxt model.Time) {
 
 // Returns underlying queries, the queriers should be roughly ordered in TS increasing order
 func (h *Head) Queriers() Queriers {
-	h.profiles.rowsLock.RLock()
-	defer h.profiles.rowsLock.RUnlock()
-
-	queriers := make([]Querier, 0, len(h.profiles.rowGroups)+1)
-	for idx := range h.profiles.rowGroups {
-		queriers = append(queriers, &headOnDiskQuerier{
-			head:        h,
-			rowGroupIdx: idx,
-		})
-	}
-	queriers = append(queriers, &headInMemoryQuerier{h})
-	return queriers
+	return nil
+	//h.profiles.rowsLock.RLock()
+	//defer h.profiles.rowsLock.RUnlock()
+	//
+	//queriers := make([]Querier, 0, len(h.profiles.rowGroups)+1)
+	//for idx := range h.profiles.rowGroups {
+	//	queriers = append(queriers, &headOnDiskQuerier{
+	//		head:        h,
+	//		rowGroupIdx: idx,
+	//	})
+	//}
+	//queriers = append(queriers, &headInMemoryQuerier{h})
+	//return queriers
 }
 
 func (h *Head) Sort(in []Profile) []Profile {
@@ -626,9 +627,9 @@ func (h *Head) flush(ctx context.Context) error {
 func (h *Head) Move() error {
 	// Remove intermediate row groups before the move as they are still
 	// referencing files on the disk.
-	if err := h.profiles.DeleteRowGroups(); err != nil {
-		return err
-	}
+	//if err := h.profiles.DeleteRowGroups(); err != nil {
+	//	return err
+	//}
 
 	// move block to the local directory
 	if err := os.MkdirAll(filepath.Dir(h.localPath), defaultFolderMode); err != nil {
