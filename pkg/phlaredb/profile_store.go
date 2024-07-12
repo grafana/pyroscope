@@ -284,6 +284,8 @@ func (s *profileStore) cutRowGroup(count int) (err error) {
 	// held for long as it only performs in-memory operations,
 	// although blocking readers.
 	s.rowsLock.Lock()
+	// After the lock is released, rows/profiles should be read from the disk.
+	defer s.rowsLock.Unlock()
 	s.rowsFlushed += uint64(n)
 	s.rowGroups = append(s.rowGroups, rowGroup)
 	// Cutting the index is relatively quick op (no I/O).
@@ -303,8 +305,6 @@ func (s *profileStore) cutRowGroup(count int) (err error) {
 
 	level.Debug(s.logger).Log("msg", "cut row group segment", "path", path, "numProfiles", n)
 	s.metrics.sizeBytes.WithLabelValues(s.Name()).Set(float64(currentSize))
-	// After the lock is released, rows/profiles should be read from the disk.
-	s.rowsLock.Unlock()
 	return nil
 }
 
