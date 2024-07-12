@@ -1404,6 +1404,9 @@
     "v1Query": {
       "type": "object",
       "properties": {
+        "queryType": {
+          "$ref": "#/definitions/v1QueryType"
+        },
         "labelNames": {
           "$ref": "#/definitions/v1LabelNamesQuery"
         },
@@ -1455,7 +1458,7 @@
             "type": "object",
             "$ref": "#/definitions/v1BlockMeta"
           },
-          "description": "The blocks matching the query. Required.\nTODO: Use opaque byte array to avoid unnecessary\n proto encoding/decoding overhead."
+          "description": "The blocks matching the query.\n\nTODO: Use opaque byte array to avoid unnecessary\n proto encoding/decoding overhead in transient nodes.\n Graph nodes reference ranges, thus each range could\n be a blob of bytes:\n repeated bytes block_ranges = 2;"
         }
       },
       "description": "Query plan is represented by a DAG, where each node\nmight be either \"merge\" or \"read\" (leaves). Each node\nreferences a range: merge nodes refer to other nodes,\nwhile read nodes refer to the blocks."
@@ -1502,6 +1505,18 @@
         }
       }
     },
+    "v1QueryType": {
+      "type": "string",
+      "enum": [
+        "QUERY_UNSPECIFIED",
+        "QUERY_LABEL_NAMES",
+        "QUERY_LABEL_VALUES",
+        "QUERY_SERIES_LABELS",
+        "QUERY_METRICS",
+        "QUERY_TREE"
+      ],
+      "default": "QUERY_UNSPECIFIED"
+    },
     "v1RawProfileSeries": {
       "type": "object",
       "properties": {
@@ -1547,6 +1562,9 @@
     "v1Report": {
       "type": "object",
       "properties": {
+        "reportType": {
+          "$ref": "#/definitions/v1ReportType"
+        },
         "labelNames": {
           "$ref": "#/definitions/v1LabelNamesReport"
         },
@@ -1563,6 +1581,18 @@
           "$ref": "#/definitions/v1TreeReport"
         }
       }
+    },
+    "v1ReportType": {
+      "type": "string",
+      "enum": [
+        "REPORT_UNSPECIFIED",
+        "REPORT_LABEL_NAMES",
+        "REPORT_LABEL_VALUES",
+        "REPORT_SERIES_LABELS",
+        "REPORT_METRICS",
+        "REPORT_TREE"
+      ],
+      "default": "REPORT_UNSPECIFIED"
     },
     "v1Sample": {
       "type": "object",
@@ -1912,7 +1942,7 @@
         "query": {
           "$ref": "#/definitions/v1TreeQuery"
         },
-        "data": {
+        "tree": {
           "type": "string",
           "format": "byte"
         }

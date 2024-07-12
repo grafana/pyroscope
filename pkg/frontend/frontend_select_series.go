@@ -42,7 +42,7 @@ func (f *Frontend) SelectSeries(ctx context.Context,
 	c.Msg.Start = int64(validated.Start)
 	c.Msg.End = int64(validated.End)
 
-	query, err := buildQueryFromLabelSelectorAndProfileType(c.Msg.LabelSelector, c.Msg.ProfileTypeID)
+	query, err := buildLabelSelectorAndProfileType(c.Msg.LabelSelector, c.Msg.ProfileTypeID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}

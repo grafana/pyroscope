@@ -37,25 +37,37 @@ message QueryPlan {
   //  - range length.
   repeated uint32 graph = 1;
 
-  // The blocks matching the query. Required.
-  // TODO: Use opaque byte array to avoid unnecessary
-  //  proto encoding/decoding overhead.
+  // The blocks matching the query.
   repeated metastore.v1.BlockMeta blocks = 2;
+  // TODO: Use opaque byte array to avoid unnecessary
+  // proto encoding/decoding overhead in transient nodes.
+  // Graph nodes reference ranges, thus each range could
+  // be a blob of bytes:
+  // repeated bytes block_ranges = 2;
 }
 
 message Query {
-  oneof query_type {
-    LabelNamesQuery label_names = 1;
-    LabelValuesQuery label_values = 2;
-    SeriesLabelsQuery series_labels = 3;
-    MetricsQuery metrics = 4;
-    TreeQuery tree = 5;
-    // pprof
-    // function_details
-    // call_graph
-    // top_table
-    // ...
-  }
+  QueryType query_type = 1;
+
+  LabelNamesQuery label_names = 2;
+  LabelValuesQuery label_values = 3;
+  SeriesLabelsQuery series_labels = 4;
+  MetricsQuery metrics = 5;
+  TreeQuery tree = 6;
+  // pprof
+  // function_details
+  // call_graph
+  // top_table
+  // ...
+}
+
+enum QueryType {
+  QUERY_UNSPECIFIED = 0;
+  QUERY_LABEL_NAMES = 1;
+  QUERY_LABEL_VALUES = 2;
+  QUERY_SERIES_LABELS = 3;
+  QUERY_METRICS = 4;
+  QUERY_TREE = 5;
 }
 
 message InvokeResponse {
@@ -67,13 +79,22 @@ message InvokeResponse {
 message Diagnostics {}
 
 message Report {
-  oneof report_type {
-    LabelNamesReport label_names = 1;
-    LabelValuesReport label_values = 2;
-    SeriesLabelsReport series_labels = 3;
-    MetricsReport metrics = 4;
-    TreeReport tree = 5;
-  }
+  ReportType report_type = 1;
+
+  LabelNamesReport label_names = 2;
+  LabelValuesReport label_values = 3;
+  SeriesLabelsReport series_labels = 4;
+  MetricsReport metrics = 5;
+  TreeReport tree = 6;
+}
+
+enum ReportType {
+  REPORT_UNSPECIFIED = 0;
+  REPORT_LABEL_NAMES = 1;
+  REPORT_LABEL_VALUES = 2;
+  REPORT_SERIES_LABELS = 3;
+  REPORT_METRICS = 4;
+  REPORT_TREE = 5;
 }
 
 message LabelNamesQuery {}
@@ -119,5 +140,5 @@ message TreeQuery {
 
 message TreeReport {
   TreeQuery query = 1;
-  bytes data = 2;
+  bytes tree = 2;
 }

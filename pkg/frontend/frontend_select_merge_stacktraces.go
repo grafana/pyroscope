@@ -58,7 +58,7 @@ func (f *Frontend) selectMergeStacktracesTree(ctx context.Context,
 		return new(phlaremodel.Tree), nil
 	}
 
-	query, err := buildQueryFromLabelSelectorAndProfileType(c.Msg.LabelSelector, c.Msg.ProfileTypeID)
+	query, err := buildLabelSelectorAndProfileType(c.Msg.LabelSelector, c.Msg.ProfileTypeID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}

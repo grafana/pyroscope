@@ -8,22 +8,22 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
-type LabelsMerger struct {
+type LabelMerger struct {
 	mu     sync.Mutex
 	names  map[string]struct{}
 	values map[string]struct{}
 	series map[uint64]*typesv1.Labels
 }
 
-func NewLabelsMerger() *LabelsMerger {
-	return &LabelsMerger{
+func NewLabelMerger() *LabelMerger {
+	return &LabelMerger{
 		names:  make(map[string]struct{}),
 		values: make(map[string]struct{}),
 		series: make(map[uint64]*typesv1.Labels),
 	}
 }
 
-func (m *LabelsMerger) MergeLabelNames(names []string) {
+func (m *LabelMerger) MergeLabelNames(names []string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for _, n := range names {
@@ -31,7 +31,7 @@ func (m *LabelsMerger) MergeLabelNames(names []string) {
 	}
 }
 
-func (m *LabelsMerger) MergeLabelValues(values []string) {
+func (m *LabelMerger) MergeLabelValues(values []string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for _, v := range values {
@@ -39,11 +39,11 @@ func (m *LabelsMerger) MergeLabelValues(values []string) {
 	}
 }
 
-func (m *LabelsMerger) HasNames() bool {
+func (m *LabelMerger) HasNames() bool {
 	return len(m.names) > 0
 }
 
-func (m *LabelsMerger) LabelNames() []string {
+func (m *LabelMerger) LabelNames() []string {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	s := make([]string, len(m.names))
@@ -56,11 +56,11 @@ func (m *LabelsMerger) LabelNames() []string {
 	return s
 }
 
-func (m *LabelsMerger) HasValues() bool {
+func (m *LabelMerger) HasValues() bool {
 	return len(m.values) > 0
 }
 
-func (m *LabelsMerger) LabelValues() []string {
+func (m *LabelMerger) LabelValues() []string {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	s := make([]string, len(m.values))
@@ -73,7 +73,7 @@ func (m *LabelsMerger) LabelValues() []string {
 	return s
 }
 
-func (m *LabelsMerger) MergeSeries(series []*typesv1.Labels) {
+func (m *LabelMerger) MergeSeries(series []*typesv1.Labels) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for _, s := range series {
@@ -81,7 +81,7 @@ func (m *LabelsMerger) MergeSeries(series []*typesv1.Labels) {
 	}
 }
 
-func (m *LabelsMerger) SeriesLabels() []*typesv1.Labels {
+func (m *LabelMerger) SeriesLabels() []*typesv1.Labels {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	s := make([]*typesv1.Labels, len(m.series))
@@ -96,6 +96,6 @@ func (m *LabelsMerger) SeriesLabels() []*typesv1.Labels {
 	return s
 }
 
-func (m *LabelsMerger) HasSeries() bool {
+func (m *LabelMerger) HasSeries() bool {
 	return len(m.series) > 0
 }

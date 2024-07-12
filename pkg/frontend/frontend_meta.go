@@ -3,7 +3,6 @@ package frontend
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/go-kit/log/level"
@@ -36,7 +35,7 @@ func (f *Frontend) listMetadata(
 	return resp.Blocks, nil
 }
 
-func buildQueryFromMatchers(matchers []string) (string, error) {
+func buildLabelSelectorFromMatchers(matchers []string) (string, error) {
 	parsed, err := parseMatchers(matchers)
 	if err != nil {
 		return "", fmt.Errorf("parsing label selector: %w", err)
@@ -44,7 +43,7 @@ func buildQueryFromMatchers(matchers []string) (string, error) {
 	return matchersToLabelSelector(parsed), nil
 }
 
-func buildQueryFromLabelSelectorAndProfileType(labelSelector, profileTypeID string) (string, error) {
+func buildLabelSelectorAndProfileType(labelSelector, profileTypeID string) (string, error) {
 	matchers, err := parser.ParseMetricSelector(labelSelector)
 	if err != nil {
 		return "", fmt.Errorf("parsing label selector %q: %w", labelSelector, err)
@@ -86,14 +85,11 @@ func matchersToLabelSelector(matchers []*labels.Matcher) string {
 	return q.String()
 }
 
-func findReport[T any](r *T, reports []*querybackendv1.Report) bool {
+func findReport(r querybackendv1.ReportType, reports []*querybackendv1.Report) *querybackendv1.Report {
 	for _, x := range reports {
-		if reflect.TypeOf(x.ReportType) == reflect.TypeOf(r) {
-			if v, ok := (x.ReportType).(any).(*T); ok {
-				*r = *v
-				return true
-			}
+		if x.ReportType == r {
+			return x
 		}
 	}
-	return false
+	return nil
 }

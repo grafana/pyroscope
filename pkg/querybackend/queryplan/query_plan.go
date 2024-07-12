@@ -54,13 +54,14 @@ type node struct {
 }
 
 func Open(p *querybackendv1.QueryPlan) *QueryPlan {
-	if len(p.Graph) == 0 || len(p.Blocks) == 0 || len(p.Graph)%3 > 0 {
+	if len(p.Blocks) == 0 {
 		return new(QueryPlan)
 	}
-	return &QueryPlan{
-		nodes:  *(*[]node)(unsafe.Pointer(&p.Graph)),
-		blocks: p.Blocks,
+	qp := QueryPlan{blocks: p.Blocks}
+	if len(p.Graph) != 0 || len(p.Graph)%3 == 0 {
+		qp.nodes = unsafe.Slice((*node)(unsafe.Pointer(unsafe.SliceData(p.Graph))), len(p.Graph)/3)
 	}
+	return &qp
 }
 
 // Build creates a query plan from the list of block metadata.
@@ -93,6 +94,12 @@ func Build(
 			// Block range.
 			off: b[0],
 			len: b[1],
+		}
+	}
+	if len(nodes) < 2 {
+		return &QueryPlan{
+			blocks: blocks,
+			nodes:  nodes,
 		}
 	}
 	// Next we create merge nodes.
@@ -141,7 +148,6 @@ func Build(
 // Root returns the root node of the query plan.
 func (p *QueryPlan) Root() *Node {
 	if len(p.nodes) == 0 {
-		// A stub node.
 		return &Node{Type: NodeRead, p: p}
 	}
 	n := Node{p: p}
@@ -230,7 +236,7 @@ func (n *Node) Plan() *QueryPlan {
 
 func (p *QueryPlan) Proto() *querybackendv1.QueryPlan {
 	return &querybackendv1.QueryPlan{
-		Graph:  *(*[]uint32)(unsafe.Pointer(&p.nodes)),
+		Graph:  unsafe.Slice((*uint32)(unsafe.Pointer(unsafe.SliceData(p.nodes))), len(p.nodes)*3),
 		Blocks: p.blocks,
 	}
 }

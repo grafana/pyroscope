@@ -40,7 +40,7 @@ func (f *Frontend) LabelNames(ctx context.Context, c *connect.Request[typesv1.La
 		c.Msg.End = int64(validated.End)
 	}
 
-	query, err := buildQueryFromMatchers(c.Msg.Matchers)
+	query, err := buildLabelSelectorFromMatchers(c.Msg.Matchers)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}

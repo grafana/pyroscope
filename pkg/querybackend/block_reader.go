@@ -2,18 +2,15 @@ package querybackend
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"strconv"
 
 	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/parquet-go/parquet-go"
 	"golang.org/x/sync/errgroup"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	querybackendv1 "github.com/grafana/pyroscope/api/gen/proto/go/querybackend/v1"
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
@@ -52,14 +49,7 @@ func (b *BlockReader) Invoke(ctx context.Context, req *querybackendv1.InvokeRequ
 			svc := svc
 			for _, query := range req.Query {
 				g.Go(util.RecoverPanic(func() error {
-					q := &queryContext{
-						ctx: ctx,
-						log: b.log,
-						req: req,
-						svc: svc,
-						obj: obj,
-					}
-					r, err := q.execute(query)
+					r, err := newQueryContext(ctx, b.log, req, svc, obj).execute(query)
 					if err != nil {
 						return err
 					}
@@ -171,55 +161,4 @@ func (b object) openProfileTable(ctx context.Context, svc *metastorev1.TenantSer
 		Offset:         offset,
 	}
 	return parquet.OpenFile(rat, size) // TODO: options, etc.
-}
-
-type queryContext struct {
-	ctx context.Context
-	log log.Logger
-	req *querybackendv1.InvokeRequest
-	svc *metastorev1.TenantService
-	obj object
-}
-
-func (q *queryContext) execute(query *querybackendv1.Query) (*querybackendv1.Report, error) {
-	// TODO: Replace with a map type => handler?
-	_ = level.Info(q.log).Log("msg", "executing query", "query", fmt.Sprintf("%+v", query.GetQueryType()))
-	// TODO: Implement query methods.
-	switch x := query.QueryType.(type) {
-	case *querybackendv1.Query_LabelNames:
-		return &querybackendv1.Report{
-			ReportType: &querybackendv1.Report_LabelNames{
-				LabelNames: &querybackendv1.LabelNamesReport{
-					LabelNames: []string{"some_label_name"},
-				},
-			},
-		}, nil
-	case *querybackendv1.Query_LabelValues:
-		return &querybackendv1.Report{
-			ReportType: &querybackendv1.Report_LabelValues{
-				LabelValues: &querybackendv1.LabelValuesReport{
-					LabelValues: []string{"some_label_value"},
-				},
-			},
-		}, nil
-	case *querybackendv1.Query_SeriesLabels:
-		return &querybackendv1.Report{
-			ReportType: &querybackendv1.Report_SeriesLabels{
-				SeriesLabels: &querybackendv1.SeriesLabelsReport{
-					SeriesLabels: []*typesv1.Labels{{Labels: []*typesv1.LabelPair{
-						{Name: "service_name", Value: "service_name"},
-						{Name: "__profile_type__", Value: "__profile_type__"},
-						{Name: "__type__", Value: "__type__"},
-						{Name: "__name__", Value: "__name__"},
-					}}},
-				},
-			},
-		}, nil
-	case *querybackendv1.Query_Metrics:
-		return nil, nil
-	case *querybackendv1.Query_Tree:
-		return q.queryTree(x.Tree)
-	default:
-		return nil, fmt.Errorf("unknown query type %T", x)
-	}
 }

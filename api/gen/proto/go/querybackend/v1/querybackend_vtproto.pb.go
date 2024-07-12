@@ -113,9 +113,12 @@ func (m *Query) CloneVT() *Query {
 		return (*Query)(nil)
 	}
 	r := new(Query)
-	if m.QueryType != nil {
-		r.QueryType = m.QueryType.(interface{ CloneVT() isQuery_QueryType }).CloneVT()
-	}
+	r.QueryType = m.QueryType
+	r.LabelNames = m.LabelNames.CloneVT()
+	r.LabelValues = m.LabelValues.CloneVT()
+	r.SeriesLabels = m.SeriesLabels.CloneVT()
+	r.Metrics = m.Metrics.CloneVT()
+	r.Tree = m.Tree.CloneVT()
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -125,51 +128,6 @@ func (m *Query) CloneVT() *Query {
 
 func (m *Query) CloneMessageVT() proto.Message {
 	return m.CloneVT()
-}
-
-func (m *Query_LabelNames) CloneVT() isQuery_QueryType {
-	if m == nil {
-		return (*Query_LabelNames)(nil)
-	}
-	r := new(Query_LabelNames)
-	r.LabelNames = m.LabelNames.CloneVT()
-	return r
-}
-
-func (m *Query_LabelValues) CloneVT() isQuery_QueryType {
-	if m == nil {
-		return (*Query_LabelValues)(nil)
-	}
-	r := new(Query_LabelValues)
-	r.LabelValues = m.LabelValues.CloneVT()
-	return r
-}
-
-func (m *Query_SeriesLabels) CloneVT() isQuery_QueryType {
-	if m == nil {
-		return (*Query_SeriesLabels)(nil)
-	}
-	r := new(Query_SeriesLabels)
-	r.SeriesLabels = m.SeriesLabels.CloneVT()
-	return r
-}
-
-func (m *Query_Metrics) CloneVT() isQuery_QueryType {
-	if m == nil {
-		return (*Query_Metrics)(nil)
-	}
-	r := new(Query_Metrics)
-	r.Metrics = m.Metrics.CloneVT()
-	return r
-}
-
-func (m *Query_Tree) CloneVT() isQuery_QueryType {
-	if m == nil {
-		return (*Query_Tree)(nil)
-	}
-	r := new(Query_Tree)
-	r.Tree = m.Tree.CloneVT()
-	return r
 }
 
 func (m *InvokeResponse) CloneVT() *InvokeResponse {
@@ -217,9 +175,12 @@ func (m *Report) CloneVT() *Report {
 		return (*Report)(nil)
 	}
 	r := new(Report)
-	if m.ReportType != nil {
-		r.ReportType = m.ReportType.(interface{ CloneVT() isReport_ReportType }).CloneVT()
-	}
+	r.ReportType = m.ReportType
+	r.LabelNames = m.LabelNames.CloneVT()
+	r.LabelValues = m.LabelValues.CloneVT()
+	r.SeriesLabels = m.SeriesLabels.CloneVT()
+	r.Metrics = m.Metrics.CloneVT()
+	r.Tree = m.Tree.CloneVT()
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -229,51 +190,6 @@ func (m *Report) CloneVT() *Report {
 
 func (m *Report) CloneMessageVT() proto.Message {
 	return m.CloneVT()
-}
-
-func (m *Report_LabelNames) CloneVT() isReport_ReportType {
-	if m == nil {
-		return (*Report_LabelNames)(nil)
-	}
-	r := new(Report_LabelNames)
-	r.LabelNames = m.LabelNames.CloneVT()
-	return r
-}
-
-func (m *Report_LabelValues) CloneVT() isReport_ReportType {
-	if m == nil {
-		return (*Report_LabelValues)(nil)
-	}
-	r := new(Report_LabelValues)
-	r.LabelValues = m.LabelValues.CloneVT()
-	return r
-}
-
-func (m *Report_SeriesLabels) CloneVT() isReport_ReportType {
-	if m == nil {
-		return (*Report_SeriesLabels)(nil)
-	}
-	r := new(Report_SeriesLabels)
-	r.SeriesLabels = m.SeriesLabels.CloneVT()
-	return r
-}
-
-func (m *Report_Metrics) CloneVT() isReport_ReportType {
-	if m == nil {
-		return (*Report_Metrics)(nil)
-	}
-	r := new(Report_Metrics)
-	r.Metrics = m.Metrics.CloneVT()
-	return r
-}
-
-func (m *Report_Tree) CloneVT() isReport_ReportType {
-	if m == nil {
-		return (*Report_Tree)(nil)
-	}
-	r := new(Report_Tree)
-	r.Tree = m.Tree.CloneVT()
-	return r
 }
 
 func (m *LabelNamesQuery) CloneVT() *LabelNamesQuery {
@@ -479,10 +395,10 @@ func (m *TreeReport) CloneVT() *TreeReport {
 	}
 	r := new(TreeReport)
 	r.Query = m.Query.CloneVT()
-	if rhs := m.Data; rhs != nil {
+	if rhs := m.Tree; rhs != nil {
 		tmpBytes := make([]byte, len(rhs))
 		copy(tmpBytes, rhs)
-		r.Data = tmpBytes
+		r.Tree = tmpBytes
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -620,15 +536,23 @@ func (this *Query) EqualVT(that *Query) bool {
 	} else if this == nil || that == nil {
 		return false
 	}
-	if this.QueryType == nil && that.QueryType != nil {
+	if this.QueryType != that.QueryType {
 		return false
-	} else if this.QueryType != nil {
-		if that.QueryType == nil {
-			return false
-		}
-		if !this.QueryType.(interface{ EqualVT(isQuery_QueryType) bool }).EqualVT(that.QueryType) {
-			return false
-		}
+	}
+	if !this.LabelNames.EqualVT(that.LabelNames) {
+		return false
+	}
+	if !this.LabelValues.EqualVT(that.LabelValues) {
+		return false
+	}
+	if !this.SeriesLabels.EqualVT(that.SeriesLabels) {
+		return false
+	}
+	if !this.Metrics.EqualVT(that.Metrics) {
+		return false
+	}
+	if !this.Tree.EqualVT(that.Tree) {
+		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
@@ -640,131 +564,6 @@ func (this *Query) EqualMessageVT(thatMsg proto.Message) bool {
 	}
 	return this.EqualVT(that)
 }
-func (this *Query_LabelNames) EqualVT(thatIface isQuery_QueryType) bool {
-	that, ok := thatIface.(*Query_LabelNames)
-	if !ok {
-		return false
-	}
-	if this == that {
-		return true
-	}
-	if this == nil && that != nil || this != nil && that == nil {
-		return false
-	}
-	if p, q := this.LabelNames, that.LabelNames; p != q {
-		if p == nil {
-			p = &LabelNamesQuery{}
-		}
-		if q == nil {
-			q = &LabelNamesQuery{}
-		}
-		if !p.EqualVT(q) {
-			return false
-		}
-	}
-	return true
-}
-
-func (this *Query_LabelValues) EqualVT(thatIface isQuery_QueryType) bool {
-	that, ok := thatIface.(*Query_LabelValues)
-	if !ok {
-		return false
-	}
-	if this == that {
-		return true
-	}
-	if this == nil && that != nil || this != nil && that == nil {
-		return false
-	}
-	if p, q := this.LabelValues, that.LabelValues; p != q {
-		if p == nil {
-			p = &LabelValuesQuery{}
-		}
-		if q == nil {
-			q = &LabelValuesQuery{}
-		}
-		if !p.EqualVT(q) {
-			return false
-		}
-	}
-	return true
-}
-
-func (this *Query_SeriesLabels) EqualVT(thatIface isQuery_QueryType) bool {
-	that, ok := thatIface.(*Query_SeriesLabels)
-	if !ok {
-		return false
-	}
-	if this == that {
-		return true
-	}
-	if this == nil && that != nil || this != nil && that == nil {
-		return false
-	}
-	if p, q := this.SeriesLabels, that.SeriesLabels; p != q {
-		if p == nil {
-			p = &SeriesLabelsQuery{}
-		}
-		if q == nil {
-			q = &SeriesLabelsQuery{}
-		}
-		if !p.EqualVT(q) {
-			return false
-		}
-	}
-	return true
-}
-
-func (this *Query_Metrics) EqualVT(thatIface isQuery_QueryType) bool {
-	that, ok := thatIface.(*Query_Metrics)
-	if !ok {
-		return false
-	}
-	if this == that {
-		return true
-	}
-	if this == nil && that != nil || this != nil && that == nil {
-		return false
-	}
-	if p, q := this.Metrics, that.Metrics; p != q {
-		if p == nil {
-			p = &MetricsQuery{}
-		}
-		if q == nil {
-			q = &MetricsQuery{}
-		}
-		if !p.EqualVT(q) {
-			return false
-		}
-	}
-	return true
-}
-
-func (this *Query_Tree) EqualVT(thatIface isQuery_QueryType) bool {
-	that, ok := thatIface.(*Query_Tree)
-	if !ok {
-		return false
-	}
-	if this == that {
-		return true
-	}
-	if this == nil && that != nil || this != nil && that == nil {
-		return false
-	}
-	if p, q := this.Tree, that.Tree; p != q {
-		if p == nil {
-			p = &TreeQuery{}
-		}
-		if q == nil {
-			q = &TreeQuery{}
-		}
-		if !p.EqualVT(q) {
-			return false
-		}
-	}
-	return true
-}
-
 func (this *InvokeResponse) EqualVT(that *InvokeResponse) bool {
 	if this == that {
 		return true
@@ -823,17 +622,23 @@ func (this *Report) EqualVT(that *Report) bool {
 	} else if this == nil || that == nil {
 		return false
 	}
-	if this.ReportType == nil && that.ReportType != nil {
+	if this.ReportType != that.ReportType {
 		return false
-	} else if this.ReportType != nil {
-		if that.ReportType == nil {
-			return false
-		}
-		if !this.ReportType.(interface {
-			EqualVT(isReport_ReportType) bool
-		}).EqualVT(that.ReportType) {
-			return false
-		}
+	}
+	if !this.LabelNames.EqualVT(that.LabelNames) {
+		return false
+	}
+	if !this.LabelValues.EqualVT(that.LabelValues) {
+		return false
+	}
+	if !this.SeriesLabels.EqualVT(that.SeriesLabels) {
+		return false
+	}
+	if !this.Metrics.EqualVT(that.Metrics) {
+		return false
+	}
+	if !this.Tree.EqualVT(that.Tree) {
+		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
@@ -845,131 +650,6 @@ func (this *Report) EqualMessageVT(thatMsg proto.Message) bool {
 	}
 	return this.EqualVT(that)
 }
-func (this *Report_LabelNames) EqualVT(thatIface isReport_ReportType) bool {
-	that, ok := thatIface.(*Report_LabelNames)
-	if !ok {
-		return false
-	}
-	if this == that {
-		return true
-	}
-	if this == nil && that != nil || this != nil && that == nil {
-		return false
-	}
-	if p, q := this.LabelNames, that.LabelNames; p != q {
-		if p == nil {
-			p = &LabelNamesReport{}
-		}
-		if q == nil {
-			q = &LabelNamesReport{}
-		}
-		if !p.EqualVT(q) {
-			return false
-		}
-	}
-	return true
-}
-
-func (this *Report_LabelValues) EqualVT(thatIface isReport_ReportType) bool {
-	that, ok := thatIface.(*Report_LabelValues)
-	if !ok {
-		return false
-	}
-	if this == that {
-		return true
-	}
-	if this == nil && that != nil || this != nil && that == nil {
-		return false
-	}
-	if p, q := this.LabelValues, that.LabelValues; p != q {
-		if p == nil {
-			p = &LabelValuesReport{}
-		}
-		if q == nil {
-			q = &LabelValuesReport{}
-		}
-		if !p.EqualVT(q) {
-			return false
-		}
-	}
-	return true
-}
-
-func (this *Report_SeriesLabels) EqualVT(thatIface isReport_ReportType) bool {
-	that, ok := thatIface.(*Report_SeriesLabels)
-	if !ok {
-		return false
-	}
-	if this == that {
-		return true
-	}
-	if this == nil && that != nil || this != nil && that == nil {
-		return false
-	}
-	if p, q := this.SeriesLabels, that.SeriesLabels; p != q {
-		if p == nil {
-			p = &SeriesLabelsReport{}
-		}
-		if q == nil {
-			q = &SeriesLabelsReport{}
-		}
-		if !p.EqualVT(q) {
-			return false
-		}
-	}
-	return true
-}
-
-func (this *Report_Metrics) EqualVT(thatIface isReport_ReportType) bool {
-	that, ok := thatIface.(*Report_Metrics)
-	if !ok {
-		return false
-	}
-	if this == that {
-		return true
-	}
-	if this == nil && that != nil || this != nil && that == nil {
-		return false
-	}
-	if p, q := this.Metrics, that.Metrics; p != q {
-		if p == nil {
-			p = &MetricsReport{}
-		}
-		if q == nil {
-			q = &MetricsReport{}
-		}
-		if !p.EqualVT(q) {
-			return false
-		}
-	}
-	return true
-}
-
-func (this *Report_Tree) EqualVT(thatIface isReport_ReportType) bool {
-	that, ok := thatIface.(*Report_Tree)
-	if !ok {
-		return false
-	}
-	if this == that {
-		return true
-	}
-	if this == nil && that != nil || this != nil && that == nil {
-		return false
-	}
-	if p, q := this.Tree, that.Tree; p != q {
-		if p == nil {
-			p = &TreeReport{}
-		}
-		if q == nil {
-			q = &TreeReport{}
-		}
-		if !p.EqualVT(q) {
-			return false
-		}
-	}
-	return true
-}
-
 func (this *LabelNamesQuery) EqualVT(that *LabelNamesQuery) bool {
 	if this == that {
 		return true
@@ -1225,7 +905,7 @@ func (this *TreeReport) EqualVT(that *TreeReport) bool {
 	if !this.Query.EqualVT(that.Query) {
 		return false
 	}
-	if string(this.Data) != string(that.Data) {
+	if string(this.Tree) != string(that.Tree) {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -1561,101 +1241,6 @@ func (m *Query) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if vtmsg, ok := m.QueryType.(interface {
-		MarshalToSizedBufferVT([]byte) (int, error)
-	}); ok {
-		size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *Query_LabelNames) MarshalToVT(dAtA []byte) (int, error) {
-	size := m.SizeVT()
-	return m.MarshalToSizedBufferVT(dAtA[:size])
-}
-
-func (m *Query_LabelNames) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.LabelNames != nil {
-		size, err := m.LabelNames.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-func (m *Query_LabelValues) MarshalToVT(dAtA []byte) (int, error) {
-	size := m.SizeVT()
-	return m.MarshalToSizedBufferVT(dAtA[:size])
-}
-
-func (m *Query_LabelValues) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.LabelValues != nil {
-		size, err := m.LabelValues.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
-		i--
-		dAtA[i] = 0x12
-	}
-	return len(dAtA) - i, nil
-}
-func (m *Query_SeriesLabels) MarshalToVT(dAtA []byte) (int, error) {
-	size := m.SizeVT()
-	return m.MarshalToSizedBufferVT(dAtA[:size])
-}
-
-func (m *Query_SeriesLabels) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.SeriesLabels != nil {
-		size, err := m.SeriesLabels.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
-		i--
-		dAtA[i] = 0x1a
-	}
-	return len(dAtA) - i, nil
-}
-func (m *Query_Metrics) MarshalToVT(dAtA []byte) (int, error) {
-	size := m.SizeVT()
-	return m.MarshalToSizedBufferVT(dAtA[:size])
-}
-
-func (m *Query_Metrics) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.Metrics != nil {
-		size, err := m.Metrics.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
-		i--
-		dAtA[i] = 0x22
-	}
-	return len(dAtA) - i, nil
-}
-func (m *Query_Tree) MarshalToVT(dAtA []byte) (int, error) {
-	size := m.SizeVT()
-	return m.MarshalToSizedBufferVT(dAtA[:size])
-}
-
-func (m *Query_Tree) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
-	i := len(dAtA)
 	if m.Tree != nil {
 		size, err := m.Tree.MarshalToSizedBufferVT(dAtA[:i])
 		if err != nil {
@@ -1664,10 +1249,56 @@ func (m *Query_Tree) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= size
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
 		i--
+		dAtA[i] = 0x32
+	}
+	if m.Metrics != nil {
+		size, err := m.Metrics.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
 		dAtA[i] = 0x2a
+	}
+	if m.SeriesLabels != nil {
+		size, err := m.SeriesLabels.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x22
+	}
+	if m.LabelValues != nil {
+		size, err := m.LabelValues.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if m.LabelNames != nil {
+		size, err := m.LabelNames.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x12
+	}
+	if m.QueryType != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.QueryType))
+		i--
+		dAtA[i] = 0x8
 	}
 	return len(dAtA) - i, nil
 }
+
 func (m *InvokeResponse) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
@@ -1786,101 +1417,6 @@ func (m *Report) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if vtmsg, ok := m.ReportType.(interface {
-		MarshalToSizedBufferVT([]byte) (int, error)
-	}); ok {
-		size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *Report_LabelNames) MarshalToVT(dAtA []byte) (int, error) {
-	size := m.SizeVT()
-	return m.MarshalToSizedBufferVT(dAtA[:size])
-}
-
-func (m *Report_LabelNames) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.LabelNames != nil {
-		size, err := m.LabelNames.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-func (m *Report_LabelValues) MarshalToVT(dAtA []byte) (int, error) {
-	size := m.SizeVT()
-	return m.MarshalToSizedBufferVT(dAtA[:size])
-}
-
-func (m *Report_LabelValues) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.LabelValues != nil {
-		size, err := m.LabelValues.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
-		i--
-		dAtA[i] = 0x12
-	}
-	return len(dAtA) - i, nil
-}
-func (m *Report_SeriesLabels) MarshalToVT(dAtA []byte) (int, error) {
-	size := m.SizeVT()
-	return m.MarshalToSizedBufferVT(dAtA[:size])
-}
-
-func (m *Report_SeriesLabels) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.SeriesLabels != nil {
-		size, err := m.SeriesLabels.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
-		i--
-		dAtA[i] = 0x1a
-	}
-	return len(dAtA) - i, nil
-}
-func (m *Report_Metrics) MarshalToVT(dAtA []byte) (int, error) {
-	size := m.SizeVT()
-	return m.MarshalToSizedBufferVT(dAtA[:size])
-}
-
-func (m *Report_Metrics) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.Metrics != nil {
-		size, err := m.Metrics.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
-		i--
-		dAtA[i] = 0x22
-	}
-	return len(dAtA) - i, nil
-}
-func (m *Report_Tree) MarshalToVT(dAtA []byte) (int, error) {
-	size := m.SizeVT()
-	return m.MarshalToSizedBufferVT(dAtA[:size])
-}
-
-func (m *Report_Tree) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
-	i := len(dAtA)
 	if m.Tree != nil {
 		size, err := m.Tree.MarshalToSizedBufferVT(dAtA[:i])
 		if err != nil {
@@ -1889,10 +1425,56 @@ func (m *Report_Tree) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= size
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
 		i--
+		dAtA[i] = 0x32
+	}
+	if m.Metrics != nil {
+		size, err := m.Metrics.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
 		dAtA[i] = 0x2a
+	}
+	if m.SeriesLabels != nil {
+		size, err := m.SeriesLabels.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x22
+	}
+	if m.LabelValues != nil {
+		size, err := m.LabelValues.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if m.LabelNames != nil {
+		size, err := m.LabelNames.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x12
+	}
+	if m.ReportType != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.ReportType))
+		i--
+		dAtA[i] = 0x8
 	}
 	return len(dAtA) - i, nil
 }
+
 func (m *LabelNamesQuery) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
@@ -2367,10 +1949,10 @@ func (m *TreeReport) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if len(m.Data) > 0 {
-		i -= len(m.Data)
-		copy(dAtA[i:], m.Data)
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Data)))
+	if len(m.Tree) > 0 {
+		i -= len(m.Tree)
+		copy(dAtA[i:], m.Tree)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Tree)))
 		i--
 		dAtA[i] = 0x12
 	}
@@ -2472,73 +2054,33 @@ func (m *Query) SizeVT() (n int) {
 	}
 	var l int
 	_ = l
-	if vtmsg, ok := m.QueryType.(interface{ SizeVT() int }); ok {
-		n += vtmsg.SizeVT()
+	if m.QueryType != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.QueryType))
+	}
+	if m.LabelNames != nil {
+		l = m.LabelNames.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.LabelValues != nil {
+		l = m.LabelValues.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.SeriesLabels != nil {
+		l = m.SeriesLabels.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.Metrics != nil {
+		l = m.Metrics.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.Tree != nil {
+		l = m.Tree.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	n += len(m.unknownFields)
 	return n
 }
 
-func (m *Query_LabelNames) SizeVT() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.LabelNames != nil {
-		l = m.LabelNames.SizeVT()
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-	}
-	return n
-}
-func (m *Query_LabelValues) SizeVT() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.LabelValues != nil {
-		l = m.LabelValues.SizeVT()
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-	}
-	return n
-}
-func (m *Query_SeriesLabels) SizeVT() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.SeriesLabels != nil {
-		l = m.SeriesLabels.SizeVT()
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-	}
-	return n
-}
-func (m *Query_Metrics) SizeVT() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Metrics != nil {
-		l = m.Metrics.SizeVT()
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-	}
-	return n
-}
-func (m *Query_Tree) SizeVT() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Tree != nil {
-		l = m.Tree.SizeVT()
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-	}
-	return n
-}
 func (m *InvokeResponse) SizeVT() (n int) {
 	if m == nil {
 		return 0
@@ -2575,73 +2117,33 @@ func (m *Report) SizeVT() (n int) {
 	}
 	var l int
 	_ = l
-	if vtmsg, ok := m.ReportType.(interface{ SizeVT() int }); ok {
-		n += vtmsg.SizeVT()
+	if m.ReportType != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.ReportType))
+	}
+	if m.LabelNames != nil {
+		l = m.LabelNames.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.LabelValues != nil {
+		l = m.LabelValues.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.SeriesLabels != nil {
+		l = m.SeriesLabels.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.Metrics != nil {
+		l = m.Metrics.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.Tree != nil {
+		l = m.Tree.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	n += len(m.unknownFields)
 	return n
 }
 
-func (m *Report_LabelNames) SizeVT() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.LabelNames != nil {
-		l = m.LabelNames.SizeVT()
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-	}
-	return n
-}
-func (m *Report_LabelValues) SizeVT() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.LabelValues != nil {
-		l = m.LabelValues.SizeVT()
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-	}
-	return n
-}
-func (m *Report_SeriesLabels) SizeVT() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.SeriesLabels != nil {
-		l = m.SeriesLabels.SizeVT()
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-	}
-	return n
-}
-func (m *Report_Metrics) SizeVT() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Metrics != nil {
-		l = m.Metrics.SizeVT()
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-	}
-	return n
-}
-func (m *Report_Tree) SizeVT() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Tree != nil {
-		l = m.Tree.SizeVT()
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-	}
-	return n
-}
 func (m *LabelNamesQuery) SizeVT() (n int) {
 	if m == nil {
 		return 0
@@ -2819,7 +2321,7 @@ func (m *TreeReport) SizeVT() (n int) {
 		l = m.Query.SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
-	l = len(m.Data)
+	l = len(m.Tree)
 	if l > 0 {
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
@@ -3336,6 +2838,25 @@ func (m *Query) UnmarshalVT(dAtA []byte) error {
 		}
 		switch fieldNum {
 		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field QueryType", wireType)
+			}
+			m.QueryType = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.QueryType |= QueryType(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field LabelNames", wireType)
 			}
@@ -3364,19 +2885,14 @@ func (m *Query) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if oneof, ok := m.QueryType.(*Query_LabelNames); ok {
-				if err := oneof.LabelNames.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				v := &LabelNamesQuery{}
-				if err := v.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-				m.QueryType = &Query_LabelNames{LabelNames: v}
+			if m.LabelNames == nil {
+				m.LabelNames = &LabelNamesQuery{}
+			}
+			if err := m.LabelNames.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
 			}
 			iNdEx = postIndex
-		case 2:
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field LabelValues", wireType)
 			}
@@ -3405,19 +2921,14 @@ func (m *Query) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if oneof, ok := m.QueryType.(*Query_LabelValues); ok {
-				if err := oneof.LabelValues.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				v := &LabelValuesQuery{}
-				if err := v.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-				m.QueryType = &Query_LabelValues{LabelValues: v}
+			if m.LabelValues == nil {
+				m.LabelValues = &LabelValuesQuery{}
+			}
+			if err := m.LabelValues.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
 			}
 			iNdEx = postIndex
-		case 3:
+		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field SeriesLabels", wireType)
 			}
@@ -3446,19 +2957,14 @@ func (m *Query) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if oneof, ok := m.QueryType.(*Query_SeriesLabels); ok {
-				if err := oneof.SeriesLabels.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				v := &SeriesLabelsQuery{}
-				if err := v.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-				m.QueryType = &Query_SeriesLabels{SeriesLabels: v}
+			if m.SeriesLabels == nil {
+				m.SeriesLabels = &SeriesLabelsQuery{}
+			}
+			if err := m.SeriesLabels.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
 			}
 			iNdEx = postIndex
-		case 4:
+		case 5:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Metrics", wireType)
 			}
@@ -3487,19 +2993,14 @@ func (m *Query) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if oneof, ok := m.QueryType.(*Query_Metrics); ok {
-				if err := oneof.Metrics.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				v := &MetricsQuery{}
-				if err := v.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-				m.QueryType = &Query_Metrics{Metrics: v}
+			if m.Metrics == nil {
+				m.Metrics = &MetricsQuery{}
+			}
+			if err := m.Metrics.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
 			}
 			iNdEx = postIndex
-		case 5:
+		case 6:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Tree", wireType)
 			}
@@ -3528,16 +3029,11 @@ func (m *Query) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if oneof, ok := m.QueryType.(*Query_Tree); ok {
-				if err := oneof.Tree.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				v := &TreeQuery{}
-				if err := v.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-				m.QueryType = &Query_Tree{Tree: v}
+			if m.Tree == nil {
+				m.Tree = &TreeQuery{}
+			}
+			if err := m.Tree.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
 			}
 			iNdEx = postIndex
 		default:
@@ -3764,6 +3260,25 @@ func (m *Report) UnmarshalVT(dAtA []byte) error {
 		}
 		switch fieldNum {
 		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ReportType", wireType)
+			}
+			m.ReportType = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.ReportType |= ReportType(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field LabelNames", wireType)
 			}
@@ -3792,19 +3307,14 @@ func (m *Report) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if oneof, ok := m.ReportType.(*Report_LabelNames); ok {
-				if err := oneof.LabelNames.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				v := &LabelNamesReport{}
-				if err := v.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-				m.ReportType = &Report_LabelNames{LabelNames: v}
+			if m.LabelNames == nil {
+				m.LabelNames = &LabelNamesReport{}
+			}
+			if err := m.LabelNames.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
 			}
 			iNdEx = postIndex
-		case 2:
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field LabelValues", wireType)
 			}
@@ -3833,19 +3343,14 @@ func (m *Report) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if oneof, ok := m.ReportType.(*Report_LabelValues); ok {
-				if err := oneof.LabelValues.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				v := &LabelValuesReport{}
-				if err := v.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-				m.ReportType = &Report_LabelValues{LabelValues: v}
+			if m.LabelValues == nil {
+				m.LabelValues = &LabelValuesReport{}
+			}
+			if err := m.LabelValues.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
 			}
 			iNdEx = postIndex
-		case 3:
+		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field SeriesLabels", wireType)
 			}
@@ -3874,19 +3379,14 @@ func (m *Report) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if oneof, ok := m.ReportType.(*Report_SeriesLabels); ok {
-				if err := oneof.SeriesLabels.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				v := &SeriesLabelsReport{}
-				if err := v.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-				m.ReportType = &Report_SeriesLabels{SeriesLabels: v}
+			if m.SeriesLabels == nil {
+				m.SeriesLabels = &SeriesLabelsReport{}
+			}
+			if err := m.SeriesLabels.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
 			}
 			iNdEx = postIndex
-		case 4:
+		case 5:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Metrics", wireType)
 			}
@@ -3915,19 +3415,14 @@ func (m *Report) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if oneof, ok := m.ReportType.(*Report_Metrics); ok {
-				if err := oneof.Metrics.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				v := &MetricsReport{}
-				if err := v.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-				m.ReportType = &Report_Metrics{Metrics: v}
+			if m.Metrics == nil {
+				m.Metrics = &MetricsReport{}
+			}
+			if err := m.Metrics.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
 			}
 			iNdEx = postIndex
-		case 5:
+		case 6:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Tree", wireType)
 			}
@@ -3956,16 +3451,11 @@ func (m *Report) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if oneof, ok := m.ReportType.(*Report_Tree); ok {
-				if err := oneof.Tree.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				v := &TreeReport{}
-				if err := v.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-				m.ReportType = &Report_Tree{Tree: v}
+			if m.Tree == nil {
+				m.Tree = &TreeReport{}
+			}
+			if err := m.Tree.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
 			}
 			iNdEx = postIndex
 		default:
@@ -4954,7 +4444,7 @@ func (m *TreeReport) UnmarshalVT(dAtA []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Data", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Tree", wireType)
 			}
 			var byteLen int
 			for shift := uint(0); ; shift += 7 {
@@ -4981,9 +4471,9 @@ func (m *TreeReport) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Data = append(m.Data[:0], dAtA[iNdEx:postIndex]...)
-			if m.Data == nil {
-				m.Data = []byte{}
+			m.Tree = append(m.Tree[:0], dAtA[iNdEx:postIndex]...)
+			if m.Tree == nil {
+				m.Tree = []byte{}
 			}
 			iNdEx = postIndex
 		default:

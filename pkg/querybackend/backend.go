@@ -83,10 +83,6 @@ func (q *QueryBackend) Invoke(
 	//  100 merges, or memory available, etc.
 
 	p := queryplan.Open(req.QueryPlan)
-	if p == nil {
-		return new(querybackendv1.InvokeResponse), nil
-	}
-
 	switch r := p.Root(); r.Type {
 	case queryplan.NodeMerge:
 		return q.merge(ctx, req, r.Children())
@@ -127,5 +123,5 @@ func (q *QueryBackend) read(
 	request.QueryPlan = &querybackendv1.QueryPlan{
 		Blocks: iter.MustSlice(blocks),
 	}
-	return q.backendClient.Invoke(ctx, request)
+	return q.blockReader.Invoke(ctx, request)
 }
