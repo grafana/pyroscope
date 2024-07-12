@@ -60,7 +60,7 @@ func (cfg *RaftConfig) RegisterFlags(f *flag.FlagSet) {
 }
 
 type Metastore struct {
-	services.Service
+	service services.Service
 	metastorev1.MetastoreServiceServer
 
 	config Config
@@ -104,9 +104,11 @@ func New(config Config, limits Limits, logger log.Logger, reg prometheus.Registe
 	}
 	m.leaderhealth = raftleader.NewRaftLeaderHealthObserver(hs, logger)
 	m.state = newMetastoreState(logger, m.db)
-	m.Service = services.NewBasicService(m.starting, m.running, m.stopping)
+	m.service = services.NewBasicService(m.starting, m.running, m.stopping)
 	return m, nil
 }
+
+func (m *Metastore) Service() services.Service { return m.service }
 
 func (m *Metastore) Shutdown() error {
 	m.shutdownRaft()

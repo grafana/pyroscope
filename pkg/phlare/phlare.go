@@ -53,6 +53,8 @@ import (
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/querier"
 	"github.com/grafana/pyroscope/pkg/querier/worker"
+	"github.com/grafana/pyroscope/pkg/querybackend"
+	querybackendclient "github.com/grafana/pyroscope/pkg/querybackend/client"
 	"github.com/grafana/pyroscope/pkg/scheduler"
 	"github.com/grafana/pyroscope/pkg/scheduler/schedulerdiscovery"
 	"github.com/grafana/pyroscope/pkg/storegateway"
@@ -85,7 +87,8 @@ type Config struct {
 	RuntimeConfig     runtimeconfig.Config   `yaml:"runtime_config"`
 	Compactor         compactor.Config       `yaml:"compactor"`
 	Metastore         metastore.Config       `yaml:"metastore"`
-	MetastoreClient   metastoreclient.Config `yaml:"metastore_client"`
+	MetastoreClient   metastoreclient.Config `yaml:"metastore_client"` // TODO: merge into Metastore. See QueryBackend
+	QueryBackend      querybackend.Config    `yaml:"query_backend"`
 
 	Storage       StorageConfig       `yaml:"storage"`
 	SelfProfiling SelfProfilingConfig `yaml:"self_profiling,omitempty"`
@@ -155,6 +158,7 @@ func (c *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) 
 	c.Compactor.RegisterFlags(f, log.NewLogfmtLogger(os.Stderr))
 	c.Metastore.RegisterFlags(f)
 	c.MetastoreClient.RegisterFlags(f)
+	c.QueryBackend.RegisterFlags(f)
 	c.API.RegisterFlags(f)
 }
 
@@ -228,19 +232,21 @@ type Phlare struct {
 	serviceMap    map[string]services.Service
 	deps          map[string][]string
 
-	API             *api.API
-	Server          *server.Server
-	SignalHandler   *signals.Handler
-	MemberlistKV    *memberlist.KVInitService
-	ring            *ring.Ring
-	MetastoreClient *metastoreclient.Client
-	usageReport     *usagestats.Reporter
-	RuntimeConfig   *runtimeconfig.Manager
-	Overrides       *validation.Overrides
-	Compactor       *compactor.MultitenantCompactor
-	admin           *operations.Admin
-	versions        *apiversion.Service
-	serviceManager  *services.Manager
+	API            *api.API
+	Server         *server.Server
+	SignalHandler  *signals.Handler
+	MemberlistKV   *memberlist.KVInitService
+	ring           *ring.Ring
+	usageReport    *usagestats.Reporter
+	RuntimeConfig  *runtimeconfig.Manager
+	Overrides      *validation.Overrides
+	Compactor      *compactor.MultitenantCompactor
+	admin          *operations.Admin
+	versions       *apiversion.Service
+	serviceManager *services.Manager
+
+	MetastoreClient    *metastoreclient.Client
+	QueryBackendClient *querybackendclient.Client
 
 	TenantLimits validation.TenantLimits
 
@@ -318,16 +324,18 @@ func (f *Phlare) setupModuleManager() error {
 	mm.RegisterModule(AdHocProfiles, f.initAdHocProfiles)
 	mm.RegisterModule(Metastore, f.initMetastore)
 	mm.RegisterModule(MetastoreClient, f.initMetastoreClient, modules.UserInvisibleModule)
+	mm.RegisterModule(QueryBackend, f.initQueryBackend)
+	mm.RegisterModule(QueryBackendClient, f.initQueryBackendClient, modules.UserInvisibleModule)
 
 	// Add dependencies
 	deps := map[string][]string{
-		All: {Ingester, Distributor, QueryScheduler, QueryFrontend, Querier, StoreGateway, Admin, TenantSettings, Compactor, AdHocProfiles, Metastore, MetastoreClient},
+		All: {Ingester, Distributor, QueryScheduler, QueryFrontend, Querier, StoreGateway, Admin, TenantSettings, Compactor, AdHocProfiles, Metastore, MetastoreClient, QueryBackend, QueryBackendClient},
 
 		Server:            {GRPCGateway},
 		API:               {Server},
 		Distributor:       {Overrides, Ring, API, UsageReport},
 		Querier:           {Overrides, API, MemberlistKV, Ring, UsageReport, Version},
-		QueryFrontend:     {OverridesExporter, API, MemberlistKV, UsageReport, Version, MetastoreClient},
+		QueryFrontend:     {OverridesExporter, API, MemberlistKV, UsageReport, Version, MetastoreClient, QueryBackendClient},
 		QueryScheduler:    {Overrides, API, MemberlistKV, UsageReport},
 		Ingester:          {Overrides, API, MemberlistKV, Storage, UsageReport, Version, MetastoreClient},
 		StoreGateway:      {API, Storage, Overrides, MemberlistKV, UsageReport, Admin, Version},
@@ -343,6 +351,7 @@ func (f *Phlare) setupModuleManager() error {
 		TenantSettings:    {API, Storage},
 		AdHocProfiles:     {API, Overrides, Storage},
 		Metastore:         {API, Overrides, MetastoreClient},
+		QueryBackend:      {API, Storage, QueryBackendClient},
 	}
 
 	for mod, targets := range deps {

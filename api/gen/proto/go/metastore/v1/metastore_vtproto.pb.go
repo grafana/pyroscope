@@ -67,6 +67,7 @@ func (m *BlockMeta) CloneVT() *BlockMeta {
 	r.MaxTime = m.MaxTime
 	r.Shard = m.Shard
 	r.CompactionLevel = m.CompactionLevel
+	r.TenantId = m.TenantId
 	if rhs := m.TenantServices; rhs != nil {
 		tmpContainer := make([]*TenantService, len(rhs))
 		for k, v := range rhs {
@@ -263,6 +264,9 @@ func (this *BlockMeta) EqualVT(that *BlockMeta) bool {
 		return false
 	}
 	if this.CompactionLevel != that.CompactionLevel {
+		return false
+	}
+	if this.TenantId != that.TenantId {
 		return false
 	}
 	if len(this.TenantServices) != len(that.TenantServices) {
@@ -748,8 +752,15 @@ func (m *BlockMeta) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 			i -= size
 			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
 			i--
-			dAtA[i] = 0x3a
+			dAtA[i] = 0x42
 		}
+	}
+	if len(m.TenantId) > 0 {
+		i -= len(m.TenantId)
+		copy(dAtA[i:], m.TenantId)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.TenantId)))
+		i--
+		dAtA[i] = 0x3a
 	}
 	if m.CompactionLevel != 0 {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.CompactionLevel))
@@ -1133,6 +1144,10 @@ func (m *BlockMeta) SizeVT() (n int) {
 	}
 	if m.CompactionLevel != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.CompactionLevel))
+	}
+	l = len(m.TenantId)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	if len(m.TenantServices) > 0 {
 		for _, e := range m.TenantServices {
@@ -1562,6 +1577,38 @@ func (m *BlockMeta) UnmarshalVT(dAtA []byte) error {
 				}
 			}
 		case 7:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TenantId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.TenantId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 8:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field TenantServices", wireType)
 			}

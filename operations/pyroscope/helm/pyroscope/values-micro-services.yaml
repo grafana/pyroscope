@@ -97,5 +97,15 @@ pyroscope:
         requests:
           memory: 8Gi
           cpu: 2
+    query-worker:
+      kind: Deployment
+      replicaCount: 3
+      resources:
+        limits:
+          memory: 16Gi
+        requests:
+          memory: 8Gi
+          cpu: 4
+
 minio:
   enabled: true

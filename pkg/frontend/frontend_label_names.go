@@ -22,7 +22,6 @@ func (f *Frontend) LabelNames(ctx context.Context, c *connect.Request[typesv1.La
 		SetTag("matchers", c.Msg.Matchers)
 
 	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceLabelNamesProcedure)
-
 	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -41,5 +40,13 @@ func (f *Frontend) LabelNames(ctx context.Context, c *connect.Request[typesv1.La
 		c.Msg.End = int64(validated.End)
 	}
 
-	return connectgrpc.RoundTripUnary[typesv1.LabelNamesRequest, typesv1.LabelNamesResponse](ctx, f, c)
+	query, err := buildLabelSelectorFromMatchers(c.Msg.Matchers)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	if _, err = f.listMetadata(ctx, tenantIDs, c.Msg.Start, c.Msg.End, query); err != nil {
+		return nil, err
+	}
+	// TODO: Call query-backend.
+	return connect.NewResponse(&typesv1.LabelNamesResponse{}), nil
 }

@@ -1,14 +1,6 @@
 pyroscope:
   components:
-    querier:
-      kind: Deployment
-      replicaCount: 1
-    query-frontend:
-      kind: Deployment
-      replicaCount: 1
-    query-scheduler:
-      kind: Deployment
-      replicaCount: 1
+
     distributor:
       kind: Deployment
       replicaCount: 1
@@ -16,10 +8,29 @@ pyroscope:
       kind: StatefulSet
       replicaCount: 3
       terminationGracePeriodSeconds: 600
+      persistence:
+        enabled: false
     metastore:
       kind: StatefulSet
       replicaCount: 3
-      terminationGracePeriodSeconds: 1200
+      terminationGracePeriodSeconds: 600
+      persistence:
+        enabled: true
+        size: 100Gi
+    query-frontend:
+      kind: Deployment
+      replicaCount: 1
+    query-backend:
+      kind: Deployment
+      replicaCount: 3
+    # compactor-worker:
+    #   kind: Deployment
+    #   replicaCount: 3
+
+    # To be removed.
+    query-scheduler:
+      kind: Deployment
+      replicaCount: 1
     compactor:
       kind: StatefulSet
       replicaCount: 0
@@ -31,5 +42,9 @@ pyroscope:
       replicaCount: 3
       persistence:
         enabled: false
+    querier:
+      kind: Deployment
+      replicaCount: 1
+
 minio:
   enabled: true

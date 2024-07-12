@@ -32,6 +32,12 @@ message Point {
   int64 timestamp = 2;
 }
 
+message Metric {
+  repeated LabelPair labels = 1;
+  repeated int64 timestamp = 2;
+  repeated double values = 3;
+}
+
 message LabelValuesRequest {
   string name = 1;
   repeated string matchers = 2;

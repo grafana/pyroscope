@@ -1,6 +1,7 @@
 package metastoreclient
 
 import (
+	"context"
 	"flag"
 	"fmt"
 
@@ -42,13 +43,13 @@ func New(config Config) (c *Client, err error) {
 		return nil, err
 	}
 	c.MetastoreServiceClient = metastorev1.NewMetastoreServiceClient(c.conn)
-	c.service = services.NewIdleService(nil, c.stopping)
+	c.service = services.NewIdleService(c.starting, c.stopping)
 	return c, nil
 }
 
-func (c *Client) stopping(error) error { return c.conn.Close() }
-
-func (c *Client) Service() services.Service { return c.service }
+func (c *Client) Service() services.Service      { return c.service }
+func (c *Client) starting(context.Context) error { return nil }
+func (c *Client) stopping(error) error           { return c.conn.Close() }
 
 func dial(cfg Config) (*grpc.ClientConn, error) {
 	if err := cfg.Validate(); err != nil {
@@ -61,14 +62,13 @@ func dial(cfg Config) (*grpc.ClientConn, error) {
 	// TODO: https://github.com/grpc/grpc-proto/blob/master/grpc/service_config/service_config.proto
 	options = append(options, grpc.WithDefaultServiceConfig(grpcServiceConfig))
 	return grpc.Dial(cfg.MetastoreAddress, options...)
-
 }
 
 const grpcServiceConfig = `{
 	"healthCheckConfig": {
 		"serviceName": "metastore.v1.MetastoreService.RaftLeader"
 	},
-	"loadBalancingPolicy":"round_robin",
+    "loadBalancingPolicy":"round_robin",
     "methodConfig": [{
         "name": [{"service": "metastore.v1.MetastoreService"}],
         "waitForReady": true,

@@ -28,8 +28,8 @@ type ReaderAtBucket struct {
 func (b *ReaderAtBucket) ReaderAt(ctx context.Context, name string) (ReaderAtCloser, error) {
 	return &ReaderAt{
 		GetRangeReader: b.Bucket,
-		name:           name,
-		ctx:            ctx,
+		Name:           name,
+		Context:        ctx,
 	}, nil
 }
 
@@ -61,12 +61,13 @@ type GetRangeReader interface {
 
 type ReaderAt struct {
 	GetRangeReader
-	name string
-	ctx  context.Context
+	Name    string
+	Context context.Context
+	Offset  int64
 }
 
 func (b *ReaderAt) ReadAt(p []byte, off int64) (int, error) {
-	rc, err := b.GetRangeReader.GetRange(b.ctx, b.name, off, int64(len(p)))
+	rc, err := b.GetRangeReader.GetRange(b.Context, b.Name, b.Offset+off, int64(len(p)))
 	if err != nil {
 		return 0, err
 	}
