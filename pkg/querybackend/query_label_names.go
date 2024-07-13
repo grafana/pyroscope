@@ -13,11 +13,11 @@ func init() {
 		querybackendv1.ReportType_REPORT_LABEL_NAMES,
 		queryLabelNames,
 		newLabelNameMerger,
+		[]section{sectionTSDB}...,
 	)
 }
 
 func queryLabelNames(q *queryContext, query *querybackendv1.Query) (*querybackendv1.Report, error) {
-	// TODO: implement
 	resp := &querybackendv1.Report{
 		LabelNames: &querybackendv1.LabelNamesReport{
 			Query:      query.LabelNames.CloneVT(),

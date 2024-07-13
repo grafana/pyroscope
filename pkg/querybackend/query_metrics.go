@@ -14,6 +14,10 @@ func init() {
 		querybackendv1.ReportType_REPORT_METRICS,
 		queryMetrics,
 		newMetricsMerger,
+		[]section{
+			sectionTSDB,
+			sectionProfiles,
+		}...,
 	)
 }
 

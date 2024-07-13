@@ -14,6 +14,7 @@ func init() {
 		querybackendv1.ReportType_REPORT_SERIES_LABELS,
 		querySeriesLabels,
 		newSeriesLabelsMerger,
+		[]section{sectionTSDB}...,
 	)
 }
 

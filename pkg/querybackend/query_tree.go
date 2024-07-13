@@ -13,6 +13,11 @@ func init() {
 		querybackendv1.ReportType_REPORT_TREE,
 		queryTree,
 		newTreeMerger,
+		[]section{
+			sectionTSDB,
+			sectionProfiles,
+			sectionSymbols,
+		}...,
 	)
 }
 

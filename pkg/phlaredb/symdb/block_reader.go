@@ -38,8 +38,8 @@ type Reader struct {
 	parquetFiles *parquetFiles
 }
 
-func OpenReader(r io.Reader) (*Reader, error) {
-	// TODO
+// TODO: Object reader.
+func OpenReaderV3(ctx context.Context, b objstore.BucketReader) (*Reader, error) {
 	return nil, nil
 }
 

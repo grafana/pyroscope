@@ -38,8 +38,8 @@ const (
 
 var typeNames = [...]string{"invalid", "read", "merge"}
 
-func (t NodeType) String() (s string) {
-	if int(t) >= len(typeNames) {
+func (t NodeType) String() string {
+	if t < 0 || int(t) >= len(typeNames) {
 		return typeNames[0]
 	}
 	return typeNames[t]

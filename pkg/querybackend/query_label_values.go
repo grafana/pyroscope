@@ -13,6 +13,7 @@ func init() {
 		querybackendv1.ReportType_REPORT_LABEL_VALUES,
 		queryLabelValues,
 		newLabelValueMerger,
+		[]section{sectionTSDB}...,
 	)
 }
 
