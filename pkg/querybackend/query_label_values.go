@@ -18,11 +18,14 @@ func init() {
 }
 
 func queryLabelValues(q *queryContext, query *querybackendv1.Query) (*querybackendv1.Report, error) {
-	// TODO: implement
+	values, err := q.svc.tsdb.LabelValues(query.LabelValues.LabelName, q.req.matchers...)
+	if err != nil {
+		return nil, err
+	}
 	resp := &querybackendv1.Report{
 		LabelValues: &querybackendv1.LabelValuesReport{
 			Query:       query.LabelValues.CloneVT(),
-			LabelValues: []string{},
+			LabelValues: values,
 		},
 	}
 	return resp, nil

@@ -10,7 +10,11 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/parquet-go/parquet-go"
+	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/promql/parser"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	querybackendv1 "github.com/grafana/pyroscope/api/gen/proto/go/querybackend/v1"
@@ -50,9 +54,13 @@ type BlockReader struct {
 	storage objstore.Bucket
 
 	// TODO Next:
+	//  - In-memory threshold option.
+	//  - Series API
 	//  - In-memory bucket.
 	//  - parquet reader at.
+	//  - Metrics API
 	//  - symdb reader.
+	//  - Tree API
 	//  - Buffer pool.
 
 	// TODO:
@@ -78,12 +86,16 @@ func (b *BlockReader) Invoke(
 	ctx context.Context,
 	req *querybackendv1.InvokeRequest,
 ) (*querybackendv1.InvokeResponse, error) {
+	vr, err := validateRequest(req)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "request validation failed")
+	}
 	g, ctx := errgroup.WithContext(ctx)
 	m := newMerger()
 	for _, block := range req.QueryPlan.Blocks {
 		obj := newObject(b.storage, block)
 		for _, meta := range block.TenantServices {
-			c := newQueryContext(ctx, b.log, req, meta, obj)
+			c := newQueryContext(ctx, b.log, meta, vr, obj)
 			for _, query := range req.Query {
 				q := query
 				g.Go(util.RecoverPanic(func() error {
@@ -96,10 +108,34 @@ func (b *BlockReader) Invoke(
 			}
 		}
 	}
-	if err := g.Wait(); err != nil {
+	if err = g.Wait(); err != nil {
 		return nil, err
 	}
 	return m.response()
+}
+
+type request struct {
+	src      *querybackendv1.InvokeRequest
+	matchers []*labels.Matcher
+}
+
+func validateRequest(req *querybackendv1.InvokeRequest) (*request, error) {
+	if len(req.Query) == 0 {
+		return nil, fmt.Errorf("no queries provided")
+	}
+	if req.QueryPlan == nil || len(req.QueryPlan.Blocks) == 0 {
+		return nil, fmt.Errorf("no blocks planned")
+	}
+	matchers, err := parser.ParseMetricSelector(req.LabelSelector)
+	if err != nil {
+		return nil, fmt.Errorf("label selection is invalid: %w", err)
+	}
+	r := request{
+		src:      req,
+		matchers: matchers,
+	}
+	// TODO: Validate the rest.
+	return &r, nil
 }
 
 const (

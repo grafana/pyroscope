@@ -69,8 +69,8 @@ func registerQueryType(
 type queryContext struct {
 	ctx  context.Context
 	log  log.Logger
-	req  *querybackendv1.InvokeRequest
 	meta *metastorev1.TenantService
+	req  *request
 	obj  *object
 
 	openOnce sync.Once
@@ -81,8 +81,8 @@ type queryContext struct {
 func newQueryContext(
 	ctx context.Context,
 	logger log.Logger,
-	req *querybackendv1.InvokeRequest,
 	meta *metastorev1.TenantService,
+	req *request,
 	obj *object,
 ) *queryContext {
 	return &queryContext{
@@ -119,7 +119,7 @@ func (q *queryContext) open() error {
 
 func (q *queryContext) sections() []section {
 	sections := make(map[section]struct{}, 3)
-	for _, qt := range q.req.Query {
+	for _, qt := range q.req.src.Query {
 		for _, s := range queryDependencies[qt.QueryType] {
 			sections[s] = struct{}{}
 		}
