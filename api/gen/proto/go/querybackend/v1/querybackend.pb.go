@@ -341,7 +341,9 @@ type Query struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	QueryType    QueryType          `protobuf:"varint,1,opt,name=query_type,json=queryType,proto3,enum=querybackend.v1.QueryType" json:"query_type,omitempty"`
+	QueryType QueryType `protobuf:"varint,1,opt,name=query_type,json=queryType,proto3,enum=querybackend.v1.QueryType" json:"query_type,omitempty"`
+	// Exactly one of the following fields should be set,
+	// depending on the query type.
 	LabelNames   *LabelNamesQuery   `protobuf:"bytes,2,opt,name=label_names,json=labelNames,proto3" json:"label_names,omitempty"`
 	LabelValues  *LabelValuesQuery  `protobuf:"bytes,3,opt,name=label_values,json=labelValues,proto3" json:"label_values,omitempty"`
 	SeriesLabels *SeriesLabelsQuery `protobuf:"bytes,4,opt,name=series_labels,json=seriesLabels,proto3" json:"series_labels,omitempty"`
@@ -522,7 +524,9 @@ type Report struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	ReportType   ReportType          `protobuf:"varint,1,opt,name=report_type,json=reportType,proto3,enum=querybackend.v1.ReportType" json:"report_type,omitempty"`
+	ReportType ReportType `protobuf:"varint,1,opt,name=report_type,json=reportType,proto3,enum=querybackend.v1.ReportType" json:"report_type,omitempty"`
+	// Exactly one of the following fields should be set,
+	// depending on the report type.
 	LabelNames   *LabelNamesReport   `protobuf:"bytes,2,opt,name=label_names,json=labelNames,proto3" json:"label_names,omitempty"`
 	LabelValues  *LabelValuesReport  `protobuf:"bytes,3,opt,name=label_values,json=labelValues,proto3" json:"label_values,omitempty"`
 	SeriesLabels *SeriesLabelsReport `protobuf:"bytes,4,opt,name=series_labels,json=seriesLabels,proto3" json:"series_labels,omitempty"`

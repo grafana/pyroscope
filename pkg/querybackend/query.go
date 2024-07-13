@@ -13,12 +13,12 @@ import (
 
 var (
 	handlerMutex  = new(sync.RWMutex)
-	queryHandlers = map[querybackendv1.QueryType]func(q *queryContext) queryHandler{}
+	queryHandlers = map[querybackendv1.QueryType]queryHandler{}
 )
 
-type queryHandler func(*querybackendv1.Query) (*querybackendv1.Report, error)
+type queryHandler func(*queryContext, *querybackendv1.Query) (*querybackendv1.Report, error)
 
-func registerQueryHandler(t querybackendv1.QueryType, h func(q *queryContext) queryHandler) {
+func registerQueryHandler(t querybackendv1.QueryType, h queryHandler) {
 	handlerMutex.Lock()
 	defer handlerMutex.Unlock()
 	_, ok := queryHandlers[t]
@@ -28,21 +28,23 @@ func registerQueryHandler(t querybackendv1.QueryType, h func(q *queryContext) qu
 	queryHandlers[t] = h
 }
 
-func getQueryHandler(q *queryContext, x *querybackendv1.Query) (queryHandler, error) {
+func getQueryHandler(x *querybackendv1.Query) (queryHandler, error) {
 	handlerMutex.RLock()
 	defer handlerMutex.RUnlock()
 	handler, ok := queryHandlers[x.QueryType]
 	if !ok {
 		return nil, fmt.Errorf("unknown query type %s", x.QueryType)
 	}
-	return handler(q), nil
+	return handler, nil
 }
+
+type responseMergerProvider func() reportMerger
 
 func registerQueryType(
 	qt querybackendv1.QueryType,
 	rt querybackendv1.ReportType,
-	q func(q *queryContext) queryHandler,
-	r func() reportMerger,
+	q queryHandler,
+	r responseMergerProvider,
 ) {
 	registerQueryReportType(qt, rt)
 	registerQueryHandler(qt, q)
@@ -73,12 +75,12 @@ func newQueryContext(
 	}
 }
 
-func (q *queryContext) execute(query *querybackendv1.Query) (*querybackendv1.Report, error) {
-	handle, err := getQueryHandler(q, query)
+func executeQuery(q *queryContext, query *querybackendv1.Query) (*querybackendv1.Report, error) {
+	handle, err := getQueryHandler(query)
 	if err != nil {
 		return nil, err
 	}
-	r, err := handle(query)
+	r, err := handle(q, query)
 	if r != nil {
 		r.ReportType = QueryReportType(query.QueryType)
 	}

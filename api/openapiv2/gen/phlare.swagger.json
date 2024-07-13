@@ -1408,7 +1408,8 @@
           "$ref": "#/definitions/v1QueryType"
         },
         "labelNames": {
-          "$ref": "#/definitions/v1LabelNamesQuery"
+          "$ref": "#/definitions/v1LabelNamesQuery",
+          "description": "Exactly one of the following fields should be set,\ndepending on the query type."
         },
         "labelValues": {
           "$ref": "#/definitions/v1LabelValuesQuery"
@@ -1566,7 +1567,8 @@
           "$ref": "#/definitions/v1ReportType"
         },
         "labelNames": {
-          "$ref": "#/definitions/v1LabelNamesReport"
+          "$ref": "#/definitions/v1LabelNamesReport",
+          "description": "Exactly one of the following fields should be set,\ndepending on the report type."
         },
         "labelValues": {
           "$ref": "#/definitions/v1LabelValuesReport"

@@ -14,8 +14,13 @@ var (
 )
 
 type reportMerger interface {
+	// merge a report into the merger.
+	// The method is called concurrently.
 	merge(*querybackendv1.Report) error
-	append([]*querybackendv1.Report) []*querybackendv1.Report
+	// report the merge result.
+	// It's guaranteed that merge() was called at least once
+	// before report() is called.
+	report() *querybackendv1.Report
 }
 
 func registerReportMerger(t querybackendv1.ReportType, m func() reportMerger) {
@@ -142,8 +147,10 @@ func (m *merger) response() (*querybackendv1.InvokeResponse, error) {
 		return nil, err
 	}
 	reports := make([]*querybackendv1.Report, 0, len(m.staged))
-	for _, rm := range m.mergers {
-		reports = rm.append(reports)
+	for t, rm := range m.mergers {
+		r := rm.report()
+		r.ReportType = t
+		reports = append(reports, r)
 	}
 	return &querybackendv1.InvokeResponse{Reports: reports}, nil
 }

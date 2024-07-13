@@ -11,12 +11,12 @@ func init() {
 	registerQueryType(
 		querybackendv1.QueryType_QUERY_LABEL_VALUES,
 		querybackendv1.ReportType_REPORT_LABEL_VALUES,
-		func(q *queryContext) queryHandler { return q.queryLabelValues },
-		func() reportMerger { return new(labelValueMerger) },
+		queryLabelValues,
+		newLabelValueMerger,
 	)
 }
 
-func (q *queryContext) queryLabelValues(query *querybackendv1.Query) (*querybackendv1.Report, error) {
+func queryLabelValues(q *queryContext, query *querybackendv1.Query) (*querybackendv1.Report, error) {
 	// TODO: implement
 	resp := &querybackendv1.Report{
 		LabelValues: &querybackendv1.LabelValuesReport{
@@ -33,6 +33,8 @@ type labelValueMerger struct {
 	values *model.LabelMerger
 }
 
+func newLabelValueMerger() reportMerger { return new(labelValueMerger) }
+
 func (m *labelValueMerger) merge(report *querybackendv1.Report) error {
 	r := report.LabelValues
 	m.init.Do(func() {
@@ -43,14 +45,11 @@ func (m *labelValueMerger) merge(report *querybackendv1.Report) error {
 	return nil
 }
 
-func (m *labelValueMerger) append(reports []*querybackendv1.Report) []*querybackendv1.Report {
-	if m.values == nil {
-		return reports
-	}
-	return append(reports, &querybackendv1.Report{
-		ReportType: querybackendv1.ReportType_REPORT_LABEL_VALUES,
+func (m *labelValueMerger) report() *querybackendv1.Report {
+	return &querybackendv1.Report{
 		LabelValues: &querybackendv1.LabelValuesReport{
+			Query:       m.query,
 			LabelValues: m.values.LabelValues(),
 		},
-	})
+	}
 }

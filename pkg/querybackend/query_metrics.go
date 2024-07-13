@@ -12,12 +12,12 @@ func init() {
 	registerQueryType(
 		querybackendv1.QueryType_QUERY_METRICS,
 		querybackendv1.ReportType_REPORT_METRICS,
-		func(q *queryContext) queryHandler { return q.queryMetrics },
-		func() reportMerger { return new(metricsMerger) },
+		queryMetrics,
+		newMetricsMerger,
 	)
 }
 
-func (q *queryContext) queryMetrics(query *querybackendv1.Query) (*querybackendv1.Report, error) {
+func queryMetrics(q *queryContext, query *querybackendv1.Query) (*querybackendv1.Report, error) {
 	// TODO: implement
 	resp := &querybackendv1.Report{
 		Metrics: &querybackendv1.MetricsReport{
@@ -34,6 +34,8 @@ type metricsMerger struct {
 	metrics *model.MetricsMerger
 }
 
+func newMetricsMerger() reportMerger { return new(metricsMerger) }
+
 func (m *metricsMerger) merge(report *querybackendv1.Report) error {
 	r := report.Metrics
 	m.init.Do(func() {
@@ -45,15 +47,11 @@ func (m *metricsMerger) merge(report *querybackendv1.Report) error {
 	return nil
 }
 
-func (m *metricsMerger) append(reports []*querybackendv1.Report) []*querybackendv1.Report {
-	if m.metrics == nil {
-		return reports
-	}
-	return append(reports, &querybackendv1.Report{
-		ReportType: querybackendv1.ReportType_REPORT_METRICS,
+func (m *metricsMerger) report() *querybackendv1.Report {
+	return &querybackendv1.Report{
 		Metrics: &querybackendv1.MetricsReport{
 			Query:   m.query,
 			Metrics: m.metrics.Metrics(),
 		},
-	})
+	}
 }

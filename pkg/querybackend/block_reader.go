@@ -49,7 +49,8 @@ func (b *BlockReader) Invoke(ctx context.Context, req *querybackendv1.InvokeRequ
 			svc := svc
 			for _, query := range req.Query {
 				g.Go(util.RecoverPanic(func() error {
-					r, err := newQueryContext(ctx, b.log, req, svc, obj).execute(query)
+					c := newQueryContext(ctx, b.log, req, svc, obj)
+					r, err := executeQuery(c, query)
 					if err != nil {
 						return err
 					}

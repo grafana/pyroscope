@@ -12,12 +12,12 @@ func init() {
 	registerQueryType(
 		querybackendv1.QueryType_QUERY_SERIES_LABELS,
 		querybackendv1.ReportType_REPORT_SERIES_LABELS,
-		func(q *queryContext) queryHandler { return q.querySeriesLabels },
-		func() reportMerger { return new(seriesLabelsMerger) },
+		querySeriesLabels,
+		newSeriesLabelsMerger,
 	)
 }
 
-func (q *queryContext) querySeriesLabels(query *querybackendv1.Query) (*querybackendv1.Report, error) {
+func querySeriesLabels(q *queryContext, query *querybackendv1.Query) (*querybackendv1.Report, error) {
 	// TODO: implement
 	resp := &querybackendv1.Report{
 		SeriesLabels: &querybackendv1.SeriesLabelsReport{
@@ -39,6 +39,8 @@ type seriesLabelsMerger struct {
 	series *model.LabelMerger
 }
 
+func newSeriesLabelsMerger() reportMerger { return new(seriesLabelsMerger) }
+
 func (m *seriesLabelsMerger) merge(report *querybackendv1.Report) error {
 	r := report.SeriesLabels
 	m.init.Do(func() {
@@ -49,15 +51,11 @@ func (m *seriesLabelsMerger) merge(report *querybackendv1.Report) error {
 	return nil
 }
 
-func (m *seriesLabelsMerger) append(reports []*querybackendv1.Report) []*querybackendv1.Report {
-	if m.series == nil {
-		return reports
-	}
-	return append(reports, &querybackendv1.Report{
-		ReportType: querybackendv1.ReportType_REPORT_SERIES_LABELS,
+func (m *seriesLabelsMerger) report() *querybackendv1.Report {
+	return &querybackendv1.Report{
 		SeriesLabels: &querybackendv1.SeriesLabelsReport{
 			Query:        m.query,
 			SeriesLabels: m.series.SeriesLabels(),
 		},
-	})
+	}
 }

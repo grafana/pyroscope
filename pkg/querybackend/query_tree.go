@@ -11,12 +11,12 @@ func init() {
 	registerQueryType(
 		querybackendv1.QueryType_QUERY_TREE,
 		querybackendv1.ReportType_REPORT_TREE,
-		func(q *queryContext) queryHandler { return q.queryTree },
-		func() reportMerger { return new(treeMerger) },
+		queryTree,
+		newTreeMerger,
 	)
 }
 
-func (q *queryContext) queryTree(query *querybackendv1.Query) (*querybackendv1.Report, error) {
+func queryTree(q *queryContext, query *querybackendv1.Query) (*querybackendv1.Report, error) {
 	// TODO: implement
 	resp := &querybackendv1.Report{
 		Tree: &querybackendv1.TreeReport{
@@ -33,6 +33,8 @@ type treeMerger struct {
 	tree  *model.TreeMerger
 }
 
+func newTreeMerger() reportMerger { return new(treeMerger) }
+
 func (m *treeMerger) merge(report *querybackendv1.Report) error {
 	r := report.Tree
 	m.init.Do(func() {
@@ -42,15 +44,11 @@ func (m *treeMerger) merge(report *querybackendv1.Report) error {
 	return m.tree.MergeTreeBytes(r.Tree)
 }
 
-func (m *treeMerger) append(reports []*querybackendv1.Report) []*querybackendv1.Report {
-	if m.tree == nil {
-		return reports
-	}
-	return append(reports, &querybackendv1.Report{
-		ReportType: querybackendv1.ReportType_REPORT_TREE,
+func (m *treeMerger) report() *querybackendv1.Report {
+	return &querybackendv1.Report{
 		Tree: &querybackendv1.TreeReport{
 			Query: m.query,
 			Tree:  m.tree.Tree().Bytes(m.query.GetMaxNodes()),
 		},
-	})
+	}
 }

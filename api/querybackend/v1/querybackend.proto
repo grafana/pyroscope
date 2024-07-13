@@ -48,7 +48,8 @@ message QueryPlan {
 
 message Query {
   QueryType query_type = 1;
-
+  // Exactly one of the following fields should be set,
+  // depending on the query type.
   LabelNamesQuery label_names = 2;
   LabelValuesQuery label_values = 3;
   SeriesLabelsQuery series_labels = 4;
@@ -80,7 +81,8 @@ message Diagnostics {}
 
 message Report {
   ReportType report_type = 1;
-
+  // Exactly one of the following fields should be set,
+  // depending on the report type.
   LabelNamesReport label_names = 2;
   LabelValuesReport label_values = 3;
   SeriesLabelsReport series_labels = 4;
