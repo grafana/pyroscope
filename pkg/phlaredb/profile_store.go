@@ -381,6 +381,9 @@ func (s *profileStore) writeRowGroups(path string, rowGroups []parquet.RowGroup)
 		readers[i] = rg.Rows()
 	}
 	n, numRowGroups, err = phlareparquet.CopyAsRowGroups(s.writer, schemav1.NewMergeProfilesRowReader(readers), s.cfg.MaxBufferRowCount)
+	if err != nil {
+		return 0, 0, err
+	}
 
 	if err := s.writer.Close(); err != nil {
 		return 0, 0, err
