@@ -181,6 +181,7 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 	for _, wait := range waits {
 		if err = wait.waitFlushed(ctx); err != nil {
 			i.segmentWriter.metrics.segmentFlushTimeouts.WithLabelValues(tenantID).Inc()
+			i.segmentWriter.metrics.segmentFlushWaitDuration.WithLabelValues(tenantID).Observe(time.Since(t1).Seconds())
 			return nil, err
 		}
 	}
