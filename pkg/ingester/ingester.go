@@ -182,7 +182,7 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 			return nil, err
 		}
 	}
-	level.Debug(i.logger).Log("msg", "flushed", "duration", time.Since(t1), "segments", len(waits))
+	//level.Debug(i.logger).Log("msg", "flushed", "duration", time.Since(t1), "segments", len(waits))
 	i.segmentWriter.metrics.segmentFlushWaitDuration.WithLabelValues(tenantID).Observe(time.Since(t1).Seconds())
 	return connect.NewResponse(&pushv1.PushResponse{}), nil
 }
