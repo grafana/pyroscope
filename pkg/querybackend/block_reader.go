@@ -55,8 +55,6 @@ type BlockReader struct {
 
 	// TODO Next:
 	//  - In-memory threshold option.
-	//  - In-memory bucket.
-	//  - Metrics API
 	//  - symdb reader.
 	//  - Tree API
 	//  - Buffer pool.
@@ -175,7 +173,7 @@ func (sc section) open(ctx context.Context, s *tenantService) (err error) {
 	}
 }
 
-const loadInMemorySizeThreshold = 1 << 20
+const loadInMemorySizeThreshold = 0 // 1 << 20
 
 // Object represents a block or a segment in the object storage.
 type object struct {
@@ -412,7 +410,7 @@ func (s *tenantService) inMemoryBuffer() []byte {
 }
 
 func (s *tenantService) inMemoryBucket(buf []byte) objstore.Bucket {
-	bucket := memory.NewBucketClient()
-	_ = bucket.Upload(context.Background(), s.obj.path, bytes.NewReader(buf))
+	bucket := memory.NewInMemBucket()
+	bucket.Set(s.obj.path, buf)
 	return objstore.NewBucket(bucket)
 }

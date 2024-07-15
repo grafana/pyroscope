@@ -44,6 +44,9 @@ func (f *Frontend) SelectSeries(ctx context.Context,
 	c.Msg.End = int64(validated.End)
 
 	labelSelector, err := buildLabelSelectorAndProfileType(c.Msg.LabelSelector, c.Msg.ProfileTypeID)
+	if err != nil {
+		return nil, err
+	}
 	report, err := f.invoke(ctx, c.Msg.Start, c.Msg.End, tenantIDs, labelSelector, &querybackendv1.Query{
 		QueryType: querybackendv1.QueryType_QUERY_TIME_SERIES,
 		TimeSeries: &querybackendv1.TimeSeriesQuery{
