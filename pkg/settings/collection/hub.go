@@ -235,7 +235,7 @@ func (h *hub) run(stopCh <-chan struct{}) {
 		select {
 		case client := <-h.registerCh:
 			h.clients[client] = struct{}{}
-			for _, topic := range client.subscribedTopics {
+			for _, topic := range client.SubscribedTopics() {
 				t, ok := h.topics[topic]
 				if !ok {
 					continue
