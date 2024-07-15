@@ -15,24 +15,20 @@ import (
 )
 
 func openProfileTable(_ context.Context, s *tenantService) (err error) {
+	offset := s.sectionOffset(sectionProfiles)
+	size := s.sectionSize(sectionProfiles)
 	if buf := s.inMemoryBuffer(); buf != nil {
 		s.profiles, err = openParquetFile(
-			s.inMemoryBucket(buf),
-			s.obj.path,
-			s.sectionOffset(sectionProfiles),
-			s.sectionSize(sectionProfiles),
+			s.inMemoryBucket(buf), s.obj.path, offset, size,
 			0, // Do not prefetch the footer.
 			parquet.SkipBloomFilters(true),
 			parquet.FileReadMode(parquet.ReadModeSync),
 			parquet.ReadBufferSize(4<<10))
 	} else {
 		s.profiles, err = openParquetFile(
-			s.obj.storage,
-			s.obj.path,
-			s.sectionOffset(sectionProfiles),
-			s.sectionSize(sectionProfiles),
+			s.obj.storage, s.obj.path, offset, size,
 			// TODO(kolesnikovae): Store in TOC.
-			estimateFooterSize(s.sectionSize(sectionProfiles)),
+			estimateFooterSize(size),
 			parquet.SkipBloomFilters(true),
 			parquet.FileReadMode(parquet.ReadModeAsync),
 			parquet.ReadBufferSize(256<<10))

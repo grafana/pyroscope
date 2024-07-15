@@ -95,7 +95,7 @@ func (b *ReaderAt) Close() error {
 	return nil
 }
 
-func FetchRange(ctx context.Context, dst *bytes.Buffer, name string, storage objstore.Bucket, off, size int64) error {
+func FetchRange(ctx context.Context, dst *bytes.Buffer, name string, storage objstore.BucketReader, off, size int64) error {
 	if size == 0 {
 		attrs, err := storage.Attributes(ctx, name)
 		if err != nil {
@@ -113,6 +113,7 @@ func FetchRange(ctx context.Context, dst *bytes.Buffer, name string, storage obj
 	defer func() {
 		_ = rc.Close()
 	}()
+	dst.Reset()
 	dst.Grow(int(size) + bytes.MinRead)
 	n, err := dst.ReadFrom(rc)
 	if err != nil {
@@ -122,4 +123,20 @@ func FetchRange(ctx context.Context, dst *bytes.Buffer, name string, storage obj
 		return fmt.Errorf("read %d bytes, expected %d", n, size)
 	}
 	return nil
+}
+
+type BucketReaderWithOffset struct {
+	BucketReader
+	offset int64
+}
+
+func NewBucketReaderWithOffset(r BucketReader, offset int64) *BucketReaderWithOffset {
+	return &BucketReaderWithOffset{
+		BucketReader: r,
+		offset:       offset,
+	}
+}
+
+func (r *BucketReaderWithOffset) GetRange(ctx context.Context, name string, off, length int64) (io.ReadCloser, error) {
+	return r.BucketReader.GetRange(ctx, name, r.offset+off, length)
 }

@@ -173,7 +173,7 @@ func (sc section) open(ctx context.Context, s *tenantService) (err error) {
 	}
 }
 
-const loadInMemorySizeThreshold = 0 // 1 << 20
+const loadInMemorySizeThreshold = 1 << 20
 
 // Object represents a block or a segment in the object storage.
 type object struct {
