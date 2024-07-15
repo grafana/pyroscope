@@ -169,9 +169,6 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 		if err != nil {
 			return nil, err
 		}
-		if wait == nil {
-			panic("wait is nil")
-		}
 		waits = append(waits, wait)
 	}
 	if i.cfg.Async {

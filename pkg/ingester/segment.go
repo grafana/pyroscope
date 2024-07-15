@@ -193,7 +193,6 @@ func (sw *segmentsWriter) newSegment(sk shardKey, sl log.Logger) *segment {
 		dataPath: dataPath,
 		doneChan: make(chan struct{}),
 	}
-	//_ = level.Debug(sw.l).Log("msg", "new segment", "shard", sk, "segment-id", id.String())
 	return s
 }
 
@@ -214,26 +213,22 @@ func (s *segment) flush(ctx context.Context) error {
 		return nil
 	}
 
-	blockPath, blockMeta, err := s.flushBlock(ctx, heads)
+	blockPath, blockMeta, err := s.flushBlock(heads)
 	if err != nil {
 		return err
 	}
-	err = s.sw.uploadBlock(ctx, blockPath, s)
+	err = s.sw.uploadBlock(blockPath, s)
 	if err != nil {
 		return err
 	}
 	err = s.sw.storeMeta(ctx, blockMeta, s)
 	if err != nil {
-		//dlcErr := s.sw.uploadMeta(ctx, blockMeta)
-		//if dlcErr != nil {
-		//	err = fmt.Errorf("failed to store meta: %w %w", err, fmt.Errorf("failed to upload meta: %w", dlcErr))
-		//}
 		return err
 	}
 	return nil
 }
 
-func (s *segment) flushBlock(ctx context.Context, heads []serviceHead) (string, *metastorev1.BlockMeta, error) {
+func (s *segment) flushBlock(heads []serviceHead) (string, *metastorev1.BlockMeta, error) {
 	t1 := time.Now()
 	meta := &metastorev1.BlockMeta{
 		Id:              s.ulid.String(),
@@ -452,7 +447,7 @@ func (s *segment) cleanup() {
 	}
 }
 
-func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockPath string, s *segment) error {
+func (sw *segmentsWriter) uploadBlock(blockPath string, s *segment) error {
 	t1 := time.Now()
 
 	dst, err := filepath.Rel(sw.cfg.DataPath, blockPath)
