@@ -3,6 +3,7 @@ package phlaredb
 import (
 	"context"
 	"fmt"
+	index2 "github.com/grafana/pyroscope/pkg/phlaredb/tsdb/loki/index"
 	"sort"
 	"sync"
 
@@ -399,7 +400,12 @@ outer:
 
 // WriteTo writes the profiles tsdb index to the specified filepath.
 func (pi *profilesIndex) writeTo(ctx context.Context, path string) ([][]rowRangeWithSeriesIndex, error) {
-	writer, err := index.NewWriter(ctx, path, index.SegmentsIndexWriterBufSize)
+	var writer index2.IIndexWriter
+	fileWriter, err := index.NewWriter(ctx, path, index.SegmentsIndexWriterBufSize)
+	if err != nil {
+		return nil, err
+	}
+	writer, err = index2.NewCompareIndexWriter(ctx, path, fileWriter)
 	if err != nil {
 		return nil, err
 	}

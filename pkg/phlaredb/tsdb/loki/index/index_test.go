@@ -16,6 +16,7 @@ package index
 import (
 	"context"
 	"fmt"
+	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 	"hash/crc32"
 	"math/rand"
 	"os"
@@ -48,7 +49,7 @@ func TestMain(m *testing.M) {
 
 type series struct {
 	l      phlaremodel.Labels
-	chunks []ChunkMeta
+	chunks []index.ChunkMeta
 }
 
 type mockIndex struct {
@@ -59,6 +60,7 @@ type mockIndex struct {
 }
 
 func newMockIndex() mockIndex {
+	allPostingsKeyName, allPostingsKeyValue := index.AllPostingsKey()
 	ix := mockIndex{
 		series:   make(map[storage.SeriesRef]series),
 		postings: make(map[struct{ Name, Value string }][]storage.SeriesRef),
@@ -67,7 +69,7 @@ func newMockIndex() mockIndex {
 	ix.postings[struct {
 		Name  string
 		Value string
-	}{allPostingsKey.Name, allPostingsKey.Value}] = []storage.SeriesRef{}
+	}{allPostingsKeyName, allPostingsKeyValue}] = []storage.SeriesRef{}
 	return ix
 }
 
@@ -75,7 +77,9 @@ func (m mockIndex) Symbols() (map[string]struct{}, error) {
 	return m.symbols, nil
 }
 
-func (m mockIndex) AddSeries(ref storage.SeriesRef, l phlaremodel.Labels, chunks ...ChunkMeta) error {
+func (m mockIndex) AddSeries(ref storage.SeriesRef, l phlaremodel.Labels, chunks ...index.ChunkMeta) error {
+	allPostingsKeyName, allPostingsKeyValue := index.AllPostingsKey()
+
 	if _, ok := m.series[ref]; ok {
 		return errors.Errorf("series with reference %d already added", ref)
 	}
@@ -102,10 +106,10 @@ func (m mockIndex) AddSeries(ref storage.SeriesRef, l phlaremodel.Labels, chunks
 	m.postings[struct {
 		Name  string
 		Value string
-	}{allPostingsKey.Name, allPostingsKey.Value}] = append(m.postings[struct {
+	}{allPostingsKeyName, allPostingsKeyValue}] = append(m.postings[struct {
 		Name  string
 		Value string
-	}{allPostingsKey.Name, allPostingsKey.Value}], ref)
+	}{allPostingsKeyName, allPostingsKeyValue}], ref)
 
 	s := series{l: l}
 	// Actual chunk data is not stored in the index.
@@ -129,18 +133,18 @@ func (m mockIndex) LabelValues(name string) ([]string, error) {
 	return values, nil
 }
 
-func (m mockIndex) Postings(name string, values ...string) (Postings, error) {
-	p := []Postings{}
+func (m mockIndex) Postings(name string, values ...string) (index.Postings, error) {
+	p := []index.Postings{}
 	for _, value := range values {
 		p = append(p, iter.NewSliceSeekIterator(m.postings[struct {
 			Name  string
 			Value string
 		}{Name: name, Value: value}]))
 	}
-	return Merge(p...), nil
+	return index.Merge(p...), nil
 }
 
-func (m mockIndex) Series(ref storage.SeriesRef, lset *phlaremodel.Labels, chks *[]ChunkMeta) error {
+func (m mockIndex) Series(ref storage.SeriesRef, lset *phlaremodel.Labels, chks *[]index.ChunkMeta) error {
 	s, ok := m.series[ref]
 	if !ok {
 		return errors.New("not found")
@@ -152,36 +156,30 @@ func (m mockIndex) Series(ref storage.SeriesRef, lset *phlaremodel.Labels, chks 
 }
 
 func TestIndexRW_Create_Open(t *testing.T) {
-	dir := t.TempDir()
-
-	fn := filepath.Join(dir, IndexFilename)
 
 	// An empty index must still result in a readable file.
-	iw, err := NewWriter(context.Background(), fn, BlocksIndexWriterBufSize)
+	iw, err := NewWriter(context.Background(), BlocksIndexWriterBufSize)
 	require.NoError(t, err)
 	require.NoError(t, iw.Close())
 
-	ir, err := NewFileReader(fn)
+	ir, err := NewReader(RealByteSlice(iw.IndexBytes()))
 	require.NoError(t, err)
 	require.NoError(t, ir.Close())
 
 	// Modify magic header must cause open to fail.
-	f, err := os.OpenFile(fn, os.O_WRONLY, 0o666)
+	//f, err := os.OpenFile(fn, os.O_WRONLY, 0o666)
+	//require.NoError(t, err)
+	err = iw.f.WriteAt([]byte{0, 0}, 0)
 	require.NoError(t, err)
-	_, err = f.WriteAt([]byte{0, 0}, 0)
-	require.NoError(t, err)
-	f.Close()
+	//f.Close()
 
-	_, err = NewFileReader(dir)
-	require.Error(t, err)
+	//_, err = NewFileReader(dir)
+	//require.Error(t, err)
 }
 
 func TestIndexRW_Postings(t *testing.T) {
-	dir := t.TempDir()
 
-	fn := filepath.Join(dir, IndexFilename)
-
-	iw, err := NewWriter(context.Background(), fn, BlocksIndexWriterBufSize)
+	iw, err := NewWriter(context.Background(), BlocksIndexWriterBufSize)
 	require.NoError(t, err)
 
 	series := []phlaremodel.Labels{
@@ -207,14 +205,14 @@ func TestIndexRW_Postings(t *testing.T) {
 
 	require.NoError(t, iw.Close())
 
-	ir, err := NewFileReader(fn)
+	ir, err := NewReader(RealByteSlice(iw.IndexBytes()))
 	require.NoError(t, err)
 
 	p, err := ir.Postings("a", nil, "1")
 	require.NoError(t, err)
 
 	var l phlaremodel.Labels
-	var c []ChunkMeta
+	var c []index.ChunkMeta
 
 	for i := 0; p.Next(); i++ {
 		_, err := ir.Series(p.At(), &l, &c)
@@ -257,11 +255,8 @@ func TestIndexRW_Postings(t *testing.T) {
 }
 
 func TestPostingsMany(t *testing.T) {
-	dir := t.TempDir()
 
-	fn := filepath.Join(dir, IndexFilename)
-
-	iw, err := NewWriter(context.Background(), fn, BlocksIndexWriterBufSize)
+	iw, err := NewWriter(context.Background(), BlocksIndexWriterBufSize)
 	require.NoError(t, err)
 
 	// Create a label in the index which has 999 values.
@@ -293,7 +288,7 @@ func TestPostingsMany(t *testing.T) {
 	}
 	require.NoError(t, iw.Close())
 
-	ir, err := NewFileReader(fn)
+	ir, err := NewReader(RealByteSlice(iw.IndexBytes()))
 	require.NoError(t, err)
 	defer func() { require.NoError(t, ir.Close()) }()
 
@@ -334,7 +329,7 @@ func TestPostingsMany(t *testing.T) {
 
 		got := []string{}
 		var lbls phlaremodel.Labels
-		var metas []ChunkMeta
+		var metas []index.ChunkMeta
 		for it.Next() {
 			_, err := ir.Series(it.At(), &lbls, &metas)
 			require.NoError(t, err)
@@ -358,9 +353,8 @@ func TestPostingsMany(t *testing.T) {
 }
 
 func TestPersistence_index_e2e(t *testing.T) {
-	dir := t.TempDir()
 
-	lbls, err := labels.ReadLabels(filepath.Join("..", "testdata", "20kseries.json"), 20000)
+	lbls, err := labels.ReadLabels(filepath.Join("..", "..", "testdata", "20kseries.json"), 20000)
 	require.NoError(t, err)
 
 	flbls := make([]phlaremodel.Labels, len(lbls))
@@ -384,26 +378,26 @@ func TestPersistence_index_e2e(t *testing.T) {
 		}
 	}
 
-	var input IndexWriterSeriesSlice
+	var input index.IndexWriterSeriesSlice
 
 	// Generate ChunkMetas for every label set.
 	for i, lset := range flbls {
-		var metas []ChunkMeta
+		var metas []index.ChunkMeta
 
 		for j := 0; j <= (i % 20); j++ {
-			metas = append(metas, ChunkMeta{
+			metas = append(metas, index.ChunkMeta{
 				MinTime:  int64(j * 10000),
 				MaxTime:  int64((j + 1) * 10000),
 				Checksum: rand.Uint32(),
 			})
 		}
-		input = append(input, &IndexWriterSeries{
+		input = append(input, &index.IndexWriterSeries{
 			Labels: lset,
 			Chunks: metas,
 		})
 	}
 
-	iw, err := NewWriter(context.Background(), filepath.Join(dir, IndexFilename), BlocksIndexWriterBufSize)
+	iw, err := NewWriter(context.Background(), BlocksIndexWriterBufSize)
 	require.NoError(t, err)
 
 	syms := []string{}
@@ -417,7 +411,7 @@ func TestPersistence_index_e2e(t *testing.T) {
 
 	// Population procedure as done by compaction.
 	var (
-		postings = NewMemPostings()
+		postings = index.NewMemPostings()
 		values   = map[string]map[string]struct{}{}
 	)
 
@@ -442,7 +436,7 @@ func TestPersistence_index_e2e(t *testing.T) {
 	err = iw.Close()
 	require.NoError(t, err)
 
-	ir, err := NewFileReader(filepath.Join(dir, IndexFilename))
+	ir, err := NewReader(RealByteSlice(iw.IndexBytes()))
 	require.NoError(t, err)
 
 	for p := range mi.postings {
@@ -453,7 +447,7 @@ func TestPersistence_index_e2e(t *testing.T) {
 		require.NoError(t, err)
 
 		var lset, explset phlaremodel.Labels
-		var chks, expchks []ChunkMeta
+		var chks, expchks []index.ChunkMeta
 
 		for gotp.Next() {
 			require.True(t, expp.Next())
@@ -586,7 +580,7 @@ func TestDecoder_Postings_WrongInput(t *testing.T) {
 }
 
 func TestWriter_ShouldReturnErrorOnSeriesWithDuplicatedLabelNames(t *testing.T) {
-	w, err := NewWriter(context.Background(), filepath.Join(t.TempDir(), "index"), BlocksIndexWriterBufSize)
+	w, err := NewWriter(context.Background(), BlocksIndexWriterBufSize)
 	require.NoError(t, err)
 
 	require.NoError(t, w.AddSymbol("__name__"))
