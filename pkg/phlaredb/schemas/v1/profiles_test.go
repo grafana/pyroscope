@@ -542,3 +542,41 @@ func Test_SamplesRange(t *testing.T) {
 		})
 	}
 }
+
+func TestColumnCount(t *testing.T) {
+	profiles := []InMemoryProfile{{
+		SeriesIndex: 1,
+		TimeNanos:   2,
+		Samples: Samples{
+			StacktraceIDs: []uint32{1, 2, 3},
+			Values:        []uint64{1, 2, 3},
+		},
+	},
+		{
+			SeriesIndex: 1,
+			TimeNanos:   2,
+			Samples: Samples{
+				StacktraceIDs: []uint32{1, 2, 3},
+				Values:        []uint64{1, 2, 3},
+				Spans:         []uint64{1, 2, 3},
+			},
+		},
+		{
+			SeriesIndex: 1,
+			TimeNanos:   2,
+			Samples: Samples{
+				StacktraceIDs: []uint32{1, 2, 3},
+				Values:        []uint64{1, 2, 3},
+				Spans:         []uint64{1, 2, 3},
+			},
+			Comments: []int64{1, 2, 3},
+		}}
+	for _, profile := range profiles {
+		count := profileColumnCount(profile)
+
+		row := deconstructMemoryProfile(profile, nil)
+		assert.Equal(t, len(row), count)
+		assert.Equal(t, cap(row), count)
+	}
+
+}
