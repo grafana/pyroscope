@@ -2,14 +2,11 @@ package phlaredb
 
 import (
 	"context"
-	"sort"
 	"strings"
 
 	"github.com/grafana/dskit/runutil"
 	"github.com/opentracing/opentracing-go"
 	"github.com/parquet-go/parquet-go"
-	"github.com/prometheus/common/model"
-	"github.com/samber/lo"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -161,67 +158,6 @@ func mergeBySpans[T interface{ StacktracePartition() uint64 }](ctx context.Conte
 	return profiles.Err()
 }
 
-type seriesByLabels map[string]*typesv1.Series
-
-func (m seriesByLabels) normalize() []*typesv1.Series {
-	result := lo.Values(m)
-	sort.Slice(result, func(i, j int) bool {
-		return phlaremodel.CompareLabelPairs(result[i].Labels, result[j].Labels) < 0
-	})
-	// we have to sort the points in each series because labels reduction may have changed the order
-	for _, s := range result {
-		sort.Slice(s.Points, func(i, j int) bool {
-			return s.Points[i].Timestamp < s.Points[j].Timestamp
-		})
-	}
-	return result
-}
-
-type seriesBuilder struct {
-	labelsByFingerprint map[model.Fingerprint]string
-	labelBuf            []byte
-	by                  []string
-
-	series seriesByLabels
-}
-
-func (s *seriesBuilder) init(by ...string) {
-	s.labelsByFingerprint = map[model.Fingerprint]string{}
-	s.series = make(seriesByLabels)
-	s.labelBuf = make([]byte, 0, 1024)
-	s.by = by
-}
-
-func (s *seriesBuilder) add(fp model.Fingerprint, lbs phlaremodel.Labels, ts int64, value float64) {
-	labelsByString, ok := s.labelsByFingerprint[fp]
-	if !ok {
-		s.labelBuf = lbs.BytesWithLabels(s.labelBuf, s.by...)
-		labelsByString = string(s.labelBuf)
-		s.labelsByFingerprint[fp] = labelsByString
-		if _, ok := s.series[labelsByString]; !ok {
-			s.series[labelsByString] = &typesv1.Series{
-				Labels: lbs.WithLabels(s.by...),
-				Points: []*typesv1.Point{
-					{
-						Timestamp: ts,
-						Value:     value,
-					},
-				},
-			}
-			return
-		}
-	}
-	series := s.series[labelsByString]
-	series.Points = append(series.Points, &typesv1.Point{
-		Timestamp: ts,
-		Value:     value,
-	})
-}
-
-func (s *seriesBuilder) build() []*typesv1.Series {
-	return s.series.normalize()
-}
-
 func mergeByLabels[T Profile](
 	ctx context.Context,
 	profileSource Source,
@@ -236,8 +172,8 @@ func mergeByLabels[T Profile](
 	profiles := query.NewRepeatedRowIterator(ctx, rows, profileSource.RowGroups(), column.ColumnIndex)
 	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
 
-	seriesBuilder := seriesBuilder{}
-	seriesBuilder.init(by...)
+	seriesBuilder := phlaremodel.TimeSeriesBuilder{}
+	seriesBuilder.Init(by...)
 
 	for profiles.Next() {
 		values := profiles.At()
@@ -246,10 +182,10 @@ func mergeByLabels[T Profile](
 		for _, e := range values.Values {
 			total += e[0].Int64()
 		}
-		seriesBuilder.add(p.Fingerprint(), p.Labels(), int64(p.Timestamp()), float64(total))
+		seriesBuilder.Add(p.Fingerprint(), p.Labels(), int64(p.Timestamp()), float64(total))
 
 	}
-	return seriesBuilder.build(), profiles.Err()
+	return seriesBuilder.Build(), profiles.Err()
 }
 
 func mergeByLabelsWithStackTraceSelector[T Profile](
@@ -268,8 +204,8 @@ func mergeByLabelsWithStackTraceSelector[T Profile](
 		columns.Value.ColumnIndex,
 	)
 
-	seriesBuilder := seriesBuilder{}
-	seriesBuilder.init(by...)
+	seriesBuilder := phlaremodel.TimeSeriesBuilder{}
+	seriesBuilder.Init(by...)
 
 	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
 	var v symdb.CallSiteValues
@@ -279,8 +215,8 @@ func mergeByLabelsWithStackTraceSelector[T Profile](
 		if err = r.CallSiteValuesParquet(&v, h.StacktracePartition(), row.Values[0], row.Values[1]); err != nil {
 			return nil, err
 		}
-		seriesBuilder.add(h.Fingerprint(), h.Labels(), int64(h.Timestamp()), float64(v.Total))
+		seriesBuilder.Add(h.Fingerprint(), h.Labels(), int64(h.Timestamp()), float64(v.Total))
 	}
 
-	return seriesBuilder.build(), profiles.Err()
+	return seriesBuilder.Build(), profiles.Err()
 }

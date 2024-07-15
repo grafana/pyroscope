@@ -117,7 +117,7 @@ func (m *Query) CloneVT() *Query {
 	r.LabelNames = m.LabelNames.CloneVT()
 	r.LabelValues = m.LabelValues.CloneVT()
 	r.SeriesLabels = m.SeriesLabels.CloneVT()
-	r.Metrics = m.Metrics.CloneVT()
+	r.TimeSeries = m.TimeSeries.CloneVT()
 	r.Tree = m.Tree.CloneVT()
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -179,7 +179,7 @@ func (m *Report) CloneVT() *Report {
 	r.LabelNames = m.LabelNames.CloneVT()
 	r.LabelValues = m.LabelValues.CloneVT()
 	r.SeriesLabels = m.SeriesLabels.CloneVT()
-	r.Metrics = m.Metrics.CloneVT()
+	r.TimeSeries = m.TimeSeries.CloneVT()
 	r.Tree = m.Tree.CloneVT()
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -318,11 +318,11 @@ func (m *SeriesLabelsReport) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
-func (m *MetricsQuery) CloneVT() *MetricsQuery {
+func (m *TimeSeriesQuery) CloneVT() *TimeSeriesQuery {
 	if m == nil {
-		return (*MetricsQuery)(nil)
+		return (*TimeSeriesQuery)(nil)
 	}
-	r := new(MetricsQuery)
+	r := new(TimeSeriesQuery)
 	r.Step = m.Step
 	if rhs := m.GroupBy; rhs != nil {
 		tmpContainer := make([]string, len(rhs))
@@ -340,17 +340,17 @@ func (m *MetricsQuery) CloneVT() *MetricsQuery {
 	return r
 }
 
-func (m *MetricsQuery) CloneMessageVT() proto.Message {
+func (m *TimeSeriesQuery) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
-func (m *MetricsReport) CloneVT() *MetricsReport {
+func (m *TimeSeriesReport) CloneVT() *TimeSeriesReport {
 	if m == nil {
-		return (*MetricsReport)(nil)
+		return (*TimeSeriesReport)(nil)
 	}
-	r := new(MetricsReport)
+	r := new(TimeSeriesReport)
 	r.Query = m.Query.CloneVT()
-	if rhs := m.Metrics; rhs != nil {
+	if rhs := m.TimeSeries; rhs != nil {
 		tmpContainer := make([]*v11.Series, len(rhs))
 		for k, v := range rhs {
 			if vtpb, ok := interface{}(v).(interface{ CloneVT() *v11.Series }); ok {
@@ -359,7 +359,7 @@ func (m *MetricsReport) CloneVT() *MetricsReport {
 				tmpContainer[k] = proto.Clone(v).(*v11.Series)
 			}
 		}
-		r.Metrics = tmpContainer
+		r.TimeSeries = tmpContainer
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -368,7 +368,7 @@ func (m *MetricsReport) CloneVT() *MetricsReport {
 	return r
 }
 
-func (m *MetricsReport) CloneMessageVT() proto.Message {
+func (m *TimeSeriesReport) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
@@ -548,7 +548,7 @@ func (this *Query) EqualVT(that *Query) bool {
 	if !this.SeriesLabels.EqualVT(that.SeriesLabels) {
 		return false
 	}
-	if !this.Metrics.EqualVT(that.Metrics) {
+	if !this.TimeSeries.EqualVT(that.TimeSeries) {
 		return false
 	}
 	if !this.Tree.EqualVT(that.Tree) {
@@ -634,7 +634,7 @@ func (this *Report) EqualVT(that *Report) bool {
 	if !this.SeriesLabels.EqualVT(that.SeriesLabels) {
 		return false
 	}
-	if !this.Metrics.EqualVT(that.Metrics) {
+	if !this.TimeSeries.EqualVT(that.TimeSeries) {
 		return false
 	}
 	if !this.Tree.EqualVT(that.Tree) {
@@ -806,7 +806,7 @@ func (this *SeriesLabelsReport) EqualMessageVT(thatMsg proto.Message) bool {
 	}
 	return this.EqualVT(that)
 }
-func (this *MetricsQuery) EqualVT(that *MetricsQuery) bool {
+func (this *TimeSeriesQuery) EqualVT(that *TimeSeriesQuery) bool {
 	if this == that {
 		return true
 	} else if this == nil || that == nil {
@@ -830,14 +830,14 @@ func (this *MetricsQuery) EqualVT(that *MetricsQuery) bool {
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
-func (this *MetricsQuery) EqualMessageVT(thatMsg proto.Message) bool {
-	that, ok := thatMsg.(*MetricsQuery)
+func (this *TimeSeriesQuery) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*TimeSeriesQuery)
 	if !ok {
 		return false
 	}
 	return this.EqualVT(that)
 }
-func (this *MetricsReport) EqualVT(that *MetricsReport) bool {
+func (this *TimeSeriesReport) EqualVT(that *TimeSeriesReport) bool {
 	if this == that {
 		return true
 	} else if this == nil || that == nil {
@@ -846,11 +846,11 @@ func (this *MetricsReport) EqualVT(that *MetricsReport) bool {
 	if !this.Query.EqualVT(that.Query) {
 		return false
 	}
-	if len(this.Metrics) != len(that.Metrics) {
+	if len(this.TimeSeries) != len(that.TimeSeries) {
 		return false
 	}
-	for i, vx := range this.Metrics {
-		vy := that.Metrics[i]
+	for i, vx := range this.TimeSeries {
+		vy := that.TimeSeries[i]
 		if p, q := vx, vy; p != q {
 			if p == nil {
 				p = &v11.Series{}
@@ -870,8 +870,8 @@ func (this *MetricsReport) EqualVT(that *MetricsReport) bool {
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
-func (this *MetricsReport) EqualMessageVT(thatMsg proto.Message) bool {
-	that, ok := thatMsg.(*MetricsReport)
+func (this *TimeSeriesReport) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*TimeSeriesReport)
 	if !ok {
 		return false
 	}
@@ -1251,8 +1251,8 @@ func (m *Query) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x32
 	}
-	if m.Metrics != nil {
-		size, err := m.Metrics.MarshalToSizedBufferVT(dAtA[:i])
+	if m.TimeSeries != nil {
+		size, err := m.TimeSeries.MarshalToSizedBufferVT(dAtA[:i])
 		if err != nil {
 			return 0, err
 		}
@@ -1427,8 +1427,8 @@ func (m *Report) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x32
 	}
-	if m.Metrics != nil {
-		size, err := m.Metrics.MarshalToSizedBufferVT(dAtA[:i])
+	if m.TimeSeries != nil {
+		size, err := m.TimeSeries.MarshalToSizedBufferVT(dAtA[:i])
 		if err != nil {
 			return 0, err
 		}
@@ -1761,7 +1761,7 @@ func (m *SeriesLabelsReport) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *MetricsQuery) MarshalVT() (dAtA []byte, err error) {
+func (m *TimeSeriesQuery) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -1774,12 +1774,12 @@ func (m *MetricsQuery) MarshalVT() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *MetricsQuery) MarshalToVT(dAtA []byte) (int, error) {
+func (m *TimeSeriesQuery) MarshalToVT(dAtA []byte) (int, error) {
 	size := m.SizeVT()
 	return m.MarshalToSizedBufferVT(dAtA[:size])
 }
 
-func (m *MetricsQuery) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+func (m *TimeSeriesQuery) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m == nil {
 		return 0, nil
 	}
@@ -1814,7 +1814,7 @@ func (m *MetricsQuery) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *MetricsReport) MarshalVT() (dAtA []byte, err error) {
+func (m *TimeSeriesReport) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -1827,12 +1827,12 @@ func (m *MetricsReport) MarshalVT() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *MetricsReport) MarshalToVT(dAtA []byte) (int, error) {
+func (m *TimeSeriesReport) MarshalToVT(dAtA []byte) (int, error) {
 	size := m.SizeVT()
 	return m.MarshalToSizedBufferVT(dAtA[:size])
 }
 
-func (m *MetricsReport) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+func (m *TimeSeriesReport) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m == nil {
 		return 0, nil
 	}
@@ -1844,9 +1844,9 @@ func (m *MetricsReport) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if len(m.Metrics) > 0 {
-		for iNdEx := len(m.Metrics) - 1; iNdEx >= 0; iNdEx-- {
-			if vtmsg, ok := interface{}(m.Metrics[iNdEx]).(interface {
+	if len(m.TimeSeries) > 0 {
+		for iNdEx := len(m.TimeSeries) - 1; iNdEx >= 0; iNdEx-- {
+			if vtmsg, ok := interface{}(m.TimeSeries[iNdEx]).(interface {
 				MarshalToSizedBufferVT([]byte) (int, error)
 			}); ok {
 				size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
@@ -1856,7 +1856,7 @@ func (m *MetricsReport) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 				i -= size
 				i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
 			} else {
-				encoded, err := proto.Marshal(m.Metrics[iNdEx])
+				encoded, err := proto.Marshal(m.TimeSeries[iNdEx])
 				if err != nil {
 					return 0, err
 				}
@@ -2069,8 +2069,8 @@ func (m *Query) SizeVT() (n int) {
 		l = m.SeriesLabels.SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
-	if m.Metrics != nil {
-		l = m.Metrics.SizeVT()
+	if m.TimeSeries != nil {
+		l = m.TimeSeries.SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	if m.Tree != nil {
@@ -2132,8 +2132,8 @@ func (m *Report) SizeVT() (n int) {
 		l = m.SeriesLabels.SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
-	if m.Metrics != nil {
-		l = m.Metrics.SizeVT()
+	if m.TimeSeries != nil {
+		l = m.TimeSeries.SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	if m.Tree != nil {
@@ -2250,7 +2250,7 @@ func (m *SeriesLabelsReport) SizeVT() (n int) {
 	return n
 }
 
-func (m *MetricsQuery) SizeVT() (n int) {
+func (m *TimeSeriesQuery) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -2272,7 +2272,7 @@ func (m *MetricsQuery) SizeVT() (n int) {
 	return n
 }
 
-func (m *MetricsReport) SizeVT() (n int) {
+func (m *TimeSeriesReport) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -2282,8 +2282,8 @@ func (m *MetricsReport) SizeVT() (n int) {
 		l = m.Query.SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
-	if len(m.Metrics) > 0 {
-		for _, e := range m.Metrics {
+	if len(m.TimeSeries) > 0 {
+		for _, e := range m.TimeSeries {
 			if size, ok := interface{}(e).(interface {
 				SizeVT() int
 			}); ok {
@@ -2966,7 +2966,7 @@ func (m *Query) UnmarshalVT(dAtA []byte) error {
 			iNdEx = postIndex
 		case 5:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Metrics", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field TimeSeries", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -2993,10 +2993,10 @@ func (m *Query) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.Metrics == nil {
-				m.Metrics = &MetricsQuery{}
+			if m.TimeSeries == nil {
+				m.TimeSeries = &TimeSeriesQuery{}
 			}
-			if err := m.Metrics.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+			if err := m.TimeSeries.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -3388,7 +3388,7 @@ func (m *Report) UnmarshalVT(dAtA []byte) error {
 			iNdEx = postIndex
 		case 5:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Metrics", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field TimeSeries", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -3415,10 +3415,10 @@ func (m *Report) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.Metrics == nil {
-				m.Metrics = &MetricsReport{}
+			if m.TimeSeries == nil {
+				m.TimeSeries = &TimeSeriesReport{}
 			}
-			if err := m.Metrics.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+			if err := m.TimeSeries.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -4064,7 +4064,7 @@ func (m *SeriesLabelsReport) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *MetricsQuery) UnmarshalVT(dAtA []byte) error {
+func (m *TimeSeriesQuery) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -4087,10 +4087,10 @@ func (m *MetricsQuery) UnmarshalVT(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: MetricsQuery: wiretype end group for non-group")
+			return fmt.Errorf("proto: TimeSeriesQuery: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: MetricsQuery: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: TimeSeriesQuery: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -4178,7 +4178,7 @@ func (m *MetricsQuery) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *MetricsReport) UnmarshalVT(dAtA []byte) error {
+func (m *TimeSeriesReport) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -4201,10 +4201,10 @@ func (m *MetricsReport) UnmarshalVT(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: MetricsReport: wiretype end group for non-group")
+			return fmt.Errorf("proto: TimeSeriesReport: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: MetricsReport: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: TimeSeriesReport: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -4237,7 +4237,7 @@ func (m *MetricsReport) UnmarshalVT(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Query == nil {
-				m.Query = &MetricsQuery{}
+				m.Query = &TimeSeriesQuery{}
 			}
 			if err := m.Query.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -4245,7 +4245,7 @@ func (m *MetricsReport) UnmarshalVT(dAtA []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Metrics", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field TimeSeries", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -4272,15 +4272,15 @@ func (m *MetricsReport) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Metrics = append(m.Metrics, &v11.Series{})
-			if unmarshal, ok := interface{}(m.Metrics[len(m.Metrics)-1]).(interface {
+			m.TimeSeries = append(m.TimeSeries, &v11.Series{})
+			if unmarshal, ok := interface{}(m.TimeSeries[len(m.TimeSeries)-1]).(interface {
 				UnmarshalVT([]byte) error
 			}); ok {
 				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 					return err
 				}
 			} else {
-				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Metrics[len(m.Metrics)-1]); err != nil {
+				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.TimeSeries[len(m.TimeSeries)-1]); err != nil {
 					return err
 				}
 			}

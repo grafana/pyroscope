@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/multierror"
+	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
 	"golang.org/x/sync/errgroup"
@@ -112,8 +113,10 @@ func (b *BlockReader) Invoke(
 }
 
 type request struct {
-	src      *querybackendv1.InvokeRequest
-	matchers []*labels.Matcher
+	src       *querybackendv1.InvokeRequest
+	matchers  []*labels.Matcher
+	startTime int64 // Unix nano.
+	endTime   int64 // Unix nano.
 }
 
 func validateRequest(req *querybackendv1.InvokeRequest) (*request, error) {
@@ -127,11 +130,13 @@ func validateRequest(req *querybackendv1.InvokeRequest) (*request, error) {
 	if err != nil {
 		return nil, fmt.Errorf("label selection is invalid: %w", err)
 	}
+	// TODO: Validate the rest, just in case.
 	r := request{
-		src:      req,
-		matchers: matchers,
+		src:       req,
+		matchers:  matchers,
+		startTime: model.Time(req.StartTime).UnixNano(),
+		endTime:   model.Time(req.EndTime).UnixNano(),
 	}
-	// TODO: Validate the rest.
 	return &r, nil
 }
 

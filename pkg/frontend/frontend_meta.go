@@ -48,6 +48,9 @@ func (f *Frontend) invoke(
 	if err != nil {
 		return nil, err
 	}
+	if len(blocks) == 0 {
+		return nil, nil
+	}
 	// TODO: Params.
 	p := queryplan.Build(blocks, 20, 50)
 	resp, err := f.querybackendclient.Invoke(ctx, &querybackendv1.InvokeRequest{

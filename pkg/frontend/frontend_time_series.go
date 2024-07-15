@@ -10,6 +10,7 @@ import (
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
+	querybackendv1 "github.com/grafana/pyroscope/api/gen/proto/go/querybackend/v1"
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
@@ -42,13 +43,22 @@ func (f *Frontend) SelectSeries(ctx context.Context,
 	c.Msg.Start = int64(validated.Start)
 	c.Msg.End = int64(validated.End)
 
-	query, err := buildLabelSelectorAndProfileType(c.Msg.LabelSelector, c.Msg.ProfileTypeID)
+	labelSelector, err := buildLabelSelectorAndProfileType(c.Msg.LabelSelector, c.Msg.ProfileTypeID)
+	report, err := f.invoke(ctx, c.Msg.Start, c.Msg.End, tenantIDs, labelSelector, &querybackendv1.Query{
+		QueryType: querybackendv1.QueryType_QUERY_TIME_SERIES,
+		TimeSeries: &querybackendv1.TimeSeriesQuery{
+			Step:        c.Msg.GetStep(),
+			GroupBy:     c.Msg.GetGroupBy(),
+			Aggregation: c.Msg.Aggregation,
+		},
+	})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
-	}
-	if _, err = f.listMetadata(ctx, tenantIDs, c.Msg.Start, c.Msg.End, query); err != nil {
 		return nil, err
 	}
-	// TODO: Call query-backend.
-	return connect.NewResponse(&querierv1.SelectSeriesResponse{}), nil
+	if report == nil {
+		return connect.NewResponse(&querierv1.SelectSeriesResponse{}), nil
+	}
+	return connect.NewResponse(&querierv1.SelectSeriesResponse{
+		Series: report.TimeSeries.TimeSeries,
+	}), nil
 }

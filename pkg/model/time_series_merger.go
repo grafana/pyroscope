@@ -8,34 +8,34 @@ import (
 )
 
 func MergeSeries(aggregation *typesv1.TimeSeriesAggregationType, series ...[]*typesv1.Series) []*typesv1.Series {
-	var m *MetricsMerger
+	var m *TimeSeriesMerger
 	if aggregation == nil || *aggregation == typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_SUM {
-		m = NewMetricsMerger(true)
+		m = NewTimeSeriesMerger(true)
 	} else {
-		m = NewMetricsMerger(false)
+		m = NewTimeSeriesMerger(false)
 	}
 	for _, s := range series {
-		m.MergeMetrics(s)
+		m.MergeTimeSeries(s)
 	}
-	return m.Metrics()
+	return m.TimeSeries()
 }
 
-type MetricsMerger struct {
+type TimeSeriesMerger struct {
 	mu     sync.Mutex
 	series map[uint64]*typesv1.Series
 	sum    bool
 }
 
-// NewMetricsMerger creates a new series merger. If sum is set, samples
+// NewTimeSeriesMerger creates a new series merger. If sum is set, samples
 // with matching timestamps are summed, otherwise duplicates are retained.
-func NewMetricsMerger(sum bool) *MetricsMerger {
-	return &MetricsMerger{
+func NewTimeSeriesMerger(sum bool) *TimeSeriesMerger {
+	return &TimeSeriesMerger{
 		series: make(map[uint64]*typesv1.Series),
 		sum:    sum,
 	}
 }
 
-func (m *MetricsMerger) MergeMetrics(s []*typesv1.Series) {
+func (m *TimeSeriesMerger) MergeTimeSeries(s []*typesv1.Series) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for _, x := range s {
@@ -49,11 +49,11 @@ func (m *MetricsMerger) MergeMetrics(s []*typesv1.Series) {
 	}
 }
 
-func (m *MetricsMerger) IsEmpty() bool {
+func (m *TimeSeriesMerger) IsEmpty() bool {
 	return len(m.series) == 0
 }
 
-func (m *MetricsMerger) Metrics() []*typesv1.Series {
+func (m *TimeSeriesMerger) TimeSeries() []*typesv1.Series {
 	if len(m.series) == 0 {
 		return nil
 	}
@@ -70,7 +70,7 @@ func (m *MetricsMerger) Metrics() []*typesv1.Series {
 	return r
 }
 
-func (m *MetricsMerger) mergePoints(points []*typesv1.Point) int {
+func (m *TimeSeriesMerger) mergePoints(points []*typesv1.Point) int {
 	l := len(points)
 	if l < 2 {
 		return l
