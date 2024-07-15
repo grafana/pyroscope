@@ -301,40 +301,26 @@ func (s *segment) flushHeads(ctx context.Context) (moved []serviceHead) {
 		s.sw.metrics.flushHeadsDuration.WithLabelValues(s.sshard).Observe(time.Since(t1).Seconds())
 		s.debuginfo.flushHeadsDuration = time.Since(t1)
 	}()
-
+	wg := sync.WaitGroup{}
+	mutex := new(sync.Mutex)
 	for _, e := range s.heads {
-		th := time.Now()
-		if err := e.head.Flush(ctx); err != nil {
-			s.sw.metrics.flushServiceHeadDuration.WithLabelValues(s.sshard, e.key.tenant).Observe(time.Since(th).Seconds())
-			_ = level.Error(s.l).Log("msg", "failed to flush head", "err", err, "head", e.head.BlockID())
-			s.sw.metrics.flushServiceHeadError.WithLabelValues(s.sshard, e.key.tenant).Inc()
-			continue
-		}
-		s.sw.metrics.flushServiceHeadDuration.WithLabelValues(s.sshard, e.key.tenant).Observe(time.Since(th).Seconds())
-		stats, _ := json.Marshal(e.head.GetMetaStats())
-		level.Debug(s.l).Log(
-			"msg", "flushed head",
-			"head", e.head.BlockID(),
-			"stats", stats,
-			"head-flush-duration", time.Since(th).String(),
-		)
-		if err := e.head.Move(); err != nil {
-			if e.head.GetMetaStats().NumSamples == 0 {
-				_ = level.Debug(s.l).Log("msg", "skipping empty head", "head", e.head.BlockID())
-				continue
+		wg.Add(1)
+		e := e
+		go func() {
+			defer wg.Done()
+			eMoved, err := s.flushHead(ctx, e)
+			if err != nil {
+				level.Error(s.l).Log("msg", "failed to flush head", "err", err)
 			}
-			s.sw.metrics.flushServiceHeadError.WithLabelValues(s.sshard, e.key.tenant).Inc()
-			_ = level.Error(s.l).Log("msg", "failed to move head", "err", err, "head", e.head.BlockID())
-			continue
-		}
-		profiles, index, symbols := getFilesForSegment(e.head.Meta())
-		if profiles == nil || index == nil || symbols == nil {
-			s.sw.metrics.flushServiceHeadError.WithLabelValues(s.sshard, e.key.tenant).Inc()
-			_ = level.Error(s.l).Log("msg", "failed to find files", "head", e.head.BlockID())
-			continue
-		}
-		moved = append(moved, e)
+			if eMoved {
+				mutex.Lock()
+				moved = append(moved, e)
+				mutex.Unlock()
+			}
+		}()
 	}
+	wg.Wait()
+
 	slices.SortFunc(moved, func(i, j serviceHead) int {
 		c := strings.Compare(i.key.tenant, j.key.tenant)
 		if c != 0 {
@@ -343,6 +329,37 @@ func (s *segment) flushHeads(ctx context.Context) (moved []serviceHead) {
 		return strings.Compare(i.key.service, j.key.service)
 	})
 	return moved
+}
+
+func (s *segment) flushHead(ctx context.Context, e serviceHead) (moved bool, err error) {
+	th := time.Now()
+	if err := e.head.Flush(ctx); err != nil {
+		s.sw.metrics.flushServiceHeadDuration.WithLabelValues(s.sshard, e.key.tenant).Observe(time.Since(th).Seconds())
+		s.sw.metrics.flushServiceHeadError.WithLabelValues(s.sshard, e.key.tenant).Inc()
+		return false, fmt.Errorf("failed to flush head %v: %w", e.head.BlockID(), err)
+	}
+	s.sw.metrics.flushServiceHeadDuration.WithLabelValues(s.sshard, e.key.tenant).Observe(time.Since(th).Seconds())
+	stats, _ := json.Marshal(e.head.GetMetaStats())
+	level.Debug(s.l).Log(
+		"msg", "flushed head",
+		"head", e.head.BlockID(),
+		"stats", stats,
+		"head-flush-duration", time.Since(th).String(),
+	)
+	if err := e.head.Move(); err != nil {
+		if e.head.GetMetaStats().NumSamples == 0 {
+			_ = level.Debug(s.l).Log("msg", "skipping empty head", "head", e.head.BlockID())
+			return false, nil
+		}
+		s.sw.metrics.flushServiceHeadError.WithLabelValues(s.sshard, e.key.tenant).Inc()
+		return false, fmt.Errorf("failed to move head %v: %w", e.head.BlockID(), err)
+	}
+	profiles, index, symbols := getFilesForSegment(e.head.Meta())
+	if profiles == nil || index == nil || symbols == nil {
+		s.sw.metrics.flushServiceHeadError.WithLabelValues(s.sshard, e.key.tenant).Inc()
+		return false, fmt.Errorf("failed to find files %v %v %v", profiles, index, symbols)
+	}
+	return true, nil
 }
 
 type serviceKey struct {
