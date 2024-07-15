@@ -55,8 +55,6 @@ type BlockReader struct {
 
 	// TODO Next:
 	//  - In-memory threshold option.
-	//  - symdb reader.
-	//  - Tree API
 	//  - Buffer pool.
 
 	// TODO:
