@@ -39,6 +39,7 @@ message CompactionJob {
   CompactionOptions options = 2;
   // List of the input blocks.
   repeated metastore.v1.BlockMeta blocks = 3;
+  CompactionJobStatus status = 4;
 }
 
 message CompactionOptions {
@@ -58,7 +59,6 @@ message UpdateJobStatusRequest {
 }
 
 message CompactionJobStatus {
-  string name = 1;
   // Status update allows the planner to keep
   // track of the job ownership and compaction
   // progress:
@@ -72,8 +72,8 @@ message CompactionJobStatus {
   //   or cancels the compaction job.
   //
   // Partial results/status is not allowed.
-  CompactionStatus status = 2;
-  CompletedJob completed_job = 3;
+  CompactionStatus status = 1;
+  CompletedJob completed_job = 2;
 }
 
 enum CompactionStatus {
@@ -89,8 +89,6 @@ message CompletedJob {
 
 message UpdateJobStatusResponse {}
 
-message AddCompactionJobsRequest {
-  repeated CompactionJob jobs = 1;
+message BlockMetas {
+  repeated metastore.v1.BlockMeta blocks = 1;
 }
-
-message AddCompactionJobsResponse {}

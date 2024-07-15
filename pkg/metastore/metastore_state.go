@@ -3,6 +3,8 @@ package metastore
 import (
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/go-kit/log"
@@ -19,8 +21,8 @@ type metastoreState struct {
 	shardsMutex sync.Mutex
 	shards      map[uint32]*metastoreShard
 
-	compactionPlanMutex sync.Mutex
-	compactionPlan      *compactionPlan
+	compactionPlansMutex sync.Mutex
+	compactionPlans      map[uint32]*compactionPlan
 
 	db *boltdb
 }
@@ -32,13 +34,10 @@ type metastoreShard struct {
 
 func newMetastoreState(logger log.Logger, db *boltdb) *metastoreState {
 	return &metastoreState{
-		logger: logger,
-		shards: make(map[uint32]*metastoreShard),
-		db:     db,
-		compactionPlan: &compactionPlan{
-			jobs:          make(map[string]*compactorv1.CompactionJob),
-			plannedBlocks: make(map[string]interface{}),
-		},
+		logger:          logger,
+		shards:          make(map[uint32]*metastoreShard),
+		db:              db,
+		compactionPlans: make(map[uint32]*compactionPlan),
 	}
 }
 
@@ -106,24 +105,31 @@ func (m *metastoreState) restoreCompactionPlan(tx *bbolt.Tx) error {
 	default:
 		return err
 	}
-	m.compactionPlanMutex.Lock()
-	defer m.compactionPlanMutex.Unlock()
-	m.compactionPlan = &compactionPlan{
-		jobs:          make(map[string]*compactorv1.CompactionJob),
-		plannedBlocks: make(map[string]interface{}),
-	}
-	c := cdb.Cursor()
-	for k, v := c.First(); k != nil; k, v = c.Next() {
-		var job compactorv1.CompactionJob
-		if err := job.UnmarshalVT(v); err != nil {
-			return fmt.Errorf("failed to unmarshal job %q: %w", string(k), err)
+	return cdb.ForEachBucket(func(name []byte) error {
+		shardId, _, ok := parseBucketName(name)
+		if !ok {
+			_ = level.Error(m.logger).Log("msg", "malformed bucket name", "name", string(name))
+			return nil
 		}
-		m.compactionPlan.jobs[job.Name] = &job
-		for _, block := range job.Blocks {
-			m.compactionPlan.plannedBlocks[block.Id] = struct{}{}
-		}
+		planForShard := m.getOrCreatePlan(shardId)
+		return planForShard.loadJobs(cdb.Bucket(name))
+	})
+
+}
+
+func (m *metastoreState) getOrCreatePlan(shardId uint32) *compactionPlan {
+	m.compactionPlansMutex.Lock()
+	defer m.compactionPlansMutex.Unlock()
+
+	if plan, ok := m.compactionPlans[shardId]; ok {
+		return plan
 	}
-	return nil
+	plan := &compactionPlan{
+		jobsByName:          make(map[string]*compactorv1.CompactionJob),
+		queuedBlocksByLevel: make(map[uint32][]*metastorev1.BlockMeta),
+	}
+	m.compactionPlans[shardId] = plan
+	return plan
 }
 
 func newMetastoreShard() *metastoreShard {
@@ -148,6 +154,37 @@ func (s *metastoreShard) loadSegments(b *bbolt.Bucket) error {
 			return fmt.Errorf("failed to block %q: %w", string(k), err)
 		}
 		s.segments[md.Id] = &md
+	}
+	return nil
+}
+
+func (p *compactionPlan) loadJobs(b *bbolt.Bucket) error {
+	p.jobsMutex.Lock()
+	defer p.jobsMutex.Unlock()
+	c := b.Cursor()
+	for k, v := c.First(); k != nil; k, v = c.Next() {
+		keyString := string(k)
+		if strings.HasPrefix(keyString, "blocks") {
+			parts := strings.Split(keyString, "_")
+			if len(parts) != 2 {
+				return fmt.Errorf("malformed key: %s", string(k))
+			}
+			compactionLevel, err := strconv.Atoi(parts[1])
+			if err != nil {
+				return fmt.Errorf("malformed key: %s", string(k))
+			}
+			var blockMetas compactorv1.BlockMetas
+			if err = blockMetas.UnmarshalVT(v); err != nil {
+				return fmt.Errorf("malformed key: %s", string(k))
+			}
+			p.queuedBlocksByLevel[uint32(compactionLevel)] = blockMetas.Blocks
+		} else {
+			var job compactorv1.CompactionJob
+			if err := job.UnmarshalVT(v); err != nil {
+				return fmt.Errorf("failed to unmarshal job %q: %w", string(k), err)
+			}
+			p.jobsByName[job.Name] = &job
+		}
 	}
 	return nil
 }

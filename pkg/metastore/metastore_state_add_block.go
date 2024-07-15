@@ -11,6 +11,9 @@ import (
 
 func (m *Metastore) AddBlock(_ context.Context, req *metastorev1.AddBlockRequest) (*metastorev1.AddBlockResponse, error) {
 	_, resp, err := applyCommand[*metastorev1.AddBlockRequest, *metastorev1.AddBlockResponse](m.raft, req, m.config.Raft.ApplyTimeout)
+	if err == nil {
+		m.addForCompaction(req.Block)
+	}
 	return resp, err
 }
 

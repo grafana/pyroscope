@@ -128,8 +128,7 @@ func (m *Metastore) starting(ctx context.Context) error {
 	if err := m.initRaft(); err != nil {
 		return fmt.Errorf("failed to initialize raft: %w", err)
 	}
-	m.compactionPlanner = NewPlanner(m.state, m.raft, m.config.Raft, m.logger)
-	go m.compactionPlanner.Run(ctx)
+	m.compactionPlanner = NewPlanner(m.state, m.logger)
 	m.wg.Add(1)
 	go m.cleanupLoop()
 	return nil

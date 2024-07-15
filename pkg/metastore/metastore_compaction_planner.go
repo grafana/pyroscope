@@ -2,14 +2,11 @@ package metastore
 
 import (
 	"context"
-	"crypto/rand"
 	"fmt"
-	"time"
+	"sync"
 
+	"github.com/cespare/xxhash/v2"
 	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
-	"github.com/hashicorp/raft"
-	"github.com/oklog/ulid"
 	"go.etcd.io/bbolt"
 
 	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
@@ -17,124 +14,29 @@ import (
 )
 
 type compactionPlan struct {
-	jobs          map[string]*compactorv1.CompactionJob
-	plannedBlocks map[string]interface{}
-}
+	jobsMutex  sync.Mutex
+	jobsByName map[string]*compactorv1.CompactionJob
 
-type compactionJob struct {
-	name      string
-	jobType   string
-	blocks    []*metastorev1.BlockMeta
-	jobStatus string
+	queuedBlocksByLevel map[uint32][]*metastorev1.BlockMeta
 }
 
 type Planner struct {
 	logger         log.Logger
 	metastoreState *metastoreState
-	raft           *raft.Raft
-	raftConfig     RaftConfig
 }
 
-func NewPlanner(state *metastoreState, raft *raft.Raft, raftConfig RaftConfig, logger log.Logger) *Planner {
-	state.compactionPlan.plannedBlocks = make(map[string]interface{})
-	for _, job := range state.compactionPlan.jobs {
-		for _, block := range job.Blocks {
-			state.compactionPlan.plannedBlocks[block.Id] = struct{}{}
-		}
-	}
+func NewPlanner(state *metastoreState, logger log.Logger) *Planner {
 	return &Planner{
 		metastoreState: state,
-		raft:           raft,
-		raftConfig:     raftConfig,
 		logger:         logger,
 	}
 }
 
-func (c *Planner) Run(ctx context.Context) {
-	ticker := time.NewTicker(10 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			if c.raft.State() != raft.Leader {
-				level.Info(c.logger).Log("msg", "not the leader, skip planning")
-				continue
-			}
-			level.Info(c.logger).Log("msg", "run compaction planning")
-			err := c.plan()
-			if err != nil {
-				level.Warn(c.logger).Log("msg", "failed to run planner", "err", err)
-			}
-		case <-ctx.Done():
-			return
-		}
-	}
-}
-
-func (c *Planner) plan() error {
-	// plan L0 -> L1 jobs only
-	c.metastoreState.shardsMutex.Lock()
-
-	blocksToCompact := make(map[uint32][]*metastorev1.BlockMeta, len(c.metastoreState.shards))
-	level.Debug(c.logger).Log("msg", "listing shards for compaction", "shard_count", len(c.metastoreState.shards))
-	for shardId, shard := range c.metastoreState.shards {
-		shard.segmentsMutex.Lock()
-		level.Debug(c.logger).Log("msg", "listing segments for compaction", "shard", shardId, "segment_count", len(shard.segments))
-		for _, segment := range shard.segments {
-			if segment.CompactionLevel > 0 {
-				level.Debug(c.logger).Log("msg", "skip segment of higher compaction level", "segment_id", segment.Id)
-				continue
-			}
-			_, ok := c.metastoreState.compactionPlan.plannedBlocks[segment.Id]
-			if ok {
-				continue
-			}
-			level.Debug(c.logger).Log("msg", "adding segment to candidates for compaction", "segment_id", segment.Id)
-			blocksToCompact[shardId] = append(blocksToCompact[shardId], segment.CloneVT())
-		}
-		shard.segmentsMutex.Unlock()
-	}
-	c.metastoreState.shardsMutex.Unlock()
-
-	jobs := make([]*compactorv1.CompactionJob, 0, len(blocksToCompact))
-	batchSize := 10
-	level.Debug(c.logger).Log("msg", "shards with segments to compact", "shard_count", len(blocksToCompact))
-	for shard, blocks := range blocksToCompact {
-		level.Debug(c.logger).Log("msg", "segments to compact in shard", "shard", shard, "segment_count", len(blocks))
-		// Split in batches if needed
-		for i := 0; i < len(blocks); i += batchSize {
-			if len(blocks[i:]) >= batchSize {
-				id := ulid.MustNew(ulid.Now(), rand.Reader)
-				job := &compactorv1.CompactionJob{
-					Name:   fmt.Sprintf("L0-%d-%s", shard, id.String()),
-					Blocks: blocks[i : i+batchSize],
-				}
-				level.Info(c.logger).Log("msg", "creating compaction job", "name", job.Name)
-				jobs = append(jobs, job)
-			}
-		}
-	}
-	level.Info(c.logger).Log("msg", "compaction planning finished", "job_count", len(jobs))
-
-	_, _, err := applyCommand[*compactorv1.AddCompactionJobsRequest, *compactorv1.AddCompactionJobsResponse](
-		c.raft, &compactorv1.AddCompactionJobsRequest{Jobs: jobs}, c.raftConfig.ApplyTimeout)
-
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func (m *Metastore) GetCompactionJobs(_ context.Context, req *compactorv1.GetCompactionRequest) (*compactorv1.GetCompactionResponse, error) {
-	m.state.compactionPlanMutex.Lock()
-	defer m.state.compactionPlanMutex.Unlock()
+	m.state.compactionPlansMutex.Lock()
+	defer m.state.compactionPlansMutex.Unlock()
 
 	resp := &compactorv1.GetCompactionResponse{}
-	for _, job := range m.state.compactionPlan.jobs {
-		resp.CompactionJobs = append(resp.CompactionJobs, job)
-	}
-
 	return resp, nil
 }
 
@@ -143,35 +45,67 @@ func (m *Metastore) UpdateJobStatus(_ context.Context, req *compactorv1.UpdateJo
 	return resp, err
 }
 
-func (m *metastoreState) applyAddCompactionJobs(req *compactorv1.AddCompactionJobsRequest) (*compactorv1.AddCompactionJobsResponse, error) {
-	m.compactionPlanMutex.Lock()
-	defer m.compactionPlanMutex.Unlock()
+func (m *Metastore) addForCompaction(block *metastorev1.BlockMeta) {
+	plan := m.state.getOrCreatePlan(block.Shard)
+	plan.jobsMutex.Lock()
+	defer plan.jobsMutex.Unlock()
 
-	level.Debug(m.logger).Log("msg", "applying compaction jobs command", "job_count", len(req.Jobs))
+	queuedBlocks := plan.queuedBlocksByLevel[block.CompactionLevel]
+	if queuedBlocks == nil {
+		queuedBlocks = make([]*metastorev1.BlockMeta, 0)
 
-	for _, job := range req.Jobs {
-		_, ok := m.compactionPlan.jobs[job.Name]
-		if ok {
-			level.Warn(m.logger).Log("msg", "cannot add compaction job, a job with that name already exists", "job", job.Name)
-			continue
-		}
-		value, err := job.MarshalVT()
-		if err != nil {
-			return nil, err
-		}
-		level.Debug(m.logger).Log("msg", "adding compaction job to storage", "job", job.Name)
-		err = m.db.boltdb.Update(func(tx *bbolt.Tx) error {
-			return updateCompactionPlanBucket(tx, func(bucket *bbolt.Bucket) error {
-				return bucket.Put([]byte(job.Name), value)
-			})
+	}
+	queuedBlocks = append(queuedBlocks, block)
+
+	name, key := keyForCompactionBlockQueue(block.Shard, block.TenantId, block.CompactionLevel)
+	value := &compactorv1.BlockMetas{Blocks: queuedBlocks}
+	err := m.db.boltdb.Update(func(tx *bbolt.Tx) error {
+		return updateCompactionPlanBucket(tx, name, func(bucket *bbolt.Bucket) error {
+			data, _ := value.MarshalVT()
+			return bucket.Put(key, data)
 		})
-
-		level.Debug(m.logger).Log("msg", "marking job blocks as planned", "job", job.Name, "block_count", len(job.Blocks))
-		m.compactionPlan.jobs[job.Name] = job
-		for _, block := range job.Blocks {
-			m.compactionPlan.plannedBlocks[block.Id] = struct{}{}
-		}
+	})
+	if err != nil {
+		m.logger.Log("msg", "failed to update queued blocks for compaction in the bucket", "err", err)
+		return
 	}
 
-	return &compactorv1.AddCompactionJobsResponse{}, nil
+	var job *compactorv1.CompactionJob
+	if len(queuedBlocks) >= 10 { // TODO aleks: add block size sum to the condition
+		job = &compactorv1.CompactionJob{
+			Name:    fmt.Sprintf("L%d-S%d-%d", block.CompactionLevel, block.Shard, StableHash(queuedBlocks)),
+			Options: nil,
+			Blocks:  queuedBlocks,
+			Status: &compactorv1.CompactionJobStatus{
+				Status: compactorv1.CompactionStatus_COMPACTION_STATUS_UNSPECIFIED,
+			},
+		}
+
+		name, key := keyForCompactionJob(block.Shard, block.TenantId, job.Name)
+		err := m.db.boltdb.Update(func(tx *bbolt.Tx) error {
+			return updateCompactionPlanBucket(tx, name, func(bucket *bbolt.Bucket) error {
+				data, _ := job.MarshalVT()
+				return bucket.Put(key, data)
+			})
+		})
+		if err != nil {
+			m.logger.Log("msg", "failed to store compaction job in the bucket", "err", err, "job", job)
+			return
+		}
+
+		queuedBlocks = queuedBlocks[:0]
+	}
+
+	if job != nil {
+		plan.jobsByName[job.Name] = job
+	}
+	plan.queuedBlocksByLevel[block.CompactionLevel] = queuedBlocks
+}
+
+func StableHash(blocks []*metastorev1.BlockMeta) uint64 {
+	b := make([]byte, 0, 1024)
+	for _, blk := range blocks {
+		b = append(b, blk.Id...)
+	}
+	return xxhash.Sum64(b)
 }
