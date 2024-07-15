@@ -1,7 +1,6 @@
 package ingester
 
 import (
-	"github.com/grafana/dskit/instrument"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -57,7 +56,7 @@ func newSegmentMetrics(reg prometheus.Registerer) *segmentMetrics {
 		segmentFlushWaitDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Namespace: "pyroscope",
 			Name:      "segment_ingester_wait_duration_seconds",
-			Buckets:   instrument.DefBuckets,
+			Buckets:   prometheus.LinearBuckets(0.5, 0.1, 20),
 		}, []string{"tenant"}),
 		segmentFlushTimeouts: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
