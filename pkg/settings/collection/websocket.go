@@ -23,8 +23,10 @@ type client struct {
 	// The websocket connection.
 	conn *websocket.Conn
 
-	role             Role
-	subscribedTopics []string
+	role Role
+
+	subscribedTopics    []string
+	subscribedTopicsMtx sync.Mutex
 
 	// Buffered channel of outbound messages.
 	send      chan []byte
@@ -35,6 +37,12 @@ func (c *client) close() {
 	c.sendClose.Do(func() {
 		close(c.send)
 	})
+}
+
+func (c *client) SubscribedTopics() []string {
+	c.subscribedTopicsMtx.Lock()
+	defer c.subscribedTopicsMtx.Unlock()
+	return c.subscribedTopics
 }
 
 func (c *client) isRuleManager() bool {
@@ -91,7 +99,11 @@ func (c *client) readPump() {
 		}
 
 		if p := msg.PayloadSubscribe; p != nil {
-			c.subscribedTopics = p.Topics
+			c.subscribedTopicsMtx.Lock()
+			c.subscribedTopics = make([]string, len(p.Topics))
+			copy(c.subscribedTopics, p.Topics)
+			c.subscribedTopicsMtx.Unlock()
+
 			level.Debug(c.logger).Log("msg", "client subscribing", "topics", fmt.Sprintf("%v", p.Topics))
 			c.hub.registerCh <- c
 		} else if p := msg.PayloadData; p != nil {
@@ -111,9 +123,10 @@ func (c *client) readPump() {
 				continue
 			}
 			level.Info(c.logger).Log("msg", "received rule delete", "id", p.Id)
-			id := p.Id
+			ruleID := p.Id
+			msgID := msg.Id
 			c.hub.rulesCh <- func(h *hub) {
-				handleResult(msg.Id, h.deleteRule(ctx, id))
+				handleResult(msgID, h.deleteRule(ctx, ruleID))
 			}
 		} else if p := msg.PayloadRuleInsert; p != nil {
 			if !c.isRuleManager() {
@@ -121,8 +134,10 @@ func (c *client) readPump() {
 				continue
 			}
 			level.Info(c.logger).Log("msg", "received rule insert", "rule", p.Rule)
+			id := msg.Id
+			settings := p.CloneVT()
 			c.hub.rulesCh <- func(h *hub) {
-				handleResult(msg.Id, h.insertRule(ctx, p))
+				handleResult(id, h.insertRule(ctx, settings))
 			}
 		} else {
 			level.Warn(c.logger).Log("msg", "no known message type used")

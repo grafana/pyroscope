@@ -141,7 +141,7 @@ func (b *bucketStore) list(ctx context.Context) ([]*settingsv1.CollectionRule, e
 	// serve from cache if available
 	b.cacheLock.RLock()
 	if b.cache != nil {
-		b.cacheLock.RUnlock()
+		defer b.cacheLock.RUnlock()
 		return b.cache.Rules, nil
 	}
 	b.cacheLock.RUnlock()
