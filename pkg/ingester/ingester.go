@@ -157,7 +157,7 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	var waits = make([]segmentWaitFlushed, 0, len(req.Msg.Series))
+	var waits = make(map[segmentWaitFlushed]struct{}, len(req.Msg.Series))
 	for _, series := range req.Msg.Series {
 		var shard shardKey = 0
 		if series.Shard != nil {
@@ -169,19 +169,20 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 		if err != nil {
 			return nil, err
 		}
-		waits = append(waits, wait)
+		waits[wait] = struct{}{}
 	}
 	if i.cfg.Async {
 		return connect.NewResponse(&pushv1.PushResponse{}), nil
 	}
 	t1 := time.Now()
-	for _, wait := range waits {
+	for wait := range waits {
 		if err = wait.waitFlushed(ctx); err != nil {
 			i.segmentWriter.metrics.segmentFlushTimeouts.WithLabelValues(tenantID).Inc()
 			i.segmentWriter.metrics.segmentFlushWaitDuration.WithLabelValues(tenantID).Observe(time.Since(t1).Seconds())
 			return nil, err
 		}
 	}
+	level.Debug(i.logger).Log("msg", "flushed", "duration", time.Since(t1), "segments", len(waits))
 	i.segmentWriter.metrics.segmentFlushWaitDuration.WithLabelValues(tenantID).Observe(time.Since(t1).Seconds())
 	return connect.NewResponse(&pushv1.PushResponse{}), nil
 }
