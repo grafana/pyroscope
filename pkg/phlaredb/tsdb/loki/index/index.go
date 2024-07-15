@@ -19,7 +19,6 @@
 package index
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/binary"
@@ -216,9 +215,9 @@ func NewTOCFromByteSlice(bs ByteSlice) (*TOC, error) {
 func NewWriter(ctx context.Context, bufferSize int) (*Writer, error) {
 	iw := &Writer{
 		ctx:   ctx,
-		f:     NewBufferWriter(),
-		fP:    NewBufferWriter(),
-		fPO:   NewBufferWriter(),
+		f:     GetBufferWriterFromPool(),
+		fP:    GetBufferWriterFromPool(),
+		fPO:   GetBufferWriterFromPool(),
 		stage: idxStageNone,
 
 		// Reusable memory.
@@ -245,88 +244,6 @@ func (w *Writer) writeAt(buf []byte, pos uint64) error {
 
 func (w *Writer) addPadding(size int) error {
 	return w.f.AddPadding(size)
-}
-
-type FileWriter struct {
-	f    *os.File
-	fbuf *bufio.Writer
-	pos  uint64
-	name string
-}
-
-func NewFileWriter(name string, bufferSize int) (*FileWriter, error) {
-	f, err := os.OpenFile(name, os.O_CREATE|os.O_RDWR, 0o666)
-	if err != nil {
-		return nil, err
-	}
-	return &FileWriter{
-		f:    f,
-		fbuf: bufio.NewWriterSize(f, bufferSize),
-		pos:  0,
-		name: name,
-	}, nil
-}
-
-func (fw *FileWriter) Pos() uint64 {
-	return fw.pos
-}
-
-func (fw *FileWriter) Write(bufs ...[]byte) error {
-	for _, b := range bufs {
-		n, err := fw.fbuf.Write(b)
-		fw.pos += uint64(n)
-		if err != nil {
-			return err
-		}
-		// For now the index file must not grow beyond 64GiB. Some of the fixed-sized
-		// offset references in v1 are only 4 bytes large.
-		// Once we move to compressed/varint representations in those areas, this limitation
-		// can be lifted.
-		if fw.pos > 16*math.MaxUint32 {
-			return errors.Errorf("%q exceeding max size of 64GiB", fw.name)
-		}
-	}
-	return nil
-}
-
-func (fw *FileWriter) Flush() error {
-	return fw.fbuf.Flush()
-}
-
-func (fw *FileWriter) WriteAt(buf []byte, pos uint64) error {
-	if err := fw.Flush(); err != nil {
-		return err
-	}
-	_, err := fw.f.WriteAt(buf, int64(pos))
-	return err
-}
-
-// AddPadding adds zero byte padding until the file size is a multiple size.
-func (fw *FileWriter) AddPadding(size int) error {
-	p := fw.pos % uint64(size)
-	if p == 0 {
-		return nil
-	}
-	p = uint64(size) - p
-
-	if err := fw.Write(make([]byte, p)); err != nil {
-		return errors.Wrap(err, "add padding")
-	}
-	return nil
-}
-
-func (fw *FileWriter) Close() error {
-	if err := fw.Flush(); err != nil {
-		return err
-	}
-	if err := fw.f.Sync(); err != nil {
-		return err
-	}
-	return fw.f.Close()
-}
-
-func (fw *FileWriter) Remove() error {
-	return os.Remove(fw.name)
 }
 
 // ensureStage handles transitions between write stages and ensures that IndexWriter
