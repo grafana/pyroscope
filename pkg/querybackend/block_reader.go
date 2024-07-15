@@ -4,12 +4,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"strconv"
-	"sync"
 
 	"github.com/go-kit/log"
-	"github.com/parquet-go/parquet-go"
+	"github.com/grafana/dskit/multierror"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
 	"golang.org/x/sync/errgroup"
@@ -23,6 +21,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/pkg/util/refctr"
 )
 
 // Block reader reads objects from the object storage. Each block is currently
@@ -55,9 +54,7 @@ type BlockReader struct {
 
 	// TODO Next:
 	//  - In-memory threshold option.
-	//  - Series API
 	//  - In-memory bucket.
-	//  - parquet reader at.
 	//  - Metrics API
 	//  - symdb reader.
 	//  - Tree API
@@ -88,7 +85,7 @@ func (b *BlockReader) Invoke(
 ) (*querybackendv1.InvokeResponse, error) {
 	vr, err := validateRequest(req)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "request validation failed")
+		return nil, status.Errorf(codes.InvalidArgument, "request validation failed: %v", err)
 	}
 	g, ctx := errgroup.WithContext(ctx)
 	m := newMerger()
@@ -144,7 +141,7 @@ const (
 	anonTenantDirName = "anon"
 )
 
-type section int
+type section uint32
 
 const (
 	// Table of contents sections.
@@ -181,9 +178,9 @@ type object struct {
 	path    string
 	meta    *metastorev1.BlockMeta
 
-	openOnce sync.Once
-	buf      *bytes.Buffer
-	err      error
+	refs refctr.Counter
+	buf  *bytes.Buffer
+	err  error
 }
 
 func newObject(storage objstore.Bucket, meta *metastorev1.BlockMeta) *object {
@@ -201,48 +198,77 @@ func objectPath(md *metastorev1.BlockMeta) string {
 		topLevel = segmentDirPath
 		tenantDirName = anonTenantDirName
 	}
-	return topLevel + strconv.Itoa(int(md.Shard)) + "/" + tenantDirName + "/" + md.Id + "/data.bin"
+	return topLevel + strconv.Itoa(int(md.Shard)) + "/" + tenantDirName + "/" + md.Id + "/block.bin"
 }
 
-func (obj *object) open(ctx context.Context) (err error) {
-	obj.openOnce.Do(func() {
-		// Estimate the size of the sections to process, and load the
-		// data into memory, if it's small enough.
-		// NOTE(kolesnikovae): This could be done at the planning
-		// step and stored in the query execution plan.
-		if len(obj.meta.TenantServices) == 0 {
-			panic("bug: invalid block meta: at least one section is expected")
-		}
-		// The order of services matches the physical placement.
-		// Therefore, we can find the range that spans all of them.
-		off := int64(obj.meta.TenantServices[0].TableOfContents[0])
-		lastEntry := obj.meta.TenantServices[len(obj.meta.TenantServices)-1]
-		length := int64(lastEntry.TableOfContents[0]+lastEntry.Size) - off
-		if length > loadInMemorySizeThreshold {
-			// The object won't be loaded into memory. However, each
-			// of the sections is to be evaluated separately, and might
-			// be loaded individually.
-			return
-		}
-		obj.buf = new(bytes.Buffer)
-		if err = objstore.FetchRange(ctx, obj.buf, obj.path, obj.storage, off, length); err != nil {
-			obj.err = fmt.Errorf("loading object into memory: %w", err)
-		}
+// open the object, loading the data into memory if it's small enough.
+// open may be called multiple times concurrently, but the object is
+// only initialized once. While it is possible to open the object
+// repeatedly after close, the caller must pass the failure reason
+// to the "close" call, preventing further use, if applicable.
+func (obj *object) open(ctx context.Context) error {
+	obj.err = obj.refs.Inc(func() error {
+		return obj.doOpen(ctx)
 	})
 	return obj.err
+}
+
+func (obj *object) doOpen(ctx context.Context) error {
+	if obj.err != nil {
+		// In case if the object has been already closed with an error,
+		// and then released, return the error immediately.
+		return obj.err
+	}
+	// Estimate the size of the sections to process, and load the
+	// data into memory, if it's small enough.
+	if len(obj.meta.TenantServices) == 0 {
+		panic("bug: invalid block meta: at least one section is expected")
+	}
+	// The order of services matches the physical placement.
+	// Therefore, we can find the range that spans all of them.
+	off := int64(obj.meta.TenantServices[0].TableOfContents[0])
+	lastEntry := obj.meta.TenantServices[len(obj.meta.TenantServices)-1]
+	length := int64(lastEntry.TableOfContents[0]+lastEntry.Size) - off
+	if length > loadInMemorySizeThreshold {
+		// The object won't be loaded into memory. However, each
+		// of the sections is to be evaluated separately, and might
+		// be loaded individually.
+		return nil
+	}
+	obj.buf = new(bytes.Buffer) // TODO: Take from pool.
+	if err := objstore.FetchRange(ctx, obj.buf, obj.path, obj.storage, off, length); err != nil {
+		return fmt.Errorf("loading object into memory: %w", err)
+	}
+	return nil
+}
+
+// close the object, releasing all the acquired resources, once the last
+// reference is released. If the provided error is not nil, the object will
+// be marked as failed, preventing any further use.
+func (obj *object) close(err error) {
+	obj.refs.Dec(func() {
+		obj.doClose(err)
+	})
+}
+
+func (obj *object) doClose(err error) {
+	if obj.err == nil {
+		obj.err = err
+	}
+	obj.buf = nil // TODO: Release.
 }
 
 type tenantService struct {
 	meta *metastorev1.TenantService
 	obj  *object
 
-	openOnce sync.Once
-	buf      *bytes.Buffer
-	err      error
+	refs refctr.Counter
+	buf  *bytes.Buffer
+	err  error
 
 	tsdb     *index.Reader
 	symbols  *symdb.Reader
-	profiles *parquet.File
+	profiles *parquetFile
 }
 
 func newTenantService(meta *metastorev1.TenantService, obj *object) *tenantService {
@@ -253,32 +279,70 @@ func newTenantService(meta *metastorev1.TenantService, obj *object) *tenantServi
 }
 
 func (s *tenantService) open(ctx context.Context, sections ...section) (err error) {
-	s.openOnce.Do(func() {
-		if err = s.obj.open(ctx); err != nil {
-			s.err = fmt.Errorf("failed to open object: %w", err)
-			return
-		}
-		if s.obj.buf == nil && s.meta.Size < loadInMemorySizeThreshold {
-			s.buf = new(bytes.Buffer)
-			off, size := int64(s.offset()), int64(s.meta.Size)
-			if err = objstore.FetchRange(ctx, s.buf, s.obj.path, s.obj.storage, off, size); err != nil {
-				s.err = fmt.Errorf("loading sections into memory: %w", err)
-				return
-			}
-		}
-		g, ctx := errgroup.WithContext(ctx)
-		for _, sc := range sections {
-			sc := sc
-			g.Go(func() error {
-				if err = sc.open(ctx, s); err != nil {
-					return fmt.Errorf("openning section %v: %w", s.sectionName(sc), err)
-				}
-				return nil
-			})
-		}
-		s.err = g.Wait()
+	s.err = s.refs.Inc(func() error {
+		return s.doOpen(ctx, sections...)
 	})
 	return s.err
+}
+
+func (s *tenantService) doOpen(ctx context.Context, sections ...section) (err error) {
+	if s.err != nil {
+		// The tenant service has been already closed with an error.
+		return s.err
+	}
+	if err = s.obj.open(ctx); err != nil {
+		return fmt.Errorf("failed to open object: %w", err)
+	}
+	defer func() {
+		// Close the object here because the tenant service won't be
+		// closed if it fails to open.
+		if err != nil {
+			s.obj.close(err)
+		}
+	}()
+	if s.obj.buf == nil && s.meta.Size < loadInMemorySizeThreshold {
+		s.buf = new(bytes.Buffer) // TODO: Pool.
+		off, size := int64(s.offset()), int64(s.meta.Size)
+		if err = objstore.FetchRange(ctx, s.buf, s.obj.path, s.obj.storage, off, size); err != nil {
+			return fmt.Errorf("loading sections into memory: %w", err)
+		}
+	}
+	g, ctx := errgroup.WithContext(ctx)
+	for _, sc := range sections {
+		sc := sc
+		g.Go(func() error {
+			if err = sc.open(ctx, s); err != nil {
+				return fmt.Errorf("openning section %v: %w", s.sectionName(sc), err)
+			}
+			return nil
+		})
+	}
+	return g.Wait()
+}
+
+func (s *tenantService) close(err error) {
+	s.refs.Dec(func() {
+		s.doClose(err)
+	})
+}
+
+func (s *tenantService) doClose(err error) {
+	if s.buf != nil {
+		s.buf = nil // TODO: Release.
+	}
+	var m multierror.MultiError
+	m.Add(s.err) // Preserve the existing error
+	m.Add(err)   // Add the new error, if any.
+	if s.tsdb != nil {
+		m.Add(s.tsdb.Close())
+	}
+	if s.symbols != nil {
+		m.Add(s.symbols.Close())
+	}
+	if s.profiles != nil {
+		m.Add(s.profiles.Close())
+	}
+	s.err = m.Err()
 }
 
 // Offset of the tenant service section within the object.
@@ -290,8 +354,8 @@ func (s *tenantService) sectionIndex(sc section) int {
 	default:
 		n = sectionIndices[1]
 	}
-	if sc <= 0 || int(sc) >= len(n) {
-		return -1
+	if int(sc) >= len(n) {
+		panic(fmt.Sprintf("bug: invalid section index: %d (total: %d)", sc, len(n)))
 	}
 	return n[sc]
 }
@@ -302,8 +366,8 @@ func (s *tenantService) sectionName(sc section) string {
 	default:
 		n = sectionNames[1]
 	}
-	if sc <= 0 || int(sc) >= len(n) {
-		return "invalid"
+	if int(sc) >= len(n) {
+		panic(fmt.Sprintf("bug: invalid section index: %d (total: %d)", sc, len(n)))
 	}
 	return n[sc]
 }
@@ -328,7 +392,10 @@ func (s *tenantService) inMemoryBuffer() []byte {
 	if s.obj.buf != nil {
 		// If the entire object is loaded into memory,
 		// return the tenant service sub-slice.
-		return s.obj.buf.Bytes()[s.offset() : s.offset()+s.meta.Size]
+		lo := s.offset()
+		hi := lo + s.meta.Size
+		buf := s.obj.buf.Bytes()
+		return buf[lo:hi]
 	}
 	if s.buf != nil {
 		// Otherwise, if the tenant service is loaded into memory
@@ -343,20 +410,4 @@ func (s *tenantService) inMemoryBucket(buf []byte) objstore.Bucket {
 	bucket := memory.NewBucketClient()
 	_ = bucket.Upload(context.Background(), s.obj.path, bytes.NewReader(buf))
 	return objstore.NewBucket(bucket)
-}
-
-type readerWithOffset struct {
-	offset int64
-	objstore.Bucket
-}
-
-func newReaderWithOffset(bucket objstore.Bucket, offset int64) *readerWithOffset {
-	return &readerWithOffset{
-		Bucket: bucket,
-		offset: offset,
-	}
-}
-
-func (r readerWithOffset) GetRange(ctx context.Context, name string, off, length int64) (io.ReadCloser, error) {
-	return r.Bucket.GetRange(ctx, name, r.offset+off, length)
 }

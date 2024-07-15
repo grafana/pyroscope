@@ -72,10 +72,8 @@ type queryContext struct {
 	meta *metastorev1.TenantService
 	req  *request
 	obj  *object
-
-	openOnce sync.Once
-	svc      *tenantService
-	err      error
+	svc  *tenantService
+	err  error
 }
 
 func newQueryContext(
@@ -96,6 +94,9 @@ func newQueryContext(
 }
 
 func executeQuery(q *queryContext, query *querybackendv1.Query) (*querybackendv1.Report, error) {
+	// TODO(kolesnikovae): We have a procedural definition of our queries,
+	//  thus we have handlers. Instead, in order to enable pipelining and
+	//  reduce the boilerplate, we should define query execution plans.
 	handle, err := getQueryHandler(query.QueryType)
 	if err != nil {
 		return nil, err
@@ -103,6 +104,9 @@ func executeQuery(q *queryContext, query *querybackendv1.Query) (*querybackendv1
 	if err = q.open(); err != nil {
 		return nil, fmt.Errorf("failed to initialize query context: %w", err)
 	}
+	defer func() {
+		q.close(err)
+	}()
 	r, err := handle(q, query)
 	if r != nil {
 		r.ReportType = QueryReportType(query.QueryType)
@@ -111,10 +115,11 @@ func executeQuery(q *queryContext, query *querybackendv1.Query) (*querybackendv1
 }
 
 func (q *queryContext) open() error {
-	q.openOnce.Do(func() {
-		q.err = q.svc.open(q.ctx, q.sections()...)
-	})
-	return q.err
+	return q.svc.open(q.ctx, q.sections()...)
+}
+
+func (q *queryContext) close(err error) {
+	q.svc.close(err)
 }
 
 func (q *queryContext) sections() []section {

@@ -39,7 +39,7 @@ const (
 var typeNames = [...]string{"invalid", "read", "merge"}
 
 func (t NodeType) String() string {
-	if t < 0 || int(t) >= len(typeNames) {
+	if int(t) >= len(typeNames) {
 		return typeNames[0]
 	}
 	return typeNames[t]
@@ -157,7 +157,6 @@ func (p *QueryPlan) Root() *Node {
 }
 
 // Plan returns the query plan scoped to the node.
-// The plan is nil, if the node is a leaf.
 // The plan references the parent plan blocks.
 func (n *Node) Plan() *QueryPlan {
 	// BFS traversal. Our goal is to preserve the order of

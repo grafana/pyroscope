@@ -1,10 +1,17 @@
 package querybackend
 
 import (
+	"errors"
+	"sort"
 	"sync"
+
+	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/storage"
 
 	querybackendv1 "github.com/grafana/pyroscope/api/gen/proto/go/querybackend/v1"
 	"github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/phlaredb"
+	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 )
 
 func init() {
@@ -18,7 +25,13 @@ func init() {
 }
 
 func queryLabelValues(q *queryContext, query *querybackendv1.Query) (*querybackendv1.Report, error) {
-	values, err := q.svc.tsdb.LabelValues(query.LabelValues.LabelName, q.req.matchers...)
+	var values []string
+	var err error
+	if len(q.req.matchers) == 0 {
+		values, err = q.svc.tsdb.LabelValues(query.LabelValues.LabelName)
+	} else {
+		values, err = labelValuesForMatchers(q.svc.tsdb, query.LabelValues.LabelName, q.req.matchers)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -29,6 +42,35 @@ func queryLabelValues(q *queryContext, query *querybackendv1.Query) (*querybacke
 		},
 	}
 	return resp, nil
+}
+
+func labelValuesForMatchers(reader *index.Reader, name string, matchers []*labels.Matcher) ([]string, error) {
+	postings, err := phlaredb.PostingsForMatchers(reader, nil, matchers...)
+	if err != nil {
+		return nil, err
+	}
+	l := make(map[string]struct{})
+	for postings.Next() {
+		var v string
+		if v, err = reader.LabelValueFor(postings.At(), name); err != nil {
+			if errors.Is(err, storage.ErrNotFound) {
+				continue
+			}
+			return nil, err
+		}
+		l[v] = struct{}{}
+	}
+	if err = postings.Err(); err != nil {
+		return nil, err
+	}
+	values := make([]string, len(l))
+	var i int
+	for v := range l {
+		values[i] = v
+		i++
+	}
+	sort.Strings(values)
+	return values, nil
 }
 
 type labelValueMerger struct {
