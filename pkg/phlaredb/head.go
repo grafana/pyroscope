@@ -144,6 +144,10 @@ func NewHead(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*Hea
 	return h, nil
 }
 
+func (h *Head) TSDBIndex() []byte {
+	return h.profiles.indexBytes
+}
+
 func (h *Head) MemorySize() uint64 {
 	// TODO: TSDB index
 	return h.profiles.MemorySize() + h.symdb.MemorySize()
@@ -585,19 +589,19 @@ func (h *Head) flush(ctx context.Context) error {
 
 	// tsdb
 	h.meta.Stats.NumSeries = uint64(h.profiles.index.totalSeries.Load())
-	f := block.File{
-		RelPath: block.IndexFilename,
-		TSDB: &block.TSDBFile{
-			NumSeries: h.meta.Stats.NumSeries,
-		},
-	}
+	//f := block.File{
+	//	RelPath: block.IndexFilename,
+	//	TSDB: &block.TSDBFile{
+	//		NumSeries: h.meta.Stats.NumSeries,
+	//	},
+	//}
 	h.metrics.flushedBlockSeries.Observe(float64(h.meta.Stats.NumSeries))
-	if stat, err := os.Stat(filepath.Join(h.headPath, block.IndexFilename)); err == nil {
-		f.SizeBytes = uint64(stat.Size())
-		blockSize += f.SizeBytes
-		h.metrics.flushedFileSizeBytes.WithLabelValues("tsdb").Observe(float64(f.SizeBytes))
-	}
-	files = append(files, f)
+	//if stat, err := os.Stat(filepath.Join(h.headPath, block.IndexFilename)); err == nil {
+	//	f.SizeBytes = uint64(stat.Size())
+	blockSize += uint64(len(h.profiles.indexBytes))
+	h.metrics.flushedFileSizeBytes.WithLabelValues("tsdb").Observe(float64(uint64(len(h.profiles.indexBytes))))
+	//}
+	//files = append(files, f)
 
 	h.metrics.flushedBlockSizeBytes.Observe(float64(blockSize))
 	sort.Slice(files, func(i, j int) bool {
@@ -612,9 +616,9 @@ func (h *Head) flush(ctx context.Context) error {
 	h.metrics.flusehdBlockProfiles.Observe(float64(h.meta.Stats.NumProfiles))
 
 	sort.Slice(files, func(i, j int) bool { return files[i].RelPath < files[j].RelPath })
-	if _, err := h.meta.WriteToFile(h.logger, h.headPath); err != nil {
-		return err
-	}
+	//if _, err := h.meta.WriteToFile(h.logger, h.headPath); err != nil {
+	//	return err
+	//}
 	h.metrics.blockDurationSeconds.Observe(h.meta.MaxTime.Sub(h.meta.MinTime).Seconds())
 	return nil
 }

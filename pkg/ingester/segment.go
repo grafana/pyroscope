@@ -162,10 +162,6 @@ func (sw *segmentsWriter) Stop() error {
 	return nil
 }
 
-func (sw *segmentsWriter) Flush(ctx context.Context) error {
-	return fmt.Errorf("Flush not implemented")
-}
-
 func (sw *segmentsWriter) newShard(sk shardKey) *shard {
 	sl := log.With(sw.l, "shard", fmt.Sprintf("%d", sk))
 	sh := &shard{
@@ -272,9 +268,24 @@ func (s *segment) flushBlock(heads []serviceHead) (string, *metastorev1.BlockMet
 func concatSegmentHead(e serviceHead, w *writerOffset) (*metastorev1.TenantService, error) {
 	tenantServiceOffset := w.offset
 	b := e.head.Meta()
-	profiles, index, symbols := getFilesForSegment(b)
+	profiles, index, symbols := getFilesForSegment(e.head, b)
 
-	offsets, err := concatFiles(w, e.head, profiles, index, symbols)
+	//offsets, err := concatFiles(w, e.head, profiles, index, symbols)
+	//if err != nil {
+	//	return nil, err
+	//}
+	offsets := make([]uint64, 3)
+	var err error
+	offsets[0], err = concatFile(w, e.head, profiles)
+	if err != nil {
+		return nil, err
+	}
+	offsets[1] = uint64(w.offset)
+	_, err = w.Write(index)
+	if err != nil {
+		return nil, err
+	}
+	offsets[2], err = concatFile(w, e.head, symbols)
 	if err != nil {
 		return nil, err
 	}
@@ -354,8 +365,8 @@ func (s *segment) flushHead(ctx context.Context, e serviceHead) (moved bool, err
 		s.sw.metrics.flushServiceHeadError.WithLabelValues(s.sshard, e.key.tenant).Inc()
 		return false, fmt.Errorf("failed to move head %v: %w", e.head.BlockID(), err)
 	}
-	profiles, index, symbols := getFilesForSegment(e.head.Meta())
-	if profiles == nil || index == nil || symbols == nil {
+	profiles, index, symbols := getFilesForSegment(e.head, e.head.Meta())
+	if profiles == nil || len(index) == 0 || symbols == nil {
 		s.sw.metrics.flushServiceHeadError.WithLabelValues(s.sshard, e.key.tenant).Inc()
 		return false, fmt.Errorf("failed to find files %v %v %v", profiles, index, symbols)
 	}
@@ -499,9 +510,9 @@ func (sw *segmentsWriter) storeMeta(ctx context.Context, meta *metastorev1.Block
 	return nil
 }
 
-func getFilesForSegment(b *block.Meta) (profiles *block.File, index *block.File, symbols *block.File) {
+func getFilesForSegment(h *phlaredb.Head, b *block.Meta) (profiles *block.File, index []byte, symbols *block.File) {
 	profiles = b.FileByRelPath("profiles.parquet")
-	index = b.FileByRelPath("index.tsdb")
+	index = h.TSDBIndex()
 	symbols = b.FileByRelPath("symbols.symdb")
 	return
 }

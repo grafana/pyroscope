@@ -215,7 +215,7 @@ func (i *Ingester) ingestToSegment(ctx context.Context, segment segmentIngest, s
 }
 
 func (i *Ingester) Flush(ctx context.Context, req *connect.Request[ingesterv1.FlushRequest]) (*connect.Response[ingesterv1.FlushResponse], error) {
-	err := i.segmentWriter.Flush(ctx)
+	err := i.segmentWriter.Stop()
 	if err != nil {
 		return nil, err
 	}
