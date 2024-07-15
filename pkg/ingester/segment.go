@@ -59,6 +59,7 @@ type shard struct {
 	currentLock sync.RWMutex
 	wg          sync.WaitGroup
 	l           log.Logger
+	concatBuf   []byte
 }
 
 func (sh *shard) ingest(fn func(head segmentIngest) error) (segmentWaitFlushed, error) {
@@ -87,7 +88,7 @@ func (sh *shard) loop(ctx context.Context) {
 func (sh *shard) flushSegment(ctx context.Context) {
 	sh.currentLock.Lock()
 	s := sh.current
-	sh.current = sh.sw.newSegment(s.shard, sh.l)
+	sh.current = sh.sw.newSegment(sh, s.shard, sh.l)
 	sh.currentLock.Unlock()
 
 	t1 := time.Now()
@@ -166,10 +167,11 @@ func (sw *segmentsWriter) Stop() error {
 func (sw *segmentsWriter) newShard(sk shardKey) *shard {
 	sl := log.With(sw.l, "shard", fmt.Sprintf("%d", sk))
 	sh := &shard{
-		sw:      sw,
-		l:       sl,
-		current: sw.newSegment(sk, sl),
+		sw:        sw,
+		l:         sl,
+		concatBuf: make([]byte, 4*0x1000),
 	}
+	sh.current = sw.newSegment(sh, sk, sl)
 	sh.wg.Add(1)
 	go func() {
 		defer sh.wg.Done()
@@ -177,7 +179,7 @@ func (sw *segmentsWriter) newShard(sk shardKey) *shard {
 	}()
 	return sh
 }
-func (sw *segmentsWriter) newSegment(sk shardKey, sl log.Logger) *segment {
+func (sw *segmentsWriter) newSegment(sh *shard, sk shardKey, sl log.Logger) *segment {
 	id := ulid.MustNew(ulid.Timestamp(time.Now()), rand.Reader)
 	dataPath := path.Join(sw.cfg.DataPath, pathSegments, fmt.Sprintf("%d", sk), pathAnon, id.String())
 	s := &segment{
@@ -185,6 +187,7 @@ func (sw *segmentsWriter) newSegment(sk shardKey, sl log.Logger) *segment {
 		ulid:     id,
 		heads:    make(map[serviceKey]serviceHead),
 		sw:       sw,
+		sh:       sh,
 		shard:    sk,
 		sshard:   fmt.Sprintf("%d", sk),
 		dataPath: dataPath,
@@ -246,7 +249,7 @@ func (s *segment) flushBlock(heads []serviceHead) (string, *metastorev1.BlockMet
 	w := withWriterOffset(blockFile)
 
 	for i, e := range heads {
-		svc, err := concatSegmentHead(e, w)
+		svc, err := concatSegmentHead(s.sh, e, w)
 		if err != nil {
 			_ = level.Error(s.l).Log("msg", "failed to concat segment head", "err", err)
 			continue
@@ -266,7 +269,7 @@ func (s *segment) flushBlock(heads []serviceHead) (string, *metastorev1.BlockMet
 	return blockPath, meta, nil
 }
 
-func concatSegmentHead(e serviceHead, w *writerOffset) (*metastorev1.TenantService, error) {
+func concatSegmentHead(sh *shard, e serviceHead, w *writerOffset) (*metastorev1.TenantService, error) {
 	tenantServiceOffset := w.offset
 	b := e.head.Meta()
 	profiles, index, symbols := getFilesForSegment(e.head, b)
@@ -274,7 +277,7 @@ func concatSegmentHead(e serviceHead, w *writerOffset) (*metastorev1.TenantServi
 
 	offsets := make([]uint64, 3)
 	var err error
-	offsets[0], err = concatFile(w, e.head, profiles)
+	offsets[0], err = concatFile(w, e.head, profiles, sh.concatBuf)
 	if err != nil {
 		return nil, err
 	}
@@ -284,7 +287,7 @@ func concatSegmentHead(e serviceHead, w *writerOffset) (*metastorev1.TenantServi
 	if err != nil {
 		return nil, err
 	}
-	offsets[2], err = concatFile(w, e.head, symbols)
+	offsets[2], err = concatFile(w, e.head, symbols, sh.concatBuf)
 	if err != nil {
 		return nil, err
 	}
@@ -400,6 +403,7 @@ type segment struct {
 		flushBlockDuration time.Duration
 		storeMetaDuration  time.Duration
 	}
+	sh *shard
 }
 
 type segmentIngest interface {
