@@ -35,7 +35,7 @@ func PutBufferWriterToPool(fw *BufferWriter) {
 // todo: pooling memory
 func NewBufferWriter() *BufferWriter {
 	return &BufferWriter{
-		buf: bytes.NewBuffer(nil),
+		buf: bytes.NewBuffer(make([]byte, 0, 0x2000)),
 		pos: 0,
 	}
 }
