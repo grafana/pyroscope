@@ -404,7 +404,8 @@ func (pi *profilesIndex) writeTo(ctx context.Context, path string) ([][]rowRange
 	if err != nil {
 		return nil, err
 	}
-	err = os.WriteFile(path, index, 0666)
+	buffer, _, _ := index.Buffer()
+	err = os.WriteFile(path, buffer, 0666)
 	if err != nil {
 		return nil, err
 	}
@@ -412,7 +413,7 @@ func (pi *profilesIndex) writeTo(ctx context.Context, path string) ([][]rowRange
 }
 
 // WriteTo writes the profiles tsdb index to the specified filepath.
-func (pi *profilesIndex) writeToMem(ctx context.Context) ([][]rowRangeWithSeriesIndex, []byte, error) {
+func (pi *profilesIndex) writeToMem(ctx context.Context) ([][]rowRangeWithSeriesIndex, *index2.BufferWriter, error) {
 	writer, err := index2.NewWriter(ctx, index.SegmentsIndexWriterBufSize)
 	if err != nil {
 		return nil, nil, err
@@ -472,7 +473,12 @@ func (pi *profilesIndex) writeToMem(ctx context.Context) ([][]rowRangeWithSeries
 		}
 	}
 
-	return rangesPerRG, writer.IndexBytes(), writer.Close()
+	err = writer.Close()
+	if err != nil {
+		index2.PutBufferWriterToPool(writer.ReleaseIndexBuffer())
+		return nil, nil, err
+	}
+	return rangesPerRG, writer.ReleaseIndexBuffer(), err
 }
 
 func (pi *profilesIndex) cutRowGroup(rgProfiles []schemav1.InMemoryProfile) error {

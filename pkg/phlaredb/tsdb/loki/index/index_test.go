@@ -162,14 +162,16 @@ func TestIndexRW_Create_Open(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, iw.Close())
 
-	ir, err := NewReader(RealByteSlice(iw.IndexBytes()))
+	bytes := iw.ReleaseIndexBuffer().buf.Bytes()
+	ir, err := NewReader(RealByteSlice(bytes))
 	require.NoError(t, err)
 	require.NoError(t, ir.Close())
 
 	// Modify magic header must cause open to fail.
 	//f, err := os.OpenFile(fn, os.O_WRONLY, 0o666)
 	//require.NoError(t, err)
-	err = iw.f.WriteAt([]byte{0, 0}, 0)
+	//err = iw.f.WriteAt([]byte{0, 0}, 0)
+	bytes[0] = 0
 	require.NoError(t, err)
 	//f.Close()
 
@@ -205,7 +207,7 @@ func TestIndexRW_Postings(t *testing.T) {
 
 	require.NoError(t, iw.Close())
 
-	ir, err := NewReader(RealByteSlice(iw.IndexBytes()))
+	ir, err := NewReader(RealByteSlice(iw.ReleaseIndexBuffer().buf.Bytes()))
 	require.NoError(t, err)
 
 	p, err := ir.Postings("a", nil, "1")
@@ -288,7 +290,7 @@ func TestPostingsMany(t *testing.T) {
 	}
 	require.NoError(t, iw.Close())
 
-	ir, err := NewReader(RealByteSlice(iw.IndexBytes()))
+	ir, err := NewReader(RealByteSlice(iw.ReleaseIndexBuffer().buf.Bytes()))
 	require.NoError(t, err)
 	defer func() { require.NoError(t, ir.Close()) }()
 
@@ -436,7 +438,7 @@ func TestPersistence_index_e2e(t *testing.T) {
 	err = iw.Close()
 	require.NoError(t, err)
 
-	ir, err := NewReader(RealByteSlice(iw.IndexBytes()))
+	ir, err := NewReader(RealByteSlice(iw.ReleaseIndexBuffer().buf.Bytes()))
 	require.NoError(t, err)
 
 	for p := range mi.postings {

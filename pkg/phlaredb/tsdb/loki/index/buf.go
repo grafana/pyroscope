@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"sync"
 
 	"github.com/pkg/errors"
 )
@@ -11,6 +12,23 @@ import (
 type BufferWriter struct {
 	buf *bytes.Buffer
 	pos uint64
+}
+
+var pool = sync.Pool{
+	New: func() interface{} {
+		return NewBufferWriter()
+	},
+}
+
+func GetBufferWriterFromPool() *BufferWriter {
+	res := pool.Get().(*BufferWriter)
+	res.Reset()
+	return res
+}
+
+func PutBufferWriterToPool(fw *BufferWriter) {
+	fw.Reset()
+	pool.Put(fw)
 }
 
 // NewBufferWriter returns a new BufferWriter.

@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	index2 "github.com/grafana/pyroscope/pkg/phlaredb/tsdb/loki/index"
 	"os"
 	"path"
 	"path/filepath"
@@ -269,11 +270,8 @@ func concatSegmentHead(e serviceHead, w *writerOffset) (*metastorev1.TenantServi
 	tenantServiceOffset := w.offset
 	b := e.head.Meta()
 	profiles, index, symbols := getFilesForSegment(e.head, b)
+	defer index2.PutBufferWriterToPool(index)
 
-	//offsets, err := concatFiles(w, e.head, profiles, index, symbols)
-	//if err != nil {
-	//	return nil, err
-	//}
 	offsets := make([]uint64, 3)
 	var err error
 	offsets[0], err = concatFile(w, e.head, profiles)
@@ -281,7 +279,8 @@ func concatSegmentHead(e serviceHead, w *writerOffset) (*metastorev1.TenantServi
 		return nil, err
 	}
 	offsets[1] = uint64(w.offset)
-	_, err = w.Write(index)
+	indexBytes, _, _ := index.Buffer()
+	_, err = w.Write(indexBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -366,7 +365,7 @@ func (s *segment) flushHead(ctx context.Context, e serviceHead) (moved bool, err
 		return false, fmt.Errorf("failed to move head %v: %w", e.head.BlockID(), err)
 	}
 	profiles, index, symbols := getFilesForSegment(e.head, e.head.Meta())
-	if profiles == nil || len(index) == 0 || symbols == nil {
+	if profiles == nil || index == nil || symbols == nil {
 		s.sw.metrics.flushServiceHeadError.WithLabelValues(s.sshard, e.key.tenant).Inc()
 		return false, fmt.Errorf("failed to find files %v %v %v", profiles, index, symbols)
 	}
@@ -510,7 +509,7 @@ func (sw *segmentsWriter) storeMeta(ctx context.Context, meta *metastorev1.Block
 	return nil
 }
 
-func getFilesForSegment(h *phlaredb.Head, b *block.Meta) (profiles *block.File, index []byte, symbols *block.File) {
+func getFilesForSegment(h *phlaredb.Head, b *block.Meta) (profiles *block.File, index *index2.BufferWriter, symbols *block.File) {
 	profiles = b.FileByRelPath("profiles.parquet")
 	index = h.TSDBIndex()
 	symbols = b.FileByRelPath("symbols.symdb")

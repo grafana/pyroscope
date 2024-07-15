@@ -3,6 +3,7 @@ package phlaredb
 import (
 	"context"
 	"fmt"
+	index2 "github.com/grafana/pyroscope/pkg/phlaredb/tsdb/loki/index"
 	"os"
 	"path/filepath"
 	"sort"
@@ -144,7 +145,7 @@ func NewHead(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*Hea
 	return h, nil
 }
 
-func (h *Head) TSDBIndex() []byte {
+func (h *Head) TSDBIndex() *index2.BufferWriter {
 	return h.profiles.indexBytes
 }
 
@@ -598,8 +599,11 @@ func (h *Head) flush(ctx context.Context) error {
 	h.metrics.flushedBlockSeries.Observe(float64(h.meta.Stats.NumSeries))
 	//if stat, err := os.Stat(filepath.Join(h.headPath, block.IndexFilename)); err == nil {
 	//	f.SizeBytes = uint64(stat.Size())
-	blockSize += uint64(len(h.profiles.indexBytes))
-	h.metrics.flushedFileSizeBytes.WithLabelValues("tsdb").Observe(float64(uint64(len(h.profiles.indexBytes))))
+	if h.profiles.indexBytes != nil {
+		blockSize += uint64(h.profiles.indexBytes.Pos())
+		h.metrics.flushedFileSizeBytes.WithLabelValues("tsdb").Observe(float64(uint64(h.profiles.indexBytes.Pos())))
+	}
+
 	//}
 	//files = append(files, f)
 

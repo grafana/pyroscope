@@ -718,7 +718,7 @@ func (w *Writer) writePostingsOffsetTable() error {
 	if err := w.fPO.Remove(); err != nil {
 		return err
 	}
-	w.fPO = nil
+	//w.fPO = nil
 
 	// Write out the length.
 	w.buf1.Reset()
@@ -994,7 +994,7 @@ func (w *Writer) writePostings() error {
 	if err := w.fP.Remove(); err != nil {
 		return err
 	}
-	w.fP = nil
+	//w.fP = nil
 	return nil
 }
 
@@ -1031,6 +1031,12 @@ func (w *Writer) Close() error {
 	if err := w.f.Close(); err != nil {
 		return err
 	}
+	// w.f is kept around a bit longer and returned to pool by users
+	PutBufferWriterToPool(w.fP)
+	PutBufferWriterToPool(w.fPO)
+	w.fP = nil
+	w.fPO = nil
+
 	return ensureErr
 }
 
@@ -1985,6 +1991,8 @@ func yoloString(b []byte) string {
 	return *((*string)(unsafe.Pointer(&b)))
 }
 
-func (w *Writer) IndexBytes() []byte {
-	return w.f.buf.Bytes()
+func (w *Writer) ReleaseIndexBuffer() *BufferWriter {
+	res := w.f
+	w.f = nil
+	return res
 }

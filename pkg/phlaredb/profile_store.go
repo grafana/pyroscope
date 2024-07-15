@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	index2 "github.com/grafana/pyroscope/pkg/phlaredb/tsdb/loki/index"
 	"io"
 	"os"
 	"path/filepath"
@@ -61,7 +62,7 @@ type profileStore struct {
 	//flushWg        sync.WaitGroup
 	flushBuffer    []schemav1.InMemoryProfile
 	flushBufferLbs []phlaremodel.Labels
-	indexBytes     []byte
+	indexBytes     *index2.BufferWriter
 
 	//onFlush        func()
 }
