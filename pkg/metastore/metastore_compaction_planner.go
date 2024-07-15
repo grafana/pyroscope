@@ -36,7 +36,14 @@ func (m *Metastore) GetCompactionJobs(_ context.Context, req *compactorv1.GetCom
 	m.state.compactionPlansMutex.Lock()
 	defer m.state.compactionPlansMutex.Unlock()
 
-	resp := &compactorv1.GetCompactionResponse{}
+	resp := &compactorv1.GetCompactionResponse{
+		CompactionJobs: make([]*compactorv1.CompactionJob, 0, len(m.state.compactionPlans)),
+	}
+	for _, plan := range m.state.compactionPlans {
+		for _, job := range plan.jobsByName {
+			resp.CompactionJobs = append(resp.CompactionJobs, job)
+		}
+	}
 	return resp, nil
 }
 
