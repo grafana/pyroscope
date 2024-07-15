@@ -27,7 +27,7 @@ func profileEntryIterator(q *queryContext, groupBy ...string) (iter.Iterator[Pro
 
 	buf := make([][]parquet.Value, 3)
 	entries := iter.NewAsyncBatchIterator[*parquetquery.IteratorResult, ProfileEntry](
-		results, 1<<10,
+		results, 128,
 		func(r *parquetquery.IteratorResult) ProfileEntry {
 			buf = r.Columns(buf,
 				schemav1.SeriesIndexColumnName,
