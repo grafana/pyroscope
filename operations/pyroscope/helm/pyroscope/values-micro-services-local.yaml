@@ -20,7 +20,7 @@ pyroscope:
     query-frontend:
       kind: Deployment
       replicaCount: 1
-    query-backend:
+    query-worker:
       kind: Deployment
       replicaCount: 1
     # compactor-worker:

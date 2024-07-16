@@ -1378,6 +1378,7 @@ spec:
             - "-metastore.raft.server-id=$(POD_NAME).pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
             - "-metastore.raft.bootstrap-peers=dnssrvnoa+_raft._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
             - "-metastore.address=dns:///_grpc._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9095"
+            - "-query-backend.address=dns:///pyroscope-dev-query-worker-headless.default.svc.cluster.local.:9095"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-ingester.num-tokens=4"
