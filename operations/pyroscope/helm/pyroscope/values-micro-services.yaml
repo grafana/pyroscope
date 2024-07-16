@@ -85,10 +85,8 @@ pyroscope:
         # some time to become ready. This value can be used to ensure Kubernetes waits long enough and reduce errors.
         initialDelaySeconds: 60
     tenant-settings:
-      kind: StatefulSet
+      kind: Deployment
       replicaCount: 1
-      persistence:
-        enabled: false
       resources:
         limits:
           memory: 4Gi
@@ -96,10 +94,8 @@ pyroscope:
           memory: 16Mi
           cpu: 0.1
     ad-hoc-profiles:
-      kind: StatefulSet
+      kind: Deployment
       replicaCount: 1
-      persistence:
-        enabled: false
       resources:
         limits:
           memory: 4Gi

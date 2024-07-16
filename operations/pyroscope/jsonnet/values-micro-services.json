@@ -5,10 +5,7 @@
   "pyroscope": {
     "components": {
       "ad-hoc-profiles": {
-        "kind": "StatefulSet",
-        "persistence": {
-          "enabled": false
-        },
+        "kind": "Deployment",
         "replicaCount": 1,
         "resources": {
           "limits": {
@@ -123,10 +120,7 @@
         }
       },
       "tenant-settings": {
-        "kind": "StatefulSet",
-        "persistence": {
-          "enabled": false
-        },
+        "kind": "Deployment",
         "replicaCount": 1,
         "resources": {
           "limits": {
