@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/grafana/pyroscope/ebpf/util"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"
 
@@ -13,13 +14,13 @@ import (
 )
 
 func TestCompactBlocks(t *testing.T) {
-	worker, err := New()
+	worker, err := New(util.TestLogger(t), nil, nil)
 	require.NoError(t, err)
 
 	ctx := context.Background()
 	worker.storage, _ = testutil.NewFilesystemBucket(t, ctx, "testdata")
 
-	var blockMetas compactorv1.BlockMetas
+	var blockMetas compactorv1.CompletedJob // same contract, can break in the future
 	blockMetasData, err := os.ReadFile("testdata/block-metas.json")
 	require.NoError(t, err)
 	err = protojson.Unmarshal(blockMetasData, &blockMetas)
@@ -29,4 +30,6 @@ func TestCompactBlocks(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Len(t, compactedBlocks, 1)
+
+	_ = worker.storage.Delete(ctx, "blocks")
 }
