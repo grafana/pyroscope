@@ -32,7 +32,7 @@ func (w *writerOffset) Write(p []byte) (n int, err error) {
 	return n, err
 }
 
-func concatFile(w *writerOffset, h *phlaredb.Head, f *block.File) (uint64, error) {
+func concatFile(w *writerOffset, h *phlaredb.Head, f *block.File, buf []byte) (uint64, error) {
 	o := w.offset
 	fp := h.LocalPathFor(f.RelPath)
 	file, err := os.Open(fp)
@@ -40,21 +40,9 @@ func concatFile(w *writerOffset, h *phlaredb.Head, f *block.File) (uint64, error
 		return 0, err
 	}
 	defer file.Close()
-	_, err = io.Copy(w, file)
+	_, err = io.CopyBuffer(w, file, buf)
 	if err != nil {
 		return 0, err
 	}
 	return uint64(o), nil
-}
-
-func concatFiles(w *writerOffset, h *phlaredb.Head, f ...*block.File) ([]uint64, error) {
-	res := make([]uint64, len(f))
-	for i, file := range f {
-		o, err := concatFile(w, h, file)
-		if err != nil {
-			return nil, err
-		}
-		res[i] = o
-	}
-	return res, nil
 }

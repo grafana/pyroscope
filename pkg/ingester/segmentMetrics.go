@@ -1,7 +1,6 @@
 package ingester
 
 import (
-	"github.com/grafana/dskit/instrument"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -14,7 +13,7 @@ type segmentMetrics struct {
 	segmentFlushTimeouts     *prometheus.CounterVec
 	storeMetaErrors          *prometheus.CounterVec
 	blockUploadDuration      *prometheus.HistogramVec
-	flushSegmentsDuration    prometheus.Histogram
+	//flushSegmentsDuration    prometheus.Histogram
 	flushSegmentDuration     *prometheus.HistogramVec
 	flushHeadsDuration       *prometheus.HistogramVec
 	flushServiceHeadDuration *prometheus.HistogramVec
@@ -57,7 +56,7 @@ func newSegmentMetrics(reg prometheus.Registerer) *segmentMetrics {
 		segmentFlushWaitDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Namespace: "pyroscope",
 			Name:      "segment_ingester_wait_duration_seconds",
-			Buckets:   instrument.DefBuckets,
+			Buckets:   prometheus.LinearBuckets(0.5, 0.1, 20),
 		}, []string{"tenant"}),
 		segmentFlushTimeouts: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
@@ -79,11 +78,11 @@ func newSegmentMetrics(reg prometheus.Registerer) *segmentMetrics {
 			Name:      "segment_flush_segment_duration_seconds",
 			Buckets:   prometheus.ExponentialBuckets(0.1, 1.22, 20),
 		}, []string{"shard"}),
-		flushSegmentsDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
-			Namespace: "pyroscope",
-			Name:      "segment_flush_segments_duration_seconds",
-			Buckets:   prometheus.ExponentialBuckets(0.1, 1.22, 20),
-		}),
+		//flushSegmentsDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
+		//	Namespace: "pyroscope",
+		//	Name:      "segment_flush_segments_duration_seconds",
+		//	Buckets:   prometheus.ExponentialBuckets(0.1, 1.22, 20),
+		//}),
 
 		flushServiceHeadError: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
@@ -110,7 +109,7 @@ func newSegmentMetrics(reg prometheus.Registerer) *segmentMetrics {
 		reg.MustRegister(m.flushServiceHeadDuration)
 		reg.MustRegister(m.flushServiceHeadError)
 		reg.MustRegister(m.flushSegmentDuration)
-		reg.MustRegister(m.flushSegmentsDuration)
+		//reg.MustRegister(m.flushSegmentsDuration)
 		reg.MustRegister(m.headSizeBytes)
 	}
 	return m

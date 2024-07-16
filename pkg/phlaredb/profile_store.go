@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	index2 "github.com/grafana/pyroscope/pkg/phlaredb/tsdb/loki/index"
 	"io"
 	"os"
 	"path/filepath"
@@ -61,6 +62,8 @@ type profileStore struct {
 	//flushWg        sync.WaitGroup
 	flushBuffer    []schemav1.InMemoryProfile
 	flushBufferLbs []phlaremodel.Labels
+	indexBytes     *index2.BufferWriter
+
 	//onFlush        func()
 }
 
@@ -168,18 +171,15 @@ func (s *profileStore) Flush(ctx context.Context) (numRows uint64, numRowGroups 
 		return 0, 0, err
 	}
 
-	indexPath := filepath.Join(
-		s.path,
-		block.IndexFilename,
-	)
-
-	rowRangerPerRG, err := s.index.writeTo(ctx, indexPath)
+	rowRangerPerRG, indexBytes, err := s.index.writeToMem(ctx)
 	if err != nil {
 		return 0, 0, err
 	}
 	if len(rowRangerPerRG) != 1 {
 		return 0, 0, fmt.Errorf("expected exactly one row group, got %d", len(rowRangerPerRG))
 	}
+
+	s.indexBytes = indexBytes
 
 	parquetPath := filepath.Join(
 		s.path,

@@ -3,6 +3,8 @@ package phlaredb
 import (
 	"context"
 	"fmt"
+	index2 "github.com/grafana/pyroscope/pkg/phlaredb/tsdb/loki/index"
+	"os"
 	"sort"
 	"sync"
 
@@ -397,11 +399,24 @@ outer:
 	return nil
 }
 
-// WriteTo writes the profiles tsdb index to the specified filepath.
 func (pi *profilesIndex) writeTo(ctx context.Context, path string) ([][]rowRangeWithSeriesIndex, error) {
-	writer, err := index.NewWriter(ctx, path, index.SegmentsIndexWriterBufSize)
+	rangesPerRG, index, err := pi.writeToMem(ctx)
 	if err != nil {
 		return nil, err
+	}
+	buffer, _, _ := index.Buffer()
+	err = os.WriteFile(path, buffer, 0666)
+	if err != nil {
+		return nil, err
+	}
+	return rangesPerRG, nil
+}
+
+// WriteTo writes the profiles tsdb index to the specified filepath.
+func (pi *profilesIndex) writeToMem(ctx context.Context) ([][]rowRangeWithSeriesIndex, *index2.BufferWriter, error) {
+	writer, err := index2.NewWriter(ctx, index.SegmentsIndexWriterBufSize)
+	if err != nil {
+		return nil, nil, err
 	}
 	pi.mutex.RLock()
 	defer pi.mutex.RUnlock()
@@ -435,7 +450,7 @@ func (pi *profilesIndex) writeTo(ctx context.Context, path string) ([][]rowRange
 	// Add symbols
 	for _, symbol := range symbols {
 		if err := writer.AddSymbol(symbol); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
@@ -450,7 +465,7 @@ func (pi *profilesIndex) writeTo(ctx context.Context, path string) ([][]rowRange
 			// We store the series Index from the head with the series to use when retrieving data from parquet.
 			SeriesIndex: uint32(i),
 		}); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		// store series index
 		for idx, rg := range s.profilesOnDisk {
@@ -458,7 +473,12 @@ func (pi *profilesIndex) writeTo(ctx context.Context, path string) ([][]rowRange
 		}
 	}
 
-	return rangesPerRG, writer.Close()
+	err = writer.Close()
+	if err != nil {
+		index2.PutBufferWriterToPool(writer.ReleaseIndexBuffer())
+		return nil, nil, err
+	}
+	return rangesPerRG, writer.ReleaseIndexBuffer(), err
 }
 
 func (pi *profilesIndex) cutRowGroup(rgProfiles []schemav1.InMemoryProfile) error {
