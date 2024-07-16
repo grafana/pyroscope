@@ -42,6 +42,7 @@ func (m *metastoreState) applyAddBlock(request *metastorev1.AddBlockRequest) (*m
 		}
 		// store the optional compaction job
 		if job != nil {
+			level.Debug(m.logger).Log("msg", "persisting compaction job", "job", job.Name)
 			jobBucketName, jobKey := keyForCompactionJob(request.Block.Shard, request.Block.TenantId, job.Name)
 			return updateCompactionJobBucket(tx, jobBucketName, func(bucket *bbolt.Bucket) error {
 				data, _ := job.MarshalVT()

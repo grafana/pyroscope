@@ -7,6 +7,7 @@ import (
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 
 	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -55,8 +56,16 @@ func (m *metastoreState) addForCompaction(block *metastorev1.BlockMeta) *compact
 	plan.jobsMutex.Lock()
 	defer plan.jobsMutex.Unlock()
 
-	plan.queuedBlocksByLevel[block.CompactionLevel] = append(plan.queuedBlocksByLevel[block.CompactionLevel], block)
 	queuedBlocks := plan.queuedBlocksByLevel[block.CompactionLevel]
+	queuedBlocks = append(queuedBlocks, block)
+	level.Debug(m.logger).Log(
+		"msg", "adding block for compaction",
+		"block", block.Id,
+		"shard", block.Shard,
+		"tenant", block.TenantId,
+		"compaction_level", block.CompactionLevel,
+		"size", block.Size,
+		"queue_size", len(queuedBlocks))
 
 	var job *compactorv1.CompactionJob
 	if len(queuedBlocks) >= 10 { // TODO aleks: add block size sum to the condition
@@ -67,6 +76,13 @@ func (m *metastoreState) addForCompaction(block *metastorev1.BlockMeta) *compact
 				Status: compactorv1.CompactionStatus_COMPACTION_STATUS_UNSPECIFIED,
 			},
 		}
+		level.Info(m.logger).Log(
+			"msg", "created compaction job",
+			"job", job.Name,
+			"blocks", len(queuedBlocks),
+			"shard", block.Shard,
+			"tenant", block.TenantId,
+			"compaction_level", block.CompactionLevel)
 		plan.jobsByName[job.Name] = job
 		plan.queuedBlocksByLevel[block.CompactionLevel] = plan.queuedBlocksByLevel[block.CompactionLevel][:0]
 	}
