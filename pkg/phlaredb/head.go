@@ -332,6 +332,15 @@ func (h *Head) LabelNames(ctx context.Context, req *connect.Request[typesv1.Labe
 	}), nil
 }
 
+func (h *Head) MustProfileTypeNames() []string {
+	ptypes, err := h.profiles.index.ix.LabelValues(phlaremodel.LabelNameProfileType, nil)
+	if err != nil {
+		panic(err)
+	}
+	sort.Strings(ptypes)
+	return ptypes
+}
+
 // ProfileTypes returns the possible profile types.
 func (h *Head) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
 	values, err := h.profiles.index.ix.LabelValues(phlaremodel.LabelNameProfileType, nil)

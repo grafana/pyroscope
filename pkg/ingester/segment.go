@@ -275,6 +275,8 @@ func (s *segment) flushBlock(heads []serviceHead) (string, *metastorev1.BlockMet
 func concatSegmentHead(sh *shard, e serviceHead, w *writerOffset) (*metastorev1.TenantService, error) {
 	tenantServiceOffset := w.offset
 	b := e.head.Meta()
+	ptypes := e.head.MustProfileTypeNames()
+
 	profiles, index, symbols := getFilesForSegment(e.head, b)
 	defer index2.PutBufferWriterToPool(index)
 
@@ -307,6 +309,7 @@ func concatSegmentHead(sh *shard, e serviceHead, w *writerOffset) (*metastorev1.
 		//  - 1: index.tsdb
 		//  - 2: symbols.symdb
 		TableOfContents: offsets,
+		ProfileTypes:    ptypes,
 	}
 	return svc, nil
 }
