@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	index2 "github.com/grafana/pyroscope/pkg/phlaredb/tsdb/loki/index"
 	"os"
 	"path"
 	"path/filepath"
@@ -13,6 +12,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	index2 "github.com/grafana/pyroscope/pkg/phlaredb/tsdb/loki/index"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -237,6 +238,7 @@ func (s *segment) flushBlock(heads []serviceHead) (string, *metastorev1.BlockMet
 		Shard:           uint32(s.shard),
 		CompactionLevel: 0,
 		TenantServices:  make([]*metastorev1.TenantService, 0, len(heads)),
+		Size:            0,
 	}
 
 	blockPath := path.Join(s.dataPath, pathBlock)
@@ -265,6 +267,7 @@ func (s *segment) flushBlock(heads []serviceHead) (string, *metastorev1.BlockMet
 		meta.TenantServices = append(meta.TenantServices, svc)
 	}
 
+	meta.Size = uint64(w.offset)
 	s.debuginfo.flushBlockDuration = time.Since(t1)
 	return blockPath, meta, nil
 }

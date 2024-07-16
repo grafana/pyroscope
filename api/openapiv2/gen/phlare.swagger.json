@@ -580,6 +580,10 @@
             "$ref": "#/definitions/v1TenantService"
           },
           "title": "TODO(kolesnikovae): Partitions with labels?"
+        },
+        "size": {
+          "type": "string",
+          "format": "uint64"
         }
       }
     },

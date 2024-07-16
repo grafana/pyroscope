@@ -21,9 +21,7 @@ import (
 func (m *Metastore) ListBlocksForQuery(
 	ctx context.Context,
 	request *metastorev1.ListBlocksForQueryRequest,
-) (
-	*metastorev1.ListBlocksForQueryResponse, error,
-) {
+) (*metastorev1.ListBlocksForQueryResponse, error) {
 	_ = level.Info(m.logger).Log("msg", "ListBlocksForQuery called")
 	// TODO(kolesnikovae):
 	//   Wait for Applied index to be on par with Committed (at the moment the request arrived).
@@ -111,22 +109,18 @@ func (s *metastoreShard) listBlocksForQuery(q *metadataQuery) map[string]*metast
 }
 
 func cloneBlockForQuery(b *metastorev1.BlockMeta) *metastorev1.BlockMeta {
-	return &metastorev1.BlockMeta{
-		Id:              b.Id,
-		MinTime:         b.MinTime,
-		MaxTime:         b.MaxTime,
-		Shard:           b.Shard,
-		CompactionLevel: b.CompactionLevel,
-		TenantServices:  make([]*metastorev1.TenantService, 0, len(b.TenantServices)),
-	}
+	services := b.TenantServices
+	b.TenantServices = nil
+	c := b.CloneVT()
+	b.TenantServices = services
+	c.TenantServices = make([]*metastorev1.TenantService, 0, len(b.TenantServices))
+	return c
 }
 
 func (m *metastoreState) listBlocksForQuery(
 	ctx context.Context,
 	request *metastorev1.ListBlocksForQueryRequest,
-) (
-	*metastorev1.ListBlocksForQueryResponse, error,
-) {
+) (*metastorev1.ListBlocksForQueryResponse, error) {
 	q, err := newMetadataQuery(request)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())

@@ -226,7 +226,7 @@ func (obj *object) doOpen(ctx context.Context) error {
 		panic("bug: invalid block meta: at least one section is expected")
 	}
 	obj.buf = new(bytes.Buffer) // TODO: Take from pool.
-	if err := objstore.FetchRange(ctx, obj.buf, obj.path, obj.storage, 0, 0); err != nil {
+	if err := objstore.FetchRange(ctx, obj.buf, obj.path, obj.storage, 0, int64(obj.meta.Size)); err != nil {
 		return fmt.Errorf("loading object into memory: %w", err)
 	}
 	return nil
