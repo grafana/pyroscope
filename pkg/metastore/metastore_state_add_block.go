@@ -11,9 +11,6 @@ import (
 
 func (m *Metastore) AddBlock(_ context.Context, req *metastorev1.AddBlockRequest) (*metastorev1.AddBlockResponse, error) {
 	_, resp, err := applyCommand[*metastorev1.AddBlockRequest, *metastorev1.AddBlockResponse](m.raft, req, m.config.Raft.ApplyTimeout)
-	if err == nil {
-		m.addForCompaction(req.Block)
-	}
 	return resp, err
 }
 
@@ -27,15 +24,31 @@ func (m *metastoreState) applyAddBlock(request *metastorev1.AddBlockRequest) (*m
 		)
 		return &metastorev1.AddBlockResponse{}, nil
 	}
+
+	// create an optional compaction job
+	job := m.addForCompaction(request.Block)
+
 	name, key := keyForBlockMeta(request.Block.Shard, "", request.Block.Id)
 	value, err := request.Block.MarshalVT()
 	if err != nil {
 		return nil, err
 	}
 	err = m.db.boltdb.Update(func(tx *bbolt.Tx) error {
-		return updateBlockMetadataBucket(tx, name, func(bucket *bbolt.Bucket) error {
+		err := updateBlockMetadataBucket(tx, name, func(bucket *bbolt.Bucket) error {
 			return bucket.Put(key, value)
 		})
+		if err != nil {
+			return err
+		}
+		// store the optional compaction job
+		if job != nil {
+			jobBucketName, jobKey := keyForCompactionJob(request.Block.Shard, request.Block.TenantId, job.Name)
+			return updateCompactionJobBucket(tx, jobBucketName, func(bucket *bbolt.Bucket) error {
+				data, _ := job.MarshalVT()
+				return bucket.Put(jobKey, data)
+			})
+		}
+		return nil
 	})
 	if err != nil {
 		_ = level.Error(m.logger).Log(

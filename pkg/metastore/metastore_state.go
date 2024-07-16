@@ -3,8 +3,6 @@ package metastore
 import (
 	"errors"
 	"fmt"
-	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/go-kit/log"
@@ -97,7 +95,7 @@ func (m *metastoreState) restoreBlockMetadata(tx *bbolt.Tx) error {
 }
 
 func (m *metastoreState) restoreCompactionPlan(tx *bbolt.Tx) error {
-	cdb, err := getCompactionPlanBucket(tx)
+	cdb, err := getCompactionJobBucket(tx)
 	switch {
 	case err == nil:
 	case errors.Is(err, bbolt.ErrBucketNotFound):
@@ -163,28 +161,12 @@ func (p *compactionPlan) loadJobs(b *bbolt.Bucket) error {
 	defer p.jobsMutex.Unlock()
 	c := b.Cursor()
 	for k, v := c.First(); k != nil; k, v = c.Next() {
-		keyString := string(k)
-		if strings.HasPrefix(keyString, "blocks") {
-			parts := strings.Split(keyString, "_")
-			if len(parts) != 2 {
-				return fmt.Errorf("malformed key: %s", string(k))
-			}
-			compactionLevel, err := strconv.Atoi(parts[1])
-			if err != nil {
-				return fmt.Errorf("malformed key: %s", string(k))
-			}
-			var blockMetas compactorv1.BlockMetas
-			if err = blockMetas.UnmarshalVT(v); err != nil {
-				return fmt.Errorf("malformed key: %s", string(k))
-			}
-			p.queuedBlocksByLevel[uint32(compactionLevel)] = blockMetas.Blocks
-		} else {
-			var job compactorv1.CompactionJob
-			if err := job.UnmarshalVT(v); err != nil {
-				return fmt.Errorf("failed to unmarshal job %q: %w", string(k), err)
-			}
-			p.jobsByName[job.Name] = &job
+		var job compactorv1.CompactionJob
+		if err := job.UnmarshalVT(v); err != nil {
+			return fmt.Errorf("failed to unmarshal job %q: %w", string(k), err)
 		}
+		p.jobsByName[job.Name] = &job
+		// TODO aleks: restoring from a snapshot will lose "partial" jobs
 	}
 	return nil
 }

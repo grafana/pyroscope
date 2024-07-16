@@ -66,7 +66,7 @@ func (db *boltdb) open(readOnly bool) (err error) {
 			if err != nil {
 				return err
 			}
-			_, err = tx.CreateBucketIfNotExists(compactionPlanBucketNameBytes)
+			_, err = tx.CreateBucketIfNotExists(compactionJobBucketNameBytes)
 			return err
 		})
 		if err != nil {
@@ -193,10 +193,10 @@ func getOrCreateSubBucket(parent *bbolt.Bucket, name []byte) (*bbolt.Bucket, err
 }
 
 const blockMetadataBucketName = "block_metadata"
-const compactionPlanBucketName = "compaction_plan"
+const compactionJobBucketName = "compaction_job"
 
 var blockMetadataBucketNameBytes = []byte(blockMetadataBucketName)
-var compactionPlanBucketNameBytes = []byte(compactionPlanBucketName)
+var compactionJobBucketNameBytes = []byte(compactionJobBucketName)
 
 func getBlockMetadataBucket(tx *bbolt.Tx) (*bbolt.Bucket, error) {
 	mdb := tx.Bucket(blockMetadataBucketNameBytes)
@@ -234,8 +234,8 @@ func parseBucketName(b []byte) (shard uint32, tenant string, ok bool) {
 	return 0, "", false
 }
 
-func updateCompactionPlanBucket(tx *bbolt.Tx, name []byte, fn func(*bbolt.Bucket) error) error {
-	cdb, err := getCompactionPlanBucket(tx)
+func updateCompactionJobBucket(tx *bbolt.Tx, name []byte, fn func(*bbolt.Bucket) error) error {
+	cdb, err := getCompactionJobBucket(tx)
 	if err != nil {
 		return err
 	}
@@ -247,18 +247,6 @@ func updateCompactionPlanBucket(tx *bbolt.Tx, name []byte, fn func(*bbolt.Bucket
 }
 
 // Bucket           |Key
-// [4:shard]<tenant>|[compaction_level]
-func keyForCompactionBlockQueue(shard uint32, tenant string, compactionLevel uint32) (bucket, key []byte) {
-	bucket = make([]byte, 4+len(tenant))
-	binary.BigEndian.PutUint32(bucket, shard)
-	copy(bucket[4:], tenant)
-
-	key = make([]byte, 4)
-	binary.BigEndian.PutUint32(key, compactionLevel)
-	return bucket, key
-}
-
-// Bucket           |Key
 // [4:shard]<tenant>|[job_name]
 func keyForCompactionJob(shard uint32, tenant string, jobName string) (bucket, key []byte) {
 	bucket = make([]byte, 4+len(tenant))
@@ -267,8 +255,8 @@ func keyForCompactionJob(shard uint32, tenant string, jobName string) (bucket, k
 	return bucket, []byte(jobName)
 }
 
-func getCompactionPlanBucket(tx *bbolt.Tx) (*bbolt.Bucket, error) {
-	cdb := tx.Bucket(compactionPlanBucketNameBytes)
+func getCompactionJobBucket(tx *bbolt.Tx) (*bbolt.Bucket, error) {
+	cdb := tx.Bucket(compactionJobBucketNameBytes)
 	if cdb == nil {
 		return nil, bbolt.ErrBucketNotFound
 	}
