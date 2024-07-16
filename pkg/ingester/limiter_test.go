@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 type fakeLimits struct {
@@ -29,6 +30,10 @@ func (f *fakeLimits) MaxGlobalSeriesPerTenant(userID string) int {
 
 func (f *fakeLimits) IngestionTenantShardSize(userID string) int {
 	return f.ingestionTenantShardSize
+}
+
+func (f *fakeLimits) DistributorUsageGroups(userID string) *validation.TenantUsageGroups {
+	return &validation.TenantUsageGroups{}
 }
 
 type fakeRingCount struct {
