@@ -84,7 +84,7 @@ var (
 			Name:      "discarded_bytes_total",
 			Help:      "The total number of bytes that were discarded.",
 		},
-		[]string{ReasonLabel, "tenant"},
+		[]string{ReasonLabel, "tenant", "service_name"},
 	)
 
 	// DiscardedProfiles is a metric of the number of discarded profiles, by reason.

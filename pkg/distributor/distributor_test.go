@@ -997,8 +997,12 @@ func Test_SampleLabels(t *testing.T) {
 
 	for _, tc := range testCases {
 		tc := tc
+		ug := &validation.TenantUsageGroups{
+			TenantID: "",
+		}
+
 		t.Run(tc.description, func(t *testing.T) {
-			series, actualBytesDropped, actualProfilesDropped := extractSampleSeries(tc.pushReq, tc.relabelRules)
+			series, actualBytesDropped, actualProfilesDropped := extractSampleSeries(tc.pushReq, ug, tc.relabelRules)
 			assert.Equal(t, tc.expectBytesDropped, actualBytesDropped)
 			assert.Equal(t, tc.expectProfilesDropped, actualProfilesDropped)
 			require.Len(t, series, len(tc.series))
