@@ -20,6 +20,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 
+	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/metastore/raftleader"
 	"github.com/grafana/pyroscope/pkg/util/health"
@@ -62,6 +63,7 @@ func (cfg *RaftConfig) RegisterFlags(f *flag.FlagSet) {
 type Metastore struct {
 	service services.Service
 	metastorev1.MetastoreServiceServer
+	compactorv1.CompactionPlannerServer
 
 	config Config
 	logger log.Logger
@@ -73,6 +75,9 @@ type Metastore struct {
 
 	// Persistent state.
 	db *boltdb
+
+	// Compaction
+	compactionPlanner *Planner
 
 	// Raft module.
 	wal          *raftwal.WAL
@@ -116,13 +121,14 @@ func (m *Metastore) Shutdown() error {
 	return nil
 }
 
-func (m *Metastore) starting(_ context.Context) error {
+func (m *Metastore) starting(ctx context.Context) error {
 	if err := m.db.open(false); err != nil {
 		return fmt.Errorf("failed to initialize database: %w", err)
 	}
 	if err := m.initRaft(); err != nil {
 		return fmt.Errorf("failed to initialize raft: %w", err)
 	}
+	m.compactionPlanner = NewPlanner(m.state, m.logger)
 	m.wg.Add(1)
 	go m.cleanupLoop()
 	return nil

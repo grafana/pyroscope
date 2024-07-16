@@ -659,6 +659,9 @@
             "$ref": "#/definitions/v1BlockMeta"
           },
           "description": "List of the input blocks."
+        },
+        "status": {
+          "$ref": "#/definitions/v1CompactionJobStatus"
         }
       },
       "description": "One compaction job may result in multiple output blocks."
@@ -671,9 +674,6 @@
     "v1CompactionJobStatus": {
       "type": "object",
       "properties": {
-        "name": {
-          "type": "string"
-        },
         "status": {
           "$ref": "#/definitions/v1CompactionStatus",
           "description": "Status update allows the planner to keep\ntrack of the job ownership and compaction\nprogress:\n- If the job status is other than IN_PROGRESS,\n  the ownership of the job is revoked.\n- FAILURE must only be sent if the failure is\n  persistent and the compaction can't be accomplished.\n- completed_job must be empty if the status is\n  other than SUCCESS, and vice-versa.\n- UNSPECIFIED must be sent if the worker rejects\n  or cancels the compaction job.\n\nPartial results/status is not allowed."

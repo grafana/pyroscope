@@ -9,6 +9,7 @@ import (
 	"github.com/go-kit/log/level"
 	"go.etcd.io/bbolt"
 
+	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 )
 
@@ -17,6 +18,9 @@ type metastoreState struct {
 
 	shardsMutex sync.Mutex
 	shards      map[uint32]*metastoreShard
+
+	compactionPlansMutex sync.Mutex
+	compactionPlans      map[uint32]*compactionPlan
 
 	db *boltdb
 }
@@ -28,9 +32,10 @@ type metastoreShard struct {
 
 func newMetastoreState(logger log.Logger, db *boltdb) *metastoreState {
 	return &metastoreState{
-		logger: logger,
-		shards: make(map[uint32]*metastoreShard),
-		db:     db,
+		logger:          logger,
+		shards:          make(map[uint32]*metastoreShard),
+		db:              db,
+		compactionPlans: make(map[uint32]*compactionPlan),
 	}
 }
 
@@ -54,14 +59,14 @@ func (m *metastoreState) getOrCreateShard(shardID uint32) *metastoreShard {
 func (m *metastoreState) restore(db *boltdb) error {
 	m.reset()
 	return db.boltdb.View(func(tx *bbolt.Tx) error {
-		if err := m.restoreMetadata(tx); err != nil {
+		if err := m.restoreBlockMetadata(tx); err != nil {
 			return fmt.Errorf("failed to restore metadata entries: %w", err)
 		}
-		return nil
+		return m.restoreCompactionPlan(tx)
 	})
 }
 
-func (m *metastoreState) restoreMetadata(tx *bbolt.Tx) error {
+func (m *metastoreState) restoreBlockMetadata(tx *bbolt.Tx) error {
 	mdb, err := getBlockMetadataBucket(tx)
 	switch {
 	case err == nil:
@@ -89,6 +94,42 @@ func (m *metastoreState) restoreMetadata(tx *bbolt.Tx) error {
 	})
 }
 
+func (m *metastoreState) restoreCompactionPlan(tx *bbolt.Tx) error {
+	cdb, err := getCompactionJobBucket(tx)
+	switch {
+	case err == nil:
+	case errors.Is(err, bbolt.ErrBucketNotFound):
+		return nil
+	default:
+		return err
+	}
+	return cdb.ForEachBucket(func(name []byte) error {
+		shardId, _, ok := parseBucketName(name)
+		if !ok {
+			_ = level.Error(m.logger).Log("msg", "malformed bucket name", "name", string(name))
+			return nil
+		}
+		planForShard := m.getOrCreatePlan(shardId)
+		return planForShard.loadJobs(cdb.Bucket(name))
+	})
+
+}
+
+func (m *metastoreState) getOrCreatePlan(shardId uint32) *compactionPlan {
+	m.compactionPlansMutex.Lock()
+	defer m.compactionPlansMutex.Unlock()
+
+	if plan, ok := m.compactionPlans[shardId]; ok {
+		return plan
+	}
+	plan := &compactionPlan{
+		jobsByName:          make(map[string]*compactorv1.CompactionJob),
+		queuedBlocksByLevel: make(map[uint32][]*metastorev1.BlockMeta),
+	}
+	m.compactionPlans[shardId] = plan
+	return plan
+}
+
 func newMetastoreShard() *metastoreShard {
 	return &metastoreShard{
 		segments: make(map[string]*metastorev1.BlockMeta),
@@ -111,6 +152,21 @@ func (s *metastoreShard) loadSegments(b *bbolt.Bucket) error {
 			return fmt.Errorf("failed to block %q: %w", string(k), err)
 		}
 		s.segments[md.Id] = &md
+	}
+	return nil
+}
+
+func (p *compactionPlan) loadJobs(b *bbolt.Bucket) error {
+	p.jobsMutex.Lock()
+	defer p.jobsMutex.Unlock()
+	c := b.Cursor()
+	for k, v := c.First(); k != nil; k, v = c.Next() {
+		var job compactorv1.CompactionJob
+		if err := job.UnmarshalVT(v); err != nil {
+			return fmt.Errorf("failed to unmarshal job %q: %w", string(k), err)
+		}
+		p.jobsByName[job.Name] = &job
+		// TODO aleks: restoring from a snapshot will lose "partial" jobs
 	}
 	return nil
 }
