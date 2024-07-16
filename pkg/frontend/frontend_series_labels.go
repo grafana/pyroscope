@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"connectrpc.com/connect"
+	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/tenant"
 	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/common/model"
@@ -46,6 +47,7 @@ func (f *Frontend) Series(ctx context.Context, c *connect.Request[querierv1.Seri
 	}
 
 	if isProfileTypeQuery(c.Msg.LabelNames, c.Msg.Matchers) {
+		_ = level.Info(f.log).Log("msg", "listing profile types from metadata as series labels")
 		return f.listProfileTypesFromMetadataAsSeriesLabels(ctx, tenantIDs, c.Msg.Start, c.Msg.End, c.Msg.LabelNames)
 	}
 

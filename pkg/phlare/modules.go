@@ -491,6 +491,15 @@ func (f *Phlare) initServer() (services.Service, error) {
 		f.Cfg.Server.HTTPServerReadTimeout = 2 * f.Cfg.Server.HTTPServerReadTimeout
 		f.Cfg.Server.HTTPServerWriteTimeout = 2 * f.Cfg.Server.HTTPServerWriteTimeout
 	}
+
+	f.Cfg.Server.GRPCServerMaxConcurrentStreams = 0
+	f.Cfg.Server.GRPCServerMaxRecvMsgSize = 100 << 20
+	f.Cfg.Server.GRPCServerMaxSendMsgSize = 100 << 20
+	f.Cfg.Server.GRPCServerMaxConnectionIdle = 15 * time.Second
+	f.Cfg.Server.GRPCServerMaxConnectionAge = 5 * time.Minute
+	f.Cfg.Server.GRPCServerMinTimeBetweenPings = time.Second
+	f.Cfg.Server.GRPCServerTime = 2 * time.Minute
+
 	serv, err := server.New(f.Cfg.Server)
 	if err != nil {
 		return nil, err
