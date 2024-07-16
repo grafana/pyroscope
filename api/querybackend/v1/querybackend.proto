@@ -48,11 +48,12 @@ message QueryPlan {
 
 message Query {
   QueryType query_type = 1;
-
+  // Exactly one of the following fields should be set,
+  // depending on the query type.
   LabelNamesQuery label_names = 2;
   LabelValuesQuery label_values = 3;
   SeriesLabelsQuery series_labels = 4;
-  MetricsQuery metrics = 5;
+  TimeSeriesQuery time_series = 5;
   TreeQuery tree = 6;
   // pprof
   // function_details
@@ -66,7 +67,7 @@ enum QueryType {
   QUERY_LABEL_NAMES = 1;
   QUERY_LABEL_VALUES = 2;
   QUERY_SERIES_LABELS = 3;
-  QUERY_METRICS = 4;
+  QUERY_TIME_SERIES = 4;
   QUERY_TREE = 5;
 }
 
@@ -80,11 +81,12 @@ message Diagnostics {}
 
 message Report {
   ReportType report_type = 1;
-
+  // Exactly one of the following fields should be set,
+  // depending on the report type.
   LabelNamesReport label_names = 2;
   LabelValuesReport label_values = 3;
   SeriesLabelsReport series_labels = 4;
-  MetricsReport metrics = 5;
+  TimeSeriesReport time_series = 5;
   TreeReport tree = 6;
 }
 
@@ -93,7 +95,7 @@ enum ReportType {
   REPORT_LABEL_NAMES = 1;
   REPORT_LABEL_VALUES = 2;
   REPORT_SERIES_LABELS = 3;
-  REPORT_METRICS = 4;
+  REPORT_TIME_SERIES = 4;
   REPORT_TREE = 5;
 }
 
@@ -122,16 +124,15 @@ message SeriesLabelsReport {
   repeated types.v1.Labels series_labels = 2;
 }
 
-message MetricsQuery {
+message TimeSeriesQuery {
   double step = 1;
   repeated string group_by = 2;
   optional types.v1.TimeSeriesAggregationType aggregation = 3;
 }
 
-message MetricsReport {
-  // TODO: Metrics model.
-  MetricsQuery query = 1;
-  repeated types.v1.Series metrics = 2;
+message TimeSeriesReport {
+  TimeSeriesQuery query = 1;
+  repeated types.v1.Series time_series = 2;
 }
 
 message TreeQuery {

@@ -580,6 +580,10 @@
             "$ref": "#/definitions/v1TenantService"
           },
           "title": "TODO(kolesnikovae): Partitions with labels?"
+        },
+        "size": {
+          "type": "string",
+          "format": "uint64"
         }
       }
     },
@@ -1291,40 +1295,6 @@
         }
       }
     },
-    "v1MetricsQuery": {
-      "type": "object",
-      "properties": {
-        "step": {
-          "type": "number",
-          "format": "double"
-        },
-        "groupBy": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "aggregation": {
-          "$ref": "#/definitions/v1TimeSeriesAggregationType"
-        }
-      }
-    },
-    "v1MetricsReport": {
-      "type": "object",
-      "properties": {
-        "query": {
-          "$ref": "#/definitions/v1MetricsQuery",
-          "description": "TODO: Metrics model."
-        },
-        "metrics": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1Series"
-          }
-        }
-      }
-    },
     "v1Point": {
       "type": "object",
       "properties": {
@@ -1408,7 +1378,8 @@
           "$ref": "#/definitions/v1QueryType"
         },
         "labelNames": {
-          "$ref": "#/definitions/v1LabelNamesQuery"
+          "$ref": "#/definitions/v1LabelNamesQuery",
+          "description": "Exactly one of the following fields should be set,\ndepending on the query type."
         },
         "labelValues": {
           "$ref": "#/definitions/v1LabelValuesQuery"
@@ -1416,8 +1387,8 @@
         "seriesLabels": {
           "$ref": "#/definitions/v1SeriesLabelsQuery"
         },
-        "metrics": {
-          "$ref": "#/definitions/v1MetricsQuery"
+        "timeSeries": {
+          "$ref": "#/definitions/v1TimeSeriesQuery"
         },
         "tree": {
           "$ref": "#/definitions/v1TreeQuery",
@@ -1512,7 +1483,7 @@
         "QUERY_LABEL_NAMES",
         "QUERY_LABEL_VALUES",
         "QUERY_SERIES_LABELS",
-        "QUERY_METRICS",
+        "QUERY_TIME_SERIES",
         "QUERY_TREE"
       ],
       "default": "QUERY_UNSPECIFIED"
@@ -1566,7 +1537,8 @@
           "$ref": "#/definitions/v1ReportType"
         },
         "labelNames": {
-          "$ref": "#/definitions/v1LabelNamesReport"
+          "$ref": "#/definitions/v1LabelNamesReport",
+          "description": "Exactly one of the following fields should be set,\ndepending on the report type."
         },
         "labelValues": {
           "$ref": "#/definitions/v1LabelValuesReport"
@@ -1574,8 +1546,8 @@
         "seriesLabels": {
           "$ref": "#/definitions/v1SeriesLabelsReport"
         },
-        "metrics": {
-          "$ref": "#/definitions/v1MetricsReport"
+        "timeSeries": {
+          "$ref": "#/definitions/v1TimeSeriesReport"
         },
         "tree": {
           "$ref": "#/definitions/v1TreeReport"
@@ -1589,7 +1561,7 @@
         "REPORT_LABEL_NAMES",
         "REPORT_LABEL_VALUES",
         "REPORT_SERIES_LABELS",
-        "REPORT_METRICS",
+        "REPORT_TIME_SERIES",
         "REPORT_TREE"
       ],
       "default": "REPORT_UNSPECIFIED"
@@ -1926,6 +1898,39 @@
         "TIME_SERIES_AGGREGATION_TYPE_AVERAGE"
       ],
       "default": "TIME_SERIES_AGGREGATION_TYPE_SUM"
+    },
+    "v1TimeSeriesQuery": {
+      "type": "object",
+      "properties": {
+        "step": {
+          "type": "number",
+          "format": "double"
+        },
+        "groupBy": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "aggregation": {
+          "$ref": "#/definitions/v1TimeSeriesAggregationType"
+        }
+      }
+    },
+    "v1TimeSeriesReport": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "$ref": "#/definitions/v1TimeSeriesQuery"
+        },
+        "timeSeries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Series"
+          }
+        }
+      }
     },
     "v1TreeQuery": {
       "type": "object",

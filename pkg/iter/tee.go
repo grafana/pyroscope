@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-const defaultTeeBufferSize = 4096
+const defaultTeeBufferSize = 128
 
 // Tee returns 2 independent iterators from a single iterable.
 //

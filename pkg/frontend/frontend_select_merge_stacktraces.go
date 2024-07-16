@@ -10,15 +10,15 @@ import (
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
+	querybackendv1 "github.com/grafana/pyroscope/api/gen/proto/go/querybackend/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 func (f *Frontend) SelectMergeStacktraces(ctx context.Context,
-	c *connect.Request[querierv1.SelectMergeStacktracesRequest]) (
-	*connect.Response[querierv1.SelectMergeStacktracesResponse], error,
-) {
+	c *connect.Request[querierv1.SelectMergeStacktracesRequest],
+) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
 	t, err := f.selectMergeStacktracesTree(ctx, c)
 	if err != nil {
 		return nil, err
@@ -26,17 +26,17 @@ func (f *Frontend) SelectMergeStacktraces(ctx context.Context,
 	var resp querierv1.SelectMergeStacktracesResponse
 	switch c.Msg.Format {
 	default:
-		resp.Flamegraph = phlaremodel.NewFlameGraph(t, c.Msg.GetMaxNodes())
+		tree := phlaremodel.MustUnmarshalTree(t)
+		resp.Flamegraph = phlaremodel.NewFlameGraph(tree, c.Msg.GetMaxNodes())
 	case querierv1.ProfileFormat_PROFILE_FORMAT_TREE:
-		resp.Tree = t.Bytes(c.Msg.GetMaxNodes())
+		resp.Tree = t
 	}
 	return connect.NewResponse(&resp), nil
 }
 
 func (f *Frontend) selectMergeStacktracesTree(ctx context.Context,
-	c *connect.Request[querierv1.SelectMergeStacktracesRequest]) (
-	*phlaremodel.Tree, error,
-) {
+	c *connect.Request[querierv1.SelectMergeStacktracesRequest],
+) ([]byte, error) {
 	opentracing.SpanFromContext(ctx).
 		SetTag("start", model.Time(c.Msg.Start).Time().String()).
 		SetTag("end", model.Time(c.Msg.End).Time().String()).
@@ -55,16 +55,24 @@ func (f *Frontend) selectMergeStacktracesTree(ctx context.Context,
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	if validated.IsEmpty {
-		return new(phlaremodel.Tree), nil
+		return nil, nil
 	}
 
-	query, err := buildLabelSelectorAndProfileType(c.Msg.LabelSelector, c.Msg.ProfileTypeID)
+	labelSelector, err := buildLabelSelectorAndProfileType(c.Msg.LabelSelector, c.Msg.ProfileTypeID)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
-	}
-	if _, err = f.listMetadata(ctx, tenantIDs, c.Msg.Start, c.Msg.End, query); err != nil {
 		return nil, err
 	}
-	// TODO: Call query-backend.
-	return new(phlaremodel.Tree), nil
+	report, err := f.invoke(ctx, c.Msg.Start, c.Msg.End, tenantIDs, labelSelector, &querybackendv1.Query{
+		QueryType: querybackendv1.QueryType_QUERY_TREE,
+		Tree: &querybackendv1.TreeQuery{
+			MaxNodes: c.Msg.GetMaxNodes(),
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	if report == nil {
+		return nil, nil
+	}
+	return report.Tree.Tree, nil
 }

@@ -374,6 +374,17 @@ var errMalformedTreeBytes = fmt.Errorf("malformed tree bytes")
 
 const estimateBytesPerNode = 16 // Chosen empirically.
 
+func MustUnmarshalTree(b []byte) *Tree {
+	if len(b) == 0 {
+		return new(Tree)
+	}
+	t, err := UnmarshalTree(b)
+	if err != nil {
+		panic(err)
+	}
+	return t
+}
+
 func UnmarshalTree(b []byte) (*Tree, error) {
 	t := new(Tree)
 	if len(b) < 2 {

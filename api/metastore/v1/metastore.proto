@@ -25,6 +25,7 @@ message BlockMeta {
   string tenant_id = 7;
   // TODO(kolesnikovae): Partitions with labels?
   repeated TenantService tenant_services = 8;
+  uint64 size = 9;
 }
 
 // TenantService object points to the offset in the block at which

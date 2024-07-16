@@ -13,74 +13,125 @@ import (
 
 var (
 	handlerMutex  = new(sync.RWMutex)
-	queryHandlers = map[querybackendv1.QueryType]func(q *queryContext) queryHandler{}
+	queryHandlers = map[querybackendv1.QueryType]queryHandler{}
 )
 
-type queryHandler func(*querybackendv1.Query) (*querybackendv1.Report, error)
+type queryHandler func(*queryContext, *querybackendv1.Query) (*querybackendv1.Report, error)
 
-func registerQueryHandler(t querybackendv1.QueryType, h func(q *queryContext) queryHandler) {
+func registerQueryHandler(t querybackendv1.QueryType, h queryHandler) {
 	handlerMutex.Lock()
 	defer handlerMutex.Unlock()
-	_, ok := queryHandlers[t]
-	if ok {
+	if _, ok := queryHandlers[t]; ok {
 		panic(fmt.Sprintf("%s: handler already registered", t))
 	}
 	queryHandlers[t] = h
 }
 
-func getQueryHandler(q *queryContext, x *querybackendv1.Query) (queryHandler, error) {
+func getQueryHandler(t querybackendv1.QueryType) (queryHandler, error) {
 	handlerMutex.RLock()
 	defer handlerMutex.RUnlock()
-	handler, ok := queryHandlers[x.QueryType]
+	handler, ok := queryHandlers[t]
 	if !ok {
-		return nil, fmt.Errorf("unknown query type %s", x.QueryType)
+		return nil, fmt.Errorf("unknown query type %s", t)
 	}
-	return handler(q), nil
+	return handler, nil
 }
+
+var (
+	depMutex          = new(sync.RWMutex)
+	queryDependencies = map[querybackendv1.QueryType][]section{}
+)
+
+func registerQueryDependencies(t querybackendv1.QueryType, deps ...section) {
+	depMutex.Lock()
+	defer depMutex.Unlock()
+	if _, ok := queryDependencies[t]; ok {
+		panic(fmt.Sprintf("%s: dependencies already registered", t))
+	}
+	queryDependencies[t] = deps
+}
+
+type responseMergerProvider func() reportMerger
 
 func registerQueryType(
 	qt querybackendv1.QueryType,
 	rt querybackendv1.ReportType,
-	q func(q *queryContext) queryHandler,
-	r func() reportMerger,
+	q queryHandler,
+	r responseMergerProvider,
+	deps ...section,
 ) {
 	registerQueryReportType(qt, rt)
 	registerQueryHandler(qt, q)
+	registerQueryDependencies(qt, deps...)
 	registerReportMerger(rt, r)
 }
 
 type queryContext struct {
-	ctx context.Context
-	log log.Logger
-	req *querybackendv1.InvokeRequest
-	svc *metastorev1.TenantService
-	obj object
+	ctx  context.Context
+	log  log.Logger
+	meta *metastorev1.TenantService
+	req  *request
+	obj  *object
+	svc  *tenantService
+	err  error
 }
 
 func newQueryContext(
 	ctx context.Context,
 	logger log.Logger,
-	req *querybackendv1.InvokeRequest,
-	svc *metastorev1.TenantService,
-	obj object,
+	meta *metastorev1.TenantService,
+	req *request,
+	obj *object,
 ) *queryContext {
 	return &queryContext{
-		ctx: ctx,
-		log: logger,
-		req: req,
-		svc: svc,
-		obj: obj,
+		ctx:  ctx,
+		log:  logger,
+		req:  req,
+		meta: meta,
+		obj:  obj,
+		svc:  newTenantService(meta, obj),
 	}
 }
 
-func (q *queryContext) execute(query *querybackendv1.Query) (*querybackendv1.Report, error) {
-	handle, err := getQueryHandler(q, query)
+func executeQuery(q *queryContext, query *querybackendv1.Query) (*querybackendv1.Report, error) {
+	// TODO(kolesnikovae): We have a procedural definition of our queries,
+	//  thus we have handlers. Instead, in order to enable pipelining and
+	//  reduce the boilerplate, we should define query execution plans.
+	handle, err := getQueryHandler(query.QueryType)
 	if err != nil {
 		return nil, err
 	}
-	r, err := handle(query)
+	if err = q.open(); err != nil {
+		return nil, fmt.Errorf("failed to initialize query context: %w", err)
+	}
+	defer func() {
+		q.close(err)
+	}()
+	r, err := handle(q, query)
 	if r != nil {
 		r.ReportType = QueryReportType(query.QueryType)
 	}
 	return r, err
+}
+
+func (q *queryContext) open() error {
+	return q.svc.open(q.ctx, q.sections()...)
+}
+
+func (q *queryContext) close(err error) {
+	q.svc.close(err)
+}
+
+func (q *queryContext) sections() []section {
+	sections := make(map[section]struct{}, 3)
+	for _, qt := range q.req.src.Query {
+		for _, s := range queryDependencies[qt.QueryType] {
+			sections[s] = struct{}{}
+		}
+	}
+	unique := make([]section, 0, len(sections))
+	for s := range sections {
+		unique = append(unique, s)
+	}
+	return unique
 }

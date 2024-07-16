@@ -70,6 +70,7 @@ spec:
             - "-metastore.raft.server-id=$(POD_NAME).{{ include "pyroscope.fullname" .}}-metastore-headless.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:9099"
             - "-metastore.raft.bootstrap-peers=dnssrvnoa+_raft._tcp.{{ include "pyroscope.fullname" .}}-metastore-headless.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:9099"
             - "-metastore.address=dns:///_grpc._tcp.{{ include "pyroscope.fullname" .}}-metastore-headless.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:9095"
+            - "-query-backend.address=dns:///{{ include "pyroscope.fullname" .}}-query-worker-headless.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:9095"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-ingester.num-tokens=4"

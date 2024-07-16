@@ -12,6 +12,8 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	querybackendv1 "github.com/grafana/pyroscope/api/gen/proto/go/querybackend/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/querybackend"
+	"github.com/grafana/pyroscope/pkg/querybackend/queryplan"
 )
 
 func (f *Frontend) listMetadata(
@@ -33,6 +35,37 @@ func (f *Frontend) listMetadata(
 	}
 	_ = level.Info(f.log).Log("msg", "block metadata list", "blocks", len(resp.Blocks))
 	return resp.Blocks, nil
+}
+
+func (f *Frontend) invoke(
+	ctx context.Context,
+	startTime, endTime int64,
+	tenants []string,
+	labelSelector string,
+	q *querybackendv1.Query,
+) (*querybackendv1.Report, error) {
+	blocks, err := f.listMetadata(ctx, tenants, startTime, endTime, labelSelector)
+	if err != nil {
+		return nil, err
+	}
+	if len(blocks) == 0 {
+		return nil, nil
+	}
+	// TODO: Params.
+	p := queryplan.Build(blocks, 20, 50)
+	resp, err := f.querybackendclient.Invoke(ctx, &querybackendv1.InvokeRequest{
+		Tenant:        tenants,
+		StartTime:     startTime,
+		EndTime:       endTime,
+		LabelSelector: labelSelector,
+		Options:       &querybackendv1.InvokeOptions{},
+		QueryPlan:     p.Proto(),
+		Query:         []*querybackendv1.Query{q},
+	})
+	if err != nil {
+		return nil, err
+	}
+	return findReport(querybackend.QueryReportType(q.QueryType), resp.Reports), nil
 }
 
 func buildLabelSelectorFromMatchers(matchers []string) (string, error) {

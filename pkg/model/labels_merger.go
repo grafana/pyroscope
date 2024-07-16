@@ -35,7 +35,7 @@ func (m *LabelMerger) MergeLabelValues(values []string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for _, v := range values {
-		m.names[v] = struct{}{}
+		m.values[v] = struct{}{}
 	}
 }
 
