@@ -56,8 +56,9 @@ func (m *metastoreState) addForCompaction(block *metastorev1.BlockMeta) *compact
 	plan.jobsMutex.Lock()
 	defer plan.jobsMutex.Unlock()
 
-	queuedBlocks := plan.queuedBlocksByLevel[block.CompactionLevel]
-	queuedBlocks = append(queuedBlocks, block)
+	queuedBlocks := append(plan.queuedBlocksByLevel[block.CompactionLevel], block)
+	plan.queuedBlocksByLevel[block.CompactionLevel] = queuedBlocks
+
 	level.Debug(m.logger).Log(
 		"msg", "adding block for compaction",
 		"block", block.Id,
