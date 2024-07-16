@@ -10,7 +10,6 @@ message RaftLogEntry {
 enum CommandType {
   COMMAND_TYPE_UNKNOWN = 0;
   COMMAND_TYPE_ADD_BLOCK = 1;
-  COMMAND_TYPE_ADD_COMPACTION_JOBS = 2;
 
   // This is a temporary solution.
   COMMAND_TYPE_TRUNCATE = 4196;
