@@ -2,7 +2,6 @@ package symdb
 
 import (
 	"context"
-	"github.com/spf13/afero"
 	"sort"
 	"sync"
 	"time"
@@ -100,7 +99,6 @@ type Config struct {
 	Version     FormatVersion
 	Stacktraces StacktracesConfig
 	Parquet     ParquetConfig
-	Fs          afero.Fs
 }
 
 type StacktracesConfig struct {
@@ -162,9 +160,6 @@ func (c *Config) WithVersion(v FormatVersion) *Config {
 func NewSymDB(c *Config) *SymDB {
 	if c == nil {
 		c = DefaultConfig()
-	}
-	if c.Fs == nil {
-		c.Fs = afero.NewOsFs()
 	}
 	db := &SymDB{
 		config:     *c,

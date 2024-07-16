@@ -2,7 +2,6 @@ package symdb
 
 import (
 	"bufio"
-	"github.com/spf13/afero"
 	"io"
 	"os"
 	"path/filepath"
@@ -18,12 +17,12 @@ type blockWriter interface {
 type fileWriter struct {
 	path string
 	buf  *bufio.Writer
-	f    afero.File
+	f    *os.File
 	w    *writerOffset
 }
 
-func newFileWriter(fs afero.Fs, path string) (*fileWriter, error) {
-	f, err := fs.Create(path)
+func newFileWriter(path string) (*fileWriter, error) {
+	f, err := os.Create(path)
 	if err != nil {
 		return nil, err
 	}

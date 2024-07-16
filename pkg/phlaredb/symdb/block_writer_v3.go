@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
+	"os"
 	"path/filepath"
 
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
@@ -46,7 +47,7 @@ func newWriterV3(c *Config) *writerV3 {
 }
 
 func (w *writerV3) writePartitions(partitions []*PartitionWriter) (err error) {
-	if err = w.config.Fs.MkdirAll(w.config.Dir, 0o755); err != nil {
+	if err = os.MkdirAll(w.config.Dir, 0o755); err != nil {
 		return fmt.Errorf("failed to create directory %q: %w", w.config.Dir, err)
 	}
 	if w.dataFile, err = w.newFile(DefaultFileName); err != nil {
@@ -76,7 +77,7 @@ func (w *writerV3) meta() []block.File { return w.files }
 
 func (w *writerV3) newFile(path string) (f *fileWriter, err error) {
 	path = filepath.Join(w.config.Dir, path)
-	if f, err = newFileWriter(w.config.Fs, path); err != nil {
+	if f, err = newFileWriter(path); err != nil {
 		return nil, fmt.Errorf("failed to create %q: %w", path, err)
 	}
 	return f, err

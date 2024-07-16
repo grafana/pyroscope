@@ -4,8 +4,7 @@ import (
 	"context"
 	"fmt"
 	index2 "github.com/grafana/pyroscope/pkg/phlaredb/tsdb/loki/index"
-	"github.com/prometheus/prometheus/tsdb/fileutil"
-	"github.com/spf13/afero"
+	"os"
 	"path/filepath"
 	"sort"
 	"sync"
@@ -21,6 +20,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
+	"github.com/prometheus/prometheus/tsdb/fileutil"
 	"github.com/samber/lo"
 	"go.uber.org/atomic"
 	"google.golang.org/grpc/codes"
@@ -74,7 +74,6 @@ type Head struct {
 
 	limiter   TenantLimiter
 	updatedAt *atomic.Time
-	fs        afero.Fs
 }
 
 const (
@@ -85,12 +84,8 @@ const (
 
 func NewHead(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*Head, error) {
 	// todo if tenantLimiter is nil ....
-	if cfg.Fs == nil {
-		cfg.Fs = afero.NewOsFs()
-	}
 	parquetConfig := *defaultParquetConfig
 	h := &Head{
-		fs:      cfg.Fs,
 		logger:  phlarecontext.Logger(phlarectx),
 		metrics: contextHeadMetrics(phlarectx),
 
@@ -113,13 +108,13 @@ func NewHead(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*Hea
 	h.parquetConfig.MaxRowGroupBytes = cfg.RowGroupTargetSize
 
 	// ensure folder is writable
-	err := cfg.Fs.MkdirAll(h.headPath, defaultFolderMode)
+	err := os.MkdirAll(h.headPath, defaultFolderMode)
 	if err != nil {
 		return nil, err
 	}
 
 	// create profile store
-	h.profiles = newProfileStore2(phlarectx, cfg.Fs)
+	h.profiles = newProfileStore(phlarectx)
 	h.delta = newDeltaProfiles()
 	h.tables = []Table{
 		h.profiles,
@@ -131,7 +126,6 @@ func NewHead(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*Hea
 	}
 
 	symdbConfig := symdb.DefaultConfig()
-	symdbConfig.Fs = cfg.Fs
 	if cfg.SymDBFormat == symdb.FormatV3 {
 		symdbConfig.Version = symdb.FormatV3
 		symdbConfig.Dir = h.headPath
@@ -558,7 +552,7 @@ func (h *Head) flush(ctx context.Context) error {
 	h.inFlightProfiles.Wait()
 	if h.profiles.index.totalProfiles.Load() == 0 {
 		level.Info(h.logger).Log("msg", "head empty - no block written")
-		return h.fs.RemoveAll(h.headPath)
+		return os.RemoveAll(h.headPath)
 	}
 
 	var blockSize uint64
@@ -581,7 +575,7 @@ func (h *Head) flush(ctx context.Context) error {
 		if err = t.Close(); err != nil {
 			return errors.Wrapf(err, "closing table %s", t.Name())
 		}
-		if stat, err := h.fs.Stat(filepath.Join(h.headPath, f.RelPath)); err == nil {
+		if stat, err := os.Stat(filepath.Join(h.headPath, f.RelPath)); err == nil {
 			f.SizeBytes = uint64(stat.Size())
 			blockSize += f.SizeBytes
 			h.metrics.flushedFileSizeBytes.WithLabelValues(t.Name()).Observe(float64(f.SizeBytes))
@@ -655,19 +649,11 @@ func (h *Head) Move() error {
 	//}
 
 	// move block to the local directory
-	if err := h.fs.MkdirAll(filepath.Dir(h.localPath), defaultFolderMode); err != nil {
+	if err := os.MkdirAll(filepath.Dir(h.localPath), defaultFolderMode); err != nil {
 		return err
 	}
-	memfs, ok := h.fs.(*afero.MemMapFs)
-	if ok {
-		if err := memfs.Rename(h.headPath, h.localPath); err != nil {
-			return err
-		}
-	} else {
-		// for parent.Sync
-		if err := fileutil.Rename(h.headPath, h.localPath); err != nil {
-			return err
-		}
+	if err := fileutil.Rename(h.headPath, h.localPath); err != nil {
+		return err
 	}
 
 	level.Info(h.logger).Log("msg", "head successfully written to block", "block_path", h.localPath)
