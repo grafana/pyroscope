@@ -4,6 +4,19 @@
   },
   "pyroscope": {
     "components": {
+      "ad-hoc-profiles": {
+        "kind": "Deployment",
+        "replicaCount": 1,
+        "resources": {
+          "limits": {
+            "memory": "4Gi"
+          },
+          "requests": {
+            "cpu": 0.1,
+            "memory": "16Mi"
+          }
+        }
+      },
       "compactor": {
         "kind": "StatefulSet",
         "persistence": {
@@ -103,6 +116,19 @@
           "requests": {
             "cpu": 1,
             "memory": "8Gi"
+          }
+        }
+      },
+      "tenant-settings": {
+        "kind": "Deployment",
+        "replicaCount": 1,
+        "resources": {
+          "limits": {
+            "memory": "4Gi"
+          },
+          "requests": {
+            "cpu": 0.1,
+            "memory": "16Mi"
           }
         }
       }
