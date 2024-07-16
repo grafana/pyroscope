@@ -18,6 +18,7 @@ func openProfileTable(_ context.Context, s *tenantService) (err error) {
 	offset := s.sectionOffset(sectionProfiles)
 	size := s.sectionSize(sectionProfiles)
 	if buf := s.inMemoryBuffer(); buf != nil {
+		offset -= int64(s.offset())
 		s.profiles, err = openParquetFile(
 			s.inMemoryBucket(buf), s.obj.path, offset, size,
 			0, // Do not prefetch the footer.

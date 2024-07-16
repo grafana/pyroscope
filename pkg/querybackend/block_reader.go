@@ -225,19 +225,8 @@ func (obj *object) doOpen(ctx context.Context) error {
 	if len(obj.meta.TenantServices) == 0 {
 		panic("bug: invalid block meta: at least one section is expected")
 	}
-	// The order of services matches the physical placement.
-	// Therefore, we can find the range that spans all of them.
-	off := int64(obj.meta.TenantServices[0].TableOfContents[0])
-	lastEntry := obj.meta.TenantServices[len(obj.meta.TenantServices)-1]
-	length := int64(lastEntry.TableOfContents[0]+lastEntry.Size) - off
-	if length > loadInMemorySizeThreshold {
-		// The object won't be loaded into memory. However, each
-		// of the sections is to be evaluated separately, and might
-		// be loaded individually.
-		return nil
-	}
 	obj.buf = new(bytes.Buffer) // TODO: Take from pool.
-	if err := objstore.FetchRange(ctx, obj.buf, obj.path, obj.storage, off, length); err != nil {
+	if err := objstore.FetchRange(ctx, obj.buf, obj.path, obj.storage, 0, 0); err != nil {
 		return fmt.Errorf("loading object into memory: %w", err)
 	}
 	return nil
@@ -311,12 +300,12 @@ func (s *tenantService) doOpen(ctx context.Context, sections ...section) (err er
 	g, ctx := errgroup.WithContext(ctx)
 	for _, sc := range sections {
 		sc := sc
-		g.Go(func() error {
+		g.Go(util.RecoverPanic(func() error {
 			if err = sc.open(ctx, s); err != nil {
 				return fmt.Errorf("openning section %v: %w", s.sectionName(sc), err)
 			}
 			return nil
-		})
+		}))
 	}
 	return g.Wait()
 }

@@ -6,13 +6,13 @@ pyroscope:
       replicaCount: 1
     ingester:
       kind: StatefulSet
-      replicaCount: 3
+      replicaCount: 1
       terminationGracePeriodSeconds: 600
       persistence:
         enabled: false
     metastore:
       kind: StatefulSet
-      replicaCount: 3
+      replicaCount: 1
       terminationGracePeriodSeconds: 600
       persistence:
         enabled: true
@@ -22,7 +22,7 @@ pyroscope:
       replicaCount: 1
     query-backend:
       kind: Deployment
-      replicaCount: 3
+      replicaCount: 1
     # compactor-worker:
     #   kind: Deployment
     #   replicaCount: 3
@@ -30,7 +30,7 @@ pyroscope:
     # To be removed.
     query-scheduler:
       kind: Deployment
-      replicaCount: 1
+      replicaCount: 0
     compactor:
       kind: StatefulSet
       replicaCount: 0
@@ -39,12 +39,12 @@ pyroscope:
         enabled: false
     store-gateway:
       kind: StatefulSet
-      replicaCount: 3
+      replicaCount: 0
       persistence:
         enabled: false
     querier:
       kind: Deployment
-      replicaCount: 1
+      replicaCount: 0
 
 minio:
   enabled: true
