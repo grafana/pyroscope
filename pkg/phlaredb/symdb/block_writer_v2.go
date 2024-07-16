@@ -166,7 +166,7 @@ func (w *writerV2) writeStacktraces(partition *PartitionWriter) (err error) {
 }
 
 func (w *writerV2) createDir() error {
-	if err := os.MkdirAll(w.config.Dir, 0o755); err != nil {
+	if err := w.config.Fs.MkdirAll(w.config.Dir, 0o755); err != nil {
 		return fmt.Errorf("failed to create directory %q: %w", w.config.Dir, err)
 	}
 	return nil
@@ -188,7 +188,7 @@ func (w *writerV2) writeIndexFile() (err error) {
 
 func (w *writerV2) newFile(path string) (f *fileWriter, err error) {
 	path = filepath.Join(w.config.Dir, path)
-	if f, err = newFileWriter(path); err != nil {
+	if f, err = newFileWriter(w.config.Fs, path); err != nil {
 		return nil, fmt.Errorf("failed to create %q: %w", path, err)
 	}
 	return f, err

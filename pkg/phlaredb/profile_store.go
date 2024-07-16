@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	index2 "github.com/grafana/pyroscope/pkg/phlaredb/tsdb/loki/index"
+	"github.com/spf13/afero"
 	"io"
 	"os"
 	"path/filepath"
@@ -63,6 +64,7 @@ type profileStore struct {
 	flushBuffer    []schemav1.InMemoryProfile
 	flushBufferLbs []phlaremodel.Labels
 	indexBytes     *index2.BufferWriter
+	fs             afero.Fs
 
 	//onFlush        func()
 }
@@ -83,7 +85,12 @@ var profileStoreWriterPool = sync.Pool{
 }
 
 func newProfileStore(phlarectx context.Context) *profileStore {
+	return newProfileStore2(phlarectx, afero.NewOsFs())
+}
+
+func newProfileStore2(phlarectx context.Context, fs afero.Fs) *profileStore {
 	s := &profileStore{
+		fs:        fs,
 		logger:    phlarecontext.Logger(phlarectx),
 		metrics:   contextHeadMetrics(phlarectx),
 		persister: &schemav1.ProfilePersister{},
@@ -216,8 +223,8 @@ func (s *profileStore) Flush(ctx context.Context) (numRows uint64, numRowGroups 
 //	return nil
 //}
 
-func (s *profileStore) prepareFile(path string) (f *os.File, err error) {
-	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
+func (s *profileStore) prepareFile(path string) (f afero.File, err error) {
+	file, err := s.fs.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
 	if err != nil {
 		return nil, err
 	}

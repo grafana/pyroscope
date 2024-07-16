@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/spf13/afero"
 	"math"
 	"os"
 	"path/filepath"
@@ -59,6 +60,7 @@ type Config struct {
 	MinDiskAvailablePercentage float64       `yaml:"min_disk_available_percentage"`
 	EnforcementInterval        time.Duration `yaml:"enforcement_interval"`
 	DisableEnforcement         bool          `yaml:"disable_enforcement"`
+	Fs                         afero.Fs
 }
 
 type ParquetConfig struct {

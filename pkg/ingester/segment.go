@@ -1,10 +1,12 @@
 package ingester
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"github.com/spf13/afero"
 	"os"
 	"path"
 	"path/filepath"
@@ -180,11 +182,21 @@ func (sw *segmentsWriter) newShard(sk shardKey) *shard {
 	}()
 	return sh
 }
+
+var memfs = true
+
 func (sw *segmentsWriter) newSegment(sh *shard, sk shardKey, sl log.Logger) *segment {
 	id := ulid.MustNew(ulid.Timestamp(time.Now()), rand.Reader)
 	dataPath := path.Join(sw.cfg.DataPath, pathSegments, fmt.Sprintf("%d", sk), pathAnon, id.String())
+	var fs afero.Fs
+	if memfs {
+		fs = afero.NewMemMapFs()
+	} else {
+		fs = afero.NewOsFs()
+	}
 	s := &segment{
 		l:        log.With(sl, "segment-id", id.String()),
+		fs:       fs,
 		ulid:     id,
 		heads:    make(map[serviceKey]serviceHead),
 		sw:       sw,
@@ -214,11 +226,11 @@ func (s *segment) flush(ctx context.Context) error {
 		return nil
 	}
 
-	blockPath, blockMeta, err := s.flushBlock(heads)
+	blockPath, blockData, blockMeta, err := s.flushBlock(heads)
 	if err != nil {
 		return err
 	}
-	err = s.sw.uploadBlock(blockPath, s)
+	err = s.sw.uploadBlock(blockPath, blockData, s)
 	if err != nil {
 		return err
 	}
@@ -229,7 +241,7 @@ func (s *segment) flush(ctx context.Context) error {
 	return nil
 }
 
-func (s *segment) flushBlock(heads []serviceHead) (string, *metastorev1.BlockMeta, error) {
+func (s *segment) flushBlock(heads []serviceHead) (string, []byte, *metastorev1.BlockMeta, error) {
 	t1 := time.Now()
 	meta := &metastorev1.BlockMeta{
 		Id:              s.ulid.String(),
@@ -242,16 +254,18 @@ func (s *segment) flushBlock(heads []serviceHead) (string, *metastorev1.BlockMet
 	}
 
 	blockPath := path.Join(s.dataPath, pathBlock)
-	blockFile, err := os.OpenFile(blockPath, os.O_CREATE|os.O_WRONLY|os.O_EXCL, 0644)
-	if err != nil {
-		return "", nil, err
-	}
-	defer blockFile.Close()
+	//blockFile, err := os.OpenFile(blockPath, os.O_CREATE|os.O_WRONLY|os.O_EXCL, 0644)
+	//if err != nil {
+	//	return "", nil, err
+	//}
+	//defer blockFile.Close()
+	sz := s.estimateBlockSize(heads)
+	blockFile := bytes.NewBuffer(make([]byte, 0, sz))
 
 	w := withWriterOffset(blockFile)
 
 	for i, e := range heads {
-		svc, err := concatSegmentHead(s.sh, e, w)
+		svc, err := concatSegmentHead(s.fs, s.sh, e, w)
 		if err != nil {
 			_ = level.Error(s.l).Log("msg", "failed to concat segment head", "err", err)
 			continue
@@ -269,10 +283,28 @@ func (s *segment) flushBlock(heads []serviceHead) (string, *metastorev1.BlockMet
 
 	meta.Size = uint64(w.offset)
 	s.debuginfo.flushBlockDuration = time.Since(t1)
-	return blockPath, meta, nil
+	return blockPath, blockFile.Bytes(), meta, nil
 }
 
-func concatSegmentHead(sh *shard, e serviceHead, w *writerOffset) (*metastorev1.TenantService, error) {
+func (s *segment) estimateBlockSize(heads []serviceHead) int {
+	var sz int
+	for _, e := range heads {
+		profiles, index, symbols := getFilesForSegment(e.head, e.head.Meta())
+		if profiles != nil {
+			sz += int(profiles.SizeBytes)
+		}
+		if symbols != nil {
+			sz += int(symbols.SizeBytes)
+		}
+		if index != nil {
+			buf, _, _ := index.Buffer()
+			sz += len(buf)
+		}
+	}
+	return sz
+}
+
+func concatSegmentHead(fs afero.Fs, sh *shard, e serviceHead, w *writerOffset) (*metastorev1.TenantService, error) {
 	tenantServiceOffset := w.offset
 	b := e.head.Meta()
 	ptypes := e.head.MustProfileTypeNames()
@@ -282,7 +314,7 @@ func concatSegmentHead(sh *shard, e serviceHead, w *writerOffset) (*metastorev1.
 
 	offsets := make([]uint64, 3)
 	var err error
-	offsets[0], err = concatFile(w, e.head, profiles, sh.concatBuf)
+	offsets[0], err = concatFile(fs, w, e.head, profiles, sh.concatBuf)
 	if err != nil {
 		return nil, err
 	}
@@ -292,7 +324,7 @@ func concatSegmentHead(sh *shard, e serviceHead, w *writerOffset) (*metastorev1.
 	if err != nil {
 		return nil, err
 	}
-	offsets[2], err = concatFile(w, e.head, symbols, sh.concatBuf)
+	offsets[2], err = concatFile(fs, w, e.head, symbols, sh.concatBuf)
 	if err != nil {
 		return nil, err
 	}
@@ -410,6 +442,7 @@ type segment struct {
 		storeMetaDuration  time.Duration
 	}
 	sh *shard
+	fs afero.Fs
 }
 
 type segmentIngest interface {
@@ -464,6 +497,7 @@ func (s *segment) headForIngest(k serviceKey) (*phlaredb.Head, error) {
 	cfg := s.sw.cfg
 	cfg.DataPath = path.Join(s.dataPath)
 	cfg.SymDBFormat = symdb.FormatV3
+	cfg.Fs = s.fs
 
 	nh, err := phlaredb.NewHead(s.sw.phlarectx, cfg, l)
 	if err != nil {
@@ -484,15 +518,18 @@ func (s *segment) cleanup() {
 	}
 }
 
-func (sw *segmentsWriter) uploadBlock(blockPath string, s *segment) error {
+func (sw *segmentsWriter) uploadBlock(blockPath string, blockData []byte, s *segment) error {
 	t1 := time.Now()
 
 	dst, err := filepath.Rel(sw.cfg.DataPath, blockPath)
 	if err != nil {
 		return err
 	}
-	if err := objstore.UploadFile(sw.phlarectx, sw.l, sw.bucket, blockPath, dst); err != nil {
-		return err
+	//if err := objstore.UploadFile(sw.phlarectx, sw.l, sw.bucket, blockPath, dst); err != nil {
+	//	return err
+	//}
+	if err := sw.bucket.Upload(context.TODO(), dst, bytes.NewReader(blockData)); err != nil {
+		return fmt.Errorf("failed to upload block: %w", err)
 	}
 	st, _ := os.Stat(blockPath)
 	if st != nil {

@@ -1,11 +1,10 @@
 package ingester
 
 import (
-	"io"
-	"os"
-
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	"github.com/spf13/afero"
+	"io"
 )
 
 type writerOffset struct {
@@ -32,10 +31,10 @@ func (w *writerOffset) Write(p []byte) (n int, err error) {
 	return n, err
 }
 
-func concatFile(w *writerOffset, h *phlaredb.Head, f *block.File, buf []byte) (uint64, error) {
+func concatFile(fs afero.Fs, w *writerOffset, h *phlaredb.Head, f *block.File, buf []byte) (uint64, error) {
 	o := w.offset
 	fp := h.LocalPathFor(f.RelPath)
-	file, err := os.Open(fp)
+	file, err := fs.Open(fp)
 	if err != nil {
 		return 0, err
 	}
