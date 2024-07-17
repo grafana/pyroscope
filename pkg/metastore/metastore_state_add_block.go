@@ -16,17 +16,6 @@ func (m *Metastore) AddBlock(_ context.Context, req *metastorev1.AddBlockRequest
 
 func (m *metastoreState) applyAddBlock(request *metastorev1.AddBlockRequest) (*metastorev1.AddBlockResponse, error) {
 	_ = level.Info(m.logger).Log("msg", "adding block", "block_id", request.Block.Id)
-	if request.Block.CompactionLevel != 0 {
-		_ = level.Error(m.logger).Log(
-			"msg", "compaction not implemented, ignoring block with non-zero compaction level",
-			"compaction_level", request.Block.CompactionLevel,
-			"block", request.Block.Id,
-		)
-		return &metastorev1.AddBlockResponse{}, nil
-	}
-
-	// create an optional compaction job
-	job := m.addForCompaction(request.Block)
 
 	name, key := keyForBlockMeta(request.Block.Shard, "", request.Block.Id)
 	value, err := request.Block.MarshalVT()
@@ -40,14 +29,20 @@ func (m *metastoreState) applyAddBlock(request *metastorev1.AddBlockRequest) (*m
 		if err != nil {
 			return err
 		}
-		// store the optional compaction job
-		if job != nil {
+		// create and store an optional compaction job
+		if job := m.tryCreateJob(request.Block); job != nil {
 			level.Debug(m.logger).Log("msg", "persisting compaction job", "job", job.Name)
 			jobBucketName, jobKey := keyForCompactionJob(request.Block.Shard, request.Block.TenantId, job.Name)
-			return updateCompactionJobBucket(tx, jobBucketName, func(bucket *bbolt.Bucket) error {
+			err := updateCompactionJobBucket(tx, jobBucketName, func(bucket *bbolt.Bucket) error {
 				data, _ := job.MarshalVT()
 				return bucket.Put(jobKey, data)
 			})
+			if err != nil {
+				return err
+			}
+			m.addCompactionJob(job)
+		} else {
+			m.addBlockToCompactionJobQueue(request.Block)
 		}
 		return nil
 	})

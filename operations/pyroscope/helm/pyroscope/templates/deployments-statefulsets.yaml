@@ -120,7 +120,7 @@ spec:
               mountPath: /etc/pyroscope/overrides/
             - name: data
               mountPath: /data
-            {{- if eq $component "compactor" }}
+            {{- if or (eq $component "compactor") (eq $component "compaction-worker") }}
               subPath: default
             - name: data
               mountPath: /data-compactor

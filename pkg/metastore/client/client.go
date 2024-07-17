@@ -9,6 +9,7 @@ import (
 	"github.com/grafana/dskit/services"
 	"google.golang.org/grpc"
 
+	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 )
 
@@ -31,6 +32,7 @@ func (cfg *Config) Validate() error {
 
 type Client struct {
 	metastorev1.MetastoreServiceClient
+	compactorv1.CompactionPlannerClient
 	service services.Service
 	conn    *grpc.ClientConn
 	config  Config
@@ -43,6 +45,7 @@ func New(config Config) (c *Client, err error) {
 		return nil, err
 	}
 	c.MetastoreServiceClient = metastorev1.NewMetastoreServiceClient(c.conn)
+	c.CompactionPlannerClient = compactorv1.NewCompactionPlannerClient(c.conn)
 	c.service = services.NewIdleService(c.starting, c.stopping)
 	return c, nil
 }

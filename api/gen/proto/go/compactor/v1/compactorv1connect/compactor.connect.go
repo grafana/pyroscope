@@ -33,25 +33,27 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
+	// CompactionPlannerPollCompactionJobsProcedure is the fully-qualified name of the
+	// CompactionPlanner's PollCompactionJobs RPC.
+	CompactionPlannerPollCompactionJobsProcedure = "/compactor.v1.CompactionPlanner/PollCompactionJobs"
 	// CompactionPlannerGetCompactionJobsProcedure is the fully-qualified name of the
 	// CompactionPlanner's GetCompactionJobs RPC.
 	CompactionPlannerGetCompactionJobsProcedure = "/compactor.v1.CompactionPlanner/GetCompactionJobs"
-	// CompactionPlannerUpdateJobStatusProcedure is the fully-qualified name of the CompactionPlanner's
-	// UpdateJobStatus RPC.
-	CompactionPlannerUpdateJobStatusProcedure = "/compactor.v1.CompactionPlanner/UpdateJobStatus"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
 var (
-	compactionPlannerServiceDescriptor                 = v1.File_compactor_v1_compactor_proto.Services().ByName("CompactionPlanner")
-	compactionPlannerGetCompactionJobsMethodDescriptor = compactionPlannerServiceDescriptor.Methods().ByName("GetCompactionJobs")
-	compactionPlannerUpdateJobStatusMethodDescriptor   = compactionPlannerServiceDescriptor.Methods().ByName("UpdateJobStatus")
+	compactionPlannerServiceDescriptor                  = v1.File_compactor_v1_compactor_proto.Services().ByName("CompactionPlanner")
+	compactionPlannerPollCompactionJobsMethodDescriptor = compactionPlannerServiceDescriptor.Methods().ByName("PollCompactionJobs")
+	compactionPlannerGetCompactionJobsMethodDescriptor  = compactionPlannerServiceDescriptor.Methods().ByName("GetCompactionJobs")
 )
 
 // CompactionPlannerClient is a client for the compactor.v1.CompactionPlanner service.
 type CompactionPlannerClient interface {
+	// Used to both retrieve jobs and update the jobs status at the same time.
+	PollCompactionJobs(context.Context, *connect.Request[v1.PollCompactionJobsRequest]) (*connect.Response[v1.PollCompactionJobsResponse], error)
+	// Used for admin purposes only.
 	GetCompactionJobs(context.Context, *connect.Request[v1.GetCompactionRequest]) (*connect.Response[v1.GetCompactionResponse], error)
-	UpdateJobStatus(context.Context, *connect.Request[v1.UpdateJobStatusRequest]) (*connect.Response[v1.UpdateJobStatusResponse], error)
 }
 
 // NewCompactionPlannerClient constructs a client for the compactor.v1.CompactionPlanner service. By
@@ -64,16 +66,16 @@ type CompactionPlannerClient interface {
 func NewCompactionPlannerClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) CompactionPlannerClient {
 	baseURL = strings.TrimRight(baseURL, "/")
 	return &compactionPlannerClient{
+		pollCompactionJobs: connect.NewClient[v1.PollCompactionJobsRequest, v1.PollCompactionJobsResponse](
+			httpClient,
+			baseURL+CompactionPlannerPollCompactionJobsProcedure,
+			connect.WithSchema(compactionPlannerPollCompactionJobsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 		getCompactionJobs: connect.NewClient[v1.GetCompactionRequest, v1.GetCompactionResponse](
 			httpClient,
 			baseURL+CompactionPlannerGetCompactionJobsProcedure,
 			connect.WithSchema(compactionPlannerGetCompactionJobsMethodDescriptor),
-			connect.WithClientOptions(opts...),
-		),
-		updateJobStatus: connect.NewClient[v1.UpdateJobStatusRequest, v1.UpdateJobStatusResponse](
-			httpClient,
-			baseURL+CompactionPlannerUpdateJobStatusProcedure,
-			connect.WithSchema(compactionPlannerUpdateJobStatusMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -81,8 +83,13 @@ func NewCompactionPlannerClient(httpClient connect.HTTPClient, baseURL string, o
 
 // compactionPlannerClient implements CompactionPlannerClient.
 type compactionPlannerClient struct {
-	getCompactionJobs *connect.Client[v1.GetCompactionRequest, v1.GetCompactionResponse]
-	updateJobStatus   *connect.Client[v1.UpdateJobStatusRequest, v1.UpdateJobStatusResponse]
+	pollCompactionJobs *connect.Client[v1.PollCompactionJobsRequest, v1.PollCompactionJobsResponse]
+	getCompactionJobs  *connect.Client[v1.GetCompactionRequest, v1.GetCompactionResponse]
+}
+
+// PollCompactionJobs calls compactor.v1.CompactionPlanner.PollCompactionJobs.
+func (c *compactionPlannerClient) PollCompactionJobs(ctx context.Context, req *connect.Request[v1.PollCompactionJobsRequest]) (*connect.Response[v1.PollCompactionJobsResponse], error) {
+	return c.pollCompactionJobs.CallUnary(ctx, req)
 }
 
 // GetCompactionJobs calls compactor.v1.CompactionPlanner.GetCompactionJobs.
@@ -90,15 +97,12 @@ func (c *compactionPlannerClient) GetCompactionJobs(ctx context.Context, req *co
 	return c.getCompactionJobs.CallUnary(ctx, req)
 }
 
-// UpdateJobStatus calls compactor.v1.CompactionPlanner.UpdateJobStatus.
-func (c *compactionPlannerClient) UpdateJobStatus(ctx context.Context, req *connect.Request[v1.UpdateJobStatusRequest]) (*connect.Response[v1.UpdateJobStatusResponse], error) {
-	return c.updateJobStatus.CallUnary(ctx, req)
-}
-
 // CompactionPlannerHandler is an implementation of the compactor.v1.CompactionPlanner service.
 type CompactionPlannerHandler interface {
+	// Used to both retrieve jobs and update the jobs status at the same time.
+	PollCompactionJobs(context.Context, *connect.Request[v1.PollCompactionJobsRequest]) (*connect.Response[v1.PollCompactionJobsResponse], error)
+	// Used for admin purposes only.
 	GetCompactionJobs(context.Context, *connect.Request[v1.GetCompactionRequest]) (*connect.Response[v1.GetCompactionResponse], error)
-	UpdateJobStatus(context.Context, *connect.Request[v1.UpdateJobStatusRequest]) (*connect.Response[v1.UpdateJobStatusResponse], error)
 }
 
 // NewCompactionPlannerHandler builds an HTTP handler from the service implementation. It returns
@@ -107,24 +111,24 @@ type CompactionPlannerHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewCompactionPlannerHandler(svc CompactionPlannerHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	compactionPlannerPollCompactionJobsHandler := connect.NewUnaryHandler(
+		CompactionPlannerPollCompactionJobsProcedure,
+		svc.PollCompactionJobs,
+		connect.WithSchema(compactionPlannerPollCompactionJobsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	compactionPlannerGetCompactionJobsHandler := connect.NewUnaryHandler(
 		CompactionPlannerGetCompactionJobsProcedure,
 		svc.GetCompactionJobs,
 		connect.WithSchema(compactionPlannerGetCompactionJobsMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
-	compactionPlannerUpdateJobStatusHandler := connect.NewUnaryHandler(
-		CompactionPlannerUpdateJobStatusProcedure,
-		svc.UpdateJobStatus,
-		connect.WithSchema(compactionPlannerUpdateJobStatusMethodDescriptor),
-		connect.WithHandlerOptions(opts...),
-	)
 	return "/compactor.v1.CompactionPlanner/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case CompactionPlannerPollCompactionJobsProcedure:
+			compactionPlannerPollCompactionJobsHandler.ServeHTTP(w, r)
 		case CompactionPlannerGetCompactionJobsProcedure:
 			compactionPlannerGetCompactionJobsHandler.ServeHTTP(w, r)
-		case CompactionPlannerUpdateJobStatusProcedure:
-			compactionPlannerUpdateJobStatusHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -134,10 +138,10 @@ func NewCompactionPlannerHandler(svc CompactionPlannerHandler, opts ...connect.H
 // UnimplementedCompactionPlannerHandler returns CodeUnimplemented from all methods.
 type UnimplementedCompactionPlannerHandler struct{}
 
-func (UnimplementedCompactionPlannerHandler) GetCompactionJobs(context.Context, *connect.Request[v1.GetCompactionRequest]) (*connect.Response[v1.GetCompactionResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("compactor.v1.CompactionPlanner.GetCompactionJobs is not implemented"))
+func (UnimplementedCompactionPlannerHandler) PollCompactionJobs(context.Context, *connect.Request[v1.PollCompactionJobsRequest]) (*connect.Response[v1.PollCompactionJobsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("compactor.v1.CompactionPlanner.PollCompactionJobs is not implemented"))
 }
 
-func (UnimplementedCompactionPlannerHandler) UpdateJobStatus(context.Context, *connect.Request[v1.UpdateJobStatusRequest]) (*connect.Response[v1.UpdateJobStatusResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("compactor.v1.CompactionPlanner.UpdateJobStatus is not implemented"))
+func (UnimplementedCompactionPlannerHandler) GetCompactionJobs(context.Context, *connect.Request[v1.GetCompactionRequest]) (*connect.Response[v1.GetCompactionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("compactor.v1.CompactionPlanner.GetCompactionJobs is not implemented"))
 }

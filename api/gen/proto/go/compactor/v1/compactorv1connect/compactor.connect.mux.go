@@ -19,14 +19,14 @@ const _ = connect.IsAtLeastVersion0_1_0
 // RegisterCompactionPlannerHandler register an HTTP handler to a mux.Router from the service
 // implementation.
 func RegisterCompactionPlannerHandler(mux *mux.Router, svc CompactionPlannerHandler, opts ...connect.HandlerOption) {
+	mux.Handle("/compactor.v1.CompactionPlanner/PollCompactionJobs", connect.NewUnaryHandler(
+		"/compactor.v1.CompactionPlanner/PollCompactionJobs",
+		svc.PollCompactionJobs,
+		opts...,
+	))
 	mux.Handle("/compactor.v1.CompactionPlanner/GetCompactionJobs", connect.NewUnaryHandler(
 		"/compactor.v1.CompactionPlanner/GetCompactionJobs",
 		svc.GetCompactionJobs,
-		opts...,
-	))
-	mux.Handle("/compactor.v1.CompactionPlanner/UpdateJobStatus", connect.NewUnaryHandler(
-		"/compactor.v1.CompactionPlanner/UpdateJobStatus",
-		svc.UpdateJobStatus,
 		opts...,
 	))
 }

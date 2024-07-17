@@ -89,6 +89,7 @@ const (
 	MetastoreClient    string = "metastore-client"
 	QueryBackend       string = "query-worker" // TODO: query-backend
 	QueryBackendClient string = "query-backend-client"
+	CompactionWorker   string = "compaction-worker"
 
 	// QueryFrontendTripperware string = "query-frontend-tripperware"
 	// IndexGateway             string = "index-gateway"
