@@ -95,7 +95,7 @@ func (m *metastoreState) applyPollCompactionJobsStatus(request *compactorv1.Poll
 	}
 
 	for _, j := range jResult.newJobs {
-		m.addCompactionJob(j, j.CompactionLevel)
+		m.addCompactionJob(j)
 	}
 
 	for _, b := range jResult.newQueuedBlocks {

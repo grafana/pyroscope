@@ -161,7 +161,7 @@ func (m *metastoreState) tryCreateJob(block *metastorev1.BlockMeta) *compactionp
 	return job
 }
 
-func (m *metastoreState) addCompactionJob(job *compactionpb.CompactionJob, compactionLevel uint32) {
+func (m *metastoreState) addCompactionJob(job *compactionpb.CompactionJob) {
 	key := tenantShard{
 		tenant: job.TenantId,
 		shard:  job.Shard,
@@ -171,7 +171,7 @@ func (m *metastoreState) addCompactionJob(job *compactionpb.CompactionJob, compa
 	defer plan.jobsMutex.Unlock()
 
 	plan.jobsByName[job.Name] = job
-	plan.queuedBlocksByLevel[compactionLevel] = plan.queuedBlocksByLevel[compactionLevel][:0]
+	plan.queuedBlocksByLevel[job.CompactionLevel] = plan.queuedBlocksByLevel[job.CompactionLevel][:0]
 }
 
 func (m *metastoreState) addBlockToCompactionJobQueue(block *metastorev1.BlockMeta) {

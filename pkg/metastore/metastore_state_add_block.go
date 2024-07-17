@@ -7,6 +7,7 @@ import (
 	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/pkg/metastore/compactionpb"
 )
 
 func (m *Metastore) AddBlock(_ context.Context, req *metastorev1.AddBlockRequest) (*metastorev1.AddBlockResponse, error) {
@@ -22,6 +23,10 @@ func (m *metastoreState) applyAddBlock(request *metastorev1.AddBlockRequest) (*m
 	if err != nil {
 		return nil, err
 	}
+
+	var jobToAdd *compactionpb.CompactionJob
+	var blockToAddToQueue *metastorev1.BlockMeta
+
 	err = m.db.boltdb.Update(func(tx *bbolt.Tx) error {
 		err := updateBlockMetadataBucket(tx, name, func(bucket *bbolt.Bucket) error {
 			return bucket.Put(key, value)
@@ -40,9 +45,9 @@ func (m *metastoreState) applyAddBlock(request *metastorev1.AddBlockRequest) (*m
 			if err != nil {
 				return err
 			}
-			m.addCompactionJob(job, request.Block.CompactionLevel)
+			jobToAdd = job
 		} else {
-			m.addBlockToCompactionJobQueue(request.Block)
+			blockToAddToQueue = request.Block
 		}
 		return nil
 	})
@@ -55,5 +60,10 @@ func (m *metastoreState) applyAddBlock(request *metastorev1.AddBlockRequest) (*m
 		return nil, err
 	}
 	m.getOrCreateShard(request.Block.Shard).putSegment(request.Block)
+	if jobToAdd != nil {
+		m.addCompactionJob(jobToAdd)
+	} else if blockToAddToQueue != nil {
+		m.addBlockToCompactionJobQueue(blockToAddToQueue)
+	}
 	return &metastorev1.AddBlockResponse{}, nil
 }
