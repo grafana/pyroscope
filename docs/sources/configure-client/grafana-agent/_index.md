@@ -46,6 +46,12 @@ Benefits of eBPF profiling:
 1. Configure the Agent to use eBPF for profiling. Refer to the [eBPF documentation](/docs/pyroscope/latest/configure-client/grafana-agent/ebpf) for detailed steps.
 1. The collector collects eBPF profiles and sends them to the Pyroscope server.
 
+### Supported languages
+
+This eBPF profiler only collects CPU profiles. Generally natively compiled languages like C/C++, Go, Rust are supported (also see [Troubleshooting](https://grafana.com/docs/alloy/latest/reference/components/pyroscope/pyroscope.ebpf/#troubleshooting) for additional requirements).
+
+The only high-level language supported is Python. Other high-level languages like Java, Ruby, PHP, JavaScript, etc. will require some additional work in order to correctly show stack traces of methods in these languages. Currently their CPU usage will be displayed belonging to the runtime's methods instead.
+
 ## Golang profiling in pull mode
 
 In pull mode, the collector periodically retrieves profiles from Golang applications, specifically targeting the pprof endpoints.

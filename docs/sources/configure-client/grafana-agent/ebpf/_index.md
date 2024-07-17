@@ -30,6 +30,12 @@ However, eBPF has some limitations that make it unsuitable for certain use cases
 - It does not support all profile types such as memory and contention/lock profiling.
 - eBPF requires root access to the host machine, which can be a problem in some environments.
 
+## Supported languages
+
+This eBPF profiler only collects CPU profiles. Generally natively compiled languages like C/C++, Go, Rust are supported (also see [Troubleshooting](https://grafana.com/docs/alloy/latest/reference/components/pyroscope/pyroscope.ebpf/#troubleshooting) for additional requirements).
+
+The only high-level language supported is Python. Other high-level languages like Java, Ruby, PHP, JavaScript, etc. will require some additional work in order to correctly show stack traces of methods in these languages. Currently their CPU usage will be displayed belonging to the runtime's methods instead.
+
 ## eBPF via the Grafana Agent
 
 {{< docs/shared lookup="agent-deprecation.md" source="alloy" version="next" >}}
