@@ -11,6 +11,7 @@ import (
 
 	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/pkg/metastore/compactionpb"
 )
 
 var (
@@ -83,27 +84,31 @@ func NewPlanner(state *metastoreState, logger log.Logger) *Planner {
 
 type compactionPlan struct {
 	jobsMutex           sync.Mutex
-	jobsByName          map[string]*compactorv1.CompactionJob
+	jobsByName          map[string]*compactionpb.CompactionJob
 	queuedBlocksByLevel map[uint32][]*metastorev1.BlockMeta
 }
 
-func (m *Metastore) GetCompactionJobs(_ context.Context, req *compactorv1.GetCompactionRequest) (*compactorv1.GetCompactionResponse, error) {
-	m.state.compactionPlansMutex.Lock()
-	defer m.state.compactionPlansMutex.Unlock()
+func (p *compactionPlan) setJobStatus(jobName string, status compactionpb.CompactionStatus) {
+	p.jobsMutex.Lock()
+	defer p.jobsMutex.Unlock()
 
-	resp := &compactorv1.GetCompactionResponse{
-		CompactionJobs: make([]*compactorv1.CompactionJob, 0, len(m.state.compactionPlans)),
+	job := p.jobsByName[jobName]
+	if job != nil {
+		job.Status = status
 	}
-	for _, plan := range m.state.compactionPlans {
-		for _, job := range plan.jobsByName {
-			resp.CompactionJobs = append(resp.CompactionJobs, job)
-		}
-	}
-
-	return resp, nil
 }
 
-func (m *metastoreState) tryCreateJob(block *metastorev1.BlockMeta) *compactorv1.CompactionJob {
+func (p *compactionPlan) deleteJob(jobName string) {
+	p.jobsMutex.Lock()
+	defer p.jobsMutex.Unlock()
+	delete(p.jobsByName, jobName)
+}
+
+func (m *Metastore) GetCompactionJobs(_ context.Context, req *compactorv1.GetCompactionRequest) (*compactorv1.GetCompactionResponse, error) {
+	return nil, nil
+}
+
+func (m *metastoreState) tryCreateJob(block *metastorev1.BlockMeta) *compactionpb.CompactionJob {
 	key := tenantShard{
 		tenant: block.TenantId,
 		shard:  block.Shard,
@@ -130,22 +135,19 @@ func (m *metastoreState) tryCreateJob(block *metastorev1.BlockMeta) *compactorv1
 
 	strategy := getStrategyForLevel(block.CompactionLevel)
 
-	var job *compactorv1.CompactionJob
+	var job *compactionpb.CompactionJob
 	if strategy.shouldCreateJob(queuedBlocks) {
-		job = &compactorv1.CompactionJob{
-			Name:    fmt.Sprintf("L%d-S%d-%d", block.CompactionLevel, block.Shard, calculateHash(queuedBlocks)),
-			Options: &compactorv1.CompactionOptions{},
-			Blocks:  queuedBlocks,
-			Status: &compactorv1.CompactionJobStatus{
-				Status: compactorv1.CompactionStatus_COMPACTION_STATUS_UNSPECIFIED,
-				CompletedJob: &compactorv1.CompletedJob{
-					Blocks: make([]*metastorev1.BlockMeta, 0),
-				},
-				Shard:    block.Shard,
-				TenantId: block.TenantId,
-			},
-			Shard:    block.Shard,
-			TenantId: block.TenantId,
+		blockIds := make([]string, 0, len(queuedBlocks))
+		for _, block := range queuedBlocks {
+			blockIds = append(blockIds, block.Id)
+		}
+		job = &compactionpb.CompactionJob{
+			Name:            fmt.Sprintf("L%d-S%d-%d", block.CompactionLevel, block.Shard, calculateHash(queuedBlocks)),
+			Blocks:          blockIds,
+			Status:          compactionpb.CompactionStatus_COMPACTION_STATUS_UNSPECIFIED,
+			Shard:           block.Shard,
+			TenantId:        block.TenantId,
+			CompactionLevel: block.CompactionLevel,
 		}
 		level.Info(m.logger).Log(
 			"msg", "created compaction job",
@@ -159,7 +161,7 @@ func (m *metastoreState) tryCreateJob(block *metastorev1.BlockMeta) *compactorv1
 	return job
 }
 
-func (m *metastoreState) addCompactionJob(job *compactorv1.CompactionJob) {
+func (m *metastoreState) addCompactionJob(job *compactionpb.CompactionJob, compactionLevel uint32) {
 	key := tenantShard{
 		tenant: job.TenantId,
 		shard:  job.Shard,
@@ -169,7 +171,6 @@ func (m *metastoreState) addCompactionJob(job *compactorv1.CompactionJob) {
 	defer plan.jobsMutex.Unlock()
 
 	plan.jobsByName[job.Name] = job
-	compactionLevel := job.Blocks[0].CompactionLevel
 	plan.queuedBlocksByLevel[compactionLevel] = plan.queuedBlocksByLevel[compactionLevel][:0]
 }
 

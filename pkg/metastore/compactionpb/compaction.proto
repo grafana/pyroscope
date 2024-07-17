@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package compaction;
+
+message CompactionJob {
+  // Unique name of the job.
+  string name = 1;
+  // List of the input blocks.
+  repeated string blocks = 2;
+  // Compaction level (all blocks are the same)
+  uint32 compaction_level = 3;
+  // Fencing token.
+  uint64 commit_index = 4;
+  // Shard the blocks belong to.
+  uint32 shard = 5;
+  // Optional, empty for compaction level 0.
+  string tenant_id = 6;
+  CompactionStatus status = 7;
+}
+
+enum CompactionStatus {
+  COMPACTION_STATUS_UNSPECIFIED = 0;
+  COMPACTION_STATUS_IN_PROGRESS = 1;
+  COMPACTION_STATUS_SUCCESS = 2;
+  COMPACTION_STATUS_FAILURE = 3;
+}

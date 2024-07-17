@@ -480,7 +480,7 @@ func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.Pu
 		})
 		shardTotal := uint32(d.ingestersRing.InstancesCount() * len(ingester.Tokens))
 		profiles[i].shard = TokenFor(tenantID, serviceName) % shardTotal
-		level.Debug(d.logger).Log("distributed profile to ingester", "ingester", ingester.Id, "shard", profiles[i].shard)
+		level.Debug(d.logger).Log("msg", "distributed profile to ingester", "ingester", ingester.Id, "shard", profiles[i].shard, "tenant", tenantID)
 	}
 	tracker := pushTracker{
 		done: make(chan struct{}, 1), // buffer avoids blocking if caller terminates - sendProfiles() only sends once on each

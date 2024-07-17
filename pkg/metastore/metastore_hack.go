@@ -10,6 +10,7 @@ import (
 	"github.com/oklog/ulid"
 	"google.golang.org/protobuf/types/known/anypb"
 
+	"github.com/grafana/pyroscope/pkg/metastore/compactionpb"
 	"github.com/grafana/pyroscope/pkg/metastore/raftlogpb"
 )
 

@@ -40,7 +40,7 @@ func (m *metastoreState) applyAddBlock(request *metastorev1.AddBlockRequest) (*m
 			if err != nil {
 				return err
 			}
-			m.addCompactionJob(job)
+			m.addCompactionJob(job, request.Block.CompactionLevel)
 		} else {
 			m.addBlockToCompactionJobQueue(request.Block)
 		}

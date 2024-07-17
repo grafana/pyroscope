@@ -9,8 +9,8 @@ import (
 	"github.com/go-kit/log/level"
 	"go.etcd.io/bbolt"
 
-	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/pkg/metastore/compactionpb"
 )
 
 type tenantShard struct {
@@ -132,14 +132,14 @@ func (m *metastoreState) getOrCreatePlan(key tenantShard) *compactionPlan {
 		return plan
 	}
 	plan := &compactionPlan{
-		jobsByName:          make(map[string]*compactorv1.CompactionJob),
+		jobsByName:          make(map[string]*compactionpb.CompactionJob),
 		queuedBlocksByLevel: make(map[uint32][]*metastorev1.BlockMeta),
 	}
 	m.compactionPlans[key] = plan
 	return plan
 }
 
-func (m *metastoreState) findJob(key tenantShard, name string) *compactorv1.CompactionJob {
+func (m *metastoreState) findJob(key tenantShard, name string) *compactionpb.CompactionJob {
 	plan := m.getOrCreatePlan(key)
 	plan.jobsMutex.Lock()
 	defer plan.jobsMutex.Unlock()
@@ -184,7 +184,7 @@ func (p *compactionPlan) loadJobs(b *bbolt.Bucket) error {
 	defer p.jobsMutex.Unlock()
 	c := b.Cursor()
 	for k, v := c.First(); k != nil; k, v = c.Next() {
-		var job compactorv1.CompactionJob
+		var job compactionpb.CompactionJob
 		if err := job.UnmarshalVT(v); err != nil {
 			return fmt.Errorf("failed to unmarshal job %q: %w", string(k), err)
 		}
@@ -194,8 +194,8 @@ func (p *compactionPlan) loadJobs(b *bbolt.Bucket) error {
 	return nil
 }
 
-func (m *metastoreState) getJobs(status compactorv1.CompactionStatus, fn func(job *compactorv1.CompactionJob) (exit bool)) <-chan *compactorv1.CompactionJob {
-	ch := make(chan *compactorv1.CompactionJob)
+func (m *metastoreState) getJobs(status compactionpb.CompactionStatus, fn func(job *compactionpb.CompactionJob) (exit bool)) <-chan *compactionpb.CompactionJob {
+	ch := make(chan *compactionpb.CompactionJob)
 	go func() {
 		defer close(ch)
 
@@ -205,7 +205,7 @@ func (m *metastoreState) getJobs(status compactorv1.CompactionStatus, fn func(jo
 		for _, plan := range m.compactionPlans {
 			plan.jobsMutex.Lock()
 			for _, job := range plan.jobsByName {
-				if job.Status.Status != status {
+				if job.Status != status {
 					continue
 				}
 				exitCondition := fn(job)
