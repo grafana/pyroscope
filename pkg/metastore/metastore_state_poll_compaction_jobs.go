@@ -23,7 +23,11 @@ func (m *metastoreState) applyPollCompactionJobsStatus(request *compactorv1.Poll
 	err = m.db.boltdb.Update(func(tx *bbolt.Tx) error {
 		for _, statusUpdate := range request.JobStatusUpdates {
 			// find job
-			job := m.findJob(statusUpdate.Shard, statusUpdate.JobName)
+			key := tenantShard{
+				tenant: statusUpdate.TenantId,
+				shard:  statusUpdate.Shard,
+			}
+			job := m.findJob(key, statusUpdate.JobName)
 			if job == nil {
 				return errors.New(fmt.Sprintf("job with name %s not found", statusUpdate.JobName))
 			}

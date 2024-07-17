@@ -13,6 +13,11 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 )
 
+type tenantShard struct {
+	tenant string
+	shard  uint32
+}
+
 type metastoreState struct {
 	logger log.Logger
 
@@ -20,7 +25,7 @@ type metastoreState struct {
 	shards      map[uint32]*metastoreShard
 
 	compactionPlansMutex sync.Mutex
-	compactionPlans      map[uint32]*compactionPlan
+	compactionPlans      map[tenantShard]*compactionPlan
 
 	db *boltdb
 }
@@ -35,7 +40,7 @@ func newMetastoreState(logger log.Logger, db *boltdb) *metastoreState {
 		logger:          logger,
 		shards:          make(map[uint32]*metastoreShard),
 		db:              db,
-		compactionPlans: make(map[uint32]*compactionPlan),
+		compactionPlans: make(map[tenantShard]*compactionPlan),
 	}
 }
 
@@ -104,34 +109,38 @@ func (m *metastoreState) restoreCompactionPlan(tx *bbolt.Tx) error {
 		return err
 	}
 	return cdb.ForEachBucket(func(name []byte) error {
-		shardId, _, ok := parseBucketName(name)
+		shardId, tenant, ok := parseBucketName(name)
 		if !ok {
 			_ = level.Error(m.logger).Log("msg", "malformed bucket name", "name", string(name))
 			return nil
 		}
-		planForShard := m.getOrCreatePlan(shardId)
+		key := tenantShard{
+			tenant: tenant,
+			shard:  shardId,
+		}
+		planForShard := m.getOrCreatePlan(key)
 		return planForShard.loadJobs(cdb.Bucket(name))
 	})
 
 }
 
-func (m *metastoreState) getOrCreatePlan(shardId uint32) *compactionPlan {
+func (m *metastoreState) getOrCreatePlan(key tenantShard) *compactionPlan {
 	m.compactionPlansMutex.Lock()
 	defer m.compactionPlansMutex.Unlock()
 
-	if plan, ok := m.compactionPlans[shardId]; ok {
+	if plan, ok := m.compactionPlans[key]; ok {
 		return plan
 	}
 	plan := &compactionPlan{
 		jobsByName:          make(map[string]*compactorv1.CompactionJob),
 		queuedBlocksByLevel: make(map[uint32][]*metastorev1.BlockMeta),
 	}
-	m.compactionPlans[shardId] = plan
+	m.compactionPlans[key] = plan
 	return plan
 }
 
-func (m *metastoreState) findJob(shardId uint32, name string) *compactorv1.CompactionJob {
-	plan := m.getOrCreatePlan(shardId)
+func (m *metastoreState) findJob(key tenantShard, name string) *compactorv1.CompactionJob {
+	plan := m.getOrCreatePlan(key)
 	plan.jobsMutex.Lock()
 	defer plan.jobsMutex.Unlock()
 

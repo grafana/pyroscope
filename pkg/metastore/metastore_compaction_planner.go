@@ -104,7 +104,11 @@ func (m *Metastore) GetCompactionJobs(_ context.Context, req *compactorv1.GetCom
 }
 
 func (m *metastoreState) tryCreateJob(block *metastorev1.BlockMeta) *compactorv1.CompactionJob {
-	plan := m.getOrCreatePlan(block.Shard)
+	key := tenantShard{
+		tenant: block.TenantId,
+		shard:  block.Shard,
+	}
+	plan := m.getOrCreatePlan(key)
 	plan.jobsMutex.Lock()
 	defer plan.jobsMutex.Unlock()
 
@@ -156,7 +160,11 @@ func (m *metastoreState) tryCreateJob(block *metastorev1.BlockMeta) *compactorv1
 }
 
 func (m *metastoreState) addCompactionJob(job *compactorv1.CompactionJob) {
-	plan := m.getOrCreatePlan(job.Shard)
+	key := tenantShard{
+		tenant: job.TenantId,
+		shard:  job.Shard,
+	}
+	plan := m.getOrCreatePlan(key)
 	plan.jobsMutex.Lock()
 	defer plan.jobsMutex.Unlock()
 
@@ -166,7 +174,11 @@ func (m *metastoreState) addCompactionJob(job *compactorv1.CompactionJob) {
 }
 
 func (m *metastoreState) addBlockToCompactionJobQueue(block *metastorev1.BlockMeta) {
-	plan := m.getOrCreatePlan(block.Shard)
+	key := tenantShard{
+		tenant: block.TenantId,
+		shard:  block.Shard,
+	}
+	plan := m.getOrCreatePlan(key)
 	plan.jobsMutex.Lock()
 	defer plan.jobsMutex.Unlock()
 
