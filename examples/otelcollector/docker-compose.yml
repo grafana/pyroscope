@@ -1,0 +1,41 @@
+version: '3.9'
+services:
+  grafana:
+    image: grafana/grafana:latest
+    volumes:
+      - ./grafana-provisioning:/etc/grafana/provisioning
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
+      - ./grafana/home.json:/default-dashboard.json
+    ports:
+      - 3000:3000
+
+  pyroscope:
+    image: 'grafana/pyroscope:1.0.0-rc.0'
+    ports:
+      - 4040:4040
+    command: -config.file=/etc/pyroscope/config.yaml
+    volumes:
+      - ./pyroscope/config.yaml:/etc/pyroscope/config.yaml
+
+  agent:
+    image: grafana/agent:latest
+    volumes:
+      - ./agent/config:/etc/agent-config
+    command:
+      - run
+      - /etc/agent-config/config.river
+      - --server.http.listen-addr=0.0.0.0:12345
+    environment:
+      HOSTNAME: agent
+      AGENT_MODE: flow
+    ports:
+      - "12345:12345"
+
+  otelcollector:
+    image: otel/opentelemetry-collector:0.67.0
+    restart: always
+    command: ["--config=/etc/otelcollector.yaml"]
+    volumes:
+      - ./otelcollector.yaml:/etc/otelcollector.yaml
+    ports:
+      - "6060:6060"   # pprof extension
