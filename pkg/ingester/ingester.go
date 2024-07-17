@@ -253,10 +253,13 @@ func (i *Ingester) evictBlock(tenantID string, b ulid.ULID, fn func() error) (er
 
 func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
 	return forInstanceUnary(ctx, i, func(instance *instance) (*connect.Response[pushv1.PushResponse], error) {
-		ug := i.limits.DistributorUsageGroups(instance.tenantID)
+		ug, err := i.limits.DistributorUsageGroups(instance.tenantID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get usage groups: %w", err)
+		}
 
 		for _, series := range req.Msg.Series {
-			serviceName := ug.GetServiceName(series.Labels)
+			serviceName := ug.GetUsageGroup(series.Labels)
 
 			for _, sample := range series.Samples {
 				err := pprof.FromBytes(sample.RawProfile, func(p *profilev1.Profile, size int) error {
