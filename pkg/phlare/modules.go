@@ -489,7 +489,10 @@ func (f *Phlare) initServer() (services.Service, error) {
 		httpMetric,
 		objstoreTracerMiddleware,
 		middleware.Func(func(h http.Handler) http.Handler {
-			return k6.LabelsFromBaggageHandler(h)
+			next := k6.LabelsFromBaggageHandler(h)
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				next.ServeHTTP(w, r)
+			})
 		}),
 	}
 	f.Server.HTTPServer.Handler = middleware.Merge(defaultHTTPMiddleware...).Wrap(f.Server.HTTP)
