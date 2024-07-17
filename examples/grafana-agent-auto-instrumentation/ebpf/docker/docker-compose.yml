@@ -1,25 +1,32 @@
----
 version: '3.9'
 services:
   pyroscope:
     image: grafana/pyroscope
     ports:
-      - '4040:4040'
-
+    - 4040:4040
   grafana-agent:
-    image: 'grafana/agent:main'
+    image: grafana/agent:main
     user: root
     privileged: true
-    pid: 'host'
+    pid: host
     environment:
-      - AGENT_MODE=flow
+    - AGENT_MODE=flow
     volumes:
-      - '/var/run/docker.sock:/var/run/docker.sock'
-      - ./config.river:/config.river
+    - /var/run/docker.sock:/var/run/docker.sock
+    - ./config.river:/config.river
     ports:
-      - '12345:12345'
+    - 12345:12345
     command:
-      - 'run'
-      - '/config.river'
-      - '--storage.path=/tmp/agent'
-      - '--server.http.listen-addr=0.0.0.0:12345'
+    - run
+    - /config.river
+    - --storage.path=/tmp/agent
+    - --server.http.listen-addr=0.0.0.0:12345
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+    - GF_INSTALL_PLUGINS=grafana-pyroscope-app
+    - GF_AUTH_ANONYMOUS_ENABLED=true
+    volumes:
+    - ./grafana-provisioning:/etc/grafana/provisioning
+    ports:
+    - 3000:3000

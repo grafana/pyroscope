@@ -1,43 +1,49 @@
-version: "3"
+version: '3'
 services:
   us-east:
     ports:
-      - 5000
+    - 5000
     environment:
-      - REGION=us-east
-      - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
-      - PARAMETERS_POOL_SIZE=1000
-      - PARAMETERS_POOL_BUFFER_SIZE_KB=1000
+    - REGION=us-east
+    - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
+    - PARAMETERS_POOL_SIZE=1000
+    - PARAMETERS_POOL_BUFFER_SIZE_KB=1000
     build:
       context: .
-
   eu-north:
     ports:
-      - 5000
+    - 5000
     environment:
-      - REGION=eu-north
-      - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
-
+    - REGION=eu-north
+    - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
     build:
       context: .
-
   ap-south:
     ports:
-      - 5000
+    - 5000
     environment:
-      - REGION=ap-south
-      - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
+    - REGION=ap-south
+    - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
     build:
       context: .
-
   pyroscope:
     image: grafana/pyroscope:latest
     ports:
-      - '4040:4040'
-
+    - 4040:4040
   load-generator:
     build:
       context: .
       dockerfile: Dockerfile.load-generator
     environment:
-      - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
+    - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+    - GF_INSTALL_PLUGINS=grafana-pyroscope-app
+    - GF_AUTH_ANONYMOUS_ENABLED=true
+    - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    - GF_AUTH_DISABLE_LOGIN_FORM=true
+    volumes:
+    - ./grafana-provisioning:/etc/grafana/provisioning
+    ports:
+    - 3000:3000

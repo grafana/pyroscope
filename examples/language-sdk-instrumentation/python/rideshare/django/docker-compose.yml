@@ -1,34 +1,40 @@
 version: '3'
-
 services:
   pyroscope:
     image: grafana/pyroscope
     ports:
-      - '4040:4040'
-
+    - 4040:4040
   web:
     build: ./app
     command: python manage.py runserver 0.0.0.0:8000
     ports:
-      - 8000:8000
+    - 8000:8000
     env_file:
-      - ./.env.dev
+    - ./.env.dev
     depends_on:
-      - db
-
+    - db
   db:
     image: postgres:13.0-alpine
     ports:
-      - '5432'
+    - '5432'
     environment:
-      - POSTGRES_USER=hello_django
-      - POSTGRES_PASSWORD=hello_django
-      - POSTGRES_DB=hello_django_dev
-
+    - POSTGRES_USER=hello_django
+    - POSTGRES_PASSWORD=hello_django
+    - POSTGRES_DB=hello_django_dev
   load-generator:
     build:
       context: .
       dockerfile: Dockerfile.load-generator
-
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+    - GF_INSTALL_PLUGINS=grafana-pyroscope-app
+    - GF_AUTH_ANONYMOUS_ENABLED=true
+    - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    - GF_AUTH_DISABLE_LOGIN_FORM=true
+    volumes:
+    - ./grafana-provisioning:/etc/grafana/provisioning
+    ports:
+    - 3000:3000
 volumes:
-  postgres_data:
+  postgres_data: null
