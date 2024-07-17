@@ -1,10 +1,10 @@
-# Grafana Agent mull mode integration
+# Grafana Agent pull mode integration
 
 This example demonstrates how you can use Grafana Agent with Grafana Pyroscope to profile otel collector.
 
 ### 1. Configure Grafana agent
 
-For Grafana Agent to pull profiles from your application, configure the agent for things like profiling configuration, targets, and possibly authentication.
+For Grafana Alloy to pull profiles from your application, configure the agent for things like profiling configuration, targets, and possibly authentication.
 
 You can find a list of [arguments](https://grafana.com/docs/agent/next/flow/reference/components/pyroscope.scrape/#arguments) and [supported blocks](https://grafana.com/docs/agent/next/flow/reference/components/pyroscope.scrape/#blocks) in the [Grafana Agent documentation for Pyroscope](https://grafana.com/docs/agent/next/flow/reference/components/pyroscope.scrape/)
 
