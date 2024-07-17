@@ -4,6 +4,19 @@
   },
   "pyroscope": {
     "components": {
+      "compaction-worker": {
+        "kind": "Deployment",
+        "replicaCount": 3,
+        "resources": {
+          "limits": {
+            "memory": "16Gi"
+          },
+          "requests": {
+            "cpu": 4,
+            "memory": "8Gi"
+          }
+        }
+      },
       "compactor": {
         "kind": "StatefulSet",
         "persistence": {

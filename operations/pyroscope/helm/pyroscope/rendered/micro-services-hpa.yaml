@@ -1746,6 +1746,7 @@ spec:
     app.kubernetes.io/component: "compactor"
 ---
 # Source: pyroscope/templates/services.yaml
+# TODO: headless services need to be listed explicitly
 apiVersion: v1
 kind: Service
 metadata:
@@ -1797,6 +1798,7 @@ spec:
     app.kubernetes.io/component: "distributor"
 ---
 # Source: pyroscope/templates/services.yaml
+# TODO: headless services need to be listed explicitly
 apiVersion: v1
 kind: Service
 metadata:
@@ -1848,6 +1850,7 @@ spec:
     app.kubernetes.io/component: "ingester"
 ---
 # Source: pyroscope/templates/services.yaml
+# TODO: headless services need to be listed explicitly
 apiVersion: v1
 kind: Service
 metadata:
@@ -1899,6 +1902,7 @@ spec:
     app.kubernetes.io/component: "querier"
 ---
 # Source: pyroscope/templates/services.yaml
+# TODO: headless services need to be listed explicitly
 apiVersion: v1
 kind: Service
 metadata:
@@ -1950,6 +1954,7 @@ spec:
     app.kubernetes.io/component: "query-frontend"
 ---
 # Source: pyroscope/templates/services.yaml
+# TODO: headless services need to be listed explicitly
 apiVersion: v1
 kind: Service
 metadata:
@@ -2001,6 +2006,7 @@ spec:
     app.kubernetes.io/component: "query-scheduler"
 ---
 # Source: pyroscope/templates/services.yaml
+# TODO: headless services need to be listed explicitly
 apiVersion: v1
 kind: Service
 metadata:
@@ -2052,6 +2058,7 @@ spec:
     app.kubernetes.io/component: "store-gateway"
 ---
 # Source: pyroscope/templates/services.yaml
+# TODO: headless services need to be listed explicitly
 apiVersion: v1
 kind: Service
 metadata:

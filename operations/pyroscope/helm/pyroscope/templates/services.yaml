@@ -26,6 +26,8 @@ spec:
     {{- include "pyroscope.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component | quote }}
 ---
+# TODO: headless services need to be listed explicitly
+{{- if ne $component "compaction-worker" }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -64,5 +66,6 @@ spec:
   selector:
     {{- include "pyroscope.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component | quote }}
+{{- end }}
 {{- end }}
 {{- end }}
