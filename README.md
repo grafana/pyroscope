@@ -20,7 +20,7 @@ Grafana Pyroscope is an open source continuous profiling platform. It will help 
 * Understand the call tree of your application
 * Auto-instrument your code to link profiling data to traces
 
-## 🔥 [Pyroscope Live Demo](https://demo.pyroscope.io/) 🔥
+## 🔥 [Pyroscope Live Demo](https://play.grafana.org/a/grafana-pyroscope-app/)
 
 [![Pyroscope GIF Demo](https://user-images.githubusercontent.com/23323466/143324845-16ff72df-231e-412d-bd0a-38ef2e09cba8.gif)](https://demo.pyroscope.io/)
 
