@@ -85,14 +85,16 @@ function doAllQueryRequests(serviceName, start, end) {
     label_selector: `{service_name="${serviceName}"}`,
   });
 
-  doRenderRequest({
-    from: start,
-    until: end,
-    query: `process_cpu:cpu:nanoseconds:cpu:nanoseconds{service_name="${serviceName}"}`,
-    aggregation: 'sum',
-    format: 'json',
-    'max-nodes': 16384,
-  });
+  // note(bryanhuhta): Temporarily removing this until k6 pyroscope SDK supports
+  // tagging requests.
+  // doRenderRequest({
+  //   from: start,
+  //   until: end,
+  //   query: `process_cpu:cpu:nanoseconds:cpu:nanoseconds{service_name="${serviceName}"}`,
+  //   aggregation: 'sum',
+  //   format: 'json',
+  //   'max-nodes': 16384,
+  // });
 
   doSelectMergeStacktracesRequest({
     start,
@@ -117,16 +119,18 @@ function doAllQueryRequests(serviceName, start, end) {
     matchers: [],
   });
 
-  doRenderDiffRequest({
-    rightQuery: `process_cpu:cpu:nanoseconds:cpu:nanoseconds{service_name="${serviceName}"}`,
-    rightFrom: start,
-    rightUntil: end,
-    leftQuery: `process_cpu:cpu:nanoseconds:cpu:nanoseconds{service_name="${serviceName}"}`,
-    leftFrom: start - (end - start), // Whatever the right query range is, we want to go back the same amount.
-    leftUntil: start,
-    format: 'json',
-    'max-nodes': 16384,
-  });
+  // note(bryanhuhta): Temporarily removing this until k6 pyroscope SDK supports
+  // tagging requests.
+  // doRenderDiffRequest({
+  //   rightQuery: `process_cpu:cpu:nanoseconds:cpu:nanoseconds{service_name="${serviceName}"}`,
+  //   rightFrom: start,
+  //   rightUntil: end,
+  //   leftQuery: `process_cpu:cpu:nanoseconds:cpu:nanoseconds{service_name="${serviceName}"}`,
+  //   leftFrom: start - (end - start), // Whatever the right query range is, we want to go back the same amount.
+  //   leftUntil: start,
+  //   format: 'json',
+  //   'max-nodes': 16384,
+  // });
 }
 
 function newRelativeTimeRange(scalar, unit) {
