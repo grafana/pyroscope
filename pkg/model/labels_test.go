@@ -68,6 +68,42 @@ func TestLabelsUnique(t *testing.T) {
 	}
 }
 
+func Test_LabelsBuilder_Unique(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    Labels
+		add      Labels
+		expected Labels
+	}{
+		{
+			name: "duplicates in input are preserved",
+			input: Labels{
+				{Name: "unique", Value: "yes"},
+				{Name: "unique", Value: "no"},
+			},
+			add: Labels{
+				{Name: "foo", Value: "bar"},
+				{Name: "foo", Value: "baz"},
+			},
+			expected: Labels{
+				{Name: "foo", Value: "baz"},
+				{Name: "unique", Value: "yes"},
+				{Name: "unique", Value: "no"},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			builder := NewLabelsBuilder(test.input)
+			for _, l := range test.add {
+				builder.Set(l.Name, l.Value)
+			}
+			assert.Equal(t, test.expected, builder.Labels())
+		})
+	}
+}
+
 func TestLabels_SessionID_Order(t *testing.T) {
 	input := []Labels{
 		{

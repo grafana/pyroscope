@@ -2,7 +2,6 @@ package model
 
 import (
 	"bytes"
-	"container/heap"
 	"fmt"
 	"io"
 	"sort"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/grafana/pyroscope/pkg/og/util/varint"
 	"github.com/grafana/pyroscope/pkg/slices"
+	"github.com/grafana/pyroscope/pkg/util/minheap"
 )
 
 type Tree struct {
@@ -262,30 +262,29 @@ func (t *Tree) minValue(maxNodes int64) int64 {
 		return 0
 	}
 
-	s := make(minHeap, 0, maxNodes)
-	h := &s
+	h := make([]int64, 0, maxNodes)
 
 	nodes = append(nodes[:0], t.root...)
 	var n *node
 	for len(nodes) > 0 {
 		last := len(nodes) - 1
 		n, nodes = nodes[last], nodes[:last]
-		if h.Len() >= int(maxNodes) {
-			if n.total > (*h)[0] {
-				heap.Pop(h)
+		if len(h) >= int(maxNodes) {
+			if n.total > h[0] {
+				h = minheap.Pop(h)
 			} else {
 				continue
 			}
 		}
-		heap.Push(h, n.total)
+		h = minheap.Push(h, n.total)
 		nodes = append(nodes, n.children...)
 	}
 
-	if h.Len() < int(maxNodes) {
+	if len(h) < int(maxNodes) {
 		return 0
 	}
 
-	return (*h)[0]
+	return h[0]
 }
 
 // size reports number of nodes the tree consists of.
@@ -301,36 +300,6 @@ func (t *Tree) size(buf []*node) int64 {
 		s++
 	}
 	return s
-}
-
-// minHeap is a custom min-heap data structure that stores integers.
-type minHeap []int64
-
-// Len returns the number of elements in the min-heap.
-func (h minHeap) Len() int { return len(h) }
-
-// Less returns true if the element at index i is less than the element at index j.
-// This method is used by the container/heap package to maintain the min-heap property.
-func (h minHeap) Less(i, j int) bool { return h[i] < h[j] }
-
-// Swap exchanges the elements at index i and index j.
-// This method is used by the container/heap package to reorganize the min-heap during its operations.
-func (h minHeap) Swap(i, j int) { h[i], h[j] = h[j], h[i] }
-
-// Push adds an element (x) to the min-heap.
-// This method is used by the container/heap package to grow the min-heap.
-func (h *minHeap) Push(x interface{}) {
-	*h = append(*h, x.(int64))
-}
-
-// Pop removes and returns the smallest element (minimum) from the min-heap.
-// This method is used by the container/heap package to shrink the min-heap.
-func (h *minHeap) Pop() interface{} {
-	old := *h
-	n := len(old)
-	x := old[n-1]
-	*h = old[0 : n-1]
-	return x
 }
 
 const truncatedNodeName = "other"
@@ -473,6 +442,16 @@ func NewTreeMerger() *TreeMerger {
 	return new(TreeMerger)
 }
 
+func (m *TreeMerger) MergeTree(t *Tree) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.t != nil {
+		m.t.Merge(t)
+	} else {
+		m.t = t
+	}
+}
+
 func (m *TreeMerger) MergeTreeBytes(b []byte) error {
 	// TODO(kolesnikovae): Ideally, we should not have
 	// the intermediate tree t but update m.t reading
@@ -481,13 +460,7 @@ func (m *TreeMerger) MergeTreeBytes(b []byte) error {
 	if err != nil {
 		return err
 	}
-	m.mu.Lock()
-	if m.t != nil {
-		m.t.Merge(t)
-	} else {
-		m.t = t
-	}
-	m.mu.Unlock()
+	m.MergeTree(t)
 	return nil
 }
 

@@ -174,10 +174,33 @@ pyroscope:
   # -- Grafana Agent Configuration.
 
 # -------------------------------------
+# Configuration for `alloy` child chart
+# -------------------------------------
+alloy:
+  enabled: true
+  controller:
+    type: "statefulset"
+    replicas: 1
+    podAnnotations:
+      profiles.grafana.com/memory.scrape: "true"
+      profiles.grafana.com/memory.port_name: "http-metrics"
+      profiles.grafana.com/cpu.scrape: "true"
+      profiles.grafana.com/cpu.port_name: "http-metrics"
+      profiles.grafana.com/goroutine.scrape: "true"
+      profiles.grafana.com/goroutine.port_name: "http-metrics"
+  alloy:
+    stabilityLevel: "public-preview"  # This needs to be set for some of our resources until verison v1.2 is released
+    configMap:
+      create: false
+      name: alloy-config-pyroscope
+    clustering:
+      enabled: true
+
+# -------------------------------------
 # Configuration for `grafana-agent` child chart
 # -------------------------------------
 agent:
-  enabled: true
+  enabled: false
   controller:
     type: "statefulset"
     replicas: 1

@@ -260,7 +260,7 @@ $(BIN)/buf: Makefile
 
 $(BIN)/golangci-lint: Makefile
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.58.2
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.1
 
 $(BIN)/protoc-gen-go: Makefile go.mod
 	@mkdir -p $(@D)
@@ -318,6 +318,7 @@ $(BIN)/updater: Makefile
 	@mkdir -p $(@D)
 	GOBIN=$(abspath $(@D)) GOPRIVATE=github.com/grafana/deployment_tools $(GO) install github.com/grafana/deployment_tools/drone/plugins/cmd/updater@d64d509
 
+# Note: When updating the goreleaser version also update .github/workflow/release.yml and .git/workflow/weekly-release.yaml
 $(BIN)/goreleaser: Makefile go.mod
 	@mkdir -p $(@D)
 	GOBIN=$(abspath $(@D)) $(GO) install github.com/goreleaser/goreleaser/v2@v2.0.0
@@ -356,7 +357,7 @@ helm/lint: $(BIN)/helm
 	$(BIN)/helm lint ./operations/pyroscope/helm/pyroscope/
 
 helm/docs: $(BIN)/helm
-	docker run --rm --volume "$(CURDIR)/operations/pyroscope/helm:/helm-docs" -u "$(shell id -u)" jnorwood/helm-docs:v1.13.1
+	docker run --rm --volume "$(CURDIR)/operations/pyroscope/helm:/helm-docs" -u "$(shell id -u)" jnorwood/helm-docs:v1.8.1
 
 .PHONY: goreleaser/lint
 goreleaser/lint: $(BIN)/goreleaser

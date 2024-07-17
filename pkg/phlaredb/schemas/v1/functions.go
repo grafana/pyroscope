@@ -10,13 +10,11 @@ var functionsSchema = parquet.SchemaOf(new(profilev1.Function))
 
 type FunctionPersister struct{}
 
-func (*FunctionPersister) Name() string { return "functions" }
+func (FunctionPersister) Name() string { return "functions" }
 
-func (*FunctionPersister) Schema() *parquet.Schema { return functionsSchema }
+func (FunctionPersister) Schema() *parquet.Schema { return functionsSchema }
 
-func (*FunctionPersister) SortingColumns() parquet.SortingOption { return parquet.SortingColumns() }
-
-func (*FunctionPersister) Deconstruct(row parquet.Row, _ uint64, fn *InMemoryFunction) parquet.Row {
+func (FunctionPersister) Deconstruct(row parquet.Row, fn InMemoryFunction) parquet.Row {
 	if cap(row) < 5 {
 		row = make(parquet.Row, 0, 5)
 	}
@@ -29,7 +27,7 @@ func (*FunctionPersister) Deconstruct(row parquet.Row, _ uint64, fn *InMemoryFun
 	return row
 }
 
-func (*FunctionPersister) Reconstruct(row parquet.Row) (uint64, *InMemoryFunction, error) {
+func (FunctionPersister) Reconstruct(row parquet.Row) (InMemoryFunction, error) {
 	loc := InMemoryFunction{
 		Id:         row[0].Uint64(),
 		Name:       row[1].Uint32(),
@@ -37,7 +35,7 @@ func (*FunctionPersister) Reconstruct(row parquet.Row) (uint64, *InMemoryFunctio
 		Filename:   row[3].Uint32(),
 		StartLine:  row[4].Uint32(),
 	}
-	return 0, &loc, nil
+	return loc, nil
 }
 
 type InMemoryFunction struct {
@@ -54,7 +52,6 @@ type InMemoryFunction struct {
 	StartLine uint32
 }
 
-func (f *InMemoryFunction) Clone() *InMemoryFunction {
-	n := *f
-	return &n
+func (f InMemoryFunction) Clone() InMemoryFunction {
+	return f
 }

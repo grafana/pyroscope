@@ -28,10 +28,9 @@ Here are the steps needed to use PGO in the Rideshare example application.
 3. Extract a profile in pprof format with `profilecli` (see the [Profile CLI documentation](https://grafana.com/docs/pyroscope/latest/ingest-and-analyze-profile-data/profile-cli/#install-profile-cli) for further reference)
 
     ```shell
-    profilecli query merge \
+    profilecli query go-pgo \
         --query='{service_name="ride-sharing-app"}' \
-        --profile-type="process_cpu:cpu:nanoseconds:cpu:nanoseconds" \
-        --from="now-5m" \
+        --from="now-1h" \
         --to="now" \
         --output=pprof=./default.pgo
     ```

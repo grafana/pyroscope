@@ -41,31 +41,44 @@ const (
 )
 
 type SelectedStackTraces struct {
-	symbols   *Symbols
-	selector  []*typesv1.Location
-	relations map[uint32]stackTraceLocationRelation
-	callSite  []uint32 // stack trace of the call site
-	location  uint32   // stack trace leaf
-	depth     uint32
-	buf       []uint64
+	symbols *Symbols
+	// Go PGO filter.
+	gopgo *typesv1.GoPGO
+	// Call site filter
+	relations        map[uint32]stackTraceLocationRelation
+	callSiteSelector []*typesv1.Location
+	callSite         []string // call site strings in the original order.
+	location         string   // stack trace leaf function.
+	depth            uint32
+	buf              []uint64
+	// Function ID => name. The lookup table is used to
+	// avoid unnecessary indirect accesses through the
+	// strings[functions[id].Name] path. Instead, the
+	// name can be resolved directly funcNames[id].
+	funcNames []string
 }
 
 func SelectStackTraces(symbols *Symbols, selector *typesv1.StackTraceSelector) *SelectedStackTraces {
 	x := &SelectedStackTraces{
-		symbols:  symbols,
-		selector: selector.GetCallSite(),
+		symbols:          symbols,
+		callSiteSelector: selector.GetCallSite(),
+		gopgo:            selector.GetGoPgo(),
 	}
-	x.callSite = findCallSite(symbols, x.selector)
+	x.callSite = callSiteFunctions(x.callSiteSelector)
 	if x.depth = uint32(len(x.callSite)); x.depth > 0 {
 		x.location = x.callSite[x.depth-1]
+	}
+	x.funcNames = make([]string, len(symbols.Functions))
+	for i, f := range symbols.Functions {
+		x.funcNames[i] = symbols.Strings[f.Name]
 	}
 	return x
 }
 
-// IsValid reports whether any stack traces match the selector.
+// HasValidCallSite reports whether any stack traces match the selector.
 // An empty selector results in a valid empty selection.
-func (x *SelectedStackTraces) IsValid() bool {
-	return len(x.selector) == 0 || len(x.selector) != 0 && len(x.callSite) != 0
+func (x *SelectedStackTraces) HasValidCallSite() bool {
+	return len(x.callSiteSelector) == 0 || len(x.callSiteSelector) != 0 && len(x.callSite) != 0
 }
 
 // CallSiteValues writes the call site statistics for
@@ -140,9 +153,11 @@ func (x *SelectedStackTraces) appendStackTrace(locations []uint64) stackTraceLoc
 		lines := x.symbols.Locations[locations[i]].Line
 		for j := len(lines) - 1; j >= 0; j-- {
 			f := lines[j].FunctionId
-			n += eq(x.location, f)
-			if pos < x.depth && pos == l {
-				pos += eq(x.callSite[pos], f)
+			if x.location == x.funcNames[f] {
+				n++
+			}
+			if pos < x.depth && pos == l && x.callSite[pos] == x.funcNames[f] {
+				pos++
 			}
 			l++
 		}
@@ -150,22 +165,22 @@ func (x *SelectedStackTraces) appendStackTrace(locations []uint64) stackTraceLoc
 	if n == 0 {
 		return 0
 	}
+	var isLeaf uint32
 	leaf := x.symbols.Locations[locations[0]].Line[0]
-	isLeaf := eq(x.location, leaf.FunctionId)
-	inSubtree := ge(pos, x.depth)
+	if x.location == x.funcNames[leaf.FunctionId] {
+		isLeaf = 1
+	}
+	var inSubtree uint32
+	if pos >= x.depth {
+		inSubtree = 1
+	}
 	return stackTraceLocationRelation(inSubtree | isLeaf<<1 | (1-isLeaf)<<2)
 }
 
-func eq(a, b uint32) uint32 {
-	if a == b {
-		return 1
+func callSiteFunctions(locations []*typesv1.Location) []string {
+	callSite := make([]string, len(locations))
+	for i, loc := range locations {
+		callSite[i] = loc.Name
 	}
-	return 0
-}
-
-func ge(a, b uint32) uint32 {
-	if a >= b {
-		return 1
-	}
-	return 0
+	return callSite
 }

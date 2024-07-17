@@ -24,6 +24,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -422,10 +423,16 @@ func Test_Sessions_Limit(t *testing.T) {
 }
 
 func Test_SampleLabels(t *testing.T) {
+	o := validation.MockDefaultOverrides()
+	defaultRelabelConfigs := o.IngestionRelabelingRules("")
+
 	type testCase struct {
-		description string
-		pushReq     *distributormodel.PushRequest
-		series      []*distributormodel.ProfileSeries
+		description           string
+		pushReq               *distributormodel.PushRequest
+		series                []*distributormodel.ProfileSeries
+		relabelRules          []*relabel.Config
+		expectBytesDropped    float64
+		expectProfilesDropped float64
 	}
 
 	testCases := []testCase{
@@ -582,6 +589,56 @@ func Test_SampleLabels(t *testing.T) {
 			},
 		},
 		{
+			description: "has series labels, and the only sample label name overlaps with series label, creating overlapping groups",
+			pushReq: &distributormodel.PushRequest{
+				Series: []*distributormodel.ProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "foo", Value: "bar"},
+						},
+						Samples: []*distributormodel.ProfileSample{
+							{
+								Profile: pprof2.RawFromProto(&profilev1.Profile{
+									StringTable: []string{"", "foo", "bar"},
+									Sample: []*profilev1.Sample{
+										{
+											Value: []int64{1},
+											Label: []*profilev1.Label{
+												{Key: 1, Str: 2},
+											},
+										},
+										{
+											Value: []int64{2},
+										},
+									},
+								}),
+							},
+						},
+					},
+				},
+			},
+			series: []*distributormodel.ProfileSeries{
+				{
+					Labels: []*typesv1.LabelPair{
+						{Name: "foo", Value: "bar"},
+					},
+					Samples: []*distributormodel.ProfileSample{
+						{
+							Profile: pprof2.RawFromProto(&profilev1.Profile{
+								StringTable: []string{"", "foo", "bar"},
+								Sample: []*profilev1.Sample{
+									{
+										Value: []int64{3},
+										Label: nil,
+									},
+								},
+							}),
+						},
+					},
+				},
+			},
+		},
+		{
 			description: "has series labels, samples have distinct label sets",
 			pushReq: &distributormodel.PushRequest{
 				Series: []*distributormodel.ProfileSeries{
@@ -650,12 +707,300 @@ func Test_SampleLabels(t *testing.T) {
 				},
 			},
 		},
+		{
+			description:  "has series labels that should be renamed to no longer include godeltaprof",
+			relabelRules: defaultRelabelConfigs,
+			pushReq: &distributormodel.PushRequest{
+				Series: []*distributormodel.ProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "__name__", Value: "godeltaprof_memory"},
+						},
+						Samples: []*distributormodel.ProfileSample{
+							{
+								Profile: pprof2.RawFromProto(&profilev1.Profile{
+									StringTable: []string{""},
+									Sample: []*profilev1.Sample{{
+										Value: []int64{2},
+										Label: []*profilev1.Label{},
+									}},
+								}),
+							},
+						},
+					},
+				},
+			},
+			series: []*distributormodel.ProfileSeries{
+				{
+					Labels: []*typesv1.LabelPair{
+						{Name: "__delta__", Value: "false"},
+						{Name: "__name__", Value: "memory"},
+						{Name: "__name_replaced__", Value: "godeltaprof_memory"},
+					},
+					Samples: []*distributormodel.ProfileSample{
+						{
+							Profile: pprof2.RawFromProto(&profilev1.Profile{
+								StringTable: []string{""},
+								Sample: []*profilev1.Sample{{
+									Value: []int64{2},
+									Label: []*profilev1.Label{},
+								}},
+							}),
+						},
+					},
+				},
+			},
+		},
+		{
+			description: "has series labels and sample label, which relabel rules drop",
+			relabelRules: []*relabel.Config{
+				{Action: relabel.Drop, SourceLabels: []model.LabelName{"__name__", "span_name"}, Separator: "/", Regex: relabel.MustNewRegexp("unwanted/randomness")},
+			},
+			pushReq: &distributormodel.PushRequest{
+				Series: []*distributormodel.ProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "__name__", Value: "unwanted"},
+						},
+						Samples: []*distributormodel.ProfileSample{
+							{
+								Profile: pprof2.RawFromProto(&profilev1.Profile{
+									StringTable: []string{"", "span_name", "randomness"},
+									Sample: []*profilev1.Sample{
+										{
+											Value: []int64{2},
+											Label: []*profilev1.Label{
+												{Key: 1, Str: 2},
+											},
+										},
+										{
+											Value: []int64{1},
+										},
+									},
+								}),
+							},
+						},
+					},
+				},
+			},
+			expectProfilesDropped: 0,
+			expectBytesDropped:    3,
+			series: []*distributormodel.ProfileSeries{
+				{
+					Labels: []*typesv1.LabelPair{
+						{Name: "__name__", Value: "unwanted"},
+					},
+					Samples: []*distributormodel.ProfileSample{
+						{
+							Profile: pprof2.RawFromProto(&profilev1.Profile{
+								StringTable: []string{""},
+								Sample: []*profilev1.Sample{{
+									Value: []int64{1},
+								}},
+							}),
+						},
+					},
+				},
+			},
+		},
+		{
+			description: "has series/sample labels, drops everything",
+			relabelRules: []*relabel.Config{
+				{Action: relabel.Drop, Regex: relabel.MustNewRegexp(".*")},
+			},
+			pushReq: &distributormodel.PushRequest{
+				Series: []*distributormodel.ProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "__name__", Value: "unwanted"},
+						},
+						Samples: []*distributormodel.ProfileSample{
+							{
+								Profile: pprof2.RawFromProto(&profilev1.Profile{
+									StringTable: []string{"", "span_name", "randomness"},
+									Sample: []*profilev1.Sample{
+										{
+											Value: []int64{2},
+											Label: []*profilev1.Label{
+												{Key: 1, Str: 2},
+											},
+										},
+										{
+											Value: []int64{1},
+										},
+									},
+								}),
+							},
+						},
+					},
+				},
+			},
+			expectProfilesDropped: 1,
+			expectBytesDropped:    6,
+		},
+		{
+			description: "has series labels / sample rules, drops samples label",
+			relabelRules: []*relabel.Config{
+				{Action: relabel.Replace, Regex: relabel.MustNewRegexp(".*"), Replacement: "", TargetLabel: "span_name"},
+			},
+			pushReq: &distributormodel.PushRequest{
+				Series: []*distributormodel.ProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "__name__", Value: "unwanted"},
+						},
+						Samples: []*distributormodel.ProfileSample{
+							{
+								Profile: pprof2.RawFromProto(&profilev1.Profile{
+									StringTable: []string{"", "span_name", "randomness"},
+									Sample: []*profilev1.Sample{
+										{
+											Value: []int64{2},
+											Label: []*profilev1.Label{
+												{Key: 1, Str: 2},
+											},
+										},
+										{
+											Value: []int64{1},
+										},
+									},
+								}),
+							},
+						},
+					},
+				},
+			},
+			series: []*distributormodel.ProfileSeries{
+				{
+					Labels: []*typesv1.LabelPair{
+						{Name: "__name__", Value: "unwanted"},
+					},
+					Samples: []*distributormodel.ProfileSample{
+						{
+							Profile: pprof2.RawFromProto(&profilev1.Profile{
+								StringTable: []string{""},
+								Sample: []*profilev1.Sample{{
+									Value: []int64{3},
+								}},
+							}),
+						},
+					},
+				},
+			},
+		},
+		{
+			description: "ensure only samples of same stacktraces get grouped",
+			pushReq: &distributormodel.PushRequest{
+				Series: []*distributormodel.ProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "__name__", Value: "profile"},
+						},
+						Samples: []*distributormodel.ProfileSample{
+							{
+								Profile: pprof2.RawFromProto(&profilev1.Profile{
+									StringTable: []string{"", "foo", "bar", "binary", "span_id", "aaaabbbbccccdddd", "__name__"},
+									Location: []*profilev1.Location{
+										{Id: 1, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1}}},
+										{Id: 2, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 2}}},
+									},
+									Mapping: []*profilev1.Mapping{{}, {Id: 1, Filename: 3}},
+									Function: []*profilev1.Function{
+										{Id: 1, Name: 1},
+										{Id: 2, Name: 2},
+									},
+									Sample: []*profilev1.Sample{
+										{
+											LocationId: []uint64{1, 2},
+											Value:      []int64{2},
+											Label: []*profilev1.Label{
+												{Key: 6, Str: 1}, // This __name__ label is expected to be removed as it overlaps with the series label name
+
+											},
+										},
+										{
+											LocationId: []uint64{1, 2},
+											Value:      []int64{1},
+										},
+										{
+											LocationId: []uint64{1, 2},
+											Value:      []int64{4},
+											Label: []*profilev1.Label{
+												{Key: 4, Str: 5},
+											},
+										},
+										{
+											Value: []int64{8},
+										},
+										{
+											Value: []int64{16},
+											Label: []*profilev1.Label{
+												{Key: 1, Str: 2},
+											},
+										},
+									},
+								}),
+							},
+						},
+					},
+				},
+			},
+			series: []*distributormodel.ProfileSeries{
+				{
+					Labels: []*typesv1.LabelPair{
+						{Name: "__name__", Value: "profile"},
+					},
+					Samples: []*distributormodel.ProfileSample{
+						{
+							Profile: pprof2.RawFromProto(&profilev1.Profile{
+								StringTable: []string{""},
+								Sample: []*profilev1.Sample{
+									{
+										LocationId: []uint64{1, 2},
+										Value:      []int64{3},
+									},
+									{
+										LocationId: []uint64{1, 2},
+										Value:      []int64{4},
+										Label: []*profilev1.Label{
+											{Key: 1, Str: 2},
+										},
+									},
+									{
+										Value: []int64{8},
+									},
+								},
+							}),
+						},
+					},
+				},
+				{
+					Labels: []*typesv1.LabelPair{
+						{Name: "__name__", Value: "profile"},
+						{Name: "foo", Value: "bar"},
+					},
+					Samples: []*distributormodel.ProfileSample{
+						{
+							Profile: pprof2.RawFromProto(&profilev1.Profile{
+								StringTable: []string{""},
+								Sample: []*profilev1.Sample{{
+									Value: []int64{16},
+									Label: []*profilev1.Label{},
+								}},
+							}),
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.description, func(t *testing.T) {
-			series := extractSampleSeries(tc.pushReq)
+			series, actualBytesDropped, actualProfilesDropped := extractSampleSeries(tc.pushReq, tc.relabelRules)
+			assert.Equal(t, tc.expectBytesDropped, actualBytesDropped)
+			assert.Equal(t, tc.expectProfilesDropped, actualProfilesDropped)
 			require.Len(t, series, len(tc.series))
 			for i, actualSeries := range series {
 				expectedSeries := tc.series[i]

@@ -15,6 +15,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 )
 
@@ -1431,4 +1432,36 @@ func Benchmark_GetProfileLanguage(b *testing.B) {
 			}
 		})
 	}
+}
+
+func Test_SetProfileMetadata(t *testing.T) {
+	p := &profilev1.Profile{
+		SampleType:  []*profilev1.ValueType{{}},
+		StringTable: []string{"", "qux"},
+		PeriodType:  &profilev1.ValueType{},
+	}
+	pt := &typesv1.ProfileType{
+		ID:         "alfa",
+		Name:       "bravo",
+		SampleType: "foo",
+		SampleUnit: "bar",
+		PeriodType: "baz",
+		PeriodUnit: "qux",
+	}
+	SetProfileMetadata(p, pt, 1, 2)
+	expected := &profilev1.Profile{
+		SampleType: []*profilev1.ValueType{{
+			Type: 3, // foo
+			Unit: 2, // bar
+		}},
+		StringTable: []string{"", "qux", "bar", "foo", "baz"},
+		PeriodType: &profilev1.ValueType{
+			Type: 4, // baz
+			Unit: 1, // qux
+		},
+		TimeNanos:         1,
+		Period:            1,
+		DefaultSampleType: 3, // foo
+	}
+	require.Equal(t, expected.String(), p.String())
 }

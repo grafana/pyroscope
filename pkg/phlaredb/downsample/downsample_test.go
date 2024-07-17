@@ -8,6 +8,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/parquet-go/parquet-go"
 	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	phlareparquet "github.com/grafana/pyroscope/pkg/parquet"
@@ -39,8 +40,8 @@ func TestDownsampler_ProfileCounts(t *testing.T) {
 	err = d.Close()
 	require.NoError(t, err)
 
-	verifyProfileCount(t, outDir, "profiles_5m_sum.parquet", 1867)
-	verifyProfileCount(t, outDir, "profiles_1h_sum.parquet", 1)
+	verifyProfileCount(t, outDir, "profiles_5m_sum.parquet", 1869)
+	verifyProfileCount(t, outDir, "profiles_1h_sum.parquet", 50)
 }
 
 func TestDownsampler_Aggregation(t *testing.T) {
@@ -132,6 +133,53 @@ func TestDownsampler_VaryingFingerprints(t *testing.T) {
 
 	verifyProfileCount(t, outDir, "profiles_5m_sum.parquet", 5)
 	verifyProfileCount(t, outDir, "profiles_1h_sum.parquet", 5)
+}
+
+func TestDownsampler_VaryingPartition(t *testing.T) {
+	profiles := make([]schemav1.InMemoryProfile, 0)
+	builder := testhelper.NewProfileBuilder(1703853310000000000).CPUProfile()
+	builder.ForStacktraceString("a", "b", "c").AddSamples(30)
+	builder.ForStacktraceString("a", "b", "c", "d").AddSamples(20)
+	batch, _ := schemav1testhelper.NewProfileSchema(builder.Profile, "cpu")
+	profiles = append(profiles, batch...)
+
+	builder = testhelper.NewProfileBuilder(1703853311000000000).CPUProfile()
+	builder.ForStacktraceString("a", "b", "c").AddSamples(30)
+	builder.ForStacktraceString("a", "b", "c", "d").AddSamples(20)
+	batch, _ = schemav1testhelper.NewProfileSchema(builder.Profile, "cpu")
+	profiles = append(profiles, batch...)
+
+	reader := schemav1.NewInMemoryProfilesRowReader(profiles)
+	rows, err := phlareparquet.ReadAllWithBufferSize(reader, 5)
+	require.NoError(t, err)
+
+	outDir := t.TempDir()
+	d, err := NewDownsampler(outDir, log.NewNopLogger())
+	require.NoError(t, err)
+
+	for i, row := range rows {
+		r := schemav1.ProfileRow(row)
+		r.SetStacktracePartitionID(uint64(i))
+		err = d.AddRow(r, 1)
+		require.NoError(t, err)
+	}
+
+	err = d.Close()
+	require.NoError(t, err)
+
+	downsampledRows := readDownsampledRows(t, filepath.Join(outDir, "profiles_5m_sum.parquet"), 2)
+	schemav1.DownsampledProfileRow(downsampledRows[0]).ForValues(func(values []parquet.Value) {
+		assert.Equal(t, 2, len(values))
+		assert.Equal(t, int64(30), values[0].Int64()) // a, b, c
+		assert.Equal(t, int64(20), values[1].Int64()) // a, b, c, d
+	})
+
+	downsampledRows = readDownsampledRows(t, filepath.Join(outDir, "profiles_1h_sum.parquet"), 2)
+	schemav1.DownsampledProfileRow(downsampledRows[0]).ForValues(func(values []parquet.Value) {
+		assert.Equal(t, 2, len(values))
+		assert.Equal(t, int64(30), values[0].Int64()) // a, b, c
+		assert.Equal(t, int64(20), values[1].Int64()) // a, b, c, d
+	})
 }
 
 func BenchmarkDownsampler_AddRow(b *testing.B) {

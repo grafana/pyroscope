@@ -31,6 +31,7 @@ import (
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 	"github.com/grafana/pyroscope/pkg/util"
 )
 
@@ -49,7 +50,10 @@ type Config struct {
 	// TODO: docs
 	RowGroupTargetSize uint64 `yaml:"row_group_target_size"`
 
-	Parquet *ParquetConfig `yaml:"-"` // Those configs should not be exposed to the user, rather they should be determined by pyroscope itself. Currently, they are solely used for test cases.
+	// Those configs should not be exposed to the user, rather they should be determined by pyroscope itself.
+	// Currently, they are solely used for test cases.
+	Parquet     *ParquetConfig      `yaml:"-"`
+	SymDBFormat symdb.FormatVersion `yaml:"-"`
 
 	MinFreeDisk                uint64        `yaml:"min_free_disk_gb"`
 	MinDiskAvailablePercentage float64       `yaml:"min_disk_available_percentage"`

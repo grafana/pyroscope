@@ -305,7 +305,7 @@ func (b *RequestBuilder) Render(metric string) *flamebearer.FlamebearerProfile {
 	return fb
 }
 
-func (b *RequestBuilder) PushPPROFRequest(file string, metric string) *connect.Request[pushv1.PushRequest] {
+func (b *RequestBuilder) PushPPROFRequestFromFile(file string, metric string) *connect.Request[pushv1.PushRequest] {
 	updateTimestamp := func(rawProfile []byte) []byte {
 		expectedProfile, err := pprof.RawFromBytes(rawProfile)
 		require.NoError(b.t, err)
@@ -329,6 +329,19 @@ func (b *RequestBuilder) PushPPROFRequest(file string, metric string) *connect.R
 			Labels: []*typesv1.LabelPair{
 				{Name: "__name__", Value: metricName},
 				{Name: "__delta__", Value: "false"},
+				{Name: "service_name", Value: b.AppName},
+			},
+			Samples: []*pushv1.RawSample{{RawProfile: rawProfile}},
+		}},
+	})
+	return req
+}
+
+func (b *RequestBuilder) PushPPROFRequestFromBytes(rawProfile []byte, name string) *connect.Request[pushv1.PushRequest] {
+	req := connect.NewRequest(&pushv1.PushRequest{
+		Series: []*pushv1.RawProfileSeries{{
+			Labels: []*typesv1.LabelPair{
+				{Name: "__name__", Value: name},
 				{Name: "service_name", Value: b.AppName},
 			},
 			Samples: []*pushv1.RawSample{{RawProfile: rawProfile}},
@@ -403,7 +416,7 @@ func (b *RequestBuilder) SelectMergeProfile(metric string, query map[string]stri
 	qc := b.QueryClient()
 	resp, err := qc.SelectMergeProfile(context.Background(), connect.NewRequest(&querierv1.SelectMergeProfileRequest{
 		ProfileTypeID: metric,
-		Start:         time.Unix(0, 0).UnixMilli(),
+		Start:         time.Unix(1, 0).UnixMilli(),
 		End:           time.Now().UnixMilli(),
 		LabelSelector: selector.String(),
 	}))

@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
@@ -180,5 +181,46 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 		}
 		sort.Strings(expectedValues)
 		assert.Equal(t, expectedValues, resp.Msg.Names)
+	})
+
+	t.Run("QuerySelectMergeProfile", func(t *testing.T) {
+		req := &querierv1.SelectMergeProfileRequest{
+			ProfileTypeID: "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+			LabelSelector: "{}",
+			Start:         tc.now.Add(-time.Hour).UnixMilli(),
+			End:           tc.now.Add(time.Hour).UnixMilli(),
+		}
+		resp, err := tc.querier.SelectMergeProfile(ctx, connect.NewRequest(req))
+		require.NoError(t, err)
+
+		expected := &profilev1.Profile{
+			SampleType: []*profilev1.ValueType{
+				{Type: 6, Unit: 5},
+			},
+			Sample: []*profilev1.Sample{
+				{LocationId: []uint64{1, 2, 3}, Value: []int64{100}},
+				{LocationId: []uint64{1, 2, 4}, Value: []int64{501}},
+			},
+			Mapping: []*profilev1.Mapping{{Id: 1, HasFunctions: true}},
+			Location: []*profilev1.Location{
+				{Id: 1, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1}}},
+				{Id: 2, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 2}}},
+				{Id: 3, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 3}}},
+				{Id: 4, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 4}}},
+			},
+			Function: []*profilev1.Function{
+				{Id: 1, Name: 1},
+				{Id: 2, Name: 2},
+				{Id: 3, Name: 3},
+				{Id: 4, Name: 4},
+			},
+			StringTable:       []string{"", "foo", "bar", "baz", "boz", "nanoseconds", "cpu"},
+			TimeNanos:         req.End * 1e6,
+			DurationNanos:     7200000000000,
+			PeriodType:        &profilev1.ValueType{Type: 6, Unit: 5},
+			Period:            1000000000,
+			DefaultSampleType: 6,
+		}
+		require.Equal(t, expected.String(), resp.Msg.String())
 	})
 }

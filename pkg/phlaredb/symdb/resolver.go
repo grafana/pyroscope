@@ -14,6 +14,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/model"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/pprof"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 // Resolver converts stack trace samples to one of the profile
@@ -70,7 +71,7 @@ type lazyPartition struct {
 	id uint64
 
 	m       sync.Mutex
-	samples map[uint32]int64
+	samples *SampleAppender
 
 	fetchOnce sync.Once
 	resolver  *Resolver
@@ -129,36 +130,47 @@ func (r *Resolver) Release() {
 // AddSamples adds a collection of stack trace samples to the resolver.
 // Samples can be added to partitions concurrently.
 func (r *Resolver) AddSamples(partition uint64, s schemav1.Samples) {
-	r.WithPartitionSamples(partition, func(samples map[uint32]int64) {
+	r.withPartitionSamples(partition, func(samples *SampleAppender) {
+		samples.AppendMany(s.StacktraceIDs, s.Values)
+	})
+}
+
+func (r *Resolver) AddSamplesWithSpanSelector(partition uint64, s schemav1.Samples, spanSelector model.SpanSelector) {
+	r.withPartitionSamples(partition, func(samples *SampleAppender) {
 		for i, sid := range s.StacktraceIDs {
-			if sid > 0 {
-				samples[sid] += int64(s.Values[i])
+			if _, ok := spanSelector[s.Spans[i]]; ok && sid > 0 {
+				samples.Append(sid, s.Values[i])
 			}
 		}
 	})
 }
 
 func (r *Resolver) AddSamplesFromParquetRow(partition uint64, stacktraceIDs, values []parquet.Value) {
-	r.WithPartitionSamples(partition, func(samples map[uint32]int64) {
+	r.withPartitionSamples(partition, func(samples *SampleAppender) {
 		for i, sid := range stacktraceIDs {
 			if s := sid.Uint32(); s > 0 {
-				samples[s] += values[i].Int64()
+				samples.Append(s, values[i].Uint64())
 			}
 		}
 	})
 }
 
-func (r *Resolver) AddSamplesWithSpanSelector(partition uint64, s schemav1.Samples, spanSelector model.SpanSelector) {
-	r.WithPartitionSamples(partition, func(samples map[uint32]int64) {
-		for i, sid := range s.StacktraceIDs {
-			if _, ok := spanSelector[s.Spans[i]]; ok && sid > 0 {
-				samples[sid] += int64(s.Values[i])
+func (r *Resolver) AddSamplesWithSpanSelectorFromParquetRow(partition uint64, stacktraces, values, spans []parquet.Value, spanSelector model.SpanSelector) {
+	r.withPartitionSamples(partition, func(samples *SampleAppender) {
+		for i, sid := range stacktraces {
+			spanID := spans[i].Uint64()
+			stackID := sid.Uint32()
+			if spanID == 0 || stackID == 0 {
+				continue
+			}
+			if _, ok := spanSelector[spanID]; ok {
+				samples.Append(stackID, values[i].Uint64())
 			}
 		}
 	})
 }
 
-func (r *Resolver) WithPartitionSamples(partition uint64, fn func(map[uint32]int64)) {
+func (r *Resolver) withPartitionSamples(partition uint64, fn func(*SampleAppender)) {
 	p := r.partition(partition)
 	p.m.Lock()
 	defer p.m.Unlock()
@@ -203,16 +215,16 @@ func (r *Resolver) partition(partition uint64) *lazyPartition {
 	}
 	p = &lazyPartition{
 		id:       partition,
-		samples:  make(map[uint32]int64),
+		samples:  NewSampleAppender(),
 		resolver: r,
 	}
 	r.p[partition] = p
 	r.m.Unlock()
 	// Fetch partition in the background, not blocking the caller.
 	// p.reader must be accessed only after p.fetch returns.
-	r.g.Go(func() error {
+	r.g.Go(util.RecoverPanic(func() error {
 		return p.fetch(r.ctx)
-	})
+	}))
 	// r.g.Wait() is called at Resolver.Release.
 	return p
 }
@@ -222,8 +234,8 @@ func (r *Resolver) Tree() (*model.Tree, error) {
 	defer span.Finish()
 	var lock sync.Mutex
 	tree := new(model.Tree)
-	err := r.withSymbols(ctx, func(symbols *Symbols, samples schemav1.Samples) error {
-		resolved, err := symbols.Tree(ctx, samples, r.maxNodes)
+	err := r.withSymbols(ctx, func(symbols *Symbols, appender *SampleAppender) error {
+		resolved, err := symbols.Tree(ctx, appender, r.maxNodes)
 		if err != nil {
 			return err
 		}
@@ -240,8 +252,8 @@ func (r *Resolver) Pprof() (*googlev1.Profile, error) {
 	defer span.Finish()
 	var lock sync.Mutex
 	var p pprof.ProfileMerge
-	err := r.withSymbols(ctx, func(symbols *Symbols, samples schemav1.Samples) error {
-		resolved, err := symbols.Pprof(ctx, samples, r.maxNodes, SelectStackTraces(symbols, r.sts))
+	err := r.withSymbols(ctx, func(symbols *Symbols, appender *SampleAppender) error {
+		resolved, err := symbols.Pprof(ctx, appender, r.maxNodes, SelectStackTraces(symbols, r.sts))
 		if err != nil {
 			return err
 		}
@@ -255,102 +267,34 @@ func (r *Resolver) Pprof() (*googlev1.Profile, error) {
 	return p.Profile(), nil
 }
 
-func (r *Resolver) withSymbols(ctx context.Context, fn func(*Symbols, schemav1.Samples) error) error {
+func (r *Resolver) withSymbols(ctx context.Context, fn func(*Symbols, *SampleAppender) error) error {
 	g, _ := errgroup.WithContext(ctx)
 	g.SetLimit(r.c)
 	for _, p := range r.p {
 		p := p
-		g.Go(func() error {
+		g.Go(util.RecoverPanic(func() error {
 			if err := p.fetch(ctx); err != nil {
 				return err
 			}
-			m := schemav1.NewSamplesFromMap(p.samples)
-			return fn(p.reader.Symbols(), m)
-		})
+			return fn(p.reader.Symbols(), p.samples)
+		}))
 	}
 	return g.Wait()
 }
 
-type pprofBuilder interface {
-	StacktraceInserter
-	init(*Symbols, schemav1.Samples)
-	buildPprof() *googlev1.Profile
-}
-
 func (r *Symbols) Pprof(
 	ctx context.Context,
-	samples schemav1.Samples,
+	appender *SampleAppender,
 	maxNodes int64,
 	selection *SelectedStackTraces,
 ) (*googlev1.Profile, error) {
-	// By default, we use a builder that's optimized
-	// for the simplest case: we take all the source
-	// stack traces unchanged.
-	var b pprofBuilder = new(pprofProtoSymbols)
-	// If a stack trace selector is specified,
-	// check if such a profile can exist at all.
-	if !selection.IsValid() {
-		// Build an empty profile.
-		return b.buildPprof(), nil
-	}
-	// Truncation is applicable when there is an explicit
-	// limit on the number of the nodes in the profile, or
-	// if stack traces should be filtered.
-	if maxNodes > 0 || len(selection.callSite) > 0 {
-		b = &pprofProtoTruncatedSymbols{
-			maxNodes:  maxNodes,
-			selection: selection,
-		}
-	}
-	b.init(r, samples)
-	if err := r.Stacktraces.ResolveStacktraceLocations(ctx, b, samples.StacktraceIDs); err != nil {
-		return nil, err
-	}
-	return b.buildPprof(), nil
+	return buildPprof(ctx, r, appender.Samples(), maxNodes, selection)
 }
 
 func (r *Symbols) Tree(
 	ctx context.Context,
-	samples schemav1.Samples,
+	appender *SampleAppender,
 	maxNodes int64,
 ) (*model.Tree, error) {
-	t := treeSymbolsFromPool()
-	defer t.reset()
-	t.init(r, samples)
-	if err := r.Stacktraces.ResolveStacktraceLocations(ctx, t, samples.StacktraceIDs); err != nil {
-		return nil, err
-	}
-	return t.tree.Tree(maxNodes, t.symbols.Strings), nil
-}
-
-// findCallSite returns the stack trace of the call site
-// where each element in the stack trace is represented by
-// the function ID. Call site is the last element.
-// TODO(kolesnikovae): Location should also include the line number.
-func findCallSite(symbols *Symbols, locations []*typesv1.Location) []uint32 {
-	if len(locations) == 0 {
-		return nil
-	}
-	m := make(map[string]uint32, len(locations))
-	for _, loc := range locations {
-		m[loc.Name] = 0
-	}
-	c := len(m) // Only count unique names.
-	for f := 0; f < len(symbols.Functions) && c > 0; f++ {
-		s := symbols.Strings[symbols.Functions[f].Name]
-		if _, ok := m[s]; ok {
-			// We assume that no functions have the same name.
-			// Otherwise, the last one takes precedence.
-			m[s] = uint32(f) // f is FunctionId
-			c--
-		}
-	}
-	if c > 0 {
-		return nil
-	}
-	callSite := make([]uint32, len(locations))
-	for i, loc := range locations {
-		callSite[i] = m[loc.Name]
-	}
-	return callSite
+	return buildTree(ctx, r, appender, maxNodes)
 }

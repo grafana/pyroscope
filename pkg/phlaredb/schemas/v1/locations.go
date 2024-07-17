@@ -10,13 +10,11 @@ var locationsSchema = parquet.SchemaOf(new(profilev1.Location))
 
 type LocationPersister struct{}
 
-func (*LocationPersister) Name() string { return "locations" }
+func (LocationPersister) Name() string { return "locations" }
 
-func (*LocationPersister) Schema() *parquet.Schema { return locationsSchema }
+func (LocationPersister) Schema() *parquet.Schema { return locationsSchema }
 
-func (*LocationPersister) SortingColumns() parquet.SortingOption { return parquet.SortingColumns() }
-
-func (*LocationPersister) Deconstruct(row parquet.Row, _ uint64, loc *InMemoryLocation) parquet.Row {
+func (LocationPersister) Deconstruct(row parquet.Row, loc InMemoryLocation) parquet.Row {
 	var (
 		col    = -1
 		newCol = func() int {
@@ -61,7 +59,7 @@ func (*LocationPersister) Deconstruct(row parquet.Row, _ uint64, loc *InMemoryLo
 	return row
 }
 
-func (*LocationPersister) Reconstruct(row parquet.Row) (uint64, *InMemoryLocation, error) {
+func (LocationPersister) Reconstruct(row parquet.Row) (InMemoryLocation, error) {
 	loc := InMemoryLocation{
 		Id:        row[0].Uint64(),
 		MappingId: uint32(row[1].Uint64()),
@@ -76,7 +74,7 @@ func (*LocationPersister) Reconstruct(row parquet.Row) (uint64, *InMemoryLocatio
 	for i, v := range lines[len(lines)/2:] {
 		loc.Line[i].Line = int32(v.Uint64())
 	}
-	return 0, &loc, nil
+	return loc, nil
 }
 
 type InMemoryLocation struct {
@@ -110,11 +108,11 @@ type InMemoryLocation struct {
 	Line []InMemoryLine
 }
 
-func (l *InMemoryLocation) Clone() *InMemoryLocation {
-	x := *l
+func (l InMemoryLocation) Clone() InMemoryLocation {
+	x := l
 	x.Line = make([]InMemoryLine, len(l.Line))
 	copy(x.Line, l.Line)
-	return &x
+	return x
 }
 
 type InMemoryLine struct {

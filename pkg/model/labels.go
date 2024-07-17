@@ -51,6 +51,18 @@ func (ls Labels) Len() int           { return len(ls) }
 func (ls Labels) Swap(i, j int)      { ls[i], ls[j] = ls[j], ls[i] }
 func (ls Labels) Less(i, j int) bool { return ls[i].Name < ls[j].Name }
 
+// Range calls f on each label.
+func (ls Labels) Range(f func(l *typesv1.LabelPair)) {
+	for _, l := range ls {
+		f(l)
+	}
+}
+
+// EmptyLabels returns n empty Labels value, for convenience.
+func EmptyLabels() Labels {
+	return Labels{}
+}
+
 // LabelsEnforcedOrder is a sort order of labels, where profile type and
 // service name labels always go first. This is crucial for query performance
 // as labels determine the physical order of the profiling data.
@@ -274,6 +286,16 @@ func LabelPairsString(lbs []*typesv1.LabelPair) string {
 	return b.String()
 }
 
+// LabelsFromMap returns new sorted Labels from the given map.
+func LabelsFromMap(m map[string]string) Labels {
+	res := make(Labels, 0, len(m))
+	for k, v := range m {
+		res = append(res, &typesv1.LabelPair{Name: k, Value: v})
+	}
+	sort.Sort(res)
+	return res
+}
+
 // LabelsFromStrings creates new labels from pairs of strings.
 func LabelsFromStrings(ss ...string) Labels {
 	if len(ss)%2 != 0 {
@@ -371,6 +393,45 @@ func (b *LabelsBuilder) Set(n, v string) *LabelsBuilder {
 	b.add = append(b.add, &typesv1.LabelPair{Name: n, Value: v})
 
 	return b
+}
+
+func (b *LabelsBuilder) Get(n string) string {
+	// Del() removes entries from .add but Set() does not remove from .del, so check .add first.
+	for _, a := range b.add {
+		if a.Name == n {
+			return a.Value
+		}
+	}
+	if slices.Contains(b.del, n) {
+		return ""
+	}
+	return b.base.Get(n)
+}
+
+// Range calls f on each label in the Builder.
+func (b *LabelsBuilder) Range(f func(l *typesv1.LabelPair)) {
+	// Stack-based arrays to avoid heap allocation in most cases.
+	var addStack [128]*typesv1.LabelPair
+	var delStack [128]string
+	// Take a copy of add and del, so they are unaffected by calls to Set() or Del().
+	origAdd, origDel := append(addStack[:0], b.add...), append(delStack[:0], b.del...)
+	b.base.Range(func(l *typesv1.LabelPair) {
+		if !slices.Contains(origDel, l.Name) && !contains(origAdd, l.Name) {
+			f(l)
+		}
+	})
+	for _, a := range origAdd {
+		f(a)
+	}
+}
+
+func contains(s []*typesv1.LabelPair, n string) bool {
+	for _, a := range s {
+		if a.Name == n {
+			return true
+		}
+	}
+	return false
 }
 
 // Labels returns the labels from the builder. If no modifications
