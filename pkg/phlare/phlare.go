@@ -70,26 +70,27 @@ import (
 )
 
 type Config struct {
-	Target            flagext.StringSliceCSV `yaml:"target,omitempty"`
-	API               api.Config             `yaml:"api"`
-	Server            server.Config          `yaml:"server,omitempty"`
-	Distributor       distributor.Config     `yaml:"distributor,omitempty"`
-	Querier           querier.Config         `yaml:"querier,omitempty"`
-	Frontend          frontend.Config        `yaml:"frontend,omitempty"`
-	Worker            worker.Config          `yaml:"frontend_worker"`
-	LimitsConfig      validation.Limits      `yaml:"limits"`
-	QueryScheduler    scheduler.Config       `yaml:"query_scheduler"`
-	Ingester          ingester.Config        `yaml:"ingester,omitempty"`
-	StoreGateway      storegateway.Config    `yaml:"store_gateway,omitempty"`
-	MemberlistKV      memberlist.KVConfig    `yaml:"memberlist"`
-	PhlareDB          phlaredb.Config        `yaml:"pyroscopedb,omitempty"`
-	Tracing           tracing.Config         `yaml:"tracing"`
-	OverridesExporter exporter.Config        `yaml:"overrides_exporter" doc:"hidden"`
-	RuntimeConfig     runtimeconfig.Config   `yaml:"runtime_config"`
-	Compactor         compactor.Config       `yaml:"compactor"`
-	Metastore         metastore.Config       `yaml:"metastore"`
-	MetastoreClient   metastoreclient.Config `yaml:"metastore_client"` // TODO: merge into Metastore. See QueryBackend
-	QueryBackend      querybackend.Config    `yaml:"query_backend"`
+	Target            flagext.StringSliceCSV  `yaml:"target,omitempty"`
+	API               api.Config              `yaml:"api"`
+	Server            server.Config           `yaml:"server,omitempty"`
+	Distributor       distributor.Config      `yaml:"distributor,omitempty"`
+	Querier           querier.Config          `yaml:"querier,omitempty"`
+	Frontend          frontend.Config         `yaml:"frontend,omitempty"`
+	Worker            worker.Config           `yaml:"frontend_worker"`
+	LimitsConfig      validation.Limits       `yaml:"limits"`
+	QueryScheduler    scheduler.Config        `yaml:"query_scheduler"`
+	Ingester          ingester.Config         `yaml:"ingester,omitempty"`
+	StoreGateway      storegateway.Config     `yaml:"store_gateway,omitempty"`
+	MemberlistKV      memberlist.KVConfig     `yaml:"memberlist"`
+	PhlareDB          phlaredb.Config         `yaml:"pyroscopedb,omitempty"`
+	Tracing           tracing.Config          `yaml:"tracing"`
+	OverridesExporter exporter.Config         `yaml:"overrides_exporter" doc:"hidden"`
+	RuntimeConfig     runtimeconfig.Config    `yaml:"runtime_config"`
+	Compactor         compactor.Config        `yaml:"compactor"`
+	Metastore         metastore.Config        `yaml:"metastore"`
+	MetastoreClient   metastoreclient.Config  `yaml:"metastore_client"` // TODO: merge into Metastore. See QueryBackend
+	QueryBackend      querybackend.Config     `yaml:"query_backend"`
+	CompactionWorker  compactionworker.Config `yaml:"compaction_worker"`
 
 	Storage       StorageConfig       `yaml:"storage"`
 	SelfProfiling SelfProfilingConfig `yaml:"self_profiling,omitempty"`
@@ -160,6 +161,7 @@ func (c *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) 
 	c.Metastore.RegisterFlags(f)
 	c.MetastoreClient.RegisterFlags(f)
 	c.QueryBackend.RegisterFlags(f)
+	c.CompactionWorker.RegisterFlags(f)
 	c.API.RegisterFlags(f)
 }
 
@@ -587,7 +589,7 @@ func (f *Phlare) initVersion() (services.Service, error) {
 }
 
 func (f *Phlare) initCompactionWorker() (svc services.Service, err error) {
-	f.compactionWorker, err = compactionworker.New(f.logger, f.MetastoreClient, f.storageBucket)
+	f.compactionWorker, err = compactionworker.New(f.Cfg.CompactionWorker, f.logger, f.MetastoreClient, f.storageBucket)
 	return f.compactionWorker, nil
 }
 

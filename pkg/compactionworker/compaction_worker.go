@@ -3,6 +3,7 @@ package compactionworker
 import (
 	"context"
 	"crypto/rand"
+	"flag"
 	"io"
 	"math"
 	"os"
@@ -39,6 +40,7 @@ import (
 type Worker struct {
 	*services.BasicService
 
+	config          Config
 	logger          log.Logger
 	metastoreClient *metastoreclient.Client
 	storage         objstore.Bucket
@@ -49,8 +51,18 @@ type Worker struct {
 	pendingStatusUpdates map[string]*compactorv1.CompactionJobStatus
 }
 
-func New(logger log.Logger, metastoreClient *metastoreclient.Client, storage objstore.Bucket) (*Worker, error) {
+type Config struct {
+	JobCapacity int `yaml:"job_capacity"`
+}
+
+func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
+	const prefix = "compaction-worker."
+	f.IntVar(&cfg.JobCapacity, prefix+"job-capacity", 5, "how many concurrent jobs will a worker run at most")
+}
+
+func New(config Config, logger log.Logger, metastoreClient *metastoreclient.Client, storage objstore.Bucket) (*Worker, error) {
 	w := &Worker{
+		config:               config,
 		logger:               logger,
 		metastoreClient:      metastoreClient,
 		storage:              storage,
@@ -120,7 +132,7 @@ func (w *Worker) poll(ctx context.Context) {
 		level.Debug(w.logger).Log("msg", "pending compaction job update", "job", update.JobName, "status", update.Status)
 		pendingStatusUpdates = append(pendingStatusUpdates, update)
 	}
-	jobCapacity := uint32(2 - len(w.activeJobs) - len(w.pendingJobs)) // TODO aleks: make capacity configurable
+	jobCapacity := uint32(w.config.JobCapacity - len(w.activeJobs) - len(w.pendingJobs))
 	if len(pendingStatusUpdates) > 0 || jobCapacity > 0 {
 		jobsResponse, err := w.metastoreClient.PollCompactionJobs(ctx, &compactorv1.PollCompactionJobsRequest{
 			JobStatusUpdates: pendingStatusUpdates,
