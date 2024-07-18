@@ -42,7 +42,7 @@ type Config struct {
 // RegisterFlags registers the flags.
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	cfg.LifecyclerConfig.RegisterFlags(f, util.Logger)
-	f.DurationVar(&cfg.SegmentDuration, "ingester.segment.duration", 1*time.Second, "Timeout when flushing segments to bucket.")
+	f.DurationVar(&cfg.SegmentDuration, "ingester.segment.duration", 500*time.Millisecond, "Timeout when flushing segments to bucket.")
 	f.BoolVar(&cfg.Async, "ingester.async", false, "Enable async mode for ingester.")
 }
 
