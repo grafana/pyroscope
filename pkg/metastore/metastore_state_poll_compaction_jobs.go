@@ -205,7 +205,7 @@ func (m *metastoreState) processCompletedJob(tx *bbolt.Tx, job *compactionpb.Com
 			b := m.findBlock(job.Shard, bId)
 			if b == nil {
 				level.Error(m.logger).Log("msg", "failed to delete block from storage, block not found", "block", bId, "shard", job.Shard)
-				return errors.Wrapf(err, "failed to find compaction job source block %s for deletion", b.Id)
+				return errors.Wrapf(err, "failed to find compaction job source block %s for deletion", bId)
 			}
 
 			_, bKey := keyForBlockMeta(b.Shard, b.TenantId, b.Id)
