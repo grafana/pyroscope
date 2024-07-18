@@ -56,6 +56,7 @@ func (db *boltdb) open(readOnly bool) (err error) {
 
 	opts := *bbolt.DefaultOptions
 	opts.ReadOnly = readOnly
+	opts.NoSync = true
 	if db.boltdb, err = bbolt.Open(db.path, 0644, &opts); err != nil {
 		return fmt.Errorf("failed to open db: %w", err)
 	}
