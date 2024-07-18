@@ -21,7 +21,6 @@ import (
 // when the request is converted to a Raft log entry.
 var commandTypeMap = map[reflect.Type]raftlogpb.CommandType{
 	reflect.TypeOf(new(metastorev1.AddBlockRequest)):           raftlogpb.CommandType_COMMAND_TYPE_ADD_BLOCK,
-	reflect.TypeOf(new(raftlogpb.TruncateCommand)):             raftlogpb.CommandType_COMMAND_TYPE_TRUNCATE,
 	reflect.TypeOf(new(compactorv1.PollCompactionJobsRequest)): raftlogpb.CommandType_COMMAND_TYPE_POLL_COMPACTION_JOBS_STATUS,
 }
 
@@ -30,9 +29,6 @@ var commandTypeMap = map[reflect.Type]raftlogpb.CommandType{
 var commandHandlers = map[raftlogpb.CommandType]commandHandler{
 	raftlogpb.CommandType_COMMAND_TYPE_ADD_BLOCK: func(fsm *FSM, cmd *raft.Log, raw []byte) fsmResponse {
 		return handleCommand(raw, cmd, fsm.state.applyAddBlock)
-	},
-	raftlogpb.CommandType_COMMAND_TYPE_TRUNCATE: func(fsm *FSM, cmd *raft.Log, raw []byte) fsmResponse {
-		return handleCommand(raw, cmd, fsm.state.applyTruncate)
 	},
 	raftlogpb.CommandType_COMMAND_TYPE_POLL_COMPACTION_JOBS_STATUS: func(fsm *FSM, cmd *raft.Log, raw []byte) fsmResponse {
 		return handleCommand(raw, cmd, fsm.state.applyPollCompactionJobsStatus)
