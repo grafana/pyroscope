@@ -2,6 +2,7 @@ package metastore
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/go-kit/log/level"
 	"github.com/hashicorp/raft"
@@ -63,8 +64,14 @@ func (m *metastoreState) applyAddBlock(_ *raft.Log, request *metastorev1.AddBloc
 	m.getOrCreateShard(request.Block.Shard).putSegment(request.Block)
 	if jobToAdd != nil {
 		m.addCompactionJob(jobToAdd)
+		m.compactionMetrics.addedBlocks.WithLabelValues(
+			fmt.Sprint(jobToAdd.Shard), jobToAdd.TenantId, fmt.Sprint(jobToAdd.CompactionLevel)).Inc()
+		m.compactionMetrics.addedJobs.WithLabelValues(
+			fmt.Sprint(jobToAdd.Shard), jobToAdd.TenantId, fmt.Sprint(jobToAdd.CompactionLevel)).Inc()
 	} else if blockToAddToQueue != nil {
 		m.addBlockToCompactionJobQueue(blockToAddToQueue)
+		m.compactionMetrics.addedBlocks.WithLabelValues(
+			fmt.Sprint(blockToAddToQueue.Shard), blockToAddToQueue.TenantId, fmt.Sprint(blockToAddToQueue.CompactionLevel)).Inc()
 	}
 	return &metastorev1.AddBlockResponse{}, nil
 }

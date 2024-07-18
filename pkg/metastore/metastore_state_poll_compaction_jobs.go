@@ -81,42 +81,47 @@ func (m *metastoreState) applyPollCompactionJobsStatus(_ *raft.Log, request *com
 
 		return nil
 	})
-
-	// now update the state
 	if err != nil {
 		return nil, err
 	}
 
+	// now update the state
 	for _, b := range jResult.newBlocks {
 		m.getOrCreateShard(b.Shard).putSegment(b)
+		m.compactionMetrics.addedBlocks.WithLabelValues(fmt.Sprint(b.Shard), b.TenantId, fmt.Sprint(b.CompactionLevel)).Inc()
 	}
 
 	for _, b := range jResult.deletedBlocks {
 		m.getOrCreateShard(b.Shard).deleteSegment(b)
+		m.compactionMetrics.deletedBlocks.WithLabelValues(fmt.Sprint(b.Shard), b.TenantId, fmt.Sprint(b.CompactionLevel)).Inc()
 	}
 
 	for _, j := range jResult.newJobs {
 		m.addCompactionJob(j)
+		m.compactionMetrics.addedJobs.WithLabelValues(fmt.Sprint(j.Shard), j.TenantId, fmt.Sprint(j.CompactionLevel)).Inc()
 	}
 
 	for _, b := range jResult.newQueuedBlocks {
 		m.addBlockToCompactionJobQueue(b)
+		// already counted above
 	}
 
-	for _, job := range jResult.deletedJobs {
+	for _, j := range jResult.deletedJobs {
 		key := tenantShard{
-			tenant: job.TenantId,
-			shard:  job.Shard,
+			tenant: j.TenantId,
+			shard:  j.Shard,
 		}
-		m.getOrCreatePlan(key).deleteJob(job.Name)
+		m.getOrCreatePlan(key).deleteJob(j.Name)
+		m.compactionMetrics.completedJobs.WithLabelValues(fmt.Sprint(j.Shard), j.TenantId, fmt.Sprint(j.CompactionLevel)).Inc()
 	}
 
-	for _, job := range jResult.newJobAssignments {
+	for _, j := range jResult.newJobAssignments {
 		key := tenantShard{
-			tenant: job.TenantId,
-			shard:  job.Shard,
+			tenant: j.TenantId,
+			shard:  j.Shard,
 		}
-		m.getOrCreatePlan(key).setJobStatus(job.Name, compactionpb.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS)
+		m.getOrCreatePlan(key).setJobStatus(j.Name, compactionpb.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS)
+		m.compactionMetrics.assignedJobs.WithLabelValues(fmt.Sprint(j.Shard), j.TenantId, fmt.Sprint(j.CompactionLevel)).Inc()
 	}
 
 	resp.CompactionJobs, err = m.convertJobs(jResult.newJobAssignments)

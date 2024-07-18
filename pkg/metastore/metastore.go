@@ -108,7 +108,7 @@ func New(config Config, limits Limits, logger log.Logger, reg prometheus.Registe
 		done:   make(chan struct{}),
 	}
 	m.leaderhealth = raftleader.NewRaftLeaderHealthObserver(hs, logger)
-	m.state = newMetastoreState(logger, m.db)
+	m.state = newMetastoreState(logger, m.db, m.reg)
 	m.service = services.NewBasicService(m.starting, m.running, m.stopping)
 	return m, nil
 }

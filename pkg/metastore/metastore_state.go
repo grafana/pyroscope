@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -19,7 +20,8 @@ type tenantShard struct {
 }
 
 type metastoreState struct {
-	logger log.Logger
+	logger            log.Logger
+	compactionMetrics *compactionMetrics
 
 	shardsMutex sync.Mutex
 	shards      map[uint32]*metastoreShard
@@ -35,12 +37,13 @@ type metastoreShard struct {
 	segments      map[string]*metastorev1.BlockMeta
 }
 
-func newMetastoreState(logger log.Logger, db *boltdb) *metastoreState {
+func newMetastoreState(logger log.Logger, db *boltdb, reg prometheus.Registerer) *metastoreState {
 	return &metastoreState{
-		logger:          logger,
-		shards:          make(map[uint32]*metastoreShard),
-		db:              db,
-		compactionPlans: make(map[tenantShard]*compactionPlan),
+		logger:            logger,
+		shards:            make(map[uint32]*metastoreShard),
+		db:                db,
+		compactionPlans:   make(map[tenantShard]*compactionPlan),
+		compactionMetrics: newCompactionMetrics(reg),
 	}
 }
 

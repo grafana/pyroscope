@@ -8,6 +8,7 @@ import (
 	"github.com/cespare/xxhash/v2"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/prometheus/client_golang/prometheus"
 
 	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -200,4 +201,52 @@ func calculateHash(blocks []*metastorev1.BlockMeta) uint64 {
 		b = append(b, blk.Id...)
 	}
 	return xxhash.Sum64(b)
+}
+
+type compactionMetrics struct {
+	addedBlocks   *prometheus.CounterVec
+	deletedBlocks *prometheus.CounterVec
+	addedJobs     *prometheus.CounterVec
+	assignedJobs  *prometheus.CounterVec
+	completedJobs *prometheus.CounterVec
+}
+
+func newCompactionMetrics(reg prometheus.Registerer) *compactionMetrics {
+	m := &compactionMetrics{
+		addedBlocks: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "pyroscope",
+			Name:      "metastore_compaction_added_blocks",
+			Help:      "The number of blocks added for compaction",
+		}, []string{"shard", "tenant", "level"}),
+		deletedBlocks: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "pyroscope",
+			Name:      "metastore_compaction_deleted_blocks",
+			Help:      "The number of blocks deleted as a result of compaction",
+		}, []string{"shard", "tenant", "level"}),
+		addedJobs: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "pyroscope",
+			Name:      "metastore_compaction_added_jobs",
+			Help:      "The number of created compaction jobs",
+		}, []string{"shard", "tenant", "level"}),
+		assignedJobs: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "pyroscope",
+			Name:      "metastore_compaction_assigned_jobs",
+			Help:      "The number of assigned compaction jobs",
+		}, []string{"shard", "tenant", "level"}),
+		completedJobs: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "pyroscope",
+			Name:      "metastore_compaction_completed_jobs",
+			Help:      "The number of completed compaction jobs",
+		}, []string{"shard", "tenant", "level"}),
+	}
+	if reg != nil {
+		reg.MustRegister(
+			m.addedBlocks,
+			m.deletedBlocks,
+			m.addedJobs,
+			m.assignedJobs,
+			m.completedJobs,
+		)
+	}
+	return m
 }
