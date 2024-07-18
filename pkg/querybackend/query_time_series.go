@@ -11,6 +11,7 @@ import (
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	parquetquery "github.com/grafana/pyroscope/pkg/phlaredb/query"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/querybackend/block"
 )
 
 func init() {
@@ -19,9 +20,9 @@ func init() {
 		querybackendv1.ReportType_REPORT_TIME_SERIES,
 		queryTimeSeries,
 		newTimeSeriesMerger,
-		[]section{
-			sectionTSDB,
-			sectionProfiles,
+		[]block.Section{
+			block.SectionTSDB,
+			block.SectionProfiles,
 		}...,
 	)
 }
@@ -33,12 +34,12 @@ func queryTimeSeries(q *queryContext, query *querybackendv1.Query) (r *queryback
 	}
 	defer runutil.CloseWithErrCapture(&err, entries, "failed to close profile entry iterator")
 
-	column, err := schemav1.ResolveColumnByPath(q.svc.profiles.Schema(), strings.Split("TotalValue", "."))
+	column, err := schemav1.ResolveColumnByPath(q.svc.Profiles.Schema(), strings.Split("TotalValue", "."))
 	if err != nil {
 		return nil, err
 	}
 
-	rows := parquetquery.NewRepeatedRowIterator(q.ctx, entries, q.svc.profiles.RowGroups(), column.ColumnIndex)
+	rows := parquetquery.NewRepeatedRowIterator(q.ctx, entries, q.svc.Profiles.RowGroups(), column.ColumnIndex)
 	defer runutil.CloseWithErrCapture(&err, rows, "failed to close column iterator")
 
 	builder := phlaremodel.NewTimeSeriesBuilder(query.TimeSeries.GroupBy...)

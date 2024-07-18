@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
+	"github.com/grafana/pyroscope/pkg/querybackend/block"
 )
 
 func init() {
@@ -20,7 +21,7 @@ func init() {
 		querybackendv1.ReportType_REPORT_LABEL_VALUES,
 		queryLabelValues,
 		newLabelValueMerger,
-		[]section{sectionTSDB}...,
+		[]block.Section{block.SectionTSDB}...,
 	)
 }
 
@@ -28,9 +29,9 @@ func queryLabelValues(q *queryContext, query *querybackendv1.Query) (*querybacke
 	var values []string
 	var err error
 	if len(q.req.matchers) == 0 {
-		values, err = q.svc.tsdb.LabelValues(query.LabelValues.LabelName)
+		values, err = q.svc.TSDB.LabelValues(query.LabelValues.LabelName)
 	} else {
-		values, err = labelValuesForMatchers(q.svc.tsdb, query.LabelValues.LabelName, q.req.matchers)
+		values, err = labelValuesForMatchers(q.svc.TSDB, query.LabelValues.LabelName, q.req.matchers)
 	}
 	if err != nil {
 		return nil, err

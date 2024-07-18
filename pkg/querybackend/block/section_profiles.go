@@ -1,4 +1,4 @@
-package querybackend
+package block
 
 import (
 	"bytes"
@@ -14,25 +14,25 @@ import (
 	"github.com/grafana/pyroscope/pkg/phlaredb/query"
 )
 
-func openProfileTable(_ context.Context, s *tenantService) (err error) {
-	offset := s.sectionOffset(sectionProfiles)
-	size := s.sectionSize(sectionProfiles)
+func openProfileTable(_ context.Context, s *TenantService) (err error) {
+	offset := s.sectionOffset(SectionProfiles)
+	size := s.sectionSize(SectionProfiles)
 	if buf := s.inMemoryBuffer(); buf != nil {
 		offset -= int64(s.offset())
-		s.profiles, err = openParquetFile(
+		s.Profiles, err = openParquetFile(
 			s.inMemoryBucket(buf), s.obj.path, offset, size,
 			0, // Do not prefetch the footer.
 			parquet.SkipBloomFilters(true),
 			parquet.FileReadMode(parquet.ReadModeSync),
 			parquet.ReadBufferSize(4<<10))
 	} else {
-		s.profiles, err = openParquetFile(
+		s.Profiles, err = openParquetFile(
 			s.obj.storage, s.obj.path, offset, size,
 			// TODO(kolesnikovae): Store in TOC.
 			estimateFooterSize(size),
 			parquet.SkipBloomFilters(true),
 			parquet.FileReadMode(parquet.ReadModeAsync),
-			parquet.ReadBufferSize(256<<10))
+			parquet.ReadBufferSize(estimateReadBufferSize(size)))
 	}
 	if err != nil {
 		return fmt.Errorf("opening profile parquet table: %w", err)
@@ -40,7 +40,7 @@ func openProfileTable(_ context.Context, s *tenantService) (err error) {
 	return nil
 }
 
-type parquetFile struct {
+type ParquetFile struct {
 	*parquet.File
 
 	reader objstore.ReaderAtCloser
@@ -59,7 +59,7 @@ func openParquetFile(
 	path string,
 	offset, size, footerSize int64,
 	options ...parquet.FileOption,
-) (p *parquetFile, err error) {
+) (p *ParquetFile, err error) {
 	// The context is used for GetRange calls and should not
 	// be canceled until the parquet file is closed.
 	ctx, cancel := context.WithCancel(context.Background())
@@ -69,7 +69,7 @@ func openParquetFile(
 		}
 	}()
 
-	p = &parquetFile{
+	p = &ParquetFile{
 		cancel:  cancel,
 		storage: storage,
 		path:    path,
@@ -113,7 +113,7 @@ func openParquetFile(
 
 var parquetFooterPool bytebufferpool.Pool
 
-func (f *parquetFile) fetchFooter(ctx context.Context, estimatedSize int64) error {
+func (f *ParquetFile) fetchFooter(ctx context.Context, estimatedSize int64) error {
 	// Fetch the footer of estimated size.
 	buf := bytes.NewBuffer(f.footer.B) // Will be grown if needed.
 	defer func() {
@@ -134,7 +134,7 @@ func (f *parquetFile) fetchFooter(ctx context.Context, estimatedSize int64) erro
 	return objstore.FetchRange(ctx, buf, f.path, f.storage, f.off+f.size-s, s)
 }
 
-func (f *parquetFile) Close() error {
+func (f *ParquetFile) Close() error {
 	if f.cancel != nil {
 		f.cancel()
 	}
@@ -144,13 +144,16 @@ func (f *parquetFile) Close() error {
 	return nil
 }
 
-func (f *parquetFile) Column(ctx context.Context, columnName string, predicate query.Predicate) query.Iterator {
+func (f *ParquetFile) Column(ctx context.Context, columnName string, predicate query.Predicate) query.Iterator {
 	index, _ := query.GetColumnIndexByPath(f.Root(), columnName)
 	if index == -1 {
 		return query.NewErrIterator(fmt.Errorf("column '%s' not found in parquet table", columnName))
 	}
 	return query.NewSyncIterator(ctx, f.RowGroups(), index, columnName, 1<<10, predicate, columnName)
 }
+
+// TODO(kolesnikovae): Figure out optimal thresholds.
+//   It'd better if it was stored in the metadata.
 
 func estimateFooterSize(size int64) int64 {
 	var s int64
@@ -171,6 +174,32 @@ func estimateFooterSize(size int64) int64 {
 		s = size
 	}
 	return s
+}
+
+func estimateReadBufferSize(s int64) int {
+	const minSize = 64 << 10
+	const maxSize = 1 << 20
+	// Parquet has global buffer map, where buffer size is key,
+	// so we want a low cardinality here.
+	e := nextPowerOfTwo(uint32(s / 10))
+	if e < minSize {
+		return minSize
+	}
+	return int(min(e, maxSize))
+}
+
+func nextPowerOfTwo(n uint32) uint32 {
+	if n == 0 {
+		return 1
+	}
+	n--
+	n |= n >> 1
+	n |= n >> 2
+	n |= n >> 4
+	n |= n >> 8
+	n |= n >> 16
+	n++
+	return n
 }
 
 type readerWithFooter struct {

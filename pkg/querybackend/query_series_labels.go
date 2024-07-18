@@ -10,6 +10,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
+	"github.com/grafana/pyroscope/pkg/querybackend/block"
 )
 
 func init() {
@@ -18,12 +19,12 @@ func init() {
 		querybackendv1.ReportType_REPORT_SERIES_LABELS,
 		querySeriesLabels,
 		newSeriesLabelsMerger,
-		[]section{sectionTSDB}...,
+		[]block.Section{block.SectionTSDB}...,
 	)
 }
 
 func querySeriesLabels(q *queryContext, query *querybackendv1.Query) (*querybackendv1.Report, error) {
-	postings, err := getPostings(q.svc.tsdb, q.req.matchers...)
+	postings, err := getPostings(q.svc.TSDB, q.req.matchers...)
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +32,7 @@ func querySeriesLabels(q *queryContext, query *querybackendv1.Query) (*queryback
 	var c []index.ChunkMeta
 	l := make(map[uint64]model.Labels)
 	for postings.Next() {
-		fp, _ := q.svc.tsdb.SeriesBy(postings.At(), &tmp, &c, query.SeriesLabels.LabelNames...)
+		fp, _ := q.svc.TSDB.SeriesBy(postings.At(), &tmp, &c, query.SeriesLabels.LabelNames...)
 		if _, ok := l[fp]; ok {
 			continue
 		}

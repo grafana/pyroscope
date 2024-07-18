@@ -10,6 +10,7 @@ import (
 	parquetquery "github.com/grafana/pyroscope/pkg/phlaredb/query"
 	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
+	"github.com/grafana/pyroscope/pkg/querybackend/block"
 )
 
 func init() {
@@ -18,10 +19,10 @@ func init() {
 		querybackendv1.ReportType_REPORT_TREE,
 		queryTree,
 		newTreeMerger,
-		[]section{
-			sectionTSDB,
-			sectionProfiles,
-			sectionSymbols,
+		[]block.Section{
+			block.SectionTSDB,
+			block.SectionProfiles,
+			block.SectionSymbols,
 		}...,
 	)
 }
@@ -34,16 +35,16 @@ func queryTree(q *queryContext, query *querybackendv1.Query) (*querybackendv1.Re
 	defer runutil.CloseWithErrCapture(&err, entries, "failed to close profile entry iterator")
 
 	var columns v1.SampleColumns
-	if err = columns.Resolve(q.svc.profiles.Schema()); err != nil {
+	if err = columns.Resolve(q.svc.Profiles.Schema()); err != nil {
 		return nil, err
 	}
 
-	profiles := parquetquery.NewRepeatedRowIterator(q.ctx, entries, q.svc.profiles.RowGroups(),
+	profiles := parquetquery.NewRepeatedRowIterator(q.ctx, entries, q.svc.Profiles.RowGroups(),
 		columns.StacktraceID.ColumnIndex,
 		columns.Value.ColumnIndex)
 	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
 
-	resolver := symdb.NewResolver(q.ctx, q.svc.symbols)
+	resolver := symdb.NewResolver(q.ctx, q.svc.Symbols)
 	defer resolver.Release()
 	for profiles.Next() {
 		p := profiles.At()
