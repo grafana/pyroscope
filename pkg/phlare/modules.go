@@ -501,7 +501,8 @@ func (f *Phlare) initServer() (services.Service, error) {
 	f.Cfg.Server.GRPCServerMinTimeBetweenPings = time.Second
 	f.Cfg.Server.GRPCServerTime = 2 * time.Minute
 
-	serv, err := server.New(f.Cfg.Server)
+	metrics := NewServerMetrics(f.Cfg.Server, f.Cfg.Server.Registerer)
+	serv, err := server.NewWithMetrics(f.Cfg.Server, metrics)
 	if err != nil {
 		return nil, err
 	}
