@@ -83,26 +83,9 @@ func NewPlanner(state *metastoreState, logger log.Logger) *Planner {
 	}
 }
 
-type compactionPlan struct {
-	jobsMutex           sync.Mutex
-	jobsByName          map[string]*compactionpb.CompactionJob
-	queuedBlocksByLevel map[uint32][]*metastorev1.BlockMeta
-}
-
-func (p *compactionPlan) setJobStatus(jobName string, status compactionpb.CompactionStatus) {
-	p.jobsMutex.Lock()
-	defer p.jobsMutex.Unlock()
-
-	job := p.jobsByName[jobName]
-	if job != nil {
-		job.Status = status
-	}
-}
-
-func (p *compactionPlan) deleteJob(jobName string) {
-	p.jobsMutex.Lock()
-	defer p.jobsMutex.Unlock()
-	delete(p.jobsByName, jobName)
+type jobPreQueue struct {
+	mu            sync.Mutex
+	blocksByLevel map[uint32][]*metastorev1.BlockMeta
 }
 
 func (m *Metastore) GetCompactionJobs(_ context.Context, req *compactorv1.GetCompactionRequest) (*compactorv1.GetCompactionResponse, error) {
@@ -114,16 +97,16 @@ func (m *metastoreState) tryCreateJob(block *metastorev1.BlockMeta) *compactionp
 		tenant: block.TenantId,
 		shard:  block.Shard,
 	}
-	plan := m.getOrCreatePlan(key)
-	plan.jobsMutex.Lock()
-	defer plan.jobsMutex.Unlock()
+	preQueue := m.getOrCreatePreQueue(key)
+	preQueue.mu.Lock()
+	defer preQueue.mu.Unlock()
 
 	if block.CompactionLevel > globalCompactionStrategy.maxCompactionLevel {
 		level.Info(m.logger).Log("msg", "skipping block at max compaction level", "block", block.Id, "compaction_level", block.CompactionLevel)
 		return nil
 	}
 
-	queuedBlocks := append(plan.queuedBlocksByLevel[block.CompactionLevel], block)
+	queuedBlocks := append(preQueue.blocksByLevel[block.CompactionLevel], block)
 
 	level.Debug(m.logger).Log(
 		"msg", "adding block for compaction",
@@ -163,16 +146,21 @@ func (m *metastoreState) tryCreateJob(block *metastorev1.BlockMeta) *compactionp
 }
 
 func (m *metastoreState) addCompactionJob(job *compactionpb.CompactionJob) {
+	level.Debug(m.logger).Log("msg", "adding compaction job to priority queue", "job", job.Name)
+	if ok := m.compactionJobQueue.enqueue(job); !ok {
+		level.Warn(m.logger).Log("msg", "a compaction job with this name already exists", "job", job.Name)
+		return
+	}
+
+	// reset the pre-queue for this level
 	key := tenantShard{
 		tenant: job.TenantId,
 		shard:  job.Shard,
 	}
-	plan := m.getOrCreatePlan(key)
-	plan.jobsMutex.Lock()
-	defer plan.jobsMutex.Unlock()
-
-	plan.jobsByName[job.Name] = job
-	plan.queuedBlocksByLevel[job.CompactionLevel] = plan.queuedBlocksByLevel[job.CompactionLevel][:0]
+	preQueue := m.getOrCreatePreQueue(key)
+	preQueue.mu.Lock()
+	defer preQueue.mu.Unlock()
+	preQueue.blocksByLevel[job.CompactionLevel] = preQueue.blocksByLevel[job.CompactionLevel][:0]
 }
 
 func (m *metastoreState) addBlockToCompactionJobQueue(block *metastorev1.BlockMeta) {
@@ -180,11 +168,11 @@ func (m *metastoreState) addBlockToCompactionJobQueue(block *metastorev1.BlockMe
 		tenant: block.TenantId,
 		shard:  block.Shard,
 	}
-	plan := m.getOrCreatePlan(key)
-	plan.jobsMutex.Lock()
-	defer plan.jobsMutex.Unlock()
+	preQueue := m.getOrCreatePreQueue(key)
+	preQueue.mu.Lock()
+	defer preQueue.mu.Unlock()
 
-	plan.queuedBlocksByLevel[block.CompactionLevel] = append(plan.queuedBlocksByLevel[block.CompactionLevel], block)
+	preQueue.blocksByLevel[block.CompactionLevel] = append(preQueue.blocksByLevel[block.CompactionLevel], block)
 }
 
 func getTotalSize(blocks []*metastorev1.BlockMeta) uint64 {

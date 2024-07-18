@@ -117,6 +117,7 @@ func (w *Worker) poll(ctx context.Context) {
 
 	pendingStatusUpdates := make([]*compactorv1.CompactionJobStatus, 0, len(w.pendingStatusUpdates))
 	for _, update := range w.pendingStatusUpdates {
+		level.Debug(w.logger).Log("msg", "pending compaction job update", "job", update.JobName, "status", update.Status)
 		pendingStatusUpdates = append(pendingStatusUpdates, update)
 	}
 	jobCapacity := uint32(2 - len(w.activeJobs) - len(w.pendingJobs)) // TODO aleks: make capacity configurable
@@ -157,6 +158,7 @@ func (w *Worker) startJob(ctx context.Context, job *compactorv1.CompactionJob) *
 		CompletedJob: &compactorv1.CompletedJob{},
 		Shard:        job.Shard,
 		TenantId:     job.TenantId,
+		CommitIndex:  job.CommitIndex,
 	}
 
 	level.Info(w.logger).Log(

@@ -5,7 +5,7 @@ import (
 	"slices"
 	"sync"
 
-	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
+	"github.com/grafana/pyroscope/pkg/metastore/compactionpb"
 )
 
 // A priority queue for compaction jobs. Jobs are prioritized by the compaction
@@ -58,7 +58,7 @@ type jobQueueEntry struct {
 	index    int // The index of the job in the heap.
 
 	// The original proto message.
-	proto *compactorv1.CompactionJob
+	proto *compactionpb.CompactionJob
 }
 
 func (c *jobQueueEntry) less(x *jobQueueEntry) bool {
@@ -78,14 +78,17 @@ func (c *jobQueueEntry) less(x *jobQueueEntry) bool {
 	return c.name < x.name
 }
 
-func (c *jobQueueEntry) load(job *compactorv1.CompactionJob) {
-	// TODO(kolesnikovae): Add CompactionLevel to the proto message.
+func (c *jobQueueEntry) load(job *compactionpb.CompactionJob) {
+	js := jobStatusInitial
+	if job.Status == compactionpb.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS {
+		js = jobStatusInProgress
+	}
 	*c = jobQueueEntry{
 		name:     job.Name,
 		shard:    job.Shard,
 		tenant:   job.TenantId,
-		level:    job.Blocks[0].CompactionLevel,
-		status:   jobStatusInitial,
+		level:    job.CompactionLevel,
+		status:   js,
 		index:    0,
 		deadline: 0, // Deadline and token will be assigned
 		token:    0, // when the job is "dequeued" (transferred).
@@ -93,7 +96,7 @@ func (c *jobQueueEntry) load(job *compactorv1.CompactionJob) {
 	}
 }
 
-func (q *jobQueue) dequeue(now int64, token uint64) *compactorv1.CompactionJob {
+func (q *jobQueue) dequeue(now int64, token uint64) *compactionpb.CompactionJob {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	for q.pq.Len() > 0 {
@@ -133,6 +136,17 @@ func (q *jobQueue) update(name string, now int64, token uint64) bool {
 	return false
 }
 
+func (q *jobQueue) peekEvict(name string, token uint64) bool {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if job, exists := q.jobs[name]; exists {
+		if job.token > token {
+			return false
+		}
+	}
+	return true
+}
+
 func (q *jobQueue) evict(name string, token uint64) bool {
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -146,7 +160,7 @@ func (q *jobQueue) evict(name string, token uint64) bool {
 	return true
 }
 
-func (q *jobQueue) enqueue(job *compactorv1.CompactionJob) bool {
+func (q *jobQueue) enqueue(job *compactionpb.CompactionJob) bool {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if _, exists := q.jobs[job.Name]; exists {
@@ -159,7 +173,7 @@ func (q *jobQueue) enqueue(job *compactorv1.CompactionJob) bool {
 	return true
 }
 
-func (q *jobQueue) putJob(job *compactorv1.CompactionJob) {
+func (q *jobQueue) putJob(job *compactionpb.CompactionJob) {
 	var j jobQueueEntry
 	j.load(job)
 	q.jobs[job.Name] = &j

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -27,7 +28,8 @@ type metastoreState struct {
 	shards      map[uint32]*metastoreShard
 
 	compactionPlansMutex sync.Mutex
-	compactionPlans      map[tenantShard]*compactionPlan
+	preCompactionQueues  map[tenantShard]*jobPreQueue
+	compactionJobQueue   *jobQueue
 
 	db *boltdb
 }
@@ -39,11 +41,12 @@ type metastoreShard struct {
 
 func newMetastoreState(logger log.Logger, db *boltdb, reg prometheus.Registerer) *metastoreState {
 	return &metastoreState{
-		logger:            logger,
-		shards:            make(map[uint32]*metastoreShard),
-		db:                db,
-		compactionPlans:   make(map[tenantShard]*compactionPlan),
-		compactionMetrics: newCompactionMetrics(reg),
+		logger:              logger,
+		shards:              make(map[uint32]*metastoreShard),
+		db:                  db,
+		preCompactionQueues: make(map[tenantShard]*jobPreQueue),
+		compactionJobQueue:  newJobQueue(10 * time.Minute.Nanoseconds()),
+		compactionMetrics:   newCompactionMetrics(reg),
 	}
 }
 
@@ -112,42 +115,37 @@ func (m *metastoreState) restoreCompactionPlan(tx *bbolt.Tx) error {
 		return err
 	}
 	return cdb.ForEachBucket(func(name []byte) error {
-		shardId, tenant, ok := parseBucketName(name)
+		_, _, ok := parseBucketName(name)
 		if !ok {
 			_ = level.Error(m.logger).Log("msg", "malformed bucket name", "name", string(name))
 			return nil
 		}
-		key := tenantShard{
-			tenant: tenant,
-			shard:  shardId,
-		}
-		planForShard := m.getOrCreatePlan(key)
-		return planForShard.loadJobs(cdb.Bucket(name))
+		return m.loadJobs(cdb.Bucket(name))
 	})
 
 }
 
-func (m *metastoreState) getOrCreatePlan(key tenantShard) *compactionPlan {
+func (m *metastoreState) getOrCreatePreQueue(key tenantShard) *jobPreQueue {
 	m.compactionPlansMutex.Lock()
 	defer m.compactionPlansMutex.Unlock()
 
-	if plan, ok := m.compactionPlans[key]; ok {
-		return plan
+	if preQueue, ok := m.preCompactionQueues[key]; ok {
+		return preQueue
 	}
-	plan := &compactionPlan{
-		jobsByName:          make(map[string]*compactionpb.CompactionJob),
-		queuedBlocksByLevel: make(map[uint32][]*metastorev1.BlockMeta),
+	plan := &jobPreQueue{
+		blocksByLevel: make(map[uint32][]*metastorev1.BlockMeta),
 	}
-	m.compactionPlans[key] = plan
+	m.preCompactionQueues[key] = plan
 	return plan
 }
 
-func (m *metastoreState) findJob(key tenantShard, name string) *compactionpb.CompactionJob {
-	plan := m.getOrCreatePlan(key)
-	plan.jobsMutex.Lock()
-	defer plan.jobsMutex.Unlock()
-
-	return plan.jobsByName[name]
+func (m *metastoreState) findJob(name string) *compactionpb.CompactionJob {
+	m.compactionJobQueue.mu.Lock()
+	defer m.compactionJobQueue.mu.Unlock()
+	if jobEntry, exists := m.compactionJobQueue.jobs[name]; exists {
+		return jobEntry.proto
+	}
+	return nil
 }
 
 func newMetastoreShard() *metastoreShard {
@@ -182,45 +180,15 @@ func (s *metastoreShard) loadSegments(b *bbolt.Bucket) error {
 	return nil
 }
 
-func (p *compactionPlan) loadJobs(b *bbolt.Bucket) error {
-	p.jobsMutex.Lock()
-	defer p.jobsMutex.Unlock()
+func (m *metastoreState) loadJobs(b *bbolt.Bucket) error {
 	c := b.Cursor()
 	for k, v := c.First(); k != nil; k, v = c.Next() {
 		var job compactionpb.CompactionJob
 		if err := job.UnmarshalVT(v); err != nil {
 			return fmt.Errorf("failed to unmarshal job %q: %w", string(k), err)
 		}
-		p.jobsByName[job.Name] = &job
+		m.compactionJobQueue.enqueue(&job)
 		// TODO aleks: restoring from a snapshot will lose "partial" jobs
 	}
 	return nil
-}
-
-func (m *metastoreState) getJobs(status compactionpb.CompactionStatus, fn func(job *compactionpb.CompactionJob) (exit bool)) <-chan *compactionpb.CompactionJob {
-	ch := make(chan *compactionpb.CompactionJob)
-	go func() {
-		defer close(ch)
-
-		m.compactionPlansMutex.Lock()
-		defer m.compactionPlansMutex.Unlock()
-
-		for _, plan := range m.compactionPlans {
-			plan.jobsMutex.Lock()
-			for _, job := range plan.jobsByName {
-				if job.Status != status {
-					continue
-				}
-				exitCondition := fn(job)
-				if exitCondition {
-					plan.jobsMutex.Unlock()
-					return
-				}
-				ch <- job
-			}
-			plan.jobsMutex.Unlock()
-		}
-	}()
-
-	return ch
 }

@@ -3,6 +3,7 @@ package metastore
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/go-kit/log/level"
 	"github.com/hashicorp/raft"
@@ -29,7 +30,7 @@ type jobResult struct {
 	newJobAssignments []*compactionpb.CompactionJob
 }
 
-func (m *metastoreState) applyPollCompactionJobsStatus(_ *raft.Log, request *compactorv1.PollCompactionJobsRequest) (resp *compactorv1.PollCompactionJobsResponse, err error) {
+func (m *metastoreState) applyPollCompactionJobsStatus(raft *raft.Log, request *compactorv1.PollCompactionJobsRequest) (resp *compactorv1.PollCompactionJobsResponse, err error) {
 	resp = &compactorv1.PollCompactionJobsResponse{}
 	level.Debug(m.logger).Log(
 		"msg", "received poll compaction jobs request",
@@ -47,19 +48,14 @@ func (m *metastoreState) applyPollCompactionJobsStatus(_ *raft.Log, request *com
 
 	err = m.db.boltdb.Update(func(tx *bbolt.Tx) error {
 		for _, statusUpdate := range request.JobStatusUpdates {
-			// find job
-			key := tenantShard{
-				tenant: statusUpdate.TenantId,
-				shard:  statusUpdate.Shard,
-			}
-			job := m.findJob(key, statusUpdate.JobName)
+			job := m.findJob(statusUpdate.JobName)
 			if job == nil {
 				return errors.New(fmt.Sprintf("job with name %s not found", statusUpdate.JobName))
 			}
 
 			level.Debug(m.logger).Log("msg", "processing status update for compaction job", "job", statusUpdate.JobName, "status", statusUpdate.Status)
 			name, _ := keyForCompactionJob(statusUpdate.Shard, statusUpdate.TenantId, statusUpdate.JobName)
-			return updateCompactionJobBucket(tx, name, func(bucket *bbolt.Bucket) error {
+			err := updateCompactionJobBucket(tx, name, func(bucket *bbolt.Bucket) error {
 				switch statusUpdate.Status { // TODO: handle other cases
 				case compactorv1.CompactionStatus_COMPACTION_STATUS_SUCCESS:
 					err := m.processCompletedJob(tx, job, statusUpdate, jResult)
@@ -70,10 +66,14 @@ func (m *metastoreState) applyPollCompactionJobsStatus(_ *raft.Log, request *com
 				}
 				return nil
 			})
+			if err != nil {
+				level.Error(m.logger).Log("msg", "error processing update for compaction job", "job", job.Name, "err", err)
+				continue
+			}
 		}
 
 		if request.JobCapacity > 0 {
-			jResult.newJobAssignments, err = m.assignNewJobs(int(request.JobCapacity), tx)
+			jResult.newJobAssignments, err = m.assignNewJobs(int(request.JobCapacity), tx, raft.Index)
 			if err != nil {
 				return err
 			}
@@ -107,20 +107,11 @@ func (m *metastoreState) applyPollCompactionJobsStatus(_ *raft.Log, request *com
 	}
 
 	for _, j := range jResult.deletedJobs {
-		key := tenantShard{
-			tenant: j.TenantId,
-			shard:  j.Shard,
-		}
-		m.getOrCreatePlan(key).deleteJob(j.Name)
+		m.compactionJobQueue.evict(j.Name, j.CommitIndex)
 		m.compactionMetrics.completedJobs.WithLabelValues(fmt.Sprint(j.Shard), j.TenantId, fmt.Sprint(j.CompactionLevel)).Inc()
 	}
 
 	for _, j := range jResult.newJobAssignments {
-		key := tenantShard{
-			tenant: j.TenantId,
-			shard:  j.Shard,
-		}
-		m.getOrCreatePlan(key).setJobStatus(j.Name, compactionpb.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS)
 		m.compactionMetrics.assignedJobs.WithLabelValues(fmt.Sprint(j.Shard), j.TenantId, fmt.Sprint(j.CompactionLevel)).Inc()
 	}
 
@@ -166,6 +157,10 @@ func (m *metastoreState) convertJobs(jobs []*compactionpb.CompactionJob) ([]*com
 }
 
 func (m *metastoreState) processCompletedJob(tx *bbolt.Tx, job *compactionpb.CompactionJob, update *compactorv1.CompactionJobStatus, jResult *jobResult) error {
+	ownsJob := m.compactionJobQueue.peekEvict(job.Name, update.CommitIndex)
+	if !ownsJob {
+		return errors.New(fmt.Sprintf("deadline exceeded for job with id %s", job.Name))
+	}
 	err := m.persistJobStatus(tx, job, compactionpb.CompactionStatus_COMPACTION_STATUS_SUCCESS)
 	if err != nil {
 		return err
@@ -226,6 +221,7 @@ func (m *metastoreState) processCompletedJob(tx *bbolt.Tx, job *compactionpb.Com
 	if err != nil {
 		return err
 	}
+	job.CommitIndex = update.CommitIndex
 	jResult.deletedJobs = append(jResult.deletedJobs, job)
 	return nil
 }
@@ -257,14 +253,17 @@ func (m *metastoreState) persistJobStatus(tx *bbolt.Tx, job *compactionpb.Compac
 	return err
 }
 
-func (m *metastoreState) assignNewJobs(jobCapacity int, tx *bbolt.Tx) ([]*compactionpb.CompactionJob, error) {
-	jobsToAssign := m.findJobsToAssign(jobCapacity)
+func (m *metastoreState) assignNewJobs(jobCapacity int, tx *bbolt.Tx, token uint64) ([]*compactionpb.CompactionJob, error) {
+	jobsToAssign := m.findJobsToAssign(jobCapacity, token)
+	level.Debug(m.logger).Log("msg", "compaction jobs to assign", "jobs", len(jobsToAssign), "token", token, "capacity", jobCapacity)
 
 	for _, job := range jobsToAssign {
 		// mark job "in progress"
 		err := m.persistJobStatus(tx, job, compactionpb.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS)
 		if err != nil {
 			level.Error(m.logger).Log("msg", "failed to update job status", "job", job.Name, "err", err)
+			// return the job back to the queue
+			m.compactionJobQueue.enqueue(job)
 			return nil, errors.Wrap(err, "failed to update job status")
 		}
 	}
@@ -272,28 +271,18 @@ func (m *metastoreState) assignNewJobs(jobCapacity int, tx *bbolt.Tx) ([]*compac
 	return jobsToAssign, nil
 }
 
-func (m *metastoreState) findJobsToAssign(jobCapacity int) []*compactionpb.CompactionJob {
-	m.compactionPlansMutex.Lock()
-	defer m.compactionPlansMutex.Unlock()
-
+func (m *metastoreState) findJobsToAssign(jobCapacity int, token uint64) []*compactionpb.CompactionJob {
 	jobsToAssign := make([]*compactionpb.CompactionJob, 0, jobCapacity)
 
-	exit := false
-	for _, plan := range m.compactionPlans {
-		if exit {
+	var j *compactionpb.CompactionJob
+	for len(jobsToAssign) < jobCapacity {
+		j = m.compactionJobQueue.dequeue(time.Now().UnixNano(), token)
+		if j == nil {
 			break
 		}
-		plan.jobsMutex.Lock()
-		for _, job := range plan.jobsByName {
-			if len(jobsToAssign) >= jobCapacity {
-				exit = true
-				break
-			}
-			if job.Status == compactionpb.CompactionStatus_COMPACTION_STATUS_UNSPECIFIED {
-				jobsToAssign = append(jobsToAssign, job)
-			}
-		}
-		plan.jobsMutex.Unlock()
+		level.Debug(m.logger).Log("msg", "assigning job to token", "job", j, "token", token)
+		jobsToAssign = append(jobsToAssign, j)
 	}
+
 	return jobsToAssign
 }

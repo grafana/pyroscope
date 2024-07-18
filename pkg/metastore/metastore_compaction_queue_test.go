@@ -6,8 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
-	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/pkg/metastore/compactionpb"
 )
 
 func Test_compactionJobQueue(t *testing.T) {
@@ -15,20 +14,20 @@ func Test_compactionJobQueue(t *testing.T) {
 	lease := int64(10) // Job lease duration.
 	q := newJobQueue(lease)
 
-	assert.True(t, q.enqueue(&compactorv1.CompactionJob{
-		Name:        "job1",
-		CommitIndex: 1,
-		Blocks:      []*metastorev1.BlockMeta{{CompactionLevel: 0}},
+	assert.True(t, q.enqueue(&compactionpb.CompactionJob{
+		Name:            "job1",
+		CommitIndex:     1,
+		CompactionLevel: 0,
 	}))
-	assert.True(t, q.enqueue(&compactorv1.CompactionJob{
-		Name:        "job2",
-		CommitIndex: 2,
-		Blocks:      []*metastorev1.BlockMeta{{CompactionLevel: 1}},
+	assert.True(t, q.enqueue(&compactionpb.CompactionJob{
+		Name:            "job2",
+		CommitIndex:     2,
+		CompactionLevel: 1,
 	}))
-	assert.True(t, q.enqueue(&compactorv1.CompactionJob{
-		Name:        "job3",
-		CommitIndex: 3,
-		Blocks:      []*metastorev1.BlockMeta{{CompactionLevel: 0}},
+	assert.True(t, q.enqueue(&compactionpb.CompactionJob{
+		Name:            "job3",
+		CommitIndex:     3,
+		CompactionLevel: 0,
 	}))
 
 	// Token here is the raft command index.
@@ -65,7 +64,7 @@ func Test_compactionJobQueue(t *testing.T) {
 	require.Nil(t, q.dequeue(now, 14))
 }
 
-func assertJob(t *testing.T, j *compactorv1.CompactionJob, name string, commitIndex uint64) {
+func assertJob(t *testing.T, j *compactionpb.CompactionJob, name string, commitIndex uint64) {
 	require.NotNil(t, j)
 	assert.Equal(t, name, j.Name)
 	assert.Equal(t, commitIndex, j.CommitIndex)
