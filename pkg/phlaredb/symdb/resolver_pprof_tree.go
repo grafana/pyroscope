@@ -31,8 +31,8 @@ type pprofTree struct {
 	functionsBuf []int32
 	locationsBuf []uint64
 
-	callSite []uint32
-	fnNames  func(locations []int32) ([]int32, bool)
+	selection *SelectedStackTraces
+	fnNames   func(locations []int32) ([]int32, bool)
 
 	// After truncation many samples will have the same stack trace.
 	// The map is used to deduplicate them. The key is sample.LocationId
@@ -57,7 +57,7 @@ func (r *pprofTree) init(symbols *Symbols, samples schemav1.Samples) {
 	r.functionTree = model.NewStacktraceTree(samples.Len() * 2)
 	r.stacktraces = make([]truncatedStacktraceSample, 0, samples.Len())
 	r.sampleMap = make(map[string]*googlev1.Sample, samples.Len())
-	if len(r.callSite) > 0 {
+	if r.selection != nil && len(r.selection.callSite) > 0 {
 		r.fnNames = r.locFunctionsFiltered
 	} else {
 		r.fnNames = r.locFunctions
@@ -92,7 +92,7 @@ func (r *pprofTree) locFunctions(locations []int32) ([]int32, bool) {
 func (r *pprofTree) locFunctionsFiltered(locations []int32) ([]int32, bool) {
 	r.functionsBuf = r.functionsBuf[:0]
 	var pos int
-	pathLen := len(r.callSite)
+	pathLen := int(r.selection.depth)
 	// Even if len(locations) < pathLen, we still
 	// need to inspect locations line by line.
 	for i := len(locations) - 1; i >= 0; i-- {
@@ -100,7 +100,7 @@ func (r *pprofTree) locFunctionsFiltered(locations []int32) ([]int32, bool) {
 		for j := len(lines) - 1; j >= 0; j-- {
 			f := lines[j].FunctionId
 			if pos < pathLen {
-				if r.callSite[pos] != f {
+				if r.selection.callSite[pos] != r.selection.funcNames[f] {
 					return nil, false
 				}
 				pos++

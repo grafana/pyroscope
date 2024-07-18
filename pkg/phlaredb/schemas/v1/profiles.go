@@ -503,8 +503,9 @@ func deconstructMemoryProfile(imp InMemoryProfile, row parquet.Row) parquet.Row 
 			col++
 			return col
 		}
-		totalCols = 8 + (7 * len(imp.Samples.StacktraceIDs)) + len(imp.Comments)
+		totalCols = profileColumnCount(imp)
 	)
+
 	if cap(row) < totalCols {
 		row = make(parquet.Row, 0, totalCols)
 	}
@@ -612,6 +613,17 @@ func deconstructMemoryProfile(imp InMemoryProfile, row parquet.Row) parquet.Row 
 		row = append(row, parquet.Int64Value(imp.DefaultSampleType).Level(0, 1, newCol()))
 	}
 	return row
+}
+
+func profileColumnCount(imp InMemoryProfile) int {
+	var totalCols = 10 + (7 * len(imp.Samples.StacktraceIDs)) + len(imp.Comments)
+	if len(imp.Comments) == 0 {
+		totalCols++
+	}
+	if len(imp.Samples.StacktraceIDs) == 0 {
+		totalCols += 7
+	}
+	return totalCols
 }
 
 func NewMergeProfilesRowReader(rowGroups []parquet.RowReader) parquet.RowReader {
