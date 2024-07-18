@@ -18,7 +18,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/gorilla/mux"
-	"github.com/grafana/dskit/instrument"
 	dslog "github.com/grafana/dskit/log"
 	"github.com/grafana/dskit/middleware"
 	"github.com/grafana/dskit/multierror"
@@ -316,7 +315,8 @@ func NewHTTPMetricMiddleware(mux *mux.Router, namespace string, reg prometheus.R
 		Namespace: namespace,
 		Name:      "request_duration_seconds",
 		Help:      "Time (in seconds) spent serving HTTP requests.",
-		Buckets:   instrument.DefBuckets,
+		//Buckets:   instrument.DefBuckets,
+		Buckets: []float64{.005, .01, .025, .05, .1, .2, .3, .4, .5, .6, .7, .8, .9, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2, 4},
 	}, []string{"method", "route", "status_code", "ws"})
 	err := reg.Register(requestDuration)
 	if err != nil {
