@@ -11,19 +11,19 @@ import (
 
 func TestOverrides_DistributorUsageGroups(t *testing.T) {
 	tests := []struct {
-		Name           string
-		TenantID       string
-		UsageGroups    []map[string]string
-		Labels         phlaremodel.Labels
-		WantUsageGroup string
-		WantErrMsg     string
+		Name               string
+		TenantID           string
+		UsageGroups        []map[string]string
+		Labels             phlaremodel.Labels
+		WantUsageGroupName string
+		WantErrMsg         string
 	}{
 		{
-			Name:           "no_usage_groups",
-			TenantID:       "tenant1",
-			UsageGroups:    []map[string]string{},
-			Labels:         phlaremodel.Labels{{Name: "service_name", Value: "foo"}},
-			WantUsageGroup: "other",
+			Name:               "no_usage_groups",
+			TenantID:           "tenant1",
+			UsageGroups:        []map[string]string{},
+			Labels:             phlaremodel.Labels{{Name: "service_name", Value: "foo"}},
+			WantUsageGroupName: "other",
 		},
 		{
 			Name:     "single_matcher",
@@ -35,7 +35,7 @@ func TestOverrides_DistributorUsageGroups(t *testing.T) {
 				{Name: "service_name", Value: "foo"},
 				{Name: "namespace", Value: "foo_namespace"},
 			},
-			WantUsageGroup: "app/foo",
+			WantUsageGroupName: "app/foo",
 		},
 		{
 			Name:     "multiple_matchers",
@@ -47,7 +47,7 @@ func TestOverrides_DistributorUsageGroups(t *testing.T) {
 				{Name: "service_name", Value: "foo"},
 				{Name: "namespace", Value: "foo_namespace"},
 			},
-			WantUsageGroup: "app/foo",
+			WantUsageGroupName: "app/foo",
 		},
 		{
 			Name:     "single_matcher_no_match",
@@ -58,7 +58,7 @@ func TestOverrides_DistributorUsageGroups(t *testing.T) {
 			Labels: phlaremodel.Labels{
 				{Name: "service_name", Value: "bar"},
 			},
-			WantUsageGroup: "other",
+			WantUsageGroupName: "other",
 		},
 		{
 			Name:     "multiple_matchers_no_match",
@@ -70,7 +70,7 @@ func TestOverrides_DistributorUsageGroups(t *testing.T) {
 				{Name: "service_name", Value: "foo"},
 				{Name: "namespace", Value: "bar_namespace"},
 			},
-			WantUsageGroup: "other",
+			WantUsageGroupName: "other",
 		},
 		{
 			Name:     "multiple_usage_groups_match",
@@ -83,7 +83,7 @@ func TestOverrides_DistributorUsageGroups(t *testing.T) {
 				{Name: "service_name", Value: "foo"},
 				{Name: "namespace", Value: "foo_namespace"},
 			},
-			WantUsageGroup: "app/foo",
+			WantUsageGroupName: "app/foo",
 		},
 		{
 			Name:     "match_everything_matcher",
@@ -94,7 +94,7 @@ func TestOverrides_DistributorUsageGroups(t *testing.T) {
 			Labels: phlaremodel.Labels{
 				{Name: "service_name", Value: "does_not_matter"},
 			},
-			WantUsageGroup: "app/foo",
+			WantUsageGroupName: "app/foo",
 		},
 		{
 			Name:     "no_labels",
@@ -102,8 +102,8 @@ func TestOverrides_DistributorUsageGroups(t *testing.T) {
 			UsageGroups: []map[string]string{
 				{"app/foo": `{service_name="foo"}`},
 			},
-			Labels:         phlaremodel.Labels{},
-			WantUsageGroup: "other",
+			Labels:             phlaremodel.Labels{},
+			WantUsageGroupName: "other",
 		},
 		{
 			Name:     "too_many_usage_groups",
@@ -158,9 +158,10 @@ func TestOverrides_DistributorUsageGroups(t *testing.T) {
 				require.Error(t, err)
 				require.EqualError(t, err, tt.WantErrMsg)
 			} else {
-				name := ug.GetUsageGroup(tt.Labels)
+				group := ug.GetUsageGroup(tt.Labels)
 				require.NoError(t, err)
-				require.Equal(t, tt.WantUsageGroup, name)
+				require.Equal(t, tt.WantUsageGroupName, group.name)
+				require.Equal(t, tt.TenantID, group.tenantID)
 			}
 		})
 	}

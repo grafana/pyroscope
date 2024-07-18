@@ -42,7 +42,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 				Help:      "The number of decompressed bytes per profiles received by the distributor.",
 				Buckets:   prometheus.ExponentialBucketsRange(minBytes, maxBytes, bucketsCount),
 			},
-			[]string{"type", "tenant", "service_name"},
+			[]string{"type", "tenant"},
 		),
 		receivedSamples: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{

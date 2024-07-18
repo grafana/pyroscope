@@ -997,9 +997,7 @@ func Test_SampleLabels(t *testing.T) {
 
 	for _, tc := range testCases {
 		tc := tc
-		ug := &validation.TenantUsageGroups{
-			TenantID: "",
-		}
+		ug := &validation.UsageGroupConfig{}
 
 		t.Run(tc.description, func(t *testing.T) {
 			series, actualBytesDropped, actualProfilesDropped := extractSampleSeries(tc.pushReq, ug, tc.relabelRules)

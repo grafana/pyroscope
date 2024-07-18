@@ -26,7 +26,7 @@ type Limits interface {
 	MaxLocalSeriesPerTenant(tenantID string) int
 	MaxGlobalSeriesPerTenant(tenantID string) int
 	IngestionTenantShardSize(tenantID string) int
-	DistributorUsageGroups(tenantID string) (*validation.TenantUsageGroups, error)
+	DistributorUsageGroups(tenantID string) (*validation.UsageGroupConfig, error)
 }
 
 type Limiter interface {

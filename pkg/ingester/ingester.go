@@ -253,13 +253,13 @@ func (i *Ingester) evictBlock(tenantID string, b ulid.ULID, fn func() error) (er
 
 func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
 	return forInstanceUnary(ctx, i, func(instance *instance) (*connect.Response[pushv1.PushResponse], error) {
-		ug, err := i.limits.DistributorUsageGroups(instance.tenantID)
+		usageGroups, err := i.limits.DistributorUsageGroups(instance.tenantID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get usage groups: %w", err)
 		}
 
 		for _, series := range req.Msg.Series {
-			serviceName := ug.GetUsageGroup(series.Labels)
+			usageGroup := usageGroups.GetUsageGroup(series.Labels)
 
 			for _, sample := range series.Samples {
 				err := pprof.FromBytes(sample.RawProfile, func(p *profilev1.Profile, size int) error {
@@ -271,7 +271,9 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 						reason := validation.ReasonOf(err)
 						if reason != validation.Unknown {
 							validation.DiscardedProfiles.WithLabelValues(string(reason), instance.tenantID).Add(float64(1))
-							validation.DiscardedBytes.WithLabelValues(string(reason), instance.tenantID, serviceName).Add(float64(size))
+							validation.DiscardedBytes.WithLabelValues(string(reason), instance.tenantID).Add(float64(size))
+							usageGroup.CountDiscardedBytes(string(reason), int64(size))
+
 							switch validation.ReasonOf(err) {
 							case validation.SeriesLimit:
 								return connect.NewError(connect.CodeResourceExhausted, err)

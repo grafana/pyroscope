@@ -8,6 +8,8 @@ import (
 	"fmt"
 
 	amlabels "github.com/prometheus/alertmanager/pkg/labels"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/prometheus/model/labels"
 
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
@@ -18,34 +20,76 @@ const (
 	maxUsageGroups = 50
 )
 
-// TenantUsageGroups is an allowlist of service names that have per-app usage
+var (
+	// This is a duplicate of distributor_received_decompressed_bytes, but with
+	// usage_group as a label.
+	usageGroupReceivedDecompressedBytes = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "pyroscope",
+			Name:      "usage_group_received_decompressed_total",
+			Help:      "The total number of decompressed bytes per profile received by usage group.",
+		},
+		[]string{"type", "tenant", "usage_group"},
+	)
+
+	// This is a duplicate of discarded_bytes_total, but with usage_group as a
+	// label.
+	UsageGroupDiscardedBytes = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "pyroscope",
+			Name:      "usage_group_discarded_bytes_total",
+			Help:      "The total number of bytes that were discarded by usage group.",
+		},
+		[]string{"reason", "tenant", "usage_group"},
+	)
+)
+
+type usageGroupEntry struct {
+	Name     string
+	Matchers []*labels.Matcher
+}
+
+// UsageGroupConfig is an allowlist of service names that have per-app usage
 // enabled. This allowlist is constructed on a per-tenant basis.
-type TenantUsageGroups struct {
-	TenantID string
-	config   map[string][]*labels.Matcher
+type UsageGroupConfig struct {
+	tenantID string
+	config   []usageGroupEntry
 }
 
 // GetUsageGroupName matches the label set to a usage group. If no usage group
 // is matched, the default group name is used.
-func (u *TenantUsageGroups) GetUsageGroup(lbls phlaremodel.Labels) string {
-	groupName := "other"
-	if u == nil {
-		return groupName
+func (u *UsageGroupConfig) GetUsageGroup(lbls phlaremodel.Labels) UsageGroup {
+	group := UsageGroup{
+		tenantID: u.tenantID,
+		name:     "other",
 	}
 
-	for name, matchers := range u.config {
-		if matchesAll(matchers, lbls) {
-			groupName = name
+	for _, cfgGroup := range u.config {
+		if matchesAll(cfgGroup.Matchers, lbls) {
+			group.name = cfgGroup.Name
 		}
 	}
-	return groupName
+	return group
+}
+
+type UsageGroup struct {
+	tenantID string
+	name     string
+}
+
+func (u UsageGroup) CountReceivedBytes(profileType string, n int64) {
+	usageGroupReceivedDecompressedBytes.WithLabelValues(profileType, u.tenantID, u.name).Add(float64(n))
+}
+
+func (u UsageGroup) CountDiscardedBytes(reason string, n int64) {
+	UsageGroupDiscardedBytes.WithLabelValues(reason, u.tenantID, u.name).Add(float64(n))
 }
 
 // DistributorUsageGroups returns the usage groups that are enabled for this
 // tenant.
-func (o *Overrides) DistributorUsageGroups(tenantID string) (*TenantUsageGroups, error) {
-	ug := &TenantUsageGroups{
-		TenantID: tenantID,
+func (o *Overrides) DistributorUsageGroups(tenantID string) (*UsageGroupConfig, error) {
+	ug := &UsageGroupConfig{
+		tenantID: tenantID,
 	}
 
 	groups := o.getOverridesForTenant(tenantID).DistributorUsageGroups
@@ -58,7 +102,8 @@ func (o *Overrides) DistributorUsageGroups(tenantID string) (*TenantUsageGroups,
 	}
 
 	existingNames := make(map[string]struct{}, len(groups))
-	ug.config = make(map[string][]*labels.Matcher, len(groups))
+	ug.config = make([]usageGroupEntry, 0, len(groups))
+
 	for _, group := range groups {
 		for name, matchersString := range group {
 			if _, ok := existingNames[name]; ok {
@@ -83,7 +128,10 @@ func (o *Overrides) DistributorUsageGroups(tenantID string) (*TenantUsageGroups,
 			for i, m := range amMatchers {
 				matchers[i] = amlabelMatcherToProm(m)
 			}
-			ug.config[name] = matchers
+			ug.config = append(ug.config, usageGroupEntry{
+				Name:     name,
+				Matchers: matchers,
+			})
 		}
 	}
 
