@@ -94,12 +94,14 @@ func (w *Worker) running(ctx context.Context) error {
 			w.jobMutex.RUnlock()
 
 			if len(pendingJobs) > 0 {
-				level.Info(w.logger).Log("msg", "starting pending compaction jobs", "pendingJobs", len(w.pendingJobs))
+				level.Info(w.logger).Log("msg", "starting pending compaction jobs", "pendingJobs", len(pendingJobs))
 				for _, job := range pendingJobs {
 					job := job
 					go func() {
+						w.jobMutex.Lock()
 						w.activeJobs[job.Name] = job
 						delete(w.pendingJobs, job.Name)
+						w.jobMutex.Unlock()
 
 						level.Info(w.logger).Log("msg", "starting compaction job", "job", job.Name)
 						status := w.startJob(ctx, job)
@@ -121,6 +123,7 @@ func (w *Worker) running(ctx context.Context) error {
 }
 
 func (w *Worker) poll(ctx context.Context) {
+	w.jobMutex.Lock()
 	level.Debug(w.logger).Log(
 		"msg", "polling for compaction jobs and status updates",
 		"active_jobs", len(w.activeJobs),
@@ -133,6 +136,8 @@ func (w *Worker) poll(ctx context.Context) {
 		pendingStatusUpdates = append(pendingStatusUpdates, update)
 	}
 	jobCapacity := uint32(w.config.JobCapacity - len(w.activeJobs) - len(w.pendingJobs))
+	w.jobMutex.Unlock()
+
 	if len(pendingStatusUpdates) > 0 || jobCapacity > 0 {
 		jobsResponse, err := w.metastoreClient.PollCompactionJobs(ctx, &compactorv1.PollCompactionJobsRequest{
 			JobStatusUpdates: pendingStatusUpdates,
@@ -147,8 +152,6 @@ func (w *Worker) poll(ctx context.Context) {
 		level.Debug(w.logger).Log("msg", "poll response received", "compaction_jobs", len(jobsResponse.CompactionJobs))
 
 		w.jobMutex.Lock()
-		defer w.jobMutex.Unlock()
-
 		for _, update := range pendingStatusUpdates {
 			delete(w.pendingStatusUpdates, update.JobName)
 		}
@@ -156,6 +159,7 @@ func (w *Worker) poll(ctx context.Context) {
 		for _, pendingJob := range jobsResponse.CompactionJobs {
 			w.pendingJobs[pendingJob.Name] = pendingJob
 		}
+		w.jobMutex.Unlock()
 	}
 }
 
