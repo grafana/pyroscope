@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/go-kit/log/level"
+	"github.com/hashicorp/raft"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 
@@ -28,7 +29,7 @@ type jobResult struct {
 	newJobAssignments []*compactionpb.CompactionJob
 }
 
-func (m *metastoreState) applyPollCompactionJobsStatus(request *compactorv1.PollCompactionJobsRequest) (resp *compactorv1.PollCompactionJobsResponse, err error) {
+func (m *metastoreState) applyPollCompactionJobsStatus(_ *raft.Log, request *compactorv1.PollCompactionJobsRequest) (resp *compactorv1.PollCompactionJobsResponse, err error) {
 	resp = &compactorv1.PollCompactionJobsResponse{}
 	level.Debug(m.logger).Log(
 		"msg", "received poll compaction jobs request",

@@ -41,7 +41,7 @@ func (m *Metastore) cleanupLoop() {
 	}
 }
 
-func (m *metastoreState) applyTruncate(request *raftlogpb.TruncateCommand) (*anypb.Any, error) {
+func (m *metastoreState) applyTruncate(_ *raft.Log, request *raftlogpb.TruncateCommand) (*anypb.Any, error) {
 	m.shardsMutex.Lock()
 	var g sync.WaitGroup
 	g.Add(len(m.shards))

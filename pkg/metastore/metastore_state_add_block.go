@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/go-kit/log/level"
+	"github.com/hashicorp/raft"
 	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -15,7 +16,7 @@ func (m *Metastore) AddBlock(_ context.Context, req *metastorev1.AddBlockRequest
 	return resp, err
 }
 
-func (m *metastoreState) applyAddBlock(request *metastorev1.AddBlockRequest) (*metastorev1.AddBlockResponse, error) {
+func (m *metastoreState) applyAddBlock(_ *raft.Log, request *metastorev1.AddBlockRequest) (*metastorev1.AddBlockResponse, error) {
 	_ = level.Info(m.logger).Log("msg", "adding block", "block_id", request.Block.Id)
 
 	name, key := keyForBlockMeta(request.Block.Shard, "", request.Block.Id)

@@ -28,14 +28,14 @@ var commandTypeMap = map[reflect.Type]raftlogpb.CommandType{
 // The map is used to determine the handler for the given command,
 // read from the Raft log entry.
 var commandHandlers = map[raftlogpb.CommandType]commandHandler{
-	raftlogpb.CommandType_COMMAND_TYPE_ADD_BLOCK: func(fsm *FSM, raw []byte) fsmResponse {
-		return handleCommand(raw, fsm.state.applyAddBlock)
+	raftlogpb.CommandType_COMMAND_TYPE_ADD_BLOCK: func(fsm *FSM, cmd *raft.Log, raw []byte) fsmResponse {
+		return handleCommand(raw, cmd, fsm.state.applyAddBlock)
 	},
-	raftlogpb.CommandType_COMMAND_TYPE_TRUNCATE: func(fsm *FSM, raw []byte) fsmResponse {
-		return handleCommand(raw, fsm.state.applyTruncate)
+	raftlogpb.CommandType_COMMAND_TYPE_TRUNCATE: func(fsm *FSM, cmd *raft.Log, raw []byte) fsmResponse {
+		return handleCommand(raw, cmd, fsm.state.applyTruncate)
 	},
-	raftlogpb.CommandType_COMMAND_TYPE_POLL_COMPACTION_JOBS_STATUS: func(fsm *FSM, raw []byte) fsmResponse {
-		return handleCommand(raw, fsm.state.applyPollCompactionJobsStatus)
+	raftlogpb.CommandType_COMMAND_TYPE_POLL_COMPACTION_JOBS_STATUS: func(fsm *FSM, cmd *raft.Log, raw []byte) fsmResponse {
+		return handleCommand(raw, cmd, fsm.state.applyPollCompactionJobsStatus)
 	},
 }
 
@@ -72,14 +72,14 @@ func (e *fsmError) Error() string {
 		e.log.Index, e.log.Term, e.log.AppendedAt, e.err)
 }
 
-type commandHandler func(*FSM, []byte) fsmResponse
+type commandHandler func(*FSM, *raft.Log, []byte) fsmResponse
 
 // TODO(kolesnikovae): replace commandCall with interface:
 // type command[Req, Resp proto.Message] interface {
 //   apply(Req) (Resp, error)
 // }
 
-type commandCall[Req, Resp proto.Message] func(Req) (Resp, error)
+type commandCall[Req, Resp proto.Message] func(*raft.Log, Req) (Resp, error)
 
 func newFSM(logger log.Logger, db *boltdb, state *metastoreState) *FSM {
 	return &FSM{
@@ -113,7 +113,7 @@ func (fsm *FSM) applyCommand(l *raft.Log) interface{} {
 		return errResponse(l, err)
 	}
 	if handler, ok := commandHandlers[e.Type]; ok {
-		return handler(fsm, e.Payload)
+		return handler(fsm, l, e.Payload)
 	}
 	return errResponse(l, fmt.Errorf("unknown command type: %v", e.Type.String()))
 }
@@ -121,7 +121,7 @@ func (fsm *FSM) applyCommand(l *raft.Log) interface{} {
 // handleCommand receives payload of the command from the raft log (FSM.Apply),
 // and the function that processes the command. Returned response is wrapped in
 // fsmResponse and is available to the FSM.Apply caller.
-func handleCommand[Req, Resp proto.Message](raw []byte, call commandCall[Req, Resp]) fsmResponse {
+func handleCommand[Req, Resp proto.Message](raw []byte, cmd *raft.Log, call commandCall[Req, Resp]) fsmResponse {
 	var resp fsmResponse
 	defer func() {
 		if r := recover(); r != nil {
@@ -132,7 +132,7 @@ func handleCommand[Req, Resp proto.Message](raw []byte, call commandCall[Req, Re
 	if resp.err = proto.Unmarshal(raw, req); resp.err != nil {
 		return resp
 	}
-	resp.msg, resp.err = call(req)
+	resp.msg, resp.err = call(cmd, req)
 	return resp
 }
 
