@@ -7,12 +7,8 @@ package validation
 import (
 	"fmt"
 
-	amlabels "github.com/prometheus/alertmanager/pkg/labels"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/prometheus/prometheus/model/labels"
-
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 )
 
 const (
@@ -44,117 +40,24 @@ var (
 	)
 )
 
-type usageGroupEntry struct {
-	Name     string
-	Matchers []*labels.Matcher
-}
-
-// UsageGroupConfig is an allowlist of service names that have per-app usage
-// enabled. This allowlist is constructed on a per-tenant basis.
 type UsageGroupConfig struct {
-	tenantID string
-	config   []usageGroupEntry
+	config map[string]string
 }
 
-// GetUsageGroupName matches the label set to a usage group. If no usage group
-// is matched, the default group name is used.
-func (u *UsageGroupConfig) GetUsageGroup(lbls phlaremodel.Labels) UsageGroup {
-	group := UsageGroup{
-		tenantID: u.tenantID,
-		name:     "other",
+func NewUsageGroupConfig(m map[string]string) (UsageGroupConfig, error) {
+	if len(m) > maxUsageGroups {
+		return UsageGroupConfig{}, fmt.Errorf("maximum number of usage groups is %d, got %d", maxUsageGroups, len(m))
 	}
 
-	for _, cfgGroup := range u.config {
-		if matchesAll(cfgGroup.Matchers, lbls) {
-			group.name = cfgGroup.Name
-		}
-	}
-	return group
-}
-
-type UsageGroup struct {
-	tenantID string
-	name     string
-}
-
-func (u UsageGroup) CountReceivedBytes(profileType string, n int64) {
-	usageGroupReceivedDecompressedBytes.WithLabelValues(profileType, u.tenantID, u.name).Add(float64(n))
-}
-
-func (u UsageGroup) CountDiscardedBytes(reason string, n int64) {
-	UsageGroupDiscardedBytes.WithLabelValues(reason, u.tenantID, u.name).Add(float64(n))
-}
-
-// DistributorUsageGroups returns the usage groups that are enabled for this
-// tenant.
-func (o *Overrides) DistributorUsageGroups(tenantID string) (*UsageGroupConfig, error) {
-	ug := &UsageGroupConfig{
-		tenantID: tenantID,
+	config := UsageGroupConfig{}
+	if len(m) == 0 {
+		return config, nil
 	}
 
-	groups := o.getOverridesForTenant(tenantID).DistributorUsageGroups
-	if len(groups) == 0 {
-		return ug, nil
+	config.config = make(map[string]string)
+	for name, matchers := range m {
+		config.config[name] = matchers
 	}
 
-	if len(groups) > maxUsageGroups {
-		return nil, fmt.Errorf("too many usage groups configured for tenant %q: got %d, max %d", tenantID, len(groups), maxUsageGroups)
-	}
-
-	existingNames := make(map[string]struct{}, len(groups))
-	ug.config = make([]usageGroupEntry, 0, len(groups))
-
-	for _, group := range groups {
-		for name, matchersString := range group {
-			if _, ok := existingNames[name]; ok {
-				return nil, fmt.Errorf("duplicate usage group name %q for tenant %q", name, tenantID)
-			}
-			existingNames[name] = struct{}{}
-
-			if name == "" {
-				return nil, fmt.Errorf("empty service name in usage group for tenant %q", tenantID)
-			}
-
-			if matchersString == "" {
-				return nil, fmt.Errorf("no matchers for usage group %q and tenant %q", name, tenantID)
-			}
-
-			amMatchers, err := amlabels.ParseMatchers(matchersString)
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse matchers for usage group %q and tenant %q: %w", name, tenantID, err)
-			}
-
-			matchers := make([]*labels.Matcher, len(amMatchers))
-			for i, m := range amMatchers {
-				matchers[i] = amlabelMatcherToProm(m)
-			}
-			ug.config = append(ug.config, usageGroupEntry{
-				Name:     name,
-				Matchers: matchers,
-			})
-		}
-	}
-
-	return ug, nil
-}
-
-func amlabelMatcherToProm(m *amlabels.Matcher) *labels.Matcher {
-	// TODO(bryanhuhta) we actually don't have a test (yet).
-	// labels.MatchType(m.Type) is a risky conversion because it depends on the iota order, but we have a test for it
-	return labels.MustNewMatcher(labels.MatchType(m.Type), m.Name, m.Value)
-}
-
-func matchesAll(matchers []*labels.Matcher, lbls phlaremodel.Labels) bool {
-	if len(lbls) == 0 {
-		return false
-	}
-
-	for _, m := range matchers {
-		for _, lbl := range lbls {
-			if lbl.Name == m.Name && !m.Matches(lbl.Value) {
-				return false
-			}
-		}
-	}
-	return true
+	return config, nil
 }
