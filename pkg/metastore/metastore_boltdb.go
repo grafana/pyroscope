@@ -179,6 +179,7 @@ func (s *snapshot) persist(sink raft.SnapshotSink) error {
 	_ = s.logger.Log("msg", "persisting snapshot", "sink_id", sink.ID())
 	defer func() {
 		s.metrics.boltDBPersistSnapshotDuration.Observe(time.Since(t1).Seconds())
+		s.logger.Log("msg", "persisted snapshot", "sink_id", sink.ID(), "err", err, "duration", time.Since(t1))
 		if err != nil {
 			_ = s.logger.Log("msg", "failed to persist snapshot", "err", err)
 			if err = sink.Cancel(); err != nil {
