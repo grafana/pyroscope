@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -19,21 +20,24 @@ const (
 )
 
 type boltdb struct {
-	logger log.Logger
-	boltdb *bbolt.DB
-	config Config
-	path   string
+	logger  log.Logger
+	boltdb  *bbolt.DB
+	config  Config
+	path    string
+	metrics *metastoreMetrics
 }
 
 type snapshot struct {
-	logger log.Logger
-	tx     *bbolt.Tx
+	logger  log.Logger
+	tx      *bbolt.Tx
+	metrics *metastoreMetrics
 }
 
-func newDB(config Config, logger log.Logger) *boltdb {
+func newDB(config Config, logger log.Logger, metrics *metastoreMetrics) *boltdb {
 	return &boltdb{
-		logger: logger,
-		config: config,
+		logger:  logger,
+		config:  config,
+		metrics: metrics,
 	}
 }
 
@@ -87,6 +91,10 @@ func (db *boltdb) shutdown() {
 }
 
 func (db *boltdb) restore(snapshot io.Reader) error {
+	t1 := time.Now()
+	defer func() {
+		db.metrics.boltDBRestoreSnapshotDuration.Observe(time.Since(t1).Seconds())
+	}()
 	// Snapshot is a full copy of the database, therefore we copy
 	// it on disk and use it instead of the current database.
 	path, err := db.copySnapshot(snapshot)
@@ -147,7 +155,7 @@ func syncFD(f *os.File) (err error) {
 }
 
 func (db *boltdb) createSnapshot() (*snapshot, error) {
-	s := snapshot{logger: db.logger}
+	s := snapshot{logger: db.logger, metrics: db.metrics}
 	tx, err := db.boltdb.Begin(false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open a transaction for snapshot: %w", err)
@@ -157,8 +165,10 @@ func (db *boltdb) createSnapshot() (*snapshot, error) {
 }
 
 func (s *snapshot) Persist(sink raft.SnapshotSink) (err error) {
+	t1 := time.Now()
 	_ = s.logger.Log("msg", "persisting snapshot", "sink_id", sink.ID())
 	defer func() {
+		s.metrics.boltDBPersistSnapshotDuration.Observe(time.Since(t1).Seconds())
 		if err != nil {
 			_ = s.logger.Log("msg", "failed to persist snapshot", "err", err)
 			if err = sink.Cancel(); err != nil {

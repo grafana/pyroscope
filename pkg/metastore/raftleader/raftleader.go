@@ -1,6 +1,7 @@
 package raftleader
 
 import (
+	"github.com/prometheus/client_golang/prometheus"
 	"sync"
 
 	"github.com/go-kit/log"
@@ -16,12 +17,30 @@ type HealthObserver struct {
 	logger     log.Logger
 	mu         sync.Mutex
 	registered map[serviceKey]*raftService
+	metrics    *Metrics
+}
+type Metrics struct {
+	status prometheus.Gauge
 }
 
-func NewRaftLeaderHealthObserver(hs health.Service, logger log.Logger) *HealthObserver {
+func NewMetrics(reg prometheus.Registerer) *Metrics {
+	m := &Metrics{
+		status: prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: "pyroscope",
+			Name:      "metastore_raft_status",
+		}),
+	}
+	if reg != nil {
+		reg.MustRegister(m.status)
+	}
+	return m
+}
+
+func NewRaftLeaderHealthObserver(hs health.Service, logger log.Logger, m *Metrics) *HealthObserver {
 	return &HealthObserver{
 		server:     hs,
 		logger:     logger,
+		metrics:    m,
 		registered: make(map[serviceKey]*raftService),
 	}
 }
@@ -35,6 +54,7 @@ func (hs *HealthObserver) Register(r *raft.Raft, service string) {
 	}
 	svc := &raftService{
 		server:  hs.server,
+		hs:      hs,
 		logger:  log.With(hs.logger, "service", service),
 		service: service,
 		raft:    r,
@@ -72,6 +92,7 @@ type serviceKey struct {
 
 type raftService struct {
 	server   health.Service
+	hs       *HealthObserver
 	logger   log.Logger
 	service  string
 	raft     *raft.Raft
@@ -104,6 +125,8 @@ func (svc *raftService) updateStatus() {
 	if svc.raft.State() == raft.Leader {
 		status = grpc_health_v1.HealthCheckResponse_SERVING
 	}
+	svc.hs.metrics.status.Set(float64(svc.raft.State()))
+
 	_ = level.Info(svc.logger).Log("msg", "updating health status", "status", status)
 	svc.server.SetServingStatus(svc.service, status)
 }

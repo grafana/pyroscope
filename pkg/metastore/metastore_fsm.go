@@ -108,6 +108,10 @@ func (fsm *FSM) Apply(l *raft.Log) interface{} {
 // and calls the corresponding handler on the _local_ FSM, based on
 // the command type.
 func (fsm *FSM) applyCommand(l *raft.Log) interface{} {
+	t1 := time.Now()
+	defer func() {
+		fsm.db.metrics.fsmApplyCommandHandlerDuration.Observe(time.Since(t1).Seconds())
+	}()
 	var e raftlogpb.RaftLogEntry
 	if err := proto.Unmarshal(l.Data, &e); err != nil {
 		return errResponse(l, err)
@@ -149,9 +153,11 @@ func (fsm *FSM) Snapshot() (raft.FSMSnapshot, error) {
 }
 
 func (fsm *FSM) Restore(snapshot io.ReadCloser) error {
+	t1 := time.Now()
 	_ = level.Info(fsm.logger).Log("msg", "restoring snapshot")
 	defer func() {
 		_ = snapshot.Close()
+		fsm.db.metrics.fsmRestoreSnapshotDuration.Observe(time.Since(t1).Seconds())
 	}()
 	if err := fsm.db.restore(snapshot); err != nil {
 		return fmt.Errorf("failed to restore from snapshot: %w", err)

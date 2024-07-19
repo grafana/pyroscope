@@ -95,22 +95,25 @@ type Metastore struct {
 
 	walDir string
 
-	done chan struct{}
-	wg   sync.WaitGroup
+	done    chan struct{}
+	wg      sync.WaitGroup
+	metrics *metastoreMetrics
 }
 
 type Limits interface{}
 
 func New(config Config, limits Limits, logger log.Logger, reg prometheus.Registerer, hs health.Service) (*Metastore, error) {
+	metrics := newMetastoreMetrics(reg)
 	m := &Metastore{
-		config: config,
-		logger: logger,
-		reg:    reg,
-		limits: limits,
-		db:     newDB(config, logger),
-		done:   make(chan struct{}),
+		config:  config,
+		logger:  logger,
+		reg:     reg,
+		limits:  limits,
+		db:      newDB(config, logger, metrics),
+		done:    make(chan struct{}),
+		metrics: metrics,
 	}
-	m.leaderhealth = raftleader.NewRaftLeaderHealthObserver(hs, logger)
+	m.leaderhealth = raftleader.NewRaftLeaderHealthObserver(hs, logger, raftleader.NewMetrics(reg))
 	m.state = newMetastoreState(logger, m.db, m.reg)
 	m.service = services.NewBasicService(m.starting, m.running, m.stopping)
 	return m, nil
