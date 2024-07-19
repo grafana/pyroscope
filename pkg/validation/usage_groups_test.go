@@ -327,6 +327,31 @@ func TestNewUsageGroupConfig(t *testing.T) {
 			},
 			WantErr: `failed to parse matchers for usage group "app/foo": 1:1: parse error: unexpected character: '?'`,
 		},
+		{
+			Name: "empty_matcher",
+			ConfigMap: map[string]string{
+				"app/foo": ``,
+			},
+			WantErr: `failed to parse matchers for usage group "app/foo": unknown position: parse error: unexpected end of input`,
+		},
+		{
+			Name: "empty_name",
+			ConfigMap: map[string]string{
+				"": `{service_name="foo"}`,
+			},
+			WantErr: "usage group name cannot be empty",
+		},
+		{
+			Name: "whitespace_name",
+			ConfigMap: map[string]string{
+				"   app/foo   ": `{service_name="foo"}`,
+			},
+			Want: UsageGroupConfig{
+				config: map[string][]*labels.Matcher{
+					"app/foo": testMustParseMatcher(t, `{service_name="foo"}`),
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {

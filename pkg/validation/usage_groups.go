@@ -7,6 +7,7 @@ package validation
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -135,6 +136,14 @@ func NewUsageGroupConfig(m map[string]string) (UsageGroupConfig, error) {
 	}
 
 	for name, matchersText := range m {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			return UsageGroupConfig{}, fmt.Errorf("usage group name cannot be empty")
+		}
+
+		// TODO(bryanhuhta): We should probably validate the usage group name
+		// is a valid label value.
+
 		matchers, err := parser.ParseMetricSelector(matchersText)
 		if err != nil {
 			return UsageGroupConfig{}, fmt.Errorf("failed to parse matchers for usage group %q: %w", name, err)
