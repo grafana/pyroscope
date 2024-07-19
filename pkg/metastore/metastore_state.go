@@ -45,7 +45,7 @@ func newMetastoreState(logger log.Logger, db *boltdb, reg prometheus.Registerer)
 		shards:              make(map[uint32]*metastoreShard),
 		db:                  db,
 		preCompactionQueues: make(map[tenantShard]*jobPreQueue),
-		compactionJobQueue:  newJobQueue(10 * time.Minute.Nanoseconds()),
+		compactionJobQueue:  newJobQueue(5 * time.Minute.Nanoseconds()),
 		compactionMetrics:   newCompactionMetrics(reg),
 	}
 }

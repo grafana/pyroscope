@@ -35,7 +35,7 @@ var commandHandlers = map[raftlogpb.CommandType]commandHandler{
 		return handleCommand(raw, cmd, fsm.state.applyTruncate)
 	},
 	raftlogpb.CommandType_COMMAND_TYPE_POLL_COMPACTION_JOBS_STATUS: func(fsm *FSM, cmd *raft.Log, raw []byte) fsmResponse {
-		return handleCommand(raw, cmd, fsm.state.applyPollCompactionJobsStatus)
+		return handleCommand(raw, cmd, fsm.state.applyPollCompactionJobs)
 	},
 }
 

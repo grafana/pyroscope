@@ -48,14 +48,8 @@ const (
 )
 
 type jobQueueEntry struct {
-	name     string
-	shard    uint32
-	tenant   string
-	level    uint32
-	deadline int64
-	token    uint64 // Fencing token.
-	status   jobStatus
-	index    int // The index of the job in the heap.
+	status jobStatus
+	index  int // The index of the job in the heap.
 
 	// The original proto message.
 	proto *compactionpb.CompactionJob
@@ -66,16 +60,16 @@ func (c *jobQueueEntry) less(x *jobQueueEntry) bool {
 		// Peek jobs in the "initial" state first.
 		return c.status < x.status
 	}
-	if c.deadline != x.deadline {
+	if c.proto.LeaseExpiresAt != x.proto.LeaseExpiresAt {
 		// Jobs with earlier deadlines should be at the top.
-		return c.deadline < x.deadline
+		return c.proto.LeaseExpiresAt < x.proto.LeaseExpiresAt
 	}
 	// Compact lower level jobs first.
-	if c.level != x.level {
+	if c.proto.CompactionLevel != x.proto.CompactionLevel {
 		// Jobs with earlier deadlines should be at the top.
-		return c.level < x.level
+		return c.proto.CompactionLevel < x.proto.CompactionLevel
 	}
-	return c.name < x.name
+	return c.proto.Name < x.proto.Name
 }
 
 func (c *jobQueueEntry) load(job *compactionpb.CompactionJob) {
@@ -84,50 +78,45 @@ func (c *jobQueueEntry) load(job *compactionpb.CompactionJob) {
 		js = jobStatusInProgress
 	}
 	*c = jobQueueEntry{
-		name:     job.Name,
-		shard:    job.Shard,
-		tenant:   job.TenantId,
-		level:    job.CompactionLevel,
-		status:   js,
-		index:    0,
-		deadline: 0, // Deadline and token will be assigned
-		token:    0, // when the job is "dequeued" (transferred).
-		proto:    job,
+		status: js,
+		index:  0,
+		proto:  job,
 	}
+	// Deadline will be assigned when the job is "dequeued" (transferred).
+	job.RaftLogIndex = 0
+	job.LeaseExpiresAt = 0
 }
 
-func (q *jobQueue) dequeue(now int64, token uint64) *compactionpb.CompactionJob {
+func (q *jobQueue) dequeue(now int64, raftLogIndex uint64) *compactionpb.CompactionJob {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	for q.pq.Len() > 0 {
 		job := q.pq[0]
-		if job.status == jobStatusInProgress && now <= job.deadline {
+		if job.status == jobStatusInProgress && now <= job.proto.LeaseExpiresAt {
 			// If the top job is in progress and not expired, stop checking further
 			return nil
 		}
 		// Actually remove it from the heap, update
 		// and push it back.
 		heap.Pop(&q.pq)
-		job.deadline = now + q.lease
+		job.proto.LeaseExpiresAt = q.getNewDeadline(now)
 		job.status = jobStatusInProgress
-		// if job.status is "in progress", the ownership
-		// of the job is being revoked.
-		job.token = token
-		job.proto.CommitIndex = token
+		// if job.status is "in progress", the ownership of the job is being revoked.
+		job.proto.RaftLogIndex = raftLogIndex
 		heap.Push(&q.pq, job)
 		return job.proto
 	}
 	return nil
 }
 
-func (q *jobQueue) update(name string, now int64, token uint64) bool {
+func (q *jobQueue) update(name string, now int64, raftLogIndex uint64) bool {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if job, exists := q.jobs[name]; exists {
-		if job.token > token {
+		if job.proto.RaftLogIndex > raftLogIndex {
 			return false
 		}
-		job.deadline = now + q.lease
+		job.proto.LeaseExpiresAt = q.getNewDeadline(now)
 		job.status = jobStatusInProgress
 		// De-prioritize the job, as the deadline has been postponed.
 		heap.Fix(&q.pq, job.index)
@@ -136,22 +125,26 @@ func (q *jobQueue) update(name string, now int64, token uint64) bool {
 	return false
 }
 
-func (q *jobQueue) peekEvict(name string, token uint64) bool {
+func (q *jobQueue) getNewDeadline(now int64) int64 {
+	return now + q.lease
+}
+
+func (q *jobQueue) isOwner(name string, raftLogIndex uint64) bool {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if job, exists := q.jobs[name]; exists {
-		if job.token > token {
+		if job.proto.RaftLogIndex > raftLogIndex {
 			return false
 		}
 	}
 	return true
 }
 
-func (q *jobQueue) evict(name string, token uint64) bool {
+func (q *jobQueue) evict(name string, raftLogIndex uint64) bool {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if job, exists := q.jobs[name]; exists {
-		if job.token > token {
+		if job.proto.RaftLogIndex > raftLogIndex {
 			return false
 		}
 		delete(q.jobs, name)

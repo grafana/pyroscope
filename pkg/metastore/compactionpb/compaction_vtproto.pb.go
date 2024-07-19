@@ -48,6 +48,11 @@ func (m *CompactionJob) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.LeaseExpiresAt != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.LeaseExpiresAt))
+		i--
+		dAtA[i] = 0x40
+	}
 	if m.Status != 0 {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Status))
 		i--
@@ -65,8 +70,8 @@ func (m *CompactionJob) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x28
 	}
-	if m.CommitIndex != 0 {
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.CommitIndex))
+	if m.RaftLogIndex != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.RaftLogIndex))
 		i--
 		dAtA[i] = 0x20
 	}
@@ -113,8 +118,8 @@ func (m *CompactionJob) SizeVT() (n int) {
 	if m.CompactionLevel != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.CompactionLevel))
 	}
-	if m.CommitIndex != 0 {
-		n += 1 + protohelpers.SizeOfVarint(uint64(m.CommitIndex))
+	if m.RaftLogIndex != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.RaftLogIndex))
 	}
 	if m.Shard != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.Shard))
@@ -125,6 +130,9 @@ func (m *CompactionJob) SizeVT() (n int) {
 	}
 	if m.Status != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.Status))
+	}
+	if m.LeaseExpiresAt != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.LeaseExpiresAt))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -244,9 +252,9 @@ func (m *CompactionJob) UnmarshalVT(dAtA []byte) error {
 			}
 		case 4:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field CommitIndex", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field RaftLogIndex", wireType)
 			}
-			m.CommitIndex = 0
+			m.RaftLogIndex = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return protohelpers.ErrIntOverflow
@@ -256,7 +264,7 @@ func (m *CompactionJob) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.CommitIndex |= uint64(b&0x7F) << shift
+				m.RaftLogIndex |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -327,6 +335,25 @@ func (m *CompactionJob) UnmarshalVT(dAtA []byte) error {
 				b := dAtA[iNdEx]
 				iNdEx++
 				m.Status |= CompactionStatus(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 8:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LeaseExpiresAt", wireType)
+			}
+			m.LeaseExpiresAt = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.LeaseExpiresAt |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}

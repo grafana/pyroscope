@@ -663,7 +663,7 @@
         "status": {
           "$ref": "#/definitions/v1CompactionJobStatus"
         },
-        "commitIndex": {
+        "raftLogIndex": {
           "type": "string",
           "format": "uint64",
           "description": "Fencing token."
@@ -693,7 +693,7 @@
         "completedJob": {
           "$ref": "#/definitions/v1CompletedJob"
         },
-        "commitIndex": {
+        "raftLogIndex": {
           "type": "string",
           "format": "uint64",
           "description": "Fencing token."

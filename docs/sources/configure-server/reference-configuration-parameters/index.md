@@ -160,6 +160,10 @@ metastore:
     # CLI flag: -metastore.raft.bootstrap-peers
     [bootstrap_peers: <list of strings> | default = []]
 
+    # Expected number of peers including the local node.
+    # CLI flag: -metastore.raft.bootstrap-expect-peers
+    [bootstrap_expect_peers: <int> | default = 1]
+
     # CLI flag: -metastore.raft.server-id
     [server_id: <string> | default = "localhost:9099"]
 
@@ -188,6 +192,11 @@ query_backend:
   # The CLI flags prefix for this block configuration is:
   # query-backend.grpc-client-config
   [grpc_client_config: <grpc_client>]
+
+compaction_worker:
+  # how many concurrent jobs will a worker run at most
+  # CLI flag: -compaction-worker.job-capacity
+  [job_capacity: <int> | default = 5]
 
 storage:
   # Backend storage to use. Supported backends are: s3, gcs, azure, swift,
@@ -820,7 +829,7 @@ lifecycler:
 
 # Timeout when flushing segments to bucket.
 # CLI flag: -ingester.segment.duration
-[segmentDuration: <duration> | default = 1s]
+[segmentDuration: <duration> | default = 500ms]
 
 # Enable async mode for ingester.
 # CLI flag: -ingester.async

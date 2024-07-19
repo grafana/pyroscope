@@ -135,6 +135,16 @@ func (w *Worker) poll(ctx context.Context) {
 		level.Debug(w.logger).Log("msg", "pending compaction job update", "job", update.JobName, "status", update.Status)
 		pendingStatusUpdates = append(pendingStatusUpdates, update)
 	}
+	for _, activeJob := range w.activeJobs {
+		level.Debug(w.logger).Log("msg", "in progress job update", "job", activeJob.Name)
+		pendingStatusUpdates = append(pendingStatusUpdates, &compactorv1.CompactionJobStatus{
+			JobName:      activeJob.Name,
+			Status:       compactorv1.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS,
+			RaftLogIndex: activeJob.RaftLogIndex,
+			Shard:        activeJob.Shard,
+			TenantId:     activeJob.TenantId,
+		})
+	}
 	jobCapacity := uint32(w.config.JobCapacity - len(w.activeJobs) - len(w.pendingJobs))
 	w.jobMutex.Unlock()
 
@@ -174,7 +184,7 @@ func (w *Worker) startJob(ctx context.Context, job *compactorv1.CompactionJob) *
 		CompletedJob: &compactorv1.CompletedJob{},
 		Shard:        job.Shard,
 		TenantId:     job.TenantId,
-		CommitIndex:  job.CommitIndex,
+		RaftLogIndex: job.RaftLogIndex,
 	}
 
 	level.Info(w.logger).Log(
