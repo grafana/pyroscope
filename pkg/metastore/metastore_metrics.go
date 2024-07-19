@@ -11,7 +11,7 @@ type metastoreMetrics struct {
 }
 
 func newMetastoreMetrics(reg prometheus.Registerer) *metastoreMetrics {
-	var dataTimingBuckets = prometheus.ExponentialBucketsRange(0.001, 2, 30)
+	var dataTimingBuckets = prometheus.ExponentialBucketsRange(0.001, 5, 32)
 	m := &metastoreMetrics{
 		boltDBPersistSnapshotDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
 			Namespace: "pyroscope",
