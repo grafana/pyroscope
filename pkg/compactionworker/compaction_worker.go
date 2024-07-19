@@ -688,7 +688,7 @@ func newProfileWriter(path string) (*profilesWriter, error) {
 }
 
 func newParquetProfileWriter(writer io.Writer, options ...parquet.WriterOption) *parquet.GenericWriter[*schemav1.Profile] {
-	options = append(options, parquet.PageBufferSize(512*1024))
+	options = append(options, parquet.PageBufferSize(32*1024))
 	options = append(options, parquet.CreatedBy("github.com/grafana/pyroscope/", build.Version, build.Revision))
 	options = append(options, schemav1.ProfilesSchema)
 	return parquet.NewGenericWriter[*schemav1.Profile](
@@ -766,7 +766,7 @@ func (idxRw *indexRewriter) NumSeries() uint64 {
 
 // Close writes the index to given folder.
 func (idxRw *indexRewriter) Close(ctx context.Context) error {
-	indexw, err := index.NewWriter(ctx, filepath.Join(idxRw.path, block.IndexFilename), index.BlocksIndexWriterBufSize)
+	indexw, err := index.NewWriter(ctx, filepath.Join(idxRw.path, block.IndexFilename), 1<<18)
 	if err != nil {
 		return err
 	}

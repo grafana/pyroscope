@@ -164,9 +164,10 @@ func (m *metastoreState) convertJobs(jobs []*compactionpb.CompactionJob) ([]*com
 				Shard:        job.Shard,
 				TenantId:     job.TenantId,
 			},
-			RaftLogIndex: job.RaftLogIndex,
-			Shard:        job.Shard,
-			TenantId:     job.TenantId,
+			CompactionLevel: job.CompactionLevel,
+			RaftLogIndex:    job.RaftLogIndex,
+			Shard:           job.Shard,
+			TenantId:        job.TenantId,
 		})
 	}
 	return res, nil
@@ -177,10 +178,14 @@ func (m *metastoreState) processCompletedJob(tx *bbolt.Tx, job *compactionpb.Com
 	if !ownsJob {
 		return errors.New(fmt.Sprintf("deadline exceeded for job with id %s", job.Name))
 	}
-	err := m.persistJobStatus(tx, job, compactionpb.CompactionStatus_COMPACTION_STATUS_SUCCESS)
+	jBucket, jKey := keyForCompactionJob(job.Shard, job.TenantId, job.Name)
+	err := updateCompactionJobBucket(tx, jBucket, func(bucket *bbolt.Bucket) error {
+		return bucket.Delete(jKey)
+	})
 	if err != nil {
 		return err
 	}
+	jResult.deletedJobs = append(jResult.deletedJobs, job)
 	for _, b := range update.CompletedJob.Blocks {
 		bName, bKey := keyForBlockMeta(b.Shard, b.TenantId, b.Id)
 		err = updateBlockMetadataBucket(tx, bName, func(bucket *bbolt.Bucket) error {
@@ -238,7 +243,6 @@ func (m *metastoreState) processCompletedJob(tx *bbolt.Tx, job *compactionpb.Com
 		return err
 	}
 	job.RaftLogIndex = update.RaftLogIndex
-	jResult.deletedJobs = append(jResult.deletedJobs, job)
 	return nil
 }
 
