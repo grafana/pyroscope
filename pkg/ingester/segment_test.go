@@ -2,6 +2,7 @@ package ingester
 
 import (
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus"
 	"os"
 	"testing"
 
@@ -12,6 +13,9 @@ import (
 )
 
 func TestReadSegment(t *testing.T) {
+	for _v, v := range prometheus.ExponentialBucketsRange(0.01, 5, 40) {
+		fmt.Printf("%d: %f\n", _v, v)
+	}
 	t.Skip("skipping")
 	s := "/home/korniltsev/p/pyroscope/data/segments/32/anon/01J2E88MFPVGEMEEW8N044EWCQ/"
 	block, _ := os.ReadFile(s + "block.bin")

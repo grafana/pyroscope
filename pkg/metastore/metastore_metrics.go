@@ -1,6 +1,9 @@
 package metastore
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/grafana/dskit/instrument"
+	"github.com/prometheus/client_golang/prometheus"
+)
 
 type metastoreMetrics struct {
 	boltDBPersistSnapshotDuration  prometheus.Histogram
@@ -11,12 +14,13 @@ type metastoreMetrics struct {
 }
 
 func newMetastoreMetrics(reg prometheus.Registerer) *metastoreMetrics {
-	var dataTimingBuckets = prometheus.ExponentialBucketsRange(0.001, 5, 32)
+	var dataTimingBuckets = prometheus.ExponentialBucketsRange(0.01, 20, 48)
 	m := &metastoreMetrics{
 		boltDBPersistSnapshotDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
 			Namespace: "pyroscope",
 			Name:      "metastore_boltdb_persist_snapshot_duration_seconds",
-			Buckets:   dataTimingBuckets,
+			//Buckets:   dataTimingBuckets,
+			Buckets: instrument.DefBuckets,
 		}),
 		boltDBRestoreSnapshotDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
 			Namespace: "pyroscope",
