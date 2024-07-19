@@ -35,10 +35,12 @@ type Config struct {
 type RaftConfig struct {
 	Dir string `yaml:"dir"`
 
-	BootstrapPeers   []string `yaml:"bootstrap_peers"`
-	ServerID         string   `yaml:"server_id"`
-	BindAddress      string   `yaml:"bind_address"`
-	AdvertiseAddress string   `yaml:"advertise_address"`
+	BootstrapPeers       []string `yaml:"bootstrap_peers"`
+	BootstrapExpectPeers int      `yaml:"bootstrap_expect_peers"`
+
+	ServerID         string `yaml:"server_id"`
+	BindAddress      string `yaml:"bind_address"`
+	AdvertiseAddress string `yaml:"advertise_address"`
 
 	ApplyTimeout time.Duration `yaml:"apply_timeout" doc:"hidden"`
 }
@@ -53,6 +55,7 @@ func (cfg *RaftConfig) RegisterFlags(f *flag.FlagSet) {
 	const prefix = "metastore.raft."
 	f.StringVar(&cfg.Dir, prefix+"dir", "./data-metastore/raft", "")
 	f.Var((*flagext.StringSlice)(&cfg.BootstrapPeers), prefix+"bootstrap-peers", "")
+	f.IntVar(&cfg.BootstrapExpectPeers, prefix+"bootstrap-expect-peers", 1, "Expected number of peers including the local node.")
 	f.StringVar(&cfg.BindAddress, prefix+"bind-address", "localhost:9099", "")
 	f.StringVar(&cfg.ServerID, prefix+"server-id", "localhost:9099", "")
 	f.StringVar(&cfg.AdvertiseAddress, prefix+"advertise-address", "localhost:9099", "")
@@ -189,7 +192,7 @@ func (m *Metastore) initRaft() (err error) {
 	}
 
 	if !hasState {
-		_ = level.Warn(m.logger).Log("msg", "no existing state found, bootstrapping cluster")
+		_ = level.Warn(m.logger).Log("msg", "no existing state found, trying to bootstrap cluster")
 		if err = m.bootstrap(); err != nil {
 			return fmt.Errorf("failed to bootstrap cluster: %w", err)
 		}

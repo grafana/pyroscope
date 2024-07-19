@@ -24,7 +24,8 @@ func (m *Metastore) bootstrap() error {
 		"server_id", m.config.Raft.ServerID,
 		"advertise_address", m.config.Raft.AdvertiseAddress,
 		"peers", fmt.Sprint(peers))
-	if raft.ServerAddress(m.config.Raft.AdvertiseAddress) != peers[0].Address {
+	lastPeer := peers[len(peers)-1]
+	if raft.ServerAddress(m.config.Raft.AdvertiseAddress) != lastPeer.Address {
 		_ = level.Info(logger).Log("msg", "not the bootstrap node, skipping")
 		return nil
 	}
@@ -83,6 +84,10 @@ func (m *Metastore) bootstrapPeers() ([]raft.Server, error) {
 				Address:  raft.ServerAddress(peer),
 			})
 		}
+	}
+	if len(peers) != m.config.Raft.BootstrapExpectPeers {
+		return nil, fmt.Errorf("expected number of bootstrap peers not reached: got %d, expected %d",
+			len(peers), m.config.Raft.BootstrapExpectPeers)
 	}
 	// Finally, we sort and deduplicate the peers: the first one
 	// is to boostrap the cluster. If there are nodes with distinct

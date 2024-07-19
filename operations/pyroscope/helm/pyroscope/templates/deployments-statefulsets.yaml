@@ -69,6 +69,7 @@ spec:
             - "-metastore.raft.advertise-address=$(POD_NAME).{{ include "pyroscope.fullname" .}}-metastore-headless.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:9099"
             - "-metastore.raft.server-id=$(POD_NAME).{{ include "pyroscope.fullname" .}}-metastore-headless.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:9099"
             - "-metastore.raft.bootstrap-peers=dnssrvnoa+_raft._tcp.{{ include "pyroscope.fullname" .}}-metastore-headless.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:9099"
+            - "-metastore.raft.bootstrap-expect-peers={{ $values.replicaCount }}"
             - "-metastore.address=dns:///_grpc._tcp.{{ include "pyroscope.fullname" .}}-metastore-headless.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:9095"
             - "-query-backend.address=dns:///{{ include "pyroscope.fullname" .}}-query-worker-headless.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:9095"
             - "-config.file=/etc/pyroscope/config.yaml"
