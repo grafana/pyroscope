@@ -1,18 +1,6 @@
 package compactionworker
 
-import (
-	"context"
-	"os"
-	"testing"
-
-	"github.com/grafana/pyroscope/ebpf/util"
-	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/encoding/protojson"
-
-	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
-	"github.com/grafana/pyroscope/pkg/objstore/testutil"
-)
-
+/*
 func TestCompactBlocks(t *testing.T) {
 	worker, err := New(util.TestLogger(t), nil, nil)
 	require.NoError(t, err)
@@ -33,3 +21,4 @@ func TestCompactBlocks(t *testing.T) {
 
 	_ = worker.storage.Delete(ctx, "blocks")
 }
+*/

@@ -99,11 +99,14 @@ func ObjectPath(md *metastorev1.BlockMeta) string {
 	return topLevel + strconv.Itoa(int(md.Shard)) + "/" + tenantDirName + "/" + md.Id + "/block.bin"
 }
 
-// OpenShared the object, loading the data into memory if it's small enough.
-// OpenShared may be called multiple times concurrently, but the object is
-// only initialized once. While it is possible to open the object
-// repeatedly after close, the caller must pass the failure reason
-// to the "close" call, preventing further use, if applicable.
+// OpenShared opens the object, loading the data into memory
+// if it's small enough.
+//
+// OpenShared may be called multiple times concurrently, but the
+// object is only initialized once. While it is possible to open
+// the object repeatedly after close, the caller must pass the
+// failure reason to the "CloseShared" call, preventing further
+// use, if  applicable.
 func (obj *Object) OpenShared(ctx context.Context) error {
 	obj.err = obj.refs.Inc(func() error {
 		return obj.Open(ctx)
@@ -129,18 +132,25 @@ func (obj *Object) Open(ctx context.Context) error {
 	return nil
 }
 
-// CloseShared the object, releasing all the acquired resources, once the last
-// reference is released. If the provided error is not nil, the object will
-// be marked as failed, preventing any further use.
+// CloseShared closes the object, releasing all the acquired resources,
+// once the last reference is released. If the provided error is not nil,
+// the object will be marked as failed, preventing any further use.
 func (obj *Object) CloseShared(err error) {
 	obj.refs.Dec(func() {
-		obj.Close(err)
+		obj.closeErr(err)
 	})
 }
 
-func (obj *Object) Close(err error) {
+func (obj *Object) Close() error {
+	obj.closeErr(nil)
+	return obj.err
+}
+
+func (obj *Object) closeErr(err error) {
 	if obj.err == nil {
 		obj.err = err
 	}
 	obj.buf = nil // TODO: Release.
 }
+
+func (obj *Object) Meta() *metastorev1.BlockMeta { return obj.meta }

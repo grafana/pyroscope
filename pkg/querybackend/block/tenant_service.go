@@ -6,16 +6,29 @@ import (
 	"fmt"
 
 	"github.com/grafana/dskit/multierror"
+	"github.com/parquet-go/parquet-go"
 	"golang.org/x/sync/errgroup"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/memory"
+	"github.com/grafana/pyroscope/pkg/phlaredb"
+	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/refctr"
 )
+
+type Block interface {
+	ProfileRowReader() parquet.RowReader
+	Profiles() *ParquetFile
+	Index() phlaredb.IndexReader
+	Symbols() symdb.SymbolsReader
+	Close() error
+}
+
+var _ Block = (*TenantService)(nil)
 
 type TenantService struct {
 	meta *metastorev1.TenantService
@@ -25,9 +38,9 @@ type TenantService struct {
 	buf  *bytes.Buffer
 	err  error
 
-	TSDB     *index.Reader
-	Symbols  *symdb.Reader
-	Profiles *ParquetFile
+	tsdb     *index.Reader
+	symbols  *symdb.Reader
+	profiles *ParquetFile
 }
 
 func NewTenantService(meta *metastorev1.TenantService, obj *Object) *TenantService {
@@ -79,30 +92,58 @@ func (s *TenantService) Open(ctx context.Context, sections ...Section) (err erro
 	return g.Wait()
 }
 
+func (s *TenantService) estimatedInMemorySizeMerge() int64 {
+	var e int64
+	// Both the symbols and the tsdb are loaded into memory entirely.
+	// However, the actual footprint is higher because the encoding.
+	e += s.sectionSize(SectionSymbols) * 4
+	e += s.sectionSize(SectionTSDB) * 4
+	// All columns are to be opened.
+	columns := len(schemav1.ProfilesSchema.Columns())
+	cb := estimateReadBufferSize(s.sectionSize(SectionProfiles))
+	e += int64(columns * cb)
+	return e
+}
+
 func (s *TenantService) CloseShared(err error) {
 	s.refs.Dec(func() {
-		s.Close(err)
+		s.closeErr(err)
 	})
 }
 
-func (s *TenantService) Close(err error) {
+func (s *TenantService) Close() error {
+	s.closeErr(nil)
+	return s.err
+}
+
+func (s *TenantService) closeErr(err error) {
 	if s.buf != nil {
 		s.buf = nil // TODO: Release.
 	}
 	var m multierror.MultiError
 	m.Add(s.err) // Preserve the existing error
 	m.Add(err)   // Add the new error, if any.
-	if s.TSDB != nil {
-		m.Add(s.TSDB.Close())
+	if s.tsdb != nil {
+		m.Add(s.tsdb.Close())
 	}
-	if s.Symbols != nil {
-		m.Add(s.Symbols.Close())
+	if s.symbols != nil {
+		m.Add(s.symbols.Close())
 	}
-	if s.Profiles != nil {
-		m.Add(s.Profiles.Close())
+	if s.profiles != nil {
+		m.Add(s.profiles.Close())
 	}
 	s.err = m.Err()
 }
+
+func (s *TenantService) Meta() *metastorev1.TenantService { return s.meta }
+
+func (s *TenantService) Profiles() *ParquetFile { return s.profiles }
+
+func (s *TenantService) ProfileRowReader() parquet.RowReader { return s.profiles.RowReader() }
+
+func (s *TenantService) Symbols() symdb.SymbolsReader { return s.symbols }
+
+func (s *TenantService) Index() phlaredb.IndexReader { return s.tsdb }
 
 // Offset of the tenant service section within the object.
 func (s *TenantService) offset() uint64 { return s.meta.TableOfContents[0] }

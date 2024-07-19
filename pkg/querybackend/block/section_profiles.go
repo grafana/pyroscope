@@ -6,27 +6,42 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math"
+	"os"
+	"path/filepath"
 
 	"github.com/parquet-go/parquet-go"
+	"github.com/pkg/errors"
+	"github.com/prometheus/common/model"
 	"github.com/valyala/bytebufferpool"
 
+	"github.com/grafana/pyroscope/pkg/iter"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/objstore"
+	phlareparquet "github.com/grafana/pyroscope/pkg/parquet"
+	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/query"
+	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
+	"github.com/grafana/pyroscope/pkg/util/build"
+	"github.com/grafana/pyroscope/pkg/util/loser"
 )
+
+const maxRowsPerRowGroup = 10 << 10
 
 func openProfileTable(_ context.Context, s *TenantService) (err error) {
 	offset := s.sectionOffset(SectionProfiles)
 	size := s.sectionSize(SectionProfiles)
 	if buf := s.inMemoryBuffer(); buf != nil {
 		offset -= int64(s.offset())
-		s.Profiles, err = openParquetFile(
+		s.profiles, err = openParquetFile(
 			s.inMemoryBucket(buf), s.obj.path, offset, size,
 			0, // Do not prefetch the footer.
 			parquet.SkipBloomFilters(true),
 			parquet.FileReadMode(parquet.ReadModeSync),
 			parquet.ReadBufferSize(4<<10))
 	} else {
-		s.Profiles, err = openParquetFile(
+		s.profiles, err = openParquetFile(
 			s.obj.storage, s.obj.path, offset, size,
 			// TODO(kolesnikovae): Store in TOC.
 			estimateFooterSize(size),
@@ -111,6 +126,10 @@ func openParquetFile(
 	return p, nil
 }
 
+func (f *ParquetFile) RowReader() *parquet.Reader {
+	return parquet.NewReader(f.File, schemav1.ProfilesSchema)
+}
+
 var parquetFooterPool bytebufferpool.Pool
 
 func (f *ParquetFile) fetchFooter(ctx context.Context, estimatedSize int64) error {
@@ -145,11 +164,52 @@ func (f *ParquetFile) Close() error {
 }
 
 func (f *ParquetFile) Column(ctx context.Context, columnName string, predicate query.Predicate) query.Iterator {
-	index, _ := query.GetColumnIndexByPath(f.Root(), columnName)
-	if index == -1 {
+	idx, _ := query.GetColumnIndexByPath(f.Root(), columnName)
+	if idx == -1 {
 		return query.NewErrIterator(fmt.Errorf("column '%s' not found in parquet table", columnName))
 	}
-	return query.NewSyncIterator(ctx, f.RowGroups(), index, columnName, 1<<10, predicate, columnName)
+	return query.NewSyncIterator(ctx, f.RowGroups(), idx, columnName, 1<<10, predicate, columnName)
+}
+
+type profilesWriter struct {
+	*parquet.GenericWriter[*schemav1.Profile]
+	file     *os.File
+	buf      []parquet.Row
+	profiles uint64
+}
+
+func newProfileWriter(dst string, sizeTotal int64) (*profilesWriter, error) {
+	f, err := os.Create(filepath.Join(dst, "profiles.parquet"))
+	if err != nil {
+		return nil, err
+	}
+	return &profilesWriter{
+		file: f,
+		buf:  make([]parquet.Row, 1),
+		GenericWriter: parquet.NewGenericWriter[*schemav1.Profile](f,
+			parquet.CreatedBy("github.com/grafana/pyroscope/", build.Version, build.Revision),
+			parquet.PageBufferSize(estimatePageBufferSize(sizeTotal)),
+			// Note that parquet keeps ALL RG pages in memory (ColumnPageBuffers).
+			parquet.MaxRowsPerRowGroup(maxRowsPerRowGroup),
+			schemav1.ProfilesSchema,
+			// parquet.ColumnPageBuffers(),
+		),
+	}, nil
+}
+
+func (p *profilesWriter) writeRow(e ProfileEntry) error {
+	p.buf[0] = parquet.Row(e.Row)
+	_, err := p.GenericWriter.WriteRows(p.buf)
+	p.profiles++
+	return err
+}
+
+func (p *profilesWriter) Close() error {
+	err := p.GenericWriter.Close()
+	if err != nil {
+		return err
+	}
+	return p.file.Close()
 }
 
 // TODO(kolesnikovae): Figure out optimal thresholds.
@@ -178,9 +238,21 @@ func estimateFooterSize(size int64) int64 {
 
 func estimateReadBufferSize(s int64) int {
 	const minSize = 64 << 10
-	const maxSize = 1 << 20
+	const maxSize = 2 << 20
 	// Parquet has global buffer map, where buffer size is key,
 	// so we want a low cardinality here.
+	e := nextPowerOfTwo(uint32(s / 10))
+	if e < minSize {
+		return minSize
+	}
+	return int(min(e, maxSize))
+}
+
+// This is a verbatim copy of estimateReadBufferSize.
+// It's kept for the sake of clarity and to avoid confusion.
+func estimatePageBufferSize(s int64) int {
+	const minSize = 64 << 10
+	const maxSize = 2 << 20
 	e := nextPowerOfTwo(uint32(s / 10))
 	if e < minSize {
 		return minSize
@@ -245,4 +317,149 @@ func (f *readerWithFooter) ReadAt(p []byte, off int64) (n int, err error) {
 		return len(p), nil
 	}
 	return f.reader.ReadAt(p, off)
+}
+
+type ProfileEntry struct {
+	TenantService *TenantService
+
+	Timestamp   int64
+	Fingerprint model.Fingerprint
+	Labels      phlaremodel.Labels
+	Row         schemav1.ProfileRow
+}
+
+func NewMergeRowProfileIterator(src []*TenantService) (iter.Iterator[ProfileEntry], error) {
+	its := make([]iter.Iterator[ProfileEntry], len(src))
+	for i, s := range src {
+		it, err := NewProfileRowIterator(s)
+		if err != nil {
+			return nil, err
+		}
+		its[i] = it
+	}
+	if len(its) == 1 {
+		return its[0], nil
+	}
+	return &dedupeProfileRowIterator{
+		Iterator: iter.NewTreeIterator(loser.New(
+			its,
+			ProfileEntry{
+				Timestamp: math.MaxInt64,
+			},
+			func(it iter.Iterator[ProfileEntry]) ProfileEntry { return it.At() },
+			func(r1, r2 ProfileEntry) bool {
+				// first handle max profileRow if it's either r1 or r2
+				if r1.Timestamp == math.MaxInt64 {
+					return false
+				}
+				if r2.Timestamp == math.MaxInt64 {
+					return true
+				}
+				// then handle normal profileRows
+				if cmp := phlaremodel.CompareLabelPairs(r1.Labels, r2.Labels); cmp != 0 {
+					return cmp < 0
+				}
+				return r1.Timestamp < r2.Timestamp
+			},
+			func(it iter.Iterator[ProfileEntry]) { _ = it.Close() },
+		)),
+	}, nil
+}
+
+type dedupeProfileRowIterator struct {
+	iter.Iterator[ProfileEntry]
+
+	prevFP        model.Fingerprint
+	prevTimeNanos int64
+}
+
+func (it *dedupeProfileRowIterator) Next() bool {
+	for {
+		if !it.Iterator.Next() {
+			return false
+		}
+		currentProfile := it.Iterator.At()
+		if it.prevFP == currentProfile.Fingerprint && it.prevTimeNanos == currentProfile.Timestamp {
+			// skip duplicate profile
+			continue
+		}
+		it.prevFP = currentProfile.Fingerprint
+		it.prevTimeNanos = currentProfile.Timestamp
+		return true
+	}
+}
+
+type profileRowIterator struct {
+	reader      *TenantService
+	index       phlaredb.IndexReader
+	profiles    iter.Iterator[parquet.Row]
+	allPostings index.Postings
+	err         error
+
+	currentRow       ProfileEntry
+	currentSeriesIdx uint32
+	chunks           []index.ChunkMeta
+}
+
+func NewProfileRowIterator(s *TenantService) (iter.Iterator[ProfileEntry], error) {
+	k, v := index.AllPostingsKey()
+	tsdb := s.Index()
+	allPostings, err := tsdb.Postings(k, nil, v)
+	if err != nil {
+		return nil, err
+	}
+	return &profileRowIterator{
+		reader:           s,
+		index:            tsdb,
+		profiles:         phlareparquet.NewBufferedRowReaderIterator(s.ProfileRowReader(), 4),
+		allPostings:      allPostings,
+		currentSeriesIdx: math.MaxUint32,
+		chunks:           make([]index.ChunkMeta, 1),
+	}, nil
+}
+
+func (p *profileRowIterator) At() ProfileEntry {
+	return p.currentRow
+}
+
+func (p *profileRowIterator) Next() bool {
+	if !p.profiles.Next() {
+		return false
+	}
+	p.currentRow.TenantService = p.reader
+	p.currentRow.Row = schemav1.ProfileRow(p.profiles.At())
+	seriesIndex := p.currentRow.Row.SeriesIndex()
+	p.currentRow.Timestamp = p.currentRow.Row.TimeNanos()
+	// do we have a new series?
+	if seriesIndex == p.currentSeriesIdx {
+		return true
+	}
+	p.currentSeriesIdx = seriesIndex
+	if !p.allPostings.Next() {
+		if err := p.allPostings.Err(); err != nil {
+			p.err = err
+			return false
+		}
+		p.err = errors.New("unexpected end of postings")
+		return false
+	}
+
+	fp, err := p.index.Series(p.allPostings.At(), &p.currentRow.Labels, &p.chunks)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	p.currentRow.Fingerprint = model.Fingerprint(fp)
+	return true
+}
+
+func (p *profileRowIterator) Err() error {
+	if p.err != nil {
+		return p.err
+	}
+	return p.profiles.Err()
+}
+
+func (p *profileRowIterator) Close() error {
+	return p.reader.Close()
 }

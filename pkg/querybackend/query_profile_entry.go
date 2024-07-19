@@ -7,22 +7,23 @@ import (
 
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/phlaredb"
 	parquetquery "github.com/grafana/pyroscope/pkg/phlaredb/query"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 )
 
 func profileEntryIterator(q *queryContext, groupBy ...string) (iter.Iterator[ProfileEntry], error) {
-	series, err := getSeriesLabels(q.svc.TSDB, q.req.matchers, groupBy...)
+	series, err := getSeriesLabels(q.svc.Index(), q.req.matchers, groupBy...)
 	if err != nil {
 		return nil, err
 	}
 	results := parquetquery.NewBinaryJoinIterator(0,
-		q.svc.Profiles.Column(q.ctx, "SeriesIndex", parquetquery.NewMapPredicate(series)),
-		q.svc.Profiles.Column(q.ctx, "TimeNanos", parquetquery.NewIntBetweenPredicate(q.req.startTime, q.req.endTime)),
+		q.svc.Profiles().Column(q.ctx, "SeriesIndex", parquetquery.NewMapPredicate(series)),
+		q.svc.Profiles().Column(q.ctx, "TimeNanos", parquetquery.NewIntBetweenPredicate(q.req.startTime, q.req.endTime)),
 	)
 	results = parquetquery.NewBinaryJoinIterator(0, results,
-		q.svc.Profiles.Column(q.ctx, "StacktracePartition", nil),
+		q.svc.Profiles().Column(q.ctx, "StacktracePartition", nil),
 	)
 
 	buf := make([][]parquet.Value, 3)
@@ -62,7 +63,7 @@ type seriesLabels struct {
 	labels      phlaremodel.Labels
 }
 
-func getSeriesLabels(reader *index.Reader, matchers []*labels.Matcher, by ...string) (map[uint32]seriesLabels, error) {
+func getSeriesLabels(reader phlaredb.IndexReader, matchers []*labels.Matcher, by ...string) (map[uint32]seriesLabels, error) {
 	postings, err := getPostings(reader, matchers...)
 	if err != nil {
 		return nil, err

@@ -14,10 +14,10 @@ func openSymbols(ctx context.Context, s *TenantService) (err error) {
 	if buf := s.inMemoryBuffer(); buf != nil {
 		offset -= int64(s.offset())
 		reader := objstore.NewBucketReaderWithOffset(s.inMemoryBucket(buf), offset)
-		s.Symbols, err = symdb.OpenObject(ctx, reader, s.obj.path, size)
+		s.symbols, err = symdb.OpenObject(ctx, reader, s.obj.path, size)
 	} else {
 		reader := objstore.NewBucketReaderWithOffset(s.obj.storage, offset)
-		s.Symbols, err = symdb.OpenObject(ctx, reader, s.obj.path, size,
+		s.symbols, err = symdb.OpenObject(ctx, reader, s.obj.path, size,
 			symdb.WithPrefetchSize(32<<10))
 	}
 	if err != nil {

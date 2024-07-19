@@ -9,7 +9,6 @@ import (
 	querybackendv1 "github.com/grafana/pyroscope/api/gen/proto/go/querybackend/v1"
 	"github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
-	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 	"github.com/grafana/pyroscope/pkg/querybackend/block"
 )
 
@@ -27,9 +26,9 @@ func queryLabelNames(q *queryContext, query *querybackendv1.Query) (*querybacken
 	var names []string
 	var err error
 	if len(q.req.matchers) == 0 {
-		names, err = q.svc.TSDB.LabelNames()
+		names, err = q.svc.Index().LabelNames()
 	} else {
-		names, err = labelNamesForMatchers(q.svc.TSDB, q.req.matchers)
+		names, err = labelNamesForMatchers(q.svc.Index(), q.req.matchers)
 	}
 	if err != nil {
 		return nil, err
@@ -43,7 +42,7 @@ func queryLabelNames(q *queryContext, query *querybackendv1.Query) (*querybacken
 	return resp, nil
 }
 
-func labelNamesForMatchers(reader *index.Reader, matchers []*labels.Matcher) ([]string, error) {
+func labelNamesForMatchers(reader phlaredb.IndexReader, matchers []*labels.Matcher) ([]string, error) {
 	postings, err := phlaredb.PostingsForMatchers(reader, nil, matchers...)
 	if err != nil {
 		return nil, err

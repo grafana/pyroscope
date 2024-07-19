@@ -24,7 +24,7 @@ func init() {
 }
 
 func querySeriesLabels(q *queryContext, query *querybackendv1.Query) (*querybackendv1.Report, error) {
-	postings, err := getPostings(q.svc.TSDB, q.req.matchers...)
+	postings, err := getPostings(q.svc.Index(), q.req.matchers...)
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +32,7 @@ func querySeriesLabels(q *queryContext, query *querybackendv1.Query) (*queryback
 	var c []index.ChunkMeta
 	l := make(map[uint64]model.Labels)
 	for postings.Next() {
-		fp, _ := q.svc.TSDB.SeriesBy(postings.At(), &tmp, &c, query.SeriesLabels.LabelNames...)
+		fp, _ := q.svc.Index().SeriesBy(postings.At(), &tmp, &c, query.SeriesLabels.LabelNames...)
 		if _, ok := l[fp]; ok {
 			continue
 		}
@@ -56,7 +56,7 @@ func querySeriesLabels(q *queryContext, query *querybackendv1.Query) (*queryback
 	return resp, nil
 }
 
-func getPostings(reader *index.Reader, matchers ...*labels.Matcher) (index.Postings, error) {
+func getPostings(reader phlaredb.IndexReader, matchers ...*labels.Matcher) (index.Postings, error) {
 	if len(matchers) == 0 {
 		k, v := index.AllPostingsKey()
 		return reader.Postings(k, nil, v)
