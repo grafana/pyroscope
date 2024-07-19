@@ -13,22 +13,11 @@ import (
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/memory"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/refctr"
 )
-
-type Block interface {
-	ProfileRowReader() parquet.RowReader
-	Profiles() *ParquetFile
-	Index() phlaredb.IndexReader
-	Symbols() symdb.SymbolsReader
-	Close() error
-}
-
-var _ Block = (*TenantService)(nil)
 
 type TenantService struct {
 	meta *metastorev1.TenantService
@@ -90,19 +79,6 @@ func (s *TenantService) Open(ctx context.Context, sections ...Section) (err erro
 		}))
 	}
 	return g.Wait()
-}
-
-func (s *TenantService) estimatedInMemorySizeMerge() int64 {
-	var e int64
-	// Both the symbols and the tsdb are loaded into memory entirely.
-	// However, the actual footprint is higher because the encoding.
-	e += s.sectionSize(SectionSymbols) * 4
-	e += s.sectionSize(SectionTSDB) * 4
-	// All columns are to be opened.
-	columns := len(schemav1.ProfilesSchema.Columns())
-	cb := estimateReadBufferSize(s.sectionSize(SectionProfiles))
-	e += int64(columns * cb)
-	return e
 }
 
 func (s *TenantService) CloseShared(err error) {
