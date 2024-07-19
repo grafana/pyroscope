@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-kit/log"
@@ -93,6 +94,9 @@ type Metastore struct {
 	snapshotStore raft.SnapshotStore
 
 	walDir string
+
+	done chan struct{}
+	wg   sync.WaitGroup
 }
 
 type Limits interface{}
@@ -104,6 +108,7 @@ func New(config Config, limits Limits, logger log.Logger, reg prometheus.Registe
 		reg:    reg,
 		limits: limits,
 		db:     newDB(config, logger),
+		done:   make(chan struct{}),
 	}
 	m.leaderhealth = raftleader.NewRaftLeaderHealthObserver(hs, logger)
 	m.state = newMetastoreState(logger, m.db, m.reg)
@@ -127,10 +132,14 @@ func (m *Metastore) starting(ctx context.Context) error {
 		return fmt.Errorf("failed to initialize raft: %w", err)
 	}
 	m.compactionPlanner = NewPlanner(m.state, m.logger)
+	m.wg.Add(1)
+	go m.cleanupLoop()
 	return nil
 }
 
 func (m *Metastore) stopping(_ error) error {
+	close(m.done)
+	m.wg.Wait()
 	return m.Shutdown()
 }
 
