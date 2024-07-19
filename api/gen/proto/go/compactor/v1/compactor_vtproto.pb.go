@@ -121,6 +121,7 @@ func (m *CompactionJob) CloneVT() *CompactionJob {
 	r.RaftLogIndex = m.RaftLogIndex
 	r.Shard = m.Shard
 	r.TenantId = m.TenantId
+	r.CompactionLevel = m.CompactionLevel
 	if rhs := m.Blocks; rhs != nil {
 		tmpContainer := make([]*v1.BlockMeta, len(rhs))
 		for k, v := range rhs {
@@ -370,6 +371,9 @@ func (this *CompactionJob) EqualVT(that *CompactionJob) bool {
 		return false
 	}
 	if this.TenantId != that.TenantId {
+		return false
+	}
+	if this.CompactionLevel != that.CompactionLevel {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -807,6 +811,11 @@ func (m *CompactionJob) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.CompactionLevel != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.CompactionLevel))
+		i--
+		dAtA[i] = 0x40
+	}
 	if len(m.TenantId) > 0 {
 		i -= len(m.TenantId)
 		copy(dAtA[i:], m.TenantId)
@@ -1145,6 +1154,9 @@ func (m *CompactionJob) SizeVT() (n int) {
 	l = len(m.TenantId)
 	if l > 0 {
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.CompactionLevel != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.CompactionLevel))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -1786,6 +1798,25 @@ func (m *CompactionJob) UnmarshalVT(dAtA []byte) error {
 			}
 			m.TenantId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
+		case 8:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CompactionLevel", wireType)
+			}
+			m.CompactionLevel = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.CompactionLevel |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

@@ -43,6 +43,7 @@ message CompactionJob {
   uint32 shard = 6;
   // Optional, empty for compaction level 0.
   string tenant_id = 7;
+  uint32 compaction_level = 8;
 }
 
 message CompactionOptions {

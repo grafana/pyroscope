@@ -3,6 +3,7 @@ package metastore
 import (
 	"context"
 	"fmt"
+	"math"
 
 	"github.com/go-kit/log/level"
 	"github.com/hashicorp/raft"
@@ -122,11 +123,10 @@ func (m *metastoreState) applyPollCompactionJobs(raft *raft.Log, request *compac
 		m.compactionMetrics.completedJobs.WithLabelValues(fmt.Sprint(j.Shard), j.TenantId, fmt.Sprint(j.CompactionLevel)).Inc()
 	}
 
-	for _, j := range jResult.newJobAssignments {
+	resp.CompactionJobs, err = m.convertJobs(jResult.newJobAssignments)
+	for _, j := range resp.CompactionJobs {
 		m.compactionMetrics.assignedJobs.WithLabelValues(fmt.Sprint(j.Shard), j.TenantId, fmt.Sprint(j.CompactionLevel)).Inc()
 	}
-
-	resp.CompactionJobs, err = m.convertJobs(jResult.newJobAssignments)
 
 	return resp, err
 }
@@ -149,8 +149,8 @@ func (m *metastoreState) convertJobs(jobs []*compactionpb.CompactionJob) ([]*com
 			blocks = append(blocks, b)
 		}
 		if len(blocks) == 0 {
-			level.Warn(m.logger).Log("msg", "skipping assigned compaction job since it has no valid blocks", "job", job.Name)
-			m.compactionJobQueue.evict(job.Name, job.RaftLogIndex)
+			evicted := m.compactionJobQueue.evict(job.Name, math.MaxInt64)
+			level.Warn(m.logger).Log("msg", "skipping assigned compaction job since it has no valid blocks", "job", job.Name, "evicted", evicted)
 			continue
 		}
 

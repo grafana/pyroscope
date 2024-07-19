@@ -676,6 +676,10 @@
         "tenantId": {
           "type": "string",
           "description": "Optional, empty for compaction level 0."
+        },
+        "compactionLevel": {
+          "type": "integer",
+          "format": "int64"
         }
       },
       "description": "One compaction job may result in multiple output blocks."
