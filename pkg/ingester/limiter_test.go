@@ -32,8 +32,8 @@ func (f *fakeLimits) IngestionTenantShardSize(userID string) int {
 	return f.ingestionTenantShardSize
 }
 
-func (f *fakeLimits) DistributorUsageGroups(userID string) (*validation.UsageGroupConfig, error) {
-	return &validation.UsageGroupConfig{}, nil
+func (f *fakeLimits) DistributorUsageGroups(userID string) *validation.UsageGroupConfig {
+	return &validation.UsageGroupConfig{}
 }
 
 type fakeRingCount struct {

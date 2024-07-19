@@ -397,6 +397,13 @@ usage_groups:
   app/foo: ?????`,
 			WantErr: `failed to parse matchers for usage group "app/foo": 1:1: parse error: unexpected character: '?'`,
 		},
+		{
+			Name: "missing_usage_groups_key_in_config",
+			YAML: `
+some_other_config:
+  foo: bar`,
+			Want: UsageGroupConfig{},
+		},
 	}
 
 	for _, tt := range tests {
@@ -468,6 +475,11 @@ func TestUsageGroupConfig_UnmarshalJSON(t *testing.T) {
 			Name:    "invalid_matcher",
 			JSON:    `{"usage_groups": {"app/foo": "?????"}}`,
 			WantErr: `failed to parse matchers for usage group "app/foo": 1:1: parse error: unexpected character: '?'`,
+		},
+		{
+			Name: "missing_usage_groups_key_in_config",
+			JSON: `{"some_other_key": {"foo": "bar"}}`,
+			Want: UsageGroupConfig{},
 		},
 	}
 

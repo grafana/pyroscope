@@ -51,7 +51,7 @@ type Limits struct {
 	MaxProfileSymbolValueLength      int `yaml:"max_profile_symbol_value_length" json:"max_profile_symbol_value_length"`
 
 	// Distributor per-app usage breakdown.
-	DistributorUsageGroups []map[string]string `yaml:"distributor_usage_groups" json:"distributor_usage_groups"`
+	DistributorUsageGroups *UsageGroupConfig `yaml:"distributor_usage_groups" json:"distributor_usage_groups"`
 
 	// Distributor aggregation.
 	DistributorAggregationWindow model.Duration `yaml:"distributor_aggregation_window" json:"distributor_aggregation_window"`

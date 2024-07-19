@@ -146,6 +146,22 @@ func NewUsageGroupConfig(m map[string]string) (UsageGroupConfig, error) {
 	return config, nil
 }
 
+func (o *Overrides) DistributorUsageGroups(tenantID string) *UsageGroupConfig {
+	config := o.getOverridesForTenant(tenantID).DistributorUsageGroups
+
+	// It should never be nil, but check just in case!
+	if config == nil {
+		config = &UsageGroupConfig{}
+	}
+
+	// Make sure the usage group config has the tenant ID set. It is not known
+	// when it is unmarshaled from the configuration.
+	if config.TenantID == "" {
+		config.TenantID = tenantID
+	}
+	return config
+}
+
 func matchesAll(matchers []*labels.Matcher, lbls phlaremodel.Labels) bool {
 	if len(lbls) == 0 {
 		return false
