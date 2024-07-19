@@ -5,17 +5,24 @@
 package validation
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
+	"gopkg.in/yaml.v3"
+
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 )
 
 const (
 	// Maximum number of usage groups that can be configured (per tenant).
 	maxUsageGroups = 50
+
+	// The usage group name to use when no user-defined usage groups matched.
+	noMatchName = "other"
 )
 
 var (
@@ -32,7 +39,7 @@ var (
 
 	// This is a duplicate of discarded_bytes_total, but with usage_group as a
 	// label.
-	UsageGroupDiscardedBytes = promauto.NewCounterVec(
+	usageGroupDiscardedBytes = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "pyroscope",
 			Name:      "usage_group_discarded_bytes_total",
@@ -43,7 +50,79 @@ var (
 )
 
 type UsageGroupConfig struct {
-	config map[string][]*labels.Matcher
+	TenantID string
+	config   map[string][]*labels.Matcher
+}
+
+func (c *UsageGroupConfig) GetUsageGroups(lbls phlaremodel.Labels) UsageGroupMatch {
+	match := UsageGroupMatch{
+		tenantID: c.TenantID,
+	}
+
+	for name, matchers := range c.config {
+		if matchesAll(matchers, lbls) {
+			match.names = append(match.names, name)
+		}
+	}
+
+	return match
+}
+
+func (c *UsageGroupConfig) UnmarshalYAML(value *yaml.Node) error {
+	m := make(map[string]string)
+	err := value.DecodeWithOptions(&m, yaml.DecodeOptions{
+		KnownFields: true,
+	})
+	if err != nil {
+		return fmt.Errorf("malformed usage group config: %w", err)
+	}
+
+	*c, err = NewUsageGroupConfig(m)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *UsageGroupConfig) UnmarshalJSON(bytes []byte) error {
+	m := make(map[string]string)
+	err := json.Unmarshal(bytes, &m)
+	if err != nil {
+		return fmt.Errorf("malformed usage group config: %w", err)
+	}
+
+	*c, err = NewUsageGroupConfig(m)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type UsageGroupMatch struct {
+	tenantID string
+	names    []string
+}
+
+func (m UsageGroupMatch) CountReceivedBytes(profileType string, n int64) {
+	if len(m.names) == 0 {
+		usageGroupReceivedDecompressedBytes.WithLabelValues(profileType, m.tenantID, noMatchName).Add(float64(n))
+		return
+	}
+
+	for _, name := range m.names {
+		usageGroupReceivedDecompressedBytes.WithLabelValues(profileType, m.tenantID, name).Add(float64(n))
+	}
+}
+
+func (m UsageGroupMatch) CountDiscardedBytes(reason string, n int64) {
+	if len(m.names) == 0 {
+		usageGroupDiscardedBytes.WithLabelValues(reason, m.tenantID, noMatchName).Add(float64(n))
+		return
+	}
+
+	for _, name := range m.names {
+		usageGroupDiscardedBytes.WithLabelValues(reason, m.tenantID, name).Add(float64(n))
+	}
 }
 
 func NewUsageGroupConfig(m map[string]string) (UsageGroupConfig, error) {
@@ -65,4 +144,19 @@ func NewUsageGroupConfig(m map[string]string) (UsageGroupConfig, error) {
 	}
 
 	return config, nil
+}
+
+func matchesAll(matchers []*labels.Matcher, lbls phlaremodel.Labels) bool {
+	if len(lbls) == 0 {
+		return false
+	}
+
+	for _, m := range matchers {
+		for _, lbl := range lbls {
+			if lbl.Name == m.Name && !m.Matches(lbl.Value) {
+				return false
+			}
+		}
+	}
+	return true
 }
