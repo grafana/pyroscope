@@ -2303,7 +2303,7 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "compaction-worker"
 spec:
-  replicas: 3
+  replicas: 32
   selector:
     matchLabels:
       app.kubernetes.io/name: pyroscope
@@ -2347,13 +2347,14 @@ spec:
             - "-metastore.raft.advertise-address=$(POD_NAME).pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
             - "-metastore.raft.server-id=$(POD_NAME).pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
             - "-metastore.raft.bootstrap-peers=dnssrvnoa+_raft._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
-            - "-metastore.raft.bootstrap-expect-peers=3"
+            - "-metastore.raft.bootstrap-expect-peers=32"
             - "-metastore.address=dns:///_grpc._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9095"
             - "-query-backend.address=dns:///pyroscope-dev-query-worker-headless.default.svc.cluster.local.:9095"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-ingester.num-tokens=4"
             - "-distributor.replication-factor=1"
+            - "-compaction-worker.job-capacity=40"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
           env:

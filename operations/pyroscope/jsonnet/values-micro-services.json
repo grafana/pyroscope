@@ -5,8 +5,11 @@
   "pyroscope": {
     "components": {
       "compaction-worker": {
+        "extraArgs": {
+          "compaction-worker.job-capacity": 40
+        },
         "kind": "Deployment",
-        "replicaCount": 3,
+        "replicaCount": 32,
         "resources": {
           "limits": {
             "memory": "16Gi"
