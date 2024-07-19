@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,21 +22,21 @@ func TestNewUsageGroupConfig(t *testing.T) {
 				"app/foo": `{service_name="foo"}`,
 			},
 			Want: UsageGroupConfig{
-				config: map[string]string{
-					"app/foo": `{service_name="foo"}`,
+				config: map[string][]*labels.Matcher{
+					"app/foo": testMustParseMatcher(t, `{service_name="foo"}`),
 				},
 			},
 		},
 		{
 			Name: "multiple_usage_groups",
 			ConfigMap: map[string]string{
-				"app/foo": `{service_name="foo"}`,
-				"app/bar": `{service_name="bar"}`,
+				"app/foo":  `{service_name="foo"}`,
+				"app/foo2": `{service_name="foo", namespace=~"bar.*"}`,
 			},
 			Want: UsageGroupConfig{
-				config: map[string]string{
-					"app/foo": `{service_name="foo"}`,
-					"app/bar": `{service_name="bar"}`,
+				config: map[string][]*labels.Matcher{
+					"app/foo":  testMustParseMatcher(t, `{service_name="foo"}`),
+					"app/foo2": testMustParseMatcher(t, `{service_name="foo", namespace=~"bar.*"}`),
 				},
 			},
 		},
@@ -65,4 +67,10 @@ func TestNewUsageGroupConfig(t *testing.T) {
 			require.Equal(t, tt.Want, got)
 		}
 	}
+}
+
+func testMustParseMatcher(t *testing.T, s string) []*labels.Matcher {
+	m, err := parser.ParseMetricSelector(s)
+	require.NoError(t, err)
+	return m
 }

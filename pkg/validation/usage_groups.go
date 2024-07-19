@@ -9,6 +9,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/promql/parser"
 )
 
 const (
@@ -41,7 +43,7 @@ var (
 )
 
 type UsageGroupConfig struct {
-	config map[string]string
+	config map[string][]*labels.Matcher
 }
 
 func NewUsageGroupConfig(m map[string]string) (UsageGroupConfig, error) {
@@ -49,13 +51,16 @@ func NewUsageGroupConfig(m map[string]string) (UsageGroupConfig, error) {
 		return UsageGroupConfig{}, fmt.Errorf("maximum number of usage groups is %d, got %d", maxUsageGroups, len(m))
 	}
 
-	config := UsageGroupConfig{}
-	if len(m) == 0 {
-		return config, nil
+	config := UsageGroupConfig{
+		config: make(map[string][]*labels.Matcher),
 	}
 
-	config.config = make(map[string]string)
-	for name, matchers := range m {
+	for name, matchersText := range m {
+		matchers, err := parser.ParseMetricSelector(matchersText)
+		if err != nil {
+			return UsageGroupConfig{}, fmt.Errorf("failed to parse matchers for usage group %q: %w", name, err)
+		}
+
 		config.config[name] = matchers
 	}
 
