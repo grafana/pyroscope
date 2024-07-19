@@ -85,10 +85,6 @@ func (m *Metastore) bootstrapPeers() ([]raft.Server, error) {
 			})
 		}
 	}
-	if len(peers) != m.config.Raft.BootstrapExpectPeers {
-		return nil, fmt.Errorf("expected number of bootstrap peers not reached: got %d, expected %d",
-			len(peers), m.config.Raft.BootstrapExpectPeers)
-	}
 	// Finally, we sort and deduplicate the peers: the first one
 	// is to boostrap the cluster. If there are nodes with distinct
 	// IDs but the same address, bootstrapping will fail.
@@ -98,6 +94,10 @@ func (m *Metastore) bootstrapPeers() ([]raft.Server, error) {
 	peers = slices.CompactFunc(peers, func(a, b raft.Server) bool {
 		return a.ID == b.ID
 	})
+	if len(peers) != m.config.Raft.BootstrapExpectPeers {
+		return nil, fmt.Errorf("expected number of bootstrap peers not reached: got %d, expected %d",
+			len(peers), m.config.Raft.BootstrapExpectPeers)
+	}
 	return peers, nil
 }
 
