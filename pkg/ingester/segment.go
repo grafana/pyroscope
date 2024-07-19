@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime/pprof"
 	"slices"
 	"strings"
 	"sync"
@@ -207,8 +208,9 @@ func (s *segment) flush(ctx context.Context) error {
 		s.sw.metrics.flushSegmentDuration.WithLabelValues(s.sshard).Observe(time.Since(t1).Seconds())
 
 	}()
-
-	heads = s.flushHeads(ctx)
+	pprof.Do(ctx, pprof.Labels("segment_op", "flush_heads"), func(ctx context.Context) {
+		heads = s.flushHeads(ctx)
+	})
 	s.debuginfo.movedHeads = len(heads)
 	if len(heads) == 0 {
 		return nil

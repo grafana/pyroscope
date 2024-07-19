@@ -1,11 +1,13 @@
 package metastore
 
 import (
+	"context"
 	"encoding/binary"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"runtime/pprof"
 	"time"
 
 	"github.com/go-kit/log"
@@ -165,6 +167,14 @@ func (db *boltdb) createSnapshot() (*snapshot, error) {
 }
 
 func (s *snapshot) Persist(sink raft.SnapshotSink) (err error) {
+	pprof.Do(context.Background(), pprof.Labels("metastore_op", "persist"), func(ctx context.Context) {
+		err = s.persist(sink)
+	})
+	return err
+}
+
+func (s *snapshot) persist(sink raft.SnapshotSink) error {
+	var err error
 	t1 := time.Now()
 	_ = s.logger.Log("msg", "persisting snapshot", "sink_id", sink.ID())
 	defer func() {
