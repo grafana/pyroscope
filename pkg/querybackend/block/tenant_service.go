@@ -1,7 +1,6 @@
 package block
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 
@@ -14,8 +13,8 @@ import (
 	"github.com/grafana/pyroscope/pkg/objstore/providers/memory"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
-	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/pkg/util/bufferpool"
 	"github.com/grafana/pyroscope/pkg/util/refctr"
 )
 
@@ -24,47 +23,63 @@ type TenantService struct {
 	obj  *Object
 
 	refs refctr.Counter
-	buf  *bytes.Buffer
+	buf  *bufferpool.Buffer
 	err  error
 
-	tsdb     *index.Reader
+	tsdb     *tsdbBuffer
 	symbols  *symdb.Reader
 	profiles *ParquetFile
+
+	memSize int
 }
 
 func NewTenantService(meta *metastorev1.TenantService, obj *Object) *TenantService {
 	return &TenantService{
-		meta: meta,
-		obj:  obj,
+		meta:    meta,
+		obj:     obj,
+		memSize: defaultTenantServiceSizeLoadInMemory,
 	}
 }
 
-func (s *TenantService) OpenShared(ctx context.Context, sections ...Section) (err error) {
-	s.err = s.refs.Inc(func() error {
-		return s.Open(ctx, sections...)
-	})
-	return s.err
+type TenantServiceOption func(*TenantService)
+
+func WithTenantServiceMaxSizeLoadInMemory(size int) TenantServiceOption {
+	return func(s *TenantService) {
+		s.memSize = size
+	}
 }
 
+// Open opens the service, initializing the sections specified.
+//
+// Open may be called multiple times concurrently, but the service
+// is only initialized once. While it is possible to open the service
+// repeatedly after close, the caller must pass the failure reason to
+// the CloseWithError call, preventing further use, if applicable.
 func (s *TenantService) Open(ctx context.Context, sections ...Section) (err error) {
+	return s.refs.IncErr(func() error {
+		return s.open(ctx, sections...)
+	})
+}
+
+func (s *TenantService) open(ctx context.Context, sections ...Section) (err error) {
 	if s.err != nil {
 		// The tenant service has been already closed with an error.
 		return s.err
 	}
-	if err = s.obj.OpenShared(ctx); err != nil {
+	if err = s.obj.Open(ctx); err != nil {
 		return fmt.Errorf("failed to open object: %w", err)
 	}
 	defer func() {
 		// Close the object here because the tenant service won't be
 		// closed if it fails to open.
 		if err != nil {
-			s.obj.CloseShared(err)
+			_ = s.closeErr(err)
 		}
 	}()
-	if s.obj.buf == nil && s.meta.Size < loadInMemorySizeThreshold {
-		s.buf = new(bytes.Buffer) // TODO: Pool.
+	if s.obj.buf == nil && s.meta.Size < uint64(s.memSize) {
+		s.buf = bufferpool.GetBuffer(int(s.meta.Size))
 		off, size := int64(s.offset()), int64(s.meta.Size)
-		if err = objstore.FetchRange(ctx, s.buf, s.obj.path, s.obj.storage, off, size); err != nil {
+		if err = objstore.ReadRange(ctx, s.buf, s.obj.path, s.obj.storage, off, size); err != nil {
 			return fmt.Errorf("loading sections into memory: %w", err)
 		}
 	}
@@ -81,34 +96,39 @@ func (s *TenantService) Open(ctx context.Context, sections ...Section) (err erro
 	return g.Wait()
 }
 
-func (s *TenantService) CloseShared(err error) {
+func (s *TenantService) Close() error { return s.CloseWithError(nil) }
+
+// CloseWithError closes the tenant service and disposes all the resources
+// associated with it.
+//
+// Any further attempts to open the service will return the provided error.
+func (s *TenantService) CloseWithError(err error) (closeErr error) {
 	s.refs.Dec(func() {
-		s.closeErr(err)
+		closeErr = s.closeErr(err)
 	})
+	return closeErr
 }
 
-func (s *TenantService) Close() error {
-	s.closeErr(nil)
-	return s.err
-}
-
-func (s *TenantService) closeErr(err error) {
+func (s *TenantService) closeErr(err error) error {
+	s.err = err
 	if s.buf != nil {
-		s.buf = nil // TODO: Release.
+		bufferpool.Put(s.buf)
+		s.buf = nil
 	}
-	var m multierror.MultiError
-	m.Add(s.err) // Preserve the existing error
-	m.Add(err)   // Add the new error, if any.
+	var merr multierror.MultiError
 	if s.tsdb != nil {
-		m.Add(s.tsdb.Close())
+		merr.Add(s.tsdb.Close())
 	}
 	if s.symbols != nil {
-		m.Add(s.symbols.Close())
+		merr.Add(s.symbols.Close())
 	}
 	if s.profiles != nil {
-		m.Add(s.profiles.Close())
+		merr.Add(s.profiles.Close())
 	}
-	s.err = m.Err()
+	if s.obj != nil {
+		merr.Add(s.obj.CloseWithError(err))
+	}
+	return merr.Err()
 }
 
 func (s *TenantService) Meta() *metastorev1.TenantService { return s.meta }
@@ -119,7 +139,7 @@ func (s *TenantService) ProfileRowReader() parquet.RowReader { return s.profiles
 
 func (s *TenantService) Symbols() symdb.SymbolsReader { return s.symbols }
 
-func (s *TenantService) Index() phlaredb.IndexReader { return s.tsdb }
+func (s *TenantService) Index() phlaredb.IndexReader { return s.tsdb.index }
 
 // Offset of the tenant service section within the object.
 func (s *TenantService) offset() uint64 { return s.meta.TableOfContents[0] }
@@ -170,13 +190,13 @@ func (s *TenantService) inMemoryBuffer() []byte {
 		// return the tenant service sub-slice.
 		lo := s.offset()
 		hi := lo + s.meta.Size
-		buf := s.obj.buf.Bytes()
+		buf := s.obj.buf.B
 		return buf[lo:hi]
 	}
 	if s.buf != nil {
 		// Otherwise, if the tenant service is loaded into memory
 		// individually, return the buffer.
-		return s.buf.Bytes()
+		return s.buf.B
 	}
 	// Otherwise, the tenant service is not loaded into memory.
 	return nil

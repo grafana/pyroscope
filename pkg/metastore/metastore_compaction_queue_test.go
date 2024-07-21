@@ -16,17 +16,17 @@ func Test_compactionJobQueue(t *testing.T) {
 
 	assert.True(t, q.enqueue(&compactionpb.CompactionJob{
 		Name:            "job1",
-		CommitIndex:     1,
+		RaftLogIndex:    1,
 		CompactionLevel: 0,
 	}))
 	assert.True(t, q.enqueue(&compactionpb.CompactionJob{
 		Name:            "job2",
-		CommitIndex:     2,
+		RaftLogIndex:    2,
 		CompactionLevel: 1,
 	}))
 	assert.True(t, q.enqueue(&compactionpb.CompactionJob{
 		Name:            "job3",
-		CommitIndex:     3,
+		RaftLogIndex:    3,
 		CompactionLevel: 0,
 	}))
 
@@ -67,5 +67,5 @@ func Test_compactionJobQueue(t *testing.T) {
 func assertJob(t *testing.T, j *compactionpb.CompactionJob, name string, commitIndex uint64) {
 	require.NotNil(t, j)
 	assert.Equal(t, name, j.Name)
-	assert.Equal(t, commitIndex, j.CommitIndex)
+	assert.Equal(t, commitIndex, j.RaftLogIndex)
 }

@@ -334,7 +334,7 @@ func (f *Phlare) setupModuleManager() error {
 
 	// Add dependencies
 	deps := map[string][]string{
-		All: {Ingester, Distributor, QueryScheduler, QueryFrontend, Querier, StoreGateway, Admin, TenantSettings, Compactor, AdHocProfiles, Metastore, MetastoreClient, QueryBackend, QueryBackendClient},
+		All: {Ingester, Distributor, QueryScheduler, QueryFrontend, Querier, StoreGateway, Admin, TenantSettings, Compactor, AdHocProfiles, Metastore, MetastoreClient, QueryBackend, QueryBackendClient, CompactionWorker},
 
 		Server:            {GRPCGateway},
 		API:               {Server},

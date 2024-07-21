@@ -14,6 +14,7 @@ import (
 )
 
 func (m *Metastore) AddBlock(_ context.Context, req *metastorev1.AddBlockRequest) (*metastorev1.AddBlockResponse, error) {
+	_ = level.Info(m.logger).Log("msg", "adding block", "block_id", req.Block.Id, "shard", req.Block.Shard)
 	t1 := time.Now()
 	defer func() {
 		m.metrics.raftAddBlockDuration.Observe(time.Since(t1).Seconds())
@@ -23,8 +24,6 @@ func (m *Metastore) AddBlock(_ context.Context, req *metastorev1.AddBlockRequest
 }
 
 func (m *metastoreState) applyAddBlock(_ *raft.Log, request *metastorev1.AddBlockRequest) (*metastorev1.AddBlockResponse, error) {
-	_ = level.Info(m.logger).Log("msg", "adding block", "block_id", request.Block.Id)
-
 	name, key := keyForBlockMeta(request.Block.Shard, "", request.Block.Id)
 	value, err := request.Block.MarshalVT()
 	if err != nil {

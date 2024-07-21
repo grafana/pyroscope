@@ -3,7 +3,6 @@ package symdb
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"fmt"
 	"hash/crc32"
@@ -15,13 +14,13 @@ import (
 	"github.com/grafana/dskit/multierror"
 	"github.com/opentracing/opentracing-go"
 	otlog "github.com/opentracing/opentracing-go/log"
-	"github.com/valyala/bytebufferpool"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/grafana/pyroscope/pkg/iter"
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/util/bufferpool"
 	"github.com/grafana/pyroscope/pkg/util/refctr"
 )
 
@@ -40,7 +39,6 @@ type Reader struct {
 	parquetFiles *parquetFiles
 
 	prefetchSize uint64
-	buf          *bytebufferpool.ByteBuffer
 }
 
 type Option func(*Reader)
@@ -51,13 +49,13 @@ func WithPrefetchSize(size uint64) Option {
 	}
 }
 
-func OpenObject(ctx context.Context, b objstore.BucketReader, name string, size int64, options ...Option) (*Reader, error) {
+func OpenObject(ctx context.Context, b objstore.BucketReader, name string, offset, size int64, options ...Option) (*Reader, error) {
 	f := block.File{
 		RelPath:   name,
 		SizeBytes: uint64(size),
 	}
 	r := &Reader{
-		bucket: b,
+		bucket: objstore.NewBucketReaderWithOffset(b, offset),
 		file:   f,
 	}
 	for _, opt := range options {
@@ -81,46 +79,30 @@ func OpenObject(ctx context.Context, b objstore.BucketReader, name string, size 
 	return r, nil
 }
 
-var footerPool bytebufferpool.Pool
-
-func (r *Reader) freeBuf() {
-	if r.buf != nil {
-		footerPool.Put(r.buf)
-		r.buf = nil
-	}
-}
-
 func (r *Reader) openIndexWithPrefetch(ctx context.Context) (err error) {
-	r.buf = footerPool.Get()
-	buf := bytes.NewBuffer(r.buf.B)
-	defer func() {
-		r.buf.B = buf.Bytes()
-		if err != nil {
-			r.freeBuf()
-		}
-	}()
 	prefetchSize := r.prefetchSize
 	if prefetchSize > r.file.SizeBytes {
 		prefetchSize = r.file.SizeBytes
 	}
-	n, err := r.prefetchIndex(ctx, buf, prefetchSize)
+	n, err := r.prefetchIndex(ctx, prefetchSize)
 	if err == nil && n != 0 {
-		_, err = r.prefetchIndex(ctx, buf, prefetchSize)
+		_, err = r.prefetchIndex(ctx, prefetchSize)
 	}
 	return err
 }
 
-func (r *Reader) prefetchIndex(ctx context.Context, buf *bytes.Buffer, size uint64) (n uint64, err error) {
+func (r *Reader) prefetchIndex(ctx context.Context, size uint64) (n uint64, err error) {
 	if size < uint64(FooterSize) {
 		size = uint64(FooterSize)
 	}
 	prefetchOffset := r.file.SizeBytes - size
-	if err = objstore.FetchRange(ctx, buf, r.file.RelPath, r.bucket, int64(prefetchOffset), int64(size)); err != nil {
+	buf := bufferpool.GetBuffer(int(size))
+	defer bufferpool.Put(buf)
+	if err = objstore.ReadRange(ctx, buf, r.file.RelPath, r.bucket, int64(prefetchOffset), int64(size)); err != nil {
 		return 0, fmt.Errorf("fetching index: %w", err)
 	}
-	b := buf.Bytes()
 	footerOffset := size - uint64(FooterSize)
-	if err = r.footer.UnmarshalBinary(b[footerOffset:]); err != nil {
+	if err = r.footer.UnmarshalBinary(buf.B[footerOffset:]); err != nil {
 		return 0, fmt.Errorf("unmarshaling footer: %w", err)
 	}
 	if prefetchOffset > (r.footer.IndexOffset) {
@@ -128,7 +110,7 @@ func (r *Reader) prefetchIndex(ctx context.Context, buf *bytes.Buffer, size uint
 	}
 	// prefetch offset is less that or equal to the index offset.
 	indexOffset := r.footer.IndexOffset - prefetchOffset
-	if r.index, err = OpenIndex(b[indexOffset:footerOffset]); err != nil {
+	if r.index, err = OpenIndex(buf.B[indexOffset:footerOffset]); err != nil {
 		return 0, fmt.Errorf("opening index: %w", err)
 	}
 	return 0, nil
@@ -301,7 +283,6 @@ func (r *Reader) Close() error {
 	if r.parquetFiles != nil {
 		return r.parquetFiles.Close()
 	}
-	r.freeBuf()
 	return nil
 }
 
