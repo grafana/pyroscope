@@ -420,10 +420,8 @@ func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.Pu
 		return connect.NewResponse(&pushv1.PushResponse{}), nil
 	}
 
-	// Validate the labels again and generate tokens for shuffle sharding.
-	keys := make([]uint32, len(profileSeries))
 	enforceLabelsOrder := d.limits.EnforceLabelsOrder(tenantID)
-	for i, series := range profileSeries {
+	for _, series := range profileSeries {
 		if enforceLabelsOrder {
 			series.Labels = phlaremodel.Labels(series.Labels).InsertSorted(phlaremodel.LabelNameOrder, phlaremodel.LabelOrderEnforced)
 		}
@@ -432,10 +430,8 @@ func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.Pu
 			validation.DiscardedBytes.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(req.TotalBytesUncompressed))
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
-		keys[i] = TokenFor(tenantID, phlaremodel.LabelPairsString(series.Labels))
 	}
 
-	profiles := make([]*profileTracker, 0, len(profileSeries))
 	for _, series := range profileSeries {
 		for _, raw := range series.Samples {
 			p := raw.Profile
@@ -447,48 +443,32 @@ func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.Pu
 			raw.ID = uuid.NewString()
 			raw.RawProfile = bw.Bytes()
 		}
-		profiles = append(profiles, &profileTracker{profile: series})
 	}
 
-	var descs [1]ring.InstanceDesc
-
-	samplesByIngester := map[string][]*profileTracker{}
-	ingesterDescs := map[string]ring.InstanceDesc{}
-
-	for i, key := range keys {
-		serviceName := phlaremodel.Labels(profiles[i].profile.Labels).Get(phlaremodel.LabelNameServiceName)
-		subRing := d.ingestersRing.ShuffleShard(tenantID+serviceName, d.limits.IngestionTenantShardSize(tenantID))
-		targetSet, err := subRing.Get(key, ring.Write, descs[:0], nil, nil)
-		if err != nil {
-			return nil, err
-		}
-		if len(targetSet.Instances) != 1 {
-			return nil, connect.NewError(connect.CodeInternal, errors.New("misconfigured ingester ring"))
-		}
-		ingester := targetSet.Instances[0]
-		samplesByIngester[ingester.Addr] = append(samplesByIngester[ingester.Addr], profiles[i])
-		ingesterDescs[ingester.Addr] = ingester
-
-		fallbackSet, err := subRing.GetAllHealthy(ring.Write)
-		if err != nil {
-			return nil, err
-		}
-		profiles[i].fallbackNodes = make([]ring.InstanceDesc, 0, len(fallbackSet.Instances))
-		profiles[i].fallbackNodes = append(profiles[i].fallbackNodes, fallbackSet.Instances...)
-		phlareslices.RemoveInPlace(profiles[i].fallbackNodes, func(desc ring.InstanceDesc, i int) bool {
-			return desc.Id == ingester.Addr
-		})
-		shardTotal := uint32(d.ingestersRing.InstancesCount() * len(ingester.Tokens))
-		profiles[i].shard = TokenFor(tenantID, serviceName) % shardTotal
-		level.Debug(d.logger).Log("msg", "distributed profile to ingester", "ingester", ingester.Id, "shard", profiles[i].shard, "tenant", tenantID)
+	sd, err := newSeriesDistributor(d.ingestersRing)
+	if err != nil {
+		return nil, err
 	}
-	tracker := pushTracker{
+
+	trackers := sd.buildTrackers(tenantID, profileSeries)
+	trackersByIngester := map[string][]*profileTracker{}
+	ingesterDescs := map[string]*ring.InstanceDesc{}
+	for _, p := range trackers {
+		if n, ok := p.nextIngester(); ok {
+			trackersByIngester[n.Addr] = append(trackersByIngester[n.Addr], p)
+			ingesterDescs[n.Addr] = n
+		} else {
+			_ = level.Error(d.logger).Log("msg", "no nodes to send profile")
+		}
+	}
+
+	tracker := &pushTracker{
 		done: make(chan struct{}, 1), // buffer avoids blocking if caller terminates - sendProfiles() only sends once on each
 		err:  make(chan error, 1),
 	}
-	tracker.samplesPending.Store(int32(len(profiles)))
-	for ingester, samples := range samplesByIngester {
-		go func(ingester ring.InstanceDesc, samples []*profileTracker) {
+	tracker.pending.Store(int32(len(trackers)))
+	for ingester, v := range trackersByIngester {
+		go func(ingester *ring.InstanceDesc, trackers []*profileTracker) {
 			// Use a background context to make sure all ingesters get samples even if we return early
 			localCtx, cancel := context.WithTimeout(context.Background(), d.cfg.PushTimeout)
 			defer cancel()
@@ -496,9 +476,10 @@ func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.Pu
 			if sp := opentracing.SpanFromContext(ctx); sp != nil {
 				localCtx = opentracing.ContextWithSpan(localCtx, sp)
 			}
-			d.sendProfiles(localCtx, ingester, samples, &tracker)
-		}(ingesterDescs[ingester], samples)
+			d.sendProfiles(localCtx, ingester, trackers, tracker)
+		}(ingesterDescs[ingester], v)
 	}
+
 	numRetries := 0
 	maxRetries := 1
 	for {
@@ -508,26 +489,25 @@ func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.Pu
 			if numRetries < maxRetries {
 				return nil, err
 			}
-			samplesByIngester = map[string][]*profileTracker{}
-			ingesterDescs = map[string]ring.InstanceDesc{}
+			trackersByIngester = map[string][]*profileTracker{}
+			ingesterDescs = map[string]*ring.InstanceDesc{}
 			pending := int32(0)
-			for i, p := range profiles {
+			for i, p := range trackers {
 				if p.failed.Load() > 0 {
-					if len(p.fallbackNodes) == 0 {
-						level.Warn(d.logger).Log("msg", "no fallback nodes to send failed profile to", "err", err)
-						continue
+					if n, ok := p.nextIngester(); ok {
+						trackersByIngester[n.Addr] = append(trackersByIngester[n.Addr], trackers[i])
+						ingesterDescs[n.Addr] = n
+						pending++
+					} else {
+						_ = level.Warn(d.logger).Log("msg", "no fallback nodes to send failed profile to", "err", err)
 					}
-					ingester := p.fallbackNodes[0]
-					samplesByIngester[ingester.Addr] = append(samplesByIngester[ingester.Addr], profiles[i])
-					ingesterDescs[ingester.Addr] = ingester
-					pending++
 				}
 			}
 			if pending > 0 {
-				tracker.samplesPending.Store(pending)
+				tracker.pending.Store(pending)
 				numRetries++
-				for ingester, samples := range samplesByIngester {
-					go func(ingester ring.InstanceDesc, samples []*profileTracker) {
+				for ingester, samples := range trackersByIngester {
+					go func(ingester *ring.InstanceDesc, samples []*profileTracker) {
 						// Use a background context to make sure all ingesters get samples even if we return early
 						localCtx, cancel := context.WithTimeout(context.Background(), d.cfg.PushTimeout)
 						defer cancel()
@@ -535,7 +515,7 @@ func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.Pu
 						if sp := opentracing.SpanFromContext(ctx); sp != nil {
 							localCtx = opentracing.ContextWithSpan(localCtx, sp)
 						}
-						d.sendProfiles(localCtx, ingester, samples, &tracker)
+						d.sendProfiles(localCtx, ingester, samples, tracker)
 					}(ingesterDescs[ingester], samples)
 				}
 			} else {
@@ -616,7 +596,7 @@ func mergeProfile(profile *profilev1.Profile) aggregator.AggregateFn[*pprof.Prof
 	}
 }
 
-func (d *Distributor) sendProfiles(ctx context.Context, ingester ring.InstanceDesc, profileTrackers []*profileTracker, pushTracker *pushTracker) {
+func (d *Distributor) sendProfiles(ctx context.Context, ingester *ring.InstanceDesc, profileTrackers []*profileTracker, pushTracker *pushTracker) {
 	err := d.sendProfilesErr(ctx, ingester, profileTrackers)
 	// If we succeed, decrement each sample's pending count by one.  If we reach
 	// the required number of successful puts on this sample, then decrement the
@@ -630,19 +610,19 @@ func (d *Distributor) sendProfiles(ctx context.Context, ingester ring.InstanceDe
 	for i := range profileTrackers {
 		if err != nil {
 			profileTrackers[i].failed.Inc()
-			if pushTracker.samplesFailed.Inc() == 1 {
+			if pushTracker.failed.Inc() == 1 {
 				pushTracker.err <- err
 			}
 		} else {
 			profileTrackers[i].succeeded.Inc()
-			if pushTracker.samplesPending.Dec() == 0 {
+			if pushTracker.pending.Dec() == 0 {
 				pushTracker.done <- struct{}{}
 			}
 		}
 	}
 }
 
-func (d *Distributor) sendProfilesErr(ctx context.Context, ingester ring.InstanceDesc, profileTrackers []*profileTracker) error {
+func (d *Distributor) sendProfilesErr(ctx context.Context, ingester *ring.InstanceDesc, profileTrackers []*profileTracker) error {
 	c, err := d.pool.GetClientFor(ingester.Addr)
 	if err != nil {
 		return err
@@ -952,27 +932,37 @@ func exportSamples(e *pprof.SampleExporter, samples []*profilev1.Sample) *pprof.
 }
 
 type profileTracker struct {
-	profile   *distributormodel.ProfileSeries
 	succeeded atomic.Int32
 	failed    atomic.Int32
+	profile   *distributormodel.ProfileSeries
+	// Note that the instances reference shared objects, and must not be modified.
+	instances []*ring.InstanceDesc
+	shard     uint32
+}
 
-	shard         uint32
-	fallbackNodes []ring.InstanceDesc
+func (p *profileTracker) nextIngester() (instance *ring.InstanceDesc, ok bool) {
+	for len(p.instances) > 0 {
+		instance, p.instances = p.instances[0], p.instances[1:]
+		if instance.State == ring.ACTIVE {
+			return instance, true
+		}
+	}
+	return nil, false
 }
 
 type pushTracker struct {
-	samplesPending atomic.Int32
-	samplesFailed  atomic.Int32
-	done           chan struct{}
-	err            chan error
+	pending atomic.Int32
+	failed  atomic.Int32
+	done    chan struct{}
+	err     chan error
 }
 
-// TokenFor generates a token used for finding ingesters from ring
-func TokenFor(tenantID, labels string) uint32 {
-	h := fnv.New32()
-	_, _ = h.Write([]byte(tenantID))
-	_, _ = h.Write([]byte(labels))
-	return h.Sum32()
+func fnv64(keys ...string) uint64 {
+	h := fnv.New64a()
+	for _, k := range keys {
+		_, _ = h.Write([]byte(k))
+	}
+	return h.Sum64()
 }
 
 // newRingAndLifecycler creates a new distributor ring and lifecycler with all required lifecycler delegates
