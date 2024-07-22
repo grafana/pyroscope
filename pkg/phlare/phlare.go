@@ -258,7 +258,8 @@ type Phlare struct {
 
 	grpcGatewayMux *grpcgw.ServeMux
 
-	auth connect.Option
+	auth      connect.Option
+	metastore *metastore.Metastore
 }
 
 func New(cfg Config) (*Phlare, error) {
@@ -528,6 +529,13 @@ func (f *Phlare) readyHandler(sm *services.Manager) http.HandlerFunc {
 
 			http.Error(w, msg.String(), http.StatusServiceUnavailable)
 			return
+		}
+
+		if f.metastore != nil {
+			if err := f.metastore.CheckReady(r.Context()); err != nil {
+				http.Error(w, err.Error(), http.StatusServiceUnavailable)
+				return
+			}
 		}
 
 		util.WriteTextResponse(w, "ready")

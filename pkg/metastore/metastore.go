@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	metastoreclient "github.com/grafana/pyroscope/pkg/metastore/client"
 	"net"
 	"os"
 	"path/filepath"
@@ -109,11 +110,12 @@ type Metastore struct {
 	done    chan struct{}
 	wg      sync.WaitGroup
 	metrics *metastoreMetrics
+	client  *metastoreclient.Client
 }
 
 type Limits interface{}
 
-func New(config Config, limits Limits, logger log.Logger, reg prometheus.Registerer, hs health.Service) (*Metastore, error) {
+func New(config Config, limits Limits, logger log.Logger, reg prometheus.Registerer, hs health.Service, client *metastoreclient.Client) (*Metastore, error) {
 	metrics := newMetastoreMetrics(reg)
 	m := &Metastore{
 		config:  config,
@@ -123,6 +125,7 @@ func New(config Config, limits Limits, logger log.Logger, reg prometheus.Registe
 		db:      newDB(config, logger, metrics),
 		done:    make(chan struct{}),
 		metrics: metrics,
+		client:  client,
 	}
 	m.leaderhealth = raftleader.NewRaftLeaderHealthObserver(hs, logger, raftleader.NewMetrics(reg))
 	m.state = newMetastoreState(logger, m.db, m.reg)

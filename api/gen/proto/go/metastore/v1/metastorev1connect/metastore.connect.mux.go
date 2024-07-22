@@ -34,4 +34,9 @@ func RegisterMetastoreServiceHandler(mux *mux.Router, svc MetastoreServiceHandle
 		svc.ListBlocksForQuery,
 		opts...,
 	))
+	mux.Handle("/metastore.v1.MetastoreService/ReadIndex", connect.NewUnaryHandler(
+		"/metastore.v1.MetastoreService/ReadIndex",
+		svc.ReadIndex,
+		opts...,
+	))
 }

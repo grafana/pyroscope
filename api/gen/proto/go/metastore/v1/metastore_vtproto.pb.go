@@ -208,6 +208,40 @@ func (m *ListBlocksForQueryResponse) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
+func (m *ReadIndexRequest) CloneVT() *ReadIndexRequest {
+	if m == nil {
+		return (*ReadIndexRequest)(nil)
+	}
+	r := new(ReadIndexRequest)
+	r.DebugRequestId = m.DebugRequestId
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *ReadIndexRequest) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *ReadIndexResponse) CloneVT() *ReadIndexResponse {
+	if m == nil {
+		return (*ReadIndexResponse)(nil)
+	}
+	r := new(ReadIndexResponse)
+	r.ReadIndex = m.ReadIndex
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *ReadIndexResponse) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
 func (this *AddBlockRequest) EqualVT(that *AddBlockRequest) bool {
 	if this == that {
 		return true
@@ -477,6 +511,44 @@ func (this *ListBlocksForQueryResponse) EqualMessageVT(thatMsg proto.Message) bo
 	}
 	return this.EqualVT(that)
 }
+func (this *ReadIndexRequest) EqualVT(that *ReadIndexRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.DebugRequestId != that.DebugRequestId {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *ReadIndexRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*ReadIndexRequest)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *ReadIndexResponse) EqualVT(that *ReadIndexResponse) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.ReadIndex != that.ReadIndex {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *ReadIndexResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*ReadIndexResponse)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
@@ -490,6 +562,7 @@ type MetastoreServiceClient interface {
 	AddBlock(ctx context.Context, in *AddBlockRequest, opts ...grpc.CallOption) (*AddBlockResponse, error)
 	ListBlocks(ctx context.Context, in *ListBlocksRequest, opts ...grpc.CallOption) (*ListBlocksResponse, error)
 	ListBlocksForQuery(ctx context.Context, in *ListBlocksForQueryRequest, opts ...grpc.CallOption) (*ListBlocksForQueryResponse, error)
+	ReadIndex(ctx context.Context, in *ReadIndexRequest, opts ...grpc.CallOption) (*ReadIndexResponse, error)
 }
 
 type metastoreServiceClient struct {
@@ -527,6 +600,15 @@ func (c *metastoreServiceClient) ListBlocksForQuery(ctx context.Context, in *Lis
 	return out, nil
 }
 
+func (c *metastoreServiceClient) ReadIndex(ctx context.Context, in *ReadIndexRequest, opts ...grpc.CallOption) (*ReadIndexResponse, error) {
+	out := new(ReadIndexResponse)
+	err := c.cc.Invoke(ctx, "/metastore.v1.MetastoreService/ReadIndex", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MetastoreServiceServer is the server API for MetastoreService service.
 // All implementations must embed UnimplementedMetastoreServiceServer
 // for forward compatibility
@@ -534,6 +616,7 @@ type MetastoreServiceServer interface {
 	AddBlock(context.Context, *AddBlockRequest) (*AddBlockResponse, error)
 	ListBlocks(context.Context, *ListBlocksRequest) (*ListBlocksResponse, error)
 	ListBlocksForQuery(context.Context, *ListBlocksForQueryRequest) (*ListBlocksForQueryResponse, error)
+	ReadIndex(context.Context, *ReadIndexRequest) (*ReadIndexResponse, error)
 	mustEmbedUnimplementedMetastoreServiceServer()
 }
 
@@ -549,6 +632,9 @@ func (UnimplementedMetastoreServiceServer) ListBlocks(context.Context, *ListBloc
 }
 func (UnimplementedMetastoreServiceServer) ListBlocksForQuery(context.Context, *ListBlocksForQueryRequest) (*ListBlocksForQueryResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListBlocksForQuery not implemented")
+}
+func (UnimplementedMetastoreServiceServer) ReadIndex(context.Context, *ReadIndexRequest) (*ReadIndexResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ReadIndex not implemented")
 }
 func (UnimplementedMetastoreServiceServer) mustEmbedUnimplementedMetastoreServiceServer() {}
 
@@ -617,6 +703,24 @@ func _MetastoreService_ListBlocksForQuery_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MetastoreService_ReadIndex_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReadIndexRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MetastoreServiceServer).ReadIndex(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/metastore.v1.MetastoreService/ReadIndex",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MetastoreServiceServer).ReadIndex(ctx, req.(*ReadIndexRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MetastoreService_ServiceDesc is the grpc.ServiceDesc for MetastoreService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -635,6 +739,10 @@ var MetastoreService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListBlocksForQuery",
 			Handler:    _MetastoreService_ListBlocksForQuery_Handler,
+		},
+		{
+			MethodName: "ReadIndex",
+			Handler:    _MetastoreService_ReadIndex_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -1105,6 +1213,84 @@ func (m *ListBlocksForQueryResponse) MarshalToSizedBufferVT(dAtA []byte) (int, e
 	return len(dAtA) - i, nil
 }
 
+func (m *ReadIndexRequest) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ReadIndexRequest) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *ReadIndexRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.DebugRequestId) > 0 {
+		i -= len(m.DebugRequestId)
+		copy(dAtA[i:], m.DebugRequestId)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.DebugRequestId)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *ReadIndexResponse) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ReadIndexResponse) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *ReadIndexResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.ReadIndex != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.ReadIndex))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
 func (m *AddBlockRequest) SizeVT() (n int) {
 	if m == nil {
 		return 0
@@ -1289,6 +1475,33 @@ func (m *ListBlocksForQueryResponse) SizeVT() (n int) {
 			l = e.SizeVT()
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *ReadIndexRequest) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.DebugRequestId)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *ReadIndexResponse) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.ReadIndex != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.ReadIndex))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -2442,6 +2655,159 @@ func (m *ListBlocksForQueryResponse) UnmarshalVT(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ReadIndexRequest) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ReadIndexRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ReadIndexRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DebugRequestId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.DebugRequestId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ReadIndexResponse) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ReadIndexResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ReadIndexResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ReadIndex", wireType)
+			}
+			m.ReadIndex = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.ReadIndex |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
