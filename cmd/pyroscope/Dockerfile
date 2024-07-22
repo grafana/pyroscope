@@ -1,16 +1,23 @@
-FROM alpine:3.18.7
+FROM gcr.io/distroless/static:debug AS debug
 
-RUN apk add --no-cache ca-certificates
+SHELL [ "/busybox/sh", "-c" ]
+
+RUN addgroup -g 10001 -S pyroscope && \
+    adduser -u 10001 -S pyroscope -G pyroscope -h /data
+
+FROM gcr.io/distroless/static
+
+COPY --from=debug /etc/passwd /etc/passwd
+COPY --from=debug /etc/group /etc/group
+
+# Copy folder from debug container, this folder needs to have the correct UID
+# in order for the container to run as non-root.
+VOLUME /data
+COPY --chown=pyroscope:pyroscope --from=debug /data /data
 
 COPY cmd/pyroscope/pyroscope.yaml /etc/pyroscope/config.yaml
 COPY profilecli /usr/bin/profilecli
 COPY pyroscope /usr/bin/pyroscope
-
-RUN addgroup -g 10001 -S pyroscope && \
-    adduser -u 10001 -S pyroscope -G pyroscope
-RUN mkdir -p /data && \
-    chown -R pyroscope:pyroscope /data
-VOLUME /data
 
 USER pyroscope
 EXPOSE 4040
