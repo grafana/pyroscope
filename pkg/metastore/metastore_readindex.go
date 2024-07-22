@@ -3,11 +3,13 @@ package metastore
 import (
 	"context"
 	"fmt"
-	"github.com/go-kit/log"
-	"github.com/google/uuid"
-	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"strings"
 	"time"
+
+	"github.com/go-kit/log"
+	"github.com/google/uuid"
+
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 )
 
 func (m *Metastore) ReadIndex(ctx context.Context, req *metastorev1.ReadIndexRequest) (*metastorev1.ReadIndexResponse, error) {

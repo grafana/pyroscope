@@ -263,7 +263,7 @@ func (w *Worker) compactBlocks(ctx context.Context, jobName string, blocks []*me
 	}
 
 	writers := make(map[string]*blockWriter)
-	for tenant, _ := range svcReaders {
+	for tenant := range svcReaders {
 		dest := filepath.Join("data-compactor", tenant, jobName)
 		writer, err := w.createBlockWriter(dest, tenant, shard, compactionLevel)
 		if err != nil {

@@ -169,7 +169,7 @@ func (p *ptypes) buildSeriesLabels(names []string) (labels []*typesv1.Labels) {
 func (p *ptypes) buildSeriesLabels2() []*typesv1.Labels {
 	labels := make([]*typesv1.Labels, 0, len(p.services)*4)
 	for n, types := range p.services {
-		for t, _ := range types {
+		for t := range types {
 			labels = append(labels, &typesv1.Labels{
 				Labels: []*typesv1.LabelPair{
 					{Name: "__profile_type__", Value: t},
@@ -184,7 +184,7 @@ func (p *ptypes) buildSeriesLabels2() []*typesv1.Labels {
 func (p *ptypes) buildSeriesLabels5() []*typesv1.Labels {
 	labels := make([]*typesv1.Labels, 0, len(p.services)*4)
 	for n, types := range p.services {
-		for t, _ := range types {
+		for t := range types {
 			pt, err := phlaremodel.ParseProfileTypeSelector(t)
 			if err != nil {
 				panic(err)

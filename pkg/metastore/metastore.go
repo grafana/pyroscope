@@ -4,13 +4,14 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	metastoreclient "github.com/grafana/pyroscope/pkg/metastore/client"
 	"net"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
+
+	metastoreclient "github.com/grafana/pyroscope/pkg/metastore/client"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
