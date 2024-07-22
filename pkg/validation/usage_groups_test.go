@@ -352,6 +352,13 @@ func TestNewUsageGroupConfig(t *testing.T) {
 				},
 			},
 		},
+		{
+			Name: "reserved_name",
+			ConfigMap: map[string]string{
+				noMatchName: `{service_name="foo"}`,
+			},
+			WantErr: fmt.Sprintf("usage group name %q is reserved", noMatchName),
+		},
 	}
 
 	for _, tt := range tests {

@@ -141,8 +141,9 @@ func NewUsageGroupConfig(m map[string]string) (UsageGroupConfig, error) {
 			return UsageGroupConfig{}, fmt.Errorf("usage group name cannot be empty")
 		}
 
-		// TODO(bryanhuhta): We should probably validate the usage group name
-		// is a valid label value.
+		if name == noMatchName {
+			return UsageGroupConfig{}, fmt.Errorf("usage group name %q is reserved", noMatchName)
+		}
 
 		matchers, err := parser.ParseMetricSelector(matchersText)
 		if err != nil {
