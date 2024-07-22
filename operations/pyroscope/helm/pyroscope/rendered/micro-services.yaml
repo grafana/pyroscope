@@ -2416,7 +2416,7 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "distributor"
 spec:
-  replicas: 2
+  replicas: 5
   selector:
     matchLabels:
       app.kubernetes.io/name: pyroscope
@@ -2460,7 +2460,7 @@ spec:
             - "-metastore.raft.advertise-address=$(POD_NAME).pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
             - "-metastore.raft.server-id=$(POD_NAME).pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
             - "-metastore.raft.bootstrap-peers=dnssrvnoa+_raft._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
-            - "-metastore.raft.bootstrap-expect-peers=2"
+            - "-metastore.raft.bootstrap-expect-peers=5"
             - "-metastore.address=dns:///_grpc._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9095"
             - "-query-backend.address=dns:///pyroscope-dev-query-worker-headless.default.svc.cluster.local.:9095"
             - "-config.file=/etc/pyroscope/config.yaml"
@@ -2496,10 +2496,10 @@ spec:
               mountPath: /data
           resources:
             limits:
-              memory: 1Gi
+              memory: 4Gi
             requests:
               cpu: 500m
-              memory: 256Mi
+              memory: 2Gi
       volumes:
         - name: config
           configMap:
@@ -3336,10 +3336,10 @@ spec:
               mountPath: /data
           resources:
             limits:
-              memory: 16Gi
+              memory: 4Gi
             requests:
-              cpu: 1
-              memory: 8Gi
+              cpu: 4
+              memory: 2Gi
       terminationGracePeriodSeconds: 600
       volumes:
         - name: config
