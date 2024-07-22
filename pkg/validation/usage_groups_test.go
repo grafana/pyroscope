@@ -359,6 +359,13 @@ func TestNewUsageGroupConfig(t *testing.T) {
 			},
 			WantErr: fmt.Sprintf("usage group name %q is reserved", noMatchName),
 		},
+		{
+			Name: "invalid_utf8_name",
+			ConfigMap: map[string]string{
+				"app/\x80foo": `{service_name="foo"}`,
+			},
+			WantErr: `usage group name "app/\x80foo" is not valid UTF-8`,
+		},
 	}
 
 	for _, tt := range tests {

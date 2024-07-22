@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -136,6 +137,10 @@ func NewUsageGroupConfig(m map[string]string) (UsageGroupConfig, error) {
 	}
 
 	for name, matchersText := range m {
+		if !utf8.ValidString(name) {
+			return UsageGroupConfig{}, fmt.Errorf("usage group name %q is not valid UTF-8", name)
+		}
+
 		name = strings.TrimSpace(name)
 		if name == "" {
 			return UsageGroupConfig{}, fmt.Errorf("usage group name cannot be empty")
