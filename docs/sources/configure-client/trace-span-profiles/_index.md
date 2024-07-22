@@ -18,7 +18,9 @@ Key benefits and features:
 - Seamless integration: Smoothly transition from a high-level trace overview to detailed profiling of specific trace spans within Grafana’s trace view
 - Efficiency and cost savings: Quickly identify and address performance issues, reducing troubleshooting time and operational costs
 
-Get started:
+## Get started
+
+Select an option from the list below:
 
 - Configure Pyroscope: Begin sending profiling data to unlock the full potential of Span Profiles
 - Client-side packages: Easily link traces and profiles using available packages for Go, Java, Ruby, .NET, and Python
