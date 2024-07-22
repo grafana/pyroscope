@@ -191,6 +191,12 @@ docker-image/pyroscope/build-debug: GOARCH=amd64
 docker-image/pyroscope/build-debug: frontend/build go/bin-debug $(BIN)/linux_amd64/dlv
 	$(call docker_buildx,--load,debug.)
 
+.PHONY: docker-image/pyroscope/push-debug
+docker-image/pyroscope/push-debug: GOOS=linux
+docker-image/pyroscope/push-debug: GOARCH=amd64
+docker-image/pyroscope/push-debug: frontend/build go/bin-debug $(BIN)/linux_amd64/dlv
+	$(call docker_buildx,--push,debug.)
+
 .PHONY: docker-image/pyroscope/build
 docker-image/pyroscope/build: GOOS=linux
 docker-image/pyroscope/build: GOARCH=amd64
