@@ -10,6 +10,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
+	"go.etcd.io/bbolt"
 
 	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -57,7 +58,7 @@ func getStrategyForLevel(compactionLevel uint32) compactionLevelStrategy {
 	return strategy
 }
 
-func (s compactionLevelStrategy) shouldCreateJob(blocks []*metastorev1.BlockMeta) bool {
+func (s compactionLevelStrategy) shouldCreateJob(blocks []string) bool {
 	// NB: Total block size does not reflect the actual size of the data
 	// to be read for compaction (at once) or queried. A better heuristic
 	// would be max tenant service size.
@@ -78,7 +79,7 @@ func NewPlanner(state *metastoreState, logger log.Logger) *Planner {
 
 type jobPreQueue struct {
 	mu            sync.Mutex
-	blocksByLevel map[uint32][]*metastorev1.BlockMeta
+	blocksByLevel map[uint32][]string
 }
 
 func (m *Metastore) GetCompactionJobs(_ context.Context, req *compactorv1.GetCompactionRequest) (*compactorv1.GetCompactionResponse, error) {
@@ -99,7 +100,7 @@ func (m *metastoreState) tryCreateJob(block *metastorev1.BlockMeta) *compactionp
 		return nil
 	}
 
-	queuedBlocks := append(preQueue.blocksByLevel[block.CompactionLevel], block)
+	queuedBlocks := append(preQueue.blocksByLevel[block.CompactionLevel], block.Id)
 
 	level.Debug(m.logger).Log(
 		"msg", "adding block for compaction",
@@ -115,8 +116,8 @@ func (m *metastoreState) tryCreateJob(block *metastorev1.BlockMeta) *compactionp
 	var job *compactionpb.CompactionJob
 	if strategy.shouldCreateJob(queuedBlocks) {
 		blockIds := make([]string, 0, len(queuedBlocks))
-		for _, block := range queuedBlocks {
-			blockIds = append(blockIds, block.Id)
+		for _, b := range queuedBlocks {
+			blockIds = append(blockIds, b)
 		}
 		job = &compactionpb.CompactionJob{
 			Name:            fmt.Sprintf("L%d-S%d-%d", block.CompactionLevel, block.Shard, calculateHash(queuedBlocks)),
@@ -130,7 +131,6 @@ func (m *metastoreState) tryCreateJob(block *metastorev1.BlockMeta) *compactionp
 			"msg", "created compaction job",
 			"job", job.Name,
 			"blocks", len(queuedBlocks),
-			"blocks_bytes", getTotalSize(queuedBlocks),
 			"shard", block.Shard,
 			"tenant", block.TenantId,
 			"compaction_level", block.CompactionLevel)
@@ -165,21 +165,13 @@ func (m *metastoreState) addBlockToCompactionJobQueue(block *metastorev1.BlockMe
 	preQueue.mu.Lock()
 	defer preQueue.mu.Unlock()
 
-	preQueue.blocksByLevel[block.CompactionLevel] = append(preQueue.blocksByLevel[block.CompactionLevel], block)
+	preQueue.blocksByLevel[block.CompactionLevel] = append(preQueue.blocksByLevel[block.CompactionLevel], block.Id)
 }
 
-func getTotalSize(blocks []*metastorev1.BlockMeta) uint64 {
-	totalSizeBytes := uint64(0)
-	for _, block := range blocks {
-		totalSizeBytes += block.Size
-	}
-	return totalSizeBytes
-}
-
-func calculateHash(blocks []*metastorev1.BlockMeta) uint64 {
+func calculateHash(blocks []string) uint64 {
 	b := make([]byte, 0, 1024)
 	for _, blk := range blocks {
-		b = append(b, blk.Id...)
+		b = append(b, blk...)
 	}
 	return xxhash.Sum64(b)
 }
@@ -230,4 +222,49 @@ func newCompactionMetrics(reg prometheus.Registerer) *compactionMetrics {
 		)
 	}
 	return m
+}
+
+func (m *metastoreState) consumeBlock(block *metastorev1.BlockMeta, tx *bbolt.Tx) (err error, jobToAdd *compactionpb.CompactionJob, blockForQueue *metastorev1.BlockMeta) {
+	// create and store an optional compaction job
+	if job := m.tryCreateJob(block); job != nil {
+		level.Debug(m.logger).Log("msg", "persisting compaction job", "job", job.Name)
+		jobBucketName, jobKey := keyForCompactionJob(block.Shard, block.TenantId, job.Name)
+		err := updateCompactionJobBucket(tx, jobBucketName, func(bucket *bbolt.Bucket) error {
+			data, _ := job.MarshalVT()
+			return bucket.Put(jobKey, data)
+		})
+		if err != nil {
+			return err, nil, nil
+		}
+		err = m.persistJobPreQueue(block.Shard, block.TenantId, block.CompactionLevel, []string{}, tx)
+		jobToAdd = job
+	} else {
+		key := tenantShard{
+			tenant: block.TenantId,
+			shard:  block.Shard,
+		}
+		queue := m.getOrCreatePreQueue(key).blocksByLevel[block.CompactionLevel]
+		queue = append(queue, block.Id)
+		err := m.persistJobPreQueue(block.Shard, block.TenantId, block.CompactionLevel, queue, tx)
+		if err != nil {
+			return err, nil, nil
+		}
+		blockForQueue = block
+	}
+	return err, jobToAdd, blockForQueue
+}
+
+func (m *metastoreState) persistJobPreQueue(shard uint32, tenant string, compactionLevel uint32, queue []string, tx *bbolt.Tx) error {
+	jobBucketName, _ := keyForCompactionJob(shard, tenant, "")
+	preQueue := &compactionpb.JobPreQueue{
+		CompactionLevel: compactionLevel,
+		Shard:           shard,
+		Tenant:          tenant,
+		Blocks:          queue,
+	}
+	key := []byte(fmt.Sprintf("job-pre-queue-%d", compactionLevel))
+	return updateCompactionJobBucket(tx, jobBucketName, func(bucket *bbolt.Bucket) error {
+		data, _ := preQueue.MarshalVT()
+		return bucket.Put(key, data)
+	})
 }

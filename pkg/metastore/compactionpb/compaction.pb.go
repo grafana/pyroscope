@@ -194,6 +194,77 @@ func (x *CompactionJob) GetLeaseExpiresAt() int64 {
 	return 0
 }
 
+type JobPreQueue struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	CompactionLevel uint32   `protobuf:"varint,1,opt,name=compaction_level,json=compactionLevel,proto3" json:"compaction_level,omitempty"`
+	Shard           uint32   `protobuf:"varint,2,opt,name=shard,proto3" json:"shard,omitempty"`
+	Tenant          string   `protobuf:"bytes,3,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Blocks          []string `protobuf:"bytes,4,rep,name=blocks,proto3" json:"blocks,omitempty"`
+}
+
+func (x *JobPreQueue) Reset() {
+	*x = JobPreQueue{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_metastore_compactionpb_compaction_proto_msgTypes[1]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *JobPreQueue) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*JobPreQueue) ProtoMessage() {}
+
+func (x *JobPreQueue) ProtoReflect() protoreflect.Message {
+	mi := &file_metastore_compactionpb_compaction_proto_msgTypes[1]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use JobPreQueue.ProtoReflect.Descriptor instead.
+func (*JobPreQueue) Descriptor() ([]byte, []int) {
+	return file_metastore_compactionpb_compaction_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *JobPreQueue) GetCompactionLevel() uint32 {
+	if x != nil {
+		return x.CompactionLevel
+	}
+	return 0
+}
+
+func (x *JobPreQueue) GetShard() uint32 {
+	if x != nil {
+		return x.Shard
+	}
+	return 0
+}
+
+func (x *JobPreQueue) GetTenant() string {
+	if x != nil {
+		return x.Tenant
+	}
+	return ""
+}
+
+func (x *JobPreQueue) GetBlocks() []string {
+	if x != nil {
+		return x.Blocks
+	}
+	return nil
+}
+
 var File_metastore_compactionpb_compaction_proto protoreflect.FileDescriptor
 
 var file_metastore_compactionpb_compaction_proto_rawDesc = []byte{
@@ -218,7 +289,15 @@ var file_metastore_compactionpb_compaction_proto_rawDesc = []byte{
 	0x74, 0x61, 0x74, 0x75, 0x73, 0x52, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x28, 0x0a,
 	0x10, 0x6c, 0x65, 0x61, 0x73, 0x65, 0x5f, 0x65, 0x78, 0x70, 0x69, 0x72, 0x65, 0x73, 0x5f, 0x61,
 	0x74, 0x18, 0x08, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0e, 0x6c, 0x65, 0x61, 0x73, 0x65, 0x45, 0x78,
-	0x70, 0x69, 0x72, 0x65, 0x73, 0x41, 0x74, 0x2a, 0x96, 0x01, 0x0a, 0x10, 0x43, 0x6f, 0x6d, 0x70,
+	0x70, 0x69, 0x72, 0x65, 0x73, 0x41, 0x74, 0x22, 0x7e, 0x0a, 0x0b, 0x4a, 0x6f, 0x62, 0x50, 0x72,
+	0x65, 0x51, 0x75, 0x65, 0x75, 0x65, 0x12, 0x29, 0x0a, 0x10, 0x63, 0x6f, 0x6d, 0x70, 0x61, 0x63,
+	0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x6c, 0x65, 0x76, 0x65, 0x6c, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0d,
+	0x52, 0x0f, 0x63, 0x6f, 0x6d, 0x70, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x4c, 0x65, 0x76, 0x65,
+	0x6c, 0x12, 0x14, 0x0a, 0x05, 0x73, 0x68, 0x61, 0x72, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0d,
+	0x52, 0x05, 0x73, 0x68, 0x61, 0x72, 0x64, 0x12, 0x16, 0x0a, 0x06, 0x74, 0x65, 0x6e, 0x61, 0x6e,
+	0x74, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x74, 0x65, 0x6e, 0x61, 0x6e, 0x74, 0x12,
+	0x16, 0x0a, 0x06, 0x62, 0x6c, 0x6f, 0x63, 0x6b, 0x73, 0x18, 0x04, 0x20, 0x03, 0x28, 0x09, 0x52,
+	0x06, 0x62, 0x6c, 0x6f, 0x63, 0x6b, 0x73, 0x2a, 0x96, 0x01, 0x0a, 0x10, 0x43, 0x6f, 0x6d, 0x70,
 	0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x21, 0x0a, 0x1d,
 	0x43, 0x4f, 0x4d, 0x50, 0x41, 0x43, 0x54, 0x49, 0x4f, 0x4e, 0x5f, 0x53, 0x54, 0x41, 0x54, 0x55,
 	0x53, 0x5f, 0x55, 0x4e, 0x53, 0x50, 0x45, 0x43, 0x49, 0x46, 0x49, 0x45, 0x44, 0x10, 0x00, 0x12,
@@ -254,10 +333,11 @@ func file_metastore_compactionpb_compaction_proto_rawDescGZIP() []byte {
 }
 
 var file_metastore_compactionpb_compaction_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_metastore_compactionpb_compaction_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_metastore_compactionpb_compaction_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_metastore_compactionpb_compaction_proto_goTypes = []interface{}{
 	(CompactionStatus)(0), // 0: compaction.CompactionStatus
 	(*CompactionJob)(nil), // 1: compaction.CompactionJob
+	(*JobPreQueue)(nil),   // 2: compaction.JobPreQueue
 }
 var file_metastore_compactionpb_compaction_proto_depIdxs = []int32{
 	0, // 0: compaction.CompactionJob.status:type_name -> compaction.CompactionStatus
@@ -286,6 +366,18 @@ func file_metastore_compactionpb_compaction_proto_init() {
 				return nil
 			}
 		}
+		file_metastore_compactionpb_compaction_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*JobPreQueue); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -293,7 +385,7 @@ func file_metastore_compactionpb_compaction_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_metastore_compactionpb_compaction_proto_rawDesc,
 			NumEnums:      1,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -203,18 +203,13 @@ func (m *metastoreState) processCompletedJob(tx *bbolt.Tx, job *compactionpb.Com
 		jResult.newBlocks = append(jResult.newBlocks, b)
 
 		// create and store an optional compaction job
-		if job := m.tryCreateJob(b); job != nil {
-			level.Debug(m.logger).Log("msg", "persisting compaction job", "job", job.Name)
-			jobBucketName, jobKey := keyForCompactionJob(job.Shard, job.TenantId, job.Name)
-			err := updateCompactionJobBucket(tx, jobBucketName, func(bucket *bbolt.Bucket) error {
-				data, _ := job.MarshalVT()
-				return bucket.Put(jobKey, data)
-			})
-			if err != nil {
-				return err
-			}
+		err, jobToAdd, blockForQueue := m.consumeBlock(b, tx)
+		if err != nil {
+			return err
+		}
+		if jobToAdd != nil {
 			jResult.newJobs = append(jResult.newJobs, job)
-		} else {
+		} else if blockForQueue != nil {
 			jResult.newQueuedBlocks = append(jResult.newQueuedBlocks, b)
 		}
 	}

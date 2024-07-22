@@ -38,3 +38,10 @@ enum CompactionStatus {
   COMPACTION_STATUS_SUCCESS = 2;
   COMPACTION_STATUS_FAILURE = 3;
 }
+
+message JobPreQueue {
+  uint32 compaction_level = 1;
+  uint32 shard = 2;
+  string tenant = 3;
+  repeated string blocks = 4;
+}

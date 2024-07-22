@@ -3,6 +3,7 @@ package metastore
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/go-kit/log"
@@ -12,6 +13,10 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/metastore/compactionpb"
+)
+
+const (
+	compactionBucketJobPreQueuePrefix = "job-pre-queue"
 )
 
 type tenantShard struct {
@@ -114,12 +119,20 @@ func (m *metastoreState) restoreCompactionPlan(tx *bbolt.Tx) error {
 		return err
 	}
 	return cdb.ForEachBucket(func(name []byte) error {
-		_, _, ok := parseBucketName(name)
+		shard, tenant, ok := parseBucketName(name)
 		if !ok {
 			_ = level.Error(m.logger).Log("msg", "malformed bucket name", "name", string(name))
 			return nil
 		}
-		return m.loadJobs(cdb.Bucket(name))
+		key := tenantShard{
+			tenant: tenant,
+			shard:  shard,
+		}
+		m.compactionPlansMutex.Lock()
+		defer m.compactionPlansMutex.Unlock()
+		preQueue := m.getOrCreatePreQueue(key)
+
+		return m.loadCompactionPlan(cdb.Bucket(name), preQueue)
 	})
 
 }
@@ -132,7 +145,7 @@ func (m *metastoreState) getOrCreatePreQueue(key tenantShard) *jobPreQueue {
 		return preQueue
 	}
 	plan := &jobPreQueue{
-		blocksByLevel: make(map[uint32][]*metastorev1.BlockMeta),
+		blocksByLevel: make(map[uint32][]string),
 	}
 	m.preCompactionQueues[key] = plan
 	return plan
@@ -179,15 +192,25 @@ func (s *metastoreShard) loadSegments(b *bbolt.Bucket) error {
 	return nil
 }
 
-func (m *metastoreState) loadJobs(b *bbolt.Bucket) error {
+func (m *metastoreState) loadCompactionPlan(b *bbolt.Bucket, preQueue *jobPreQueue) error {
+	preQueue.mu.Lock()
+	defer preQueue.mu.Unlock()
+
 	c := b.Cursor()
 	for k, v := c.First(); k != nil; k, v = c.Next() {
-		var job compactionpb.CompactionJob
-		if err := job.UnmarshalVT(v); err != nil {
-			return fmt.Errorf("failed to unmarshal job %q: %w", string(k), err)
+		if strings.HasPrefix(string(k), compactionBucketJobPreQueuePrefix) {
+			var storedPreQueue compactionpb.JobPreQueue
+			if err := storedPreQueue.UnmarshalVT(v); err != nil {
+				return fmt.Errorf("failed to load job pre queue %q: %w", string(k), err)
+			}
+			preQueue.blocksByLevel[storedPreQueue.CompactionLevel] = storedPreQueue.Blocks
+		} else {
+			var job compactionpb.CompactionJob
+			if err := job.UnmarshalVT(v); err != nil {
+				return fmt.Errorf("failed to unmarshal job %q: %w", string(k), err)
+			}
+			m.compactionJobQueue.enqueue(&job)
 		}
-		m.compactionJobQueue.enqueue(&job)
-		// TODO aleks: restoring from a snapshot will lose "partial" jobs
 	}
 	return nil
 }
