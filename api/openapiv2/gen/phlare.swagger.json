@@ -1572,15 +1572,6 @@
       },
       "title": "RawSample is the set of bytes that correspond to a pprof profile"
     },
-    "v1ReadIndexResponse": {
-      "type": "object",
-      "properties": {
-        "readIndex": {
-          "type": "string",
-          "format": "uint64"
-        }
-      }
-    },
     "v1Report": {
       "type": "object",
       "properties": {
