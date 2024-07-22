@@ -4,13 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"os"
-
-	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/storage"
-
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/storage"
+	"os"
 )
 
 type IIndexWriter interface {

@@ -3,11 +3,10 @@ package phlaredb
 import (
 	"context"
 	"fmt"
+	index2 "github.com/grafana/pyroscope/pkg/phlaredb/tsdb/loki/index"
 	"os"
 	"sort"
 	"sync"
-
-	index2 "github.com/grafana/pyroscope/pkg/phlaredb/tsdb/loki/index"
 
 	"github.com/gogo/status"
 	"github.com/opentracing/opentracing-go"

@@ -3,13 +3,12 @@ package phlaredb
 import (
 	"context"
 	"fmt"
+	index2 "github.com/grafana/pyroscope/pkg/phlaredb/tsdb/loki/index"
 	"os"
 	"path/filepath"
 	"sort"
 	"sync"
 	"time"
-
-	index2 "github.com/grafana/pyroscope/pkg/phlaredb/tsdb/loki/index"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"

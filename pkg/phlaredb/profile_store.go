@@ -4,13 +4,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	index2 "github.com/grafana/pyroscope/pkg/phlaredb/tsdb/loki/index"
 	"io"
 	"os"
 	"path/filepath"
 	"sort"
 	"sync"
-
-	index2 "github.com/grafana/pyroscope/pkg/phlaredb/tsdb/loki/index"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/runutil"

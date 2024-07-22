@@ -6,14 +6,13 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"errors"
+	"github.com/grafana/dskit/instrument"
 	"html/template"
 	"io"
 	"net"
 	"net/http"
 	"strings"
 	"time"
-
-	"github.com/grafana/dskit/instrument"
 
 	"github.com/dustin/go-humanize"
 	"github.com/felixge/httpsnoop"

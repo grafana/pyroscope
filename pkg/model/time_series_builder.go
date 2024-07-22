@@ -6,7 +6,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
 
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
 type TimeSeriesBuilder struct {
