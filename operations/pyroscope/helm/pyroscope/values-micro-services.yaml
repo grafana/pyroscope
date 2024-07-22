@@ -8,12 +8,12 @@ pyroscope:
   components:
     distributor:
       kind: Deployment
-      replicaCount: 2
+      replicaCount: 5
       resources:
         limits:
-          memory: 1Gi
+          memory: 4Gi
         requests:
-          memory: 256Mi
+          memory: 2Gi
           cpu: 500m
     ingester:
       kind: StatefulSet
@@ -21,10 +21,10 @@ pyroscope:
       terminationGracePeriodSeconds: 600
       resources:
         limits:
-          memory: 16Gi
+          memory: 4Gi
         requests:
-          memory: 8Gi
-          cpu: 1
+          memory: 2Gi
+          cpu: 4
     metastore:
       kind: StatefulSet
       replicaCount: 3
