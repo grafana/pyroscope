@@ -239,7 +239,9 @@ type Phlare struct {
 
 	grpcGatewayMux *grpcgw.ServeMux
 
-	auth connect.Option
+	auth     connect.Option
+	ingester *ingester.Ingester
+	frontend *frontend.Frontend
 }
 
 func New(cfg Config) (*Phlare, error) {
@@ -500,6 +502,20 @@ func (f *Phlare) readyHandler(sm *services.Manager) http.HandlerFunc {
 
 			http.Error(w, msg.String(), http.StatusServiceUnavailable)
 			return
+		}
+
+		if f.ingester != nil {
+			if err := f.ingester.CheckReady(r.Context()); err != nil {
+				http.Error(w, "Ingester not ready: "+err.Error(), http.StatusServiceUnavailable)
+				return
+			}
+		}
+
+		if f.frontend != nil {
+			if err := f.frontend.CheckReady(r.Context()); err != nil {
+				http.Error(w, "Query Frontend not ready: "+err.Error(), http.StatusServiceUnavailable)
+				return
+			}
 		}
 
 		util.WriteTextResponse(w, "ready")
