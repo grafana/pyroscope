@@ -39,52 +39,28 @@ func newJobQueue(lease int64) *jobQueue {
 	}
 }
 
-type jobStatus int
-
-const (
-	_ jobStatus = iota
-	jobStatusInitial
-	jobStatusInProgress
-)
-
 type jobQueueEntry struct {
-	status jobStatus
-	index  int // The index of the job in the heap.
-
+	// The index of the job in the heap.
+	index int
 	// The original proto message.
-	proto *compactionpb.CompactionJob
+	*compactionpb.CompactionJob
 }
 
 func (c *jobQueueEntry) less(x *jobQueueEntry) bool {
-	if c.status != x.status {
-		// Peek jobs in the "initial" state first.
-		return c.status < x.status
+	if c.Status != x.Status {
+		// Peek jobs in the "initial" (unspecified) state first.
+		return c.Status < x.Status
 	}
-	if c.proto.LeaseExpiresAt != x.proto.LeaseExpiresAt {
+	if c.LeaseExpiresAt != x.LeaseExpiresAt {
 		// Jobs with earlier deadlines should be at the top.
-		return c.proto.LeaseExpiresAt < x.proto.LeaseExpiresAt
+		return c.LeaseExpiresAt < x.LeaseExpiresAt
 	}
 	// Compact lower level jobs first.
-	if c.proto.CompactionLevel != x.proto.CompactionLevel {
+	if c.CompactionLevel != x.CompactionLevel {
 		// Jobs with earlier deadlines should be at the top.
-		return c.proto.CompactionLevel < x.proto.CompactionLevel
+		return c.CompactionLevel < x.CompactionLevel
 	}
-	return c.proto.Name < x.proto.Name
-}
-
-func (c *jobQueueEntry) load(job *compactionpb.CompactionJob) {
-	js := jobStatusInitial
-	if job.Status == compactionpb.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS {
-		js = jobStatusInProgress
-	}
-	*c = jobQueueEntry{
-		status: js,
-		index:  0,
-		proto:  job,
-	}
-	// Deadline will be assigned when the job is "dequeued" (transferred).
-	job.RaftLogIndex = 0
-	job.LeaseExpiresAt = 0
+	return c.Name < x.Name
 }
 
 func (q *jobQueue) dequeue(now int64, raftLogIndex uint64) *compactionpb.CompactionJob {
@@ -92,19 +68,19 @@ func (q *jobQueue) dequeue(now int64, raftLogIndex uint64) *compactionpb.Compact
 	defer q.mu.Unlock()
 	for q.pq.Len() > 0 {
 		job := q.pq[0]
-		if job.status == jobStatusInProgress && now <= job.proto.LeaseExpiresAt {
+		if job.Status == compactionpb.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS &&
+			now <= job.LeaseExpiresAt {
 			// If the top job is in progress and not expired, stop checking further
 			return nil
 		}
-		// Actually remove it from the heap, update
-		// and push it back.
+		// Actually remove it from the heap, update and push it back.
 		heap.Pop(&q.pq)
-		job.proto.LeaseExpiresAt = q.getNewDeadline(now)
-		job.status = jobStatusInProgress
-		// if job.status is "in progress", the ownership of the job is being revoked.
-		job.proto.RaftLogIndex = raftLogIndex
+		job.LeaseExpiresAt = q.getNewDeadline(now)
+		job.Status = compactionpb.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS
+		// If job.status is "in progress", the ownership of the job is being revoked.
+		job.RaftLogIndex = raftLogIndex
 		heap.Push(&q.pq, job)
-		return job.proto
+		return job.CompactionJob
 	}
 	return nil
 }
@@ -113,11 +89,11 @@ func (q *jobQueue) update(name string, now int64, raftLogIndex uint64) bool {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if job, exists := q.jobs[name]; exists {
-		if job.proto.RaftLogIndex > raftLogIndex {
+		if job.RaftLogIndex > raftLogIndex {
 			return false
 		}
-		job.proto.LeaseExpiresAt = q.getNewDeadline(now)
-		job.status = jobStatusInProgress
+		job.LeaseExpiresAt = q.getNewDeadline(now)
+		job.Status = compactionpb.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS
 		// De-prioritize the job, as the deadline has been postponed.
 		heap.Fix(&q.pq, job.index)
 		return true
@@ -133,7 +109,7 @@ func (q *jobQueue) isOwner(name string, raftLogIndex uint64) bool {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if job, exists := q.jobs[name]; exists {
-		if job.proto.RaftLogIndex > raftLogIndex {
+		if job.RaftLogIndex > raftLogIndex {
 			return false
 		}
 	}
@@ -144,7 +120,7 @@ func (q *jobQueue) evict(name string, raftLogIndex uint64) bool {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if job, exists := q.jobs[name]; exists {
-		if job.proto.RaftLogIndex > raftLogIndex {
+		if job.RaftLogIndex > raftLogIndex {
 			return false
 		}
 		delete(q.jobs, name)
@@ -159,17 +135,14 @@ func (q *jobQueue) enqueue(job *compactionpb.CompactionJob) bool {
 	if _, exists := q.jobs[job.Name]; exists {
 		return false
 	}
-	var j jobQueueEntry
-	j.load(job)
-	q.jobs[job.Name] = &j
-	heap.Push(&q.pq, &j)
+	j := &jobQueueEntry{CompactionJob: job}
+	q.jobs[job.Name] = j
+	heap.Push(&q.pq, j)
 	return true
 }
 
 func (q *jobQueue) putJob(job *compactionpb.CompactionJob) {
-	var j jobQueueEntry
-	j.load(job)
-	q.jobs[job.Name] = &j
+	q.jobs[job.Name] = &jobQueueEntry{CompactionJob: job}
 }
 
 func (q *jobQueue) rebuild() {

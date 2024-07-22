@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -45,7 +44,7 @@ func newMetastoreState(logger log.Logger, db *boltdb, reg prometheus.Registerer)
 		shards:              make(map[uint32]*metastoreShard),
 		db:                  db,
 		preCompactionQueues: make(map[tenantShard]*jobPreQueue),
-		compactionJobQueue:  newJobQueue(5 * time.Minute.Nanoseconds()),
+		compactionJobQueue:  newJobQueue(jobLeaseDuration.Nanoseconds()),
 		compactionMetrics:   newCompactionMetrics(reg),
 	}
 }
@@ -143,7 +142,7 @@ func (m *metastoreState) findJob(name string) *compactionpb.CompactionJob {
 	m.compactionJobQueue.mu.Lock()
 	defer m.compactionJobQueue.mu.Unlock()
 	if jobEntry, exists := m.compactionJobQueue.jobs[name]; exists {
-		return jobEntry.proto
+		return jobEntry.CompactionJob
 	}
 	return nil
 }
