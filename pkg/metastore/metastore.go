@@ -26,7 +26,18 @@ import (
 	"github.com/grafana/pyroscope/pkg/util/health"
 )
 
-const metastoreRaftLeaderHealthServiceName = "metastore.v1.MetastoreService.RaftLeader"
+const (
+	snapshotsRetain       = 3
+	walCacheEntries       = 512
+	transportConnPoolSize = 10
+	transportTimeout      = 10 * time.Second
+
+	raftTrailingLogs      = 18 << 10
+	raftSnapshotInterval  = 180 * time.Second
+	raftSnapshotThreshold = 8 << 10
+
+	metastoreRaftLeaderHealthServiceName = "metastore.v1.MetastoreService.RaftLeader"
+)
 
 type Config struct {
 	DataDir string     `yaml:"data_dir"`
@@ -151,17 +162,6 @@ func (m *Metastore) running(ctx context.Context) error {
 	return nil
 }
 
-const (
-	snapshotsRetain       = 3
-	walCacheEntries       = 512
-	transportConnPoolSize = 10
-	transportTimeout      = 10 * time.Second
-
-	raftTrailingLogs      = 32 << 10
-	raftSnapshotInterval  = 300 * time.Second
-	raftSnapshotThreshold = 16 << 10
-)
-
 func (m *Metastore) initRaft() (err error) {
 	defer func() {
 		if err != nil {
@@ -192,9 +192,6 @@ func (m *Metastore) initRaft() (err error) {
 	config.TrailingLogs = raftTrailingLogs
 	config.SnapshotThreshold = raftSnapshotThreshold
 	config.SnapshotInterval = raftSnapshotInterval
-	// TODO: We don't need to restore the latest snapshot
-	//  on start, because the FSM is already disk-based.
-	//	config.NoSnapshotRestoreOnStart = true
 	config.LocalID = raft.ServerID(m.config.Raft.ServerID)
 
 	fsm := newFSM(m.logger, m.db, m.state)
