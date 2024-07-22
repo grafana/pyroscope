@@ -997,10 +997,15 @@ func Test_SampleLabels(t *testing.T) {
 
 	for _, tc := range testCases {
 		tc := tc
+
+		// These are both required to be set to fulfill the usage group
+		// reporting. Neither are validated by the tests, nor do they influence
+		// test behavior in any way.
 		ug := &validation.UsageGroupConfig{}
+		const dummyTenantID = "tenant1"
 
 		t.Run(tc.description, func(t *testing.T) {
-			series, actualBytesDropped, actualProfilesDropped := extractSampleSeries(tc.pushReq, ug, tc.relabelRules)
+			series, actualBytesDropped, actualProfilesDropped := extractSampleSeries(tc.pushReq, dummyTenantID, ug, tc.relabelRules)
 			assert.Equal(t, tc.expectBytesDropped, actualBytesDropped)
 			assert.Equal(t, tc.expectProfilesDropped, actualProfilesDropped)
 			require.Len(t, series, len(tc.series))

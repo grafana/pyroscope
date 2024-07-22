@@ -289,7 +289,7 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 
 	for _, series := range req.Series {
 		profName := phlaremodel.Labels(series.Labels).Get(ProfileName)
-		groups := usageGroups.GetUsageGroups(phlaremodel.Labels(series.Labels))
+		groups := usageGroups.GetUsageGroups(tenantID, phlaremodel.Labels(series.Labels))
 		profLanguage := d.GetProfileLanguage(series)
 
 		for _, raw := range series.Samples {
@@ -412,7 +412,7 @@ func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.Pu
 	usageGroups := d.limits.DistributorUsageGroups(tenantID)
 
 	// Next we split profiles by labels and apply relabel rules.
-	profileSeries, bytesRelabelDropped, profilesRelabelDropped := extractSampleSeries(req, usageGroups, d.limits.IngestionRelabelingRules(tenantID))
+	profileSeries, bytesRelabelDropped, profilesRelabelDropped := extractSampleSeries(req, tenantID, usageGroups, d.limits.IngestionRelabelingRules(tenantID))
 	validation.DiscardedBytes.WithLabelValues(string(validation.RelabelRules), tenantID).Add(bytesRelabelDropped)
 	validation.DiscardedProfiles.WithLabelValues(string(validation.RelabelRules), tenantID).Add(profilesRelabelDropped)
 
@@ -437,7 +437,7 @@ func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.Pu
 			series.Labels = phlaremodel.Labels(series.Labels).InsertSorted(phlaremodel.LabelNameOrder, phlaremodel.LabelOrderEnforced)
 		}
 
-		groups := usageGroups.GetUsageGroups(phlaremodel.Labels(series.Labels))
+		groups := usageGroups.GetUsageGroups(tenantID, phlaremodel.Labels(series.Labels))
 
 		if err = validation.ValidateLabels(d.limits, tenantID, series.Labels); err != nil {
 			validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(req.TotalProfiles))
@@ -759,7 +759,7 @@ func (g *groupsWithFingerprints) add(stringTable []string, lbls phlaremodel.Labe
 	})
 }
 
-func extractSampleSeries(req *distributormodel.PushRequest, usageGroups *validation.UsageGroupConfig, relabelRules []*relabel.Config) (result []*distributormodel.ProfileSeries, bytesRelabelDropped, profilesRelabelDropped float64) {
+func extractSampleSeries(req *distributormodel.PushRequest, tenantID string, usageGroups *validation.UsageGroupConfig, relabelRules []*relabel.Config) (result []*distributormodel.ProfileSeries, bytesRelabelDropped, profilesRelabelDropped float64) {
 	var (
 		lblbuilder = phlaremodel.NewLabelsBuilder(phlaremodel.EmptyLabels())
 	)
@@ -770,7 +770,7 @@ func extractSampleSeries(req *distributormodel.PushRequest, usageGroups *validat
 			Labels:  series.Labels,
 			Samples: make([]*distributormodel.ProfileSample, 0, len(series.Samples)),
 		}
-		usageGroups := usageGroups.GetUsageGroups(phlaremodel.Labels(series.Labels))
+		usageGroups := usageGroups.GetUsageGroups(tenantID, phlaremodel.Labels(series.Labels))
 
 		for _, raw := range series.Samples {
 			pprof.RenameLabel(raw.Profile.Profile, pprof.ProfileIDLabelName, pprof.SpanIDLabelName)

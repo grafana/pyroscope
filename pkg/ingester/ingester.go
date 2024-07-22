@@ -256,7 +256,7 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 		usageGroups := i.limits.DistributorUsageGroups(instance.tenantID)
 
 		for _, series := range req.Msg.Series {
-			groups := usageGroups.GetUsageGroups(series.Labels)
+			groups := usageGroups.GetUsageGroups(instance.tenantID, series.Labels)
 
 			for _, sample := range series.Samples {
 				err := pprof.FromBytes(sample.RawProfile, func(p *profilev1.Profile, size int) error {

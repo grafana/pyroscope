@@ -52,13 +52,12 @@ var (
 )
 
 type UsageGroupConfig struct {
-	TenantID string
-	config   map[string][]*labels.Matcher
+	config map[string][]*labels.Matcher
 }
 
-func (c *UsageGroupConfig) GetUsageGroups(lbls phlaremodel.Labels) UsageGroupMatch {
+func (c *UsageGroupConfig) GetUsageGroups(tenantID string, lbls phlaremodel.Labels) UsageGroupMatch {
 	match := UsageGroupMatch{
-		tenantID: c.TenantID,
+		tenantID: tenantID,
 	}
 
 	for name, matchers := range c.config {
@@ -167,12 +166,6 @@ func (o *Overrides) DistributorUsageGroups(tenantID string) *UsageGroupConfig {
 	// It should never be nil, but check just in case!
 	if config == nil {
 		config = &UsageGroupConfig{}
-	}
-
-	// Make sure the usage group config has the tenant ID set. It is not known
-	// when it is unmarshaled from the configuration.
-	if config.TenantID == "" {
-		config.TenantID = tenantID
 	}
 	return config
 }

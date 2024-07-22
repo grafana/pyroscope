@@ -17,15 +17,16 @@ import (
 
 func TestUsageGroupConfig_GetUsageGroups(t *testing.T) {
 	tests := []struct {
-		Name   string
-		Config UsageGroupConfig
-		Labels phlaremodel.Labels
-		Want   UsageGroupMatch
+		Name     string
+		TenantID string
+		Config   UsageGroupConfig
+		Labels   phlaremodel.Labels
+		Want     UsageGroupMatch
 	}{
 		{
-			Name: "single_usage_group_match",
+			Name:     "single_usage_group_match",
+			TenantID: "tenant1",
 			Config: UsageGroupConfig{
-				TenantID: "tenant1",
 				config: map[string][]*labels.Matcher{
 					"app/foo": testMustParseMatcher(t, `{service_name="foo"}`),
 				},
@@ -39,9 +40,9 @@ func TestUsageGroupConfig_GetUsageGroups(t *testing.T) {
 			},
 		},
 		{
-			Name: "multiple_usage_group_matches",
+			Name:     "multiple_usage_group_matches",
+			TenantID: "tenant1",
 			Config: UsageGroupConfig{
-				TenantID: "tenant1",
 				config: map[string][]*labels.Matcher{
 					"app/foo":  testMustParseMatcher(t, `{service_name="foo"}`),
 					"app/foo2": testMustParseMatcher(t, `{service_name="foo", namespace=~"bar.*"}`),
@@ -60,9 +61,9 @@ func TestUsageGroupConfig_GetUsageGroups(t *testing.T) {
 			},
 		},
 		{
-			Name: "no_usage_group_matches",
+			Name:     "no_usage_group_matches",
+			TenantID: "tenant1",
 			Config: UsageGroupConfig{
-				TenantID: "tenant1",
 				config: map[string][]*labels.Matcher{
 					"app/foo": testMustParseMatcher(t, `{service_name="notfound"}`),
 				},
@@ -75,9 +76,9 @@ func TestUsageGroupConfig_GetUsageGroups(t *testing.T) {
 			},
 		},
 		{
-			Name: "wildcard_matcher",
+			Name:     "wildcard_matcher",
+			TenantID: "tenant1",
 			Config: UsageGroupConfig{
-				TenantID: "tenant1",
 				config: map[string][]*labels.Matcher{
 					"app/foo": testMustParseMatcher(t, `{}`),
 				},
@@ -91,9 +92,9 @@ func TestUsageGroupConfig_GetUsageGroups(t *testing.T) {
 			},
 		},
 		{
-			Name: "no_labels",
+			Name:     "no_labels",
+			TenantID: "tenant1",
 			Config: UsageGroupConfig{
-				TenantID: "tenant1",
 				config: map[string][]*labels.Matcher{
 					"app/foo": testMustParseMatcher(t, `{service_name="foo"}`),
 				},
@@ -107,7 +108,7 @@ func TestUsageGroupConfig_GetUsageGroups(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.Name, func(t *testing.T) {
-			got := tt.Config.GetUsageGroups(tt.Labels)
+			got := tt.Config.GetUsageGroups(tt.TenantID, tt.Labels)
 
 			slices.Sort(got.names)
 			slices.Sort(tt.Want.names)
