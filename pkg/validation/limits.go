@@ -50,6 +50,9 @@ type Limits struct {
 	MaxProfileStacktraceDepth        int `yaml:"max_profile_stacktrace_depth" json:"max_profile_stacktrace_depth"`
 	MaxProfileSymbolValueLength      int `yaml:"max_profile_symbol_value_length" json:"max_profile_symbol_value_length"`
 
+	// Distributor per-app usage breakdown.
+	DistributorUsageGroups *UsageGroupConfig `yaml:"distributor_usage_groups" json:"distributor_usage_groups"`
+
 	// Distributor aggregation.
 	DistributorAggregationWindow model.Duration `yaml:"distributor_aggregation_window" json:"distributor_aggregation_window"`
 	DistributorAggregationPeriod model.Duration `yaml:"distributor_aggregation_period" json:"distributor_aggregation_period"`
