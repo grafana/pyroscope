@@ -8,7 +8,8 @@ weight: 30
 
 ## Configuration reference
 
-Grafana Agent supports eBPF profiling in [Flow mode](/docs/agent/latest/flow/). The configuration file is written in the [River](/docs/agent/latest/flow/config-language/) language and is composed of components that are used to collect, transform, and send data.
+Grafana Agent supports eBPF profiling in [Flow mode](https://grafana.com/docs/agent/latest/flow/).
+The configuration file is written in the [River](https://grafana.com/docs/agent/latest/flow/concepts/config-language/) language and is composed of components that are used to collect, transform, and send data.
 
 The `pyroscope.ebpf` component is used to collect application performance profiles via eBPF.
 
@@ -17,7 +18,7 @@ The `pyroscope.ebpf` component is used to collect application performance profil
 The `pyroscope.ebpf` runs on the host machine and collects stack traces associated with a process running on the current host.
 
 Using the `targets` argument, you can specify which processes and containers to profile on the machine. The `targets` can be from discovery components such as `discovery.process`, `dicovery.kubernetes`, `discovery.docker`, and `discovery.dockerswarm`.
-To relabel discovered targets and set your own labels you can use the `discovery.relabel` component. For more information, see [Components](/docs/agent/latest/flow/concepts/components/).
+To relabel discovered targets and set your own labels you can use the `discovery.relabel` component. For more information, refer to [Components](/docs/agent/latest/flow/concepts/components/).
 
 The `forward_to` parameter should point to a `pyroscope.write` component to send the collected profiles to your Pyroscope Server or [Grafana Cloud](/products/cloud/).
 

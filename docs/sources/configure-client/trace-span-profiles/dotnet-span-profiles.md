@@ -36,7 +36,7 @@ To use Span Profiles, you need to:
 Your applications must be instrumented for profiling and tracing before you can use span profiles.
 
 * Profiling: Your application must be instrumented with Pyroscope's .NET instrumentation library. Refer to the [.NET]({{< relref "../language-sdks/dotnet" >}}) guide for instructions.
-* Tracing: Your application must be instrumented with OpenTelemetry traces. Refer to the [OpenTelemetry](https://opentelemetry.io/docs/languages/net/getting-started/) guide for isntructions.
+* Tracing: Your application must be instrumented with OpenTelemetry traces. Refer to the [OpenTelemetry](https://opentelemetry.io/docs/languages/net/getting-started/) guide for instructions.
 
 {{< admonition type="note" >}}
 Span profiles in .NET are only supported using [OpenTelemetry manual instrumentation](https://opentelemetry.io/docs/languages/net/instrumentation/)
@@ -72,7 +72,7 @@ With the span processor registered, spans created automatically (for example, HT
 
 To view the span profiles in Grafana Tempo, you need to have a Grafana instance running and a data source configured to link traces and profiles.
 
-Refer to the [data source configuration documentation](/docs/grafana/datasources/tempo/configure-tempo-data-source) to see how to configure the visualization to link traces with profiles.
+Refer to the [data source configuration documentation](https://grafana.com/docs/grafana/<GRAFANA_VERSION>/datasources/tempo/configure-tempo-data-source) to see how to configure the visualization to link traces with profiles.
 
 ## Examples
 
