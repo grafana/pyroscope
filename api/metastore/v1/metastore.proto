@@ -37,9 +37,10 @@ message TenantService {
   int64 max_time = 4;
 
   // Table of contents lists data sections within the tenant
-  // service region. The interpretation of the table of contents
-  // is specific to the metadata format version. By default, the
-  // sections are:
+  // service region. The offsets are absolute.
+  //
+  // The interpretation of the table of contents is specific
+  // to the metadata format version. By default, the sections are:
   //  - 0: profiles.parquet
   //  - 1: index.tsdb
   //  - 2: symbols.symdb

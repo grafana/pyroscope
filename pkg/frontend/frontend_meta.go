@@ -22,7 +22,12 @@ func (f *Frontend) listMetadata(
 	startTime, endTime int64,
 	query string,
 ) ([]*metastorev1.BlockMeta, error) {
-	_ = level.Info(f.log).Log("msg", "listing metadata", "tenants", tenants, "start", startTime, "end", endTime, "query", query)
+	_ = level.Info(f.log).Log("msg", "listing metadata",
+		"tenants", strings.Join(tenants, ","),
+		"start", startTime,
+		"end", endTime,
+		"query", query,
+	)
 	resp, err := f.metastoreclient.ListBlocksForQuery(ctx, &metastorev1.ListBlocksForQueryRequest{
 		TenantId:  tenants,
 		StartTime: startTime,

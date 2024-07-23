@@ -98,7 +98,7 @@ func newQueryContext(
 	}
 }
 
-func executeQuery(q *queryContext, query *querybackendv1.Query) (*querybackendv1.Report, error) {
+func executeQuery(q *queryContext, query *querybackendv1.Query) (r *querybackendv1.Report, err error) {
 	handle, err := getQueryHandler(query.QueryType)
 	if err != nil {
 		return nil, err
@@ -107,21 +107,20 @@ func executeQuery(q *queryContext, query *querybackendv1.Query) (*querybackendv1
 		return nil, fmt.Errorf("failed to initialize query context: %w", err)
 	}
 	defer func() {
-		q.close(err)
+		_ = q.close(err)
 	}()
-	r, err := handle(q, query)
-	if r != nil {
+	if r, err = handle(q, query); r != nil {
 		r.ReportType = QueryReportType(query.QueryType)
 	}
 	return r, err
 }
 
 func (q *queryContext) open() error {
-	return q.svc.OpenShared(q.ctx, q.sections()...)
+	return q.svc.Open(q.ctx, q.sections()...)
 }
 
-func (q *queryContext) close(err error) {
-	q.svc.CloseShared(err)
+func (q *queryContext) close(err error) error {
+	return q.svc.CloseWithError(err)
 }
 
 func (q *queryContext) sections() []block.Section {

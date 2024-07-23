@@ -15,6 +15,7 @@ import (
 	"time"
 
 	index2 "github.com/grafana/pyroscope/pkg/phlaredb/tsdb/loki/index"
+	"github.com/grafana/pyroscope/pkg/tenant"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -34,7 +35,7 @@ import (
 )
 
 const pathSegments = "segments"
-const pathAnon = "anon"
+const pathAnon = tenant.DefaultTenantID
 const pathBlock = "block.bin"
 
 type shardKey uint32

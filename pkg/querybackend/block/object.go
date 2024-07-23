@@ -1,13 +1,17 @@
 package block
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
+
+	"github.com/grafana/dskit/multierror"
+	"golang.org/x/sync/errgroup"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/util/bufferpool"
 	"github.com/grafana/pyroscope/pkg/util/refctr"
 )
 
@@ -19,12 +23,6 @@ import (
 //  - Local cache? Useful for all-in-one deployments.
 //  - Distributed cache.
 
-const (
-	segmentDirPath    = "segments/"
-	blockDirPath      = "blocks/"
-	anonTenantDirName = "anon"
-)
-
 type Section uint32
 
 const (
@@ -34,6 +32,12 @@ const (
 	SectionTSDB
 	SectionSymbols
 )
+
+var allSections = []Section{
+	SectionProfiles,
+	SectionTSDB,
+	SectionSymbols,
+}
 
 var (
 	// Version-specific.
@@ -54,8 +58,6 @@ func (sc Section) open(ctx context.Context, s *TenantService) (err error) {
 	}
 }
 
-const loadInMemorySizeThreshold = 1 << 20
-
 // Object represents a block or a segment in the object storage.
 type Object struct {
 	storage objstore.Bucket
@@ -63,94 +65,141 @@ type Object struct {
 	meta    *metastorev1.BlockMeta
 
 	refs refctr.Counter
-	buf  *bytes.Buffer
+	buf  *bufferpool.Buffer
 	err  error
+
+	memSize int
 }
 
-type Option func(*Object)
+type ObjectOption func(*Object)
 
-func WithPath(path string) Option {
+func WithPath(path string) ObjectOption {
 	return func(obj *Object) {
 		obj.path = path
 	}
 }
 
-func NewObject(storage objstore.Bucket, meta *metastorev1.BlockMeta, opts ...Option) *Object {
+func WithObjectMaxSizeLoadInMemory(size int) ObjectOption {
+	return func(obj *Object) {
+		obj.memSize = size
+	}
+}
+
+func NewObject(storage objstore.Bucket, meta *metastorev1.BlockMeta, opts ...ObjectOption) *Object {
 	o := &Object{
 		storage: storage,
 		meta:    meta,
+		path:    ObjectPath(meta),
+		memSize: defaultObjectSizeLoadInMemory,
 	}
 	for _, opt := range opts {
 		opt(o)
-	}
-	if o.path == "" {
-		o.path = ObjectPath(meta)
 	}
 	return o
 }
 
 func ObjectPath(md *metastorev1.BlockMeta) string {
-	topLevel := blockDirPath
+	topLevel := DirPathBlock
 	tenantDirName := md.TenantId
 	if md.CompactionLevel == 0 {
-		topLevel = segmentDirPath
-		tenantDirName = anonTenantDirName
+		topLevel = DirPathSegment
+		tenantDirName = DirNameAnonTenant
 	}
-	return topLevel + strconv.Itoa(int(md.Shard)) + "/" + tenantDirName + "/" + md.Id + "/block.bin"
+	var b strings.Builder
+	b.WriteString(topLevel)
+	b.WriteString(strconv.Itoa(int(md.Shard)))
+	b.WriteByte('/')
+	b.WriteString(tenantDirName)
+	b.WriteByte('/')
+	b.WriteString(md.Id)
+	b.WriteByte('/')
+	b.WriteString(FileNameDataObject)
+	return b.String()
 }
 
-// OpenShared opens the object, loading the data into memory
-// if it's small enough.
+// Open opens the object, loading the data into memory if it's small enough.
 //
-// OpenShared may be called multiple times concurrently, but the
+// Open may be called multiple times concurrently, but the
 // object is only initialized once. While it is possible to open
 // the object repeatedly after close, the caller must pass the
-// failure reason to the "CloseShared" call, preventing further
-// use, if  applicable.
-func (obj *Object) OpenShared(ctx context.Context) error {
-	obj.err = obj.refs.Inc(func() error {
-		return obj.Open(ctx)
+// failure reason to the "CloseWithError" call, preventing further
+// use, if applicable.
+func (obj *Object) Open(ctx context.Context) error {
+	return obj.refs.IncErr(func() error {
+		return obj.open(ctx)
 	})
-	return obj.err
 }
 
-func (obj *Object) Open(ctx context.Context) error {
+func (obj *Object) open(ctx context.Context) (err error) {
 	if obj.err != nil {
 		// In case if the object has been already closed with an error,
 		// and then released, return the error immediately.
 		return obj.err
 	}
-	// Estimate the size of the sections to process, and load the
-	// data into memory, if it's small enough.
 	if len(obj.meta.TenantServices) == 0 {
 		panic("bug: invalid block meta: at least one section is expected")
 	}
-	obj.buf = new(bytes.Buffer) // TODO: Take from pool.
-	if err := objstore.FetchRange(ctx, obj.buf, obj.path, obj.storage, 0, int64(obj.meta.Size)); err != nil {
-		return fmt.Errorf("loading object into memory: %w", err)
+	// Estimate the size of the sections to process, and load the
+	// data into memory, if it's small enough.
+	if obj.meta.Size > uint64(obj.memSize) {
+		return nil
+	}
+	defer func() {
+		if err != nil {
+			_ = obj.closeErr(err)
+		}
+	}()
+	obj.buf = bufferpool.GetBuffer(int(obj.meta.Size))
+	if err = objstore.ReadRange(ctx, obj.buf, obj.path, obj.storage, 0, int64(obj.meta.Size)); err != nil {
+		return fmt.Errorf("loading object into memory %s: %w", obj.path, err)
 	}
 	return nil
 }
 
-// CloseShared closes the object, releasing all the acquired resources,
+func (obj *Object) Close() error {
+	return obj.CloseWithError(nil)
+}
+
+// CloseWithError closes the object, releasing all the acquired resources,
 // once the last reference is released. If the provided error is not nil,
 // the object will be marked as failed, preventing any further use.
-func (obj *Object) CloseShared(err error) {
+func (obj *Object) CloseWithError(err error) (closeErr error) {
 	obj.refs.Dec(func() {
-		obj.closeErr(err)
+		closeErr = obj.closeErr(err)
 	})
+	return closeErr
 }
 
-func (obj *Object) Close() error {
-	obj.closeErr(nil)
-	return obj.err
-}
-
-func (obj *Object) closeErr(err error) {
-	if obj.err == nil {
-		obj.err = err
+func (obj *Object) closeErr(err error) error {
+	obj.err = err
+	if obj.buf != nil {
+		bufferpool.Put(obj.buf)
+		obj.buf = nil
 	}
-	obj.buf = nil // TODO: Release.
+	return nil
 }
 
-func (obj *Object) Meta() *metastorev1.BlockMeta { return obj.meta }
+func (obj *Object) Meta() *metastorev1.BlockMeta {
+	return obj.meta
+}
+
+type Objects []*Object
+
+func (s Objects) Open(ctx context.Context) error {
+	g, ctx := errgroup.WithContext(ctx)
+	for i := range s {
+		i := i
+		g.Go(func() error {
+			return s[i].Open(ctx)
+		})
+	}
+	return g.Wait()
+}
+
+func (s Objects) Close() error {
+	var m multierror.MultiError
+	for i := range s {
+		m.Add(s[i].Close())
+	}
+	return m.Err()
+}

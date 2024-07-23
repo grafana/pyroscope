@@ -1,7 +1,6 @@
 package objstore
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -95,7 +94,7 @@ func (b *ReaderAt) Close() error {
 	return nil
 }
 
-func FetchRange(ctx context.Context, dst *bytes.Buffer, name string, storage objstore.BucketReader, off, size int64) error {
+func ReadRange(ctx context.Context, reader io.ReaderFrom, name string, storage objstore.BucketReader, off, size int64) error {
 	if size == 0 {
 		attrs, err := storage.Attributes(ctx, name)
 		if err != nil {
@@ -113,9 +112,7 @@ func FetchRange(ctx context.Context, dst *bytes.Buffer, name string, storage obj
 	defer func() {
 		_ = rc.Close()
 	}()
-	dst.Reset()
-	dst.Grow(int(size) + bytes.MinRead)
-	n, err := dst.ReadFrom(rc)
+	n, err := reader.ReadFrom(rc)
 	if err != nil {
 		return err
 	}

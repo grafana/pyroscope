@@ -1,7 +1,6 @@
 package block
 
 import (
-	"bytes"
 	"context"
 	"encoding/binary"
 	"fmt"
@@ -13,7 +12,6 @@ import (
 	"github.com/parquet-go/parquet-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
-	"github.com/valyala/bytebufferpool"
 
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
@@ -23,11 +21,10 @@ import (
 	"github.com/grafana/pyroscope/pkg/phlaredb/query"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
+	"github.com/grafana/pyroscope/pkg/util/bufferpool"
 	"github.com/grafana/pyroscope/pkg/util/build"
 	"github.com/grafana/pyroscope/pkg/util/loser"
 )
-
-const maxRowsPerRowGroup = 10 << 10
 
 func openProfileTable(_ context.Context, s *TenantService) (err error) {
 	offset := s.sectionOffset(SectionProfiles)
@@ -43,7 +40,6 @@ func openProfileTable(_ context.Context, s *TenantService) (err error) {
 	} else {
 		s.profiles, err = openParquetFile(
 			s.obj.storage, s.obj.path, offset, size,
-			// TODO(kolesnikovae): Store in TOC.
 			estimateFooterSize(size),
 			parquet.SkipBloomFilters(true),
 			parquet.FileReadMode(parquet.ReadModeAsync),
@@ -65,8 +61,6 @@ type ParquetFile struct {
 	path    string
 	off     int64
 	size    int64
-
-	footer *bytebufferpool.ByteBuffer
 }
 
 func openParquetFile(
@@ -100,19 +94,16 @@ func openParquetFile(
 	var ra io.ReaderAt
 	ra = io.NewSectionReader(r, offset, size)
 	if footerSize > 0 {
-		p.footer = parquetFooterPool.Get()
+		buf := bufferpool.GetBuffer(int(footerSize))
 		defer func() {
-			// Footer is not accessed after the file is opened.
-			parquetFooterPool.Put(p.footer)
-			p.footer = nil
+			// Footer is not used after the file was opened.
+			bufferpool.Put(buf)
 		}()
-		if err = p.fetchFooter(ctx, footerSize); err != nil {
+		if err = p.fetchFooter(ctx, buf, footerSize); err != nil {
 			return nil, err
 		}
-		rf := newReaderWithFooter(ra, p.footer.B, size)
-		defer func() {
-			rf.free()
-		}()
+		rf := newReaderWithFooter(ra, buf.B, size)
+		defer rf.free()
 		ra = rf
 	}
 
@@ -130,27 +121,22 @@ func (f *ParquetFile) RowReader() *parquet.Reader {
 	return parquet.NewReader(f.File, schemav1.ProfilesSchema)
 }
 
-var parquetFooterPool bytebufferpool.Pool
-
-func (f *ParquetFile) fetchFooter(ctx context.Context, estimatedSize int64) error {
-	// Fetch the footer of estimated size.
-	buf := bytes.NewBuffer(f.footer.B) // Will be grown if needed.
-	defer func() {
-		f.footer.B = buf.Bytes()
-	}()
-	if err := objstore.FetchRange(ctx, buf, f.path, f.storage, f.off+f.size-estimatedSize, estimatedSize); err != nil {
+func (f *ParquetFile) fetchFooter(ctx context.Context, buf *bufferpool.Buffer, estimatedSize int64) error {
+	// Fetch the footer of estimated size at the estimated offset.
+	estimatedOffset := f.off + f.size - estimatedSize
+	if err := objstore.ReadRange(ctx, buf, f.path, f.storage, estimatedOffset, estimatedSize); err != nil {
 		return err
 	}
 	// Footer size is an uint32 located at size-8.
-	b := buf.Bytes()
-	sb := b[f.size-8 : f.size-4]
+	sb := buf.B[len(buf.B)-8 : len(buf.B)-4]
 	s := int64(binary.LittleEndian.Uint32(sb))
 	s += 8 // Include the footer size itself and the magic signature.
 	if estimatedSize >= s {
 		// The footer has been fetched.
 		return nil
 	}
-	return objstore.FetchRange(ctx, buf, f.path, f.storage, f.off+f.size-s, s)
+	// Fetch footer to buf for sure.
+	return objstore.ReadRange(ctx, buf, f.path, f.storage, f.off+f.size-s, s)
 }
 
 func (f *ParquetFile) Close() error {
@@ -179,7 +165,7 @@ type profilesWriter struct {
 }
 
 func newProfileWriter(dst string, sizeTotal int64) (*profilesWriter, error) {
-	f, err := os.Create(filepath.Join(dst, "profiles.parquet"))
+	f, err := os.Create(filepath.Join(dst, FileNameProfilesParquet))
 	if err != nil {
 		return nil, err
 	}
@@ -210,68 +196,6 @@ func (p *profilesWriter) Close() error {
 		return err
 	}
 	return p.file.Close()
-}
-
-// TODO(kolesnikovae): Figure out optimal thresholds.
-//   It'd better if it was stored in the metadata.
-
-func estimateFooterSize(size int64) int64 {
-	var s int64
-	// as long as we don't keep the exact footer sizes in the meta estimate it
-	if size > 0 {
-		s = size / 10000
-	}
-	// set a minimum footer size of 32KiB
-	if s < 32<<10 {
-		s = 32 << 10
-	}
-	// set a maximum footer size of 512KiB
-	if s > 512<<10 {
-		s = 512 << 10
-	}
-	// now check clamp it to the actual size of the whole object
-	if s > size {
-		s = size
-	}
-	return s
-}
-
-func estimateReadBufferSize(s int64) int {
-	const minSize = 64 << 10
-	const maxSize = 2 << 20
-	// Parquet has global buffer map, where buffer size is key,
-	// so we want a low cardinality here.
-	e := nextPowerOfTwo(uint32(s / 10))
-	if e < minSize {
-		return minSize
-	}
-	return int(min(e, maxSize))
-}
-
-// This is a verbatim copy of estimateReadBufferSize.
-// It's kept for the sake of clarity and to avoid confusion.
-func estimatePageBufferSize(s int64) int {
-	const minSize = 64 << 10
-	const maxSize = 2 << 20
-	e := nextPowerOfTwo(uint32(s / 10))
-	if e < minSize {
-		return minSize
-	}
-	return int(min(e, maxSize))
-}
-
-func nextPowerOfTwo(n uint32) uint32 {
-	if n == 0 {
-		return 1
-	}
-	n--
-	n |= n >> 1
-	n |= n >> 2
-	n |= n >> 4
-	n |= n >> 8
-	n |= n >> 16
-	n++
-	return n
 }
 
 type readerWithFooter struct {
@@ -340,7 +264,7 @@ func NewMergeRowProfileIterator(src []*TenantService) (iter.Iterator[ProfileEntr
 	if len(its) == 1 {
 		return its[0], nil
 	}
-	return &dedupeProfileRowIterator{
+	return &DedupeProfileRowIterator{
 		Iterator: iter.NewTreeIterator(loser.New(
 			its,
 			ProfileEntry{
@@ -366,14 +290,14 @@ func NewMergeRowProfileIterator(src []*TenantService) (iter.Iterator[ProfileEntr
 	}, nil
 }
 
-type dedupeProfileRowIterator struct {
+type DedupeProfileRowIterator struct {
 	iter.Iterator[ProfileEntry]
 
 	prevFP        model.Fingerprint
 	prevTimeNanos int64
 }
 
-func (it *dedupeProfileRowIterator) Next() bool {
+func (it *DedupeProfileRowIterator) Next() bool {
 	for {
 		if !it.Iterator.Next() {
 			return false

@@ -49,21 +49,21 @@ pyroscope:
           cpu: 100m
     query-worker:
       kind: Deployment
-      replicaCount: 3
+      replicaCount: 8
       resources:
         limits:
-          memory: 16Gi
+          memory: 8Gi
         requests:
           memory: 8Gi
-          cpu: 4
+          cpu: 2
     compaction-worker:
       extraArgs:
-        compaction-worker.job-capacity: 40
+        compaction-worker.job-capacity: 5
       kind: Deployment
-      replicaCount: 32
+      replicaCount: 4
       resources:
         limits:
-          memory: 16Gi
+          memory: 8Gi
         requests:
           memory: 8Gi
           cpu: 4
