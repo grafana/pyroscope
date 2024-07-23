@@ -94,17 +94,12 @@ func (m *metastoreState) restoreBlockMetadata(tx *bbolt.Tx) error {
 	// block_metadata/[{shard_id}<tenant_id>]/[block_id]
 	// TODO(kolesnikovae): Load concurrently.
 	return mdb.ForEachBucket(func(name []byte) error {
-		shardID, tenantID, ok := parseBucketName(name)
+		shardID, _, ok := parseBucketName(name)
 		if !ok {
 			_ = level.Error(m.logger).Log("msg", "malformed bucket name", "name", string(name))
 			return nil
 		}
 		shard := m.getOrCreateShard(shardID)
-		if tenantID != "" {
-			_ = level.Debug(m.logger).Log("compacted blocks are ignored")
-			// TODO: Load tenant blocks.
-			return nil
-		}
 		return shard.loadSegments(mdb.Bucket(name))
 	})
 }
