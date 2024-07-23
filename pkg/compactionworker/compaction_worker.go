@@ -3,12 +3,15 @@ package compactionworker
 import (
 	"context"
 	"flag"
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/services"
+	"github.com/opentracing/opentracing-go"
+	"github.com/prometheus/client_golang/prometheus"
 
 	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastoreclient "github.com/grafana/pyroscope/pkg/metastore/client"
@@ -23,6 +26,7 @@ type Worker struct {
 	logger          log.Logger
 	metastoreClient *metastoreclient.Client
 	storage         objstore.Bucket
+	metrics         *compactionWorkerMetrics
 
 	jobMutex             sync.RWMutex
 	pendingJobs          map[string]*compactorv1.CompactionJob
@@ -39,7 +43,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.IntVar(&cfg.JobCapacity, prefix+"job-capacity", 5, "how many concurrent jobs will a worker run at most")
 }
 
-func New(config Config, logger log.Logger, metastoreClient *metastoreclient.Client, storage objstore.Bucket) (*Worker, error) {
+func New(config Config, logger log.Logger, metastoreClient *metastoreclient.Client, storage objstore.Bucket, reg prometheus.Registerer) (*Worker, error) {
 	w := &Worker{
 		config:               config,
 		logger:               logger,
@@ -48,6 +52,7 @@ func New(config Config, logger log.Logger, metastoreClient *metastoreclient.Clie
 		pendingJobs:          make(map[string]*compactorv1.CompactionJob),
 		activeJobs:           make(map[string]*compactorv1.CompactionJob),
 		pendingStatusUpdates: make(map[string]*compactorv1.CompactionJobStatus),
+		metrics:              newMetrics(reg),
 	}
 	w.BasicService = services.NewBasicService(w.starting, w.running, w.stopping)
 	return w, nil
@@ -158,6 +163,27 @@ func (w *Worker) stopping(err error) error {
 }
 
 func (w *Worker) startJob(ctx context.Context, job *compactorv1.CompactionJob) *compactorv1.CompactionJobStatus {
+	jobStartTime := time.Now()
+	labels := []string{job.TenantId, fmt.Sprint(job.Shard), fmt.Sprint(job.CompactionLevel)}
+	jobOutcome := "unknown"
+	defer func() {
+		elapsed := time.Since(jobStartTime)
+		labelsWithOutcome := append(labels, jobOutcome)
+		w.metrics.jobsCompleted.WithLabelValues(labelsWithOutcome...).Inc()
+		w.metrics.jobsInProgress.WithLabelValues(labels...).Dec()
+		w.metrics.jobDuration.WithLabelValues(labelsWithOutcome...).Observe(elapsed.Seconds())
+	}()
+	w.metrics.jobsInProgress.WithLabelValues(labels...).Inc()
+
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "StartCompactionJob",
+		opentracing.Tag{Key: "Job", Value: job.String()},
+		opentracing.Tag{Key: "Tenant", Value: job.TenantId},
+		opentracing.Tag{Key: "Shard", Value: job.Shard},
+		opentracing.Tag{Key: "CompactionLevel", Value: job.CompactionLevel},
+		opentracing.Tag{Key: "BlockCount", Value: len(job.Blocks)},
+	)
+	defer sp.Finish()
+
 	jobStatus := &compactorv1.CompactionJobStatus{
 		JobName:      job.Name,
 		CompletedJob: &compactorv1.CompletedJob{},
@@ -175,6 +201,7 @@ func (w *Worker) startJob(ctx context.Context, job *compactorv1.CompactionJob) *
 	if err != nil {
 		level.Error(w.logger).Log("msg", "failed to run block compaction", "err", err, "job", job.Name)
 		jobStatus.Status = compactorv1.CompactionStatus_COMPACTION_STATUS_FAILURE
+		jobOutcome = "failure"
 		return jobStatus
 	}
 
@@ -185,6 +212,7 @@ func (w *Worker) startJob(ctx context.Context, job *compactorv1.CompactionJob) *
 		"output_blocks", len(compactedBlockMetas))
 
 	jobStatus.Status = compactorv1.CompactionStatus_COMPACTION_STATUS_SUCCESS
+	jobOutcome = "success"
 	jobStatus.CompletedJob.Blocks = compactedBlockMetas
 
 	return jobStatus

@@ -589,7 +589,7 @@ func (f *Phlare) initVersion() (services.Service, error) {
 }
 
 func (f *Phlare) initCompactionWorker() (svc services.Service, err error) {
-	f.compactionWorker, err = compactionworker.New(f.Cfg.CompactionWorker, f.logger, f.MetastoreClient, f.storageBucket)
+	f.compactionWorker, err = compactionworker.New(f.Cfg.CompactionWorker, f.logger, f.MetastoreClient, f.storageBucket, f.reg)
 	return f.compactionWorker, nil
 }
 
