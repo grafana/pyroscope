@@ -43,7 +43,8 @@ Currently, the CPU usage for these languages is reported as belonging to the run
 
 {{< docs/shared lookup="agent-deprecation.md" source="alloy" version="next" >}}
 
-The Grafana Agent is a lightweight, all-in-one agent that can collect, transform, and ship observability data. For profiling, the Grafana Agent can be configured to collect eBPF profiles and send them to Pyroscope.
+The Grafana Agent is a lightweight, all-in-one agent that can collect, transform, and ship observability data.
+For profiling, the Grafana Agent can be configured to collect eBPF profiles and send them to Pyroscope.
 
 This section contains instructions for installing and configuring the Grafana Agent to collect eBPF profiles.
 For more information about the Grafana Agent itself, see the [Grafana Agent documentation](/docs/agent/latest/flow/).
