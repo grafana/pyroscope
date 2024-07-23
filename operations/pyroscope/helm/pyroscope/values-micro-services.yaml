@@ -58,9 +58,9 @@ pyroscope:
           cpu: 2
     compaction-worker:
       extraArgs:
-        compaction-worker.job-capacity: 5
+        compaction-worker.job-capacity: 4
       kind: Deployment
-      replicaCount: 4
+      replicaCount: 3
       resources:
         limits:
           memory: 8Gi
