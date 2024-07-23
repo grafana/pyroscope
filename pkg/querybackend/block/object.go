@@ -151,7 +151,7 @@ func (obj *Object) open(ctx context.Context) (err error) {
 	}()
 	obj.buf = bufferpool.GetBuffer(int(obj.meta.Size))
 	if err = objstore.ReadRange(ctx, obj.buf, obj.path, obj.storage, 0, int64(obj.meta.Size)); err != nil {
-		return fmt.Errorf("loading object into memory: %w", err)
+		return fmt.Errorf("loading object into memory %s: %w", obj.path, err)
 	}
 	return nil
 }

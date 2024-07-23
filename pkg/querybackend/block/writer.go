@@ -19,33 +19,26 @@ import (
 
 type Writer struct {
 	storage objstore.Bucket
+	path    string
+	local   string
+	off     uint64
+	w       *os.File
 
 	tmp string
 	n   int
 	cur string
-	buf *bufferpool.Buffer
-	off uint64
 
-	r      *io.PipeReader
-	w      *io.PipeWriter
-	ctx    context.Context
-	cancel context.CancelFunc
-	done   chan struct{}
+	buf *bufferpool.Buffer
 }
 
-func NewBlockWriter(ctx context.Context, storage objstore.Bucket, path string, tmp string) *Writer {
+func NewBlockWriter(storage objstore.Bucket, path string, tmp string) *Writer {
 	b := &Writer{
 		storage: storage,
+		path:    path,
 		tmp:     tmp,
-		done:    make(chan struct{}),
+		local:   filepath.Join(tmp, FileNameDataObject),
 		buf:     bufferpool.GetBuffer(compactionCopyBufferSize),
 	}
-	b.r, b.w = io.Pipe()
-	b.ctx, b.cancel = context.WithCancel(ctx)
-	go func() {
-		defer close(b.done)
-		_ = b.w.CloseWithError(storage.Upload(b.ctx, path, b.r))
-	}()
 	return b
 }
 
@@ -69,7 +62,12 @@ func (b *Writer) ReadFromFiles(files ...string) (toc []uint64, err error) {
 }
 
 // ReadFromFile located in the directory Dir.
-func (b *Writer) ReadFromFile(file string) error {
+func (b *Writer) ReadFromFile(file string) (err error) {
+	if b.w == nil {
+		if b.w, err = os.Create(b.local); err != nil {
+			return err
+		}
+	}
 	f, err := os.Open(filepath.Join(b.cur, file))
 	if err != nil {
 		return err
@@ -85,10 +83,25 @@ func (b *Writer) ReadFromFile(file string) error {
 
 func (b *Writer) Offset() uint64 { return b.off }
 
+func (b *Writer) Flush(ctx context.Context) error {
+	if err := b.w.Close(); err != nil {
+		return err
+	}
+	b.w = nil
+	f, err := os.Open(b.local)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = f.Close()
+	}()
+	return b.storage.Upload(ctx, b.path, f)
+}
+
 func (b *Writer) Close() error {
-	_ = b.r.Close()
-	b.cancel()
-	<-b.done
-	// b.w is closed before close(d.done).
-	return os.RemoveAll(b.tmp)
+	bufferpool.Put(b.buf)
+	if b.w != nil {
+		return b.w.Close()
+	}
+	return nil
 }

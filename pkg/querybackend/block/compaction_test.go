@@ -9,6 +9,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 
 	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/objstore/testutil"
 )
 
@@ -27,4 +28,11 @@ func Test_CompactBlocks(t *testing.T) {
 
 	// TODO: Assertions.
 	require.Len(t, compactedBlocks, 1)
+	metas := []*metastorev1.BlockMeta{
+		compactedBlocks[0],
+		compactedBlocks[0].CloneVT(),
+	}
+
+	compactedBlocks, err = Compact(ctx, metas, bucket)
+	require.NoError(t, err)
 }

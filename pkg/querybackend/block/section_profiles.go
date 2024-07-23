@@ -93,7 +93,7 @@ func openParquetFile(
 
 	var ra io.ReaderAt
 	ra = io.NewSectionReader(r, offset, size)
-	if footerSize > 0 {
+	/*	if footerSize > 0 {
 		buf := bufferpool.GetBuffer(int(footerSize))
 		defer func() {
 			// Footer is not used after the file was opened.
@@ -105,7 +105,7 @@ func openParquetFile(
 		rf := newReaderWithFooter(ra, buf.B, size)
 		defer rf.free()
 		ra = rf
-	}
+	}*/
 
 	f, err := parquet.OpenFile(ra, size, options...)
 	if err != nil {

@@ -52,12 +52,13 @@ func Compact(
 		err = objects.Close()
 	}()
 
-	compacted := make([]*metastorev1.BlockMeta, len(plan))
-	for i, p := range plan {
-		compacted[i], err = p.Compact(ctx, storage)
+	compacted := make([]*metastorev1.BlockMeta, 0, len(plan))
+	for _, p := range plan {
+		md, err := p.Compact(ctx, storage)
 		if err != nil {
-			return compacted, err
+			return nil, err
 		}
+		compacted = append(compacted, md)
 	}
 
 	return compacted, nil
@@ -147,7 +148,7 @@ func (b *CompactionPlan) Estimate() {
 
 func (b *CompactionPlan) Compact(ctx context.Context, storage objstore.Bucket) (m *metastorev1.BlockMeta, err error) {
 	dir := filepath.Join(os.TempDir(), "pyroscope-compactor", b.meta.Id)
-	w := NewBlockWriter(ctx, storage, ObjectPath(b.meta), dir)
+	w := NewBlockWriter(storage, ObjectPath(b.meta), dir)
 	defer func() {
 		err = multierror.New(err, w.Close()).Err()
 	}()
@@ -159,6 +160,9 @@ func (b *CompactionPlan) Compact(ctx context.Context, storage objstore.Bucket) (
 			return nil, fmt.Errorf("compacting block: %w", err)
 		}
 		b.meta.TenantServices = append(b.meta.TenantServices, s.meta)
+	}
+	if err = w.Flush(ctx); err != nil {
+		return nil, fmt.Errorf("flushing block writer: %w", err)
 	}
 	b.meta.Size = w.Offset()
 	return b.meta, nil

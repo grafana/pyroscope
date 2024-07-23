@@ -1,9 +1,13 @@
 package block
 
+import (
+	"github.com/grafana/pyroscope/pkg/tenant"
+)
+
 const (
 	DirPathSegment    = "segments/"
 	DirPathBlock      = "blocks/"
-	DirNameAnonTenant = "anon"
+	DirNameAnonTenant = tenant.DefaultTenantID
 
 	FileNameProfilesParquet = "profiles.parquet"
 	FileNameDataObject      = "block.bin"
