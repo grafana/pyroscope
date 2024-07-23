@@ -208,9 +208,9 @@ func (m *metastoreState) processCompletedJob(tx *bbolt.Tx, job *compactionpb.Com
 			return err
 		}
 		if jobToAdd != nil {
-			jResult.newJobs = append(jResult.newJobs, job)
+			jResult.newJobs = append(jResult.newJobs, jobToAdd)
 		} else if blockForQueue != nil {
-			jResult.newQueuedBlocks = append(jResult.newQueuedBlocks, b)
+			jResult.newQueuedBlocks = append(jResult.newQueuedBlocks, blockForQueue)
 		}
 	}
 
