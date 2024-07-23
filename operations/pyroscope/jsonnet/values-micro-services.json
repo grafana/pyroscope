@@ -39,14 +39,14 @@
       },
       "distributor": {
         "kind": "Deployment",
-        "replicaCount": 2,
+        "replicaCount": 5,
         "resources": {
           "limits": {
-            "memory": "1Gi"
+            "memory": "4Gi"
           },
           "requests": {
             "cpu": "500m",
-            "memory": "256Mi"
+            "memory": "2Gi"
           }
         }
       },
@@ -55,11 +55,11 @@
         "replicaCount": 3,
         "resources": {
           "limits": {
-            "memory": "16Gi"
+            "memory": "4Gi"
           },
           "requests": {
-            "cpu": 1,
-            "memory": "8Gi"
+            "cpu": 4,
+            "memory": "2Gi"
           }
         },
         "terminationGracePeriodSeconds": 600

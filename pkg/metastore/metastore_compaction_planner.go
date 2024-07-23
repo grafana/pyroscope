@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/go-kit/log"
@@ -15,24 +16,25 @@ import (
 	"github.com/grafana/pyroscope/pkg/metastore/compactionpb"
 )
 
+const (
+	jobPollInterval  = 5 * time.Second
+	jobLeaseDuration = 3 * jobPollInterval
+)
+
 var (
 	// TODO aleks: for illustration purposes, to be moved externally
 	globalCompactionStrategy = compactionStrategy{
 		levels: map[uint32]compactionLevelStrategy{
-			0: {
-				minBlocks:         10,
-				maxBlocks:         20,
-				minTotalSizeBytes: 2 << 18, // 512KB
-				maxTotalSizeBytes: 2 << 20, // 2MB
-			},
+			0: {maxBlocks: 20},
 		},
 		defaultStrategy: compactionLevelStrategy{
-			minBlocks:         10,
-			maxBlocks:         0,
-			minTotalSizeBytes: 0,
-			maxTotalSizeBytes: 0,
+			maxBlocks: 10,
 		},
-		maxCompactionLevel: 10,
+		maxCompactionLevel: 3,
+		// 0: 0.5
+		// 1: 10s
+		// 2: 100s
+		// 3: 1000s // 16m40s
 	}
 )
 
@@ -43,9 +45,7 @@ type compactionStrategy struct {
 }
 
 type compactionLevelStrategy struct {
-	minBlocks         int
 	maxBlocks         int
-	minTotalSizeBytes uint64
 	maxTotalSizeBytes uint64
 }
 
@@ -58,17 +58,10 @@ func getStrategyForLevel(compactionLevel uint32) compactionLevelStrategy {
 }
 
 func (s compactionLevelStrategy) shouldCreateJob(blocks []*metastorev1.BlockMeta) bool {
-	totalSizeBytes := getTotalSize(blocks)
-	enoughBlocks := len(blocks) >= s.minBlocks
-	enoughData := totalSizeBytes > 0 && totalSizeBytes >= s.minTotalSizeBytes
-	if enoughBlocks && enoughData {
-		return true
-	} else if enoughBlocks {
-		return s.maxBlocks > 0 && len(blocks) >= s.maxBlocks
-	} else if enoughData {
-		return s.maxTotalSizeBytes > 0 && totalSizeBytes >= s.maxTotalSizeBytes
-	}
-	return false
+	// NB: Total block size does not reflect the actual size of the data
+	// to be read for compaction (at once) or queried. A better heuristic
+	// would be max tenant service size.
+	return len(blocks) >= s.maxBlocks
 }
 
 type Planner struct {
@@ -101,7 +94,7 @@ func (m *metastoreState) tryCreateJob(block *metastorev1.BlockMeta) *compactionp
 	preQueue.mu.Lock()
 	defer preQueue.mu.Unlock()
 
-	if block.CompactionLevel > globalCompactionStrategy.maxCompactionLevel {
+	if block.CompactionLevel >= globalCompactionStrategy.maxCompactionLevel {
 		level.Info(m.logger).Log("msg", "skipping block at max compaction level", "block", block.Id, "compaction_level", block.CompactionLevel)
 		return nil
 	}

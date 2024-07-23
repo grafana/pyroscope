@@ -17,8 +17,9 @@ import (
 )
 
 const (
-	boltDBFileName     = "metastore.boltdb"
-	boltDBSnapshotName = "metastore_snapshot.boltdb"
+	boltDBFileName        = "metastore.boltdb"
+	boltDBSnapshotName    = "metastore_snapshot.boltdb"
+	boltDBInitialMmapSize = 2 << 30
 )
 
 type boltdb struct {
@@ -63,7 +64,7 @@ func (db *boltdb) open(readOnly bool) (err error) {
 	opts := *bbolt.DefaultOptions
 	opts.ReadOnly = readOnly
 	opts.NoSync = true
-	opts.InitialMmapSize = 256 << 20
+	opts.InitialMmapSize = boltDBInitialMmapSize
 	if db.boltdb, err = bbolt.Open(db.path, 0644, &opts); err != nil {
 		return fmt.Errorf("failed to open db: %w", err)
 	}

@@ -12,6 +12,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/dns"
+	"github.com/grafana/dskit/kv"
 	"github.com/grafana/dskit/kv/codec"
 	"github.com/grafana/dskit/kv/memberlist"
 	"github.com/grafana/dskit/middleware"
@@ -38,6 +39,7 @@ import (
 	apiversion "github.com/grafana/pyroscope/pkg/api/version"
 	"github.com/grafana/pyroscope/pkg/compactor"
 	"github.com/grafana/pyroscope/pkg/distributor"
+	"github.com/grafana/pyroscope/pkg/distributor/singlereplica"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/ingester"
 	"github.com/grafana/pyroscope/pkg/metastore"
@@ -379,14 +381,34 @@ func (f *Phlare) initMemberlistKV() (services.Service, error) {
 
 func (f *Phlare) initRing() (_ services.Service, err error) {
 	f.Cfg.Ingester.LifecyclerConfig.RingConfig.ReplicationFactor = 1
-	f.ring, err = ring.New(f.Cfg.Ingester.LifecyclerConfig.RingConfig, "ingester", "ring", log.With(f.logger, "component", "ring"), prometheus.WrapRegistererWithPrefix("pyroscope_", f.reg))
+	f.Cfg.Ingester.LifecyclerConfig.NumTokens = 4
+	f.ring, err = newRing(
+		f.Cfg.Ingester.LifecyclerConfig.RingConfig,
+		"ingester", "ring",
+		log.With(f.logger, "component", "ring"),
+		singlereplica.NewReplicationStrategy(),
+		prometheus.WrapRegistererWithPrefix("pyroscope_", f.reg),
+	)
 	if err != nil {
 		return nil, err
 	}
-
 	f.API.RegisterRing(f.ring)
 
 	return f.ring, nil
+}
+
+func newRing(cfg ring.Config, name, key string, logger log.Logger, rs ring.ReplicationStrategy, reg prometheus.Registerer) (*ring.Ring, error) {
+	codec := ring.GetCodec()
+	store, err := kv.NewClient(
+		cfg.KVStore,
+		codec,
+		kv.RegistererWithKVName(reg, name+"-ring"),
+		logger,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return ring.NewWithStoreClientAndStrategy(cfg, name, key, store, rs, reg, logger)
 }
 
 func (f *Phlare) initStorage() (_ services.Service, err error) {
