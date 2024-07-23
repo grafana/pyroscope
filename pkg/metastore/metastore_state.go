@@ -128,8 +128,6 @@ func (m *metastoreState) restoreCompactionPlan(tx *bbolt.Tx) error {
 			tenant: tenant,
 			shard:  shard,
 		}
-		m.compactionPlansMutex.Lock()
-		defer m.compactionPlansMutex.Unlock()
 		preQueue := m.getOrCreatePreQueue(key)
 
 		return m.loadCompactionPlan(cdb.Bucket(name), preQueue)
