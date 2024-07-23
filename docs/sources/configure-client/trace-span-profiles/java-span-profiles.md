@@ -79,7 +79,7 @@ ENV OTEL_PYROSCOPE_START_PROFILING=true
 ## Useful for debugging
 # ENV PYROSCOPE_LOG_LEVEL=debug
 
-## Those environment variables need to be overwritten at runtime, if you are using Grafana Cloud 
+## Those environment variables need to be overwritten at runtime, if you are using Grafana Cloud
 ENV PYROSCOPE_SERVER_ADDRESS=http://localhost:4040
 # ENV PYROSCOPE_BASIC_AUTH_USER=123     ## Grafana Cloud Username
 # ENV PYROSCOPE_BASIC_AUTH_PASSWORD=glc_secret ## Grafana Cloud Password / API Token
@@ -92,7 +92,7 @@ CMD ["java", "-Dserver.port=5000", "-javaagent:./opentelemetry-javaagent.jar", "
 
 To view the span profiles in Grafana Tempo, you need to have a Grafana instance running and a data source configured to link trace spans and profiles.
 
-Refer to the [data source configuration documentation](https://grafana.com/docs/grafana/latest/datasources/tempo/configure-tempo-data-source/) to see how to configure the visualization to link trace spans with profiles.
+Refer to the [data source configuration documentation](https://grafana.com/docs/grafana/<GRAFANA_VERSION>/datasources/tempo/configure-tempo-data-source/) to see how to configure the visualization to link trace spans with profiles.
 
 To use a simple configuration, follow these steps:
 

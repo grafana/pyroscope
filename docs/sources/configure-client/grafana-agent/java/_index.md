@@ -13,7 +13,7 @@ Grafana Alloy and Grafana Agent in [Flow mode](/docs/agent/latest/flow/) support
 The collector configuration file is composed of components that are used to collect,
 transform, and send data.
 Alloy configuration files use the Alloy [configuration syntax](https://grafana.com/docs/alloy/latest/concepts/configuration-syntax/).
-Agent Flow files use the [River](/docs/agent/latest/flow/config-language/) language.
+Agent Flow files use the [River](https://grafana.com/docs/agent/latest/flow/concepts/config-language/) language.
 
 {{< docs/shared lookup="agent-deprecation.md" source="alloy" version="next" >}}
 
@@ -292,11 +292,11 @@ For more information:
 ### Grafana Alloy
 
 - [Grafana Alloy](https://grafana.com/docs/alloy/latest/)
-- [pyroscope.scrape](/docs/alloy/latest/flow/reference/components/pyroscope.scrape/)
-- [pyroscope.write](/docs/alloy/latest/flow/reference/components/pyroscope.write/)
-- [discovery.kubernetes](/docs/alloy/latest/flow/reference/components/discovery.kubernetes/)
-- [discovery.docker](/docs/alloy/latest/flow/reference/components/discovery.docker/)
-- [discovery.relabel](/docs/alloy/latest/flow/reference/components/discovery.relabel/)
+- [pyroscope.scrape](https://grafana.com/docs/alloy/latest/reference/components/pyroscope/pyroscope.scrape/)
+- [pyroscope.write](https://grafana.com/docs/alloy/latest/reference/components/pyroscope/pyroscope.write/)
+- [discovery.kubernetes](https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.kubernetes/)
+- [discovery.docker](/docs/alloy/latest/flow/reference/components/discovery/discovery.docker/)
+- [discovery.relabel](/docs/alloy/latest/flow/reference/components/discovery/discovery.relabel/)
 
 ### Grafana Agent
 
