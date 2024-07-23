@@ -162,7 +162,7 @@ check/go/mod: go/mod
 
 
 define docker_buildx
-	docker buildx build $(1) --platform $(IMAGE_PLATFORM) $(BUILDX_ARGS) --build-arg=revision=$(GIT_REVISION) -t $(IMAGE_PREFIX)$(shell basename $(@D)) -t $(IMAGE_PREFIX)$(shell basename $(@D)):$(IMAGE_TAG) -f cmd/$(shell basename $(@D))/$(2)Dockerfile .
+	docker buildx build $(1) --platform $(IMAGE_PLATFORM) $(BUILDX_ARGS) --build-arg=revision=$(GIT_REVISION) -t $(IMAGE_PREFIX)$(shell basename $(@D)):$(2)latest -t $(IMAGE_PREFIX)$(shell basename $(@D)):$(2)$(IMAGE_TAG) -f cmd/$(shell basename $(@D))/$(2)Dockerfile .
 endef
 
 define deploy
@@ -187,6 +187,12 @@ docker-image/pyroscope/build-debug: GOOS=linux
 docker-image/pyroscope/build-debug: GOARCH=amd64
 docker-image/pyroscope/build-debug: frontend/build go/bin-debug $(BIN)/linux_amd64/dlv
 	$(call docker_buildx,--load,debug.)
+
+.PHONY: docker-image/pyroscope/push-debug
+docker-image/pyroscope/push-debug: GOOS=linux
+docker-image/pyroscope/push-debug: GOARCH=amd64
+docker-image/pyroscope/push-debug: frontend/build go/bin-debug $(BIN)/linux_amd64/dlv
+	$(call docker_buildx,--push,debug.)
 
 .PHONY: docker-image/pyroscope/build
 docker-image/pyroscope/build: GOOS=linux
@@ -324,7 +330,7 @@ $(BIN)/gotestsum: Makefile go.mod
 	@mkdir -p $(@D)
 	GOBIN=$(abspath $(@D)) $(GO) install gotest.tools/gotestsum@v1.9.0
 
-DLV_VERSION=v1.21.0
+DLV_VERSION=v1.23.0
 
 $(BIN)/dlv: Makefile go.mod
 	@mkdir -p $(@D)
