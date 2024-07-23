@@ -93,7 +93,7 @@ func openParquetFile(
 
 	var ra io.ReaderAt
 	ra = io.NewSectionReader(r, offset, size)
-	/*	if footerSize > 0 {
+	if footerSize > 0 {
 		buf := bufferpool.GetBuffer(int(footerSize))
 		defer func() {
 			// Footer is not used after the file was opened.
@@ -105,7 +105,7 @@ func openParquetFile(
 		rf := newReaderWithFooter(ra, buf.B, size)
 		defer rf.free()
 		ra = rf
-	}*/
+	}
 
 	f, err := parquet.OpenFile(ra, size, options...)
 	if err != nil {
@@ -122,18 +122,20 @@ func (f *ParquetFile) RowReader() *parquet.Reader {
 }
 
 func (f *ParquetFile) fetchFooter(ctx context.Context, buf *bufferpool.Buffer, estimatedSize int64) error {
-	// Fetch the footer of estimated size.
-	if err := objstore.ReadRange(ctx, buf, f.path, f.storage, f.off+f.size-estimatedSize, estimatedSize); err != nil {
+	// Fetch the footer of estimated size at the estimated offset.
+	estimatedOffset := f.off + f.size - estimatedSize
+	if err := objstore.ReadRange(ctx, buf, f.path, f.storage, estimatedOffset, estimatedSize); err != nil {
 		return err
 	}
 	// Footer size is an uint32 located at size-8.
-	sb := buf.B[f.size-8 : f.size-4]
+	sb := buf.B[len(buf.B)-8 : len(buf.B)-4]
 	s := int64(binary.LittleEndian.Uint32(sb))
 	s += 8 // Include the footer size itself and the magic signature.
 	if estimatedSize >= s {
 		// The footer has been fetched.
 		return nil
 	}
+	// Fetch footer to buf for sure.
 	return objstore.ReadRange(ctx, buf, f.path, f.storage, f.off+f.size-s, s)
 }
 
