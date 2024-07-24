@@ -34,13 +34,49 @@ var (
 	ErrShardMergeMismatch = fmt.Errorf("only blocks from the same shard can be merged")
 )
 
+type CompactionOption func(*compactionConfig)
+
+func WithCompactionObjectOptions(options ...ObjectOption) CompactionOption {
+	return func(p *compactionConfig) {
+		p.objectOptions = append(p.objectOptions, options...)
+	}
+}
+
+func WithCompactionTempDir(tempdir string) CompactionOption {
+	return func(p *compactionConfig) {
+		p.tempdir = tempdir
+	}
+}
+
+func WithCompactionDestination(storage objstore.Bucket) CompactionOption {
+	return func(p *compactionConfig) {
+		p.destination = storage
+	}
+}
+
+type compactionConfig struct {
+	objectOptions []ObjectOption
+	tempdir       string
+	source        objstore.BucketReader
+	destination   objstore.Bucket
+}
+
 func Compact(
 	ctx context.Context,
 	blocks []*metastorev1.BlockMeta,
 	storage objstore.Bucket,
-	options ...ObjectOption,
+	options ...CompactionOption,
 ) (m []*metastorev1.BlockMeta, err error) {
-	objects := ObjectsFromMetas(storage, blocks, options...)
+	c := &compactionConfig{
+		tempdir:     os.TempDir(),
+		source:      storage,
+		destination: storage,
+	}
+	for _, option := range options {
+		option(c)
+	}
+
+	objects := ObjectsFromMetas(storage, blocks, c.objectOptions...)
 	plan, err := PlanCompaction(objects)
 	if err != nil {
 		return nil, err
@@ -55,7 +91,7 @@ func Compact(
 
 	compacted := make([]*metastorev1.BlockMeta, 0, len(plan))
 	for _, p := range plan {
-		md, err := p.Compact(ctx, storage)
+		md, err := p.Compact(ctx, c.destination, c.tempdir)
 		if err != nil {
 			return nil, err
 		}
@@ -63,15 +99,6 @@ func Compact(
 	}
 
 	return compacted, nil
-}
-
-// ObjectsFromMetas binds block metas to corresponding objects in the storage.
-func ObjectsFromMetas(storage objstore.Bucket, blocks []*metastorev1.BlockMeta, options ...ObjectOption) Objects {
-	objects := make([]*Object, len(blocks))
-	for i, m := range blocks {
-		objects[i] = NewObject(storage, m, options...)
-	}
-	return objects
 }
 
 func PlanCompaction(objects Objects) ([]*CompactionPlan, error) {
@@ -130,7 +157,8 @@ func newBlockCompaction(tenantID string, shard uint32, compactionLevel uint32) *
 		tenantID:   tenantID,
 		serviceMap: make(map[string]*tenantServiceCompaction),
 		meta: &metastorev1.BlockMeta{
-			FormatVersion:   1,
+			FormatVersion: 1,
+			// TODO(kolesnikovae): Make it deterministic?
 			Id:              ulid.MustNew(uint64(time.Now().UnixMilli()), rand.Reader).String(),
 			TenantId:        tenantID,
 			Shard:           shard,
@@ -147,13 +175,12 @@ func (b *CompactionPlan) Estimate() {
 	// TODO(kolesnikovae): Implement.
 }
 
-func (b *CompactionPlan) Compact(ctx context.Context, storage objstore.Bucket) (m *metastorev1.BlockMeta, err error) {
-	dir := filepath.Join(os.TempDir(), "pyroscope-compactor", b.meta.Id)
-	w := NewBlockWriter(storage, ObjectPath(b.meta), dir)
+func (b *CompactionPlan) Compact(ctx context.Context, dst objstore.Bucket, tmpdir string) (m *metastorev1.BlockMeta, err error) {
+	w := NewBlockWriter(dst, ObjectPath(b.meta), tmpdir)
 	defer func() {
 		err = multierror.New(err, w.Close()).Err()
 	}()
-	// Services are compacted in strict order.
+	// Services are compacted in a strict order.
 	for _, s := range b.services {
 		s.estimate()
 		// TODO(kolesnikovae): Wait until the required resources are available?

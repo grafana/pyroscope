@@ -57,14 +57,14 @@ type ParquetFile struct {
 	reader objstore.ReaderAtCloser
 	cancel context.CancelFunc
 
-	storage objstore.Bucket
+	storage objstore.BucketReader
 	path    string
 	off     int64
 	size    int64
 }
 
 func openParquetFile(
-	storage objstore.Bucket,
+	storage objstore.BucketReader,
 	path string,
 	offset, size, footerSize int64,
 	options ...parquet.FileOption,

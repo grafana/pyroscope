@@ -4,6 +4,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -35,12 +37,17 @@ type Worker struct {
 }
 
 type Config struct {
-	JobCapacity int `yaml:"job_capacity"`
+	JobCapacity     int    `yaml:"job_capacity"`
+	SmallObjectSize int    `yaml:"small_object_size_bytes"`
+	TempDir         string `yaml:"temp_dir"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	const prefix = "compaction-worker."
+	tempdir := filepath.Join(os.TempDir(), "pyroscope-compactor")
 	f.IntVar(&cfg.JobCapacity, prefix+"job-capacity", 5, "how many concurrent jobs will a worker run at most")
+	f.IntVar(&cfg.SmallObjectSize, prefix+"small-object-size-bytes", 8<<20, "size of the object that can be loaded in memory")
+	f.StringVar(&cfg.TempDir, prefix+"temp-dir", tempdir, "temporary directory for compaction jobs")
 }
 
 func New(config Config, logger log.Logger, metastoreClient *metastoreclient.Client, storage objstore.Bucket, reg prometheus.Registerer) (*Worker, error) {
@@ -197,7 +204,16 @@ func (w *Worker) startJob(ctx context.Context, job *compactorv1.CompactionJob) *
 		"job", job.Name,
 		"blocks", len(job.Blocks))
 
-	compactedBlockMetas, err := block.Compact(ctx, job.Blocks, w.storage, block.WithObjectMaxSizeLoadInMemory(4<<20))
+	tempdir := filepath.Join(w.config.TempDir, job.Name)
+	sourcedir := filepath.Join(tempdir, "source")
+	compactedBlockMetas, err := block.Compact(ctx, job.Blocks, w.storage,
+		block.WithCompactionTempDir(tempdir),
+		block.WithCompactionObjectOptions(
+			block.WithObjectMaxSizeLoadInMemory(w.config.SmallObjectSize),
+			block.WithObjectDownload(sourcedir),
+		),
+	)
+
 	if err != nil {
 		level.Error(w.logger).Log("msg", "failed to run block compaction", "err", err, "job", job.Name)
 		jobStatus.Status = compactorv1.CompactionStatus_COMPACTION_STATUS_FAILURE

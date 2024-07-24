@@ -3,6 +3,7 @@ package block
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -60,20 +61,22 @@ func (sc Section) open(ctx context.Context, s *TenantService) (err error) {
 
 // Object represents a block or a segment in the object storage.
 type Object struct {
-	storage objstore.Bucket
 	path    string
 	meta    *metastorev1.BlockMeta
+	storage objstore.BucketReader
+	local   *objstore.ReadOnlyFile
 
 	refs refctr.Counter
 	buf  *bufferpool.Buffer
 	err  error
 
-	memSize int
+	memSize     int
+	downloadDir string
 }
 
 type ObjectOption func(*Object)
 
-func WithPath(path string) ObjectOption {
+func WithObjectPath(path string) ObjectOption {
 	return func(obj *Object) {
 		obj.path = path
 	}
@@ -82,6 +85,12 @@ func WithPath(path string) ObjectOption {
 func WithObjectMaxSizeLoadInMemory(size int) ObjectOption {
 	return func(obj *Object) {
 		obj.memSize = size
+	}
+}
+
+func WithObjectDownload(dir string) ObjectOption {
+	return func(obj *Object) {
+		obj.downloadDir = dir
 	}
 }
 
@@ -137,19 +146,25 @@ func (obj *Object) open(ctx context.Context) (err error) {
 		return obj.err
 	}
 	if len(obj.meta.TenantServices) == 0 {
-		panic("bug: invalid block meta: at least one section is expected")
+		return nil
 	}
 	// Estimate the size of the sections to process, and load the
 	// data into memory, if it's small enough.
 	if obj.meta.Size > uint64(obj.memSize) {
+		// Otherwise, download the object to the local directory,
+		// if it's specified, and use the local file.
+		if obj.downloadDir != "" {
+			return obj.Download(ctx)
+		}
+		// The object will be read from the storage directly.
 		return nil
 	}
+	obj.buf = bufferpool.GetBuffer(int(obj.meta.Size))
 	defer func() {
 		if err != nil {
 			_ = obj.closeErr(err)
 		}
 	}()
-	obj.buf = bufferpool.GetBuffer(int(obj.meta.Size))
 	if err = objstore.ReadRange(ctx, obj.buf, obj.path, obj.storage, 0, int64(obj.meta.Size)); err != nil {
 		return fmt.Errorf("loading object into memory %s: %w", obj.path, err)
 	}
@@ -170,17 +185,39 @@ func (obj *Object) CloseWithError(err error) (closeErr error) {
 	return closeErr
 }
 
-func (obj *Object) closeErr(err error) error {
+func (obj *Object) closeErr(err error) (closeErr error) {
 	obj.err = err
 	if obj.buf != nil {
 		bufferpool.Put(obj.buf)
 		obj.buf = nil
 	}
+	if obj.local != nil {
+		closeErr = obj.local.Close()
+		obj.local = nil
+	}
+	return closeErr
+}
+
+func (obj *Object) Meta() *metastorev1.BlockMeta { return obj.meta }
+
+func (obj *Object) Download(ctx context.Context) error {
+	dir := filepath.Join(obj.downloadDir, obj.meta.Id)
+	local, err := objstore.Download(ctx, obj.path, obj.storage, dir)
+	if err != nil {
+		return err
+	}
+	obj.storage = local
+	obj.local = local
 	return nil
 }
 
-func (obj *Object) Meta() *metastorev1.BlockMeta {
-	return obj.meta
+// ObjectsFromMetas binds block metas to corresponding objects in the storage.
+func ObjectsFromMetas(storage objstore.Bucket, blocks []*metastorev1.BlockMeta, options ...ObjectOption) Objects {
+	objects := make([]*Object, len(blocks))
+	for i, m := range blocks {
+		objects[i] = NewObject(storage, m, options...)
+	}
+	return objects
 }
 
 type Objects []*Object
