@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"time"
 
 	"github.com/go-kit/log/level"
@@ -11,8 +13,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/metastore/compactionpb"
 	"github.com/hashicorp/raft"
 	"go.etcd.io/bbolt"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 func (m *Metastore) AddBlock(_ context.Context, req *metastorev1.AddBlockRequest) (*metastorev1.AddBlockResponse, error) {
@@ -24,9 +24,9 @@ func (m *Metastore) AddBlock(_ context.Context, req *metastorev1.AddBlockRequest
 	_, resp, err := applyCommand[*metastorev1.AddBlockRequest, *metastorev1.AddBlockResponse](m.raft, req, m.config.Raft.ApplyTimeout)
 	if err != nil {
 		_ = level.Error(m.logger).Log("msg", "failed to apply add block", "block_id", req.Block.Id, "shard", req.Block.Shard, "err", err)
-	}
-	if m.shouldRetryAddBlock(err) {
-		return resp, status.Error(codes.Unavailable, err.Error())
+		if m.shouldRetryAddBlock(err) {
+			return resp, status.Error(codes.Unavailable, err.Error())
+		}
 	}
 	return resp, err
 }
