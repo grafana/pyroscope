@@ -6,6 +6,7 @@ service MetastoreService {
   rpc AddBlock(AddBlockRequest) returns (AddBlockResponse) {}
   rpc ListBlocks(ListBlocksRequest) returns (ListBlocksResponse) {}
   rpc ListBlocksForQuery(ListBlocksForQueryRequest) returns (ListBlocksForQueryResponse) {}
+  rpc ReadIndex(ReadIndexRequest) returns (ReadIndexResponse) {}
 }
 
 message AddBlockRequest {
@@ -75,4 +76,12 @@ message ListBlocksForQueryRequest {
 
 message ListBlocksForQueryResponse {
   repeated BlockMeta blocks = 1;
+}
+
+message ReadIndexRequest {
+  string debug_request_id = 1; // for debug logging, // todo delete
+}
+
+message ReadIndexResponse {
+  uint64 read_index = 1;
 }

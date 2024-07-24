@@ -8,8 +8,9 @@
 package phlare
 
 import (
-	"github.com/grafana/dskit/server"
 	"time"
+
+	"github.com/grafana/dskit/server"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"

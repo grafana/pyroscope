@@ -627,11 +627,12 @@ func (f *Phlare) initAdmin() (services.Service, error) {
 
 func (f *Phlare) initMetastore() (services.Service, error) {
 	logger := log.With(f.logger, "component", "metastore")
-	m, err := metastore.New(f.Cfg.Metastore, f.TenantLimits, logger, f.reg, f.health)
+	m, err := metastore.New(f.Cfg.Metastore, f.TenantLimits, logger, f.reg, f.health, f.MetastoreClient)
 	if err != nil {
 		return nil, err
 	}
 	f.API.RegisterMetastore(m)
+	f.metastore = m
 	return m.Service(), nil
 }
 

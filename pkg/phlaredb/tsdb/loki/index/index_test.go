@@ -16,13 +16,14 @@ package index
 import (
 	"context"
 	"fmt"
-	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 	"hash/crc32"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"sort"
 	"testing"
+
+	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"

@@ -1,8 +1,9 @@
 package raftleader
 
 import (
-	"github.com/prometheus/client_golang/prometheus"
 	"sync"
+
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"

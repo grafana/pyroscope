@@ -77,13 +77,11 @@ build: frontend/build go/bin ## Do a production build (requiring the frontend bu
 build-dev: ## Do a dev build (without requiring the frontend)
 	$(MAKE) EMBEDASSETS="" go/bin
 
-.PHONY: frontend/build
-frontend/build: frontend/deps ## Do a production build for the frontend
-	yarn build
 
-.PHONY: frontend/deps
-frontend/deps:
-	yarn --frozen-lockfile
+.PHONY: frontend/build
+frontend/build:
+	docker build  -f cmd/pyroscope/frontend.Dockerfile --output=public/build .
+
 
 .PHONY: release
 release/prereq: $(BIN)/goreleaser ## Ensure release pre requesites are met

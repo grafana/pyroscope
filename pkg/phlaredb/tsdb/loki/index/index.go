@@ -23,7 +23,6 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 	"hash"
 	"hash/crc32"
 	"io"
@@ -31,6 +30,8 @@ import (
 	"os"
 	"sort"
 	"unsafe"
+
+	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
