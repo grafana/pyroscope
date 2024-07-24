@@ -3,7 +3,6 @@ package metastore
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/go-kit/log"
@@ -92,11 +91,6 @@ func (m *Metastore) CheckReady(ctx context.Context) (err error) {
 	req.DebugRequestId = debugRequestId
 	res, err := m.client.ReadIndex(ctx, req)
 	if err != nil {
-		//if strings.Contains(err.Error(), "unknown method ReadIndex for service metastore.v1.MetastoreService") {
-		if strings.Contains(err.Error(), "unknown method") { //todo delete
-			raftLogger().Log(status, ready, "err", err)
-			return nil
-		}
 		err = fmt.Errorf("failed to get read index: %w", err)
 		raftLogger().Log(status, notReady, "err", err)
 		return err
