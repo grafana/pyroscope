@@ -38,8 +38,9 @@ func Compact(
 	ctx context.Context,
 	blocks []*metastorev1.BlockMeta,
 	storage objstore.Bucket,
+	options ...ObjectOption,
 ) (m []*metastorev1.BlockMeta, err error) {
-	objects := ObjectsFromMetas(storage, blocks)
+	objects := ObjectsFromMetas(storage, blocks, options...)
 	plan, err := PlanCompaction(objects)
 	if err != nil {
 		return nil, err
@@ -65,10 +66,10 @@ func Compact(
 }
 
 // ObjectsFromMetas binds block metas to corresponding objects in the storage.
-func ObjectsFromMetas(storage objstore.Bucket, blocks []*metastorev1.BlockMeta) Objects {
+func ObjectsFromMetas(storage objstore.Bucket, blocks []*metastorev1.BlockMeta, options ...ObjectOption) Objects {
 	objects := make([]*Object, len(blocks))
 	for i, m := range blocks {
-		objects[i] = NewObject(storage, m)
+		objects[i] = NewObject(storage, m, options...)
 	}
 	return objects
 }

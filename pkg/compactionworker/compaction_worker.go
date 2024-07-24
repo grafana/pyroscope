@@ -197,7 +197,7 @@ func (w *Worker) startJob(ctx context.Context, job *compactorv1.CompactionJob) *
 		"job", job.Name,
 		"blocks", len(job.Blocks))
 
-	compactedBlockMetas, err := block.Compact(ctx, job.Blocks, w.storage)
+	compactedBlockMetas, err := block.Compact(ctx, job.Blocks, w.storage, block.WithObjectMaxSizeLoadInMemory(4<<20))
 	if err != nil {
 		level.Error(w.logger).Log("msg", "failed to run block compaction", "err", err, "job", job.Name)
 		jobStatus.Status = compactorv1.CompactionStatus_COMPACTION_STATUS_FAILURE
