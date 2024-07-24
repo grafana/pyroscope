@@ -219,15 +219,15 @@ func (s *segment) flush(ctx context.Context) error {
 
 	blockPath, blockMeta, err := s.flushBlock(heads)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to flush block %s: %w", s.ulid.String(), err)
 	}
 	err = s.sw.uploadBlock(blockPath, s)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to upload block %s: %w", s.ulid.String(), err)
 	}
 	err = s.sw.storeMeta(ctx, blockMeta, s)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to store meta %s: %w", s.ulid.String(), err)
 	}
 	return nil
 }
@@ -495,7 +495,7 @@ func (sw *segmentsWriter) uploadBlock(blockPath string, s *segment) error {
 		return err
 	}
 	if err := objstore.UploadFile(sw.phlarectx, sw.l, sw.bucket, blockPath, dst); err != nil {
-		return fmt.Errorf("failed to upload block: %w", err)
+		return err
 	}
 	st, _ := os.Stat(blockPath)
 	if st != nil {
@@ -515,7 +515,7 @@ func (sw *segmentsWriter) storeMeta(ctx context.Context, meta *metastorev1.Block
 	})
 	if err != nil {
 		sw.metrics.storeMetaErrors.WithLabelValues(s.sshard).Inc()
-		return fmt.Errorf("failed to store meta: %w", err)
+		return err
 	}
 	sw.metrics.storeMetaDuration.WithLabelValues(s.sshard).Observe(time.Since(t1).Seconds())
 	s.debuginfo.storeMetaDuration = time.Since(t1)
