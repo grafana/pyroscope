@@ -495,7 +495,7 @@ func (sw *segmentsWriter) uploadBlock(blockPath string, s *segment) error {
 		return err
 	}
 	if err := objstore.UploadFile(sw.phlarectx, sw.l, sw.bucket, blockPath, dst); err != nil {
-		return err
+		return fmt.Errorf("failed to upload block: %w", err)
 	}
 	st, _ := os.Stat(blockPath)
 	if st != nil {
@@ -515,7 +515,7 @@ func (sw *segmentsWriter) storeMeta(ctx context.Context, meta *metastorev1.Block
 	})
 	if err != nil {
 		sw.metrics.storeMetaErrors.WithLabelValues(s.sshard).Inc()
-		return err
+		return fmt.Errorf("failed to store meta: %w", err)
 	}
 	sw.metrics.storeMetaDuration.WithLabelValues(s.sshard).Observe(time.Since(t1).Seconds())
 	s.debuginfo.storeMetaDuration = time.Since(t1)
