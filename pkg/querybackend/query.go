@@ -6,6 +6,8 @@ import (
 	"sync"
 
 	"github.com/go-kit/log"
+	"github.com/iancoleman/strcase"
+	"github.com/opentracing/opentracing-go"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	querybackendv1 "github.com/grafana/pyroscope/api/gen/proto/go/querybackend/v1"
@@ -99,6 +101,9 @@ func newQueryContext(
 }
 
 func executeQuery(q *queryContext, query *querybackendv1.Query) (r *querybackendv1.Report, err error) {
+	var span opentracing.Span
+	span, q.ctx = opentracing.StartSpanFromContext(q.ctx, "executeQuery."+strcase.ToCamel(query.QueryType.String()))
+	defer span.Finish()
 	handle, err := getQueryHandler(query.QueryType)
 	if err != nil {
 		return nil, err

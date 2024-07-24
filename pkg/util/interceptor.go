@@ -68,7 +68,6 @@ func NewLogInterceptor(logger log.Logger) connect.UnaryInterceptorFunc {
 					"route", req.Spec().Procedure,
 					"tenant", tenantID,
 					"traceID", traceID,
-					"parameters", req.Any(),
 					"duration", time.Since(begin),
 				)
 			}()

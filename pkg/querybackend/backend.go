@@ -8,6 +8,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/services"
+	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/errgroup"
 
@@ -77,6 +78,9 @@ func (q *QueryBackend) Invoke(
 	ctx context.Context,
 	req *querybackendv1.InvokeRequest,
 ) (*querybackendv1.InvokeResponse, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "QueryBackend.Invoke")
+	defer span.Finish()
+
 	// TODO: Return codes.ResourceExhausted if the query
 	//  exceeds the budget of the current instance: e.g,
 	//  100MB of in-flight data, or 30 queries/blocks, or

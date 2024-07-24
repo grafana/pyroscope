@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/go-kit/log"
+	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
@@ -65,6 +66,8 @@ func (b *BlockReader) Invoke(
 	ctx context.Context,
 	req *querybackendv1.InvokeRequest,
 ) (*querybackendv1.InvokeResponse, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "BlockReader.Invoke")
+	defer span.Finish()
 	vr, err := validateRequest(req)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "request validation failed: %v", err)

@@ -7,6 +7,8 @@ import (
 
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/services"
+	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
+	"github.com/opentracing/opentracing-go"
 	"google.golang.org/grpc"
 
 	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
@@ -63,7 +65,10 @@ func dial(cfg Config) (*grpc.ClientConn, error) {
 		return nil, err
 	}
 	// TODO: https://github.com/grpc/grpc-proto/blob/master/grpc/service_config/service_config.proto
-	options = append(options, grpc.WithDefaultServiceConfig(grpcServiceConfig))
+	options = append(options,
+		grpc.WithDefaultServiceConfig(grpcServiceConfig),
+		grpc.WithUnaryInterceptor(otgrpc.OpenTracingClientInterceptor(opentracing.GlobalTracer())),
+	)
 	return grpc.Dial(cfg.MetastoreAddress, options...)
 }
 
