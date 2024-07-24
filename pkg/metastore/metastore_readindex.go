@@ -11,7 +11,6 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 )
 
-// var tcheckFreq = 100 * time.Millisecond
 var tcheckFreq = 10 * time.Millisecond
 
 func (m *Metastore) ReadIndex(ctx context.Context, req *metastorev1.ReadIndexRequest) (*metastorev1.ReadIndexResponse, error) {
