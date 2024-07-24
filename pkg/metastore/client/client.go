@@ -81,7 +81,7 @@ const grpcServiceConfig = `{
         "name": [{"service": "metastore.v1.MetastoreService"}],
         "waitForReady": true,
         "retryPolicy": {
-            "MaxAttempts": 4,
+            "MaxAttempts": 16,
             "InitialBackoff": ".01s",
             "MaxBackoff": ".01s",
             "BackoffMultiplier": 1.0,

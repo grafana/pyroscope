@@ -2,15 +2,17 @@ package metastore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/go-kit/log/level"
-	"github.com/hashicorp/raft"
-	"go.etcd.io/bbolt"
-
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/metastore/compactionpb"
+	"github.com/hashicorp/raft"
+	"go.etcd.io/bbolt"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func (m *Metastore) AddBlock(_ context.Context, req *metastorev1.AddBlockRequest) (*metastorev1.AddBlockResponse, error) {
@@ -23,7 +25,17 @@ func (m *Metastore) AddBlock(_ context.Context, req *metastorev1.AddBlockRequest
 	if err != nil {
 		_ = level.Error(m.logger).Log("msg", "failed to apply add block", "block_id", req.Block.Id, "shard", req.Block.Shard, "err", err)
 	}
+	if m.shouldRetryAddBlock(err) {
+		return resp, status.Error(codes.Unavailable, err.Error())
+	}
 	return resp, err
+}
+
+func (m *Metastore) shouldRetryAddBlock(err error) bool {
+	return errors.Is(err, raft.ErrLeadershipLost) ||
+		errors.Is(err, raft.ErrNotLeader) ||
+		errors.Is(err, raft.ErrLeadershipTransferInProgress) ||
+		errors.Is(err, raft.ErrRaftShutdown)
 }
 
 func (m *metastoreState) applyAddBlock(_ *raft.Log, request *metastorev1.AddBlockRequest) (*metastorev1.AddBlockResponse, error) {
