@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"google.golang.org/grpc"
 	"time"
 
 	"github.com/google/uuid"
@@ -83,6 +84,9 @@ func (i *ingesterFlusherCompat) Flush() {
 }
 
 func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storageBucket phlareobj.Bucket, limits Limits, queryStoreAfter time.Duration, metastoreClient *metastoreclient.Client) (*Ingester, error) {
+
+	grpc.EnableTracing = true
+
 	reg := phlarecontext.Registry(phlarectx)
 	log := phlarecontext.Logger(phlarectx)
 	phlarectx = phlaredb.ContextWithHeadMetrics(phlarectx, reg)

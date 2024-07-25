@@ -626,6 +626,8 @@ func (f *Phlare) initAdmin() (services.Service, error) {
 }
 
 func (f *Phlare) initMetastore() (services.Service, error) {
+	//grpc.EnableTracing = true
+
 	logger := log.With(f.logger, "component", "metastore")
 	m, err := metastore.New(f.Cfg.Metastore, f.TenantLimits, logger, f.reg, f.health, f.MetastoreClient)
 	if err != nil {
