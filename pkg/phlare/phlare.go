@@ -407,6 +407,8 @@ func (f *Phlare) Run() error {
 	}
 	f.serviceManager = sm
 
+	f.API.RegisterDebugTraceEvents()
+
 	f.API.RegisterRoute("/ready", f.readyHandler(sm), false, false, "GET")
 
 	RegisterHealthServer(f.Server.HTTP, grpcutil.WithManager(sm))

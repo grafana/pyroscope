@@ -345,3 +345,9 @@ func (a *API) connectOptionsAuthRecovery() []connect.HandlerOption {
 func (a *API) connectOptionsAuthLogRecovery() []connect.HandlerOption {
 	return append(connectapi.DefaultHandlerOptions(), []connect.HandlerOption{a.grpcAuthMiddleware, a.grpcLogMiddleware, a.recoveryMiddleware}...)
 }
+
+func (a *API) RegisterDebugTraceEvents() {
+	a.server.HTTP.Handle("/debug/events", http.DefaultServeMux)
+	a.server.HTTP.Handle("/debug/requests", http.DefaultServeMux)
+
+}
