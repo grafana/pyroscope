@@ -426,7 +426,7 @@ type segmentWaitFlushed interface {
 func (s *segment) waitFlushed(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
-		return ctx.Err()
+		return fmt.Errorf("waitFlushed: %s %w", s.ulid.String(), ctx.Err())
 	case <-s.doneChan:
 		return nil
 	}
