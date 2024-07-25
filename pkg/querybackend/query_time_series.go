@@ -3,6 +3,7 @@ package querybackend
 import (
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/grafana/dskit/runutil"
 
@@ -96,14 +97,18 @@ func (a *timeSeriesAggregator) build() *querybackendv1.Report {
 	//  the way that it can be distributed (count + sum), and should be done
 	//  at "aggregate" call.
 	sum := typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_SUM
+	stepMilli := time.Duration(a.query.GetStep() * float64(time.Second)).Milliseconds()
+	seriesIterator := phlaremodel.NewTimeSeriesMergeIterator(a.series.TimeSeries())
 	return &querybackendv1.Report{
 		TimeSeries: &querybackendv1.TimeSeriesReport{
 			Query: a.query,
-			TimeSeries: phlaremodel.RangeSeries(phlaremodel.NewTimeSeriesMergeIterator(a.series.TimeSeries()),
+			TimeSeries: phlaremodel.RangeSeries(
+				seriesIterator,
 				a.startTime,
 				a.endTime,
-				int64(a.query.GetStep()),
-				&sum),
+				stepMilli,
+				&sum,
+			),
 		},
 	}
 }
