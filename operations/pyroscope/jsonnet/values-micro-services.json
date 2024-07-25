@@ -6,17 +6,17 @@
     "components": {
       "compaction-worker": {
         "extraArgs": {
-          "compaction-worker.job-capacity": 5
+          "compaction-worker.job-capacity": 4
         },
         "kind": "Deployment",
-        "replicaCount": 4,
+        "replicaCount": 6,
         "resources": {
           "limits": {
-            "memory": "8Gi"
+            "memory": "4Gi"
           },
           "requests": {
-            "cpu": 4,
-            "memory": "8Gi"
+            "cpu": 2,
+            "memory": "4Gi"
           }
         }
       },
@@ -25,7 +25,7 @@
         "persistence": {
           "enabled": false
         },
-        "replicaCount": 3,
+        "replicaCount": 0,
         "resources": {
           "limits": {
             "memory": "16Gi"
@@ -84,7 +84,7 @@
       },
       "querier": {
         "kind": "Deployment",
-        "replicaCount": 3,
+        "replicaCount": 0,
         "resources": {
           "limits": {
             "memory": "1Gi"
@@ -110,7 +110,7 @@
       },
       "query-scheduler": {
         "kind": "Deployment",
-        "replicaCount": 2,
+        "replicaCount": 0,
         "resources": {
           "limits": {
             "memory": "1Gi"
@@ -126,11 +126,11 @@
         "replicaCount": 8,
         "resources": {
           "limits": {
-            "memory": "8Gi"
+            "memory": "4Gi"
           },
           "requests": {
             "cpu": 2,
-            "memory": "8Gi"
+            "memory": "4Gi"
           }
         }
       },
@@ -142,7 +142,7 @@
         "readinessProbe": {
           "initialDelaySeconds": 60
         },
-        "replicaCount": 3,
+        "replicaCount": 0,
         "resources": {
           "limits": {
             "memory": "16Gi"

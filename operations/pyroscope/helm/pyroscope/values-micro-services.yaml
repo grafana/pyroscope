@@ -52,26 +52,26 @@ pyroscope:
       replicaCount: 8
       resources:
         limits:
-          memory: 8Gi
+          memory: 4Gi
         requests:
-          memory: 8Gi
+          memory: 4Gi
           cpu: 2
     compaction-worker:
       extraArgs:
         compaction-worker.job-capacity: 4
       kind: Deployment
-      replicaCount: 3
+      replicaCount: 6
       resources:
         limits:
-          memory: 8Gi
+          memory: 4Gi
         requests:
-          memory: 8Gi
-          cpu: 4
+          memory: 4Gi
+          cpu: 2
 
     # TODO: Remove these components.
     query-scheduler:
       kind: Deployment
-      replicaCount: 2
+      replicaCount: 0
       resources:
         limits:
           memory: 1Gi
@@ -80,7 +80,7 @@ pyroscope:
           cpu: 100m
     querier:
       kind: Deployment
-      replicaCount: 3
+      replicaCount: 0
       resources:
         limits:
           memory: 1Gi
@@ -89,7 +89,7 @@ pyroscope:
           cpu: 1
     compactor:
       kind: StatefulSet
-      replicaCount: 3
+      replicaCount: 0
       terminationGracePeriodSeconds: 1200
       persistence:
         enabled: false
@@ -101,7 +101,7 @@ pyroscope:
           cpu: 1
     store-gateway:
       kind: StatefulSet
-      replicaCount: 3
+      replicaCount: 0
       persistence:
         # The store-gateway needs not need persistent storage, but we still run it as a StatefulSet
         # This is to avoid having blocks of data being
