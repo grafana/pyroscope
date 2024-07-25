@@ -20,6 +20,7 @@ func (m *Metastore) AddBlock(_ context.Context, req *metastorev1.AddBlockRequest
 	t1 := time.Now()
 	defer func() {
 		m.metrics.raftAddBlockDuration.Observe(time.Since(t1).Seconds())
+		level.Debug(m.logger).Log("msg", "add block duration", "block_id", req.Block.Id, "shard", req.Block.Shard, "duration", time.Since(t1).Seconds())
 	}()
 	_, resp, err := applyCommand[*metastorev1.AddBlockRequest, *metastorev1.AddBlockResponse](m.raft, req, m.config.Raft.ApplyTimeout)
 	if err != nil {
