@@ -19,7 +19,7 @@ func init() {
 		querybackendv1.QueryType_QUERY_TIME_SERIES,
 		querybackendv1.ReportType_REPORT_TIME_SERIES,
 		queryTimeSeries,
-		newTimeSeriesMerger,
+		newTimeSeriesAggregator,
 		[]block.Section{
 			block.SectionTSDB,
 			block.SectionProfiles,
@@ -66,30 +66,44 @@ func queryTimeSeries(q *queryContext, query *querybackendv1.Query) (r *queryback
 	return resp, nil
 }
 
-type timeSeriesMerger struct {
-	init   sync.Once
-	query  *querybackendv1.TimeSeriesQuery
-	series *phlaremodel.TimeSeriesMerger
+type timeSeriesAggregator struct {
+	init      sync.Once
+	startTime int64
+	endTime   int64
+	query     *querybackendv1.TimeSeriesQuery
+	series    *phlaremodel.TimeSeriesMerger
 }
 
-func newTimeSeriesMerger() reportMerger { return new(timeSeriesMerger) }
+func newTimeSeriesAggregator(req *querybackendv1.InvokeRequest) aggregator {
+	return &timeSeriesAggregator{
+		startTime: req.StartTime,
+		endTime:   req.EndTime,
+	}
+}
 
-func (m *timeSeriesMerger) merge(report *querybackendv1.Report) error {
+func (a *timeSeriesAggregator) aggregate(report *querybackendv1.Report) error {
 	r := report.TimeSeries
-	m.init.Do(func() {
-		sum := r.Query.GetAggregation() == typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_SUM
-		m.series = phlaremodel.NewTimeSeriesMerger(sum)
-		m.query = r.Query.CloneVT()
+	a.init.Do(func() {
+		a.series = phlaremodel.NewTimeSeriesMerger(true)
+		a.query = r.Query.CloneVT()
 	})
-	m.series.MergeTimeSeries(r.TimeSeries)
+	a.series.MergeTimeSeries(r.TimeSeries)
 	return nil
 }
 
-func (m *timeSeriesMerger) report() *querybackendv1.Report {
+func (a *timeSeriesAggregator) build() *querybackendv1.Report {
+	// TODO(kolesnikovae): Average aggregation should be implemented in
+	//  the way that it can be distributed (count + sum), and should be done
+	//  at "aggregate" call.
+	sum := typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_SUM
 	return &querybackendv1.Report{
 		TimeSeries: &querybackendv1.TimeSeriesReport{
-			Query:      m.query,
-			TimeSeries: m.series.TimeSeries(),
+			Query: a.query,
+			TimeSeries: phlaremodel.RangeSeries(phlaremodel.NewTimeSeriesMergeIterator(a.series.TimeSeries()),
+				a.startTime,
+				a.endTime,
+				int64(a.query.GetStep()),
+				&sum),
 		},
 	}
 }

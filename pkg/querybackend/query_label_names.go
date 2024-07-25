@@ -17,7 +17,7 @@ func init() {
 		querybackendv1.QueryType_QUERY_LABEL_NAMES,
 		querybackendv1.ReportType_REPORT_LABEL_NAMES,
 		queryLabelNames,
-		newLabelNameMerger,
+		newLabelNameAggregator,
 		[]block.Section{block.SectionTSDB}...,
 	)
 }
@@ -70,15 +70,17 @@ func labelNamesForMatchers(reader phlaredb.IndexReader, matchers []*labels.Match
 	return names, nil
 }
 
-type labelNameMerger struct {
+type labelNameAggregator struct {
 	init  sync.Once
 	query *querybackendv1.LabelNamesQuery
 	names *model.LabelMerger
 }
 
-func newLabelNameMerger() reportMerger { return new(labelNameMerger) }
+func newLabelNameAggregator(*querybackendv1.InvokeRequest) aggregator {
+	return new(labelNameAggregator)
+}
 
-func (m *labelNameMerger) merge(report *querybackendv1.Report) error {
+func (m *labelNameAggregator) aggregate(report *querybackendv1.Report) error {
 	r := report.LabelNames
 	m.init.Do(func() {
 		m.query = r.Query.CloneVT()
@@ -88,7 +90,7 @@ func (m *labelNameMerger) merge(report *querybackendv1.Report) error {
 	return nil
 }
 
-func (m *labelNameMerger) report() *querybackendv1.Report {
+func (m *labelNameAggregator) build() *querybackendv1.Report {
 	return &querybackendv1.Report{
 		LabelNames: &querybackendv1.LabelNamesReport{
 			Query:      m.query,

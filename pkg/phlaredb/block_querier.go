@@ -633,7 +633,7 @@ func (queriers Queriers) SelectMatchingProfiles(ctx context.Context, params *ing
 	if err != nil {
 		return nil, err
 	}
-	return iter.NewMergeIterator(maxBlockProfile, true, iters...), nil
+	return phlaremodel.NewMergeIterator(maxBlockProfile, true, iters...), nil
 }
 
 func (queriers Queriers) LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error) {
@@ -1611,7 +1611,7 @@ func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params 
 		iters = append(iters, iter.NewSliceIterator(currentSeriesSlice))
 	}
 
-	return iter.NewMergeIterator(maxBlockProfile, false, iters...), nil
+	return phlaremodel.NewMergeIterator(maxBlockProfile, false, iters...), nil
 }
 
 func (b *singleBlockQuerier) SelectMergeByLabels(

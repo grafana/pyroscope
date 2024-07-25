@@ -73,7 +73,7 @@ func (b *BlockReader) Invoke(
 		return nil, status.Errorf(codes.InvalidArgument, "request validation failed: %v", err)
 	}
 	g, ctx := errgroup.WithContext(ctx)
-	m := newMerger()
+	m := newAggregator(req)
 	for _, md := range req.QueryPlan.Blocks {
 		obj := block.NewObject(b.storage, md)
 		for _, meta := range md.TenantServices {
@@ -85,7 +85,7 @@ func (b *BlockReader) Invoke(
 					if err != nil {
 						return err
 					}
-					return m.mergeReport(r)
+					return m.aggregateReport(r)
 				}))
 			}
 		}

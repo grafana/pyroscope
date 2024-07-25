@@ -18,7 +18,7 @@ func init() {
 		querybackendv1.QueryType_QUERY_SERIES_LABELS,
 		querybackendv1.ReportType_REPORT_SERIES_LABELS,
 		querySeriesLabels,
-		newSeriesLabelsMerger,
+		newSeriesLabelsAggregator,
 		[]block.Section{block.SectionTSDB}...,
 	)
 }
@@ -64,29 +64,31 @@ func getPostings(reader phlaredb.IndexReader, matchers ...*labels.Matcher) (inde
 	return phlaredb.PostingsForMatchers(reader, nil, matchers...)
 }
 
-type seriesLabelsMerger struct {
+type seriesLabelsAggregator struct {
 	init   sync.Once
 	query  *querybackendv1.SeriesLabelsQuery
 	series *model.LabelMerger
 }
 
-func newSeriesLabelsMerger() reportMerger { return new(seriesLabelsMerger) }
+func newSeriesLabelsAggregator(*querybackendv1.InvokeRequest) aggregator {
+	return new(seriesLabelsAggregator)
+}
 
-func (m *seriesLabelsMerger) merge(report *querybackendv1.Report) error {
+func (a *seriesLabelsAggregator) aggregate(report *querybackendv1.Report) error {
 	r := report.SeriesLabels
-	m.init.Do(func() {
-		m.query = r.Query.CloneVT()
-		m.series = model.NewLabelMerger()
+	a.init.Do(func() {
+		a.query = r.Query.CloneVT()
+		a.series = model.NewLabelMerger()
 	})
-	m.series.MergeSeries(r.SeriesLabels)
+	a.series.MergeSeries(r.SeriesLabels)
 	return nil
 }
 
-func (m *seriesLabelsMerger) report() *querybackendv1.Report {
+func (a *seriesLabelsAggregator) build() *querybackendv1.Report {
 	return &querybackendv1.Report{
 		SeriesLabels: &querybackendv1.SeriesLabelsReport{
-			Query:        m.query,
-			SeriesLabels: m.series.SeriesLabels(),
+			Query:        a.query,
+			SeriesLabels: a.series.SeriesLabels(),
 		},
 	}
 }

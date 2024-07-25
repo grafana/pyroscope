@@ -103,14 +103,14 @@ func (q *QueryBackend) merge(
 	children iter.Iterator[*queryplan.Node],
 ) (*querybackendv1.InvokeResponse, error) {
 	request.QueryPlan = nil
-	m := newMerger()
+	m := newAggregator(request)
 	g, ctx := errgroup.WithContext(ctx)
 	for children.Next() {
 		req := request.CloneVT()
 		req.QueryPlan = children.At().Plan().Proto()
 		g.Go(util.RecoverPanic(func() error {
 			// TODO: Speculative retry.
-			return m.mergeResponse(q.backendClient.Invoke(ctx, req))
+			return m.aggregateResponse(q.backendClient.Invoke(ctx, req))
 		}))
 	}
 	if err := g.Wait(); err != nil {

@@ -58,19 +58,17 @@ func registerQueryDependencies(t querybackendv1.QueryType, deps ...block.Section
 	queryDependencies[t] = deps
 }
 
-type responseMergerProvider func() reportMerger
-
 func registerQueryType(
 	qt querybackendv1.QueryType,
 	rt querybackendv1.ReportType,
 	q queryHandler,
-	r responseMergerProvider,
+	a aggregatorProvider,
 	deps ...block.Section,
 ) {
 	registerQueryReportType(qt, rt)
 	registerQueryHandler(qt, q)
 	registerQueryDependencies(qt, deps...)
-	registerReportMerger(rt, r)
+	registerAggregator(rt, a)
 }
 
 type queryContext struct {

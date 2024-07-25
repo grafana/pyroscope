@@ -18,7 +18,7 @@ func init() {
 		querybackendv1.QueryType_QUERY_TREE,
 		querybackendv1.ReportType_REPORT_TREE,
 		queryTree,
-		newTreeMerger,
+		newTreeAggregator,
 		[]block.Section{
 			block.SectionTSDB,
 			block.SectionProfiles,
@@ -68,28 +68,28 @@ func queryTree(q *queryContext, query *querybackendv1.Query) (*querybackendv1.Re
 	return resp, nil
 }
 
-type treeMerger struct {
+type treeAggregator struct {
 	init  sync.Once
 	query *querybackendv1.TreeQuery
 	tree  *model.TreeMerger
 }
 
-func newTreeMerger() reportMerger { return new(treeMerger) }
+func newTreeAggregator(*querybackendv1.InvokeRequest) aggregator { return new(treeAggregator) }
 
-func (m *treeMerger) merge(report *querybackendv1.Report) error {
+func (a *treeAggregator) aggregate(report *querybackendv1.Report) error {
 	r := report.Tree
-	m.init.Do(func() {
-		m.tree = model.NewTreeMerger()
-		m.query = r.Query.CloneVT()
+	a.init.Do(func() {
+		a.tree = model.NewTreeMerger()
+		a.query = r.Query.CloneVT()
 	})
-	return m.tree.MergeTreeBytes(r.Tree)
+	return a.tree.MergeTreeBytes(r.Tree)
 }
 
-func (m *treeMerger) report() *querybackendv1.Report {
+func (a *treeAggregator) build() *querybackendv1.Report {
 	return &querybackendv1.Report{
 		Tree: &querybackendv1.TreeReport{
-			Query: m.query,
-			Tree:  m.tree.Tree().Bytes(m.query.GetMaxNodes()),
+			Query: a.query,
+			Tree:  a.tree.Tree().Bytes(a.query.GetMaxNodes()),
 		},
 	}
 }

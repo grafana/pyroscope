@@ -12,6 +12,7 @@ import (
 
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	"github.com/grafana/pyroscope/pkg/iter"
+	model2 "github.com/grafana/pyroscope/pkg/model"
 )
 
 type BidiServerMerge[Res any, Req any] interface {
@@ -76,7 +77,7 @@ func filterProfiles[B BidiServerMerge[Res, Req], Res filterResponse, Req filterR
 			querierIndex: i,
 		}
 	}
-	if err := iter.ReadBatch(ctx, iter.NewMergeIterator(ProfileWithIndex{
+	if err := iter.ReadBatch(ctx, model2.NewMergeIterator(ProfileWithIndex{
 		Profile: maxBlockProfile,
 		Index:   0,
 	}, true, its...), batchProfileSize, func(ctx context.Context, batch []ProfileWithIndex) error {

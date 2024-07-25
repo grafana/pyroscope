@@ -10,7 +10,6 @@ import (
 	"github.com/grafana/dskit/multierror"
 	"github.com/opentracing/opentracing-go"
 	otlog "github.com/opentracing/opentracing-go/log"
-	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 
@@ -463,23 +462,8 @@ func selectMergePprofProfile(ctx context.Context, ty *typesv1.ProfileType, respo
 	return p, nil
 }
 
-type ProfileValue struct {
-	Ts         int64
-	Lbs        []*typesv1.LabelPair
-	LabelsHash uint64
-	Value      float64
-}
-
-func (p ProfileValue) Labels() phlaremodel.Labels {
-	return p.Lbs
-}
-
-func (p ProfileValue) Timestamp() model.Time {
-	return model.Time(p.Ts)
-}
-
 // selectMergeSeries selects the  profile from each ingester by deduping them and request merges of total values.
-func selectMergeSeries(ctx context.Context, aggregation *typesv1.TimeSeriesAggregationType, responses []ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels]) (iter.Iterator[ProfileValue], error) {
+func selectMergeSeries(ctx context.Context, aggregation *typesv1.TimeSeriesAggregationType, responses []ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels]) (iter.Iterator[phlaremodel.TimeSeriesValue], error) {
 	mergeResults := make([]MergeResult[[]*typesv1.Series], len(responses))
 	iters := make([]MergeIterator, len(responses))
 	var wg sync.WaitGroup
@@ -524,12 +508,12 @@ func selectMergeSeries(ctx context.Context, aggregation *typesv1.TimeSeriesAggre
 	}
 	var series = phlaremodel.MergeSeries(aggregation, results...)
 
-	seriesIters := make([]iter.Iterator[ProfileValue], 0, len(series))
+	seriesIters := make([]iter.Iterator[phlaremodel.TimeSeriesValue], 0, len(series))
 	for _, s := range series {
 		s := s
-		seriesIters = append(seriesIters, newSeriesIterator(s.Labels, s.Points))
+		seriesIters = append(seriesIters, phlaremodel.NewSeriesIterator(s.Labels, s.Points))
 	}
-	return iter.NewMergeIterator(ProfileValue{Ts: math.MaxInt64}, false, seriesIters...), nil
+	return phlaremodel.NewMergeIterator(phlaremodel.TimeSeriesValue{Ts: math.MaxInt64}, false, seriesIters...), nil
 }
 
 // selectMergeSpanProfile selects the  profile from each ingester by deduping them and
@@ -580,44 +564,4 @@ func selectMergeSpanProfile(ctx context.Context, responses []ResponseFromReplica
 
 	span.LogFields(otlog.String("msg", "building tree"))
 	return m.Tree(), nil
-}
-
-type seriesIterator struct {
-	point []*typesv1.Point
-
-	curr ProfileValue
-}
-
-func newSeriesIterator(lbs []*typesv1.LabelPair, points []*typesv1.Point) *seriesIterator {
-	return &seriesIterator{
-		point: points,
-
-		curr: ProfileValue{
-			Lbs:        lbs,
-			LabelsHash: phlaremodel.Labels(lbs).Hash(),
-		},
-	}
-}
-
-func (s *seriesIterator) Next() bool {
-	if len(s.point) == 0 {
-		return false
-	}
-	p := s.point[0]
-	s.point = s.point[1:]
-	s.curr.Ts = p.Timestamp
-	s.curr.Value = p.Value
-	return true
-}
-
-func (s *seriesIterator) At() ProfileValue {
-	return s.curr
-}
-
-func (s *seriesIterator) Err() error {
-	return nil
-}
-
-func (s *seriesIterator) Close() error {
-	return nil
 }
