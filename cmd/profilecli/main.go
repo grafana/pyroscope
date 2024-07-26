@@ -89,6 +89,14 @@ func main() {
 	bucketWebCmd := bucketCmd.Command("web", "Run the web tool for visualizing blocks in object-store buckets.")
 	bucketWebParams := addBucketWebToolParams(bucketWebCmd)
 
+	collectionRulesCmd := app.Command("collection-rules", "Operate on collection rules.")
+	collectionRulesListCmd := collectionRulesCmd.Command("list", "List collection rules.")
+	collectionRulesListParams := addCollectionRulesParams(collectionRulesListCmd)
+	collectionRulesInsertCmd := collectionRulesCmd.Command("insert", "Insert collection rule.")
+	collectionRulesInsertParams := addCollectionRulesInsertParams(collectionRulesInsertCmd)
+	collectionRulesDeleteCmd := collectionRulesCmd.Command("delete", "Delete collection rule.")
+	collectionRulesDeleteParams := addCollectionRulesDeleteParams(collectionRulesDeleteCmd)
+
 	// parse command line arguments
 	parsedCmd := kingpin.MustParse(app.Parse(os.Args[1:]))
 
@@ -149,6 +157,18 @@ func main() {
 		}
 	case blocksCompactCmd.FullCommand():
 		if err := blocksCompact(ctx, cfg.blocks.compact.src, cfg.blocks.compact.dst, cfg.blocks.compact.shards); err != nil {
+			os.Exit(checkError(err))
+		}
+	case collectionRulesListCmd.FullCommand():
+		if err := collectionRulesList(ctx, collectionRulesListParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case collectionRulesInsertCmd.FullCommand():
+		if err := collectionRulesInsert(ctx, collectionRulesInsertParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case collectionRulesDeleteCmd.FullCommand():
+		if err := collectionRulesDelete(ctx, collectionRulesDeleteParams); err != nil {
 			os.Exit(checkError(err))
 		}
 	default:
