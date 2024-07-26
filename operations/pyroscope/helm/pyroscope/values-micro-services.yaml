@@ -8,7 +8,7 @@ pyroscope:
   components:
     distributor:
       kind: Deployment
-      replicaCount: 5
+      replicaCount: 15
       resources:
         limits:
           memory: 4Gi
@@ -17,7 +17,7 @@ pyroscope:
           cpu: 500m
     ingester:
       kind: StatefulSet
-      replicaCount: 3
+      replicaCount: 8
       terminationGracePeriodSeconds: 600
       resources:
         limits:
@@ -60,7 +60,7 @@ pyroscope:
       extraArgs:
         compaction-worker.job-capacity: 4
       kind: Deployment
-      replicaCount: 6
+      replicaCount: 8
       resources:
         limits:
           memory: 4Gi
