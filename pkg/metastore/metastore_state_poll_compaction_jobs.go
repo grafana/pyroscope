@@ -263,9 +263,11 @@ func (m *metastoreState) findBlock(shard uint32, blockId string) *metastorev1.Bl
 	return segmentShard.segments[blockId]
 }
 
-func (m *metastoreState) persistJobStatus(tx *bbolt.Tx, job *compactionpb.CompactionJob, status compactionpb.CompactionStatus) error {
+func (m *metastoreState) persistAssignedJob(tx *bbolt.Tx, job *compactionpb.CompactionJob) error {
 	return m.persistJob(tx, job, func(storedJob *compactionpb.CompactionJob) {
-		storedJob.Status = status
+		storedJob.Status = job.Status
+		storedJob.LeaseExpiresAt = job.LeaseExpiresAt
+		storedJob.RaftLogIndex = job.RaftLogIndex
 	})
 }
 
@@ -300,7 +302,7 @@ func (m *metastoreState) assignNewJobs(tx *bbolt.Tx, jobCapacity int, raftLogInd
 
 	for _, job := range jobsToAssign {
 		// mark job "in progress"
-		err := m.persistJobStatus(tx, job, compactionpb.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS)
+		err := m.persistAssignedJob(tx, job)
 		if err != nil {
 			level.Error(m.logger).Log("msg", "failed to update job status", "job", job.Name, "err", err)
 			// return the job back to the queue
