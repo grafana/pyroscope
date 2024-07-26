@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/cespare/xxhash/v2"
-	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.etcd.io/bbolt"
@@ -63,18 +62,6 @@ func (s compactionLevelStrategy) shouldCreateJob(blocks []string) bool {
 	// to be read for compaction (at once) or queried. A better heuristic
 	// would be max tenant service size.
 	return len(blocks) >= s.maxBlocks
-}
-
-type Planner struct {
-	logger         log.Logger
-	metastoreState *metastoreState
-}
-
-func NewPlanner(state *metastoreState, logger log.Logger) *Planner {
-	return &Planner{
-		metastoreState: state,
-		logger:         logger,
-	}
 }
 
 type jobPreQueue struct {

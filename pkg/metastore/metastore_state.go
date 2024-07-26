@@ -54,9 +54,12 @@ func newMetastoreState(logger log.Logger, db *boltdb, reg prometheus.Registerer)
 	}
 }
 
-func (m *metastoreState) reset() {
+func (m *metastoreState) reset(db *boltdb) {
 	m.shardsMutex.Lock()
 	clear(m.shards)
+	clear(m.preCompactionQueues)
+	m.compactionJobQueue = newJobQueue(jobLeaseDuration.Nanoseconds())
+	m.db = db
 	m.shardsMutex.Unlock()
 }
 
@@ -72,7 +75,7 @@ func (m *metastoreState) getOrCreateShard(shardID uint32) *metastoreShard {
 }
 
 func (m *metastoreState) restore(db *boltdb) error {
-	m.reset()
+	m.reset(db)
 	return db.boltdb.View(func(tx *bbolt.Tx) error {
 		if err := m.restoreBlockMetadata(tx); err != nil {
 			return fmt.Errorf("failed to restore metadata entries: %w", err)
