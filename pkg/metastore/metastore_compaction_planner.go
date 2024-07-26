@@ -73,7 +73,7 @@ func (m *Metastore) GetCompactionJobs(_ context.Context, req *compactorv1.GetCom
 	return nil, nil
 }
 
-func (m *metastoreState) tryCreateJob(block *metastorev1.BlockMeta) *compactionpb.CompactionJob {
+func (m *metastoreState) tryCreateJob(block *metastorev1.BlockMeta, raftLogIndex uint64) *compactionpb.CompactionJob {
 	key := tenantShard{
 		tenant: block.TenantId,
 		shard:  block.Shard,
@@ -96,7 +96,8 @@ func (m *metastoreState) tryCreateJob(block *metastorev1.BlockMeta) *compactionp
 		"tenant", block.TenantId,
 		"compaction_level", block.CompactionLevel,
 		"size", block.Size,
-		"queue_size", len(queuedBlocks))
+		"queue_size", len(queuedBlocks),
+		"raft_log_index", raftLogIndex)
 
 	strategy := getStrategyForLevel(block.CompactionLevel)
 
@@ -211,9 +212,9 @@ func newCompactionMetrics(reg prometheus.Registerer) *compactionMetrics {
 	return m
 }
 
-func (m *metastoreState) consumeBlock(block *metastorev1.BlockMeta, tx *bbolt.Tx) (err error, jobToAdd *compactionpb.CompactionJob, blockForQueue *metastorev1.BlockMeta) {
+func (m *metastoreState) consumeBlock(block *metastorev1.BlockMeta, tx *bbolt.Tx, raftLogIndex uint64) (err error, jobToAdd *compactionpb.CompactionJob, blockForQueue *metastorev1.BlockMeta) {
 	// create and store an optional compaction job
-	if job := m.tryCreateJob(block); job != nil {
+	if job := m.tryCreateJob(block, raftLogIndex); job != nil {
 		level.Debug(m.logger).Log("msg", "persisting compaction job", "job", job.Name)
 		jobBucketName, jobKey := keyForCompactionJob(block.Shard, block.TenantId, job.Name)
 		err := updateCompactionJobBucket(tx, jobBucketName, func(bucket *bbolt.Bucket) error {

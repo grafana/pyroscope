@@ -16,6 +16,13 @@ import (
 )
 
 func (m *Metastore) PollCompactionJobs(_ context.Context, req *compactorv1.PollCompactionJobsRequest) (*compactorv1.PollCompactionJobsResponse, error) {
+	level.Debug(m.logger).Log(
+		"msg", "received poll compaction jobs request",
+		"num_updates", len(req.JobStatusUpdates),
+		"job_capacity", req.JobCapacity,
+		"raft_commit_index", m.raft.CommitIndex(),
+		"raft_last_index", m.raft.LastIndex(),
+		"raft_applied_index", m.raft.AppliedIndex())
 	_, resp, err := applyCommand[*compactorv1.PollCompactionJobsRequest, *compactorv1.PollCompactionJobsResponse](m.raft, req, m.config.Raft.ApplyTimeout)
 	return resp, err
 }
@@ -33,9 +40,10 @@ type jobResult struct {
 func (m *metastoreState) applyPollCompactionJobs(raft *raft.Log, request *compactorv1.PollCompactionJobsRequest) (resp *compactorv1.PollCompactionJobsResponse, err error) {
 	resp = &compactorv1.PollCompactionJobsResponse{}
 	level.Debug(m.logger).Log(
-		"msg", "received poll compaction jobs request",
+		"msg", "applying poll compaction jobs",
 		"num_updates", len(request.JobStatusUpdates),
-		"job_capacity", request.JobCapacity)
+		"job_capacity", request.JobCapacity,
+		"raft_log_index", raft.Index)
 
 	jResult := &jobResult{
 		newBlocks:         make([]*metastorev1.BlockMeta, 0),
@@ -59,7 +67,7 @@ func (m *metastoreState) applyPollCompactionJobs(raft *raft.Log, request *compac
 			err := updateCompactionJobBucket(tx, name, func(bucket *bbolt.Bucket) error {
 				switch statusUpdate.Status { // TODO: handle other cases
 				case compactorv1.CompactionStatus_COMPACTION_STATUS_SUCCESS:
-					err := m.processCompletedJob(tx, job, statusUpdate, jResult)
+					err := m.processCompletedJob(tx, job, statusUpdate, jResult, raft.Index)
 					if err != nil {
 						level.Error(m.logger).Log("msg", "failed to update completed job", "job", job.Name, "err", err)
 						return errors.Wrap(err, "failed to update completed job")
@@ -173,7 +181,13 @@ func (m *metastoreState) convertJobs(jobs []*compactionpb.CompactionJob) ([]*com
 	return res, nil
 }
 
-func (m *metastoreState) processCompletedJob(tx *bbolt.Tx, job *compactionpb.CompactionJob, update *compactorv1.CompactionJobStatus, jResult *jobResult) error {
+func (m *metastoreState) processCompletedJob(
+	tx *bbolt.Tx,
+	job *compactionpb.CompactionJob,
+	update *compactorv1.CompactionJobStatus,
+	jResult *jobResult,
+	raftLogIndex uint64,
+) error {
 	ownsJob := m.compactionJobQueue.isOwner(job.Name, update.RaftLogIndex)
 	if !ownsJob {
 		return errors.New(fmt.Sprintf("deadline exceeded for job with id %s", job.Name))
@@ -203,7 +217,7 @@ func (m *metastoreState) processCompletedJob(tx *bbolt.Tx, job *compactionpb.Com
 		jResult.newBlocks = append(jResult.newBlocks, b)
 
 		// create and store an optional compaction job
-		err, jobToAdd, blockForQueue := m.consumeBlock(b, tx)
+		err, jobToAdd, blockForQueue := m.consumeBlock(b, tx, raftLogIndex)
 		if err != nil {
 			return err
 		}
@@ -300,6 +314,17 @@ func (m *metastoreState) assignNewJobs(tx *bbolt.Tx, jobCapacity int, raftLogInd
 
 func (m *metastoreState) findJobsToAssign(jobCapacity int, raftLogIndex uint64, now int64) []*compactionpb.CompactionJob {
 	jobsToAssign := make([]*compactionpb.CompactionJob, 0, jobCapacity)
+	jobCount, newJobs, inProgressJobs, completedJobs, failedJobs := m.compactionJobQueue.stats()
+	level.Debug(m.logger).Log(
+		"msg", "looking for jobs to assign",
+		"job_capacity", jobCapacity,
+		"raft_log_index", raftLogIndex,
+		"job_queue_size", jobCount,
+		"new_jobs_in_queue", newJobs,
+		"in_progress_jobs_in_queue", inProgressJobs,
+		"completed_jobs_in_queue", completedJobs,
+		"failed_jobs_in_queue", failedJobs,
+	)
 
 	var j *compactionpb.CompactionJob
 	for len(jobsToAssign) < jobCapacity {

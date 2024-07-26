@@ -200,12 +200,28 @@ func (m *metastoreState) loadCompactionPlan(b *bbolt.Bucket, preQueue *jobPreQue
 				return fmt.Errorf("failed to load job pre queue %q: %w", string(k), err)
 			}
 			preQueue.blocksByLevel[storedPreQueue.CompactionLevel] = storedPreQueue.Blocks
+			level.Debug(m.logger).Log(
+				"msg", "restored pre queue",
+				"shard", storedPreQueue.Shard,
+				"compaction_level", storedPreQueue.CompactionLevel,
+				"block_count", len(storedPreQueue.Blocks),
+				"blocks", storedPreQueue.Blocks)
 		} else {
 			var job compactionpb.CompactionJob
 			if err := job.UnmarshalVT(v); err != nil {
 				return fmt.Errorf("failed to unmarshal job %q: %w", string(k), err)
 			}
 			m.compactionJobQueue.enqueue(&job)
+			level.Debug(m.logger).Log(
+				"msg", "restored job into queue",
+				"shard", job.Shard,
+				"tenant", job.TenantId,
+				"compaction_level", job.CompactionLevel,
+				"job_status", job.Status.String(),
+				"raft_log_index", job.RaftLogIndex,
+				"lease_expires_at", job.LeaseExpiresAt,
+				"block_count", len(job.Blocks),
+				"blocks", job.Blocks)
 		}
 	}
 	return nil

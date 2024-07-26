@@ -16,7 +16,13 @@ import (
 )
 
 func (m *Metastore) AddBlock(_ context.Context, req *metastorev1.AddBlockRequest) (*metastorev1.AddBlockResponse, error) {
-	_ = level.Info(m.logger).Log("msg", "adding block", "block_id", req.Block.Id, "shard", req.Block.Shard)
+	_ = level.Info(m.logger).Log(
+		"msg", "adding block",
+		"block_id", req.Block.Id,
+		"shard", req.Block.Shard,
+		"raft_commit_index", m.raft.CommitIndex(),
+		"raft_last_index", m.raft.LastIndex(),
+		"raft_applied_index", m.raft.AppliedIndex())
 	t1 := time.Now()
 	defer func() {
 		m.metrics.raftAddBlockDuration.Observe(time.Since(t1).Seconds())
@@ -39,7 +45,7 @@ func (m *Metastore) shouldRetryAddBlock(err error) bool {
 		errors.Is(err, raft.ErrRaftShutdown)
 }
 
-func (m *metastoreState) applyAddBlock(_ *raft.Log, request *metastorev1.AddBlockRequest) (*metastorev1.AddBlockResponse, error) {
+func (m *metastoreState) applyAddBlock(log *raft.Log, request *metastorev1.AddBlockRequest) (*metastorev1.AddBlockResponse, error) {
 	name, key := keyForBlockMeta(request.Block.Shard, "", request.Block.Id)
 	value, err := request.Block.MarshalVT()
 	if err != nil {
@@ -56,7 +62,7 @@ func (m *metastoreState) applyAddBlock(_ *raft.Log, request *metastorev1.AddBloc
 		if err != nil {
 			return err
 		}
-		err, jobToAdd, blockToAddToQueue = m.consumeBlock(request.Block, tx)
+		err, jobToAdd, blockToAddToQueue = m.consumeBlock(request.Block, tx, log.Index)
 		return nil
 	})
 	if err != nil {

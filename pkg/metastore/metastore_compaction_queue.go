@@ -3,6 +3,7 @@ package metastore
 import (
 	"container/heap"
 	"slices"
+	"strings"
 	"sync"
 
 	"github.com/grafana/pyroscope/pkg/metastore/compactionpb"
@@ -151,6 +152,29 @@ func (q *jobQueue) rebuild() {
 		q.pq = append(q.pq, job)
 	}
 	heap.Init(&q.pq)
+}
+
+func (q *jobQueue) stats() (int, string, string, string, string) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	newJobs := make([]string, 0)
+	inProgressJobs := make([]string, 0)
+	completedJobs := make([]string, 0)
+	failedJobs := make([]string, 0)
+	for _, job := range q.jobs {
+		switch job.Status {
+		case compactionpb.CompactionStatus_COMPACTION_STATUS_UNSPECIFIED:
+			newJobs = append(newJobs, job.Name)
+		case compactionpb.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS:
+			inProgressJobs = append(inProgressJobs, job.Name)
+		case compactionpb.CompactionStatus_COMPACTION_STATUS_SUCCESS:
+			completedJobs = append(completedJobs, job.Name)
+		case compactionpb.CompactionStatus_COMPACTION_STATUS_FAILURE:
+			failedJobs = append(failedJobs, job.Name)
+		}
+	}
+	return len(q.jobs), strings.Join(newJobs, ", "), strings.Join(inProgressJobs, ", "), strings.Join(completedJobs, ", "), strings.Join(failedJobs, ", ")
 }
 
 // TODO(kolesnikovae): container/heap is not very efficient,
