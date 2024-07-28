@@ -110,8 +110,9 @@ func (m *Metastore) CheckReady(ctx context.Context) (err error) {
 				if m.readySince.IsZero() {
 					m.readySince = time.Now()
 				}
-				if time.Since(m.readySince) < time.Minute {
-					err := fmt.Errorf("waiting for %v after being ready", time.Minute)
+				minReadyTime := 30 * time.Second
+				if time.Since(m.readySince) < minReadyTime {
+					err := fmt.Errorf("waiting for %v after being ready", minReadyTime)
 					raftLogger().Log(status, notReady, "err", err)
 					return err
 				}
