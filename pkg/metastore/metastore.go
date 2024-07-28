@@ -105,10 +105,11 @@ type Metastore struct {
 
 	walDir string
 
-	done    chan struct{}
-	wg      sync.WaitGroup
-	metrics *metastoreMetrics
-	client  *metastoreclient.Client
+	done       chan struct{}
+	wg         sync.WaitGroup
+	metrics    *metastoreMetrics
+	client     *metastoreclient.Client
+	readySince time.Time
 }
 
 type Limits interface{}

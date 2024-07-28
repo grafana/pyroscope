@@ -107,6 +107,15 @@ func (m *Metastore) CheckReady(ctx context.Context) (err error) {
 			commitIndex := m.raft.CommitIndex()
 			raftLogger().Log("msg", "tick")
 			if commitIndex >= res.ReadIndex {
+				if m.readySince.IsZero() {
+					m.readySince = time.Now()
+				}
+				if time.Since(m.readySince) < time.Minute {
+					err := fmt.Errorf("waiting for %v after being ready", time.Minute)
+					raftLogger().Log(status, notReady, "err", err)
+					return err
+				}
+
 				raftLogger().Log(status, ready)
 				return nil
 			}
