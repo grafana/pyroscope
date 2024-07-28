@@ -639,7 +639,7 @@ func (f *Phlare) initMetastore() (services.Service, error) {
 }
 
 func (f *Phlare) initMetastoreClient() (services.Service, error) {
-	mc, err := metastoreclient.New(f.Cfg.MetastoreClient)
+	mc, err := metastoreclient.New(f.Cfg.MetastoreClient, f.logger)
 	if err != nil {
 		return nil, err
 	}

@@ -94,25 +94,27 @@ func (sh *shard) flushSegment(ctx context.Context) {
 	sh.current = sh.sw.newSegment(sh, s.shard, sh.l)
 	sh.currentLock.Unlock()
 
-	t1 := time.Now()
-	s.inFlightProfiles.Wait()
-	s.debuginfo.waitInflight = time.Since(t1)
+	go func() { // not blocking next ticks in case metastore/s3 latency is high
+		t1 := time.Now()
+		s.inFlightProfiles.Wait()
+		s.debuginfo.waitInflight = time.Since(t1)
 
-	err := s.flush(ctx)
-	if err != nil {
-		_ = level.Error(sh.sw.l).Log("msg", "failed to flush segment", "err", err)
-	}
-	if s.debuginfo.movedHeads > 0 {
-		_ = level.Debug(s.l).Log("msg",
-			"writing segment block done",
-			"heads-count", len(s.heads),
-			"heads-moved-count", s.debuginfo.movedHeads,
-			"inflight-duration", s.debuginfo.waitInflight,
-			"flush-heads-duration", s.debuginfo.flushHeadsDuration,
-			"flush-block-duration", s.debuginfo.flushBlockDuration,
-			"store-meta-duration", s.debuginfo.storeMetaDuration,
-			"total-duration", time.Since(t1))
-	}
+		err := s.flush(ctx)
+		if err != nil {
+			_ = level.Error(sh.sw.l).Log("msg", "failed to flush segment", "err", err)
+		}
+		if s.debuginfo.movedHeads > 0 {
+			_ = level.Debug(s.l).Log("msg",
+				"writing segment block done",
+				"heads-count", len(s.heads),
+				"heads-moved-count", s.debuginfo.movedHeads,
+				"inflight-duration", s.debuginfo.waitInflight,
+				"flush-heads-duration", s.debuginfo.flushHeadsDuration,
+				"flush-block-duration", s.debuginfo.flushBlockDuration,
+				"store-meta-duration", s.debuginfo.storeMetaDuration,
+				"total-duration", time.Since(t1))
+		}
+	}()
 }
 
 func newSegmentWriter(phlarectx context.Context, l log.Logger, metrics *segmentMetrics, cfg phlaredb.Config, limiters *limiters, bucket objstore.Bucket, segmentDuration time.Duration, metastoreClient *metastoreclient.Client) *segmentsWriter {

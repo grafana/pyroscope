@@ -4,6 +4,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/go-kit/log"
+	"os"
 
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/services"
@@ -40,9 +42,9 @@ type Client struct {
 	config  Config
 }
 
-func New(config Config) (c *Client, err error) {
+func New(config Config, logger log.Logger) (c *Client, err error) {
 	c = &Client{config: config}
-	c.conn, err = dial(c.config)
+	c.conn, err = dial(c.config, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +58,7 @@ func (c *Client) Service() services.Service      { return c.service }
 func (c *Client) starting(context.Context) error { return nil }
 func (c *Client) stopping(error) error           { return c.conn.Close() }
 
-func dial(cfg Config) (*grpc.ClientConn, error) {
+func dial(cfg Config, logger log.Logger) (*grpc.ClientConn, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
@@ -69,7 +71,16 @@ func dial(cfg Config) (*grpc.ClientConn, error) {
 		grpc.WithDefaultServiceConfig(grpcServiceConfig),
 		grpc.WithUnaryInterceptor(otgrpc.OpenTracingClientInterceptor(opentracing.GlobalTracer())),
 	)
-	return grpc.Dial(cfg.MetastoreAddress, options...)
+	if os.Getenv("KUBERNETES_SERVICE_HOST") != "" {
+		builder, err := NewGrpcResolverBuilder(logger, cfg.MetastoreAddress)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create grpc resolver builder: %w", err)
+		}
+		options = append(options, grpc.WithResolvers(builder))
+		return grpc.Dial(builder.resolverAddrStub(), options...)
+	} else {
+		return grpc.Dial(cfg.MetastoreAddress, options...)
+	}
 }
 
 const grpcServiceConfig = `{
