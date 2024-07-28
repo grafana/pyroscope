@@ -124,21 +124,20 @@ func (w *EndpointSliceWatcher) watch(up chan []*targetgroup.Group) {
 			w.l.Log("msg", "context done, stopping watch")
 			return
 		case groups := <-up:
-			ipset := make(map[string]struct{})
-			sourceset := make(map[string]struct{})
+			ipset := make(map[string]string)
 			for _, group := range groups {
 				if !isNeededSlice(group) {
 					w.l.Log("msg", "skipping group", "source", group.Source)
 					continue
 				}
 				w.l.Log("msg", "processing group", "source", group.Source)
-				sourceset[group.Source] = struct{}{}
 				for _, target := range group.Targets {
 					ip := target["__meta_kubernetes_pod_ip"]
 					ready := target["__meta_kubernetes_pod_ready"]
 					phase := target["__meta_kubernetes_pod_phase"]
+					podname := target["__meta_kubernetes_pod_name"]
 					w.l.Log("msg", "received new target", "tt", fmt.Sprintf(">>%s %s %s<<", ip, phase, ready))
-					ipset[string(ip)] = struct{}{}
+					ipset[string(ip)] = string(podname)
 				}
 			}
 			if len(ipset) == 0 {
@@ -151,7 +150,7 @@ func (w *EndpointSliceWatcher) watch(up chan []*targetgroup.Group) {
 				}
 				w.cb(ipss)
 			}
-			w.l.Log("msg", "received new target groups", "sources", fmt.Sprintf("%+v", sourceset), "ips", fmt.Sprintf("%+v", ipset))
+			w.l.Log("msg", "received new target groups", "ips", fmt.Sprintf("%+v", ipset))
 		}
 	}
 }
