@@ -2,6 +2,7 @@ package distributor
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/grafana/dskit/ring"
 
@@ -40,7 +41,15 @@ type seriesPlacement interface {
 
 type defaultSeriesPlacement struct{}
 
-func (defaultSeriesPlacement) tenantServiceSize(tenantServiceKey, []shard) int { return 2 }
+func (defaultSeriesPlacement) tenantServiceSize(k tenantServiceKey, shards []shard) int {
+	if strings.HasPrefix(k.service, "hosted-grafana") {
+		return 16
+	}
+	if strings.HasPrefix(k.service, "cortex-ops-01/ingester") {
+		return 8
+	}
+	return 2
+}
 
 func (defaultSeriesPlacement) tenantServiceSeriesShard(s *distributormodel.ProfileSeries, shards []shard) int {
 	k := fnv64(phlaremodel.LabelPairsString(s.Labels))
