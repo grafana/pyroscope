@@ -26,6 +26,7 @@ func Test_CompactBlocks(t *testing.T) {
 	dst, tempdir := testutil.NewFilesystemBucket(t, ctx, t.TempDir())
 	compactedBlocks, err := Compact(ctx, blockMetas.Blocks, bucket,
 		WithCompactionDestination(dst),
+		WithCompactionTempDir(tempdir),
 		WithCompactionObjectOptions(
 			WithObjectDownload(filepath.Join(tempdir, "source")),
 			WithObjectMaxSizeLoadInMemory(0)), // Force download.

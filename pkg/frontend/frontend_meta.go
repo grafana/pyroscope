@@ -3,8 +3,10 @@ package frontend
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
+	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
@@ -38,8 +40,46 @@ func (f *Frontend) listMetadata(
 		// TODO: Not sure if we want to pass it through
 		return nil, err
 	}
-	_ = level.Info(f.log).Log("msg", "block metadata list", "blocks", len(resp.Blocks))
+	printStats(f.log, resp.Blocks)
 	return resp.Blocks, nil
+}
+
+func printStats(logger log.Logger, blocks []*metastorev1.BlockMeta) {
+	type blockMetaStats struct {
+		level   uint32
+		minTime int64
+		maxTime int64
+		size    uint64
+		count   int
+	}
+	m := make(map[uint32]*blockMetaStats)
+	for _, b := range blocks {
+		s, ok := m[b.CompactionLevel]
+		if !ok {
+			s = &blockMetaStats{level: b.CompactionLevel}
+			m[b.CompactionLevel] = s
+		}
+		for _, x := range b.TenantServices {
+			s.size += x.Size
+		}
+		s.count++
+	}
+	sorted := make([]*blockMetaStats, 0, len(m))
+	for _, s := range m {
+		sorted = append(sorted, s)
+	}
+	slices.SortFunc(sorted, func(a, b *blockMetaStats) int {
+		return int(a.level - b.level)
+	})
+	fields := make([]interface{}, 0, 4+len(sorted)*2)
+	fields = append(fields, "msg", "block metadata list", "blocks_total", fmt.Sprint(len(blocks)))
+	for _, s := range sorted {
+		fields = append(fields,
+			fmt.Sprintf("l%d_blocks", s.level), fmt.Sprint(s.count),
+			fmt.Sprintf("l%d_size", s.level), fmt.Sprint(s.size),
+		)
+	}
+	_ = level.Info(logger).Log(fields...)
 }
 
 func (f *Frontend) invoke(

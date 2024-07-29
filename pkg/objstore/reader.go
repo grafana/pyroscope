@@ -112,7 +112,7 @@ func ReadRange(ctx context.Context, reader io.ReaderFrom, name string, storage o
 	defer func() {
 		_ = rc.Close()
 	}()
-	n, err := reader.ReadFrom(rc)
+	n, err := reader.ReadFrom(io.LimitReader(rc, size))
 	if err != nil {
 		return err
 	}

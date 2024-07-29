@@ -13,6 +13,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/services"
 	"github.com/opentracing/opentracing-go"
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 
 	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
@@ -100,8 +101,11 @@ func (w *Worker) running(ctx context.Context) error {
 						level.Info(w.logger).Log("msg", "compaction job finished", "job", job.Name)
 
 						w.jobMutex.Lock()
-						w.pendingStatusUpdates[job.Name] = status
 						delete(w.activeJobs, job.Name)
+						// Status is unspecified, if compaction job was cancelled.
+						if status.Status != compactorv1.CompactionStatus_COMPACTION_STATUS_UNSPECIFIED {
+							w.pendingStatusUpdates[job.Name] = status
+						}
 						w.jobMutex.Unlock()
 					}()
 				}
@@ -128,13 +132,9 @@ func (w *Worker) poll(ctx context.Context) {
 	}
 	for _, activeJob := range w.activeJobs {
 		level.Debug(w.logger).Log("msg", "in progress job update", "job", activeJob.Name)
-		pendingStatusUpdates = append(pendingStatusUpdates, &compactorv1.CompactionJobStatus{
-			JobName:      activeJob.Name,
-			Status:       compactorv1.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS,
-			RaftLogIndex: activeJob.RaftLogIndex,
-			Shard:        activeJob.Shard,
-			TenantId:     activeJob.TenantId,
-		})
+		update := activeJob.Status.CloneVT()
+		update.Status = compactorv1.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS
+		pendingStatusUpdates = append(pendingStatusUpdates, update)
 	}
 	jobCapacity := uint32(w.config.JobCapacity - len(w.activeJobs) - len(w.pendingJobs))
 	w.jobMutex.Unlock()
@@ -172,13 +172,13 @@ func (w *Worker) stopping(err error) error {
 func (w *Worker) startJob(ctx context.Context, job *compactorv1.CompactionJob) *compactorv1.CompactionJobStatus {
 	jobStartTime := time.Now()
 	labels := []string{job.TenantId, fmt.Sprint(job.Shard), fmt.Sprint(job.CompactionLevel)}
-	jobOutcome := "unknown"
+	statusName := "unknown"
 	defer func() {
 		elapsed := time.Since(jobStartTime)
-		labelsWithOutcome := append(labels, jobOutcome)
-		w.metrics.jobsCompleted.WithLabelValues(labelsWithOutcome...).Inc()
+		jobStatusLabel := append(labels, statusName)
+		w.metrics.jobDuration.WithLabelValues(jobStatusLabel...).Observe(elapsed.Seconds())
+		w.metrics.jobsCompleted.WithLabelValues(jobStatusLabel...).Inc()
 		w.metrics.jobsInProgress.WithLabelValues(labels...).Dec()
-		w.metrics.jobDuration.WithLabelValues(labelsWithOutcome...).Observe(elapsed.Seconds())
 	}()
 	w.metrics.jobsInProgress.WithLabelValues(labels...).Inc()
 
@@ -191,22 +191,14 @@ func (w *Worker) startJob(ctx context.Context, job *compactorv1.CompactionJob) *
 	)
 	defer sp.Finish()
 
-	jobStatus := &compactorv1.CompactionJobStatus{
-		JobName:      job.Name,
-		CompletedJob: &compactorv1.CompletedJob{},
-		Shard:        job.Shard,
-		TenantId:     job.TenantId,
-		RaftLogIndex: job.RaftLogIndex,
-	}
-
-	level.Info(w.logger).Log(
+	_ = level.Info(w.logger).Log(
 		"msg", "compacting blocks for job",
 		"job", job.Name,
 		"blocks", len(job.Blocks))
 
 	tempdir := filepath.Join(w.config.TempDir, job.Name)
 	sourcedir := filepath.Join(tempdir, "source")
-	compactedBlockMetas, err := block.Compact(ctx, job.Blocks, w.storage,
+	compacted, err := block.Compact(ctx, job.Blocks, w.storage,
 		block.WithCompactionTempDir(tempdir),
 		block.WithCompactionObjectOptions(
 			block.WithObjectMaxSizeLoadInMemory(w.config.SmallObjectSize),
@@ -214,22 +206,47 @@ func (w *Worker) startJob(ctx context.Context, job *compactorv1.CompactionJob) *
 		),
 	)
 
-	if err != nil {
-		level.Error(w.logger).Log("msg", "failed to run block compaction", "err", err, "job", job.Name)
-		jobStatus.Status = compactorv1.CompactionStatus_COMPACTION_STATUS_FAILURE
-		jobOutcome = "failure"
-		return jobStatus
+	logger := log.With(w.logger,
+		"job_name", job.Name,
+		"job_shard", job.Shard,
+		"job_tenant", job.TenantId,
+		"job_compaction_level", job.CompactionLevel,
+	)
+
+	switch {
+	case err == nil:
+		_ = level.Info(logger).Log(
+			"msg", "successful compaction for job",
+			"input_blocks", len(job.Blocks),
+			"output_blocks", len(compacted))
+
+		for _, c := range compacted {
+			_ = level.Info(logger).Log(
+				"msg", "new compacted block",
+				"block_id", c.Id,
+				"block_tenant", c.TenantId,
+				"block_shard", c.Shard,
+				"block_size", c.Size,
+				"block_compaction_level", c.CompactionLevel,
+				"block_min_time", c.MinTime,
+				"block_max_time", c.MinTime,
+				"tenant_services", len(c.TenantServices))
+		}
+
+		job.Status.Status = compactorv1.CompactionStatus_COMPACTION_STATUS_SUCCESS
+		job.Status.CompletedJob = &compactorv1.CompletedJob{Blocks: compacted}
+		statusName = "success"
+
+	case errors.Is(err, context.Canceled):
+		_ = level.Warn(logger).Log("msg", "job cancelled", "job", job.Name)
+		job.Status.Status = compactorv1.CompactionStatus_COMPACTION_STATUS_UNSPECIFIED
+		statusName = "cancelled"
+
+	default:
+		_ = level.Error(logger).Log("msg", "failed to compact blocks", "err", err, "job", job.Name)
+		job.Status.Status = compactorv1.CompactionStatus_COMPACTION_STATUS_FAILURE
+		statusName = "failure"
 	}
 
-	level.Info(w.logger).Log(
-		"msg", "successful compaction for job",
-		"job", job.Name,
-		"blocks", len(job.Blocks),
-		"output_blocks", len(compactedBlockMetas))
-
-	jobStatus.Status = compactorv1.CompactionStatus_COMPACTION_STATUS_SUCCESS
-	jobOutcome = "success"
-	jobStatus.CompletedJob.Blocks = compactedBlockMetas
-
-	return jobStatus
+	return job.Status
 }

@@ -12,6 +12,7 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/bufferpool"
 	"github.com/grafana/pyroscope/pkg/util/refctr"
 )
@@ -226,9 +227,9 @@ func (s Objects) Open(ctx context.Context) error {
 	g, ctx := errgroup.WithContext(ctx)
 	for i := range s {
 		i := i
-		g.Go(func() error {
+		g.Go(util.RecoverPanic(func() error {
 			return s[i].Open(ctx)
-		})
+		}))
 	}
 	return g.Wait()
 }

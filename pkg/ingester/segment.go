@@ -238,11 +238,13 @@ func (s *segment) flush(ctx context.Context) error {
 func (s *segment) flushBlock(heads []serviceHead) (string, *metastorev1.BlockMeta, error) {
 	t1 := time.Now()
 	meta := &metastorev1.BlockMeta{
+		FormatVersion:   1,
 		Id:              s.ulid.String(),
 		MinTime:         0,
 		MaxTime:         0,
 		Shard:           uint32(s.shard),
 		CompactionLevel: 0,
+		TenantId:        "",
 		TenantServices:  make([]*metastorev1.TenantService, 0, len(heads)),
 		Size:            0,
 	}

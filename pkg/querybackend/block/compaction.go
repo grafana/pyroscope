@@ -86,14 +86,14 @@ func Compact(
 		return nil, err
 	}
 	defer func() {
-		err = objects.Close()
+		err = multierror.New(err, objects.Close()).Err()
 	}()
 
 	compacted := make([]*metastorev1.BlockMeta, 0, len(plan))
 	for _, p := range plan {
-		md, err := p.Compact(ctx, c.destination, c.tempdir)
-		if err != nil {
-			return nil, err
+		md, compactionErr := p.Compact(ctx, c.destination, c.tempdir)
+		if compactionErr != nil {
+			return nil, compactionErr
 		}
 		compacted = append(compacted, md)
 	}

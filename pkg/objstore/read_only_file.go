@@ -71,6 +71,7 @@ func (f *ReadOnlyFile) Close() error {
 		m.Add(r.Close())
 	}
 	m.Add(os.RemoveAll(f.path))
+	f.readers = f.readers[:0]
 	return m.Err()
 }
 
@@ -100,8 +101,16 @@ func (f *ReadOnlyFile) ReaderAt(_ context.Context, name string) (ReaderAtCloser,
 	return f.borrowOrCreateReader(name)
 }
 
-func (f *ReadOnlyFile) Get(_ context.Context, name string) (r io.ReadCloser, err error) {
-	return f.borrowOrCreateReader(name)
+func (f *ReadOnlyFile) Get(_ context.Context, name string) (io.ReadCloser, error) {
+	r, err := f.borrowOrCreateReader(name)
+	if err != nil {
+		return nil, err
+	}
+	if _, err = r.Seek(0, io.SeekStart); err != nil {
+		_ = r.Close()
+		return nil, err
+	}
+	return r, nil
 }
 
 func (f *ReadOnlyFile) GetRange(_ context.Context, name string, off, length int64) (io.ReadCloser, error) {
@@ -116,6 +125,7 @@ func (f *ReadOnlyFile) GetRange(_ context.Context, name string, off, length int6
 		_ = r.Close()
 		return nil, err
 	}
+	r.reader = io.LimitReader(r.reader, length)
 	return r, nil
 }
 
@@ -128,26 +138,16 @@ func (f *ReadOnlyFile) borrowOrCreateReader(name string) (*fileReader, error) {
 	if len(f.readers) > 0 {
 		ff := f.readers[len(f.readers)-1]
 		f.readers = f.readers[:len(f.readers)-1]
+		ff.reader = ff.File
 		return ff, nil
 	}
-	ff, err := f.openReader()
-	if err != nil {
-		return nil, err
-	}
-	f.readers = append(f.readers, ff)
-	return ff, nil
+	return f.openReader()
 }
 
-func (f *ReadOnlyFile) returnReader(r *fileReader) error {
+func (f *ReadOnlyFile) returnReader(r *fileReader) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	_, err := r.Seek(0, io.SeekStart)
-	if err != nil {
-		_ = r.File.Close()
-		return err
-	}
 	f.readers = append(f.readers, r)
-	return nil
 }
 
 func (f *ReadOnlyFile) openReader() (*fileReader, error) {
@@ -158,14 +158,22 @@ func (f *ReadOnlyFile) openReader() (*fileReader, error) {
 	return &fileReader{
 		parent: f,
 		File:   ff,
+		reader: ff,
 	}, nil
 }
 
 type fileReader struct {
 	parent *ReadOnlyFile
+	reader io.Reader
 	*os.File
 }
 
 func (r *fileReader) Close() error {
-	return r.parent.returnReader(r)
+	r.reader = nil
+	r.parent.returnReader(r)
+	return nil
+}
+
+func (r *fileReader) Read(p []byte) (int, error) {
+	return r.reader.Read(p)
 }

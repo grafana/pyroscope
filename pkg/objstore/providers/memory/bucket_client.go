@@ -140,12 +140,11 @@ func (b *InMemBucket) GetRange(_ context.Context, name string, off, length int64
 		return io.NopCloser(bytes.NewReader(nil)), nil
 	}
 
+	if length == 0 {
+		return io.NopCloser(bytes.NewReader(nil)), nil
+	}
 	if length == -1 {
 		return io.NopCloser(bytes.NewReader(file[off:])), nil
-	}
-
-	if length <= 0 {
-		return io.NopCloser(bytes.NewReader(nil)), errors.New("length cannot be smaller or equal 0")
 	}
 
 	if int64(len(file)) <= off+length {
