@@ -60,12 +60,12 @@ pyroscope:
       extraArgs:
         compaction-worker.job-capacity: 4
       kind: Deployment
-      replicaCount: 8
+      replicaCount: 10
       resources:
         limits:
-          memory: 4Gi
+          memory: 8Gi
         requests:
-          memory: 4Gi
+          memory: 8Gi
           cpu: 2
 
     # TODO: Remove these components.
