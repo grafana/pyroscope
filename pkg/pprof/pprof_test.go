@@ -733,11 +733,11 @@ func Test_FilterLabelsInPlace(t *testing.T) {
 			},
 			keys: []int64{2, 4},
 			expectedOrder: []*profilev1.Label{
-				{Key: 1, Str: 100},
-				{Key: 3, Str: 300},
-				{Key: 5, Str: 500},
-				{Key: 4, Str: 400},
 				{Key: 2, Str: 200},
+				{Key: 4, Str: 400},
+				{Key: 3, Str: 300},
+				{Key: 1, Str: 100},
+				{Key: 5, Str: 500},
 			},
 			expectedIndex: 2,
 		},
@@ -751,11 +751,11 @@ func Test_FilterLabelsInPlace(t *testing.T) {
 			},
 			keys: []int64{1, 3, 5},
 			expectedOrder: []*profilev1.Label{
-				{Key: 2, Str: 200},
-				{Key: 4, Str: 400},
-				{Key: 5, Str: 500},
-				{Key: 3, Str: 300},
 				{Key: 1, Str: 100},
+				{Key: 3, Str: 300},
+				{Key: 5, Str: 500},
+				{Key: 4, Str: 400},
+				{Key: 2, Str: 200},
 			},
 			expectedIndex: 3,
 		},
@@ -799,9 +799,9 @@ func Test_FilterLabelsInPlace(t *testing.T) {
 			},
 			keys: []int64{4},
 			expectedOrder: []*profilev1.Label{
+				{Key: 4, Str: 400},
 				{Key: 3, Str: 300},
 				{Key: 5, Str: 500},
-				{Key: 4, Str: 400},
 			},
 			expectedIndex: 1,
 		},
@@ -813,9 +813,9 @@ func Test_FilterLabelsInPlace(t *testing.T) {
 			},
 			keys: []int64{3},
 			expectedOrder: []*profilev1.Label{
+				{Key: 3, Str: 300},
 				{Key: 4, Str: 400},
 				{Key: 5, Str: 500},
-				{Key: 3, Str: 300},
 			},
 			expectedIndex: 1,
 		},
@@ -827,9 +827,9 @@ func Test_FilterLabelsInPlace(t *testing.T) {
 			},
 			keys: []int64{5},
 			expectedOrder: []*profilev1.Label{
-				{Key: 3, Str: 300},
-				{Key: 4, Str: 400},
 				{Key: 5, Str: 500},
+				{Key: 4, Str: 400},
+				{Key: 3, Str: 300},
 			},
 			expectedIndex: 1,
 		},
@@ -851,9 +851,9 @@ func Test_FilterLabelsInPlace(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run("", func(t *testing.T) {
-			n := FilterLabelsInPlace(tc.labels, tc.keys)
+			boundaryIdx := FilterLabelsInPlace(tc.labels, tc.keys)
 			require.Equal(t, tc.expectedOrder, tc.labels)
-			require.Equal(t, len(tc.expectedOrder)-tc.expectedIndex, n)
+			require.Equal(t, tc.expectedIndex, boundaryIdx)
 		})
 	}
 }
