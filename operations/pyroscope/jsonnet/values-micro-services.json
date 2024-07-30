@@ -9,14 +9,14 @@
           "compaction-worker.job-capacity": 4
         },
         "kind": "Deployment",
-        "replicaCount": 8,
+        "replicaCount": 10,
         "resources": {
           "limits": {
-            "memory": "4Gi"
+            "memory": "8Gi"
           },
           "requests": {
             "cpu": 2,
-            "memory": "4Gi"
+            "memory": "8Gi"
           }
         }
       },
