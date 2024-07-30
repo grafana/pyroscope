@@ -662,7 +662,6 @@ func GroupSamplesWithoutLabelsByKey(p *profilev1.Profile, keys []int64) []Sample
 		// We hide labels matching the keys to the end
 		// of the slice, after len() boundary.
 		s.Label = LabelsWithout(s.Label, keys)
-		sort.Sort(LabelsByKeyValue(s.Label)) // TODO: Find a way to avoid this.
 	}
 	// Sorting and grouping accounts only for labels kept.
 	sort.Sort(SamplesByLabels(p.Sample))
@@ -713,27 +712,33 @@ func CompareSampleLabels(a, b []*profilev1.Label) int {
 
 func LabelsWithout(labels []*profilev1.Label, keys []int64) []*profilev1.Label {
 	n := FilterLabelsInPlace(labels, keys)
-	slices.Reverse(labels) // TODO: Find a way to avoid this.
-	return labels[:len(labels)-n]
+	return labels[:n]
 }
 
+// FilterLabelsInPlace accepts labels in sorted order.
+// FilterLabelsInPlace splits labels into two groups in place:
+// The first one contains labels with keys not in the keys list, remaining in sorted order
+// The second one contains labels with keys in the keys list, remaining in reverse sorted order
+// Returns the index of split point
 func FilterLabelsInPlace(labels []*profilev1.Label, keys []int64) int {
-	boundaryIdx := 0
+	r := len(labels) - 1
 	i := 0 // Pointer to labels
 	j := 0 // Pointer to keys
-	for i < len(labels) && j < len(keys) {
+	for i < len(labels) && j < len(keys) && i <= r {
 		if labels[i].Key == keys[j] {
-			// If label key matches a key in keys, swap and increment both pointers
-			labels[i], labels[boundaryIdx] = labels[boundaryIdx], labels[i]
-			boundaryIdx++
-			i++
+			if i != r {
+				t := labels[i]
+				copy(labels[i:r+1], labels[i+1:r+1]) // hopefully this is done once for a single label
+				labels[r] = t
+			}
+			r--
 		} else if labels[i].Key < keys[j] {
 			i++ // Advance label pointer.
 		} else {
 			j++ // Advance key pointer.
 		}
 	}
-	return boundaryIdx
+	return r + 1
 }
 
 func LabelKeysByString(p *profilev1.Profile, keys ...string) []int64 {
