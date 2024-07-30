@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"math/rand"
 	"slices"
 	"strings"
 	"unsafe"
@@ -12,6 +13,8 @@ import (
 	querybackendv1 "github.com/grafana/pyroscope/api/gen/proto/go/querybackend/v1"
 	"github.com/grafana/pyroscope/pkg/iter"
 )
+
+var xrand = rand.New(rand.NewSource(4349676827832284783))
 
 // QueryPlan represents a physical query plan structured as a DAG.
 // Each node in the graph can either be a "merge" or a "read" operation (leaves).
@@ -82,6 +85,9 @@ func Build(
 	if len(blocks) == 0 {
 		return new(QueryPlan)
 	}
+	xrand.Shuffle(len(blocks), func(i, j int) {
+		blocks[i], blocks[j] = blocks[j], blocks[i]
+	})
 	// First, we create leaves: the entire range of blocks
 	// is split into smaller uniform ranges, which will be
 	// fetched by workers.

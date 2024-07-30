@@ -32,6 +32,8 @@ func dial(address string, grpcClientConfig grpcclient.Config) (*grpc.ClientConn,
 	if err := grpcClientConfig.Validate(); err != nil {
 		return nil, err
 	}
+	grpcClientConfig.BackoffOnRatelimits = false
+	grpcClientConfig.ConnectTimeout = 0
 	options, err := grpcClientConfig.DialOption(nil, nil)
 	if err != nil {
 		return nil, err
@@ -58,11 +60,14 @@ const grpcServiceConfig = `{
         "name": [{"service": ""}],
         "waitForReady": true,
         "retryPolicy": {
-            "MaxAttempts": 4,
+            "MaxAttempts": 500,
             "InitialBackoff": ".01s",
-            "MaxBackoff": ".01s",
+            "MaxBackoff": ".5s",
             "BackoffMultiplier": 1.0,
-            "RetryableStatusCodes": [ "UNAVAILABLE" ]
+            "RetryableStatusCodes": [
+              "UNAVAILABLE",
+              "RESOURCE_EXHAUSTED"
+            ]
         }
     }]
 }`

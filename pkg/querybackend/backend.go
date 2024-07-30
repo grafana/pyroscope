@@ -10,7 +10,10 @@ import (
 	"github.com/grafana/dskit/services"
 	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
+	"go.uber.org/atomic"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	querybackendv1 "github.com/grafana/pyroscope/api/gen/proto/go/querybackend/v1"
@@ -18,6 +21,8 @@ import (
 	"github.com/grafana/pyroscope/pkg/querybackend/queryplan"
 	"github.com/grafana/pyroscope/pkg/util"
 )
+
+const defaultConcurrencyLimit = 25
 
 type Config struct {
 	Address          string            `yaml:"address"`
@@ -50,6 +55,9 @@ type QueryBackend struct {
 
 	backendClient QueryHandler
 	blockReader   QueryHandler
+
+	concurrency uint32
+	running     atomic.Uint32
 }
 
 func New(
@@ -65,6 +73,8 @@ func New(
 		reg:           reg,
 		backendClient: backendClient,
 		blockReader:   blockReader,
+
+		concurrency: defaultConcurrencyLimit,
 	}
 	q.service = services.NewIdleService(q.starting, q.stopping)
 	return &q, nil
@@ -81,17 +91,14 @@ func (q *QueryBackend) Invoke(
 	span, ctx := opentracing.StartSpanFromContext(ctx, "QueryBackend.Invoke")
 	defer span.Finish()
 
-	// TODO: Return codes.ResourceExhausted if the query
-	//  exceeds the budget of the current instance: e.g,
-	//  100MB of in-flight data, or 30 queries/blocks, or
-	//  100 merges, or memory available, etc.
-
 	p := queryplan.Open(req.QueryPlan)
 	switch r := p.Root(); r.Type {
 	case queryplan.NodeMerge:
 		return q.merge(ctx, req, r.Children())
 	case queryplan.NodeRead:
-		return q.read(ctx, req, r.Blocks())
+		return q.withThrottling(func() (*querybackendv1.InvokeResponse, error) {
+			return q.read(ctx, req, r.Blocks())
+		})
 	default:
 		panic("query plan: unknown node type")
 	}
@@ -128,4 +135,12 @@ func (q *QueryBackend) read(
 		Blocks: iter.MustSlice(blocks),
 	}
 	return q.blockReader.Invoke(ctx, request)
+}
+
+func (q *QueryBackend) withThrottling(fn func() (*querybackendv1.InvokeResponse, error)) (*querybackendv1.InvokeResponse, error) {
+	if q.running.Inc() > q.concurrency {
+		return nil, status.Error(codes.ResourceExhausted, "all minions are busy, please try later")
+	}
+	defer q.running.Dec()
+	return fn()
 }

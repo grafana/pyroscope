@@ -97,7 +97,7 @@ func (f *Frontend) invoke(
 		return nil, nil
 	}
 	// TODO: Params.
-	p := queryplan.Build(blocks, 20, 50)
+	p := queryplan.Build(blocks, 2, 10)
 	resp, err := f.querybackendclient.Invoke(ctx, &querybackendv1.InvokeRequest{
 		Tenant:        tenants,
 		StartTime:     startTime,
