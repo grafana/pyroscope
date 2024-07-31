@@ -123,7 +123,7 @@ Use a custom namespace so that you don't have to overwrite the default namespace
    helm upgrade -n pyroscope-test --install grafana grafana/grafana \
      --set image.repository=grafana/grafana \
      --set image.tag=main \
-     --set env.GF_FEATURE_TOGGLES_ENABLE=flameGraph \
+     --set env.GF_INSTALL_PLUGINS=grafana-pyroscope-app \
      --set env.GF_AUTH_ANONYMOUS_ENABLED=true \
      --set env.GF_AUTH_ANONYMOUS_ORG_ROLE=Admin \
      --set env.GF_DIAGNOSTICS_PROFILING_ENABLED=true \
