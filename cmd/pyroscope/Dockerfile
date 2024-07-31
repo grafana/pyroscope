@@ -14,6 +14,8 @@ COPY --from=debug /etc/group /etc/group
 # in order for the container to run as non-root.
 VOLUME /data
 COPY --chown=pyroscope:pyroscope --from=debug /data /data
+VOLUME /data-compactor
+COPY --chown=pyroscope:pyroscope --from=debug /data /data-compactor
 
 COPY cmd/pyroscope/pyroscope.yaml /etc/pyroscope/config.yaml
 COPY profilecli /usr/bin/profilecli
