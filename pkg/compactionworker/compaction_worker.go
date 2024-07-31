@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	metastoreclient "github.com/grafana/pyroscope/pkg/metastore/client"
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/querybackend/block"
@@ -31,10 +33,12 @@ type Worker struct {
 	storage         objstore.Bucket
 	metrics         *compactionWorkerMetrics
 
-	jobMutex             sync.RWMutex
-	pendingJobs          map[string]*compactorv1.CompactionJob
-	activeJobs           map[string]*compactorv1.CompactionJob
-	pendingStatusUpdates map[string]*compactorv1.CompactionJobStatus
+	jobMutex      sync.RWMutex
+	pendingJobs   map[string]*compactorv1.CompactionJob
+	activeJobs    map[string]*compactorv1.CompactionJob
+	completedJobs map[string]*compactorv1.CompactionJobStatus
+
+	queue chan *compactorv1.CompactionJob
 }
 
 type Config struct {
@@ -53,14 +57,15 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 
 func New(config Config, logger log.Logger, metastoreClient *metastoreclient.Client, storage objstore.Bucket, reg prometheus.Registerer) (*Worker, error) {
 	w := &Worker{
-		config:               config,
-		logger:               logger,
-		metastoreClient:      metastoreClient,
-		storage:              storage,
-		pendingJobs:          make(map[string]*compactorv1.CompactionJob),
-		activeJobs:           make(map[string]*compactorv1.CompactionJob),
-		pendingStatusUpdates: make(map[string]*compactorv1.CompactionJobStatus),
-		metrics:              newMetrics(reg),
+		config:          config,
+		logger:          logger,
+		metastoreClient: metastoreClient,
+		storage:         storage,
+		pendingJobs:     make(map[string]*compactorv1.CompactionJob),
+		activeJobs:      make(map[string]*compactorv1.CompactionJob),
+		completedJobs:   make(map[string]*compactorv1.CompactionJobStatus),
+		metrics:         newMetrics(reg),
+		queue:           make(chan *compactorv1.CompactionJob, 2*config.JobCapacity),
 	}
 	w.BasicService = services.NewBasicService(w.starting, w.running, w.stopping)
 	return w, nil
@@ -73,43 +78,34 @@ func (w *Worker) starting(ctx context.Context) (err error) {
 func (w *Worker) running(ctx context.Context) error {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+
+			case job := <-w.queue:
+				w.jobMutex.Lock()
+				delete(w.pendingJobs, job.Name)
+				w.activeJobs[job.Name] = job
+				w.jobMutex.Unlock()
+
+				_ = level.Info(w.logger).Log("msg", "starting compaction job", "job", job.Name)
+				status := w.startJob(ctx, job)
+				_ = level.Info(w.logger).Log("msg", "compaction job finished", "job", job.Name)
+
+				w.jobMutex.Lock()
+				delete(w.activeJobs, job.Name)
+				w.completedJobs[job.Name] = status
+				w.jobMutex.Unlock()
+			}
+		}
+	}()
+
 	for {
 		select {
 		case <-ticker.C:
 			w.poll(ctx)
-
-			w.jobMutex.RLock()
-			pendingJobs := make(map[string]*compactorv1.CompactionJob, len(w.pendingJobs))
-			for _, job := range w.pendingJobs {
-				pendingJobs[job.Name] = job
-			}
-			w.jobMutex.RUnlock()
-
-			if len(pendingJobs) > 0 {
-				level.Info(w.logger).Log("msg", "starting pending compaction jobs", "pendingJobs", len(pendingJobs))
-				for _, job := range pendingJobs {
-					job := job
-					go func() {
-						w.jobMutex.Lock()
-						w.activeJobs[job.Name] = job
-						delete(w.pendingJobs, job.Name)
-						w.jobMutex.Unlock()
-
-						level.Info(w.logger).Log("msg", "starting compaction job", "job", job.Name)
-						status := w.startJob(ctx, job)
-
-						level.Info(w.logger).Log("msg", "compaction job finished", "job", job.Name)
-
-						w.jobMutex.Lock()
-						delete(w.activeJobs, job.Name)
-						// Status is unspecified, if compaction job was cancelled.
-						if status.Status != compactorv1.CompactionStatus_COMPACTION_STATUS_UNSPECIFIED {
-							w.pendingStatusUpdates[job.Name] = status
-						}
-						w.jobMutex.Unlock()
-					}()
-				}
-			}
 
 		case <-ctx.Done():
 			return nil
@@ -123,11 +119,11 @@ func (w *Worker) poll(ctx context.Context) {
 		"msg", "polling for compaction jobs and status updates",
 		"active_jobs", len(w.activeJobs),
 		"pending_jobs", len(w.pendingJobs),
-		"pending_updates", len(w.pendingStatusUpdates))
+		"pending_updates", len(w.completedJobs))
 
-	pendingStatusUpdates := make([]*compactorv1.CompactionJobStatus, 0, len(w.pendingStatusUpdates))
-	for _, update := range w.pendingStatusUpdates {
-		level.Debug(w.logger).Log("msg", "pending compaction job update", "job", update.JobName, "status", update.Status)
+	pendingStatusUpdates := make([]*compactorv1.CompactionJobStatus, 0, len(w.completedJobs))
+	for _, update := range w.completedJobs {
+		level.Debug(w.logger).Log("msg", "completed job update", "job", update.JobName, "status", update.Status)
 		pendingStatusUpdates = append(pendingStatusUpdates, update)
 	}
 	for _, activeJob := range w.activeJobs {
@@ -136,13 +132,23 @@ func (w *Worker) poll(ctx context.Context) {
 		update.Status = compactorv1.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS
 		pendingStatusUpdates = append(pendingStatusUpdates, update)
 	}
-	jobCapacity := uint32(w.config.JobCapacity - len(w.activeJobs) - len(w.pendingJobs))
+	for _, pendingJob := range w.pendingJobs {
+		level.Debug(w.logger).Log("msg", "pending job update", "job", pendingJob.Name)
+		update := pendingJob.Status.CloneVT()
+		update.Status = compactorv1.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS
+		pendingStatusUpdates = append(pendingStatusUpdates, update)
+	}
+
+	jobCapacity := w.config.JobCapacity - len(w.activeJobs) - len(w.pendingJobs)
+	if jobCapacity < 0 {
+		jobCapacity = 0
+	}
 	w.jobMutex.Unlock()
 
 	if len(pendingStatusUpdates) > 0 || jobCapacity > 0 {
 		jobsResponse, err := w.metastoreClient.PollCompactionJobs(ctx, &compactorv1.PollCompactionJobsRequest{
 			JobStatusUpdates: pendingStatusUpdates,
-			JobCapacity:      jobCapacity,
+			JobCapacity:      uint32(jobCapacity),
 		})
 
 		if err != nil {
@@ -152,15 +158,30 @@ func (w *Worker) poll(ctx context.Context) {
 
 		level.Debug(w.logger).Log("msg", "poll response received", "compaction_jobs", len(jobsResponse.CompactionJobs))
 
-		w.jobMutex.Lock()
-		for _, update := range pendingStatusUpdates {
-			delete(w.pendingStatusUpdates, update.JobName)
+		pendingJobs := make([]*compactorv1.CompactionJob, 0, len(jobsResponse.CompactionJobs))
+		for _, job := range jobsResponse.CompactionJobs {
+			pendingJobs = append(pendingJobs, job.CloneVT())
 		}
 
-		for _, pendingJob := range jobsResponse.CompactionJobs {
-			w.pendingJobs[pendingJob.Name] = pendingJob
+		w.jobMutex.Lock()
+		for _, update := range pendingStatusUpdates {
+			delete(w.completedJobs, update.JobName)
+		}
+		for _, job := range pendingJobs {
+			w.pendingJobs[job.Name] = job
 		}
 		w.jobMutex.Unlock()
+
+		for _, job := range pendingJobs {
+			select {
+			case w.queue <- job:
+			default:
+				level.Warn(w.logger).Log("msg", "dropping job", "job_name", job.Name)
+				w.jobMutex.Lock()
+				delete(w.pendingJobs, job.Name)
+				w.jobMutex.Unlock()
+			}
+		}
 	}
 }
 
@@ -198,13 +219,17 @@ func (w *Worker) startJob(ctx context.Context, job *compactorv1.CompactionJob) *
 
 	tempdir := filepath.Join(w.config.TempDir, job.Name)
 	sourcedir := filepath.Join(tempdir, "source")
-	compacted, err := block.Compact(ctx, job.Blocks, w.storage,
-		block.WithCompactionTempDir(tempdir),
-		block.WithCompactionObjectOptions(
-			block.WithObjectMaxSizeLoadInMemory(w.config.SmallObjectSize),
-			block.WithObjectDownload(sourcedir),
-		),
-	)
+	// TODO(kolesnikovae): Return the actual error once we
+	//   can handle compaction failures in metastore.
+	compacted, err := pretendEverythingIsOK(func() ([]*metastorev1.BlockMeta, error) {
+		return block.Compact(ctx, job.Blocks, w.storage,
+			block.WithCompactionTempDir(tempdir),
+			block.WithCompactionObjectOptions(
+				block.WithObjectMaxSizeLoadInMemory(w.config.SmallObjectSize),
+				block.WithObjectDownload(sourcedir),
+			),
+		)
+	})
 
 	logger := log.With(w.logger,
 		"job_name", job.Name,
@@ -249,4 +274,24 @@ func (w *Worker) startJob(ctx context.Context, job *compactorv1.CompactionJob) *
 	}
 
 	return job.Status
+}
+
+func pretendEverythingIsOK(fn func() ([]*metastorev1.BlockMeta, error)) (m []*metastorev1.BlockMeta, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("ignoring compaction panic:", r)
+			fmt.Println(string(debug.Stack()))
+			m = nil
+		}
+		if err != nil {
+			if errors.Is(err, context.Canceled) {
+				// We can handle this.
+				return
+			}
+			fmt.Println("ignoring compaction error:", err)
+			m = nil
+		}
+		err = nil
+	}()
+	return fn()
 }
