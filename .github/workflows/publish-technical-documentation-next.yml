@@ -15,7 +15,7 @@ jobs:
       uses: "actions/checkout@v3"
     - name: "Build website"
       run: |
-        docker run -v ${PWD}/docs/sources:/hugo/content/docs/phlare/latest -e HUGO_REFLINKSERRORLEVEL=ERROR --rm grafana/docs-base:latest /bin/bash -c 'make hugo'
+        docker run -v ${PWD}/docs/sources:/hugo/content/docs/pyroscope/latest -e HUGO_REFLINKSERRORLEVEL=ERROR --rm grafana/docs-base:latest /bin/bash -c 'make hugo'
 
   sync:
     runs-on: "ubuntu-latest"
