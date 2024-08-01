@@ -6,38 +6,15 @@ pyroscope:
   extraArgs:
     store-gateway.sharding-ring.replication-factor: "3"
   components:
-    distributor:
+    querier:
       kind: Deployment
-      replicaCount: 15
-      resources:
-        limits:
-          memory: 4Gi
-        requests:
-          memory: 2Gi
-          cpu: 500m
-    ingester:
-      kind: StatefulSet
-      replicaCount: 8
-      terminationGracePeriodSeconds: 600
-      resources:
-        limits:
-          memory: 4Gi
-        requests:
-          memory: 2Gi
-          cpu: 4
-    metastore:
-      kind: StatefulSet
       replicaCount: 3
-      terminationGracePeriodSeconds: 1200
-      persistence:
-        enabled: true
-        size: 100Gi
       resources:
         limits:
-          memory: 8Gi
+          memory: 1Gi
         requests:
-          memory: 8Gi
-          cpu: 2
+          memory: 256Mi
+          cpu: 1
     query-frontend:
       kind: Deployment
       replicaCount: 2
@@ -47,49 +24,37 @@ pyroscope:
         requests:
           memory: 256Mi
           cpu: 100m
-    query-worker:
-      kind: Deployment
-      replicaCount: 8
-      resources:
-        limits:
-          memory: 4Gi
-        requests:
-          memory: 4Gi
-          cpu: 2
-    compaction-worker:
-      extraArgs:
-        compaction-worker.job-capacity: 4
-      kind: Deployment
-      replicaCount: 10
-      resources:
-        limits:
-          memory: 8Gi
-        requests:
-          memory: 8Gi
-          cpu: 2
-
-    # TODO: Remove these components.
     query-scheduler:
       kind: Deployment
-      replicaCount: 0
+      replicaCount: 2
       resources:
         limits:
           memory: 1Gi
         requests:
           memory: 256Mi
           cpu: 100m
-    querier:
+    distributor:
       kind: Deployment
-      replicaCount: 0
+      replicaCount: 2
       resources:
         limits:
           memory: 1Gi
         requests:
           memory: 256Mi
+          cpu: 500m
+    ingester:
+      kind: StatefulSet
+      replicaCount: 3
+      terminationGracePeriodSeconds: 600
+      resources:
+        limits:
+          memory: 16Gi
+        requests:
+          memory: 8Gi
           cpu: 1
     compactor:
       kind: StatefulSet
-      replicaCount: 0
+      replicaCount: 3
       terminationGracePeriodSeconds: 1200
       persistence:
         enabled: false
@@ -101,7 +66,7 @@ pyroscope:
           cpu: 1
     store-gateway:
       kind: StatefulSet
-      replicaCount: 0
+      replicaCount: 3
       persistence:
         # The store-gateway needs not need persistent storage, but we still run it as a StatefulSet
         # This is to avoid having blocks of data being
@@ -119,6 +84,23 @@ pyroscope:
         # Depending on this flag and the number of tenants + blocks that need to be synced on startup, pods can take
         # some time to become ready. This value can be used to ensure Kubernetes waits long enough and reduce errors.
         initialDelaySeconds: 60
-
+    tenant-settings:
+      kind: Deployment
+      replicaCount: 1
+      resources:
+        limits:
+          memory: 4Gi
+        requests:
+          memory: 16Mi
+          cpu: 0.1
+    ad-hoc-profiles:
+      kind: Deployment
+      replicaCount: 1
+      resources:
+        limits:
+          memory: 4Gi
+        requests:
+          memory: 16Mi
+          cpu: 0.1
 minio:
   enabled: true

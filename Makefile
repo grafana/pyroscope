@@ -82,7 +82,6 @@ build-dev: ## Do a dev build (without requiring the frontend)
 frontend/build:
 	docker build  -f cmd/pyroscope/frontend.Dockerfile --output=public/build .
 
-
 .PHONY: release
 release/prereq: $(BIN)/goreleaser ## Ensure release pre requesites are met
 	# remove local git tags coming from helm chart release
@@ -163,7 +162,7 @@ check/go/mod: go/mod
 
 
 define docker_buildx
-	docker buildx build $(1) --platform $(IMAGE_PLATFORM) $(BUILDX_ARGS) --build-arg=revision=$(GIT_REVISION) -t $(IMAGE_PREFIX)$(shell basename $(@D)) -t $(IMAGE_PREFIX)$(shell basename $(@D)):$(IMAGE_TAG) -f cmd/$(shell basename $(@D))/$(2)Dockerfile .
+	docker buildx build $(1) --platform $(IMAGE_PLATFORM) $(BUILDX_ARGS) --build-arg=revision=$(GIT_REVISION) -t $(IMAGE_PREFIX)$(shell basename $(@D)):$(2)latest -t $(IMAGE_PREFIX)$(shell basename $(@D)):$(2)$(IMAGE_TAG) -f cmd/$(shell basename $(@D))/$(2)Dockerfile .
 endef
 
 define deploy
@@ -189,6 +188,12 @@ docker-image/pyroscope/build-debug: GOARCH=amd64
 docker-image/pyroscope/build-debug: frontend/build go/bin-debug $(BIN)/linux_amd64/dlv
 	$(call docker_buildx,--load,debug.)
 
+.PHONY: docker-image/pyroscope/push-debug
+docker-image/pyroscope/push-debug: GOOS=linux
+docker-image/pyroscope/push-debug: GOARCH=amd64
+docker-image/pyroscope/push-debug: frontend/build go/bin-debug $(BIN)/linux_amd64/dlv
+	$(call docker_buildx,--push,debug.)
+
 .PHONY: docker-image/pyroscope/build
 docker-image/pyroscope/build: GOOS=linux
 docker-image/pyroscope/build: GOARCH=amd64
@@ -213,14 +218,14 @@ define UPDATER_CONFIG_JSON
   "destination_branch": "master",
   "update_jsonnet_attribute_configs": [
     {
-      "file_path": "ksonnet/lib/pyroscope/releases/dev-003/images.libsonnet",
+      "file_path": "ksonnet/lib/pyroscope/releases/dev/images.libsonnet",
       "jsonnet_key": "pyroscope",
       "jsonnet_value": "$(IMAGE_PREFIX)pyroscope:$(IMAGE_TAG)"
     }
   ],
   "update_jsonnet_lib_configs": [
     {
-      "jsonnet_dir": "ksonnet/lib/pyroscope/releases/dev-003",
+      "jsonnet_dir": "ksonnet/lib/pyroscope/releases/dev",
       "dependencies": [
         {
           "owner": "grafana",
@@ -236,9 +241,9 @@ define UPDATER_CONFIG_JSON
 }
 endef
 
-.PHONY: docker-image/pyroscope/deploy-dev-003
-docker-image/pyroscope/deploy-dev-003: export CONFIG_JSON:=$(call UPDATER_CONFIG_JSON)
-docker-image/pyroscope/deploy-dev-003: $(BIN)/updater $(BIN)/jb
+.PHONY: docker-image/pyroscope/deploy-dev-001
+docker-image/pyroscope/deploy-dev-001: export CONFIG_JSON:=$(call UPDATER_CONFIG_JSON)
+docker-image/pyroscope/deploy-dev-001: $(BIN)/updater $(BIN)/jb
 	PATH=$(BIN):$(PATH) $(BIN)/updater
 
 .PHONY: clean
@@ -258,7 +263,7 @@ $(BIN)/buf: Makefile
 
 $(BIN)/golangci-lint: Makefile
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.58.2
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.1
 
 $(BIN)/protoc-gen-go: Makefile go.mod
 	@mkdir -p $(@D)
@@ -325,7 +330,7 @@ $(BIN)/gotestsum: Makefile go.mod
 	@mkdir -p $(@D)
 	GOBIN=$(abspath $(@D)) $(GO) install gotest.tools/gotestsum@v1.9.0
 
-DLV_VERSION=v1.21.0
+DLV_VERSION=v1.23.0
 
 $(BIN)/dlv: Makefile go.mod
 	@mkdir -p $(@D)

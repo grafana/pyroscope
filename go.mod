@@ -5,6 +5,7 @@ go 1.21.0
 require (
 	connectrpc.com/connect v1.16.2
 	connectrpc.com/grpchealth v1.3.0
+	github.com/OneOfOne/xxhash v1.2.6
 	github.com/PuerkitoBio/goquery v1.8.1
 	github.com/aybabtme/rgbterm v0.0.0-20170906152045-cc83f3b3ce59
 	github.com/briandowns/spinner v1.23.0

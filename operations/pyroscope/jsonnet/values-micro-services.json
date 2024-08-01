@@ -4,19 +4,16 @@
   },
   "pyroscope": {
     "components": {
-      "compaction-worker": {
-        "extraArgs": {
-          "compaction-worker.job-capacity": 4
-        },
+      "ad-hoc-profiles": {
         "kind": "Deployment",
-        "replicaCount": 10,
+        "replicaCount": 1,
         "resources": {
           "limits": {
-            "memory": "8Gi"
+            "memory": "4Gi"
           },
           "requests": {
-            "cpu": 2,
-            "memory": "8Gi"
+            "cpu": 0.1,
+            "memory": "16Mi"
           }
         }
       },
@@ -25,7 +22,7 @@
         "persistence": {
           "enabled": false
         },
-        "replicaCount": 0,
+        "replicaCount": 3,
         "resources": {
           "limits": {
             "memory": "16Gi"
@@ -39,52 +36,34 @@
       },
       "distributor": {
         "kind": "Deployment",
-        "replicaCount": 15,
+        "replicaCount": 2,
         "resources": {
           "limits": {
-            "memory": "4Gi"
+            "memory": "1Gi"
           },
           "requests": {
             "cpu": "500m",
-            "memory": "2Gi"
+            "memory": "256Mi"
           }
         }
       },
       "ingester": {
         "kind": "StatefulSet",
-        "replicaCount": 8,
+        "replicaCount": 3,
         "resources": {
           "limits": {
-            "memory": "4Gi"
+            "memory": "16Gi"
           },
           "requests": {
-            "cpu": 4,
-            "memory": "2Gi"
+            "cpu": 1,
+            "memory": "8Gi"
           }
         },
         "terminationGracePeriodSeconds": 600
       },
-      "metastore": {
-        "kind": "StatefulSet",
-        "persistence": {
-          "enabled": true,
-          "size": "100Gi"
-        },
-        "replicaCount": 3,
-        "resources": {
-          "limits": {
-            "memory": "8Gi"
-          },
-          "requests": {
-            "cpu": 2,
-            "memory": "8Gi"
-          }
-        },
-        "terminationGracePeriodSeconds": 1200
-      },
       "querier": {
         "kind": "Deployment",
-        "replicaCount": 0,
+        "replicaCount": 3,
         "resources": {
           "limits": {
             "memory": "1Gi"
@@ -110,7 +89,7 @@
       },
       "query-scheduler": {
         "kind": "Deployment",
-        "replicaCount": 0,
+        "replicaCount": 2,
         "resources": {
           "limits": {
             "memory": "1Gi"
@@ -118,19 +97,6 @@
           "requests": {
             "cpu": "100m",
             "memory": "256Mi"
-          }
-        }
-      },
-      "query-worker": {
-        "kind": "Deployment",
-        "replicaCount": 8,
-        "resources": {
-          "limits": {
-            "memory": "4Gi"
-          },
-          "requests": {
-            "cpu": 2,
-            "memory": "4Gi"
           }
         }
       },
@@ -142,7 +108,7 @@
         "readinessProbe": {
           "initialDelaySeconds": 60
         },
-        "replicaCount": 0,
+        "replicaCount": 3,
         "resources": {
           "limits": {
             "memory": "16Gi"
@@ -150,6 +116,19 @@
           "requests": {
             "cpu": 1,
             "memory": "8Gi"
+          }
+        }
+      },
+      "tenant-settings": {
+        "kind": "Deployment",
+        "replicaCount": 1,
+        "resources": {
+          "limits": {
+            "memory": "4Gi"
+          },
+          "requests": {
+            "cpu": 0.1,
+            "memory": "16Mi"
           }
         }
       }

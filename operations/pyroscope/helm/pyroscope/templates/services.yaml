@@ -26,8 +26,6 @@ spec:
     {{- include "pyroscope.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component | quote }}
 ---
-# TODO: headless services need to be listed explicitly
-{{- if ne $component "compaction-worker" }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -47,25 +45,8 @@ spec:
       targetPort: {{ $values.service.port_name }}
       protocol: TCP
       name: {{ $values.service.port_name }}
-    {{- if eq $component "query-worker" }}
-    - name: grpc
-      port: 9095
-      protocol: TCP
-      targetPort: 9095
-    {{- else if eq $component "metastore" }}
-    - name: grpc
-      port: 9095
-      protocol: TCP
-      targetPort: 9095
-    - name: raft
-      port: 9099
-      protocol: TCP
-      targetPort: 9099
-  publishNotReadyAddresses: true
-    {{- end }}
   selector:
     {{- include "pyroscope.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component | quote }}
-{{- end }}
 {{- end }}
 {{- end }}

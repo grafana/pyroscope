@@ -1,0 +1,17 @@
+name: helm-release
+
+on:
+  push:
+    branches:
+      - main
+      - "release-[0-9]+.[0-9]+"
+
+jobs:
+  call-update-helm-repo:
+    uses: grafana/helm-charts/.github/workflows/update-helm-repo.yaml@main
+    with:
+      charts_dir: operations/pyroscope/helm/
+      cr_configfile: operations/pyroscope/helm/cr.yaml
+      ct_configfile: operations/pyroscope/helm/ct.yaml
+    secrets:
+      helm_repo_token: ${{ secrets.GH_BOT_ACCESS_TOKEN }}

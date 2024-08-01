@@ -1037,16 +1037,11 @@ metadata:
 rules:
 - apiGroups:
   - ""
-  - discovery.k8s.io
   resources:
   - pods
-  - services
-  - endpoints
-  - endpointslices
   verbs:
   - list
   - watch
-  - get
 - apiGroups:
   - ""
   resources:
@@ -1156,7 +1151,7 @@ spec:
       targetPort: 12345
       protocol: "TCP"
 ---
-# Source: pyroscope/templates/service-memberlist.yaml
+# Source: pyroscope/templates/memberlist-service.yaml
 apiVersion: v1
 kind: Service
 metadata:
@@ -1209,7 +1204,6 @@ spec:
     app.kubernetes.io/component: "all"
 ---
 # Source: pyroscope/templates/services.yaml
-# TODO: headless services need to be listed explicitly
 apiVersion: v1
 kind: Service
 metadata:
@@ -1379,23 +1373,9 @@ spec:
             - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
-            - "-metastore.raft.bind-address=:9099"
-            - "-metastore.raft.advertise-address=$(POD_NAME).pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
-            - "-metastore.raft.server-id=$(POD_NAME).pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
-            - "-metastore.raft.bootstrap-peers=dnssrvnoa+_raft._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
-            - "-metastore.raft.bootstrap-expect-peers=1"
-            - "-metastore.address=dns:///_grpc._tcp.pyroscope-dev-metastore-headless.default.svc.cluster.local.:9095"
-            - "-query-backend.address=dns:///pyroscope-dev-query-worker-headless.default.svc.cluster.local.:9095"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
-            - "-ingester.num-tokens=4"
-            - "-distributor.replication-factor=1"
             - "-log.level=debug"
-          env:
-            - name: POD_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
           ports:
             - name: http2
               containerPort: 4040
