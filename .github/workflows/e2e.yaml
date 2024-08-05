@@ -60,7 +60,7 @@ jobs:
       - run: yarn --frozen-lockfile
       - run: make build
       - name: run nginx with /foobar/
-        run: docker-compose -f scripts/base-url/docker-compose.yaml up -d
+        run: docker compose -f scripts/base-url/docker-compose.yaml up -d
       - name: Cypress run
         uses: cypress-io/github-action@v5
         with:
