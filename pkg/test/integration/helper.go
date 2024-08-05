@@ -88,6 +88,7 @@ func (p *PyroscopeTest) Start(t *testing.T) {
 	p.config.MemberlistKV.AdvertisePort = p.memberlistPort
 	p.config.MemberlistKV.TCPTransport.BindPort = p.memberlistPort
 	p.config.Ingester.LifecyclerConfig.Addr = address
+	p.config.Ingester.LifecyclerConfig.MinReadyDuration = 0
 	p.config.QueryScheduler.ServiceDiscovery.SchedulerRing.InstanceAddr = address
 	p.config.Frontend.Addr = address
 

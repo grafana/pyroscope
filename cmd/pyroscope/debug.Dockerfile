@@ -5,9 +5,12 @@ SHELL [ "/busybox/sh", "-c" ]
 RUN addgroup -g 10001 -S pyroscope && \
     adduser -u 10001 -S pyroscope -G pyroscope -h /data
 
-# Copy folder from debug container, this folder needs to have the correct UID
-# in order for the container to run as non-root.
+# This folder is created by adduser command with right owner/group
 VOLUME /data
+
+# This folder needs to be created and set to the right owner/group
+VOLUME /data-compactor
+RUN mkdir -p /data-compactor && chown pyroscope:pyroscope /data /data-compactor
 
 COPY .tmp/bin/linux_amd64/dlv /usr/bin/dlv
 COPY cmd/pyroscope/pyroscope.yaml /etc/pyroscope/config.yaml
