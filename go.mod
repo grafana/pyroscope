@@ -27,6 +27,7 @@ require (
 	github.com/google/pprof v0.0.0-20240227163752-401108e1b7e7
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.0
+	github.com/gorilla/websocket v1.5.0
 	github.com/grafana/alloy/syntax v0.1.0
 	github.com/grafana/dskit v0.0.0-20231221015914-de83901bf4d6
 	github.com/grafana/jfr-parser/pprof v0.0.0-20240228024232-8abcb81c304c
