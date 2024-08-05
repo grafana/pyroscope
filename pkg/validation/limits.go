@@ -8,7 +8,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/model/relabel"
 	"gopkg.in/yaml.v3"
 
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
@@ -20,14 +19,6 @@ const (
 	// MinCompactorPartialBlockDeletionDelay is the minimum partial blocks deletion delay that can be configured in Mimir.
 	// Partial blocks are blocks that are not having meta file uploaded yet.
 	MinCompactorPartialBlockDeletionDelay = 4 * time.Hour
-)
-
-type RulesPosition string
-
-const (
-	RulePositionFirst    RulesPosition = "first"
-	RulePositionDisabled RulesPosition = "disabled"
-	RulePositionLast     RulesPosition = "last"
 )
 
 // Limits describe all the limits for tenants; can be used to describe global default
@@ -58,8 +49,8 @@ type Limits struct {
 	DistributorAggregationPeriod model.Duration `yaml:"distributor_aggregation_period" json:"distributor_aggregation_period"`
 
 	// IngestionRelabelingRules allow to specify additional relabeling rules that get applied before a profile gets ingested. There are some default relabeling rules, which ensure consistency of profiling series. The position of the default rules can be contolled by IngestionRelabelingDefaultRulesPosition
-	IngestionRelabelingRules                []*relabel.Config `yaml:"ingestion_relabeling_rules" json:"ingestion_relabeling_rules"`
-	IngestionRelabelingDefaultRulesPosition RulesPosition     `yaml:"ingestion_relabeling_default_rules_position" json:"ingestion_relabeling_default_rules_position"`
+	IngestionRelabelingRules                RelabelRules         `yaml:"ingestion_relabeling_rules" json:"ingestion_relabeling_rules" category:"advanced"`
+	IngestionRelabelingDefaultRulesPosition RelabelRulesPosition `yaml:"ingestion_relabeling_default_rules_position" json:"ingestion_relabeling_default_rules_position" category:"advanced"`
 
 	// The tenant shard size determines the how many ingesters a particular
 	// tenant will be sharded to. Needs to be specified on distributors for
@@ -173,6 +164,12 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 
 	_ = l.RejectOlderThan.Set("1h")
 	f.Var(&l.RejectOlderThan, "validation.reject-older-than", "This limits how far into the past profiling data can be ingested. This limit is enforced in the distributor. 0 to disable, defaults to 1h.")
+
+	_ = l.IngestionRelabelingDefaultRulesPosition.Set("first")
+	f.Var(&l.IngestionRelabelingDefaultRulesPosition, "distributor.ingestion-relabeling-default-rules-position", "Position of the default ingestion relabeling rules in relation to relabel rules from overrides. Valid values are 'first', 'last' or 'disabled'.")
+	_ = l.IngestionRelabelingRules.Set("[]")
+	f.Var(&l.IngestionRelabelingRules, "distributor.ingestion-relabeling-rules", "List of ingestion relabel configurations. The relabeling rules work the same way, as those of [Prometheus](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config). All rules are applied in the order they are specified. Note: In most situations, it is more effective to use relabeling directly in Grafana Alloy.")
+
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
@@ -198,11 +195,10 @@ func (l *Limits) UnmarshalYAML(unmarshal func(interface{}) error) error {
 // Validate validates that this limits config is valid.
 func (l *Limits) Validate() error {
 
-	switch l.IngestionRelabelingDefaultRulesPosition {
-	case "", RulePositionFirst, RulePositionLast, RulePositionDisabled:
-		break
-	default:
-		return fmt.Errorf("invalid ingestion_relabeling_default_rules_position: %s", l.IngestionRelabelingDefaultRulesPosition)
+	if l.IngestionRelabelingDefaultRulesPosition != "" {
+		if err := l.IngestionRelabelingDefaultRulesPosition.Set(string(l.IngestionRelabelingDefaultRulesPosition)); err != nil {
+			return err
+		}
 	}
 
 	return nil
