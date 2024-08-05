@@ -413,8 +413,8 @@ func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.Pu
 
 	// Next we split profiles by labels and apply relabel rules.
 	profileSeries, bytesRelabelDropped, profilesRelabelDropped := extractSampleSeries(req, tenantID, usageGroups, d.limits.IngestionRelabelingRules(tenantID))
-	validation.DiscardedBytes.WithLabelValues(string(validation.RelabelRules), tenantID).Add(bytesRelabelDropped)
-	validation.DiscardedProfiles.WithLabelValues(string(validation.RelabelRules), tenantID).Add(profilesRelabelDropped)
+	validation.DiscardedBytes.WithLabelValues(string(validation.DroppedByRelabelRules), tenantID).Add(bytesRelabelDropped)
+	validation.DiscardedProfiles.WithLabelValues(string(validation.DroppedByRelabelRules), tenantID).Add(profilesRelabelDropped)
 
 	// Filter our series and profiles without samples.
 	for _, series := range profileSeries {
@@ -786,7 +786,7 @@ func extractSampleSeries(req *distributormodel.PushRequest, tenantID string, usa
 					if !keep {
 						bytesRelabelDropped += float64(raw.Profile.SizeVT())
 						profilesRelabelDropped++ // in this case we dropped a whole profile
-						usageGroups.CountDiscardedBytes(string(validation.RelabelRules), int64(raw.Profile.SizeVT()))
+						usageGroups.CountDiscardedBytes(string(validation.DroppedByRelabelRules), int64(raw.Profile.SizeVT()))
 						continue
 					}
 				}
@@ -810,7 +810,7 @@ func extractSampleSeries(req *distributormodel.PushRequest, tenantID string, usa
 					if !keep {
 						droppedBytes := sampleSize(raw.Profile.Profile.StringTable, group.Samples)
 						bytesRelabelDropped += float64(droppedBytes)
-						usageGroups.CountDiscardedBytes(string(validation.RelabelRules), droppedBytes)
+						usageGroups.CountDiscardedBytes(string(validation.DroppedByRelabelRules), droppedBytes)
 						continue
 					}
 				}
