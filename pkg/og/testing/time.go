@@ -12,9 +12,6 @@ func ParseTime(str string) time.Time {
 	return r.UTC()
 }
 
-func SimpleTime(i int) time.Time {
-	return time.Time{}.Add(time.Duration(i) * time.Second).UTC()
-}
 
 func SimpleUTime(i int) time.Time {
 	return time.Unix(int64(i), 0)
