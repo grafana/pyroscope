@@ -20,7 +20,7 @@ Grafana Pyroscope is an open source continuous profiling platform. It will help 
 * Understand the call tree of your application
 * Auto-instrument your code to link profiling data to traces
 
-## 🔥 [Pyroscope Live Demo](https://demo.pyroscope.io/) 🔥
+## 🔥 [Pyroscope Live Demo](https://play.grafana.org/a/grafana-pyroscope-app/)
 
 [![Pyroscope GIF Demo](https://user-images.githubusercontent.com/23323466/143324845-16ff72df-231e-412d-bd0a-38ef2e09cba8.gif)](https://demo.pyroscope.io/)
 
@@ -116,19 +116,14 @@ For more information on how to use Pyroscope with other programming languages, i
 
 You can download the latest version of pyroscope for macOS, linux and Docker from our [Releases page](https://github.com/grafana/pyroscope/releases).
 
-## Supported Languages
+## [Supported Languages][supported languages]
 
-* [x] Go (via `pprof`)
-* [x] Python (via `py-spy`)
-* [x] Ruby (via `rbspy`)
-* [x] Linux eBPF
-* [x] Java (via `async-profiler`)
-* [x] Rust (via `pprof-rs`)
-* [x] .NET
-* [x] PHP (via `phpspy`)
-* [x] Node
+Our documentation contains the most recent list of [supported languages] and also an overview over what [profiling types are supported per language][profile-types-languages].
 
 Let us know what other integrations you want to see in [our issues](https://github.com/grafana/pyroscope/issues?q=is%3Aissue+is%3Aopen+label%3Anew-profilers) or in [our slack](https://slack.grafana.com).
+
+[supported languages]: https://grafana.com/docs/pyroscope/latest/configure-client/
+[profile-types-languages]: https://grafana.com/docs/pyroscope/latest/view-and-analyze-profile-data/profiling-types/#available-profiling-types
 
 ## Credits
 

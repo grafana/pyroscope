@@ -109,6 +109,7 @@ func (f *Phlare) initQueryFrontend() (services.Service, error) {
 	f.API.RegisterPyroscopeHandlers(frontendSvc)
 	f.API.RegisterQueryFrontend(frontendSvc)
 	f.API.RegisterQuerier(frontendSvc)
+	f.frontend = frontendSvc
 
 	return frontendSvc, nil
 }
@@ -408,6 +409,7 @@ func (f *Phlare) initIngester() (_ services.Service, err error) {
 	}
 
 	f.API.RegisterIngester(svc)
+	f.ingester = svc
 
 	return svc, nil
 }

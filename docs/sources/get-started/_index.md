@@ -83,12 +83,17 @@ Verify that you have installed [Docker](https://docs.docker.com/engine/install/)
 1. In a new terminal, run a local Grafana server using Docker:
 
     ```bash
-    docker run --rm --name=grafana -p 3000:3000 -e "GF_FEATURE_TOGGLES_ENABLE=flameGraph" --network=pyroscope-demo grafana/grafana:main
+    docker run --rm --name=grafana \
+      --network=pyroscope-demo \
+      -p 3000:3000 \
+      -e "GF_INSTALL_PLUGINS=grafana-pyroscope-app"\
+      -e "GF_AUTH_ANONYMOUS_ENABLED=true" \
+      -e "GF_AUTH_ANONYMOUS_ORG_ROLE=Admin" \
+      -e "GF_AUTH_DISABLE_LOGIN_FORM=true" \
+      grafana/grafana:main
     ```
 
 1. In a browser, go to the Grafana server at [http://localhost:3000/datasources](http://localhost:3000/datasources).
-
-1. Sign in using the default username `admin` and password `admin`.
 
 1. Use the following settings to configure a Pyroscope data source to query the local Pyroscope server:
 

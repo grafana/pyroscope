@@ -108,13 +108,15 @@ func addQueryParams(queryCmd commander) *queryParams {
 
 type queryMergeParams struct {
 	*queryParams
-	ProfileType string
+	ProfileType        string
+	StacktraceSelector []string
 }
 
 func addQueryMergeParams(queryCmd commander) *queryMergeParams {
 	params := new(queryMergeParams)
 	params.queryParams = addQueryParams(queryCmd)
 	queryCmd.Flag("profile-type", "Profile type to query.").Default("process_cpu:cpu:nanoseconds:cpu:nanoseconds").StringVar(&params.ProfileType)
+	queryCmd.Flag("stacktrace-selector", "Only query locations with those symbols. Provide multiple times starting with the root").StringsVar(&params.StacktraceSelector)
 	return params
 }
 
@@ -124,13 +126,28 @@ func queryMerge(ctx context.Context, params *queryMergeParams, outputFlag string
 		return err
 	}
 	level.Info(logger).Log("msg", "query aggregated profile from profile store", "url", params.URL, "from", from, "to", to, "query", params.Query, "type", params.ProfileType)
-	return selectMergeProfile(ctx, params.phlareClient, outputFlag,
-		&querierv1.SelectMergeProfileRequest{
-			ProfileTypeID: params.ProfileType,
-			Start:         from.UnixMilli(),
-			End:           to.UnixMilli(),
-			LabelSelector: params.Query,
-		})
+
+	req := &querierv1.SelectMergeProfileRequest{
+		ProfileTypeID: params.ProfileType,
+		Start:         from.UnixMilli(),
+		End:           to.UnixMilli(),
+		LabelSelector: params.Query,
+	}
+
+	if len(params.StacktraceSelector) > 0 {
+		locations := make([]*typesv1.Location, 0, len(params.StacktraceSelector))
+		for _, cs := range params.StacktraceSelector {
+			locations = append(locations, &typesv1.Location{
+				Name: cs,
+			})
+		}
+		req.StackTraceSelector = &typesv1.StackTraceSelector{
+			CallSite: locations,
+		}
+		level.Info(logger).Log("msg", "selecting with stackstrace selector", "call-site", fmt.Sprintf("%#+v", params.StacktraceSelector))
+	}
+
+	return selectMergeProfile(ctx, params.phlareClient, outputFlag, req)
 }
 
 func selectMergeProfile(ctx context.Context, client *phlareClient, outputFlag string, req *querierv1.SelectMergeProfileRequest) error {

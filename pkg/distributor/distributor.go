@@ -126,6 +126,7 @@ type Limits interface {
 	MaxSessionsPerSeries(tenantID string) int
 	EnforceLabelsOrder(tenantID string) bool
 	IngestionRelabelingRules(tenantID string) []*relabel.Config
+	DistributorUsageGroups(tenantID string) *validation.UsageGroupConfig
 	validation.ProfileValidationLimits
 	aggregator.Limits
 }
@@ -284,9 +285,13 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		return nil, err
 	}
 
+	usageGroups := d.limits.DistributorUsageGroups(tenantID)
+
 	for _, series := range req.Series {
 		profName := phlaremodel.Labels(series.Labels).Get(ProfileName)
+		groups := usageGroups.GetUsageGroups(tenantID, phlaremodel.Labels(series.Labels))
 		profLanguage := d.GetProfileLanguage(series)
+
 		for _, raw := range series.Samples {
 			usagestats.NewCounter(fmt.Sprintf("distributor_profile_type_%s_received", profName)).Inc(1)
 			d.profileReceivedStats.Inc(1, profLanguage)
@@ -298,11 +303,14 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 			d.metrics.receivedDecompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(decompressedSize))
 			d.metrics.receivedSamples.WithLabelValues(profName, tenantID).Observe(float64(len(p.Sample)))
 			d.profileSizeStats.Record(float64(decompressedSize), profLanguage)
+			groups.CountReceivedBytes(profName, int64(decompressedSize))
 
 			if err = validation.ValidateProfile(d.limits, tenantID, p.Profile, decompressedSize, series.Labels, now); err != nil {
 				_ = level.Debug(d.logger).Log("msg", "invalid profile", "err", err)
-				validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(req.TotalProfiles))
-				validation.DiscardedBytes.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(req.TotalBytesUncompressed))
+				reason := string(validation.ReasonOf(err))
+				validation.DiscardedProfiles.WithLabelValues(reason, tenantID).Add(float64(req.TotalProfiles))
+				validation.DiscardedBytes.WithLabelValues(reason, tenantID).Add(float64(req.TotalBytesUncompressed))
+				groups.CountDiscardedBytes(reason, req.TotalBytesUncompressed)
 				return nil, connect.NewError(connect.CodeInvalidArgument, err)
 			}
 
@@ -401,11 +409,12 @@ func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.Pu
 	for _, series := range req.Series {
 		series.Labels = d.limitMaxSessionsPerSeries(maxSessionsPerSeries, series.Labels)
 	}
+	usageGroups := d.limits.DistributorUsageGroups(tenantID)
 
 	// Next we split profiles by labels and apply relabel rules.
-	profileSeries, bytesRelabelDropped, profilesRelabelDropped := extractSampleSeries(req, d.limits.IngestionRelabelingRules(tenantID))
-	validation.DiscardedBytes.WithLabelValues(string(validation.RelabelRules), tenantID).Add(bytesRelabelDropped)
-	validation.DiscardedProfiles.WithLabelValues(string(validation.RelabelRules), tenantID).Add(profilesRelabelDropped)
+	profileSeries, bytesRelabelDropped, profilesRelabelDropped := extractSampleSeries(req, tenantID, usageGroups, d.limits.IngestionRelabelingRules(tenantID))
+	validation.DiscardedBytes.WithLabelValues(string(validation.DroppedByRelabelRules), tenantID).Add(bytesRelabelDropped)
+	validation.DiscardedProfiles.WithLabelValues(string(validation.DroppedByRelabelRules), tenantID).Add(profilesRelabelDropped)
 
 	// Filter our series and profiles without samples.
 	for _, series := range profileSeries {
@@ -427,9 +436,13 @@ func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.Pu
 		if enforceLabelsOrder {
 			series.Labels = phlaremodel.Labels(series.Labels).InsertSorted(phlaremodel.LabelNameOrder, phlaremodel.LabelOrderEnforced)
 		}
+
+		groups := usageGroups.GetUsageGroups(tenantID, phlaremodel.Labels(series.Labels))
+
 		if err = validation.ValidateLabels(d.limits, tenantID, series.Labels); err != nil {
 			validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(req.TotalProfiles))
 			validation.DiscardedBytes.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(req.TotalBytesUncompressed))
+			groups.CountDiscardedBytes(string(validation.ReasonOf(err)), req.TotalBytesUncompressed)
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
 		keys[i] = TokenFor(tenantID, phlaremodel.LabelPairsString(series.Labels))
@@ -746,7 +759,7 @@ func (g *groupsWithFingerprints) add(stringTable []string, lbls phlaremodel.Labe
 	})
 }
 
-func extractSampleSeries(req *distributormodel.PushRequest, relabelRules []*relabel.Config) (result []*distributormodel.ProfileSeries, bytesRelabelDropped, profilesRelabelDropped float64) {
+func extractSampleSeries(req *distributormodel.PushRequest, tenantID string, usageGroups *validation.UsageGroupConfig, relabelRules []*relabel.Config) (result []*distributormodel.ProfileSeries, bytesRelabelDropped, profilesRelabelDropped float64) {
 	var (
 		lblbuilder = phlaremodel.NewLabelsBuilder(phlaremodel.EmptyLabels())
 	)
@@ -757,6 +770,8 @@ func extractSampleSeries(req *distributormodel.PushRequest, relabelRules []*rela
 			Labels:  series.Labels,
 			Samples: make([]*distributormodel.ProfileSample, 0, len(series.Samples)),
 		}
+		usageGroups := usageGroups.GetUsageGroups(tenantID, phlaremodel.Labels(series.Labels))
+
 		for _, raw := range series.Samples {
 			pprof.RenameLabel(raw.Profile.Profile, pprof.ProfileIDLabelName, pprof.SpanIDLabelName)
 			groups := pprof.GroupSamplesWithoutLabels(raw.Profile.Profile, pprof.SpanIDLabelName)
@@ -771,6 +786,7 @@ func extractSampleSeries(req *distributormodel.PushRequest, relabelRules []*rela
 					if !keep {
 						bytesRelabelDropped += float64(raw.Profile.SizeVT())
 						profilesRelabelDropped++ // in this case we dropped a whole profile
+						usageGroups.CountDiscardedBytes(string(validation.DroppedByRelabelRules), int64(raw.Profile.SizeVT()))
 						continue
 					}
 				}
@@ -792,7 +808,9 @@ func extractSampleSeries(req *distributormodel.PushRequest, relabelRules []*rela
 				if len(relabelRules) > 0 {
 					keep := relabel.ProcessBuilder(lblbuilder, relabelRules...)
 					if !keep {
-						bytesRelabelDropped += float64(sampleSize(raw.Profile.Profile.StringTable, group.Samples))
+						droppedBytes := sampleSize(raw.Profile.Profile.StringTable, group.Samples)
+						bytesRelabelDropped += float64(droppedBytes)
+						usageGroups.CountDiscardedBytes(string(validation.DroppedByRelabelRules), droppedBytes)
 						continue
 					}
 				}

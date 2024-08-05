@@ -6,7 +6,7 @@ jobs:
   call-lint:
     uses: grafana/helm-charts/.github/workflows/linter.yml@main
     with:
-      filter_regex_include: .*operations/pyroscope/helm/.*
+      filter_regex_include: operations/pyroscope/helm/pyroscope/templates/.*
 
   call-lint-test:
     uses: grafana/helm-charts/.github/workflows/lint-test.yaml@main
