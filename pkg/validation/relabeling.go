@@ -1,8 +1,12 @@
 package validation
 
 import (
+	"encoding/json"
+	"fmt"
+
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
+	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -50,11 +54,78 @@ var (
 	}
 )
 
+type RelabelRulesPosition string
+
+func (p *RelabelRulesPosition) Set(s string) error {
+	switch sp := RelabelRulesPosition(s); sp {
+	case RelabelRulePositionFirst, RelabelRulePositionLast, RelabelRulePositionDisabled:
+		*p = sp
+		return nil
+	}
+	return fmt.Errorf("invalid ingestion_relabeling_default_rules_position: %s", s)
+}
+
+func (p *RelabelRulesPosition) String() string {
+	return string(*p)
+}
+
+const (
+	RelabelRulePositionFirst    RelabelRulesPosition = "first"
+	RelabelRulePositionDisabled RelabelRulesPosition = "disabled"
+	RelabelRulePositionLast     RelabelRulesPosition = "last"
+)
+
+type RelabelRules []*relabel.Config
+
+func (p *RelabelRules) Set(s string) error {
+
+	v := []*relabel.Config{}
+	if err := yaml.Unmarshal([]byte(s), &v); err != nil {
+		return err
+	}
+
+	for idx, rule := range v {
+		if err := rule.Validate(); err != nil {
+			return fmt.Errorf("rule at pos %d is not valid: %w", idx, err)
+		}
+	}
+	*p = v
+	return nil
+}
+
+func (p RelabelRules) String() string {
+	yamlBytes, err := yaml.Marshal(p)
+	if err != nil {
+		panic(fmt.Errorf("error marshal yaml: %w", err))
+	}
+
+	temp := make([]interface{}, 0, len(p))
+	err = yaml.Unmarshal(yamlBytes, &temp)
+	if err != nil {
+		panic(fmt.Errorf("error unmarshal yaml: %w", err))
+	}
+
+	jsonBytes, err := json.Marshal(temp)
+	if err != nil {
+		panic(fmt.Errorf("error marshal json: %w", err))
+	}
+	return string(jsonBytes)
+}
+
+// ExampleDoc provides an example doc for this config, especially valuable since it's custom-unmarshaled.
+func (r RelabelRules) ExampleDoc() (comment string, yaml interface{}) {
+	return `This example consists of two rules, the first one will drop all profiles received with an label 'environment="secrets"' and the second rule will add a label 'powered_by="Grafana Labs"' to all profile series.`,
+		[]map[string]interface{}{
+			{"action": "drop", "source_labels": []interface{}{"environment"}, "regex": "secret"},
+			{"action": "replace", "replacement": "grafana-labs", "target_label": "powered_by"},
+		}
+}
+
 func (o *Overrides) IngestionRelabelingRules(tenantID string) []*relabel.Config {
 	l := o.getOverridesForTenant(tenantID)
 
 	// return only custom rules when default rules are disabled
-	if l.IngestionRelabelingDefaultRulesPosition == RulePositionDisabled {
+	if l.IngestionRelabelingDefaultRulesPosition == RelabelRulePositionDisabled {
 		return l.IngestionRelabelingRules
 	}
 
@@ -65,7 +136,7 @@ func (o *Overrides) IngestionRelabelingRules(tenantID string) []*relabel.Config 
 
 	rules := make([]*relabel.Config, 0, len(l.IngestionRelabelingRules)+len(defaultRelabelRules))
 
-	if l.IngestionRelabelingDefaultRulesPosition == "" || l.IngestionRelabelingDefaultRulesPosition == RulePositionFirst {
+	if l.IngestionRelabelingDefaultRulesPosition == "" || l.IngestionRelabelingDefaultRulesPosition == RelabelRulePositionFirst {
 		rules = append(rules, defaultRelabelRules...)
 		return append(rules, l.IngestionRelabelingRules...)
 	}

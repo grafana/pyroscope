@@ -1843,6 +1843,8 @@ The `limits` block configures default and per-tenant limits imposed by component
 # CLI flag: -validation.max-profile-symbol-value-length
 [max_profile_symbol_value_length: <int> | default = 65535]
 
+distributor_usage_groups:
+
 # Duration of the distributor aggregation window. Requires aggregation period to
 # be specified. 0 to disable.
 # CLI flag: -distributor.aggregation-window
@@ -1853,9 +1855,30 @@ The `limits` block configures default and per-tenant limits imposed by component
 # CLI flag: -distributor.aggregation-period
 [distributor_aggregation_period: <duration> | default = 0s]
 
-[ingestion_relabeling_rules: <relabel_config...> | default = ]
+# List of ingestion relabel configurations. The relabeling rules work the same
+# way, as those of
+# [Prometheus](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config).
+# All rules are applied in the order they are specified. Note: In most
+# situations, it is more effective to use relabeling directly in Grafana Alloy.
+# Example:
+#   This example consists of two rules, the first one will drop all profiles
+#   received with an label 'environment="secrets"' and the second rule will add
+#   a label 'powered_by="Grafana Labs"' to all profile series.
+#   ingestion_relabeling_rules:
+#       - action: drop
+#         regex: secret
+#         source_labels:
+#           - environment
+#       - action: replace
+#         replacement: grafana-labs
+#         target_label: powered_by
+# CLI flag: -distributor.ingestion-relabeling-rules
+[ingestion_relabeling_rules: <list of Configs> | default = []]
 
-[ingestion_relabeling_default_rules_position: <string> | default = ""]
+# Position of the default ingestion relabeling rules in relation to relabel
+# rules from overrides. Valid values are 'first', 'last' or 'disabled'.
+# CLI flag: -distributor.ingestion-relabeling-default-rules-position
+[ingestion_relabeling_default_rules_position: <string> | default = "first"]
 
 # The tenant's shard size used by shuffle-sharding. Must be set both on
 # ingesters and distributors. 0 disables shuffle sharding.
