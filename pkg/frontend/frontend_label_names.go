@@ -9,7 +9,6 @@ import (
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
-	querybackendv1 "github.com/grafana/pyroscope/api/gen/proto/go/querybackend/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
@@ -23,6 +22,7 @@ func (f *Frontend) LabelNames(ctx context.Context, c *connect.Request[typesv1.La
 		SetTag("matchers", c.Msg.Matchers)
 
 	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceLabelNamesProcedure)
+
 	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -41,19 +41,5 @@ func (f *Frontend) LabelNames(ctx context.Context, c *connect.Request[typesv1.La
 		c.Msg.End = int64(validated.End)
 	}
 
-	labelSelector, err := buildLabelSelectorFromMatchers(c.Msg.Matchers)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
-	}
-	report, err := f.invoke(ctx, c.Msg.Start, c.Msg.End, tenantIDs, labelSelector, &querybackendv1.Query{
-		QueryType:  querybackendv1.QueryType_QUERY_LABEL_NAMES,
-		LabelNames: &querybackendv1.LabelNamesQuery{},
-	})
-	if err != nil {
-		return nil, err
-	}
-	if report == nil {
-		return connect.NewResponse(&typesv1.LabelNamesResponse{}), nil
-	}
-	return connect.NewResponse(&typesv1.LabelNamesResponse{Names: report.LabelNames.LabelNames}), nil
+	return connectgrpc.RoundTripUnary[typesv1.LabelNamesRequest, typesv1.LabelNamesResponse](ctx, f, c)
 }

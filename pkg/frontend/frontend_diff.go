@@ -36,7 +36,7 @@ func (f *Frontend) Diff(ctx context.Context,
 	c.Msg.Left.MaxNodes = &maxNodes
 	c.Msg.Right.MaxNodes = &maxNodes
 
-	var left, right []byte
+	var left, right *phlaremodel.Tree
 	g.Go(func() error {
 		var leftErr error
 		left, leftErr = f.selectMergeStacktracesTree(ctx, connect.NewRequest(c.Msg.Left))
@@ -51,10 +51,7 @@ func (f *Frontend) Diff(ctx context.Context,
 		return nil, err
 	}
 
-	diff, err := phlaremodel.NewFlamegraphDiff(
-		phlaremodel.MustUnmarshalTree(left),
-		phlaremodel.MustUnmarshalTree(right),
-		maxNodes)
+	diff, err := phlaremodel.NewFlamegraphDiff(left, right, maxNodes)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}

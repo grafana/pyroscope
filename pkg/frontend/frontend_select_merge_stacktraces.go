@@ -2,23 +2,26 @@ package frontend
 
 import (
 	"context"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/grafana/dskit/tenant"
 	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/common/model"
+	"golang.org/x/sync/errgroup"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
-	querybackendv1 "github.com/grafana/pyroscope/api/gen/proto/go/querybackend/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
+	validationutil "github.com/grafana/pyroscope/pkg/util/validation"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 func (f *Frontend) SelectMergeStacktraces(ctx context.Context,
-	c *connect.Request[querierv1.SelectMergeStacktracesRequest],
-) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
+	c *connect.Request[querierv1.SelectMergeStacktracesRequest]) (
+	*connect.Response[querierv1.SelectMergeStacktracesResponse], error,
+) {
 	t, err := f.selectMergeStacktracesTree(ctx, c)
 	if err != nil {
 		return nil, err
@@ -26,17 +29,17 @@ func (f *Frontend) SelectMergeStacktraces(ctx context.Context,
 	var resp querierv1.SelectMergeStacktracesResponse
 	switch c.Msg.Format {
 	default:
-		tree := phlaremodel.MustUnmarshalTree(t)
-		resp.Flamegraph = phlaremodel.NewFlameGraph(tree, c.Msg.GetMaxNodes())
+		resp.Flamegraph = phlaremodel.NewFlameGraph(t, c.Msg.GetMaxNodes())
 	case querierv1.ProfileFormat_PROFILE_FORMAT_TREE:
-		resp.Tree = t
+		resp.Tree = t.Bytes(c.Msg.GetMaxNodes())
 	}
 	return connect.NewResponse(&resp), nil
 }
 
 func (f *Frontend) selectMergeStacktracesTree(ctx context.Context,
-	c *connect.Request[querierv1.SelectMergeStacktracesRequest],
-) ([]byte, error) {
+	c *connect.Request[querierv1.SelectMergeStacktracesRequest]) (
+	*phlaremodel.Tree, error,
+) {
 	opentracing.SpanFromContext(ctx).
 		SetTag("start", model.Time(c.Msg.Start).Time().String()).
 		SetTag("end", model.Time(c.Msg.End).Time().String()).
@@ -55,24 +58,52 @@ func (f *Frontend) selectMergeStacktracesTree(ctx context.Context,
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	if validated.IsEmpty {
-		return nil, nil
+		return new(phlaremodel.Tree), nil
+	}
+	maxNodes, err := validation.ValidateMaxNodes(f.limits, tenantIDs, c.Msg.GetMaxNodes())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	labelSelector, err := buildLabelSelectorAndProfileType(c.Msg.LabelSelector, c.Msg.ProfileTypeID)
-	if err != nil {
+	g, ctx := errgroup.WithContext(ctx)
+	if maxConcurrent := validationutil.SmallestPositiveNonZeroIntPerTenant(tenantIDs, f.limits.MaxQueryParallelism); maxConcurrent > 0 {
+		g.SetLimit(maxConcurrent)
+	}
+
+	m := phlaremodel.NewFlameGraphMerger()
+	interval := validationutil.MaxDurationOrZeroPerTenant(tenantIDs, f.limits.QuerySplitDuration)
+	intervals := NewTimeIntervalIterator(time.UnixMilli(int64(validated.Start)), time.UnixMilli(int64(validated.End)), interval)
+
+	for intervals.Next() {
+		r := intervals.At()
+		g.Go(func() error {
+			req := connectgrpc.CloneRequest(c, &querierv1.SelectMergeStacktracesRequest{
+				ProfileTypeID: c.Msg.ProfileTypeID,
+				LabelSelector: c.Msg.LabelSelector,
+				Start:         r.Start.UnixMilli(),
+				End:           r.End.UnixMilli(),
+				MaxNodes:      &maxNodes,
+				Format:        querierv1.ProfileFormat_PROFILE_FORMAT_TREE,
+			})
+			resp, err := connectgrpc.RoundTripUnary[
+				querierv1.SelectMergeStacktracesRequest,
+				querierv1.SelectMergeStacktracesResponse](ctx, f, req)
+			if err != nil {
+				return err
+			}
+			if len(resp.Msg.Tree) > 0 {
+				err = m.MergeTreeBytes(resp.Msg.Tree)
+			} else if resp.Msg.Flamegraph != nil {
+				// For backward compatibility.
+				m.MergeFlameGraph(resp.Msg.Flamegraph)
+			}
+			return err
+		})
+	}
+
+	if err = g.Wait(); err != nil {
 		return nil, err
 	}
-	report, err := f.invoke(ctx, c.Msg.Start, c.Msg.End, tenantIDs, labelSelector, &querybackendv1.Query{
-		QueryType: querybackendv1.QueryType_QUERY_TREE,
-		Tree: &querybackendv1.TreeQuery{
-			MaxNodes: c.Msg.GetMaxNodes(),
-		},
-	})
-	if err != nil {
-		return nil, err
-	}
-	if report == nil {
-		return nil, nil
-	}
-	return report.Tree.Tree, nil
+
+	return m.Tree(), nil
 }

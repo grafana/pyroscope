@@ -9,7 +9,6 @@ import (
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
-	querybackendv1 "github.com/grafana/pyroscope/api/gen/proto/go/querybackend/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
@@ -24,13 +23,14 @@ func (f *Frontend) LabelValues(ctx context.Context, c *connect.Request[typesv1.L
 		SetTag("name", c.Msg.Name)
 
 	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceLabelValuesProcedure)
-	tenantIDs, err := tenant.TenantIDs(ctx)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
-	}
 
 	interval, ok := phlaremodel.GetTimeRange(c.Msg)
 	if ok {
+		tenantIDs, err := tenant.TenantIDs(ctx)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+
 		validated, err := validation.ValidateRangeRequest(f.limits, tenantIDs, interval, model.Now())
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -42,21 +42,5 @@ func (f *Frontend) LabelValues(ctx context.Context, c *connect.Request[typesv1.L
 		c.Msg.End = int64(validated.End)
 	}
 
-	labelSelector, err := buildLabelSelectorFromMatchers(c.Msg.Matchers)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
-	}
-	report, err := f.invoke(ctx, c.Msg.Start, c.Msg.End, tenantIDs, labelSelector, &querybackendv1.Query{
-		QueryType: querybackendv1.QueryType_QUERY_LABEL_VALUES,
-		LabelValues: &querybackendv1.LabelValuesQuery{
-			LabelName: c.Msg.Name,
-		},
-	})
-	if err != nil {
-		return nil, err
-	}
-	if report == nil {
-		return connect.NewResponse(&typesv1.LabelValuesResponse{}), nil
-	}
-	return connect.NewResponse(&typesv1.LabelValuesResponse{Names: report.LabelValues.LabelValues}), nil
+	return connectgrpc.RoundTripUnary[typesv1.LabelValuesRequest, typesv1.LabelValuesResponse](ctx, f, c)
 }

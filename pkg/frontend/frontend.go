@@ -21,17 +21,16 @@ import (
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/netutil"
 	"github.com/grafana/dskit/services"
-	"github.com/grafana/dskit/tenant"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/atomic"
 
+	"github.com/grafana/dskit/tenant"
+
 	"github.com/grafana/pyroscope/pkg/frontend/frontendpb"
-	metastoreclient "github.com/grafana/pyroscope/pkg/metastore/client"
 	"github.com/grafana/pyroscope/pkg/querier/stats"
-	querybackendclient "github.com/grafana/pyroscope/pkg/querybackend/client"
 	"github.com/grafana/pyroscope/pkg/scheduler/schedulerdiscovery"
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
 	"github.com/grafana/pyroscope/pkg/util/httpgrpc"
@@ -72,6 +71,7 @@ func (cfg *Config) Validate() error {
 	if cfg.QuerySchedulerDiscovery.Mode == schedulerdiscovery.ModeRing && cfg.SchedulerAddress != "" {
 		return fmt.Errorf("scheduler address cannot be specified when query-scheduler service discovery mode is set to '%s'", cfg.QuerySchedulerDiscovery.Mode)
 	}
+
 	return cfg.GRPCClientConfig.Validate()
 }
 
@@ -94,9 +94,6 @@ type Frontend struct {
 	schedulerWorkersWatcher *services.FailureWatcher
 	requests                *requestsInProgress
 	frontendpb.UnimplementedFrontendForQuerierServer
-
-	metastoreclient    *metastoreclient.Client
-	querybackendclient *querybackendclient.Client
 }
 
 type Limits interface {
@@ -137,14 +134,7 @@ type enqueueResult struct {
 }
 
 // NewFrontend creates a new frontend.
-func NewFrontend(
-	cfg Config,
-	limits Limits,
-	log log.Logger,
-	reg prometheus.Registerer,
-	mc *metastoreclient.Client,
-	qbc *querybackendclient.Client,
-) (*Frontend, error) {
+func NewFrontend(cfg Config, limits Limits, log log.Logger, reg prometheus.Registerer) (*Frontend, error) {
 	requestsCh := make(chan *frontendRequest)
 
 	schedulerWorkers, err := newFrontendSchedulerWorkers(cfg, fmt.Sprintf("%s:%d", cfg.Addr, cfg.Port), requestsCh, log, reg)
@@ -160,14 +150,7 @@ func NewFrontend(
 		schedulerWorkers:        schedulerWorkers,
 		schedulerWorkersWatcher: services.NewFailureWatcher(),
 		requests:                newRequestsInProgress(),
-		metastoreclient:         mc,
-		querybackendclient:      qbc,
 	}
-
-	if err != nil {
-		return nil, fmt.Errorf("metastoreclient.New: %w", err)
-	}
-
 	f.GRPCRoundTripper = &realFrontendRoundTripper{frontend: f}
 	// Randomize to avoid getting responses from queries sent before restart, which could lead to mixing results
 	// between different queries. Note that frontend verifies the user, so it cannot leak results between tenants.

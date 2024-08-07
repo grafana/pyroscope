@@ -141,6 +141,79 @@ func Test_Pprof_subtree(t *testing.T) {
 	require.Equal(t, expected, actual)
 }
 
+func Test_Pprof_subtree_multiple_versions(t *testing.T) {
+	profile := &googlev1.Profile{
+		StringTable: []string{"", "a", "b", "c", "d"},
+		Function: []*googlev1.Function{
+			{Id: 1, Name: 1},               // a
+			{Id: 2, Name: 2},               // b
+			{Id: 3, Name: 3},               // c
+			{Id: 4, Name: 4, StartLine: 1}, // d
+			{Id: 5, Name: 4, StartLine: 2}, // d(2)
+		},
+		Mapping: []*googlev1.Mapping{{Id: 1}},
+		Location: []*googlev1.Location{
+			{Id: 1, MappingId: 1, Line: []*googlev1.Line{{FunctionId: 1, Line: 1}}}, // a
+			{Id: 2, MappingId: 1, Line: []*googlev1.Line{{FunctionId: 2, Line: 1}}}, // b:1
+			{Id: 3, MappingId: 1, Line: []*googlev1.Line{{FunctionId: 2, Line: 2}}}, // b:2
+			{Id: 4, MappingId: 1, Line: []*googlev1.Line{{FunctionId: 3, Line: 1}}}, // c
+			{Id: 5, MappingId: 1, Line: []*googlev1.Line{{FunctionId: 4, Line: 1}}}, // d
+			{Id: 6, MappingId: 1, Line: []*googlev1.Line{{FunctionId: 5, Line: 1}}}, // d(2)
+		},
+		Sample: []*googlev1.Sample{
+			{LocationId: []uint64{5, 4, 2, 1}, Value: []int64{1}}, // a, b:1, c, d
+			{LocationId: []uint64{6, 4, 3, 1}, Value: []int64{1}}, // a, b:2, c, d(2)
+			{LocationId: []uint64{3, 1}, Value: []int64{1}},       // a, b:2
+			{LocationId: []uint64{4, 1}, Value: []int64{1}},       // a, c
+			{LocationId: []uint64{5}, Value: []int64{1}},          // d
+			{LocationId: []uint64{6}, Value: []int64{1}},          // d (2)
+		},
+	}
+
+	db := NewSymDB(DefaultConfig().WithDirectory(t.TempDir()))
+	w := db.WriteProfileSymbols(0, profile)
+	r := NewResolver(context.Background(), db,
+		WithResolverStackTraceSelector(&typesv1.StackTraceSelector{
+			CallSite: []*typesv1.Location{{Name: "a"}, {Name: "b"}, {Name: "c"}, {Name: "d"}},
+		}))
+
+	r.AddSamples(0, w[0].Samples)
+	actual, err := r.Pprof()
+	require.NoError(t, err)
+	// Sample order is not deterministic.
+	sort.Slice(actual.Sample, func(i, j int) bool {
+		return slices.Compare(actual.Sample[i].LocationId, actual.Sample[j].LocationId) >= 0
+	})
+
+	expected := &googlev1.Profile{
+		PeriodType:  &googlev1.ValueType{},
+		SampleType:  []*googlev1.ValueType{{}},
+		StringTable: []string{"", "a", "b", "c", "d"},
+		Function: []*googlev1.Function{
+			{Id: 1, Name: 1},               // a
+			{Id: 2, Name: 2},               // b
+			{Id: 3, Name: 3},               // c
+			{Id: 4, Name: 4, StartLine: 1}, // d
+			{Id: 5, Name: 4, StartLine: 2}, // d(2)
+		},
+		Mapping: []*googlev1.Mapping{{Id: 1}},
+		Location: []*googlev1.Location{
+			{Id: 1, MappingId: 1, Line: []*googlev1.Line{{FunctionId: 1, Line: 1}}}, // a
+			{Id: 2, MappingId: 1, Line: []*googlev1.Line{{FunctionId: 2, Line: 1}}}, // b:1
+			{Id: 3, MappingId: 1, Line: []*googlev1.Line{{FunctionId: 2, Line: 2}}}, // b:2
+			{Id: 4, MappingId: 1, Line: []*googlev1.Line{{FunctionId: 3, Line: 1}}}, // c
+			{Id: 5, MappingId: 1, Line: []*googlev1.Line{{FunctionId: 4, Line: 1}}}, // d
+			{Id: 6, MappingId: 1, Line: []*googlev1.Line{{FunctionId: 5, Line: 1}}}, // d(2)
+		},
+		Sample: []*googlev1.Sample{
+			{LocationId: []uint64{6, 4, 3, 1}, Value: []int64{1}}, // a, b:2, c, d(2)
+			{LocationId: []uint64{5, 4, 2, 1}, Value: []int64{1}}, // a, b:1, c, d
+		},
+	}
+
+	require.Equal(t, expected, actual)
+}
+
 func Test_Resolver_pprof_options(t *testing.T) {
 	s := newMemSuite(t, [][]string{{"testdata/profile.pb.gz"}})
 	samples := s.indexed[0][0].Samples
