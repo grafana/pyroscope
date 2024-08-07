@@ -36,9 +36,6 @@ const (
 	// MetastoreServiceAddBlockProcedure is the fully-qualified name of the MetastoreService's AddBlock
 	// RPC.
 	MetastoreServiceAddBlockProcedure = "/metastore.v1.MetastoreService/AddBlock"
-	// MetastoreServiceListBlocksProcedure is the fully-qualified name of the MetastoreService's
-	// ListBlocks RPC.
-	MetastoreServiceListBlocksProcedure = "/metastore.v1.MetastoreService/ListBlocks"
 	// MetastoreServiceListBlocksForQueryProcedure is the fully-qualified name of the MetastoreService's
 	// ListBlocksForQuery RPC.
 	MetastoreServiceListBlocksForQueryProcedure = "/metastore.v1.MetastoreService/ListBlocksForQuery"
@@ -51,7 +48,6 @@ const (
 var (
 	metastoreServiceServiceDescriptor                  = v1.File_metastore_v1_metastore_proto.Services().ByName("MetastoreService")
 	metastoreServiceAddBlockMethodDescriptor           = metastoreServiceServiceDescriptor.Methods().ByName("AddBlock")
-	metastoreServiceListBlocksMethodDescriptor         = metastoreServiceServiceDescriptor.Methods().ByName("ListBlocks")
 	metastoreServiceListBlocksForQueryMethodDescriptor = metastoreServiceServiceDescriptor.Methods().ByName("ListBlocksForQuery")
 	metastoreServiceReadIndexMethodDescriptor          = metastoreServiceServiceDescriptor.Methods().ByName("ReadIndex")
 )
@@ -59,7 +55,6 @@ var (
 // MetastoreServiceClient is a client for the metastore.v1.MetastoreService service.
 type MetastoreServiceClient interface {
 	AddBlock(context.Context, *connect.Request[v1.AddBlockRequest]) (*connect.Response[v1.AddBlockResponse], error)
-	ListBlocks(context.Context, *connect.Request[v1.ListBlocksRequest]) (*connect.Response[v1.ListBlocksResponse], error)
 	ListBlocksForQuery(context.Context, *connect.Request[v1.ListBlocksForQueryRequest]) (*connect.Response[v1.ListBlocksForQueryResponse], error)
 	ReadIndex(context.Context, *connect.Request[v1.ReadIndexRequest]) (*connect.Response[v1.ReadIndexResponse], error)
 }
@@ -80,12 +75,6 @@ func NewMetastoreServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(metastoreServiceAddBlockMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
-		listBlocks: connect.NewClient[v1.ListBlocksRequest, v1.ListBlocksResponse](
-			httpClient,
-			baseURL+MetastoreServiceListBlocksProcedure,
-			connect.WithSchema(metastoreServiceListBlocksMethodDescriptor),
-			connect.WithClientOptions(opts...),
-		),
 		listBlocksForQuery: connect.NewClient[v1.ListBlocksForQueryRequest, v1.ListBlocksForQueryResponse](
 			httpClient,
 			baseURL+MetastoreServiceListBlocksForQueryProcedure,
@@ -104,7 +93,6 @@ func NewMetastoreServiceClient(httpClient connect.HTTPClient, baseURL string, op
 // metastoreServiceClient implements MetastoreServiceClient.
 type metastoreServiceClient struct {
 	addBlock           *connect.Client[v1.AddBlockRequest, v1.AddBlockResponse]
-	listBlocks         *connect.Client[v1.ListBlocksRequest, v1.ListBlocksResponse]
 	listBlocksForQuery *connect.Client[v1.ListBlocksForQueryRequest, v1.ListBlocksForQueryResponse]
 	readIndex          *connect.Client[v1.ReadIndexRequest, v1.ReadIndexResponse]
 }
@@ -112,11 +100,6 @@ type metastoreServiceClient struct {
 // AddBlock calls metastore.v1.MetastoreService.AddBlock.
 func (c *metastoreServiceClient) AddBlock(ctx context.Context, req *connect.Request[v1.AddBlockRequest]) (*connect.Response[v1.AddBlockResponse], error) {
 	return c.addBlock.CallUnary(ctx, req)
-}
-
-// ListBlocks calls metastore.v1.MetastoreService.ListBlocks.
-func (c *metastoreServiceClient) ListBlocks(ctx context.Context, req *connect.Request[v1.ListBlocksRequest]) (*connect.Response[v1.ListBlocksResponse], error) {
-	return c.listBlocks.CallUnary(ctx, req)
 }
 
 // ListBlocksForQuery calls metastore.v1.MetastoreService.ListBlocksForQuery.
@@ -132,7 +115,6 @@ func (c *metastoreServiceClient) ReadIndex(ctx context.Context, req *connect.Req
 // MetastoreServiceHandler is an implementation of the metastore.v1.MetastoreService service.
 type MetastoreServiceHandler interface {
 	AddBlock(context.Context, *connect.Request[v1.AddBlockRequest]) (*connect.Response[v1.AddBlockResponse], error)
-	ListBlocks(context.Context, *connect.Request[v1.ListBlocksRequest]) (*connect.Response[v1.ListBlocksResponse], error)
 	ListBlocksForQuery(context.Context, *connect.Request[v1.ListBlocksForQueryRequest]) (*connect.Response[v1.ListBlocksForQueryResponse], error)
 	ReadIndex(context.Context, *connect.Request[v1.ReadIndexRequest]) (*connect.Response[v1.ReadIndexResponse], error)
 }
@@ -147,12 +129,6 @@ func NewMetastoreServiceHandler(svc MetastoreServiceHandler, opts ...connect.Han
 		MetastoreServiceAddBlockProcedure,
 		svc.AddBlock,
 		connect.WithSchema(metastoreServiceAddBlockMethodDescriptor),
-		connect.WithHandlerOptions(opts...),
-	)
-	metastoreServiceListBlocksHandler := connect.NewUnaryHandler(
-		MetastoreServiceListBlocksProcedure,
-		svc.ListBlocks,
-		connect.WithSchema(metastoreServiceListBlocksMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	metastoreServiceListBlocksForQueryHandler := connect.NewUnaryHandler(
@@ -171,8 +147,6 @@ func NewMetastoreServiceHandler(svc MetastoreServiceHandler, opts ...connect.Han
 		switch r.URL.Path {
 		case MetastoreServiceAddBlockProcedure:
 			metastoreServiceAddBlockHandler.ServeHTTP(w, r)
-		case MetastoreServiceListBlocksProcedure:
-			metastoreServiceListBlocksHandler.ServeHTTP(w, r)
 		case MetastoreServiceListBlocksForQueryProcedure:
 			metastoreServiceListBlocksForQueryHandler.ServeHTTP(w, r)
 		case MetastoreServiceReadIndexProcedure:
@@ -188,10 +162,6 @@ type UnimplementedMetastoreServiceHandler struct{}
 
 func (UnimplementedMetastoreServiceHandler) AddBlock(context.Context, *connect.Request[v1.AddBlockRequest]) (*connect.Response[v1.AddBlockResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("metastore.v1.MetastoreService.AddBlock is not implemented"))
-}
-
-func (UnimplementedMetastoreServiceHandler) ListBlocks(context.Context, *connect.Request[v1.ListBlocksRequest]) (*connect.Response[v1.ListBlocksResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("metastore.v1.MetastoreService.ListBlocks is not implemented"))
 }
 
 func (UnimplementedMetastoreServiceHandler) ListBlocksForQuery(context.Context, *connect.Request[v1.ListBlocksForQueryRequest]) (*connect.Response[v1.ListBlocksForQueryResponse], error) {

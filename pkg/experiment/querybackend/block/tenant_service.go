@@ -87,8 +87,8 @@ func (s *TenantService) open(ctx context.Context, sections ...Section) (err erro
 	for _, sc := range sections {
 		sc := sc
 		g.Go(util.RecoverPanic(func() error {
-			if err = sc.open(ctx, s); err != nil {
-				return fmt.Errorf("openning section %v: %w", s.sectionName(sc), err)
+			if openErr := sc.open(ctx, s); openErr != nil {
+				return fmt.Errorf("openning section %v: %w", s.sectionName(sc), openErr)
 			}
 			return nil
 		}))

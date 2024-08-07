@@ -37,8 +37,9 @@ func (r *Counter) Inc(init func() error) (err error) {
 func (r *Counter) IncErr(init func() error) (err error) {
 	r.m.Lock()
 	if r.err != nil {
+		err = r.err
 		r.m.Unlock()
-		return r.err
+		return err
 	}
 	defer func() {
 		// If initialization fails, we need to make sure

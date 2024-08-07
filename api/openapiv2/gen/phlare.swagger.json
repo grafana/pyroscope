@@ -1169,21 +1169,6 @@
         }
       }
     },
-    "v1ListBlocksResponse": {
-      "type": "object",
-      "properties": {
-        "blocks": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1BlockMeta"
-          }
-        },
-        "nextToken": {
-          "type": "string"
-        }
-      }
-    },
     "v1Mapping": {
       "type": "object",
       "properties": {
@@ -1925,7 +1910,7 @@
             "type": "string",
             "format": "uint64"
           },
-          "title": "Table of contents lists data sections within the tenant\nservice region. The interpretation of the table of contents\nis specific to the metadata format version. By default, the\nsections are:\n - 0: profiles.parquet\n - 1: index.tsdb\n - 2: symbols.symdb"
+          "description": "Table of contents lists data sections within the tenant\nservice region. The offsets are absolute.\n\nThe interpretation of the table of contents is specific\nto the metadata format version. By default, the sections are:\n - 0: profiles.parquet\n - 1: index.tsdb\n - 2: symbols.symdb"
         },
         "size": {
           "type": "string",

@@ -149,55 +149,6 @@ runtime_config:
 # The compactor block configures the compactor.
 [compactor: <compactor>]
 
-metastore:
-  # CLI flag: -metastore.data-dir
-  [data_dir: <string> | default = "./data-metastore/data"]
-
-  raft:
-    # CLI flag: -metastore.raft.dir
-    [dir: <string> | default = "./data-metastore/raft"]
-
-    # CLI flag: -metastore.raft.bootstrap-peers
-    [bootstrap_peers: <list of strings> | default = []]
-
-    # Expected number of peers including the local node.
-    # CLI flag: -metastore.raft.bootstrap-expect-peers
-    [bootstrap_expect_peers: <int> | default = 1]
-
-    # CLI flag: -metastore.raft.server-id
-    [server_id: <string> | default = "localhost:9099"]
-
-    # CLI flag: -metastore.raft.bind-address
-    [bind_address: <string> | default = "localhost:9099"]
-
-    # CLI flag: -metastore.raft.advertise-address
-    [advertise_address: <string> | default = "localhost:9099"]
-
-metastore_client:
-  # CLI flag: -metastore.address
-  [address: <string> | default = "localhost:9095"]
-
-  # Configures the gRPC client used to communicate between the query-frontends
-  # and the query-schedulers.
-  # The CLI flags prefix for this block configuration is:
-  # metastore.grpc-client-config
-  [grpc_client_config: <grpc_client>]
-
-query_backend:
-  # CLI flag: -query-backend.address
-  [address: <string> | default = "localhost:9095"]
-
-  # Configures the gRPC client used to communicate between the query-frontends
-  # and the query-schedulers.
-  # The CLI flags prefix for this block configuration is:
-  # query-backend.grpc-client-config
-  [grpc_client_config: <grpc_client>]
-
-compaction_worker:
-  # how many concurrent jobs will a worker run at most
-  # CLI flag: -compaction-worker.job-capacity
-  [job_capacity: <int> | default = 5]
-
 storage:
   # Backend storage to use. Supported backends are: s3, gcs, azure, swift,
   # filesystem, cos.
@@ -826,14 +777,6 @@ lifecycler:
   # ID to register in the ring.
   # CLI flag: -ingester.lifecycler.ID
   [id: <string> | default = "<hostname>"]
-
-# Timeout when flushing segments to bucket.
-# CLI flag: -ingester.segment.duration
-[segmentDuration: <duration> | default = 500ms]
-
-# Enable async mode for ingester.
-# CLI flag: -ingester.async
-[async: <boolean> | default = false]
 ```
 
 ### querier
@@ -1502,9 +1445,7 @@ sharding_ring:
 
 The `grpc_client` block configures the gRPC client used to communicate between two Pyroscope components. The supported CLI flags `<prefix>` used to reference this configuration block are:
 
-- `metastore.grpc-client-config`
 - `querier.frontend-client`
-- `query-backend.grpc-client-config`
 - `query-frontend.grpc-client-config`
 - `query-scheduler.grpc-client-config`
 
@@ -2149,12 +2090,12 @@ http:
   # Maximum number of idle (keep-alive) connections across all hosts. 0 means no
   # limit.
   # CLI flag: -storage.s3.max-idle-connections
-  [max_idle_connections: <int> | default = 0]
+  [max_idle_connections: <int> | default = 100]
 
   # Maximum number of idle (keep-alive) connections to keep per-host. If 0, a
   # built-in default value is used.
   # CLI flag: -storage.s3.max-idle-connections-per-host
-  [max_idle_connections_per_host: <int> | default = 1024]
+  [max_idle_connections_per_host: <int> | default = 100]
 
   # Maximum number of connections per host. 0 means no limit.
   # CLI flag: -storage.s3.max-connections-per-host

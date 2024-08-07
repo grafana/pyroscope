@@ -374,8 +374,8 @@ func (m *tenantServiceCompaction) open(ctx context.Context, path string) (err er
 	for _, s := range m.services {
 		s := s
 		g.Go(util.RecoverPanic(func() error {
-			if err = s.Open(ctx, allSections...); err != nil {
-				return fmt.Errorf("opening tenant service (block %s): %w", s.obj.path, err)
+			if openErr := s.Open(ctx, allSections...); openErr != nil {
+				return fmt.Errorf("opening tenant service (block %s): %w", s.obj.path, openErr)
 			}
 			return nil
 		}))

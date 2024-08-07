@@ -24,11 +24,6 @@ func RegisterMetastoreServiceHandler(mux *mux.Router, svc MetastoreServiceHandle
 		svc.AddBlock,
 		opts...,
 	))
-	mux.Handle("/metastore.v1.MetastoreService/ListBlocks", connect.NewUnaryHandler(
-		"/metastore.v1.MetastoreService/ListBlocks",
-		svc.ListBlocks,
-		opts...,
-	))
 	mux.Handle("/metastore.v1.MetastoreService/ListBlocksForQuery", connect.NewUnaryHandler(
 		"/metastore.v1.MetastoreService/ListBlocksForQuery",
 		svc.ListBlocksForQuery,

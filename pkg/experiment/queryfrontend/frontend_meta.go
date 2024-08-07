@@ -3,6 +3,7 @@ package queryfrontend
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"slices"
 	"strings"
 
@@ -87,6 +88,8 @@ func printStats(logger log.Logger, blocks []*metastorev1.BlockMeta) {
 	_ = level.Info(logger).Log(fields...)
 }
 
+var xrand = rand.New(rand.NewSource(4349676827832284783))
+
 func Query(
 	ctx context.Context,
 	startTime, endTime int64,
@@ -104,6 +107,10 @@ func Query(
 	if len(blocks) == 0 {
 		return nil, nil
 	}
+	// Randomize the order of blocks to avoid hotspots.
+	xrand.Shuffle(len(blocks), func(i, j int) {
+		blocks[i], blocks[j] = blocks[j], blocks[i]
+	})
 	// TODO: Params.
 	p := queryplan.Build(blocks, 2, 10)
 	resp, err := qc.Invoke(ctx, &querybackendv1.InvokeRequest{
