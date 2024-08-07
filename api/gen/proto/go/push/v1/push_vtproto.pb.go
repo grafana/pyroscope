@@ -86,10 +86,6 @@ func (m *RawProfileSeries) CloneVT() *RawProfileSeries {
 		}
 		r.Samples = tmpContainer
 	}
-	if rhs := m.Shard; rhs != nil {
-		tmpVal := *rhs
-		r.Shard = &tmpVal
-	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -215,9 +211,6 @@ func (this *RawProfileSeries) EqualVT(that *RawProfileSeries) bool {
 				return false
 			}
 		}
-	}
-	if p, q := this.Shard, that.Shard; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
-		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
@@ -451,11 +444,6 @@ func (m *RawProfileSeries) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if m.Shard != nil {
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(*m.Shard))
-		i--
-		dAtA[i] = 0x18
-	}
 	if len(m.Samples) > 0 {
 		for iNdEx := len(m.Samples) - 1; iNdEx >= 0; iNdEx-- {
 			size, err := m.Samples[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
@@ -591,9 +579,6 @@ func (m *RawProfileSeries) SizeVT() (n int) {
 			l = e.SizeVT()
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
-	}
-	if m.Shard != nil {
-		n += 1 + protohelpers.SizeOfVarint(uint64(*m.Shard))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -858,26 +843,6 @@ func (m *RawProfileSeries) UnmarshalVT(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 3:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Shard", wireType)
-			}
-			var v uint32
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				v |= uint32(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			m.Shard = &v
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

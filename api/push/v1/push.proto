@@ -23,9 +23,6 @@ message RawProfileSeries {
 
   // samples are the set of profile bytes
   repeated RawSample samples = 2;
-
-  // the logical shard assigned to the profile
-  optional uint32 shard = 3;
 }
 
 // RawSample is the set of bytes that correspond to a pprof profile
