@@ -52,13 +52,10 @@ func TestMicroServicesIntegration(t *testing.T) {
 	})
 
 	t.Run("HealthyCluster", func(t *testing.T) {
-		skipV2QueryTests(t)
 		tc.runQueryTest(ctx, t)
 	})
 
-	componentsToStop := map[string]struct{}{
-		//"store-gateway": {},
-		"ingester": {}}
+	componentsToStop := map[string]struct{}{"store-gateway": {}, "ingester": {}}
 	g, gctx := errgroup.WithContext(ctx)
 	for _, comp := range c.Components {
 		if _, ok := componentsToStop[comp.Target]; ok {
@@ -74,7 +71,6 @@ func TestMicroServicesIntegration(t *testing.T) {
 	require.NoError(t, g.Wait())
 
 	t.Run("DegradedCluster", func(t *testing.T) {
-		t.Skip() // TODO aleks: with replication-factor=1 queries to a degraded cluster return a portion of the data
 		tc.runQueryTest(ctx, t)
 	})
 

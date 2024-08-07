@@ -75,20 +75,20 @@ func StacktracePartitionFromProfile(lbls []Labels, p *profilev1.Profile) uint64 
 }
 
 func stacktracePartitionKeyFromProfile(lbls []Labels, p *profilev1.Profile) string {
+	// take the first mapping (which is the main binary's file basename)
+	if len(p.Mapping) > 0 {
+		if filenameID := p.Mapping[0].Filename; filenameID > 0 {
+			if filename := extractMappingFilename(p.StringTable[filenameID]); filename != "" {
+				return filename
+			}
+		}
+	}
 
 	// failing that look through the labels for the ServiceName
 	if len(lbls) > 0 {
 		for _, lbl := range lbls[0] {
 			if lbl.Name == LabelNameServiceName {
 				return lbl.Value
-			}
-		}
-	}
-	// take the first mapping (which is the main binary's file basename)
-	if len(p.Mapping) > 0 {
-		if filenameID := p.Mapping[0].Filename; filenameID > 0 {
-			if filename := extractMappingFilename(p.StringTable[filenameID]); filename != "" {
-				return filename
 			}
 		}
 	}
