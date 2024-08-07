@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"slices"
 	"strings"
@@ -41,6 +42,33 @@ type AdHocProfile struct {
 	UploadedAt time.Time `json:"uploadedAt"`
 }
 
+func validRunes(r rune) bool {
+	if r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '.' || r == '-' || r == '_' {
+		return true
+	}
+	return false
+}
+
+// check if the id is valid
+func validID(id string) bool {
+	for _, r := range id {
+		if !validRunes(r) {
+			return false
+		}
+	}
+	return true
+}
+
+// replaces invalid runes in the id with underscores
+func replaceInvalidRunes(id string) string {
+	return strings.Map(func(r rune) rune {
+		if validRunes(r) {
+			return r
+		}
+		return '_'
+	}, id)
+}
+
 func NewAdHocProfiles(bucket objstore.Bucket, logger log.Logger, limits frontend.Limits) *AdHocProfiles {
 	a := &AdHocProfiles{
 		logger: logger,
@@ -67,6 +95,9 @@ func (a *AdHocProfiles) Upload(ctx context.Context, c *connect.Request[v1.AdHocP
 		Data:       c.Msg.Profile,
 		UploadedAt: time.Now().UTC(),
 	}
+
+	// replace runes outside of [a-zA-Z0-9_-.] with underscores
+	adHocProfile.Name = replaceInvalidRunes(adHocProfile.Name)
 
 	// TODO: Add per-tenant upload limits (number of files, total size, etc.)
 
@@ -118,7 +149,12 @@ func (a *AdHocProfiles) Get(ctx context.Context, c *connect.Request[v1.AdHocProf
 
 	bucket := a.getBucket(tenantID)
 
-	reader, err := bucket.Get(ctx, c.Msg.GetId())
+	id := c.Msg.GetId()
+	if !validID(id) {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("id '%s' is invalid: can only contain [a-zA-Z0-9_-.]", id))
+	}
+
+	reader, err := bucket.Get(ctx, id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get profile")
 	}
@@ -167,6 +203,11 @@ func (a *AdHocProfiles) List(ctx context.Context, c *connect.Request[v1.AdHocPro
 
 	profiles := make([]*v1.AdHocProfilesProfileMetadata, 0)
 	err = bucket.Iter(ctx, "", func(s string) error {
+		// do not list elements with invalid ids
+		if !validID(s) {
+			return nil
+		}
+
 		separatorIndex := strings.IndexRune(s, '-')
 		id, err := ulid.Parse(s[0:separatorIndex])
 		if err != nil {
