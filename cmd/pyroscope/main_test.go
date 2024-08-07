@@ -15,7 +15,6 @@ import (
 )
 
 func TestFlagParsing(t *testing.T) {
-	t.Skip()
 	for name, tc := range map[string]struct {
 		arguments      []string
 		stdoutMessage  string // string that must be included in stdout
@@ -70,7 +69,6 @@ func TestFlagParsing(t *testing.T) {
 }
 
 func TestHelp(t *testing.T) {
-	t.Skip()
 	for _, tc := range []struct {
 		name     string
 		arg      string
