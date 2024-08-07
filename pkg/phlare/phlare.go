@@ -40,13 +40,10 @@ import (
 	"github.com/grafana/pyroscope/pkg/api"
 	apiversion "github.com/grafana/pyroscope/pkg/api/version"
 	"github.com/grafana/pyroscope/pkg/cfg"
-	"github.com/grafana/pyroscope/pkg/compactionworker"
 	"github.com/grafana/pyroscope/pkg/compactor"
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/ingester"
-	"github.com/grafana/pyroscope/pkg/metastore"
-	metastoreclient "github.com/grafana/pyroscope/pkg/metastore/client"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/operations"
@@ -54,8 +51,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/querier"
 	"github.com/grafana/pyroscope/pkg/querier/worker"
-	"github.com/grafana/pyroscope/pkg/querybackend"
-	querybackendclient "github.com/grafana/pyroscope/pkg/querybackend/client"
 	"github.com/grafana/pyroscope/pkg/scheduler"
 	"github.com/grafana/pyroscope/pkg/scheduler/schedulerdiscovery"
 	"github.com/grafana/pyroscope/pkg/storegateway"
@@ -64,33 +59,28 @@ import (
 	"github.com/grafana/pyroscope/pkg/usagestats"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/cli"
-	"github.com/grafana/pyroscope/pkg/util/health"
 	"github.com/grafana/pyroscope/pkg/validation"
 	"github.com/grafana/pyroscope/pkg/validation/exporter"
 )
 
 type Config struct {
-	Target            flagext.StringSliceCSV  `yaml:"target,omitempty"`
-	API               api.Config              `yaml:"api"`
-	Server            server.Config           `yaml:"server,omitempty"`
-	Distributor       distributor.Config      `yaml:"distributor,omitempty"`
-	Querier           querier.Config          `yaml:"querier,omitempty"`
-	Frontend          frontend.Config         `yaml:"frontend,omitempty"`
-	Worker            worker.Config           `yaml:"frontend_worker"`
-	LimitsConfig      validation.Limits       `yaml:"limits"`
-	QueryScheduler    scheduler.Config        `yaml:"query_scheduler"`
-	Ingester          ingester.Config         `yaml:"ingester,omitempty"`
-	StoreGateway      storegateway.Config     `yaml:"store_gateway,omitempty"`
-	MemberlistKV      memberlist.KVConfig     `yaml:"memberlist"`
-	PhlareDB          phlaredb.Config         `yaml:"pyroscopedb,omitempty"`
-	Tracing           tracing.Config          `yaml:"tracing"`
-	OverridesExporter exporter.Config         `yaml:"overrides_exporter" doc:"hidden"`
-	RuntimeConfig     runtimeconfig.Config    `yaml:"runtime_config"`
-	Compactor         compactor.Config        `yaml:"compactor"`
-	Metastore         metastore.Config        `yaml:"metastore"`
-	MetastoreClient   metastoreclient.Config  `yaml:"metastore_client"` // TODO: merge into Metastore. See QueryBackend
-	QueryBackend      querybackend.Config     `yaml:"query_backend"`
-	CompactionWorker  compactionworker.Config `yaml:"compaction_worker"`
+	Target            flagext.StringSliceCSV `yaml:"target,omitempty"`
+	API               api.Config             `yaml:"api"`
+	Server            server.Config          `yaml:"server,omitempty"`
+	Distributor       distributor.Config     `yaml:"distributor,omitempty"`
+	Querier           querier.Config         `yaml:"querier,omitempty"`
+	Frontend          frontend.Config        `yaml:"frontend,omitempty"`
+	Worker            worker.Config          `yaml:"frontend_worker"`
+	LimitsConfig      validation.Limits      `yaml:"limits"`
+	QueryScheduler    scheduler.Config       `yaml:"query_scheduler"`
+	Ingester          ingester.Config        `yaml:"ingester,omitempty"`
+	StoreGateway      storegateway.Config    `yaml:"store_gateway,omitempty"`
+	MemberlistKV      memberlist.KVConfig    `yaml:"memberlist"`
+	PhlareDB          phlaredb.Config        `yaml:"pyroscopedb,omitempty"`
+	Tracing           tracing.Config         `yaml:"tracing"`
+	OverridesExporter exporter.Config        `yaml:"overrides_exporter" doc:"hidden"`
+	RuntimeConfig     runtimeconfig.Config   `yaml:"runtime_config"`
+	Compactor         compactor.Config       `yaml:"compactor"`
 
 	Storage       StorageConfig       `yaml:"storage"`
 	SelfProfiling SelfProfilingConfig `yaml:"self_profiling,omitempty"`
@@ -158,10 +148,6 @@ func (c *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) 
 	c.Analytics.RegisterFlags(f)
 	c.LimitsConfig.RegisterFlags(f)
 	c.Compactor.RegisterFlags(f, log.NewLogfmtLogger(os.Stderr))
-	c.Metastore.RegisterFlags(f)
-	c.MetastoreClient.RegisterFlags(f)
-	c.QueryBackend.RegisterFlags(f)
-	c.CompactionWorker.RegisterFlags(f)
 	c.API.RegisterFlags(f)
 }
 
@@ -229,7 +215,6 @@ type Phlare struct {
 	logger log.Logger
 	reg    prometheus.Registerer
 	tracer io.Closer
-	health health.Service
 
 	ModuleManager *modules.Manager
 	serviceMap    map[string]services.Service
@@ -248,18 +233,15 @@ type Phlare struct {
 	versions       *apiversion.Service
 	serviceManager *services.Manager
 
-	MetastoreClient    *metastoreclient.Client
-	QueryBackendClient *querybackendclient.Client
-	compactionWorker   *compactionworker.Worker
-
 	TenantLimits validation.TenantLimits
 
 	storageBucket phlareobj.Bucket
 
 	grpcGatewayMux *grpcgw.ServeMux
 
-	auth      connect.Option
-	metastore *metastore.Metastore
+	auth     connect.Option
+	ingester *ingester.Ingester
+	frontend *frontend.Frontend
 }
 
 func New(cfg Config) (*Phlare, error) {
@@ -271,7 +253,6 @@ func New(cfg Config) (*Phlare, error) {
 		Cfg:    cfg,
 		logger: logger,
 		reg:    prometheus.DefaultRegisterer,
-		health: health.NoOpService,
 	}
 	if err := cfg.Validate(); err != nil {
 		return nil, err
@@ -327,25 +308,20 @@ func (f *Phlare) setupModuleManager() error {
 	mm.RegisterModule(All, nil)
 	mm.RegisterModule(TenantSettings, f.initTenantSettings)
 	mm.RegisterModule(AdHocProfiles, f.initAdHocProfiles)
-	mm.RegisterModule(Metastore, f.initMetastore)
-	mm.RegisterModule(MetastoreClient, f.initMetastoreClient, modules.UserInvisibleModule)
-	mm.RegisterModule(QueryBackend, f.initQueryBackend)
-	mm.RegisterModule(QueryBackendClient, f.initQueryBackendClient, modules.UserInvisibleModule)
-	mm.RegisterModule(CompactionWorker, f.initCompactionWorker)
 
 	// Add dependencies
 	deps := map[string][]string{
-		All: {Ingester, Distributor, QueryScheduler, QueryFrontend, Querier, StoreGateway, Admin, TenantSettings, Compactor, AdHocProfiles, Metastore, MetastoreClient, QueryBackend, QueryBackendClient, CompactionWorker},
+		All: {Ingester, Distributor, QueryScheduler, QueryFrontend, Querier, StoreGateway, Admin, TenantSettings, Compactor, AdHocProfiles},
 
 		Server:            {GRPCGateway},
 		API:               {Server},
 		Distributor:       {Overrides, Ring, API, UsageReport},
 		Querier:           {Overrides, API, MemberlistKV, Ring, UsageReport, Version},
-		QueryFrontend:     {OverridesExporter, API, MemberlistKV, UsageReport, Version, MetastoreClient, QueryBackendClient},
+		QueryFrontend:     {OverridesExporter, API, MemberlistKV, UsageReport, Version},
 		QueryScheduler:    {Overrides, API, MemberlistKV, UsageReport},
-		Ingester:          {Overrides, API, MemberlistKV, Storage, UsageReport, Version, MetastoreClient},
+		Ingester:          {Overrides, API, MemberlistKV, Storage, UsageReport, Version},
 		StoreGateway:      {API, Storage, Overrides, MemberlistKV, UsageReport, Admin, Version},
-		Compactor:         {API, Storage, Overrides, MemberlistKV, UsageReport, MetastoreClient},
+		Compactor:         {API, Storage, Overrides, MemberlistKV, UsageReport},
 		UsageReport:       {Storage, MemberlistKV},
 		Overrides:         {RuntimeConfig},
 		OverridesExporter: {Overrides, MemberlistKV},
@@ -356,9 +332,6 @@ func (f *Phlare) setupModuleManager() error {
 		Version:           {API, MemberlistKV},
 		TenantSettings:    {API, Storage},
 		AdHocProfiles:     {API, Overrides, Storage},
-		Metastore:         {API, Overrides, MetastoreClient},
-		QueryBackend:      {API, Storage, QueryBackendClient},
-		CompactionWorker:  {Storage, MemberlistKV, MetastoreClient},
 	}
 
 	for mod, targets := range deps {
@@ -406,8 +379,6 @@ func (f *Phlare) Run() error {
 		return err
 	}
 	f.serviceManager = sm
-
-	f.API.RegisterDebugTraceEvents()
 
 	f.API.RegisterRoute("/ready", f.readyHandler(sm), false, false, "GET")
 
@@ -533,9 +504,16 @@ func (f *Phlare) readyHandler(sm *services.Manager) http.HandlerFunc {
 			return
 		}
 
-		if f.metastore != nil {
-			if err := f.metastore.CheckReady(r.Context()); err != nil {
-				http.Error(w, err.Error(), http.StatusServiceUnavailable)
+		if f.ingester != nil {
+			if err := f.ingester.CheckReady(r.Context()); err != nil {
+				http.Error(w, "Ingester not ready: "+err.Error(), http.StatusServiceUnavailable)
+				return
+			}
+		}
+
+		if f.frontend != nil {
+			if err := f.frontend.CheckReady(r.Context()); err != nil {
+				http.Error(w, "Query Frontend not ready: "+err.Error(), http.StatusServiceUnavailable)
 				return
 			}
 		}
@@ -596,11 +574,6 @@ func (f *Phlare) initVersion() (services.Service, error) {
 	}
 	f.API.RegisterVersion(f.versions)
 	return f.versions, nil
-}
-
-func (f *Phlare) initCompactionWorker() (svc services.Service, err error) {
-	f.compactionWorker, err = compactionworker.New(f.Cfg.CompactionWorker, f.logger, f.MetastoreClient, f.storageBucket, f.reg)
-	return f.compactionWorker, nil
 }
 
 func printRoutes(r *mux.Router) {

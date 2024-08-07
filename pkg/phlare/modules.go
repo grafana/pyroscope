@@ -12,7 +12,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/dns"
-	"github.com/grafana/dskit/kv"
 	"github.com/grafana/dskit/kv/codec"
 	"github.com/grafana/dskit/kv/memberlist"
 	"github.com/grafana/dskit/middleware"
@@ -30,7 +29,6 @@ import (
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/genproto/googleapis/api/httpbody"
-	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/protobuf/encoding/protojson"
 	"gopkg.in/yaml.v3"
 
@@ -39,59 +37,48 @@ import (
 	apiversion "github.com/grafana/pyroscope/pkg/api/version"
 	"github.com/grafana/pyroscope/pkg/compactor"
 	"github.com/grafana/pyroscope/pkg/distributor"
-	"github.com/grafana/pyroscope/pkg/distributor/singlereplica"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/ingester"
-	"github.com/grafana/pyroscope/pkg/metastore"
-	metastoreclient "github.com/grafana/pyroscope/pkg/metastore/client"
 	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/pkg/operations"
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/querier"
 	"github.com/grafana/pyroscope/pkg/querier/worker"
-	"github.com/grafana/pyroscope/pkg/querybackend"
-	querybackendclient "github.com/grafana/pyroscope/pkg/querybackend/client"
 	"github.com/grafana/pyroscope/pkg/scheduler"
 	"github.com/grafana/pyroscope/pkg/settings"
 	"github.com/grafana/pyroscope/pkg/storegateway"
 	"github.com/grafana/pyroscope/pkg/usagestats"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/build"
-	"github.com/grafana/pyroscope/pkg/util/health"
 	"github.com/grafana/pyroscope/pkg/validation"
 	"github.com/grafana/pyroscope/pkg/validation/exporter"
 )
 
 // The various modules that make up Pyroscope.
 const (
-	All                string = "all"
-	API                string = "api"
-	Version            string = "version"
-	Distributor        string = "distributor"
-	Server             string = "server"
-	Ring               string = "ring"
-	Ingester           string = "ingester"
-	MemberlistKV       string = "memberlist-kv"
-	Querier            string = "querier"
-	StoreGateway       string = "store-gateway"
-	GRPCGateway        string = "grpc-gateway"
-	Storage            string = "storage"
-	UsageReport        string = "usage-stats"
-	QueryFrontend      string = "query-frontend"
-	QueryScheduler     string = "query-scheduler"
-	RuntimeConfig      string = "runtime-config"
-	Overrides          string = "overrides"
-	OverridesExporter  string = "overrides-exporter"
-	Compactor          string = "compactor"
-	Admin              string = "admin"
-	TenantSettings     string = "tenant-settings"
-	AdHocProfiles      string = "ad-hoc-profiles"
-	Metastore          string = "metastore"
-	MetastoreClient    string = "metastore-client"
-	QueryBackend       string = "query-worker" // TODO: query-backend
-	QueryBackendClient string = "query-backend-client"
-	CompactionWorker   string = "compaction-worker"
+	All               string = "all"
+	API               string = "api"
+	Version           string = "version"
+	Distributor       string = "distributor"
+	Server            string = "server"
+	Ring              string = "ring"
+	Ingester          string = "ingester"
+	MemberlistKV      string = "memberlist-kv"
+	Querier           string = "querier"
+	StoreGateway      string = "store-gateway"
+	GRPCGateway       string = "grpc-gateway"
+	Storage           string = "storage"
+	UsageReport       string = "usage-stats"
+	QueryFrontend     string = "query-frontend"
+	QueryScheduler    string = "query-scheduler"
+	RuntimeConfig     string = "runtime-config"
+	Overrides         string = "overrides"
+	OverridesExporter string = "overrides-exporter"
+	Compactor         string = "compactor"
+	Admin             string = "admin"
+	TenantSettings    string = "tenant-settings"
+	AdHocProfiles     string = "ad-hoc-profiles"
 
 	// QueryFrontendTripperware string = "query-frontend-tripperware"
 	// IndexGateway             string = "index-gateway"
@@ -114,15 +101,7 @@ func (f *Phlare) initQueryFrontend() (services.Service, error) {
 		f.Cfg.Frontend.Port = f.Cfg.Server.HTTPListenPort
 	}
 
-	logger := log.With(f.logger, "component", "frontend")
-	frontendSvc, err := frontend.NewFrontend(
-		f.Cfg.Frontend,
-		f.Overrides,
-		logger,
-		f.reg,
-		f.MetastoreClient,
-		f.QueryBackendClient,
-	)
+	frontendSvc, err := frontend.NewFrontend(f.Cfg.Frontend, f.Overrides, log.With(f.logger, "component", "frontend"), f.reg)
 	if err != nil {
 		return nil, err
 	}
@@ -130,6 +109,7 @@ func (f *Phlare) initQueryFrontend() (services.Service, error) {
 	f.API.RegisterPyroscopeHandlers(frontendSvc)
 	f.API.RegisterQueryFrontend(frontendSvc)
 	f.API.RegisterQuerier(frontendSvc)
+	f.frontend = frontendSvc
 
 	return frontendSvc, nil
 }
@@ -380,35 +360,14 @@ func (f *Phlare) initMemberlistKV() (services.Service, error) {
 }
 
 func (f *Phlare) initRing() (_ services.Service, err error) {
-	f.Cfg.Ingester.LifecyclerConfig.RingConfig.ReplicationFactor = 1
-	f.Cfg.Ingester.LifecyclerConfig.NumTokens = 4
-	f.ring, err = newRing(
-		f.Cfg.Ingester.LifecyclerConfig.RingConfig,
-		"ingester", "ring",
-		log.With(f.logger, "component", "ring"),
-		singlereplica.NewReplicationStrategy(),
-		prometheus.WrapRegistererWithPrefix("pyroscope_", f.reg),
-	)
+	f.ring, err = ring.New(f.Cfg.Ingester.LifecyclerConfig.RingConfig, "ingester", "ring", log.With(f.logger, "component", "ring"), prometheus.WrapRegistererWithPrefix("pyroscope_", f.reg))
 	if err != nil {
 		return nil, err
 	}
+
 	f.API.RegisterRing(f.ring)
 
 	return f.ring, nil
-}
-
-func newRing(cfg ring.Config, name, key string, logger log.Logger, rs ring.ReplicationStrategy, reg prometheus.Registerer) (*ring.Ring, error) {
-	codec := ring.GetCodec()
-	store, err := kv.NewClient(
-		cfg.KVStore,
-		codec,
-		kv.RegistererWithKVName(reg, name+"-ring"),
-		logger,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return ring.NewWithStoreClientAndStrategy(cfg, name, key, store, rs, reg, logger)
 }
 
 func (f *Phlare) initStorage() (_ services.Service, err error) {
@@ -431,23 +390,6 @@ func (f *Phlare) initStorage() (_ services.Service, err error) {
 	if f.Cfg.Target.String() != All && f.storageBucket == nil {
 		return nil, errors.New("storage bucket configuration is required when running in microservices mode")
 	}
-	if f.Cfg.Target.String() == All && f.storageBucket == nil {
-		level.Warn(f.logger).Log("msg", "no storage bucket configured, using filesystem bucket", "path", f.Cfg.PhlareDB.DataPath)
-		b, err := objstoreclient.NewBucket(f.context(), objstoreclient.Config{
-			StorageBackendConfig: objstoreclient.StorageBackendConfig{
-				Backend: objstoreclient.Filesystem,
-				Filesystem: filesystem.Config{
-					Directory: f.Cfg.PhlareDB.DataPath,
-				},
-			},
-			StoragePrefix: "all_objects",
-			Middlewares:   nil,
-		}, "storage")
-		if err != nil {
-			return nil, errors.Wrap(err, "unable to initialise bucket")
-		}
-		f.storageBucket = b
-	}
 
 	return nil, nil
 }
@@ -461,12 +403,13 @@ func (f *Phlare) context() context.Context {
 func (f *Phlare) initIngester() (_ services.Service, err error) {
 	f.Cfg.Ingester.LifecyclerConfig.ListenPort = f.Cfg.Server.HTTPListenPort
 
-	svc, err := ingester.New(f.context(), f.Cfg.Ingester, f.Cfg.PhlareDB, f.storageBucket, f.Overrides, f.Cfg.Querier.QueryStoreAfter, f.MetastoreClient)
+	svc, err := ingester.New(f.context(), f.Cfg.Ingester, f.Cfg.PhlareDB, f.storageBucket, f.Overrides, f.Cfg.Querier.QueryStoreAfter)
 	if err != nil {
 		return nil, err
 	}
 
 	f.API.RegisterIngester(svc)
+	f.ingester = svc
 
 	return svc, nil
 }
@@ -514,26 +457,12 @@ func (f *Phlare) initServer() (services.Service, error) {
 		f.Cfg.Server.HTTPServerReadTimeout = 2 * f.Cfg.Server.HTTPServerReadTimeout
 		f.Cfg.Server.HTTPServerWriteTimeout = 2 * f.Cfg.Server.HTTPServerWriteTimeout
 	}
-
-	f.Cfg.Server.GRPCServerMaxConcurrentStreams = 0
-	f.Cfg.Server.GRPCServerMaxRecvMsgSize = 100 << 20
-	f.Cfg.Server.GRPCServerMaxSendMsgSize = 100 << 20
-	f.Cfg.Server.GRPCServerMaxConnectionIdle = 15 * time.Second
-	f.Cfg.Server.GRPCServerMaxConnectionAge = 5 * time.Minute
-	f.Cfg.Server.GRPCServerMinTimeBetweenPings = time.Second
-	f.Cfg.Server.GRPCServerTime = 2 * time.Minute
-
-	metrics := NewServerMetrics(f.Cfg.Server, f.Cfg.Server.Registerer)
-	serv, err := server.NewWithMetrics(f.Cfg.Server, metrics)
+	serv, err := server.New(f.Cfg.Server)
 	if err != nil {
 		return nil, err
 	}
 
 	f.Server = serv
-
-	healthService := health.NewGRPCHealthService()
-	grpc_health_v1.RegisterHealthServer(f.Server.GRPC, healthService)
-	f.health = healthService
 
 	servicesToWaitFor := func() []services.Service {
 		svs := []services.Service(nil)
@@ -623,51 +552,6 @@ func (f *Phlare) initAdmin() (services.Service, error) {
 	f.admin = a
 	f.API.RegisterAdmin(a)
 	return a, nil
-}
-
-func (f *Phlare) initMetastore() (services.Service, error) {
-	//grpc.EnableTracing = true
-
-	logger := log.With(f.logger, "component", "metastore")
-	m, err := metastore.New(f.Cfg.Metastore, f.TenantLimits, logger, f.reg, f.health, f.MetastoreClient)
-	if err != nil {
-		return nil, err
-	}
-	f.API.RegisterMetastore(m)
-	f.metastore = m
-	return m.Service(), nil
-}
-
-func (f *Phlare) initMetastoreClient() (services.Service, error) {
-	mc, err := metastoreclient.New(f.Cfg.MetastoreClient, f.logger)
-	if err != nil {
-		return nil, err
-	}
-	f.MetastoreClient = mc
-	return mc.Service(), nil
-}
-
-func (f *Phlare) initQueryBackendClient() (services.Service, error) {
-	c, err := querybackendclient.New(
-		f.Cfg.QueryBackend.Address,
-		f.Cfg.QueryBackend.GRPCClientConfig,
-	)
-	if err != nil {
-		return nil, err
-	}
-	f.QueryBackendClient = c
-	return c.Service(), nil
-}
-
-func (f *Phlare) initQueryBackend() (services.Service, error) {
-	br := querybackend.NewBlockReader(f.logger, f.storageBucket)
-	logger := log.With(f.logger, "component", "query-backend")
-	b, err := querybackend.New(f.Cfg.QueryBackend, logger, f.reg, f.QueryBackendClient, br)
-	if err != nil {
-		return nil, err
-	}
-	f.API.RegisterQueryBackend(b)
-	return b.Service(), nil
 }
 
 type statusService struct {
