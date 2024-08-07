@@ -208,10 +208,6 @@ func NewTOCFromByteSlice(bs ByteSlice) (*TOC, error) {
 
 // NewWriter returns a new Writer to the given filename. It serializes data in format version 2.
 func NewWriter(ctx context.Context, fn string) (*Writer, error) {
-	return NewWriterSize(ctx, fn, 4<<20)
-}
-
-func NewWriterSize(ctx context.Context, fn string, bufferSize int) (*Writer, error) {
 	dir := filepath.Dir(fn)
 
 	df, err := fileutil.OpenDir(dir)
@@ -225,17 +221,17 @@ func NewWriterSize(ctx context.Context, fn string, bufferSize int) (*Writer, err
 	}
 
 	// Main index file we are building.
-	f, err := NewFileWriter(fn, bufferSize)
+	f, err := NewFileWriter(fn)
 	if err != nil {
 		return nil, err
 	}
 	// Temporary file for postings.
-	fP, err := NewFileWriter(fn+"_tmp_p", bufferSize)
+	fP, err := NewFileWriter(fn + "_tmp_p")
 	if err != nil {
 		return nil, err
 	}
 	// Temporary file for posting offset table.
-	fPO, err := NewFileWriter(fn+"_tmp_po", bufferSize)
+	fPO, err := NewFileWriter(fn + "_tmp_po")
 	if err != nil {
 		return nil, err
 	}
@@ -251,8 +247,8 @@ func NewWriterSize(ctx context.Context, fn string, bufferSize int) (*Writer, err
 		stage: idxStageNone,
 
 		// Reusable memory.
-		buf1: encoding.EncWrap(tsdb_enc.Encbuf{B: make([]byte, 0, bufferSize)}),
-		buf2: encoding.EncWrap(tsdb_enc.Encbuf{B: make([]byte, 0, bufferSize)}),
+		buf1: encoding.EncWrap(tsdb_enc.Encbuf{B: make([]byte, 0, 1<<22)}),
+		buf2: encoding.EncWrap(tsdb_enc.Encbuf{B: make([]byte, 0, 1<<22)}),
 
 		symbolCache: make(map[string]symbolCacheEntry, 1<<8),
 		labelNames:  make(map[string]uint64, 1<<8),
@@ -283,14 +279,14 @@ type FileWriter struct {
 	name string
 }
 
-func NewFileWriter(name string, bufferSize int) (*FileWriter, error) {
+func NewFileWriter(name string) (*FileWriter, error) {
 	f, err := os.OpenFile(name, os.O_CREATE|os.O_RDWR, 0o666)
 	if err != nil {
 		return nil, err
 	}
 	return &FileWriter{
 		f:    f,
-		fbuf: bufio.NewWriterSize(f, bufferSize),
+		fbuf: bufio.NewWriterSize(f, 1<<22),
 		pos:  0,
 		name: name,
 	}, nil
@@ -1080,8 +1076,7 @@ func (w *Writer) writePostings() error {
 		return err
 	}
 	// Don't need to calculate a checksum, so can copy directly.
-	buf := w.buf1.B[:cap(w.buf1.B)]
-	n, err := io.CopyBuffer(w.f.fbuf, w.fP.f, buf)
+	n, err := io.CopyBuffer(w.f.fbuf, w.fP.f, make([]byte, 1<<20))
 	if err != nil {
 		return err
 	}

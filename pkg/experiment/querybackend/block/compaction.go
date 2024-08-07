@@ -522,11 +522,8 @@ func (rw *indexRewriter) rewriteRow(e ProfileEntry) error {
 func (rw *indexRewriter) NumSeries() uint64 { return uint64(len(rw.series)) }
 
 func (rw *indexRewriter) Flush() error {
-	w, err := index.NewWriterSize(context.Background(),
-		filepath.Join(rw.path, block.IndexFilename),
-		// There is no particular reason to use a buffer (bufio.Writer)
-		// larger than the default one when writing on disk
-		4<<10)
+	w, err := index.NewWriter(context.Background(),
+		filepath.Join(rw.path, block.IndexFilename))
 	if err != nil {
 		return err
 	}
