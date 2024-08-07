@@ -5,7 +5,6 @@ go 1.21.0
 require (
 	connectrpc.com/connect v1.16.2
 	connectrpc.com/grpchealth v1.3.0
-	github.com/OneOfOne/xxhash v1.2.6
 	github.com/PuerkitoBio/goquery v1.8.1
 	github.com/aybabtme/rgbterm v0.0.0-20170906152045-cc83f3b3ce59
 	github.com/briandowns/spinner v1.23.0
@@ -36,7 +35,6 @@ require (
 	github.com/grafana/pyroscope/api v0.4.0
 	github.com/grafana/regexp v0.0.0-20221123153739-15dc172cd2db
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.0
-	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/hashicorp/raft v1.7.0
 	github.com/hashicorp/raft-wal v0.4.1
@@ -171,6 +169,7 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-hclog v1.6.2 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
+	github.com/hashicorp/go-msgpack v1.1.5 // indirect
 	github.com/hashicorp/go-msgpack/v2 v2.1.1 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-rootcerts v1.0.2 // indirect
@@ -259,7 +258,7 @@ replace (
 
 	// Replace memberlist with our fork which includes some fixes that haven't been
 	// merged upstream yet.
-	//	github.com/hashicorp/memberlist => github.com/grafana/memberlist v0.3.1-0.20220708130638-bd88e10a3d91
+	github.com/hashicorp/memberlist => github.com/grafana/memberlist v0.3.1-0.20220708130638-bd88e10a3d91
 
 	// Replaced with fork, to allow prefix listing, see https://github.com/simonswine/objstore/commit/84f91ea90e721f17d2263cf479fff801cab7cf27
 	github.com/thanos-io/objstore => github.com/grafana/objstore v0.0.0-20231121154247-84f91ea90e72

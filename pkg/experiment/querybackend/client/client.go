@@ -5,7 +5,7 @@ import (
 
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/services"
-	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
+	"github.com/opentracing-contrib/go-grpc"
 	"github.com/opentracing/opentracing-go"
 	"google.golang.org/grpc"
 
