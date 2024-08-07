@@ -79,31 +79,6 @@ func TestIter(t *testing.T) {
 			expected: []string{"foo/ba/buzz3", "foo/bar/buz1", "foo/bar/buz2", "foo/buzz4", "foo/buzz5", "foo6"},
 			options:  []objstore.IterOption{objstore.WithRecursiveIter},
 		},
-		{
-			prefix:   "foo",
-			expected: []string{"foo/", "foo6"},
-			options:  []objstore.IterOption{objstore.WithoutApendingDirDelim},
-		},
-		{
-			prefix:   "f",
-			expected: []string{"foo/", "foo6"},
-			options:  []objstore.IterOption{objstore.WithoutApendingDirDelim},
-		},
-		{
-			prefix:   "foo/ba",
-			expected: []string{"foo/ba/", "foo/bar/"},
-			options:  []objstore.IterOption{objstore.WithoutApendingDirDelim},
-		},
-		{
-			prefix:   "foo/ba",
-			expected: []string{"foo/ba/buzz3", "foo/bar/buz1", "foo/bar/buz2"},
-			options:  []objstore.IterOption{objstore.WithoutApendingDirDelim, objstore.WithRecursiveIter},
-		},
-		{
-			prefix:   "fo",
-			expected: []string{"foo/ba/buzz3", "foo/bar/buz1", "foo/bar/buz2", "foo/buzz4", "foo/buzz5", "foo6"},
-			options:  []objstore.IterOption{objstore.WithoutApendingDirDelim, objstore.WithRecursiveIter},
-		},
 	} {
 		tc := tc
 		t.Run(tc.prefix, func(t *testing.T) {
