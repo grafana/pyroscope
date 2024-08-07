@@ -351,12 +351,9 @@ func newProfileWriter(path string) (*profilesWriter, error) {
 		return nil, err
 	}
 	return &profilesWriter{
-		GenericWriter: newParquetProfileWriter(profileFile,
-			parquet.MaxRowsPerRowGroup(int64(defaultParquetConfig.MaxBufferRowCount)),
-			parquet.PageBufferSize(BlocksParquetWriteBufferSize),
-		),
-		file: profileFile,
-		buf:  make([]parquet.Row, 1),
+		GenericWriter: newParquetProfileWriter(profileFile, parquet.MaxRowsPerRowGroup(int64(defaultParquetConfig.MaxBufferRowCount))),
+		file:          profileFile,
+		buf:           make([]parquet.Row, 1),
 	}, nil
 }
 
@@ -430,7 +427,7 @@ func (idxRw *indexRewriter) NumSeries() uint64 {
 
 // Close writes the index to given folder.
 func (idxRw *indexRewriter) Close(ctx context.Context) error {
-	indexw, err := index.NewWriter(ctx, filepath.Join(idxRw.path, block.IndexFilename), index.BlocksIndexWriterBufSize)
+	indexw, err := index.NewWriter(ctx, filepath.Join(idxRw.path, block.IndexFilename))
 	if err != nil {
 		return err
 	}

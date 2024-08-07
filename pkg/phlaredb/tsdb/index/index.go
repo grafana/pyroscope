@@ -56,9 +56,6 @@ const (
 
 	// store every 1024 series' fingerprints in the fingerprint offsets table
 	fingerprintInterval = 1 << 10
-
-	SegmentsIndexWriterBufSize = 2 * 0x1000 // small for segments
-	BlocksIndexWriterBufSize   = 1 << 22    // large for blocks
 )
 
 type indexWriterStage uint8
@@ -210,7 +207,11 @@ func NewTOCFromByteSlice(bs ByteSlice) (*TOC, error) {
 }
 
 // NewWriter returns a new Writer to the given filename. It serializes data in format version 2.
-func NewWriter(ctx context.Context, fn string, bufferSize int) (*Writer, error) {
+func NewWriter(ctx context.Context, fn string) (*Writer, error) {
+	return NewWriterSize(ctx, fn, 4<<20)
+}
+
+func NewWriterSize(ctx context.Context, fn string, bufferSize int) (*Writer, error) {
 	dir := filepath.Dir(fn)
 
 	df, err := fileutil.OpenDir(dir)
@@ -1079,8 +1080,6 @@ func (w *Writer) writePostings() error {
 		return err
 	}
 	// Don't need to calculate a checksum, so can copy directly.
-	//n, err := io.CopyBuffer(w.f.fbuf, w.fP.f, make([]byte, 1<<20))
-	//buf := make([]byte, cap(w.buf1.B))
 	buf := w.buf1.B[:cap(w.buf1.B)]
 	n, err := io.CopyBuffer(w.f.fbuf, w.fP.f, buf)
 	if err != nil {

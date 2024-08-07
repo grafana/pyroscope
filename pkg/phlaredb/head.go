@@ -9,8 +9,6 @@ import (
 	"sync"
 	"time"
 
-	index2 "github.com/grafana/pyroscope/pkg/phlaredb/tsdb/loki/index"
-
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -144,10 +142,6 @@ func NewHead(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*Hea
 	go h.loop()
 
 	return h, nil
-}
-
-func (h *Head) TSDBIndex() *index2.BufferWriter {
-	return h.profiles.indexBytes
 }
 
 func (h *Head) MemorySize() uint64 {
@@ -376,19 +370,18 @@ func (h *Head) Bounds() (mint, maxt model.Time) {
 
 // Returns underlying queries, the queriers should be roughly ordered in TS increasing order
 func (h *Head) Queriers() Queriers {
-	return nil
-	//h.profiles.rowsLock.RLock()
-	//defer h.profiles.rowsLock.RUnlock()
-	//
-	//queriers := make([]Querier, 0, len(h.profiles.rowGroups)+1)
-	//for idx := range h.profiles.rowGroups {
-	//	queriers = append(queriers, &headOnDiskQuerier{
-	//		head:        h,
-	//		rowGroupIdx: idx,
-	//	})
-	//}
-	//queriers = append(queriers, &headInMemoryQuerier{h})
-	//return queriers
+	h.profiles.rowsLock.RLock()
+	defer h.profiles.rowsLock.RUnlock()
+
+	queriers := make([]Querier, 0, len(h.profiles.rowGroups)+1)
+	for idx := range h.profiles.rowGroups {
+		queriers = append(queriers, &headOnDiskQuerier{
+			head:        h,
+			rowGroupIdx: idx,
+		})
+	}
+	queriers = append(queriers, &headInMemoryQuerier{h})
+	return queriers
 }
 
 func (h *Head) Sort(in []Profile) []Profile {
@@ -600,22 +593,19 @@ func (h *Head) flush(ctx context.Context) error {
 
 	// tsdb
 	h.meta.Stats.NumSeries = uint64(h.profiles.index.totalSeries.Load())
-	//f := block.File{
-	//	RelPath: block.IndexFilename,
-	//	TSDB: &block.TSDBFile{
-	//		NumSeries: h.meta.Stats.NumSeries,
-	//	},
-	//}
-	h.metrics.flushedBlockSeries.Observe(float64(h.meta.Stats.NumSeries))
-	//if stat, err := os.Stat(filepath.Join(h.headPath, block.IndexFilename)); err == nil {
-	//	f.SizeBytes = uint64(stat.Size())
-	if h.profiles.indexBytes != nil {
-		blockSize += uint64(h.profiles.indexBytes.Pos())
-		h.metrics.flushedFileSizeBytes.WithLabelValues("tsdb").Observe(float64(uint64(h.profiles.indexBytes.Pos())))
+	f := block.File{
+		RelPath: block.IndexFilename,
+		TSDB: &block.TSDBFile{
+			NumSeries: h.meta.Stats.NumSeries,
+		},
 	}
-
-	//}
-	//files = append(files, f)
+	h.metrics.flushedBlockSeries.Observe(float64(h.meta.Stats.NumSeries))
+	if stat, err := os.Stat(filepath.Join(h.headPath, block.IndexFilename)); err == nil {
+		f.SizeBytes = uint64(stat.Size())
+		blockSize += f.SizeBytes
+		h.metrics.flushedFileSizeBytes.WithLabelValues("tsdb").Observe(float64(f.SizeBytes))
+	}
+	files = append(files, f)
 
 	h.metrics.flushedBlockSizeBytes.Observe(float64(blockSize))
 	sort.Slice(files, func(i, j int) bool {
@@ -630,9 +620,9 @@ func (h *Head) flush(ctx context.Context) error {
 	h.metrics.flusehdBlockProfiles.Observe(float64(h.meta.Stats.NumProfiles))
 
 	sort.Slice(files, func(i, j int) bool { return files[i].RelPath < files[j].RelPath })
-	//if _, err := h.meta.WriteToFile(h.logger, h.headPath); err != nil {
-	//	return err
-	//}
+	if _, err := h.meta.WriteToFile(h.logger, h.headPath); err != nil {
+		return err
+	}
 	h.metrics.blockDurationSeconds.Observe(h.meta.MaxTime.Sub(h.meta.MinTime).Seconds())
 	return nil
 }
@@ -645,9 +635,9 @@ func (h *Head) flush(ctx context.Context) error {
 func (h *Head) Move() error {
 	// Remove intermediate row groups before the move as they are still
 	// referencing files on the disk.
-	//if err := h.profiles.DeleteRowGroups(); err != nil {
-	//	return err
-	//}
+	if err := h.profiles.DeleteRowGroups(); err != nil {
+		return err
+	}
 
 	// move block to the local directory
 	if err := os.MkdirAll(filepath.Dir(h.localPath), defaultFolderMode); err != nil {

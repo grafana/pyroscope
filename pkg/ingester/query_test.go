@@ -90,7 +90,6 @@ import (
 // }
 
 func Test_QueryMetadata(t *testing.T) {
-	t.Skip("No querying from ingesters in the new architecture")
 	dbPath := t.TempDir()
 	logger := log.NewJSONLogger(os.Stdout)
 	reg := prometheus.NewRegistry()
@@ -111,7 +110,7 @@ func Test_QueryMetadata(t *testing.T) {
 	ing, err := New(ctx, defaultIngesterTestConfig(t), phlaredb.Config{
 		DataPath:         dbPath,
 		MaxBlockDuration: 30 * time.Hour,
-	}, fs, &fakeLimits{}, 0, nil)
+	}, fs, &fakeLimits{}, 0)
 	require.NoError(t, err)
 	require.NoError(t, services.StartAndAwaitRunning(context.Background(), ing))
 

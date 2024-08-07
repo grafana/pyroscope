@@ -157,7 +157,7 @@ func TestIndexRW_Create_Open(t *testing.T) {
 	fn := filepath.Join(dir, IndexFilename)
 
 	// An empty index must still result in a readable file.
-	iw, err := NewWriter(context.Background(), fn, BlocksIndexWriterBufSize)
+	iw, err := NewWriter(context.Background(), fn)
 	require.NoError(t, err)
 	require.NoError(t, iw.Close())
 
@@ -181,7 +181,7 @@ func TestIndexRW_Postings(t *testing.T) {
 
 	fn := filepath.Join(dir, IndexFilename)
 
-	iw, err := NewWriter(context.Background(), fn, BlocksIndexWriterBufSize)
+	iw, err := NewWriter(context.Background(), fn)
 	require.NoError(t, err)
 
 	series := []phlaremodel.Labels{
@@ -261,7 +261,7 @@ func TestPostingsMany(t *testing.T) {
 
 	fn := filepath.Join(dir, IndexFilename)
 
-	iw, err := NewWriter(context.Background(), fn, BlocksIndexWriterBufSize)
+	iw, err := NewWriter(context.Background(), fn)
 	require.NoError(t, err)
 
 	// Create a label in the index which has 999 values.
@@ -403,7 +403,7 @@ func TestPersistence_index_e2e(t *testing.T) {
 		})
 	}
 
-	iw, err := NewWriter(context.Background(), filepath.Join(dir, IndexFilename), BlocksIndexWriterBufSize)
+	iw, err := NewWriter(context.Background(), filepath.Join(dir, IndexFilename))
 	require.NoError(t, err)
 
 	syms := []string{}
@@ -586,7 +586,7 @@ func TestDecoder_Postings_WrongInput(t *testing.T) {
 }
 
 func TestWriter_ShouldReturnErrorOnSeriesWithDuplicatedLabelNames(t *testing.T) {
-	w, err := NewWriter(context.Background(), filepath.Join(t.TempDir(), "index"), BlocksIndexWriterBufSize)
+	w, err := NewWriter(context.Background(), filepath.Join(t.TempDir(), "index"))
 	require.NoError(t, err)
 
 	require.NoError(t, w.AddSymbol("__name__"))

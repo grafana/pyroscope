@@ -829,7 +829,7 @@ func generateFile(t *testing.T, path string, size int) {
 func generateIndexFile(t *testing.T, dir string) {
 	t.Helper()
 	filePath := filepath.Join(dir, block.IndexFilename)
-	idxw, err := index.NewWriter(context.Background(), filePath, index.BlocksIndexWriterBufSize)
+	idxw, err := index.NewWriter(context.Background(), filePath)
 	require.NoError(t, err)
 	require.NoError(t, idxw.AddSymbol("a"))
 	require.NoError(t, idxw.AddSymbol("b"))

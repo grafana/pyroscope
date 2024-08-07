@@ -14,23 +14,24 @@ import (
 	"sync"
 	"time"
 
-	index2 "github.com/grafana/pyroscope/pkg/phlaredb/tsdb/loki/index"
-	"github.com/grafana/pyroscope/pkg/tenant"
-
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
 	"github.com/oklog/ulid"
+	"github.com/prometheus/common/model"
 	"github.com/thanos-io/objstore"
+
+	"github.com/grafana/pyroscope/pkg/experiment/ingester/loki/index"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/client"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	metastoreclient "github.com/grafana/pyroscope/pkg/metastore/client"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
+	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/util/math"
 )
 
@@ -47,7 +48,6 @@ type segmentsWriter struct {
 	shards          map[shardKey]*shard
 	shardsLock      sync.RWMutex
 	cfg             phlaredb.Config
-	limiters        *limiters
 	bucket          objstore.Bucket
 	metastoreClient *metastoreclient.Client
 	//wg              sync.WaitGroup
@@ -117,7 +117,7 @@ func (sh *shard) flushSegment(ctx context.Context) {
 	}()
 }
 
-func newSegmentWriter(phlarectx context.Context, l log.Logger, metrics *segmentMetrics, cfg phlaredb.Config, limiters *limiters, bucket objstore.Bucket, segmentDuration time.Duration, metastoreClient *metastoreclient.Client) *segmentsWriter {
+func newSegmentWriter(phlarectx context.Context, l log.Logger, metrics *segmentMetrics, cfg phlaredb.Config, bucket objstore.Bucket, segmentDuration time.Duration, metastoreClient *metastoreclient.Client) *segmentsWriter {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	sw := &segmentsWriter{
 		metrics:         metrics,
@@ -125,7 +125,6 @@ func newSegmentWriter(phlarectx context.Context, l log.Logger, metrics *segmentM
 		phlarectx:       phlarectx,
 		l:               l,
 		bucket:          bucket,
-		limiters:        limiters,
 		cfg:             cfg,
 		shards:          make(map[shardKey]*shard),
 		metastoreClient: metastoreClient,
@@ -285,8 +284,8 @@ func concatSegmentHead(sh *shard, e serviceHead, w *writerOffset) (*metastorev1.
 	b := e.head.Meta()
 	ptypes := e.head.MustProfileTypeNames()
 
-	profiles, index, symbols := getFilesForSegment(e.head, b)
-	defer index2.PutBufferWriterToPool(index)
+	profiles, x, symbols := getFilesForSegment(e.head, b)
+	defer index.PutBufferWriterToPool(x)
 
 	offsets := make([]uint64, 3)
 	var err error
@@ -295,7 +294,7 @@ func concatSegmentHead(sh *shard, e serviceHead, w *writerOffset) (*metastorev1.
 		return nil, err
 	}
 	offsets[1] = uint64(w.offset)
-	indexBytes, _, _ := index.Buffer()
+	indexBytes, _, _ := x.Buffer()
 	_, err = w.Write(indexBytes)
 	if err != nil {
 		return nil, err
@@ -468,12 +467,11 @@ func (s *segment) headForIngest(k serviceKey) (*phlaredb.Head, error) {
 		return h.head, nil
 	}
 
-	l := s.sw.limiters.get(k.tenant)
 	cfg := s.sw.cfg
 	cfg.DataPath = path.Join(s.dataPath)
 	cfg.SymDBFormat = symdb.FormatV3
 
-	nh, err := phlaredb.NewHead(s.sw.phlarectx, cfg, l)
+	nh, err := phlaredb.NewHead(s.sw.phlarectx, cfg, noopLimiter{})
 	if err != nil {
 		return nil, err
 	}
@@ -527,9 +525,16 @@ func (sw *segmentsWriter) storeMeta(ctx context.Context, meta *metastorev1.Block
 	return nil
 }
 
-func getFilesForSegment(h *phlaredb.Head, b *block.Meta) (profiles *block.File, index *index2.BufferWriter, symbols *block.File) {
+func getFilesForSegment(_ *phlaredb.Head, b *block.Meta) (profiles *block.File, index *index.BufferWriter, symbols *block.File) {
 	profiles = b.FileByRelPath("profiles.parquet")
-	index = h.TSDBIndex()
+	// FIXME
+	// index = head.TSDBIndex()
 	symbols = b.FileByRelPath("symbols.symdb")
 	return
 }
+
+type noopLimiter struct{}
+
+func (noopLimiter) AllowProfile(model.Fingerprint, phlaremodel.Labels, int64) error { return nil }
+
+func (noopLimiter) Stop() {}

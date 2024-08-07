@@ -181,11 +181,6 @@ func (m *headMetrics) register(reg prometheus.Registerer) {
 	m.writtenProfileSegmentsBytes = util.RegisterOrGet(reg, m.writtenProfileSegmentsBytes)
 }
 
-// todo this implicit object passing is confusing and errorprone
-func ContextWithHeadMetrics(ctx context.Context, reg prometheus.Registerer) context.Context {
-	return contextWithHeadMetrics(ctx, newHeadMetrics(reg))
-}
-
 func contextWithHeadMetrics(ctx context.Context, m *headMetrics) context.Context {
 	return context.WithValue(ctx, headMetricsContextKey, m)
 }

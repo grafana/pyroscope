@@ -4,47 +4,43 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"google.golang.org/grpc"
+	"sync"
 	"time"
-
-	"github.com/google/uuid"
-
-	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	metastoreclient "github.com/grafana/pyroscope/pkg/metastore/client"
-	"github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/grafana/pyroscope/pkg/tenant"
-	"github.com/grafana/pyroscope/pkg/validation"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/google/uuid"
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
+	"github.com/oklog/ulid"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingesterv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
+	phlareobjclient "github.com/grafana/pyroscope/pkg/objstore/client"
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
+	"github.com/grafana/pyroscope/pkg/pprof"
+	"github.com/grafana/pyroscope/pkg/tenant"
+	"github.com/grafana/pyroscope/pkg/usagestats"
 	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
-//var activeTenantsStats = usagestats.NewInt("ingester_active_tenants")
+var activeTenantsStats = usagestats.NewInt("ingester_active_tenants")
 
 type Config struct {
 	LifecyclerConfig ring.LifecyclerConfig `yaml:"lifecycler,omitempty"`
-	SegmentDuration  time.Duration         `yaml:"segmentDuration,omitempty"`
-	Async            bool                  `yaml:"async,omitempty"`
 }
 
 // RegisterFlags registers the flags.
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	cfg.LifecyclerConfig.RegisterFlags(f, util.Logger)
-	f.DurationVar(&cfg.SegmentDuration, "ingester.segment.duration", 500*time.Millisecond, "Timeout when flushing segments to bucket.")
-	f.BoolVar(&cfg.Async, "ingester.async", false, "Enable async mode for ingester.")
 }
 
 func (cfg *Config) Validate() error {
@@ -63,10 +59,11 @@ type Ingester struct {
 	subservices        *services.Manager
 	subservicesWatcher *services.FailureWatcher
 
+	localBucket   phlareobj.Bucket
 	storageBucket phlareobj.Bucket
 
-	limiters      *limiters
-	segmentWriter *segmentsWriter
+	instances    map[string]*instance
+	instancesMtx sync.RWMutex
 
 	limits Limits
 	reg    prometheus.Registerer
@@ -83,18 +80,13 @@ func (i *ingesterFlusherCompat) Flush() {
 	}
 }
 
-func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storageBucket phlareobj.Bucket, limits Limits, queryStoreAfter time.Duration, metastoreClient *metastoreclient.Client) (*Ingester, error) {
-
-	grpc.EnableTracing = true
-
-	reg := phlarecontext.Registry(phlarectx)
-	log := phlarecontext.Logger(phlarectx)
-	phlarectx = phlaredb.ContextWithHeadMetrics(phlarectx, reg)
+func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storageBucket phlareobj.Bucket, limits Limits, queryStoreAfter time.Duration) (*Ingester, error) {
 	i := &Ingester{
 		cfg:           cfg,
 		phlarectx:     phlarectx,
-		logger:        log,
-		reg:           reg,
+		logger:        phlarecontext.Logger(phlarectx),
+		reg:           phlarecontext.Registry(phlarectx),
+		instances:     map[string]*instance{},
 		dbConfig:      dbConfig,
 		storageBucket: storageBucket,
 		limits:        limits,
@@ -102,8 +94,15 @@ func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storag
 
 	// initialise the local bucket client
 	var (
-		err error
+		localBucketCfg phlareobjclient.Config
+		err            error
 	)
+	localBucketCfg.Backend = phlareobjclient.Filesystem
+	localBucketCfg.Filesystem.Directory = dbConfig.DataPath
+	i.localBucket, err = phlareobjclient.NewBucket(phlarectx, localBucketCfg, "local")
+	if err != nil {
+		return nil, err
+	}
 
 	i.lifecycler, err = ring.NewLifecycler(
 		cfg.LifecyclerConfig,
@@ -116,20 +115,30 @@ func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storag
 		return nil, err
 	}
 
-	i.subservices, err = services.NewManager(i.lifecycler)
+	retentionPolicy := defaultRetentionPolicy()
+
+	if dbConfig.EnforcementInterval > 0 {
+		retentionPolicy.EnforcementInterval = dbConfig.EnforcementInterval
+	}
+	if dbConfig.MinFreeDisk > 0 {
+		retentionPolicy.MinFreeDisk = dbConfig.MinFreeDisk
+	}
+	if dbConfig.MinDiskAvailablePercentage > 0 {
+		retentionPolicy.MinDiskAvailablePercentage = dbConfig.MinDiskAvailablePercentage
+	}
+	if queryStoreAfter > 0 {
+		retentionPolicy.Expiry = queryStoreAfter
+	}
+
+	if dbConfig.DisableEnforcement {
+		i.subservices, err = services.NewManager(i.lifecycler)
+	} else {
+		dc := newDiskCleaner(phlarecontext.Logger(phlarectx), i, retentionPolicy, dbConfig)
+		i.subservices, err = services.NewManager(i.lifecycler, dc)
+	}
 	if err != nil {
 		return nil, errors.Wrap(err, "services manager")
 	}
-	i.limiters = newLimiters(i.limitsForTenant)
-	if storageBucket == nil {
-		return nil, errors.New("storage bucket is required for segment writer")
-	}
-	if metastoreClient == nil {
-		return nil, errors.New("metastore client is required for segment writer")
-	}
-	metrics := newSegmentMetrics(i.reg)
-
-	i.segmentWriter = newSegmentWriter(i.phlarectx, i.logger, metrics, i.dbConfig, i.limiters, storageBucket, cfg.SegmentDuration, metastoreClient)
 	i.subservicesWatcher = services.NewFailureWatcher()
 	i.subservicesWatcher.WatchManager(i.subservices)
 	i.Service = services.NewBasicService(i.starting, i.running, i.stopping)
@@ -152,77 +161,140 @@ func (i *Ingester) running(ctx context.Context) error {
 func (i *Ingester) stopping(_ error) error {
 	errs := multierror.New()
 	errs.Add(services.StopManagerAndAwaitStopped(context.Background(), i.subservices))
-	errs.Add(i.segmentWriter.Stop())
+	// stop all instances
+	i.instancesMtx.RLock()
+	defer i.instancesMtx.RUnlock()
+	for _, inst := range i.instances {
+		errs.Add(inst.Stop())
+	}
 	return errs.Err()
 }
 
-func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
-	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+func (i *Ingester) GetOrCreateInstance(tenantID string) (*instance, error) { //nolint:revive
+	inst, ok := i.getInstanceByID(tenantID)
+	if ok {
+		return inst, nil
 	}
-	var waits = make(map[segmentWaitFlushed]struct{}, len(req.Msg.Series))
-	for _, series := range req.Msg.Series {
-		var shard shardKey = 0
-		if series.Shard != nil {
-			shard = shardKey(*series.Shard)
-		}
-		wait, err := i.segmentWriter.ingest(shard, func(segment segmentIngest) error {
-			return i.ingestToSegment(ctx, segment, series, tenantID)
-		})
+
+	i.instancesMtx.Lock()
+	defer i.instancesMtx.Unlock()
+	inst, ok = i.instances[tenantID]
+	if !ok {
+		var err error
+
+		inst, err = newInstance(i.phlarectx, i.dbConfig, tenantID, i.localBucket, i.storageBucket, NewLimiter(tenantID, i.limits, i.lifecycler, i.cfg.LifecyclerConfig.RingConfig.ReplicationFactor))
 		if err != nil {
 			return nil, err
 		}
-		waits[wait] = struct{}{}
+		i.instances[tenantID] = inst
+		activeTenantsStats.Set(int64(len(i.instances)))
 	}
-	if i.cfg.Async {
-		return connect.NewResponse(&pushv1.PushResponse{}), nil
-	}
-	t1 := time.Now()
-	for wait := range waits {
-		if err = wait.waitFlushed(ctx); err != nil {
-			i.segmentWriter.metrics.segmentFlushTimeouts.WithLabelValues(tenantID).Inc()
-			i.segmentWriter.metrics.segmentFlushWaitDuration.WithLabelValues(tenantID).Observe(time.Since(t1).Seconds())
-			level.Error(i.logger).Log("msg", "flush timeout", "err", err)
-			return nil, err
-		}
-	}
-	//level.Debug(i.logger).Log("msg", "flushed", "duration", time.Since(t1), "segments", len(waits))
-	i.segmentWriter.metrics.segmentFlushWaitDuration.WithLabelValues(tenantID).Observe(time.Since(t1).Seconds())
-	return connect.NewResponse(&pushv1.PushResponse{}), nil
+	return inst, nil
 }
 
-func (i *Ingester) ingestToSegment(ctx context.Context, segment segmentIngest, series *pushv1.RawProfileSeries, tenantID string) error {
-	for _, sample := range series.Samples {
-		id, err := uuid.Parse(sample.ID)
-		if err != nil {
-			return err
+func (i *Ingester) getInstanceByID(id string) (*instance, bool) {
+	i.instancesMtx.RLock()
+	defer i.instancesMtx.RUnlock()
+
+	inst, ok := i.instances[id]
+	return inst, ok
+}
+
+// forInstanceUnary executes the given function for the instance with the given tenant ID in the context.
+func forInstanceUnary[T any](ctx context.Context, i *Ingester, f func(*instance) (T, error)) (T, error) {
+	var res T
+	err := i.forInstance(ctx, func(inst *instance) error {
+		r, err := f(inst)
+		if err == nil {
+			res = r
 		}
-		err = pprof.FromBytes(sample.RawProfile, func(p *profilev1.Profile, size int) error {
-			if err = segment.ingest(ctx, tenantID, p, id, series.Labels...); err != nil {
-				reason := validation.ReasonOf(err)
-				if reason != validation.Unknown {
-					validation.DiscardedProfiles.WithLabelValues(string(reason), tenantID).Add(float64(1))
-					validation.DiscardedBytes.WithLabelValues(string(reason), tenantID).Add(float64(size))
-					switch validation.ReasonOf(err) {
-					case validation.SeriesLimit:
-						return connect.NewError(connect.CodeResourceExhausted, err)
-					}
-				}
-			}
-			return nil
-		})
-		if err != nil {
-			return err
+		return err
+	})
+	return res, err
+}
+
+// forInstance executes the given function for the instance with the given tenant ID in the context.
+func (i *Ingester) forInstance(ctx context.Context, f func(*instance) error) error {
+	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+	if err != nil {
+		return connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	instance, err := i.GetOrCreateInstance(tenantID)
+	if err != nil {
+		return connect.NewError(connect.CodeInternal, err)
+	}
+	return f(instance)
+}
+
+func (i *Ingester) evictBlock(tenantID string, b ulid.ULID, fn func() error) (err error) {
+	// We lock instances map for writes to ensure that no new instances are
+	// created during the procedure. Otherwise, during initialization, the
+	// new PhlareDB instance may try to load a block that has already been
+	// deleted, or is being deleted.
+	i.instancesMtx.RLock()
+	defer i.instancesMtx.RUnlock()
+	// The map only contains PhlareDB instances that has been initialized since
+	// the process start, therefore there is no guarantee that we will find the
+	// discovered candidate block there. If it is the case, we have to ensure that
+	// the block won't be accessed, before and during deleting it from the disk.
+	var evicted bool
+	if tenantInstance, ok := i.instances[tenantID]; ok {
+		if evicted, err = tenantInstance.Evict(b, fn); err != nil {
+			return fmt.Errorf("failed to evict block %s/%s: %w", tenantID, b, err)
 		}
+	}
+	// If the instance is not found, or the querier is not aware of the block,
+	// and thus the callback has not been invoked, do it now.
+	if !evicted {
+		return fn()
 	}
 	return nil
 }
 
+func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
+	return forInstanceUnary(ctx, i, func(instance *instance) (*connect.Response[pushv1.PushResponse], error) {
+		usageGroups := i.limits.DistributorUsageGroups(instance.tenantID)
+
+		for _, series := range req.Msg.Series {
+			groups := usageGroups.GetUsageGroups(instance.tenantID, series.Labels)
+
+			for _, sample := range series.Samples {
+				err := pprof.FromBytes(sample.RawProfile, func(p *profilev1.Profile, size int) error {
+					id, err := uuid.Parse(sample.ID)
+					if err != nil {
+						return err
+					}
+					if err = instance.Ingest(ctx, p, id, series.Labels...); err != nil {
+						reason := validation.ReasonOf(err)
+						if reason != validation.Unknown {
+							validation.DiscardedProfiles.WithLabelValues(string(reason), instance.tenantID).Add(float64(1))
+							validation.DiscardedBytes.WithLabelValues(string(reason), instance.tenantID).Add(float64(size))
+							groups.CountDiscardedBytes(string(reason), int64(size))
+
+							switch validation.ReasonOf(err) {
+							case validation.SeriesLimit:
+								return connect.NewError(connect.CodeResourceExhausted, err)
+							}
+						}
+					}
+					return err
+				})
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+		return connect.NewResponse(&pushv1.PushResponse{}), nil
+	})
+}
+
 func (i *Ingester) Flush(ctx context.Context, req *connect.Request[ingesterv1.FlushRequest]) (*connect.Response[ingesterv1.FlushResponse], error) {
-	err := i.segmentWriter.Stop()
-	if err != nil {
-		return nil, err
+	i.instancesMtx.RLock()
+	defer i.instancesMtx.RUnlock()
+	for _, inst := range i.instances {
+		if err := inst.Flush(ctx, true, "api"); err != nil {
+			return nil, err
+		}
 	}
 
 	return connect.NewResponse(&ingesterv1.FlushResponse{}), nil
@@ -240,10 +312,4 @@ func (i *Ingester) CheckReady(ctx context.Context) error {
 		return fmt.Errorf("ingester not ready: %v", s)
 	}
 	return i.lifecycler.CheckReady(ctx)
-}
-
-func (i *Ingester) limitsForTenant(tenantID string) Limiter {
-	return NewLimiter(tenantID, i.limits, i.lifecycler,
-		1, // i.cfg.LifecyclerConfig.RingConfig.ReplicationFactor
-	)
 }

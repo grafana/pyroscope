@@ -26,6 +26,7 @@ type Limits interface {
 	MaxLocalSeriesPerTenant(tenantID string) int
 	MaxGlobalSeriesPerTenant(tenantID string) int
 	IngestionTenantShardSize(tenantID string) int
+	DistributorUsageGroups(tenantID string) *validation.UsageGroupConfig
 }
 
 type Limiter interface {
@@ -182,35 +183,4 @@ func minNonZero(first, second int) int {
 	}
 
 	return first
-}
-
-type limiters struct {
-	limiters     map[string]Limiter
-	limitersLock sync.RWMutex
-	cb           func(tenantID string) Limiter
-}
-
-func newLimiters(cb func(tenantID string) Limiter) *limiters {
-	return &limiters{
-		limiters: make(map[string]Limiter),
-		cb:       cb,
-	}
-}
-
-func (s *limiters) get(tenantID string) Limiter {
-	s.limitersLock.RLock()
-	l, ok := s.limiters[tenantID]
-	s.limitersLock.RUnlock()
-	if ok {
-		return l
-	}
-	s.limitersLock.Lock()
-	defer s.limitersLock.Unlock()
-	l, ok = s.limiters[tenantID]
-	if ok {
-		return l
-	}
-	l = s.cb(tenantID)
-	s.limiters[tenantID] = l
-	return l
 }

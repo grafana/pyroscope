@@ -211,21 +211,21 @@ func TestProfileStore_RowGroupSplitting(t *testing.T) {
 		{
 			name:            "a stream ending after half of the samples and a new one starting",
 			cfg:             &ParquetConfig{MaxRowGroupBytes: 128000, MaxBufferRowCount: 10},
-			expectedNumRGs:  1,
+			expectedNumRGs:  10,
 			expectedNumRows: 100,
 			values:          profileStreamEndingAndStarting(50),
 		},
 		{
 			name:            "multiple row groups because of maximum row num",
 			cfg:             &ParquetConfig{MaxRowGroupBytes: 128000, MaxBufferRowCount: 10},
-			expectedNumRGs:  1,
+			expectedNumRGs:  10,
 			expectedNumRows: 100,
 			values:          sameProfileStream,
 		},
 		{
 			name:            "a single sample per series",
 			cfg:             &ParquetConfig{MaxRowGroupBytes: 128000, MaxBufferRowCount: 10},
-			expectedNumRGs:  1,
+			expectedNumRGs:  10,
 			expectedNumRows: 100,
 			values:          nProfileStreams(100),
 		},
@@ -237,15 +237,15 @@ func TestProfileStore_RowGroupSplitting(t *testing.T) {
 			for i := 0; i < 100; i++ {
 				p := tc.values(i)
 				require.NoError(t, store.ingest(ctx, []schemav1.InMemoryProfile{p.p}, p.lbls, p.profileName))
-				//for store.flushing.Load() {
-				//	time.Sleep(time.Millisecond)
-				//}
+				for store.flushing.Load() {
+					time.Sleep(time.Millisecond)
+				}
 			}
 
 			// ensure the correct number of files are created
 			numRows, numRGs, err := store.Flush(context.Background())
 			require.NoError(t, err)
-			//require.NoError(t, store.DeleteRowGroups())
+			require.NoError(t, store.DeleteRowGroups())
 			assert.Equal(t, tc.expectedNumRows, numRows)
 			assert.Equal(t, tc.expectedNumRGs, numRGs)
 
@@ -389,9 +389,9 @@ func TestProfileStore_Querying(t *testing.T) {
 			defer func() {
 				// wait for the profile to be flushed
 				// todo(cyriltovena): We shouldn't need this, but when calling head.Queriers(), flushing row group and then querying using the queriers previously returned we will miss the new headDiskQuerier.
-				//for head.profiles.flushing.Load() {
-				//	time.Sleep(time.Millisecond)
-				//}
+				for head.profiles.flushing.Load() {
+					time.Sleep(time.Millisecond)
+				}
 			}()
 			return head.Ingest(ctx, p, u, lp...)
 		}))
@@ -406,7 +406,6 @@ func TestProfileStore_Querying(t *testing.T) {
 	}
 
 	t.Run("select matching profiles", func(t *testing.T) {
-		skipQueryTest(t)
 		pIt, err := head.Queriers().SelectMatchingProfiles(ctx, params)
 		require.NoError(t, err)
 
@@ -419,7 +418,6 @@ func TestProfileStore_Querying(t *testing.T) {
 	})
 
 	t.Run("merge by labels", func(t *testing.T) {
-		skipQueryTest(t)
 		client, cleanup := head.Queriers().ingesterClient()
 		defer cleanup()
 
@@ -486,7 +484,6 @@ func TestProfileStore_Querying(t *testing.T) {
 	})
 
 	t.Run("merge by stacktraces", func(t *testing.T) {
-		skipQueryTest(t)
 		client, cleanup := head.Queriers().ingesterClient()
 		defer cleanup()
 
@@ -535,7 +532,6 @@ func TestProfileStore_Querying(t *testing.T) {
 	})
 
 	t.Run("merge by pprof", func(t *testing.T) {
-		skipQueryTest(t)
 		client, cleanup := head.Queriers().ingesterClient()
 		defer cleanup()
 
@@ -598,10 +594,6 @@ func TestProfileStore_Querying(t *testing.T) {
 			values,
 		)
 	})
-}
-
-func skipQueryTest(t *testing.T) {
-	t.Skip()
 }
 
 func TestRemoveFailedSegment(t *testing.T) {

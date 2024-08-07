@@ -271,12 +271,12 @@ func TestHead_SelectMatchingProfiles_Order(t *testing.T) {
 	require.NoError(t, err)
 
 	c := make(chan struct{})
-	//var closeOnce sync.Once
-	//head.profiles.onFlush = func() {
-	//	closeOnce.Do(func() {
-	//		close(c)
-	//	})
-	//}
+	var closeOnce sync.Once
+	head.profiles.onFlush = func() {
+		closeOnce.Do(func() {
+			close(c)
+		})
+	}
 
 	now := time.Now()
 	for i := 0; i < n; i++ {
@@ -300,7 +300,7 @@ func TestHead_SelectMatchingProfiles_Order(t *testing.T) {
 		Type:          typ,
 		End:           now.Add(time.Hour).UnixMilli(),
 	}
-	skipQueryTest(t)
+
 	profiles := make([]Profile, 0, n)
 	for _, b := range q {
 		i, err := b.SelectMatchingProfiles(ctx, req)

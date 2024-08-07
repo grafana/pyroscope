@@ -172,8 +172,7 @@ func mergeByLabels[T Profile](
 	profiles := query.NewRepeatedRowIterator(ctx, rows, profileSource.RowGroups(), column.ColumnIndex)
 	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
 
-	seriesBuilder := phlaremodel.TimeSeriesBuilder{}
-	seriesBuilder.Init(by...)
+	seriesBuilder := phlaremodel.NewTimeSeriesBuilder(by...)
 
 	for profiles.Next() {
 		values := profiles.At()
