@@ -356,7 +356,7 @@ func TestPostingsMany(t *testing.T) {
 }
 
 func TestPersistence_index_e2e(t *testing.T) {
-	lbls, err := labels.ReadLabels("testdata/20kseries.json", 20000)
+	lbls, err := labels.ReadLabels("../../../../phlaredb/tsdb/testdata/20kseries.json", 20000)
 	require.NoError(t, err)
 
 	flbls := make([]phlaremodel.Labels, len(lbls))
