@@ -1,15 +1,24 @@
----
 version: '3.9'
 services:
   pyroscope:
     image: grafana/pyroscope
     ports:
-      - '4040:4040'
-
+    - 4040:4040
   app:
     build: .
     privileged: true
     environment:
-      - 'PYROSCOPE_APPLICATION_NAME=fibonacci-java-lock-push'
-      - 'PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040'
-      - 'PYROSCOPE_FORMAT=jfr'
+    - PYROSCOPE_APPLICATION_NAME=fibonacci-java-lock-push
+    - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
+    - PYROSCOPE_FORMAT=jfr
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+    - GF_INSTALL_PLUGINS=grafana-pyroscope-app
+    - GF_AUTH_ANONYMOUS_ENABLED=true
+    - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    - GF_AUTH_DISABLE_LOGIN_FORM=true
+    volumes:
+    - ./grafana-provisioning:/etc/grafana/provisioning
+    ports:
+    - 3000:3000

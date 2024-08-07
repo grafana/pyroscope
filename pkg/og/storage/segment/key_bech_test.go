@@ -31,6 +31,8 @@ func BenchmarkKey_Parse(b *testing.B) {
 	}
 }
 
+func randInt(min, max int) int { return rand.Intn(max-min) + min }
+
 // TODO(kolesnikovae): This is not near perfect way of generating strings.
 //  It makes sense to create a package for util functions like this.
 

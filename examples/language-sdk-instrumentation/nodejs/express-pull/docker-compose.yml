@@ -3,45 +3,51 @@ services:
   pyroscope:
     image: grafana/pyroscope
     ports:
-      - '4040:4040'
-
+    - 4040:4040
   agent:
     image: grafana/agent:latest
     volumes:
-      - ./agent.config.river:/etc/agent-config/config.river:ro
+    - ./agent.config.river:/etc/agent-config/config.river:ro
     command:
-      - run
-      - /etc/agent-config/config.river
-      - --server.http.listen-addr=0.0.0.0:12345
+    - run
+    - /etc/agent-config/config.river
+    - --server.http.listen-addr=0.0.0.0:12345
     environment:
       HOSTNAME: agent
       AGENT_MODE: flow
     ports:
-      - "12345:12345"
-
+    - 12345:12345
   us-east:
     environment:
-      - REGION=us-east
+    - REGION=us-east
     build:
       context: .
-
   eu-north:
     environment:
-      - REGION=eu-north
+    - REGION=eu-north
     build:
       context: .
-
   ap-south:
     environment:
-      - REGION=ap-south
+    - REGION=ap-south
     build:
       context: .
-
   load-generator:
     build:
       context: ../
       dockerfile: Dockerfile.load-generator
     depends_on:
-      - us-east
-      - eu-north
-      - ap-south
+    - us-east
+    - eu-north
+    - ap-south
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+    - GF_INSTALL_PLUGINS=grafana-pyroscope-app
+    - GF_AUTH_ANONYMOUS_ENABLED=true
+    - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    - GF_AUTH_DISABLE_LOGIN_FORM=true
+    volumes:
+    - ./grafana-provisioning:/etc/grafana/provisioning
+    ports:
+    - 3000:3000

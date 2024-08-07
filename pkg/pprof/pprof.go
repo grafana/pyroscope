@@ -662,6 +662,7 @@ func GroupSamplesWithoutLabelsByKey(p *profilev1.Profile, keys []int64) []Sample
 		// We hide labels matching the keys to the end
 		// of the slice, after len() boundary.
 		s.Label = LabelsWithout(s.Label, keys)
+		sort.Sort(LabelsByKeyValue(s.Label)) // TODO: Find a way to avoid this.
 	}
 	// Sorting and grouping accounts only for labels kept.
 	sort.Sort(SamplesByLabels(p.Sample))
@@ -677,7 +678,7 @@ func GroupSamplesWithoutLabelsByKey(p *profilev1.Profile, keys []int64) []Sample
 func restoreRemovedLabels(labels []*profilev1.Label) []*profilev1.Label {
 	labels = labels[len(labels):cap(labels)]
 	for i, l := range labels {
-		if l == nil {
+		if l == nil { // labels had extra capacity in sample labels
 			labels = labels[:i]
 			break
 		}

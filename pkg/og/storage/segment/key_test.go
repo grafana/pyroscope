@@ -7,6 +7,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/og/flameql"
 )
 
+// todo port from ginko
 var _ = Describe("segment key", func() {
 	Context("ParseKey", func() {
 		It("no tags version works", func() {
