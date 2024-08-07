@@ -103,6 +103,7 @@ func (d *distribution) readRing(r ring.ReadRing) error {
 const serviceShardsRandSeed = 4349676827832284783
 
 func (d *distribution) serviceShards(n int, service uint64) []shard {
+	// TODO(kolesnikovae): Precompute the jump hash keys (e.g., 1K should be enough).
 	rnd := rand.New(rand.NewSource(serviceShardsRandSeed))
 	m := len(d.shards)
 	if m < n {

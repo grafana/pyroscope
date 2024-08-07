@@ -2,7 +2,7 @@ package distributor
 
 import (
 	"fmt"
-	"strings"
+	"hash/fnv"
 
 	"github.com/grafana/dskit/ring"
 
@@ -41,15 +41,7 @@ type seriesPlacement interface {
 
 type defaultSeriesPlacement struct{}
 
-func (defaultSeriesPlacement) tenantServiceSize(k tenantServiceKey, shards []shard) int {
-	if strings.HasPrefix(k.service, "hosted-grafana") {
-		return 16
-	}
-	if strings.HasPrefix(k.service, "cortex-ops-01/ingester") {
-		return 8
-	}
-	return 2
-}
+func (defaultSeriesPlacement) tenantServiceSize(k tenantServiceKey, shards []shard) int { return 2 }
 
 func (defaultSeriesPlacement) tenantServiceSeriesShard(s *distributormodel.ProfileSeries, shards []shard) int {
 	k := fnv64(phlaremodel.LabelPairsString(s.Labels))
@@ -65,16 +57,16 @@ func newSeriesDistributor(r ring.ReadRing) (d *seriesDistributor, err error) {
 	return d, nil
 }
 
-func (d *seriesDistributor) buildTrackers(tenantID string, series []*distributormodel.ProfileSeries) []*profileTracker {
+func (d *seriesDistributor) buildRequests(tenantID string, series []*distributormodel.ProfileSeries) []*ingestionRequest {
 	var size int
 	for _, s := range series {
 		d.append(tenantID, s)
 		size++
 	}
-	trackers := make([]*profileTracker, 0, size)
+	trackers := make([]*ingestionRequest, 0, size)
 	for _, p := range d.tenantServices {
 		for _, s := range p.series {
-			t := &profileTracker{profile: s}
+			t := &ingestionRequest{profile: s}
 			t.shard, t.instances = p.pickShard(s)
 			trackers = append(trackers, t)
 		}
@@ -156,4 +148,29 @@ func (p *tenantServicePlacement) pickShard(s *distributormodel.ProfileSeries) (u
 	}
 	instances[0], instances[i] = instances[i], instances[0]
 	return x.id, instances
+}
+
+type ingestionRequest struct {
+	profile *distributormodel.ProfileSeries
+	// Note that the instances reference shared objects, and must not be modified.
+	instances []*ring.InstanceDesc
+	shard     uint32
+}
+
+func (p *ingestionRequest) next() (instance *ring.InstanceDesc, ok bool) {
+	for len(p.instances) > 0 {
+		instance, p.instances = p.instances[0], p.instances[1:]
+		if instance.State == ring.ACTIVE {
+			return instance, true
+		}
+	}
+	return nil, false
+}
+
+func fnv64(keys ...string) uint64 {
+	h := fnv.New64a()
+	for _, k := range keys {
+		_, _ = h.Write([]byte(k))
+	}
+	return h.Sum64()
 }
