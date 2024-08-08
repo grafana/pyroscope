@@ -268,6 +268,19 @@ analytics:
 # Prints the application banner at startup.
 # CLI flag: -config.show_banner
 [show_banner: <boolean> | default = true]
+
+embedded_grafana:
+  # The directory where the Grafana data will be stored.
+  # CLI flag: -embedded-grafana.data-path
+  [data_path: <string> | default = "./data/__embedded_grafana/"]
+
+  # The port on which the Grafana will listen.
+  # CLI flag: -embedded-grafana.listen-port
+  [listen_port: <int> | default = 4041]
+
+  # The URL of the Pyroscope instance to use for the Grafana datasources.
+  # CLI flag: -embedded-grafana.pyroscope-url
+  [pyroscope_url: <string> | default = "http://localhost:4040"]
 ```
 
 ### server

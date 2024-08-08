@@ -11,6 +11,7 @@ import (
 	"os"
 	"runtime"
 	"runtime/debug"
+	"slices"
 	"sort"
 	"strings"
 
@@ -42,6 +43,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/cfg"
 	"github.com/grafana/pyroscope/pkg/compactor"
 	"github.com/grafana/pyroscope/pkg/distributor"
+	"github.com/grafana/pyroscope/pkg/embedded/grafana"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/ingester"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
@@ -88,6 +90,8 @@ type Config struct {
 	MultitenancyEnabled bool              `yaml:"multitenancy_enabled,omitempty"`
 	Analytics           usagestats.Config `yaml:"analytics"`
 	ShowBanner          bool              `yaml:"show_banner,omitempty"`
+
+	EmbeddedGrafana grafana.Config `yaml:"embedded_grafana,omitempty"`
 
 	ConfigFile      string `yaml:"-"`
 	ConfigExpandEnv bool   `yaml:"-"`
@@ -149,6 +153,7 @@ func (c *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) 
 	c.LimitsConfig.RegisterFlags(f)
 	c.Compactor.RegisterFlags(f, log.NewLogfmtLogger(os.Stderr))
 	c.API.RegisterFlags(f)
+	c.EmbeddedGrafana.RegisterFlags(f)
 }
 
 // registerServerFlagsWithChangedDefaultValues registers *Config.Server flags, but overrides some defaults set by the weaveworks package.
@@ -308,6 +313,7 @@ func (f *Phlare) setupModuleManager() error {
 	mm.RegisterModule(All, nil)
 	mm.RegisterModule(TenantSettings, f.initTenantSettings)
 	mm.RegisterModule(AdHocProfiles, f.initAdHocProfiles)
+	mm.RegisterModule(EmbeddedGrafana, f.initEmbeddedGrafana)
 
 	// Add dependencies
 	deps := map[string][]string{
@@ -332,6 +338,7 @@ func (f *Phlare) setupModuleManager() error {
 		Version:           {API, MemberlistKV},
 		TenantSettings:    {API, Storage},
 		AdHocProfiles:     {API, Overrides, Storage},
+		EmbeddedGrafana:   {API},
 	}
 
 	for mod, targets := range deps {
@@ -390,7 +397,7 @@ func (f *Phlare) Run() error {
 		}
 
 		// Start profiling when Pyroscope is ready
-		if !f.Cfg.SelfProfiling.DisablePush && f.Cfg.Target.String() == All {
+		if !f.Cfg.SelfProfiling.DisablePush && slices.Contains(f.Cfg.Target, All) {
 			_, err := pyroscope.Start(pyroscope.Config{
 				ApplicationName: "pyroscope",
 				ServerAddress:   fmt.Sprintf("http://%s:%d", "localhost", f.Cfg.Server.HTTPListenPort),
