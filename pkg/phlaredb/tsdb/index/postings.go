@@ -730,6 +730,10 @@ type bigEndianPostings struct {
 	cur  uint32
 }
 
+func NewBigEndianPostings(list []byte) Postings {
+	return newBigEndianPostings(list)
+}
+
 func newBigEndianPostings(list []byte) *bigEndianPostings {
 	return &bigEndianPostings{list: list}
 }

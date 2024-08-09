@@ -39,6 +39,7 @@ type IndexReader interface {
 	// by the reference.
 	// Returns storage.ErrNotFound if the ref does not resolve to a known series.
 	Series(ref storage.SeriesRef, lset *phlaremodel.Labels, chks *[]index.ChunkMeta) (uint64, error)
+	SeriesBy(ref storage.SeriesRef, lset *phlaremodel.Labels, chks *[]index.ChunkMeta, by ...string) (uint64, error)
 
 	// LabelNames returns all the unique label names present in the index in sorted order.
 	LabelNames(matchers ...*labels.Matcher) ([]string, error)

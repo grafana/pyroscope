@@ -384,7 +384,7 @@ func TestPersistence_index_e2e(t *testing.T) {
 		}
 	}
 
-	var input indexWriterSeriesSlice
+	var input IndexWriterSeriesSlice
 
 	// Generate ChunkMetas for every label set.
 	for i, lset := range flbls {
@@ -397,9 +397,9 @@ func TestPersistence_index_e2e(t *testing.T) {
 				Checksum: rand.Uint32(),
 			})
 		}
-		input = append(input, &indexWriterSeries{
-			labels: lset,
-			chunks: metas,
+		input = append(input, &IndexWriterSeries{
+			Labels: lset,
+			Chunks: metas,
 		})
 	}
 
@@ -424,11 +424,11 @@ func TestPersistence_index_e2e(t *testing.T) {
 	mi := newMockIndex()
 
 	for i, s := range input {
-		err = iw.AddSeries(storage.SeriesRef(i), s.labels, model.Fingerprint(s.labels.Hash()), s.chunks...)
+		err = iw.AddSeries(storage.SeriesRef(i), s.Labels, model.Fingerprint(s.Labels.Hash()), s.Chunks...)
 		require.NoError(t, err)
-		require.NoError(t, mi.AddSeries(storage.SeriesRef(i), s.labels, s.chunks...))
+		require.NoError(t, mi.AddSeries(storage.SeriesRef(i), s.Labels, s.Chunks...))
 
-		for _, l := range s.labels {
+		for _, l := range s.Labels {
 			valset, ok := values[l.Name]
 			if !ok {
 				valset = map[string]struct{}{}
@@ -436,7 +436,7 @@ func TestPersistence_index_e2e(t *testing.T) {
 			}
 			valset[l.Value] = struct{}{}
 		}
-		postings.Add(storage.SeriesRef(i), s.labels)
+		postings.Add(storage.SeriesRef(i), s.Labels)
 	}
 
 	err = iw.Close()

@@ -13,12 +13,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/grafana/dskit/instrument"
+
 	"github.com/dustin/go-humanize"
 	"github.com/felixge/httpsnoop"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/gorilla/mux"
-	"github.com/grafana/dskit/instrument"
 	dslog "github.com/grafana/dskit/log"
 	"github.com/grafana/dskit/middleware"
 	"github.com/grafana/dskit/multierror"

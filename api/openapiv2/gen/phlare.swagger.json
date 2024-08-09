@@ -9,6 +9,12 @@
       "name": "AdHocProfileService"
     },
     {
+      "name": "MetastoreService"
+    },
+    {
+      "name": "CompactionPlanner"
+    },
+    {
       "name": "PusherService"
     },
     {
@@ -16,6 +22,9 @@
     },
     {
       "name": "QuerierService"
+    },
+    {
+      "name": "QueryBackendService"
     },
     {
       "name": "SettingsService"
@@ -451,6 +460,9 @@
         }
       }
     },
+    "v1AddBlockResponse": {
+      "type": "object"
+    },
     "v1AnalyzeQueryResponse": {
       "type": "object",
       "properties": {
@@ -531,6 +543,50 @@
         }
       }
     },
+    "v1BlockMeta": {
+      "type": "object",
+      "properties": {
+        "formatVersion": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "id": {
+          "type": "string"
+        },
+        "minTime": {
+          "type": "string",
+          "format": "int64"
+        },
+        "maxTime": {
+          "type": "string",
+          "format": "int64"
+        },
+        "shard": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "compactionLevel": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "Optional. Empty if compaction level is 0."
+        },
+        "tenantServices": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1TenantService"
+          },
+          "title": "TODO(kolesnikovae): Partitions with labels?"
+        },
+        "size": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
     "v1BlockMetadataResponse": {
       "type": "object",
       "properties": {
@@ -585,6 +641,114 @@
           "title": "the author avatar URL"
         }
       }
+    },
+    "v1CompactionJob": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Unique name of the job."
+        },
+        "options": {
+          "$ref": "#/definitions/v1CompactionOptions"
+        },
+        "blocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1BlockMeta"
+          },
+          "description": "List of the input blocks."
+        },
+        "status": {
+          "$ref": "#/definitions/v1CompactionJobStatus"
+        },
+        "raftLogIndex": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Fencing token."
+        },
+        "shard": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Shard the blocks belong to."
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "Optional, empty for compaction level 0."
+        },
+        "compactionLevel": {
+          "type": "integer",
+          "format": "int64"
+        }
+      },
+      "description": "One compaction job may result in multiple output blocks."
+    },
+    "v1CompactionJobStatus": {
+      "type": "object",
+      "properties": {
+        "jobName": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/v1CompactionStatus",
+          "description": "Status update allows the planner to keep\ntrack of the job ownership and compaction\nprogress:\n- If the job status is other than IN_PROGRESS,\n  the ownership of the job is revoked.\n- FAILURE must only be sent if the failure is\n  persistent and the compaction can't be accomplished.\n- completed_job must be empty if the status is\n  other than SUCCESS, and vice-versa.\n- UNSPECIFIED must be sent if the worker rejects\n  or cancels the compaction job.\n\nPartial results/status is not allowed."
+        },
+        "completedJob": {
+          "$ref": "#/definitions/v1CompletedJob"
+        },
+        "raftLogIndex": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Fencing token."
+        },
+        "shard": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Shard the blocks belong to."
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "Optional, empty for compaction level 0."
+        }
+      }
+    },
+    "v1CompactionOptions": {
+      "type": "object",
+      "properties": {
+        "statusUpdateIntervalSeconds": {
+          "type": "string",
+          "format": "uint64",
+          "description": "How often the compaction worker should update\nthe job status. If overdue, the job ownership\nis revoked."
+        }
+      },
+      "description": "Compaction planner should instruct the compactor\n worker how to compact the blocks:\n  - Limits and tenant overrides.\n  - Feature flags."
+    },
+    "v1CompactionStatus": {
+      "type": "string",
+      "enum": [
+        "COMPACTION_STATUS_UNSPECIFIED",
+        "COMPACTION_STATUS_IN_PROGRESS",
+        "COMPACTION_STATUS_SUCCESS",
+        "COMPACTION_STATUS_FAILURE"
+      ],
+      "default": "COMPACTION_STATUS_UNSPECIFIED"
+    },
+    "v1CompletedJob": {
+      "type": "object",
+      "properties": {
+        "blocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1BlockMeta"
+          }
+        }
+      }
+    },
+    "v1Diagnostics": {
+      "type": "object",
+      "description": "Diagnostic messages, events, statistics, analytics, etc."
     },
     "v1DiffResponse": {
       "type": "object",
@@ -758,6 +922,19 @@
         }
       }
     },
+    "v1GetCompactionResponse": {
+      "type": "object",
+      "properties": {
+        "compactionJobs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1CompactionJob"
+          },
+          "title": "A list of all compaction jobs"
+        }
+      }
+    },
     "v1GetFileResponse": {
       "type": "object",
       "properties": {
@@ -849,6 +1026,42 @@
       },
       "title": "Hints are used to propagate information about querying"
     },
+    "v1InvokeOptions": {
+      "type": "object",
+      "description": "Query workers might not have access to the tenant\n overrides, therefore all the necessary options should\n be listed in the request explicitly."
+    },
+    "v1InvokeResponse": {
+      "type": "object",
+      "properties": {
+        "reports": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Report"
+          }
+        },
+        "diagnostics": {
+          "$ref": "#/definitions/v1Diagnostics"
+        }
+      }
+    },
+    "v1LabelNamesQuery": {
+      "type": "object"
+    },
+    "v1LabelNamesReport": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "$ref": "#/definitions/v1LabelNamesQuery"
+        },
+        "labelNames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "v1LabelNamesResponse": {
       "type": "object",
       "properties": {
@@ -868,6 +1081,28 @@
         },
         "value": {
           "type": "string"
+        }
+      }
+    },
+    "v1LabelValuesQuery": {
+      "type": "object",
+      "properties": {
+        "labelName": {
+          "type": "string"
+        }
+      }
+    },
+    "v1LabelValuesReport": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "$ref": "#/definitions/v1LabelValuesQuery"
+        },
+        "labelValues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
@@ -919,6 +1154,18 @@
           "type": "string",
           "format": "int64",
           "description": "Line number in source code."
+        }
+      }
+    },
+    "v1ListBlocksForQueryResponse": {
+      "type": "object",
+      "properties": {
+        "blocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1BlockMeta"
+          }
         }
       }
     },
@@ -1077,6 +1324,18 @@
         }
       }
     },
+    "v1PollCompactionJobsResponse": {
+      "type": "object",
+      "properties": {
+        "compactionJobs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1CompactionJob"
+          }
+        }
+      }
+    },
     "v1ProfileFormat": {
       "type": "string",
       "enum": [
@@ -1139,6 +1398,31 @@
     "v1PushResponse": {
       "type": "object"
     },
+    "v1Query": {
+      "type": "object",
+      "properties": {
+        "queryType": {
+          "$ref": "#/definitions/v1QueryType"
+        },
+        "labelNames": {
+          "$ref": "#/definitions/v1LabelNamesQuery",
+          "description": "Exactly one of the following fields should be set,\ndepending on the query type."
+        },
+        "labelValues": {
+          "$ref": "#/definitions/v1LabelValuesQuery"
+        },
+        "seriesLabels": {
+          "$ref": "#/definitions/v1SeriesLabelsQuery"
+        },
+        "timeSeries": {
+          "$ref": "#/definitions/v1TimeSeriesQuery"
+        },
+        "tree": {
+          "$ref": "#/definitions/v1TreeQuery",
+          "description": "pprof\n function_details\n call_graph\n top_table\n ..."
+        }
+      }
+    },
     "v1QueryImpact": {
       "type": "object",
       "properties": {
@@ -1154,6 +1438,28 @@
           "type": "boolean"
         }
       }
+    },
+    "v1QueryPlan": {
+      "type": "object",
+      "properties": {
+        "graph": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "description": "Each node is encoded with 3 values:\n - node type: 0 - read, 1 - merge;\n - range offset;\n - range length."
+        },
+        "blocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1BlockMeta"
+          },
+          "description": "The blocks matching the query.\n\nTODO: Use opaque byte array to avoid unnecessary\n proto encoding/decoding overhead in transient nodes.\n Graph nodes reference ranges, thus each range could\n be a blob of bytes:\n repeated bytes block_ranges = 2;"
+        }
+      },
+      "description": "Query plan is represented by a DAG, where each node\nmight be either \"merge\" or \"read\" (leaves). Each node\nreferences a range: merge nodes refer to other nodes,\nwhile read nodes refer to the blocks."
     },
     "v1QueryScope": {
       "type": "object",
@@ -1197,6 +1503,18 @@
         }
       }
     },
+    "v1QueryType": {
+      "type": "string",
+      "enum": [
+        "QUERY_UNSPECIFIED",
+        "QUERY_LABEL_NAMES",
+        "QUERY_LABEL_VALUES",
+        "QUERY_SERIES_LABELS",
+        "QUERY_TIME_SERIES",
+        "QUERY_TREE"
+      ],
+      "default": "QUERY_UNSPECIFIED"
+    },
     "v1RawProfileSeries": {
       "type": "object",
       "properties": {
@@ -1233,6 +1551,51 @@
         }
       },
       "title": "RawSample is the set of bytes that correspond to a pprof profile"
+    },
+    "v1ReadIndexResponse": {
+      "type": "object",
+      "properties": {
+        "readIndex": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "v1Report": {
+      "type": "object",
+      "properties": {
+        "reportType": {
+          "$ref": "#/definitions/v1ReportType"
+        },
+        "labelNames": {
+          "$ref": "#/definitions/v1LabelNamesReport",
+          "description": "Exactly one of the following fields should be set,\ndepending on the report type."
+        },
+        "labelValues": {
+          "$ref": "#/definitions/v1LabelValuesReport"
+        },
+        "seriesLabels": {
+          "$ref": "#/definitions/v1SeriesLabelsReport"
+        },
+        "timeSeries": {
+          "$ref": "#/definitions/v1TimeSeriesReport"
+        },
+        "tree": {
+          "$ref": "#/definitions/v1TreeReport"
+        }
+      }
+    },
+    "v1ReportType": {
+      "type": "string",
+      "enum": [
+        "REPORT_UNSPECIFIED",
+        "REPORT_LABEL_NAMES",
+        "REPORT_LABEL_VALUES",
+        "REPORT_SERIES_LABELS",
+        "REPORT_TIME_SERIES",
+        "REPORT_TREE"
+      ],
+      "default": "REPORT_UNSPECIFIED"
     },
     "v1Sample": {
       "type": "object",
@@ -1412,6 +1775,32 @@
         }
       }
     },
+    "v1SeriesLabelsQuery": {
+      "type": "object",
+      "properties": {
+        "labelNames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v1SeriesLabelsReport": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "$ref": "#/definitions/v1SeriesLabelsQuery"
+        },
+        "seriesLabels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Labels"
+          }
+        }
+      }
+    },
     "v1SeriesProfile": {
       "type": "object",
       "properties": {
@@ -1493,6 +1882,46 @@
       ],
       "default": "MERGE_FORMAT_UNSPECIFIED"
     },
+    "v1TenantService": {
+      "type": "object",
+      "properties": {
+        "tenantId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "minTime": {
+          "type": "string",
+          "format": "int64"
+        },
+        "maxTime": {
+          "type": "string",
+          "format": "int64"
+        },
+        "tableOfContents": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uint64"
+          },
+          "description": "Table of contents lists data sections within the tenant\nservice region. The offsets are absolute.\n\nThe interpretation of the table of contents is specific\nto the metadata format version. By default, the sections are:\n - 0: profiles.parquet\n - 1: index.tsdb\n - 2: symbols.symdb"
+        },
+        "size": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Size of the section in bytes."
+        },
+        "profileTypes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Profile types present in the tenant service data."
+        }
+      },
+      "description": "TenantService object points to the offset in the block at which\nthe tenant service data is located."
+    },
     "v1TimeSeriesAggregationType": {
       "type": "string",
       "enum": [
@@ -1500,6 +1929,60 @@
         "TIME_SERIES_AGGREGATION_TYPE_AVERAGE"
       ],
       "default": "TIME_SERIES_AGGREGATION_TYPE_SUM"
+    },
+    "v1TimeSeriesQuery": {
+      "type": "object",
+      "properties": {
+        "step": {
+          "type": "number",
+          "format": "double"
+        },
+        "groupBy": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "aggregation": {
+          "$ref": "#/definitions/v1TimeSeriesAggregationType"
+        }
+      }
+    },
+    "v1TimeSeriesReport": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "$ref": "#/definitions/v1TimeSeriesQuery"
+        },
+        "timeSeries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Series"
+          }
+        }
+      }
+    },
+    "v1TreeQuery": {
+      "type": "object",
+      "properties": {
+        "maxNodes": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1TreeReport": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "$ref": "#/definitions/v1TreeQuery"
+        },
+        "tree": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
     },
     "v1ValueType": {
       "type": "object",

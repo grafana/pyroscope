@@ -29,7 +29,7 @@ var (
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			defer func() {
 				if p := recover(); p != nil {
-					httputil.Error(w, httpgrpc.Errorf(http.StatusInternalServerError, "error while processing request: %v", panicError(p)))
+					httputil.Error(w, httpgrpc.Errorf(http.StatusInternalServerError, "error while processing request: %v", PanicError(p)))
 				}
 			}()
 			next.ServeHTTP(w, req)
@@ -39,7 +39,7 @@ var (
 	RecoveryInterceptor recoveryInterceptor
 )
 
-func panicError(p interface{}) error {
+func PanicError(p interface{}) error {
 	stack := make([]byte, maxStacksize)
 	stack = stack[:runtime.Stack(stack, true)]
 	// keep a multiline stack
@@ -53,7 +53,7 @@ func RecoverPanic(f func() error) func() error {
 	return func() (err error) {
 		defer func() {
 			if p := recover(); p != nil {
-				err = panicError(p)
+				err = PanicError(p)
 			}
 		}()
 		return f()
@@ -66,7 +66,7 @@ func (recoveryInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 	return func(ctx context.Context, req connect.AnyRequest) (resp connect.AnyResponse, err error) {
 		defer func() {
 			if p := recover(); p != nil {
-				err = connect.NewError(connect.CodeInternal, panicError(p))
+				err = connect.NewError(connect.CodeInternal, PanicError(p))
 			}
 		}()
 		return next(ctx, req)
@@ -77,7 +77,7 @@ func (recoveryInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFun
 	return func(ctx context.Context, conn connect.StreamingHandlerConn) (err error) {
 		defer func() {
 			if p := recover(); p != nil {
-				err = connect.NewError(connect.CodeInternal, panicError(p))
+				err = connect.NewError(connect.CodeInternal, PanicError(p))
 			}
 		}()
 		return next(ctx, conn)

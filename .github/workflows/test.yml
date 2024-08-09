@@ -63,10 +63,34 @@ jobs:
   doc-validator:
     runs-on: "ubuntu-latest"
     container:
-      image: "grafana/doc-validator:v4.1.1"
+      image: "grafana/doc-validator:v5.1.0"
     steps:
       - name: "Checkout code"
-        uses: "actions/checkout@v3"
+        uses: "actions/checkout@v4"
+      # reviewdog is having issues with large diffs.
+      # The issue https://github.com/reviewdog/reviewdog/issues/1696 is not
+      # yet fully solved (as of reviewdog 0.17.4).
+      # The workaround is to fetch PR head and merge base commits explicitly:
+      # Credits to https://github.com/grafana/deployment_tools/pull/162200.
+      # NB: fetch-depth=0 does not help (and is not recommended per se).
+      # TODO(kolesnikovae): Remove this workaround when the issue is fixed.
+      - name: Get merge commit between head SHA and base SHA
+        id: merge-commit
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const { data: { merge_base_commit } } = await github.rest.repos.compareCommitsWithBasehead({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              basehead: `${context.payload.pull_request.base.sha}...${context.payload.pull_request.head.sha}`,
+            });
+            console.log(`Merge base commit: ${merge_base_commit.sha}`);
+            core.setOutput('merge-commit', merge_base_commit.sha);
+      - name: Fetch merge base and PR head
+        run: |
+          git config --system --add safe.directory '*'
+          git fetch --depth=1 origin "${{ steps.merge-commit.outputs.merge-commit }}"
+          git fetch --depth=1 origin "${{ github.event.pull_request.head.sha }}"
       - name: "Run doc-validator tool"
         run: >
           doc-validator
@@ -81,6 +105,7 @@ jobs:
           --reporter=github-pr-review
         env:
           REVIEWDOG_GITHUB_API_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          REVIEWDOG_SKIP_GIT_FETCH: true
 
   build-image:
     if: github.event_name != 'push'
