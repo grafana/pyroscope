@@ -1,0 +1,118 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: collect-sidecar
+  labels:
+    app: example-ebpf-sidecar
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: example-ebpf-sidecar
+  template:
+    metadata:
+      labels:
+        app: example-ebpf-sidecar
+    spec:
+      shareProcessNamespace: true
+      containers:
+      - name: collect
+        image: docker.io/simonswine/collect-ebpf-sidecar:latest@sha256:40b10016e90324dadabf5141e10b164bdbd05cd35de0e277609a1b29f44e3fda
+      - name: alloy
+        image: grafana/alloy
+        securityContext:
+          runAsUser: 0
+          allowPrivilegeEscalation: true
+          capabilities:
+            add:
+              - BPF
+              - SYS_ADMIN
+        command:
+          - /bin/bash
+          - -c
+          - |
+            set -euo pipefail
+            set -x
+
+            cat > /tmp/config.alloy <<"EOF"
+            discovery.process "all" {
+              refresh_interval = "200ms"
+              discover_config {
+                cwd = true
+                exe = true
+                commandline = true
+                username = true
+                uid = true
+                container_id = true
+              }
+            }
+            discovery.relabel "process" {
+              targets = discovery.process.all.targets
+              rule {
+                action = "replace"
+                regex = ".*/(.*)$"
+                replacement = "${1}"
+                source_labels = ["__meta_process_exe"]
+                target_label = "service_name"
+              }
+              rule {
+                action = "replace"
+                source_labels = ["__meta_process_commandline"]
+                target_label = "commandline"
+              }
+            }
+            pyroscope.write "pyroscope" {
+              endpoint {
+                url = "http://pyroscope"
+              }
+            }
+            pyroscope.ebpf "default" {
+              forward_to = [ pyroscope.write.pyroscope.receiver ]
+              targets    = discovery.relabel.process.output
+            }
+            EOF
+
+            exec alloy run --stability.level public-preview /tmp/config.alloy
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pyroscope
+  labels:
+    app: pyroscope
+spec:
+  ports:
+  - port: 80
+    targetPort: http
+  selector:
+    app: pyroscope
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: pyroscope
+spec:
+  selector:
+    matchLabels:
+      app: pyroscope
+  serviceName: "pyroscope"
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: pyroscope
+    spec:
+      containers:
+      - name: pyroscope
+        image: grafana/pyroscope
+        ports:
+        - containerPort: 4040
+          name: http
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1G
