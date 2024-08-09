@@ -20,6 +20,7 @@ COPY --chown=pyroscope:pyroscope --from=debug /data /data-compactor
 COPY cmd/pyroscope/pyroscope.yaml /etc/pyroscope/config.yaml
 COPY profilecli /usr/bin/profilecli
 COPY pyroscope /usr/bin/pyroscope
+COPY --from=busybox:1.36.0-musl /bin/wget /usr/bin/wget
 
 USER pyroscope
 EXPOSE 4040
