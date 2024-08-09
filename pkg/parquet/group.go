@@ -24,6 +24,8 @@ func (g Group) String() string {
 	return s.String()
 }
 
+func (g Group) ID() int { return 0 }
+
 func (g Group) Type() parquet.Type { return &groupType{} }
 
 func (g Group) Optional() bool { return false }
