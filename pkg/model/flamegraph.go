@@ -29,7 +29,7 @@ func NewFlameGraph(t *Tree, maxNodes int64) *querierv1.FlameGraph {
 
 	minVal := t.minValue(maxNodes)
 
-	stack := stackNodePool.Get().(*Stack[stackNode])
+	stack := getNodeStackPool().Get().(*Stack[stackNode])
 	defer stackNodePool.Put(stack)
 	stack.Reset()
 	stack.Push(stackNode{xOffset: 0, level: 0, node: &node{children: t.root, total: total}})
@@ -116,6 +116,14 @@ func NewFlameGraph(t *Tree, maxNodes int64) *querierv1.FlameGraph {
 		Levels:  levels,
 		Total:   total,
 		MaxSelf: max,
+	}
+}
+
+func getNodeStackPool() *sync.Pool {
+	return &sync.Pool{
+		New: func() interface{} {
+			return NewStack[stackNode]()
+		},
 	}
 }
 
