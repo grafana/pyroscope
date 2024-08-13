@@ -2,8 +2,6 @@ package metastoreclient
 
 import (
 	"context"
-	"fmt"
-	"os"
 
 	"github.com/go-kit/log"
 
@@ -24,22 +22,24 @@ type Client struct {
 	conn    *grpc.ClientConn
 }
 
-func New(address string, grpcClientConfig grpcclient.Config, logger log.Logger) (c *Client, err error) {
-	c.conn, err = dial(address, grpcClientConfig, logger)
+func New(address string, grpcClientConfig grpcclient.Config, logger log.Logger) (*Client, error) {
+	conn, err := dial(address, grpcClientConfig, logger)
 	if err != nil {
 		return nil, err
 	}
-	c.MetastoreServiceClient = metastorev1.NewMetastoreServiceClient(c.conn)
-	c.CompactionPlannerClient = compactorv1.NewCompactionPlannerClient(c.conn)
+	var c Client
+	c.MetastoreServiceClient = metastorev1.NewMetastoreServiceClient(conn)
+	c.CompactionPlannerClient = compactorv1.NewCompactionPlannerClient(conn)
 	c.service = services.NewIdleService(c.starting, c.stopping)
-	return c, nil
+	c.conn = conn
+	return &c, nil
 }
 
 func (c *Client) Service() services.Service      { return c.service }
 func (c *Client) starting(context.Context) error { return nil }
 func (c *Client) stopping(error) error           { return c.conn.Close() }
 
-func dial(address string, grpcClientConfig grpcclient.Config, logger log.Logger) (*grpc.ClientConn, error) {
+func dial(address string, grpcClientConfig grpcclient.Config, _ log.Logger) (*grpc.ClientConn, error) {
 	if err := grpcClientConfig.Validate(); err != nil {
 		return nil, err
 	}
@@ -52,14 +52,17 @@ func dial(address string, grpcClientConfig grpcclient.Config, logger log.Logger)
 		grpc.WithDefaultServiceConfig(grpcServiceConfig),
 		grpc.WithUnaryInterceptor(otgrpc.OpenTracingClientInterceptor(opentracing.GlobalTracer())),
 	)
-	if os.Getenv("KUBERNETES_SERVICE_HOST") != "" {
-		builder, err := NewGrpcResolverBuilder(logger, address)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create grpc resolver builder: %w", err)
-		}
-		options = append(options, grpc.WithResolvers(builder))
-		return grpc.Dial(builder.resolverAddrStub(), options...)
-	}
+	// TODO: Implement k8s grpc resolver.
+	//   Note that this may require additional permissions.
+	//   Consider: https://github.com/sercand/kuberesolver
+	//	if os.Getenv("KUBERNETES_SERVICE_HOST") != "" {
+	//		builder, err := NewGrpcResolverBuilder(logger, address)
+	//		if err != nil {
+	//			return nil, fmt.Errorf("failed to create grpc resolver builder: %w", err)
+	//		}
+	//		options = append(options, grpc.WithResolvers(builder))
+	//		return grpc.Dial(builder.resolverAddrStub(), options...)
+	//	}
 	return grpc.Dial(address, options...)
 }
 

@@ -52,7 +52,7 @@ pyroscope:
       persistence:
         enabled: true
         size: 10Gi
-      extraMounts:
+      extraVolumeMounts:
         - name: data
           mountPath: /data-metastore
           subPath: metastore
@@ -62,7 +62,7 @@ pyroscope:
       replicaCount: 3
       persistence:
         enabled: false
-      extraMounts:
+      extraVolumeMounts:
         - name: data
           mountPath: /data-compaction-worker
           subPath: compaction-worker
