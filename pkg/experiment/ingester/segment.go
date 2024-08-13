@@ -50,10 +50,10 @@ type segmentsWriter struct {
 	cfg             phlaredb.Config
 	bucket          objstore.Bucket
 	metastoreClient *metastoreclient.Client
-	//wg              sync.WaitGroup
-	cancel    context.CancelFunc
-	metrics   *segmentMetrics
-	cancelCtx context.Context
+	cancel          context.CancelFunc
+	metrics         *segmentMetrics
+	headMetrics     *phlaredb.HeadMetrics
+	cancelCtx       context.Context
 }
 
 type shard struct {
@@ -117,10 +117,11 @@ func (sh *shard) flushSegment(ctx context.Context) {
 	}()
 }
 
-func newSegmentWriter(phlarectx context.Context, l log.Logger, metrics *segmentMetrics, cfg phlaredb.Config, bucket objstore.Bucket, segmentDuration time.Duration, metastoreClient *metastoreclient.Client) *segmentsWriter {
+func newSegmentWriter(phlarectx context.Context, l log.Logger, metrics *segmentMetrics, hm *phlaredb.HeadMetrics, cfg phlaredb.Config, bucket objstore.Bucket, segmentDuration time.Duration, metastoreClient *metastoreclient.Client) *segmentsWriter {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	sw := &segmentsWriter{
 		metrics:         metrics,
+		headMetrics:     hm,
 		segmentDuration: segmentDuration,
 		phlarectx:       phlarectx,
 		l:               l,
@@ -471,7 +472,7 @@ func (s *segment) headForIngest(k serviceKey) (*phlaredb.Head, error) {
 	cfg.DataPath = path.Join(s.dataPath)
 	cfg.SymDBFormat = symdb.FormatV3
 
-	nh, err := phlaredb.NewHead(s.sw.phlarectx, cfg, noopLimiter{})
+	nh, err := phlaredb.NewHead(s.sw.phlarectx, cfg, s.sw.headMetrics, noopLimiter{})
 	if err != nil {
 		return nil, err
 	}

@@ -13,11 +13,10 @@ import (
 type contextKey uint8
 
 const (
-	headMetricsContextKey contextKey = iota
-	blockMetricsContextKey
+	blockMetricsContextKey contextKey = iota
 )
 
-type headMetrics struct {
+type HeadMetrics struct {
 	series        prometheus.Gauge
 	seriesCreated *prometheus.CounterVec
 
@@ -44,8 +43,8 @@ type headMetrics struct {
 	writtenProfileSegmentsBytes prometheus.Histogram
 }
 
-func newHeadMetrics(reg prometheus.Registerer) *headMetrics {
-	m := &headMetrics{
+func NewHeadMetrics(reg prometheus.Registerer) *HeadMetrics {
+	m := &HeadMetrics{
 		seriesCreated: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "pyroscope_tsdb_head_series_created_total",
 			Help: "Total number of series created in the head",
@@ -156,41 +155,29 @@ func newHeadMetrics(reg prometheus.Registerer) *headMetrics {
 	return m
 }
 
-func (m *headMetrics) register(reg prometheus.Registerer) {
+func (m *HeadMetrics) register(reg prometheus.Registerer) {
 	if reg == nil {
 		return
 	}
-	m.series = util.RegisterOrGet(reg, m.series)
-	m.seriesCreated = util.RegisterOrGet(reg, m.seriesCreated)
-	m.profiles = util.RegisterOrGet(reg, m.profiles)
-	m.profilesCreated = util.RegisterOrGet(reg, m.profilesCreated)
-	m.sizeBytes = util.RegisterOrGet(reg, m.sizeBytes)
-	m.rowsWritten = util.RegisterOrGet(reg, m.rowsWritten)
-	m.sampleValuesIngested = util.RegisterOrGet(reg, m.sampleValuesIngested)
-	m.sampleValuesReceived = util.RegisterOrGet(reg, m.sampleValuesReceived)
-	m.flushedFileSizeBytes = util.RegisterOrGet(reg, m.flushedFileSizeBytes)
-	m.flushedBlockSizeBytes = util.RegisterOrGet(reg, m.flushedBlockSizeBytes)
-	m.flushedBlockDurationSeconds = util.RegisterOrGet(reg, m.flushedBlockDurationSeconds)
-	m.flushedBlockSeries = util.RegisterOrGet(reg, m.flushedBlockSeries)
-	m.flushedBlockSamples = util.RegisterOrGet(reg, m.flushedBlockSamples)
-	m.flusehdBlockProfiles = util.RegisterOrGet(reg, m.flusehdBlockProfiles)
-	m.blockDurationSeconds = util.RegisterOrGet(reg, m.blockDurationSeconds)
-	m.flushedBlocks = util.RegisterOrGet(reg, m.flushedBlocks)
-	m.flushedBlocksReasons = util.RegisterOrGet(reg, m.flushedBlocksReasons)
-	m.writtenProfileSegments = util.RegisterOrGet(reg, m.writtenProfileSegments)
-	m.writtenProfileSegmentsBytes = util.RegisterOrGet(reg, m.writtenProfileSegmentsBytes)
-}
-
-func contextWithHeadMetrics(ctx context.Context, m *headMetrics) context.Context {
-	return context.WithValue(ctx, headMetricsContextKey, m)
-}
-
-func contextHeadMetrics(ctx context.Context) *headMetrics {
-	m, ok := ctx.Value(headMetricsContextKey).(*headMetrics)
-	if !ok {
-		return newHeadMetrics(phlarecontext.Registry(ctx))
-	}
-	return m
+	reg.MustRegister(m.series)
+	reg.MustRegister(m.seriesCreated)
+	reg.MustRegister(m.profiles)
+	reg.MustRegister(m.profilesCreated)
+	reg.MustRegister(m.sizeBytes)
+	reg.MustRegister(m.rowsWritten)
+	reg.MustRegister(m.sampleValuesIngested)
+	reg.MustRegister(m.sampleValuesReceived)
+	reg.MustRegister(m.flushedFileSizeBytes)
+	reg.MustRegister(m.flushedBlockSizeBytes)
+	reg.MustRegister(m.flushedBlockDurationSeconds)
+	reg.MustRegister(m.flushedBlockSeries)
+	reg.MustRegister(m.flushedBlockSamples)
+	reg.MustRegister(m.flusehdBlockProfiles)
+	reg.MustRegister(m.blockDurationSeconds)
+	reg.MustRegister(m.flushedBlocks)
+	reg.MustRegister(m.flushedBlocksReasons)
+	reg.MustRegister(m.writtenProfileSegments)
+	reg.MustRegister(m.writtenProfileSegmentsBytes)
 }
 
 type BlocksMetrics struct {

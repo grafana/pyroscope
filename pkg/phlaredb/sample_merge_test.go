@@ -94,7 +94,7 @@ func TestMergeSampleByStacktraces(t *testing.T) {
 			db, err := New(ctx, Config{
 				DataPath:         contextDataDir(ctx),
 				MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
-			}, NoLimit, ctx.localBucketClient)
+			}, testHeadMetrics, NoLimit, ctx.localBucketClient)
 			require.NoError(t, err)
 
 			input, expected := tc.in()
@@ -200,7 +200,7 @@ func TestHeadMergeSampleByStacktraces(t *testing.T) {
 			db, err := New(ctx, Config{
 				DataPath:         contextDataDir(ctx),
 				MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
-			}, NoLimit, ctx.localBucketClient)
+			}, testHeadMetrics, NoLimit, ctx.localBucketClient)
 			require.NoError(t, err)
 
 			input, expected := tc.in()
@@ -310,7 +310,7 @@ func TestMergeSampleByLabels(t *testing.T) {
 			db, err := New(ctx, Config{
 				DataPath:         contextDataDir(ctx),
 				MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
-			}, NoLimit, ctx.localBucketClient)
+			}, testHeadMetrics, NoLimit, ctx.localBucketClient)
 			require.NoError(t, err)
 
 			for _, p := range tc.in() {
@@ -434,7 +434,7 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 			db, err := New(ctx, Config{
 				DataPath:         contextDataDir(ctx),
 				MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
-			}, NoLimit, ctx.localBucketClient)
+			}, testHeadMetrics, NoLimit, ctx.localBucketClient)
 			require.NoError(t, err)
 
 			for _, p := range tc.in() {
@@ -471,7 +471,7 @@ func TestMergePprof(t *testing.T) {
 	db, err := New(ctx, Config{
 		DataPath:         contextDataDir(ctx),
 		MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
-	}, NoLimit, ctx.localBucketClient)
+	}, testHeadMetrics, NoLimit, ctx.localBucketClient)
 	require.NoError(t, err)
 
 	for i := 0; i < 3; i++ {
@@ -529,7 +529,7 @@ func TestHeadMergePprof(t *testing.T) {
 	db, err := New(ctx, Config{
 		DataPath:         contextDataDir(ctx),
 		MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
-	}, NoLimit, ctx.localBucketClient)
+	}, testHeadMetrics, NoLimit, ctx.localBucketClient)
 	require.NoError(t, err)
 
 	for i := 0; i < 3; i++ {
@@ -578,7 +578,7 @@ func TestMergeSpans(t *testing.T) {
 	db, err := New(ctx, Config{
 		DataPath:         contextDataDir(ctx),
 		MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
-	}, NoLimit, ctx.localBucketClient)
+	}, testHeadMetrics, NoLimit, ctx.localBucketClient)
 	require.NoError(t, err)
 
 	require.NoError(t, db.Ingest(ctx, generateProfileWithSpans(t, 1000), uuid.New(), &typesv1.LabelPair{
@@ -629,7 +629,7 @@ func TestHeadMergeSpans(t *testing.T) {
 	db, err := New(ctx, Config{
 		DataPath:         contextDataDir(ctx),
 		MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
-	}, NoLimit, ctx.localBucketClient)
+	}, testHeadMetrics, NoLimit, ctx.localBucketClient)
 	require.NoError(t, err)
 
 	require.NoError(t, db.Ingest(ctx, generateProfileWithSpans(t, 1000), uuid.New(), &typesv1.LabelPair{

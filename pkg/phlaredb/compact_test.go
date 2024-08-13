@@ -649,7 +649,7 @@ func newBlock(t testing.TB, generator func() []*testhelper.ProfileBuilder) *sing
 		Parquet: &ParquetConfig{
 			MaxBufferRowCount: 10,
 		},
-	}, NoLimit)
+	}, testHeadMetrics, NoLimit)
 	require.NoError(t, err)
 
 	// ingest.

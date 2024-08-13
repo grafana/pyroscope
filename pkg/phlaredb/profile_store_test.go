@@ -35,6 +35,8 @@ const (
 	contextKeyDataDir contextKey = iota + 32
 )
 
+var testHeadMetrics = NewHeadMetrics(prometheus.NewRegistry())
+
 func contextWithDataDir(ctx context.Context, path string) context.Context {
 	return context.WithValue(ctx, contextKeyDataDir, path)
 }
@@ -71,7 +73,6 @@ func testContext(t testing.TB) testCtx {
 	bucketClient, err := phlareobjclient.NewBucket(ctx, bucketCfg, "testing")
 	require.NoError(t, err)
 
-	ctx = contextWithHeadMetrics(ctx, newHeadMetrics(reg))
 	return testCtx{
 		Context:           ctx,
 		dataDir:           dataPath,
@@ -191,7 +192,7 @@ func readFullParquetFile[M any](t *testing.T, path string) ([]M, uint64) {
 func TestProfileStore_RowGroupSplitting(t *testing.T) {
 	var (
 		ctx   = testContext(t)
-		store = newProfileStore(ctx)
+		store = newProfileStore(ctx, testHeadMetrics)
 	)
 
 	for _, tc := range []struct {
@@ -232,7 +233,7 @@ func TestProfileStore_RowGroupSplitting(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			path := t.TempDir()
-			require.NoError(t, store.Init(path, tc.cfg, newHeadMetrics(prometheus.NewRegistry())))
+			require.NoError(t, store.Init(path, tc.cfg, testHeadMetrics))
 
 			for i := 0; i < 100; i++ {
 				p := tc.values(i)
@@ -295,10 +296,10 @@ func threeProfileStreams(i int) *testProfile {
 func TestProfileStore_Ingestion_SeriesIndexes(t *testing.T) {
 	var (
 		ctx   = testContext(t)
-		store = newProfileStore(ctx)
+		store = newProfileStore(ctx, testHeadMetrics)
 	)
 	path := t.TempDir()
-	require.NoError(t, store.Init(path, defaultParquetConfig, newHeadMetrics(prometheus.NewRegistry())))
+	require.NoError(t, store.Init(path, defaultParquetConfig, NewHeadMetrics(prometheus.NewRegistry())))
 
 	for i := 0; i < 9; i++ {
 		p := threeProfileStreams(i)
@@ -326,7 +327,6 @@ func TestProfileStore_Ingestion_SeriesIndexes(t *testing.T) {
 func BenchmarkFlush(b *testing.B) {
 	b.StopTimer()
 	ctx := testContext(b)
-	metrics := newHeadMetrics(prometheus.NewRegistry())
 	b.ReportAllocs()
 	samples := schemav1.Samples{
 		Values:        make([]uint64, 10000),
@@ -339,8 +339,8 @@ func BenchmarkFlush(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 
 		path := b.TempDir()
-		store := newProfileStore(ctx)
-		require.NoError(b, store.Init(path, defaultParquetConfig, metrics))
+		store := newProfileStore(ctx, testHeadMetrics)
+		require.NoError(b, store.Init(path, defaultParquetConfig, testHeadMetrics))
 		for rg := 0; rg < 10; rg++ {
 			for i := 0; i < 10^6; i++ {
 				p := threeProfileStreams(i)
@@ -377,7 +377,7 @@ func TestProfileStore_Querying(t *testing.T) {
 		cfg = Config{
 			DataPath: t.TempDir(),
 		}
-		head, err = NewHead(ctx, cfg, NoLimit)
+		head, err = NewHead(ctx, cfg, testHeadMetrics, NoLimit)
 	)
 	require.NoError(t, err)
 
@@ -597,9 +597,9 @@ func TestProfileStore_Querying(t *testing.T) {
 }
 
 func TestRemoveFailedSegment(t *testing.T) {
-	store := newProfileStore(testContext(t))
+	store := newProfileStore(testContext(t), testHeadMetrics)
 	dir := t.TempDir()
-	require.NoError(t, store.Init(dir, defaultParquetConfig, contextHeadMetrics(context.Background())))
+	require.NoError(t, store.Init(dir, defaultParquetConfig, testHeadMetrics))
 	// fake a failed segment
 	_, err := os.Create(dir + "/profiles.0.parquet")
 	require.NoError(t, store.ingest(context.Background(), []schemav1.InMemoryProfile{{}}, phlaremodel.LabelsFromStrings(), "memory"))

@@ -46,14 +46,14 @@ type Table interface {
 	Name() string
 	Size() uint64       // Size estimates the uncompressed byte size of the table in memory and on disk.
 	MemorySize() uint64 // MemorySize estimates the uncompressed byte size of the table in memory.
-	Init(path string, cfg *ParquetConfig, metrics *headMetrics) error
+	Init(path string, cfg *ParquetConfig, metrics *HeadMetrics) error
 	Flush(context.Context) (numRows uint64, numRowGroups uint64, err error)
 	Close() error
 }
 
 type Head struct {
 	logger  log.Logger
-	metrics *headMetrics
+	metrics *HeadMetrics
 	stopCh  chan struct{}
 	wg      sync.WaitGroup
 
@@ -81,12 +81,12 @@ const (
 	defaultFolderMode = 0o755
 )
 
-func NewHead(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*Head, error) {
+func NewHead(phlarectx context.Context, cfg Config, hm *HeadMetrics, limiter TenantLimiter) (*Head, error) {
 	// todo if tenantLimiter is nil ....
 	parquetConfig := *defaultParquetConfig
 	h := &Head{
 		logger:  phlarecontext.Logger(phlarectx),
-		metrics: contextHeadMetrics(phlarectx),
+		metrics: hm,
 
 		stopCh: make(chan struct{}),
 
@@ -113,7 +113,7 @@ func NewHead(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*Hea
 	}
 
 	// create profile store
-	h.profiles = newProfileStore(phlarectx)
+	h.profiles = newProfileStore(phlarectx, h.metrics)
 	h.delta = newDeltaProfiles()
 	h.tables = []Table{
 		h.profiles,

@@ -36,7 +36,7 @@ type profileStore struct {
 
 	logger  log.Logger
 	cfg     *ParquetConfig
-	metrics *headMetrics
+	metrics *HeadMetrics
 
 	path      string
 	persister schemav1.Persister[*schemav1.Profile]
@@ -76,10 +76,10 @@ func newParquetProfileWriter(writer io.Writer, options ...parquet.WriterOption) 
 	)
 }
 
-func newProfileStore(phlarectx context.Context) *profileStore {
+func newProfileStore(phlarectx context.Context, hm *HeadMetrics) *profileStore {
 	s := &profileStore{
 		logger:     phlarecontext.Logger(phlarectx),
-		metrics:    contextHeadMetrics(phlarectx),
+		metrics:    hm,
 		persister:  &schemav1.ProfilePersister{},
 		flushing:   atomic.NewBool(false),
 		flushQueue: make(chan int),
@@ -106,7 +106,7 @@ func (s *profileStore) MemorySize() uint64 {
 }
 
 // resets the store
-func (s *profileStore) Init(path string, cfg *ParquetConfig, metrics *headMetrics) (err error) {
+func (s *profileStore) Init(path string, cfg *ParquetConfig, metrics *HeadMetrics) (err error) {
 	// close previous iteration
 	if err := s.Close(); err != nil {
 		return err

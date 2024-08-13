@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
@@ -35,7 +37,7 @@ func CreateBlock(t testing.TB, generator func() []*testhelper.ProfileBuilder) (b
 		Parquet: &phlaredb.ParquetConfig{
 			MaxBufferRowCount: 10,
 		},
-	}, noLimit{})
+	}, phlaredb.NewHeadMetrics(prometheus.NewRegistry()), noLimit{})
 	require.NoError(t, err)
 
 	// ingest.

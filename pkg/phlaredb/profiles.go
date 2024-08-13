@@ -144,10 +144,10 @@ type profilesIndex struct {
 	totalSeries     *atomic.Int64
 	rowGroupsOnDisk int
 
-	metrics *headMetrics
+	metrics *HeadMetrics
 }
 
-func newProfileIndex(totalShards uint32, metrics *headMetrics) (*profilesIndex, error) {
+func newProfileIndex(totalShards uint32, metrics *HeadMetrics) (*profilesIndex, error) {
 	ix, err := tsdb.NewBitPrefixWithShards(totalShards)
 	if err != nil {
 		return nil, err

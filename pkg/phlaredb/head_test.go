@@ -42,9 +42,10 @@ var NoLimit = noLimit{}
 func newTestHead(t testing.TB) *testHead {
 	dataPath := t.TempDir()
 	ctx := testContext(t)
-	head, err := NewHead(ctx, Config{DataPath: dataPath}, NoLimit)
+	reg := phlarecontext.Registry(ctx).(*prometheus.Registry)
+	head, err := NewHead(ctx, Config{DataPath: dataPath}, NewHeadMetrics(reg), NoLimit)
 	require.NoError(t, err)
-	return &testHead{Head: head, t: t, reg: phlarecontext.Registry(ctx).(*prometheus.Registry)}
+	return &testHead{Head: head, t: t, reg: reg}
 }
 
 type testHead struct {
@@ -267,7 +268,7 @@ func TestHead_SelectMatchingProfiles_Order(t *testing.T) {
 		Parquet: &ParquetConfig{
 			MaxBufferRowCount: n - 1,
 		},
-	}, NoLimit)
+	}, testHeadMetrics, NoLimit)
 	require.NoError(t, err)
 
 	c := make(chan struct{})
@@ -437,7 +438,7 @@ func TestHead_Concurrent_Ingest_Querying(t *testing.T) {
 		cfg = Config{
 			DataPath: t.TempDir(),
 		}
-		head, err = NewHead(ctx, cfg, NoLimit)
+		head, err = NewHead(ctx, cfg, testHeadMetrics, NoLimit)
 	)
 	require.NoError(t, err)
 

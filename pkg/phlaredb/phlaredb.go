@@ -87,7 +87,7 @@ type PhlareDB struct {
 
 	logger    log.Logger
 	phlarectx context.Context
-	metrics   *headMetrics
+	metrics   *HeadMetrics
 
 	cfg    Config
 	stopCh chan struct{}
@@ -112,14 +112,13 @@ type PhlareDB struct {
 	evictCh      chan *blockEviction
 }
 
-func New(phlarectx context.Context, cfg Config, limiter TenantLimiter, fs phlareobj.Bucket) (*PhlareDB, error) {
-	reg := phlarecontext.Registry(phlarectx)
+func New(phlarectx context.Context, cfg Config, hm *HeadMetrics, limiter TenantLimiter, fs phlareobj.Bucket) (*PhlareDB, error) {
 	f := &PhlareDB{
 		cfg:     cfg,
 		logger:  phlarecontext.Logger(phlarectx),
 		stopCh:  make(chan struct{}),
 		evictCh: make(chan *blockEviction),
-		metrics: newHeadMetrics(reg),
+		metrics: hm,
 		limiter: limiter,
 		heads:   make(map[int64]*Head),
 	}
@@ -129,7 +128,6 @@ func New(phlarectx context.Context, cfg Config, limiter TenantLimiter, fs phlare
 	}
 
 	// ensure head metrics are registered early so they are reused for the new head
-	phlarectx = contextWithHeadMetrics(phlarectx, f.metrics)
 	f.phlarectx = phlarectx
 	f.wg.Add(1)
 	go f.loop()
@@ -353,7 +351,7 @@ func (f *PhlareDB) headForIngest(sampleTimeNanos int64, fn func(*Head) error) (e
 	f.headLock.Lock()
 	head, ok := f.heads[maxT]
 	if !ok {
-		h, err := NewHead(f.phlarectx, f.cfg, f.limiter)
+		h, err := NewHead(f.phlarectx, f.cfg, f.metrics, f.limiter)
 		if err != nil {
 			f.headLock.Unlock()
 			return err

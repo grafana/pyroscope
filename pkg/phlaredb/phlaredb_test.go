@@ -35,13 +35,13 @@ func TestCreateLocalDir(t *testing.T) {
 	_, err := New(testContext(t), Config{
 		DataPath:         dataPath,
 		MaxBlockDuration: 30 * time.Minute,
-	}, NoLimit, ctx.localBucketClient)
+	}, testHeadMetrics, NoLimit, ctx.localBucketClient)
 	require.Error(t, err)
 	require.NoError(t, os.Remove(localFile))
 	_, err = New(ctx, Config{
 		DataPath:         dataPath,
 		MaxBlockDuration: 30 * time.Minute,
-	}, NoLimit, ctx.localBucketClient)
+	}, testHeadMetrics, NoLimit, ctx.localBucketClient)
 	require.NoError(t, err)
 }
 
@@ -161,11 +161,10 @@ func TestMergeProfilesStacktraces(t *testing.T) {
 		start   = end.Add(-time.Minute)
 		step    = 15 * time.Second
 	)
-
 	db, err := New(ctx, Config{
 		DataPath:         testDir,
 		MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
-	}, NoLimit, ctx.localBucketClient)
+	}, testHeadMetrics, NoLimit, ctx.localBucketClient)
 	require.NoError(t, err)
 	defer func() {
 		require.NoError(t, db.Close())
@@ -293,11 +292,10 @@ func Test_HeadFlush_DuplicateLabels(t *testing.T) {
 		start   = end.Add(-time.Minute)
 		step    = 15 * time.Second
 	)
-
 	db, err := New(ctx, Config{
 		DataPath:         testDir,
 		MaxBlockDuration: time.Duration(100000) * time.Minute,
-	}, NoLimit, ctx.localBucketClient)
+	}, testHeadMetrics, NoLimit, ctx.localBucketClient)
 	require.NoError(t, err)
 	defer func() {
 		require.NoError(t, db.Close())
@@ -321,11 +319,10 @@ func TestMergeProfilesPprof(t *testing.T) {
 		start   = end.Add(-time.Minute)
 		step    = 15 * time.Second
 	)
-
 	db, err := New(ctx, Config{
 		DataPath:         testDir,
 		MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
-	}, NoLimit, ctx.localBucketClient)
+	}, testHeadMetrics, NoLimit, ctx.localBucketClient)
 	require.NoError(t, err)
 	defer func() {
 		require.NoError(t, db.Close())
@@ -466,7 +463,7 @@ func Test_QueryNotInitializedHead(t *testing.T) {
 	db, err := New(ctx, Config{
 		DataPath:         contextDataDir(ctx),
 		MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
-	}, NoLimit, ctx.localBucketClient)
+	}, testHeadMetrics, NoLimit, ctx.localBucketClient)
 	require.NoError(t, err)
 	defer func() {
 		require.NoError(t, db.Close())
@@ -539,7 +536,7 @@ func Test_FlushNotInitializedHead(t *testing.T) {
 	db, err := New(ctx, Config{
 		DataPath:         contextDataDir(ctx),
 		MaxBlockDuration: 1 * time.Hour,
-	}, NoLimit, ctx.localBucketClient)
+	}, testHeadMetrics, NoLimit, ctx.localBucketClient)
 
 	var (
 		end   = time.Unix(0, int64(time.Hour))

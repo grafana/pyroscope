@@ -65,8 +65,9 @@ type Ingester struct {
 	instances    map[string]*instance
 	instancesMtx sync.RWMutex
 
-	limits Limits
-	reg    prometheus.Registerer
+	limits      Limits
+	reg         prometheus.Registerer
+	headMetrics *phlaredb.HeadMetrics
 }
 
 type ingesterFlusherCompat struct {
@@ -81,15 +82,17 @@ func (i *ingesterFlusherCompat) Flush() {
 }
 
 func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storageBucket phlareobj.Bucket, limits Limits, queryStoreAfter time.Duration) (*Ingester, error) {
+	reg := phlarecontext.Registry(phlarectx)
 	i := &Ingester{
 		cfg:           cfg,
 		phlarectx:     phlarectx,
 		logger:        phlarecontext.Logger(phlarectx),
-		reg:           phlarecontext.Registry(phlarectx),
+		reg:           reg,
 		instances:     map[string]*instance{},
 		dbConfig:      dbConfig,
 		storageBucket: storageBucket,
 		limits:        limits,
+		headMetrics:   phlaredb.NewHeadMetrics(reg),
 	}
 
 	// initialise the local bucket client
@@ -182,7 +185,7 @@ func (i *Ingester) GetOrCreateInstance(tenantID string) (*instance, error) { //n
 	if !ok {
 		var err error
 
-		inst, err = newInstance(i.phlarectx, i.dbConfig, tenantID, i.localBucket, i.storageBucket, NewLimiter(tenantID, i.limits, i.lifecycler, i.cfg.LifecyclerConfig.RingConfig.ReplicationFactor))
+		inst, err = newInstance(i.phlarectx, i.dbConfig, i.headMetrics, tenantID, i.localBucket, i.storageBucket, NewLimiter(tenantID, i.limits, i.lifecycler, i.cfg.LifecyclerConfig.RingConfig.ReplicationFactor))
 		if err != nil {
 			return nil, err
 		}
