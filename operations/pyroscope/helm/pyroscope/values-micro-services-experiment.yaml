@@ -1,6 +1,16 @@
 pyroscope:
-  components:
+  extraEnvVars:
+    PYROSCOPE_V2_EXPERIMENT: 1
+  extraArgs:
+    query-backend.address: "dns:///_grpc._tcp.pyroscope-query-worker-headless.$(NAMESPACE_FQDN):9095"
+    metastore.address: "dns:///_grpc._tcp.pyroscope-metastore-headless.$(NAMESPACE_FQDN):9095"
+    metastore.raft.bind-address: ":9099"
+    metastore.raft.server-id: "$(POD_NAME).pyroscope-metastore-headless.$(NAMESPACE_FQDN)"
+    metastore.raft.advertise-address: "$(POD_NAME).pyroscope-metastore-headless.$(NAMESPACE_FQDN):9099"
+    metastore.raft.bootstrap-peers: "dnssrvnoa+_raft._tcp.pyroscope-metastore-headless.$(NAMESPACE_FQDN):9099"
+    metastore.raft.bootstrap-expect-peers: "3"
 
+  components:
     distributor:
       kind: Deployment
       replicaCount: 2
@@ -8,23 +18,16 @@ pyroscope:
     segment-writer:
       kind: StatefulSet
       replicaCount: 3
-      extraArgs:
-        metastore.address: "dns:///_grpc._tcp.pyroscope-metastore-headless.$(NAMESPACE_FQDN):9095"
       persistence:
         enabled: false
 
     query-frontend:
       kind: Deployment
       replicaCount: 2
-      extraArgs:
-        query-backend.address: "dns:///_grpc._tcp.pyroscope-query-worker-headless.$(NAMESPACE_FQDN):9095"
-        metastore.address: "dns:///_grpc._tcp.pyroscope-metastore-headless.$(NAMESPACE_FQDN):9095"
 
     query-backend:
       kind: Deployment
       replicaCount: 3
-      extraArgs:
-        query-backend.address: "dns:///_grpc._tcp.pyroscope-query-worker-headless.$(NAMESPACE_FQDN):9095"
       service:
         extraPorts:
           - name: grpc
@@ -35,13 +38,6 @@ pyroscope:
     metastore:
       kind: StatefulSet
       replicaCount: 3
-      extraArgs:
-        metastore.address: "dns:///_grpc._tcp.pyroscope-metastore-headless.$(NAMESPACE_FQDN):9095"
-        metastore.raft.bind-address: ":9099"
-        metastore.raft.advertise-address: "$(POD_NAME).pyroscope-metastore-headless.$(NAMESPACE_FQDN):9099"
-        metastore.raft.server-id: "$(POD_NAME).pyroscope-metastore-headless.$(NAMESPACE_FQDN):9099"
-        metastore.raft.bootstrap-peers: "dnssrvnoa+_raft._tcp.pyroscope-metastore-headless.$(NAMESPACE_FQDN):9099"
-        metastore.raft.bootstrap-expect-peers: "3"
       service:
         publishNotReadyAddresses: true
         extraPorts:
@@ -66,8 +62,6 @@ pyroscope:
       replicaCount: 3
       persistence:
         enabled: false
-      extraArgs:
-        metastore.address: "dns:///_grpc._tcp.pyroscope-metastore-headless.$(NAMESPACE_FQDN):9095"
       extraMounts:
         - name: data
           mountPath: /data-compaction-worker
