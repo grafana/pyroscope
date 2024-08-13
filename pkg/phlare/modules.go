@@ -80,9 +80,15 @@ const (
 	TenantSettings    string = "tenant-settings"
 	AdHocProfiles     string = "ad-hoc-profiles"
 
-	// QueryFrontendTripperware string = "query-frontend-tripperware"
-	// IndexGateway             string = "index-gateway"
-	// IndexGatewayRing         string = "index-gateway-ring"
+	// Experimental modules
+
+	Metastore          string = "metastore"
+	MetastoreClient    string = "metastore-client"
+	SegmentWriter      string = "segment-writer"
+	QueryBackend       string = "query-backend"
+	QueryBackendClient string = "query-backend-client"
+	CompactionWorker   string = "compaction-worker"
+	HealthService      string = "health-service"
 )
 
 var objectStoreTypeStats = usagestats.NewString("store_object_type")

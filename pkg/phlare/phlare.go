@@ -42,6 +42,12 @@ import (
 	"github.com/grafana/pyroscope/pkg/cfg"
 	"github.com/grafana/pyroscope/pkg/compactor"
 	"github.com/grafana/pyroscope/pkg/distributor"
+	compactionworker "github.com/grafana/pyroscope/pkg/experiment/compactor"
+	segmentwriter "github.com/grafana/pyroscope/pkg/experiment/ingester"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore"
+	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
+	"github.com/grafana/pyroscope/pkg/experiment/querybackend"
+	querybackendclient "github.com/grafana/pyroscope/pkg/experiment/querybackend/client"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/ingester"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
@@ -59,6 +65,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/usagestats"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/cli"
+	"github.com/grafana/pyroscope/pkg/util/health"
 	"github.com/grafana/pyroscope/pkg/validation"
 	"github.com/grafana/pyroscope/pkg/validation/exporter"
 )
@@ -91,6 +98,16 @@ type Config struct {
 
 	ConfigFile      string `yaml:"-"`
 	ConfigExpandEnv bool   `yaml:"-"`
+
+	// Experimental modules.
+	// TODO(kolesnikovae):
+	//  - Generalized experimental features?
+	//  - Better naming.
+	v2Experiment     bool
+	SegmentWriter    segmentwriter.Config    `yaml:"segment_writer" doc:"hidden"`
+	Metastore        metastore.Config        `yaml:"metastore" doc:"hidden"`
+	QueryBackend     querybackend.Config     `yaml:"query_backend" doc:"hidden"`
+	CompactionWorker compactionworker.Config `yaml:"compaction_worker" doc:"hidden"`
 }
 
 func newDefaultConfig() *Config {
@@ -149,6 +166,14 @@ func (c *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) 
 	c.LimitsConfig.RegisterFlags(f)
 	c.Compactor.RegisterFlags(f, log.NewLogfmtLogger(os.Stderr))
 	c.API.RegisterFlags(f)
+
+	c.v2Experiment = os.Getenv("PYROSCOPE_V2_EXPERIMENT") != ""
+	if c.v2Experiment {
+		c.Metastore.RegisterFlags(f)
+		c.SegmentWriter.RegisterFlags(f)
+		c.QueryBackend.RegisterFlags(f)
+		c.CompactionWorker.RegisterFlags(f)
+	}
 }
 
 // registerServerFlagsWithChangedDefaultValues registers *Config.Server flags, but overrides some defaults set by the weaveworks package.
@@ -242,6 +267,16 @@ type Phlare struct {
 	auth     connect.Option
 	ingester *ingester.Ingester
 	frontend *frontend.Frontend
+
+	// Experimental modules.
+
+	segmentWriter      *segmentwriter.SegmentWriter
+	metastore          *metastore.Metastore
+	metastoreClient    *metastoreclient.Client
+	queryBackend       *querybackend.QueryBackend
+	queryBackendClient *querybackendclient.Client
+	compactionWorker   *compactionworker.Worker
+	healthService      health.Service
 }
 
 func New(cfg Config) (*Phlare, error) {
@@ -250,9 +285,10 @@ func New(cfg Config) (*Phlare, error) {
 	usagestats.Edition("oss")
 
 	phlare := &Phlare{
-		Cfg:    cfg,
-		logger: logger,
-		reg:    prometheus.DefaultRegisterer,
+		Cfg:           cfg,
+		logger:        logger,
+		reg:           prometheus.DefaultRegisterer,
+		healthService: health.NoOpService,
 	}
 	if err := cfg.Validate(); err != nil {
 		return nil, err
@@ -311,7 +347,7 @@ func (f *Phlare) setupModuleManager() error {
 
 	// Add dependencies
 	deps := map[string][]string{
-		All: {Ingester, Distributor, QueryScheduler, QueryFrontend, Querier, StoreGateway, Admin, TenantSettings, Compactor, AdHocProfiles},
+		All: {Ingester, Distributor, QueryFrontend, QueryScheduler, Querier, StoreGateway, Compactor, Admin, TenantSettings, AdHocProfiles},
 
 		Server:            {GRPCGateway},
 		API:               {Server},
@@ -332,6 +368,32 @@ func (f *Phlare) setupModuleManager() error {
 		Version:           {API, MemberlistKV},
 		TenantSettings:    {API, Storage},
 		AdHocProfiles:     {API, Overrides, Storage},
+	}
+
+	// Experimental modules.
+	if f.Cfg.v2Experiment {
+		experimentalModules := map[string][]string{
+			SegmentWriter:    {Overrides, API, MemberlistKV, Storage, UsageReport, MetastoreClient},
+			Metastore:        {Overrides, API, HealthService, MetastoreClient},
+			CompactionWorker: {Overrides, API, Storage, Overrides, MetastoreClient},
+			QueryBackend:     {Overrides, API, Storage, Overrides, QueryBackendClient},
+			HealthService:    {Overrides, API},
+		}
+		for k, v := range experimentalModules {
+			deps[k] = v
+		}
+
+		// TODO(kolesnikovae): Inject new distributor dependencies, if any.
+		deps[All] = append(deps[All], SegmentWriter, Metastore, CompactionWorker, QueryBackend, HealthService)
+		deps[QueryFrontend] = append(deps[QueryFrontend], MetastoreClient, QueryBackendClient)
+
+		mm.RegisterModule(SegmentWriter, f.initSegmentWriter, modules.UserInvisibleModule)
+		mm.RegisterModule(Metastore, f.initMetastore, modules.UserInvisibleModule)
+		mm.RegisterModule(CompactionWorker, f.initCompactionWorker, modules.UserInvisibleModule)
+		mm.RegisterModule(QueryBackend, f.initQueryBackend, modules.UserInvisibleModule)
+		mm.RegisterModule(MetastoreClient, f.initMetastoreClient, modules.UserInvisibleModule)
+		mm.RegisterModule(QueryBackendClient, f.initQueryBackendClient, modules.UserInvisibleModule)
+		mm.RegisterModule(HealthService, f.initHealthService, modules.UserInvisibleModule)
 	}
 
 	for mod, targets := range deps {

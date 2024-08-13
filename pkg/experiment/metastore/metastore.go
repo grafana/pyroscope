@@ -14,6 +14,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/flagext"
+	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/services"
 	"github.com/hashicorp/raft"
 	raftwal "github.com/hashicorp/raft-wal"
@@ -41,8 +42,10 @@ const (
 )
 
 type Config struct {
-	DataDir string     `yaml:"data_dir"`
-	Raft    RaftConfig `yaml:"raft"`
+	Address          string            `yaml:"address"`
+	GRPCClientConfig grpcclient.Config `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with the metastore."`
+	DataDir          string            `yaml:"data_dir"`
+	Raft             RaftConfig        `yaml:"raft"`
 }
 
 type RaftConfig struct {
@@ -60,12 +63,13 @@ type RaftConfig struct {
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	const prefix = "metastore."
+	f.StringVar(&cfg.Address, prefix+"address", "localhost:9095", "")
+	cfg.GRPCClientConfig.RegisterFlagsWithPrefix(prefix+"grpc-client-config", f)
 	f.StringVar(&cfg.DataDir, prefix+"data-dir", "./data-metastore/data", "")
-	cfg.Raft.RegisterFlags(f)
+	cfg.Raft.RegisterFlagsWithPrefix(prefix+"raft.", f)
 }
 
-func (cfg *RaftConfig) RegisterFlags(f *flag.FlagSet) {
-	const prefix = "metastore.raft."
+func (cfg *RaftConfig) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.StringVar(&cfg.Dir, prefix+"dir", "./data-metastore/raft", "")
 	f.Var((*flagext.StringSlice)(&cfg.BootstrapPeers), prefix+"bootstrap-peers", "")
 	f.IntVar(&cfg.BootstrapExpectPeers, prefix+"bootstrap-expect-peers", 1, "Expected number of peers including the local node.")

@@ -81,6 +81,13 @@ spec:
               {{- end }}
           {{- end }}
           {{- end }}
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: NAMESPACE_FQDN
+              value: "{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}"
           {{- with $values.extraEnvFrom }}
           envFrom:
             {{- toYaml . | nindent 12 }}
