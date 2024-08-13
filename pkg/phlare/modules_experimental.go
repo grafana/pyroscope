@@ -26,6 +26,9 @@ func (f *Phlare) initSegmentWriter() (services.Service, error) {
 func (f *Phlare) initCompactionWorker() (svc services.Service, err error) {
 	logger := log.With(f.logger, "component", "compaction-worker")
 	f.compactionWorker, err = compactionworker.New(f.Cfg.CompactionWorker, logger, f.metastoreClient, f.storageBucket, f.reg)
+	if err != nil {
+		return nil, err
+	}
 	return f.compactionWorker, nil
 }
 

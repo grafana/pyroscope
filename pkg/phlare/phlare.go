@@ -269,10 +269,11 @@ type Phlare struct {
 	frontend *frontend.Frontend
 
 	// Experimental modules.
-
-	segmentWriter      *segmentwriter.SegmentWriter
-	metastore          *metastore.Metastore
-	metastoreClient    *metastoreclient.Client
+	//nolint:unused
+	segmentWriter   *segmentwriter.SegmentWriter
+	metastore       *metastore.Metastore
+	metastoreClient *metastoreclient.Client
+	//nolint:unused
 	queryBackend       *querybackend.QueryBackend
 	queryBackendClient *querybackendclient.Client
 	compactionWorker   *compactionworker.Worker
