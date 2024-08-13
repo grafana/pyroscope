@@ -1,4 +1,4 @@
-package iter
+package model
 
 import (
 	"math"
@@ -8,21 +8,21 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/iter"
 )
 
 var (
-	aLabels = phlaremodel.LabelsFromStrings("foo", "a")
-	bLabels = phlaremodel.LabelsFromStrings("foo", "b")
-	cLabels = phlaremodel.LabelsFromStrings("foo", "c")
+	aLabels = LabelsFromStrings("foo", "a")
+	bLabels = LabelsFromStrings("foo", "b")
+	cLabels = LabelsFromStrings("foo", "c")
 )
 
 type profile struct {
-	labels    phlaremodel.Labels
+	labels    Labels
 	timestamp model.Time
 }
 
-func (p profile) Labels() phlaremodel.Labels {
+func (p profile) Labels() Labels {
 	return p.labels
 }
 
@@ -120,9 +120,9 @@ func TestMergeIterator(t *testing.T) {
 	} {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			iters := make([]Iterator[profile], len(tt.input))
+			iters := make([]iter.Iterator[profile], len(tt.input))
 			for i, input := range tt.input {
-				iters[i] = NewSliceIterator(input)
+				iters[i] = iter.NewSliceIterator(input)
 			}
 			it := NewMergeIterator(
 				profile{timestamp: math.MaxInt64},
@@ -162,9 +162,9 @@ func Test_BufferedIterator(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			actual, err := Slice(
-				NewBufferedIterator(
-					NewSliceIterator(tc.in), tc.size),
+			actual, err := iter.Slice(
+				iter.NewBufferedIterator(
+					iter.NewSliceIterator(tc.in), tc.size),
 			)
 			require.NoError(t, err)
 			require.Equal(t, tc.in, actual)
@@ -175,8 +175,8 @@ func Test_BufferedIterator(t *testing.T) {
 func Test_BufferedIteratorClose(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
-	it := NewBufferedIterator(
-		NewSliceIterator(generatesProfiles(t, 100)), 10)
+	it := iter.NewBufferedIterator(
+		iter.NewSliceIterator(generatesProfiles(t, 100)), 10)
 	require.NoError(t, it.Close())
 }
 

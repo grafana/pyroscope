@@ -20,6 +20,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/util/bufferpool"
 	"github.com/grafana/pyroscope/pkg/util/refctr"
 )
 
@@ -36,6 +37,83 @@ type Reader struct {
 	meta         *block.Meta
 	files        map[string]block.File
 	parquetFiles *parquetFiles
+
+	prefetchSize uint64
+}
+
+type Option func(*Reader)
+
+func WithPrefetchSize(size uint64) Option {
+	return func(r *Reader) {
+		r.prefetchSize = size
+	}
+}
+
+func OpenObject(ctx context.Context, b objstore.BucketReader, name string, offset, size int64, options ...Option) (*Reader, error) {
+	f := block.File{
+		RelPath:   name,
+		SizeBytes: uint64(size),
+	}
+	r := &Reader{
+		bucket: objstore.NewBucketReaderWithOffset(b, offset),
+		file:   f,
+	}
+	for _, opt := range options {
+		opt(r)
+	}
+
+	var err error
+	if r.prefetchSize > 0 {
+		err = r.openIndexWithPrefetch(ctx)
+	} else {
+		err = r.openIndex(ctx)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("opening index section: %w", err)
+	}
+
+	if err = r.buildPartitions(); err != nil {
+		return nil, err
+	}
+
+	return r, nil
+}
+
+func (r *Reader) openIndexWithPrefetch(ctx context.Context) (err error) {
+	prefetchSize := r.prefetchSize
+	if prefetchSize > r.file.SizeBytes {
+		prefetchSize = r.file.SizeBytes
+	}
+	n, err := r.prefetchIndex(ctx, prefetchSize)
+	if err == nil && n != 0 {
+		_, err = r.prefetchIndex(ctx, prefetchSize)
+	}
+	return err
+}
+
+func (r *Reader) prefetchIndex(ctx context.Context, size uint64) (n uint64, err error) {
+	if size < uint64(FooterSize) {
+		size = uint64(FooterSize)
+	}
+	prefetchOffset := r.file.SizeBytes - size
+	buf := bufferpool.GetBuffer(int(size))
+	defer bufferpool.Put(buf)
+	if err = objstore.ReadRange(ctx, buf, r.file.RelPath, r.bucket, int64(prefetchOffset), int64(size)); err != nil {
+		return 0, fmt.Errorf("fetching index: %w", err)
+	}
+	footerOffset := size - uint64(FooterSize)
+	if err = r.footer.UnmarshalBinary(buf.B[footerOffset:]); err != nil {
+		return 0, fmt.Errorf("unmarshaling footer: %w", err)
+	}
+	if prefetchOffset > (r.footer.IndexOffset) {
+		return r.file.SizeBytes - r.footer.IndexOffset, nil
+	}
+	// prefetch offset is less that or equal to the index offset.
+	indexOffset := r.footer.IndexOffset - prefetchOffset
+	if r.index, err = OpenIndex(buf.B[indexOffset:footerOffset]); err != nil {
+		return 0, fmt.Errorf("opening index: %w", err)
+	}
+	return 0, nil
 }
 
 func Open(ctx context.Context, b objstore.BucketReader, m *block.Meta) (*Reader, error) {
@@ -113,13 +191,6 @@ func (r *Reader) partitionReader(h *PartitionHeader) (*partition, error) {
 
 // openIndex locates footer and loads the index section from
 // the file into the memory.
-//
-// NOTE(kolesnikovae): Pre-fetch: we could speculatively fetch
-// the footer and the index section into a larger buffer rather
-// than retrieving them synchronously.
-//
-// NOTE(kolesnikovae): It is possible to skip the footer, if it
-// was cached, and the index section offset and size are known.
 func (r *Reader) openIndex(ctx context.Context) error {
 	if r.file.SizeBytes == 0 {
 		attrs, err := r.bucket.Attributes(ctx, r.file.RelPath)

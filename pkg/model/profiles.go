@@ -1,10 +1,10 @@
-package iter
+package model
 
 import (
 	"github.com/grafana/dskit/multierror"
 	"github.com/prometheus/common/model"
 
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/iter"
 	"github.com/grafana/pyroscope/pkg/util/loser"
 )
 
@@ -13,20 +13,20 @@ type Timestamp interface {
 }
 
 type Profile interface {
-	Labels() phlaremodel.Labels
+	Labels() Labels
 	Timestamp
 }
 
 func lessProfile(p1, p2 Profile) bool {
 	if p1.Timestamp() == p2.Timestamp() {
 		// todo we could compare SeriesRef here
-		return phlaremodel.CompareLabelPairs(p1.Labels(), p2.Labels()) < 0
+		return CompareLabelPairs(p1.Labels(), p2.Labels()) < 0
 	}
 	return p1.Timestamp() < p2.Timestamp()
 }
 
 type MergeIterator[P Profile] struct {
-	tree        *loser.Tree[P, Iterator[P]]
+	tree        *loser.Tree[P, iter.Iterator[P]]
 	closeErrs   multierror.MultiError
 	current     P
 	deduplicate bool
@@ -35,34 +35,34 @@ type MergeIterator[P Profile] struct {
 // NewMergeIterator returns an iterator that k-way merges the given iterators.
 // The given iterators must be sorted by timestamp and labels themselves.
 // Optionally, the iterator can deduplicate profiles with the same timestamp and labels.
-func NewMergeIterator[P Profile](max P, deduplicate bool, iters ...Iterator[P]) Iterator[P] {
+func NewMergeIterator[P Profile](max P, deduplicate bool, iters ...iter.Iterator[P]) iter.Iterator[P] {
 	if len(iters) == 0 {
-		return NewEmptyIterator[P]()
+		return iter.NewEmptyIterator[P]()
 	}
 	if len(iters) == 1 {
 		// No need to merge a single iterator.
 		// We should never allow a single iterator to be passed in because
 		return iters[0]
 	}
-	iter := &MergeIterator[P]{
+	m := &MergeIterator[P]{
 		deduplicate: deduplicate,
 		current:     max,
 	}
-	iter.tree = loser.New(
+	m.tree = loser.New(
 		iters,
 		max,
-		func(s Iterator[P]) P {
+		func(s iter.Iterator[P]) P {
 			return s.At()
 		},
 		func(p1, p2 P) bool {
 			return lessProfile(p1, p2)
 		},
-		func(s Iterator[P]) {
+		func(s iter.Iterator[P]) {
 			if err := s.Close(); err != nil {
-				iter.closeErrs.Add(err)
+				m.closeErrs.Add(err)
 			}
 		})
-	return iter
+	return m
 }
 
 func (i *MergeIterator[P]) Next() bool {
@@ -74,7 +74,7 @@ func (i *MergeIterator[P]) Next() bool {
 			return true
 		}
 		if next.At().Timestamp() != i.current.Timestamp() ||
-			phlaremodel.CompareLabelPairs(next.At().Labels(), i.current.Labels()) != 0 {
+			CompareLabelPairs(next.At().Labels(), i.current.Labels()) != 0 {
 			i.current = next.At()
 			return true
 		}
@@ -97,11 +97,11 @@ func (i *MergeIterator[P]) Close() error {
 }
 
 type TimeRangedIterator[T Timestamp] struct {
-	Iterator[T]
+	iter.Iterator[T]
 	min, max model.Time
 }
 
-func NewTimeRangedIterator[T Timestamp](it Iterator[T], min, max model.Time) Iterator[T] {
+func NewTimeRangedIterator[T Timestamp](it iter.Iterator[T], min, max model.Time) iter.Iterator[T] {
 	return &TimeRangedIterator[T]{
 		Iterator: it,
 		min:      min,

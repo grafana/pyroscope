@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package metastore.v1;
+
+service MetastoreService {
+  rpc AddBlock(AddBlockRequest) returns (AddBlockResponse) {}
+  rpc ListBlocksForQuery(ListBlocksForQueryRequest) returns (ListBlocksForQueryResponse) {}
+  rpc ReadIndex(ReadIndexRequest) returns (ReadIndexResponse) {}
+}
+
+message AddBlockRequest {
+  BlockMeta block = 1;
+}
+
+message AddBlockResponse {}
+
+message BlockMeta {
+  uint64 format_version = 1;
+  string id = 2;
+  int64 min_time = 3;
+  int64 max_time = 4;
+  uint32 shard = 5;
+  uint32 compaction_level = 6;
+  // Optional. Empty if compaction level is 0.
+  string tenant_id = 7;
+  // TODO(kolesnikovae): Partitions with labels?
+  repeated TenantService tenant_services = 8;
+  uint64 size = 9;
+}
+
+// TenantService object points to the offset in the block at which
+// the tenant service data is located.
+message TenantService {
+  string tenant_id = 1;
+  string name = 2;
+  int64 min_time = 3;
+  int64 max_time = 4;
+
+  // Table of contents lists data sections within the tenant
+  // service region. The offsets are absolute.
+  //
+  // The interpretation of the table of contents is specific
+  // to the metadata format version. By default, the sections are:
+  //  - 0: profiles.parquet
+  //  - 1: index.tsdb
+  //  - 2: symbols.symdb
+  repeated uint64 table_of_contents = 5;
+  // Size of the section in bytes.
+  uint64 size = 6;
+  // Profile types present in the tenant service data.
+  repeated string profile_types = 7;
+}
+
+message ListBlocksForQueryRequest {
+  repeated string tenant_id = 1;
+  int64 start_time = 2;
+  int64 end_time = 3;
+  string query = 4;
+}
+
+message ListBlocksForQueryResponse {
+  repeated BlockMeta blocks = 1;
+}
+
+message ReadIndexRequest {
+  string debug_request_id = 1; // for debug logging, // todo delete
+}
+
+message ReadIndexResponse {
+  uint64 read_index = 1;
+}
