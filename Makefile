@@ -77,10 +77,15 @@ build: frontend/build go/bin ## Do a production build (requiring the frontend bu
 build-dev: ## Do a dev build (without requiring the frontend)
 	$(MAKE) EMBEDASSETS="" go/bin
 
-
 .PHONY: frontend/build
 frontend/build:
-	docker build  -f cmd/pyroscope/frontend.Dockerfile --output=public/build .
+	docker build -f cmd/pyroscope/frontend.Dockerfile --output=public/build .
+
+.PHONY: profilecli/build
+profilecli/build: go/bin-profilecli ## Build the profilecli binary
+
+.PHONY: pyroscope/build
+pyroscope/build: go/bin-pyroscope ## Build just the pyroscope binary
 
 .PHONY: release
 release/prereq: $(BIN)/goreleaser ## Ensure release pre requesites are met
@@ -110,18 +115,31 @@ release/build: release/prereq ## Build current platform release binaries
 go/deps:
 	$(GO) mod tidy
 
-define go_build
+define go_build_pyroscope
 	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 $(GO) build -tags "netgo $(EMBEDASSETS)" -ldflags "-extldflags \"-static\" $(1)" ./cmd/pyroscope
+endef
+
+define go_build_profilecli
 	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 $(GO) build -ldflags "-extldflags \"-static\" $(1)" ./cmd/profilecli
 endef
 
 .PHONY: go/bin-debug
 go/bin-debug:
-	$(call go_build,$(GO_LDFLAGS))
+	$(call go_build_pyroscope,$(GO_LDFLAGS))
+	$(call go_build_profilecli,$(GO_LDFLAGS))
 
 .PHONY: go/bin
 go/bin:
-	$(call go_build,-s -w $(GO_LDFLAGS))
+	$(call go_build_pyroscope,-s -w $(GO_LDFLAGS))
+	$(call go_build_profilecli,-s -w $(GO_LDFLAGS))
+
+.PHONY: go/bin-pyroscope-debug
+go/bin-pyroscope-debug:
+	$(call go_build_pyroscope,$(GO_LDFLAGS))
+
+.PHONY: go/bin-profilecli-debug
+go/bin-profilecli:
+	$(call go_build_profilecli,$(GO_LDFLAGS))
 
 .PHONY: go/lint
 go/lint: $(BIN)/golangci-lint
@@ -180,7 +198,7 @@ define deploy
 		--set pyroscope.podAnnotations."profiles\.grafana\.com\/goroutine\.port_name"=http-metrics \
 		--set pyroscope.extraEnvVars.JAEGER_AGENT_HOST=jaeger.monitoring.svc.cluster.local. \
 		--set pyroscope.extraArgs."pyroscopedb\.max-block-duration"=5m
-  endef
+endef
 
 .PHONY: docker-image/pyroscope/build-debug
 docker-image/pyroscope/build-debug: GOOS=linux
