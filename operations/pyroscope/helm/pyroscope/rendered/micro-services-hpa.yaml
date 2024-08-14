@@ -2134,6 +2134,13 @@ spec:
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: NAMESPACE_FQDN
+              value: "default.svc.cluster.local."
           ports:
             - name: http2
               containerPort: 4040
@@ -2227,6 +2234,13 @@ spec:
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: NAMESPACE_FQDN
+              value: "default.svc.cluster.local."
           ports:
             - name: http2
               containerPort: 4040
@@ -2320,6 +2334,13 @@ spec:
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: NAMESPACE_FQDN
+              value: "default.svc.cluster.local."
           ports:
             - name: http2
               containerPort: 4040
@@ -2413,6 +2434,13 @@ spec:
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: NAMESPACE_FQDN
+              value: "default.svc.cluster.local."
           ports:
             - name: http2
               containerPort: 4040
@@ -2807,6 +2835,13 @@ spec:
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: NAMESPACE_FQDN
+              value: "default.svc.cluster.local."
           ports:
             - name: http2
               containerPort: 4040
@@ -2908,6 +2943,13 @@ spec:
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: NAMESPACE_FQDN
+              value: "default.svc.cluster.local."
           ports:
             - name: http2
               containerPort: 4040
@@ -3005,6 +3047,13 @@ spec:
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: NAMESPACE_FQDN
+              value: "default.svc.cluster.local."
           ports:
             - name: http2
               containerPort: 4040

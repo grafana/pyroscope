@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"os"
 	"path"
@@ -38,6 +39,14 @@ import (
 const pathSegments = "segments"
 const pathAnon = tenant.DefaultTenantID
 const pathBlock = "block.bin"
+
+type Config struct{}
+
+func (cfg *Config) RegisterFlags(f *flag.FlagSet) {}
+
+type SegmentWriter struct {
+	// TODO: Implement
+}
 
 type shardKey uint32
 
