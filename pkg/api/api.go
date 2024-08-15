@@ -9,6 +9,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	segmentwriter "github.com/grafana/pyroscope/pkg/experiment/ingester"
 	"net/http"
 	"strings"
 
@@ -33,6 +34,7 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
+	"github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1/segmentwriterv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/settings/v1/settingsv1connect"
 	statusv1 "github.com/grafana/pyroscope/api/gen/proto/go/status/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/storegateway/v1/storegatewayv1connect"
@@ -268,6 +270,10 @@ func (a *API) RegisterPyroscopeHandlers(client querierv1connect.QuerierServiceCl
 // RegisterIngester registers the endpoints associated with the ingester.
 func (a *API) RegisterIngester(svc *ingester.Ingester) {
 	ingesterv1connect.RegisterIngesterServiceHandler(a.server.HTTP, svc, a.connectOptionsAuthRecovery()...)
+}
+
+func (a *API) RegisterSegmentWriter(svc *segmentwriter.SegmentWriterService) {
+	segmentwriterv1connect.RegisterSegmentWriterServiceHandler(a.server.HTTP, svc, a.connectOptionsAuthRecovery()...)
 }
 
 func (a *API) RegisterStoreGateway(svc *storegateway.StoreGateway) {
