@@ -89,6 +89,9 @@ func main() {
 	bucketWebCmd := bucketCmd.Command("web", "Run the web tool for visualizing blocks in object-store buckets.")
 	bucketWebParams := addBucketWebToolParams(bucketWebCmd)
 
+	readyCmd := app.Command("ready", "Check Pyroscope health.")
+	readyParams := addReadyParams(readyCmd)
+
 	// parse command line arguments
 	parsedCmd := kingpin.MustParse(app.Parse(os.Args[1:]))
 
@@ -149,6 +152,10 @@ func main() {
 		}
 	case blocksCompactCmd.FullCommand():
 		if err := blocksCompact(ctx, cfg.blocks.compact.src, cfg.blocks.compact.dst, cfg.blocks.compact.shards); err != nil {
+			os.Exit(checkError(err))
+		}
+	case readyCmd.FullCommand():
+		if err := ready(ctx, readyParams); err != nil {
 			os.Exit(checkError(err))
 		}
 	default:
