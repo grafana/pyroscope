@@ -291,12 +291,12 @@ For more information:
 
 ### Grafana Alloy
 
-- [Grafana Alloy](https://grafana.com/docs/alloy/latest/)
-- [pyroscope.scrape](https://grafana.com/docs/alloy/latest/reference/components/pyroscope/pyroscope.scrape/)
-- [pyroscope.write](https://grafana.com/docs/alloy/latest/reference/components/pyroscope/pyroscope.write/)
-- [discovery.kubernetes](https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.kubernetes/)
-- [discovery.docker](/docs/alloy/latest/flow/reference/components/discovery/discovery.docker/)
-- [discovery.relabel](/docs/alloy/latest/flow/reference/components/discovery/discovery.relabel/)
+- [Grafana Alloy](https://grafana.com/docs/alloy/<ALLOY_VERSION>/)
+- [pyroscope.scrape](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/pyroscope/pyroscope.scrape/)
+- [pyroscope.write](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/pyroscope/pyroscope.write/)
+- [discovery.kubernetes](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.kubernetes/)
+- [discovery.docker](/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.docker/)
+- [discovery.relabel](/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.relabel/)
 
 ### Grafana Agent
 
