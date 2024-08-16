@@ -164,11 +164,16 @@ func main() {
 }
 
 func checkError(err error) int {
-	if err != nil {
+	switch err {
+	case nil:
+		return 0
+	case notReadyErr:
+		// The reason for the failed ready is already logged, so just exit with
+		// an error code.
+	default:
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		return 1
 	}
-	return 0
+	return 1
 }
 
 type contextKey uint8

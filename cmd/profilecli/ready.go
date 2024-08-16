@@ -7,6 +7,12 @@ import (
 	"net/http"
 
 	"github.com/go-kit/log/level"
+	"github.com/pkg/errors"
+)
+
+var (
+	// Occurs when Pyroscope is not
+	notReadyErr = errors.New("not ready")
 )
 
 type readyParams struct {
@@ -41,7 +47,7 @@ func ready(ctx context.Context, params *readyParams) error {
 
 	if res.StatusCode != http.StatusOK {
 		level.Error(logger).Log("msg", "not ready", "status", res.Status, "body", string(bytes))
-		return nil
+		return notReadyErr
 	}
 
 	level.Info(logger).Log("msg", "ready")
