@@ -39,7 +39,7 @@ enum CompactionStatus {
   COMPACTION_STATUS_FAILURE = 3;
 }
 
-message JobPreQueue {
+message CompactionJobBlockQueue {
   uint32 compaction_level = 1;
   uint32 shard = 2;
   string tenant = 3;

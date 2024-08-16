@@ -99,7 +99,7 @@ func (m *CompactionJob) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *JobPreQueue) MarshalVT() (dAtA []byte, err error) {
+func (m *CompactionJobBlockQueue) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -112,12 +112,12 @@ func (m *JobPreQueue) MarshalVT() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *JobPreQueue) MarshalToVT(dAtA []byte) (int, error) {
+func (m *CompactionJobBlockQueue) MarshalToVT(dAtA []byte) (int, error) {
 	size := m.SizeVT()
 	return m.MarshalToSizedBufferVT(dAtA[:size])
 }
 
-func (m *JobPreQueue) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+func (m *CompactionJobBlockQueue) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m == nil {
 		return 0, nil
 	}
@@ -197,7 +197,7 @@ func (m *CompactionJob) SizeVT() (n int) {
 	return n
 }
 
-func (m *JobPreQueue) SizeVT() (n int) {
+func (m *CompactionJobBlockQueue) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -465,7 +465,7 @@ func (m *CompactionJob) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *JobPreQueue) UnmarshalVT(dAtA []byte) error {
+func (m *CompactionJobBlockQueue) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -488,10 +488,10 @@ func (m *JobPreQueue) UnmarshalVT(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: JobPreQueue: wiretype end group for non-group")
+			return fmt.Errorf("proto: CompactionJobBlockQueue: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: JobPreQueue: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: CompactionJobBlockQueue: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:

@@ -64,7 +64,7 @@ func (s compactionLevelStrategy) shouldCreateJob(blocks []string) bool {
 	return len(blocks) >= s.maxBlocks
 }
 
-type jobPreQueue struct {
+type compactionJobBlockQueue struct {
 	mu            sync.Mutex
 	blocksByLevel map[uint32][]string
 }
@@ -78,16 +78,16 @@ func (m *metastoreState) tryCreateJob(block *metastorev1.BlockMeta, raftLogIndex
 		tenant: block.TenantId,
 		shard:  block.Shard,
 	}
-	preQueue := m.getOrCreatePreQueue(key)
-	preQueue.mu.Lock()
-	defer preQueue.mu.Unlock()
+	blockQueue := m.getOrCreateCompactionBlockQueue(key)
+	blockQueue.mu.Lock()
+	defer blockQueue.mu.Unlock()
 
 	if block.CompactionLevel >= globalCompactionStrategy.maxCompactionLevel {
 		level.Info(m.logger).Log("msg", "skipping block at max compaction level", "block", block.Id, "compaction_level", block.CompactionLevel)
 		return nil
 	}
 
-	queuedBlocks := append(preQueue.blocksByLevel[block.CompactionLevel], block.Id)
+	queuedBlocks := append(blockQueue.blocksByLevel[block.CompactionLevel], block.Id)
 
 	level.Debug(m.logger).Log(
 		"msg", "adding block for compaction",
@@ -138,10 +138,10 @@ func (m *metastoreState) addCompactionJob(job *compactionpb.CompactionJob) {
 		tenant: job.TenantId,
 		shard:  job.Shard,
 	}
-	preQueue := m.getOrCreatePreQueue(key)
-	preQueue.mu.Lock()
-	defer preQueue.mu.Unlock()
-	preQueue.blocksByLevel[job.CompactionLevel] = preQueue.blocksByLevel[job.CompactionLevel][:0]
+	blockQueue := m.getOrCreateCompactionBlockQueue(key)
+	blockQueue.mu.Lock()
+	defer blockQueue.mu.Unlock()
+	blockQueue.blocksByLevel[job.CompactionLevel] = blockQueue.blocksByLevel[job.CompactionLevel][:0]
 }
 
 func (m *metastoreState) addBlockToCompactionJobQueue(block *metastorev1.BlockMeta) {
@@ -149,11 +149,11 @@ func (m *metastoreState) addBlockToCompactionJobQueue(block *metastorev1.BlockMe
 		tenant: block.TenantId,
 		shard:  block.Shard,
 	}
-	preQueue := m.getOrCreatePreQueue(key)
-	preQueue.mu.Lock()
-	defer preQueue.mu.Unlock()
+	blockQueue := m.getOrCreateCompactionBlockQueue(key)
+	blockQueue.mu.Lock()
+	defer blockQueue.mu.Unlock()
 
-	preQueue.blocksByLevel[block.CompactionLevel] = append(preQueue.blocksByLevel[block.CompactionLevel], block.Id)
+	blockQueue.blocksByLevel[block.CompactionLevel] = append(blockQueue.blocksByLevel[block.CompactionLevel], block.Id)
 }
 
 func calculateHash(blocks []string) uint64 {
@@ -224,16 +224,16 @@ func (m *metastoreState) consumeBlock(block *metastorev1.BlockMeta, tx *bbolt.Tx
 		if err != nil {
 			return err, nil, nil
 		}
-		err = m.persistJobPreQueue(block.Shard, block.TenantId, block.CompactionLevel, []string{}, tx)
+		err = m.persistCompactionJobBlockQueue(block.Shard, block.TenantId, block.CompactionLevel, []string{}, tx)
 		jobToAdd = job
 	} else {
 		key := tenantShard{
 			tenant: block.TenantId,
 			shard:  block.Shard,
 		}
-		queue := m.getOrCreatePreQueue(key).blocksByLevel[block.CompactionLevel]
+		queue := m.getOrCreateCompactionBlockQueue(key).blocksByLevel[block.CompactionLevel]
 		queue = append(queue, block.Id)
-		err := m.persistJobPreQueue(block.Shard, block.TenantId, block.CompactionLevel, queue, tx)
+		err := m.persistCompactionJobBlockQueue(block.Shard, block.TenantId, block.CompactionLevel, queue, tx)
 		if err != nil {
 			return err, nil, nil
 		}
@@ -242,9 +242,9 @@ func (m *metastoreState) consumeBlock(block *metastorev1.BlockMeta, tx *bbolt.Tx
 	return err, jobToAdd, blockForQueue
 }
 
-func (m *metastoreState) persistJobPreQueue(shard uint32, tenant string, compactionLevel uint32, queue []string, tx *bbolt.Tx) error {
+func (m *metastoreState) persistCompactionJobBlockQueue(shard uint32, tenant string, compactionLevel uint32, queue []string, tx *bbolt.Tx) error {
 	jobBucketName, _ := keyForCompactionJob(shard, tenant, "")
-	preQueue := &compactionpb.JobPreQueue{
+	blockQueue := &compactionpb.CompactionJobBlockQueue{
 		CompactionLevel: compactionLevel,
 		Shard:           shard,
 		Tenant:          tenant,
@@ -252,7 +252,7 @@ func (m *metastoreState) persistJobPreQueue(shard uint32, tenant string, compact
 	}
 	key := []byte(fmt.Sprintf("job-pre-queue-%d", compactionLevel))
 	return updateCompactionJobBucket(tx, jobBucketName, func(bucket *bbolt.Bucket) error {
-		data, _ := preQueue.MarshalVT()
+		data, _ := blockQueue.MarshalVT()
 		return bucket.Put(key, data)
 	})
 }
