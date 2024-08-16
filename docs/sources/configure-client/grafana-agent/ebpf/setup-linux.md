@@ -136,7 +136,7 @@ Make sure you're running the agent with root privileges which are required for t
 To verify that the profiles are received by the Pyroscope server, go to the Pyroscope UI or [Grafana Pyroscope datasource][pyroscope-ds]. Select a profile type and a service from the drop-down menu.
 
 [agent-install]: /docs/agent/latest/flow/setup/install/linux/
-[pyroscope-ds]: /docs/grafana/latest/datasources/grafana-pyroscope/
+[pyroscope-ds]: /docs/grafana/<GRAFANA_VERSION>/datasources/pyroscope/
 [config-reference]: ../configuration/
 [gcloud]: /products/cloud/
 [discovery.process](/docs/agent/next/flow/reference/components/discovery.process/)
