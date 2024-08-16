@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	// Occurs when Pyroscope is not
+	// Occurs when Pyroscope is not ready.
 	notReadyErr = errors.New("not ready")
 )
 
