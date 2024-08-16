@@ -22,6 +22,9 @@ spec:
       targetPort: {{ $values.service.port_name }}
       protocol: TCP
       name: {{ $values.service.port_name }}
+    {{- with $values.service.extraPorts }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   selector:
     {{- include "pyroscope.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component | quote }}
@@ -45,6 +48,12 @@ spec:
       targetPort: {{ $values.service.port_name }}
       protocol: TCP
       name: {{ $values.service.port_name }}
+    {{- with $values.service.extraPorts }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- if $values.service.publishNotReadyAddresses }}
+  publishNotReadyAddresses: true
+  {{- end }}
   selector:
     {{- include "pyroscope.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component | quote }}

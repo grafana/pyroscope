@@ -50,9 +50,9 @@ type Config struct {
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	const prefix = "compaction-worker."
 	tempdir := filepath.Join(os.TempDir(), "pyroscope-compactor")
-	f.IntVar(&cfg.JobCapacity, prefix+"job-capacity", 3, "how many concurrent jobs will a worker run at most")
-	f.IntVar(&cfg.SmallObjectSize, prefix+"small-object-size-bytes", 8<<20, "size of the object that can be loaded in memory")
-	f.StringVar(&cfg.TempDir, prefix+"temp-dir", tempdir, "temporary directory for compaction jobs")
+	f.IntVar(&cfg.JobCapacity, prefix+"job-capacity", 3, "How many concurrent jobs will a worker run at most.")
+	f.IntVar(&cfg.SmallObjectSize, prefix+"small-object-size-bytes", 8<<20, "Size of the object that can be loaded in memory.")
+	f.StringVar(&cfg.TempDir, prefix+"temp-dir", tempdir, "Temporary directory for compaction jobs.")
 }
 
 func New(config Config, logger log.Logger, metastoreClient *metastoreclient.Client, storage objstore.Bucket, reg prometheus.Registerer) (*Worker, error) {
