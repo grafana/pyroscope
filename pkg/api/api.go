@@ -9,9 +9,10 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	segmentwriter "github.com/grafana/pyroscope/pkg/experiment/ingester"
 	"net/http"
 	"strings"
+
+	segmentwriter "github.com/grafana/pyroscope/pkg/experiment/ingester"
 
 	"connectrpc.com/connect"
 	"github.com/felixge/fgprof"
