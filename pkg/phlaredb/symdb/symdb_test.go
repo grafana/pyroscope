@@ -1,11 +1,16 @@
 package symdb
 
 import (
+	"bytes"
 	"context"
+	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/objstore/providers/memory"
+	pprofth "github.com/grafana/pyroscope/pkg/pprof/testhelper"
 	"io"
 	"sort"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/stretchr/testify/require"
@@ -191,5 +196,33 @@ func TestWritePartition(t *testing.T) {
 			MaxBufferRowCount: 100 << 10,
 		},
 	})
-	t.Error(p) // todo
+	profile := pprofth.NewProfileBuilder(time.Now().UnixNano()).
+		CPUProfile().
+		WithLabels(phlaremodel.LabelNameServiceName, "svc").
+		ForStacktraceString("foo", "bar").
+		AddSamples(1).
+		ForStacktraceString("qwe", "foo", "bar").
+		AddSamples(2)
+
+	profiles := p.WriteProfileSymbols(profile.Profile)
+	symdbBlob := bytes.NewBuffer(nil)
+	err := WritePartition(p, symdbBlob)
+	require.NoError(t, err)
+
+	bucket := phlareobj.NewBucket(memory.NewInMemBucket())
+	require.NoError(t, bucket.Upload(context.Background(), DefaultFileName, bytes.NewReader(symdbBlob.Bytes())))
+	reader, err := Open(context.Background(), bucket, testBlockMeta)
+	require.NoError(t, err)
+
+	r := NewResolver(context.Background(), reader)
+	defer r.Release()
+	r.AddSamples(0, profiles[0].Samples)
+	resolved, err := r.Tree()
+	require.NoError(t, err)
+	expected := `.
+└── bar: self 0 total 3
+    └── foo: self 1 total 3
+        └── qwe: self 2 total 2
+`
+	require.Equal(t, expected, resolved.String())
 }
