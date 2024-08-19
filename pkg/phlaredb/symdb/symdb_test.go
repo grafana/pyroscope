@@ -3,14 +3,15 @@ package symdb
 import (
 	"bytes"
 	"context"
-	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
-	"github.com/grafana/pyroscope/pkg/objstore/providers/memory"
-	pprofth "github.com/grafana/pyroscope/pkg/pprof/testhelper"
 	"io"
 	"sort"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/objstore/providers/memory"
+	pprofth "github.com/grafana/pyroscope/pkg/pprof/testhelper"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/stretchr/testify/require"
