@@ -119,22 +119,22 @@ func PlanCompaction(objects Objects) ([]*CompactionPlan, error) {
 
 	m := make(map[string]*CompactionPlan)
 	for _, obj := range objects {
-		for _, s := range obj.meta.TenantServices {
+		for _, s := range obj.meta.Datasets {
 			tm, ok := m[s.TenantId]
 			if !ok {
 				tm = newBlockCompaction(s.TenantId, r.meta.Shard, c)
 				m[s.TenantId] = tm
 			}
-			sm := tm.addTenantService(s)
-			// Bind objects to services.
-			sm.append(NewTenantService(s, obj))
+			sm := tm.addDataset(s)
+			// Bind objects to datasets.
+			sm.append(NewDataset(s, obj))
 		}
 	}
 
 	ordered := make([]*CompactionPlan, 0, len(m))
 	for _, tm := range m {
 		ordered = append(ordered, tm)
-		slices.SortFunc(tm.services, func(a, b *tenantServiceCompaction) int {
+		slices.SortFunc(tm.datasets, func(a, b *datasetCompaction) int {
 			return strings.Compare(a.meta.Name, b.meta.Name)
 		})
 	}
@@ -147,15 +147,15 @@ func PlanCompaction(objects Objects) ([]*CompactionPlan, error) {
 
 type CompactionPlan struct {
 	tenantID   string
-	serviceMap map[string]*tenantServiceCompaction
-	services   []*tenantServiceCompaction
+	datasetMap map[string]*datasetCompaction
+	datasets   []*datasetCompaction
 	meta       *metastorev1.BlockMeta
 }
 
 func newBlockCompaction(tenantID string, shard uint32, compactionLevel uint32) *CompactionPlan {
 	return &CompactionPlan{
 		tenantID:   tenantID,
-		serviceMap: make(map[string]*tenantServiceCompaction),
+		datasetMap: make(map[string]*datasetCompaction),
 		meta: &metastorev1.BlockMeta{
 			FormatVersion: 1,
 			// TODO(kolesnikovae): Make it deterministic?
@@ -163,7 +163,7 @@ func newBlockCompaction(tenantID string, shard uint32, compactionLevel uint32) *
 			TenantId:        tenantID,
 			Shard:           shard,
 			CompactionLevel: compactionLevel,
-			TenantServices:  nil,
+			Datasets:        nil,
 			MinTime:         0,
 			MaxTime:         0,
 			Size:            0,
@@ -180,14 +180,14 @@ func (b *CompactionPlan) Compact(ctx context.Context, dst objstore.Bucket, tmpdi
 	defer func() {
 		err = multierror.New(err, w.Close()).Err()
 	}()
-	// Services are compacted in a strict order.
-	for _, s := range b.services {
+	// Datasets are compacted in a strict order.
+	for _, s := range b.datasets {
 		s.estimate()
 		// TODO(kolesnikovae): Wait until the required resources are available?
 		if err = s.compact(ctx, w); err != nil {
 			return nil, fmt.Errorf("compacting block: %w", err)
 		}
-		b.meta.TenantServices = append(b.meta.TenantServices, s.meta)
+		b.meta.Datasets = append(b.meta.Datasets, s.meta)
 	}
 	if err = w.Flush(ctx); err != nil {
 		return nil, fmt.Errorf("flushing block writer: %w", err)
@@ -196,12 +196,12 @@ func (b *CompactionPlan) Compact(ctx context.Context, dst objstore.Bucket, tmpdi
 	return b.meta, nil
 }
 
-func (b *CompactionPlan) addTenantService(s *metastorev1.TenantService) *tenantServiceCompaction {
-	sm, ok := b.serviceMap[s.Name]
+func (b *CompactionPlan) addDataset(s *metastorev1.Dataset) *datasetCompaction {
+	sm, ok := b.datasetMap[s.Name]
 	if !ok {
-		sm = newTenantServiceCompaction(s.TenantId, s.Name)
-		b.serviceMap[s.Name] = sm
-		b.services = append(b.services, sm)
+		sm = newDatasetCompaction(s.TenantId, s.Name)
+		b.datasetMap[s.Name] = sm
+		b.datasets = append(b.datasets, sm)
 	}
 	if b.meta.MinTime == 0 || s.MinTime < b.meta.MinTime {
 		b.meta.MinTime = s.MinTime
@@ -235,12 +235,12 @@ func (m *compactionEstimates) inMemorySizeTotal() int64 {
 		m.inMemorySizeOutputProfiles
 }
 
-type tenantServiceCompaction struct {
-	meta   *metastorev1.TenantService
+type datasetCompaction struct {
+	meta   *metastorev1.Dataset
 	ptypes map[string]struct{}
 	path   string // Set at open.
 
-	services []*TenantService
+	datasets []*Dataset
 
 	indexRewriter   *indexRewriter
 	symbolsRewriter *symbolsRewriter
@@ -254,10 +254,10 @@ type tenantServiceCompaction struct {
 	flushOnce sync.Once
 }
 
-func newTenantServiceCompaction(tenantID, name string) *tenantServiceCompaction {
-	return &tenantServiceCompaction{
+func newDatasetCompaction(tenantID, name string) *datasetCompaction {
+	return &datasetCompaction{
 		ptypes: make(map[string]struct{}, 10),
-		meta: &metastorev1.TenantService{
+		meta: &metastorev1.Dataset{
 			TenantId: tenantID,
 			Name:     name,
 			// Updated at append.
@@ -271,8 +271,8 @@ func newTenantServiceCompaction(tenantID, name string) *tenantServiceCompaction 
 	}
 }
 
-func (m *tenantServiceCompaction) append(s *TenantService) {
-	m.services = append(m.services, s)
+func (m *datasetCompaction) append(s *Dataset) {
+	m.datasets = append(m.datasets, s)
 	if m.meta.MinTime == 0 || s.meta.MinTime < m.meta.MinTime {
 		m.meta.MinTime = s.meta.MinTime
 	}
@@ -284,7 +284,7 @@ func (m *tenantServiceCompaction) append(s *TenantService) {
 	}
 }
 
-func (m *tenantServiceCompaction) compact(ctx context.Context, w *Writer) (err error) {
+func (m *datasetCompaction) compact(ctx context.Context, w *Writer) (err error) {
 	if err = m.open(ctx, w.Dir()); err != nil {
 		return fmt.Errorf("failed to open sections for compaction: %w", err)
 	}
@@ -303,10 +303,10 @@ func (m *tenantServiceCompaction) compact(ctx context.Context, w *Writer) (err e
 // TODO(kolesnikovae):
 //   - Add statistics to the block meta.
 //   - Measure. Ideally, we should track statistics.
-func (m *tenantServiceCompaction) estimate() {
+func (m *datasetCompaction) estimate() {
 	columns := len(schemav1.ProfilesSchema.Columns())
-	// Services are to be opened concurrently.
-	for _, s := range m.services {
+	// Datasets are to be opened concurrently.
+	for _, s := range m.datasets {
 		s1 := s.sectionSize(SectionSymbols)
 		// It's likely that both symbols and tsdb sections will
 		// be heavily deduplicated, so the actual output size will
@@ -350,7 +350,7 @@ func (m *tenantServiceCompaction) estimate() {
 	m.estimates.inMemorySizeOutputProfiles += columnBuffers + pageBuffers
 }
 
-func (m *tenantServiceCompaction) open(ctx context.Context, path string) (err error) {
+func (m *datasetCompaction) open(ctx context.Context, path string) (err error) {
 	m.path = path
 	defer func() {
 		if err != nil {
@@ -371,18 +371,18 @@ func (m *tenantServiceCompaction) open(ctx context.Context, path string) (err er
 	m.symbolsRewriter = newSymbolsRewriter(m.path)
 
 	g, ctx := errgroup.WithContext(ctx)
-	for _, s := range m.services {
+	for _, s := range m.datasets {
 		s := s
 		g.Go(util.RecoverPanic(func() error {
 			if openErr := s.Open(ctx, allSections...); openErr != nil {
-				return fmt.Errorf("opening tenant service (block %s): %w", s.obj.path, openErr)
+				return fmt.Errorf("opening tenant dataset (block %s): %w", s.obj.path, openErr)
 			}
 			return nil
 		}))
 	}
 	if err = g.Wait(); err != nil {
 		merr := multierror.New(err)
-		for _, s := range m.services {
+		for _, s := range m.datasets {
 			merr.Add(s.Close())
 		}
 		return merr.Err()
@@ -391,15 +391,15 @@ func (m *tenantServiceCompaction) open(ctx context.Context, path string) (err er
 	return nil
 }
 
-func (m *tenantServiceCompaction) mergeAndClose(ctx context.Context) (err error) {
+func (m *datasetCompaction) mergeAndClose(ctx context.Context) (err error) {
 	defer func() {
 		err = multierror.New(err, m.close()).Err()
 	}()
 	return m.merge(ctx)
 }
 
-func (m *tenantServiceCompaction) merge(ctx context.Context) (err error) {
-	rows, err := NewMergeRowProfileIterator(m.services)
+func (m *datasetCompaction) merge(ctx context.Context) (err error) {
+	rows, err := NewMergeRowProfileIterator(m.datasets)
 	if err != nil {
 		return err
 	}
@@ -420,7 +420,7 @@ func (m *tenantServiceCompaction) merge(ctx context.Context) (err error) {
 	return rows.Err()
 }
 
-func (m *tenantServiceCompaction) writeRow(r ProfileEntry) (err error) {
+func (m *datasetCompaction) writeRow(r ProfileEntry) (err error) {
 	if err = m.indexRewriter.rewriteRow(r); err != nil {
 		return err
 	}
@@ -430,7 +430,7 @@ func (m *tenantServiceCompaction) writeRow(r ProfileEntry) (err error) {
 	return m.profilesWriter.writeRow(r)
 }
 
-func (m *tenantServiceCompaction) close() (err error) {
+func (m *datasetCompaction) close() (err error) {
 	m.flushOnce.Do(func() {
 		merr := multierror.New()
 		merr.Add(m.symbolsRewriter.Flush())
@@ -442,17 +442,17 @@ func (m *tenantServiceCompaction) close() (err error) {
 		m.symbolsRewriter = nil
 		m.indexRewriter = nil
 		m.profilesWriter = nil
-		// Note that m.services are closed by merge
+		// Note that m.datasets are closed by merge
 		// iterator as they reach the end of the profile
 		// table. We do it here again just in case.
 		// TODO(kolesnikovae): Double check error handling.
-		m.services = nil
+		m.datasets = nil
 		err = merr.Err()
 	})
 	return err
 }
 
-func (m *tenantServiceCompaction) writeTo(w *Writer) (err error) {
+func (m *datasetCompaction) writeTo(w *Writer) (err error) {
 	off := w.Offset()
 	m.meta.TableOfContents, err = w.ReadFromFiles(
 		FileNameProfilesParquet,
@@ -471,7 +471,7 @@ func (m *tenantServiceCompaction) writeTo(w *Writer) (err error) {
 	return nil
 }
 
-func (m *tenantServiceCompaction) cleanup() error {
+func (m *datasetCompaction) cleanup() error {
 	return os.RemoveAll(m.path)
 }
 
@@ -557,7 +557,7 @@ func (rw *indexRewriter) Flush() error {
 
 type symbolsRewriter struct {
 	w       *symdb.SymDB
-	rw      map[*TenantService]*symdb.Rewriter
+	rw      map[*Dataset]*symdb.Rewriter
 	samples uint64
 
 	stacktraces []uint32
@@ -565,7 +565,7 @@ type symbolsRewriter struct {
 
 func newSymbolsRewriter(path string) *symbolsRewriter {
 	return &symbolsRewriter{
-		rw: make(map[*TenantService]*symdb.Rewriter),
+		rw: make(map[*Dataset]*symdb.Rewriter),
 		w: symdb.NewSymDB(symdb.DefaultConfig().
 			WithVersion(symdb.FormatV3).
 			WithDirectory(path)),
@@ -573,7 +573,7 @@ func newSymbolsRewriter(path string) *symbolsRewriter {
 }
 
 func (s *symbolsRewriter) rewriteRow(e ProfileEntry) (err error) {
-	rw := s.rewriterFor(e.TenantService)
+	rw := s.rewriterFor(e.Dataset)
 	e.Row.ForStacktraceIDsValues(func(values []parquet.Value) {
 		s.loadStacktraceIDs(values)
 		if err = rw.Rewrite(e.Row.StacktracePartitionID(), s.stacktraces); err != nil {
@@ -587,7 +587,7 @@ func (s *symbolsRewriter) rewriteRow(e ProfileEntry) (err error) {
 	return err
 }
 
-func (s *symbolsRewriter) rewriterFor(x *TenantService) *symdb.Rewriter {
+func (s *symbolsRewriter) rewriterFor(x *Dataset) *symdb.Rewriter {
 	rw, ok := s.rw[x]
 	if !ok {
 		rw = symdb.NewRewriter(s.w, x.Symbols())

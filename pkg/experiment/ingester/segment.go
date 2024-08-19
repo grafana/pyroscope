@@ -252,7 +252,7 @@ func (s *segment) flushBlock(heads []serviceHead) (string, *metastorev1.BlockMet
 		Shard:           uint32(s.shard),
 		CompactionLevel: 0,
 		TenantId:        "",
-		TenantServices:  make([]*metastorev1.TenantService, 0, len(heads)),
+		Datasets:        make([]*metastorev1.Dataset, 0, len(heads)),
 		Size:            0,
 	}
 
@@ -279,7 +279,7 @@ func (s *segment) flushBlock(heads []serviceHead) (string, *metastorev1.BlockMet
 			meta.MaxTime = math.Max(meta.MaxTime, svc.MaxTime)
 		}
 		s.sw.metrics.headSizeBytes.WithLabelValues(s.sshard, e.key.tenant).Observe(float64(svc.Size))
-		meta.TenantServices = append(meta.TenantServices, svc)
+		meta.Datasets = append(meta.Datasets, svc)
 	}
 
 	meta.Size = uint64(w.offset)
@@ -287,7 +287,7 @@ func (s *segment) flushBlock(heads []serviceHead) (string, *metastorev1.BlockMet
 	return blockPath, meta, nil
 }
 
-func concatSegmentHead(sh *shard, e serviceHead, w *writerOffset) (*metastorev1.TenantService, error) {
+func concatSegmentHead(sh *shard, e serviceHead, w *writerOffset) (*metastorev1.Dataset, error) {
 	tenantServiceOffset := w.offset
 	b := e.head.Meta()
 	ptypes := e.head.MustProfileTypeNames()
@@ -311,7 +311,7 @@ func concatSegmentHead(sh *shard, e serviceHead, w *writerOffset) (*metastorev1.
 
 	tenantServiceSize := w.offset - tenantServiceOffset
 
-	svc := &metastorev1.TenantService{
+	svc := &metastorev1.Dataset{
 		TenantId: e.key.tenant,
 		Name:     e.key.service,
 		MinTime:  int64(b.MinTime),

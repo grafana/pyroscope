@@ -28,9 +28,9 @@ func queryLabelValues(q *queryContext, query *querybackendv1.Query) (*querybacke
 	var values []string
 	var err error
 	if len(q.req.matchers) == 0 {
-		values, err = q.svc.Index().LabelValues(query.LabelValues.LabelName)
+		values, err = q.ds.Index().LabelValues(query.LabelValues.LabelName)
 	} else {
-		values, err = labelValuesForMatchers(q.svc.Index(), query.LabelValues.LabelName, q.req.matchers)
+		values, err = labelValuesForMatchers(q.ds.Index(), query.LabelValues.LabelName, q.req.matchers)
 	}
 	if err != nil {
 		return nil, err

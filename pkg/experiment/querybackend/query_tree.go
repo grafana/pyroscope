@@ -35,16 +35,16 @@ func queryTree(q *queryContext, query *querybackendv1.Query) (*querybackendv1.Re
 	defer runutil.CloseWithErrCapture(&err, entries, "failed to close profile entry iterator")
 
 	var columns v1.SampleColumns
-	if err = columns.Resolve(q.svc.Profiles().Schema()); err != nil {
+	if err = columns.Resolve(q.ds.Profiles().Schema()); err != nil {
 		return nil, err
 	}
 
-	profiles := parquetquery.NewRepeatedRowIterator(q.ctx, entries, q.svc.Profiles().RowGroups(),
+	profiles := parquetquery.NewRepeatedRowIterator(q.ctx, entries, q.ds.Profiles().RowGroups(),
 		columns.StacktraceID.ColumnIndex,
 		columns.Value.ColumnIndex)
 	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
 
-	resolver := symdb.NewResolver(q.ctx, q.svc.Symbols())
+	resolver := symdb.NewResolver(q.ctx, q.ds.Symbols())
 	defer resolver.Release()
 	for profiles.Next() {
 		p := profiles.At()

@@ -18,8 +18,8 @@ import (
 	"github.com/grafana/pyroscope/pkg/util/refctr"
 )
 
-type TenantService struct {
-	meta *metastorev1.TenantService
+type Dataset struct {
+	meta *metastorev1.Dataset
 	obj  *Object
 
 	refs refctr.Counter
@@ -33,44 +33,44 @@ type TenantService struct {
 	memSize int
 }
 
-func NewTenantService(meta *metastorev1.TenantService, obj *Object) *TenantService {
-	return &TenantService{
+func NewDataset(meta *metastorev1.Dataset, obj *Object) *Dataset {
+	return &Dataset{
 		meta:    meta,
 		obj:     obj,
-		memSize: defaultTenantServiceSizeLoadInMemory,
+		memSize: defaultTenantDatasetSizeLoadInMemory,
 	}
 }
 
-type TenantServiceOption func(*TenantService)
+type DatasetOption func(*Dataset)
 
-func WithTenantServiceMaxSizeLoadInMemory(size int) TenantServiceOption {
-	return func(s *TenantService) {
+func WithDatasetMaxSizeLoadInMemory(size int) DatasetOption {
+	return func(s *Dataset) {
 		s.memSize = size
 	}
 }
 
-// Open opens the service, initializing the sections specified.
+// Open opens the dataset, initializing the sections specified.
 //
-// Open may be called multiple times concurrently, but the service
-// is only initialized once. While it is possible to open the service
+// Open may be called multiple times concurrently, but the dataset
+// is only initialized once. While it is possible to open the dataset
 // repeatedly after close, the caller must pass the failure reason to
 // the CloseWithError call, preventing further use, if applicable.
-func (s *TenantService) Open(ctx context.Context, sections ...Section) (err error) {
+func (s *Dataset) Open(ctx context.Context, sections ...Section) (err error) {
 	return s.refs.IncErr(func() error {
 		return s.open(ctx, sections...)
 	})
 }
 
-func (s *TenantService) open(ctx context.Context, sections ...Section) (err error) {
+func (s *Dataset) open(ctx context.Context, sections ...Section) (err error) {
 	if s.err != nil {
-		// The tenant service has been already closed with an error.
+		// The tenant dataset has been already closed with an error.
 		return s.err
 	}
 	if err = s.obj.Open(ctx); err != nil {
 		return fmt.Errorf("failed to open object: %w", err)
 	}
 	defer func() {
-		// Close the object here because the tenant service won't be
+		// Close the object here because the tenant dataset won't be
 		// closed if it fails to open.
 		if err != nil {
 			_ = s.closeErr(err)
@@ -96,20 +96,20 @@ func (s *TenantService) open(ctx context.Context, sections ...Section) (err erro
 	return g.Wait()
 }
 
-func (s *TenantService) Close() error { return s.CloseWithError(nil) }
+func (s *Dataset) Close() error { return s.CloseWithError(nil) }
 
-// CloseWithError closes the tenant service and disposes all the resources
+// CloseWithError closes the tenant dataset and disposes all the resources
 // associated with it.
 //
-// Any further attempts to open the service will return the provided error.
-func (s *TenantService) CloseWithError(err error) (closeErr error) {
+// Any further attempts to open the dataset will return the provided error.
+func (s *Dataset) CloseWithError(err error) (closeErr error) {
 	s.refs.Dec(func() {
 		closeErr = s.closeErr(err)
 	})
 	return closeErr
 }
 
-func (s *TenantService) closeErr(err error) error {
+func (s *Dataset) closeErr(err error) error {
 	s.err = err
 	if s.buf != nil {
 		bufferpool.Put(s.buf)
@@ -131,20 +131,20 @@ func (s *TenantService) closeErr(err error) error {
 	return merr.Err()
 }
 
-func (s *TenantService) Meta() *metastorev1.TenantService { return s.meta }
+func (s *Dataset) Meta() *metastorev1.Dataset { return s.meta }
 
-func (s *TenantService) Profiles() *ParquetFile { return s.profiles }
+func (s *Dataset) Profiles() *ParquetFile { return s.profiles }
 
-func (s *TenantService) ProfileRowReader() parquet.RowReader { return s.profiles.RowReader() }
+func (s *Dataset) ProfileRowReader() parquet.RowReader { return s.profiles.RowReader() }
 
-func (s *TenantService) Symbols() symdb.SymbolsReader { return s.symbols }
+func (s *Dataset) Symbols() symdb.SymbolsReader { return s.symbols }
 
-func (s *TenantService) Index() phlaredb.IndexReader { return s.tsdb.index }
+func (s *Dataset) Index() phlaredb.IndexReader { return s.tsdb.index }
 
-// Offset of the tenant service section within the object.
-func (s *TenantService) offset() uint64 { return s.meta.TableOfContents[0] }
+// Offset of the tenant dataset section within the object.
+func (s *Dataset) offset() uint64 { return s.meta.TableOfContents[0] }
 
-func (s *TenantService) sectionIndex(sc Section) int {
+func (s *Dataset) sectionIndex(sc Section) int {
 	var n []int
 	switch s.obj.meta.FormatVersion {
 	default:
@@ -156,7 +156,7 @@ func (s *TenantService) sectionIndex(sc Section) int {
 	return n[sc]
 }
 
-func (s *TenantService) sectionName(sc Section) string {
+func (s *Dataset) sectionName(sc Section) string {
 	var n []string
 	switch s.obj.meta.FormatVersion {
 	default:
@@ -168,11 +168,11 @@ func (s *TenantService) sectionName(sc Section) string {
 	return n[sc]
 }
 
-func (s *TenantService) sectionOffset(sc Section) int64 {
+func (s *Dataset) sectionOffset(sc Section) int64 {
 	return int64(s.meta.TableOfContents[s.sectionIndex(sc)])
 }
 
-func (s *TenantService) sectionSize(sc Section) int64 {
+func (s *Dataset) sectionSize(sc Section) int64 {
 	idx := s.sectionIndex(sc)
 	off := s.meta.TableOfContents[idx]
 	var next uint64
@@ -184,25 +184,25 @@ func (s *TenantService) sectionSize(sc Section) int64 {
 	return int64(next - off)
 }
 
-func (s *TenantService) inMemoryBuffer() []byte {
+func (s *Dataset) inMemoryBuffer() []byte {
 	if s.obj.buf != nil {
 		// If the entire object is loaded into memory,
-		// return the tenant service sub-slice.
+		// return the tenant dataset sub-slice.
 		lo := s.offset()
 		hi := lo + s.meta.Size
 		buf := s.obj.buf.B
 		return buf[lo:hi]
 	}
 	if s.buf != nil {
-		// Otherwise, if the tenant service is loaded into memory
+		// Otherwise, if the tenant dataset is loaded into memory
 		// individually, return the buffer.
 		return s.buf.B
 	}
-	// Otherwise, the tenant service is not loaded into memory.
+	// Otherwise, the tenant dataset is not loaded into memory.
 	return nil
 }
 
-func (s *TenantService) inMemoryBucket(buf []byte) objstore.Bucket {
+func (s *Dataset) inMemoryBucket(buf []byte) objstore.Bucket {
 	bucket := memory.NewInMemBucket()
 	bucket.Set(s.obj.path, buf)
 	return objstore.NewBucket(bucket)
