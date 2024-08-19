@@ -37,9 +37,9 @@ brackets indicate that a parameter is optional.
 - `<prefix>`: a CLI flag prefix based on the context (look at the parent configuration block to see which CLI flags prefix should be used)
 - `<relabel_config>`: a [Prometheus relabeling configuration](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config)
 - `<time>`: a timestamp, with available formats:
-    - `2006-01-20` (midnight, local timezone)
-    - `2006-01-20T15:04` (local timezone)
-    - RFC 3339 formats: `2006-01-20T15:04:05Z` (UTC) or `2006-01-20T15:04:05+07:00` (explicit timezone)
+  - `2006-01-20` (midnight, local timezone)
+  - `2006-01-20T15:04` (local timezone)
+  - RFC 3339 formats: `2006-01-20T15:04:05Z` (UTC) or `2006-01-20T15:04:05+07:00` (explicit timezone)
 
 ## Use environment variables in the configuration
 
@@ -2259,3 +2259,4 @@ The `filesystem_storage_backend` block configures the usage of local file system
 ```
 
 ```
+

@@ -1,13 +1,14 @@
 package phlare
 
 import (
-	"context"
+	"fmt"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/services"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
 	compactionworker "github.com/grafana/pyroscope/pkg/experiment/compactor"
+	segmentwriter "github.com/grafana/pyroscope/pkg/experiment/ingester"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore"
 	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
 	"github.com/grafana/pyroscope/pkg/experiment/querybackend"
@@ -16,11 +17,17 @@ import (
 )
 
 func (f *Phlare) initSegmentWriter() (services.Service, error) {
-	// TODO(kolesnikovae): initialize the component.
-	return services.NewIdleService(
-		func(context.Context) error { return nil },
-		func(error) error { return nil },
-	), nil
+	ingester, err := segmentwriter.New(
+		f.context(),
+		f.Cfg.SegmentWriter,
+		f.Cfg.PhlareDB,
+		f.storageBucket, f.metastoreClient)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create segment writer: %w", err)
+	}
+	f.segmentWriter = ingester
+	f.API.RegisterSegmentWriter(ingester)
+	return f.segmentWriter, nil
 }
 
 func (f *Phlare) initCompactionWorker() (svc services.Service, err error) {

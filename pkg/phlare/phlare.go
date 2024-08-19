@@ -216,6 +216,7 @@ func (c *Config) Validate() error {
 
 func (c *Config) ApplyDynamicConfig() cfg.Source {
 	c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store = "memberlist"
+	c.SegmentWriter.LifecyclerConfig.RingConfig.KVStore.Store = "memberlist"
 	c.Distributor.DistributorRing.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
 	c.OverridesExporter.Ring.Ring.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
 	c.Frontend.QuerySchedulerDiscovery.SchedulerRing.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
@@ -270,7 +271,7 @@ type Phlare struct {
 
 	// Experimental modules.
 	//nolint:unused
-	segmentWriter   *segmentwriter.SegmentWriter
+	segmentWriter   *segmentwriter.SegmentWriterService
 	metastore       *metastore.Metastore
 	metastoreClient *metastoreclient.Client
 	//nolint:unused
@@ -570,6 +571,12 @@ func (f *Phlare) readyHandler(sm *services.Manager) http.HandlerFunc {
 		if f.ingester != nil {
 			if err := f.ingester.CheckReady(r.Context()); err != nil {
 				http.Error(w, "Ingester not ready: "+err.Error(), http.StatusServiceUnavailable)
+				return
+			}
+		}
+		if f.segmentWriter != nil {
+			if err := f.segmentWriter.CheckReady(r.Context()); err != nil {
+				http.Error(w, "Segment Writer not ready: "+err.Error(), http.StatusServiceUnavailable)
 				return
 			}
 		}

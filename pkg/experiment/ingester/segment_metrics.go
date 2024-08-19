@@ -12,6 +12,7 @@ type segmentMetrics struct {
 	segmentFlushWaitDuration *prometheus.HistogramVec
 	segmentFlushTimeouts     *prometheus.CounterVec
 	storeMetaErrors          *prometheus.CounterVec
+	storeMetaDLQ             *prometheus.CounterVec
 	blockUploadDuration      *prometheus.HistogramVec
 	flushSegmentDuration     *prometheus.HistogramVec
 	flushHeadsDuration       *prometheus.HistogramVec
@@ -58,6 +59,11 @@ func newSegmentMetrics(reg prometheus.Registerer) *segmentMetrics {
 				Namespace: "pyroscope",
 				Name:      "segment_store_meta_errors",
 			}, []string{"shard"}),
+		storeMetaDLQ: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace: "pyroscope",
+				Name:      "segment_store_meta_dlq",
+			}, []string{"shard", "status"}),
 
 		segmentFlushWaitDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Namespace: "pyroscope",
@@ -105,12 +111,12 @@ func newSegmentMetrics(reg prometheus.Registerer) *segmentMetrics {
 		reg.MustRegister(m.segmentFlushWaitDuration)
 		reg.MustRegister(m.segmentFlushTimeouts)
 		reg.MustRegister(m.storeMetaErrors)
+		reg.MustRegister(m.storeMetaDLQ)
 		reg.MustRegister(m.blockUploadDuration)
 		reg.MustRegister(m.flushHeadsDuration)
 		reg.MustRegister(m.flushServiceHeadDuration)
 		reg.MustRegister(m.flushServiceHeadError)
 		reg.MustRegister(m.flushSegmentDuration)
-		//reg.MustRegister(m.flushSegmentsDuration)
 		reg.MustRegister(m.headSizeBytes)
 	}
 	return m
