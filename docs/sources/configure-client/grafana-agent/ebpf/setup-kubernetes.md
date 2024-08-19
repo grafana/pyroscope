@@ -127,5 +127,5 @@ To verify that the profiles are received by the Pyroscope server, go to the Pyro
 [gcloud]: /products/cloud/
 [helm]: https://helm.sh/docs/intro/install/
 [kubectl]: https://kubernetes.io/docs/tasks/tools/install-kubectl/
-[pyroscope-ds]: /docs/grafana/latest/datasources/grafana-pyroscope/
+[pyroscope-ds]: /docs/grafana/<GRAFANA_VERSION>/datasources/pyroscope/
 [config-reference]: ../configuration/
