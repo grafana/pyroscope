@@ -22,7 +22,7 @@ message RawProfileSeries {
   repeated types.v1.LabelPair labels = 1;
 
   // samples are the set of profile bytes
-  repeated RawSample samples = 2;
+  RawSample sample = 2;
 
   uint32 shard = 3;
 }

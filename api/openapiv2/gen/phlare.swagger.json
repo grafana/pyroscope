@@ -452,12 +452,8 @@
           },
           "title": "LabelPair is the key value pairs to identify the corresponding profile"
         },
-        "samples": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/segmentwriterv1RawSample"
-          },
+        "sample": {
+          "$ref": "#/definitions/segmentwriterv1RawSample",
           "title": "samples are the set of profile bytes"
         },
         "shard": {

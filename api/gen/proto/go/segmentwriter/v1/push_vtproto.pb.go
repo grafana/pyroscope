@@ -62,6 +62,7 @@ func (m *RawProfileSeries) CloneVT() *RawProfileSeries {
 		return (*RawProfileSeries)(nil)
 	}
 	r := new(RawProfileSeries)
+	r.Sample = m.Sample.CloneVT()
 	r.Shard = m.Shard
 	if rhs := m.Labels; rhs != nil {
 		tmpContainer := make([]*v1.LabelPair, len(rhs))
@@ -73,13 +74,6 @@ func (m *RawProfileSeries) CloneVT() *RawProfileSeries {
 			}
 		}
 		r.Labels = tmpContainer
-	}
-	if rhs := m.Samples; rhs != nil {
-		tmpContainer := make([]*RawSample, len(rhs))
-		for k, v := range rhs {
-			tmpContainer[k] = v.CloneVT()
-		}
-		r.Samples = tmpContainer
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -176,22 +170,8 @@ func (this *RawProfileSeries) EqualVT(that *RawProfileSeries) bool {
 			}
 		}
 	}
-	if len(this.Samples) != len(that.Samples) {
+	if !this.Sample.EqualVT(that.Sample) {
 		return false
-	}
-	for i, vx := range this.Samples {
-		vy := that.Samples[i]
-		if p, q := vx, vy; p != q {
-			if p == nil {
-				p = &RawSample{}
-			}
-			if q == nil {
-				q = &RawSample{}
-			}
-			if !p.EqualVT(q) {
-				return false
-			}
-		}
 	}
 	if this.Shard != that.Shard {
 		return false
@@ -431,17 +411,15 @@ func (m *RawProfileSeries) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x18
 	}
-	if len(m.Samples) > 0 {
-		for iNdEx := len(m.Samples) - 1; iNdEx >= 0; iNdEx-- {
-			size, err := m.Samples[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
-			i--
-			dAtA[i] = 0x12
+	if m.Sample != nil {
+		size, err := m.Sample.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
 		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x12
 	}
 	if len(m.Labels) > 0 {
 		for iNdEx := len(m.Labels) - 1; iNdEx >= 0; iNdEx-- {
@@ -559,11 +537,9 @@ func (m *RawProfileSeries) SizeVT() (n int) {
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
 	}
-	if len(m.Samples) > 0 {
-		for _, e := range m.Samples {
-			l = e.SizeVT()
-			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-		}
+	if m.Sample != nil {
+		l = m.Sample.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	if m.Shard != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.Shard))
@@ -801,7 +777,7 @@ func (m *RawProfileSeries) UnmarshalVT(dAtA []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Samples", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Sample", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -828,8 +804,10 @@ func (m *RawProfileSeries) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Samples = append(m.Samples, &RawSample{})
-			if err := m.Samples[len(m.Samples)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+			if m.Sample == nil {
+				m.Sample = &RawSample{}
+			}
+			if err := m.Sample.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

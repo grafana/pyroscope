@@ -33,7 +33,7 @@ import (
 type Config struct {
 	LifecyclerConfig ring.LifecyclerConfig `yaml:"lifecycler,omitempty"`
 	SegmentDuration  time.Duration         `yaml:"segmentDuration,omitempty"`
-	Async            bool                  `yaml:"async,omitempty"`
+	Async            bool                  `yaml:"async,omitempty"` //todo make it pertenant
 }
 
 // RegisterFlags registers the flags.
@@ -182,26 +182,21 @@ func (i *SegmentWriterService) Push(ctx context.Context, req *connect.Request[se
 }
 
 func (i *SegmentWriterService) ingestToSegment(ctx context.Context, segment segmentIngest, series *segmentWriterV1.RawProfileSeries, tenantID string) error {
-	for _, sample := range series.Samples {
-		id, err := uuid.Parse(sample.ID)
-		if err != nil {
-			return err
-		}
-		err = pprof.FromBytes(sample.RawProfile, func(p *profilev1.Profile, size int) error {
-			if err = segment.ingest(ctx, tenantID, p, id, series.Labels); err != nil {
-				reason := validation.ReasonOf(err)
-				if reason != validation.Unknown {
-					validation.DiscardedProfiles.WithLabelValues(string(reason), tenantID).Add(float64(1))
-					validation.DiscardedBytes.WithLabelValues(string(reason), tenantID).Add(float64(size))
-				}
-			}
-			return nil
-		})
-		if err != nil {
-			return err
-		}
+	sample := series.Sample
+	id, err := uuid.Parse(sample.ID)
+	if err != nil {
+		return err
 	}
-	return nil
+	return pprof.FromBytes(sample.RawProfile, func(p *profilev1.Profile, size int) error {
+		if err = segment.ingest(ctx, tenantID, p, id, series.Labels); err != nil {
+			reason := validation.ReasonOf(err)
+			if reason != validation.Unknown {
+				validation.DiscardedProfiles.WithLabelValues(string(reason), tenantID).Add(float64(1))
+				validation.DiscardedBytes.WithLabelValues(string(reason), tenantID).Add(float64(size))
+			}
+		}
+		return nil
+	})
 }
 
 func (i *SegmentWriterService) Flush() error {
