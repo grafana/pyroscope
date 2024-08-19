@@ -1,11 +1,17 @@
 package symdb
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"sort"
 	"sync/atomic"
 	"testing"
+	"time"
+
+	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/objstore/providers/memory"
+	pprofth "github.com/grafana/pyroscope/pkg/pprof/testhelper"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/stretchr/testify/require"
@@ -101,8 +107,8 @@ func (b *testBucket) GetRange(ctx context.Context, name string, off, length int6
 	return b.Bucket.GetRange(ctx, name, off, length)
 }
 
-func newTestFileWriter(w io.Writer) *fileWriter {
-	return &fileWriter{w: &writerOffset{Writer: w}}
+func newTestFileWriter(w io.Writer) *writerOffset {
+	return &writerOffset{Writer: w}
 }
 
 //nolint:unparam
@@ -179,4 +185,45 @@ func Test_Stats(t *testing.T) {
 		StringsTotal:     699,
 	}
 	require.Equal(t, expected, actual)
+}
+
+func TestWritePartition(t *testing.T) {
+	p := NewPartitionWriter(0, &Config{
+		Version: FormatV3,
+		Stacktraces: StacktracesConfig{
+			MaxNodesPerChunk: 4 << 20,
+		},
+		Parquet: ParquetConfig{
+			MaxBufferRowCount: 100 << 10,
+		},
+	})
+	profile := pprofth.NewProfileBuilder(time.Now().UnixNano()).
+		CPUProfile().
+		WithLabels(phlaremodel.LabelNameServiceName, "svc").
+		ForStacktraceString("foo", "bar").
+		AddSamples(1).
+		ForStacktraceString("qwe", "foo", "bar").
+		AddSamples(2)
+
+	profiles := p.WriteProfileSymbols(profile.Profile)
+	symdbBlob := bytes.NewBuffer(nil)
+	err := WritePartition(p, symdbBlob)
+	require.NoError(t, err)
+
+	bucket := phlareobj.NewBucket(memory.NewInMemBucket())
+	require.NoError(t, bucket.Upload(context.Background(), DefaultFileName, bytes.NewReader(symdbBlob.Bytes())))
+	reader, err := Open(context.Background(), bucket, testBlockMeta)
+	require.NoError(t, err)
+
+	r := NewResolver(context.Background(), reader)
+	defer r.Release()
+	r.AddSamples(0, profiles[0].Samples)
+	resolved, err := r.Tree()
+	require.NoError(t, err)
+	expected := `.
+└── bar: self 0 total 3
+    └── foo: self 1 total 3
+        └── qwe: self 2 total 2
+`
+	require.Equal(t, expected, resolved.String())
 }

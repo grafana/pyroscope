@@ -188,18 +188,18 @@ func (s *SymDB) PartitionWriter(partition uint64) *PartitionWriter {
 		s.m.Unlock()
 		return p
 	}
-	p = s.newPartition(partition)
+	p = NewPartitionWriter(partition, &s.config)
 	s.partitions[partition] = p
 	s.m.Unlock()
 	return p
 }
 
-func (s *SymDB) newPartition(partition uint64) *PartitionWriter {
+func NewPartitionWriter(partition uint64, config *Config) *PartitionWriter {
 	p := PartitionWriter{
 		header:      PartitionHeader{Partition: partition},
-		stacktraces: newStacktracesPartition(s.config.Stacktraces.MaxNodesPerChunk),
+		stacktraces: newStacktracesPartition(config.Stacktraces.MaxNodesPerChunk),
 	}
-	switch s.config.Version {
+	switch config.Version {
 	case FormatV2:
 		p.header.V2 = new(PartitionHeaderV2)
 	case FormatV3:
