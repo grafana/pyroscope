@@ -48,7 +48,7 @@ func newHeadMetrics(reg prometheus.Registerer) *headMetrics {
 	return newHeadMetrics2(reg, "pyroscope")
 }
 
-func newHeadMetrics2(reg prometheus.Registerer, prefix string) *headMetrics {
+func newHeadMetricsWithPrefix(reg prometheus.Registerer, prefix string) *headMetrics {
 	m := &headMetrics{
 		seriesCreated: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: prefix + "_tsdb_head_series_created_total",
