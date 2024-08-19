@@ -24,6 +24,7 @@ The .NET Profiler supports the following profiling types:
 * Allocations
 * Lock contention
 * Exceptions
+* Live heap (requires .NET 7+)
 
 ### Compatibility
 
@@ -171,6 +172,7 @@ Here is a simple [example](https://github.com/grafana/pyroscope/blob/main/exampl
 | PYROSCOPE_PROFILING_EXCEPTION_ENABLED  | Boolean      | If set to true, enables the Exceptions profiling. Defaults to false.                                                              |
 | PYROSCOPE_PROFILING_ALLOCATION_ENABLED | Boolean      | If set to true, enables the Allocations profiling. Defaults to false.                                                             |
 | PYROSCOPE_PROFILING_LOCK_ENABLED       | Boolean      | If set to true, enables the Lock Contention profiling. Defaults to false.                                                         |
+| PYROSCOPE_PROFILING_HEAP_ENABLED       | Boolean      | If set to true, enables the Live heap profiling. Requires .NET 7+. Defaults to false.                                             |
 | PYROSCOPE_BASIC_AUTH_USER              | String       | For HTTP Basic Authentication, use this to send profiles to authenticated server, for example Grafana Cloud                       |
 | PYROSCOPE_BASIC_AUTH_PASSWORD          | String       | For HTTP Basic Authentication, use this to send profiles to authenticated server, for example Grafana Cloud                       |
 | PYROSCOPE_TENANT_ID                    | String       | Only needed if using multi-tenancy in Pyroscope.                                                                                  |
