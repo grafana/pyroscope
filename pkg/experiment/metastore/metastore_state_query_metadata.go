@@ -17,7 +17,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/model"
 )
 
-func (m *Metastore) ListBlocksForQuery(
+func (m *Metastore) QueryMetadata(
 	ctx context.Context,
 	request *metastorev1.QueryMetadataRequest,
 ) (*metastorev1.QueryMetadataResponse, error) {
