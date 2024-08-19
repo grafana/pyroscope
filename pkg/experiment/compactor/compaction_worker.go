@@ -255,7 +255,7 @@ func (w *Worker) startJob(ctx context.Context, job *compactorv1.CompactionJob) *
 				"block_compaction_level", c.CompactionLevel,
 				"block_min_time", c.MinTime,
 				"block_max_time", c.MinTime,
-				"tenant_services", len(c.TenantServices))
+				"datasets", len(c.Datasets))
 		}
 
 		job.Status.Status = compactorv1.CompactionStatus_COMPACTION_STATUS_SUCCESS

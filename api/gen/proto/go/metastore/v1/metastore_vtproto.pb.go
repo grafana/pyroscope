@@ -7,6 +7,7 @@ package metastorev1
 import (
 	context "context"
 	fmt "fmt"
+	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	protohelpers "github.com/planetscale/vtprotobuf/protohelpers"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
@@ -69,12 +70,12 @@ func (m *BlockMeta) CloneVT() *BlockMeta {
 	r.CompactionLevel = m.CompactionLevel
 	r.TenantId = m.TenantId
 	r.Size = m.Size
-	if rhs := m.TenantServices; rhs != nil {
-		tmpContainer := make([]*TenantService, len(rhs))
+	if rhs := m.Datasets; rhs != nil {
+		tmpContainer := make([]*Dataset, len(rhs))
 		for k, v := range rhs {
 			tmpContainer[k] = v.CloneVT()
 		}
-		r.TenantServices = tmpContainer
+		r.Datasets = tmpContainer
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -87,16 +88,27 @@ func (m *BlockMeta) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
-func (m *TenantService) CloneVT() *TenantService {
+func (m *Dataset) CloneVT() *Dataset {
 	if m == nil {
-		return (*TenantService)(nil)
+		return (*Dataset)(nil)
 	}
-	r := new(TenantService)
+	r := new(Dataset)
 	r.TenantId = m.TenantId
 	r.Name = m.Name
 	r.MinTime = m.MinTime
 	r.MaxTime = m.MaxTime
 	r.Size = m.Size
+	if rhs := m.Labels; rhs != nil {
+		tmpContainer := make([]*v1.Labels, len(rhs))
+		for k, v := range rhs {
+			if vtpb, ok := interface{}(v).(interface{ CloneVT() *v1.Labels }); ok {
+				tmpContainer[k] = vtpb.CloneVT()
+			} else {
+				tmpContainer[k] = proto.Clone(v).(*v1.Labels)
+			}
+		}
+		r.Labels = tmpContainer
+	}
 	if rhs := m.TableOfContents; rhs != nil {
 		tmpContainer := make([]uint64, len(rhs))
 		copy(tmpContainer, rhs)
@@ -114,15 +126,15 @@ func (m *TenantService) CloneVT() *TenantService {
 	return r
 }
 
-func (m *TenantService) CloneMessageVT() proto.Message {
+func (m *Dataset) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
-func (m *ListBlocksForQueryRequest) CloneVT() *ListBlocksForQueryRequest {
+func (m *QueryMetadataRequest) CloneVT() *QueryMetadataRequest {
 	if m == nil {
-		return (*ListBlocksForQueryRequest)(nil)
+		return (*QueryMetadataRequest)(nil)
 	}
-	r := new(ListBlocksForQueryRequest)
+	r := new(QueryMetadataRequest)
 	r.StartTime = m.StartTime
 	r.EndTime = m.EndTime
 	r.Query = m.Query
@@ -138,15 +150,15 @@ func (m *ListBlocksForQueryRequest) CloneVT() *ListBlocksForQueryRequest {
 	return r
 }
 
-func (m *ListBlocksForQueryRequest) CloneMessageVT() proto.Message {
+func (m *QueryMetadataRequest) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
-func (m *ListBlocksForQueryResponse) CloneVT() *ListBlocksForQueryResponse {
+func (m *QueryMetadataResponse) CloneVT() *QueryMetadataResponse {
 	if m == nil {
-		return (*ListBlocksForQueryResponse)(nil)
+		return (*QueryMetadataResponse)(nil)
 	}
-	r := new(ListBlocksForQueryResponse)
+	r := new(QueryMetadataResponse)
 	if rhs := m.Blocks; rhs != nil {
 		tmpContainer := make([]*BlockMeta, len(rhs))
 		for k, v := range rhs {
@@ -161,7 +173,7 @@ func (m *ListBlocksForQueryResponse) CloneVT() *ListBlocksForQueryResponse {
 	return r
 }
 
-func (m *ListBlocksForQueryResponse) CloneMessageVT() proto.Message {
+func (m *QueryMetadataResponse) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
@@ -261,17 +273,17 @@ func (this *BlockMeta) EqualVT(that *BlockMeta) bool {
 	if this.TenantId != that.TenantId {
 		return false
 	}
-	if len(this.TenantServices) != len(that.TenantServices) {
+	if len(this.Datasets) != len(that.Datasets) {
 		return false
 	}
-	for i, vx := range this.TenantServices {
-		vy := that.TenantServices[i]
+	for i, vx := range this.Datasets {
+		vy := that.Datasets[i]
 		if p, q := vx, vy; p != q {
 			if p == nil {
-				p = &TenantService{}
+				p = &Dataset{}
 			}
 			if q == nil {
-				q = &TenantService{}
+				q = &Dataset{}
 			}
 			if !p.EqualVT(q) {
 				return false
@@ -291,7 +303,7 @@ func (this *BlockMeta) EqualMessageVT(thatMsg proto.Message) bool {
 	}
 	return this.EqualVT(that)
 }
-func (this *TenantService) EqualVT(that *TenantService) bool {
+func (this *Dataset) EqualVT(that *Dataset) bool {
 	if this == that {
 		return true
 	} else if this == nil || that == nil {
@@ -330,17 +342,38 @@ func (this *TenantService) EqualVT(that *TenantService) bool {
 			return false
 		}
 	}
+	if len(this.Labels) != len(that.Labels) {
+		return false
+	}
+	for i, vx := range this.Labels {
+		vy := that.Labels[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &v1.Labels{}
+			}
+			if q == nil {
+				q = &v1.Labels{}
+			}
+			if equal, ok := interface{}(p).(interface{ EqualVT(*v1.Labels) bool }); ok {
+				if !equal.EqualVT(q) {
+					return false
+				}
+			} else if !proto.Equal(p, q) {
+				return false
+			}
+		}
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
-func (this *TenantService) EqualMessageVT(thatMsg proto.Message) bool {
-	that, ok := thatMsg.(*TenantService)
+func (this *Dataset) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*Dataset)
 	if !ok {
 		return false
 	}
 	return this.EqualVT(that)
 }
-func (this *ListBlocksForQueryRequest) EqualVT(that *ListBlocksForQueryRequest) bool {
+func (this *QueryMetadataRequest) EqualVT(that *QueryMetadataRequest) bool {
 	if this == that {
 		return true
 	} else if this == nil || that == nil {
@@ -367,14 +400,14 @@ func (this *ListBlocksForQueryRequest) EqualVT(that *ListBlocksForQueryRequest) 
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
-func (this *ListBlocksForQueryRequest) EqualMessageVT(thatMsg proto.Message) bool {
-	that, ok := thatMsg.(*ListBlocksForQueryRequest)
+func (this *QueryMetadataRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*QueryMetadataRequest)
 	if !ok {
 		return false
 	}
 	return this.EqualVT(that)
 }
-func (this *ListBlocksForQueryResponse) EqualVT(that *ListBlocksForQueryResponse) bool {
+func (this *QueryMetadataResponse) EqualVT(that *QueryMetadataResponse) bool {
 	if this == that {
 		return true
 	} else if this == nil || that == nil {
@@ -400,8 +433,8 @@ func (this *ListBlocksForQueryResponse) EqualVT(that *ListBlocksForQueryResponse
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
-func (this *ListBlocksForQueryResponse) EqualMessageVT(thatMsg proto.Message) bool {
-	that, ok := thatMsg.(*ListBlocksForQueryResponse)
+func (this *QueryMetadataResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*QueryMetadataResponse)
 	if !ok {
 		return false
 	}
@@ -456,7 +489,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MetastoreServiceClient interface {
 	AddBlock(ctx context.Context, in *AddBlockRequest, opts ...grpc.CallOption) (*AddBlockResponse, error)
-	ListBlocksForQuery(ctx context.Context, in *ListBlocksForQueryRequest, opts ...grpc.CallOption) (*ListBlocksForQueryResponse, error)
+	QueryMetadata(ctx context.Context, in *QueryMetadataRequest, opts ...grpc.CallOption) (*QueryMetadataResponse, error)
 	ReadIndex(ctx context.Context, in *ReadIndexRequest, opts ...grpc.CallOption) (*ReadIndexResponse, error)
 }
 
@@ -477,9 +510,9 @@ func (c *metastoreServiceClient) AddBlock(ctx context.Context, in *AddBlockReque
 	return out, nil
 }
 
-func (c *metastoreServiceClient) ListBlocksForQuery(ctx context.Context, in *ListBlocksForQueryRequest, opts ...grpc.CallOption) (*ListBlocksForQueryResponse, error) {
-	out := new(ListBlocksForQueryResponse)
-	err := c.cc.Invoke(ctx, "/metastore.v1.MetastoreService/ListBlocksForQuery", in, out, opts...)
+func (c *metastoreServiceClient) QueryMetadata(ctx context.Context, in *QueryMetadataRequest, opts ...grpc.CallOption) (*QueryMetadataResponse, error) {
+	out := new(QueryMetadataResponse)
+	err := c.cc.Invoke(ctx, "/metastore.v1.MetastoreService/QueryMetadata", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -500,7 +533,7 @@ func (c *metastoreServiceClient) ReadIndex(ctx context.Context, in *ReadIndexReq
 // for forward compatibility
 type MetastoreServiceServer interface {
 	AddBlock(context.Context, *AddBlockRequest) (*AddBlockResponse, error)
-	ListBlocksForQuery(context.Context, *ListBlocksForQueryRequest) (*ListBlocksForQueryResponse, error)
+	QueryMetadata(context.Context, *QueryMetadataRequest) (*QueryMetadataResponse, error)
 	ReadIndex(context.Context, *ReadIndexRequest) (*ReadIndexResponse, error)
 	mustEmbedUnimplementedMetastoreServiceServer()
 }
@@ -512,8 +545,8 @@ type UnimplementedMetastoreServiceServer struct {
 func (UnimplementedMetastoreServiceServer) AddBlock(context.Context, *AddBlockRequest) (*AddBlockResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddBlock not implemented")
 }
-func (UnimplementedMetastoreServiceServer) ListBlocksForQuery(context.Context, *ListBlocksForQueryRequest) (*ListBlocksForQueryResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListBlocksForQuery not implemented")
+func (UnimplementedMetastoreServiceServer) QueryMetadata(context.Context, *QueryMetadataRequest) (*QueryMetadataResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method QueryMetadata not implemented")
 }
 func (UnimplementedMetastoreServiceServer) ReadIndex(context.Context, *ReadIndexRequest) (*ReadIndexResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReadIndex not implemented")
@@ -549,20 +582,20 @@ func _MetastoreService_AddBlock_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
-func _MetastoreService_ListBlocksForQuery_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListBlocksForQueryRequest)
+func _MetastoreService_QueryMetadata_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryMetadataRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MetastoreServiceServer).ListBlocksForQuery(ctx, in)
+		return srv.(MetastoreServiceServer).QueryMetadata(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/metastore.v1.MetastoreService/ListBlocksForQuery",
+		FullMethod: "/metastore.v1.MetastoreService/QueryMetadata",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MetastoreServiceServer).ListBlocksForQuery(ctx, req.(*ListBlocksForQueryRequest))
+		return srv.(MetastoreServiceServer).QueryMetadata(ctx, req.(*QueryMetadataRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -597,8 +630,8 @@ var MetastoreService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _MetastoreService_AddBlock_Handler,
 		},
 		{
-			MethodName: "ListBlocksForQuery",
-			Handler:    _MetastoreService_ListBlocksForQuery_Handler,
+			MethodName: "QueryMetadata",
+			Handler:    _MetastoreService_QueryMetadata_Handler,
 		},
 		{
 			MethodName: "ReadIndex",
@@ -720,9 +753,9 @@ func (m *BlockMeta) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x48
 	}
-	if len(m.TenantServices) > 0 {
-		for iNdEx := len(m.TenantServices) - 1; iNdEx >= 0; iNdEx-- {
-			size, err := m.TenantServices[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
+	if len(m.Datasets) > 0 {
+		for iNdEx := len(m.Datasets) - 1; iNdEx >= 0; iNdEx-- {
+			size, err := m.Datasets[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
 			if err != nil {
 				return 0, err
 			}
@@ -774,7 +807,7 @@ func (m *BlockMeta) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *TenantService) MarshalVT() (dAtA []byte, err error) {
+func (m *Dataset) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -787,12 +820,12 @@ func (m *TenantService) MarshalVT() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *TenantService) MarshalToVT(dAtA []byte) (int, error) {
+func (m *Dataset) MarshalToVT(dAtA []byte) (int, error) {
 	size := m.SizeVT()
 	return m.MarshalToSizedBufferVT(dAtA[:size])
 }
 
-func (m *TenantService) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+func (m *Dataset) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m == nil {
 		return 0, nil
 	}
@@ -803,6 +836,30 @@ func (m *TenantService) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.Labels) > 0 {
+		for iNdEx := len(m.Labels) - 1; iNdEx >= 0; iNdEx-- {
+			if vtmsg, ok := interface{}(m.Labels[iNdEx]).(interface {
+				MarshalToSizedBufferVT([]byte) (int, error)
+			}); ok {
+				size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+			} else {
+				encoded, err := proto.Marshal(m.Labels[iNdEx])
+				if err != nil {
+					return 0, err
+				}
+				i -= len(encoded)
+				copy(dAtA[i:], encoded)
+				i = protohelpers.EncodeVarint(dAtA, i, uint64(len(encoded)))
+			}
+			i--
+			dAtA[i] = 0x42
+		}
 	}
 	if len(m.ProfileTypes) > 0 {
 		for iNdEx := len(m.ProfileTypes) - 1; iNdEx >= 0; iNdEx-- {
@@ -865,7 +922,7 @@ func (m *TenantService) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *ListBlocksForQueryRequest) MarshalVT() (dAtA []byte, err error) {
+func (m *QueryMetadataRequest) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -878,12 +935,12 @@ func (m *ListBlocksForQueryRequest) MarshalVT() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *ListBlocksForQueryRequest) MarshalToVT(dAtA []byte) (int, error) {
+func (m *QueryMetadataRequest) MarshalToVT(dAtA []byte) (int, error) {
 	size := m.SizeVT()
 	return m.MarshalToSizedBufferVT(dAtA[:size])
 }
 
-func (m *ListBlocksForQueryRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+func (m *QueryMetadataRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m == nil {
 		return 0, nil
 	}
@@ -924,7 +981,7 @@ func (m *ListBlocksForQueryRequest) MarshalToSizedBufferVT(dAtA []byte) (int, er
 	return len(dAtA) - i, nil
 }
 
-func (m *ListBlocksForQueryResponse) MarshalVT() (dAtA []byte, err error) {
+func (m *QueryMetadataResponse) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -937,12 +994,12 @@ func (m *ListBlocksForQueryResponse) MarshalVT() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *ListBlocksForQueryResponse) MarshalToVT(dAtA []byte) (int, error) {
+func (m *QueryMetadataResponse) MarshalToVT(dAtA []byte) (int, error) {
 	size := m.SizeVT()
 	return m.MarshalToSizedBufferVT(dAtA[:size])
 }
 
-func (m *ListBlocksForQueryResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+func (m *QueryMetadataResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m == nil {
 		return 0, nil
 	}
@@ -1100,8 +1157,8 @@ func (m *BlockMeta) SizeVT() (n int) {
 	if l > 0 {
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
-	if len(m.TenantServices) > 0 {
-		for _, e := range m.TenantServices {
+	if len(m.Datasets) > 0 {
+		for _, e := range m.Datasets {
 			l = e.SizeVT()
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
@@ -1113,7 +1170,7 @@ func (m *BlockMeta) SizeVT() (n int) {
 	return n
 }
 
-func (m *TenantService) SizeVT() (n int) {
+func (m *Dataset) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1149,11 +1206,23 @@ func (m *TenantService) SizeVT() (n int) {
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
 	}
+	if len(m.Labels) > 0 {
+		for _, e := range m.Labels {
+			if size, ok := interface{}(e).(interface {
+				SizeVT() int
+			}); ok {
+				l = size.SizeVT()
+			} else {
+				l = proto.Size(e)
+			}
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
 	n += len(m.unknownFields)
 	return n
 }
 
-func (m *ListBlocksForQueryRequest) SizeVT() (n int) {
+func (m *QueryMetadataRequest) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1179,7 +1248,7 @@ func (m *ListBlocksForQueryRequest) SizeVT() (n int) {
 	return n
 }
 
-func (m *ListBlocksForQueryResponse) SizeVT() (n int) {
+func (m *QueryMetadataResponse) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1550,7 +1619,7 @@ func (m *BlockMeta) UnmarshalVT(dAtA []byte) error {
 			iNdEx = postIndex
 		case 8:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field TenantServices", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Datasets", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -1577,8 +1646,8 @@ func (m *BlockMeta) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.TenantServices = append(m.TenantServices, &TenantService{})
-			if err := m.TenantServices[len(m.TenantServices)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+			m.Datasets = append(m.Datasets, &Dataset{})
+			if err := m.Datasets[len(m.Datasets)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -1623,7 +1692,7 @@ func (m *BlockMeta) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *TenantService) UnmarshalVT(dAtA []byte) error {
+func (m *Dataset) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1646,10 +1715,10 @@ func (m *TenantService) UnmarshalVT(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: TenantService: wiretype end group for non-group")
+			return fmt.Errorf("proto: Dataset: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: TenantService: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: Dataset: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -1881,6 +1950,48 @@ func (m *TenantService) UnmarshalVT(dAtA []byte) error {
 			}
 			m.ProfileTypes = append(m.ProfileTypes, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
+		case 8:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Labels", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Labels = append(m.Labels, &v1.Labels{})
+			if unmarshal, ok := interface{}(m.Labels[len(m.Labels)-1]).(interface {
+				UnmarshalVT([]byte) error
+			}); ok {
+				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Labels[len(m.Labels)-1]); err != nil {
+					return err
+				}
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
@@ -1903,7 +2014,7 @@ func (m *TenantService) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *ListBlocksForQueryRequest) UnmarshalVT(dAtA []byte) error {
+func (m *QueryMetadataRequest) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1926,10 +2037,10 @@ func (m *ListBlocksForQueryRequest) UnmarshalVT(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: ListBlocksForQueryRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: QueryMetadataRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: ListBlocksForQueryRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: QueryMetadataRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -2056,7 +2167,7 @@ func (m *ListBlocksForQueryRequest) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *ListBlocksForQueryResponse) UnmarshalVT(dAtA []byte) error {
+func (m *QueryMetadataResponse) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2079,10 +2190,10 @@ func (m *ListBlocksForQueryResponse) UnmarshalVT(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: ListBlocksForQueryResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: QueryMetadataResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: ListBlocksForQueryResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: QueryMetadataResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:

@@ -2,9 +2,11 @@ syntax = "proto3";
 
 package metastore.v1;
 
+import "types/v1/types.proto";
+
 service MetastoreService {
   rpc AddBlock(AddBlockRequest) returns (AddBlockResponse) {}
-  rpc ListBlocksForQuery(ListBlocksForQueryRequest) returns (ListBlocksForQueryResponse) {}
+  rpc QueryMetadata(QueryMetadataRequest) returns (QueryMetadataResponse) {}
   rpc ReadIndex(ReadIndexRequest) returns (ReadIndexResponse) {}
 }
 
@@ -23,14 +25,13 @@ message BlockMeta {
   uint32 compaction_level = 6;
   // Optional. Empty if compaction level is 0.
   string tenant_id = 7;
-  // TODO(kolesnikovae): Partitions with labels?
-  repeated TenantService tenant_services = 8;
+  repeated Dataset datasets = 8;
   uint64 size = 9;
 }
 
-// TenantService object points to the offset in the block at which
-// the tenant service data is located.
-message TenantService {
+message Dataset {
+  repeated types.v1.Labels labels = 8;
+
   string tenant_id = 1;
   string name = 2;
   int64 min_time = 3;
@@ -47,18 +48,20 @@ message TenantService {
   repeated uint64 table_of_contents = 5;
   // Size of the section in bytes.
   uint64 size = 6;
+
+  // TODO: delete
   // Profile types present in the tenant service data.
   repeated string profile_types = 7;
 }
 
-message ListBlocksForQueryRequest {
+message QueryMetadataRequest {
   repeated string tenant_id = 1;
   int64 start_time = 2;
   int64 end_time = 3;
   string query = 4;
 }
 
-message ListBlocksForQueryResponse {
+message QueryMetadataResponse {
   repeated BlockMeta blocks = 1;
 }
 

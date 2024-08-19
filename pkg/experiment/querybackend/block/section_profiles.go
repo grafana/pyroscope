@@ -26,7 +26,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/util/loser"
 )
 
-func openProfileTable(_ context.Context, s *TenantService) (err error) {
+func openProfileTable(_ context.Context, s *Dataset) (err error) {
 	offset := s.sectionOffset(SectionProfiles)
 	size := s.sectionSize(SectionProfiles)
 	if buf := s.inMemoryBuffer(); buf != nil {
@@ -244,7 +244,7 @@ func (f *readerWithFooter) ReadAt(p []byte, off int64) (n int, err error) {
 }
 
 type ProfileEntry struct {
-	TenantService *TenantService
+	Dataset *Dataset
 
 	Timestamp   int64
 	Fingerprint model.Fingerprint
@@ -252,7 +252,7 @@ type ProfileEntry struct {
 	Row         schemav1.ProfileRow
 }
 
-func NewMergeRowProfileIterator(src []*TenantService) (iter.Iterator[ProfileEntry], error) {
+func NewMergeRowProfileIterator(src []*Dataset) (iter.Iterator[ProfileEntry], error) {
 	its := make([]iter.Iterator[ProfileEntry], len(src))
 	for i, s := range src {
 		it, err := NewProfileRowIterator(s)
@@ -314,7 +314,7 @@ func (it *DedupeProfileRowIterator) Next() bool {
 }
 
 type profileRowIterator struct {
-	reader      *TenantService
+	reader      *Dataset
 	index       phlaredb.IndexReader
 	profiles    iter.Iterator[parquet.Row]
 	allPostings index.Postings
@@ -325,7 +325,7 @@ type profileRowIterator struct {
 	chunks           []index.ChunkMeta
 }
 
-func NewProfileRowIterator(s *TenantService) (iter.Iterator[ProfileEntry], error) {
+func NewProfileRowIterator(s *Dataset) (iter.Iterator[ProfileEntry], error) {
 	k, v := index.AllPostingsKey()
 	tsdb := s.Index()
 	allPostings, err := tsdb.Postings(k, nil, v)
@@ -350,7 +350,7 @@ func (p *profileRowIterator) Next() bool {
 	if !p.profiles.Next() {
 		return false
 	}
-	p.currentRow.TenantService = p.reader
+	p.currentRow.Dataset = p.reader
 	p.currentRow.Row = schemav1.ProfileRow(p.profiles.At())
 	seriesIndex := p.currentRow.Row.SeriesIndex()
 	p.currentRow.Timestamp = p.currentRow.Row.TimeNanos()

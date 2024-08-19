@@ -7,7 +7,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 )
 
-func openSymbols(ctx context.Context, s *TenantService) (err error) {
+func openSymbols(ctx context.Context, s *Dataset) (err error) {
 	offset := s.sectionOffset(SectionSymbols)
 	size := s.sectionSize(SectionSymbols)
 	if buf := s.inMemoryBuffer(); buf != nil {

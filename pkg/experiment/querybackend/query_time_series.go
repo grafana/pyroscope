@@ -35,12 +35,12 @@ func queryTimeSeries(q *queryContext, query *querybackendv1.Query) (r *queryback
 	}
 	defer runutil.CloseWithErrCapture(&err, entries, "failed to close profile entry iterator")
 
-	column, err := schemav1.ResolveColumnByPath(q.svc.Profiles().Schema(), strings.Split("TotalValue", "."))
+	column, err := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), strings.Split("TotalValue", "."))
 	if err != nil {
 		return nil, err
 	}
 
-	rows := parquetquery.NewRepeatedRowIterator(q.ctx, entries, q.svc.Profiles().RowGroups(), column.ColumnIndex)
+	rows := parquetquery.NewRepeatedRowIterator(q.ctx, entries, q.ds.Profiles().RowGroups(), column.ColumnIndex)
 	defer runutil.CloseWithErrCapture(&err, rows, "failed to close column iterator")
 
 	builder := phlaremodel.NewTimeSeriesBuilder(query.TimeSeries.GroupBy...)

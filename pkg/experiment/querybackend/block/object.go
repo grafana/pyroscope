@@ -47,7 +47,7 @@ var (
 	sectionIndices = [...][]int{1: {-1, 0, 1, 2}}
 )
 
-func (sc Section) open(ctx context.Context, s *TenantService) (err error) {
+func (sc Section) open(ctx context.Context, s *Dataset) (err error) {
 	switch sc {
 	case SectionTSDB:
 		return openTSDB(ctx, s)
@@ -146,7 +146,7 @@ func (obj *Object) open(ctx context.Context) (err error) {
 		// and then released, return the error immediately.
 		return obj.err
 	}
-	if len(obj.meta.TenantServices) == 0 {
+	if len(obj.meta.Datasets) == 0 {
 		return nil
 	}
 	// Estimate the size of the sections to process, and load the

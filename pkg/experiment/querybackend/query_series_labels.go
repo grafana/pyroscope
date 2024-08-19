@@ -24,7 +24,7 @@ func init() {
 }
 
 func querySeriesLabels(q *queryContext, query *querybackendv1.Query) (*querybackendv1.Report, error) {
-	postings, err := getPostings(q.svc.Index(), q.req.matchers...)
+	postings, err := getPostings(q.ds.Index(), q.req.matchers...)
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +32,7 @@ func querySeriesLabels(q *queryContext, query *querybackendv1.Query) (*queryback
 	var c []index.ChunkMeta
 	l := make(map[uint64]model.Labels)
 	for postings.Next() {
-		fp, _ := q.svc.Index().SeriesBy(postings.At(), &tmp, &c, query.SeriesLabels.LabelNames...)
+		fp, _ := q.ds.Index().SeriesBy(postings.At(), &tmp, &c, query.SeriesLabels.LabelNames...)
 		if _, ok := l[fp]; ok {
 			continue
 		}

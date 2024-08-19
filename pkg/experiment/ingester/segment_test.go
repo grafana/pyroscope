@@ -6,6 +6,22 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"slices"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/oklog/ulid"
+	"github.com/prometheus/client_golang/prometheus"
+	model2 "github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/util/testutil"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -16,20 +32,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	pprofth "github.com/grafana/pyroscope/pkg/pprof/testhelper"
-	"github.com/oklog/ulid"
-	"github.com/prometheus/client_golang/prometheus"
-	model2 "github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/util/testutil"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
-	"io"
-	"os"
-	"path/filepath"
-	"slices"
-	"strings"
-	"testing"
-	"time"
 )
 
 type metastoreClient struct {
@@ -40,7 +42,7 @@ func (m *metastoreClient) AddBlock(ctx context.Context, in *metastorev1.AddBlock
 	return m.AddBlock_(ctx, in, opts...)
 }
 
-func (m *metastoreClient) ListBlocksForQuery(ctx context.Context, in *metastorev1.ListBlocksForQueryRequest, opts ...grpc.CallOption) (*metastorev1.ListBlocksForQueryResponse, error) {
+func (m *metastoreClient) QueryMetadata(ctx context.Context, in *metastorev1.QueryMetadataRequest, opts ...grpc.CallOption) (*metastorev1.QueryMetadataResponse, error) {
 	panic("implement me")
 }
 
@@ -90,12 +92,12 @@ func TestSegmentIngest(t *testing.T) {
 	assert.NoError(t, err)
 
 	meta := <-blocks
-	assert.Len(t, meta.TenantServices, 1)
+	assert.Len(t, meta.Datasets, 1)
 	assert.Equal(t, uint32(testShard), meta.Shard)
-	assert.Equal(t, testTenant, meta.TenantServices[0].TenantId)
-	assert.Equal(t, testSVCName, meta.TenantServices[0].Name)
+	assert.Equal(t, testTenant, meta.Datasets[0].TenantId)
+	assert.Equal(t, testSVCName, meta.Datasets[0].Name)
 
-	blockQuerier := sw.createBlockFromMeta(meta, meta.TenantServices[0])
+	blockQuerier := sw.createBlockFromMeta(meta, meta.Datasets[0])
 
 	q := blockQuerier.Queriers()
 	err = q.Open(context.Background())
@@ -134,12 +136,12 @@ func TestSegmentIngestDLQ(t *testing.T) {
 	assert.Len(t, metas, 1)
 	meta := metas[0]
 
-	assert.Len(t, meta.TenantServices, 1)
+	assert.Len(t, meta.Datasets, 1)
 	assert.Equal(t, uint32(testShard), meta.Shard)
-	assert.Equal(t, testTenant, meta.TenantServices[0].TenantId)
-	assert.Equal(t, testSVCName, meta.TenantServices[0].Name)
+	assert.Equal(t, testTenant, meta.Datasets[0].TenantId)
+	assert.Equal(t, testSVCName, meta.Datasets[0].Name)
 
-	blockQuerier := sw.createBlockFromMeta(meta, meta.TenantServices[0])
+	blockQuerier := sw.createBlockFromMeta(meta, meta.Datasets[0])
 
 	q := blockQuerier.Queriers()
 	err = q.Open(context.Background())
@@ -211,7 +213,7 @@ func newTestSegmentWriter(t *testing.T) sw {
 	}
 }
 
-func (sw *sw) createBlockFromMeta(meta *metastorev1.BlockMeta, ts *metastorev1.TenantService) *phlaredb.BlockQuerier {
+func (sw *sw) createBlockFromMeta(meta *metastorev1.BlockMeta, ts *metastorev1.Dataset) *phlaredb.BlockQuerier {
 	dir := sw.t.TempDir()
 	blockid, err := ulid.New(uint64(meta.MaxTime), rand.Reader)
 	require.NoError(sw.t, err)
