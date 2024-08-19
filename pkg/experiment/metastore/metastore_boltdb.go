@@ -19,7 +19,7 @@ import (
 const (
 	boltDBFileName        = "metastore.boltdb"
 	boltDBSnapshotName    = "metastore_snapshot.boltdb"
-	boltDBInitialMmapSize = 2 << 30
+	boltDBInitialMmapSize = 1 << 30
 )
 
 type boltdb struct {
