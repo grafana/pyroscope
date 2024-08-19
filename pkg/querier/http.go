@@ -178,11 +178,11 @@ func (q *QueryHandlers) Render(w http.ResponseWriter, req *http.Request) {
 	}
 
 	var resFlame *connect.Response[querierv1.SelectMergeStacktracesResponse]
-	g, ctx := errgroup.WithContext(req.Context())
+	g, gCtx := errgroup.WithContext(req.Context())
 	selectParamsClone := selectParams.CloneVT()
 	g.Go(func() error {
 		var err error
-		resFlame, err = q.client.SelectMergeStacktraces(ctx, connect.NewRequest(selectParamsClone))
+		resFlame, err = q.client.SelectMergeStacktraces(gCtx, connect.NewRequest(selectParamsClone))
 		return err
 	})
 
