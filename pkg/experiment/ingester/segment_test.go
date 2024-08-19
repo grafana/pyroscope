@@ -174,17 +174,6 @@ func getMetadataDLQ(sw sw) []*metastorev1.BlockMeta {
 		metas = append(metas, meta)
 	}
 	return metas
-	//get, err := sw.bucket.Get(context.Background(), fmt.Sprintf("%s/%d/%s/%s/%s", pathSegments, testShard, pathAnon, testProfile1.UUID, pathBlock))
-	//if err != nil {
-	//  return nil, err
-	//}
-	//blob, err := io.ReadAll(get)
-	//if err != nil {
-	//  return nil, err
-	//}
-	//var meta metastorev1.BlockMeta
-	//err = meta.UnmarshalVT(blob)
-	//return &meta, err
 }
 
 type sw struct {

@@ -170,7 +170,11 @@ func (i *SegmentWriterService) Push(ctx context.Context, req *connect.Request[se
 	if err = wait.waitFlushed(ctx); err != nil {
 		i.segmentWriter.metrics.segmentFlushTimeouts.WithLabelValues(tenantID).Inc()
 		i.segmentWriter.metrics.segmentFlushWaitDuration.WithLabelValues(tenantID).Observe(time.Since(t1).Seconds())
-		level.Error(i.logger).Log("msg", "flush timeout", "err", err)
+		if errors.Is(err, context.DeadlineExceeded) {
+			level.Error(i.logger).Log("msg", "flush timeout", "err", err)
+		} else {
+			level.Error(i.logger).Log("msg", "flush err", "err", err)
+		}
 		return nil, err
 	}
 	i.segmentWriter.metrics.segmentFlushWaitDuration.WithLabelValues(tenantID).Observe(time.Since(t1).Seconds())
