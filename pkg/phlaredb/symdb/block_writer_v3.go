@@ -128,7 +128,7 @@ func writeSymbolsBlock[T any](w *writerOffset, s []T, e *symbolsEncoder[T]) (h S
 	return h, nil
 }
 
-func WritePartitionV3(p *PartitionWriter, dst io.Writer) error {
+func WritePartition(p *PartitionWriter, dst io.Writer) error {
 	index := newIndexFileV3()
 	footer := newFooterV3()
 	encoders := newEncodersV3()
