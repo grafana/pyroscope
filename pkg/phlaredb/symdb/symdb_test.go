@@ -101,8 +101,8 @@ func (b *testBucket) GetRange(ctx context.Context, name string, off, length int6
 	return b.Bucket.GetRange(ctx, name, off, length)
 }
 
-func newTestFileWriter(w io.Writer) *fileWriter {
-	return &fileWriter{w: &writerOffset{Writer: w}}
+func newTestFileWriter(w io.Writer) *writerOffset {
+	return &writerOffset{Writer: w}
 }
 
 //nolint:unparam
@@ -179,4 +179,17 @@ func Test_Stats(t *testing.T) {
 		StringsTotal:     699,
 	}
 	require.Equal(t, expected, actual)
+}
+
+func TestWritePartition(t *testing.T) {
+	p := NewPartitionWriter(0, &Config{
+		Version: FormatV3,
+		Stacktraces: StacktracesConfig{
+			MaxNodesPerChunk: 4 << 20,
+		},
+		Parquet: ParquetConfig{
+			MaxBufferRowCount: 100 << 10,
+		},
+	})
+	t.Error(p) // todo
 }
