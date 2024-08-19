@@ -12,6 +12,8 @@ import (
 	"net/http"
 	"strings"
 
+	segmentwriter "github.com/grafana/pyroscope/pkg/experiment/ingester"
+
 	"connectrpc.com/connect"
 	"github.com/felixge/fgprof"
 	"github.com/go-kit/log"
@@ -22,12 +24,18 @@ import (
 	"github.com/grafana/dskit/server"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 
+	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	querybackendv1 "github.com/grafana/pyroscope/api/gen/proto/go/querybackend/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore"
+	"github.com/grafana/pyroscope/pkg/experiment/querybackend"
 	"github.com/grafana/pyroscope/public"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/adhocprofiles/v1/adhocprofilesv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
+	"github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1/segmentwriterv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/settings/v1/settingsv1connect"
 	statusv1 "github.com/grafana/pyroscope/api/gen/proto/go/status/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/storegateway/v1/storegatewayv1connect"
@@ -265,6 +273,10 @@ func (a *API) RegisterIngester(svc *ingester.Ingester) {
 	ingesterv1connect.RegisterIngesterServiceHandler(a.server.HTTP, svc, a.connectOptionsAuthRecovery()...)
 }
 
+func (a *API) RegisterSegmentWriter(svc *segmentwriter.SegmentWriterService) {
+	segmentwriterv1connect.RegisterSegmentWriterServiceHandler(a.server.HTTP, svc, a.connectOptionsAuthRecovery()...)
+}
+
 func (a *API) RegisterStoreGateway(svc *storegateway.StoreGateway) {
 	storegatewayv1connect.RegisterStoreGatewayServiceHandler(a.server.HTTP, svc, a.connectOptionsAuthRecovery()...)
 
@@ -318,6 +330,15 @@ func (a *API) RegisterAdmin(ad *operations.Admin) {
 
 func (a *API) RegisterAdHocProfiles(ahp *adhocprofiles.AdHocProfiles) {
 	adhocprofilesv1connect.RegisterAdHocProfileServiceHandler(a.server.HTTP, ahp, a.connectOptionsAuthRecovery()...)
+}
+
+func (a *API) RegisterMetastore(svc *metastore.Metastore) {
+	metastorev1.RegisterMetastoreServiceServer(a.server.GRPC, svc)
+	compactorv1.RegisterCompactionPlannerServer(a.server.GRPC, svc)
+}
+
+func (a *API) RegisterQueryBackend(svc *querybackend.QueryBackend) {
+	querybackendv1.RegisterQueryBackendServiceServer(a.server.GRPC, svc)
 }
 
 func (a *API) connectOptionsRecovery() []connect.HandlerOption {

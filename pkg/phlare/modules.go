@@ -80,9 +80,15 @@ const (
 	TenantSettings    string = "tenant-settings"
 	AdHocProfiles     string = "ad-hoc-profiles"
 
-	// QueryFrontendTripperware string = "query-frontend-tripperware"
-	// IndexGateway             string = "index-gateway"
-	// IndexGatewayRing         string = "index-gateway-ring"
+	// Experimental modules
+
+	Metastore          string = "metastore"
+	MetastoreClient    string = "metastore-client"
+	SegmentWriter      string = "segment-writer"
+	QueryBackend       string = "query-backend"
+	QueryBackendClient string = "query-backend-client"
+	CompactionWorker   string = "compaction-worker"
+	HealthService      string = "health-service"
 )
 
 var objectStoreTypeStats = usagestats.NewString("store_object_type")
@@ -347,6 +353,7 @@ func (f *Phlare) initMemberlistKV() (services.Service, error) {
 
 	f.Cfg.Distributor.DistributorRing.KVStore.MemberlistKV = f.MemberlistKV.GetMemberlistKV
 	f.Cfg.Ingester.LifecyclerConfig.RingConfig.KVStore.MemberlistKV = f.MemberlistKV.GetMemberlistKV
+	f.Cfg.SegmentWriter.LifecyclerConfig.RingConfig.KVStore.MemberlistKV = f.MemberlistKV.GetMemberlistKV
 	f.Cfg.QueryScheduler.ServiceDiscovery.SchedulerRing.KVStore.MemberlistKV = f.MemberlistKV.GetMemberlistKV
 	f.Cfg.OverridesExporter.Ring.Ring.KVStore.MemberlistKV = f.MemberlistKV.GetMemberlistKV
 	f.Cfg.StoreGateway.ShardingRing.Ring.KVStore.MemberlistKV = f.MemberlistKV.GetMemberlistKV

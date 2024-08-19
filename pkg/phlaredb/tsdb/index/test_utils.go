@@ -4,16 +4,16 @@ import (
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 )
 
-type indexWriterSeries struct {
-	labels phlaremodel.Labels
-	chunks []ChunkMeta // series file offset of chunks
+type IndexWriterSeries struct {
+	Labels phlaremodel.Labels
+	Chunks []ChunkMeta // series file offset of chunks
 }
 
-type indexWriterSeriesSlice []*indexWriterSeries
+type IndexWriterSeriesSlice []*IndexWriterSeries
 
-func (s indexWriterSeriesSlice) Len() int      { return len(s) }
-func (s indexWriterSeriesSlice) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (s IndexWriterSeriesSlice) Len() int      { return len(s) }
+func (s IndexWriterSeriesSlice) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
 
-func (s indexWriterSeriesSlice) Less(i, j int) bool {
-	return phlaremodel.CompareLabelPairs(s[i].labels, s[j].labels) < 0
+func (s IndexWriterSeriesSlice) Less(i, j int) bool {
+	return phlaremodel.CompareLabelPairs(s[i].Labels, s[j].Labels) < 0
 }

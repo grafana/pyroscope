@@ -27,23 +27,23 @@ For information on auto-instrumentation and supported language SDKs, refer to [C
 Various languages support different profiling types.
 Pyroscope supports the following profiling types:
 
-| Profile Type       | Go    | Java  | .NET  | Ruby  | Python | Rust  | Node.js | eBPF (Go) | eBPF (Python) |
-|--------------------|-------|-------|-------|-------|--------|-------|---------|-----------|--------------|
-| CPU                | Yes   | Yes   | Yes   | Yes   | Yes    | Yes   | Yes     | Yes       | Yes          |
-| Alloc Objects      | Yes   | Yes   | Yes   |       |        |       |         |           |              |
-| Alloc Space        | Yes   | Yes   | Yes   |       |        |       |         |           |              |
-| Inuse Objects      | Yes   |       |       |       |        |       |         |           |              |
-| Inuse Space        | Yes   |       |       |       |        |       |         |           |              |
-| Goroutines         | Yes   |       |       |       |        |       |         |           |              |
-| Mutex Count        | Yes   |       | Yes   |       |        |       |         |           |              |
-| Mutex Duration     | Yes   |       | Yes   |       |        |       |         |           |              |
-| Block Count        | Yes   |       |       |       |        |       |         |           |              |
-| Block Duration     | Yes   |       |       |       |        |       |         |           |              |
-| Lock Count         |       | Yes   | Yes   |       |        |       |         |           |              |
-| Lock Duration      |       | Yes   | Yes   |       |        |       |         |           |              |
-| Exceptions         |       |       | Yes   |       |        |       |         |           |              |
-| Wall               |       |       | Yes   |       |        |       |         |           |              |
-| Heap               |       |       |       |       |        |       | Yes     |           |              |
+| Profile Type       | Go    | Java  | .NET       | Ruby  | Python | Rust  | Node.js | eBPF (Go) | eBPF (Python)|
+|--------------------|-------|-------|------------|-------|--------|-------|---------|-----------|--------------|
+| CPU                | Yes   | Yes   | Yes        | Yes   | Yes    | Yes   | Yes     | Yes       | Yes          |
+| Alloc Objects      | Yes   | Yes   | Yes        |       |        |       |         |           |              |
+| Alloc Space        | Yes   | Yes   | Yes        |       |        |       |         |           |              |
+| Inuse Objects      | Yes   |       | Yes (7.0+) |       |        |       |         |           |              |
+| Inuse Space        | Yes   |       | Yes (7.0+) |       |        |       |         |           |              |
+| Goroutines         | Yes   |       |            |       |        |       |         |           |              |
+| Mutex Count        | Yes   |       | Yes        |       |        |       |         |           |              |
+| Mutex Duration     | Yes   |       | Yes        |       |        |       |         |           |              |
+| Block Count        | Yes   |       |            |       |        |       |         |           |              |
+| Block Duration     | Yes   |       |            |       |        |       |         |           |              |
+| Lock Count         |       | Yes   | Yes        |       |        |       |         |           |              |
+| Lock Duration      |       | Yes   | Yes        |       |        |       |         |           |              |
+| Exceptions         |       |       | Yes        |       |        |       |         |           |              |
+| Wall               |       |       | Yes        |       |        |       |         |           |              |
+| Heap               |       |       |            |       |        |       | Yes     |           |              |
 
 ## CPU profiling
 

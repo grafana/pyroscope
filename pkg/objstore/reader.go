@@ -2,6 +2,7 @@ package objstore
 
 import (
 	"context"
+	"fmt"
 	"io"
 
 	"github.com/thanos-io/objstore"
@@ -90,4 +91,48 @@ func (b *ReaderAt) ReadAt(p []byte, off int64) (int, error) {
 
 func (b *ReaderAt) Close() error {
 	return nil
+}
+
+func ReadRange(ctx context.Context, reader io.ReaderFrom, name string, storage objstore.BucketReader, off, size int64) error {
+	if size == 0 {
+		attrs, err := storage.Attributes(ctx, name)
+		if err != nil {
+			return err
+		}
+		size = attrs.Size
+	}
+	if size == 0 {
+		return nil
+	}
+	rc, err := storage.GetRange(ctx, name, off, size)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = rc.Close()
+	}()
+	n, err := reader.ReadFrom(io.LimitReader(rc, size))
+	if err != nil {
+		return err
+	}
+	if n != size {
+		return fmt.Errorf("read %d bytes, expected %d", n, size)
+	}
+	return nil
+}
+
+type BucketReaderWithOffset struct {
+	BucketReader
+	offset int64
+}
+
+func NewBucketReaderWithOffset(r BucketReader, offset int64) *BucketReaderWithOffset {
+	return &BucketReaderWithOffset{
+		BucketReader: r,
+		offset:       offset,
+	}
+}
+
+func (r *BucketReaderWithOffset) GetRange(ctx context.Context, name string, off, length int64) (io.ReadCloser, error) {
+	return r.BucketReader.GetRange(ctx, name, r.offset+off, length)
 }
