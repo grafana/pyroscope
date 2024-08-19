@@ -22,24 +22,24 @@ import (
 // Block reader reads objects from the object storage. Each block is currently
 // represented by a single object.
 //
-// An object consists of a set of "tenant services" – regions within the block
-// that include data of a specific tenant service. Each such tenant service
-// consists of 3 sections: profile table, TSDB, and symbol database.
+// An object consists of data sets – regions within the block that include some
+// tenant data. Each such dataset consists of 3 sections: profile table, TSDB,
+// and symbol database.
 //
 // A single Invoke request typically spans multiple blocks (objects).
-// Querying an object involves processing multiple tenant services in parallel.
-// Multiple parallel queries can be executed on the same tenant service.
+// Querying an object involves processing multiple datasets in parallel.
+// Multiple parallel queries can be executed on the same tenant datasets.
 //
 // Thus, queries share the same "execution context": the object and a tenant
-// service:
+// dataset.
 //
-// object-a    service-a   query-a
+// object-a    dataset-a   query-a
 //                         query-b
-//             service-b   query-a
+//             dataset-b   query-a
 //                         query-b
-// object-b    service-a   query-a
+// object-b    dataset-a   query-a
 //                         query-b
-//             service-b   query-a
+//             dataset-b   query-a
 //                         query-b
 //
 
@@ -76,7 +76,7 @@ func (b *BlockReader) Invoke(
 	m := newAggregator(req)
 	for _, md := range req.QueryPlan.Blocks {
 		obj := block.NewObject(b.storage, md)
-		for _, meta := range md.TenantServices {
+		for _, meta := range md.Datasets {
 			c := newQueryContext(ctx, b.log, meta, vr, obj)
 			for _, query := range req.Query {
 				q := query

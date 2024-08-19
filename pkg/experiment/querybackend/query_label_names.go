@@ -26,9 +26,9 @@ func queryLabelNames(q *queryContext, query *querybackendv1.Query) (*querybacken
 	var names []string
 	var err error
 	if len(q.req.matchers) == 0 {
-		names, err = q.svc.Index().LabelNames()
+		names, err = q.ds.Index().LabelNames()
 	} else {
-		names, err = labelNamesForMatchers(q.svc.Index(), q.req.matchers)
+		names, err = labelNamesForMatchers(q.ds.Index(), q.req.matchers)
 	}
 	if err != nil {
 		return nil, err

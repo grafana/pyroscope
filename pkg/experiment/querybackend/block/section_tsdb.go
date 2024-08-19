@@ -9,7 +9,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/util/bufferpool"
 )
 
-func openTSDB(ctx context.Context, s *TenantService) (err error) {
+func openTSDB(ctx context.Context, s *Dataset) (err error) {
 	offset := s.sectionOffset(SectionTSDB)
 	size := s.sectionSize(SectionTSDB)
 	s.tsdb = new(tsdbBuffer)

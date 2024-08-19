@@ -14,7 +14,7 @@ import (
 // TODO(kolesnikovae):
 //  - Avoid staging files where possible.
 //  - If stage files are required, at least avoid
-//    recreating them for each tenant service.
+//    recreating them for each tenant dataset.
 //  - objstore.Bucket should provide object writer.
 
 type Writer struct {

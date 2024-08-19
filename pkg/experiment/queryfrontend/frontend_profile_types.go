@@ -75,7 +75,7 @@ func listProfileTypesFromMetadata(
 	}
 	p := newProfileTypesResponseBuilder(len(metas) * 8)
 	for _, m := range metas {
-		for _, s := range m.TenantServices {
+		for _, s := range m.Datasets {
 			p.addServiceProfileTypes(s.Name, s.ProfileTypes...)
 		}
 	}

@@ -656,13 +656,12 @@
           "type": "string",
           "description": "Optional. Empty if compaction level is 0."
         },
-        "tenantServices": {
+        "datasets": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/v1TenantService"
-          },
-          "title": "TODO(kolesnikovae): Partitions with labels?"
+            "$ref": "#/definitions/v1Dataset"
+          }
         },
         "size": {
           "type": "string",
@@ -826,6 +825,52 @@
             "type": "object",
             "$ref": "#/definitions/v1BlockMeta"
           }
+        }
+      }
+    },
+    "v1Dataset": {
+      "type": "object",
+      "properties": {
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Labels"
+          }
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "minTime": {
+          "type": "string",
+          "format": "int64"
+        },
+        "maxTime": {
+          "type": "string",
+          "format": "int64"
+        },
+        "tableOfContents": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uint64"
+          },
+          "description": "Table of contents lists data sections within the tenant\nservice region. The offsets are absolute.\n\nThe interpretation of the table of contents is specific\nto the metadata format version. By default, the sections are:\n - 0: profiles.parquet\n - 1: index.tsdb\n - 2: symbols.symdb"
+        },
+        "size": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Size of the section in bytes."
+        },
+        "profileTypes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "TODO: delete\nProfile types present in the tenant service data."
         }
       }
     },
@@ -1240,18 +1285,6 @@
         }
       }
     },
-    "v1ListBlocksForQueryResponse": {
-      "type": "object",
-      "properties": {
-        "blocks": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1BlockMeta"
-          }
-        }
-      }
-    },
     "v1Mapping": {
       "type": "object",
       "properties": {
@@ -1516,6 +1549,18 @@
         },
         "deduplicationNeeded": {
           "type": "boolean"
+        }
+      }
+    },
+    "v1QueryMetadataResponse": {
+      "type": "object",
+      "properties": {
+        "blocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1BlockMeta"
+          }
         }
       }
     },
@@ -1924,46 +1969,6 @@
         "MERGE_FORMAT_TREE"
       ],
       "default": "MERGE_FORMAT_UNSPECIFIED"
-    },
-    "v1TenantService": {
-      "type": "object",
-      "properties": {
-        "tenantId": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "minTime": {
-          "type": "string",
-          "format": "int64"
-        },
-        "maxTime": {
-          "type": "string",
-          "format": "int64"
-        },
-        "tableOfContents": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "format": "uint64"
-          },
-          "description": "Table of contents lists data sections within the tenant\nservice region. The offsets are absolute.\n\nThe interpretation of the table of contents is specific\nto the metadata format version. By default, the sections are:\n - 0: profiles.parquet\n - 1: index.tsdb\n - 2: symbols.symdb"
-        },
-        "size": {
-          "type": "string",
-          "format": "uint64",
-          "description": "Size of the section in bytes."
-        },
-        "profileTypes": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Profile types present in the tenant service data."
-        }
-      },
-      "description": "TenantService object points to the offset in the block at which\nthe tenant service data is located."
     },
     "v1TimeSeriesAggregationType": {
       "type": "string",
