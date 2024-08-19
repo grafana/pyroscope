@@ -94,7 +94,6 @@ func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storag
 		reg:           reg,
 		dbConfig:      dbConfig,
 		storageBucket: storageBucket,
-		//limits:        limits,
 	}
 
 	var (
@@ -116,7 +115,6 @@ func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storag
 	if err != nil {
 		return nil, errors.Wrap(err, "services manager")
 	}
-	//i.limiters = newLimiters(i.limitsForTenant)
 	if storageBucket == nil {
 		return nil, errors.New("storage bucket is required for segment writer")
 	}
@@ -157,30 +155,24 @@ func (i *SegmentWriterService) Push(ctx context.Context, req *connect.Request[se
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	var waits = make(map[segmentWaitFlushed]struct{}, len(req.Msg.Series))
-	for _, series := range req.Msg.Series {
-		var shard = shardKey(series.Shard)
-		wait, err := i.segmentWriter.ingest(shard, func(segment segmentIngest) error {
-			return i.ingestToSegment(ctx, segment, series, tenantID)
-		})
-		if err != nil {
-			return nil, err
-		}
-		waits[wait] = struct{}{}
+	series := req.Msg.Series
+	var shard = shardKey(series.Shard)
+	wait, err := i.segmentWriter.ingest(shard, func(segment segmentIngest) error {
+		return i.ingestToSegment(ctx, segment, series, tenantID)
+	})
+	if err != nil {
+		return nil, err
 	}
 	if i.cfg.Async {
 		return connect.NewResponse(&segmentWriterV1.PushResponse{}), nil
 	}
 	t1 := time.Now()
-	for wait := range waits {
-		if err = wait.waitFlushed(ctx); err != nil {
-			i.segmentWriter.metrics.segmentFlushTimeouts.WithLabelValues(tenantID).Inc()
-			i.segmentWriter.metrics.segmentFlushWaitDuration.WithLabelValues(tenantID).Observe(time.Since(t1).Seconds())
-			level.Error(i.logger).Log("msg", "flush timeout", "err", err)
-			return nil, err
-		}
+	if err = wait.waitFlushed(ctx); err != nil {
+		i.segmentWriter.metrics.segmentFlushTimeouts.WithLabelValues(tenantID).Inc()
+		i.segmentWriter.metrics.segmentFlushWaitDuration.WithLabelValues(tenantID).Observe(time.Since(t1).Seconds())
+		level.Error(i.logger).Log("msg", "flush timeout", "err", err)
+		return nil, err
 	}
-	//level.Debug(i.logger).Log("msg", "flushed", "duration", time.Since(t1), "segments", len(waits))
 	i.segmentWriter.metrics.segmentFlushWaitDuration.WithLabelValues(tenantID).Observe(time.Since(t1).Seconds())
 	return connect.NewResponse(&segmentWriterV1.PushResponse{}), nil
 }
@@ -197,10 +189,6 @@ func (i *SegmentWriterService) ingestToSegment(ctx context.Context, segment segm
 				if reason != validation.Unknown {
 					validation.DiscardedProfiles.WithLabelValues(string(reason), tenantID).Add(float64(1))
 					validation.DiscardedBytes.WithLabelValues(string(reason), tenantID).Add(float64(size))
-					switch validation.ReasonOf(err) {
-					case validation.SeriesLimit:
-						return connect.NewError(connect.CodeResourceExhausted, err)
-					}
 				}
 			}
 			return nil
@@ -229,9 +217,3 @@ func (i *SegmentWriterService) CheckReady(ctx context.Context) error {
 	}
 	return i.lifecycler.CheckReady(ctx)
 }
-
-//func (i *Ingester) limitsForTenant(tenantID string) ingester.Limiter {
-//	return ingester.NewLimiter(tenantID, i.limits, i.lifecycler,
-//		1, // i.cfg.LifecyclerConfig.RingConfig.ReplicationFactor
-//	)
-//}

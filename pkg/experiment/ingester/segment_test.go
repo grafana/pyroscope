@@ -52,11 +52,13 @@ const testSVCName = "svc239"
 const testTenant = "tenant42"
 const testShard = shardKey(239)
 
-var testProfile1 = pprofth.NewProfileBuilder(time.Now().UnixNano()).
-	CPUProfile().
-	WithLabels(model.LabelNameServiceName, testSVCName).
-	ForStacktraceString("foo", "bar").
-	AddSamples(1)
+func testProfile() *pprofth.ProfileBuilder {
+	return pprofth.NewProfileBuilder(time.Now().UnixNano()).
+		CPUProfile().
+		WithLabels(model.LabelNameServiceName, testSVCName).
+		ForStacktraceString("foo", "bar").
+		AddSamples(1)
+}
 
 var cpuProfileType = &typesv1.ProfileType{
 	ID:         "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
@@ -77,7 +79,8 @@ func TestSegmentIngest(t *testing.T) {
 		return &metastorev1.AddBlockResponse{}, nil
 	}
 	awaiter, err := sw.ingest(testShard, func(head segmentIngest) error {
-		err := head.ingest(context.Background(), testTenant, testProfile1.Profile, testProfile1.UUID, testProfile1.Labels)
+		p := testProfile()
+		err := head.ingest(context.Background(), testTenant, p.Profile, p.UUID, p.Labels)
 		assert.NoError(t, err)
 		return nil
 	})
@@ -117,7 +120,8 @@ func TestSegmentIngestDLQ(t *testing.T) {
 		return nil, fmt.Errorf("metastore unavailable")
 	}
 	awaiter, err := sw.ingest(testShard, func(head segmentIngest) error {
-		err := head.ingest(context.Background(), testTenant, testProfile1.Profile, testProfile1.UUID, testProfile1.Labels)
+		p := testProfile()
+		err := head.ingest(context.Background(), testTenant, p.Profile, p.UUID, p.Labels)
 		assert.NoError(t, err)
 		return nil
 	})

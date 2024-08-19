@@ -45,13 +45,7 @@ func (m *PushRequest) CloneVT() *PushRequest {
 		return (*PushRequest)(nil)
 	}
 	r := new(PushRequest)
-	if rhs := m.Series; rhs != nil {
-		tmpContainer := make([]*RawProfileSeries, len(rhs))
-		for k, v := range rhs {
-			tmpContainer[k] = v.CloneVT()
-		}
-		r.Series = tmpContainer
-	}
+	r.Series = m.Series.CloneVT()
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -142,22 +136,8 @@ func (this *PushRequest) EqualVT(that *PushRequest) bool {
 	} else if this == nil || that == nil {
 		return false
 	}
-	if len(this.Series) != len(that.Series) {
+	if !this.Series.EqualVT(that.Series) {
 		return false
-	}
-	for i, vx := range this.Series {
-		vy := that.Series[i]
-		if p, q := vx, vy; p != q {
-			if p == nil {
-				p = &RawProfileSeries{}
-			}
-			if q == nil {
-				q = &RawProfileSeries{}
-			}
-			if !p.EqualVT(q) {
-				return false
-			}
-		}
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
@@ -403,17 +383,15 @@ func (m *PushRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if len(m.Series) > 0 {
-		for iNdEx := len(m.Series) - 1; iNdEx >= 0; iNdEx-- {
-			size, err := m.Series[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
-			i--
-			dAtA[i] = 0xa
+	if m.Series != nil {
+		size, err := m.Series.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
 		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0xa
 	}
 	return len(dAtA) - i, nil
 }
@@ -555,11 +533,9 @@ func (m *PushRequest) SizeVT() (n int) {
 	}
 	var l int
 	_ = l
-	if len(m.Series) > 0 {
-		for _, e := range m.Series {
-			l = e.SizeVT()
-			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-		}
+	if m.Series != nil {
+		l = m.Series.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -723,8 +699,10 @@ func (m *PushRequest) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Series = append(m.Series, &RawProfileSeries{})
-			if err := m.Series[len(m.Series)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+			if m.Series == nil {
+				m.Series = &RawProfileSeries{}
+			}
+			if err := m.Series.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

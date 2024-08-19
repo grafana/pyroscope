@@ -13,7 +13,7 @@ message PushResponse {}
 // WriteRawRequest writes a pprof profile
 message PushRequest {
   // series is a set raw pprof profiles and accompanying labels
-  repeated RawProfileSeries series = 1;
+  RawProfileSeries series = 1;
 }
 
 // RawProfileSeries represents the pprof profile and its associated labels

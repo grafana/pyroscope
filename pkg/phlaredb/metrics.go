@@ -45,7 +45,7 @@ type headMetrics struct {
 }
 
 func newHeadMetrics(reg prometheus.Registerer) *headMetrics {
-	return newHeadMetrics2(reg, "pyroscope")
+	return newHeadMetricsWithPrefix(reg, "pyroscope")
 }
 
 func newHeadMetricsWithPrefix(reg prometheus.Registerer, prefix string) *headMetrics {
@@ -186,7 +186,7 @@ func (m *headMetrics) register(reg prometheus.Registerer) {
 }
 
 func ContextWithHeadMetrics(ctx context.Context, reg prometheus.Registerer, prefix string) context.Context {
-	return contextWithHeadMetrics(ctx, newHeadMetrics2(reg, prefix))
+	return contextWithHeadMetrics(ctx, newHeadMetricsWithPrefix(reg, prefix))
 }
 
 func contextWithHeadMetrics(ctx context.Context, m *headMetrics) context.Context {
