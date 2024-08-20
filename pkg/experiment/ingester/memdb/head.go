@@ -1,0 +1,176 @@
+package memdb
+
+import (
+	"bytes"
+	"context"
+	"fmt"
+	"github.com/google/uuid"
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	phlarelabels "github.com/grafana/pyroscope/pkg/phlaredb/labels"
+	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/model"
+	"go.uber.org/atomic"
+	"math"
+	"sync"
+)
+
+type FlushedHead struct {
+	Index    []byte
+	Profiles []byte
+	Symbols  []byte
+	Meta     struct {
+		ProfileTypeNames []string
+		MinTime          model.Time
+		MaxTime          model.Time
+		NumSamples       uint64
+		NumProfiles      uint64
+		NumSeries        uint64
+	}
+}
+
+type Head struct {
+	symbols      *symdb.PartitionWriter
+	metaLock     sync.RWMutex
+	minTime      model.Time
+	maxTime      model.Time
+	totalSamples *atomic.Uint64
+	profiles     *profilesIndex
+	metrics      *HeadMetrics
+}
+
+func NewHead(metrics *HeadMetrics) (*Head, error) {
+	h := &Head{
+		metrics: metrics,
+		symbols: symdb.NewPartitionWriter(0, &symdb.Config{
+			Version: symdb.FormatV3,
+			Stacktraces: symdb.StacktracesConfig{
+				MaxNodesPerChunk: 4 << 20,
+			},
+		}),
+		totalSamples: atomic.NewUint64(0),
+		minTime:      math.MaxInt64,
+		maxTime:      0,
+	}
+	profiles, err := newProfileIndex(32, metrics)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create profile store: %w", err)
+	}
+	h.profiles = profiles
+
+	return h, nil
+}
+
+func (h *Head) Ingest(p *profilev1.Profile, id uuid.UUID, externalLabels []*typesv1.LabelPair) error {
+	if len(p.Sample) == 0 {
+		return nil
+	}
+
+	// delta not supported
+	externalLabels = phlaremodel.Labels(externalLabels).Delete(phlaremodel.LabelNameDelta)
+
+	enforceLabelOrder := phlaremodel.Labels(externalLabels).Get(phlaremodel.LabelNameOrder) == phlaremodel.LabelOrderEnforced
+	externalLabels = phlaremodel.Labels(externalLabels).Delete(phlaremodel.LabelNameOrder)
+
+	lbls, seriesFingerprints := phlarelabels.CreateProfileLabels(enforceLabelOrder, p, externalLabels...)
+
+	metricName := phlaremodel.Labels(externalLabels).Get(model.MetricNameLabel)
+
+	var profileIngested bool
+	memProfiles := h.symbols.WriteProfileSymbols(p)
+	for idxType := range memProfiles {
+		profile := &memProfiles[idxType]
+		profile.ID = id
+		profile.SeriesFingerprint = seriesFingerprints[idxType]
+		profile.Samples = profile.Samples.Compact(false)
+
+		profile.TotalValue = profile.Samples.Sum()
+
+		if profile.Samples.Len() == 0 {
+			continue
+		}
+
+		h.profiles.Add(profile, lbls[idxType], metricName)
+
+		profileIngested = true
+		h.totalSamples.Add(uint64(profile.Samples.Len()))
+		h.metrics.sampleValuesIngested.WithLabelValues(metricName).Add(float64(profile.Samples.Len()))
+		h.metrics.sampleValuesReceived.WithLabelValues(metricName).Add(float64(len(p.Sample)))
+	}
+
+	if !profileIngested {
+		return nil
+	}
+
+	v := model.TimeFromUnixNano(p.TimeNanos)
+	h.metaLock.Lock()
+	if v < h.minTime {
+		h.minTime = v
+	}
+	if v > h.maxTime {
+		h.maxTime = v
+	}
+	h.metaLock.Unlock()
+
+	return nil
+}
+
+func (h *Head) Flush(ctx context.Context) (res *FlushedHead, err error) {
+	t := prometheus.NewTimer(h.metrics.flushedBlockDurationSeconds)
+	defer t.ObserveDuration()
+
+	if res, err = h.flush(ctx); err != nil {
+		h.metrics.flushedBlocks.WithLabelValues("failed").Inc()
+		return nil, err
+	}
+
+	blockSize := len(res.Index) + len(res.Profiles) + len(res.Symbols)
+	h.metrics.flushedBlocks.WithLabelValues("success").Inc()
+	h.metrics.flushedBlockSamples.Observe(float64(res.Meta.NumSamples))
+	h.metrics.flusehdBlockProfiles.Observe(float64(res.Meta.NumProfiles))
+	h.metrics.flushedBlockSeries.Observe(float64(res.Meta.NumSeries))
+	h.metrics.flushedBlockSizeBytes.Observe(float64(blockSize))
+	h.metrics.flushedFileSizeBytes.WithLabelValues("tsdb").Observe(float64(len(res.Index)))
+	h.metrics.flushedFileSizeBytes.WithLabelValues("profiles.parquet").Observe(float64(len(res.Profiles)))
+	h.metrics.flushedFileSizeBytes.WithLabelValues("symbols.symdb").Observe(float64(len(res.Symbols)))
+	return res, nil
+}
+
+func (h *Head) flush(ctx context.Context) (*FlushedHead, error) {
+	var (
+		err      error
+		profiles []schemav1.InMemoryProfile
+	)
+	res := new(FlushedHead)
+	res.Meta.MinTime = h.minTime
+	res.Meta.MaxTime = h.maxTime
+	res.Meta.NumSamples = h.totalSamples.Load()
+	res.Meta.NumSeries = uint64(h.profiles.totalSeries.Load())
+
+	if res.Meta.NumSamples == 0 {
+		return res, nil
+	}
+
+	symbolsBuffer := bytes.NewBuffer(nil)
+	if err := symdb.WritePartition(h.symbols, symbolsBuffer); err != nil {
+		return nil, err
+	}
+	res.Symbols = symbolsBuffer.Bytes()
+
+	if res.Meta.ProfileTypeNames, err = h.profiles.profileTypeNames(); err != nil {
+		return nil, fmt.Errorf("failed to get profile type names: %w", err)
+	}
+
+	if res.Index, profiles, err = h.profiles.Flush(ctx); err != nil {
+		return nil, fmt.Errorf("failed to flush profiles: %w", err)
+	}
+	res.Meta.NumProfiles = uint64(len(profiles))
+
+	if res.Profiles, err = WriteProfiles(h.metrics, profiles); err != nil {
+		return nil, fmt.Errorf("failed to write profiles parquet: %w", err)
+	}
+	return res, nil
+}

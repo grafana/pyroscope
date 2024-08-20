@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	segmentWriterV1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/ingester/memdb"
 	"time"
 
 	"github.com/google/uuid"
@@ -25,7 +26,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
-	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/util"
 )
@@ -51,10 +51,9 @@ func (cfg *Config) Validate() error {
 type SegmentWriterService struct {
 	services.Service
 
-	cfg       Config
-	dbConfig  phlaredb.Config
-	logger    log.Logger
-	phlarectx context.Context
+	cfg      Config
+	dbConfig phlaredb.Config
+	logger   log.Logger
 
 	lifecycler         *ring.Lifecycler
 	subservices        *services.Manager
@@ -80,16 +79,10 @@ func (i *ingesterFlusherCompat) Flush() {
 	}
 }
 
-func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storageBucket phlareobj.Bucket, metastoreClient *metastoreclient.Client) (*SegmentWriterService, error) {
-	reg := phlarecontext.Registry(phlarectx)
-	reg = prometheus.WrapRegistererWith(prometheus.Labels{"component": "segment-writer"}, reg)
-	phlarectx = phlarecontext.WithRegistry(phlarectx, reg)
-	log := phlarecontext.Logger(phlarectx)
-	phlarectx = phlaredb.ContextWithHeadMetrics(phlarectx, reg, "pyroscope_segment_writer")
+func New(reg prometheus.Registerer, log log.Logger, cfg Config, dbConfig phlaredb.Config, storageBucket phlareobj.Bucket, metastoreClient *metastoreclient.Client) (*SegmentWriterService, error) {
 
 	i := &SegmentWriterService{
 		cfg:           cfg,
-		phlarectx:     phlarectx,
 		logger:        log,
 		reg:           reg,
 		dbConfig:      dbConfig,
@@ -121,9 +114,10 @@ func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storag
 	if metastoreClient == nil {
 		return nil, errors.New("metastore client is required for segment writer")
 	}
-	metrics := newSegmentMetrics(i.reg)
+	segmentMetrics := newSegmentMetrics(i.reg)
+	headMetrics := memdb.NewHeadMetricsWithPrefix(reg, "pyroscope_segment_writer")
 
-	i.segmentWriter = newSegmentWriter(i.phlarectx, i.logger, metrics, i.dbConfig, storageBucket, cfg.SegmentDuration, metastoreClient)
+	i.segmentWriter = newSegmentWriter(i.logger, segmentMetrics, headMetrics, i.dbConfig, storageBucket, cfg.SegmentDuration, metastoreClient)
 	i.subservicesWatcher = services.NewFailureWatcher()
 	i.subservicesWatcher.WatchManager(i.subservices)
 	i.Service = services.NewBasicService(i.starting, i.running, i.stopping)

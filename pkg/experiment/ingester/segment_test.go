@@ -14,17 +14,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/oklog/ulid"
-	"github.com/prometheus/client_golang/prometheus"
-	model2 "github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/util/testutil"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
-
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/ingester/memdb"
 	"github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/memory"
@@ -32,6 +25,13 @@ import (
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	pprofth "github.com/grafana/pyroscope/pkg/pprof/testhelper"
+	"github.com/oklog/ulid"
+	"github.com/prometheus/client_golang/prometheus"
+	model2 "github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/util/testutil"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 )
 
 type metastoreClient struct {
@@ -196,9 +196,10 @@ func newTestSegmentWriter(t *testing.T) sw {
 	}
 	bucket := memory.NewInMemBucket()
 	client := new(metastoreClient)
-	res := newSegmentWriter(phlarectx,
+	res := newSegmentWriter(
 		l,
 		newSegmentMetrics(reg),
+		memdb.NewHeadMetricsWithPrefix(reg, ""),
 		cfg,
 		bucket,
 		1*time.Second,
