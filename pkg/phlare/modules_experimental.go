@@ -4,7 +4,9 @@ import (
 	"fmt"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
+	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
 	compactionworker "github.com/grafana/pyroscope/pkg/experiment/compactor"
@@ -15,6 +17,20 @@ import (
 	querybackendclient "github.com/grafana/pyroscope/pkg/experiment/querybackend/client"
 	"github.com/grafana/pyroscope/pkg/util/health"
 )
+
+func (f *Phlare) initSegmentWriterRing() (_ services.Service, err error) {
+	f.segmentWriterRing, err = ring.New(
+		f.Cfg.SegmentWriter.LifecyclerConfig.RingConfig,
+		"segment-writer", "ring",
+		log.With(f.logger, "component", "segment-writer-ring"),
+		prometheus.WrapRegistererWithPrefix("pyroscope_", f.reg),
+	)
+	if err != nil {
+		return nil, err
+	}
+	f.API.RegisterRing(f.segmentWriterRing)
+	return f.segmentWriterRing, nil
+}
 
 func (f *Phlare) initSegmentWriter() (services.Service, error) {
 	ingester, err := segmentwriter.New(

@@ -250,7 +250,7 @@ type Phlare struct {
 	Server         *server.Server
 	SignalHandler  *signals.Handler
 	MemberlistKV   *memberlist.KVInitService
-	ring           *ring.Ring
+	ingesterRing   *ring.Ring
 	usageReport    *usagestats.Reporter
 	RuntimeConfig  *runtimeconfig.Manager
 	Overrides      *validation.Overrides
@@ -271,9 +271,10 @@ type Phlare struct {
 
 	// Experimental modules.
 	//nolint:unused
-	segmentWriter   *segmentwriter.SegmentWriterService
-	metastore       *metastore.Metastore
-	metastoreClient *metastoreclient.Client
+	segmentWriter     *segmentwriter.SegmentWriterService
+	segmentWriterRing *ring.Ring
+	metastore         *metastore.Metastore
+	metastoreClient   *metastoreclient.Client
 	//nolint:unused
 	queryBackend       *querybackend.QueryBackend
 	queryBackendClient *querybackendclient.Client
@@ -327,7 +328,7 @@ func (f *Phlare) setupModuleManager() error {
 	mm.RegisterModule(Storage, f.initStorage, modules.UserInvisibleModule)
 	mm.RegisterModule(GRPCGateway, f.initGRPCGateway, modules.UserInvisibleModule)
 	mm.RegisterModule(MemberlistKV, f.initMemberlistKV, modules.UserInvisibleModule)
-	mm.RegisterModule(Ring, f.initRing, modules.UserInvisibleModule)
+	mm.RegisterModule(IngesterRing, f.initIngesterRing, modules.UserInvisibleModule)
 	mm.RegisterModule(RuntimeConfig, f.initRuntimeConfig, modules.UserInvisibleModule)
 	mm.RegisterModule(Overrides, f.initOverrides, modules.UserInvisibleModule)
 	mm.RegisterModule(OverridesExporter, f.initOverridesExporter)
@@ -353,8 +354,8 @@ func (f *Phlare) setupModuleManager() error {
 
 		Server:            {GRPCGateway},
 		API:               {Server},
-		Distributor:       {Overrides, Ring, API, UsageReport},
-		Querier:           {Overrides, API, MemberlistKV, Ring, UsageReport, Version},
+		Distributor:       {Overrides, IngesterRing, API, UsageReport},
+		Querier:           {Overrides, API, MemberlistKV, IngesterRing, UsageReport, Version},
 		QueryFrontend:     {OverridesExporter, API, MemberlistKV, UsageReport, Version},
 		QueryScheduler:    {Overrides, API, MemberlistKV, UsageReport},
 		Ingester:          {Overrides, API, MemberlistKV, Storage, UsageReport, Version},
@@ -364,7 +365,7 @@ func (f *Phlare) setupModuleManager() error {
 		Overrides:         {RuntimeConfig},
 		OverridesExporter: {Overrides, MemberlistKV},
 		RuntimeConfig:     {API},
-		Ring:              {API, MemberlistKV},
+		IngesterRing:      {API, MemberlistKV},
 		MemberlistKV:      {API},
 		Admin:             {API, Storage},
 		Version:           {API, MemberlistKV},
@@ -375,21 +376,23 @@ func (f *Phlare) setupModuleManager() error {
 	// Experimental modules.
 	if f.Cfg.v2Experiment {
 		experimentalModules := map[string][]string{
-			SegmentWriter:    {Overrides, API, MemberlistKV, Storage, UsageReport, MetastoreClient},
-			Metastore:        {Overrides, API, HealthService, MetastoreClient},
-			CompactionWorker: {Overrides, API, Storage, Overrides, MetastoreClient},
-			QueryBackend:     {Overrides, API, Storage, Overrides, QueryBackendClient},
-			HealthService:    {Overrides, API},
+			SegmentWriter:     {Overrides, API, MemberlistKV, Storage, UsageReport, MetastoreClient},
+			Metastore:         {Overrides, API, HealthService, MetastoreClient},
+			CompactionWorker:  {Overrides, API, Storage, Overrides, MetastoreClient},
+			QueryBackend:      {Overrides, API, Storage, Overrides, QueryBackendClient},
+			SegmentWriterRing: {Overrides, API, MemberlistKV},
+			HealthService:     {Overrides, API},
 		}
 		for k, v := range experimentalModules {
 			deps[k] = v
 		}
 
-		// TODO(kolesnikovae): Inject new distributor dependencies, if any.
 		deps[All] = append(deps[All], SegmentWriter, Metastore, CompactionWorker, QueryBackend, HealthService)
 		deps[QueryFrontend] = append(deps[QueryFrontend], MetastoreClient, QueryBackendClient)
+		deps[Distributor] = append(deps[Distributor], SegmentWriterRing)
 
 		mm.RegisterModule(SegmentWriter, f.initSegmentWriter)
+		mm.RegisterModule(SegmentWriterRing, f.initSegmentWriterRing, modules.UserInvisibleModule)
 		mm.RegisterModule(Metastore, f.initMetastore)
 		mm.RegisterModule(CompactionWorker, f.initCompactionWorker)
 		mm.RegisterModule(QueryBackend, f.initQueryBackend)

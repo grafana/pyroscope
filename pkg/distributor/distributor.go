@@ -34,6 +34,7 @@ import (
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
+	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/clientpool"
@@ -51,6 +52,10 @@ import (
 
 type PushClient interface {
 	Push(context.Context, *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error)
+}
+
+type SegmentWriterClient interface {
+	Push(context.Context, *connect.Request[segmentwriterv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error)
 }
 
 const (
@@ -109,6 +114,8 @@ type Distributor struct {
 	bytesReceivedTotalStats *usagestats.Counter
 	profileReceivedStats    *usagestats.MultiCounter
 	profileSizeStats        *usagestats.MultiStatistics
+
+	segmentWriterClient SegmentWriterClient
 }
 
 type Limits interface {
@@ -131,7 +138,7 @@ type Limits interface {
 	aggregator.Limits
 }
 
-func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactory, limits Limits, reg prometheus.Registerer, logger log.Logger, clientsOptions ...connect.ClientOption) (*Distributor, error) {
+func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactory, limits Limits, reg prometheus.Registerer, logger log.Logger, swclient SegmentWriterClient, clientsOptions ...connect.ClientOption) (*Distributor, error) {
 	clientsOptions = append(
 		connectapi.DefaultClientOptions(),
 		clientsOptions...,
@@ -156,6 +163,7 @@ func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactor
 		bytesReceivedTotalStats: usagestats.NewCounter("distributor_bytes_received_total"),
 		profileReceivedStats:    usagestats.NewMultiCounter("distributor_profiles_received", "lang"),
 		profileSizeStats:        usagestats.NewMultiStatistics("distributor_profile_sizes", "lang"),
+		segmentWriterClient:     swclient,
 	}
 	var err error
 
@@ -409,6 +417,9 @@ func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.Pu
 	for _, series := range req.Series {
 		series.Labels = d.limitMaxSessionsPerSeries(maxSessionsPerSeries, series.Labels)
 	}
+
+	// TODO(kolesnikovae): Send profiles to segment writers.
+
 	usageGroups := d.limits.DistributorUsageGroups(tenantID)
 
 	// Next we split profiles by labels and apply relabel rules.
