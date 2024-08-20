@@ -89,6 +89,9 @@ func main() {
 	bucketWebCmd := bucketCmd.Command("web", "Run the web tool for visualizing blocks in object-store buckets.")
 	bucketWebParams := addBucketWebToolParams(bucketWebCmd)
 
+	readyCmd := app.Command("ready", "Check Pyroscope health.")
+	readyParams := addReadyParams(readyCmd)
+
 	// parse command line arguments
 	parsedCmd := kingpin.MustParse(app.Parse(os.Args[1:]))
 
@@ -151,17 +154,26 @@ func main() {
 		if err := blocksCompact(ctx, cfg.blocks.compact.src, cfg.blocks.compact.dst, cfg.blocks.compact.shards); err != nil {
 			os.Exit(checkError(err))
 		}
+	case readyCmd.FullCommand():
+		if err := ready(ctx, readyParams); err != nil {
+			os.Exit(checkError(err))
+		}
 	default:
 		level.Error(logger).Log("msg", "unknown command", "cmd", parsedCmd)
 	}
 }
 
 func checkError(err error) int {
-	if err != nil {
+	switch err {
+	case nil:
+		return 0
+	case notReadyErr:
+		// The reason for the failed ready is already logged, so just exit with
+		// an error code.
+	default:
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		return 1
 	}
-	return 0
+	return 1
 }
 
 type contextKey uint8
