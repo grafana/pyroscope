@@ -69,6 +69,16 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	cfg.Raft.RegisterFlagsWithPrefix(prefix+"raft.", f)
 }
 
+func (cfg *Config) Validate() error {
+	if cfg.Address == "" {
+		return fmt.Errorf("metastore.address is required")
+	}
+	if err := cfg.GRPCClientConfig.Validate(); err != nil {
+		return err
+	}
+	return cfg.Raft.Validate()
+}
+
 func (cfg *RaftConfig) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.StringVar(&cfg.Dir, prefix+"dir", "./data-metastore/raft", "")
 	f.Var((*flagext.StringSlice)(&cfg.BootstrapPeers), prefix+"bootstrap-peers", "")
@@ -77,6 +87,11 @@ func (cfg *RaftConfig) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.StringVar(&cfg.ServerID, prefix+"server-id", "localhost:9099", "")
 	f.StringVar(&cfg.AdvertiseAddress, prefix+"advertise-address", "localhost:9099", "")
 	f.DurationVar(&cfg.ApplyTimeout, prefix+"apply-timeout", 5*time.Second, "")
+}
+
+func (cfg *RaftConfig) Validate() error {
+	// TODO(kolesnikovae): Check the params.
+	return nil
 }
 
 type Metastore struct {

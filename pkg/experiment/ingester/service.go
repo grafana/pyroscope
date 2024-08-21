@@ -4,33 +4,33 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	segmentWriterV1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
 	"time"
-
-	"github.com/google/uuid"
-
-	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
-	"github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/grafana/pyroscope/pkg/tenant"
-	"github.com/grafana/pyroscope/pkg/validation"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/google/uuid"
+	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	segmentWriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
+	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
+	"github.com/grafana/pyroscope/pkg/pprof"
+	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 type Config struct {
+	GRPCClientConfig grpcclient.Config     `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with the segment writer."`
 	LifecyclerConfig ring.LifecyclerConfig `yaml:"lifecycler,omitempty"`
 	SegmentDuration  time.Duration         `yaml:"segmentDuration,omitempty"`
 	Async            bool                  `yaml:"async,omitempty"` //todo make it pertenant
@@ -45,7 +45,11 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 }
 
 func (cfg *Config) Validate() error {
-	return nil
+	// TODO(kolesnikovae): implement.
+	if err := cfg.LifecyclerConfig.Validate(); err != nil {
+		return err
+	}
+	return cfg.GRPCClientConfig.Validate()
 }
 
 type SegmentWriterService struct {
@@ -150,7 +154,7 @@ func (i *SegmentWriterService) stopping(_ error) error {
 	return errs.Err()
 }
 
-func (i *SegmentWriterService) Push(ctx context.Context, req *connect.Request[segmentWriterV1.PushRequest]) (*connect.Response[segmentWriterV1.PushResponse], error) {
+func (i *SegmentWriterService) Push(ctx context.Context, req *connect.Request[segmentWriterv1.PushRequest]) (*connect.Response[segmentWriterv1.PushResponse], error) {
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -164,7 +168,7 @@ func (i *SegmentWriterService) Push(ctx context.Context, req *connect.Request[se
 		return nil, err
 	}
 	if i.cfg.Async {
-		return connect.NewResponse(&segmentWriterV1.PushResponse{}), nil
+		return connect.NewResponse(&segmentWriterv1.PushResponse{}), nil
 	}
 	t1 := time.Now()
 	if err = wait.waitFlushed(ctx); err != nil {
@@ -178,10 +182,10 @@ func (i *SegmentWriterService) Push(ctx context.Context, req *connect.Request[se
 		return nil, err
 	}
 	i.segmentWriter.metrics.segmentFlushWaitDuration.WithLabelValues(tenantID).Observe(time.Since(t1).Seconds())
-	return connect.NewResponse(&segmentWriterV1.PushResponse{}), nil
+	return connect.NewResponse(&segmentWriterv1.PushResponse{}), nil
 }
 
-func (i *SegmentWriterService) ingestToSegment(ctx context.Context, segment segmentIngest, series *segmentWriterV1.RawProfileSeries, tenantID string) error {
+func (i *SegmentWriterService) ingestToSegment(ctx context.Context, segment segmentIngest, series *segmentWriterv1.RawProfileSeries, tenantID string) error {
 	sample := series.Sample
 	id, err := uuid.Parse(sample.ID)
 	if err != nil {

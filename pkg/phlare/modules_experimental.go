@@ -19,6 +19,9 @@ import (
 )
 
 func (f *Phlare) initSegmentWriterRing() (_ services.Service, err error) {
+	if err = f.Cfg.SegmentWriter.LifecyclerConfig.Validate(); err != nil {
+		return nil, err
+	}
 	f.segmentWriterRing, err = ring.New(
 		f.Cfg.SegmentWriter.LifecyclerConfig.RingConfig,
 		"segment-writer", "ring",
@@ -28,11 +31,14 @@ func (f *Phlare) initSegmentWriterRing() (_ services.Service, err error) {
 	if err != nil {
 		return nil, err
 	}
-	f.API.RegisterRing(f.segmentWriterRing)
+	f.API.RegisterSegmentWriterRing(f.segmentWriterRing)
 	return f.segmentWriterRing, nil
 }
 
 func (f *Phlare) initSegmentWriter() (services.Service, error) {
+	if err := f.Cfg.SegmentWriter.Validate(); err != nil {
+		return nil, err
+	}
 	ingester, err := segmentwriter.New(
 		f.context(),
 		f.Cfg.SegmentWriter,
@@ -47,6 +53,9 @@ func (f *Phlare) initSegmentWriter() (services.Service, error) {
 }
 
 func (f *Phlare) initCompactionWorker() (svc services.Service, err error) {
+	if err = f.Cfg.CompactionWorker.Validate(); err != nil {
+		return nil, err
+	}
 	logger := log.With(f.logger, "component", "compaction-worker")
 	f.compactionWorker, err = compactionworker.New(f.Cfg.CompactionWorker, logger, f.metastoreClient, f.storageBucket, f.reg)
 	if err != nil {
@@ -56,6 +65,9 @@ func (f *Phlare) initCompactionWorker() (svc services.Service, err error) {
 }
 
 func (f *Phlare) initMetastore() (services.Service, error) {
+	if err := f.Cfg.Metastore.Validate(); err != nil {
+		return nil, err
+	}
 	logger := log.With(f.logger, "component", "metastore")
 	m, err := metastore.New(f.Cfg.Metastore, f.TenantLimits, logger, f.reg, f.healthService, f.metastoreClient)
 	if err != nil {
@@ -67,6 +79,9 @@ func (f *Phlare) initMetastore() (services.Service, error) {
 }
 
 func (f *Phlare) initMetastoreClient() (services.Service, error) {
+	if err := f.Cfg.Metastore.Validate(); err != nil {
+		return nil, err
+	}
 	mc, err := metastoreclient.New(f.Cfg.Metastore.Address, f.Cfg.Metastore.GRPCClientConfig, f.logger)
 	if err != nil {
 		return nil, err
@@ -76,6 +91,9 @@ func (f *Phlare) initMetastoreClient() (services.Service, error) {
 }
 
 func (f *Phlare) initQueryBackend() (services.Service, error) {
+	if err := f.Cfg.QueryBackend.Validate(); err != nil {
+		return nil, err
+	}
 	br := querybackend.NewBlockReader(f.logger, f.storageBucket)
 	logger := log.With(f.logger, "component", "query-backend")
 	b, err := querybackend.New(f.Cfg.QueryBackend, logger, f.reg, f.queryBackendClient, br)
@@ -87,6 +105,9 @@ func (f *Phlare) initQueryBackend() (services.Service, error) {
 }
 
 func (f *Phlare) initQueryBackendClient() (services.Service, error) {
+	if err := f.Cfg.QueryBackend.Validate(); err != nil {
+		return nil, err
+	}
 	c, err := querybackendclient.New(
 		f.Cfg.QueryBackend.Address,
 		f.Cfg.QueryBackend.GRPCClientConfig,

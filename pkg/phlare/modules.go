@@ -372,7 +372,7 @@ func (f *Phlare) initIngesterRing() (_ services.Service, err error) {
 	if err != nil {
 		return nil, err
 	}
-	f.API.RegisterRing(f.ingesterRing)
+	f.API.RegisterIngesterRing(f.ingesterRing)
 	return f.ingesterRing, nil
 }
 

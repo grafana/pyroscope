@@ -40,9 +40,6 @@ func (c *Client) starting(context.Context) error { return nil }
 func (c *Client) stopping(error) error           { return c.conn.Close() }
 
 func dial(address string, grpcClientConfig grpcclient.Config, _ log.Logger) (*grpc.ClientConn, error) {
-	if err := grpcClientConfig.Validate(); err != nil {
-		return nil, err
-	}
 	options, err := grpcClientConfig.DialOption(nil, nil)
 	if err != nil {
 		return nil, err

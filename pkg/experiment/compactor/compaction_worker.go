@@ -55,6 +55,11 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.StringVar(&cfg.TempDir, prefix+"temp-dir", tempdir, "Temporary directory for compaction jobs.")
 }
 
+func (cfg *Config) Validate() error {
+	// TODO(kolesnikovae): implement.
+	return nil
+}
+
 func New(config Config, logger log.Logger, metastoreClient *metastoreclient.Client, storage objstore.Bucket, reg prometheus.Registerer) (*Worker, error) {
 	w := &Worker{
 		config:          config,
