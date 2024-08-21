@@ -19,7 +19,7 @@ a piece of work is finished it should:
 
 To be able to run make targets you'll need to install:
 
-- [Go](https://go.dev/doc/install) (> 1.19)
+- [Go](https://go.dev/doc/install) (>= 1.21)
 - [Docker](https://docs.docker.com/engine/install/)
 
 All other required tools will be automatically downloaded `$(pwd)/.tmp/bin`.
@@ -85,6 +85,16 @@ replace `image: grafana/pyroscope` with the local tag name you got from docker-i
     ports:
       - '4040:4040'
 ```
+
+#### Run with Pyroscope with embedded Grafana + Explore Profiles
+
+In order to quickly test the whole stack it is possible to run an embedded Grafana by using target parameter:
+
+```
+go run ./cmd/pyroscope --target all,embedded-grafana
+```
+
+This will start additional to Pyroscope on `:4040`, the embedded Grafana on port `:4041`.
 
 #### Front end development
 
