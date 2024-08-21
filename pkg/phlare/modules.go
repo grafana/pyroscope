@@ -456,6 +456,7 @@ func (f *Phlare) initServer() (services.Service, error) {
 	// Not all default middleware works with http2 so we'll add then manually.
 	// see https://github.com/grafana/pyroscope/issues/231
 	f.Cfg.Server.DoNotAddDefaultHTTPMiddleware = true
+	f.Cfg.Server.GRPCMiddleware = append(f.Cfg.Server.GRPCMiddleware, util.GRPCRecoveryInterceptor)
 
 	f.setupWorkerTimeout()
 	if f.isModuleActive(QueryScheduler) {
