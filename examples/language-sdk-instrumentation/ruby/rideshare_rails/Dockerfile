@@ -14,7 +14,6 @@ RUN bundle config --global frozen 1
 RUN bundle install --without development test
 
 COPY app /usr/src/app/app
-COPY bin /usr/src/app/bin
 COPY config /usr/src/app/config
 COPY public /usr/src/app/public
 
