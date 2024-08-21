@@ -28,7 +28,7 @@ const grpcServiceConfig = `{
 
 type ClientPool struct{ pool *ring_client.Pool }
 
-func NewClient(ring ring.ReadRing, logger log.Logger, grpcClientConfig grpcclient.Config) (*ClientPool, error) {
+func NewClientPool(ring ring.ReadRing, logger log.Logger, grpcClientConfig grpcclient.Config) (*ClientPool, error) {
 	p, err := newSegmentWriterRingClientPool(ring, logger, grpcClientConfig)
 	if err != nil {
 		return nil, err

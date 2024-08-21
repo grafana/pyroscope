@@ -199,6 +199,8 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 			_ = f.Value.Set("1")
 		case "query-scheduler.service-discovery-mode":
 			_ = f.Value.Set(schedulerdiscovery.ModeRing)
+		case "segment-writer.grpc-client-config.connect-timeout":
+			_ = f.Value.Set("1s")
 		}
 		fs.Var(f.Value, f.Name, f.Usage)
 	})
