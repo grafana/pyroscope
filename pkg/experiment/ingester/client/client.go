@@ -2,6 +2,7 @@ package sewgmentwriterclient
 
 import (
 	"io"
+	"math"
 	"time"
 
 	"github.com/go-kit/log"
@@ -10,10 +11,12 @@ import (
 	ring_client "github.com/grafana/dskit/ring/client"
 	"github.com/opentracing-contrib/go-grpc"
 	"github.com/opentracing/opentracing-go"
+	"github.com/sony/gobreaker/v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
 	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
+	"github.com/grafana/pyroscope/pkg/util/circuitbreaker"
 	"github.com/grafana/pyroscope/pkg/util/health"
 )
 
@@ -44,15 +47,31 @@ func (p *ClientPool) GetClientFor(addr string) (segmentwriterv1.SegmentWriterSer
 	return c.(segmentwriterv1.SegmentWriterServiceClient), nil
 }
 
-func newSegmentWriterRingClientPool(ring ring.ReadRing, logger log.Logger, grpcClientConfig grpcclient.Config) (*ring_client.Pool, error) {
+func newSegmentWriterRingClientPool(rring ring.ReadRing, logger log.Logger, grpcClientConfig grpcclient.Config) (*ring_client.Pool, error) {
 	options, err := grpcClientConfig.DialOption(nil, nil)
 	if err != nil {
 		return nil, err
 	}
-	factory := newSegmentWriterPoolFactory(append(options,
-		grpc.WithUnaryInterceptor(otgrpc.OpenTracingClientInterceptor(opentracing.GlobalTracer())),
-		grpc.WithDefaultServiceConfig(grpcServiceConfig),
-	)...)
+
+	// TODO(kolesnikovae): Make the circuit breaker settings configurable?
+	cbconfig := gobreaker.Settings{
+		MaxRequests: math.MaxUint32,
+		Interval:    time.Second,
+		Timeout:     time.Second * 5,
+		ReadyToTrip: func(counts gobreaker.Counts) bool {
+			failureRatio := float64(counts.TotalFailures) / float64(counts.Requests)
+			return counts.Requests >= 10 && failureRatio >= 0.6
+		},
+	}
+
+	// Note that interceptors are created per client.
+	factory := newSegmentWriterPoolFactory(func(desc ring.InstanceDesc) []grpc.DialOption {
+		return append(options,
+			grpc.WithUnaryInterceptor(circuitbreaker.UnaryClientInterceptor(gobreaker.NewCircuitBreaker[any](cbconfig))),
+			grpc.WithUnaryInterceptor(otgrpc.OpenTracingClientInterceptor(opentracing.GlobalTracer())),
+			grpc.WithDefaultServiceConfig(grpcServiceConfig),
+		)
+	})
 
 	p := ring_client.NewPool(
 		"segment-writer",
@@ -71,26 +90,27 @@ func newSegmentWriterRingClientPool(ring ring.ReadRing, logger log.Logger, grpcC
 		// An instance is healthy, if it's heartbeat timestamp
 		// is not older than a configured threshold (intrinsic
 		// to the ring itself).
-		ring_client.NewRingServiceDiscovery(ring),
+		ring_client.NewRingServiceDiscovery(rring),
 		factory,
 		nil, // Client count gauge is not used.
 		logger,
 	)
+
 	return p, nil
 }
 
 type segmentWriterPoolFactory struct {
-	options []grpc.DialOption
+	options func(ring.InstanceDesc) []grpc.DialOption
 }
 
-func newSegmentWriterPoolFactory(options ...grpc.DialOption) ring_client.PoolFactory {
+func newSegmentWriterPoolFactory(options func(ring.InstanceDesc) []grpc.DialOption) ring_client.PoolFactory {
 	return &segmentWriterPoolFactory{
 		options: options,
 	}
 }
 
 func (f *segmentWriterPoolFactory) FromInstance(inst ring.InstanceDesc) (ring_client.PoolClient, error) {
-	conn, err := grpc.Dial(inst.Addr, f.options...)
+	conn, err := grpc.Dial(inst.Addr, f.options(inst)...)
 	if err != nil {
 		return nil, err
 	}
