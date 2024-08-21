@@ -1,0 +1,35 @@
+version: '3'
+services:
+  pyroscope:
+    image: grafana/pyroscope
+    ports:
+      - '4040:4040'
+
+  us-east:
+    ports:
+      - 5000
+    environment:
+      - REGION=us-east
+    build:
+      context: .
+
+  eu-north:
+    ports:
+      - 5000
+    environment:
+      - REGION=eu-north
+    build:
+      context: .
+
+  ap-south:
+    ports:
+      - 5000
+    environment:
+      - REGION=ap-south
+    build:
+      context: .
+
+  load-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile.load-generator
