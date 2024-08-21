@@ -15,6 +15,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -272,4 +273,33 @@ func TestProfileTypeNames(t *testing.T) {
 	names, err := a.profileTypeNames()
 	require.NoError(t, err)
 	require.Equal(t, []string{"test-profile-type-0", "test-profile-type-1", "test-profile-type-2", "test-profile-type-3", "test-profile-type-4"}, names)
+}
+
+func TestIndexAddOutOfOrder(t *testing.T) {
+	a, err := newProfileIndex(32, NewHeadMetricsWithPrefix(prometheus.NewRegistry(), ""))
+	require.NoError(t, err)
+
+	lb1 := phlaremodel.Labels([]*typesv1.LabelPair{
+		{Name: "__name__", Value: "memory"},
+		{Name: "__sample__type__", Value: "bytes"},
+		{Name: "bar", Value: "1"},
+	})
+	sort.Sort(lb1)
+
+	ts := []uint64{10, 20, 0}
+
+	for _, t := range ts {
+		a.Add(&v1.InMemoryProfile{
+			ID:                uuid.New(),
+			TimeNanos:         int64(t),
+			SeriesFingerprint: model.Fingerprint(lb1.Hash()),
+		}, lb1, "memory")
+	}
+
+	_, profiles, err := a.Flush(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, 3, len(profiles))
+	assert.Equal(t, int64(0), profiles[0].TimeNanos)
+	assert.Equal(t, int64(10), profiles[1].TimeNanos)
+	assert.Equal(t, int64(20), profiles[2].TimeNanos)
 }
