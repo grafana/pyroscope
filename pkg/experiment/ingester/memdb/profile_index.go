@@ -15,13 +15,10 @@ import (
 )
 
 type profileSeries struct {
-	lbs phlaremodel.Labels
-	fp  model.Fingerprint
-
+	lbs              phlaremodel.Labels
+	fp               model.Fingerprint
 	minTime, maxTime int64
-
-	// profiles in memory
-	profiles []*schemav1.InMemoryProfile
+	profiles         []*schemav1.InMemoryProfile
 }
 
 type profilesIndex struct {
@@ -171,6 +168,8 @@ func (pi *profilesIndex) Flush(ctx context.Context) ([]byte, []schemav1.InMemory
 }
 
 func (pi *profilesIndex) profileTypeNames() ([]string, error) {
+	pi.mutex.RLock()
+	defer pi.mutex.RUnlock()
 	ptypes, err := pi.ix.LabelValues(phlaremodel.LabelNameProfileType, nil)
 	sort.Strings(ptypes)
 	return ptypes, err
