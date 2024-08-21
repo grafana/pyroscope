@@ -286,6 +286,19 @@ func TestIndexAddOutOfOrder(t *testing.T) {
 	})
 	sort.Sort(lb1)
 
+	lb2 := phlaremodel.Labels([]*typesv1.LabelPair{
+		{Name: "__name__", Value: "memory"},
+		{Name: "__sample__type__", Value: "bytes"},
+		{Name: "bar", Value: "2"},
+	})
+	sort.Sort(lb2)
+
+	a.Add(&v1.InMemoryProfile{
+		ID:                uuid.New(),
+		TimeNanos:         239,
+		SeriesFingerprint: model.Fingerprint(lb2.Hash()),
+	}, lb2, "memory")
+
 	ts := []uint64{10, 20, 0}
 
 	for _, t := range ts {
@@ -296,10 +309,24 @@ func TestIndexAddOutOfOrder(t *testing.T) {
 		}, lb1, "memory")
 	}
 
+	a.Add(&v1.InMemoryProfile{
+		ID:                uuid.New(),
+		TimeNanos:         239,
+		SeriesFingerprint: model.Fingerprint(lb2.Hash()),
+	}, lb2, "memory")
+
 	_, profiles, err := a.Flush(context.Background())
 	require.NoError(t, err)
-	assert.Equal(t, 3, len(profiles))
+	assert.Equal(t, 5, len(profiles))
 	assert.Equal(t, int64(0), profiles[0].TimeNanos)
 	assert.Equal(t, int64(10), profiles[1].TimeNanos)
 	assert.Equal(t, int64(20), profiles[2].TimeNanos)
+	assert.Equal(t, int64(239), profiles[3].TimeNanos)
+	assert.Equal(t, int64(239), profiles[3].TimeNanos)
+
+	assert.Equal(t, uint32(0), profiles[0].SeriesIndex)
+	assert.Equal(t, uint32(0), profiles[1].SeriesIndex)
+	assert.Equal(t, uint32(0), profiles[2].SeriesIndex)
+	assert.Equal(t, uint32(1), profiles[3].SeriesIndex)
+	assert.Equal(t, uint32(1), profiles[4].SeriesIndex)
 }
