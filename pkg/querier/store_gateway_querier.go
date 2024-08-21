@@ -206,7 +206,7 @@ func (q *Querier) selectTreeFromStoreGateway(ctx context.Context, req *querierv1
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	// send the first initial request to all ingesters.
-	g, gCtx := errgroup.WithContext(ctx)
+	g, _ := errgroup.WithContext(ctx)
 	for _, r := range responses {
 		r := r
 		blockHints, err := BlockHints(plan, r.addr)
@@ -231,7 +231,7 @@ func (q *Querier) selectTreeFromStoreGateway(ctx context.Context, req *querierv1
 	}
 
 	// merge all profiles
-	return selectMergeTree(gCtx, responses)
+	return selectMergeTree(ctx, responses)
 }
 
 func (q *Querier) selectProfileFromStoreGateway(ctx context.Context, req *querierv1.SelectMergeProfileRequest, plan map[string]*blockPlanEntry) (*googlev1.Profile, error) {
@@ -266,7 +266,7 @@ func (q *Querier) selectProfileFromStoreGateway(ctx context.Context, req *querie
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	// send the first initial request to all ingesters.
-	g, gCtx := errgroup.WithContext(ctx)
+	g, _ := errgroup.WithContext(ctx)
 	for _, r := range responses {
 		r := r
 		blockHints, err := BlockHints(plan, r.addr)
@@ -292,7 +292,7 @@ func (q *Querier) selectProfileFromStoreGateway(ctx context.Context, req *querie
 	}
 
 	// merge all profiles
-	return selectMergePprofProfile(gCtx, profileType, responses)
+	return selectMergePprofProfile(ctx, profileType, responses)
 }
 
 func (q *Querier) selectSeriesFromStoreGateway(ctx context.Context, req *ingesterv1.MergeProfilesLabelsRequest, plan map[string]*blockPlanEntry) ([]ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels], error) {
@@ -434,7 +434,7 @@ func (q *Querier) selectSpanProfileFromStoreGateway(ctx context.Context, req *qu
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	// send the first initial request to all ingesters.
-	g, gCtx := errgroup.WithContext(ctx)
+	g, _ := errgroup.WithContext(ctx)
 	for _, r := range responses {
 		r := r
 		blockHints, err := BlockHints(plan, r.addr)
@@ -460,7 +460,7 @@ func (q *Querier) selectSpanProfileFromStoreGateway(ctx context.Context, req *qu
 	}
 
 	// merge all profiles
-	return selectMergeSpanProfile(gCtx, responses)
+	return selectMergeSpanProfile(ctx, responses)
 }
 
 func (q *Querier) blockSelectFromStoreGateway(ctx context.Context, req *ingestv1.BlockMetadataRequest) ([]ResponseFromReplica[[]*typesv1.BlockInfo], error) {

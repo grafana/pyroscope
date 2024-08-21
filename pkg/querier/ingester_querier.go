@@ -111,7 +111,7 @@ func (q *Querier) selectTreeFromIngesters(ctx context.Context, req *querierv1.Se
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	// send the first initial request to all ingesters.
-	g, gCtx := errgroup.WithContext(ctx)
+	g, _ := errgroup.WithContext(ctx)
 	for idx := range responses {
 		r := responses[idx]
 		blockHints, err := BlockHints(plan, r.addr)
@@ -137,7 +137,7 @@ func (q *Querier) selectTreeFromIngesters(ctx context.Context, req *querierv1.Se
 	}
 
 	// merge all profiles
-	return selectMergeTree(gCtx, responses)
+	return selectMergeTree(ctx, responses)
 }
 
 func (q *Querier) selectProfileFromIngesters(ctx context.Context, req *querierv1.SelectMergeProfileRequest, plan blockPlan) (*googlev1.Profile, error) {
@@ -168,7 +168,7 @@ func (q *Querier) selectProfileFromIngesters(ctx context.Context, req *querierv1
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	// send the first initial request to all ingesters.
-	g, gCtx := errgroup.WithContext(ctx)
+	g, _ := errgroup.WithContext(ctx)
 	for idx := range responses {
 		r := responses[idx]
 		blockHints, err := BlockHints(plan, r.addr)
@@ -196,7 +196,7 @@ func (q *Querier) selectProfileFromIngesters(ctx context.Context, req *querierv1
 
 	// merge all profiles
 	span.LogFields(otlog.String("msg", "selectMergePprofProfile"))
-	return selectMergePprofProfile(gCtx, profileType, responses)
+	return selectMergePprofProfile(ctx, profileType, responses)
 }
 
 func (q *Querier) selectSeriesFromIngesters(ctx context.Context, req *ingesterv1.MergeProfilesLabelsRequest, plan map[string]*blockPlanEntry) ([]ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels], error) {
@@ -321,7 +321,7 @@ func (q *Querier) selectSpanProfileFromIngesters(ctx context.Context, req *queri
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	// send the first initial request to all ingesters.
-	g, gCtx := errgroup.WithContext(ctx)
+	g, _ := errgroup.WithContext(ctx)
 	for idx := range responses {
 		r := responses[idx]
 		blockHints, err := BlockHints(plan, r.addr)
@@ -348,7 +348,7 @@ func (q *Querier) selectSpanProfileFromIngesters(ctx context.Context, req *queri
 	}
 
 	// merge all profiles
-	return selectMergeSpanProfile(gCtx, responses)
+	return selectMergeSpanProfile(ctx, responses)
 }
 
 func (q *Querier) blockSelectFromIngesters(ctx context.Context, req *ingestv1.BlockMetadataRequest) ([]ResponseFromReplica[[]*typesv1.BlockInfo], error) {

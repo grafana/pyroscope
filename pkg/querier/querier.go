@@ -237,11 +237,11 @@ func (q *Querier) LabelValues(ctx context.Context, req *connect.Request[typesv1.
 
 	var responses []ResponseFromReplica[[]string]
 	var lock sync.Mutex
-	group, ctx := errgroup.WithContext(ctx)
+	group, gCtx := errgroup.WithContext(ctx)
 
 	if storeQueries.ingester.shouldQuery {
 		group.Go(func() error {
-			ir, err := q.labelValuesFromIngesters(ctx, storeQueries.ingester.LabelValuesRequest(req.Msg))
+			ir, err := q.labelValuesFromIngesters(gCtx, storeQueries.ingester.LabelValuesRequest(req.Msg))
 			if err != nil {
 				return err
 			}
@@ -255,7 +255,7 @@ func (q *Querier) LabelValues(ctx context.Context, req *connect.Request[typesv1.
 
 	if storeQueries.storeGateway.shouldQuery {
 		group.Go(func() error {
-			ir, err := q.labelValuesFromStoreGateway(ctx, storeQueries.storeGateway.LabelValuesRequest(req.Msg))
+			ir, err := q.labelValuesFromStoreGateway(gCtx, storeQueries.storeGateway.LabelValuesRequest(req.Msg))
 			if err != nil {
 				return err
 			}
@@ -307,11 +307,11 @@ func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[typesv1.L
 
 	var responses []ResponseFromReplica[[]string]
 	var lock sync.Mutex
-	group, ctx := errgroup.WithContext(ctx)
+	group, gCtx := errgroup.WithContext(ctx)
 
 	if storeQueries.ingester.shouldQuery {
 		group.Go(func() error {
-			ir, err := q.labelNamesFromIngesters(ctx, storeQueries.ingester.LabelNamesRequest(req.Msg))
+			ir, err := q.labelNamesFromIngesters(gCtx, storeQueries.ingester.LabelNamesRequest(req.Msg))
 			if err != nil {
 				return err
 			}
@@ -325,7 +325,7 @@ func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[typesv1.L
 
 	if storeQueries.storeGateway.shouldQuery {
 		group.Go(func() error {
-			ir, err := q.labelNamesFromStoreGateway(ctx, storeQueries.storeGateway.LabelNamesRequest(req.Msg))
+			ir, err := q.labelNamesFromStoreGateway(gCtx, storeQueries.storeGateway.LabelNamesRequest(req.Msg))
 			if err != nil {
 				return err
 			}
@@ -427,11 +427,11 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 
 	var responses []ResponseFromReplica[[]*typesv1.Labels]
 	var lock sync.Mutex
-	group, ctx := errgroup.WithContext(ctx)
+	group, gCtx := errgroup.WithContext(ctx)
 
 	if storeQueries.ingester.shouldQuery {
 		group.Go(func() error {
-			ir, err := q.seriesFromIngesters(ctx, storeQueries.ingester.SeriesRequest(req.Msg))
+			ir, err := q.seriesFromIngesters(gCtx, storeQueries.ingester.SeriesRequest(req.Msg))
 			if err != nil {
 				return err
 			}
@@ -445,7 +445,7 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 
 	if storeQueries.storeGateway.shouldQuery {
 		group.Go(func() error {
-			ir, err := q.seriesFromStoreGateway(ctx, storeQueries.storeGateway.SeriesRequest(req.Msg))
+			ir, err := q.seriesFromStoreGateway(gCtx, storeQueries.storeGateway.SeriesRequest(req.Msg))
 			if err != nil {
 				return err
 			}
@@ -690,11 +690,11 @@ func (q *Querier) selectTree(ctx context.Context, req *querierv1.SelectMergeStac
 		return q.selectTreeFromIngesters(ctx, storeQueries.ingester.MergeStacktracesRequest(req), plan)
 	}
 
-	g, ctx := errgroup.WithContext(ctx)
+	g, gCtx := errgroup.WithContext(ctx)
 	var ingesterTree, storegatewayTree *phlaremodel.Tree
 	g.Go(func() error {
 		var err error
-		ingesterTree, err = q.selectTreeFromIngesters(ctx, storeQueries.ingester.MergeStacktracesRequest(req), plan)
+		ingesterTree, err = q.selectTreeFromIngesters(gCtx, storeQueries.ingester.MergeStacktracesRequest(req), plan)
 		if err != nil {
 			return err
 		}
@@ -893,11 +893,11 @@ func (q *Querier) selectProfile(ctx context.Context, req *querierv1.SelectMergeP
 		return q.selectProfileFromIngesters(ctx, storeQueries.ingester.MergeProfileRequest(req), plan)
 	}
 
-	g, ctx := errgroup.WithContext(ctx)
+	g, gCtx := errgroup.WithContext(ctx)
 	var lock sync.Mutex
 	var merge pprof.ProfileMerge
 	g.Go(func() error {
-		ingesterProfile, err := q.selectProfileFromIngesters(ctx, storeQueries.ingester.MergeProfileRequest(req), plan)
+		ingesterProfile, err := q.selectProfileFromIngesters(gCtx, storeQueries.ingester.MergeProfileRequest(req), plan)
 		if err != nil {
 			return err
 		}
@@ -906,7 +906,7 @@ func (q *Querier) selectProfile(ctx context.Context, req *querierv1.SelectMergeP
 		return merge.Merge(ingesterProfile)
 	})
 	g.Go(func() error {
-		storegatewayProfile, err := q.selectProfileFromStoreGateway(ctx, storeQueries.storeGateway.MergeProfileRequest(req), plan)
+		storegatewayProfile, err := q.selectProfileFromStoreGateway(gCtx, storeQueries.storeGateway.MergeProfileRequest(req), plan)
 		if err != nil {
 			return err
 		}
@@ -1090,11 +1090,11 @@ func (q *Querier) selectSpanProfile(ctx context.Context, req *querierv1.SelectMe
 		return q.selectSpanProfileFromIngesters(ctx, storeQueries.ingester.MergeSpanProfileRequest(req), plan)
 	}
 
-	g, ctx := errgroup.WithContext(ctx)
+	g, gCtx := errgroup.WithContext(ctx)
 	var ingesterTree, storegatewayTree *phlaremodel.Tree
 	g.Go(func() error {
 		var err error
-		ingesterTree, err = q.selectSpanProfileFromIngesters(ctx, storeQueries.ingester.MergeSpanProfileRequest(req), plan)
+		ingesterTree, err = q.selectSpanProfileFromIngesters(gCtx, storeQueries.ingester.MergeSpanProfileRequest(req), plan)
 		if err != nil {
 			return err
 		}
@@ -1102,7 +1102,7 @@ func (q *Querier) selectSpanProfile(ctx context.Context, req *querierv1.SelectMe
 	})
 	g.Go(func() error {
 		var err error
-		storegatewayTree, err = q.selectSpanProfileFromStoreGateway(ctx, storeQueries.storeGateway.MergeSpanProfileRequest(req), plan)
+		storegatewayTree, err = q.selectSpanProfileFromStoreGateway(gCtx, storeQueries.storeGateway.MergeSpanProfileRequest(req), plan)
 		if err != nil {
 			return err
 		}
