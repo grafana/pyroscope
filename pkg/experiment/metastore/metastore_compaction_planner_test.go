@@ -12,7 +12,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/util"
 )
 
-func TestMaintainSeparateQueues(t *testing.T) {
+func Test_MaintainSeparateBlockQueues(t *testing.T) {
 	m := initState(t)
 	_ = m.db.boltdb.Update(func(tx *bbolt.Tx) error {
 		_ = m.compactBlock(createBlock(1, 0, "", 0), tx, 0)
@@ -29,9 +29,10 @@ func TestMaintainSeparateQueues(t *testing.T) {
 	require.Equal(t, 2, getQueueLen(m, 1, "", 0))
 	require.Equal(t, 2, getQueueLen(m, 1, "tenant1", 1))
 	require.Equal(t, 1, getQueueLen(m, 1, "tenant2", 1))
+	verifyCompactionState(t, m)
 }
 
-func TestJobCreation(t *testing.T) {
+func Test_CreateJobs(t *testing.T) {
 	m := initState(t)
 	_ = m.db.boltdb.Update(func(tx *bbolt.Tx) error {
 		for i := 0; i < 420; i++ {
@@ -44,6 +45,7 @@ func TestJobCreation(t *testing.T) {
 	require.Equal(t, 5, getQueueLen(m, 2, "", 0))
 	require.Equal(t, 5, getQueueLen(m, 3, "", 0))
 	require.Equal(t, 20, len(m.compactionJobQueue.jobs))
+	verifyCompactionState(t, m)
 }
 
 func initState(t *testing.T) *metastoreState {
@@ -74,4 +76,25 @@ func getQueueLen(m *metastoreState, shard int, tenant string, level int) int {
 		tenant: tenant,
 		shard:  uint32(shard),
 	}).blocksByLevel[uint32(level)])
+}
+
+func verifyCompactionState(t *testing.T, m *metastoreState) {
+	stateFromDb := newMetastoreState(util.Logger, m.db, prometheus.DefaultRegisterer)
+	err := m.db.boltdb.View(func(tx *bbolt.Tx) error {
+		return stateFromDb.restoreCompactionPlan(tx)
+	})
+	require.NoError(t, err)
+
+	require.Equalf(t, len(m.compactionJobQueue.jobs), len(stateFromDb.compactionJobQueue.jobs), "job queues different")
+	for name, _ := range m.compactionJobQueue.jobs {
+		require.Truef(t, stateFromDb.compactionJobQueue.jobs[name] != nil, "missing compaction job %s", name)
+	}
+	require.Equalf(t, len(m.compactionJobBlockQueues), len(stateFromDb.compactionJobBlockQueues), "block queues different")
+	for key := range m.compactionJobBlockQueues {
+		require.Truef(t, stateFromDb.compactionJobBlockQueues[key] != nil, "no queue for key %v", key)
+		for level, blocks := range m.compactionJobBlockQueues[key].blocksByLevel {
+			require.Truef(t, stateFromDb.compactionJobBlockQueues[key].blocksByLevel[level] != nil, "no queue for level %d", level)
+			require.Equalf(t, blocks, stateFromDb.compactionJobBlockQueues[key].blocksByLevel[level], "queues different for level %d", level)
+		}
+	}
 }
