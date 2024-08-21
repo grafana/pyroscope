@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
@@ -18,13 +17,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	segmentWriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
+	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
 	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
@@ -54,6 +52,7 @@ func (cfg *Config) Validate() error {
 
 type SegmentWriterService struct {
 	services.Service
+	segmentwriterv1.UnimplementedSegmentWriterServiceServer
 
 	cfg       Config
 	dbConfig  phlaredb.Config
@@ -154,26 +153,20 @@ func (i *SegmentWriterService) stopping(_ error) error {
 	return errs.Err()
 }
 
-func (i *SegmentWriterService) Push(ctx context.Context, req *connect.Request[segmentWriterv1.PushRequest]) (*connect.Response[segmentWriterv1.PushResponse], error) {
-	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
-	}
-	series := req.Msg.Series
-	var shard = shardKey(series.Shard)
-	wait, err := i.segmentWriter.ingest(shard, func(segment segmentIngest) error {
-		return i.ingestToSegment(ctx, segment, series, tenantID)
+func (i *SegmentWriterService) Push(ctx context.Context, req *segmentwriterv1.PushRequest) (*segmentwriterv1.PushResponse, error) {
+	wait, err := i.segmentWriter.ingest(shardKey(req.Shard), func(segment segmentIngest) error {
+		return i.ingestToSegment(ctx, segment, req)
 	})
 	if err != nil {
 		return nil, err
 	}
 	if i.cfg.Async {
-		return connect.NewResponse(&segmentWriterv1.PushResponse{}), nil
+		return &segmentwriterv1.PushResponse{}, nil
 	}
 	t1 := time.Now()
 	if err = wait.waitFlushed(ctx); err != nil {
-		i.segmentWriter.metrics.segmentFlushTimeouts.WithLabelValues(tenantID).Inc()
-		i.segmentWriter.metrics.segmentFlushWaitDuration.WithLabelValues(tenantID).Observe(time.Since(t1).Seconds())
+		i.segmentWriter.metrics.segmentFlushTimeouts.WithLabelValues(req.TenantId).Inc()
+		i.segmentWriter.metrics.segmentFlushWaitDuration.WithLabelValues(req.TenantId).Observe(time.Since(t1).Seconds())
 		if errors.Is(err, context.DeadlineExceeded) {
 			level.Error(i.logger).Log("msg", "flush timeout", "err", err)
 		} else {
@@ -181,22 +174,21 @@ func (i *SegmentWriterService) Push(ctx context.Context, req *connect.Request[se
 		}
 		return nil, err
 	}
-	i.segmentWriter.metrics.segmentFlushWaitDuration.WithLabelValues(tenantID).Observe(time.Since(t1).Seconds())
-	return connect.NewResponse(&segmentWriterv1.PushResponse{}), nil
+	i.segmentWriter.metrics.segmentFlushWaitDuration.WithLabelValues(req.TenantId).Observe(time.Since(t1).Seconds())
+	return &segmentwriterv1.PushResponse{}, nil
 }
 
-func (i *SegmentWriterService) ingestToSegment(ctx context.Context, segment segmentIngest, series *segmentWriterv1.RawProfileSeries, tenantID string) error {
-	sample := series.Sample
-	id, err := uuid.Parse(sample.ID)
+func (i *SegmentWriterService) ingestToSegment(ctx context.Context, segment segmentIngest, req *segmentwriterv1.PushRequest) error {
+	id, err := uuid.ParseBytes(req.ProfileId)
 	if err != nil {
 		return err
 	}
-	return pprof.FromBytes(sample.RawProfile, func(p *profilev1.Profile, size int) error {
-		if err = segment.ingest(ctx, tenantID, p, id, series.Labels); err != nil {
+	return pprof.FromBytes(req.Profile, func(p *profilev1.Profile, size int) error {
+		if err = segment.ingest(ctx, req.TenantId, p, id, req.Labels); err != nil {
 			reason := validation.ReasonOf(err)
 			if reason != validation.Unknown {
-				validation.DiscardedProfiles.WithLabelValues(string(reason), tenantID).Add(float64(1))
-				validation.DiscardedBytes.WithLabelValues(string(reason), tenantID).Add(float64(size))
+				validation.DiscardedProfiles.WithLabelValues(string(reason), req.TenantId).Add(float64(1))
+				validation.DiscardedBytes.WithLabelValues(string(reason), req.TenantId).Add(float64(size))
 			}
 		}
 		return nil

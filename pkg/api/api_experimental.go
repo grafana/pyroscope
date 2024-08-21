@@ -6,16 +6,16 @@ import (
 	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	querybackendv1 "github.com/grafana/pyroscope/api/gen/proto/go/querybackend/v1"
-	"github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1/segmentwriterv1connect"
+	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
 	segmentwriter "github.com/grafana/pyroscope/pkg/experiment/ingester"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore"
 	"github.com/grafana/pyroscope/pkg/experiment/querybackend"
 )
 
+// TODO(kolesnikovae): Recovery interceptor.
+
 func (a *API) RegisterSegmentWriter(svc *segmentwriter.SegmentWriterService) {
-	// TODO: Remove connect, add gRPC.
-	// segmentwriterv1.RegisterSegmentWriterServiceServer(a.server.GRPC, svc)
-	segmentwriterv1connect.RegisterSegmentWriterServiceHandler(a.server.HTTP, svc, a.connectOptionsAuthRecovery()...)
+	segmentwriterv1.RegisterSegmentWriterServiceServer(a.server.GRPC, svc)
 }
 
 // RegisterSegmentWriterRing registers the ring UI page associated with the distributor for writes.
