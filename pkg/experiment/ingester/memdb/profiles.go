@@ -8,12 +8,12 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	SegmentsParquetWriteBufferSize = 8 * 0x1000
+)
+
 func WriteProfiles(metrics *HeadMetrics, profiles []v1.InMemoryProfile) ([]byte, error) {
 	buf := &bytes.Buffer{}
-	const (
-		SegmentsParquetWriteBufferSize = 8 * 0x1000
-	)
-
 	w := parquet.NewGenericWriter[*v1.Profile](
 		buf,
 		parquet.PageBufferSize(SegmentsParquetWriteBufferSize),
