@@ -30,8 +30,8 @@ func mustHexDecode(s string) []byte {
 
 var exploreProfileReleases = releaseArtifacts{
 	{
-		URL:          "https://github.com/grafana/explore-profiles/releases/download/v0.1.0/grafana-pyroscope-app-169.zip",
-		Sha256Sum:    mustHexDecode("1f2e1cb984e6feb0a2438a264d02e842d865042995006b88295cd815093a1f3d"),
+		URL:          "https://github.com/grafana/explore-profiles/releases/download/v0.1.5/grafana-pyroscope-app-405.zip",
+		Sha256Sum:    mustHexDecode("6e133f49b0528633146ccf77bb07f09ea1e4aaac3ce9563df42cfd54f6f7e753"),
 		CompressType: CompressTypeZip,
 	},
 }
