@@ -43,6 +43,11 @@ type metastoreShard struct {
 	segments      map[string]*metastorev1.BlockMeta
 }
 
+type compactionJobBlockQueue struct {
+	mu            sync.Mutex
+	blocksByLevel map[uint32][]string
+}
+
 func newMetastoreState(logger log.Logger, db *boltdb, reg prometheus.Registerer) *metastoreState {
 	return &metastoreState{
 		logger:                   logger,
@@ -56,11 +61,13 @@ func newMetastoreState(logger log.Logger, db *boltdb, reg prometheus.Registerer)
 
 func (m *metastoreState) reset(db *boltdb) {
 	m.shardsMutex.Lock()
+	m.compactionMutex.Lock()
 	clear(m.shards)
 	clear(m.compactionJobBlockQueues)
 	m.compactionJobQueue = newJobQueue(jobLeaseDuration.Nanoseconds())
 	m.db = db
 	m.shardsMutex.Unlock()
+	m.compactionMutex.Unlock()
 }
 
 func (m *metastoreState) getOrCreateShard(shardID uint32) *metastoreShard {

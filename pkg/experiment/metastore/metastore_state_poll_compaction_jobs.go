@@ -28,11 +28,9 @@ func (m *Metastore) PollCompactionJobs(_ context.Context, req *compactorv1.PollC
 }
 
 type jobResult struct {
-	newBlocks       []*metastorev1.BlockMeta
-	deletedBlocks   []*metastorev1.BlockMeta
-	newJobs         []*compactionpb.CompactionJob
-	newQueuedBlocks []*metastorev1.BlockMeta
-	deletedJobs     []*compactionpb.CompactionJob
+	newBlocks     []*metastorev1.BlockMeta
+	deletedBlocks []*metastorev1.BlockMeta
+	deletedJobs   []*compactionpb.CompactionJob
 
 	newJobAssignments []*compactionpb.CompactionJob
 }
@@ -48,8 +46,6 @@ func (m *metastoreState) applyPollCompactionJobs(raft *raft.Log, request *compac
 	jResult := &jobResult{
 		newBlocks:         make([]*metastorev1.BlockMeta, 0),
 		deletedBlocks:     make([]*metastorev1.BlockMeta, 0),
-		newJobs:           make([]*compactionpb.CompactionJob, 0),
-		newQueuedBlocks:   make([]*metastorev1.BlockMeta, 0),
 		deletedJobs:       make([]*compactionpb.CompactionJob, 0),
 		newJobAssignments: make([]*compactionpb.CompactionJob, 0),
 	}
@@ -114,16 +110,6 @@ func (m *metastoreState) applyPollCompactionJobs(raft *raft.Log, request *compac
 	for _, b := range jResult.deletedBlocks {
 		m.getOrCreateShard(b.Shard).deleteSegment(b)
 		m.compactionMetrics.deletedBlocks.WithLabelValues(fmt.Sprint(b.Shard), b.TenantId, fmt.Sprint(b.CompactionLevel)).Inc()
-	}
-
-	for _, j := range jResult.newJobs {
-		m.addCompactionJob(j)
-		m.compactionMetrics.addedJobs.WithLabelValues(fmt.Sprint(j.Shard), j.TenantId, fmt.Sprint(j.CompactionLevel)).Inc()
-	}
-
-	for _, b := range jResult.newQueuedBlocks {
-		m.addBlockToCompactionJobQueue(b)
-		// already counted above
 	}
 
 	for _, j := range jResult.deletedJobs {
@@ -217,14 +203,8 @@ func (m *metastoreState) processCompletedJob(
 		jResult.newBlocks = append(jResult.newBlocks, b)
 
 		// create and store an optional compaction job
-		err, jobToAdd, blockForQueue := m.consumeBlock(b, tx, raftLogIndex)
-		if err != nil {
+		if err := m.compactBlock(b, tx, raftLogIndex); err != nil {
 			return err
-		}
-		if jobToAdd != nil {
-			jResult.newJobs = append(jResult.newJobs, jobToAdd)
-		} else if blockForQueue != nil {
-			jResult.newQueuedBlocks = append(jResult.newQueuedBlocks, blockForQueue)
 		}
 	}
 
@@ -264,7 +244,7 @@ func (m *metastoreState) findBlock(shard uint32, blockId string) *metastorev1.Bl
 }
 
 func (m *metastoreState) persistAssignedJob(tx *bbolt.Tx, job *compactionpb.CompactionJob) error {
-	return m.persistJob(tx, job, func(storedJob *compactionpb.CompactionJob) {
+	return m.persistJobUpdate(tx, job, func(storedJob *compactionpb.CompactionJob) {
 		storedJob.Status = job.Status
 		storedJob.LeaseExpiresAt = job.LeaseExpiresAt
 		storedJob.RaftLogIndex = job.RaftLogIndex
@@ -272,12 +252,12 @@ func (m *metastoreState) persistAssignedJob(tx *bbolt.Tx, job *compactionpb.Comp
 }
 
 func (m *metastoreState) persistJobDeadline(tx *bbolt.Tx, job *compactionpb.CompactionJob, leaseExpiresAt int64) error {
-	return m.persistJob(tx, job, func(storedJob *compactionpb.CompactionJob) {
+	return m.persistJobUpdate(tx, job, func(storedJob *compactionpb.CompactionJob) {
 		storedJob.LeaseExpiresAt = leaseExpiresAt
 	})
 }
 
-func (m *metastoreState) persistJob(tx *bbolt.Tx, job *compactionpb.CompactionJob, fn func(compactionJob *compactionpb.CompactionJob)) error {
+func (m *metastoreState) persistJobUpdate(tx *bbolt.Tx, job *compactionpb.CompactionJob, fn func(compactionJob *compactionpb.CompactionJob)) error {
 	jobBucketName, jobKey := keyForCompactionJob(job.Shard, job.TenantId, job.Name)
 	err := updateCompactionJobBucket(tx, jobBucketName, func(bucket *bbolt.Bucket) error {
 		storedJobData := bucket.Get(jobKey)
