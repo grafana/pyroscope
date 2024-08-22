@@ -175,9 +175,9 @@ func (s *metastoreShard) putSegment(segment *metastorev1.BlockMeta) {
 	s.segmentsMutex.Unlock()
 }
 
-func (s *metastoreShard) deleteSegment(segment *metastorev1.BlockMeta) {
+func (s *metastoreShard) deleteSegment(segmentId string) {
 	s.segmentsMutex.Lock()
-	delete(s.segments, segment.Id)
+	delete(s.segments, segmentId)
 	s.segmentsMutex.Unlock()
 }
 

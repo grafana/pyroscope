@@ -30,6 +30,8 @@ message CompactionJob {
   //
   // The lease is extended every time the owner reports a status update.
   int64 lease_expires_at = 8;
+  // The number of failures when processing this job. Used for retries.
+  uint32 failures = 9;
 }
 
 enum CompactionStatus {

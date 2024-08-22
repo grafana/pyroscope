@@ -85,18 +85,25 @@ func verifyCompactionState(t *testing.T, m *metastoreState) {
 	})
 	require.NoError(t, err)
 
-	require.Equalf(t, len(m.compactionJobQueue.jobs), len(stateFromDb.compactionJobQueue.jobs), "job queues different")
-	for name, job := range m.compactionJobQueue.jobs {
+	require.Equalf(t, len(m.compactionJobQueue.jobs), len(stateFromDb.compactionJobQueue.jobs), "compaction job queues different")
+	for name, jobEntry := range m.compactionJobQueue.jobs {
 		require.Truef(t, stateFromDb.compactionJobQueue.jobs[name] != nil, "missing compaction job %s", name)
-		require.Equalf(t, job, stateFromDb.compactionJobQueue.jobs[name], "compaction job different for %s, %v: %v", name, job, stateFromDb.compactionJobQueue.jobs[name])
+		require.Equalf(
+			t,
+			jobEntry.CompactionJob,
+			stateFromDb.compactionJobQueue.jobs[name].CompactionJob,
+			"compaction job different for %s, %v: %v",
+			name,
+			jobEntry.CompactionJob,
+			stateFromDb.compactionJobQueue.jobs[name].CompactionJob)
 	}
-	require.Equalf(t, len(m.compactionJobBlockQueues), len(stateFromDb.compactionJobBlockQueues), "block queues different")
+	require.Equalf(t, len(m.compactionJobBlockQueues), len(stateFromDb.compactionJobBlockQueues), "compaction block queues different")
 	for key := range m.compactionJobBlockQueues {
-		require.Truef(t, stateFromDb.compactionJobBlockQueues[key] != nil, "no queue for key %v", key)
+		require.Truef(t, stateFromDb.compactionJobBlockQueues[key] != nil, "no compaction block queue for key %v", key)
 		for level, blocks := range m.compactionJobBlockQueues[key].blocksByLevel {
-			require.Equalf(t, len(blocks), len(stateFromDb.compactionJobBlockQueues[key].blocksByLevel[level]), "queue lengths different for level %d", level)
+			require.Equalf(t, len(blocks), len(stateFromDb.compactionJobBlockQueues[key].blocksByLevel[level]), "compaction block queue lengths different for level %d", level)
 			if len(blocks) > 0 {
-				require.Equalf(t, blocks, stateFromDb.compactionJobBlockQueues[key].blocksByLevel[level], "queues different for level %d", level)
+				require.Equalf(t, blocks, stateFromDb.compactionJobBlockQueues[key].blocksByLevel[level], "compaction block queues different for level %d", level)
 			}
 		}
 	}

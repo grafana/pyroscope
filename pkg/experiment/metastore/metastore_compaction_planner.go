@@ -55,6 +55,8 @@ type compactionMetrics struct {
 	addedJobs     *prometheus.CounterVec
 	assignedJobs  *prometheus.CounterVec
 	completedJobs *prometheus.CounterVec
+	retriedJobs   *prometheus.CounterVec
+	discardedJobs *prometheus.CounterVec
 }
 
 func newCompactionMetrics(reg prometheus.Registerer) *compactionMetrics {
@@ -84,6 +86,16 @@ func newCompactionMetrics(reg prometheus.Registerer) *compactionMetrics {
 			Name:      "metastore_compaction_completed_jobs_count",
 			Help:      "The number of completed compaction jobs",
 		}, []string{"shard", "tenant", "level"}),
+		retriedJobs: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "pyroscope",
+			Name:      "metastore_compaction_retried_jobs_count",
+			Help:      "The number of retried compaction jobs",
+		}, []string{"shard", "tenant", "level"}),
+		discardedJobs: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "pyroscope",
+			Name:      "metastore_compaction_discarded_jobs_count",
+			Help:      "The number of discarded compaction jobs",
+		}, []string{"shard", "tenant", "level"}),
 	}
 	if reg != nil {
 		util.Register(reg,
@@ -92,6 +104,8 @@ func newCompactionMetrics(reg prometheus.Registerer) *compactionMetrics {
 			m.addedJobs,
 			m.assignedJobs,
 			m.completedJobs,
+			m.retriedJobs,
+			m.discardedJobs,
 		)
 	}
 	return m
@@ -119,9 +133,7 @@ func (m *metastoreState) compactBlock(block *metastorev1.BlockMeta, tx *bbolt.Tx
 		if err := m.persistCompactionJobBlockQueue(block.Shard, block.TenantId, block.CompactionLevel, []string{}, tx); err != nil {
 			return err
 		}
-		if err := m.addCompactionJob(job); err != nil {
-			return err
-		}
+		m.addCompactionJob(job)
 		m.compactionMetrics.addedBlocks.WithLabelValues(
 			fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
 		m.compactionMetrics.addedJobs.WithLabelValues(
@@ -208,11 +220,11 @@ func (s compactionLevelStrategy) shouldCreateJob(blocks []string) bool {
 	return len(blocks) >= s.maxBlocks
 }
 
-func (m *metastoreState) addCompactionJob(job *compactionpb.CompactionJob) error {
+func (m *metastoreState) addCompactionJob(job *compactionpb.CompactionJob) {
 	level.Debug(m.logger).Log("msg", "adding compaction job to priority queue", "job", job.Name)
 	if ok := m.compactionJobQueue.enqueue(job); !ok {
 		level.Warn(m.logger).Log("msg", "a compaction job with this name already exists", "job", job.Name)
-		return fmt.Errorf("a compaction job with name %s already exists", job.Name)
+		return
 	}
 
 	// reset the pre-queue for this level
@@ -224,7 +236,6 @@ func (m *metastoreState) addCompactionJob(job *compactionpb.CompactionJob) error
 	blockQueue.mu.Lock()
 	defer blockQueue.mu.Unlock()
 	blockQueue.blocksByLevel[job.CompactionLevel] = blockQueue.blocksByLevel[job.CompactionLevel][:0]
-	return nil
 }
 
 func (m *metastoreState) addBlockToCompactionJobQueue(block *metastorev1.BlockMeta) {
