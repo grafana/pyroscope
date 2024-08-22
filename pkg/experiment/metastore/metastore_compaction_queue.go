@@ -49,18 +49,18 @@ type jobQueueEntry struct {
 
 func (c *jobQueueEntry) less(x *jobQueueEntry) bool {
 	if c.Status != x.Status {
-		// Peek jobs in the "initial" (unspecified) state first.
+		// Pick jobs in the "initial" (unspecified) state first.
 		return c.Status < x.Status
+	}
+	if c.CompactionLevel != x.CompactionLevel {
+		// Compact lower level jobs first.
+		return c.CompactionLevel < x.CompactionLevel
 	}
 	if c.LeaseExpiresAt != x.LeaseExpiresAt {
 		// Jobs with earlier deadlines should be at the top.
 		return c.LeaseExpiresAt < x.LeaseExpiresAt
 	}
-	// Compact lower level jobs first.
-	if c.CompactionLevel != x.CompactionLevel {
-		// Jobs with earlier deadlines should be at the top.
-		return c.CompactionLevel < x.CompactionLevel
-	}
+
 	return c.Name < x.Name
 }
 
