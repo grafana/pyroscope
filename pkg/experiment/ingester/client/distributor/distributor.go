@@ -46,7 +46,7 @@ func (d *Distributor) Distribute(k Key, r ring.ReadRing) (*Placement, error) {
 	// find instances where the shard may be placed.
 	// Limit the scope for selection to the actual number of shards, allowed
 	// for the tenant dataset.
-	i := d.placement.PickShard(k, uint32(len(scope[:size])))
+	i := d.placement.PickShard(k, min(size, uint32(len(scope))))
 	s := scope[i]
 	// Collect all the instances available in the scope.
 	// Note that the order of instances is deterministic.
@@ -54,8 +54,8 @@ func (d *Distributor) Distribute(k Key, r ring.ReadRing) (*Placement, error) {
 	for j, o := range scope {
 		instances[j] = &d.distribution.desc[o.instance]
 	}
-	// Move the instance that owns the selected shard to the first position.
-	// Other instances are only considered if the primary one is unavailable.
+	// Move the instance that owns the selected shard to the queue front;
+	// other instances are only considered if the primary one is unavailable.
 	instances[0], instances[i] = instances[i], instances[0]
 	p := &Placement{
 		Instances: instances,
