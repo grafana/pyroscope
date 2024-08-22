@@ -272,12 +272,12 @@ func (r *Resolver) withSymbols(ctx context.Context, fn func(*Symbols, *SampleApp
 	g.SetLimit(r.c)
 	for _, p := range r.p {
 		p := p
-		g.Go(util.RecoverPanic(func() error {
+		g.Go(func() error {
 			if err := p.fetch(ctx); err != nil {
 				return err
 			}
 			return fn(p.reader.Symbols(), p.samples)
-		}))
+		})
 	}
 	return g.Wait()
 }

@@ -3,12 +3,9 @@ package ingester
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
-	"encoding/json"
 	"fmt"
+	testutil3 "github.com/grafana/pyroscope/pkg/phlaredb/block/testutil"
 	"io"
-	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -19,13 +16,10 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/ingester/memdb"
 	"github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/memory"
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	pprofth "github.com/grafana/pyroscope/pkg/pprof/testhelper"
-	"github.com/oklog/ulid"
 	"github.com/prometheus/client_golang/prometheus"
 	model2 "github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/util/testutil"
@@ -215,59 +209,20 @@ func newTestSegmentWriter(t *testing.T) sw {
 }
 
 func (sw *sw) createBlockFromMeta(meta *metastorev1.BlockMeta, ts *metastorev1.Dataset) *phlaredb.BlockQuerier {
-	dir := sw.t.TempDir()
-	blockid, err := ulid.New(uint64(meta.MaxTime), rand.Reader)
-	require.NoError(sw.t, err)
-	blockDir := filepath.Join(dir, blockid.String())
-	sw.t.Logf("block dir: %s", blockDir)
-	os.Mkdir(blockDir, 0755)
-	blockBucket, err := filesystem.NewBucket(dir)
 	blobReader, err := sw.bucket.Get(context.Background(), fmt.Sprintf("%s/%d/%s/%s/%s", pathSegments, testShard, pathAnon, meta.Id, pathBlock))
 	require.NoError(sw.t, err)
 	blob, err := io.ReadAll(blobReader)
 	require.NoError(sw.t, err)
 
-	//block.MetaFilename
 	profiles := blob[ts.TableOfContents[0]:ts.TableOfContents[1]]
 	tsdb := blob[ts.TableOfContents[1]:ts.TableOfContents[2]]
 	symbols := blob[ts.TableOfContents[2] : ts.TableOfContents[0]+ts.Size]
 
-	err = os.WriteFile(filepath.Join(blockDir, "profiles.parquet"), profiles, 0644)
-	assert.NoError(sw.t, err)
-	err = os.WriteFile(filepath.Join(blockDir, "index.tsdb"), tsdb, 0644)
-	assert.NoError(sw.t, err)
-	err = os.WriteFile(filepath.Join(blockDir, "symbols.symdb"), symbols, 0644)
-	assert.NoError(sw.t, err)
-
-	blockMeta := block.Meta{
-		ULID:    blockid,
-		MinTime: model2.TimeFromUnix(meta.MinTime),
-		MaxTime: model2.TimeFromUnix(meta.MaxTime),
-		Files: []block.File{
-			{
-				RelPath:   "profiles.parquet",
-				SizeBytes: uint64(len(profiles)),
-			},
-			{
-				RelPath:   "index.tsdb",
-				SizeBytes: uint64(len(tsdb)),
-			},
-			{
-				RelPath:   "symbols.symdb",
-				SizeBytes: uint64(len(symbols)),
-			},
-		},
-		Version: block.MetaVersion3,
-	}
-	blockMetaJson, err := json.Marshal(&blockMeta)
-	assert.NoError(sw.t, err)
-	err = os.WriteFile(filepath.Join(blockDir, block.MetaFilename), blockMetaJson, 0644)
-	assert.NoError(sw.t, err)
-
-	blockQuerier := phlaredb.NewBlockQuerier(sw.phlarectx, blockBucket)
-
-	err = blockQuerier.Sync(context.Background())
-	require.NoError(sw.t, err)
-
-	return blockQuerier
+	return testutil3.CreateBlockFromMemory(sw.t,
+		model2.TimeFromUnix(meta.MinTime),
+		model2.TimeFromUnix(meta.MaxTime),
+		profiles,
+		tsdb,
+		symbols,
+	)
 }

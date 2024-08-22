@@ -2,6 +2,12 @@ package testutil
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/json"
+	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
+	"github.com/oklog/ulid"
+	"github.com/stretchr/testify/assert"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -55,4 +61,52 @@ func CreateBlock(t testing.TB, generator func() []*testhelper.ProfileBuilder) (b
 	}
 	require.NotNil(t, meta)
 	return *meta, localDir
+}
+
+func CreateBlockFromMemory(t *testing.T, minTime, maxTime model.Time, profiles, tsdb, symbols []byte) *phlaredb.BlockQuerier {
+	dir := t.TempDir()
+	blockid, err := ulid.New(uint64(maxTime), rand.Reader)
+	require.NoError(t, err)
+	blockDir := filepath.Join(dir, blockid.String())
+	t.Logf("block dir: %s", blockDir)
+	os.Mkdir(blockDir, 0755)
+	blockBucket, err := filesystem.NewBucket(dir)
+	err = os.WriteFile(filepath.Join(blockDir, "profiles.parquet"), profiles, 0644)
+	assert.NoError(t, err)
+	err = os.WriteFile(filepath.Join(blockDir, "index.tsdb"), tsdb, 0644)
+	assert.NoError(t, err)
+	err = os.WriteFile(filepath.Join(blockDir, "symbols.symdb"), symbols, 0644)
+	assert.NoError(t, err)
+
+	blockMeta := block.Meta{
+		ULID:    blockid,
+		MinTime: minTime,
+		MaxTime: maxTime,
+		Files: []block.File{
+			{
+				RelPath:   "profiles.parquet",
+				SizeBytes: uint64(len(profiles)),
+			},
+			{
+				RelPath:   "index.tsdb",
+				SizeBytes: uint64(len(tsdb)),
+			},
+			{
+				RelPath:   "symbols.symdb",
+				SizeBytes: uint64(len(symbols)),
+			},
+		},
+		Version: block.MetaVersion3,
+	}
+	blockMetaJson, err := json.Marshal(&blockMeta)
+	assert.NoError(t, err)
+	err = os.WriteFile(filepath.Join(blockDir, block.MetaFilename), blockMetaJson, 0644)
+	assert.NoError(t, err)
+
+	blockQuerier := phlaredb.NewBlockQuerier(context.Background(), blockBucket)
+
+	err = blockQuerier.Sync(context.Background())
+	require.NoError(t, err)
+
+	return blockQuerier
 }
