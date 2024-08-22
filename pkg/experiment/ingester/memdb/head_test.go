@@ -9,6 +9,7 @@ import (
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/ingester/memdb/testutil"
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
@@ -17,8 +18,10 @@ import (
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 	"github.com/parquet-go/parquet-go"
+	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
 	"strconv"
 	"sync"
 	"testing"
@@ -118,7 +121,7 @@ func TestHead_SelectMatchingProfiles_Order(t *testing.T) {
 		}))
 	}
 
-	q := flushTestHead(t, &testHead{Head: head, t: t})
+	q := flushTestHead(t, head)
 
 	typ, err := phlaremodel.ParseProfileTypeSelector(":type:unit:type:unit")
 	require.NoError(t, err)
@@ -333,6 +336,130 @@ func TestFlushEmptyHead(t *testing.T) {
 	require.Equal(t, 0, len(flushed.Profiles))
 }
 
+func TestMergeProfilesStacktraces(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	// ingest some sample data
+	var (
+		end   = time.Unix(0, int64(time.Hour))
+		start = end.Add(-time.Minute)
+		step  = 15 * time.Second
+	)
+
+	db := newTestHead(t)
+
+	ingestProfiles(t, db, cpuProfileGenerator, start.UnixNano(), end.UnixNano(), step,
+		&typesv1.LabelPair{Name: "namespace", Value: "my-namespace"},
+		&typesv1.LabelPair{Name: "pod", Value: "my-pod"},
+	)
+
+	q := flushTestHead(t, db)
+
+	// create client
+	client, cleanup := testutil.IngesterClientForTest([]phlaredb.Querier{q})
+	defer cleanup()
+
+	t.Run("request the one existing series", func(t *testing.T) {
+		bidi := client.MergeProfilesStacktraces(context.Background())
+
+		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{
+			Request: &ingestv1.SelectProfilesRequest{
+				LabelSelector: `{pod="my-pod"}`,
+				Type:          mustParseProfileSelector(t, "process_cpu:cpu:nanoseconds:cpu:nanoseconds"),
+				Start:         start.UnixMilli(),
+				End:           end.UnixMilli(),
+			},
+		}))
+
+		resp, err := bidi.Receive()
+		require.NoError(t, err)
+		require.Nil(t, resp.Result)
+		require.Len(t, resp.SelectedProfiles.Fingerprints, 1)
+		require.Len(t, resp.SelectedProfiles.Profiles, 5)
+
+		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{
+			Profiles: []bool{true},
+		}))
+
+		// expect empty response
+		resp, err = bidi.Receive()
+		require.NoError(t, err)
+		require.Nil(t, resp.Result)
+
+		// received result
+		resp, err = bidi.Receive()
+		require.NoError(t, err)
+		require.NotNil(t, resp.Result)
+
+		at, err := phlaremodel.UnmarshalTree(resp.Result.TreeBytes)
+		require.NoError(t, err)
+		require.Equal(t, int64(500000000), at.Total())
+	})
+
+	t.Run("request non existing series", func(t *testing.T) {
+		bidi := client.MergeProfilesStacktraces(context.Background())
+
+		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{
+			Request: &ingestv1.SelectProfilesRequest{
+				LabelSelector: `{pod="not-my-pod"}`,
+				Type:          mustParseProfileSelector(t, "process_cpu:cpu:nanoseconds:cpu:nanoseconds"),
+				Start:         start.UnixMilli(),
+				End:           end.UnixMilli(),
+			},
+		}))
+
+		// expect empty resp to signal it is finished
+		resp, err := bidi.Receive()
+		require.NoError(t, err)
+		require.Nil(t, resp.Result)
+		require.Nil(t, resp.SelectedProfiles)
+
+		// still receiving a result
+		resp, err = bidi.Receive()
+		require.NoError(t, err)
+		require.NotNil(t, resp.Result)
+		require.Len(t, resp.Result.Stacktraces, 0)
+		require.Len(t, resp.Result.FunctionNames, 0)
+		require.Nil(t, resp.SelectedProfiles)
+	})
+
+	t.Run("empty request fails", func(t *testing.T) {
+		bidi := client.MergeProfilesStacktraces(context.Background())
+
+		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{}))
+
+		_, err := bidi.Receive()
+		require.EqualError(t, err, "invalid_argument: missing initial select request")
+	})
+
+	t.Run("test cancellation", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		bidi := client.MergeProfilesStacktraces(ctx)
+		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{
+			Request: &ingestv1.SelectProfilesRequest{
+				LabelSelector: `{pod="my-pod"}`,
+				Type:          mustParseProfileSelector(t, "process_cpu:cpu:nanoseconds:cpu:nanoseconds"),
+				Start:         start.UnixMilli(),
+				End:           end.UnixMilli(),
+			},
+		}))
+		cancel()
+	})
+
+	t.Run("test close request", func(t *testing.T) {
+		bidi := client.MergeProfilesStacktraces(context.Background())
+		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{
+			Request: &ingestv1.SelectProfilesRequest{
+				LabelSelector: `{pod="my-pod"}`,
+				Type:          mustParseProfileSelector(t, "process_cpu:cpu:nanoseconds:cpu:nanoseconds"),
+				Start:         start.UnixMilli(),
+				End:           end.UnixMilli(),
+			},
+		}))
+		require.NoError(t, bidi.CloseRequest())
+	})
+}
+
 func BenchmarkHeadIngestProfiles(t *testing.B) {
 	var (
 		profilePaths = []string{
@@ -355,10 +482,10 @@ func BenchmarkHeadIngestProfiles(t *testing.B) {
 	}
 }
 
-func newTestHead(t testing.TB) *testHead {
+func newTestHead(t testing.TB) *Head {
 	head, err := NewHead(NewHeadMetricsWithPrefix(nil, ""))
 	require.NoError(t, err)
-	return &testHead{Head: head, t: t}
+	return head
 }
 
 type testHead struct {
@@ -514,7 +641,7 @@ func compareProfile(t *testing.T, expected *profilev1.Profile, expectedSampleTyp
 	assert.Equal(t, expectedCollapsed, actualCollapsed)
 }
 
-func flushTestHead(t *testing.T, head *testHead) phlaredb.Querier {
+func flushTestHead(t *testing.T, head *Head) phlaredb.Querier {
 	flushed, err := head.Flush(context.Background())
 	require.NoError(t, err)
 
@@ -535,4 +662,19 @@ func mustParseProfileSelector(t testing.TB, selector string) *typesv1.ProfileTyp
 	ps, err := phlaremodel.ParseProfileTypeSelector(selector)
 	require.NoError(t, err)
 	return ps
+}
+
+func ingestProfiles(b testing.TB, db *Head, generator func(tsNano int64, t testing.TB) (*profilev1.Profile, string), from, to int64, step time.Duration, externalLabels ...*typesv1.LabelPair) {
+	b.Helper()
+	for i := from; i <= to; i += int64(step) {
+		p, name := generator(i, b)
+		require.NoError(b, db.Ingest(
+			p, uuid.New(), append(externalLabels, &typesv1.LabelPair{Name: model.MetricNameLabel, Value: name})))
+	}
+}
+
+var cpuProfileGenerator = func(tsNano int64, t testing.TB) (*profilev1.Profile, string) {
+	p := parseProfile(t, testdataPrefix+"/testdata/profile")
+	p.TimeNanos = tsNano
+	return p, "process_cpu"
 }
