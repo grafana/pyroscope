@@ -2,9 +2,12 @@ package circuitbreaker
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/sony/gobreaker/v2"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func UnaryClientInterceptor(cb *gobreaker.CircuitBreaker[any]) grpc.UnaryClientInterceptor {
@@ -12,6 +15,12 @@ func UnaryClientInterceptor(cb *gobreaker.CircuitBreaker[any]) grpc.UnaryClientI
 		_, err := cb.Execute(func() (interface{}, error) {
 			return nil, invoker(ctx, method, req, reply, cc, opts...)
 		})
+		switch err {
+		case nil:
+		case gobreaker.ErrOpenState,
+			gobreaker.ErrTooManyRequests:
+			return status.Error(codes.Unavailable, fmt.Sprintf("circuit breaker: %s", err.Error()))
+		}
 		return err
 	}
 }

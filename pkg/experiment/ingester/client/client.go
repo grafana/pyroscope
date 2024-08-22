@@ -2,7 +2,6 @@ package sewgmentwriterclient
 
 import (
 	"io"
-	"math"
 	"time"
 
 	"github.com/go-kit/log"
@@ -13,14 +12,25 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/sony/gobreaker/v2"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/status"
 
 	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
 	"github.com/grafana/pyroscope/pkg/util/circuitbreaker"
 	"github.com/grafana/pyroscope/pkg/util/health"
 )
 
-const cleanupPeriod = 15 * time.Second
+const poolCleanupPeriod = 15 * time.Second
+
+// Circuit breaker defaults.
+// TODO(kolesnikovae): Configurable?
+const (
+	cbMinSuccess     = 5
+	cbMaxFailures    = 3
+	cbClosedInterval = 0
+	cbOpenTimeout    = 5 * time.Second
+)
 
 const grpcServiceConfig = `{
     "methodConfig": [{
@@ -53,14 +63,36 @@ func newSegmentWriterRingClientPool(rring ring.ReadRing, logger log.Logger, grpc
 		return nil, err
 	}
 
-	// TODO(kolesnikovae): Make the circuit breaker settings configurable?
+	// https://en.wikipedia.org/wiki/Circuit_breaker_design_pattern
+	// The circuit breaker is used to prevent the client from sending
+	// requests to unhealthy instances. The logic is as follows:
+	//
+	// Once we observe 3 consecutive failures, the circuit breaker will trip
+	// and open the circuit – any attempt to send a request will fail
+	// immediately with a "circuit breaker is open" error.
+	//
+	// After the expiration of the Timeout (5 seconds), the circuit breaker will
+	// transition to the half-open state. In this state, if a failure occurs,
+	// the breaker will revert to the open state. After MaxRequests (5)
+	// consecutive successful requests, the circuit breaker will return to the
+	// closed state.
 	cbconfig := gobreaker.Settings{
-		MaxRequests: math.MaxUint32,
-		Interval:    time.Second,
-		Timeout:     time.Second * 5,
+		MaxRequests: cbMinSuccess,
+		Interval:    cbClosedInterval,
+		Timeout:     cbOpenTimeout,
 		ReadyToTrip: func(counts gobreaker.Counts) bool {
-			failureRatio := float64(counts.TotalFailures) / float64(counts.Requests)
-			return counts.Requests >= 10 && failureRatio >= 0.6
+			return counts.ConsecutiveFailures >= cbMaxFailures
+		},
+		IsSuccessful: func(err error) bool {
+			// Only these codes are counted towards tripping
+			// the open state (no requests flow through).
+			switch status.Code(err) {
+			case codes.Unavailable,
+				codes.DeadlineExceeded,
+				codes.ResourceExhausted:
+				return false
+			}
+			return true
 		},
 	}
 
@@ -79,7 +111,7 @@ func newSegmentWriterRingClientPool(rring ring.ReadRing, logger log.Logger, grpc
 		// in the ring, including unhealthy instances. CheckInterval
 		// specifies how frequently the stale clients are removed.
 		ring_client.PoolConfig{
-			CheckInterval: cleanupPeriod,
+			CheckInterval: poolCleanupPeriod,
 			// Note that no health checks are performed: it's caller
 			// responsibility to pick the healthy clients.
 			HealthCheckEnabled:        false,
