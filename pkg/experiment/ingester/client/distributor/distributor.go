@@ -2,6 +2,7 @@ package distributor
 
 import (
 	"fmt"
+	"hash/fnv"
 	"math/rand"
 	"slices"
 	"strings"
@@ -9,6 +10,10 @@ import (
 	"time"
 
 	"github.com/grafana/dskit/ring"
+
+	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/ingester/client/distributor/placement"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 )
 
 const (
@@ -16,26 +21,37 @@ const (
 	defaultFallbackLocations  = 5
 )
 
-// Key represents the distribution key.
-type Key struct {
-	TenantID    string
-	DatasetName string
+// NewTenantServiceDatasetKey build a distribution key, where
+func NewTenantServiceDatasetKey(tenant string, labels []*v1.LabelPair) placement.Key {
+	dataset := phlaremodel.Labels(labels).Get(phlaremodel.LabelNameServiceName)
+	return placement.Key{
+		TenantID:    tenant,
+		DatasetName: dataset,
 
-	Tenant       uint64
-	Dataset      uint64
-	Distribution uint64
+		Tenant:      fnv64(tenant),
+		Dataset:     fnv64(tenant, dataset),
+		Fingerprint: fnv64(phlaremodel.LabelPairsString(labels)),
+	}
+}
+
+func fnv64(keys ...string) uint64 {
+	h := fnv.New64a()
+	for _, k := range keys {
+		_, _ = h.Write([]byte(k))
+	}
+	return h.Sum64()
 }
 
 type Distributor struct {
 	mu           sync.RWMutex
 	distribution *distribution
-	placement    PlacementStrategy
+	placement    placement.Strategy
 
 	RingUpdateInterval time.Duration
 	FallbackLocations  uint32
 }
 
-func NewDistributor(placementStrategy PlacementStrategy) *Distributor {
+func NewDistributor(placementStrategy placement.Strategy) *Distributor {
 	return &Distributor{
 		placement: placementStrategy,
 
@@ -44,7 +60,7 @@ func NewDistributor(placementStrategy PlacementStrategy) *Distributor {
 	}
 }
 
-func (d *Distributor) Distribute(k Key, r ring.ReadRing) (*Placement, error) {
+func (d *Distributor) Distribute(k placement.Key, r ring.ReadRing) (*placement.Placement, error) {
 	if err := d.getDistribution(r, d.RingUpdateInterval); err != nil {
 		return nil, err
 	}
@@ -68,7 +84,7 @@ func (d *Distributor) Distribute(k Key, r ring.ReadRing) (*Placement, error) {
 	// Move the instance that owns the selected shard to the queue front;
 	// other instances are only considered if the primary one is unavailable.
 	instances[0], instances[i] = instances[i], instances[0]
-	p := &Placement{
+	p := &placement.Placement{
 		Instances: instances,
 		Shard:     s.id,
 	}
@@ -76,7 +92,7 @@ func (d *Distributor) Distribute(k Key, r ring.ReadRing) (*Placement, error) {
 }
 
 // tenantShards returns the list of shards that are available to the tenant dataset.
-func (d *Distributor) datasetShards(k Key, ms uint32) ([]shard, uint32) {
+func (d *Distributor) datasetShards(k placement.Key, ms uint32) ([]shard, uint32) {
 	shards := d.tenantShards(k, ms)
 	s := uint32(len(shards))
 	size := d.placement.NumDatasetShards(k, s)
@@ -87,31 +103,13 @@ func (d *Distributor) datasetShards(k Key, ms uint32) ([]shard, uint32) {
 }
 
 // tenantShards returns the list of shards that are available to the tenant.
-func (d *Distributor) tenantShards(k Key, ms uint32) []shard {
+func (d *Distributor) tenantShards(k placement.Key, ms uint32) []shard {
 	s := uint32(len(d.distribution.shards))
 	size := d.placement.NumTenantShards(k, s)
 	if size == 0 {
 		return d.distribution.shards
 	}
 	return d.distribution.selectShards(nil, max(size, ms), k.Tenant)
-}
-
-// Placement represents the placement for the given distribution key.
-type Placement struct {
-	// Note that the instances reference shared objects, and must not be modified.
-	Instances []*ring.InstanceDesc
-	Shard     uint32
-}
-
-// Next returns the next available location address.
-func (p *Placement) Next() (instance *ring.InstanceDesc, ok bool) {
-	for len(p.Instances) > 0 {
-		instance, p.Instances = p.Instances[0], p.Instances[1:]
-		if instance.State == ring.ACTIVE {
-			return instance, true
-		}
-	}
-	return nil, false
 }
 
 // TODO(kolesnikovae):

@@ -1,8 +1,6 @@
 package phlare
 
 import (
-	"fmt"
-
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
@@ -11,6 +9,7 @@ import (
 
 	compactionworker "github.com/grafana/pyroscope/pkg/experiment/compactor"
 	segmentwriter "github.com/grafana/pyroscope/pkg/experiment/ingester"
+	segmentwriterclient "github.com/grafana/pyroscope/pkg/experiment/ingester/client"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore"
 	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
 	"github.com/grafana/pyroscope/pkg/experiment/querybackend"
@@ -19,14 +18,15 @@ import (
 )
 
 func (f *Phlare) initSegmentWriterRing() (_ services.Service, err error) {
-	if err = f.Cfg.SegmentWriter.LifecyclerConfig.Validate(); err != nil {
+	if err = f.Cfg.SegmentWriter.Validate(); err != nil {
 		return nil, err
 	}
+	logger := log.With(f.logger, "component", "segment-writer-ring")
+	reg := prometheus.WrapRegistererWithPrefix("pyroscope_", f.reg)
 	f.segmentWriterRing, err = ring.New(
 		f.Cfg.SegmentWriter.LifecyclerConfig.RingConfig,
 		"segment-writer", "ring",
-		log.With(f.logger, "component", "segment-writer-ring"),
-		prometheus.WrapRegistererWithPrefix("pyroscope_", f.reg),
+		logger, reg,
 	)
 	if err != nil {
 		return nil, err
@@ -45,11 +45,23 @@ func (f *Phlare) initSegmentWriter() (services.Service, error) {
 		f.Cfg.PhlareDB,
 		f.storageBucket, f.metastoreClient)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create segment writer: %w", err)
+		return nil, err
 	}
 	f.segmentWriter = ingester
 	f.API.RegisterSegmentWriter(ingester)
 	return f.segmentWriter, nil
+}
+
+func (f *Phlare) initSegmentWriterClient() (_ services.Service, err error) {
+	// Validation of the config is not required since
+	// it's already validated in initSegmentWriterRing.
+	logger := log.With(f.logger, "component", "segment-writer-client")
+	client, err := segmentwriterclient.NewSegmentWriterClient(f.Cfg.SegmentWriter.GRPCClientConfig, logger, f.segmentWriterRing)
+	if err != nil {
+		return nil, err
+	}
+	f.segmentWriterClient = client
+	return client.Service(), nil
 }
 
 func (f *Phlare) initCompactionWorker() (svc services.Service, err error) {
@@ -82,7 +94,7 @@ func (f *Phlare) initMetastoreClient() (services.Service, error) {
 	if err := f.Cfg.Metastore.Validate(); err != nil {
 		return nil, err
 	}
-	mc, err := metastoreclient.New(f.Cfg.Metastore.Address, f.Cfg.Metastore.GRPCClientConfig, f.logger)
+	mc, err := metastoreclient.New(f.Cfg.Metastore.Address, f.logger, f.Cfg.Metastore.GRPCClientConfig)
 	if err != nil {
 		return nil, err
 	}

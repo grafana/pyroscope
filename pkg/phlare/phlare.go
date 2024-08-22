@@ -44,6 +44,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/distributor"
 	compactionworker "github.com/grafana/pyroscope/pkg/experiment/compactor"
 	segmentwriter "github.com/grafana/pyroscope/pkg/experiment/ingester"
+	segmentwriterclient "github.com/grafana/pyroscope/pkg/experiment/ingester/client"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore"
 	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
 	"github.com/grafana/pyroscope/pkg/experiment/querybackend"
@@ -272,11 +273,11 @@ type Phlare struct {
 	frontend *frontend.Frontend
 
 	// Experimental modules.
-	//nolint:unused
-	segmentWriter     *segmentwriter.SegmentWriterService
-	segmentWriterRing *ring.Ring
-	metastore         *metastore.Metastore
-	metastoreClient   *metastoreclient.Client
+	segmentWriter       *segmentwriter.SegmentWriterService
+	segmentWriterClient *segmentwriterclient.Client
+	segmentWriterRing   *ring.Ring
+	metastore           *metastore.Metastore
+	metastoreClient     *metastoreclient.Client
 	//nolint:unused
 	queryBackend       *querybackend.QueryBackend
 	queryBackendClient *querybackendclient.Client
@@ -378,12 +379,13 @@ func (f *Phlare) setupModuleManager() error {
 	// Experimental modules.
 	if f.Cfg.v2Experiment {
 		experimentalModules := map[string][]string{
-			SegmentWriter:     {Overrides, API, MemberlistKV, Storage, UsageReport, MetastoreClient},
-			Metastore:         {Overrides, API, HealthService, MetastoreClient},
-			CompactionWorker:  {Overrides, API, Storage, Overrides, MetastoreClient},
-			QueryBackend:      {Overrides, API, Storage, Overrides, QueryBackendClient},
-			SegmentWriterRing: {Overrides, API, MemberlistKV},
-			HealthService:     {Overrides, API},
+			SegmentWriter:       {Overrides, API, MemberlistKV, Storage, UsageReport, MetastoreClient},
+			Metastore:           {Overrides, API, HealthService, MetastoreClient},
+			CompactionWorker:    {Overrides, API, Storage, Overrides, MetastoreClient},
+			QueryBackend:        {Overrides, API, Storage, Overrides, QueryBackendClient},
+			SegmentWriterRing:   {Overrides, API, MemberlistKV},
+			SegmentWriterClient: {SegmentWriterRing},
+			HealthService:       {API},
 		}
 		for k, v := range experimentalModules {
 			deps[k] = v
@@ -391,10 +393,11 @@ func (f *Phlare) setupModuleManager() error {
 
 		deps[All] = append(deps[All], SegmentWriter, Metastore, CompactionWorker, QueryBackend, HealthService)
 		deps[QueryFrontend] = append(deps[QueryFrontend], MetastoreClient, QueryBackendClient)
-		deps[Distributor] = append(deps[Distributor], SegmentWriterRing)
+		deps[Distributor] = append(deps[Distributor], SegmentWriterClient)
 
 		mm.RegisterModule(SegmentWriter, f.initSegmentWriter)
 		mm.RegisterModule(SegmentWriterRing, f.initSegmentWriterRing, modules.UserInvisibleModule)
+		mm.RegisterModule(SegmentWriterClient, f.initSegmentWriterClient, modules.UserInvisibleModule)
 		mm.RegisterModule(Metastore, f.initMetastore)
 		mm.RegisterModule(CompactionWorker, f.initCompactionWorker)
 		mm.RegisterModule(QueryBackend, f.initQueryBackend)

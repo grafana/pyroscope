@@ -1,23 +1,21 @@
 package segmentwriterclient
 
 import (
-	"io"
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/dskit/grpcclient"
-	"github.com/grafana/dskit/ring"
-	ring_client "github.com/grafana/dskit/ring/client"
 	"github.com/opentracing-contrib/go-grpc"
 	"github.com/opentracing/opentracing-go"
 	"github.com/sony/gobreaker/v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
 
+	"github.com/grafana/dskit/grpcclient"
+	"github.com/grafana/dskit/ring"
+	ring_client "github.com/grafana/dskit/ring/client"
+
 	"github.com/grafana/pyroscope/pkg/util/circuitbreaker"
-	"github.com/grafana/pyroscope/pkg/util/health"
 )
 
 const poolCleanupPeriod = 15 * time.Second
@@ -38,21 +36,7 @@ const grpcServiceConfig = `{
     }]
 }`
 
-type ConnPool interface {
-	GetConnFor(addr string) (grpc.ClientConnInterface, error)
-}
-
-type connPool struct{ pool *ring_client.Pool }
-
-func NewConnPool(ring ring.ReadRing, logger log.Logger, grpcClientConfig grpcclient.Config) (ConnPool, error) {
-	p, err := newConnPool(ring, logger, grpcClientConfig)
-	if err != nil {
-		return nil, err
-	}
-	return &connPool{pool: p}, nil
-}
-
-func newConnPool(rring ring.ReadRing, logger log.Logger, grpcClientConfig grpcclient.Config) (*ring_client.Pool, error) {
+func NewConnPool(rring ring.ReadRing, logger log.Logger, grpcClientConfig grpcclient.Config) (*RingConnPool, error) {
 	options, err := grpcClientConfig.DialOption(nil, nil)
 	if err != nil {
 		return nil, err
@@ -123,41 +107,5 @@ func newConnPool(rring ring.ReadRing, logger log.Logger, grpcClientConfig grpccl
 		logger,
 	)
 
-	return p, nil
-}
-
-func (p *connPool) GetConnFor(addr string) (grpc.ClientConnInterface, error) {
-	c, err := p.pool.GetClientFor(addr)
-	if err != nil {
-		return nil, err
-	}
-	return c.(grpc.ClientConnInterface), nil
-}
-
-type connPoolFactory struct {
-	options func(ring.InstanceDesc) []grpc.DialOption
-}
-
-func newConnPoolFactory(options func(ring.InstanceDesc) []grpc.DialOption) ring_client.PoolFactory {
-	return &connPoolFactory{
-		options: options,
-	}
-}
-
-func (f *connPoolFactory) FromInstance(inst ring.InstanceDesc) (ring_client.PoolClient, error) {
-	conn, err := grpc.Dial(inst.Addr, f.options(inst)...)
-	if err != nil {
-		return nil, err
-	}
-	return &poolConn{
-		ClientConnInterface: conn,
-		HealthClient:        health.NoOpClient,
-		Closer:              conn,
-	}, nil
-}
-
-type poolConn struct {
-	grpc.ClientConnInterface
-	grpc_health_v1.HealthClient
-	io.Closer
+	return &RingConnPool{Pool: p}, nil
 }

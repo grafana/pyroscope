@@ -82,14 +82,15 @@ const (
 
 	// Experimental modules
 
-	Metastore          string = "metastore"
-	MetastoreClient    string = "metastore-client"
-	SegmentWriter      string = "segment-writer"
-	SegmentWriterRing  string = "segment-writer-ring"
-	QueryBackend       string = "query-backend"
-	QueryBackendClient string = "query-backend-client"
-	CompactionWorker   string = "compaction-worker"
-	HealthService      string = "health-service"
+	Metastore           string = "metastore"
+	MetastoreClient     string = "metastore-client"
+	SegmentWriter       string = "segment-writer"
+	SegmentWriterRing   string = "segment-writer-ring"
+	SegmentWriterClient string = "segment-writer-client"
+	QueryBackend        string = "query-backend"
+	QueryBackendClient  string = "query-backend-client"
+	CompactionWorker    string = "compaction-worker"
+	HealthService       string = "health-service"
 )
 
 var objectStoreTypeStats = usagestats.NewString("store_object_type")
@@ -325,11 +326,11 @@ func (f *Phlare) initGRPCGateway() (services.Service, error) {
 
 func (f *Phlare) initDistributor() (services.Service, error) {
 	f.Cfg.Distributor.DistributorRing.ListenPort = f.Cfg.Server.HTTPListenPort
-	d, err := distributor.New(f.Cfg.Distributor, f.ingesterRing, nil, f.Overrides, f.reg, log.With(f.logger, "component", "distributor"), nil, f.auth)
+	logger := log.With(f.logger, "component", "distributor")
+	d, err := distributor.New(f.Cfg.Distributor, f.ingesterRing, nil, f.Overrides, f.reg, logger, f.segmentWriterClient, f.auth)
 	if err != nil {
 		return nil, err
 	}
-
 	f.API.RegisterDistributor(d)
 	return d, nil
 }

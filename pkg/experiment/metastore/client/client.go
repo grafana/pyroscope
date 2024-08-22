@@ -22,7 +22,7 @@ type Client struct {
 	conn    *grpc.ClientConn
 }
 
-func New(address string, grpcClientConfig grpcclient.Config, logger log.Logger) (*Client, error) {
+func New(address string, logger log.Logger, grpcClientConfig grpcclient.Config) (*Client, error) {
 	conn, err := dial(address, grpcClientConfig, logger)
 	if err != nil {
 		return nil, err
