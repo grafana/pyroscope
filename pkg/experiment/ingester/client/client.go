@@ -22,8 +22,8 @@ type SegmentWriterClient struct {
 }
 
 func NewSegmentWriterClient(
-	distributor *distributor.Distributor,
 	ring ring.ReadRing,
+	distributor *distributor.Distributor,
 	logger log.Logger,
 	grpcClientConfig grpcclient.Config,
 ) (*SegmentWriterClient, error) {

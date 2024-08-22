@@ -11,6 +11,11 @@ import (
 	"github.com/grafana/dskit/ring"
 )
 
+const (
+	defaultRingUpdateInterval = 5 * time.Second
+	defaultFallbackLocations  = 5
+)
+
 // Key represents the distribution key.
 type Key struct {
 	TenantID    string
@@ -25,23 +30,29 @@ type Distributor struct {
 	mu           sync.RWMutex
 	distribution *distribution
 	placement    PlacementStrategy
+
+	RingUpdateInterval time.Duration
+	FallbackLocations  uint32
 }
 
-const ringUpdateInterval = 5 * time.Second
-
 func NewDistributor(placementStrategy PlacementStrategy) *Distributor {
-	return &Distributor{placement: placementStrategy}
+	return &Distributor{
+		placement: placementStrategy,
+
+		RingUpdateInterval: defaultRingUpdateInterval,
+		FallbackLocations:  defaultFallbackLocations,
+	}
 }
 
 func (d *Distributor) Distribute(k Key, r ring.ReadRing) (*Placement, error) {
-	if err := d.getDistribution(r, ringUpdateInterval); err != nil {
+	if err := d.getDistribution(r, d.RingUpdateInterval); err != nil {
 		return nil, err
 	}
 	// scope is a slice of shards that belong to the tenant dataset.
 	// It might be larger than the actual number of shards allowed for use.
 	// In case of a delivery failure, at least 5 options of the shard
 	// placement (locations) are available.
-	scope, size := d.datasetShards(k, 5)
+	scope, size := d.datasetShards(k, d.FallbackLocations)
 	// Next, we need to find the exact shard for the key from N options and
 	// find instances where the shard may be placed.
 	// Limit the scope for selection to the actual number of shards, allowed
@@ -122,6 +133,7 @@ func (d *Distributor) getDistribution(r ring.ReadRing, maxAge time.Duration) err
 		return nil
 	}
 
+	// Initial capacity.
 	var shards = 64
 	var instances = 128
 	if x != nil {
