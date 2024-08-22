@@ -460,6 +460,25 @@ func TestMergeProfilesStacktraces(t *testing.T) {
 	})
 }
 
+// See https://github.com/grafana/pyroscope/pull/3356
+func Test_HeadFlush_DuplicateLabels(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	// ingest some sample data
+	var (
+		end   = time.Unix(0, int64(time.Hour))
+		start = end.Add(-time.Minute)
+		step  = 15 * time.Second
+	)
+
+	head := newTestHead(t)
+
+	ingestProfiles(t, head, cpuProfileGenerator, start.UnixNano(), end.UnixNano(), step,
+		&typesv1.LabelPair{Name: "namespace", Value: "my-namespace"},
+		&typesv1.LabelPair{Name: "pod", Value: "my-pod"},
+		&typesv1.LabelPair{Name: "pod", Value: "not-my-pod"},
+	)
+}
 func BenchmarkHeadIngestProfiles(t *testing.B) {
 	var (
 		profilePaths = []string{
