@@ -182,7 +182,7 @@ func (c *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) 
 	}
 }
 
-// registerServerFlagsWithChangedDefaultValues registers *Config.Server flags, but overrides some defaults set by the weaveworks package.
+// registerServerFlagsWithChangedDefaultValues registers *Config.Server flags, but overrides some defaults set by the dskit package.
 func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 	throwaway := flag.NewFlagSet("throwaway", flag.PanicOnError)
 
@@ -196,17 +196,20 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 	c.Worker.RegisterFlags(throwaway)
 	c.OverridesExporter.RegisterFlags(throwaway, log.NewLogfmtLogger(os.Stderr))
 
+	overrides := map[string]string{
+		"server.http-listen-port":                           "4040",
+		"distributor.replication-factor":                    "1",
+		"query-scheduler.service-discovery-mode":            schedulerdiscovery.ModeRing,
+		"segment-writer.grpc-client-config.connect-timeout": "1s",
+		"server.grpc-max-recv-msg-size-bytes":               "104857600",
+		"server.grpc-max-send-msg-size-bytes":               "104857600",
+		"server.grpc.keepalive.min-time-between-pings":      "1s",
+	}
+
 	throwaway.VisitAll(func(f *flag.Flag) {
-		// Ignore errors when setting new values. We have a test to verify that it works.
-		switch f.Name {
-		case "server.http-listen-port":
-			_ = f.Value.Set("4040")
-		case "distributor.replication-factor":
-			_ = f.Value.Set("1")
-		case "query-scheduler.service-discovery-mode":
-			_ = f.Value.Set(schedulerdiscovery.ModeRing)
-		case "segment-writer.grpc-client-config.connect-timeout":
-			_ = f.Value.Set("1s")
+		if v, ok := overrides[f.Name]; ok {
+			// Ignore errors when setting new values. We have a test to verify that it works.
+			_ = f.Value.Set(v)
 		}
 		fs.Var(f.Value, f.Name, f.Usage)
 	})

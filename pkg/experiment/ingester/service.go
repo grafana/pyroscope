@@ -27,6 +27,8 @@ import (
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
+// TODO(kolesnikovae): Inject phlaredb.Config.
+
 type Config struct {
 	GRPCClientConfig grpcclient.Config     `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with the segment writer."`
 	LifecyclerConfig ring.LifecyclerConfig `yaml:"lifecycler,omitempty"`
@@ -37,6 +39,7 @@ type Config struct {
 // RegisterFlags registers the flags.
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	const prefix = "segment-writer."
+	cfg.GRPCClientConfig.RegisterFlagsWithPrefix(prefix, f)
 	cfg.LifecyclerConfig.RegisterFlagsWithPrefix(prefix, f, util.Logger)
 	f.DurationVar(&cfg.SegmentDuration, prefix+"segment.duration", 500*time.Millisecond, "Timeout when flushing segments to bucket.")
 	f.BoolVar(&cfg.Async, prefix+"async", false, "Enable async mode for segment writer.")
@@ -83,7 +86,17 @@ func (i *ingesterFlusherCompat) Flush() {
 	}
 }
 
-func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storageBucket phlareobj.Bucket, metastoreClient *metastoreclient.Client) (*SegmentWriterService, error) {
+// TODO(kolesnikovae): Get rid of phlarectx.
+
+func New(
+	phlarectx context.Context,
+	cfg Config,
+	dbConfig phlaredb.Config,
+	storageBucket phlareobj.Bucket,
+	metastoreClient *metastoreclient.Client,
+	ringName string,
+	ringKey string,
+) (*SegmentWriterService, error) {
 	reg := phlarecontext.Registry(phlarectx)
 	reg = prometheus.WrapRegistererWith(prometheus.Labels{"component": "segment-writer"}, reg)
 	phlarectx = phlarecontext.WithRegistry(phlarectx, reg)
@@ -99,17 +112,16 @@ func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storag
 		storageBucket: storageBucket,
 	}
 
-	var (
-		err error
-	)
-
+	var err error
 	i.lifecycler, err = ring.NewLifecycler(
 		cfg.LifecyclerConfig,
 		&ingesterFlusherCompat{i},
-		"segment-writer-ring-name",
-		"segment-writer-ring-key",
+		ringName,
+		ringKey,
 		true,
-		i.logger, prometheus.WrapRegistererWithPrefix("pyroscope_segment_writer_", i.reg))
+		i.logger,
+		prometheus.WrapRegistererWithPrefix("pyroscope_segment_writer_", i.reg),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -179,12 +191,12 @@ func (i *SegmentWriterService) Push(ctx context.Context, req *segmentwriterv1.Pu
 }
 
 func (i *SegmentWriterService) ingestToSegment(ctx context.Context, segment segmentIngest, req *segmentwriterv1.PushRequest) error {
-	id, err := uuid.ParseBytes(req.ProfileId)
-	if err != nil {
+	var profileID uuid.UUID
+	if err := profileID.UnmarshalBinary(req.ProfileId); err != nil {
 		return err
 	}
 	return pprof.FromBytes(req.Profile, func(p *profilev1.Profile, size int) error {
-		if err = segment.ingest(ctx, req.TenantId, p, id, req.Labels); err != nil {
+		if err := segment.ingest(ctx, req.TenantId, p, profileID, req.Labels); err != nil {
 			reason := validation.ReasonOf(err)
 			if reason != validation.Unknown {
 				validation.DiscardedProfiles.WithLabelValues(string(reason), req.TenantId).Add(float64(1))

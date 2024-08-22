@@ -421,11 +421,11 @@ grpc_tls_config:
 
 # Limit on the size of a gRPC message this server can receive (bytes).
 # CLI flag: -server.grpc-max-recv-msg-size-bytes
-[grpc_server_max_recv_msg_size: <int> | default = 4194304]
+[grpc_server_max_recv_msg_size: <int> | default = 104857600]
 
 # Limit on the size of a gRPC message this server can send (bytes).
 # CLI flag: -server.grpc-max-send-msg-size-bytes
-[grpc_server_max_send_msg_size: <int> | default = 4194304]
+[grpc_server_max_send_msg_size: <int> | default = 104857600]
 
 # Limit on the number of concurrent streams for gRPC calls per client connection
 # (0 = unlimited)
@@ -461,7 +461,7 @@ grpc_tls_config:
 # If client sends keepalive ping more often, server will send GOAWAY and close
 # the connection.
 # CLI flag: -server.grpc.keepalive.min-time-between-pings
-[grpc_server_min_time_between_pings: <duration> | default = 5m]
+[grpc_server_min_time_between_pings: <duration> | default = 1s]
 
 # If true, server allows keepalive pings even when there are no active
 # streams(RPCs). If false, and client sends ping when there are no active
@@ -2103,7 +2103,7 @@ http:
   # Maximum number of idle (keep-alive) connections across all hosts. 0 means no
   # limit.
   # CLI flag: -storage.s3.max-idle-connections
-  [max_idle_connections: <int> | default = 100]
+  [max_idle_connections: <int> | default = 0]
 
   # Maximum number of idle (keep-alive) connections to keep per-host. If 0, a
   # built-in default value is used.
