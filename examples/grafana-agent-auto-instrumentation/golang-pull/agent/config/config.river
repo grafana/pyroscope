@@ -22,8 +22,7 @@ pyroscope.write "example" {
 
 pyroscope.scrape "default" {
   targets = [
-    {"__address__" = "pyroscope:4040", "service_name"="pyroscope"},
-    {"__address__" = "agent:12345", "service_name"="agent"},
+    {"__address__" = "pyroscope:4040", "service_name"="pyroscope"}
   ]
   forward_to = [pyroscope.write.example.receiver]
 }

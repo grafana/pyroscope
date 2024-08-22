@@ -1,26 +1,11 @@
 import os
 import time
-import pyroscope
 from flask import Flask
 from arcade.arcade import order_arcade
 from puzzle.puzzle import order_puzzle
 from shooter.shooter import order_shooter
 
-app_name = os.getenv("PYROSCOPE_APPLICATION_NAME", "flask-arcade-app")
-gaming_server_addr = os.getenv("PYROSCOPE_SERVER_ADDRESS", "http://pyroscope:4040")
-basic_auth_username = os.getenv("PYROSCOPE_BASIC_AUTH_USER", "")
-basic_auth_password = os.getenv("PYROSCOPE_BASIC_AUTH_PASSWORD", "")
 port = int(os.getenv("RIDESHARE_LISTEN_PORT", "5000"))
-
-pyroscope.configure(
-	application_name = app_name,
-	server_address   = gaming_server_addr,
-    basic_auth_username = basic_auth_username, # for grafana cloud
-    basic_auth_password = basic_auth_password, # for grafana cloud
-	tags             = {
-        "region":   f'{os.getenv("REGION")}',
-	}
-)
 
 app = Flask(__name__)
 

@@ -1,5 +1,5 @@
 import time
-import pyroscope
+# import pyroscope
 import os
 from datetime import datetime
 
@@ -26,10 +26,9 @@ def check_driver_availability(n):
 
 
 def find_nearest_game(n, game):
-    with pyroscope.tag_wrapper({ "game": game}):
-        i = 0
-        start_time = time.time()
-        while time.time() - start_time < n:
-            i += 1
-        if game == "puzzle":
-            check_driver_availability(n)
+    i = 0
+    start_time = time.time()
+    while time.time() - start_time < n:
+        i += 1
+    if game == "puzzle":
+        check_driver_availability(n)

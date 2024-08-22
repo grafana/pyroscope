@@ -4,7 +4,7 @@ WORKDIR /opt/app
 
 RUN apt-get update && apt-get install ca-certificates -y && update-ca-certificates && apt-get install -y git
 
-ADD https://github.com/grafana/pyroscope-java/releases/download/v0.14.0/pyroscope.jar /opt/app/pyroscope.jar
+#add jar file here
 
 COPY Main.java ./
 
@@ -20,4 +20,6 @@ ENV PYROSCOPE_UPLOAD_INTERVAL=15s
 ENV PYROSCOPE_LOG_LEVEL=debug
 ENV PYROSCOPE_SERVER_ADDRESS=http://localhost:4040
 
-CMD ["java", "-XX:-Inline", "-javaagent:pyroscope.jar", "Main"]
+# Run with "-XX:-Inline" to disable inlining
+
+CMD ["java", "Main"]
