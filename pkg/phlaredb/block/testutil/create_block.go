@@ -4,13 +4,15 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
-	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
-	"github.com/oklog/ulid"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/oklog/ulid"
+	"github.com/stretchr/testify/assert"
+
+	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"

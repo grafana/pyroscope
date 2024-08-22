@@ -27,8 +27,8 @@ import (
 
 func TestHeadLabelValues(t *testing.T) {
 	head := newTestHead(t)
-	require.NoError(t, head.Ingest(newProfileFoo(), uuid.New(), []*typesv1.LabelPair{&typesv1.LabelPair{Name: "job", Value: "foo"}, &typesv1.LabelPair{Name: "namespace", Value: "phlare"}}))
-	require.NoError(t, head.Ingest(newProfileBar(), uuid.New(), []*typesv1.LabelPair{&typesv1.LabelPair{Name: "job", Value: "bar"}, &typesv1.LabelPair{Name: "namespace", Value: "phlare"}}))
+	require.NoError(t, head.Ingest(newProfileFoo(), uuid.New(), []*typesv1.LabelPair{{Name: "job", Value: "foo"}, {Name: "namespace", Value: "phlare"}}))
+	require.NoError(t, head.Ingest(newProfileBar(), uuid.New(), []*typesv1.LabelPair{{Name: "job", Value: "bar"}, {Name: "namespace", Value: "phlare"}}))
 
 	q := flushTestHead(t, head)
 
@@ -42,8 +42,8 @@ func TestHeadLabelValues(t *testing.T) {
 }
 func TestHeadLabelNames(t *testing.T) {
 	head := newTestHead(t)
-	require.NoError(t, head.Ingest(newProfileFoo(), uuid.New(), []*typesv1.LabelPair{&typesv1.LabelPair{Name: "job", Value: "foo"}, &typesv1.LabelPair{Name: "namespace", Value: "phlare"}}))
-	require.NoError(t, head.Ingest(newProfileBar(), uuid.New(), []*typesv1.LabelPair{&typesv1.LabelPair{Name: "job", Value: "bar"}, &typesv1.LabelPair{Name: "namespace", Value: "phlare"}}))
+	require.NoError(t, head.Ingest(newProfileFoo(), uuid.New(), []*typesv1.LabelPair{{Name: "job", Value: "foo"}, {Name: "namespace", Value: "phlare"}}))
+	require.NoError(t, head.Ingest(newProfileBar(), uuid.New(), []*typesv1.LabelPair{{Name: "job", Value: "bar"}, {Name: "namespace", Value: "phlare"}}))
 
 	q := flushTestHead(t, head)
 
@@ -89,8 +89,8 @@ func TestHeadSeries(t *testing.T) {
 
 func TestHeadProfileTypes(t *testing.T) {
 	head := newTestHead(t)
-	require.NoError(t, head.Ingest(newProfileFoo(), uuid.New(), []*typesv1.LabelPair{&typesv1.LabelPair{Name: "__name__", Value: "foo"}, &typesv1.LabelPair{Name: "job", Value: "foo"}, &typesv1.LabelPair{Name: "namespace", Value: "phlare"}}))
-	require.NoError(t, head.Ingest(newProfileBar(), uuid.New(), []*typesv1.LabelPair{&typesv1.LabelPair{Name: "__name__", Value: "bar"}, &typesv1.LabelPair{Name: "namespace", Value: "phlare"}}))
+	require.NoError(t, head.Ingest(newProfileFoo(), uuid.New(), []*typesv1.LabelPair{{Name: "__name__", Value: "foo"}, {Name: "job", Value: "foo"}, {Name: "namespace", Value: "phlare"}}))
+	require.NoError(t, head.Ingest(newProfileBar(), uuid.New(), []*typesv1.LabelPair{{Name: "__name__", Value: "bar"}, {Name: "namespace", Value: "phlare"}}))
 
 	q := flushTestHead(t, head)
 
