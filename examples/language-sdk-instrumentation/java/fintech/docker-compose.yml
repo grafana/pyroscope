@@ -8,7 +8,7 @@ services:
     build: .
     privileged: true
     environment:
-    - PYROSCOPE_APPLICATION_NAME=fibonacci-java-lock-push
+    - PYROSCOPE_APPLICATION_NAME=fintech.java.push.app
     - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
     - PYROSCOPE_FORMAT=jfr
   grafana:
