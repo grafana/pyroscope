@@ -24,7 +24,7 @@ def check_driver_availability(n):
     if os.getenv("REGION") == "eu-north" and force_mutex_lock:
         mutex_lock(n)
 
-
+# Add a tag to that puts the "game" variable into an `operation` label
 def find_nearest_game(n, game):
     i = 0
     start_time = time.time()
