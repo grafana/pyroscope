@@ -325,6 +325,14 @@ func TestHead_ProfileOrder(t *testing.T) {
 	}, rows)
 }
 
+func TestFlushEmptyHead(t *testing.T) {
+	head := newTestHead(t)
+	flushed, err := head.Flush(context.Background())
+	require.NoError(t, err)
+	require.NotNil(t, flushed)
+	require.Equal(t, 0, len(flushed.Profiles))
+}
+
 func BenchmarkHeadIngestProfiles(t *testing.B) {
 	var (
 		profilePaths = []string{
