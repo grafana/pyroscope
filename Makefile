@@ -30,6 +30,7 @@ EMBEDASSETS ?= embedassets
 # Build flags
 VPREFIX := github.com/grafana/pyroscope/pkg/util/build
 GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH) -X $(VPREFIX).Version=$(IMAGE_TAG) -X $(VPREFIX).Revision=$(GIT_REVISION) -X $(VPREFIX).BuildDate=$(GIT_LAST_COMMIT_DATE)
+GO_GCFLAGS_DEBUG := all="-N -l"
 
 # Folders with go.mod file
 GO_MOD_PATHS := api/ ebpf/ examples/language-sdk-instrumentation/golang-push/rideshare examples/language-sdk-instrumentation/golang-push/simple/
@@ -116,30 +117,30 @@ go/deps:
 	$(GO) mod tidy
 
 define go_build_pyroscope
-	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 $(GO) build -tags "netgo $(EMBEDASSETS)" -ldflags "-extldflags \"-static\" $(1)" ./cmd/pyroscope
+	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 $(GO) build -tags "netgo $(EMBEDASSETS)" -ldflags "-extldflags \"-static\" $(1)" -gcflags=$(2) ./cmd/pyroscope
 endef
 
 define go_build_profilecli
-	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 $(GO) build -ldflags "-extldflags \"-static\" $(1)" ./cmd/profilecli
+	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 $(GO) build -ldflags "-extldflags \"-static\" $(1)" -gcflags=$(2) ./cmd/profilecli
 endef
 
 .PHONY: go/bin-debug
 go/bin-debug:
-	$(call go_build_pyroscope,$(GO_LDFLAGS))
-	$(call go_build_profilecli,$(GO_LDFLAGS))
+	$(call go_build_pyroscope,$(GO_LDFLAGS),$(GO_GCFLAGS_DEBUG))
+	$(call go_build_profilecli,$(GO_LDFLAGS),$(GO_GCFLAGS_DEBUG))
 
 .PHONY: go/bin
 go/bin:
-	$(call go_build_pyroscope,-s -w $(GO_LDFLAGS))
-	$(call go_build_profilecli,-s -w $(GO_LDFLAGS))
+	$(call go_build_pyroscope,-s -w $(GO_LDFLAGS),)
+	$(call go_build_profilecli,-s -w $(GO_LDFLAGS),)
 
 .PHONY: go/bin-pyroscope-debug
 go/bin-pyroscope-debug:
-	$(call go_build_pyroscope,$(GO_LDFLAGS))
+	$(call go_build_pyroscope,$(GO_LDFLAGS),$(GO_GCFLAGS_DEBUG))
 
 .PHONY: go/bin-profilecli-debug
-go/bin-profilecli:
-	$(call go_build_profilecli,$(GO_LDFLAGS))
+go/bin-profilecli-debug:
+	$(call go_build_profilecli,$(GO_LDFLAGS),$(GO_GCFLAGS_DEBUG))
 
 .PHONY: go/lint
 go/lint: $(BIN)/golangci-lint
