@@ -10,6 +10,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # these are credentials for https://github.com/pyroscopebot
+          token: ${{ secrets.BOT_GITHUB_TOKEN }}
       - uses: actions/setup-go@v5
         with:
           go-version: '1.22'
@@ -18,12 +21,10 @@ jobs:
 
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          # these are credentials for https://github.com/pyroscopebot
-          token: ${{ secrets.BOT_GITHUB_TOKEN }}
           commit_user_name: Pyroscope Bot
           commit_user_email: dmitry+bot@pyroscope.io
           commit_author: 'Pyroscope Bot <dmitry+bot@pyroscope.io>'
-          commit_message: 'docs: updates the list of contributors in README'
+          commit_message: 'docs: updates the list of contributors in README [skip ci]'
           file_pattern: README.md
         env:
           GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
