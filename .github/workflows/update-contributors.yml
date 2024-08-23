@@ -10,22 +10,23 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@v5
         with:
           go-version: '1.22'
       - name: Update contributors
         run: make update-contributors
 
-      - name: Update git credentials
-        run: git remote set-url origin https://x-access-token:${{ secrets.BOT_GITHUB_TOKEN }}@github.com/${{ github.repository }}
-
-      - uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_user_name: Pyroscope Bot
-          commit_user_email: dmitry+bot@pyroscope.io
-          commit_author: 'Pyroscope Bot <dmitry+bot@pyroscope.io>'
-          commit_message: 'docs: updates the list of contributors in README [skip ci]'
-          file_pattern: README.md
-          push_options: '--force-with-lease'
+      - name: Commit and push changes
+        run: |
+          git config --local user.name 'Pyroscope Bot'
+          git config --local user.email 'dmitry+bot@pyroscope.io'
+          if ! git diff --exit-code README.md; then
+              git add README.md
+              git commit -m 'docs: updates the list of contributors in README [skip ci]'
+              gh auth status
+              git push --force https://x-access-token:${{ secrets.BOT_GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
