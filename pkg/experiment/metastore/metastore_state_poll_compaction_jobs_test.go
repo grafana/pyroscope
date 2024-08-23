@@ -236,6 +236,39 @@ func Test_CompactedBlockCanCreateNewJob(t *testing.T) {
 	require.Equalf(t, "b-21-1", m.compactionJobBlockQueues[key].blocksByLevel[1][0], "the block id should match the second compacted block")
 }
 
+func Test_FailedCompaction(t *testing.T) {
+	m := initState(t)
+	m.compactionConfig.JobMaxFailures = 2
+	addLevel0Blocks(m, 20)
+
+	// assign a job
+	resp, err := m.pollCompactionJobs(&compactorv1.PollCompactionJobsRequest{JobCapacity: 1}, 20, 20)
+	require.NoError(t, err)
+	job := resp.CompactionJobs[0]
+
+	// fail the job
+	statusUpdates := []*compactorv1.CompactionJobStatus{
+		{
+			JobName:      job.Name,
+			Status:       compactorv1.CompactionStatus_COMPACTION_STATUS_FAILURE,
+			RaftLogIndex: 20,
+		},
+	}
+	resp, err = m.pollCompactionJobs(&compactorv1.PollCompactionJobsRequest{JobStatusUpdates: statusUpdates, JobCapacity: 1}, 20, 20)
+	require.NoError(t, err)
+	require.NotNilf(t, m.compactionJobQueue.jobs[job.Name].CompactionJob, "the job %s should still exist", job.Name)
+	require.Equalf(t, uint32(1), m.compactionJobQueue.jobs[job.Name].CompactionJob.Failures, "the job %s should have 1 failure", job.Name)
+	require.Equalf(t, job.Name, resp.CompactionJobs[0].Name, "the job %s should be assigned again", job.Name)
+	verifyCompactionState(t, m)
+
+	// fail the job a second time, this time it will get removed
+	resp, err = m.pollCompactionJobs(&compactorv1.PollCompactionJobsRequest{JobStatusUpdates: statusUpdates, JobCapacity: 1}, 20, 20)
+	require.NoError(t, err)
+	require.Nilf(t, m.compactionJobQueue.jobs[job.Name], "the job %s should not exist", job.Name)
+	require.Equalf(t, 0, len(resp.CompactionJobs), "no jobs should be left to assign")
+	verifyCompactionState(t, m)
+}
+
 func addLevel0Blocks(m *metastoreState, count int) {
 	for i := 0; i < count; i++ {
 		b := createBlock(i, 0, "", 0)
