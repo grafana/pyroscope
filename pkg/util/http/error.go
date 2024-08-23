@@ -60,6 +60,9 @@ func ErrorWithStatus(w http.ResponseWriter, err error, status int) {
 // ClientHTTPStatusAndError returns error and http status that is "safe" to return to client without
 // exposing any implementation details.
 func ClientHTTPStatusAndError(err error) (int, error) {
+	if err == nil {
+		return http.StatusOK, nil
+	}
 	// todo handle multi errors
 	// me, ok := err.(multierror.MultiError)
 	// if ok && me.Is(context.Canceled) {
@@ -71,12 +74,15 @@ func ClientHTTPStatusAndError(err error) (int, error) {
 
 	s, isRPC := status.FromError(err)
 	switch {
-	case errors.Is(err, context.Canceled):
+	case errors.Is(err, context.Canceled) ||
+		(isRPC && s.Code() == codes.Canceled):
 		return StatusClientClosedRequest, errors.New(ErrClientCanceled)
 	case errors.Is(err, context.DeadlineExceeded) ||
 		(isRPC && s.Code() == codes.DeadlineExceeded):
 		return http.StatusGatewayTimeout, errors.New(ErrDeadlineExceeded)
 	case errors.Is(err, tenant.ErrNoTenantID):
+		return http.StatusBadRequest, err
+	case isRPC && s.Code() == codes.InvalidArgument:
 		return http.StatusBadRequest, err
 	default:
 		if grpcErr, ok := httpgrpc.HTTPResponseFromError(err); ok {

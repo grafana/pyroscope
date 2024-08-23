@@ -31,16 +31,15 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"
-	"golang.org/x/sync/errgroup"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
-	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/clientpool"
 	"github.com/grafana/pyroscope/pkg/distributor/aggregator"
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
+	writepath "github.com/grafana/pyroscope/pkg/distributor/write_path"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/model/relabel"
 	"github.com/grafana/pyroscope/pkg/pprof"
@@ -48,16 +47,11 @@ import (
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/usagestats"
 	"github.com/grafana/pyroscope/pkg/util"
-	"github.com/grafana/pyroscope/pkg/util/bufferpool"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 type PushClient interface {
 	Push(context.Context, *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error)
-}
-
-type SegmentWriterClient interface {
-	Push(context.Context, *segmentwriterv1.PushRequest) (*segmentwriterv1.PushResponse, error)
 }
 
 const (
@@ -117,7 +111,8 @@ type Distributor struct {
 	profileReceivedStats    *usagestats.MultiCounter
 	profileSizeStats        *usagestats.MultiStatistics
 
-	segmentWriterClient SegmentWriterClient
+	//nolint: unused
+	segwriterClient writepath.SegmentWriterClient
 }
 
 type Limits interface {
@@ -147,7 +142,7 @@ func New(
 	limits Limits,
 	reg prometheus.Registerer,
 	logger log.Logger,
-	segmentWriterClient SegmentWriterClient,
+	segwriterClient writepath.SegmentWriterClient,
 	ingesterClientsOptions ...connect.ClientOption,
 ) (*Distributor, error) {
 	ingesterClientsOptions = append(
@@ -168,13 +163,13 @@ func New(
 		metrics:                 newMetrics(reg),
 		healthyInstancesCount:   atomic.NewUint32(0),
 		aggregator:              aggregator.NewMultiTenantAggregator[*pprof.ProfileMerge](limits, reg),
+		segwriterClient:         segwriterClient,
 		limits:                  limits,
 		rfStats:                 usagestats.NewInt("distributor_replication_factor"),
 		bytesReceivedStats:      usagestats.NewStatistics("distributor_bytes_received"),
 		bytesReceivedTotalStats: usagestats.NewCounter("distributor_bytes_received_total"),
 		profileReceivedStats:    usagestats.NewMultiCounter("distributor_profiles_received", "lang"),
 		profileSizeStats:        usagestats.NewMultiStatistics("distributor_profile_sizes", "lang"),
-		segmentWriterClient:     segmentWriterClient,
 	}
 	var err error
 
@@ -423,15 +418,11 @@ func (d *Distributor) sendAggregatedProfile(ctx context.Context, req *distributo
 }
 
 func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.PushRequest, tenantID string) (resp *connect.Response[pushv1.PushResponse], err error) {
-	// Reduce cardinality of the session_id label.
+	// Reduce cardinality of session_id label.
 	maxSessionsPerSeries := d.limits.MaxSessionsPerSeries(tenantID)
 	for _, series := range req.Series {
 		series.Labels = d.limitMaxSessionsPerSeries(maxSessionsPerSeries, series.Labels)
 	}
-	return d.sendToIngester(ctx, req, tenantID)
-}
-
-func (d *Distributor) sendToIngester(ctx context.Context, req *distributormodel.PushRequest, tenantID string) (resp *connect.Response[pushv1.PushResponse], err error) {
 	usageGroups := d.limits.DistributorUsageGroups(tenantID)
 
 	// Next we split profiles by labels and apply relabel rules.
@@ -531,65 +522,6 @@ func (d *Distributor) sendToIngester(ctx context.Context, req *distributormodel.
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
-}
-
-// nolint: unused
-func (d *Distributor) sendToSegmentWriter(
-	ctx context.Context,
-	req *distributormodel.PushRequest,
-	tenantID string,
-) (*connect.Response[pushv1.PushResponse], error) {
-	// In all known cases, we have only one series and profile.
-	if len(req.Series) == 1 && len(req.Series[0].Samples) == 1 {
-		series := req.Series[0]
-		profile := series.Samples[0]
-		if err := sendToSegmentWriter(ctx, d.segmentWriterClient, profile, series.Labels, tenantID); err != nil {
-			return nil, err
-		}
-		return connect.NewResponse(&pushv1.PushResponse{}), nil
-	}
-	// Fallback.
-	g, ctx := errgroup.WithContext(ctx)
-	for _, s := range req.Series {
-		for _, p := range s.Samples {
-			s := s
-			p := p
-			g.Go(func() error {
-				return sendToSegmentWriter(ctx, d.segmentWriterClient, p, s.Labels, tenantID)
-			})
-		}
-	}
-	if err := g.Wait(); err != nil {
-		return nil, err
-	}
-	return connect.NewResponse(&pushv1.PushResponse{}), nil
-}
-
-// nolint: unused
-func sendToSegmentWriter(
-	ctx context.Context,
-	client SegmentWriterClient,
-	profile *distributormodel.ProfileSample,
-	labels []*typesv1.LabelPair,
-	tenantID string,
-) error {
-	profileID := uuid.New()
-	buf := bufferpool.GetBuffer(cap(profile.RawProfile))
-	b := bytes.NewBuffer(buf.B)
-	defer func() {
-		buf.B = b.Bytes()
-		bufferpool.Put(buf)
-	}()
-	if _, wErr := profile.Profile.WriteTo(b); wErr != nil {
-		return wErr
-	}
-	_, pushErr := client.Push(ctx, &segmentwriterv1.PushRequest{
-		TenantId:  tenantID,
-		Labels:    labels,
-		Profile:   b.Bytes(),
-		ProfileId: profileID[:],
-	})
-	return pushErr
 }
 
 // sampleSize returns the size of a samples in bytes.
