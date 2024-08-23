@@ -311,22 +311,17 @@ func TestIndexAddOutOfOrder(t *testing.T) {
 
 	a.Add(&v1.InMemoryProfile{
 		ID:                uuid.New(),
-		TimeNanos:         239,
+		TimeNanos:         238,
 		SeriesFingerprint: model.Fingerprint(lb2.Hash()),
 	}, lb2, "memory")
 
 	_, profiles, err := a.Flush(context.Background())
 	require.NoError(t, err)
 	assert.Equal(t, 5, len(profiles))
-	assert.Equal(t, int64(0), profiles[0].TimeNanos)
-	assert.Equal(t, int64(10), profiles[1].TimeNanos)
-	assert.Equal(t, int64(20), profiles[2].TimeNanos)
-	assert.Equal(t, int64(239), profiles[3].TimeNanos)
-	assert.Equal(t, int64(239), profiles[3].TimeNanos)
-
-	assert.Equal(t, uint32(0), profiles[0].SeriesIndex)
-	assert.Equal(t, uint32(0), profiles[1].SeriesIndex)
-	assert.Equal(t, uint32(0), profiles[2].SeriesIndex)
-	assert.Equal(t, uint32(1), profiles[3].SeriesIndex)
-	assert.Equal(t, uint32(1), profiles[4].SeriesIndex)
+	expectedTS := []int64{0, 10, 20, 238, 239}
+	expectedSeriesIndex := []uint32{0, 0, 0, 1, 1}
+	for i := range profiles {
+		assert.Equal(t, expectedTS[i], profiles[i].TimeNanos)
+		assert.Equal(t, expectedSeriesIndex[i], profiles[i].SeriesIndex)
+	}
 }
