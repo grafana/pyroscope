@@ -121,6 +121,11 @@ func replaceReadme() error {
 		return err
 	}
 
+	_, err = f.WriteString("\n")
+	if err != nil {
+		return err
+	}
+
 	_, err = f.WriteString(s[end:])
 	if err != nil {
 		return err
