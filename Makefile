@@ -30,7 +30,7 @@ EMBEDASSETS ?= embedassets
 # Build flags
 VPREFIX := github.com/grafana/pyroscope/pkg/util/build
 GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH) -X $(VPREFIX).Version=$(IMAGE_TAG) -X $(VPREFIX).Revision=$(GIT_REVISION) -X $(VPREFIX).BuildDate=$(GIT_LAST_COMMIT_DATE)
-GO_GCFLAGS   := all="-N -l"
+GO_GCFLAGS_DEBUG := all="-N -l"
 
 # Folders with go.mod file
 GO_MOD_PATHS := api/ ebpf/ examples/language-sdk-instrumentation/golang-push/rideshare examples/language-sdk-instrumentation/golang-push/simple/
@@ -126,8 +126,8 @@ endef
 
 .PHONY: go/bin-debug
 go/bin-debug:
-	$(call go_build_pyroscope,$(GO_LDFLAGS),$(GO_GCFLAGS))
-	$(call go_build_profilecli,$(GO_LDFLAGS),$(GO_GCFLAGS))
+	$(call go_build_pyroscope,$(GO_LDFLAGS),$(GO_GCFLAGS_DEBUG))
+	$(call go_build_profilecli,$(GO_LDFLAGS),$(GO_GCFLAGS_DEBUG))
 
 .PHONY: go/bin
 go/bin:
@@ -136,11 +136,11 @@ go/bin:
 
 .PHONY: go/bin-pyroscope-debug
 go/bin-pyroscope-debug:
-	$(call go_build_pyroscope,$(GO_LDFLAGS),$(GO_GCFLAGS))
+	$(call go_build_pyroscope,$(GO_LDFLAGS),$(GO_GCFLAGS_DEBUG))
 
 .PHONY: go/bin-profilecli-debug
-go/bin-profilecli:
-	$(call go_build_profilecli,$(GO_LDFLAGS),$(GO_GCFLAGS))
+go/bin-profilecli-debug:
+	$(call go_build_profilecli,$(GO_LDFLAGS),$(GO_GCFLAGS_DEBUG))
 
 .PHONY: go/lint
 go/lint: $(BIN)/golangci-lint
