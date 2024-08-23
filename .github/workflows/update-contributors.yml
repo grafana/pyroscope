@@ -26,5 +26,6 @@ jobs:
           commit_author: 'Pyroscope Bot <dmitry+bot@pyroscope.io>'
           commit_message: 'docs: updates the list of contributors in README [skip ci]'
           file_pattern: README.md
+          push_options: '--force-with-lease'
         env:
           GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
