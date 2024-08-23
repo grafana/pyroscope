@@ -147,6 +147,10 @@ go/lint: $(BIN)/golangci-lint
 	$(BIN)/golangci-lint run
 	$(GO) vet ./...
 
+.PHONY: update-contributors
+update-contributors: ## Update the contributors in README.md
+	go run ./tools/update-contributors
+
 .PHONY: go/mod
 go/mod: $(foreach P,$(GO_MOD_PATHS),go/mod_tidy/$P)
 
