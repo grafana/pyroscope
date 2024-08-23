@@ -2,7 +2,7 @@ name: Update Contributors in README
 
 on:
   push:
-    branches: [main, maintest]
+    branches: [main]
 
 jobs:
   update-contributors:
@@ -26,7 +26,7 @@ jobs:
               git add README.md
               git commit -m 'docs: updates the list of contributors in README [skip ci]'
               gh auth status
-              git push --force https://x-access-token:${{ secrets.BOT_GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:maintest
+              git push --force https://x-access-token:${{ secrets.BOT_GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
