@@ -24,7 +24,7 @@ jobs:
           commit_user_name: Pyroscope Bot
           commit_user_email: dmitry+bot@pyroscope.io
           commit_author: 'Pyroscope Bot <dmitry+bot@pyroscope.io>'
-          commit_message: 'docs: updates the list of contributors in README'
+          commit_message: 'docs: updates the list of contributors in README [skip ci]'
           file_pattern: README.md
         env:
           GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
