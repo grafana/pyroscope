@@ -27,6 +27,7 @@ type tenantShard struct {
 type metastoreState struct {
 	logger            log.Logger
 	compactionMetrics *compactionMetrics
+	compactionConfig  *CompactionConfig
 
 	shardsMutex sync.Mutex
 	shards      map[uint32]*metastoreShard
@@ -48,14 +49,15 @@ type compactionJobBlockQueue struct {
 	blocksByLevel map[uint32][]string
 }
 
-func newMetastoreState(logger log.Logger, db *boltdb, reg prometheus.Registerer) *metastoreState {
+func newMetastoreState(logger log.Logger, db *boltdb, reg prometheus.Registerer, compaction *CompactionConfig) *metastoreState {
 	return &metastoreState{
 		logger:                   logger,
 		shards:                   make(map[uint32]*metastoreShard),
 		db:                       db,
 		compactionJobBlockQueues: make(map[tenantShard]*compactionJobBlockQueue),
-		compactionJobQueue:       newJobQueue(jobLeaseDuration.Nanoseconds()),
+		compactionJobQueue:       newJobQueue(compaction.JobLeaseDuration.Nanoseconds()),
 		compactionMetrics:        newCompactionMetrics(reg),
+		compactionConfig:         compaction,
 	}
 }
 
@@ -64,7 +66,7 @@ func (m *metastoreState) reset(db *boltdb) {
 	m.compactionMutex.Lock()
 	clear(m.shards)
 	clear(m.compactionJobBlockQueues)
-	m.compactionJobQueue = newJobQueue(jobLeaseDuration.Nanoseconds())
+	m.compactionJobQueue = newJobQueue(m.compactionConfig.JobLeaseDuration.Nanoseconds())
 	m.db = db
 	m.shardsMutex.Unlock()
 	m.compactionMutex.Unlock()

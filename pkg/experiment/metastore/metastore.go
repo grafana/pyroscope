@@ -46,6 +46,7 @@ type Config struct {
 	GRPCClientConfig grpcclient.Config `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with the metastore."`
 	DataDir          string            `yaml:"data_dir"`
 	Raft             RaftConfig        `yaml:"raft"`
+	Compaction       CompactionConfig  `yaml:"compaction_config"`
 }
 
 type RaftConfig struct {
@@ -67,6 +68,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix(prefix+"grpc-client-config", f)
 	f.StringVar(&cfg.DataDir, prefix+"data-dir", "./data-metastore/data", "")
 	cfg.Raft.RegisterFlagsWithPrefix(prefix+"raft.", f)
+	cfg.Compaction.RegisterFlagsWithPrefix(prefix+"compaction.", f)
 }
 
 func (cfg *Config) Validate() error {
@@ -145,7 +147,7 @@ func New(config Config, limits Limits, logger log.Logger, reg prometheus.Registe
 		client:  client,
 	}
 	m.leaderhealth = raftleader.NewRaftLeaderHealthObserver(hs, logger, raftleader.NewMetrics(reg))
-	m.state = newMetastoreState(logger, m.db, m.reg)
+	m.state = newMetastoreState(logger, m.db, m.reg, &config.Compaction)
 	m.service = services.NewBasicService(m.starting, m.running, m.stopping)
 	return m, nil
 }

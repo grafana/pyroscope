@@ -15,13 +15,14 @@ import (
 func TestMetadataStateManagement(t *testing.T) {
 	reg := prometheus.DefaultRegisterer
 	config := Config{
-		DataDir: t.TempDir(),
+		DataDir:    t.TempDir(),
+		Compaction: CompactionConfig{},
 	}
 	db := newDB(config, util.Logger, newMetastoreMetrics(reg))
 	err := db.open(false)
 	require.NoError(t, err)
 
-	m := newMetastoreState(util.Logger, db, reg)
+	m := newMetastoreState(util.Logger, db, reg, &config.Compaction)
 	require.NotNil(t, m)
 
 	t.Run("restore compaction state", func(t *testing.T) {
@@ -39,7 +40,7 @@ func TestMetadataStateManagement(t *testing.T) {
 		}
 
 		// clear state
-		m.compactionJobQueue = newJobQueue(jobLeaseDuration.Nanoseconds())
+		m.compactionJobQueue = newJobQueue(m.compactionConfig.JobLeaseDuration.Nanoseconds())
 		m.compactionJobBlockQueues = make(map[tenantShard]*compactionJobBlockQueue)
 
 		// restore state from db

@@ -97,7 +97,7 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 			stateUpdate.updatedJobs = append(stateUpdate.updatedJobs, job.Name)
 		case compactorv1.CompactionStatus_COMPACTION_STATUS_FAILURE:
 			job.Failures += 1
-			if job.Failures > 2 {
+			if int(job.Failures) >= m.compactionConfig.JobMaxFailures {
 				m.compactionJobQueue.evict(job.Name, math.MaxInt64)
 				stateUpdate.deletedJobs[jobKey] = append(stateUpdate.deletedJobs[jobKey], job.Name)
 			} else {

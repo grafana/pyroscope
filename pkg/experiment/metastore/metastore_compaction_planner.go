@@ -2,6 +2,7 @@ package metastore
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"time"
 
@@ -16,10 +17,15 @@ import (
 	"github.com/grafana/pyroscope/pkg/util"
 )
 
-const (
-	jobPollInterval  = 5 * time.Second
-	jobLeaseDuration = 3 * jobPollInterval
-)
+type CompactionConfig struct {
+	JobLeaseDuration time.Duration `yaml:"job_lease_duration"`
+	JobMaxFailures   int           `yaml:"job_max_failures"`
+}
+
+func (cfg *CompactionConfig) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
+	f.DurationVar(&cfg.JobLeaseDuration, prefix+"job-lease-duration", 15*time.Second, "")
+	f.IntVar(&cfg.JobMaxFailures, prefix+"job-max-failures", 3, "")
+}
 
 var (
 	// TODO aleks: for illustration purposes, to be moved externally

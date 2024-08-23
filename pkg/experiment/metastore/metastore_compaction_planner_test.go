@@ -3,6 +3,7 @@ package metastore
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
@@ -52,12 +53,15 @@ func initState(t *testing.T) *metastoreState {
 	reg := prometheus.DefaultRegisterer
 	config := Config{
 		DataDir: t.TempDir(),
+		Compaction: CompactionConfig{
+			JobLeaseDuration: 15 * time.Second,
+		},
 	}
 	db := newDB(config, util.Logger, newMetastoreMetrics(reg))
 	err := db.open(false)
 	require.NoError(t, err)
 
-	m := newMetastoreState(util.Logger, db, reg)
+	m := newMetastoreState(util.Logger, db, reg, &config.Compaction)
 	require.NotNil(t, m)
 	return m
 }
@@ -79,7 +83,7 @@ func getQueueLen(m *metastoreState, shard int, tenant string, level int) int {
 }
 
 func verifyCompactionState(t *testing.T, m *metastoreState) {
-	stateFromDb := newMetastoreState(util.Logger, m.db, prometheus.DefaultRegisterer)
+	stateFromDb := newMetastoreState(util.Logger, m.db, prometheus.DefaultRegisterer, m.compactionConfig)
 	err := m.db.boltdb.View(func(tx *bbolt.Tx) error {
 		return stateFromDb.restoreCompactionPlan(tx)
 	})
