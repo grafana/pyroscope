@@ -434,7 +434,6 @@ func (s *segment) waitFlushed(ctx context.Context) error {
 		s.flushErrMutex.Lock()
 		defer s.flushErrMutex.Unlock()
 		res := s.flushErr
-		s.flushErr = nil // TODO
 		return res
 	}
 }

@@ -29,7 +29,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	testutil3 "github.com/grafana/pyroscope/pkg/phlaredb/block/testutil"
 	pprofth "github.com/grafana/pyroscope/pkg/pprof/testhelper"
-	"github.com/prometheus/client_golang/prometheus"
 	model2 "github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/util/testutil"
 	"github.com/stretchr/testify/require"
@@ -233,9 +232,56 @@ func TestBusyIngestLoop(t *testing.T) {
 }
 
 func TestDLQFail(t *testing.T) {
-	t.Fail()
 
-	// test second return
+	l := testutil.NewLogger(t)
+	bucket := mockBucket{upload: func(ctx context.Context, name string, r io.Reader) error {
+		if strings.HasSuffix(name, pathBlock) {
+			return nil
+		}
+		assert.Contains(t, name, pathDLQ)
+		return fmt.Errorf("mock upload DLQ error")
+	}}
+	client := &metastoreClientMock{
+		addBlock: func(ctx context.Context, in *metastorev1.AddBlockRequest, opts ...grpc.CallOption) (*metastorev1.AddBlockResponse, error) {
+			return nil, fmt.Errorf("metastore unavailable")
+		},
+	}
+	res := newSegmentWriter(
+		l,
+		newSegmentMetrics(nil),
+		memdb.NewHeadMetricsWithPrefix(nil, ""),
+		segmentWriterConfig{
+			segmentDuration: 100 * time.Millisecond,
+		},
+		bucket,
+		client,
+	)
+	defer res.Stop()
+	ts := 420
+	ing := func(head segmentIngest) error {
+		ts += 420
+		p := cpuProfile(42, ts, "svc1", "foo", "bar")
+		err := head.ingest(context.Background(), "t1", p.Profile, p.UUID, p.Labels)
+		require.NoError(t, err)
+		return err
+	}
+
+	awaiter1, err := res.ingest(0, ing)
+	require.NoError(t, err)
+	awaiter2, err := res.ingest(0, ing)
+	require.NoError(t, err)
+
+	err1 := awaiter1.waitFlushed(context.Background())
+	require.Error(t, err1)
+
+	err2 := awaiter1.waitFlushed(context.Background())
+	require.Error(t, err2)
+
+	err3 := awaiter2.waitFlushed(context.Background())
+	require.Error(t, err3)
+
+	require.Equal(t, err1, err2)
+	require.Equal(t, err1, err3)
 }
 
 func TestDatasetMinMaxTime(t *testing.T) {
@@ -253,21 +299,19 @@ func TestQueryMultipleSeriesSingleTenant(t *testing.T) {
 type sw struct {
 	*segmentsWriter
 	bucket  *memory.InMemBucket
-	client  *metastoreClient
+	client  *metastoreClientMock
 	t       *testing.T
 	queryNo int
 }
 
 func newTestSegmentWriter(t *testing.T, cfg segmentWriterConfig) sw {
 	l := testutil.NewLogger(t)
-	reg := prometheus.NewRegistry()
-
 	bucket := memory.NewInMemBucket()
-	client := new(metastoreClient)
+	client := new(metastoreClientMock)
 	res := newSegmentWriter(
 		l,
-		newSegmentMetrics(reg),
-		memdb.NewHeadMetricsWithPrefix(reg, ""),
+		newSegmentMetrics(nil),
+		memdb.NewHeadMetricsWithPrefix(nil, ""),
 		cfg,
 		bucket,
 		client,
@@ -561,19 +605,19 @@ func memProfile(samples int, tsMillis int, svc string, stack ...string) *pprofth
 		AddSamples([]int64{v, v * 1024, v, v * 1024}...)
 }
 
-type metastoreClient struct {
+type metastoreClientMock struct {
 	addBlock func(ctx context.Context, in *metastorev1.AddBlockRequest, opts ...grpc.CallOption) (*metastorev1.AddBlockResponse, error)
 }
 
-func (m *metastoreClient) AddBlock(ctx context.Context, in *metastorev1.AddBlockRequest, opts ...grpc.CallOption) (*metastorev1.AddBlockResponse, error) {
+func (m *metastoreClientMock) AddBlock(ctx context.Context, in *metastorev1.AddBlockRequest, opts ...grpc.CallOption) (*metastorev1.AddBlockResponse, error) {
 	return m.addBlock(ctx, in, opts...)
 }
 
-func (m *metastoreClient) QueryMetadata(ctx context.Context, in *metastorev1.QueryMetadataRequest, opts ...grpc.CallOption) (*metastorev1.QueryMetadataResponse, error) {
+func (m *metastoreClientMock) QueryMetadata(ctx context.Context, in *metastorev1.QueryMetadataRequest, opts ...grpc.CallOption) (*metastorev1.QueryMetadataResponse, error) {
 	panic("implement me")
 }
 
-func (m *metastoreClient) ReadIndex(ctx context.Context, in *metastorev1.ReadIndexRequest, opts ...grpc.CallOption) (*metastorev1.ReadIndexResponse, error) {
+func (m *metastoreClientMock) ReadIndex(ctx context.Context, in *metastorev1.ReadIndexRequest, opts ...grpc.CallOption) (*metastorev1.ReadIndexResponse, error) {
 	panic("implement me")
 }
 
