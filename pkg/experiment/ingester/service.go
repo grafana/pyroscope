@@ -117,7 +117,9 @@ func New(reg prometheus.Registerer, log log.Logger, cfg Config, dbConfig phlared
 	segmentMetrics := newSegmentMetrics(i.reg)
 	headMetrics := memdb.NewHeadMetricsWithPrefix(reg, "pyroscope_segment_writer")
 
-	i.segmentWriter = newSegmentWriter(i.logger, segmentMetrics, headMetrics, i.dbConfig, storageBucket, cfg.SegmentDuration, metastoreClient)
+	i.segmentWriter = newSegmentWriter(i.logger, segmentMetrics, headMetrics, segmentWriterConfig{
+		segmentDuration: cfg.SegmentDuration,
+	}, storageBucket, metastoreClient)
 	i.subservicesWatcher = services.NewFailureWatcher()
 	i.subservicesWatcher.WatchManager(i.subservices)
 	i.Service = services.NewBasicService(i.starting, i.running, i.stopping)

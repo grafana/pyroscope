@@ -6,9 +6,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"github.com/grafana/pyroscope/pkg/experiment/ingester/memdb"
-	"os"
 	"path"
-	"path/filepath"
 	"runtime/pprof"
 	"slices"
 	"strings"
@@ -25,7 +23,6 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/util/math"
 )
@@ -37,19 +34,25 @@ const pathBlock = "block.bin"
 
 type shardKey uint32
 
+type segmentWriterConfig struct {
+	segmentDuration time.Duration
+}
+
 type segmentsWriter struct {
 	segmentDuration time.Duration
+
 	l               log.Logger
-	shards          map[shardKey]*shard
-	shardsLock      sync.RWMutex
-	cfg             phlaredb.Config
 	bucket          objstore.Bucket
 	metastoreClient metastorev1.MetastoreServiceClient
-	//wg              sync.WaitGroup
-	cancel      context.CancelFunc
+
+	shards     map[shardKey]*shard
+	shardsLock sync.RWMutex
+
+	cancelCtx context.Context
+	cancel    context.CancelFunc
+
 	metrics     *segmentMetrics
 	headMetrics *memdb.HeadMetrics
-	cancelCtx   context.Context
 }
 
 type shard struct {
@@ -113,15 +116,14 @@ func (sh *shard) flushSegment(ctx context.Context) {
 	}()
 }
 
-func newSegmentWriter(l log.Logger, metrics *segmentMetrics, hm *memdb.HeadMetrics, cfg phlaredb.Config, bucket objstore.Bucket, segmentDuration time.Duration, metastoreClient metastorev1.MetastoreServiceClient) *segmentsWriter {
+func newSegmentWriter(l log.Logger, metrics *segmentMetrics, hm *memdb.HeadMetrics, cfg segmentWriterConfig, bucket objstore.Bucket, metastoreClient metastorev1.MetastoreServiceClient) *segmentsWriter {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	sw := &segmentsWriter{
 		metrics:         metrics,
 		headMetrics:     hm,
-		segmentDuration: segmentDuration,
+		segmentDuration: cfg.segmentDuration,
 		l:               l,
 		bucket:          bucket,
-		cfg:             cfg,
 		shards:          make(map[shardKey]*shard),
 		metastoreClient: metastoreClient,
 		cancel:          cancelFunc,
@@ -183,17 +185,17 @@ func (sw *segmentsWriter) newShard(sk shardKey) *shard {
 func (sw *segmentsWriter) newSegment(sh *shard, sk shardKey, sl log.Logger) *segment {
 	id := ulid.MustNew(ulid.Timestamp(time.Now()), rand.Reader)
 	sshard := fmt.Sprintf("%d", sk)
-	dataPath := path.Join(sw.cfg.DataPath, pathSegments, sshard, pathAnon, id.String())
+	blockPath := path.Join(pathSegments, sshard, pathAnon, id.String(), pathBlock)
 	s := &segment{
-		l:        log.With(sl, "segment-id", id.String()),
-		ulid:     id,
-		heads:    make(map[serviceKey]serviceHead),
-		sw:       sw,
-		sh:       sh,
-		shard:    sk,
-		sshard:   sshard,
-		dataPath: dataPath,
-		doneChan: make(chan struct{}, 0),
+		l:         log.With(sl, "segment-id", id.String()),
+		ulid:      id,
+		heads:     make(map[serviceKey]serviceHead),
+		sw:        sw,
+		sh:        sh,
+		shard:     sk,
+		sshard:    sshard,
+		blockPath: blockPath,
+		doneChan:  make(chan struct{}, 0),
 	}
 	return s
 }
@@ -399,7 +401,7 @@ type segment struct {
 	heads            map[serviceKey]serviceHead
 	headsLock        sync.RWMutex
 	sw               *segmentsWriter
-	dataPath         string
+	blockPath        string
 	doneChan         chan struct{}
 	flushErr         error
 	flushErrMutex    sync.Mutex
@@ -487,20 +489,12 @@ func (s *segment) cleanup() {
 
 func (sw *segmentsWriter) uploadBlock(blockData []byte, s *segment) error {
 	t1 := time.Now()
-	blockPath := path.Join(s.dataPath, pathBlock)
-	dst, err := filepath.Rel(sw.cfg.DataPath, blockPath)
-	if err != nil {
+	if err := sw.bucket.Upload(context.Background(), s.blockPath, bytes.NewReader(blockData)); err != nil {
 		return err
 	}
-	if err := sw.bucket.Upload(context.Background(), dst, bytes.NewReader(blockData)); err != nil {
-		return err
-	}
-	st, _ := os.Stat(blockPath)
-	if st != nil {
-		sw.metrics.segmentBlockSizeBytes.WithLabelValues(s.sshard).Observe(float64(st.Size()))
-	}
+	sw.metrics.segmentBlockSizeBytes.WithLabelValues(s.sshard).Observe(float64(len(blockData)))
 	sw.metrics.blockUploadDuration.WithLabelValues(s.sshard).Observe(time.Since(t1).Seconds())
-	sw.l.Log("msg", "uploaded block", "path", dst, "time-took", time.Since(t1))
+	sw.l.Log("msg", "uploaded block", "path", s.blockPath, "time-took", time.Since(t1))
 
 	return nil
 }

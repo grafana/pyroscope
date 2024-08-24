@@ -68,7 +68,7 @@ func TestSegmentIngest(t *testing.T) {
 }
 
 func ingestWithMetastoreAvailable(t *testing.T, chunks []inputChunk) {
-	sw := newTestSegmentWriter(t)
+	sw := newTestSegmentWriter(t, defaultTestSegmentWriterConfig())
 	defer sw.Stop()
 	blocks := make(chan *metastorev1.BlockMeta, 128)
 	sw.client.addBlock = func(ctx context.Context, in *metastorev1.AddBlockRequest, opts ...grpc.CallOption) (*metastorev1.AddBlockResponse, error) {
@@ -95,7 +95,7 @@ func ingestWithMetastoreAvailable(t *testing.T, chunks []inputChunk) {
 }
 
 func ingestWithDLQ(t *testing.T, chunks []inputChunk) {
-	sw := newTestSegmentWriter(t)
+	sw := newTestSegmentWriter(t, defaultTestSegmentWriterConfig())
 	defer sw.Stop()
 	sw.client.addBlock = func(ctx context.Context, in *metastorev1.AddBlockRequest, opts ...grpc.CallOption) (*metastorev1.AddBlockResponse, error) {
 		t.Log("addBlock: metastore unavailable")
@@ -115,7 +115,28 @@ func ingestWithDLQ(t *testing.T, chunks []inputChunk) {
 }
 
 func TestIngestWait(t *testing.T) {
-	t.Fail()
+	sw := newTestSegmentWriter(t, segmentWriterConfig{
+		segmentDuration: 100 * time.Millisecond,
+	})
+
+	defer sw.Stop()
+	sw.client.addBlock = func(ctx context.Context, in *metastorev1.AddBlockRequest, opts ...grpc.CallOption) (*metastorev1.AddBlockResponse, error) {
+		time.Sleep(1 * time.Second)
+		return new(metastorev1.AddBlockResponse), nil
+	}
+
+	t1 := time.Now()
+	awaiter, err := sw.ingest(0, func(head segmentIngest) error {
+		p := cpuProfile(42, 480, "svc1", "foo", "bar")
+		err := head.ingest(context.Background(), "t1", p.Profile, p.UUID, p.Labels)
+		require.NoError(t, err)
+		return err
+	})
+	require.NoError(t, err)
+	err = awaiter.waitFlushed(context.Background())
+	require.NoError(t, err)
+	since := time.Since(t1)
+	require.True(t, since > 1*time.Second)
 }
 
 func TestBusyIngestLoop(t *testing.T) {
@@ -151,12 +172,10 @@ type sw struct {
 	queryNo int
 }
 
-func newTestSegmentWriter(t *testing.T) sw {
+func newTestSegmentWriter(t *testing.T, cfg segmentWriterConfig) sw {
 	l := testutil.NewLogger(t)
 	reg := prometheus.NewRegistry()
-	cfg := phlaredb.Config{
-		DataPath: t.TempDir(),
-	}
+
 	bucket := memory.NewInMemBucket()
 	client := new(metastoreClient)
 	res := newSegmentWriter(
@@ -165,7 +184,6 @@ func newTestSegmentWriter(t *testing.T) sw {
 		memdb.NewHeadMetricsWithPrefix(reg, ""),
 		cfg,
 		bucket,
-		1*time.Second,
 		client,
 	)
 	return sw{
@@ -173,6 +191,12 @@ func newTestSegmentWriter(t *testing.T) sw {
 		segmentsWriter: res,
 		bucket:         bucket,
 		client:         client,
+	}
+}
+
+func defaultTestSegmentWriterConfig() segmentWriterConfig {
+	return segmentWriterConfig{
+		segmentDuration: 1 * time.Second,
 	}
 }
 
