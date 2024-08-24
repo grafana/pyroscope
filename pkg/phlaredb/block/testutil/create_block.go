@@ -68,6 +68,7 @@ func CreateBlock(t testing.TB, generator func() []*testhelper.ProfileBuilder) (b
 func OpenBlockFromMemory(t *testing.T, dir string, minTime, maxTime model.Time, profiles, tsdb, symbols []byte) *phlaredb.BlockQuerier {
 	CreateBlockFromMemory(t, dir, minTime, maxTime, profiles, tsdb, symbols)
 	blockBucket, err := filesystem.NewBucket(dir)
+	require.NoError(t, err)
 	blockQuerier := phlaredb.NewBlockQuerier(context.Background(), blockBucket)
 
 	err = blockQuerier.Sync(context.Background())

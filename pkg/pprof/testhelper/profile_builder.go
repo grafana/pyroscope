@@ -21,11 +21,6 @@ type ProfileBuilder struct {
 	Labels []*typesv1.LabelPair
 }
 
-type sampleID struct {
-	locationsID uint64
-	labelsID    uint64
-}
-
 // NewProfileBuilder creates a new ProfileBuilder with the given nanoseconds timestamp.
 func NewProfileBuilder(ts int64) *ProfileBuilder {
 	return NewProfileBuilderWithLabels(ts, []*typesv1.LabelPair{
