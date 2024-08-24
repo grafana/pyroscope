@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"io"
 	"math/rand"
 	"path/filepath"
@@ -140,8 +141,95 @@ func TestIngestWait(t *testing.T) {
 }
 
 func TestBusyIngestLoop(t *testing.T) {
-	// wait for 2 segment
-	t.Fail()
+
+	sw := newTestSegmentWriter(t, segmentWriterConfig{
+		segmentDuration: 100 * time.Millisecond,
+	})
+
+	writeCtx, writeCancel := context.WithCancel(context.Background())
+	readCtx, readCancel := context.WithCancel(context.Background())
+	metaChan := make(chan *metastorev1.BlockMeta)
+	defer sw.Stop()
+	cnt := 0
+	sw.client.addBlock = func(ctx context.Context, in *metastorev1.AddBlockRequest, opts ...grpc.CallOption) (*metastorev1.AddBlockResponse, error) {
+		t.Logf("addBlock %v", in.Block)
+		metaChan <- in.Block
+		t.Logf("addedBlock %v", in.Block)
+
+		cnt++
+		if cnt == 3 { // wait for at least 3 segment
+			writeCancel()
+		}
+		return new(metastorev1.AddBlockResponse), nil
+	}
+	metas := make([]*metastorev1.BlockMeta, 0)
+	readG := sync.WaitGroup{}
+	readG.Add(1)
+	go func() {
+		defer readG.Done()
+		for {
+			select {
+			case <-readCtx.Done():
+				return
+			case meta := <-metaChan:
+				metas = append(metas, meta)
+			}
+		}
+	}()
+	writeG := sync.WaitGroup{}
+	allProfiles := make([]*pprofth.ProfileBuilder, 0)
+	m := new(sync.Mutex)
+	nWorkers := 5
+	for i := 0; i < nWorkers; i++ {
+		workerno := i
+		writeG.Add(1)
+		go func() {
+			defer writeG.Done()
+			awaiters := make([]segmentWaitFlushed, 0)
+			profiles := make([]*pprofth.ProfileBuilder, 0)
+			defer func() {
+				require.NotEmpty(t, profiles)
+				require.NotEmpty(t, awaiters)
+				for _, awaiter := range awaiters {
+					err := awaiter.waitFlushed(context.Background())
+					require.NoError(t, err)
+				}
+				m.Lock()
+				allProfiles = append(allProfiles, profiles...)
+				m.Unlock()
+			}()
+			for {
+				select {
+				case <-writeCtx.Done():
+					return
+				default:
+					ts := workerno*1000000000 + len(profiles)
+					awaiter, err := sw.ingest(1, func(head segmentIngest) error {
+						p := cpuProfile(42, ts, "svc1", "foo", "bar")
+						err := head.ingest(context.Background(), "t1", p.CloneVT(), p.UUID, p.Labels)
+						require.NoError(t, err)
+						profiles = append(profiles, p)
+						return err
+					})
+					require.NoError(t, err)
+					awaiters = append(awaiters, awaiter)
+				}
+			}
+		}()
+	}
+	writeG.Wait()
+
+	readCancel()
+	readG.Wait()
+	assert.True(t, len(metas) >= 3)
+
+	chunk := make(inputChunk, 0)
+	for _, p := range allProfiles {
+		chunk = append(chunk, input{shard: 1, tenant: "t1", profile: p})
+	}
+	inputs := groupInputs(t, chunk)
+	clients := sw.createBlocksFromMetas(metas)
+	sw.queryInputs(clients, inputs)
 }
 
 func TestDLQFail(t *testing.T) {
@@ -582,6 +670,10 @@ type (
 
 func (g testDataGenerator) generate() []inputChunk {
 	r := rand.New(rand.NewSource(g.seed))
+	tg := timestampGenerator{
+		m: make(map[int64]struct{}),
+		r: rand.New(rand.NewSource(r.Int63())),
+	}
 	chunks := make([]inputChunk, g.chunks)
 
 	services := make([]string, 0, g.services)
@@ -598,16 +690,6 @@ func (g testDataGenerator) generate() []inputChunk {
 		frames = append(frames, fmt.Sprintf("frame%d", i))
 	}
 
-	timestamps := make(map[int64]struct{})
-	timestamp := func() int {
-		for {
-			ts := r.Int63n(1000000)
-			if _, ok := timestamps[ts]; !ok {
-				timestamps[ts] = struct{}{}
-				return int(ts)
-			}
-		}
-	}
 	for i := range chunks {
 		chunk := make(inputChunk, 0, g.profiles)
 		for j := 0; j < g.profiles; j++ {
@@ -621,7 +703,7 @@ func (g testDataGenerator) generate() []inputChunk {
 			typ := r.Intn(2)
 			var p *pprofth.ProfileBuilder
 			nSamples := r.Intn(100)
-			ts := timestamp()
+			ts := tg.next()
 			if typ == 0 {
 				p = cpuProfile(nSamples+1, ts, svc, stack...)
 			} else {
@@ -632,4 +714,20 @@ func (g testDataGenerator) generate() []inputChunk {
 		chunks[i] = chunk
 	}
 	return chunks
+}
+
+type timestampGenerator struct {
+	m map[int64]struct{}
+	r *rand.Rand
+	l sync.Mutex
+}
+
+func (g *timestampGenerator) next() int {
+	for {
+		ts := g.r.Int63n(100000000)
+		if _, ok := g.m[ts]; !ok {
+			g.m[ts] = struct{}{}
+			return int(ts)
+		}
+	}
 }
