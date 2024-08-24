@@ -24,11 +24,9 @@ import (
 )
 
 // TODO:
-//  1. Service
-//  2. Overrides
+//  5. Add TenantID to the distributormodel.PushRequest
 //  3. Integrate into distributor
 //  4. Tests
-//  5. Add TenantID to the distributormodel.PushRequest
 
 type SendFunc func(context.Context, *distributormodel.PushRequest, string) error
 
@@ -36,12 +34,16 @@ type SegmentWriterClient interface {
 	Push(context.Context, *segmentwriterv1.PushRequest) (*segmentwriterv1.PushResponse, error)
 }
 
+type Overrides interface {
+	WritePathOverrides(tenantID string) Config
+}
+
 type Router struct {
 	service  services.Service
 	inflight sync.WaitGroup
 
-	config Config
-	logger log.Logger
+	logger    log.Logger
+	overrides Overrides
 
 	sendToIngester SendFunc
 	segmentWriter  SegmentWriterClient
@@ -50,15 +52,16 @@ type Router struct {
 }
 
 func NewRouter(
-	limits Config,
 	logger log.Logger,
+	overrides Overrides,
 	reg prometheus.Registerer,
 	ingester SendFunc,
 	segwriter SegmentWriterClient,
 ) *Router {
 	r := &Router{
-		config:         limits,
-		logger:         logger,
+		logger:    logger,
+		overrides: overrides,
+
 		sendToIngester: ingester,
 		segmentWriter:  segwriter,
 
@@ -94,13 +97,14 @@ func (m *Router) Send(
 	req *distributormodel.PushRequest,
 	tenantID string,
 ) error {
-	switch path := m.config.WritePath(); path {
+	config := m.overrides.WritePathOverrides(tenantID)
+	switch config.WritePath {
 	case IngesterPath:
 		return m.send(m.ingesterRoute())(ctx, req, tenantID)
 	case SegmentWriterPath:
 		return m.send(m.segwriterRoute(true))(ctx, req, tenantID)
 	case CombinedPath:
-		return m.sendToBoth(ctx, req, tenantID)
+		return m.sendToBoth(ctx, req, config, tenantID)
 	}
 	return ErrInvalidWritePath
 }
@@ -134,13 +138,12 @@ func (m *Router) segwriterRoute(primary bool) *route {
 func (m *Router) sendToBoth(
 	ctx context.Context,
 	req *distributormodel.PushRequest,
+	config Config,
 	tenantID string,
 ) error {
 	r := rand.Float64() // [0.0, 1.0)
-	ingesterWeight := m.config.IngesterWeight()
-	segwriterWeight := m.config.SegmentWriterWeight()
-	shouldIngester := ingesterWeight > 0.0 && ingesterWeight >= r
-	shouldSegwriter := segwriterWeight > 0.0 && segwriterWeight >= r
+	shouldIngester := config.IngesterWeight > 0.0 && config.IngesterWeight >= r
+	shouldSegwriter := config.SegmentWriterWeight > 0.0 && config.SegmentWriterWeight >= r
 
 	// Client sees errors and latency of the primary write
 	// path, secondary write path does not affect the client.

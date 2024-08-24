@@ -162,7 +162,3 @@ func TestOverwriteMarshalingStringMapYAML(t *testing.T) {
 	require.Nil(t, yaml.Unmarshal(out, &back))
 	require.Equal(t, m, back)
 }
-
-func TestIngestionRelabelingOverwrites(t *testing.T) {
-
-}
