@@ -144,12 +144,10 @@ func TestBusyIngestLoop(t *testing.T) {
 	t.Fail()
 }
 
-func TestSecondAwaitReturnsSameError(t *testing.T) {
-	t.Fail()
-}
-
 func TestDLQFail(t *testing.T) {
 	t.Fail()
+
+	// test second return
 }
 
 func TestDatasetMinMaxTime(t *testing.T) {
