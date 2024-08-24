@@ -12,6 +12,7 @@ const RawProfileTypePPROF = RawProfileType("pprof")
 const RawProfileTypeJFR = RawProfileType("jfr")
 
 type PushRequest struct {
+	TenantID       string
 	RawProfileSize int
 	RawProfileType RawProfileType
 

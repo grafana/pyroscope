@@ -24,11 +24,10 @@ import (
 )
 
 // TODO:
-//  5. Add TenantID to the distributormodel.PushRequest
-//  3. Integrate into distributor
-//  4. Tests
+//  3. Tests
+//  4. Integrate into distributor
 
-type SendFunc func(context.Context, *distributormodel.PushRequest, string) error
+type SendFunc func(context.Context, *distributormodel.PushRequest) error
 
 type SegmentWriterClient interface {
 	Push(context.Context, *segmentwriterv1.PushRequest) (*segmentwriterv1.PushResponse, error)
@@ -53,8 +52,8 @@ type Router struct {
 
 func NewRouter(
 	logger log.Logger,
+	registerer prometheus.Registerer,
 	overrides Overrides,
-	reg prometheus.Registerer,
 	ingester SendFunc,
 	segwriter SegmentWriterClient,
 ) *Router {
@@ -72,7 +71,7 @@ func NewRouter(
 		}, []string{"route", "primary", "status"}),
 	}
 
-	reg.MustRegister(r.durationHistogram)
+	registerer.MustRegister(r.durationHistogram)
 	r.service = services.NewBasicService(r.starting, r.running, r.stopping)
 	return r
 }
@@ -92,19 +91,15 @@ func (m *Router) running(ctx context.Context) error {
 	return nil
 }
 
-func (m *Router) Send(
-	ctx context.Context,
-	req *distributormodel.PushRequest,
-	tenantID string,
-) error {
-	config := m.overrides.WritePathOverrides(tenantID)
+func (m *Router) Send(ctx context.Context, req *distributormodel.PushRequest) error {
+	config := m.overrides.WritePathOverrides(req.TenantID)
 	switch config.WritePath {
 	case IngesterPath:
-		return m.send(m.ingesterRoute())(ctx, req, tenantID)
+		return m.send(m.ingesterRoute())(ctx, req)
 	case SegmentWriterPath:
-		return m.send(m.segwriterRoute(true))(ctx, req, tenantID)
+		return m.send(m.segwriterRoute(true))(ctx, req)
 	case CombinedPath:
-		return m.sendToBoth(ctx, req, config, tenantID)
+		return m.sendToBoth(ctx, req, config)
 	}
 	return ErrInvalidWritePath
 }
@@ -121,26 +116,17 @@ func (m *Router) segwriterRoute(primary bool) *route {
 	return &route{
 		path:    SegmentWriterPath,
 		primary: primary,
-		send: func(
-			ctx context.Context,
-			req *distributormodel.PushRequest,
-			tenantID string,
-		) error {
+		send: func(ctx context.Context, req *distributormodel.PushRequest) error {
 			// Prepare the requests: we're trying to avoid allocating extra
 			// memory for serialized profiles by reusing the source request
 			// capacities, iff the request won't be sent to ingester.
-			requests := convertRequest(tenantID, req, !primary)
+			requests := convertRequest(req, !primary)
 			return m.sendRequestsToSegmentWriter(ctx, requests)
 		},
 	}
 }
 
-func (m *Router) sendToBoth(
-	ctx context.Context,
-	req *distributormodel.PushRequest,
-	config Config,
-	tenantID string,
-) error {
+func (m *Router) sendToBoth(ctx context.Context, req *distributormodel.PushRequest, config Config) error {
 	r := rand.Float64() // [0.0, 1.0)
 	shouldIngester := config.IngesterWeight > 0.0 && config.IngesterWeight >= r
 	shouldSegwriter := config.SegmentWriterWeight > 0.0 && config.SegmentWriterWeight >= r
@@ -155,7 +141,7 @@ func (m *Router) sendToBoth(
 		// and counted in metrics but NOT returned to the client.
 		ingester = m.ingesterRoute()
 		if !shouldSegwriter {
-			return m.send(ingester)(ctx, req, tenantID)
+			return m.send(ingester)(ctx, req)
 		}
 	}
 	if shouldSegwriter {
@@ -166,23 +152,30 @@ func (m *Router) sendToBoth(
 			// returns.
 			// Failure of the new write is returned to the client.
 			// Failure of the old write path is NOT returned to the client.
-			return m.send(segwriter)(ctx, req, tenantID)
+			return m.send(segwriter)(ctx, req)
 		}
 	}
+
+	// No write routes. This is possible if the write path is configured
+	// to "combined" and both weights are set to 0.0.
 	if ingester == nil && segwriter == nil {
-		return ErrInvalidWritePath
+		return nil
 	}
 
-	// If we ended up here, ingester is the primary route.
-	c := m.sendAsync(ctx, req, tenantID, ingester)
-	m.sendAsync(ctx, req, tenantID, segwriter)
-	var err error
+	// If we ended up here, ingester is the primary route,
+	// and segment-writer is the secondary route.
+	c := m.sendAsync(ctx, req, ingester)
+	// We do not wait for the secondary request to complete.
+	// On shutdown, however, we will wait for all inflight
+	// requests to complete.
+	m.sendAsync(ctx, req, segwriter)
+
 	select {
-	case err = <-c:
+	case err := <-c:
+		return err
 	case <-ctx.Done():
-		err = ctx.Err()
+		return ctx.Err()
 	}
-	return err
 }
 
 type route struct {
@@ -204,27 +197,18 @@ func (r *route) metricDims(err error) []string {
 	return dims
 }
 
-func (m *Router) sendAsync(
-	ctx context.Context,
-	req *distributormodel.PushRequest,
-	tenantID string,
-	r *route,
-) <-chan error {
+func (m *Router) sendAsync(ctx context.Context, req *distributormodel.PushRequest, r *route) <-chan error {
 	c := make(chan error, 1)
 	m.inflight.Add(1)
 	go func() {
 		defer m.inflight.Done()
-		c <- m.send(r)(ctx, req, tenantID)
+		c <- m.send(r)(ctx, req)
 	}()
 	return c
 }
 
 func (m *Router) send(r *route) SendFunc {
-	return func(
-		ctx context.Context,
-		req *distributormodel.PushRequest,
-		tenantID string,
-	) (err error) {
+	return func(ctx context.Context, req *distributormodel.PushRequest) (err error) {
 		start := time.Now()
 		defer func() {
 			if p := recover(); p != nil {
@@ -234,17 +218,14 @@ func (m *Router) send(r *route) SendFunc {
 				WithLabelValues(r.metricDims(err)...).
 				Observe(time.Since(start).Seconds())
 		}()
-		return r.send(ctx, req, tenantID)
+		return r.send(ctx, req)
 	}
 }
 
-func (m *Router) sendRequestsToSegmentWriter(
-	ctx context.Context,
-	requests []*segmentwriterv1.PushRequest,
-) error {
-	// In all known cases, we only have a single profile.
-	// We should avoid batching multiple profiles into a single request.
-	// Overhead of handling multiple profiles in a single request is
+func (m *Router) sendRequestsToSegmentWriter(ctx context.Context, requests []*segmentwriterv1.PushRequest) error {
+	// In all the known cases, we only have a single profile.
+	// We should avoid batching multiple profiles into a single request:
+	// overhead of handling multiple profiles in a single request is
 	// substantial: we need to allocate memory for all profiles at once,
 	// and wait for multiple requests routed to different shards to complete
 	// is generally a bad idea because it's hard to reason about latencies,
@@ -265,15 +246,11 @@ func (m *Router) sendRequestsToSegmentWriter(
 	return g.Wait()
 }
 
-func convertRequest(
-	tenantID string,
-	request *distributormodel.PushRequest,
-	copy bool,
-) []*segmentwriterv1.PushRequest {
-	r := make([]*segmentwriterv1.PushRequest, 0, len(request.Series)*2)
-	for _, s := range request.Series {
+func convertRequest(req *distributormodel.PushRequest, copy bool) []*segmentwriterv1.PushRequest {
+	r := make([]*segmentwriterv1.PushRequest, 0, len(req.Series)*2)
+	for _, s := range req.Series {
 		for _, p := range s.Samples {
-			r = append(r, convertProfile(p, s.Labels, tenantID, copy))
+			r = append(r, convertProfile(p, s.Labels, req.TenantID, copy))
 		}
 	}
 	return r

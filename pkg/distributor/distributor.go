@@ -276,6 +276,7 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
+	req.TenantID = tenantID
 	for _, series := range req.Series {
 		serviceName := phlaremodel.Labels(series.Labels).Get(phlaremodel.LabelNameServiceName)
 		if serviceName == "" {
@@ -384,7 +385,7 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		}
 	}
 
-	return d.sendRequests(ctx, req, tenantID)
+	return d.sendRequests(ctx, req)
 }
 
 func (d *Distributor) sendAggregatedProfile(ctx context.Context, req *distributormodel.PushRequest, tenantID string, handler func() (*pprof.ProfileMerge, error)) {
@@ -406,29 +407,30 @@ func (d *Distributor) sendAggregatedProfile(ctx context.Context, req *distributo
 			return
 		}
 		req := &distributormodel.PushRequest{
+			TenantID: tenantID,
 			Series: []*distributormodel.ProfileSeries{{
 				Labels:  labels,
 				Samples: []*distributormodel.ProfileSample{{Profile: pprof.RawFromProto(p.Profile())}},
 			}},
 		}
-		if _, err = d.sendRequests(localCtx, req, tenantID); err != nil {
+		if _, err = d.sendRequests(localCtx, req); err != nil {
 			_ = level.Error(d.logger).Log("msg", "failed to ingest aggregated profile", "tenant", tenantID, "err", err)
 		}
 	}()
 }
 
-func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.PushRequest, tenantID string) (resp *connect.Response[pushv1.PushResponse], err error) {
+func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.PushRequest) (resp *connect.Response[pushv1.PushResponse], err error) {
 	// Reduce cardinality of session_id label.
-	maxSessionsPerSeries := d.limits.MaxSessionsPerSeries(tenantID)
+	maxSessionsPerSeries := d.limits.MaxSessionsPerSeries(req.TenantID)
 	for _, series := range req.Series {
 		series.Labels = d.limitMaxSessionsPerSeries(maxSessionsPerSeries, series.Labels)
 	}
-	usageGroups := d.limits.DistributorUsageGroups(tenantID)
+	usageGroups := d.limits.DistributorUsageGroups(req.TenantID)
 
 	// Next we split profiles by labels and apply relabel rules.
-	profileSeries, bytesRelabelDropped, profilesRelabelDropped := extractSampleSeries(req, tenantID, usageGroups, d.limits.IngestionRelabelingRules(tenantID))
-	validation.DiscardedBytes.WithLabelValues(string(validation.DroppedByRelabelRules), tenantID).Add(bytesRelabelDropped)
-	validation.DiscardedProfiles.WithLabelValues(string(validation.DroppedByRelabelRules), tenantID).Add(profilesRelabelDropped)
+	profileSeries, bytesRelabelDropped, profilesRelabelDropped := extractSampleSeries(req, req.TenantID, usageGroups, d.limits.IngestionRelabelingRules(req.TenantID))
+	validation.DiscardedBytes.WithLabelValues(string(validation.DroppedByRelabelRules), req.TenantID).Add(bytesRelabelDropped)
+	validation.DiscardedProfiles.WithLabelValues(string(validation.DroppedByRelabelRules), req.TenantID).Add(profilesRelabelDropped)
 
 	// Filter our series and profiles without samples.
 	for _, series := range profileSeries {
@@ -445,21 +447,21 @@ func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.Pu
 
 	// Validate the labels again and generate tokens for shuffle sharding.
 	keys := make([]uint32, len(profileSeries))
-	enforceLabelsOrder := d.limits.EnforceLabelsOrder(tenantID)
+	enforceLabelsOrder := d.limits.EnforceLabelsOrder(req.TenantID)
 	for i, series := range profileSeries {
 		if enforceLabelsOrder {
 			series.Labels = phlaremodel.Labels(series.Labels).InsertSorted(phlaremodel.LabelNameOrder, phlaremodel.LabelOrderEnforced)
 		}
 
-		groups := usageGroups.GetUsageGroups(tenantID, phlaremodel.Labels(series.Labels))
+		groups := usageGroups.GetUsageGroups(req.TenantID, series.Labels)
 
-		if err = validation.ValidateLabels(d.limits, tenantID, series.Labels); err != nil {
-			validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(req.TotalProfiles))
-			validation.DiscardedBytes.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(req.TotalBytesUncompressed))
+		if err = validation.ValidateLabels(d.limits, req.TenantID, series.Labels); err != nil {
+			validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), req.TenantID).Add(float64(req.TotalProfiles))
+			validation.DiscardedBytes.WithLabelValues(string(validation.ReasonOf(err)), req.TenantID).Add(float64(req.TotalBytesUncompressed))
 			groups.CountDiscardedBytes(string(validation.ReasonOf(err)), req.TotalBytesUncompressed)
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
-		keys[i] = TokenFor(tenantID, phlaremodel.LabelPairsString(series.Labels))
+		keys[i] = TokenFor(req.TenantID, phlaremodel.LabelPairsString(series.Labels))
 	}
 
 	profiles := make([]*profileTracker, 0, len(profileSeries))
@@ -484,7 +486,7 @@ func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.Pu
 	ingesterDescs := map[string]ring.InstanceDesc{}
 	for i, key := range keys {
 		// Get a subring if tenant has shuffle shard size configured.
-		subRing := d.ingestersRing.ShuffleShard(tenantID, d.limits.IngestionTenantShardSize(tenantID))
+		subRing := d.ingestersRing.ShuffleShard(req.TenantID, d.limits.IngestionTenantShardSize(req.TenantID))
 
 		replicationSet, err := subRing.Get(key, ring.Write, descs[:0], nil, nil)
 		if err != nil {
@@ -507,7 +509,7 @@ func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.Pu
 			// Use a background context to make sure all ingesters get samples even if we return early
 			localCtx, cancel := context.WithTimeout(context.Background(), d.cfg.PushTimeout)
 			defer cancel()
-			localCtx = tenant.InjectTenantID(localCtx, tenantID)
+			localCtx = tenant.InjectTenantID(localCtx, req.TenantID)
 			if sp := opentracing.SpanFromContext(ctx); sp != nil {
 				localCtx = opentracing.ContextWithSpan(localCtx, sp)
 			}
@@ -784,7 +786,7 @@ func extractSampleSeries(req *distributormodel.PushRequest, tenantID string, usa
 			Labels:  series.Labels,
 			Samples: make([]*distributormodel.ProfileSample, 0, len(series.Samples)),
 		}
-		usageGroups := usageGroups.GetUsageGroups(tenantID, phlaremodel.Labels(series.Labels))
+		usageGroups := usageGroups.GetUsageGroups(tenantID, series.Labels)
 
 		for _, raw := range series.Samples {
 			pprof.RenameLabel(raw.Profile.Profile, pprof.ProfileIDLabelName, pprof.SpanIDLabelName)
