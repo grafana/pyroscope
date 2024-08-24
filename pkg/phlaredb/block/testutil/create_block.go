@@ -65,14 +65,23 @@ func CreateBlock(t testing.TB, generator func() []*testhelper.ProfileBuilder) (b
 	return *meta, localDir
 }
 
-func CreateBlockFromMemory(t *testing.T, minTime, maxTime model.Time, profiles, tsdb, symbols []byte) *phlaredb.BlockQuerier {
-	dir := t.TempDir()
+func OpenBlockFromMemory(t *testing.T, dir string, minTime, maxTime model.Time, profiles, tsdb, symbols []byte) *phlaredb.BlockQuerier {
+	CreateBlockFromMemory(t, dir, minTime, maxTime, profiles, tsdb, symbols)
+	blockBucket, err := filesystem.NewBucket(dir)
+	blockQuerier := phlaredb.NewBlockQuerier(context.Background(), blockBucket)
+
+	err = blockQuerier.Sync(context.Background())
+	require.NoError(t, err)
+
+	return blockQuerier
+}
+
+func CreateBlockFromMemory(t *testing.T, dir string, minTime, maxTime model.Time, profiles, tsdb, symbols []byte) *block.Meta {
 	blockid, err := ulid.New(uint64(maxTime), rand.Reader)
 	require.NoError(t, err)
 	blockDir := filepath.Join(dir, blockid.String())
-	t.Logf("block dir: %s", blockDir)
-	os.Mkdir(blockDir, 0755)
-	blockBucket, err := filesystem.NewBucket(dir)
+	err = os.MkdirAll(blockDir, 0755)
+	assert.NoError(t, err)
 	err = os.WriteFile(filepath.Join(blockDir, "profiles.parquet"), profiles, 0644)
 	assert.NoError(t, err)
 	err = os.WriteFile(filepath.Join(blockDir, "index.tsdb"), tsdb, 0644)
@@ -80,7 +89,7 @@ func CreateBlockFromMemory(t *testing.T, minTime, maxTime model.Time, profiles, 
 	err = os.WriteFile(filepath.Join(blockDir, "symbols.symdb"), symbols, 0644)
 	assert.NoError(t, err)
 
-	blockMeta := block.Meta{
+	blockMeta := &block.Meta{
 		ULID:    blockid,
 		MinTime: minTime,
 		MaxTime: maxTime,
@@ -105,10 +114,5 @@ func CreateBlockFromMemory(t *testing.T, minTime, maxTime model.Time, profiles, 
 	err = os.WriteFile(filepath.Join(blockDir, block.MetaFilename), blockMetaJson, 0644)
 	assert.NoError(t, err)
 
-	blockQuerier := phlaredb.NewBlockQuerier(context.Background(), blockBucket)
-
-	err = blockQuerier.Sync(context.Background())
-	require.NoError(t, err)
-
-	return blockQuerier
+	return blockMeta
 }

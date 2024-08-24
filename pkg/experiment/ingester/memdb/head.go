@@ -24,8 +24,8 @@ type FlushedHead struct {
 	Symbols  []byte
 	Meta     struct {
 		ProfileTypeNames []string
-		MinTime          model.Time
-		MaxTime          model.Time
+		MinTimeNanos     int64
+		MaxTimeNanos     int64
 		NumSamples       uint64
 		NumProfiles      uint64
 		NumSeries        uint64
@@ -35,8 +35,8 @@ type FlushedHead struct {
 type Head struct {
 	symbols      *symdb.PartitionWriter
 	metaLock     sync.RWMutex
-	minTime      model.Time
-	maxTime      model.Time
+	minTimeNanos int64
+	maxTimeNanos int64
 	totalSamples *atomic.Uint64
 	profiles     *profilesIndex
 	metrics      *HeadMetrics
@@ -52,8 +52,8 @@ func NewHead(metrics *HeadMetrics) (*Head, error) {
 			},
 		}),
 		totalSamples: atomic.NewUint64(0),
-		minTime:      math.MaxInt64,
-		maxTime:      0,
+		minTimeNanos: math.MaxInt64,
+		maxTimeNanos: 0,
 	}
 	profiles, err := newProfileIndex(32, metrics)
 	if err != nil {
@@ -105,13 +105,12 @@ func (h *Head) Ingest(p *profilev1.Profile, id uuid.UUID, externalLabels []*type
 		return nil
 	}
 
-	v := model.TimeFromUnixNano(p.TimeNanos)
 	h.metaLock.Lock()
-	if v < h.minTime {
-		h.minTime = v
+	if p.TimeNanos < h.minTimeNanos {
+		h.minTimeNanos = p.TimeNanos
 	}
-	if v > h.maxTime {
-		h.maxTime = v
+	if p.TimeNanos > h.maxTimeNanos {
+		h.maxTimeNanos = p.TimeNanos
 	}
 	h.metaLock.Unlock()
 
@@ -145,8 +144,8 @@ func (h *Head) flush(ctx context.Context) (*FlushedHead, error) {
 		profiles []schemav1.InMemoryProfile
 	)
 	res := new(FlushedHead)
-	res.Meta.MinTime = h.minTime
-	res.Meta.MaxTime = h.maxTime
+	res.Meta.MinTimeNanos = h.minTimeNanos
+	res.Meta.MaxTimeNanos = h.maxTimeNanos
 	res.Meta.NumSamples = h.totalSamples.Load()
 	res.Meta.NumSeries = uint64(h.profiles.totalSeries.Load())
 

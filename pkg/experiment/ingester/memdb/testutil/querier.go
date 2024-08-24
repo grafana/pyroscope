@@ -11,7 +11,9 @@ import (
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/testhelper"
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 	"net/http"
+	"testing"
 )
 
 // Copied from phlaredb, todo
@@ -19,7 +21,8 @@ type IngesterHandlerPhlareDB struct {
 	phlaredb.Queriers
 }
 
-func IngesterClientForTest(q phlaredb.Queriers) (ingesterv1connect.IngesterServiceClient, func()) {
+func IngesterClientForTest(t *testing.T, q phlaredb.Queriers) (ingesterv1connect.IngesterServiceClient, func()) {
+	assert.NotEmpty(t, q)
 	mux := http.NewServeMux()
 	mux.Handle(ingesterv1connect.NewIngesterServiceHandler(&IngesterHandlerPhlareDB{q}, connectapi.DefaultHandlerOptions()...))
 	serv := testhelper.NewInMemoryServer(mux)

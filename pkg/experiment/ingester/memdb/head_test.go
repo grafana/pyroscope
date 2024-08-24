@@ -5,6 +5,7 @@ import (
 	"connectrpc.com/connect"
 	"context"
 	"fmt"
+	"github.com/google/pprof/profile"
 	"github.com/google/uuid"
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
@@ -356,7 +357,7 @@ func TestMergeProfilesStacktraces(t *testing.T) {
 	q := flushTestHead(t, db)
 
 	// create client
-	client, cleanup := testutil.IngesterClientForTest([]phlaredb.Querier{q})
+	client, cleanup := testutil.IngesterClientForTest(t, []phlaredb.Querier{q})
 	defer cleanup()
 
 	t.Run("request the one existing series", func(t *testing.T) {
@@ -460,6 +461,149 @@ func TestMergeProfilesStacktraces(t *testing.T) {
 	})
 }
 
+func TestMergeProfilesPprof(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	// ingest some sample data
+	var (
+		end   = time.Unix(0, int64(time.Hour))
+		start = end.Add(-time.Minute)
+		step  = 15 * time.Second
+	)
+
+	db, err := NewHead(NewHeadMetricsWithPrefix(nil, ""))
+	require.NoError(t, err)
+
+	ingestProfiles(t, db, cpuProfileGenerator, start.UnixNano(), end.UnixNano(), step,
+		&typesv1.LabelPair{Name: "namespace", Value: "my-namespace"},
+		&typesv1.LabelPair{Name: "pod", Value: "my-pod"},
+	)
+
+	q := flushTestHead(t, db)
+
+	// create client
+	client, cleanup := testutil.IngesterClientForTest(t, []phlaredb.Querier{q})
+	defer cleanup()
+
+	t.Run("request the one existing series", func(t *testing.T) {
+		bidi := client.MergeProfilesPprof(context.Background())
+
+		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesPprofRequest{
+			Request: &ingestv1.SelectProfilesRequest{
+				LabelSelector: `{pod="my-pod"}`,
+				Type:          mustParseProfileSelector(t, "process_cpu:cpu:nanoseconds:cpu:nanoseconds"),
+				Start:         start.UnixMilli(),
+				End:           end.UnixMilli(),
+			},
+		}))
+
+		resp, err := bidi.Receive()
+		require.NoError(t, err)
+		require.Nil(t, resp.Result)
+		require.Len(t, resp.SelectedProfiles.Fingerprints, 1)
+		require.Len(t, resp.SelectedProfiles.Profiles, 5)
+
+		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesPprofRequest{
+			Profiles: []bool{true},
+		}))
+
+		// expect empty resp to signal it is finished
+		resp, err = bidi.Receive()
+		require.NoError(t, err)
+		require.Nil(t, resp.Result)
+
+		// received result
+		resp, err = bidi.Receive()
+		require.NoError(t, err)
+		require.NotNil(t, resp.Result)
+		p, err := profile.ParseUncompressed(resp.Result)
+		require.NoError(t, err)
+		require.Len(t, p.Sample, 48)
+		require.Len(t, p.Location, 287)
+	})
+
+	t.Run("request non existing series", func(t *testing.T) {
+		bidi := client.MergeProfilesPprof(context.Background())
+
+		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesPprofRequest{
+			Request: &ingestv1.SelectProfilesRequest{
+				LabelSelector: `{pod="not-my-pod"}`,
+				Type:          mustParseProfileSelector(t, "process_cpu:cpu:nanoseconds:cpu:nanoseconds"),
+				Start:         start.UnixMilli(),
+				End:           end.UnixMilli(),
+			},
+		}))
+
+		// expect empty resp to signal it is finished
+		resp, err := bidi.Receive()
+		require.NoError(t, err)
+		require.Nil(t, resp.Result)
+		require.Nil(t, resp.SelectedProfiles)
+
+		// still receiving a result
+		resp, err = bidi.Receive()
+		require.NoError(t, err)
+		require.NotNil(t, resp.Result)
+		p, err := profile.ParseUncompressed(resp.Result)
+		require.NoError(t, err)
+		require.Len(t, p.Sample, 0)
+		require.Len(t, p.Location, 0)
+		require.Nil(t, resp.SelectedProfiles)
+	})
+
+	t.Run("empty request fails", func(t *testing.T) {
+		bidi := client.MergeProfilesPprof(context.Background())
+
+		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesPprofRequest{}))
+
+		_, err := bidi.Receive()
+		require.EqualError(t, err, "invalid_argument: missing initial select request")
+	})
+
+	t.Run("test cancellation", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		bidi := client.MergeProfilesPprof(ctx)
+		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesPprofRequest{
+			Request: &ingestv1.SelectProfilesRequest{
+				LabelSelector: `{pod="my-pod"}`,
+				Type:          mustParseProfileSelector(t, "process_cpu:cpu:nanoseconds:cpu:nanoseconds"),
+				Start:         start.UnixMilli(),
+				End:           end.UnixMilli(),
+			},
+		}))
+		cancel()
+	})
+
+	t.Run("test close request", func(t *testing.T) {
+		bidi := client.MergeProfilesPprof(context.Background())
+		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesPprofRequest{
+			Request: &ingestv1.SelectProfilesRequest{
+				LabelSelector: `{pod="my-pod"}`,
+				Type:          mustParseProfileSelector(t, "process_cpu:cpu:nanoseconds:cpu:nanoseconds"),
+				Start:         start.UnixMilli(),
+				End:           end.UnixMilli(),
+			},
+		}))
+		require.NoError(t, bidi.CloseRequest())
+	})
+
+	t.Run("timerange with no Profiles", func(t *testing.T) {
+		bidi := client.MergeProfilesPprof(context.Background())
+		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesPprofRequest{
+			Request: &ingestv1.SelectProfilesRequest{
+				LabelSelector: `{pod="my-pod"}`,
+				Type:          mustParseProfileSelector(t, "process_cpu:cpu:nanoseconds:cpu:nanoseconds"),
+				Start:         0,
+				End:           1,
+			},
+		}))
+		_, err := bidi.Receive()
+		require.NoError(t, err)
+		_, err = bidi.Receive()
+		require.NoError(t, err)
+	})
+}
+
 // See https://github.com/grafana/pyroscope/pull/3356
 func Test_HeadFlush_DuplicateLabels(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
@@ -505,11 +649,6 @@ func newTestHead(t testing.TB) *Head {
 	head, err := NewHead(NewHeadMetricsWithPrefix(nil, ""))
 	require.NoError(t, err)
 	return head
-}
-
-type testHead struct {
-	*Head
-	t testing.TB
 }
 
 func parseProfile(t testing.TB, path string) *profilev1.Profile {
@@ -669,7 +808,8 @@ func flushTestHead(t *testing.T, head *Head) phlaredb.Querier {
 }
 
 func createBlockFromFlushedHead(t *testing.T, flushed *FlushedHead) phlaredb.Querier {
-	block := testutil2.CreateBlockFromMemory(t, flushed.Meta.MinTime, flushed.Meta.MaxTime, flushed.Profiles, flushed.Index, flushed.Symbols)
+	dir := t.TempDir()
+	block := testutil2.OpenBlockFromMemory(t, dir, model.TimeFromUnixNano(flushed.Meta.MinTimeNanos), model.TimeFromUnixNano(flushed.Meta.MinTimeNanos), flushed.Profiles, flushed.Index, flushed.Symbols)
 	q := block.Queriers()
 	err := q.Open(context.Background())
 	require.NoError(t, err)

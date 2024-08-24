@@ -193,7 +193,7 @@ func (sw *segmentsWriter) newSegment(sh *shard, sk shardKey, sl log.Logger) *seg
 		shard:    sk,
 		sshard:   sshard,
 		dataPath: dataPath,
-		doneChan: make(chan error, 1),
+		doneChan: make(chan struct{}, 0),
 	}
 	return s
 }
@@ -205,11 +205,12 @@ func (s *segment) flush(ctx context.Context) (err error) {
 	defer func() {
 		s.cleanup()
 		if err != nil {
-			s.doneChan <- err
+			s.flushErrMutex.Lock()
+			s.flushErr = err
+			s.flushErrMutex.Unlock()
 		}
 		close(s.doneChan)
 		s.sw.metrics.flushSegmentDuration.WithLabelValues(s.sshard).Observe(time.Since(t1).Seconds())
-
 	}()
 	pprof.Do(ctx, pprof.Labels("segment_op", "flush_heads"), func(ctx context.Context) {
 		heads = s.flushHeads(ctx)
@@ -258,7 +259,7 @@ func (s *segment) flushBlock(heads []flushedServiceHead) ([]byte, *metastorev1.B
 	w := withWriterOffset(blockFile)
 
 	for i, e := range heads {
-		svc, err := concatSegmentHead(s.sh, e, w)
+		svc, err := concatSegmentHead(e, w)
 		if err != nil {
 			_ = level.Error(s.l).Log("msg", "failed to concat segment head", "err", err)
 			continue
@@ -279,7 +280,7 @@ func (s *segment) flushBlock(heads []flushedServiceHead) ([]byte, *metastorev1.B
 	return blockFile.Bytes(), meta, nil
 }
 
-func concatSegmentHead(sh *shard, e flushedServiceHead, w *writerOffset) (*metastorev1.Dataset, error) {
+func concatSegmentHead(e flushedServiceHead, w *writerOffset) (*metastorev1.Dataset, error) {
 	tenantServiceOffset := w.offset
 
 	ptypes := e.head.Meta.ProfileTypeNames
@@ -300,8 +301,8 @@ func concatSegmentHead(sh *shard, e flushedServiceHead, w *writerOffset) (*metas
 	svc := &metastorev1.Dataset{
 		TenantId: e.key.tenant,
 		Name:     e.key.service,
-		MinTime:  int64(e.head.Meta.MinTime),
-		MaxTime:  int64(e.head.Meta.MaxTime),
+		MinTime:  e.head.Meta.MinTimeNanos / 1e6,
+		MaxTime:  e.head.Meta.MaxTimeNanos/1e6 + 1,
 		Size:     uint64(tenantServiceSize),
 		//  - 0: profiles.parquet
 		//  - 1: index.tsdb
@@ -367,6 +368,10 @@ func (s *segment) flushHead(ctx context.Context, e serviceHead) (*memdb.FlushedH
 		"msg", "flushed head",
 		"tenant", e.key.tenant,
 		"service", e.key.service,
+		"profiles", flushed.Meta.NumProfiles,
+		"profiletypes", fmt.Sprintf("%v", flushed.Meta.ProfileTypeNames),
+		"mintime", flushed.Meta.MinTimeNanos,
+		"maxtime", flushed.Meta.MaxTimeNanos,
 		"head-flush-duration", time.Since(th).String(),
 	)
 	return flushed, nil
@@ -395,7 +400,9 @@ type segment struct {
 	headsLock        sync.RWMutex
 	sw               *segmentsWriter
 	dataPath         string
-	doneChan         chan error
+	doneChan         chan struct{}
+	flushErr         error
+	flushErrMutex    sync.Mutex
 	l                log.Logger
 
 	debuginfo struct {
@@ -405,7 +412,8 @@ type segment struct {
 		flushBlockDuration time.Duration
 		storeMetaDuration  time.Duration
 	}
-	sh *shard
+	sh      *shard
+	counter int64
 }
 
 type segmentIngest interface {
@@ -420,8 +428,12 @@ func (s *segment) waitFlushed(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
 		return fmt.Errorf("waitFlushed: %s %w", s.ulid.String(), ctx.Err())
-	case err := <-s.doneChan:
-		return err
+	case <-s.doneChan:
+		s.flushErrMutex.Lock()
+		defer s.flushErrMutex.Unlock()
+		res := s.flushErr
+		s.flushErr = nil // TODO
+		return res
 	}
 }
 
@@ -470,9 +482,7 @@ func (s *segment) headForIngest(k serviceKey) (*memdb.Head, error) {
 }
 
 func (s *segment) cleanup() {
-	if err := os.RemoveAll(s.dataPath); err != nil {
-		_ = level.Error(s.l).Log("msg", "failed to cleanup segment", "err", err, "f", s.dataPath)
-	}
+
 }
 
 func (sw *segmentsWriter) uploadBlock(blockData []byte, s *segment) error {
