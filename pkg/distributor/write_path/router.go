@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/google/uuid"
+	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/errgroup"
 
@@ -36,6 +37,7 @@ type SegmentWriterClient interface {
 }
 
 type Router struct {
+	service  services.Service
 	inflight sync.WaitGroup
 
 	config Config
@@ -54,19 +56,37 @@ func NewRouter(
 	ingester SendFunc,
 	segwriter SegmentWriterClient,
 ) *Router {
-	durationHistogram := prometheus.NewHistogramVec(prometheus.HistogramOpts{
-		Namespace: "pyroscope",
-		Name:      "_write_path_downstream_request_duration_seconds",
-		Buckets:   prometheus.ExponentialBucketsRange(0.001, 10, 30),
-	}, []string{"route", "primary", "status"})
-	reg.MustRegister(durationHistogram)
-	return &Router{
-		config:            limits,
-		logger:            logger,
-		sendToIngester:    ingester,
-		segmentWriter:     segwriter,
-		durationHistogram: durationHistogram,
+	r := &Router{
+		config:         limits,
+		logger:         logger,
+		sendToIngester: ingester,
+		segmentWriter:  segwriter,
+
+		durationHistogram: prometheus.NewHistogramVec(prometheus.HistogramOpts{
+			Namespace: "pyroscope",
+			Name:      "_write_path_downstream_request_duration_seconds",
+			Buckets:   prometheus.ExponentialBucketsRange(0.001, 10, 30),
+		}, []string{"route", "primary", "status"}),
 	}
+
+	reg.MustRegister(r.durationHistogram)
+	r.service = services.NewBasicService(r.starting, r.running, r.stopping)
+	return r
+}
+
+func (m *Router) Service() services.Service { return m.service }
+
+func (m *Router) starting(context.Context) error { return nil }
+
+func (m *Router) stopping(_ error) error {
+	// We expect that no requests are routed after the stopping call.
+	m.inflight.Wait()
+	return nil
+}
+
+func (m *Router) running(ctx context.Context) error {
+	<-ctx.Done()
+	return nil
 }
 
 func (m *Router) Send(
@@ -220,11 +240,17 @@ func (m *Router) sendRequestsToSegmentWriter(
 	requests []*segmentwriterv1.PushRequest,
 ) error {
 	// In all known cases, we only have a single profile.
+	// We should avoid batching multiple profiles into a single request.
+	// Overhead of handling multiple profiles in a single request is
+	// substantial: we need to allocate memory for all profiles at once,
+	// and wait for multiple requests routed to different shards to complete
+	// is generally a bad idea because it's hard to reason about latencies,
+	// retries, and error handling.
 	if len(requests) == 1 {
 		_, err := m.segmentWriter.Push(ctx, requests[0])
 		return err
 	}
-	// Fallback: it's very unlikely that we will end up here.
+	// Fallback. We should minimize probability of this branch.
 	g, ctx := errgroup.WithContext(ctx)
 	for _, r := range requests {
 		request := r
