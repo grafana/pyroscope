@@ -304,7 +304,7 @@ func concatSegmentHead(e flushedServiceHead, w *writerOffset) (*metastorev1.Data
 		TenantId: e.key.tenant,
 		Name:     e.key.service,
 		MinTime:  e.head.Meta.MinTimeNanos / 1e6,
-		MaxTime:  e.head.Meta.MaxTimeNanos/1e6 + 1,
+		MaxTime:  e.head.Meta.MaxTimeNanos / 1e6,
 		Size:     uint64(tenantServiceSize),
 		//  - 0: profiles.parquet
 		//  - 1: index.tsdb

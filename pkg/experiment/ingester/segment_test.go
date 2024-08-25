@@ -144,6 +144,7 @@ func TestBusyIngestLoop(t *testing.T) {
 	sw := newTestSegmentWriter(t, segmentWriterConfig{
 		segmentDuration: 100 * time.Millisecond,
 	})
+	defer sw.Stop()
 
 	writeCtx, writeCancel := context.WithCancel(context.Background())
 	readCtx, readCancel := context.WithCancel(context.Background())
@@ -285,11 +286,56 @@ func TestDLQFail(t *testing.T) {
 }
 
 func TestDatasetMinMaxTime(t *testing.T) {
-	t.Fail()
-}
+	l := testutil.NewLogger(t)
+	bucket := memory.NewInMemBucket()
+	metas := make(chan *metastorev1.BlockMeta)
+	client := &metastoreClientMock{
+		addBlock: func(ctx context.Context, in *metastorev1.AddBlockRequest, opts ...grpc.CallOption) (*metastorev1.AddBlockResponse, error) {
+			metas <- in.Block
+			return new(metastorev1.AddBlockResponse), nil
+		},
+	}
+	res := newSegmentWriter(
+		l,
+		newSegmentMetrics(nil),
+		memdb.NewHeadMetricsWithPrefix(nil, ""),
+		segmentWriterConfig{
+			segmentDuration: 100 * time.Millisecond,
+		},
+		bucket,
+		client,
+	)
+	data := []input{
+		{shard: 1, tenant: "tb", profile: cpuProfile(42, 239, "svc1", "foo", "bar")},
+		{shard: 1, tenant: "tb", profile: cpuProfile(13, 420, "svc1", "qwe", "foo", "bar")},
+		{shard: 1, tenant: "tb", profile: cpuProfile(13, 420, "svc2", "qwe", "foo", "bar")},
+		{shard: 1, tenant: "tb", profile: cpuProfile(13, 421, "svc2", "qwe", "foo", "bar")},
+		{shard: 1, tenant: "ta", profile: cpuProfile(13, 10, "svc1", "vbn", "foo", "bar")},
+		{shard: 1, tenant: "ta", profile: cpuProfile(13, 1337, "svc1", "vbn", "foo", "bar")},
+	}
+	_, _ = res.ingest(1, func(head segmentIngest) error {
+		for _, p := range data {
+			err := head.ingest(context.Background(), p.tenant, p.profile.Profile, p.profile.UUID, p.profile.Labels)
+			require.NoError(t, err)
+		}
+		return nil
+	})
+	defer res.Stop()
+	block := <-metas
 
-func TestTimeSubrange(t *testing.T) {
-	t.Fail() // ingest multiple profiles with different time ranges, query half
+	expected := [][2]int{
+		{10, 1337},
+		{239, 420},
+		{420, 421},
+	}
+
+	require.Equal(t, len(expected), len(block.Datasets))
+	for i, ds := range block.Datasets {
+		assert.Equalf(t, expected[i][0], int(ds.MinTime), "idx %d", i)
+		assert.Equalf(t, expected[i][1], int(ds.MaxTime), "idx %d", i)
+	}
+	assert.Equal(t, int64(10), block.MinTime)
+	assert.Equal(t, int64(1337), block.MaxTime)
 }
 
 func TestQueryMultipleSeriesSingleTenant(t *testing.T) {
@@ -396,73 +442,73 @@ func (sw *sw) queryInputs(clients tenantClients, inputs groupedInputs) {
 		tc, ok := clients[tenant]
 		require.True(sw.t, ok)
 		for svc, metricNameInputs := range tenantInputs {
-			if svc == "svc2" { //TODO delete this
-				continue
-			}
 			for metricName, profiles := range metricNameInputs {
+				start, end := getStartEndTime(profiles)
 				ps := make([]*profilev1.Profile, 0, len(profiles))
 				for _, p := range profiles {
 					ps = append(ps, p.Profile)
 				}
 				expectedMerged := mergeProfiles(sw.t, ps)
 
-				start, end := getStartEndTime(profiles)
-
 				sts := sampleTypesFromMetricName(sw.t, metricName)
 				for sti, st := range sts {
-					bidi := tc.client.MergeProfilesPprof(context.Background())
-					err := bidi.Send(&ingesterv1.MergeProfilesPprofRequest{
-						Request: &ingesterv1.SelectProfilesRequest{
-							LabelSelector: fmt.Sprintf("{%s=\"%s\"}", model.LabelNameServiceName, svc),
-							Type:          st,
-							Start:         start,
-							End:           end,
-						},
-					})
-					require.NoError(sw.t, err)
-
-					resp, err := bidi.Receive()
-					require.NoError(t, err)
-					require.Nil(t, resp.Result)
-					if resp.SelectedProfiles == nil {
-						t.Logf("resp %+v", resp)
+					q := &ingesterv1.SelectProfilesRequest{
+						LabelSelector: fmt.Sprintf("{%s=\"%s\"}", model.LabelNameServiceName, svc),
+						Type:          st,
+						Start:         start,
+						End:           end,
 					}
-					require.NotNilf(t, resp.SelectedProfiles, "res %+v", resp)
-					require.NotEmpty(t, resp.SelectedProfiles.Fingerprints)
-					require.NotEmpty(t, resp.SelectedProfiles.Profiles)
-
-					nProfiles := len(resp.SelectedProfiles.Profiles)
-
-					bools := make([]bool, nProfiles)
-					for i := 0; i < nProfiles; i++ {
-						bools[i] = true
-					}
-					require.NoError(t, bidi.Send(&ingesterv1.MergeProfilesPprofRequest{
-						Profiles: bools,
-					}))
-
-					// expect empty resp to signal it is finished
-					resp, err = bidi.Receive()
-					require.NoError(t, err)
-					require.Nil(t, resp.Result)
-					require.Nil(t, resp.SelectedProfiles)
-
-					resp, err = bidi.Receive()
-					require.NoError(t, err)
-					require.NotNil(t, resp.Result)
-
-					actualMerged := &profilev1.Profile{}
-					err = actualMerged.UnmarshalVT(resp.Result)
-					require.NoError(t, err)
+					actualMerged := sw.query(tc, q)
 
 					actualCollapsed := bench.StackCollapseProto(actualMerged, 0, 1)
 					expectedCollapsed := bench.StackCollapseProto(expectedMerged, sti, 1)
-					require.Equalf(t, expectedCollapsed, actualCollapsed, "tenant: %s, svc: %s, metricName: %s queryNo %d", tenant, svc, metricName, sw.queryNo)
+					require.Equal(t, expectedCollapsed, actualCollapsed)
 				}
 
 			}
 		}
 	}
+}
+
+func (sw *sw) query(tc tenantClient, q *ingesterv1.SelectProfilesRequest) *profilev1.Profile {
+	t := sw.t
+	bidi := tc.client.MergeProfilesPprof(context.Background())
+	err := bidi.Send(&ingesterv1.MergeProfilesPprofRequest{
+		Request: q,
+	})
+	require.NoError(sw.t, err)
+
+	resp, err := bidi.Receive()
+	require.NoError(t, err)
+	require.Nil(t, resp.Result)
+	require.NotNilf(t, resp.SelectedProfiles, "res %+v", resp)
+	require.NotEmpty(t, resp.SelectedProfiles.Fingerprints)
+	require.NotEmpty(t, resp.SelectedProfiles.Profiles)
+
+	nProfiles := len(resp.SelectedProfiles.Profiles)
+
+	bools := make([]bool, nProfiles)
+	for i := 0; i < nProfiles; i++ {
+		bools[i] = true
+	}
+	require.NoError(t, bidi.Send(&ingesterv1.MergeProfilesPprofRequest{
+		Profiles: bools,
+	}))
+
+	// expect empty resp to signal it is finished
+	resp, err = bidi.Receive()
+	require.NoError(t, err)
+	require.Nil(t, resp.Result)
+	require.Nil(t, resp.SelectedProfiles)
+
+	resp, err = bidi.Receive()
+	require.NoError(t, err)
+	require.NotNil(t, resp.Result)
+
+	actualMerged := &profilev1.Profile{}
+	err = actualMerged.UnmarshalVT(resp.Result)
+	require.NoError(t, err)
+	return actualMerged
 }
 
 // millis
