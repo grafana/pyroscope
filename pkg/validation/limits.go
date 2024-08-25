@@ -173,8 +173,6 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.Var(&l.IngestionRelabelingDefaultRulesPosition, "distributor.ingestion-relabeling-default-rules-position", "Position of the default ingestion relabeling rules in relation to relabel rules from overrides. Valid values are 'first', 'last' or 'disabled'.")
 	_ = l.IngestionRelabelingRules.Set("[]")
 	f.Var(&l.IngestionRelabelingRules, "distributor.ingestion-relabeling-rules", "List of ingestion relabel configurations. The relabeling rules work the same way, as those of [Prometheus](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config). All rules are applied in the order they are specified. Note: In most situations, it is more effective to use relabeling directly in Grafana Alloy.")
-
-	l.WritePathOverrides.RegisterFlags(f)
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.

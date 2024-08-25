@@ -5,11 +5,13 @@ import (
 	"io"
 	"testing"
 
+	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
+	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
@@ -51,9 +53,9 @@ type mockIngesterClient struct{ mock.Mock }
 func (m *mockIngesterClient) Push(
 	ctx context.Context,
 	request *distributormodel.PushRequest,
-) error {
+) (*connect.Response[pushv1.PushResponse], error) {
 	args := m.Called(ctx, request)
-	return args.Error(0)
+	return args.Get(0).(*connect.Response[pushv1.PushResponse]), args.Error(1)
 }
 
 func (s *routerTestSuite) SetupTest() {
@@ -81,7 +83,7 @@ func (s *routerTestSuite) SetupTest() {
 		s.logger,
 		s.registry,
 		s.overrides,
-		s.ingester.Push,
+		s.ingester,
 		s.segwriter,
 	)
 }
@@ -99,7 +101,10 @@ func (s *routerTestSuite) Test_IngesterPath() {
 		WritePath: IngesterPath,
 	})
 
-	s.ingester.On("Push", mock.Anything, s.request).Return(nil).Once()
+	s.ingester.On("Push", mock.Anything, s.request).
+		Return(new(connect.Response[pushv1.PushResponse]), nil).
+		Once()
+
 	s.Assert().NoError(s.router.Send(context.Background(), s.request))
 }
 
@@ -108,42 +113,50 @@ func (s *routerTestSuite) Test_SegmentWriterPath() {
 		WritePath: SegmentWriterPath,
 	})
 
-	s.segwriter.On("Push", mock.Anything, mock.Anything).Return(new(segmentwriterv1.PushResponse), nil).Once()
+	s.segwriter.On("Push", mock.Anything, mock.Anything).
+		Return(new(segmentwriterv1.PushResponse), nil).
+		Once()
+
 	s.Assert().NoError(s.router.Send(context.Background(), s.request))
 }
 
 func (s *routerTestSuite) Test_CombinedPath() {
+	const (
+		N = 100
+		f = 0.5
+		d = 0.3 // Allowed delta.
+	)
+
 	s.overrides.On("WritePathOverrides", "tenant-a").Return(Config{
 		WritePath:           CombinedPath,
 		IngesterWeight:      1,
-		SegmentWriterWeight: 0.5,
+		SegmentWriterWeight: f,
 	})
 
 	var sentIngester int
-	sendToIngester := func(mock.Arguments) { sentIngester++ }
-	s.ingester.On("Push", mock.Anything, mock.Anything).Run(sendToIngester).Return(nil)
+	s.ingester.On("Push", mock.Anything, mock.Anything).
+		Run(func(mock.Arguments) { sentIngester++ }).
+		Return(new(connect.Response[pushv1.PushResponse]), nil)
 
 	var sentSegwriter int
-	var resp segmentwriterv1.PushResponse
-	sendToSegwriter := func(mock.Arguments) { sentSegwriter++ }
-	s.segwriter.On("Push", mock.Anything, mock.Anything).Run(sendToSegwriter).Return(&resp, nil)
+	s.segwriter.On("Push", mock.Anything, mock.Anything).
+		Run(func(mock.Arguments) { sentSegwriter++ }).
+		Return(new(segmentwriterv1.PushResponse), nil)
 
-	for i := 0; i < 100; i++ {
+	for i := 0; i < N; i++ {
 		s.Assert().NoError(s.router.Send(context.Background(), s.request))
 	}
 
-	s.Assert().Equal(100, sentIngester)
-	// Potentially flaky.
-	// We allow for +- 15 delta, given the expected 50.
-	s.Assert().Greater(sentSegwriter, 35)
-	s.Assert().Less(sentSegwriter, 65)
+	expected := N * f
+	delta := expected * d
+	s.Assert().Equal(N, sentIngester)
+	s.Assert().Greater(sentSegwriter, int(expected-delta))
+	s.Assert().Less(sentSegwriter, int(expected+delta))
 }
 
 func (s *routerTestSuite) Test_CombinedPath_ZeroWeights() {
 	s.overrides.On("WritePathOverrides", "tenant-a").Return(Config{
-		WritePath:           CombinedPath,
-		IngesterWeight:      0,
-		SegmentWriterWeight: 0,
+		WritePath: CombinedPath,
 	})
 
 	s.Assert().NoError(s.router.Send(context.Background(), s.request))
@@ -157,9 +170,14 @@ func (s *routerTestSuite) Test_CombinedPath_IngesterError() {
 		SegmentWriterWeight: 1,
 	})
 
-	var resp segmentwriterv1.PushResponse
-	s.segwriter.On("Push", mock.Anything, mock.Anything).Return(&resp, nil).Once()
-	s.ingester.On("Push", mock.Anything, mock.Anything).Return(context.Canceled).Once()
+	s.segwriter.On("Push", mock.Anything, mock.Anything).
+		Return(new(segmentwriterv1.PushResponse), nil).
+		Once()
+
+	s.ingester.On("Push", mock.Anything, mock.Anything).
+		Return(new(connect.Response[pushv1.PushResponse]), context.Canceled).
+		Once()
+
 	s.Assert().Error(s.router.Send(context.Background(), s.request), context.Canceled)
 }
 
@@ -171,9 +189,14 @@ func (s *routerTestSuite) Test_CombinedPath_SegmentWriterError() {
 		SegmentWriterWeight: 1,
 	})
 
-	var resp segmentwriterv1.PushResponse
-	s.segwriter.On("Push", mock.Anything, mock.Anything).Return(&resp, context.Canceled).Once()
-	s.ingester.On("Push", mock.Anything, mock.Anything).Return(nil).Once()
+	s.segwriter.On("Push", mock.Anything, mock.Anything).
+		Return(new(segmentwriterv1.PushResponse), context.Canceled).
+		Once()
+
+	s.ingester.On("Push", mock.Anything, mock.Anything).
+		Return(new(connect.Response[pushv1.PushResponse]), nil).
+		Once()
+
 	s.Assert().NoError(s.router.Send(context.Background(), s.request))
 }
 
@@ -185,7 +208,10 @@ func (s *routerTestSuite) Test_CombinedPath_Ingester_Exclusive_Error() {
 		SegmentWriterWeight: 0,
 	})
 
-	s.ingester.On("Push", mock.Anything, mock.Anything).Return(context.Canceled).Once()
+	s.ingester.On("Push", mock.Anything, mock.Anything).
+		Return(new(connect.Response[pushv1.PushResponse]), context.Canceled).
+		Once()
+
 	s.Assert().Error(s.router.Send(context.Background(), s.request), context.Canceled)
 }
 
@@ -197,8 +223,10 @@ func (s *routerTestSuite) Test_CombinedPath_SegmentWriter_Exclusive_Error() {
 		SegmentWriterWeight: 1,
 	})
 
-	var resp segmentwriterv1.PushResponse
-	s.segwriter.On("Push", mock.Anything, mock.Anything).Return(&resp, context.Canceled).Once()
+	s.segwriter.On("Push", mock.Anything, mock.Anything).
+		Return(new(segmentwriterv1.PushResponse), context.Canceled).
+		Once()
+
 	s.Assert().Error(s.router.Send(context.Background(), s.request), context.Canceled)
 }
 
@@ -212,7 +240,9 @@ func (s *routerTestSuite) Test_SegmentWriter_MultipleProfiles() {
 	x := s.request.Series[0]
 	x.Samples = append(x.Samples, &distributormodel.ProfileSample{Profile: &pprof.Profile{}})
 
-	var resp segmentwriterv1.PushResponse
-	s.segwriter.On("Push", mock.Anything, mock.Anything).Return(&resp, nil).Twice()
+	s.segwriter.On("Push", mock.Anything, mock.Anything).
+		Return(new(segmentwriterv1.PushResponse), nil).
+		Twice()
+
 	s.Assert().NoError(s.router.Send(context.Background(), s.request))
 }

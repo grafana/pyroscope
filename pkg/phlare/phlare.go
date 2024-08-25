@@ -179,6 +179,7 @@ func (c *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) 
 		c.SegmentWriter.RegisterFlags(f)
 		c.QueryBackend.RegisterFlags(f)
 		c.CompactionWorker.RegisterFlags(f)
+		c.LimitsConfig.WritePathOverrides.RegisterFlags(f)
 	}
 }
 

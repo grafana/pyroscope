@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
@@ -15,6 +16,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/errgroup"
 
+	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
@@ -22,10 +24,24 @@ import (
 	"github.com/grafana/pyroscope/pkg/util"
 )
 
-type SendFunc func(context.Context, *distributormodel.PushRequest) error
-
 type SegmentWriterClient interface {
 	Push(context.Context, *segmentwriterv1.PushRequest) (*segmentwriterv1.PushResponse, error)
+}
+
+type IngesterClient interface {
+	Push(context.Context, *distributormodel.PushRequest) (*connect.Response[pushv1.PushResponse], error)
+}
+
+type IngesterFunc func(
+	context.Context,
+	*distributormodel.PushRequest,
+) (*connect.Response[pushv1.PushResponse], error)
+
+func (f IngesterFunc) Push(
+	ctx context.Context,
+	req *distributormodel.PushRequest,
+) (*connect.Response[pushv1.PushResponse], error) {
+	return f(ctx, req)
 }
 
 type Overrides interface {
@@ -40,23 +56,23 @@ type Router struct {
 	overrides Overrides
 	metrics   *metrics
 
-	sendToIngester SendFunc
-	segmentWriter  SegmentWriterClient
+	ingester  IngesterClient
+	segwriter SegmentWriterClient
 }
 
 func NewRouter(
 	logger log.Logger,
 	registerer prometheus.Registerer,
 	overrides Overrides,
-	ingester SendFunc,
+	ingester IngesterClient,
 	segwriter SegmentWriterClient,
 ) *Router {
 	r := &Router{
-		logger:         logger,
-		overrides:      overrides,
-		metrics:        newMetrics(registerer),
-		sendToIngester: ingester,
-		segmentWriter:  segwriter,
+		logger:    logger,
+		overrides: overrides,
+		metrics:   newMetrics(registerer),
+		ingester:  ingester,
+		segwriter: segwriter,
 	}
 	r.service = services.NewBasicService(r.starting, r.running, r.stopping)
 	return r
@@ -93,8 +109,11 @@ func (m *Router) Send(ctx context.Context, req *distributormodel.PushRequest) er
 func (m *Router) ingesterRoute() *route {
 	return &route{
 		path:    IngesterPath,
-		send:    m.sendToIngester,
-		primary: true,
+		primary: true, // Ingester is always the primary route.
+		send: func(ctx context.Context, request *distributormodel.PushRequest) error {
+			_, err := m.ingester.Push(ctx, request)
+			return err
+		},
 	}
 }
 
@@ -164,9 +183,11 @@ func (m *Router) sendToBoth(ctx context.Context, req *distributormodel.PushReque
 	}
 }
 
+type sendFunc func(context.Context, *distributormodel.PushRequest) error
+
 type route struct {
 	path    WritePath // IngesterPath | SegmentWriterPath
-	send    SendFunc
+	send    sendFunc
 	primary bool
 }
 
@@ -180,7 +201,7 @@ func (m *Router) sendAsync(ctx context.Context, req *distributormodel.PushReques
 	return c
 }
 
-func (m *Router) send(r *route) SendFunc {
+func (m *Router) send(r *route) sendFunc {
 	return func(ctx context.Context, req *distributormodel.PushRequest) (err error) {
 		start := time.Now()
 		defer func() {
@@ -214,7 +235,7 @@ func (m *Router) sendRequestsToSegmentWriter(ctx context.Context, requests []*se
 	// is generally a bad idea because it's hard to reason about latencies,
 	// retries, and error handling.
 	if len(requests) == 1 {
-		_, err := m.segmentWriter.Push(ctx, requests[0])
+		_, err := m.segwriter.Push(ctx, requests[0])
 		return err
 	}
 	// Fallback. We should minimize probability of this branch.
@@ -222,7 +243,7 @@ func (m *Router) sendRequestsToSegmentWriter(ctx context.Context, requests []*se
 	for _, r := range requests {
 		r := r
 		g.Go(func() error {
-			_, err := m.segmentWriter.Push(ctx, r)
+			_, err := m.segwriter.Push(ctx, r)
 			return err
 		})
 	}

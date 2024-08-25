@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/kv"
 	"github.com/grafana/dskit/ring"
@@ -213,12 +212,6 @@ func (i *fakeIngester) Push(_ context.Context, req *connect.Request[pushv1.PushR
 
 func newFakeIngester(t testing.TB, fail bool) *fakeIngester {
 	return &fakeIngester{t: t, fail: fail}
-}
-
-func TestBuckets(t *testing.T) {
-	for _, r := range prometheus.ExponentialBucketsRange(minBytes, maxBytes, bucketsCount) {
-		t.Log(humanize.Bytes(uint64(r)))
-	}
 }
 
 func Test_Limits(t *testing.T) {

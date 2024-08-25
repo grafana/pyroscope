@@ -111,8 +111,7 @@ type Distributor struct {
 	profileReceivedStats    *usagestats.MultiCounter
 	profileSizeStats        *usagestats.MultiStatistics
 
-	//nolint: unused
-	segwriterClient writepath.SegmentWriterClient
+	router *writepath.Router
 }
 
 type Limits interface {
@@ -133,6 +132,7 @@ type Limits interface {
 	DistributorUsageGroups(tenantID string) *validation.UsageGroupConfig
 	validation.ProfileValidationLimits
 	aggregator.Limits
+	writepath.Overrides
 }
 
 func New(
@@ -163,7 +163,6 @@ func New(
 		metrics:                 newMetrics(reg),
 		healthyInstancesCount:   atomic.NewUint32(0),
 		aggregator:              aggregator.NewMultiTenantAggregator[*pprof.ProfileMerge](limits, reg),
-		segwriterClient:         segwriterClient,
 		limits:                  limits,
 		rfStats:                 usagestats.NewInt("distributor_replication_factor"),
 		bytesReceivedStats:      usagestats.NewStatistics("distributor_bytes_received"),
@@ -171,8 +170,15 @@ func New(
 		profileReceivedStats:    usagestats.NewMultiCounter("distributor_profiles_received", "lang"),
 		profileSizeStats:        usagestats.NewMultiStatistics("distributor_profile_sizes", "lang"),
 	}
-	var err error
 
+	ingesterClient := writepath.IngesterFunc(d.sendRequestsToIngester)
+	d.router = writepath.NewRouter(
+		logger, reg, limits,
+		ingesterClient,
+		segwriterClient,
+	)
+
+	var err error
 	subservices := []services.Service(nil)
 	subservices = append(subservices, d.pool)
 
@@ -354,80 +360,115 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		_ = level.Warn(d.logger).Log("msg", "failed to inject mapping versions", "err", err)
 	}
 
-	// If aggregation is configured for the tenant, we try to determine
-	// whether the profile is eligible for aggregation based on the series
-	// profile rate, and handle it asynchronously, if this is the case.
-	//
-	// NOTE(kolesnikovae): aggregated profiles are handled on best-effort
-	// basis (at-most-once delivery semantics): any error occurred will
-	// not be returned to the client, and it must not retry sending.
-	//
-	// Aggregation is only meant to be used for cases, when clients do not
-	// form individual series (e.g., server-less workload), and typically
-	// are ephemeral in its nature, and therefore retrying is not possible
-	// or desirable, as it prolongs life-time duration of the clients.
-	if len(req.Series) == 1 && len(req.Series[0].Samples) == 1 {
-		// Actually all series profiles can be merged before aggregation.
-		// However, it's not expected that a series has more than one profile.
-		series := req.Series[0]
-		profile := series.Samples[0].Profile.Profile
-		// maybeAggregate _may_ return a non-nil handler of the aggregated value,
-		// if the profile is aggregated indeed, and this is the first invocation.
-		aggregateHandler, ok, err := d.maybeAggregate(tenantID, series.Labels, profile)
-		if err != nil {
-			return nil, err
-		}
-		if ok {
-			if aggregateHandler != nil {
-				d.sendAggregatedProfile(ctx, req, tenantID, aggregateHandler)
-			}
-			return connect.NewResponse(&pushv1.PushResponse{}), nil
-		}
-	}
-
-	return d.sendRequests(ctx, req)
-}
-
-func (d *Distributor) sendAggregatedProfile(ctx context.Context, req *distributormodel.PushRequest, tenantID string, handler func() (*pprof.ProfileMerge, error)) {
-	d.asyncRequests.Add(1)
-	// We must not reuse the request in goroutine.
-	labels := phlaremodel.Labels(req.Series[0].Labels).Clone()
-	go func() {
-		defer d.asyncRequests.Done()
-		localCtx, cancel := context.WithTimeout(context.Background(), d.cfg.PushTimeout)
-		defer cancel()
-		localCtx = tenant.InjectTenantID(localCtx, tenantID)
-		if sp := opentracing.SpanFromContext(ctx); sp != nil {
-			localCtx = opentracing.ContextWithSpan(localCtx, sp)
-		}
-		// Obtain the aggregated profile.
-		p, err := handler()
-		if err != nil {
-			_ = level.Error(d.logger).Log("msg", "failed to aggregate profiles", "tenant", tenantID, "err", err)
-			return
-		}
-		req := &distributormodel.PushRequest{
-			TenantID: tenantID,
-			Series: []*distributormodel.ProfileSeries{{
-				Labels:  labels,
-				Samples: []*distributormodel.ProfileSample{{Profile: pprof.RawFromProto(p.Profile())}},
-			}},
-		}
-		if _, err = d.sendRequests(localCtx, req); err != nil {
-			_ = level.Error(d.logger).Log("msg", "failed to ingest aggregated profile", "tenant", tenantID, "err", err)
-		}
-	}()
-}
-
-func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.PushRequest) (resp *connect.Response[pushv1.PushResponse], err error) {
-	// Reduce cardinality of session_id label.
+	// Reduce cardinality of the session_id label.
 	maxSessionsPerSeries := d.limits.MaxSessionsPerSeries(req.TenantID)
 	for _, series := range req.Series {
 		series.Labels = d.limitMaxSessionsPerSeries(maxSessionsPerSeries, series.Labels)
 	}
-	usageGroups := d.limits.DistributorUsageGroups(req.TenantID)
 
-	// Next we split profiles by labels and apply relabel rules.
+	aggregated, err := d.aggregate(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if aggregated {
+		return connect.NewResponse(&pushv1.PushResponse{}), nil
+	}
+
+	if err = d.router.Send(ctx, req); err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&pushv1.PushResponse{}), nil
+}
+
+// If aggregation is configured for the tenant, we try to determine
+// whether the profile is eligible for aggregation based on the series
+// profile rate, and handle it asynchronously, if this is the case.
+//
+// NOTE(kolesnikovae): aggregated profiles are handled on best-effort
+// basis (at-most-once delivery semantics): any error occurred will
+// not be returned to the client, and it must not retry sending.
+//
+// Aggregation is only meant to be used for cases, when clients do not
+// form individual series (e.g., server-less workload), and typically
+// are ephemeral in its nature, and therefore retrying is not possible
+// or desirable, as it prolongs life-time duration of the clients.
+func (d *Distributor) aggregate(ctx context.Context, req *distributormodel.PushRequest) (bool, error) {
+	a, ok := d.aggregator.AggregatorForTenant(req.TenantID)
+	if !ok {
+		// Aggregation is not configured for the tenant.
+		return false, nil
+	}
+
+	// Actually all series profiles can be merged before aggregation.
+	// However, it's not expected that a series has more than one profile.
+	if len(req.Series) != 1 {
+		return false, nil
+	}
+	series := req.Series[0]
+	if len(series.Samples) != 1 {
+		return false, nil
+	}
+
+	// First, we drop __session_id__ label to increase probability
+	// of aggregation, which is handled done per series.
+	profile := series.Samples[0].Profile.Profile
+	labels := phlaremodel.Labels(series.Labels)
+	if _, hasSessionID := labels.GetLabel(phlaremodel.LabelNameSessionID); hasSessionID {
+		labels = labels.Clone().Delete(phlaremodel.LabelNameSessionID)
+	}
+	r, ok, err := a.Aggregate(labels.Hash(), profile.TimeNanos, mergeProfile(profile))
+	if err != nil {
+		return false, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	if !ok {
+		// Aggregation is not needed.
+		return false, nil
+	}
+	handler := r.Handler()
+	if handler == nil {
+		// Aggregation is handled in another goroutine.
+		return true, nil
+	}
+
+	// Aggregation is needed, and we own the result handler.
+	// Note that the labels include the source series labels with
+	// session ID: this is required to ensure fair load distribution.
+	d.asyncRequests.Add(1)
+	labels = phlaremodel.Labels(req.Series[0].Labels).Clone()
+	go func() {
+		defer d.asyncRequests.Done()
+		sendErr := util.RecoverPanic(func() error {
+			localCtx, cancel := context.WithTimeout(context.Background(), d.cfg.PushTimeout)
+			defer cancel()
+			localCtx = tenant.InjectTenantID(localCtx, req.TenantID)
+			if sp := opentracing.SpanFromContext(ctx); sp != nil {
+				localCtx = opentracing.ContextWithSpan(localCtx, sp)
+			}
+			// Obtain the aggregated profile.
+			p, handleErr := handler()
+			if handleErr != nil {
+				return handleErr
+			}
+			aggregated := &distributormodel.PushRequest{
+				TenantID: req.TenantID,
+				Series: []*distributormodel.ProfileSeries{{
+					Labels:  labels,
+					Samples: []*distributormodel.ProfileSample{{Profile: pprof.RawFromProto(p.Profile())}},
+				}},
+			}
+			return d.router.Send(localCtx, aggregated)
+		})()
+		if sendErr != nil {
+			_ = level.Error(d.logger).Log("msg", "failed to handle aggregation", "tenant", req.TenantID, "err", err)
+		}
+	}()
+
+	return true, nil
+}
+
+func (d *Distributor) sendRequestsToIngester(ctx context.Context, req *distributormodel.PushRequest) (resp *connect.Response[pushv1.PushResponse], err error) {
+	// Next we split profiles by labels and apply relabeling rules.
+	usageGroups := d.limits.DistributorUsageGroups(req.TenantID)
 	profileSeries, bytesRelabelDropped, profilesRelabelDropped := extractSampleSeries(req, req.TenantID, usageGroups, d.limits.IngestionRelabelingRules(req.TenantID))
 	validation.DiscardedBytes.WithLabelValues(string(validation.DroppedByRelabelRules), req.TenantID).Add(bytesRelabelDropped)
 	validation.DiscardedProfiles.WithLabelValues(string(validation.DroppedByRelabelRules), req.TenantID).Add(profilesRelabelDropped)
@@ -561,24 +602,6 @@ func profileSizeBytes(p *profilev1.Profile) (symbols, samples int64) {
 	// restore samples
 	p.Sample = samplesSlice
 	return
-}
-
-func (d *Distributor) maybeAggregate(tenantID string, labels phlaremodel.Labels, profile *profilev1.Profile) (func() (*pprof.ProfileMerge, error), bool, error) {
-	a, ok := d.aggregator.AggregatorForTenant(tenantID)
-	if !ok {
-		return nil, false, nil
-	}
-	if _, hasSessionID := labels.GetLabel(phlaremodel.LabelNameSessionID); hasSessionID {
-		labels = labels.Clone().Delete(phlaremodel.LabelNameSessionID)
-	}
-	r, ok, err := a.Aggregate(labels.Hash(), profile.TimeNanos, mergeProfile(profile))
-	if err != nil {
-		return nil, false, err
-	}
-	if !ok {
-		return nil, false, nil
-	}
-	return r.Handler(), true, nil
 }
 
 func mergeProfile(profile *profilev1.Profile) aggregator.AggregateFn[*pprof.ProfileMerge] {

@@ -19,7 +19,9 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			Buckets: prometheus.ExponentialBucketsRange(0.001, 10, 30),
 		}, []string{"route", "primary", "status"}),
 	}
-	reg.MustRegister(m.durationHistogram)
+	if reg != nil {
+		reg.MustRegister(m.durationHistogram)
+	}
 	return m
 }
 
