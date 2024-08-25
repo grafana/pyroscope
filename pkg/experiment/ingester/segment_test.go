@@ -339,7 +339,50 @@ func TestDatasetMinMaxTime(t *testing.T) {
 }
 
 func TestQueryMultipleSeriesSingleTenant(t *testing.T) {
-	t.Fail()
+	metas := make(chan *metastorev1.BlockMeta, 1)
+
+	sw := newTestSegmentWriter(t, segmentWriterConfig{
+		segmentDuration: 100 * time.Millisecond,
+	})
+	defer sw.Stop()
+	sw.client.addBlock = func(ctx context.Context, in *metastorev1.AddBlockRequest, opts ...grpc.CallOption) (*metastorev1.AddBlockResponse, error) {
+		metas <- in.Block
+		return new(metastorev1.AddBlockResponse), nil
+	}
+
+	data := inputChunk([]input{
+		{shard: 1, tenant: "tb", profile: cpuProfile(42, 239, "svc1", "kek", "foo", "bar")},
+		{shard: 1, tenant: "tb", profile: cpuProfile(13, 420, "svc1", "qwe1", "foo", "bar")},
+		{shard: 1, tenant: "tb", profile: cpuProfile(17, 420, "svc2", "qwe3", "foo", "bar")},
+		{shard: 1, tenant: "tb", profile: cpuProfile(13, 421, "svc2", "qwe", "foo", "bar")},
+		{shard: 1, tenant: "ta", profile: cpuProfile(13, 10, "svc1", "vbn", "foo", "bar")},
+		{shard: 1, tenant: "ta", profile: cpuProfile(13, 1337, "svc1", "vbn", "foo", "bar")},
+	})
+	sw.ingestChunk(t, data, false)
+	block := <-metas
+
+	clients := sw.createBlocksFromMetas([]*metastorev1.BlockMeta{block})
+	defer func() {
+		for _, tc := range clients {
+			tc.f()
+		}
+	}()
+
+	client := clients["tb"]
+	actualMerged := sw.query(client, &ingesterv1.SelectProfilesRequest{
+		LabelSelector: "{service_name=~\"svc[12]\"}",
+		Type:          mustParseProfileSelector(t, "process_cpu:cpu:nanoseconds:cpu:nanoseconds"),
+		Start:         239,
+		End:           420,
+	})
+	expectedMerged := mergeProfiles(t, []*profilev1.Profile{
+		data[0].profile.Profile,
+		data[1].profile.Profile,
+		data[2].profile.Profile,
+	})
+	actualCollapsed := bench.StackCollapseProto(actualMerged, 0, 1)
+	expectedCollapsed := bench.StackCollapseProto(expectedMerged, 0, 1)
+	require.Equal(t, expectedCollapsed, actualCollapsed)
 }
 
 type sw struct {
