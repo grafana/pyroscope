@@ -5,11 +5,11 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"strconv"
 	"sync"
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
@@ -20,12 +20,7 @@ import (
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/util"
-	httputil "github.com/grafana/pyroscope/pkg/util/http"
 )
-
-// TODO:
-//  3. Tests
-//  4. Integrate into distributor
 
 type SendFunc func(context.Context, *distributormodel.PushRequest) error
 
@@ -43,11 +38,10 @@ type Router struct {
 
 	logger    log.Logger
 	overrides Overrides
+	metrics   *metrics
 
 	sendToIngester SendFunc
 	segmentWriter  SegmentWriterClient
-
-	durationHistogram *prometheus.HistogramVec
 }
 
 func NewRouter(
@@ -58,20 +52,12 @@ func NewRouter(
 	segwriter SegmentWriterClient,
 ) *Router {
 	r := &Router{
-		logger:    logger,
-		overrides: overrides,
-
+		logger:         logger,
+		overrides:      overrides,
+		metrics:        newMetrics(registerer),
 		sendToIngester: ingester,
 		segmentWriter:  segwriter,
-
-		durationHistogram: prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Namespace: "pyroscope",
-			Name:      "_write_path_downstream_request_duration_seconds",
-			Buckets:   prometheus.ExponentialBucketsRange(0.001, 10, 30),
-		}, []string{"route", "primary", "status"}),
 	}
-
-	registerer.MustRegister(r.durationHistogram)
 	r.service = services.NewBasicService(r.starting, r.running, r.stopping)
 	return r
 }
@@ -184,19 +170,6 @@ type route struct {
 	primary bool
 }
 
-func (r *route) metricDims(err error) []string {
-	dims := make([]string, 3)
-	dims[0] = string(r.path)
-	if r.primary {
-		dims[1] = "1"
-	} else {
-		dims[1] = "0"
-	}
-	code, _ := httputil.ClientHTTPStatusAndError(err)
-	dims[2] = strconv.Itoa(code)
-	return dims
-}
-
 func (m *Router) sendAsync(ctx context.Context, req *distributormodel.PushRequest, r *route) <-chan error {
 	c := make(chan error, 1)
 	m.inflight.Add(1)
@@ -214,8 +187,18 @@ func (m *Router) send(r *route) SendFunc {
 			if p := recover(); p != nil {
 				err = util.PanicError(p)
 			}
-			m.durationHistogram.
-				WithLabelValues(r.metricDims(err)...).
+			dims := newDurationHistogramDims(r, err)
+			if err != nil {
+				_ = level.Warn(m.logger).Log(
+					"msg", "write path request failed",
+					"path", dims.path,
+					"primary", dims.primary,
+					"status", dims.status,
+					"err", err,
+				)
+			}
+			m.metrics.durationHistogram.
+				WithLabelValues(dims.slice()...).
 				Observe(time.Since(start).Seconds())
 		}()
 		return r.send(ctx, req)
@@ -237,9 +220,9 @@ func (m *Router) sendRequestsToSegmentWriter(ctx context.Context, requests []*se
 	// Fallback. We should minimize probability of this branch.
 	g, ctx := errgroup.WithContext(ctx)
 	for _, r := range requests {
-		request := r
+		r := r
 		g.Go(func() error {
-			_, err := m.segmentWriter.Push(ctx, request)
+			_, err := m.segmentWriter.Push(ctx, r)
 			return err
 		})
 	}
