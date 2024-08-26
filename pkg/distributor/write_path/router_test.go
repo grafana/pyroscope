@@ -154,6 +154,16 @@ func (s *routerTestSuite) Test_CombinedPath() {
 	s.Assert().Less(sentSegwriter, int(expected+delta))
 }
 
+func (s *routerTestSuite) Test_UnspecifiedWriterPath() {
+	s.overrides.On("WritePathOverrides", "tenant-a").Return(Config{})
+
+	s.ingester.On("Push", mock.Anything, mock.Anything).
+		Return(new(connect.Response[pushv1.PushResponse]), nil).
+		Once()
+
+	s.Assert().NoError(s.router.Send(context.Background(), s.request))
+}
+
 func (s *routerTestSuite) Test_CombinedPath_ZeroWeights() {
 	s.overrides.On("WritePathOverrides", "tenant-a").Return(Config{
 		WritePath: CombinedPath,

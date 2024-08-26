@@ -96,14 +96,13 @@ func (m *Router) running(ctx context.Context) error {
 func (m *Router) Send(ctx context.Context, req *distributormodel.PushRequest) error {
 	config := m.overrides.WritePathOverrides(req.TenantID)
 	switch config.WritePath {
-	case IngesterPath:
-		return m.send(m.ingesterRoute())(ctx, req)
 	case SegmentWriterPath:
 		return m.send(m.segwriterRoute(true))(ctx, req)
 	case CombinedPath:
 		return m.sendToBoth(ctx, req, config)
+	default:
+		return m.send(m.ingesterRoute())(ctx, req)
 	}
-	return ErrInvalidWritePath
 }
 
 func (m *Router) ingesterRoute() *route {
