@@ -22,6 +22,8 @@ import (
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
+	httputil "github.com/grafana/pyroscope/pkg/util/http"
 )
 
 type SegmentWriterClient interface {
@@ -207,8 +209,11 @@ func (m *Router) send(r *route) sendFunc {
 			if p := recover(); p != nil {
 				err = util.PanicError(p)
 			}
-			dims := newDurationHistogramDims(r, err)
+			code, _ := httputil.ClientHTTPStatusAndError(err)
+			dims := newDurationHistogramDims(r, code)
 			if err != nil {
+				// Note that the upstream expects "connect" codes.
+				err = connect.NewError(connectgrpc.HTTPToCode(int32(code)), err)
 				_ = level.Warn(m.logger).Log(
 					"msg", "write path request failed",
 					"path", dims.path,

@@ -4,8 +4,6 @@ import (
 	"strconv"
 
 	"github.com/prometheus/client_golang/prometheus"
-
-	httputil "github.com/grafana/pyroscope/pkg/util/http"
 )
 
 type metrics struct {
@@ -36,14 +34,13 @@ func (d durationHistogramDims) slice() []string {
 	return []string{d.path, d.primary, d.status}
 }
 
-func newDurationHistogramDims(r *route, err error) (d durationHistogramDims) {
+func newDurationHistogramDims(r *route, code int) (d durationHistogramDims) {
 	d.path = string(r.path)
 	if r.primary {
 		d.primary = "1"
 	} else {
 		d.primary = "0"
 	}
-	code, _ := httputil.ClientHTTPStatusAndError(err)
 	d.status = strconv.Itoa(code)
 	return d
 }
