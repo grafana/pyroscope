@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"math/rand"
 	"path/filepath"
@@ -29,9 +28,14 @@ import (
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	testutil3 "github.com/grafana/pyroscope/pkg/phlaredb/block/testutil"
 	pprofth "github.com/grafana/pyroscope/pkg/pprof/testhelper"
+	"github.com/grafana/pyroscope/pkg/test/mocks/mockmetastorev1"
+	"github.com/grafana/pyroscope/pkg/test/mocks/mockobjstore"
 	model2 "github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/util/testutil"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
 	"google.golang.org/grpc"
 )
 
@@ -71,14 +75,11 @@ func ingestWithMetastoreAvailable(t *testing.T, chunks []inputChunk) {
 	sw := newTestSegmentWriter(t, defaultTestSegmentWriterConfig())
 	defer sw.Stop()
 	blocks := make(chan *metastorev1.BlockMeta, 128)
-	sw.client.addBlock = func(ctx context.Context, in *metastorev1.AddBlockRequest, opts ...grpc.CallOption) (*metastorev1.AddBlockResponse, error) {
-		select {
-		case blocks <- in.Block:
-			return &metastorev1.AddBlockResponse{}, nil
-		default:
-			return nil, fmt.Errorf("mock meta channel full")
-		}
-	}
+
+	sw.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			blocks <- args.Get(1).(*metastorev1.AddBlockRequest).Block
+		}).Return(new(metastorev1.AddBlockResponse), nil)
 	allBlocks := make([]*metastorev1.BlockMeta, 0, len(chunks))
 	for _, chunk := range chunks {
 		chunkBlocks := make([]*metastorev1.BlockMeta, 0, len(chunk))
@@ -97,10 +98,8 @@ func ingestWithMetastoreAvailable(t *testing.T, chunks []inputChunk) {
 func ingestWithDLQ(t *testing.T, chunks []inputChunk) {
 	sw := newTestSegmentWriter(t, defaultTestSegmentWriterConfig())
 	defer sw.Stop()
-	sw.client.addBlock = func(ctx context.Context, in *metastorev1.AddBlockRequest, opts ...grpc.CallOption) (*metastorev1.AddBlockResponse, error) {
-		t.Log("addBlock: metastore unavailable")
-		return nil, fmt.Errorf("metastore unavailable")
-	}
+	sw.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
+		Return(nil, fmt.Errorf("metastore unavailable"))
 	ingestedChunks := make([]inputChunk, 0, len(chunks))
 	for chunkIndex, chunk := range chunks {
 		t.Logf("ingesting chunk %d", chunkIndex)
@@ -120,10 +119,9 @@ func TestIngestWait(t *testing.T) {
 	})
 
 	defer sw.Stop()
-	sw.client.addBlock = func(ctx context.Context, in *metastorev1.AddBlockRequest, opts ...grpc.CallOption) (*metastorev1.AddBlockResponse, error) {
+	sw.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		time.Sleep(1 * time.Second)
-		return new(metastorev1.AddBlockResponse), nil
-	}
+	}).Return(new(metastorev1.AddBlockResponse), nil)
 
 	t1 := time.Now()
 	awaiter := sw.ingest(0, func(head segmentIngest) {
@@ -147,18 +145,14 @@ func TestBusyIngestLoop(t *testing.T) {
 	readCtx, readCancel := context.WithCancel(context.Background())
 	metaChan := make(chan *metastorev1.BlockMeta)
 	defer sw.Stop()
-	cnt := 0
-	sw.client.addBlock = func(ctx context.Context, in *metastorev1.AddBlockRequest, opts ...grpc.CallOption) (*metastorev1.AddBlockResponse, error) {
-		t.Logf("addBlock %v", in.Block)
-		metaChan <- in.Block
-		t.Logf("addedBlock %v", in.Block)
-
-		cnt++
-		if cnt == 3 { // wait for at least 3 segment
-			writeCancel()
-		}
-		return new(metastorev1.AddBlockResponse), nil
-	}
+	cnt := atomic.NewInt32(0)
+	sw.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			metaChan <- args.Get(1).(*metastorev1.AddBlockRequest).Block
+			if cnt.Inc() == 3 {
+				writeCancel()
+			}
+		}).Return(new(metastorev1.AddBlockResponse), nil)
 	metas := make([]*metastorev1.BlockMeta, 0)
 	readG := sync.WaitGroup{}
 	readG.Add(1)
@@ -227,20 +221,18 @@ func TestBusyIngestLoop(t *testing.T) {
 }
 
 func TestDLQFail(t *testing.T) {
-
 	l := testutil.NewLogger(t)
-	bucket := mockBucket{upload: func(ctx context.Context, name string, r io.Reader) error {
-		if strings.HasSuffix(name, pathBlock) {
-			return nil
-		}
-		assert.Contains(t, name, pathDLQ)
-		return fmt.Errorf("mock upload DLQ error")
-	}}
-	client := &metastoreClientMock{
-		addBlock: func(ctx context.Context, in *metastorev1.AddBlockRequest, opts ...grpc.CallOption) (*metastorev1.AddBlockResponse, error) {
-			return nil, fmt.Errorf("metastore unavailable")
-		},
-	}
+	bucket := mockobjstore.NewMockBucket(t)
+	bucket.On("Upload", mock.Anything, mock.MatchedBy(func(name string) bool {
+		return strings.HasSuffix(name, pathBlock)
+	}), mock.Anything).Return(nil)
+	bucket.On("Upload", mock.Anything, mock.MatchedBy(func(name string) bool {
+		return strings.Contains(name, pathDLQ)
+	}), mock.Anything).Return(fmt.Errorf("mock upload DLQ error"))
+	client := mockmetastorev1.NewMockMetastoreServiceClient(t)
+	client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
+		Return(nil, fmt.Errorf("mock add block error"))
+
 	res := newSegmentWriter(
 		l,
 		newSegmentMetrics(nil),
@@ -279,12 +271,12 @@ func TestDatasetMinMaxTime(t *testing.T) {
 	l := testutil.NewLogger(t)
 	bucket := memory.NewInMemBucket()
 	metas := make(chan *metastorev1.BlockMeta)
-	client := &metastoreClientMock{
-		addBlock: func(ctx context.Context, in *metastorev1.AddBlockRequest, opts ...grpc.CallOption) (*metastorev1.AddBlockResponse, error) {
-			metas <- in.Block
-			return new(metastorev1.AddBlockResponse), nil
-		},
-	}
+	client := mockmetastorev1.NewMockMetastoreServiceClient(t)
+	client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			meta := args.Get(1).(*metastorev1.AddBlockRequest).Block
+			metas <- meta
+		}).Return(new(metastorev1.AddBlockResponse), nil)
 	res := newSegmentWriter(
 		l,
 		newSegmentMetrics(nil),
@@ -333,10 +325,10 @@ func TestQueryMultipleSeriesSingleTenant(t *testing.T) {
 		segmentDuration: 100 * time.Millisecond,
 	})
 	defer sw.Stop()
-	sw.client.addBlock = func(ctx context.Context, in *metastorev1.AddBlockRequest, opts ...grpc.CallOption) (*metastorev1.AddBlockResponse, error) {
-		metas <- in.Block
-		return new(metastorev1.AddBlockResponse), nil
-	}
+	sw.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			metas <- args.Get(1).(*metastorev1.AddBlockRequest).Block
+		}).Return(new(metastorev1.AddBlockResponse), nil)
 
 	data := inputChunk([]input{
 		{shard: 1, tenant: "tb", profile: cpuProfile(42, 239, "svc1", "kek", "foo", "bar")},
@@ -376,7 +368,7 @@ func TestQueryMultipleSeriesSingleTenant(t *testing.T) {
 type sw struct {
 	*segmentsWriter
 	bucket  *memory.InMemBucket
-	client  *metastoreClientMock
+	client  *mockmetastorev1.MockMetastoreServiceClient
 	t       *testing.T
 	queryNo int
 }
@@ -384,7 +376,7 @@ type sw struct {
 func newTestSegmentWriter(t *testing.T, cfg segmentWriterConfig) sw {
 	l := testutil.NewLogger(t)
 	bucket := memory.NewInMemBucket()
-	client := new(metastoreClientMock)
+	client := mockmetastorev1.NewMockMetastoreServiceClient(t)
 	res := newSegmentWriter(
 		l,
 		newSegmentMetrics(nil),
