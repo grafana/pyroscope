@@ -8,10 +8,10 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/cilium/ebpf v0.11.0
 	github.com/go-kit/log v0.2.1
-	github.com/google/pprof v0.0.0-20240227163752-401108e1b7e7
+	github.com/google/pprof v0.0.0-20240727154555-813a5fbdbec8
 	github.com/grafana/pyroscope/api v0.4.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
-	github.com/ianlancetaylor/demangle v0.0.0-20230524184225-eabc099b10ab
+	github.com/ianlancetaylor/demangle v0.0.0-20240312041847-bd984b5ce465
 	github.com/klauspost/compress v1.17.9
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.19.1
