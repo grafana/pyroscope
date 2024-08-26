@@ -201,10 +201,13 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 		"server.http-listen-port":                           "4040",
 		"distributor.replication-factor":                    "1",
 		"query-scheduler.service-discovery-mode":            schedulerdiscovery.ModeRing,
-		"segment-writer.grpc-client-config.connect-timeout": "1s",
 		"server.grpc-max-recv-msg-size-bytes":               "104857600",
 		"server.grpc-max-send-msg-size-bytes":               "104857600",
 		"server.grpc.keepalive.min-time-between-pings":      "1s",
+		"segment-writer.grpc-client-config.connect-timeout": "1s",
+		"segment-writer.num-tokens":                         "4",
+		"segment-writer.heartbeat-timeout":                  "1m",
+		"segment-writer.unregister-on-shutdown":             "false",
 	}
 
 	throwaway.VisitAll(func(f *flag.Flag) {

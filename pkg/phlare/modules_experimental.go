@@ -44,7 +44,6 @@ func (f *Phlare) initSegmentWriterRing() (_ services.Service, err error) {
 
 func (f *Phlare) initSegmentWriter() (services.Service, error) {
 	f.Cfg.SegmentWriter.LifecyclerConfig.ListenPort = f.Cfg.Server.GRPCListenPort
-	f.Cfg.SegmentWriter.LifecyclerConfig.NumTokens = 4 // TODO: Configurable?
 	if err := f.Cfg.SegmentWriter.Validate(); err != nil {
 		return nil, err
 	}
