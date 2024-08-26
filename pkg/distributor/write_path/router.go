@@ -5,14 +5,15 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"net/http"
 	"sync"
 	"time"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
 	"github.com/grafana/dskit/services"
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/errgroup"
 
@@ -209,21 +210,23 @@ func (m *Router) send(r *route) sendFunc {
 			if p := recover(); p != nil {
 				err = util.PanicError(p)
 			}
-			code, _ := httputil.ClientHTTPStatusAndError(err)
-			dims := newDurationHistogramDims(r, code)
+			// Note that the upstream expects "connect" codes.
+			code := http.StatusOK // HTTP status code.
 			if err != nil {
-				// Note that the upstream expects "connect" codes.
-				err = connect.NewError(connectgrpc.HTTPToCode(int32(code)), err)
-				_ = level.Warn(m.logger).Log(
-					"msg", "write path request failed",
-					"path", dims.path,
-					"primary", dims.primary,
-					"status", dims.status,
-					"err", err,
-				)
+				var connectErr *connect.Error
+				if ok := errors.As(err, &connectErr); ok {
+					// connect errors are passed as is, we only
+					// identify the HTTP status code.
+					code = int(connectgrpc.CodeToHTTP(connectErr.Code()))
+				} else {
+					// We identify the HTTP status code based on the
+					// error and then convert the error to connect error.
+					code, _ = httputil.ClientHTTPStatusAndError(err)
+					err = connect.NewError(connectgrpc.HTTPToCode(int32(code)), err)
+				}
 			}
 			m.metrics.durationHistogram.
-				WithLabelValues(dims.slice()...).
+				WithLabelValues(newDurationHistogramDims(r, code)...).
 				Observe(time.Since(start).Seconds())
 		}()
 		return r.send(ctx, req)

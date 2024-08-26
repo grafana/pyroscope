@@ -24,23 +24,10 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 	return m
 }
 
-type durationHistogramDims struct {
-	path    string
-	primary string
-	status  string
-}
-
-func (d durationHistogramDims) slice() []string {
-	return []string{d.path, d.primary, d.status}
-}
-
-func newDurationHistogramDims(r *route, code int) (d durationHistogramDims) {
-	d.path = string(r.path)
-	if r.primary {
-		d.primary = "1"
-	} else {
-		d.primary = "0"
+func newDurationHistogramDims(r *route, code int) []string {
+	dims := []string{string(r.path), "1", strconv.Itoa(code)}
+	if !r.primary {
+		dims[1] = "0"
 	}
-	d.status = strconv.Itoa(code)
-	return d
+	return dims
 }

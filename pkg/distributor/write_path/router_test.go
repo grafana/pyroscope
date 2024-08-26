@@ -3,10 +3,12 @@ package writepath
 import (
 	"context"
 	"io"
+	"sync/atomic"
 	"testing"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
+	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -88,7 +90,23 @@ func (s *routerTestSuite) SetupTest() {
 	)
 }
 
+func (s *routerTestSuite) BeforeTest(_, _ string) {
+	svc := s.router.Service()
+	s.Require().NoError(svc.StartAsync(context.Background()))
+	s.Require().NoError(svc.AwaitRunning(context.Background()))
+	s.Require().Equal(services.Running, svc.State())
+
+	s.overrides.AssertExpectations(s.T())
+	s.ingester.AssertExpectations(s.T())
+	s.segwriter.AssertExpectations(s.T())
+}
+
 func (s *routerTestSuite) AfterTest(_, _ string) {
+	svc := s.router.Service()
+	svc.StopAsync()
+	s.Require().NoError(svc.AwaitTerminated(context.Background()))
+	s.Require().Equal(services.Terminated, svc.State())
+
 	s.overrides.AssertExpectations(s.T())
 	s.ingester.AssertExpectations(s.T())
 	s.segwriter.AssertExpectations(s.T())
@@ -133,14 +151,14 @@ func (s *routerTestSuite) Test_CombinedPath() {
 		SegmentWriterWeight: f,
 	})
 
-	var sentIngester int
+	var sentIngester atomic.Uint32
 	s.ingester.On("Push", mock.Anything, mock.Anything).
-		Run(func(mock.Arguments) { sentIngester++ }).
+		Run(func(mock.Arguments) { sentIngester.Add(1) }).
 		Return(new(connect.Response[pushv1.PushResponse]), nil)
 
-	var sentSegwriter int
+	var sentSegwriter atomic.Uint32
 	s.segwriter.On("Push", mock.Anything, mock.Anything).
-		Run(func(mock.Arguments) { sentSegwriter++ }).
+		Run(func(mock.Arguments) { sentSegwriter.Add(1) }).
 		Return(new(segmentwriterv1.PushResponse), nil)
 
 	for i := 0; i < N; i++ {
@@ -149,9 +167,9 @@ func (s *routerTestSuite) Test_CombinedPath() {
 
 	expected := N * f
 	delta := expected * d
-	s.Assert().Equal(N, sentIngester)
-	s.Assert().Greater(sentSegwriter, int(expected-delta))
-	s.Assert().Less(sentSegwriter, int(expected+delta))
+	s.Assert().Equal(N, int(sentIngester.Load()))
+	s.Assert().Greater(int(sentSegwriter.Load()), int(expected-delta))
+	s.Assert().Less(int(sentSegwriter.Load()), int(expected+delta))
 }
 
 func (s *routerTestSuite) Test_UnspecifiedWriterPath() {

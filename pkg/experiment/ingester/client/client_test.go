@@ -7,14 +7,17 @@ import (
 	"net"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/ring"
+	"github.com/grafana/dskit/services"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 
@@ -76,9 +79,33 @@ func (s *segwriterClientSuite) SetupTest() {
 		defer close(s.done)
 		s.Require().NoError(s.server.Serve(s.listener))
 	}()
+
+	// Wait for the server
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	conn, err := grpc.DialContext(ctx, "",
+		grpc.WithContextDialer(s.dialer),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithBlock(),
+	)
+
+	s.Require().NoError(err)
+	s.Require().NoError(conn.Close())
 }
 
-func (s *segwriterClientSuite) AfterTest() {
+func (s *segwriterClientSuite) BeforeTest(_, _ string) {
+	svc := s.client.Service()
+	s.Require().NoError(svc.StartAsync(context.Background()))
+	s.Require().NoError(svc.AwaitRunning(context.Background()))
+	s.Require().Equal(services.Running, svc.State())
+}
+
+func (s *segwriterClientSuite) AfterTest(_, _ string) {
+	svc := s.client.Service()
+	svc.StopAsync()
+	s.Require().NoError(svc.AwaitTerminated(context.Background()))
+	s.Require().Equal(services.Terminated, svc.State())
+
 	s.service.AssertExpectations(s.T())
 }
 
@@ -196,8 +223,7 @@ func (s *segwriterClientSuite) Test_Push_DialError_Retry() {
 
 func (s *segwriterClientSuite) Test_Push_AllInstancesUnavailable() {
 	s.service.On("Push", mock.Anything, mock.Anything).
-		Return(new(segmentwriterv1.PushResponse), status.Error(codes.Unavailable, errServiceUnavailableMsg)).
-		Times(3)
+		Return(new(segmentwriterv1.PushResponse), status.Error(codes.Unavailable, errServiceUnavailableMsg))
 
 	_, err := s.client.Push(context.Background(), &segmentwriterv1.PushRequest{})
 	s.Assert().Equal(codes.Unavailable.String(), status.Code(err).String())
