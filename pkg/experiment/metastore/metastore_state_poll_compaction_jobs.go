@@ -7,7 +7,6 @@ import (
 
 	"github.com/go-kit/log/level"
 	"github.com/hashicorp/raft"
-	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 
 	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
@@ -126,14 +125,11 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 	resp = &compactorv1.PollCompactionJobsResponse{}
 	if request.JobCapacity > 0 {
 		newJobs := m.findJobsToAssign(int(request.JobCapacity), raftIndex, raftAppendedAtNanos)
-		resp.CompactionJobs, err = m.convertJobs(newJobs)
-		for _, j := range newJobs {
+		resp.CompactionJobs = m.convertJobs(newJobs)
+		for _, j := range resp.CompactionJobs {
 			stateUpdate.updatedJobs = append(stateUpdate.updatedJobs, j.Name)
 			m.compactionMetrics.assignedJobs.WithLabelValues(
 				fmt.Sprint(j.Shard), j.TenantId, fmt.Sprint(j.CompactionLevel)).Inc()
-		}
-		if err != nil {
-			return nil, err
 		}
 	}
 
@@ -145,7 +141,7 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 	return resp, nil
 }
 
-func (m *metastoreState) convertJobs(jobs []*compactionpb.CompactionJob) ([]*compactorv1.CompactionJob, error) {
+func (m *metastoreState) convertJobs(jobs []*compactionpb.CompactionJob) []*compactorv1.CompactionJob {
 	res := make([]*compactorv1.CompactionJob, 0, len(jobs))
 	for _, job := range jobs {
 		// populate block metadata (workers rely on it)
@@ -184,7 +180,7 @@ func (m *metastoreState) convertJobs(jobs []*compactionpb.CompactionJob) ([]*com
 			TenantId:        job.TenantId,
 		})
 	}
-	return res, nil
+	return res
 }
 
 func (m *metastoreState) findBlock(shard uint32, blockId string) *metastorev1.BlockMeta {
@@ -193,57 +189,6 @@ func (m *metastoreState) findBlock(shard uint32, blockId string) *metastorev1.Bl
 	defer segmentShard.segmentsMutex.Unlock()
 
 	return segmentShard.segments[blockId]
-}
-
-func (m *metastoreState) persistAssignedJob(tx *bbolt.Tx, job *compactionpb.CompactionJob) error {
-	return m.persistJobUpdate(tx, job, func(storedJob *compactionpb.CompactionJob) {
-		storedJob.Status = job.Status
-		storedJob.LeaseExpiresAt = job.LeaseExpiresAt
-		storedJob.RaftLogIndex = job.RaftLogIndex
-	})
-}
-
-func (m *metastoreState) persistJobDeadline(tx *bbolt.Tx, job *compactionpb.CompactionJob, leaseExpiresAt int64) error {
-	return m.persistJobUpdate(tx, job, func(storedJob *compactionpb.CompactionJob) {
-		storedJob.LeaseExpiresAt = leaseExpiresAt
-	})
-}
-
-func (m *metastoreState) persistJobUpdate(tx *bbolt.Tx, job *compactionpb.CompactionJob, fn func(compactionJob *compactionpb.CompactionJob)) error {
-	jobBucketName, jobKey := keyForCompactionJob(job.Shard, job.TenantId, job.Name)
-	err := updateCompactionJobBucket(tx, jobBucketName, func(bucket *bbolt.Bucket) error {
-		storedJobData := bucket.Get(jobKey)
-		if storedJobData == nil {
-			return errors.New("compaction job not found in storage")
-		}
-		var storedJob compactionpb.CompactionJob
-		err := storedJob.UnmarshalVT(storedJobData)
-		if err != nil {
-			return errors.Wrap(err, "failed to unmarshal compaction job data")
-		}
-		fn(&storedJob)
-		jobData, _ := storedJob.MarshalVT()
-		return bucket.Put(jobKey, jobData)
-	})
-	return err
-}
-
-func (m *metastoreState) assignNewJobs(tx *bbolt.Tx, jobCapacity int, raftLogIndex uint64, now int64) ([]*compactionpb.CompactionJob, error) {
-	jobsToAssign := m.findJobsToAssign(jobCapacity, raftLogIndex, now)
-	level.Debug(m.logger).Log("msg", "compaction jobs to assign", "jobs", len(jobsToAssign), "raft_log_index", raftLogIndex, "capacity", jobCapacity)
-
-	for _, job := range jobsToAssign {
-		// mark job "in progress"
-		err := m.persistAssignedJob(tx, job)
-		if err != nil {
-			level.Error(m.logger).Log("msg", "failed to update job status", "job", job.Name, "err", err)
-			// return the job back to the queue
-			m.compactionJobQueue.enqueue(job)
-			return nil, errors.Wrap(err, "failed to update job status")
-		}
-	}
-
-	return jobsToAssign, nil
 }
 
 func (m *metastoreState) findJobsToAssign(jobCapacity int, raftLogIndex uint64, now int64) []*compactionpb.CompactionJob {
@@ -334,7 +279,6 @@ func (m *metastoreState) writeToDb(sTable *pollStateUpdate) error {
 					return err
 				}
 			}
-
 		}
 		for _, jobName := range sTable.updatedJobs {
 			job := m.findJob(jobName)
