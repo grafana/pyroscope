@@ -91,6 +91,11 @@ func (d *Distributor) Distribute(k placement.Key, r ring.ReadRing) (*placement.P
 	return p, nil
 }
 
+// Update forcibly updates the distribution.
+func (d *Distributor) Update(r ring.ReadRing) error {
+	return d.getDistribution(r, 0)
+}
+
 // tenantShards returns the list of shards that are available to the tenant dataset.
 func (d *Distributor) datasetShards(k placement.Key, ms uint32) ([]shard, uint32) {
 	shards := d.tenantShards(k, ms)

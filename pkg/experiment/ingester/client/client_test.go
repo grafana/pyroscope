@@ -3,6 +3,7 @@ package segmentwriterclient
 import (
 	"context"
 	"flag"
+	"io"
 	"net"
 	"os"
 	"testing"
@@ -13,6 +14,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 
 	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
@@ -57,7 +60,11 @@ func (s *segwriterClientSuite) SetupTest() {
 	s.logger = log.NewLogfmtLogger(os.Stdout)
 	s.config = grpcclient.Config{}
 	s.config.RegisterFlags(flag.NewFlagSet("", flag.PanicOnError))
-	instances := []ring.InstanceDesc{{Addr: "a", State: ring.ACTIVE, Tokens: make([]uint32, 1)}}
+	instances := []ring.InstanceDesc{
+		{Addr: "a", Tokens: make([]uint32, 1)},
+		{Addr: "b", Tokens: make([]uint32, 1)},
+		{Addr: "c", Tokens: make([]uint32, 1)},
+	}
 	s.ring = testhelper.NewMockRing(instances, 1)
 
 	var err error
@@ -82,9 +89,116 @@ func (s *segwriterClientSuite) TearDownTest() {
 
 func TestSegmentWriterClientSuite(t *testing.T) { suite.Run(t, new(segwriterClientSuite)) }
 
-func (s *segwriterClientSuite) Test_Push() {
-	s.service.On("Push", mock.Anything, mock.Anything).Return(&segmentwriterv1.PushResponse{}, nil).Once()
+func (s *segwriterClientSuite) Test_Push_HappyPath() {
+	s.service.On("Push", mock.Anything, mock.Anything).
+		Return(&segmentwriterv1.PushResponse{}, nil).
+		Once()
 
 	_, err := s.client.Push(context.Background(), &segmentwriterv1.PushRequest{})
 	s.Assert().NoError(err)
+}
+
+func (s *segwriterClientSuite) Test_Push_EmptyRing() {
+	emptyRing := testhelper.NewMockRing(nil, 1)
+	var err error
+	s.client, err = NewSegmentWriterClient(s.config, s.logger, emptyRing, grpc.WithContextDialer(s.dialer))
+	s.Require().NoError(err)
+
+	_, err = s.client.Push(context.Background(), &segmentwriterv1.PushRequest{})
+	s.Assert().Equal(codes.Unavailable.String(), status.Code(err).String())
+}
+
+func (s *segwriterClientSuite) Test_Push_ClientError_Cancellation() {
+	s.service.On("Push", mock.Anything, mock.Anything).
+		Return(new(segmentwriterv1.PushResponse), context.Canceled).
+		Once()
+
+	_, err := s.client.Push(context.Background(), &segmentwriterv1.PushRequest{})
+	s.Assert().Equal(codes.Canceled.String(), status.Code(err).String())
+}
+
+func (s *segwriterClientSuite) Test_Push_ClientError_InvalidArgument() {
+	s.service.On("Push", mock.Anything, mock.Anything).
+		Return(new(segmentwriterv1.PushResponse), status.Error(codes.InvalidArgument, errServiceUnavailableMsg)).
+		Once()
+
+	_, err := s.client.Push(context.Background(), &segmentwriterv1.PushRequest{})
+	s.Assert().Equal(codes.InvalidArgument.String(), status.Code(err).String())
+}
+
+func (s *segwriterClientSuite) Test_Push_ServerError_NonRetryable() {
+	s.service.On("Push", mock.Anything, mock.Anything).
+		Return(new(segmentwriterv1.PushResponse), io.EOF).
+		Once()
+
+	_, err := s.client.Push(context.Background(), &segmentwriterv1.PushRequest{})
+	s.Assert().Equal(codes.Unavailable.String(), status.Code(err).String())
+}
+
+func (s *segwriterClientSuite) Test_Push_ServerError_Retry_Unavailable() {
+	s.service.On("Push", mock.Anything, mock.Anything).
+		Return(new(segmentwriterv1.PushResponse), status.Error(codes.Unavailable, errServiceUnavailableMsg)).
+		Once()
+
+	s.service.On("Push", mock.Anything, mock.Anything).
+		Return(new(segmentwriterv1.PushResponse), nil).
+		Once()
+
+	_, err := s.client.Push(context.Background(), &segmentwriterv1.PushRequest{})
+	s.Assert().NoError(err)
+}
+
+func (s *segwriterClientSuite) Test_Push_ServerError_Retry_ResourceExhausted() {
+	s.service.On("Push", mock.Anything, mock.Anything).
+		Return(new(segmentwriterv1.PushResponse), status.Error(codes.ResourceExhausted, errServiceUnavailableMsg)).
+		Once()
+
+	s.service.On("Push", mock.Anything, mock.Anything).
+		Return(new(segmentwriterv1.PushResponse), nil).
+		Once()
+
+	_, err := s.client.Push(context.Background(), &segmentwriterv1.PushRequest{})
+	s.Assert().NoError(err)
+}
+
+func (s *segwriterClientSuite) Test_Push_DialError() {
+	dialer := func(ctx context.Context, s string) (net.Conn, error) {
+		return nil, io.EOF
+	}
+	var err error
+	s.client, err = NewSegmentWriterClient(s.config, s.logger, s.ring, grpc.WithContextDialer(dialer))
+	s.Require().NoError(err)
+
+	_, err = s.client.Push(context.Background(), &segmentwriterv1.PushRequest{})
+	s.Assert().Equal(codes.Unavailable.String(), status.Code(err).String())
+}
+
+func (s *segwriterClientSuite) Test_Push_DialError_Retry() {
+	var failed bool
+	dialer := func(context.Context, string) (net.Conn, error) {
+		if failed {
+			return nil, net.UnknownNetworkError("network issue")
+		}
+		failed = true
+		return s.listener.Dial()
+	}
+	var err error
+	s.client, err = NewSegmentWriterClient(s.config, s.logger, s.ring, grpc.WithContextDialer(dialer))
+	s.Require().NoError(err)
+
+	s.service.On("Push", mock.Anything, mock.Anything).
+		Return(new(segmentwriterv1.PushResponse), nil).
+		Once()
+
+	_, err = s.client.Push(context.Background(), &segmentwriterv1.PushRequest{})
+	s.Assert().NoError(err)
+}
+
+func (s *segwriterClientSuite) Test_Push_AllInstancesUnavailable() {
+	s.service.On("Push", mock.Anything, mock.Anything).
+		Return(new(segmentwriterv1.PushResponse), status.Error(codes.Unavailable, errServiceUnavailableMsg)).
+		Times(3)
+
+	_, err := s.client.Push(context.Background(), &segmentwriterv1.PushRequest{})
+	s.Assert().Equal(codes.Unavailable.String(), status.Code(err).String())
 }

@@ -3,6 +3,7 @@ package segmentwriterclient
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/go-kit/log"
@@ -13,6 +14,7 @@ import (
 	"github.com/grafana/dskit/services"
 	otgrpc "github.com/opentracing-contrib/go-grpc"
 	"github.com/opentracing/opentracing-go"
+	"github.com/pkg/errors"
 	"github.com/sony/gobreaker/v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -25,7 +27,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/util/circuitbreaker"
 )
 
-var ErrServiceUnavailable = "service is unavailable"
+var errServiceUnavailableMsg = "service is unavailable"
 
 // TODO(kolesnikovae): Make these configurable (advanced category)?
 const (
@@ -37,6 +39,37 @@ const (
 
 	poolCleanupPeriod = 15 * time.Second
 )
+
+// Only these errors are considered as a signal to retry the request
+// and send it to another instance. Client-side, internal, and unknown
+// errors should not be retried, as they are likely to be permanent.
+// Note that the client errors are not excluded from the list.
+func isRetryable(err error) bool {
+	switch status.Code(err) {
+	case codes.Unknown,
+		codes.Internal,
+		codes.FailedPrecondition:
+		return false
+	default:
+		// All sorts of network errors.
+		return true
+	}
+}
+
+// Client errors are returned as is without retries.
+// Any other error is substituted with a stub message
+// and UNAVAILABLE status.
+func isClientError(err error) bool {
+	switch status.Code(err) {
+	case codes.InvalidArgument,
+		codes.Canceled,
+		codes.PermissionDenied,
+		codes.Unauthenticated:
+		return true
+	default:
+		return errors.Is(err, context.Canceled)
+	}
+}
 
 // https://en.wikipedia.org/wiki/Circuit_breaker_design_pattern
 // The circuit breaker is used to prevent the client from sending
@@ -70,39 +103,30 @@ var circuitBreakerConfig = gobreaker.Settings{
 // and we want to avoid time waste. For example, when a service instance
 // went unavailable for a long period of time, or is not reposing in
 // timely fashion.
+//
+// From the caller perspective, we're converting those to UNAVAILABLE,
+// thereby allowing the caller to retry the request against another service
+// instance.
+//
+// Note that client-side, internal, and unknown errors are not included:
+// in case if a request is failing permanently regardless of the service
+// instance, there is a good chance that all the circuits will be opened
+// by retries, making the whole service unavailable.
+//
+// Next, ResourceExhausted also excluded from the list: as the error is
+// tenant-request-specific, and the circuit breaker operates connection-wise.
 func shouldBeHandledByCaller(err error) bool {
+	if errors.Is(err, os.ErrDeadlineExceeded) {
+		return false
+	}
 	switch status.Code(err) {
-	// From the caller perspective, we're converting those to
-	// UNAVAILABLE, thereby allowing the caller to retry the
-	// request against another service instance.
-	//
-	// Note that client-side, internal, and unknown errors are not
-	// included: in case if a request is failing permanently
-	// regardless of the service instance, there is a good chance
-	// that all the circuits will be opened by retries, making the
-	// whole service unavailable.
-	//
-	// Next, ResourceExhausted also excluded from the list: as the
-	// error is tenant-request-specific, and the circuit breaker
-	// operates connection-wise.
 	case codes.Unavailable,
 		codes.DeadlineExceeded:
 		return false
 	}
-	// The error handling is returned back the caller.
+	// The error handling is returned back the caller: the circuit
+	// remains closed.
 	return true
-}
-
-// Only these errors are considered as a signal to retry the request
-// and send it to another instance. Client-side, internal, and unknown
-// errors should not be retried, as they are likely to be permanent.
-func shouldTrySendToAnotherInstance(err error) bool {
-	switch status.Code(err) {
-	case codes.ResourceExhausted,
-		codes.Unavailable:
-		return true
-	}
-	return false
 }
 
 // The default gRPC service config is explicitly set to
@@ -181,8 +205,9 @@ func (c *Client) Push(
 			"msg", "unable to distribute request",
 			"tenant", req.TenantId,
 			"err", dErr)
-		return nil, status.Error(codes.Unavailable, ErrServiceUnavailable)
+		return nil, status.Error(codes.Unavailable, errServiceUnavailableMsg)
 	}
+
 	req.Shard = p.Shard
 	for { // The caller should cancel the context to break the loop.
 		instance, ok := p.Next()
@@ -190,20 +215,25 @@ func (c *Client) Push(
 			_ = level.Error(c.logger).Log(
 				"msg", "no segment writer instances available for the request",
 				"tenant", req.TenantId)
-			return nil, status.Error(codes.Unavailable, ErrServiceUnavailable)
+			return nil, status.Error(codes.Unavailable, errServiceUnavailableMsg)
 		}
+
 		resp, err := c.pushToInstance(ctx, req, instance.Addr)
 		if err == nil {
 			// Happy path.
 			return resp, nil
 		}
-		if !shouldTrySendToAnotherInstance(err) {
+		// Handle client errors explicitly.
+		if isClientError(err) {
+			return nil, err
+		}
+		if !isRetryable(err) {
 			_ = level.Error(c.logger).Log(
 				"msg", "failed to push data to segment writer",
 				"tenant", req.TenantId,
 				"instance", instance.Addr,
 				"err", err)
-			return nil, status.Error(codes.Unavailable, ErrServiceUnavailable)
+			return nil, status.Error(codes.Unavailable, errServiceUnavailableMsg)
 		}
 	}
 }
