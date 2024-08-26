@@ -75,6 +75,8 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 		case compactorv1.CompactionStatus_COMPACTION_STATUS_SUCCESS:
 			m.compactionJobQueue.evict(job.Name, job.RaftLogIndex)
 			stateUpdate.deletedJobs[jobKey] = append(stateUpdate.deletedJobs[jobKey], job.Name)
+			m.compactionMetrics.completedJobs.WithLabelValues(
+				fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
 
 			for _, b := range statusUpdate.CompletedJob.Blocks {
 				m.getOrCreateShard(job.Shard).putSegment(b)
@@ -83,14 +85,20 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 				if job := m.tryCreateJob(b, statusUpdate.RaftLogIndex); job != nil {
 					m.addCompactionJob(job)
 					stateUpdate.newJobs = append(stateUpdate.newJobs, job.Name)
+					m.compactionMetrics.addedJobs.WithLabelValues(
+						fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
 				} else {
 					m.addBlockToCompactionJobQueue(b)
 				}
+				m.compactionMetrics.addedBlocks.WithLabelValues(
+					fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
 				stateUpdate.updatedBlockQueues[jobKey] = append(stateUpdate.updatedBlockQueues[jobKey], b.CompactionLevel)
 			}
 			for _, b := range job.Blocks {
 				m.getOrCreateShard(job.Shard).deleteSegment(b)
 				stateUpdate.deletedBlocks[job.Shard] = append(stateUpdate.deletedBlocks[job.Shard], b)
+				m.compactionMetrics.deletedBlocks.WithLabelValues(
+					fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
 			}
 		case compactorv1.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS:
 			m.compactionJobQueue.update(statusUpdate.JobName, raftAppendedAtNanos, statusUpdate.RaftLogIndex)
@@ -100,6 +108,8 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 			if int(job.Failures) >= m.compactionConfig.JobMaxFailures {
 				m.compactionJobQueue.evict(job.Name, math.MaxInt64)
 				stateUpdate.deletedJobs[jobKey] = append(stateUpdate.deletedJobs[jobKey], job.Name)
+				m.compactionMetrics.discardedJobs.WithLabelValues(
+					fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
 			} else {
 				m.compactionJobQueue.evict(job.Name, math.MaxInt64)
 				job.Status = compactionpb.CompactionStatus_COMPACTION_STATUS_UNSPECIFIED
@@ -107,6 +117,8 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 				job.LeaseExpiresAt = 0
 				m.compactionJobQueue.enqueue(job)
 				stateUpdate.updatedJobs = append(stateUpdate.updatedJobs, job.Name)
+				m.compactionMetrics.retriedJobs.WithLabelValues(
+					fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
 			}
 		}
 	}
@@ -117,6 +129,8 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 		resp.CompactionJobs, err = m.convertJobs(newJobs)
 		for _, j := range newJobs {
 			stateUpdate.updatedJobs = append(stateUpdate.updatedJobs, j.Name)
+			m.compactionMetrics.assignedJobs.WithLabelValues(
+				fmt.Sprint(j.Shard), j.TenantId, fmt.Sprint(j.CompactionLevel)).Inc()
 		}
 		if err != nil {
 			return nil, err

@@ -140,8 +140,6 @@ func (m *metastoreState) compactBlock(block *metastorev1.BlockMeta, tx *bbolt.Tx
 			return err
 		}
 		m.addCompactionJob(job)
-		m.compactionMetrics.addedBlocks.WithLabelValues(
-			fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
 		m.compactionMetrics.addedJobs.WithLabelValues(
 			fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
 	} else {
@@ -155,9 +153,9 @@ func (m *metastoreState) compactBlock(block *metastorev1.BlockMeta, tx *bbolt.Tx
 			return err
 		}
 		m.addBlockToCompactionJobQueue(block)
-		m.compactionMetrics.addedBlocks.WithLabelValues(
-			fmt.Sprint(block.Shard), block.TenantId, fmt.Sprint(block.CompactionLevel)).Inc()
 	}
+	m.compactionMetrics.addedBlocks.WithLabelValues(
+		fmt.Sprint(block.Shard), block.TenantId, fmt.Sprint(block.CompactionLevel)).Inc()
 	return nil
 }
 

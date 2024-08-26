@@ -633,6 +633,10 @@ lifecycler:
         # values:
         # 
         # Secure Ciphers:
+        # - TLS_RSA_WITH_AES_128_CBC_SHA
+        # - TLS_RSA_WITH_AES_256_CBC_SHA
+        # - TLS_RSA_WITH_AES_128_GCM_SHA256
+        # - TLS_RSA_WITH_AES_256_GCM_SHA384
         # - TLS_AES_128_GCM_SHA256
         # - TLS_AES_256_GCM_SHA384
         # - TLS_CHACHA20_POLY1305_SHA256
@@ -650,11 +654,7 @@ lifecycler:
         # Insecure Ciphers:
         # - TLS_RSA_WITH_RC4_128_SHA
         # - TLS_RSA_WITH_3DES_EDE_CBC_SHA
-        # - TLS_RSA_WITH_AES_128_CBC_SHA
-        # - TLS_RSA_WITH_AES_256_CBC_SHA
         # - TLS_RSA_WITH_AES_128_CBC_SHA256
-        # - TLS_RSA_WITH_AES_128_GCM_SHA256
-        # - TLS_RSA_WITH_AES_256_GCM_SHA384
         # - TLS_ECDHE_ECDSA_WITH_RC4_128_SHA
         # - TLS_ECDHE_RSA_WITH_RC4_128_SHA
         # - TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA
@@ -990,6 +990,10 @@ sharding_ring:
       # values:
       # 
       # Secure Ciphers:
+      # - TLS_RSA_WITH_AES_128_CBC_SHA
+      # - TLS_RSA_WITH_AES_256_CBC_SHA
+      # - TLS_RSA_WITH_AES_128_GCM_SHA256
+      # - TLS_RSA_WITH_AES_256_GCM_SHA384
       # - TLS_AES_128_GCM_SHA256
       # - TLS_AES_256_GCM_SHA384
       # - TLS_CHACHA20_POLY1305_SHA256
@@ -1007,11 +1011,7 @@ sharding_ring:
       # Insecure Ciphers:
       # - TLS_RSA_WITH_RC4_128_SHA
       # - TLS_RSA_WITH_3DES_EDE_CBC_SHA
-      # - TLS_RSA_WITH_AES_128_CBC_SHA
-      # - TLS_RSA_WITH_AES_256_CBC_SHA
       # - TLS_RSA_WITH_AES_128_CBC_SHA256
-      # - TLS_RSA_WITH_AES_128_GCM_SHA256
-      # - TLS_RSA_WITH_AES_256_GCM_SHA384
       # - TLS_ECDHE_ECDSA_WITH_RC4_128_SHA
       # - TLS_ECDHE_RSA_WITH_RC4_128_SHA
       # - TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA
@@ -1339,6 +1339,10 @@ sharding_ring:
       # values:
       # 
       # Secure Ciphers:
+      # - TLS_RSA_WITH_AES_128_CBC_SHA
+      # - TLS_RSA_WITH_AES_256_CBC_SHA
+      # - TLS_RSA_WITH_AES_128_GCM_SHA256
+      # - TLS_RSA_WITH_AES_256_GCM_SHA384
       # - TLS_AES_128_GCM_SHA256
       # - TLS_AES_256_GCM_SHA384
       # - TLS_CHACHA20_POLY1305_SHA256
@@ -1356,11 +1360,7 @@ sharding_ring:
       # Insecure Ciphers:
       # - TLS_RSA_WITH_RC4_128_SHA
       # - TLS_RSA_WITH_3DES_EDE_CBC_SHA
-      # - TLS_RSA_WITH_AES_128_CBC_SHA
-      # - TLS_RSA_WITH_AES_256_CBC_SHA
       # - TLS_RSA_WITH_AES_128_CBC_SHA256
-      # - TLS_RSA_WITH_AES_128_GCM_SHA256
-      # - TLS_RSA_WITH_AES_256_GCM_SHA384
       # - TLS_ECDHE_ECDSA_WITH_RC4_128_SHA
       # - TLS_ECDHE_RSA_WITH_RC4_128_SHA
       # - TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA
@@ -1547,6 +1547,10 @@ backoff_config:
 # Override the default cipher suite list (separated by commas). Allowed values:
 # 
 # Secure Ciphers:
+# - TLS_RSA_WITH_AES_128_CBC_SHA
+# - TLS_RSA_WITH_AES_256_CBC_SHA
+# - TLS_RSA_WITH_AES_128_GCM_SHA256
+# - TLS_RSA_WITH_AES_256_GCM_SHA384
 # - TLS_AES_128_GCM_SHA256
 # - TLS_AES_256_GCM_SHA384
 # - TLS_CHACHA20_POLY1305_SHA256
@@ -1564,11 +1568,7 @@ backoff_config:
 # Insecure Ciphers:
 # - TLS_RSA_WITH_RC4_128_SHA
 # - TLS_RSA_WITH_3DES_EDE_CBC_SHA
-# - TLS_RSA_WITH_AES_128_CBC_SHA
-# - TLS_RSA_WITH_AES_256_CBC_SHA
 # - TLS_RSA_WITH_AES_128_CBC_SHA256
-# - TLS_RSA_WITH_AES_128_GCM_SHA256
-# - TLS_RSA_WITH_AES_256_GCM_SHA384
 # - TLS_ECDHE_ECDSA_WITH_RC4_128_SHA
 # - TLS_ECDHE_RSA_WITH_RC4_128_SHA
 # - TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA
@@ -1760,6 +1760,10 @@ The `memberlist` block configures the Gossip memberlist.
 # Override the default cipher suite list (separated by commas). Allowed values:
 # 
 # Secure Ciphers:
+# - TLS_RSA_WITH_AES_128_CBC_SHA
+# - TLS_RSA_WITH_AES_256_CBC_SHA
+# - TLS_RSA_WITH_AES_128_GCM_SHA256
+# - TLS_RSA_WITH_AES_256_GCM_SHA384
 # - TLS_AES_128_GCM_SHA256
 # - TLS_AES_256_GCM_SHA384
 # - TLS_CHACHA20_POLY1305_SHA256
@@ -1777,11 +1781,7 @@ The `memberlist` block configures the Gossip memberlist.
 # Insecure Ciphers:
 # - TLS_RSA_WITH_RC4_128_SHA
 # - TLS_RSA_WITH_3DES_EDE_CBC_SHA
-# - TLS_RSA_WITH_AES_128_CBC_SHA
-# - TLS_RSA_WITH_AES_256_CBC_SHA
 # - TLS_RSA_WITH_AES_128_CBC_SHA256
-# - TLS_RSA_WITH_AES_128_GCM_SHA256
-# - TLS_RSA_WITH_AES_256_GCM_SHA384
 # - TLS_ECDHE_ECDSA_WITH_RC4_128_SHA
 # - TLS_ECDHE_RSA_WITH_RC4_128_SHA
 # - TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA
