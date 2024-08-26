@@ -2,10 +2,6 @@ package ingester
 
 import (
 	"io"
-	"os"
-
-	"github.com/grafana/pyroscope/pkg/phlaredb"
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 )
 
 type writerOffset struct {
@@ -30,19 +26,4 @@ func (w *writerOffset) Write(p []byte) (n int, err error) {
 	n, err = w.Writer.Write(p)
 	w.offset += int64(n)
 	return n, err
-}
-
-func concatFile(w *writerOffset, h *phlaredb.Head, f *block.File, buf []byte) (uint64, error) {
-	o := w.offset
-	fp := h.LocalPathFor(f.RelPath)
-	file, err := os.Open(fp)
-	if err != nil {
-		return 0, err
-	}
-	defer file.Close()
-	_, err = io.CopyBuffer(w, file, buf)
-	if err != nil {
-		return 0, err
-	}
-	return uint64(o), nil
 }

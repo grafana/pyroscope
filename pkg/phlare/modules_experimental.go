@@ -3,6 +3,10 @@ package phlare
 import (
 	"fmt"
 
+	"github.com/prometheus/client_golang/prometheus"
+
+	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
+
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/services"
 	"google.golang.org/grpc/health/grpc_health_v1"
@@ -17,8 +21,13 @@ import (
 )
 
 func (f *Phlare) initSegmentWriter() (services.Service, error) {
+	phlarectx := f.context()
+	reg := phlarecontext.Registry(phlarectx)
+	reg = prometheus.WrapRegistererWith(prometheus.Labels{"component": "segment-writer"}, reg)
+	log := phlarecontext.Logger(phlarectx)
 	ingester, err := segmentwriter.New(
-		f.context(),
+		reg,
+		log,
 		f.Cfg.SegmentWriter,
 		f.Cfg.PhlareDB,
 		f.storageBucket, f.metastoreClient)
