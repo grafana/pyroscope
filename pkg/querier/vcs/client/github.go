@@ -82,3 +82,20 @@ func toString(s *string) string {
 	}
 	return *s
 }
+
+func MapErrorToConnectCode(err error) error {
+	var githubErr *github.ErrorResponse
+	if errors.As(err, &githubErr) {
+		switch githubErr.Response.StatusCode {
+		case http.StatusNotFound:
+			return connect.NewError(connect.CodeNotFound, err)
+		case http.StatusForbidden:
+			return connect.NewError(connect.CodePermissionDenied, err)
+		case http.StatusUnauthorized:
+			return connect.NewError(connect.CodeUnauthenticated, err)
+		case http.StatusTooManyRequests:
+			return connect.NewError(connect.CodeResourceExhausted, err)
+		}
+	}
+	return connect.NewError(connect.CodeUnknown, err)
+}
