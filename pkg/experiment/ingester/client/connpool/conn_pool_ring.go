@@ -1,8 +1,9 @@
-package segmentwriterclient
+package connpool
 
 import (
 	"io"
 
+	"github.com/grafana/dskit/services"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
@@ -11,6 +12,15 @@ import (
 
 	"github.com/grafana/pyroscope/pkg/util/health"
 )
+
+// NOTE(kolesnikovae): This is a tiny wrapper for ring_client.Pool
+// that is not tailored for the specific use case of the segment
+// writer client, and it should be refactored out.
+
+type ConnPool interface {
+	GetConnFor(addr string) (grpc.ClientConnInterface, error)
+	services.Service
+}
 
 type RingConnPool struct{ *ring_client.Pool }
 
@@ -22,17 +32,15 @@ func (p *RingConnPool) GetConnFor(addr string) (grpc.ClientConnInterface, error)
 	return c.(grpc.ClientConnInterface), nil
 }
 
-type connFactory struct {
+type ConnFactory struct {
 	options func(ring.InstanceDesc) []grpc.DialOption
 }
 
-func newConnPoolFactory(options func(ring.InstanceDesc) []grpc.DialOption) ring_client.PoolFactory {
-	return &connFactory{
-		options: options,
-	}
+func NewConnPoolFactory(options func(ring.InstanceDesc) []grpc.DialOption) ring_client.PoolFactory {
+	return &ConnFactory{options: options}
 }
 
-func (f *connFactory) FromInstance(inst ring.InstanceDesc) (ring_client.PoolClient, error) {
+func (f *ConnFactory) FromInstance(inst ring.InstanceDesc) (ring_client.PoolClient, error) {
 	conn, err := grpc.Dial(inst.Addr, f.options(inst)...)
 	if err != nil {
 		return nil, err

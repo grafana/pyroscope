@@ -15,6 +15,7 @@ func UnaryClientInterceptor(cb *gobreaker.CircuitBreaker[any]) grpc.UnaryClientI
 		_, err := cb.Execute(func() (interface{}, error) {
 			return nil, invoker(ctx, method, req, reply, cc, opts...)
 		})
+		// gobreaker returns unwrapped errors.
 		switch err {
 		case nil:
 		case gobreaker.ErrOpenState,

@@ -41,15 +41,27 @@ type Placement struct {
 	// Note that the instances reference shared objects, and must not be modified.
 	Instances []*ring.InstanceDesc
 	Shard     uint32
+	visited   map[string]*ring.InstanceDesc
 }
 
 // Next returns the next available location address.
 func (p *Placement) Next() (instance *ring.InstanceDesc, ok bool) {
 	for len(p.Instances) > 0 {
 		instance, p.Instances = p.Instances[0], p.Instances[1:]
-		if instance.State == ring.ACTIVE {
+		if instance.State == ring.ACTIVE && !p.isVisited(instance) {
 			return instance, true
 		}
 	}
 	return nil, false
+}
+
+func (p *Placement) isVisited(x *ring.InstanceDesc) bool {
+	if p.visited == nil {
+		p.visited = make(map[string]*ring.InstanceDesc, len(p.Instances))
+	}
+	if _, ok := p.visited[x.Addr]; ok {
+		return true
+	}
+	p.visited[x.Addr] = x
+	return false
 }
