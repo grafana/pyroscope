@@ -31,17 +31,17 @@ type profilesIndex struct {
 	totalSeries *atomic.Int64
 }
 
-func newProfileIndex(totalShards uint32, metrics *HeadMetrics) (*profilesIndex, error) {
-	ix, err := tsdb.NewBitPrefixWithShards(totalShards)
+func newProfileIndex(metrics *HeadMetrics) *profilesIndex {
+	ix, err := tsdb.NewBitPrefixWithShards(32)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 	return &profilesIndex{
 		ix:            ix,
 		profilesPerFP: make(map[model.Fingerprint]*profileSeries),
 		metrics:       metrics,
 		totalSeries:   atomic.NewInt64(0),
-	}, nil
+	}
 }
 
 // Add a new set of profile to the index.

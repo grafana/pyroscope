@@ -30,9 +30,9 @@ import (
 )
 
 func TestHeadLabelValues(t *testing.T) {
-	head := newTestHead(t)
-	require.NoError(t, head.Ingest(newProfileFoo(), uuid.New(), []*typesv1.LabelPair{{Name: "job", Value: "foo"}, {Name: "namespace", Value: "phlare"}}))
-	require.NoError(t, head.Ingest(newProfileBar(), uuid.New(), []*typesv1.LabelPair{{Name: "job", Value: "bar"}, {Name: "namespace", Value: "phlare"}}))
+	head := newTestHead()
+	head.Ingest(newProfileFoo(), uuid.New(), []*typesv1.LabelPair{{Name: "job", Value: "foo"}, {Name: "namespace", Value: "phlare"}})
+	head.Ingest(newProfileBar(), uuid.New(), []*typesv1.LabelPair{{Name: "job", Value: "bar"}, {Name: "namespace", Value: "phlare"}})
 
 	q := flushTestHead(t, head)
 
@@ -45,9 +45,9 @@ func TestHeadLabelValues(t *testing.T) {
 	require.Equal(t, []string{"bar", "foo"}, res.Msg.Names)
 }
 func TestHeadLabelNames(t *testing.T) {
-	head := newTestHead(t)
-	require.NoError(t, head.Ingest(newProfileFoo(), uuid.New(), []*typesv1.LabelPair{{Name: "job", Value: "foo"}, {Name: "namespace", Value: "phlare"}}))
-	require.NoError(t, head.Ingest(newProfileBar(), uuid.New(), []*typesv1.LabelPair{{Name: "job", Value: "bar"}, {Name: "namespace", Value: "phlare"}}))
+	head := newTestHead()
+	head.Ingest(newProfileFoo(), uuid.New(), []*typesv1.LabelPair{{Name: "job", Value: "foo"}, {Name: "namespace", Value: "phlare"}})
+	head.Ingest(newProfileBar(), uuid.New(), []*typesv1.LabelPair{{Name: "job", Value: "bar"}, {Name: "namespace", Value: "phlare"}})
 
 	q := flushTestHead(t, head)
 
@@ -57,11 +57,11 @@ func TestHeadLabelNames(t *testing.T) {
 }
 
 func TestHeadSeries(t *testing.T) {
-	head := newTestHead(t)
+	head := newTestHead()
 	fooLabels := phlaremodel.NewLabelsBuilder(nil).Set("namespace", "phlare").Set("job", "foo").Labels()
 	barLabels := phlaremodel.NewLabelsBuilder(nil).Set("namespace", "phlare").Set("job", "bar").Labels()
-	require.NoError(t, head.Ingest(newProfileFoo(), uuid.New(), fooLabels))
-	require.NoError(t, head.Ingest(newProfileBar(), uuid.New(), barLabels))
+	head.Ingest(newProfileFoo(), uuid.New(), fooLabels)
+	head.Ingest(newProfileBar(), uuid.New(), barLabels)
 
 	lblBuilder := phlaremodel.NewLabelsBuilder(nil).
 		Set("namespace", "phlare").
@@ -92,9 +92,9 @@ func TestHeadSeries(t *testing.T) {
 }
 
 func TestHeadProfileTypes(t *testing.T) {
-	head := newTestHead(t)
-	require.NoError(t, head.Ingest(newProfileFoo(), uuid.New(), []*typesv1.LabelPair{{Name: "__name__", Value: "foo"}, {Name: "job", Value: "foo"}, {Name: "namespace", Value: "phlare"}}))
-	require.NoError(t, head.Ingest(newProfileBar(), uuid.New(), []*typesv1.LabelPair{{Name: "__name__", Value: "bar"}, {Name: "namespace", Value: "phlare"}}))
+	head := newTestHead()
+	head.Ingest(newProfileFoo(), uuid.New(), []*typesv1.LabelPair{{Name: "__name__", Value: "foo"}, {Name: "job", Value: "foo"}, {Name: "namespace", Value: "phlare"}})
+	head.Ingest(newProfileBar(), uuid.New(), []*typesv1.LabelPair{{Name: "__name__", Value: "bar"}, {Name: "namespace", Value: "phlare"}})
 
 	q := flushTestHead(t, head)
 
@@ -108,18 +108,17 @@ func TestHeadProfileTypes(t *testing.T) {
 
 func TestHead_SelectMatchingProfiles_Order(t *testing.T) {
 	const n = 15
-	head, err := NewHead(NewHeadMetricsWithPrefix(nil, ""))
-	require.NoError(t, err)
+	head := NewHead(NewHeadMetricsWithPrefix(nil, ""))
 
 	now := time.Now()
 	for i := 0; i < n; i++ {
 		x := newProfileFoo()
 		// Make sure some of our profiles have matching timestamps.
 		x.TimeNanos = now.Add(time.Second * time.Duration(i-i%2)).UnixNano()
-		require.NoError(t, head.Ingest(x, uuid.UUID{}, []*typesv1.LabelPair{
+		head.Ingest(x, uuid.UUID{}, []*typesv1.LabelPair{
 			{Name: "job", Value: "foo"},
 			{Name: "x", Value: strconv.Itoa(i)},
-		}))
+		})
 	}
 
 	q := flushTestHead(t, head)
@@ -167,13 +166,13 @@ func TestHeadFlushQuery(t *testing.T) {
 		td.profile = p
 	}
 
-	head := newTestHead(t)
+	head := newTestHead()
 	ctx := context.Background()
 
 	for pos := range testdata {
-		require.NoError(t, head.Ingest(testdata[pos].profile.CloneVT(), uuid.New(), []*typesv1.LabelPair{
+		head.Ingest(testdata[pos].profile.CloneVT(), uuid.New(), []*typesv1.LabelPair{
 			{Name: phlaremodel.LabelNameServiceName, Value: testdata[pos].svc},
-		}))
+		})
 	}
 
 	flushed, err := head.Flush(ctx)
@@ -213,7 +212,7 @@ func TestHeadFlushQuery(t *testing.T) {
 }
 
 func TestHead_Concurrent_Ingest(t *testing.T) {
-	head := newTestHead(t)
+	head := newTestHead()
 
 	wg := sync.WaitGroup{}
 
@@ -228,7 +227,7 @@ func TestHead_Concurrent_Ingest(t *testing.T) {
 			defer tick.Stop()
 			for j := 0; j < profilesPerSeries; j++ {
 				<-tick.C
-				require.NoError(t, ingestThreeProfileStreams(profilesPerSeries*i+j, head.Ingest))
+				ingestThreeProfileStreams(profilesPerSeries*i+j, head.Ingest)
 			}
 			t.Logf("ingest stream %s done", streams[i])
 		}(i)
@@ -246,10 +245,10 @@ func profileWithID(id int) (*profilev1.Profile, uuid.UUID) {
 }
 
 func TestHead_ProfileOrder(t *testing.T) {
-	head := newTestHead(t)
+	head := newTestHead()
 
 	p, u := profileWithID(1)
-	require.NoError(t, head.Ingest(
+	head.Ingest(
 		p,
 		u,
 		[]*typesv1.LabelPair{
@@ -257,10 +256,10 @@ func TestHead_ProfileOrder(t *testing.T) {
 			{Name: phlaremodel.LabelNameOrder, Value: phlaremodel.LabelOrderEnforced},
 			{Name: phlaremodel.LabelNameServiceName, Value: "service-a"},
 		},
-	))
+	)
 
 	p, u = profileWithID(2)
-	require.NoError(t, head.Ingest(
+	head.Ingest(
 		p,
 		u,
 		[]*typesv1.LabelPair{
@@ -269,10 +268,10 @@ func TestHead_ProfileOrder(t *testing.T) {
 			{Name: phlaremodel.LabelNameServiceName, Value: "service-b"},
 			{Name: "____Label", Value: "important"},
 		},
-	))
+	)
 
 	p, u = profileWithID(3)
-	require.NoError(t, head.Ingest(
+	head.Ingest(
 		p,
 		u,
 		[]*typesv1.LabelPair{
@@ -281,10 +280,10 @@ func TestHead_ProfileOrder(t *testing.T) {
 			{Name: phlaremodel.LabelNameServiceName, Value: "service-c"},
 			{Name: "AAALabel", Value: "important"},
 		},
-	))
+	)
 
 	p, u = profileWithID(4)
-	require.NoError(t, head.Ingest(
+	head.Ingest(
 		p,
 		u,
 		[]*typesv1.LabelPair{
@@ -293,10 +292,10 @@ func TestHead_ProfileOrder(t *testing.T) {
 			{Name: phlaremodel.LabelNameServiceName, Value: "service-a"},
 			{Name: "000Label", Value: "important"},
 		},
-	))
+	)
 
 	p, u = profileWithID(5)
-	require.NoError(t, head.Ingest(
+	head.Ingest(
 		p,
 		u,
 		[]*typesv1.LabelPair{
@@ -304,10 +303,10 @@ func TestHead_ProfileOrder(t *testing.T) {
 			{Name: phlaremodel.LabelNameOrder, Value: phlaremodel.LabelOrderEnforced},
 			{Name: phlaremodel.LabelNameServiceName, Value: "service-b"},
 		},
-	))
+	)
 
 	p, u = profileWithID(6)
-	require.NoError(t, head.Ingest(
+	head.Ingest(
 		p,
 		u,
 		[]*typesv1.LabelPair{
@@ -315,7 +314,7 @@ func TestHead_ProfileOrder(t *testing.T) {
 			{Name: phlaremodel.LabelNameOrder, Value: phlaremodel.LabelOrderEnforced},
 			{Name: phlaremodel.LabelNameServiceName, Value: "service-b"},
 		},
-	))
+	)
 
 	flushed, err := head.Flush(context.Background())
 	require.NoError(t, err)
@@ -330,7 +329,7 @@ func TestHead_ProfileOrder(t *testing.T) {
 }
 
 func TestFlushEmptyHead(t *testing.T) {
-	head := newTestHead(t)
+	head := newTestHead()
 	flushed, err := head.Flush(context.Background())
 	require.NoError(t, err)
 	require.NotNil(t, flushed)
@@ -347,7 +346,7 @@ func TestMergeProfilesStacktraces(t *testing.T) {
 		step  = 15 * time.Second
 	)
 
-	db := newTestHead(t)
+	db := newTestHead()
 
 	ingestProfiles(t, db, cpuProfileGenerator, start.UnixNano(), end.UnixNano(), step,
 		&typesv1.LabelPair{Name: "namespace", Value: "my-namespace"},
@@ -471,8 +470,7 @@ func TestMergeProfilesPprof(t *testing.T) {
 		step  = 15 * time.Second
 	)
 
-	db, err := NewHead(NewHeadMetricsWithPrefix(nil, ""))
-	require.NoError(t, err)
+	db := NewHead(NewHeadMetricsWithPrefix(nil, ""))
 
 	ingestProfiles(t, db, cpuProfileGenerator, start.UnixNano(), end.UnixNano(), step,
 		&typesv1.LabelPair{Name: "namespace", Value: "my-namespace"},
@@ -615,7 +613,7 @@ func Test_HeadFlush_DuplicateLabels(t *testing.T) {
 		step  = 15 * time.Second
 	)
 
-	head := newTestHead(t)
+	head := newTestHead()
 
 	ingestProfiles(t, head, cpuProfileGenerator, start.UnixNano(), end.UnixNano(), step,
 		&typesv1.LabelPair{Name: "namespace", Value: "my-namespace"},
@@ -632,22 +630,21 @@ func BenchmarkHeadIngestProfiles(t *testing.B) {
 		profileCount = 0
 	)
 
-	head := newTestHead(t)
+	head := newTestHead()
 
 	t.ReportAllocs()
 
 	for n := 0; n < t.N; n++ {
 		for pos := range profilePaths {
 			p := parseProfile(t, profilePaths[pos])
-			require.NoError(t, head.Ingest(p, uuid.New(), []*typesv1.LabelPair{}))
+			head.Ingest(p, uuid.New(), []*typesv1.LabelPair{})
 			profileCount++
 		}
 	}
 }
 
-func newTestHead(t testing.TB) *Head {
-	head, err := NewHead(NewHeadMetricsWithPrefix(nil, ""))
-	require.NoError(t, err)
+func newTestHead() *Head {
+	head := NewHead(NewHeadMetricsWithPrefix(nil, ""))
 	return head
 }
 
@@ -768,7 +765,7 @@ func newProfileBar() *profilev1.Profile {
 
 var streams = []string{"stream-a", "stream-b", "stream-c"}
 
-func ingestThreeProfileStreams(i int, ingest func(*profilev1.Profile, uuid.UUID, []*typesv1.LabelPair) error) error {
+func ingestThreeProfileStreams(i int, ingest func(*profilev1.Profile, uuid.UUID, []*typesv1.LabelPair)) {
 	p := testhelper.NewProfileBuilder(time.Second.Nanoseconds() * int64(i))
 	p.CPUProfile()
 	p.WithLabels(
@@ -779,7 +776,7 @@ func ingestThreeProfileStreams(i int, ingest func(*profilev1.Profile, uuid.UUID,
 	p.ForStacktraceString("func1", "func2").AddSamples(10)
 	p.ForStacktraceString("func1").AddSamples(20)
 
-	return ingest(p.Profile, p.UUID, p.Labels)
+	ingest(p.Profile, p.UUID, p.Labels)
 }
 
 func profileTypeFromProfile(p *profilev1.Profile, stIndex int) *typesv1.ProfileType {
@@ -827,8 +824,8 @@ func ingestProfiles(b testing.TB, db *Head, generator func(tsNano int64, t testi
 	b.Helper()
 	for i := from; i <= to; i += int64(step) {
 		p, name := generator(i, b)
-		require.NoError(b, db.Ingest(
-			p, uuid.New(), append(externalLabels, &typesv1.LabelPair{Name: model.MetricNameLabel, Value: name})))
+		db.Ingest(
+			p, uuid.New(), append(externalLabels, &typesv1.LabelPair{Name: model.MetricNameLabel, Value: name}))
 	}
 }
 

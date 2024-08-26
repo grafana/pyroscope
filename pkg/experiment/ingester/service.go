@@ -10,18 +10,15 @@ import (
 
 	"github.com/google/uuid"
 
-	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
-	"github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/grafana/pyroscope/pkg/tenant"
-	"github.com/grafana/pyroscope/pkg/validation"
-
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
+	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
+	"github.com/grafana/pyroscope/pkg/pprof"
+	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -153,12 +150,18 @@ func (i *SegmentWriterService) Push(ctx context.Context, req *connect.Request[se
 	}
 	series := req.Msg.Series
 	var shard = shardKey(series.Shard)
-	wait, err := i.segmentWriter.ingest(shard, func(segment segmentIngest) error {
-		return i.ingestToSegment(ctx, segment, series, tenantID)
-	})
+	sample := series.Sample
+	id, err := uuid.Parse(sample.ID)
 	if err != nil {
-		return nil, err
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
+	p, err := pprof.RawFromBytes(sample.RawProfile)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	wait := i.segmentWriter.ingest(shard, func(segment segmentIngest) {
+		segment.ingest(ctx, tenantID, p.Profile, id, series.Labels)
+	})
 	if i.cfg.Async {
 		return connect.NewResponse(&segmentWriterV1.PushResponse{}), nil
 	}
@@ -171,28 +174,10 @@ func (i *SegmentWriterService) Push(ctx context.Context, req *connect.Request[se
 		} else {
 			level.Error(i.logger).Log("msg", "flush err", "err", err)
 		}
-		return nil, err
+		return nil, connect.NewError(connect.CodeUnavailable, err)
 	}
 	i.segmentWriter.metrics.segmentFlushWaitDuration.WithLabelValues(tenantID).Observe(time.Since(t1).Seconds())
 	return connect.NewResponse(&segmentWriterV1.PushResponse{}), nil
-}
-
-func (i *SegmentWriterService) ingestToSegment(ctx context.Context, segment segmentIngest, series *segmentWriterV1.RawProfileSeries, tenantID string) error {
-	sample := series.Sample
-	id, err := uuid.Parse(sample.ID)
-	if err != nil {
-		return err
-	}
-	return pprof.FromBytes(sample.RawProfile, func(p *profilev1.Profile, size int) error {
-		if err = segment.ingest(ctx, tenantID, p, id, series.Labels); err != nil {
-			reason := validation.ReasonOf(err)
-			if reason != validation.Unknown {
-				validation.DiscardedProfiles.WithLabelValues(string(reason), tenantID).Add(float64(1))
-				validation.DiscardedBytes.WithLabelValues(string(reason), tenantID).Add(float64(size))
-			}
-		}
-		return nil
-	})
 }
 
 func (i *SegmentWriterService) Flush() error {

@@ -64,13 +64,14 @@ type shard struct {
 	concatBuf   []byte
 }
 
-func (sh *shard) ingest(fn func(head segmentIngest) error) (segmentWaitFlushed, error) {
+func (sh *shard) ingest(fn func(head segmentIngest)) segmentWaitFlushed {
 	sh.currentLock.RLock()
 	s := sh.current
 	s.inFlightProfiles.Add(1)
 	sh.currentLock.RUnlock()
 	defer s.inFlightProfiles.Done()
-	return s, fn(s)
+	fn(s)
+	return s
 }
 
 func (sh *shard) loop(ctx context.Context) {
@@ -133,7 +134,7 @@ func newSegmentWriter(l log.Logger, metrics *segmentMetrics, hm *memdb.HeadMetri
 	return sw
 }
 
-func (sw *segmentsWriter) ingest(shard shardKey, fn func(head segmentIngest) error) (await segmentWaitFlushed, err error) {
+func (sw *segmentsWriter) ingest(shard shardKey, fn func(head segmentIngest)) (await segmentWaitFlushed) {
 	sw.shardsLock.RLock()
 	s, ok := sw.shards[shard]
 	sw.shardsLock.RUnlock()
@@ -419,7 +420,7 @@ type segment struct {
 }
 
 type segmentIngest interface {
-	ingest(ctx context.Context, tenantID string, p *profilev1.Profile, id uuid.UUID, labels []*typesv1.LabelPair) error
+	ingest(ctx context.Context, tenantID string, p *profilev1.Profile, id uuid.UUID, labels []*typesv1.LabelPair)
 }
 
 type segmentWaitFlushed interface {
@@ -438,48 +439,40 @@ func (s *segment) waitFlushed(ctx context.Context) error {
 	}
 }
 
-func (s *segment) ingest(ctx context.Context, tenantID string, p *profilev1.Profile, id uuid.UUID, labels []*typesv1.LabelPair) error {
-	var err error
+func (s *segment) ingest(ctx context.Context, tenantID string, p *profilev1.Profile, id uuid.UUID, labels []*typesv1.LabelPair) {
 	k := serviceKey{
 		tenant:  tenantID,
 		service: phlaremodel.Labels(labels).Get(phlaremodel.LabelNameServiceName),
 	}
 	s.sw.metrics.segmentIngestBytes.WithLabelValues(s.sshard, tenantID).Observe(float64(p.SizeVT()))
-	h, err := s.headForIngest(k)
-	if err != nil {
-		return err
-	}
-	return h.Ingest(p, id, labels)
+	h := s.headForIngest(k)
+
+	h.Ingest(p, id, labels)
 }
 
-func (s *segment) headForIngest(k serviceKey) (*memdb.Head, error) {
-	var err error
-
+func (s *segment) headForIngest(k serviceKey) *memdb.Head {
 	s.headsLock.RLock()
 	h, ok := s.heads[k]
 	s.headsLock.RUnlock()
 	if ok {
-		return h.head, nil
+		return h.head
 	}
 
 	s.headsLock.Lock()
 	defer s.headsLock.Unlock()
 	h, ok = s.heads[k]
 	if ok {
-		return h.head, nil
+		return h.head
 	}
 
-	nh, err := memdb.NewHead(s.sw.headMetrics)
-	if err != nil {
-		return nil, err
-	}
+	nh := memdb.NewHead(s.sw.headMetrics)
 
 	s.heads[k] = serviceHead{
 		key:  k,
 		head: nh,
 	}
 
-	return nh, nil
+	return nh
 }
 
 func (s *segment) cleanup() {

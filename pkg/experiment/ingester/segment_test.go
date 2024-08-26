@@ -126,14 +126,11 @@ func TestIngestWait(t *testing.T) {
 	}
 
 	t1 := time.Now()
-	awaiter, err := sw.ingest(0, func(head segmentIngest) error {
+	awaiter := sw.ingest(0, func(head segmentIngest) {
 		p := cpuProfile(42, 480, "svc1", "foo", "bar")
-		err := head.ingest(context.Background(), "t1", p.Profile, p.UUID, p.Labels)
-		require.NoError(t, err)
-		return err
+		head.ingest(context.Background(), "t1", p.Profile, p.UUID, p.Labels)
 	})
-	require.NoError(t, err)
-	err = awaiter.waitFlushed(context.Background())
+	err := awaiter.waitFlushed(context.Background())
 	require.NoError(t, err)
 	since := time.Since(t1)
 	require.True(t, since > 1*time.Second)
@@ -204,14 +201,11 @@ func TestBusyIngestLoop(t *testing.T) {
 					return
 				default:
 					ts := workerno*1000000000 + len(profiles)
-					awaiter, err := sw.ingest(1, func(head segmentIngest) error {
+					awaiter := sw.ingest(1, func(head segmentIngest) {
 						p := cpuProfile(42, ts, "svc1", "foo", "bar")
-						err := head.ingest(context.Background(), "t1", p.CloneVT(), p.UUID, p.Labels)
-						require.NoError(t, err)
+						head.ingest(context.Background(), "t1", p.CloneVT(), p.UUID, p.Labels)
 						profiles = append(profiles, p)
-						return err
 					})
-					require.NoError(t, err)
 					awaiters = append(awaiters, awaiter)
 				}
 			}
@@ -259,18 +253,14 @@ func TestDLQFail(t *testing.T) {
 	)
 	defer res.Stop()
 	ts := 420
-	ing := func(head segmentIngest) error {
+	ing := func(head segmentIngest) {
 		ts += 420
 		p := cpuProfile(42, ts, "svc1", "foo", "bar")
-		err := head.ingest(context.Background(), "t1", p.Profile, p.UUID, p.Labels)
-		require.NoError(t, err)
-		return err
+		head.ingest(context.Background(), "t1", p.Profile, p.UUID, p.Labels)
 	}
 
-	awaiter1, err := res.ingest(0, ing)
-	require.NoError(t, err)
-	awaiter2, err := res.ingest(0, ing)
-	require.NoError(t, err)
+	awaiter1 := res.ingest(0, ing)
+	awaiter2 := res.ingest(0, ing)
 
 	err1 := awaiter1.waitFlushed(context.Background())
 	require.Error(t, err1)
@@ -313,12 +303,10 @@ func TestDatasetMinMaxTime(t *testing.T) {
 		{shard: 1, tenant: "ta", profile: cpuProfile(13, 10, "svc1", "vbn", "foo", "bar")},
 		{shard: 1, tenant: "ta", profile: cpuProfile(13, 1337, "svc1", "vbn", "foo", "bar")},
 	}
-	_, _ = res.ingest(1, func(head segmentIngest) error {
+	_ = res.ingest(1, func(head segmentIngest) {
 		for _, p := range data {
-			err := head.ingest(context.Background(), p.tenant, p.profile.Profile, p.profile.UUID, p.profile.Labels)
-			require.NoError(t, err)
+			head.ingest(context.Background(), p.tenant, p.profile.Profile, p.profile.UUID, p.profile.Labels)
 		}
-		return nil
 	})
 	defer res.Stop()
 	block := <-metas
@@ -602,14 +590,11 @@ func (sw *sw) ingestChunk(t *testing.T, chunk inputChunk, expectAwaitError bool)
 
 		go func() {
 			defer wg.Done()
-			awaiter, err := sw.ingest(shardKey(it.shard), func(head segmentIngest) error {
+			awaiter := sw.ingest(shardKey(it.shard), func(head segmentIngest) {
 				p := it.profile.CloneVT() // important to not rewrite original profile
-				err := head.ingest(context.Background(), it.tenant, p, it.profile.UUID, it.profile.Labels)
-				require.NoError(t, err)
-				return err
+				head.ingest(context.Background(), it.tenant, p, it.profile.UUID, it.profile.Labels)
 			})
-			require.NoError(t, err)
-			err = awaiter.waitFlushed(context.Background())
+			err := awaiter.waitFlushed(context.Background())
 			if expectAwaitError {
 				require.Error(t, err)
 			} else {

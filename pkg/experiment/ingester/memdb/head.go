@@ -42,7 +42,7 @@ type Head struct {
 	metrics      *HeadMetrics
 }
 
-func NewHead(metrics *HeadMetrics) (*Head, error) {
+func NewHead(metrics *HeadMetrics) *Head {
 	h := &Head{
 		metrics: metrics,
 		symbols: symdb.NewPartitionWriter(0, &symdb.Config{
@@ -54,19 +54,15 @@ func NewHead(metrics *HeadMetrics) (*Head, error) {
 		totalSamples: atomic.NewUint64(0),
 		minTimeNanos: math.MaxInt64,
 		maxTimeNanos: 0,
+		profiles:     newProfileIndex(metrics),
 	}
-	profiles, err := newProfileIndex(32, metrics)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create profile store: %w", err)
-	}
-	h.profiles = profiles
 
-	return h, nil
+	return h
 }
 
-func (h *Head) Ingest(p *profilev1.Profile, id uuid.UUID, externalLabels []*typesv1.LabelPair) error {
+func (h *Head) Ingest(p *profilev1.Profile, id uuid.UUID, externalLabels []*typesv1.LabelPair) {
 	if len(p.Sample) == 0 {
-		return nil
+		return
 	}
 
 	// delta not supported
@@ -102,7 +98,7 @@ func (h *Head) Ingest(p *profilev1.Profile, id uuid.UUID, externalLabels []*type
 	}
 
 	if !profileIngested {
-		return nil
+		return
 	}
 
 	h.metaLock.Lock()
@@ -113,8 +109,6 @@ func (h *Head) Ingest(p *profilev1.Profile, id uuid.UUID, externalLabels []*type
 		h.maxTimeNanos = p.TimeNanos
 	}
 	h.metaLock.Unlock()
-
-	return nil
 }
 
 func (h *Head) Flush(ctx context.Context) (res *FlushedHead, err error) {

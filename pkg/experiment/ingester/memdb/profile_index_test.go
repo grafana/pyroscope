@@ -25,8 +25,7 @@ import (
 )
 
 func TestIndex(t *testing.T) {
-	a, err := newProfileIndex(16, NewHeadMetricsWithPrefix(prometheus.NewRegistry(), ""))
-	require.NoError(t, err)
+	a := newProfileIndex(NewHeadMetricsWithPrefix(prometheus.NewRegistry(), ""))
 	var wg sync.WaitGroup
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
@@ -130,8 +129,7 @@ outer:
 }
 
 func TestWriteRead(t *testing.T) {
-	a, err := newProfileIndex(32, NewHeadMetricsWithPrefix(prometheus.NewRegistry(), ""))
-	require.NoError(t, err)
+	a := newProfileIndex(NewHeadMetricsWithPrefix(prometheus.NewRegistry(), ""))
 
 	for j := 0; j < 10; j++ {
 		lb1 := phlaremodel.Labels([]*typesv1.LabelPair{
@@ -196,8 +194,7 @@ func TestWriteRead(t *testing.T) {
 }
 
 func TestQueryIndex(t *testing.T) {
-	a, err := newProfileIndex(32, NewHeadMetricsWithPrefix(prometheus.NewRegistry(), ""))
-	require.NoError(t, err)
+	a := newProfileIndex(NewHeadMetricsWithPrefix(prometheus.NewRegistry(), ""))
 
 	for j := 0; j < 10; j++ {
 		lb1 := phlaremodel.Labels([]*typesv1.LabelPair{
@@ -255,8 +252,7 @@ func TestQueryIndex(t *testing.T) {
 }
 
 func TestProfileTypeNames(t *testing.T) {
-	a, err := newProfileIndex(32, NewHeadMetricsWithPrefix(prometheus.NewRegistry(), ""))
-	require.NoError(t, err)
+	a := newProfileIndex(NewHeadMetricsWithPrefix(prometheus.NewRegistry(), ""))
 
 	for j := 0; j < 5; j++ {
 		lb1 := phlaremodel.Labels([]*typesv1.LabelPair{
@@ -276,8 +272,7 @@ func TestProfileTypeNames(t *testing.T) {
 }
 
 func TestIndexAddOutOfOrder(t *testing.T) {
-	a, err := newProfileIndex(32, NewHeadMetricsWithPrefix(prometheus.NewRegistry(), ""))
-	require.NoError(t, err)
+	a := newProfileIndex(NewHeadMetricsWithPrefix(prometheus.NewRegistry(), ""))
 
 	lb1 := phlaremodel.Labels([]*typesv1.LabelPair{
 		{Name: "__name__", Value: "memory"},
