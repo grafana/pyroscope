@@ -22,13 +22,11 @@ type profileSeries struct {
 }
 
 type profilesIndex struct {
-	ix              *tsdb.BitPrefixInvertedIndex
-	profilesPerFP   map[model.Fingerprint]*profileSeries
-	mutex           sync.RWMutex
-	rowGroupsOnDisk int
-
-	metrics     *HeadMetrics
-	totalSeries *atomic.Int64
+	ix            *tsdb.BitPrefixInvertedIndex
+	profilesPerFP map[model.Fingerprint]*profileSeries
+	mutex         sync.RWMutex
+	metrics       *HeadMetrics
+	totalSeries   *atomic.Int64
 }
 
 func newProfileIndex(metrics *HeadMetrics) *profilesIndex {
