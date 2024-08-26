@@ -27,9 +27,9 @@ import (
 
 var ErrServiceUnavailable = "service is unavailable"
 
-// Circuit breaker defaults.
-// TODO(kolesnikovae): Make these configurable?
+// TODO(kolesnikovae): Make these configurable (advanced category)?
 const (
+	// Circuit breaker defaults.
 	cbMinSuccess     = 5
 	cbMaxFailures    = 3
 	cbClosedInterval = 0
@@ -38,6 +38,75 @@ const (
 	poolCleanupPeriod = 15 * time.Second
 )
 
+// https://en.wikipedia.org/wiki/Circuit_breaker_design_pattern
+// The circuit breaker is used to prevent the client from sending
+// requests to unhealthy instances. The logic is as follows:
+//
+// Once we observe 3 consecutive failures, the circuit breaker will trip
+// and open the circuit – any attempt to send a request will fail
+// immediately with a "circuit breaker is open" error (UNAVAILABLE).
+//
+// After the expiration of the Timeout (5 seconds), the circuit breaker will
+// transition to the half-open state. In this state, if a failure occurs,
+// the breaker will revert to the open state. After MaxRequests (5)
+// consecutive successful requests, the circuit breaker will return to the
+// closed state.
+var circuitBreakerConfig = gobreaker.Settings{
+	MaxRequests:  cbMinSuccess,
+	Interval:     cbClosedInterval,
+	Timeout:      cbOpenTimeout,
+	IsSuccessful: shouldBeHandledByCaller,
+	ReadyToTrip: func(counts gobreaker.Counts) bool {
+		return counts.ConsecutiveFailures >= cbMaxFailures
+	},
+}
+
+// If the function returns false, the error is counted towards tripping
+// the open state, when no requests flow through the circuit. Otherwise,
+// the error handling is returned back the caller.
+//
+// In fact, the configuration should only prevent sending requests
+// to instances that are a-priory unable to process them at the moment,
+// and we want to avoid time waste. For example, when a service instance
+// went unavailable for a long period of time, or is not reposing in
+// timely fashion.
+func shouldBeHandledByCaller(err error) bool {
+	switch status.Code(err) {
+	// From the caller perspective, we're converting those to
+	// UNAVAILABLE, thereby allowing the caller to retry the
+	// request against another service instance.
+	//
+	// Note that client-side, internal, and unknown errors are not
+	// included: in case if a request is failing permanently
+	// regardless of the service instance, there is a good chance
+	// that all the circuits will be opened by retries, making the
+	// whole service unavailable.
+	//
+	// Next, ResourceExhausted also excluded from the list: as the
+	// error is tenant-request-specific, and the circuit breaker
+	// operates connection-wise.
+	case codes.Unavailable,
+		codes.DeadlineExceeded:
+		return false
+	}
+	// The error handling is returned back the caller.
+	return true
+}
+
+// Only these errors are considered as a signal to retry the request
+// and send it to another instance. Client-side, internal, and unknown
+// errors should not be retried, as they are likely to be permanent.
+func shouldTrySendToAnotherInstance(err error) bool {
+	switch status.Code(err) {
+	case codes.ResourceExhausted,
+		codes.Unavailable:
+		return true
+	}
+	return false
+}
+
+// The default gRPC service config is explicitly set to
+// not retry and load balance between instances.
 const grpcServiceConfig = `{
     "methodConfig": [{
         "name": [{"service": ""}],
@@ -111,38 +180,30 @@ func (c *Client) Push(
 		_ = level.Error(c.logger).Log(
 			"msg", "unable to distribute request",
 			"tenant", req.TenantId,
-			"err", dErr,
-		)
+			"err", dErr)
 		return nil, status.Error(codes.Unavailable, ErrServiceUnavailable)
 	}
 	req.Shard = p.Shard
-	for {
+	for { // The caller should cancel the context to break the loop.
 		instance, ok := p.Next()
 		if !ok {
 			_ = level.Error(c.logger).Log(
 				"msg", "no segment writer instances available for the request",
-				"tenant", req.TenantId,
-			)
+				"tenant", req.TenantId)
 			return nil, status.Error(codes.Unavailable, ErrServiceUnavailable)
 		}
 		resp, err := c.pushToInstance(ctx, req, instance.Addr)
 		if err == nil {
+			// Happy path.
 			return resp, nil
 		}
-		_ = level.Warn(c.logger).Log(
-			"msg", "failed to push data to segment writer",
-			"tenant", req.TenantId,
-			"instance", instance.Addr,
-			"err", err,
-		)
-		// These are "retryable" errors.
-		switch status.Code(err) {
-		case codes.ResourceExhausted,
-			codes.Unavailable:
-			continue
-		default:
-			// Any other error returned as is.
-			return nil, err
+		if !shouldTrySendToAnotherInstance(err) {
+			_ = level.Error(c.logger).Log(
+				"msg", "failed to push data to segment writer",
+				"tenant", req.TenantId,
+				"instance", instance.Addr,
+				"err", err)
+			return nil, status.Error(codes.Unavailable, ErrServiceUnavailable)
 		}
 	}
 }
@@ -177,50 +238,9 @@ func newConnPool(
 		grpc.WithDefaultServiceConfig(grpcServiceConfig),
 	)
 
-	// https://en.wikipedia.org/wiki/Circuit_breaker_design_pattern
-	// The circuit breaker is used to prevent the client from sending
-	// requests to unhealthy instances. The logic is as follows:
-	//
-	// Once we observe 3 consecutive failures, the circuit breaker will trip
-	// and open the circuit – any attempt to send a request will fail
-	// immediately with a "circuit breaker is open" error (UNAVAILABLE).
-	//
-	// After the expiration of the Timeout (5 seconds), the circuit breaker will
-	// transition to the half-open state. In this state, if a failure occurs,
-	// the breaker will revert to the open state. After MaxRequests (5)
-	// consecutive successful requests, the circuit breaker will return to the
-	// closed state.
-	cbconfig := gobreaker.Settings{
-		MaxRequests: cbMinSuccess,
-		Interval:    cbClosedInterval,
-		Timeout:     cbOpenTimeout,
-		ReadyToTrip: func(counts gobreaker.Counts) bool {
-			return counts.ConsecutiveFailures >= cbMaxFailures
-		},
-		IsSuccessful: func(err error) bool {
-			// Only these codes are counted towards tripping the open state,
-			// when no requests flow through the circuit.
-			//
-			// From the caller perspective, we're converting those to
-			// UNAVAILABLE, thereby allowing the caller to retry the request
-			// against another service instance.
-			//
-			// Note that client-side, internal, and unknown errors are not
-			// included: in case if a request was failing permanently, there
-			// would be a chance to "open" all the circuits (if the caller
-			// retries), making the whole service unavailable.
-			switch status.Code(err) {
-			case codes.Unavailable,
-				codes.DeadlineExceeded:
-				return false
-			}
-			return true
-		},
-	}
-
 	// Note that circuit breaker must be created per client conn.
 	factory := connpool.NewConnPoolFactory(func(desc ring.InstanceDesc) []grpc.DialOption {
-		cb := gobreaker.NewCircuitBreaker[any](cbconfig)
+		cb := gobreaker.NewCircuitBreaker[any](circuitBreakerConfig)
 		return append(options, grpc.WithUnaryInterceptor(circuitbreaker.UnaryClientInterceptor(cb)))
 	})
 
