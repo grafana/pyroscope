@@ -214,7 +214,7 @@ func (d *distribution) readRing(r ring.ReadRing) error {
 // key. The seed is fixed to ensure deterministic behaviour
 // across instances. The value is a random generated with a
 // crypto/rand.Read, and decoded as a little-endian uint64.
-const stepRandSeed = 4349676827832284783
+const stepRandSeed = 4349576827832984783
 
 // For a given key, we need to deterministically select N shards.
 // The array stores precalculated jump hashing steps.
