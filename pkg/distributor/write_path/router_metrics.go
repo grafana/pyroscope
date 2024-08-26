@@ -17,6 +17,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 		durationHistogram: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Name:    "pyroscope_write_path_downstream_request_duration_seconds",
 			Buckets: prometheus.ExponentialBucketsRange(0.001, 10, 30),
+			Help:    "Duration of downstream requests made by the write path router.",
 		}, []string{"route", "primary", "status"}),
 	}
 	if reg != nil {

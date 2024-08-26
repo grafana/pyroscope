@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/go-kit/log"
@@ -15,6 +16,7 @@ import (
 	otgrpc "github.com/opentracing-contrib/go-grpc"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sony/gobreaker/v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -139,10 +141,12 @@ const grpcServiceConfig = `{
 }`
 
 type Client struct {
-	distributor *distributor.Distributor
-	logger      log.Logger
+	logger  log.Logger
+	metrics *metrics
+
 	ring        ring.ReadRing
 	pool        *connpool.RingConnPool
+	distributor *distributor.Distributor
 
 	service     services.Service
 	subservices *services.Manager
@@ -152,6 +156,7 @@ type Client struct {
 func NewSegmentWriterClient(
 	grpcClientConfig grpcclient.Config,
 	logger log.Logger,
+	registry prometheus.Registerer,
 	ring ring.ReadRing,
 	dialOpts ...grpc.DialOption,
 ) (*Client, error) {
@@ -160,10 +165,11 @@ func NewSegmentWriterClient(
 		return nil, err
 	}
 	c := &Client{
-		distributor: distributor.NewDistributor(placement.DefaultPlacement),
 		logger:      logger,
+		metrics:     newMetrics(registry),
 		ring:        ring,
 		pool:        pool,
+		distributor: distributor.NewDistributor(placement.DefaultPlacement),
 	}
 	c.subservices, err = services.NewManager(c.pool)
 	if err != nil {
@@ -219,8 +225,8 @@ func (c *Client) Push(
 		}
 
 		resp, err := c.pushToInstance(ctx, req, instance.Addr)
+		// Happy path.
 		if err == nil {
-			// Happy path.
 			return resp, nil
 		}
 		// Handle client errors explicitly.
@@ -247,6 +253,7 @@ func (c *Client) pushToInstance(
 	if err != nil {
 		return nil, err
 	}
+	c.metrics.sentBytes.WithLabelValues(strconv.Itoa(int(req.Shard)), req.TenantId, addr)
 	return segmentwriterv1.NewSegmentWriterServiceClient(conn).Push(ctx, req)
 }
 

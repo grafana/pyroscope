@@ -68,7 +68,11 @@ func (f *Phlare) initSegmentWriterClient() (_ services.Service, err error) {
 	// Validation of the config is not required since
 	// it's already validated in initSegmentWriterRing.
 	logger := log.With(f.logger, "component", "segment-writer-client")
-	client, err := segmentwriterclient.NewSegmentWriterClient(f.Cfg.SegmentWriter.GRPCClientConfig, logger, f.segmentWriterRing)
+	client, err := segmentwriterclient.NewSegmentWriterClient(
+		f.Cfg.SegmentWriter.GRPCClientConfig,
+		logger, f.reg,
+		f.segmentWriterRing,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +85,13 @@ func (f *Phlare) initCompactionWorker() (svc services.Service, err error) {
 		return nil, err
 	}
 	logger := log.With(f.logger, "component", "compaction-worker")
-	f.compactionWorker, err = compactionworker.New(f.Cfg.CompactionWorker, logger, f.metastoreClient, f.storageBucket, f.reg)
+	f.compactionWorker, err = compactionworker.New(
+		f.Cfg.CompactionWorker,
+		logger,
+		f.metastoreClient,
+		f.storageBucket,
+		f.reg,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +103,14 @@ func (f *Phlare) initMetastore() (services.Service, error) {
 		return nil, err
 	}
 	logger := log.With(f.logger, "component", "metastore")
-	m, err := metastore.New(f.Cfg.Metastore, f.TenantLimits, logger, f.reg, f.healthService, f.metastoreClient)
+	m, err := metastore.New(
+		f.Cfg.Metastore,
+		f.TenantLimits,
+		logger,
+		f.reg,
+		f.healthService,
+		f.metastoreClient,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +123,11 @@ func (f *Phlare) initMetastoreClient() (services.Service, error) {
 	if err := f.Cfg.Metastore.Validate(); err != nil {
 		return nil, err
 	}
-	mc, err := metastoreclient.New(f.Cfg.Metastore.Address, f.logger, f.Cfg.Metastore.GRPCClientConfig)
+	mc, err := metastoreclient.New(
+		f.Cfg.Metastore.Address,
+		f.logger,
+		f.Cfg.Metastore.GRPCClientConfig,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -118,9 +139,14 @@ func (f *Phlare) initQueryBackend() (services.Service, error) {
 	if err := f.Cfg.QueryBackend.Validate(); err != nil {
 		return nil, err
 	}
-	br := querybackend.NewBlockReader(f.logger, f.storageBucket)
 	logger := log.With(f.logger, "component", "query-backend")
-	b, err := querybackend.New(f.Cfg.QueryBackend, logger, f.reg, f.queryBackendClient, br)
+	b, err := querybackend.New(
+		f.Cfg.QueryBackend,
+		logger,
+		f.reg,
+		f.queryBackendClient,
+		querybackend.NewBlockReader(f.logger, f.storageBucket),
+	)
 	if err != nil {
 		return nil, err
 	}
