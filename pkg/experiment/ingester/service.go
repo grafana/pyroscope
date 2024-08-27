@@ -42,11 +42,11 @@ type Config struct {
 
 // RegisterFlags registers the flags.
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
-	const prefix = "segment-writer."
+	const prefix = "segment-writer"
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix(prefix, f)
-	cfg.LifecyclerConfig.RegisterFlagsWithPrefix(prefix, f, util.Logger)
-	f.DurationVar(&cfg.SegmentDuration, prefix+"segment.duration", 500*time.Millisecond, "Timeout when flushing segments to bucket.")
-	f.BoolVar(&cfg.Async, prefix+"async", false, "Enable async mode for segment writer.")
+	cfg.LifecyclerConfig.RegisterFlagsWithPrefix(prefix+".", f, util.Logger)
+	f.DurationVar(&cfg.SegmentDuration, prefix+".segment.duration", 500*time.Millisecond, "Timeout when flushing segments to bucket.")
+	f.BoolVar(&cfg.Async, prefix+".async", false, "Enable async mode for segment writer.")
 }
 
 func (cfg *Config) Validate() error {

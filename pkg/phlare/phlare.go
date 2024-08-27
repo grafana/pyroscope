@@ -172,15 +172,6 @@ func (c *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) 
 	c.Compactor.RegisterFlags(f, log.NewLogfmtLogger(os.Stderr))
 	c.API.RegisterFlags(f)
 	c.EmbeddedGrafana.RegisterFlags(f)
-
-	c.v2Experiment = os.Getenv("PYROSCOPE_V2_EXPERIMENT") != ""
-	if c.v2Experiment {
-		c.Metastore.RegisterFlags(f)
-		c.SegmentWriter.RegisterFlags(f)
-		c.QueryBackend.RegisterFlags(f)
-		c.CompactionWorker.RegisterFlags(f)
-		c.LimitsConfig.WritePathOverrides.RegisterFlags(f)
-	}
 }
 
 // registerServerFlagsWithChangedDefaultValues registers *Config.Server flags, but overrides some defaults set by the dskit package.
@@ -196,6 +187,15 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 	c.QueryScheduler.RegisterFlags(throwaway, log.NewLogfmtLogger(os.Stderr))
 	c.Worker.RegisterFlags(throwaway)
 	c.OverridesExporter.RegisterFlags(throwaway, log.NewLogfmtLogger(os.Stderr))
+
+	c.v2Experiment = os.Getenv("PYROSCOPE_V2_EXPERIMENT") != ""
+	if c.v2Experiment {
+		c.Metastore.RegisterFlags(throwaway)
+		c.SegmentWriter.RegisterFlags(throwaway)
+		c.QueryBackend.RegisterFlags(throwaway)
+		c.CompactionWorker.RegisterFlags(throwaway)
+		c.LimitsConfig.WritePathOverrides.RegisterFlags(throwaway)
+	}
 
 	overrides := map[string]string{
 		"server.http-listen-port":                           "4040",
