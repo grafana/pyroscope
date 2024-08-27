@@ -76,6 +76,8 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 				fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
 
 			// next we'll replace source blocks with compacted ones
+			// we need to acquire the shards lock first, to protect the read path from an inconsistent view of the data
+			m.shardsMutex.Lock()
 			for _, b := range jobUpdate.CompletedJob.Blocks {
 				level.Debug(m.logger).Log("msg", "adding compacted block", "block", b.Id, "level", b.CompactionLevel, "source_job", job.Name)
 				m.shards[job.Shard].putSegment(b)
@@ -108,6 +110,7 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 				m.compactionMetrics.deletedBlocks.WithLabelValues(
 					fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
 			}
+			m.shardsMutex.Unlock()
 		case compactorv1.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS:
 			level.Debug(m.logger).Log(
 				"msg", "compaction job still in progress",
