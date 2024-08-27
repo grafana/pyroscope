@@ -225,7 +225,13 @@ func (s compactionLevelStrategy) shouldCreateJob(blocks []string) bool {
 }
 
 func (m *metastoreState) addCompactionJob(job *compactionpb.CompactionJob) {
-	level.Debug(m.logger).Log("msg", "adding compaction job to priority queue", "job", job.Name)
+	level.Debug(m.logger).Log(
+		"msg", "adding compaction job to priority queue",
+		"job", job.Name,
+		"tenant", job.TenantId,
+		"shard", job.Shard,
+		"compaction_level", job.CompactionLevel,
+	)
 	if ok := m.compactionJobQueue.enqueue(job); !ok {
 		level.Warn(m.logger).Log("msg", "a compaction job with this name already exists", "job", job.Name)
 		return
@@ -251,6 +257,12 @@ func (m *metastoreState) addBlockToCompactionJobQueue(block *metastorev1.BlockMe
 	blockQueue.mu.Lock()
 	defer blockQueue.mu.Unlock()
 
+	level.Debug(m.logger).Log(
+		"msg", "adding block to compaction job block queue",
+		"block", block.Id,
+		"level", block.CompactionLevel,
+		"shard", block.Shard,
+		"tenant", block.TenantId)
 	blockQueue.blocksByLevel[block.CompactionLevel] = append(blockQueue.blocksByLevel[block.CompactionLevel], block.Id)
 }
 

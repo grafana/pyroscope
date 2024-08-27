@@ -55,37 +55,38 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 		updatedJobs:        make([]string, 0),
 	}
 
-	for _, statusUpdate := range request.JobStatusUpdates {
-		job := m.findJob(statusUpdate.JobName)
+	for _, jobUpdate := range request.JobStatusUpdates {
+		job := m.findJob(jobUpdate.JobName)
 		if job == nil {
-			level.Error(m.logger).Log("msg", "error processing update for compaction job, job not found", "job", statusUpdate.JobName, "err", err)
+			level.Error(m.logger).Log("msg", "error processing update for compaction job, job not found", "job", jobUpdate.JobName, "err", err)
 			continue
 		}
-		if !m.compactionJobQueue.isOwner(job.Name, statusUpdate.RaftLogIndex) {
-			level.Warn(m.logger).Log("msg", "job is not assigned to the worker", "job", statusUpdate.JobName, "raft_log_index", statusUpdate.RaftLogIndex)
+		if !m.compactionJobQueue.isOwner(job.Name, jobUpdate.RaftLogIndex) {
+			level.Warn(m.logger).Log("msg", "job is not assigned to the worker", "job", jobUpdate.JobName, "raft_log_index", jobUpdate.RaftLogIndex)
 			continue
 		}
-		jobKey := tenantShard{
-			tenant: job.TenantId,
-			shard:  job.Shard,
-		}
-		level.Debug(m.logger).Log("msg", "processing status update for compaction job", "job", statusUpdate.JobName, "status", statusUpdate.Status)
-		switch statusUpdate.Status {
+		jobKey := tenantShard{tenant: job.TenantId, shard: job.Shard}
+		level.Debug(m.logger).Log("msg", "processing status update for compaction job", "job", jobUpdate.JobName, "status", jobUpdate.Status)
+		switch jobUpdate.Status {
 		case compactorv1.CompactionStatus_COMPACTION_STATUS_SUCCESS:
+			// clean up the job, we don't keep completed jobs around
 			m.compactionJobQueue.evict(job.Name, job.RaftLogIndex)
 			stateUpdate.deletedJobs[jobKey] = append(stateUpdate.deletedJobs[jobKey], job.Name)
 			m.compactionMetrics.completedJobs.WithLabelValues(
 				fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
 
-			for _, b := range statusUpdate.CompletedJob.Blocks {
-				m.getOrCreateShard(job.Shard).putSegment(b)
+			// next we'll replace source blocks with compacted ones
+			for _, b := range jobUpdate.CompletedJob.Blocks {
+				level.Debug(m.logger).Log("msg", "adding compacted block", "block", b.Id, "level", b.CompactionLevel, "source_job", job.Name)
+				m.shards[job.Shard].putSegment(b)
 				stateUpdate.newBlocks[job.Shard] = append(stateUpdate.newBlocks[job.Shard], b.Id)
 
-				if job := m.tryCreateJob(b, statusUpdate.RaftLogIndex); job != nil {
-					m.addCompactionJob(job)
-					stateUpdate.newJobs = append(stateUpdate.newJobs, job.Name)
+				// adding new blocks to the compaction queue
+				if jobForNewBlock := m.tryCreateJob(b, jobUpdate.RaftLogIndex); jobForNewBlock != nil {
+					m.addCompactionJob(jobForNewBlock)
+					stateUpdate.newJobs = append(stateUpdate.newJobs, jobForNewBlock.Name)
 					m.compactionMetrics.addedJobs.WithLabelValues(
-						fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
+						fmt.Sprint(jobForNewBlock.Shard), jobForNewBlock.TenantId, fmt.Sprint(jobForNewBlock.CompactionLevel)).Inc()
 				} else {
 					m.addBlockToCompactionJobQueue(b)
 				}
@@ -93,23 +94,62 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 					fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
 				stateUpdate.updatedBlockQueues[jobKey] = append(stateUpdate.updatedBlockQueues[jobKey], b.CompactionLevel)
 			}
+			// finally we'll delete the metadata for source blocks (this doesn't delete blocks from object store)
 			for _, b := range job.Blocks {
-				m.getOrCreateShard(job.Shard).deleteSegment(b)
+				level.Debug(m.logger).Log(
+					"msg", "deleting source block",
+					"block", b,
+					"tenant", job.TenantId,
+					"shard", job.Shard,
+					"level", job.CompactionLevel,
+				)
+				m.shards[job.Shard].deleteSegment(b)
 				stateUpdate.deletedBlocks[job.Shard] = append(stateUpdate.deletedBlocks[job.Shard], b)
 				m.compactionMetrics.deletedBlocks.WithLabelValues(
 					fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
 			}
 		case compactorv1.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS:
-			m.compactionJobQueue.update(statusUpdate.JobName, raftAppendedAtNanos, statusUpdate.RaftLogIndex)
+			level.Debug(m.logger).Log(
+				"msg", "compaction job still in progress",
+				"job", job.Name,
+				"tenant", job.TenantId,
+				"shard", job.Shard,
+				"level", job.CompactionLevel,
+			)
+			m.compactionJobQueue.update(jobUpdate.JobName, raftAppendedAtNanos, jobUpdate.RaftLogIndex)
 			stateUpdate.updatedJobs = append(stateUpdate.updatedJobs, job.Name)
 		case compactorv1.CompactionStatus_COMPACTION_STATUS_FAILURE:
 			job.Failures += 1
+			level.Warn(m.logger).Log(
+				"msg", "compaction job failed",
+				"job", job.Name,
+				"tenant", job.TenantId,
+				"shard", job.Shard,
+				"level", job.CompactionLevel,
+				"failures", job.Failures,
+			)
 			if int(job.Failures) >= m.compactionConfig.JobMaxFailures {
+				level.Warn(m.logger).Log(
+					"msg", "compaction job reached max failures",
+					"job", job.Name,
+					"tenant", job.TenantId,
+					"shard", job.Shard,
+					"level", job.CompactionLevel,
+					"failures", job.Failures,
+				)
 				m.compactionJobQueue.evict(job.Name, math.MaxInt64)
 				stateUpdate.deletedJobs[jobKey] = append(stateUpdate.deletedJobs[jobKey], job.Name)
 				m.compactionMetrics.discardedJobs.WithLabelValues(
 					fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
 			} else {
+				level.Warn(m.logger).Log(
+					"msg", "adding failed compaction job back to the queue",
+					"job", job.Name,
+					"tenant", job.TenantId,
+					"shard", job.Shard,
+					"level", job.CompactionLevel,
+					"failures", job.Failures,
+				)
 				m.compactionJobQueue.evict(job.Name, math.MaxInt64)
 				job.Status = compactionpb.CompactionStatus_COMPACTION_STATUS_UNSPECIFIED
 				job.RaftLogIndex = 0
@@ -150,7 +190,7 @@ func (m *metastoreState) convertJobs(jobs []*compactionpb.CompactionJob) []*comp
 			b := m.findBlock(job.Shard, bId)
 			if b == nil {
 				level.Error(m.logger).Log(
-					"msg", "failed to populate job details, block not found",
+					"msg", "failed to populate compaction job details, block not found",
 					"block", bId,
 					"shard", job.Shard,
 					"job", job.Name)
