@@ -766,9 +766,9 @@ Usage of ./pyroscope:
   -server.grpc-max-concurrent-streams uint
     	Limit on the number of concurrent streams for gRPC calls per client connection (0 = unlimited) (default 100)
   -server.grpc-max-recv-msg-size-bytes int
-    	Limit on the size of a gRPC message this server can receive (bytes). (default 4194304)
+    	Limit on the size of a gRPC message this server can receive (bytes). (default 104857600)
   -server.grpc-max-send-msg-size-bytes int
-    	Limit on the size of a gRPC message this server can send (bytes). (default 4194304)
+    	Limit on the size of a gRPC message this server can send (bytes). (default 104857600)
   -server.grpc-tls-ca-path string
     	GRPC TLS Client CA path.
   -server.grpc-tls-cert-path string
@@ -784,7 +784,7 @@ Usage of ./pyroscope:
   -server.grpc.keepalive.max-connection-idle duration
     	The duration after which an idle connection should be closed. Default: infinity (default 2562047h47m16.854775807s)
   -server.grpc.keepalive.min-time-between-pings duration
-    	Minimum amount of time a client should wait before sending a keepalive ping. If client sends keepalive ping more often, server will send GOAWAY and close the connection. (default 5m0s)
+    	Minimum amount of time a client should wait before sending a keepalive ping. If client sends keepalive ping more often, server will send GOAWAY and close the connection. (default 1s)
   -server.grpc.keepalive.ping-without-stream-allowed
     	If true, server allows keepalive pings even when there are no active streams(RPCs). If false, and client sends ping when there are no active streams, server will send GOAWAY and close the connection.
   -server.grpc.keepalive.time duration
@@ -912,7 +912,7 @@ Usage of ./pyroscope:
   -storage.s3.max-connections-per-host int
     	Maximum number of connections per host. 0 means no limit.
   -storage.s3.max-idle-connections int
-    	Maximum number of idle (keep-alive) connections across all hosts. 0 means no limit. (default 100)
+    	Maximum number of idle (keep-alive) connections across all hosts. 0 means no limit.
   -storage.s3.max-idle-connections-per-host int
     	Maximum number of idle (keep-alive) connections to keep per-host. If 0, a built-in default value is used. (default 100)
   -storage.s3.region string

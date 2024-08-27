@@ -358,43 +358,6 @@
     "pushv1PushResponse": {
       "type": "object"
     },
-    "pushv1RawProfileSeries": {
-      "type": "object",
-      "properties": {
-        "labels": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1LabelPair"
-          },
-          "title": "LabelPair is the key value pairs to identify the corresponding profile"
-        },
-        "samples": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/pushv1RawSample"
-          },
-          "title": "samples are the set of profile bytes"
-        }
-      },
-      "title": "RawProfileSeries represents the pprof profile and its associated labels"
-    },
-    "pushv1RawSample": {
-      "type": "object",
-      "properties": {
-        "rawProfile": {
-          "type": "string",
-          "format": "byte",
-          "title": "raw_profile is the set of bytes of the pprof profile"
-        },
-        "ID": {
-          "type": "string",
-          "title": "unique ID of the profile"
-        }
-      },
-      "title": "RawSample is the set of bytes that correspond to a pprof profile"
-    },
     "querierv1ProfileTypesResponse": {
       "type": "object",
       "properties": {
@@ -440,43 +403,6 @@
     },
     "segmentwriterv1PushResponse": {
       "type": "object"
-    },
-    "segmentwriterv1RawProfileSeries": {
-      "type": "object",
-      "properties": {
-        "labels": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1LabelPair"
-          },
-          "title": "LabelPair is the key value pairs to identify the corresponding profile"
-        },
-        "sample": {
-          "$ref": "#/definitions/segmentwriterv1RawSample",
-          "title": "samples are the set of profile bytes"
-        },
-        "shard": {
-          "type": "integer",
-          "format": "int64"
-        }
-      },
-      "title": "RawProfileSeries represents the pprof profile and its associated labels"
-    },
-    "segmentwriterv1RawSample": {
-      "type": "object",
-      "properties": {
-        "rawProfile": {
-          "type": "string",
-          "format": "byte",
-          "title": "raw_profile is the set of bytes of the pprof profile"
-        },
-        "ID": {
-          "type": "string",
-          "title": "unique ID of the profile"
-        }
-      },
-      "title": "RawSample is the set of bytes that correspond to a pprof profile"
     },
     "typesv1Location": {
       "type": "object",
@@ -1639,6 +1565,43 @@
         "QUERY_TREE"
       ],
       "default": "QUERY_UNSPECIFIED"
+    },
+    "v1RawProfileSeries": {
+      "type": "object",
+      "properties": {
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1LabelPair"
+          },
+          "title": "LabelPair is the key value pairs to identify the corresponding profile"
+        },
+        "samples": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1RawSample"
+          },
+          "title": "samples are the set of profile bytes"
+        }
+      },
+      "title": "RawProfileSeries represents the pprof profile and its associated labels"
+    },
+    "v1RawSample": {
+      "type": "object",
+      "properties": {
+        "rawProfile": {
+          "type": "string",
+          "format": "byte",
+          "title": "raw_profile is the set of bytes of the pprof profile"
+        },
+        "ID": {
+          "type": "string",
+          "title": "unique ID of the profile"
+        }
+      },
+      "title": "RawSample is the set of bytes that correspond to a pprof profile"
     },
     "v1ReadIndexResponse": {
       "type": "object",

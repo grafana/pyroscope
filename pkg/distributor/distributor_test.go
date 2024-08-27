@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/kv"
 	"github.com/grafana/dskit/ring"
@@ -76,7 +75,7 @@ func Test_ConnectPush(t *testing.T) {
 		{Addr: "foo"},
 	}, 3), &poolFactory{func(addr string) (client.PoolClient, error) {
 		return ing, nil
-	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
+	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout), nil)
 
 	require.NoError(t, err)
 	mux.Handle(pushv1connect.NewPusherServiceHandler(d, handlerOptions...))
@@ -134,7 +133,7 @@ func Test_Replication(t *testing.T) {
 		{Addr: "3"},
 	}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 		return ingesters[addr], nil
-	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
+	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout), nil)
 	require.NoError(t, err)
 	// only 1 ingester failing should be fine.
 	resp, err := d.Push(ctx, req)
@@ -156,7 +155,7 @@ func Test_Subservices(t *testing.T) {
 		{Addr: "foo"},
 	}, 1), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 		return ing, nil
-	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
+	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout), nil)
 
 	require.NoError(t, err)
 	require.NoError(t, d.StartAsync(context.Background()))
@@ -213,12 +212,6 @@ func (i *fakeIngester) Push(_ context.Context, req *connect.Request[pushv1.PushR
 
 func newFakeIngester(t testing.TB, fail bool) *fakeIngester {
 	return &fakeIngester{t: t, fail: fail}
-}
-
-func TestBuckets(t *testing.T) {
-	for _, r := range prometheus.ExponentialBucketsRange(minBytes, maxBytes, bucketsCount) {
-		t.Log(humanize.Bytes(uint64(r)))
-	}
 }
 
 func Test_Limits(t *testing.T) {
@@ -321,7 +314,7 @@ func Test_Limits(t *testing.T) {
 				{Addr: "foo"},
 			}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 				return ing, nil
-			}}, tc.overrides, nil, log.NewLogfmtLogger(os.Stdout))
+			}}, tc.overrides, nil, log.NewLogfmtLogger(os.Stdout), nil)
 
 			require.NoError(t, err)
 
@@ -413,7 +406,7 @@ func Test_Sessions_Limit(t *testing.T) {
 					l := validation.MockDefaultLimits()
 					l.MaxSessionsPerSeries = tc.maxSessions
 					tenantLimits["user-1"] = l
-				}), nil, log.NewLogfmtLogger(os.Stdout))
+				}), nil, log.NewLogfmtLogger(os.Stdout), nil)
 
 			require.NoError(t, err)
 			limit := d.limits.MaxSessionsPerSeries("user-1")
@@ -1031,7 +1024,7 @@ func TestBadPushRequest(t *testing.T) {
 		{Addr: "foo"},
 	}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 		return ing, nil
-	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
+	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout), nil)
 
 	require.NoError(t, err)
 	mux.Handle(pushv1connect.NewPusherServiceHandler(d, handlerOptions...))
@@ -1111,6 +1104,7 @@ func TestPush_ShuffleSharding(t *testing.T) {
 		overrides,
 		nil,
 		log.NewLogfmtLogger(os.Stdout),
+		nil,
 	)
 	require.NoError(t, err)
 
@@ -1211,7 +1205,7 @@ func TestPush_Aggregation(t *testing.T) {
 			l.MaxSessionsPerSeries = maxSessions
 			tenantLimits["user-1"] = l
 		}),
-		nil, log.NewLogfmtLogger(os.Stdout),
+		nil, log.NewLogfmtLogger(os.Stdout), nil,
 	)
 	require.NoError(t, err)
 	ctx := tenant.InjectTenantID(context.Background(), "user-1")

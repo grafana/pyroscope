@@ -10,6 +10,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/grafana/dskit/httpgrpc"
 	"github.com/grafana/dskit/middleware"
+	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
@@ -36,7 +37,8 @@ var (
 		})
 	})
 
-	RecoveryInterceptor recoveryInterceptor
+	RecoveryInterceptor     recoveryInterceptor
+	GRPCRecoveryInterceptor = grpc_recovery.UnaryServerInterceptor(grpc_recovery.WithRecoveryHandler(PanicError))
 )
 
 func PanicError(p interface{}) error {
