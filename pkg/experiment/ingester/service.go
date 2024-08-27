@@ -4,8 +4,13 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	segmentWriterV1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/ingester/memdb"
 	"time"
 
+	"github.com/google/uuid"
+
+	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
@@ -13,21 +18,16 @@ import (
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
+	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
+	"github.com/grafana/pyroscope/pkg/pprof"
+	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 
-	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
-	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
-	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
-	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/util"
-	"github.com/grafana/pyroscope/pkg/validation"
 )
-
-// TODO(kolesnikovae): Inject phlaredb.Config.
 
 type Config struct {
 	GRPCClientConfig grpcclient.Config     `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with the segment writer."`
@@ -57,10 +57,9 @@ type SegmentWriterService struct {
 	services.Service
 	segmentwriterv1.UnimplementedSegmentWriterServiceServer
 
-	cfg       Config
-	dbConfig  phlaredb.Config
-	logger    log.Logger
-	phlarectx context.Context
+	cfg      Config
+	dbConfig phlaredb.Config
+	logger   log.Logger
 
 	lifecycler         *ring.Lifecycler
 	subservices        *services.Manager
@@ -86,42 +85,27 @@ func (i *ingesterFlusherCompat) Flush() {
 	}
 }
 
-// TODO(kolesnikovae): Get rid of phlarectx.
-
-func New(
-	phlarectx context.Context,
-	cfg Config,
-	dbConfig phlaredb.Config,
-	storageBucket phlareobj.Bucket,
-	metastoreClient *metastoreclient.Client,
-	ringName string,
-	ringKey string,
-) (*SegmentWriterService, error) {
-	reg := phlarecontext.Registry(phlarectx)
-	reg = prometheus.WrapRegistererWith(prometheus.Labels{"component": "segment-writer"}, reg)
-	phlarectx = phlarecontext.WithRegistry(phlarectx, reg)
-	log := phlarecontext.Logger(phlarectx)
-	phlarectx = phlaredb.ContextWithHeadMetrics(phlarectx, reg, "pyroscope_segment_writer")
+func New(reg prometheus.Registerer, log log.Logger, cfg Config, dbConfig phlaredb.Config, storageBucket phlareobj.Bucket, metastoreClient *metastoreclient.Client) (*SegmentWriterService, error) {
 
 	i := &SegmentWriterService{
 		cfg:           cfg,
-		phlarectx:     phlarectx,
 		logger:        log,
 		reg:           reg,
 		dbConfig:      dbConfig,
 		storageBucket: storageBucket,
 	}
 
-	var err error
+	var (
+		err error
+	)
+
 	i.lifecycler, err = ring.NewLifecycler(
 		cfg.LifecyclerConfig,
 		&ingesterFlusherCompat{i},
-		ringName,
-		ringKey,
+		"segment-writer-ring-name",
+		"segment-writer-ring-key",
 		true,
-		i.logger,
-		prometheus.WrapRegistererWithPrefix("pyroscope_segment_writer_", i.reg),
-	)
+		i.logger, prometheus.WrapRegistererWithPrefix("pyroscope_segment_writer_", i.reg))
 	if err != nil {
 		return nil, err
 	}
@@ -136,9 +120,12 @@ func New(
 	if metastoreClient == nil {
 		return nil, errors.New("metastore client is required for segment writer")
 	}
-	metrics := newSegmentMetrics(i.reg)
+	segmentMetrics := newSegmentMetrics(i.reg)
+	headMetrics := memdb.NewHeadMetricsWithPrefix(reg, "pyroscope_segment_writer")
 
-	i.segmentWriter = newSegmentWriter(i.phlarectx, i.logger, metrics, i.dbConfig, storageBucket, cfg.SegmentDuration, metastoreClient)
+	i.segmentWriter = newSegmentWriter(i.logger, segmentMetrics, headMetrics, segmentWriterConfig{
+		segmentDuration: cfg.SegmentDuration,
+	}, storageBucket, metastoreClient)
 	i.subservicesWatcher = services.NewFailureWatcher()
 	i.subservicesWatcher.WatchManager(i.subservices)
 	i.Service = services.NewBasicService(i.starting, i.running, i.stopping)
@@ -165,46 +152,41 @@ func (i *SegmentWriterService) stopping(_ error) error {
 	return errs.Err()
 }
 
-func (i *SegmentWriterService) Push(ctx context.Context, req *segmentwriterv1.PushRequest) (*segmentwriterv1.PushResponse, error) {
-	wait, err := i.segmentWriter.ingest(shardKey(req.Shard), func(segment segmentIngest) error {
-		return i.ingestToSegment(ctx, segment, req)
-	})
+func (i *SegmentWriterService) Push(ctx context.Context, req *connect.Request[segmentWriterV1.PushRequest]) (*connect.Response[segmentWriterV1.PushResponse], error) {
+	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
 	if err != nil {
-		return nil, err
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
+	series := req.Msg.Series
+	var shard = shardKey(series.Shard)
+	sample := series.Sample
+	id, err := uuid.Parse(sample.ID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	p, err := pprof.RawFromBytes(sample.RawProfile)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	wait := i.segmentWriter.ingest(shard, func(segment segmentIngest) {
+		segment.ingest(ctx, tenantID, p.Profile, id, series.Labels)
+	})
 	if i.cfg.Async {
-		return &segmentwriterv1.PushResponse{}, nil
+		return connect.NewResponse(&segmentWriterV1.PushResponse{}), nil
 	}
 	t1 := time.Now()
 	if err = wait.waitFlushed(ctx); err != nil {
-		i.segmentWriter.metrics.segmentFlushTimeouts.WithLabelValues(req.TenantId).Inc()
-		i.segmentWriter.metrics.segmentFlushWaitDuration.WithLabelValues(req.TenantId).Observe(time.Since(t1).Seconds())
+		i.segmentWriter.metrics.segmentFlushTimeouts.WithLabelValues(tenantID).Inc()
+		i.segmentWriter.metrics.segmentFlushWaitDuration.WithLabelValues(tenantID).Observe(time.Since(t1).Seconds())
 		if errors.Is(err, context.DeadlineExceeded) {
 			level.Error(i.logger).Log("msg", "flush timeout", "err", err)
 		} else {
 			level.Error(i.logger).Log("msg", "flush err", "err", err)
 		}
-		return nil, err
+		return nil, connect.NewError(connect.CodeUnavailable, err)
 	}
-	i.segmentWriter.metrics.segmentFlushWaitDuration.WithLabelValues(req.TenantId).Observe(time.Since(t1).Seconds())
-	return &segmentwriterv1.PushResponse{}, nil
-}
-
-func (i *SegmentWriterService) ingestToSegment(ctx context.Context, segment segmentIngest, req *segmentwriterv1.PushRequest) error {
-	var profileID uuid.UUID
-	if err := profileID.UnmarshalBinary(req.ProfileId); err != nil {
-		return err
-	}
-	return pprof.FromBytes(req.Profile, func(p *profilev1.Profile, size int) error {
-		if err := segment.ingest(ctx, req.TenantId, p, profileID, req.Labels); err != nil {
-			reason := validation.ReasonOf(err)
-			if reason != validation.Unknown {
-				validation.DiscardedProfiles.WithLabelValues(string(reason), req.TenantId).Add(float64(1))
-				validation.DiscardedBytes.WithLabelValues(string(reason), req.TenantId).Add(float64(size))
-			}
-		}
-		return nil
-	})
+	i.segmentWriter.metrics.segmentFlushWaitDuration.WithLabelValues(tenantID).Observe(time.Since(t1).Seconds())
+	return connect.NewResponse(&segmentWriterV1.PushResponse{}), nil
 }
 
 func (i *SegmentWriterService) Flush() error {

@@ -24,7 +24,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 	github.com/google/go-cmp v0.6.0
 	github.com/google/go-github/v58 v58.0.1-0.20240111193443-e9f52699f5e5
-	github.com/google/pprof v0.0.0-20240227163752-401108e1b7e7
+	github.com/google/pprof v0.0.0-20240727154555-813a5fbdbec8
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.0
 	github.com/grafana/alloy/syntax v0.1.0

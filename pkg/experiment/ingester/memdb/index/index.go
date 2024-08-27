@@ -1992,8 +1992,19 @@ func yoloString(b []byte) string {
 	return *((*string)(unsafe.Pointer(&b)))
 }
 
+// todo better name, nicer api
 func (w *Writer) ReleaseIndexBuffer() *BufferWriter {
 	res := w.f
 	w.f = nil
+	return res
+}
+
+// todo better name, nicer api
+func (w *Writer) ReleaseIndex() []byte {
+	bw := w.ReleaseIndexBuffer()
+	defer PutBufferWriterToPool(bw)
+	buffer, _, _ := bw.Buffer()
+	res := make([]byte, len(buffer))
+	copy(res, buffer)
 	return res
 }
