@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/pkg/errors"
 	"github.com/sony/gobreaker/v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -15,13 +16,13 @@ func UnaryClientInterceptor(cb *gobreaker.CircuitBreaker[any]) grpc.UnaryClientI
 		_, err := cb.Execute(func() (interface{}, error) {
 			return nil, invoker(ctx, method, req, reply, cc, opts...)
 		})
-		// gobreaker returns unwrapped errors.
-		switch err {
-		case nil:
-		case gobreaker.ErrOpenState,
-			gobreaker.ErrTooManyRequests:
+		switch {
+		case err == nil:
+			return nil
+		case errors.Is(err, gobreaker.ErrOpenState) || errors.Is(err, gobreaker.ErrTooManyRequests):
 			return status.Error(codes.Unavailable, fmt.Sprintf("circuit breaker: %s", err.Error()))
+		default:
+			return err
 		}
-		return err
 	}
 }
