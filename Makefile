@@ -340,6 +340,10 @@ $(BIN)/mage: Makefile go.mod
 	@mkdir -p $(@D)
 	GOBIN=$(abspath $(@D)) $(GO) install github.com/magefile/mage@v1.13.0
 
+$(BIN)/mockery: Makefile go.mod
+	@mkdir -p $(@D)
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/vektra/mockery/v2@v2.45.0
+
 $(BIN)/updater: Makefile
 	@mkdir -p $(@D)
 	GOBIN=$(abspath $(@D)) GOPRIVATE=github.com/grafana/deployment_tools $(GO) install github.com/grafana/deployment_tools/drone/plugins/cmd/updater@d64d509
@@ -456,3 +460,7 @@ docs/%:
 .PHONY: run
 run: ## Run the pyroscope binary (pass parameters with 'make run PARAMS=-myparam')
 	./pyroscope $(PARAMS)
+
+.PHONY: mockery
+mockery: $(BIN)/mockery
+	$(BIN)/mockery
