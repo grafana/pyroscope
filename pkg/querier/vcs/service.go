@@ -27,6 +27,10 @@ type Service struct {
 	httpClient *http.Client
 }
 
+type gitHubCommitGetter interface {
+	GetCommit(context.Context, string, string, string) (*vcsv1.GetCommitResponse, error)
+}
+
 func New(logger log.Logger, reg prometheus.Registerer) *Service {
 	httpClient := client.InstrumentedHTTPClient(logger, reg)
 
@@ -189,11 +193,39 @@ func (q *Service) GetCommit(ctx context.Context, req *connect.Request[vcsv1.GetC
 		return nil, err
 	}
 
-	commit, err := ghClient.GetCommit(ctx, gitURL.GetOwnerName(), gitURL.GetRepoName(), req.Msg.Ref)
+	owner := gitURL.GetOwnerName()
+	repo := gitURL.GetRepoName()
+	ref := req.Msg.GetRef()
+
+	commit, err := q.tryGetCommit(ctx, ghClient, owner, repo, ref)
 	if err != nil {
 		return nil, err
 	}
+
 	return connect.NewResponse(commit), nil
+}
+
+// tryGetCommit attempts to retrieve a commit using different ref formats (commit hash, branch, tag).
+// It tries each format in order and returns the first successful result.
+func (q *Service) tryGetCommit(ctx context.Context, client gitHubCommitGetter, owner, repo, ref string) (*vcsv1.GetCommitResponse, error) {
+	refFormats := []string{
+		ref,            // Try as a commit hash
+		"heads/" + ref, // Try as a branch
+		"tags/" + ref,  // Try as a tag
+	}
+
+	var lastErr error
+	for _, format := range refFormats {
+		commit, err := client.GetCommit(ctx, owner, repo, format)
+		if err == nil {
+			return commit, nil
+		}
+
+		lastErr = err
+		q.logger.Log("err", lastErr, "msg", "Failed to get commit", "ref", format)
+	}
+
+	return nil, lastErr
 }
 
 func rejectExpiredToken(token *oauth2.Token) error {
