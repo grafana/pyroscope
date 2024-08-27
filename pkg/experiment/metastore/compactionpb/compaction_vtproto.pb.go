@@ -48,6 +48,13 @@ func (m *CompactionJob) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if len(m.LastFailureReason) > 0 {
+		i -= len(m.LastFailureReason)
+		copy(dAtA[i:], m.LastFailureReason)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.LastFailureReason)))
+		i--
+		dAtA[i] = 0x52
+	}
 	if m.Failures != 0 {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Failures))
 		i--
@@ -200,6 +207,10 @@ func (m *CompactionJob) SizeVT() (n int) {
 	}
 	if m.Failures != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.Failures))
+	}
+	l = len(m.LastFailureReason)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -470,6 +481,38 @@ func (m *CompactionJob) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
+		case 10:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LastFailureReason", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.LastFailureReason = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

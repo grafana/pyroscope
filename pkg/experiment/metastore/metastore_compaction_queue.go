@@ -74,6 +74,10 @@ func (q *jobQueue) dequeue(now int64, raftLogIndex uint64) *compactionpb.Compact
 			// If the top job is in progress and not expired, stop checking further
 			return nil
 		}
+		if job.Status == compactionpb.CompactionStatus_COMPACTION_STATUS_CANCELLED {
+			// if we've reached cancelled jobs in the queue we have no work left
+			return nil
+		}
 		// Actually remove it from the heap, update and push it back.
 		heap.Pop(&q.pq)
 		job.LeaseExpiresAt = q.getNewDeadline(now)
@@ -100,6 +104,15 @@ func (q *jobQueue) update(name string, now int64, raftLogIndex uint64) bool {
 		return true
 	}
 	return false
+}
+
+func (q *jobQueue) cancel(name string) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if job, exists := q.jobs[name]; exists {
+		job.Status = compactionpb.CompactionStatus_COMPACTION_STATUS_CANCELLED
+		heap.Fix(&q.pq, job.index)
+	}
 }
 
 func (q *jobQueue) getNewDeadline(now int64) int64 {

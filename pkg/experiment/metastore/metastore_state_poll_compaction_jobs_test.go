@@ -261,11 +261,11 @@ func Test_FailedCompaction(t *testing.T) {
 	require.Equalf(t, job.Name, resp.CompactionJobs[0].Name, "the job %s should be assigned again", job.Name)
 	verifyCompactionState(t, m)
 
-	// fail the job a second time, this time it will get removed
+	// fail the job a second time, this time it will get marked as cancelled
 	resp, err = m.pollCompactionJobs(&compactorv1.PollCompactionJobsRequest{JobStatusUpdates: statusUpdates, JobCapacity: 1}, 20, 20)
 	require.NoError(t, err)
-	require.Nilf(t, m.compactionJobQueue.jobs[job.Name], "the job %s should not exist", job.Name)
 	require.Equalf(t, 0, len(resp.CompactionJobs), "no jobs should be left to assign")
+	require.Equalf(t, compactionpb.CompactionStatus_COMPACTION_STATUS_CANCELLED, m.compactionJobQueue.jobs[job.Name].Status, "the job status should be cancelled")
 	verifyCompactionState(t, m)
 }
 

@@ -140,8 +140,8 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 					"level", job.CompactionLevel,
 					"failures", job.Failures,
 				)
-				m.compactionJobQueue.evict(job.Name, math.MaxInt64)
-				stateUpdate.deletedJobs[jobKey] = append(stateUpdate.deletedJobs[jobKey], job.Name)
+				m.compactionJobQueue.cancel(job.Name)
+				stateUpdate.updatedJobs = append(stateUpdate.updatedJobs, job.Name)
 				m.compactionMetrics.discardedJobs.WithLabelValues(
 					fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
 			} else {
