@@ -199,7 +199,7 @@ func (q *Service) GetCommit(ctx context.Context, req *connect.Request[vcsv1.GetC
 
 	commit, err := q.tryGetCommit(ctx, ghClient, owner, repo, ref)
 	if err != nil {
-		return nil, client.MapErrorToConnectCode(err)
+		return nil, err
 	}
 
 	return connect.NewResponse(commit), nil

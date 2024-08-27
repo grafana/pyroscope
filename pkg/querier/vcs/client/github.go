@@ -12,6 +12,7 @@ import (
 	"golang.org/x/oauth2"
 
 	vcsv1 "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1"
+	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
 )
 
 // GithubClient returns a github client.
@@ -28,6 +29,11 @@ type githubClient struct {
 func (gh *githubClient) GetCommit(ctx context.Context, owner, repo, ref string) (*vcsv1.GetCommitResponse, error) {
 	commit, _, err := gh.client.Repositories.GetCommit(ctx, owner, repo, ref, nil)
 	if err != nil {
+		var githubErr *github.ErrorResponse
+		if errors.As(err, &githubErr) {
+			code := connectgrpc.HTTPToCode(int32(githubErr.Response.StatusCode))
+			return nil, connect.NewError(code, err)
+		}
 		return nil, err
 	}
 
@@ -81,21 +87,4 @@ func toString(s *string) string {
 		return ""
 	}
 	return *s
-}
-
-func MapErrorToConnectCode(err error) error {
-	var githubErr *github.ErrorResponse
-	if errors.As(err, &githubErr) {
-		switch githubErr.Response.StatusCode {
-		case http.StatusNotFound:
-			return connect.NewError(connect.CodeNotFound, err)
-		case http.StatusForbidden:
-			return connect.NewError(connect.CodePermissionDenied, err)
-		case http.StatusUnauthorized:
-			return connect.NewError(connect.CodeUnauthenticated, err)
-		case http.StatusTooManyRequests:
-			return connect.NewError(connect.CodeResourceExhausted, err)
-		}
-	}
-	return connect.NewError(connect.CodeUnknown, err)
 }
