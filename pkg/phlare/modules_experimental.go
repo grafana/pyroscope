@@ -17,12 +17,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/util/health"
 )
 
-// NOTE: Both the ring and lifecycler MUST use the same name and key.
-const (
-	segmentWriterRingName = "segment-writer"
-	segmentWriterRingKey  = "segment-writer-ring"
-)
-
 func (f *Phlare) initSegmentWriterRing() (_ services.Service, err error) {
 	if err = f.Cfg.SegmentWriter.Validate(); err != nil {
 		return nil, err
@@ -31,8 +25,8 @@ func (f *Phlare) initSegmentWriterRing() (_ services.Service, err error) {
 	reg := prometheus.WrapRegistererWithPrefix("pyroscope_", f.reg)
 	f.segmentWriterRing, err = ring.New(
 		f.Cfg.SegmentWriter.LifecyclerConfig.RingConfig,
-		segmentWriterRingName,
-		segmentWriterRingKey,
+		segmentwriter.RingName,
+		segmentwriter.RingKey,
 		logger, reg,
 	)
 	if err != nil {
@@ -48,13 +42,11 @@ func (f *Phlare) initSegmentWriter() (services.Service, error) {
 		return nil, err
 	}
 	segmentWriter, err := segmentwriter.New(
-		f.context(),
+		f.reg,
+		f.logger,
 		f.Cfg.SegmentWriter,
-		f.Cfg.PhlareDB,
 		f.storageBucket,
 		f.metastoreClient,
-		segmentWriterRingName,
-		segmentWriterRingKey,
 	)
 	if err != nil {
 		return nil, err

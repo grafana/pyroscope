@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"github.com/grafana/pyroscope/pkg/experiment/ingester/memdb"
 	"path"
 	"runtime/pprof"
 	"slices"
@@ -22,6 +21,7 @@ import (
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/ingester/memdb"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/util/math"
@@ -31,6 +31,8 @@ const pathSegments = "segments"
 const pathDLQ = "dlq"
 const pathAnon = tenant.DefaultTenantID
 const pathBlock = "block.bin"
+
+var ErrMetastoreDLQFailed = fmt.Errorf("failed to store block metadata in DLQ")
 
 type shardKey uint32
 
@@ -206,7 +208,6 @@ func (s *segment) flush(ctx context.Context) (err error) {
 	var heads []flushedServiceHead
 
 	defer func() {
-		s.cleanup()
 		if err != nil {
 			s.flushErrMutex.Lock()
 			s.flushErr = err
@@ -227,18 +228,16 @@ func (s *segment) flush(ctx context.Context) (err error) {
 	if err != nil {
 		return fmt.Errorf("failed to flush block %s: %w", s.ulid.String(), err)
 	}
-	err = s.sw.uploadBlock(blockData, s)
-	if err != nil {
+	// TODO(kolesnikovae): Add sane timeouts to all the operations.
+	if err = s.sw.uploadBlock(ctx, blockData, s); err != nil {
 		return fmt.Errorf("failed to upload block %s: %w", s.ulid.String(), err)
 	}
-	err = s.sw.storeMeta(ctx, blockMeta, s)
-	if err != nil {
-		level.Error(s.l).Log("msg", "failed to store meta", "err", err)
-		errDLQErr := s.sw.storeMetaDLQ(ctx, blockMeta, s)
-		if errDLQErr == nil {
-			return nil
+	if err = s.sw.storeMeta(ctx, blockMeta, s); err != nil {
+		level.Error(s.l).Log("msg", "failed to store meta in metastore", "err", err)
+		if dlqErr := s.sw.storeMetaDLQ(ctx, blockMeta, s); dlqErr != nil {
+			level.Error(s.l).Log("msg", "metastore fallback failed", "err", dlqErr)
+			return fmt.Errorf("failed to store meta %s: %w", s.ulid.String(), dlqErr)
 		}
-		return fmt.Errorf("failed to store meta %s: %w %w", s.ulid.String(), err, errDLQErr)
 	}
 	return nil
 }
@@ -420,6 +419,7 @@ type segment struct {
 }
 
 type segmentIngest interface {
+	// TODO(kolesnikovae): Remove context from the signature.
 	ingest(ctx context.Context, tenantID string, p *profilev1.Profile, id uuid.UUID, labels []*typesv1.LabelPair)
 }
 
@@ -475,35 +475,30 @@ func (s *segment) headForIngest(k serviceKey) *memdb.Head {
 	return nh
 }
 
-func (s *segment) cleanup() {
-
-}
-
-func (sw *segmentsWriter) uploadBlock(blockData []byte, s *segment) error {
+func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockData []byte, s *segment) error {
 	t1 := time.Now()
-	if err := sw.bucket.Upload(context.Background(), s.blockPath, bytes.NewReader(blockData)); err != nil {
+	defer func() {
+		sw.metrics.blockUploadDuration.WithLabelValues(s.sshard).Observe(time.Since(t1).Seconds())
+	}()
+	sw.metrics.segmentBlockSizeBytes.WithLabelValues(s.sshard).Observe(float64(len(blockData)))
+	if err := sw.bucket.Upload(ctx, s.blockPath, bytes.NewReader(blockData)); err != nil {
 		return err
 	}
-	sw.metrics.segmentBlockSizeBytes.WithLabelValues(s.sshard).Observe(float64(len(blockData)))
-	sw.metrics.blockUploadDuration.WithLabelValues(s.sshard).Observe(time.Since(t1).Seconds())
-	sw.l.Log("msg", "uploaded block", "path", s.blockPath, "time-took", time.Since(t1))
-
+	sw.l.Log("msg", "uploaded block", "path", s.blockPath, "upload_duration", time.Since(t1))
 	return nil
 }
 
 func (sw *segmentsWriter) storeMeta(ctx context.Context, meta *metastorev1.BlockMeta, s *segment) error {
 	t1 := time.Now()
-
-	_, err := sw.metastoreClient.AddBlock(ctx, &metastorev1.AddBlockRequest{
-		Block: meta,
-	})
+	defer func() {
+		sw.metrics.storeMetaDuration.WithLabelValues(s.sshard).Observe(time.Since(t1).Seconds())
+		s.debuginfo.storeMetaDuration = time.Since(t1)
+	}()
+	_, err := sw.metastoreClient.AddBlock(ctx, &metastorev1.AddBlockRequest{Block: meta})
 	if err != nil {
 		sw.metrics.storeMetaErrors.WithLabelValues(s.sshard).Inc()
-		return err
 	}
-	sw.metrics.storeMetaDuration.WithLabelValues(s.sshard).Observe(time.Since(t1).Seconds())
-	s.debuginfo.storeMetaDuration = time.Since(t1)
-	return nil
+	return err
 }
 
 func (sw *segmentsWriter) storeMetaDLQ(ctx context.Context, meta *metastorev1.BlockMeta, s *segment) error {
@@ -512,13 +507,10 @@ func (sw *segmentsWriter) storeMetaDLQ(ctx context.Context, meta *metastorev1.Bl
 		sw.metrics.storeMetaDLQ.WithLabelValues(s.sshard, "err").Inc()
 		return err
 	}
-
 	fullPath := path.Join(pathDLQ, s.sshard, pathAnon, s.ulid.String(), "meta.pb")
-	if err = sw.bucket.Upload(ctx,
-		fullPath,
-		bytes.NewReader(metaBlob)); err != nil {
+	if err = sw.bucket.Upload(ctx, fullPath, bytes.NewReader(metaBlob)); err != nil {
 		sw.metrics.storeMetaDLQ.WithLabelValues(s.sshard, "err").Inc()
-		return err
+		return fmt.Errorf("%w, %w", ErrMetastoreDLQFailed, err)
 	}
 	sw.metrics.storeMetaDLQ.WithLabelValues(s.sshard, "OK").Inc()
 	return nil
