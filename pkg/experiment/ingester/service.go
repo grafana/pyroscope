@@ -154,12 +154,11 @@ func (i *SegmentWriterService) stopping(_ error) error {
 }
 
 func (i *SegmentWriterService) Push(ctx context.Context, req *segmentwriterv1.PushRequest) (*segmentwriterv1.PushResponse, error) {
-	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+	if req.TenantId == "" {
+		return nil, status.Error(codes.InvalidArgument, tenant.ErrNoTenantID.Error())
 	}
 	var id uuid.UUID
-	if err = id.UnmarshalBinary(req.ProfileId); err != nil {
+	if err := id.UnmarshalBinary(req.ProfileId); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	p, err := pprof.RawFromBytes(req.Profile)
@@ -168,7 +167,7 @@ func (i *SegmentWriterService) Push(ctx context.Context, req *segmentwriterv1.Pu
 	}
 
 	wait := i.segmentWriter.ingest(shardKey(req.Shard), func(segment segmentIngest) {
-		segment.ingest(ctx, tenantID, p.Profile, id, req.Labels)
+		segment.ingest(ctx, req.TenantId, p.Profile, id, req.Labels)
 	})
 	if i.cfg.Async {
 		return &segmentwriterv1.PushResponse{}, nil
@@ -177,7 +176,7 @@ func (i *SegmentWriterService) Push(ctx context.Context, req *segmentwriterv1.Pu
 	flushStarted := time.Now()
 	defer func() {
 		i.segmentWriter.metrics.segmentFlushWaitDuration.
-			WithLabelValues(tenantID).
+			WithLabelValues(req.TenantId).
 			Observe(time.Since(flushStarted).Seconds())
 	}()
 	if err = wait.waitFlushed(ctx); err == nil {
@@ -189,7 +188,7 @@ func (i *SegmentWriterService) Push(ctx context.Context, req *segmentwriterv1.Pu
 		return nil, status.FromContextError(err).Err()
 
 	case errors.Is(err, context.DeadlineExceeded):
-		i.segmentWriter.metrics.segmentFlushTimeouts.WithLabelValues(tenantID).Inc()
+		i.segmentWriter.metrics.segmentFlushTimeouts.WithLabelValues(req.TenantId).Inc()
 		level.Error(i.logger).Log("msg", "flush timeout", "err", err)
 		return nil, status.FromContextError(err).Err()
 
