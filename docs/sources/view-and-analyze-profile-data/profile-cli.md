@@ -288,7 +288,7 @@ By default, it looks for samples within the last hour, though this can be contro
     - You can provide a label selector using the `--query` flag, for example, `--query='{service_name="my_application_name"}'`.
     - You can provide a custom time range using the `--from` and `--to` flags, for example, `--from="now-3h" --to="now"`.
     - You can specify the profile type via the `--profile-type` flag. The available profile types are listed in the output of the `profilecli query series` command.
-    - You can specify the number of leaf locations to keep via the `--keep-locations` flag. The default value is `5`. Go compiler does not use the full stack trace. Reducing the number helps to minimize the profile size.
+    - You can specify the number of leaf locations to keep via the `--keep-locations` flag. The default value is `5`. The Go compiler does not use the full stack trace. Reducing the number helps to minimize the profile size.
     - You can specify whether the callee aggregation should be used via the `--aggregate-callees` flag. By default, samples are aggregated by the leaf location, ignoring callee line number. Go compiler ignores this information.
 
 2. Construct and execute the command.
