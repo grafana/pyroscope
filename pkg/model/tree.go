@@ -1,18 +1,18 @@
 package model
 
 import (
-	"container/heap"
+	"bytes"
 	"fmt"
 	"io"
 	"sort"
 	"strings"
-	"sync"
 
 	dvarint "github.com/dennwc/varint"
 	"github.com/xlab/treeprint"
 
 	"github.com/grafana/pyroscope/pkg/og/util/varint"
 	"github.com/grafana/pyroscope/pkg/slices"
+	"github.com/grafana/pyroscope/pkg/util/minheap"
 )
 
 type Tree struct {
@@ -63,9 +63,28 @@ func (t *Tree) InsertStack(v int64, stack ...string) {
 	}
 	r := &node{children: t.root}
 	n := r
-	for j := range stack {
+	for s := range stack {
+		name := stack[s]
 		n.total += v
-		n = n.insert(stack[j])
+		// Inlined node.insert
+		i, j := 0, len(n.children)
+		for i < j {
+			h := int(uint(i+j) >> 1)
+			if n.children[h].name < name {
+				i = h + 1
+			} else {
+				j = h
+			}
+		}
+		if i < len(n.children) && n.children[i].name == name {
+			n = n.children[i]
+		} else {
+			child := &node{parent: n, name: name}
+			n.children = append(n.children, child)
+			copy(n.children[i+1:], n.children[i:])
+			n.children[i] = child
+			n = child
+		}
 	}
 	// Leaf.
 	n.total += v
@@ -110,6 +129,14 @@ func (t *Tree) IterateStacks(cb func(name string, self int64, stack []string)) {
 const defaultDFSSize = 128
 
 func (t *Tree) Merge(src *Tree) {
+	if t.Total() == 0 && src.Total() > 0 {
+		*t = *src
+		return
+	}
+	if src.Total() == 0 {
+		return
+	}
+
 	srcNodes := make([]*node, 0, defaultDFSSize)
 	srcRoot := &node{children: src.root}
 	srcNodes = append(srcNodes, srcRoot)
@@ -234,30 +261,29 @@ func (t *Tree) minValue(maxNodes int64) int64 {
 		return 0
 	}
 
-	s := make(minHeap, 0, maxNodes)
-	h := &s
+	h := make([]int64, 0, maxNodes)
 
 	nodes = append(nodes[:0], t.root...)
 	var n *node
 	for len(nodes) > 0 {
 		last := len(nodes) - 1
 		n, nodes = nodes[last], nodes[:last]
-		if h.Len() >= int(maxNodes) {
-			if n.total > (*h)[0] {
-				heap.Pop(h)
+		if len(h) >= int(maxNodes) {
+			if n.total > h[0] {
+				h = minheap.Pop(h)
 			} else {
 				continue
 			}
 		}
-		heap.Push(h, n.total)
+		h = minheap.Push(h, n.total)
 		nodes = append(nodes, n.children...)
 	}
 
-	if h.Len() < int(maxNodes) {
+	if len(h) < int(maxNodes) {
 		return 0
 	}
 
-	return (*h)[0]
+	return h[0]
 }
 
 // size reports number of nodes the tree consists of.
@@ -275,37 +301,18 @@ func (t *Tree) size(buf []*node) int64 {
 	return s
 }
 
-// minHeap is a custom min-heap data structure that stores integers.
-type minHeap []int64
-
-// Len returns the number of elements in the min-heap.
-func (h minHeap) Len() int { return len(h) }
-
-// Less returns true if the element at index i is less than the element at index j.
-// This method is used by the container/heap package to maintain the min-heap property.
-func (h minHeap) Less(i, j int) bool { return h[i] < h[j] }
-
-// Swap exchanges the elements at index i and index j.
-// This method is used by the container/heap package to reorganize the min-heap during its operations.
-func (h minHeap) Swap(i, j int) { h[i], h[j] = h[j], h[i] }
-
-// Push adds an element (x) to the min-heap.
-// This method is used by the container/heap package to grow the min-heap.
-func (h *minHeap) Push(x interface{}) {
-	*h = append(*h, x.(int64))
-}
-
-// Pop removes and returns the smallest element (minimum) from the min-heap.
-// This method is used by the container/heap package to shrink the min-heap.
-func (h *minHeap) Pop() interface{} {
-	old := *h
-	n := len(old)
-	x := old[n-1]
-	*h = old[0 : n-1]
-	return x
-}
-
 const truncatedNodeName = "other"
+
+var truncatedNodeNameBytes = []byte(truncatedNodeName)
+
+// Bytes returns marshaled tree byte representation; the number of nodes
+// is limited to maxNodes. The function modifies the tree: truncated nodes
+// are removed from the tree in place.
+func (t *Tree) Bytes(maxNodes int64) []byte {
+	var buf bytes.Buffer
+	_ = t.MarshalTruncate(&buf, maxNodes)
+	return buf.Bytes()
+}
 
 // MarshalTruncate writes tree byte representation to the writer provider,
 // the number of nodes is limited to maxNodes. The function modifies
@@ -367,6 +374,17 @@ var errMalformedTreeBytes = fmt.Errorf("malformed tree bytes")
 
 const estimateBytesPerNode = 16 // Chosen empirically.
 
+func MustUnmarshalTree(b []byte) *Tree {
+	if len(b) == 0 {
+		return new(Tree)
+	}
+	t, err := UnmarshalTree(b)
+	if err != nil {
+		panic(err)
+	}
+	return t
+}
+
 func UnmarshalTree(b []byte) (*Tree, error) {
 	t := new(Tree)
 	if len(b) < 2 {
@@ -423,38 +441,4 @@ func UnmarshalTree(b []byte) (*Tree, error) {
 	t.root = root.children[0].children
 
 	return t, nil
-}
-
-type TreeMerger struct {
-	mu sync.Mutex
-	t  *Tree
-}
-
-func NewTreeMerger() *TreeMerger {
-	return new(TreeMerger)
-}
-
-func (m *TreeMerger) MergeTreeBytes(b []byte) error {
-	// TODO(kolesnikovae): Ideally, we should not have
-	// the intermediate tree t but update m.t reading
-	// raw bytes b directly.
-	t, err := UnmarshalTree(b)
-	if err != nil {
-		return err
-	}
-	m.mu.Lock()
-	if m.t != nil {
-		m.t.Merge(t)
-	} else {
-		m.t = t
-	}
-	m.mu.Unlock()
-	return nil
-}
-
-func (m *TreeMerger) Tree() *Tree {
-	if m.t == nil {
-		return new(Tree)
-	}
-	return m.t
 }

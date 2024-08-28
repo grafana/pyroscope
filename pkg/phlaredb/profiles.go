@@ -307,6 +307,8 @@ type ProfileWithLabels struct {
 	fp      model.Fingerprint
 }
 
+func (p ProfileWithLabels) RowNumber() int64 { return 0 }
+
 func (p ProfileWithLabels) StacktracePartition() uint64 {
 	return p.profile.StacktracePartition
 }

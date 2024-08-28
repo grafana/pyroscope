@@ -6,7 +6,7 @@ aliases:
 description: Learn how to get started with Pyroscope.
 menuTitle: Get started
 title: Get started with Pyroscope
-weight: 20
+weight: 250
 ---
 
 # Get started with Pyroscope
@@ -15,11 +15,11 @@ Choose one of the following options to get started with Pyroscope:
 
 - The **written tutorial** below provides a series of imperative commands to start a single Pyroscope process, or [monolith]({{< relref "../reference-pyroscope-architecture/deployment-modes/index.md#monolithic-mode" >}}), which is designed for users getting started with the project.
 
-- The following **video tutorial** uses [`docker-compose`](https://github.com/grafana/pyroscope/tree/main/tools/docker-compose) to declaratively deploy Pyroscope and Grafana.
-
-  {{< vimeo 766316030 >}}
+- You can also use [`docker-compose`](https://github.com/grafana/pyroscope/tree/main/tools/docker-compose) to declaratively deploy Pyroscope and Grafana.
 
 For more information on the different ways to deploy Pyroscope, see [Pyroscope deployment modes]({{< relref "../reference-pyroscope-architecture/deployment-modes/index.md" >}}).
+
+{{< youtube id="XL2yTCPy2e0" >}}
 
 ## Before you begin
 
@@ -83,12 +83,17 @@ Verify that you have installed [Docker](https://docs.docker.com/engine/install/)
 1. In a new terminal, run a local Grafana server using Docker:
 
     ```bash
-    docker run --rm --name=grafana -p 3000:3000 -e "GF_FEATURE_TOGGLES_ENABLE=flameGraph" --network=pyroscope-demo grafana/grafana:main
+    docker run --rm --name=grafana \
+      --network=pyroscope-demo \
+      -p 3000:3000 \
+      -e "GF_INSTALL_PLUGINS=grafana-pyroscope-app"\
+      -e "GF_AUTH_ANONYMOUS_ENABLED=true" \
+      -e "GF_AUTH_ANONYMOUS_ORG_ROLE=Admin" \
+      -e "GF_AUTH_DISABLE_LOGIN_FORM=true" \
+      grafana/grafana:main
     ```
 
 1. In a browser, go to the Grafana server at [http://localhost:3000/datasources](http://localhost:3000/datasources).
-
-1. Sign in using the default username `admin` and password `admin`.
 
 1. Use the following settings to configure a Pyroscope data source to query the local Pyroscope server:
 

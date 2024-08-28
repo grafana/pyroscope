@@ -5,13 +5,16 @@ import (
 	"math"
 	"sort"
 
+	lru "github.com/hashicorp/golang-lru/v2"
+
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/slices"
 )
 
 type Rewriter struct {
 	symdb      *SymDB
 	source     SymbolsReader
-	partitions map[uint64]*partitionRewriter
+	partitions *lru.Cache[uint64, *partitionRewriter]
 }
 
 func NewRewriter(w *SymDB, r SymbolsReader) *Rewriter {
@@ -37,60 +40,60 @@ func (r *Rewriter) Rewrite(partition uint64, stacktraces []uint32) error {
 
 func (r *Rewriter) init(partition uint64) (p *partitionRewriter, err error) {
 	if r.partitions == nil {
-		r.partitions = make(map[uint64]*partitionRewriter)
+		r.partitions, _ = lru.NewWithEvict(2, func(_ uint64, p *partitionRewriter) {
+			p.reader.Release()
+		})
 	}
-	if p, err = r.getOrCreatePartition(partition); err != nil {
-		return nil, err
-	}
-	return p, nil
+	return r.getOrCreatePartitionRewriter(partition)
 }
 
-func (r *Rewriter) getOrCreatePartition(partition uint64) (_ *partitionRewriter, err error) {
-	p, ok := r.partitions[partition]
+func (r *Rewriter) getOrCreatePartitionRewriter(partition uint64) (_ *partitionRewriter, err error) {
+	p, ok := r.partitions.Get(partition)
 	if ok {
 		p.reset()
 		return p, nil
 	}
-
-	n := &partitionRewriter{name: partition}
-	n.dst = r.symdb.PartitionWriter(partition)
-	// Note that the partition is not released: we want to keep
-	// it during the whole lifetime of the rewriter.
-	pr, err := r.source.Partition(context.TODO(), partition)
+	pr, err := r.newRewriter(partition)
 	if err != nil {
 		return nil, err
 	}
+	r.partitions.Add(partition, pr)
+	return pr, nil
+}
+
+func (r *Rewriter) newRewriter(p uint64) (*partitionRewriter, error) {
+	n := &partitionRewriter{name: p}
+	reader, err := r.source.Partition(context.TODO(), p)
+	if err != nil {
+		return nil, err
+	}
+	n.reader = reader
+	n.dst = r.symdb.PartitionWriter(p)
 	// We clone locations, functions, and mappings,
 	// because these object will be modified.
-	n.src = cloneSymbolsPartially(pr.Symbols())
+	n.src = cloneSymbolsPartially(reader.Symbols())
 	var stats PartitionStats
-	pr.WriteStats(&stats)
-
+	reader.WriteStats(&stats)
 	n.stacktraces = newLookupTable[[]int32](stats.MaxStacktraceID)
-	n.locations = newLookupTable[*schemav1.InMemoryLocation](stats.LocationsTotal)
-	n.mappings = newLookupTable[*schemav1.InMemoryMapping](stats.MappingsTotal)
-	n.functions = newLookupTable[*schemav1.InMemoryFunction](stats.FunctionsTotal)
+	n.locations = newLookupTable[schemav1.InMemoryLocation](stats.LocationsTotal)
+	n.mappings = newLookupTable[schemav1.InMemoryMapping](stats.MappingsTotal)
+	n.functions = newLookupTable[schemav1.InMemoryFunction](stats.FunctionsTotal)
 	n.strings = newLookupTable[string](stats.StringsTotal)
-
-	r.partitions[partition] = n
 	return n, nil
 }
 
 type partitionRewriter struct {
-	name uint64
-
-	src *Symbols
-	dst *PartitionWriter
+	name   uint64
+	src    *Symbols
+	dst    *PartitionWriter
+	reader PartitionReader
 
 	stacktraces *lookupTable[[]int32]
-	locations   *lookupTable[*schemav1.InMemoryLocation]
-	mappings    *lookupTable[*schemav1.InMemoryMapping]
-	functions   *lookupTable[*schemav1.InMemoryFunction]
+	locations   *lookupTable[schemav1.InMemoryLocation]
+	mappings    *lookupTable[schemav1.InMemoryMapping]
+	functions   *lookupTable[schemav1.InMemoryFunction]
 	strings     *lookupTable[string]
-
-	// FIXME(kolesnikovae): schemav1.Stacktrace should be just a uint32 slice:
-	//   type Stacktrace []uint32
-	current []*schemav1.Stacktrace
+	current     []*schemav1.Stacktrace
 }
 
 func (p *partitionRewriter) reset() {
@@ -161,25 +164,25 @@ func (p *partitionRewriter) appendRewrite(stacktraces []uint32) error {
 	p.dst.AppendStrings(p.strings.buf, p.strings.values)
 	p.strings.updateResolved()
 
-	for _, v := range p.functions.values {
-		v.Name = p.strings.lookupResolved(v.Name)
-		v.Filename = p.strings.lookupResolved(v.Filename)
-		v.SystemName = p.strings.lookupResolved(v.SystemName)
+	for i := range p.functions.values {
+		p.functions.values[i].Name = p.strings.lookupResolved(p.functions.values[i].Name)
+		p.functions.values[i].Filename = p.strings.lookupResolved(p.functions.values[i].Filename)
+		p.functions.values[i].SystemName = p.strings.lookupResolved(p.functions.values[i].SystemName)
 	}
 	p.dst.AppendFunctions(p.functions.buf, p.functions.values)
 	p.functions.updateResolved()
 
-	for _, v := range p.mappings.values {
-		v.BuildId = p.strings.lookupResolved(v.BuildId)
-		v.Filename = p.strings.lookupResolved(v.Filename)
+	for i := range p.mappings.values {
+		p.mappings.values[i].BuildId = p.strings.lookupResolved(p.mappings.values[i].BuildId)
+		p.mappings.values[i].Filename = p.strings.lookupResolved(p.mappings.values[i].Filename)
 	}
 	p.dst.AppendMappings(p.mappings.buf, p.mappings.values)
 	p.mappings.updateResolved()
 
-	for _, v := range p.locations.values {
-		v.MappingId = p.mappings.lookupResolved(v.MappingId)
-		for j, line := range v.Line {
-			v.Line[j].FunctionId = p.functions.lookupResolved(line.FunctionId)
+	for i := range p.locations.values {
+		p.locations.values[i].MappingId = p.mappings.lookupResolved(p.locations.values[i].MappingId)
+		for j, line := range p.locations.values[i].Line {
+			p.locations.values[i].Line[j].FunctionId = p.functions.lookupResolved(line.FunctionId)
 		}
 	}
 	p.dst.AppendLocations(p.locations.buf, p.locations.values)
@@ -213,14 +216,14 @@ func (p *partitionRewriter) resolveStacktraces(stacktraceIDs []uint32) error {
 }
 
 func (p *partitionRewriter) stacktracesFromResolvedValues() []*schemav1.Stacktrace {
-	p.current = grow(p.current, len(p.stacktraces.values))
+	p.current = slices.GrowLen(p.current, len(p.stacktraces.values))
 	for i, v := range p.stacktraces.values {
 		s := p.current[i]
 		if s == nil {
 			s = &schemav1.Stacktrace{LocationIDs: make([]uint64, len(v))}
 			p.current[i] = s
 		}
-		s.LocationIDs = grow(s.LocationIDs, len(v))
+		s.LocationIDs = slices.GrowLen(s.LocationIDs, len(v))
 		for j, m := range v {
 			s.LocationIDs[j] = uint64(m)
 		}
@@ -237,7 +240,7 @@ func (p *partitionRewriter) InsertStacktrace(stacktrace uint32, locations []int3
 	// be a marked pointer to unresolved value.
 	idx := p.stacktraces.resolved[stacktrace] & markerMask
 	v := &p.stacktraces.values[idx]
-	n := grow(*v, len(locations))
+	n := slices.GrowLen(*v, len(locations))
 	copy(n, locations)
 	// Preserve allocated capacity.
 	p.stacktraces.values[idx] = n
@@ -246,9 +249,9 @@ func (p *partitionRewriter) InsertStacktrace(stacktrace uint32, locations []int3
 func cloneSymbolsPartially(x *Symbols) *Symbols {
 	n := Symbols{
 		Stacktraces: x.Stacktraces,
-		Locations:   make([]*schemav1.InMemoryLocation, len(x.Locations)),
-		Mappings:    make([]*schemav1.InMemoryMapping, len(x.Mappings)),
-		Functions:   make([]*schemav1.InMemoryFunction, len(x.Functions)),
+		Locations:   make([]schemav1.InMemoryLocation, len(x.Locations)),
+		Mappings:    make([]schemav1.InMemoryMapping, len(x.Mappings)),
+		Functions:   make([]schemav1.InMemoryFunction, len(x.Functions)),
 		Strings:     x.Strings,
 	}
 	for i, l := range x.Locations {
@@ -360,7 +363,7 @@ func (t *lookupTable[T]) updateResolved() {
 
 func (t *lookupTable[T]) initSorted() {
 	// Gather and sort references to unresolved values.
-	t.buf = grow(t.buf, len(t.unresolved))
+	t.buf = slices.GrowLen(t.buf, len(t.unresolved))
 	copy(t.buf, t.unresolved)
 	sort.Slice(t.buf, func(i, j int) bool {
 		return t.buf[i] < t.buf[j]

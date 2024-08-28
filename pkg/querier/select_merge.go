@@ -5,15 +5,13 @@ import (
 	"fmt"
 	"math"
 	"sync"
+	"time"
 
-	"github.com/google/pprof/profile"
 	"github.com/grafana/dskit/multierror"
 	"github.com/opentracing/opentracing-go"
-	"github.com/prometheus/common/model"
+	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
-
-	otlog "github.com/opentracing/opentracing-go/log"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
@@ -27,9 +25,10 @@ import (
 )
 
 type ProfileWithLabels struct {
-	Timestamp int64
-	phlaremodel.Labels
+	Timestamp    int64
+	Fingerprint  uint64
 	IngesterAddr string
+	phlaremodel.Labels
 }
 
 type BidiClientMerge[Req any, Res any] interface {
@@ -140,14 +139,23 @@ func (s *mergeIterator[R, Req, Res]) Next() bool {
 			return false
 		}
 		s.currIdx = 0
-		s.currentProfile.Timestamp = s.curr.Profiles[s.currIdx].Timestamp
-		s.currentProfile.Labels = s.curr.LabelsSets[s.curr.Profiles[s.currIdx].LabelIndex].Labels
+		s.setCurrentProfile()
 		return true
 	}
 	s.currIdx++
-	s.currentProfile.Timestamp = s.curr.Profiles[s.currIdx].Timestamp
-	s.currentProfile.Labels = s.curr.LabelsSets[s.curr.Profiles[s.currIdx].LabelIndex].Labels
+	s.setCurrentProfile()
 	return true
+}
+
+func (s *mergeIterator[R, Req, Res]) setCurrentProfile() {
+	p := s.curr.Profiles[s.currIdx]
+	s.currentProfile.Timestamp = p.Timestamp
+	if len(s.curr.LabelsSets) > 0 {
+		s.currentProfile.Labels = s.curr.LabelsSets[p.LabelIndex].Labels
+	}
+	if len(s.curr.Fingerprints) > 0 {
+		s.currentProfile.Fingerprint = s.curr.Fingerprints[p.LabelIndex]
+	}
 }
 
 func (s *mergeIterator[R, Req, Res]) fetchBatch() {
@@ -251,10 +259,7 @@ func skipDuplicates(ctx context.Context, its []MergeIterator) error {
 			return s.At()
 		},
 		func(p1, p2 *ProfileWithLabels) bool {
-			if p1.Timestamp == p2.Timestamp {
-				return phlaremodel.CompareLabelPairs(p1.Labels, p2.Labels) < 0
-			}
-			return p1.Timestamp < p2.Timestamp
+			return p1.Timestamp <= p2.Timestamp
 		},
 		func(s MergeIterator) {
 			if err := s.Close(); err != nil {
@@ -263,17 +268,21 @@ func skipDuplicates(ctx context.Context, its []MergeIterator) error {
 		})
 
 	defer tree.Close()
+	// We rely on the fact that profiles are ordered by timestamp.
+	// In order to deduplicate profiles, we only keep the first profile
+	// with a given fingerprint for a given timestamp.
+	fingerprints := newTimestampedFingerprints()
 	duplicates := 0
 	total := 0
-	previousTs := int64(-1)
-	previousLabels := phlaremodel.Labels{}
 	for tree.Next() {
 		next := tree.Winner()
 		profile := next.At()
 		total++
-		if previousTs != profile.Timestamp || phlaremodel.CompareLabelPairs(previousLabels, profile.Labels) != 0 {
-			previousTs = profile.Timestamp
-			previousLabels = profile.Labels
+		fingerprint := profile.Fingerprint
+		if fingerprint == 0 && len(profile.Labels) > 0 {
+			fingerprint = profile.Labels.Hash()
+		}
+		if fingerprints.keep(profile.Timestamp, fingerprint) {
 			next.Keep()
 			continue
 		}
@@ -286,6 +295,42 @@ func skipDuplicates(ctx context.Context, its []MergeIterator) error {
 	}
 
 	return errors.Err()
+}
+
+func newTimestampedFingerprints() *timestampedFingerprints {
+	return &timestampedFingerprints{
+		timestamp:    math.MaxInt64,
+		fingerprints: make(map[uint64]struct{}),
+	}
+}
+
+type timestampedFingerprints struct {
+	timestamp    int64
+	fingerprints map[uint64]struct{}
+}
+
+// keep reports whether the profile has unique fingerprint for the timestamp.
+func (p *timestampedFingerprints) keep(ts int64, fingerprint uint64) bool {
+	if p.timestamp != ts {
+		p.reset(ts, fingerprint)
+		return true
+	}
+	return !p.fingerprintSeen(fingerprint)
+}
+
+func (p *timestampedFingerprints) reset(ts int64, fingerprint uint64) {
+	p.timestamp = ts
+	clear(p.fingerprints)
+	p.fingerprints[fingerprint] = struct{}{}
+}
+
+func (p *timestampedFingerprints) fingerprintSeen(fingerprint uint64) (seen bool) {
+	_, seen = p.fingerprints[fingerprint]
+	if seen {
+		return true
+	}
+	p.fingerprints[fingerprint] = struct{}{}
+	return false
 }
 
 // selectMergeTree selects the  profile from each ingester by deduping them and
@@ -378,60 +423,47 @@ func selectMergePprofProfile(ctx context.Context, ty *typesv1.ProfileType, respo
 		return nil, err
 	}
 
+	span := opentracing.SpanFromContext(ctx)
 	// Collects the results in parallel.
-	results := make([]*profile.Profile, 0, len(iters))
-	s := lo.Synchronize()
+	var lock sync.Mutex
+	var pprofMerge pprof.ProfileMerge
 	g, _ := errgroup.WithContext(ctx)
 	for _, iter := range mergeResults {
 		iter := iter
 		g.Go(util.RecoverPanic(func() error {
+			start := time.Now()
 			result, err := iter.Result()
 			if err != nil || result == nil {
 				return err
 			}
-			p, err := profile.ParseUncompressed(result)
-			if err != nil {
+			if span != nil {
+				span.LogFields(
+					otlog.Int("profile_size", len(result)),
+					otlog.Int64("took_ms", time.Since(start).Milliseconds()),
+				)
+			}
+			var p googlev1.Profile
+			if err = pprof.Unmarshal(result, &p); err != nil {
 				return err
 			}
-			s.Do(func() {
-				results = append(results, p)
-			})
-			return nil
+			lock.Lock()
+			defer lock.Unlock()
+			return pprofMerge.Merge(&p)
 		}))
 	}
 	if err := g.Wait(); err != nil {
 		return nil, err
 	}
 
-	if len(results) == 0 {
-		empty := &profile.Profile{}
-		phlaremodel.SetProfileMetadata(empty, ty)
-		return pprof.FromProfile(empty)
+	p := pprofMerge.Profile()
+	if len(p.Sample) == 0 {
+		pprof.SetProfileMetadata(p, ty, 0, 0)
 	}
-	p, err := profile.Merge(results)
-	if err != nil {
-		return nil, err
-	}
-	return pprof.FromProfile(p)
-}
-
-type ProfileValue struct {
-	Ts         int64
-	Lbs        []*typesv1.LabelPair
-	LabelsHash uint64
-	Value      float64
-}
-
-func (p ProfileValue) Labels() phlaremodel.Labels {
-	return p.Lbs
-}
-
-func (p ProfileValue) Timestamp() model.Time {
-	return model.Time(p.Ts)
+	return p, nil
 }
 
 // selectMergeSeries selects the  profile from each ingester by deduping them and request merges of total values.
-func selectMergeSeries(ctx context.Context, responses []ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels]) (iter.Iterator[ProfileValue], error) {
+func selectMergeSeries(ctx context.Context, aggregation *typesv1.TimeSeriesAggregationType, responses []ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels]) (iter.Iterator[phlaremodel.TimeSeriesValue], error) {
 	mergeResults := make([]MergeResult[[]*typesv1.Series], len(responses))
 	iters := make([]MergeIterator, len(responses))
 	var wg sync.WaitGroup
@@ -474,13 +506,14 @@ func selectMergeSeries(ctx context.Context, responses []ResponseFromReplica[clie
 	if err := g.Wait(); err != nil {
 		return nil, err
 	}
-	series := phlaremodel.SumSeries(results...)
-	seriesIters := make([]iter.Iterator[ProfileValue], 0, len(series))
+	var series = phlaremodel.MergeSeries(aggregation, results...)
+
+	seriesIters := make([]iter.Iterator[phlaremodel.TimeSeriesValue], 0, len(series))
 	for _, s := range series {
 		s := s
-		seriesIters = append(seriesIters, newSeriesIterator(s.Labels, s.Points))
+		seriesIters = append(seriesIters, phlaremodel.NewSeriesIterator(s.Labels, s.Points))
 	}
-	return iter.NewMergeIterator(ProfileValue{Ts: math.MaxInt64}, false, seriesIters...), nil
+	return phlaremodel.NewMergeIterator(phlaremodel.TimeSeriesValue{Ts: math.MaxInt64}, false, seriesIters...), nil
 }
 
 // selectMergeSpanProfile selects the  profile from each ingester by deduping them and
@@ -531,44 +564,4 @@ func selectMergeSpanProfile(ctx context.Context, responses []ResponseFromReplica
 
 	span.LogFields(otlog.String("msg", "building tree"))
 	return m.Tree(), nil
-}
-
-type seriesIterator struct {
-	point []*typesv1.Point
-
-	curr ProfileValue
-}
-
-func newSeriesIterator(lbs []*typesv1.LabelPair, points []*typesv1.Point) *seriesIterator {
-	return &seriesIterator{
-		point: points,
-
-		curr: ProfileValue{
-			Lbs:        lbs,
-			LabelsHash: phlaremodel.Labels(lbs).Hash(),
-		},
-	}
-}
-
-func (s *seriesIterator) Next() bool {
-	if len(s.point) == 0 {
-		return false
-	}
-	p := s.point[0]
-	s.point = s.point[1:]
-	s.curr.Ts = p.Timestamp
-	s.curr.Value = p.Value
-	return true
-}
-
-func (s *seriesIterator) At() ProfileValue {
-	return s.curr
-}
-
-func (s *seriesIterator) Err() error {
-	return nil
-}
-
-func (s *seriesIterator) Close() error {
-	return nil
 }

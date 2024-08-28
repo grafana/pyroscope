@@ -30,20 +30,33 @@ func (t *DiscoveryTarget) DebugString() string {
 }
 
 const (
-	labelContainerID    = "__container_id__"
-	labelPID            = "__process_pid__"
-	labelServiceName    = "service_name"
-	labelServiceNameK8s = "__meta_kubernetes_pod_annotation_pyroscope_io_service_name"
-	metricValue         = "process_cpu"
+	labelContainerID                = "__container_id__"
+	labelPID                        = "__process_pid__"
+	labelServiceName                = "service_name"
+	labelServiceNameK8s             = "__meta_kubernetes_pod_annotation_pyroscope_io_service_name"
+	metricValue                     = "process_cpu"
+	labelMetaPyroscopeOptionsPrefix = "__meta_pyroscope_ebpf_options_"
+
+	OptionGoTableFallback          = labelMetaPyroscopeOptionsPrefix + "go_table_fallback"
+	OptionCollectKernel            = labelMetaPyroscopeOptionsPrefix + "collect_kernel"
+	OptionPythonFullFilePath       = labelMetaPyroscopeOptionsPrefix + "python_full_file_path"
+	OptionPythonEnabled            = labelMetaPyroscopeOptionsPrefix + "python_enabled"
+	OptionPythonBPFDebugLogEnabled = labelMetaPyroscopeOptionsPrefix + "python_bpf_debug_log"
+	OptionPythonBPFErrorLogEnabled = labelMetaPyroscopeOptionsPrefix + "python_bpf_error_log"
+	OptionDemangle                 = labelMetaPyroscopeOptionsPrefix + "demangle"
 )
 
 type Target struct {
-
 	// todo make keep it a map until Append happens
 	labels                labels.Labels
 	serviceName           string
 	fingerprint           uint64
 	fingerprintCalculated bool
+}
+
+// todo remove, make containerID exported or use string
+func NewTargetForTesting(cid string, pid uint32, target DiscoveryTarget) *Target {
+	return NewTarget(containerID(cid), pid, target)
 }
 
 func NewTarget(cid containerID, pid uint32, target DiscoveryTarget) *Target {
@@ -54,7 +67,9 @@ func NewTarget(cid containerID, pid uint32, target DiscoveryTarget) *Target {
 
 	lset := make(map[string]string, len(target))
 	for k, v := range target {
-		if strings.HasPrefix(k, model.ReservedLabelPrefix) && k != labels.MetricName {
+		if strings.HasPrefix(k, model.ReservedLabelPrefix) &&
+			k != labels.MetricName &&
+			!strings.HasPrefix(k, labelMetaPyroscopeOptionsPrefix) {
 			continue
 		}
 		lset[k] = v
@@ -95,6 +110,12 @@ func inferServiceName(target DiscoveryTarget) string {
 	if dockerContainer != "" {
 		return dockerContainer
 	}
+	if swarmService := target["__meta_dockerswarm_container_label_service_name"]; swarmService != "" {
+		return swarmService
+	}
+	if swarmService := target["__meta_dockerswarm_service_name"]; swarmService != "" {
+		return swarmService
+	}
 	return "unspecified"
 }
 
@@ -110,12 +131,22 @@ func (t *Target) String() string {
 	return t.labels.String()
 }
 
+func (t *Target) Get(k string) (string, bool) {
+	v := t.labels.Get(k)
+	return v, v != ""
+}
+
+func (t *Target) GetFlag(k string) (bool, bool) {
+	v := t.labels.Get(k)
+	return v == "true", v != ""
+}
+
 type containerID string
 
 type TargetFinder interface {
 	FindTarget(pid uint32) *Target
 	RemoveDeadPID(pid uint32)
-	DebugInfo() []string
+	DebugInfo() []map[string]string
 	Update(args TargetsOptions)
 }
 type TargetsOptions struct {
@@ -181,16 +212,16 @@ func (tf *targetFinder) setTargets(opts TargetsOptions) {
 	containerID2Target := make(map[containerID]*Target)
 	pid2Target := make(map[uint32]*Target)
 	for _, target := range opts.Targets {
-		if cid := containerIDFromTarget(target); cid != "" {
-			t := NewTarget(cid, 0, target)
-			containerID2Target[cid] = t
-		} else if pid := pidFromTarget(target); pid != 0 {
+		if pid := pidFromTarget(target); pid != 0 {
 			t := NewTarget("", pid, target)
 			pid2Target[pid] = t
+		} else if cid := containerIDFromTarget(target); cid != "" {
+			t := NewTarget(cid, 0, target)
+			containerID2Target[cid] = t
 		}
 	}
-	if len(opts.Targets) > 0 && len(containerID2Target) == 0 {
-		_ = level.Warn(tf.l).Log("msg", "No container IDs found in targets")
+	if len(opts.Targets) > 0 && len(containerID2Target) == 0 && len(pid2Target) == 0 {
+		_ = level.Warn(tf.l).Log("msg", "No targets found")
 	}
 	tf.cid2target = containerID2Target
 	tf.pid2target = pid2Target
@@ -221,14 +252,15 @@ func (tf *targetFinder) resizeContainerIDCache(size int) {
 	tf.containerIDCache.Resize(size)
 }
 
-func (tf *targetFinder) DebugInfo() []string {
+func (tf *targetFinder) DebugInfo() []map[string]string {
 	tf.sync.Lock()
 	defer tf.sync.Unlock()
 
-	debugTargets := make([]string, 0, len(tf.cid2target))
+	debugTargets := make([]map[string]string, 0, len(tf.cid2target))
 	for _, target := range tf.cid2target {
+
 		_, ls := target.Labels()
-		debugTargets = append(debugTargets, ls.String())
+		debugTargets = append(debugTargets, ls.Map())
 	}
 	return debugTargets
 }
@@ -269,6 +301,9 @@ func containerIDFromTarget(target DiscoveryTarget) containerID {
 	}
 	cid, ok = target["__meta_docker_container_id"]
 	if ok && cid != "" {
+		return containerID(cid)
+	}
+	if cid, ok = target["__meta_dockerswarm_task_container_id"]; ok && cid != "" {
 		return containerID(cid)
 	}
 	return ""

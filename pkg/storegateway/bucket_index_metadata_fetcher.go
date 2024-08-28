@@ -103,6 +103,12 @@ func (f *BucketIndexMetadataFetcher) Fetch(ctx context.Context) (metas map[ulid.
 
 		return f.fallbackFetch(ctx)
 	}
+	if err != nil {
+		f.metrics.Synced.WithLabelValues(block.FailedMeta).Set(1)
+		f.metrics.Submit()
+
+		return nil, nil, errors.Wrapf(err, "read bucket index")
+	}
 
 	// check if index is older than 1 hour, fallback to metafetcher
 	if time.Unix(idx.UpdatedAt, 0).Before(start.Add(-1 * time.Hour)) {
@@ -122,13 +128,6 @@ func (f *BucketIndexMetadataFetcher) Fetch(ctx context.Context) (metas map[ulid.
 		}
 	}()
 	f.metrics.Syncs.Inc()
-
-	if err != nil {
-		f.metrics.Synced.WithLabelValues(block.FailedMeta).Set(1)
-		f.metrics.Submit()
-
-		return nil, nil, errors.Wrapf(err, "read bucket index")
-	}
 
 	// Build block metas out of the index.
 	metas = make(map[ulid.ULID]*block.Meta, len(idx.Blocks))

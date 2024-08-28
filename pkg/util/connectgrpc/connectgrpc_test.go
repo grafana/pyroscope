@@ -1,13 +1,14 @@
 package connectgrpc
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/gorilla/mux"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
@@ -40,6 +41,17 @@ func (m *mockRoundTripper) RoundTripGRPC(_ context.Context, req *httpgrpc.HTTPRe
 	return m.resp, nil
 }
 
+func headerToSlice(t testing.TB, header http.Header) []string {
+	buf := new(bytes.Buffer)
+	excludeHeaders := map[string]bool{"Content-Length": true, "Date": true}
+	require.NoError(t, header.WriteSubset(buf, excludeHeaders))
+	sl := strings.Split(strings.ReplaceAll(buf.String(), "\r\n", "\n"), "\n")
+	if len(sl) > 0 && sl[len(sl)-1] == "" {
+		sl = sl[:len(sl)-1]
+	}
+	return sl
+}
+
 func Test_RoundTripUnary(t *testing.T) {
 	request := func(t *testing.T) *connect.Request[typesv1.LabelValuesRequest] {
 		server := httptest.NewUnstartedServer(nil)
@@ -64,8 +76,15 @@ func Test_RoundTripUnary(t *testing.T) {
 
 	t.Run("HTTP request can trip GRPC", func(t *testing.T) {
 		req := request(t)
-		m := &mockRoundTripper{resp: &httpgrpc.HTTPResponse{Code: 200}}
-		_, err := RoundTripUnary[typesv1.LabelValuesRequest, typesv1.LabelValuesResponse](context.Background(), m, req)
+		m := &mockRoundTripper{resp: &httpgrpc.HTTPResponse{
+			Code: 200,
+			Headers: []*httpgrpc.Header{
+				{Key: "Content-Type", Values: []string{"application/proto"}},
+				{Key: "X-My-App", Values: []string{"foobar"}},
+			},
+		}}
+
+		resp, err := RoundTripUnary[typesv1.LabelValuesRequest, typesv1.LabelValuesResponse](context.Background(), m, req)
 		require.NoError(t, err)
 		require.Equal(t, "POST", m.req.Method)
 		require.Equal(t, "/querier.v1.QuerierService/LabelValues", m.req.Url)
@@ -79,6 +98,10 @@ func Test_RoundTripUnary(t *testing.T) {
 		decoded, err := decodeRequest[typesv1.LabelValuesRequest](m.req)
 		require.NoError(t, err)
 		require.Equal(t, req.Msg.Name, decoded.Msg.Name)
+
+		// ensure no headers leak
+		require.Equal(t, []string{"X-My-App: foobar"}, headerToSlice(t, resp.Header()))
+
 	})
 
 	t.Run("HTTP request URL can be overridden", func(t *testing.T) {

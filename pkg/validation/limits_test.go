@@ -52,6 +52,8 @@ max_query_series: 100
 max_query_lookback: 110s
 max_query_length: 120s
 max_query_parallelism: 130
+distributor_aggregation_window: 0s
+distributor_aggregation_duration: 0s
 cardinality_limit: 140
 max_streams_matchers_per_query: 150
 max_concurrent_tail_requests: 160
@@ -95,6 +97,8 @@ blocked_queries:
   "max_query_lookback": "110s",
   "max_query_length": "120s",
   "max_query_parallelism": 130,
+  "distributor_aggregation_window": "0s",
+  "distributor_aggregation_duration": "0s",
   "cardinality_limit": 140,
   "max_streams_matchers_per_query": 150,
   "max_concurrent_tail_requests": 160,

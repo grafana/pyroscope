@@ -1,0 +1,14 @@
+with-expecter: true
+disable-version-string: True
+outpkg: "mock{{.PackageName}}"
+mockname: "Mock{{.InterfaceName}}"
+filename: "mock_{{.InterfaceName | snakecase}}.go"
+dir: "pkg/test/mocks/mock{{.PackageName}}"
+packages:
+  github.com/grafana/pyroscope/pkg/objstore:
+    interfaces:
+      Bucket:
+  github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1:
+    interfaces:
+      MetastoreServiceClient:
+

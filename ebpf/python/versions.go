@@ -3,7 +3,6 @@ package python
 import (
 	"fmt"
 	"io"
-	"os"
 	"regexp"
 	"strconv"
 
@@ -17,6 +16,7 @@ type Version struct {
 var Py313 = &Version{Major: 3, Minor: 13}
 var Py312 = &Version{Major: 3, Minor: 12}
 var Py311 = &Version{Major: 3, Minor: 11}
+var Py310 = &Version{Major: 3, Minor: 10}
 var Py37 = &Version{Major: 3, Minor: 7}
 
 func (p *Version) Compare(other *Version) int {
@@ -30,6 +30,10 @@ func (p *Version) Compare(other *Version) int {
 		return minor
 	}
 	return p.Patch - other.Patch
+}
+
+func (p *Version) String() string {
+	return fmt.Sprintf("%d.%d.%d", p.Major, p.Minor, p.Patch)
 }
 
 // GetPythonPatchVersion searches for a patch version given a major + minor version with regexp
@@ -48,40 +52,6 @@ func GetPythonPatchVersion(r io.Reader, v Version) (Version, error) {
 	}
 	res.Patch = patch
 	return res, nil
-}
-
-var reMuslVersion = regexp.MustCompile("1\\.([12])\\.(\\d+)\\D")
-
-func GetMuslVersionFromFile(f string) (int, error) {
-	muslFD, err := os.Open(f)
-	if err != nil {
-		return 0, fmt.Errorf("couldnot determine musl version %s %w", f, err)
-	}
-	defer muslFD.Close()
-	return GetMuslVersionFromReader(muslFD)
-}
-
-// GetMuslVersionFromReader return minor musl version. For example 1 for 1.1.44 and 2 for 1.2.4
-func GetMuslVersionFromReader(r io.Reader) (int, error) {
-	m, err := rgrep(r, reMuslVersion)
-	if err != nil {
-		return 0, fmt.Errorf("rgrep python version  %w", err)
-	}
-	minor, err := strconv.Atoi(string(m[1]))
-	if err != nil {
-		return 0, fmt.Errorf("error trying to grep musl minor version %s, %w", string(m[0]), err)
-	}
-	patch, err := strconv.Atoi(string(m[2]))
-	if err != nil {
-		return 0, fmt.Errorf("error trying to grep musl patch version %s, %w", string(m[0]), err)
-	}
-	if minor == 1 {
-		return 1, nil
-	}
-	if patch <= 4 {
-		return 2, nil
-	}
-	return 2, nil // let's hope it won't change in patch fix
 }
 
 func rgrep(r io.Reader, re *regexp.Regexp) ([][]byte, error) {
@@ -126,11 +96,15 @@ type UserOffsets struct {
 	PyCodeObject_co_name              int16
 	PyCodeObject_co_varnames          int16
 	PyCodeObject_co_localsplusnames   int16
+	PyCodeObject__co_cell2arg         int16
+	PyCodeObject__co_cellvars         int16
+	PyCodeObject__co_nlocals          int16
 	PyTupleObject_ob_item             int16
 	PyInterpreterFrame_f_code         int16
 	PyInterpreterFrame_f_executable   int16
 	PyInterpreterFrame_previous       int16
 	PyInterpreterFrame_localsplus     int16
+	PyInterpreterFrame_owner          int16
 	PyRuntimeState_gilstate           int16
 	PyRuntimeState_autoTSSkey         int16
 	Gilstate_runtime_state_autoTSSkey int16
@@ -139,14 +113,33 @@ type UserOffsets struct {
 	PyTssTSize                        int16
 	PyASCIIObjectSize                 int16
 	PyCompactUnicodeObjectSize        int16
+	PyCellObject__ob_ref              int16
+}
+
+type GlibcOffsets struct {
+	PthreadSpecific1stblock int16
+	PthreadSize             int16
+	PthreadKeyDataData      int16
+	PthreadKeyDataSize      int16
+}
+
+type MuslOffsets struct {
+	PthreadTsd  int16
+	PthreadSize int16
 }
 
 func GetUserOffsets(version Version) (*UserOffsets, bool, error) {
-	offsets, ok := pyVersions[version]
+	return getVersionGuessing(version, pyVersions)
+}
+
+// getVersionGuessing returns offsets for a given version. If version is not found, it tries to guess the closest one
+// within the same major.minor version. If that fails, it returns an error.
+func getVersionGuessing[T any](version Version, m map[Version]*T) (*T, bool, error) {
+	offsets, ok := m[version]
 	patchGuess := false
 	if !ok {
 		foundVersion := Version{}
-		for v, o := range pyVersions {
+		for v, o := range m {
 			if v.Major == version.Major && v.Minor == version.Minor {
 				if offsets == nil {
 					offsets = o
@@ -158,7 +151,7 @@ func GetUserOffsets(version Version) (*UserOffsets, bool, error) {
 			}
 		}
 		if offsets == nil {
-			return nil, false, fmt.Errorf("unsupported python version %v ", version)
+			return nil, false, fmt.Errorf("unsupported version %v ", version)
 		}
 		patchGuess = true
 	}

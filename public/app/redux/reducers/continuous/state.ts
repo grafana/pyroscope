@@ -138,6 +138,7 @@ export interface ContinuousState {
   leftQuery?: string;
   rightQuery?: string;
   maxNodes: string;
+  aggregation: string;
   refreshToken?: string;
 
   singleView: SingleView;

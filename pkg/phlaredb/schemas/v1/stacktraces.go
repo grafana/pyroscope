@@ -30,25 +30,17 @@ func (*StacktracePersister) Schema() *parquet.Schema {
 	return stacktracesSchema
 }
 
-func (*StacktracePersister) SortingColumns() parquet.SortingOption {
-	return parquet.SortingColumns(
-		parquet.Ascending("ID"),
-		parquet.Ascending("LocationIDs", "list", "element"),
-	)
-}
-
-func (*StacktracePersister) Deconstruct(row parquet.Row, id uint64, s *Stacktrace) parquet.Row {
+func (*StacktracePersister) Deconstruct(row parquet.Row, s *Stacktrace) parquet.Row {
 	var stored storedStacktrace
-	stored.ID = id
 	stored.LocationIDs = s.LocationIDs
 	row = stacktracesSchema.Deconstruct(row, &stored)
 	return row
 }
 
-func (*StacktracePersister) Reconstruct(row parquet.Row) (id uint64, s *Stacktrace, err error) {
+func (*StacktracePersister) Reconstruct(row parquet.Row) (s *Stacktrace, err error) {
 	var stored storedStacktrace
 	if err := stacktracesSchema.Reconstruct(&stored, row); err != nil {
-		return 0, nil, err
+		return nil, err
 	}
-	return stored.ID, &Stacktrace{LocationIDs: stored.LocationIDs}, nil
+	return &Stacktrace{LocationIDs: stored.LocationIDs}, nil
 }

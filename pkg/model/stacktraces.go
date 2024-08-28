@@ -2,14 +2,13 @@ package model
 
 import (
 	"bytes"
-	"container/heap"
 	"io"
-	"reflect"
 	"sync"
 	"unsafe"
 
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	"github.com/grafana/pyroscope/pkg/og/util/varint"
+	"github.com/grafana/pyroscope/pkg/util/minheap"
 )
 
 // TODO(kolesnikovae): Remove support for StacktracesMergeFormat_MERGE_FORMAT_STACKTRACES.
@@ -141,35 +140,47 @@ func NewStacktraceTree(size int) *StacktraceTree {
 	return &t
 }
 
+func (t *StacktraceTree) Reset() {
+	if cap(t.Nodes) < 1 {
+		*t = *(NewStacktraceTree(0))
+		return
+	}
+	t.Nodes = t.Nodes[:1]
+	t.Nodes[0] = StacktraceNode{
+		FirstChild:  sentinel,
+		NextSibling: sentinel,
+	}
+}
+
 const sentinel = -1
 
-func (t *StacktraceTree) Insert(locations []int32, value int64) {
+func (t *StacktraceTree) Insert(locations []int32, value int64) int32 {
 	var (
-		n = &t.Nodes[0]
-		i = n.FirstChild
-		x int32
+		n    = &t.Nodes[0]
+		next = n.FirstChild
+		cur  int32
 	)
 
 	for j := len(locations) - 1; j >= 0; {
 		r := locations[j]
-		if i == sentinel {
+		if next == sentinel {
 			ni := int32(len(t.Nodes))
 			n.FirstChild = ni
 			t.Nodes = append(t.Nodes, StacktraceNode{
-				Parent:      x,
+				Parent:      cur,
 				FirstChild:  sentinel,
 				NextSibling: sentinel,
 				Location:    r,
 			})
-			x = ni
+			cur = ni
 			n = &t.Nodes[ni]
 		} else {
-			x = i
-			n = &t.Nodes[i]
+			cur = next
+			n = &t.Nodes[next]
 		}
 		if n.Location == r {
 			n.Total += value
-			i = n.FirstChild
+			next = n.FirstChild
 			j--
 			continue
 		}
@@ -182,10 +193,22 @@ func (t *StacktraceTree) Insert(locations []int32, value int64) {
 				Location:    r,
 			})
 		}
-		i = n.NextSibling
+		next = n.NextSibling
 	}
 
-	t.Nodes[x].Value += value
+	t.Nodes[cur].Value += value
+	return cur
+}
+
+func (t *StacktraceTree) LookupLocations(dst []uint64, idx int32) []uint64 {
+	dst = dst[:0]
+	if idx >= int32(len(t.Nodes)) {
+		return dst
+	}
+	for i := idx; i > 0; i = t.Nodes[i].Parent {
+		dst = append(dst, uint64(t.Nodes[i].Location))
+	}
+	return dst
 }
 
 // MinValue returns the minimum "total" value a node in a tree has to have.
@@ -193,28 +216,27 @@ func (t *StacktraceTree) MinValue(maxNodes int64) int64 {
 	if maxNodes < 1 || maxNodes >= int64(len(t.Nodes)) {
 		return 0
 	}
-	s := make(minHeap, 0, maxNodes)
-	h := &s
+	h := make([]int64, 0, maxNodes)
 	for _, n := range t.Nodes {
-		if h.Len() >= int(maxNodes) {
-			if n.Total > (*h)[0] {
-				heap.Pop(h)
+		if len(h) >= int(maxNodes) {
+			if n.Total > h[0] {
+				h = minheap.Pop(h)
 			} else {
 				continue
 			}
 		}
-		heap.Push(h, n.Total)
+		h = minheap.Push(h, n.Total)
 	}
-	if h.Len() < int(maxNodes) {
+	if len(h) < int(maxNodes) {
 		return 0
 	}
-	return (*h)[0]
+	return h[0]
 }
 
 type StacktraceTreeTraverseFn = func(index int32, children []int32) error
 
 func (t *StacktraceTree) Traverse(maxNodes int64, fn StacktraceTreeTraverseFn) error {
-	min := t.MinValue(maxNodes)
+	minValue := t.MinValue(maxNodes)
 	children := make([]int32, 0, 128) // Children per node.
 	nodesSize := maxNodes             // Depth search buffer.
 	if nodesSize < 1 || nodesSize > 10<<10 {
@@ -226,13 +248,13 @@ func (t *StacktraceTree) Traverse(maxNodes int64, fn StacktraceTreeTraverseFn) e
 		current, nodes, children = nodes[len(nodes)-1], nodes[:len(nodes)-1], children[:0]
 		var truncated int64
 		n := &t.Nodes[current]
-		if n.Location == stacktraceTreeNodeTruncated {
+		if n.Location == sentinel {
 			goto call
 		}
 
 		for x := n.FirstChild; x > 0; {
 			child := &t.Nodes[x]
-			if child.Total >= min && child.Location != stacktraceTreeNodeTruncated {
+			if child.Total >= minValue && child.Location != sentinel {
 				children = append(children, x)
 			} else {
 				truncated += child.Total
@@ -244,7 +266,7 @@ func (t *StacktraceTree) Traverse(maxNodes int64, fn StacktraceTreeTraverseFn) e
 			// Create a stub for removed nodes.
 			i := len(t.Nodes)
 			t.Nodes = append(t.Nodes, StacktraceNode{
-				Location: stacktraceTreeNodeTruncated,
+				Location: sentinel,
 				Value:    truncated,
 			})
 			children = append(children, int32(i))
@@ -263,10 +285,6 @@ func (t *StacktraceTree) Traverse(maxNodes int64, fn StacktraceTreeTraverseFn) e
 	return nil
 }
 
-const stacktraceTreeNodeTruncated = -1
-
-var lostDuringSerializationNameBytes = []byte(truncatedNodeName)
-
 func (t *StacktraceTree) Bytes(dst io.Writer, maxNodes int64, funcs []string) {
 	if len(t.Nodes) == 0 || len(funcs) == 0 {
 		return
@@ -280,10 +298,9 @@ func (t *StacktraceTree) Bytes(dst io.Writer, maxNodes int64, funcs []string) {
 			// It is guaranteed that funcs slice and its contents are immutable,
 			// and the byte slice backing capacity is managed by GC.
 			name = unsafeStringBytes(funcs[n.Location])
-		case stacktraceTreeNodeTruncated:
-			name = lostDuringSerializationNameBytes
+		case sentinel:
+			name = truncatedNodeNameBytes
 		}
-
 		_, _ = vw.Write(dst, uint64(len(name)))
 		_, _ = dst.Write(name)
 		_, _ = vw.Write(dst, uint64(n.Value))
@@ -293,11 +310,50 @@ func (t *StacktraceTree) Bytes(dst io.Writer, maxNodes int64, funcs []string) {
 }
 
 func unsafeStringBytes(s string) []byte {
-	p := unsafe.Pointer((*reflect.StringHeader)(unsafe.Pointer(&s)).Data)
-	var b []byte
-	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&b))
-	hdr.Data = uintptr(p)
-	hdr.Cap = len(s)
-	hdr.Len = len(s)
-	return b
+	return unsafe.Slice(unsafe.StringData(s), len(s))
+}
+
+func (t *StacktraceTree) Tree(maxNodes int64, names []string) *Tree {
+	if len(t.Nodes) < 2 || len(names) == 0 {
+		// stack trace tree has root at 0: trees with less
+		// than 2 nodes are considered empty.
+		return new(Tree)
+	}
+
+	nodesSize := maxNodes
+	if nodesSize < 1 || nodesSize > 10<<10 {
+		nodesSize = 1 << 10 // Sane default.
+	}
+	root := new(node) // Virtual root node.
+	nodes := make([]*node, 1, nodesSize)
+	nodes[0] = root
+	var current *node
+
+	_ = t.Traverse(maxNodes, func(index int32, children []int32) error {
+		current, nodes = nodes[len(nodes)-1], nodes[:len(nodes)-1]
+		sn := &t.Nodes[index]
+		var name string
+		if sn.Location < 0 {
+			name = truncatedNodeName
+			sn.Total = sn.Value
+		} else {
+			name = names[sn.Location]
+		}
+		n := current.insert(name)
+		n.self = sn.Value
+		n.total = sn.Total
+		n.children = make([]*node, 0, len(children))
+		for i := 0; i < len(children); i++ {
+			nodes = append(nodes, n)
+		}
+		return nil
+	})
+
+	// Roots should not have parents.
+	s := root.children[0].children
+	for _, n := range s {
+		n.parent.parent = nil
+	}
+
+	return &Tree{root: s}
 }

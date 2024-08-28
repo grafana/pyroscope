@@ -180,7 +180,9 @@ function ComparisonApp() {
           title={
             <ChartTitle
               titleKey={
-                isSidesHasSameUnits ? leftSide.metadata.units : undefined
+                isSidesHasSameUnits
+                  ? (leftSide.metadata.name as any)
+                  : undefined
               }
             />
           }
@@ -228,6 +230,7 @@ function ComparisonApp() {
           data-testid="comparison-container"
         >
           <Panel
+            dataTestId="baseline-panel"
             isLoading={isLoading}
             className={styles.comparisonPane}
             title={<ChartTitle titleKey="baseline" color={leftColor} />}
@@ -277,6 +280,7 @@ function ComparisonApp() {
           </Panel>
 
           <Panel
+            dataTestId="comparison-panel"
             isLoading={isLoading}
             className={styles.comparisonPane}
             title={<ChartTitle titleKey="comparison" color={rightColor} />}

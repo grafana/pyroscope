@@ -84,10 +84,10 @@ func TestGroupMaxMinTime(t *testing.T) {
 func TestBucketCompactor_FilterOwnJobs(t *testing.T) {
 	jobsFn := func() []*Job {
 		return []*Job{
-			NewJob("user", "key1", labels.EmptyLabels(), 0, false, 0, ""),
-			NewJob("user", "key2", labels.EmptyLabels(), 0, false, 0, ""),
-			NewJob("user", "key3", labels.EmptyLabels(), 0, false, 0, ""),
-			NewJob("user", "key4", labels.EmptyLabels(), 0, false, 0, ""),
+			NewJob("user", "key1", labels.EmptyLabels(), 0, false, 0, 0, ""),
+			NewJob("user", "key2", labels.EmptyLabels(), 0, false, 0, 0, ""),
+			NewJob("user", "key3", labels.EmptyLabels(), 0, false, 0, 0, ""),
+			NewJob("user", "key4", labels.EmptyLabels(), 0, false, 0, 0, ""),
 		}
 	}
 
@@ -134,13 +134,13 @@ func TestBucketCompactor_FilterOwnJobs(t *testing.T) {
 }
 
 func TestBlockMaxTimeDeltas(t *testing.T) {
-	j1 := NewJob("user", "key1", labels.EmptyLabels(), 0, false, 0, "")
+	j1 := NewJob("user", "key1", labels.EmptyLabels(), 0, false, 0, 0, "")
 	require.NoError(t, j1.AppendMeta(&block.Meta{
 		MinTime: 1500002700159,
 		MaxTime: 1500002800159,
 	}))
 
-	j2 := NewJob("user", "key2", labels.EmptyLabels(), 0, false, 0, "")
+	j2 := NewJob("user", "key2", labels.EmptyLabels(), 0, false, 0, 0, "")
 	require.NoError(t, j2.AppendMeta(&block.Meta{
 		MinTime: 1500002600159,
 		MaxTime: 1500002700159,

@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/flagext"
@@ -32,8 +32,10 @@ import (
 	"github.com/grafana/pyroscope/pkg/frontend/frontendpb"
 	"github.com/grafana/pyroscope/pkg/querier/stats"
 	"github.com/grafana/pyroscope/pkg/scheduler/schedulerdiscovery"
+	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
 	"github.com/grafana/pyroscope/pkg/util/httpgrpc"
 	"github.com/grafana/pyroscope/pkg/util/httpgrpcutil"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 // Config for a Frontend.
@@ -77,6 +79,7 @@ func (cfg *Config) Validate() error {
 // dispatches them to backends via gRPC, and handles retries for requests which failed.
 type Frontend struct {
 	services.Service
+	connectgrpc.GRPCRoundTripper
 
 	cfg Config
 	log log.Logger
@@ -98,6 +101,8 @@ type Limits interface {
 	MaxQueryParallelism(string) int
 	MaxQueryLength(tenantID string) time.Duration
 	MaxQueryLookback(tenantID string) time.Duration
+	QueryAnalysisEnabled(string) bool
+	validation.FlameGraphLimits
 }
 
 type frontendRequest struct {
@@ -146,6 +151,7 @@ func NewFrontend(cfg Config, limits Limits, log log.Logger, reg prometheus.Regis
 		schedulerWorkersWatcher: services.NewFailureWatcher(),
 		requests:                newRequestsInProgress(),
 	}
+	f.GRPCRoundTripper = &realFrontendRoundTripper{frontend: f}
 	// Randomize to avoid getting responses from queries sent before restart, which could lead to mixing results
 	// between different queries. Note that frontend verifies the user, so it cannot leak results between tenants.
 	// This isn't perfect, but better than nothing.
@@ -188,8 +194,15 @@ func (f *Frontend) stopping(_ error) error {
 	return errors.Wrap(services.StopAndAwaitTerminated(context.Background(), f.schedulerWorkers), "failed to stop frontend scheduler workers")
 }
 
+// allow to test the frontend without the need of a real roundertripper
+type realFrontendRoundTripper struct {
+	frontend *Frontend
+}
+
 // RoundTripGRPC round trips a proto (instead of an HTTP request).
-func (f *Frontend) RoundTripGRPC(ctx context.Context, req *httpgrpc.HTTPRequest) (*httpgrpc.HTTPResponse, error) {
+func (rt *realFrontendRoundTripper) RoundTripGRPC(ctx context.Context, req *httpgrpc.HTTPRequest) (*httpgrpc.HTTPResponse, error) {
+	f := rt.frontend
+
 	if s := f.State(); s != services.Running {
 		return nil, fmt.Errorf("frontend not running: %v", s)
 	}

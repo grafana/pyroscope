@@ -28,7 +28,7 @@ const (
 
 	// sharedOptionWithRingClient is a message appended to all config options that should be also
 	// set on the components running the store-gateway ring client.
-	sharedOptionWithRingClient = " This option needs be set both on the store-gateway, querier and ruler when running in microservices mode."
+	sharedOptionWithRingClient = " This option needs be set both on the store-gateway and querier when running in microservices mode."
 )
 
 var (
@@ -68,6 +68,12 @@ type RingConfig struct {
 
 	// Injected internally
 	RingCheckPeriod time.Duration `yaml:"-"`
+}
+
+func (cfg *RingConfig) ToRingConfig() ring.Config {
+	ringCfg := cfg.Ring.ToRingConfig()
+	ringCfg.ReplicationFactor = cfg.ReplicationFactor
+	return ringCfg
 }
 
 // RegisterFlags adds the flags required to config this to the given FlagSet

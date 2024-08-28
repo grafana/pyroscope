@@ -21,6 +21,31 @@
       "replicas": 1,
       "type": "statefulset"
     },
+    "enabled": false
+  },
+  "alloy": {
+    "alloy": {
+      "clustering": {
+        "enabled": true
+      },
+      "configMap": {
+        "create": false,
+        "name": "alloy-config-pyroscope"
+      },
+      "stabilityLevel": "public-preview"
+    },
+    "controller": {
+      "podAnnotations": {
+        "profiles.grafana.com/cpu.port_name": "http-metrics",
+        "profiles.grafana.com/cpu.scrape": "true",
+        "profiles.grafana.com/goroutine.port_name": "http-metrics",
+        "profiles.grafana.com/goroutine.scrape": "true",
+        "profiles.grafana.com/memory.port_name": "http-metrics",
+        "profiles.grafana.com/memory.scrape": "true"
+      },
+      "replicas": 1,
+      "type": "statefulset"
+    },
     "enabled": true
   },
   "ingress": {
@@ -56,6 +81,7 @@
   },
   "pyroscope": {
     "affinity": {},
+    "cluster_domain": ".cluster.local.",
     "components": {},
     "config": "{{- if .Values.minio.enabled }}\nstorage:\n  backend: s3\n  s3:\n    endpoint: \"{{ include \"pyroscope.fullname\" . }}-minio:9000\"\n    bucket_name: {{(index .Values.minio.buckets 0).name | quote }}\n    access_key_id: {{ .Values.minio.rootUser | quote }}\n    secret_access_key: {{ .Values.minio.rootPassword | quote }}\n    insecure: true\n{{- end }}\n",
     "dnsPolicy": "ClusterFirst",
@@ -71,7 +97,7 @@
     "image": {
       "pullPolicy": "IfNotPresent",
       "repository": "grafana/pyroscope",
-      "tag": "1.1.5"
+      "tag": ""
     },
     "imagePullSecrets": [],
     "initContainers": [],
@@ -113,6 +139,7 @@
     "resources": {},
     "securityContext": {},
     "service": {
+      "annotations": {},
       "port": 4040,
       "port_name": "http2",
       "scheme": "HTTP",
@@ -126,5 +153,19 @@
     "structuredConfig": {},
     "tenantOverrides": {},
     "tolerations": []
+  },
+  "serviceMonitor": {
+    "annotations": {},
+    "enabled": false,
+    "interval": null,
+    "labels": {},
+    "matchExpressions": [],
+    "metricRelabelings": [],
+    "namespaceSelector": {},
+    "relabelings": [],
+    "scheme": "http",
+    "scrapeTimeout": null,
+    "targetLabels": [],
+    "tlsConfig": null
   }
 }

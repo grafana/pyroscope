@@ -39,13 +39,7 @@ func newSampleDict(samples schemav1.Samples) map[uint32]uint64 {
 	return dict
 }
 
-func (d *deltaProfiles) computeDelta(ps schemav1.InMemoryProfile, lbs phlaremodel.Labels) schemav1.Samples {
-	// there's no delta to compute for those profile.
-	if !isDelta(lbs) {
-		// Trim zero and negative values.
-		return ps.Samples.Compact(false)
-	}
-
+func (d *deltaProfiles) computeDelta(ps schemav1.InMemoryProfile) schemav1.Samples {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 
@@ -77,13 +71,8 @@ func (d *deltaProfiles) computeDelta(ps schemav1.InMemoryProfile, lbs phlaremode
 	return ps.Samples.Compact(false).Clone()
 }
 
-func isDelta(lbs phlaremodel.Labels) bool {
-	switch lbs.Get(phlaremodel.LabelNameDelta) {
-	case "false":
-		return false
-	case "true":
-		return true
-	}
+func isDeltaSupported(lbs phlaremodel.Labels) bool {
+	// only compute delta for allocs memory profile.
 	if lbs.Get(model.MetricNameLabel) == memoryProfileName {
 		ty := lbs.Get(phlaremodel.LabelNameType)
 		if ty == allocObjectTypeName || ty == allocSpaceTypeName {

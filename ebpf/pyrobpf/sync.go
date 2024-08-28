@@ -1,5 +1,7 @@
 package pyrobpf
 
+const MapNamePIDs = "pids"
+
 type ProfilingType uint8
 
 //#define PROFILING_TYPE_UNKNOWN 1
@@ -24,4 +26,14 @@ var (
 	PidOpRequestUnknownProcessInfo PidOp = 1
 	PidOpDead                      PidOp = 2
 	PidOpRequestExecProcessInfo    PidOp = 3
+)
+
+//#define SAMPLE_KEY_FLAG_PYTHON_STACK 1
+//#define SAMPLE_KEY_FLAG_STACK_TRUNCATED 2
+
+type SampleKeyFlag uint32
+
+var (
+	SampleKeyFlagPythonStack    SampleKeyFlag = 1
+	SampleKeyFlagStackTruncated SampleKeyFlag = 2
 )

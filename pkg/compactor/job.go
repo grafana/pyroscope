@@ -33,10 +33,11 @@ type Job struct {
 
 	// The number of shards to split compacted block into. Not used if splitting is disabled.
 	splitNumShards uint32
+	splitStageSize uint32
 }
 
 // NewJob returns a new compaction Job.
-func NewJob(userID string, key string, lset labels.Labels, resolution int64, useSplitting bool, splitNumShards uint32, shardingKey string) *Job {
+func NewJob(userID string, key string, lset labels.Labels, resolution int64, useSplitting bool, splitNumShards, splitStageSize uint32, shardingKey string) *Job {
 	return &Job{
 		userID:         userID,
 		key:            key,
@@ -44,6 +45,7 @@ func NewJob(userID string, key string, lset labels.Labels, resolution int64, use
 		resolution:     resolution,
 		useSplitting:   useSplitting,
 		splitNumShards: splitNumShards,
+		splitStageSize: splitStageSize,
 		shardingKey:    shardingKey,
 	}
 }
@@ -143,6 +145,11 @@ func (job *Job) UseSplitting() bool {
 // SplittingShards returns the number of output shards to build if splitting is enabled.
 func (job *Job) SplittingShards() uint32 {
 	return job.splitNumShards
+}
+
+// SplitStageSize returns the number of stages split shards will be written to.
+func (job *Job) SplitStageSize() uint32 {
+	return job.splitStageSize
 }
 
 // ShardingKey returns the key used to shard this job across multiple instances.

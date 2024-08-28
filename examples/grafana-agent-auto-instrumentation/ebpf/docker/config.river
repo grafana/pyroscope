@@ -1,0 +1,40 @@
+
+discovery.docker "all" {
+	host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "pyroscope" {
+    targets = discovery.docker.all.targets
+    // Filter needed containers based on docker labels
+    // See more info at reference doc https://grafana.com/docs/agent/next/flow/reference/components/discovery.docker/
+    rule {
+        source_labels = ["__meta_docker_container_name"]
+        regex = ".*pyroscope.*"
+        action = "keep"
+    }
+    // provide arbitrary service_name label, otherwise it will default to value of __meta_docker_container_name
+    rule {
+        source_labels = ["__meta_docker_container_name"]
+        regex = ".*pyroscope.*"
+        action = "replace"
+        target_label = "service_name"
+        replacement = "ebpf/docker/pyroscope"
+    }
+}
+
+
+pyroscope.ebpf "instance" {
+  forward_to = [pyroscope.write.endpoint.receiver]
+  targets = discovery.relabel.pyroscope.output
+}
+
+pyroscope.write "endpoint" {
+  endpoint {
+    url = "http://pyroscope:4040"
+    // url = "<Grafana Cloud URL>"
+    // basic_auth {
+    //  username = "<Grafana Cloud User>"
+    //  password = "<Grafana Cloud Password>"
+    // }
+  }
+}

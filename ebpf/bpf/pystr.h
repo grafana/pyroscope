@@ -31,8 +31,8 @@ struct _object {
 
 
 // Note: it is incomplete
-// Some state fields may be ommited
-// Also wstr field is ommited
+// Some state fields may be omitted
+// Also wstr field is omitted
 // Only first 32 bytes  are here
 typedef struct {
     struct _object                   ob_base;              /*     0    16 */

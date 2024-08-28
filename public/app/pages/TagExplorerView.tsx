@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import type { Maybe } from 'true-myth';
-import type { ClickEvent } from '@pyroscope/ui/Menu';
 import Color from 'color';
 import TotalSamplesChart from '@pyroscope/pages/tagExplorer/components/TotalSamplesChart';
 import type { Profile } from '@pyroscope/legacy/models';
@@ -10,7 +9,6 @@ import Toolbar from '@pyroscope/components/Toolbar';
 import TimelineChartWrapper, {
   TimelineGroupData,
 } from '@pyroscope/components/TimelineChart/TimelineChartWrapper';
-import Dropdown, { MenuItem } from '@pyroscope/ui/Dropdown';
 import TagsSelector from '@pyroscope/pages/tagExplorer/components/TagsSelector';
 import TableUI, { useTableSort, BodyRow } from '@pyroscope/ui/Table';
 import useTimeZone from '@pyroscope/hooks/timeZone.hook';
@@ -23,7 +21,6 @@ import {
   selectQueries,
   selectContinuousState,
   selectAppTags,
-  TagsState,
   fetchTagExplorerView,
   fetchTagExplorerViewProfile,
   ALL_TAGS,
@@ -47,6 +44,8 @@ import {
 import styles from './TagExplorerView.module.scss';
 import { formatTitle } from './formatTitle';
 import { FlameGraphWrapper } from '@pyroscope/components/FlameGraphWrapper';
+import profileMetrics from '../constants/profile-metrics.json';
+import { ExploreHeader } from '@pyroscope/pages/tagExplorer/components/ExploreHeader';
 
 const TIMELINE_SERIES_COLORS = [
   Color.rgb(242, 204, 12),
@@ -159,6 +158,15 @@ const TIMELINE_WRAPPER_ID = 'explore_timeline_wrapper';
 const getTimelineColor = (index: number, palette: Color[]): Color =>
   Color(palette[index % (palette.length - 1)]);
 
+export const getProfileMetricTitle = (appName: Maybe<string>) => {
+  const name = appName.unwrapOr('');
+  const profileMetric = (profileMetrics as Record<string, any>)[name];
+
+  return profileMetric
+    ? `${profileMetric.type} (${profileMetric.group})`
+    : appName.unwrapOr('');
+};
+
 function TagExplorerView() {
   const { offset } = useTimeZone();
   const dispatch = useAppDispatch();
@@ -193,10 +201,10 @@ function TagExplorerView() {
       return () => fetchData.abort('cancel');
     }
     return undefined;
-  }, [from, until, query, groupByTagValue, dispatch]);
+  }, [from, until, query, groupByTagValue, refreshToken, dispatch]);
 
   useEffect(() => {
-    if (from && until && query) {
+    if (from && until && query && groupByTag) {
       const fetchData = dispatch(fetchTagExplorerView(null));
       return () => fetchData.abort('cancel');
     }
@@ -375,9 +383,7 @@ function TagExplorerView() {
         </Box>
         <CollapseBox
           isLoading={dataLoading}
-          title={appName
-            .map((a) => `${a} Tag Breakdown`)
-            .unwrapOr('Tag Breakdown')}
+          title={`${getProfileMetricTitle(appName)} Tag Breakdown`}
         >
           <div className={styles.statisticsBox}>
             <div className={styles.pieChartWrapper}>
@@ -638,83 +644,6 @@ function Table({
         className={styles.tagExplorerTable}
         tableStyle={{ tableLayout: 'auto' }}
       />
-    </div>
-  );
-}
-
-function ExploreHeader({
-  appName,
-  whereDropdownItems,
-  tags,
-  selectedTag,
-  selectedTagValue,
-  handleGroupByTagChange,
-  handleGroupByTagValueChange,
-}: {
-  appName: Maybe<string>;
-  whereDropdownItems: string[];
-  tags: TagsState;
-  selectedTag: string;
-  selectedTagValue: string;
-  handleGroupByTagChange: (value: string) => void;
-  handleGroupByTagValueChange: (value: string) => void;
-}) {
-  const tagKeys = Object.keys(tags.tags);
-  const groupByDropdownItems =
-    tagKeys.length > 0 ? tagKeys : ['No tags available'];
-
-  const handleGroupByClick = (e: ClickEvent) => {
-    handleGroupByTagChange(e.value);
-  };
-
-  const handleGroupByValueClick = (e: ClickEvent) => {
-    handleGroupByTagValueChange(e.value);
-  };
-
-  useEffect(() => {
-    if (tagKeys.length && !selectedTag) {
-      handleGroupByTagChange(tagKeys[0]);
-    }
-  }, [tagKeys, selectedTag, handleGroupByTagChange]);
-
-  return (
-    <div className={styles.header} data-testid="explore-header">
-      <span className={styles.title}>{appName.unwrapOr('')}</span>
-      <div className={styles.queryGrouppedBy}>
-        <span className={styles.selectName}>grouped by</span>
-        <Dropdown
-          label="select tag"
-          value={selectedTag ? `tag: ${selectedTag}` : 'select tag'}
-          onItemClick={tagKeys.length > 0 ? handleGroupByClick : undefined}
-          menuButtonClassName={
-            selectedTag === '' ? styles.notSelectedTagDropdown : undefined
-          }
-        >
-          {groupByDropdownItems.map((tagName) => (
-            <MenuItem key={tagName} value={tagName}>
-              {tagName}
-            </MenuItem>
-          ))}
-        </Dropdown>
-      </div>
-      <div className={styles.query}>
-        <span className={styles.selectName}>where</span>
-        <Dropdown
-          label="select where"
-          value={`${selectedTag ? `${selectedTag} = ` : selectedTag} ${
-            selectedTagValue || ALL_TAGS
-          }`}
-          onItemClick={handleGroupByValueClick}
-          menuButtonClassName={styles.whereSelectButton}
-        >
-          {/* always show "All" option */}
-          {[ALL_TAGS, ...whereDropdownItems].map((tagGroupName) => (
-            <MenuItem key={tagGroupName} value={tagGroupName}>
-              {tagGroupName}
-            </MenuItem>
-          ))}
-        </Dropdown>
-      </div>
     </div>
   );
 }

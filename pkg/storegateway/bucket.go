@@ -13,6 +13,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/oklog/ulid"
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
@@ -44,16 +45,19 @@ type BucketStore struct {
 	stats   BucketStoreStats
 }
 
-func NewBucketStore(bucket phlareobj.Bucket, fetcher block.MetadataFetcher, tenantID string, syncDir string, logger log.Logger, Metrics *Metrics) (*BucketStore, error) {
+func NewBucketStore(bucket phlareobj.Bucket, fetcher block.MetadataFetcher, tenantID string, syncDir string, logger log.Logger, reg prometheus.Registerer) (*BucketStore, error) {
 	s := &BucketStore{
 		fetcher:  fetcher,
 		bucket:   phlareobj.NewTenantBucketClient(tenantID, bucket, nil),
 		tenantID: tenantID,
 		syncDir:  syncDir,
-		logger:   logger,
+		logger:   log.With(logger, "tenant", tenantID),
 		blockSet: newBucketBlockSet(),
 		blocks:   map[ulid.ULID]*Block{},
-		metrics:  Metrics,
+		metrics: NewBucketStoreMetrics(prometheus.WrapRegistererWith(
+			prometheus.Labels{"tenant": tenantID},
+			reg,
+		)),
 	}
 
 	if err := os.MkdirAll(syncDir, 0o750); err != nil {
@@ -176,7 +180,7 @@ func (bs *BucketStore) addBlock(ctx context.Context, meta *block.Meta) (err erro
 	b, err := func() (*Block, error) {
 		bs.blocksMx.Lock()
 		defer bs.blocksMx.Unlock()
-
+		ctx = phlaredb.ContextWithBlockMetrics(ctx, bs.metrics.blockMetrics)
 		b, err := bs.createBlock(ctx, meta)
 		if err != nil {
 			return nil, errors.Wrap(err, "load block from disk")

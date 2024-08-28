@@ -35,6 +35,8 @@ Usage of ./pyroscope:
     	How many times to retry a failed compaction within a single compaction run. (default 3)
   -compactor.compaction-split-by string
     	Experimental: The strategy to use when splitting blocks during compaction. Supported values are: fingerprint, stacktracePartition. (default "fingerprint")
+  -compactor.compactor-downsampler-enabled
+    	If enabled, the compactor will downsample profiles in blocks at compaction level 3 and above. The original profiles are also kept. (default true)
   -compactor.compactor-tenant-shard-size int
     	Max number of compactors that can compact blocks for single tenant. 0 to disable the limit and use all compactors.
   -compactor.data-dir string
@@ -43,6 +45,8 @@ Usage of ./pyroscope:
     	Time before a block marked for deletion is deleted from bucket. If not 0, blocks will be marked for deletion and compactor component will permanently delete blocks marked for deletion from the bucket. If 0, blocks will be deleted straight away. Note that deleting blocks immediately can cause query failures. (default 12h0m0s)
   -compactor.disabled-tenants comma-separated-list-of-strings
     	Comma separated list of tenants that cannot be compacted by this compactor. If specified, and compactor would normally pick given tenant for compaction (via -compactor.enabled-tenants or sharding), it will be ignored instead.
+  -compactor.downsampler-enabled
+    	If enabled, the compactor will downsample profiles in blocks at compaction level 3 and above. The original profiles are also kept.
   -compactor.enabled-tenants comma-separated-list-of-strings
     	Comma separated list of tenants that can be compacted. If specified, only these tenants will be compacted by compactor, otherwise all tenants can be compacted. Subject to sharding.
   -compactor.first-level-compaction-wait-period duration
@@ -131,12 +135,16 @@ Usage of ./pyroscope:
     	Minimum time to wait for ring stability at startup. 0 to disable.
   -compactor.split-and-merge-shards int
     	The number of shards to use when splitting blocks. 0 to disable splitting.
+  -compactor.split-and-merge-stage-size int
+    	Number of stages split shards will be written to. Number of output split shards is controlled by -compactor.split-and-merge-shards.
   -compactor.split-groups int
     	Number of groups that blocks for splitting should be grouped into. Each group of blocks is then split separately. Number of output split shards is controlled by -compactor.split-and-merge-shards. (default 1)
   -config.expand-env
     	Expands ${var} in config according to the values of the environment variables.
   -config.file string
     	yaml file to load
+  -config.show_banner
+    	Prints the application banner at startup. (default true)
   -consul.acl-token string
     	ACL Token used to interact with Consul.
   -consul.cas-retry-delay duration
@@ -151,6 +159,10 @@ Usage of ./pyroscope:
     	Burst size used in rate limit. Values less than 1 are treated as 1. (default 1)
   -consul.watch-rate-limit float
     	Rate limit when watching key or prefix in Consul, in requests per second. 0 disables the rate limit. (default 1)
+  -distributor.aggregation-period duration
+    	Duration of the distributor aggregation period. Requires aggregation window to be specified. 0 to disable.
+  -distributor.aggregation-window duration
+    	Duration of the distributor aggregation window. Requires aggregation period to be specified. 0 to disable.
   -distributor.client-cleanup-period duration
     	How frequently to clean up clients for ingesters that have gone away. (default 15s)
   -distributor.excluded-zones comma-separated-list-of-strings
@@ -163,6 +175,10 @@ Usage of ./pyroscope:
     	Per-tenant allowed ingestion burst size (in sample size). Units in MB. The burst size refers to the per-distributor local rate limiter, and should be set at least to the maximum profile size expected in a single push request. (default 2)
   -distributor.ingestion-rate-limit-mb float
     	Per-tenant ingestion rate limit in sample size per second. Units in MB. (default 4)
+  -distributor.ingestion-relabeling-default-rules-position value
+    	Position of the default ingestion relabeling rules in relation to relabel rules from overrides. Valid values are 'first', 'last' or 'disabled'. (default "first")
+  -distributor.ingestion-relabeling-rules value
+    	List of ingestion relabel configurations. The relabeling rules work the same way, as those of [Prometheus](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config). All rules are applied in the order they are specified. Note: In most situations, it is more effective to use relabeling directly in Grafana Alloy.
   -distributor.ingestion-tenant-shard-size int
     	The tenant's shard size used by shuffle-sharding. Must be set both on ingesters and distributors. 0 disables shuffle sharding.
   -distributor.push.timeout duration
@@ -237,6 +253,12 @@ Usage of ./pyroscope:
     	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
   -distributor.zone-awareness-enabled
     	True to enable the zone-awareness and replicate ingested samples across different availability zones.
+  -embedded-grafana.data-path string
+    	The directory where the Grafana data will be stored. (default "./data/__embedded_grafana/")
+  -embedded-grafana.listen-port int
+    	The port on which the Grafana will listen. (default 4041)
+  -embedded-grafana.pyroscope-url string
+    	The URL of the Pyroscope instance to use for the Grafana datasources. (default "http://localhost:4040")
   -etcd.dial-timeout duration
     	The dial timeout for the etcd connection. (default 10s)
   -etcd.endpoints string
@@ -465,6 +487,14 @@ Usage of ./pyroscope:
     	Directory used for local storage. (default "./data")
   -pyroscopedb.max-block-duration duration
     	Upper limit to the duration of a Pyroscope block. (default 1h0m0s)
+  -pyroscopedb.retention-policy-disable
+    	Disable retention policy enforcement
+  -pyroscopedb.retention-policy-enforcement-interval duration
+    	How often to enforce disk retention (default 5m0s)
+  -pyroscopedb.retention-policy-min-disk-available-percentage float
+    	Which percentage of free disk space to keep (default 0.05)
+  -pyroscopedb.retention-policy-min-free-disk-gb uint
+    	How much available disk space to keep in GiB (default 10)
   -pyroscopedb.row-group-target-size uint
     	How big should a single row group be uncompressed (default 1342177280)
   -querier.client-cleanup-period duration
@@ -521,12 +551,20 @@ Usage of ./pyroscope:
     	Querier ID, sent to the query-frontend to identify requests from the same querier. Defaults to hostname.
   -querier.max-concurrent int
     	The maximum number of concurrent queries allowed. (default 4)
+  -querier.max-flamegraph-nodes-default int
+    	Maximum number of flame graph nodes by default. 0 to disable. (default 8192)
+  -querier.max-flamegraph-nodes-max int
+    	Maximum number of flame graph nodes allowed. 0 to disable.
   -querier.max-query-length duration
     	The limit to length of queries. 0 to disable. (default 1d)
   -querier.max-query-lookback duration
     	Limit how far back in profiling data can be queried, up until lookback duration ago. This limit is enforced in the query frontend. If the requested time range is outside the allowed range, the request will not fail, but will be modified to only query data within the allowed time range. 0 to disable, default to 7d. (default 1w)
   -querier.max-query-parallelism int
     	Maximum number of queries that will be scheduled in parallel by the frontend.
+  -querier.query-analysis-enabled
+    	Whether query analysis is enabled in the query frontend. If disabled, the /AnalyzeQuery endpoint will return an empty response. (default true)
+  -querier.query-analysis-series-enabled
+    	Whether the series portion of query analysis is enabled. If disabled, no series data (e.g., series count) will be calculated by the /AnalyzeQuery endpoint.
   -querier.query-store-after duration
     	The time after which a metric should be queried from storage and not just ingesters. 0 means all queries are sent to store. If this option is enabled, the time range of the query sent to the store-gateway will be manipulated to ensure the query end is not more recent than 'now - query-store-after'. (default 4h0m0s)
   -querier.split-queries-by-interval duration
@@ -728,9 +766,9 @@ Usage of ./pyroscope:
   -server.grpc-max-concurrent-streams uint
     	Limit on the number of concurrent streams for gRPC calls per client connection (0 = unlimited) (default 100)
   -server.grpc-max-recv-msg-size-bytes int
-    	Limit on the size of a gRPC message this server can receive (bytes). (default 4194304)
+    	Limit on the size of a gRPC message this server can receive (bytes). (default 104857600)
   -server.grpc-max-send-msg-size-bytes int
-    	Limit on the size of a gRPC message this server can send (bytes). (default 4194304)
+    	Limit on the size of a gRPC message this server can send (bytes). (default 104857600)
   -server.grpc-tls-ca-path string
     	GRPC TLS Client CA path.
   -server.grpc-tls-cert-path string
@@ -746,13 +784,15 @@ Usage of ./pyroscope:
   -server.grpc.keepalive.max-connection-idle duration
     	The duration after which an idle connection should be closed. Default: infinity (default 2562047h47m16.854775807s)
   -server.grpc.keepalive.min-time-between-pings duration
-    	Minimum amount of time a client should wait before sending a keepalive ping. If client sends keepalive ping more often, server will send GOAWAY and close the connection. (default 5m0s)
+    	Minimum amount of time a client should wait before sending a keepalive ping. If client sends keepalive ping more often, server will send GOAWAY and close the connection. (default 1s)
   -server.grpc.keepalive.ping-without-stream-allowed
     	If true, server allows keepalive pings even when there are no active streams(RPCs). If false, and client sends ping when there are no active streams, server will send GOAWAY and close the connection.
   -server.grpc.keepalive.time duration
     	Duration after which a keepalive probe is sent in case of no activity over the connection., Default: 2h (default 2h0m0s)
   -server.grpc.keepalive.timeout duration
     	After having pinged for keepalive check, the duration after which an idle connection should be closed, Default: 20s (default 20s)
+  -server.grpc.num-workers int
+    	If non-zero, configures the amount of GRPC server workers used to serve the requests.
   -server.http-conn-limit int
     	Maximum number of simultaneous http connections, <=0 to disable
   -server.http-idle-timeout duration
@@ -763,8 +803,12 @@ Usage of ./pyroscope:
     	HTTP server listen network, default tcp (default "tcp")
   -server.http-listen-port int
     	HTTP server listen port. (default 4040)
+  -server.http-log-closed-connections-without-response-enabled
+    	Log closed connections that did not receive any response, most likely because client didn't send any request within timeout.
+  -server.http-read-header-timeout duration
+    	Read timeout for HTTP request headers. If set to 0, value of -server.http-read-timeout is used.
   -server.http-read-timeout duration
-    	Read timeout for HTTP server (default 30s)
+    	Read timeout for entire HTTP request, including headers and body. (default 30s)
   -server.http-tls-ca-path string
     	HTTP TLS Client CA path.
   -server.http-tls-cert-path string
@@ -791,24 +835,28 @@ Usage of ./pyroscope:
     	Base path to serve all API routes from (e.g. /v1/)
   -server.register-instrumentation
     	Register the intrumentation handlers (/metrics etc). (default true)
+  -server.report-grpc-codes-in-instrumentation-label-enabled
+    	If set to true, gRPC statuses will be reported in instrumentation labels with their string representations. Otherwise, they will be reported as "error".
   -server.tls-cipher-suites string
     	Comma-separated list of cipher suites to use. If blank, the default Go cipher suites is used.
   -server.tls-min-version string
     	Minimum TLS version to use. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13. If blank, the Go TLS minimum version is used.
   -storage.azure.account-key string
-    	Azure storage account key
+    	Azure storage account key. If unset, Azure managed identities will be used for authentication instead.
   -storage.azure.account-name string
     	Azure storage account name
+  -storage.azure.connection-string string
+    	If `connection-string` is set, the value of `endpoint-suffix` will not be used. Use this method over `account-key` if you need to authenticate via a SAS token. Or if you use the Azurite emulator.
   -storage.azure.container-name string
     	Azure storage container name
   -storage.azure.endpoint-suffix string
     	Azure storage endpoint suffix without schema. The account name will be prefixed to this value to create the FQDN. If set to empty string, default endpoint suffix is used.
   -storage.azure.max-retries int
-    	Number of retries for recoverable errors (default 20)
+    	Number of retries for recoverable errors (default 3)
   -storage.azure.user-assigned-id string
-    	User assigned identity. If empty, then System assigned identity is used.
+    	User assigned managed identity. If empty, then System assigned identity is used.
   -storage.backend string
-    	Backend storage to use. Supported backends are: s3, gcs, azure, swift, filesystem, cos. (default "filesystem")
+    	Backend storage to use. Supported backends are: s3, gcs, azure, swift, filesystem, cos.
   -storage.cos.app-id string
     	COS app id
   -storage.cos.bucket string
@@ -838,7 +886,7 @@ Usage of ./pyroscope:
   -storage.cos.tls-handshake-timeout duration
     	Maximum time to wait for a TLS handshake. 0 means no limit. (default 10s)
   -storage.filesystem.dir string
-    	Local filesystem storage directory.
+    	Local filesystem storage directory. (default "./data-shared")
   -storage.gcs.bucket-name string
     	GCS bucket name
   -storage.gcs.service-account string
@@ -851,6 +899,8 @@ Usage of ./pyroscope:
     	The S3 bucket endpoint. It could be an AWS S3 endpoint listed at https://docs.aws.amazon.com/general/latest/gr/s3.html or the address of an S3-compatible service in hostname:port format.
   -storage.s3.expect-continue-timeout duration
     	The time to wait for a server's first response headers after fully writing the request headers if the request has an Expect header. 0 to send the request body immediately. (default 1s)
+  -storage.s3.force-path-style
+    	Set this to `true` to force the bucket lookup to be using path-style.
   -storage.s3.http.idle-conn-timeout duration
     	The time an idle connection will remain idle before closing. (default 1m30s)
   -storage.s3.http.insecure-skip-verify
@@ -862,7 +912,7 @@ Usage of ./pyroscope:
   -storage.s3.max-connections-per-host int
     	Maximum number of connections per host. 0 means no limit.
   -storage.s3.max-idle-connections int
-    	Maximum number of idle (keep-alive) connections across all hosts. 0 means no limit. (default 100)
+    	Maximum number of idle (keep-alive) connections across all hosts. 0 means no limit.
   -storage.s3.max-idle-connections-per-host int
     	Maximum number of idle (keep-alive) connections to keep per-host. If 0, a built-in default value is used. (default 100)
   -storage.s3.region string
@@ -984,7 +1034,7 @@ Usage of ./pyroscope:
   -store-gateway.sharding-ring.prefix string
     	The prefix for the keys in the store. Should end with a /. (default "collectors/")
   -store-gateway.sharding-ring.replication-factor int
-    	The replication factor to use when sharding blocks. This option needs be set both on the store-gateway, querier and ruler when running in microservices mode. (default 1)
+    	The replication factor to use when sharding blocks. This option needs be set both on the store-gateway and querier when running in microservices mode. (default 1)
   -store-gateway.sharding-ring.store string
     	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
   -store-gateway.sharding-ring.tokens-file-path string
@@ -996,7 +1046,7 @@ Usage of ./pyroscope:
   -store-gateway.sharding-ring.wait-stability-min-duration duration
     	Minimum time to wait for ring stability at startup, if set to positive value.
   -store-gateway.sharding-ring.zone-awareness-enabled
-    	True to enable zone-awareness and replicate blocks across different availability zones. This option needs be set both on the store-gateway, querier and ruler when running in microservices mode.
+    	True to enable zone-awareness and replicate blocks across different availability zones. This option needs be set both on the store-gateway and querier when running in microservices mode.
   -store-gateway.tenant-shard-size int
     	The tenant's shard size, used when store-gateway sharding is enabled. Value of 0 disables shuffle sharding for the tenant, that is all tenant blocks are sharded across all store-gateway replicas.
   -target comma-separated-list-of-strings
@@ -1007,6 +1057,8 @@ Usage of ./pyroscope:
     	[experimental] Set to true to enable profiling integration.
   -usage-stats.enabled
     	Enable anonymous usage reporting. (default true)
+  -validation.enforce-labels-order
+    	Enforce labels order optimization.
   -validation.max-label-names-per-series int
     	Maximum number of label names per series. (default 30)
   -validation.max-length-label-name int

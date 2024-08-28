@@ -129,13 +129,13 @@ func newStoreGateway(gatewayCfg Config, storageBucket phlareobj.Bucket, ringStor
 	delegate = ring.NewTokensPersistencyDelegate(gatewayCfg.ShardingRing.TokensFilePath, ring.JOINING, delegate, logger)
 	delegate = ring.NewAutoForgetDelegate(ringAutoForgetUnhealthyPeriods*gatewayCfg.ShardingRing.Ring.HeartbeatTimeout, delegate, logger)
 
-	g.ringLifecycler, err = ring.NewBasicLifecycler(lifecyclerCfg, RingNameForServer, RingKey, ringStore, delegate, logger, prometheus.WrapRegistererWithPrefix("cortex_", reg))
+	g.ringLifecycler, err = ring.NewBasicLifecycler(lifecyclerCfg, RingNameForServer, RingKey, ringStore, delegate, logger, prometheus.WrapRegistererWithPrefix("pyroscope_", reg))
 	if err != nil {
 		return nil, errors.Wrap(err, "create ring lifecycler")
 	}
 
-	ringCfg := gatewayCfg.ShardingRing.Ring.ToRingConfig()
-	g.ring, err = ring.NewWithStoreClientAndStrategy(ringCfg, RingNameForServer, RingKey, ringStore, ring.NewIgnoreUnhealthyInstancesReplicationStrategy(), prometheus.WrapRegistererWithPrefix("cortex_", reg), logger)
+	ringCfg := gatewayCfg.ShardingRing.ToRingConfig()
+	g.ring, err = ring.NewWithStoreClientAndStrategy(ringCfg, RingNameForServer, RingKey, ringStore, ring.NewIgnoreUnhealthyInstancesReplicationStrategy(), prometheus.WrapRegistererWithPrefix("pyroscope_", reg), logger)
 	if err != nil {
 		return nil, errors.Wrap(err, "create ring client")
 	}

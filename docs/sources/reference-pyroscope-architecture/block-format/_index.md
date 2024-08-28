@@ -23,12 +23,7 @@ the block there are multiple files:
 
 * `profiles.parquet` [parquet] table that contains profiles.
 
-* `symbols` sub-directory contains profiling symbols that provide a link between 
-  the compiled or interpreted binary code and the original source code:
-   - A `index.symdb` file with meta information, which helps to find symbols for a specific profile.
-   - A `stacktraces.symdb` file contains stack traces compacted in the [parent pointer tree].
-   - Parquet tables for models referenced by stack traces:
-     `locations.parquet`, `functions.parquet`, `mappings.parquet`, `strings.parquet`.
+* `symbols.symdb` that contains symbolic information for the profiles stored in the block.
 
 ## Data model
 
@@ -36,7 +31,7 @@ The data model within the block is fairly aligned to Google's [proto definition]
 
 
 Profile series labels contain additional information gathered at ingestion time and can
-be used to select certain profiles. They are comparable to Prometeus'/Loki's labels
+be used to select certain profiles. They are comparable to Prometheus/Loki labels
 and typical label names are `namespace` and `pod` to describe which workload the profiles
 are coming from.
 

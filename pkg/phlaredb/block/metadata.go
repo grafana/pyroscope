@@ -8,6 +8,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/go-kit/log"
@@ -19,6 +20,9 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/tsdb"
 	"github.com/prometheus/prometheus/tsdb/fileutil"
+
+	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
 const (
@@ -103,6 +107,17 @@ type BlockDesc struct {
 	ULID    ulid.ULID  `json:"ulid"`
 	MinTime model.Time `json:"minTime"`
 	MaxTime model.Time `json:"maxTime"`
+}
+
+type MetaStats struct {
+	BlockStats
+	FileStats      []FileStats
+	TotalSizeBytes uint64
+}
+
+type FileStats struct {
+	RelPath   string
+	SizeBytes uint64
 }
 
 // BlockMetaCompaction holds information about compactions a block went through.
@@ -191,6 +206,36 @@ func (m *Meta) Clone() *Meta {
 		panic(err)
 	}
 	return &clone
+}
+func (m *Meta) BlockInfo() *typesv1.BlockInfo {
+	info := &typesv1.BlockInfo{}
+	m.WriteBlockInfo(info)
+	return info
+}
+
+func (m *Meta) WriteBlockInfo(info *typesv1.BlockInfo) {
+	info.Ulid = m.ULID.String()
+	info.MinTime = int64(m.MinTime)
+	info.MaxTime = int64(m.MaxTime)
+	if info.Compaction == nil {
+		info.Compaction = &typesv1.BlockCompaction{}
+	}
+	info.Compaction.Level = int32(m.Compaction.Level)
+	info.Compaction.Parents = make([]string, len(m.Compaction.Parents))
+	for i, p := range m.Compaction.Parents {
+		info.Compaction.Parents[i] = p.ULID.String()
+	}
+	info.Compaction.Sources = make([]string, len(m.Compaction.Sources))
+	for i, s := range m.Compaction.Sources {
+		info.Compaction.Sources[i] = s.String()
+	}
+	info.Labels = make([]*typesv1.LabelPair, 0, len(m.Labels))
+	for k, v := range m.Labels {
+		info.Labels = append(info.Labels, &typesv1.LabelPair{
+			Name:  k,
+			Value: v,
+		})
+	}
 }
 
 func generateULID() ulid.ULID {
@@ -294,6 +339,48 @@ func (meta *Meta) TSDBBlockMeta() tsdb.BlockMeta {
 		MinTime: int64(meta.MinTime),
 		MaxTime: int64(meta.MaxTime),
 	}
+}
+
+func (meta *Meta) GetStats() MetaStats {
+	fileStats := make([]FileStats, 0, len(meta.Files))
+	totalSizeBytes := uint64(0)
+	for _, file := range meta.Files {
+		fileStats = append(fileStats, FileStats{
+			RelPath:   file.RelPath,
+			SizeBytes: file.SizeBytes,
+		})
+		totalSizeBytes += file.SizeBytes
+	}
+
+	return MetaStats{
+		BlockStats:     meta.Stats,
+		FileStats:      fileStats,
+		TotalSizeBytes: totalSizeBytes,
+	}
+}
+
+func (stats MetaStats) ConvertToBlockStats() *ingestv1.BlockStats {
+	indexBytes := uint64(0)
+	profileBytes := uint64(0)
+	symbolBytes := uint64(0)
+	for _, f := range stats.FileStats {
+		if f.RelPath == IndexFilename {
+			indexBytes = f.SizeBytes
+		} else if f.RelPath == "profiles.parquet" {
+			profileBytes += f.SizeBytes
+		} else if strings.HasPrefix(f.RelPath, "symbols") || filepath.Ext(f.RelPath) == ".symdb" {
+			symbolBytes += f.SizeBytes
+		}
+	}
+	blockStats := &ingestv1.BlockStats{
+		SeriesCount:  stats.NumSeries,
+		ProfileCount: stats.NumProfiles,
+		SampleCount:  stats.NumSamples,
+		IndexBytes:   indexBytes,
+		ProfileBytes: profileBytes,
+		SymbolBytes:  symbolBytes,
+	}
+	return blockStats
 }
 
 // ReadMetaFromDir reads the given meta from <dir>/meta.json.

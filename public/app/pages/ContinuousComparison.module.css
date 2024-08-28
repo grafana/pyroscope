@@ -1,7 +1,7 @@
 .comparisonPane {
   flex: 1;
   width: calc(50% - 15px);
-
+  overflow: hidden;
   margin: 0 5px;
 }
 .comparisonPane:first-child {

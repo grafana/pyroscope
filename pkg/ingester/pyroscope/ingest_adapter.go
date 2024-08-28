@@ -12,7 +12,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/distributor/model"
 	"github.com/grafana/pyroscope/pkg/tenant"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/google/uuid"
 	"github.com/prometheus/prometheus/model/labels"
@@ -118,7 +118,7 @@ func (p *pyroscopeIngesterAdapter) Put(ctx context.Context, pi *storage.PutInput
 	})
 	if pi.SpyName != "" {
 		series.Labels = append(series.Labels, &typesv1.LabelPair{
-			Name:  "pyroscope_spy",
+			Name:  phlaremodel.LabelNamePyroscopeSpy,
 			Value: pi.SpyName,
 		})
 	}
@@ -165,22 +165,6 @@ func (p *pyroscopeIngesterAdapter) Evaluate(input *storage.PutInput) (storage.Sa
 
 func (p *pyroscopeIngesterAdapter) parseToPprof(ctx context.Context, in *ingestion.IngestInput, pprofable ingestion.ParseableToPprof) error {
 	plainReq, err := pprofable.ParseToPprof(ctx, in.Metadata)
-	// ParseToPprof allocates pprof.Profile that have to be closed after use.
-	defer func() {
-		if plainReq == nil {
-			return
-		}
-		for _, s := range plainReq.Series {
-			if s == nil {
-				continue
-			}
-			for _, x := range s.Samples {
-				if x != nil && x.Profile != nil {
-					x.Profile.Close()
-				}
-			}
-		}
-	}()
 	if err != nil {
 		return fmt.Errorf("parsing IngestInput-pprof failed %w", err)
 	}

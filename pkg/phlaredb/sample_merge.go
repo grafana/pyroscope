@@ -2,16 +2,13 @@ package phlaredb
 
 import (
 	"context"
-	"sort"
 	"strings"
 
-	"github.com/google/pprof/profile"
 	"github.com/grafana/dskit/runutil"
 	"github.com/opentracing/opentracing-go"
 	"github.com/parquet-go/parquet-go"
-	"github.com/prometheus/common/model"
-	"github.com/samber/lo"
 
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
@@ -20,48 +17,88 @@ import (
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 )
 
-func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*phlaremodel.Tree, error) {
+func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile], maxNodes int64) (*phlaremodel.Tree, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - Block")
 	defer sp.Finish()
-	r := symdb.NewResolver(ctx, b.symbols)
+	sp.SetTag("block ULID", b.meta.ULID.String())
+
+	if err := b.Open(ctx); err != nil {
+		return nil, err
+	}
+	b.queries.Add(1)
+	defer b.queries.Done()
+
+	ctx = query.AddMetricsToContext(ctx, b.metrics.query)
+	r := symdb.NewResolver(ctx, b.symbols, symdb.WithResolverMaxNodes(maxNodes))
 	defer r.Release()
-	if err := mergeByStacktraces(ctx, b.profiles.file, rows, r); err != nil {
+	if err := mergeByStacktraces(ctx, b.profileSourceTable().file, rows, r); err != nil {
 		return nil, err
 	}
 	return r.Tree()
 }
 
-func (b *singleBlockQuerier) MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profile.Profile, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - Block")
+func (b *singleBlockQuerier) MergePprof(ctx context.Context, rows iter.Iterator[Profile], maxNodes int64, sts *typesv1.StackTraceSelector) (*profilev1.Profile, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergePprof - Block")
 	defer sp.Finish()
-	r := symdb.NewResolver(ctx, b.symbols)
-	defer r.Release()
-	if err := mergeByStacktraces(ctx, b.profiles.file, rows, r); err != nil {
+	sp.SetTag("block ULID", b.meta.ULID.String())
+
+	if err := b.Open(ctx); err != nil {
 		return nil, err
 	}
-	return r.Profile()
+	b.queries.Add(1)
+	defer b.queries.Done()
+
+	ctx = query.AddMetricsToContext(ctx, b.metrics.query)
+	r := symdb.NewResolver(ctx, b.symbols,
+		symdb.WithResolverMaxNodes(maxNodes),
+		symdb.WithResolverStackTraceSelector(sts))
+	defer r.Release()
+	if err := mergeByStacktraces(ctx, b.profileSourceTable().file, rows, r); err != nil {
+		return nil, err
+	}
+	return r.Pprof()
 }
 
-func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error) {
+func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], sts *typesv1.StackTraceSelector, by ...string) ([]*typesv1.Series, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByLabels - Block")
 	defer sp.Finish()
-	m := make(seriesByLabels)
-	columnName := "TotalValue"
-	if b.meta.Version == 1 {
-		columnName = "Samples.list.element.Value"
-	}
-	if err := mergeByLabels(ctx, b.profiles.file, columnName, rows, m, by...); err != nil {
+	sp.SetTag("block ULID", b.meta.ULID.String())
+
+	if err := b.Open(ctx); err != nil {
 		return nil, err
 	}
-	return m.normalize(), nil
+	b.queries.Add(1)
+	defer b.queries.Done()
+
+	ctx = query.AddMetricsToContext(ctx, b.metrics.query)
+	if len(sts.GetCallSite()) == 0 {
+		columnName := "TotalValue"
+		if b.meta.Version == 1 {
+			columnName = "Samples.list.element.Value"
+		}
+		return mergeByLabels(ctx, b.profileSourceTable().file, columnName, rows, by...)
+	}
+	r := symdb.NewResolver(ctx, b.symbols,
+		symdb.WithResolverStackTraceSelector(sts))
+	defer r.Release()
+	return mergeByLabelsWithStackTraceSelector(ctx, b.profileSourceTable().file, rows, r, by...)
 }
 
 func (b *singleBlockQuerier) MergeBySpans(ctx context.Context, rows iter.Iterator[Profile], spanSelector phlaremodel.SpanSelector) (*phlaremodel.Tree, error) {
 	sp, _ := opentracing.StartSpanFromContext(ctx, "MergeBySpans - Block")
 	defer sp.Finish()
+	sp.SetTag("block ULID", b.meta.ULID.String())
+
+	if err := b.Open(ctx); err != nil {
+		return nil, err
+	}
+	b.queries.Add(1)
+	defer b.queries.Done()
+
+	ctx = query.AddMetricsToContext(ctx, b.metrics.query)
 	r := symdb.NewResolver(ctx, b.symbols)
 	defer r.Release()
-	if err := mergeBySpans(ctx, b.profiles.file, rows, r, spanSelector); err != nil {
+	if err := mergeBySpans(ctx, b.profileSourceTable().file, rows, r, spanSelector); err != nil {
 		return nil, err
 	}
 	return r.Tree()
@@ -72,7 +109,8 @@ type Source interface {
 	RowGroups() []parquet.RowGroup
 }
 
-func mergeByStacktraces(ctx context.Context, profileSource Source, rows iter.Iterator[Profile], r *symdb.Resolver) (err error) {
+func mergeByStacktraces[T interface{ StacktracePartition() uint64 }](ctx context.Context, profileSource Source, rows iter.Iterator[T], r *symdb.Resolver,
+) (err error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "mergeByStacktraces")
 	defer sp.Finish()
 	var columns v1.SampleColumns
@@ -86,17 +124,12 @@ func mergeByStacktraces(ctx context.Context, profileSource Source, rows iter.Ite
 	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
 	for profiles.Next() {
 		p := profiles.At()
-		partition := r.Partition(p.Row.StacktracePartition())
-		stacktraces := p.Values[0]
-		values := p.Values[1]
-		for i, sid := range stacktraces {
-			partition[sid.Uint32()] += values[i].Int64()
-		}
+		r.AddSamplesFromParquetRow(p.Row.StacktracePartition(), p.Values[0], p.Values[1])
 	}
 	return profiles.Err()
 }
 
-func mergeBySpans(ctx context.Context, profileSource Source, rows iter.Iterator[Profile], r *symdb.Resolver, spanSelector phlaremodel.SpanSelector) (err error) {
+func mergeBySpans[T interface{ StacktracePartition() uint64 }](ctx context.Context, profileSource Source, rows iter.Iterator[T], r *symdb.Resolver, spanSelector phlaremodel.SpanSelector) (err error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "mergeBySpans")
 	defer sp.Finish()
 	var columns v1.SampleColumns
@@ -114,49 +147,32 @@ func mergeBySpans(ctx context.Context, profileSource Source, rows iter.Iterator[
 	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
 	for profiles.Next() {
 		p := profiles.At()
-		partition := r.Partition(p.Row.StacktracePartition())
-		stacktraces := p.Values[0]
-		values := p.Values[1]
-		spans := p.Values[2]
-		for i, sid := range stacktraces {
-			spanID := spans[i].Uint64()
-			if spanID == 0 {
-				continue
-			}
-			if _, ok := spanSelector[spanID]; ok {
-				partition[sid.Uint32()] += values[i].Int64()
-			}
-		}
+		r.AddSamplesWithSpanSelectorFromParquetRow(
+			p.Row.StacktracePartition(),
+			p.Values[0],
+			p.Values[1],
+			p.Values[2],
+			spanSelector,
+		)
 	}
 	return profiles.Err()
 }
 
-type seriesByLabels map[string]*typesv1.Series
-
-func (m seriesByLabels) normalize() []*typesv1.Series {
-	result := lo.Values(m)
-	sort.Slice(result, func(i, j int) bool {
-		return phlaremodel.CompareLabelPairs(result[i].Labels, result[j].Labels) < 0
-	})
-	// we have to sort the points in each series because labels reduction may have changed the order
-	for _, s := range result {
-		sort.Slice(s.Points, func(i, j int) bool {
-			return s.Points[i].Timestamp < s.Points[j].Timestamp
-		})
-	}
-	return result
-}
-
-func mergeByLabels(ctx context.Context, profileSource Source, columnName string, rows iter.Iterator[Profile], m seriesByLabels, by ...string) (err error) {
+func mergeByLabels[T Profile](
+	ctx context.Context,
+	profileSource Source,
+	columnName string,
+	rows iter.Iterator[T],
+	by ...string,
+) ([]*typesv1.Series, error) {
 	column, err := v1.ResolveColumnByPath(profileSource.Schema(), strings.Split(columnName, "."))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	profiles := query.NewRepeatedRowIterator(ctx, rows, profileSource.RowGroups(), column.ColumnIndex)
 	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
 
-	labelsByFingerprint := map[model.Fingerprint]string{}
-	labelBuf := make([]byte, 0, 1024)
+	seriesBuilder := phlaremodel.NewTimeSeriesBuilder(by...)
 
 	for profiles.Next() {
 		values := profiles.At()
@@ -165,29 +181,41 @@ func mergeByLabels(ctx context.Context, profileSource Source, columnName string,
 		for _, e := range values.Values {
 			total += e[0].Int64()
 		}
-		labelsByString, ok := labelsByFingerprint[p.Fingerprint()]
-		if !ok {
-			labelBuf = p.Labels().BytesWithLabels(labelBuf, by...)
-			labelsByString = string(labelBuf)
-			labelsByFingerprint[p.Fingerprint()] = labelsByString
-			if _, ok := m[labelsByString]; !ok {
-				m[labelsByString] = &typesv1.Series{
-					Labels: p.Labels().WithLabels(by...),
-					Points: []*typesv1.Point{
-						{
-							Timestamp: int64(p.Timestamp()),
-							Value:     float64(total),
-						},
-					},
-				}
-				continue
-			}
-		}
-		series := m[labelsByString]
-		series.Points = append(series.Points, &typesv1.Point{
-			Timestamp: int64(p.Timestamp()),
-			Value:     float64(total),
-		})
+		seriesBuilder.Add(p.Fingerprint(), p.Labels(), int64(p.Timestamp()), float64(total))
+
 	}
-	return profiles.Err()
+	return seriesBuilder.Build(), profiles.Err()
+}
+
+func mergeByLabelsWithStackTraceSelector[T Profile](
+	ctx context.Context,
+	profileSource Source,
+	rows iter.Iterator[T],
+	r *symdb.Resolver,
+	by ...string,
+) (s []*typesv1.Series, err error) {
+	var columns v1.SampleColumns
+	if err = columns.Resolve(profileSource.Schema()); err != nil {
+		return nil, err
+	}
+	profiles := query.NewRepeatedRowIterator(ctx, rows, profileSource.RowGroups(),
+		columns.StacktraceID.ColumnIndex,
+		columns.Value.ColumnIndex,
+	)
+
+	seriesBuilder := phlaremodel.TimeSeriesBuilder{}
+	seriesBuilder.Init(by...)
+
+	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
+	var v symdb.CallSiteValues
+	for profiles.Next() {
+		row := profiles.At()
+		h := row.Row
+		if err = r.CallSiteValuesParquet(&v, h.StacktracePartition(), row.Values[0], row.Values[1]); err != nil {
+			return nil, err
+		}
+		seriesBuilder.Add(h.Fingerprint(), h.Labels(), int64(h.Timestamp()), float64(v.Total))
+	}
+
+	return seriesBuilder.Build(), profiles.Err()
 }

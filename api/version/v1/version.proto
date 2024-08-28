@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package version.v1;
+
+service Version {
+  rpc Version(VersionRequest) returns (VersionResponse) {}
+}
+
+message VersionRequest {}
+
+message VersionResponse {
+  uint64 QuerierAPI = 1;
+}
+
+message InstanceVersion {
+  string ID = 1;
+  string addr = 2;
+  // Unix timestamp (with nanoseconds precision) of the last heartbeat sent
+  // by this instance.
+  int64 Timestamp = 3;
+
+  // Querier Service API version
+  uint64 QuerierAPI = 4;
+
+  // Tells if the instance is running or has left cluster.
+  bool left = 5;
+}
+
+// Versions is the top-level type used to model version for all instances, containing information for individual instances.
+message Versions {
+  map<string, InstanceVersion> instances = 1;
+}

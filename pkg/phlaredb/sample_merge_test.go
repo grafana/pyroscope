@@ -125,7 +125,7 @@ func TestMergeSampleByStacktraces(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			r, err := q.queriers[0].MergeByStacktraces(ctx, profiles)
+			r, err := q.queriers[0].MergeByStacktraces(ctx, profiles, 0)
 			require.NoError(t, err)
 			require.Equal(t, expected.String(), r.String())
 		})
@@ -220,7 +220,7 @@ func TestHeadMergeSampleByStacktraces(t *testing.T) {
 				End:   int64(model.TimeFromUnixNano(int64(1 * time.Minute))),
 			})
 			require.NoError(t, err)
-			r, err := db.queriers()[0].MergeByStacktraces(ctx, profiles)
+			r, err := db.queriers()[0].MergeByStacktraces(ctx, profiles, 0)
 			require.NoError(t, err)
 			require.Equal(t, expected.String(), r.String())
 		})
@@ -343,7 +343,7 @@ func TestMergeSampleByLabels(t *testing.T) {
 			require.NoError(t, err)
 
 			q.queriers[0].Sort(profiles)
-			series, err := q.queriers[0].MergeByLabels(ctx, iter.NewSliceIterator(profiles), tc.by...)
+			series, err := q.queriers[0].MergeByLabels(ctx, iter.NewSliceIterator(profiles), nil, tc.by...)
 			require.NoError(t, err)
 
 			testhelper.EqualProto(t, tc.expected, series)
@@ -458,7 +458,7 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 			require.NoError(t, err)
 
 			db.headQueriers()[0].Sort(profiles)
-			series, err := db.headQueriers()[0].MergeByLabels(ctx, iter.NewSliceIterator(profiles), tc.by...)
+			series, err := db.headQueriers()[0].MergeByLabels(ctx, iter.NewSliceIterator(profiles), nil, tc.by...)
 			require.NoError(t, err)
 
 			testhelper.EqualProto(t, tc.expected, series)
@@ -507,7 +507,7 @@ func TestMergePprof(t *testing.T) {
 	require.NoError(t, err)
 
 	q.queriers[0].Sort(profiles)
-	result, err := q.queriers[0].MergePprof(ctx, iter.NewSliceIterator(profiles))
+	result, err := q.queriers[0].MergePprof(ctx, iter.NewSliceIterator(profiles), 0, nil)
 	require.NoError(t, err)
 
 	data, err := proto.Marshal(generateProfile(t, 1))
@@ -517,7 +517,11 @@ func TestMergePprof(t *testing.T) {
 	for _, sample := range expected.Sample {
 		sample.Value = []int64{sample.Value[0] * 3}
 	}
-	compareProfile(t, expected.Compact(), result)
+	data, err = proto.Marshal(result)
+	require.NoError(t, err)
+	actual, err := profile.ParseUncompressed(data)
+	require.NoError(t, err)
+	compareProfile(t, expected.Compact(), actual.Compact())
 }
 
 func TestHeadMergePprof(t *testing.T) {
@@ -552,7 +556,7 @@ func TestHeadMergePprof(t *testing.T) {
 	require.NoError(t, err)
 
 	db.headQueriers()[0].Sort(profiles)
-	result, err := db.headQueriers()[0].MergePprof(ctx, iter.NewSliceIterator(profiles))
+	result, err := db.headQueriers()[0].MergePprof(ctx, iter.NewSliceIterator(profiles), 0, nil)
 	require.NoError(t, err)
 
 	data, err := proto.Marshal(generateProfile(t, 1))
@@ -562,7 +566,11 @@ func TestHeadMergePprof(t *testing.T) {
 	for _, sample := range expected.Sample {
 		sample.Value = []int64{sample.Value[0] * 3}
 	}
-	compareProfile(t, expected.Compact(), result)
+	data, err = proto.Marshal(result)
+	require.NoError(t, err)
+	actual, err := profile.ParseUncompressed(data)
+	require.NoError(t, err)
+	compareProfile(t, expected.Compact(), actual.Compact())
 }
 
 func TestMergeSpans(t *testing.T) {

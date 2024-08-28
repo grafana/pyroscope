@@ -2,14 +2,18 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+
 pyroscope:
   replicaCount: 1
+
+  # -- Kubernetes cluster domain suffix for DNS discovery
+  cluster_domain: .cluster.local.
 
   image:
     repository: grafana/pyroscope
     pullPolicy: IfNotPresent
-    # Overrides the image tag whose default is the chart appVersion.
-    tag: "1.1.5"
+    # Allows to override the image tag, which defaults to the appVersion in the chart metadata
+    tag: ""
 
   extraArgs:
     log.level: debug
@@ -43,7 +47,7 @@ pyroscope:
     name: ""
 
   podAnnotations:
-    # Scrapes itself see https://grafana.com/docs/phlare/latest/operators-guide/deploy-kubernetes/#optional-scrape-your-own-workloads-profiles
+    # Scrapes itself see https://grafana.com/docs/pyroscope/latest/deploy-kubernetes/helm/#optional-scrape-your-own-workloads-profiles
     profiles.grafana.com/memory.scrape: "true"
     profiles.grafana.com/memory.port_name: http2
     profiles.grafana.com/cpu.scrape: "true"
@@ -76,6 +80,7 @@ pyroscope:
     port: 4040
     port_name: http2
     scheme: HTTP
+    annotations: {}
 
   memberlist:
     port: 7946
@@ -169,10 +174,33 @@ pyroscope:
   # -- Grafana Agent Configuration.
 
 # -------------------------------------
+# Configuration for `alloy` child chart
+# -------------------------------------
+alloy:
+  enabled: true
+  controller:
+    type: "statefulset"
+    replicas: 1
+    podAnnotations:
+      profiles.grafana.com/memory.scrape: "true"
+      profiles.grafana.com/memory.port_name: "http-metrics"
+      profiles.grafana.com/cpu.scrape: "true"
+      profiles.grafana.com/cpu.port_name: "http-metrics"
+      profiles.grafana.com/goroutine.scrape: "true"
+      profiles.grafana.com/goroutine.port_name: "http-metrics"
+  alloy:
+    stabilityLevel: "public-preview"  # This needs to be set for some of our resources until verison v1.2 is released
+    configMap:
+      create: false
+      name: alloy-config-pyroscope
+    clustering:
+      enabled: true
+
+# -------------------------------------
 # Configuration for `grafana-agent` child chart
 # -------------------------------------
 agent:
-  enabled: true
+  enabled: false
   controller:
     type: "statefulset"
     replicas: 1
@@ -221,5 +249,39 @@ ingress:
   className: ""
   # hosts:
   #   - localhost
-  # tls: 
+  # tls:
   #   - secretName: certificate
+
+# ServiceMonitor configuration
+serviceMonitor:
+  # -- If enabled, ServiceMonitor resources for Prometheus Operator are created
+  enabled: false
+  # -- Namespace selector for ServiceMonitor resources
+  namespaceSelector: {}
+  # -- Optional expressions to match on
+  matchExpressions: []
+    # - key: prometheus.io/service-monitor
+    #   operator: NotIn
+    #   values:
+    #     - "false"
+  # -- ServiceMonitor annotations
+  annotations: {}
+  # -- Additional ServiceMonitor labels
+  labels: {}
+  # -- ServiceMonitor scrape interval
+  interval: null
+  # -- ServiceMonitor scrape timeout in Go duration format (e.g. 15s)
+  scrapeTimeout: null
+  # -- ServiceMonitor relabel configs to apply to samples before scraping
+  # https://github.com/prometheus-operator/prometheus-operator/blob/master/Documentation/api.md#relabelconfig
+  relabelings: []
+  # -- ServiceMonitor metric relabel configs to apply to samples before ingestion
+  # https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/api.md#endpoint
+  metricRelabelings: []
+  # --ServiceMonitor will add labels from the service to the Prometheus metric
+  # https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/api.md#servicemonitorspec
+  targetLabels: []
+  # -- ServiceMonitor will use http by default, but you can pick https as well
+  scheme: http
+  # -- ServiceMonitor will use these tlsConfig settings to make the health check requests
+  tlsConfig: null

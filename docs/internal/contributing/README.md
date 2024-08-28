@@ -19,7 +19,7 @@ a piece of work is finished it should:
 
 To be able to run make targets you'll need to install:
 
-- [Go](https://go.dev/doc/install) (> 1.19)
+- [Go](https://go.dev/doc/install) (>= 1.21)
 - [Docker](https://docs.docker.com/engine/install/)
 
 All other required tools will be automatically downloaded `$(pwd)/.tmp/bin`.
@@ -41,7 +41,7 @@ To build:
 make go/bin
 ```
 
-To run the unit tests suite:
+To run the unit test suite:
 
 ```
 make go/test
@@ -86,6 +86,16 @@ replace `image: grafana/pyroscope` with the local tag name you got from docker-i
       - '4040:4040'
 ```
 
+#### Run with Pyroscope with embedded Grafana + Explore Profiles
+
+In order to quickly test the whole stack it is possible to run an embedded Grafana by using target parameter:
+
+```
+go run ./cmd/pyroscope --target all,embedded-grafana
+```
+
+This will start additional to Pyroscope on `:4040`, the embedded Grafana on port `:4041`.
+
 #### Front end development
 
 **Versions for development tools**:
@@ -124,7 +134,7 @@ will be able to interact with it.
 ### Dependency management
 
 We use [Go modules](https://golang.org/cmd/go/#hdr-Modules__module_versions__and_more) to manage dependencies on external packages.
-However we don't commit the `vendor/` folder.
+However, we don't commit the `vendor/` folder.
 
 To add or update a new dependency, use the `go get` command:
 
@@ -150,4 +160,4 @@ The Grafana Pyroscope documentation is compiled into a website published at [gra
 
 To start the website locally you can use `make docs/docs` and follow console instructions to access the website.
 
-Note: if you attempt to view pages on Github, it's likely that you might find broken links or pages. That is expected and should not be addressed unless it is causing issues with the site that occur as part of the build.
+Note: if you attempt to view pages on GitHub, it's likely that you might find broken links or pages. That is expected and should not be addressed unless it is causing issues with the site that occur as part of the build.

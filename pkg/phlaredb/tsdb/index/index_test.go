@@ -384,7 +384,7 @@ func TestPersistence_index_e2e(t *testing.T) {
 		}
 	}
 
-	var input indexWriterSeriesSlice
+	var input IndexWriterSeriesSlice
 
 	// Generate ChunkMetas for every label set.
 	for i, lset := range flbls {
@@ -397,9 +397,9 @@ func TestPersistence_index_e2e(t *testing.T) {
 				Checksum: rand.Uint32(),
 			})
 		}
-		input = append(input, &indexWriterSeries{
-			labels: lset,
-			chunks: metas,
+		input = append(input, &IndexWriterSeries{
+			Labels: lset,
+			Chunks: metas,
 		})
 	}
 
@@ -424,11 +424,11 @@ func TestPersistence_index_e2e(t *testing.T) {
 	mi := newMockIndex()
 
 	for i, s := range input {
-		err = iw.AddSeries(storage.SeriesRef(i), s.labels, model.Fingerprint(s.labels.Hash()), s.chunks...)
+		err = iw.AddSeries(storage.SeriesRef(i), s.Labels, model.Fingerprint(s.Labels.Hash()), s.Chunks...)
 		require.NoError(t, err)
-		require.NoError(t, mi.AddSeries(storage.SeriesRef(i), s.labels, s.chunks...))
+		require.NoError(t, mi.AddSeries(storage.SeriesRef(i), s.Labels, s.Chunks...))
 
-		for _, l := range s.labels {
+		for _, l := range s.Labels {
 			valset, ok := values[l.Name]
 			if !ok {
 				valset = map[string]struct{}{}
@@ -436,7 +436,7 @@ func TestPersistence_index_e2e(t *testing.T) {
 			}
 			valset[l.Value] = struct{}{}
 		}
-		postings.Add(storage.SeriesRef(i), s.labels)
+		postings.Add(storage.SeriesRef(i), s.Labels)
 	}
 
 	err = iw.Close()
@@ -583,4 +583,19 @@ func TestSymbols(t *testing.T) {
 func TestDecoder_Postings_WrongInput(t *testing.T) {
 	_, _, err := (&Decoder{}).Postings([]byte("the cake is a lie"))
 	require.Error(t, err)
+}
+
+func TestWriter_ShouldReturnErrorOnSeriesWithDuplicatedLabelNames(t *testing.T) {
+	w, err := NewWriter(context.Background(), filepath.Join(t.TempDir(), "index"))
+	require.NoError(t, err)
+
+	require.NoError(t, w.AddSymbol("__name__"))
+	require.NoError(t, w.AddSymbol("metric_1"))
+	require.NoError(t, w.AddSymbol("metric_2"))
+
+	require.NoError(t, w.AddSeries(0, phlaremodel.LabelsFromStrings("__name__", "metric_1", "__name__", "metric_2"), 0))
+
+	err = w.Close()
+	require.Error(t, err)
+	require.ErrorContains(t, err, "corruption detected when writing postings to index")
 }

@@ -52,3 +52,56 @@ message LabelNamesRequest {
 message LabelNamesResponse {
   repeated string names = 1;
 }
+
+message BlockInfo {
+  string ulid = 1;
+  int64 min_time = 2;
+  int64 max_time = 3;
+  BlockCompaction compaction = 4;
+  repeated LabelPair labels = 5;
+}
+
+message BlockCompaction {
+  int32 level = 1;
+  repeated string sources = 2;
+  repeated string parents = 3;
+}
+
+enum TimeSeriesAggregationType {
+  TIME_SERIES_AGGREGATION_TYPE_SUM = 0;
+  TIME_SERIES_AGGREGATION_TYPE_AVERAGE = 1;
+}
+
+// StackTraceSelector is used for filtering stack traces by locations.
+message StackTraceSelector {
+  // Stack trace of the call site. Root at call_site[0].
+  // Only stack traces having the prefix provided will be selected.
+  // If empty, the filter is ignored.
+  repeated Location call_site = 1;
+  // Stack trace selector for profiles purposed for Go PGO.
+  // If set, call_site is ignored.
+  GoPGO go_pgo = 2;
+}
+
+message Location {
+  string name = 1;
+}
+
+message GoPGO {
+  // Specifies the number of leaf locations to keep.
+  uint32 keep_locations = 1;
+  // Aggregate callees causes the leaf location line number to be ignored,
+  // thus aggregating all callee samples (but not callers).
+  bool aggregate_callees = 2;
+}
+
+message GetProfileStatsRequest {}
+
+message GetProfileStatsResponse {
+  // Whether we received any data at any time in the past.
+  bool data_ingested = 1;
+  // Milliseconds since epoch.
+  int64 oldest_profile_time = 2;
+  // Milliseconds since epoch.
+  int64 newest_profile_time = 3;
+}

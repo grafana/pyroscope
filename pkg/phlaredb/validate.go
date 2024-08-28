@@ -13,13 +13,13 @@ import (
 )
 
 // ValidateLocalBlock validates the block in the given directory is readable.
-func ValidateLocalBlock(phlarectx context.Context, dir string) error {
+func ValidateLocalBlock(ctx context.Context, dir string) error {
 	meta, err := block.ReadMetaFromDir(dir)
 	if err != nil {
 		return err
 	}
 
-	bkt, err := client.NewBucket(phlarectx, client.Config{
+	bkt, err := client.NewBucket(ctx, client.Config{
 		StorageBackendConfig: client.StorageBackendConfig{
 			Backend: client.Filesystem,
 			Filesystem: filesystem.Config{
@@ -30,7 +30,7 @@ func ValidateLocalBlock(phlarectx context.Context, dir string) error {
 	if err != nil {
 		return err
 	}
-	q := NewSingleBlockQuerierFromMeta(phlarectx, bkt, meta)
+	q := NewSingleBlockQuerierFromMeta(ctx, bkt, meta)
 	defer runutil.CloseWithLogOnErr(util.Logger, q, "closing block querier")
-	return q.Open(phlarectx)
+	return q.Open(ctx)
 }

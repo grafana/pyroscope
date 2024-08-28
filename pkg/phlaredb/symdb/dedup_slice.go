@@ -4,7 +4,6 @@ package symdb
 import (
 	"fmt"
 	"hash/maphash"
-	"reflect"
 	"sort"
 	"sync"
 	"unsafe"
@@ -37,9 +36,9 @@ func (p *PartitionWriter) WriteProfileSymbols(profile *profilev1.Profile) []sche
 	pprof.ZeroLabelStrings(profile)
 
 	p.strings.ingest(profile.StringTable, rewrites)
-	mappings := make([]*schemav1.InMemoryMapping, len(profile.Mapping))
+	mappings := make([]schemav1.InMemoryMapping, len(profile.Mapping))
 	for i, v := range profile.Mapping {
-		mappings[i] = &schemav1.InMemoryMapping{
+		mappings[i] = schemav1.InMemoryMapping{
 			Id:              v.Id,
 			MemoryStart:     v.MemoryStart,
 			MemoryLimit:     v.MemoryLimit,
@@ -54,9 +53,9 @@ func (p *PartitionWriter) WriteProfileSymbols(profile *profilev1.Profile) []sche
 	}
 
 	p.mappings.ingest(mappings, rewrites)
-	funcs := make([]*schemav1.InMemoryFunction, len(profile.Function))
+	funcs := make([]schemav1.InMemoryFunction, len(profile.Function))
 	for i, v := range profile.Function {
-		funcs[i] = &schemav1.InMemoryFunction{
+		funcs[i] = schemav1.InMemoryFunction{
 			Id:         v.Id,
 			Name:       uint32(v.Name),
 			SystemName: uint32(v.SystemName),
@@ -66,9 +65,9 @@ func (p *PartitionWriter) WriteProfileSymbols(profile *profilev1.Profile) []sche
 	}
 
 	p.functions.ingest(funcs, rewrites)
-	locs := make([]*schemav1.InMemoryLocation, len(profile.Location))
+	locs := make([]schemav1.InMemoryLocation, len(profile.Location))
 	for i, v := range profile.Location {
-		x := &schemav1.InMemoryLocation{
+		x := schemav1.InMemoryLocation{
 			Id:        v.Id,
 			Address:   v.Address,
 			MappingId: uint32(v.MappingId),
@@ -139,7 +138,7 @@ func (p *PartitionWriter) convertSamples(r *rewriter, in []*profilev1.Sample, sp
 		}
 	}
 
-	stacktracesIds := slices.Grow(uint32SlicePool.Get(), len(stacktraces))
+	stacktracesIds := slices.GrowLen(uint32SlicePool.Get(), len(stacktraces))
 	p.stacktraces.append(stacktracesIds, stacktraces)
 
 	// Rewrite stacktraces
@@ -214,7 +213,7 @@ type rewriter struct {
 
 type storeHelper[M schemav1.Models] interface {
 	// some Models contain their own IDs within the struct, this allows to set them and keep track of the preexisting ID. It should return the oldID that is supposed to be rewritten.
-	setID(existingSliceID uint64, newID uint64, element M) uint64
+	setID(existingSliceID uint64, newID uint64, element *M) uint64
 
 	// size returns a (rough estimation) of the size of a single element M
 	size(M) uint64
@@ -222,7 +221,7 @@ type storeHelper[M schemav1.Models] interface {
 	// clone copies parts that are not optimally sized from protobuf parsing
 	clone(M) M
 
-	rewrite(*rewriter, M) error
+	rewrite(*rewriter, *M) error
 }
 
 type Helper[M schemav1.Models, K comparable] interface {
@@ -261,7 +260,7 @@ func (s *deduplicatingSlice[M, K, H]) ingest(elems []M, rewriter *rewriter) {
 	missing = missing[:0]
 	// rewrite elements
 	for pos := range elems {
-		_ = s.helper.rewrite(rewriter, elems[pos])
+		_ = s.helper.rewrite(rewriter, &elems[pos])
 	}
 
 	// try to find if element already exists in slice, when supposed to deduplicate
@@ -269,7 +268,7 @@ func (s *deduplicatingSlice[M, K, H]) ingest(elems []M, rewriter *rewriter) {
 	for pos := range elems {
 		k := s.helper.key(elems[pos])
 		if posSlice, exists := s.lookup[k]; exists {
-			rewritingMap[int64(s.helper.setID(uint64(pos), uint64(posSlice), elems[pos]))] = posSlice
+			rewritingMap[int64(s.helper.setID(uint64(pos), uint64(posSlice), &elems[pos]))] = posSlice
 		} else {
 			missing = append(missing, int64(pos))
 		}
@@ -284,14 +283,14 @@ func (s *deduplicatingSlice[M, K, H]) ingest(elems []M, rewriter *rewriter) {
 			// check again if element exists
 			k := s.helper.key(elems[pos])
 			if posSlice, exists := s.lookup[k]; exists {
-				rewritingMap[int64(s.helper.setID(uint64(pos), uint64(posSlice), elems[pos]))] = posSlice
+				rewritingMap[int64(s.helper.setID(uint64(pos), uint64(posSlice), &elems[pos]))] = posSlice
 				continue
 			}
 
 			// add element to slice/map
 			s.slice = append(s.slice, s.helper.clone(elems[pos]))
 			s.lookup[k] = posSlice
-			rewritingMap[int64(s.helper.setID(uint64(pos), uint64(posSlice), elems[pos]))] = posSlice
+			rewritingMap[int64(s.helper.setID(uint64(pos), uint64(posSlice), &elems[pos]))] = posSlice
 			posSlice++
 			s.size.Add(s.helper.size(elems[pos]))
 		}
@@ -381,7 +380,7 @@ func (*stringsHelper) addToRewriter(r *rewriter, m idConversionTable) {
 }
 
 // nolint unused
-func (*stringsHelper) rewrite(*rewriter, string) error {
+func (*stringsHelper) rewrite(*rewriter, *string) error {
 	return nil
 }
 
@@ -389,7 +388,7 @@ func (*stringsHelper) size(s string) uint64 {
 	return uint64(len(s))
 }
 
-func (*stringsHelper) setID(oldID, newID uint64, s string) uint64 {
+func (*stringsHelper) setID(oldID, newID uint64, s *string) uint64 {
 	return oldID
 }
 
@@ -410,7 +409,7 @@ const (
 
 type locationsHelper struct{}
 
-func (*locationsHelper) key(l *schemav1.InMemoryLocation) locationsKey {
+func (*locationsHelper) key(l schemav1.InMemoryLocation) locationsKey {
 	return locationsKey{
 		Address:   l.Address,
 		MappingId: l.MappingId,
@@ -424,11 +423,17 @@ func hashLines(s []schemav1.InMemoryLine) uint64 {
 	if len(s) == 0 {
 		return 0
 	}
-	var b []byte
-	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&b))
-	hdr.Len = len(s) * int(lineSize)
-	hdr.Cap = hdr.Len
-	hdr.Data = uintptr(unsafe.Pointer(&s[0]))
+	p := (*byte)(unsafe.Pointer(&s[0]))
+	b := unsafe.Slice(p, len(s)*int(lineSize))
+	return maphash.Bytes(mapHashSeed, b)
+}
+
+func hashLocations(s []uint64) uint64 {
+	if len(s) == 0 {
+		return 0
+	}
+	p := (*byte)(unsafe.Pointer(&s[0]))
+	b := unsafe.Slice(p, len(s)*8)
 	return maphash.Bytes(mapHashSeed, b)
 }
 
@@ -453,15 +458,15 @@ func (*locationsHelper) setID(_, newID uint64, l *schemav1.InMemoryLocation) uin
 	return oldID
 }
 
-func (*locationsHelper) size(l *schemav1.InMemoryLocation) uint64 {
+func (*locationsHelper) size(l schemav1.InMemoryLocation) uint64 {
 	return uint64(len(l.Line))*lineSize + locationSize
 }
 
-func (*locationsHelper) clone(l *schemav1.InMemoryLocation) *schemav1.InMemoryLocation {
-	x := *l
+func (*locationsHelper) clone(l schemav1.InMemoryLocation) schemav1.InMemoryLocation {
+	x := l
 	x.Line = make([]schemav1.InMemoryLine, len(l.Line))
 	copy(x.Line, l.Line)
-	return &x
+	return x
 }
 
 type mappingsHelper struct{}
@@ -480,7 +485,7 @@ type mappingsKey struct {
 	HasInlineFrames bool
 }
 
-func (*mappingsHelper) key(m *schemav1.InMemoryMapping) mappingsKey {
+func (*mappingsHelper) key(m schemav1.InMemoryMapping) mappingsKey {
 	return mappingsKey{
 		MemoryStart:     m.MemoryStart,
 		MemoryLimit:     m.MemoryLimit,
@@ -489,7 +494,7 @@ func (*mappingsHelper) key(m *schemav1.InMemoryMapping) mappingsKey {
 		BuildId:         m.BuildId,
 		HasFunctions:    m.HasFunctions,
 		HasFilenames:    m.HasFilenames,
-		HasLineNumbers:  m.HasFunctions,
+		HasLineNumbers:  m.HasLineNumbers,
 		HasInlineFrames: m.HasInlineFrames,
 	}
 }
@@ -511,13 +516,12 @@ func (*mappingsHelper) setID(_, newID uint64, m *schemav1.InMemoryMapping) uint6
 	return oldID
 }
 
-func (*mappingsHelper) size(_ *schemav1.InMemoryMapping) uint64 {
+func (*mappingsHelper) size(_ schemav1.InMemoryMapping) uint64 {
 	return mappingSize
 }
 
-func (*mappingsHelper) clone(m *schemav1.InMemoryMapping) *schemav1.InMemoryMapping {
-	x := *m
-	return &x
+func (*mappingsHelper) clone(m schemav1.InMemoryMapping) schemav1.InMemoryMapping {
+	return m
 }
 
 type functionsKey struct {
@@ -531,7 +535,7 @@ type functionsHelper struct{}
 
 const functionSize = uint64(unsafe.Sizeof(schemav1.InMemoryFunction{}))
 
-func (*functionsHelper) key(f *schemav1.InMemoryFunction) functionsKey {
+func (*functionsHelper) key(f schemav1.InMemoryFunction) functionsKey {
 	return functionsKey{
 		Name:       f.Name,
 		SystemName: f.SystemName,
@@ -557,11 +561,10 @@ func (*functionsHelper) setID(_, newID uint64, f *schemav1.InMemoryFunction) uin
 	return oldID
 }
 
-func (*functionsHelper) size(_ *schemav1.InMemoryFunction) uint64 {
+func (*functionsHelper) size(_ schemav1.InMemoryFunction) uint64 {
 	return functionSize
 }
 
-func (*functionsHelper) clone(f *schemav1.InMemoryFunction) *schemav1.InMemoryFunction {
-	x := *f
-	return &x
+func (*functionsHelper) clone(f schemav1.InMemoryFunction) schemav1.InMemoryFunction {
+	return f
 }

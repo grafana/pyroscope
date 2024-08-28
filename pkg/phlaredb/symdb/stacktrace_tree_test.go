@@ -88,7 +88,6 @@ func Test_stacktrace_tree_encoding_group(t *testing.T) {
 }
 
 func Test_stacktrace_tree_encoding_rand(t *testing.T) {
-	// TODO: Fuzzing.
 	nodes := make([]node, 1<<20)
 	for i := range nodes {
 		nodes[i] = node{
@@ -114,6 +113,16 @@ func Test_stacktrace_tree_encoding_rand(t *testing.T) {
 			t.Fatalf("tree mismatch at %d: n:%#v. p:%#v", j, n, p)
 		}
 	}
+}
+
+func Test_stacktrace_tree_pprof_locations_(t *testing.T) {
+	x := newStacktraceTree(0)
+	assert.Len(t, x.resolve([]int32{0, 1, 2, 3}, 42), 0)
+	assert.Len(t, x.resolveUint64([]uint64{0, 1, 2, 3}, 42), 0)
+
+	p := newParentPointerTree(0)
+	assert.Len(t, p.resolve([]int32{0, 1, 2, 3}, 42), 0)
+	assert.Len(t, p.resolveUint64([]uint64{0, 1, 2, 3}, 42), 0)
 }
 
 func Test_stacktrace_tree_pprof_locations(t *testing.T) {
@@ -163,6 +172,44 @@ func Test_stacktrace_tree_pprof_locations(t *testing.T) {
 			}
 		}
 	}
+}
+
+// The test is helpful for debugging.
+func Test_parentPointerTree_toStacktraceTree(t *testing.T) {
+	x := newStacktraceTree(10)
+	for _, stack := range [][]uint64{
+		{5, 4, 3, 2, 1},
+		{6, 4, 3, 2, 1},
+		{4, 3, 2, 1},
+		{3, 2, 1},
+		{4, 2, 1},
+		{7, 2, 1},
+		{2, 1},
+		{1},
+	} {
+		x.insert(stack)
+	}
+	assertRestoredStacktraceTree(t, x)
+}
+
+func Test_parentPointerTree_toStacktraceTree_profile(t *testing.T) {
+	p, err := pprof.OpenFile("testdata/profile.pb.gz")
+	require.NoError(t, err)
+	x := newStacktraceTree(defaultStacktraceTreeSize)
+	for _, s := range p.Sample {
+		x.insert(s.LocationId)
+	}
+	assertRestoredStacktraceTree(t, x)
+}
+
+func assertRestoredStacktraceTree(t *testing.T, x *stacktraceTree) {
+	var b bytes.Buffer
+	_, _ = x.WriteTo(&b)
+	ppt := newParentPointerTree(x.len())
+	_, err := ppt.ReadFrom(bytes.NewBuffer(b.Bytes()))
+	require.NoError(t, err)
+	restored := ppt.toStacktraceTree()
+	assert.Equal(t, x.nodes, restored.nodes)
 }
 
 func Benchmark_stacktrace_tree_insert(b *testing.B) {

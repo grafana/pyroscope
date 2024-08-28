@@ -5,7 +5,7 @@ aliases:
 description: Learn how to get started with Pyroscope on Kubernetes.
 menuTitle: Deploy on Kubernetes
 title: Deploy Pyroscope on Kubernetes
-weight: 50
+weight: 400
 ---
 
 # Deploy Pyroscope on Kubernetes

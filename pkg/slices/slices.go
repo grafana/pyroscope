@@ -1,5 +1,9 @@
 package slices
 
+import (
+	"slices"
+)
+
 // RemoveInPlace removes all elements from a slice that match the given predicate.
 // Does not allocate a new slice.
 func RemoveInPlace[T any](collection []T, predicate func(T, int) bool) []T {
@@ -26,10 +30,7 @@ func Clear[S ~[]E, E any](s S) {
 	}
 }
 
-func Grow[S ~[]E, E any](s S, n int) S {
-	if cap(s) < n {
-		s = make([]E, n)
-	}
-	s = s[:n]
-	return s
+func GrowLen[S ~[]E, E any](s S, n int) S {
+	s = s[:0]
+	return slices.Grow(s, n)[:n]
 }

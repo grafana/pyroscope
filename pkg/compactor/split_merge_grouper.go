@@ -28,6 +28,9 @@ type SplitAndMergeGrouper struct {
 	// Number of shards to split source blocks into.
 	shardCount uint32
 
+	// Number of stages to split shards into.
+	splitStageSize uint32
+
 	// Number of groups that blocks used for splitting are grouped into.
 	splitGroupsCount uint32
 }
@@ -38,6 +41,7 @@ func NewSplitAndMergeGrouper(
 	userID string,
 	ranges []int64,
 	shardCount uint32,
+	splitStageSize uint32,
 	splitGroupsCount uint32,
 	logger log.Logger,
 ) *SplitAndMergeGrouper {
@@ -45,6 +49,7 @@ func NewSplitAndMergeGrouper(
 		userID:           userID,
 		ranges:           ranges,
 		shardCount:       shardCount,
+		splitStageSize:   splitStageSize,
 		splitGroupsCount: splitGroupsCount,
 		logger:           logger,
 	}
@@ -83,6 +88,7 @@ func (g *SplitAndMergeGrouper) Groups(blocks map[ulid.ULID]*block.Meta) (res []*
 			resolution,
 			job.stage == stageSplit,
 			g.shardCount,
+			g.splitStageSize,
 			job.shardingKey(),
 		)
 

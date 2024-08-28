@@ -2,12 +2,13 @@ package phlaredb
 
 import (
 	"context"
+	"math"
 	"net/http"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/google/pprof/profile"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -21,6 +22,7 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/testhelper"
 )
@@ -79,13 +81,13 @@ func (f *fakeBidiServerMergeProfilesStacktraces) Receive() (*ingestv1.MergeProfi
 
 func (q Queriers) ingesterClient() (ingesterv1connect.IngesterServiceClient, func()) {
 	mux := http.NewServeMux()
-	mux.Handle(ingesterv1connect.NewIngesterServiceHandler(&ingesterHandlerPhlareDB{q}))
+	mux.Handle(ingesterv1connect.NewIngesterServiceHandler(&ingesterHandlerPhlareDB{q}, connectapi.DefaultHandlerOptions()...))
 	serv := testhelper.NewInMemoryServer(mux)
 
 	var httpClient *http.Client = serv.Client()
 
 	client := ingesterv1connect.NewIngesterServiceClient(
-		httpClient, serv.URL(),
+		httpClient, serv.URL(), connectapi.DefaultClientOptions()...,
 	)
 
 	return client, serv.Close
@@ -97,19 +99,19 @@ type ingesterHandlerPhlareDB struct {
 }
 
 func (i *ingesterHandlerPhlareDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesStacktracesRequest, ingestv1.MergeProfilesStacktracesResponse]) error {
-	return MergeProfilesStacktraces(ctx, stream, i.forTimeRange)
+	return MergeProfilesStacktraces(ctx, stream, i.ForTimeRange)
 }
 
 func (i *ingesterHandlerPhlareDB) MergeProfilesLabels(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesLabelsRequest, ingestv1.MergeProfilesLabelsResponse]) error {
-	return MergeProfilesLabels(ctx, stream, i.forTimeRange)
+	return MergeProfilesLabels(ctx, stream, i.ForTimeRange)
 }
 
 func (i *ingesterHandlerPhlareDB) MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesPprofRequest, ingestv1.MergeProfilesPprofResponse]) error {
-	return MergeProfilesPprof(ctx, stream, i.forTimeRange)
+	return MergeProfilesPprof(ctx, stream, i.ForTimeRange)
 }
 
 func (i *ingesterHandlerPhlareDB) MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeSpanProfileRequest, ingestv1.MergeSpanProfileResponse]) error {
-	return MergeSpanProfile(ctx, stream, i.forTimeRange)
+	return MergeSpanProfile(ctx, stream, i.ForTimeRange)
 }
 
 func (i *ingesterHandlerPhlareDB) Push(context.Context, *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
@@ -133,6 +135,18 @@ func (i *ingesterHandlerPhlareDB) Series(context.Context, *connect.Request[inges
 }
 
 func (i *ingesterHandlerPhlareDB) Flush(context.Context, *connect.Request[ingestv1.FlushRequest]) (*connect.Response[ingestv1.FlushResponse], error) {
+	return nil, errors.New("not implemented")
+}
+
+func (i *ingesterHandlerPhlareDB) BlockMetadata(context.Context, *connect.Request[ingestv1.BlockMetadataRequest]) (*connect.Response[ingestv1.BlockMetadataResponse], error) {
+	return nil, errors.New("not implemented")
+}
+
+func (i *ingesterHandlerPhlareDB) GetProfileStats(context.Context, *connect.Request[typesv1.GetProfileStatsRequest]) (*connect.Response[typesv1.GetProfileStatsResponse], error) {
+	return nil, errors.New("not implemented")
+}
+
+func (i *ingesterHandlerPhlareDB) GetBlockStats(context.Context, *connect.Request[ingestv1.GetBlockStatsRequest]) (*connect.Response[ingestv1.GetBlockStatsResponse], error) {
 	return nil, errors.New("not implemented")
 }
 
@@ -181,7 +195,7 @@ func TestMergeProfilesStacktraces(t *testing.T) {
 		resp, err := bidi.Receive()
 		require.NoError(t, err)
 		require.Nil(t, resp.Result)
-		require.Len(t, resp.SelectedProfiles.LabelsSets, 1)
+		require.Len(t, resp.SelectedProfiles.Fingerprints, 1)
 		require.Len(t, resp.SelectedProfiles.Profiles, 5)
 
 		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{
@@ -267,6 +281,35 @@ func TestMergeProfilesStacktraces(t *testing.T) {
 	})
 }
 
+// See https://github.com/grafana/pyroscope/pull/3356
+func Test_HeadFlush_DuplicateLabels(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	// ingest some sample data
+	var (
+		ctx     = testContext(t)
+		testDir = contextDataDir(ctx)
+		end     = time.Unix(0, int64(time.Hour))
+		start   = end.Add(-time.Minute)
+		step    = 15 * time.Second
+	)
+
+	db, err := New(ctx, Config{
+		DataPath:         testDir,
+		MaxBlockDuration: time.Duration(100000) * time.Minute,
+	}, NoLimit, ctx.localBucketClient)
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, db.Close())
+	}()
+
+	ingestProfiles(t, db, cpuProfileGenerator, start.UnixNano(), end.UnixNano(), step,
+		&typesv1.LabelPair{Name: "namespace", Value: "my-namespace"},
+		&typesv1.LabelPair{Name: "pod", Value: "my-pod"},
+		&typesv1.LabelPair{Name: "pod", Value: "not-my-pod"},
+	)
+}
+
 func TestMergeProfilesPprof(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
@@ -311,7 +354,7 @@ func TestMergeProfilesPprof(t *testing.T) {
 		resp, err := bidi.Receive()
 		require.NoError(t, err)
 		require.Nil(t, resp.Result)
-		require.Len(t, resp.SelectedProfiles.LabelsSets, 1)
+		require.Len(t, resp.SelectedProfiles.Fingerprints, 1)
 		require.Len(t, resp.SelectedProfiles.Profiles, 5)
 
 		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesPprofRequest{
@@ -558,6 +601,49 @@ func Test_endRangeForTimestamp(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			require.Equal(t, tt.expected, endRangeForTimestamp(tt.ts, 1*time.Hour.Nanoseconds()))
+		})
+	}
+}
+
+func Test_getProfileStatsFromMetas(t *testing.T) {
+	tests := []struct {
+		name     string
+		minTimes []model.Time
+		maxTimes []model.Time
+		want     *typesv1.GetProfileStatsResponse
+	}{
+		{
+			name:     "no metas should result in no data ingested",
+			minTimes: []model.Time{},
+			maxTimes: []model.Time{},
+			want: &typesv1.GetProfileStatsResponse{
+				DataIngested:      false,
+				OldestProfileTime: math.MaxInt64,
+				NewestProfileTime: math.MinInt64,
+			},
+		},
+		{
+			name: "valid metas should result in data ingested",
+			minTimes: []model.Time{
+				model.TimeFromUnix(1710161819),
+				model.TimeFromUnix(1710171819),
+			},
+			maxTimes: []model.Time{
+				model.TimeFromUnix(1710172239),
+				model.TimeFromUnix(1710174239),
+			},
+			want: &typesv1.GetProfileStatsResponse{
+				DataIngested:      true,
+				OldestProfileTime: 1710161819000,
+				NewestProfileTime: 1710174239000,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			response, err := getProfileStatsFromBounds(tt.minTimes, tt.maxTimes)
+			require.NoError(t, err)
+			assert.Equalf(t, tt.want, response, "getProfileStatsFromBounds(%v, %v)", tt.minTimes, tt.maxTimes)
 		})
 	}
 }

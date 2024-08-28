@@ -1,9 +1,10 @@
 package querier
 
 import (
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
+	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
 )
 
@@ -11,6 +12,9 @@ func NewGRPCRoundTripper(transport connectgrpc.GRPCRoundTripper) querierv1connec
 	return querierv1connect.NewQuerierServiceClient(
 		connectgrpc.NewClient(transport),
 		"http://httpgrpc",
-		connect.WithGRPCWeb(),
+		append(
+			connectapi.DefaultClientOptions(),
+			connect.WithGRPCWeb(),
+		)...,
 	)
 }

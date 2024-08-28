@@ -1,10 +1,19 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "google/v1/profile.proto",
+    "title": "types/v1/types.proto",
     "version": "version not set"
   },
   "tags": [
+    {
+      "name": "AdHocProfileService"
+    },
+    {
+      "name": "MetastoreService"
+    },
+    {
+      "name": "CompactionPlanner"
+    },
     {
       "name": "PusherService"
     },
@@ -15,10 +24,25 @@
       "name": "QuerierService"
     },
     {
+      "name": "QueryBackendService"
+    },
+    {
+      "name": "SegmentWriterService"
+    },
+    {
+      "name": "SettingsService"
+    },
+    {
       "name": "StatusService"
     },
     {
       "name": "StoreGatewayService"
+    },
+    {
+      "name": "VCSService"
+    },
+    {
+      "name": "Version"
     }
   ],
   "consumes": [
@@ -325,11 +349,14 @@
       "properties": {
         "@type": {
           "type": "string",
-          "description": "A URL/resource name that uniquely identifies the type of the serialized\nprotocol buffer message. This string must contain at least\none \"/\" character. The last segment of the URL's path must represent\nthe fully qualified name of the type (as in\n`path/google.protobuf.Duration`). The name should be in a canonical form\n(e.g., leading \".\" is not accepted).\n\nIn practice, teams usually precompile into the binary all types that they\nexpect it to use in the context of Any. However, for URLs which use the\nscheme `http`, `https`, or no scheme, one can optionally set up a type\nserver that maps type URLs to message definitions as follows:\n\n* If no scheme is provided, `https` is assumed.\n* An HTTP GET on the URL must yield a [google.protobuf.Type][]\n  value in binary format, or produce an error.\n* Applications are allowed to cache lookup results based on the\n  URL, or have them precompiled into a binary to avoid any\n  lookup. Therefore, binary compatibility needs to be preserved\n  on changes to types. (Use versioned type names to manage\n  breaking changes.)\n\nNote: this functionality is not currently available in the official\nprotobuf release, and it is not used for type URLs beginning with\ntype.googleapis.com.\n\nSchemes other than `http`, `https` (or the empty scheme) might be\nused with implementation specific semantics."
+          "description": "A URL/resource name that uniquely identifies the type of the serialized\nprotocol buffer message. This string must contain at least\none \"/\" character. The last segment of the URL's path must represent\nthe fully qualified name of the type (as in\n`path/google.protobuf.Duration`). The name should be in a canonical form\n(e.g., leading \".\" is not accepted).\n\nIn practice, teams usually precompile into the binary all types that they\nexpect it to use in the context of Any. However, for URLs which use the\nscheme `http`, `https`, or no scheme, one can optionally set up a type\nserver that maps type URLs to message definitions as follows:\n\n* If no scheme is provided, `https` is assumed.\n* An HTTP GET on the URL must yield a [google.protobuf.Type][]\n  value in binary format, or produce an error.\n* Applications are allowed to cache lookup results based on the\n  URL, or have them precompiled into a binary to avoid any\n  lookup. Therefore, binary compatibility needs to be preserved\n  on changes to types. (Use versioned type names to manage\n  breaking changes.)\n\nNote: this functionality is not currently available in the official\nprotobuf release, and it is not used for type URLs beginning with\ntype.googleapis.com. As of May 2023, there are no widely used type server\nimplementations and no plans to implement one.\n\nSchemes other than `http`, `https` (or the empty scheme) might be\nused with implementation specific semantics."
         }
       },
       "additionalProperties": {},
-      "description": "`Any` contains an arbitrary serialized protocol buffer message along with a\nURL that describes the type of the serialized message.\n\nProtobuf library provides support to pack/unpack Any values in the form\nof utility functions or additional generated methods of the Any type.\n\nExample 1: Pack and unpack a message in C++.\n\n    Foo foo = ...;\n    Any any;\n    any.PackFrom(foo);\n    ...\n    if (any.UnpackTo(\u0026foo)) {\n      ...\n    }\n\nExample 2: Pack and unpack a message in Java.\n\n    Foo foo = ...;\n    Any any = Any.pack(foo);\n    ...\n    if (any.is(Foo.class)) {\n      foo = any.unpack(Foo.class);\n    }\n    // or ...\n    if (any.isSameTypeAs(Foo.getDefaultInstance())) {\n      foo = any.unpack(Foo.getDefaultInstance());\n    }\n\nExample 3: Pack and unpack a message in Python.\n\n    foo = Foo(...)\n    any = Any()\n    any.Pack(foo)\n    ...\n    if any.Is(Foo.DESCRIPTOR):\n      any.Unpack(foo)\n      ...\n\nExample 4: Pack and unpack a message in Go\n\n     foo := \u0026pb.Foo{...}\n     any, err := anypb.New(foo)\n     if err != nil {\n       ...\n     }\n     ...\n     foo := \u0026pb.Foo{}\n     if err := any.UnmarshalTo(foo); err != nil {\n       ...\n     }\n\nThe pack methods provided by protobuf library will by default use\n'type.googleapis.com/full.type.name' as the type URL and the unpack\nmethods only use the fully qualified type name after the last '/'\nin the type URL, for example \"foo.bar.com/x/y.z\" will yield type\nname \"y.z\".\n\nJSON\n\nThe JSON representation of an `Any` value uses the regular\nrepresentation of the deserialized, embedded message, with an\nadditional field `@type` which contains the type URL. Example:\n\n    package google.profile;\n    message Person {\n      string first_name = 1;\n      string last_name = 2;\n    }\n\n    {\n      \"@type\": \"type.googleapis.com/google.profile.Person\",\n      \"firstName\": \u003cstring\u003e,\n      \"lastName\": \u003cstring\u003e\n    }\n\nIf the embedded message type is well-known and has a custom JSON\nrepresentation, that representation will be embedded adding a field\n`value` which holds the custom JSON in addition to the `@type`\nfield. Example (for message [google.protobuf.Duration][]):\n\n    {\n      \"@type\": \"type.googleapis.com/google.protobuf.Duration\",\n      \"value\": \"1.212s\"\n    }"
+      "description": "`Any` contains an arbitrary serialized protocol buffer message along with a\nURL that describes the type of the serialized message.\n\nProtobuf library provides support to pack/unpack Any values in the form\nof utility functions or additional generated methods of the Any type.\n\nExample 1: Pack and unpack a message in C++.\n\n    Foo foo = ...;\n    Any any;\n    any.PackFrom(foo);\n    ...\n    if (any.UnpackTo(\u0026foo)) {\n      ...\n    }\n\nExample 2: Pack and unpack a message in Java.\n\n    Foo foo = ...;\n    Any any = Any.pack(foo);\n    ...\n    if (any.is(Foo.class)) {\n      foo = any.unpack(Foo.class);\n    }\n    // or ...\n    if (any.isSameTypeAs(Foo.getDefaultInstance())) {\n      foo = any.unpack(Foo.getDefaultInstance());\n    }\n\n Example 3: Pack and unpack a message in Python.\n\n    foo = Foo(...)\n    any = Any()\n    any.Pack(foo)\n    ...\n    if any.Is(Foo.DESCRIPTOR):\n      any.Unpack(foo)\n      ...\n\n Example 4: Pack and unpack a message in Go\n\n     foo := \u0026pb.Foo{...}\n     any, err := anypb.New(foo)\n     if err != nil {\n       ...\n     }\n     ...\n     foo := \u0026pb.Foo{}\n     if err := any.UnmarshalTo(foo); err != nil {\n       ...\n     }\n\nThe pack methods provided by protobuf library will by default use\n'type.googleapis.com/full.type.name' as the type URL and the unpack\nmethods only use the fully qualified type name after the last '/'\nin the type URL, for example \"foo.bar.com/x/y.z\" will yield type\nname \"y.z\".\n\nJSON\n====\nThe JSON representation of an `Any` value uses the regular\nrepresentation of the deserialized, embedded message, with an\nadditional field `@type` which contains the type URL. Example:\n\n    package google.profile;\n    message Person {\n      string first_name = 1;\n      string last_name = 2;\n    }\n\n    {\n      \"@type\": \"type.googleapis.com/google.profile.Person\",\n      \"firstName\": \u003cstring\u003e,\n      \"lastName\": \u003cstring\u003e\n    }\n\nIf the embedded message type is well-known and has a custom JSON\nrepresentation, that representation will be embedded adding a field\n`value` which holds the custom JSON in addition to the `@type`\nfield. Example (for message [google.protobuf.Duration][]):\n\n    {\n      \"@type\": \"type.googleapis.com/google.protobuf.Duration\",\n      \"value\": \"1.212s\"\n    }"
+    },
+    "pushv1PushResponse": {
+      "type": "object"
     },
     "querierv1ProfileTypesResponse": {
       "type": "object",
@@ -373,6 +400,410 @@
           }
         }
       }
+    },
+    "segmentwriterv1PushResponse": {
+      "type": "object"
+    },
+    "typesv1Location": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "v1AdHocProfilesGetResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "uploadedAt": {
+          "type": "string",
+          "format": "int64",
+          "title": "timestamp in milliseconds"
+        },
+        "profileType": {
+          "type": "string"
+        },
+        "profileTypes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Some profiles formats (like pprof) can contain multiple profile (sample) types inside. One of these can be passed\nin the Get request using the profile_type field."
+        },
+        "flamebearerProfile": {
+          "type": "string"
+        }
+      }
+    },
+    "v1AdHocProfilesListResponse": {
+      "type": "object",
+      "properties": {
+        "profiles": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1AdHocProfilesProfileMetadata"
+          }
+        }
+      }
+    },
+    "v1AdHocProfilesProfileMetadata": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "uploadedAt": {
+          "type": "string",
+          "format": "int64",
+          "title": "timestamp in milliseconds"
+        }
+      }
+    },
+    "v1AddBlockResponse": {
+      "type": "object"
+    },
+    "v1AnalyzeQueryResponse": {
+      "type": "object",
+      "properties": {
+        "queryScopes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1QueryScope"
+          },
+          "title": "detailed view of what the query will require"
+        },
+        "queryImpact": {
+          "$ref": "#/definitions/v1QueryImpact",
+          "title": "summary of the query impact / performance"
+        }
+      }
+    },
+    "v1BlockCompaction": {
+      "type": "object",
+      "properties": {
+        "level": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "parents": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v1BlockHints": {
+      "type": "object",
+      "properties": {
+        "ulids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "The ULID of blocks to query"
+        },
+        "deduplication": {
+          "type": "boolean",
+          "description": "When all blocks are compacted, there is no effect of the replication factor, hence we do not need to run deduplication."
+        }
+      }
+    },
+    "v1BlockInfo": {
+      "type": "object",
+      "properties": {
+        "ulid": {
+          "type": "string"
+        },
+        "minTime": {
+          "type": "string",
+          "format": "int64"
+        },
+        "maxTime": {
+          "type": "string",
+          "format": "int64"
+        },
+        "compaction": {
+          "$ref": "#/definitions/v1BlockCompaction"
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1LabelPair"
+          }
+        }
+      }
+    },
+    "v1BlockMeta": {
+      "type": "object",
+      "properties": {
+        "formatVersion": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "id": {
+          "type": "string"
+        },
+        "minTime": {
+          "type": "string",
+          "format": "int64"
+        },
+        "maxTime": {
+          "type": "string",
+          "format": "int64"
+        },
+        "shard": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "compactionLevel": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "Optional. Empty if compaction level is 0."
+        },
+        "datasets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Dataset"
+          }
+        },
+        "size": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "v1BlockMetadataResponse": {
+      "type": "object",
+      "properties": {
+        "blocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1BlockInfo"
+          },
+          "title": "Blocks that are present on the instance for the start to end period"
+        }
+      }
+    },
+    "v1BlockStats": {
+      "type": "object",
+      "properties": {
+        "seriesCount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "profileCount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "sampleCount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "indexBytes": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "profileBytes": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "symbolBytes": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "v1CommitAuthor": {
+      "type": "object",
+      "properties": {
+        "login": {
+          "type": "string",
+          "title": "the author login"
+        },
+        "avatarURL": {
+          "type": "string",
+          "title": "the author avatar URL"
+        }
+      }
+    },
+    "v1CompactionJob": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Unique name of the job."
+        },
+        "options": {
+          "$ref": "#/definitions/v1CompactionOptions"
+        },
+        "blocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1BlockMeta"
+          },
+          "description": "List of the input blocks."
+        },
+        "status": {
+          "$ref": "#/definitions/v1CompactionJobStatus"
+        },
+        "raftLogIndex": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Fencing token."
+        },
+        "shard": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Shard the blocks belong to."
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "Optional, empty for compaction level 0."
+        },
+        "compactionLevel": {
+          "type": "integer",
+          "format": "int64"
+        }
+      },
+      "description": "One compaction job may result in multiple output blocks."
+    },
+    "v1CompactionJobStatus": {
+      "type": "object",
+      "properties": {
+        "jobName": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/v1CompactionStatus",
+          "description": "Status update allows the planner to keep\ntrack of the job ownership and compaction\nprogress:\n- If the job status is other than IN_PROGRESS,\n  the ownership of the job is revoked.\n- FAILURE must only be sent if the failure is\n  persistent and the compaction can't be accomplished.\n- completed_job must be empty if the status is\n  other than SUCCESS, and vice-versa.\n- UNSPECIFIED must be sent if the worker rejects\n  or cancels the compaction job.\n\nPartial results/status is not allowed."
+        },
+        "completedJob": {
+          "$ref": "#/definitions/v1CompletedJob"
+        },
+        "raftLogIndex": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Fencing token."
+        },
+        "shard": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Shard the blocks belong to."
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "Optional, empty for compaction level 0."
+        }
+      }
+    },
+    "v1CompactionOptions": {
+      "type": "object",
+      "properties": {
+        "statusUpdateIntervalSeconds": {
+          "type": "string",
+          "format": "uint64",
+          "description": "How often the compaction worker should update\nthe job status. If overdue, the job ownership\nis revoked."
+        }
+      },
+      "description": "Compaction planner should instruct the compactor\n worker how to compact the blocks:\n  - Limits and tenant overrides.\n  - Feature flags."
+    },
+    "v1CompactionStatus": {
+      "type": "string",
+      "enum": [
+        "COMPACTION_STATUS_UNSPECIFIED",
+        "COMPACTION_STATUS_IN_PROGRESS",
+        "COMPACTION_STATUS_SUCCESS",
+        "COMPACTION_STATUS_FAILURE",
+        "COMPACTION_STATUS_CANCELLED"
+      ],
+      "default": "COMPACTION_STATUS_UNSPECIFIED"
+    },
+    "v1CompletedJob": {
+      "type": "object",
+      "properties": {
+        "blocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1BlockMeta"
+          }
+        }
+      }
+    },
+    "v1Dataset": {
+      "type": "object",
+      "properties": {
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Labels"
+          }
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "minTime": {
+          "type": "string",
+          "format": "int64"
+        },
+        "maxTime": {
+          "type": "string",
+          "format": "int64"
+        },
+        "tableOfContents": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uint64"
+          },
+          "description": "Table of contents lists data sections within the tenant\nservice region. The offsets are absolute.\n\nThe interpretation of the table of contents is specific\nto the metadata format version. By default, the sections are:\n - 0: profiles.parquet\n - 1: index.tsdb\n - 2: symbols.symdb"
+        },
+        "size": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Size of the section in bytes."
+        },
+        "profileTypes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "TODO: delete\nProfile types present in the tenant service data."
+        }
+      }
+    },
+    "v1Diagnostics": {
+      "type": "object",
+      "description": "Diagnostic messages, events, statistics, analytics, etc."
     },
     "v1DiffResponse": {
       "type": "object",
@@ -475,6 +906,18 @@
         }
       }
     },
+    "v1GetBlockStatsResponse": {
+      "type": "object",
+      "properties": {
+        "blockStats": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1BlockStats"
+          }
+        }
+      }
+    },
     "v1GetBuildInfoData": {
       "type": "object",
       "properties": {
@@ -509,6 +952,171 @@
         }
       }
     },
+    "v1GetCommitResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string",
+          "title": "the commit message"
+        },
+        "author": {
+          "$ref": "#/definitions/v1CommitAuthor",
+          "title": "the commit author login"
+        },
+        "date": {
+          "type": "string",
+          "title": "the commit date"
+        },
+        "sha": {
+          "type": "string",
+          "title": "the commit sha"
+        },
+        "URL": {
+          "type": "string",
+          "title": "the full URL to the commit"
+        }
+      }
+    },
+    "v1GetCompactionResponse": {
+      "type": "object",
+      "properties": {
+        "compactionJobs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1CompactionJob"
+          },
+          "title": "A list of all compaction jobs"
+        }
+      }
+    },
+    "v1GetFileResponse": {
+      "type": "object",
+      "properties": {
+        "content": {
+          "type": "string",
+          "title": "base64 content of the file"
+        },
+        "URL": {
+          "type": "string",
+          "title": "the full URL to the file"
+        }
+      }
+    },
+    "v1GetProfileStatsResponse": {
+      "type": "object",
+      "properties": {
+        "dataIngested": {
+          "type": "boolean",
+          "description": "Whether we received any data at any time in the past."
+        },
+        "oldestProfileTime": {
+          "type": "string",
+          "format": "int64",
+          "description": "Milliseconds since epoch."
+        },
+        "newestProfileTime": {
+          "type": "string",
+          "format": "int64",
+          "description": "Milliseconds since epoch."
+        }
+      }
+    },
+    "v1GetSettingsResponse": {
+      "type": "object",
+      "properties": {
+        "settings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Setting"
+          }
+        }
+      }
+    },
+    "v1GithubAppResponse": {
+      "type": "object",
+      "properties": {
+        "clientID": {
+          "type": "string"
+        }
+      }
+    },
+    "v1GithubLoginResponse": {
+      "type": "object",
+      "properties": {
+        "cookie": {
+          "type": "string"
+        }
+      }
+    },
+    "v1GithubRefreshResponse": {
+      "type": "object",
+      "properties": {
+        "cookie": {
+          "type": "string"
+        }
+      }
+    },
+    "v1GoPGO": {
+      "type": "object",
+      "properties": {
+        "keepLocations": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Specifies the number of leaf locations to keep."
+        },
+        "aggregateCallees": {
+          "type": "boolean",
+          "description": "Aggregate callees causes the leaf location line number to be ignored,\nthus aggregating all callee samples (but not callers)."
+        }
+      }
+    },
+    "v1Hints": {
+      "type": "object",
+      "properties": {
+        "block": {
+          "$ref": "#/definitions/v1BlockHints"
+        }
+      },
+      "title": "Hints are used to propagate information about querying"
+    },
+    "v1InvokeOptions": {
+      "type": "object",
+      "description": "Query workers might not have access to the tenant\n overrides, therefore all the necessary options should\n be listed in the request explicitly."
+    },
+    "v1InvokeResponse": {
+      "type": "object",
+      "properties": {
+        "reports": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Report"
+          }
+        },
+        "diagnostics": {
+          "$ref": "#/definitions/v1Diagnostics"
+        }
+      }
+    },
+    "v1LabelNamesQuery": {
+      "type": "object"
+    },
+    "v1LabelNamesReport": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "$ref": "#/definitions/v1LabelNamesQuery"
+        },
+        "labelNames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "v1LabelNamesResponse": {
       "type": "object",
       "properties": {
@@ -528,6 +1136,28 @@
         },
         "value": {
           "type": "string"
+        }
+      }
+    },
+    "v1LabelValuesQuery": {
+      "type": "object",
+      "properties": {
+        "labelName": {
+          "type": "string"
+        }
+      }
+    },
+    "v1LabelValuesReport": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "$ref": "#/definitions/v1LabelValuesQuery"
+        },
+        "labelValues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
@@ -737,6 +1367,27 @@
         }
       }
     },
+    "v1PollCompactionJobsResponse": {
+      "type": "object",
+      "properties": {
+        "compactionJobs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1CompactionJob"
+          }
+        }
+      }
+    },
+    "v1ProfileFormat": {
+      "type": "string",
+      "enum": [
+        "PROFILE_FORMAT_UNSPECIFIED",
+        "PROFILE_FORMAT_FLAMEGRAPH",
+        "PROFILE_FORMAT_TREE"
+      ],
+      "default": "PROFILE_FORMAT_UNSPECIFIED"
+    },
     "v1ProfileSets": {
       "type": "object",
       "properties": {
@@ -745,13 +1396,21 @@
           "items": {
             "type": "object",
             "$ref": "#/definitions/v1Labels"
-          }
+          },
+          "description": "DEPRECATED: Use fingerprints instead."
         },
         "profiles": {
           "type": "array",
           "items": {
             "type": "object",
             "$ref": "#/definitions/v1SeriesProfile"
+          }
+        },
+        "fingerprints": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uint64"
           }
         }
       }
@@ -779,8 +1438,134 @@
         }
       }
     },
-    "v1PushResponse": {
-      "type": "object"
+    "v1Query": {
+      "type": "object",
+      "properties": {
+        "queryType": {
+          "$ref": "#/definitions/v1QueryType"
+        },
+        "labelNames": {
+          "$ref": "#/definitions/v1LabelNamesQuery",
+          "description": "Exactly one of the following fields should be set,\ndepending on the query type."
+        },
+        "labelValues": {
+          "$ref": "#/definitions/v1LabelValuesQuery"
+        },
+        "seriesLabels": {
+          "$ref": "#/definitions/v1SeriesLabelsQuery"
+        },
+        "timeSeries": {
+          "$ref": "#/definitions/v1TimeSeriesQuery"
+        },
+        "tree": {
+          "$ref": "#/definitions/v1TreeQuery",
+          "description": "pprof\n function_details\n call_graph\n top_table\n ..."
+        }
+      }
+    },
+    "v1QueryImpact": {
+      "type": "object",
+      "properties": {
+        "totalBytesInTimeRange": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "totalQueriedSeries": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "deduplicationNeeded": {
+          "type": "boolean"
+        }
+      }
+    },
+    "v1QueryMetadataResponse": {
+      "type": "object",
+      "properties": {
+        "blocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1BlockMeta"
+          }
+        }
+      }
+    },
+    "v1QueryPlan": {
+      "type": "object",
+      "properties": {
+        "graph": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "description": "Each node is encoded with 3 values:\n - node type: 0 - read, 1 - merge;\n - range offset;\n - range length."
+        },
+        "blocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1BlockMeta"
+          },
+          "description": "The blocks matching the query.\n\nTODO: Use opaque byte array to avoid unnecessary\n proto encoding/decoding overhead in transient nodes.\n Graph nodes reference ranges, thus each range could\n be a blob of bytes:\n repeated bytes block_ranges = 2;"
+        }
+      },
+      "description": "Query plan is represented by a DAG, where each node\nmight be either \"merge\" or \"read\" (leaves). Each node\nreferences a range: merge nodes refer to other nodes,\nwhile read nodes refer to the blocks."
+    },
+    "v1QueryScope": {
+      "type": "object",
+      "properties": {
+        "componentType": {
+          "type": "string",
+          "title": "a descriptive high level name of the component processing one part of the query (e.g., \"short term storage\")"
+        },
+        "componentCount": {
+          "type": "string",
+          "format": "uint64",
+          "title": "how many components of this type will process the query (indicator of read-path replication)"
+        },
+        "blockCount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "seriesCount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "profileCount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "sampleCount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "indexBytes": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "profileBytes": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "symbolBytes": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "v1QueryType": {
+      "type": "string",
+      "enum": [
+        "QUERY_UNSPECIFIED",
+        "QUERY_LABEL_NAMES",
+        "QUERY_LABEL_VALUES",
+        "QUERY_SERIES_LABELS",
+        "QUERY_TIME_SERIES",
+        "QUERY_TREE"
+      ],
+      "default": "QUERY_UNSPECIFIED"
     },
     "v1RawProfileSeries": {
       "type": "object",
@@ -819,6 +1604,51 @@
       },
       "title": "RawSample is the set of bytes that correspond to a pprof profile"
     },
+    "v1ReadIndexResponse": {
+      "type": "object",
+      "properties": {
+        "readIndex": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "v1Report": {
+      "type": "object",
+      "properties": {
+        "reportType": {
+          "$ref": "#/definitions/v1ReportType"
+        },
+        "labelNames": {
+          "$ref": "#/definitions/v1LabelNamesReport",
+          "description": "Exactly one of the following fields should be set,\ndepending on the report type."
+        },
+        "labelValues": {
+          "$ref": "#/definitions/v1LabelValuesReport"
+        },
+        "seriesLabels": {
+          "$ref": "#/definitions/v1SeriesLabelsReport"
+        },
+        "timeSeries": {
+          "$ref": "#/definitions/v1TimeSeriesReport"
+        },
+        "tree": {
+          "$ref": "#/definitions/v1TreeReport"
+        }
+      }
+    },
+    "v1ReportType": {
+      "type": "string",
+      "enum": [
+        "REPORT_UNSPECIFIED",
+        "REPORT_LABEL_NAMES",
+        "REPORT_LABEL_VALUES",
+        "REPORT_SERIES_LABELS",
+        "REPORT_TIME_SERIES",
+        "REPORT_TREE"
+      ],
+      "default": "REPORT_UNSPECIFIED"
+    },
     "v1Sample": {
       "type": "object",
       "properties": {
@@ -854,6 +1684,11 @@
       "properties": {
         "flamegraph": {
           "$ref": "#/definitions/v1FlameGraph"
+        },
+        "tree": {
+          "type": "string",
+          "format": "byte",
+          "description": "Pyroscope tree bytes."
         }
       }
     },
@@ -869,17 +1704,21 @@
         "start": {
           "type": "string",
           "format": "int64",
-          "title": "milliseconds since epoch"
+          "description": "Milliseconds since epoch."
         },
         "end": {
           "type": "string",
           "format": "int64",
-          "title": "milliseconds since epoch"
+          "description": "Milliseconds since epoch."
         },
         "maxNodes": {
           "type": "string",
           "format": "int64",
           "title": "Limit the nodes returned to only show the node with the max_node's biggest total"
+        },
+        "format": {
+          "$ref": "#/definitions/v1ProfileFormat",
+          "description": "Profile format specifies the format of profile to be returned.\nIf not specified, the profile will be returned in flame graph format."
         }
       }
     },
@@ -888,6 +1727,11 @@
       "properties": {
         "flamegraph": {
           "$ref": "#/definitions/v1FlameGraph"
+        },
+        "tree": {
+          "type": "string",
+          "format": "byte",
+          "description": "Pyroscope tree bytes."
         }
       }
     },
@@ -902,11 +1746,21 @@
         },
         "start": {
           "type": "string",
-          "format": "int64"
+          "format": "int64",
+          "description": "Milliseconds since epoch."
         },
         "end": {
           "type": "string",
-          "format": "int64"
+          "format": "int64",
+          "description": "Milliseconds since epoch."
+        },
+        "hints": {
+          "$ref": "#/definitions/v1Hints",
+          "title": "Optional: Hints for querying"
+        },
+        "aggregation": {
+          "$ref": "#/definitions/v1TimeSeriesAggregationType",
+          "title": "Optional: Aggregation"
         }
       }
     },
@@ -933,17 +1787,24 @@
         },
         "start": {
           "type": "string",
-          "format": "int64"
+          "format": "int64",
+          "description": "Milliseconds since epoch."
         },
         "end": {
           "type": "string",
-          "format": "int64"
+          "format": "int64",
+          "description": "Milliseconds since epoch."
         },
         "spanSelector": {
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "description": "List of span identifiers."
+        },
+        "hints": {
+          "$ref": "#/definitions/v1Hints",
+          "title": "Optional: Hints for querying"
         }
       }
     },
@@ -966,6 +1827,32 @@
         }
       }
     },
+    "v1SeriesLabelsQuery": {
+      "type": "object",
+      "properties": {
+        "labelNames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v1SeriesLabelsReport": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "$ref": "#/definitions/v1SeriesLabelsQuery"
+        },
+        "seriesLabels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Labels"
+          }
+        }
+      }
+    },
     "v1SeriesProfile": {
       "type": "object",
       "properties": {
@@ -980,6 +1867,47 @@
           "title": "timestamp in milliseconds"
         }
       }
+    },
+    "v1SetSettingsResponse": {
+      "type": "object",
+      "properties": {
+        "setting": {
+          "$ref": "#/definitions/v1Setting"
+        }
+      }
+    },
+    "v1Setting": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "modifiedAt": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1StackTraceSelector": {
+      "type": "object",
+      "properties": {
+        "callSite": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/typesv1Location"
+          },
+          "description": "Stack trace of the call site. Root at call_site[0].\nOnly stack traces having the prefix provided will be selected.\nIf empty, the filter is ignored."
+        },
+        "goPgo": {
+          "$ref": "#/definitions/v1GoPGO",
+          "description": "Stack trace selector for profiles purposed for Go PGO.\nIf set, call_site is ignored."
+        }
+      },
+      "description": "StackTraceSelector is used for filtering stack traces by locations."
     },
     "v1StacktraceSample": {
       "type": "object",
@@ -1006,6 +1934,68 @@
       ],
       "default": "MERGE_FORMAT_UNSPECIFIED"
     },
+    "v1TimeSeriesAggregationType": {
+      "type": "string",
+      "enum": [
+        "TIME_SERIES_AGGREGATION_TYPE_SUM",
+        "TIME_SERIES_AGGREGATION_TYPE_AVERAGE"
+      ],
+      "default": "TIME_SERIES_AGGREGATION_TYPE_SUM"
+    },
+    "v1TimeSeriesQuery": {
+      "type": "object",
+      "properties": {
+        "step": {
+          "type": "number",
+          "format": "double"
+        },
+        "groupBy": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "aggregation": {
+          "$ref": "#/definitions/v1TimeSeriesAggregationType"
+        }
+      }
+    },
+    "v1TimeSeriesReport": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "$ref": "#/definitions/v1TimeSeriesQuery"
+        },
+        "timeSeries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Series"
+          }
+        }
+      }
+    },
+    "v1TreeQuery": {
+      "type": "object",
+      "properties": {
+        "maxNodes": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1TreeReport": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "$ref": "#/definitions/v1TreeQuery"
+        },
+        "tree": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
     "v1ValueType": {
       "type": "object",
       "properties": {
@@ -1021,6 +2011,15 @@
         }
       },
       "description": "ValueType describes the semantics and measurement units of a value."
+    },
+    "v1VersionResponse": {
+      "type": "object",
+      "properties": {
+        "QuerierAPI": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
     }
   }
 }

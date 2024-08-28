@@ -12,3 +12,6 @@ data/**
 *.yml
 *.html
 og/**
+cmd/**
+pkg/test/**
+examples/**

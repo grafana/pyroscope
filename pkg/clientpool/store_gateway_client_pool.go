@@ -5,7 +5,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/ring"
 	ring_client "github.com/grafana/dskit/ring/client"
@@ -18,7 +18,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/util"
 )
 
-func NeStoreGatewayPool(ring ring.ReadRing, factory ring_client.PoolFactory, clientsMetric prometheus.Gauge, logger log.Logger, options ...connect.ClientOption) *ring_client.Pool {
+func NewStoreGatewayPool(ring ring.ReadRing, factory ring_client.PoolFactory, clientsMetric prometheus.Gauge, logger log.Logger, options ...connect.ClientOption) *ring_client.Pool {
 	if factory == nil {
 		factory = newStoreGatewayPoolFactory(options...)
 	}
@@ -44,8 +44,10 @@ func (f *storeGatewayPoolFactory) FromInstance(inst ring.InstanceDesc) (ring_cli
 	if err != nil {
 		return nil, err
 	}
+
+	httpClient := util.InstrumentedDefaultHTTPClient(util.WithTracingTransport())
 	return &storeGatewayPoolClient{
-		StoreGatewayServiceClient: storegatewayv1connect.NewStoreGatewayServiceClient(util.InstrumentedHTTPClient(), "http://"+inst.Addr, f.options...),
+		StoreGatewayServiceClient: storegatewayv1connect.NewStoreGatewayServiceClient(httpClient, "http://"+inst.Addr, f.options...),
 		HealthClient:              grpc_health_v1.NewHealthClient(conn),
 		Closer:                    conn,
 	}, nil

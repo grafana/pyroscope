@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package adhocprofiles.v1;
+
+import "types/v1/types.proto";
+
+service AdHocProfileService {
+  // Upload a profile to the underlying store. The request contains a name and a base64 encoded pprof file. The response
+  // contains a generated unique identifier, a flamegraph and a list of found sample types within the profile.
+  rpc Upload(AdHocProfilesUploadRequest) returns (AdHocProfilesGetResponse) {}
+
+  // Retrieves a profile from the underlying store by id and an optional sample type. The response is similar to the one
+  // for the upload method.
+  rpc Get(AdHocProfilesGetRequest) returns (AdHocProfilesGetResponse) {}
+
+  // Retrieves a list of profiles found in the underlying store.
+  rpc List(AdHocProfilesListRequest) returns (AdHocProfilesListResponse) {}
+}
+
+message AdHocProfilesUploadRequest {
+  // This is typically the file name and it serves as a human readable name for the profile.
+  string name = 1;
+  // This is the profile encoded in base64. The supported formats are pprof, json, collapsed and perf-script.
+  string profile = 2;
+  // Max nodes can be used to truncate the response.
+  optional int64 max_nodes = 3;
+}
+
+message AdHocProfilesGetRequest {
+  // The unique identifier of the profile.
+  string id = 1;
+  // The desired profile type (e.g., cpu, samples) for the returned flame graph. If omitted the first profile is returned.
+  optional string profile_type = 2;
+  // Max nodes can be used to truncate the response.
+  optional int64 max_nodes = 3;
+}
+
+message AdHocProfilesGetResponse {
+  string id = 1;
+  string name = 2;
+  // timestamp in milliseconds
+  int64 uploaded_at = 3;
+  string profile_type = 4;
+  // Some profiles formats (like pprof) can contain multiple profile (sample) types inside. One of these can be passed
+  // in the Get request using the profile_type field.
+  repeated string profile_types = 5;
+  string flamebearer_profile = 6;
+}
+
+message AdHocProfilesListRequest {}
+
+message AdHocProfilesListResponse {
+  repeated AdHocProfilesProfileMetadata profiles = 1;
+}
+
+message AdHocProfilesProfileMetadata {
+  string id = 1;
+  string name = 2;
+  // timestamp in milliseconds
+  int64 uploaded_at = 3;
+}

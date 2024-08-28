@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/grafana/pyroscope/pkg/tenant"
@@ -61,7 +61,13 @@ func RoundTripUnary[Req any, Res any](ctx context.Context, rt GRPCRoundTripper, 
 		return nil, err
 	}
 	if res.Code/100 != 2 {
-		return nil, connect.NewError(HTTPToCode(res.Code), errors.New(string(res.Body)))
+		err := connect.NewError(HTTPToCode(res.Code), errors.New(string(res.Body)))
+		for _, h := range res.Headers {
+			for _, v := range h.Values {
+				err.Meta().Add(h.Key, v)
+			}
+		}
+		return nil, err
 	}
 	return decodeResponse[Res](res)
 }
@@ -160,11 +166,34 @@ func removeContentHeaders(h http.Header) http.Header {
 	return h
 }
 
+// filterHeader filters headers, which would expose details about the implementation details of the connectgrpc implementation
+func filterHeader(name string) bool {
+	if strings.ToLower(name) == "content-type" {
+		return true
+	}
+	if strings.ToLower(name) == "accept-encoding" {
+		return true
+	}
+	if strings.ToLower(name) == "content-encoding" {
+		return true
+	}
+	return false
+}
+
 func decodeResponse[Resp any](r *httpgrpc.HTTPResponse) (*connect.Response[Resp], error) {
 	if err := decompressResponse(r); err != nil {
 		return nil, err
 	}
 	resp := &connect.Response[Resp]{Msg: new(Resp)}
+	for _, h := range r.Headers {
+		if filterHeader(h.Key) {
+			continue
+		}
+
+		for _, v := range h.Values {
+			resp.Header().Add(h.Key, v)
+		}
+	}
 	if err := proto.Unmarshal(r.Body, resp.Any().(proto.Message)); err != nil {
 		return nil, err
 	}
@@ -353,5 +382,4 @@ func (g *httpgrpcClient) Do(req *http.Request) (*http.Response, error) {
 		StatusCode:    int(resp.Code),
 		Header:        httpgrpcHeaderToConnectHeader(resp.Headers),
 	}, nil
-
 }

@@ -208,6 +208,10 @@ func NewTOCFromByteSlice(bs ByteSlice) (*TOC, error) {
 
 // NewWriter returns a new Writer to the given filename. It serializes data in format version 2.
 func NewWriter(ctx context.Context, fn string) (*Writer, error) {
+	return NewWriterSize(ctx, fn, 4<<20)
+}
+
+func NewWriterSize(ctx context.Context, fn string, bufferSize int) (*Writer, error) {
 	dir := filepath.Dir(fn)
 
 	df, err := fileutil.OpenDir(dir)
@@ -221,17 +225,17 @@ func NewWriter(ctx context.Context, fn string) (*Writer, error) {
 	}
 
 	// Main index file we are building.
-	f, err := NewFileWriter(fn)
+	f, err := NewFileWriter(fn, bufferSize)
 	if err != nil {
 		return nil, err
 	}
 	// Temporary file for postings.
-	fP, err := NewFileWriter(fn + "_tmp_p")
+	fP, err := NewFileWriter(fn+"_tmp_p", bufferSize)
 	if err != nil {
 		return nil, err
 	}
 	// Temporary file for posting offset table.
-	fPO, err := NewFileWriter(fn + "_tmp_po")
+	fPO, err := NewFileWriter(fn+"_tmp_po", bufferSize)
 	if err != nil {
 		return nil, err
 	}
@@ -247,8 +251,8 @@ func NewWriter(ctx context.Context, fn string) (*Writer, error) {
 		stage: idxStageNone,
 
 		// Reusable memory.
-		buf1: encoding.EncWrap(tsdb_enc.Encbuf{B: make([]byte, 0, 1<<22)}),
-		buf2: encoding.EncWrap(tsdb_enc.Encbuf{B: make([]byte, 0, 1<<22)}),
+		buf1: encoding.EncWrap(tsdb_enc.Encbuf{B: make([]byte, 0, bufferSize)}),
+		buf2: encoding.EncWrap(tsdb_enc.Encbuf{B: make([]byte, 0, bufferSize)}),
 
 		symbolCache: make(map[string]symbolCacheEntry, 1<<8),
 		labelNames:  make(map[string]uint64, 1<<8),
@@ -279,14 +283,14 @@ type FileWriter struct {
 	name string
 }
 
-func NewFileWriter(name string) (*FileWriter, error) {
+func NewFileWriter(name string, bufferSize int) (*FileWriter, error) {
 	f, err := os.OpenFile(name, os.O_CREATE|os.O_RDWR, 0o666)
 	if err != nil {
 		return nil, err
 	}
 	return &FileWriter{
 		f:    f,
-		fbuf: bufio.NewWriterSize(f, 1<<22),
+		fbuf: bufio.NewWriterSize(f, bufferSize),
 		pos:  0,
 		name: name,
 	}, nil
@@ -942,7 +946,10 @@ func (w *Writer) writePostingsToTmpFiles() error {
 		// using more memory than a single label name can.
 		for len(names) > 0 {
 			if w.labelNames[names[0]]+c > maxPostings {
-				break
+				if c > 0 {
+					break
+				}
+				return fmt.Errorf("corruption detected when writing postings to index: label %q has %d uses, but maxPostings is %d", names[0], w.labelNames[names[0]], maxPostings)
 			}
 			batchNames = append(batchNames, names[0])
 			c += w.labelNames[names[0]]
@@ -1016,7 +1023,6 @@ func (w *Writer) writePostingsToTmpFiles() error {
 			return w.ctx.Err()
 		default:
 		}
-
 	}
 	return nil
 }
@@ -1074,7 +1080,8 @@ func (w *Writer) writePostings() error {
 		return err
 	}
 	// Don't need to calculate a checksum, so can copy directly.
-	n, err := io.CopyBuffer(w.f.fbuf, w.fP.f, make([]byte, 1<<20))
+	buf := w.buf1.B[:cap(w.buf1.B)]
+	n, err := io.CopyBuffer(w.f.fbuf, w.fP.f, buf)
 	if err != nil {
 		return err
 	}
@@ -1747,7 +1754,27 @@ func (r *Reader) Series(id storage.SeriesRef, lbls *phlaremodel.Labels, chks *[]
 		return 0, d.Err()
 	}
 
-	fprint, err := r.dec.Series(d.Get(), lbls, chks)
+	fprint, err := r.dec.Series(d.Get(), lbls, chks, false)
+	if err != nil {
+		return 0, errors.Wrap(err, "read series")
+	}
+	return fprint, nil
+}
+
+// SeriesBy is like Series but allows to group labels by name. This avoid looking up all label symbols for requested series.
+func (r *Reader) SeriesBy(id storage.SeriesRef, lbls *phlaremodel.Labels, chks *[]ChunkMeta, by ...string) (uint64, error) {
+	offset := id
+	// In version 2 series IDs are no longer exact references but series are 16-byte padded
+	// and the ID is the multiple of 16 of the actual position.
+	if r.version == FormatV2 {
+		offset = id * 16
+	}
+	d := encoding.DecWrap(tsdb_enc.NewDecbufUvarintAt(r.b, int(offset), castagnoliTable))
+	if d.Err() != nil {
+		return 0, d.Err()
+	}
+
+	fprint, err := r.dec.Series(d.Get(), lbls, chks, true, by...)
 	if err != nil {
 		return 0, errors.Wrap(err, "read series")
 	}
@@ -1958,8 +1985,10 @@ func (dec *Decoder) LabelValueFor(b []byte, label string) (string, error) {
 }
 
 // Series decodes a series entry from the given byte slice into lset and chks.
-func (dec *Decoder) Series(b []byte, lbls *phlaremodel.Labels, chks *[]ChunkMeta) (uint64, error) {
-	*lbls = (*lbls)[:0]
+func (dec *Decoder) Series(b []byte, lbls *phlaremodel.Labels, chks *[]ChunkMeta, group bool, by ...string) (uint64, error) {
+	if lbls != nil {
+		*lbls = (*lbls)[:0]
+	}
 	*chks = (*chks)[:0]
 
 	d := encoding.DecWrap(tsdb_enc.Decbuf{B: b})
@@ -1974,10 +2003,28 @@ func (dec *Decoder) Series(b []byte, lbls *phlaremodel.Labels, chks *[]ChunkMeta
 		if d.Err() != nil {
 			return 0, errors.Wrap(d.Err(), "read series label offsets")
 		}
-
+		if lbls == nil {
+			continue
+		}
+		if group && len(by) == 0 {
+			// If we're grouping by all labels, we don't need to decode them.
+			continue
+		}
 		ln, err := dec.LookupSymbol(lno)
 		if err != nil {
 			return 0, errors.Wrap(err, "lookup label name")
+		}
+		if group {
+			var found bool
+			for _, b := range by {
+				if b == ln {
+					found = true
+					break
+				}
+			}
+			if !found {
+				continue
+			}
 		}
 		lv, err := dec.LookupSymbol(lvo)
 		if err != nil {

@@ -16,14 +16,19 @@ service QuerierService {
   rpc Series(SeriesRequest) returns (SeriesResponse) {}
   // SelectMergeStacktraces returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
   rpc SelectMergeStacktraces(SelectMergeStacktracesRequest) returns (SelectMergeStacktracesResponse) {}
-  // SelectMergeSpans returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
+  // SelectMergeSpanProfile returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
   rpc SelectMergeSpanProfile(SelectMergeSpanProfileRequest) returns (SelectMergeSpanProfileResponse) {}
   // SelectMergeProfile returns matching profiles aggregated in pprof format. It will contain all information stored (so including filenames and line number, if ingested).
   rpc SelectMergeProfile(SelectMergeProfileRequest) returns (google.v1.Profile) {}
   // SelectSeries returns a time series for the total sum of the requested profiles.
   rpc SelectSeries(SelectSeriesRequest) returns (SelectSeriesResponse) {}
 
+  // Diff returns a diff of two profiles
   rpc Diff(DiffRequest) returns (DiffResponse) {}
+
+  // GetProfileStats returns profile stats for the current tenant.
+  rpc GetProfileStats(types.v1.GetProfileStatsRequest) returns (types.v1.GetProfileStatsResponse) {}
+  rpc AnalyzeQuery(AnalyzeQueryRequest) returns (AnalyzeQueryResponse) {}
 }
 
 message ProfileTypesRequest {
@@ -57,26 +62,48 @@ message SeriesResponse {
 message SelectMergeStacktracesRequest {
   string profile_typeID = 1;
   string label_selector = 2;
-  int64 start = 3; // milliseconds since epoch
-  int64 end = 4; // milliseconds since epoch
-  optional int64 max_nodes = 5; // Limit the nodes returned to only show the node with the max_node's biggest total
+  // Milliseconds since epoch.
+  int64 start = 3;
+  // Milliseconds since epoch.
+  int64 end = 4;
+  // Limit the nodes returned to only show the node with the max_node's biggest total
+  optional int64 max_nodes = 5;
+  // Profile format specifies the format of profile to be returned.
+  // If not specified, the profile will be returned in flame graph format.
+  ProfileFormat format = 6;
+}
+
+enum ProfileFormat {
+  PROFILE_FORMAT_UNSPECIFIED = 0;
+  PROFILE_FORMAT_FLAMEGRAPH = 1;
+  PROFILE_FORMAT_TREE = 2;
 }
 
 message SelectMergeStacktracesResponse {
   FlameGraph flamegraph = 1;
+  // Pyroscope tree bytes.
+  bytes tree = 2;
 }
 
 message SelectMergeSpanProfileRequest {
   string profile_typeID = 1;
   string label_selector = 2;
   repeated string span_selector = 3;
-  int64 start = 4; // milliseconds since epoch
-  int64 end = 5; // milliseconds since epoch
-  optional int64 max_nodes = 6; // Limit the nodes returned to only show the node with the max_node's biggest total
+  // Milliseconds since epoch.
+  int64 start = 4;
+  // Milliseconds since epoch.
+  int64 end = 5;
+  // Limit the nodes returned to only show the node with the max_node's biggest total
+  optional int64 max_nodes = 6;
+  // Profile format specifies the format of profile to be returned.
+  // If not specified, the profile will be returned in flame graph format.
+  ProfileFormat format = 7;
 }
 
 message SelectMergeSpanProfileResponse {
   FlameGraph flamegraph = 1;
+  // Pyroscope tree bytes.
+  bytes tree = 2;
 }
 
 message DiffRequest {
@@ -112,19 +139,61 @@ message Level {
 message SelectMergeProfileRequest {
   string profile_typeID = 1;
   string label_selector = 2;
-  int64 start = 3; // milliseconds since epoch
-  int64 end = 4; // milliseconds since epoch
+  // Milliseconds since epoch.
+  int64 start = 3;
+  // Milliseconds since epoch.
+  int64 end = 4;
+  // Limit the nodes returned to only show the node with the max_node's biggest total
+  optional int64 max_nodes = 5;
+  // Select stack traces that match the provided selector.
+  optional types.v1.StackTraceSelector stack_trace_selector = 6;
 }
 
 message SelectSeriesRequest {
   string profile_typeID = 1;
   string label_selector = 2;
-  int64 start = 3; // milliseconds since epoch
-  int64 end = 4; // milliseconds since epoch
+  // Milliseconds since epoch.
+  int64 start = 3;
+  // Milliseconds since epoch.
+  int64 end = 4;
   repeated string group_by = 5;
-  double step = 6; // Query resolution step width in seconds
+  double step = 6;
+  // Query resolution step width in seconds
+  optional types.v1.TimeSeriesAggregationType aggregation = 7;
+  // Select stack traces that match the provided selector.
+  optional types.v1.StackTraceSelector stack_trace_selector = 8;
 }
 
 message SelectSeriesResponse {
   repeated types.v1.Series series = 1;
+}
+
+message AnalyzeQueryRequest {
+  int64 start = 2;
+  int64 end = 3;
+  string query = 4;
+}
+
+message AnalyzeQueryResponse {
+  repeated QueryScope query_scopes = 1; // detailed view of what the query will require
+  QueryImpact query_impact = 2; // summary of the query impact / performance
+}
+
+message QueryScope {
+  string component_type = 1; // a descriptive high level name of the component processing one part of the query (e.g., "short term storage")
+  uint64 component_count = 2; // how many components of this type will process the query (indicator of read-path replication)
+
+  uint64 block_count = 3;
+  uint64 series_count = 4;
+  uint64 profile_count = 5;
+  uint64 sample_count = 6;
+  uint64 index_bytes = 7;
+  uint64 profile_bytes = 8;
+  uint64 symbol_bytes = 9;
+}
+
+message QueryImpact {
+  uint64 total_bytes_in_time_range = 2;
+  uint64 total_queried_series = 3;
+  bool deduplication_needed = 4;
 }

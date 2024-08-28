@@ -9,8 +9,6 @@ import (
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 )
 
-const MaxNodes = 8192
-
 // NewFlamegraphDiff generates a FlameGraphDiff from 2 trees.
 // It also prunes the final tree based on the maxNodes parameter
 // Notice that the resulting FlameGraph can't be used interchangeably with a 'single' Flamegraph
@@ -25,7 +23,7 @@ const MaxNodes = 8192
 //	i+4 = total   , right tree
 //	i+5 = self    , right tree
 //	i+6 = index in the names array
-func NewFlamegraphDiff(left, right *Tree, maxNodes int) (*querierv1.FlameGraphDiff, error) {
+func NewFlamegraphDiff(left, right *Tree, maxNodes int64) (*querierv1.FlameGraphDiff, error) {
 	// The algorithm doesn't work properly with negative nodes
 	// Although it's possible to silently drop these nodes
 	// Let's fail early and analyze properly with real data when the issue happens
@@ -52,7 +50,7 @@ func NewFlamegraphDiff(left, right *Tree, maxNodes int) (*querierv1.FlameGraphDi
 	levels := []int{0}
 	var minVal int64
 	if maxNodes > 0 {
-		minVal = int64(combineMinValues(leftTree, rightTree, maxNodes))
+		minVal = int64(combineMinValues(leftTree, rightTree, int(maxNodes)))
 	}
 	nameLocationCache := map[string]int{}
 

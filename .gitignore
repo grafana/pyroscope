@@ -1,8 +1,8 @@
 # Binaries for programs and plugins
-bin
 /phlare
 /pyroscope
 /profilecli
+/playground
 # Test binary, built with `go test -c`
 *.test
 # Output of the go coverage tool, specifically when used with LiteIDE
@@ -12,6 +12,9 @@ bin
 /cmd/pyroscope/data
 pyroscope-sync/
 data/
+data-shared/
+data-compactor/
+data-metastore/
 .DS_Store
 **/dist
 
@@ -39,3 +42,4 @@ yarn-error.log
 /.docker-image-id-pyroscope
 
 /.tmp
+tools/k6/.env

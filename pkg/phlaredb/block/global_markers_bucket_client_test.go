@@ -348,7 +348,7 @@ func TestPhlareDBGlobalMarker(t *testing.T) {
 
 	id := generateULID()
 
-	err := MarkForDeletion(context.Background(), log.NewLogfmtLogger(os.Stderr), bkt, id, "foo", prometheus.NewCounter(prometheus.CounterOpts{}))
+	err := MarkForDeletion(context.Background(), log.NewLogfmtLogger(os.Stderr), bkt, id, "foo", false, prometheus.NewCounter(prometheus.CounterOpts{}))
 	require.NoError(t, err)
 
 	ok, err := bkt.Exists(context.Background(), DeletionMarkFilepath(id))

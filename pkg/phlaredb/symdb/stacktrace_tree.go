@@ -102,6 +102,28 @@ func (t *stacktraceTree) resolve(dst []int32, id uint32) []int32 {
 	return dst
 }
 
+func (t *stacktraceTree) resolveUint64(dst []uint64, id uint32) []uint64 {
+	dst = dst[:0]
+	if id >= uint32(len(t.nodes)) {
+		return dst
+	}
+	// Only node members are accessed, in order to avoid
+	// race condition with insert: r and p are written once,
+	// when the node is created.
+	for i := int32(id); i > 0; i = t.nodes[i].p {
+		dst = append(dst, uint64(t.nodes[i].r))
+	}
+	return dst
+}
+
+func (t *stacktraceTree) Nodes() []Node {
+	dst := make([]Node, len(t.nodes))
+	for i := 0; i < len(dst) && i < len(t.nodes); i++ { // BCE
+		dst[i] = Node{Parent: t.nodes[i].p, Location: t.nodes[i].r}
+	}
+	return dst
+}
+
 const (
 	maxGroupSize = 17 // 4 * uint32 + control byte
 	// minGroupSize = 5  // 4 * byte + control byte
@@ -131,16 +153,68 @@ func newParentPointerTree(size uint32) *parentPointerTree {
 }
 
 func (t *parentPointerTree) resolve(dst []int32, id uint32) []int32 {
+	dst = dst[:0]
 	if id >= uint32(len(t.nodes)) {
 		return dst
 	}
-	dst = dst[:0]
 	n := t.nodes[id]
 	for n.p >= 0 {
 		dst = append(dst, n.r)
 		n = t.nodes[n.p]
 	}
 	return dst
+}
+
+func (t *parentPointerTree) resolveUint64(dst []uint64, id uint32) []uint64 {
+	dst = dst[:0]
+	if id >= uint32(len(t.nodes)) {
+		return dst
+	}
+	n := t.nodes[id]
+	for n.p >= 0 {
+		dst = append(dst, uint64(n.r))
+		n = t.nodes[n.p]
+	}
+	return dst
+}
+
+func (t *parentPointerTree) Nodes() []Node {
+	dst := make([]Node, len(t.nodes))
+	for i := 0; i < len(dst) && i < len(t.nodes); i++ { // BCE
+		dst[i] = Node{Parent: t.nodes[i].p, Location: t.nodes[i].r}
+	}
+	return dst
+}
+
+func (t *parentPointerTree) toStacktraceTree() *stacktraceTree {
+	l := int32(len(t.nodes))
+	x := stacktraceTree{nodes: make([]node, l)}
+	x.nodes[0] = node{
+		p:  sentinel,
+		fc: sentinel,
+		ns: sentinel,
+	}
+	lc := make([]int32, len(t.nodes))
+	var s int32
+	for i := int32(1); i < l; i++ {
+		n := t.nodes[i]
+		x.nodes[i] = node{
+			p:  n.p,
+			r:  n.r,
+			fc: sentinel,
+			ns: sentinel,
+		}
+		// Swap the last child of the parent with self.
+		// If this is the first child, update the parent.
+		// Otherwise, update the sibling.
+		s, lc[n.p] = lc[n.p], i
+		if s == 0 {
+			x.nodes[n.p].fc = i
+		} else {
+			x.nodes[s].ns = i
+		}
+	}
+	return &x
 }
 
 // ReadFrom decodes parent pointer tree from the reader.
@@ -233,6 +307,9 @@ func (d *treeDecoder) unmarshal(t *parentPointerTree, r io.Reader) error {
 			}
 			eof = true
 		}
+		// len(b) is always >= b.Buffered(),
+		// therefore Discard does not invalidate
+		// the buffer.
 		if _, err = buf.Discard(len(b)); err != nil {
 			return err
 		}
@@ -245,12 +322,14 @@ func (d *treeDecoder) unmarshal(t *parentPointerTree, r io.Reader) error {
 			xn := len(t.nodes) - np // remaining nodes
 			// Note that g should always be a multiple of 4.
 			g = g[:math.Min((xn+xn%2)*2, d.groupBuffer)]
-			var gp int
-
+			if len(g)%4 != 0 {
+				return io.ErrUnexpectedEOF
+			}
 			// Check if there is a remainder. If this is the case,
 			// decode the group and advance gp.
+			var gp int
 			if len(rb) > 0 {
-				// It's expected that r contains a single complete group.
+				// It's expected that rb contains a single complete group.
 				m := groupvarint.BytesUsed[rb[0]] - len(rb)
 				if m >= (len(b) + len(rb)) {
 					return io.ErrUnexpectedEOF
@@ -268,11 +347,14 @@ func (d *treeDecoder) unmarshal(t *parentPointerTree, r io.Reader) error {
 			// Re-fill g.
 			gi, n, rn := decodeU32Groups(g[gp:], b[read:])
 			gp += gi
-			read += n + rn // Mark remainder bytes as read, we copy them.
+			read += n + rn // Mark the remaining bytes as read; we copy them.
 			if rn > 0 {
 				// If there is a remainder, it is copied and decoded on
 				// the next Peek. This should not be possible with eof.
 				rb = append(rb, b[len(b)-rn:]...)
+			}
+			if len(g) == 0 && len(rb) == 0 {
+				break
 			}
 
 			// g is full, or no more data in buf.

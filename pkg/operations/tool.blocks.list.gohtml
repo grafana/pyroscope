@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html class="h-100">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Bucket Blocks Tool - {{ .User }}</title>
+
+    <link rel="stylesheet" href="/static/bootstrap-5.1.3.min.css">
+    <link rel="stylesheet" href="/static/bootstrap-icons-1.8.1.css">
+    <link rel="stylesheet" href="/static/pyroscope-styles.css">
+    <script src="/static/bootstrap-5.1.3.bundle.min.js"></script>
+    <style>
+        button.acc-btn {
+            display: grid;
+            grid-template-columns: 1fr max-content max-content;
+            grid-gap: 10px;
+        }
+    </style>
+</head>
+<body class="d-flex flex-column h-100">
+<main class="flex-shrink-0">
+    <div class="container">
+        <div class="header row border-bottom py-3 flex-column-reverse flex-sm-row">
+            <div class="col-12 col-sm-9 text-center text-sm-start">
+                <h3>Bucket Blocks Explorer: Tenant {{ .User }}</h3>
+            </div>
+            <div class="col-12 col-sm-3 text-center text-sm-end mb-3 mb-sm-0">
+                <a href="../../tenants">
+                    <img alt="Pyroscope logo" class="pyroscope-brand" src="/static/pyroscope-logo.png">
+                </a>
+            </div>
+        </div>
+        <div class="row my-3">
+            <div class="col-md-6">
+                <form class="card p-2" action="blocks" method="get">
+                    <div class="input-group">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="include-deleted" name="includeDeleted" value="true" {{ if .Query.IncludeDeleted }} checked {{ end }}>
+                            <label class="form-check-label" for="include-deleted">Include deleted blocks</label>
+                        </div>
+                    </div>
+                    <hr/>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="view" id="view-table" value="table" {{ if eq .Query.View "table" }} checked {{ end }}>
+                        <label class="form-check-label" for="view">
+                            Table
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="view" id="view-grid" value="grid" {{ if eq .Query.View "grid" }} checked {{ end }}>
+                        <label class="form-check-label" for="view-grid">
+                            Grid
+                        </label>
+                    </div>
+                    <hr/>
+                    <div class="input-group">
+                        <input type="text" class="form-control" placeholder="From" name="queryFrom"
+                               value="{{ .Query.From }}">
+                        <input type="text" class="form-control" placeholder="To" name="queryTo" value="{{ .Query.To }}">
+                        <button type="submit" class="btn btn-secondary">Reload</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div class="row my-3">
+            <h5>{{ len $.SelectedBlocks.BlockGroups }} block groups found</h5>
+            {{ $user := .User }}
+            {{ if eq .Query.View "table"}}
+            <div class="accordion">
+                {{ range $i, $blockGroup := .SelectedBlocks.BlockGroups }}
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed acc-btn" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#group-{{ $i }}" aria-expanded="true" aria-controls="collapseOne">
+                            <span class="title">
+                                {{ $blockGroup.FormattedMinTime }}: {{ len $blockGroup.Blocks }} blocks
+                            </span>
+                            <span class="time">
+                                 {{ $blockGroup.MinTimeAge }}
+                            </span>
+                        </button>
+                    </h2>
+                    <div class="accordion-collapse collapse" id="group-{{ $i }}">
+                        <div class="accordion-body">
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-hover table-striped">
+                                    <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Upload Time</th>
+                                        <th>Min Time</th>
+                                        <th>Max Time</th>
+                                        <th>Duration</th>
+                                        <th>Compaction Level</th>
+                                        <th>Compactor Shard ID</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    {{ range $, $v := $blockGroup.Blocks }}
+                                        <tr>
+                                            <td class="font-monospace small">
+                                                <a href="blocks/{{ $v.ID }}">
+                                                    {{ $v.ID }}
+                                                </a>
+                                            </td>
+                                            <td class="font-monospace small">{{ $v.UploadedAt }}</td>
+                                            <td class="font-monospace small">{{ $v.MinTime }}</td>
+                                            <td class="font-monospace small">{{ $v.MaxTime }}</td>
+                                            <td class="font-monospace small">{{ $v.FormattedDuration }}</td>
+                                            <td class="font-monospace small">{{ $v.CompactionLevel }}</td>
+                                            <td class="font-monospace small">{{ $v.CompactorShardID }}</td>
+                                        </tr>
+                                    {{ end }}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {{ end }}
+            </div>
+            {{ else }}
+                <hr/>
+                {{ $groupDuration := .SelectedBlocks.GroupDurationMinutes}}
+                {{ $blockWidth := 20 }}
+                {{ $blockSpacing := 2 }}
+                {{ if gt .SelectedBlocks.MaxBlocksPerGroup 32 }}
+                    {{ $blockWidth = 10 }}
+                    {{ $blockSpacing = 1 }}
+                {{ end }}
+                <div>
+                    <div style="position: relative">
+                        {{ range $i, $blockGroup := .SelectedBlocks.BlockGroups }}
+                            {{ range $j, $block := $blockGroup.Blocks }}
+                                {{ if lt $j 80 }}
+                                    {{ $height := mulf 5 (divf $block.Duration $groupDuration) }}
+                                    {{ $heightEm := format "%.1f" $height }}
+                                    {{ $top := addf (mulf (float $i) 5.0) (subf 5.0 $height) }}
+                                    {{ $topEm := format "%.1f" $top }}
+                                    {{ $color := "#d3d3d3" }}
+                                    {{ if eq 2 $block.CompactionLevel }}
+                                        {{ $color = "#ffa500"}}
+                                    {{ else if eq 3 $block.CompactionLevel }}
+                                        {{ $color = "#9acd32"}}
+                                    {{ else if gt $block.CompactionLevel 3 }}
+                                        {{ $color = "#008000"}}
+                                    {{ end }}
+                                <a href="blocks/{{ $block.ID }}">
+                                    <button  style="position: absolute; background-color: {{ $color }}; top: {{ $topEm }}em; padding: 0; left: {{ add 20 (mul $j $blockSpacing)}}%; width: {{ $blockWidth }}px; height: {{ $heightEm }}em;"></button>
+                                </a>
+                                {{ end}}
+                            {{ end }}
+                        {{ end }}
+                    </div>
+                </div>
+                {{ range $i, $blockGroup := .SelectedBlocks.BlockGroups }}
+                <div style="position: relative; left: 0; top: {{ add (mul (add 1 $i) 5) -1 }}em; height: 0">
+                    <small>{{ $blockGroup.FormattedMinTime }}: {{ len $blockGroup.Blocks }} blocks</small>
+                </div>
+                {{ end }}
+            {{ end }}
+        </div>
+    </div>
+</main>
+</body>
+</html>

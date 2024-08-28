@@ -22,7 +22,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: 1.21.3
+          go-version: 1.21.12
       - name: Format
         run: make fmt check/unstaged-changes
   test:
@@ -33,12 +33,11 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: 1.21.3
+          go-version: 1.21.12
       - name: Go Mod
         run: make check/go/mod
       - name: Test
         run: make go/test
-
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -47,7 +46,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: 1.21.3
+          go-version: 1.21.12
       - name: Run linter
         run: make lint
       - name: Check helm manifests
@@ -64,10 +63,10 @@ jobs:
   doc-validator:
     runs-on: "ubuntu-latest"
     container:
-      image: "grafana/doc-validator:v3.2.0"
+      image: "grafana/doc-validator:v5.1.0"
     steps:
       - name: "Checkout code"
-        uses: "actions/checkout@v3"
+        uses: "actions/checkout@v4"
       - name: "Run doc-validator tool"
         run: >
           doc-validator
@@ -97,7 +96,7 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.21.3
+          go-version: 1.21.12
       - uses: actions/setup-node@v3
         with:
           node-version: lts/hydrogen
@@ -119,7 +118,7 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.21.3
+          go-version: 1.21.12
       - uses: actions/setup-node@v3
         with:
           node-version: lts/hydrogen
@@ -133,7 +132,7 @@ jobs:
       - name: Pyroscope Build & push multi-arch image
         id: build-push
         run: |
-          make docker-image/pyroscope/push "BUILDX_ARGS=--cache-from=type=gha --cache-to=type=gha"
+          make docker-image/pyroscope/push docker-image/pyroscope/push-debug "BUILDX_ARGS=--cache-from=type=gha --cache-to=type=gha"
 
   deploy-dev-001:
     if: github.event_name == 'push' && github.repository == 'grafana/pyroscope'

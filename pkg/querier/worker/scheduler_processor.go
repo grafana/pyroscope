@@ -39,10 +39,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/util/httpgrpcutil"
 )
 
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
-
 var processorBackoffConfig = backoff.Config{
 	MinBackoff: 250 * time.Millisecond,
 	MaxBackoff: 2 * time.Second,

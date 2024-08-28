@@ -3,7 +3,7 @@ package ingester
 import (
 	"context"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -37,6 +37,13 @@ func (i *Ingester) Series(ctx context.Context, req *connect.Request[ingestv1.Ser
 	})
 }
 
+// BlockMetadata returns the metadata of the instance's blocks
+func (i *Ingester) BlockMetadata(ctx context.Context, req *connect.Request[ingestv1.BlockMetadataRequest]) (*connect.Response[ingestv1.BlockMetadataResponse], error) {
+	return forInstanceUnary(ctx, i, func(instance *instance) (*connect.Response[ingestv1.BlockMetadataResponse], error) {
+		return instance.BlockMetadata(ctx, req)
+	})
+}
+
 func (i *Ingester) MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesStacktracesRequest, ingestv1.MergeProfilesStacktracesResponse]) error {
 	return i.forInstance(ctx, func(instance *instance) error {
 		return instance.MergeProfilesStacktraces(ctx, stream)
@@ -58,5 +65,17 @@ func (i *Ingester) MergeProfilesPprof(ctx context.Context, stream *connect.BidiS
 func (i *Ingester) MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeSpanProfileRequest, ingestv1.MergeSpanProfileResponse]) error {
 	return i.forInstance(ctx, func(instance *instance) error {
 		return instance.MergeSpanProfile(ctx, stream)
+	})
+}
+
+func (i *Ingester) GetProfileStats(ctx context.Context, req *connect.Request[typesv1.GetProfileStatsRequest]) (*connect.Response[typesv1.GetProfileStatsResponse], error) {
+	return forInstanceUnary(ctx, i, func(instance *instance) (*connect.Response[typesv1.GetProfileStatsResponse], error) {
+		return instance.GetProfileStats(ctx, req)
+	})
+}
+
+func (i *Ingester) GetBlockStats(ctx context.Context, req *connect.Request[ingestv1.GetBlockStatsRequest]) (*connect.Response[ingestv1.GetBlockStatsResponse], error) {
+	return forInstanceUnary(ctx, i, func(instance *instance) (*connect.Response[ingestv1.GetBlockStatsResponse], error) {
+		return instance.GetBlockStats(ctx, req)
 	})
 }

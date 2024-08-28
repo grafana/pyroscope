@@ -19,6 +19,7 @@ module.exports = merge(common, {
     // Duplicated in webpack.dev.js
     new HtmlWebpackPlugin({
       filename: path.resolve(__dirname, '../../public/build/index.html'),
+      favicon: path.resolve(__dirname, '../../public/app/images/favicon.ico'),
       template: path.resolve(__dirname, '../../public/templates/index.html'),
       chunksSortMode: 'none',
     }),

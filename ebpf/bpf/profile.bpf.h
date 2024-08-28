@@ -4,12 +4,6 @@
 
 
 
-struct sample_key {
-    __u32 pid;
-    __u32 flags;
-    __s64 kern_stack;
-    __s64 user_stack;
-};
 
 #define PROFILING_TYPE_UNKNOWN 1
 #define PROFILING_TYPE_FRAMEPOINTERS 2
@@ -42,7 +36,7 @@ struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __type(key, u32);
     __type(value, struct pid_config);
-    __uint(max_entries, 1024);
+    __uint(max_entries, 2048);
 } pids SEC(".maps");
 
 
@@ -65,11 +59,5 @@ struct {
 #include "stacks.h"
 
 
-struct {
-    __uint(type, BPF_MAP_TYPE_HASH);
-    __type(key, struct sample_key);
-    __type(value, u32);
-    __uint(max_entries, PROFILE_MAPS_SIZE);
-} counts SEC(".maps");
 
 #endif // PROFILE_BPF_H

@@ -2,8 +2,7 @@ package gosym
 
 import (
 	"math"
-
-	"golang.org/x/exp/slices"
+	"slices"
 )
 
 type PCIndex struct {

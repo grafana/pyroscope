@@ -1,17 +1,21 @@
 package pprof
 
 import (
+	"io/fs"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/go-kit/log"
 	"github.com/google/pprof/profile"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 )
 
@@ -50,53 +54,55 @@ func TestNormalizeProfile(t *testing.T) {
 			{Id: 5, Name: 16, SystemName: 17, Filename: 18, StartLine: 1},
 		},
 		StringTable: []string{
-			"memory", "bytes", "in_used", "allocs", "count",
+			"",
+			"bytes", "in_used", "allocs", "count",
 			"main", "runtime.main", "main.go", // fn1
 			"foo", "runtime.foo", "foo.go", // fn2
 			"bar", "runtime.bar", "bar.go", // fn3
 			"buzz", "runtime.buzz", // fn4
 			"bla", "runtime.bla", "bla.go", // fn5
 		},
-		PeriodType:        &profilev1.ValueType{Type: 0, Unit: 1},
+		PeriodType:        &profilev1.ValueType{Type: 2, Unit: 1},
 		Comment:           []int64{},
 		DefaultSampleType: 0,
 	}
 
 	pf := &Profile{Profile: p}
 	pf.Normalize()
-	require.Equal(t, pf.Profile, &profilev1.Profile{
+	require.Equal(t, &profilev1.Profile{
 		SampleType: []*profilev1.ValueType{
 			{Type: 2, Unit: 1},
 			{Type: 3, Unit: 4},
 		},
 		Sample: []*profilev1.Sample{
-			{LocationId: []uint64{2, 3}, Value: []int64{0, 1}, Label: []*profilev1.Label{}},
+			{LocationId: []uint64{1, 2}, Value: []int64{0, 1}, Label: []*profilev1.Label{}},
 		},
 		Mapping: []*profilev1.Mapping{{
 			Id:           1,
 			HasFunctions: true,
 		}},
 		Location: []*profilev1.Location{
+			{Id: 1, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1, Line: 1}, {FunctionId: 2, Line: 3}}},
 			{Id: 2, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 2, Line: 1}, {FunctionId: 3, Line: 3}}},
-			{Id: 3, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 3, Line: 1}, {FunctionId: 4, Line: 3}}},
 		},
 		Function: []*profilev1.Function{
-			{Id: 2, Name: 6, SystemName: 7, Filename: 8, StartLine: 1},
-			{Id: 3, Name: 9, SystemName: 10, Filename: 11, StartLine: 1},
-			{Id: 4, Name: 12, SystemName: 13, Filename: 5, StartLine: 1},
+			{Id: 1, Name: 6, SystemName: 7, Filename: 8, StartLine: 1},
+			{Id: 2, Name: 9, SystemName: 10, Filename: 11, StartLine: 1},
+			{Id: 3, Name: 12, SystemName: 13, Filename: 5, StartLine: 1},
 		},
 		StringTable: []string{
-			"memory", "bytes", "in_used", "allocs", "count",
+			"",
+			"bytes", "in_used", "allocs", "count",
 			"main.go",
 			"foo", "runtime.foo", "foo.go",
 			"bar", "runtime.bar", "bar.go",
 			"buzz", "runtime.buzz",
 		},
-		PeriodType:        &profilev1.ValueType{Type: 0, Unit: 1},
+		PeriodType:        &profilev1.ValueType{Type: 2, Unit: 1},
 		Comment:           []int64{},
 		TimeNanos:         1577836800000000000,
 		DefaultSampleType: 0,
-	})
+	}, pf.Profile)
 }
 
 func TestNormalizeProfile_SampleLabels(t *testing.T) {
@@ -113,9 +119,9 @@ func TestNormalizeProfile_SampleLabels(t *testing.T) {
 			{Type: 1, Unit: 2},
 		},
 		Sample: []*profilev1.Sample{
-			{LocationId: []uint64{2, 1}, Value: []int64{10}, Label: []*profilev1.Label{{Str: 10, Key: 1}, {Str: 11, Key: 2}}},
-			{LocationId: []uint64{2, 1}, Value: []int64{10}, Label: []*profilev1.Label{{Str: 12, Key: 2}, {Str: 10, Key: 1}}},
-			{LocationId: []uint64{2, 1}, Value: []int64{10}, Label: []*profilev1.Label{{Str: 11, Key: 2}, {Str: 10, Key: 1}}},
+			{LocationId: []uint64{2, 1}, Value: []int64{10}, Label: []*profilev1.Label{{Str: 5, Key: 5}, {Str: 5, Key: 6}}},
+			{LocationId: []uint64{2, 1}, Value: []int64{10}, Label: []*profilev1.Label{{Str: 5, Key: 5}, {Str: 5, Key: 7}}},
+			{LocationId: []uint64{2, 1}, Value: []int64{10}, Label: []*profilev1.Label{{Str: 5, Key: 5}, {Str: 5, Key: 7}}},
 		},
 		Mapping: []*profilev1.Mapping{{Id: 1, HasFunctions: true, MemoryStart: 100, MemoryLimit: 200, FileOffset: 200}},
 		Location: []*profilev1.Location{
@@ -130,7 +136,7 @@ func TestNormalizeProfile_SampleLabels(t *testing.T) {
 			"",
 			"cpu", "nanoseconds",
 			"main", "main.go",
-			"foo",
+			"foo", "bar", "baz",
 		},
 		PeriodType: &profilev1.ValueType{Type: 1, Unit: 2},
 	}
@@ -142,8 +148,8 @@ func TestNormalizeProfile_SampleLabels(t *testing.T) {
 			{Type: 1, Unit: 2},
 		},
 		Sample: []*profilev1.Sample{
-			{LocationId: []uint64{2, 1}, Value: []int64{10}, Label: []*profilev1.Label{{Str: 10, Key: 1}, {Str: 12, Key: 2}}},
-			{LocationId: []uint64{2, 1}, Value: []int64{20}, Label: []*profilev1.Label{{Str: 10, Key: 1}, {Str: 11, Key: 2}}},
+			{LocationId: []uint64{2, 1}, Value: []int64{10}, Label: []*profilev1.Label{{Str: 5, Key: 5}, {Str: 5, Key: 6}}},
+			{LocationId: []uint64{2, 1}, Value: []int64{20}, Label: []*profilev1.Label{{Str: 5, Key: 5}, {Str: 5, Key: 7}}},
 		},
 		Mapping: []*profilev1.Mapping{{Id: 1, HasFunctions: true}},
 		Location: []*profilev1.Location{
@@ -158,11 +164,310 @@ func TestNormalizeProfile_SampleLabels(t *testing.T) {
 			"",
 			"cpu", "nanoseconds",
 			"main", "main.go",
-			"foo",
+			"foo", "bar", "baz",
 		},
 		PeriodType: &profilev1.ValueType{Type: 1, Unit: 2},
 		TimeNanos:  1577836800000000000,
 	})
+}
+
+func Test_sanitizeReferences(t *testing.T) {
+	type testCase struct {
+		name     string
+		profile  *profilev1.Profile
+		expected *profilev1.Profile
+	}
+
+	testCases := []testCase{
+		{
+			name: "string_reference",
+			profile: &profilev1.Profile{
+				SampleType:        []*profilev1.ValueType{{Type: 10, Unit: 10}},
+				Sample:            []*profilev1.Sample{{Label: []*profilev1.Label{{Key: 10, Str: 10, NumUnit: 10}}}},
+				Mapping:           []*profilev1.Mapping{{Filename: 10, BuildId: 10}},
+				Function:          []*profilev1.Function{{Name: 10, SystemName: 10, Filename: 10}},
+				DropFrames:        10,
+				KeepFrames:        10,
+				PeriodType:        &profilev1.ValueType{Type: 10, Unit: 10},
+				DefaultSampleType: 10,
+				Comment:           []int64{0, 10},
+				StringTable:       []string{},
+			},
+			expected: &profilev1.Profile{
+				SampleType:  []*profilev1.ValueType{{}},
+				Sample:      []*profilev1.Sample{},
+				Mapping:     []*profilev1.Mapping{{Id: 1}},
+				Function:    []*profilev1.Function{{Id: 1}},
+				PeriodType:  &profilev1.ValueType{},
+				Comment:     []int64{0, 0},
+				StringTable: []string{""},
+			},
+		},
+		{
+			name: "zero_string_non_0",
+			profile: &profilev1.Profile{
+				SampleType:        []*profilev1.ValueType{{Type: 10, Unit: 10}},
+				Sample:            []*profilev1.Sample{{Label: []*profilev1.Label{{Key: 10, Str: 10, NumUnit: 10}}}},
+				Mapping:           []*profilev1.Mapping{{Filename: 10, BuildId: 10}},
+				Function:          []*profilev1.Function{{Name: 10, Filename: 0, SystemName: 2}},
+				DropFrames:        10,
+				KeepFrames:        10,
+				PeriodType:        &profilev1.ValueType{Type: 10, Unit: 10},
+				DefaultSampleType: 10,
+				Comment:           []int64{1, 10},
+				StringTable:       []string{"foo", "", "bar"},
+			},
+			expected: &profilev1.Profile{
+				SampleType:  []*profilev1.ValueType{{}},
+				Sample:      []*profilev1.Sample{},
+				Mapping:     []*profilev1.Mapping{{Id: 1}},
+				Function:    []*profilev1.Function{{Id: 1, Filename: 1, SystemName: 2}},
+				PeriodType:  &profilev1.ValueType{},
+				Comment:     []int64{0, 0},
+				StringTable: []string{"", "foo", "bar"},
+			},
+		},
+		{
+			name: "zero_string_missing",
+			profile: &profilev1.Profile{
+				SampleType:        []*profilev1.ValueType{{Type: 10, Unit: 10}},
+				Sample:            []*profilev1.Sample{{Label: []*profilev1.Label{{Key: 10, Str: 10, NumUnit: 10}}}},
+				Mapping:           []*profilev1.Mapping{{Filename: 10, BuildId: 10}},
+				Function:          []*profilev1.Function{{Name: 0, SystemName: 0, Filename: 1}},
+				DropFrames:        10,
+				KeepFrames:        10,
+				PeriodType:        &profilev1.ValueType{Type: 10, Unit: 10},
+				DefaultSampleType: 10,
+				StringTable:       []string{"foo", "bar"},
+			},
+			expected: &profilev1.Profile{
+				SampleType:  []*profilev1.ValueType{{}},
+				Sample:      []*profilev1.Sample{},
+				Mapping:     []*profilev1.Mapping{{Id: 1}},
+				Function:    []*profilev1.Function{{Id: 1, Name: 2, SystemName: 2, Filename: 1}},
+				PeriodType:  &profilev1.ValueType{},
+				StringTable: []string{"", "bar", "foo"},
+			},
+		},
+		{
+			name: "multiple_zero_strings",
+			profile: &profilev1.Profile{
+				SampleType: []*profilev1.ValueType{{}},
+				Sample: []*profilev1.Sample{
+					{LocationId: []uint64{1}, Value: []int64{1}, Label: []*profilev1.Label{{Key: 1, Str: 5}}},
+				},
+				Location:    []*profilev1.Location{{Id: 1, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1}}}},
+				Function:    []*profilev1.Function{{Id: 1, Name: 1, SystemName: 1, Filename: 2}},
+				Mapping:     []*profilev1.Mapping{{Id: 1, Filename: 1}},
+				StringTable: []string{"", "foo", "", "", "", "bar"},
+			},
+			expected: &profilev1.Profile{
+				SampleType: []*profilev1.ValueType{{}},
+				Sample: []*profilev1.Sample{
+					{LocationId: []uint64{1}, Value: []int64{1}, Label: []*profilev1.Label{{Key: 1, Str: 5}}},
+				},
+				Location:    []*profilev1.Location{{Id: 1, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1}}}},
+				Function:    []*profilev1.Function{{Id: 1, Name: 1, SystemName: 1, Filename: 2}},
+				Mapping:     []*profilev1.Mapping{{Id: 1, Filename: 1}},
+				StringTable: []string{"", "foo", "", "", "", "bar"},
+			},
+		},
+		{
+			name: "mapping_reference",
+			profile: &profilev1.Profile{
+				Sample: []*profilev1.Sample{
+					{LocationId: []uint64{2, 1}},
+					{LocationId: []uint64{3, 2, 1}},
+				},
+				Location: []*profilev1.Location{
+					{Id: 1, MappingId: 1},
+					{Id: 3, MappingId: 5},
+					{Id: 2, MappingId: 0},
+				},
+				Mapping: []*profilev1.Mapping{
+					{Id: 1},
+				},
+			},
+			expected: &profilev1.Profile{
+				Sample: []*profilev1.Sample{
+					{LocationId: []uint64{2, 1}},
+				},
+				Location: []*profilev1.Location{
+					{Id: 1, MappingId: 1},
+					{Id: 2, MappingId: 2},
+				},
+				Mapping: []*profilev1.Mapping{
+					{Id: 1},
+					{Id: 2},
+				},
+				StringTable: []string{""},
+			},
+		},
+		{
+			name: "location_reference",
+			profile: &profilev1.Profile{
+				Sample: []*profilev1.Sample{
+					{LocationId: []uint64{1, 0}},
+					{LocationId: []uint64{5}},
+				},
+				Location: []*profilev1.Location{
+					{Id: 1, MappingId: 1},
+					{Id: 0, MappingId: 0},
+				},
+			},
+			expected: &profilev1.Profile{
+				Sample: []*profilev1.Sample{},
+				Location: []*profilev1.Location{
+					{Id: 1, MappingId: 1},
+				},
+				Mapping: []*profilev1.Mapping{
+					{Id: 1},
+				},
+				StringTable: []string{""},
+			},
+		},
+		{
+			name: "function_reference",
+			profile: &profilev1.Profile{
+				Sample: []*profilev1.Sample{
+					{LocationId: []uint64{2, 1}},
+				},
+				Location: []*profilev1.Location{
+					{Id: 2, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 5}}},
+					{Id: 3, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 10}}},
+					{Id: 1, MappingId: 1, Line: []*profilev1.Line{{}}},
+				},
+				Function: []*profilev1.Function{
+					{Id: 10},
+				},
+			},
+			expected: &profilev1.Profile{
+				Sample:   []*profilev1.Sample{},
+				Location: []*profilev1.Location{},
+				Function: []*profilev1.Function{
+					{Id: 1},
+				},
+				StringTable: []string{""},
+			},
+		},
+		{
+			name:     "nil_profile",
+			profile:  nil,
+			expected: nil,
+		},
+		{
+			name: "nil_sample_type",
+			profile: &profilev1.Profile{
+				SampleType: []*profilev1.ValueType{nil},
+			},
+			expected: &profilev1.Profile{
+				SampleType:  []*profilev1.ValueType{},
+				StringTable: []string{""},
+			},
+		},
+		{
+			name: "nil_sample",
+			profile: &profilev1.Profile{
+				SampleType: []*profilev1.ValueType{{}},
+				Sample:     []*profilev1.Sample{nil},
+			},
+			expected: &profilev1.Profile{
+				SampleType:  []*profilev1.ValueType{{}},
+				Sample:      []*profilev1.Sample{},
+				StringTable: []string{""},
+			},
+		},
+		{
+			name: "nil_location",
+			profile: &profilev1.Profile{
+				SampleType: []*profilev1.ValueType{{}},
+				Sample:     []*profilev1.Sample{{LocationId: []uint64{1}, Value: []int64{1}}},
+				Location:   []*profilev1.Location{nil},
+			},
+			expected: &profilev1.Profile{
+				SampleType:  []*profilev1.ValueType{{}},
+				Sample:      []*profilev1.Sample{},
+				Location:    []*profilev1.Location{},
+				StringTable: []string{""},
+			},
+		},
+		{
+			name: "nil_function",
+			profile: &profilev1.Profile{
+				SampleType: []*profilev1.ValueType{{}},
+				Sample:     []*profilev1.Sample{{LocationId: []uint64{1}, Value: []int64{1}}},
+				Location:   []*profilev1.Location{{Line: []*profilev1.Line{{FunctionId: 1}}}},
+				Function:   []*profilev1.Function{nil},
+			},
+			expected: &profilev1.Profile{
+				SampleType:  []*profilev1.ValueType{{}},
+				Sample:      []*profilev1.Sample{},
+				Location:    []*profilev1.Location{},
+				Function:    []*profilev1.Function{},
+				Mapping:     []*profilev1.Mapping{{Id: 1}},
+				StringTable: []string{""},
+			},
+		},
+		{
+			name: "nil_mapping",
+			profile: &profilev1.Profile{
+				SampleType: []*profilev1.ValueType{{}},
+				Sample:     []*profilev1.Sample{{LocationId: []uint64{1}, Value: []int64{1}}},
+				Location:   []*profilev1.Location{{MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1}}}},
+				Function:   []*profilev1.Function{nil},
+				Mapping:    []*profilev1.Mapping{nil},
+			},
+			expected: &profilev1.Profile{
+				SampleType:  []*profilev1.ValueType{{}},
+				Sample:      []*profilev1.Sample{},
+				Location:    []*profilev1.Location{},
+				Function:    []*profilev1.Function{},
+				Mapping:     []*profilev1.Mapping{},
+				StringTable: []string{""},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			sanitizeProfile(tc.profile)
+			assert.Equal(t, tc.expected, tc.profile)
+		})
+	}
+}
+
+func Test_sanitize_fixtures(t *testing.T) {
+	require.NoError(t, filepath.WalkDir("testdata", func(path string, d fs.DirEntry, err error) error {
+		switch {
+		case err != nil:
+			return err
+		case filepath.Ext(path) == ".txt":
+			return nil
+		case d.IsDir():
+			if d.Name() == "fuzz" {
+				return fs.SkipDir
+			}
+			return nil
+		}
+
+		t.Run(path, func(t *testing.T) {
+			f, err := OpenFile(path)
+			require.NoError(t, err)
+			c := f.CloneVT()
+			sanitizeProfile(f.Profile)
+			assert.Equal(t, len(c.Sample), len(f.Sample))
+			assert.Equal(t, len(c.Location), len(f.Location))
+			assert.Equal(t, len(c.Function), len(f.Function))
+			assert.Equal(t, len(c.StringTable), len(f.StringTable))
+			if len(c.Mapping) != 0 {
+				assert.Equal(t, len(c.Mapping), len(f.Mapping))
+			} else {
+				assert.Equal(t, 1, len(f.Mapping))
+			}
+		})
+		return nil
+	}))
 }
 
 func TestFromProfile(t *testing.T) {
@@ -626,15 +931,15 @@ func Test_GroupSamplesWithout(t *testing.T) {
 					},
 				},
 				{
-					Labels: []*profilev1.Label{{Key: 1, Str: 3}},
+					Labels: []*profilev1.Label{{Key: 1, Str: 1}, {Key: 2, Str: 2}},
 					Samples: []*profilev1.Sample{
+						{Label: []*profilev1.Label{}},
 						{Label: []*profilev1.Label{}},
 					},
 				},
 				{
-					Labels: []*profilev1.Label{{Key: 2, Str: 2}, {Key: 1, Str: 1}},
+					Labels: []*profilev1.Label{{Key: 1, Str: 3}},
 					Samples: []*profilev1.Sample{
-						{Label: []*profilev1.Label{}},
 						{Label: []*profilev1.Label{}},
 					},
 				},
@@ -666,14 +971,14 @@ func Test_GroupSamplesWithout(t *testing.T) {
 					},
 				},
 				{
-					Labels: []*profilev1.Label{{Key: 3, Str: 3}, {Key: 1, Str: 1}},
+					Labels: []*profilev1.Label{{Key: 1, Str: 1}, {Key: 3, Str: 3}},
 					Samples: []*profilev1.Sample{
 						{Label: []*profilev1.Label{{Key: 2, Str: 100}}},
 						{Label: []*profilev1.Label{{Key: 2, Str: 101}}},
 					},
 				},
 				{
-					Labels: []*profilev1.Label{{Key: 3, Str: 4}, {Key: 1, Str: 1}},
+					Labels: []*profilev1.Label{{Key: 1, Str: 1}, {Key: 3, Str: 4}},
 					Samples: []*profilev1.Sample{
 						{Label: []*profilev1.Label{{Key: 2, Str: 102}}},
 					},
@@ -704,7 +1009,7 @@ func Test_GroupSamplesWithout(t *testing.T) {
 					},
 				},
 				{
-					Labels: []*profilev1.Label{{Key: 3, Str: 3}, {Key: 2, Str: 2}, {Key: 1, Str: 1}},
+					Labels: []*profilev1.Label{{Key: 1, Str: 1}, {Key: 2, Str: 2}, {Key: 3, Str: 3}},
 					Samples: []*profilev1.Sample{
 						{Label: []*profilev1.Label{}},
 					},
@@ -743,12 +1048,57 @@ func Test_GroupSamplesWithout(t *testing.T) {
 				},
 			},
 		},
+		{
+			description: "without single existent, single group",
+			input: &profilev1.Profile{
+				Sample: []*profilev1.Sample{
+					{Label: []*profilev1.Label{{Key: 1, Str: 1}, {Key: 2, Str: 100}, {Key: 3, Str: 3}}},
+					{Label: []*profilev1.Label{{Key: 1, Str: 1}, {Key: 3, Str: 3}}},
+				},
+			},
+			without: []int64{2},
+			expected: []SampleGroup{
+				{
+					Labels: []*profilev1.Label{{Key: 1, Str: 1}, {Key: 3, Str: 3}},
+					Samples: []*profilev1.Sample{
+						{Label: []*profilev1.Label{{Key: 2, Str: 100}}},
+						{Label: []*profilev1.Label{}},
+					},
+				},
+			},
+		},
+		{
+			description: "Testcase for extra labels capacity (restoreRemovedLabels nil check)",
+			input: &profilev1.Profile{
+				Sample: []*profilev1.Sample{
+					{Label: []*profilev1.Label{{Key: 1, Str: 1}, {Key: 2, Str: 100}, {Key: 3, Str: 3}, nil, nil}[:3]},
+					{Label: []*profilev1.Label{{Key: 1, Str: 1}, {Key: 3, Str: 3}}},
+				}[:2],
+			},
+			without: []int64{2},
+			expected: []SampleGroup{
+				{
+					Labels: []*profilev1.Label{{Key: 1, Str: 1}, {Key: 3, Str: 3}},
+					Samples: []*profilev1.Sample{
+						{Label: []*profilev1.Label{{Key: 2, Str: 100}}},
+						{Label: []*profilev1.Label{}},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.description, func(t *testing.T) {
 			require.Equal(t, tc.expected, GroupSamplesWithoutLabelsByKey(tc.input, tc.without))
+			for _, g := range tc.expected {
+				for _, sample := range g.Samples {
+					for _, label := range sample.Label {
+						assert.NotNil(t, label)
+					}
+				}
+			}
 		})
 	}
 }
@@ -1008,7 +1358,6 @@ func Test_SampleExporter_Partial(t *testing.T) {
 		Period: 10000000,
 	}
 	requireProfilesEqual(t, expected, n)
-
 }
 
 func Test_GroupSamplesWithout_Go_CPU_profile(t *testing.T) {
@@ -1021,10 +1370,10 @@ func Test_GroupSamplesWithout_Go_CPU_profile(t *testing.T) {
 	assert.Equal(t, groups[0].Labels, []*profilev1.Label{{Key: 18, Str: 19}})
 	assert.Equal(t, len(groups[0].Samples), 5)
 
-	assert.Equal(t, groups[1].Labels, []*profilev1.Label{{Key: 22, Str: 23}, {Key: 18, Str: 19}})
+	assert.Equal(t, groups[1].Labels, []*profilev1.Label{{Key: 18, Str: 19}, {Key: 22, Str: 23}})
 	assert.Equal(t, len(groups[1].Samples), 325)
 
-	assert.Equal(t, groups[2].Labels, []*profilev1.Label{{Key: 22, Str: 27}, {Key: 18, Str: 19}})
+	assert.Equal(t, groups[2].Labels, []*profilev1.Label{{Key: 18, Str: 19}, {Key: 22, Str: 27}})
 	assert.Equal(t, len(groups[2].Samples), 150)
 }
 
@@ -1034,5 +1383,145 @@ func Test_GroupSamplesWithout_dotnet_profile(t *testing.T) {
 
 	groups := GroupSamplesWithoutLabels(p.Profile, ProfileIDLabelName)
 	require.Len(t, groups, 1)
-	assert.Equal(t, groups[0].Labels, []*profilev1.Label{{Key: 66, Str: 67}, {Key: 64, Str: 65}})
+	assert.Equal(t, groups[0].Labels, []*profilev1.Label{{Key: 64, Str: 65}, {Key: 66, Str: 67}})
+}
+
+func Test_GroupSamplesWithout_single_group_with_optional_span_id(t *testing.T) {
+	// pprof.Do(context.Background(), pprof.Labels("function", "slow", "qwe", "asd", "asdasd", "zxczxc"), func(c context.Context) {
+	//   work(40000)
+	//   pprof.Do(c, pprof.Labels("span_id", "239"), func(c context.Context) {
+	//     work(40000)
+	//   })
+	// })
+	p, err := OpenFile("testdata/single_group_with_optional_span_id.pb.gz")
+	require.NoError(t, err)
+
+	groups := GroupSamplesWithoutLabels(p.Profile, SpanIDLabelName)
+	require.Len(t, groups, 1)
+	assert.Equal(t, groups[0].Labels, []*profilev1.Label{{Key: 5, Str: 6}, {Key: 7, Str: 8}, {Key: 9, Str: 10}})
+}
+
+func Test_GetProfileLanguage_go_cpu_profile(t *testing.T) {
+	p, err := OpenFile("testdata/go.cpu.labels.pprof")
+	require.NoError(t, err)
+
+	language := GetLanguage(p, log.NewNopLogger())
+	assert.Equal(t, "go", language)
+}
+
+func Test_GetProfileLanguage_go_heap_profile(t *testing.T) {
+	p, err := OpenFile("testdata/heap")
+	require.NoError(t, err)
+
+	language := GetLanguage(p, log.NewNopLogger())
+	assert.Equal(t, "go", language)
+}
+
+func Test_GetProfileLanguage_dotnet_profile(t *testing.T) {
+	p, err := OpenFile("testdata/dotnet.labels.pprof")
+	require.NoError(t, err)
+
+	language := GetLanguage(p, log.NewNopLogger())
+	assert.Equal(t, "dotnet", language)
+}
+
+func Test_GetProfileLanguage_java_profile(t *testing.T) {
+	p, err := OpenFile("testdata/profile_java")
+	require.NoError(t, err)
+
+	language := GetLanguage(p, log.NewNopLogger())
+	assert.Equal(t, "java", language)
+}
+
+func Test_GetProfileLanguage_python_profile(t *testing.T) {
+	p, err := OpenFile("testdata/profile_python")
+	require.NoError(t, err)
+
+	language := GetLanguage(p, log.NewNopLogger())
+	assert.Equal(t, "python", language)
+}
+
+func Test_GetProfileLanguage_ruby_profile(t *testing.T) {
+	p, err := OpenFile("testdata/profile_ruby")
+	require.NoError(t, err)
+
+	language := GetLanguage(p, log.NewNopLogger())
+	assert.Equal(t, "ruby", language)
+}
+
+func Test_GetProfileLanguage_nodejs_profile(t *testing.T) {
+	p, err := OpenFile("testdata/profile_nodejs")
+	require.NoError(t, err)
+
+	language := GetLanguage(p, log.NewNopLogger())
+	assert.Equal(t, "nodejs", language)
+}
+
+func Test_GetProfileLanguage_rust_profile(t *testing.T) {
+	p, err := OpenFile("testdata/profile_rust")
+	require.NoError(t, err)
+
+	language := GetLanguage(p, log.NewNopLogger())
+	assert.Equal(t, "rust", language)
+}
+
+func Benchmark_GetProfileLanguage(b *testing.B) {
+	tests := []string{
+		"testdata/go.cpu.labels.pprof",
+		"testdata/heap",
+		"testdata/dotnet.labels.pprof",
+		"testdata/profile_java",
+		"testdata/profile_nodejs",
+		"testdata/profile_python",
+		"testdata/profile_ruby",
+		"testdata/profile_rust",
+	}
+
+	for _, testdata := range tests {
+		f := testdata
+		b.Run(testdata, func(b *testing.B) {
+			p, err := OpenFile(f)
+			require.NoError(b, err)
+			b.ResetTimer()
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				language := GetLanguage(p, log.NewNopLogger())
+				if language == "unknown" {
+					b.Fatal()
+				}
+			}
+		})
+	}
+}
+
+func Test_SetProfileMetadata(t *testing.T) {
+	p := &profilev1.Profile{
+		SampleType:  []*profilev1.ValueType{{}},
+		StringTable: []string{"", "qux"},
+		PeriodType:  &profilev1.ValueType{},
+	}
+	pt := &typesv1.ProfileType{
+		ID:         "alfa",
+		Name:       "bravo",
+		SampleType: "foo",
+		SampleUnit: "bar",
+		PeriodType: "baz",
+		PeriodUnit: "qux",
+	}
+	SetProfileMetadata(p, pt, 1, 2)
+	expected := &profilev1.Profile{
+		SampleType: []*profilev1.ValueType{{
+			Type: 3, // foo
+			Unit: 2, // bar
+		}},
+		StringTable: []string{"", "qux", "bar", "foo", "baz"},
+		PeriodType: &profilev1.ValueType{
+			Type: 4, // baz
+			Unit: 1, // qux
+		},
+		TimeNanos:         1,
+		Period:            1,
+		DefaultSampleType: 3, // foo
+	}
+	require.Equal(t, expected.String(), p.String())
 }

@@ -1,8 +1,12 @@
 project_name: pyroscope
+version: 2
 before:
   hooks:
     # This hook ensures that goreleaser uses the correct go version for a Pyroscope release
-    - sh -euc "go version | grep "go version go1.21.3 " || { echo "Unexpected go version"; exit 1; }"
+    - sh -euc 'go version | grep "go version go1.21.12 " || { echo "Unexpected go version"; exit 1; }'
+env:
+  # Strip debug information from the binary by default, weekly builds will have debug information
+  - GORELEASER_DEBUG_INFO_FLAGS={{ if and (index .Env "GORELEASER_STRIP_DEBUG_INFO") (eq .Env.GORELEASER_STRIP_DEBUG_INFO "false")  }}{{ else }}-s -w{{ end }}
 builds:
   - env:
       - CGO_ENABLED=0
@@ -14,7 +18,6 @@ builds:
       - arm64
       - arm
     goarm:
-      - "6"
       - "7"
     main: ./cmd/pyroscope
     mod_timestamp: "{{ .CommitTimestamp }}"
@@ -25,7 +28,7 @@ builds:
       - embedassets
     ldflags:
       - >
-        -extldflags "-static" -s -w
+        -extldflags "-static" {{ .Env.GORELEASER_DEBUG_INFO_FLAGS }}
         -X "github.com/grafana/pyroscope/pkg/util/build.Branch={{ .Branch }}"
         -X "github.com/grafana/pyroscope/pkg/util/build.Version={{ .Version }}"
         -X "github.com/grafana/pyroscope/pkg/util/build.Revision={{ .ShortCommit }}"
@@ -37,7 +40,7 @@ builds:
       - netgo
     ldflags:
       - >
-        -extldflags "-static" -s -w
+        -extldflags "-static" {{ .Env.GORELEASER_DEBUG_INFO_FLAGS }}
         -X "github.com/grafana/pyroscope/pkg/util/build.Branch={{ .Branch }}"
         -X "github.com/grafana/pyroscope/pkg/util/build.Version={{ .Version }}"
         -X "github.com/grafana/pyroscope/pkg/util/build.Revision={{ .ShortCommit }}"
@@ -51,7 +54,6 @@ builds:
       - arm64
       - arm
     goarm:
-      - "6"
       - "7"
     ignore:
       - goos: windows
@@ -99,22 +101,6 @@ dockers:
   - use: buildx
     goos: linux
     goarch: arm
-    goarm: "6"
-    extra_files:
-      - cmd/pyroscope/pyroscope.yaml
-    dockerfile: ./cmd/pyroscope/Dockerfile
-    image_templates:
-      - "grafana/{{ .ProjectName }}:{{ .Version }}-armv6"
-      - "grafana/{{ .ProjectName }}:latest-armv6"
-    build_flag_templates:
-      - "--platform=linux/arm/v6"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.title={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-  - use: buildx
-    goos: linux
-    goarch: arm
     goarm: "7"
     dockerfile: ./cmd/pyroscope/Dockerfile
     extra_files:
@@ -134,13 +120,11 @@ docker_manifests:
     image_templates:
       - grafana/{{ .ProjectName }}:{{ .Version }}-amd64
       - grafana/{{ .ProjectName }}:{{ .Version }}-arm64v8
-      - grafana/{{ .ProjectName }}:{{ .Version }}-armv6
       - grafana/{{ .ProjectName }}:{{ .Version }}-armv7
   - name_template: grafana/{{ .ProjectName }}:latest
     image_templates:
       - grafana/{{ .ProjectName }}:latest-amd64
       - grafana/{{ .ProjectName }}:latest-arm64v8
-      - grafana/{{ .ProjectName }}:latest-armv6
       - grafana/{{ .ProjectName }}:latest-armv7
 nfpms:
   - id: pyroscope
@@ -180,7 +164,6 @@ changelog:
   sort: asc
   filters:
     exclude:
-      - "^docs:"
       - "^test:"
 release:
   draft: true

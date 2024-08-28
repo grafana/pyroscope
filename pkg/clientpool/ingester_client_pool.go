@@ -6,7 +6,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/ring"
 	ring_client "github.com/grafana/dskit/ring/client"
@@ -59,8 +59,10 @@ func (f *ingesterPoolFactory) FromInstance(inst ring.InstanceDesc) (ring_client.
 	if err != nil {
 		return nil, err
 	}
+
+	httpClient := util.InstrumentedDefaultHTTPClient(util.WithTracingTransport())
 	return &ingesterPoolClient{
-		IngesterServiceClient: ingesterv1connect.NewIngesterServiceClient(util.InstrumentedHTTPClient(), "http://"+inst.Addr, f.options...),
+		IngesterServiceClient: ingesterv1connect.NewIngesterServiceClient(httpClient, "http://"+inst.Addr, f.options...),
 		HealthClient:          grpc_health_v1.NewHealthClient(conn),
 		Closer:                conn,
 	}, nil

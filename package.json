@@ -18,7 +18,7 @@
     "format:fix": "prettier --write .",
     "storybook": "start-storybook -p 6006",
     "build-storybook": "build-storybook",
-    "prepare": "husky install"
+    "prepare:manually": "husky install"
   },
   "lint-staged": {
     "*.{ts,tsx,scss}": "yarn format:fix"
@@ -28,7 +28,7 @@
     "@emotion/react": "^11.10.6",
     "@emotion/styled": "^11.10.6",
     "@fortawesome/fontawesome-common-types": "~0.2.36",
-    "@grafana/eslint-config": "^5.1.0",
+    "@grafana/eslint-config": "^6.0.0",
     "@size-limit/file": "^6.0.3",
     "@size-limit/time": "^6.0.3",
     "@storybook/addon-actions": "~6.5.0",
@@ -72,7 +72,6 @@
     "canvas": "^2.8.0",
     "canvas-to-buffer": "^1.1.1",
     "clean-webpack-plugin": "^3.0.0",
-    "contributor-faces": "^1.1.0",
     "conventional-changelog-cli": "^2.1.1",
     "copy-webpack-plugin": "^11.0.0",
     "cypress": "^12.11.0",
@@ -130,9 +129,9 @@
     "@fortawesome/free-regular-svg-icons": "~5.15.2",
     "@fortawesome/free-solid-svg-icons": "~5.14.0",
     "@fortawesome/react-fontawesome": "~0.1.11",
-    "@grafana/data": "10.2.0-140126",
-    "@grafana/flamegraph": "10.2.0-140126",
-    "@grafana/ui": "10.2.0-140126",
+    "@grafana/data": "10.3.0-147665",
+    "@grafana/flamegraph": "10.3.0-147665",
+    "@grafana/ui": "10.3.0-147665",
     "@hookform/resolvers": "^2.9.8",
     "@mui/base": "5.0.0-alpha.98",
     "@mui/material": "5.10.11",
@@ -154,7 +153,7 @@
     "lodash.groupby": "^4.6.0",
     "lodash.map": "^4.6.0",
     "prismjs": "^1.27.0",
-    "protobufjs": "^7.2.4",
+    "protobufjs": "^7.2.5",
     "react": "^18.2.0",
     "react-copy-to-clipboard": "^5.0.4",
     "react-datepicker": "^4.7.0",
@@ -184,13 +183,12 @@
     "zod": "^3.22.3"
   },
   "optionalDependencies": {
-    "@pyroscope/nodejs": "^0.2.5"
+    "@pyroscope/nodejs": "^0.2.9"
   },
   "resolutions": {
     "jquery": "^3.6.4",
     "braces": ">2.3.1",
     "glob-parent": ">5.1.2",
-    "got": ">12.1.0",
     "json5": ">2.2.2",
     "loader-utils": "^1.4.1",
     "mem": ">4.0.0",

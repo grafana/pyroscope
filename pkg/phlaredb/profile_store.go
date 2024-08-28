@@ -26,6 +26,10 @@ import (
 	"github.com/grafana/pyroscope/pkg/util/build"
 )
 
+const (
+	parquetWriteBufferSize = 3 << 20 // 3MB
+)
+
 type profileStore struct {
 	size      atomic.Uint64
 	totalSize atomic.Uint64
@@ -60,10 +64,11 @@ type profileStore struct {
 	flushWg        sync.WaitGroup
 	flushBuffer    []schemav1.InMemoryProfile
 	flushBufferLbs []phlaremodel.Labels
+	onFlush        func()
 }
 
 func newParquetProfileWriter(writer io.Writer, options ...parquet.WriterOption) *parquet.GenericWriter[*schemav1.Profile] {
-	options = append(options, parquet.PageBufferSize(3*1024*1024))
+	options = append(options, parquet.PageBufferSize(parquetWriteBufferSize))
 	options = append(options, parquet.CreatedBy("github.com/grafana/pyroscope/", build.Version, build.Revision))
 	options = append(options, schemav1.ProfilesSchema)
 	return parquet.NewGenericWriter[*schemav1.Profile](
@@ -279,6 +284,8 @@ func (s *profileStore) cutRowGroup(count int) (err error) {
 	// held for long as it only performs in-memory operations,
 	// although blocking readers.
 	s.rowsLock.Lock()
+	// After the lock is released, rows/profiles should be read from the disk.
+	defer s.rowsLock.Unlock()
 	s.rowsFlushed += uint64(n)
 	s.rowGroups = append(s.rowGroups, rowGroup)
 	// Cutting the index is relatively quick op (no I/O).
@@ -298,8 +305,6 @@ func (s *profileStore) cutRowGroup(count int) (err error) {
 
 	level.Debug(s.logger).Log("msg", "cut row group segment", "path", path, "numProfiles", n)
 	s.metrics.sizeBytes.WithLabelValues(s.Name()).Set(float64(currentSize))
-	// After the lock is released, rows/profiles should be read from the disk.
-	s.rowsLock.Unlock()
 	return nil
 }
 
@@ -376,6 +381,9 @@ func (s *profileStore) writeRowGroups(path string, rowGroups []parquet.RowGroup)
 		readers[i] = rg.Rows()
 	}
 	n, numRowGroups, err = phlareparquet.CopyAsRowGroups(s.writer, schemav1.NewMergeProfilesRowReader(readers), s.cfg.MaxBufferRowCount)
+	if err != nil {
+		return 0, 0, err
+	}
 
 	if err := s.writer.Close(); err != nil {
 		return 0, 0, err
@@ -424,6 +432,9 @@ func (s *profileStore) cutRowGroupLoop() {
 			level.Error(s.logger).Log("msg", "cutting row group", "err", err)
 		}
 		s.flushing.Store(false)
+		if s.onFlush != nil {
+			s.onFlush()
+		}
 	}
 }
 

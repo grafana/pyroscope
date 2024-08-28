@@ -47,25 +47,33 @@ const (
 	DuplicateLabelNames Reason = "duplicate_label_names"
 	// SeriesLimit is a reason for discarding lines when we can't create a new stream
 	// because the limit of active streams has been reached.
-	SeriesLimit       Reason = "series_limit"
-	QueryLimit        Reason = "query_limit"
-	SamplesLimit      Reason = "samples_limit"
-	ProfileSizeLimit  Reason = "profile_size_limit"
-	SampleLabelsLimit Reason = "sample_labels_limit"
-	MalformedProfile  Reason = "malformed_profile"
+	SeriesLimit           Reason = "series_limit"
+	QueryLimit            Reason = "query_limit"
+	SamplesLimit          Reason = "samples_limit"
+	ProfileSizeLimit      Reason = "profile_size_limit"
+	SampleLabelsLimit     Reason = "sample_labels_limit"
+	MalformedProfile      Reason = "malformed_profile"
+	FlameGraphLimit       Reason = "flamegraph_limit"
+	QueryMissingTimeRange Reason = "missing_time_range"
 
-	SeriesLimitErrorMsg                = "Maximum active series limit exceeded (%d/%d), reduce the number of active streams (reduce labels or reduce label values), or contact your administrator to see if the limit can be increased"
-	MissingLabelsErrorMsg              = "error at least one label pair is required per profile"
-	InvalidLabelsErrorMsg              = "invalid labels '%s' with error: %s"
-	MaxLabelNamesPerSeriesErrorMsg     = "profile series '%s' has %d label names; limit %d"
-	LabelNameTooLongErrorMsg           = "profile with labels '%s' has label name too long: '%s'"
-	LabelValueTooLongErrorMsg          = "profile with labels '%s' has label value too long: '%s'"
-	DuplicateLabelNamesErrorMsg        = "profile with labels '%s' has duplicate label name: '%s'"
-	QueryTooLongErrorMsg               = "the query time range exceeds the limit (max_query_length, actual: %s, limit: %s)"
-	ProfileTooBigErrorMsg              = "the profile with labels '%s' exceeds the size limit (max_profile_size_byte, actual: %d, limit: %d)"
-	ProfileTooManySamplesErrorMsg      = "the profile with labels '%s' exceeds the samples count limit (max_profile_stacktrace_samples, actual: %d, limit: %d)"
-	ProfileTooManySampleLabelsErrorMsg = "the profile with labels '%s' exceeds the sample labels limit (max_profile_stacktrace_sample_labels, actual: %d, limit: %d)"
-	NotInIngestionWindowErrorMsg       = "profile with labels '%s' is outside of ingestion window (profile timestamp: %s, %s)"
+	// Those profiles were dropped because of relabeling rules
+	DroppedByRelabelRules Reason = "dropped_by_relabel_rules"
+
+	SeriesLimitErrorMsg                 = "Maximum active series limit exceeded (%d/%d), reduce the number of active streams (reduce labels or reduce label values), or contact your administrator to see if the limit can be increased"
+	MissingLabelsErrorMsg               = "error at least one label pair is required per profile"
+	InvalidLabelsErrorMsg               = "invalid labels '%s' with error: %s"
+	MaxLabelNamesPerSeriesErrorMsg      = "profile series '%s' has %d label names; limit %d"
+	LabelNameTooLongErrorMsg            = "profile with labels '%s' has label name too long: '%s'"
+	LabelValueTooLongErrorMsg           = "profile with labels '%s' has label value too long: '%s'"
+	DuplicateLabelNamesErrorMsg         = "profile with labels '%s' has duplicate label name: '%s'"
+	QueryTooLongErrorMsg                = "the query time range exceeds the limit (max_query_length, actual: %s, limit: %s)"
+	ProfileTooBigErrorMsg               = "the profile with labels '%s' exceeds the size limit (max_profile_size_byte, actual: %d, limit: %d)"
+	ProfileTooManySamplesErrorMsg       = "the profile with labels '%s' exceeds the samples count limit (max_profile_stacktrace_samples, actual: %d, limit: %d)"
+	ProfileTooManySampleLabelsErrorMsg  = "the profile with labels '%s' exceeds the sample labels limit (max_profile_stacktrace_sample_labels, actual: %d, limit: %d)"
+	NotInIngestionWindowErrorMsg        = "profile with labels '%s' is outside of ingestion window (profile timestamp: %s, %s)"
+	MaxFlameGraphNodesErrorMsg          = "max flamegraph nodes limit %d is greater than allowed %d"
+	MaxFlameGraphNodesUnlimitedErrorMsg = "max flamegraph nodes limit must be set (max allowed %d)"
+	QueryMissingTimeRangeErrorMsg       = "missing time range in the query"
 )
 
 var (
@@ -120,19 +128,55 @@ func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1
 	for _, l := range ls {
 		if len(l.Name) > limits.MaxLabelNameLength(tenantID) {
 			return NewErrorf(LabelNameTooLong, LabelNameTooLongErrorMsg, phlaremodel.LabelPairsString(ls), l.Name)
-		} else if len(l.Value) > limits.MaxLabelValueLength(tenantID) {
+		}
+		if len(l.Value) > limits.MaxLabelValueLength(tenantID) {
 			return NewErrorf(LabelValueTooLong, LabelValueTooLongErrorMsg, phlaremodel.LabelPairsString(ls), l.Value)
-		} else if !model.LabelName(l.Name).IsValid() {
-			return NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "invalid label name '"+l.Name+"'")
-		} else if !model.LabelValue(l.Value).IsValid() {
+		}
+		var origName string
+		var ok bool
+		if origName, l.Name, ok = SanitizeLabelName(l.Name); !ok {
+			return NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "invalid label name '"+origName+"'")
+		}
+		if !model.LabelValue(l.Value).IsValid() {
 			return NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "invalid label value '"+l.Value+"'")
-		} else if cmp := strings.Compare(lastLabelName, l.Name); cmp == 0 {
-			return NewErrorf(DuplicateLabelNames, DuplicateLabelNamesErrorMsg, phlaremodel.LabelPairsString(ls), l.Name)
+		}
+		if cmp := strings.Compare(lastLabelName, l.Name); cmp == 0 {
+			return NewErrorf(DuplicateLabelNames, DuplicateLabelNamesErrorMsg, phlaremodel.LabelPairsString(ls), origName)
 		}
 		lastLabelName = l.Name
 	}
 
 	return nil
+}
+
+// SanitizeLabelName reports whether the label name is valid,
+// and returns the sanitized value.
+//
+// The only change the function makes is replacing dots with underscores.
+func SanitizeLabelName(ln string) (old, sanitized string, ok bool) {
+	if len(ln) == 0 {
+		return ln, ln, false
+	}
+	hasDots := false
+	for i, b := range ln {
+		if !((b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || b == '_' || (b >= '0' && b <= '9' && i > 0)) {
+			if b == '.' {
+				hasDots = true
+			} else {
+				return ln, ln, false
+			}
+		}
+	}
+	if !hasDots {
+		return ln, ln, true
+	}
+	r := []rune(ln)
+	for i, b := range r {
+		if b == '.' {
+			r[i] = '_'
+		}
+	}
+	return ln, string(r), true
 }
 
 type ProfileValidationLimits interface {
@@ -285,6 +329,10 @@ type ValidatedRangeRequest struct {
 }
 
 func ValidateRangeRequest(limits RangeRequestLimits, tenantIDs []string, req model.Interval, now model.Time) (ValidatedRangeRequest, error) {
+	if req.Start == 0 || req.End == 0 {
+		return ValidatedRangeRequest{}, NewErrorf(QueryMissingTimeRange, QueryMissingTimeRangeErrorMsg)
+	}
+
 	if maxQueryLookback := validation.SmallestPositiveNonZeroDurationPerTenant(tenantIDs, limits.MaxQueryLookback); maxQueryLookback > 0 {
 		minStartTime := now.Add(-maxQueryLookback)
 
@@ -320,4 +368,25 @@ func ValidateRangeRequest(limits RangeRequestLimits, tenantIDs []string, req mod
 	}
 
 	return ValidatedRangeRequest{Interval: req}, nil
+}
+
+type FlameGraphLimits interface {
+	MaxFlameGraphNodesDefault(string) int
+	MaxFlameGraphNodesMax(string) int
+}
+
+func ValidateMaxNodes(l FlameGraphLimits, tenantIDs []string, n int64) (int64, error) {
+	if n == 0 {
+		return int64(validation.SmallestPositiveNonZeroIntPerTenant(tenantIDs, l.MaxFlameGraphNodesDefault)), nil
+	}
+	maxNodes := int64(validation.SmallestPositiveNonZeroIntPerTenant(tenantIDs, l.MaxFlameGraphNodesMax))
+	if maxNodes != 0 {
+		if n > maxNodes {
+			return 0, NewErrorf(FlameGraphLimit, MaxFlameGraphNodesErrorMsg, n, maxNodes)
+		}
+		if n < 0 {
+			return 0, NewErrorf(FlameGraphLimit, MaxFlameGraphNodesUnlimitedErrorMsg, maxNodes)
+		}
+	}
+	return n, nil
 }

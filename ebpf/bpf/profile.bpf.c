@@ -5,18 +5,38 @@
 #include "bpf_tracing.h"
 #include "profile.bpf.h"
 #include "pid.h"
+#include "ume.h"
+
+#define PF_KTHREAD 0x00200000
+
+struct global_config_t {
+    uint64_t ns_pid_ino;
+};
+
+const volatile struct global_config_t global_config;
 
 SEC("perf_event")
 int do_perf_event(struct bpf_perf_event_data *ctx) {
     u32 tgid = 0;
-    current_pid(&tgid);
+    current_pid(global_config.ns_pid_ino, &tgid);
 
     struct sample_key key = {};
     u32 *val, one = 1;
 
-    if (tgid == 0) {
+    struct task_struct *task = (struct task_struct *)bpf_get_current_task();
+    if (tgid == 0 || task == 0) {
         return 0;
     }
+    int flags = 0;
+    if (pyro_bpf_core_read(&flags, sizeof(flags), &task->flags)) {
+        bpf_dbg_printk("failed to read task->flags\n");
+        return 0;
+    }
+    if (flags & PF_KTHREAD) {
+        bpf_dbg_printk("skipping kthread %d\n", tgid);
+        return 0;
+    }
+
     struct pid_config *config = bpf_map_lookup_elem(&pids, &tgid);
     if (config == NULL) {
         struct pid_config unknown = {
@@ -25,7 +45,10 @@ int do_perf_event(struct bpf_perf_event_data *ctx) {
                 .collect_user = 0,
                 .padding_ = 0
         };
-        bpf_map_update_elem(&pids, &tgid, &unknown, BPF_NOEXIST);
+        if (bpf_map_update_elem(&pids, &tgid, &unknown, BPF_NOEXIST)) {
+            bpf_dbg_printk("failed to update pids map. probably concurrent update\n");
+            return 0;
+        }
         struct pid_event event = {
                 .op  = OP_REQUEST_UNKNOWN_PROCESS_INFO,
                 .pid = tgid
@@ -71,10 +94,11 @@ int BPF_KPROBE(disassociate_ctty, int on_exit) {
         return 0;
     }
     u32 pid = 0;
-    current_pid(&pid);
+    current_pid(global_config.ns_pid_ino, &pid);
     if (pid == 0) {
         return 0;
     }
+    bpf_map_delete_elem(&pids, &pid);
     struct pid_event event = {
         .op  = OP_PID_DEAD,
         .pid = pid
@@ -87,7 +111,7 @@ int BPF_KPROBE(disassociate_ctty, int on_exit) {
 SEC("kprobe/exec")
 int BPF_KPROBE(exec, void *_) {
     u32 pid = 0;
-    current_pid(&pid);
+    current_pid(global_config.ns_pid_ino, &pid);
     if (pid == 0) {
         return 0;
     }

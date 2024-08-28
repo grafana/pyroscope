@@ -387,6 +387,15 @@ func (r *IteratorResult) Columns(buffer [][]parquet.Value, names ...string) [][]
 	return buffer
 }
 
+func (r *IteratorResult) ColumnValue(name string) parquet.Value {
+	for _, e := range r.Entries {
+		if e.k == name {
+			return e.V
+		}
+	}
+	return parquet.Value{}
+}
+
 // iterator - Every iterator follows this interface and can be composed.
 type Iterator = iter.SeekIterator[*IteratorResult, RowNumberWithDefinitionLevel]
 
@@ -432,6 +441,7 @@ func NewBinaryJoinIterator(definitionLevel int, left, right Iterator) *BinaryJoi
 		left:            left,
 		right:           right,
 		definitionLevel: definitionLevel,
+		res:             iteratorResultPoolGet(),
 	}
 }
 
@@ -447,7 +457,7 @@ func (bj *BinaryJoinIterator) nextOrSeek(to RowNumberWithDefinitionLevel, it Ite
 }
 
 func (bj *BinaryJoinIterator) makeResult() {
-	bj.res = iteratorResultPoolGet()
+	bj.res.Reset()
 	bj.res.RowNumber = EmptyRowNumber()
 	bj.res.RowNumber[0] = bj.left.At().RowNumber[0]
 	bj.res.Append(bj.left.At())
@@ -455,8 +465,12 @@ func (bj *BinaryJoinIterator) makeResult() {
 }
 
 func (bj *BinaryJoinIterator) Next() bool {
+	var r *IteratorResult
 	for {
-		iteratorResultPoolPut(bj.left.At())
+		if r != nil {
+			iteratorResultPoolPut(r)
+		}
+		r = bj.left.At()
 		if !bj.left.Next() {
 			bj.err = bj.left.Err()
 			return false
@@ -873,7 +887,6 @@ func syncIteratorPoolPut(b []parquet.Value) {
 }
 
 func NewSyncIterator(ctx context.Context, rgs []parquet.RowGroup, column int, columnName string, readSize int, filter Predicate, selectAs string) *SyncIterator {
-
 	// Assign row group bounds.
 	// Lower bound is inclusive
 	// Upper bound is exclusive, points at the first row of the next group
@@ -935,14 +948,18 @@ func (c *SyncIterator) Next() bool {
 // SeekTo moves this iterator to the next result that is greater than
 // or equal to the given row number (and based on the given definition level)
 func (c *SyncIterator) Seek(to RowNumberWithDefinitionLevel) bool {
-
-	if c.seekRowGroup(to.RowNumber, to.DefinitionLevel) {
+	done, err := c.seekRowGroup(to.RowNumber, to.DefinitionLevel)
+	if err != nil {
+		c.err = err
+		return false
+	}
+	if done {
 		c.res = nil
 		c.err = nil
 		return false
 	}
 
-	done, err := c.seekPages(to.RowNumber, to.DefinitionLevel)
+	done, err = c.seekPages(to.RowNumber, to.DefinitionLevel)
 	if err != nil {
 		c.res = nil
 		c.err = err
@@ -995,7 +1012,7 @@ func (c *SyncIterator) popRowGroup() (parquet.RowGroup, RowNumber, RowNumber) {
 
 // seekRowGroup skips ahead to the row group that could contain the value at the
 // desired row number. Does nothing if the current row group is already the correct one.
-func (c *SyncIterator) seekRowGroup(seekTo RowNumber, definitionLevel int) (done bool) {
+func (c *SyncIterator) seekRowGroup(seekTo RowNumber, definitionLevel int) (done bool, err error) {
 	if c.currRowGroup != nil && CompareRowNumbers(definitionLevel, seekTo, c.currRowGroupMax) >= 0 {
 		// Done with this row group
 		c.closeCurrRowGroup()
@@ -1005,15 +1022,19 @@ func (c *SyncIterator) seekRowGroup(seekTo RowNumber, definitionLevel int) (done
 
 		rg, min, max := c.popRowGroup()
 		if rg == nil {
-			return true
+			return true, nil
 		}
 
 		if CompareRowNumbers(definitionLevel, seekTo, max) != -1 {
 			continue
 		}
 
-		cc := rg.ColumnChunks()[c.column]
-		if c.filter != nil && !c.filter.KeepColumnChunk(cc) {
+		ci, err := rg.ColumnChunks()[c.column].ColumnIndex()
+		if err != nil {
+			return true, err
+		}
+
+		if c.filter != nil && !c.filter.KeepColumnChunk(ci) {
 			continue
 		}
 
@@ -1021,7 +1042,7 @@ func (c *SyncIterator) seekRowGroup(seekTo RowNumber, definitionLevel int) (done
 		c.setRowGroup(rg, min, max)
 	}
 
-	return c.currRowGroup == nil
+	return c.currRowGroup == nil, nil
 }
 
 // seekPages skips ahead in the current row group to the page that could contain the value at
@@ -1033,7 +1054,6 @@ func (c *SyncIterator) seekPages(seekTo RowNumber, definitionLevel int) (done bo
 	}
 
 	if c.currPage == nil {
-
 		// TODO (mdisibio)   :((((((((
 		//    pages.SeekToRow is more costly than expected.  It doesn't reuse existing i/o
 		// so it can't be called naively every time we swap pages. We need to figure out
@@ -1114,8 +1134,11 @@ func (c *SyncIterator) next() (RowNumber, *parquet.Value, error) {
 				return EmptyRowNumber(), nil, nil
 			}
 
-			cc := rg.ColumnChunks()[c.column]
-			if c.filter != nil && !c.filter.KeepColumnChunk(cc) {
+			ci, err := rg.ColumnChunks()[c.column].ColumnIndex()
+			if err != nil {
+				return EmptyRowNumber(), nil, err
+			}
+			if c.filter != nil && !c.filter.KeepColumnChunk(ci) {
 				continue
 			}
 
@@ -1196,7 +1219,6 @@ func (c *SyncIterator) setRowGroup(rg parquet.RowGroup, min, max RowNumber) {
 }
 
 func (c *SyncIterator) setPage(pg parquet.Page) {
-
 	// Handle an outgoing page
 	if c.currPage != nil {
 		c.curr = c.currPageMax.Preceding() // Reposition current row number to end of this page.

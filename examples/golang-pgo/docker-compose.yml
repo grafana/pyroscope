@@ -1,0 +1,25 @@
+version: '3'
+services:
+  rideshare-go:
+    environment:
+    - REGION=us-east
+    - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
+    build:
+      context: .
+    ports:
+    - 5001:5001
+  pyroscope:
+    image: grafana/pyroscope:latest
+    ports:
+    - 4040:4040
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+    - GF_INSTALL_PLUGINS=grafana-pyroscope-app
+    - GF_AUTH_ANONYMOUS_ENABLED=true
+    - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    - GF_AUTH_DISABLE_LOGIN_FORM=true
+    volumes:
+    - ./grafana-provisioning:/etc/grafana/provisioning
+    ports:
+    - 3000:3000

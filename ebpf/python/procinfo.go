@@ -3,6 +3,7 @@ package python
 import (
 	"bufio"
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -15,9 +16,10 @@ type ProcInfo struct {
 	PythonMaps    []*symtab.ProcMap
 	LibPythonMaps []*symtab.ProcMap
 	Musl          []*symtab.ProcMap
+	Glibc         []*symtab.ProcMap
 }
 
-var rePython = regexp.MustCompile("/.*/((?:lib)?python)(\\d+)\\.(\\d+)(?:[mu]?(?:\\.so)?)?(?:.1.0)?$")
+var rePython = regexp.MustCompile("/.*/((?:lib)?python)(\\d+)\\.(\\d+)(?:[mu]?(-pyston\\d.\\d)?(?:\\.so)?)?(?:.1.0)?$")
 
 // GetProcInfo parses /proc/pid/map of a python process.
 func GetProcInfo(s *bufio.Scanner) (ProcInfo, error) {
@@ -53,8 +55,13 @@ func GetProcInfo(s *bufio.Scanner) (ProcInfo, error) {
 
 				i += 1
 			}
-			if strings.Contains(m.Pathname, "/lib/ld-musl-x86_64.so.1") {
+
+			if strings.Contains(m.Pathname, "/lib/ld-musl-x86_64.so.1") ||
+				strings.Contains(m.Pathname, "/lib/ld-musl-aarch64.so.1") {
 				res.Musl = append(res.Musl, m)
+			}
+			if strings.HasSuffix(m.Pathname, "/libc.so.6") || strings.HasPrefix(filepath.Base(m.Pathname), "libc-2.") {
+				res.Glibc = append(res.Glibc, m)
 			}
 		}
 	}

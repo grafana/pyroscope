@@ -11,7 +11,7 @@ type MockRing struct {
 	replicationFactor uint32
 }
 
-func NewMockRing(ingesters []ring.InstanceDesc, replicationFactor uint32) ring.ReadRing {
+func NewMockRing(ingesters []ring.InstanceDesc, replicationFactor uint32) MockRing {
 	return MockRing{
 		ingesters:         ingesters,
 		replicationFactor: replicationFactor,
@@ -87,4 +87,12 @@ func (r MockRing) CleanupShuffleShardCache(identifier string) {}
 
 func (r MockRing) GetInstanceState(instanceID string) (ring.InstanceState, error) {
 	return 0, nil
+}
+
+func (r MockRing) GetTokenRangesForInstance(instanceID string) (ring.TokenRanges, error) {
+	return nil, nil
+}
+
+func (r *MockRing) SetInstances(instances []ring.InstanceDesc) {
+	r.ingesters = instances
 }

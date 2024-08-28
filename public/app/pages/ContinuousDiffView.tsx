@@ -29,8 +29,17 @@ import { isLoadingOrReloading } from './loading';
 import { Panel } from '@pyroscope/components/Panel';
 import { PageContentWrapper } from '@pyroscope/pages/PageContentWrapper';
 import { FlameGraphWrapper } from '@pyroscope/components/FlameGraphWrapper';
+import styles from './ContinuousSingleView.module.css';
 
-function ComparisonDiffApp() {
+type ContinuousDiffViewProps = {
+  extraButton?: React.ReactNode;
+  extraPanel?: React.ReactNode;
+};
+
+function ComparisonDiffApp({
+  extraButton,
+  extraPanel,
+}: ContinuousDiffViewProps) {
   const dispatch = useAppDispatch();
   const {
     diffView,
@@ -97,7 +106,9 @@ function ComparisonDiffApp() {
         />
         <Panel
           isLoading={isLoading}
-          title={<ChartTitle titleKey={diffView.profile?.metadata.units} />}
+          title={
+            <ChartTitle titleKey={diffView.profile?.metadata.name as any} />
+          }
         >
           <TimelineChartWrapper
             data-testid="timeline-main"
@@ -140,6 +151,7 @@ function ComparisonDiffApp() {
         </Panel>
         <div className="diff-instructions-wrapper">
           <Panel
+            dataTestId="baseline-panel"
             isLoading={isLoading}
             className="diff-instructions-wrapper-side"
             title={<ChartTitle titleKey="baseline" color={leftColor} />}
@@ -179,6 +191,7 @@ function ComparisonDiffApp() {
             />
           </Panel>
           <Panel
+            dataTestId="comparison-panel"
             isLoading={isLoading}
             className="diff-instructions-wrapper-side"
             title={<ChartTitle titleKey="comparison" color={rightColor} />}
@@ -218,8 +231,21 @@ function ComparisonDiffApp() {
             />
           </Panel>
         </div>
-        <Panel isLoading={isLoading} title={<ChartTitle titleKey="diff" />}>
-          <FlameGraphWrapper profile={diffView.profile} diff={true} />
+        <Panel
+          isLoading={isLoading}
+          headerActions={extraButton}
+          dataTestId="diff-panel"
+        >
+          {extraPanel ? (
+            <div className={styles.flamegraphContainer}>
+              <div className={styles.flamegraphComponent}>
+                <FlameGraphWrapper profile={diffView.profile} diff={true} />
+              </div>
+              <div className={styles.extraPanel}>{extraPanel}</div>
+            </div>
+          ) : (
+            <FlameGraphWrapper profile={diffView.profile} diff={true} />
+          )}
         </Panel>
       </PageContentWrapper>
     </div>

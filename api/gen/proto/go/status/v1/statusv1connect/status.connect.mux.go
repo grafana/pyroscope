@@ -5,7 +5,7 @@
 package statusv1connect
 
 import (
-	connect_go "github.com/bufbuild/connect-go"
+	connect "connectrpc.com/connect"
 	mux "github.com/gorilla/mux"
 )
 
@@ -14,27 +14,27 @@ import (
 // generated with a version of connect newer than the one compiled into your binary. You can fix the
 // problem by either regenerating this code with an older version of connect or updating the connect
 // version compiled into your binary.
-const _ = connect_go.IsAtLeastVersion0_1_0
+const _ = connect.IsAtLeastVersion0_1_0
 
 // RegisterStatusServiceHandler register an HTTP handler to a mux.Router from the service
 // implementation.
-func RegisterStatusServiceHandler(mux *mux.Router, svc StatusServiceHandler, opts ...connect_go.HandlerOption) {
-	mux.Handle("/status.v1.StatusService/GetBuildInfo", connect_go.NewUnaryHandler(
+func RegisterStatusServiceHandler(mux *mux.Router, svc StatusServiceHandler, opts ...connect.HandlerOption) {
+	mux.Handle("/status.v1.StatusService/GetBuildInfo", connect.NewUnaryHandler(
 		"/status.v1.StatusService/GetBuildInfo",
 		svc.GetBuildInfo,
 		opts...,
 	))
-	mux.Handle("/status.v1.StatusService/GetConfig", connect_go.NewUnaryHandler(
+	mux.Handle("/status.v1.StatusService/GetConfig", connect.NewUnaryHandler(
 		"/status.v1.StatusService/GetConfig",
 		svc.GetConfig,
 		opts...,
 	))
-	mux.Handle("/status.v1.StatusService/GetDiffConfig", connect_go.NewUnaryHandler(
+	mux.Handle("/status.v1.StatusService/GetDiffConfig", connect.NewUnaryHandler(
 		"/status.v1.StatusService/GetDiffConfig",
 		svc.GetDiffConfig,
 		opts...,
 	))
-	mux.Handle("/status.v1.StatusService/GetDefaultConfig", connect_go.NewUnaryHandler(
+	mux.Handle("/status.v1.StatusService/GetDefaultConfig", connect.NewUnaryHandler(
 		"/status.v1.StatusService/GetDefaultConfig",
 		svc.GetDefaultConfig,
 		opts...,

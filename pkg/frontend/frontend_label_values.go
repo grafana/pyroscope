@@ -3,8 +3,9 @@ package frontend
 import (
 	"context"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/grafana/dskit/tenant"
+	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
@@ -15,6 +16,12 @@ import (
 )
 
 func (f *Frontend) LabelValues(ctx context.Context, c *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error) {
+	opentracing.SpanFromContext(ctx).
+		SetTag("start", model.Time(c.Msg.Start).Time().String()).
+		SetTag("end", model.Time(c.Msg.End).Time().String()).
+		SetTag("matchers", c.Msg.Matchers).
+		SetTag("name", c.Msg.Name)
+
 	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceLabelValuesProcedure)
 
 	interval, ok := phlaremodel.GetTimeRange(c.Msg)

@@ -6,7 +6,7 @@ on:
       - 'weekly/f*'
 jobs:
   goreleaser-weekly:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v3
         with:
@@ -15,6 +15,8 @@ jobs:
         run: echo "GORELEASER_CURRENT_TAG=v0.0.0-$(./tools/image-tag)" >> $GITHUB_ENV
       - name: Set WEEKLY_IMAGE_TAG
         run: echo "WEEKLY_IMAGE_TAG=$(./tools/image-tag)" >> $GITHUB_ENV
+      - name: Set GORELEASER_STRIP_DEBUG_INFO=false, so binaries are not stripped of debug info
+        run: echo "GORELEASER_STRIP_DEBUG_INFO=false" >> $GITHUB_ENV
       # Forces goreleaser to use the correct previous tag for the changelog
       - name: Set GORELEASER_PREVIOUS_TAG
         run: echo "GORELEASER_PREVIOUS_TAG=$(git tag -l --sort=-version:refname | grep -E '^weekly-.*' | head -n 2 | tail -1)" >> $GITHUB_ENV
@@ -25,7 +27,7 @@ jobs:
           git tag "$WEEKLY_IMAGE_TAG"
       - uses: actions/setup-go@v3
         with:
-          go-version: "1.21.3"
+          go-version: "1.21.12"
           cache: true
       # setup docker buildx
       - name: Set up QEMU
@@ -49,18 +51,14 @@ jobs:
         with:
           app_id: ${{ secrets.APP_ID }}
           private_key: ${{ secrets.APP_PRIVATE_KEY }}
-      - uses: goreleaser/goreleaser-action@v4
+      - uses: goreleaser/goreleaser-action@v6
         with:
-          # either 'goreleaser' (default) or 'goreleaser-pro':
-          distribution: goreleaser
-          version: latest
-          args: release --clean --skip-publish --timeout 60m
+          # ensure this aligns with the version specified in the /Makefile
+          version: v2.0.1
+          args: release --clean --skip=publish --timeout 60m
         env:
           GITHUB_TOKEN: ${{ steps.app-releaser.outputs.token }}
-          # Your GoReleaser Pro key, if you are using the 'goreleaser-pro'
-          # distribution:
-          # GORELEASER_KEY: ${{ secrets.GORELEASER_KEY }}
-          #
+
       - name: Push per architecture images and create multi-arch manifest
         run: |
           set +x

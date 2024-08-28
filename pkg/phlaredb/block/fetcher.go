@@ -178,9 +178,9 @@ var (
 	ErrorSyncMetaCorrupted = errors.New("meta.json corrupted")
 )
 
-// loadMeta returns metadata from object storage or error.
+// LoadMeta returns metadata from object storage or error.
 // It returns ErrorSyncMetaNotFound and ErrorSyncMetaCorrupted sentinel errors in those cases.
-func (f *MetaFetcher) loadMeta(ctx context.Context, id ulid.ULID) (*Meta, error) {
+func (f *MetaFetcher) LoadMeta(ctx context.Context, id ulid.ULID) (*Meta, error) {
 	var (
 		metaFile       = path.Join(id.String(), MetaFilename)
 		cachedBlockDir = filepath.Join(f.cacheDir, id.String())
@@ -307,7 +307,7 @@ func (f *MetaFetcher) fetchMetadata(ctx context.Context, excludeMarkedForDeletio
 	for i := 0; i < f.concurrency; i++ {
 		eg.Go(func() error {
 			for id := range ch {
-				meta, err := f.loadMeta(ctx, id)
+				meta, err := f.LoadMeta(ctx, id)
 				if err == nil {
 					mtx.Lock()
 					resp.metas[id] = meta

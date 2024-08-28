@@ -66,7 +66,7 @@ func testContext(t testing.TB) testCtx {
 	dataPath := t.TempDir()
 	ctx = contextWithDataDir(ctx, dataPath)
 	bucketCfg := phlareobjclient.Config{}
-	bucketCfg.Backend = "filesystem"
+	bucketCfg.Backend = phlareobjclient.Filesystem
 	bucketCfg.Filesystem.Directory = dataPath
 	bucketClient, err := phlareobjclient.NewBucket(ctx, bucketCfg, "testing")
 	require.NoError(t, err)

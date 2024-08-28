@@ -23,6 +23,7 @@ const (
 	IndexCompressedFilename = IndexFilename + ".gz"
 	IndexVersion1           = 1
 	IndexVersion2           = 2 // Added CompactorShardID field.
+	IndexVersion3           = 3 // Added CompactionLevel field.
 )
 
 // Index contains all known blocks and markers of a tenant.
@@ -78,6 +79,7 @@ type Block struct {
 
 	// Block's compactor shard ID, copied from tsdb.CompactorShardIDExternalLabel label.
 	CompactorShardID string `json:"compactor_shard_id,omitempty"`
+	CompactionLevel  int    `json:"compaction_level,omitempty"`
 }
 
 // Within returns whether the block contains samples within the provided range.
@@ -113,6 +115,9 @@ func (m *Block) Meta() *block.Meta {
 		Labels: map[string]string{
 			sharding.CompactorShardIDLabel: m.CompactorShardID,
 		},
+		Compaction: block.BlockMetaCompaction{
+			Level: m.CompactionLevel,
+		},
 	}
 }
 
@@ -122,6 +127,7 @@ func BlockFromMeta(meta block.Meta) *Block {
 		MinTime:          meta.MinTime,
 		MaxTime:          meta.MaxTime,
 		CompactorShardID: meta.Labels[sharding.CompactorShardIDLabel],
+		CompactionLevel:  meta.Compaction.Level,
 	}
 }
 

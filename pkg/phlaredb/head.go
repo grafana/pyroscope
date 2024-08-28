@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/gogo/status"
@@ -31,6 +31,7 @@ import (
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	phlarelabels "github.com/grafana/pyroscope/pkg/phlaredb/labels"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 )
@@ -123,11 +124,19 @@ func NewHead(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*Hea
 		}
 	}
 
-	h.symdb = symdb.NewSymDB(symdb.DefaultConfig().
-		WithDirectory(filepath.Join(h.headPath, symdb.DefaultDirName)).
-		WithParquetConfig(symdb.ParquetConfig{
+	symdbConfig := symdb.DefaultConfig()
+	if cfg.SymDBFormat == symdb.FormatV3 {
+		symdbConfig.Version = symdb.FormatV3
+		symdbConfig.Dir = h.headPath
+	} else {
+		symdbConfig.Version = symdb.FormatV2
+		symdbConfig.Dir = filepath.Join(h.headPath, symdb.DefaultDirName)
+		symdbConfig.Parquet = symdb.ParquetConfig{
 			MaxBufferRowCount: h.parquetConfig.MaxBufferRowCount,
-		}))
+		}
+	}
+
+	h.symdb = symdb.NewSymDB(symdbConfig)
 
 	h.wg.Add(1)
 	go h.loop()
@@ -183,16 +192,22 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 		return nil
 	}
 
-	labels, seriesFingerprints := labelsForProfile(p, externalLabels...)
+	delta := phlaremodel.Labels(externalLabels).Get(phlaremodel.LabelNameDelta) != "false"
+	externalLabels = phlaremodel.Labels(externalLabels).Delete(phlaremodel.LabelNameDelta)
+
+	enforceLabelOrder := phlaremodel.Labels(externalLabels).Get(phlaremodel.LabelNameOrder) == phlaremodel.LabelOrderEnforced
+	externalLabels = phlaremodel.Labels(externalLabels).Delete(phlaremodel.LabelNameOrder)
+
+	lbls, seriesFingerprints := phlarelabels.CreateProfileLabels(enforceLabelOrder, p, externalLabels...)
 
 	for i, fp := range seriesFingerprints {
-		if err := h.limiter.AllowProfile(fp, labels[i], p.TimeNanos); err != nil {
+		if err := h.limiter.AllowProfile(fp, lbls[i], p.TimeNanos); err != nil {
 			return err
 		}
 	}
 
 	// determine the stacktraces partition ID
-	partition := phlaremodel.StacktracePartitionFromProfile(labels, p)
+	partition := phlaremodel.StacktracePartitionFromProfile(lbls, p)
 
 	metricName := phlaremodel.Labels(externalLabels).Get(model.MetricNameLabel)
 
@@ -200,7 +215,12 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 	for idxType, profile := range h.symdb.WriteProfileSymbols(partition, p) {
 		profile.ID = id
 		profile.SeriesFingerprint = seriesFingerprints[idxType]
-		profile.Samples = h.delta.computeDelta(profile, labels[idxType])
+		if delta && isDeltaSupported(lbls[idxType]) {
+			profile.Samples = h.delta.computeDelta(profile)
+		} else {
+			profile.Samples = profile.Samples.Compact(false)
+		}
+
 		profile.TotalValue = profile.Samples.Sum()
 
 		if profile.Samples.Len() == 0 {
@@ -208,7 +228,7 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 			continue
 		}
 
-		if err := h.profiles.ingest(ctx, []schemav1.InMemoryProfile{profile}, labels[idxType], metricName); err != nil {
+		if err := h.profiles.ingest(ctx, []schemav1.InMemoryProfile{profile}, lbls[idxType], metricName); err != nil {
 			return err
 		}
 
@@ -307,6 +327,15 @@ func (h *Head) LabelNames(ctx context.Context, req *connect.Request[typesv1.Labe
 	}), nil
 }
 
+func (h *Head) MustProfileTypeNames() []string {
+	ptypes, err := h.profiles.index.ix.LabelValues(phlaremodel.LabelNameProfileType, nil)
+	if err != nil {
+		panic(err)
+	}
+	sort.Strings(ptypes)
+	return ptypes
+}
+
 // ProfileTypes returns the possible profile types.
 func (h *Head) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
 	values, err := h.profiles.index.ix.LabelValues(phlaremodel.LabelNameProfileType, nil)
@@ -327,6 +356,10 @@ func (h *Head) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.P
 	return connect.NewResponse(&ingestv1.ProfileTypesResponse{
 		ProfileTypes: profileTypes,
 	}), nil
+}
+
+func (h *Head) BlockID() string {
+	return h.meta.ULID.String()
 }
 
 func (h *Head) Bounds() (mint, maxt model.Time) {
@@ -550,7 +583,9 @@ func (h *Head) flush(ctx context.Context) error {
 	}
 	for _, file := range h.symdb.Files() {
 		// Files' path is relative to the symdb dir.
-		file.RelPath = filepath.Join(symdb.DefaultDirName, file.RelPath)
+		if h.symdb.FormatVersion() == symdb.FormatV2 {
+			file.RelPath = filepath.Join(symdb.DefaultDirName, file.RelPath)
+		}
 		files = append(files, file)
 		blockSize += file.SizeBytes
 		h.metrics.flushedFileSizeBytes.WithLabelValues(file.RelPath).Observe(float64(file.SizeBytes))
@@ -624,4 +659,18 @@ func (h *Head) updateSymbolsMemUsage(memStats *symdb.MemoryStats) {
 	m.WithLabelValues("functions").Set(float64(memStats.FunctionsSize))
 	m.WithLabelValues("mappings").Set(float64(memStats.MappingsSize))
 	m.WithLabelValues("strings").Set(float64(memStats.StringsSize))
+}
+
+func (h *Head) GetMetaStats() block.MetaStats {
+	h.metaLock.RLock()
+	defer h.metaLock.RUnlock()
+	return h.meta.GetStats()
+}
+
+func (h *Head) Meta() *block.Meta {
+	return h.meta
+}
+
+func (h *Head) LocalPathFor(relPath string) string {
+	return filepath.Join(h.localPath, relPath)
 }

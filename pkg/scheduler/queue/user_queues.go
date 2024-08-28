@@ -7,10 +7,9 @@ package queue
 
 import (
 	"math/rand"
+	"slices"
 	"sort"
 	"time"
-
-	"golang.org/x/exp/slices"
 
 	"github.com/grafana/pyroscope/pkg/util"
 )

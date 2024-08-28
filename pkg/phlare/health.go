@@ -3,7 +3,7 @@ package phlare
 import (
 	"context"
 
-	grpchealth "github.com/bufbuild/connect-grpchealth-go"
+	grpchealth "connectrpc.com/grpchealth"
 	"github.com/gorilla/mux"
 	"github.com/grafana/dskit/grpcutil"
 )

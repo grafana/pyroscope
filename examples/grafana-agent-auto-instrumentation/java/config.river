@@ -1,0 +1,56 @@
+logging {
+  level = "debug"
+  format = "logfmt"
+}
+
+discovery.process "all" {
+  // join kuberenetes targets with process targets on container_id to have k8s labels
+  // join = discovery.kubernetes.containers.targets
+}
+
+discovery.relabel "java" {
+    targets = discovery.process.all.targets
+    rule {
+        source_labels = ["__meta_process_exe"]
+        action = "keep"
+        regex = ".*/java$"
+    }
+    rule {
+        source_labels = ["__meta_process_commandline"]
+        regex = "java FastSlow"
+        action = "keep"
+    }
+    rule {
+        action = "replace"
+        target_label = "service_name"
+        replacement = "java-fast-slow-fibonacci"
+    }
+}
+
+pyroscope.java "java" {
+  profiling_config {
+    interval = "15s"
+    alloc = "512k"
+    cpu = true
+    lock = "10ms"
+    sample_rate = 100
+  }
+  forward_to = [pyroscope.write.example.receiver]
+  targets = discovery.relabel.java.output
+}
+
+pyroscope.write "example" {
+  // Send metrics to a locally running Pyroscope instance.
+  endpoint {
+    url = "http://pyroscope:4040"
+
+    // To send data to Grafana Cloud you'll need to provide username and password.
+    // basic_auth {
+    //   username = "myuser"
+    //   password = "mypassword"
+    // }
+  }
+  external_labels = {
+    "env" = "example",
+  }
+}

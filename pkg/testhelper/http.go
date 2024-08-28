@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This has been adapted from https://github.com/bufbuild/connect-go/blob/cce7065d23ae00021eb4b31284361a2d8525df21/example_init_test.go#L44-L144
+// This has been adapted from https://connectrpc.com/connect/blob/cce7065d23ae00021eb4b31284361a2d8525df21/example_init_test.go#L44-L144
 
 package testhelper
 

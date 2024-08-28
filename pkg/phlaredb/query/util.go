@@ -1,15 +1,16 @@
 package query
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/colega/zeropool"
 	"github.com/parquet-go/parquet-go"
 )
 
-func GetColumnIndexByPath(pf *parquet.File, s string) (index, depth int) {
+func GetColumnIndexByPath(root *parquet.Column, s string) (index, depth int) {
 	colSelector := strings.Split(s, ".")
-	n := pf.Root()
+	n := root
 	for len(colSelector) > 0 {
 		n = n.Column(colSelector[0])
 		if n == nil {
@@ -23,8 +24,8 @@ func GetColumnIndexByPath(pf *parquet.File, s string) (index, depth int) {
 	return n.Index(), depth
 }
 
-func HasColumn(pf *parquet.File, s string) bool {
-	index, _ := GetColumnIndexByPath(pf, s)
+func HasColumn(root *parquet.Column, s string) bool {
+	index, _ := GetColumnIndexByPath(root, s)
 	return index >= 0
 }
 
@@ -86,9 +87,7 @@ var parquetValuesPool = zeropool.New(func() []parquet.Value { return nil })
 
 func CloneParquetValues(values []parquet.Value) []parquet.Value {
 	p := parquetValuesPool.Get()
-	if l := len(values); cap(p) < l {
-		p = make([]parquet.Value, 0, 2*l)
-	}
+	p = slices.Grow(p, len(values))
 	p = p[:len(values)]
 	for i, v := range values {
 		p[i] = v.Clone()

@@ -135,7 +135,7 @@ func (g *GoTable) goSymbolName(idx int) (string, error) {
 	}
 
 	offsetName := g.Index.Name[idx]
-	name, ok := g.File.getString(int(offsetGpcln)+int(g.funcNameOffset)+int(offsetName), DemangleNone)
+	name, ok := g.File.getString(int(offsetGpcln)+int(g.funcNameOffset)+int(offsetName), nil)
 	if !ok {
 		return "", errGoFailed
 	}

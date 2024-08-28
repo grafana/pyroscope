@@ -10,6 +10,8 @@ service IngesterService {
   rpc Push(push.v1.PushRequest) returns (push.v1.PushResponse) {}
   rpc LabelValues(types.v1.LabelValuesRequest) returns (types.v1.LabelValuesResponse) {}
   rpc LabelNames(types.v1.LabelNamesRequest) returns (types.v1.LabelNamesResponse) {}
+  // Deprecated: ProfileType call is deprecated in the store components
+  // TODO: Remove this call in release v1.4
   rpc ProfileTypes(ProfileTypesRequest) returns (ProfileTypesResponse) {}
   rpc Series(SeriesRequest) returns (SeriesResponse) {}
   rpc Flush(FlushRequest) returns (FlushResponse) {}
@@ -17,6 +19,10 @@ service IngesterService {
   rpc MergeProfilesLabels(stream MergeProfilesLabelsRequest) returns (stream MergeProfilesLabelsResponse) {}
   rpc MergeProfilesPprof(stream MergeProfilesPprofRequest) returns (stream MergeProfilesPprofResponse) {}
   rpc MergeSpanProfile(stream MergeSpanProfileRequest) returns (stream MergeSpanProfileResponse) {}
+  rpc BlockMetadata(BlockMetadataRequest) returns (BlockMetadataResponse) {}
+  // GetProfileStats returns profile stats for the current tenant.
+  rpc GetProfileStats(types.v1.GetProfileStatsRequest) returns (types.v1.GetProfileStatsResponse) {}
+  rpc GetBlockStats(GetBlockStatsRequest) returns (GetBlockStatsResponse) {}
 }
 
 message ProfileTypesRequest {
@@ -52,8 +58,14 @@ message FlushResponse {}
 message SelectProfilesRequest {
   string label_selector = 1;
   types.v1.ProfileType type = 2;
+  // Milliseconds since epoch.
   int64 start = 3;
+  // Milliseconds since epoch.
   int64 end = 4;
+  // Optional: Hints for querying
+  optional Hints hints = 5;
+  // Optional: Aggregation
+  optional types.v1.TimeSeriesAggregationType aggregation = 6;
 }
 
 message MergeProfilesStacktracesRequest {
@@ -84,6 +96,7 @@ message MergeProfilesStacktracesResponse {
   // The server replies batch of profiles.
   // A last message without profiles signals the next message will be the result of the merge.
   ProfileSets selectedProfiles = 1;
+
   // The list of stracktraces for the profile with their respective value
   MergeProfilesStacktracesResult result = 3;
 }
@@ -91,9 +104,14 @@ message MergeProfilesStacktracesResponse {
 message SelectSpanProfileRequest {
   string label_selector = 1;
   types.v1.ProfileType type = 2;
+  // Milliseconds since epoch.
   int64 start = 3;
+  // Milliseconds since epoch.
   int64 end = 4;
+  // List of span identifiers.
   repeated string span_selector = 5;
+  // Optional: Hints for querying
+  optional Hints hints = 6;
 }
 
 message MergeSpanProfileRequest {
@@ -118,8 +136,10 @@ message MergeSpanProfileResult {
 }
 
 message ProfileSets {
+  // DEPRECATED: Use fingerprints instead.
   repeated types.v1.Labels labelsSets = 1;
   repeated SeriesProfile profiles = 2;
+  repeated uint64 fingerprints = 3;
 }
 
 message SeriesProfile {
@@ -151,10 +171,10 @@ message StacktraceSample {
 message MergeProfilesLabelsRequest {
   // The client starts the stream with a request containing the profile type and the labels.
   SelectProfilesRequest request = 1;
-
   // The labels to merge by
   repeated string by = 2;
-
+  // Select stack traces that match the provided selector.
+  optional types.v1.StackTraceSelector stack_trace_selector = 4;
   // On a batch of profiles, the client sends the profiles to keep for merging.
   repeated bool profiles = 3;
 }
@@ -170,7 +190,10 @@ message MergeProfilesLabelsResponse {
 message MergeProfilesPprofRequest {
   // The client starts the stream with a request containing the profile type and the labels.
   SelectProfilesRequest request = 1;
-
+  // Max nodes in the resulting profile.
+  optional int64 max_nodes = 3;
+  // Select stack traces that match the provided selector.
+  optional types.v1.StackTraceSelector stack_trace_selector = 4;
   // On a batch of profiles, the client sends the profiles to keep for merging.
   repeated bool profiles = 2;
 }
@@ -181,4 +204,47 @@ message MergeProfilesPprofResponse {
   ProfileSets selectedProfiles = 1;
   // The merge result in the pprof format.
   bytes result = 2;
+}
+
+message BlockMetadataRequest {
+  // Milliseconds since epoch. If missing or zero, only the ingesters will be
+  // queried.
+  int64 start = 1;
+  // Milliseconds since epoch. If missing or zero, only the ingesters will be
+  // queried.
+  int64 end = 2;
+}
+
+message BlockMetadataResponse {
+  // Blocks that are present on the instance for the start to end period
+  repeated types.v1.BlockInfo blocks = 1;
+}
+
+// Hints are used to propagate information about querying
+message Hints {
+  BlockHints block = 1;
+}
+
+message BlockHints {
+  // The ULID of blocks to query
+  repeated string ulids = 1;
+  // When all blocks are compacted, there is no effect of the replication factor, hence we do not need to run deduplication.
+  bool deduplication = 2;
+}
+
+message GetBlockStatsRequest {
+  repeated string ulids = 1;
+}
+
+message GetBlockStatsResponse {
+  repeated BlockStats block_stats = 1;
+}
+
+message BlockStats {
+  uint64 series_count = 2;
+  uint64 profile_count = 3;
+  uint64 sample_count = 4;
+  uint64 index_bytes = 5;
+  uint64 profile_bytes = 6;
+  uint64 symbol_bytes = 7;
 }

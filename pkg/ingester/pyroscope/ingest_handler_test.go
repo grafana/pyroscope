@@ -7,24 +7,22 @@ import (
 	"mime/multipart"
 	"net/http/httptest"
 	"os"
+	"slices"
 	"sort"
-	"strings"
 	"testing"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/slices"
-
-	pprof2 "github.com/grafana/pyroscope/pkg/og/convert/pprof"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/distributor/model"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	pprof2 "github.com/grafana/pyroscope/pkg/og/convert/pprof"
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
 	"github.com/grafana/pyroscope/pkg/pprof"
 )
@@ -117,6 +115,17 @@ func (m *MockPushService) CompareDump(file string) {
 	err = json.Unmarshal(bs, &expected)
 	require.NoError(m.T, err)
 
+	var req []*flatProfileSeries
+	for _, x := range m.reqPprof {
+		iterateProfileSeries(x.Profile.CloneVT(), x.Labels, func(p *profilev1.Profile, ls phlaremodel.Labels) {
+			req = append(req, &flatProfileSeries{
+				Labels:  ls,
+				Profile: p,
+			})
+		})
+	}
+	m.reqPprof = req
+
 	for i := range expected.Profiles {
 		expectedLabels := labels.Labels{}
 		err := expectedLabels.UnmarshalJSON([]byte(expected.Profiles[i].Labels))
@@ -131,54 +140,6 @@ const (
 	repoRoot       = "../../../"
 	testdataDirJFR = repoRoot + "pkg/og/convert/jfr/testdata"
 )
-
-func TestIngestJFR(b *testing.T) {
-	testdata := []struct {
-		jfr    string
-		labels string
-	}{
-		{"cortex-dev-01__kafka-0__cpu__0.jfr.gz", ""},
-		{"cortex-dev-01__kafka-0__cpu__1.jfr.gz", ""},
-		{"cortex-dev-01__kafka-0__cpu__2.jfr.gz", ""},
-		{"cortex-dev-01__kafka-0__cpu__3.jfr.gz", ""},
-		{"cortex-dev-01__kafka-0__cpu_lock_alloc__0.jfr.gz", ""},
-		{"cortex-dev-01__kafka-0__cpu_lock_alloc__1.jfr.gz", ""},
-		{"cortex-dev-01__kafka-0__cpu_lock_alloc__2.jfr.gz", ""},
-		{"cortex-dev-01__kafka-0__cpu_lock_alloc__3.jfr.gz", ""},
-		{"cortex-dev-01__kafka-0__cpu_lock0_alloc0__0.jfr.gz", ""},
-		{"dump1.jfr.gz", "dump1.labels.pb.gz"},
-		{"dump2.jfr.gz", "dump2.labels.pb.gz"},
-	}
-	l := log.NewSyncLogger(log.NewLogfmtLogger(os.Stderr))
-
-	for _, jfr := range testdata {
-		td := jfr
-		b.Run(td.jfr, func(t *testing.T) {
-			src := testdataDirJFR + "/" + td.jfr
-			jfr, err := bench.ReadGzipFile(src)
-			require.NoError(t, err)
-			var labels []byte
-			if td.labels != "" {
-				labels, err = bench.ReadGzipFile(testdataDirJFR + "/" + td.labels)
-			}
-			require.NoError(t, err)
-			svc := &MockPushService{Keep: true, T: t}
-			h := NewPyroscopeIngestHandler(svc, l)
-
-			res := httptest.NewRecorder()
-			body, ct := createJFRRequestBody(t, jfr, labels)
-
-			req := httptest.NewRequest("POST", "/ingest?name=javaapp&format=jfr", bytes.NewReader(body))
-			req.Header.Set("Content-Type", ct)
-			h.ServeHTTP(res, req)
-			assert.Equal(t, 200, res.Code)
-
-			dst := strings.ReplaceAll(src, ".jfr.gz", ".pprof.json.gz")
-			// svc.DumpTo(dst)
-			svc.CompareDump(dst)
-		})
-	}
-}
 
 func TestCorruptedJFR422(t *testing.T) {
 	l := log.NewSyncLogger(log.NewLogfmtLogger(os.Stderr))
@@ -395,7 +356,7 @@ func TestIngestPPROFFixtures(t *testing.T) {
 				ls := phlaremodel.Labels(actualReq.Labels)
 				require.Equal(t, testdatum.expectMetric, ls.Get(labels.MetricName))
 				require.Equal(t, "asd", ls.Get("qwe"))
-				require.Equal(t, spyName, ls.Get("pyroscope_spy"))
+				require.Equal(t, spyName, ls.Get(phlaremodel.LabelNamePyroscopeSpy))
 				require.Equal(t, "pprof.test", ls.Get("service_name"))
 				require.Equal(t, "false", ls.Get("__delta__"))
 				require.Equal(t, profile, actualReq.RawProfile)
@@ -413,7 +374,6 @@ func TestIngestPPROFFixtures(t *testing.T) {
 func comparePPROF(t *testing.T, actual *profilev1.Profile, profile2 []byte) {
 	expected, err := pprof.RawFromBytes(profile2)
 	require.NoError(t, err)
-	defer expected.Close()
 
 	require.Equal(t, len(expected.SampleType), len(actual.SampleType))
 	for i := range actual.SampleType {
@@ -459,4 +419,30 @@ func createPProfRequest(t *testing.T, profile, prevProfile, sampleTypeConfig []b
 	require.NoError(t, err)
 
 	return b.Bytes(), w.FormDataContentType()
+}
+
+func iterateProfileSeries(p *profilev1.Profile, seriesLabels phlaremodel.Labels, fn func(*profilev1.Profile, phlaremodel.Labels)) {
+	for _, x := range p.Sample {
+		sort.Sort(pprof.LabelsByKeyValue(x.Label))
+	}
+	sort.Sort(pprof.SamplesByLabels(p.Sample))
+	groups := pprof.GroupSamplesWithoutLabels(p, "profile_id")
+	e := pprof.NewSampleExporter(p)
+	for _, g := range groups {
+		ls := mergeSeriesAndSampleLabels(p, seriesLabels, g.Labels)
+		ps := e.ExportSamples(new(profilev1.Profile), g.Samples)
+		fn(ps, ls)
+	}
+}
+
+func mergeSeriesAndSampleLabels(p *profilev1.Profile, sl []*v1.LabelPair, pl []*profilev1.Label) []*v1.LabelPair {
+	m := phlaremodel.Labels(sl).Clone()
+	for _, l := range pl {
+		m = append(m, &v1.LabelPair{
+			Name:  p.StringTable[l.Key],
+			Value: p.StringTable[l.Str],
+		})
+	}
+	sort.Stable(m)
+	return m.Unique()
 }

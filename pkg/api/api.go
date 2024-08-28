@@ -12,7 +12,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/felixge/fgprof"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -24,21 +24,29 @@ import (
 
 	"github.com/grafana/pyroscope/public"
 
+	"github.com/grafana/pyroscope/api/gen/proto/go/adhocprofiles/v1/adhocprofilesv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
+	"github.com/grafana/pyroscope/api/gen/proto/go/settings/v1/settingsv1connect"
 	statusv1 "github.com/grafana/pyroscope/api/gen/proto/go/status/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/storegateway/v1/storegatewayv1connect"
+	"github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1/vcsv1connect"
+	"github.com/grafana/pyroscope/api/gen/proto/go/version/v1/versionv1connect"
 	"github.com/grafana/pyroscope/api/openapiv2"
+	"github.com/grafana/pyroscope/pkg/adhocprofiles"
+	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/compactor"
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/frontend/frontendpb/frontendpbconnect"
 	"github.com/grafana/pyroscope/pkg/ingester"
 	"github.com/grafana/pyroscope/pkg/ingester/pyroscope"
+	"github.com/grafana/pyroscope/pkg/operations"
 	"github.com/grafana/pyroscope/pkg/querier"
 	"github.com/grafana/pyroscope/pkg/scheduler"
 	"github.com/grafana/pyroscope/pkg/scheduler/schedulerpb/schedulerpbconnect"
+	"github.com/grafana/pyroscope/pkg/settings"
 	"github.com/grafana/pyroscope/pkg/storegateway"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/gziphandler"
@@ -58,6 +66,7 @@ type API struct {
 	grpcGatewayMux     *grpcgw.ServeMux
 	grpcAuthMiddleware connect.Option
 	grpcLogMiddleware  connect.Option
+	recoveryMiddleware connect.Option
 
 	cfg       Config
 	logger    log.Logger
@@ -74,6 +83,7 @@ func New(cfg Config, s *server.Server, grpcGatewayMux *grpcgw.ServeMux, logger l
 		grpcGatewayMux:     grpcGatewayMux,
 		grpcAuthMiddleware: cfg.GrpcAuthMiddleware,
 		grpcLogMiddleware:  connect.WithInterceptors(util.NewLogInterceptor(logger)),
+		recoveryMiddleware: connect.WithInterceptors(util.RecoveryInterceptor),
 	}
 
 	// If no authentication middleware is present in the config, use the default authentication middleware.
@@ -168,8 +178,12 @@ func (a *API) RegisterCatchAll() error {
 	if err != nil {
 		return fmt.Errorf("unable to initialize the ui: %w", err)
 	}
-	// Serve index to all other pages
-	a.RegisterRoutesWithPrefix("/", uiIndexHandler, false, true, "GET")
+
+	// Serve index to known paths
+	// This should be kept in sync with routes in public/app/pages/routes.ts
+	for _, path := range []string{"/", "/explore", "/comparison", "/comparison-diff"} {
+		a.RegisterRoute(path, uiIndexHandler, false, true, "GET")
+	}
 
 	a.indexPage.AddLinks(defaultWeight, "User interface", []IndexPageLink{
 		{Desc: "User interface", Path: "/"},
@@ -188,6 +202,10 @@ func (a *API) RegisterRuntimeConfig(runtimeConfigHandler http.HandlerFunc, userL
 	})
 }
 
+func (a *API) RegisterTenantSettings(ts *settings.TenantSettings) {
+	settingsv1connect.RegisterSettingsServiceHandler(a.server.HTTP, ts, a.connectOptionsAuthRecovery()...)
+}
+
 // RegisterOverridesExporter registers the endpoints associated with the overrides exporter.
 func (a *API) RegisterOverridesExporter(oe *exporter.OverridesExporter) {
 	a.RegisterRoute("/overrides-exporter/ring", http.HandlerFunc(oe.RingHandler), false, true, "GET", "POST")
@@ -201,7 +219,7 @@ func (a *API) RegisterDistributor(d *distributor.Distributor) {
 	pyroscopeHandler := pyroscope.NewPyroscopeIngestHandler(d, a.logger)
 	a.RegisterRoute("/ingest", pyroscopeHandler, true, true, "POST")
 	a.RegisterRoute("/pyroscope/ingest", pyroscopeHandler, true, true, "POST")
-	pushv1connect.RegisterPusherServiceHandler(a.server.HTTP, d, a.grpcAuthMiddleware)
+	pushv1connect.RegisterPusherServiceHandler(a.server.HTTP, d, a.connectOptionsAuthRecovery()...)
 	a.RegisterRoute("/distributor/ring", d, false, true, "GET", "POST")
 	a.indexPage.AddLinks(defaultWeight, "Distributor", []IndexPageLink{
 		{Desc: "Ring status", Path: "/distributor/ring"},
@@ -216,17 +234,23 @@ func (a *API) RegisterMemberlistKV(pathPrefix string, kvs *memberlist.KVInitServ
 	})
 }
 
-// RegisterRing registers the ring UI page associated with the distributor for writes.
-func (a *API) RegisterRing(r http.Handler) {
+// RegisterIngesterRing registers the ring UI page associated with the distributor for writes.
+func (a *API) RegisterIngesterRing(r http.Handler) {
 	a.RegisterRoute("/ring", r, false, true, "GET", "POST")
 	a.indexPage.AddLinks(defaultWeight, "Ingester", []IndexPageLink{
 		{Desc: "Ring status", Path: "/ring"},
 	})
 }
 
+type QuerierSvc interface {
+	querierv1connect.QuerierServiceHandler
+	vcsv1connect.VCSServiceHandler
+}
+
 // RegisterQuerier registers the endpoints associated with the querier.
-func (a *API) RegisterQuerier(svc querierv1connect.QuerierServiceHandler) {
-	querierv1connect.RegisterQuerierServiceHandler(a.server.HTTP, svc, a.grpcAuthMiddleware, a.grpcLogMiddleware)
+func (a *API) RegisterQuerier(svc QuerierSvc) {
+	querierv1connect.RegisterQuerierServiceHandler(a.server.HTTP, svc, a.connectOptionsAuthLogRecovery()...)
+	vcsv1connect.RegisterVCSServiceHandler(a.server.HTTP, svc, a.connectOptionsAuthLogRecovery()...)
 }
 
 func (a *API) RegisterPyroscopeHandlers(client querierv1connect.QuerierServiceClient) {
@@ -238,11 +262,11 @@ func (a *API) RegisterPyroscopeHandlers(client querierv1connect.QuerierServiceCl
 
 // RegisterIngester registers the endpoints associated with the ingester.
 func (a *API) RegisterIngester(svc *ingester.Ingester) {
-	ingesterv1connect.RegisterIngesterServiceHandler(a.server.HTTP, svc, a.grpcAuthMiddleware)
+	ingesterv1connect.RegisterIngesterServiceHandler(a.server.HTTP, svc, a.connectOptionsAuthRecovery()...)
 }
 
 func (a *API) RegisterStoreGateway(svc *storegateway.StoreGateway) {
-	storegatewayv1connect.RegisterStoreGatewayServiceHandler(a.server.HTTP, svc, a.grpcAuthMiddleware)
+	storegatewayv1connect.RegisterStoreGatewayServiceHandler(a.server.HTTP, svc, a.connectOptionsAuthRecovery()...)
 
 	a.indexPage.AddLinks(defaultWeight, "Store-gateway", []IndexPageLink{
 		{Desc: "Ring status", Path: "/store-gateway/ring"},
@@ -263,16 +287,47 @@ func (a *API) RegisterCompactor(c *compactor.MultitenantCompactor) {
 
 // RegisterQueryFrontend registers the endpoints associated with the query frontend.
 func (a *API) RegisterQueryFrontend(frontendSvc *frontend.Frontend) {
-	frontendpbconnect.RegisterFrontendForQuerierHandler(a.server.HTTP, frontendSvc, a.grpcAuthMiddleware)
+	frontendpbconnect.RegisterFrontendForQuerierHandler(a.server.HTTP, frontendSvc, a.connectOptionsAuthRecovery()...)
+}
+
+// RegisterVersion registers the endpoints associated with the versions service.
+func (a *API) RegisterVersion(svc versionv1connect.VersionHandler) {
+	versionv1connect.RegisterVersionHandler(a.server.HTTP, svc, a.connectOptionsRecovery()...)
 }
 
 // RegisterQueryScheduler registers the endpoints associated with the query scheduler.
 func (a *API) RegisterQueryScheduler(s *scheduler.Scheduler) {
-	schedulerpbconnect.RegisterSchedulerForFrontendHandler(a.server.HTTP, s)
-	schedulerpbconnect.RegisterSchedulerForQuerierHandler(a.server.HTTP, s)
+	schedulerpbconnect.RegisterSchedulerForFrontendHandler(a.server.HTTP, s, a.connectOptionsRecovery()...)
+	schedulerpbconnect.RegisterSchedulerForQuerierHandler(a.server.HTTP, s, a.connectOptionsRecovery()...)
 }
 
 // RegisterFlags registers api-related flags.
 func (cfg *Config) RegisterFlags(fs *flag.FlagSet) {
 	fs.StringVar(&cfg.BaseURL, "api.base-url", "", "base URL for when the server is behind a reverse proxy with a different path")
+}
+
+func (a *API) RegisterAdmin(ad *operations.Admin) {
+	a.RegisterRoute("/ops/object-store/tenants", http.HandlerFunc(ad.TenantsHandler), false, true, "GET")
+	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks", http.HandlerFunc(ad.BlocksHandler), false, true, "GET")
+	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}", http.HandlerFunc(ad.BlockHandler), false, true, "GET")
+
+	a.indexPage.AddLinks(defaultWeight, "Admin", []IndexPageLink{
+		{Desc: "Object Storage Tenants & Blocks", Path: "/ops/object-store/tenants"},
+	})
+}
+
+func (a *API) RegisterAdHocProfiles(ahp *adhocprofiles.AdHocProfiles) {
+	adhocprofilesv1connect.RegisterAdHocProfileServiceHandler(a.server.HTTP, ahp, a.connectOptionsAuthRecovery()...)
+}
+
+func (a *API) connectOptionsRecovery() []connect.HandlerOption {
+	return append(connectapi.DefaultHandlerOptions(), a.recoveryMiddleware)
+}
+
+func (a *API) connectOptionsAuthRecovery() []connect.HandlerOption {
+	return append(connectapi.DefaultHandlerOptions(), []connect.HandlerOption{a.grpcAuthMiddleware, a.recoveryMiddleware}...)
+}
+
+func (a *API) connectOptionsAuthLogRecovery() []connect.HandlerOption {
+	return append(connectapi.DefaultHandlerOptions(), []connect.HandlerOption{a.grpcAuthMiddleware, a.grpcLogMiddleware, a.recoveryMiddleware}...)
 }

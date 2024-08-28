@@ -6,20 +6,23 @@ import (
 	"encoding/hex"
 	"io"
 	"os"
-	"reflect"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 	"unsafe"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/colega/zeropool"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/google/pprof/profile"
 	"github.com/klauspost/compress/gzip"
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/slices"
 	"github.com/grafana/pyroscope/pkg/util"
 )
@@ -75,32 +78,20 @@ func (r *gzipReader) openBytes(input []byte) (io.Reader, error) {
 }
 
 func NewProfile() *Profile {
-	return RawFromProto(profilev1.ProfileFromVTPool())
+	return RawFromProto(new(profilev1.Profile))
 }
 
 func RawFromProto(pbp *profilev1.Profile) *Profile {
-	buf := bufPool.Get().(*bytes.Buffer)
-	return &Profile{Profile: pbp, buf: buf}
+	return &Profile{Profile: pbp}
 }
 
-// Read RawProfile from bytes
 func RawFromBytes(input []byte) (_ *Profile, err error) {
 	gzipReader := gzipReaderPool.Get().(*gzipReader)
-	// We borrow all the necessary objects from respective pools in advance.
-	// If an error happens before the function returns, we ensure that these
-	// are returned to their pools. Otherwise, the ownership is transferred to
-	// the caller: Profile.Close must be called to dispose the resources
-	// allocated.
 	buf := bufPool.Get().(*bytes.Buffer)
-	pbp := profilev1.ProfileFromVTPool()
 	defer func() {
-		// Note that gzip reader should be returned unconditionally.
 		gzipReaderPool.Put(gzipReader)
-		if err != nil {
-			buf.Reset()
-			bufPool.Put(buf)
-			pbp.ReturnToVTPool()
-		}
+		buf.Reset()
+		bufPool.Put(buf)
 	}()
 
 	r, err := gzipReader.openBytes(input)
@@ -112,29 +103,28 @@ func RawFromBytes(input []byte) (_ *Profile, err error) {
 		return nil, errors.Wrap(err, "copy to buffer")
 	}
 
+	rawSize := buf.Len()
+	pbp := new(profilev1.Profile)
 	if err = pbp.UnmarshalVT(buf.Bytes()); err != nil {
 		return nil, err
 	}
 
-	return &Profile{Profile: pbp, buf: buf}, nil
+	return &Profile{
+		Profile: pbp,
+		rawSize: rawSize,
+	}, nil
 }
 
-// Read Profile from Bytes
 func FromBytes(input []byte, fn func(*profilev1.Profile, int) error) error {
 	p, err := RawFromBytes(input)
 	if err != nil {
 		return err
 	}
-	uncompressedSize := p.buf.Len()
-	p.buf.Reset()
-	bufPool.Put(p.buf)
-	err = fn(p.Profile, uncompressedSize)
-	p.ReturnToVTPool()
-	return err
+	return fn(p.Profile, p.rawSize)
 }
 
 func FromProfile(p *profile.Profile) (*profilev1.Profile, error) {
-	r := profilev1.ProfileFromVTPool()
+	var r profilev1.Profile
 	strings := make(map[string]int)
 
 	r.Sample = make([]*profilev1.Sample, 0, len(p.Sample))
@@ -272,7 +262,7 @@ func FromProfile(p *profile.Profile) (*profilev1.Profile, error) {
 	for s, i := range strings {
 		r.StringTable[i] = s
 	}
-	return r, nil
+	return &r, nil
 }
 
 func addString(strings map[string]int, s string) int64 {
@@ -295,28 +285,19 @@ func OpenFile(path string) (*Profile, error) {
 
 type Profile struct {
 	*profilev1.Profile
-	// raw []byte
-	buf *bytes.Buffer
-
-	hasher SampleHasher
-}
-
-func (p *Profile) Close() {
-	p.Profile.ReturnToVTPool()
-	p.buf.Reset()
-	bufPool.Put(p.buf)
-}
-
-func (p *Profile) SizeBytes() int {
-	return p.buf.Len()
+	hasher  SampleHasher
+	rawSize int
 }
 
 // WriteTo writes the profile to the given writer.
 func (p *Profile) WriteTo(w io.Writer) (int64, error) {
-	// reuse the data buffer if possible
-	p.buf.Reset()
-	p.buf.Grow(p.SizeVT())
-	data := p.buf.Bytes()
+	buf := bufPool.Get().(*bytes.Buffer)
+	defer func() {
+		buf.Reset()
+		bufPool.Put(buf)
+	}()
+	buf.Grow(p.SizeVT())
+	data := buf.Bytes()
 	n, err := p.MarshalToVT(data)
 	if err != nil {
 		return 0, err
@@ -338,10 +319,6 @@ func (p *Profile) WriteTo(w io.Writer) (int64, error) {
 	if err := gzipWriter.Close(); err != nil {
 		return 0, errors.Wrap(err, "gzip close")
 	}
-
-	// reset buffer
-	p.buf.Reset()
-
 	return int64(written), nil
 }
 
@@ -374,14 +351,14 @@ var currentTime = time.Now
 //   - Then remove unused references.
 //   - Ensure that the profile has a time_nanos set
 //   - Removes addresses from symbolized profiles.
+//   - Removes elements with invalid references.
+//   - Converts identifiers to indices.
+//   - Ensures that string_table[0] is "".
 func (p *Profile) Normalize() {
 	// if the profile has no time, set it to now
 	if p.TimeNanos == 0 {
 		p.TimeNanos = currentTime().UnixNano()
 	}
-
-	p.ensureHasMapping()
-	p.clearAddresses()
 
 	// Non-string labels are not supported.
 	for _, sample := range p.Sample {
@@ -423,6 +400,8 @@ func (p *Profile) Normalize() {
 
 	// Remove references to removed samples.
 	p.clearSampleReferences(removedSamples)
+	sanitizeProfile(p.Profile)
+	p.clearAddresses()
 }
 
 // Removes addresses from symbolized profiles.
@@ -437,29 +416,6 @@ func (p *Profile) clearAddresses() {
 	for _, l := range p.Location {
 		if p.Mapping[l.MappingId-1].HasFunctions {
 			l.Address = 0
-		}
-	}
-}
-
-// ensureHasMapping ensures all locations have at least a mapping.
-func (p *Profile) ensureHasMapping() {
-	var mId uint64
-	for _, m := range p.Mapping {
-		if mId < m.Id {
-			mId = m.Id
-		}
-	}
-	var fake *profilev1.Mapping
-	for _, l := range p.Location {
-		if l.MappingId == 0 {
-			if fake == nil {
-				fake = &profilev1.Mapping{
-					Id:          mId + 1,
-					MemoryLimit: ^uint64(0),
-				}
-				p.Mapping = append(p.Mapping, fake)
-			}
-			l.MappingId = fake.Id
 		}
 	}
 }
@@ -599,7 +555,7 @@ func (h SampleHasher) Hashes(samples []*profilev1.Sample) []uint64 {
 
 	hashes := make([]uint64, len(samples))
 	for i, sample := range samples {
-		if _, err := h.hash.Write(locationBytes(sample)); err != nil {
+		if _, err := h.hash.Write(uint64Bytes(sample.LocationId)); err != nil {
 			panic("unable to write hash")
 		}
 		sort.Sort(LabelsByKeyValue(sample.Label))
@@ -617,16 +573,12 @@ func (h SampleHasher) Hashes(samples []*profilev1.Sample) []uint64 {
 	return hashes
 }
 
-func locationBytes(sample *profilev1.Sample) []byte {
-	if len(sample.LocationId) == 0 {
+func uint64Bytes(s []uint64) []byte {
+	if len(s) == 0 {
 		return nil
 	}
-	var bs []byte
-	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&bs))
-	hdr.Len = len(sample.LocationId) * 8
-	hdr.Cap = hdr.Len
-	hdr.Data = uintptr(unsafe.Pointer(&sample.LocationId[0]))
-	return bs
+	p := (*byte)(unsafe.Pointer(&s[0]))
+	return unsafe.Slice(p, len(s)*8)
 }
 
 type SamplesByLabels []*profilev1.Sample
@@ -710,6 +662,7 @@ func GroupSamplesWithoutLabelsByKey(p *profilev1.Profile, keys []int64) []Sample
 		// We hide labels matching the keys to the end
 		// of the slice, after len() boundary.
 		s.Label = LabelsWithout(s.Label, keys)
+		sort.Sort(LabelsByKeyValue(s.Label)) // TODO: Find a way to avoid this.
 	}
 	// Sorting and grouping accounts only for labels kept.
 	sort.Sort(SamplesByLabels(p.Sample))
@@ -725,7 +678,7 @@ func GroupSamplesWithoutLabelsByKey(p *profilev1.Profile, keys []int64) []Sample
 func restoreRemovedLabels(labels []*profilev1.Label) []*profilev1.Label {
 	labels = labels[len(labels):cap(labels)]
 	for i, l := range labels {
-		if l == nil {
+		if l == nil { // labels had extra capacity in sample labels
 			labels = labels[:i]
 			break
 		}
@@ -871,7 +824,7 @@ func (e *SampleExporter) ExportSamples(dst *profilev1.Profile, samples []*profil
 	dst.Period = e.profile.Period
 	dst.DefaultSampleType = e.profile.DefaultSampleType
 
-	dst.SampleType = slices.Grow(dst.SampleType, len(e.profile.SampleType))
+	dst.SampleType = slices.GrowLen(dst.SampleType, len(e.profile.SampleType))
 	for i, v := range e.profile.SampleType {
 		dst.SampleType[i] = &profilev1.ValueType{
 			Type: e.strings.lookupString(v.Type),
@@ -881,7 +834,7 @@ func (e *SampleExporter) ExportSamples(dst *profilev1.Profile, samples []*profil
 	dst.DropFrames = e.strings.lookupString(e.profile.DropFrames)
 	dst.KeepFrames = e.strings.lookupString(e.profile.KeepFrames)
 	if c := len(e.profile.Comment); c > 0 {
-		dst.Comment = slices.Grow(dst.Comment, c)
+		dst.Comment = slices.GrowLen(dst.Comment, c)
 		for i, comment := range e.profile.Comment {
 			dst.Comment[i] = e.strings.lookupString(comment)
 		}
@@ -904,7 +857,7 @@ func (e *SampleExporter) ExportSamples(dst *profilev1.Profile, samples []*profil
 	}
 
 	// Copy locations.
-	dst.Location = slices.Grow(dst.Location, int(e.locations.resolved))
+	dst.Location = slices.GrowLen(dst.Location, int(e.locations.resolved))
 	for i, j := range e.locations.indices {
 		// i points to the location in the source profile.
 		// j point to the location in the new profile.
@@ -930,7 +883,7 @@ func (e *SampleExporter) ExportSamples(dst *profilev1.Profile, samples []*profil
 	}
 
 	// Copy mappings.
-	dst.Mapping = slices.Grow(dst.Mapping, int(e.mappings.resolved))
+	dst.Mapping = slices.GrowLen(dst.Mapping, int(e.mappings.resolved))
 	for i, j := range e.mappings.indices {
 		if j == 0 {
 			continue
@@ -951,7 +904,7 @@ func (e *SampleExporter) ExportSamples(dst *profilev1.Profile, samples []*profil
 	}
 
 	// Copy functions.
-	dst.Function = slices.Grow(dst.Function, int(e.functions.resolved))
+	dst.Function = slices.GrowLen(dst.Function, int(e.functions.resolved))
 	for i, j := range e.functions.indices {
 		if j == 0 {
 			continue
@@ -974,7 +927,7 @@ func (e *SampleExporter) ExportSamples(dst *profilev1.Profile, samples []*profil
 	}
 
 	// Copy strings.
-	dst.StringTable = slices.Grow(dst.StringTable, int(e.strings.resolved)+1)
+	dst.StringTable = slices.GrowLen(dst.StringTable, int(e.strings.resolved)+1)
 	for i, j := range e.strings.indices {
 		if j == 0 {
 			continue
@@ -1076,7 +1029,7 @@ func RenameLabel(p *profilev1.Profile, oldName, newName string) {
 
 func ZeroLabelStrings(p *profilev1.Profile) {
 	// TODO: A true bitmap should be used instead.
-	st := slices.Grow(uint32SlicePool.Get(), len(p.StringTable))
+	st := slices.GrowLen(uint32SlicePool.Get(), len(p.StringTable))
 	slices.Clear(st)
 	defer uint32SlicePool.Put(st)
 	for _, t := range p.SampleType {
@@ -1103,4 +1056,282 @@ func ZeroLabelStrings(p *profilev1.Profile) {
 			p.StringTable[i] = zeroString
 		}
 	}
+}
+
+var languageMatchers = map[string][]string{
+	"go":     {".go", "/usr/local/go/"},
+	"java":   {"java/", "sun/"},
+	"ruby":   {".rb", "gems/"},
+	"nodejs": {"./node_modules/", ".js"},
+	"dotnet": {"System.", "Microsoft."},
+	"python": {".py"},
+	"rust":   {"main.rs", "core.rs"},
+}
+
+func GetLanguage(profile *Profile, logger log.Logger) string {
+	for _, symbol := range profile.StringTable {
+		for lang, matcherPatterns := range languageMatchers {
+			for _, pattern := range matcherPatterns {
+				if strings.HasPrefix(symbol, pattern) || strings.HasSuffix(symbol, pattern) {
+					level.Debug(logger).Log("msg", "found profile language", "lang", lang, "symbol", symbol)
+					return lang
+				}
+			}
+		}
+	}
+	return "unknown"
+}
+
+// SetProfileMetadata sets the metadata on the profile.
+func SetProfileMetadata(p *profilev1.Profile, ty *typesv1.ProfileType, timeNanos int64, period int64) {
+	m := map[string]int64{
+		ty.SampleUnit: -1,
+		ty.SampleType: -1,
+		ty.PeriodType: -1,
+		ty.PeriodUnit: -1,
+	}
+	for i, s := range p.StringTable {
+		if _, ok := m[s]; ok {
+			m[s] = int64(i)
+		}
+	}
+	for _, k := range []string{
+		ty.SampleUnit,
+		ty.SampleType,
+		ty.PeriodType,
+		ty.PeriodUnit,
+	} {
+		if m[k] == -1 {
+			i := int64(len(p.StringTable))
+			p.StringTable = append(p.StringTable, k)
+			m[k] = i
+		}
+	}
+
+	p.SampleType = []*profilev1.ValueType{{Type: m[ty.SampleType], Unit: m[ty.SampleUnit]}}
+	p.DefaultSampleType = m[ty.SampleType]
+	p.PeriodType = &profilev1.ValueType{Type: m[ty.PeriodType], Unit: m[ty.PeriodUnit]}
+	p.TimeNanos = timeNanos
+
+	if period != 0 {
+		p.Period = period
+	}
+
+	// Try to guess period based on the profile type.
+	// TODO: This should be encoded into the profile type.
+	switch ty.Name {
+	case "process_cpu":
+		p.Period = 1000000000
+	case "memory":
+		p.Period = 512 * 1024
+	default:
+		p.Period = 1
+	}
+}
+
+func Marshal(p *profilev1.Profile, compress bool) ([]byte, error) {
+	b, err := p.MarshalVT()
+	if err != nil {
+		return nil, err
+	}
+	if !compress {
+		return b, nil
+	}
+	var buf bytes.Buffer
+	buf.Grow(len(b) / 2)
+	gw := gzipWriterPool.Get().(*gzip.Writer)
+	gw.Reset(&buf)
+	defer func() {
+		gw.Reset(io.Discard)
+		gzipWriterPool.Put(gw)
+	}()
+	if _, err = gw.Write(b); err != nil {
+		return nil, err
+	}
+	if err = gw.Flush(); err != nil {
+		return nil, err
+	}
+	if err = gw.Close(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func Unmarshal(data []byte, p *profilev1.Profile) error {
+	gr := gzipReaderPool.Get().(*gzipReader)
+	defer gzipReaderPool.Put(gr)
+	r, err := gr.openBytes(data)
+	if err != nil {
+		return err
+	}
+	buf := bufPool.Get().(*bytes.Buffer)
+	defer func() {
+		buf.Reset()
+		bufPool.Put(buf)
+	}()
+	buf.Grow(len(data) * 2)
+	if _, err = io.Copy(buf, r); err != nil {
+		return err
+	}
+	return p.UnmarshalVT(buf.Bytes())
+}
+
+func sanitizeProfile(p *profilev1.Profile) {
+	if p == nil {
+		return
+	}
+	ms := int64(len(p.StringTable))
+	// Handle the case when "" is not present,
+	// or is not at string_table[0].
+	z := int64(-1)
+	for i, s := range p.StringTable {
+		if s == "" {
+			z = int64(i)
+			break
+		}
+	}
+	if z == -1 {
+		// No empty string found in the table.
+		// Reduce number of invariants by adding one.
+		z = ms
+		p.StringTable = append(p.StringTable, "")
+		ms++
+	}
+	// Swap zero string.
+	p.StringTable[z], p.StringTable[0] = p.StringTable[0], p.StringTable[z]
+	// Now we need to update references to strings:
+	// invalid references (>= len(string_table)) are set to 0.
+	// references to empty string are set to 0.
+	str := func(i int64) int64 {
+		if i == 0 && z > 0 {
+			// z > 0 indicates that "" is not at string_table[0].
+			// This means that element that used to be at 0 has
+			// been moved to z.
+			return z
+		}
+		if i == z || i >= ms || i < 0 {
+			// The reference to empty string, or a string that is
+			// not present in the table.
+			return 0
+		}
+		return i
+	}
+
+	p.SampleType = slices.RemoveInPlace(p.SampleType, func(x *profilev1.ValueType, _ int) bool {
+		if x == nil {
+			return true
+		}
+		x.Type = str(x.Type)
+		x.Unit = str(x.Unit)
+		return false
+	})
+	if p.PeriodType != nil {
+		p.PeriodType.Type = str(p.PeriodType.Type)
+		p.PeriodType.Unit = str(p.PeriodType.Unit)
+	}
+
+	p.DefaultSampleType = str(p.DefaultSampleType)
+	p.DropFrames = str(p.DropFrames)
+	p.KeepFrames = str(p.KeepFrames)
+	for i := range p.Comment {
+		p.Comment[i] = str(p.Comment[i])
+	}
+
+	// Sanitize mappings and references to them.
+	// Locations with invalid references are removed.
+	t := make(map[uint64]uint64, len(p.Location))
+	clearMap := func() {
+		for k := range t {
+			delete(t, k)
+		}
+	}
+	j := uint64(1)
+	p.Mapping = slices.RemoveInPlace(p.Mapping, func(x *profilev1.Mapping, _ int) bool {
+		if x == nil {
+			return true
+		}
+		x.BuildId = str(x.BuildId)
+		x.Filename = str(x.Filename)
+		x.Id, t[x.Id] = j, j
+		j++
+		return false
+	})
+
+	// Rewrite references to mappings, removing invalid ones.
+	// Locations with mapping ID 0 are allowed: in this case,
+	// a mapping stub is created.
+	var mapping *profilev1.Mapping
+	p.Location = slices.RemoveInPlace(p.Location, func(x *profilev1.Location, _ int) bool {
+		if x == nil {
+			return true
+		}
+		if x.MappingId == 0 {
+			if mapping == nil {
+				mapping = &profilev1.Mapping{Id: uint64(len(p.Mapping) + 1)}
+				p.Mapping = append(p.Mapping, mapping)
+			}
+			x.MappingId = mapping.Id
+			return false
+		}
+		x.MappingId = t[x.MappingId]
+		return x.MappingId == 0
+	})
+
+	// Sanitize functions and references to them.
+	// Locations with invalid references are removed.
+	clearMap()
+	j = 1
+	p.Function = slices.RemoveInPlace(p.Function, func(x *profilev1.Function, _ int) bool {
+		if x == nil {
+			return true
+		}
+		x.Name = str(x.Name)
+		x.SystemName = str(x.SystemName)
+		x.Filename = str(x.Filename)
+		x.Id, t[x.Id] = j, j
+		j++
+		return false
+	})
+	// Check locations again, verifying that all functions are valid.
+	p.Location = slices.RemoveInPlace(p.Location, func(x *profilev1.Location, _ int) bool {
+		for _, line := range x.Line {
+			if line.FunctionId = t[line.FunctionId]; line.FunctionId == 0 {
+				return true
+			}
+		}
+		return false
+	})
+
+	// Sanitize locations and references to them.
+	// Samples with invalid references are removed.
+	clearMap()
+	j = 1
+	for _, x := range p.Location {
+		x.Id, t[x.Id] = j, j
+		j++
+	}
+
+	vs := len(p.SampleType)
+	p.Sample = slices.RemoveInPlace(p.Sample, func(x *profilev1.Sample, _ int) bool {
+		if x == nil {
+			return true
+		}
+		if len(x.Value) != vs {
+			return true
+		}
+		for i := range x.LocationId {
+			if x.LocationId[i] = t[x.LocationId[i]]; x.LocationId[i] == 0 {
+				return true
+			}
+		}
+		for _, l := range x.Label {
+			if l == nil {
+				return true
+			}
+			l.Key = str(l.Key)
+			l.Str = str(l.Str)
+			l.NumUnit = str(l.NumUnit)
+		}
+		return false
+	})
 }

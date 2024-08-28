@@ -2,12 +2,12 @@ package symdb
 
 import (
 	"context"
-	"fmt"
 	"sort"
 	"sync"
 	"time"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	"github.com/grafana/pyroscope/pkg/iter"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
@@ -15,7 +15,6 @@ import (
 // SymbolsReader provides access to a symdb partition.
 type SymbolsReader interface {
 	Partition(ctx context.Context, partition uint64) (PartitionReader, error)
-	Load(context.Context) error
 }
 
 type PartitionReader interface {
@@ -26,9 +25,9 @@ type PartitionReader interface {
 
 type Symbols struct {
 	Stacktraces StacktraceResolver
-	Locations   []*schemav1.InMemoryLocation
-	Mappings    []*schemav1.InMemoryMapping
-	Functions   []*schemav1.InMemoryFunction
+	Locations   []schemav1.InMemoryLocation
+	Mappings    []schemav1.InMemoryMapping
+	Functions   []schemav1.InMemoryFunction
 	Strings     []string
 }
 
@@ -51,6 +50,26 @@ type StacktraceResolver interface {
 	//
 	// Stacktraces slice might be modified during the call.
 	ResolveStacktraceLocations(ctx context.Context, dst StacktraceInserter, stacktraces []uint32) error
+	LookupLocations(dst []uint64, stacktraceID uint32) []uint64
+
+	// Optional:
+	// StacktraceIDRangeIterator
+}
+
+// StacktraceIDRangeIterator provides low level access
+// to stack traces, stored in painter point trees.
+type StacktraceIDRangeIterator interface {
+	SplitStacktraceIDRanges(*SampleAppender) iter.Iterator[*StacktraceIDRange]
+}
+
+type ParentPointerTree interface {
+	Nodes() []Node
+}
+
+type Node struct {
+	Parent   int32
+	Location int32
+	Value    int64
 }
 
 // StacktraceInserter accepts resolved locations for a given stack
@@ -64,8 +83,8 @@ type StacktraceInserter interface {
 }
 
 type SymDB struct {
-	config *Config
-	writer *writer
+	config Config
+	writer blockWriter
 	stats  MemoryStats
 
 	m          sync.RWMutex
@@ -77,6 +96,7 @@ type SymDB struct {
 
 type Config struct {
 	Dir         string
+	Version     FormatVersion
 	Stacktraces StacktracesConfig
 	Parquet     ParquetConfig
 }
@@ -109,7 +129,7 @@ const statsUpdateInterval = 5 * time.Second
 
 func DefaultConfig() *Config {
 	return &Config{
-		Dir: DefaultDirName,
+		Version: FormatV2,
 		Stacktraces: StacktracesConfig{
 			// At the moment chunks are loaded in memory at once.
 			// Due to the fact that chunking causes some duplication,
@@ -132,15 +152,26 @@ func (c *Config) WithParquetConfig(pc ParquetConfig) *Config {
 	return c
 }
 
+func (c *Config) WithVersion(v FormatVersion) *Config {
+	c.Version = v
+	return c
+}
+
 func NewSymDB(c *Config) *SymDB {
 	if c == nil {
 		c = DefaultConfig()
 	}
 	db := &SymDB{
-		config:     c,
-		writer:     newWriter(c),
+		config:     *c,
 		partitions: make(map[uint64]*PartitionWriter),
 		stop:       make(chan struct{}),
+	}
+	switch c.Version {
+	case FormatV3:
+		db.writer = newWriterV3(c)
+	default:
+		db.config.Version = FormatV2
+		db.writer = newWriterV2(c)
 	}
 	db.wg.Add(1)
 	go db.updateStatsLoop()
@@ -157,21 +188,30 @@ func (s *SymDB) PartitionWriter(partition uint64) *PartitionWriter {
 		s.m.Unlock()
 		return p
 	}
-	p = s.newPartition(partition)
+	p = NewPartitionWriter(partition, &s.config)
 	s.partitions[partition] = p
 	s.m.Unlock()
 	return p
 }
 
-func (s *SymDB) newPartition(partition uint64) *PartitionWriter {
+func NewPartitionWriter(partition uint64, config *Config) *PartitionWriter {
 	p := PartitionWriter{
 		header:      PartitionHeader{Partition: partition},
-		stacktraces: newStacktracesPartition(s.config.Stacktraces.MaxNodesPerChunk),
+		stacktraces: newStacktracesPartition(config.Stacktraces.MaxNodesPerChunk),
+	}
+	switch config.Version {
+	case FormatV2:
+		p.header.V2 = new(PartitionHeaderV2)
+	case FormatV3:
+		p.header.V3 = new(PartitionHeaderV3)
 	}
 	p.strings.init()
 	p.mappings.init()
 	p.functions.init()
 	p.locations.init()
+	// To ensure that the first string is always "".
+	p.strings.slice = append(p.strings.slice, "")
+	p.strings.lookup[""] = 0
 	return &p
 }
 
@@ -259,20 +299,13 @@ func (s *SymDB) Flush() error {
 	sort.Slice(partitions, func(i, j int) bool {
 		return partitions[i].header.Partition < partitions[j].header.Partition
 	})
-	if err := s.writer.createDir(); err != nil {
-		return err
-	}
-	if err := s.writer.writePartitions(partitions); err != nil {
-		return fmt.Errorf("writing partitions: %w", err)
-	}
-	return s.writer.Flush()
+	return s.writer.writePartitions(partitions)
 }
 
 func (s *SymDB) Files() []block.File {
-	return s.writer.files
+	return s.writer.meta()
 }
 
-func (s *SymDB) Load(context.Context) error {
-	// Already loaded into memory.
-	return nil
+func (s *SymDB) FormatVersion() FormatVersion {
+	return s.config.Version
 }

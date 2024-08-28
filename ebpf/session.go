@@ -12,8 +12,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
+	"syscall"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/btf"
@@ -21,8 +23,10 @@ import (
 	"github.com/cilium/ebpf/perf"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/grafana/pyroscope/ebpf/cpp/demangle"
 	"github.com/grafana/pyroscope/ebpf/cpuonline"
 	"github.com/grafana/pyroscope/ebpf/metrics"
+	"github.com/grafana/pyroscope/ebpf/pprof"
 	"github.com/grafana/pyroscope/ebpf/pyrobpf"
 	"github.com/grafana/pyroscope/ebpf/python"
 	"github.com/grafana/pyroscope/ebpf/rlimit"
@@ -32,28 +36,40 @@ import (
 )
 
 type SessionOptions struct {
-	CollectUser               bool
+	CollectUser               bool //todo make these per target option overridable
 	CollectKernel             bool
 	UnknownSymbolModuleOffset bool // use libfoo.so+0xef instead of libfoo.so for unknown symbols
 	UnknownSymbolAddress      bool // use 0xcafebabe instead of [unknown]
 	PythonEnabled             bool
 	CacheOptions              symtab.CacheOptions
+	SymbolOptions             symtab.SymbolOptions
 	Metrics                   *metrics.Metrics
 	SampleRate                int
+	VerifierLogSize           int
+	PythonBPFErrorLogEnabled  bool
+	PythonBPFDebugLogEnabled  bool
+	BPFMapsOptions            BPFMapsOptions
+}
+
+type BPFMapsOptions struct {
+	PIDMapSize     uint32
+	SymbolsMapSize uint32
 }
 
 type Session interface {
+	pprof.SamplesCollector
 	Start() error
 	Stop()
 	Update(SessionOptions) error
 	UpdateTargets(args sd.TargetsOptions)
-	CollectProfiles(f func(target *sd.Target, stack []string, value uint64, pid uint32)) error
 	DebugInfo() interface{}
 }
 
 type SessionDebugInfo struct {
-	ElfCache symtab.ElfCacheDebugInfo                          `river:"elf_cache,attr,optional"`
-	PidCache symtab.GCacheDebugInfo[symtab.ProcTableDebugInfo] `river:"pid_cache,attr,optional"`
+	ElfCache symtab.ElfCacheDebugInfo                          `alloy:"elf_cache,attr,optional" river:"elf_cache,attr,optional"`
+	PidCache symtab.GCacheDebugInfo[symtab.ProcTableDebugInfo] `alloy:"pid_cache,attr,optional" river:"pid_cache,attr,optional"`
+	Arch     string                                            `alloy:"arch,attr" river:"arch,attr"`
+	Kernel   string                                            `alloy:"kernel,attr" river:"kernel,attr"`
 }
 
 type pids struct {
@@ -130,6 +146,7 @@ func NewSession(
 }
 
 func (s *session) Start() error {
+	s.printDebugInfo()
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	var err error
@@ -139,26 +156,46 @@ func (s *session) Start() error {
 	}
 
 	opts := &ebpf.CollectionOptions{
-		Programs: ebpf.ProgramOptions{
-			LogDisabled: true,
-		},
+		Programs: s.progOptions(),
 	}
-	if err := pyrobpf.LoadProfileObjects(&s.bpf, opts); err != nil {
+	spec, err := pyrobpf.LoadProfile()
+	if err != nil {
+		return fmt.Errorf("pyrobpf load %w", err)
+	}
+	if s.options.BPFMapsOptions.PIDMapSize != 0 {
+		spec.Maps[pyrobpf.MapNamePIDs].MaxEntries = s.options.BPFMapsOptions.PIDMapSize
+	}
+
+	_, nsIno, err := getPIDNamespace()
+	if err != nil {
+		return fmt.Errorf("unable to get pid namespace %w", err)
+	}
+	err = spec.RewriteConstants(map[string]interface{}{
+		"global_config": pyrobpf.ProfileGlobalConfigT{
+			NsPidIno: nsIno,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("pyrobpf rewrite constants %w", err)
+	}
+	err = spec.LoadAndAssign(&s.bpf, opts)
+	if err != nil {
+		s.logVerifierError(err)
 		s.stopLocked()
 		return fmt.Errorf("load bpf objects: %w", err)
 	}
 
 	btf.FlushKernelSpec() // save some memory
 
-	s.perfEvents, err = attachPerfEvents(s.options.SampleRate, s.bpf.DoPerfEvent)
-	if err != nil {
-		s.stopLocked()
-		return fmt.Errorf("attach perf events: %w", err)
-	}
 	eventsReader, err := perf.NewReader(s.bpf.ProfileMaps.Events, 4*os.Getpagesize())
 	if err != nil {
 		s.stopLocked()
 		return fmt.Errorf("perf new reader for events map: %w", err)
+	}
+	s.perfEvents, err = attachPerfEvents(s.options.SampleRate, s.bpf.DoPerfEvent)
+	if err != nil {
+		s.stopLocked()
+		return fmt.Errorf("attach perf events: %w", err)
 	}
 
 	err = s.linkKProbes()
@@ -224,19 +261,14 @@ func (s *session) UpdateTargets(args sd.TargetsOptions) {
 	}
 }
 
-func (s *session) CollectProfiles(cb func(t *sd.Target, stack []string, value uint64, pid uint32)) error {
+func (s *session) CollectProfiles(cb pprof.CollectProfilesCallback) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	s.symCache.NextRound()
 	s.roundNumber++
 
-	err := s.collectPythonProfile(cb)
-	if err != nil {
-		return err
-	}
-
-	err = s.collectRegularProfile(cb)
+	err := s.collectRegularProfile(cb)
 	if err != nil {
 		return err
 	}
@@ -247,16 +279,18 @@ func (s *session) CollectProfiles(cb func(t *sd.Target, stack []string, value ui
 }
 
 func (s *session) DebugInfo() interface{} {
+	pv, _ := os.ReadFile("/proc/version")
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-
 	return SessionDebugInfo{
 		ElfCache: s.symCache.ElfCacheDebugInfo(),
 		PidCache: s.symCache.PidCacheDebugInfo(),
+		Arch:     runtime.GOARCH,
+		Kernel:   string(pv),
 	}
 }
 
-func (s *session) collectRegularProfile(cb func(t *sd.Target, stack []string, value uint64, pid uint32)) error {
+func (s *session) collectRegularProfile(cb pprof.CollectProfilesCallback) error {
 	sb := &stackBuilder{}
 
 	keys, values, batch, err := s.getCountsMapValues()
@@ -265,37 +299,44 @@ func (s *session) collectRegularProfile(cb func(t *sd.Target, stack []string, va
 	}
 
 	knownStacks := map[uint32]bool{}
+	knownPythonStacks := map[uint32]bool{}
+	var pySymbols *python.LazySymbols
+	if s.pyperf != nil {
+		pySymbols = s.pyperf.GetLazySymbols()
+	}
 
 	for i := range keys {
 		ck := &keys[i]
 		value := values[i]
-
-		if ck.UserStack >= 0 {
-			knownStacks[uint32(ck.UserStack)] = true
+		isPythonStack := ck.Flags&uint32(pyrobpf.SampleKeyFlagPythonStack) != 0
+		if ck.UserStack > 0 {
+			if isPythonStack {
+				knownPythonStacks[uint32(ck.UserStack)] = true
+			} else {
+				knownStacks[uint32(ck.UserStack)] = true
+			}
 		}
 		if ck.KernStack >= 0 {
 			knownStacks[uint32(ck.KernStack)] = true
 		}
-		labels := s.targetFinder.FindTarget(ck.Pid)
-		if labels == nil {
+		target := s.targetFinder.FindTarget(ck.Pid)
+		if target == nil {
 			continue
 		}
 		if _, ok := s.pids.dead[ck.Pid]; ok {
 			continue
 		}
 
-		proc := s.symCache.GetProcTable(symtab.PidKey(ck.Pid))
-		if proc.Error() != nil {
-			s.pids.dead[uint32(proc.Pid())] = struct{}{}
-			// in theory if we saw this process alive before, we could try resolving tack anyway
-			// it may succeed if we have same binary loaded in another process, not doing it for now
-			continue
-		}
+		pk := symtab.PidKey(ck.Pid)
 
 		var uStack []byte
 		var kStack []byte
 		if s.options.CollectUser {
-			uStack = s.GetStack(ck.UserStack)
+			if isPythonStack {
+				uStack = s.GetPythonStack(ck.UserStack) //todo lookup batch
+			} else {
+				uStack = s.GetStack(ck.UserStack)
+			}
 		}
 		if s.options.CollectKernel {
 			kStack = s.GetStack(ck.KernStack)
@@ -305,7 +346,25 @@ func (s *session) collectRegularProfile(cb func(t *sd.Target, stack []string, va
 		sb.reset()
 		sb.append(s.comm(ck.Pid))
 		if s.options.CollectUser {
-			s.WalkStack(sb, uStack, proc, &stats)
+			if isPythonStack {
+				pyProc := s.pyperf.FindProc(ck.Pid)
+				if pyProc != nil {
+					s.WalkPythonStack(sb, uStack, target, pyProc, pySymbols, &stats)
+				}
+			} else {
+				proc := s.symCache.GetProcTableCached(pk)
+				if proc == nil {
+					proc = s.symCache.NewProcTable(pk, s.targetSymbolOptions(target)) // todo make the creation of it at profiling type selection
+				}
+				if proc.Error() != nil {
+					s.pids.dead[uint32(proc.Pid())] = struct{}{}
+					// in theory if we saw this process alive before, we could try resolving tack anyway
+					// it may succeed if we have same binary loaded in another process, not doing it for now
+					continue
+				} else {
+					s.WalkStack(sb, uStack, proc, &stats)
+				}
+			}
 		}
 		if s.options.CollectKernel {
 			s.WalkStack(sb, kStack, s.symCache.GetKallsyms(), &stats)
@@ -314,15 +373,27 @@ func (s *session) collectRegularProfile(cb func(t *sd.Target, stack []string, va
 			continue // only comm
 		}
 		lo.Reverse(sb.stack)
-		cb(labels, sb.stack, uint64(value), ck.Pid)
-		s.collectMetrics(labels, &stats, sb)
+		cb(pprof.ProfileSample{
+			Target:      target,
+			Pid:         ck.Pid,
+			Aggregation: pprof.SampleAggregated,
+			SampleType:  pprof.SampleTypeCpu,
+			Stack:       sb.stack,
+			Value:       uint64(value),
+		})
+		s.collectMetrics(target, &stats, sb)
 	}
 
 	if err = s.clearCountsMap(keys, batch); err != nil {
 		return fmt.Errorf("clear counts map %w", err)
 	}
-	if err = s.clearStacksMap(knownStacks); err != nil {
+	if err = s.clearStacksMap(knownStacks, s.bpf.Stacks); err != nil {
 		return fmt.Errorf("clear stacks map %w", err)
+	}
+	if s.pyperfBpf.PythonStacks != nil && len(knownPythonStacks) > 0 {
+		if err = s.clearStacksMap(knownPythonStacks, s.pyperfBpf.PythonStacks); err != nil { //todo use batchdelete
+			return fmt.Errorf("clear stacks map %w", err)
+		}
 	}
 	return nil
 }
@@ -367,7 +438,7 @@ func (s *session) stopLocked() {
 	s.kprobes = nil
 	_ = s.bpf.Close()
 	if s.pyperf != nil {
-		s.pyperf.Close()
+		s.pyperf = nil
 	}
 	if s.eventsReader != nil {
 		err := s.eventsReader.Close()
@@ -463,7 +534,7 @@ func (s *session) WalkStack(sb *stackBuilder, stack []byte, resolver symtab.Symb
 	if len(stack) == 0 {
 		return
 	}
-	var stackFrames []string
+	begin := len(sb.stack)
 	for i := 0; i < 127; i++ {
 		instructionPointerBytes := stack[i*8 : i*8+8]
 		instructionPointer := binary.LittleEndian.Uint64(instructionPointerBytes)
@@ -492,12 +563,11 @@ func (s *session) WalkStack(sb *stackBuilder, stack []byte, resolver symtab.Symb
 				stats.unknownModules++
 			}
 		}
-		stackFrames = append(stackFrames, name)
+		sb.append(name)
 	}
-	lo.Reverse(stackFrames)
-	for _, s := range stackFrames {
-		sb.append(s)
-	}
+	end := len(sb.stack)
+	lo.Reverse(sb.stack[begin:end])
+
 }
 
 func (s *session) readEvents(events *perf.Reader,
@@ -558,7 +628,6 @@ func (s *session) readEvents(events *perf.Reader,
 func (s *session) processPidInfoRequests(pidInfoRequests <-chan uint32) {
 	for pid := range pidInfoRequests {
 		target := s.targetFinder.FindTarget(pid)
-		_ = level.Debug(s.logger).Log("msg", "got pid info request", "pid", pid, "target", target)
 
 		func() {
 			s.mutex.Lock()
@@ -566,7 +635,6 @@ func (s *session) processPidInfoRequests(pidInfoRequests <-chan uint32) {
 
 			_, alreadyDead := s.pids.dead[pid]
 			if alreadyDead {
-				_ = level.Debug(s.logger).Log("msg", "pid info request for dead pid", "pid", pid)
 				return
 			}
 
@@ -588,7 +656,13 @@ func (s *session) startProfilingLocked(pid uint32, target *sd.Target) {
 		go s.tryStartPythonProfiling(pid, target, typ)
 		return
 	}
-	s.setPidConfig(pid, typ, s.options.CollectUser, s.options.CollectKernel)
+	if s.pyperf != nil {
+		pyproc := s.pyperf.FindProc(pid)
+		if pyproc != nil {
+			s.pyperf.RemoveDeadPID(pid)
+		}
+	}
+	s.setPidConfig(pid, typ, s.options.CollectUser, s.collectKernelEnabled(target))
 }
 
 type procInfoLite struct {
@@ -614,9 +688,7 @@ func (s *session) selectProfilingType(pid uint32, target *sd.Target) procInfoLit
 	}
 	exe := filepath.Base(exePath)
 
-	_ = level.Debug(s.logger).Log("exe", exePath, "pid", pid)
-
-	if s.options.PythonEnabled && strings.HasPrefix(exe, "python") || exe == "uwsgi" {
+	if s.pythonEnabled(target) && strings.HasPrefix(exe, "python") || exe == "uwsgi" {
 		return procInfoLite{pid: pid, comm: string(comm), typ: pyrobpf.ProfilingTypePython}
 	}
 	return procInfoLite{pid: pid, comm: string(comm), typ: pyrobpf.ProfilingTypeFramepointers}
@@ -648,7 +720,6 @@ func (s *session) saveUnknownPIDLocked(pid uint32) {
 
 func (s *session) processDeadPIDsEvents(dead chan uint32) {
 	for pid := range dead {
-		_ = level.Debug(s.logger).Log("msg", "got pid dead", "pid", pid)
 		func() {
 			s.mutex.Lock()
 			defer s.mutex.Unlock()
@@ -661,14 +732,12 @@ func (s *session) processDeadPIDsEvents(dead chan uint32) {
 func (s *session) processPIDExecRequests(requests chan uint32) {
 	for pid := range requests {
 		target := s.targetFinder.FindTarget(pid)
-		_ = level.Debug(s.logger).Log("msg", "got pid exec request", "pid", pid)
 		func() {
 			s.mutex.Lock()
 			defer s.mutex.Unlock()
 
 			_, alreadyDead := s.pids.dead[pid]
 			if alreadyDead {
-				_ = level.Debug(s.logger).Log("msg", "pid exec request for dead pid", "pid", pid)
 				return
 			}
 
@@ -687,10 +756,12 @@ func (s *session) linkKProbes() error {
 		prog     *ebpf.Program
 		required bool
 	}
-	var hooks = []hook{
+	var hooks []hook
+
+	hooks = []hook{
 		{kprobe: "disassociate_ctty", prog: s.bpf.DisassociateCtty, required: true},
-		{kprobe: "__x64_sys_execve", prog: s.bpf.Exec, required: false},
-		{kprobe: "__x64_sys_execveat", prog: s.bpf.Exec, required: false},
+		{kprobe: "sys_execve", prog: s.bpf.Exec, required: false},
+		{kprobe: "sys_execveat", prog: s.bpf.Exec, required: false},
 	}
 	for _, it := range hooks {
 		kp, err := link.Kprobe(it.kprobe, it.prog, nil)
@@ -710,16 +781,12 @@ func (s *session) cleanup() {
 	s.symCache.Cleanup()
 
 	for pid := range s.pids.dead {
-		_ = level.Debug(s.logger).Log("msg", "cleanup dead pid", "pid", pid)
 		delete(s.pids.dead, pid)
 		delete(s.pids.unknown, pid)
 		delete(s.pids.all, pid)
 		s.symCache.RemoveDeadPID(symtab.PidKey(pid))
 		if s.pyperf != nil {
 			s.pyperf.RemoveDeadPID(pid)
-		}
-		if err := s.bpf.Pids.Delete(pid); err != nil && !errors.Is(err, ebpf.ErrKeyNotExist) {
-			_ = level.Error(s.logger).Log("msg", "delete pid config", "pid", pid, "err", err)
 		}
 		s.targetFinder.RemoveDeadPID(pid)
 	}
@@ -732,11 +799,127 @@ func (s *session) cleanup() {
 			}
 			delete(s.pids.unknown, pid)
 			delete(s.pids.all, pid)
-			if err := s.bpf.Pids.Delete(pid); err != nil && !errors.Is(err, ebpf.ErrKeyNotExist) {
-				_ = level.Error(s.logger).Log("msg", "delete pid config", "pid", pid, "err", err)
-			}
 		}
 	}
+
+	if s.roundNumber%10 == 0 {
+		s.checkStalePids()
+	}
+}
+
+// iterate over all pids and check if they are alive
+// it is only needed in case disassociate_ctty hook somehow mises a process death
+func (s *session) checkStalePids() {
+	var (
+		m       = s.bpf.Pids
+		mapSize = m.MaxEntries()
+		nextKey = uint32(0)
+	)
+	keys := make([]uint32, mapSize)
+	values := make([]pyrobpf.ProfilePidConfig, mapSize)
+	n, err := m.BatchLookup(nil, &nextKey, keys, values, new(ebpf.BatchOptions))
+	_ = level.Debug(s.logger).Log("msg", "check stale pids", "count", n)
+	for i := 0; i < n; i++ {
+		_, err := os.Stat(fmt.Sprintf("/proc/%d/status", keys[i]))
+		if err != nil {
+			if !errors.Is(err, os.ErrNotExist) {
+				_ = level.Error(s.logger).Log("msg", "check stale pids", "err", err)
+			}
+			if err := m.Delete(keys[i]); err != nil && !errors.Is(err, ebpf.ErrKeyNotExist) {
+				_ = level.Error(s.logger).Log("msg", "delete stale pid", "pid", keys[i], "err", err)
+			}
+			continue
+		} else {
+		}
+	}
+	if err != nil {
+		if !errors.Is(err, ebpf.ErrKeyNotExist) {
+			_ = level.Error(s.logger).Log("msg", "check stale pids", "err", err)
+		}
+	}
+}
+
+func (s *session) logVerifierError(err error) {
+	if s.options.VerifierLogSize <= 0 {
+		return
+	}
+	var e *ebpf.VerifierError
+	if errors.As(err, &e) {
+		for _, l := range e.Log {
+			level.Error(s.logger).Log("verifier", l)
+		}
+	}
+}
+
+func (s *session) progOptions() ebpf.ProgramOptions {
+	if s.options.VerifierLogSize > 0 {
+		return ebpf.ProgramOptions{
+			LogDisabled: false,
+			LogSize:     s.options.VerifierLogSize,
+			LogLevel:    ebpf.LogLevelInstruction | ebpf.LogLevelBranch | ebpf.LogLevelStats,
+		}
+	} else {
+		return ebpf.ProgramOptions{
+			LogDisabled: true,
+		}
+	}
+}
+
+func (s *session) targetSymbolOptions(target *sd.Target) *symtab.SymbolOptions {
+	opt := new(symtab.SymbolOptions)
+	*opt = s.options.SymbolOptions
+	overrideSymbolOptions(target, opt)
+	return opt
+}
+
+func overrideSymbolOptions(t *sd.Target, opt *symtab.SymbolOptions) {
+	if v, present := t.GetFlag(sd.OptionGoTableFallback); present {
+		opt.GoTableFallback = v
+	}
+	if v, present := t.GetFlag(sd.OptionPythonFullFilePath); present {
+		opt.PythonFullFilePath = v
+	}
+	if v, present := t.Get(sd.OptionDemangle); present {
+		opt.DemangleOptions = demangle.ConvertDemangleOptions(v)
+	}
+}
+
+func (s *session) collectKernelEnabled(target *sd.Target) bool {
+	enabled := s.options.CollectKernel
+	if v, present := target.GetFlag(sd.OptionCollectKernel); present {
+		enabled = v
+	}
+	return enabled
+}
+
+func (s *session) pythonEnabled(target *sd.Target) bool {
+	enabled := s.options.PythonEnabled
+	if v, present := target.GetFlag(sd.OptionPythonEnabled); present {
+		enabled = v
+	}
+	return enabled
+}
+
+func (s *session) pythonBPFDebugLogEnabled(target *sd.Target) bool {
+	enabled := s.options.PythonBPFDebugLogEnabled
+	if v, present := target.GetFlag(sd.OptionPythonBPFDebugLogEnabled); present {
+		enabled = v
+	}
+	return enabled
+}
+
+func (s *session) pythonBPFErrorLogEnabled(target *sd.Target) bool {
+	enabled := s.options.PythonBPFErrorLogEnabled
+	if v, present := target.GetFlag(sd.OptionPythonBPFErrorLogEnabled); present {
+		enabled = v
+	}
+	return enabled
+}
+
+func (s *session) printDebugInfo() {
+	_ = level.Debug(s.logger).Log("arch", runtime.GOARCH)
+	pv, _ := os.ReadFile("/proc/version")
+	_ = level.Debug(s.logger).Log("/proc/version", pv)
 }
 
 type stackBuilder struct {
@@ -749,4 +932,15 @@ func (s *stackBuilder) reset() {
 
 func (s *stackBuilder) append(sym string) {
 	s.stack = append(s.stack, sym)
+}
+
+func getPIDNamespace() (dev uint64, ino uint64, err error) {
+	stat, err := os.Stat("/proc/self/ns/pid")
+	if err != nil {
+		return 0, 0, err
+	}
+	if st, ok := stat.Sys().(*syscall.Stat_t); ok {
+		return st.Dev, st.Ino, nil
+	}
+	return 0, 0, fmt.Errorf("could not determine pid namespace")
 }

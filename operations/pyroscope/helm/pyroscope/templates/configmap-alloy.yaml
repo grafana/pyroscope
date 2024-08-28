@@ -1,0 +1,193 @@
+{{- if and (.Values.alloy.enabled) (not .Values.alloy.alloy.configMap.create)  }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.alloy.alloy.configMap.name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "pyroscope.labels" . | nindent 4 }}
+data:
+  config.alloy: |
+    logging {
+    	level  = "info"
+    	format = "logfmt"
+    }
+
+    discovery.kubernetes "pyroscope_kubernetes" {
+    	role = "pod"
+    }
+
+    // The default scrape config allows to define annotations based scraping.
+    //
+    // For example the following annotations:
+    //
+    // ```
+    // profiles.grafana.com/memory.scrape: "true"
+    // profiles.grafana.com/memory.port: "8080"
+    // profiles.grafana.com/cpu.scrape: "true"
+    // profiles.grafana.com/cpu.port: "8080"
+    // profiles.grafana.com/goroutine.scrape: "true"
+    // profiles.grafana.com/goroutine.port: "8080"
+    // ```
+    //
+    // will scrape the `memory`, `cpu` and `goroutine` profiles from the `8080` port of the pod.
+    //
+    // For more information see https://grafana.com/docs/pyroscope/latest/deploy-kubernetes/helm/#optional-scrape-your-own-workloads-profiles
+    discovery.relabel "kubernetes_pods" {
+    	targets = concat(discovery.kubernetes.pyroscope_kubernetes.targets)
+
+    	rule {
+    		action        = "drop"
+    		source_labels = ["__meta_kubernetes_pod_phase"]
+    		regex         = "Pending|Succeeded|Failed|Completed"
+    	}
+
+    	rule {
+    		action = "labelmap"
+    		regex  = "__meta_kubernetes_pod_label_(.+)"
+    	}
+
+    	rule {
+    		action        = "replace"
+    		source_labels = ["__meta_kubernetes_namespace"]
+    		target_label  = "namespace"
+    	}
+
+    	rule {
+    		action        = "replace"
+    		source_labels = ["__meta_kubernetes_pod_name"]
+    		target_label  = "pod"
+    	}
+
+    	rule {
+    		action        = "replace"
+    		source_labels = ["__meta_kubernetes_pod_container_name"]
+    		target_label  = "container"
+    	}
+    }
+  {{- $profileTypes := list "memory" "cpu" "goroutine" "block" "mutex" "fgprof" }}
+  {{- range $profileTypes }}
+
+    discovery.relabel "kubernetes_pods_{{.}}_default_name" {
+    	targets = concat(discovery.relabel.kubernetes_pods.output)
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_{{.}}_scrape"]
+    		action        = "keep"
+    		regex         = "true"
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_{{.}}_port_name"]
+    		action        = "keep"
+    		regex         = ""
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_container_port_number"]
+    		target_label  = "__meta_kubernetes_pod_annotation_profiles_grafana_com_{{.}}_port"
+    		action        = "keepequal"
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_{{.}}_scheme"]
+    		action        = "replace"
+    		regex         = "(https?)"
+    		target_label  = "__scheme__"
+    		replacement   = "$1"
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_{{.}}_path"]
+    		action        = "replace"
+    		regex         = "(.+)"
+    		target_label  = "__profile_path__"
+    		replacement   = "$1"
+    	}
+
+    	rule {
+    		source_labels = ["__address__", "__meta_kubernetes_pod_annotation_profiles_grafana_com_{{.}}_port"]
+    		action        = "replace"
+    		regex         = "(.+?)(?::\\d+)?;(\\d+)"
+    		target_label  = "__address__"
+    		replacement   = "$1:$2"
+    	}
+    }
+
+    discovery.relabel "kubernetes_pods_{{.}}_custom_name" {
+    	targets = concat(discovery.relabel.kubernetes_pods.output)
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_{{.}}_scrape"]
+    		action        = "keep"
+    		regex         = "true"
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_{{.}}_port_name"]
+    		action        = "drop"
+    		regex         = ""
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_container_port_name"]
+    		target_label  = "__meta_kubernetes_pod_annotation_profiles_grafana_com_{{.}}_port_name"
+    		action        = "keepequal"
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_{{.}}_scheme"]
+    		action        = "replace"
+    		regex         = "(https?)"
+    		target_label  = "__scheme__"
+    		replacement   = "$1"
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_{{.}}_path"]
+    		action        = "replace"
+    		regex         = "(.+)"
+    		target_label  = "__profile_path__"
+    		replacement   = "$1"
+    	}
+
+    	rule {
+    		source_labels = ["__address__", "__meta_kubernetes_pod_annotation_profiles_grafana_com_{{.}}_port"]
+    		action        = "replace"
+    		regex         = "(.+?)(?::\\d+)?;(\\d+)"
+    		target_label  = "__address__"
+    		replacement   = "$1:$2"
+    	}
+    }
+
+    pyroscope.scrape "pyroscope_scrape_{{.}}" {
+    	clustering {
+    		enabled = true
+    	}
+
+    	targets    = concat(discovery.relabel.kubernetes_pods_{{.}}_default_name.output, discovery.relabel.kubernetes_pods_{{.}}_custom_name.output)
+    	forward_to = [pyroscope.write.pyroscope_write.receiver]
+
+    	profiling_config {
+        {{- $currentType := . -}}
+        {{- range $profileTypes }}
+    		profile.{{if eq . "cpu"}}process_cpu{{else}}{{.}}{{end}} {
+    			enabled = {{if eq . $currentType}}true{{else}}false{{end}}
+    		}
+        {{- if ne . (last $profileTypes) }}{{ printf "\n" }}{{ end }}
+        {{- end }}
+    	}
+    }
+  {{- end }}
+
+    pyroscope.write "pyroscope_write" {
+    	endpoint {
+        {{- if hasKey .Values.pyroscope.components "distributor" }}
+    		url = "http://{{ include "pyroscope.fullname" . }}-distributor.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:{{ (.Values.pyroscope.components.distributor.service).port | default .Values.pyroscope.service.port}}"
+        {{- else }}
+    		url = "http://{{ include "pyroscope.fullname" . }}.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:{{ .Values.pyroscope.service.port }}"
+        {{- end }}
+    	}
+    }
+
+{{- end }}

@@ -5,9 +5,9 @@
 package pushv1connect
 
 import (
+	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
-	connect_go "github.com/bufbuild/connect-go"
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	http "net/http"
 	strings "strings"
@@ -18,7 +18,7 @@ import (
 // generated with a version of connect newer than the one compiled into your binary. You can fix the
 // problem by either regenerating this code with an older version of connect or updating the connect
 // version compiled into your binary.
-const _ = connect_go.IsAtLeastVersion0_1_0
+const _ = connect.IsAtLeastVersion1_13_0
 
 const (
 	// PusherServiceName is the fully-qualified name of the PusherService service.
@@ -37,9 +37,15 @@ const (
 	PusherServicePushProcedure = "/push.v1.PusherService/Push"
 )
 
+// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
+var (
+	pusherServiceServiceDescriptor    = v1.File_push_v1_push_proto.Services().ByName("PusherService")
+	pusherServicePushMethodDescriptor = pusherServiceServiceDescriptor.Methods().ByName("Push")
+)
+
 // PusherServiceClient is a client for the push.v1.PusherService service.
 type PusherServiceClient interface {
-	Push(context.Context, *connect_go.Request[v1.PushRequest]) (*connect_go.Response[v1.PushResponse], error)
+	Push(context.Context, *connect.Request[v1.PushRequest]) (*connect.Response[v1.PushResponse], error)
 }
 
 // NewPusherServiceClient constructs a client for the push.v1.PusherService service. By default, it
@@ -49,30 +55,31 @@ type PusherServiceClient interface {
 //
 // The URL supplied here should be the base URL for the Connect or gRPC server (for example,
 // http://api.acme.com or https://acme.com/grpc).
-func NewPusherServiceClient(httpClient connect_go.HTTPClient, baseURL string, opts ...connect_go.ClientOption) PusherServiceClient {
+func NewPusherServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) PusherServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
 	return &pusherServiceClient{
-		push: connect_go.NewClient[v1.PushRequest, v1.PushResponse](
+		push: connect.NewClient[v1.PushRequest, v1.PushResponse](
 			httpClient,
 			baseURL+PusherServicePushProcedure,
-			opts...,
+			connect.WithSchema(pusherServicePushMethodDescriptor),
+			connect.WithClientOptions(opts...),
 		),
 	}
 }
 
 // pusherServiceClient implements PusherServiceClient.
 type pusherServiceClient struct {
-	push *connect_go.Client[v1.PushRequest, v1.PushResponse]
+	push *connect.Client[v1.PushRequest, v1.PushResponse]
 }
 
 // Push calls push.v1.PusherService.Push.
-func (c *pusherServiceClient) Push(ctx context.Context, req *connect_go.Request[v1.PushRequest]) (*connect_go.Response[v1.PushResponse], error) {
+func (c *pusherServiceClient) Push(ctx context.Context, req *connect.Request[v1.PushRequest]) (*connect.Response[v1.PushResponse], error) {
 	return c.push.CallUnary(ctx, req)
 }
 
 // PusherServiceHandler is an implementation of the push.v1.PusherService service.
 type PusherServiceHandler interface {
-	Push(context.Context, *connect_go.Request[v1.PushRequest]) (*connect_go.Response[v1.PushResponse], error)
+	Push(context.Context, *connect.Request[v1.PushRequest]) (*connect.Response[v1.PushResponse], error)
 }
 
 // NewPusherServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -80,11 +87,12 @@ type PusherServiceHandler interface {
 //
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
-func NewPusherServiceHandler(svc PusherServiceHandler, opts ...connect_go.HandlerOption) (string, http.Handler) {
-	pusherServicePushHandler := connect_go.NewUnaryHandler(
+func NewPusherServiceHandler(svc PusherServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	pusherServicePushHandler := connect.NewUnaryHandler(
 		PusherServicePushProcedure,
 		svc.Push,
-		opts...,
+		connect.WithSchema(pusherServicePushMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
 	)
 	return "/push.v1.PusherService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
@@ -99,6 +107,6 @@ func NewPusherServiceHandler(svc PusherServiceHandler, opts ...connect_go.Handle
 // UnimplementedPusherServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedPusherServiceHandler struct{}
 
-func (UnimplementedPusherServiceHandler) Push(context.Context, *connect_go.Request[v1.PushRequest]) (*connect_go.Response[v1.PushResponse], error) {
-	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("push.v1.PusherService.Push is not implemented"))
+func (UnimplementedPusherServiceHandler) Push(context.Context, *connect.Request[v1.PushRequest]) (*connect.Response[v1.PushResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("push.v1.PusherService.Push is not implemented"))
 }

@@ -2,14 +2,19 @@ apiVersion: v2
 name: pyroscope
 description: 🔥 horizontally-scalable, highly-available, multi-tenant continuous profiling aggregation system
 type: application
-version: 1.1.0
-appVersion: 1.1.5
+version: 1.7.1
+appVersion: 1.7.1
 dependencies:
   - name: grafana-agent
     alias: agent
     version: "0.25.0"
     repository: https://grafana.github.io/helm-charts
     condition: agent.enabled
+  - name: alloy
+    alias: alloy
+    version: "0.3.2"
+    repository: https://grafana.github.io/helm-charts
+    condition: alloy.enabled
   - name: minio
     alias: minio
     version: 4.0.12

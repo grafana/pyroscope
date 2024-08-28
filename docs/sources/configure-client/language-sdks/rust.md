@@ -1,7 +1,7 @@
 ---
 title: "Rust"
 menuTitle: "Rust"
-description: "Instrumenting Rust applications for continuous profiling"
+description: "Instrumenting Rust applications for continuous profiling."
 weight: 60
 aliases:
   - /docs/phlare/latest/configure-client/language-sdks/rust
@@ -9,7 +9,21 @@ aliases:
 
 # Rust
 
-## How to add Rust profiling to your application
+Optimize your Rust applications with our advanced Rust Profiler.
+In collaboration with Pyroscope, it offers real-time profiling capabilities, shedding light on the intricacies of your Rust codebase.
+This integration is invaluable for developers seeking to enhance performance, reduce resource usage, and achieve efficient code execution in Rust applications.
+
+{{< admonition type="note" >}}
+Refer to [Available profiling types]({{< relref "../../view-and-analyze-profile-data/profiling-types#available-profiling-types" >}}) for a list of profile types supported by Rust.
+{{< /admonition >}}
+
+## Before you begin
+
+To capture and analyze profiling data, you need either a hosted Pyroscope OSS server or a hosted [Pyroscope instance with Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/) (requires a free Grafana Cloud account).
+
+The Pyroscope server can be a local server for development or a remote server for production use.
+
+## Add Rust profiling to your application
 
 Add the `pyroscope` and `pyroscope_pprofrs` crates to your Cargo.toml:
 
@@ -18,7 +32,7 @@ cargo add pyroscope
 cargo add pyroscope_pprofrs
 ```
 
-### Rust client configuration
+## Configure the Rust client
 
 At a minimum, you need to provide the URL of the Pyroscope server and the name
 of your application. You also need to configure a profiling backend. For Rust,
@@ -65,14 +79,14 @@ The agent can be stopped at any point, and it'll send a last report to the serve
 let agent_ready = agent.stop().unwrap();
 ```
 
-It's recommended to shutdown the agent before exiting the application. A last
+It's recommended to shut down the agent before exiting the application. A last
 request to the server might be missed if the agent is not shutdown properly.
 
 ```rust
 agent_ready.shutdown();
 ```
 
-## How to add profiling labels to Rust applications
+## Add profiling labels to Rust applications
 
 Tags can be added or removed after the agent is started. As of 0.5.0, the
 Pyroscope Agent supports tagging within threads. Check the [tags](https://github.com/pyroscope-io/pyroscope-rs/blob/main/examples/tags.rs) and [multi-thread](https://github.com/pyroscope-io/pyroscope-rs/blob/main/examples/multi-thread.rs) examples for detailed usage.
@@ -129,20 +143,21 @@ PyroscopeAgent::builder("http://localhost:4040", "myapp")
 .build()?;
 ```
 
-## Technical Details
+## Technical details
+
 - **Backend**: The Pyroscope Agent uses [pprof-rs](https://github.com/tikv/pprof-rs) as a backend. As a result, the [limitations](https://github.com/tikv/pprof-rs#why-not-) for pprof-rs also applies.
 As of 0.5.0, the Pyroscope Agent supports tagging within threads. Check the [tags](https://github.com/pyroscope-io/pyroscope-rs/blob/main/examples/tags.rs) and [multi-thread](https://github.com/pyroscope-io/pyroscope-rs/blob/main/examples/multi-thread.rs) examples for usage.
 - **Timer**: epoll (for Linux) and kqueue (for macOS) are required for a more precise timer.
-- **Shutdown**: The Pyroscope Agent might take some time (usually less than 10 seconds) to shutdown properly and drop its threads. For a proper shutdown, it's recommended that you run the `shutdown` function before dropping the agent.
+- **Shutdown**: The Pyroscope Agent might take some time (usually less than 10 seconds) to shut down properly and drop its threads. For a proper shutdown, it's recommended that you run the `shutdown` function before dropping the agent.
 
 - **Relevant Links**
-  - [Github Repository](https://github.com/pyroscope-io/pyroscope-rs)
+  - [GitHub Repository](https://github.com/pyroscope-io/pyroscope-rs)
   - [Cargo crate](https://crates.io/crates/pyroscope)
   - [Crate documentation](https://docs.rs/pyroscope/latest/pyroscope/index.html)
 
 ## Examples
 
-**Usage Examples**
+### Usage examples
 
 - [**basic**](https://github.com/pyroscope-io/pyroscope-rs/blob/main/examples/basic.rs): Minimal configuration example.
 - [**tags**](https://github.com/pyroscope-io/pyroscope-rs/blob/main/examples/tags.rs): Example using Tags.
@@ -151,7 +166,7 @@ As of 0.5.0, the Pyroscope Agent supports tagging within threads. Check the [tag
 - [**with-logger**](https://github.com/pyroscope-io/pyroscope-rs/blob/main/examples/with-logger.rs): Example with logging to stdout.
 - [**error**](https://github.com/pyroscope-io/pyroscope-rs/blob/main/examples/error.rs): Example with an invalid server address.
 
-#### Stand-alone Examples
+#### Stand-alone examples
 
-- [**basic**](https://github.com/grafana/pyroscope/tree/main/examples/rust/basic): Simple Rust application that uses the Pyroscope Library.
-- [**rideshare**](https://github.com/grafana/pyroscope/tree/main/examples/rust/rideshare): A multi-instances web service running on Docker.
+- [**basic**](https://github.com/grafana/pyroscope/tree/main/examples/language-sdk-instrumentation/rust/basic): Simple Rust application that uses the Pyroscope Library.
+- [**rideshare**](https://github.com/grafana/pyroscope/tree/main/examples/language-sdk-instrumentation/rust/rideshare): A multi-instances web service running on Docker.

@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strings"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	"golang.org/x/exp/slices"
 )
 
 func ReadGzipFile(f string) ([]byte, error) {
@@ -74,8 +74,8 @@ func StackCollapseProto(p *profilev1.Profile, valueIDX int, scale float64) []str
 			value: v,
 		})
 	}
-	slices.SortFunc(ret, func(i, j stack) bool {
-		return strings.Compare(i.funcs, j.funcs) < 0
+	slices.SortFunc(ret, func(i, j stack) int {
+		return strings.Compare(i.funcs, j.funcs)
 	})
 	var unique []stack
 	for _, s := range ret {

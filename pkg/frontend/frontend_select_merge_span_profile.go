@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/grafana/dskit/tenant"
 	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/common/model"
@@ -26,6 +26,7 @@ func (f *Frontend) SelectMergeSpanProfile(ctx context.Context,
 		SetTag("start", model.Time(c.Msg.Start).Time().String()).
 		SetTag("end", model.Time(c.Msg.End).Time().String()).
 		SetTag("selector", c.Msg.LabelSelector).
+		SetTag("max_nodes", c.Msg.MaxNodes).
 		SetTag("profile_type", c.Msg.ProfileTypeID)
 
 	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceSelectMergeSpanProfileProcedure)
@@ -40,6 +41,10 @@ func (f *Frontend) SelectMergeSpanProfile(ctx context.Context,
 	}
 	if validated.IsEmpty {
 		return connect.NewResponse(&querierv1.SelectMergeSpanProfileResponse{Flamegraph: &querierv1.FlameGraph{}}), nil
+	}
+	maxNodes, err := validation.ValidateMaxNodes(f.limits, tenantIDs, c.Msg.GetMaxNodes())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
 	g, ctx := errgroup.WithContext(ctx)
@@ -59,9 +64,9 @@ func (f *Frontend) SelectMergeSpanProfile(ctx context.Context,
 				LabelSelector: c.Msg.LabelSelector,
 				Start:         r.Start.UnixMilli(),
 				End:           r.End.UnixMilli(),
-				MaxNodes:      c.Msg.MaxNodes,
-				// TODO: Make sure we don't need to copy it.
-				SpanSelector: c.Msg.SpanSelector,
+				MaxNodes:      &maxNodes,
+				SpanSelector:  c.Msg.SpanSelector,
+				Format:        querierv1.ProfileFormat_PROFILE_FORMAT_TREE,
 			})
 			resp, err := connectgrpc.RoundTripUnary[
 				querierv1.SelectMergeSpanProfileRequest,
@@ -69,8 +74,13 @@ func (f *Frontend) SelectMergeSpanProfile(ctx context.Context,
 			if err != nil {
 				return err
 			}
-			m.MergeFlameGraph(resp.Msg.Flamegraph)
-			return nil
+			if len(resp.Msg.Tree) > 0 {
+				err = m.MergeTreeBytes(resp.Msg.Tree)
+			} else if resp.Msg.Flamegraph != nil {
+				// For backward compatibility.
+				m.MergeFlameGraph(resp.Msg.Flamegraph)
+			}
+			return err
 		})
 	}
 
@@ -79,8 +89,12 @@ func (f *Frontend) SelectMergeSpanProfile(ctx context.Context,
 	}
 
 	t := m.Tree()
-	t.FormatNodeNames(phlaremodel.DropGoTypeParameters)
-	return connect.NewResponse(&querierv1.SelectMergeSpanProfileResponse{
-		Flamegraph: phlaremodel.NewFlameGraph(t, c.Msg.GetMaxNodes()),
-	}), nil
+	var resp querierv1.SelectMergeSpanProfileResponse
+	switch c.Msg.Format {
+	default:
+		resp.Flamegraph = phlaremodel.NewFlameGraph(t, c.Msg.GetMaxNodes())
+	case querierv1.ProfileFormat_PROFILE_FORMAT_TREE:
+		resp.Tree = t.Bytes(c.Msg.GetMaxNodes())
+	}
+	return connect.NewResponse(&resp), nil
 }

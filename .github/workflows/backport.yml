@@ -1,0 +1,26 @@
+name: Backport PR creator
+on:
+  pull_request_target:
+    types:
+      - closed
+      - labeled
+
+jobs:
+  main:
+    if: github.repository == 'grafana/pyroscope'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Actions
+        uses: actions/checkout@v4
+        with:
+          repository: grafana/grafana-github-actions
+          path: ./actions
+          ref: main
+      - name: Install Actions
+        run: npm install --production --prefix ./actions
+      - name: Run backport
+        uses: ./actions/backport
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          labelsToAdd: backport
+          title: "[{{base}}] {{originalTitle}}"

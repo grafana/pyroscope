@@ -72,7 +72,7 @@ function isValidDate(d: Date) {
  * based on the passed-in parameter value
  * which is either a Number repsenting a date
  * or a default preset(example: "now-1h")
- * this is neccessary because the DatePicker component
+ * this is necessary because the DatePicker component
  * from react-datepicker package has a property (selected)
  * that requires an input of type Date if we passed another
  * type the Component will throw an error and the app will crash

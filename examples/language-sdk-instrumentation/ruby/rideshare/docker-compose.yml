@@ -1,0 +1,36 @@
+version: '3.9'
+services:
+  pyroscope:
+    image: grafana/pyroscope
+    ports:
+    - 4040:4040
+  us-east:
+    environment:
+    - REGION=us-east
+    build:
+      context: .
+  eu-north:
+    environment:
+    - REGION=eu-north
+    build:
+      context: .
+  ap-south:
+    environment:
+    - REGION=ap-south
+    build:
+      context: .
+  load-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile.load-generator
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+    - GF_INSTALL_PLUGINS=grafana-pyroscope-app
+    - GF_AUTH_ANONYMOUS_ENABLED=true
+    - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    - GF_AUTH_DISABLE_LOGIN_FORM=true
+    volumes:
+    - ./grafana-provisioning:/etc/grafana/provisioning
+    ports:
+    - 3000:3000

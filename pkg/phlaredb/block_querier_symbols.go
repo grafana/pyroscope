@@ -27,11 +27,10 @@ import (
 type symbolsResolver interface {
 	symdb.SymbolsReader
 	io.Closer
-	Load(context.Context) error
 }
 
 type symbolsResolverV1 struct {
-	stacktraces  parquetReader[*schemav1.Stacktrace, *schemav1.StacktracePersister]
+	stacktraces  parquetReader[*schemav1.StacktracePersister]
 	bucketReader phlareobj.Bucket
 	*inMemoryParquetTables
 }
@@ -51,11 +50,6 @@ func newSymbolsResolverV1(ctx context.Context, bucketReader phlareobj.Bucket, me
 	}
 	r.inMemoryParquetTables, err = openInMemoryParquetTables(ctx, bucketReader, meta)
 	return r, err
-}
-
-func (r *symbolsResolverV1) Load(_ context.Context) error {
-	// Unsupported.
-	return nil
 }
 
 func (r *symbolsResolverV1) Close() error {
@@ -107,6 +101,16 @@ func (r stacktraceResolverV1) ResolveStacktraceLocations(ctx context.Context, ds
 	return it.Err()
 }
 
+func (r stacktraceResolverV1) LookupLocations(_ []uint64, _ uint32) []uint64 {
+	// NOTE(kolesnikovae): This API is not supported.
+	// Despite the fact that this could be implemented,
+	// practically this is not viable.
+	//
+	// The method is only implemented to satisfy the
+	// StacktraceResolver interface and must not be used.
+	return nil
+}
+
 func grow[T any](s []T, n int) []T {
 	if cap(s) < n {
 		return make([]T, n, 2*n)
@@ -128,10 +132,6 @@ func newSymbolsResolverV2(ctx context.Context, b phlareobj.Bucket, meta *block.M
 	}
 	r.inMemoryParquetTables, err = openInMemoryParquetTables(ctx, b, meta)
 	return &r, err
-}
-
-func (r *symbolsResolverV2) Load(ctx context.Context) error {
-	return r.symbols.Load(ctx)
 }
 
 func (r *symbolsResolverV2) Close() error {
@@ -191,10 +191,10 @@ func (p *symbolsPartition) Release() {
 }
 
 type inMemoryParquetTables struct {
-	strings   inMemoryparquetReader[string, *schemav1.StringPersister]
-	functions inMemoryparquetReader[*schemav1.InMemoryFunction, *schemav1.FunctionPersister]
-	locations inMemoryparquetReader[*schemav1.InMemoryLocation, *schemav1.LocationPersister]
-	mappings  inMemoryparquetReader[*schemav1.InMemoryMapping, *schemav1.MappingPersister]
+	strings   inMemoryparquetReader[string, schemav1.StringPersister]
+	functions inMemoryparquetReader[schemav1.InMemoryFunction, schemav1.FunctionPersister]
+	locations inMemoryparquetReader[schemav1.InMemoryLocation, schemav1.LocationPersister]
+	mappings  inMemoryparquetReader[schemav1.InMemoryMapping, schemav1.MappingPersister]
 }
 
 func openInMemoryParquetTables(ctx context.Context, r phlareobj.BucketReader, meta *block.Meta) (*inMemoryParquetTables, error) {
@@ -278,7 +278,7 @@ func (r *inMemoryparquetReader[M, P]) readRG(dst []M, rg parquet.RowGroup) (err 
 		n, err := rr.ReadRows(buf)
 		if n > 0 {
 			for _, row := range buf[:n] {
-				_, v, err := r.persister.Reconstruct(row)
+				v, err := r.persister.Reconstruct(row)
 				if err != nil {
 					return err
 				}

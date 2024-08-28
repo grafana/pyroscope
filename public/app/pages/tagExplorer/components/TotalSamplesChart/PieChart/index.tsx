@@ -20,7 +20,7 @@ interface TooltipProps {
   value?: number;
 }
 
-interface PieChartProps {
+export interface PieChartProps {
   data: PieChartDataItem[];
   width: string;
   height: string;

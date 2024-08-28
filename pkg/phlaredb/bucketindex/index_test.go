@@ -51,6 +51,7 @@ func TestBlockFromMeta(t *testing.T) {
 				MinTime:          model.Time(10),
 				MaxTime:          model.Time(20),
 				CompactorShardID: "1_of_8",
+				CompactionLevel:  0,
 			},
 		},
 	}

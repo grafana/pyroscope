@@ -13,6 +13,11 @@ module.exports = merge(common, {
     proxy: {
       '/pyroscope': 'http://localhost:4040',
       '/querier.v1.QuerierService': 'http://localhost:4040',
+      '/assets/grafana/*': {
+        target: 'http://localhost:4041',
+        pathRewrite: { '^/assets': '' },
+        logLevel: 'debug',
+      },
     },
   },
   optimization: {
@@ -25,6 +30,7 @@ module.exports = merge(common, {
     // Duplicated in webpack.prod.js
     new HtmlWebpackPlugin({
       filename: path.resolve(__dirname, '../../public/build/index.html'),
+      favicon: path.resolve(__dirname, '../../public/app/images/favicon.ico'),
       template: path.resolve(__dirname, '../../public/templates/index.html'),
       chunksSortMode: 'none',
     }),
