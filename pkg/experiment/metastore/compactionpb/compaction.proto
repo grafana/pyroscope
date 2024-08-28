@@ -30,6 +30,9 @@ message CompactionJob {
   //
   // The lease is extended every time the owner reports a status update.
   int64 lease_expires_at = 8;
+  // The number of failures when processing this job. Used for retries.
+  uint32 failures = 9;
+  string last_failure_reason = 10;
 }
 
 enum CompactionStatus {
@@ -37,9 +40,10 @@ enum CompactionStatus {
   COMPACTION_STATUS_IN_PROGRESS = 1;
   COMPACTION_STATUS_SUCCESS = 2;
   COMPACTION_STATUS_FAILURE = 3;
+  COMPACTION_STATUS_CANCELLED = 4;
 }
 
-message JobPreQueue {
+message CompactionJobBlockQueue {
   uint32 compaction_level = 1;
   uint32 shard = 2;
   string tenant = 3;

@@ -1,6 +1,8 @@
 package util
 
 import (
+	"errors"
+
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -13,11 +15,28 @@ func RegisterOrGet[T prometheus.Collector](reg prometheus.Registerer, c T) T {
 	}
 	err := reg.Register(c)
 	if err != nil {
-		already, ok := err.(prometheus.AlreadyRegisteredError)
+		var already prometheus.AlreadyRegisteredError
+		ok := errors.As(err, &already)
 		if ok {
 			return already.ExistingCollector.(T)
 		}
 		panic(err)
 	}
 	return c
+}
+
+func Register(reg prometheus.Registerer, collectors ...prometheus.Collector) {
+	if reg == nil {
+		return
+	}
+	for _, collector := range collectors {
+		err := reg.Register(collector)
+		if err != nil {
+			var alreadyRegisteredError prometheus.AlreadyRegisteredError
+			ok := errors.As(err, &alreadyRegisteredError)
+			if !ok {
+				panic(err)
+			}
+		}
+	}
 }

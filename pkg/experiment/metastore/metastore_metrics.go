@@ -3,6 +3,8 @@ package metastore
 import (
 	"github.com/grafana/dskit/instrument"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 type metastoreMetrics struct {
@@ -44,11 +46,11 @@ func newMetastoreMetrics(reg prometheus.Registerer) *metastoreMetrics {
 		}),
 	}
 	if reg != nil {
-		reg.MustRegister(m.boltDBPersistSnapshotDuration)
-		reg.MustRegister(m.boltDBRestoreSnapshotDuration)
-		reg.MustRegister(m.fsmRestoreSnapshotDuration)
-		reg.MustRegister(m.fsmApplyCommandHandlerDuration)
-		reg.MustRegister(m.raftAddBlockDuration)
+		util.RegisterOrGet(reg, m.boltDBPersistSnapshotDuration)
+		util.RegisterOrGet(reg, m.boltDBRestoreSnapshotDuration)
+		util.RegisterOrGet(reg, m.fsmRestoreSnapshotDuration)
+		util.RegisterOrGet(reg, m.fsmApplyCommandHandlerDuration)
+		util.RegisterOrGet(reg, m.raftAddBlockDuration)
 	}
 	return m
 }

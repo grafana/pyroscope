@@ -49,18 +49,18 @@ type jobQueueEntry struct {
 
 func (c *jobQueueEntry) less(x *jobQueueEntry) bool {
 	if c.Status != x.Status {
-		// Peek jobs in the "initial" (unspecified) state first.
+		// Pick jobs in the "initial" (unspecified) state first.
 		return c.Status < x.Status
+	}
+	if c.CompactionLevel != x.CompactionLevel {
+		// Compact lower level jobs first.
+		return c.CompactionLevel < x.CompactionLevel
 	}
 	if c.LeaseExpiresAt != x.LeaseExpiresAt {
 		// Jobs with earlier deadlines should be at the top.
 		return c.LeaseExpiresAt < x.LeaseExpiresAt
 	}
-	// Compact lower level jobs first.
-	if c.CompactionLevel != x.CompactionLevel {
-		// Jobs with earlier deadlines should be at the top.
-		return c.CompactionLevel < x.CompactionLevel
-	}
+
 	return c.Name < x.Name
 }
 
@@ -72,6 +72,10 @@ func (q *jobQueue) dequeue(now int64, raftLogIndex uint64) *compactionpb.Compact
 		if job.Status == compactionpb.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS &&
 			now <= job.LeaseExpiresAt {
 			// If the top job is in progress and not expired, stop checking further
+			return nil
+		}
+		if job.Status == compactionpb.CompactionStatus_COMPACTION_STATUS_CANCELLED {
+			// if we've reached cancelled jobs in the queue we have no work left
 			return nil
 		}
 		// Actually remove it from the heap, update and push it back.
@@ -100,6 +104,15 @@ func (q *jobQueue) update(name string, now int64, raftLogIndex uint64) bool {
 		return true
 	}
 	return false
+}
+
+func (q *jobQueue) cancel(name string) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if job, exists := q.jobs[name]; exists {
+		job.Status = compactionpb.CompactionStatus_COMPACTION_STATUS_CANCELLED
+		heap.Fix(&q.pq, job.index)
+	}
 }
 
 func (q *jobQueue) getNewDeadline(now int64) int64 {
