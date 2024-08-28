@@ -1416,6 +1416,28 @@
         }
       }
     },
+    "v1PprofQuery": {
+      "type": "object",
+      "properties": {
+        "maxNodes": {
+          "type": "string",
+          "format": "int64",
+          "description": "TODO(kolesnikovae): Go PGO options."
+        }
+      }
+    },
+    "v1PprofReport": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "$ref": "#/definitions/v1PprofQuery"
+        },
+        "pprof": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
     "v1ProfileFormat": {
       "type": "string",
       "enum": [
@@ -1495,8 +1517,11 @@
           "$ref": "#/definitions/v1TimeSeriesQuery"
         },
         "tree": {
-          "$ref": "#/definitions/v1TreeQuery",
-          "description": "pprof\n function_details\n call_graph\n top_table\n ..."
+          "$ref": "#/definitions/v1TreeQuery"
+        },
+        "pprof": {
+          "$ref": "#/definitions/v1PprofQuery",
+          "description": "function_details\n call_graph\n top_table\n ..."
         }
       }
     },
@@ -1600,7 +1625,8 @@
         "QUERY_LABEL_VALUES",
         "QUERY_SERIES_LABELS",
         "QUERY_TIME_SERIES",
-        "QUERY_TREE"
+        "QUERY_TREE",
+        "QUERY_PPROF"
       ],
       "default": "QUERY_UNSPECIFIED"
     },
@@ -1671,6 +1697,9 @@
         },
         "tree": {
           "$ref": "#/definitions/v1TreeReport"
+        },
+        "pprof": {
+          "$ref": "#/definitions/v1PprofReport"
         }
       }
     },
@@ -1682,7 +1711,8 @@
         "REPORT_LABEL_VALUES",
         "REPORT_SERIES_LABELS",
         "REPORT_TIME_SERIES",
-        "REPORT_TREE"
+        "REPORT_TREE",
+        "REPORT_PPROF"
       ],
       "default": "REPORT_UNSPECIFIED"
     },

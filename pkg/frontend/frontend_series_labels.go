@@ -15,7 +15,10 @@ import (
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
-func (f *Frontend) Series(ctx context.Context, c *connect.Request[querierv1.SeriesRequest]) (*connect.Response[querierv1.SeriesResponse], error) {
+func (f *Frontend) Series(
+	ctx context.Context,
+	c *connect.Request[querierv1.SeriesRequest],
+) (*connect.Response[querierv1.SeriesResponse], error) {
 	opentracing.SpanFromContext(ctx).
 		SetTag("start", model.Time(c.Msg.Start).Time().String()).
 		SetTag("end", model.Time(c.Msg.End).Time().String()).

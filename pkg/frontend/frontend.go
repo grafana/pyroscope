@@ -80,6 +80,7 @@ func (cfg *Config) Validate() error {
 type Frontend struct {
 	services.Service
 	connectgrpc.GRPCRoundTripper
+	frontendpb.UnimplementedFrontendForQuerierServer
 
 	cfg Config
 	log log.Logger
@@ -93,7 +94,6 @@ type Frontend struct {
 	schedulerWorkers        *frontendSchedulerWorkers
 	schedulerWorkersWatcher *services.FailureWatcher
 	requests                *requestsInProgress
-	frontendpb.UnimplementedFrontendForQuerierServer
 }
 
 type Limits interface {

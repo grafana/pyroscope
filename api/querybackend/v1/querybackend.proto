@@ -21,6 +21,9 @@ message InvokeRequest {
   int64 start_time = 2;
   int64 end_time = 3;
   string label_selector = 4;
+
+
+
   repeated Query query = 5;
   QueryPlan query_plan = 6;
   InvokeOptions options = 7;
@@ -55,7 +58,7 @@ message Query {
   SeriesLabelsQuery series_labels = 4;
   TimeSeriesQuery time_series = 5;
   TreeQuery tree = 6;
-  // pprof
+  PprofQuery pprof = 7;
   // function_details
   // call_graph
   // top_table
@@ -69,6 +72,7 @@ enum QueryType {
   QUERY_SERIES_LABELS = 3;
   QUERY_TIME_SERIES = 4;
   QUERY_TREE = 5;
+  QUERY_PPROF = 6;
 }
 
 message InvokeResponse {
@@ -88,6 +92,7 @@ message Report {
   SeriesLabelsReport series_labels = 4;
   TimeSeriesReport time_series = 5;
   TreeReport tree = 6;
+  PprofReport pprof = 7;
 }
 
 enum ReportType {
@@ -97,6 +102,7 @@ enum ReportType {
   REPORT_SERIES_LABELS = 3;
   REPORT_TIME_SERIES = 4;
   REPORT_TREE = 5;
+  REPORT_PPROF = 6;
 }
 
 message LabelNamesQuery {}
@@ -142,4 +148,14 @@ message TreeQuery {
 message TreeReport {
   TreeQuery query = 1;
   bytes tree = 2;
+}
+
+message PprofQuery {
+  int64 max_nodes = 1;
+  // TODO(kolesnikovae): Go PGO options.
+}
+
+message PprofReport {
+  PprofQuery query = 1;
+  bytes pprof = 2;
 }
