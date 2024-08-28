@@ -110,7 +110,7 @@ profilecli <command>
 ```
 
 {{< admonition type="caution" >}}
-If you're querying data from Grafana Cloud Profiles, be sure to use the url of your Grafana Cloud Pyroscope server in `PROFILECLI_URL` (e.g. `https://profiles-prod-001.grafana.net`) and **not** the url of your Grafana Cloud tenant (e.g. `<your tenant>.grafana.net`).
+If you're querying data from Cloud Profiles, be sure to use the url of your Cloud Profiles server in `PROFILECLI_URL` (e.g. `https://profiles-prod-001.grafana.net`) and **not** the url of your Grafana Cloud tenant (e.g. `<your tenant>.grafana.net`).
 {{< /admonition >}}
 
 ## Uploading a profile to a Pyroscope server using `profilecli`
