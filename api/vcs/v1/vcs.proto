@@ -8,6 +8,7 @@ service VCSService {
   rpc GithubRefresh(GithubRefreshRequest) returns (GithubRefreshResponse) {}
   rpc GetFile(GetFileRequest) returns (GetFileResponse) {}
   rpc GetCommit(GetCommitRequest) returns (GetCommitResponse) {}
+  rpc GetCommits(GetCommitsRequest) returns (GetCommitsResponse) {}
 }
 message GithubAppRequest {}
 
@@ -70,4 +71,27 @@ message CommitAuthor {
   string login = 1;
   // the author avatar URL
   string avatarURL = 2;
+}
+
+message CommitInfo {
+  // the commit message
+  string message = 1;
+  // the commit author login
+  CommitAuthor author = 2;
+  // the commit date
+  string date = 3;
+  // the commit sha
+  string sha = 4;
+  // the full URL to the commit
+  string URL = 5;
+}
+
+// New messages for the GetCommits method
+message GetCommitsRequest {
+  string repository_url = 1;
+  repeated string refs = 2;
+}
+
+message GetCommitsResponse {
+  repeated CommitInfo commits = 1;
 }

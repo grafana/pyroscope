@@ -15,8 +15,8 @@ import (
 	"golang.org/x/oauth2"
 
 	vcsv1 "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1"
-	vcsv1connect "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1/vcsv1connect"
-	client "github.com/grafana/pyroscope/pkg/querier/vcs/client"
+	"github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1/vcsv1connect"
+	"github.com/grafana/pyroscope/pkg/querier/vcs/client"
 	"github.com/grafana/pyroscope/pkg/querier/vcs/source"
 )
 
@@ -25,10 +25,6 @@ var _ vcsv1connect.VCSServiceHandler = (*Service)(nil)
 type Service struct {
 	logger     log.Logger
 	httpClient *http.Client
-}
-
-type gitHubCommitGetter interface {
-	GetCommit(context.Context, string, string, string) (*vcsv1.GetCommitResponse, error)
 }
 
 func New(logger log.Logger, reg prometheus.Registerer) *Service {
@@ -197,35 +193,64 @@ func (q *Service) GetCommit(ctx context.Context, req *connect.Request[vcsv1.GetC
 	repo := gitURL.GetRepoName()
 	ref := req.Msg.GetRef()
 
-	commit, err := q.tryGetCommit(ctx, ghClient, owner, repo, ref)
+	commit, err := tryGetCommit(ctx, ghClient, owner, repo, ref)
 	if err != nil {
 		return nil, err
 	}
 
-	return connect.NewResponse(commit), nil
+	return connect.NewResponse(&vcsv1.GetCommitResponse{
+		Message: commit.GetMessage(),
+		Author:  commit.GetAuthor(),
+		Date:    commit.GetDate(),
+		Sha:     commit.GetSha(),
+		URL:     commit.GetURL(),
+	}), nil
 }
 
-// tryGetCommit attempts to retrieve a commit using different ref formats (commit hash, branch, tag).
-// It tries each format in order and returns the first successful result.
-func (q *Service) tryGetCommit(ctx context.Context, client gitHubCommitGetter, owner, repo, ref string) (*vcsv1.GetCommitResponse, error) {
-	refFormats := []string{
-		ref,            // Try as a commit hash
-		"heads/" + ref, // Try as a branch
-		"tags/" + ref,  // Try as a tag
+func (q *Service) GetCommits(ctx context.Context, req *connect.Request[vcsv1.GetCommitsRequest]) (*connect.Response[vcsv1.GetCommitsResponse], error) {
+	token, err := tokenFromRequest(ctx, req)
+	if err != nil {
+		q.logger.Log("err", err, "msg", "failed to extract token from request")
+		return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("invalid token"))
 	}
 
-	var lastErr error
-	for _, format := range refFormats {
-		commit, err := client.GetCommit(ctx, owner, repo, format)
-		if err == nil {
-			return commit, nil
+	err = rejectExpiredToken(token)
+	if err != nil {
+		return nil, err
+	}
+
+	gitURL, err := giturl.NewGitURL(req.Msg.RepositoryUrl)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	if gitURL.GetProvider() != apis.ProviderGitHub.String() {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("only GitHub repositories are supported"))
+	}
+
+	ghClient, err := client.GithubClient(ctx, token, q.httpClient)
+	if err != nil {
+		return nil, err
+	}
+
+	owner := gitURL.GetOwnerName()
+	repo := gitURL.GetRepoName()
+	refs := req.Msg.Refs
+
+	commits, failedFetches, err := getCommits(ctx, ghClient, owner, repo, refs)
+	if err != nil {
+		q.logger.Log("err", err, "msg", "failed to get any commits", "owner", owner, "repo", repo)
+		return nil, err
+	}
+
+	if len(failedFetches) > 0 {
+		q.logger.Log("warn", "partial success fetching commits", "owner", owner, "repo", repo, "successCount", len(commits), "failureCount", len(failedFetches))
+		for _, fetchErr := range failedFetches {
+			q.logger.Log("err", fetchErr, "msg", "failed to fetch commit")
 		}
-
-		lastErr = err
-		q.logger.Log("err", lastErr, "msg", "Failed to get commit", "ref", format)
 	}
 
-	return nil, lastErr
+	return connect.NewResponse(&vcsv1.GetCommitsResponse{Commits: commits}), nil
 }
 
 func rejectExpiredToken(token *oauth2.Token) error {

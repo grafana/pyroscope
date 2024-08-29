@@ -650,6 +650,31 @@
         }
       }
     },
+    "v1CommitInfo": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string",
+          "title": "the commit message"
+        },
+        "author": {
+          "$ref": "#/definitions/v1CommitAuthor",
+          "title": "the commit author login"
+        },
+        "date": {
+          "type": "string",
+          "title": "the commit date"
+        },
+        "sha": {
+          "type": "string",
+          "title": "the commit sha"
+        },
+        "URL": {
+          "type": "string",
+          "title": "the full URL to the commit"
+        }
+      }
+    },
     "v1CompactionJob": {
       "type": "object",
       "properties": {
@@ -974,6 +999,18 @@
         "URL": {
           "type": "string",
           "title": "the full URL to the commit"
+        }
+      }
+    },
+    "v1GetCommitsResponse": {
+      "type": "object",
+      "properties": {
+        "commits": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1CommitInfo"
+          }
         }
       }
     },

@@ -28,3 +28,7 @@ func (f *Frontend) GetFile(ctx context.Context, req *connect.Request[vcsv1.GetFi
 func (f *Frontend) GetCommit(ctx context.Context, req *connect.Request[vcsv1.GetCommitRequest]) (*connect.Response[vcsv1.GetCommitResponse], error) {
 	return connectgrpc.RoundTripUnary[vcsv1.GetCommitRequest, vcsv1.GetCommitResponse](ctx, f, req)
 }
+
+func (f *Frontend) GetCommits(ctx context.Context, req *connect.Request[vcsv1.GetCommitsRequest]) (*connect.Response[vcsv1.GetCommitsResponse], error) {
+	return connectgrpc.RoundTripUnary[vcsv1.GetCommitsRequest, vcsv1.GetCommitsResponse](ctx, f, req)
+}
