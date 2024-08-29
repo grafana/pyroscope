@@ -3,6 +3,7 @@ package discovery
 import (
 	"fmt"
 	"github.com/go-kit/log"
+	"github.com/sercand/kuberesolver/v5"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/serviceconfig"
 	"net/url"
@@ -14,7 +15,8 @@ type GrpcDiscovery struct {
 }
 
 func NewGrpcDiscovery(l log.Logger, target string) (*GrpcDiscovery, error) {
-	l = log.With(l, "target", target, "component", "metastore-grpc-discovery")
+	kuberesolver.RegisterInCluster()
+	l = log.With(l, "target", target, "component", "metastore-grpc-discovery / kuberesolver")
 	u, err := url.Parse(target)
 	if err != nil {
 		return nil, err
