@@ -29,9 +29,6 @@ func New(address string, grpcClientConfig grpcclient.Config) (*Client, error) {
 }
 
 func dial(address string, grpcClientConfig grpcclient.Config) (*grpc.ClientConn, error) {
-	if err := grpcClientConfig.Validate(); err != nil {
-		return nil, err
-	}
 	grpcClientConfig.BackoffOnRatelimits = false
 	grpcClientConfig.ConnectTimeout = 0
 	options, err := grpcClientConfig.DialOption(nil, nil)

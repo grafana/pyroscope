@@ -12,6 +12,7 @@ import (
 	"golang.org/x/oauth2"
 
 	vcsv1 "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1"
+	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
 )
 
 // GithubClient returns a github client.
@@ -25,13 +26,18 @@ type githubClient struct {
 	client *github.Client
 }
 
-func (gh *githubClient) GetCommit(ctx context.Context, owner, repo, ref string) (*vcsv1.GetCommitResponse, error) {
+func (gh *githubClient) GetCommit(ctx context.Context, owner, repo, ref string) (*vcsv1.CommitInfo, error) {
 	commit, _, err := gh.client.Repositories.GetCommit(ctx, owner, repo, ref, nil)
 	if err != nil {
+		var githubErr *github.ErrorResponse
+		if errors.As(err, &githubErr) {
+			code := connectgrpc.HTTPToCode(int32(githubErr.Response.StatusCode))
+			return nil, connect.NewError(code, err)
+		}
 		return nil, err
 	}
 
-	return &vcsv1.GetCommitResponse{
+	return &vcsv1.CommitInfo{
 		Sha:     toString(commit.SHA),
 		Message: toString(commit.Commit.Message),
 		Author: &vcsv1.CommitAuthor{

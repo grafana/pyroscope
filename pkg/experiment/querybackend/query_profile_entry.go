@@ -14,16 +14,16 @@ import (
 )
 
 func profileEntryIterator(q *queryContext, groupBy ...string) (iter.Iterator[ProfileEntry], error) {
-	series, err := getSeriesLabels(q.svc.Index(), q.req.matchers, groupBy...)
+	series, err := getSeriesLabels(q.ds.Index(), q.req.matchers, groupBy...)
 	if err != nil {
 		return nil, err
 	}
 	results := parquetquery.NewBinaryJoinIterator(0,
-		q.svc.Profiles().Column(q.ctx, "SeriesIndex", parquetquery.NewMapPredicate(series)),
-		q.svc.Profiles().Column(q.ctx, "TimeNanos", parquetquery.NewIntBetweenPredicate(q.req.startTime, q.req.endTime)),
+		q.ds.Profiles().Column(q.ctx, "SeriesIndex", parquetquery.NewMapPredicate(series)),
+		q.ds.Profiles().Column(q.ctx, "TimeNanos", parquetquery.NewIntBetweenPredicate(q.req.startTime, q.req.endTime)),
 	)
 	results = parquetquery.NewBinaryJoinIterator(0, results,
-		q.svc.Profiles().Column(q.ctx, "StacktracePartition", nil),
+		q.ds.Profiles().Column(q.ctx, "StacktracePartition", nil),
 	)
 
 	buf := make([][]parquet.Value, 3)

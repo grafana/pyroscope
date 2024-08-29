@@ -35,7 +35,7 @@ func ListMetadata(
 		"end", endTime,
 		"query", query,
 	)
-	resp, err := client.ListBlocksForQuery(ctx, &metastorev1.ListBlocksForQueryRequest{
+	resp, err := client.QueryMetadata(ctx, &metastorev1.QueryMetadataRequest{
 		TenantId:  tenants,
 		StartTime: startTime,
 		EndTime:   endTime,
@@ -65,7 +65,7 @@ func printStats(logger log.Logger, blocks []*metastorev1.BlockMeta) {
 			s = &blockMetaStats{level: b.CompactionLevel}
 			m[b.CompactionLevel] = s
 		}
-		for _, x := range b.TenantServices {
+		for _, x := range b.Datasets {
 			s.size += x.Size
 		}
 		s.count++

@@ -5,7 +5,7 @@
       "minTime": "1721060035611",
       "maxTime": "1721060035611",
       "shard": 1,
-      "tenantServices": [
+      "datasets": [
         {
           "tenantId": "anonymous",
           "name": "pyroscope-test/query-frontend",
@@ -25,7 +25,7 @@
       "minTime": "1721060023235",
       "maxTime": "1721060023235",
       "shard": 1,
-      "tenantServices": [
+      "datasets": [
         {
           "tenantId": "anonymous",
           "name": "pyroscope-test/ingester",
@@ -45,7 +45,7 @@
       "minTime": "1721060010831",
       "maxTime": "1721060010831",
       "shard": 1,
-      "tenantServices": [
+      "datasets": [
         {
           "tenantId": "anonymous",
           "name": "pyroscope-test/alloy",
@@ -65,7 +65,7 @@
       "minTime": "1721060025159",
       "maxTime": "1721060025159",
       "shard": 1,
-      "tenantServices": [
+      "datasets": [
         {
           "tenantId": "anonymous",
           "name": "pyroscope-test/query-frontend",
@@ -85,7 +85,7 @@
       "minTime": "1721060026913",
       "maxTime": "1721060026913",
       "shard": 1,
-      "tenantServices": [
+      "datasets": [
         {
           "tenantId": "anonymous",
           "name": "pyroscope-test/ingester",
@@ -105,7 +105,7 @@
       "minTime": "1721060013534",
       "maxTime": "1721060013534",
       "shard": 1,
-      "tenantServices": [
+      "datasets": [
         {
           "tenantId": "anonymous",
           "name": "pyroscope-test/query-frontend",
@@ -125,7 +125,7 @@
       "minTime": "1721060015603",
       "maxTime": "1721060015603",
       "shard": 1,
-      "tenantServices": [
+      "datasets": [
         {
           "tenantId": "anonymous",
           "name": "pyroscope-test/ingester",
@@ -145,7 +145,7 @@
       "minTime": "1721060031203",
       "maxTime": "1721060031203",
       "shard": 1,
-      "tenantServices": [
+      "datasets": [
         {
           "tenantId": "anonymous",
           "name": "pyroscope-test/ingester",
@@ -165,7 +165,7 @@
       "minTime": "1721060032190",
       "maxTime": "1721060032190",
       "shard": 1,
-      "tenantServices": [
+      "datasets": [
         {
           "tenantId": "anonymous",
           "name": "pyroscope-test/ingester",
@@ -185,7 +185,7 @@
       "minTime": "1721060033248",
       "maxTime": "1721060033802",
       "shard": 1,
-      "tenantServices": [
+      "datasets": [
         {
           "tenantId": "anonymous",
           "name": "pyroscope-test/alloy",

@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"slices"
 	"time"
 
 	"connectrpc.com/connect"
@@ -37,6 +38,7 @@ import (
 	apiversion "github.com/grafana/pyroscope/pkg/api/version"
 	"github.com/grafana/pyroscope/pkg/compactor"
 	"github.com/grafana/pyroscope/pkg/distributor"
+	"github.com/grafana/pyroscope/pkg/embedded/grafana"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/ingester"
 	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
@@ -62,7 +64,7 @@ const (
 	Version           string = "version"
 	Distributor       string = "distributor"
 	Server            string = "server"
-	Ring              string = "ring"
+	IngesterRing      string = "ring"
 	Ingester          string = "ingester"
 	MemberlistKV      string = "memberlist-kv"
 	Querier           string = "querier"
@@ -79,16 +81,19 @@ const (
 	Admin             string = "admin"
 	TenantSettings    string = "tenant-settings"
 	AdHocProfiles     string = "ad-hoc-profiles"
+	EmbeddedGrafana   string = "embedded-grafana"
 
 	// Experimental modules
 
-	Metastore          string = "metastore"
-	MetastoreClient    string = "metastore-client"
-	SegmentWriter      string = "segment-writer"
-	QueryBackend       string = "query-backend"
-	QueryBackendClient string = "query-backend-client"
-	CompactionWorker   string = "compaction-worker"
-	HealthService      string = "health-service"
+	Metastore           string = "metastore"
+	MetastoreClient     string = "metastore-client"
+	SegmentWriter       string = "segment-writer"
+	SegmentWriterRing   string = "segment-writer-ring"
+	SegmentWriterClient string = "segment-writer-client"
+	QueryBackend        string = "query-backend"
+	QueryBackendClient  string = "query-backend-client"
+	CompactionWorker    string = "compaction-worker"
+	HealthService       string = "health-service"
 )
 
 var objectStoreTypeStats = usagestats.NewString("store_object_type")
@@ -262,7 +267,7 @@ func (f *Phlare) initQuerier() (services.Service, error) {
 		Overrides:       f.Overrides,
 		CfgProvider:     f.Overrides,
 		StorageBucket:   f.storageBucket,
-		IngestersRing:   f.ring,
+		IngestersRing:   f.ingesterRing,
 		Reg:             f.reg,
 		Logger:          log.With(f.logger, "component", "querier"),
 		ClientOptions:   []connect.ClientOption{f.auth},
@@ -324,11 +329,11 @@ func (f *Phlare) initGRPCGateway() (services.Service, error) {
 
 func (f *Phlare) initDistributor() (services.Service, error) {
 	f.Cfg.Distributor.DistributorRing.ListenPort = f.Cfg.Server.HTTPListenPort
-	d, err := distributor.New(f.Cfg.Distributor, f.ring, nil, f.Overrides, f.reg, log.With(f.logger, "component", "distributor"), f.auth)
+	logger := log.With(f.logger, "component", "distributor")
+	d, err := distributor.New(f.Cfg.Distributor, f.ingesterRing, nil, f.Overrides, f.reg, logger, f.segmentWriterClient, f.auth)
 	if err != nil {
 		return nil, err
 	}
-
 	f.API.RegisterDistributor(d)
 	return d, nil
 }
@@ -353,6 +358,7 @@ func (f *Phlare) initMemberlistKV() (services.Service, error) {
 
 	f.Cfg.Distributor.DistributorRing.KVStore.MemberlistKV = f.MemberlistKV.GetMemberlistKV
 	f.Cfg.Ingester.LifecyclerConfig.RingConfig.KVStore.MemberlistKV = f.MemberlistKV.GetMemberlistKV
+	f.Cfg.SegmentWriter.LifecyclerConfig.RingConfig.KVStore.MemberlistKV = f.MemberlistKV.GetMemberlistKV
 	f.Cfg.QueryScheduler.ServiceDiscovery.SchedulerRing.KVStore.MemberlistKV = f.MemberlistKV.GetMemberlistKV
 	f.Cfg.OverridesExporter.Ring.Ring.KVStore.MemberlistKV = f.MemberlistKV.GetMemberlistKV
 	f.Cfg.StoreGateway.ShardingRing.Ring.KVStore.MemberlistKV = f.MemberlistKV.GetMemberlistKV
@@ -365,15 +371,13 @@ func (f *Phlare) initMemberlistKV() (services.Service, error) {
 	return f.MemberlistKV, nil
 }
 
-func (f *Phlare) initRing() (_ services.Service, err error) {
-	f.ring, err = ring.New(f.Cfg.Ingester.LifecyclerConfig.RingConfig, "ingester", "ring", log.With(f.logger, "component", "ring"), prometheus.WrapRegistererWithPrefix("pyroscope_", f.reg))
+func (f *Phlare) initIngesterRing() (_ services.Service, err error) {
+	f.ingesterRing, err = ring.New(f.Cfg.Ingester.LifecyclerConfig.RingConfig, "ingester", "ring", log.With(f.logger, "component", "ring"), prometheus.WrapRegistererWithPrefix("pyroscope_", f.reg))
 	if err != nil {
 		return nil, err
 	}
-
-	f.API.RegisterRing(f.ring)
-
-	return f.ring, nil
+	f.API.RegisterIngesterRing(f.ingesterRing)
+	return f.ingesterRing, nil
 }
 
 func (f *Phlare) initStorage() (_ services.Service, err error) {
@@ -393,7 +397,7 @@ func (f *Phlare) initStorage() (_ services.Service, err error) {
 		f.storageBucket = b
 	}
 
-	if f.Cfg.Target.String() != All && f.storageBucket == nil {
+	if !slices.Contains(f.Cfg.Target, All) && f.storageBucket == nil {
 		return nil, errors.New("storage bucket configuration is required when running in microservices mode")
 	}
 
@@ -456,6 +460,8 @@ func (f *Phlare) initServer() (services.Service, error) {
 	// Not all default middleware works with http2 so we'll add then manually.
 	// see https://github.com/grafana/pyroscope/issues/231
 	f.Cfg.Server.DoNotAddDefaultHTTPMiddleware = true
+	f.Cfg.Server.ExcludeRequestInLog = true // gRPC-specific.
+	f.Cfg.Server.GRPCMiddleware = append(f.Cfg.Server.GRPCMiddleware, util.GRPCRecoveryInterceptor)
 
 	f.setupWorkerTimeout()
 	if f.isModuleActive(QueryScheduler) {
@@ -558,6 +564,10 @@ func (f *Phlare) initAdmin() (services.Service, error) {
 	f.admin = a
 	f.API.RegisterAdmin(a)
 	return a, nil
+}
+
+func (f *Phlare) initEmbeddedGrafana() (services.Service, error) {
+	return grafana.New(f.Cfg.EmbeddedGrafana, f.logger)
 }
 
 type statusService struct {

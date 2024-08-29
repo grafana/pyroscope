@@ -15,7 +15,7 @@ const (
 
 const (
 	defaultObjectSizeLoadInMemory        = 1 << 20
-	defaultTenantServiceSizeLoadInMemory = 1 << 20
+	defaultTenantDatasetSizeLoadInMemory = 1 << 20
 
 	maxRowsPerRowGroup       = 10 << 10
 	symbolsPrefetchSize      = 32 << 10

@@ -42,17 +42,24 @@ type Worker struct {
 }
 
 type Config struct {
-	JobCapacity     int    `yaml:"job_capacity"`
-	SmallObjectSize int    `yaml:"small_object_size_bytes"`
-	TempDir         string `yaml:"temp_dir"`
+	JobCapacity     int           `yaml:"job_capacity"`
+	JobPollInterval time.Duration `yaml:"job_poll_interval"`
+	SmallObjectSize int           `yaml:"small_object_size_bytes"`
+	TempDir         string        `yaml:"temp_dir"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	const prefix = "compaction-worker."
 	tempdir := filepath.Join(os.TempDir(), "pyroscope-compactor")
-	f.IntVar(&cfg.JobCapacity, prefix+"job-capacity", 3, "How many concurrent jobs will a worker run at most.")
+	f.IntVar(&cfg.JobCapacity, prefix+"job-capacity", 3, "How many concurrent jobs will a compaction worker run at most.")
+	f.DurationVar(&cfg.JobPollInterval, prefix+"job-poll-interval", 5*time.Second, "How often will a compaction worker poll for jobs.")
 	f.IntVar(&cfg.SmallObjectSize, prefix+"small-object-size-bytes", 8<<20, "Size of the object that can be loaded in memory.")
 	f.StringVar(&cfg.TempDir, prefix+"temp-dir", tempdir, "Temporary directory for compaction jobs.")
+}
+
+func (cfg *Config) Validate() error {
+	// TODO(kolesnikovae): implement.
+	return nil
 }
 
 func New(config Config, logger log.Logger, metastoreClient *metastoreclient.Client, storage objstore.Bucket, reg prometheus.Registerer) (*Worker, error) {
@@ -76,7 +83,7 @@ func (w *Worker) starting(ctx context.Context) (err error) {
 }
 
 func (w *Worker) running(ctx context.Context) error {
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(w.config.JobPollInterval)
 	defer ticker.Stop()
 	go func() {
 		for {
@@ -255,7 +262,7 @@ func (w *Worker) startJob(ctx context.Context, job *compactorv1.CompactionJob) *
 				"block_compaction_level", c.CompactionLevel,
 				"block_min_time", c.MinTime,
 				"block_max_time", c.MinTime,
-				"tenant_services", len(c.TenantServices))
+				"datasets", len(c.Datasets))
 		}
 
 		job.Status.Status = compactorv1.CompactionStatus_COMPACTION_STATUS_SUCCESS

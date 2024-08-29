@@ -30,6 +30,7 @@ EMBEDASSETS ?= embedassets
 # Build flags
 VPREFIX := github.com/grafana/pyroscope/pkg/util/build
 GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH) -X $(VPREFIX).Version=$(IMAGE_TAG) -X $(VPREFIX).Revision=$(GIT_REVISION) -X $(VPREFIX).BuildDate=$(GIT_LAST_COMMIT_DATE)
+GO_GCFLAGS_DEBUG := all="-N -l"
 
 # Folders with go.mod file
 GO_MOD_PATHS := api/ ebpf/ examples/language-sdk-instrumentation/golang-push/rideshare examples/language-sdk-instrumentation/golang-push/simple/
@@ -77,10 +78,15 @@ build: frontend/build go/bin ## Do a production build (requiring the frontend bu
 build-dev: ## Do a dev build (without requiring the frontend)
 	$(MAKE) EMBEDASSETS="" go/bin
 
-
 .PHONY: frontend/build
 frontend/build:
-	docker build  -f cmd/pyroscope/frontend.Dockerfile --output=public/build .
+	docker build -f cmd/pyroscope/frontend.Dockerfile --output=public/build .
+
+.PHONY: profilecli/build
+profilecli/build: go/bin-profilecli ## Build the profilecli binary
+
+.PHONY: pyroscope/build
+pyroscope/build: go/bin-pyroscope ## Build just the pyroscope binary
 
 .PHONY: release
 release/prereq: $(BIN)/goreleaser ## Ensure release pre requesites are met
@@ -110,23 +116,40 @@ release/build: release/prereq ## Build current platform release binaries
 go/deps:
 	$(GO) mod tidy
 
-define go_build
-	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 $(GO) build -tags "netgo $(EMBEDASSETS)" -ldflags "-extldflags \"-static\" $(1)" ./cmd/pyroscope
-	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 $(GO) build -ldflags "-extldflags \"-static\" $(1)" ./cmd/profilecli
+define go_build_pyroscope
+	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 $(GO) build -tags "netgo $(EMBEDASSETS)" -ldflags "-extldflags \"-static\" $(1)" -gcflags=$(2) ./cmd/pyroscope
+endef
+
+define go_build_profilecli
+	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 $(GO) build -ldflags "-extldflags \"-static\" $(1)" -gcflags=$(2) ./cmd/profilecli
 endef
 
 .PHONY: go/bin-debug
 go/bin-debug:
-	$(call go_build,$(GO_LDFLAGS))
+	$(call go_build_pyroscope,$(GO_LDFLAGS),$(GO_GCFLAGS_DEBUG))
+	$(call go_build_profilecli,$(GO_LDFLAGS),$(GO_GCFLAGS_DEBUG))
 
 .PHONY: go/bin
 go/bin:
-	$(call go_build,-s -w $(GO_LDFLAGS))
+	$(call go_build_pyroscope,-s -w $(GO_LDFLAGS),)
+	$(call go_build_profilecli,-s -w $(GO_LDFLAGS),)
+
+.PHONY: go/bin-pyroscope-debug
+go/bin-pyroscope-debug:
+	$(call go_build_pyroscope,$(GO_LDFLAGS),$(GO_GCFLAGS_DEBUG))
+
+.PHONY: go/bin-profilecli-debug
+go/bin-profilecli-debug:
+	$(call go_build_profilecli,$(GO_LDFLAGS),$(GO_GCFLAGS_DEBUG))
 
 .PHONY: go/lint
 go/lint: $(BIN)/golangci-lint
 	$(BIN)/golangci-lint run
 	$(GO) vet ./...
+
+.PHONY: update-contributors
+update-contributors: ## Update the contributors in README.md
+	go run ./tools/update-contributors
 
 .PHONY: go/mod
 go/mod: $(foreach P,$(GO_MOD_PATHS),go/mod_tidy/$P)
@@ -180,7 +203,7 @@ define deploy
 		--set pyroscope.podAnnotations."profiles\.grafana\.com\/goroutine\.port_name"=http-metrics \
 		--set pyroscope.extraEnvVars.JAEGER_AGENT_HOST=jaeger.monitoring.svc.cluster.local. \
 		--set pyroscope.extraArgs."pyroscopedb\.max-block-duration"=5m
-  endef
+endef
 
 .PHONY: docker-image/pyroscope/build-debug
 docker-image/pyroscope/build-debug: GOOS=linux
@@ -317,6 +340,10 @@ $(BIN)/mage: Makefile go.mod
 	@mkdir -p $(@D)
 	GOBIN=$(abspath $(@D)) $(GO) install github.com/magefile/mage@v1.13.0
 
+$(BIN)/mockery: Makefile go.mod
+	@mkdir -p $(@D)
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/vektra/mockery/v2@v2.45.0
+
 $(BIN)/updater: Makefile
 	@mkdir -p $(@D)
 	GOBIN=$(abspath $(@D)) GOPRIVATE=github.com/grafana/deployment_tools $(GO) install github.com/grafana/deployment_tools/drone/plugins/cmd/updater@d64d509
@@ -433,3 +460,7 @@ docs/%:
 .PHONY: run
 run: ## Run the pyroscope binary (pass parameters with 'make run PARAMS=-myparam')
 	./pyroscope $(PARAMS)
+
+.PHONY: mockery
+mockery: $(BIN)/mockery
+	$(BIN)/mockery

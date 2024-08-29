@@ -74,17 +74,17 @@ func registerQueryType(
 type queryContext struct {
 	ctx  context.Context
 	log  log.Logger
-	meta *metastorev1.TenantService
+	meta *metastorev1.Dataset
 	req  *request
 	obj  *block.Object
-	svc  *block.TenantService
+	ds   *block.Dataset
 	err  error
 }
 
 func newQueryContext(
 	ctx context.Context,
 	logger log.Logger,
-	meta *metastorev1.TenantService,
+	meta *metastorev1.Dataset,
 	req *request,
 	obj *block.Object,
 ) *queryContext {
@@ -94,7 +94,7 @@ func newQueryContext(
 		req:  req,
 		meta: meta,
 		obj:  obj,
-		svc:  block.NewTenantService(meta, obj),
+		ds:   block.NewDataset(meta, obj),
 	}
 }
 
@@ -119,11 +119,11 @@ func executeQuery(q *queryContext, query *querybackendv1.Query) (r *querybackend
 }
 
 func (q *queryContext) open() error {
-	return q.svc.Open(q.ctx, q.sections()...)
+	return q.ds.Open(q.ctx, q.sections()...)
 }
 
 func (q *queryContext) close(err error) error {
-	return q.svc.CloseWithError(err)
+	return q.ds.CloseWithError(err)
 }
 
 func (q *queryContext) sections() []block.Section {

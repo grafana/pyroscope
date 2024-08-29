@@ -11,6 +11,7 @@ import (
 	"os"
 	"runtime"
 	"runtime/debug"
+	"slices"
 	"sort"
 	"strings"
 
@@ -42,8 +43,10 @@ import (
 	"github.com/grafana/pyroscope/pkg/cfg"
 	"github.com/grafana/pyroscope/pkg/compactor"
 	"github.com/grafana/pyroscope/pkg/distributor"
+	"github.com/grafana/pyroscope/pkg/embedded/grafana"
 	compactionworker "github.com/grafana/pyroscope/pkg/experiment/compactor"
 	segmentwriter "github.com/grafana/pyroscope/pkg/experiment/ingester"
+	segmentwriterclient "github.com/grafana/pyroscope/pkg/experiment/ingester/client"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore"
 	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
 	"github.com/grafana/pyroscope/pkg/experiment/querybackend"
@@ -95,6 +98,8 @@ type Config struct {
 	MultitenancyEnabled bool              `yaml:"multitenancy_enabled,omitempty"`
 	Analytics           usagestats.Config `yaml:"analytics"`
 	ShowBanner          bool              `yaml:"show_banner,omitempty"`
+
+	EmbeddedGrafana grafana.Config `yaml:"embedded_grafana,omitempty"`
 
 	ConfigFile      string `yaml:"-"`
 	ConfigExpandEnv bool   `yaml:"-"`
@@ -166,17 +171,10 @@ func (c *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) 
 	c.LimitsConfig.RegisterFlags(f)
 	c.Compactor.RegisterFlags(f, log.NewLogfmtLogger(os.Stderr))
 	c.API.RegisterFlags(f)
-
-	c.v2Experiment = os.Getenv("PYROSCOPE_V2_EXPERIMENT") != ""
-	if c.v2Experiment {
-		c.Metastore.RegisterFlags(f)
-		c.SegmentWriter.RegisterFlags(f)
-		c.QueryBackend.RegisterFlags(f)
-		c.CompactionWorker.RegisterFlags(f)
-	}
+	c.EmbeddedGrafana.RegisterFlags(f)
 }
 
-// registerServerFlagsWithChangedDefaultValues registers *Config.Server flags, but overrides some defaults set by the weaveworks package.
+// registerServerFlagsWithChangedDefaultValues registers *Config.Server flags, but overrides some defaults set by the dskit package.
 func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 	throwaway := flag.NewFlagSet("throwaway", flag.PanicOnError)
 
@@ -190,15 +188,32 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 	c.Worker.RegisterFlags(throwaway)
 	c.OverridesExporter.RegisterFlags(throwaway, log.NewLogfmtLogger(os.Stderr))
 
+	c.v2Experiment = os.Getenv("PYROSCOPE_V2_EXPERIMENT") != ""
+	if c.v2Experiment {
+		c.Metastore.RegisterFlags(throwaway)
+		c.SegmentWriter.RegisterFlags(throwaway)
+		c.QueryBackend.RegisterFlags(throwaway)
+		c.CompactionWorker.RegisterFlags(throwaway)
+		c.LimitsConfig.WritePathOverrides.RegisterFlags(throwaway)
+	}
+
+	overrides := map[string]string{
+		"server.http-listen-port":                           "4040",
+		"distributor.replication-factor":                    "1",
+		"query-scheduler.service-discovery-mode":            schedulerdiscovery.ModeRing,
+		"server.grpc-max-recv-msg-size-bytes":               "104857600",
+		"server.grpc-max-send-msg-size-bytes":               "104857600",
+		"server.grpc.keepalive.min-time-between-pings":      "1s",
+		"segment-writer.grpc-client-config.connect-timeout": "1s",
+		"segment-writer.num-tokens":                         "4",
+		"segment-writer.heartbeat-timeout":                  "1m",
+		"segment-writer.unregister-on-shutdown":             "false",
+	}
+
 	throwaway.VisitAll(func(f *flag.Flag) {
-		// Ignore errors when setting new values. We have a test to verify that it works.
-		switch f.Name {
-		case "server.http-listen-port":
-			_ = f.Value.Set("4040")
-		case "distributor.replication-factor":
-			_ = f.Value.Set("1")
-		case "query-scheduler.service-discovery-mode":
-			_ = f.Value.Set(schedulerdiscovery.ModeRing)
+		if v, ok := overrides[f.Name]; ok {
+			// Ignore errors when setting new values. We have a test to verify that it works.
+			_ = f.Value.Set(v)
 		}
 		fs.Var(f.Value, f.Name, f.Usage)
 	})
@@ -216,6 +231,7 @@ func (c *Config) Validate() error {
 
 func (c *Config) ApplyDynamicConfig() cfg.Source {
 	c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store = "memberlist"
+	c.SegmentWriter.LifecyclerConfig.RingConfig.KVStore.Store = "memberlist"
 	c.Distributor.DistributorRing.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
 	c.OverridesExporter.Ring.Ring.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
 	c.Frontend.QuerySchedulerDiscovery.SchedulerRing.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
@@ -249,7 +265,7 @@ type Phlare struct {
 	Server         *server.Server
 	SignalHandler  *signals.Handler
 	MemberlistKV   *memberlist.KVInitService
-	ring           *ring.Ring
+	ingesterRing   *ring.Ring
 	usageReport    *usagestats.Reporter
 	RuntimeConfig  *runtimeconfig.Manager
 	Overrides      *validation.Overrides
@@ -269,10 +285,11 @@ type Phlare struct {
 	frontend *frontend.Frontend
 
 	// Experimental modules.
-	//nolint:unused
-	segmentWriter   *segmentwriter.SegmentWriter
-	metastore       *metastore.Metastore
-	metastoreClient *metastoreclient.Client
+	segmentWriter       *segmentwriter.SegmentWriterService
+	segmentWriterClient *segmentwriterclient.Client
+	segmentWriterRing   *ring.Ring
+	metastore           *metastore.Metastore
+	metastoreClient     *metastoreclient.Client
 	//nolint:unused
 	queryBackend       *querybackend.QueryBackend
 	queryBackendClient *querybackendclient.Client
@@ -326,7 +343,7 @@ func (f *Phlare) setupModuleManager() error {
 	mm.RegisterModule(Storage, f.initStorage, modules.UserInvisibleModule)
 	mm.RegisterModule(GRPCGateway, f.initGRPCGateway, modules.UserInvisibleModule)
 	mm.RegisterModule(MemberlistKV, f.initMemberlistKV, modules.UserInvisibleModule)
-	mm.RegisterModule(Ring, f.initRing, modules.UserInvisibleModule)
+	mm.RegisterModule(IngesterRing, f.initIngesterRing, modules.UserInvisibleModule)
 	mm.RegisterModule(RuntimeConfig, f.initRuntimeConfig, modules.UserInvisibleModule)
 	mm.RegisterModule(Overrides, f.initOverrides, modules.UserInvisibleModule)
 	mm.RegisterModule(OverridesExporter, f.initOverridesExporter)
@@ -345,6 +362,7 @@ func (f *Phlare) setupModuleManager() error {
 	mm.RegisterModule(All, nil)
 	mm.RegisterModule(TenantSettings, f.initTenantSettings)
 	mm.RegisterModule(AdHocProfiles, f.initAdHocProfiles)
+	mm.RegisterModule(EmbeddedGrafana, f.initEmbeddedGrafana)
 
 	// Add dependencies
 	deps := map[string][]string{
@@ -352,8 +370,8 @@ func (f *Phlare) setupModuleManager() error {
 
 		Server:            {GRPCGateway},
 		API:               {Server},
-		Distributor:       {Overrides, Ring, API, UsageReport},
-		Querier:           {Overrides, API, MemberlistKV, Ring, UsageReport, Version},
+		Distributor:       {Overrides, IngesterRing, API, UsageReport},
+		Querier:           {Overrides, API, MemberlistKV, IngesterRing, UsageReport, Version},
 		QueryFrontend:     {OverridesExporter, API, MemberlistKV, UsageReport, Version},
 		QueryScheduler:    {Overrides, API, MemberlistKV, UsageReport},
 		Ingester:          {Overrides, API, MemberlistKV, Storage, UsageReport, Version},
@@ -363,32 +381,37 @@ func (f *Phlare) setupModuleManager() error {
 		Overrides:         {RuntimeConfig},
 		OverridesExporter: {Overrides, MemberlistKV},
 		RuntimeConfig:     {API},
-		Ring:              {API, MemberlistKV},
+		IngesterRing:      {API, MemberlistKV},
 		MemberlistKV:      {API},
 		Admin:             {API, Storage},
 		Version:           {API, MemberlistKV},
 		TenantSettings:    {API, Storage},
 		AdHocProfiles:     {API, Overrides, Storage},
+		EmbeddedGrafana:   {API},
 	}
 
 	// Experimental modules.
 	if f.Cfg.v2Experiment {
 		experimentalModules := map[string][]string{
-			SegmentWriter:    {Overrides, API, MemberlistKV, Storage, UsageReport, MetastoreClient},
-			Metastore:        {Overrides, API, HealthService, MetastoreClient},
-			CompactionWorker: {Overrides, API, Storage, Overrides, MetastoreClient},
-			QueryBackend:     {Overrides, API, Storage, Overrides, QueryBackendClient},
-			HealthService:    {Overrides, API},
+			SegmentWriter:       {Overrides, API, MemberlistKV, Storage, UsageReport, MetastoreClient},
+			Metastore:           {Overrides, API, HealthService, MetastoreClient},
+			CompactionWorker:    {Overrides, API, Storage, Overrides, MetastoreClient},
+			QueryBackend:        {Overrides, API, Storage, Overrides, QueryBackendClient},
+			SegmentWriterRing:   {Overrides, API, MemberlistKV},
+			SegmentWriterClient: {SegmentWriterRing},
+			HealthService:       {API},
 		}
 		for k, v := range experimentalModules {
 			deps[k] = v
 		}
 
-		// TODO(kolesnikovae): Inject new distributor dependencies, if any.
 		deps[All] = append(deps[All], SegmentWriter, Metastore, CompactionWorker, QueryBackend, HealthService)
 		deps[QueryFrontend] = append(deps[QueryFrontend], MetastoreClient, QueryBackendClient)
+		deps[Distributor] = append(deps[Distributor], SegmentWriterClient)
 
 		mm.RegisterModule(SegmentWriter, f.initSegmentWriter)
+		mm.RegisterModule(SegmentWriterRing, f.initSegmentWriterRing, modules.UserInvisibleModule)
+		mm.RegisterModule(SegmentWriterClient, f.initSegmentWriterClient, modules.UserInvisibleModule)
 		mm.RegisterModule(Metastore, f.initMetastore)
 		mm.RegisterModule(CompactionWorker, f.initCompactionWorker)
 		mm.RegisterModule(QueryBackend, f.initQueryBackend)
@@ -453,7 +476,7 @@ func (f *Phlare) Run() error {
 		}
 
 		// Start profiling when Pyroscope is ready
-		if !f.Cfg.SelfProfiling.DisablePush && f.Cfg.Target.String() == All {
+		if !f.Cfg.SelfProfiling.DisablePush && slices.Contains(f.Cfg.Target, All) {
 			_, err := pyroscope.Start(pyroscope.Config{
 				ApplicationName: "pyroscope",
 				ServerAddress:   fmt.Sprintf("http://%s:%d", "localhost", f.Cfg.Server.HTTPListenPort),
@@ -570,6 +593,12 @@ func (f *Phlare) readyHandler(sm *services.Manager) http.HandlerFunc {
 		if f.ingester != nil {
 			if err := f.ingester.CheckReady(r.Context()); err != nil {
 				http.Error(w, "Ingester not ready: "+err.Error(), http.StatusServiceUnavailable)
+				return
+			}
+		}
+		if f.segmentWriter != nil {
+			if err := f.segmentWriter.CheckReady(r.Context()); err != nil {
+				http.Error(w, "Segment Writer not ready: "+err.Error(), http.StatusServiceUnavailable)
 				return
 			}
 		}

@@ -13,6 +13,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/grafana/dskit/dns"
 	"github.com/grafana/dskit/flagext"
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/services"
@@ -46,6 +47,7 @@ type Config struct {
 	GRPCClientConfig grpcclient.Config `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with the metastore."`
 	DataDir          string            `yaml:"data_dir"`
 	Raft             RaftConfig        `yaml:"raft"`
+	Compaction       CompactionConfig  `yaml:"compaction_config"`
 }
 
 type RaftConfig struct {
@@ -67,6 +69,17 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix(prefix+"grpc-client-config", f)
 	f.StringVar(&cfg.DataDir, prefix+"data-dir", "./data-metastore/data", "")
 	cfg.Raft.RegisterFlagsWithPrefix(prefix+"raft.", f)
+	cfg.Compaction.RegisterFlagsWithPrefix(prefix+"compaction.", f)
+}
+
+func (cfg *Config) Validate() error {
+	if cfg.Address == "" {
+		return fmt.Errorf("metastore.address is required")
+	}
+	if err := cfg.GRPCClientConfig.Validate(); err != nil {
+		return err
+	}
+	return cfg.Raft.Validate()
 }
 
 func (cfg *RaftConfig) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
@@ -77,6 +90,11 @@ func (cfg *RaftConfig) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.StringVar(&cfg.ServerID, prefix+"server-id", "localhost:9099", "")
 	f.StringVar(&cfg.AdvertiseAddress, prefix+"advertise-address", "localhost:9099", "")
 	f.DurationVar(&cfg.ApplyTimeout, prefix+"apply-timeout", 5*time.Second, "")
+}
+
+func (cfg *RaftConfig) Validate() error {
+	// TODO(kolesnikovae): Check the params.
+	return nil
 }
 
 type Metastore struct {
@@ -113,6 +131,8 @@ type Metastore struct {
 	metrics    *metastoreMetrics
 	client     *metastoreclient.Client
 	readySince time.Time
+
+	dnsProvider *dns.Provider
 }
 
 type Limits interface{}
@@ -130,7 +150,7 @@ func New(config Config, limits Limits, logger log.Logger, reg prometheus.Registe
 		client:  client,
 	}
 	m.leaderhealth = raftleader.NewRaftLeaderHealthObserver(hs, logger, raftleader.NewMetrics(reg))
-	m.state = newMetastoreState(logger, m.db, m.reg)
+	m.state = newMetastoreState(logger, m.db, m.reg, &config.Compaction)
 	m.service = services.NewBasicService(m.starting, m.running, m.stopping)
 	return m, nil
 }
@@ -143,7 +163,7 @@ func (m *Metastore) Shutdown() error {
 	return nil
 }
 
-func (m *Metastore) starting(ctx context.Context) error {
+func (m *Metastore) starting(context.Context) error {
 	if err := m.db.open(false); err != nil {
 		return fmt.Errorf("failed to initialize database: %w", err)
 	}
@@ -209,6 +229,8 @@ func (m *Metastore) initRaft() (err error) {
 		if err = m.bootstrap(); err != nil {
 			return fmt.Errorf("failed to bootstrap cluster: %w", err)
 		}
+	} else {
+		_ = level.Info(m.logger).Log("msg", "restoring existing state, not bootstraping")
 	}
 
 	m.leaderhealth.Register(m.raft, metastoreRaftLeaderHealthServiceName)

@@ -24,6 +24,7 @@ The .NET Profiler supports the following profiling types:
 * Allocations
 * Lock contention
 * Exceptions
+* Live heap (requires .NET 7+)
 
 ### Compatibility
 
@@ -44,13 +45,13 @@ The Pyroscope server can be a local server for development or a remote server fo
 1. Obtain `Pyroscope.Profiler.Native.so` and `Pyroscope.Linux.ApiWrapper.x64.so` from the [latest tarball](https://github.com/pyroscope-io/pyroscope-dotnet/releases/):
 
 ```bash
-curl -s -L https://github.com/grafana/pyroscope-dotnet/releases/download/v0.8.14-pyroscope/pyroscope.0.8.14-glibc-x86_64.tar.gz  | tar xvz -C .
+curl -s -L https://github.com/grafana/pyroscope-dotnet/releases/download/v0.8.19-pyroscope/pyroscope.0.8.19-glibc-x86_64.tar.gz  | tar xvz -C .
 ```
 
 Or copy them from the [latest docker image](https://hub.docker.com/r/pyroscope/pyroscope-dotnet/tags). We have `glibc` and `musl` versions:
 ```dockerfile
-COPY --from=pyroscope/pyroscope-dotnet:0.8.14-glibc /Pyroscope.Profiler.Native.so ./Pyroscope.Profiler.Native.so
-COPY --from=pyroscope/pyroscope-dotnet:0.8.14-glibc /Pyroscope.Linux.ApiWrapper.x64.so ./Pyroscope.Linux.ApiWrapper.x64.so
+COPY --from=pyroscope/pyroscope-dotnet:0.8.19-glibc /Pyroscope.Profiler.Native.so ./Pyroscope.Profiler.Native.so
+COPY --from=pyroscope/pyroscope-dotnet:0.8.19-glibc /Pyroscope.Linux.ApiWrapper.x64.so ./Pyroscope.Linux.ApiWrapper.x64.so
 ````
 
 2. Set the following required environment variables to enable profiler
@@ -171,6 +172,7 @@ Here is a simple [example](https://github.com/grafana/pyroscope/blob/main/exampl
 | PYROSCOPE_PROFILING_EXCEPTION_ENABLED  | Boolean      | If set to true, enables the Exceptions profiling. Defaults to false.                                                              |
 | PYROSCOPE_PROFILING_ALLOCATION_ENABLED | Boolean      | If set to true, enables the Allocations profiling. Defaults to false.                                                             |
 | PYROSCOPE_PROFILING_LOCK_ENABLED       | Boolean      | If set to true, enables the Lock Contention profiling. Defaults to false.                                                         |
+| PYROSCOPE_PROFILING_HEAP_ENABLED       | Boolean      | If set to true, enables the Live heap profiling. Requires .NET 7+. Defaults to false.                                             |
 | PYROSCOPE_BASIC_AUTH_USER              | String       | For HTTP Basic Authentication, use this to send profiles to authenticated server, for example Grafana Cloud                       |
 | PYROSCOPE_BASIC_AUTH_PASSWORD          | String       | For HTTP Basic Authentication, use this to send profiles to authenticated server, for example Grafana Cloud                       |
 | PYROSCOPE_TENANT_ID                    | String       | Only needed if using multi-tenancy in Pyroscope.                                                                                  |

@@ -1,7 +1,11 @@
 package health
 
 import (
+	"context"
+
 	"github.com/grafana/dskit/services"
+	"github.com/pkg/errors"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 )
@@ -30,4 +34,16 @@ func NewGRPCHealthService() *GRPCHealthService {
 type GRPCHealthService struct {
 	services.Service
 	*health.Server
+}
+
+var NoOpClient = noOpClient{}
+
+type noOpClient struct{}
+
+func (noOpClient) Check(context.Context, *grpc_health_v1.HealthCheckRequest, ...grpc.CallOption) (*grpc_health_v1.HealthCheckResponse, error) {
+	return &grpc_health_v1.HealthCheckResponse{Status: grpc_health_v1.HealthCheckResponse_SERVING}, nil
+}
+
+func (noOpClient) Watch(context.Context, *grpc_health_v1.HealthCheckRequest, ...grpc.CallOption) (grpc_health_v1.Health_WatchClient, error) {
+	return nil, errors.New("not implemented")
 }

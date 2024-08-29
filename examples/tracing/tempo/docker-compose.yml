@@ -43,7 +43,6 @@ services:
       dockerfile: Dockerfile.otel-instrumentation
 
   rideshare-dotnet-eu-west:
-    platform: linux/amd64
     ports:
       - 5000
     hostname: rideshare-dotnet-eu-west

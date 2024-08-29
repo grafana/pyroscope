@@ -1,14 +1,11 @@
 package ingester
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
-	"encoding/json"
-	"flag"
 	"fmt"
-	"os"
 	"path"
-	"path/filepath"
 	"runtime/pprof"
 	"slices"
 	"strings"
@@ -19,50 +16,45 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
 	"github.com/oklog/ulid"
-	"github.com/prometheus/common/model"
 	"github.com/thanos-io/objstore"
-
-	"github.com/grafana/pyroscope/pkg/experiment/ingester/loki/index"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/client"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/ingester/memdb"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/phlaredb"
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
-	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/util/math"
 )
 
 const pathSegments = "segments"
+const pathDLQ = "dlq"
 const pathAnon = tenant.DefaultTenantID
 const pathBlock = "block.bin"
 
-type Config struct{}
-
-func (cfg *Config) RegisterFlags(f *flag.FlagSet) {}
-
-type SegmentWriter struct {
-	// TODO: Implement
-}
+var ErrMetastoreDLQFailed = fmt.Errorf("failed to store block metadata in DLQ")
 
 type shardKey uint32
 
+type segmentWriterConfig struct {
+	segmentDuration time.Duration
+}
+
 type segmentsWriter struct {
 	segmentDuration time.Duration
-	phlarectx       context.Context
+
 	l               log.Logger
-	shards          map[shardKey]*shard
-	shardsLock      sync.RWMutex
-	cfg             phlaredb.Config
 	bucket          objstore.Bucket
-	metastoreClient *metastoreclient.Client
-	//wg              sync.WaitGroup
-	cancel    context.CancelFunc
-	metrics   *segmentMetrics
+	metastoreClient metastorev1.MetastoreServiceClient
+
+	shards     map[shardKey]*shard
+	shardsLock sync.RWMutex
+
 	cancelCtx context.Context
+	cancel    context.CancelFunc
+
+	metrics     *segmentMetrics
+	headMetrics *memdb.HeadMetrics
 }
 
 type shard struct {
@@ -74,13 +66,14 @@ type shard struct {
 	concatBuf   []byte
 }
 
-func (sh *shard) ingest(fn func(head segmentIngest) error) (segmentWaitFlushed, error) {
+func (sh *shard) ingest(fn func(head segmentIngest)) segmentWaitFlushed {
 	sh.currentLock.RLock()
 	s := sh.current
 	s.inFlightProfiles.Add(1)
 	sh.currentLock.RUnlock()
 	defer s.inFlightProfiles.Done()
-	return s, fn(s)
+	fn(s)
+	return s
 }
 
 func (sh *shard) loop(ctx context.Context) {
@@ -126,15 +119,14 @@ func (sh *shard) flushSegment(ctx context.Context) {
 	}()
 }
 
-func newSegmentWriter(phlarectx context.Context, l log.Logger, metrics *segmentMetrics, cfg phlaredb.Config, bucket objstore.Bucket, segmentDuration time.Duration, metastoreClient *metastoreclient.Client) *segmentsWriter {
+func newSegmentWriter(l log.Logger, metrics *segmentMetrics, hm *memdb.HeadMetrics, cfg segmentWriterConfig, bucket objstore.Bucket, metastoreClient metastorev1.MetastoreServiceClient) *segmentsWriter {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	sw := &segmentsWriter{
 		metrics:         metrics,
-		segmentDuration: segmentDuration,
-		phlarectx:       phlarectx,
+		headMetrics:     hm,
+		segmentDuration: cfg.segmentDuration,
 		l:               l,
 		bucket:          bucket,
-		cfg:             cfg,
 		shards:          make(map[shardKey]*shard),
 		metastoreClient: metastoreClient,
 		cancel:          cancelFunc,
@@ -144,7 +136,7 @@ func newSegmentWriter(phlarectx context.Context, l log.Logger, metrics *segmentM
 	return sw
 }
 
-func (sw *segmentsWriter) ingest(shard shardKey, fn func(head segmentIngest) error) (await segmentWaitFlushed, err error) {
+func (sw *segmentsWriter) ingest(shard shardKey, fn func(head segmentIngest)) (await segmentWaitFlushed) {
 	sw.shardsLock.RLock()
 	s, ok := sw.shards[shard]
 	sw.shardsLock.RUnlock()
@@ -195,30 +187,34 @@ func (sw *segmentsWriter) newShard(sk shardKey) *shard {
 }
 func (sw *segmentsWriter) newSegment(sh *shard, sk shardKey, sl log.Logger) *segment {
 	id := ulid.MustNew(ulid.Timestamp(time.Now()), rand.Reader)
-	dataPath := path.Join(sw.cfg.DataPath, pathSegments, fmt.Sprintf("%d", sk), pathAnon, id.String())
+	sshard := fmt.Sprintf("%d", sk)
+	blockPath := path.Join(pathSegments, sshard, pathAnon, id.String(), pathBlock)
 	s := &segment{
-		l:        log.With(sl, "segment-id", id.String()),
-		ulid:     id,
-		heads:    make(map[serviceKey]serviceHead),
-		sw:       sw,
-		sh:       sh,
-		shard:    sk,
-		sshard:   fmt.Sprintf("%d", sk),
-		dataPath: dataPath,
-		doneChan: make(chan struct{}),
+		l:         log.With(sl, "segment-id", id.String()),
+		ulid:      id,
+		heads:     make(map[serviceKey]serviceHead),
+		sw:        sw,
+		sh:        sh,
+		shard:     sk,
+		sshard:    sshard,
+		blockPath: blockPath,
+		doneChan:  make(chan struct{}, 0),
 	}
 	return s
 }
 
-func (s *segment) flush(ctx context.Context) error {
+func (s *segment) flush(ctx context.Context) (err error) {
 	t1 := time.Now()
-	var heads []serviceHead
+	var heads []flushedServiceHead
 
 	defer func() {
-		s.cleanup()
+		if err != nil {
+			s.flushErrMutex.Lock()
+			s.flushErr = err
+			s.flushErrMutex.Unlock()
+		}
 		close(s.doneChan)
 		s.sw.metrics.flushSegmentDuration.WithLabelValues(s.sshard).Observe(time.Since(t1).Seconds())
-
 	}()
 	pprof.Do(ctx, pprof.Labels("segment_op", "flush_heads"), func(ctx context.Context) {
 		heads = s.flushHeads(ctx)
@@ -228,22 +224,25 @@ func (s *segment) flush(ctx context.Context) error {
 		return nil
 	}
 
-	blockPath, blockMeta, err := s.flushBlock(heads)
+	blockData, blockMeta, err := s.flushBlock(heads)
 	if err != nil {
 		return fmt.Errorf("failed to flush block %s: %w", s.ulid.String(), err)
 	}
-	err = s.sw.uploadBlock(blockPath, s)
-	if err != nil {
+	// TODO(kolesnikovae): Add sane timeouts to all the operations.
+	if err = s.sw.uploadBlock(ctx, blockData, s); err != nil {
 		return fmt.Errorf("failed to upload block %s: %w", s.ulid.String(), err)
 	}
-	err = s.sw.storeMeta(ctx, blockMeta, s)
-	if err != nil {
-		return fmt.Errorf("failed to store meta %s: %w", s.ulid.String(), err)
+	if err = s.sw.storeMeta(ctx, blockMeta, s); err != nil {
+		level.Error(s.l).Log("msg", "failed to store meta in metastore", "err", err)
+		if dlqErr := s.sw.storeMetaDLQ(ctx, blockMeta, s); dlqErr != nil {
+			level.Error(s.l).Log("msg", "metastore fallback failed", "err", dlqErr)
+			return fmt.Errorf("failed to store meta %s: %w", s.ulid.String(), dlqErr)
+		}
 	}
 	return nil
 }
 
-func (s *segment) flushBlock(heads []serviceHead) (string, *metastorev1.BlockMeta, error) {
+func (s *segment) flushBlock(heads []flushedServiceHead) ([]byte, *metastorev1.BlockMeta, error) {
 	t1 := time.Now()
 	meta := &metastorev1.BlockMeta{
 		FormatVersion:   1,
@@ -253,21 +252,16 @@ func (s *segment) flushBlock(heads []serviceHead) (string, *metastorev1.BlockMet
 		Shard:           uint32(s.shard),
 		CompactionLevel: 0,
 		TenantId:        "",
-		TenantServices:  make([]*metastorev1.TenantService, 0, len(heads)),
+		Datasets:        make([]*metastorev1.Dataset, 0, len(heads)),
 		Size:            0,
 	}
 
-	blockPath := path.Join(s.dataPath, pathBlock)
-	blockFile, err := os.OpenFile(blockPath, os.O_CREATE|os.O_WRONLY|os.O_EXCL, 0644)
-	if err != nil {
-		return "", nil, err
-	}
-	defer blockFile.Close()
+	blockFile := bytes.NewBuffer(nil)
 
 	w := withWriterOffset(blockFile)
 
 	for i, e := range heads {
-		svc, err := concatSegmentHead(s.sh, e, w)
+		svc, err := concatSegmentHead(e, w)
 		if err != nil {
 			_ = level.Error(s.l).Log("msg", "failed to concat segment head", "err", err)
 			continue
@@ -280,46 +274,37 @@ func (s *segment) flushBlock(heads []serviceHead) (string, *metastorev1.BlockMet
 			meta.MaxTime = math.Max(meta.MaxTime, svc.MaxTime)
 		}
 		s.sw.metrics.headSizeBytes.WithLabelValues(s.sshard, e.key.tenant).Observe(float64(svc.Size))
-		meta.TenantServices = append(meta.TenantServices, svc)
+		meta.Datasets = append(meta.Datasets, svc)
 	}
 
 	meta.Size = uint64(w.offset)
 	s.debuginfo.flushBlockDuration = time.Since(t1)
-	return blockPath, meta, nil
+	return blockFile.Bytes(), meta, nil
 }
 
-func concatSegmentHead(sh *shard, e serviceHead, w *writerOffset) (*metastorev1.TenantService, error) {
+func concatSegmentHead(e flushedServiceHead, w *writerOffset) (*metastorev1.Dataset, error) {
 	tenantServiceOffset := w.offset
-	b := e.head.Meta()
-	ptypes := e.head.MustProfileTypeNames()
 
-	profiles, x, symbols := getFilesForSegment(e.head, b)
-	defer index.PutBufferWriterToPool(x)
+	ptypes := e.head.Meta.ProfileTypeNames
 
-	offsets := make([]uint64, 3)
-	var err error
-	offsets[0], err = concatFile(w, e.head, profiles, sh.concatBuf)
-	if err != nil {
-		return nil, err
-	}
+	offsets := []uint64{0, 0, 0}
+
+	offsets[0] = uint64(w.offset)
+	_, _ = w.Write(e.head.Profiles)
+
 	offsets[1] = uint64(w.offset)
-	indexBytes, _, _ := x.Buffer()
-	_, err = w.Write(indexBytes)
-	if err != nil {
-		return nil, err
-	}
-	offsets[2], err = concatFile(w, e.head, symbols, sh.concatBuf)
-	if err != nil {
-		return nil, err
-	}
+	_, _ = w.Write(e.head.Index)
+
+	offsets[2] = uint64(w.offset)
+	_, _ = w.Write(e.head.Symbols)
 
 	tenantServiceSize := w.offset - tenantServiceOffset
 
-	svc := &metastorev1.TenantService{
+	svc := &metastorev1.Dataset{
 		TenantId: e.key.tenant,
 		Name:     e.key.service,
-		MinTime:  int64(b.MinTime),
-		MaxTime:  int64(b.MaxTime),
+		MinTime:  e.head.Meta.MinTimeNanos / 1e6,
+		MaxTime:  e.head.Meta.MaxTimeNanos / 1e6,
 		Size:     uint64(tenantServiceSize),
 		//  - 0: profiles.parquet
 		//  - 1: index.tsdb
@@ -330,7 +315,7 @@ func concatSegmentHead(sh *shard, e serviceHead, w *writerOffset) (*metastorev1.
 	return svc, nil
 }
 
-func (s *segment) flushHeads(ctx context.Context) (moved []serviceHead) {
+func (s *segment) flushHeads(ctx context.Context) (moved []flushedServiceHead) {
 	t1 := time.Now()
 	defer func() {
 		s.sw.metrics.flushHeadsDuration.WithLabelValues(s.sshard).Observe(time.Since(t1).Seconds())
@@ -343,20 +328,26 @@ func (s *segment) flushHeads(ctx context.Context) (moved []serviceHead) {
 		e := e
 		go func() {
 			defer wg.Done()
-			eMoved, err := s.flushHead(ctx, e)
+			eFlushed, err := s.flushHead(ctx, e)
+
 			if err != nil {
 				level.Error(s.l).Log("msg", "failed to flush head", "err", err)
 			}
-			if eMoved {
-				mutex.Lock()
-				moved = append(moved, e)
-				mutex.Unlock()
+			if eFlushed != nil {
+				if eFlushed.Meta.NumSamples == 0 {
+					_ = level.Debug(s.l).Log("msg", "skipping empty head")
+					return
+				} else {
+					mutex.Lock()
+					moved = append(moved, flushedServiceHead{e.key, eFlushed})
+					mutex.Unlock()
+				}
 			}
 		}()
 	}
 	wg.Wait()
 
-	slices.SortFunc(moved, func(i, j serviceHead) int {
+	slices.SortFunc(moved, func(i, j flushedServiceHead) int {
 		c := strings.Compare(i.key.tenant, j.key.tenant)
 		if c != 0 {
 			return c
@@ -366,35 +357,26 @@ func (s *segment) flushHeads(ctx context.Context) (moved []serviceHead) {
 	return moved
 }
 
-func (s *segment) flushHead(ctx context.Context, e serviceHead) (moved bool, err error) {
+func (s *segment) flushHead(ctx context.Context, e serviceHead) (*memdb.FlushedHead, error) {
 	th := time.Now()
-	if err := e.head.Flush(ctx); err != nil {
+	flushed, err := e.head.Flush(ctx)
+	if err != nil {
 		s.sw.metrics.flushServiceHeadDuration.WithLabelValues(s.sshard, e.key.tenant).Observe(time.Since(th).Seconds())
 		s.sw.metrics.flushServiceHeadError.WithLabelValues(s.sshard, e.key.tenant).Inc()
-		return false, fmt.Errorf("failed to flush head %v: %w", e.head.BlockID(), err)
+		return nil, fmt.Errorf("failed to flush head : %w", err)
 	}
 	s.sw.metrics.flushServiceHeadDuration.WithLabelValues(s.sshard, e.key.tenant).Observe(time.Since(th).Seconds())
-	stats, _ := json.Marshal(e.head.GetMetaStats())
 	level.Debug(s.l).Log(
 		"msg", "flushed head",
-		"head", e.head.BlockID(),
-		"stats", stats,
+		"tenant", e.key.tenant,
+		"service", e.key.service,
+		"profiles", flushed.Meta.NumProfiles,
+		"profiletypes", fmt.Sprintf("%v", flushed.Meta.ProfileTypeNames),
+		"mintime", flushed.Meta.MinTimeNanos,
+		"maxtime", flushed.Meta.MaxTimeNanos,
 		"head-flush-duration", time.Since(th).String(),
 	)
-	if err := e.head.Move(); err != nil {
-		if e.head.GetMetaStats().NumSamples == 0 {
-			_ = level.Debug(s.l).Log("msg", "skipping empty head", "head", e.head.BlockID())
-			return false, nil
-		}
-		s.sw.metrics.flushServiceHeadError.WithLabelValues(s.sshard, e.key.tenant).Inc()
-		return false, fmt.Errorf("failed to move head %v: %w", e.head.BlockID(), err)
-	}
-	profiles, index, symbols := getFilesForSegment(e.head, e.head.Meta())
-	if profiles == nil || index == nil || symbols == nil {
-		s.sw.metrics.flushServiceHeadError.WithLabelValues(s.sshard, e.key.tenant).Inc()
-		return false, fmt.Errorf("failed to find files %v %v %v", profiles, index, symbols)
-	}
-	return true, nil
+	return flushed, nil
 }
 
 type serviceKey struct {
@@ -403,7 +385,12 @@ type serviceKey struct {
 }
 type serviceHead struct {
 	key  serviceKey
-	head *phlaredb.Head
+	head *memdb.Head
+}
+
+type flushedServiceHead struct {
+	key  serviceKey
+	head *memdb.FlushedHead
 }
 
 type segment struct {
@@ -414,8 +401,10 @@ type segment struct {
 	heads            map[serviceKey]serviceHead
 	headsLock        sync.RWMutex
 	sw               *segmentsWriter
-	dataPath         string
+	blockPath        string
 	doneChan         chan struct{}
+	flushErr         error
+	flushErrMutex    sync.Mutex
 	l                log.Logger
 
 	debuginfo struct {
@@ -425,11 +414,13 @@ type segment struct {
 		flushBlockDuration time.Duration
 		storeMetaDuration  time.Duration
 	}
-	sh *shard
+	sh      *shard
+	counter int64
 }
 
 type segmentIngest interface {
-	ingest(ctx context.Context, tenantID string, p *profilev1.Profile, id uuid.UUID, labels ...*typesv1.LabelPair) error
+	// TODO(kolesnikovae): Remove context from the signature.
+	ingest(ctx context.Context, tenantID string, p *profilev1.Profile, id uuid.UUID, labels []*typesv1.LabelPair)
 }
 
 type segmentWaitFlushed interface {
@@ -441,109 +432,86 @@ func (s *segment) waitFlushed(ctx context.Context) error {
 	case <-ctx.Done():
 		return fmt.Errorf("waitFlushed: %s %w", s.ulid.String(), ctx.Err())
 	case <-s.doneChan:
-		return nil
+		s.flushErrMutex.Lock()
+		defer s.flushErrMutex.Unlock()
+		res := s.flushErr
+		return res
 	}
 }
 
-func (s *segment) ingest(ctx context.Context, tenantID string, p *profilev1.Profile, id uuid.UUID, labels ...*typesv1.LabelPair) error {
-	var err error
+func (s *segment) ingest(ctx context.Context, tenantID string, p *profilev1.Profile, id uuid.UUID, labels []*typesv1.LabelPair) {
 	k := serviceKey{
 		tenant:  tenantID,
 		service: phlaremodel.Labels(labels).Get(phlaremodel.LabelNameServiceName),
 	}
 	s.sw.metrics.segmentIngestBytes.WithLabelValues(s.sshard, tenantID).Observe(float64(p.SizeVT()))
-	h, err := s.headForIngest(k)
-	if err != nil {
-		return err
-	}
-	return h.Ingest(ctx, p, id, labels...)
+	h := s.headForIngest(k)
+
+	h.Ingest(p, id, labels)
 }
 
-func (s *segment) headForIngest(k serviceKey) (*phlaredb.Head, error) {
-	var err error
-
+func (s *segment) headForIngest(k serviceKey) *memdb.Head {
 	s.headsLock.RLock()
 	h, ok := s.heads[k]
 	s.headsLock.RUnlock()
 	if ok {
-		return h.head, nil
+		return h.head
 	}
 
 	s.headsLock.Lock()
 	defer s.headsLock.Unlock()
 	h, ok = s.heads[k]
 	if ok {
-		return h.head, nil
+		return h.head
 	}
 
-	cfg := s.sw.cfg
-	cfg.DataPath = path.Join(s.dataPath)
-	cfg.SymDBFormat = symdb.FormatV3
-
-	nh, err := phlaredb.NewHead(s.sw.phlarectx, cfg, noopLimiter{})
-	if err != nil {
-		return nil, err
-	}
+	nh := memdb.NewHead(s.sw.headMetrics)
 
 	s.heads[k] = serviceHead{
 		key:  k,
 		head: nh,
 	}
 
-	return nh, nil
+	return nh
 }
 
-func (s *segment) cleanup() {
-	if err := os.RemoveAll(s.dataPath); err != nil {
-		_ = level.Error(s.l).Log("msg", "failed to cleanup segment", "err", err, "f", s.dataPath)
-	}
-}
-
-func (sw *segmentsWriter) uploadBlock(blockPath string, s *segment) error {
+func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockData []byte, s *segment) error {
 	t1 := time.Now()
-
-	dst, err := filepath.Rel(sw.cfg.DataPath, blockPath)
-	if err != nil {
+	defer func() {
+		sw.metrics.blockUploadDuration.WithLabelValues(s.sshard).Observe(time.Since(t1).Seconds())
+	}()
+	sw.metrics.segmentBlockSizeBytes.WithLabelValues(s.sshard).Observe(float64(len(blockData)))
+	if err := sw.bucket.Upload(ctx, s.blockPath, bytes.NewReader(blockData)); err != nil {
 		return err
 	}
-	if err := objstore.UploadFile(sw.phlarectx, sw.l, sw.bucket, blockPath, dst); err != nil {
-		return err
-	}
-	st, _ := os.Stat(blockPath)
-	if st != nil {
-		sw.metrics.segmentBlockSizeBytes.WithLabelValues(s.sshard).Observe(float64(st.Size()))
-	}
-	sw.metrics.blockUploadDuration.WithLabelValues(s.sshard).Observe(time.Since(t1).Seconds())
-	sw.l.Log("msg", "uploaded block", "path", dst, "time-took", time.Since(t1))
-
+	sw.l.Log("msg", "uploaded block", "path", s.blockPath, "upload_duration", time.Since(t1))
 	return nil
 }
 
 func (sw *segmentsWriter) storeMeta(ctx context.Context, meta *metastorev1.BlockMeta, s *segment) error {
 	t1 := time.Now()
-
-	_, err := sw.metastoreClient.AddBlock(ctx, &metastorev1.AddBlockRequest{
-		Block: meta,
-	})
+	defer func() {
+		sw.metrics.storeMetaDuration.WithLabelValues(s.sshard).Observe(time.Since(t1).Seconds())
+		s.debuginfo.storeMetaDuration = time.Since(t1)
+	}()
+	_, err := sw.metastoreClient.AddBlock(ctx, &metastorev1.AddBlockRequest{Block: meta})
 	if err != nil {
 		sw.metrics.storeMetaErrors.WithLabelValues(s.sshard).Inc()
+	}
+	return err
+}
+
+func (sw *segmentsWriter) storeMetaDLQ(ctx context.Context, meta *metastorev1.BlockMeta, s *segment) error {
+	metaBlob, err := meta.MarshalVT()
+	if err != nil {
+		sw.metrics.storeMetaDLQ.WithLabelValues(s.sshard, "err").Inc()
 		return err
 	}
-	sw.metrics.storeMetaDuration.WithLabelValues(s.sshard).Observe(time.Since(t1).Seconds())
-	s.debuginfo.storeMetaDuration = time.Since(t1)
+	fullPath := path.Join(pathDLQ, s.sshard, pathAnon, s.ulid.String(), "meta.pb")
+	if err = sw.bucket.Upload(ctx, fullPath, bytes.NewReader(metaBlob)); err != nil {
+		sw.metrics.storeMetaDLQ.WithLabelValues(s.sshard, "err").Inc()
+		return fmt.Errorf("%w, %w", ErrMetastoreDLQFailed, err)
+	}
+	sw.metrics.storeMetaDLQ.WithLabelValues(s.sshard, "OK").Inc()
 	return nil
 }
-
-func getFilesForSegment(_ *phlaredb.Head, b *block.Meta) (profiles *block.File, index *index.BufferWriter, symbols *block.File) {
-	profiles = b.FileByRelPath("profiles.parquet")
-	// FIXME
-	// index = head.TSDBIndex()
-	symbols = b.FileByRelPath("symbols.symdb")
-	return
-}
-
-type noopLimiter struct{}
-
-func (noopLimiter) AllowProfile(model.Fingerprint, phlaremodel.Labels, int64) error { return nil }
-
-func (noopLimiter) Stop() {}

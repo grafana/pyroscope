@@ -10,6 +10,7 @@ import (
 	"github.com/prometheus/common/model"
 	"gopkg.in/yaml.v3"
 
+	writepath "github.com/grafana/pyroscope/pkg/distributor/write_path"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 )
 
@@ -97,6 +98,9 @@ type Limits struct {
 	// Ensure profiles are dated within the IngestionWindow of the distributor.
 	RejectOlderThan model.Duration `yaml:"reject_older_than" json:"reject_older_than"`
 	RejectNewerThan model.Duration `yaml:"reject_newer_than" json:"reject_newer_than"`
+
+	// Write path overrides used in the write path router.
+	WritePathOverrides writepath.Config `yaml:",inline" json:",inline"`
 }
 
 // LimitError are errors that do not comply with the limits specified.
@@ -169,7 +173,6 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.Var(&l.IngestionRelabelingDefaultRulesPosition, "distributor.ingestion-relabeling-default-rules-position", "Position of the default ingestion relabeling rules in relation to relabel rules from overrides. Valid values are 'first', 'last' or 'disabled'.")
 	_ = l.IngestionRelabelingRules.Set("[]")
 	f.Var(&l.IngestionRelabelingRules, "distributor.ingestion-relabeling-rules", "List of ingestion relabel configurations. The relabeling rules work the same way, as those of [Prometheus](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config). All rules are applied in the order they are specified. Note: In most situations, it is more effective to use relabeling directly in Grafana Alloy.")
-
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
@@ -451,6 +454,10 @@ func (o *Overrides) QueryAnalysisEnabled(tenantID string) bool {
 // To be used for tenants where calculating series can be expensive.
 func (o *Overrides) QueryAnalysisSeriesEnabled(tenantID string) bool {
 	return o.getOverridesForTenant(tenantID).QueryAnalysisSeriesEnabled
+}
+
+func (o *Overrides) WritePathOverrides(tenantID string) writepath.Config {
+	return o.getOverridesForTenant(tenantID).WritePathOverrides
 }
 
 func (o *Overrides) DefaultLimits() *Limits {
