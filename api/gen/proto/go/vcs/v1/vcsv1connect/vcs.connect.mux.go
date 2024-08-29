@@ -44,4 +44,9 @@ func RegisterVCSServiceHandler(mux *mux.Router, svc VCSServiceHandler, opts ...c
 		svc.GetCommit,
 		opts...,
 	))
+	mux.Handle("/vcs.v1.VCSService/GetCommits", connect.NewUnaryHandler(
+		"/vcs.v1.VCSService/GetCommits",
+		svc.GetCommits,
+		opts...,
+	))
 }

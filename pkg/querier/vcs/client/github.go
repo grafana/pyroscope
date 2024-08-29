@@ -26,7 +26,7 @@ type githubClient struct {
 	client *github.Client
 }
 
-func (gh *githubClient) GetCommit(ctx context.Context, owner, repo, ref string) (*vcsv1.GetCommitResponse, error) {
+func (gh *githubClient) GetCommit(ctx context.Context, owner, repo, ref string) (*vcsv1.CommitInfo, error) {
 	commit, _, err := gh.client.Repositories.GetCommit(ctx, owner, repo, ref, nil)
 	if err != nil {
 		var githubErr *github.ErrorResponse
@@ -37,7 +37,7 @@ func (gh *githubClient) GetCommit(ctx context.Context, owner, repo, ref string) 
 		return nil, err
 	}
 
-	return &vcsv1.GetCommitResponse{
+	return &vcsv1.CommitInfo{
 		Sha:     toString(commit.SHA),
 		Message: toString(commit.Commit.Message),
 		Author: &vcsv1.CommitAuthor{
