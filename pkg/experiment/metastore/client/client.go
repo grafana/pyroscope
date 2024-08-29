@@ -2,6 +2,7 @@ package metastoreclient
 
 import (
 	"context"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
 
 	"github.com/go-kit/log"
 
@@ -20,6 +21,8 @@ type Client struct {
 	compactorv1.CompactionPlannerClient
 	service services.Service
 	conn    *grpc.ClientConn
+
+	discovery *discovery.GrpcDiscovery
 }
 
 func New(address string, logger log.Logger, grpcClientConfig grpcclient.Config) (*Client, error) {
@@ -32,6 +35,11 @@ func New(address string, logger log.Logger, grpcClientConfig grpcclient.Config) 
 	c.CompactionPlannerClient = compactorv1.NewCompactionPlannerClient(conn)
 	c.service = services.NewIdleService(c.starting, c.stopping)
 	c.conn = conn
+	c.discovery, err = discovery.NewGrpcDiscovery(logger, address)
+	if err != nil {
+		return nil, err
+	}
+
 	return &c, nil
 }
 
@@ -60,6 +68,7 @@ func dial(address string, grpcClientConfig grpcclient.Config, _ log.Logger) (*gr
 	//		options = append(options, grpc.WithResolvers(builder))
 	//		return grpc.Dial(builder.resolverAddrStub(), options...)
 	//	}
+
 	return grpc.Dial(address, options...)
 }
 
