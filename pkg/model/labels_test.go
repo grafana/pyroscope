@@ -317,3 +317,61 @@ func TestInsert(t *testing.T) {
 		})
 	}
 }
+
+func Test_ServiceVersionFromLabels(t *testing.T) {
+	tests := []struct {
+		name            string
+		input           Labels
+		expectedVersion ServiceVersion
+		expectedOk      bool
+	}{
+		{
+			name: "all present",
+			input: Labels{
+				{Name: LabelNameServiceRepository, Value: "repo"},
+				{Name: LabelNameServiceGitRef, Value: "ref"},
+				{Name: LabelNameServiceRootPath, Value: "some-path"},
+				{Name: "any-other-label", Value: "any-value"},
+			},
+			expectedVersion: ServiceVersion{
+				Repository: "repo",
+				GitRef:     "ref",
+				RootPath:   "some-path",
+			},
+			expectedOk: true,
+		},
+		{
+			name: "some present",
+			input: Labels{
+				{Name: LabelNameServiceRepository, Value: "repo"},
+				{Name: LabelNameServiceRootPath, Value: "some-path"},
+				{Name: "any-other-label", Value: "any-value"},
+			},
+			expectedVersion: ServiceVersion{
+				Repository: "repo",
+				GitRef:     "",
+				RootPath:   "some-path",
+			},
+			expectedOk: true,
+		},
+		{
+			name: "none present",
+			input: Labels{
+				{Name: "any-label", Value: "any-value"},
+			},
+			expectedVersion: ServiceVersion{
+				Repository: "",
+				GitRef:     "",
+				RootPath:   "",
+			},
+			expectedOk: false,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			version, ok := ServiceVersionFromLabels(test.input)
+			assert.Equal(t, test.expectedVersion, version)
+			assert.Equal(t, test.expectedOk, ok)
+		})
+	}
+}
