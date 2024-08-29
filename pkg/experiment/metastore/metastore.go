@@ -13,6 +13,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/grafana/dskit/dns"
 	"github.com/grafana/dskit/flagext"
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/services"
@@ -130,6 +131,8 @@ type Metastore struct {
 	metrics    *metastoreMetrics
 	client     *metastoreclient.Client
 	readySince time.Time
+
+	dnsProvider *dns.Provider
 }
 
 type Limits interface{}
@@ -226,6 +229,8 @@ func (m *Metastore) initRaft() (err error) {
 		if err = m.bootstrap(); err != nil {
 			return fmt.Errorf("failed to bootstrap cluster: %w", err)
 		}
+	} else {
+		_ = level.Info(m.logger).Log("msg", "restoring existing state, not bootstraping")
 	}
 
 	m.leaderhealth.Register(m.raft, metastoreRaftLeaderHealthServiceName)
