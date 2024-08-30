@@ -7,18 +7,18 @@ import (
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/query_backend/block"
-	"github.com/grafana/pyroscope/pkg/model"
 	parquetquery "github.com/grafana/pyroscope/pkg/phlaredb/query"
 	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
+	"github.com/grafana/pyroscope/pkg/pprof"
 )
 
 func init() {
 	registerQueryType(
-		queryv1.QueryType_QUERY_TREE,
-		queryv1.ReportType_REPORT_TREE,
-		queryTree,
-		newTreeAggregator,
+		queryv1.QueryType_QUERY_PPROF,
+		queryv1.ReportType_REPORT_PPROF,
+		queryPprof,
+		newPprofAggregator,
 		[]block.Section{
 			block.SectionTSDB,
 			block.SectionProfiles,
@@ -27,7 +27,7 @@ func init() {
 	)
 }
 
-func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
+func queryPprof(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 	entries, err := profileEntryIterator(q)
 	if err != nil {
 		return nil, err
@@ -45,7 +45,8 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
 
 	resolver := symdb.NewResolver(q.ctx, q.ds.Symbols(),
-		symdb.WithResolverMaxNodes(query.Tree.GetMaxNodes()))
+		// TODO(kolesnikovae): Stack trace selector.
+		symdb.WithResolverMaxNodes(query.Pprof.MaxNodes))
 	defer resolver.Release()
 
 	for profiles.Next() {
@@ -56,42 +57,41 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 		return nil, err
 	}
 
-	tree, err := resolver.Tree()
+	profile, err := resolver.Pprof()
 	if err != nil {
 		return nil, err
 	}
 
 	resp := &queryv1.Report{
-		Tree: &queryv1.TreeReport{
-			Query: query.Tree.CloneVT(),
-			Tree:  tree.Bytes(query.Tree.GetMaxNodes()),
+		Pprof: &queryv1.PprofReport{
+			Query: query.Pprof.CloneVT(),
+			Pprof: pprof.MustMarshal(profile, true),
 		},
 	}
 	return resp, nil
 }
 
-type treeAggregator struct {
-	init  sync.Once
-	query *queryv1.TreeQuery
-	tree  *model.TreeMerger
+type pprofAggregator struct {
+	init    sync.Once
+	query   *queryv1.PprofQuery
+	profile pprof.ProfileMerge
 }
 
-func newTreeAggregator(*queryv1.InvokeRequest) aggregator { return new(treeAggregator) }
+func newPprofAggregator(*queryv1.InvokeRequest) aggregator { return new(pprofAggregator) }
 
-func (a *treeAggregator) aggregate(report *queryv1.Report) error {
-	r := report.Tree
+func (a *pprofAggregator) aggregate(report *queryv1.Report) error {
+	r := report.Pprof
 	a.init.Do(func() {
-		a.tree = model.NewTreeMerger()
 		a.query = r.Query.CloneVT()
 	})
-	return a.tree.MergeTreeBytes(r.Tree)
+	return a.profile.MergeBytes(r.Pprof)
 }
 
-func (a *treeAggregator) build() *queryv1.Report {
+func (a *pprofAggregator) build() *queryv1.Report {
 	return &queryv1.Report{
-		Tree: &queryv1.TreeReport{
+		Pprof: &queryv1.PprofReport{
 			Query: a.query,
-			Tree:  a.tree.Tree().Bytes(a.query.GetMaxNodes()),
+			Pprof: pprof.MustMarshal(a.profile.Profile(), true),
 		},
 	}
 }

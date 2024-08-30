@@ -1157,6 +1157,14 @@ func Marshal(p *profilev1.Profile, compress bool) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+func MustMarshal(p *profilev1.Profile, compress bool) []byte {
+	b, err := Marshal(p, compress)
+	if err != nil {
+		panic(err)
+	}
+	return b
+}
+
 func Unmarshal(data []byte, p *profilev1.Profile) error {
 	gr := gzipReaderPool.Get().(*gzipReader)
 	defer gzipReaderPool.Put(gr)
