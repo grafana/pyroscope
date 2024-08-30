@@ -4,6 +4,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
@@ -120,9 +121,11 @@ func (f *Phlare) initMetastoreClient() (services.Service, error) {
 		f.logger,
 		f.Cfg.Metastore.GRPCClientConfig,
 	)
+	var mcc metastorev1.MetastoreServiceClient = mc
 	if err != nil {
 		return nil, err
 	}
+	_ = mcc
 	f.metastoreClient = mc
 	return mc.Service(), nil
 }
