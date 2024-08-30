@@ -86,7 +86,7 @@ func Query[Req, Resp any](
 		return nil, connect.NewError(connect.CodeUnimplemented, nil)
 	}
 	cloned := c.CloneVT()
-	phlaremodel.SetTimeRange(req, queryRange.Start, split-1)
+	phlaremodel.SetTimeRange(req.Msg, queryRange.Start, split-1)
 	phlaremodel.SetTimeRange(cloned, split, queryRange.End)
 
 	var a, b *connect.Response[Resp]
