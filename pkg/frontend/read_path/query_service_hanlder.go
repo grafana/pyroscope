@@ -63,7 +63,7 @@ func (r *Router) SelectMergeStacktraces(
 	// return it in the format requested by the client.
 	f := c.Msg.Format
 	c.Msg.Format = querierv1.ProfileFormat_PROFILE_FORMAT_TREE
-	return Query[querierv1.SelectMergeStacktracesRequest, querierv1.SelectMergeStacktracesResponse](ctx, r, c,
+	resp, err := Query[querierv1.SelectMergeStacktracesRequest, querierv1.SelectMergeStacktracesResponse](ctx, r, c,
 		func(a, b *querierv1.SelectMergeStacktracesResponse) (*querierv1.SelectMergeStacktracesResponse, error) {
 			m := phlaremodel.NewTreeMerger()
 			if err := m.MergeTreeBytes(a.Tree); err != nil {
@@ -72,15 +72,16 @@ func (r *Router) SelectMergeStacktraces(
 			if err := m.MergeTreeBytes(b.Tree); err != nil {
 				return nil, err
 			}
-			switch f {
-			case querierv1.ProfileFormat_PROFILE_FORMAT_TREE:
-				tree := m.Tree().Bytes(c.Msg.GetMaxNodes())
-				return &querierv1.SelectMergeStacktracesResponse{Tree: tree}, nil
-			default:
-				flamegraph := phlaremodel.NewFlameGraph(m.Tree(), c.Msg.GetMaxNodes())
-				return &querierv1.SelectMergeStacktracesResponse{Flamegraph: flamegraph}, nil
-			}
-		})
+			tree := m.Tree().Bytes(c.Msg.GetMaxNodes())
+			return &querierv1.SelectMergeStacktracesResponse{Tree: tree}, nil
+		},
+	)
+	if err == nil && f != c.Msg.Format {
+		resp.Msg.Flamegraph = phlaremodel.NewFlameGraph(
+			phlaremodel.MustUnmarshalTree(resp.Msg.Tree),
+			c.Msg.GetMaxNodes())
+	}
+	return resp, err
 }
 
 func (r *Router) SelectMergeSpanProfile(
@@ -91,7 +92,7 @@ func (r *Router) SelectMergeSpanProfile(
 	// return it in the format requested by the client.
 	f := c.Msg.Format
 	c.Msg.Format = querierv1.ProfileFormat_PROFILE_FORMAT_TREE
-	return Query[querierv1.SelectMergeSpanProfileRequest, querierv1.SelectMergeSpanProfileResponse](ctx, r, c,
+	resp, err := Query[querierv1.SelectMergeSpanProfileRequest, querierv1.SelectMergeSpanProfileResponse](ctx, r, c,
 		func(a, b *querierv1.SelectMergeSpanProfileResponse) (*querierv1.SelectMergeSpanProfileResponse, error) {
 			m := phlaremodel.NewTreeMerger()
 			if err := m.MergeTreeBytes(a.Tree); err != nil {
@@ -100,15 +101,16 @@ func (r *Router) SelectMergeSpanProfile(
 			if err := m.MergeTreeBytes(b.Tree); err != nil {
 				return nil, err
 			}
-			switch f {
-			case querierv1.ProfileFormat_PROFILE_FORMAT_TREE:
-				tree := m.Tree().Bytes(c.Msg.GetMaxNodes())
-				return &querierv1.SelectMergeSpanProfileResponse{Tree: tree}, nil
-			default:
-				flamegraph := phlaremodel.NewFlameGraph(m.Tree(), c.Msg.GetMaxNodes())
-				return &querierv1.SelectMergeSpanProfileResponse{Flamegraph: flamegraph}, nil
-			}
-		})
+			tree := m.Tree().Bytes(c.Msg.GetMaxNodes())
+			return &querierv1.SelectMergeSpanProfileResponse{Tree: tree}, nil
+		},
+	)
+	if err == nil && f != c.Msg.Format {
+		resp.Msg.Flamegraph = phlaremodel.NewFlameGraph(
+			phlaremodel.MustUnmarshalTree(resp.Msg.Tree),
+			c.Msg.GetMaxNodes())
+	}
+	return resp, err
 }
 
 func (r *Router) SelectMergeProfile(
