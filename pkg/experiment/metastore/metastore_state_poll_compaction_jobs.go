@@ -94,7 +94,8 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 				}
 				m.compactionMetrics.addedBlocks.WithLabelValues(
 					fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
-				stateUpdate.updatedBlockQueues[jobKey] = append(stateUpdate.updatedBlockQueues[jobKey], b.CompactionLevel)
+				blockTenantShard := tenantShard{tenant: b.TenantId, shard: b.Shard}
+				stateUpdate.updatedBlockQueues[blockTenantShard] = append(stateUpdate.updatedBlockQueues[blockTenantShard], b.CompactionLevel)
 			}
 			// finally we'll delete the metadata for source blocks (this doesn't delete blocks from object store)
 			for _, b := range job.Blocks {
