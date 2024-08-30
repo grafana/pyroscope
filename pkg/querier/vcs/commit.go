@@ -3,10 +3,13 @@ package vcs
 import (
 	"context"
 	"fmt"
-	"sync"
+
+	"golang.org/x/sync/errgroup"
 
 	vcsv1 "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1"
 )
+
+const maxConcurrentRequests = 10
 
 type gitHubCommitGetter interface {
 	GetCommit(context.Context, string, string, string) (*vcsv1.CommitInfo, error)
@@ -25,20 +28,25 @@ func getCommits(ctx context.Context, client gitHubCommitGetter, owner, repo stri
 		err    error
 	}
 
-	var wg sync.WaitGroup
-	resultsCh := make(chan result, len(refs))
+	resultsCh := make(chan result, maxConcurrentRequests)
+	g, ctx := errgroup.WithContext(ctx)
+	g.SetLimit(maxConcurrentRequests)
 
 	for _, ref := range refs {
-		wg.Add(1)
-		go func(ref string) {
-			defer wg.Done()
+		ref := ref
+		g.Go(func() error {
 			commit, err := tryGetCommit(ctx, client, owner, repo, ref)
-			resultsCh <- result{commit, err}
-		}(ref)
+			select {
+			case resultsCh <- result{commit, err}:
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+			return nil
+		})
 	}
 
 	go func() {
-		wg.Wait()
+		_ = g.Wait() // ignore errors since they're handled in the `resultsCh`.
 		close(resultsCh)
 	}()
 
