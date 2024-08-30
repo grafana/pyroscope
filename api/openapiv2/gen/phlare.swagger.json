@@ -1587,9 +1587,6 @@
             "type": "object",
             "$ref": "#/definitions/v1Report"
           }
-        },
-        "diagnostics": {
-          "$ref": "#/definitions/v1Diagnostics"
         }
       }
     },
@@ -2039,9 +2036,6 @@
           "items": {
             "type": "string"
           }
-        },
-        "aggregation": {
-          "$ref": "#/definitions/v1TimeSeriesAggregationType"
         }
       }
     },

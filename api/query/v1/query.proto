@@ -6,16 +6,26 @@ import "google/v1/profile.proto";
 import "metastore/v1/metastore.proto";
 import "types/v1/types.proto";
 
+// QueryFrontendService is supposed to handle both access to the time series
+// profiling data through the QueryBackendService and metadata queries through
+// the MetastoreService. Example metadata queries: listing datasets (services)
+// and their available profile types, accessing tenant statistics, analyzing
+// the queries, etc. However, metadata queries should not be mixed with the
+// time series profiling queries, therefore the API is to be extended.
+//
+// QueryFrontendService is supposed to be a public interface, available to
+// the external clients, while QueryBackendService and MetastoreService are
+// supposed to be private, accessed through the QueryFrontendService.
+
 service QueryFrontendService {
   rpc Query(QueryRequest) returns (QueryResponse) {}
 }
 
 message QueryRequest {
-  repeated string tenant = 1;
-  int64 start_time = 2;
-  int64 end_time = 3;
-  string label_selector = 4;
-  repeated Query query = 5;
+  int64 start_time = 1;
+  int64 end_time = 2;
+  string label_selector = 3;
+  repeated Query query = 4;
 }
 
 message QueryResponse {
@@ -146,7 +156,6 @@ message SeriesLabelsReport {
 message TimeSeriesQuery {
   double step = 1;
   repeated string group_by = 2;
-  optional types.v1.TimeSeriesAggregationType aggregation = 3;
 }
 
 message TimeSeriesReport {

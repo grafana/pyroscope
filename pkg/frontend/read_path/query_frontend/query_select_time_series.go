@@ -41,17 +41,15 @@ func (q *QueryFrontend) SelectSeries(
 	if err != nil {
 		return nil, err
 	}
-	report, err := q.query(ctx, &queryv1.QueryRequest{
-		Tenant:        tenantIDs,
+	report, err := q.querySingle(ctx, &queryv1.QueryRequest{
 		StartTime:     c.Msg.Start,
 		EndTime:       c.Msg.End,
 		LabelSelector: labelSelector,
 		Query: []*queryv1.Query{{
 			QueryType: queryv1.QueryType_QUERY_TIME_SERIES,
 			TimeSeries: &queryv1.TimeSeriesQuery{
-				Step:        c.Msg.GetStep(),
-				GroupBy:     c.Msg.GetGroupBy(),
-				Aggregation: c.Msg.Aggregation,
+				Step:    c.Msg.GetStep(),
+				GroupBy: c.Msg.GetGroupBy(),
 			},
 		}},
 	})

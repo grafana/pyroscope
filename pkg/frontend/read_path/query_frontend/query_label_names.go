@@ -38,8 +38,7 @@ func (q *QueryFrontend) LabelNames(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	report, err := q.query(ctx, &queryv1.QueryRequest{
-		Tenant:        tenantIDs,
+	report, err := q.querySingle(ctx, &queryv1.QueryRequest{
 		StartTime:     c.Msg.Start,
 		EndTime:       c.Msg.End,
 		LabelSelector: labelSelector,

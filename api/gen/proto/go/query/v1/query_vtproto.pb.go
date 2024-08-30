@@ -35,11 +35,6 @@ func (m *QueryRequest) CloneVT() *QueryRequest {
 	r.StartTime = m.StartTime
 	r.EndTime = m.EndTime
 	r.LabelSelector = m.LabelSelector
-	if rhs := m.Tenant; rhs != nil {
-		tmpContainer := make([]string, len(rhs))
-		copy(tmpContainer, rhs)
-		r.Tenant = tmpContainer
-	}
 	if rhs := m.Query; rhs != nil {
 		tmpContainer := make([]*Query, len(rhs))
 		for k, v := range rhs {
@@ -63,7 +58,6 @@ func (m *QueryResponse) CloneVT() *QueryResponse {
 		return (*QueryResponse)(nil)
 	}
 	r := new(QueryResponse)
-	r.Diagnostics = m.Diagnostics.CloneVT()
 	if rhs := m.Reports; rhs != nil {
 		tmpContainer := make([]*Report, len(rhs))
 		for k, v := range rhs {
@@ -386,10 +380,6 @@ func (m *TimeSeriesQuery) CloneVT() *TimeSeriesQuery {
 		copy(tmpContainer, rhs)
 		r.GroupBy = tmpContainer
 	}
-	if rhs := m.Aggregation; rhs != nil {
-		tmpVal := *rhs
-		r.Aggregation = &tmpVal
-	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -513,15 +503,6 @@ func (this *QueryRequest) EqualVT(that *QueryRequest) bool {
 	} else if this == nil || that == nil {
 		return false
 	}
-	if len(this.Tenant) != len(that.Tenant) {
-		return false
-	}
-	for i, vx := range this.Tenant {
-		vy := that.Tenant[i]
-		if vx != vy {
-			return false
-		}
-	}
 	if this.StartTime != that.StartTime {
 		return false
 	}
@@ -580,9 +561,6 @@ func (this *QueryResponse) EqualVT(that *QueryResponse) bool {
 				return false
 			}
 		}
-	}
-	if !this.Diagnostics.EqualVT(that.Diagnostics) {
-		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
@@ -1013,9 +991,6 @@ func (this *TimeSeriesQuery) EqualVT(that *TimeSeriesQuery) bool {
 			return false
 		}
 	}
-	if p, q := this.Aggregation, that.Aggregation; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
-		return false
-	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
@@ -1365,7 +1340,7 @@ func (m *QueryRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 			i -= size
 			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
 			i--
-			dAtA[i] = 0x2a
+			dAtA[i] = 0x22
 		}
 	}
 	if len(m.LabelSelector) > 0 {
@@ -1373,26 +1348,17 @@ func (m *QueryRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		copy(dAtA[i:], m.LabelSelector)
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.LabelSelector)))
 		i--
-		dAtA[i] = 0x22
+		dAtA[i] = 0x1a
 	}
 	if m.EndTime != 0 {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.EndTime))
 		i--
-		dAtA[i] = 0x18
+		dAtA[i] = 0x10
 	}
 	if m.StartTime != 0 {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.StartTime))
 		i--
-		dAtA[i] = 0x10
-	}
-	if len(m.Tenant) > 0 {
-		for iNdEx := len(m.Tenant) - 1; iNdEx >= 0; iNdEx-- {
-			i -= len(m.Tenant[iNdEx])
-			copy(dAtA[i:], m.Tenant[iNdEx])
-			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Tenant[iNdEx])))
-			i--
-			dAtA[i] = 0xa
-		}
+		dAtA[i] = 0x8
 	}
 	return len(dAtA) - i, nil
 }
@@ -1426,16 +1392,6 @@ func (m *QueryResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
-	}
-	if m.Diagnostics != nil {
-		size, err := m.Diagnostics.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
-		i--
-		dAtA[i] = 0x12
 	}
 	if len(m.Reports) > 0 {
 		for iNdEx := len(m.Reports) - 1; iNdEx >= 0; iNdEx-- {
@@ -2253,11 +2209,6 @@ func (m *TimeSeriesQuery) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if m.Aggregation != nil {
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(*m.Aggregation))
-		i--
-		dAtA[i] = 0x18
-	}
 	if len(m.GroupBy) > 0 {
 		for iNdEx := len(m.GroupBy) - 1; iNdEx >= 0; iNdEx-- {
 			i -= len(m.GroupBy[iNdEx])
@@ -2525,12 +2476,6 @@ func (m *QueryRequest) SizeVT() (n int) {
 	}
 	var l int
 	_ = l
-	if len(m.Tenant) > 0 {
-		for _, s := range m.Tenant {
-			l = len(s)
-			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-		}
-	}
 	if m.StartTime != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.StartTime))
 	}
@@ -2562,10 +2507,6 @@ func (m *QueryResponse) SizeVT() (n int) {
 			l = e.SizeVT()
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
-	}
-	if m.Diagnostics != nil {
-		l = m.Diagnostics.SizeVT()
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -2875,9 +2816,6 @@ func (m *TimeSeriesQuery) SizeVT() (n int) {
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
 	}
-	if m.Aggregation != nil {
-		n += 1 + protohelpers.SizeOfVarint(uint64(*m.Aggregation))
-	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -3000,38 +2938,6 @@ func (m *QueryRequest) UnmarshalVT(dAtA []byte) error {
 		}
 		switch fieldNum {
 		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Tenant", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Tenant = append(m.Tenant, string(dAtA[iNdEx:postIndex]))
-			iNdEx = postIndex
-		case 2:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field StartTime", wireType)
 			}
@@ -3050,7 +2956,7 @@ func (m *QueryRequest) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
-		case 3:
+		case 2:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field EndTime", wireType)
 			}
@@ -3069,7 +2975,7 @@ func (m *QueryRequest) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
-		case 4:
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field LabelSelector", wireType)
 			}
@@ -3101,7 +3007,7 @@ func (m *QueryRequest) UnmarshalVT(dAtA []byte) error {
 			}
 			m.LabelSelector = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 5:
+		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Query", wireType)
 			}
@@ -3217,42 +3123,6 @@ func (m *QueryResponse) UnmarshalVT(dAtA []byte) error {
 			}
 			m.Reports = append(m.Reports, &Report{})
 			if err := m.Reports[len(m.Reports)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Diagnostics", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Diagnostics == nil {
-				m.Diagnostics = &Diagnostics{}
-			}
-			if err := m.Diagnostics.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -5157,26 +5027,6 @@ func (m *TimeSeriesQuery) UnmarshalVT(dAtA []byte) error {
 			}
 			m.GroupBy = append(m.GroupBy, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
-		case 3:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Aggregation", wireType)
-			}
-			var v v11.TimeSeriesAggregationType
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				v |= v11.TimeSeriesAggregationType(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			m.Aggregation = &v
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

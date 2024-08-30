@@ -4,7 +4,9 @@ import (
 	"context"
 	"math/rand"
 
+	"connectrpc.com/connect"
 	"github.com/go-kit/log"
+	"github.com/grafana/dskit/tenant"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
@@ -19,8 +21,6 @@ import (
 var _ querierv1connect.QuerierServiceClient = (*QueryFrontend)(nil)
 
 type QueryFrontend struct {
-	queryv1.UnimplementedQueryFrontendServiceServer
-
 	logger       log.Logger
 	limits       frontend.Limits
 	metastore    *metastoreclient.Client
@@ -43,18 +43,20 @@ func NewQueryFrontend(
 
 var xrand = rand.New(rand.NewSource(4349676827832284783))
 
-// Query invokes the query backend with the given query.
-//
-// TODO(kolesnikovae):
-// This method is supposed to be the entry point of the read path
-// in the future versions. Therefore, validation, overrides, and
-// rest of the request handling should be moved here.
 func (q *QueryFrontend) Query(
 	ctx context.Context,
 	req *queryv1.QueryRequest,
 ) (*queryv1.QueryResponse, error) {
+	// TODO(kolesnikovae):
+	// This method is supposed to be the entry point of the read path
+	// in the future versions. Therefore, validation, overrides, and
+	// rest of the request handling should be moved here.
+	tenants, err := tenant.TenantIDs(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
 	md, err := q.metastore.QueryMetadata(ctx, &metastorev1.QueryMetadataRequest{
-		TenantId:  req.Tenant,
+		TenantId:  tenants,
 		StartTime: req.StartTime,
 		EndTime:   req.EndTime,
 		Query:     req.LabelSelector,
@@ -74,7 +76,7 @@ func (q *QueryFrontend) Query(
 	p := queryplan.Build(md.Blocks, 4, 20)
 
 	resp, err := q.querybackend.Invoke(ctx, &queryv1.InvokeRequest{
-		Tenant:        req.Tenant,
+		Tenant:        tenants,
 		StartTime:     req.StartTime,
 		EndTime:       req.EndTime,
 		LabelSelector: req.LabelSelector,
@@ -89,7 +91,10 @@ func (q *QueryFrontend) Query(
 	return &queryv1.QueryResponse{Reports: resp.Reports}, nil
 }
 
-func (q *QueryFrontend) query(
+// querySingle is a helper method that expects a single report
+// of the appropriate type in the response; this method should
+// be used to implement adapter to the old query API.
+func (q *QueryFrontend) querySingle(
 	ctx context.Context,
 	req *queryv1.QueryRequest,
 ) (*queryv1.Report, error) {

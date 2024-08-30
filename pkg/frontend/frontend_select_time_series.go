@@ -51,7 +51,7 @@ func (f *Frontend) SelectSeries(
 		g.SetLimit(maxConcurrent)
 	}
 
-	m := phlaremodel.NewTimeSeriesMerger(false)
+	m := phlaremodel.NewTimeSeriesMerger(true)
 	interval := validationutil.MaxDurationOrZeroPerTenant(tenantIDs, f.limits.QuerySplitDuration)
 	intervals := NewTimeIntervalIterator(time.UnixMilli(c.Msg.Start), time.UnixMilli(c.Msg.End), interval,
 		WithAlignment(time.Second*time.Duration(c.Msg.Step)))
