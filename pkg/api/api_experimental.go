@@ -5,11 +5,11 @@ import (
 
 	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	querybackendv1 "github.com/grafana/pyroscope/api/gen/proto/go/querybackend/v1"
+	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
 	segmentwriter "github.com/grafana/pyroscope/pkg/experiment/ingester"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore"
-	"github.com/grafana/pyroscope/pkg/experiment/querybackend"
+	querybackend "github.com/grafana/pyroscope/pkg/experiment/query_backend"
 )
 
 // TODO(kolesnikovae): Recovery interceptor.
@@ -32,5 +32,5 @@ func (a *API) RegisterMetastore(svc *metastore.Metastore) {
 }
 
 func (a *API) RegisterQueryBackend(svc *querybackend.QueryBackend) {
-	querybackendv1.RegisterQueryBackendServiceServer(a.server.GRPC, svc)
+	queryv1.RegisterQueryBackendServiceServer(a.server.GRPC, svc)
 }

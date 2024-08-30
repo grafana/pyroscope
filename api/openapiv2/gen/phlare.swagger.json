@@ -24,6 +24,9 @@
       "name": "QuerierService"
     },
     {
+      "name": "QueryFrontendService"
+    },
+    {
       "name": "QueryBackendService"
     },
     {
@@ -1574,6 +1577,21 @@
         }
       },
       "description": "Query plan is represented by a DAG, where each node\nmight be either \"merge\" or \"read\" (leaves). Each node\nreferences a range: merge nodes refer to other nodes,\nwhile read nodes refer to the blocks."
+    },
+    "v1QueryResponse": {
+      "type": "object",
+      "properties": {
+        "reports": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Report"
+          }
+        },
+        "diagnostics": {
+          "$ref": "#/definitions/v1Diagnostics"
+        }
+      }
     },
     "v1QueryScope": {
       "type": "object",

@@ -2,195 +2,158 @@ package read_path
 
 import (
 	"context"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
+	"github.com/grafana/dskit/tenant"
+	"github.com/prometheus/common/model"
 	"golang.org/x/sync/errgroup"
 
-	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/frontend"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/pprof"
 )
 
 type Overrides interface {
 	ReadPathOverrides(tenantID string) Config
 }
 
+// Router is a proxy that routes queries to the querier frontend
+// or the backend querier service directly, bypassing the scheduler
+// and querier services.
 type Router struct {
 	logger    log.Logger
 	overrides Overrides
-	limits    frontend.Limits
 
-	frontend *frontend.Frontend
-	backend  *QueryBackend
+	frontend querierv1connect.QuerierServiceClient
+	backend  querierv1connect.QuerierServiceClient
+}
+
+func NewRouter(
+	logger log.Logger,
+	overrides Overrides,
+	frontend querierv1connect.QuerierServiceClient,
+	backend querierv1connect.QuerierServiceClient,
+) *Router {
+	return &Router{
+		logger:    logger,
+		overrides: overrides,
+		frontend:  frontend,
+		backend:   backend,
+	}
 }
 
 func Query[Req, Resp any](
-	context.Context,
-	*Router,
-	*connect.Request[Req],
-	func(a, b *Resp) (*Resp, error),
+	ctx context.Context,
+	router *Router,
+	req *connect.Request[Req],
+	aggregate func(a, b *Resp) (*Resp, error),
 ) (*connect.Response[Resp], error) {
-	panic("implement me")
-}
-
-func (r *Router) LabelValues(
-	ctx context.Context,
-	c *connect.Request[typesv1.LabelValuesRequest],
-) (*connect.Response[typesv1.LabelValuesResponse], error) {
-	return Query[typesv1.LabelValuesRequest, typesv1.LabelValuesResponse](ctx, r, c,
-		func(a, b *typesv1.LabelValuesResponse) (*typesv1.LabelValuesResponse, error) {
-			m := phlaremodel.NewLabelMerger()
-			m.MergeLabelValues(a.Names)
-			m.MergeLabelValues(b.Names)
-			return &typesv1.LabelValuesResponse{Names: m.LabelValues()}, nil
-		})
-}
-
-func (r *Router) LabelNames(
-	ctx context.Context,
-	c *connect.Request[typesv1.LabelNamesRequest],
-) (*connect.Response[typesv1.LabelNamesResponse], error) {
-	return Query[typesv1.LabelNamesRequest, typesv1.LabelNamesResponse](ctx, r, c,
-		func(a, b *typesv1.LabelNamesResponse) (*typesv1.LabelNamesResponse, error) {
-			m := phlaremodel.NewLabelMerger()
-			m.MergeLabelNames(a.Names)
-			m.MergeLabelNames(b.Names)
-			return &typesv1.LabelNamesResponse{Names: m.LabelNames()}, nil
-		})
-}
-
-func (r *Router) Series(
-	ctx context.Context,
-	c *connect.Request[querierv1.SeriesRequest],
-) (*connect.Response[querierv1.SeriesResponse], error) {
-	return Query[querierv1.SeriesRequest, querierv1.SeriesResponse](ctx, r, c,
-		func(a, b *querierv1.SeriesResponse) (*querierv1.SeriesResponse, error) {
-			m := phlaremodel.NewLabelMerger()
-			m.MergeSeries(a.LabelsSet)
-			m.MergeSeries(b.LabelsSet)
-			return &querierv1.SeriesResponse{LabelsSet: m.SeriesLabels()}, nil
-		})
-}
-
-func (r *Router) SelectMergeStacktraces(
-	ctx context.Context,
-	c *connect.Request[querierv1.SelectMergeStacktracesRequest],
-) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
-	// We always query data in the tree format and
-	// return it in the format requested by the client.
-	f := c.Msg.Format
-	c.Msg.Format = querierv1.ProfileFormat_PROFILE_FORMAT_TREE
-	return Query[querierv1.SelectMergeStacktracesRequest, querierv1.SelectMergeStacktracesResponse](ctx, r, c,
-		func(a, b *querierv1.SelectMergeStacktracesResponse) (*querierv1.SelectMergeStacktracesResponse, error) {
-			m := phlaremodel.NewTreeMerger()
-			if err := m.MergeTreeBytes(a.Tree); err != nil {
-				return nil, err
-			}
-			if err := m.MergeTreeBytes(b.Tree); err != nil {
-				return nil, err
-			}
-			switch f {
-			case querierv1.ProfileFormat_PROFILE_FORMAT_TREE:
-				tree := m.Tree().Bytes(c.Msg.GetMaxNodes())
-				return &querierv1.SelectMergeStacktracesResponse{Tree: tree}, nil
-			default:
-				flamegraph := phlaremodel.NewFlameGraph(m.Tree(), c.Msg.GetMaxNodes())
-				return &querierv1.SelectMergeStacktracesResponse{Flamegraph: flamegraph}, nil
-			}
-		})
-}
-
-func (r *Router) SelectMergeSpanProfile(
-	ctx context.Context,
-	c *connect.Request[querierv1.SelectMergeSpanProfileRequest],
-) (*connect.Response[querierv1.SelectMergeSpanProfileResponse], error) {
-	// We always query data in the tree format and
-	// return it in the format requested by the client.
-	f := c.Msg.Format
-	c.Msg.Format = querierv1.ProfileFormat_PROFILE_FORMAT_TREE
-	return Query[querierv1.SelectMergeSpanProfileRequest, querierv1.SelectMergeSpanProfileResponse](ctx, r, c,
-		func(a, b *querierv1.SelectMergeSpanProfileResponse) (*querierv1.SelectMergeSpanProfileResponse, error) {
-			m := phlaremodel.NewTreeMerger()
-			if err := m.MergeTreeBytes(a.Tree); err != nil {
-				return nil, err
-			}
-			if err := m.MergeTreeBytes(b.Tree); err != nil {
-				return nil, err
-			}
-			switch f {
-			case querierv1.ProfileFormat_PROFILE_FORMAT_TREE:
-				tree := m.Tree().Bytes(c.Msg.GetMaxNodes())
-				return &querierv1.SelectMergeSpanProfileResponse{Tree: tree}, nil
-			default:
-				flamegraph := phlaremodel.NewFlameGraph(m.Tree(), c.Msg.GetMaxNodes())
-				return &querierv1.SelectMergeSpanProfileResponse{Flamegraph: flamegraph}, nil
-			}
-		})
-}
-
-func (r *Router) SelectMergeProfile(
-	ctx context.Context,
-	c *connect.Request[querierv1.SelectMergeProfileRequest],
-) (*connect.Response[profilev1.Profile], error) {
-	return Query[querierv1.SelectMergeProfileRequest, profilev1.Profile](ctx, r, c,
-		func(a, b *profilev1.Profile) (*profilev1.Profile, error) {
-			var m pprof.ProfileMerge
-			if err := m.Merge(a); err != nil {
-				return nil, err
-			}
-			if err := m.Merge(b); err != nil {
-				return nil, err
-			}
-			return m.Profile(), nil
-		})
-}
-
-func (r *Router) SelectSeries(
-	ctx context.Context,
-	c *connect.Request[querierv1.SelectSeriesRequest],
-) (*connect.Response[querierv1.SelectSeriesResponse], error) {
-	return Query[querierv1.SelectSeriesRequest, querierv1.SelectSeriesResponse](ctx, r, c,
-		func(a, b *querierv1.SelectSeriesResponse) (*querierv1.SelectSeriesResponse, error) {
-			series := phlaremodel.MergeSeries(c.Msg.Aggregation, a.Series, b.Series)
-			return &querierv1.SelectSeriesResponse{Series: series}, nil
-		})
-}
-
-func (r *Router) Diff(
-	ctx context.Context,
-	c *connect.Request[querierv1.DiffRequest],
-) (*connect.Response[querierv1.DiffResponse], error) {
-	g, ctx := errgroup.WithContext(ctx)
-	getTree := func(dst *phlaremodel.Tree, req *querierv1.SelectMergeStacktracesRequest) func() error {
-		return func() error {
-			resp, err := r.SelectMergeStacktraces(ctx, connect.NewRequest(req))
-			if err != nil {
-				return err
-			}
-			tree, err := phlaremodel.UnmarshalTree(resp.Msg.Tree)
-			if err != nil {
-				return err
-			}
-			*dst = *tree
-			return nil
-		}
-	}
-
-	var left, right phlaremodel.Tree
-	g.Go(getTree(&left, c.Msg.Left))
-	g.Go(getTree(&right, c.Msg.Right))
-	if err := g.Wait(); err != nil {
-		return nil, err
-	}
-
-	diff, err := phlaremodel.NewFlamegraphDiff(&left, &right, 0)
+	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	if len(tenantIDs) != 1 {
+		level.Warn(router.logger).Log("msg", "ignoring inter-tenant query overrides", "tenants", tenantIDs)
+	}
+	tenantID := tenantIDs[0]
+
+	// Verbose but explicit. Note that limits, error handling, etc.,
+	// are delegated to the callee.
+	overrides := router.overrides.ReadPathOverrides(tenantID)
+	if !overrides.EnableQueryBackend {
+		return query[Req, Resp](ctx, router.frontend, req)
+	}
+	// Note: the old read path includes both start and end: [start, end].
+	// The new read path does not include end: [start, end).
+	split := model.TimeFromUnixNano(overrides.EnableQueryBackendFrom.UnixNano())
+	queryRange := phlaremodel.GetSafeTimeRange(time.Now(), req.Msg)
+	if split.After(queryRange.End) {
+		return query[Req, Resp](ctx, router.frontend, req)
+	}
+	if split.Before(queryRange.Start) {
+		return query[Req, Resp](ctx, router.backend, req)
+	}
+
+	// We need to send requests both to the old and new read paths:
+	// [start, split](split, end), which translates to
+	// [start, split-1][split, end).
+	c, ok := (any)(req.Msg).(interface{ CloneVT() *Req })
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnimplemented, nil)
+	}
+	cloned := c.CloneVT()
+	phlaremodel.SetTimeRange(req, queryRange.Start, split-1)
+	phlaremodel.SetTimeRange(cloned, split, queryRange.End)
+
+	var a, b *connect.Response[Resp]
+	g, ctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		var err error
+		a, err = query[Req, Resp](ctx, router.frontend, req)
+		return err
+	})
+	g.Go(func() error {
+		var err error
+		b, err = query[Req, Resp](ctx, router.backend, connect.NewRequest(cloned))
+		return err
+	})
+	if err = g.Wait(); err != nil {
 		return nil, err
 	}
 
-	return connect.NewResponse(&querierv1.DiffResponse{Flamegraph: diff}), nil
+	resp, err := aggregate(a.Msg, b.Msg)
+	if err != nil || resp == nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(resp), nil
+}
+
+func query[Req, Resp any](
+	ctx context.Context,
+	svc querierv1connect.QuerierServiceClient,
+	req *connect.Request[Req],
+) (*connect.Response[Resp], error) {
+	var resp any
+	var err error
+
+	switch r := (any)(req).(type) {
+	case *connect.Request[querierv1.ProfileTypesRequest]:
+		resp, err = svc.ProfileTypes(ctx, r)
+	case *connect.Request[typesv1.GetProfileStatsRequest]:
+		resp, err = svc.GetProfileStats(ctx, r)
+	case *connect.Request[querierv1.AnalyzeQueryRequest]:
+		resp, err = svc.AnalyzeQuery(ctx, r)
+
+	case *connect.Request[typesv1.LabelNamesRequest]:
+		resp, err = svc.LabelNames(ctx, r)
+	case *connect.Request[typesv1.LabelValuesRequest]:
+		resp, err = svc.LabelValues(ctx, r)
+	case *connect.Request[querierv1.SeriesRequest]:
+		resp, err = svc.Series(ctx, r)
+
+	case *connect.Request[querierv1.SelectMergeStacktracesRequest]:
+		resp, err = svc.SelectMergeStacktraces(ctx, r)
+	case *connect.Request[querierv1.SelectMergeSpanProfileRequest]:
+		resp, err = svc.SelectMergeSpanProfile(ctx, r)
+	case *connect.Request[querierv1.SelectMergeProfileRequest]:
+		resp, err = svc.SelectMergeProfile(ctx, r)
+	case *connect.Request[querierv1.SelectSeriesRequest]:
+		resp, err = svc.SelectSeries(ctx, r)
+	case *connect.Request[querierv1.DiffRequest]:
+		resp, err = svc.Diff(ctx, r)
+
+	default:
+		return nil, connect.NewError(connect.CodeUnimplemented, nil)
+	}
+
+	if err != nil || resp == nil {
+		return nil, err
+	}
+
+	return resp.(*connect.Response[Resp]), nil
 }

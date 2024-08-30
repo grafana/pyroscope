@@ -370,7 +370,7 @@ func ValidateRangeRequest(limits RangeRequestLimits, tenantIDs []string, req mod
 	return ValidatedRangeRequest{Interval: req}, nil
 }
 
-func ValidateTimeRange(limits RangeRequestLimits, tenant []string, start, end *int64) (empty bool, err error) {
+func SanitizeTimeRange(limits RangeRequestLimits, tenant []string, start, end *int64) (empty bool, err error) {
 	var interval model.Interval
 	if start != nil {
 		interval.Start = model.Time(*start)
