@@ -65,12 +65,12 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 			level.Warn(m.logger).Log("msg", "job is not assigned to the worker", "job", jobUpdate.JobName, "raft_log_index", jobUpdate.RaftLogIndex)
 			continue
 		}
-		jobKey := tenantShard{tenant: job.TenantId, shard: job.Shard}
 		level.Debug(m.logger).Log("msg", "processing status update for compaction job", "job", jobUpdate.JobName, "status", jobUpdate.Status)
 		switch jobUpdate.Status {
 		case compactorv1.CompactionStatus_COMPACTION_STATUS_SUCCESS:
 			// clean up the job, we don't keep completed jobs around
 			m.compactionJobQueue.evict(job.Name, job.RaftLogIndex)
+			jobKey := tenantShard{tenant: job.TenantId, shard: job.Shard}
 			stateUpdate.deletedJobs[jobKey] = append(stateUpdate.deletedJobs[jobKey], job.Name)
 			m.compactionMetrics.completedJobs.WithLabelValues(
 				fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
@@ -94,7 +94,8 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 				}
 				m.compactionMetrics.addedBlocks.WithLabelValues(
 					fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
-				stateUpdate.updatedBlockQueues[jobKey] = append(stateUpdate.updatedBlockQueues[jobKey], b.CompactionLevel)
+				blockTenantShard := tenantShard{tenant: b.TenantId, shard: b.Shard}
+				stateUpdate.updatedBlockQueues[blockTenantShard] = append(stateUpdate.updatedBlockQueues[blockTenantShard], b.CompactionLevel)
 			}
 			// finally we'll delete the metadata for source blocks (this doesn't delete blocks from object store)
 			for _, b := range job.Blocks {
@@ -178,7 +179,7 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 
 	err = m.writeToDb(stateUpdate)
 	if err != nil {
-		panic(fmt.Errorf("error writing metastore compaction state to db: %w", err))
+		panic(fatalCommandError{fmt.Errorf("error persisting metadata state to db, %w", err)})
 	}
 
 	return resp, nil
@@ -267,7 +268,12 @@ func (m *metastoreState) writeToDb(sTable *pollStateUpdate) error {
 			for _, b := range blocks {
 				block := m.findBlock(shard, b)
 				if block == nil {
-					return fmt.Errorf("block %s not found in shard %d", b, shard)
+					level.Error(m.logger).Log(
+						"msg", "a newly compacted block could not be found",
+						"block", b,
+						"shard", shard,
+					)
+					continue
 				}
 				name, key := keyForBlockMeta(shard, "", b)
 				err := updateBlockMetadataBucket(tx, name, func(bucket *bbolt.Bucket) error {
@@ -293,7 +299,11 @@ func (m *metastoreState) writeToDb(sTable *pollStateUpdate) error {
 		for _, jobName := range sTable.newJobs {
 			job := m.findJob(jobName)
 			if job == nil {
-				return fmt.Errorf("job %s not found", jobName)
+				level.Error(m.logger).Log(
+					"msg", "a newly added job could not be found",
+					"job", jobName,
+				)
+				continue
 			}
 			err := m.persistCompactionJob(job.Shard, job.TenantId, job, tx)
 			if err != nil {
@@ -304,7 +314,13 @@ func (m *metastoreState) writeToDb(sTable *pollStateUpdate) error {
 			for _, l := range levels {
 				queue := m.getOrCreateCompactionBlockQueue(key).blocksByLevel[l]
 				if queue == nil {
-					return fmt.Errorf("block queue for %v and level %d not found", key, l)
+					level.Error(m.logger).Log(
+						"msg", "block queue not found",
+						"shard", key.shard,
+						"tenant", key.tenant,
+						"level", l,
+					)
+					continue
 				}
 				err := m.persistCompactionJobBlockQueue(key.shard, key.tenant, l, queue, tx)
 				if err != nil {
@@ -326,7 +342,11 @@ func (m *metastoreState) writeToDb(sTable *pollStateUpdate) error {
 		for _, jobName := range sTable.updatedJobs {
 			job := m.findJob(jobName)
 			if job == nil {
-				return fmt.Errorf("job %s not found", jobName)
+				level.Error(m.logger).Log(
+					"msg", "an updated job could not be found",
+					"job", jobName,
+				)
+				continue
 			}
 			err := m.persistCompactionJob(job.Shard, job.TenantId, job, tx)
 			if err != nil {
