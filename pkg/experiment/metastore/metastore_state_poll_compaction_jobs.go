@@ -65,12 +65,12 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 			level.Warn(m.logger).Log("msg", "job is not assigned to the worker", "job", jobUpdate.JobName, "raft_log_index", jobUpdate.RaftLogIndex)
 			continue
 		}
-		jobKey := tenantShard{tenant: job.TenantId, shard: job.Shard}
 		level.Debug(m.logger).Log("msg", "processing status update for compaction job", "job", jobUpdate.JobName, "status", jobUpdate.Status)
 		switch jobUpdate.Status {
 		case compactorv1.CompactionStatus_COMPACTION_STATUS_SUCCESS:
 			// clean up the job, we don't keep completed jobs around
 			m.compactionJobQueue.evict(job.Name, job.RaftLogIndex)
+			jobKey := tenantShard{tenant: job.TenantId, shard: job.Shard}
 			stateUpdate.deletedJobs[jobKey] = append(stateUpdate.deletedJobs[jobKey], job.Name)
 			m.compactionMetrics.completedJobs.WithLabelValues(
 				fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
@@ -179,7 +179,7 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 
 	err = m.writeToDb(stateUpdate)
 	if err != nil {
-		panic(fmt.Errorf("error writing metastore compaction state to db: %w", err))
+		panic(fatalCommandError{fmt.Errorf("error persisting metadata state to db, %w", err)})
 	}
 
 	return resp, nil

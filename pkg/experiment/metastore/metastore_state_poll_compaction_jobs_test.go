@@ -271,6 +271,20 @@ func Test_FailedCompaction(t *testing.T) {
 	verifyCompactionState(t, m)
 }
 
+func Test_PanicWithDbErrors(t *testing.T) {
+	m := initState(t)
+	addLevel0Blocks(m, 20)
+
+	// set up panic recovery
+	defer func() {
+		r := recover()
+		require.NotNilf(t, r, "we should panic when a DB error is returned")
+	}()
+	// close the db, this should cause errors when persisting the state
+	_ = m.db.boltdb.Close()
+	_, _ = m.pollCompactionJobs(&compactorv1.PollCompactionJobsRequest{JobCapacity: 2}, 20, 20)
+}
+
 func addLevel0Blocks(m *metastoreState, count int) {
 	for i := 0; i < count; i++ {
 		b := createBlock(i, 0, "", 0)
