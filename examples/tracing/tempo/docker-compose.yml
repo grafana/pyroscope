@@ -1,41 +1,42 @@
-version: "3"
+x-service: &rideshare-go-template
+  ports:
+    - 5000
+  environment: &env
+    PYROSCOPE_SERVER_ADDRESS: http://pyroscope:4040
+    OTLP_URL: tempo:4318
+    OTLP_INSECURE: 1
+    DEBUG_LOGGER: 1
+  build:
+    context: ../../language-sdk-instrumentation/golang-push/rideshare
+
+x-environment: &otel
+  <<: *env
+  OTEL_TRACES_EXPORTER: otlp
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4317
+  OTEL_METRICS_EXPORTER: none
+  OTEL_TRACES_SAMPLER: always_on
+  OTEL_PROPAGATORS: tracecontext
 
 services:
   rideshare-go-ap-south:
-    ports:
-      - 5000
+    <<: *rideshare-go-template
     hostname: rideshare-go-ap-south
-    environment: &env
-      PYROSCOPE_SERVER_ADDRESS: http://pyroscope:4040
-      OTLP_URL: tempo:4318
-      OTLP_INSECURE: 1
-      DEBUG_LOGGER: 1
+    environment:
       REGION: ap-south
-    build:
-      context: ../../language-sdk-instrumentation/golang-push/rideshare
 
   rideshare-go-eu-north:
-    ports:
-      - 5000
+    <<: *rideshare-go-template
     hostname: rideshare-go-eu-north
     environment:
-      <<: *env
       REGION: eu-north
-    build:
-      context: ../../language-sdk-instrumentation/golang-push/rideshare
 
   rideshare-java-us-east:
     ports:
       - 5000
     hostname: rideshare-java-us-east
     environment:
-      <<: *env
-      OTEL_TRACES_EXPORTER: otlp
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4317
+      <<: *otel
       OTEL_SERVICE_NAME: rideshare.java.push.app
-      OTEL_METRICS_EXPORTER: none
-      OTEL_TRACES_SAMPLER: always_on
-      OTEL_PROPAGATORS: tracecontext
       PYROSCOPE_LABELS: hostname=rideshare-java-us-east
       REGION: us-east
     build:
@@ -47,13 +48,8 @@ services:
       - 5000
     hostname: rideshare-dotnet-eu-west
     environment:
-      <<: *env
-      OTEL_TRACES_EXPORTER: otlp
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4317
+      <<: *otel
       OTEL_SERVICE_NAME: rideshare.dotnet.push.app
-      OTEL_METRICS_EXPORTER: none
-      OTEL_TRACES_SAMPLER: always_on
-      OTEL_PROPAGATORS: tracecontext
       OTEL_RESOURCE_ATTRIBUTES: host.name=rideshare-dotnet-eu-west
       PYROSCOPE_LABELS: hostname=rideshare-dotnet-eu-west
       REGION: eu-west
@@ -66,13 +62,8 @@ services:
       - 5000
     hostname: rideshare-python-eu-east
     environment:
-      <<: *env
-      OTEL_TRACES_EXPORTER: otlp
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4317
+      <<: *otel
       OTEL_SERVICE_NAME: rideshare.python.push.app
-      OTEL_METRICS_EXPORTER: none
-      OTEL_TRACES_SAMPLER: always_on
-      OTEL_PROPAGATORS: tracecontext
       PYROSCOPE_LABELS: hostname=rideshare-python-us-east
       REGION: us-east
     build:
