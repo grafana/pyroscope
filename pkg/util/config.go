@@ -8,6 +8,7 @@ package util
 import (
 	"fmt"
 	"reflect"
+	"time"
 )
 
 func stringKeyMapToInterfaceKeyMap(m map[string]interface{}) map[interface{}]interface{} {
@@ -58,6 +59,10 @@ func DiffConfig(defaultConfig, actualConfig map[interface{}]interface{}) (map[in
 			}
 		case nil:
 			if defaultValue != nil {
+				output[key] = v
+			}
+		case time.Time:
+			if defaultValue != nil && !v.IsZero() {
 				output[key] = v
 			}
 		case map[interface{}]interface{}:

@@ -40,12 +40,15 @@ import (
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/embedded/grafana"
 	"github.com/grafana/pyroscope/pkg/frontend"
+	readpath "github.com/grafana/pyroscope/pkg/frontend/read_path"
+	queryfrontend "github.com/grafana/pyroscope/pkg/frontend/read_path/query_frontend"
 	"github.com/grafana/pyroscope/pkg/ingester"
 	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/pkg/operations"
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/querier"
+	"github.com/grafana/pyroscope/pkg/querier/vcs"
 	"github.com/grafana/pyroscope/pkg/querier/worker"
 	"github.com/grafana/pyroscope/pkg/scheduler"
 	"github.com/grafana/pyroscope/pkg/settings"
@@ -116,13 +119,42 @@ func (f *Phlare) initQueryFrontend() (services.Service, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	f.API.RegisterPyroscopeHandlers(frontendSvc)
-	f.API.RegisterQueryFrontend(frontendSvc)
-	f.API.RegisterQuerier(frontendSvc)
 	f.frontend = frontendSvc
+	f.API.RegisterFrontendForQuerierHandler(frontendSvc)
+	if !f.Cfg.v2Experiment {
+		f.API.RegisterQuerierServiceHandler(frontendSvc)
+		f.API.RegisterPyroscopeHandlers(frontendSvc)
+		f.API.RegisterVCSServiceHandler(frontendSvc)
+	} else {
+		f.initReadPathRouter()
+	}
 
 	return frontendSvc, nil
+}
+
+func (f *Phlare) initReadPathRouter() {
+	vcsService := vcs.New(
+		log.With(f.logger, "component", "vcs-service"),
+		f.reg,
+	)
+
+	newFrontend := queryfrontend.NewQueryFrontend(
+		log.With(f.logger, "component", "query-frontend"),
+		f.Overrides,
+		f.metastoreClient,
+		f.queryBackendClient,
+	)
+
+	router := readpath.NewRouter(
+		log.With(f.logger, "component", "read-path-router"),
+		f.Overrides,
+		f.frontend,
+		newFrontend,
+	)
+
+	f.API.RegisterQuerierServiceHandler(router)
+	f.API.RegisterPyroscopeHandlers(router)
+	f.API.RegisterVCSServiceHandler(vcsService)
 }
 
 func (f *Phlare) initRuntimeConfig() (services.Service, error) {
@@ -279,7 +311,8 @@ func (f *Phlare) initQuerier() (services.Service, error) {
 
 	if !f.isModuleActive(QueryFrontend) {
 		f.API.RegisterPyroscopeHandlers(querierSvc)
-		f.API.RegisterQuerier(querierSvc)
+		f.API.RegisterQuerierServiceHandler(querierSvc)
+		f.API.RegisterVCSServiceHandler(querierSvc)
 	}
 	qWorker, err := worker.NewQuerierWorker(f.Cfg.Worker, querier.NewGRPCHandler(querierSvc), log.With(f.logger, "component", "querier-worker"), f.reg)
 	if err != nil {
