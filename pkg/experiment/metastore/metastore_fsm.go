@@ -1,6 +1,7 @@
 package metastore
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
@@ -56,6 +57,16 @@ type fsmError struct {
 	log *raft.Log
 	err error
 }
+
+type fatalCommandError struct {
+	err error
+}
+
+func (e fatalCommandError) Error() string {
+	return fmt.Sprintf("fatal FSM command error: %v", e.err)
+}
+
+func (e fatalCommandError) Unwrap() error { return e }
 
 func errResponse(l *raft.Log, err error) fsmResponse {
 	return fsmResponse{err: &fsmError{log: l, err: err}}
@@ -129,6 +140,10 @@ func handleCommand[Req, Resp proto.Message](raw []byte, cmd *raft.Log, call comm
 	var resp fsmResponse
 	defer func() {
 		if r := recover(); r != nil {
+			var fCommandError fatalCommandError
+			if errors.As(r.(error), &fCommandError) {
+				panic(fCommandError)
+			}
 			resp.err = util.PanicError(r)
 		}
 	}()

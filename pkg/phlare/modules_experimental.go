@@ -15,8 +15,8 @@ import (
 	segmentwriterclient "github.com/grafana/pyroscope/pkg/experiment/ingester/client"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore"
 	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
-	"github.com/grafana/pyroscope/pkg/experiment/querybackend"
-	querybackendclient "github.com/grafana/pyroscope/pkg/experiment/querybackend/client"
+	querybackend "github.com/grafana/pyroscope/pkg/experiment/query_backend"
+	querybackendclient "github.com/grafana/pyroscope/pkg/experiment/query_backend/client"
 	"github.com/grafana/pyroscope/pkg/util/health"
 )
 

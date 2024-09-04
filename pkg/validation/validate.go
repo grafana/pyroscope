@@ -370,6 +370,26 @@ func ValidateRangeRequest(limits RangeRequestLimits, tenantIDs []string, req mod
 	return ValidatedRangeRequest{Interval: req}, nil
 }
 
+func SanitizeTimeRange(limits RangeRequestLimits, tenant []string, start, end *int64) (empty bool, err error) {
+	var interval model.Interval
+	if start != nil {
+		interval.Start = model.Time(*start)
+	}
+	if end != nil {
+		interval.End = model.Time(*end)
+	}
+	validated, err := ValidateRangeRequest(limits, tenant, interval, model.Now())
+	if err != nil {
+		return false, err
+	}
+	if validated.IsEmpty {
+		return true, nil
+	}
+	*start = int64(validated.Start)
+	*end = int64(validated.End)
+	return false, nil
+}
+
 type FlameGraphLimits interface {
 	MaxFlameGraphNodesDefault(string) int
 	MaxFlameGraphNodesMax(string) int

@@ -22,8 +22,8 @@ type VCSClient interface {
 
 // FileFinder finds a file in a vcs repository.
 type FileFinder struct {
-	path, ref string
-	repo      giturl.IGitURL
+	path, ref, rootPath string
+	repo                giturl.IGitURL
 
 	client     VCSClient
 	httpClient *http.Client
@@ -31,7 +31,7 @@ type FileFinder struct {
 }
 
 // NewFileFinder returns a new FileFinder.
-func NewFileFinder(client VCSClient, repo giturl.IGitURL, path, ref string, httpClient *http.Client, logger log.Logger) *FileFinder {
+func NewFileFinder(client VCSClient, repo giturl.IGitURL, path, rootPath, ref string, httpClient *http.Client, logger log.Logger) *FileFinder {
 	if ref == "" {
 		ref = "HEAD"
 	}
@@ -40,6 +40,7 @@ func NewFileFinder(client VCSClient, repo giturl.IGitURL, path, ref string, http
 		logger:     logger,
 		repo:       repo,
 		path:       path,
+		rootPath:   rootPath,
 		ref:        ref,
 		httpClient: httpClient,
 	}

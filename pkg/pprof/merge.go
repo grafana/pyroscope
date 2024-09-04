@@ -89,6 +89,14 @@ func (m *ProfileMerge) Merge(p *profilev1.Profile) error {
 	return nil
 }
 
+func (m *ProfileMerge) MergeBytes(b []byte) error {
+	var p profilev1.Profile
+	if err := Unmarshal(b, &p); err != nil {
+		return err
+	}
+	return m.Merge(&p)
+}
+
 func (m *ProfileMerge) Profile() *profilev1.Profile {
 	if m.profile == nil {
 		return &profilev1.Profile{

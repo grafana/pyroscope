@@ -253,7 +253,9 @@ func (c *Client) pushToInstance(
 	if err != nil {
 		return nil, err
 	}
-	c.metrics.sentBytes.WithLabelValues(strconv.Itoa(int(req.Shard)), req.TenantId, addr)
+	c.metrics.sentBytes.
+		WithLabelValues(strconv.Itoa(int(req.Shard)), req.TenantId, addr).
+		Observe(float64(len(req.Profile)))
 	return segmentwriterv1.NewSegmentWriterServiceClient(conn).Push(ctx, req)
 }
 

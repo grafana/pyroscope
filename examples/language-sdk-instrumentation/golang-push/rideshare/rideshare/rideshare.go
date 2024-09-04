@@ -100,8 +100,11 @@ func ReadConfig() Config {
 		UseDebugTracer: os.Getenv("DEBUG_TRACER") == "1",
 		UseDebugLogger: os.Getenv("DEBUG_LOGGER") == "1",
 		Tags: map[string]string{
-			"region":   os.Getenv("REGION"),
-			"hostname": hostname,
+			"region":             os.Getenv("REGION"),
+			"hostname":           hostname,
+			"service_git_ref":    "HEAD",
+			"service_repository": "https://github.com/grafana/pyroscope",
+			"service_root_path":  "examples/language-sdk-instrumentation/golang-push/rideshare",
 		},
 
 		ParametersPoolSize: envIntOrDefault("PARAMETERS_POOL_SIZE", 1000),

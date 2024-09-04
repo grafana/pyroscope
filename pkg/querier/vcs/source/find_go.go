@@ -99,16 +99,15 @@ func (ff FileFinder) fetchGoogleSourceDependencyFile(ctx context.Context, mod go
 	return ff.fetchURL(ctx, url, true)
 }
 
-// tryFindGoFile tries to find the go file in the repo.
-// It tries to find the file in the repo by removing path segment after path segment.
+// tryFindGoFile tries to find the go file in the repo, under the rootPath.
+// It tries to find the file in the rootPath inside the repo by removing path segment after path segment.
 // maxAttempts is the maximum number of attempts to try to find the file in case the file path is very long.
-// For example, if the path is "github.com/grafana/grafana/pkg/infra/log/log.go", it will try to find the file at:
-// - github.com/grafana/grafana/pkg/infra/log/log.go
-// - grafana/grafana/pkg/infra/log/log.go
-// - pkg/infra/log/log.go
-// - infra/log/log.go
-// - log/log.go
-// - log.go
+// For example, if the path is "github.com/grafana/grafana/pkg/infra/log/log.go" and rootPath is "path/to/module1", it
+// will try to find the file at:
+// - "path/to/module1/pkg/infra/log/log.go"
+// - "path/to/module1/infra/log/log.go"
+// - "path/to/module1/log/log.go"
+// - "path/to/module1/log.go"
 func (ff FileFinder) tryFindGoFile(ctx context.Context, maxAttempts int) (*vcsv1.GetFileResponse, error) {
 	if maxAttempts <= 0 {
 		return nil, errors.New("invalid max attempts")
@@ -121,7 +120,7 @@ func (ff FileFinder) tryFindGoFile(ctx context.Context, maxAttempts int) (*vcsv1
 		content, err := ff.client.GetFile(ctx, client.FileRequest{
 			Owner: ff.repo.GetOwnerName(),
 			Repo:  ff.repo.GetRepoName(),
-			Path:  path,
+			Path:  strings.Join([]string{ff.rootPath, path}, "/"),
 			Ref:   ff.ref,
 		})
 		attempts++
