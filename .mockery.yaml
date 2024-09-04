@@ -11,6 +11,13 @@ packages:
   github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1:
     interfaces:
       MetastoreServiceClient:
+      MetastoreServiceServer:
   github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect:
     interfaces:
       QuerierServiceClient:
+  github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1:
+    interfaces:
+      CompactionPlannerServer:
+  github.com/grafana/pyroscope/pkg/experiment/metastore/discovery:
+    interfaces:
+      Discovery:

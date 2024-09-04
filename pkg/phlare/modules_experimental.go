@@ -4,7 +4,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
-	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
 	kuberesolver2 "github.com/grafana/pyroscope/pkg/experiment/metastore/discovery/kuberesolver"
 	"github.com/prometheus/client_golang/prometheus"
@@ -128,18 +127,12 @@ func (f *Phlare) initMetastoreClient() (services.Service, error) {
 		return nil, err
 	}
 
-	mc, err := metastoreclient.New(
+	f.metastoreClient = metastoreclient.New(
 		f.logger,
 		f.Cfg.Metastore.GRPCClientConfig,
 		disc,
 	)
-	var mcc metastorev1.MetastoreServiceClient = mc
-	if err != nil {
-		return nil, err
-	}
-	_ = mcc
-	f.metastoreClient = mc
-	return mc.Service(), nil
+	return f.metastoreClient.Service(), nil
 }
 
 func (f *Phlare) initQueryBackend() (services.Service, error) {

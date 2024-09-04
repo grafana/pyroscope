@@ -3,10 +3,9 @@ package metastore
 import (
 	"context"
 	"errors"
-	"time"
-
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"time"
 
 	"github.com/go-kit/log/level"
 
@@ -33,8 +32,22 @@ func (m *Metastore) AddBlock(_ context.Context, req *metastorev1.AddBlockRequest
 	if err != nil {
 		_ = level.Error(m.logger).Log("msg", "failed to apply add block", "block_id", req.Block.Id, "shard", req.Block.Shard, "err", err)
 		if m.shouldRetryAddBlock(err) {
-			return resp, status.Error(codes.Unavailable, err.Error())
+			_, serverID := m.raft.LeaderWithID()
+			if serverID != "" {
+				return &metastorev1.AddBlockResponse{
+					RaftStatus: &metastorev1.RaftStatus{
+						Code:   metastorev1.RaftStatusCode_NOT_LEADER,
+						Leader: string(serverID),
+					},
+				}, nil
+			} else {
+				return nil, status.Error(codes.Unavailable, err.Error())
+			}
+
 		}
+	}
+	resp.RaftStatus = &metastorev1.RaftStatus{
+		Code: metastorev1.RaftStatusCode_OK,
 	}
 	return resp, err
 }

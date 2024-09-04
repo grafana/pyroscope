@@ -2,6 +2,7 @@ package metastoreclient
 
 import (
 	"context"
+	"fmt"
 	"github.com/go-kit/log"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
 	"github.com/hashicorp/go-multierror"
@@ -49,7 +50,7 @@ type instance interface {
 	compactorv1.CompactionPlannerClient
 }
 
-func New(logger log.Logger, grpcClientConfig grpcclient.Config, d discovery.Discovery) (*Client, error) {
+func New(logger log.Logger, grpcClientConfig grpcclient.Config, d discovery.Discovery) *Client {
 	var (
 		c = new(Client)
 	)
@@ -62,7 +63,7 @@ func New(logger log.Logger, grpcClientConfig grpcclient.Config, d discovery.Disc
 	c.discovery.Subscribe(discovery.UpdateFunc(func(servers []discovery.Server) {
 		c.updateServers(servers)
 	}))
-	return c, nil
+	return c
 }
 
 func (c *Client) Service() services.Service      { return c.service }
@@ -84,6 +85,7 @@ func (c *Client) stopping(error) error {
 }
 
 func (c *Client) updateServers(servers []discovery.Server) {
+	c.logger.Log("msg", "updating servers", "servers", fmt.Sprintf("%+v", servers))
 	byID := make(map[raft.ServerID][]discovery.Server, len(servers))
 	for _, srv := range servers {
 		byID[srv.Raft.ID] = append(byID[srv.Raft.ID], srv)
@@ -132,8 +134,8 @@ func (c *Client) updateServers(servers []discovery.Server) {
 
 func newClient(s discovery.Server, config grpcclient.Config, logger log.Logger) (*client, error) {
 	address := s.Raft.Address
-	if s.IP != "" {
-		address = raft.ServerAddress(s.IP)
+	if s.ResolvedAddress != "" {
+		address = raft.ServerAddress(s.ResolvedAddress)
 	}
 	conn, err := dial(string(address), config, logger)
 	if err != nil {

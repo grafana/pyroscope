@@ -14,7 +14,9 @@ message AddBlockRequest {
   BlockMeta block = 1;
 }
 
-message AddBlockResponse {}
+message AddBlockResponse {
+  RaftStatus raft_status = 1;
+}
 
 message BlockMeta {
   uint64 format_version = 1;
@@ -63,6 +65,7 @@ message QueryMetadataRequest {
 
 message QueryMetadataResponse {
   repeated BlockMeta blocks = 1;
+  RaftStatus raft_status = 2;
 }
 
 message ReadIndexRequest {
@@ -71,4 +74,15 @@ message ReadIndexRequest {
 
 message ReadIndexResponse {
   uint64 read_index = 1;
+  RaftStatus raft_status = 2;
+}
+
+message RaftStatus {
+  RaftStatusCode code = 1;
+  string leader = 2;
+}
+
+enum RaftStatusCode {
+  OK = 0;
+  NOT_LEADER = 2;
 }

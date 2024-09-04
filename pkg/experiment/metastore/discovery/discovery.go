@@ -1,6 +1,9 @@
 package discovery
 
-import "github.com/hashicorp/raft"
+import (
+	"fmt"
+	"github.com/hashicorp/raft"
+)
 
 type Updates interface {
 	Servers(servers []Server)
@@ -13,8 +16,12 @@ func (f UpdateFunc) Servers(servers []Server) {
 }
 
 type Server struct {
-	Raft raft.Server
-	IP   string
+	Raft            raft.Server
+	ResolvedAddress string
+}
+
+func (s *Server) String() string {
+	return fmt.Sprintf("Server{id: %s, Address %s ResolvedAddress: %v}", s.Raft.ID, s.Raft.Address, s.ResolvedAddress)
 }
 
 type Discovery interface {
