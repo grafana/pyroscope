@@ -2,6 +2,7 @@ package read_path
 
 import (
 	"context"
+	"slices"
 
 	"connectrpc.com/connect"
 	"golang.org/x/sync/errgroup"
@@ -203,10 +204,16 @@ func (r *Router) GetProfileStats(
 
 func (r *Router) ProfileTypes(
 	ctx context.Context,
-	req *connect.Request[querierv1.ProfileTypesRequest],
+	c *connect.Request[querierv1.ProfileTypesRequest],
 ) (*connect.Response[querierv1.ProfileTypesResponse], error) {
-	if r.frontend != nil {
-		return r.frontend.ProfileTypes(ctx, req)
-	}
-	return connect.NewResponse(&querierv1.ProfileTypesResponse{}), nil
+	return Query[querierv1.ProfileTypesRequest, querierv1.ProfileTypesResponse](ctx, r, c,
+		func(a, b *querierv1.ProfileTypesResponse) (*querierv1.ProfileTypesResponse, error) {
+			pTypes := a.ProfileTypes
+			for _, pType := range b.ProfileTypes {
+				if !slices.Contains(pTypes, pType) {
+					pTypes = append(pTypes, pType)
+				}
+			}
+			return &querierv1.ProfileTypesResponse{ProfileTypes: pTypes}, nil
+		})
 }
