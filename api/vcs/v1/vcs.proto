@@ -37,6 +37,8 @@ message GetFileRequest {
   string ref = 2;
   // the path to the file as provided by the symbols
   string localPath = 3;
+  // the root path where the project lives inside the repository
+  string rootPath = 4;
 }
 
 message GetFileResponse {

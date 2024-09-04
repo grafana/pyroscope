@@ -150,6 +150,7 @@ func (q *Service) GetFile(ctx context.Context, req *connect.Request[vcsv1.GetFil
 		ghClient,
 		gitURL,
 		req.Msg.LocalPath,
+		req.Msg.RootPath,
 		req.Msg.Ref,
 		http.DefaultClient,
 		log.With(q.logger, "repo", gitURL.GetRepoName()),
