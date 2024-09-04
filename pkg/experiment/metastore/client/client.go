@@ -6,6 +6,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/raft"
+	"io"
 	"sync"
 
 	"github.com/grafana/dskit/grpcclient"
@@ -38,28 +39,29 @@ type Client struct {
 type client struct {
 	metastorev1.MetastoreServiceClient
 	compactorv1.CompactionPlannerClient
-	conn *grpc.ClientConn
+	conn io.Closer
 	srv  discovery.Server
 }
 
-func New(address string, logger log.Logger, grpcClientConfig grpcclient.Config) (*Client, error) {
+// todo
+type instance interface {
+	metastorev1.MetastoreServiceClient
+	compactorv1.CompactionPlannerClient
+}
+
+func New(logger log.Logger, grpcClientConfig grpcclient.Config, d discovery.Discovery) (*Client, error) {
 	var (
-		c   = new(Client)
-		err error
+		c = new(Client)
 	)
 
 	c.service = services.NewIdleService(c.starting, c.stopping)
 	c.logger = logger
 	c.grpcClientConfig = grpcClientConfig
 	c.servers = make(map[raft.ServerID]*client)
-
-	c.discovery, err = discovery.NewKubeResolverDiscovery(logger, address, nil, discovery.UpdateFunc(func(servers []discovery.Server) {
+	c.discovery = d
+	c.discovery.Subscribe(discovery.UpdateFunc(func(servers []discovery.Server) {
 		c.updateServers(servers)
 	}))
-	if err != nil {
-		return nil, err
-	}
-
 	return c, nil
 }
 
@@ -77,6 +79,7 @@ func (c *Client) stopping(error) error {
 			multiErr = multierror.Append(multiErr, err)
 		}
 	}
+	c.servers = nil
 	return multiErr
 }
 
@@ -98,7 +101,7 @@ func (c *Client) updateServers(servers []discovery.Server) {
 		return
 	}
 	newServers := make(map[raft.ServerID]*client, len(byID))
-
+	clientSet := make(map[*client]struct{})
 	for k, s := range byID {
 		prev, ok := c.servers[k]
 		if ok {
@@ -107,8 +110,6 @@ func (c *Client) updateServers(servers []discovery.Server) {
 				c.logger.Log("msg", "server already exists", "id", k, "server", s[0])
 				continue
 			}
-			_ = prev.conn.Close()
-			c.servers[k] = nil
 		}
 		cl, err := newClient(s[0], c.grpcClientConfig, c.logger)
 		if err != nil {
@@ -116,6 +117,15 @@ func (c *Client) updateServers(servers []discovery.Server) {
 			continue
 		}
 		newServers[k] = cl
+		clientSet[cl] = struct{}{}
+	}
+	for _, oldClient := range c.servers {
+		if _, ok := clientSet[oldClient]; !ok {
+			err := oldClient.conn.Close()
+			if err != nil {
+				c.logger.Log("msg", "failed to close connection", "err", err)
+			}
+		}
 	}
 	c.servers = newServers
 }

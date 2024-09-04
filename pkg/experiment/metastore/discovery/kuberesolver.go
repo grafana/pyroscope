@@ -7,32 +7,26 @@ import (
 	"google.golang.org/grpc/resolver"
 	"net/url"
 	"strings"
+	"sync"
 )
 
 type KubeDiscovery struct {
 	l        log.Logger
 	resolver *kuberesolver2.KResolver
 	ti       targetInfo
-	upd      Updates
+
+	servers []Server
+	updLock sync.Mutex
+	upd     Updates
 }
 
-func (g *KubeDiscovery) resolved(e kuberesolver2.Endpoints) {
-	g.upd.Servers(nil)
+func (g *KubeDiscovery) ServerError(srv Server) {
+
 }
 
-func (g *KubeDiscovery) Close() {
-	g.resolver.Close()
-}
-
-func NewKubeResolverDiscovery(l log.Logger, target string, client kuberesolver2.K8sClient, upd Updates) (*KubeDiscovery, error) {
+func NewKubeResolverDiscovery(l log.Logger, target string, client kuberesolver2.K8sClient) (*KubeDiscovery, error) {
 	var err error
-	if client == nil {
-		client, err = kuberesolver2.NewInClusterK8sClient()
-		if err != nil {
-			return nil, err
-		}
-	}
-	l = log.With(l, "target", target, "component", "kuberesolver-fork")
+	l = log.With(l, "target", target, "component", "kuberesolver-discovery")
 	u, err := url.Parse(target)
 	if err != nil {
 		return nil, err
@@ -60,9 +54,35 @@ func NewKubeResolverDiscovery(l log.Logger, target string, client kuberesolver2.
 	}
 
 	res.resolver = r
-	res.upd = upd
 
 	return res, nil
+}
+
+func (g *KubeDiscovery) Subscribe(upd Updates) {
+	g.updLock.Lock()
+	defer g.updLock.Unlock()
+	g.upd = upd
+	g.upd.Servers(g.servers)
+}
+
+func (g *KubeDiscovery) Close() {
+	g.updLock.Lock()
+	defer g.updLock.Unlock()
+	g.upd = nil
+	g.resolver.Close()
+}
+
+func (g *KubeDiscovery) resolved(e kuberesolver2.Endpoints) {
+	g.updLock.Lock()
+	defer g.updLock.Unlock()
+	g.servers = convertEndpoints(e)
+	if g.upd != nil {
+		g.upd.Servers(g.servers)
+	}
+}
+
+func convertEndpoints(e kuberesolver2.Endpoints) []Server {
+	return nil
 }
 
 type targetInfo struct {

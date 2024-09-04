@@ -18,6 +18,7 @@ type Server struct {
 }
 
 type Discovery interface {
-	//GetServers() []Server
+	Subscribe(updates Updates)
+	ServerError(srv Server)
 	Close()
 }

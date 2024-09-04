@@ -5,6 +5,8 @@ import (
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
+	kuberesolver2 "github.com/grafana/pyroscope/pkg/experiment/metastore/discovery/kuberesolver"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
@@ -116,10 +118,20 @@ func (f *Phlare) initMetastoreClient() (services.Service, error) {
 	if err := f.Cfg.Metastore.Validate(); err != nil {
 		return nil, err
 	}
+
+	kubeClient, err := kuberesolver2.NewInClusterK8sClient()
+	if err != nil {
+		return nil, err
+	}
+	disc, err := discovery.NewKubeResolverDiscovery(f.logger, f.Cfg.Metastore.Address, kubeClient)
+	if err != nil {
+		return nil, err
+	}
+
 	mc, err := metastoreclient.New(
-		f.Cfg.Metastore.Address,
 		f.logger,
 		f.Cfg.Metastore.GRPCClientConfig,
+		disc,
 	)
 	var mcc metastorev1.MetastoreServiceClient = mc
 	if err != nil {
