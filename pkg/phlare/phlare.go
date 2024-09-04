@@ -49,8 +49,8 @@ import (
 	segmentwriterclient "github.com/grafana/pyroscope/pkg/experiment/ingester/client"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore"
 	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
-	"github.com/grafana/pyroscope/pkg/experiment/querybackend"
-	querybackendclient "github.com/grafana/pyroscope/pkg/experiment/querybackend/client"
+	querybackend "github.com/grafana/pyroscope/pkg/experiment/query_backend"
+	querybackendclient "github.com/grafana/pyroscope/pkg/experiment/query_backend/client"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/ingester"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
@@ -188,26 +188,32 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 	c.Worker.RegisterFlags(throwaway)
 	c.OverridesExporter.RegisterFlags(throwaway, log.NewLogfmtLogger(os.Stderr))
 
+	overrides := map[string]string{
+		"server.http-listen-port":                "4040",
+		"distributor.replication-factor":         "1",
+		"query-scheduler.service-discovery-mode": schedulerdiscovery.ModeRing,
+	}
+
 	c.v2Experiment = os.Getenv("PYROSCOPE_V2_EXPERIMENT") != ""
 	if c.v2Experiment {
+		for k, v := range map[string]string{
+			"server.grpc-max-recv-msg-size-bytes":               "104857600",
+			"server.grpc-max-send-msg-size-bytes":               "104857600",
+			"server.grpc.keepalive.min-time-between-pings":      "1s",
+			"segment-writer.grpc-client-config.connect-timeout": "1s",
+			"segment-writer.num-tokens":                         "4",
+			"segment-writer.heartbeat-timeout":                  "1m",
+			"segment-writer.unregister-on-shutdown":             "false",
+		} {
+			overrides[k] = v
+		}
+
 		c.Metastore.RegisterFlags(throwaway)
 		c.SegmentWriter.RegisterFlags(throwaway)
 		c.QueryBackend.RegisterFlags(throwaway)
 		c.CompactionWorker.RegisterFlags(throwaway)
 		c.LimitsConfig.WritePathOverrides.RegisterFlags(throwaway)
-	}
-
-	overrides := map[string]string{
-		"server.http-listen-port":                           "4040",
-		"distributor.replication-factor":                    "1",
-		"query-scheduler.service-discovery-mode":            schedulerdiscovery.ModeRing,
-		"server.grpc-max-recv-msg-size-bytes":               "104857600",
-		"server.grpc-max-send-msg-size-bytes":               "104857600",
-		"server.grpc.keepalive.min-time-between-pings":      "1s",
-		"segment-writer.grpc-client-config.connect-timeout": "1s",
-		"segment-writer.num-tokens":                         "4",
-		"segment-writer.heartbeat-timeout":                  "1m",
-		"segment-writer.unregister-on-shutdown":             "false",
+		c.LimitsConfig.ReadPathOverrides.RegisterFlags(throwaway)
 	}
 
 	throwaway.VisitAll(func(f *flag.Flag) {

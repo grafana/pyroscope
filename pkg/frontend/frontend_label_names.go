@@ -15,7 +15,10 @@ import (
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
-func (f *Frontend) LabelNames(ctx context.Context, c *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error) {
+func (f *Frontend) LabelNames(
+	ctx context.Context,
+	c *connect.Request[typesv1.LabelNamesRequest],
+) (*connect.Response[typesv1.LabelNamesResponse], error) {
 	opentracing.SpanFromContext(ctx).
 		SetTag("start", model.Time(c.Msg.Start).Time().String()).
 		SetTag("end", model.Time(c.Msg.End).Time().String()).

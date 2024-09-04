@@ -146,6 +146,18 @@ func NewFlamegraphDiff(left, right *Tree, maxNodes int64) (*querierv1.FlameGraph
 	return res, nil
 }
 
+func NewFlamegraphDiffFromBytes(left, right []byte, maxNodes int64) (*querierv1.FlameGraphDiff, error) {
+	l, err := UnmarshalTree(left)
+	if err != nil {
+		return nil, err
+	}
+	r, err := UnmarshalTree(right)
+	if err != nil {
+		return nil, err
+	}
+	return NewFlamegraphDiff(l, r, maxNodes)
+}
+
 // combineTree aligns 2 trees by making them having the same structure with the
 // same number of nodes
 // It also makes the tree have a single root

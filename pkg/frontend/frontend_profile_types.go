@@ -15,7 +15,10 @@ import (
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
-func (f *Frontend) ProfileTypes(ctx context.Context, c *connect.Request[querierv1.ProfileTypesRequest]) (*connect.Response[querierv1.ProfileTypesResponse], error) {
+func (f *Frontend) ProfileTypes(
+	ctx context.Context,
+	c *connect.Request[querierv1.ProfileTypesRequest],
+) (*connect.Response[querierv1.ProfileTypesResponse], error) {
 	opentracing.SpanFromContext(ctx).
 		SetTag("start", model.Time(c.Msg.Start).Time().String()).
 		SetTag("end", model.Time(c.Msg.End).Time().String())

@@ -11,6 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	writepath "github.com/grafana/pyroscope/pkg/distributor/write_path"
+	readpath "github.com/grafana/pyroscope/pkg/frontend/read_path"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 )
 
@@ -101,6 +102,9 @@ type Limits struct {
 
 	// Write path overrides used in the write path router.
 	WritePathOverrides writepath.Config `yaml:",inline" json:",inline"`
+
+	// Write path overrides used in the read path router.
+	ReadPathOverrides readpath.Config `yaml:",inline" json:",inline"`
 }
 
 // LimitError are errors that do not comply with the limits specified.
@@ -458,6 +462,10 @@ func (o *Overrides) QueryAnalysisSeriesEnabled(tenantID string) bool {
 
 func (o *Overrides) WritePathOverrides(tenantID string) writepath.Config {
 	return o.getOverridesForTenant(tenantID).WritePathOverrides
+}
+
+func (o *Overrides) ReadPathOverrides(tenantID string) readpath.Config {
+	return o.getOverridesForTenant(tenantID).ReadPathOverrides
 }
 
 func (o *Overrides) DefaultLimits() *Limits {
