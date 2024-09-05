@@ -5,6 +5,7 @@ import (
 
 	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/metastorev1connect"
 	querybackendv1 "github.com/grafana/pyroscope/api/gen/proto/go/querybackend/v1"
 	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
 	segmentwriter "github.com/grafana/pyroscope/pkg/experiment/ingester"
@@ -28,6 +29,7 @@ func (a *API) RegisterSegmentWriterRing(r http.Handler) {
 
 func (a *API) RegisterMetastore(svc *metastore.Metastore) {
 	metastorev1.RegisterMetastoreServiceServer(a.server.GRPC, svc)
+	metastorev1connect.RegisterOperatorServiceHandler(a.server.HTTP, svc)
 	compactorv1.RegisterCompactionPlannerServer(a.server.GRPC, svc)
 }
 
