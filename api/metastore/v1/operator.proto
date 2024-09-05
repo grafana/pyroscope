@@ -6,25 +6,12 @@ service OperatorService {
   rpc Info(InfoRequest) returns (InfoResponse) {}
 }
 
-message Info {
-  string id = 1;
-  State state = 2;
-  string leader_id = 3;
-  string last_leader_contact = 4;
-  uint64 term = 5;
-  Suffrage suffrage = 6;
-  Log log = 7;
-  Snapshot snapshot = 8;
-  Protocol protocol = 9;
-  repeated Peer peers = 10;
-}
-
 // State values are chosen to match the Hashicorp Raft library states. See:
 // https://github.com/hashicorp/raft/blob/42d34464b2d203e389e11ed6d43db698792c0604/state.go#L15-L27.
 enum State {
   Follower = 0;
-  Leader = 1;
-  Candidate = 2;
+  Candidate = 1;
+  Leader = 2;
   Shutdown = 3;
 }
 
@@ -65,4 +52,16 @@ message Peer {
 
 message InfoRequest {}
 
-message InfoResponse {}
+message InfoResponse {
+  string id = 1;
+  State state = 2;
+  string leader_id = 3;
+  // Unix timestamp in milliseconds of when the leader last contacted this node.
+  int64 last_leader_contact = 4;
+  uint64 term = 5;
+  Suffrage suffrage = 6;
+  Log log = 7;
+  Snapshot snapshot = 8;
+  Protocol protocol = 9;
+  repeated Peer peers = 10;
+}
