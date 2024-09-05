@@ -464,3 +464,5 @@ run: ## Run the pyroscope binary (pass parameters with 'make run PARAMS=-myparam
 .PHONY: mockery
 mockery: $(BIN)/mockery
 	$(BIN)/mockery
+
+include .vscode/Makefile
