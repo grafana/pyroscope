@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/cespare/xxhash/v2"
@@ -132,7 +133,6 @@ func (m *Metastore) GetCompactionJobs(_ context.Context, req *compactorv1.GetCom
 func (m *metastoreState) compactBlock(block *metastorev1.BlockMeta, tx *bbolt.Tx, raftLogIndex uint64) error {
 	// create and store an optional compaction job
 	if job := m.tryCreateJob(block, raftLogIndex); job != nil {
-		level.Debug(m.logger).Log("msg", "persisting compaction job", "job", job.Name)
 		if err := m.persistCompactionJob(block.Shard, block.TenantId, job, tx); err != nil {
 			return err
 		}
@@ -204,7 +204,7 @@ func (m *metastoreState) tryCreateJob(block *metastorev1.BlockMeta, raftLogIndex
 		level.Info(m.logger).Log(
 			"msg", "created compaction job",
 			"job", job.Name,
-			"blocks", len(queuedBlocks),
+			"blocks", strings.Join(queuedBlocks, ","),
 			"shard", block.Shard,
 			"tenant", block.TenantId,
 			"compaction_level", block.CompactionLevel)
@@ -278,6 +278,7 @@ func (m *metastoreState) persistCompactionJob(shard uint32, tenant string, job *
 	jobBucketName, jobKey := keyForCompactionJob(shard, tenant, job.Name)
 	if err := updateCompactionJobBucket(tx, jobBucketName, func(bucket *bbolt.Bucket) error {
 		data, _ := job.MarshalVT()
+		level.Debug(m.logger).Log("msg", "persisting compaction job", "job", job.Name, "storage_bucket", jobBucketName, "storage_key", jobKey)
 		return bucket.Put(jobKey, data)
 	}); err != nil {
 		return err
