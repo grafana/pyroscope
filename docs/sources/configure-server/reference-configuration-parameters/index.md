@@ -421,11 +421,11 @@ grpc_tls_config:
 
 # Limit on the size of a gRPC message this server can receive (bytes).
 # CLI flag: -server.grpc-max-recv-msg-size-bytes
-[grpc_server_max_recv_msg_size: <int> | default = 104857600]
+[grpc_server_max_recv_msg_size: <int> | default = 4194304]
 
 # Limit on the size of a gRPC message this server can send (bytes).
 # CLI flag: -server.grpc-max-send-msg-size-bytes
-[grpc_server_max_send_msg_size: <int> | default = 104857600]
+[grpc_server_max_send_msg_size: <int> | default = 4194304]
 
 # Limit on the number of concurrent streams for gRPC calls per client connection
 # (0 = unlimited)
@@ -461,7 +461,7 @@ grpc_tls_config:
 # If client sends keepalive ping more often, server will send GOAWAY and close
 # the connection.
 # CLI flag: -server.grpc.keepalive.min-time-between-pings
-[grpc_server_min_time_between_pings: <duration> | default = 1s]
+[grpc_server_min_time_between_pings: <duration> | default = 5m]
 
 # If true, server allows keepalive pings even when there are no active
 # streams(RPCs). If false, and client sends ping when there are no active

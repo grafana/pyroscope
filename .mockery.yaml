@@ -11,4 +11,9 @@ packages:
   github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1:
     interfaces:
       MetastoreServiceClient:
-
+  github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect:
+    interfaces:
+      QuerierServiceClient:
+  github.com/grafana/pyroscope/pkg/frontend:
+    interfaces:
+      Limits:

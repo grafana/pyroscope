@@ -11,10 +11,10 @@ import (
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
 )
 
-func (f *Frontend) GetProfileStats(ctx context.Context,
-	c *connect.Request[typesv1.GetProfileStatsRequest]) (
-	*connect.Response[typesv1.GetProfileStatsResponse], error,
-) {
+func (f *Frontend) GetProfileStats(
+	ctx context.Context,
+	c *connect.Request[typesv1.GetProfileStatsRequest],
+) (*connect.Response[typesv1.GetProfileStatsResponse], error) {
 	opentracing.SpanFromContext(ctx)
 
 	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceGetProfileStatsProcedure)

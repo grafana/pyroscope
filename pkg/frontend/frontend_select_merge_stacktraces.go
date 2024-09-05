@@ -18,10 +18,10 @@ import (
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
-func (f *Frontend) SelectMergeStacktraces(ctx context.Context,
-	c *connect.Request[querierv1.SelectMergeStacktracesRequest]) (
-	*connect.Response[querierv1.SelectMergeStacktracesResponse], error,
-) {
+func (f *Frontend) SelectMergeStacktraces(
+	ctx context.Context,
+	c *connect.Request[querierv1.SelectMergeStacktracesRequest],
+) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
 	t, err := f.selectMergeStacktracesTree(ctx, c)
 	if err != nil {
 		return nil, err
@@ -36,10 +36,10 @@ func (f *Frontend) SelectMergeStacktraces(ctx context.Context,
 	return connect.NewResponse(&resp), nil
 }
 
-func (f *Frontend) selectMergeStacktracesTree(ctx context.Context,
-	c *connect.Request[querierv1.SelectMergeStacktracesRequest]) (
-	*phlaremodel.Tree, error,
-) {
+func (f *Frontend) selectMergeStacktracesTree(
+	ctx context.Context,
+	c *connect.Request[querierv1.SelectMergeStacktracesRequest],
+) (*phlaremodel.Tree, error) {
 	opentracing.SpanFromContext(ctx).
 		SetTag("start", model.Time(c.Msg.Start).Time().String()).
 		SetTag("end", model.Time(c.Msg.End).Time().String()).

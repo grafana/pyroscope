@@ -34,6 +34,7 @@ const (
 	LabelNameServiceGitRef     = "service_git_ref"
 	LabelNameServiceName       = "service_name"
 	LabelNameServiceRepository = "service_repository"
+	LabelNameServiceRootPath   = "service_root_path"
 
 	LabelNameOrder     = "__order__"
 	LabelOrderEnforced = "enforced"
@@ -495,6 +496,7 @@ type ServiceVersion struct {
 	Repository string `json:"repository,omitempty"`
 	GitRef     string `json:"git_ref,omitempty"`
 	BuildID    string `json:"build_id,omitempty"`
+	RootPath   string `json:"root_path,omitempty"`
 }
 
 // ServiceVersionFromLabels Attempts to extract a service version from the given labels.
@@ -502,8 +504,10 @@ type ServiceVersion struct {
 func ServiceVersionFromLabels(lbls Labels) (ServiceVersion, bool) {
 	repo := lbls.Get(LabelNameServiceRepository)
 	gitref := lbls.Get(LabelNameServiceGitRef)
+	rootPath := lbls.Get(LabelNameServiceRootPath)
 	return ServiceVersion{
 		Repository: repo,
 		GitRef:     gitref,
-	}, repo != "" || gitref != ""
+		RootPath:   rootPath,
+	}, repo != "" || gitref != "" || rootPath != ""
 }

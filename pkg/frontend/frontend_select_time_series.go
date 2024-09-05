@@ -18,10 +18,10 @@ import (
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
-func (f *Frontend) SelectSeries(ctx context.Context,
-	c *connect.Request[querierv1.SelectSeriesRequest]) (
-	*connect.Response[querierv1.SelectSeriesResponse], error,
-) {
+func (f *Frontend) SelectSeries(
+	ctx context.Context,
+	c *connect.Request[querierv1.SelectSeriesRequest],
+) (*connect.Response[querierv1.SelectSeriesResponse], error) {
 	opentracing.SpanFromContext(ctx).
 		SetTag("start", model.Time(c.Msg.Start).Time().String()).
 		SetTag("end", model.Time(c.Msg.End).Time().String()).
@@ -51,7 +51,7 @@ func (f *Frontend) SelectSeries(ctx context.Context,
 		g.SetLimit(maxConcurrent)
 	}
 
-	m := phlaremodel.NewTimeSeriesMerger(false)
+	m := phlaremodel.NewTimeSeriesMerger(true)
 	interval := validationutil.MaxDurationOrZeroPerTenant(tenantIDs, f.limits.QuerySplitDuration)
 	intervals := NewTimeIntervalIterator(time.UnixMilli(c.Msg.Start), time.UnixMilli(c.Msg.End), interval,
 		WithAlignment(time.Second*time.Duration(c.Msg.Step)))

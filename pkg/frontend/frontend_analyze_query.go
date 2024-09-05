@@ -15,10 +15,10 @@ import (
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
-func (f *Frontend) AnalyzeQuery(ctx context.Context,
-	c *connect.Request[querierv1.AnalyzeQueryRequest]) (
-	*connect.Response[querierv1.AnalyzeQueryResponse], error,
-) {
+func (f *Frontend) AnalyzeQuery(
+	ctx context.Context,
+	c *connect.Request[querierv1.AnalyzeQueryRequest],
+) (*connect.Response[querierv1.AnalyzeQueryResponse], error) {
 	opentracing.SpanFromContext(ctx)
 
 	tenantID, err := tenant.TenantID(ctx)
