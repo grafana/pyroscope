@@ -92,6 +92,14 @@ func main() {
 	readyCmd := app.Command("ready", "Check Pyroscope health.")
 	readyParams := addReadyParams(readyCmd)
 
+	collectionRulesCmd := app.Command("collection-rules", "Operate on collection rules.")
+	collectionRulesListCmd := collectionRulesCmd.Command("list", "List collection rules.")
+	collectionRulesListParams := addCollectionRulesParams(collectionRulesListCmd)
+	collectionRulesInsertCmd := collectionRulesCmd.Command("insert", "Insert collection rule.")
+	collectionRulesInsertParams := addCollectionRulesInsertParams(collectionRulesInsertCmd)
+	collectionRulesDeleteCmd := collectionRulesCmd.Command("delete", "Delete collection rule.")
+	collectionRulesDeleteParams := addCollectionRulesDeleteParams(collectionRulesDeleteCmd)
+
 	// parse command line arguments
 	parsedCmd := kingpin.MustParse(app.Parse(os.Args[1:]))
 
@@ -156,6 +164,18 @@ func main() {
 		}
 	case readyCmd.FullCommand():
 		if err := ready(ctx, readyParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case collectionRulesListCmd.FullCommand():
+		if err := collectionRulesList(ctx, collectionRulesListParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case collectionRulesInsertCmd.FullCommand():
+		if err := collectionRulesInsert(ctx, collectionRulesInsertParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case collectionRulesDeleteCmd.FullCommand():
+		if err := collectionRulesDelete(ctx, collectionRulesDeleteParams); err != nil {
 			os.Exit(checkError(err))
 		}
 	default:

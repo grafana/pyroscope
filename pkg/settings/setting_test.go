@@ -263,8 +263,8 @@ func TestTenantSettings_Set(t *testing.T) {
 func newTestTenantSettings(t *testing.T, initial map[string][]*settingsv1.Setting) (*TenantSettings, func()) {
 	t.Helper()
 
-	store, err := NewMemoryStore()
-	require.NoError(t, err)
+	store := newMemoryStore()
+	var err error
 
 	for tenant, settings := range initial {
 		for _, setting := range settings {
