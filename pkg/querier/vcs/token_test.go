@@ -161,7 +161,7 @@ func Test_tokenFromRequest(t *testing.T) {
 
 	t.Run("token does not exist in request", func(t *testing.T) {
 		githubSessionSecret = []byte("16_byte_key_XXXX")
-		wantErr := "failed to read cookie GitSession: http: named cookie not present"
+		wantErr := "failed to read cookie pyroscope_git_session: http: named cookie not present"
 
 		// The type of request here doesn't matter.
 		req := connect.NewRequest(&vcsv1.GetFileRequest{})
@@ -275,12 +275,12 @@ func Test_tenantIsolation(t *testing.T) {
 
 }
 
-func Test_StillCompatbile(t *testing.T) {
+func Test_StillCompatible(t *testing.T) {
 	githubSessionSecret = []byte("16_byte_key_XXXX")
 
 	ctx := newTestContextWithTenantID("tenant_a")
 	req := connect.NewRequest(&vcsv1.GetFileRequest{})
-	req.Header().Add("Cookie", "GitSession=eyJtZXRhZGF0YSI6Im12N0d1OHlIanZxdWdQMmF5TnJaYXd1SXNyQXFmUUVIMVhGS1RkejVlZWtob1NRV1JUM3hVZGRuMndUemhQZ05oWktRVkpjcVh5SVJDSnFmTTV3WTJyNmR3R21rZkRhL2FORjhRZ0lJcU1oa1hPbGFEdXNwcFE9PSJ9Cg==")
+	req.Header().Add("Cookie", "pyroscope_git_session=eyJtZXRhZGF0YSI6Im12N0d1OHlIanZxdWdQMmF5TnJaYXd1SXNyQXFmUUVIMVhGS1RkejVlZWtob1NRV1JUM3hVZGRuMndUemhQZ05oWktRVkpjcVh5SVJDSnFmTTV3WTJyNmR3R21rZkRhL2FORjhRZ0lJcU1oa1hPbGFEdXNwcFE9PSJ9Cg==")
 
 	realToken, err := tokenFromRequest(ctx, req)
 	require.NoError(t, err)

@@ -220,7 +220,7 @@ func (a *app) provisioningDatasource(_ context.Context) error {
 					"name": "Pyroscope",
 					"url":  a.cfg.PyroscopeURL,
 					"jsonData": map[string]interface{}{
-						"keepCookies":      []string{"GitSession"},
+						"keepCookies":      []string{"pyroscope_git_session"},
 						"overridesDefault": true,
 					},
 				},
