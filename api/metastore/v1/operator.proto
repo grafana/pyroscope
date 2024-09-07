@@ -56,12 +56,13 @@ message InfoResponse {
   string id = 1;
   State state = 2;
   string leader_id = 3;
+  bool is_leader_verified = 4;
   // Unix timestamp in milliseconds of when the leader last contacted this node.
-  int64 last_leader_contact = 4;
-  uint64 term = 5;
-  Suffrage suffrage = 6;
-  Log log = 7;
-  Snapshot snapshot = 8;
-  Protocol protocol = 9;
-  repeated Peer peers = 10;
+  int64 last_leader_contact = 5;
+  uint64 term = 6;
+  Suffrage suffrage = 7;
+  Log log = 8;
+  Snapshot snapshot = 9;
+  Protocol protocol = 10;
+  repeated Peer peers = 11;
 }

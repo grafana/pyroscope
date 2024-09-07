@@ -1136,6 +1136,9 @@
         "leaderId": {
           "type": "string"
         },
+        "isLeaderVerified": {
+          "type": "boolean"
+        },
         "lastLeaderContact": {
           "type": "string",
           "format": "int64",

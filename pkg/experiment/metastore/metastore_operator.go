@@ -45,11 +45,21 @@ func (m *Metastore) Info(_ context.Context, _ *connect.Request[metastorev1.InfoR
 		},
 	}
 
+	// Perform a more reliable leader check to verify if this node is indeed a
+	// leader. A node may report itself as a leader, but not be a leader by
+	// consensus of the cluster.
+	leaderErr := m.raft.VerifyLeader().Error()
+
 	switch m.raft.State() {
 	case raft.Leader:
 		res.LastLeaderContact = 0
+		res.IsLeaderVerified = leaderErr == nil
 	default:
 		res.LastLeaderContact = m.raft.LastContact().UnixMilli()
+
+		// A node which is a candidate can't have a verified leader status as
+		// there is no leader yet.
+		res.IsLeaderVerified = leaderErr == raft.ErrNotLeader && res.State != metastorev1.State_Candidate
 	}
 
 	if len(cfg.Servers) > 1 {

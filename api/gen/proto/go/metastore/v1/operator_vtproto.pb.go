@@ -125,6 +125,7 @@ func (m *InfoResponse) CloneVT() *InfoResponse {
 	r.Id = m.Id
 	r.State = m.State
 	r.LeaderId = m.LeaderId
+	r.IsLeaderVerified = m.IsLeaderVerified
 	r.LastLeaderContact = m.LastLeaderContact
 	r.Term = m.Term
 	r.Suffrage = m.Suffrage
@@ -284,6 +285,9 @@ func (this *InfoResponse) EqualVT(that *InfoResponse) bool {
 		return false
 	}
 	if this.LeaderId != that.LeaderId {
+		return false
+	}
+	if this.IsLeaderVerified != that.IsLeaderVerified {
 		return false
 	}
 	if this.LastLeaderContact != that.LastLeaderContact {
@@ -701,7 +705,7 @@ func (m *InfoResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 			i -= size
 			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
 			i--
-			dAtA[i] = 0x52
+			dAtA[i] = 0x5a
 		}
 	}
 	if m.Protocol != nil {
@@ -712,7 +716,7 @@ func (m *InfoResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= size
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
 		i--
-		dAtA[i] = 0x4a
+		dAtA[i] = 0x52
 	}
 	if m.Snapshot != nil {
 		size, err := m.Snapshot.MarshalToSizedBufferVT(dAtA[:i])
@@ -722,7 +726,7 @@ func (m *InfoResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= size
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
 		i--
-		dAtA[i] = 0x42
+		dAtA[i] = 0x4a
 	}
 	if m.Log != nil {
 		size, err := m.Log.MarshalToSizedBufferVT(dAtA[:i])
@@ -732,20 +736,30 @@ func (m *InfoResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= size
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
 		i--
-		dAtA[i] = 0x3a
+		dAtA[i] = 0x42
 	}
 	if m.Suffrage != 0 {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Suffrage))
 		i--
-		dAtA[i] = 0x30
+		dAtA[i] = 0x38
 	}
 	if m.Term != 0 {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Term))
 		i--
-		dAtA[i] = 0x28
+		dAtA[i] = 0x30
 	}
 	if m.LastLeaderContact != 0 {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.LastLeaderContact))
+		i--
+		dAtA[i] = 0x28
+	}
+	if m.IsLeaderVerified {
+		i--
+		if m.IsLeaderVerified {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
 		i--
 		dAtA[i] = 0x20
 	}
@@ -881,6 +895,9 @@ func (m *InfoResponse) SizeVT() (n int) {
 	l = len(m.LeaderId)
 	if l > 0 {
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.IsLeaderVerified {
+		n += 2
 	}
 	if m.LastLeaderContact != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.LastLeaderContact))
@@ -1574,6 +1591,26 @@ func (m *InfoResponse) UnmarshalVT(dAtA []byte) error {
 			iNdEx = postIndex
 		case 4:
 			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field IsLeaderVerified", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.IsLeaderVerified = bool(v != 0)
+		case 5:
+			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field LastLeaderContact", wireType)
 			}
 			m.LastLeaderContact = 0
@@ -1591,7 +1628,7 @@ func (m *InfoResponse) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
-		case 5:
+		case 6:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Term", wireType)
 			}
@@ -1610,7 +1647,7 @@ func (m *InfoResponse) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
-		case 6:
+		case 7:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Suffrage", wireType)
 			}
@@ -1629,7 +1666,7 @@ func (m *InfoResponse) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
-		case 7:
+		case 8:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Log", wireType)
 			}
@@ -1665,7 +1702,7 @@ func (m *InfoResponse) UnmarshalVT(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 8:
+		case 9:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Snapshot", wireType)
 			}
@@ -1701,7 +1738,7 @@ func (m *InfoResponse) UnmarshalVT(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 9:
+		case 10:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Protocol", wireType)
 			}
@@ -1737,7 +1774,7 @@ func (m *InfoResponse) UnmarshalVT(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 10:
+		case 11:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Peers", wireType)
 			}
