@@ -98,8 +98,8 @@ func formatHumanRaftInfo(res *metastorev1.InfoResponse) string {
 	appendPairs(&sb, [][]string{
 		{"ID", res.Id},
 		{"State", res.State.String()},
+		{"State verified", fmt.Sprint(res.IsStateVerified)},
 		{"Leader ID", res.LeaderId},
-		{"Leader verified", fmt.Sprint(res.IsLeaderVerified)},
 		{"Last leader contact", lastLeaderContact},
 		{"Term", fmt.Sprint(res.Term)},
 		{"Suffrage", res.Suffrage.String()},

@@ -125,7 +125,7 @@ func (m *InfoResponse) CloneVT() *InfoResponse {
 	r.Id = m.Id
 	r.State = m.State
 	r.LeaderId = m.LeaderId
-	r.IsLeaderVerified = m.IsLeaderVerified
+	r.IsStateVerified = m.IsStateVerified
 	r.LastLeaderContact = m.LastLeaderContact
 	r.Term = m.Term
 	r.Suffrage = m.Suffrage
@@ -287,7 +287,7 @@ func (this *InfoResponse) EqualVT(that *InfoResponse) bool {
 	if this.LeaderId != that.LeaderId {
 		return false
 	}
-	if this.IsLeaderVerified != that.IsLeaderVerified {
+	if this.IsStateVerified != that.IsStateVerified {
 		return false
 	}
 	if this.LastLeaderContact != that.LastLeaderContact {
@@ -753,9 +753,9 @@ func (m *InfoResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x28
 	}
-	if m.IsLeaderVerified {
+	if m.IsStateVerified {
 		i--
-		if m.IsLeaderVerified {
+		if m.IsStateVerified {
 			dAtA[i] = 1
 		} else {
 			dAtA[i] = 0
@@ -896,7 +896,7 @@ func (m *InfoResponse) SizeVT() (n int) {
 	if l > 0 {
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
-	if m.IsLeaderVerified {
+	if m.IsStateVerified {
 		n += 2
 	}
 	if m.LastLeaderContact != 0 {
@@ -1591,7 +1591,7 @@ func (m *InfoResponse) UnmarshalVT(dAtA []byte) error {
 			iNdEx = postIndex
 		case 4:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field IsLeaderVerified", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field IsStateVerified", wireType)
 			}
 			var v int
 			for shift := uint(0); ; shift += 7 {
@@ -1608,7 +1608,7 @@ func (m *InfoResponse) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
-			m.IsLeaderVerified = bool(v != 0)
+			m.IsStateVerified = bool(v != 0)
 		case 5:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field LastLeaderContact", wireType)

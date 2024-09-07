@@ -56,7 +56,10 @@ message InfoResponse {
   string id = 1;
   State state = 2;
   string leader_id = 3;
-  bool is_leader_verified = 4;
+  // True if the state reported by this node matches the state the cluster
+  // reports. For example, if this node claims to be a leader, but the rest of
+  // the cluster disagrees, this value will be false.
+  bool is_state_verified = 4;
   // Unix timestamp in milliseconds of when the leader last contacted this node.
   int64 last_leader_contact = 5;
   uint64 term = 6;

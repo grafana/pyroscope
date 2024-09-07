@@ -1136,8 +1136,9 @@
         "leaderId": {
           "type": "string"
         },
-        "isLeaderVerified": {
-          "type": "boolean"
+        "isStateVerified": {
+          "type": "boolean",
+          "description": "True if the state reported by this node matches the state the cluster\nreports. For example, if this node claims to be a leader, but the rest of\nthe cluster disagrees, this value will be false."
         },
         "lastLeaderContact": {
           "type": "string",

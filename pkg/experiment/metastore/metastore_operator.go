@@ -53,13 +53,10 @@ func (m *Metastore) Info(_ context.Context, _ *connect.Request[metastorev1.InfoR
 	switch m.raft.State() {
 	case raft.Leader:
 		res.LastLeaderContact = 0
-		res.IsLeaderVerified = leaderErr == nil
+		res.IsStateVerified = leaderErr == nil
 	default:
 		res.LastLeaderContact = m.raft.LastContact().UnixMilli()
-
-		// A node which is a candidate can't have a verified leader status as
-		// there is no leader yet.
-		res.IsLeaderVerified = leaderErr == raft.ErrNotLeader && res.State != metastorev1.State_Candidate
+		res.IsStateVerified = leaderErr == raft.ErrNotLeader
 	}
 
 	if len(cfg.Servers) > 1 {
