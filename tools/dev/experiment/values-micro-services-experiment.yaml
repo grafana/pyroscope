@@ -67,5 +67,11 @@ pyroscope:
           mountPath: /data-compaction-worker
           subPath: compaction-worker
 
+    # TODO(bryan) Remove this once we eliminate the need for the query
+    # scheduler in v2.
+    query-scheduler:
+      kind: Deployment
+      replicaCount: 1
+
 minio:
   enabled: true

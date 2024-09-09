@@ -24,10 +24,3 @@ func (q *QueryFrontend) GetProfileStats(
 ) (*connect.Response[typesv1.GetProfileStatsResponse], error) {
 	return connect.NewResponse(&typesv1.GetProfileStatsResponse{}), nil
 }
-
-func (q *QueryFrontend) ProfileTypes(
-	context.Context,
-	*connect.Request[querierv1.ProfileTypesRequest],
-) (*connect.Response[querierv1.ProfileTypesResponse], error) {
-	return connect.NewResponse(&querierv1.ProfileTypesResponse{}), nil
-}

@@ -23,9 +23,9 @@ jobs:
           node-version: lts/hydrogen
           cache: yarn
       - name: Install Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: "1.21.12"
+          go-version: "1.22.7"
           cache: true
       - run: yarn --frozen-lockfile
       - run: make build
@@ -53,9 +53,9 @@ jobs:
           node-version: lts/hydrogen
           cache: yarn
       - name: Install Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: "1.21.12"
+          go-version: "1.22.7"
           cache: true
       - run: yarn --frozen-lockfile
       - run: make build

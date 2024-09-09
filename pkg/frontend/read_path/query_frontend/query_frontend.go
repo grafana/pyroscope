@@ -11,7 +11,6 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
-	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
 	querybackend "github.com/grafana/pyroscope/pkg/experiment/query_backend"
 	querybackendclient "github.com/grafana/pyroscope/pkg/experiment/query_backend/client"
 	queryplan "github.com/grafana/pyroscope/pkg/experiment/query_backend/query_plan"
@@ -23,14 +22,14 @@ var _ querierv1connect.QuerierServiceClient = (*QueryFrontend)(nil)
 type QueryFrontend struct {
 	logger       log.Logger
 	limits       frontend.Limits
-	metastore    *metastoreclient.Client
+	metastore    metastorev1.MetastoreServiceClient
 	querybackend *querybackendclient.Client
 }
 
 func NewQueryFrontend(
 	logger log.Logger,
 	limits frontend.Limits,
-	metastore *metastoreclient.Client,
+	metastore metastorev1.MetastoreServiceClient,
 	querybackend *querybackendclient.Client,
 ) *QueryFrontend {
 	return &QueryFrontend{

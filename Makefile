@@ -69,7 +69,11 @@ EBPF_TESTS='^TestEBPF.*'
 
 .PHONY: go/test
 go/test: $(BIN)/gotestsum
+ifeq ($(GOOS),darwin)
+	$(BIN)/gotestsum -- $(GO_TEST_FLAGS) ./...
+else
 	$(BIN)/gotestsum -- $(GO_TEST_FLAGS) -skip $(EBPF_TESTS) ./... ./ebpf/...
+endif
 
 .PHONY: build
 build: frontend/build go/bin ## Do a production build (requiring the frontend build to be present)

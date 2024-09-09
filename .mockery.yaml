@@ -15,6 +15,9 @@ packages:
   github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect:
     interfaces:
       QuerierServiceClient:
+  github.com/grafana/pyroscope/pkg/frontend:
+    interfaces:
+      Limits:
   github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1:
     interfaces:
       CompactionPlannerServer:

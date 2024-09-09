@@ -138,9 +138,9 @@ func (q *QueryBackend) read(
 }
 
 func (q *QueryBackend) withThrottling(fn func() (*queryv1.InvokeResponse, error)) (*queryv1.InvokeResponse, error) {
+	defer q.running.Dec()
 	if q.running.Inc() > q.concurrency {
 		return nil, status.Error(codes.ResourceExhausted, "all minions are busy, please try later")
 	}
-	defer q.running.Dec()
 	return fn()
 }
