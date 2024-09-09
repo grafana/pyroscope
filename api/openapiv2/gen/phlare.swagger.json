@@ -473,12 +473,7 @@
       }
     },
     "v1AddBlockResponse": {
-      "type": "object",
-      "properties": {
-        "raftStatus": {
-          "$ref": "#/definitions/v1RaftStatus"
-        }
-      }
+      "type": "object"
     },
     "v1AnalyzeQueryResponse": {
       "type": "object",
@@ -1558,9 +1553,6 @@
             "type": "object",
             "$ref": "#/definitions/v1BlockMeta"
           }
-        },
-        "raftStatus": {
-          "$ref": "#/definitions/v1RaftStatus"
         }
       }
     },
@@ -1653,25 +1645,6 @@
       ],
       "default": "QUERY_UNSPECIFIED"
     },
-    "v1RaftStatus": {
-      "type": "object",
-      "properties": {
-        "code": {
-          "$ref": "#/definitions/v1RaftStatusCode"
-        },
-        "leader": {
-          "type": "string"
-        }
-      }
-    },
-    "v1RaftStatusCode": {
-      "type": "string",
-      "enum": [
-        "OK",
-        "NOT_LEADER"
-      ],
-      "default": "OK"
-    },
     "v1RawProfileSeries": {
       "type": "object",
       "properties": {
@@ -1715,9 +1688,6 @@
         "readIndex": {
           "type": "string",
           "format": "uint64"
-        },
-        "raftStatus": {
-          "$ref": "#/definitions/v1RaftStatus"
         }
       }
     },

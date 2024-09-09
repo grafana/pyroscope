@@ -46,7 +46,6 @@ func (m *AddBlockResponse) CloneVT() *AddBlockResponse {
 		return (*AddBlockResponse)(nil)
 	}
 	r := new(AddBlockResponse)
-	r.RaftStatus = m.RaftStatus.CloneVT()
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -160,7 +159,6 @@ func (m *QueryMetadataResponse) CloneVT() *QueryMetadataResponse {
 		return (*QueryMetadataResponse)(nil)
 	}
 	r := new(QueryMetadataResponse)
-	r.RaftStatus = m.RaftStatus.CloneVT()
 	if rhs := m.Blocks; rhs != nil {
 		tmpContainer := make([]*BlockMeta, len(rhs))
 		for k, v := range rhs {
@@ -202,7 +200,6 @@ func (m *ReadIndexResponse) CloneVT() *ReadIndexResponse {
 	}
 	r := new(ReadIndexResponse)
 	r.ReadIndex = m.ReadIndex
-	r.RaftStatus = m.RaftStatus.CloneVT()
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -211,24 +208,6 @@ func (m *ReadIndexResponse) CloneVT() *ReadIndexResponse {
 }
 
 func (m *ReadIndexResponse) CloneMessageVT() proto.Message {
-	return m.CloneVT()
-}
-
-func (m *RaftStatus) CloneVT() *RaftStatus {
-	if m == nil {
-		return (*RaftStatus)(nil)
-	}
-	r := new(RaftStatus)
-	r.Code = m.Code
-	r.Leader = m.Leader
-	if len(m.unknownFields) > 0 {
-		r.unknownFields = make([]byte, len(m.unknownFields))
-		copy(r.unknownFields, m.unknownFields)
-	}
-	return r
-}
-
-func (m *RaftStatus) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
@@ -255,9 +234,6 @@ func (this *AddBlockResponse) EqualVT(that *AddBlockResponse) bool {
 	if this == that {
 		return true
 	} else if this == nil || that == nil {
-		return false
-	}
-	if !this.RaftStatus.EqualVT(that.RaftStatus) {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -454,9 +430,6 @@ func (this *QueryMetadataResponse) EqualVT(that *QueryMetadataResponse) bool {
 			}
 		}
 	}
-	if !this.RaftStatus.EqualVT(that.RaftStatus) {
-		return false
-	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
@@ -495,36 +468,11 @@ func (this *ReadIndexResponse) EqualVT(that *ReadIndexResponse) bool {
 	if this.ReadIndex != that.ReadIndex {
 		return false
 	}
-	if !this.RaftStatus.EqualVT(that.RaftStatus) {
-		return false
-	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
 func (this *ReadIndexResponse) EqualMessageVT(thatMsg proto.Message) bool {
 	that, ok := thatMsg.(*ReadIndexResponse)
-	if !ok {
-		return false
-	}
-	return this.EqualVT(that)
-}
-func (this *RaftStatus) EqualVT(that *RaftStatus) bool {
-	if this == that {
-		return true
-	} else if this == nil || that == nil {
-		return false
-	}
-	if this.Code != that.Code {
-		return false
-	}
-	if this.Leader != that.Leader {
-		return false
-	}
-	return string(this.unknownFields) == string(that.unknownFields)
-}
-
-func (this *RaftStatus) EqualMessageVT(thatMsg proto.Message) bool {
-	that, ok := thatMsg.(*RaftStatus)
 	if !ok {
 		return false
 	}
@@ -766,16 +714,6 @@ func (m *AddBlockResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
-	}
-	if m.RaftStatus != nil {
-		size, err := m.RaftStatus.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
-		i--
-		dAtA[i] = 0xa
 	}
 	return len(dAtA) - i, nil
 }
@@ -1073,16 +1011,6 @@ func (m *QueryMetadataResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error)
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if m.RaftStatus != nil {
-		size, err := m.RaftStatus.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
-		i--
-		dAtA[i] = 0x12
-	}
 	if len(m.Blocks) > 0 {
 		for iNdEx := len(m.Blocks) - 1; iNdEx >= 0; iNdEx-- {
 			size, err := m.Blocks[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
@@ -1168,63 +1096,8 @@ func (m *ReadIndexResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if m.RaftStatus != nil {
-		size, err := m.RaftStatus.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
-		i--
-		dAtA[i] = 0x12
-	}
 	if m.ReadIndex != 0 {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.ReadIndex))
-		i--
-		dAtA[i] = 0x8
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *RaftStatus) MarshalVT() (dAtA []byte, err error) {
-	if m == nil {
-		return nil, nil
-	}
-	size := m.SizeVT()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *RaftStatus) MarshalToVT(dAtA []byte) (int, error) {
-	size := m.SizeVT()
-	return m.MarshalToSizedBufferVT(dAtA[:size])
-}
-
-func (m *RaftStatus) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
-	if m == nil {
-		return 0, nil
-	}
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.unknownFields != nil {
-		i -= len(m.unknownFields)
-		copy(dAtA[i:], m.unknownFields)
-	}
-	if len(m.Leader) > 0 {
-		i -= len(m.Leader)
-		copy(dAtA[i:], m.Leader)
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Leader)))
-		i--
-		dAtA[i] = 0x12
-	}
-	if m.Code != 0 {
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Code))
 		i--
 		dAtA[i] = 0x8
 	}
@@ -1251,10 +1124,6 @@ func (m *AddBlockResponse) SizeVT() (n int) {
 	}
 	var l int
 	_ = l
-	if m.RaftStatus != nil {
-		l = m.RaftStatus.SizeVT()
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -1391,10 +1260,6 @@ func (m *QueryMetadataResponse) SizeVT() (n int) {
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
 	}
-	if m.RaftStatus != nil {
-		l = m.RaftStatus.SizeVT()
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -1421,27 +1286,6 @@ func (m *ReadIndexResponse) SizeVT() (n int) {
 	_ = l
 	if m.ReadIndex != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.ReadIndex))
-	}
-	if m.RaftStatus != nil {
-		l = m.RaftStatus.SizeVT()
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-	}
-	n += len(m.unknownFields)
-	return n
-}
-
-func (m *RaftStatus) SizeVT() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Code != 0 {
-		n += 1 + protohelpers.SizeOfVarint(uint64(m.Code))
-	}
-	l = len(m.Leader)
-	if l > 0 {
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -1563,42 +1407,6 @@ func (m *AddBlockResponse) UnmarshalVT(dAtA []byte) error {
 			return fmt.Errorf("proto: AddBlockResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field RaftStatus", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.RaftStatus == nil {
-				m.RaftStatus = &RaftStatus{}
-			}
-			if err := m.RaftStatus.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
@@ -2422,42 +2230,6 @@ func (m *QueryMetadataResponse) UnmarshalVT(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field RaftStatus", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.RaftStatus == nil {
-				m.RaftStatus = &RaftStatus{}
-			}
-			if err := m.RaftStatus.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
@@ -2611,144 +2383,6 @@ func (m *ReadIndexResponse) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field RaftStatus", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.RaftStatus == nil {
-				m.RaftStatus = &RaftStatus{}
-			}
-			if err := m.RaftStatus.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *RaftStatus) UnmarshalVT(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return protohelpers.ErrIntOverflow
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: RaftStatus: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: RaftStatus: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Code", wireType)
-			}
-			m.Code = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Code |= RaftStatusCode(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Leader", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Leader = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

@@ -105,3 +105,9 @@ message GetProfileStatsResponse {
   // Milliseconds since epoch.
   int64 newest_profile_time = 3;
 }
+
+
+message RaftDetails {
+  string leader = 1;
+}
+

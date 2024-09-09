@@ -7,6 +7,7 @@ import (
 	"github.com/grafana/dskit/grpcclient"
 	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockdiscovery"
 	"github.com/hashicorp/raft"
@@ -15,6 +16,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"net"
 	"sync"
 	"testing"
@@ -78,23 +81,19 @@ func TestUnavailableRediscover(t *testing.T) {
 					l.Log("called", srvIndex, "leader", leaderIndex)
 					if callNo == 1 {
 						leaderIndex = (srvIndex + 1) % nServers
-						return &metastorev1.AddBlockResponse{
-							RaftStatus: &metastorev1.RaftStatus{
-								Code:   metastorev1.RaftStatusCode_NOT_LEADER,
+						s, err := status.New(codes.Unavailable, fmt.Sprintf("test error not leader, leader is %s", testServerId(leaderIndex))).
+							WithDetails(&typesv1.RaftDetails{
 								Leader: string(testServerId(leaderIndex)),
-							},
-						}, nil
+							})
+						assert.NoError(t, err)
+						return nil, s.Err()
 					}
 					if callNo == 2 {
 						if srvIndex != leaderIndex {
 							t.Errorf("expected leader %d to be called, but %d called", leaderIndex, srvIndex)
 						}
 						leaderCalled++
-						return &metastorev1.AddBlockResponse{
-							RaftStatus: &metastorev1.RaftStatus{
-								Code: metastorev1.RaftStatusCode_OK,
-							},
-						}, nil
+						return &metastorev1.AddBlockResponse{}, nil
 					}
 					return nil, fmt.Errorf("unexpected call")
 				}
@@ -111,8 +110,6 @@ func TestUnavailableRediscover(t *testing.T) {
 	assert.Equal(t, 2, callNo)
 	assert.Equal(t, 1, leaderCalled)
 	m.Unlock()
-	require.NotNil(t, res.RaftStatus)
-	require.Equal(t, metastorev1.RaftStatusCode_OK, res.RaftStatus.Code)
 
 }
 
