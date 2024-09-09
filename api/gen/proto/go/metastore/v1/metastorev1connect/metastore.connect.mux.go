@@ -34,4 +34,9 @@ func RegisterMetastoreServiceHandler(mux *mux.Router, svc MetastoreServiceHandle
 		svc.ReadIndex,
 		opts...,
 	))
+	mux.Handle("/metastore.v1.MetastoreService/GetProfileStats", connect.NewUnaryHandler(
+		"/metastore.v1.MetastoreService/GetProfileStats",
+		svc.GetProfileStats,
+		opts...,
+	))
 }
