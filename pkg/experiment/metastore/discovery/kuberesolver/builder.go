@@ -2,6 +2,7 @@ package kuberesolver
 
 import (
 	"context"
+	"fmt"
 	"github.com/go-kit/log"
 	"io"
 	"sync"
@@ -19,11 +20,7 @@ type TargetInfo struct {
 
 func Build(l log.Logger, k8sClient K8sClient, upd ResolveUpdates, target TargetInfo) (*KResolver, error) {
 	if k8sClient == nil {
-		if cl, err := NewInClusterK8sClient(); err == nil {
-			k8sClient = cl
-		} else {
-			return nil, err
-		}
+		return nil, fmt.Errorf("k8sClient is nil")
 	}
 	ti := target
 	if ti.ServiceNamespace == "" {

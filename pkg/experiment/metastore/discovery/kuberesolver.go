@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/go-kit/log"
 	kuberesolver2 "github.com/grafana/pyroscope/pkg/experiment/metastore/discovery/kuberesolver"
+	"github.com/hashicorp/raft"
 	"google.golang.org/grpc/resolver"
 	"net/url"
 	"strings"
@@ -75,14 +76,37 @@ func (g *KubeDiscovery) Close() {
 func (g *KubeDiscovery) resolved(e kuberesolver2.Endpoints) {
 	g.updLock.Lock()
 	defer g.updLock.Unlock()
-	g.servers = convertEndpoints(e)
+	g.servers = convertEndpoints(e, g.ti)
 	if g.upd != nil {
 		g.upd.Servers(g.servers)
 	}
 }
 
-func convertEndpoints(e kuberesolver2.Endpoints) []Server {
-	return nil
+func convertEndpoints(e kuberesolver2.Endpoints, ti targetInfo) []Server {
+	fmt.Printf("%+v\n", e)
+	//metastore.raft.server-id: "$(POD_NAME).pyroscope-metastore-headless.$(NAMESPACE_FQDN):9099"
+	var servers []Server
+	for _, ep := range e.Subsets {
+		for _, addr := range ep.Addresses {
+			for _, port := range ep.Ports {
+				if fmt.Sprintf("%d", port.Port) != ti.port {
+					continue
+				}
+				podName := addr.TargetRef.Name
+				raftServerId := fmt.Sprintf("%s.%s.%s:%d", podName, ti.service, ti.namespace, port.Port)
+
+				servers = append(servers, Server{
+					ResolvedAddress: fmt.Sprintf("%s:%d", addr.IP, port.Port),
+					Raft: raft.Server{
+						ID:      raft.ServerID(raftServerId),
+						Address: raft.ServerAddress(raftServerId),
+					},
+				})
+
+			}
+		}
+	}
+	return servers
 }
 
 type targetInfo struct {
