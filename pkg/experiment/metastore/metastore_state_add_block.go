@@ -3,6 +3,7 @@ package metastore
 import (
 	"context"
 	"errors"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"time"
@@ -32,24 +33,20 @@ func (m *Metastore) AddBlock(_ context.Context, req *metastorev1.AddBlockRequest
 	if err != nil {
 		_ = level.Error(m.logger).Log("msg", "failed to apply add block", "block_id", req.Block.Id, "shard", req.Block.Shard, "err", err)
 		if m.shouldRetryAddBlock(err) {
-			_, serverID := m.raft.LeaderWithID()
-			if serverID != "" {
-				return &metastorev1.AddBlockResponse{
-					RaftStatus: &metastorev1.RaftStatus{
-						Code:   metastorev1.RaftStatusCode_NOT_LEADER,
-						Leader: string(serverID),
-					},
-				}, nil
-			} else {
-				return nil, status.Error(codes.Unavailable, err.Error())
-			}
-
+			// todo (korniltsev) write a test to span multiple metastores and verify this error returned with correct details
+			return nil, m.retryableErrorWithRaftDetails(err)
 		}
 	}
-	resp.RaftStatus = &metastorev1.RaftStatus{
-		Code: metastorev1.RaftStatusCode_OK,
-	}
 	return resp, err
+}
+
+func (m *Metastore) retryableErrorWithRaftDetails(err error) error {
+	_, serverID := m.raft.LeaderWithID()
+	s := status.New(codes.Unavailable, err.Error())
+	if serverID != "" {
+		s, _ = s.WithDetails(&typesv1.RaftDetails{Leader: string(serverID)})
+	}
+	return s.Err()
 }
 
 func (m *Metastore) shouldRetryAddBlock(err error) bool {

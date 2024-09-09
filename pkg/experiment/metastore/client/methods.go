@@ -59,7 +59,6 @@ func invoke[R any](ctx context.Context, cl *Client,
 						break
 					}
 				}
-
 			}
 			cl.mu.Lock()
 			if cl.leader == it.srv.Raft.ID {
