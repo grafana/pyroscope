@@ -316,6 +316,17 @@ func addLevel0Blocks(m *metastoreState, count int) {
 	}
 }
 
+func addLevel0BlocksForShard(m *metastoreState, count int, shard int) {
+	for i := 0; i < count; i++ {
+		b := createBlock(i, shard, "", 0)
+		raftLog := &raft.Log{
+			Index:      uint64(i),
+			AppendedAt: time.Unix(0, int64(i)),
+		}
+		_, _ = m.applyAddBlock(raftLog, &metastorev1.AddBlockRequest{Block: b})
+	}
+}
+
 func addLevel1Blocks(m *metastoreState, tenant string, count int) {
 	for i := 0; i < count; i++ {
 		b := createBlock(i, 0, tenant, 1)

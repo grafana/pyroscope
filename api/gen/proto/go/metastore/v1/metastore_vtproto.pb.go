@@ -211,6 +211,23 @@ func (m *ReadIndexResponse) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
+func (m *GetProfileStatsRequest) CloneVT() *GetProfileStatsRequest {
+	if m == nil {
+		return (*GetProfileStatsRequest)(nil)
+	}
+	r := new(GetProfileStatsRequest)
+	r.TenantId = m.TenantId
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *GetProfileStatsRequest) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
 func (this *AddBlockRequest) EqualVT(that *AddBlockRequest) bool {
 	if this == that {
 		return true
@@ -478,6 +495,25 @@ func (this *ReadIndexResponse) EqualMessageVT(thatMsg proto.Message) bool {
 	}
 	return this.EqualVT(that)
 }
+func (this *GetProfileStatsRequest) EqualVT(that *GetProfileStatsRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.TenantId != that.TenantId {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *GetProfileStatsRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*GetProfileStatsRequest)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
@@ -491,6 +527,7 @@ type MetastoreServiceClient interface {
 	AddBlock(ctx context.Context, in *AddBlockRequest, opts ...grpc.CallOption) (*AddBlockResponse, error)
 	QueryMetadata(ctx context.Context, in *QueryMetadataRequest, opts ...grpc.CallOption) (*QueryMetadataResponse, error)
 	ReadIndex(ctx context.Context, in *ReadIndexRequest, opts ...grpc.CallOption) (*ReadIndexResponse, error)
+	GetProfileStats(ctx context.Context, in *GetProfileStatsRequest, opts ...grpc.CallOption) (*v1.GetProfileStatsResponse, error)
 }
 
 type metastoreServiceClient struct {
@@ -528,6 +565,15 @@ func (c *metastoreServiceClient) ReadIndex(ctx context.Context, in *ReadIndexReq
 	return out, nil
 }
 
+func (c *metastoreServiceClient) GetProfileStats(ctx context.Context, in *GetProfileStatsRequest, opts ...grpc.CallOption) (*v1.GetProfileStatsResponse, error) {
+	out := new(v1.GetProfileStatsResponse)
+	err := c.cc.Invoke(ctx, "/metastore.v1.MetastoreService/GetProfileStats", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MetastoreServiceServer is the server API for MetastoreService service.
 // All implementations must embed UnimplementedMetastoreServiceServer
 // for forward compatibility
@@ -535,6 +581,7 @@ type MetastoreServiceServer interface {
 	AddBlock(context.Context, *AddBlockRequest) (*AddBlockResponse, error)
 	QueryMetadata(context.Context, *QueryMetadataRequest) (*QueryMetadataResponse, error)
 	ReadIndex(context.Context, *ReadIndexRequest) (*ReadIndexResponse, error)
+	GetProfileStats(context.Context, *GetProfileStatsRequest) (*v1.GetProfileStatsResponse, error)
 	mustEmbedUnimplementedMetastoreServiceServer()
 }
 
@@ -550,6 +597,9 @@ func (UnimplementedMetastoreServiceServer) QueryMetadata(context.Context, *Query
 }
 func (UnimplementedMetastoreServiceServer) ReadIndex(context.Context, *ReadIndexRequest) (*ReadIndexResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReadIndex not implemented")
+}
+func (UnimplementedMetastoreServiceServer) GetProfileStats(context.Context, *GetProfileStatsRequest) (*v1.GetProfileStatsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetProfileStats not implemented")
 }
 func (UnimplementedMetastoreServiceServer) mustEmbedUnimplementedMetastoreServiceServer() {}
 
@@ -618,6 +668,24 @@ func _MetastoreService_ReadIndex_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MetastoreService_GetProfileStats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetProfileStatsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MetastoreServiceServer).GetProfileStats(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/metastore.v1.MetastoreService/GetProfileStats",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MetastoreServiceServer).GetProfileStats(ctx, req.(*GetProfileStatsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MetastoreService_ServiceDesc is the grpc.ServiceDesc for MetastoreService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -636,6 +704,10 @@ var MetastoreService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ReadIndex",
 			Handler:    _MetastoreService_ReadIndex_Handler,
+		},
+		{
+			MethodName: "GetProfileStats",
+			Handler:    _MetastoreService_GetProfileStats_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -1104,6 +1176,46 @@ func (m *ReadIndexResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *GetProfileStatsRequest) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *GetProfileStatsRequest) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *GetProfileStatsRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.TenantId) > 0 {
+		i -= len(m.TenantId)
+		copy(dAtA[i:], m.TenantId)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.TenantId)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
 func (m *AddBlockRequest) SizeVT() (n int) {
 	if m == nil {
 		return 0
@@ -1286,6 +1398,20 @@ func (m *ReadIndexResponse) SizeVT() (n int) {
 	_ = l
 	if m.ReadIndex != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.ReadIndex))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *GetProfileStatsRequest) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.TenantId)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -2383,6 +2509,89 @@ func (m *ReadIndexResponse) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *GetProfileStatsRequest) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: GetProfileStatsRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: GetProfileStatsRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TenantId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.TenantId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

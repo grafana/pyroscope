@@ -8,6 +8,7 @@ service MetastoreService {
   rpc AddBlock(AddBlockRequest) returns (AddBlockResponse) {}
   rpc QueryMetadata(QueryMetadataRequest) returns (QueryMetadataResponse) {}
   rpc ReadIndex(ReadIndexRequest) returns (ReadIndexResponse) {}
+  rpc GetProfileStats(GetProfileStatsRequest) returns (types.v1.GetProfileStatsResponse) {}
 }
 
 message AddBlockRequest {
@@ -71,4 +72,8 @@ message ReadIndexRequest {
 
 message ReadIndexResponse {
   uint64 read_index = 1;
+}
+
+message GetProfileStatsRequest {
+  string tenant_id = 1;
 }
