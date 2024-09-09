@@ -49,20 +49,22 @@ func Test_CreateJobs(t *testing.T) {
 	verifyCompactionState(t, m)
 }
 
-func initState(t *testing.T) *metastoreState {
+func initState(tb testing.TB) *metastoreState {
+	tb.Helper()
+
 	reg := prometheus.DefaultRegisterer
 	config := Config{
-		DataDir: t.TempDir(),
+		DataDir: tb.TempDir(),
 		Compaction: CompactionConfig{
 			JobLeaseDuration: 15 * time.Second,
 		},
 	}
 	db := newDB(config, util.Logger, newMetastoreMetrics(reg))
 	err := db.open(false)
-	require.NoError(t, err)
+	require.NoError(tb, err)
 
 	m := newMetastoreState(util.Logger, db, reg, &config.Compaction)
-	require.NotNil(t, m)
+	require.NotNil(tb, m)
 	return m
 }
 

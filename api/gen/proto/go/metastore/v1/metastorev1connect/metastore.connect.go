@@ -9,6 +9,7 @@ import (
 	context "context"
 	errors "errors"
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	v11 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	http "net/http"
 	strings "strings"
 )
@@ -42,14 +43,18 @@ const (
 	// MetastoreServiceReadIndexProcedure is the fully-qualified name of the MetastoreService's
 	// ReadIndex RPC.
 	MetastoreServiceReadIndexProcedure = "/metastore.v1.MetastoreService/ReadIndex"
+	// MetastoreServiceGetProfileStatsProcedure is the fully-qualified name of the MetastoreService's
+	// GetProfileStats RPC.
+	MetastoreServiceGetProfileStatsProcedure = "/metastore.v1.MetastoreService/GetProfileStats"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
 var (
-	metastoreServiceServiceDescriptor             = v1.File_metastore_v1_metastore_proto.Services().ByName("MetastoreService")
-	metastoreServiceAddBlockMethodDescriptor      = metastoreServiceServiceDescriptor.Methods().ByName("AddBlock")
-	metastoreServiceQueryMetadataMethodDescriptor = metastoreServiceServiceDescriptor.Methods().ByName("QueryMetadata")
-	metastoreServiceReadIndexMethodDescriptor     = metastoreServiceServiceDescriptor.Methods().ByName("ReadIndex")
+	metastoreServiceServiceDescriptor               = v1.File_metastore_v1_metastore_proto.Services().ByName("MetastoreService")
+	metastoreServiceAddBlockMethodDescriptor        = metastoreServiceServiceDescriptor.Methods().ByName("AddBlock")
+	metastoreServiceQueryMetadataMethodDescriptor   = metastoreServiceServiceDescriptor.Methods().ByName("QueryMetadata")
+	metastoreServiceReadIndexMethodDescriptor       = metastoreServiceServiceDescriptor.Methods().ByName("ReadIndex")
+	metastoreServiceGetProfileStatsMethodDescriptor = metastoreServiceServiceDescriptor.Methods().ByName("GetProfileStats")
 )
 
 // MetastoreServiceClient is a client for the metastore.v1.MetastoreService service.
@@ -57,6 +62,7 @@ type MetastoreServiceClient interface {
 	AddBlock(context.Context, *connect.Request[v1.AddBlockRequest]) (*connect.Response[v1.AddBlockResponse], error)
 	QueryMetadata(context.Context, *connect.Request[v1.QueryMetadataRequest]) (*connect.Response[v1.QueryMetadataResponse], error)
 	ReadIndex(context.Context, *connect.Request[v1.ReadIndexRequest]) (*connect.Response[v1.ReadIndexResponse], error)
+	GetProfileStats(context.Context, *connect.Request[v1.GetProfileStatsRequest]) (*connect.Response[v11.GetProfileStatsResponse], error)
 }
 
 // NewMetastoreServiceClient constructs a client for the metastore.v1.MetastoreService service. By
@@ -87,14 +93,21 @@ func NewMetastoreServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(metastoreServiceReadIndexMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		getProfileStats: connect.NewClient[v1.GetProfileStatsRequest, v11.GetProfileStatsResponse](
+			httpClient,
+			baseURL+MetastoreServiceGetProfileStatsProcedure,
+			connect.WithSchema(metastoreServiceGetProfileStatsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // metastoreServiceClient implements MetastoreServiceClient.
 type metastoreServiceClient struct {
-	addBlock      *connect.Client[v1.AddBlockRequest, v1.AddBlockResponse]
-	queryMetadata *connect.Client[v1.QueryMetadataRequest, v1.QueryMetadataResponse]
-	readIndex     *connect.Client[v1.ReadIndexRequest, v1.ReadIndexResponse]
+	addBlock        *connect.Client[v1.AddBlockRequest, v1.AddBlockResponse]
+	queryMetadata   *connect.Client[v1.QueryMetadataRequest, v1.QueryMetadataResponse]
+	readIndex       *connect.Client[v1.ReadIndexRequest, v1.ReadIndexResponse]
+	getProfileStats *connect.Client[v1.GetProfileStatsRequest, v11.GetProfileStatsResponse]
 }
 
 // AddBlock calls metastore.v1.MetastoreService.AddBlock.
@@ -112,11 +125,17 @@ func (c *metastoreServiceClient) ReadIndex(ctx context.Context, req *connect.Req
 	return c.readIndex.CallUnary(ctx, req)
 }
 
+// GetProfileStats calls metastore.v1.MetastoreService.GetProfileStats.
+func (c *metastoreServiceClient) GetProfileStats(ctx context.Context, req *connect.Request[v1.GetProfileStatsRequest]) (*connect.Response[v11.GetProfileStatsResponse], error) {
+	return c.getProfileStats.CallUnary(ctx, req)
+}
+
 // MetastoreServiceHandler is an implementation of the metastore.v1.MetastoreService service.
 type MetastoreServiceHandler interface {
 	AddBlock(context.Context, *connect.Request[v1.AddBlockRequest]) (*connect.Response[v1.AddBlockResponse], error)
 	QueryMetadata(context.Context, *connect.Request[v1.QueryMetadataRequest]) (*connect.Response[v1.QueryMetadataResponse], error)
 	ReadIndex(context.Context, *connect.Request[v1.ReadIndexRequest]) (*connect.Response[v1.ReadIndexResponse], error)
+	GetProfileStats(context.Context, *connect.Request[v1.GetProfileStatsRequest]) (*connect.Response[v11.GetProfileStatsResponse], error)
 }
 
 // NewMetastoreServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -143,6 +162,12 @@ func NewMetastoreServiceHandler(svc MetastoreServiceHandler, opts ...connect.Han
 		connect.WithSchema(metastoreServiceReadIndexMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	metastoreServiceGetProfileStatsHandler := connect.NewUnaryHandler(
+		MetastoreServiceGetProfileStatsProcedure,
+		svc.GetProfileStats,
+		connect.WithSchema(metastoreServiceGetProfileStatsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/metastore.v1.MetastoreService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case MetastoreServiceAddBlockProcedure:
@@ -151,6 +176,8 @@ func NewMetastoreServiceHandler(svc MetastoreServiceHandler, opts ...connect.Han
 			metastoreServiceQueryMetadataHandler.ServeHTTP(w, r)
 		case MetastoreServiceReadIndexProcedure:
 			metastoreServiceReadIndexHandler.ServeHTTP(w, r)
+		case MetastoreServiceGetProfileStatsProcedure:
+			metastoreServiceGetProfileStatsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -170,4 +197,8 @@ func (UnimplementedMetastoreServiceHandler) QueryMetadata(context.Context, *conn
 
 func (UnimplementedMetastoreServiceHandler) ReadIndex(context.Context, *connect.Request[v1.ReadIndexRequest]) (*connect.Response[v1.ReadIndexResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("metastore.v1.MetastoreService.ReadIndex is not implemented"))
+}
+
+func (UnimplementedMetastoreServiceHandler) GetProfileStats(context.Context, *connect.Request[v1.GetProfileStatsRequest]) (*connect.Response[v11.GetProfileStatsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("metastore.v1.MetastoreService.GetProfileStats is not implemented"))
 }

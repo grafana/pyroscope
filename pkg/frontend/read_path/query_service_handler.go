@@ -194,12 +194,24 @@ func (r *Router) AnalyzeQuery(
 
 func (r *Router) GetProfileStats(
 	ctx context.Context,
-	req *connect.Request[typesv1.GetProfileStatsRequest],
+	c *connect.Request[typesv1.GetProfileStatsRequest],
 ) (*connect.Response[typesv1.GetProfileStatsResponse], error) {
-	if r.frontend != nil {
-		return r.frontend.GetProfileStats(ctx, req)
-	}
-	return connect.NewResponse(&typesv1.GetProfileStatsResponse{}), nil
+	return Query[typesv1.GetProfileStatsRequest, typesv1.GetProfileStatsResponse](ctx, r, c,
+		func(a, b *typesv1.GetProfileStatsResponse) (*typesv1.GetProfileStatsResponse, error) {
+			oldestProfileTime := a.OldestProfileTime
+			newestProfileTime := a.NewestProfileTime
+			if b.OldestProfileTime < oldestProfileTime {
+				oldestProfileTime = b.OldestProfileTime
+			}
+			if b.NewestProfileTime > newestProfileTime {
+				newestProfileTime = b.NewestProfileTime
+			}
+			return &typesv1.GetProfileStatsResponse{
+				DataIngested:      a.DataIngested || b.DataIngested,
+				OldestProfileTime: oldestProfileTime,
+				NewestProfileTime: newestProfileTime,
+			}, nil
+		})
 }
 
 func (r *Router) ProfileTypes(
