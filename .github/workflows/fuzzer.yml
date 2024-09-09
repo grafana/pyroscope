@@ -11,8 +11,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
       - name: Install Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: 1.21.12
+          go-version: 1.22.7
       - name: Run Fuzz_Merge_Single
         run: go test -fuzz=Fuzz_Merge_Single --fuzztime 1h -run '^$' -v ./pkg/pprof/
