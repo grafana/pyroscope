@@ -102,7 +102,6 @@ func (f *Phlare) initMetastore() (services.Service, error) {
 		f.TenantLimits,
 		logger,
 		f.reg,
-		f.healthService,
 		f.metastoreClient,
 	)
 	if err != nil {

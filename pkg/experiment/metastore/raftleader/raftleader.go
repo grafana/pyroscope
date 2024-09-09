@@ -8,13 +8,9 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/hashicorp/raft"
-	"google.golang.org/grpc/health/grpc_health_v1"
-
-	"github.com/grafana/pyroscope/pkg/util/health"
 )
 
 type HealthObserver struct {
-	server     health.Service
 	logger     log.Logger
 	mu         sync.Mutex
 	registered map[serviceKey]*raftService
@@ -37,9 +33,8 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 	return m
 }
 
-func NewRaftLeaderHealthObserver(hs health.Service, logger log.Logger, m *Metrics) *HealthObserver {
+func NewRaftLeaderHealthObserver(logger log.Logger, m *Metrics) *HealthObserver {
 	return &HealthObserver{
-		server:     hs,
 		logger:     logger,
 		metrics:    m,
 		registered: make(map[serviceKey]*raftService),
@@ -54,7 +49,6 @@ func (hs *HealthObserver) Register(r *raft.Raft, service string) {
 		return
 	}
 	svc := &raftService{
-		server:  hs.server,
 		hs:      hs,
 		logger:  log.With(hs.logger, "service", service),
 		service: service,
@@ -92,7 +86,6 @@ type serviceKey struct {
 }
 
 type raftService struct {
-	server   health.Service
 	hs       *HealthObserver
 	logger   log.Logger
 	service  string
@@ -113,8 +106,6 @@ func (svc *raftService) run() {
 			svc.updateStatus()
 		case <-svc.stop:
 			_ = level.Debug(svc.logger).Log("msg", "deregistering health check")
-			// We explicitly remove the service from serving when we stop observing it.
-			svc.server.SetServingStatus(svc.service, grpc_health_v1.HealthCheckResponse_NOT_SERVING)
 			svc.raft.DeregisterObserver(svc.observer)
 			return
 		}
@@ -122,12 +113,7 @@ func (svc *raftService) run() {
 }
 
 func (svc *raftService) updateStatus() {
-	status := grpc_health_v1.HealthCheckResponse_NOT_SERVING
-	if svc.raft.State() == raft.Leader {
-		status = grpc_health_v1.HealthCheckResponse_SERVING
-	}
-	svc.hs.metrics.status.Set(float64(svc.raft.State()))
-
-	_ = level.Info(svc.logger).Log("msg", "updating health status", "status", status)
-	svc.server.SetServingStatus(svc.service, status)
+	state := svc.raft.State()
+	svc.hs.metrics.status.Set(float64(state))
+	_ = level.Info(svc.logger).Log("msg", "updated raft state", "state", state)
 }

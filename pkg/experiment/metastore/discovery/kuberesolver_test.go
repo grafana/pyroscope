@@ -14,10 +14,11 @@ func TestName(t *testing.T) {
 	client := kuberesolver2.NewInsecureK8sClient("http://localhost:8080")
 	target := "kubernetes://kubernetes:///pyroscope-metastore-headless.pyroscope-test:9095"
 
-	discovery, err := NewKubeResolverDiscovery(l, target, client, UpdateFunc(func(servers []Server) {
+	discovery, err := NewKubeResolverDiscovery(l, target, client)
+	require.NoError(t, err)
+	discovery.Subscribe(UpdateFunc(func(servers []Server) {
 
 	}))
-	require.NoError(t, err)
 
 	defer discovery.Close()
 
