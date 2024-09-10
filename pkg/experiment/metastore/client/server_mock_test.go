@@ -212,8 +212,8 @@ func getFreePorts(len int) (ports []int, err error) {
 			if l, err = net.ListenTCP("tcp", a); err != nil {
 				return nil, err
 			}
-			defer l.Close()
 			ports[i] = l.Addr().(*net.TCPAddr).Port
+			l.Close()
 		}
 	}
 	return ports, nil
