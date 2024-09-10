@@ -31,7 +31,7 @@ func (m *Metastore) cleanupLoop() {
 			if m.raft.State() != raft.Leader {
 				continue
 			}
-			timestamp := uint64(time.Now().Add(-12 * time.Hour).UnixMilli())
+			timestamp := uint64(time.Now().Add(-7 * 24 * time.Hour).UnixMilli())
 			req := &raftlogpb.TruncateCommand{Timestamp: timestamp}
 			_, _, err := applyCommand[*raftlogpb.TruncateCommand, *anypb.Any](m.raft, req, m.config.Raft.ApplyTimeout)
 			if err != nil {
@@ -88,6 +88,9 @@ func truncateSegmentsBefore(
 	defer shard.segmentsMutex.Unlock()
 
 	for k, segment := range shard.segments {
+		if segment.CompactionLevel > 2 {
+			continue
+		}
 		if ulid.MustParse(segment.Id).Time() < t {
 			if err = bucket.Delete([]byte(segment.Id)); err != nil {
 				_ = level.Error(log).Log("msg", "failed to delete stale segments", "err", err)
