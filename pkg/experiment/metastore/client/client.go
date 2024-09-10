@@ -1,23 +1,23 @@
 package metastoreclient
 
 import (
-	"context"
-	"fmt"
-	"github.com/go-kit/log"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
-	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/raft"
-	"io"
-	"sync"
+  "context"
+  "fmt"
+  "github.com/go-kit/log"
+  "github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
+  "github.com/hashicorp/go-multierror"
+  "github.com/hashicorp/raft"
+  "io"
+  "sync"
 
-	"github.com/grafana/dskit/grpcclient"
-	"github.com/grafana/dskit/services"
-	otgrpc "github.com/opentracing-contrib/go-grpc"
-	"github.com/opentracing/opentracing-go"
-	"google.golang.org/grpc"
+  "github.com/grafana/dskit/grpcclient"
+  "github.com/grafana/dskit/services"
+  otgrpc "github.com/opentracing-contrib/go-grpc"
+  "github.com/opentracing/opentracing-go"
+  "google.golang.org/grpc"
 
-	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
-	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+  compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
+  metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 )
 
 var _ metastorev1.MetastoreServiceClient = (*Client)(nil)

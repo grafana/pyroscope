@@ -120,3 +120,9 @@ func (c *Client) GetCompactionJobs(ctx context.Context, in *compactorv1.GetCompa
 		return instance.GetCompactionJobs(ctx, in, opts...)
 	})
 }
+
+func (c *Client) GetProfileStats(ctx context.Context, in *metastorev1.GetProfileStatsRequest, opts ...grpc.CallOption) (*typesv1.GetProfileStatsResponse, error) {
+	return invoke(ctx, c, func(ctx context.Context, instance instance) (*typesv1.GetProfileStatsResponse, error) {
+		return instance.GetProfileStats(ctx, in, opts...)
+	})
+}
