@@ -6,7 +6,7 @@ require (
 	connectrpc.com/connect v1.16.2
 	github.com/avvmoto/buf-readerat v0.0.0-20171115124131-a17c8cb89270
 	github.com/cespare/xxhash/v2 v2.3.0
-	github.com/cilium/ebpf v0.11.0
+	github.com/cilium/ebpf v0.16.0
 	github.com/go-kit/log v0.2.1
 	github.com/google/pprof v0.0.0-20240727154555-813a5fbdbec8
 	github.com/grafana/pyroscope/api v0.4.0
@@ -19,7 +19,7 @@ require (
 	github.com/prometheus/prometheus v0.51.2
 	github.com/samber/lo v1.38.1
 	github.com/stretchr/testify v1.9.0
-	golang.org/x/sys v0.23.0
+	golang.org/x/sys v0.25.0
 )
 
 require (
@@ -39,6 +39,7 @@ require (
 	golang.org/x/exp v0.0.0-20240119083558-1b970713d09a // indirect
 	golang.org/x/net v0.26.0 // indirect
 	golang.org/x/oauth2 v0.21.0 // indirect
+	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240318140521-94a12d6c2237 // indirect
 	google.golang.org/grpc v1.62.1 // indirect
@@ -46,7 +47,3 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-// x/sys: v0.14.0 removes definition of BPF_F_KPROBE_MULTI_RETURN in unix/zerrors_linux.go
-// https://github.com/golang/go/issues/63969
-replace golang.org/x/sys => golang.org/x/sys v0.13.0

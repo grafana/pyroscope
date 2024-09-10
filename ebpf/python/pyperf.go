@@ -99,13 +99,13 @@ func (s *Perf) GetSymbols(svcReason string) (map[uint32]*PerfPySymbol, error) {
 	var (
 		m       = s.symbolsHashMp
 		mapSize = m.MaxEntries()
-		nextKey = PerfPySymbol{}
 	)
 	keys := make([]PerfPySymbol, mapSize)
 	values := make([]uint32, mapSize)
 	res := make(map[uint32]*PerfPySymbol)
 	opts := &ebpf.BatchOptions{}
-	n, err := m.BatchLookup(nil, &nextKey, keys, values, opts)
+	var cursor = new(ebpf.MapBatchCursor)
+	n, err := m.BatchLookup(cursor, keys, values, opts)
 	if n > 0 {
 		level.Debug(s.logger).Log(
 			"msg", "GetSymbols BatchLookup",
