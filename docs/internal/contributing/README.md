@@ -35,17 +35,25 @@ Use `make lint` to ensure formatting is correct.
 
 ## Building Grafana Pyroscope
 
-To build:
+These are steps for building Pyroscope in single binary mode. See [development.md](./development.md) for more advanced methods building and running Pyroscope locally for development.
+
+### Building a binary
+
+To build a binary, run:
 
 ```
 make go/bin
 ```
+
+### Building tests
 
 To run the unit test suite:
 
 ```
 make go/test
 ```
+
+### Building a docker image
 
 To build the docker image use:
 
@@ -76,17 +84,24 @@ brew install pkg-config cairo pango libpng jpeg giflib librsvg
 
 See https://github.com/Automattic/node-canvas/issues/1662
 
-#### Running examples locally
-replace `image: grafana/pyroscope` with the local tag name you got from docker-image/pyroscope/build (i.e):
+## Running Grafana Pyroscope locally
+
+### Running examples
+
+First, find the example you want to run and move to that directory. For example:
 
 ```
-  pyroscope:
-    image: us.gcr.io/kubernetes-dev/pyroscope:main-470125e1-WIP
-    ports:
-      - '4040:4040'
+cd examples/language-sdk-instrumentation/golang-push/rideshare
 ```
 
-#### Run with Pyroscope with embedded Grafana + Explore Profiles
+Then in the `docker-compose.yml` file, replace the image for the `pyroscope` service with the image built in the [Building a docker image](###building-a-docker-image) section.
+
+```yaml
+pyroscope:
+  image: us.gcr.io/kubernetes-dev/pyroscope:main-470125e1-WIP
+```
+
+### Run with embedded Grafana + Explore Profiles
 
 In order to quickly test the whole stack it is possible to run an embedded Grafana by using target parameter:
 
@@ -94,44 +109,9 @@ In order to quickly test the whole stack it is possible to run an embedded Grafa
 go run ./cmd/pyroscope --target all,embedded-grafana
 ```
 
-This will start additional to Pyroscope on `:4040`, the embedded Grafana on port `:4041`.
+In addition to starting Pyroscope on `:4040`, this starts an embedded Grafana on port `:4041`.
 
-#### Front end development
-
-**Versions for development tools**:
-- Node v18
-- Yarn v1.22
-
-The front end code is all located in the `public/app` directory, although its `plugin.json`
-file exists at the repository root.
-
-To run the local front end source code:
-```sh
-yarn 
-yarn dev
-```
-
-This will install / update front end dependencies and launch a process that will build
-the front end code, launch a pyroscope web app service at `http://localhost:4041`,
-and keep that web app updated any time you save the front end source code.
-The resulting web app will not initially be connected to a pyroscope server,
-so all attempts to fetch data will fail.
-
-To launch a pyroscope server for development purposes:
-```sh
-yarn backend:dev
-```
-
-This yarn script actually runs the following:
-```sh
-make build run 'PARAMS=--config.file ./cmd/pyroscope/pyroscope.yaml'
-```
-
-It will take a while for this process to build and start serving pyroscope data, but
-once it is fully active, the pyroscope web app service at `http://localhost:4041`
-will be able to interact with it.
-
-### Dependency management
+## Dependency management
 
 We use [Go modules](https://golang.org/cmd/go/#hdr-Modules__module_versions__and_more) to manage dependencies on external packages.
 However, we don't commit the `vendor/` folder.
@@ -153,6 +133,7 @@ make go/mod
 ```
 
 Commit the changes to `go.mod` and `go.sum` before submitting your pull request.
+
 
 ## Documentation
 
