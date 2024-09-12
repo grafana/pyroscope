@@ -5,7 +5,10 @@
   "scripts": {
     "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "run": "node build/index.js"
+    "start": "node build/index.js",
+    "start:local": "yarn build && PYROSCOPE_URL=http://localhost:4040 yarn start",
+    "up": "yarn down && docker compose up --build --force-recreate --no-deps",
+    "down": "docker compose down"
   },
   "author": "",
   "license": "Apache-2.0",
