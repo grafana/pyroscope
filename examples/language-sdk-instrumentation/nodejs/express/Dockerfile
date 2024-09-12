@@ -8,4 +8,4 @@ COPY index.js .
 
 ENV DEBUG=pyroscope
 ENV PYROSCOPE_WALL_COLLECT_CPU_TIME=true
-CMD ["node", "index.js"] 
+CMD ["node", "index.js"]
