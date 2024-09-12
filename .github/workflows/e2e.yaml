@@ -37,7 +37,7 @@ jobs:
           config-file: cypress/ci.ts
         env:
           ELECTRON_ENABLE_LOGGING: 1
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: regular-path-cypress-screenshots
@@ -70,7 +70,7 @@ jobs:
           config-file: cypress/ci-base-path.ts
         env:
           ELECTRON_ENABLE_LOGGING: 1
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: base-path-cypress-screenshots
