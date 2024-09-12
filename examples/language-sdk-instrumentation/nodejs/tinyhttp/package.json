@@ -1,0 +1,22 @@
+{
+  "name": "rideshare-app-express",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start:local": "PYROSCOPE_URL=http://localhost:4040 yarn start",
+    "up": "yarn down && docker compose up --build --force-recreate --no-deps",
+    "down": "docker compose down"
+  },
+
+  "author": "",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@pyroscope/nodejs": "^0.4.0",
+    "@tinyhttp/app": "^2.4.0",
+    "@tinyhttp/logger": "^2.0.0"
+  }
+}
