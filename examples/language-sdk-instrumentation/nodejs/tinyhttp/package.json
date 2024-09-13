@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -13,12 +14,8 @@
   "author": "",
   "license": "Apache-2.0",
   "dependencies": {
-    "@pyroscope/nodejs": "v0.4.0",
-    "express": "^4.19.2",
-    "morgan": "^1.10.0"
-  },
-  "resolutions": {
-    "protobufjs": "^7.2.5",
-    "tar": "^6.2.1"
+    "@pyroscope/nodejs": "^0.4.0",
+    "@tinyhttp/app": "^2.4.0",
+    "@tinyhttp/logger": "^2.0.0"
   }
 }
