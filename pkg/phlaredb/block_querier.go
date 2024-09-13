@@ -479,7 +479,7 @@ func (b *singleBlockQuerier) LabelNames(ctx context.Context, req *connect.Reques
 		iters = append(iters, iter)
 	}
 
-	nameSet := make(map[string]struct{})
+	nameSet := make(map[string]int64)
 	iter := index.Intersect(iters...)
 	for iter.Next() {
 		names, err := b.index.LabelNamesFor(iter.At())
@@ -491,18 +491,32 @@ func (b *singleBlockQuerier) LabelNames(ctx context.Context, req *connect.Reques
 		}
 
 		for _, name := range names {
-			nameSet[name] = struct{}{}
+			if _, ok := nameSet[name]; !ok {
+				nameSet[name] = 1
+			} else {
+				nameSet[name]++
+			}
 		}
 	}
 
-	names := make([]string, 0, len(nameSet))
-	for name := range nameSet {
-		names = append(names, name)
+	res := &typesv1.LabelNamesResponse{
+		Names: make([]string, 0, len(nameSet)),
 	}
-	slices.Sort(names)
-	return connect.NewResponse(&typesv1.LabelNamesResponse{
-		Names: names,
-	}), nil
+	if req.Msg.IncludeCardinality != nil && *req.Msg.IncludeCardinality {
+		res.Cardinality = make([]int64, 0, len(nameSet))
+		for name, cardinality := range nameSet {
+			res.Names = append(res.Names, name)
+			res.Cardinality = append(res.Cardinality, cardinality)
+		}
+		// TODO(bryan): sort by name
+	} else {
+		for name := range nameSet {
+			res.Names = append(res.Names, name)
+		}
+		slices.Sort(res.Names)
+	}
+
+	return connect.NewResponse(res), nil
 }
 
 func (b *singleBlockQuerier) BlockID() string {
@@ -1393,7 +1407,7 @@ func LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequ
 		return nil, err
 	}
 
-	var labelNames []string
+	labelNames := make(map[string]int)
 	var lock sync.Mutex
 	group, ctx := errgroup.WithContext(ctx)
 
@@ -1408,7 +1422,15 @@ func LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequ
 			}
 
 			lock.Lock()
-			labelNames = append(labelNames, res.Msg.Names...)
+			for i, name := range res.Msg.Names {
+				cardinality := int(res.Msg.Cardinality[i])
+
+				if _, ok := labelNames[name]; !ok {
+					labelNames[name] = cardinality
+				} else {
+					labelNames[name] += cardinality
+				}
+			}
 			lock.Unlock()
 			return nil
 		}))
@@ -1418,10 +1440,15 @@ func LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequ
 		return nil, err
 	}
 
-	slices.Sort(labelNames)
-	return &typesv1.LabelNamesResponse{
-		Names: lo.Uniq(labelNames),
-	}, nil
+	res := &typesv1.LabelNamesResponse{
+		Names:       make([]string, 0, len(labelNames)),
+		Cardinality: make([]int64, 0, len(labelNames)),
+	}
+	for name, cardinality := range labelNames {
+		res.Names = append(res.Names, name)
+		res.Cardinality = append(res.Cardinality, int64(cardinality))
+	}
+	return res, nil
 }
 
 func Series(ctx context.Context, req *ingestv1.SeriesRequest, blockGetter BlockGetter) (*ingestv1.SeriesResponse, error) {

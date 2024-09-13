@@ -312,19 +312,35 @@ func (h *Head) LabelNames(ctx context.Context, req *connect.Request[typesv1.Labe
 	}
 
 	// aggregate all label values from series matching, when matchers are given.
-	values := make(map[string]struct{})
+	values := make(map[string]int64)
 	if err := h.forMatchingSelectors(selectors, func(lbs phlaremodel.Labels, fp model.Fingerprint) error {
 		for _, lbl := range lbs {
-			values[lbl.Name] = struct{}{}
+			if _, ok := values[lbl.Name]; !ok {
+				values[lbl.Name] = 1
+			} else {
+				values[lbl.Name]++
+			}
 		}
 		return nil
 	}); err != nil {
 		return nil, err
 	}
 
-	return connect.NewResponse(&typesv1.LabelNamesResponse{
-		Names: lo.Keys(values),
-	}), nil
+	res := &typesv1.LabelNamesResponse{
+		Names: make([]string, 0, len(values)),
+	}
+
+	if req.Msg.IncludeCardinality != nil && *req.Msg.IncludeCardinality {
+		res.Cardinality = make([]int64, 0, len(values))
+		for name, cardinality := range values {
+			res.Names = append(res.Names, name)
+			res.Cardinality = append(res.Cardinality, cardinality)
+		}
+	} else {
+		res.Names = lo.Keys(values)
+	}
+
+	return connect.NewResponse(res), nil
 }
 
 func (h *Head) MustProfileTypeNames() []string {
