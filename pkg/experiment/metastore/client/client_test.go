@@ -104,6 +104,9 @@ func testRediscoverWrongLeader(t *testing.T, f func(c *Client)) {
 			srvInfo := createServers(p2)
 			servers = createMockServers(t, l, p2)
 			verify = servers.InitWrongLeader()
+
+			// call updateServers twice
+			c.updateServers(srvInfo)
 			c.updateServers(srvInfo)
 		}
 	}).Return()

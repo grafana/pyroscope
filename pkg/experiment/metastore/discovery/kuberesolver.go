@@ -77,7 +77,7 @@ func (g *KubeDiscovery) Close() {
 func (g *KubeDiscovery) resolved(e kuberesolver2.Endpoints) {
 	for _, subset := range e.Subsets {
 		for _, addr := range subset.Addresses {
-			g.l.Log("msg", "resolved", "ip", addr.IP, "targetRef", addr.TargetRef)
+			g.l.Log("msg", "resolved", "ip", addr.IP, "targetRef", fmt.Sprintf("%+v", addr.TargetRef))
 		}
 	}
 	g.updLock.Lock()

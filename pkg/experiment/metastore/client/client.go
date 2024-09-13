@@ -111,6 +111,7 @@ func (c *Client) updateServers(servers []discovery.Server) {
 		if ok {
 			if prev.srv == s[0] {
 				newServers[k] = prev
+				clientSet[prev] = struct{}{}
 				c.logger.Log("msg", "server already exists", "id", k, "server", s[0])
 				continue
 			}
