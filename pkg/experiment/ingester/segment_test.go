@@ -36,7 +36,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
-	"google.golang.org/grpc"
 )
 
 func TestSegmentIngest(t *testing.T) {
@@ -669,22 +668,6 @@ func memProfile(samples int, tsMillis int, svc string, stack ...string) *pprofth
 		WithLabels(model.LabelNameServiceName, svc).
 		ForStacktraceString(stack...).
 		AddSamples([]int64{v, v * 1024, v, v * 1024}...)
-}
-
-type metastoreClientMock struct {
-	addBlock func(ctx context.Context, in *metastorev1.AddBlockRequest, opts ...grpc.CallOption) (*metastorev1.AddBlockResponse, error)
-}
-
-func (m *metastoreClientMock) AddBlock(ctx context.Context, in *metastorev1.AddBlockRequest, opts ...grpc.CallOption) (*metastorev1.AddBlockResponse, error) {
-	return m.addBlock(ctx, in, opts...)
-}
-
-func (m *metastoreClientMock) QueryMetadata(ctx context.Context, in *metastorev1.QueryMetadataRequest, opts ...grpc.CallOption) (*metastorev1.QueryMetadataResponse, error) {
-	panic("implement me")
-}
-
-func (m *metastoreClientMock) ReadIndex(ctx context.Context, in *metastorev1.ReadIndexRequest, opts ...grpc.CallOption) (*metastorev1.ReadIndexResponse, error) {
-	panic("implement me")
 }
 
 func sampleTypesFromMetricName(t *testing.T, name string) []*typesv1.ProfileType {

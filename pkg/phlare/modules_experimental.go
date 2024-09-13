@@ -1,11 +1,16 @@
 package phlare
 
 import (
+	"strings"
+
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc/health/grpc_health_v1"
+
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
+	kuberesolver2 "github.com/grafana/pyroscope/pkg/experiment/metastore/discovery/kuberesolver"
 
 	compactionworker "github.com/grafana/pyroscope/pkg/experiment/compactor"
 	segmentwriter "github.com/grafana/pyroscope/pkg/experiment/ingester"
@@ -100,7 +105,6 @@ func (f *Phlare) initMetastore() (services.Service, error) {
 		f.TenantLimits,
 		logger,
 		f.reg,
-		f.healthService,
 		f.metastoreClient,
 	)
 	if err != nil {
@@ -115,16 +119,26 @@ func (f *Phlare) initMetastoreClient() (services.Service, error) {
 	if err := f.Cfg.Metastore.Validate(); err != nil {
 		return nil, err
 	}
-	mc, err := metastoreclient.New(
-		f.Cfg.Metastore.Address,
-		f.logger,
-		f.Cfg.Metastore.GRPCClientConfig,
-	)
+
+	kubeClient, err := kuberesolver2.NewInClusterK8sClient()
 	if err != nil {
 		return nil, err
 	}
-	f.metastoreClient = mc
-	return mc.Service(), nil
+	address := f.Cfg.Metastore.Address
+	if strings.HasPrefix(address, "dns:///_grpc._tcp.") {
+		address = strings.Replace(address, "dns:///_grpc._tcp.", "kubernetes:///", 1) // todo support dns discovery
+	}
+	disc, err := discovery.NewKubeResolverDiscovery(f.logger, address, kubeClient)
+	if err != nil {
+		return nil, err
+	}
+
+	f.metastoreClient = metastoreclient.New(
+		f.logger,
+		f.Cfg.Metastore.GRPCClientConfig,
+		disc,
+	)
+	return f.metastoreClient.Service(), nil
 }
 
 func (f *Phlare) initQueryBackend() (services.Service, error) {

@@ -1037,10 +1037,13 @@ metadata:
 rules:
 - apiGroups:
   - ""
+  - "discovery.k8s.io"
   resources:
   - pods
+  - endpoints
   verbs:
   - list
+  - get
   - watch
 - apiGroups:
   - ""

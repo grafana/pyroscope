@@ -26,7 +26,6 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftleader"
-	"github.com/grafana/pyroscope/pkg/util/health"
 )
 
 const (
@@ -119,7 +118,7 @@ type Metastore struct {
 	snapshots    *raft.FileSnapshotStore
 	transport    *raft.NetworkTransport
 	raft         *raft.Raft
-	leaderhealth *raftleader.HealthObserver
+	leaderhealth *raftleader.HealthObserver //todo remove
 
 	logStore      raft.LogStore
 	stableStore   raft.StableStore
@@ -138,7 +137,7 @@ type Metastore struct {
 
 type Limits interface{}
 
-func New(config Config, limits Limits, logger log.Logger, reg prometheus.Registerer, hs health.Service, client *metastoreclient.Client) (*Metastore, error) {
+func New(config Config, limits Limits, logger log.Logger, reg prometheus.Registerer, client *metastoreclient.Client) (*Metastore, error) {
 	metrics := newMetastoreMetrics(reg)
 	m := &Metastore{
 		config:  config,
@@ -150,7 +149,7 @@ func New(config Config, limits Limits, logger log.Logger, reg prometheus.Registe
 		metrics: metrics,
 		client:  client,
 	}
-	m.leaderhealth = raftleader.NewRaftLeaderHealthObserver(hs, logger, raftleader.NewMetrics(reg))
+	m.leaderhealth = raftleader.NewRaftLeaderHealthObserver(logger, raftleader.NewMetrics(reg))
 	m.state = newMetastoreState(logger, m.db, m.reg, &config.Compaction)
 	m.service = services.NewBasicService(m.starting, m.running, m.stopping)
 	return m, nil
