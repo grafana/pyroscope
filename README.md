@@ -175,6 +175,7 @@ To start contributing, check out our [Contributing Guide](docs/internal/contribu
 <a href="https://github.com/RichiH"><img src="https://avatars.githubusercontent.com/u/754723?v=4" title="RichiH" width="80" height="80"></a>
 <a href="https://github.com/cjsampson"><img src="https://avatars.githubusercontent.com/u/8391857?v=4" title="cjsampson" width="80" height="80"></a>
 <a href="https://github.com/cristiangreco"><img src="https://avatars.githubusercontent.com/u/316923?v=4" title="cristiangreco" width="80" height="80"></a>
+<a href="https://github.com/BenAl1i"><img src="https://avatars.githubusercontent.com/u/96211182?v=4" title="BenAl1i" width="80" height="80"></a>
 <a href="https://github.com/robbymilo"><img src="https://avatars.githubusercontent.com/u/8106669?v=4" title="robbymilo" width="80" height="80"></a>
 <a href="https://github.com/ekpatrice"><img src="https://avatars.githubusercontent.com/u/77462462?v=4" title="ekpatrice" width="80" height="80"></a>
 <a href="https://github.com/ruslanpascoal2"><img src="https://avatars.githubusercontent.com/u/61955096?v=4" title="ruslanpascoal2" width="80" height="80"></a>
@@ -207,6 +208,5 @@ To start contributing, check out our [Contributing Guide](docs/internal/contribu
 <a href="https://github.com/yashrsharma44"><img src="https://avatars.githubusercontent.com/u/31438680?v=4" title="yashrsharma44" width="80" height="80"></a>
 <a href="https://github.com/SusyQinqinYang"><img src="https://avatars.githubusercontent.com/u/55719616?v=4" title="SusyQinqinYang" width="80" height="80"></a>
 <a href="https://github.com/SeamusGrafana"><img src="https://avatars.githubusercontent.com/u/102023327?v=4" title="SeamusGrafana" width="80" height="80"></a>
-<a href="https://github.com/s4kibs4mi"><img src="https://avatars.githubusercontent.com/u/5650785?v=4" title="s4kibs4mi" width="80" height="80"></a>
 
 [//]: contributor-faces
