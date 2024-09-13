@@ -1,12 +1,13 @@
 package phlare
 
 import (
+	"strings"
+
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc/health/grpc_health_v1"
-	"strings"
 
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
 	kuberesolver2 "github.com/grafana/pyroscope/pkg/experiment/metastore/discovery/kuberesolver"
