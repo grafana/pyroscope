@@ -54,6 +54,7 @@ func New(logger log.Logger, grpcClientConfig grpcclient.Config, d discovery.Disc
 	var (
 		c = new(Client)
 	)
+	logger = log.With(logger, "component", "metastore-client")
 
 	c.service = services.NewIdleService(c.starting, c.stopping)
 	c.logger = logger
@@ -76,6 +77,7 @@ func (c *Client) stopping(error) error {
 	var multiErr error
 	for _, srv := range c.servers {
 		err := srv.conn.Close()
+		c.logger.Log("msg", "connection closed", "resolved_address", srv.srv.ResolvedAddress, "raft_address", srv.srv.Raft.Address)
 		if err != nil {
 			multiErr = multierror.Append(multiErr, err)
 		}
@@ -118,6 +120,7 @@ func (c *Client) updateServers(servers []discovery.Server) {
 			c.logger.Log("msg", "failed to crate client", "err", err)
 			continue
 		}
+		c.logger.Log("msg", "new client created", "resolved_address", cl.srv.ResolvedAddress, "raft_address", cl.srv.Raft.Address)
 		newServers[k] = cl
 		clientSet[cl] = struct{}{}
 	}
@@ -126,6 +129,8 @@ func (c *Client) updateServers(servers []discovery.Server) {
 			err := oldClient.conn.Close()
 			if err != nil {
 				c.logger.Log("msg", "failed to close connection", "err", err)
+			} else {
+				c.logger.Log("msg", "connection closed", "resolved_address", oldClient.srv.ResolvedAddress, "raft_address", oldClient.srv.Raft.Address)
 			}
 		}
 	}
