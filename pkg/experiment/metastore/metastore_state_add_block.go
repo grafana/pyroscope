@@ -33,7 +33,7 @@ func (m *Metastore) AddBlock(_ context.Context, req *metastorev1.AddBlockRequest
 	if err != nil {
 		_ = level.Error(m.logger).Log("msg", "failed to apply add block", "block_id", req.Block.Id, "shard", req.Block.Shard, "err", err)
 		if m.shouldRetryAddBlock(err) {
-			// todo (korniltsev) write a test to span multiple metastores and verify this error returned with correct details
+			// todo (korniltsev) write a test to spawn multiple metastores and verify this error returned with correct details
 			return nil, m.retryableErrorWithRaftDetails(err)
 		}
 	}
