@@ -37,6 +37,7 @@ func NewKubeResolverDiscovery(l log.Logger, target string, client kuberesolver2.
 	if err != nil {
 		return nil, err
 	}
+	l.Log("msg", "parsed target", "target_namespace", ti.namespace, "target_service", ti.service, "target_port", ti.port)
 
 	res := &KubeDiscovery{
 		l:  l,
@@ -74,6 +75,11 @@ func (g *KubeDiscovery) Close() {
 }
 
 func (g *KubeDiscovery) resolved(e kuberesolver2.Endpoints) {
+	for _, subset := range e.Subsets {
+		for _, addr := range subset.Addresses {
+			g.l.Log("msg", "resolved", "ip", addr.IP, "targetRef", addr.TargetRef)
+		}
+	}
 	g.updLock.Lock()
 	defer g.updLock.Unlock()
 	g.servers = convertEndpoints(e, g.ti)
@@ -83,8 +89,6 @@ func (g *KubeDiscovery) resolved(e kuberesolver2.Endpoints) {
 }
 
 func convertEndpoints(e kuberesolver2.Endpoints, ti targetInfo) []Server {
-	fmt.Printf("%+v\n", e)
-	//metastore.raft.server-id: "$(POD_NAME).pyroscope-metastore-headless.$(NAMESPACE_FQDN):9099"
 	var servers []Server
 	for _, ep := range e.Subsets {
 		for _, addr := range ep.Addresses {
