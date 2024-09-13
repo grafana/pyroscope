@@ -125,7 +125,7 @@ func (f *Phlare) initMetastoreClient() (services.Service, error) {
 		return nil, err
 	}
 	address := f.Cfg.Metastore.Address
-	if strings.HasSuffix(address, "dns:///_grpc._tcp.") {
+	if strings.HasPrefix(address, "dns:///_grpc._tcp.") {
 		address = strings.Replace(address, "dns:///_grpc._tcp.", "kubernetes:///", 1) // todo support dns discovery
 	}
 	disc, err := discovery.NewKubeResolverDiscovery(f.logger, address, kubeClient)
