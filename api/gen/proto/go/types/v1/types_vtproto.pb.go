@@ -189,6 +189,10 @@ func (m *LabelNamesRequest) CloneVT() *LabelNamesRequest {
 		copy(tmpContainer, rhs)
 		r.Matchers = tmpContainer
 	}
+	if rhs := m.IncludeCardinality; rhs != nil {
+		tmpVal := *rhs
+		r.IncludeCardinality = &tmpVal
+	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -209,6 +213,11 @@ func (m *LabelNamesResponse) CloneVT() *LabelNamesResponse {
 		tmpContainer := make([]string, len(rhs))
 		copy(tmpContainer, rhs)
 		r.Names = tmpContainer
+	}
+	if rhs := m.Cardinality; rhs != nil {
+		tmpContainer := make([]int64, len(rhs))
+		copy(tmpContainer, rhs)
+		r.Cardinality = tmpContainer
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -610,6 +619,9 @@ func (this *LabelNamesRequest) EqualVT(that *LabelNamesRequest) bool {
 	if this.End != that.End {
 		return false
 	}
+	if p, q := this.IncludeCardinality, that.IncludeCardinality; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
@@ -631,6 +643,15 @@ func (this *LabelNamesResponse) EqualVT(that *LabelNamesResponse) bool {
 	}
 	for i, vx := range this.Names {
 		vy := that.Names[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if len(this.Cardinality) != len(that.Cardinality) {
+		return false
+	}
+	for i, vx := range this.Cardinality {
+		vy := that.Cardinality[i]
 		if vx != vy {
 			return false
 		}
@@ -1244,6 +1265,16 @@ func (m *LabelNamesRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.IncludeCardinality != nil {
+		i--
+		if *m.IncludeCardinality {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x20
+	}
 	if m.End != 0 {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.End))
 		i--
@@ -1295,6 +1326,27 @@ func (m *LabelNamesResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.Cardinality) > 0 {
+		var pksize2 int
+		for _, num := range m.Cardinality {
+			pksize2 += protohelpers.SizeOfVarint(uint64(num))
+		}
+		i -= pksize2
+		j1 := i
+		for _, num1 := range m.Cardinality {
+			num := uint64(num1)
+			for num >= 1<<7 {
+				dAtA[j1] = uint8(uint64(num)&0x7f | 0x80)
+				num >>= 7
+				j1++
+			}
+			dAtA[j1] = uint8(num)
+			j1++
+		}
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(pksize2))
+		i--
+		dAtA[i] = 0x12
 	}
 	if len(m.Names) > 0 {
 		for iNdEx := len(m.Names) - 1; iNdEx >= 0; iNdEx-- {
@@ -1831,6 +1883,9 @@ func (m *LabelNamesRequest) SizeVT() (n int) {
 	if m.End != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.End))
 	}
+	if m.IncludeCardinality != nil {
+		n += 2
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -1846,6 +1901,13 @@ func (m *LabelNamesResponse) SizeVT() (n int) {
 			l = len(s)
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
+	}
+	if len(m.Cardinality) > 0 {
+		l = 0
+		for _, e := range m.Cardinality {
+			l += protohelpers.SizeOfVarint(uint64(e))
+		}
+		n += 1 + protohelpers.SizeOfVarint(uint64(l)) + l
 	}
 	n += len(m.unknownFields)
 	return n
@@ -2963,6 +3025,27 @@ func (m *LabelNamesRequest) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field IncludeCardinality", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			b := bool(v != 0)
+			m.IncludeCardinality = &b
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
@@ -3046,6 +3129,82 @@ func (m *LabelNamesResponse) UnmarshalVT(dAtA []byte) error {
 			}
 			m.Names = append(m.Names, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
+		case 2:
+			if wireType == 0 {
+				var v int64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protohelpers.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					v |= int64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				m.Cardinality = append(m.Cardinality, v)
+			} else if wireType == 2 {
+				var packedLen int
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protohelpers.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					packedLen |= int(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				if packedLen < 0 {
+					return protohelpers.ErrInvalidLength
+				}
+				postIndex := iNdEx + packedLen
+				if postIndex < 0 {
+					return protohelpers.ErrInvalidLength
+				}
+				if postIndex > l {
+					return io.ErrUnexpectedEOF
+				}
+				var elementCount int
+				var count int
+				for _, integer := range dAtA[iNdEx:postIndex] {
+					if integer < 128 {
+						count++
+					}
+				}
+				elementCount = count
+				if elementCount != 0 && len(m.Cardinality) == 0 {
+					m.Cardinality = make([]int64, 0, elementCount)
+				}
+				for iNdEx < postIndex {
+					var v int64
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return protohelpers.ErrIntOverflow
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						v |= int64(b&0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					m.Cardinality = append(m.Cardinality, v)
+				}
+			} else {
+				return fmt.Errorf("proto: wrong wireType = %d for field Cardinality", wireType)
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

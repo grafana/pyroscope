@@ -1214,6 +1214,13 @@
           "items": {
             "type": "string"
           }
+        },
+        "cardinality": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "int64"
+          }
         }
       }
     },
