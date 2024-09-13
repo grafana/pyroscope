@@ -6,6 +6,7 @@ import (
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc/health/grpc_health_v1"
+	"strings"
 
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
 	kuberesolver2 "github.com/grafana/pyroscope/pkg/experiment/metastore/discovery/kuberesolver"
@@ -122,7 +123,11 @@ func (f *Phlare) initMetastoreClient() (services.Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	disc, err := discovery.NewKubeResolverDiscovery(f.logger, f.Cfg.Metastore.Address, kubeClient)
+	address := f.Cfg.Metastore.Address
+	if strings.HasSuffix(address, "dns:///_grpc._tcp.") {
+		address = strings.Replace(address, "dns:///_grpc._tcp.", "kubernetes:///", 1) // todo support dns discovery
+	}
+	disc, err := discovery.NewKubeResolverDiscovery(f.logger, address, kubeClient)
 	if err != nil {
 		return nil, err
 	}
