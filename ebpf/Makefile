@@ -21,9 +21,6 @@ EBPF_GO_TEST_FLAGS_ARM64 = -v
 EBPF_CGO_ENABLED_ARM64 = 0
 endif # $(shell uname -s),Linux
 
-
-
-
 .phony: python/dwarfdump
 python/dwarfdump:
 	git submodule update --init --recursive
