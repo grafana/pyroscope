@@ -40,8 +40,8 @@ func (m *metastoreState) applyPollCompactionJobs(raft *raft.Log, request *compac
 }
 
 type pollStateUpdate struct {
-	newBlocks          map[uint32][]string
-	deletedBlocks      map[uint32][]string
+	newBlocks          map[tenantShard][]string
+	deletedBlocks      map[tenantShard][]string
 	newJobs            []string
 	updatedBlockQueues map[tenantShard][]uint32
 	deletedJobs        map[tenantShard][]string
@@ -50,8 +50,8 @@ type pollStateUpdate struct {
 
 func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJobsRequest, raftIndex uint64, raftAppendedAtNanos int64) (resp *compactorv1.PollCompactionJobsResponse, err error) {
 	stateUpdate := &pollStateUpdate{
-		newBlocks:          make(map[uint32][]string),
-		deletedBlocks:      make(map[uint32][]string),
+		newBlocks:          make(map[tenantShard][]string),
+		deletedBlocks:      make(map[tenantShard][]string),
 		newJobs:            make([]string, 0),
 		updatedBlockQueues: make(map[tenantShard][]uint32),
 		deletedJobs:        make(map[tenantShard][]string),
@@ -79,42 +79,42 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 				fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
 
 			// next we'll replace source blocks with compacted ones
-			// we need to acquire the shards lock first, to protect the read path from an inconsistent view of the data
-			m.shardsMutex.Lock()
-			for _, b := range jobUpdate.CompletedJob.Blocks {
-				level.Debug(m.logger).Log("msg", "adding compacted block", "block", b.Id, "level", b.CompactionLevel, "source_job", job.Name)
-				m.shards[job.Shard].putSegment(b)
-				stateUpdate.newBlocks[job.Shard] = append(stateUpdate.newBlocks[job.Shard], b.Id)
+			m.index.run(func() {
+				for _, b := range jobUpdate.CompletedJob.Blocks {
+					level.Debug(m.logger).Log("msg", "adding compacted block", "block", b.Id, "level", b.CompactionLevel, "source_job", job.Name)
+					_ = m.index.insertBlock(b)
+					blockTenantShard := tenantShard{tenant: b.TenantId, shard: b.Shard}
+					stateUpdate.newBlocks[blockTenantShard] = append(stateUpdate.newBlocks[blockTenantShard], b.Id)
 
-				// adding new blocks to the compaction queue
-				if jobForNewBlock := m.tryCreateJob(b, jobUpdate.RaftLogIndex); jobForNewBlock != nil {
-					m.addCompactionJob(jobForNewBlock)
-					stateUpdate.newJobs = append(stateUpdate.newJobs, jobForNewBlock.Name)
-					m.compactionMetrics.addedJobs.WithLabelValues(
-						fmt.Sprint(jobForNewBlock.Shard), jobForNewBlock.TenantId, fmt.Sprint(jobForNewBlock.CompactionLevel)).Inc()
-				} else {
-					m.addBlockToCompactionJobQueue(b)
+					// adding new blocks to the compaction queue
+					if jobForNewBlock := m.tryCreateJob(b, jobUpdate.RaftLogIndex); jobForNewBlock != nil {
+						m.addCompactionJob(jobForNewBlock)
+						stateUpdate.newJobs = append(stateUpdate.newJobs, jobForNewBlock.Name)
+						m.compactionMetrics.addedJobs.WithLabelValues(
+							fmt.Sprint(jobForNewBlock.Shard), jobForNewBlock.TenantId, fmt.Sprint(jobForNewBlock.CompactionLevel)).Inc()
+					} else {
+						m.addBlockToCompactionJobQueue(b)
+					}
+					m.compactionMetrics.addedBlocks.WithLabelValues(
+						fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
+
+					stateUpdate.updatedBlockQueues[blockTenantShard] = append(stateUpdate.updatedBlockQueues[blockTenantShard], b.CompactionLevel)
 				}
-				m.compactionMetrics.addedBlocks.WithLabelValues(
-					fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
-				blockTenantShard := tenantShard{tenant: b.TenantId, shard: b.Shard}
-				stateUpdate.updatedBlockQueues[blockTenantShard] = append(stateUpdate.updatedBlockQueues[blockTenantShard], b.CompactionLevel)
-			}
-			// finally we'll delete the metadata for source blocks (this doesn't delete blocks from object store)
-			for _, b := range job.Blocks {
-				level.Debug(m.logger).Log(
-					"msg", "deleting source block",
-					"block", b,
-					"tenant", job.TenantId,
-					"shard", job.Shard,
-					"level", job.CompactionLevel,
-				)
-				m.shards[job.Shard].deleteSegment(b)
-				stateUpdate.deletedBlocks[job.Shard] = append(stateUpdate.deletedBlocks[job.Shard], b)
-				m.compactionMetrics.deletedBlocks.WithLabelValues(
-					fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
-			}
-			m.shardsMutex.Unlock()
+				// finally we'll delete the metadata for source blocks (this doesn't delete blocks from object store)
+				for _, b := range job.Blocks {
+					level.Debug(m.logger).Log(
+						"msg", "deleting source block",
+						"block", b,
+						"tenant", job.TenantId,
+						"shard", job.Shard,
+						"level", job.CompactionLevel,
+					)
+					m.index.deleteBlock(job.Shard, job.TenantId, b)
+					stateUpdate.deletedBlocks[jobKey] = append(stateUpdate.deletedBlocks[jobKey], b)
+					m.compactionMetrics.deletedBlocks.WithLabelValues(
+						fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
+				}
+			})
 		case compactorv1.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS:
 			level.Debug(m.logger).Log(
 				"msg", "compaction job still in progress",
@@ -204,7 +204,7 @@ func (m *metastoreState) convertJobs(jobs []*compactionpb.CompactionJob) (conver
 		// populate block metadata (workers rely on it)
 		blocks := make([]*metastorev1.BlockMeta, 0, len(job.Blocks))
 		for _, bId := range job.Blocks {
-			b := m.findBlock(job.Shard, bId)
+			b := m.findBlock(job.Shard, job.TenantId, bId)
 			if b == nil {
 				level.Error(m.logger).Log(
 					"msg", "failed to populate compaction job details, block not found",
@@ -240,12 +240,8 @@ func (m *metastoreState) convertJobs(jobs []*compactionpb.CompactionJob) (conver
 	return convertedJobs, invalidJobs
 }
 
-func (m *metastoreState) findBlock(shard uint32, blockId string) *metastorev1.BlockMeta {
-	segmentShard := m.getOrCreateShard(shard)
-	segmentShard.segmentsMutex.Lock()
-	defer segmentShard.segmentsMutex.Unlock()
-
-	return segmentShard.segments[blockId]
+func (m *metastoreState) findBlock(shard uint32, tenant string, blockId string) *metastorev1.BlockMeta {
+	return m.index.findBlock(shard, tenant, blockId)
 }
 
 func (m *metastoreState) findJobsToAssign(jobCapacity int, raftLogIndex uint64, now int64) []*compactionpb.CompactionJob {
@@ -278,33 +274,27 @@ func (m *metastoreState) findJobsToAssign(jobCapacity int, raftLogIndex uint64, 
 
 func (m *metastoreState) writeToDb(sTable *pollStateUpdate) error {
 	return m.db.boltdb.Update(func(tx *bbolt.Tx) error {
-		for shard, blocks := range sTable.newBlocks {
+		for key, blocks := range sTable.newBlocks {
 			for _, b := range blocks {
-				block := m.findBlock(shard, b)
+				block := m.findBlock(key.shard, key.tenant, b)
 				if block == nil {
 					level.Error(m.logger).Log(
 						"msg", "a newly compacted block could not be found",
 						"block", b,
-						"shard", shard,
+						"shard", key.shard,
+						"tenant", key.tenant,
 					)
 					continue
 				}
-				name, key := keyForBlockMeta(shard, "", b)
-				err := updateBlockMetadataBucket(tx, name, func(bucket *bbolt.Bucket) error {
-					bValue, _ := block.MarshalVT()
-					return bucket.Put(key, bValue)
-				})
+				err := m.persistBlock(tx, block)
 				if err != nil {
 					return err
 				}
 			}
 		}
-		for shard, blocks := range sTable.deletedBlocks {
+		for key, blocks := range sTable.deletedBlocks {
 			for _, b := range blocks {
-				name, key := keyForBlockMeta(shard, "", b)
-				err := updateBlockMetadataBucket(tx, name, func(bucket *bbolt.Bucket) error {
-					return bucket.Delete(key)
-				})
+				err := m.deleteBlock(tx, key.shard, key.tenant, b)
 				if err != nil {
 					return err
 				}

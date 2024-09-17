@@ -71,7 +71,7 @@ func (db *boltdb) open(readOnly bool) (err error) {
 
 	if !readOnly {
 		err = db.boltdb.Update(func(tx *bbolt.Tx) error {
-			_, err := tx.CreateBucketIfNotExists(blockMetadataBucketNameBytes)
+			_, err := tx.CreateBucketIfNotExists(partitionBucketNameBytes)
 			if err != nil {
 				return err
 			}
@@ -216,30 +216,38 @@ func getOrCreateSubBucket(parent *bbolt.Bucket, name []byte) (*bbolt.Bucket, err
 	return bucket, nil
 }
 
-const blockMetadataBucketName = "block_metadata"
-const compactionJobBucketName = "compaction_job"
+const (
+	compactionJobBucketName = "compaction_job"
+	emptyTenantBucketName   = "-"
+)
 
-var blockMetadataBucketNameBytes = []byte(blockMetadataBucketName)
 var compactionJobBucketNameBytes = []byte(compactionJobBucketName)
+var emptyTenantBucketNameBytes = []byte(emptyTenantBucketName)
 
-func getBlockMetadataBucket(tx *bbolt.Tx) (*bbolt.Bucket, error) {
-	mdb := tx.Bucket(blockMetadataBucketNameBytes)
-	if mdb == nil {
-		return nil, bbolt.ErrBucketNotFound
-	}
-	return mdb, nil
-}
-
-func updateBlockMetadataBucket(tx *bbolt.Tx, name []byte, fn func(*bbolt.Bucket) error) error {
-	mdb, err := getBlockMetadataBucket(tx)
+func updateBlockMetadataBucket(tx *bbolt.Tx, partitionKey PartitionKey, shard uint32, tenant string, fn func(*bbolt.Bucket) error) error {
+	bkt, err := getPartitionBucket(tx)
 	if err != nil {
 		return err
 	}
-	bucket, err := getOrCreateSubBucket(mdb, name)
+	partBkt, err := getOrCreateSubBucket(bkt, []byte(partitionKey))
 	if err != nil {
 		return err
 	}
-	return fn(bucket)
+	shardBktName := make([]byte, 4)
+	binary.BigEndian.PutUint32(shardBktName, shard)
+	shardBkt, err := getOrCreateSubBucket(partBkt, shardBktName)
+	if err != nil {
+		return err
+	}
+	tenantBktName := []byte(tenant)
+	if len(tenantBktName) == 0 {
+		tenantBktName = emptyTenantBucketNameBytes
+	}
+	tenantBkt, err := getOrCreateSubBucket(shardBkt, tenantBktName)
+	if err != nil {
+		return err
+	}
+	return fn(tenantBkt)
 }
 
 // Bucket           |Key

@@ -79,8 +79,8 @@ func Test_StatusUpdates_Success(t *testing.T) {
 	require.Equalf(t, 0, len(m.compactionJobQueue.jobs), "compaction job queue should be empty")
 
 	// compacted blocks are added
-	b40 := m.getOrCreateShard(0).segments["b-40"]
-	b41 := m.getOrCreateShard(0).segments["b-41"]
+	b40 := m.index.findBlock(0, "", "40")
+	b41 := m.index.findBlock(0, "", "b-41")
 	require.NotNilf(t, b40, "compacted block not found in state")
 	require.NotNilf(t, b41, "compacted block not found in state")
 	require.Equalf(t, uint32(1), b40.CompactionLevel, "compacted block has wrong level")
@@ -88,7 +88,7 @@ func Test_StatusUpdates_Success(t *testing.T) {
 
 	// source blocks are removed
 	for i := 0; i < 40; i++ {
-		require.Nilf(t, m.getOrCreateShard(0).segments[fmt.Sprintf("b-%d", i)], "old block %d found in state", i)
+		require.Nilf(t, m.findBlock(0, "", fmt.Sprintf("b-%d", i)), "old block %d found in state", i)
 	}
 }
 
@@ -291,9 +291,13 @@ func Test_RemoveInvalidJobsFromStorage(t *testing.T) {
 	require.Equal(t, 1, len(m.compactionJobQueue.jobs), "there should be one job in the queue")
 
 	// delete all blocks, making the existing job invalid
-	for _, shard := range m.shards {
-		for _, segment := range shard.segments {
-			shard.deleteSegment(segment.Id)
+	for _, p := range m.index.partitionMap {
+		for sKey, s := range p.shards {
+			for tKey, t := range s.tenants {
+				for _, b := range t.blocks {
+					m.index.deleteBlock(sKey, tKey, b.Id)
+				}
+			}
 		}
 	}
 

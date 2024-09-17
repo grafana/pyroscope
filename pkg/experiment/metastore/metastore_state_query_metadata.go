@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"sync"
 
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
-	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -60,10 +58,6 @@ func newMetadataQuery(request *metastorev1.QueryMetadataRequest) (*metadataQuery
 	return q, nil
 }
 
-func (q *metadataQuery) matchBlock(b *metastorev1.BlockMeta) bool {
-	return inRange(b.MinTime, b.MaxTime, q.startTime, q.endTime)
-}
-
 func (q *metadataQuery) matchService(s *metastorev1.Dataset) bool {
 	_, ok := q.tenants[s.TenantId]
 	if !ok {
@@ -82,25 +76,25 @@ func inRange(blockStart, blockEnd, queryStart, queryEnd int64) bool {
 	return blockStart <= queryEnd && blockEnd >= queryStart
 }
 
-func (s *metastoreShard) listBlocksForQuery(q *metadataQuery) map[string]*metastorev1.BlockMeta {
-	s.segmentsMutex.Lock()
-	defer s.segmentsMutex.Unlock()
-	md := make(map[string]*metastorev1.BlockMeta, 32)
-	for _, segment := range s.segments {
-		if !q.matchBlock(segment) {
-			continue
+func (i *index) listBlocksForQuery(q *metadataQuery) []*metastorev1.BlockMeta {
+	md := make([]*metastorev1.BlockMeta, 0, 32)
+	i.run(func() {
+		blocks, err := i.findBlocksInRange(q.startTime, q.endTime, q.tenants)
+		if err != nil {
+			return
 		}
-		var block *metastorev1.BlockMeta
-		for _, svc := range segment.Datasets {
-			if q.matchService(svc) {
-				if block == nil {
-					block = cloneBlockForQuery(segment)
-					md[segment.Id] = block
+		for _, block := range blocks {
+			var clone *metastorev1.BlockMeta
+			for _, svc := range block.Datasets {
+				if q.matchService(svc) {
+					clone = cloneBlockForQuery(block)
+					clone.Datasets = append(clone.Datasets, svc)
+					md = append(md, clone)
 				}
-				block.Datasets = append(block.Datasets, svc)
 			}
 		}
-	}
+	})
+
 	return md
 }
 
@@ -121,26 +115,9 @@ func (m *metastoreState) listBlocksForQuery(
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	var respMutex sync.Mutex
 	var resp metastorev1.QueryMetadataResponse
-	g, ctx := errgroup.WithContext(ctx)
-	m.shardsMutex.Lock()
-	for _, s := range m.shards {
-		s := s
-		g.Go(func() error {
-			blocks := s.listBlocksForQuery(q)
-			respMutex.Lock()
-			for _, b := range blocks {
-				resp.Blocks = append(resp.Blocks, b)
-			}
-			respMutex.Unlock()
-			return nil
-		})
-	}
-	m.shardsMutex.Unlock()
-	if err = g.Wait(); err != nil {
-		return nil, err
-	}
+	blocks := m.index.listBlocksForQuery(q)
+	resp.Blocks = append(resp.Blocks, blocks...)
 	slices.SortFunc(resp.Blocks, func(a, b *metastorev1.BlockMeta) int {
 		return strings.Compare(a.Id, b.Id)
 	})

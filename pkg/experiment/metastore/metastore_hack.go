@@ -7,7 +7,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/hashicorp/raft"
-	"github.com/oklog/ulid"
 	"google.golang.org/protobuf/types/known/anypb"
 
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftlogpb"
@@ -42,24 +41,30 @@ func (m *Metastore) cleanupLoop() {
 }
 
 func (m *metastoreState) applyTruncate(_ *raft.Log, request *raftlogpb.TruncateCommand) (*anypb.Any, error) {
-	m.shardsMutex.Lock()
-	var g sync.WaitGroup
-	g.Add(len(m.shards))
-	for shardID, shard := range m.shards {
-		go truncateSegmentsBefore(m.db, m.logger, &g, shardID, shard, request.Timestamp)
-	}
-	m.shardsMutex.Unlock()
-	g.Wait()
+	m.index.run(func() {
+		toDelete := make([]PartitionKey, 0)
+		for key, partition := range m.index.partitionMap {
+			if uint64(partition.ts.UnixMilli()) < request.Timestamp {
+				toDelete = append(toDelete, key)
+			}
+		}
+		var g sync.WaitGroup
+		g.Add(len(toDelete))
+		for _, key := range toDelete {
+			go truncatePartition(m.db, m.index, m.logger, &g, key)
+		}
+		g.Wait()
+	})
+
 	return &anypb.Any{}, nil
 }
 
-func truncateSegmentsBefore(
+func truncatePartition(
 	db *boltdb,
+	index *index,
 	log log.Logger,
 	wg *sync.WaitGroup,
-	shardID uint32,
-	shard *metastoreShard,
-	t uint64,
+	key PartitionKey,
 ) {
 	defer wg.Done()
 	var c int
@@ -73,31 +78,22 @@ func truncateSegmentsBefore(
 			_ = level.Error(log).Log("msg", "failed to commit transaction", "err", err)
 			return
 		}
-		_ = level.Info(log).Log("msg", "stale segments truncated", "segments", c)
+		_ = level.Info(log).Log("msg", "stale partitions truncated", "segments", c)
 	}()
 
-	bucket, err := getBlockMetadataBucket(tx)
+	bucket, err := getPartitionBucket(tx)
 	if err != nil {
 		_ = level.Error(log).Log("msg", "failed to get metadata bucket", "err", err)
 		return
 	}
-	shardBucket, _ := keyForBlockMeta(shardID, "", "")
-	bucket = bucket.Bucket(shardBucket)
-
-	shard.segmentsMutex.Lock()
-	defer shard.segmentsMutex.Unlock()
-
-	for k, segment := range shard.segments {
-		if segment.CompactionLevel > 2 {
-			continue
+	index.run(func() {
+		delete(index.partitionMap, key)
+		if err = bucket.Delete([]byte(key)); err != nil {
+			_ = level.Error(log).Log(
+				"msg", "failed to delete stale partition",
+				"err", err,
+				"partition", key)
+			return
 		}
-		if ulid.MustParse(segment.Id).Time() < t {
-			if err = bucket.Delete([]byte(segment.Id)); err != nil {
-				_ = level.Error(log).Log("msg", "failed to delete stale segments", "err", err)
-				return
-			}
-			delete(shard.segments, k)
-			c++
-		}
-	}
+	})
 }

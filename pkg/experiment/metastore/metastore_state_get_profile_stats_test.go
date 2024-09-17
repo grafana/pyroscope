@@ -68,7 +68,7 @@ func Benchmark_MetastoreState_GetProfileStats(b *testing.B) {
 		// total:                 123 blocks
 		// monthly:              3690 blocks (usually less)
 		for i := 0; i < 600; i++ { // level 0
-			m.getOrCreateShard(uint32(s)).putSegment(&metastorev1.BlockMeta{
+			_ = m.index.insertBlock(&metastorev1.BlockMeta{
 				Id:      fmt.Sprintf("b-%d", i),
 				Shard:   uint32(s),
 				MinTime: int64(i * 10),
@@ -84,7 +84,7 @@ func Benchmark_MetastoreState_GetProfileStats(b *testing.B) {
 			})
 		}
 		for i := 0; i < 3400; i++ {
-			m.getOrCreateShard(uint32(s)).putSegment(&metastorev1.BlockMeta{
+			_ = m.index.insertBlock(&metastorev1.BlockMeta{
 				Id:       fmt.Sprintf("b-%d", i),
 				Shard:    uint32(s),
 				TenantId: "tenant1",

@@ -1,9 +1,11 @@
 package metastore
 
 import (
+	"crypto/rand"
 	"fmt"
 	"testing"
 
+	"github.com/oklog/ulid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/bbolt"
@@ -63,13 +65,14 @@ func TestMetadataStateManagement(t *testing.T) {
 		for i := 0; i < 420; i++ {
 			err = db.boltdb.Update(func(tx *bbolt.Tx) error {
 				block := &metastorev1.BlockMeta{
-					Id:    fmt.Sprintf("b-%d", i),
+					Id:    ulid.MustNew(ulid.Now(), rand.Reader).String(),
 					Shard: uint32(i % 4),
 				}
-				name, key := keyForBlockMeta(block.Shard, "", block.Id)
+				key := []byte(block.Id)
 				value, err := block.MarshalVT()
 				require.NoError(t, err)
-				err = updateBlockMetadataBucket(tx, name, func(bucket *bbolt.Bucket) error {
+				partKey := m.index.getPartitionKey(block.Id)
+				err = updateBlockMetadataBucket(tx, partKey, block.Shard, block.TenantId, func(bucket *bbolt.Bucket) error {
 					return bucket.Put(key, value)
 				})
 				return err
@@ -78,14 +81,18 @@ func TestMetadataStateManagement(t *testing.T) {
 		}
 
 		// restore from db
-		err = db.boltdb.Update(func(tx *bbolt.Tx) error {
-			return m.restoreBlockMetadata(tx)
-		})
+		m.index.loadPartitions()
 		require.NoError(t, err)
 
-		require.Equal(t, 4, len(m.shards))
-		for shard := range m.shards {
-			require.Equal(t, 105, len(m.getOrCreateShard(shard).segments))
+		require.Equal(t, 1, len(m.index.partitions))
+		for _, p := range m.index.partitionMap {
+			require.Equal(t, 4, len(p.shards))
+			for _, s := range p.shards {
+				require.Equal(t, 1, len(s.tenants))
+				for _, ten := range s.tenants {
+					require.Equal(t, 105, len(ten.blocks))
+				}
+			}
 		}
 	})
 }
