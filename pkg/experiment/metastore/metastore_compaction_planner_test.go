@@ -1,10 +1,11 @@
 package metastore
 
 import (
-	"fmt"
+	"crypto/rand"
 	"testing"
 	"time"
 
+	"github.com/oklog/ulid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/bbolt"
@@ -16,14 +17,14 @@ import (
 func Test_MaintainSeparateBlockQueues(t *testing.T) {
 	m := initState(t)
 	_ = m.db.boltdb.Update(func(tx *bbolt.Tx) error {
-		_ = m.compactBlock(createBlock(1, 0, "", 0), tx, 0)
-		_ = m.compactBlock(createBlock(2, 0, "", 0), tx, 0)
-		_ = m.compactBlock(createBlock(3, 0, "", 0), tx, 0)
-		_ = m.compactBlock(createBlock(4, 1, "", 0), tx, 0)
-		_ = m.compactBlock(createBlock(5, 1, "", 0), tx, 0)
-		_ = m.compactBlock(createBlock(6, 1, "tenant1", 1), tx, 0)
-		_ = m.compactBlock(createBlock(7, 1, "tenant2", 1), tx, 0)
-		_ = m.compactBlock(createBlock(8, 1, "tenant1", 1), tx, 0)
+		_ = m.compactBlock(createBlock(0, "", 0), tx, 0)
+		_ = m.compactBlock(createBlock(0, "", 0), tx, 0)
+		_ = m.compactBlock(createBlock(0, "", 0), tx, 0)
+		_ = m.compactBlock(createBlock(1, "", 0), tx, 0)
+		_ = m.compactBlock(createBlock(1, "", 0), tx, 0)
+		_ = m.compactBlock(createBlock(1, "tenant1", 1), tx, 0)
+		_ = m.compactBlock(createBlock(1, "tenant2", 1), tx, 0)
+		_ = m.compactBlock(createBlock(1, "tenant1", 1), tx, 0)
 		return nil
 	})
 	require.Equal(t, 3, getQueueLen(m, 0, "", 0))
@@ -37,7 +38,7 @@ func Test_CreateJobs(t *testing.T) {
 	m := initState(t)
 	_ = m.db.boltdb.Update(func(tx *bbolt.Tx) error {
 		for i := 0; i < 420; i++ {
-			_ = m.compactBlock(createBlock(i, i%4, "", 0), tx, 0)
+			_ = m.compactBlock(createBlock(i%4, "", 0), tx, 0)
 		}
 		return nil
 	})
@@ -68,9 +69,9 @@ func initState(tb testing.TB) *metastoreState {
 	return m
 }
 
-func createBlock(id int, shard int, tenant string, level int) *metastorev1.BlockMeta {
+func createBlock(shard int, tenant string, level int) *metastorev1.BlockMeta {
 	return &metastorev1.BlockMeta{
-		Id:              fmt.Sprintf("b-%d", id),
+		Id:              ulid.MustNew(ulid.Now(), rand.Reader).String(),
 		Shard:           uint32(shard),
 		TenantId:        tenant,
 		CompactionLevel: uint32(level),

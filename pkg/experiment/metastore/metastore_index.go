@@ -195,9 +195,6 @@ func (i *index) insertBlock(b *metastorev1.BlockMeta) error {
 		return err
 	}
 
-	i.partitionMu.Lock()
-	defer i.partitionMu.Unlock()
-
 	p, ok := i.partitionMap[key]
 	if !ok {
 		p = &indexPartition{
@@ -206,7 +203,12 @@ func (i *index) insertBlock(b *metastorev1.BlockMeta) error {
 			shards:   make(map[uint32]*indexShard),
 		}
 		i.partitionMap[key] = p
+		i.partitions = append(i.partitions, key)
+		slices.SortFunc(i.partitions, func(a, b PartitionKey) int {
+			return a.compare(b)
+		})
 	}
+
 	p.shardsMu.Lock()
 	defer p.shardsMu.Unlock()
 
@@ -231,15 +233,13 @@ func (i *index) insertBlock(b *metastorev1.BlockMeta) error {
 
 	ten.blocksMu.Lock()
 	defer ten.blocksMu.Unlock()
-	ten.blocks[b.Id] = b
 
+	ten.blocks[b.Id] = b
 	return nil
 }
 
 func (i *index) deleteBlock(shard uint32, tenant string, blockId string) {
 	key := i.getPartitionKey(blockId)
-	i.partitionMu.Lock()
-	defer i.partitionMu.Unlock()
 
 	p, ok := i.partitionMap[key]
 	if !ok {
@@ -291,7 +291,7 @@ func (i *index) findBlock(shardNum uint32, tenant string, id string) *metastorev
 		return nil
 	}
 	t := i.getTenant(s, tenant)
-	if t != nil {
+	if t == nil {
 		return nil
 	}
 	b := i.getBlock(t, id)
@@ -305,7 +305,6 @@ func (i *index) findBlocksInRange(start, end int64, tenants map[string]struct{})
 	blocks := make([]*metastorev1.BlockMeta, 0)
 
 	firstPartitionIdx, lastPartitionIdx := -1, -1
-
 	for idx, key := range i.partitions {
 		if key.inRange(start, end) {
 			if firstPartitionIdx == -1 {
@@ -348,8 +347,6 @@ func (i *index) getOrCreatePartition(key PartitionKey) (*indexPartition, error) 
 	if err != nil {
 		return nil, err
 	}
-	i.partitionMu.Lock()
-	defer i.partitionMu.Unlock()
 	p, ok := i.partitionMap[key]
 	if !ok {
 		p = &indexPartition{
@@ -400,4 +397,22 @@ func (i *index) getBlock(t *indexTenant, id string) *metastorev1.BlockMeta {
 	t.blocksMu.Lock()
 	defer t.blocksMu.Unlock()
 	return t.blocks[id]
+}
+
+func (i *index) replaceBlocks(sources []string, sourceShard uint32, sourceTenant string, replacements []*metastorev1.BlockMeta) error {
+	i.partitionMu.Lock()
+	defer i.partitionMu.Unlock()
+
+	for _, newBlock := range replacements {
+		err := i.insertBlock(newBlock)
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, sourceBlock := range sources {
+		i.deleteBlock(sourceShard, sourceTenant, sourceBlock)
+	}
+
+	return nil
 }

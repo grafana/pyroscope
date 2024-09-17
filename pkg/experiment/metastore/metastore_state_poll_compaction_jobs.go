@@ -79,42 +79,53 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 				fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
 
 			// next we'll replace source blocks with compacted ones
-			m.index.run(func() {
-				for _, b := range jobUpdate.CompletedJob.Blocks {
-					level.Debug(m.logger).Log("msg", "adding compacted block", "block", b.Id, "level", b.CompactionLevel, "source_job", job.Name)
-					_ = m.index.insertBlock(b)
-					blockTenantShard := tenantShard{tenant: b.TenantId, shard: b.Shard}
-					stateUpdate.newBlocks[blockTenantShard] = append(stateUpdate.newBlocks[blockTenantShard], b.Id)
+			err = m.index.replaceBlocks(job.Blocks, job.Shard, job.TenantId, jobUpdate.CompletedJob.Blocks)
+			if err != nil {
+				level.Error(m.logger).Log(
+					"msg", "failed to replace source blocks with compacted blocks",
+					"err", err,
+					"job", jobUpdate.JobName,
+					"shard", job.Shard,
+					"tenant", job.TenantId)
+			}
+			for _, b := range jobUpdate.CompletedJob.Blocks {
+				level.Debug(m.logger).Log(
+					"msg", "added compacted block",
+					"block", b.Id,
+					"shard", b.Shard,
+					"tenant", b.TenantId,
+					"level", b.CompactionLevel,
+					"source_job", job.Name)
+				blockTenantShard := tenantShard{tenant: b.TenantId, shard: b.Shard}
+				stateUpdate.newBlocks[blockTenantShard] = append(stateUpdate.newBlocks[blockTenantShard], b.Id)
 
-					// adding new blocks to the compaction queue
-					if jobForNewBlock := m.tryCreateJob(b, jobUpdate.RaftLogIndex); jobForNewBlock != nil {
-						m.addCompactionJob(jobForNewBlock)
-						stateUpdate.newJobs = append(stateUpdate.newJobs, jobForNewBlock.Name)
-						m.compactionMetrics.addedJobs.WithLabelValues(
-							fmt.Sprint(jobForNewBlock.Shard), jobForNewBlock.TenantId, fmt.Sprint(jobForNewBlock.CompactionLevel)).Inc()
-					} else {
-						m.addBlockToCompactionJobQueue(b)
-					}
-					m.compactionMetrics.addedBlocks.WithLabelValues(
-						fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
+				// adding new blocks to the compaction queue
+				if jobForNewBlock := m.tryCreateJob(b, jobUpdate.RaftLogIndex); jobForNewBlock != nil {
+					m.addCompactionJob(jobForNewBlock)
+					stateUpdate.newJobs = append(stateUpdate.newJobs, jobForNewBlock.Name)
+					m.compactionMetrics.addedJobs.WithLabelValues(
+						fmt.Sprint(jobForNewBlock.Shard), jobForNewBlock.TenantId, fmt.Sprint(jobForNewBlock.CompactionLevel)).Inc()
+				} else {
+					m.addBlockToCompactionJobQueue(b)
+				}
+				m.compactionMetrics.addedBlocks.WithLabelValues(
+					fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
 
-					stateUpdate.updatedBlockQueues[blockTenantShard] = append(stateUpdate.updatedBlockQueues[blockTenantShard], b.CompactionLevel)
-				}
-				// finally we'll delete the metadata for source blocks (this doesn't delete blocks from object store)
-				for _, b := range job.Blocks {
-					level.Debug(m.logger).Log(
-						"msg", "deleting source block",
-						"block", b,
-						"tenant", job.TenantId,
-						"shard", job.Shard,
-						"level", job.CompactionLevel,
-					)
-					m.index.deleteBlock(job.Shard, job.TenantId, b)
-					stateUpdate.deletedBlocks[jobKey] = append(stateUpdate.deletedBlocks[jobKey], b)
-					m.compactionMetrics.deletedBlocks.WithLabelValues(
-						fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
-				}
-			})
+				stateUpdate.updatedBlockQueues[blockTenantShard] = append(stateUpdate.updatedBlockQueues[blockTenantShard], b.CompactionLevel)
+			}
+			for _, b := range job.Blocks {
+				level.Debug(m.logger).Log(
+					"msg", "deleted source block",
+					"block", b,
+					"shard", job.Shard,
+					"tenant", job.TenantId,
+					"level", job.CompactionLevel,
+					"job", job.Name,
+				)
+				stateUpdate.deletedBlocks[jobKey] = append(stateUpdate.deletedBlocks[jobKey], b)
+				m.compactionMetrics.deletedBlocks.WithLabelValues(
+					fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
+			}
 		case compactorv1.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS:
 			level.Debug(m.logger).Log(
 				"msg", "compaction job still in progress",
