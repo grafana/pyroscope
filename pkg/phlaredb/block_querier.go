@@ -1408,6 +1408,7 @@ func LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequ
 	}
 
 	labelNames := make(map[string]int)
+	includeCardinality := req.Msg.IncludeCardinality != nil && *req.Msg.IncludeCardinality
 	var lock sync.Mutex
 	group, ctx := errgroup.WithContext(ctx)
 
@@ -1422,13 +1423,19 @@ func LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequ
 			}
 
 			lock.Lock()
-			for i, name := range res.Msg.Names {
-				cardinality := int(res.Msg.Cardinality[i])
+			if includeCardinality {
+				for i, name := range res.Msg.Names {
+					cardinality := int(res.Msg.Cardinality[i])
 
-				if _, ok := labelNames[name]; !ok {
-					labelNames[name] = cardinality
-				} else {
-					labelNames[name] += cardinality
+					if _, ok := labelNames[name]; !ok {
+						labelNames[name] = cardinality
+					} else {
+						labelNames[name] += cardinality
+					}
+				}
+			} else {
+				for _, name := range res.Msg.Names {
+					labelNames[name] = 0
 				}
 			}
 			lock.Unlock()
@@ -1441,12 +1448,19 @@ func LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequ
 	}
 
 	res := &typesv1.LabelNamesResponse{
-		Names:       make([]string, 0, len(labelNames)),
-		Cardinality: make([]int64, 0, len(labelNames)),
+		Names: make([]string, 0, len(labelNames)),
 	}
-	for name, cardinality := range labelNames {
-		res.Names = append(res.Names, name)
-		res.Cardinality = append(res.Cardinality, int64(cardinality))
+
+	if includeCardinality {
+		res.Cardinality = make([]int64, 0, len(labelNames))
+		for name, cardinality := range labelNames {
+			res.Names = append(res.Names, name)
+			res.Cardinality = append(res.Cardinality, int64(cardinality))
+		}
+	} else {
+		for name := range labelNames {
+			res.Names = append(res.Names, name)
+		}
 	}
 	return res, nil
 }
