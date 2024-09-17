@@ -14,6 +14,7 @@ import (
 	"time"
 
 	gprofile "github.com/google/pprof/profile"
+
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingesterv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
@@ -30,6 +31,8 @@ import (
 	pprofth "github.com/grafana/pyroscope/pkg/pprof/testhelper"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockmetastorev1"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockobjstore"
+	"github.com/grafana/pyroscope/pkg/validation"
+
 	model2 "github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/util/testutil"
 	"github.com/stretchr/testify/assert"
@@ -239,6 +242,7 @@ func TestDLQFail(t *testing.T) {
 		segmentWriterConfig{
 			segmentDuration: 100 * time.Millisecond,
 		},
+		validation.MockDefaultOverrides(),
 		bucket,
 		client,
 	)
@@ -283,6 +287,7 @@ func TestDatasetMinMaxTime(t *testing.T) {
 		segmentWriterConfig{
 			segmentDuration: 100 * time.Millisecond,
 		},
+		validation.MockDefaultOverrides(),
 		bucket,
 		client,
 	)
@@ -381,6 +386,7 @@ func newTestSegmentWriter(t *testing.T, cfg segmentWriterConfig) sw {
 		newSegmentMetrics(nil),
 		memdb.NewHeadMetricsWithPrefix(nil, ""),
 		cfg,
+		validation.MockDefaultOverrides(),
 		bucket,
 		client,
 	)

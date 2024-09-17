@@ -21,11 +21,13 @@ import (
 	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/ingester/memdb"
 	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
+	"github.com/grafana/pyroscope/pkg/model/relabel"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 const (
@@ -55,6 +57,11 @@ func (cfg *Config) Validate() error {
 		return err
 	}
 	return cfg.GRPCClientConfig.Validate()
+}
+
+type Limits interface {
+	IngestionRelabelingRules(tenantID string) []*relabel.Config
+	DistributorUsageGroups(tenantID string) *validation.UsageGroupConfig
 }
 
 type SegmentWriterService struct {
@@ -89,6 +96,7 @@ func New(
 	reg prometheus.Registerer,
 	log log.Logger,
 	cfg Config,
+	lim Limits,
 	storageBucket phlareobj.Bucket,
 	metastoreClient *metastoreclient.Client,
 ) (*SegmentWriterService, error) {
@@ -123,10 +131,8 @@ func New(
 	}
 	segmentMetrics := newSegmentMetrics(i.reg)
 	headMetrics := memdb.NewHeadMetricsWithPrefix(reg, "pyroscope_segment_writer")
-
-	i.segmentWriter = newSegmentWriter(i.logger, segmentMetrics, headMetrics, segmentWriterConfig{
-		segmentDuration: cfg.SegmentDuration,
-	}, storageBucket, metastoreClient)
+	config := segmentWriterConfig{segmentDuration: cfg.SegmentDuration}
+	i.segmentWriter = newSegmentWriter(i.logger, segmentMetrics, headMetrics, config, lim, storageBucket, metastoreClient)
 	i.subservicesWatcher = services.NewFailureWatcher()
 	i.subservicesWatcher.WatchManager(i.subservices)
 	i.Service = services.NewBasicService(i.starting, i.running, i.stopping)
