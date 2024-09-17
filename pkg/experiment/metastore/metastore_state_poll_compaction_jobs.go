@@ -25,9 +25,7 @@ func (m *Metastore) PollCompactionJobs(_ context.Context, req *compactorv1.PollC
 	_, resp, err := applyCommand[*compactorv1.PollCompactionJobsRequest, *compactorv1.PollCompactionJobsResponse](m.raft, req, m.config.Raft.ApplyTimeout)
 	if err != nil {
 		_ = level.Error(m.logger).Log("msg", "failed to apply poll compaction jobs", "raft_commit_index", m.raft.CommitIndex(), "err", err)
-		if m.shouldRetryCommand(err) {
-			return nil, m.retryableErrorWithRaftDetails(err)
-		}
+		return nil, wrapRetryableErrorWithRaftDetails(err, m.raft)
 	}
 	return resp, err
 }
