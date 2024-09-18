@@ -14,6 +14,7 @@ import (
 	"time"
 
 	gprofile "github.com/google/pprof/profile"
+
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingesterv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
@@ -30,13 +31,14 @@ import (
 	pprofth "github.com/grafana/pyroscope/pkg/pprof/testhelper"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockmetastorev1"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockobjstore"
+	"github.com/grafana/pyroscope/pkg/validation"
+
 	model2 "github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/util/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
-	"google.golang.org/grpc"
 )
 
 func TestSegmentIngest(t *testing.T) {
@@ -240,6 +242,7 @@ func TestDLQFail(t *testing.T) {
 		segmentWriterConfig{
 			segmentDuration: 100 * time.Millisecond,
 		},
+		validation.MockDefaultOverrides(),
 		bucket,
 		client,
 	)
@@ -284,6 +287,7 @@ func TestDatasetMinMaxTime(t *testing.T) {
 		segmentWriterConfig{
 			segmentDuration: 100 * time.Millisecond,
 		},
+		validation.MockDefaultOverrides(),
 		bucket,
 		client,
 	)
@@ -382,6 +386,7 @@ func newTestSegmentWriter(t *testing.T, cfg segmentWriterConfig) sw {
 		newSegmentMetrics(nil),
 		memdb.NewHeadMetricsWithPrefix(nil, ""),
 		cfg,
+		validation.MockDefaultOverrides(),
 		bucket,
 		client,
 	)
@@ -669,22 +674,6 @@ func memProfile(samples int, tsMillis int, svc string, stack ...string) *pprofth
 		WithLabels(model.LabelNameServiceName, svc).
 		ForStacktraceString(stack...).
 		AddSamples([]int64{v, v * 1024, v, v * 1024}...)
-}
-
-type metastoreClientMock struct {
-	addBlock func(ctx context.Context, in *metastorev1.AddBlockRequest, opts ...grpc.CallOption) (*metastorev1.AddBlockResponse, error)
-}
-
-func (m *metastoreClientMock) AddBlock(ctx context.Context, in *metastorev1.AddBlockRequest, opts ...grpc.CallOption) (*metastorev1.AddBlockResponse, error) {
-	return m.addBlock(ctx, in, opts...)
-}
-
-func (m *metastoreClientMock) QueryMetadata(ctx context.Context, in *metastorev1.QueryMetadataRequest, opts ...grpc.CallOption) (*metastorev1.QueryMetadataResponse, error) {
-	panic("implement me")
-}
-
-func (m *metastoreClientMock) ReadIndex(ctx context.Context, in *metastorev1.ReadIndexRequest, opts ...grpc.CallOption) (*metastorev1.ReadIndexResponse, error) {
-	panic("implement me")
 }
 
 func sampleTypesFromMetricName(t *testing.T, name string) []*typesv1.ProfileType {

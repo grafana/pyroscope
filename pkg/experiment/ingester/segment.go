@@ -22,9 +22,12 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/ingester/memdb"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/model"
+	pprofsplit "github.com/grafana/pyroscope/pkg/model/pprof_split"
+	pprofmodel "github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/util/math"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 const pathSegments = "segments"
@@ -42,6 +45,7 @@ type segmentWriterConfig struct {
 
 type segmentsWriter struct {
 	segmentDuration time.Duration
+	limits          Limits
 
 	l               log.Logger
 	bucket          objstore.Bucket
@@ -119,9 +123,10 @@ func (sh *shard) flushSegment(ctx context.Context) {
 	}()
 }
 
-func newSegmentWriter(l log.Logger, metrics *segmentMetrics, hm *memdb.HeadMetrics, cfg segmentWriterConfig, bucket objstore.Bucket, metastoreClient metastorev1.MetastoreServiceClient) *segmentsWriter {
+func newSegmentWriter(l log.Logger, metrics *segmentMetrics, hm *memdb.HeadMetrics, cfg segmentWriterConfig, limits Limits, bucket objstore.Bucket, metastoreClient metastorev1.MetastoreServiceClient) *segmentsWriter {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	sw := &segmentsWriter{
+		limits:          limits,
 		metrics:         metrics,
 		headMetrics:     hm,
 		segmentDuration: cfg.segmentDuration,
@@ -442,12 +447,41 @@ func (s *segment) waitFlushed(ctx context.Context) error {
 func (s *segment) ingest(ctx context.Context, tenantID string, p *profilev1.Profile, id uuid.UUID, labels []*typesv1.LabelPair) {
 	k := serviceKey{
 		tenant:  tenantID,
-		service: phlaremodel.Labels(labels).Get(phlaremodel.LabelNameServiceName),
+		service: model.Labels(labels).Get(model.LabelNameServiceName),
 	}
-	s.sw.metrics.segmentIngestBytes.WithLabelValues(s.sshard, tenantID).Observe(float64(p.SizeVT()))
-	h := s.headForIngest(k)
+	size := p.SizeVT()
+	rules := s.sw.limits.IngestionRelabelingRules(tenantID)
+	usage := s.sw.limits.DistributorUsageGroups(tenantID).GetUsageGroups(tenantID, labels)
+	appender := &sampleAppender{
+		id:       id,
+		head:     s.headForIngest(k),
+		exporter: pprofmodel.NewSampleExporter(p),
+	}
+	pprofsplit.VisitSampleSeries(p, labels, rules, appender)
+	size -= appender.discardedBytes
+	s.sw.metrics.segmentIngestBytes.WithLabelValues(s.sshard, tenantID).Observe(float64(size))
+	usage.CountDiscardedBytes(string(validation.DroppedByRelabelRules), int64(appender.discardedBytes))
+	// CountReceivedBytes is tracked in distributors.
+}
 
-	h.Ingest(p, id, labels)
+type sampleAppender struct {
+	id       uuid.UUID
+	head     *memdb.Head
+	exporter *pprofmodel.SampleExporter
+
+	discardedProfiles int
+	discardedBytes    int
+}
+
+func (v *sampleAppender) VisitSampleSeries(labels []*typesv1.LabelPair, samples []*profilev1.Sample) {
+	var n profilev1.Profile
+	v.exporter.ExportSamples(&n, samples)
+	v.head.Ingest(&n, v.id, labels)
+}
+
+func (v *sampleAppender) Discarded(profiles, bytes int) {
+	v.discardedProfiles += profiles
+	v.discardedBytes += bytes
 }
 
 func (s *segment) headForIngest(k serviceKey) *memdb.Head {

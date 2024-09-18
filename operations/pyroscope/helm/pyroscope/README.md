@@ -72,6 +72,7 @@
 | pyroscope.structuredConfig | object | `{}` | Allows to override Phlare's configuration using structured format. |
 | pyroscope.tenantOverrides | object | `{}` | Allows to add tenant specific overrides to the default limit configuration. |
 | pyroscope.tolerations | list | `[]` |  |
+| pyroscope.topologySpreadConstraints | list | `[]` | Topology Spread Constraints |
 | serviceMonitor.annotations | object | `{}` | ServiceMonitor annotations |
 | serviceMonitor.enabled | bool | `false` | If enabled, ServiceMonitor resources for Prometheus Operator are created |
 | serviceMonitor.interval | string | `nil` | ServiceMonitor scrape interval |

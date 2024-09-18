@@ -2,6 +2,7 @@ package read_path
 
 import (
 	"context"
+	"slices"
 
 	"connectrpc.com/connect"
 	"golang.org/x/sync/errgroup"
@@ -193,20 +194,38 @@ func (r *Router) AnalyzeQuery(
 
 func (r *Router) GetProfileStats(
 	ctx context.Context,
-	req *connect.Request[typesv1.GetProfileStatsRequest],
+	c *connect.Request[typesv1.GetProfileStatsRequest],
 ) (*connect.Response[typesv1.GetProfileStatsResponse], error) {
-	if r.frontend != nil {
-		return r.frontend.GetProfileStats(ctx, req)
-	}
-	return connect.NewResponse(&typesv1.GetProfileStatsResponse{}), nil
+	return Query[typesv1.GetProfileStatsRequest, typesv1.GetProfileStatsResponse](ctx, r, c,
+		func(a, b *typesv1.GetProfileStatsResponse) (*typesv1.GetProfileStatsResponse, error) {
+			oldestProfileTime := a.OldestProfileTime
+			newestProfileTime := a.NewestProfileTime
+			if b.OldestProfileTime < oldestProfileTime {
+				oldestProfileTime = b.OldestProfileTime
+			}
+			if b.NewestProfileTime > newestProfileTime {
+				newestProfileTime = b.NewestProfileTime
+			}
+			return &typesv1.GetProfileStatsResponse{
+				DataIngested:      a.DataIngested || b.DataIngested,
+				OldestProfileTime: oldestProfileTime,
+				NewestProfileTime: newestProfileTime,
+			}, nil
+		})
 }
 
 func (r *Router) ProfileTypes(
 	ctx context.Context,
-	req *connect.Request[querierv1.ProfileTypesRequest],
+	c *connect.Request[querierv1.ProfileTypesRequest],
 ) (*connect.Response[querierv1.ProfileTypesResponse], error) {
-	if r.frontend != nil {
-		return r.frontend.ProfileTypes(ctx, req)
-	}
-	return connect.NewResponse(&querierv1.ProfileTypesResponse{}), nil
+	return Query[querierv1.ProfileTypesRequest, querierv1.ProfileTypesResponse](ctx, r, c,
+		func(a, b *querierv1.ProfileTypesResponse) (*querierv1.ProfileTypesResponse, error) {
+			pTypes := a.ProfileTypes
+			for _, pType := range b.ProfileTypes {
+				if !slices.Contains(pTypes, pType) {
+					pTypes = append(pTypes, pType)
+				}
+			}
+			return &querierv1.ProfileTypesResponse{ProfileTypes: pTypes}, nil
+		})
 }

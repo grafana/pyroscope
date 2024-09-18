@@ -231,7 +231,7 @@ func (tf *targetFinder) setTargets(opts TargetsOptions) {
 		t := NewTarget("", 0, opts.DefaultTarget)
 		tf.defaultTarget = t
 	}
-	_ = level.Debug(tf.l).Log("msg", "created targets", "count", len(tf.cid2target))
+	_ = level.Debug(tf.l).Log("msg", "created targets", "cid2target", len(tf.cid2target), "pid2target", len(tf.pid2target))
 }
 
 func (tf *targetFinder) findTarget(pid uint32) *Target {

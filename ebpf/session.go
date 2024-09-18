@@ -813,11 +813,11 @@ func (s *session) checkStalePids() {
 	var (
 		m       = s.bpf.Pids
 		mapSize = m.MaxEntries()
-		nextKey = uint32(0)
 	)
 	keys := make([]uint32, mapSize)
 	values := make([]pyrobpf.ProfilePidConfig, mapSize)
-	n, err := m.BatchLookup(nil, &nextKey, keys, values, new(ebpf.BatchOptions))
+	cursor := new(ebpf.MapBatchCursor)
+	n, err := m.BatchLookup(cursor, keys, values, new(ebpf.BatchOptions))
 	_ = level.Debug(s.logger).Log("msg", "check stale pids", "count", n)
 	for i := 0; i < n; i++ {
 		_, err := os.Stat(fmt.Sprintf("/proc/%d/status", keys[i]))

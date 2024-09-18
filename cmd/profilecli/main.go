@@ -92,6 +92,10 @@ func main() {
 	readyCmd := app.Command("ready", "Check Pyroscope health.")
 	readyParams := addReadyParams(readyCmd)
 
+	raftCmd := adminCmd.Command("raft", "Operate on Raft cluster.")
+	raftInfoCmd := raftCmd.Command("info", "Print info about a Raft node.")
+	raftInfoParams := addRaftInfoParams(raftInfoCmd)
+
 	// parse command line arguments
 	parsedCmd := kingpin.MustParse(app.Parse(os.Args[1:]))
 
@@ -156,6 +160,10 @@ func main() {
 		}
 	case readyCmd.FullCommand():
 		if err := ready(ctx, readyParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case raftInfoCmd.FullCommand():
+		if err := raftInfo(ctx, raftInfoParams); err != nil {
 			os.Exit(checkError(err))
 		}
 	default:

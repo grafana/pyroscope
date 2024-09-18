@@ -3,6 +3,7 @@
 Choose a language folder to select an example for your language of choice.
 
 # How Pyroscope works
+
 Pyroscope identifies performance issues in your application by continuously profiling the code.
 
 If you've never used a profiler before, then welcome!

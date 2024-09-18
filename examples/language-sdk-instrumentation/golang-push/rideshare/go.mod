@@ -1,6 +1,6 @@
 module rideshare
 
-go 1.17
+go 1.22.7
 
 require (
 	github.com/agoda-com/opentelemetry-logs-go v0.4.1

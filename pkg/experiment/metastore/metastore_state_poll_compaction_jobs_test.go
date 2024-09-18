@@ -285,9 +285,40 @@ func Test_PanicWithDbErrors(t *testing.T) {
 	_, _ = m.pollCompactionJobs(&compactorv1.PollCompactionJobsRequest{JobCapacity: 2}, 20, 20)
 }
 
+func Test_RemoveInvalidJobsFromStorage(t *testing.T) {
+	m := initState(t)
+	addLevel0Blocks(m, 20)
+	require.Equal(t, 1, len(m.compactionJobQueue.jobs), "there should be one job in the queue")
+
+	// delete all blocks, making the existing job invalid
+	for _, shard := range m.shards {
+		for _, segment := range shard.segments {
+			shard.deleteSegment(segment.Id)
+		}
+	}
+
+	// try to assign the job
+	resp, err := m.pollCompactionJobs(&compactorv1.PollCompactionJobsRequest{JobCapacity: 1}, 20, 20)
+	require.NoError(t, err)
+	require.Equal(t, 0, len(resp.CompactionJobs), "the one job in the queue became invalid")
+	require.Equal(t, 0, len(m.compactionJobQueue.jobs), "there should be no jobs in the queue")
+	verifyCompactionState(t, m)
+}
+
 func addLevel0Blocks(m *metastoreState, count int) {
 	for i := 0; i < count; i++ {
 		b := createBlock(i, 0, "", 0)
+		raftLog := &raft.Log{
+			Index:      uint64(i),
+			AppendedAt: time.Unix(0, int64(i)),
+		}
+		_, _ = m.applyAddBlock(raftLog, &metastorev1.AddBlockRequest{Block: b})
+	}
+}
+
+func addLevel0BlocksForShard(m *metastoreState, count int, shard int) {
+	for i := 0; i < count; i++ {
+		b := createBlock(i, shard, "", 0)
 		raftLog := &raft.Log{
 			Index:      uint64(i),
 			AppendedAt: time.Unix(0, int64(i)),

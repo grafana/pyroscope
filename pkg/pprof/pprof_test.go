@@ -873,6 +873,17 @@ func Test_GroupSamplesWithout(t *testing.T) {
 			expected:    nil,
 		},
 		{
+			description: "no sample labels",
+			input: &profilev1.Profile{
+				Sample: []*profilev1.Sample{{}, {}},
+			},
+			expected: []SampleGroup{
+				{
+					Samples: []*profilev1.Sample{{}, {}},
+				},
+			},
+		},
+		{
 			description: "without all, single label set",
 			input: &profilev1.Profile{
 				Sample: []*profilev1.Sample{

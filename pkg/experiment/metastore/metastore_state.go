@@ -214,7 +214,7 @@ func (m *metastoreState) loadCompactionPlan(b *bbolt.Bucket, blockQueue *compact
 				"shard", storedBlockQueue.Shard,
 				"compaction_level", storedBlockQueue.CompactionLevel,
 				"block_count", len(storedBlockQueue.Blocks),
-				"blocks", storedBlockQueue.Blocks)
+				"blocks", strings.Join(storedBlockQueue.Blocks, ","))
 		} else {
 			var job compactionpb.CompactionJob
 			if err := job.UnmarshalVT(v); err != nil {
@@ -223,6 +223,7 @@ func (m *metastoreState) loadCompactionPlan(b *bbolt.Bucket, blockQueue *compact
 			m.compactionJobQueue.enqueue(&job)
 			level.Debug(m.logger).Log(
 				"msg", "restored job into queue",
+				"job", job.Name,
 				"shard", job.Shard,
 				"tenant", job.TenantId,
 				"compaction_level", job.CompactionLevel,
@@ -230,7 +231,7 @@ func (m *metastoreState) loadCompactionPlan(b *bbolt.Bucket, blockQueue *compact
 				"raft_log_index", job.RaftLogIndex,
 				"lease_expires_at", job.LeaseExpiresAt,
 				"block_count", len(job.Blocks),
-				"blocks", job.Blocks)
+				"blocks", strings.Join(job.Blocks, ","))
 		}
 	}
 	return nil

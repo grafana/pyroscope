@@ -4,18 +4,20 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"math"
+	"sync"
+
 	"github.com/google/uuid"
-	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	phlarelabels "github.com/grafana/pyroscope/pkg/phlaredb/labels"
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"
-	"math"
-	"sync"
+
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/phlaredb/labels"
+	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 )
 
 type FlushedHead struct {
@@ -65,14 +67,14 @@ func (h *Head) Ingest(p *profilev1.Profile, id uuid.UUID, externalLabels []*type
 		return
 	}
 
-	// delta not supported
+	// Delta not supported.
 	externalLabels = phlaremodel.Labels(externalLabels).Delete(phlaremodel.LabelNameDelta)
-
-	enforceLabelOrder := phlaremodel.Labels(externalLabels).Get(phlaremodel.LabelNameOrder) == phlaremodel.LabelOrderEnforced
+	// Label order is enforced to ensure that __profile_type__ and __service_name__ always
+	// come first in the label set. This is important for spatial locality: profiles are
+	// stored in the label series order.
 	externalLabels = phlaremodel.Labels(externalLabels).Delete(phlaremodel.LabelNameOrder)
 
-	lbls, seriesFingerprints := phlarelabels.CreateProfileLabels(enforceLabelOrder, p, externalLabels...)
-
+	lbls, seriesFingerprints := labels.CreateProfileLabels(true, p, externalLabels...)
 	metricName := phlaremodel.Labels(externalLabels).Get(model.MetricNameLabel)
 
 	var profileIngested bool

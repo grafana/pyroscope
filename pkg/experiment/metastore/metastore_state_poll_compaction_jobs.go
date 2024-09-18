@@ -169,11 +169,20 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 	resp = &compactorv1.PollCompactionJobsResponse{}
 	if request.JobCapacity > 0 {
 		newJobs := m.findJobsToAssign(int(request.JobCapacity), raftIndex, raftAppendedAtNanos)
-		resp.CompactionJobs = m.convertJobs(newJobs)
-		for _, j := range resp.CompactionJobs {
+		convertedJobs, invalidJobs := m.convertJobs(newJobs)
+		resp.CompactionJobs = convertedJobs
+		for _, j := range convertedJobs {
 			stateUpdate.updatedJobs = append(stateUpdate.updatedJobs, j.Name)
 			m.compactionMetrics.assignedJobs.WithLabelValues(
 				fmt.Sprint(j.Shard), j.TenantId, fmt.Sprint(j.CompactionLevel)).Inc()
+		}
+		for _, j := range invalidJobs {
+			key := tenantShard{
+				tenant: j.TenantId,
+				shard:  j.Shard,
+			}
+			m.compactionJobQueue.evict(j.Name, math.MaxInt64)
+			stateUpdate.deletedJobs[key] = append(stateUpdate.deletedJobs[key], j.Name)
 		}
 	}
 
@@ -185,8 +194,9 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 	return resp, nil
 }
 
-func (m *metastoreState) convertJobs(jobs []*compactionpb.CompactionJob) []*compactorv1.CompactionJob {
-	res := make([]*compactorv1.CompactionJob, 0, len(jobs))
+func (m *metastoreState) convertJobs(jobs []*compactionpb.CompactionJob) (convertedJobs []*compactorv1.CompactionJob, invalidJobs []*compactionpb.CompactionJob) {
+	convertedJobs = make([]*compactorv1.CompactionJob, 0, len(jobs))
+	invalidJobs = make([]*compactionpb.CompactionJob, 0, len(jobs))
 	for _, job := range jobs {
 		// populate block metadata (workers rely on it)
 		blocks := make([]*metastorev1.BlockMeta, 0, len(job.Blocks))
@@ -203,12 +213,12 @@ func (m *metastoreState) convertJobs(jobs []*compactionpb.CompactionJob) []*comp
 			blocks = append(blocks, b)
 		}
 		if len(blocks) == 0 {
-			evicted := m.compactionJobQueue.evict(job.Name, math.MaxInt64)
-			level.Warn(m.logger).Log("msg", "skipping assigned compaction job since it has no valid blocks", "job", job.Name, "evicted", evicted)
+			invalidJobs = append(invalidJobs, job)
+			level.Warn(m.logger).Log("msg", "skipping assigned compaction job since it has no valid blocks", "job", job.Name)
 			continue
 		}
 
-		res = append(res, &compactorv1.CompactionJob{
+		convertedJobs = append(convertedJobs, &compactorv1.CompactionJob{
 			Name:   job.Name,
 			Blocks: blocks,
 			Status: &compactorv1.CompactionJobStatus{
@@ -224,7 +234,7 @@ func (m *metastoreState) convertJobs(jobs []*compactionpb.CompactionJob) []*comp
 			TenantId:        job.TenantId,
 		})
 	}
-	return res
+	return convertedJobs, invalidJobs
 }
 
 func (m *metastoreState) findBlock(shard uint32, blockId string) *metastorev1.BlockMeta {
@@ -237,16 +247,17 @@ func (m *metastoreState) findBlock(shard uint32, blockId string) *metastorev1.Bl
 
 func (m *metastoreState) findJobsToAssign(jobCapacity int, raftLogIndex uint64, now int64) []*compactionpb.CompactionJob {
 	jobsToAssign := make([]*compactionpb.CompactionJob, 0, jobCapacity)
-	jobCount, newJobs, inProgressJobs, completedJobs, failedJobs := m.compactionJobQueue.stats()
+	jobCount, newJobs, inProgressJobs, completedJobs, failedJobs, cancelledJobs := m.compactionJobQueue.stats()
 	level.Debug(m.logger).Log(
 		"msg", "looking for jobs to assign",
 		"job_capacity", jobCapacity,
 		"raft_log_index", raftLogIndex,
 		"job_queue_size", jobCount,
-		"new_jobs_in_queue", newJobs,
-		"in_progress_jobs_in_queue", inProgressJobs,
-		"completed_jobs_in_queue", completedJobs,
-		"failed_jobs_in_queue", failedJobs,
+		"new_jobs_in_queue_count", len(newJobs),
+		"in_progress_jobs_in_queue_count", len(inProgressJobs),
+		"completed_jobs_in_queue_count", len(completedJobs),
+		"failed_jobs_in_queue_count", len(failedJobs),
+		"cancelled_jobs_in_queue_count", len(cancelledJobs),
 	)
 
 	var j *compactionpb.CompactionJob
@@ -332,6 +343,13 @@ func (m *metastoreState) writeToDb(sTable *pollStateUpdate) error {
 			for _, jobName := range jobNames {
 				jBucket, jKey := keyForCompactionJob(key.shard, key.tenant, jobName)
 				err := updateCompactionJobBucket(tx, jBucket, func(bucket *bbolt.Bucket) error {
+					level.Debug(m.logger).Log(
+						"msg", "deleting job from storage",
+						"job", jobName,
+						"shard", key.shard,
+						"tenant", key.tenant,
+						"storage_bucket", string(jBucket),
+						"storage_key", string(jKey))
 					return bucket.Delete(jKey)
 				})
 				if err != nil {

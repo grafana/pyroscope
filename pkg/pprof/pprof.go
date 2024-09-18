@@ -613,6 +613,10 @@ func (l LabelsByKeyValue) Swap(i, j int) {
 	l[i], l[j] = l[j], l[i]
 }
 
+// SampleGroup refers to a group of samples that share the same
+// labels. Note that the Span ID label is handled in a special
+// way and is not included in the Labels member but is kept as
+// as a sample label.
 type SampleGroup struct {
 	Labels  []*profilev1.Label
 	Samples []*profilev1.Sample
@@ -963,12 +967,12 @@ func LabelID(p *profilev1.Profile, name string) int64 {
 
 func ProfileSpans(p *profilev1.Profile) []uint64 {
 	if i := LabelID(p, SpanIDLabelName); i > 0 {
-		return profileSpans(i, p)
+		return Spans(p, i)
 	}
 	return nil
 }
 
-func profileSpans(spanIDLabelIdx int64, p *profilev1.Profile) []uint64 {
+func Spans(p *profilev1.Profile, spanIDLabelIdx int64) []uint64 {
 	tmp := make([]byte, 8)
 	s := make([]uint64, len(p.Sample))
 	for i, sample := range p.Sample {

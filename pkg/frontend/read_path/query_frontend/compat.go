@@ -17,7 +17,6 @@ import (
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 )
 
@@ -55,7 +54,7 @@ func isProfileTypeQuery(labels, matchers []string) bool {
 
 func listProfileTypesFromMetadataAsSeriesLabels(
 	ctx context.Context,
-	client *metastoreclient.Client,
+	client metastorev1.MetastoreServiceClient,
 	tenants []string,
 	startTime int64,
 	endTime int64,
@@ -72,7 +71,7 @@ func listProfileTypesFromMetadataAsSeriesLabels(
 
 func listProfileTypesFromMetadata(
 	ctx context.Context,
-	client *metastoreclient.Client,
+	client metastorev1.MetastoreServiceClient,
 	tenants []string,
 	startTime int64,
 	endTime int64,
