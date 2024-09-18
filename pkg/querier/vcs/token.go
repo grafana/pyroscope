@@ -23,9 +23,15 @@ const (
 	sessionCookieName = "pyroscope_git_session"
 )
 
-type gitSessionTokenCookie struct {
+// Deprecated: this is the old format for encoded token inside a cookie
+// Remove after completing https://github.com/grafana/explore-profiles/issues/187
+type deprecatedGitSessionTokenCookie struct {
 	Metadata        string `json:"metadata"`
 	ExpiryTimestamp int64  `json:"expiry"`
+}
+
+type gitSessionTokenCookie struct {
+	Token *string `json:"token"`
 }
 
 const envVarGithubSessionSecret = "GITHUB_SESSION_SECRET"
@@ -102,14 +108,17 @@ func tokenFromRequest(ctx context.Context, req connect.AnyRequest) (*oauth2.Toke
 	return token, nil
 }
 
-// encodeToken encrypts then base64 encodes an OAuth token.
-func encodeToken(token *oauth2.Token, key []byte) (*http.Cookie, error) {
+// Deprecated: encodeTokenInCookie creates a cookie by encrypting then base64 encoding an OAuth token.
+// In future version, the cookie that this function creates will be no longer sent by the backend.
+// Instead, backend provides the necessary data so frontend can create its own GitHub session cookie.
+// Remove after completing https://github.com/grafana/explore-profiles/issues/187
+func encodeTokenInCookie(token *oauth2.Token, key []byte) (*http.Cookie, error) {
 	encrypted, err := encryptToken(token, key)
 	if err != nil {
 		return nil, err
 	}
 
-	bytes, err := json.Marshal(gitSessionTokenCookie{
+	bytes, err := json.Marshal(deprecatedGitSessionTokenCookie{
 		Metadata:        encrypted,
 		ExpiryTimestamp: token.Expiry.UnixMilli(),
 	})
@@ -140,16 +149,34 @@ func decodeToken(value string, key []byte) (*oauth2.Token, error) {
 
 	sessionToken := gitSessionTokenCookie{}
 	err = json.Unmarshal(decoded, &sessionToken)
-	if err != nil {
-		// This may be a legacy cookie. Legacy cookies aren't base64 encoded
-		// JSON objects, but rather a base64 encoded crypto hash.
-		var innerErr error
-		token, innerErr = decryptToken(value, key)
+	if err != nil || sessionToken.Token == nil {
+		// This may be a deprecated cookie. Deprecated cookies are base64 encoded deprecatedGitSessionTokenCookie objects.
+		token, innerErr := decodeDeprecatedToken(decoded, key)
 		if innerErr != nil {
-			// Legacy fallback failed, return the original error.
+			// Deprecated fallback failed, return the original error.
 			return nil, err
 		}
 		return token, nil
+	}
+
+	token, err = decryptToken(*sessionToken.Token, key)
+	if err != nil {
+		return nil, err
+	}
+
+	return token, nil
+}
+
+// Deprecated: decodeDeprecatedToken decrypts a deprecatedGitSessionTokenCookie
+// In future version, frontend won't send any deprecated cookies.
+// Remove alongside encodeTokenInCookie, after completing https://github.com/grafana/explore-profiles/issues/187
+func decodeDeprecatedToken(value []byte, key []byte) (*oauth2.Token, error) {
+	var token *oauth2.Token
+
+	sessionToken := &deprecatedGitSessionTokenCookie{}
+	err := json.Unmarshal(value, sessionToken)
+	if err != nil || sessionToken == nil {
+		return nil, err
 	}
 
 	token, err = decryptToken(sessionToken.Metadata, key)
