@@ -101,7 +101,7 @@ For more documentation on how to add the Pyroscope agent to your code, see the [
 
 ## Deployment Diagram
 
-![deployment_diagram](https://grafana.com/media/docs/pyroscope/pyroscope_client_server_diagram.png)
+![deployment_diagram](https://grafana.com/media/docs/pyroscope/pyroscope_client_server_diagram_09_18_2024.png)
 
 ## Documentation
 
