@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"hash/maphash"
 	"sort"
+	"sync"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"github.com/grafana/pyroscope/pkg/slices"
@@ -23,6 +24,8 @@ import (
 //      reused and the number of allocs decreased.
 
 type ProfileMerge struct {
+	mu sync.Mutex
+
 	profile *profilev1.Profile
 	tmp     []uint32
 
@@ -36,6 +39,9 @@ type ProfileMerge struct {
 // Merge adds p to the profile merge, cloning new objects.
 // Profile p is modified in place but not retained by the function.
 func (m *ProfileMerge) Merge(p *profilev1.Profile) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	if p == nil || len(p.Sample) == 0 || len(p.StringTable) < 2 {
 		return nil
 	}

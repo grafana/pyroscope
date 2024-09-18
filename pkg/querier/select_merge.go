@@ -424,8 +424,6 @@ func selectMergePprofProfile(ctx context.Context, ty *typesv1.ProfileType, respo
 	}
 
 	span := opentracing.SpanFromContext(ctx)
-	// Collects the results in parallel.
-	var lock sync.Mutex
 	var pprofMerge pprof.ProfileMerge
 	g, _ := errgroup.WithContext(ctx)
 	for _, iter := range mergeResults {
@@ -446,8 +444,6 @@ func selectMergePprofProfile(ctx context.Context, ty *typesv1.ProfileType, respo
 			if err = pprof.Unmarshal(result, &p); err != nil {
 				return err
 			}
-			lock.Lock()
-			defer lock.Unlock()
 			return pprofMerge.Merge(&p)
 		}))
 	}
