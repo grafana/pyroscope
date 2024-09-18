@@ -31,6 +31,5 @@ func Clear[S ~[]E, E any](s S) {
 }
 
 func GrowLen[S ~[]E, E any](s S, n int) S {
-	s = s[:0]
-	return slices.Grow(s, n)[:n]
+	return slices.Grow(s[:0], n)[:n]
 }

@@ -50,6 +50,7 @@ func (f *Phlare) initSegmentWriter() (services.Service, error) {
 		f.reg,
 		f.logger,
 		f.Cfg.SegmentWriter,
+		f.Overrides,
 		f.storageBucket,
 		f.metastoreClient,
 	)
