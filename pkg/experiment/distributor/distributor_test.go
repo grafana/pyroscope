@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/experiment/ingester/client/distributor/placement"
+	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement"
 	"github.com/grafana/pyroscope/pkg/testhelper"
 )
 
