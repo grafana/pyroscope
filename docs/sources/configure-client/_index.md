@@ -15,7 +15,7 @@ When sending profiles to Pyroscope, you can choose between two primary methods: 
 
 This document explains these two techniques and guide you when to choose each one.
 
-![Pyroscope agent server diagram](https://grafana.com/media/docs/pyroscope/pyroscope_client_server_diagram.png)
+![Pyroscope agent server diagram](https://grafana.com/media/docs/pyroscope/pyroscope_client_server_diagram_09_18_2024.png)
 
 ## About auto-instrumentation with Grafana Alloy or Agent collectors
 
