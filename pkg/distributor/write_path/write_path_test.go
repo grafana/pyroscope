@@ -142,7 +142,7 @@ func (s *routerTestSuite) Test_CombinedPath() {
 	const (
 		N = 100
 		f = 0.5
-		d = 0.3 // Allowed delta.
+		d = 0.3 // Allowed delta: note that f is just a probability.
 	)
 
 	s.overrides.On("WritePathOverrides", "tenant-a").Return(Config{
@@ -165,6 +165,7 @@ func (s *routerTestSuite) Test_CombinedPath() {
 		s.Assert().NoError(s.router.Send(context.Background(), s.request))
 	}
 
+	s.router.inflight.Wait()
 	expected := N * f
 	delta := expected * d
 	s.Assert().Equal(N, int(sentIngester.Load()))
