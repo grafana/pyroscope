@@ -820,7 +820,7 @@ func extractSampleSeries(
 ) {
 	for _, series := range req.Series {
 		for _, p := range series.Samples {
-			v := &sampleSeriesVisitor{profile: p.Profile.Profile}
+			v := &sampleSeriesVisitor{profile: p.Profile}
 			pprofsplit.VisitSampleSeries(
 				p.Profile.Profile,
 				series.Labels,
@@ -834,12 +834,11 @@ func extractSampleSeries(
 				CountDiscardedBytes(string(validation.DroppedByRelabelRules), int64(v.discardedBytes))
 		}
 	}
-
 	return result, bytesRelabelDropped, profilesRelabelDropped
 }
 
 type sampleSeriesVisitor struct {
-	profile *profilev1.Profile
+	profile *pprof.Profile
 	exp     *pprof.SampleExporter
 	series  []*distributormodel.ProfileSeries
 
@@ -847,9 +846,16 @@ type sampleSeriesVisitor struct {
 	discardedProfiles int
 }
 
+func (v *sampleSeriesVisitor) VisitProfile(labels []*typesv1.LabelPair) {
+	v.series = append(v.series, &distributormodel.ProfileSeries{
+		Samples: []*distributormodel.ProfileSample{{Profile: v.profile}},
+		Labels:  labels,
+	})
+}
+
 func (v *sampleSeriesVisitor) VisitSampleSeries(labels []*typesv1.LabelPair, samples []*profilev1.Sample) {
 	if v.exp == nil {
-		v.exp = pprof.NewSampleExporter(v.profile)
+		v.exp = pprof.NewSampleExporter(v.profile.Profile)
 	}
 	v.series = append(v.series, &distributormodel.ProfileSeries{
 		Samples: []*distributormodel.ProfileSample{{Profile: exportSamples(v.exp, samples)}},
