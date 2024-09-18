@@ -894,15 +894,12 @@ func (q *Querier) selectProfile(ctx context.Context, req *querierv1.SelectMergeP
 	}
 
 	g, gCtx := errgroup.WithContext(ctx)
-	var lock sync.Mutex
 	var merge pprof.ProfileMerge
 	g.Go(func() error {
 		ingesterProfile, err := q.selectProfileFromIngesters(gCtx, storeQueries.ingester.MergeProfileRequest(req), plan)
 		if err != nil {
 			return err
 		}
-		lock.Lock()
-		defer lock.Unlock()
 		return merge.Merge(ingesterProfile)
 	})
 	g.Go(func() error {
@@ -910,8 +907,6 @@ func (q *Querier) selectProfile(ctx context.Context, req *querierv1.SelectMergeP
 		if err != nil {
 			return err
 		}
-		lock.Lock()
-		defer lock.Unlock()
 		return merge.Merge(storegatewayProfile)
 	})
 	if err := g.Wait(); err != nil {

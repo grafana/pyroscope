@@ -1214,7 +1214,6 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 		deduplicationNeeded = request.Hints.Block.Deduplication
 	}
 
-	var lock sync.Mutex
 	var result pprof.ProfileMerge
 	g, ctx := errgroup.WithContext(ctx)
 
@@ -1234,9 +1233,6 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 				if err != nil {
 					return err
 				}
-
-				lock.Lock()
-				defer lock.Unlock()
 				return result.Merge(p)
 			}))
 		}
@@ -1271,8 +1267,6 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 				if err != nil {
 					return err
 				}
-				lock.Lock()
-				defer lock.Unlock()
 				return result.Merge(p)
 			}))
 		}

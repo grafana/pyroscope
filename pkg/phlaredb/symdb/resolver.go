@@ -250,15 +250,12 @@ func (r *Resolver) Tree() (*model.Tree, error) {
 func (r *Resolver) Pprof() (*googlev1.Profile, error) {
 	span, ctx := opentracing.StartSpanFromContext(r.ctx, "Resolver.Pprof")
 	defer span.Finish()
-	var lock sync.Mutex
 	var p pprof.ProfileMerge
 	err := r.withSymbols(ctx, func(symbols *Symbols, appender *SampleAppender) error {
 		resolved, err := symbols.Pprof(ctx, appender, r.maxNodes, SelectStackTraces(symbols, r.sts))
 		if err != nil {
 			return err
 		}
-		lock.Lock()
-		defer lock.Unlock()
 		return p.Merge(resolved)
 	})
 	if err != nil {

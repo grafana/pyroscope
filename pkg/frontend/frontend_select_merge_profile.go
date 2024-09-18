@@ -2,7 +2,6 @@ package frontend
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -58,7 +57,6 @@ func (f *Frontend) SelectMergeProfile(
 	//   the method is used for pprof export and
 	//   truncation is not applicable for that.
 
-	var lock sync.Mutex
 	var m pprof.ProfileMerge
 	for intervals.Next() {
 		r := intervals.At()
@@ -77,8 +75,6 @@ func (f *Frontend) SelectMergeProfile(
 			if err != nil {
 				return err
 			}
-			lock.Lock()
-			defer lock.Unlock()
 			return m.Merge(resp.Msg)
 		})
 	}
