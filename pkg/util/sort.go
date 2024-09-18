@@ -19,11 +19,11 @@ func (s *labelNameCardinalitySort) Less(i, j int) bool {
 
 func (s *labelNameCardinalitySort) Swap(i, j int) {
 	s.Names[i], s.Names[j] = s.Names[j], s.Names[i]
-	s.Cardinality[i], s.Cardinality[j] = s.Cardinality[j], s.Cardinality[i]
+	s.EstimatedCardinality[i], s.EstimatedCardinality[j] = s.EstimatedCardinality[j], s.EstimatedCardinality[i]
 }
 
 func SortLabelNamesResponse(r *typesv1.LabelNamesResponse) {
-	if len(r.Cardinality) == 0 {
+	if len(r.EstimatedCardinality) == 0 {
 		slices.Sort(r.Names)
 		return
 	}

@@ -1215,7 +1215,7 @@
             "type": "string"
           }
         },
-        "cardinality": {
+        "estimatedCardinality": {
           "type": "array",
           "items": {
             "type": "string",

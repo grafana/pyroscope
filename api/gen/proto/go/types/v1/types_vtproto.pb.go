@@ -214,10 +214,10 @@ func (m *LabelNamesResponse) CloneVT() *LabelNamesResponse {
 		copy(tmpContainer, rhs)
 		r.Names = tmpContainer
 	}
-	if rhs := m.Cardinality; rhs != nil {
+	if rhs := m.EstimatedCardinality; rhs != nil {
 		tmpContainer := make([]int64, len(rhs))
 		copy(tmpContainer, rhs)
-		r.Cardinality = tmpContainer
+		r.EstimatedCardinality = tmpContainer
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -647,11 +647,11 @@ func (this *LabelNamesResponse) EqualVT(that *LabelNamesResponse) bool {
 			return false
 		}
 	}
-	if len(this.Cardinality) != len(that.Cardinality) {
+	if len(this.EstimatedCardinality) != len(that.EstimatedCardinality) {
 		return false
 	}
-	for i, vx := range this.Cardinality {
-		vy := that.Cardinality[i]
+	for i, vx := range this.EstimatedCardinality {
+		vy := that.EstimatedCardinality[i]
 		if vx != vy {
 			return false
 		}
@@ -1327,14 +1327,14 @@ func (m *LabelNamesResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if len(m.Cardinality) > 0 {
+	if len(m.EstimatedCardinality) > 0 {
 		var pksize2 int
-		for _, num := range m.Cardinality {
+		for _, num := range m.EstimatedCardinality {
 			pksize2 += protohelpers.SizeOfVarint(uint64(num))
 		}
 		i -= pksize2
 		j1 := i
-		for _, num1 := range m.Cardinality {
+		for _, num1 := range m.EstimatedCardinality {
 			num := uint64(num1)
 			for num >= 1<<7 {
 				dAtA[j1] = uint8(uint64(num)&0x7f | 0x80)
@@ -1902,9 +1902,9 @@ func (m *LabelNamesResponse) SizeVT() (n int) {
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
 	}
-	if len(m.Cardinality) > 0 {
+	if len(m.EstimatedCardinality) > 0 {
 		l = 0
-		for _, e := range m.Cardinality {
+		for _, e := range m.EstimatedCardinality {
 			l += protohelpers.SizeOfVarint(uint64(e))
 		}
 		n += 1 + protohelpers.SizeOfVarint(uint64(l)) + l
@@ -3146,7 +3146,7 @@ func (m *LabelNamesResponse) UnmarshalVT(dAtA []byte) error {
 						break
 					}
 				}
-				m.Cardinality = append(m.Cardinality, v)
+				m.EstimatedCardinality = append(m.EstimatedCardinality, v)
 			} else if wireType == 2 {
 				var packedLen int
 				for shift := uint(0); ; shift += 7 {
@@ -3181,8 +3181,8 @@ func (m *LabelNamesResponse) UnmarshalVT(dAtA []byte) error {
 					}
 				}
 				elementCount = count
-				if elementCount != 0 && len(m.Cardinality) == 0 {
-					m.Cardinality = make([]int64, 0, elementCount)
+				if elementCount != 0 && len(m.EstimatedCardinality) == 0 {
+					m.EstimatedCardinality = make([]int64, 0, elementCount)
 				}
 				for iNdEx < postIndex {
 					var v int64
@@ -3200,10 +3200,10 @@ func (m *LabelNamesResponse) UnmarshalVT(dAtA []byte) error {
 							break
 						}
 					}
-					m.Cardinality = append(m.Cardinality, v)
+					m.EstimatedCardinality = append(m.EstimatedCardinality, v)
 				}
 			} else {
-				return fmt.Errorf("proto: wrong wireType = %d for field Cardinality", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field EstimatedCardinality", wireType)
 			}
 		default:
 			iNdEx = preIndex

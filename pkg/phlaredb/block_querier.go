@@ -479,7 +479,10 @@ func (b *singleBlockQuerier) LabelNames(ctx context.Context, req *connect.Reques
 		iters = append(iters, iter)
 	}
 
-	nameSet := make(map[string]int64)
+	// Maps label name to a set of label values.
+	nameSet := make(map[string]map[string]struct{})
+	includeCardinality := req.Msg.IncludeCardinality != nil && *req.Msg.IncludeCardinality
+
 	iter := index.Intersect(iters...)
 	for iter.Next() {
 		names, err := b.index.LabelNamesFor(iter.At())
@@ -491,10 +494,25 @@ func (b *singleBlockQuerier) LabelNames(ctx context.Context, req *connect.Reques
 		}
 
 		for _, name := range names {
-			if _, ok := nameSet[name]; !ok {
-				nameSet[name] = 1
+			var value string
+			if includeCardinality {
+				value, err = b.index.LabelValueFor(iter.At(), name)
+				if err != nil {
+					if err == storage.ErrNotFound {
+						continue
+					}
+					return nil, err
+				}
+
+				if _, ok := nameSet[name]; !ok {
+					nameSet[name] = map[string]struct{}{value: {}}
+				} else {
+					nameSet[name][value] = struct{}{}
+				}
 			} else {
-				nameSet[name]++
+				if _, ok := nameSet[name]; !ok {
+					nameSet[name] = map[string]struct{}{}
+				}
 			}
 		}
 	}
@@ -502,20 +520,19 @@ func (b *singleBlockQuerier) LabelNames(ctx context.Context, req *connect.Reques
 	res := &typesv1.LabelNamesResponse{
 		Names: make([]string, 0, len(nameSet)),
 	}
-	if req.Msg.IncludeCardinality != nil && *req.Msg.IncludeCardinality {
-		res.Cardinality = make([]int64, 0, len(nameSet))
+	if includeCardinality {
+		res.EstimatedCardinality = make([]int64, 0, len(nameSet))
 		for name, cardinality := range nameSet {
 			res.Names = append(res.Names, name)
-			res.Cardinality = append(res.Cardinality, cardinality)
+			res.EstimatedCardinality = append(res.EstimatedCardinality, int64(len(cardinality)))
 		}
-		// TODO(bryan): sort by name
 	} else {
 		for name := range nameSet {
 			res.Names = append(res.Names, name)
 		}
-		slices.Sort(res.Names)
 	}
 
+	util.SortLabelNamesResponse(res)
 	return connect.NewResponse(res), nil
 }
 
@@ -1407,8 +1424,7 @@ func LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequ
 		return nil, err
 	}
 
-	labelNames := make(map[string]int)
-	includeCardinality := req.Msg.IncludeCardinality != nil && *req.Msg.IncludeCardinality
+	responses := make([]*typesv1.LabelNamesResponse, 0, len(queriers))
 	var lock sync.Mutex
 	group, ctx := errgroup.WithContext(ctx)
 
@@ -1423,21 +1439,7 @@ func LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequ
 			}
 
 			lock.Lock()
-			if includeCardinality {
-				for i, name := range res.Msg.Names {
-					cardinality := int(res.Msg.Cardinality[i])
-
-					if _, ok := labelNames[name]; !ok {
-						labelNames[name] = cardinality
-					} else {
-						labelNames[name] += cardinality
-					}
-				}
-			} else {
-				for _, name := range res.Msg.Names {
-					labelNames[name] = 0
-				}
-			}
+			responses = append(responses, res.Msg)
 			lock.Unlock()
 			return nil
 		}))
@@ -1447,21 +1449,7 @@ func LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequ
 		return nil, err
 	}
 
-	res := &typesv1.LabelNamesResponse{
-		Names: make([]string, 0, len(labelNames)),
-	}
-
-	if includeCardinality {
-		res.Cardinality = make([]int64, 0, len(labelNames))
-		for name, cardinality := range labelNames {
-			res.Names = append(res.Names, name)
-			res.Cardinality = append(res.Cardinality, int64(cardinality))
-		}
-	} else {
-		for name := range labelNames {
-			res.Names = append(res.Names, name)
-		}
-	}
+	res := util.MergeLabelNames(responses)
 	return res, nil
 }
 

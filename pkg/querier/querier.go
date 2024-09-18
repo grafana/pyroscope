@@ -1117,47 +1117,10 @@ func uniqueSortedStrings(responses []ResponseFromReplica[[]string]) []string {
 }
 
 func uniqueSortedLabelNames(responses []ResponseFromReplica[*typesv1.LabelNamesResponse]) *typesv1.LabelNamesResponse {
-	total := 0
-	includeCardinality := true
-	for _, r := range responses {
-		total += len(r.response.Names)
-		if len(r.response.Cardinality) != len(r.response.Names) {
-			includeCardinality = false
-		}
+	innerResponses := make([]*typesv1.LabelNamesResponse, len(responses))
+	for i, r := range responses {
+		innerResponses[i] = r.response
 	}
 
-	unique := make(map[string]int64, total)
-	for _, r := range responses {
-		for i, name := range r.response.Names {
-			cardinality := int64(0)
-			if includeCardinality {
-				cardinality = r.response.Cardinality[i]
-			}
-
-			if _, ok := unique[name]; !ok {
-				unique[name] = cardinality
-			} else {
-				unique[name] += cardinality
-			}
-		}
-	}
-
-	res := &typesv1.LabelNamesResponse{
-		Names: make([]string, 0, len(unique)),
-	}
-
-	if includeCardinality {
-		res.Cardinality = make([]int64, 0, len(unique))
-		for name, cardinality := range unique {
-			res.Names = append(res.Names, name)
-			res.Cardinality = append(res.Cardinality, cardinality)
-		}
-	} else {
-		for name := range unique {
-			res.Names = append(res.Names, name)
-		}
-	}
-
-	util.SortLabelNamesResponse(res)
-	return res
+	return util.MergeLabelNames(innerResponses)
 }

@@ -311,14 +311,18 @@ func (h *Head) LabelNames(ctx context.Context, req *connect.Request[typesv1.Labe
 		}), nil
 	}
 
-	// aggregate all label values from series matching, when matchers are given.
-	values := make(map[string]int64)
+	// aggregate all label nameSet from series matching, when matchers are given.
+	nameSet := make(map[string]map[string]struct{})
+	includeCardinality := req.Msg.IncludeCardinality != nil && *req.Msg.IncludeCardinality
+
 	if err := h.forMatchingSelectors(selectors, func(lbs phlaremodel.Labels, fp model.Fingerprint) error {
 		for _, lbl := range lbs {
-			if _, ok := values[lbl.Name]; !ok {
-				values[lbl.Name] = 1
+			if includeCardinality {
+				addToLabelNameMap(nameSet, lbl)
 			} else {
-				values[lbl.Name]++
+				if _, ok := nameSet[lbl.Name]; !ok {
+					nameSet[lbl.Name] = nil
+				}
 			}
 		}
 		return nil
@@ -327,17 +331,17 @@ func (h *Head) LabelNames(ctx context.Context, req *connect.Request[typesv1.Labe
 	}
 
 	res := &typesv1.LabelNamesResponse{
-		Names: make([]string, 0, len(values)),
+		Names: make([]string, 0, len(nameSet)),
 	}
 
-	if req.Msg.IncludeCardinality != nil && *req.Msg.IncludeCardinality {
-		res.Cardinality = make([]int64, 0, len(values))
-		for name, cardinality := range values {
+	if includeCardinality {
+		res.EstimatedCardinality = make([]int64, 0, len(nameSet))
+		for name, cardinality := range nameSet {
 			res.Names = append(res.Names, name)
-			res.Cardinality = append(res.Cardinality, cardinality)
+			res.EstimatedCardinality = append(res.EstimatedCardinality, int64(len(cardinality)))
 		}
 	} else {
-		res.Names = lo.Keys(values)
+		res.Names = lo.Keys(nameSet)
 	}
 
 	return connect.NewResponse(res), nil
@@ -689,4 +693,12 @@ func (h *Head) Meta() *block.Meta {
 
 func (h *Head) LocalPathFor(relPath string) string {
 	return filepath.Join(h.localPath, relPath)
+}
+
+func addToLabelNameMap(labelNameMap map[string]map[string]struct{}, label *typesv1.LabelPair) map[string]map[string]struct{} {
+	if _, ok := labelNameMap[label.Name]; !ok {
+		labelNameMap[label.Name] = make(map[string]struct{}, 1)
+	}
+	labelNameMap[label.Name][label.Value] = struct{}{}
+	return labelNameMap
 }

@@ -52,7 +52,7 @@ message LabelNamesRequest {
 
 message LabelNamesResponse {
   repeated string names = 1;
-  repeated int64 cardinality = 2;
+  repeated int64 estimated_cardinality = 2;
 }
 
 message BlockInfo {
