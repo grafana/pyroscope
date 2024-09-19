@@ -9,6 +9,8 @@ pyroscope:
     metastore.raft.advertise-address: "$(POD_NAME).pyroscope-metastore-headless.$(NAMESPACE_FQDN):9099"
     metastore.raft.bootstrap-peers: "dnssrvnoa+_raft._tcp.pyroscope-metastore-headless.$(NAMESPACE_FQDN):9099"
     metastore.raft.bootstrap-expect-peers: "3"
+    distributor.replication-factor: "1"
+    write-path: "segment-writer"
 
   components:
     distributor:
