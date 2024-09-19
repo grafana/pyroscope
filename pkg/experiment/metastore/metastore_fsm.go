@@ -10,10 +10,13 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/hashicorp/raft"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 
 	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftlogpb"
 	"github.com/grafana/pyroscope/pkg/util"
 )
@@ -205,7 +208,8 @@ func applyCommand[Req, Resp proto.Message](
 	}
 	future = log.Apply(raw, timeout)
 	if err = future.Error(); err != nil {
-		return nil, resp, err
+		// todo (korniltsev) write a test to spawn multiple metastores and verify this error returned with correct details
+		return nil, resp, wrapRetryableErrorWithRaftDetails(err, log)
 	}
 	fsmResp := future.Response().(fsmResponse)
 	if fsmResp.msg != nil {
@@ -230,4 +234,23 @@ func marshallRequest[Req proto.Message](req Req) ([]byte, error) {
 		return nil, err
 	}
 	return raw, nil
+}
+
+func wrapRetryableErrorWithRaftDetails(err error, raft *raft.Raft) error {
+	if err == nil || !shouldRetryCommand(err) {
+		return err
+	}
+	_, serverID := raft.LeaderWithID()
+	s := status.New(codes.Unavailable, err.Error())
+	if serverID != "" {
+		s, _ = s.WithDetails(&typesv1.RaftDetails{Leader: string(serverID)})
+	}
+	return s.Err()
+}
+
+func shouldRetryCommand(err error) bool {
+	return errors.Is(err, raft.ErrLeadershipLost) ||
+		errors.Is(err, raft.ErrNotLeader) ||
+		errors.Is(err, raft.ErrLeadershipTransferInProgress) ||
+		errors.Is(err, raft.ErrRaftShutdown)
 }
