@@ -453,9 +453,9 @@ func (s *segment) ingest(ctx context.Context, tenantID string, p *profilev1.Prof
 	rules := s.sw.limits.IngestionRelabelingRules(tenantID)
 	usage := s.sw.limits.DistributorUsageGroups(tenantID).GetUsageGroups(tenantID, labels)
 	appender := &sampleAppender{
-		id:       id,
-		head:     s.headForIngest(k),
-		exporter: pprofmodel.NewSampleExporter(p),
+		head:    s.headForIngest(k),
+		profile: p,
+		id:      id,
 	}
 	pprofsplit.VisitSampleSeries(p, labels, rules, appender)
 	size -= appender.discardedBytes
@@ -467,13 +467,21 @@ func (s *segment) ingest(ctx context.Context, tenantID string, p *profilev1.Prof
 type sampleAppender struct {
 	id       uuid.UUID
 	head     *memdb.Head
+	profile  *profilev1.Profile
 	exporter *pprofmodel.SampleExporter
 
 	discardedProfiles int
 	discardedBytes    int
 }
 
+func (v *sampleAppender) VisitProfile(labels []*typesv1.LabelPair) {
+	v.head.Ingest(v.profile, v.id, labels)
+}
+
 func (v *sampleAppender) VisitSampleSeries(labels []*typesv1.LabelPair, samples []*profilev1.Sample) {
+	if v.exporter == nil {
+		v.exporter = pprofmodel.NewSampleExporter(v.profile)
+	}
 	var n profilev1.Profile
 	v.exporter.ExportSamples(&n, samples)
 	v.head.Ingest(&n, v.id, labels)

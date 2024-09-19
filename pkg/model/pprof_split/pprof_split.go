@@ -11,6 +11,10 @@ import (
 )
 
 type SampleSeriesVisitor interface {
+	// VisitProfile is called when no sample labels are present in
+	// the profile, or if all the sample labels are identical.
+	// Provided labels are the series labels processed with relabeling rules.
+	VisitProfile([]*typesv1.LabelPair)
 	VisitSampleSeries([]*typesv1.LabelPair, []*profilev1.Sample)
 	Discarded(profiles, bytes int)
 }
@@ -44,7 +48,7 @@ func VisitSampleSeries(
 			}
 		}
 		if len(profile.Sample) > 0 {
-			visitor.VisitSampleSeries(builder.Labels(), profile.Sample)
+			visitor.VisitProfile(builder.Labels())
 		}
 		return
 	}
