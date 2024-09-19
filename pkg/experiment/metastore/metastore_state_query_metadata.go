@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/go-kit/log/level"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
 	"google.golang.org/grpc/codes"
@@ -28,6 +29,10 @@ type metadataQuery struct {
 	endTime        int64
 	tenants        map[string]struct{}
 	serviceMatcher *labels.Matcher
+}
+
+func (q *metadataQuery) String() string {
+	return fmt.Sprintf("start: %d, end: %d, tenants: %v, serviceMatcher: %v", q.startTime, q.endTime, q.tenants, q.serviceMatcher)
 }
 
 func newMetadataQuery(request *metastorev1.QueryMetadataRequest) (*metadataQuery, error) {
@@ -79,13 +84,12 @@ func inRange(blockStart, blockEnd, queryStart, queryEnd int64) bool {
 func (i *index) listBlocksForQuery(q *metadataQuery) []*metastorev1.BlockMeta {
 	md := make(map[string]*metastorev1.BlockMeta, 32)
 	i.run(func() {
-		level.Info(i.logger).Log("msg", "querying metastore", "query", q)
+		level.Info(i.logger).Log("msg", "querying metastore index", "query", q)
 		blocks, err := i.findBlocksInRange(q.startTime, q.endTime, q.tenants)
 		if err != nil {
-			level.Error(i.logger).Log("msg", "failed to list metastore blocks", "err", err)
+			level.Error(i.logger).Log("msg", "failed to list metastore blocks", "query", q, "err", err)
 			return
 		}
-		level.Debug(i.logger).Log("msg", "found blocks for query", "block_count", len(blocks), "query", q)
 		for _, block := range blocks {
 			var clone *metastorev1.BlockMeta
 			for _, svc := range block.Datasets {

@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/oklog/ulid"
 	"github.com/prometheus/common/model"
 
@@ -20,16 +22,18 @@ type index struct {
 	partitionMap map[PartitionKey]*indexPartition
 	partitions   []PartitionKey
 
-	store Store
+	store  Store
+	logger log.Logger
 
 	partitionDuration time.Duration
 }
 
-func NewIndex(store Store) *index {
+func newIndex(store Store, logger log.Logger) *index {
 	return &index{
 		partitionMap:      make(map[PartitionKey]*indexPartition),
 		partitions:        make([]PartitionKey, 0),
 		store:             store,
+		logger:            logger,
 		partitionDuration: time.Hour,
 	}
 }
@@ -192,6 +196,7 @@ func (i *index) insertBlock(b *metastorev1.BlockMeta) error {
 	key := i.getPartitionKey(b.Id)
 	pTime, _, err := key.parse()
 	if err != nil {
+		level.Error(i.logger).Log("msg", "failed to parse partition key", "key", key, "err", err)
 		return err
 	}
 
@@ -310,6 +315,7 @@ func (i *index) findBlocksInRange(start, end int64, tenants map[string]struct{})
 			}
 			p, err := i.getOrCreatePartition(key)
 			if err != nil {
+				level.Error(i.logger).Log("msg", "error getting partition", "key", key, "err", err)
 				return nil, err
 			}
 			tenantBlocks := i.collectTenantBlocks(p, tenants)
@@ -361,7 +367,7 @@ func (i *index) collectTenantBlocks(p *indexPartition, tenants map[string]struct
 	p.shardsMu.Lock()
 	defer p.shardsMu.Unlock()
 	blocks := make([]*metastorev1.BlockMeta, 0)
-	for _, s := range p.shards {
+	for sKey, s := range p.shards {
 		s.tenantsMu.Lock()
 		for tKey, t := range s.tenants {
 			_, ok := tenants[tKey]

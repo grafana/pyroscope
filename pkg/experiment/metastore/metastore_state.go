@@ -51,7 +51,7 @@ type compactionJobBlockQueue struct {
 func newMetastoreState(logger log.Logger, db *boltdb, reg prometheus.Registerer, compaction *CompactionConfig) *metastoreState {
 	return &metastoreState{
 		logger:                   logger,
-		index:                    NewIndex(&metastoreIndexStore{db: db}),
+		index:                    newIndex(&metastoreIndexStore{db: db}, logger),
 		db:                       db,
 		compactionJobBlockQueues: make(map[tenantShard]*compactionJobBlockQueue),
 		compactionJobQueue:       newJobQueue(compaction.JobLeaseDuration.Nanoseconds()),
@@ -63,7 +63,7 @@ func newMetastoreState(logger log.Logger, db *boltdb, reg prometheus.Registerer,
 func (m *metastoreState) reset(db *boltdb) {
 	m.compactionMutex.Lock()
 	clear(m.compactionJobBlockQueues)
-	m.index = NewIndex(&metastoreIndexStore{db: db})
+	m.index = newIndex(&metastoreIndexStore{db: db}, m.logger)
 	m.compactionJobQueue = newJobQueue(m.compactionConfig.JobLeaseDuration.Nanoseconds())
 	m.db = db
 	m.compactionMutex.Unlock()
