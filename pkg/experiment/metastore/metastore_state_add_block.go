@@ -28,8 +28,6 @@ func (m *Metastore) AddBlock(_ context.Context, req *metastorev1.AddBlockRequest
 	_, resp, err := applyCommand[*metastorev1.AddBlockRequest, *metastorev1.AddBlockResponse](m.raft, req, m.config.Raft.ApplyTimeout)
 	if err != nil {
 		_ = level.Error(m.logger).Log("msg", "failed to apply add block", "block_id", req.Block.Id, "shard", req.Block.Shard, "err", err)
-		// todo (korniltsev) write a test to spawn multiple metastores and verify this error returned with correct details
-		return nil, wrapRetryableErrorWithRaftDetails(err, m.raft)
 	}
 	return resp, err
 }
