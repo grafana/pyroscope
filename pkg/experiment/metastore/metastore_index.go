@@ -367,7 +367,7 @@ func (i *index) collectTenantBlocks(p *indexPartition, tenants map[string]struct
 	p.shardsMu.Lock()
 	defer p.shardsMu.Unlock()
 	blocks := make([]*metastorev1.BlockMeta, 0)
-	for sKey, s := range p.shards {
+	for _, s := range p.shards {
 		s.tenantsMu.Lock()
 		for tKey, t := range s.tenants {
 			_, ok := tenants[tKey]
