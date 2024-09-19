@@ -300,8 +300,6 @@ func (i *index) findBlock(shardNum uint32, tenant string, id string) *metastorev
 }
 
 func (i *index) findBlocksInRange(start, end int64, tenants map[string]struct{}) ([]*metastorev1.BlockMeta, error) {
-	i.partitionMu.Lock()
-	defer i.partitionMu.Unlock()
 	blocks := make([]*metastorev1.BlockMeta, 0)
 
 	firstPartitionIdx, lastPartitionIdx := -1, -1
