@@ -365,7 +365,7 @@ func (i *index) collectTenantBlocks(p *indexPartition, tenants map[string]struct
 		s.tenantsMu.Lock()
 		for tKey, t := range s.tenants {
 			_, ok := tenants[tKey]
-			if !ok {
+			if !ok && tKey != "" {
 				continue
 			}
 			t.blocksMu.Lock()

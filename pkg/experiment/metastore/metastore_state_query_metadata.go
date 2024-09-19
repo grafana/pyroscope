@@ -77,25 +77,35 @@ func inRange(blockStart, blockEnd, queryStart, queryEnd int64) bool {
 }
 
 func (i *index) listBlocksForQuery(q *metadataQuery) []*metastorev1.BlockMeta {
-	md := make([]*metastorev1.BlockMeta, 0, 32)
+	md := make(map[string]*metastorev1.BlockMeta, 32)
 	i.run(func() {
+		level.Info(i.logger).Log("msg", "querying metastore", "query", q)
 		blocks, err := i.findBlocksInRange(q.startTime, q.endTime, q.tenants)
 		if err != nil {
+			level.Error(i.logger).Log("msg", "failed to list metastore blocks", "err", err)
 			return
 		}
+		level.Debug(i.logger).Log("msg", "found blocks for query", "block_count", len(blocks), "query", q)
 		for _, block := range blocks {
 			var clone *metastorev1.BlockMeta
 			for _, svc := range block.Datasets {
 				if q.matchService(svc) {
-					clone = cloneBlockForQuery(block)
+					if clone == nil {
+						clone = cloneBlockForQuery(block)
+						md[clone.Id] = clone
+					}
 					clone.Datasets = append(clone.Datasets, svc)
-					md = append(md, clone)
 				}
 			}
 		}
 	})
 
-	return md
+	blocks := make([]*metastorev1.BlockMeta, 0, len(md))
+	for _, block := range md {
+		blocks = append(blocks, block)
+	}
+
+	return blocks
 }
 
 func cloneBlockForQuery(b *metastorev1.BlockMeta) *metastorev1.BlockMeta {
