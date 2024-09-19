@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/experiment/ingester/client/distributor/placement"
+	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement"
 	"github.com/grafana/pyroscope/pkg/testhelper"
 )
 
@@ -32,16 +32,16 @@ type mockDistributionStrategy struct {
 	mock.Mock
 }
 
-func (m *mockDistributionStrategy) NumTenantShards(k placement.Key, n uint32) (size uint32) {
-	return m.Called(k, n).Get(0).(uint32)
+func (m *mockDistributionStrategy) NumTenantShards(k placement.Key, n int) (size int) {
+	return m.Called(k, n).Get(0).(int)
 }
 
-func (m *mockDistributionStrategy) NumDatasetShards(k placement.Key, n uint32) (size uint32) {
-	return m.Called(k, n).Get(0).(uint32)
+func (m *mockDistributionStrategy) NumDatasetShards(k placement.Key, n int) (size int) {
+	return m.Called(k, n).Get(0).(int)
 }
 
-func (m *mockDistributionStrategy) PickShard(k placement.Key, n uint32) (shard uint32) {
-	return m.Called(k, n).Get(0).(uint32)
+func (m *mockDistributionStrategy) PickShard(k placement.Key, n int) (shard int) {
+	return m.Called(k, n).Get(0).(int)
 }
 
 func Test_EmptyRing(t *testing.T) {
@@ -57,8 +57,8 @@ func Test_EmptyRing(t *testing.T) {
 func Test_Distribution_AvailableShards(t *testing.T) {
 	for _, tc := range []struct {
 		description   string
-		tenantShards  uint32
-		datasetShards uint32
+		tenantShards  int
+		datasetShards int
 	}{
 		{description: "zero", tenantShards: 0, datasetShards: 0},
 		{description: "min", tenantShards: 1, datasetShards: 1},
@@ -70,7 +70,7 @@ func Test_Distribution_AvailableShards(t *testing.T) {
 			m := new(mockDistributionStrategy)
 			m.On("NumTenantShards", k, mock.Anything).Return(tc.tenantShards).Once()
 			m.On("NumDatasetShards", k, mock.Anything).Return(tc.datasetShards).Once()
-			m.On("PickShard", k, mock.Anything).Return(uint32(0)).Once()
+			m.On("PickShard", k, mock.Anything).Return(0).Once()
 
 			d := NewDistributor(m)
 			r := testhelper.NewMockRing(testInstances, 1)
@@ -94,9 +94,9 @@ func Test_Distribution_AvailableShards(t *testing.T) {
 func Test_RingUpdate(t *testing.T) {
 	k := NewTenantServiceDatasetKey("", nil)
 	m := new(mockDistributionStrategy)
-	m.On("NumTenantShards", k, mock.Anything).Return(uint32(1))
-	m.On("NumDatasetShards", k, mock.Anything).Return(uint32(1))
-	m.On("PickShard", k, mock.Anything).Return(uint32(0))
+	m.On("NumTenantShards", k, mock.Anything).Return(1)
+	m.On("NumDatasetShards", k, mock.Anything).Return(1)
+	m.On("PickShard", k, mock.Anything).Return(0)
 
 	d := NewDistributor(m)
 	r := testhelper.NewMockRing(testInstances, 1)
@@ -106,7 +106,7 @@ func Test_RingUpdate(t *testing.T) {
 	instances := make([]ring.InstanceDesc, 2)
 	copy(instances, testInstances[:1])
 	r.SetInstances(instances)
-	require.NoError(t, d.Update(r))
+	require.NoError(t, d.updateDistribution(r, 0))
 
 	p, err := d.Distribute(k, r)
 	require.NoError(t, err)

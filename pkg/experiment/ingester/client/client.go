@@ -23,9 +23,9 @@ import (
 	"google.golang.org/grpc/status"
 
 	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/distributor"
+	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement"
 	"github.com/grafana/pyroscope/pkg/experiment/ingester/client/connpool"
-	"github.com/grafana/pyroscope/pkg/experiment/ingester/client/distributor"
-	"github.com/grafana/pyroscope/pkg/experiment/ingester/client/distributor/placement"
 	"github.com/grafana/pyroscope/pkg/util/circuitbreaker"
 )
 
