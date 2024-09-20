@@ -23,9 +23,9 @@ jobs:
           node-version: lts/hydrogen
           cache: yarn
       - name: Install Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: "1.21.11"
+          go-version: "1.22.7"
           cache: true
       - run: yarn --frozen-lockfile
       - run: make build
@@ -37,7 +37,7 @@ jobs:
           config-file: cypress/ci.ts
         env:
           ELECTRON_ENABLE_LOGGING: 1
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: regular-path-cypress-screenshots
@@ -53,14 +53,14 @@ jobs:
           node-version: lts/hydrogen
           cache: yarn
       - name: Install Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: "1.21.11"
+          go-version: "1.22.7"
           cache: true
       - run: yarn --frozen-lockfile
       - run: make build
       - name: run nginx with /foobar/
-        run: docker-compose -f scripts/base-url/docker-compose.yaml up -d
+        run: docker compose -f scripts/base-url/docker-compose.yaml up -d
       - name: Cypress run
         uses: cypress-io/github-action@v5
         with:
@@ -70,7 +70,7 @@ jobs:
           config-file: cypress/ci-base-path.ts
         env:
           ELECTRON_ENABLE_LOGGING: 1
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: base-path-cypress-screenshots

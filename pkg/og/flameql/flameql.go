@@ -97,7 +97,7 @@ func ValidateAppName(n string) error {
 }
 
 func IsTagKeyRuneAllowed(r rune) bool {
-	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_'
+	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '.'
 }
 
 func IsAppNameRuneAllowed(r rune) bool {

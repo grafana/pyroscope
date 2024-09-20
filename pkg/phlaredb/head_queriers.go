@@ -395,12 +395,12 @@ func (q *headInMemoryQuerier) SelectMatchingProfiles(ctx context.Context, params
 			NewSeriesIterator(
 				profileSeries.lbs,
 				profileSeries.fp,
-				iter.NewTimeRangedIterator(iter.NewSliceIterator(profiles), start, end),
+				phlaremodel.NewTimeRangedIterator(iter.NewSliceIterator(profiles), start, end),
 			),
 		)
 	}
 
-	return iter.NewMergeIterator(maxBlockProfile, false, iters...), nil
+	return phlaremodel.NewMergeIterator(maxBlockProfile, false, iters...), nil
 }
 
 func (q *headInMemoryQuerier) SelectMergeByStacktraces(ctx context.Context, params *ingestv1.SelectProfilesRequest, maxNodes int64) (*phlaremodel.Tree, error) {
@@ -598,16 +598,14 @@ func (q *headInMemoryQuerier) MergeByLabels(
 	sp, _ := opentracing.StartSpanFromContext(ctx, "MergeByLabels - HeadInMemory")
 	defer sp.Finish()
 
-	seriesBuilder := seriesBuilder{}
-	seriesBuilder.init(by...)
-
+	seriesBuilder := phlaremodel.NewTimeSeriesBuilder(by...)
 	if len(sts.GetCallSite()) == 0 {
 		for rows.Next() {
 			p, ok := rows.At().(ProfileWithLabels)
 			if !ok {
 				return nil, errors.New("expected ProfileWithLabels")
 			}
-			seriesBuilder.add(p.Fingerprint(), p.Labels(), int64(p.Timestamp()), float64(p.Total()))
+			seriesBuilder.Add(p.Fingerprint(), p.Labels(), int64(p.Timestamp()), float64(p.Total()))
 		}
 	} else {
 		r := symdb.NewResolver(ctx, q.head.symdb,
@@ -622,7 +620,7 @@ func (q *headInMemoryQuerier) MergeByLabels(
 			if err := r.CallSiteValues(&v, p.StacktracePartition(), p.Samples()); err != nil {
 				return nil, err
 			}
-			seriesBuilder.add(p.Fingerprint(), p.Labels(), int64(p.Timestamp()), float64(v.Total))
+			seriesBuilder.Add(p.Fingerprint(), p.Labels(), int64(p.Timestamp()), float64(v.Total))
 		}
 	}
 
@@ -630,7 +628,7 @@ func (q *headInMemoryQuerier) MergeByLabels(
 		return nil, err
 	}
 
-	return seriesBuilder.build(), nil
+	return seriesBuilder.Build(), nil
 }
 
 func (q *headInMemoryQuerier) SelectMergeByLabels(
@@ -654,8 +652,7 @@ func (q *headInMemoryQuerier) SelectMergeByLabels(
 		start = model.Time(params.Start)
 		end   = model.Time(params.End)
 	)
-	seriesBuilder := seriesBuilder{}
-	seriesBuilder.init(by...)
+	seriesBuilder := phlaremodel.NewTimeSeriesBuilder(by...)
 
 	index.mutex.RLock()
 	defer index.mutex.RUnlock()
@@ -673,7 +670,7 @@ func (q *headInMemoryQuerier) SelectMergeByLabels(
 				if p.Timestamp() > end {
 					break
 				}
-				seriesBuilder.add(fp, profileSeries.lbs, int64(p.Timestamp()), float64(p.Total()))
+				seriesBuilder.Add(fp, profileSeries.lbs, int64(p.Timestamp()), float64(p.Total()))
 			}
 		}
 	} else {
@@ -696,11 +693,11 @@ func (q *headInMemoryQuerier) SelectMergeByLabels(
 				if err = r.CallSiteValues(&v, p.StacktracePartition, p.Samples); err != nil {
 					return nil, err
 				}
-				seriesBuilder.add(fp, profileSeries.lbs, int64(p.Timestamp()), float64(v.Total))
+				seriesBuilder.Add(fp, profileSeries.lbs, int64(p.Timestamp()), float64(v.Total))
 			}
 		}
 	}
-	return seriesBuilder.build(), nil
+	return seriesBuilder.Build(), nil
 }
 
 func (q *headInMemoryQuerier) Series(ctx context.Context, params *ingestv1.SeriesRequest) ([]*typesv1.Labels, error) {

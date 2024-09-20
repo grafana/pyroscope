@@ -79,7 +79,7 @@ ENV OTEL_PYROSCOPE_START_PROFILING=true
 ## Useful for debugging
 # ENV PYROSCOPE_LOG_LEVEL=debug
 
-## Those environment variables need to be overwritten at runtime, if you are using Grafana Cloud 
+## Those environment variables need to be overwritten at runtime, if you are using Grafana Cloud
 ENV PYROSCOPE_SERVER_ADDRESS=http://localhost:4040
 # ENV PYROSCOPE_BASIC_AUTH_USER=123     ## Grafana Cloud Username
 # ENV PYROSCOPE_BASIC_AUTH_PASSWORD=glc_secret ## Grafana Cloud Password / API Token
@@ -88,11 +88,19 @@ ENV PYROSCOPE_SERVER_ADDRESS=http://localhost:4040
 CMD ["java", "-Dserver.port=5000", "-javaagent:./opentelemetry-javaagent.jar", "-javaagent:pyroscope.jar", "-jar", "./my-app.jar" ]
 ```
 
+### Available configuration options
+
+| Flag                             | Description                                                                                                                                                                                                                                                                                                             | Default |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| `otel.pyroscope.start.profiling` | Boolean flag to start PyroscopeAgent. Set to false if you want to start the PyroscopeAgent manually.                                                                                                                                                                                                                    | `true`  |
+| `otel.pyroscope.root.span.only`  | Boolean flag. When enabled, the tracer will annotate only the first span created locally (the root span), but the profile will include samples of all the nested spans. This may be helpful in case if the trace consists of multiple spans shorter than 10ms and profiler can't collect and annotate samples properly. | `true`  |
+| `otel.pyroscope.add.span.name`   | Boolean flag. Controls whether the span name added to profile labels.                                                                                                                                                                                                                                                   | `true`  |
+
 ## View the span profiles in Grafana Tempo
 
 To view the span profiles in Grafana Tempo, you need to have a Grafana instance running and a data source configured to link trace spans and profiles.
 
-Refer to the [data source configuration documentation](https://grafana.com/docs/grafana/latest/datasources/tempo/configure-tempo-data-source/) to see how to configure the visualization to link trace spans with profiles.
+Refer to the [data source configuration documentation](https://grafana.com/docs/grafana/<GRAFANA_VERSION>/datasources/tempo/configure-tempo-data-source/) to see how to configure the visualization to link trace spans with profiles.
 
 To use a simple configuration, follow these steps:
 

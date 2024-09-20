@@ -2,7 +2,6 @@ package frontend
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -20,7 +19,10 @@ import (
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
-func (f *Frontend) SelectMergeProfile(ctx context.Context, c *connect.Request[querierv1.SelectMergeProfileRequest]) (*connect.Response[profilev1.Profile], error) {
+func (f *Frontend) SelectMergeProfile(
+	ctx context.Context,
+	c *connect.Request[querierv1.SelectMergeProfileRequest],
+) (*connect.Response[profilev1.Profile], error) {
 	opentracing.SpanFromContext(ctx).
 		SetTag("start", model.Time(c.Msg.Start).Time().String()).
 		SetTag("end", model.Time(c.Msg.End).Time().String()).
@@ -55,7 +57,6 @@ func (f *Frontend) SelectMergeProfile(ctx context.Context, c *connect.Request[qu
 	//   the method is used for pprof export and
 	//   truncation is not applicable for that.
 
-	var lock sync.Mutex
 	var m pprof.ProfileMerge
 	for intervals.Next() {
 		r := intervals.At()
@@ -74,8 +75,6 @@ func (f *Frontend) SelectMergeProfile(ctx context.Context, c *connect.Request[qu
 			if err != nil {
 				return err
 			}
-			lock.Lock()
-			defer lock.Unlock()
 			return m.Merge(resp.Msg)
 		})
 	}

@@ -14,10 +14,10 @@ import (
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
-func (f *Frontend) Diff(ctx context.Context,
-	c *connect.Request[querierv1.DiffRequest]) (
-	*connect.Response[querierv1.DiffResponse], error,
-) {
+func (f *Frontend) Diff(
+	ctx context.Context,
+	c *connect.Request[querierv1.DiffRequest],
+) (*connect.Response[querierv1.DiffResponse], error) {
 	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceDiffProcedure)
 	g, ctx := errgroup.WithContext(ctx)
 	tenantIDs, err := tenant.TenantIDs(ctx)

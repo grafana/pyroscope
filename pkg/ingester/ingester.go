@@ -253,7 +253,11 @@ func (i *Ingester) evictBlock(tenantID string, b ulid.ULID, fn func() error) (er
 
 func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
 	return forInstanceUnary(ctx, i, func(instance *instance) (*connect.Response[pushv1.PushResponse], error) {
+		usageGroups := i.limits.DistributorUsageGroups(instance.tenantID)
+
 		for _, series := range req.Msg.Series {
+			groups := usageGroups.GetUsageGroups(instance.tenantID, series.Labels)
+
 			for _, sample := range series.Samples {
 				err := pprof.FromBytes(sample.RawProfile, func(p *profilev1.Profile, size int) error {
 					id, err := uuid.Parse(sample.ID)
@@ -265,6 +269,8 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 						if reason != validation.Unknown {
 							validation.DiscardedProfiles.WithLabelValues(string(reason), instance.tenantID).Add(float64(1))
 							validation.DiscardedBytes.WithLabelValues(string(reason), instance.tenantID).Add(float64(size))
+							groups.CountDiscardedBytes(string(reason), int64(size))
+
 							switch validation.ReasonOf(err) {
 							case validation.SeriesLimit:
 								return connect.NewError(connect.CodeResourceExhausted, err)

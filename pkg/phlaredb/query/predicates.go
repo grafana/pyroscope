@@ -12,7 +12,7 @@ import (
 // Predicate is a pushdown predicate that can be applied at
 // the chunk, page, and value levels.
 type Predicate interface {
-	KeepColumnChunk(cc pq.ColumnChunk) bool
+	KeepColumnChunk(ci pq.ColumnIndex) bool
 	KeepPage(page pq.Page) bool
 	KeepValue(pq.Value) bool
 }
@@ -34,8 +34,8 @@ func NewStringInPredicate(ss []string) Predicate {
 	return p
 }
 
-func (p *StringInPredicate) KeepColumnChunk(cc pq.ColumnChunk) bool {
-	if ci := cc.ColumnIndex(); ci != nil {
+func (p *StringInPredicate) KeepColumnChunk(ci pq.ColumnIndex) bool {
+	if ci != nil {
 
 		for _, subs := range p.ss {
 			for i := 0; i < ci.NumPages(); i++ {
@@ -101,7 +101,7 @@ func NewSubstringPredicate(substring string) *SubstringPredicate {
 	}
 }
 
-func (p *SubstringPredicate) KeepColumnChunk(_ pq.ColumnChunk) bool {
+func (p *SubstringPredicate) KeepColumnChunk(_ pq.ColumnIndex) bool {
 	// Reset match cache on each row group change
 	p.matches = make(map[string]bool, len(p.matches))
 
@@ -151,8 +151,8 @@ func NewIntBetweenPredicate(min, max int64) *IntBetweenPredicate {
 	return &IntBetweenPredicate{min, max}
 }
 
-func (p *IntBetweenPredicate) KeepColumnChunk(c pq.ColumnChunk) bool {
-	if ci := c.ColumnIndex(); ci != nil {
+func (p *IntBetweenPredicate) KeepColumnChunk(ci pq.ColumnIndex) bool {
+	if ci != nil {
 		for i := 0; i < ci.NumPages(); i++ {
 			min := ci.MinValue(i).Int64()
 			max := ci.MaxValue(i).Int64()
@@ -184,8 +184,8 @@ func NewEqualInt64Predicate(value int64) EqualInt64Predicate {
 	return EqualInt64Predicate(value)
 }
 
-func (p EqualInt64Predicate) KeepColumnChunk(c pq.ColumnChunk) bool {
-	if ci := c.ColumnIndex(); ci != nil {
+func (p EqualInt64Predicate) KeepColumnChunk(ci pq.ColumnIndex) bool {
+	if ci != nil {
 		for i := 0; i < ci.NumPages(); i++ {
 			min := ci.MinValue(i).Int64()
 			max := ci.MaxValue(i).Int64()
@@ -223,10 +223,10 @@ type InstrumentedPredicate struct {
 
 var _ Predicate = (*InstrumentedPredicate)(nil)
 
-func (p *InstrumentedPredicate) KeepColumnChunk(c pq.ColumnChunk) bool {
+func (p *InstrumentedPredicate) KeepColumnChunk(ci pq.ColumnIndex) bool {
 	p.InspectedColumnChunks.Inc()
 
-	if p.pred == nil || p.pred.KeepColumnChunk(c) {
+	if p.pred == nil || p.pred.KeepColumnChunk(ci) {
 		p.KeptColumnChunks.Inc()
 		return true
 	}
@@ -282,8 +282,8 @@ func NewMapPredicate[K constraints.Integer, V any](m map[K]V) Predicate {
 	}
 }
 
-func (m *mapPredicate[K, V]) KeepColumnChunk(c pq.ColumnChunk) bool {
-	return m.inbetweenPred.KeepColumnChunk(c)
+func (m *mapPredicate[K, V]) KeepColumnChunk(ci pq.ColumnIndex) bool {
+	return m.inbetweenPred.KeepColumnChunk(ci)
 }
 
 func (m *mapPredicate[K, V]) KeepPage(page pq.Page) bool {

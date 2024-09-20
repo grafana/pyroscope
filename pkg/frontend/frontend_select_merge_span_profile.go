@@ -18,10 +18,10 @@ import (
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
-func (f *Frontend) SelectMergeSpanProfile(ctx context.Context,
-	c *connect.Request[querierv1.SelectMergeSpanProfileRequest]) (
-	*connect.Response[querierv1.SelectMergeSpanProfileResponse], error,
-) {
+func (f *Frontend) SelectMergeSpanProfile(
+	ctx context.Context,
+	c *connect.Request[querierv1.SelectMergeSpanProfileRequest],
+) (*connect.Response[querierv1.SelectMergeSpanProfileResponse], error) {
 	opentracing.SpanFromContext(ctx).
 		SetTag("start", model.Time(c.Msg.Start).Time().String()).
 		SetTag("end", model.Time(c.Msg.End).Time().String()).

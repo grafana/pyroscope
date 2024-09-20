@@ -47,7 +47,7 @@ pyroscope:
     name: ""
 
   podAnnotations:
-    # Scrapes itself see https://grafana.com/docs/phlare/latest/operators-guide/deploy-kubernetes/#optional-scrape-your-own-workloads-profiles
+    # Scrapes itself see https://grafana.com/docs/pyroscope/latest/deploy-kubernetes/helm/#optional-scrape-your-own-workloads-profiles
     profiles.grafana.com/memory.scrape: "true"
     profiles.grafana.com/memory.port_name: http2
     profiles.grafana.com/cpu.scrape: "true"
@@ -109,6 +109,9 @@ pyroscope:
     #   memory: 128Mi
 
   nodeSelector: {}
+
+  # -- Topology Spread Constraints
+  topologySpreadConstraints: []
 
   ## ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
   ## If you set enabled as "True", you need :

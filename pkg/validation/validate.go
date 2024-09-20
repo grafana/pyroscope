@@ -57,7 +57,7 @@ const (
 	QueryMissingTimeRange Reason = "missing_time_range"
 
 	// Those profiles were dropped because of relabeling rules
-	RelabelRules Reason = "dropped_by_relabel_rules"
+	DroppedByRelabelRules Reason = "dropped_by_relabel_rules"
 
 	SeriesLimitErrorMsg                 = "Maximum active series limit exceeded (%d/%d), reduce the number of active streams (reduce labels or reduce label values), or contact your administrator to see if the limit can be increased"
 	MissingLabelsErrorMsg               = "error at least one label pair is required per profile"
@@ -368,6 +368,26 @@ func ValidateRangeRequest(limits RangeRequestLimits, tenantIDs []string, req mod
 	}
 
 	return ValidatedRangeRequest{Interval: req}, nil
+}
+
+func SanitizeTimeRange(limits RangeRequestLimits, tenant []string, start, end *int64) (empty bool, err error) {
+	var interval model.Interval
+	if start != nil {
+		interval.Start = model.Time(*start)
+	}
+	if end != nil {
+		interval.End = model.Time(*end)
+	}
+	validated, err := ValidateRangeRequest(limits, tenant, interval, model.Now())
+	if err != nil {
+		return false, err
+	}
+	if validated.IsEmpty {
+		return true, nil
+	}
+	*start = int64(validated.Start)
+	*end = int64(validated.End)
+	return false, nil
 }
 
 type FlameGraphLimits interface {

@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"os"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -125,9 +126,10 @@ func TestAdHocProfiles_Upload(t *testing.T) {
 		c   *connect.Request[v1.AdHocProfilesUploadRequest]
 	}
 	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
+		name           string
+		args           args
+		wantErr        bool
+		expectedSuffix string
 	}{
 		{
 			name: "reject requests with missing tenant id",
@@ -153,11 +155,24 @@ func TestAdHocProfiles_Upload(t *testing.T) {
 			args: args{
 				ctx: tenant.InjectTenantID(context.Background(), "tenant"),
 				c: connect.NewRequest(&v1.AdHocProfilesUploadRequest{
-					Name:    "test",
+					Name:    "test.cpu.pb.gz",
 					Profile: encodedProfile,
 				}),
 			},
-			wantErr: false,
+			wantErr:        false,
+			expectedSuffix: "-test.cpu.pb.gz",
+		},
+		{
+			name: "should limit profile names to particular character set",
+			args: args{
+				ctx: tenant.InjectTenantID(context.Background(), "tenant"),
+				c: connect.NewRequest(&v1.AdHocProfilesUploadRequest{
+					Name:    "test/../../../etc/passwd",
+					Profile: encodedProfile,
+				}),
+			},
+			wantErr:        false,
+			expectedSuffix: "-test_.._.._.._etc_passwd",
 		},
 	}
 	for _, tt := range tests {
@@ -171,6 +186,18 @@ func TestAdHocProfiles_Upload(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Upload() error = %v, wantErr %v", err, tt.wantErr)
 				return
+			}
+
+			if tt.expectedSuffix != "" {
+				found := false
+				err := bucket.Iter(tt.args.ctx, "tenant/adhoc", func(name string) error {
+					if strings.HasSuffix(name, tt.expectedSuffix) {
+						found = true
+					}
+					return nil
+				})
+				require.NoError(t, err)
+				require.True(t, found)
 			}
 		})
 	}

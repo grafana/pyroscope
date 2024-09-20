@@ -43,7 +43,6 @@ services:
       dockerfile: Dockerfile.otel-instrumentation
 
   rideshare-dotnet-eu-west:
-    platform: linux/amd64
     ports:
       - 5000
     hostname: rideshare-dotnet-eu-west
@@ -94,15 +93,15 @@ services:
       - http://rideshare-python-eu-east:5000
 
   grafana:
-    image: grafana/grafana-dev:10.3.0-151740
+    image: grafana/grafana:latest
     environment:
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
       - GF_AUTH_DISABLE_LOGIN_FORM=true
-      - GF_INSTALL_PLUGINS=pyroscope-panel
+      - GF_INSTALL_PLUGINS=grafana-pyroscope-app
       - GF_FEATURE_TOGGLES_ENABLE=traceToProfiles tracesEmbeddedFlameGraph
     volumes:
-      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./grafana/provisioning:/etc/grafana/provisioning
     ports:
       - '3000:3000'
 

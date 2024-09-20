@@ -613,6 +613,10 @@ func (l LabelsByKeyValue) Swap(i, j int) {
 	l[i], l[j] = l[j], l[i]
 }
 
+// SampleGroup refers to a group of samples that share the same
+// labels. Note that the Span ID label is handled in a special
+// way and is not included in the Labels member but is kept as
+// as a sample label.
 type SampleGroup struct {
 	Labels  []*profilev1.Label
 	Samples []*profilev1.Sample
@@ -662,6 +666,7 @@ func GroupSamplesWithoutLabelsByKey(p *profilev1.Profile, keys []int64) []Sample
 		// We hide labels matching the keys to the end
 		// of the slice, after len() boundary.
 		s.Label = LabelsWithout(s.Label, keys)
+		sort.Sort(LabelsByKeyValue(s.Label)) // TODO: Find a way to avoid this.
 	}
 	// Sorting and grouping accounts only for labels kept.
 	sort.Sort(SamplesByLabels(p.Sample))
@@ -677,7 +682,7 @@ func GroupSamplesWithoutLabelsByKey(p *profilev1.Profile, keys []int64) []Sample
 func restoreRemovedLabels(labels []*profilev1.Label) []*profilev1.Label {
 	labels = labels[len(labels):cap(labels)]
 	for i, l := range labels {
-		if l == nil {
+		if l == nil { // labels had extra capacity in sample labels
 			labels = labels[:i]
 			break
 		}
@@ -962,12 +967,12 @@ func LabelID(p *profilev1.Profile, name string) int64 {
 
 func ProfileSpans(p *profilev1.Profile) []uint64 {
 	if i := LabelID(p, SpanIDLabelName); i > 0 {
-		return profileSpans(i, p)
+		return Spans(p, i)
 	}
 	return nil
 }
 
-func profileSpans(spanIDLabelIdx int64, p *profilev1.Profile) []uint64 {
+func Spans(p *profilev1.Profile, spanIDLabelIdx int64) []uint64 {
 	tmp := make([]byte, 8)
 	s := make([]uint64, len(p.Sample))
 	for i, sample := range p.Sample {
@@ -1154,6 +1159,14 @@ func Marshal(p *profilev1.Profile, compress bool) ([]byte, error) {
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+func MustMarshal(p *profilev1.Profile, compress bool) []byte {
+	b, err := Marshal(p, compress)
+	if err != nil {
+		panic(err)
+	}
+	return b
 }
 
 func Unmarshal(data []byte, p *profilev1.Profile) error {

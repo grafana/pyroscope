@@ -152,7 +152,8 @@
     },
     "structuredConfig": {},
     "tenantOverrides": {},
-    "tolerations": []
+    "tolerations": [],
+    "topologySpreadConstraints": []
   },
   "serviceMonitor": {
     "annotations": {},

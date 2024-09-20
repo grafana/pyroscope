@@ -163,6 +163,14 @@ func Slice[T any](it Iterator[T]) ([]T, error) {
 	return result, it.Err()
 }
 
+func MustSlice[T any](it Iterator[T]) []T {
+	s, err := Slice(it)
+	if err != nil {
+		panic(err)
+	}
+	return s
+}
+
 // CloneN returns N copy of the iterator.
 // The returned iterators are independent of the original iterator.
 // The original might be exhausted and should be discarded.

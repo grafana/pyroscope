@@ -3,6 +3,7 @@
 Choose a language folder to select an example for your language of choice.
 
 # How Pyroscope works
+
 Pyroscope identifies performance issues in your application by continuously profiling the code.
 
 If you've never used a profiler before, then welcome!
@@ -18,7 +19,7 @@ If you are familiar with profiling and flame graphs, then you'll be happy to kno
 Pyroscope is a continuous profiling database that allows you to analyze the performance of your applications.
 When sending profiles to Pyroscope, you can choose between two primary methods: SDK Instrumentation and auto-instrumentation using the Grafana Agent.
 
-![Pyroscope agent server diagram](https://grafana.com/media/docs/pyroscope/pyroscope_client_server_diagram.png)
+![Pyroscope agent server diagram](https://grafana.com/media/docs/pyroscope/pyroscope_client_server_diagram_09_18_2024.png)
 
 ### About auto-instrumentation with Grafana Alloy or Agent collectors
 

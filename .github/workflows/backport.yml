@@ -15,7 +15,7 @@ jobs:
         with:
           repository: grafana/grafana-github-actions
           path: ./actions
-          ref: main
+          ref: jdb/2024-09-replace-graphql-with-rest
       - name: Install Actions
         run: npm install --production --prefix ./actions
       - name: Run backport

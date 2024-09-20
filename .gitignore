@@ -1,5 +1,4 @@
 # Binaries for programs and plugins
-bin
 /phlare
 /pyroscope
 /profilecli
@@ -15,6 +14,7 @@ pyroscope-sync/
 data/
 data-shared/
 data-compactor/
+data-metastore/
 .DS_Store
 **/dist
 

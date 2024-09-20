@@ -109,6 +109,9 @@ export PROFILECLI_PASSWORD=<password>
 profilecli <command>
 ```
 
+{{< admonition type="caution" >}}
+If you're querying data from Cloud Profiles, be sure to use the url of your Cloud Profiles server in `PROFILECLI_URL` (e.g. `https://profiles-prod-001.grafana.net`) and **not** the url of your Grafana Cloud tenant (e.g. `<your tenant>.grafana.net`).
+{{< /admonition >}}
 
 ## Uploading a profile to a Pyroscope server using `profilecli`
 
@@ -285,8 +288,8 @@ By default, it looks for samples within the last hour, though this can be contro
     - You can provide a label selector using the `--query` flag, for example, `--query='{service_name="my_application_name"}'`.
     - You can provide a custom time range using the `--from` and `--to` flags, for example, `--from="now-3h" --to="now"`.
     - You can specify the profile type via the `--profile-type` flag. The available profile types are listed in the output of the `profilecli query series` command.
-    - You can specify the number of leaf locations to keep via the `--keep-locations` flag. The default value is `5`. Go compiler does not use the full stack trace. Reducing the number helps to minimize the profile size. 
-    - You can specify whether the callee aggregation should be used via the `--aggregate-callees` flag. By default, samples are aggregated by the leaf location, ignoring callee line number. Go compiler ignores this information. 
+    - You can specify the number of leaf locations to keep via the `--keep-locations` flag. The default value is `5`. The Go compiler does not use the full stack trace. Reducing the number helps to minimize the profile size.
+    - You can specify whether the callee aggregation should be used via the `--aggregate-callees` flag. By default, samples are aggregated by the leaf location, ignoring callee line number. Go compiler ignores this information.
 
 2. Construct and execute the command.
 
@@ -295,7 +298,7 @@ By default, it looks for samples within the last hour, though this can be contro
       export PROFILECLI_URL=https://profiles-prod-001.grafana.net
       export PROFILECLI_USERNAME=my_username
       export PROFILECLI_PASSWORD=my_password
- 
+
       profilecli query go-pgo \
           --query='{service_name="my_service"}' \
           --from="now-1h" --to="now"

@@ -234,22 +234,19 @@ func (a *API) RegisterMemberlistKV(pathPrefix string, kvs *memberlist.KVInitServ
 	})
 }
 
-// RegisterRing registers the ring UI page associated with the distributor for writes.
-func (a *API) RegisterRing(r http.Handler) {
+// RegisterIngesterRing registers the ring UI page associated with the distributor for writes.
+func (a *API) RegisterIngesterRing(r http.Handler) {
 	a.RegisterRoute("/ring", r, false, true, "GET", "POST")
 	a.indexPage.AddLinks(defaultWeight, "Ingester", []IndexPageLink{
 		{Desc: "Ring status", Path: "/ring"},
 	})
 }
 
-type QuerierSvc interface {
-	querierv1connect.QuerierServiceHandler
-	vcsv1connect.VCSServiceHandler
+func (a *API) RegisterQuerierServiceHandler(svc querierv1connect.QuerierServiceHandler) {
+	querierv1connect.RegisterQuerierServiceHandler(a.server.HTTP, svc, a.connectOptionsAuthLogRecovery()...)
 }
 
-// RegisterQuerier registers the endpoints associated with the querier.
-func (a *API) RegisterQuerier(svc QuerierSvc) {
-	querierv1connect.RegisterQuerierServiceHandler(a.server.HTTP, svc, a.connectOptionsAuthLogRecovery()...)
+func (a *API) RegisterVCSServiceHandler(svc vcsv1connect.VCSServiceHandler) {
 	vcsv1connect.RegisterVCSServiceHandler(a.server.HTTP, svc, a.connectOptionsAuthLogRecovery()...)
 }
 
@@ -285,8 +282,8 @@ func (a *API) RegisterCompactor(c *compactor.MultitenantCompactor) {
 	a.RegisterRoute("/compactor/ring", http.HandlerFunc(c.RingHandler), false, true, "GET", "POST")
 }
 
-// RegisterQueryFrontend registers the endpoints associated with the query frontend.
-func (a *API) RegisterQueryFrontend(frontendSvc *frontend.Frontend) {
+// RegisterFrontendForQuerierHandler registers the endpoints associated with the query frontend.
+func (a *API) RegisterFrontendForQuerierHandler(frontendSvc *frontend.Frontend) {
 	frontendpbconnect.RegisterFrontendForQuerierHandler(a.server.HTTP, frontendSvc, a.connectOptionsAuthRecovery()...)
 }
 

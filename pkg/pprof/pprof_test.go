@@ -873,6 +873,17 @@ func Test_GroupSamplesWithout(t *testing.T) {
 			expected:    nil,
 		},
 		{
+			description: "no sample labels",
+			input: &profilev1.Profile{
+				Sample: []*profilev1.Sample{{}, {}},
+			},
+			expected: []SampleGroup{
+				{
+					Samples: []*profilev1.Sample{{}, {}},
+				},
+			},
+		},
+		{
 			description: "without all, single label set",
 			input: &profilev1.Profile{
 				Sample: []*profilev1.Sample{
@@ -931,15 +942,15 @@ func Test_GroupSamplesWithout(t *testing.T) {
 					},
 				},
 				{
-					Labels: []*profilev1.Label{{Key: 1, Str: 3}},
+					Labels: []*profilev1.Label{{Key: 1, Str: 1}, {Key: 2, Str: 2}},
 					Samples: []*profilev1.Sample{
+						{Label: []*profilev1.Label{}},
 						{Label: []*profilev1.Label{}},
 					},
 				},
 				{
-					Labels: []*profilev1.Label{{Key: 2, Str: 2}, {Key: 1, Str: 1}},
+					Labels: []*profilev1.Label{{Key: 1, Str: 3}},
 					Samples: []*profilev1.Sample{
-						{Label: []*profilev1.Label{}},
 						{Label: []*profilev1.Label{}},
 					},
 				},
@@ -971,14 +982,14 @@ func Test_GroupSamplesWithout(t *testing.T) {
 					},
 				},
 				{
-					Labels: []*profilev1.Label{{Key: 3, Str: 3}, {Key: 1, Str: 1}},
+					Labels: []*profilev1.Label{{Key: 1, Str: 1}, {Key: 3, Str: 3}},
 					Samples: []*profilev1.Sample{
 						{Label: []*profilev1.Label{{Key: 2, Str: 100}}},
 						{Label: []*profilev1.Label{{Key: 2, Str: 101}}},
 					},
 				},
 				{
-					Labels: []*profilev1.Label{{Key: 3, Str: 4}, {Key: 1, Str: 1}},
+					Labels: []*profilev1.Label{{Key: 1, Str: 1}, {Key: 3, Str: 4}},
 					Samples: []*profilev1.Sample{
 						{Label: []*profilev1.Label{{Key: 2, Str: 102}}},
 					},
@@ -1009,7 +1020,7 @@ func Test_GroupSamplesWithout(t *testing.T) {
 					},
 				},
 				{
-					Labels: []*profilev1.Label{{Key: 3, Str: 3}, {Key: 2, Str: 2}, {Key: 1, Str: 1}},
+					Labels: []*profilev1.Label{{Key: 1, Str: 1}, {Key: 2, Str: 2}, {Key: 3, Str: 3}},
 					Samples: []*profilev1.Sample{
 						{Label: []*profilev1.Label{}},
 					},
@@ -1048,12 +1059,57 @@ func Test_GroupSamplesWithout(t *testing.T) {
 				},
 			},
 		},
+		{
+			description: "without single existent, single group",
+			input: &profilev1.Profile{
+				Sample: []*profilev1.Sample{
+					{Label: []*profilev1.Label{{Key: 1, Str: 1}, {Key: 2, Str: 100}, {Key: 3, Str: 3}}},
+					{Label: []*profilev1.Label{{Key: 1, Str: 1}, {Key: 3, Str: 3}}},
+				},
+			},
+			without: []int64{2},
+			expected: []SampleGroup{
+				{
+					Labels: []*profilev1.Label{{Key: 1, Str: 1}, {Key: 3, Str: 3}},
+					Samples: []*profilev1.Sample{
+						{Label: []*profilev1.Label{{Key: 2, Str: 100}}},
+						{Label: []*profilev1.Label{}},
+					},
+				},
+			},
+		},
+		{
+			description: "Testcase for extra labels capacity (restoreRemovedLabels nil check)",
+			input: &profilev1.Profile{
+				Sample: []*profilev1.Sample{
+					{Label: []*profilev1.Label{{Key: 1, Str: 1}, {Key: 2, Str: 100}, {Key: 3, Str: 3}, nil, nil}[:3]},
+					{Label: []*profilev1.Label{{Key: 1, Str: 1}, {Key: 3, Str: 3}}},
+				}[:2],
+			},
+			without: []int64{2},
+			expected: []SampleGroup{
+				{
+					Labels: []*profilev1.Label{{Key: 1, Str: 1}, {Key: 3, Str: 3}},
+					Samples: []*profilev1.Sample{
+						{Label: []*profilev1.Label{{Key: 2, Str: 100}}},
+						{Label: []*profilev1.Label{}},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.description, func(t *testing.T) {
 			require.Equal(t, tc.expected, GroupSamplesWithoutLabelsByKey(tc.input, tc.without))
+			for _, g := range tc.expected {
+				for _, sample := range g.Samples {
+					for _, label := range sample.Label {
+						assert.NotNil(t, label)
+					}
+				}
+			}
 		})
 	}
 }
@@ -1325,10 +1381,10 @@ func Test_GroupSamplesWithout_Go_CPU_profile(t *testing.T) {
 	assert.Equal(t, groups[0].Labels, []*profilev1.Label{{Key: 18, Str: 19}})
 	assert.Equal(t, len(groups[0].Samples), 5)
 
-	assert.Equal(t, groups[1].Labels, []*profilev1.Label{{Key: 22, Str: 23}, {Key: 18, Str: 19}})
+	assert.Equal(t, groups[1].Labels, []*profilev1.Label{{Key: 18, Str: 19}, {Key: 22, Str: 23}})
 	assert.Equal(t, len(groups[1].Samples), 325)
 
-	assert.Equal(t, groups[2].Labels, []*profilev1.Label{{Key: 22, Str: 27}, {Key: 18, Str: 19}})
+	assert.Equal(t, groups[2].Labels, []*profilev1.Label{{Key: 18, Str: 19}, {Key: 22, Str: 27}})
 	assert.Equal(t, len(groups[2].Samples), 150)
 }
 
@@ -1338,7 +1394,22 @@ func Test_GroupSamplesWithout_dotnet_profile(t *testing.T) {
 
 	groups := GroupSamplesWithoutLabels(p.Profile, ProfileIDLabelName)
 	require.Len(t, groups, 1)
-	assert.Equal(t, groups[0].Labels, []*profilev1.Label{{Key: 66, Str: 67}, {Key: 64, Str: 65}})
+	assert.Equal(t, groups[0].Labels, []*profilev1.Label{{Key: 64, Str: 65}, {Key: 66, Str: 67}})
+}
+
+func Test_GroupSamplesWithout_single_group_with_optional_span_id(t *testing.T) {
+	// pprof.Do(context.Background(), pprof.Labels("function", "slow", "qwe", "asd", "asdasd", "zxczxc"), func(c context.Context) {
+	//   work(40000)
+	//   pprof.Do(c, pprof.Labels("span_id", "239"), func(c context.Context) {
+	//     work(40000)
+	//   })
+	// })
+	p, err := OpenFile("testdata/single_group_with_optional_span_id.pb.gz")
+	require.NoError(t, err)
+
+	groups := GroupSamplesWithoutLabels(p.Profile, SpanIDLabelName)
+	require.Len(t, groups, 1)
+	assert.Equal(t, groups[0].Labels, []*profilev1.Label{{Key: 5, Str: 6}, {Key: 7, Str: 8}, {Key: 9, Str: 10}})
 }
 
 func Test_GetProfileLanguage_go_cpu_profile(t *testing.T) {

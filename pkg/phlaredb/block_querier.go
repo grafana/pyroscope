@@ -633,11 +633,11 @@ func (queriers Queriers) SelectMatchingProfiles(ctx context.Context, params *ing
 	if err != nil {
 		return nil, err
 	}
-	return iter.NewMergeIterator(maxBlockProfile, true, iters...), nil
+	return phlaremodel.NewMergeIterator(maxBlockProfile, true, iters...), nil
 }
 
 func (queriers Queriers) LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error) {
-	blockGetter := queriers.forTimeRange
+	blockGetter := queriers.ForTimeRange
 	_, hasTimeRange := phlaremodel.GetTimeRange(req.Msg)
 	if !hasTimeRange {
 		blockGetter = func(_ context.Context, _, _ model.Time, _ *ingestv1.Hints) (Queriers, error) {
@@ -652,7 +652,7 @@ func (queriers Queriers) LabelValues(ctx context.Context, req *connect.Request[t
 }
 
 func (queriers Queriers) LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error) {
-	blockGetter := queriers.forTimeRange
+	blockGetter := queriers.ForTimeRange
 	_, hasTimeRange := phlaremodel.GetTimeRange(req.Msg)
 	if !hasTimeRange {
 		blockGetter = func(_ context.Context, _, _ model.Time, _ *ingestv1.Hints) (Queriers, error) {
@@ -667,7 +667,7 @@ func (queriers Queriers) LabelNames(ctx context.Context, req *connect.Request[ty
 }
 
 func (queriers Queriers) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
-	blockGetter := queriers.forTimeRange
+	blockGetter := queriers.ForTimeRange
 	_, hasTimeRange := phlaremodel.GetTimeRange(req.Msg)
 	if !hasTimeRange {
 		blockGetter = func(_ context.Context, _, _ model.Time, _ *ingestv1.Hints) (Queriers, error) {
@@ -683,7 +683,7 @@ func (queriers Queriers) ProfileTypes(ctx context.Context, req *connect.Request[
 
 func (queriers Queriers) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {
 	// todo: verify empty timestamp request should return all series
-	blockGetter := queriers.forTimeRange
+	blockGetter := queriers.ForTimeRange
 	// Legacy Series queries without a range should return all series from all head blocks.
 	if req.Msg.Start == 0 || req.Msg.End == 0 {
 		blockGetter = func(_ context.Context, _, _ model.Time, _ *ingestv1.Hints) (Queriers, error) {
@@ -698,24 +698,24 @@ func (queriers Queriers) Series(ctx context.Context, req *connect.Request[ingest
 }
 
 func (queriers Queriers) MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesStacktracesRequest, ingestv1.MergeProfilesStacktracesResponse]) error {
-	return MergeProfilesStacktraces(ctx, stream, queriers.forTimeRange)
+	return MergeProfilesStacktraces(ctx, stream, queriers.ForTimeRange)
 }
 
 func (queriers Queriers) MergeProfilesLabels(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesLabelsRequest, ingestv1.MergeProfilesLabelsResponse]) error {
-	return MergeProfilesLabels(ctx, stream, queriers.forTimeRange)
+	return MergeProfilesLabels(ctx, stream, queriers.ForTimeRange)
 }
 
 func (queriers Queriers) MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesPprofRequest, ingestv1.MergeProfilesPprofResponse]) error {
-	return MergeProfilesPprof(ctx, stream, queriers.forTimeRange)
+	return MergeProfilesPprof(ctx, stream, queriers.ForTimeRange)
 }
 
 func (queriers Queriers) MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeSpanProfileRequest, ingestv1.MergeSpanProfileResponse]) error {
-	return MergeSpanProfile(ctx, stream, queriers.forTimeRange)
+	return MergeSpanProfile(ctx, stream, queriers.ForTimeRange)
 }
 
 type BlockGetter func(ctx context.Context, start, end model.Time, hints *ingestv1.Hints) (Queriers, error)
 
-func (queriers Queriers) forTimeRange(_ context.Context, start, end model.Time, hints *ingestv1.Hints) (Queriers, error) {
+func (queriers Queriers) ForTimeRange(_ context.Context, start, end model.Time, hints *ingestv1.Hints) (Queriers, error) {
 	skipBlock := HintsToBlockSkipper(hints)
 
 	result := make(Queriers, 0, len(queriers))
@@ -1214,7 +1214,6 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 		deduplicationNeeded = request.Hints.Block.Deduplication
 	}
 
-	var lock sync.Mutex
 	var result pprof.ProfileMerge
 	g, ctx := errgroup.WithContext(ctx)
 
@@ -1234,9 +1233,6 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 				if err != nil {
 					return err
 				}
-
-				lock.Lock()
-				defer lock.Unlock()
 				return result.Merge(p)
 			}))
 		}
@@ -1271,8 +1267,6 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 				if err != nil {
 					return err
 				}
-				lock.Lock()
-				defer lock.Unlock()
 				return result.Merge(p)
 			}))
 		}
@@ -1611,7 +1605,7 @@ func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params 
 		iters = append(iters, iter.NewSliceIterator(currentSeriesSlice))
 	}
 
-	return iter.NewMergeIterator(maxBlockProfile, false, iters...), nil
+	return phlaremodel.NewMergeIterator(maxBlockProfile, false, iters...), nil
 }
 
 func (b *singleBlockQuerier) SelectMergeByLabels(

@@ -1,15 +1,24 @@
----
 version: '3.9'
 services:
   pyroscope:
     image: grafana/pyroscope
     ports:
-      - '4040:4040'
-
+    - 4040:4040
   app:
     platform: linux/amd64
     environment:
       ASPNETCORE_URLS: http://*:5000
     ports:
-      - '5000:5000'
+    - 5000:5000
     build: ''
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+    - GF_INSTALL_PLUGINS=grafana-pyroscope-app
+    - GF_AUTH_ANONYMOUS_ENABLED=true
+    - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    - GF_AUTH_DISABLE_LOGIN_FORM=true
+    volumes:
+    - ./grafana-provisioning:/etc/grafana/provisioning
+    ports:
+    - 3000:3000

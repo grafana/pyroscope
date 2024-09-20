@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package segmentwriter.v1;
+
+import "types/v1/types.proto";
+
+service SegmentWriterService {
+  rpc Push(PushRequest) returns (PushResponse) {}
+}
+
+message PushResponse {}
+
+message PushRequest {
+  // Unique identifier for the tenant submitting the request.
+  string tenant_id = 1;
+  // Label KV pairs of the series the profile belongs to.
+  repeated types.v1.LabelPair labels = 2;
+  reserved 3; // Reserved for format.
+  // Profile data in binary format. Default format is pprof.
+  bytes profile = 4;
+  // Unique identifier of the profile.
+  bytes profile_id = 5;
+  // Shard identifier the profile belongs to.
+  uint32 shard = 6;
+}

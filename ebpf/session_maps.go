@@ -19,13 +19,13 @@ func (s *session) getCountsMapValues() (keys []pyrobpf.ProfileSampleKey, values 
 	var (
 		m       = s.bpf.ProfileMaps.Counts
 		mapSize = m.MaxEntries()
-		nextKey = pyrobpf.ProfileSampleKey{}
 	)
 	keys = make([]pyrobpf.ProfileSampleKey, mapSize)
 	values = make([]uint32, mapSize)
 
 	opts := &ebpf.BatchOptions{}
-	n, err := m.BatchLookupAndDelete(nil, &nextKey, keys, values, opts)
+	cursor := new(ebpf.MapBatchCursor)
+	n, err := m.BatchLookupAndDelete(cursor, keys, values, opts)
 	if n > 0 {
 		level.Debug(s.logger).Log(
 			"msg", "getCountsMapValues BatchLookupAndDelete",

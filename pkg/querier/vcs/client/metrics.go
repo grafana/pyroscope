@@ -9,7 +9,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	"github.com/grafana/pyroscope/pkg/util"
 )
@@ -31,7 +30,7 @@ var (
 )
 
 func InstrumentedHTTPClient(logger log.Logger, reg prometheus.Registerer) *http.Client {
-	apiDuration := promauto.With(reg).NewHistogramVec(
+	apiDuration := util.RegisterOrGet(reg, prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: "pyroscope",
 			Name:      "vcs_github_request_duration",
@@ -39,7 +38,7 @@ func InstrumentedHTTPClient(logger log.Logger, reg prometheus.Registerer) *http.
 			Buckets:   prometheus.ExponentialBucketsRange(0.1, 10, 8),
 		},
 		[]string{"method", "route", "status_code"},
-	)
+	))
 
 	defaultClient := &http.Client{
 		Timeout:   10 * time.Second,

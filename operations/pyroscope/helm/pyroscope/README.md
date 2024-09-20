@@ -1,6 +1,6 @@
 # pyroscope
 
-![Version: 1.6.1](https://img.shields.io/badge/Version-1.6.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.6.1](https://img.shields.io/badge/AppVersion-1.6.1-informational?style=flat-square)
+![Version: 1.7.1](https://img.shields.io/badge/Version-1.7.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.7.1](https://img.shields.io/badge/AppVersion-1.7.1-informational?style=flat-square)
 
 🔥 horizontally-scalable, highly-available, multi-tenant continuous profiling aggregation system
 
@@ -72,6 +72,7 @@
 | pyroscope.structuredConfig | object | `{}` | Allows to override Phlare's configuration using structured format. |
 | pyroscope.tenantOverrides | object | `{}` | Allows to add tenant specific overrides to the default limit configuration. |
 | pyroscope.tolerations | list | `[]` |  |
+| pyroscope.topologySpreadConstraints | list | `[]` | Topology Spread Constraints |
 | serviceMonitor.annotations | object | `{}` | ServiceMonitor annotations |
 | serviceMonitor.enabled | bool | `false` | If enabled, ServiceMonitor resources for Prometheus Operator are created |
 | serviceMonitor.interval | string | `nil` | ServiceMonitor scrape interval |

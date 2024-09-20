@@ -948,13 +948,18 @@ func (c *SyncIterator) Next() bool {
 // SeekTo moves this iterator to the next result that is greater than
 // or equal to the given row number (and based on the given definition level)
 func (c *SyncIterator) Seek(to RowNumberWithDefinitionLevel) bool {
-	if c.seekRowGroup(to.RowNumber, to.DefinitionLevel) {
+	done, err := c.seekRowGroup(to.RowNumber, to.DefinitionLevel)
+	if err != nil {
+		c.err = err
+		return false
+	}
+	if done {
 		c.res = nil
 		c.err = nil
 		return false
 	}
 
-	done, err := c.seekPages(to.RowNumber, to.DefinitionLevel)
+	done, err = c.seekPages(to.RowNumber, to.DefinitionLevel)
 	if err != nil {
 		c.res = nil
 		c.err = err
@@ -1007,7 +1012,7 @@ func (c *SyncIterator) popRowGroup() (parquet.RowGroup, RowNumber, RowNumber) {
 
 // seekRowGroup skips ahead to the row group that could contain the value at the
 // desired row number. Does nothing if the current row group is already the correct one.
-func (c *SyncIterator) seekRowGroup(seekTo RowNumber, definitionLevel int) (done bool) {
+func (c *SyncIterator) seekRowGroup(seekTo RowNumber, definitionLevel int) (done bool, err error) {
 	if c.currRowGroup != nil && CompareRowNumbers(definitionLevel, seekTo, c.currRowGroupMax) >= 0 {
 		// Done with this row group
 		c.closeCurrRowGroup()
@@ -1017,15 +1022,19 @@ func (c *SyncIterator) seekRowGroup(seekTo RowNumber, definitionLevel int) (done
 
 		rg, min, max := c.popRowGroup()
 		if rg == nil {
-			return true
+			return true, nil
 		}
 
 		if CompareRowNumbers(definitionLevel, seekTo, max) != -1 {
 			continue
 		}
 
-		cc := rg.ColumnChunks()[c.column]
-		if c.filter != nil && !c.filter.KeepColumnChunk(cc) {
+		ci, err := rg.ColumnChunks()[c.column].ColumnIndex()
+		if err != nil {
+			return true, err
+		}
+
+		if c.filter != nil && !c.filter.KeepColumnChunk(ci) {
 			continue
 		}
 
@@ -1033,7 +1042,7 @@ func (c *SyncIterator) seekRowGroup(seekTo RowNumber, definitionLevel int) (done
 		c.setRowGroup(rg, min, max)
 	}
 
-	return c.currRowGroup == nil
+	return c.currRowGroup == nil, nil
 }
 
 // seekPages skips ahead in the current row group to the page that could contain the value at
@@ -1125,8 +1134,11 @@ func (c *SyncIterator) next() (RowNumber, *parquet.Value, error) {
 				return EmptyRowNumber(), nil, nil
 			}
 
-			cc := rg.ColumnChunks()[c.column]
-			if c.filter != nil && !c.filter.KeepColumnChunk(cc) {
+			ci, err := rg.ColumnChunks()[c.column].ColumnIndex()
+			if err != nil {
+				return EmptyRowNumber(), nil, err
+			}
+			if c.filter != nil && !c.filter.KeepColumnChunk(ci) {
 				continue
 			}
 
