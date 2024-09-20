@@ -315,7 +315,13 @@ func (f *Phlare) initQuerier() (services.Service, error) {
 		f.API.RegisterQuerierServiceHandler(querierSvc)
 		f.API.RegisterVCSServiceHandler(querierSvc)
 	}
-	qWorker, err := worker.NewQuerierWorker(f.Cfg.Worker, querier.NewGRPCHandler(querierSvc), log.With(f.logger, "component", "querier-worker"), f.reg)
+
+	qWorker, err := worker.NewQuerierWorker(
+		f.Cfg.Worker,
+		querier.NewGRPCHandler(querierSvc, f.Cfg.SelfProfiling.UseK6Middleware),
+		log.With(f.logger, "component", "querier-worker"),
+		f.reg,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -537,6 +543,10 @@ func (f *Phlare) initServer() (services.Service, error) {
 		objstoreTracerMiddleware,
 		httputil.K6Middleware(),
 	}
+	if f.Cfg.SelfProfiling.UseK6Middleware {
+		defaultHTTPMiddleware = append(defaultHTTPMiddleware, httputil.K6Middleware())
+	}
+
 	f.Server.HTTPServer.Handler = middleware.Merge(defaultHTTPMiddleware...).Wrap(f.Server.HTTP)
 
 	s := NewServerService(f.Server, servicesToWaitFor, f.logger)
