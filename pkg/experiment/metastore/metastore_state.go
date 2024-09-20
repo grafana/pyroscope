@@ -11,8 +11,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"go.etcd.io/bbolt"
 
-	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compactionpb"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
 )
 
 const (
@@ -29,18 +29,13 @@ type metastoreState struct {
 	compactionMetrics *compactionMetrics
 	compactionConfig  *CompactionConfig
 
-	index *index
+	index *index.Index
 
 	compactionMutex          sync.Mutex
 	compactionJobBlockQueues map[tenantShard]*compactionJobBlockQueue
 	compactionJobQueue       *jobQueue
 
 	db *boltdb
-}
-
-type metastoreShard struct {
-	segmentsMutex sync.Mutex
-	segments      map[string]*metastorev1.BlockMeta
 }
 
 type compactionJobBlockQueue struct {
@@ -51,7 +46,7 @@ type compactionJobBlockQueue struct {
 func newMetastoreState(logger log.Logger, db *boltdb, reg prometheus.Registerer, compaction *CompactionConfig) *metastoreState {
 	return &metastoreState{
 		logger:                   logger,
-		index:                    newIndex(&metastoreIndexStore{db: db}, logger),
+		index:                    index.NewIndex(&metastoreIndexStore{db: db}, logger),
 		db:                       db,
 		compactionJobBlockQueues: make(map[tenantShard]*compactionJobBlockQueue),
 		compactionJobQueue:       newJobQueue(compaction.JobLeaseDuration.Nanoseconds()),
@@ -63,7 +58,7 @@ func newMetastoreState(logger log.Logger, db *boltdb, reg prometheus.Registerer,
 func (m *metastoreState) reset(db *boltdb) {
 	m.compactionMutex.Lock()
 	clear(m.compactionJobBlockQueues)
-	m.index = newIndex(&metastoreIndexStore{db: db}, m.logger)
+	m.index = index.NewIndex(&metastoreIndexStore{db: db}, m.logger)
 	m.compactionJobQueue = newJobQueue(m.compactionConfig.JobLeaseDuration.Nanoseconds())
 	m.db = db
 	m.compactionMutex.Unlock()
@@ -71,7 +66,7 @@ func (m *metastoreState) reset(db *boltdb) {
 
 func (m *metastoreState) restore(db *boltdb) error {
 	m.reset(db)
-	m.index.loadPartitions()
+	m.index.LoadPartitions()
 	return db.boltdb.View(func(tx *bbolt.Tx) error {
 		return m.restoreCompactionPlan(tx)
 	})

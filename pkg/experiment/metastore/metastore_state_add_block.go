@@ -2,7 +2,7 @@ package metastore
 
 import (
 	"context"
-	"github.com/go-kit/log"
+	"fmt"
 	"time"
 
 	"github.com/go-kit/log/level"
@@ -60,7 +60,7 @@ func (m *metastoreState) applyAddBlock(log *raft.Log, request *metastorev1.AddBl
 		)
 		return nil, err
 	}
-	err = m.index.insertBlock(request.Block)
+	err = m.index.InsertBlock(request.Block)
 	if err != nil {
 		return nil, err
 	}
@@ -74,16 +74,24 @@ func (m *metastoreState) persistBlock(tx *bbolt.Tx, block *metastorev1.BlockMeta
 		return err
 	}
 
-	partKey := m.index.getPartitionKey(block.Id)
+	partKey := m.index.GetPartitionKey(block.Id)
+	partMeta, err := m.index.GetOrCreatePartitionMeta(partKey)
+	if err != nil {
+		return err
+	}
 
-	return updateBlockMetadataBucket(tx, partKey, block.Shard, block.TenantId, func(bucket *bbolt.Bucket) error {
+	return updateBlockMetadataBucket(tx, partMeta, block.Shard, block.TenantId, func(bucket *bbolt.Bucket) error {
 		return bucket.Put(key, value)
 	})
 }
 
 func (m *metastoreState) deleteBlock(tx *bbolt.Tx, shard uint32, tenant, blockId string) error {
-	partKey := m.index.getPartitionKey(blockId)
-	return updateBlockMetadataBucket(tx, partKey, shard, tenant, func(bucket *bbolt.Bucket) error {
+	partKey := m.index.GetPartitionKey(blockId)
+	partMeta := m.index.FindPartitionMeta(partKey)
+	if partMeta == nil {
+		return fmt.Errorf("partition meta not found for %s", partKey)
+	}
+	return updateBlockMetadataBucket(tx, partMeta, shard, tenant, func(bucket *bbolt.Bucket) error {
 		return bucket.Delete([]byte(blockId))
 	})
 }

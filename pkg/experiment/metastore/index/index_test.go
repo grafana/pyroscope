@@ -1,4 +1,4 @@
-package metastore
+package index
 
 import (
 	"crypto/rand"
@@ -62,11 +62,11 @@ func TestIndex_getPartitionKey(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			i := &index{
-				partitionMap:      make(map[PartitionKey]*indexPartition),
+			i := &Index{
+				loadedPartitions:  make(map[PartitionKey]*fullPartition),
 				partitionDuration: tt.duration,
 			}
-			assert.Equalf(t, tt.want, i.getPartitionKey(tt.blockId), "getPartitionKey(%v)", tt.blockId)
+			assert.Equalf(t, tt.want, i.GetPartitionKey(tt.blockId), "getPartitionKey(%v)", tt.blockId)
 		})
 	}
 }

@@ -81,37 +81,6 @@ func inRange(blockStart, blockEnd, queryStart, queryEnd int64) bool {
 	return blockStart <= queryEnd && blockEnd >= queryStart
 }
 
-func (i *index) listBlocksForQuery(q *metadataQuery) []*metastorev1.BlockMeta {
-	md := make(map[string]*metastorev1.BlockMeta, 32)
-	i.run(func() {
-		level.Info(i.logger).Log("msg", "querying metastore index", "query", q)
-		blocks, err := i.findBlocksInRange(q.startTime, q.endTime, q.tenants)
-		if err != nil {
-			level.Error(i.logger).Log("msg", "failed to list metastore blocks", "query", q, "err", err)
-			return
-		}
-		for _, block := range blocks {
-			var clone *metastorev1.BlockMeta
-			for _, svc := range block.Datasets {
-				if q.matchService(svc) {
-					if clone == nil {
-						clone = cloneBlockForQuery(block)
-						md[clone.Id] = clone
-					}
-					clone.Datasets = append(clone.Datasets, svc)
-				}
-			}
-		}
-	})
-
-	blocks := make([]*metastorev1.BlockMeta, 0, len(md))
-	for _, block := range md {
-		blocks = append(blocks, block)
-	}
-
-	return blocks
-}
-
 func cloneBlockForQuery(b *metastorev1.BlockMeta) *metastorev1.BlockMeta {
 	datasets := b.Datasets
 	b.Datasets = nil
@@ -130,8 +99,30 @@ func (m *metastoreState) listBlocksForQuery(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	var resp metastorev1.QueryMetadataResponse
-	blocks := m.index.listBlocksForQuery(q)
-	resp.Blocks = append(resp.Blocks, blocks...)
+
+	md := make(map[string]*metastorev1.BlockMeta, 32)
+	blocks, err := m.index.FindBlocksInRange(q.startTime, q.endTime, q.tenants)
+	if err != nil {
+		level.Error(m.logger).Log("msg", "failed to list metastore blocks", "query", q, "err", err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	for _, block := range blocks {
+		var clone *metastorev1.BlockMeta
+		for _, svc := range block.Datasets {
+			if q.matchService(svc) {
+				if clone == nil {
+					clone = cloneBlockForQuery(block)
+					md[clone.Id] = clone
+				}
+				clone.Datasets = append(clone.Datasets, svc)
+			}
+		}
+	}
+
+	resp.Blocks = make([]*metastorev1.BlockMeta, 0, len(md))
+	for _, block := range md {
+		resp.Blocks = append(resp.Blocks, block)
+	}
 	slices.SortFunc(resp.Blocks, func(a, b *metastorev1.BlockMeta) int {
 		return strings.Compare(a.Id, b.Id)
 	})

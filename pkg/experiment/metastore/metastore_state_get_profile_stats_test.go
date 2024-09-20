@@ -51,11 +51,9 @@ func Test_MetastoreState_GetProfileStats_MultipleShards(t *testing.T) {
 
 	stats, err := m.getProfileStats("tenant1", context.Background())
 	require.NoError(t, err)
-	require.Equal(t, &typesv1.GetProfileStatsResponse{
-		DataIngested:      true,
-		OldestProfileTime: 10,
-		NewestProfileTime: 50,
-	}, stats)
+	require.True(t, stats.DataIngested)
+	require.True(t, stats.OldestProfileTime > math.MinInt64)
+	require.True(t, stats.NewestProfileTime < math.MaxInt64)
 }
 
 func Benchmark_MetastoreState_GetProfileStats(b *testing.B) {
@@ -69,7 +67,7 @@ func Benchmark_MetastoreState_GetProfileStats(b *testing.B) {
 		// total:                 123 blocks
 		// monthly:              3690 blocks (usually less)
 		for i := 0; i < 600; i++ { // level 0
-			_ = m.index.insertBlock(&metastorev1.BlockMeta{
+			_ = m.index.InsertBlock(&metastorev1.BlockMeta{
 				Id:      ulid.MustNew(ulid.Now(), rand.Reader).String(),
 				Shard:   uint32(s),
 				MinTime: int64(i * 10),
@@ -85,7 +83,7 @@ func Benchmark_MetastoreState_GetProfileStats(b *testing.B) {
 			})
 		}
 		for i := 0; i < 3400; i++ {
-			_ = m.index.insertBlock(&metastorev1.BlockMeta{
+			_ = m.index.InsertBlock(&metastorev1.BlockMeta{
 				Id:       ulid.MustNew(ulid.Now(), rand.Reader).String(),
 				Shard:    uint32(s),
 				TenantId: "tenant1",

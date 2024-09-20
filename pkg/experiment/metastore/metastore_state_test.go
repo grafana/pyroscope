@@ -62,17 +62,23 @@ func TestMetadataStateManagement(t *testing.T) {
 	})
 
 	t.Run("restore block state", func(t *testing.T) {
+		blocks := make([]*metastorev1.BlockMeta, 0, 420)
 		for i := 0; i < 420; i++ {
 			err = db.boltdb.Update(func(tx *bbolt.Tx) error {
 				block := &metastorev1.BlockMeta{
 					Id:    ulid.MustNew(ulid.Now(), rand.Reader).String(),
 					Shard: uint32(i % 4),
 				}
-				key := []byte(block.Id)
-				value, err := block.MarshalVT()
+				blocks = append(blocks, block)
+
+				partKey := m.index.GetPartitionKey(block.Id)
+				partMeta, err := m.index.GetOrCreatePartitionMeta(partKey)
 				require.NoError(t, err)
-				partKey := m.index.getPartitionKey(block.Id)
-				err = updateBlockMetadataBucket(tx, partKey, block.Shard, block.TenantId, func(bucket *bbolt.Bucket) error {
+
+				err = updateBlockMetadataBucket(tx, partMeta, block.Shard, block.TenantId, func(bucket *bbolt.Bucket) error {
+					key := []byte(block.Id)
+					value, err := block.MarshalVT()
+					require.NoError(t, err)
 					return bucket.Put(key, value)
 				})
 				return err
@@ -81,18 +87,11 @@ func TestMetadataStateManagement(t *testing.T) {
 		}
 
 		// restore from db
-		m.index.loadPartitions()
+		m.index.LoadPartitions()
 		require.NoError(t, err)
 
-		require.Equal(t, 1, len(m.index.partitions))
-		for _, p := range m.index.partitionMap {
-			require.Equal(t, 4, len(p.shards))
-			for _, s := range p.shards {
-				require.Equal(t, 1, len(s.tenants))
-				for _, ten := range s.tenants {
-					require.Equal(t, 105, len(ten.blocks))
-				}
-			}
+		for _, b := range blocks {
+			require.NotNilf(t, m.index.FindBlock(b.Shard, b.TenantId, b.Id), "block %s not found", b.Id)
 		}
 	})
 }

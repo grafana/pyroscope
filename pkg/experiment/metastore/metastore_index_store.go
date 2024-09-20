@@ -2,12 +2,15 @@ package metastore
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"slices"
 
+	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
 )
 
 type metastoreIndexStore struct {
@@ -28,15 +31,15 @@ func getPartitionBucket(tx *bbolt.Tx) (*bbolt.Bucket, error) {
 	return bkt, nil
 }
 
-func (m *metastoreIndexStore) ListPartitions() []PartitionKey {
-	partitionKeys := make([]PartitionKey, 0)
+func (m *metastoreIndexStore) ListPartitions() []index.PartitionKey {
+	partitionKeys := make([]index.PartitionKey, 0)
 	err := m.db.boltdb.View(func(tx *bbolt.Tx) error {
 		bkt, err := getPartitionBucket(tx)
 		if err != nil {
 			return err
 		}
 		err = bkt.ForEachBucket(func(name []byte) error {
-			partitionKeys = append(partitionKeys, PartitionKey(name))
+			partitionKeys = append(partitionKeys, index.PartitionKey(name))
 			return nil
 		})
 		return err
@@ -47,7 +50,31 @@ func (m *metastoreIndexStore) ListPartitions() []PartitionKey {
 	return partitionKeys
 }
 
-func (m *metastoreIndexStore) ListShards(key PartitionKey) []uint32 {
+func (m *metastoreIndexStore) ReadPartitionMeta(key index.PartitionKey) (*index.PartitionMeta, error) {
+	var meta index.PartitionMeta
+	err := m.db.boltdb.View(func(tx *bbolt.Tx) error {
+		bkt, err := getPartitionBucket(tx)
+		if err != nil {
+			return err
+		}
+		partBkt := bkt.Bucket([]byte(key))
+		if partBkt == nil {
+			return fmt.Errorf("partition meta not found for %s", key)
+		}
+		data := partBkt.Get([]byte("meta"))
+		err = json.Unmarshal(data, &meta)
+		if err != nil {
+			return errors.Wrapf(err, "failed to read partition meta for %s", key)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &meta, nil
+}
+
+func (m *metastoreIndexStore) ListShards(key index.PartitionKey) []uint32 {
 	shards := make([]uint32, 0)
 	err := m.db.boltdb.View(func(tx *bbolt.Tx) error {
 		bkt, err := getPartitionBucket(tx)
@@ -69,7 +96,7 @@ func (m *metastoreIndexStore) ListShards(key PartitionKey) []uint32 {
 	return shards
 }
 
-func (m *metastoreIndexStore) ListTenants(key PartitionKey, shard uint32) []string {
+func (m *metastoreIndexStore) ListTenants(key index.PartitionKey, shard uint32) []string {
 	tenants := make([]string, 0)
 	err := m.db.boltdb.View(func(tx *bbolt.Tx) error {
 		bkt, err := getPartitionBucket(tx)
@@ -101,7 +128,7 @@ func (m *metastoreIndexStore) ListTenants(key PartitionKey, shard uint32) []stri
 	return tenants
 }
 
-func (m *metastoreIndexStore) ListBlocks(key PartitionKey, shard uint32, tenant string) []*metastorev1.BlockMeta {
+func (m *metastoreIndexStore) ListBlocks(key index.PartitionKey, shard uint32, tenant string) []*metastorev1.BlockMeta {
 	blocks := make([]*metastorev1.BlockMeta, 0)
 	err := m.db.boltdb.View(func(tx *bbolt.Tx) error {
 		bkt, err := getPartitionBucket(tx)
@@ -141,7 +168,7 @@ func (m *metastoreIndexStore) ListBlocks(key PartitionKey, shard uint32, tenant 
 	return blocks
 }
 
-func (m *metastoreIndexStore) LoadBlock(key PartitionKey, shard uint32, tenant string, blockId string) *metastorev1.BlockMeta {
+func (m *metastoreIndexStore) LoadBlock(key index.PartitionKey, shard uint32, tenant string, blockId string) *metastorev1.BlockMeta {
 	var block *metastorev1.BlockMeta
 	err := m.db.boltdb.View(func(tx *bbolt.Tx) error {
 		bkt, err := getPartitionBucket(tx)

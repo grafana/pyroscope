@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/raft"
 	"google.golang.org/protobuf/types/known/anypb"
 
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftlogpb"
 )
 
@@ -41,30 +42,24 @@ func (m *Metastore) cleanupLoop() {
 }
 
 func (m *metastoreState) applyTruncate(_ *raft.Log, request *raftlogpb.TruncateCommand) (*anypb.Any, error) {
-	m.index.run(func() {
-		toDelete := make([]PartitionKey, 0)
-		for key, partition := range m.index.partitionMap {
-			if uint64(partition.ts.UnixMilli()) < request.Timestamp {
-				toDelete = append(toDelete, key)
-			}
-		}
-		var g sync.WaitGroup
-		g.Add(len(toDelete))
-		for _, key := range toDelete {
-			go truncatePartition(m.db, m.index, m.logger, &g, key)
-		}
-		g.Wait()
+	deleted := m.index.DeletePartitions(func(meta *index.PartitionMeta) bool {
+		return uint64(meta.StartTime().UnixMilli()) < request.Timestamp
 	})
+	var g sync.WaitGroup
+	g.Add(len(deleted))
+	for _, meta := range deleted {
+		go deleteFromDb(m.db, m.logger, &g, meta)
+	}
+	g.Wait()
 
 	return &anypb.Any{}, nil
 }
 
-func truncatePartition(
+func deleteFromDb(
 	db *boltdb,
-	index *index,
 	log log.Logger,
 	wg *sync.WaitGroup,
-	key PartitionKey,
+	meta *index.PartitionMeta,
 ) {
 	defer wg.Done()
 	var c int
@@ -86,14 +81,11 @@ func truncatePartition(
 		_ = level.Error(log).Log("msg", "failed to get metadata bucket", "err", err)
 		return
 	}
-	index.run(func() {
-		delete(index.partitionMap, key)
-		if err = bucket.Delete([]byte(key)); err != nil {
-			_ = level.Error(log).Log(
-				"msg", "failed to delete stale partition",
-				"err", err,
-				"partition", key)
-			return
-		}
-	})
+	if err = bucket.Delete([]byte(meta.Key)); err != nil {
+		_ = level.Error(log).Log(
+			"msg", "failed to delete stale partition",
+			"err", err,
+			"partition", meta.Key)
+		return
+	}
 }

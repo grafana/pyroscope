@@ -79,7 +79,7 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 				fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
 
 			// next we'll replace source blocks with compacted ones
-			err = m.index.replaceBlocks(job.Blocks, job.Shard, job.TenantId, jobUpdate.CompletedJob.Blocks)
+			err = m.index.ReplaceBlocks(job.Blocks, job.Shard, job.TenantId, jobUpdate.CompletedJob.Blocks)
 			if err != nil {
 				level.Error(m.logger).Log(
 					"msg", "failed to replace source blocks with compacted blocks",
@@ -252,7 +252,7 @@ func (m *metastoreState) convertJobs(jobs []*compactionpb.CompactionJob) (conver
 }
 
 func (m *metastoreState) findBlock(shard uint32, tenant string, blockId string) *metastorev1.BlockMeta {
-	return m.index.findBlock(shard, tenant, blockId)
+	return m.index.FindBlock(shard, tenant, blockId)
 }
 
 func (m *metastoreState) findJobsToAssign(jobCapacity int, raftLogIndex uint64, now int64) []*compactionpb.CompactionJob {

@@ -13,6 +13,7 @@ import (
 	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compactionpb"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
 )
 
 func Test_JobAssignments(t *testing.T) {
@@ -43,7 +44,7 @@ func Test_StatusUpdates_Success(t *testing.T) {
 	// add enough blocks to create 2 jobs
 	m := initState(t)
 	addLevel0Blocks(m, 40)
-	sourceBlocks, err := m.index.findBlocksInRange(0, math.MaxInt64, map[string]struct{}{"": {}})
+	sourceBlocks, err := m.index.FindBlocksInRange(0, math.MaxInt64, map[string]struct{}{"": {}})
 	require.NoError(t, err)
 	require.Equal(t, 40, len(sourceBlocks))
 	require.Equal(t, 2, len(m.compactionJobQueue.jobs))
@@ -84,8 +85,8 @@ func Test_StatusUpdates_Success(t *testing.T) {
 	require.Equalf(t, 0, len(m.compactionJobQueue.jobs), "compaction job queue should be empty")
 
 	// compacted blocks are added
-	blockOne := m.index.findBlock(0, "", statusUpdates[0].CompletedJob.Blocks[0].Id)
-	blockTwo := m.index.findBlock(0, "", statusUpdates[1].CompletedJob.Blocks[0].Id)
+	blockOne := m.index.FindBlock(0, "", statusUpdates[0].CompletedJob.Blocks[0].Id)
+	blockTwo := m.index.FindBlock(0, "", statusUpdates[1].CompletedJob.Blocks[0].Id)
 	require.NotNilf(t, blockOne, "compacted block not found in state")
 	require.NotNilf(t, blockTwo, "compacted block not found in state")
 	require.Equalf(t, uint32(1), blockOne.CompactionLevel, "compacted block has wrong level")
@@ -296,15 +297,9 @@ func Test_RemoveInvalidJobsFromStorage(t *testing.T) {
 	require.Equal(t, 1, len(m.compactionJobQueue.jobs), "there should be one job in the queue")
 
 	// delete all blocks, making the existing job invalid
-	for _, p := range m.index.partitionMap {
-		for sKey, s := range p.shards {
-			for tKey, t := range s.tenants {
-				for _, b := range t.blocks {
-					m.index.deleteBlock(sKey, tKey, b.Id)
-				}
-			}
-		}
-	}
+	m.index.DeletePartitions(func(meta *index.PartitionMeta) bool {
+		return true
+	})
 
 	// try to assign the job
 	resp, err := m.pollCompactionJobs(&compactorv1.PollCompactionJobsRequest{JobCapacity: 1}, 20, 20)
