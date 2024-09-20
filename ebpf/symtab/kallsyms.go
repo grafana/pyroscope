@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"sort"
 	"strconv"
 )
 
@@ -94,5 +95,9 @@ func NewKallsymsFromData(kallsyms []byte) (*SymbolTab, error) {
 	if allZeros {
 		return NewSymbolTab(nil), nil
 	}
+	// kallsyms maybe unsorted when bpf/modules are loaded from userspace after kernel boot.
+	sort.Slice(syms, func(i, j int) bool {
+		return syms[i].Start < syms[j].Start
+	})
 	return NewSymbolTab(syms), nil
 }
