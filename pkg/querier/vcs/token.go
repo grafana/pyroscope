@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	sessionCookieName = "GitSession"
+	sessionCookieName = "pyroscope_git_session"
 )
 
 type gitSessionTokenCookie struct {
