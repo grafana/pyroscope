@@ -6,7 +6,7 @@ datasources:
     name: Pyroscope
     url: http://pyroscope:4040
     jsonData:
-      keepCookies: [GitSession]
+      keepCookies: [pyroscope_git_session]
     # Uncomment these if using with Grafana Cloud
     # basicAuth: true
     # basicAuthUser: '123456'
