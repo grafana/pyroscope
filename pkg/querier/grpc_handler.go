@@ -21,6 +21,5 @@ func NewGRPCHandler(svc QuerierSvc) connectgrpc.GRPCHandler {
 	mux.Handle(vcsv1connect.NewVCSServiceHandler(svc, connectapi.DefaultHandlerOptions()...))
 
 	httpMiddleware := httputil.K6Middleware()
-
 	return connectgrpc.NewHandler(httpMiddleware.Wrap(mux))
 }
