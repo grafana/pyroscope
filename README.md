@@ -10,11 +10,12 @@
 [![DockerHub](https://img.shields.io/docker/pulls/grafana/pyroscope.svg)](https://hub.docker.com/r/grafana/pyroscope)
 [![GoDoc](https://godoc.org/github.com/grafana/pyroscope?status.svg)](https://godoc.org/github.com/grafana/pyroscope)
 
-## 🎉 **Announcement: Explore Profiles UI is Here!**
+## 🎉 **Announcement: The new Explore Profiles UI is here!**
 
 We are thrilled to announce the launch of the **Explore Profiles UI**, a brand-new way to explore and analyze your profiling data—now available as part of the Grafana Explore Apps suite! This new app brings you a **queryless**, **intuitive** experience for visualizing your profiling data, simplifying the entire process without the need to write complex queries.
 
-[ insert video demo here ]
+
+https://github.com/user-attachments/assets/fe560c4d-4729-4659-b80d-ebc4f57da940
 
 ## What is Grafana Pyroscope?
 
@@ -62,12 +63,12 @@ For more documentation on how to configure Pyroscope server, see [our server doc
 ## **Quick Start: Run Explore Profiles UI in Grafana**
 
 ### Grafana Cloud
-The app should be installed auomatically!
+The app UI and server are both installed and running auomatically -- just start sending data!
 
 ### Grafana OSS
 You can run the Explore profiles UI in Grafana by installing the plugin from the [Grafana Plugin Directory](https://grafana.com/grafana/plugins/grafana-pyroscope-app/) 
 
-For more information, check out the [Explore Profiles README](https://github.com/grafana/explore-profiles).
+For more information, check out the [Explore Profiles README](https://github.com/grafana/explore-profiles)
 
 ## Documentation
 
