@@ -237,6 +237,12 @@ If we scroll down to compare the two time periods side by side we can see that t
 
 <!-- INTERACTIVE page step4.md START -->
 
+{{<docs/ignore>}}
+{{< admonition type="tip" >}}
+Unfortunately, due to a bug within the Sandbox environment, the profile explorer app is currently unavailable. We are working on a fix and will update this tutorial once resolved. If you would like to try out the profile explorer app, you can run the example locally on your machine.
+{{< /admonition >}}
+{{</docs/ignore>}}
+
 ## Integrating Pyroscope with Grafana
 
 As part of the `docker-compose.yml` file, we have included a Grafana container that's pre-configured with the Pyroscope plugin:
