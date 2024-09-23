@@ -40,7 +40,7 @@ Pyroscope consists of three main components:
 
 ## [Pyroscope Live Demo](https://play.grafana.org/a/grafana-pyroscope-app/)
 
-[![Pyroscope GIF Demo](https://user-images.githubusercontent.com/23323466/143324845-16ff72df-231e-412d-bd0a-38ef2e09cba8.gif)](https://demo.pyroscope.io/)
+[![Pyroscope GIF Demo]([https://user-images.githubusercontent.com/23323466/143324845-16ff72df-231e-412d-bd0a-38ef2e09cba8.gif](https://github.com/user-attachments/assets/4d237488-a37b-4d04-ba2b-b353ee1394fe))](https://play.grafana.org/a/grafana-pyroscope-app/)
 
 ---
 
