@@ -1,7 +1,7 @@
 ---
 description: Learn how to get started with Pyroscope using a simple Ride share app.
 menuTitle: Ride share tutorial
-title: Rid share tutorial with Pyroscope
+title: Ride share tutorial with Pyroscope
 weight: 250
 killercoda:
   title: Ride share tutorial
