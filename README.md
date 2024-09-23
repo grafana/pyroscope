@@ -44,7 +44,7 @@ Pyroscope consists of three main components:
 
 ---
 
-## **Quick Start: Run Pyroscope server and UI Locally**
+## **Quick Start: Run Pyroscope server locally**
 
 ### Homebrew
 ```sh
@@ -60,6 +60,8 @@ docker run -it -p 4040:4040 grafana/pyroscope
 For more documentation on how to configure Pyroscope server, see [our server documentation](https://grafana.com/docs/pyroscope/latest/configure-server/).
 
 ## **Quick Start: Run Explore Profiles UI in Grafana**
+
+<img width="1728" alt="image" src="https://github.com/user-attachments/assets/67691443-6450-45b9-8064-f41056c88ade">
 
 ### Grafana Cloud
 The app UI and server are both installed and running auomatically -- just start sending data!
