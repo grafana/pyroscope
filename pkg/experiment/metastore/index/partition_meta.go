@@ -3,10 +3,10 @@ package index
 import "time"
 
 type PartitionMeta struct {
-	Key      PartitionKey  `json:"key"`
-	Ts       time.Time     `json:"ts"`
-	Duration time.Duration `json:"duration"`
-	Tenants  []string      `json:"tenants"`
+	Key      PartitionKey
+	Ts       time.Time
+	Duration time.Duration
+	Tenants  []string
 
 	tenantMap map[string]struct{}
 }
