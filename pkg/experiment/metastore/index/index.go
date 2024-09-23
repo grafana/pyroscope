@@ -16,6 +16,19 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 )
 
+// NewIndex initializes a new metastore index.
+//
+// The index provides access to block metadata. The data is partitioned by time, shard and tenant. Partition identifiers
+// contain the time period referenced by partitions, e.g., "20240923T16.1h" refers to a partition for the 1-hour period
+// between 2024-09-23T16:00:00.000Z and 2024-09-23T16:59:59.999Z.
+//
+// Partitions are mostly transparent for the end user, though PartitionMeta is at times used externally. Partition
+// durations are configurable (at application level).
+//
+// The index requires a backing Store for loading data in memory. Data is loaded directly via LoadPartitions() or when
+// looking up blocks with FindBlock() or FindBlocksInRange().
+//
+// Data can be unloaded via StartCleanupLoop() which is meant to be called by the index owner and ran in a goroutine.
 func NewIndex(store Store, logger log.Logger, cfg *Config) *Index {
 	return &Index{
 		loadedPartitions: make(map[PartitionKey]*indexPartition),
@@ -26,7 +39,7 @@ func NewIndex(store Store, logger log.Logger, cfg *Config) *Index {
 	}
 }
 
-// LoadPartitions reads all partitions from the backing store and loads the most recent ones in memory.
+// LoadPartitions reads all partitions from the backing store and loads the recent ones in memory.
 func (i *Index) LoadPartitions() {
 	i.partitionMu.Lock()
 	defer i.partitionMu.Unlock()
@@ -50,6 +63,8 @@ func (i *Index) LoadPartitions() {
 	i.sortPartitions()
 }
 
+// ForEachPartition executes the given function concurrently for each partition. It will be called for all partitions,
+// regardless if they are fully loaded in memory or not.
 func (i *Index) ForEachPartition(ctx context.Context, fn func(meta *PartitionMeta)) {
 	i.partitionMu.Lock()
 	defer i.partitionMu.Unlock()
@@ -112,6 +127,12 @@ func (i *Index) getOrLoadPartition(meta *PartitionMeta) (*indexPartition, error)
 	return p, nil
 }
 
+// GetPartitionKey creates a partition key for a block. It is meant to be used for newly inserted blocks, as it relies
+// on the index's currently configured partition duration to create the key.
+//
+// FIXME aleks-p: Using this for existing blocks following a partition duration change will produce an invalid key.
+//  - option 1: create a lookup table (block id -> partition key)
+//  - option 2: scan through existing partitions for candidates
 func (i *Index) GetPartitionKey(blockId string) PartitionKey {
 	t := ulid.Time(ulid.MustParse(blockId).Time()).UTC()
 
@@ -134,6 +155,7 @@ func (i *Index) GetPartitionKey(blockId string) PartitionKey {
 	return PartitionKey(b.String())
 }
 
+// FindPartitionMeta retrieves the partition meta for the given key.
 func (i *Index) FindPartitionMeta(key PartitionKey) *PartitionMeta {
 	loaded, ok := i.loadedPartitions[key]
 	if ok {
@@ -147,14 +169,17 @@ func (i *Index) FindPartitionMeta(key PartitionKey) *PartitionMeta {
 	return nil
 }
 
+// InsertBlock is the primary way for adding blocks to the index.
 func (i *Index) InsertBlock(b *metastorev1.BlockMeta) error {
 	i.partitionMu.Lock()
 	defer i.partitionMu.Unlock()
 
-	return i.insertBlockInternal(b)
+	return i.insertBlock(b)
 }
 
-func (i *Index) insertBlockInternal(b *metastorev1.BlockMeta) error {
+// insertBlock is the underlying implementation for inserting blocks. It is the caller's responsibility to enforce safe
+// concurrent access. The method will create a new partition if needed.
+func (i *Index) insertBlock(b *metastorev1.BlockMeta) error {
 	meta, err := i.GetOrCreatePartitionMeta(b)
 	if err != nil {
 		return err
@@ -191,6 +216,8 @@ func (i *Index) insertBlockInternal(b *metastorev1.BlockMeta) error {
 	return nil
 }
 
+// GetOrCreatePartitionMeta makes the mapping between blocks and partitions. It may assign the block to an existing
+// partition or create a new partition altogether. Meant to be used only in the context of new blocks.
 func (i *Index) GetOrCreatePartitionMeta(b *metastorev1.BlockMeta) (*PartitionMeta, error) {
 	key := i.GetPartitionKey(b.Id)
 	meta := i.FindPartitionMeta(key)
@@ -222,36 +249,8 @@ func (i *Index) GetOrCreatePartitionMeta(b *metastorev1.BlockMeta) (*PartitionMe
 	return meta, nil
 }
 
-func (i *Index) deleteBlock(shard uint32, tenant string, blockId string) {
-	key := i.GetPartitionKey(blockId)
-
-	p, ok := i.loadedPartitions[key]
-	if !ok {
-		return
-	}
-
-	p.shardsMu.Lock()
-	defer p.shardsMu.Unlock()
-
-	s, ok := p.shards[shard]
-	if !ok {
-		return
-	}
-
-	s.tenantsMu.Lock()
-	defer s.tenantsMu.Unlock()
-
-	t, ok := s.tenants[tenant]
-	if !ok {
-		return
-	}
-
-	t.blocksMu.Lock()
-	defer t.blocksMu.Unlock()
-
-	delete(t.blocks, blockId)
-}
-
+// FindBlock tries to retrieve an existing block from the index. It will load the corresponding partition if it is not
+// already loaded. Returns nil if the block cannot be found.
 func (i *Index) FindBlock(shardNum uint32, tenant string, id string) *metastorev1.BlockMeta {
 	key := i.GetPartitionKey(id)
 
@@ -289,6 +288,15 @@ func (i *Index) FindBlock(shardNum uint32, tenant string, id string) *metastorev
 	return b
 }
 
+// FindBlocksInRange retrieves all blocks that might contain data for the given time range and tenants.
+//
+// It is not enough to scan for partition keys that fall in the given time interval. Partitions are built on top of
+// block identifiers which refer to the moment a block was created and not to the timestamps of the profiles contained
+// within the block (min_time, max_time). This method works around this by including blocks from adjacent partitions.
+//
+// FIXME aleks-p: A large query could cause a large number of partitions to be loaded into memory
+//  - consider loading partitions in parallel
+//  - consider capping the number of loaded partitions
 func (i *Index) FindBlocksInRange(start, end int64, tenants map[string]struct{}) ([]*metastorev1.BlockMeta, error) {
 	i.partitionMu.Lock()
 	defer i.partitionMu.Unlock()
@@ -366,12 +374,14 @@ func (i *Index) collectTenantBlocks(p *indexPartition, tenants map[string]struct
 	return blocks
 }
 
+// ReplaceBlocks removes source blocks from the index and inserts replacement blocks into the index. The intended usage
+// is for block compaction. The replacement blocks could be added to the same or a different partition.
 func (i *Index) ReplaceBlocks(sources []string, sourceShard uint32, sourceTenant string, replacements []*metastorev1.BlockMeta) error {
 	i.partitionMu.Lock()
 	defer i.partitionMu.Unlock()
 
 	for _, newBlock := range replacements {
-		err := i.insertBlockInternal(newBlock)
+		err := i.insertBlock(newBlock)
 		if err != nil {
 			return err
 		}
@@ -384,6 +394,38 @@ func (i *Index) ReplaceBlocks(sources []string, sourceShard uint32, sourceTenant
 	return nil
 }
 
+// deleteBlock deletes a block from the index. It is the caller's responsibility to enforce safe concurrent access.
+func (i *Index) deleteBlock(shard uint32, tenant string, blockId string) {
+	key := i.GetPartitionKey(blockId)
+
+	p, ok := i.loadedPartitions[key]
+	if !ok {
+		return
+	}
+
+	p.shardsMu.Lock()
+	defer p.shardsMu.Unlock()
+
+	s, ok := p.shards[shard]
+	if !ok {
+		return
+	}
+
+	s.tenantsMu.Lock()
+	defer s.tenantsMu.Unlock()
+
+	t, ok := s.tenants[tenant]
+	if !ok {
+		return
+	}
+
+	t.blocksMu.Lock()
+	defer t.blocksMu.Unlock()
+
+	delete(t.blocks, blockId)
+}
+
+// StartCleanupLoop unloads partitions from memory at an interval.
 func (i *Index) StartCleanupLoop(ctx context.Context) {
 	t := time.NewTicker(i.config.CleanupInterval)
 	defer func() {
@@ -399,6 +441,7 @@ func (i *Index) StartCleanupLoop(ctx context.Context) {
 	}
 }
 
+// unloadPartitions removes all loaded partitions that were loaded before the given threshold.
 func (i *Index) unloadPartitions(unloadThreshold time.Time) {
 	i.partitionMu.Lock()
 	defer i.partitionMu.Unlock()
