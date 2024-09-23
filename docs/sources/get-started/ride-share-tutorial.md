@@ -18,7 +18,7 @@ killercoda:
 
 # Ride share tutorial with Pyroscope
 
-This tutorial demonstrates a basic use case of Pyroscope by profiling a "Ride Share" application. In this example, you will learn how:
+This tutorial demonstrates a basic use case of Pyroscope by profiling a "Ride Share" application. In this example, you will learn:
 
 - How a application is instrumented with Pyroscope. Including techniques for dynamically tagging functions.
 - View the resulting profile data in the Pyroscope UI.
@@ -54,14 +54,14 @@ In this tutorial, you will profile a simple "Ride Share" application. The applic
 - `/car`     : calls the `order_car(search_radius)` function to order a car
 - `/scooter` : calls the `order_scooter(search_radius)` function to order a scooter
 
-To simulate a highly available and distributed system, server is deployed on three distinct servers in 3 different regions: 
+To simulate a highly available and distributed system, the app is deployed on three distinct servers in 3 different regions: 
 - us-east
 - eu-north
 - ap-south
 
 This is simulated by running three instances of the server in Docker containers. Each server instance is tagged with the region it represents.
 
-What is example will do is send mock-load to the 3 servers as well as their respective endpoints. This will allow us to see how the application is performing per region and per vehicle type.
+In this scenario a load generator will send mock-load to the 3 servers as well as their respective endpoints. This will allow us to see how the application is performing per region and per vehicle type.
 
 {{<docs/ignore>}}
 {{< admonition type="tip" >}}
