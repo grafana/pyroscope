@@ -255,6 +255,10 @@ self_profiling:
   # CLI flag: -self-profiling.block-profile-rate
   [block_profile_rate: <int> | default = 5]
 
+  # Read k6 labels from request headers and set them as dynamic profile tags.
+  # CLI flag: -self-profiling.use-k6-middleware
+  [use_k6_middleware: <boolean> | default = false]
+
 # When set to true, incoming HTTP requests must specify tenant ID in HTTP
 # X-Scope-OrgId header. When set to false, tenant ID anonymous is used instead.
 # CLI flag: -auth.multitenancy-enabled
