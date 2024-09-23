@@ -21,7 +21,7 @@ func getTimeLayout(d time.Duration) string {
 
 type PartitionKey string
 
-func (k PartitionKey) parse() (t time.Time, d time.Duration, err error) {
+func (k PartitionKey) Parse() (t time.Time, d time.Duration, err error) {
 	parts := strings.Split(string(k), ".")
 	if len(parts) != 2 {
 		return time.Time{}, 0, fmt.Errorf("invalid partition key: %s", k)
@@ -38,11 +38,11 @@ func (k PartitionKey) compare(other PartitionKey) int {
 	if k == other {
 		return 0
 	}
-	tSelf, _, err := k.parse()
+	tSelf, _, err := k.Parse()
 	if err != nil {
 		return strings.Compare(string(k), string(other))
 	}
-	tOther, _, err := other.parse()
+	tOther, _, err := other.Parse()
 	if err != nil {
 		return strings.Compare(string(k), string(other))
 	}
@@ -50,7 +50,7 @@ func (k PartitionKey) compare(other PartitionKey) int {
 }
 
 func (k PartitionKey) inRange(start, end int64) bool {
-	pStart, d, err := k.parse()
+	pStart, d, err := k.Parse()
 	if err != nil {
 		return false
 	}

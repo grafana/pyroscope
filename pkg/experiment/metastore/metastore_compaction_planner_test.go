@@ -11,6 +11,7 @@ import (
 	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
 	"github.com/grafana/pyroscope/pkg/util"
 )
 
@@ -64,7 +65,7 @@ func initState(tb testing.TB) *metastoreState {
 	err := db.open(false)
 	require.NoError(tb, err)
 
-	m := newMetastoreState(util.Logger, db, reg, &config.Compaction)
+	m := newMetastoreState(util.Logger, db, reg, &config.Compaction, &index.DefaultConfig)
 	require.NotNil(tb, m)
 	return m
 }
@@ -86,7 +87,7 @@ func getQueueLen(m *metastoreState, shard int, tenant string, level int) int {
 }
 
 func verifyCompactionState(t *testing.T, m *metastoreState) {
-	stateFromDb := newMetastoreState(util.Logger, m.db, prometheus.DefaultRegisterer, m.compactionConfig)
+	stateFromDb := newMetastoreState(util.Logger, m.db, prometheus.DefaultRegisterer, m.compactionConfig, &index.DefaultConfig)
 	err := m.db.boltdb.View(func(tx *bbolt.Tx) error {
 		return stateFromDb.restoreCompactionPlan(tx)
 	})

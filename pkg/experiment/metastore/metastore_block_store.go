@@ -14,8 +14,8 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
 )
 
-type metastoreIndexStore struct {
-	db *boltdb
+type indexStore struct {
+	db *bbolt.DB
 }
 
 const (
@@ -36,9 +36,9 @@ func getPartitionBucket(tx *bbolt.Tx) (*bbolt.Bucket, error) {
 	return bkt, nil
 }
 
-func (m *metastoreIndexStore) ListPartitions() []index.PartitionKey {
+func (m *indexStore) ListPartitions() []index.PartitionKey {
 	partitionKeys := make([]index.PartitionKey, 0)
-	err := m.db.boltdb.View(func(tx *bbolt.Tx) error {
+	err := m.db.View(func(tx *bbolt.Tx) error {
 		bkt, err := getPartitionBucket(tx)
 		if err != nil {
 			return errors.Wrap(err, "root partition bucket missing")
@@ -55,9 +55,9 @@ func (m *metastoreIndexStore) ListPartitions() []index.PartitionKey {
 	return partitionKeys
 }
 
-func (m *metastoreIndexStore) ReadPartitionMeta(key index.PartitionKey) (*index.PartitionMeta, error) {
+func (m *indexStore) ReadPartitionMeta(key index.PartitionKey) (*index.PartitionMeta, error) {
 	var meta index.PartitionMeta
-	err := m.db.boltdb.View(func(tx *bbolt.Tx) error {
+	err := m.db.View(func(tx *bbolt.Tx) error {
 		bkt, err := getPartitionBucket(tx)
 		if err != nil {
 			return errors.Wrap(err, "root partition bucket missing")
@@ -80,9 +80,9 @@ func (m *metastoreIndexStore) ReadPartitionMeta(key index.PartitionKey) (*index.
 	return &meta, nil
 }
 
-func (m *metastoreIndexStore) ListShards(key index.PartitionKey) []uint32 {
+func (m *indexStore) ListShards(key index.PartitionKey) []uint32 {
 	shards := make([]uint32, 0)
-	err := m.db.boltdb.View(func(tx *bbolt.Tx) error {
+	err := m.db.View(func(tx *bbolt.Tx) error {
 		bkt, err := getPartitionBucket(tx)
 		if err != nil {
 			return errors.Wrap(err, "root partition bucket missing")
@@ -102,9 +102,9 @@ func (m *metastoreIndexStore) ListShards(key index.PartitionKey) []uint32 {
 	return shards
 }
 
-func (m *metastoreIndexStore) ListTenants(key index.PartitionKey, shard uint32) []string {
+func (m *indexStore) ListTenants(key index.PartitionKey, shard uint32) []string {
 	tenants := make([]string, 0)
-	err := m.db.boltdb.View(func(tx *bbolt.Tx) error {
+	err := m.db.View(func(tx *bbolt.Tx) error {
 		bkt, err := getPartitionBucket(tx)
 		if err != nil {
 			return errors.Wrap(err, "root partition bucket missing")
@@ -134,9 +134,9 @@ func (m *metastoreIndexStore) ListTenants(key index.PartitionKey, shard uint32) 
 	return tenants
 }
 
-func (m *metastoreIndexStore) ListBlocks(key index.PartitionKey, shard uint32, tenant string) []*metastorev1.BlockMeta {
+func (m *indexStore) ListBlocks(key index.PartitionKey, shard uint32, tenant string) []*metastorev1.BlockMeta {
 	blocks := make([]*metastorev1.BlockMeta, 0)
-	err := m.db.boltdb.View(func(tx *bbolt.Tx) error {
+	err := m.db.View(func(tx *bbolt.Tx) error {
 		bkt, err := getPartitionBucket(tx)
 		if err != nil {
 			return errors.Wrap(err, "root partition bucket missing")

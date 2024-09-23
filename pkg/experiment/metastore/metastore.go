@@ -27,6 +27,7 @@ import (
 	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftleader"
 )
 
@@ -51,6 +52,7 @@ type Config struct {
 	Compaction        CompactionConfig  `yaml:"compaction_config"`
 	MinReadyDuration  time.Duration     `yaml:"min_ready_duration" category:"advanced"`
 	DLQRecoveryPeriod time.Duration     `yaml:"dlq_recovery_period" category:"advanced"`
+	Index            index.Config      `yaml:"index_config"`
 }
 
 type RaftConfig struct {
@@ -75,6 +77,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.DurationVar(&cfg.DLQRecoveryPeriod, prefix+"dlq-recovery-period", 15*time.Second, "Period for DLQ recovery loop.")
 	cfg.Raft.RegisterFlagsWithPrefix(prefix+"raft.", f)
 	cfg.Compaction.RegisterFlagsWithPrefix(prefix+"compaction.", f)
+	cfg.Index.RegisterFlagsWithPrefix(prefix+"index.", f)
 }
 
 func (cfg *Config) Validate() error {
@@ -154,7 +157,7 @@ func New(config Config, limits Limits, logger log.Logger, reg prometheus.Registe
 		client:  client,
 	}
 	m.leaderhealth = raftleader.NewRaftLeaderHealthObserver(logger, raftleader.NewMetrics(reg))
-	m.state = newMetastoreState(logger, m.db, m.reg, &config.Compaction)
+	m.state = newMetastoreState(logger, m.db, m.reg, &config.Compaction, &config.Index)
 	m.dlq = dlq.NewRecovery(dlq.RecoveryConfig{
 		Period: config.DLQRecoveryPeriod,
 	}, logger, m, bucket)

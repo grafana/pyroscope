@@ -1,6 +1,7 @@
 package index
 
 import (
+	"flag"
 	"sync"
 	"time"
 
@@ -9,15 +10,33 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 )
 
+var DefaultConfig = Config{
+	PartitionDuration: time.Hour,
+	PartitionTTL:      4 * time.Hour,
+	CleanupInterval:   5 * time.Minute,
+}
+
+type Config struct {
+	PartitionDuration time.Duration `yaml:"partition_duration"`
+	PartitionTTL      time.Duration `yaml:"partition_ttl"`
+	CleanupInterval   time.Duration `yaml:"cleanup_interval"`
+}
+
+func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
+	f.DurationVar(&cfg.PartitionDuration, prefix+"partition-duration", DefaultConfig.PartitionDuration, "")
+	f.DurationVar(&cfg.PartitionTTL, prefix+"partition-ttl", DefaultConfig.PartitionTTL, "")
+	f.DurationVar(&cfg.CleanupInterval, prefix+"cleanup-interval", DefaultConfig.CleanupInterval, "")
+}
+
 type Index struct {
+	config *Config
+
 	partitionMu      sync.Mutex
 	loadedPartitions map[PartitionKey]*indexPartition
 	allPartitions    []*PartitionMeta
 
 	store  Store
 	logger log.Logger
-
-	partitionDuration time.Duration
 }
 
 type indexPartition struct {

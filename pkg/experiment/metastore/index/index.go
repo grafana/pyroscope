@@ -16,13 +16,13 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 )
 
-func NewIndex(store Store, logger log.Logger) *Index {
+func NewIndex(store Store, logger log.Logger, cfg *Config) *Index {
 	return &Index{
-		loadedPartitions:  make(map[PartitionKey]*indexPartition),
-		allPartitions:     make([]*PartitionMeta, 0),
-		store:             store,
-		logger:            logger,
-		partitionDuration: time.Hour,
+		loadedPartitions: make(map[PartitionKey]*indexPartition),
+		allPartitions:    make([]*PartitionMeta, 0),
+		store:            store,
+		logger:           logger,
+		config:           cfg,
 	}
 }
 
@@ -40,7 +40,7 @@ func (i *Index) LoadPartitions() {
 			continue
 		}
 		i.allPartitions = append(i.allPartitions, pMeta)
-		if pMeta.Ts.Add(24 * time.Hour).Before(time.Now()) {
+		if pMeta.Ts.Add(i.config.PartitionTTL).Before(time.Now()) {
 			// too old, will load on demand
 			continue
 		}
@@ -85,33 +85,27 @@ func (i *Index) getOrLoadPartition(meta *PartitionMeta) (*indexPartition, error)
 	p, ok := i.loadedPartitions[meta.Key]
 	if !ok {
 		level.Info(i.logger).Log("msg", "loading partition", "key", meta.Key)
-		p := &indexPartition{
+		p = &indexPartition{
 			meta:     meta,
 			shards:   make(map[uint32]*indexShard),
 			loadedAt: time.Now(),
 		}
 		i.loadedPartitions[meta.Key] = p
 		for _, s := range i.store.ListShards(meta.Key) {
-			p.shardsMu.Lock()
 			sh := &indexShard{
 				tenants: make(map[string]*indexTenant),
 			}
 			p.shards[s] = sh
 
 			for _, t := range i.store.ListTenants(meta.Key, s) {
-				sh.tenantsMu.Lock()
 				te := &indexTenant{
 					blocks: make(map[string]*metastorev1.BlockMeta),
 				}
-				te.blocksMu.Lock()
 				for _, b := range i.store.ListBlocks(meta.Key, s, t) {
 					te.blocks[b.Id] = b
 				}
-				te.blocksMu.Unlock()
 				sh.tenants[t] = te
-				sh.tenantsMu.Unlock()
 			}
-			p.shardsMu.Unlock()
 		}
 	}
 
@@ -127,12 +121,13 @@ func (i *Index) GetPartitionKey(blockId string) PartitionKey {
 	year, month, day := t.Date()
 	b.WriteString(fmt.Sprintf("%04d%02d%02d", year, month, day))
 
-	if i.partitionDuration < 24*time.Hour {
-		hour := (t.Hour() / int(i.partitionDuration.Hours())) * int(i.partitionDuration.Hours())
+	partitionDuration := i.config.PartitionDuration
+	if partitionDuration < 24*time.Hour {
+		hour := (t.Hour() / int(partitionDuration.Hours())) * int(partitionDuration.Hours())
 		b.WriteString(fmt.Sprintf("T%02d", hour))
 	}
 
-	mDuration := model.Duration(i.partitionDuration)
+	mDuration := model.Duration(partitionDuration)
 	b.WriteString(".")
 	b.WriteString(mDuration.String())
 
@@ -201,7 +196,7 @@ func (i *Index) GetOrCreatePartitionMeta(b *metastorev1.BlockMeta) (*PartitionMe
 	meta := i.FindPartitionMeta(key)
 
 	if meta == nil {
-		ts, duration, err := key.parse()
+		ts, duration, err := key.Parse()
 		if err != nil {
 			return nil, err
 		}
@@ -259,13 +254,14 @@ func (i *Index) deleteBlock(shard uint32, tenant string, blockId string) {
 
 func (i *Index) FindBlock(shardNum uint32, tenant string, id string) *metastorev1.BlockMeta {
 	key := i.GetPartitionKey(id)
+
+	i.partitionMu.Lock()
+	defer i.partitionMu.Unlock()
+
 	meta := i.FindPartitionMeta(key)
 	if meta == nil {
 		return nil
 	}
-
-	i.partitionMu.Lock()
-	defer i.partitionMu.Unlock()
 
 	p, err := i.getOrLoadPartition(meta)
 	if err != nil {
@@ -313,11 +309,11 @@ func (i *Index) FindBlocksInRange(start, end int64, tenants map[string]struct{})
 			tenantBlocks := i.collectTenantBlocks(p, tenants)
 			blocks = append(blocks, tenantBlocks...)
 		} else if firstPartitionIdx != -1 {
-			lastPartitionIdx = idx
+			lastPartitionIdx = idx - 1
 		}
 	}
 
-	if firstPartitionIdx > 1 {
+	if firstPartitionIdx > 0 {
 		meta := i.allPartitions[firstPartitionIdx-1]
 		p, err := i.getOrLoadPartition(meta)
 		if err != nil {
@@ -328,7 +324,7 @@ func (i *Index) FindBlocksInRange(start, end int64, tenants map[string]struct{})
 		blocks = append(blocks, tenantBlocks...)
 	}
 
-	if lastPartitionIdx > 1 && lastPartitionIdx < len(i.allPartitions)-1 {
+	if lastPartitionIdx > -1 && lastPartitionIdx < len(i.allPartitions)-1 {
 		meta := i.allPartitions[lastPartitionIdx+1]
 		p, err := i.getOrLoadPartition(meta)
 		if err != nil {
@@ -389,7 +385,7 @@ func (i *Index) ReplaceBlocks(sources []string, sourceShard uint32, sourceTenant
 }
 
 func (i *Index) StartCleanupLoop(ctx context.Context) {
-	t := time.NewTicker(10 * time.Minute)
+	t := time.NewTicker(i.config.CleanupInterval)
 	defer func() {
 		t.Stop()
 	}()
@@ -398,7 +394,7 @@ func (i *Index) StartCleanupLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-t.C:
-			i.unloadPartitions(time.Now().Add(-24 * time.Hour))
+			i.unloadPartitions(time.Now().Add(-i.config.PartitionTTL))
 		}
 	}
 }
