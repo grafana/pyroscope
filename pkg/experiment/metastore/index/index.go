@@ -18,7 +18,7 @@ import (
 
 func NewIndex(store Store, logger log.Logger) *Index {
 	return &Index{
-		loadedPartitions:  make(map[PartitionKey]*fullPartition),
+		loadedPartitions:  make(map[PartitionKey]*indexPartition),
 		allPartitions:     make([]*PartitionMeta, 0),
 		store:             store,
 		logger:            logger,
@@ -31,7 +31,7 @@ func (i *Index) LoadPartitions() {
 	i.partitionMu.Lock()
 	defer i.partitionMu.Unlock()
 
-	i.loadedPartitions = make(map[PartitionKey]*fullPartition)
+	i.loadedPartitions = make(map[PartitionKey]*indexPartition)
 	i.allPartitions = make([]*PartitionMeta, 0)
 	for _, key := range i.store.ListPartitions() {
 		pMeta, err := i.store.ReadPartitionMeta(key)
@@ -67,26 +67,28 @@ func (i *Index) ForEachPartition(ctx context.Context, fn func(meta *PartitionMet
 	}
 }
 
-func (i *Index) getOrCreatePartition(meta *PartitionMeta) *fullPartition {
+func (i *Index) getOrCreatePartition(meta *PartitionMeta) *indexPartition {
 	p, ok := i.loadedPartitions[meta.Key]
 	if !ok {
-		p = &fullPartition{
-			meta:   meta,
-			shards: make(map[uint32]*indexShard),
+		level.Info(i.logger).Log("msg", "creating new partition", "key", meta.Key)
+		p = &indexPartition{
+			meta:     meta,
+			shards:   make(map[uint32]*indexShard),
+			loadedAt: time.Now(),
 		}
 		i.loadedPartitions[meta.Key] = p
-		i.allPartitions = append(i.allPartitions, meta)
-		i.sortPartitions()
 	}
 	return p
 }
 
-func (i *Index) getOrLoadPartition(meta *PartitionMeta) (*fullPartition, error) {
+func (i *Index) getOrLoadPartition(meta *PartitionMeta) (*indexPartition, error) {
 	p, ok := i.loadedPartitions[meta.Key]
 	if !ok {
-		p := &fullPartition{
-			meta:   meta,
-			shards: make(map[uint32]*indexShard),
+		level.Info(i.logger).Log("msg", "loading partition", "key", meta.Key)
+		p := &indexPartition{
+			meta:     meta,
+			shards:   make(map[uint32]*indexShard),
+			loadedAt: time.Now(),
 		}
 		i.loadedPartitions[meta.Key] = p
 		for _, s := range i.store.ListShards(meta.Key) {
@@ -211,6 +213,7 @@ func (i *Index) GetOrCreatePartitionMeta(b *metastorev1.BlockMeta) (*PartitionMe
 			tenantMap: make(map[string]struct{}),
 		}
 		i.allPartitions = append(i.allPartitions, meta)
+		i.sortPartitions()
 	}
 
 	if b.TenantId != "" {
@@ -268,15 +271,24 @@ func (i *Index) FindBlock(shardNum uint32, tenant string, id string) *metastorev
 	if err != nil {
 		return nil
 	}
-	s := i.getShard(p, shardNum)
+
+	p.shardsMu.Lock()
+	defer p.shardsMu.Unlock()
+	s, _ := p.shards[shardNum]
 	if s == nil {
 		return nil
 	}
-	t := i.getTenant(s, tenant)
+
+	s.tenantsMu.Lock()
+	defer s.tenantsMu.Unlock()
+	t, _ := s.tenants[tenant]
 	if t == nil {
 		return nil
 	}
-	b := i.getBlock(t, id)
+
+	t.blocksMu.Lock()
+	defer t.blocksMu.Unlock()
+	b, _ := t.blocks[id]
 
 	return b
 }
@@ -330,32 +342,13 @@ func (i *Index) FindBlocksInRange(start, end int64, tenants map[string]struct{})
 	return blocks, nil
 }
 
-func (i *Index) DeletePartitions(predicate func(*PartitionMeta) bool) []*PartitionMeta {
-	i.partitionMu.Lock()
-	defer i.partitionMu.Unlock()
-
-	var deleted []*PartitionMeta
-	n := 0
-	for _, p := range i.allPartitions {
-		if predicate(p) {
-			deleted = append(deleted, p)
-			delete(i.loadedPartitions, p.Key)
-		} else {
-			i.allPartitions[n] = p
-			n++
-		}
-	}
-	i.allPartitions = i.allPartitions[:n]
-	return deleted
-}
-
 func (i *Index) sortPartitions() {
 	slices.SortFunc(i.allPartitions, func(a, b *PartitionMeta) int {
 		return a.Key.compare(b.Key)
 	})
 }
 
-func (i *Index) collectTenantBlocks(p *fullPartition, tenants map[string]struct{}) []*metastorev1.BlockMeta {
+func (i *Index) collectTenantBlocks(p *indexPartition, tenants map[string]struct{}) []*metastorev1.BlockMeta {
 	p.shardsMu.Lock()
 	defer p.shardsMu.Unlock()
 	blocks := make([]*metastorev1.BlockMeta, 0)
@@ -377,24 +370,6 @@ func (i *Index) collectTenantBlocks(p *fullPartition, tenants map[string]struct{
 	return blocks
 }
 
-func (i *Index) getShard(p *fullPartition, shardNum uint32) *indexShard {
-	p.shardsMu.Lock()
-	defer p.shardsMu.Unlock()
-	return p.shards[shardNum]
-}
-
-func (i *Index) getTenant(s *indexShard, tenant string) *indexTenant {
-	s.tenantsMu.Lock()
-	defer s.tenantsMu.Unlock()
-	return s.tenants[tenant]
-}
-
-func (i *Index) getBlock(t *indexTenant, id string) *metastorev1.BlockMeta {
-	t.blocksMu.Lock()
-	defer t.blocksMu.Unlock()
-	return t.blocks[id]
-}
-
 func (i *Index) ReplaceBlocks(sources []string, sourceShard uint32, sourceTenant string, replacements []*metastorev1.BlockMeta) error {
 	i.partitionMu.Lock()
 	defer i.partitionMu.Unlock()
@@ -411,4 +386,32 @@ func (i *Index) ReplaceBlocks(sources []string, sourceShard uint32, sourceTenant
 	}
 
 	return nil
+}
+
+func (i *Index) StartCleanupLoop(ctx context.Context) {
+	t := time.NewTicker(10 * time.Minute)
+	defer func() {
+		t.Stop()
+	}()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			i.unloadPartitions(time.Now().Add(-24 * time.Hour))
+		}
+	}
+}
+
+func (i *Index) unloadPartitions(unloadThreshold time.Time) {
+	i.partitionMu.Lock()
+	defer i.partitionMu.Unlock()
+
+	level.Info(i.logger).Log("msg", "unloading partitions", "threshold", unloadThreshold)
+	for k, p := range i.loadedPartitions {
+		if p.loadedAt.Before(unloadThreshold) {
+			level.Info(i.logger).Log("msg", "unloading partition", "key", k, "loaded_at", p.loadedAt)
+			delete(i.loadedPartitions, k)
+		}
+	}
 }

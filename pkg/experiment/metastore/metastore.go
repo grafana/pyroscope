@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/go-kit/log"
@@ -133,8 +132,6 @@ type Metastore struct {
 
 	walDir string
 
-	done       chan struct{}
-	wg         sync.WaitGroup
 	metrics    *metastoreMetrics
 	client     *metastoreclient.Client
 	readySince time.Time
@@ -153,7 +150,6 @@ func New(config Config, limits Limits, logger log.Logger, reg prometheus.Registe
 		reg:     reg,
 		limits:  limits,
 		db:      newDB(config, logger, metrics),
-		done:    make(chan struct{}),
 		metrics: metrics,
 		client:  client,
 	}
@@ -175,7 +171,7 @@ func (m *Metastore) Shutdown() error {
 	return nil
 }
 
-func (m *Metastore) starting(context.Context) error {
+func (m *Metastore) starting(ctx context.Context) error {
 	if err := m.db.open(false); err != nil {
 		return fmt.Errorf("failed to initialize database: %w", err)
 	}
@@ -183,14 +179,11 @@ func (m *Metastore) starting(context.Context) error {
 		return fmt.Errorf("failed to initialize raft: %w", err)
 	}
 	m.dlq.Start()
-	m.wg.Add(1)
-	go m.cleanupLoop()
+	go m.state.index.StartCleanupLoop(ctx)
 	return nil
 }
 
 func (m *Metastore) stopping(_ error) error {
-	close(m.done)
-	m.wg.Wait()
 	return m.Shutdown()
 }
 

@@ -11,7 +11,7 @@ import (
 
 type Index struct {
 	partitionMu      sync.Mutex
-	loadedPartitions map[PartitionKey]*fullPartition
+	loadedPartitions map[PartitionKey]*indexPartition
 	allPartitions    []*PartitionMeta
 
 	store  Store
@@ -20,8 +20,9 @@ type Index struct {
 	partitionDuration time.Duration
 }
 
-type fullPartition struct {
-	meta *PartitionMeta
+type indexPartition struct {
+	meta     *PartitionMeta
+	loadedAt time.Time
 
 	shardsMu sync.Mutex
 	shards   map[uint32]*indexShard

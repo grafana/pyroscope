@@ -13,7 +13,6 @@ import (
 	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compactionpb"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
 )
 
 func Test_JobAssignments(t *testing.T) {
@@ -297,9 +296,14 @@ func Test_RemoveInvalidJobsFromStorage(t *testing.T) {
 	require.Equal(t, 1, len(m.compactionJobQueue.jobs), "there should be one job in the queue")
 
 	// delete all blocks, making the existing job invalid
-	m.index.DeletePartitions(func(meta *index.PartitionMeta) bool {
-		return true
-	})
+	blocks, err := m.index.FindBlocksInRange(0, math.MaxInt64, map[string]struct{}{"": {}})
+	require.NoError(t, err)
+	sources := make([]string, 0, 20)
+	for _, block := range blocks {
+		sources = append(sources, block.Id)
+	}
+	err = m.index.ReplaceBlocks(sources, 0, "", []*metastorev1.BlockMeta{})
+	require.NoError(t, err)
 
 	// try to assign the job
 	resp, err := m.pollCompactionJobs(&compactorv1.PollCompactionJobsRequest{JobCapacity: 1}, 20, 20)
