@@ -215,15 +215,11 @@ func (c *Client) Push(
 	}
 
 	req.Shard = p.Shard
-	for { // The caller should cancel the context to break the loop.
-		instance, ok := p.Next()
-		if !ok {
-			_ = level.Error(c.logger).Log(
-				"msg", "no segment writer instances available for the request",
-				"tenant", req.TenantId)
-			return nil, status.Error(codes.Unavailable, errServiceUnavailableMsg)
+	for p.Instances.Next() {
+		instance := p.Instances.At()
+		if instance.State != ring.ACTIVE {
+			continue
 		}
-
 		resp, err := c.pushToInstance(ctx, req, instance.Addr)
 		// Happy path.
 		if err == nil {
@@ -242,6 +238,11 @@ func (c *Client) Push(
 			return nil, status.Error(codes.Unavailable, errServiceUnavailableMsg)
 		}
 	}
+
+	_ = level.Error(c.logger).Log(
+		"msg", "no segment writer instances available for the request",
+		"tenant", req.TenantId)
+	return nil, status.Error(codes.Unavailable, errServiceUnavailableMsg)
 }
 
 func (c *Client) pushToInstance(

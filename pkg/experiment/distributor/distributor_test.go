@@ -22,9 +22,9 @@ var (
 		{Name: "service_name", Value: "my-service"},
 	}
 	testInstances = []ring.InstanceDesc{
-		{Addr: "a", Tokens: make([]uint32, 4)},
-		{Addr: "b", Tokens: make([]uint32, 4)},
-		{Addr: "c", State: ring.LEAVING, Tokens: make([]uint32, 4)},
+		{Addr: "a", Tokens: make([]uint32, 1)},
+		{Addr: "b", Tokens: make([]uint32, 1)},
+		{Addr: "c", State: ring.LEAVING, Tokens: make([]uint32, 1)},
 	}
 )
 
@@ -76,16 +76,12 @@ func Test_Distribution_AvailableShards(t *testing.T) {
 			r := testhelper.NewMockRing(testInstances, 1)
 			p, err := d.Distribute(k, r)
 			require.NoError(t, err)
-			c := make([]*ring.InstanceDesc, 0, 2)
-			for {
-				x, ok := p.Next()
-				if !ok {
-					break
-				}
-				c = append(c, x)
+			c := make([]ring.InstanceDesc, 0, 2)
+			for p.Instances.Next() {
+				c = append(c, p.Instances.At())
 			}
 
-			assert.Equal(t, 2, len(c))
+			assert.Equal(t, 3, len(c))
 			m.AssertExpectations(t)
 		})
 	}
@@ -110,13 +106,9 @@ func Test_RingUpdate(t *testing.T) {
 
 	p, err := d.Distribute(k, r)
 	require.NoError(t, err)
-	c := make([]*ring.InstanceDesc, 0, 1)
-	for {
-		x, ok := p.Next()
-		if !ok {
-			break
-		}
-		c = append(c, x)
+	c := make([]ring.InstanceDesc, 0, 1)
+	for p.Instances.Next() {
+		c = append(c, p.Instances.At())
 	}
 
 	// Only one instance is available.

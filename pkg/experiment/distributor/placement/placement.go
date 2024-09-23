@@ -41,16 +41,6 @@ func (defaultPlacement) PickShard(k Key, n int) int { return int(k.Fingerprint %
 // Placement represents the placement for the given distribution key.
 type Placement struct {
 	// Note that the instances reference shared objects, and must not be modified.
-	Instances iter.Iterator[*ring.InstanceDesc]
+	Instances iter.Iterator[ring.InstanceDesc]
 	Shard     uint32
-}
-
-// Next returns the next available location address.
-func (p *Placement) Next() (*ring.InstanceDesc, bool) {
-	for p.Instances.Next() {
-		if instance := p.Instances.At(); instance.State == ring.ACTIVE {
-			return instance, true
-		}
-	}
-	return nil, false
 }
