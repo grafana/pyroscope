@@ -14,8 +14,7 @@
 
 We are thrilled to announce the launch of the **Explore Profiles UI**, a brand-new way to explore and analyze your profiling data—now available as part of the Grafana Explore Apps suite! This new app brings you a **queryless**, **intuitive** experience for visualizing your profiling data, simplifying the entire process without the need to write complex queries.
 
-
-https://github.com/user-attachments/assets/fe560c4d-4729-4659-b80d-ebc4f57da940
+https://github.com/user-attachments/assets/4db19ec7-86f3-4701-8f5f-9b7ffcebd49c
 
 ## What is Grafana Pyroscope?
 
