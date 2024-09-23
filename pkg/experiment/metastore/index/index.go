@@ -437,6 +437,7 @@ func (i *Index) StartCleanupLoop(ctx context.Context) {
 			return
 		case <-t.C:
 			i.unloadPartitions(time.Now().Add(-i.config.PartitionTTL))
+			// TODO aleks-p: Physically delete all partitions older than 30 days
 		}
 	}
 }
