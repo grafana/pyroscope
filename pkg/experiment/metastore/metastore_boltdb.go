@@ -1,9 +1,10 @@
 package metastore
 
 import (
+	"bytes"
 	"context"
 	"encoding/binary"
-	"encoding/json"
+	"encoding/gob"
 	"fmt"
 	"io"
 	"os"
@@ -238,12 +239,14 @@ func updateBlockMetadataBucket(tx *bbolt.Tx, partitionMeta *index.PartitionMeta,
 		return err
 	}
 
-	metaBytes, err := json.Marshal(partitionMeta)
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	err = enc.Encode(partitionMeta)
 	if err != nil {
 		return err
 	}
 
-	err = partBkt.Put([]byte("meta"), metaBytes)
+	err = partBkt.Put([]byte("meta"), buf.Bytes())
 	if err != nil {
 		return err
 	}

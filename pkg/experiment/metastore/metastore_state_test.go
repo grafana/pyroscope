@@ -71,8 +71,7 @@ func TestMetadataStateManagement(t *testing.T) {
 				}
 				blocks = append(blocks, block)
 
-				partKey := m.index.GetPartitionKey(block.Id)
-				partMeta, err := m.index.GetOrCreatePartitionMeta(partKey)
+				partMeta, err := m.index.GetOrCreatePartitionMeta(block)
 				require.NoError(t, err)
 
 				err = updateBlockMetadataBucket(tx, partMeta, block.Shard, block.TenantId, func(bucket *bbolt.Bucket) error {

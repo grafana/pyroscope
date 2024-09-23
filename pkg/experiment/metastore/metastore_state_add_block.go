@@ -74,8 +74,7 @@ func (m *metastoreState) persistBlock(tx *bbolt.Tx, block *metastorev1.BlockMeta
 		return err
 	}
 
-	partKey := m.index.GetPartitionKey(block.Id)
-	partMeta, err := m.index.GetOrCreatePartitionMeta(partKey)
+	partMeta, err := m.index.GetOrCreatePartitionMeta(block)
 	if err != nil {
 		return err
 	}

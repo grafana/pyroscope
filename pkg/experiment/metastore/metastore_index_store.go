@@ -1,8 +1,9 @@
 package metastore
 
 import (
+	"bytes"
 	"encoding/binary"
-	"encoding/json"
+	"encoding/gob"
 	"fmt"
 	"slices"
 
@@ -62,7 +63,8 @@ func (m *metastoreIndexStore) ReadPartitionMeta(key index.PartitionKey) (*index.
 			return fmt.Errorf("partition meta not found for %s", key)
 		}
 		data := partBkt.Get([]byte("meta"))
-		err = json.Unmarshal(data, &meta)
+		dec := gob.NewDecoder(bytes.NewReader(data))
+		err = dec.Decode(&meta)
 		if err != nil {
 			return errors.Wrapf(err, "failed to read partition meta for %s", key)
 		}

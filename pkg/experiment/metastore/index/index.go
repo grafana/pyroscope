@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/go-kit/log"
@@ -17,59 +16,6 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 )
 
-type PartitionKey string
-
-type PartitionMeta struct {
-	Key      PartitionKey  `json:"key"`
-	Ts       time.Time     `json:"ts"`
-	Duration time.Duration `json:"duration"`
-	Tenants  []string      `json:"tenants"`
-
-	tenantMap map[string]struct{}
-}
-
-func (m *PartitionMeta) HasTenant(tenant string) bool {
-	m.loadTenants()
-	_, ok := m.tenantMap[tenant]
-	return ok
-}
-
-func (m *PartitionMeta) StartTime() time.Time {
-	return m.Ts
-}
-
-func (m *PartitionMeta) EndTime() time.Time {
-	return m.Ts.Add(m.Duration)
-}
-
-func (m *PartitionMeta) loadTenants() {
-	if len(m.Tenants) > 0 && len(m.tenantMap) == 0 {
-		m.tenantMap = make(map[string]struct{}, len(m.Tenants))
-		for _, t := range m.Tenants {
-			m.tenantMap[t] = struct{}{}
-		}
-	}
-}
-
-func (m *PartitionMeta) AddTenant(tenant string) {
-	m.loadTenants()
-	if _, ok := m.tenantMap[tenant]; !ok {
-		m.tenantMap[tenant] = struct{}{}
-		m.Tenants = append(m.Tenants, tenant)
-	}
-}
-
-type Index struct {
-	partitionMu      sync.Mutex
-	loadedPartitions map[PartitionKey]*fullPartition
-	allPartitions    []*PartitionMeta
-
-	store  Store
-	logger log.Logger
-
-	partitionDuration time.Duration
-}
-
 func NewIndex(store Store, logger log.Logger) *Index {
 	return &Index{
 		loadedPartitions:  make(map[PartitionKey]*fullPartition),
@@ -78,84 +24,6 @@ func NewIndex(store Store, logger log.Logger) *Index {
 		logger:            logger,
 		partitionDuration: time.Hour,
 	}
-}
-
-type Store interface {
-	ListPartitions() []PartitionKey
-	ReadPartitionMeta(p PartitionKey) (*PartitionMeta, error)
-
-	ListShards(p PartitionKey) []uint32
-	ListTenants(p PartitionKey, shard uint32) []string
-	ListBlocks(p PartitionKey, shard uint32, tenant string) []*metastorev1.BlockMeta
-
-	LoadBlock(p PartitionKey, shard uint32, tenant string, blockId string) *metastorev1.BlockMeta
-}
-
-const (
-	dayLayout  = "20060102"
-	hourLayout = "20060102T15"
-)
-
-func getTimeLayout(d time.Duration) string {
-	if d >= 24*time.Hour {
-		return dayLayout
-	} else {
-		return hourLayout
-	}
-}
-
-func (k PartitionKey) parse() (t time.Time, d time.Duration, err error) {
-	parts := strings.Split(string(k), ".")
-	if len(parts) != 2 {
-		return time.Time{}, 0, fmt.Errorf("invalid partition key: %s", k)
-	}
-	d, err = time.ParseDuration(parts[1])
-	if err != nil {
-		return time.Time{}, 0, fmt.Errorf("invalid duration in partition key: %s", k)
-	}
-	t, err = time.Parse(getTimeLayout(d), parts[0])
-	return t, d, err
-}
-
-func (k PartitionKey) compare(other PartitionKey) int {
-	if k == other {
-		return 0
-	}
-	tSelf, _, err := k.parse()
-	if err != nil {
-		return strings.Compare(string(k), string(other))
-	}
-	tOther, _, err := other.parse()
-	if err != nil {
-		return strings.Compare(string(k), string(other))
-	}
-	return tSelf.Compare(tOther)
-}
-
-func (k PartitionKey) inRange(start, end int64) bool {
-	pStart, d, err := k.parse()
-	if err != nil {
-		return false
-	}
-	pEnd := pStart.Add(d)
-	return start < pEnd.UnixMilli() && end > pStart.UnixMilli()
-}
-
-type fullPartition struct {
-	PartitionMeta
-
-	shardsMu sync.Mutex
-	shards   map[uint32]*indexShard
-}
-
-type indexShard struct {
-	tenantsMu sync.Mutex
-	tenants   map[string]*indexTenant
-}
-
-type indexTenant struct {
-	blocksMu sync.Mutex
-	blocks   map[string]*metastorev1.BlockMeta
 }
 
 // LoadPartitions reads all partitions from the backing store and loads the most recent ones in memory.
@@ -179,9 +47,7 @@ func (i *Index) LoadPartitions() {
 		_, _ = i.getOrLoadPartition(pMeta)
 	}
 
-	slices.SortFunc(i.allPartitions, func(a, b *PartitionMeta) int {
-		return a.Key.compare(b.Key)
-	})
+	i.sortPartitions()
 }
 
 func (i *Index) ForEachPartition(ctx context.Context, fn func(meta *PartitionMeta)) {
@@ -201,12 +67,26 @@ func (i *Index) ForEachPartition(ctx context.Context, fn func(meta *PartitionMet
 	}
 }
 
+func (i *Index) getOrCreatePartition(meta *PartitionMeta) *fullPartition {
+	p, ok := i.loadedPartitions[meta.Key]
+	if !ok {
+		p = &fullPartition{
+			meta:   meta,
+			shards: make(map[uint32]*indexShard),
+		}
+		i.loadedPartitions[meta.Key] = p
+		i.allPartitions = append(i.allPartitions, meta)
+		i.sortPartitions()
+	}
+	return p
+}
+
 func (i *Index) getOrLoadPartition(meta *PartitionMeta) (*fullPartition, error) {
 	p, ok := i.loadedPartitions[meta.Key]
 	if !ok {
 		p := &fullPartition{
-			PartitionMeta: *meta,
-			shards:        make(map[uint32]*indexShard),
+			meta:   meta,
+			shards: make(map[uint32]*indexShard),
 		}
 		i.loadedPartitions[meta.Key] = p
 		for _, s := range i.store.ListShards(meta.Key) {
@@ -238,20 +118,29 @@ func (i *Index) getOrLoadPartition(meta *PartitionMeta) (*fullPartition, error) 
 
 func (i *Index) GetPartitionKey(blockId string) PartitionKey {
 	t := ulid.Time(ulid.MustParse(blockId).Time()).UTC()
-	key := t.Format(dayLayout)
+
+	var b strings.Builder
+	b.Grow(16)
+
+	year, month, day := t.Date()
+	b.WriteString(fmt.Sprintf("%04d%02d%02d", year, month, day))
+
 	if i.partitionDuration < 24*time.Hour {
 		hour := (t.Hour() / int(i.partitionDuration.Hours())) * int(i.partitionDuration.Hours())
-		key = key + fmt.Sprintf("T%02d", hour)
+		b.WriteString(fmt.Sprintf("T%02d", hour))
 	}
+
 	mDuration := model.Duration(i.partitionDuration)
-	key += fmt.Sprintf(".%v", mDuration)
-	return PartitionKey(key)
+	b.WriteString(".")
+	b.WriteString(mDuration.String())
+
+	return PartitionKey(b.String())
 }
 
 func (i *Index) FindPartitionMeta(key PartitionKey) *PartitionMeta {
 	loaded, ok := i.loadedPartitions[key]
 	if ok {
-		return &loaded.PartitionMeta
+		return loaded.meta
 	}
 	for _, p := range i.allPartitions {
 		if p.Key == key {
@@ -269,18 +158,9 @@ func (i *Index) InsertBlock(b *metastorev1.BlockMeta) error {
 }
 
 func (i *Index) insertBlockInternal(b *metastorev1.BlockMeta) error {
-	key := i.GetPartitionKey(b.Id)
-	meta, err := i.GetOrCreatePartitionMeta(key)
+	meta, err := i.GetOrCreatePartitionMeta(b)
 	if err != nil {
 		return err
-	}
-
-	if b.TenantId != "" {
-		meta.AddTenant(b.TenantId)
-	} else {
-		for _, ds := range b.Datasets {
-			meta.AddTenant(ds.TenantId)
-		}
 	}
 
 	p := i.getOrCreatePartition(meta)
@@ -314,7 +194,8 @@ func (i *Index) insertBlockInternal(b *metastorev1.BlockMeta) error {
 	return nil
 }
 
-func (i *Index) GetOrCreatePartitionMeta(key PartitionKey) (*PartitionMeta, error) {
+func (i *Index) GetOrCreatePartitionMeta(b *metastorev1.BlockMeta) (*PartitionMeta, error) {
+	key := i.GetPartitionKey(b.Id)
 	meta := i.FindPartitionMeta(key)
 
 	if meta == nil {
@@ -329,7 +210,17 @@ func (i *Index) GetOrCreatePartitionMeta(key PartitionKey) (*PartitionMeta, erro
 			Tenants:   make([]string, 0),
 			tenantMap: make(map[string]struct{}),
 		}
+		i.allPartitions = append(i.allPartitions, meta)
 	}
+
+	if b.TenantId != "" {
+		meta.AddTenant(b.TenantId)
+	} else {
+		for _, ds := range b.Datasets {
+			meta.AddTenant(ds.TenantId)
+		}
+	}
+
 	return meta, nil
 }
 
@@ -458,20 +349,10 @@ func (i *Index) DeletePartitions(predicate func(*PartitionMeta) bool) []*Partiti
 	return deleted
 }
 
-func (i *Index) getOrCreatePartition(meta *PartitionMeta) *fullPartition {
-	p, ok := i.loadedPartitions[meta.Key]
-	if !ok {
-		p = &fullPartition{
-			PartitionMeta: *meta,
-			shards:        make(map[uint32]*indexShard),
-		}
-		i.loadedPartitions[meta.Key] = p
-		i.allPartitions = append(i.allPartitions, meta)
-		slices.SortFunc(i.allPartitions, func(a, b *PartitionMeta) int {
-			return a.Key.compare(b.Key)
-		})
-	}
-	return p
+func (i *Index) sortPartitions() {
+	slices.SortFunc(i.allPartitions, func(a, b *PartitionMeta) int {
+		return a.Key.compare(b.Key)
+	})
 }
 
 func (i *Index) collectTenantBlocks(p *fullPartition, tenants map[string]struct{}) []*metastorev1.BlockMeta {

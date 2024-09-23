@@ -215,7 +215,7 @@ func (m *metastoreState) convertJobs(jobs []*compactionpb.CompactionJob) (conver
 		// populate block metadata (workers rely on it)
 		blocks := make([]*metastorev1.BlockMeta, 0, len(job.Blocks))
 		for _, bId := range job.Blocks {
-			b := m.findBlock(job.Shard, job.TenantId, bId)
+			b := m.index.FindBlock(job.Shard, job.TenantId, bId)
 			if b == nil {
 				level.Error(m.logger).Log(
 					"msg", "failed to populate compaction job details, block not found",
@@ -251,10 +251,6 @@ func (m *metastoreState) convertJobs(jobs []*compactionpb.CompactionJob) (conver
 	return convertedJobs, invalidJobs
 }
 
-func (m *metastoreState) findBlock(shard uint32, tenant string, blockId string) *metastorev1.BlockMeta {
-	return m.index.FindBlock(shard, tenant, blockId)
-}
-
 func (m *metastoreState) findJobsToAssign(jobCapacity int, raftLogIndex uint64, now int64) []*compactionpb.CompactionJob {
 	jobsToAssign := make([]*compactionpb.CompactionJob, 0, jobCapacity)
 	jobCount, newJobs, inProgressJobs, completedJobs, failedJobs, cancelledJobs := m.compactionJobQueue.stats()
@@ -287,7 +283,7 @@ func (m *metastoreState) writeToDb(sTable *pollStateUpdate) error {
 	return m.db.boltdb.Update(func(tx *bbolt.Tx) error {
 		for key, blocks := range sTable.newBlocks {
 			for _, b := range blocks {
-				block := m.findBlock(key.shard, key.tenant, b)
+				block := m.index.FindBlock(key.shard, key.tenant, b)
 				if block == nil {
 					level.Error(m.logger).Log(
 						"msg", "a newly compacted block could not be found",

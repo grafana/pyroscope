@@ -94,7 +94,7 @@ func Test_StatusUpdates_Success(t *testing.T) {
 
 	// source blocks are removed
 	for _, b := range sourceBlocks {
-		require.Nilf(t, m.findBlock(b.Shard, b.TenantId, b.Id), "old block %s found in state", b.Id)
+		require.Nilf(t, m.index.FindBlock(b.Shard, b.TenantId, b.Id), "old block %s found in state", b.Id)
 	}
 }
 
