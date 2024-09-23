@@ -16,7 +16,7 @@ We are thrilled to announce the launch of the **Explore Profiles UI**, a brand-n
 
 [ insert video demo here ]
 
-## 🌟 **What is Grafana Pyroscope?**
+## What is Grafana Pyroscope?
 
 Grafana Pyroscope is a continuous profiling platform designed to surface performance insights from your applications, helping you optimize resource usage such as CPU, memory, and I/O operations. With Pyroscope, you can both **proactively** and **reactively** address performance bottlenecks across your system.
 
@@ -38,7 +38,7 @@ Pyroscope consists of three main components:
 
 ---
 
-## 🔥 [Pyroscope Live Demo](https://play.grafana.org/a/grafana-pyroscope-app/)
+## [Pyroscope Live Demo](https://play.grafana.org/a/grafana-pyroscope-app/)
 
 [![Pyroscope GIF Demo](https://user-images.githubusercontent.com/23323466/143324845-16ff72df-231e-412d-bd0a-38ef2e09cba8.gif)](https://demo.pyroscope.io/)
 
