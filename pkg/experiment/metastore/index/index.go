@@ -131,8 +131,8 @@ func (i *Index) getOrLoadPartition(meta *PartitionMeta) (*indexPartition, error)
 // on the index's currently configured partition duration to create the key.
 //
 // FIXME aleks-p: Using this for existing blocks following a partition duration change will produce an invalid key.
-//  - option 1: create a lookup table (block id -> partition key)
-//  - option 2: scan through existing partitions for candidates
+//   - option 1: create a lookup table (block id -> partition key)
+//   - option 2: scan through existing partitions for candidates
 func (i *Index) GetPartitionKey(blockId string) PartitionKey {
 	t := ulid.Time(ulid.MustParse(blockId).Time()).UTC()
 
