@@ -1,10 +1,8 @@
 package metastore
 
 import (
-	"bytes"
 	"context"
 	"encoding/binary"
-	"encoding/gob"
 	"fmt"
 	"io"
 	"os"
@@ -16,8 +14,6 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/hashicorp/raft"
 	"go.etcd.io/bbolt"
-
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
 )
 
 const (
@@ -222,62 +218,9 @@ func getOrCreateSubBucket(parent *bbolt.Bucket, name []byte) (*bbolt.Bucket, err
 
 const (
 	compactionJobBucketName = "compaction_job"
-	emptyTenantBucketName   = "-"
 )
 
 var compactionJobBucketNameBytes = []byte(compactionJobBucketName)
-var emptyTenantBucketNameBytes = []byte(emptyTenantBucketName)
-
-func updateBlockMetadataBucket(tx *bbolt.Tx, partitionMeta *index.PartitionMeta, shard uint32, tenant string, fn func(*bbolt.Bucket) error) error {
-	bkt, err := getPartitionBucket(tx)
-	if err != nil {
-		return err
-	}
-
-	partBkt, err := getOrCreateSubBucket(bkt, []byte(partitionMeta.Key))
-	if err != nil {
-		return err
-	}
-
-	var buf bytes.Buffer
-	enc := gob.NewEncoder(&buf)
-	err = enc.Encode(partitionMeta)
-	if err != nil {
-		return err
-	}
-
-	err = partBkt.Put([]byte("meta"), buf.Bytes())
-	if err != nil {
-		return err
-	}
-
-	shardBktName := make([]byte, 4)
-	binary.BigEndian.PutUint32(shardBktName, shard)
-	shardBkt, err := getOrCreateSubBucket(partBkt, shardBktName)
-	if err != nil {
-		return err
-	}
-
-	tenantBktName := []byte(tenant)
-	if len(tenantBktName) == 0 {
-		tenantBktName = emptyTenantBucketNameBytes
-	}
-	tenantBkt, err := getOrCreateSubBucket(shardBkt, tenantBktName)
-	if err != nil {
-		return err
-	}
-
-	return fn(tenantBkt)
-}
-
-// Bucket           |Key
-// [4:shard]<tenant>|[block_id]
-func keyForBlockMeta(shard uint32, tenant string, id string) (bucket, key []byte) {
-	k := make([]byte, 4+len(tenant))
-	binary.BigEndian.PutUint32(k, shard)
-	copy(k[4:], tenant)
-	return k, []byte(id)
-}
 
 func parseBucketName(b []byte) (shard uint32, tenant string, ok bool) {
 	if len(b) >= 4 {

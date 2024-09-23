@@ -45,6 +45,4 @@ type Store interface {
 	ListShards(p PartitionKey) []uint32
 	ListTenants(p PartitionKey, shard uint32) []string
 	ListBlocks(p PartitionKey, shard uint32, tenant string) []*metastorev1.BlockMeta
-
-	LoadBlock(p PartitionKey, shard uint32, tenant string, blockId string) *metastorev1.BlockMeta
 }

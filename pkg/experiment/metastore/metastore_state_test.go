@@ -87,7 +87,6 @@ func TestMetadataStateManagement(t *testing.T) {
 
 		// restore from db
 		m.index.LoadPartitions()
-		require.NoError(t, err)
 
 		for _, b := range blocks {
 			require.NotNilf(t, m.index.FindBlock(b.Shard, b.TenantId, b.Id), "block %s not found", b.Id)
