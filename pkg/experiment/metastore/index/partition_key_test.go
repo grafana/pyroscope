@@ -19,7 +19,7 @@ func TestPartitionKey_inRange(t *testing.T) {
 		want bool
 	}{
 		{
-			name: "simple overlapping",
+			name: "simple overlap",
 			k:    "20240911T06.6h",
 			args: args{
 				start: createTime("2024-09-11T07:15:24.123Z"),
@@ -27,6 +27,7 @@ func TestPartitionKey_inRange(t *testing.T) {
 			},
 			want: true,
 		},
+		// TODO aleks-p: add more test cases
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
