@@ -25,7 +25,9 @@ ffffffff81001750 T memblock_find
 ffffffff81001780 T __memblock_alloc_base
 ffffffff810017d0 T memblock_alloc
 ffffffff81001820 T early_memtest
-ffffffff810018a0 T early_memtest_report`
+ffffffff810018a0 T early_memtest_report
+ffffffff81000800 T unordered_symbol_0
+ffffffff81000100 T unordered_symbol_1`
 
 func TestKallsyms(t *testing.T) {
 	kallsyms, err := NewKallsymsFromData([]byte(testdata))
