@@ -87,8 +87,8 @@ func Test_memory_Resolver_ResolveTree_copied_nodes(t *testing.T) {
 	// The only reason we perform this assertion is to make sure that
 	// truncation did take place, and the number of nodes is close to
 	// the target (we actually keep all nodes with top 16K values).
-	assert.Equal(t, nodesFull, int64(1585462))
-	assert.Equal(t, nodesTrunc, int64(22407))
+	assert.Equal(t, int64(1585462), nodesFull)
+	assert.Equal(t, int64(22461), nodesTrunc)
 	require.Equal(t, totalFull, totalTrunc)
 }
 
@@ -151,8 +151,11 @@ func Test_buildTreeFromParentPointerTrees(t *testing.T) {
 	const partition = 0
 	indexed := s.db.WriteProfileSymbols(partition, p)
 	assert.Equal(t, expectedSamples, indexed[partition].Samples)
-
-	symbols := s.db.partitions[partition].Symbols()
+	b := blockSuite{memSuite: s}
+	b.flush()
+	pr, err := b.reader.Partition(context.Background(), partition)
+	require.NoError(t, err)
+	symbols := pr.Symbols()
 	iterator, ok := symbols.Stacktraces.(StacktraceIDRangeIterator)
 	require.True(t, ok)
 
