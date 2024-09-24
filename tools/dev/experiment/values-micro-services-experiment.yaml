@@ -12,6 +12,7 @@ pyroscope:
     distributor.replication-factor: "1"
     write-path: "segment-writer"
     enable-query-backend: "true"
+    querier.max-query-length: '7d'
 
   components:
     distributor:
