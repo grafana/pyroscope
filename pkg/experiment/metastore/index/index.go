@@ -295,8 +295,8 @@ func (i *Index) FindBlock(shardNum uint32, tenant string, id string) *metastorev
 // within the block (min_time, max_time). This method works around this by including blocks from adjacent partitions.
 //
 // FIXME aleks-p: A large query could cause a large number of partitions to be loaded into memory
-//  - consider loading partitions in parallel
-//  - consider capping the number of loaded partitions
+//   - consider loading partitions in parallel
+//   - consider capping the number of loaded partitions
 func (i *Index) FindBlocksInRange(start, end int64, tenants map[string]struct{}) ([]*metastorev1.BlockMeta, error) {
 	i.partitionMu.Lock()
 	defer i.partitionMu.Unlock()
