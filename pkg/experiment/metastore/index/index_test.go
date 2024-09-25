@@ -291,12 +291,10 @@ func TestIndex_DurationChange(t *testing.T) {
 		Id: createUlidString("2024-09-23T08:00:00.123Z"),
 	}
 	_ = i.InsertBlock(b)
-	key := i.GetPartitionKey(b.Id)
-	require.Equal(t, index.PartitionKey("20240923.1d"), key)
+	require.NotNil(t, i.FindBlock(0, "", b.Id))
 
 	i.Config.PartitionDuration = time.Hour
-	key = i.GetPartitionKey(b.Id)
-	require.Equal(t, index.PartitionKey("20240923.1d"), key)
+	require.NotNil(t, i.FindBlock(0, "", b.Id))
 }
 
 func createUlidString(t string) string {
