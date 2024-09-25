@@ -1971,7 +1971,7 @@
     csstype "^3.1.2"
     prop-types "^15.8.1"
 
-"@mui/types@7.2.0", "@mui/types@^7.2.0":
+"@mui/types@^7.2.0":
   version "7.2.0"
   resolved "https://registry.yarnpkg.com/@mui/types/-/types-7.2.0.tgz#91380c2d42420f51f404120f7a9270eadd6f5c23"
   integrity sha512-lGXtFKe5lp3UxTBGqKI1l7G8sE2xBik8qCfrLHD5olwP/YU0/ReWoWT7Lp1//ri32dK39oPMrJN8TgbkCSbsNA==

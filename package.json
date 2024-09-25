@@ -125,7 +125,6 @@
     "@hookform/resolvers": "^2.9.8",
     "@mui/base": "5.0.0-alpha.98",
     "@mui/material": "5.10.11",
-    "@mui/types": "7.2.0",
     "@react-hook/resize-observer": "^1.2.6",
     "@react-hook/window-size": "^3.1.1",
     "@reduxjs/toolkit": "^1.6.2",
