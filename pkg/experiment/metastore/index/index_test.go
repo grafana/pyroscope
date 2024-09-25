@@ -284,6 +284,21 @@ func TestIndex_StartCleanupLoop(t *testing.T) {
 	store.AssertCalled(t, "ListBlocks", index.PartitionKey("20240923T08.1h"), uint32(0), "")
 }
 
+func TestIndex_DurationChange(t *testing.T) {
+	store := mockindex.NewMockStore(t)
+	i := index.NewIndex(store, util.Logger, &index.Config{PartitionDuration: 24 * time.Hour})
+	b := &metastorev1.BlockMeta{
+		Id: createUlidString("2024-09-23T08:00:00.123Z"),
+	}
+	_ = i.InsertBlock(b)
+	key := i.GetPartitionKey(b.Id)
+	require.Equal(t, index.PartitionKey("20240923.1d"), key)
+
+	i.Config.PartitionDuration = time.Hour
+	key = i.GetPartitionKey(b.Id)
+	require.Equal(t, index.PartitionKey("20240923.1d"), key)
+}
+
 func createUlidString(t string) string {
 	parsed, _ := time.Parse(time.RFC3339, t)
 	l := ulid.MustNew(ulid.Timestamp(parsed), rand.Reader)

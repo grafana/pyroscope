@@ -35,7 +35,7 @@ func NewIndex(store Store, logger log.Logger, cfg *Config) *Index {
 		allPartitions:    make([]*PartitionMeta, 0),
 		store:            store,
 		logger:           logger,
-		config:           cfg,
+		Config:           cfg,
 	}
 }
 
@@ -53,7 +53,7 @@ func (i *Index) LoadPartitions() {
 			continue
 		}
 		i.allPartitions = append(i.allPartitions, pMeta)
-		if pMeta.Ts.Add(i.config.PartitionTTL).Before(time.Now()) {
+		if pMeta.Ts.Add(i.Config.PartitionTTL).Before(time.Now()) {
 			// too old, will load on demand
 			continue
 		}
@@ -142,7 +142,7 @@ func (i *Index) GetPartitionKey(blockId string) PartitionKey {
 	year, month, day := t.Date()
 	b.WriteString(fmt.Sprintf("%04d%02d%02d", year, month, day))
 
-	partitionDuration := i.config.PartitionDuration
+	partitionDuration := i.Config.PartitionDuration
 	if partitionDuration < 24*time.Hour {
 		hour := (t.Hour() / int(partitionDuration.Hours())) * int(partitionDuration.Hours())
 		b.WriteString(fmt.Sprintf("T%02d", hour))
@@ -427,7 +427,7 @@ func (i *Index) deleteBlock(shard uint32, tenant string, blockId string) {
 
 // StartCleanupLoop unloads partitions from memory at an interval.
 func (i *Index) StartCleanupLoop(ctx context.Context) {
-	t := time.NewTicker(i.config.CleanupInterval)
+	t := time.NewTicker(i.Config.CleanupInterval)
 	defer func() {
 		t.Stop()
 	}()
@@ -436,7 +436,7 @@ func (i *Index) StartCleanupLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-t.C:
-			i.unloadPartitions(time.Now().Add(-i.config.PartitionTTL))
+			i.unloadPartitions(time.Now().Add(-i.Config.PartitionTTL))
 			// TODO aleks-p: Physically delete all partitions older than 30 days
 		}
 	}

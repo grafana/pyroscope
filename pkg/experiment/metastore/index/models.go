@@ -29,7 +29,7 @@ func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 }
 
 type Index struct {
-	config *Config
+	Config *Config
 
 	partitionMu      sync.Mutex
 	loadedPartitions map[PartitionKey]*indexPartition
