@@ -15,7 +15,6 @@ jobs:
         with:
           repository: grafana/grafana-github-actions
           path: ./actions
-          ref: jdb/2024-09-replace-graphql-with-rest
       - name: Install Actions
         run: npm install --production --prefix ./actions
       - name: Run backport
@@ -23,4 +22,6 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           labelsToAdd: backport
+          # The provided token needs read permissions for organization members if you want to remove the default reviewers.
+          removeDefaultReviewers: false
           title: "[{{base}}] {{originalTitle}}"
