@@ -17,6 +17,10 @@ type Key struct {
 }
 
 type Strategy interface {
+	// Place returns the placement for the given key.
+	// The method returns nil, if the placement is not
+	// determined, and should be calculated by the caller.
+	Place(k Key) *Placement
 	// NumTenantShards returns the number of shards
 	// for a tenant from n total.
 	NumTenantShards(k Key, n int) (size int)
@@ -38,9 +42,23 @@ func (defaultPlacement) NumDatasetShards(Key, int) int { return 2 }
 
 func (defaultPlacement) PickShard(k Key, n int) int { return int(k.Fingerprint % uint64(n)) }
 
-// Placement represents the placement for the given distribution key.
+func (defaultPlacement) Place(k Key) *Placement { return nil }
+
+// Placement represents the placement for a given key.
+//
+// Each key is mapped to one of the shards, based on the placement
+// strategy. In turn, each shard is associated with an instance.
+//
+// Placement provides a number of instances that can host the key.
+// It is assumed, that the caller will use the first one by default,
+// and will try the rest in case of failure. This is done to avoid
+// excessive data distribution in case of temporary unavailability
+// of the instances: first, we try the instance that the key is
+// mapped to, then we try the instances that host the dataset, then
+// instances that host the tenant. Finally, we try any instances.
+// Note that the instances are not guaranteed to be unique.
+// It's also not guaranteed that the instances are available.
 type Placement struct {
-	// Note that the instances reference shared objects, and must not be modified.
 	Instances iter.Iterator[ring.InstanceDesc]
 	Shard     uint32
 }

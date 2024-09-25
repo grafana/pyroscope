@@ -204,7 +204,7 @@ func (c *Client) Push(
 	ctx context.Context,
 	req *segmentwriterv1.PushRequest,
 ) (*segmentwriterv1.PushResponse, error) {
-	k := distributor.NewTenantServiceDatasetKey(req.TenantId, req.Labels)
+	k := distributor.NewTenantServiceDatasetKey(req.TenantId, req.Labels...)
 	p, dErr := c.distributor.Distribute(k, c.ring)
 	if dErr != nil {
 		_ = level.Error(c.logger).Log(

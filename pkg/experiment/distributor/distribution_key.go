@@ -9,7 +9,7 @@ import (
 )
 
 // NewTenantServiceDatasetKey build a distribution key, where
-func NewTenantServiceDatasetKey(tenant string, labels []*v1.LabelPair) placement.Key {
+func NewTenantServiceDatasetKey(tenant string, labels ...*v1.LabelPair) placement.Key {
 	dataset := phlaremodel.Labels(labels).Get(phlaremodel.LabelNameServiceName)
 	return placement.Key{
 		TenantID:    tenant,
