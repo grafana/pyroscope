@@ -127,13 +127,12 @@ func (i *Index) getOrLoadPartition(meta *PartitionMeta) (*indexPartition, error)
 	return p, nil
 }
 
-// GetPartitionKey creates a partition key for a block. It is meant to be used for newly inserted blocks, as it relies
+// CreatePartitionKey creates a partition key for a block. It is meant to be used for newly inserted blocks, as it relies
 // on the index's currently configured partition duration to create the key.
 //
-// FIXME aleks-p: Using this for existing blocks following a partition duration change will produce an invalid key.
-//   - option 1: create a lookup table (block id -> partition key)
-//   - option 2: scan through existing partitions for candidates
-func (i *Index) GetPartitionKey(blockId string) PartitionKey {
+// Note: Using this for existing blocks following a partition duration change can produce the wrong key. Callers should
+// verify that the returned partition actually contains the block.
+func (i *Index) CreatePartitionKey(blockId string) PartitionKey {
 	t := ulid.Time(ulid.MustParse(blockId).Time()).UTC()
 
 	var b strings.Builder
@@ -219,7 +218,7 @@ func (i *Index) insertBlock(b *metastorev1.BlockMeta) error {
 // GetOrCreatePartitionMeta makes the mapping between blocks and partitions. It may assign the block to an existing
 // partition or create a new partition altogether. Meant to be used only in the context of new blocks.
 func (i *Index) GetOrCreatePartitionMeta(b *metastorev1.BlockMeta) (*PartitionMeta, error) {
-	key := i.GetPartitionKey(b.Id)
+	key := i.CreatePartitionKey(b.Id)
 	meta := i.FindPartitionMeta(key)
 
 	if meta == nil {
@@ -251,12 +250,31 @@ func (i *Index) GetOrCreatePartitionMeta(b *metastorev1.BlockMeta) (*PartitionMe
 
 // FindBlock tries to retrieve an existing block from the index. It will load the corresponding partition if it is not
 // already loaded. Returns nil if the block cannot be found.
-func (i *Index) FindBlock(shardNum uint32, tenant string, id string) *metastorev1.BlockMeta {
-	key := i.GetPartitionKey(id)
-
+func (i *Index) FindBlock(shardNum uint32, tenant string, blockId string) *metastorev1.BlockMeta {
+	// first try the currently mapped partition
+	key := i.CreatePartitionKey(blockId)
 	i.partitionMu.Lock()
 	defer i.partitionMu.Unlock()
 
+	b := i.findBlockInPartition(key, shardNum, tenant, blockId)
+	if b != nil {
+		return b
+	}
+
+	// try other partitions that could contain the block
+	t := ulid.Time(ulid.MustParse(blockId).Time()).UTC().UnixMilli()
+	for _, p := range i.allPartitions {
+		if p.contains(t) {
+			b := i.findBlockInPartition(p.Key, shardNum, tenant, blockId)
+			if b != nil {
+				return b
+			}
+		}
+	}
+	return nil
+}
+
+func (i *Index) findBlockInPartition(key PartitionKey, shard uint32, tenant string, blockId string) *metastorev1.BlockMeta {
 	meta := i.FindPartitionMeta(key)
 	if meta == nil {
 		return nil
@@ -269,7 +287,7 @@ func (i *Index) FindBlock(shardNum uint32, tenant string, id string) *metastorev
 
 	p.shardsMu.Lock()
 	defer p.shardsMu.Unlock()
-	s, _ := p.shards[shardNum]
+	s, _ := p.shards[shard]
 	if s == nil {
 		return nil
 	}
@@ -283,7 +301,7 @@ func (i *Index) FindBlock(shardNum uint32, tenant string, id string) *metastorev
 
 	t.blocksMu.Lock()
 	defer t.blocksMu.Unlock()
-	b, _ := t.blocks[id]
+	b, _ := t.blocks[blockId]
 
 	return b
 }
@@ -305,7 +323,7 @@ func (i *Index) FindBlocksInRange(start, end int64, tenants map[string]struct{})
 
 	firstPartitionIdx, lastPartitionIdx := -1, -1
 	for idx, meta := range i.allPartitions {
-		if meta.Key.inRange(start, end) {
+		if meta.overlaps(start, end) {
 			if firstPartitionIdx == -1 {
 				firstPartitionIdx = idx
 			}
@@ -348,7 +366,7 @@ func (i *Index) FindBlocksInRange(start, end int64, tenants map[string]struct{})
 
 func (i *Index) sortPartitions() {
 	slices.SortFunc(i.allPartitions, func(a, b *PartitionMeta) int {
-		return a.Key.compare(b.Key)
+		return a.compare(b)
 	})
 }
 
@@ -376,31 +394,61 @@ func (i *Index) collectTenantBlocks(p *indexPartition, tenants map[string]struct
 
 // ReplaceBlocks removes source blocks from the index and inserts replacement blocks into the index. The intended usage
 // is for block compaction. The replacement blocks could be added to the same or a different partition.
-func (i *Index) ReplaceBlocks(sources []string, sourceShard uint32, sourceTenant string, replacements []*metastorev1.BlockMeta) error {
+func (i *Index) ReplaceBlocks(sources []string, sourceShard uint32, sourceTenant string, replacements []*metastorev1.BlockMeta) (map[string]*BlockWithPartition, error) {
 	i.partitionMu.Lock()
 	defer i.partitionMu.Unlock()
 
 	for _, newBlock := range replacements {
 		err := i.insertBlock(newBlock)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
+	deletedBlocks := make(map[string]*BlockWithPartition, len(sources))
 	for _, sourceBlock := range sources {
-		i.deleteBlock(sourceShard, sourceTenant, sourceBlock)
+		b, meta := i.deleteBlock(sourceShard, sourceTenant, sourceBlock)
+		if b != nil && meta != nil {
+			deletedBlocks[sourceBlock] = &BlockWithPartition{
+				Meta:  meta,
+				Block: b,
+			}
+		}
 	}
 
-	return nil
+	return deletedBlocks, nil
 }
 
 // deleteBlock deletes a block from the index. It is the caller's responsibility to enforce safe concurrent access.
-func (i *Index) deleteBlock(shard uint32, tenant string, blockId string) {
-	key := i.GetPartitionKey(blockId)
+func (i *Index) deleteBlock(shard uint32, tenant string, blockId string) (*metastorev1.BlockMeta, *PartitionMeta) {
+	// first try the currently mapped partition
+	key := i.CreatePartitionKey(blockId)
+	if b, meta, ok := i.tryDelete(key, shard, tenant, blockId); ok {
+		return b, meta
+	}
 
-	p, ok := i.loadedPartitions[key]
-	if !ok {
-		return
+	// now try all other possible partitions
+	t := ulid.Time(ulid.MustParse(blockId).Time()).UTC().UnixMilli()
+
+	for _, p := range i.allPartitions {
+		if p.contains(t) {
+			if b, meta, ok := i.tryDelete(p.Key, shard, tenant, blockId); ok {
+				return b, meta
+			}
+		}
+	}
+
+	return nil, nil
+}
+
+func (i *Index) tryDelete(key PartitionKey, shard uint32, tenant string, blockId string) (*metastorev1.BlockMeta, *PartitionMeta, bool) {
+	meta := i.FindPartitionMeta(key)
+	if meta == nil {
+		return nil, nil, false
+	}
+	p, _ := i.getOrLoadPartition(meta)
+	if p == nil {
+		return nil, nil, false
 	}
 
 	p.shardsMu.Lock()
@@ -408,7 +456,7 @@ func (i *Index) deleteBlock(shard uint32, tenant string, blockId string) {
 
 	s, ok := p.shards[shard]
 	if !ok {
-		return
+		return nil, nil, false
 	}
 
 	s.tenantsMu.Lock()
@@ -416,13 +464,19 @@ func (i *Index) deleteBlock(shard uint32, tenant string, blockId string) {
 
 	t, ok := s.tenants[tenant]
 	if !ok {
-		return
+		return nil, nil, false
 	}
 
 	t.blocksMu.Lock()
 	defer t.blocksMu.Unlock()
 
-	delete(t.blocks, blockId)
+	if t.blocks[blockId] != nil {
+		b := t.blocks[blockId]
+		delete(t.blocks, blockId)
+		return b, meta, true
+	}
+
+	return nil, nil, false
 }
 
 // StartCleanupLoop unloads partitions from memory at an interval.

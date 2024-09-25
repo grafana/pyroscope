@@ -57,6 +57,11 @@ type indexTenant struct {
 	blocks   map[string]*metastorev1.BlockMeta
 }
 
+type BlockWithPartition struct {
+	Meta  *PartitionMeta
+	Block *metastorev1.BlockMeta
+}
+
 type Store interface {
 	ListPartitions() []PartitionKey
 	ReadPartitionMeta(p PartitionKey) (*PartitionMeta, error)

@@ -302,7 +302,7 @@ func Test_RemoveInvalidJobsFromStorage(t *testing.T) {
 	for _, block := range blocks {
 		sources = append(sources, block.Id)
 	}
-	err = m.index.ReplaceBlocks(sources, 0, "", []*metastorev1.BlockMeta{})
+	_, _ = m.index.ReplaceBlocks(sources, 0, "", []*metastorev1.BlockMeta{})
 	require.NoError(t, err)
 
 	// try to assign the job

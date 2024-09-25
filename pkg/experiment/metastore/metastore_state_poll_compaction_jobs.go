@@ -12,6 +12,7 @@ import (
 	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compactionpb"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
 )
 
 func (m *Metastore) PollCompactionJobs(_ context.Context, req *compactorv1.PollCompactionJobsRequest) (*compactorv1.PollCompactionJobsResponse, error) {
@@ -41,7 +42,7 @@ func (m *metastoreState) applyPollCompactionJobs(raft *raft.Log, request *compac
 
 type pollStateUpdate struct {
 	newBlocks          map[tenantShard][]string
-	deletedBlocks      map[tenantShard][]string
+	deletedBlocks      map[string]*index.BlockWithPartition
 	newJobs            []string
 	updatedBlockQueues map[tenantShard][]uint32
 	deletedJobs        map[tenantShard][]string
@@ -51,7 +52,7 @@ type pollStateUpdate struct {
 func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJobsRequest, raftIndex uint64, raftAppendedAtNanos int64) (resp *compactorv1.PollCompactionJobsResponse, err error) {
 	stateUpdate := &pollStateUpdate{
 		newBlocks:          make(map[tenantShard][]string),
-		deletedBlocks:      make(map[tenantShard][]string),
+		deletedBlocks:      make(map[string]*index.BlockWithPartition),
 		newJobs:            make([]string, 0),
 		updatedBlockQueues: make(map[tenantShard][]uint32),
 		deletedJobs:        make(map[tenantShard][]string),
@@ -79,7 +80,7 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 				fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
 
 			// next we'll replace source blocks with compacted ones
-			err = m.index.ReplaceBlocks(job.Blocks, job.Shard, job.TenantId, jobUpdate.CompletedJob.Blocks)
+			deletedBlocks, err := m.index.ReplaceBlocks(job.Blocks, job.Shard, job.TenantId, jobUpdate.CompletedJob.Blocks)
 			if err != nil {
 				level.Error(m.logger).Log(
 					"msg", "failed to replace source blocks with compacted blocks",
@@ -114,18 +115,26 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 				stateUpdate.updatedBlockQueues[blockTenantShard] = append(stateUpdate.updatedBlockQueues[blockTenantShard], b.CompactionLevel)
 			}
 			for _, b := range job.Blocks {
-				level.Debug(m.logger).Log(
-					"msg", "deleted source block",
-					"block", b,
-					"shard", job.Shard,
-					"tenant", job.TenantId,
-					"level", job.CompactionLevel,
-					"job", job.Name,
-				)
-				stateUpdate.deletedBlocks[jobKey] = append(stateUpdate.deletedBlocks[jobKey], b)
-				m.compactionMetrics.deletedBlocks.WithLabelValues(
-					fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
+				if deletedBlocks[b] == nil {
+					level.Error(m.logger).Log(
+						"msg", "source block could not be found for deletion",
+						"block", b,
+						"shard", job.Shard,
+						"tenant", job.TenantId)
+				} else {
+					level.Debug(m.logger).Log(
+						"msg", "deleted source block",
+						"block", b,
+						"shard", job.Shard,
+						"tenant", job.TenantId,
+						"level", job.CompactionLevel,
+						"job", job.Name,
+					)
+					m.compactionMetrics.deletedBlocks.WithLabelValues(
+						fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
+				}
 			}
+			stateUpdate.deletedBlocks = deletedBlocks
 		case compactorv1.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS:
 			level.Debug(m.logger).Log(
 				"msg", "compaction job still in progress",
@@ -299,12 +308,10 @@ func (m *metastoreState) writeToDb(sTable *pollStateUpdate) error {
 				}
 			}
 		}
-		for key, blocks := range sTable.deletedBlocks {
-			for _, b := range blocks {
-				err := m.deleteBlock(tx, key.shard, key.tenant, b)
-				if err != nil {
-					return err
-				}
+		for _, blockWithPartition := range sTable.deletedBlocks {
+			err := m.deleteBlock(tx, blockWithPartition)
+			if err != nil {
+				return err
 			}
 		}
 		for _, jobName := range sTable.newJobs {
@@ -372,5 +379,13 @@ func (m *metastoreState) writeToDb(sTable *pollStateUpdate) error {
 			}
 		}
 		return nil
+	})
+}
+
+func (m *metastoreState) deleteBlock(tx *bbolt.Tx, blockWithPartition *index.BlockWithPartition) error {
+	meta := blockWithPartition.Meta
+	block := blockWithPartition.Block
+	return updateBlockMetadataBucket(tx, meta, block.Shard, block.TenantId, func(bucket *bbolt.Bucket) error {
+		return bucket.Delete([]byte(block.Id))
 	})
 }

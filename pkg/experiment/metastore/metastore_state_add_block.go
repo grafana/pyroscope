@@ -2,7 +2,6 @@ package metastore
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/go-kit/log/level"
@@ -81,16 +80,5 @@ func (m *metastoreState) persistBlock(tx *bbolt.Tx, block *metastorev1.BlockMeta
 
 	return updateBlockMetadataBucket(tx, partMeta, block.Shard, block.TenantId, func(bucket *bbolt.Bucket) error {
 		return bucket.Put(key, value)
-	})
-}
-
-func (m *metastoreState) deleteBlock(tx *bbolt.Tx, shard uint32, tenant, blockId string) error {
-	partKey := m.index.GetPartitionKey(blockId)
-	partMeta := m.index.FindPartitionMeta(partKey)
-	if partMeta == nil {
-		return fmt.Errorf("partition meta not found for %s", partKey)
-	}
-	return updateBlockMetadataBucket(tx, partMeta, shard, tenant, func(bucket *bbolt.Bucket) error {
-		return bucket.Delete([]byte(blockId))
 	})
 }

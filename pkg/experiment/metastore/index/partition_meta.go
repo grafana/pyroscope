@@ -1,6 +1,8 @@
 package index
 
-import "time"
+import (
+	"time"
+)
 
 type PartitionMeta struct {
 	Key      PartitionKey
@@ -40,4 +42,19 @@ func (m *PartitionMeta) AddTenant(tenant string) {
 		m.tenantMap[tenant] = struct{}{}
 		m.Tenants = append(m.Tenants, tenant)
 	}
+}
+
+func (m *PartitionMeta) compare(other *PartitionMeta) int {
+	if m == other {
+		return 0
+	}
+	return m.Ts.Compare(other.Ts)
+}
+
+func (m *PartitionMeta) overlaps(start, end int64) bool {
+	return start < m.EndTime().UnixMilli() && end > m.StartTime().UnixMilli()
+}
+
+func (m *PartitionMeta) contains(t int64) bool {
+	return t >= m.StartTime().UnixMilli() && t < m.EndTime().UnixMilli()
 }

@@ -174,7 +174,7 @@ func TestIndex_GetPartitionKey(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			i := index.NewIndex(mockindex.NewMockStore(t), util.Logger, &index.Config{PartitionDuration: tt.duration})
-			assert.Equalf(t, tt.want, i.GetPartitionKey(tt.blockId), "GetPartitionKey(%v)", tt.blockId)
+			assert.Equalf(t, tt.want, i.CreatePartitionKey(tt.blockId), "CreatePartitionKey(%v)", tt.blockId)
 		})
 	}
 }
@@ -217,7 +217,7 @@ func TestIndex_LoadPartitions(t *testing.T) {
 		blocks = append(blocks, block)
 	}
 
-	partitionKey := i.GetPartitionKey(blocks[0].Id)
+	partitionKey := i.CreatePartitionKey(blocks[0].Id)
 	store.On("ListPartitions").Return([]index.PartitionKey{partitionKey})
 	store.On("ReadPartitionMeta", mock.Anything).Return(&index.PartitionMeta{
 		Key:      partitionKey,
@@ -254,7 +254,7 @@ func TestIndex_ReplaceBlocks(t *testing.T) {
 		CompactionLevel: 1,
 		TenantId:        "tenant-1",
 	}
-	err := i.ReplaceBlocks([]string{b1.Id, b2.Id}, 0, "", []*metastorev1.BlockMeta{replacement})
+	_, err := i.ReplaceBlocks([]string{b1.Id, b2.Id}, 0, "", []*metastorev1.BlockMeta{replacement})
 	require.NoError(t, err)
 
 	require.Nil(t, i.FindBlock(0, "", b1.Id))
@@ -290,7 +290,8 @@ func TestIndex_DurationChange(t *testing.T) {
 	b := &metastorev1.BlockMeta{
 		Id: createUlidString("2024-09-23T08:00:00.123Z"),
 	}
-	_ = i.InsertBlock(b)
+	err := i.InsertBlock(b)
+	require.NoError(t, err)
 	require.NotNil(t, i.FindBlock(0, "", b.Id))
 
 	i.Config.PartitionDuration = time.Hour
