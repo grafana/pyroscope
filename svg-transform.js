@@ -50,10 +50,10 @@ function processSvg(contents, filename) {
   const parts = path.parse(filename);
   if (parts.ext.toLowerCase() === '.svg') {
     const functionName = createFunctionName(parts.name);
-    return buildModule(functionName, parts.base, parts.name);
+    return { code: buildModule(functionName, parts.base, parts.name) };
   }
 
-  return contents;
+  return { code: contents };
 }
 
 module.exports = {

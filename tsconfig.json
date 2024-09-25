@@ -38,7 +38,6 @@
   ],
   "exclude": [
     "public/app/**/*.spec.ts*",
-    "public/app/stories/**",
     "**/node_modules",
     "**/.*/"
   ]

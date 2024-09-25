@@ -67,7 +67,6 @@ module.exports = {
           '**/*.spec.jsx',
           '**/*.spec.ts',
           '**/*.spec.tsx',
-          '**/*.stories.tsx',
         ],
         packageDir: [
           // TODO compute this dynamically
