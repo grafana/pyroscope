@@ -35,7 +35,7 @@ type SymbolsOptions struct {
 }
 
 // todo consider using ReaderAt here, same as in gopcln
-func (f *MMapedElfFile) getSymbols(typ elf.SectionType, opt *SymbolsOptions) ([]SymbolIndex, uint32, error) {
+func (f *InMemElfFile) getSymbols(typ elf.SectionType, opt *SymbolsOptions) ([]SymbolIndex, uint32, error) {
 	switch f.Class {
 	case elf.ELFCLASS64:
 		return f.getSymbols64(typ, opt)
@@ -51,7 +51,7 @@ func (f *MMapedElfFile) getSymbols(typ elf.SectionType, opt *SymbolsOptions) ([]
 // if there is no such section in the File.
 var ErrNoSymbols = errors.New("no symbol section")
 
-func (f *MMapedElfFile) getSymbols64(typ elf.SectionType, opt *SymbolsOptions) ([]SymbolIndex, uint32, error) {
+func (f *InMemElfFile) getSymbols64(typ elf.SectionType, opt *SymbolsOptions) ([]SymbolIndex, uint32, error) {
 	symtabSection := f.sectionByType(typ)
 	if symtabSection == nil {
 		return nil, 0, ErrNoSymbols
@@ -108,7 +108,7 @@ func (f *MMapedElfFile) getSymbols64(typ elf.SectionType, opt *SymbolsOptions) (
 	return symbols[:i], symtabSection.Link, nil
 }
 
-func (f *MMapedElfFile) getSymbols32(typ elf.SectionType, opt *SymbolsOptions) ([]SymbolIndex, uint32, error) {
+func (f *InMemElfFile) getSymbols32(typ elf.SectionType, opt *SymbolsOptions) ([]SymbolIndex, uint32, error) {
 	symtabSection := f.sectionByType(typ)
 	if symtabSection == nil {
 		return nil, 0, ErrNoSymbols

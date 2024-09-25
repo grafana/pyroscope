@@ -178,6 +178,9 @@ func (et *ElfTable) createSymbolTable(me *elf2.MMapedElfFile) (SymbolNameResolve
 	}
 	symTable, symErr := me.NewSymbolTable(&symbolOptions)
 	if symErr != nil && goErr != nil {
+		symTable, symErr = me.NewMiniDebugInfoSymbolTable(&symbolOptions)
+	}
+	if symErr != nil && goErr != nil {
 		return nil, fmt.Errorf("s: %s g: %s", symErr.Error(), goErr.Error())
 	}
 	if symErr == nil && goErr == nil {
