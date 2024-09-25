@@ -51,10 +51,12 @@ func (m *PartitionMeta) compare(other *PartitionMeta) int {
 	return m.Ts.Compare(other.Ts)
 }
 
+// [ m.StartTime(), m.EndTime() )
 func (m *PartitionMeta) overlaps(start, end int64) bool {
-	return start < m.EndTime().UnixMilli() && end > m.StartTime().UnixMilli()
+	return start < m.EndTime().UnixMilli() && end >= m.StartTime().UnixMilli()
 }
 
+// [ m.StartTime(), m.EndTime() )
 func (m *PartitionMeta) contains(t int64) bool {
 	return t >= m.StartTime().UnixMilli() && t < m.EndTime().UnixMilli()
 }
