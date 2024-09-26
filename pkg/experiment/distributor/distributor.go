@@ -301,7 +301,7 @@ func (i *iterator) Next() bool {
 }
 
 func (i *iterator) At() ring.InstanceDesc {
-	a := i.ring.at(i.off - 1) // Translate relative offset to absolute.
+	a := i.ring.at(i.off - 1) // Translate the relative offset to absolute.
 	x := i.shards[a]          // Map the shard to the instance.
 	return i.desc[x]
 }

@@ -188,49 +188,7 @@ func Test_distribution_iterator(t *testing.T) {
 		assert.Equal(t, []string{}, collectN(d.instances(subring{}, 0), 10))
 	})
 
-	t.Run("dataset offsets", func(t *testing.T) {
-		r := subring{
-			n: 12,
-			a: 8,
-			b: 16,
-			c: 14,
-			d: 18,
-		}
-
-		//   0 1 2 3 4 5 6  7  8 9 10 11  all shards
-		//   a a a a b b b  b  c c c  c   no shuffling (!)
-		//   * * * *           > * *  *   tenant (size 8, offset 8)
-		//       > *           x *        dataset (size 4, offset 14 mod 12 = 2)
-		//   6 7|0 1|8 9 10 11|2 3|4  5   PickShard 0 (offset within dataset)
-		//   6 7|3 0|8 9 10 11|1 2|4  5   PickShard 1 (offset within dataset)
-		//   6 7|2 3|8 9 10 11|0 1|4  5   PickShard 2 (offset within dataset)
-		//   6 7|1 2|8 9 10 11|3 0|4  5   PickShard 3 (offset within dataset)
-
-		var expected bytes.Buffer
-		for _, line := range []string{
-			"0 [a a c c c c a a b b b b]",
-			"1 [a c c a c c a a b b b b]",
-			"2 [c c a a c c a a b b b b]",
-			"3 [c a a c c c a a b b b b]",
-			"4 [a a c c c c a a b b b b]",
-			"5 [a c c a c c a a b b b b]",
-			"6 [c c a a c c a a b b b b]",
-			"7 [c a a c c c a a b b b b]",
-			"8 [a a c c c c a a b b b b]",
-			"9 [a c c a c c a a b b b b]",
-		} {
-			_, _ = fmt.Fprintln(&expected, line)
-		}
-
-		var actual bytes.Buffer
-		for i := 0; i < 10; i++ {
-			_, _ = fmt.Fprintln(&actual, i, collectN(d.instances(r, i), 20))
-		}
-
-		assert.Equal(t, expected.String(), actual.String())
-	})
-
-	t.Run("dataset == tenant", func(t *testing.T) {
+	t.Run("matching subrings", func(t *testing.T) {
 		r := subring{
 			n: 12,
 			a: 8,
@@ -260,6 +218,165 @@ func Test_distribution_iterator(t *testing.T) {
 			"7 [a c c c c a a a b b b b]",
 			"8 [c c c c a a a a b b b b]",
 			"9 [c c c a a a a c b b b b]",
+		} {
+			_, _ = fmt.Fprintln(&expected, line)
+		}
+
+		var actual bytes.Buffer
+		for i := 0; i < 10; i++ {
+			_, _ = fmt.Fprintln(&actual, i, collectN(d.instances(r, i), 20))
+		}
+
+		assert.Equal(t, expected.String(), actual.String())
+	})
+
+	t.Run("nested subrings", func(t *testing.T) {
+		r := subring{
+			n: 12,
+			a: 1,
+			b: 9,
+			c: 3,
+			d: 7,
+		}
+
+		//   0  1  2 3 4 5 6 7 8 9 10 11  all shards
+		//   a  a  a a b b b b c c c  c   no shuffling (!)
+		//      >  * * * * * * *          tenant (size 8, offset 1)
+		//           > * * *              dataset (size 4, offset 3)
+		//
+		//   11 4  5 0 1 2 3 6 7 8 9  10  PickShard 0 (offset within dataset)
+		//   11 4  5 3 0 1 2 6 7 8 9  10  PickShard 1
+
+		var expected bytes.Buffer
+		for _, line := range []string{
+			"0 [a b b b b c a a c c c a]",
+			"1 [b b b a b c a a c c c a]",
+			"2 [b b a b b c a a c c c a]",
+			"3 [b a b b b c a a c c c a]",
+			"4 [a b b b b c a a c c c a]",
+			"5 [b b b a b c a a c c c a]",
+			"6 [b b a b b c a a c c c a]",
+			"7 [b a b b b c a a c c c a]",
+			"8 [a b b b b c a a c c c a]",
+			"9 [b b b a b c a a c c c a]",
+		} {
+			_, _ = fmt.Fprintln(&expected, line)
+		}
+
+		var actual bytes.Buffer
+		for i := 0; i < 10; i++ {
+			_, _ = fmt.Fprintln(&actual, i, collectN(d.instances(r, i), 20))
+		}
+
+		assert.Equal(t, expected.String(), actual.String())
+	})
+
+	t.Run("nested subrings aligned", func(t *testing.T) {
+		r := subring{
+			n: 12,
+			a: 1,
+			b: 9,
+			c: 1,
+			d: 5,
+		}
+
+		//   0  1 2 3 4 5 6 7 8 9 10 11  all shards
+		//   a  a a a b b b b c c c  c   no shuffling (!)
+		//      > * * * * * * *          tenant (size 8, offset 1)
+		//      > * * *                  dataset (size 4, offset 1)
+
+		var expected bytes.Buffer
+		for _, line := range []string{
+			"0 [a a a b b b b c c c c a]",
+			"1 [a a b a b b b c c c c a]",
+			"2 [a b a a b b b c c c c a]",
+			"3 [b a a a b b b c c c c a]",
+			"4 [a a a b b b b c c c c a]",
+			"5 [a a b a b b b c c c c a]",
+			"6 [a b a a b b b c c c c a]",
+			"7 [b a a a b b b c c c c a]",
+			"8 [a a a b b b b c c c c a]",
+			"9 [a a b a b b b c c c c a]",
+		} {
+			_, _ = fmt.Fprintln(&expected, line)
+		}
+
+		var actual bytes.Buffer
+		for i := 0; i < 10; i++ {
+			_, _ = fmt.Fprintln(&actual, i, collectN(d.instances(r, i), 20))
+		}
+
+		assert.Equal(t, expected.String(), actual.String())
+	})
+
+	t.Run("nested subrings wrap", func(t *testing.T) {
+		r := subring{
+			n: 12,
+			a: 8,
+			b: 16,
+			c: 10,
+			d: 14,
+		}
+
+		//   0 1 2 3 4 5 6 7 8 9 10 11  all shards
+		//   a a a a b b b b c c c  c   no shuffling (!)
+		//   * * * *         > * *  *   tenant (size 8, offset 8)
+		//   * *                 >  *   dataset (size 4, offset 14 mod 12 = 2)
+
+		var expected bytes.Buffer
+		for _, line := range []string{
+			"0 [c c a a a a c c b b b b]",
+			"1 [c a a c a a c c b b b b]",
+			"2 [a a c c a a c c b b b b]",
+			"3 [a c c a a a c c b b b b]",
+			"4 [c c a a a a c c b b b b]",
+			"5 [c a a c a a c c b b b b]",
+			"6 [a a c c a a c c b b b b]",
+			"7 [a c c a a a c c b b b b]",
+			"8 [c c a a a a c c b b b b]",
+			"9 [c a a c a a c c b b b b]",
+		} {
+			_, _ = fmt.Fprintln(&expected, line)
+		}
+
+		var actual bytes.Buffer
+		for i := 0; i < 10; i++ {
+			_, _ = fmt.Fprintln(&actual, i, collectN(d.instances(r, i), 20))
+		}
+
+		assert.Equal(t, expected.String(), actual.String())
+	})
+
+	t.Run("overlapping subrings", func(t *testing.T) {
+		r := subring{
+			n: 12,
+			a: 8,
+			b: 16,
+			c: 14,
+			d: 18,
+		}
+
+		//   0 1 2 3 4 5 6  7  8 9 10 11  all shards
+		//   a a a a b b b  b  c c c  c   no shuffling (!)
+		//   * * * *           > * *  *   tenant (size 8, offset 8)
+		//       > *           * *        dataset (size 4, offset 14 mod 12 = 2)
+		//   6 7|0 1|8 9 10 11|2 3|4  5   PickShard 0 (offset within dataset)
+		//   6 7|3 0|8 9 10 11|1 2|4  5   PickShard 1
+		//   6 7|2 3|8 9 10 11|0 1|4  5   PickShard 2
+		//   6 7|1 2|8 9 10 11|3 0|4  5   PickShard 3
+
+		var expected bytes.Buffer
+		for _, line := range []string{
+			"0 [a a c c c c a a b b b b]",
+			"1 [a c c a c c a a b b b b]",
+			"2 [c c a a c c a a b b b b]",
+			"3 [c a a c c c a a b b b b]",
+			"4 [a a c c c c a a b b b b]",
+			"5 [a c c a c c a a b b b b]",
+			"6 [c c a a c c a a b b b b]",
+			"7 [c a a c c c a a b b b b]",
+			"8 [a a c c c c a a b b b b]",
+			"9 [a c c a c c a a b b b b]",
 		} {
 			_, _ = fmt.Fprintln(&expected, line)
 		}
