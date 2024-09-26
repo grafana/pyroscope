@@ -169,7 +169,7 @@ func NewSegmentWriterClient(
 		metrics:     newMetrics(registry),
 		ring:        ring,
 		pool:        pool,
-		distributor: distributor.NewDistributor(placement.DefaultPlacement),
+		distributor: distributor.NewDistributor(distributor.DefaultPlacement),
 	}
 	c.subservices, err = services.NewManager(c.pool)
 	if err != nil {
@@ -214,12 +214,15 @@ func (c *Client) Push(
 		return nil, status.Error(codes.Unavailable, errServiceUnavailableMsg)
 	}
 
+	// In case of a failure, the request is sent to another instance.
+	// At most 5 attempts to push the data to the segment writer.
+	attempts := 5
+	instances := placement.ActiveInstances(p.Instances)
 	req.Shard = p.Shard
-	for p.Instances.Next() {
-		instance := p.Instances.At()
-		if instance.State != ring.ACTIVE {
-			continue
-		}
+
+	for attempts > 0 && instances.Next() {
+		attempts--
+		instance := instances.At()
 		resp, err := c.pushToInstance(ctx, req, instance.Addr)
 		// Happy path.
 		if err == nil {
@@ -242,6 +245,7 @@ func (c *Client) Push(
 	_ = level.Error(c.logger).Log(
 		"msg", "no segment writer instances available for the request",
 		"tenant", req.TenantId)
+
 	return nil, status.Error(codes.Unavailable, errServiceUnavailableMsg)
 }
 

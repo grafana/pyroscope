@@ -1,6 +1,8 @@
 package distributor
 
 import (
+	"bytes"
+	"fmt"
 	"testing"
 
 	"github.com/grafana/dskit/ring"
@@ -10,6 +12,7 @@ import (
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement"
+	"github.com/grafana/pyroscope/pkg/iter"
 	"github.com/grafana/pyroscope/pkg/testhelper"
 )
 
@@ -121,31 +124,25 @@ func Test_RingUpdate(t *testing.T) {
 	m.AssertExpectations(t)
 }
 
-func Test_Distribution_FallbackLocations(t *testing.T) {
+func Test_Distributor_Distribute(t *testing.T) {
 	m := new(mockDistributionStrategy)
 	m.On("Place", mock.Anything).Return((*placement.Placement)(nil))
 	m.On("NumTenantShards", mock.Anything, mock.Anything).Return(8)
 	m.On("NumDatasetShards", mock.Anything, mock.Anything).Return(4)
 
 	d := NewDistributor(m)
-	d.LocationsPerKey = 5
-
 	r := testhelper.NewMockRing([]ring.InstanceDesc{
 		{Addr: "a", Tokens: make([]uint32, 4)},
 		{Addr: "b", Tokens: make([]uint32, 4)},
 		{Addr: "c", Tokens: make([]uint32, 4)},
 	}, 1)
 
-	collect := func(pick int) []string {
+	collect := func(offset, n int) []string {
 		k := NewTenantServiceDatasetKey("tenant-a")
-		m.On("PickShard", mock.Anything, mock.Anything).Return(pick).Once()
+		m.On("PickShard", mock.Anything, mock.Anything).Return(offset).Once()
 		p, err := d.Distribute(k, r)
 		require.NoError(t, err)
-		var instances []string
-		for p.Instances.Next() {
-			instances = append(instances, p.Instances.At().Addr)
-		}
-		return instances
+		return collectN(p.Instances, n)
 	}
 
 	//   0 1 2 3 4 5 6 7 8 9 10 11  all shards
@@ -154,19 +151,126 @@ func Test_Distribution_FallbackLocations(t *testing.T) {
 	//   a a a b b b c c a b c  c   shuffling (see d.distribution.shards)
 	//   ----------------------------------------------------------------------
 	//       0 1         2 3 4      PickShard 0 (offset within dataset)
-	//                       ^ borrowed from the tenant
+	//                       ^      borrowed from the tenant
 	//
 	//       3 0         1 2 4      PickShard 1
 	//       2 3         0 1 4      PickShard 2
 	//       1 2         3 0 4      PickShard 3
 
 	// Identical keys have identical placement.
-	assert.Equal(t, []string{"a", "b", "a", "b", "c"}, collect(0))
-	assert.Equal(t, []string{"a", "b", "a", "b", "c"}, collect(0))
+	assert.Equal(t, []string{"a", "b", "a", "b", "c"}, collect(0, 5))
+	assert.Equal(t, []string{"a", "b", "a", "b", "c"}, collect(0, 5))
 
-	assert.Equal(t, []string{"b", "a", "b", "a", "c"}, collect(1))
-	assert.Equal(t, []string{"a", "b", "a", "b", "c"}, collect(2))
-	assert.Equal(t, []string{"b", "a", "b", "a", "c"}, collect(3))
+	// Placement of different keys in the dataset is bound.
+	assert.Equal(t, []string{"b", "a", "b", "a", "c"}, collect(1, 5))
+	assert.Equal(t, []string{"a", "b", "a", "b", "c"}, collect(2, 5))
+	assert.Equal(t, []string{"b", "a", "b", "a", "c"}, collect(3, 5))
+
+	// Now we're trying to collect more instances than available.
+	//   0 1 2 3 4 5 6  7  8 9 10 11  all shards
+	//   * * * *           > * *  *   tenant (size 8, offset 8)
+	//       > *           x *        dataset (size 4, offset 6+8 mod 12 = 2)
+	//       0 1           2          PickShard 2 (13)
+	//   6 7 2 3 8 9 10 11 0 1 4  5
+	//   ^ ^                   ^  ^   borrowed from the tenant
+	//           ^ ^ ^  ^             borrowed from the top ring
+	//   a a a b b b c  c  a b c  c   shuffling (see d.distribution.shards)
+	assert.Equal(t, []string{"a", "b", "a", "b", "c", "c", "a", "a", "b", "b", "c", "c"}, collect(2, 13))
+}
+
+func Test_distribution_iterator(t *testing.T) {
+	d := &distribution{
+		shards: []uint32{0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2},
+		desc:   []ring.InstanceDesc{{Addr: "a"}, {Addr: "b"}, {Addr: "c"}},
+	}
+
+	t.Run("empty ring", func(t *testing.T) {
+		assert.Equal(t, []string{}, collectN(d.instances(subring{}, 0), 10))
+	})
+
+	t.Run("dataset offsets", func(t *testing.T) {
+		r := subring{
+			n: 12,
+			a: 8,
+			b: 16,
+			c: 14,
+			d: 18,
+		}
+
+		//   0 1 2 3 4 5 6  7  8 9 10 11  all shards
+		//   a a a a b b b  b  c c c  c   no shuffling (!)
+		//   * * * *           > * *  *   tenant (size 8, offset 8)
+		//       > *           x *        dataset (size 4, offset 14 mod 12 = 2)
+		//   6 7|0 1|8 9 10 11|2 3|4  5   PickShard 0 (offset within dataset)
+		//   6 7|3 0|8 9 10 11|1 2|4  5   PickShard 1 (offset within dataset)
+		//   6 7|2 3|8 9 10 11|0 1|4  5   PickShard 2 (offset within dataset)
+		//   6 7|1 2|8 9 10 11|3 0|4  5   PickShard 3 (offset within dataset)
+
+		var expected bytes.Buffer
+		for _, line := range []string{
+			"0 [a a c c c c a a b b b b]",
+			"1 [a c c a c c a a b b b b]",
+			"2 [c c a a c c a a b b b b]",
+			"3 [c a a c c c a a b b b b]",
+			"4 [a a c c c c a a b b b b]",
+			"5 [a c c a c c a a b b b b]",
+			"6 [c c a a c c a a b b b b]",
+			"7 [c a a c c c a a b b b b]",
+			"8 [a a c c c c a a b b b b]",
+			"9 [a c c a c c a a b b b b]",
+		} {
+			_, _ = fmt.Fprintln(&expected, line)
+		}
+
+		var actual bytes.Buffer
+		for i := 0; i < 10; i++ {
+			_, _ = fmt.Fprintln(&actual, i, collectN(d.instances(r, i), 20))
+		}
+
+		assert.Equal(t, expected.String(), actual.String())
+	})
+
+	t.Run("dataset == tenant", func(t *testing.T) {
+		r := subring{
+			n: 12,
+			a: 8,
+			b: 16,
+			c: 8,
+			d: 16,
+		}
+
+		//   0 1 2 3 4 5 6  7  8 9 10 11  all shards
+		//   a a a a b b b  b  c c c  c   no shuffling (!)
+		//   * * * *           > * *  *   tenant (size 8, offset 8)
+		//   * * * *           > * *  *   dataset (size 8, offset 8)
+		//
+		//   4 5 6 7|8 9 10 11|0 1 2  3   PickShard 0 (offset within dataset/tenant)
+		//   3 4 5 6|8 9 10 11|7 0 1  2   PickShard 1
+		//   2 3 4 5|8 9 10 11|6 7 0  1   PickShard 2
+
+		var expected bytes.Buffer
+		for _, line := range []string{
+			"0 [c c c c a a a a b b b b]",
+			"1 [c c c a a a a c b b b b]",
+			"2 [c c a a a a c c b b b b]",
+			"3 [c a a a a c c c b b b b]",
+			"4 [a a a a c c c c b b b b]",
+			"5 [a a a c c c c a b b b b]",
+			"6 [a a c c c c a a b b b b]",
+			"7 [a c c c c a a a b b b b]",
+			"8 [c c c c a a a a b b b b]",
+			"9 [c c c a a a a c b b b b]",
+		} {
+			_, _ = fmt.Fprintln(&expected, line)
+		}
+
+		var actual bytes.Buffer
+		for i := 0; i < 10; i++ {
+			_, _ = fmt.Fprintln(&actual, i, collectN(d.instances(r, i), 20))
+		}
+
+		assert.Equal(t, expected.String(), actual.String())
+	})
 }
 
 func Test_permutation(t *testing.T) {
@@ -209,4 +313,13 @@ func Test_permutation(t *testing.T) {
 	}
 
 	assert.Equal(t, expected, actual)
+}
+
+func collectN(i iter.Iterator[ring.InstanceDesc], n int) []string {
+	s := make([]string, 0, n)
+	for n > 0 && i.Next() {
+		s = append(s, i.At().Addr)
+		n--
+	}
+	return s
 }

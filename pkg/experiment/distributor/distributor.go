@@ -11,27 +11,37 @@ import (
 	"github.com/grafana/dskit/ring"
 
 	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement"
-	"github.com/grafana/pyroscope/pkg/iter"
 )
 
-const (
-	defaultRingUpdateInterval = 5 * time.Second
-	defaultLocationsPerKey    = 5
-)
+// NOTE(kolesnikovae): Essentially, we do not depend on the dskit/ring and
+// only use it as a discovery mechanism build on top of the memberlist.
+// It would be better to access the memberlist/serf directly.
+
+const defaultRingUpdateInterval = 5 * time.Second
+
+var DefaultPlacement = defaultPlacement{}
+
+type defaultPlacement struct{}
+
+func (defaultPlacement) NumTenantShards(placement.Key, int) int { return 0 }
+
+func (defaultPlacement) NumDatasetShards(placement.Key, int) int { return 1 }
+
+func (defaultPlacement) PickShard(k placement.Key, n int) int { return int(k.Fingerprint % uint64(n)) }
+
+func (defaultPlacement) Place(k placement.Key) *placement.Placement { return nil }
 
 type Distributor struct {
 	mu                 sync.RWMutex
 	distribution       *distribution
 	placement          placement.Strategy
 	RingUpdateInterval time.Duration
-	LocationsPerKey    int
 }
 
 func NewDistributor(placementStrategy placement.Strategy) *Distributor {
 	return &Distributor{
 		placement:          placementStrategy,
 		RingUpdateInterval: defaultRingUpdateInterval,
-		LocationsPerKey:    defaultLocationsPerKey,
 	}
 }
 
@@ -44,12 +54,6 @@ func (d *Distributor) Distribute(k placement.Key, r ring.ReadRing) (*placement.P
 	}
 	return d.distribute(k), nil
 }
-
-// TODO(kolesnikovae):
-// Essentially, we do not need a ring. Instead, it would be better to access
-// the memberlist/serf directly and build the distribution from there and
-// generate tokens as needed. Or, alternatively, we could implement the
-// BasicLifecyclerDelegate interface.
 
 func (d *Distributor) updateDistribution(r ring.ReadRing, maxAge time.Duration) error {
 	d.mu.RLock()
@@ -81,7 +85,6 @@ func (d *Distributor) distribute(k placement.Key) *placement.Placement {
 	// Determine the number of shards for the tenant within the available
 	// space, and the dataset shards within the tenant subring.
 	s := len(d.distribution.shards)
-	p := min(d.LocationsPerKey, s)
 	tenantSize := d.placement.NumTenantShards(k, s)
 	if tenantSize == 0 || tenantSize > s {
 		tenantSize = s
@@ -101,16 +104,9 @@ func (d *Distributor) distribute(k placement.Key) *placement.Placement {
 	// but extended if needed. Note that the instances are not unique.
 	// We could collect instances lazily and pull them from the iterator,
 	// however that would complicate the code due to concurrent updates.
-	instances := make([]ring.InstanceDesc, 0, p)
-	// Collect instances from the dataset subring.
-	instances = d.distribution.collect(instances, dataset, offset, p)
-	// Collect remaining instances from the tenant subring.
-	instances = d.distribution.collect(instances, tenant, dataset.offset()+dataset.size(), p-len(instances))
-	// Collect remaining instances from the top level ring.
-	instances = d.distribution.collect(instances, all, tenant.offset()+tenant.size(), p-len(instances))
 	return &placement.Placement{
-		Shard:     uint32(dataset.at(offset)) + 1, // 0 shard ID is a sentinel.
-		Instances: iter.NewSliceIterator(instances),
+		Shard:     uint32(dataset.at(offset)) + 1, // 0 shard ID is a sentinel
+		Instances: d.distribution.instances(dataset, offset),
 	}
 }
 
@@ -132,13 +128,6 @@ func (d *distribution) isExpired(maxAge time.Duration) bool {
 	return time.Now().Add(-maxAge).After(d.timestamp)
 }
 
-// TODO(kolesnikovae):
-// Ensure we have access to all instances in the ring, regardless of their
-// state. The ring exposes only healthy instances, which is not what we want,
-// and this will lead to vast shard relocations and will deteriorate data
-// locality if instances leave and join the ring frequently. Currently, the
-// heartbeat timeout is set to 1m by default, which should prevent us from
-// severe problems, but it's still a problem.
 func (d *distribution) readRing(r ring.ReadRing) error {
 	all, err := r.GetAllHealthy(ring.Write)
 	if err != nil {
@@ -156,7 +145,7 @@ func (d *distribution) readRing(r ring.ReadRing) error {
 		return strings.Compare(a.Id, b.Id)
 	})
 	// Now we create a mapping of shards to instances.
-	var tmp [256]uint32 // Stack alloc.
+	var tmp [256]uint32 // Try to allocate on stack.
 	instances := tmp[:0]
 	for j := range d.desc {
 		for range all.Instances[j].Tokens {
@@ -171,25 +160,26 @@ func (d *distribution) readRing(r ring.ReadRing) error {
 	// delta moves.
 	size := len(instances)
 	d.perm.resize(size)
-	d.shards = slices.Grow(d.shards, max(0, size-len(d.shards)))[:size]
+	// Note that we can't reuse d.shards because it may be used by iterators.
+	// In fact, this is a snapshot that must not be modified.
+	d.shards = make([]uint32, size)
 	for j := range d.shards {
 		d.shards[j] = instances[d.perm.v[j]]
 	}
 	return nil
 }
 
-// collect n instances from the subring r starting from the offset off.
-func (d *distribution) collect(instances []ring.InstanceDesc, r subring, off, n int) []ring.InstanceDesc {
-	if n <= 0 {
-		return instances
+// instances returns an iterator that iterates over instances
+// that may host the shard at the offset in the order of preference:
+// dataset -> tenant -> all shards.
+func (d *distribution) instances(r subring, off int) *iterator {
+	return &iterator{
+		off:    off,
+		lim:    r.size(),
+		ring:   r,
+		shards: d.shards,
+		desc:   d.desc,
 	}
-	size := r.size()
-	var added int
-	for i := off; added < size && added < n; i++ {
-		instances = append(instances, d.desc[d.shards[r.at(i)]])
-		added++
-	}
-	return instances
 }
 
 // The inputs are a key and the number of buckets.
@@ -238,6 +228,13 @@ func (s subring) subring(k uint64, size int) subring {
 	return n
 }
 
+func (s subring) pop() subring {
+	n := s
+	n.c, n.d = n.a, n.b
+	n.a, n.b = 0, n.n
+	return n
+}
+
 // The function returns the absolute offset of the relative n.
 func (s subring) at(n int) int {
 	// [ . a-------|-----b . . ]
@@ -252,9 +249,62 @@ func (s subring) at(n int) int {
 	return p
 }
 
+// offset reports offset in the parent ring.
 func (s subring) offset() int { return s.c - s.a }
 
+// size reports the size of the ring.
 func (s subring) size() int { return s.d - s.c }
+
+// iterator iterates instances that host the shards of the subring.
+// The iterator is not limited to the subring, and will continue with
+// the parent subring when the current one is exhausted.
+type iterator struct {
+	n   int // Number of instances collected.
+	off int // Current offset in the ring (relative).
+	lim int // Remaining instances in the subring.
+
+	ring   subring
+	shards []uint32
+	desc   []ring.InstanceDesc
+}
+
+func (i *iterator) Err() error { return nil }
+
+func (i *iterator) Close() error { return nil }
+
+func (i *iterator) Next() bool {
+	if i.n >= i.ring.n {
+		return false
+	}
+	if i.lim > 0 {
+		i.lim--
+	} else {
+		for i.lim <= 0 {
+			// We have exhausted the subring.
+			// Navigate to the parent ring.
+			if i.ring.n == i.ring.size() {
+				// No parent rings left.
+				return false
+			}
+			// Start with the offset right after the subring.
+			size := i.ring.size()
+			i.off = i.ring.offset() + size
+			p := i.ring.pop() // Load parent.
+			// How many items remain in the ring.
+			i.lim = p.size() - size - 1
+			i.ring = p
+		}
+	}
+	i.off++
+	i.n++
+	return true
+}
+
+func (i *iterator) At() ring.InstanceDesc {
+	a := i.ring.at(i.off - 1) // Translate relative offset to absolute.
+	x := i.shards[a]          // Map the shard to the instance.
+	return i.desc[x]
+}
 
 // Fisher–Yates shuffle with predefined steps.
 // Rand source with a seed is not enough as we
@@ -269,6 +319,8 @@ func (p *perm) resize(n int) {
 	// We do want to start with 0 (in contrast to the standard
 	// implementation) as this is required for the n == 1 case:
 	// we need to zero v[0].
+	// Although, it's possible to make the change incrementally,
+	// for simplicity, we just rebuild the permutation.
 	for i := 0; i < n; i++ {
 		j := steps[i]
 		p.v[i], p.v[j] = p.v[j], uint32(i)
