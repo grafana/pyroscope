@@ -15,6 +15,15 @@ import (
 
 // symbols from .symtab, .dynsym
 
+type SymbolTableInterface interface {
+	Refresh()
+	Cleanup()
+	DebugInfo() SymTabDebugInfo
+	IsDead() bool
+	Resolve(addr uint64) string
+	Size() int
+}
+
 type SymbolIndex struct {
 	Name  Name
 	Value uint64
@@ -45,9 +54,10 @@ type FlatSymbolIndex struct {
 	Values gosym.PCIndex
 }
 type SymbolTable struct {
-	Index     FlatSymbolIndex
-	File      *MMapedElfFile
-	SymReader ElfSymbolReader
+	Index      FlatSymbolIndex
+	File       *MMapedElfFile
+	SymReader  ElfSymbolReader
+	hasSection map[elf.SectionType]bool
 
 	demangleOptions []demangle.Option
 }
@@ -67,6 +77,15 @@ func (st *SymbolTable) DebugInfo() SymTabDebugInfo {
 
 func (st *SymbolTable) Size() int {
 	return len(st.Index.Names)
+}
+
+func (st *SymbolTable) HasSection(typ elf.SectionType) bool {
+	val, exist := st.hasSection[typ]
+	if exist {
+		return val
+	} else {
+		return false
+	}
 }
 
 func (st *SymbolTable) Refresh() {
@@ -126,6 +145,10 @@ func (f *InMemElfFile) NewSymbolTable(opt *SymbolsOptions, symReader ElfSymbolRe
 		Names:  make([]Name, total),
 		Values: gosym.NewPCIndex(total),
 	},
+		hasSection: map[elf.SectionType]bool{
+			elf.SHT_SYMTAB: len(sym) > 0,
+			elf.SHT_DYNSYM: len(dynsym) > 0,
+		},
 		File:            file,
 		SymReader:       symReader,
 		demangleOptions: opt.DemangleOptions,
@@ -144,7 +167,7 @@ func (f *MMapedElfFile) NewSymbolTable(opt *SymbolsOptions) (*SymbolTable, error
 func (f *MMapedElfFile) NewMiniDebugInfoSymbolTable(opt *SymbolsOptions) (*SymbolTable, error) {
 	miniDebugSection := f.Section(".gnu_debugdata")
 	if miniDebugSection == nil {
-		return nil, fmt.Errorf("can't find .gnu_debugdata section")
+		return nil, ErrNoSymbols
 	}
 	data, dataErr := f.SectionData(miniDebugSection)
 	if dataErr != nil {
