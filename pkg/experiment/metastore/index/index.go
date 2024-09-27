@@ -124,21 +124,22 @@ func (i *Index) LoadPartitions() {
 
 // ForEachPartition executes the given function concurrently for each partition. It will be called for all partitions,
 // regardless if they are fully loaded in memory or not.
-func (i *Index) ForEachPartition(ctx context.Context, fn func(meta *PartitionMeta)) {
+func (i *Index) ForEachPartition(ctx context.Context, fn func(meta *PartitionMeta) error) error {
 	i.partitionMu.Lock()
 	defer i.partitionMu.Unlock()
 
 	g, ctx := errgroup.WithContext(ctx)
 	for _, meta := range i.allPartitions {
 		g.Go(func() error {
-			fn(meta)
-			return nil
+			return fn(meta)
 		})
 	}
 	err := g.Wait()
 	if err != nil {
 		level.Error(i.logger).Log("msg", "error during partition iteration", "err", err)
+		return err
 	}
+	return nil
 }
 
 func (i *Index) getOrCreatePartition(meta *PartitionMeta) *indexPartition {

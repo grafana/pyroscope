@@ -25,9 +25,9 @@ func (m *metastoreState) getProfileStats(tenant string, ctx context.Context) (*t
 		OldestProfileTime: math.MaxInt64,
 		NewestProfileTime: math.MinInt64,
 	}
-	m.index.ForEachPartition(ctx, func(p *index.PartitionMeta) {
+	err := m.index.ForEachPartition(ctx, func(p *index.PartitionMeta) error {
 		if !p.HasTenant(tenant) {
-			return
+			return nil
 		}
 		oldest := p.StartTime().UnixMilli()
 		newest := p.EndTime().UnixMilli()
@@ -40,7 +40,8 @@ func (m *metastoreState) getProfileStats(tenant string, ctx context.Context) (*t
 		if newest > resp.NewestProfileTime {
 			resp.NewestProfileTime = newest
 		}
+		return nil
 	})
 
-	return &resp, nil
+	return &resp, err
 }
