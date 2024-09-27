@@ -56,6 +56,7 @@ func (r *Recovery) Start() {
 	r.cancel = cancel
 	r.started = true
 	go r.recoverLoop(ctx)
+	r.l.Log("msg", "recovery started")
 }
 
 func (r *Recovery) Stop() {
