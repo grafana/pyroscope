@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/dlq"
 	"io"
 	"math/rand"
 	"path/filepath"
@@ -367,6 +368,44 @@ func TestQueryMultipleSeriesSingleTenant(t *testing.T) {
 	actualCollapsed := bench.StackCollapseProto(actualMerged, 0, 1)
 	expectedCollapsed := bench.StackCollapseProto(expectedMerged, 0, 1)
 	require.Equal(t, expectedCollapsed, actualCollapsed)
+}
+
+func TestDLQRecovery(t *testing.T) {
+	chunk := inputChunk([]input{
+		{shard: 1, tenant: "tb", profile: cpuProfile(42, 239, "svc1", "kek", "foo", "bar")},
+	})
+
+	sw := newTestSegmentWriter(t, segmentWriterConfig{
+		segmentDuration: 100 * time.Millisecond,
+	})
+	sw.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
+		Return(nil, fmt.Errorf("mock metastore unavailable"))
+
+	_ = sw.ingestChunk(t, chunk, false)
+	allBlocks := sw.getMetadataDLQ()
+	assert.Len(t, allBlocks, 1)
+
+	recoveredMetas := make(chan *metastorev1.BlockMeta, 1)
+	srv := mockmetastorev1.NewMockMetastoreServiceServer(t)
+	srv.On("AddBlock", mock.Anything, mock.Anything).
+		Once().
+		Run(func(args mock.Arguments) {
+			meta := args.Get(1).(*metastorev1.AddBlockRequest).Block
+			recoveredMetas <- meta
+		}).
+		Return(&metastorev1.AddBlockResponse{}, nil)
+	recovery := dlq.NewRecovery(dlq.RecoveryConfig{
+		Period: 100 * time.Millisecond,
+	}, testutil.NewLogger(t), srv, sw.bucket)
+	recovery.Start()
+	defer recovery.Stop()
+
+	meta := <-recoveredMetas
+	assert.Equal(t, allBlocks[0].Id, meta.Id)
+
+	clients := sw.createBlocksFromMetas(allBlocks)
+	inputs := groupInputs(t, chunk)
+	sw.queryInputs(clients, inputs)
 }
 
 type sw struct {

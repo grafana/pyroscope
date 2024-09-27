@@ -34,6 +34,7 @@ const pathSegments = "segments"
 const pathDLQ = "dlq"
 const pathAnon = tenant.DefaultTenantID
 const pathBlock = "block.bin"
+const pathMetaPB = "meta.pb"
 
 var ErrMetastoreDLQFailed = fmt.Errorf("failed to store block metadata in DLQ")
 
@@ -549,7 +550,7 @@ func (sw *segmentsWriter) storeMetaDLQ(ctx context.Context, meta *metastorev1.Bl
 		sw.metrics.storeMetaDLQ.WithLabelValues(s.sshard, "err").Inc()
 		return err
 	}
-	fullPath := path.Join(pathDLQ, s.sshard, pathAnon, s.ulid.String(), "meta.pb")
+	fullPath := path.Join(pathDLQ, s.sshard, pathAnon, s.ulid.String(), pathMetaPB)
 	if err = sw.bucket.Upload(ctx, fullPath, bytes.NewReader(metaBlob)); err != nil {
 		sw.metrics.storeMetaDLQ.WithLabelValues(s.sshard, "err").Inc()
 		return fmt.Errorf("%w, %w", ErrMetastoreDLQFailed, err)
