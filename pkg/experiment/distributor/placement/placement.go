@@ -54,22 +54,25 @@ type Placement struct {
 	Shard     uint32
 }
 
-// ActiveInstances returns an iterator that filters out inactive
-// instances and duplicates. Note that it does not mean that the
-// instance is healthy.
+// ActiveInstances returns an iterator that filters out inactive instances.
+// Note that active state does not mean that the instance is healthy.
 func ActiveInstances(i iter.Iterator[ring.InstanceDesc]) iter.Iterator[ring.InstanceDesc] {
 	seen := make(map[string]struct{})
 	return FilterInstances(i, func(x *ring.InstanceDesc) bool {
-		if _, ok := seen[x.Addr]; ok {
+		k := x.Id
+		if k == "" {
+			k = x.Addr
+		}
+		if _, ok := seen[k]; ok {
 			return true
 		}
-		seen[x.Addr] = struct{}{}
+		seen[k] = struct{}{}
 		return x.State != ring.ACTIVE
 	})
 }
 
-// FilterInstances returns an iterator that filters out instances
-// on which the filter function returns true.
+// FilterInstances returns an iterator that filters out
+// instances on which the filter function returns true.
 func FilterInstances(
 	i iter.Iterator[ring.InstanceDesc],
 	filter func(x *ring.InstanceDesc) bool,

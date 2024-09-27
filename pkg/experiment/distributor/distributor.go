@@ -101,9 +101,7 @@ func (d *Distributor) distribute(k placement.Key) *placement.Placement {
 	offset := d.placement.PickShard(k, datasetSize)
 	// Next we want to find p instances eligible to host the key.
 	// The choice must be limited to the dataset / tenant subring,
-	// but extended if needed. Note that the instances are not unique.
-	// We could collect instances lazily and pull them from the iterator,
-	// however that would complicate the code due to concurrent updates.
+	// but extended if needed.
 	return &placement.Placement{
 		Shard:     uint32(dataset.at(offset)) + 1, // 0 shard ID is a sentinel
 		Instances: d.distribution.instances(dataset, offset),

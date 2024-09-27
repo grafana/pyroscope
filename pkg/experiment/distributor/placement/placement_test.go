@@ -21,47 +21,47 @@ func Test_ActiveInstances(t *testing.T) {
 		{
 			description: "all active",
 			instances: []ring.InstanceDesc{
-				{Addr: "a", State: ring.ACTIVE},
-				{Addr: "b", State: ring.ACTIVE},
-				{Addr: "c", State: ring.ACTIVE},
+				{Id: "a", State: ring.ACTIVE},
+				{Id: "b", State: ring.ACTIVE},
+				{Id: "c", State: ring.ACTIVE},
 			},
 			expected: []ring.InstanceDesc{
-				{Addr: "a", State: ring.ACTIVE},
-				{Addr: "b", State: ring.ACTIVE},
-				{Addr: "c", State: ring.ACTIVE},
+				{Id: "a", State: ring.ACTIVE},
+				{Id: "b", State: ring.ACTIVE},
+				{Id: "c", State: ring.ACTIVE},
 			},
 		},
 		{
 			description: "active duplicate",
 			instances: []ring.InstanceDesc{
-				{Addr: "a", State: ring.ACTIVE},
-				{Addr: "a", State: ring.ACTIVE},
+				{Id: "a", State: ring.ACTIVE},
+				{Id: "a", State: ring.ACTIVE},
 			},
 			expected: []ring.InstanceDesc{
-				{Addr: "a", State: ring.ACTIVE},
+				{Id: "a", State: ring.ACTIVE},
 			},
 		},
 		{
 			description: "non-active duplicate",
 			instances: []ring.InstanceDesc{
-				{Addr: "a", State: ring.PENDING},
-				{Addr: "a", State: ring.PENDING},
+				{Id: "a", State: ring.PENDING},
+				{Id: "a", State: ring.PENDING},
 			},
 		},
 		{
 			description: "mixed",
 			instances: []ring.InstanceDesc{
-				{Addr: "a", State: ring.PENDING},
-				{Addr: "b", State: ring.ACTIVE},
-				{Addr: "c", State: ring.JOINING},
-				{Addr: "d", State: ring.LEAVING},
-				{Addr: "c", State: ring.JOINING},
-				{Addr: "e", State: ring.ACTIVE},
-				{Addr: "e", State: ring.ACTIVE},
+				{Id: "a", State: ring.PENDING},
+				{Id: "b", State: ring.ACTIVE},
+				{Id: "c", State: ring.JOINING},
+				{Id: "d", State: ring.LEAVING},
+				{Id: "c", State: ring.JOINING},
+				{Id: "e", State: ring.ACTIVE},
+				{Id: "e", State: ring.ACTIVE},
 			},
 			expected: []ring.InstanceDesc{
-				{Addr: "b", State: ring.ACTIVE},
-				{Addr: "e", State: ring.ACTIVE},
+				{Id: "b", State: ring.ACTIVE},
+				{Id: "e", State: ring.ACTIVE},
 			},
 		},
 	} {
