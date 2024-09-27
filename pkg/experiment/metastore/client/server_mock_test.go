@@ -202,19 +202,3 @@ func newMockServer(t *testing.T) *mockServer {
 	compactorv1.RegisterCompactionPlannerServer(res.srv, res)
 	return res
 }
-
-func getFreePorts(len int) (ports []int, err error) {
-	ports = make([]int, len)
-	for i := 0; i < len; i++ {
-		var a *net.TCPAddr
-		if a, err = net.ResolveTCPAddr("tcp", "127.0.0.1:0"); err == nil {
-			var l *net.TCPListener
-			if l, err = net.ListenTCP("tcp", a); err != nil {
-				return nil, err
-			}
-			ports[i] = l.Addr().(*net.TCPAddr).Port
-			l.Close()
-		}
-	}
-	return ports, nil
-}
