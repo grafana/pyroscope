@@ -37,7 +37,7 @@ func (m *Metastore) ReadIndex(ctx context.Context, req *metastorev1.ReadIndexReq
 
 	raftLogger().Log("msg", "verify_leader")
 	if err := m.raft.VerifyLeader().Error(); err != nil {
-		return nil, m.retryableErrorWithRaftDetails(err)
+		return nil, wrapRetryableErrorWithRaftDetails(err, m.raft)
 	}
 
 	tcheck := time.NewTicker(tcheckFreq)

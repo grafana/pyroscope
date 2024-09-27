@@ -2,6 +2,7 @@ package metastore
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/flagext"
@@ -14,6 +15,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/test"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockdiscovery"
 	"github.com/hashicorp/raft"
+	"github.com/oklog/ulid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -34,12 +36,14 @@ func TestRaftDetailsAddBlock(t *testing.T) {
 	defer ms.Close()
 
 	errors := 0
+	m := &metastorev1.BlockMeta{
+		Id: ulid.MustNew(1, rand.Reader).String(),
+	}
 	for _, it := range ms.instances {
 		_, err := it.metastoreClient.AddBlock(context.Background(), &metastorev1.AddBlockRequest{
-			Block: &metastorev1.BlockMeta{},
+			Block: m,
 		})
 		if err != nil {
-
 			requireRaftDetails(t, err)
 			errors++
 		}
