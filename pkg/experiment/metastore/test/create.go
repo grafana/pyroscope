@@ -17,13 +17,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"github.com/thanos-io/objstore"
 	"google.golang.org/grpc"
 	"net"
 	"testing"
 	"time"
 )
 
-func CreateMetastore(t *testing.T, cfg *metastore.Config, n int) MetastoreSet {
+func NewMetastoreSet(t *testing.T, cfg *metastore.Config, n int, bucket objstore.Bucket) MetastoreSet {
 	l := test.NewTestingLogger(t)
 
 	ports, err := test.GetFreePorts(2 * n)
@@ -82,7 +83,7 @@ func CreateMetastore(t *testing.T, cfg *metastore.Config, n int) MetastoreSet {
 		require.NoError(t, err)
 		il := log.With(l, "idx", bootstrapPeers[i])
 		server := grpc.NewServer()
-		m, err := metastore.New(configs[i], nil, il, prometheus.NewRegistry(), cl)
+		m, err := metastore.New(configs[i], nil, il, prometheus.NewRegistry(), cl, bucket)
 		require.NoError(t, err)
 		metastorev1.RegisterMetastoreServiceServer(server, m)
 		compactorv1.RegisterCompactionPlannerServer(server, m)

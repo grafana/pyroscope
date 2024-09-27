@@ -8,6 +8,7 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore"
+	"github.com/grafana/pyroscope/pkg/objstore/providers/memory"
 	"github.com/oklog/ulid"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
@@ -19,7 +20,7 @@ func TestRaftDetailsAddBlock(t *testing.T) {
 	cfg := new(metastore.Config)
 	flagext.DefaultValues(cfg)
 
-	ms := CreateMetastore(t, cfg, 3)
+	ms := NewMetastoreSet(t, cfg, 3, memory.NewInMemBucket())
 	defer ms.Close()
 
 	errors := 0
@@ -42,7 +43,7 @@ func TestRaftDetailsPullCompaction(t *testing.T) {
 	cfg := new(metastore.Config)
 	flagext.DefaultValues(cfg)
 
-	ms := CreateMetastore(t, cfg, 3)
+	ms := NewMetastoreSet(t, cfg, 3, memory.NewInMemBucket())
 	defer ms.Close()
 
 	errors := 0

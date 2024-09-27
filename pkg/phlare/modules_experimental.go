@@ -107,6 +107,7 @@ func (f *Phlare) initMetastore() (services.Service, error) {
 		logger,
 		f.reg,
 		f.metastoreClient,
+		f.storageBucket,
 	)
 	if err != nil {
 		return nil, err

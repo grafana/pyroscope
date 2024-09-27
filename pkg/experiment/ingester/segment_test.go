@@ -4,7 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/dlq"
+	"github.com/grafana/dskit/flagext"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore"
 	"io"
 	"math/rand"
 	"path/filepath"
@@ -15,7 +16,6 @@ import (
 	"time"
 
 	gprofile "github.com/google/pprof/profile"
-
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingesterv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
@@ -23,6 +23,8 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/ingester/memdb"
 	testutil2 "github.com/grafana/pyroscope/pkg/experiment/ingester/memdb/testutil"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/dlq"
+	metastoretest "github.com/grafana/pyroscope/pkg/experiment/metastore/test"
 	"github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/memory"
@@ -370,7 +372,7 @@ func TestQueryMultipleSeriesSingleTenant(t *testing.T) {
 	require.Equal(t, expectedCollapsed, actualCollapsed)
 }
 
-func TestDLQRecovery(t *testing.T) {
+func TestDLQRecoveryMock(t *testing.T) {
 	chunk := inputChunk([]input{
 		{shard: 1, tenant: "tb", profile: cpuProfile(42, 239, "svc1", "kek", "foo", "bar")},
 	})
@@ -406,6 +408,49 @@ func TestDLQRecovery(t *testing.T) {
 	clients := sw.createBlocksFromMetas(allBlocks)
 	inputs := groupInputs(t, chunk)
 	sw.queryInputs(clients, inputs)
+}
+
+func TestDLQRecovery(t *testing.T) {
+	const tenant = "tb"
+	const ts = 239
+	chunk := inputChunk([]input{
+		{shard: 1, tenant: tenant, profile: cpuProfile(42, ts, "svc1", "kek", "foo", "bar")},
+	})
+
+	sw := newTestSegmentWriter(t, segmentWriterConfig{
+		segmentDuration: 100 * time.Millisecond,
+	})
+	sw.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
+		Return(nil, fmt.Errorf("mock metastore unavailable"))
+
+	_ = sw.ingestChunk(t, chunk, false)
+
+	cfg := new(metastore.Config)
+	flagext.DefaultValues(cfg)
+	m := metastoretest.NewMetastoreSet(t, cfg, 3, memory.NewInMemBucket())
+	defer m.Close()
+
+	queryBlock := func() *metastorev1.BlockMeta {
+		res, err := m.Client.QueryMetadata(context.Background(), &metastorev1.QueryMetadataRequest{
+			TenantId:  []string{tenant},
+			StartTime: ts - 1,
+			EndTime:   ts + 1,
+			Query:     "{service_name=~\"svc1\"}",
+		})
+		if err != nil {
+			return nil
+		}
+		if len(res.Blocks) == 1 {
+			return res.Blocks[0]
+		}
+		return nil
+	}
+	require.Eventually(t, func() bool {
+		return queryBlock() != nil
+	}, 10*time.Second, 100*time.Millisecond)
+
+	block := queryBlock()
+	_ = block
 }
 
 type sw struct {
