@@ -116,8 +116,7 @@ func TestIndex_GetOrCreatePartitionMeta(t *testing.T) {
 		Id:       createUlidString("2024-09-23T08:00:00.123Z"),
 		TenantId: "tenant-1",
 	}
-	pMeta, err := i.GetOrCreatePartitionMeta(block)
-	require.NoError(t, err)
+	pMeta := i.GetOrCreatePartitionMeta(block)
 	require.Equal(t, index.PartitionKey("20240923T08.1h"), pMeta.Key)
 	require.Equal(t, time.UnixMilli(createTime("2024-09-23T08:00:00.000Z")).UTC(), pMeta.Ts)
 	require.Equal(t, []string{"tenant-1"}, pMeta.Tenants)
@@ -189,8 +188,7 @@ func TestIndex_InsertBlock(t *testing.T) {
 		TenantId: "tenant-1",
 	}
 
-	err := i.InsertBlock(block)
-	require.NoError(t, err)
+	i.InsertBlock(block)
 	require.NotNil(t, i.FindBlock(0, "tenant-1", block.Id))
 	blocks, err := i.FindBlocksInRange(0, math.MaxInt64, map[string]struct{}{"tenant-1": {}})
 	require.NoError(t, err)
@@ -198,8 +196,7 @@ func TestIndex_InsertBlock(t *testing.T) {
 	require.Equal(t, block, blocks[0])
 
 	// inserting the block again is a noop
-	err = i.InsertBlock(block)
-	require.NoError(t, err)
+	i.InsertBlock(block)
 	blocks, err = i.FindBlocksInRange(0, math.MaxInt64, map[string]struct{}{"tenant-1": {}})
 	require.NoError(t, err)
 	require.Len(t, blocks, 1)
@@ -245,19 +242,19 @@ func TestIndex_ReplaceBlocks(t *testing.T) {
 	b1 := &metastorev1.BlockMeta{
 		Id: createUlidString("2024-09-23T08:00:00.123Z"),
 	}
-	_ = i.InsertBlock(b1)
+	i.InsertBlock(b1)
 	b2 := &metastorev1.BlockMeta{
 		Id: createUlidString("2024-09-23T08:00:00.123Z"),
 	}
-	_ = i.InsertBlock(b2)
+	i.InsertBlock(b2)
 
 	replacement := &metastorev1.BlockMeta{
 		Id:              createUlidString("2024-09-23T08:00:00.123Z"),
 		CompactionLevel: 1,
 		TenantId:        "tenant-1",
 	}
-	_, err := i.ReplaceBlocks([]string{b1.Id, b2.Id}, 0, "", []*metastorev1.BlockMeta{replacement})
-	require.NoError(t, err)
+	deleted := i.ReplaceBlocks([]string{b1.Id, b2.Id}, 0, "", []*metastorev1.BlockMeta{replacement})
+	require.Equal(t, 2, len(deleted))
 
 	require.Nil(t, i.FindBlock(0, "", b1.Id))
 	require.Nil(t, i.FindBlock(0, "", b2.Id))
@@ -273,7 +270,7 @@ func TestIndex_StartCleanupLoop(t *testing.T) {
 	b := &metastorev1.BlockMeta{
 		Id: createUlidString("2024-09-23T08:00:00.123Z"),
 	}
-	_ = i.InsertBlock(b)
+	i.InsertBlock(b)
 	require.NotNil(t, i.FindBlock(0, "", b.Id))
 	store.AssertNotCalled(t, "ListBlocks", mock.Anything, mock.Anything, mock.Anything)
 
@@ -292,8 +289,7 @@ func TestIndex_DurationChange(t *testing.T) {
 	b := &metastorev1.BlockMeta{
 		Id: createUlidString("2024-09-23T08:00:00.123Z"),
 	}
-	err := i.InsertBlock(b)
-	require.NoError(t, err)
+	i.InsertBlock(b)
 	require.NotNil(t, i.FindBlock(0, "", b.Id))
 
 	i.Config.PartitionDuration = time.Hour

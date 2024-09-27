@@ -229,21 +229,17 @@ func (i *Index) findPartitionMeta(key PartitionKey) *PartitionMeta {
 }
 
 // InsertBlock is the primary way for adding blocks to the index.
-func (i *Index) InsertBlock(b *metastorev1.BlockMeta) error {
+func (i *Index) InsertBlock(b *metastorev1.BlockMeta) {
 	i.partitionMu.Lock()
 	defer i.partitionMu.Unlock()
 
-	return i.insertBlock(b)
+	i.insertBlock(b)
 }
 
 // insertBlock is the underlying implementation for inserting blocks. It is the caller's responsibility to enforce safe
 // concurrent access. The method will create a new partition if needed.
-func (i *Index) insertBlock(b *metastorev1.BlockMeta) error {
-	meta, err := i.getOrCreatePartitionMeta(b)
-	if err != nil {
-		return err
-	}
-
+func (i *Index) insertBlock(b *metastorev1.BlockMeta) {
+	meta := i.getOrCreatePartitionMeta(b)
 	p := i.getOrCreatePartition(meta)
 
 	s, ok := p.shards[b.Shard]
@@ -263,26 +259,22 @@ func (i *Index) insertBlock(b *metastorev1.BlockMeta) error {
 	}
 
 	ten.blocks[b.Id] = b
-	return nil
 }
 
 // GetOrCreatePartitionMeta creates the mapping between blocks and partitions. It may assign the block to an existing
 // partition or create a new partition altogether. Meant to be used only in the context of new blocks.
-func (i *Index) GetOrCreatePartitionMeta(b *metastorev1.BlockMeta) (*PartitionMeta, error) {
+func (i *Index) GetOrCreatePartitionMeta(b *metastorev1.BlockMeta) *PartitionMeta {
 	i.partitionMu.Lock()
 	defer i.partitionMu.Unlock()
 	return i.getOrCreatePartitionMeta(b)
 }
 
-func (i *Index) getOrCreatePartitionMeta(b *metastorev1.BlockMeta) (*PartitionMeta, error) {
+func (i *Index) getOrCreatePartitionMeta(b *metastorev1.BlockMeta) *PartitionMeta {
 	key := i.CreatePartitionKey(b.Id)
 	meta := i.findPartitionMeta(key)
 
 	if meta == nil {
-		ts, duration, err := key.Parse()
-		if err != nil {
-			return nil, err
-		}
+		ts, duration, _ := key.Parse()
 		meta = &PartitionMeta{
 			Key:       key,
 			Ts:        ts,
@@ -302,7 +294,7 @@ func (i *Index) getOrCreatePartitionMeta(b *metastorev1.BlockMeta) (*PartitionMe
 		}
 	}
 
-	return meta, nil
+	return meta
 }
 
 // FindBlock tries to retrieve an existing block from the index. It will load the corresponding partition if it is not
@@ -439,15 +431,12 @@ func (i *Index) collectTenantBlocks(p *indexPartition, tenants map[string]struct
 
 // ReplaceBlocks removes source blocks from the index and inserts replacement blocks into the index. The intended usage
 // is for block compaction. The replacement blocks could be added to the same or a different partition.
-func (i *Index) ReplaceBlocks(sources []string, sourceShard uint32, sourceTenant string, replacements []*metastorev1.BlockMeta) (map[string]*BlockWithPartition, error) {
+func (i *Index) ReplaceBlocks(sources []string, sourceShard uint32, sourceTenant string, replacements []*metastorev1.BlockMeta) map[string]*BlockWithPartition {
 	i.partitionMu.Lock()
 	defer i.partitionMu.Unlock()
 
 	for _, newBlock := range replacements {
-		err := i.insertBlock(newBlock)
-		if err != nil {
-			return nil, err
-		}
+		i.insertBlock(newBlock)
 	}
 
 	deletedBlocks := make(map[string]*BlockWithPartition, len(sources))
@@ -461,7 +450,7 @@ func (i *Index) ReplaceBlocks(sources []string, sourceShard uint32, sourceTenant
 		}
 	}
 
-	return deletedBlocks, nil
+	return deletedBlocks
 }
 
 // deleteBlock deletes a block from the index. It is the caller's responsibility to enforce safe concurrent access.

@@ -67,7 +67,7 @@ func Benchmark_MetastoreState_GetProfileStats(b *testing.B) {
 		// total:                 123 blocks
 		// monthly:              3690 blocks (usually less)
 		for i := 0; i < 600; i++ { // level 0
-			_ = m.index.InsertBlock(&metastorev1.BlockMeta{
+			m.index.InsertBlock(&metastorev1.BlockMeta{
 				Id:      ulid.MustNew(ulid.Now(), rand.Reader).String(),
 				Shard:   uint32(s),
 				MinTime: int64(i * 10),
@@ -83,7 +83,7 @@ func Benchmark_MetastoreState_GetProfileStats(b *testing.B) {
 			})
 		}
 		for i := 0; i < 3400; i++ {
-			_ = m.index.InsertBlock(&metastorev1.BlockMeta{
+			m.index.InsertBlock(&metastorev1.BlockMeta{
 				Id:       ulid.MustNew(ulid.Now(), rand.Reader).String(),
 				Shard:    uint32(s),
 				TenantId: "tenant1",

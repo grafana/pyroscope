@@ -80,15 +80,7 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 				fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
 
 			// next we'll replace source blocks with compacted ones
-			deletedBlocks, err := m.index.ReplaceBlocks(job.Blocks, job.Shard, job.TenantId, jobUpdate.CompletedJob.Blocks)
-			if err != nil {
-				level.Error(m.logger).Log(
-					"msg", "failed to replace source blocks with compacted blocks",
-					"err", err,
-					"job", jobUpdate.JobName,
-					"shard", job.Shard,
-					"tenant", job.TenantId)
-			}
+			deletedBlocks := m.index.ReplaceBlocks(job.Blocks, job.Shard, job.TenantId, jobUpdate.CompletedJob.Blocks)
 			for _, b := range jobUpdate.CompletedJob.Blocks {
 				level.Debug(m.logger).Log(
 					"msg", "added compacted block",

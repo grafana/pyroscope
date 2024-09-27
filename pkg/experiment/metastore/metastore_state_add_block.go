@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/go-kit/log/level"
-
 	"github.com/hashicorp/raft"
+	"github.com/oklog/ulid"
 	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -14,6 +14,11 @@ import (
 
 func (m *Metastore) AddBlock(_ context.Context, req *metastorev1.AddBlockRequest) (*metastorev1.AddBlockResponse, error) {
 	l := log.With(m.logger, "shard", req.Block.Shard, "block_id", req.Block.Id, "ts", req.Block.MinTime)
+	_, err := ulid.Parse(req.Block.Id)
+	if err != nil {
+		_ = level.Warn(l).Log("failed to parse block id", "err", err)
+		return nil, err
+	}
 	_ = level.Info(l).Log("msg", "adding block")
 	t1 := time.Now()
 	defer func() {
@@ -59,10 +64,7 @@ func (m *metastoreState) applyAddBlock(log *raft.Log, request *metastorev1.AddBl
 		)
 		return nil, err
 	}
-	err = m.index.InsertBlock(request.Block)
-	if err != nil {
-		return nil, err
-	}
+	m.index.InsertBlock(request.Block)
 	return &metastorev1.AddBlockResponse{}, nil
 }
 
@@ -73,10 +75,7 @@ func (m *metastoreState) persistBlock(tx *bbolt.Tx, block *metastorev1.BlockMeta
 		return err
 	}
 
-	partMeta, err := m.index.GetOrCreatePartitionMeta(block)
-	if err != nil {
-		return err
-	}
+	partMeta := m.index.GetOrCreatePartitionMeta(block)
 
 	return updateBlockMetadataBucket(tx, partMeta, block.Shard, block.TenantId, func(bucket *bbolt.Bucket) error {
 		return bucket.Put(key, value)
