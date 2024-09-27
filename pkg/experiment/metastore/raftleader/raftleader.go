@@ -41,21 +41,21 @@ func NewRaftLeaderHealthObserver(logger log.Logger, m *Metrics) *HealthObserver 
 	}
 }
 
-func (hs *HealthObserver) Register(r *raft.Raft, service string) {
+func (hs *HealthObserver) Register(r *raft.Raft, cb func(st raft.RaftState)) {
 	hs.mu.Lock()
 	defer hs.mu.Unlock()
-	k := serviceKey{raft: r, service: service}
+	k := serviceKey{raft: r}
 	if _, ok := hs.registered[k]; ok {
 		return
 	}
 	svc := &raftService{
-		hs:      hs,
-		logger:  log.With(hs.logger, "service", service),
-		service: service,
-		raft:    r,
-		c:       make(chan raft.Observation, 1),
-		stop:    make(chan struct{}),
-		done:    make(chan struct{}),
+		hs:     hs,
+		logger: hs.logger,
+		raft:   r,
+		cb:     cb,
+		c:      make(chan raft.Observation, 1),
+		stop:   make(chan struct{}),
+		done:   make(chan struct{}),
 	}
 	_ = level.Debug(svc.logger).Log("msg", "registering health check")
 	svc.updateStatus()
@@ -68,9 +68,9 @@ func (hs *HealthObserver) Register(r *raft.Raft, service string) {
 	hs.registered[k] = svc
 }
 
-func (hs *HealthObserver) Deregister(r *raft.Raft, service string) {
+func (hs *HealthObserver) Deregister(r *raft.Raft) {
 	hs.mu.Lock()
-	k := serviceKey{raft: r, service: service}
+	k := serviceKey{raft: r}
 	svc, ok := hs.registered[k]
 	delete(hs.registered, k)
 	hs.mu.Unlock()
@@ -81,19 +81,18 @@ func (hs *HealthObserver) Deregister(r *raft.Raft, service string) {
 }
 
 type serviceKey struct {
-	raft    *raft.Raft
-	service string
+	raft *raft.Raft
 }
 
 type raftService struct {
 	hs       *HealthObserver
 	logger   log.Logger
-	service  string
 	raft     *raft.Raft
 	observer *raft.Observer
 	c        chan raft.Observation
 	stop     chan struct{}
 	done     chan struct{}
+	cb       func(st raft.RaftState)
 }
 
 func (svc *raftService) run() {
@@ -114,6 +113,7 @@ func (svc *raftService) run() {
 
 func (svc *raftService) updateStatus() {
 	state := svc.raft.State()
+	svc.cb(state)
 	svc.hs.metrics.status.Set(float64(state))
 	_ = level.Info(svc.logger).Log("msg", "updated raft state", "state", state)
 }

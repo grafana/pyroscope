@@ -427,7 +427,8 @@ func TestDLQRecovery(t *testing.T) {
 
 	cfg := new(metastore.Config)
 	flagext.DefaultValues(cfg)
-	m := metastoretest.NewMetastoreSet(t, cfg, 3, memory.NewInMemBucket())
+	cfg.DLQRecoveryPeriod = 100 * time.Millisecond
+	m := metastoretest.NewMetastoreSet(t, cfg, 3, sw.bucket)
 	defer m.Close()
 
 	queryBlock := func() *metastorev1.BlockMeta {
@@ -450,7 +451,11 @@ func TestDLQRecovery(t *testing.T) {
 	}, 10*time.Second, 100*time.Millisecond)
 
 	block := queryBlock()
-	_ = block
+	require.NotNil(t, block)
+
+	clients := sw.createBlocksFromMetas([]*metastorev1.BlockMeta{block})
+	inputs := groupInputs(t, chunk)
+	sw.queryInputs(clients, inputs)
 }
 
 type sw struct {

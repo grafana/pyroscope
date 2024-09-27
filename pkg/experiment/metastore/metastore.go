@@ -171,6 +171,7 @@ func (m *Metastore) Service() services.Service { return m.service }
 func (m *Metastore) Shutdown() error {
 	m.shutdownRaft()
 	m.db.shutdown()
+	m.dlq.Stop()
 	return nil
 }
 
@@ -246,7 +247,13 @@ func (m *Metastore) initRaft() (err error) {
 		_ = level.Info(m.logger).Log("msg", "restoring existing state, not bootstraping")
 	}
 
-	m.leaderhealth.Register(m.raft, metastoreRaftLeaderHealthServiceName)
+	m.leaderhealth.Register(m.raft, func(st raft.RaftState) {
+		if st == raft.Leader {
+			m.dlq.Start()
+		} else {
+			m.dlq.Stop()
+		}
+	})
 	return nil
 }
 
@@ -300,7 +307,7 @@ func (m *Metastore) shutdownRaft() {
 				_ = level.Error(m.logger).Log("msg", "failed to transfer leadership", "err", err)
 			}
 		}
-		m.leaderhealth.Deregister(m.raft, metastoreRaftLeaderHealthServiceName)
+		m.leaderhealth.Deregister(m.raft)
 		if err := m.raft.Shutdown().Error(); err != nil {
 			_ = level.Error(m.logger).Log("msg", "failed to shutdown raft", "err", err)
 		}
