@@ -3,7 +3,6 @@ package index_test
 import (
 	"context"
 	"crypto/rand"
-	"math"
 	"sync"
 	"testing"
 	"time"
@@ -21,49 +20,93 @@ import (
 )
 
 func TestIndex_FindBlocksInRange(t *testing.T) {
-	store := mockindex.NewMockStore(t)
-	i := index.NewIndex(store, util.Logger, &index.DefaultConfig)
-
-	type partitionBlocks struct {
-		key    index.PartitionKey
-		blocks []*metastorev1.BlockMeta
+	tests := []struct {
+		name         string
+		blocks       []*metastorev1.BlockMeta
+		queryStart   int64
+		queryEnd     int64
+		queryTenants []string
+		want         int
+	}{
+		{
+			name: "matching blocks",
+			blocks: []*metastorev1.BlockMeta{
+				createBlock("20240923T06.1h", 0),
+				createBlock("20240923T07.1h", 0),
+				createBlock("20240923T08.1h", 0),
+				createBlock("20240923T09.1h", 0),
+				createBlock("20240923T10.1h", 0),
+			},
+			queryStart: createTime("2024-09-23T08:00:00.000Z"),
+			queryEnd:   createTime("2024-09-23T09:00:00.000Z"),
+			want:       2,
+		},
+		{
+			name: "no matching blocks",
+			blocks: []*metastorev1.BlockMeta{
+				createBlock("20240923T06.1h", 0),
+				createBlock("20240923T07.1h", 0),
+				createBlock("20240923T08.1h", 0),
+				createBlock("20240923T09.1h", 0),
+				createBlock("20240923T10.1h", 0),
+			},
+			queryStart: createTime("2024-09-23T04:00:00.000Z"),
+			queryEnd:   createTime("2024-09-23T05:00:00.000Z"),
+			want:       0,
+		},
+		{
+			name: "out of order ingestion (behind on time)",
+			blocks: []*metastorev1.BlockMeta{
+				createBlock("20240923T06.1h", 0),
+				createBlock("20240923T07.1h", -1*time.Hour), // in range
+				createBlock("20240923T07.1h", -2*time.Hour), // in range
+				createBlock("20240923T07.1h", -3*time.Hour), // too old
+				createBlock("20240923T08.1h", -3*time.Hour), // // technically in range but we will not look here
+				createBlock("20240923T10.1h", 0),
+			},
+			queryStart: createTime("2024-09-23T05:00:00.000Z"),
+			queryEnd:   createTime("2024-09-23T06:00:00.000Z"),
+			want:       3,
+		},
+		{
+			name: "out of order ingestion (ahead of time)",
+			blocks: []*metastorev1.BlockMeta{
+				createBlock("20240923T06.1h", 2*time.Hour), // technically in range but we will not look here
+				createBlock("20240923T07.1h", 1*time.Hour), // in range
+				createBlock("20240923T07.1h", 3*time.Hour), // too new
+				createBlock("20240923T08.1h", 0),           // in range
+				createBlock("20240923T08.1h", 1*time.Hour), // in range
+				createBlock("20240923T10.1h", 0),
+			},
+			queryStart: createTime("2024-09-23T08:00:00.000Z"),
+			queryEnd:   createTime("2024-09-23T09:00:00.000Z"),
+			want:       3,
+		},
 	}
 
-	partitions := []*partitionBlocks{
-		{key: "20240923T06.1h", blocks: []*metastorev1.BlockMeta{
-			{Id: createUlidString("2024-09-23T06:13:23.123Z")},
-			{Id: createUlidString("2024-09-23T06:24:23.123Z")},
-		}},
-		{key: "20240923T07.1h", blocks: []*metastorev1.BlockMeta{
-			{Id: createUlidString("2024-09-23T07:13:23.123Z")},
-			{Id: createUlidString("2024-09-23T07:24:23.123Z")},
-		}},
-		{key: "20240923T08.1h", blocks: []*metastorev1.BlockMeta{
-			{Id: createUlidString("2024-09-23T08:13:23.123Z")},
-			{Id: createUlidString("2024-09-23T08:24:23.123Z")},
-		}},
-		{key: "20240923T09.1h", blocks: []*metastorev1.BlockMeta{
-			{Id: createUlidString("2024-09-23T09:13:23.123Z")},
-			{Id: createUlidString("2024-09-23T09:24:23.123Z")},
-		}},
-		{key: "20240923T10.1h", blocks: []*metastorev1.BlockMeta{
-			{Id: createUlidString("2024-09-23T10:13:23.123Z")},
-			{Id: createUlidString("2024-09-23T10:24:23.123Z")},
-		}},
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			store := mockindex.NewMockStore(t)
+			i := index.NewIndex(store, util.Logger, &index.DefaultConfig)
+			for _, b := range tt.blocks {
+				i.InsertBlock(b)
+			}
+			tenantMap := make(map[string]struct{})
+			for _, t := range tt.queryTenants {
+				tenantMap[t] = struct{}{}
+			}
+			found, err := i.FindBlocksInRange(tt.queryStart, tt.queryEnd, tenantMap)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, len(found))
+			for _, b := range found {
+				require.Truef(
+					t,
+					tt.queryStart < b.MaxTime && tt.queryEnd >= b.MinTime,
+					"block %s is not in range, %v : %v", b.Id, time.UnixMilli(b.MinTime).UTC(), time.UnixMilli(b.MaxTime).UTC())
+			}
+		})
 	}
-	keys := make([]index.PartitionKey, 0, len(partitions))
-	for _, partition := range partitions {
-		keys = append(keys, partition.key)
-	}
-	store.On("ListPartitions").Return(keys)
-	for _, p := range partitions {
-		mockPartition(store, p.key, p.blocks)
-	}
-	i.LoadPartitions()
 
-	found, err := i.FindBlocksInRange(createTime("2024-09-23T08:00:00.123Z"), createTime("2024-09-23T09:00:00.123Z"), map[string]struct{}{})
-	require.NoError(t, err)
-	require.Len(t, found, 8)
 }
 
 func mockPartition(store *mockindex.MockStore, key index.PartitionKey, blocks []*metastorev1.BlockMeta) {
@@ -186,18 +229,20 @@ func TestIndex_InsertBlock(t *testing.T) {
 	block := &metastorev1.BlockMeta{
 		Id:       createUlidString("2024-09-23T08:00:00.123Z"),
 		TenantId: "tenant-1",
+		MinTime:  createTime("2024-09-23T08:00:00.000Z"),
+		MaxTime:  createTime("2024-09-23T08:05:00.000Z"),
 	}
 
 	i.InsertBlock(block)
 	require.NotNil(t, i.FindBlock(0, "tenant-1", block.Id))
-	blocks, err := i.FindBlocksInRange(0, math.MaxInt64, map[string]struct{}{"tenant-1": {}})
+	blocks, err := i.FindBlocksInRange(createTime("2024-09-23T07:00:00.000Z"), createTime("2024-09-23T09:00:00.000Z"), map[string]struct{}{"tenant-1": {}})
 	require.NoError(t, err)
 	require.Len(t, blocks, 1)
 	require.Equal(t, block, blocks[0])
 
 	// inserting the block again is a noop
 	i.InsertBlock(block)
-	blocks, err = i.FindBlocksInRange(0, math.MaxInt64, map[string]struct{}{"tenant-1": {}})
+	blocks, err = i.FindBlocksInRange(createTime("2024-09-23T07:00:00.000Z"), createTime("2024-09-23T09:00:00.000Z"), map[string]struct{}{"tenant-1": {}})
 	require.NoError(t, err)
 	require.Len(t, blocks, 1)
 	require.Equal(t, block, blocks[0])
@@ -310,4 +355,14 @@ func createDuration(d string) time.Duration {
 func createTime(t string) int64 {
 	ts, _ := time.Parse(time.RFC3339, t)
 	return ts.UnixMilli()
+}
+
+func createBlock(key string, offset time.Duration) *metastorev1.BlockMeta {
+	pKey := index.PartitionKey(key)
+	ts, _, _ := pKey.Parse()
+	return &metastorev1.BlockMeta{
+		Id:      createUlidString(ts.Format(time.RFC3339)),
+		MinTime: ts.Add(offset).UnixMilli(),
+		MaxTime: ts.Add(offset).Add(5 * time.Minute).UnixMilli(),
+	}
 }

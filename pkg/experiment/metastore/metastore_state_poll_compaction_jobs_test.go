@@ -2,7 +2,6 @@ package metastore
 
 import (
 	"crypto/rand"
-	"math"
 	"testing"
 	"time"
 
@@ -42,10 +41,7 @@ func Test_JobAssignments(t *testing.T) {
 func Test_StatusUpdates_Success(t *testing.T) {
 	// add enough blocks to create 2 jobs
 	m := initState(t)
-	addLevel0Blocks(m, 40)
-	sourceBlocks, err := m.index.FindBlocksInRange(0, math.MaxInt64, map[string]struct{}{"": {}})
-	require.NoError(t, err)
-	require.Equal(t, 40, len(sourceBlocks))
+	sourceBlocks := addLevel0Blocks(m, 40)
 	require.Equal(t, 2, len(m.compactionJobQueue.jobs))
 
 	// assign the 2 jobs
@@ -292,12 +288,10 @@ func Test_PanicWithDbErrors(t *testing.T) {
 
 func Test_RemoveInvalidJobsFromStorage(t *testing.T) {
 	m := initState(t)
-	addLevel0Blocks(m, 20)
+	blocks := addLevel0Blocks(m, 20)
 	require.Equal(t, 1, len(m.compactionJobQueue.jobs), "there should be one job in the queue")
 
 	// delete all blocks, making the existing job invalid
-	blocks, err := m.index.FindBlocksInRange(0, math.MaxInt64, map[string]struct{}{"": {}})
-	require.NoError(t, err)
 	sources := make([]string, 0, 20)
 	for _, block := range blocks {
 		sources = append(sources, block.Id)
@@ -312,15 +306,20 @@ func Test_RemoveInvalidJobsFromStorage(t *testing.T) {
 	verifyCompactionState(t, m)
 }
 
-func addLevel0Blocks(m *metastoreState, count int) {
+func addLevel0Blocks(m *metastoreState, count int) []*metastorev1.BlockMeta {
+	blocks := make([]*metastorev1.BlockMeta, 0, count)
 	for i := 0; i < count; i++ {
 		b := createBlock(0, "", 0)
+		b.MinTime = time.Now().UnixMilli()
+		b.MaxTime = time.Now().UnixMilli()
+		blocks = append(blocks, b)
 		raftLog := &raft.Log{
 			Index:      uint64(i),
 			AppendedAt: time.Unix(0, int64(i)),
 		}
 		_, _ = m.applyAddBlock(raftLog, &metastorev1.AddBlockRequest{Block: b})
 	}
+	return blocks
 }
 
 func addLevel1Blocks(m *metastoreState, tenant string, count int) {

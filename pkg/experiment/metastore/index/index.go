@@ -30,21 +30,24 @@ type Index struct {
 }
 
 type Config struct {
-	PartitionDuration time.Duration `yaml:"partition_duration"`
-	PartitionTTL      time.Duration `yaml:"partition_ttl"`
-	CleanupInterval   time.Duration `yaml:"cleanup_interval"`
+	PartitionDuration     time.Duration `yaml:"partition_duration"`
+	PartitionTTL          time.Duration `yaml:"partition_ttl"`
+	CleanupInterval       time.Duration `yaml:"cleanup_interval"`
+	QueryLookaroundPeriod time.Duration `yaml:"query_lookaround_period"`
 }
 
 func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.DurationVar(&cfg.PartitionDuration, prefix+"partition-duration", DefaultConfig.PartitionDuration, "")
 	f.DurationVar(&cfg.PartitionTTL, prefix+"partition-ttl", DefaultConfig.PartitionTTL, "")
 	f.DurationVar(&cfg.CleanupInterval, prefix+"cleanup-interval", DefaultConfig.CleanupInterval, "")
+	f.DurationVar(&cfg.QueryLookaroundPeriod, prefix+"query-lookaround-period", DefaultConfig.QueryLookaroundPeriod, "")
 }
 
 var DefaultConfig = Config{
-	PartitionDuration: time.Hour,
-	PartitionTTL:      4 * time.Hour,
-	CleanupInterval:   5 * time.Minute,
+	PartitionDuration:     time.Hour,
+	PartitionTTL:          4 * time.Hour,
+	CleanupInterval:       5 * time.Minute,
+	QueryLookaroundPeriod: time.Hour,
 }
 
 type indexPartition struct {
@@ -361,47 +364,21 @@ func (i *Index) findBlockInPartition(key PartitionKey, shard uint32, tenant stri
 func (i *Index) FindBlocksInRange(start, end int64, tenants map[string]struct{}) ([]*metastorev1.BlockMeta, error) {
 	i.partitionMu.Lock()
 	defer i.partitionMu.Unlock()
+	startWithLookaround := start - i.Config.QueryLookaroundPeriod.Milliseconds()
+	endWithLookaround := end + i.Config.QueryLookaroundPeriod.Milliseconds()
 
 	blocks := make([]*metastorev1.BlockMeta, 0)
 
-	firstPartitionIdx, lastPartitionIdx := -1, -1
-	for idx, meta := range i.allPartitions {
-		if meta.overlaps(start, end) {
-			if firstPartitionIdx == -1 {
-				firstPartitionIdx = idx
-			}
+	for _, meta := range i.allPartitions { // TODO aleks-p: consider using binary search to find a good starting point
+		if meta.overlaps(startWithLookaround, endWithLookaround) {
 			p, err := i.getOrLoadPartition(meta)
 			if err != nil {
 				level.Error(i.logger).Log("msg", "error loading partition", "key", meta.Key, "err", err)
 				return nil, err
 			}
-			tenantBlocks := i.collectTenantBlocks(p, tenants)
+			tenantBlocks := i.collectTenantBlocks(p, start, end, tenants)
 			blocks = append(blocks, tenantBlocks...)
-		} else if firstPartitionIdx != -1 {
-			lastPartitionIdx = idx - 1
 		}
-	}
-
-	if firstPartitionIdx > 0 {
-		meta := i.allPartitions[firstPartitionIdx-1]
-		p, err := i.getOrLoadPartition(meta)
-		if err != nil {
-			level.Error(i.logger).Log("msg", "error loading previous partition", "key", meta.Key, "err", err)
-			return nil, err
-		}
-		tenantBlocks := i.collectTenantBlocks(p, tenants)
-		blocks = append(blocks, tenantBlocks...)
-	}
-
-	if lastPartitionIdx > -1 && lastPartitionIdx < len(i.allPartitions)-1 {
-		meta := i.allPartitions[lastPartitionIdx+1]
-		p, err := i.getOrLoadPartition(meta)
-		if err != nil {
-			level.Error(i.logger).Log("msg", "error loading next partition", "key", meta.Key, "err", err)
-			return nil, err
-		}
-		tenantBlocks := i.collectTenantBlocks(p, tenants)
-		blocks = append(blocks, tenantBlocks...)
 	}
 
 	return blocks, nil
@@ -413,7 +390,7 @@ func (i *Index) sortPartitions() {
 	})
 }
 
-func (i *Index) collectTenantBlocks(p *indexPartition, tenants map[string]struct{}) []*metastorev1.BlockMeta {
+func (i *Index) collectTenantBlocks(p *indexPartition, start, end int64, tenants map[string]struct{}) []*metastorev1.BlockMeta {
 	blocks := make([]*metastorev1.BlockMeta, 0)
 	for _, s := range p.shards {
 		for tKey, t := range s.tenants {
@@ -422,7 +399,9 @@ func (i *Index) collectTenantBlocks(p *indexPartition, tenants map[string]struct
 				continue
 			}
 			for _, block := range t.blocks {
-				blocks = append(blocks, block)
+				if start < block.MaxTime && end >= block.MinTime {
+					blocks = append(blocks, block)
+				}
 			}
 		}
 	}
