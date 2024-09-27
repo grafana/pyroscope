@@ -2,6 +2,7 @@ package phlare
 
 import (
 	"fmt"
+
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"

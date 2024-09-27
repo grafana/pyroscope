@@ -296,7 +296,7 @@ func getTags(repo string) []Tag {
 	for {
 		var pageTags []Tag
 		url := "https://api.github.com/repos/" + repo + "/tags?page=" + strconv.Itoa(page) + "&per_page=100"
-		log.Printf("GET " + url)
+		log.Printf("GET %s", url)
 		req, err := http.NewRequest("GET", url, nil)
 		req.Header.Set("Authorization", "Bearer "+strings.TrimSpace(ghToken))
 		requireNoError(err, "new request")
