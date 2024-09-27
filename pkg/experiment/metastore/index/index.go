@@ -214,8 +214,8 @@ func (i *Index) CreatePartitionKey(blockId string) PartitionKey {
 	return PartitionKey(b.String())
 }
 
-// FindPartitionMeta retrieves the partition meta for the given key.
-func (i *Index) FindPartitionMeta(key PartitionKey) *PartitionMeta {
+// findPartitionMeta retrieves the partition meta for the given key.
+func (i *Index) findPartitionMeta(key PartitionKey) *PartitionMeta {
 	loaded, ok := i.loadedPartitions[key]
 	if ok {
 		return loaded.meta
@@ -239,7 +239,7 @@ func (i *Index) InsertBlock(b *metastorev1.BlockMeta) error {
 // insertBlock is the underlying implementation for inserting blocks. It is the caller's responsibility to enforce safe
 // concurrent access. The method will create a new partition if needed.
 func (i *Index) insertBlock(b *metastorev1.BlockMeta) error {
-	meta, err := i.GetOrCreatePartitionMeta(b)
+	meta, err := i.getOrCreatePartitionMeta(b)
 	if err != nil {
 		return err
 	}
@@ -266,11 +266,17 @@ func (i *Index) insertBlock(b *metastorev1.BlockMeta) error {
 	return nil
 }
 
-// GetOrCreatePartitionMeta makes the mapping between blocks and partitions. It may assign the block to an existing
+// GetOrCreatePartitionMeta creates the mapping between blocks and partitions. It may assign the block to an existing
 // partition or create a new partition altogether. Meant to be used only in the context of new blocks.
 func (i *Index) GetOrCreatePartitionMeta(b *metastorev1.BlockMeta) (*PartitionMeta, error) {
+	i.partitionMu.Lock()
+	defer i.partitionMu.Unlock()
+	return i.getOrCreatePartitionMeta(b)
+}
+
+func (i *Index) getOrCreatePartitionMeta(b *metastorev1.BlockMeta) (*PartitionMeta, error) {
 	key := i.CreatePartitionKey(b.Id)
-	meta := i.FindPartitionMeta(key)
+	meta := i.findPartitionMeta(key)
 
 	if meta == nil {
 		ts, duration, err := key.Parse()
@@ -326,7 +332,7 @@ func (i *Index) FindBlock(shardNum uint32, tenant string, blockId string) *metas
 }
 
 func (i *Index) findBlockInPartition(key PartitionKey, shard uint32, tenant string, blockId string) *metastorev1.BlockMeta {
-	meta := i.FindPartitionMeta(key)
+	meta := i.findPartitionMeta(key)
 	if meta == nil {
 		return nil
 	}
@@ -481,7 +487,7 @@ func (i *Index) deleteBlock(shard uint32, tenant string, blockId string) (*metas
 }
 
 func (i *Index) tryDelete(key PartitionKey, shard uint32, tenant string, blockId string) (*metastorev1.BlockMeta, *PartitionMeta, bool) {
-	meta := i.FindPartitionMeta(key)
+	meta := i.findPartitionMeta(key)
 	if meta == nil {
 		return nil, nil, false
 	}

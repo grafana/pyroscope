@@ -97,11 +97,13 @@ func TestIndex_ForEachPartition(t *testing.T) {
 
 	visited := make(map[index.PartitionKey]struct{})
 	var mu sync.Mutex
-	i.ForEachPartition(context.Background(), func(meta *index.PartitionMeta) {
+	err := i.ForEachPartition(context.Background(), func(meta *index.PartitionMeta) error {
 		mu.Lock()
 		visited[meta.Key] = struct{}{}
 		mu.Unlock()
+		return nil
 	})
+	require.NoError(t, err)
 
 	require.Len(t, visited, 5)
 }
