@@ -186,9 +186,6 @@ func (i *Index) insertBlock(b *metastorev1.BlockMeta) error {
 
 	p := i.getOrCreatePartition(meta)
 
-	p.shardsMu.Lock()
-	defer p.shardsMu.Unlock()
-
 	s, ok := p.shards[b.Shard]
 	if !ok {
 		s = &indexShard{
@@ -197,9 +194,6 @@ func (i *Index) insertBlock(b *metastorev1.BlockMeta) error {
 		p.shards[b.Shard] = s
 	}
 
-	s.tenantsMu.Lock()
-	defer s.tenantsMu.Unlock()
-
 	ten, ok := s.tenants[b.TenantId]
 	if !ok {
 		ten = &indexTenant{
@@ -207,9 +201,6 @@ func (i *Index) insertBlock(b *metastorev1.BlockMeta) error {
 		}
 		s.tenants[b.TenantId] = ten
 	}
-
-	ten.blocksMu.Lock()
-	defer ten.blocksMu.Unlock()
 
 	ten.blocks[b.Id] = b
 	return nil
@@ -285,22 +276,16 @@ func (i *Index) findBlockInPartition(key PartitionKey, shard uint32, tenant stri
 		return nil
 	}
 
-	p.shardsMu.Lock()
-	defer p.shardsMu.Unlock()
 	s, _ := p.shards[shard]
 	if s == nil {
 		return nil
 	}
 
-	s.tenantsMu.Lock()
-	defer s.tenantsMu.Unlock()
 	t, _ := s.tenants[tenant]
 	if t == nil {
 		return nil
 	}
 
-	t.blocksMu.Lock()
-	defer t.blocksMu.Unlock()
 	b, _ := t.blocks[blockId]
 
 	return b
@@ -371,23 +356,17 @@ func (i *Index) sortPartitions() {
 }
 
 func (i *Index) collectTenantBlocks(p *indexPartition, tenants map[string]struct{}) []*metastorev1.BlockMeta {
-	p.shardsMu.Lock()
-	defer p.shardsMu.Unlock()
 	blocks := make([]*metastorev1.BlockMeta, 0)
 	for _, s := range p.shards {
-		s.tenantsMu.Lock()
 		for tKey, t := range s.tenants {
 			_, ok := tenants[tKey]
 			if !ok && tKey != "" {
 				continue
 			}
-			t.blocksMu.Lock()
 			for _, block := range t.blocks {
 				blocks = append(blocks, block)
 			}
-			t.blocksMu.Unlock()
 		}
-		s.tenantsMu.Unlock()
 	}
 	return blocks
 }
@@ -451,24 +430,15 @@ func (i *Index) tryDelete(key PartitionKey, shard uint32, tenant string, blockId
 		return nil, nil, false
 	}
 
-	p.shardsMu.Lock()
-	defer p.shardsMu.Unlock()
-
 	s, ok := p.shards[shard]
 	if !ok {
 		return nil, nil, false
 	}
 
-	s.tenantsMu.Lock()
-	defer s.tenantsMu.Unlock()
-
 	t, ok := s.tenants[tenant]
 	if !ok {
 		return nil, nil, false
 	}
-
-	t.blocksMu.Lock()
-	defer t.blocksMu.Unlock()
 
 	if t.blocks[blockId] != nil {
 		b := t.blocks[blockId]

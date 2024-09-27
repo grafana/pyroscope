@@ -42,19 +42,15 @@ type Index struct {
 type indexPartition struct {
 	meta     *PartitionMeta
 	loadedAt time.Time
-
-	shardsMu sync.Mutex
 	shards   map[uint32]*indexShard
 }
 
 type indexShard struct {
-	tenantsMu sync.Mutex
-	tenants   map[string]*indexTenant
+	tenants map[string]*indexTenant
 }
 
 type indexTenant struct {
-	blocksMu sync.Mutex
-	blocks   map[string]*metastorev1.BlockMeta
+	blocks map[string]*metastorev1.BlockMeta
 }
 
 type BlockWithPartition struct {
