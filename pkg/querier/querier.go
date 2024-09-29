@@ -25,6 +25,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/samber/lo"
+	"go.opentelemetry.io/otel/baggage"
 	"golang.org/x/sync/errgroup"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -280,6 +281,15 @@ func (q *Querier) LabelValues(ctx context.Context, req *connect.Request[typesv1.
 func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "LabelNames")
 	defer sp.Finish()
+
+	header := req.Header()
+	fmt.Println("header:", header)
+
+	ctxBaggage := baggage.FromContext(ctx)
+	fmt.Println("baggage:", ctxBaggage)
+
+	parsedBaggage, e := baggage.Parse(header.Get("Baggage"))
+	fmt.Println("parsedBaggage:", parsedBaggage, "error:", e)
 
 	_, hasTimeRange := phlaremodel.GetTimeRange(req.Msg)
 	sp.LogFields(
