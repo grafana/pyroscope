@@ -33,7 +33,7 @@ require (
 	github.com/grafana/jfr-parser/pprof v0.0.0-20240228024232-8abcb81c304c
 	github.com/grafana/pyroscope-go v1.1.1
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.8
-	github.com/grafana/pyroscope-go/x/k6 v0.0.0-20240920080526-46ebf824bf43
+	github.com/grafana/pyroscope-go/x/k6 v0.0.0-20240930200707-5b85aa3649e5
 	github.com/grafana/pyroscope/api v0.4.0
 	github.com/grafana/regexp v0.0.0-20221123153739-15dc172cd2db
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0

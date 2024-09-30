@@ -397,8 +397,8 @@ github.com/grafana/pyroscope-go v1.1.1 h1:PQoUU9oWtO3ve/fgIiklYuGilvsm8qaGhlY4Vw
 github.com/grafana/pyroscope-go v1.1.1/go.mod h1:Mw26jU7jsL/KStNSGGuuVYdUq7Qghem5P8aXYXSXG88=
 github.com/grafana/pyroscope-go/godeltaprof v0.1.8 h1:iwOtYXeeVSAeYefJNaxDytgjKtUuKQbJqgAIjlnicKg=
 github.com/grafana/pyroscope-go/godeltaprof v0.1.8/go.mod h1:2+l7K7twW49Ct4wFluZD3tZ6e0SjanjcUUBPVD/UuGU=
-github.com/grafana/pyroscope-go/x/k6 v0.0.0-20240920080526-46ebf824bf43 h1:/ThZsTNBh/LfiJEtICIy8ht6syUyE7+STQU3nwjDleU=
-github.com/grafana/pyroscope-go/x/k6 v0.0.0-20240920080526-46ebf824bf43/go.mod h1:nfbW6/4ke3ywlqLb+Zgr9t1z9Zv3m+2ImUp+vbkzHpc=
+github.com/grafana/pyroscope-go/x/k6 v0.0.0-20240930200707-5b85aa3649e5 h1:c0SkBbjGLzVeMlt5gkh77HYLXjgbMb7YAI2E4faU1n4=
+github.com/grafana/pyroscope-go/x/k6 v0.0.0-20240930200707-5b85aa3649e5/go.mod h1:nfbW6/4ke3ywlqLb+Zgr9t1z9Zv3m+2ImUp+vbkzHpc=
 github.com/grafana/regexp v0.0.0-20221123153739-15dc172cd2db h1:7aN5cccjIqCLTzedH7MZzRZt5/lsAHch6Z3L2ZGn5FA=
 github.com/grafana/regexp v0.0.0-20221123153739-15dc172cd2db/go.mod h1:M5qHK+eWfAv8VR/265dIuEpL3fNfeC21tXXp9itM24A=
 github.com/grpc-ecosystem/go-grpc-middleware v1.4.0 h1:UH//fgunKIs4JdUbpDl1VZCDaL56wXCB/5+wF6uHfaI=
