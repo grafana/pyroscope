@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 
@@ -88,27 +89,22 @@ func writePartitionV3(w *writerOffset, e *encodersV3, p *PartitionWriter) (err e
 	if p.header.V3.Locations, err = writeSymbolsBlock(w, p.locations.slice, e.locationsEncoder); err != nil {
 		return err
 	}
-	for ci, c := range p.stacktraces.chunks {
-		stacks := c.stacks
-		if stacks == 0 {
-			stacks = uint32(len(p.stacktraces.hashToIdx))
-		}
-		h := StacktraceBlockHeader{
-			Offset:             w.offset,
-			Partition:          p.header.Partition,
-			BlockIndex:         uint16(ci),
-			Encoding:           StacktraceEncodingGroupVarint,
-			Stacktraces:        stacks,
-			StacktraceNodes:    c.tree.len(),
-			StacktraceMaxNodes: c.partition.maxNodesPerChunk,
-		}
-		crc := crc32.New(castagnoli)
-		if h.Size, err = c.WriteTo(io.MultiWriter(crc, w)); err != nil {
-			return fmt.Errorf("writing stacktrace chunk data: %w", err)
-		}
-		h.CRC = crc.Sum32()
-		p.header.Stacktraces = append(p.header.Stacktraces, h)
+
+	h := StacktraceBlockHeader{
+		Offset:             w.offset,
+		Partition:          p.header.Partition,
+		Encoding:           StacktraceEncodingGroupVarint,
+		Stacktraces:        uint32(len(p.stacktraces.hashToIdx)),
+		StacktraceNodes:    p.stacktraces.tree.len(),
+		StacktraceMaxNodes: math.MaxUint32,
 	}
+	crc := crc32.New(castagnoli)
+	if h.Size, err = p.stacktraces.WriteTo(io.MultiWriter(crc, w)); err != nil {
+		return fmt.Errorf("writing stacktrace chunk data: %w", err)
+	}
+	h.CRC = crc.Sum32()
+	p.header.Stacktraces = append(p.header.Stacktraces, h)
+
 	return nil
 }
 

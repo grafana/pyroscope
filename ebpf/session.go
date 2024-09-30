@@ -167,16 +167,19 @@ func (s *session) Start() error {
 	}
 
 	_, nsIno, err := getPIDNamespace()
-	if err != nil {
-		return fmt.Errorf("unable to get pid namespace %w", err)
-	}
-	err = spec.RewriteConstants(map[string]interface{}{
-		"global_config": pyrobpf.ProfileGlobalConfigT{
-			NsPidIno: nsIno,
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("pyrobpf rewrite constants %w", err)
+	// if the file does not exist, CONFIG_PID_NS is not supported, so we just ignore the error
+	if !os.IsNotExist(err) {
+		if err != nil {
+			return fmt.Errorf("unable to get pid namespace %w", err)
+		}
+		err = spec.RewriteConstants(map[string]interface{}{
+			"global_config": pyrobpf.ProfileGlobalConfigT{
+				NsPidIno: nsIno,
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("pyrobpf rewrite constants %w", err)
+		}
 	}
 	err = spec.LoadAndAssign(&s.bpf, opts)
 	if err != nil {

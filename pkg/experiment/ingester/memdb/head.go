@@ -49,9 +49,6 @@ func NewHead(metrics *HeadMetrics) *Head {
 		metrics: metrics,
 		symbols: symdb.NewPartitionWriter(0, &symdb.Config{
 			Version: symdb.FormatV3,
-			Stacktraces: symdb.StacktracesConfig{
-				MaxNodesPerChunk: 4 << 20,
-			},
 		}),
 		totalSamples: atomic.NewUint64(0),
 		minTimeNanos: math.MaxInt64,
