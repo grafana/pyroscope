@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package adaptive_placement;
+
+message Placement {
+  repeated TenantPlacement tenants = 1;
+  repeated DatasetPlacement datasets = 2;
+}
+
+message TenantPlacement {
+  string tenant_id = 1;
+  uint32 shards_limit = 2;
+}
+
+message DatasetPlacement {
+  uint32 tenant = 1;
+  string dataset_name = 2;
+  uint32 shards_limit = 3;
+  LoadBalancing load_balancing = 4;
+}
+
+enum LoadBalancing {
+  LOAD_BALANCING_UNSPECIFIED = 0;
+  LOAD_BALANCING_FINGERPRINT_MOD = 1;
+  LOAD_BALANCING_ROUND_ROBIN = 2;
+}
+
+// DistributionStats includes the data the Placement is built based on.
+message DistributionStats {
+  repeated TenantStats tenants = 1;
+  repeated DatasetStats datasets = 2;
+  repeated ShardStats shards = 3;
+}
+
+message TenantStats {
+  string tenant_id = 1;
+}
+
+message DatasetStats {
+  uint32 tenant = 1;
+  string name = 2;
+  // Shard value is a reference to ShardStats.
+  repeated uint32 shards = 3;
+  repeated uint32 usage = 4;
+}
+
+message ShardStats {
+  uint32 id = 1;
+  string owner = 2;
+}
