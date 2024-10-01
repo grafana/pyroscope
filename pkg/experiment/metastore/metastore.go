@@ -191,7 +191,6 @@ func (m *Metastore) starting(context.Context) error {
 func (m *Metastore) stopping(_ error) error {
 	close(m.done)
 	m.wg.Wait()
-	m.dlq.Stop()
 	return m.Shutdown()
 }
 
