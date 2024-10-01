@@ -169,9 +169,9 @@ func New(config Config, limits Limits, logger log.Logger, reg prometheus.Registe
 func (m *Metastore) Service() services.Service { return m.service }
 
 func (m *Metastore) Shutdown() error {
+	m.dlq.Stop()
 	m.shutdownRaft()
 	m.db.shutdown()
-	m.dlq.Stop()
 	return nil
 }
 
