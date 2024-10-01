@@ -22,7 +22,7 @@ type RecoveryConfig struct {
 }
 
 type LocalServer interface {
-	AddBlock(context.Context, *metastorev1.AddBlockRequest) (*metastorev1.AddBlockResponse, error)
+	AddRecoveredBlock(context.Context, *metastorev1.AddBlockRequest) (*metastorev1.AddBlockResponse, error)
 }
 
 type Recovery struct {
@@ -115,7 +115,7 @@ func (r *Recovery) recover(ctx context.Context, metaPath string) error {
 		level.Error(r.l).Log("msg", "unexpected block meta", "path", metaPath, "meta", fmt.Sprintf("%+v", meta))
 		return nil
 	}
-	_, err = r.srv.AddBlock(ctx, &metastorev1.AddBlockRequest{
+	_, err = r.srv.AddRecoveredBlock(ctx, &metastorev1.AddBlockRequest{
 		Block: meta,
 	})
 	if err != nil {
