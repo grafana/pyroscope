@@ -111,8 +111,15 @@ func (i *Index) LoadPartitions() {
 	i.allPartitions = make([]*PartitionMeta, 0)
 	for _, key := range i.store.ListPartitions() {
 		pMeta := i.loadPartitionMeta(key)
+		level.Info(i.logger).Log(
+			"msg", "loaded metastore index partition",
+			"key", key,
+			"ts", pMeta.Ts.Format(time.RFC3339),
+			"duration", pMeta.Duration,
+			"tenants", pMeta.Tenants)
 		i.allPartitions = append(i.allPartitions, pMeta)
 	}
+	level.Info(i.logger).Log("msg", "loaded metastore index partitions", "count", len(i.allPartitions))
 
 	i.sortPartitions()
 }
