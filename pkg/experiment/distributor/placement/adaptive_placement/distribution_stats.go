@@ -18,27 +18,28 @@ type DistributionStats struct {
 	retention time.Duration
 }
 
-func (t *DistributionStats) RecordStats(md *metastorev1.BlockMeta, now int64) {
+func (t *DistributionStats) RecordStats(md *metastorev1.BlockMeta) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	sk := shard{
 		owner: t.dict.get(""), // TODO: md.CreatedBy
 		id:    md.Shard,
 	}
+	now := time.Now().UnixNano()
 	for _, d := range md.Datasets {
 		c := t.counter(key{
 			tenant:  t.dict.get(d.TenantId),
 			dataset: t.dict.get(d.Name),
 			shard:   sk,
 		})
-		c.Add(float64(d.Size), now)
+		c.UpdateAt(float64(d.Size), now)
 	}
 }
 
 func (t *DistributionStats) counter(k key) *ewma.Rate {
 	c, ok := t.counters[k]
 	if !ok {
-		c = ewma.New(t.window)
+		c = ewma.NewHalfLife(t.window)
 		t.counters[k] = c
 	}
 	return c

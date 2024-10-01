@@ -7,35 +7,117 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_Rate(t *testing.T) {
+func Test_Rate_HalfLife(t *testing.T) {
 	s := int64(0)
-	r := New(time.Second * 10)
+	r := NewHalfLife(time.Second * 10)
 
 	// Expected rate 100.
-	for i := 0; i < 300; i++ { // 30s.
-		r.Add(10, s)
-		s += 1e9 / 10 // 100ms
+	step := int64(1e9 / 10)    // 100ms
+	for i := 0; i < 500; i++ { // 50s.
+		r.update(10, s)
+		if i == 100 { // 10s (half-life)
+			// Half-life: 10s => 100 * 0.5 = 50.
+			// The numbers here must be exact.
+			assert.Equal(t, float64(50), r.value(s))
+		}
+		s += step
 	}
-	assert.InEpsilon(t, 100, r.Value(), 0.1)
+	// Here and below: Value takes into account the time
+	// since the last update, so we need to adjust it to
+	// compensate the last iteration.
+	assert.InEpsilon(t, 100, r.value(s-step), 0.05)
 
 	// Rate decreases.
-	for i := 0; i < 1000; i++ { // 30s.
-		r.Add(5, s)
-		s += 1e9 / 10
+	step = int64(1e9 / 10)     // 100ms
+	for i := 0; i < 500; i++ { // 50s.
+		r.update(5, s)
+		s += step
 	}
-	assert.InEpsilon(t, 50, r.Value(), 0.1)
+	assert.InEpsilon(t, 50, r.value(s-step), 0.05)
 
 	// Exactly 1s rate.
-	for i := 0; i < 30; i++ { // 30s
-		r.Add(50, s)
-		s += 1e9
+	step = int64(1e9)         // 1s
+	for i := 0; i < 50; i++ { // 50s
+		r.update(50, s)
+		s += step
 	}
-	assert.InEpsilon(t, 50, r.Value(), 0.1)
+	assert.InEpsilon(t, 50, r.value(s-step), 0.005)
 
 	// Sub-second rate.
-	for i := 0; i < 50; i++ { // 100s.
-		r.Add(1, s)
-		s += 1e9 * 2 // Once per two seconds.
+	step = int64(1e9 * 2)     // 2s
+	for i := 0; i < 50; i++ { // 50s.
+		r.update(1, s)
+		if i == 5 { // 10s (half-life)
+			// We expect that after expiration of the half-life interval,
+			// the rate should be roughly 25: (~50 + 0.5) / 2 = ~25.
+			// The numbers are not exact because r has state:
+			// in the beginning it is slightly greater than 50.
+			assert.Equal(t, 25, int(r.value(s)))
+		}
+		s += step // Once per two seconds.
 	}
-	assert.InEpsilon(t, 0.5, r.Value(), 0.05)
+	assert.InEpsilon(t, 0.5, r.value(s-step), 0.5)
+}
+
+func Test_Rate_HalfLife_Tail(t *testing.T) {
+	// Expected rate 100.
+	const (
+		step   int64 = 1e9 / 10 // 100ms
+		steps  int64 = 1200     // 120s.
+		update int64 = 10
+
+		rate     = update * int64(time.Second) / step
+		halflife = time.Second * 10
+	)
+
+	r := NewHalfLife(halflife)
+	var s int64
+	for i := int64(0); i < steps; i++ {
+		r.update(float64(update), s)
+		s += step
+		if i == int64(halflife)/step {
+			// Just in case: check half-life value.
+			assert.Equal(t, float64(rate/2), r.value(s))
+		}
+	}
+
+	assert.InEpsilon(t, float64(rate), r.value(s), 0.05)
+	// Now we stop updating the rate and
+	// expect that it will decay to zero.
+	timespan := s + (steps * step)
+	assert.Less(t, r.value(timespan), float64(1))
+	// Half-life check: note that r is not exactly 100,
+	// therefore we will have some error here.
+	timespan = s + int64(halflife)
+	assert.InEpsilon(t, r.value(timespan), r.value(s)/2, 0.05)
+}
+
+func Test_Rate_Lifetime(t *testing.T) {
+	// Expected rate 100.
+	const (
+		step   int64 = 1e9 / 10 // 100ms
+		steps  int64 = 100      // 10s.
+		update int64 = 10
+
+		rate = update * int64(time.Second) / step
+		// lifetime/3 approximates SMA (error is ~5%).
+		lifetime = time.Second * 10 / 3
+	)
+
+	r := New(lifetime)
+	var s int64
+	for i := int64(0); i < steps; i++ {
+		r.update(float64(update), s)
+		s += step
+	}
+
+	assert.InEpsilon(t, float64(rate), r.value(s), 0.05)
+	// Now we stop updating the rate and expect
+	// that it will decay to zero. Note that the
+	// value decays more slowly: after 20 seconds
+	// we still observe a non-zero value (~5%).
+	for i := int64(0); i < 2*steps; i++ {
+		s += step
+	}
+	assert.Less(t, r.value(s), float64(5))
 }

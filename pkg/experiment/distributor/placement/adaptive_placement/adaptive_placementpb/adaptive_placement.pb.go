@@ -366,8 +366,9 @@ type DatasetStats struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Tenant uint32   `protobuf:"varint,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	Name   string   `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Tenant uint32 `protobuf:"varint,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Name   string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// Shard value is a reference to ShardStats.
 	Shards []uint32 `protobuf:"varint,3,rep,packed,name=shards,proto3" json:"shards,omitempty"`
 	Usage  []uint32 `protobuf:"varint,4,rep,packed,name=usage,proto3" json:"usage,omitempty"`
 }
