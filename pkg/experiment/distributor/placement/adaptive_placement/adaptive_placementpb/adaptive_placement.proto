@@ -9,7 +9,6 @@ message Placement {
 
 message TenantPlacement {
   string tenant_id = 1;
-  uint32 shards_limit = 2;
 }
 
 message DatasetPlacement {

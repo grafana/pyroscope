@@ -16,20 +16,16 @@ type Key struct {
 	Fingerprint uint64
 }
 
-type Strategy interface {
-	// Place returns the placement for the given key.
-	// The method returns nil, if the placement is not
-	// determined, and should be calculated by the caller.
-	Place(k Key) *Placement
-	// NumTenantShards returns the number of shards
-	// for a tenant from n total.
-	NumTenantShards(k Key, n int) (size int)
-	// NumDatasetShards returns the number of shards
-	// for a dataset from n total.
-	NumDatasetShards(k Key, n int) (size int)
+type Policy struct {
+	// TenantShards returns the number of shards
+	// available to the tenant.
+	TenantShards int
+	// DatasetShards returns the number of shards
+	// available to the dataset from the tenant shards.
+	DatasetShards int
 	// PickShard returns the shard index
 	// for a given key from n total.
-	PickShard(k Key, n int) (shard int)
+	PickShard func(n int) int
 }
 
 // Placement represents the placement for a given key.

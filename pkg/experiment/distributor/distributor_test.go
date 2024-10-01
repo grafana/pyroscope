@@ -29,59 +29,70 @@ var (
 		{Addr: "b", Tokens: make([]uint32, 1)},
 		{Addr: "c", State: ring.LEAVING, Tokens: make([]uint32, 1)},
 	}
+	zeroShard = func(int) int { return 0 }
 )
 
-type mockDistributionStrategy struct{ mock.Mock }
+type mockLimits struct{ mock.Mock }
 
-func (m *mockDistributionStrategy) Place(k placement.Key) *placement.Placement {
-	return m.Called(k).Get(0).(*placement.Placement)
-}
-
-func (m *mockDistributionStrategy) NumTenantShards(k placement.Key, n int) (size int) {
-	return m.Called(k, n).Get(0).(int)
-}
-
-func (m *mockDistributionStrategy) NumDatasetShards(k placement.Key, n int) (size int) {
-	return m.Called(k, n).Get(0).(int)
-}
-
-func (m *mockDistributionStrategy) PickShard(k placement.Key, n int) (shard int) {
-	return m.Called(k, n).Get(0).(int)
+func (m *mockLimits) PlacementPolicy(k placement.Key) placement.Policy {
+	return m.Called(k).Get(0).(placement.Policy)
 }
 
 func Test_EmptyRing(t *testing.T) {
-	m := new(mockDistributionStrategy)
-	d := NewDistributor(m)
+	m := new(mockLimits)
 	r := testhelper.NewMockRing(nil, 1)
+	d := NewDistributor(m, r)
 
 	k := NewTenantServiceDatasetKey("")
-	m.On("Place", k).Return((*placement.Placement)(nil)).Once()
-	_, err := d.Distribute(k, r)
+	_, err := d.Distribute(k)
 	assert.ErrorIs(t, err, ring.ErrEmptyRing)
 }
 
 func Test_Distribution_AvailableShards(t *testing.T) {
 	for _, tc := range []struct {
-		description   string
-		tenantShards  int
-		datasetShards int
+		description string
+		placement.Policy
 	}{
-		{description: "zero", tenantShards: 0, datasetShards: 0},
-		{description: "min", tenantShards: 1, datasetShards: 1},
-		{description: "insufficient", tenantShards: 1 << 10, datasetShards: 1 << 9},
-		{description: "invalid", tenantShards: 1 << 10, datasetShards: 2 << 10},
+		{
+			description: "zero",
+			Policy: placement.Policy{
+				TenantShards:  0,
+				DatasetShards: 0,
+				PickShard:     zeroShard,
+			},
+		},
+		{
+			description: "min",
+			Policy: placement.Policy{
+				TenantShards:  1,
+				DatasetShards: 1,
+				PickShard:     zeroShard,
+			},
+		},
+		{
+			description: "insufficient",
+			Policy: placement.Policy{
+				TenantShards:  1 << 10,
+				DatasetShards: 1 << 9,
+				PickShard:     zeroShard,
+			},
+		},
+		{
+			description: "invalid",
+			Policy: placement.Policy{
+				TenantShards:  1 << 10,
+				DatasetShards: 2 << 10,
+				PickShard:     zeroShard,
+			},
+		},
 	} {
 		t.Run(tc.description, func(t *testing.T) {
 			k := NewTenantServiceDatasetKey("tenant-a", testLabels...)
-			m := new(mockDistributionStrategy)
-			m.On("Place", k).Return((*placement.Placement)(nil)).Once()
-			m.On("NumTenantShards", k, mock.Anything).Return(tc.tenantShards).Once()
-			m.On("NumDatasetShards", k, mock.Anything).Return(tc.datasetShards).Once()
-			m.On("PickShard", k, mock.Anything).Return(0).Once()
-
-			d := NewDistributor(m)
+			m := new(mockLimits)
+			m.On("PlacementPolicy", k, mock.Anything).Return(tc.Policy).Once()
 			r := testhelper.NewMockRing(testInstances, 1)
-			p, err := d.Distribute(k, r)
+			d := NewDistributor(m, r)
+			p, err := d.Distribute(k)
 			require.NoError(t, err)
 			c := make([]ring.InstanceDesc, 0, 2)
 			for p.Instances.Next() {
@@ -96,15 +107,16 @@ func Test_Distribution_AvailableShards(t *testing.T) {
 
 func Test_RingUpdate(t *testing.T) {
 	k := NewTenantServiceDatasetKey("")
-	m := new(mockDistributionStrategy)
-	m.On("Place", k).Return((*placement.Placement)(nil))
-	m.On("NumTenantShards", k, mock.Anything).Return(1)
-	m.On("NumDatasetShards", k, mock.Anything).Return(1)
-	m.On("PickShard", k, mock.Anything).Return(0)
+	m := new(mockLimits)
+	m.On("PlacementPolicy", k, mock.Anything).Return(placement.Policy{
+		TenantShards:  1,
+		DatasetShards: 1,
+		PickShard:     zeroShard,
+	})
 
-	d := NewDistributor(m)
 	r := testhelper.NewMockRing(testInstances, 1)
-	_, err := d.Distribute(k, r)
+	d := NewDistributor(m, r)
+	_, err := d.Distribute(k)
 	require.NoError(t, err)
 
 	instances := make([]ring.InstanceDesc, 2)
@@ -112,7 +124,7 @@ func Test_RingUpdate(t *testing.T) {
 	r.SetInstances(instances)
 	require.NoError(t, d.updateDistribution(r, 0))
 
-	p, err := d.Distribute(k, r)
+	p, err := d.Distribute(k)
 	require.NoError(t, err)
 	c := make([]ring.InstanceDesc, 0, 1)
 	for p.Instances.Next() {
@@ -125,22 +137,22 @@ func Test_RingUpdate(t *testing.T) {
 }
 
 func Test_Distributor_Distribute(t *testing.T) {
-	m := new(mockDistributionStrategy)
-	m.On("Place", mock.Anything).Return((*placement.Placement)(nil))
-	m.On("NumTenantShards", mock.Anything, mock.Anything).Return(8)
-	m.On("NumDatasetShards", mock.Anything, mock.Anything).Return(4)
-
-	d := NewDistributor(m)
+	m := new(mockLimits)
 	r := testhelper.NewMockRing([]ring.InstanceDesc{
 		{Addr: "a", Tokens: make([]uint32, 4)},
 		{Addr: "b", Tokens: make([]uint32, 4)},
 		{Addr: "c", Tokens: make([]uint32, 4)},
 	}, 1)
 
+	d := NewDistributor(m, r)
 	collect := func(offset, n int) []string {
 		k := NewTenantServiceDatasetKey("tenant-a")
-		m.On("PickShard", mock.Anything, mock.Anything).Return(offset).Once()
-		p, err := d.Distribute(k, r)
+		m.On("PlacementPolicy", mock.Anything, mock.Anything).Return(placement.Policy{
+			TenantShards:  8,
+			DatasetShards: 4,
+			PickShard:     func(int) int { return offset },
+		}).Once()
+		p, err := d.Distribute(k)
 		require.NoError(t, err)
 		return collectN(p.Instances, n)
 	}

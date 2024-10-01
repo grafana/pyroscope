@@ -19,37 +19,25 @@ import (
 
 const defaultRingUpdateInterval = 5 * time.Second
 
-var DefaultPlacement = defaultPlacement{}
-
-type defaultPlacement struct{}
-
-func (defaultPlacement) NumTenantShards(placement.Key, int) int { return 0 }
-
-func (defaultPlacement) NumDatasetShards(placement.Key, int) int { return 1 }
-
-func (defaultPlacement) PickShard(k placement.Key, n int) int { return int(k.Fingerprint % uint64(n)) }
-
-func (defaultPlacement) Place(k placement.Key) *placement.Placement { return nil }
-
 type Distributor struct {
-	mu                 sync.RWMutex
-	distribution       *distribution
-	placement          placement.Strategy
+	mu           sync.RWMutex
+	ring         ring.ReadRing
+	limits       Limits
+	distribution *distribution
+
 	RingUpdateInterval time.Duration
 }
 
-func NewDistributor(placementStrategy placement.Strategy) *Distributor {
+func NewDistributor(limits Limits, r ring.ReadRing) *Distributor {
 	return &Distributor{
-		placement:          placementStrategy,
+		ring:               r,
+		limits:             limits,
 		RingUpdateInterval: defaultRingUpdateInterval,
 	}
 }
 
-func (d *Distributor) Distribute(k placement.Key, r ring.ReadRing) (*placement.Placement, error) {
-	if p := d.placement.Place(k); p != nil {
-		return p, nil
-	}
-	if err := d.updateDistribution(r, d.RingUpdateInterval); err != nil {
+func (d *Distributor) Distribute(k placement.Key) (*placement.Placement, error) {
+	if err := d.updateDistribution(d.ring, d.RingUpdateInterval); err != nil {
 		return nil, err
 	}
 	return d.distribute(k), nil
@@ -85,11 +73,12 @@ func (d *Distributor) distribute(k placement.Key) *placement.Placement {
 	// Determine the number of shards for the tenant within the available
 	// space, and the dataset shards within the tenant subring.
 	s := len(d.distribution.shards)
-	tenantSize := d.placement.NumTenantShards(k, s)
+	p := d.limits.PlacementPolicy(k)
+	tenantSize := p.TenantShards
 	if tenantSize == 0 || tenantSize > s {
 		tenantSize = s
 	}
-	datasetSize := min(tenantSize, max(1, d.placement.NumDatasetShards(k, tenantSize)))
+	datasetSize := min(tenantSize, max(1, p.DatasetShards))
 	// When we create subrings, we need to ensure that each of them has at
 	// least p shards. However, the data distribution must be restricted
 	// according to the limits.
@@ -98,7 +87,7 @@ func (d *Distributor) distribute(k placement.Key) *placement.Placement {
 	dataset := tenant.subring(k.Dataset, datasetSize)
 	// We pick a shard from the dataset subring: its index is relative
 	// to the dataset subring.
-	offset := d.placement.PickShard(k, datasetSize)
+	offset := p.PickShard(datasetSize)
 	// Next we want to find p instances eligible to host the key.
 	// The choice must be limited to the dataset / tenant subring,
 	// but extended if needed.

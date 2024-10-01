@@ -8,19 +8,20 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement/adaptive_placementpb"
 )
 
-type AdaptivePlacement struct {
-	mu      sync.Mutex
-	tenants map[string]*tenant
+type Limits interface {
+	DistributorTenantShards(tenant string) int
+	DistributorDefaultDatasetShards(tenant string) int
+	DistributorUnitSize(tenant string) int
+}
 
-	defaultTenantShards int
+type AdaptivePlacement struct {
+	mu      sync.RWMutex
+	tenants map[string]*tenant
+	limits  Limits
 }
 
 type tenant struct {
-	shards   int
 	datasets map[string]*dataset
-
-	defaultDatasetShards int
-	defaultLoadBalancing func(k placement.Key, n int) int
 }
 
 type dataset struct {
@@ -28,47 +29,42 @@ type dataset struct {
 	pick   func(k placement.Key, n int) int
 }
 
-func NewAdaptivePlacement() *AdaptivePlacement {
+func NewAdaptivePlacement(limits Limits) *AdaptivePlacement {
 	return &AdaptivePlacement{
 		tenants: make(map[string]*tenant),
-
-		defaultTenantShards: 3,
 	}
 }
 
-func (a *AdaptivePlacement) Place(placement.Key) *placement.Placement { return nil }
-
-func (a *AdaptivePlacement) NumTenantShards(k placement.Key, _ int) (size int) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	if t, ok := a.tenants[k.TenantID]; ok {
-		return t.shards
-	}
-	return a.defaultTenantShards
-}
-
-func (a *AdaptivePlacement) NumDatasetShards(k placement.Key, n int) (size int) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	if t, ok := a.tenants[k.TenantID]; ok {
-		if d, ok := t.datasets[k.DatasetName]; ok {
-			return d.shards
+func (a *AdaptivePlacement) PlacementPolicy(k placement.Key) placement.Policy {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	t, ok := a.tenants[k.TenantID]
+	if !ok {
+		return placement.Policy{
+			TenantShards:  a.limits.DistributorTenantShards(k.TenantID),
+			DatasetShards: a.limits.DistributorDefaultDatasetShards(k.TenantID),
+			PickShard: func(n int) int {
+				return fingerprintMod(k, n)
+			},
 		}
-		return t.defaultDatasetShards
 	}
-	return a.defaultTenantShards
-}
-
-func (a *AdaptivePlacement) PickShard(k placement.Key, n int) (shard int) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	if t, ok := a.tenants[k.TenantID]; ok {
-		if d, ok := t.datasets[k.DatasetName]; ok {
+	d, ok := t.datasets[k.DatasetName]
+	if !ok {
+		return placement.Policy{
+			TenantShards:  a.limits.DistributorTenantShards(k.TenantID),
+			DatasetShards: a.limits.DistributorDefaultDatasetShards(k.TenantID),
+			PickShard: func(n int) int {
+				return fingerprintMod(k, n)
+			},
+		}
+	}
+	return placement.Policy{
+		TenantShards:  a.limits.DistributorTenantShards(k.TenantID),
+		DatasetShards: d.shards,
+		PickShard: func(n int) int {
 			return d.pick(k, n)
-		}
-		return t.defaultLoadBalancing(k, n)
+		},
 	}
-	return fingerprintMod(k, n)
 }
 
 func (a *AdaptivePlacement) Load(p *adaptive_placementpb.Placement) {
@@ -77,10 +73,7 @@ func (a *AdaptivePlacement) Load(p *adaptive_placementpb.Placement) {
 	for i := range p.Tenants {
 		t := p.Tenants[i]
 		tenants[i] = &tenant{
-			shards:               int(t.ShardsLimit),
-			datasets:             make(map[string]*dataset),
-			defaultLoadBalancing: fingerprintMod,
-			defaultDatasetShards: 3,
+			datasets: make(map[string]*dataset),
 		}
 		m[t.TenantId] = tenants[i]
 	}
@@ -113,11 +106,6 @@ func buildLBFunc(lb adaptive_placementpb.LoadBalancing) func(k placement.Key, n 
 	}
 }
 
-type Limits interface {
-	DistributionShards(tenant string) int
-	DistributionUnitSize(tenant string) int
-}
-
 func BuildPlacement(
 	stats *adaptive_placementpb.DistributionStats,
 	limits Limits,
@@ -128,22 +116,22 @@ func BuildPlacement(
 	}
 	for _, ts := range stats.Tenants {
 		p.Tenants = append(p.Tenants, &adaptive_placementpb.TenantPlacement{
-			TenantId:    ts.TenantId,
-			ShardsLimit: uint32(limits.DistributionShards(ts.TenantId)),
+			TenantId: ts.TenantId,
 		})
 	}
-	const defaultUnitSize uint64 = 256 << 10 // 256KiB/s
 	for _, ds := range stats.Datasets {
 		var sum uint64
 		for _, v := range ds.Usage {
 			sum += v
 		}
+		// TODO(kolesnikovae): once per tenant.
+		unitSize := uint64(limits.DistributorUnitSize(stats.Tenants[ds.Tenant].TenantId))
 		p.Datasets = append(p.Datasets, &adaptive_placementpb.DatasetPlacement{
 			Tenant:      ds.Tenant,
 			DatasetName: ds.Name,
-			// TODO: hysteresis?
-			ShardsLimit: uint32(min(1, sum/defaultUnitSize)),
-			// TODO: analyze distribution over dataset shards and use round robin if needed.
+			// TODO(kolesnikovae): Hysteresis.
+			ShardsLimit: uint32(sum/unitSize + 1),
+			// TODO(kolesnikvoae): analyze distribution over dataset shards and use round robin if needed.
 			LoadBalancing: adaptive_placementpb.LoadBalancing_LOAD_BALANCING_FINGERPRINT_MOD,
 		})
 	}

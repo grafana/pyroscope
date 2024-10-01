@@ -144,7 +144,6 @@ type Client struct {
 	logger  log.Logger
 	metrics *metrics
 
-	ring        ring.ReadRing
 	pool        *connpool.RingConnPool
 	distributor *distributor.Distributor
 
@@ -167,9 +166,8 @@ func NewSegmentWriterClient(
 	c := &Client{
 		logger:      logger,
 		metrics:     newMetrics(registry),
-		ring:        ring,
 		pool:        pool,
-		distributor: distributor.NewDistributor(distributor.DefaultPlacement),
+		distributor: distributor.NewDistributor(distributor.DefaultLimits, ring),
 	}
 	c.subservices, err = services.NewManager(c.pool)
 	if err != nil {
@@ -205,7 +203,7 @@ func (c *Client) Push(
 	req *segmentwriterv1.PushRequest,
 ) (*segmentwriterv1.PushResponse, error) {
 	k := distributor.NewTenantServiceDatasetKey(req.TenantId, req.Labels...)
-	p, dErr := c.distributor.Distribute(k, c.ring)
+	p, dErr := c.distributor.Distribute(k)
 	if dErr != nil {
 		_ = level.Error(c.logger).Log(
 			"msg", "unable to distribute request",

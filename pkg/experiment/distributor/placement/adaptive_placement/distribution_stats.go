@@ -14,6 +14,8 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement/ewma"
 )
 
+// TODO(kolesnikovae): metrics
+
 type StatsTracker struct {
 	mu        sync.Mutex
 	counters  map[key]*ewma.Rate
