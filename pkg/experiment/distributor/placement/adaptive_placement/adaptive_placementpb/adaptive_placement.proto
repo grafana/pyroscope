@@ -41,7 +41,7 @@ message DatasetStats {
   string name = 2;
   // Shard value is a reference to ShardStats.
   repeated uint32 shards = 3;
-  repeated uint32 usage = 4;
+  repeated uint64 usage = 4;
 }
 
 message ShardStats {

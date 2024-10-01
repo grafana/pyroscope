@@ -113,7 +113,39 @@ func buildLBFunc(lb adaptive_placementpb.LoadBalancing) func(k placement.Key, n 
 	}
 }
 
-func BuildPlacement(stats *adaptive_placementpb.DistributionStats) *adaptive_placementpb.Placement {
-	// TODO
+type Limits interface {
+	DistributionShards(tenant string) int
+	DistributionUnitSize(tenant string) int
+}
+
+func BuildPlacement(
+	stats *adaptive_placementpb.DistributionStats,
+	limits Limits,
+) *adaptive_placementpb.Placement {
+	p := adaptive_placementpb.Placement{
+		Tenants:  make([]*adaptive_placementpb.TenantPlacement, 0, len(stats.Tenants)),
+		Datasets: make([]*adaptive_placementpb.DatasetPlacement, 0, len(stats.Datasets)),
+	}
+	for _, ts := range stats.Tenants {
+		p.Tenants = append(p.Tenants, &adaptive_placementpb.TenantPlacement{
+			TenantId:    ts.TenantId,
+			ShardsLimit: uint32(limits.DistributionShards(ts.TenantId)),
+		})
+	}
+	const defaultUnitSize uint64 = 256 << 10 // 256KiB/s
+	for _, ds := range stats.Datasets {
+		var sum uint64
+		for _, v := range ds.Usage {
+			sum += v
+		}
+		p.Datasets = append(p.Datasets, &adaptive_placementpb.DatasetPlacement{
+			Tenant:      ds.Tenant,
+			DatasetName: ds.Name,
+			// TODO: hysteresis?
+			ShardsLimit: uint32(min(1, sum/defaultUnitSize)),
+			// TODO: analyze distribution over dataset shards and use round robin if needed.
+			LoadBalancing: adaptive_placementpb.LoadBalancing_LOAD_BALANCING_FINGERPRINT_MOD,
+		})
+	}
 	return nil
 }

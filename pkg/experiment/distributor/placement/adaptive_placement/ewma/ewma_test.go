@@ -92,6 +92,38 @@ func Test_Rate_HalfLife_Tail(t *testing.T) {
 	assert.InEpsilon(t, r.value(timespan), r.value(s)/2, 0.05)
 }
 
+func Test_Rate_HalfLife_Complement(t *testing.T) {
+	// The test examines the complementarity of two rates,
+	// when the sum of the rates is constant.
+	const (
+		step   = int64(1e9 / 10) // 100ms
+		steps  = 600             // 60s.
+		update = 10
+
+		rate     = update * int64(time.Second) / step
+		halflife = time.Second * 10
+	)
+
+	s := int64(0)
+	a := NewHalfLife(halflife)
+	for i := 0; i < steps; i++ {
+		a.update(update, s)
+		s += step
+	}
+	assert.InEpsilon(t, float64(rate), a.value(s), 0.05)
+
+	b := NewHalfLife(halflife)
+	const interval = steps / 10
+	for n := 0; n < steps; n += interval {
+		for i := 0; i < interval; i++ {
+			b.update(update, s)
+			s += step
+		}
+		// The sum of the rates is expected to be constant.
+		assert.InEpsilon(t, float64(rate), a.value(s)+b.value(s), 0.05)
+	}
+}
+
 func Test_Rate_Lifetime(t *testing.T) {
 	// Expected rate 100.
 	const (
