@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/grafana/dskit/flagext"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore"
+	"github.com/grafana/pyroscope/pkg/test/mocks/mockdlq"
 	"io"
 	"math/rand"
 	"path/filepath"
@@ -389,8 +390,8 @@ func TestDLQRecoveryMock(t *testing.T) {
 	assert.Len(t, allBlocks, 1)
 
 	recoveredMetas := make(chan *metastorev1.BlockMeta, 1)
-	srv := mockmetastorev1.NewMockMetastoreServiceServer(t)
-	srv.On("AddBlock", mock.Anything, mock.Anything).
+	srv := mockdlq.NewMockLocalServer(t)
+	srv.On("AddRecoveredBlock", mock.Anything, mock.Anything).
 		Once().
 		Run(func(args mock.Arguments) {
 			meta := args.Get(1).(*metastorev1.AddBlockRequest).Block

@@ -7,7 +7,7 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	segmentstorage "github.com/grafana/pyroscope/pkg/experiment/ingester/storage"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/memory"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mockmetastorev1"
+	"github.com/grafana/pyroscope/pkg/test/mocks/mockdlq"
 	"github.com/oklog/ulid"
 	"github.com/prometheus/prometheus/util/testutil"
 	"github.com/stretchr/testify/assert"
@@ -37,8 +37,8 @@ func TestRecoverTick(t *testing.T) {
 	}
 	actual := []*metastorev1.BlockMeta{}
 
-	srv := mockmetastorev1.NewMockMetastoreServiceServer(t)
-	srv.On("AddBlock", mock.Anything, mock.Anything).
+	srv := mockdlq.NewMockLocalServer(t)
+	srv.On("AddRecoveredBlock", mock.Anything, mock.Anything).
 		Times(3).
 		Run(func(args mock.Arguments) {
 			meta := args.Get(1).(*metastorev1.AddBlockRequest).Block
@@ -75,9 +75,9 @@ func TestNotRaftLeader(t *testing.T) {
 		},
 	}
 
-	srv := mockmetastorev1.NewMockMetastoreServiceServer(t)
+	srv := mockdlq.NewMockLocalServer(t)
 	s, _ := status.New(codes.Unavailable, "mock metastore error").WithDetails(&typesv1.RaftDetails{Leader: string("239")})
-	srv.On("AddBlock", mock.Anything, mock.Anything).
+	srv.On("AddRecoveredBlock", mock.Anything, mock.Anything).
 		Once().
 		Return(nil, s.Err())
 
@@ -110,8 +110,8 @@ func TestStartStop(t *testing.T) {
 	m := new(sync.Mutex)
 	actual := []*metastorev1.BlockMeta{}
 
-	srv := mockmetastorev1.NewMockMetastoreServiceServer(t)
-	srv.On("AddBlock", mock.Anything, mock.Anything).
+	srv := mockdlq.NewMockLocalServer(t)
+	srv.On("AddRecoveredBlock", mock.Anything, mock.Anything).
 		Times(3).
 		Run(func(args mock.Arguments) {
 			meta := args.Get(1).(*metastorev1.AddBlockRequest).Block
