@@ -40,6 +40,27 @@ After the container is operational, the Grafana Agent profiles the Java applicat
 
 You need root privileges to run the Grafana Agent for profiling. The Agent must be executed within the host's PID namespace.
 
+## Additional Configuration for Linux Capabilities
+
+If your Kubernetes environment has Linux capabilities enabled, configure the following in your Helm values to ensure `pyroscope.java` functions properly:
+
+```yaml
+alloy:
+  securityContext:
+    runAsUser: 0
+    runAsNonRoot: false
+    capabilities:
+      add:
+        - PERFMON
+        - SYS_PTRACE
+        - SYS_RESOURCE
+        - SYS_ADMIN
+```
+These capabilities enable Alloy to access performance monitoring subsystems, trace processes, override resource limits, and perform necessary system administration tasks for profiling.
+{{< admonition type="note" >}}
+Adjust capabilities based on your specific security requirements and environment, following the principle of least privilege.
+{{< /admonition >}}
+
 ## Documentation
 
 Refer to the [official documentation](https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/java/) for an in-depth understanding and additional configuration options for Java profiling with the Grafana Agent.

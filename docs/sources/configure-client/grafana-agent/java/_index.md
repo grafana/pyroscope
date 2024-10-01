@@ -78,6 +78,27 @@ see [profiler-options](https://github.com/async-profiler/async-profiler?tab=read
 You must run the collector, either Grafana Alloy (recommended) or Agent (legacy), as root and inside host `pid` namespace for the `pyroscope.java`
 and `discover.process` components to work.
 
+### Additional Configuration for Linux Capabilities
+If your Kubernetes environment has Linux capabilities enabled, configure the following in the Helm values to ensure `pyroscope.java` functions properly:
+
+```yaml
+alloy:
+  securityContext:
+    runAsUser: 0
+    runAsNonRoot: false
+    capabilities:
+      add:
+        - PERFMON
+        - SYS_PTRACE
+        - SYS_RESOURCE
+        - SYS_ADMIN
+```
+These capabilities enable Alloy to access performance monitoring subsystems, trace processes, override resource limits, and perform necessary system administration tasks for profiling.
+
+{{< admonition type="note" >}}
+Adjust capabilities based on your specific security requirements and environment, following the principle of least privilege.
+{{< /admonition >}}
+
 ### Start the collector
 
 To start Grafana Alloy v1.2: Replace `configuration.alloy` with your configuration file name:
