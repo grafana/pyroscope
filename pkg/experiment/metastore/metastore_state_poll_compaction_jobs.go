@@ -367,7 +367,7 @@ func (m *metastoreState) writeToDb(sTable *pollStateUpdate) error {
 func (m *metastoreState) deleteBlock(tx *bbolt.Tx, blockWithPartition *index.BlockWithPartition) error {
 	meta := blockWithPartition.Meta
 	block := blockWithPartition.Block
-	return updateBlockMetadataBucket(tx, meta, block.Shard, block.TenantId, func(bucket *bbolt.Bucket) error {
+	return updateBlockMetadataBucket(tx, meta.Key, block.Shard, block.TenantId, func(bucket *bbolt.Bucket) error {
 		return bucket.Delete([]byte(block.Id))
 	})
 }

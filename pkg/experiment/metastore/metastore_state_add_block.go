@@ -75,9 +75,9 @@ func (m *metastoreState) persistBlock(tx *bbolt.Tx, block *metastorev1.BlockMeta
 		return err
 	}
 
-	partMeta := m.index.GetOrCreatePartitionMeta(block)
+	partKey := m.index.CreatePartitionKey(block.Id)
 
-	return updateBlockMetadataBucket(tx, partMeta, block.Shard, block.TenantId, func(bucket *bbolt.Bucket) error {
+	return updateBlockMetadataBucket(tx, partKey, block.Shard, block.TenantId, func(bucket *bbolt.Bucket) error {
 		return bucket.Put(key, value)
 	})
 }

@@ -1,9 +1,7 @@
 package metastore
 
 import (
-	"bytes"
 	"encoding/binary"
-	"encoding/gob"
 	"fmt"
 	"slices"
 
@@ -20,12 +18,10 @@ type indexStore struct {
 
 const (
 	partitionBucketName   = "partition"
-	partitionMetaKeyName  = "meta"
 	emptyTenantBucketName = "-"
 )
 
 var partitionBucketNameBytes = []byte(partitionBucketName)
-var partitionMetaKeyNameBytes = []byte(partitionMetaKeyName)
 var emptyTenantBucketNameBytes = []byte(emptyTenantBucketName)
 
 func getPartitionBucket(tx *bbolt.Tx) (*bbolt.Bucket, error) {
@@ -53,31 +49,6 @@ func (m *indexStore) ListPartitions() []index.PartitionKey {
 		panic(err)
 	}
 	return partitionKeys
-}
-
-func (m *indexStore) ReadPartitionMeta(key index.PartitionKey) (*index.PartitionMeta, error) {
-	var meta index.PartitionMeta
-	err := m.db.View(func(tx *bbolt.Tx) error {
-		bkt, err := getPartitionBucket(tx)
-		if err != nil {
-			return errors.Wrap(err, "root partition bucket missing")
-		}
-		partBkt := bkt.Bucket([]byte(key))
-		if partBkt == nil {
-			return fmt.Errorf("partition meta not found for %s", key)
-		}
-		data := partBkt.Get(partitionMetaKeyNameBytes)
-		dec := gob.NewDecoder(bytes.NewReader(data))
-		err = dec.Decode(&meta)
-		if err != nil {
-			return errors.Wrapf(err, "failed to read partition meta for %s", key)
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return &meta, nil
 }
 
 func (m *indexStore) ListShards(key index.PartitionKey) []uint32 {
@@ -174,34 +145,22 @@ func (m *indexStore) ListBlocks(key index.PartitionKey, shard uint32, tenant str
 	return blocks
 }
 
-func updateBlockMetadataBucket(tx *bbolt.Tx, partitionMeta *index.PartitionMeta, shard uint32, tenant string, fn func(*bbolt.Bucket) error) error {
+func updateBlockMetadataBucket(tx *bbolt.Tx, partKey index.PartitionKey, shard uint32, tenant string, fn func(*bbolt.Bucket) error) error {
 	bkt, err := getPartitionBucket(tx)
 	if err != nil {
 		return errors.Wrap(err, "root partition bucket missing")
 	}
 
-	partBkt, err := getOrCreateSubBucket(bkt, []byte(partitionMeta.Key))
+	partBkt, err := getOrCreateSubBucket(bkt, []byte(partKey))
 	if err != nil {
-		return errors.Wrapf(err, "error creating partition bucket for %s", partitionMeta.Key)
-	}
-
-	var buf bytes.Buffer
-	enc := gob.NewEncoder(&buf)
-	err = enc.Encode(partitionMeta)
-	if err != nil {
-		return errors.Wrapf(err, "could not encode partition meta for %s", partitionMeta.Key)
-	}
-
-	err = partBkt.Put(partitionMetaKeyNameBytes, buf.Bytes())
-	if err != nil {
-		return errors.Wrapf(err, "could not write partition meta for %s", partitionMeta.Key)
+		return errors.Wrapf(err, "error creating partition bucket for %s", partKey)
 	}
 
 	shardBktName := make([]byte, 4)
 	binary.BigEndian.PutUint32(shardBktName, shard)
 	shardBkt, err := getOrCreateSubBucket(partBkt, shardBktName)
 	if err != nil {
-		return errors.Wrapf(err, "error creating shard bucket for partiton %s and shard %d", partitionMeta.Key, shard)
+		return errors.Wrapf(err, "error creating shard bucket for partiton %s and shard %d", partKey, shard)
 	}
 
 	tenantBktName := []byte(tenant)
@@ -210,7 +169,7 @@ func updateBlockMetadataBucket(tx *bbolt.Tx, partitionMeta *index.PartitionMeta,
 	}
 	tenantBkt, err := getOrCreateSubBucket(shardBkt, tenantBktName)
 	if err != nil {
-		return errors.Wrapf(err, "error creating tenant bucket for partition %s, shard %d and tenant %s", partitionMeta.Key, shard, tenant)
+		return errors.Wrapf(err, "error creating tenant bucket for partition %s, shard %d and tenant %s", partKey, shard, tenant)
 	}
 
 	return fn(tenantBkt)

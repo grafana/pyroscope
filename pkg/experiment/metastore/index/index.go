@@ -69,8 +69,6 @@ type BlockWithPartition struct {
 
 type Store interface {
 	ListPartitions() []PartitionKey
-	ReadPartitionMeta(p PartitionKey) (*PartitionMeta, error)
-
 	ListShards(p PartitionKey) []uint32
 	ListTenants(p PartitionKey, shard uint32) []string
 	ListBlocks(p PartitionKey, shard uint32, tenant string) []*metastorev1.BlockMeta
@@ -112,15 +110,28 @@ func (i *Index) LoadPartitions() {
 
 	i.allPartitions = make([]*PartitionMeta, 0)
 	for _, key := range i.store.ListPartitions() {
-		pMeta, err := i.store.ReadPartitionMeta(key)
-		if err != nil {
-			level.Error(i.logger).Log("msg", "error reading partition metadata", "key", key, "err", err)
-			continue
-		}
+		pMeta := i.loadPartitionMeta(key)
 		i.allPartitions = append(i.allPartitions, pMeta)
 	}
 
 	i.sortPartitions()
+}
+
+func (i *Index) loadPartitionMeta(key PartitionKey) *PartitionMeta {
+	t, dur, _ := key.Parse()
+	pMeta := &PartitionMeta{
+		Key:       key,
+		Ts:        t,
+		Duration:  dur,
+		Tenants:   make([]string, 0),
+		tenantMap: make(map[string]struct{}),
+	}
+	for _, s := range i.store.ListShards(key) {
+		for _, t := range i.store.ListTenants(key, s) {
+			pMeta.AddTenant(t)
+		}
+	}
+	return pMeta
 }
 
 // ForEachPartition executes the given function concurrently for each partition. It will be called for all partitions,
@@ -246,14 +257,6 @@ func (i *Index) insertBlock(b *metastorev1.BlockMeta) {
 	}
 
 	ten.blocks[b.Id] = b
-}
-
-// GetOrCreatePartitionMeta creates the mapping between blocks and partitions. It may assign the block to an existing
-// partition or create a new partition altogether. Meant to be used only in the context of new blocks.
-func (i *Index) GetOrCreatePartitionMeta(b *metastorev1.BlockMeta) *PartitionMeta {
-	i.partitionMu.Lock()
-	defer i.partitionMu.Unlock()
-	return i.getOrCreatePartitionMeta(b)
 }
 
 func (i *Index) getOrCreatePartitionMeta(b *metastorev1.BlockMeta) *PartitionMeta {

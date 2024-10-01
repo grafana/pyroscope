@@ -115,12 +115,6 @@ func TestIndex_FindBlocksInRange(t *testing.T) {
 }
 
 func mockPartition(store *mockindex.MockStore, key index.PartitionKey, blocks []*metastorev1.BlockMeta) {
-	t, d, _ := key.Parse()
-	store.On("ReadPartitionMeta", key).Return(&index.PartitionMeta{
-		Key:      key,
-		Ts:       t,
-		Duration: d,
-	}, nil).Maybe()
 	store.On("ListShards", key).Return([]uint32{0}).Maybe()
 	store.On("ListTenants", key, uint32(0)).Return([]string{""}).Maybe()
 	store.On("ListBlocks", key, uint32(0), "").Return(blocks).Maybe()
@@ -154,20 +148,6 @@ func TestIndex_ForEachPartition(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Len(t, visited, 5)
-}
-
-func TestIndex_GetOrCreatePartitionMeta(t *testing.T) {
-	store := mockindex.NewMockStore(t)
-	i := index.NewIndex(store, util.Logger, &index.Config{PartitionDuration: time.Hour, PartitionCacheSize: 1})
-
-	block := &metastorev1.BlockMeta{
-		Id:       createUlidString("2024-09-23T08:00:00.123Z"),
-		TenantId: "tenant-1",
-	}
-	pMeta := i.GetOrCreatePartitionMeta(block)
-	require.Equal(t, index.PartitionKey("20240923T08.1h"), pMeta.Key)
-	require.Equal(t, time.UnixMilli(createTime("2024-09-23T08:00:00.000Z")).UTC(), pMeta.Ts)
-	require.Equal(t, []string{"tenant-1"}, pMeta.Tenants)
 }
 
 func TestIndex_GetPartitionKey(t *testing.T) {
@@ -269,12 +249,6 @@ func TestIndex_LoadPartitions(t *testing.T) {
 
 	partitionKey := i.CreatePartitionKey(blocks[0].Id)
 	store.On("ListPartitions").Return([]index.PartitionKey{partitionKey})
-	store.On("ReadPartitionMeta", mock.Anything).Return(&index.PartitionMeta{
-		Key:      partitionKey,
-		Ts:       time.Now().UTC(),
-		Duration: time.Hour,
-		Tenants:  []string{""},
-	}, nil)
 	store.On("ListShards", mock.Anything).Return([]uint32{0})
 	store.On("ListTenants", mock.Anything, mock.Anything).Return([]string{""})
 	store.On("ListBlocks", mock.Anything, mock.Anything, mock.Anything).Return(blocks)
