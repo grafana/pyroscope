@@ -18,7 +18,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-func (m *Placement) MarshalVT() (dAtA []byte, err error) {
+func (m *PlacementRules) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -31,12 +31,12 @@ func (m *Placement) MarshalVT() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Placement) MarshalToVT(dAtA []byte) (int, error) {
+func (m *PlacementRules) MarshalToVT(dAtA []byte) (int, error) {
 	size := m.SizeVT()
 	return m.MarshalToSizedBufferVT(dAtA[:size])
 }
 
-func (m *Placement) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+func (m *PlacementRules) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m == nil {
 		return 0, nil
 	}
@@ -409,7 +409,7 @@ func (m *ShardStats) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Placement) SizeVT() (n int) {
+func (m *PlacementRules) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -558,7 +558,7 @@ func (m *ShardStats) SizeVT() (n int) {
 	return n
 }
 
-func (m *Placement) UnmarshalVT(dAtA []byte) error {
+func (m *PlacementRules) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -581,10 +581,10 @@ func (m *Placement) UnmarshalVT(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: Placement: wiretype end group for non-group")
+			return fmt.Errorf("proto: PlacementRules: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Placement: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: PlacementRules: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:

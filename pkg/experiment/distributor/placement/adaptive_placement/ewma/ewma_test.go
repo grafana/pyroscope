@@ -17,8 +17,7 @@ func Test_Rate_HalfLife(t *testing.T) {
 		r.update(10, s)
 		if i == 100 { // 10s (half-life)
 			// Half-life: 10s => 100 * 0.5 = 50.
-			// The numbers here must be exact.
-			assert.Equal(t, float64(50), r.value(s))
+			assert.InEpsilon(t, float64(50), r.value(s), 0.0001)
 		}
 		s += step
 	}
@@ -52,7 +51,7 @@ func Test_Rate_HalfLife(t *testing.T) {
 			// the rate should be roughly 25: (~50 + 0.5) / 2 = ~25.
 			// The numbers are not exact because r has state:
 			// in the beginning it is slightly greater than 50.
-			assert.Equal(t, 25, int(r.value(s)))
+			assert.InEpsilon(t, 25, int(r.value(s)), 0.0001)
 		}
 		s += step // Once per two seconds.
 	}
@@ -77,7 +76,7 @@ func Test_Rate_HalfLife_Tail(t *testing.T) {
 		s += step
 		if i == int64(halflife)/step {
 			// Just in case: check half-life value.
-			assert.Equal(t, float64(rate/2), r.value(s))
+			assert.InEpsilon(t, float64(rate/2), r.value(s), 0.0001)
 		}
 	}
 

@@ -9,9 +9,13 @@ import (
 )
 
 type Limits interface {
-	DistributorTenantShards(tenant string) int
-	DistributorDefaultDatasetShards(tenant string) int
-	DistributorUnitSize(tenant string) int
+	ShardingLimits(tenant string) ShardingLimits
+}
+
+type ShardingLimits struct {
+	TenantShards         int
+	DefaultDatasetShards int
+	ShardingUnitBytes    int
 }
 
 type AdaptivePlacement struct {
@@ -32,17 +36,19 @@ type dataset struct {
 func NewAdaptivePlacement(limits Limits) *AdaptivePlacement {
 	return &AdaptivePlacement{
 		tenants: make(map[string]*tenant),
+		limits:  limits,
 	}
 }
 
 func (a *AdaptivePlacement) PlacementPolicy(k placement.Key) placement.Policy {
+	limits := a.limits.ShardingLimits(k.TenantID)
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	t, ok := a.tenants[k.TenantID]
 	if !ok {
 		return placement.Policy{
-			TenantShards:  a.limits.DistributorTenantShards(k.TenantID),
-			DatasetShards: a.limits.DistributorDefaultDatasetShards(k.TenantID),
+			TenantShards:  limits.TenantShards,
+			DatasetShards: limits.DefaultDatasetShards,
 			PickShard: func(n int) int {
 				return fingerprintMod(k, n)
 			},
@@ -51,15 +57,15 @@ func (a *AdaptivePlacement) PlacementPolicy(k placement.Key) placement.Policy {
 	d, ok := t.datasets[k.DatasetName]
 	if !ok {
 		return placement.Policy{
-			TenantShards:  a.limits.DistributorTenantShards(k.TenantID),
-			DatasetShards: a.limits.DistributorDefaultDatasetShards(k.TenantID),
+			TenantShards:  limits.TenantShards,
+			DatasetShards: limits.DefaultDatasetShards,
 			PickShard: func(n int) int {
 				return fingerprintMod(k, n)
 			},
 		}
 	}
 	return placement.Policy{
-		TenantShards:  a.limits.DistributorTenantShards(k.TenantID),
+		TenantShards:  limits.TenantShards,
 		DatasetShards: d.shards,
 		PickShard: func(n int) int {
 			return d.pick(k, n)
@@ -67,7 +73,7 @@ func (a *AdaptivePlacement) PlacementPolicy(k placement.Key) placement.Policy {
 	}
 }
 
-func (a *AdaptivePlacement) Load(p *adaptive_placementpb.Placement) {
+func (a *AdaptivePlacement) Load(p *adaptive_placementpb.PlacementRules) {
 	m := make(map[string]*tenant)
 	tenants := make([]*tenant, len(p.Tenants))
 	for i := range p.Tenants {
@@ -93,6 +99,40 @@ func (a *AdaptivePlacement) Load(p *adaptive_placementpb.Placement) {
 	a.mu.Unlock()
 }
 
+func BuildPlacementRules(
+	limits Limits,
+	stats *adaptive_placementpb.DistributionStats,
+) *adaptive_placementpb.PlacementRules {
+	p := adaptive_placementpb.PlacementRules{
+		Tenants:  make([]*adaptive_placementpb.TenantPlacement, 0, len(stats.Tenants)),
+		Datasets: make([]*adaptive_placementpb.DatasetPlacement, 0, len(stats.Datasets)),
+	}
+	tenantLimits := make([]ShardingLimits, 0, len(stats.Tenants))
+	for _, ts := range stats.Tenants {
+		tenantLimits = append(tenantLimits, limits.ShardingLimits(ts.TenantId))
+		p.Tenants = append(p.Tenants, &adaptive_placementpb.TenantPlacement{
+			TenantId: ts.TenantId,
+		})
+	}
+
+	// TODO(kolesnikovae): Hysteresis.
+	for _, ds := range stats.Datasets {
+		var sum uint64
+		for _, v := range ds.Usage {
+			sum += v
+		}
+		unitSize := uint64(tenantLimits[ds.Tenant].ShardingUnitBytes)
+		p.Datasets = append(p.Datasets, &adaptive_placementpb.DatasetPlacement{
+			Tenant:        ds.Tenant,
+			DatasetName:   ds.Name,
+			ShardsLimit:   uint32(sum/unitSize + 1),
+			LoadBalancing: loadBalancingFuncForDataset(ds),
+		})
+	}
+
+	return nil
+}
+
 var fingerprintMod = func(k placement.Key, n int) int { return int(k.Fingerprint) % n }
 
 var roundRobin = func(_ placement.Key, n int) int { return rand.Intn(n) }
@@ -106,34 +146,7 @@ func buildLBFunc(lb adaptive_placementpb.LoadBalancing) func(k placement.Key, n 
 	}
 }
 
-func BuildPlacement(
-	stats *adaptive_placementpb.DistributionStats,
-	limits Limits,
-) *adaptive_placementpb.Placement {
-	p := adaptive_placementpb.Placement{
-		Tenants:  make([]*adaptive_placementpb.TenantPlacement, 0, len(stats.Tenants)),
-		Datasets: make([]*adaptive_placementpb.DatasetPlacement, 0, len(stats.Datasets)),
-	}
-	for _, ts := range stats.Tenants {
-		p.Tenants = append(p.Tenants, &adaptive_placementpb.TenantPlacement{
-			TenantId: ts.TenantId,
-		})
-	}
-	for _, ds := range stats.Datasets {
-		var sum uint64
-		for _, v := range ds.Usage {
-			sum += v
-		}
-		// TODO(kolesnikovae): once per tenant.
-		unitSize := uint64(limits.DistributorUnitSize(stats.Tenants[ds.Tenant].TenantId))
-		p.Datasets = append(p.Datasets, &adaptive_placementpb.DatasetPlacement{
-			Tenant:      ds.Tenant,
-			DatasetName: ds.Name,
-			// TODO(kolesnikovae): Hysteresis.
-			ShardsLimit: uint32(sum/unitSize + 1),
-			// TODO(kolesnikvoae): analyze distribution over dataset shards and use round robin if needed.
-			LoadBalancing: adaptive_placementpb.LoadBalancing_LOAD_BALANCING_FINGERPRINT_MOD,
-		})
-	}
-	return nil
+func loadBalancingFuncForDataset(*adaptive_placementpb.DatasetStats) adaptive_placementpb.LoadBalancing {
+	// TODO(kolesnikovae): Adaptive LoadBalancing.
+	return adaptive_placementpb.LoadBalancing_LOAD_BALANCING_FINGERPRINT_MOD
 }

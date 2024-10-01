@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package adaptive_placement;
 
-message Placement {
+message PlacementRules {
   repeated TenantPlacement tenants = 1;
   repeated DatasetPlacement datasets = 2;
 }
