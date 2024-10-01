@@ -125,7 +125,7 @@ type Metastore struct {
 	snapshots    *raft.FileSnapshotStore
 	transport    *raft.NetworkTransport
 	raft         *raft.Raft
-	leaderhealth *raftleader.HealthObserver //todo remove
+	leaderhealth *raftleader.LeaderObserver
 
 	logStore      raft.LogStore
 	stableStore   raft.StableStore

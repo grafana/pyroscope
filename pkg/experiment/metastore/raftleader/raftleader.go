@@ -10,10 +10,10 @@ import (
 	"github.com/hashicorp/raft"
 )
 
-type HealthObserver struct {
+type LeaderObserver struct {
 	logger     log.Logger
 	mu         sync.Mutex
-	registered map[serviceKey]*raftService
+	registered *raftService
 	metrics    *Metrics
 }
 type Metrics struct {
@@ -33,19 +33,18 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 	return m
 }
 
-func NewRaftLeaderHealthObserver(logger log.Logger, m *Metrics) *HealthObserver {
-	return &HealthObserver{
+func NewRaftLeaderHealthObserver(logger log.Logger, m *Metrics) *LeaderObserver {
+	return &LeaderObserver{
 		logger:     logger,
 		metrics:    m,
-		registered: make(map[serviceKey]*raftService),
+		registered: nil,
 	}
 }
 
-func (hs *HealthObserver) Register(r *raft.Raft, cb func(st raft.RaftState)) {
+func (hs *LeaderObserver) Register(r *raft.Raft, cb func(st raft.RaftState)) {
 	hs.mu.Lock()
 	defer hs.mu.Unlock()
-	k := serviceKey{raft: r}
-	if _, ok := hs.registered[k]; ok {
+	if hs.registered != nil {
 		return
 	}
 	svc := &raftService{
@@ -65,14 +64,14 @@ func (hs *HealthObserver) Register(r *raft.Raft, cb func(st raft.RaftState)) {
 		return ok
 	})
 	r.RegisterObserver(svc.observer)
-	hs.registered[k] = svc
+	hs.registered = svc
 }
 
-func (hs *HealthObserver) Deregister(r *raft.Raft) {
+func (hs *LeaderObserver) Deregister(r *raft.Raft) {
 	hs.mu.Lock()
-	k := serviceKey{raft: r}
-	svc, ok := hs.registered[k]
-	delete(hs.registered, k)
+	svc := hs.registered
+	ok := svc != nil
+	hs.registered = nil
 	hs.mu.Unlock()
 	if ok {
 		close(svc.stop)
@@ -80,12 +79,8 @@ func (hs *HealthObserver) Deregister(r *raft.Raft) {
 	}
 }
 
-type serviceKey struct {
-	raft *raft.Raft
-}
-
 type raftService struct {
-	hs       *HealthObserver
+	hs       *LeaderObserver
 	logger   log.Logger
 	raft     *raft.Raft
 	observer *raft.Observer
