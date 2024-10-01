@@ -166,3 +166,26 @@ func TestFindBaseUnalignedSeparateCode(t *testing.T) {
 	assert.True(t, et.findBase(&ef))
 	assert.Equal(t, uint64(0x555e3d192000), et.base)
 }
+
+func TestMiniDebugInfo(t *testing.T) {
+	elfCache, _ := NewElfCache(testCacheOptions, testCacheOptions)
+	logger := util.TestLogger(t)
+	tab := NewElfTable(logger, &ProcMap{StartAddr: 0x1000, Offset: 0x1000}, ".", "elf/testdata/elfs/elf.minidebuginfo",
+		ElfTableOptions{
+			ElfCache: elfCache,
+			Metrics:  metrics.NewSymtabMetrics(nil),
+		})
+
+	syms := []struct {
+		name string
+		pc   uint64
+	}{
+		{"", 0x0},
+		{"android_res_cancel", 0x1330}, // in .dynsym
+		{"__on_dlclose", 0x1000},       // in .gnu_debugdata.symtab
+	}
+	for _, sym := range syms {
+		res := tab.Resolve(sym.pc)
+		require.Equal(t, res, sym.name)
+	}
+}

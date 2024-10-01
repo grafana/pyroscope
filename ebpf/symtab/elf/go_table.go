@@ -144,7 +144,7 @@ func (g *GoTable) goSymbolName(idx int) (string, error) {
 
 type GoTableWithFallback struct {
 	GoTable  *GoTable
-	SymTable *SymbolTable
+	SymTable SymbolTableInterface
 }
 
 func (g *GoTableWithFallback) IsDead() bool {
@@ -178,4 +178,72 @@ func (g *GoTableWithFallback) Resolve(addr uint64) string {
 func (g *GoTableWithFallback) Cleanup() {
 	g.GoTable.Cleanup()
 	g.SymTable.Cleanup() // second call is no op now, but call anyway just in case
+}
+
+type SymbolTableWithMiniDebugInfo struct {
+	Primary   *SymbolTable
+	MiniDebug *SymbolTable
+}
+
+func (stm *SymbolTableWithMiniDebugInfo) IsDead() bool {
+	return (stm.Primary != nil && stm.Primary.IsDead()) || (stm.MiniDebug != nil && stm.MiniDebug.IsDead())
+}
+
+func (stm *SymbolTableWithMiniDebugInfo) DebugInfo() SymTabDebugInfo {
+	return SymTabDebugInfo{
+		Name: fmt.Sprintf("SymbolTableWithMiniDebugInfo %p", stm),
+		Size: stm.Size(),
+	}
+}
+
+func (stm *SymbolTableWithMiniDebugInfo) Size() int {
+	size := 0
+	if stm.Primary != nil {
+		size += stm.Primary.Size()
+	}
+	if stm.MiniDebug != nil {
+		size += stm.MiniDebug.Size()
+	}
+	return size
+}
+
+func (stm *SymbolTableWithMiniDebugInfo) Refresh() {
+	if stm.Primary != nil {
+		stm.Primary.Refresh()
+	}
+	if stm.MiniDebug != nil {
+		stm.MiniDebug.Refresh()
+	}
+}
+
+func (stm *SymbolTableWithMiniDebugInfo) DebugString() string {
+	primary := "nil"
+	if stm.Primary != nil {
+		primary = stm.Primary.DebugString()
+	}
+	minidebug := "nil"
+	if stm.MiniDebug != nil {
+		minidebug = stm.MiniDebug.DebugString()
+	}
+	return fmt.Sprintf("SymbolTableWithMiniDebugInfo{ %s %s }", primary, minidebug)
+}
+
+func (stm *SymbolTableWithMiniDebugInfo) Resolve(addr uint64) string {
+	name := ""
+	if stm.Primary != nil {
+		name = stm.Primary.Resolve(addr)
+	}
+	if name == "" && stm.MiniDebug != nil {
+		name = stm.MiniDebug.Resolve(addr)
+	}
+	return name
+}
+
+func (stm *SymbolTableWithMiniDebugInfo) Cleanup() {
+	if stm.Primary != nil {
+		stm.Primary.Cleanup()
+	}
+	if stm.MiniDebug != nil {
+		stm.MiniDebug.Cleanup()
+	}
 }
