@@ -3,11 +3,10 @@ package dlq
 import (
 	"context"
 	"crypto/rand"
-	"fmt"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	segmentstorage "github.com/grafana/pyroscope/pkg/experiment/ingester/storage"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/memory"
-	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockmetastorev1"
 	"github.com/oklog/ulid"
 	"github.com/prometheus/prometheus/util/testutil"
@@ -16,7 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"path"
 	"sync"
 	"testing"
 	"time"
@@ -155,5 +153,5 @@ func TestStartStop(t *testing.T) {
 
 func addMeta(bucket *memory.InMemBucket, meta *metastorev1.BlockMeta) {
 	data, _ := meta.MarshalVT()
-	bucket.Set(path.Join(pathDLQ, fmt.Sprintf("%d", meta.Shard), tenant.DefaultTenantID, meta.Id, pathMetaPB), data)
+	bucket.Set(segmentstorage.PathForDLQ(meta), data)
 }

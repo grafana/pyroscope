@@ -23,6 +23,7 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/ingester/memdb"
 	testutil2 "github.com/grafana/pyroscope/pkg/experiment/ingester/memdb/testutil"
+	segmentstorage "github.com/grafana/pyroscope/pkg/experiment/ingester/storage"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/dlq"
 	metastoretest "github.com/grafana/pyroscope/pkg/experiment/metastore/test"
 	"github.com/grafana/pyroscope/pkg/model"
@@ -229,10 +230,10 @@ func TestDLQFail(t *testing.T) {
 	l := testutil.NewLogger(t)
 	bucket := mockobjstore.NewMockBucket(t)
 	bucket.On("Upload", mock.Anything, mock.MatchedBy(func(name string) bool {
-		return strings.HasSuffix(name, pathBlock)
+		return segmentstorage.IsSegmentPath(name)
 	}), mock.Anything).Return(nil)
 	bucket.On("Upload", mock.Anything, mock.MatchedBy(func(name string) bool {
-		return strings.Contains(name, pathDLQ)
+		return segmentstorage.IsDLQPath(name)
 	}), mock.Anything).Return(fmt.Errorf("mock upload DLQ error"))
 	client := mockmetastorev1.NewMockMetastoreServiceClient(t)
 	client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
@@ -496,7 +497,7 @@ func defaultTestSegmentWriterConfig() segmentWriterConfig {
 func (sw *sw) createBlocksFromMetas(blocks []*metastorev1.BlockMeta) tenantClients {
 	dir := sw.t.TempDir()
 	for _, meta := range blocks {
-		blobReader, err := sw.bucket.Get(context.Background(), fmt.Sprintf("%s/%d/%s/%s/%s", pathSegments, meta.Shard, pathAnon, meta.Id, pathBlock))
+		blobReader, err := sw.bucket.Get(context.Background(), segmentstorage.PathForSegment(meta))
 		require.NoError(sw.t, err)
 		blob, err := io.ReadAll(blobReader)
 		require.NoError(sw.t, err)
@@ -650,7 +651,7 @@ func (sw *sw) getMetadataDLQ() []*metastorev1.BlockMeta {
 	objects := sw.bucket.Objects()
 	dlqFiles := []string{}
 	for s := range objects {
-		if strings.HasPrefix(s, pathDLQ) {
+		if segmentstorage.IsDLQPath(s) {
 			dlqFiles = append(dlqFiles, s)
 		} else {
 		}

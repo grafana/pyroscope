@@ -6,8 +6,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	"github.com/grafana/pyroscope/pkg/tenant"
-
+	segmentstorage "github.com/grafana/pyroscope/pkg/experiment/ingester/storage"
 	objstore "github.com/thanos-io/objstore"
 	"io"
 	"strconv"
@@ -72,11 +71,6 @@ func (r *Recovery) Stop() {
 	r.l.Log("msg", "recovery stopped")
 }
 
-const pathAnon = tenant.DefaultTenantID
-const pathBlock = "block.bin"
-const pathMetaPB = "meta.pb"
-const pathDLQ = "dlq"
-
 func (r *Recovery) recoverLoop(ctx context.Context) {
 	ticker := time.NewTicker(r.cfg.Period)
 	for {
@@ -90,7 +84,7 @@ func (r *Recovery) recoverLoop(ctx context.Context) {
 }
 
 func (r *Recovery) recoverTick(ctx context.Context) {
-	err := r.bucket.Iter(ctx, pathDLQ, func(metaPath string) error {
+	err := r.bucket.Iter(ctx, segmentstorage.PathDLQ, func(metaPath string) error {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
