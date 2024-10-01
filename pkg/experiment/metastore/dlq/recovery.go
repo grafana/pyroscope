@@ -2,11 +2,13 @@ package dlq
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	segmentstorage "github.com/grafana/pyroscope/pkg/experiment/ingester/storage"
+	"github.com/hashicorp/raft"
 	objstore "github.com/thanos-io/objstore"
 	"io"
 	"strconv"
@@ -88,44 +90,48 @@ func (r *Recovery) recoverTick(ctx context.Context) {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
-		r.recover(ctx, metaPath)
-		return nil
+		return r.recover(ctx, metaPath)
 	}, objstore.WithRecursiveIter)
 	if err != nil {
 		level.Error(r.l).Log("msg", "failed to iterate over dlq", "err", err)
 	}
 }
 
-func (r *Recovery) recover(ctx context.Context, metaPath string) {
+func (r *Recovery) recover(ctx context.Context, metaPath string) error {
 	fields := strings.Split(metaPath, "/")
 	if len(fields) != 5 {
 		r.l.Log("msg", "unexpected path", "path", metaPath)
-		return
+		return nil
 	}
 	sshard := fields[1]
 	ulid := fields[3]
 	meta, err := r.get(ctx, metaPath)
 	if err != nil {
 		level.Error(r.l).Log("msg", "failed to get block meta", "err", err, "path", metaPath)
-		return
+		return nil
 	}
 	shard, _ := strconv.ParseUint(sshard, 10, 64)
 	if ulid != meta.Id || meta.Shard != uint32(shard) {
 		level.Error(r.l).Log("msg", "unexpected block meta", "path", metaPath, "meta", fmt.Sprintf("%+v", meta))
-		return
+		return nil
 	}
 	_, err = r.srv.AddBlock(ctx, &metastorev1.AddBlockRequest{
 		Block: meta,
 	})
 	if err != nil {
-		level.Error(r.l).Log("msg", "failed to add block", "err", err, "path", metaPath)
-		return
+		if isRaftLeadershipError(err) {
+			return err
+		} else {
+			level.Error(r.l).Log("msg", "failed to add block", "err", err, "path", metaPath)
+			return nil
+		}
+
 	}
 	err = r.bucket.Delete(ctx, metaPath)
 	if err != nil {
 		level.Error(r.l).Log("msg", "failed to delete block meta", "err", err, "path", metaPath)
 	}
-	return
+	return nil
 }
 
 func (r *Recovery) get(ctx context.Context, metaPath string) (*metastorev1.BlockMeta, error) {
@@ -143,4 +149,11 @@ func (r *Recovery) get(ctx context.Context, metaPath string) (*metastorev1.Block
 		return nil, err
 	}
 	return recovered, nil
+}
+
+func isRaftLeadershipError(err error) bool {
+	return errors.Is(err, raft.ErrLeadershipLost) ||
+		errors.Is(err, raft.ErrNotLeader) ||
+		errors.Is(err, raft.ErrLeadershipTransferInProgress) ||
+		errors.Is(err, raft.ErrRaftShutdown)
 }
