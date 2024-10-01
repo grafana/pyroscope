@@ -41,7 +41,7 @@ func (m *metastoreState) applyPollCompactionJobs(raft *raft.Log, request *compac
 }
 
 type pollStateUpdate struct {
-	newBlocks          map[tenantShard][]string
+	newBlocks          map[tenantShard][]*metastorev1.BlockMeta
 	deletedBlocks      map[string]*index.BlockWithPartition
 	newJobs            []string
 	updatedBlockQueues map[tenantShard][]uint32
@@ -51,7 +51,7 @@ type pollStateUpdate struct {
 
 func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJobsRequest, raftIndex uint64, raftAppendedAtNanos int64) (resp *compactorv1.PollCompactionJobsResponse, err error) {
 	stateUpdate := &pollStateUpdate{
-		newBlocks:          make(map[tenantShard][]string),
+		newBlocks:          make(map[tenantShard][]*metastorev1.BlockMeta),
 		deletedBlocks:      make(map[string]*index.BlockWithPartition),
 		newJobs:            make([]string, 0),
 		updatedBlockQueues: make(map[tenantShard][]uint32),
@@ -90,7 +90,7 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 					"level", b.CompactionLevel,
 					"source_job", job.Name)
 				blockTenantShard := tenantShard{tenant: b.TenantId, shard: b.Shard}
-				stateUpdate.newBlocks[blockTenantShard] = append(stateUpdate.newBlocks[blockTenantShard], b.Id)
+				stateUpdate.newBlocks[blockTenantShard] = append(stateUpdate.newBlocks[blockTenantShard], b)
 
 				// adding new blocks to the compaction queue
 				if jobForNewBlock := m.tryCreateJob(b, jobUpdate.RaftLogIndex); jobForNewBlock != nil {
@@ -282,18 +282,8 @@ func (m *metastoreState) findJobsToAssign(jobCapacity int, raftLogIndex uint64, 
 
 func (m *metastoreState) writeToDb(sTable *pollStateUpdate) error {
 	return m.db.boltdb.Update(func(tx *bbolt.Tx) error {
-		for key, blocks := range sTable.newBlocks {
-			for _, b := range blocks {
-				block := m.index.FindBlock(key.shard, key.tenant, b)
-				if block == nil {
-					level.Error(m.logger).Log(
-						"msg", "a newly compacted block could not be found",
-						"block", b,
-						"shard", key.shard,
-						"tenant", key.tenant,
-					)
-					continue
-				}
+		for _, blocks := range sTable.newBlocks {
+			for _, block := range blocks {
 				err := m.persistBlock(tx, block)
 				if err != nil {
 					return err

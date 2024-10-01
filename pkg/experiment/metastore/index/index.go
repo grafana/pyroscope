@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/oklog/ulid"
 	"github.com/prometheus/common/model"
 	"golang.org/x/sync/errgroup"
@@ -22,7 +23,7 @@ type Index struct {
 	Config *Config
 
 	partitionMu      sync.Mutex
-	loadedPartitions map[PartitionKey]*indexPartition
+	loadedPartitions *lru.Cache[PartitionKey, *indexPartition]
 	allPartitions    []*PartitionMeta
 
 	store  Store
@@ -31,22 +32,19 @@ type Index struct {
 
 type Config struct {
 	PartitionDuration     time.Duration `yaml:"partition_duration"`
-	PartitionTTL          time.Duration `yaml:"partition_ttl"`
-	CleanupInterval       time.Duration `yaml:"cleanup_interval"`
+	PartitionCacheSize    int           `yaml:"partition_cache_size"`
 	QueryLookaroundPeriod time.Duration `yaml:"query_lookaround_period"`
 }
 
 func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.DurationVar(&cfg.PartitionDuration, prefix+"partition-duration", DefaultConfig.PartitionDuration, "")
-	f.DurationVar(&cfg.PartitionTTL, prefix+"partition-ttl", DefaultConfig.PartitionTTL, "")
-	f.DurationVar(&cfg.CleanupInterval, prefix+"cleanup-interval", DefaultConfig.CleanupInterval, "")
+	f.IntVar(&cfg.PartitionCacheSize, prefix+"partition-cache-size", DefaultConfig.PartitionCacheSize, "How many partitions to keep loaded in memory.")
 	f.DurationVar(&cfg.QueryLookaroundPeriod, prefix+"query-lookaround-period", DefaultConfig.QueryLookaroundPeriod, "")
 }
 
 var DefaultConfig = Config{
-	PartitionDuration:     time.Hour,
-	PartitionTTL:          4 * time.Hour,
-	CleanupInterval:       5 * time.Minute,
+	PartitionDuration:     24 * time.Hour,
+	PartitionCacheSize:    7,
 	QueryLookaroundPeriod: time.Hour,
 }
 
@@ -89,11 +87,17 @@ type Store interface {
 //
 // The index requires a backing Store for loading data in memory. Data is loaded directly via LoadPartitions() or when
 // looking up blocks with FindBlock() or FindBlocksInRange().
-//
-// Data can be unloaded via StartCleanupLoop() which is meant to be called by the index owner and ran in a goroutine.
 func NewIndex(store Store, logger log.Logger, cfg *Config) *Index {
+
+	// A fixed cache size gives us bounded memory footprint, however changes to the partition duration could reduce
+	// the cache effectiveness.
+	// TODO (aleks-p):
+	//  - resize the cache at runtime when the config changes
+	//  - consider auto-calculating the cache size to ensure we hold data for e.g., the last 24 hours
+	cache, _ := lru.New[PartitionKey, *indexPartition](cfg.PartitionCacheSize)
+
 	return &Index{
-		loadedPartitions: make(map[PartitionKey]*indexPartition),
+		loadedPartitions: cache,
 		allPartitions:    make([]*PartitionMeta, 0),
 		store:            store,
 		logger:           logger,
@@ -106,7 +110,6 @@ func (i *Index) LoadPartitions() {
 	i.partitionMu.Lock()
 	defer i.partitionMu.Unlock()
 
-	i.loadedPartitions = make(map[PartitionKey]*indexPartition)
 	i.allPartitions = make([]*PartitionMeta, 0)
 	for _, key := range i.store.ListPartitions() {
 		pMeta, err := i.store.ReadPartitionMeta(key)
@@ -115,11 +118,6 @@ func (i *Index) LoadPartitions() {
 			continue
 		}
 		i.allPartitions = append(i.allPartitions, pMeta)
-		if pMeta.Ts.Add(i.Config.PartitionTTL).Before(time.Now()) {
-			// too old, will load on demand
-			continue
-		}
-		_, _ = i.getOrLoadPartition(pMeta)
 	}
 
 	i.sortPartitions()
@@ -145,22 +143,8 @@ func (i *Index) ForEachPartition(ctx context.Context, fn func(meta *PartitionMet
 	return nil
 }
 
-func (i *Index) getOrCreatePartition(meta *PartitionMeta) *indexPartition {
-	p, ok := i.loadedPartitions[meta.Key]
-	if !ok {
-		level.Info(i.logger).Log("msg", "creating new partition", "key", meta.Key)
-		p = &indexPartition{
-			meta:     meta,
-			shards:   make(map[uint32]*indexShard),
-			loadedAt: time.Now(),
-		}
-		i.loadedPartitions[meta.Key] = p
-	}
-	return p
-}
-
-func (i *Index) getOrLoadPartition(meta *PartitionMeta) (*indexPartition, error) {
-	p, ok := i.loadedPartitions[meta.Key]
+func (i *Index) getPartition(meta *PartitionMeta) *indexPartition {
+	p, ok := i.loadedPartitions.Get(meta.Key)
 	if !ok {
 		level.Info(i.logger).Log("msg", "loading partition", "key", meta.Key)
 		p = &indexPartition{
@@ -168,7 +152,7 @@ func (i *Index) getOrLoadPartition(meta *PartitionMeta) (*indexPartition, error)
 			shards:   make(map[uint32]*indexShard),
 			loadedAt: time.Now(),
 		}
-		i.loadedPartitions[meta.Key] = p
+		i.loadedPartitions.Add(meta.Key, p)
 		for _, s := range i.store.ListShards(meta.Key) {
 			sh := &indexShard{
 				tenants: make(map[string]*indexTenant),
@@ -187,7 +171,7 @@ func (i *Index) getOrLoadPartition(meta *PartitionMeta) (*indexPartition, error)
 		}
 	}
 
-	return p, nil
+	return p
 }
 
 // CreatePartitionKey creates a partition key for a block. It is meant to be used for newly inserted blocks, as it relies
@@ -219,7 +203,7 @@ func (i *Index) CreatePartitionKey(blockId string) PartitionKey {
 
 // findPartitionMeta retrieves the partition meta for the given key.
 func (i *Index) findPartitionMeta(key PartitionKey) *PartitionMeta {
-	loaded, ok := i.loadedPartitions[key]
+	loaded, ok := i.loadedPartitions.Get(key)
 	if ok {
 		return loaded.meta
 	}
@@ -243,7 +227,7 @@ func (i *Index) InsertBlock(b *metastorev1.BlockMeta) {
 // concurrent access. The method will create a new partition if needed.
 func (i *Index) insertBlock(b *metastorev1.BlockMeta) {
 	meta := i.getOrCreatePartitionMeta(b)
-	p := i.getOrCreatePartition(meta)
+	p := i.getPartition(meta)
 
 	s, ok := p.shards[b.Shard]
 	if !ok {
@@ -332,10 +316,7 @@ func (i *Index) findBlockInPartition(key PartitionKey, shard uint32, tenant stri
 		return nil
 	}
 
-	p, err := i.getOrLoadPartition(meta)
-	if err != nil {
-		return nil
-	}
+	p := i.getPartition(meta)
 
 	s, _ := p.shards[shard]
 	if s == nil {
@@ -371,11 +352,7 @@ func (i *Index) FindBlocksInRange(start, end int64, tenants map[string]struct{})
 
 	for _, meta := range i.allPartitions { // TODO aleks-p: consider using binary search to find a good starting point
 		if meta.overlaps(startWithLookaround, endWithLookaround) {
-			p, err := i.getOrLoadPartition(meta)
-			if err != nil {
-				level.Error(i.logger).Log("msg", "error loading partition", "key", meta.Key, "err", err)
-				return nil, err
-			}
+			p := i.getPartition(meta)
 			tenantBlocks := i.collectTenantBlocks(p, start, end, tenants)
 			blocks = append(blocks, tenantBlocks...)
 		}
@@ -459,10 +436,8 @@ func (i *Index) tryDelete(key PartitionKey, shard uint32, tenant string, blockId
 	if meta == nil {
 		return nil, nil, false
 	}
-	p, _ := i.getOrLoadPartition(meta)
-	if p == nil {
-		return nil, nil, false
-	}
+
+	p := i.getPartition(meta)
 
 	s, ok := p.shards[shard]
 	if !ok {
@@ -481,35 +456,4 @@ func (i *Index) tryDelete(key PartitionKey, shard uint32, tenant string, blockId
 	}
 
 	return nil, nil, false
-}
-
-// StartCleanupLoop unloads partitions from memory at an interval.
-func (i *Index) StartCleanupLoop(ctx context.Context) {
-	t := time.NewTicker(i.Config.CleanupInterval)
-	defer func() {
-		t.Stop()
-	}()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-t.C:
-			i.unloadPartitions(time.Now().Add(-i.Config.PartitionTTL))
-			// TODO aleks-p: Physically delete all partitions older than 30 days
-		}
-	}
-}
-
-// unloadPartitions removes all loaded partitions that were loaded before the given threshold.
-func (i *Index) unloadPartitions(unloadThreshold time.Time) {
-	i.partitionMu.Lock()
-	defer i.partitionMu.Unlock()
-
-	level.Info(i.logger).Log("msg", "unloading partitions", "threshold", unloadThreshold)
-	for k, p := range i.loadedPartitions {
-		if p.loadedAt.Before(unloadThreshold) {
-			level.Info(i.logger).Log("msg", "unloading partition", "key", k, "loaded_at", p.loadedAt)
-			delete(i.loadedPartitions, k)
-		}
-	}
 }

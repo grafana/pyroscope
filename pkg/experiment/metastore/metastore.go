@@ -4,8 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/dlq"
-	"github.com/thanos-io/objstore"
 
 	"net"
 	"os"
@@ -23,10 +21,12 @@ import (
 	raftwal "github.com/hashicorp/raft-wal"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/thanos-io/objstore"
 
 	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/dlq"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftleader"
 )
@@ -182,7 +182,6 @@ func (m *Metastore) starting(ctx context.Context) error {
 		return fmt.Errorf("failed to initialize raft: %w", err)
 	}
 	m.dlq.Start()
-	go m.state.index.StartCleanupLoop(ctx)
 	return nil
 }
 
