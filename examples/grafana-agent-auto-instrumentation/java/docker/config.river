@@ -4,7 +4,7 @@ logging {
 }
 
 discovery.process "all" {
-  // join kuberenetes targets with process targets on container_id to have k8s labels
+  // join kubernetes targets with process targets on container_id to have k8s labels
   // join = discovery.kubernetes.containers.targets
 }
 

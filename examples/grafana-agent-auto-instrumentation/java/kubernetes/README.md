@@ -1,21 +1,21 @@
-# Grafana Agent Java profiling via auto-instrumentation example in Kubernetes
+# Grafana Alloy Java profiling via auto-instrumentation in Kubernetes
 
-This repository provides a practical demonstration of leveraging the Grafana Agent for continuous Java application profiling using Pyroscope in Kubernetes. 
+This repository provides a practical demonstration of leveraging Grafana Alloy for continuous Java application profiling using Pyroscope in Kubernetes. 
 It illustrates a seamless approach to profiling Java processes, aiding in performance optimization.
 
 ## Overview
 
-The Grafana Agent automates Java process discovery for profiling, streamlining the setup per application. It enables precise and targeted profiling configurations through the Grafana Agent settings.
+Grafana Alloy automates Java process discovery for profiling, streamlining the setup for applications. It enables precise and targeted profiling configurations through the Grafana Alloy settings.
 
-Java profiling via the Grafana Agent is based on a few Grafana Agent components:
+Java profiling via Grafana Alloy is based on a few components:
 - `discovery.process` for process discovery
-- `discovery.kubernetes` optional, for adding Kubernetes labels (namespace, pod, etc.)
+- `discovery.kubernetes` for adding Kubernetes labels (namespace, pod, and more)
 - `discovery.relabel` for detecting java processes and setting up labels
 - `pyroscope.java` for enabling profiling for specific applications
 - `pyroscope.write` for writing the profiles data to a remote endpoint
 
-Refer to the [official documentation](https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/java/) for an in-depth understanding and additional configuration options for Java profiling with the Grafana Agent.
-Also, check the [Grafana Agent Components reference](https://grafana.com/docs/agent/latest/flow/reference/components/) for more details on each used component.
+Refer to the [official documentation](https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/java/) for an in-depth understanding and additional configuration options for Java profiling with Grafana Alloy.
+Also, check the [Grafana Alloy Components reference](https://grafana.com/docs/alloy/latest/reference/components/) for more details on each used component.
 
 ### async-profiler
 
@@ -28,7 +28,7 @@ Under the hood, this is achieved by attaching to the application at a process le
 
 To use this example:
 
-1. Set up a local kubernetes cluster (for example by using Kind).
+1. Set up a local kubernetes cluster using Kind or a similar tool.
 2. Clone this repository and navigate to this example's directory.
 3. Create a `pyroscope-java` namespace:
     ```shell
@@ -39,8 +39,9 @@ To use this example:
        kubectl apply -n pyroscope-java -f .
     ```
 
-After the deployment is operational, the Grafana Agent profiles the Java application using the defined configuration.
+After the deployment is operational, the Grafana Alloy will profile the Java application using the defined configuration.
+The example will deploy a Grafana instance in the same cluster, available via the `grafana` service at port 3000. 
 
 ## Documentation
 
-Refer to the [official documentation](https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/java/) for an in-depth understanding and additional configuration options for Java profiling with the Grafana Agent.
+Refer to the [official documentation](https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/java/) for an in-depth understanding and additional configuration options for Java profiling with Grafana Alloy.
