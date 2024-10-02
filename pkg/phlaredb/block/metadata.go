@@ -392,10 +392,10 @@ func ReadMetaFromDir(dir string) (*Meta, error) {
 	return Read(f)
 }
 
-func exhaustCloseWithErrCapture(err *error, r io.ReadCloser, format string) {
+func exhaustCloseWithErrCapture(err *error, r io.ReadCloser, msg string) {
 	_, copyErr := io.Copy(io.Discard, r)
 
-	runutil.CloseWithErrCapture(err, r, format)
+	runutil.CloseWithErrCapture(err, r, "%s", msg)
 
 	// Prepend the io.Copy error.
 	merr := multierror.MultiError{}

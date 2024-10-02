@@ -167,21 +167,3 @@ func dial(address string, grpcClientConfig grpcclient.Config, _ log.Logger) (*gr
 	)
 	return grpc.Dial(address, options...)
 }
-
-const grpcServiceConfig = `{
-	"healthCheckConfig": {
-		"serviceName": "metastore.v1.MetastoreService.RaftLeader"
-	},
-    "loadBalancingPolicy":"round_robin",
-    "methodConfig": [{
-        "name": [{"service": "metastore.v1.MetastoreService"}],
-        "waitForReady": true,
-        "retryPolicy": {
-            "MaxAttempts": 16,
-            "InitialBackoff": ".01s",
-            "MaxBackoff": ".01s",
-            "BackoffMultiplier": 1.0,
-            "RetryableStatusCodes": [ "UNAVAILABLE" ]
-        }
-    }]
-}`

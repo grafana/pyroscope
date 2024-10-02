@@ -404,7 +404,7 @@ func (f *Phlare) setupModuleManager() error {
 	if f.Cfg.v2Experiment {
 		experimentalModules := map[string][]string{
 			SegmentWriter:       {Overrides, API, MemberlistKV, Storage, UsageReport, MetastoreClient},
-			Metastore:           {Overrides, API, MetastoreClient},
+			Metastore:           {Overrides, API, MetastoreClient, Storage},
 			CompactionWorker:    {Overrides, API, Storage, Overrides, MetastoreClient},
 			QueryBackend:        {Overrides, API, Storage, Overrides, QueryBackendClient},
 			SegmentWriterRing:   {Overrides, API, MemberlistKV},
