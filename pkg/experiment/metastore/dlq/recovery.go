@@ -121,11 +121,9 @@ func (r *Recovery) recover(ctx context.Context, metaPath string) error {
 	if err != nil {
 		if isRaftLeadershipError(err) {
 			return err
-		} else {
-			level.Error(r.l).Log("msg", "failed to add block", "err", err, "path", metaPath)
-			return nil
 		}
-
+		level.Error(r.l).Log("msg", "failed to add block", "err", err, "path", metaPath)
+		return nil
 	}
 	err = r.bucket.Delete(ctx, metaPath)
 	if err != nil {
