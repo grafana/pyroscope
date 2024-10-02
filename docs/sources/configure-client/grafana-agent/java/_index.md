@@ -78,7 +78,7 @@ see [profiler-options](https://github.com/async-profiler/async-profiler?tab=read
 You must run the collector, either Grafana Alloy (recommended) or Agent (legacy), as root and inside host `pid` namespace for the `pyroscope.java`
 and `discover.process` components to work.
 
-### Additional Configuration for Linux Capabilities
+### Additional configuration for Linux capabilities
 If your Kubernetes environment has Linux capabilities enabled, configure the following in the Helm values to ensure `pyroscope.java` functions properly:
 
 ```yaml
