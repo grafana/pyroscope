@@ -2,19 +2,19 @@ package dlq
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
-	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	segmentstorage "github.com/grafana/pyroscope/pkg/experiment/ingester/storage"
-	"github.com/hashicorp/raft"
-	objstore "github.com/thanos-io/objstore"
 	"io"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	segmentstorage "github.com/grafana/pyroscope/pkg/experiment/ingester/storage"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftleader"
+	"github.com/thanos-io/objstore"
 )
 
 type RecoveryConfig struct {
@@ -119,7 +119,7 @@ func (r *Recovery) recover(ctx context.Context, metaPath string) error {
 		Block: meta,
 	})
 	if err != nil {
-		if isRaftLeadershipError(err) {
+		if raftleader.IsRaftLeadershipError(err) {
 			return err
 		}
 		level.Error(r.l).Log("msg", "failed to add block", "err", err, "path", metaPath)
@@ -147,11 +147,4 @@ func (r *Recovery) get(ctx context.Context, metaPath string) (*metastorev1.Block
 		return nil, err
 	}
 	return recovered, nil
-}
-
-func isRaftLeadershipError(err error) bool {
-	return errors.Is(err, raft.ErrLeadershipLost) ||
-		errors.Is(err, raft.ErrNotLeader) ||
-		errors.Is(err, raft.ErrLeadershipTransferInProgress) ||
-		errors.Is(err, raft.ErrRaftShutdown)
 }

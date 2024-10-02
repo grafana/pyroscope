@@ -303,7 +303,7 @@ func assertChanNotReceived(t *testing.T, c chan struct{}, wait time.Duration, ms
 
 	select {
 	case <-c:
-		t.Fatalf("%s", msg)
+		t.Fatal(msg)
 	case <-time.After(wait):
 		// OK!
 	}

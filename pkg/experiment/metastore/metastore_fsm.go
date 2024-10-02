@@ -17,6 +17,7 @@ import (
 	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftleader"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftlogpb"
 	"github.com/grafana/pyroscope/pkg/util"
 )
@@ -249,8 +250,5 @@ func wrapRetryableErrorWithRaftDetails(err error, raft *raft.Raft) error {
 }
 
 func shouldRetryCommand(err error) bool {
-	return errors.Is(err, raft.ErrLeadershipLost) ||
-		errors.Is(err, raft.ErrNotLeader) ||
-		errors.Is(err, raft.ErrLeadershipTransferInProgress) ||
-		errors.Is(err, raft.ErrRaftShutdown)
+	return raftleader.IsRaftLeadershipError(err)
 }
