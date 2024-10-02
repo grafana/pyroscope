@@ -1,0 +1,287 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: java-app-jar
+binaryData:
+  jar: |
+    UEsDBAoAAAgAAD1iQlkAAAAAAAAAAAAAAAAJAAQATUVUQS1JTkYv/soAAFBLAwQUAAgICAA9YkJZAAAAAAAAAAAAAAAAFAAAAE1FVEEtSU5GL01BTklGRVNULk1G803My0xLLS7RDUstKs7Mz7NSMNQz4OXyTczM03XOSSwutlJwSywuCc7JL+flci5KTSxJTdF1qrRSMAKq0zNU0HBNzsksKE5VcEzJLyjJLM3V5OXi5QIAUEsHCJiPQHxXAAAAVgAAAFBLAwQUAAgICAASYkJZAAAAAAAAAAAAAAAADgAAAEZhc3RTbG93LmNsYXNznVTLUhNBFD0dkgwMAxke8ohPMEgCSkDxGYRSCkqsoItQaJWrzqSBgclMaqaHxwf4I25csXAlsvADLD/HtXp7QggWgpSpSvfcvvece27fW/3t5+FXAM8wpyOGFg1xAwkkGcxNvs3zDnfX86/Lm8KSDMkZ27XlLENLNreqoxVtGnQD7TAYWhd5IEuOt0PeNbvMEM8u5V7q6ERKg2mgC90M1yLOUNpO3vJcK/R94cr8wq6wQun5AUO/K3ZKtrvuiJUNX/BKw8WQzeaK56JLwt+2LVHopmp6DVxCH2mwuOMwDJ2FnSc3Lzui0I4BDGpIG7iMKwyZi2Si+wjCctWmi5nN/oP/jPyLoQx9USCh816FCFNF2xWvwmpZ+CsKx9BRktzaWua1Izte5bbL0Jd9V2z2pyR9urNCbpVBX9i1RE3anhtoyDCMnlMJBR1Ha7jVaE9EueRK4fthTYrKcQypcXi1XOEZJSIzydDbuNgTY1LQMMbQ0zw+gddLXuhbYtGOSmtMzISKpYF77nkykD6vLQu54VUCE9lUEpNq0KYMjEbWPR3TuK/hgYGHeMQw3Mxju9velsgXI4lEwde4Rd3aY2ivnrS+Z4unQPWML7hbcUSQKXreVlgrnL7hs4ArezXxf856yvOxudNeNVglW6rRMZZcV/jzDg8CQT2nk5ELlafh6R8d/1sojXg9GEPUhBjULw6mHghar5J1lXZGe2LsM9gn+iBOWpPRYQva1ONwFDoXQYG+dOIDkun3++l45QBaOqFWvk+eWITtJJxiSEBTTwyuR0xMfd4gHbGIbIp2pafrAB3F8UP0AF/QH8ObpoY6Twdl7YSJXgxHrDHcxIipq3E6opo+KixlpknIW3NArR9//TgWpEcBJoG7GmIQsal6cmSOR6G3cYd2Ve1dOptAnv6PIzjDE8xgFoO/AVBLBwipPrnIuQIAAG0FAABQSwECCgAKAAAIAAA9YkJZAAAAAAAAAAAAAAAACQAEAAAAAAAAAAAAAAAAAAAATUVUQS1JTkYv/soAAFBLAQIUABQACAgIAD1iQlmYj0B8VwAAAFYAAAAUAAAAAAAAAAAAAAAAACsAAABNRVRBLUlORi9NQU5JRkVTVC5NRlBLAQIUABQACAgIABJiQlmpPrnIuQIAAG0FAAAOAAAAAAAAAAAAAAAAAMQAAABGYXN0U2xvdy5jbGFzc1BLBQYAAAAAAwADALkAAAC5AwAAAAA=
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pyroscope-rideshare-java
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pyroscope-rideshare-java
+  template:
+    metadata:
+      annotations:
+        cluster-name: dev-us-east-1
+      labels:
+        app: pyroscope-rideshare-java
+    spec:
+      containers:
+        - name: pyroscope-rideshare-java
+          image: openjdk:21-jdk-slim
+          imagePullPolicy: IfNotPresent
+          command: [ "java" ]
+          args: [ "-jar", "/app/FastSlow.jar" ]
+          volumeMounts:
+            - name: app-jar
+              mountPath: /app
+      volumes:
+        - name: app-jar
+          configMap:
+            name: java-app-jar
+            items:
+              - key: jar
+                path: FastSlow.jar
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pyroscope
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pyroscope
+  template:
+    metadata:
+      labels:
+        app: pyroscope
+    spec:
+      containers:
+        - name: pyroscope
+          image: grafana/pyroscope:latest
+          ports:
+            - containerPort: 4040
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pyroscope
+spec:
+  selector:
+    app: pyroscope
+  ports:
+    - protocol: TCP
+      port: 4040
+      targetPort: 4040
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: grafana-alloy
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: grafana-alloy-role
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: grafana-alloy-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: grafana-alloy-role
+subjects:
+  - kind: ServiceAccount
+    name: grafana-alloy
+    namespace: pyroscope-java
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: grafana-alloy
+spec:
+  selector:
+    matchLabels:
+      app: grafana-alloy
+  template:
+    metadata:
+      labels:
+        app: grafana-alloy
+    spec:
+      serviceAccountName: grafana-alloy
+      containers:
+        - name: grafana-alloy
+          image: grafana/alloy
+          command:
+            - /bin/alloy
+            - run
+            - /etc/agent-config/config.river
+            - --server.http.listen-addr=0.0.0.0:12345
+          env:
+            - name: HOSTNAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: AGENT_MODE
+              value: flow
+          ports:
+            - containerPort: 12345
+          volumeMounts:
+            - name: agent-config
+              mountPath: /etc/agent-config
+          securityContext:
+            privileged: true
+            runAsGroup: 0
+            runAsUser: 0
+      securityContext:
+        runAsGroup: 0
+        runAsUser: 0
+      volumes:
+        - name: agent-config
+          configMap:
+            name: agent-config
+      hostPID: true
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agent-config
+data:
+  config.river: |
+    logging {
+      level = "debug"
+      format = "logfmt"
+    }
+    
+    discovery.kubernetes "containers" {
+      role = "pod"
+    }
+      
+    discovery.process "all" {
+      // join kuberenetes targets with process targets on container_id to have k8s labels
+      join = discovery.kubernetes.containers.targets
+    }
+      
+    discovery.relabel "java" {
+      targets = discovery.process.all.targets
+      rule {
+        source_labels = ["__meta_process_exe"]
+        action = "keep"
+        regex = ".*/java$"
+      }
+      rule {
+        action = "replace"
+        target_label = "service_name"
+        replacement = "java-fast-slow-fibonacci"
+      }
+      rule {
+        action = "replace"
+        source_labels = ["__meta_kubernetes_namespace"]
+        target_label = "namespace"
+      }
+      rule {
+        action = "replace"
+        source_labels = ["__meta_kubernetes_pod_annotation_cluster_name"]
+        target_label = "cluster"
+      }
+    }
+      
+    pyroscope.java "java" {
+      profiling_config {
+        interval = "15s"
+        alloc = "512k"
+        cpu = true
+        lock = "10ms"
+        sample_rate = 100
+      }
+      forward_to = [pyroscope.write.example.receiver]
+      targets = discovery.relabel.java.output
+    }
+      
+    pyroscope.write "example" {
+      // Send metrics to a locally running Pyroscope instance.
+      endpoint {
+        url = "http://pyroscope:4040"
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana:latest
+          env:
+            - name: GF_INSTALL_PLUGINS
+              value: grafana-pyroscope-app
+            - name: GF_AUTH_ANONYMOUS_ENABLED
+              value: "true"
+            - name: GF_AUTH_ANONYMOUS_ORG_ROLE
+              value: Admin
+            - name: GF_AUTH_DISABLE_LOGIN_FORM
+              value: "true"
+          ports:
+            - containerPort: 3000
+          volumeMounts:
+            - name: grafana-provisioning
+              mountPath: /etc/grafana/provisioning
+      volumes:
+        - name: grafana-provisioning
+          configMap:
+            name: grafana-provisioning
+            items:
+              - key: datasources
+                path: datasources/datasources.yaml
+              - key: plugins
+                path: plugins/plugins.yaml
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+spec:
+  selector:
+    app: grafana
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-provisioning
+data:
+  "datasources": |
+    apiVersion: 1
+    datasources:
+      - uid: local-pyroscope
+        type: grafana-pyroscope-datasource
+        name: Pyroscope
+        url: http://pyroscope:4040
+        jsonData:
+          keepCookies: [pyroscope_git_session]
+
+  "plugins": |
+    apiVersion: 1
+    apps:
+      - type: grafana-pyroscope-app
+        jsonData:
+          backendUrl: http://pyroscope:4040
+        secureJsonData:
