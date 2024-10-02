@@ -116,8 +116,12 @@ func (i *Index) LoadPartitions() {
 			"key", key,
 			"ts", pMeta.Ts.Format(time.RFC3339),
 			"duration", pMeta.Duration,
-			"tenants", pMeta.Tenants)
+			"tenants", strings.Join(pMeta.Tenants, ","))
 		i.allPartitions = append(i.allPartitions, pMeta)
+		if pMeta.contains(time.Now().UTC().UnixMilli()) {
+			// load the currently active partition
+			_ = i.getPartition(pMeta)
+		}
 	}
 	level.Info(i.logger).Log("msg", "loaded metastore index partitions", "count", len(i.allPartitions))
 
