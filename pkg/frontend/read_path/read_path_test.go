@@ -209,7 +209,43 @@ func (s *routerTestSuite) Test_TimeSeries_Limit() {
 		},
 	})
 
-	s.frontend.On("SelectSeries", mock.Anything, connect.NewRequest(&querierv1.SelectSeriesRequest{Start: 10, End: 4999})).
+	s.frontend.On("SelectSeries",
+		mock.Anything, connect.NewRequest(&querierv1.SelectSeriesRequest{Start: 10, End: 4999})).
+		Return(connect.NewResponse(&querierv1.SelectSeriesResponse{
+			Series: []*typesv1.Series{
+				{Labels: model.LabelsFromStrings("foo", "bar"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}}},
+				{Labels: model.LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 2}}},
+			}}), nil).Once()
+
+	s.backend.On("SelectSeries",
+		mock.Anything, connect.NewRequest(&querierv1.SelectSeriesRequest{Start: 5000, End: 10000})).
+		Return(connect.NewResponse(&querierv1.SelectSeriesResponse{
+			Series: []*typesv1.Series{
+				{Labels: model.LabelsFromStrings("foo", "bar"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}}},
+				{Labels: model.LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}}},
+			}}), nil).Once()
+
+	resp, err := s.router.SelectSeries(s.ctx, req)
+	s.Require().NoError(err)
+	s.Assert().Equal(expected, resp)
+}
+
+func (s *routerTestSuite) Test_TimeSeries_NoLimit() {
+	s.overrides.On("ReadPathOverrides", "tenant-a").Return(Config{
+		EnableQueryBackend:     true,
+		EnableQueryBackendFrom: time.Unix(5, 0),
+	})
+
+	req := connect.NewRequest(&querierv1.SelectSeriesRequest{Start: 10, End: 10000})
+	expected := connect.NewResponse(&querierv1.SelectSeriesResponse{
+		Series: []*typesv1.Series{
+			{Labels: model.LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 3}}},
+			{Labels: model.LabelsFromStrings("foo", "bar"), Points: []*typesv1.Point{{Timestamp: 1, Value: 2}}},
+		},
+	})
+
+	s.frontend.On("SelectSeries",
+		mock.Anything, connect.NewRequest(&querierv1.SelectSeriesRequest{Start: 10, End: 4999})).
 		Return(connect.NewResponse(&querierv1.SelectSeriesResponse{
 			Series: []*typesv1.Series{
 				{Labels: model.LabelsFromStrings("foo", "bar"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}}},
