@@ -176,9 +176,30 @@ func (et *ElfTable) createSymbolTable(me *elf2.MMapedElfFile) (SymbolNameResolve
 		symbolOptions.FilterFrom = goTable.Index.Entry.Get(0)
 		symbolOptions.FilterTo = goTable.Index.End
 	}
-	symTable, symErr := me.NewSymbolTable(&symbolOptions)
+	origSymTable, origErr := me.NewSymbolTable(&symbolOptions)
+
+	var symTable elf2.SymbolTableInterface
+	var symErr error
+	if origErr == nil && origSymTable.HasSection(elf.SHT_SYMTAB) {
+		symTable = origSymTable
+		symErr = nil
+	} else {
+		miniSymTable, miniErr := me.NewMiniDebugInfoSymbolTable(&symbolOptions)
+		if origErr != nil && miniErr != nil {
+			symTable = nil
+			symErr = fmt.Errorf("o: %s m: %s", origErr.Error(), miniErr.Error())
+		} else {
+			tab := &elf2.SymbolTableWithMiniDebugInfo{
+				Primary:   origSymTable,
+				MiniDebug: miniSymTable,
+			}
+			symTable = tab
+			symErr = nil
+		}
+	}
+
 	if symErr != nil && goErr != nil {
-		return nil, fmt.Errorf("s: %s g: %s", symErr.Error(), goErr.Error())
+		return nil, fmt.Errorf("s: {%s} g: {%s}", symErr.Error(), goErr.Error())
 	}
 	if symErr == nil && goErr == nil {
 		return &elf2.GoTableWithFallback{

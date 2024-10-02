@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/grafana/dskit/flagext"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore"
+	"github.com/grafana/pyroscope/pkg/test/mocks/mockdlq"
 	"io"
 	"math/rand"
 	"path/filepath"
@@ -14,7 +17,6 @@ import (
 	"time"
 
 	gprofile "github.com/google/pprof/profile"
-
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingesterv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
@@ -22,6 +24,9 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/ingester/memdb"
 	testutil2 "github.com/grafana/pyroscope/pkg/experiment/ingester/memdb/testutil"
+	segmentstorage "github.com/grafana/pyroscope/pkg/experiment/ingester/storage"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/dlq"
+	metastoretest "github.com/grafana/pyroscope/pkg/experiment/metastore/test"
 	"github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/memory"
@@ -226,10 +231,10 @@ func TestDLQFail(t *testing.T) {
 	l := testutil.NewLogger(t)
 	bucket := mockobjstore.NewMockBucket(t)
 	bucket.On("Upload", mock.Anything, mock.MatchedBy(func(name string) bool {
-		return strings.HasSuffix(name, pathBlock)
+		return segmentstorage.IsSegmentPath(name)
 	}), mock.Anything).Return(nil)
 	bucket.On("Upload", mock.Anything, mock.MatchedBy(func(name string) bool {
-		return strings.Contains(name, pathDLQ)
+		return segmentstorage.IsDLQPath(name)
 	}), mock.Anything).Return(fmt.Errorf("mock upload DLQ error"))
 	client := mockmetastorev1.NewMockMetastoreServiceClient(t)
 	client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
@@ -369,6 +374,92 @@ func TestQueryMultipleSeriesSingleTenant(t *testing.T) {
 	require.Equal(t, expectedCollapsed, actualCollapsed)
 }
 
+func TestDLQRecoveryMock(t *testing.T) {
+	chunk := inputChunk([]input{
+		{shard: 1, tenant: "tb", profile: cpuProfile(42, 239, "svc1", "kek", "foo", "bar")},
+	})
+
+	sw := newTestSegmentWriter(t, segmentWriterConfig{
+		segmentDuration: 100 * time.Millisecond,
+	})
+	sw.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
+		Return(nil, fmt.Errorf("mock metastore unavailable"))
+
+	_ = sw.ingestChunk(t, chunk, false)
+	allBlocks := sw.getMetadataDLQ()
+	assert.Len(t, allBlocks, 1)
+
+	recoveredMetas := make(chan *metastorev1.BlockMeta, 1)
+	srv := mockdlq.NewMockLocalServer(t)
+	srv.On("AddRecoveredBlock", mock.Anything, mock.Anything).
+		Once().
+		Run(func(args mock.Arguments) {
+			meta := args.Get(1).(*metastorev1.AddBlockRequest).Block
+			recoveredMetas <- meta
+		}).
+		Return(&metastorev1.AddBlockResponse{}, nil)
+	recovery := dlq.NewRecovery(dlq.RecoveryConfig{
+		Period: 100 * time.Millisecond,
+	}, testutil.NewLogger(t), srv, sw.bucket)
+	recovery.Start()
+	defer recovery.Stop()
+
+	meta := <-recoveredMetas
+	assert.Equal(t, allBlocks[0].Id, meta.Id)
+
+	clients := sw.createBlocksFromMetas(allBlocks)
+	inputs := groupInputs(t, chunk)
+	sw.queryInputs(clients, inputs)
+}
+
+func TestDLQRecovery(t *testing.T) {
+	const tenant = "tb"
+	const ts = 239
+	chunk := inputChunk([]input{
+		{shard: 1, tenant: tenant, profile: cpuProfile(42, ts, "svc1", "kek", "foo", "bar")},
+	})
+
+	sw := newTestSegmentWriter(t, segmentWriterConfig{
+		segmentDuration: 100 * time.Millisecond,
+	})
+	sw.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
+		Return(nil, fmt.Errorf("mock metastore unavailable"))
+
+	_ = sw.ingestChunk(t, chunk, false)
+
+	cfg := new(metastore.Config)
+	flagext.DefaultValues(cfg)
+	cfg.DLQRecoveryPeriod = 100 * time.Millisecond
+	m := metastoretest.NewMetastoreSet(t, cfg, 3, sw.bucket)
+	defer m.Close()
+
+	queryBlock := func() *metastorev1.BlockMeta {
+		res, err := m.Client.QueryMetadata(context.Background(), &metastorev1.QueryMetadataRequest{
+			TenantId:  []string{tenant},
+			StartTime: ts - 1,
+			EndTime:   ts + 1,
+			Query:     "{service_name=~\"svc1\"}",
+		})
+		if err != nil {
+			return nil
+		}
+		if len(res.Blocks) == 1 {
+			return res.Blocks[0]
+		}
+		return nil
+	}
+	require.Eventually(t, func() bool {
+		return queryBlock() != nil
+	}, 10*time.Second, 100*time.Millisecond)
+
+	block := queryBlock()
+	require.NotNil(t, block)
+
+	clients := sw.createBlocksFromMetas([]*metastorev1.BlockMeta{block})
+	inputs := groupInputs(t, chunk)
+	sw.queryInputs(clients, inputs)
+}
+
 type sw struct {
 	*segmentsWriter
 	bucket  *memory.InMemBucket
@@ -407,7 +498,7 @@ func defaultTestSegmentWriterConfig() segmentWriterConfig {
 func (sw *sw) createBlocksFromMetas(blocks []*metastorev1.BlockMeta) tenantClients {
 	dir := sw.t.TempDir()
 	for _, meta := range blocks {
-		blobReader, err := sw.bucket.Get(context.Background(), fmt.Sprintf("%s/%d/%s/%s/%s", pathSegments, meta.Shard, pathAnon, meta.Id, pathBlock))
+		blobReader, err := sw.bucket.Get(context.Background(), segmentstorage.PathForSegment(meta))
 		require.NoError(sw.t, err)
 		blob, err := io.ReadAll(blobReader)
 		require.NoError(sw.t, err)
@@ -561,7 +652,7 @@ func (sw *sw) getMetadataDLQ() []*metastorev1.BlockMeta {
 	objects := sw.bucket.Objects()
 	dlqFiles := []string{}
 	for s := range objects {
-		if strings.HasPrefix(s, pathDLQ) {
+		if segmentstorage.IsDLQPath(s) {
 			dlqFiles = append(dlqFiles, s)
 		} else {
 		}

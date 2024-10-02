@@ -10,30 +10,42 @@
 [![DockerHub](https://img.shields.io/docker/pulls/grafana/pyroscope.svg)](https://hub.docker.com/r/grafana/pyroscope)
 [![GoDoc](https://godoc.org/github.com/grafana/pyroscope?status.svg)](https://godoc.org/github.com/grafana/pyroscope)
 
-### 🌟 What is Grafana Pyroscope?
+## 🎉 **Announcement: The new Explore Profiles UI is here!**
 
-Grafana Pyroscope is an open source continuous profiling platform. It will help you:
-* Find performance issues and bottlenecks in your code
-* Use high-cardinality tags/labels to analyze your application
-* Resolve issues with high CPU utilization
-* Track down memory leaks
-* Understand the call tree of your application
-* Auto-instrument your code to link profiling data to traces
+We are thrilled to announce the launch of the **Explore Profiles UI**, a brand-new way to explore and analyze your profiling data—now available as part of the Grafana Explore Apps suite! This new app brings you a **queryless**, **intuitive** experience for visualizing your profiling data, simplifying the entire process without the need to write complex queries.
 
-## 🔥 [Pyroscope Live Demo](https://play.grafana.org/a/grafana-pyroscope-app/)
+https://github.com/user-attachments/assets/4db19ec7-86f3-4701-8f5f-9b7ffcebd49c
 
-[![Pyroscope GIF Demo](https://user-images.githubusercontent.com/23323466/143324845-16ff72df-231e-412d-bd0a-38ef2e09cba8.gif)](https://demo.pyroscope.io/)
+## What is Grafana Pyroscope?
 
-## 🎉 Features
+Grafana Pyroscope is a continuous profiling platform designed to surface performance insights from your applications, helping you optimize resource usage such as CPU, memory, and I/O operations. With Pyroscope, you can both **proactively** and **reactively** address performance bottlenecks across your system.
 
-* Minimal CPU overhead
-* Horizontally scalable
-* Efficient compression, low disk space requirements
-* Can handle high-cardinality tags/labels
-* Calculate the performance "diff" between various tags/labels and time periods
-* Advanced analysis UI
+The typical use cases are:
 
-## 💻 Quick Start: Run Pyroscope Locally
+- **Proactive:** Reducing resource consumption, improving application performance, or preventing latency issues.
+- **Reactive:** Quickly resolving incidents with line-level detail and debugging active CPU, memory, or I/O bottlenecks.
+
+Pyroscope provides powerful tools to give you a comprehensive view of your application's behavior while allowing you to drill down into specific services for more targeted root cause analysis.
+
+## How Does Pyroscope Work?
+
+![deployment_diagram](https://grafana.com/media/docs/pyroscope/pyroscope_client_server_diagram_09_18_2024.png)
+
+Pyroscope consists of three main components:
+- **Pyroscope Server:** The server component that stores and processes profiling data.
+- **Pyroscope SDKs(push) or Grafana alloy(pull) :** The client-side part of Pyroscope that collects profiling data from your applications and sends it to the server.
+- **Explore Profiles UI:** A queryless, intuitive UI for visualizing and analyzing profiling data.
+
+---
+
+## [Pyroscope Live Demo](https://play.grafana.org/a/grafana-pyroscope-app/)
+
+[![Pyroscope GIF Demo](https://github.com/user-attachments/assets/2faeb985-f2b6-4311-ad29-e318e850c025)](https://play.grafana.org/a/grafana-pyroscope-app/)
+
+
+---
+
+## **Quick Start: Run Pyroscope server locally**
 
 ### Homebrew
 ```sh
@@ -48,6 +60,25 @@ docker run -it -p 4040:4040 grafana/pyroscope
 
 For more documentation on how to configure Pyroscope server, see [our server documentation](https://grafana.com/docs/pyroscope/latest/configure-server/).
 
+## **Quick Start: Run Explore Profiles UI in Grafana**
+
+<img width="1728" alt="image" src="https://github.com/user-attachments/assets/67691443-6450-45b9-8064-f41056c88ade">
+
+### Grafana Cloud
+The app UI and server are both installed and running auomatically -- just start sending data!
+
+### Grafana OSS
+You can run the Explore profiles UI in Grafana by installing the plugin from the [Grafana Plugin Directory](https://grafana.com/grafana/plugins/grafana-pyroscope-app/) 
+
+For more information, check out the [Explore Profiles README](https://github.com/grafana/explore-profiles)
+
+## Documentation
+
+For more information on how to use Pyroscope with other programming languages, install it on Linux, or use it in production environment, check out our documentation:
+
+* [Getting Started](https://grafana.com/docs/pyroscope/latest/get-started/)
+* [Deployment Guide](https://grafana.com/docs/pyroscope/latest/deploy-kubernetes/)
+* [Pyroscope Architecture](https://grafana.com/docs/pyroscope/latest/reference-pyroscope-architecture/)
 
 ## Send data to server via Pyroscope agent (language specific)
 
@@ -98,23 +129,6 @@ For more documentation on how to add the Pyroscope agent to your code, see the [
       </td>
    </tr>
 </table>
-
-## Deployment Diagram
-
-![deployment_diagram](https://grafana.com/media/docs/pyroscope/pyroscope_client_server_diagram_09_18_2024.png)
-
-## Documentation
-
-For more information on how to use Pyroscope with other programming languages, install it on Linux, or use it in production environment, check out our documentation:
-
-* [Getting Started](https://grafana.com/docs/pyroscope/latest/get-started/)
-* [Deployment Guide](https://grafana.com/docs/pyroscope/latest/deploy-kubernetes/)
-* [Pyroscope Architecture](https://grafana.com/docs/pyroscope/latest/reference-pyroscope-architecture/)
-
-
-## Downloads
-
-You can download the latest version of pyroscope for macOS, linux and Docker from our [Releases page](https://github.com/grafana/pyroscope/releases).
 
 ## [Supported Languages][supported languages]
 
@@ -200,6 +214,7 @@ To start contributing, check out our [Contributing Guide](docs/internal/contribu
 <a href="https://github.com/dapirian"><img src="https://avatars.githubusercontent.com/u/3904462?v=4" title="dapirian" width="80" height="80"></a>
 <a href="https://github.com/Cluas"><img src="https://avatars.githubusercontent.com/u/10056928?v=4" title="Cluas" width="80" height="80"></a>
 <a href="https://github.com/bodji"><img src="https://avatars.githubusercontent.com/u/1321777?v=4" title="bodji" width="80" height="80"></a>
+<a href="https://github.com/zmj64351508"><img src="https://avatars.githubusercontent.com/u/2457520?v=4" title="zmj64351508" width="80" height="80"></a>
 <a href="https://github.com/ayeniblessing101"><img src="https://avatars.githubusercontent.com/u/29165344?v=4" title="ayeniblessing101" width="80" height="80"></a>
 <a href="https://github.com/wusphinx"><img src="https://avatars.githubusercontent.com/u/1380777?v=4" title="wusphinx" width="80" height="80"></a>
 <a href="https://github.com/futurelm"><img src="https://avatars.githubusercontent.com/u/43361929?v=4" title="futurelm" width="80" height="80"></a>
@@ -207,6 +222,5 @@ To start contributing, check out our [Contributing Guide](docs/internal/contribu
 <a href="https://github.com/chengjoey"><img src="https://avatars.githubusercontent.com/u/30427474?v=4" title="chengjoey" width="80" height="80"></a>
 <a href="https://github.com/yashrsharma44"><img src="https://avatars.githubusercontent.com/u/31438680?v=4" title="yashrsharma44" width="80" height="80"></a>
 <a href="https://github.com/SusyQinqinYang"><img src="https://avatars.githubusercontent.com/u/55719616?v=4" title="SusyQinqinYang" width="80" height="80"></a>
-<a href="https://github.com/SeamusGrafana"><img src="https://avatars.githubusercontent.com/u/102023327?v=4" title="SeamusGrafana" width="80" height="80"></a>
 
 [//]: contributor-faces
