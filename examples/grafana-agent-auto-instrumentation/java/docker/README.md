@@ -1,4 +1,4 @@
-# Grafana Agent Java profiling via auto-instrumentation example
+# Grafana Agent Java profiling via auto-instrumentation example in Docker
 
 This repository provides a practical demonstration of leveraging the Grafana Agent for continuous Java application profiling using Pyroscope in a dockerized environment. It illustrates a seamless approach to profiling Java processes, aiding in performance optimization.
 
