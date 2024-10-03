@@ -2,23 +2,29 @@ package discovery
 
 import (
 	"github.com/go-kit/log"
+	"github.com/grafana/dskit/dns"
 	kuberesolver2 "github.com/grafana/pyroscope/pkg/experiment/metastore/discovery/kuberesolver"
 	"github.com/hashicorp/raft"
+	"github.com/prometheus/client_golang/prometheus"
 	"net"
 	"strings"
 )
 
-func NewDiscovery(l log.Logger, address string) (Discovery, error) {
-
-	kubeClient, err := kuberesolver2.NewInClusterK8sClient()
-	if err != nil {
-		return nil, err
-	}
-
-	if strings.HasPrefix(address, "dns:///_grpc._tcp.") {
-		address = strings.Replace(address, "dns:///_grpc._tcp.", "kubernetes:///", 1) // todo support dns discovery
+func NewDiscovery(l log.Logger, address string, reg prometheus.Registerer) (Discovery, error) {
+	if strings.HasPrefix(address, "dnssrvnoa+") {
+		p := dns.NewProvider(l,
+			prometheus.WrapRegistererWithPrefix(
+				"pyroscope_metastore_client_",
+				reg,
+			),
+			dns.MiekgdnsResolverType)
+		return NewDNSDiscovery(l, address, p), nil
 	}
 	if strings.HasPrefix(address, "kubernetes:///") {
+		kubeClient, err := kuberesolver2.NewInClusterK8sClient()
+		if err != nil {
+			return nil, err
+		}
 		return NewKubeResolverDiscovery(l, address, kubeClient)
 	}
 	peers := ParsePeers(address)

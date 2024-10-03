@@ -120,7 +120,7 @@ func (f *Phlare) initMetastoreClient() (services.Service, error) {
 		return nil, err
 	}
 
-	disc, err := discovery.NewDiscovery(f.logger, f.Cfg.Metastore.Address)
+	disc, err := discovery.NewDiscovery(f.logger, f.Cfg.Metastore.Address, f.reg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create discovery: %w %s", err, f.Cfg.Metastore.Address)
 	}

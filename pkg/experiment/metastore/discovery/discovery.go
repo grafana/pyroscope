@@ -26,6 +26,6 @@ func (s *Server) String() string {
 
 type Discovery interface {
 	Subscribe(updates Updates)
-	ServerError(srv Server)
+	Rediscover()
 	Close()
 }
