@@ -11,7 +11,6 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/oklog/ulid"
 	"github.com/prometheus/common/model"
 	"golang.org/x/sync/errgroup"
@@ -23,7 +22,7 @@ type Index struct {
 	Config *Config
 
 	partitionMu      sync.Mutex
-	loadedPartitions *lru.Cache[PartitionKey, *indexPartition]
+	loadedPartitions map[PartitionKey]*indexPartition
 	allPartitions    []*PartitionMeta
 
 	store  Store
@@ -49,9 +48,9 @@ var DefaultConfig = Config{
 }
 
 type indexPartition struct {
-	meta     *PartitionMeta
-	loadedAt time.Time
-	shards   map[uint32]*indexShard
+	meta       *PartitionMeta
+	accessedAt time.Time
+	shards     map[uint32]*indexShard
 }
 
 type indexShard struct {
@@ -92,10 +91,8 @@ func NewIndex(store Store, logger log.Logger, cfg *Config) *Index {
 	// TODO (aleks-p):
 	//  - resize the cache at runtime when the config changes
 	//  - consider auto-calculating the cache size to ensure we hold data for e.g., the last 24 hours
-	cache, _ := lru.New[PartitionKey, *indexPartition](cfg.PartitionCacheSize)
-
 	return &Index{
-		loadedPartitions: cache,
+		loadedPartitions: make(map[PartitionKey]*indexPartition, cfg.PartitionCacheSize),
 		allPartitions:    make([]*PartitionMeta, 0),
 		store:            store,
 		logger:           logger,
@@ -166,15 +163,14 @@ func (i *Index) ForEachPartition(ctx context.Context, fn func(meta *PartitionMet
 }
 
 func (i *Index) getPartition(meta *PartitionMeta) *indexPartition {
-	p, ok := i.loadedPartitions.Get(meta.Key)
+	p, ok := i.loadedPartitions[meta.Key]
 	if !ok {
 		level.Info(i.logger).Log("msg", "loading partition", "key", meta.Key)
 		p = &indexPartition{
-			meta:     meta,
-			shards:   make(map[uint32]*indexShard),
-			loadedAt: time.Now(),
+			meta:       meta,
+			shards:     make(map[uint32]*indexShard),
+			accessedAt: time.Now().UTC(),
 		}
-		i.loadedPartitions.Add(meta.Key, p)
 		for _, s := range i.store.ListShards(meta.Key) {
 			sh := &indexShard{
 				tenants: make(map[string]*indexTenant),
@@ -191,8 +187,11 @@ func (i *Index) getPartition(meta *PartitionMeta) *indexPartition {
 				sh.tenants[t] = te
 			}
 		}
+		i.loadedPartitions[meta.Key] = p
+		i.unloadPartitions()
 	}
 
+	p.accessedAt = time.Now().UTC()
 	return p
 }
 
@@ -225,7 +224,7 @@ func (i *Index) CreatePartitionKey(blockId string) PartitionKey {
 
 // findPartitionMeta retrieves the partition meta for the given key.
 func (i *Index) findPartitionMeta(key PartitionKey) *PartitionMeta {
-	loaded, ok := i.loadedPartitions.Get(key)
+	loaded, ok := i.loadedPartitions[key]
 	if ok {
 		return loaded.meta
 	}
@@ -470,4 +469,26 @@ func (i *Index) tryDelete(key PartitionKey, shard uint32, tenant string, blockId
 	}
 
 	return nil, nil, false
+}
+
+func (i *Index) unloadPartitions() {
+	toRemove := len(i.loadedPartitions) - i.Config.PartitionCacheSize
+	if toRemove > 0 {
+		level.Debug(i.logger).Log("msg", "unloading metastore index partitions", "to_remove", toRemove)
+		partitions := make([]*indexPartition, 0, len(i.loadedPartitions))
+		for _, p := range i.loadedPartitions {
+			if p.meta.contains(time.Now().UTC().UnixMilli()) {
+				continue
+			}
+			partitions = append(partitions, p)
+		}
+		slices.SortFunc(partitions, func(a, b *indexPartition) int {
+			return a.accessedAt.Compare(b.accessedAt)
+		})
+		for c := 0; c < toRemove; c++ {
+			p := partitions[c]
+			level.Debug(i.logger).Log("unloading metastore index partition", "key", p.meta.Key, "accessed_at", p.accessedAt.Format(time.RFC3339))
+			delete(i.loadedPartitions, p.meta.Key)
+		}
+	}
 }

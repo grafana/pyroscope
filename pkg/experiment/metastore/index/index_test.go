@@ -301,6 +301,49 @@ func TestIndex_DurationChange(t *testing.T) {
 	require.NotNil(t, i.FindBlock(0, "", b.Id))
 }
 
+func TestIndex_UnloadPartitions(t *testing.T) {
+	store := mockindex.NewMockStore(t)
+	i := index.NewIndex(store, util.Logger, &index.Config{PartitionDuration: time.Hour, PartitionCacheSize: 3})
+
+	keys := []index.PartitionKey{
+		"20240923T06.1h",
+		"20240923T07.1h",
+		"20240923T08.1h",
+		"20240923T09.1h",
+		"20240923T10.1h",
+	}
+	store.On("ListPartitions").Return(keys)
+	for _, key := range keys {
+		mockPartition(store, key, nil)
+	}
+	i.LoadPartitions()
+	require.True(t, store.AssertNumberOfCalls(t, "ListShards", 5))
+
+	for _, key := range keys {
+		start, _, _ := key.Parse()
+		for c := 0; c < 10; c++ {
+			_, err := i.FindBlocksInRange(start.UnixMilli(), start.Add(5*time.Minute).UnixMilli(), map[string]struct{}{"tenant-1": {}})
+			require.NoError(t, err)
+		}
+	}
+	// multiple reads cause a single store access
+	require.True(t, store.AssertNumberOfCalls(t, "ListShards", 10))
+
+	for c := 0; c < 10; c++ {
+		_, err := i.FindBlocksInRange(createTime("2024-09-23T08:00:00.000Z"), createTime("2024-09-23T08:05:00.000Z"), map[string]struct{}{"tenant-1": {}})
+		require.NoError(t, err)
+	}
+	// this partition is still loaded in memory
+	require.True(t, store.AssertNumberOfCalls(t, "ListShards", 10))
+
+	for c := 0; c < 10; c++ {
+		_, err := i.FindBlocksInRange(createTime("2024-09-23T06:00:00.000Z"), createTime("2024-09-23T06:05:00.000Z"), map[string]struct{}{"tenant-1": {}})
+		require.NoError(t, err)
+	}
+	// this partition was unloaded
+	require.True(t, store.AssertNumberOfCalls(t, "ListShards", 11))
+}
+
 func createUlidString(t string) string {
 	parsed, _ := time.Parse(time.RFC3339, t)
 	l := ulid.MustNew(ulid.Timestamp(parsed), rand.Reader)
