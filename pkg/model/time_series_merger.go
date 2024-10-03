@@ -45,7 +45,7 @@ func TopSeries(s []*typesv1.Series, k int) []*typesv1.Series {
 		if c == 0 {
 			return CompareLabelPairs(a.Labels, b.Labels)
 		}
-		return c * -1 // Invert to sort in descending order.
+		return -c // Invert to sort in descending order.
 	})
 	for i, a := range aggregated {
 		s[i] = a.Series
