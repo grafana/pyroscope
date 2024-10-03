@@ -40,7 +40,7 @@ To use this example:
     ```
 
 After the deployment is operational, the Grafana Alloy will profile the Java application using the defined configuration.
-The example will deploy a Grafana instance in the same cluster, available via the `grafana` service at port 3000. 
+The example will deploy a Grafana instance in the same cluster, available via the `grafana` service at port 3000.
 
 ## Documentation
 

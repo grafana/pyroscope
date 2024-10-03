@@ -71,6 +71,12 @@ spec:
             privileged: true
             runAsGroup: 0
             runAsUser: 0
+            capabilities:
+              add:
+                - PERFMON
+                - SYS_PTRACE
+                - SYS_RESOURCE
+                - SYS_ADMIN
       volumes:
         - name: agent-config
           configMap:
