@@ -2,6 +2,7 @@ package metastore
 
 import (
 	"context"
+	"github.com/go-kit/log"
 	"time"
 
 	"github.com/go-kit/log/level"
@@ -13,21 +14,29 @@ import (
 )
 
 func (m *Metastore) AddBlock(_ context.Context, req *metastorev1.AddBlockRequest) (*metastorev1.AddBlockResponse, error) {
-	_ = level.Info(m.logger).Log(
-		"msg", "adding block",
-		"block_id", req.Block.Id,
-		"shard", req.Block.Shard,
-		"raft_commit_index", m.raft.CommitIndex(),
-		"raft_last_index", m.raft.LastIndex(),
-		"raft_applied_index", m.raft.AppliedIndex())
+	l := log.With(m.logger, "shard", req.Block.Shard, "block_id", req.Block.Id, "ts", req.Block.MinTime)
+	_ = level.Info(l).Log("msg", "adding block")
 	t1 := time.Now()
 	defer func() {
 		m.metrics.raftAddBlockDuration.Observe(time.Since(t1).Seconds())
-		level.Debug(m.logger).Log("msg", "add block duration", "block_id", req.Block.Id, "shard", req.Block.Shard, "duration", time.Since(t1))
 	}()
 	_, resp, err := applyCommand[*metastorev1.AddBlockRequest, *metastorev1.AddBlockResponse](m.raft, req, m.config.Raft.ApplyTimeout)
 	if err != nil {
-		_ = level.Error(m.logger).Log("msg", "failed to apply add block", "block_id", req.Block.Id, "shard", req.Block.Shard, "err", err)
+		_ = level.Error(l).Log("msg", "failed to apply add block", "err", err)
+	}
+	return resp, err
+}
+
+func (m *Metastore) AddRecoveredBlock(_ context.Context, req *metastorev1.AddBlockRequest) (*metastorev1.AddBlockResponse, error) {
+	l := log.With(m.logger, "shard", req.Block.Shard, "block_id", req.Block.Id, "ts", req.Block.MinTime)
+	_ = level.Info(l).Log("msg", "adding recovered block")
+	t1 := time.Now()
+	defer func() {
+		m.metrics.raftAddRecoveredBlockDuration.Observe(time.Since(t1).Seconds())
+	}()
+	_, resp, err := applyCommand[*metastorev1.AddBlockRequest, *metastorev1.AddBlockResponse](m.raft, req, m.config.Raft.ApplyTimeout)
+	if err != nil {
+		_ = level.Error(l).Log("msg", "failed to apply add recovered block", "err", err)
 	}
 	return resp, err
 }

@@ -214,6 +214,7 @@ To start contributing, check out our [Contributing Guide](docs/internal/contribu
 <a href="https://github.com/dapirian"><img src="https://avatars.githubusercontent.com/u/3904462?v=4" title="dapirian" width="80" height="80"></a>
 <a href="https://github.com/Cluas"><img src="https://avatars.githubusercontent.com/u/10056928?v=4" title="Cluas" width="80" height="80"></a>
 <a href="https://github.com/bodji"><img src="https://avatars.githubusercontent.com/u/1321777?v=4" title="bodji" width="80" height="80"></a>
+<a href="https://github.com/zmj64351508"><img src="https://avatars.githubusercontent.com/u/2457520?v=4" title="zmj64351508" width="80" height="80"></a>
 <a href="https://github.com/ayeniblessing101"><img src="https://avatars.githubusercontent.com/u/29165344?v=4" title="ayeniblessing101" width="80" height="80"></a>
 <a href="https://github.com/wusphinx"><img src="https://avatars.githubusercontent.com/u/1380777?v=4" title="wusphinx" width="80" height="80"></a>
 <a href="https://github.com/futurelm"><img src="https://avatars.githubusercontent.com/u/43361929?v=4" title="futurelm" width="80" height="80"></a>
@@ -221,6 +222,5 @@ To start contributing, check out our [Contributing Guide](docs/internal/contribu
 <a href="https://github.com/chengjoey"><img src="https://avatars.githubusercontent.com/u/30427474?v=4" title="chengjoey" width="80" height="80"></a>
 <a href="https://github.com/yashrsharma44"><img src="https://avatars.githubusercontent.com/u/31438680?v=4" title="yashrsharma44" width="80" height="80"></a>
 <a href="https://github.com/SusyQinqinYang"><img src="https://avatars.githubusercontent.com/u/55719616?v=4" title="SusyQinqinYang" width="80" height="80"></a>
-<a href="https://github.com/SeamusGrafana"><img src="https://avatars.githubusercontent.com/u/102023327?v=4" title="SeamusGrafana" width="80" height="80"></a>
 
 [//]: contributor-faces

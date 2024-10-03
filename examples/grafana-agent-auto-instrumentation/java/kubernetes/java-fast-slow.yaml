@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: java-app-jar
+binaryData: # holds FastSlow.jar from the sibling "Docker" directory, as a base64 encoded binary
+  jar: |
+    UEsDBAoAAAgAAD1iQlkAAAAAAAAAAAAAAAAJAAQATUVUQS1JTkYv/soAAFBLAwQUAAgICAA9YkJZAAAAAAAAAAAAAAAAFAAAAE1FVEEtSU5GL01BTklGRVNULk1G803My0xLLS7RDUstKs7Mz7NSMNQz4OXyTczM03XOSSwutlJwSywuCc7JL+flci5KTSxJTdF1qrRSMAKq0zNU0HBNzsksKE5VcEzJLyjJLM3V5OXi5QIAUEsHCJiPQHxXAAAAVgAAAFBLAwQUAAgICAASYkJZAAAAAAAAAAAAAAAADgAAAEZhc3RTbG93LmNsYXNznVTLUhNBFD0dkgwMAxke8ohPMEgCSkDxGYRSCkqsoItQaJWrzqSBgclMaqaHxwf4I25csXAlsvADLD/HtXp7QggWgpSpSvfcvvece27fW/3t5+FXAM8wpyOGFg1xAwkkGcxNvs3zDnfX86/Lm8KSDMkZ27XlLENLNreqoxVtGnQD7TAYWhd5IEuOt0PeNbvMEM8u5V7q6ERKg2mgC90M1yLOUNpO3vJcK/R94cr8wq6wQun5AUO/K3ZKtrvuiJUNX/BKw8WQzeaK56JLwt+2LVHopmp6DVxCH2mwuOMwDJ2FnSc3Lzui0I4BDGpIG7iMKwyZi2Si+wjCctWmi5nN/oP/jPyLoQx9USCh816FCFNF2xWvwmpZ+CsKx9BRktzaWua1Izte5bbL0Jd9V2z2pyR9urNCbpVBX9i1RE3anhtoyDCMnlMJBR1Ha7jVaE9EueRK4fthTYrKcQypcXi1XOEZJSIzydDbuNgTY1LQMMbQ0zw+gddLXuhbYtGOSmtMzISKpYF77nkykD6vLQu54VUCE9lUEpNq0KYMjEbWPR3TuK/hgYGHeMQw3Mxju9velsgXI4lEwde4Rd3aY2ivnrS+Z4unQPWML7hbcUSQKXreVlgrnL7hs4ArezXxf856yvOxudNeNVglW6rRMZZcV/jzDg8CQT2nk5ELlafh6R8d/1sojXg9GEPUhBjULw6mHghar5J1lXZGe2LsM9gn+iBOWpPRYQva1ONwFDoXQYG+dOIDkun3++l45QBaOqFWvk+eWITtJJxiSEBTTwyuR0xMfd4gHbGIbIp2pafrAB3F8UP0AF/QH8ObpoY6Twdl7YSJXgxHrDHcxIipq3E6opo+KixlpknIW3NArR9//TgWpEcBJoG7GmIQsal6cmSOR6G3cYd2Ve1dOptAnv6PIzjDE8xgFoO/AVBLBwipPrnIuQIAAG0FAABQSwECCgAKAAAIAAA9YkJZAAAAAAAAAAAAAAAACQAEAAAAAAAAAAAAAAAAAAAATUVUQS1JTkYv/soAAFBLAQIUABQACAgIAD1iQlmYj0B8VwAAAFYAAAAUAAAAAAAAAAAAAAAAACsAAABNRVRBLUlORi9NQU5JRkVTVC5NRlBLAQIUABQACAgIABJiQlmpPrnIuQIAAG0FAAAOAAAAAAAAAAAAAAAAAMQAAABGYXN0U2xvdy5jbGFzc1BLBQYAAAAAAwADALkAAAC5AwAAAAA=
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: java-fast-slow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: java-fast-slow
+  template:
+    metadata:
+      annotations:
+        cluster-name: dev-us-east-1
+      labels:
+        app: java-fast-slow
+    spec:
+      containers:
+        - name: java-fast-slow
+          image: openjdk:21-jdk-slim
+          imagePullPolicy: IfNotPresent
+          command: [ "java" ]
+          args: [ "-jar", "/app/FastSlow.jar" ]
+          volumeMounts:
+            - name: app-jar
+              mountPath: /app
+      volumes:
+        - name: app-jar
+          configMap:
+            name: java-app-jar
+            items:
+              - key: jar
+                path: FastSlow.jar

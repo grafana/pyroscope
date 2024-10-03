@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/grafana/dskit/backoff"
-	"net"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
 	"slices"
 	"strings"
 	"time"
@@ -61,7 +61,7 @@ func (m *Metastore) bootstrapPeers() ([]raft.Server, error) {
 		if strings.Contains(peer, "+") {
 			resolve = append(resolve, peer)
 		} else {
-			peers = append(peers, parsePeer(peer))
+			peers = append(peers, discovery.ParsePeer(peer))
 		}
 	}
 	if len(resolve) > 0 {
@@ -102,33 +102,6 @@ func (m *Metastore) bootstrapPeers() ([]raft.Server, error) {
 			len(peers), m.config.Raft.BootstrapExpectPeers, peers)
 	}
 	return peers, nil
-}
-
-func parsePeer(raw string) raft.Server {
-	// The string may be "{addr}" or "{addr}/{node_id}".
-	parts := strings.SplitN(raw, "/", 2)
-	var addr string
-	var node string
-	if len(parts) == 2 {
-		addr = parts[0]
-		node = parts[1]
-	} else {
-		addr = raw
-	}
-	host, _, err := net.SplitHostPort(addr)
-	if err != nil {
-		// No port specified.
-		host = addr
-	}
-	if node == "" {
-		// No node_id specified.
-		node = host
-	}
-	return raft.Server{
-		Suffrage: raft.Voter,
-		ID:       raft.ServerID(node),
-		Address:  raft.ServerAddress(addr),
-	}
 }
 
 func (m *Metastore) bootstrapPeersWithRetries() (peers []raft.Server, err error) {

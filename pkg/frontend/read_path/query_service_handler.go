@@ -135,12 +135,17 @@ func (r *Router) SelectSeries(
 	ctx context.Context,
 	c *connect.Request[querierv1.SelectSeriesRequest],
 ) (*connect.Response[querierv1.SelectSeriesResponse], error) {
+	var limit int
+	if limit = int(c.Msg.GetLimit()); limit > 0 {
+		// Limit must be applied after merging.
+		c.Msg.Limit = nil
+	}
 	return Query[querierv1.SelectSeriesRequest, querierv1.SelectSeriesResponse](ctx, r, c,
 		func(a, b *querierv1.SelectSeriesResponse) (*querierv1.SelectSeriesResponse, error) {
 			m := phlaremodel.NewTimeSeriesMerger(true)
 			m.MergeTimeSeries(a.Series)
 			m.MergeTimeSeries(b.Series)
-			return &querierv1.SelectSeriesResponse{Series: m.TimeSeries()}, nil
+			return &querierv1.SelectSeriesResponse{Series: m.Top(limit)}, nil
 		})
 }
 
