@@ -2179,6 +2179,10 @@
           "items": {
             "type": "string"
           }
+        },
+        "limit": {
+          "type": "string",
+          "format": "int64"
         }
       }
     },

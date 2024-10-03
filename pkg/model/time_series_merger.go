@@ -1,6 +1,8 @@
 package model
 
 import (
+	"cmp"
+	"slices"
 	"sort"
 	"sync"
 
@@ -18,6 +20,40 @@ func MergeSeries(aggregation *typesv1.TimeSeriesAggregationType, series ...[]*ty
 		m.MergeTimeSeries(s)
 	}
 	return m.TimeSeries()
+}
+
+// TopSeries returns the top k series by sum of values.
+// If k is zero, all series are returned.
+// Note that even if len(c) <= k or k == 0, the returned
+// series are sorted by value in descending order and then
+// lexicographically (in ascending order).
+func TopSeries(s []*typesv1.Series, k int) []*typesv1.Series {
+	type series struct {
+		*typesv1.Series
+		sum float64
+	}
+	aggregated := make([]series, len(s))
+	for i, x := range s {
+		var sum float64
+		for _, p := range x.Points {
+			sum += p.Value
+		}
+		aggregated[i] = series{Series: x, sum: sum}
+	}
+	slices.SortFunc(aggregated, func(a, b series) int {
+		c := cmp.Compare(a.sum, b.sum)
+		if c == 0 {
+			return CompareLabelPairs(a.Labels, b.Labels)
+		}
+		return -c // Invert to sort in descending order.
+	})
+	for i, a := range aggregated {
+		s[i] = a.Series
+	}
+	if k > 0 && len(s) > k {
+		return s[:k]
+	}
+	return s
 }
 
 type TimeSeriesMerger struct {
@@ -54,6 +90,14 @@ func (m *TimeSeriesMerger) IsEmpty() bool {
 }
 
 func (m *TimeSeriesMerger) TimeSeries() []*typesv1.Series {
+	r := m.mergeTimeSeries()
+	sort.Slice(r, func(i, j int) bool {
+		return CompareLabelPairs(r[i].Labels, r[j].Labels) < 0
+	})
+	return r
+}
+
+func (m *TimeSeriesMerger) mergeTimeSeries() []*typesv1.Series {
 	if len(m.series) == 0 {
 		return nil
 	}
@@ -64,10 +108,11 @@ func (m *TimeSeriesMerger) TimeSeries() []*typesv1.Series {
 		r[i] = s
 		i++
 	}
-	sort.Slice(r, func(i, j int) bool {
-		return CompareLabelPairs(r[i].Labels, r[j].Labels) < 0
-	})
 	return r
+}
+
+func (m *TimeSeriesMerger) Top(n int) []*typesv1.Series {
+	return TopSeries(m.mergeTimeSeries(), n)
 }
 
 func (m *TimeSeriesMerger) mergePoints(points []*typesv1.Point) int {

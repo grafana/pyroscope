@@ -15,6 +15,7 @@ import (
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockquerierv1connect"
 )
@@ -190,6 +191,76 @@ func (s *routerTestSuite) Test_Series() {
 	s.backend.On("Series", mock.Anything, mock.Anything).Return(expected, nil).Once()
 
 	resp, err := s.router.Series(s.ctx, req)
+	s.Require().NoError(err)
+	s.Assert().Equal(expected, resp)
+}
+
+func (s *routerTestSuite) Test_TimeSeries_Limit() {
+	s.overrides.On("ReadPathOverrides", "tenant-a").Return(Config{
+		EnableQueryBackend:     true,
+		EnableQueryBackendFrom: time.Unix(5, 0),
+	})
+
+	one := int64(1)
+	req := connect.NewRequest(&querierv1.SelectSeriesRequest{Start: 10, End: 10000, Limit: &one})
+	expected := connect.NewResponse(&querierv1.SelectSeriesResponse{
+		Series: []*typesv1.Series{
+			{Labels: model.LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 3}}},
+		},
+	})
+
+	s.frontend.On("SelectSeries",
+		mock.Anything, connect.NewRequest(&querierv1.SelectSeriesRequest{Start: 10, End: 4999})).
+		Return(connect.NewResponse(&querierv1.SelectSeriesResponse{
+			Series: []*typesv1.Series{
+				{Labels: model.LabelsFromStrings("foo", "bar"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}}},
+				{Labels: model.LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 2}}},
+			}}), nil).Once()
+
+	s.backend.On("SelectSeries",
+		mock.Anything, connect.NewRequest(&querierv1.SelectSeriesRequest{Start: 5000, End: 10000})).
+		Return(connect.NewResponse(&querierv1.SelectSeriesResponse{
+			Series: []*typesv1.Series{
+				{Labels: model.LabelsFromStrings("foo", "bar"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}}},
+				{Labels: model.LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}}},
+			}}), nil).Once()
+
+	resp, err := s.router.SelectSeries(s.ctx, req)
+	s.Require().NoError(err)
+	s.Assert().Equal(expected, resp)
+}
+
+func (s *routerTestSuite) Test_TimeSeries_NoLimit() {
+	s.overrides.On("ReadPathOverrides", "tenant-a").Return(Config{
+		EnableQueryBackend:     true,
+		EnableQueryBackendFrom: time.Unix(5, 0),
+	})
+
+	req := connect.NewRequest(&querierv1.SelectSeriesRequest{Start: 10, End: 10000})
+	expected := connect.NewResponse(&querierv1.SelectSeriesResponse{
+		Series: []*typesv1.Series{
+			{Labels: model.LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 3}}},
+			{Labels: model.LabelsFromStrings("foo", "bar"), Points: []*typesv1.Point{{Timestamp: 1, Value: 2}}},
+		},
+	})
+
+	s.frontend.On("SelectSeries",
+		mock.Anything, connect.NewRequest(&querierv1.SelectSeriesRequest{Start: 10, End: 4999})).
+		Return(connect.NewResponse(&querierv1.SelectSeriesResponse{
+			Series: []*typesv1.Series{
+				{Labels: model.LabelsFromStrings("foo", "bar"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}}},
+				{Labels: model.LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 2}}},
+			}}), nil).Once()
+
+	s.backend.On("SelectSeries",
+		mock.Anything, connect.NewRequest(&querierv1.SelectSeriesRequest{Start: 5000, End: 10000})).
+		Return(connect.NewResponse(&querierv1.SelectSeriesResponse{
+			Series: []*typesv1.Series{
+				{Labels: model.LabelsFromStrings("foo", "bar"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}}},
+				{Labels: model.LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}}},
+			}}), nil).Once()
+
+	resp, err := s.router.SelectSeries(s.ctx, req)
 	s.Require().NoError(err)
 	s.Assert().Equal(expected, resp)
 }
