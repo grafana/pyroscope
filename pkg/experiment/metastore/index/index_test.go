@@ -21,12 +21,11 @@ import (
 
 func TestIndex_FindBlocksInRange(t *testing.T) {
 	tests := []struct {
-		name         string
-		blocks       []*metastorev1.BlockMeta
-		queryStart   int64
-		queryEnd     int64
-		queryTenants []string
-		want         int
+		name       string
+		blocks     []*metastorev1.BlockMeta
+		queryStart int64
+		queryEnd   int64
+		want       int
 	}{
 		{
 			name: "matching blocks",
@@ -96,10 +95,7 @@ func TestIndex_FindBlocksInRange(t *testing.T) {
 			for _, b := range tt.blocks {
 				i.InsertBlock(b)
 			}
-			tenantMap := make(map[string]struct{})
-			for _, t := range tt.queryTenants {
-				tenantMap[t] = struct{}{}
-			}
+			tenantMap := map[string]struct{}{"": {}}
 			found, err := i.FindBlocksInRange(tt.queryStart, tt.queryEnd, tenantMap)
 			require.NoError(t, err)
 			require.Equal(t, tt.want, len(found))
@@ -279,8 +275,7 @@ func TestIndex_ReplaceBlocks(t *testing.T) {
 		CompactionLevel: 1,
 		TenantId:        "tenant-1",
 	}
-	deleted := i.ReplaceBlocks([]string{b1.Id, b2.Id}, 0, "", []*metastorev1.BlockMeta{replacement})
-	require.Equal(t, 2, len(deleted))
+	i.ReplaceBlocks([]string{b1.Id, b2.Id}, 0, "", []*metastorev1.BlockMeta{replacement})
 
 	require.Nil(t, i.FindBlock(0, "", b1.Id))
 	require.Nil(t, i.FindBlock(0, "", b2.Id))
@@ -322,7 +317,7 @@ func TestIndex_UnloadPartitions(t *testing.T) {
 	for _, key := range keys {
 		start, _, _ := key.Parse()
 		for c := 0; c < 10; c++ {
-			_, err := i.FindBlocksInRange(start.UnixMilli(), start.Add(5*time.Minute).UnixMilli(), map[string]struct{}{"tenant-1": {}})
+			_, err := i.FindBlocksInRange(start.UnixMilli(), start.Add(5*time.Minute).UnixMilli(), map[string]struct{}{"": {}})
 			require.NoError(t, err)
 		}
 	}
@@ -330,14 +325,14 @@ func TestIndex_UnloadPartitions(t *testing.T) {
 	require.True(t, store.AssertNumberOfCalls(t, "ListShards", 10))
 
 	for c := 0; c < 10; c++ {
-		_, err := i.FindBlocksInRange(createTime("2024-09-23T08:00:00.000Z"), createTime("2024-09-23T08:05:00.000Z"), map[string]struct{}{"tenant-1": {}})
+		_, err := i.FindBlocksInRange(createTime("2024-09-23T08:00:00.000Z"), createTime("2024-09-23T08:05:00.000Z"), map[string]struct{}{"": {}})
 		require.NoError(t, err)
 	}
 	// this partition is still loaded in memory
 	require.True(t, store.AssertNumberOfCalls(t, "ListShards", 10))
 
 	for c := 0; c < 10; c++ {
-		_, err := i.FindBlocksInRange(createTime("2024-09-23T06:00:00.000Z"), createTime("2024-09-23T06:05:00.000Z"), map[string]struct{}{"tenant-1": {}})
+		_, err := i.FindBlocksInRange(createTime("2024-09-23T06:00:00.000Z"), createTime("2024-09-23T06:05:00.000Z"), map[string]struct{}{"": {}})
 		require.NoError(t, err)
 	}
 	// this partition was unloaded

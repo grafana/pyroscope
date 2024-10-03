@@ -296,7 +296,7 @@ func Test_RemoveInvalidJobsFromStorage(t *testing.T) {
 	for _, block := range blocks {
 		sources = append(sources, block.Id)
 	}
-	_ = m.index.ReplaceBlocks(sources, 0, "", []*metastorev1.BlockMeta{})
+	m.index.ReplaceBlocks(sources, 0, "", []*metastorev1.BlockMeta{})
 
 	// try to assign the job
 	resp, err := m.pollCompactionJobs(&compactorv1.PollCompactionJobsRequest{JobCapacity: 1}, 20, 20)

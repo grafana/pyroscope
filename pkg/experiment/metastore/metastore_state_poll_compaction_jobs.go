@@ -12,7 +12,6 @@ import (
 	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compactionpb"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
 )
 
 func (m *Metastore) PollCompactionJobs(_ context.Context, req *compactorv1.PollCompactionJobsRequest) (*compactorv1.PollCompactionJobsResponse, error) {
@@ -42,7 +41,7 @@ func (m *metastoreState) applyPollCompactionJobs(raft *raft.Log, request *compac
 
 type pollStateUpdate struct {
 	newBlocks          map[tenantShard][]*metastorev1.BlockMeta
-	deletedBlocks      map[string]*index.BlockWithPartition
+	deletedBlocks      map[tenantShard][]string
 	newJobs            []string
 	updatedBlockQueues map[tenantShard][]uint32
 	deletedJobs        map[tenantShard][]string
@@ -52,7 +51,7 @@ type pollStateUpdate struct {
 func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJobsRequest, raftIndex uint64, raftAppendedAtNanos int64) (resp *compactorv1.PollCompactionJobsResponse, err error) {
 	stateUpdate := &pollStateUpdate{
 		newBlocks:          make(map[tenantShard][]*metastorev1.BlockMeta),
-		deletedBlocks:      make(map[string]*index.BlockWithPartition),
+		deletedBlocks:      make(map[tenantShard][]string),
 		newJobs:            make([]string, 0),
 		updatedBlockQueues: make(map[tenantShard][]uint32),
 		deletedJobs:        make(map[tenantShard][]string),
@@ -80,7 +79,7 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 				fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
 
 			// next we'll replace source blocks with compacted ones
-			deletedBlocks := m.index.ReplaceBlocks(job.Blocks, job.Shard, job.TenantId, jobUpdate.CompletedJob.Blocks)
+			m.index.ReplaceBlocks(job.Blocks, job.Shard, job.TenantId, jobUpdate.CompletedJob.Blocks)
 			for _, b := range jobUpdate.CompletedJob.Blocks {
 				level.Debug(m.logger).Log(
 					"msg", "added compacted block",
@@ -107,26 +106,18 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 				stateUpdate.updatedBlockQueues[blockTenantShard] = append(stateUpdate.updatedBlockQueues[blockTenantShard], b.CompactionLevel)
 			}
 			for _, b := range job.Blocks {
-				if deletedBlocks[b] == nil {
-					level.Error(m.logger).Log(
-						"msg", "source block could not be found for deletion",
-						"block", b,
-						"shard", job.Shard,
-						"tenant", job.TenantId)
-				} else {
-					level.Debug(m.logger).Log(
-						"msg", "deleted source block",
-						"block", b,
-						"shard", job.Shard,
-						"tenant", job.TenantId,
-						"level", job.CompactionLevel,
-						"job", job.Name,
-					)
-					m.compactionMetrics.deletedBlocks.WithLabelValues(
-						fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
-				}
+				level.Debug(m.logger).Log(
+					"msg", "deleted source block",
+					"block", b,
+					"shard", job.Shard,
+					"tenant", job.TenantId,
+					"level", job.CompactionLevel,
+					"job", job.Name,
+				)
+				m.compactionMetrics.deletedBlocks.WithLabelValues(
+					fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
+				stateUpdate.deletedBlocks[jobKey] = append(stateUpdate.deletedBlocks[jobKey], b)
 			}
-			stateUpdate.deletedBlocks = deletedBlocks
 		case compactorv1.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS:
 			level.Debug(m.logger).Log(
 				"msg", "compaction job still in progress",
@@ -290,10 +281,12 @@ func (m *metastoreState) writeToDb(sTable *pollStateUpdate) error {
 				}
 			}
 		}
-		for _, blockWithPartition := range sTable.deletedBlocks {
-			err := m.deleteBlock(tx, blockWithPartition)
-			if err != nil {
-				return err
+		for key, blocks := range sTable.deletedBlocks {
+			for _, block := range blocks {
+				err := m.deleteBlock(tx, key.shard, key.tenant, block)
+				if err != nil {
+					return err
+				}
 			}
 		}
 		for _, jobName := range sTable.newJobs {
@@ -364,10 +357,15 @@ func (m *metastoreState) writeToDb(sTable *pollStateUpdate) error {
 	})
 }
 
-func (m *metastoreState) deleteBlock(tx *bbolt.Tx, blockWithPartition *index.BlockWithPartition) error {
-	meta := blockWithPartition.Meta
-	block := blockWithPartition.Block
-	return updateBlockMetadataBucket(tx, meta.Key, block.Shard, block.TenantId, func(bucket *bbolt.Bucket) error {
-		return bucket.Delete([]byte(block.Id))
-	})
+func (m *metastoreState) deleteBlock(tx *bbolt.Tx, shardId uint32, tenant, blockId string) error {
+	metas := m.index.FindPartitionMetas(blockId)
+	for _, meta := range metas {
+		err := updateBlockMetadataBucket(tx, meta.Key, shardId, tenant, func(bucket *bbolt.Bucket) error {
+			return bucket.Delete([]byte(blockId))
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
