@@ -45,7 +45,7 @@ func (f *storeGatewayPoolFactory) FromInstance(inst ring.InstanceDesc) (ring_cli
 		return nil, err
 	}
 
-	httpClient := util.InstrumentedDefaultHTTPClient(util.WithTracingTransport())
+	httpClient := util.InstrumentedDefaultHTTPClient(util.WithTracingTransport(), util.WithBaggageTransport())
 	return &storeGatewayPoolClient{
 		StoreGatewayServiceClient: storegatewayv1connect.NewStoreGatewayServiceClient(httpClient, "http://"+inst.Addr, f.options...),
 		HealthClient:              grpc_health_v1.NewHealthClient(conn),

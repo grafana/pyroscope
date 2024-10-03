@@ -51,7 +51,7 @@ DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P)
 source "${DIR}"/.env
 
 if [ -n "${IS_CLOUD}" ]; then
-  k6 cloud tools/k6/tests/"${TEST}" \
+  k6 cloud run tools/k6/tests/"${TEST}" \
     -e "K6_BASE_URL=${K6_BASE_URL}" \
     -e "K6_READ_TOKEN=${K6_READ_TOKEN}" \
     -e "K6_TENANT_ID=${K6_TENANT_ID}" \
