@@ -371,7 +371,10 @@ func (i *Index) FindBlocksInRange(start, end int64, tenants map[string]struct{})
 
 	for _, meta := range i.allPartitions { // TODO aleks-p: consider using binary search to find a good starting point
 		if meta.overlaps(startWithLookaround, endWithLookaround) {
-			for t, _ := range tenants {
+			for t := range tenants {
+				if !meta.HasTenant(t) {
+					continue
+				}
 				p := i.getOrLoadPartition(meta, t)
 				tenantBlocks := i.collectTenantBlocks(p, start, end)
 				blocks = append(blocks, tenantBlocks...)

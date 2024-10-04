@@ -95,7 +95,7 @@ func TestIndex_FindBlocksInRange(t *testing.T) {
 			for _, b := range tt.blocks {
 				i.InsertBlock(b)
 			}
-			tenantMap := map[string]struct{}{"": {}}
+			tenantMap := map[string]struct{}{"tenant-1": {}}
 			found, err := i.FindBlocksInRange(tt.queryStart, tt.queryEnd, tenantMap)
 			require.NoError(t, err)
 			require.Equal(t, tt.want, len(found))
@@ -359,8 +359,9 @@ func createBlock(key string, offset time.Duration) *metastorev1.BlockMeta {
 	pKey := index.PartitionKey(key)
 	ts, _, _ := pKey.Parse()
 	return &metastorev1.BlockMeta{
-		Id:      createUlidString(ts.Format(time.RFC3339)),
-		MinTime: ts.Add(offset).UnixMilli(),
-		MaxTime: ts.Add(offset).Add(5 * time.Minute).UnixMilli(),
+		Id:       createUlidString(ts.Format(time.RFC3339)),
+		MinTime:  ts.Add(offset).UnixMilli(),
+		MaxTime:  ts.Add(offset).Add(5 * time.Minute).UnixMilli(),
+		TenantId: "tenant-1",
 	}
 }
