@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 
@@ -13,7 +15,15 @@ import (
 )
 
 type indexStore struct {
-	db *bbolt.DB
+	db     *boltdb
+	logger log.Logger
+}
+
+func newIndexStore(db *boltdb, logger log.Logger) index.Store {
+	return &indexStore{
+		db:     db,
+		logger: logger,
+	}
 }
 
 const (
@@ -34,7 +44,7 @@ func getPartitionBucket(tx *bbolt.Tx) (*bbolt.Bucket, error) {
 
 func (m *indexStore) ListPartitions() []index.PartitionKey {
 	partitionKeys := make([]index.PartitionKey, 0)
-	err := m.db.View(func(tx *bbolt.Tx) error {
+	err := m.db.boltdb.View(func(tx *bbolt.Tx) error {
 		bkt, err := getPartitionBucket(tx)
 		if err != nil {
 			return errors.Wrap(err, "root partition bucket missing")
@@ -46,6 +56,7 @@ func (m *indexStore) ListPartitions() []index.PartitionKey {
 		return err
 	})
 	if err != nil {
+		level.Error(m.logger).Log("msg", "error listing partitions", "err", err)
 		panic(err)
 	}
 	return partitionKeys
@@ -53,7 +64,7 @@ func (m *indexStore) ListPartitions() []index.PartitionKey {
 
 func (m *indexStore) ListShards(key index.PartitionKey) []uint32 {
 	shards := make([]uint32, 0)
-	err := m.db.View(func(tx *bbolt.Tx) error {
+	err := m.db.boltdb.View(func(tx *bbolt.Tx) error {
 		bkt, err := getPartitionBucket(tx)
 		if err != nil {
 			return errors.Wrap(err, "root partition bucket missing")
@@ -68,6 +79,7 @@ func (m *indexStore) ListShards(key index.PartitionKey) []uint32 {
 		})
 	})
 	if err != nil {
+		level.Error(m.logger).Log("msg", "error listing shards", "partition", key, "err", err)
 		panic(err)
 	}
 	return shards
@@ -75,7 +87,7 @@ func (m *indexStore) ListShards(key index.PartitionKey) []uint32 {
 
 func (m *indexStore) ListTenants(key index.PartitionKey, shard uint32) []string {
 	tenants := make([]string, 0)
-	err := m.db.View(func(tx *bbolt.Tx) error {
+	err := m.db.boltdb.View(func(tx *bbolt.Tx) error {
 		bkt, err := getPartitionBucket(tx)
 		if err != nil {
 			return errors.Wrap(err, "root partition bucket missing")
@@ -100,6 +112,7 @@ func (m *indexStore) ListTenants(key index.PartitionKey, shard uint32) []string 
 		})
 	})
 	if err != nil {
+		level.Error(m.logger).Log("msg", "error listing tenants", "partition", key, "shard", shard, "err", err)
 		panic(err)
 	}
 	return tenants
@@ -107,7 +120,7 @@ func (m *indexStore) ListTenants(key index.PartitionKey, shard uint32) []string 
 
 func (m *indexStore) ListBlocks(key index.PartitionKey, shard uint32, tenant string) []*metastorev1.BlockMeta {
 	blocks := make([]*metastorev1.BlockMeta, 0)
-	err := m.db.View(func(tx *bbolt.Tx) error {
+	err := m.db.boltdb.View(func(tx *bbolt.Tx) error {
 		bkt, err := getPartitionBucket(tx)
 		if err != nil {
 			return errors.Wrap(err, "root partition bucket missing")
@@ -140,6 +153,7 @@ func (m *indexStore) ListBlocks(key index.PartitionKey, shard uint32, tenant str
 		})
 	})
 	if err != nil {
+		level.Error(m.logger).Log("msg", "error listing blocks", "partition", key, "shard", shard, "tenant", tenant, "err", err)
 		panic(err)
 	}
 	return blocks
