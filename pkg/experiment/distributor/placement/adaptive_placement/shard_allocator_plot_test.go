@@ -30,7 +30,7 @@ type testPlot struct {
 }
 
 func Test_generate_plots(t *testing.T) {
-	// t.Skip()
+	t.Skip()
 
 	steadyGrowthSource := generateData(
 		[]float64{
@@ -38,11 +38,7 @@ func Test_generate_plots(t *testing.T) {
 			400, 560, 610, 640, 650, 670, 675, 645,
 			560, 255, 175, 120, 100, 90, 100, 110,
 		},
-		[]float64{
-			1, 1, 1, 1, 1, 1, 1, 1,
-			1, 1, 1, 1, 1, 1, 1, 1,
-			1, 1, 1, 1, 1, 1, 1, 1,
-		},
+		nil,   // Weights.
 		1e4,   // Multiplier.
 		86400, // 1s per point.
 		80,    // Max variance.
@@ -52,35 +48,53 @@ func Test_generate_plots(t *testing.T) {
 	copy(steadyDecaySource, steadyGrowthSource)
 	slices.Reverse(steadyDecaySource)
 
+	defaultTest := func(fn func(*testPlot)) testPlot {
+		p := testPlot{
+			name:   "",
+			source: nil,
+			ewma:   ewma.NewHalfLife(time.Second * 180),
+			alloc: &shardAllocator{
+				unitSize:    uint64(256 << 10),
+				min:         1,
+				max:         32,
+				burstWindow: (63 * time.Minute).Nanoseconds(),
+				decayWindow: (67 * time.Minute).Nanoseconds(),
+			},
+			statsUpdateInterval:     time.Second * 10,
+			placementUpdateInterval: time.Second * 30,
+		}
+		fn(&p)
+		return p
+	}
+
 	for _, test := range []testPlot{
-		{
-			name:   "shard_alloc_steady_growth",
-			source: steadyGrowthSource,
-			ewma:   ewma.NewHalfLife(time.Second * 60),
-			alloc: &shardAllocator{
-				unitSize:    uint64(256 << 10),
-				min:         1,
-				max:         32,
-				burstWindow: (63 * time.Minute).Nanoseconds(),
-				decayWindow: (87 * time.Minute).Nanoseconds(),
-			},
-			statsUpdateInterval:     time.Second * 10,
-			placementUpdateInterval: time.Second * 30,
-		},
-		{
-			name:   "shard_alloc_steady_decay",
-			source: steadyDecaySource,
-			ewma:   ewma.NewHalfLife(time.Second * 60),
-			alloc: &shardAllocator{
-				unitSize:    uint64(256 << 10),
-				min:         1,
-				max:         32,
-				burstWindow: (63 * time.Minute).Nanoseconds(),
-				decayWindow: (87 * time.Minute).Nanoseconds(),
-			},
-			statsUpdateInterval:     time.Second * 10,
-			placementUpdateInterval: time.Second * 30,
-		},
+		defaultTest(func(t *testPlot) {
+			t.name = "elephant_in_a_snake"
+			t.source = steadyGrowthSource
+		}),
+		defaultTest(func(t *testPlot) {
+			t.name = "elephant_in_a_snake_backwards"
+			t.source = steadyDecaySource
+		}),
+		defaultTest(func(t *testPlot) {
+			t.name = "extreme_spikes"
+			t.alloc.max = 64
+			t.source = generateData(
+				[]float64{
+					1, 1, 1000, 1, 1, 1000, 1, 1,
+					1, 1, 1000, 1, 1, 1, 1, 1,
+					1, 1, 1000, 1, 1, 1, 1, 1,
+				},
+				[]float64{
+					1, .16, .16, 1, .16, .16, 1, 1,
+					1, .16, .16, 1, 1, 1, 1, 1,
+					1, .05, .05, 1, 1, 1, 1, 1,
+				},
+				1e4,
+				86400,
+				80,
+			)
+		}),
 	} {
 		buildPlot(t, test)
 	}

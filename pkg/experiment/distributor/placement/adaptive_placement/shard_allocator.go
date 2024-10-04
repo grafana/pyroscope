@@ -48,17 +48,18 @@ type shardAllocator struct {
 
 func (a *shardAllocator) observe(usage uint64, now int64) int {
 	target := int(usage/a.unitSize) + 1
-	if delta := target - a.target; delta > 0 {
+	delta := target - a.target
+	if delta > 0 {
 		// Scale out.
 		if now-a.burstOffset > a.burstWindow {
-			// Reset the multiplier if the burst window has passed.
+			// Reset multiplier if burst window has passed.
 			a.multiplier = 0
 		} else {
-			// Increase the multiplier on consecutive scale outs
-			// within the burst window.
+			// Increase multiplier on consecutive
+			// scale-outs within burst window.
 			a.multiplier = max(1, 2*a.multiplier)
 		}
-		// Start/prolong the burst window.
+		// Start/prolong burst window.
 		a.burstOffset = now
 		scaled := target + int(math.Ceil(float64(delta)*a.multiplier))
 		target = min(2*target, scaled)
