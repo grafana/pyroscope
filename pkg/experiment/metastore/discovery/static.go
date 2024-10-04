@@ -12,7 +12,7 @@ func (s *StaticDiscovery) Subscribe(updates Updates) {
 	updates.Servers(s.servers)
 }
 
-func (s *StaticDiscovery) ServerError(srv Server) {
+func (s *StaticDiscovery) Rediscover() {
 }
 
 func (s *StaticDiscovery) Close() {

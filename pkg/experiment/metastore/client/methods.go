@@ -35,6 +35,7 @@ func invoke[R any](ctx context.Context, cl *Client,
 		if it == nil {
 			cl.logger.Log("msg", "no instances available, backoff and retry")
 			time.Sleep(backoff)
+			cl.discovery.Rediscover()
 			continue
 		}
 		res, err := f(ctx, it)
@@ -65,9 +66,9 @@ func invoke[R any](ctx context.Context, cl *Client,
 				cl.leader = raft.ServerID(detailsLeader)
 			}
 			cl.mu.Unlock()
-			cl.discovery.ServerError(it.srv)
 		}
 		time.Sleep(backoff)
+		cl.discovery.Rediscover()
 	}
 	return nil, fmt.Errorf("metastore client retries failed")
 }

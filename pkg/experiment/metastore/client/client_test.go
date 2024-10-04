@@ -26,7 +26,7 @@ func TestUnavailable(t *testing.T) {
 	ports, err := test.GetFreePorts(nServers)
 	assert.NoError(t, err)
 
-	d.On("ServerError", mock.Anything).Run(func(args mock.Arguments) {
+	d.On("Rediscover").Run(func(args mock.Arguments) {
 	}).Return()
 
 	c.updateServers(createServers(ports))
@@ -98,7 +98,7 @@ func testRediscoverWrongLeader(t *testing.T, f func(c *Client)) {
 	defer servers.Close()
 
 	verify := func() {}
-	d.On("ServerError", mock.Anything).Run(func(args mock.Arguments) {
+	d.On("Rediscover", mock.Anything).Run(func(args mock.Arguments) {
 		m.Lock()
 		defer m.Unlock()
 		if servers == nil {
@@ -115,4 +115,18 @@ func testRediscoverWrongLeader(t *testing.T, f func(c *Client)) {
 	c.updateServers(createServers(p1))
 	f(c)
 	verify()
+}
+
+func TestServerError(t *testing.T) {
+	d := mockdiscovery.NewMockDiscovery(t)
+	d.On("Subscribe", mock.Anything).Return()
+	l := testutil.NewLogger(t)
+	c := New(l, grpcclient.Config{}, d)
+
+	d.On("Rediscover").Run(func(args mock.Arguments) {
+	}).Return()
+
+	res, err := c.AddBlock(context.Background(), &metastorev1.AddBlockRequest{})
+	require.Error(t, err)
+	require.Nil(t, res)
 }

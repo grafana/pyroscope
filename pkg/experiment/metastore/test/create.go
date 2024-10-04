@@ -128,7 +128,7 @@ func MockStaticDiscovery(t *testing.T, servers []discovery.Server) *mockdiscover
 		upd := args.Get(0).(discovery.Updates)
 		upd.Servers(servers)
 	})
-	d.On("ServerError", mock.Anything).Return()
+	d.On("Rediscover", mock.Anything).Return()
 	d.On("Close").Return(nil)
 	return d
 }
