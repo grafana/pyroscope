@@ -10,7 +10,6 @@ testSetupFile.js
 og/**
 examples/**
 public/app/util/**
-public/app/stories/**
 **.spec.ts*
 svg-transform.js
 setupAfterEnv.ts

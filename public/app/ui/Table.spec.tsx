@@ -1,5 +1,5 @@
 import React from 'react';
-import { renderHook, act } from '@testing-library/react-hooks';
+import { act, renderHook } from '@testing-library/react';
 import { render, within, screen } from '@testing-library/react';
 import Table, { useTableSort } from './Table';
 
