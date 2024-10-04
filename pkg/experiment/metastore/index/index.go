@@ -197,9 +197,8 @@ func (i *Index) getOrLoadPartition(meta *PartitionMeta, tenant string) *indexPar
 	p, ok := i.loadedPartitions[cKey]
 	if !ok {
 		p = &indexPartition{
-			meta:       meta,
-			accessedAt: time.Now(),
-			shards:     make(map[uint32]*indexShard),
+			meta:   meta,
+			shards: make(map[uint32]*indexShard),
 		}
 		for _, s := range i.store.ListShards(meta.Key) {
 			sh := &indexShard{
@@ -212,6 +211,7 @@ func (i *Index) getOrLoadPartition(meta *PartitionMeta, tenant string) *indexPar
 		}
 		i.loadedPartitions[cKey] = p
 	}
+	p.accessedAt = time.Now().UTC()
 	i.unloadPartitions()
 	return p
 }
