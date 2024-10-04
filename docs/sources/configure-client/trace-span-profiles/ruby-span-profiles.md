@@ -36,7 +36,7 @@ To use Span Profiles, you need to:
 Your applications must be instrumented for profiling and tracing before you can use span profiles.
 
 * Profiling: Your application must be instrumented with Pyroscope's Ruby SDK. Refer to the [Ruby]({{< relref "../language-sdks/ruby" >}}) guide for instructions.
-* Tracing: Your application must be instrumented with OpenTelemetry traces. Refer to the [OpenTelemetry](https://opentelemetry.io/docs/ruby/getting-started/) guide for instructions.
+* Tracing: Your application must be instrumented with OpenTelemetry traces. Refer to the [OpenTelemetry](https://opentelemetry.io/docs/languages/ruby/getting-started/) guide for instructions.
 
 ## Configure the otel-profiling-ruby package
 
