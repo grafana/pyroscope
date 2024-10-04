@@ -36,10 +36,5 @@
     "public/app/lib/types.d.ts",
     "public/app/lib/flot.d.ts"
   ],
-  "exclude": [
-    "public/app/**/*.spec.ts*",
-    "public/app/stories/**",
-    "**/node_modules",
-    "**/.*/"
-  ]
+  "exclude": ["public/app/**/*.spec.ts*", "**/node_modules", "**/.*/"]
 }
