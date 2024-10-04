@@ -52,7 +52,7 @@ type Config struct {
 	Compaction        CompactionConfig  `yaml:"compaction_config"`
 	MinReadyDuration  time.Duration     `yaml:"min_ready_duration" category:"advanced"`
 	DLQRecoveryPeriod time.Duration     `yaml:"dlq_recovery_period" category:"advanced"`
-	Index            index.Config      `yaml:"index_config"`
+	Index             index.Config      `yaml:"index_config"`
 }
 
 type RaftConfig struct {
