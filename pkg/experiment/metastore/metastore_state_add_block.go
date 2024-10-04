@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/hashicorp/raft"
 	"github.com/oklog/ulid"
