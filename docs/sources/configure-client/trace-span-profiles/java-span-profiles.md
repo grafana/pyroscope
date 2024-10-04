@@ -36,7 +36,7 @@ To use Span Profiles, you need to:
 Your applications must be instrumented for profiling and tracing before you can use span profiles.
 
 * Profiling: Your application must be instrumented with Pyroscope's Java client SDK. Refer to the [Java]({{< relref "../language-sdks/java" >}}) guide for instructions.
-* Tracing: Your application must be instrumented with OpenTelemetry traces. Refer to the [OpenTelemetry](https://opentelemetry.io/docs/java/getting-started/) guide for instructions.
+* Tracing: Your application must be instrumented with OpenTelemetry traces. Refer to the [OpenTelemetry](https://opentelemetry.io/docs/languages/java/getting-started/) guide for instructions.
 
 ## Configure the otel-profiling-java package
 
