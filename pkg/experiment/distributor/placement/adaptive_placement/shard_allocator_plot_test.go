@@ -19,42 +19,31 @@ import (
 )
 
 type testPlot struct {
-	name   string
-	source []float64
+	name        string
+	description string
 
-	ewma  *ewma.Rate
-	alloc *shardAllocator
+	source []float64
+	ewma   *ewma.Rate
+	alloc  *shardAllocator
 
 	statsUpdateInterval     time.Duration
 	placementUpdateInterval time.Duration
+
+	// Might be too expensive to draw.
+	hideSource bool
 }
+
+const randSeed = 752383033
 
 func Test_generate_plots(t *testing.T) {
 	t.Skip()
 
-	steadyGrowthSource := generateData(
-		[]float64{
-			100, 120, 130, 170, 200, 220, 240, 290,
-			400, 560, 610, 640, 650, 670, 675, 645,
-			560, 255, 175, 120, 100, 90, 100, 110,
-		},
-		nil,   // Weights.
-		1e4,   // Multiplier.
-		86400, // 1s per point.
-		80,    // Max variance.
-	)
-
-	steadyDecaySource := make([]float64, len(steadyGrowthSource))
-	copy(steadyDecaySource, steadyGrowthSource)
-	slices.Reverse(steadyDecaySource)
-
+	const defaultUnitSize uint64 = 512 << 10
 	defaultTest := func(fn func(*testPlot)) testPlot {
 		p := testPlot{
-			name:   "",
-			source: nil,
-			ewma:   ewma.NewHalfLife(time.Second * 180),
+			ewma: ewma.NewHalfLife(time.Second * 180),
 			alloc: &shardAllocator{
-				unitSize:    uint64(256 << 10),
+				unitSize:    defaultUnitSize,
 				min:         1,
 				max:         32,
 				burstWindow: (63 * time.Minute).Nanoseconds(),
@@ -67,40 +56,135 @@ func Test_generate_plots(t *testing.T) {
 		return p
 	}
 
-	for _, test := range []testPlot{
-		defaultTest(func(t *testPlot) {
-			t.name = "elephant_in_a_snake"
-			t.source = steadyGrowthSource
-		}),
-		defaultTest(func(t *testPlot) {
-			t.name = "elephant_in_a_snake_backwards"
-			t.source = steadyDecaySource
-		}),
-		defaultTest(func(t *testPlot) {
-			t.name = "extreme_spikes"
-			t.alloc.max = 64
-			t.source = generateData(
-				[]float64{
-					1, 1, 1000, 1, 1, 1000, 1, 1,
-					1, 1, 1000, 1, 1, 1, 1, 1,
-					1, 1, 1000, 1, 1, 1, 1, 1,
-				},
-				[]float64{
-					1, .16, .16, 1, .16, .16, 1, 1,
-					1, .16, .16, 1, 1, 1, 1, 1,
-					1, .05, .05, 1, 1, 1, 1, 1,
-				},
-				1e4,
-				86400,
-				80,
-			)
-		}),
-	} {
-		buildPlot(t, test)
+	shortWindowTest := func(fn func(*testPlot)) testPlot {
+		p := defaultTest(fn)
+		p.alloc.burstWindow = (17 * time.Minute).Nanoseconds()
+		p.alloc.decayWindow = (19 * time.Minute).Nanoseconds()
+		return p
 	}
+
+	drawPlots := func(t *testing.T, plots ...testPlot) {
+		for _, p := range plots {
+			t.Run(p.name, func(t *testing.T) {
+				t.Parallel()
+				drawPlot(t, p)
+			})
+		}
+	}
+
+	t.Run("elephant_in_a_snake", func(t *testing.T) {
+		steadyGrowthSource := generateData(
+			rand.New(rand.NewSource(randSeed)),
+			[]float64{
+				100, 120, 130, 170, 200, 220, 240, 290,
+				400, 560, 610, 640, 650, 670, 675, 645,
+				560, 255, 175, 120, 100, 90, 100, 110,
+			}, // Anchors.
+			nil,   // Weights.
+			1e4,   // Multiplier.
+			86400, // 1s per point.
+			80,    // Max variance.
+		)
+
+		steepGrowthSource := make([]float64, len(steadyGrowthSource))
+		copy(steepGrowthSource, steadyGrowthSource)
+		slices.Reverse(steepGrowthSource)
+
+		drawPlots(t,
+			defaultTest(func(t *testPlot) {
+				t.name = "steady_front"
+				t.source = steadyGrowthSource
+			}),
+			shortWindowTest(func(t *testPlot) {
+				t.name = "steady_front_2"
+				t.source = steadyGrowthSource
+			}),
+			defaultTest(func(t *testPlot) {
+				t.name = "steep_front"
+				t.source = steepGrowthSource
+			}),
+			shortWindowTest(func(t *testPlot) {
+				t.name = "steep_front_2"
+				t.source = steepGrowthSource
+			}),
+		)
+	})
+
+	t.Run("extreme_spikes", func(t *testing.T) {
+		extremeSpikes := generateData(
+			rand.New(rand.NewSource(randSeed)),
+			[]float64{
+				1, 1, 1000, 1, 300, 1, 1000, 1,
+				1, 1, 1000, 1, 1, 1, 1, 1,
+				1, 1, 1000, 1, 1, 1, 1, 1,
+				1, 1, 1, 1, 1, 1, 1, 1,
+			},
+			[]float64{
+				1, .1, .1, .1, .1, .1, .1, .1,
+				1, .1, .1, .1, 1, 1, 1, 1,
+				1, .01, .01, .01, 1, 1, 1, 1,
+				1, 1, 1, 1, 1, 1, 1, 1,
+			},
+			1e4,
+			86400,
+			80,
+		)
+
+		drawPlots(t,
+			defaultTest(func(t *testPlot) {
+				t.name = "extreme_spikes"
+				t.source = extremeSpikes
+			}),
+			shortWindowTest(func(t *testPlot) {
+				t.name = "extreme_spikes_2"
+				t.source = extremeSpikes
+			}),
+			shortWindowTest(func(t *testPlot) {
+				t.name = "extreme_spikes_3"
+				t.source = extremeSpikes
+				t.alloc.max = 12
+			}),
+		)
+	})
+
+	t.Run("low_rate_oscillations", func(t *testing.T) {
+		rnd := rand.New(rand.NewSource(randSeed))
+		oscillations := make([]float64, 144)
+		for i := range oscillations {
+			v := 3 * float64(rnd.Intn(int(defaultUnitSize))) * rnd.Float64()
+			oscillations[i] = v
+		}
+		oscillationWeights := make([]float64, len(oscillations))
+		for i := range oscillationWeights {
+			oscillationWeights[i] = rnd.Float64()
+		}
+		lowRateOscillations := generateData(
+			rnd,
+			oscillations,
+			oscillationWeights,
+			1,
+			86400,
+			float64(defaultUnitSize),
+		)
+
+		drawPlots(t,
+			defaultTest(func(t *testPlot) {
+				t.name = "low_rate_oscillations"
+				t.source = lowRateOscillations
+				t.hideSource = true
+			}),
+			shortWindowTest(func(t *testPlot) {
+				t.name = "low_rate_oscillations_2"
+				t.source = lowRateOscillations
+				t.hideSource = true
+			}),
+		)
+	})
 }
 
-func buildPlot(t *testing.T, test testPlot) {
+func drawPlot(t *testing.T, test testPlot) {
+	t.Helper()
+
 	u := int(test.statsUpdateInterval.Seconds())
 	a := int(test.placementUpdateInterval.Seconds())
 
@@ -133,8 +217,7 @@ func buildPlot(t *testing.T, test testPlot) {
 	sourceLine, err := plotter.NewLine(sourcePoints)
 	require.NoError(t, err)
 	sourceLine.Width = vg.Points(0.1)
-	sourceLine.Color = color.Gray{Y: 200}
-	sourceLine.Dashes = []vg.Length{vg.Points(0.1), vg.Points(0.1)}
+	sourceLine.Color = color.Gray{Y: 220}
 
 	aggregatedLine, err := plotter.NewLine(aggregated)
 	require.NoError(t, err)
@@ -167,8 +250,7 @@ func buildPlot(t *testing.T, test testPlot) {
 		XYs:    allocatedPoints.XYs,
 		Labels: allocIndices,
 	})
-	allocIndexLabels.XOffset = vg.Points(1)
-	allocIndexLabels.YOffset = vg.Points(-7)
+	allocIndexLabels.Offset = vg.Point{X: 1, Y: -7}
 	for i := range allocIndexLabels.TextStyle {
 		allocIndexLabels.TextStyle[i].Font.Size = vg.Points(7)
 	}
@@ -177,27 +259,38 @@ func buildPlot(t *testing.T, test testPlot) {
 		XYs:    allocatedPoints.XYs,
 		Labels: allocShards,
 	})
-	allocShardsLabels.XOffset = vg.Points(1)
-	allocShardsLabels.YOffset = vg.Points(3)
+	allocShardsLabels.Offset = vg.Point{X: 1, Y: 3}
 	for i := range allocShardsLabels.TextStyle {
 		allocShardsLabels.TextStyle[i].Color = allocatedPoints.Color
 	}
 
 	// Plot.
-	p, err := plot.New()
-	require.NoError(t, err)
+	p := plot.New()
+	p.Title.Text = "Shard Allocation"
+	p.X.Label.Text = "Time (hours)"
+	p.X.Tick.Marker = timeTicker(time.Hour)
+	p.Y.Label.Text = "Data rate (MiB/s)"
+	p.Y.Tick.Marker = dataRateTicker(test.alloc.unitSize)
 
-	p.Add(sourceLine)
+	grid := plotter.NewGrid()
+	grid.Horizontal.Color = color.Gray{Y: 210}
+	grid.Vertical.Width = 0
+	p.Add(grid)
+
+	if test.description != "" {
+		p.Legend.Add(test.description)
+		p.Legend.Top = true
+		p.Legend.Padding = vg.Millimeter
+		p.Legend.TextStyle.Font.Size = vg.Points(10)
+	}
+
+	if !test.hideSource {
+		p.Add(sourceLine)
+	}
 	p.Add(aggregatedLine)
 	p.Add(allocatedLine, allocatedPoints, allocIndexLabels, allocShardsLabels)
 
-	p.Title.Text = "Shard Allocation"
-	p.X.Label.Text = "Time (hours)"
-	p.X.Tick.Marker = ticker(3600 * int(time.Second))
-	p.Y.Label.Text = "Data rate (MiB/s)"
-	p.Y.Tick.Marker = ticker(1 << 20)
-
-	require.NoError(t, p.Save(12*vg.Inch, 4*vg.Inch, "testdata/output/"+test.name+".png"))
+	require.NoError(t, p.Save(12*vg.Inch, 4*vg.Inch, "testdata/plots/"+test.name+".png"))
 }
 
 func multiply(values []plotter.XY, m float64) plotter.XYs {
@@ -207,23 +300,44 @@ func multiply(values []plotter.XY, m float64) plotter.XYs {
 	return values
 }
 
-type ticker float64
+type timeTicker float64
 
-func (t ticker) Ticks(min, max float64) []plot.Tick {
+func (t timeTicker) Ticks(min, max float64) []plot.Tick {
 	h := float64(t)
 	ticks := make([]plot.Tick, 0, int((max-min)/h))
 	for i := min; i <= max; i += h {
 		ticks = append(ticks, plot.Tick{
 			Value: i,
 			Label: fmt.Sprintf("%d", int(i/h)),
-		},
-		)
+		})
 	}
 	return ticks
 }
 
-func generateData(anchors []float64, weights []float64, multiplier float64, n int, step float64) []float64 {
-	r := rand.New(rand.NewSource(123))
+type dataRateTicker int
+
+func (t dataRateTicker) Ticks(min, max float64) []plot.Tick {
+	mib := 1 << 20
+	h := float64(t)
+	ticks := make([]plot.Tick, 0, int((max-min)/h))
+	for i := min; i <= max; i += h {
+		tick := plot.Tick{Value: i}
+		if int(tick.Value)%mib == 0 {
+			tick.Label = fmt.Sprint(int(tick.Value) / mib)
+		}
+		ticks = append(ticks, tick)
+	}
+	return ticks
+}
+
+func generateData(
+	rnd *rand.Rand,
+	anchors []float64,
+	weights []float64,
+	multiplier float64,
+	n int,
+	step float64,
+) []float64 {
 	ts := make([]float64, n)
 	step *= multiplier
 	ac := len(anchors)
@@ -268,9 +382,9 @@ func generateData(anchors []float64, weights []float64, multiplier float64, n in
 			t := float64(j) / float64(ps)
 			mid := lower + t*(upper-lower)
 			if idx == 0 {
-				ts[idx] = lower + (r.Float64()*2*step-step)/2
+				ts[idx] = lower + (rnd.Float64()*2*step-step)/2
 			} else {
-				varStep := r.Float64()*2*step - step
+				varStep := rnd.Float64()*2*step - step
 				ts[idx] = ts[idx-1] + varStep
 			}
 			ts[idx] = (ts[idx] + mid) / 2
@@ -281,9 +395,13 @@ func generateData(anchors []float64, weights []float64, multiplier float64, n in
 	if idx < n {
 		lower := anchors[ac-1] * multiplier
 		for idx < n {
-			ts[idx] = lower + (r.Float64()*2*step-step)/2
+			ts[idx] = lower + (rnd.Float64()*2*step-step)/2
 			idx++
 		}
+	}
+
+	for i := range ts {
+		ts[i] = max(0, ts[i])
 	}
 
 	return ts

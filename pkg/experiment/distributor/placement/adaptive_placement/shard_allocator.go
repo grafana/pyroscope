@@ -51,20 +51,20 @@ func (a *shardAllocator) observe(usage uint64, now int64) int {
 	delta := target - a.target
 	if delta > 0 {
 		// Scale out.
-		if now-a.burstOffset > a.burstWindow {
+		if a.burstOffset == 0 || now-a.burstOffset >= a.burstWindow {
 			// Reset multiplier if burst window has passed.
-			a.multiplier = 0
+			a.multiplier = 1
 		} else {
 			// Increase multiplier on consecutive
 			// scale-outs within burst window.
-			a.multiplier = max(1, 2*a.multiplier)
+			a.multiplier *= 2
+			scaled := target + int(math.Ceil(float64(delta)*a.multiplier))
+			target = min(2*target, scaled)
 		}
 		// Start/prolong burst window.
 		a.burstOffset = now
-		scaled := target + int(math.Ceil(float64(delta)*a.multiplier))
-		target = min(2*target, scaled)
 	}
-	if now-a.decayOffset > a.decayWindow {
+	if a.decayOffset == 0 || now-a.decayOffset >= a.decayWindow {
 		a.previousMin, a.currentMin = a.currentMin, target
 		a.decayOffset = now
 	}
