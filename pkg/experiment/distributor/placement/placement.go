@@ -16,6 +16,7 @@ type Key struct {
 	Fingerprint uint64
 }
 
+// Policy is a placement policy of a given key.
 type Policy struct {
 	// TenantShards returns the number of shards
 	// available to the tenant.

@@ -164,19 +164,19 @@ func Test_generate_plots(t *testing.T) {
 			oscillationWeights,
 			1,
 			86400,
-			float64(defaultUnitSize),
+			2*float64(defaultUnitSize),
 		)
 
 		drawPlots(t,
 			defaultTest(func(t *testPlot) {
 				t.name = "low_rate_oscillations"
 				t.source = lowRateOscillations
-				t.hideSource = true
+				//	t.hideSource = true
 			}),
 			shortWindowTest(func(t *testPlot) {
 				t.name = "low_rate_oscillations_2"
 				t.source = lowRateOscillations
-				t.hideSource = true
+				//	t.hideSource = true
 			}),
 		)
 	})

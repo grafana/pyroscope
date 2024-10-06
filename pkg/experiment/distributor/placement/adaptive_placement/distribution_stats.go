@@ -14,8 +14,9 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement/ewma"
 )
 
-// TODO(kolesnikovae): metrics
-
+// StatsTracker is a helper struct that tracks the
+// data rate of each dataset based on the metadata
+// records.
 type StatsTracker struct {
 	mu        sync.Mutex
 	counters  map[key]*ewma.Rate
