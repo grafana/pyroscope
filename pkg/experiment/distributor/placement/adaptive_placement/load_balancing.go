@@ -84,7 +84,18 @@ func pickFingerprintMod(k placement.Key) func(int) int {
 	}
 }
 
-// selectLoadBalancing chooses the load balancing strategy.
+func (lb LoadBalancing) needsDynamicBalancing(x adaptive_placementpb.LoadBalancing) bool {
+	if lb != DynamicLoadBalancing {
+		return false
+	}
+	// If the configured load balancing is "dynamic", we should
+	// try to find the best strategy based on the dataset stats,
+	// except if the x is already set to round-robin, which should
+	// ensure the best distribution (from the available options).
+	return x != adaptive_placementpb.LoadBalancing_LOAD_BALANCING_ROUND_ROBIN
+}
+
+// loadBalancingStrategy chooses the load balancing strategy.
 //
 // By default, we adhere to the standard fingerprint-based distribution,
 // since it provides slightly better locality in case if the dataset has
@@ -93,8 +104,8 @@ func pickFingerprintMod(k placement.Key) func(int) int {
 // If at least one shard is significantly overheated, and relative standard
 // deviation withing the aggregation window is very high, which indicates
 // that the distribution is uneven, we resort to round-robin load balancing.
-func selectLoadBalancing(stats *adaptive_placementpb.DatasetStats, unit uint32) LoadBalancing {
-	if len(stats.Shards) > 1 {
+func loadBalancingStrategy(stats *adaptive_placementpb.DatasetStats, unit uint32) LoadBalancing {
+	if len(stats.Usage) > 1 {
 		t := 2 * uint64(unit)
 		var overheated bool
 		for _, v := range stats.Usage {
@@ -104,6 +115,9 @@ func selectLoadBalancing(stats *adaptive_placementpb.DatasetStats, unit uint32) 
 			}
 		}
 		if overheated && float64(stats.StdDev)/float64(mean(stats.Usage)) > 0.5 {
+			// Thresholds (2 x unit size and 0.5 RSD) are arbitrary
+			// and can be adjusted. The current values are conservative
+			// and chosen to only use RR as a last resort.
 			return RoundRobinLoadBalancing
 		}
 	}
@@ -132,4 +146,11 @@ func mean(d []uint64) (m uint64) {
 		m += v
 	}
 	return m / uint64(len(d))
+}
+
+func sum(d []uint64) (s uint64) {
+	for _, v := range d {
+		s += v
+	}
+	return s
 }

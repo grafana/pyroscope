@@ -46,6 +46,16 @@ type shardAllocator struct {
 	currentMin  uint32 // Minimum number of shards in the current decay window.
 }
 
+func newShardAllocator(limits ShardingLimits) *shardAllocator {
+	return &shardAllocator{
+		unitSize:    limits.UnitSizeBytes,
+		min:         limits.MinDatasetShards,
+		max:         limits.MaxDatasetShards,
+		burstWindow: limits.BurstWindow.Nanoseconds(),
+		decayWindow: limits.DecayWindow.Nanoseconds(),
+	}
+}
+
 func (a *shardAllocator) observe(usage uint64, now int64) int {
 	target := uint32(usage/uint64(a.unitSize)) + 1
 	delta := target - a.target
