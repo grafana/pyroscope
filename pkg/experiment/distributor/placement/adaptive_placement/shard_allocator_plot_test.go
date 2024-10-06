@@ -38,7 +38,7 @@ const randSeed = 752383033
 func Test_generate_plots(t *testing.T) {
 	t.Skip()
 
-	const defaultUnitSize uint64 = 512 << 10
+	const defaultUnitSize uint32 = 512 << 10
 	defaultTest := func(fn func(*testPlot)) testPlot {
 		p := testPlot{
 			ewma: ewma.NewHalfLife(time.Second * 180),

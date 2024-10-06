@@ -11,7 +11,7 @@ func Test_shardAllocator(t *testing.T) {
 	a := &shardAllocator{
 		unitSize:    10,
 		min:         1,
-		max:         32,
+		max:         5,
 		burstWindow: 50,
 		decayWindow: 50,
 	}
@@ -32,7 +32,9 @@ func Test_shardAllocator(t *testing.T) {
 		{5, 8, 5},
 		{5, 9, 5},
 		{5, 51, 5},
-		{5, 101, 1},
+		{5, 101, 2},
+		{5, 151, 1},
+		{100, 152, 5},
 	} {
 		require.Equal(t, test.want, a.observe(test.usage, test.now), fmt.Sprint(i))
 	}

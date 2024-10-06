@@ -16,26 +16,27 @@ import (
 // dataset keys.
 type AdaptivePlacement struct {
 	mu       sync.RWMutex
-	tenants  map[string]*tenant
+	tenants  map[string]*tenantPlacement
 	defaults *adaptive_placementpb.PlacementLimits
 }
 
-type tenant struct {
-	datasets map[string]*dataset
+type tenantPlacement struct {
+	datasets map[string]*datasetPlacement
 	limits   *adaptive_placementpb.PlacementLimits
 }
 
-type dataset struct {
-	shards int
-	pick   func(placement.Key) func(int) int
+type datasetPlacement struct {
+	shards        int
+	loadBalancing LoadBalancing
 }
 
 func NewAdaptivePlacement() *AdaptivePlacement {
 	return &AdaptivePlacement{
-		tenants: make(map[string]*tenant),
+		tenants: make(map[string]*tenantPlacement),
 		defaults: &adaptive_placementpb.PlacementLimits{
-			TenantShardLimit:  0, // Disabled.
-			DatasetShardLimit: 2,
+			TenantShardLimit:  defaultTenantShardLimit,
+			DatasetShardLimit: defaultDatasetShardLimit,
+			LoadBalancing:     defaultLoadBalancing.proto(),
 		},
 	}
 }
@@ -48,7 +49,7 @@ func (a *AdaptivePlacement) PlacementPolicy(k placement.Key) placement.Policy {
 		return placement.Policy{
 			TenantShards:  int(a.defaults.TenantShardLimit),
 			DatasetShards: int(a.defaults.DatasetShardLimit),
-			PickShard:     pickFingerprintMod(k),
+			PickShard:     loadBalancingFromProto(a.defaults.LoadBalancing).pick(k),
 		}
 	}
 	d, ok := t.datasets[k.DatasetName]
@@ -56,27 +57,27 @@ func (a *AdaptivePlacement) PlacementPolicy(k placement.Key) placement.Policy {
 		return placement.Policy{
 			TenantShards:  int(t.limits.TenantShardLimit),
 			DatasetShards: int(t.limits.DatasetShardLimit),
-			PickShard:     pickFingerprintMod(k),
+			PickShard:     loadBalancingFromProto(a.defaults.LoadBalancing).pick(k),
 		}
 	}
 	return placement.Policy{
 		TenantShards:  int(t.limits.TenantShardLimit),
 		DatasetShards: d.shards,
-		PickShard:     d.pick(k),
+		PickShard:     d.loadBalancing.pick(k),
 	}
 }
 
 func (a *AdaptivePlacement) Load(p *adaptive_placementpb.PlacementRules) {
-	m := make(map[string]*tenant)
-	tenants := make([]*tenant, len(p.Tenants))
+	m := make(map[string]*tenantPlacement)
+	tenants := make([]*tenantPlacement, len(p.Tenants))
 	for i := range p.Tenants {
 		t := p.Tenants[i]
 		limits := t.Limits
 		if limits == nil {
 			limits = a.defaults
 		}
-		tenants[i] = &tenant{
-			datasets: make(map[string]*dataset),
+		tenants[i] = &tenantPlacement{
+			datasets: make(map[string]*datasetPlacement),
 			limits:   limits,
 		}
 		m[t.TenantId] = tenants[i]
@@ -87,9 +88,9 @@ func (a *AdaptivePlacement) Load(p *adaptive_placementpb.PlacementRules) {
 			continue
 		}
 		t := tenants[d.Tenant]
-		t.datasets[d.Name] = &dataset{
-			shards: int(d.ShardLimit),
-			pick:   buildLBFunc(d.LoadBalancing),
+		t.datasets[d.Name] = &datasetPlacement{
+			shards:        int(d.ShardLimit),
+			loadBalancing: loadBalancingFromProto(d.LoadBalancing),
 		}
 	}
 	a.mu.Lock()

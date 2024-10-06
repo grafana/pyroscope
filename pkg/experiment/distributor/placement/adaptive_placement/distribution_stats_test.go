@@ -19,7 +19,7 @@ func Test_StatsTracker(t *testing.T) {
 		window    = time.Second * 10
 	)
 
-	tracker := NewStatsTracker(window, retention)
+	stats := NewDistributionStats(window, retention)
 	// A stub ID for the block is used to bypass
 	// block staleness check.
 	ulidNow, err := ulid.New(ulid.Now(), rand.Reader)
@@ -36,7 +36,7 @@ func Test_StatsTracker(t *testing.T) {
 				{TenantId: "tenant-a", Name: "dataset-b", Size: 10},
 			},
 		}
-		tracker.RecordStats(md, now.Nanoseconds())
+		stats.RecordStats(md, now.Nanoseconds())
 	}
 
 	// Note that we deal with half-life exponent decay here.
@@ -63,18 +63,18 @@ func Test_StatsTracker(t *testing.T) {
 			{Id: 1},
 		},
 	}
-	assert.Equal(t, expected.String(), tracker.UpdateStats(now.Nanoseconds()).String())
+	assert.Equal(t, expected.String(), stats.Build(now.Nanoseconds()).String())
 
 	// Reassign dataset-a to shard 2 and add dataset-c.
 	for ; now < time.Second*20; now += time.Second {
-		tracker.RecordStats(&metastorev1.BlockMeta{
+		stats.RecordStats(&metastorev1.BlockMeta{
 			Id:    stubID,
 			Shard: 1,
 			Datasets: []*metastorev1.Dataset{
 				{TenantId: "tenant-a", Name: "dataset-b", Size: 10}, // Not changed.
 			},
 		}, now.Nanoseconds())
-		tracker.RecordStats(&metastorev1.BlockMeta{
+		stats.RecordStats(&metastorev1.BlockMeta{
 			Id:    stubID,
 			Shard: 2,
 			Datasets: []*metastorev1.Dataset{
@@ -113,18 +113,18 @@ func Test_StatsTracker(t *testing.T) {
 			{Id: 2},
 		},
 	}
-	assert.Equal(t, expected.String(), tracker.UpdateStats(now.Nanoseconds()).String())
+	assert.Equal(t, expected.String(), stats.Build(now.Nanoseconds()).String())
 
 	// Next 30 seconds nothing changes.
 	for ; now < time.Minute; now += time.Second {
-		tracker.RecordStats(&metastorev1.BlockMeta{
+		stats.RecordStats(&metastorev1.BlockMeta{
 			Id:    stubID,
 			Shard: 1,
 			Datasets: []*metastorev1.Dataset{
 				{TenantId: "tenant-a", Name: "dataset-b", Size: 10},
 			},
 		}, now.Nanoseconds())
-		tracker.RecordStats(&metastorev1.BlockMeta{
+		stats.RecordStats(&metastorev1.BlockMeta{
 			Id:    stubID,
 			Shard: 2,
 			Datasets: []*metastorev1.Dataset{
@@ -163,10 +163,10 @@ func Test_StatsTracker(t *testing.T) {
 			{Id: 2},
 		},
 	}
-	assert.Equal(t, expected.String(), tracker.UpdateStats(now.Nanoseconds()).String())
+	assert.Equal(t, expected.String(), stats.Build(now.Nanoseconds()).String())
 
 	// See what happens when a stale counter is removed (dataset-a, shard 1).
-	stats := tracker.UpdateStats(retention.Nanoseconds() + 10*time.Second.Nanoseconds())
+	s := stats.Build(retention.Nanoseconds() + 10*time.Second.Nanoseconds())
 	expected = &adaptive_placementpb.DistributionStats{
 		Tenants: []*adaptive_placementpb.TenantStats{
 			{TenantId: "tenant-a"},
@@ -197,14 +197,14 @@ func Test_StatsTracker(t *testing.T) {
 			{Id: 1},
 		},
 	}
-	assert.Equal(t, expected.String(), tracker.UpdateStats(now.Nanoseconds()).String())
+	assert.Equal(t, expected.String(), stats.Build(now.Nanoseconds()).String())
 
 	// Expire all counters.
-	stats = tracker.UpdateStats(2 * retention.Nanoseconds())
-	assert.Empty(t, stats.Tenants)
-	assert.Empty(t, stats.Datasets)
-	assert.Empty(t, stats.Shards)
-	assert.Empty(t, tracker.counters)
+	s = stats.Build(3 * retention.Nanoseconds())
+	assert.Empty(t, s.Tenants)
+	assert.Empty(t, s.Datasets)
+	assert.Empty(t, s.Shards)
+	assert.Empty(t, stats.counters)
 }
 
 func Test_StatsTracker_stale_block(t *testing.T) {
@@ -214,7 +214,7 @@ func Test_StatsTracker_stale_block(t *testing.T) {
 	)
 
 	t.Run("stale blocks are ignored", func(t *testing.T) {
-		tracker := NewStatsTracker(window, retention)
+		stats := NewDistributionStats(window, retention)
 		now := time.Now()
 		timestamp := uint64(now.Add(-5 * time.Minute).UnixMilli())
 
@@ -225,19 +225,19 @@ func Test_StatsTracker_stale_block(t *testing.T) {
 				{TenantId: "tenant-a", Name: "dataset-b", Size: 10},
 			},
 		}
-		tracker.RecordStats(md, now.UnixNano())
-		assert.Empty(t, tracker.counters)
+		stats.RecordStats(md, now.UnixNano())
+		assert.Empty(t, stats.counters)
 	})
 
 	t.Run("invalid blocks are ignored", func(t *testing.T) {
-		tracker := NewStatsTracker(window, retention)
+		stats := NewDistributionStats(window, retention)
 		md := &metastorev1.BlockMeta{
 			Shard: 1,
 			Datasets: []*metastorev1.Dataset{
 				{TenantId: "tenant-a", Name: "dataset-b", Size: 10},
 			},
 		}
-		tracker.RecordStats(md, 0)
-		assert.Empty(t, tracker.counters)
+		stats.RecordStats(md, 0)
+		assert.Empty(t, stats.counters)
 	})
 }

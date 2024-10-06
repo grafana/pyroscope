@@ -157,6 +157,11 @@ func (m *DatasetStats) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.StdDev != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.StdDev))
+		i--
+		dAtA[i] = 0x28
+	}
 	if len(m.Usage) > 0 {
 		var pksize2 int
 		for _, num := range m.Usage {
@@ -545,6 +550,9 @@ func (m *DatasetStats) SizeVT() (n int) {
 			l += protohelpers.SizeOfVarint(uint64(e))
 		}
 		n += 1 + protohelpers.SizeOfVarint(uint64(l)) + l
+	}
+	if m.StdDev != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.StdDev))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -1120,6 +1128,25 @@ func (m *DatasetStats) UnmarshalVT(dAtA []byte) error {
 				}
 			} else {
 				return fmt.Errorf("proto: wrong wireType = %d for field Usage", wireType)
+			}
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field StdDev", wireType)
+			}
+			m.StdDev = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.StdDev |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
 			}
 		default:
 			iNdEx = preIndex

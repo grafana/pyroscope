@@ -16,8 +16,15 @@ message TenantStats {
 message DatasetStats {
   uint32 tenant = 1; // Reference to TenantStats.
   string name = 2;
-  repeated uint32 shards = 3; // Shard value is a reference to ShardStats.
+  // Shard value is a reference to ShardStats.
+  repeated uint32 shards = 3;
+  // Data rate in bytes per second for each shard.
+  // The dataset size is measured after being encoded
+  // in the block wire format.
   repeated uint64 usage = 4;
+  // Standard deviation of the data rate across shards
+  // aggregated within a sliding time window.
+  uint64 std_dev = 5;
 }
 
 message ShardStats {
@@ -33,7 +40,7 @@ message PlacementLimits {
 
 enum LoadBalancing {
   LOAD_BALANCING_UNSPECIFIED = 0;
-  LOAD_BALANCING_FINGERPRINT_MOD = 1;
+  LOAD_BALANCING_FINGERPRINT = 1;
   LOAD_BALANCING_ROUND_ROBIN = 2;
 }
 

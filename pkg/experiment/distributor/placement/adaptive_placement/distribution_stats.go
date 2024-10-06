@@ -14,41 +14,42 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement/ewma"
 )
 
-// StatsTracker is a helper struct that tracks the
+// DistributionStats is a helper struct that tracks the
 // data rate of each dataset based on the metadata
 // records.
-type StatsTracker struct {
+type DistributionStats struct {
 	mu        sync.Mutex
-	counters  map[key]*ewma.Rate
+	counters  map[counterKey]*ewma.Rate
 	window    time.Duration
 	retention time.Duration
 }
 
-func NewStatsTracker(window, retention time.Duration) *StatsTracker {
-	return &StatsTracker{
-		counters:  make(map[key]*ewma.Rate),
+func NewDistributionStats(window, retention time.Duration) *DistributionStats {
+	return &DistributionStats{
+		counters:  make(map[counterKey]*ewma.Rate),
 		window:    window,
 		retention: retention,
 	}
 }
 
-func (t *StatsTracker) RecordStats(md *metastorev1.BlockMeta, now int64) {
-	if isStale(md.Id, now, t.retention.Nanoseconds()) {
+func (d *DistributionStats) RecordStats(md *metastorev1.BlockMeta, now int64) {
+	if isStale(md.Id, now, d.retention.Nanoseconds()) {
 		return
 	}
-	t.mu.Lock()
-	defer t.mu.Unlock()
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	// TODO(kolesnikovae): intern strings with unique (go 1.23)
 	sk := shard{
 		id:    md.Shard,
 		owner: "", // TODO: md.CreatedBy
 	}
-	for _, d := range md.Datasets {
-		c := t.counter(key{
-			tenant:  d.TenantId,
-			dataset: d.Name,
+	for _, ds := range md.Datasets {
+		c := d.counter(counterKey{
+			tenant:  ds.TenantId,
+			dataset: ds.Name,
 			shard:   sk,
 		})
-		c.UpdateAt(float64(d.Size), now)
+		c.UpdateAt(float64(ds.Size), now)
 	}
 }
 
@@ -68,22 +69,22 @@ func isStale(s string, now, retention int64) bool {
 	return d > retention
 }
 
-func (t *StatsTracker) counter(k key) *ewma.Rate {
-	c, ok := t.counters[k]
+func (d *DistributionStats) counter(k counterKey) *ewma.Rate {
+	c, ok := d.counters[k]
 	if !ok {
-		c = ewma.NewHalfLife(t.window)
-		t.counters[k] = c
+		c = ewma.NewHalfLife(d.window)
+		d.counters[k] = c
 	}
 	return c
 }
 
-type key struct {
+type counterKey struct {
 	tenant  string
 	dataset string
 	shard   shard
 }
 
-func (k key) compare(x key) int {
+func (k counterKey) compare(x counterKey) int {
 	if c := strings.Compare(k.tenant, x.tenant); c != 0 {
 		return c
 	}
@@ -99,14 +100,17 @@ func (k key) compare(x key) int {
 	return strings.Compare(k.shard.owner, x.shard.owner)
 }
 
-func compareKeys(a, b key) int { return a.compare(b) }
+func compareKeys(a, b counterKey) int { return a.compare(b) }
 
 type shard struct {
 	owner string
 	id    uint32
 }
 
-func (t *StatsTracker) UpdateStats(now int64) *adaptive_placementpb.DistributionStats {
+func (d *DistributionStats) Build(now int64) *adaptive_placementpb.DistributionStats {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
 	var s adaptive_placementpb.DistributionStats
 	tenants := make(map[string]int)
 	datasets := make(map[string]int)
@@ -114,17 +118,21 @@ func (t *StatsTracker) UpdateStats(now int64) *adaptive_placementpb.Distribution
 
 	// Although, not strictly required, we iterate over the keys
 	// in a deterministic order to make the output deterministic.
-	keys := make([]key, 0, len(t.counters))
-	for k := range t.counters {
+	keys := make([]counterKey, 0, len(d.counters))
+	for k := range d.counters {
 		keys = append(keys, k)
 	}
 	slices.SortFunc(keys, compareKeys)
 
 	for _, k := range keys {
-		c := t.counters[k]
+		c := d.counters[k]
 		age := now - c.LastUpdate().UnixNano()
-		if age >= t.retention.Nanoseconds() {
-			delete(t.counters, k)
+		if age >= d.retention.Nanoseconds() {
+			delete(d.counters, k)
+			continue
+		}
+		// Skip dataset-wide counters.
+		if k.shard.id == 0 {
 			continue
 		}
 
@@ -160,6 +168,15 @@ func (t *StatsTracker) UpdateStats(now int64) *adaptive_placementpb.Distribution
 		ds := s.Datasets[di]
 		ds.Shards = append(ds.Shards, uint32(si))
 		ds.Usage = append(ds.Usage, uint64(math.Round(c.ValueAt(now))))
+	}
+
+	for _, dataset := range s.Datasets {
+		c := d.counter(counterKey{
+			tenant:  s.Tenants[dataset.Tenant].TenantId,
+			dataset: dataset.Name,
+		})
+		c.UpdateAt(float64(stdDev(dataset.Usage)), now)
+		dataset.StdDev = uint64(math.Round(c.ValueAt(now)))
 	}
 
 	return &s
