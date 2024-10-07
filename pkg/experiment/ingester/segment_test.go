@@ -4,9 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/grafana/dskit/flagext"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mockdlq"
 	"io"
 	"math/rand"
 	"path/filepath"
@@ -16,7 +13,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/dskit/flagext"
+
+	"github.com/grafana/pyroscope/pkg/experiment/metastore"
+	"github.com/grafana/pyroscope/pkg/test/mocks/mockdlq"
+
 	gprofile "github.com/google/pprof/profile"
+
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingesterv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
@@ -414,9 +417,9 @@ func TestDLQRecoveryMock(t *testing.T) {
 
 func TestDLQRecovery(t *testing.T) {
 	const tenant = "tb"
-	const ts = 239
+	var ts = time.Now().UnixMilli()
 	chunk := inputChunk([]input{
-		{shard: 1, tenant: tenant, profile: cpuProfile(42, ts, "svc1", "kek", "foo", "bar")},
+		{shard: 1, tenant: tenant, profile: cpuProfile(42, int(ts), "svc1", "kek", "foo", "bar")},
 	})
 
 	sw := newTestSegmentWriter(t, segmentWriterConfig{

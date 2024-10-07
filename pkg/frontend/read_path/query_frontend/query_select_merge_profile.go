@@ -59,7 +59,7 @@ func (q *QueryFrontend) SelectMergeProfile(
 		return nil, err
 	}
 	if report == nil {
-		return nil, nil
+		return connect.NewResponse(&profilev1.Profile{}), nil
 	}
 	var p profilev1.Profile
 	if err = pprof.Unmarshal(report.Pprof.Pprof, &p); err != nil {

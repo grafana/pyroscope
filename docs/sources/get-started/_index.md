@@ -100,9 +100,9 @@ Verify that you have installed [Docker](https://docs.docker.com/engine/install/)
    | Field | Value                                                                |
    | ----- | -------------------------------------------------------------------- |
    | Name  | Pyroscope                                                            |
-   | URL   | [http://pyroscope:4040/](http://pyroscope:4040/)                     |
+   | URL   | [http://pyroscope:4040/](http://pyroscope:4040/) OR [http://host.docker.internal:4040/](http://host.docker.internal:4040/) if using Docker  |
 
-  To learn more about adding data sources, see [Add a data source](/docs/grafana/latest/datasources/add-a-data-source/).
+  To learn more about adding data sources, refer to [Add a data source](/docs/grafana/<GRAFANA_VERSION>/datasources/add-a-data-source/).
 
-When you have completed the tasks in this getting started guide, you can query profiles in [Grafana Explore](/docs/grafana/latest/explore/)
-and create dashboard panels using the newly configured Pyroscope data source. For more information on working with dashboards with Grafana, see [Panels and visualizations](/docs/grafana/latest/panels-visualizations/) in the Grafana documentation.
+When you have completed the tasks in this getting started guide, you can query profiles in [Grafana Explore](/docs/grafana/<GRAFANA_VERSION>/explore/)
+and create dashboard panels using the newly configured Pyroscope data source. For more information on working with dashboards with Grafana, see [Panels and visualizations](/docs/grafana/<GRAFANA_VERSION>/panels-visualizations/) in the Grafana documentation.

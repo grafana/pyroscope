@@ -1,11 +1,12 @@
 package metastore
 
 import (
-	"fmt"
+	"crypto/rand"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/raft"
+	"github.com/oklog/ulid"
 	"github.com/stretchr/testify/require"
 
 	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
@@ -40,7 +41,7 @@ func Test_JobAssignments(t *testing.T) {
 func Test_StatusUpdates_Success(t *testing.T) {
 	// add enough blocks to create 2 jobs
 	m := initState(t)
-	addLevel0Blocks(m, 40)
+	sourceBlocks := addLevel0Blocks(m, 40)
 	require.Equal(t, 2, len(m.compactionJobQueue.jobs))
 
 	// assign the 2 jobs
@@ -54,7 +55,7 @@ func Test_StatusUpdates_Success(t *testing.T) {
 			JobName: resp.CompactionJobs[0].Name,
 			Status:  compactorv1.CompactionStatus_COMPACTION_STATUS_SUCCESS,
 			CompletedJob: &compactorv1.CompletedJob{
-				Blocks: []*metastorev1.BlockMeta{createBlock(40, 0, "", 1)},
+				Blocks: []*metastorev1.BlockMeta{createBlock(0, "", 1)},
 			},
 			RaftLogIndex: 20,
 			Shard:        0,
@@ -64,7 +65,7 @@ func Test_StatusUpdates_Success(t *testing.T) {
 			JobName: resp.CompactionJobs[1].Name,
 			Status:  compactorv1.CompactionStatus_COMPACTION_STATUS_SUCCESS,
 			CompletedJob: &compactorv1.CompletedJob{
-				Blocks: []*metastorev1.BlockMeta{createBlock(41, 0, "", 1)},
+				Blocks: []*metastorev1.BlockMeta{createBlock(0, "", 1)},
 			},
 			RaftLogIndex: 20,
 			Shard:        0,
@@ -79,16 +80,16 @@ func Test_StatusUpdates_Success(t *testing.T) {
 	require.Equalf(t, 0, len(m.compactionJobQueue.jobs), "compaction job queue should be empty")
 
 	// compacted blocks are added
-	b40 := m.getOrCreateShard(0).segments["b-40"]
-	b41 := m.getOrCreateShard(0).segments["b-41"]
-	require.NotNilf(t, b40, "compacted block not found in state")
-	require.NotNilf(t, b41, "compacted block not found in state")
-	require.Equalf(t, uint32(1), b40.CompactionLevel, "compacted block has wrong level")
-	require.Equalf(t, uint32(1), b41.CompactionLevel, "compacted block has wrong level")
+	blockOne := m.index.FindBlock(0, "", statusUpdates[0].CompletedJob.Blocks[0].Id)
+	blockTwo := m.index.FindBlock(0, "", statusUpdates[1].CompletedJob.Blocks[0].Id)
+	require.NotNilf(t, blockOne, "compacted block not found in state")
+	require.NotNilf(t, blockTwo, "compacted block not found in state")
+	require.Equalf(t, uint32(1), blockOne.CompactionLevel, "compacted block has wrong level")
+	require.Equalf(t, uint32(1), blockTwo.CompactionLevel, "compacted block has wrong level")
 
 	// source blocks are removed
-	for i := 0; i < 40; i++ {
-		require.Nilf(t, m.getOrCreateShard(0).segments[fmt.Sprintf("b-%d", i)], "old block %d found in state", i)
+	for _, b := range sourceBlocks {
+		require.Nilf(t, m.index.FindBlock(b.Shard, b.TenantId, b.Id), "old block %s found in state", b.Id)
 	}
 }
 
@@ -170,7 +171,7 @@ func Test_OwnershipTransfer(t *testing.T) {
 			JobName: resp.CompactionJobs[0].Name,
 			Status:  compactorv1.CompactionStatus_COMPACTION_STATUS_SUCCESS,
 			CompletedJob: &compactorv1.CompletedJob{
-				Blocks: []*metastorev1.BlockMeta{createBlock(20, 0, "", 1)},
+				Blocks: []*metastorev1.BlockMeta{createBlock(0, "", 1)},
 			},
 			RaftLogIndex: 21,
 			Shard:        0,
@@ -203,13 +204,13 @@ func Test_CompactedBlockCanCreateNewJob(t *testing.T) {
 			CompletedJob: &compactorv1.CompletedJob{
 				Blocks: []*metastorev1.BlockMeta{
 					{
-						Id:              "b-20-1",
+						Id:              ulid.MustNew(ulid.Now(), rand.Reader).String(),
 						Shard:           uint32(0),
 						TenantId:        "t1",
 						CompactionLevel: uint32(1),
 					},
 					{
-						Id:              "b-21-1",
+						Id:              ulid.MustNew(ulid.Now(), rand.Reader).String(),
 						Shard:           uint32(0),
 						TenantId:        "t1",
 						CompactionLevel: uint32(1),
@@ -235,7 +236,7 @@ func Test_CompactedBlockCanCreateNewJob(t *testing.T) {
 		shard:  0,
 	}
 	require.Equalf(t, 1, len(m.compactionJobBlockQueues[key].blocksByLevel[1]), "there should be one level-1 block in the queue")
-	require.Equalf(t, "b-21-1", m.compactionJobBlockQueues[key].blocksByLevel[1][0], "the block id should match the second compacted block")
+	require.Equalf(t, statusUpdates[0].CompletedJob.Blocks[1].Id, m.compactionJobBlockQueues[key].blocksByLevel[1][0], "the block id should match the second compacted block")
 }
 
 func Test_FailedCompaction(t *testing.T) {
@@ -287,15 +288,15 @@ func Test_PanicWithDbErrors(t *testing.T) {
 
 func Test_RemoveInvalidJobsFromStorage(t *testing.T) {
 	m := initState(t)
-	addLevel0Blocks(m, 20)
+	blocks := addLevel0Blocks(m, 20)
 	require.Equal(t, 1, len(m.compactionJobQueue.jobs), "there should be one job in the queue")
 
 	// delete all blocks, making the existing job invalid
-	for _, shard := range m.shards {
-		for _, segment := range shard.segments {
-			shard.deleteSegment(segment.Id)
-		}
+	sources := make([]string, 0, 20)
+	for _, block := range blocks {
+		sources = append(sources, block.Id)
 	}
+	m.index.ReplaceBlocks(sources, 0, "", []*metastorev1.BlockMeta{})
 
 	// try to assign the job
 	resp, err := m.pollCompactionJobs(&compactorv1.PollCompactionJobsRequest{JobCapacity: 1}, 20, 20)
@@ -305,32 +306,25 @@ func Test_RemoveInvalidJobsFromStorage(t *testing.T) {
 	verifyCompactionState(t, m)
 }
 
-func addLevel0Blocks(m *metastoreState, count int) {
+func addLevel0Blocks(m *metastoreState, count int) []*metastorev1.BlockMeta {
+	blocks := make([]*metastorev1.BlockMeta, 0, count)
 	for i := 0; i < count; i++ {
-		b := createBlock(i, 0, "", 0)
+		b := createBlock(0, "", 0)
+		b.MinTime = time.Now().UnixMilli()
+		b.MaxTime = time.Now().UnixMilli()
+		blocks = append(blocks, b)
 		raftLog := &raft.Log{
 			Index:      uint64(i),
 			AppendedAt: time.Unix(0, int64(i)),
 		}
 		_, _ = m.applyAddBlock(raftLog, &metastorev1.AddBlockRequest{Block: b})
 	}
-}
-
-func addLevel0BlocksForShard(m *metastoreState, count int, shard int) {
-	for i := 0; i < count; i++ {
-		b := createBlock(i, shard, "", 0)
-		raftLog := &raft.Log{
-			Index:      uint64(i),
-			AppendedAt: time.Unix(0, int64(i)),
-		}
-		_, _ = m.applyAddBlock(raftLog, &metastorev1.AddBlockRequest{Block: b})
-	}
+	return blocks
 }
 
 func addLevel1Blocks(m *metastoreState, tenant string, count int) {
 	for i := 0; i < count; i++ {
-		b := createBlock(i, 0, tenant, 1)
-		b.Id = fmt.Sprintf("b-%d-%d", i, 1)
+		b := createBlock(0, tenant, 1)
 		raftLog := &raft.Log{
 			Index:      uint64(i),
 			AppendedAt: time.Unix(0, int64(i)),

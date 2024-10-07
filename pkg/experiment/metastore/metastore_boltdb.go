@@ -71,7 +71,7 @@ func (db *boltdb) open(readOnly bool) (err error) {
 
 	if !readOnly {
 		err = db.boltdb.Update(func(tx *bbolt.Tx) error {
-			_, err := tx.CreateBucketIfNotExists(blockMetadataBucketNameBytes)
+			_, err := tx.CreateBucketIfNotExists(partitionBucketNameBytes)
 			if err != nil {
 				return err
 			}
@@ -216,40 +216,11 @@ func getOrCreateSubBucket(parent *bbolt.Bucket, name []byte) (*bbolt.Bucket, err
 	return bucket, nil
 }
 
-const blockMetadataBucketName = "block_metadata"
-const compactionJobBucketName = "compaction_job"
+const (
+	compactionJobBucketName = "compaction_job"
+)
 
-var blockMetadataBucketNameBytes = []byte(blockMetadataBucketName)
 var compactionJobBucketNameBytes = []byte(compactionJobBucketName)
-
-func getBlockMetadataBucket(tx *bbolt.Tx) (*bbolt.Bucket, error) {
-	mdb := tx.Bucket(blockMetadataBucketNameBytes)
-	if mdb == nil {
-		return nil, bbolt.ErrBucketNotFound
-	}
-	return mdb, nil
-}
-
-func updateBlockMetadataBucket(tx *bbolt.Tx, name []byte, fn func(*bbolt.Bucket) error) error {
-	mdb, err := getBlockMetadataBucket(tx)
-	if err != nil {
-		return err
-	}
-	bucket, err := getOrCreateSubBucket(mdb, name)
-	if err != nil {
-		return err
-	}
-	return fn(bucket)
-}
-
-// Bucket           |Key
-// [4:shard]<tenant>|[block_id]
-func keyForBlockMeta(shard uint32, tenant string, id string) (bucket, key []byte) {
-	k := make([]byte, 4+len(tenant))
-	binary.BigEndian.PutUint32(k, shard)
-	copy(k[4:], tenant)
-	return k, []byte(id)
-}
 
 func parseBucketName(b []byte) (shard uint32, tenant string, ok bool) {
 	if len(b) >= 4 {
