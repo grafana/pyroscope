@@ -1,10 +1,16 @@
 package adaptive_placement
 
 import (
+	"time"
+
 	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement/adaptive_placementpb"
 	"github.com/grafana/pyroscope/pkg/tenant"
 )
 
+// Ruler builds placement rules based on distribution stats.
+//
+// Ruler is not safe for concurrent use: the caller should
+// ensure synchronization.
 type Ruler struct {
 	limits   Limits
 	datasets map[datasetKey]*datasetShards
@@ -85,6 +91,14 @@ func (r *Ruler) BuildRules(stats *adaptive_placementpb.DistributionStats) *adapt
 	}
 
 	return &rules
+}
+
+func (r *Ruler) Expire(before time.Time) {
+	for k, ds := range r.datasets {
+		if time.Unix(0, ds.lastUpdate).Before(before) {
+			delete(r.datasets, k)
+		}
+	}
 }
 
 type datasetKey struct{ tenant, dataset string }

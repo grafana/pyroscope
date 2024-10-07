@@ -1,42 +1,25 @@
 package adaptive_placement
 
 import (
-	"crypto/rand"
 	"testing"
 	"time"
 
-	"github.com/oklog/ulid"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
-	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement/adaptive_placementpb"
+	"github.com/grafana/pyroscope/pkg/iter"
 )
 
 func Test_StatsTracker(t *testing.T) {
-	const (
-		retention = time.Minute
-		window    = time.Second * 10
-	)
-
-	stats := NewDistributionStats(window, retention)
-	// A stub ID for the block is used to bypass
-	// block staleness check.
-	ulidNow, err := ulid.New(ulid.Now(), rand.Reader)
-	require.NoError(t, err)
-	stubID := ulidNow.String()
-
+	const window = time.Second * 10
+	stats := NewDistributionStats(window)
 	var now time.Duration
+
 	for ; now < window; now += time.Second {
-		md := &metastorev1.BlockMeta{
-			Id:    stubID,
-			Shard: 1,
-			Datasets: []*metastorev1.Dataset{
-				{TenantId: "tenant-a", Name: "dataset-a", Size: 10},
-				{TenantId: "tenant-a", Name: "dataset-b", Size: 10},
-			},
-		}
-		stats.RecordStats(md, now.Nanoseconds())
+		stats.recordStats(now.Nanoseconds(), iter.NewSliceIterator([]Sample{
+			{TenantID: "tenant-a", DatasetName: "dataset-a", ShardID: 1, Size: 10},
+			{TenantID: "tenant-a", DatasetName: "dataset-b", ShardID: 1, Size: 10},
+		}))
 	}
 
 	// Note that we deal with half-life exponent decay here.
@@ -64,25 +47,16 @@ func Test_StatsTracker(t *testing.T) {
 		},
 		CreatedAt: now.Nanoseconds(),
 	}
-	assert.Equal(t, expected.String(), stats.Build(now.Nanoseconds()).String())
+	assert.Equal(t, expected.String(), stats.build(now.Nanoseconds()).String())
 
 	// Reassign dataset-a to shard 2 and add dataset-c.
 	for ; now < time.Second*20; now += time.Second {
-		stats.RecordStats(&metastorev1.BlockMeta{
-			Id:    stubID,
-			Shard: 1,
-			Datasets: []*metastorev1.Dataset{
-				{TenantId: "tenant-a", Name: "dataset-b", Size: 10}, // Not changed.
-			},
-		}, now.Nanoseconds())
-		stats.RecordStats(&metastorev1.BlockMeta{
-			Id:    stubID,
-			Shard: 2,
-			Datasets: []*metastorev1.Dataset{
-				{TenantId: "tenant-a", Name: "dataset-a", Size: 10}, // Moved from shard 1.
-				{TenantId: "tenant-b", Name: "dataset-c", Size: 10}, // Added.
-			},
-		}, now.Nanoseconds())
+		stats.recordStats(now.Nanoseconds(),
+			iter.NewSliceIterator([]Sample{
+				{TenantID: "tenant-a", DatasetName: "dataset-a", ShardID: 2, Size: 10}, // Moved from shard 1.
+				{TenantID: "tenant-a", DatasetName: "dataset-b", ShardID: 1, Size: 10}, // Not changed.
+				{TenantID: "tenant-b", DatasetName: "dataset-c", ShardID: 2, Size: 10}, // Added.
+			}))
 	}
 	expected = &adaptive_placementpb.DistributionStats{
 		Tenants: []*adaptive_placementpb.TenantStats{
@@ -115,25 +89,16 @@ func Test_StatsTracker(t *testing.T) {
 		},
 		CreatedAt: now.Nanoseconds(),
 	}
-	assert.Equal(t, expected.String(), stats.Build(now.Nanoseconds()).String())
+	assert.Equal(t, expected.String(), stats.build(now.Nanoseconds()).String())
 
 	// Next 30 seconds nothing changes.
 	for ; now < time.Minute; now += time.Second {
-		stats.RecordStats(&metastorev1.BlockMeta{
-			Id:    stubID,
-			Shard: 1,
-			Datasets: []*metastorev1.Dataset{
-				{TenantId: "tenant-a", Name: "dataset-b", Size: 10},
-			},
-		}, now.Nanoseconds())
-		stats.RecordStats(&metastorev1.BlockMeta{
-			Id:    stubID,
-			Shard: 2,
-			Datasets: []*metastorev1.Dataset{
-				{TenantId: "tenant-a", Name: "dataset-a", Size: 10},
-				{TenantId: "tenant-b", Name: "dataset-c", Size: 10},
-			},
-		}, now.Nanoseconds())
+		stats.recordStats(now.Nanoseconds(),
+			iter.NewSliceIterator([]Sample{
+				{TenantID: "tenant-a", DatasetName: "dataset-a", ShardID: 2, Size: 10},
+				{TenantID: "tenant-a", DatasetName: "dataset-b", ShardID: 1, Size: 10},
+				{TenantID: "tenant-b", DatasetName: "dataset-c", ShardID: 2, Size: 10},
+			}))
 	}
 	expected = &adaptive_placementpb.DistributionStats{
 		Tenants: []*adaptive_placementpb.TenantStats{
@@ -166,10 +131,11 @@ func Test_StatsTracker(t *testing.T) {
 		},
 		CreatedAt: now.Nanoseconds(),
 	}
-	assert.Equal(t, expected.String(), stats.Build(now.Nanoseconds()).String())
+	assert.Equal(t, expected.String(), stats.build(now.Nanoseconds()).String())
 
 	// See what happens when a stale counter is removed (dataset-a, shard 1).
-	s := stats.Build(retention.Nanoseconds() + 10*time.Second.Nanoseconds())
+	stats.Expire(time.Unix(40, 0))
+	s := stats.build(now.Nanoseconds())
 	expected = &adaptive_placementpb.DistributionStats{
 		Tenants: []*adaptive_placementpb.TenantStats{
 			{TenantId: "tenant-a"},
@@ -201,47 +167,13 @@ func Test_StatsTracker(t *testing.T) {
 		},
 		CreatedAt: now.Nanoseconds(),
 	}
-	assert.Equal(t, expected.String(), stats.Build(now.Nanoseconds()).String())
+	assert.Equal(t, expected.String(), stats.build(now.Nanoseconds()).String())
 
 	// Expire all counters.
-	s = stats.Build(3 * retention.Nanoseconds())
+	stats.Expire(time.Now())
+	s = stats.build(now.Nanoseconds())
 	assert.Empty(t, s.Tenants)
 	assert.Empty(t, s.Datasets)
 	assert.Empty(t, s.Shards)
 	assert.Empty(t, stats.counters)
-}
-
-func Test_StatsTracker_stale_block(t *testing.T) {
-	const (
-		retention = time.Minute
-		window    = time.Second * 10
-	)
-
-	t.Run("stale blocks are ignored", func(t *testing.T) {
-		stats := NewDistributionStats(window, retention)
-		now := time.Now()
-		timestamp := uint64(now.Add(-5 * time.Minute).UnixMilli())
-
-		md := &metastorev1.BlockMeta{
-			Id:    ulid.MustNew(timestamp, rand.Reader).String(),
-			Shard: 1,
-			Datasets: []*metastorev1.Dataset{
-				{TenantId: "tenant-a", Name: "dataset-b", Size: 10},
-			},
-		}
-		stats.RecordStats(md, now.UnixNano())
-		assert.Empty(t, stats.counters)
-	})
-
-	t.Run("invalid blocks are ignored", func(t *testing.T) {
-		stats := NewDistributionStats(window, retention)
-		md := &metastorev1.BlockMeta{
-			Shard: 1,
-			Datasets: []*metastorev1.Dataset{
-				{TenantId: "tenant-a", Name: "dataset-b", Size: 10},
-			},
-		}
-		stats.RecordStats(md, 0)
-		assert.Empty(t, stats.counters)
-	})
 }

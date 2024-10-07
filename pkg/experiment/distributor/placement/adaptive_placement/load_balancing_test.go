@@ -77,14 +77,10 @@ func Test_loadBalancingStrategy(t *testing.T) {
 			expected: RoundRobinLoadBalancing,
 		},
 	} {
-		t.Run("", func(t *testing.T) {
-			assert.Equal(t, test.expected, loadBalancingStrategy(
-				&adaptive_placementpb.DatasetStats{
-					Usage:  test.usage,
-					StdDev: stdDev(test.usage),
-				},
-				unitSize,
-			))
-		})
+		stats := &adaptive_placementpb.DatasetStats{
+			Usage:  test.usage,
+			StdDev: stdDev(test.usage),
+		}
+		assert.Equal(t, test.expected, loadBalancingStrategy(stats, unitSize))
 	}
 }

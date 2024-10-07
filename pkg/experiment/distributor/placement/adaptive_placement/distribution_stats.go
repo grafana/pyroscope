@@ -7,66 +7,72 @@ import (
 	"sync"
 	"time"
 
-	"github.com/oklog/ulid"
-
-	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement/adaptive_placementpb"
 	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement/ewma"
+	"github.com/grafana/pyroscope/pkg/iter"
 )
 
-// DistributionStats is a helper struct that tracks the
-// data rate of each dataset based on the metadata
-// records.
+// DistributionStats is a helper struct that tracks the data rate of each
+// dataset within a certain time window. EWMA aggregation function is used
+// to calculate the instantaneous rate of the dataset, the time window is
+// half-life of the EWMA function.
+//
+// DistributionStats is safe for concurrent use.
 type DistributionStats struct {
-	mu        sync.Mutex
-	counters  map[counterKey]*ewma.Rate
-	window    time.Duration
-	retention time.Duration
+	mu       sync.Mutex
+	counters map[counterKey]*ewma.Rate
+	window   time.Duration
 }
 
-func NewDistributionStats(window, retention time.Duration) *DistributionStats {
+func NewDistributionStats(window time.Duration) *DistributionStats {
 	return &DistributionStats{
-		counters:  make(map[counterKey]*ewma.Rate),
-		window:    window,
-		retention: retention,
+		counters: make(map[counterKey]*ewma.Rate),
+		window:   window,
 	}
 }
 
-func (d *DistributionStats) RecordStats(md *metastorev1.BlockMeta, now int64) {
-	if isStale(md.Id, now, d.retention.Nanoseconds()) {
-		return
-	}
+type Sample struct {
+	TenantID    string
+	DatasetName string
+	ShardOwner  string
+	ShardID     uint32
+	Size        uint64
+}
+
+func (d *DistributionStats) RecordStats(i iter.Iterator[Sample]) {
+	d.recordStats(time.Now().UnixNano(), i)
+}
+
+func (d *DistributionStats) Build() *adaptive_placementpb.DistributionStats {
+	return d.build(time.Now().UnixNano())
+}
+
+func (d *DistributionStats) Expire(before time.Time) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	// TODO(kolesnikovae): intern strings with unique (go 1.23)
-	sk := shard{
-		id:    md.Shard,
-		owner: "", // TODO: md.CreatedBy
-	}
-	for _, ds := range md.Datasets {
-		c := d.counter(counterKey{
-			tenant:  ds.TenantId,
-			dataset: ds.Name,
-			shard:   sk,
-		})
-		c.UpdateAt(float64(ds.Size), now)
+	for k, v := range d.counters {
+		if v.LastUpdate().Before(before) {
+			delete(d.counters, k)
+		}
 	}
 }
 
-func isStale(s string, now, retention int64) bool {
-	id, err := ulid.Parse(s)
-	if err != nil {
-		return true
+func (d *DistributionStats) recordStats(now int64, i iter.Iterator[Sample]) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	for i.Next() {
+		s := i.At()
+		// TODO(kolesnikovae): intern strings with unique (go 1.23)
+		c := d.counter(counterKey{
+			tenant:  s.TenantID,
+			dataset: s.DatasetName,
+			shard: shard{
+				owner: s.ShardOwner,
+				id:    s.ShardID,
+			},
+		})
+		c.UpdateAt(float64(s.Size), now)
 	}
-	t := int64(id.Time() * 1e6) // ms -> ns
-	d := now - t
-	// It's possible that the block was created
-	// "in the future" because of the time skew.
-	if d < 0 {
-		return false
-	}
-	// Otherwise, filter out blocks that are too old.
-	return d > retention
 }
 
 func (d *DistributionStats) counter(k counterKey) *ewma.Rate {
@@ -107,7 +113,7 @@ type shard struct {
 	id    uint32
 }
 
-func (d *DistributionStats) Build(now int64) *adaptive_placementpb.DistributionStats {
+func (d *DistributionStats) build(now int64) *adaptive_placementpb.DistributionStats {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -129,11 +135,6 @@ func (d *DistributionStats) Build(now int64) *adaptive_placementpb.DistributionS
 
 	for _, k := range keys {
 		c := d.counters[k]
-		age := now - c.LastUpdate().UnixNano()
-		if age >= d.retention.Nanoseconds() {
-			delete(d.counters, k)
-			continue
-		}
 		// Skip dataset-wide counters.
 		if k.shard.id == 0 {
 			continue
@@ -178,6 +179,8 @@ func (d *DistributionStats) Build(now int64) *adaptive_placementpb.DistributionS
 			tenant:  stats.Tenants[dataset.Tenant].TenantId,
 			dataset: dataset.Name,
 		})
+		// Unlike the shard counters, we update the dataset-wide
+		// counters at the build time.
 		c.UpdateAt(float64(stdDev(dataset.Usage)), now)
 		dataset.StdDev = uint64(math.Round(c.ValueAt(now)))
 	}
