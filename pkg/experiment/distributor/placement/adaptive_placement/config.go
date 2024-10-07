@@ -21,11 +21,9 @@ type ShardingLimits struct {
 }
 
 type Config struct {
-	PlacementUpdateInterval   time.Duration
-	PlacementConfidencePeriod time.Duration
-	PlacementRetentionPeriod  time.Duration
-
-	StatsUpdateInterval    time.Duration
-	StatsAggregationWindow time.Duration
-	StatsRetentionPeriod   time.Duration
+	PlacementUpdateInterval  time.Duration
+	StatsConfidencePeriod    time.Duration
+	PlacementRetentionPeriod time.Duration
+	StatsAggregationWindow   time.Duration
+	StatsRetentionPeriod     time.Duration
 }
