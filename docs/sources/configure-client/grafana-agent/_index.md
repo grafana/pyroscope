@@ -9,7 +9,7 @@ aliases:
 
 # Grafana Alloy and Grafana Agent
 
-You can send data from your application using Grafana Alloy or Grafana Agent collectors.
+You can send data from your application using Grafana Alloy (preferred) or Grafana Agent (legacy) collectors.
 Both collectors support profiling with eBPF, Java, and Golang in pull mode.
 
 [Grafana Alloy](https://grafana.com/docs/alloy/latest/) is a vendor-neutral distribution of the OpenTelemetry (OTel) Collector.
@@ -23,7 +23,6 @@ New installations should use Alloy.
 
 Grafana Agent is a powerful tool for collecting and forwarding profiling data.
 With the introduction of support for eBPF and continuing support for Golang in pull mode, Grafana Agent has become even more versatile in its capabilities.
-This document provides an overview of these two modes of profiling and guides users on setting them up.
 
 {{< admonition type="note" >}}
 Refer to [Available profiling types]({{< relref "../../view-and-analyze-profile-data/profiling-types#available-profiling-types" >}}) for a list of profile types supported.
