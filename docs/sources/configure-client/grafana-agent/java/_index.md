@@ -92,7 +92,7 @@ To start Grafana Alloy v1.0/1.1, replace `configuration.alloy` with your configu
 alloy run --stability.level=public-preview configuration.alloy
 ```
 
-The `stability.level` option is required for `pyroscope.scrape` with Alloy v1.0 or v1.1. For more information about `stability.level`, refer to [the run command](https://grafana.com/docs/alloy/latest/reference/cli/run/#permitted-stability-levels) documentation.
+The `stability.level` option is required for `pyroscope.scrape` with Alloy v1.0 or v1.1. For more information about `stability.level`, refer to [the run command](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/cli/run/#permitted-stability-levels) documentation.
 
 To start Grafana Agent, replace `configuration.river` with your configuration filename:
 ```bash
