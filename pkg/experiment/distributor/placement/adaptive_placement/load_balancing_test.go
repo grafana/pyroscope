@@ -1,6 +1,7 @@
 package adaptive_placement
 
 import (
+	"fmt"
 	"math/rand"
 	"testing"
 
@@ -25,7 +26,7 @@ func Test_loadBalancingStrategy(t *testing.T) {
 		return values
 	}
 
-	for _, test := range []struct {
+	for i, test := range []struct {
 		usage    []uint64
 		expected LoadBalancing
 	}{
@@ -78,9 +79,48 @@ func Test_loadBalancingStrategy(t *testing.T) {
 		},
 	} {
 		stats := &adaptive_placementpb.DatasetStats{
+			Shards: make([]uint32, len(test.usage)),
 			Usage:  test.usage,
 			StdDev: stdDev(test.usage),
 		}
-		assert.Equal(t, test.expected, loadBalancingStrategy(stats, unitSize))
+		target := len(stats.Shards)
+		assert.Equal(t, test.expected, loadBalancingStrategy(stats, unitSize, target), fmt.Sprint(i))
+	}
+
+}
+
+func Test_loadBalancingStrategy_relocation(t *testing.T) {
+	const unitSize = 512 << 10
+	for i, test := range []struct {
+		usage    []uint64
+		expected LoadBalancing
+		target   int
+	}{
+		{
+			usage:    []uint64{2 * unitSize, 2 * unitSize, unitSize / 2, unitSize / 2, unitSize / 2},
+			expected: RoundRobinLoadBalancing,
+			target:   5, // 5/5
+		},
+		{
+			usage:    []uint64{2 * unitSize, 2 * unitSize, unitSize / 2, unitSize / 2, unitSize / 2},
+			expected: RoundRobinLoadBalancing,
+			target:   3, // 3/5
+		},
+		{
+			usage:    []uint64{2 * unitSize, 2 * unitSize, unitSize / 2, unitSize / 2, unitSize / 2},
+			expected: FingerprintLoadBalancing,
+			target:   2, // 2/5
+		},
+		{
+			usage:    []uint64{2 * unitSize, 2 * unitSize, unitSize / 2, unitSize / 2},
+			expected: FingerprintLoadBalancing,
+			target:   2, // 1/2
+		},
+	} {
+		stats := &adaptive_placementpb.DatasetStats{
+			Usage:  test.usage,
+			StdDev: stdDev(test.usage),
+		}
+		assert.Equal(t, test.expected, loadBalancingStrategy(stats, unitSize, test.target), fmt.Sprint(i))
 	}
 }

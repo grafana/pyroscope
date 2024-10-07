@@ -3,12 +3,12 @@ package adaptive_placement
 import (
 	"context"
 	"errors"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
-	"go.uber.org/atomic"
 
 	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement/adaptive_placementpb"
 )
@@ -18,7 +18,7 @@ import (
 // Manager implements services.Service interface for convenience, but it's
 // meant to be started and stopped explicitly via Start and Stop calls.
 type Manager struct {
-	started atomic.Bool
+	started atomic.Int64
 
 	service services.Service
 	logger  log.Logger
@@ -57,8 +57,8 @@ func (m *Manager) Service() services.Service { return m.service }
 
 func (m *Manager) Stats() *DistributionStats { return m.stats }
 
-func (m *Manager) Start() { m.started.Store(true) }
-func (m *Manager) Stop()  { m.started.Store(false) }
+func (m *Manager) Start() { m.started.Store(time.Now().UnixNano()) }
+func (m *Manager) Stop()  { m.started.Store(-1) }
 
 func (m *Manager) starting(context.Context) error { return nil }
 func (m *Manager) stopping(error) error           { return nil }
@@ -72,10 +72,15 @@ func (m *Manager) updateRulesNoError(ctx context.Context) error {
 }
 
 func (m *Manager) updateRules(ctx context.Context) {
-	if !m.started.Load() {
+	started := m.started.Load()
+	if started < 0 {
+		// Note that we only reset the ruler here, but not the stats:
+		// there's no harm in old samples as long as they are within
+		// the retention period.
 		m.ruler = nil
 		return
 	}
+	// Initialize the ruler if it's the first run after start.
 	if m.ruler == nil && !m.loadRules(ctx) {
 		return
 	}
@@ -89,14 +94,18 @@ func (m *Manager) updateRules(ctx context.Context) {
 	stats := m.stats.Build()
 	rules := m.ruler.BuildRules(stats)
 
+	if time.Since(time.Unix(0, started)) < m.config.StatsConfidencePeriod {
+		// Although, we have enough data to build the rules, we may want
+		// to wait a bit longer to ensure that the stats are stable.
+		// Note that ruler won't downscale datasets for a certain period
+		// of time after the ruler is created regardless of this check.
+		// Therefore, it's generally safe to skip it.
+		return
+	}
+
 	if err := m.store.StoreRules(ctx, rules); err != nil {
 		m.logger.Log("msg", "failed to store placement rules", "err", err)
 	}
-	if err := m.store.StoreStats(ctx, stats); err != nil {
-		m.logger.Log("msg", "failed to store distribution stats", "err", err)
-	}
-
-	// TODO: gather metrics.
 }
 
 func (m *Manager) loadRules(ctx context.Context) bool {

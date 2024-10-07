@@ -101,24 +101,39 @@ func (lb LoadBalancing) needsDynamicBalancing(x adaptive_placementpb.LoadBalanci
 // If at least one shard is significantly overheated, and relative standard
 // deviation withing the aggregation window is very high, which indicates
 // that the distribution is uneven, we resort to round-robin load balancing.
-func loadBalancingStrategy(stats *adaptive_placementpb.DatasetStats, unit uint32) LoadBalancing {
-	if len(stats.Usage) > 1 {
-		t := 2 * uint64(unit)
-		var overheated bool
-		for _, v := range stats.Usage {
-			if v >= t {
-				overheated = true
-				break
-			}
-		}
-		if overheated && float64(stats.StdDev)/float64(mean(stats.Usage)) > 0.5 {
-			// Thresholds (2 x unit size and 0.5 RSD) are arbitrary
-			// and can be adjusted. The current values are conservative
-			// and chosen to only use RR as a last resort.
-			return RoundRobinLoadBalancing
+func loadBalancingStrategy(stats *adaptive_placementpb.DatasetStats, unit uint64, target int) LoadBalancing {
+	lb := FingerprintLoadBalancing
+	if len(stats.Shards) < 2 {
+		return lb
+	}
+	if p := float64(len(stats.Shards)) / float64(target); p > 2 || p < 0.5 {
+		// It is possible that the dataset is being moved
+		// to a different node, or different shards, or is
+		// being scaled in/out, and therefore nonuniform
+		// distribution might be expected within some period
+		// of time. Moreover, there might be a sudden surge
+		// in usage; together with high dispersion, this can
+		// lead to false positives.
+		return lb
+	}
+	t := 2 * unit
+	var overheated bool
+	for _, v := range stats.Usage {
+		if v >= t {
+			overheated = true
+			break
 		}
 	}
-	return FingerprintLoadBalancing
+	if !overheated {
+		return lb
+	}
+	if float64(stats.StdDev)/float64(mean(stats.Usage)) < 0.5 {
+		return lb
+	}
+	// Thresholds (2 x unit size, shards/target ratio, 0.5 RSD) are arbitrary
+	// and can be adjusted. The current values are conservative and were chosen
+	// to use RR as a last resort.
+	return RoundRobinLoadBalancing
 }
 
 func stdDev(d []uint64) uint64 {

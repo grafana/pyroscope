@@ -10,12 +10,10 @@ import (
 var ErrRulesNotFound = errors.New("placement rules not found")
 
 type StoreReader interface {
-	LoadStats(context.Context) (*adaptive_placementpb.DistributionStats, error)
 	LoadRules(context.Context) (*adaptive_placementpb.PlacementRules, error)
 }
 
 type StoreWriter interface {
-	StoreStats(context.Context, *adaptive_placementpb.DistributionStats) error
 	StoreRules(context.Context, *adaptive_placementpb.PlacementRules) error
 }
 

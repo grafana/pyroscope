@@ -32,9 +32,8 @@ func Test_shard_allocator(t *testing.T) {
 		{5, 8, 5},
 		{5, 9, 5},
 		{5, 51, 5},
-		{5, 101, 2},
-		{5, 151, 1},
-		{100, 152, 5},
+		{5, 101, 1},
+		{100, 151, 5},
 	} {
 		require.Equal(t, test.want, a.observe(test.usage, test.now), fmt.Sprint(i))
 	}

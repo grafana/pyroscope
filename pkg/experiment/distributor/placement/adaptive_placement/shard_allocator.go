@@ -28,9 +28,9 @@ import (
 type shardAllocator struct {
 	// Unit size denotes the portion of rate that needs
 	// to be allocated to a single shard.
-	unitSize uint32
+	unitSize uint64
 	// Minimum  and maximum number of shards allowed.
-	min, max uint32
+	min, max int
 	// Burst window specifies the time interval during which
 	// the shard allocation delta multiplier grows on scale outs.
 	burstWindow int64
@@ -38,12 +38,12 @@ type shardAllocator struct {
 	// before the target number of shards can be decreased.
 	decayWindow int64
 
-	target      uint32 // Target number of shards.
-	burstOffset int64  // Timestamp of the burst window start.
+	target      int   // Target number of shards.
+	burstOffset int64 // Timestamp of the burst window start.
 	multiplier  float64
-	decayOffset int64  // Timestamp of the decay window start.
-	previousMin uint32 // Minimum number of shards in the previous decay window.
-	currentMin  uint32 // Minimum number of shards in the current decay window.
+	decayOffset int64 // Timestamp of the decay window start.
+	previousMin int   // Minimum number of shards in the previous decay window.
+	currentMin  int   // Minimum number of shards in the current decay window.
 }
 
 func newShardAllocator(limits ShardingLimits) *shardAllocator {
@@ -53,15 +53,15 @@ func newShardAllocator(limits ShardingLimits) *shardAllocator {
 }
 
 func (a *shardAllocator) setLimits(limits ShardingLimits) {
-	a.unitSize = limits.UnitSizeBytes
-	a.min = limits.MinDatasetShards
-	a.max = limits.MaxDatasetShards
+	a.unitSize = uint64(limits.UnitSizeBytes)
+	a.min = int(limits.MinDatasetShards)
+	a.max = int(limits.MaxDatasetShards)
 	a.burstWindow = limits.BurstWindow.Nanoseconds()
 	a.decayWindow = limits.DecayWindow.Nanoseconds()
 }
 
 func (a *shardAllocator) observe(usage uint64, now int64) int {
-	target := uint32(usage/uint64(a.unitSize)) + 1
+	target := int(usage/a.unitSize) + 1
 	delta := target - a.target
 	if delta > 0 {
 		// Scale out.
@@ -72,7 +72,7 @@ func (a *shardAllocator) observe(usage uint64, now int64) int {
 			// Increase multiplier on consecutive
 			// scale-outs within burst window.
 			a.multiplier *= 2
-			scaled := target + uint32(math.Ceil(float64(delta)*a.multiplier))
+			scaled := target + int(math.Ceil(float64(delta)*a.multiplier))
 			target = min(2*target, scaled)
 		}
 		// Start/prolong burst window.
@@ -84,10 +84,5 @@ func (a *shardAllocator) observe(usage uint64, now int64) int {
 	}
 	a.currentMin = max(a.currentMin, target)
 	a.target = min(a.max, max(a.min, a.previousMin, a.currentMin))
-	return int(a.target)
-}
-
-func (a *shardAllocator) setTargetShards(n uint32) {
-	a.target = n
-	a.currentMin = n
+	return a.target
 }

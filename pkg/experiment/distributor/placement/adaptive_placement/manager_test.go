@@ -33,7 +33,6 @@ func (s *managerSuite) SetupTest() {
 		PlacementRetentionPeriod: 15 * time.Minute,
 		StatsAggregationWindow:   3 * time.Minute,
 		StatsRetentionPeriod:     5 * time.Minute,
-		StatsConfidencePeriod:    5 * time.Minute,
 	}
 	s.limits = new(mockLimits)
 	s.store = new(mockadaptive_placement.MockStore)
@@ -64,30 +63,27 @@ func (s *managerSuite) AfterTest(_, _ string) {
 
 func Test_ManagerSuite(t *testing.T) { suite.Run(t, new(managerSuite)) }
 
-func (s *managerSuite) Test_Manager_updates_rules_if_started() {
+func (s *managerSuite) Test_Manager_only_updates_rules_if_started() {
 	oldRules := &adaptive_placementpb.PlacementRules{CreatedAt: 100}
 	s.store.On("LoadRules", mock.Anything).Return(oldRules, nil)
 
 	newRules := func(r *adaptive_placementpb.PlacementRules) bool { return r.CreatedAt > 100 }
 	s.store.On("StoreRules", mock.Anything, mock.MatchedBy(newRules)).Return(nil).Once()
-	s.store.On("StoreStats", mock.Anything, mock.Anything).Return(nil).Once()
-
-	s.manager.Start()
-	s.manager.updateRules(context.Background())
-}
-
-func (s *managerSuite) Test_Manager_doesnt_update_rules_if_stopped() {
-	oldRules := &adaptive_placementpb.PlacementRules{CreatedAt: 100}
-	s.store.On("LoadRules", mock.Anything).Return(oldRules, nil)
-
-	newRules := func(r *adaptive_placementpb.PlacementRules) bool { return r.CreatedAt > 100 }
-	s.store.On("StoreRules", mock.Anything, mock.MatchedBy(newRules)).Return(nil).Once()
-	s.store.On("StoreStats", mock.Anything, mock.Anything).Return(nil).Once()
 
 	s.manager.Start()
 	s.manager.updateRules(context.Background())
 
 	s.manager.Stop()
+	s.manager.updateRules(context.Background())
+}
+
+func (s *managerSuite) Test_Manager_doesnt_update_rules_until_confidence_period_expiration() {
+	s.manager.config.StatsConfidencePeriod = time.Minute
+
+	oldRules := &adaptive_placementpb.PlacementRules{CreatedAt: 100}
+	s.store.On("LoadRules", mock.Anything).Return(oldRules, nil)
+
+	s.manager.Start()
 	s.manager.updateRules(context.Background())
 }
 
@@ -105,7 +101,6 @@ func (s *managerSuite) Test_Manager_updates_rules_if_no_rules_not_found() {
 
 	newRules := func(r *adaptive_placementpb.PlacementRules) bool { return r.CreatedAt > 0 }
 	s.store.On("StoreRules", mock.Anything, mock.MatchedBy(newRules)).Return(nil).Once()
-	s.store.On("StoreStats", mock.Anything, mock.Anything).Return(nil).Once()
 
 	s.manager.Start()
 	s.manager.updateRules(context.Background())

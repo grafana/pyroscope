@@ -38,14 +38,20 @@ func (r *Ruler) Load(rules *adaptive_placementpb.PlacementRules) {
 			dataset: ds.Name,
 		}
 		limits := tenantLimits[ds.Tenant]
-		r.datasets[k] = &datasetShards{
+		dataset := &datasetShards{
 			allocator:  newShardAllocator(limits),
 			lastUpdate: rules.CreatedAt,
-			// NOTE(kolesnikovae): Only the target number of shards and
-			// chosen load balancing strategy are loaded; the rest of the
-			// dataset state will be built from scratch over time.
-			limits: ds.Limits,
+			limits:     ds.Limits,
 		}
+		// NOTE(kolesnikovae): We prohibit decreasing the number
+		// of shards for the dataset till the expiration of the
+		// decay window since the moment rules were created. Thus,
+		// if statistics are not available or populated slowly,
+		// we won't shrink the dataset prematurely but will be
+		// able to scale out if needed.
+		dataset.allocator.decayOffset = rules.CreatedAt
+		dataset.allocator.currentMin = int(ds.Limits.DatasetShardLimit)
+		r.datasets[k] = dataset
 	}
 }
 
@@ -159,7 +165,7 @@ func (d *datasetShards) placement(
 	if configured.LoadBalancing != DynamicLoadBalancing {
 		d.limits.LoadBalancing = configured.LoadBalancing.proto()
 	} else if configured.LoadBalancing.needsDynamicBalancing(d.limits.LoadBalancing) {
-		d.limits.LoadBalancing = loadBalancingStrategy(stats, d.allocator.unitSize).proto()
+		d.limits.LoadBalancing = loadBalancingStrategy(stats, d.allocator.unitSize, d.allocator.target).proto()
 	}
 	return &adaptive_placementpb.DatasetPlacement{
 		Tenant: stats.Tenant,
