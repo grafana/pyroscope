@@ -159,6 +159,23 @@ func (b *BlockQuerier) BlockMetas(ctx context.Context) (metas []*block.Meta, _ e
 	return metas[0 : pos+1], nil
 }
 
+func (b *BlockQuerier) BlockMeta(ctx context.Context, name string) (meta *block.Meta, _ error) {
+	path := filepath.Join(name, block.MetaFilename)
+	metaReader, err := b.bkt.Get(ctx, path)
+	if err != nil {
+		level.Error(b.logger).Log("msg", "error reading block meta", "block", path, "err", err)
+		return nil, err
+	}
+
+	meta, err = block.Read(metaReader)
+	if err != nil {
+		level.Error(b.logger).Log("msg", "error parsing block meta", "block", path, "err", err)
+		return nil, err
+	}
+
+	return meta, nil
+}
+
 // Sync gradually scans the available blocks. If there are any changes to the
 // last run it will Open/Close new/no longer existing ones.
 func (b *BlockQuerier) Sync(ctx context.Context) error {
