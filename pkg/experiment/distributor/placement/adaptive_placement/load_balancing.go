@@ -72,17 +72,14 @@ func (lb LoadBalancing) pick(k placement.Key) func(int) int {
 	}
 }
 
-func pickRoundRobin() func(int) int {
-	return func(n int) int {
-		return rand.Intn(n)
-	}
-}
-
 func pickFingerprintMod(k placement.Key) func(int) int {
 	return func(n int) int {
 		return int(k.Fingerprint) % n
 	}
 }
+
+func pickRoundRobin() func(int) int { return roundRobin }
+func roundRobin(n int) int          { return rand.Intn(n) }
 
 // needsDynamicBalancing returns true if the load balancing strategy
 // should be chosen dynamically based on the dataset stats.
