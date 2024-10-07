@@ -357,10 +357,6 @@ func (i *Index) findBlockInPartition(key PartitionKey, shard uint32, tenant stri
 // It is not enough to scan for partition keys that fall in the given time interval. Partitions are built on top of
 // block identifiers which refer to the moment a block was created and not to the timestamps of the profiles contained
 // within the block (min_time, max_time). This method works around this by including blocks from adjacent partitions.
-//
-// FIXME aleks-p: A large query could cause a large number of partitions to be loaded into memory
-//   - consider loading partitions in parallel
-//   - consider capping the number of loaded partitions
 func (i *Index) FindBlocksInRange(start, end int64, tenants map[string]struct{}) ([]*metastorev1.BlockMeta, error) {
 	i.partitionMu.Lock()
 	defer i.partitionMu.Unlock()
@@ -377,6 +373,11 @@ func (i *Index) FindBlocksInRange(start, end int64, tenants map[string]struct{})
 				}
 				p := i.getOrLoadPartition(meta, t)
 				tenantBlocks := i.collectTenantBlocks(p, start, end)
+				blocks = append(blocks, tenantBlocks...)
+
+				// return mixed blocks as well, we rely on the caller to filter out the data per tenant / service
+				p = i.getOrLoadPartition(meta, "")
+				tenantBlocks = i.collectTenantBlocks(p, start, end)
 				blocks = append(blocks, tenantBlocks...)
 			}
 		}
