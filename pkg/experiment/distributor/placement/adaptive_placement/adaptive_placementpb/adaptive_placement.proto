@@ -46,24 +46,17 @@ enum LoadBalancing {
 }
 
 message PlacementRules {
-  PlacementLimits defaults = 1;
-  repeated TenantPlacement tenants = 2;
-  repeated DatasetPlacement datasets = 3;
-  int64 created_at = 4;
+  repeated TenantPlacement tenants = 1;
+  repeated DatasetPlacement datasets = 2;
+  int64 created_at = 3;
 }
 
 message TenantPlacement {
   string tenant_id = 1;
-  // Tenant placement limits take precedence
-  // over the default values. The limits are
-  // used, if dataset placement limits are not
-  // defined.
-  PlacementLimits limits = 2;
 }
 
 message DatasetPlacement {
   uint32 tenant = 1;
   string name = 2;
-  uint32 shard_limit = 3;
-  LoadBalancing load_balancing = 4;
+  PlacementLimits limits = 3;
 }

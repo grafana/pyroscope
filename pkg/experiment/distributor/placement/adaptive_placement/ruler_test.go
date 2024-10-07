@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement/adaptive_placementpb"
-	"github.com/grafana/pyroscope/pkg/tenant"
 )
 
 type mockLimits struct{ mock.Mock }
@@ -39,7 +38,6 @@ func Test_Ruler(t *testing.T) {
 	defaultLimits := withDefaults(func(l *ShardingLimits) {})
 
 	m := new(mockLimits)
-	m.On("ShardingLimits", tenant.DefaultTenantID).Return(defaultLimits)
 	m.On("ShardingLimits", "tenant-a").
 		Return(withDefaults(func(l *ShardingLimits) {
 			l.TenantShards = 20
@@ -58,44 +56,38 @@ func Test_Ruler(t *testing.T) {
 	}))
 
 	oldRules := &adaptive_placementpb.PlacementRules{
-		Defaults: &adaptive_placementpb.PlacementLimits{
-			TenantShardLimit:  1,
-			DatasetShardLimit: 2,
-		},
 		Tenants: []*adaptive_placementpb.TenantPlacement{
-			{
-				TenantId: "tenant-a",
-				Limits: &adaptive_placementpb.PlacementLimits{
-					TenantShardLimit:  2,
-					DatasetShardLimit: 3,
-				},
-			},
-			{
-				TenantId: "tenant-b",
-				Limits:   &adaptive_placementpb.PlacementLimits{},
-			},
-			{
-				TenantId: "tenant-c",
-			},
+			{TenantId: "tenant-a"},
+			{TenantId: "tenant-b"},
+			{TenantId: "tenant-c"},
 		},
 		Datasets: []*adaptive_placementpb.DatasetPlacement{
 			{
-				Tenant:        0,
-				Name:          "dataset-a",
-				ShardLimit:    5,
-				LoadBalancing: adaptive_placementpb.LoadBalancing_LOAD_BALANCING_ROUND_ROBIN,
+				Tenant: 0,
+				Name:   "dataset-a",
+				Limits: &adaptive_placementpb.PlacementLimits{
+					TenantShardLimit:  2,
+					DatasetShardLimit: 5,
+					LoadBalancing:     adaptive_placementpb.LoadBalancing_LOAD_BALANCING_ROUND_ROBIN,
+				},
 			},
 			{
-				Tenant:        1,
-				Name:          "dataset-b",
-				ShardLimit:    3,
-				LoadBalancing: adaptive_placementpb.LoadBalancing_LOAD_BALANCING_ROUND_ROBIN,
+				Tenant: 1,
+				Name:   "dataset-b",
+				Limits: &adaptive_placementpb.PlacementLimits{
+					TenantShardLimit:  2,
+					DatasetShardLimit: 3,
+					LoadBalancing:     adaptive_placementpb.LoadBalancing_LOAD_BALANCING_ROUND_ROBIN,
+				},
 			},
 			{
-				Tenant:        2,
-				Name:          "dataset-c",
-				ShardLimit:    3,
-				LoadBalancing: adaptive_placementpb.LoadBalancing_LOAD_BALANCING_FINGERPRINT,
+				Tenant: 2,
+				Name:   "dataset-c",
+				Limits: &adaptive_placementpb.PlacementLimits{
+					TenantShardLimit:  2,
+					DatasetShardLimit: 3,
+					LoadBalancing:     adaptive_placementpb.LoadBalancing_LOAD_BALANCING_FINGERPRINT,
+				},
 			},
 		},
 	}
@@ -145,66 +137,48 @@ func Test_Ruler(t *testing.T) {
 
 	expected := &adaptive_placementpb.PlacementRules{
 		CreatedAt: 1,
-		Defaults: &adaptive_placementpb.PlacementLimits{
-			TenantShardLimit:  10,
-			DatasetShardLimit: 2,
-		},
 		Tenants: []*adaptive_placementpb.TenantPlacement{
+			{TenantId: "tenant-a"},
+			{TenantId: "tenant-b"},
+			{TenantId: "tenant-c"},
+			{TenantId: "tenant-d"},
+		},
+		Datasets: []*adaptive_placementpb.DatasetPlacement{
 			{
-				TenantId: "tenant-a",
+				Tenant: 0,
+				Name:   "dataset-a",
 				Limits: &adaptive_placementpb.PlacementLimits{
 					TenantShardLimit:  20,
-					DatasetShardLimit: 3,
+					DatasetShardLimit: 5,
+					LoadBalancing:     adaptive_placementpb.LoadBalancing_LOAD_BALANCING_ROUND_ROBIN,
 				},
 			},
 			{
-				TenantId: "tenant-b",
+				Tenant: 1,
+				Name:   "dataset-b",
 				Limits: &adaptive_placementpb.PlacementLimits{
 					TenantShardLimit:  10,
-					DatasetShardLimit: 2,
+					DatasetShardLimit: 4,
 					LoadBalancing:     adaptive_placementpb.LoadBalancing_LOAD_BALANCING_FINGERPRINT,
 				},
 			},
 			{
-				TenantId: "tenant-c",
+				Tenant: 2,
+				Name:   "dataset-c",
 				Limits: &adaptive_placementpb.PlacementLimits{
 					TenantShardLimit:  10,
-					DatasetShardLimit: 2,
+					DatasetShardLimit: 3,
+					LoadBalancing:     adaptive_placementpb.LoadBalancing_LOAD_BALANCING_FINGERPRINT,
 				},
 			},
 			{
-				TenantId: "tenant-d",
+				Tenant: 3,
+				Name:   "dataset-d",
 				Limits: &adaptive_placementpb.PlacementLimits{
 					TenantShardLimit:  10,
-					DatasetShardLimit: 2,
+					DatasetShardLimit: 5,
 					LoadBalancing:     adaptive_placementpb.LoadBalancing_LOAD_BALANCING_ROUND_ROBIN,
 				},
-			},
-		},
-		Datasets: []*adaptive_placementpb.DatasetPlacement{
-			{
-				Tenant:        0,
-				Name:          "dataset-a",
-				ShardLimit:    5,
-				LoadBalancing: adaptive_placementpb.LoadBalancing_LOAD_BALANCING_ROUND_ROBIN,
-			},
-			{
-				Tenant:        1,
-				Name:          "dataset-b",
-				ShardLimit:    4,
-				LoadBalancing: adaptive_placementpb.LoadBalancing_LOAD_BALANCING_FINGERPRINT,
-			},
-			{
-				Tenant:        2,
-				Name:          "dataset-c",
-				ShardLimit:    3,
-				LoadBalancing: adaptive_placementpb.LoadBalancing_LOAD_BALANCING_FINGERPRINT,
-			},
-			{
-				Tenant:        3,
-				Name:          "dataset-d",
-				ShardLimit:    5,
-				LoadBalancing: adaptive_placementpb.LoadBalancing_LOAD_BALANCING_ROUND_ROBIN,
 			},
 		},
 	}
@@ -241,10 +215,7 @@ func Test_Ruler(t *testing.T) {
 	assert.Equal(t, expected.String(), ruler.BuildRules(update).String())
 
 	ruler.Expire(time.Now())
-	expected = &adaptive_placementpb.PlacementRules{
-		Defaults:  expected.Defaults,
-		CreatedAt: 3,
-	}
+	expected = &adaptive_placementpb.PlacementRules{CreatedAt: 3}
 	empty := &adaptive_placementpb.DistributionStats{CreatedAt: 3}
 	assert.Equal(t, expected.String(), ruler.BuildRules(empty).String())
 }
