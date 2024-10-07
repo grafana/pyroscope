@@ -4,14 +4,11 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/dlq"
-	"github.com/thanos-io/objstore"
 
 	"net"
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/go-kit/log"
@@ -24,10 +21,13 @@ import (
 	raftwal "github.com/hashicorp/raft-wal"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/thanos-io/objstore"
 
 	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/dlq"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftleader"
 )
 
@@ -52,6 +52,7 @@ type Config struct {
 	Compaction        CompactionConfig  `yaml:"compaction_config"`
 	MinReadyDuration  time.Duration     `yaml:"min_ready_duration" category:"advanced"`
 	DLQRecoveryPeriod time.Duration     `yaml:"dlq_recovery_period" category:"advanced"`
+	Index             index.Config      `yaml:"index_config"`
 }
 
 type RaftConfig struct {
@@ -76,6 +77,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.DurationVar(&cfg.DLQRecoveryPeriod, prefix+"dlq-recovery-period", 15*time.Second, "Period for DLQ recovery loop.")
 	cfg.Raft.RegisterFlagsWithPrefix(prefix+"raft.", f)
 	cfg.Compaction.RegisterFlagsWithPrefix(prefix+"compaction.", f)
+	cfg.Index.RegisterFlagsWithPrefix(prefix+"index.", f)
 }
 
 func (cfg *Config) Validate() error {
@@ -133,8 +135,6 @@ type Metastore struct {
 
 	walDir string
 
-	done       chan struct{}
-	wg         sync.WaitGroup
 	metrics    *metastoreMetrics
 	client     *metastoreclient.Client
 	readySince time.Time
@@ -153,12 +153,11 @@ func New(config Config, limits Limits, logger log.Logger, reg prometheus.Registe
 		reg:     reg,
 		limits:  limits,
 		db:      newDB(config, logger, metrics),
-		done:    make(chan struct{}),
 		metrics: metrics,
 		client:  client,
 	}
 	m.leaderhealth = raftleader.NewRaftLeaderHealthObserver(logger, raftleader.NewMetrics(reg))
-	m.state = newMetastoreState(logger, m.db, m.reg, &config.Compaction)
+	m.state = newMetastoreState(logger, m.db, m.reg, &config.Compaction, &config.Index)
 	m.dlq = dlq.NewRecovery(dlq.RecoveryConfig{
 		Period: config.DLQRecoveryPeriod,
 	}, logger, m, bucket)
@@ -175,7 +174,7 @@ func (m *Metastore) Shutdown() error {
 	return nil
 }
 
-func (m *Metastore) starting(context.Context) error {
+func (m *Metastore) starting(ctx context.Context) error {
 	if err := m.db.open(false); err != nil {
 		return fmt.Errorf("failed to initialize database: %w", err)
 	}
@@ -183,14 +182,10 @@ func (m *Metastore) starting(context.Context) error {
 		return fmt.Errorf("failed to initialize raft: %w", err)
 	}
 	m.dlq.Start()
-	m.wg.Add(1)
-	go m.cleanupLoop()
 	return nil
 }
 
 func (m *Metastore) stopping(_ error) error {
-	close(m.done)
-	m.wg.Wait()
 	return m.Shutdown()
 }
 

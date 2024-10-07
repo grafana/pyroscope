@@ -11,9 +11,6 @@ enum CommandType {
   COMMAND_TYPE_UNKNOWN = 0;
   COMMAND_TYPE_ADD_BLOCK = 1;
   COMMAND_TYPE_POLL_COMPACTION_JOBS_STATUS = 2;
-
-  // This is a temporary solution.
-  COMMAND_TYPE_TRUNCATE = 4196;
 }
 
 message TruncateCommand {

@@ -9,6 +9,7 @@ import (
 	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
 	"github.com/grafana/pyroscope/pkg/util"
 )
 
@@ -22,7 +23,7 @@ func TestMetadataStateManagement(t *testing.T) {
 	err := db.open(false)
 	require.NoError(t, err)
 
-	m := newMetastoreState(util.Logger, db, reg, &config.Compaction)
+	m := newMetastoreState(util.Logger, db, reg, &config.Compaction, &index.DefaultConfig)
 	require.NotNil(t, m)
 
 	t.Run("restore compaction state", func(t *testing.T) {
@@ -57,35 +58,5 @@ func TestMetadataStateManagement(t *testing.T) {
 		})
 		require.Equal(t, 1, len(queue.blocksByLevel))
 		require.Equal(t, 5, len(queue.blocksByLevel[0]))
-	})
-
-	t.Run("restore block state", func(t *testing.T) {
-		for i := 0; i < 420; i++ {
-			err = db.boltdb.Update(func(tx *bbolt.Tx) error {
-				block := &metastorev1.BlockMeta{
-					Id:    fmt.Sprintf("b-%d", i),
-					Shard: uint32(i % 4),
-				}
-				name, key := keyForBlockMeta(block.Shard, "", block.Id)
-				value, err := block.MarshalVT()
-				require.NoError(t, err)
-				err = updateBlockMetadataBucket(tx, name, func(bucket *bbolt.Bucket) error {
-					return bucket.Put(key, value)
-				})
-				return err
-			})
-			require.NoError(t, err)
-		}
-
-		// restore from db
-		err = db.boltdb.Update(func(tx *bbolt.Tx) error {
-			return m.restoreBlockMetadata(tx)
-		})
-		require.NoError(t, err)
-
-		require.Equal(t, 4, len(m.shards))
-		for shard := range m.shards {
-			require.Equal(t, 105, len(m.getOrCreateShard(shard).segments))
-		}
 	})
 }

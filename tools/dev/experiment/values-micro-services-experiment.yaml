@@ -2,13 +2,17 @@ pyroscope:
   extraEnvVars:
     PYROSCOPE_V2_EXPERIMENT: 1
   extraArgs:
-    query-backend.address: "dns:///_grpc._tcp.pyroscope-query-worker-headless.$(NAMESPACE_FQDN):9095"
+    query-backend.address: "dns:///_grpc._tcp.pyroscope-query-backend-headless.$(NAMESPACE_FQDN):9095"
     metastore.address: "kubernetes:///pyroscope-metastore-headless.$(NAMESPACE_FQDN):9095"
     metastore.raft.bind-address: ":9099"
     metastore.raft.server-id: "$(POD_NAME).pyroscope-metastore-headless.$(NAMESPACE_FQDN):9099"
     metastore.raft.advertise-address: "$(POD_NAME).pyroscope-metastore-headless.$(NAMESPACE_FQDN):9099"
     metastore.raft.bootstrap-peers: "dnssrvnoa+_raft._tcp.pyroscope-metastore-headless.$(NAMESPACE_FQDN):9099"
     metastore.raft.bootstrap-expect-peers: "3"
+    distributor.replication-factor: "1"
+    write-path: "segment-writer"
+    enable-query-backend: "true"
+    querier.max-query-length: '7d'
 
   components:
     distributor:
