@@ -7,19 +7,18 @@ weight: 20
 
 # Profiling Java using Grafana Alloy or Agent
 
-Grafana Alloy and Grafana Agent in [Flow mode](/docs/agent/latest/flow/) support Java profiling.
-
+Grafana Alloy (preferred) and Grafana Agent (legacy) in [Flow mode](/docs/agent/latest/flow/) support Java profiling.
 
 The collector configuration file is composed of components that are used to collect,
 transform, and send data.
-Alloy configuration files use the Alloy [configuration syntax](https://grafana.com/docs/alloy/latest/concepts/configuration-syntax/).
-Agent Flow files use the [River](https://grafana.com/docs/agent/latest/flow/concepts/config-language/) language.
+Alloy configuration files use the Alloy [configuration syntax](https://grafana.com/docs/alloy/<ALLOY_VERSION>/concepts/configuration-syntax/).
+Agent Flow files use the [River](https://grafana.com/docs/agent/<AGENT_VERSION>/flow/concepts/config-language/) language.
 
 {{< docs/shared lookup="agent-deprecation.md" source="alloy" version="next" >}}
 
 ## Configure the components
 
-The `pyroscope.java` component is used to continuously profile Java processes running on the local Linux OS
+The [`pyroscope.java` component](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/pyroscope/pyroscope.java/) is used to continuously profile Java processes running on the local Linux OS
 using [async-profiler](https://github.com/async-profiler/async-profiler).
 
 ```river
@@ -36,13 +35,14 @@ pyroscope.java "java" {
 }
 ```
 
-Using the `targets` argument, you can specify which processes and containers to profile on the machine. The `targets`
-can be from `discovery.process` component. You can use `discovery.process` join argument to join process targets with
-extra discoveries such as `dicovery.kubernetes`, `discovery.docker` and `discovery.dockerswarm`.
-You can use the `discovery.relabel` component to relabel discovered targets and set your own labels . For more
-information, see [Components](/docs/agent/latest/flow/concepts/components/).
+Using the `targets` argument, you can specify which processes and containers to profile on the machine.
 
-The `forward_to` parameter should point to a `pyroscope.write` component to send the collected profiles to your
+The `targets` can be from `discovery.process` component.
+You can use `discovery.process` join argument to join process targets with extra discoveries such as [`discovery.kubernetes`](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.kubernetes/), [`discovery.docker`](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.docker/), and [`discovery.dockerswarm`](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.dockerswarm/).
+You can use the [`discovery.relabel`](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.relabel/) component to relabel discovered targets and set your own labels.
+For more information, refer to the [Components](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/) documentation.
+
+The `forward_to` parameter should point to a [`pyroscope.write`](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/pyroscope/pyroscope.write/) component to send the collected profiles to your
 Pyroscope Server or [Grafana Cloud](/products/cloud/).
 
 | Name         | Type                     | Description                                      | Default | Required |
@@ -80,23 +80,24 @@ and `discover.process` components to work.
 
 ### Start the collector
 
-To start Grafana Alloy v1.2: Replace `configuration.alloy` with your configuration file name:
+To start Grafana Alloy v1.2 and later, replace `configuration.alloy` with your configuration file name:
 
 ```bash
 alloy run configuration.alloy
 ```
 
-To start Grafana Alloy v1.0/1.1: Replace `configuration.alloy` with your configuration file name:
+To start Grafana Alloy v1.0/1.1, replace `configuration.alloy` with your configuration file name:
 
 ```bash
 alloy run --stability.level=public-preview configuration.alloy
 ```
 
-The `stability.level` option is required for `pyroscope.scrape` with Alloy v1.0 or v1.1. For more information about `stability.level`, refer to [The run command](https://grafana.com/docs/alloy/latest/reference/cli/run/#permitted-stability-levels) documentation.
-
+The `stability.level` option is required for `pyroscope.scrape` with Alloy v1.0 or v1.1. For more information about `stability.level`, refer to [the run command](https://grafana.com/docs/alloy/latest/reference/cli/run/#permitted-stability-levels) documentation.
 
 To start Grafana Agent, replace `configuration.river` with your configuration filename:
-  ` grafana-agent-flow run configuration.river`
+```bash
+grafana-agent-flow run configuration.river
+```
 
 ### Send data to Grafana Cloud Profiles
 
@@ -118,6 +119,8 @@ pyroscope.write "endpoint" {
 
 
 ## Examples
+
+For more robust examples, refer to the [Grafana Alloy and Agent Auto-instrumentation](https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent-auto-instrumentation) examples in the Pyroscope repository.
 
 ### Profiling local process
 
@@ -160,7 +163,9 @@ pyroscope.write "example" {
 
 ```
 
-### Profiling docker containers
+### Profiling Docker containers
+
+For a working example, refer to [Java profiling via auto-instrumentation example in Docker](https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent-auto-instrumentation/java/docker).
 
 ```river
 discovery.docker "local_containers" {
@@ -206,6 +211,8 @@ pyroscope.write "example" {
 ```
 
 ### Profiling Kubernetes pods
+
+For a working example, refer to [Grafana Alloy Java profiling via auto-instrumentation with Kubernetes](https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent-auto-instrumentation/java/kubernetes).
 
 ```river
 
