@@ -52,7 +52,7 @@ func (a *AdaptivePlacement) defaultPolicy(k placement.Key) placement.Policy {
 	}
 }
 
-func (a *AdaptivePlacement) Load(rules *adaptive_placementpb.PlacementRules) {
+func (a *AdaptivePlacement) Update(rules *adaptive_placementpb.PlacementRules) {
 	datasets := make(map[datasetKey]*adaptive_placementpb.PlacementLimits, len(rules.Datasets))
 	for _, dataset := range rules.Datasets {
 		if dataset.Tenant >= uint32(len(rules.Tenants)) {

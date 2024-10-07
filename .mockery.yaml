@@ -27,3 +27,9 @@ packages:
   github.com/grafana/pyroscope/pkg/experiment/metastore/dlq:
     interfaces:
       LocalServer:
+  github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement:
+    interfaces:
+      Store:
+  github.com/grafana/pyroscope/pkg/experiment/distributor:
+    interfaces:
+      Limits:

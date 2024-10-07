@@ -13,6 +13,7 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement"
 	"github.com/grafana/pyroscope/pkg/iter"
+	"github.com/grafana/pyroscope/pkg/test/mocks/mockdistributor"
 	"github.com/grafana/pyroscope/pkg/testhelper"
 )
 
@@ -32,14 +33,8 @@ var (
 	zeroShard = func(int) int { return 0 }
 )
 
-type mockLimits struct{ mock.Mock }
-
-func (m *mockLimits) PlacementPolicy(k placement.Key) placement.Policy {
-	return m.Called(k).Get(0).(placement.Policy)
-}
-
 func Test_EmptyRing(t *testing.T) {
-	m := new(mockLimits)
+	m := new(mockdistributor.MockLimits)
 	r := testhelper.NewMockRing(nil, 1)
 	d := NewDistributor(m, r)
 
@@ -88,7 +83,7 @@ func Test_Distribution_AvailableShards(t *testing.T) {
 	} {
 		t.Run(tc.description, func(t *testing.T) {
 			k := NewTenantServiceDatasetKey("tenant-a", testLabels...)
-			m := new(mockLimits)
+			m := new(mockdistributor.MockLimits)
 			m.On("PlacementPolicy", k, mock.Anything).Return(tc.Policy).Once()
 			r := testhelper.NewMockRing(testInstances, 1)
 			d := NewDistributor(m, r)
@@ -107,7 +102,7 @@ func Test_Distribution_AvailableShards(t *testing.T) {
 
 func Test_RingUpdate(t *testing.T) {
 	k := NewTenantServiceDatasetKey("")
-	m := new(mockLimits)
+	m := new(mockdistributor.MockLimits)
 	m.On("PlacementPolicy", k, mock.Anything).Return(placement.Policy{
 		TenantShards:  1,
 		DatasetShards: 1,
@@ -137,7 +132,7 @@ func Test_RingUpdate(t *testing.T) {
 }
 
 func Test_Distributor_Distribute(t *testing.T) {
-	m := new(mockLimits)
+	m := new(mockdistributor.MockLimits)
 	r := testhelper.NewMockRing([]ring.InstanceDesc{
 		{Addr: "a", Tokens: make([]uint32, 4)},
 		{Addr: "b", Tokens: make([]uint32, 4)},

@@ -55,7 +55,7 @@ func Test_AdaptivePlacement(t *testing.T) {
 	assert.False(t, isRoundRobin(policy.PickShard))
 
 	// Load new rules and override limits for tenant-a dataset-a
-	p.Load(&adaptive_placementpb.PlacementRules{
+	p.Update(&adaptive_placementpb.PlacementRules{
 		Tenants: []*adaptive_placementpb.TenantPlacement{
 			{TenantId: "tenant-a"},
 			{TenantId: "tenant-b"},
