@@ -16,7 +16,7 @@ keywords:
 Pyroscope can be used alongside the other Grafana tools such as Loki, Tempo, Mimir, and k6.
 You can use Pyroscope to get the most granular insight into your application and how you can use it to fix issues that you may have identified via metrics, logs, traces, or anything else.
 
-You can use Pyroscope within Grafana by using the [Pyroscope data source plugin](https://grafana.com/docs/grafana/<GRAFANA_VERSION>datasources/grafana-pyroscope/).
+You can use Pyroscope within Grafana by using the [Pyroscope data source plugin](https://grafana.com/docs/grafana/<GRAFANA_VERSION>/datasources/grafana-pyroscope/).
 This plugin lets you query Pyroscope data from within Grafana and visualize it alongside your other Grafana data.
 
 ## Visualize traces and profiles data
