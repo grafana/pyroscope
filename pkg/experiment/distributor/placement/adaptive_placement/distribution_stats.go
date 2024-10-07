@@ -106,8 +106,6 @@ func (k counterKey) compare(x counterKey) int {
 	return strings.Compare(k.shard.owner, x.shard.owner)
 }
 
-func compareKeys(a, b counterKey) int { return a.compare(b) }
-
 type shard struct {
 	owner string
 	id    uint32
@@ -127,12 +125,11 @@ func (d *DistributionStats) build(now int64) *adaptive_placementpb.DistributionS
 	for k := range d.counters {
 		keys = append(keys, k)
 	}
-	slices.SortFunc(keys, compareKeys)
+	slices.SortFunc(keys, func(a, b counterKey) int {
+		return a.compare(b)
+	})
 
-	stats := &adaptive_placementpb.DistributionStats{
-		CreatedAt: now,
-	}
-
+	stats := &adaptive_placementpb.DistributionStats{CreatedAt: now}
 	for _, k := range keys {
 		c := d.counters[k]
 		// Skip dataset-wide counters.

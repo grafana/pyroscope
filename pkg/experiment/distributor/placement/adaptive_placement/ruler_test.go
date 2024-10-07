@@ -57,7 +57,7 @@ func Test_Ruler(t *testing.T) {
 		l.LoadBalancing = RoundRobinLoadBalancing
 	}))
 
-	old := &adaptive_placementpb.PlacementRules{
+	oldRules := &adaptive_placementpb.PlacementRules{
 		Defaults: &adaptive_placementpb.PlacementLimits{
 			TenantShardLimit:  1,
 			DatasetShardLimit: 2,
@@ -140,9 +140,11 @@ func Test_Ruler(t *testing.T) {
 			{Id: 4, Owner: "node-a"},
 			{Id: 5, Owner: "node-c"},
 		},
+		CreatedAt: 1,
 	}
 
 	expected := &adaptive_placementpb.PlacementRules{
+		CreatedAt: 1,
 		Defaults: &adaptive_placementpb.PlacementLimits{
 			TenantShardLimit:  10,
 			DatasetShardLimit: 2,
@@ -207,8 +209,42 @@ func Test_Ruler(t *testing.T) {
 		},
 	}
 
-	r := NewRuler(m)
-	r.Load(old)
+	ruler := NewRuler(m)
+	ruler.Load(oldRules)
+	assert.Equal(t, expected.String(), ruler.BuildRules(stats).String())
 
-	assert.Equal(t, expected.String(), r.BuildRules(stats).String())
+	// Next update only includes tenant-a dataset-a.
+	// We expect that dataset-b and dataset-c will still be present.
+	update := &adaptive_placementpb.DistributionStats{
+		Tenants: []*adaptive_placementpb.TenantStats{
+			{TenantId: "tenant-a"},
+		},
+		Datasets: []*adaptive_placementpb.DatasetStats{
+			{
+				Tenant: 0,
+				Name:   "dataset-a",
+				Shards: []uint32{0, 1, 2, 3, 4},
+				Usage:  []uint64{unitSize, unitSize, unitSize, unitSize, unitSize / 2},
+			},
+		},
+		Shards: []*adaptive_placementpb.ShardStats{
+			{Id: 1, Owner: "node-a"},
+			{Id: 2, Owner: "node-b"},
+			{Id: 3, Owner: "node-c"},
+			{Id: 4, Owner: "node-a"},
+			{Id: 5, Owner: "node-c"},
+		},
+		CreatedAt: 2,
+	}
+
+	expected.CreatedAt = 2
+	assert.Equal(t, expected.String(), ruler.BuildRules(update).String())
+
+	ruler.Expire(time.Now())
+	expected = &adaptive_placementpb.PlacementRules{
+		Defaults:  expected.Defaults,
+		CreatedAt: 3,
+	}
+	empty := &adaptive_placementpb.DistributionStats{CreatedAt: 3}
+	assert.Equal(t, expected.String(), ruler.BuildRules(empty).String())
 }

@@ -1,6 +1,8 @@
 package adaptive_placement
 
 import (
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement/adaptive_placementpb"
@@ -63,16 +65,21 @@ func (r *Ruler) BuildRules(stats *adaptive_placementpb.DistributionStats) *adapt
 	}
 
 	tenantLimits := make([]ShardingLimits, len(stats.Tenants))
+	tenants := make(map[string]int)
+
 	for i, t := range stats.Tenants {
-		tenantLimits[i] = r.limits.ShardingLimits(t.TenantId)
-		rules.Tenants[i] = &adaptive_placementpb.TenantPlacement{
+		limits = r.limits.ShardingLimits(t.TenantId)
+		p := &adaptive_placementpb.TenantPlacement{
 			TenantId: t.TenantId,
 			Limits: &adaptive_placementpb.PlacementLimits{
-				TenantShardLimit:  tenantLimits[i].TenantShards,
-				DatasetShardLimit: tenantLimits[i].DefaultDatasetShards,
-				LoadBalancing:     tenantLimits[i].LoadBalancing.proto(),
+				TenantShardLimit:  limits.TenantShards,
+				DatasetShardLimit: limits.DefaultDatasetShards,
+				LoadBalancing:     limits.LoadBalancing.proto(),
 			},
 		}
+		tenants[t.TenantId] = i
+		tenantLimits[i] = limits
+		rules.Tenants[i] = p
 	}
 
 	for i, datasetStats := range stats.Datasets {
@@ -90,6 +97,46 @@ func (r *Ruler) BuildRules(stats *adaptive_placementpb.DistributionStats) *adapt
 		rules.Datasets[i] = placement
 	}
 
+	// Include datasets that were not present in the current stats.
+	// Although, not strictly required, we iterate over the keys
+	// in a deterministic order to make the output deterministic.
+	keys := make([]datasetKey, 0, len(r.datasets))
+	for k, dataset := range r.datasets {
+		if dataset.lastUpdate < stats.CreatedAt {
+			keys = append(keys, k)
+		}
+	}
+	slices.SortFunc(keys, func(a, b datasetKey) int {
+		return a.compare(b)
+	})
+
+	for _, k := range keys {
+		dataset := r.datasets[k]
+		t, ok := tenants[k.tenant]
+		if !ok {
+			t = len(rules.Tenants)
+			limits = r.limits.ShardingLimits(k.tenant)
+			p := &adaptive_placementpb.TenantPlacement{
+				TenantId: k.tenant,
+				Limits: &adaptive_placementpb.PlacementLimits{
+					TenantShardLimit:  limits.TenantShards,
+					DatasetShardLimit: limits.DefaultDatasetShards,
+					LoadBalancing:     limits.LoadBalancing.proto(),
+				},
+			}
+			tenants[k.tenant] = t
+			tenantLimits = append(tenantLimits, limits)
+			rules.Tenants = append(rules.Tenants, p)
+		}
+		limits = tenantLimits[t]
+		rules.Datasets = append(rules.Datasets, &adaptive_placementpb.DatasetPlacement{
+			Tenant:        uint32(t),
+			Name:          k.dataset,
+			ShardLimit:    dataset.allocator.target,
+			LoadBalancing: dataset.loadBalancing,
+		})
+	}
+
 	return &rules
 }
 
@@ -102,6 +149,13 @@ func (r *Ruler) Expire(before time.Time) {
 }
 
 type datasetKey struct{ tenant, dataset string }
+
+func (k datasetKey) compare(x datasetKey) int {
+	if c := strings.Compare(k.tenant, x.tenant); c != 0 {
+		return c
+	}
+	return strings.Compare(k.dataset, x.dataset)
+}
 
 type datasetShards struct {
 	allocator *shardAllocator
