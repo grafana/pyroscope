@@ -25,3 +25,13 @@ type ShardingLimits struct {
 	DecayWindow          time.Duration
 	LoadBalancing        LoadBalancing
 }
+
+type Config struct {
+	PlacementUpdateInterval   time.Duration
+	PlacementConfidencePeriod time.Duration
+	PlacementRetentionPeriod  time.Duration
+
+	StatsUpdateInterval    time.Duration
+	StatsAggregationWindow time.Duration
+	StatsRetentionPeriod   time.Duration
+}

@@ -1,37 +1,20 @@
 package adaptive_placement
 
 import (
-	"time"
-
-	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement/adaptive_placementpb"
 	"github.com/grafana/pyroscope/pkg/tenant"
 )
 
 type Ruler struct {
 	limits   Limits
-	stats    *DistributionStats
 	datasets map[datasetKey]*datasetShards
 }
 
-func NewRuler(limits Limits, window, retention time.Duration) *Ruler {
+func NewRuler(limits Limits) *Ruler {
 	return &Ruler{
 		limits:   limits,
-		stats:    NewDistributionStats(window, retention),
 		datasets: make(map[datasetKey]*datasetShards),
 	}
-}
-
-func (r *Ruler) RecordStats(md *metastorev1.BlockMeta) {
-	r.stats.RecordStats(md, time.Now().UnixNano())
-}
-
-func (r *Ruler) BuildRules() *adaptive_placementpb.PlacementRules {
-	return r.buildRules(time.Now().UnixNano())
-}
-
-func (r *Ruler) recordStats(md *metastorev1.BlockMeta, now int64) {
-	r.stats.RecordStats(md, now)
 }
 
 func (r *Ruler) Load(rules *adaptive_placementpb.PlacementRules) {
@@ -46,20 +29,19 @@ func (r *Ruler) Load(rules *adaptive_placementpb.PlacementRules) {
 		}
 		limits := tenantLimits[ds.Tenant]
 		dataset := &datasetShards{
-			defaultLoadBalancing: limits.LoadBalancing,
-			allocator:            newShardAllocator(limits),
+			allocator:  newShardAllocator(limits),
+			lastUpdate: rules.CreatedAt,
 		}
 		// NOTE(kolesnikovae): Only the target number of shards and
 		// chosen load balancing strategy are loaded; the rest of the
 		// dataset state will be built from scratch over time.
 		dataset.loadBalancing = ds.LoadBalancing
-		dataset.allocator.target = ds.ShardLimit
-		dataset.allocator.currentMin = ds.ShardLimit
+		dataset.allocator.setTargetShards(ds.ShardLimit)
 		r.datasets[k] = dataset
 	}
 }
 
-func (r *Ruler) buildRules(now int64) *adaptive_placementpb.PlacementRules {
+func (r *Ruler) BuildRules(stats *adaptive_placementpb.DistributionStats) *adaptive_placementpb.PlacementRules {
 	limits := r.limits.ShardingLimits(tenant.DefaultTenantID)
 	defaults := &adaptive_placementpb.PlacementLimits{
 		TenantShardLimit:  limits.TenantShards,
@@ -67,11 +49,11 @@ func (r *Ruler) buildRules(now int64) *adaptive_placementpb.PlacementRules {
 		LoadBalancing:     limits.LoadBalancing.proto(),
 	}
 
-	stats := r.stats.Build(now)
 	rules := adaptive_placementpb.PlacementRules{
-		Defaults: defaults,
-		Tenants:  make([]*adaptive_placementpb.TenantPlacement, len(stats.Tenants)),
-		Datasets: make([]*adaptive_placementpb.DatasetPlacement, len(stats.Datasets)),
+		Defaults:  defaults,
+		Tenants:   make([]*adaptive_placementpb.TenantPlacement, len(stats.Tenants)),
+		Datasets:  make([]*adaptive_placementpb.DatasetPlacement, len(stats.Datasets)),
+		CreatedAt: stats.CreatedAt,
 	}
 
 	tenantLimits := make([]ShardingLimits, len(stats.Tenants))
@@ -94,14 +76,12 @@ func (r *Ruler) buildRules(now int64) *adaptive_placementpb.PlacementRules {
 		}
 		dataset, ok := r.datasets[k]
 		if !ok {
-			limits = tenantLimits[datasetStats.Tenant]
-			dataset = &datasetShards{
-				defaultLoadBalancing: limits.LoadBalancing,
-				allocator:            newShardAllocator(limits),
-			}
+			dataset = &datasetShards{allocator: new(shardAllocator)}
 			r.datasets[k] = dataset
 		}
-		rules.Datasets[i] = dataset.placement(datasetStats, now)
+		limits = tenantLimits[datasetStats.Tenant]
+		placement := dataset.placement(datasetStats, limits, stats.CreatedAt)
+		rules.Datasets[i] = placement
 	}
 
 	return &rules
@@ -111,26 +91,29 @@ type datasetKey struct{ tenant, dataset string }
 
 type datasetShards struct {
 	allocator *shardAllocator
-	// Load balancing strategy as per the tenant limits.
-	defaultLoadBalancing LoadBalancing
 	// Load balancing strategy chosen by ruler.
 	loadBalancing adaptive_placementpb.LoadBalancing
+	// Last time the dataset was updated, according
+	// to the stats update time.
+	lastUpdate int64
 }
 
 func (ds *datasetShards) placement(
 	stats *adaptive_placementpb.DatasetStats,
+	limits ShardingLimits,
 	now int64,
 ) *adaptive_placementpb.DatasetPlacement {
-	if ds.defaultLoadBalancing != DynamicLoadBalancing {
-		ds.loadBalancing = ds.defaultLoadBalancing.proto()
-	} else if ds.defaultLoadBalancing.needsDynamicBalancing(ds.loadBalancing) {
+	ds.lastUpdate = now
+	ds.allocator.setLimits(limits)
+	if limits.LoadBalancing != DynamicLoadBalancing {
+		ds.loadBalancing = limits.LoadBalancing.proto()
+	} else if limits.LoadBalancing.needsDynamicBalancing(ds.loadBalancing) {
 		ds.loadBalancing = loadBalancingStrategy(stats, ds.allocator.unitSize).proto()
 	}
-	shards := uint32(ds.allocator.observe(sum(stats.Usage), now))
 	return &adaptive_placementpb.DatasetPlacement{
 		Tenant:        stats.Tenant,
 		Name:          stats.Name,
-		ShardLimit:    shards,
+		ShardLimit:    uint32(ds.allocator.observe(sum(stats.Usage), now)),
 		LoadBalancing: ds.loadBalancing,
 	}
 }

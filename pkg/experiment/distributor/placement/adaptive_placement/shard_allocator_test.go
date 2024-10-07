@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_shardAllocator(t *testing.T) {
+func Test_shard_allocator(t *testing.T) {
 	a := &shardAllocator{
 		unitSize:    10,
 		min:         1,

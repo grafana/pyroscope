@@ -111,7 +111,6 @@ func (d *DistributionStats) Build(now int64) *adaptive_placementpb.DistributionS
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	var s adaptive_placementpb.DistributionStats
 	tenants := make(map[string]int)
 	datasets := make(map[string]int)
 	shards := make(map[shard]int)
@@ -123,6 +122,10 @@ func (d *DistributionStats) Build(now int64) *adaptive_placementpb.DistributionS
 		keys = append(keys, k)
 	}
 	slices.SortFunc(keys, compareKeys)
+
+	stats := &adaptive_placementpb.DistributionStats{
+		CreatedAt: now,
+	}
 
 	for _, k := range keys {
 		c := d.counters[k]
@@ -138,18 +141,18 @@ func (d *DistributionStats) Build(now int64) *adaptive_placementpb.DistributionS
 
 		ti, ok := tenants[k.tenant]
 		if !ok {
-			ti = len(s.Tenants)
+			ti = len(stats.Tenants)
 			tenants[k.tenant] = ti
-			s.Tenants = append(s.Tenants, &adaptive_placementpb.TenantStats{
+			stats.Tenants = append(stats.Tenants, &adaptive_placementpb.TenantStats{
 				TenantId: k.tenant,
 			})
 		}
 
 		di, ok := datasets[k.dataset]
 		if !ok {
-			di = len(s.Datasets)
+			di = len(stats.Datasets)
 			datasets[k.dataset] = di
-			s.Datasets = append(s.Datasets, &adaptive_placementpb.DatasetStats{
+			stats.Datasets = append(stats.Datasets, &adaptive_placementpb.DatasetStats{
 				Tenant: uint32(ti),
 				Name:   k.dataset,
 			})
@@ -157,27 +160,27 @@ func (d *DistributionStats) Build(now int64) *adaptive_placementpb.DistributionS
 
 		si, ok := shards[k.shard]
 		if !ok {
-			si = len(s.Shards)
+			si = len(stats.Shards)
 			shards[k.shard] = si
-			s.Shards = append(s.Shards, &adaptive_placementpb.ShardStats{
+			stats.Shards = append(stats.Shards, &adaptive_placementpb.ShardStats{
 				Id:    k.shard.id,
 				Owner: k.shard.owner,
 			})
 		}
 
-		ds := s.Datasets[di]
+		ds := stats.Datasets[di]
 		ds.Shards = append(ds.Shards, uint32(si))
 		ds.Usage = append(ds.Usage, uint64(math.Round(c.ValueAt(now))))
 	}
 
-	for _, dataset := range s.Datasets {
+	for _, dataset := range stats.Datasets {
 		c := d.counter(counterKey{
-			tenant:  s.Tenants[dataset.Tenant].TenantId,
+			tenant:  stats.Tenants[dataset.Tenant].TenantId,
 			dataset: dataset.Name,
 		})
 		c.UpdateAt(float64(stdDev(dataset.Usage)), now)
 		dataset.StdDev = uint64(math.Round(c.ValueAt(now)))
 	}
 
-	return &s
+	return stats
 }

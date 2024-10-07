@@ -84,15 +84,15 @@ func pickFingerprintMod(k placement.Key) func(int) int {
 	}
 }
 
+// needsDynamicBalancing returns true if the load balancing strategy
+// should be chosen dynamically based on the dataset stats.
+// x is the currently set load balancing strategy.
 func (lb LoadBalancing) needsDynamicBalancing(x adaptive_placementpb.LoadBalancing) bool {
-	if lb != DynamicLoadBalancing {
-		return false
-	}
 	// If the configured load balancing is "dynamic", we should
 	// try to find the best strategy based on the dataset stats,
 	// except if the x is already set to round-robin, which should
 	// ensure the best distribution (from the available options).
-	return x != adaptive_placementpb.LoadBalancing_LOAD_BALANCING_ROUND_ROBIN
+	return lb == DynamicLoadBalancing && x != adaptive_placementpb.LoadBalancing_LOAD_BALANCING_ROUND_ROBIN
 }
 
 // loadBalancingStrategy chooses the load balancing strategy.

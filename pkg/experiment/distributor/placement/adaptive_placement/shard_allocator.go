@@ -47,13 +47,17 @@ type shardAllocator struct {
 }
 
 func newShardAllocator(limits ShardingLimits) *shardAllocator {
-	return &shardAllocator{
-		unitSize:    limits.UnitSizeBytes,
-		min:         limits.MinDatasetShards,
-		max:         limits.MaxDatasetShards,
-		burstWindow: limits.BurstWindow.Nanoseconds(),
-		decayWindow: limits.DecayWindow.Nanoseconds(),
-	}
+	a := new(shardAllocator)
+	a.setLimits(limits)
+	return a
+}
+
+func (a *shardAllocator) setLimits(limits ShardingLimits) {
+	a.unitSize = limits.UnitSizeBytes
+	a.min = limits.MinDatasetShards
+	a.max = limits.MaxDatasetShards
+	a.burstWindow = limits.BurstWindow.Nanoseconds()
+	a.decayWindow = limits.DecayWindow.Nanoseconds()
 }
 
 func (a *shardAllocator) observe(usage uint64, now int64) int {
@@ -81,4 +85,9 @@ func (a *shardAllocator) observe(usage uint64, now int64) int {
 	a.currentMin = max(a.currentMin, target)
 	a.target = min(a.max, max(a.min, a.previousMin, a.currentMin))
 	return int(a.target)
+}
+
+func (a *shardAllocator) setTargetShards(n uint32) {
+	a.target = n
+	a.currentMin = n
 }

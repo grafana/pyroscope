@@ -62,6 +62,7 @@ func Test_StatsTracker(t *testing.T) {
 		Shards: []*adaptive_placementpb.ShardStats{
 			{Id: 1},
 		},
+		CreatedAt: now.Nanoseconds(),
 	}
 	assert.Equal(t, expected.String(), stats.Build(now.Nanoseconds()).String())
 
@@ -112,6 +113,7 @@ func Test_StatsTracker(t *testing.T) {
 			{Id: 1},
 			{Id: 2},
 		},
+		CreatedAt: now.Nanoseconds(),
 	}
 	assert.Equal(t, expected.String(), stats.Build(now.Nanoseconds()).String())
 
@@ -162,6 +164,7 @@ func Test_StatsTracker(t *testing.T) {
 			{Id: 1},
 			{Id: 2},
 		},
+		CreatedAt: now.Nanoseconds(),
 	}
 	assert.Equal(t, expected.String(), stats.Build(now.Nanoseconds()).String())
 
@@ -196,6 +199,7 @@ func Test_StatsTracker(t *testing.T) {
 			{Id: 2},
 			{Id: 1},
 		},
+		CreatedAt: now.Nanoseconds(),
 	}
 	assert.Equal(t, expected.String(), stats.Build(now.Nanoseconds()).String())
 

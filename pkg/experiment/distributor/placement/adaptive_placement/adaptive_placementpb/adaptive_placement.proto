@@ -7,6 +7,7 @@ message DistributionStats {
   repeated TenantStats tenants = 1;
   repeated DatasetStats datasets = 2;
   repeated ShardStats shards = 3;
+  int64 created_at = 4;
 }
 
 message TenantStats {
@@ -48,6 +49,7 @@ message PlacementRules {
   PlacementLimits defaults = 1;
   repeated TenantPlacement tenants = 2;
   repeated DatasetPlacement datasets = 3;
+  int64 created_at = 4;
 }
 
 message TenantPlacement {
