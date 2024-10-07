@@ -302,8 +302,8 @@ For more information:
 - [pyroscope.scrape](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/pyroscope/pyroscope.scrape/)
 - [pyroscope.write](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/pyroscope/pyroscope.write/)
 - [discovery.kubernetes](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.kubernetes/)
-- [discovery.docker](/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.docker/)
-- [discovery.relabel](/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.relabel/)
+- [discovery.docker](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.docker/)
+- [discovery.relabel](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.relabel/)
 
 ### Grafana Agent
 
