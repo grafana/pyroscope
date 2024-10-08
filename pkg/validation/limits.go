@@ -110,7 +110,7 @@ type Limits struct {
 	// Adaptive sharding limits used in distributors and in the metastore.
 	// Distributors use these limits to determine how many shards to
 	// allocate to a tenant dataset by default, if no placement rules
-	// exists for the tenant.
+	// exist for the tenant.
 	AdaptiveShardingLimits adaptive_placement.ShardingLimits `yaml:",inline" json:",inline"`
 }
 

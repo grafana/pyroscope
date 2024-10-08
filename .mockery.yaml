@@ -34,6 +34,6 @@ packages:
   github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement:
     interfaces:
       Store:
-  github.com/grafana/pyroscope/pkg/experiment/distributor:
+  github.com/grafana/pyroscope/pkg/experiment/distributor/placement:
     interfaces:
-      Limits:
+      Placement:

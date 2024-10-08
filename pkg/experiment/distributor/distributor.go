@@ -23,10 +23,6 @@ const defaultRingUpdateInterval = 5 * time.Second
 //  - Naming.
 //  - Move to the placement.
 
-type Placement interface {
-	Policy(placement.Key) placement.Policy
-}
-
 var DefaultPlacement = defaultPlacement{}
 
 type defaultPlacement struct{}
@@ -44,21 +40,21 @@ func (defaultPlacement) Policy(k placement.Key) placement.Policy {
 type Distributor struct {
 	mu           sync.RWMutex
 	ring         ring.ReadRing
-	placement    Placement
+	placement    placement.Placement
 	distribution *distribution
 
 	RingUpdateInterval time.Duration
 }
 
-func NewDistributor(limits Placement, r ring.ReadRing) *Distributor {
+func NewDistributor(placement placement.Placement, r ring.ReadRing) *Distributor {
 	return &Distributor{
 		ring:               r,
-		placement:          limits,
+		placement:          placement,
 		RingUpdateInterval: defaultRingUpdateInterval,
 	}
 }
 
-func (d *Distributor) Distribute(k placement.Key) (*placement.Placement, error) {
+func (d *Distributor) Distribute(k placement.Key) (*placement.ShardMapping, error) {
 	if err := d.updateDistribution(d.ring, d.RingUpdateInterval); err != nil {
 		return nil, err
 	}
@@ -89,7 +85,7 @@ func (d *Distributor) updateDistribution(r ring.ReadRing, maxAge time.Duration) 
 	return nil
 }
 
-func (d *Distributor) distribute(k placement.Key) *placement.Placement {
+func (d *Distributor) distribute(k placement.Key) *placement.ShardMapping {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 	// Determine the number of shards for the tenant within the available
@@ -113,7 +109,7 @@ func (d *Distributor) distribute(k placement.Key) *placement.Placement {
 	// Next we want to find p instances eligible to host the key.
 	// The choice must be limited to the dataset / tenant subring,
 	// but extended if needed.
-	return &placement.Placement{
+	return &placement.ShardMapping{
 		Shard:     uint32(dataset.at(offset)) + 1, // 0 shard ID is a sentinel
 		Instances: d.distribution.instances(dataset, offset),
 	}

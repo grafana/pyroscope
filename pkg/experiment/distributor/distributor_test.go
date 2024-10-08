@@ -13,7 +13,7 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement"
 	"github.com/grafana/pyroscope/pkg/iter"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mockdistributor"
+	"github.com/grafana/pyroscope/pkg/test/mocks/mockplacement"
 	"github.com/grafana/pyroscope/pkg/testhelper"
 )
 
@@ -34,7 +34,7 @@ var (
 )
 
 func Test_EmptyRing(t *testing.T) {
-	m := new(mockdistributor.MockLimits)
+	m := new(mockplacement.MockPlacement)
 	r := testhelper.NewMockRing(nil, 1)
 	d := NewDistributor(m, r)
 
@@ -83,8 +83,8 @@ func Test_Distribution_AvailableShards(t *testing.T) {
 	} {
 		t.Run(tc.description, func(t *testing.T) {
 			k := NewTenantServiceDatasetKey("tenant-a", testLabels...)
-			m := new(mockdistributor.MockLimits)
-			m.On("PlacementPolicy", k, mock.Anything).Return(tc.Policy).Once()
+			m := new(mockplacement.MockPlacement)
+			m.On("Policy", k, mock.Anything).Return(tc.Policy).Once()
 			r := testhelper.NewMockRing(testInstances, 1)
 			d := NewDistributor(m, r)
 			p, err := d.Distribute(k)
@@ -102,8 +102,8 @@ func Test_Distribution_AvailableShards(t *testing.T) {
 
 func Test_RingUpdate(t *testing.T) {
 	k := NewTenantServiceDatasetKey("")
-	m := new(mockdistributor.MockLimits)
-	m.On("PlacementPolicy", k, mock.Anything).Return(placement.Policy{
+	m := new(mockplacement.MockPlacement)
+	m.On("Policy", k, mock.Anything).Return(placement.Policy{
 		TenantShards:  1,
 		DatasetShards: 1,
 		PickShard:     zeroShard,
@@ -132,7 +132,7 @@ func Test_RingUpdate(t *testing.T) {
 }
 
 func Test_Distributor_Distribute(t *testing.T) {
-	m := new(mockdistributor.MockLimits)
+	m := new(mockplacement.MockPlacement)
 	r := testhelper.NewMockRing([]ring.InstanceDesc{
 		{Addr: "a", Tokens: make([]uint32, 4)},
 		{Addr: "b", Tokens: make([]uint32, 4)},
@@ -142,7 +142,7 @@ func Test_Distributor_Distribute(t *testing.T) {
 	d := NewDistributor(m, r)
 	collect := func(offset, n int) []string {
 		k := NewTenantServiceDatasetKey("tenant-a")
-		m.On("PlacementPolicy", mock.Anything, mock.Anything).Return(placement.Policy{
+		m.On("Policy", mock.Anything, mock.Anything).Return(placement.Policy{
 			TenantShards:  8,
 			DatasetShards: 4,
 			PickShard:     func(int) int { return offset },

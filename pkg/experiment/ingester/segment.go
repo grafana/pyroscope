@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"os"
 	"runtime/pprof"
 	"slices"
 	"strings"
@@ -241,6 +242,7 @@ func (s *segment) flush(ctx context.Context) (err error) {
 
 func (s *segment) flushBlock(heads []flushedServiceHead) ([]byte, *metastorev1.BlockMeta, error) {
 	t1 := time.Now()
+	hostname, _ := os.Hostname()
 	meta := &metastorev1.BlockMeta{
 		FormatVersion:   1,
 		Id:              s.ulid.String(),
@@ -251,6 +253,7 @@ func (s *segment) flushBlock(heads []flushedServiceHead) ([]byte, *metastorev1.B
 		TenantId:        "",
 		Datasets:        make([]*metastorev1.Dataset, 0, len(heads)),
 		Size:            0,
+		CreatedBy:       hostname,
 	}
 
 	blockFile := bytes.NewBuffer(nil)

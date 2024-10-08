@@ -19,7 +19,6 @@ type Agent struct {
 	logger  log.Logger
 	store   StoreReader
 	config  Config
-	limits  Limits
 	metrics *agentMetrics
 
 	placement *AdaptivePlacement
@@ -34,16 +33,16 @@ func NewAgent(
 	store Store,
 ) *Agent {
 	a := Agent{
-		logger:  logger,
-		store:   store,
-		config:  config,
-		limits:  limits,
-		metrics: newAgentMetrics(reg),
+		logger:    logger,
+		store:     store,
+		config:    config,
+		placement: NewAdaptivePlacement(limits),
+		metrics:   newAgentMetrics(reg),
 	}
 	a.service = services.NewTimerService(
 		config.PlacementUpdateInterval,
 		a.starting,
-		a.updatePlacementNoError,
+		a.loadRulesNoError,
 		a.stopping,
 	)
 	return &a
@@ -54,9 +53,9 @@ func (a *Agent) Service() services.Service { return a.service }
 func (a *Agent) Placement() *AdaptivePlacement { return a.placement }
 
 func (a *Agent) starting(ctx context.Context) error {
-	a.updatePlacement(ctx)
-	if a.placement == nil {
-		// The exact reason is logged in updatePlacement.
+	_ = a.loadRulesNoError(ctx)
+	if a.rules == nil {
+		// The exact reason is logged in loadRules.
 		return fmt.Errorf("failed to load placement rules")
 	}
 	return nil
@@ -67,17 +66,18 @@ func (a *Agent) stopping(error) error { return nil }
 // The function is only needed to satisfy the services.OneIteration
 // signature: there's no case when the service stops on its own:
 // it's better to serve outdated rules than to not serve at all.
-func (a *Agent) updatePlacementNoError(ctx context.Context) error {
-	util.Recover(func() { a.updatePlacement(ctx) })
+func (a *Agent) loadRulesNoError(ctx context.Context) error {
+	util.Recover(func() { a.loadRules(ctx) })
 	return nil
 }
 
-func (a *Agent) updatePlacement(ctx context.Context) {
+func (a *Agent) loadRules(ctx context.Context) {
 	rules, err := a.store.LoadRules(ctx)
 	if err != nil {
 		_ = level.Error(a.logger).Log("msg", "failed to load placement rules", "err", err)
 		return
 	}
+	a.metrics.lag.Set(max(0, time.Since(time.Unix(0, rules.CreatedAt)).Seconds()))
 	if a.rules != nil {
 		if rules.CreatedAt < a.rules.CreatedAt {
 			_ = level.Warn(a.logger).Log(
@@ -85,10 +85,6 @@ func (a *Agent) updatePlacement(ctx context.Context) {
 				"created_at", time.Unix(0, rules.CreatedAt))
 			return
 		}
-	}
-	a.metrics.lag.Set(max(0, time.Since(time.Unix(0, rules.CreatedAt)).Seconds()))
-	if a.placement == nil {
-		a.placement = NewAdaptivePlacement(a.limits)
 	}
 	a.placement.Update(rules)
 	a.rules = rules

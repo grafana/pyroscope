@@ -6,7 +6,11 @@ import (
 	"github.com/grafana/pyroscope/pkg/iter"
 )
 
-// Key represents the distribution key.
+// Placement is a strategy to distribute keys over shards.
+type Placement interface {
+	Policy(Key) Policy
+}
+
 type Key struct {
 	TenantID    string
 	DatasetName string
@@ -29,12 +33,12 @@ type Policy struct {
 	PickShard func(n int) int
 }
 
-// Placement represents the placement for a given key.
+// ShardMapping represents the placement of a given key.
 //
 // Each key is mapped to one of the shards, based on the placement
 // strategy. In turn, each shard is associated with an instance.
 //
-// Placement provides a number of instances that can host the key.
+// ShardMapping provides a number of instances that can host the key.
 // It is assumed, that the caller will use the first one by default,
 // and will try the rest in case of failure. This is done to avoid
 // excessive data distribution in case of temporary unavailability
@@ -46,7 +50,7 @@ type Policy struct {
 // It's also not guaranteed that the instances are available.
 // Use ActiveInstances wrapper if you need to filter out inactive
 // instances and duplicates.
-type Placement struct {
+type ShardMapping struct {
 	Instances iter.Iterator[ring.InstanceDesc]
 	Shard     uint32
 }

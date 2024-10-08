@@ -79,7 +79,7 @@ func (s *agentSuite) Test_Agent_service_fails_if_rules_cant_be_loaded() {
 	s.store.On("LoadRules", mock.Anything).
 		Return((*adaptive_placementpb.PlacementRules)(nil), fmt.Errorf("error"))
 	s.Require().Error(s.start())
-	s.Assert().Nil(s.agent.Placement())
+	s.Assert().Nil(s.agent.rules)
 }
 
 func (s *agentSuite) Test_Agent_updates_placement_rules() {
@@ -121,7 +121,7 @@ func (s *agentSuite) Test_Agent_updates_placement_rules() {
 		}, nil).
 		Once()
 
-	s.agent.updatePlacement(context.Background())
+	s.agent.loadRules(context.Background())
 	policy = p.Policy(placement.Key{
 		TenantID:    "tenant-a",
 		DatasetName: "dataset-a",
@@ -169,7 +169,7 @@ func (s *agentSuite) Test_Agent_ignored_outdated_rules() {
 		}, nil).
 		Once()
 
-	s.agent.updatePlacement(context.Background())
+	s.agent.loadRules(context.Background())
 	policy = p.Policy(placement.Key{
 		TenantID:    "tenant-a",
 		DatasetName: "dataset-a",

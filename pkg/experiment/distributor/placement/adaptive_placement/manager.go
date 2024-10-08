@@ -20,8 +20,21 @@ import (
 //
 // Manager implements services.Service interface for convenience, but it's
 // meant to be started and stopped explicitly via Start and Stop calls.
+//
+// If manager is being stopped while updating rules, an ongoing attempt is
+// not aborted: we're interested in finishing the operation so that the rules
+// reflect the most recent statistics. Another reason is that another instance
+// might be already running at the Stop call time.
+//
+// When just started, the manager may not have enough statistics to build
+// the rules: StatsConfidencePeriod should expire before the first update.
+// Note that ruler won't downscale datasets for a certain period of time
+// after the ruler is created regardless of the confidence period. Therefore,
+// it's generally safe to publish rules even with incomplete statistics;
+// however, this allows for delays in response to changes of the data flow.
 type Manager struct {
-	started atomic.Int64
+	started   atomic.Bool
+	startedAt time.Time
 
 	service services.Service
 	logger  log.Logger
@@ -30,8 +43,8 @@ type Manager struct {
 	metrics *managerMetrics
 
 	store Store
-	ruler *Ruler
 	stats *DistributionStats
+	ruler *Ruler
 }
 
 func NewManager(
@@ -62,8 +75,8 @@ func (m *Manager) Service() services.Service { return m.service }
 
 func (m *Manager) RecordStats(samples iter.Iterator[Sample]) { m.stats.RecordStats(samples) }
 
-func (m *Manager) Start() { m.started.Store(time.Now().UnixNano()) }
-func (m *Manager) Stop()  { m.started.Store(-1) }
+func (m *Manager) Start() { m.started.Store(true) }
+func (m *Manager) Stop()  { m.started.Store(false) }
 
 func (m *Manager) starting(context.Context) error { return nil }
 func (m *Manager) stopping(error) error           { return nil }
@@ -76,19 +89,8 @@ func (m *Manager) updateRulesNoError(ctx context.Context) error {
 	return nil
 }
 
-// If the manager is being stopped in the process, an ongoing attempt is not
-// aborted: we're interested in finishing the operation so that the rules
-// reflect the most recent statistics.
-//
-// When just started, the manager may not have enough statistics to build
-// the rules: StatsConfidencePeriod should expire before the first update.
-// Note that ruler won't downscale datasets for a certain period of time
-// after the ruler is created regardless of the confidence period. Therefore,
-// it's generally safe to publish rules even with incomplete statistics;
-// however, this allows for delays in response to changes of the data flow.
 func (m *Manager) updateRules(ctx context.Context) {
-	started := m.started.Load()
-	if started < 0 {
+	if !m.started.Load() {
 		m.reset()
 		return
 	}
@@ -109,15 +111,16 @@ func (m *Manager) updateRules(ctx context.Context) {
 	m.metrics.rulesTotal.Set(float64(len(rules.Datasets)))
 	m.metrics.statsTotal.Set(float64(len(stats.Datasets)))
 
-	if time.Since(time.Unix(0, started)) < m.config.StatsConfidencePeriod {
+	if time.Since(m.startedAt) < m.config.StatsConfidencePeriod {
 		return
 	}
 
 	if err := m.store.StoreRules(ctx, rules); err != nil {
 		m.logger.Log("msg", "failed to store placement rules", "err", err)
+	} else {
+		m.metrics.lastUpdate.SetToCurrentTime()
 	}
 
-	m.metrics.lastUpdate.SetToCurrentTime()
 	if err := m.store.StoreStats(ctx, stats); err != nil {
 		m.logger.Log("msg", "failed to store stats", "err", err)
 	}
@@ -147,6 +150,7 @@ func (m *Manager) loadRules(ctx context.Context) bool {
 	}
 	if m.ruler == nil {
 		m.ruler = NewRuler(m.limits)
+		m.startedAt = time.Now()
 	}
 	if rules == nil {
 		rules = &adaptive_placementpb.PlacementRules{

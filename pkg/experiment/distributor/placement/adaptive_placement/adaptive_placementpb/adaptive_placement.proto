@@ -33,6 +33,7 @@ message ShardStats {
   string owner = 2;
 }
 
+// TODO: Embed into DatasetPlacement
 message PlacementLimits {
   uint64 tenant_shard_limit = 1;
   uint64 dataset_shard_limit = 2;
