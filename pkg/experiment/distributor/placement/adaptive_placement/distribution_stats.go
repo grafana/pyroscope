@@ -39,8 +39,8 @@ type Sample struct {
 	Size        uint64
 }
 
-func (d *DistributionStats) RecordStats(i iter.Iterator[Sample]) {
-	d.recordStats(time.Now().UnixNano(), i)
+func (d *DistributionStats) RecordStats(samples iter.Iterator[Sample]) {
+	d.recordStats(time.Now().UnixNano(), samples)
 }
 
 func (d *DistributionStats) Build() *adaptive_placementpb.DistributionStats {
@@ -57,11 +57,11 @@ func (d *DistributionStats) Expire(before time.Time) {
 	}
 }
 
-func (d *DistributionStats) recordStats(now int64, i iter.Iterator[Sample]) {
+func (d *DistributionStats) recordStats(now int64, samples iter.Iterator[Sample]) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	for i.Next() {
-		s := i.At()
+	for samples.Next() {
+		s := samples.At()
 		// TODO(kolesnikovae): intern strings with unique (go 1.23)
 		c := d.counter(counterKey{
 			tenant:  s.TenantID,

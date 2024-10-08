@@ -38,7 +38,7 @@ func Test_AdaptivePlacement(t *testing.T) {
 
 	p := NewAdaptivePlacement(m)
 
-	policy := p.PlacementPolicy(placement.Key{
+	policy := p.Policy(placement.Key{
 		TenantID:    "tenant-a",
 		DatasetName: "dataset-a",
 	})
@@ -46,7 +46,7 @@ func Test_AdaptivePlacement(t *testing.T) {
 	assert.Equal(t, 2, policy.DatasetShards)
 	assert.False(t, isRoundRobin(policy.PickShard))
 
-	policy = p.PlacementPolicy(placement.Key{
+	policy = p.Policy(placement.Key{
 		TenantID:    "tenant-b",
 		DatasetName: "dataset-b-1",
 	})
@@ -86,7 +86,7 @@ func Test_AdaptivePlacement(t *testing.T) {
 	})
 
 	// Assert that the new rules impacted the placement policy for the dataset.
-	policy = p.PlacementPolicy(placement.Key{
+	policy = p.Policy(placement.Key{
 		TenantID:    "tenant-a",
 		DatasetName: "dataset-a",
 	})
@@ -95,7 +95,7 @@ func Test_AdaptivePlacement(t *testing.T) {
 	assert.True(t, isRoundRobin(policy.PickShard))
 
 	// Other datasets of the tenant are not affected.
-	policy = p.PlacementPolicy(placement.Key{
+	policy = p.Policy(placement.Key{
 		TenantID:    "tenant-a",
 		DatasetName: "dataset-b",
 	})
@@ -103,7 +103,7 @@ func Test_AdaptivePlacement(t *testing.T) {
 	assert.Equal(t, 2, policy.DatasetShards)
 	assert.False(t, isRoundRobin(policy.PickShard))
 
-	policy = p.PlacementPolicy(placement.Key{
+	policy = p.Policy(placement.Key{
 		TenantID:    "tenant-a",
 		DatasetName: "dataset-a-2",
 	})
@@ -112,7 +112,7 @@ func Test_AdaptivePlacement(t *testing.T) {
 	assert.False(t, isRoundRobin(policy.PickShard))
 
 	// Other tenants are not affected.
-	policy = p.PlacementPolicy(placement.Key{
+	policy = p.Policy(placement.Key{
 		TenantID:    "tenant-b",
 		DatasetName: "dataset-b-1",
 	})

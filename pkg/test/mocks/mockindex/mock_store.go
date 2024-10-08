@@ -216,64 +216,6 @@ func (_c *MockStore_ListTenants_Call) RunAndReturn(run func(index.PartitionKey, 
 	return _c
 }
 
-// ReadPartitionMeta provides a mock function with given fields: p
-func (_m *MockStore) ReadPartitionMeta(p index.PartitionKey) (*index.PartitionMeta, error) {
-	ret := _m.Called(p)
-
-	if len(ret) == 0 {
-		panic("no return value specified for ReadPartitionMeta")
-	}
-
-	var r0 *index.PartitionMeta
-	var r1 error
-	if rf, ok := ret.Get(0).(func(index.PartitionKey) (*index.PartitionMeta, error)); ok {
-		return rf(p)
-	}
-	if rf, ok := ret.Get(0).(func(index.PartitionKey) *index.PartitionMeta); ok {
-		r0 = rf(p)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*index.PartitionMeta)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(index.PartitionKey) error); ok {
-		r1 = rf(p)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockStore_ReadPartitionMeta_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReadPartitionMeta'
-type MockStore_ReadPartitionMeta_Call struct {
-	*mock.Call
-}
-
-// ReadPartitionMeta is a helper method to define mock.On call
-//   - p index.PartitionKey
-func (_e *MockStore_Expecter) ReadPartitionMeta(p interface{}) *MockStore_ReadPartitionMeta_Call {
-	return &MockStore_ReadPartitionMeta_Call{Call: _e.mock.On("ReadPartitionMeta", p)}
-}
-
-func (_c *MockStore_ReadPartitionMeta_Call) Run(run func(p index.PartitionKey)) *MockStore_ReadPartitionMeta_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(index.PartitionKey))
-	})
-	return _c
-}
-
-func (_c *MockStore_ReadPartitionMeta_Call) Return(_a0 *index.PartitionMeta, _a1 error) *MockStore_ReadPartitionMeta_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockStore_ReadPartitionMeta_Call) RunAndReturn(run func(index.PartitionKey) (*index.PartitionMeta, error)) *MockStore_ReadPartitionMeta_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // NewMockStore creates a new instance of MockStore. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockStore(t interface {

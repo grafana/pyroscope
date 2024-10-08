@@ -3,17 +3,19 @@ package test
 import (
 	"context"
 	"crypto/rand"
+	"testing"
+
 	"github.com/grafana/dskit/flagext"
+	"github.com/oklog/ulid"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/memory"
-	"github.com/oklog/ulid"
-	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-	"testing"
 )
 
 func TestRaftDetailsAddBlock(t *testing.T) {

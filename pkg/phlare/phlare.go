@@ -45,6 +45,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/embedded/grafana"
 	compactionworker "github.com/grafana/pyroscope/pkg/experiment/compactor"
+	adaptiveplacement "github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
 	segmentwriter "github.com/grafana/pyroscope/pkg/experiment/ingester"
 	segmentwriterclient "github.com/grafana/pyroscope/pkg/experiment/ingester/client"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore"
@@ -68,7 +69,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/usagestats"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/cli"
-	"github.com/grafana/pyroscope/pkg/util/health"
 	"github.com/grafana/pyroscope/pkg/validation"
 	"github.com/grafana/pyroscope/pkg/validation/exporter"
 )
@@ -108,11 +108,12 @@ type Config struct {
 	// TODO(kolesnikovae):
 	//  - Generalized experimental features?
 	//  - Better naming.
-	v2Experiment     bool
-	SegmentWriter    segmentwriter.Config    `yaml:"segment_writer" doc:"hidden"`
-	Metastore        metastore.Config        `yaml:"metastore" doc:"hidden"`
-	QueryBackend     querybackend.Config     `yaml:"query_backend" doc:"hidden"`
-	CompactionWorker compactionworker.Config `yaml:"compaction_worker" doc:"hidden"`
+	v2Experiment      bool
+	SegmentWriter     segmentwriter.Config     `yaml:"segment_writer" doc:"hidden"`
+	Metastore         metastore.Config         `yaml:"metastore" doc:"hidden"`
+	QueryBackend      querybackend.Config      `yaml:"query_backend" doc:"hidden"`
+	CompactionWorker  compactionworker.Config  `yaml:"compaction_worker" doc:"hidden"`
+	AdaptivePlacement adaptiveplacement.Config `yaml:"adaptive_placement" doc:"hidden"`
 }
 
 func newDefaultConfig() *Config {
@@ -214,8 +215,10 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 		c.SegmentWriter.RegisterFlags(throwaway)
 		c.QueryBackend.RegisterFlags(throwaway)
 		c.CompactionWorker.RegisterFlags(throwaway)
+		c.AdaptivePlacement.RegisterFlags(throwaway)
 		c.LimitsConfig.WritePathOverrides.RegisterFlags(throwaway)
 		c.LimitsConfig.ReadPathOverrides.RegisterFlags(throwaway)
+		c.LimitsConfig.AdaptiveShardingLimits.RegisterFlags(throwaway)
 	}
 
 	throwaway.VisitAll(func(f *flag.Flag) {
@@ -296,13 +299,13 @@ type Phlare struct {
 	segmentWriter       *segmentwriter.SegmentWriterService
 	segmentWriterClient *segmentwriterclient.Client
 	segmentWriterRing   *ring.Ring
+	placementAgent      *adaptiveplacement.Agent
+	placementManager    *adaptiveplacement.Manager
 	metastore           *metastore.Metastore
 	metastoreClient     *metastoreclient.Client
-	//nolint:unused
-	queryBackend       *querybackend.QueryBackend
-	queryBackendClient *querybackendclient.Client
-	compactionWorker   *compactionworker.Worker
-	healthService      health.Service
+	queryBackend        *querybackend.QueryBackend
+	queryBackendClient  *querybackendclient.Client
+	compactionWorker    *compactionworker.Worker
 }
 
 func New(cfg Config) (*Phlare, error) {
@@ -311,10 +314,9 @@ func New(cfg Config) (*Phlare, error) {
 	usagestats.Edition("oss")
 
 	phlare := &Phlare{
-		Cfg:           cfg,
-		logger:        logger,
-		reg:           prometheus.DefaultRegisterer,
-		healthService: health.NoOpService,
+		Cfg:    cfg,
+		logger: logger,
+		reg:    prometheus.DefaultRegisterer,
 	}
 	if err := cfg.Validate(); err != nil {
 		return nil, err
@@ -406,18 +408,19 @@ func (f *Phlare) setupModuleManager() error {
 	if f.Cfg.v2Experiment {
 		experimentalModules := map[string][]string{
 			SegmentWriter:       {Overrides, API, MemberlistKV, Storage, UsageReport, MetastoreClient},
-			Metastore:           {Overrides, API, MetastoreClient, Storage},
+			Metastore:           {Overrides, API, MetastoreClient, Storage, PlacementManager},
 			CompactionWorker:    {Overrides, API, Storage, Overrides, MetastoreClient},
 			QueryBackend:        {Overrides, API, Storage, Overrides, QueryBackendClient},
 			SegmentWriterRing:   {Overrides, API, MemberlistKV},
-			SegmentWriterClient: {SegmentWriterRing},
-			HealthService:       {API},
+			SegmentWriterClient: {Overrides, API, SegmentWriterRing, PlacementAgent},
+			PlacementAgent:      {Overrides, API, Storage},
+			PlacementManager:    {Overrides, API, Storage},
 		}
 		for k, v := range experimentalModules {
 			deps[k] = v
 		}
 
-		deps[All] = append(deps[All], SegmentWriter, Metastore, CompactionWorker, QueryBackend, HealthService)
+		deps[All] = append(deps[All], SegmentWriter, Metastore, CompactionWorker, QueryBackend)
 		deps[QueryFrontend] = append(deps[QueryFrontend], MetastoreClient, QueryBackendClient)
 		deps[Distributor] = append(deps[Distributor], SegmentWriterClient)
 
@@ -429,7 +432,8 @@ func (f *Phlare) setupModuleManager() error {
 		mm.RegisterModule(QueryBackend, f.initQueryBackend)
 		mm.RegisterModule(MetastoreClient, f.initMetastoreClient, modules.UserInvisibleModule)
 		mm.RegisterModule(QueryBackendClient, f.initQueryBackendClient, modules.UserInvisibleModule)
-		mm.RegisterModule(HealthService, f.initHealthService, modules.UserInvisibleModule)
+		mm.RegisterModule(PlacementAgent, f.initPlacementAgent, modules.UserInvisibleModule)
+		mm.RegisterModule(PlacementManager, f.initPlacementManager, modules.UserInvisibleModule)
 	}
 
 	for mod, targets := range deps {

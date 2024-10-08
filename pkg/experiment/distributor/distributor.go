@@ -19,19 +19,41 @@ import (
 
 const defaultRingUpdateInterval = 5 * time.Second
 
+// TODO(kolesnikovae):
+//  - Naming.
+//  - Move to the placement.
+
+type Placement interface {
+	Policy(placement.Key) placement.Policy
+}
+
+var DefaultPlacement = defaultPlacement{}
+
+type defaultPlacement struct{}
+
+func (defaultPlacement) Policy(k placement.Key) placement.Policy {
+	return placement.Policy{
+		TenantShards:  0, // Unlimited.
+		DatasetShards: 1,
+		PickShard: func(n int) int {
+			return int(k.Fingerprint % uint64(n))
+		},
+	}
+}
+
 type Distributor struct {
 	mu           sync.RWMutex
 	ring         ring.ReadRing
-	limits       Limits
+	placement    Placement
 	distribution *distribution
 
 	RingUpdateInterval time.Duration
 }
 
-func NewDistributor(limits Limits, r ring.ReadRing) *Distributor {
+func NewDistributor(limits Placement, r ring.ReadRing) *Distributor {
 	return &Distributor{
 		ring:               r,
-		limits:             limits,
+		placement:          limits,
 		RingUpdateInterval: defaultRingUpdateInterval,
 	}
 }
@@ -73,7 +95,7 @@ func (d *Distributor) distribute(k placement.Key) *placement.Placement {
 	// Determine the number of shards for the tenant within the available
 	// space, and the dataset shards within the tenant subring.
 	s := len(d.distribution.shards)
-	p := d.limits.PlacementPolicy(k)
+	p := d.placement.Policy(k)
 	tenantSize := p.TenantShards
 	if tenantSize == 0 || tenantSize > s {
 		tenantSize = s

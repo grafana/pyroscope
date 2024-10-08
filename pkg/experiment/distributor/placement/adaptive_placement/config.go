@@ -7,6 +7,8 @@ import (
 
 const flagPrefix = "adaptive-sharding."
 
+// TODO(kolesnikovae): Rename to overrides?
+
 type Limits interface {
 	ShardingLimits(tenant string) ShardingLimits
 }
@@ -14,14 +16,14 @@ type Limits interface {
 // ShardingLimits defines the limits for adaptive sharding.
 // These parameters are tenant-specific.
 type ShardingLimits struct {
-	TenantShards         uint64        `yaml:"adaptive_sharding_tenant_shards" json:"adaptive_sharding_tenant_shards"`
-	DefaultDatasetShards uint64        `yaml:"adaptive_sharding_default_dataset_shards" json:"adaptive_sharding_default_dataset_shards"`
-	LoadBalancing        LoadBalancing `yaml:"adaptive_sharding_load_balancing" json:"adaptive_sharding_load_balancing"`
-	MinDatasetShards     uint64        `yaml:"adaptive_sharding_min_dataset_shards" json:"adaptive_sharding_min_dataset_shards"`
-	MaxDatasetShards     uint64        `yaml:"adaptive_sharding_max_dataset_shards" json:"adaptive_sharding_max_dataset_shards"`
-	UnitSizeBytes        uint64        `yaml:"adaptive_sharding_unit_size_bytes" json:"adaptive_sharding_unit_size_bytes"`
-	BurstWindow          time.Duration `yaml:"adaptive_sharding_burst_window" json:"adaptive_sharding_burst_window"`
-	DecayWindow          time.Duration `yaml:"adaptive_sharding_decay_window" json:"adaptive_sharding_decay_window"`
+	TenantShards         uint64        `yaml:"adaptive_sharding_tenant_shards" json:"adaptive_sharding_tenant_shards" doc:"hidden"`
+	DefaultDatasetShards uint64        `yaml:"adaptive_sharding_default_dataset_shards" json:"adaptive_sharding_default_dataset_shards" doc:"hidden"`
+	LoadBalancing        LoadBalancing `yaml:"adaptive_sharding_load_balancing" json:"adaptive_sharding_load_balancing" doc:"hidden"`
+	MinDatasetShards     uint64        `yaml:"adaptive_sharding_min_dataset_shards" json:"adaptive_sharding_min_dataset_shards" doc:"hidden"`
+	MaxDatasetShards     uint64        `yaml:"adaptive_sharding_max_dataset_shards" json:"adaptive_sharding_max_dataset_shards" doc:"hidden"`
+	UnitSizeBytes        uint64        `yaml:"adaptive_sharding_unit_size_bytes" json:"adaptive_sharding_unit_size_bytes" doc:"hidden"`
+	BurstWindow          time.Duration `yaml:"adaptive_sharding_burst_window" json:"adaptive_sharding_burst_window" doc:"hidden"`
+	DecayWindow          time.Duration `yaml:"adaptive_sharding_decay_window" json:"adaptive_sharding_decay_window" doc:"hidden"`
 }
 
 func (o *ShardingLimits) RegisterFlags(f *flag.FlagSet) {
@@ -49,6 +51,13 @@ type Config struct {
 	ExportShardLimitMetrics          bool          `yaml:"export_shard_limit_metrics" json:"export_shard_limit_metrics"`
 	ExportShardUsageMetrics          bool          `yaml:"export_shard_usage_metrics" json:"export_shard_usage_metrics"`
 	ExportShardUsageBreakdownMetrics bool          `yaml:"export_shard_usage_breakdown_metrics" json:"export_shard_usage_breakdown_metrics"`
+}
+
+func DefaultConfig() Config {
+	var c Config
+	var f flag.FlagSet
+	c.RegisterFlags(&f)
+	return c
 }
 
 func (c *Config) RegisterFlags(f *flag.FlagSet) {

@@ -96,7 +96,7 @@ func (s *agentSuite) Test_Agent_updates_placement_rules() {
 
 	p := s.agent.Placement()
 	s.Require().NotNil(p)
-	policy := p.PlacementPolicy(placement.Key{
+	policy := p.Policy(placement.Key{
 		TenantID:    "tenant-a",
 		DatasetName: "dataset-a",
 	})
@@ -122,7 +122,7 @@ func (s *agentSuite) Test_Agent_updates_placement_rules() {
 		Once()
 
 	s.agent.updatePlacement(context.Background())
-	policy = p.PlacementPolicy(placement.Key{
+	policy = p.Policy(placement.Key{
 		TenantID:    "tenant-a",
 		DatasetName: "dataset-a",
 	})
@@ -144,7 +144,7 @@ func (s *agentSuite) Test_Agent_ignored_outdated_rules() {
 
 	p := s.agent.Placement()
 	s.Require().NotNil(p)
-	policy := p.PlacementPolicy(placement.Key{
+	policy := p.Policy(placement.Key{
 		TenantID:    "tenant-a",
 		DatasetName: "dataset-a",
 	})
@@ -170,7 +170,7 @@ func (s *agentSuite) Test_Agent_ignored_outdated_rules() {
 		Once()
 
 	s.agent.updatePlacement(context.Background())
-	policy = p.PlacementPolicy(placement.Key{
+	policy = p.Policy(placement.Key{
 		TenantID:    "tenant-a",
 		DatasetName: "dataset-a",
 	})

@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-
 	"net"
 	"os"
 	"path/filepath"
@@ -25,6 +24,7 @@ import (
 
 	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	adaptiveplacement "github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
 	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/dlq"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
@@ -114,7 +114,6 @@ type Metastore struct {
 	config Config
 	logger log.Logger
 	reg    prometheus.Registerer
-	limits Limits
 
 	// In-memory state.
 	state *metastoreState
@@ -139,25 +138,31 @@ type Metastore struct {
 	client     *metastoreclient.Client
 	readySince time.Time
 
-	dnsProvider *dns.Provider
-	dlq         *dlq.Recovery
+	placementMgr *adaptiveplacement.Manager
+	dnsProvider  *dns.Provider
+	dlq          *dlq.Recovery
 }
 
-type Limits interface{}
-
-func New(config Config, limits Limits, logger log.Logger, reg prometheus.Registerer, client *metastoreclient.Client, bucket objstore.Bucket) (*Metastore, error) {
+func New(
+	config Config,
+	logger log.Logger,
+	reg prometheus.Registerer,
+	client *metastoreclient.Client,
+	bucket objstore.Bucket,
+	placementMgr *adaptiveplacement.Manager,
+) (*Metastore, error) {
 	metrics := newMetastoreMetrics(reg)
 	m := &Metastore{
-		config:  config,
-		logger:  logger,
-		reg:     reg,
-		limits:  limits,
-		db:      newDB(config, logger, metrics),
-		metrics: metrics,
-		client:  client,
+		config:       config,
+		logger:       logger,
+		reg:          reg,
+		db:           newDB(config, logger, metrics),
+		metrics:      metrics,
+		client:       client,
+		placementMgr: placementMgr,
 	}
-	m.leaderhealth = raftleader.NewRaftLeaderHealthObserver(logger, raftleader.NewMetrics(reg))
-	m.state = newMetastoreState(logger, m.db, m.reg, &config.Compaction, &config.Index)
+	m.leaderhealth = raftleader.NewRaftLeaderHealthObserver(logger, reg)
+	m.state = newMetastoreState(logger, m.db, reg, &config.Compaction, &config.Index)
 	m.dlq = dlq.NewRecovery(dlq.RecoveryConfig{
 		Period: config.DLQRecoveryPeriod,
 	}, logger, m, bucket)
@@ -174,14 +179,13 @@ func (m *Metastore) Shutdown() error {
 	return nil
 }
 
-func (m *Metastore) starting(ctx context.Context) error {
+func (m *Metastore) starting(context.Context) error {
 	if err := m.db.open(false); err != nil {
 		return fmt.Errorf("failed to initialize database: %w", err)
 	}
 	if err := m.initRaft(); err != nil {
 		return fmt.Errorf("failed to initialize raft: %w", err)
 	}
-	m.dlq.Start()
 	return nil
 }
 
@@ -244,8 +248,10 @@ func (m *Metastore) initRaft() (err error) {
 	m.leaderhealth.Register(m.raft, func(st raft.RaftState) {
 		if st == raft.Leader {
 			m.dlq.Start()
+			m.placementMgr.Start()
 		} else {
 			m.dlq.Stop()
+			m.placementMgr.Stop()
 		}
 	})
 	return nil
@@ -301,7 +307,7 @@ func (m *Metastore) shutdownRaft() {
 				_ = level.Error(m.logger).Log("msg", "failed to transfer leadership", "err", err)
 			}
 		}
-		m.leaderhealth.Deregister(m.raft)
+		m.leaderhealth.Deregister()
 		if err := m.raft.Shutdown().Error(); err != nil {
 			_ = level.Error(m.logger).Log("msg", "failed to shutdown raft", "err", err)
 		}

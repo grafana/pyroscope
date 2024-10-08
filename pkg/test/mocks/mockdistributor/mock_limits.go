@@ -21,7 +21,7 @@ func (_m *MockLimits) EXPECT() *MockLimits_Expecter {
 }
 
 // PlacementPolicy provides a mock function with given fields: _a0
-func (_m *MockLimits) PlacementPolicy(_a0 placement.Key) placement.Policy {
+func (_m *MockLimits) Policy(_a0 placement.Key) placement.Policy {
 	ret := _m.Called(_a0)
 
 	if len(ret) == 0 {

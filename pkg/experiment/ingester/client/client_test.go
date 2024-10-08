@@ -22,6 +22,7 @@ import (
 	"google.golang.org/grpc/test/bufconn"
 
 	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/distributor"
 	"github.com/grafana/pyroscope/pkg/testhelper"
 )
 
@@ -71,7 +72,10 @@ func (s *segwriterClientSuite) SetupTest() {
 	s.ring = testhelper.NewMockRing(instances, 1)
 
 	var err error
-	s.client, err = NewSegmentWriterClient(s.config, s.logger, nil, s.ring, grpc.WithContextDialer(s.dialer))
+	s.client, err = NewSegmentWriterClient(
+		s.config, s.logger, nil, s.ring,
+		distributor.DefaultPlacement,
+		grpc.WithContextDialer(s.dialer))
 	s.Require().NoError(err)
 
 	s.done = make(chan struct{})
@@ -128,7 +132,10 @@ func (s *segwriterClientSuite) Test_Push_HappyPath() {
 func (s *segwriterClientSuite) Test_Push_EmptyRing() {
 	emptyRing := testhelper.NewMockRing(nil, 1)
 	var err error
-	s.client, err = NewSegmentWriterClient(s.config, s.logger, nil, emptyRing, grpc.WithContextDialer(s.dialer))
+	s.client, err = NewSegmentWriterClient(
+		s.config, s.logger, nil, emptyRing,
+		distributor.DefaultPlacement,
+		grpc.WithContextDialer(s.dialer))
 	s.Require().NoError(err)
 
 	_, err = s.client.Push(context.Background(), &segmentwriterv1.PushRequest{})
@@ -193,7 +200,10 @@ func (s *segwriterClientSuite) Test_Push_DialError() {
 		return nil, io.EOF
 	}
 	var err error
-	s.client, err = NewSegmentWriterClient(s.config, s.logger, nil, s.ring, grpc.WithContextDialer(dialer))
+	s.client, err = NewSegmentWriterClient(
+		s.config, s.logger, nil, s.ring,
+		distributor.DefaultPlacement,
+		grpc.WithContextDialer(dialer))
 	s.Require().NoError(err)
 
 	_, err = s.client.Push(context.Background(), &segmentwriterv1.PushRequest{})
@@ -210,7 +220,10 @@ func (s *segwriterClientSuite) Test_Push_DialError_Retry() {
 		return s.listener.Dial()
 	}
 	var err error
-	s.client, err = NewSegmentWriterClient(s.config, s.logger, nil, s.ring, grpc.WithContextDialer(dialer))
+	s.client, err = NewSegmentWriterClient(
+		s.config, s.logger, nil, s.ring,
+		distributor.DefaultPlacement,
+		grpc.WithContextDialer(dialer))
 	s.Require().NoError(err)
 
 	s.service.On("Push", mock.Anything, mock.Anything).

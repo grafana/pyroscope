@@ -12,6 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement/adaptive_placementpb"
+	"github.com/grafana/pyroscope/pkg/iter"
 	"github.com/grafana/pyroscope/pkg/util"
 )
 
@@ -59,7 +60,7 @@ func NewManager(
 
 func (m *Manager) Service() services.Service { return m.service }
 
-func (m *Manager) Stats() *DistributionStats { return m.stats }
+func (m *Manager) RecordStats(samples iter.Iterator[Sample]) { m.stats.RecordStats(samples) }
 
 func (m *Manager) Start() { m.started.Store(time.Now().UnixNano()) }
 func (m *Manager) Stop()  { m.started.Store(-1) }
@@ -75,6 +76,16 @@ func (m *Manager) updateRulesNoError(ctx context.Context) error {
 	return nil
 }
 
+// If the manager is being stopped in the process, an ongoing attempt is not
+// aborted: we're interested in finishing the operation so that the rules
+// reflect the most recent statistics.
+//
+// When just started, the manager may not have enough statistics to build
+// the rules: StatsConfidencePeriod should expire before the first update.
+// Note that ruler won't downscale datasets for a certain period of time
+// after the ruler is created regardless of the confidence period. Therefore,
+// it's generally safe to publish rules even with incomplete statistics;
+// however, this allows for delays in response to changes of the data flow.
 func (m *Manager) updateRules(ctx context.Context) {
 	started := m.started.Load()
 	if started < 0 {
@@ -99,11 +110,6 @@ func (m *Manager) updateRules(ctx context.Context) {
 	m.metrics.statsTotal.Set(float64(len(stats.Datasets)))
 
 	if time.Since(time.Unix(0, started)) < m.config.StatsConfidencePeriod {
-		// Although, we have enough data to build the rules, we may want
-		// to wait a bit longer to ensure that the stats are stable.
-		// Note that ruler won't downscale datasets for a certain period
-		// of time after the ruler is created regardless of this check.
-		// Therefore, it's generally safe to skip it.
 		return
 	}
 

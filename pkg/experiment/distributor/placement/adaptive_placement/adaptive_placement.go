@@ -23,7 +23,7 @@ func NewAdaptivePlacement(limits Limits) *AdaptivePlacement {
 	return &AdaptivePlacement{limits: limits}
 }
 
-func (a *AdaptivePlacement) PlacementPolicy(k placement.Key) placement.Policy {
+func (a *AdaptivePlacement) Policy(k placement.Key) placement.Policy {
 	dk := datasetKey{
 		tenant:  k.TenantID,
 		dataset: k.DatasetName,
@@ -55,9 +55,6 @@ func (a *AdaptivePlacement) defaultPolicy(k placement.Key) placement.Policy {
 func (a *AdaptivePlacement) Update(rules *adaptive_placementpb.PlacementRules) {
 	datasets := make(map[datasetKey]*adaptive_placementpb.PlacementLimits, len(rules.Datasets))
 	for _, dataset := range rules.Datasets {
-		if dataset.Tenant >= uint32(len(rules.Tenants)) {
-			continue
-		}
 		k := datasetKey{
 			tenant:  rules.Tenants[dataset.Tenant].TenantId,
 			dataset: dataset.Name,
