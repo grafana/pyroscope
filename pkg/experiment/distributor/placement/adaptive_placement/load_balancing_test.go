@@ -102,6 +102,11 @@ func Test_loadBalancingStrategy_relocation(t *testing.T) {
 			target:   5, // 5/5
 		},
 		{
+			usage:    []uint64{2 * unitSize, 2 * unitSize, unitSize / 2, unitSize / 2},
+			expected: RoundRobinLoadBalancing,
+			target:   2, // 2/4
+		},
+		{
 			usage:    []uint64{2 * unitSize, 2 * unitSize, unitSize / 2, unitSize / 2, unitSize / 2},
 			expected: RoundRobinLoadBalancing,
 			target:   3, // 3/5
@@ -112,12 +117,13 @@ func Test_loadBalancingStrategy_relocation(t *testing.T) {
 			target:   2, // 2/5
 		},
 		{
-			usage:    []uint64{2 * unitSize, 2 * unitSize, unitSize / 2, unitSize / 2},
+			usage:    []uint64{unitSize, unitSize, unitSize / 5, unitSize / 5},
 			expected: FingerprintLoadBalancing,
-			target:   2, // 1/2
+			target:   2, // 2/4
 		},
 	} {
 		stats := &adaptive_placementpb.DatasetStats{
+			Shards: make([]uint32, len(test.usage)),
 			Usage:  test.usage,
 			StdDev: stdDev(test.usage),
 		}
