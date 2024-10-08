@@ -82,6 +82,8 @@ func main() {
 	queryBlocksCmd := app.Command("query-blocks", "Query on local/remote blocks")
 	queryBlocksSeriesCmd := queryBlocksCmd.Command("series", "Request series labels on local/remote blocks")
 	queryBlocksSeriesParams := addQueryBlocksSeriesParams(queryBlocksSeriesCmd)
+	queryBlocksMergeCmd := queryBlocksCmd.Command("merge", "Request merged profile.")
+	queryBlocksMergeParams := addQueryBlocksMergeParams(queryBlocksMergeCmd)
 
 	uploadCmd := app.Command("upload", "Upload profile(s).")
 	uploadParams := addUploadParams(uploadCmd)
@@ -138,6 +140,10 @@ func main() {
 
 	case queryBlocksSeriesCmd.FullCommand():
 		if err := queryBlocksSeries(ctx, queryBlocksSeriesParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case queryBlocksMergeCmd.FullCommand():
+		if err := queryBlocksMerge(ctx, queryBlocksMergeParams); err != nil {
 			os.Exit(checkError(err))
 		}
 
