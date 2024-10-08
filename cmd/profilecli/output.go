@@ -4,16 +4,14 @@ import (
 	"encoding/json"
 	"os"
 
-	"github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
 func outputSeries(result []*typesv1.Labels) error {
 	enc := json.NewEncoder(os.Stdout)
 	m := make(map[string]interface{})
 	for _, s := range result {
-		for k := range m {
-			delete(m, k)
-		}
+		clear(m)
 		for _, l := range s.Labels {
 			m[l.Name] = l.Value
 		}

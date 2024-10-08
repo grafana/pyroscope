@@ -1398,6 +1398,7 @@ func TestBlockMeta_loadsMetasIndividually(t *testing.T) {
 	blockQuerier := NewBlockQuerier(ctx, bucket)
 	metas, err := blockQuerier.BlockMetas(ctx)
 	require.NoError(t, err)
+	require.NotEmpty(t, metas)
 
 	for _, meta := range metas {
 		singleMeta, err := blockQuerier.BlockMeta(ctx, meta.ULID.String())

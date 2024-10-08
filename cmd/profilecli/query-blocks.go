@@ -21,7 +21,7 @@ type queryBlocksParams struct {
 	LocalPath       string
 	BucketName      string
 	BlockIds        []string
-	TenanId         string
+	TenantID        string
 	ObjectStoreType string
 	Query           string
 }
@@ -37,7 +37,7 @@ func addQueryBlocksParams(queryCmd commander) *queryBlocksParams {
 	queryCmd.Flag("bucket-name", "The name of the object storage bucket.").StringVar(&params.BucketName)
 	queryCmd.Flag("object-store-type", "The type of the object storage (e.g., gcs).").Default("gcs").StringVar(&params.ObjectStoreType)
 	queryCmd.Flag("block-ids", "List of blocks ids to query on").StringsVar(&params.BlockIds)
-	queryCmd.Flag("tenant-id", "Tenant id of the queried block for remote bucket").StringVar(&params.TenanId)
+	queryCmd.Flag("tenant-id", "Tenant id of the queried block for remote bucket").StringVar(&params.TenantID)
 	queryCmd.Flag("query", "Label selector to query.").Default("{}").StringVar(&params.Query)
 	return params
 }
@@ -51,7 +51,7 @@ func addQueryBlocksSeriesParams(queryCmd commander) *queryBlocksSeriesParams {
 
 func queryBlocksSeries(ctx context.Context, params *queryBlocksSeriesParams) error {
 	level.Info(logger).Log("msg", "query-block series", "labelNames", fmt.Sprintf("%v", params.LabelNames),
-		"blockIds", fmt.Sprintf("%v", params.BlockIds), "localPath", params.LocalPath, "bucketName", params.BucketName, "tenantId", params.TenanId)
+		"blockIds", fmt.Sprintf("%v", params.BlockIds), "localPath", params.LocalPath, "bucketName", params.BucketName, "tenantId", params.TenantID)
 
 	bucket, err := getBucket(ctx, params)
 	if err != nil {
@@ -97,7 +97,7 @@ func getBucket(ctx context.Context, params *queryBlocksSeriesParams) (objstore.B
 }
 
 func getRemoteBucket(ctx context.Context, params *queryBlocksSeriesParams) (objstore.Bucket, error) {
-	if params.TenanId == "" {
+	if params.TenantID == "" {
 		return nil, errors.New("specify tenant id for remote bucket")
 	}
 	return objstoreclient.NewBucket(ctx, objstoreclient.Config{
@@ -107,6 +107,6 @@ func getRemoteBucket(ctx context.Context, params *queryBlocksSeriesParams) (objs
 				BucketName: params.BucketName,
 			},
 		},
-		StoragePrefix: fmt.Sprintf("%s/phlaredb", params.TenanId),
+		StoragePrefix: fmt.Sprintf("%s/phlaredb", params.TenantID),
 	}, params.BucketName)
 }
