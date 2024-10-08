@@ -11,6 +11,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement/adaptive_placementpb"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 type Agent struct {
@@ -67,7 +68,7 @@ func (a *Agent) stopping(error) error { return nil }
 // signature: there's no case when the service stops on its own:
 // it's better to serve outdated rules than to not serve at all.
 func (a *Agent) updatePlacementNoError(ctx context.Context) error {
-	a.updatePlacement(ctx)
+	util.Recover(func() { a.updatePlacement(ctx) })
 	return nil
 }
 

@@ -62,6 +62,15 @@ func RecoverPanic(f func() error) func() error {
 	}
 }
 
+func Recover(f func()) {
+	defer func() {
+		if p := recover(); p != nil {
+			_ = PanicError(p)
+		}
+	}()
+	f()
+}
+
 type recoveryInterceptor struct{}
 
 func (recoveryInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {

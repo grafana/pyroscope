@@ -11,7 +11,7 @@ type agentMetrics struct {
 func newAgentMetrics(reg prometheus.Registerer) *agentMetrics {
 	m := &agentMetrics{
 		lag: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: "pyroscope_adaptive_sharding_rules_lag_seconds",
+			Name: "pyroscope_adaptive_sharding_rules_update_lag_seconds",
 			Help: "Delay in seconds since the last update of the placement rules.",
 		}),
 	}

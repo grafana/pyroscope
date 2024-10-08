@@ -26,4 +26,8 @@ type Config struct {
 	PlacementRetentionPeriod time.Duration
 	StatsAggregationWindow   time.Duration
 	StatsRetentionPeriod     time.Duration
+
+	ExportShardLimitMetrics          bool
+	ExportShardUsageMetrics          bool
+	ExportShardUsageBreakdownMetrics bool
 }

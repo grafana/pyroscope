@@ -81,34 +81,22 @@ func (_c *MockStore_LoadRules_Call) RunAndReturn(run func(context.Context) (*ada
 	return _c
 }
 
-// LoadStats provides a mock function with given fields: _a0
-func (_m *MockStore) LoadStats(_a0 context.Context) (*adaptive_placementpb.DistributionStats, error) {
-	ret := _m.Called(_a0)
+// LoadStats provides a mock function with given fields: _a0, _a1
+func (_m *MockStore) LoadStats(_a0 context.Context, _a1 *adaptive_placementpb.DistributionStats) error {
+	ret := _m.Called(_a0, _a1)
 
 	if len(ret) == 0 {
 		panic("no return value specified for LoadStats")
 	}
 
-	var r0 *adaptive_placementpb.DistributionStats
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) (*adaptive_placementpb.DistributionStats, error)); ok {
-		return rf(_a0)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context) *adaptive_placementpb.DistributionStats); ok {
-		r0 = rf(_a0)
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *adaptive_placementpb.DistributionStats) error); ok {
+		r0 = rf(_a0, _a1)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*adaptive_placementpb.DistributionStats)
-		}
+		r0 = ret.Error(0)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
-		r1 = rf(_a0)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
+	return r0
 }
 
 // MockStore_LoadStats_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LoadStats'
@@ -118,23 +106,24 @@ type MockStore_LoadStats_Call struct {
 
 // LoadStats is a helper method to define mock.On call
 //   - _a0 context.Context
-func (_e *MockStore_Expecter) LoadStats(_a0 interface{}) *MockStore_LoadStats_Call {
-	return &MockStore_LoadStats_Call{Call: _e.mock.On("LoadStats", _a0)}
+//   - _a1 *adaptive_placementpb.DistributionStats
+func (_e *MockStore_Expecter) LoadStats(_a0 interface{}, _a1 interface{}) *MockStore_LoadStats_Call {
+	return &MockStore_LoadStats_Call{Call: _e.mock.On("LoadStats", _a0, _a1)}
 }
 
-func (_c *MockStore_LoadStats_Call) Run(run func(_a0 context.Context)) *MockStore_LoadStats_Call {
+func (_c *MockStore_LoadStats_Call) Run(run func(_a0 context.Context, _a1 *adaptive_placementpb.DistributionStats)) *MockStore_LoadStats_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context))
+		run(args[0].(context.Context), args[1].(*adaptive_placementpb.DistributionStats))
 	})
 	return _c
 }
 
-func (_c *MockStore_LoadStats_Call) Return(_a0 *adaptive_placementpb.DistributionStats, _a1 error) *MockStore_LoadStats_Call {
-	_c.Call.Return(_a0, _a1)
+func (_c *MockStore_LoadStats_Call) Return(_a0 error) *MockStore_LoadStats_Call {
+	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockStore_LoadStats_Call) RunAndReturn(run func(context.Context) (*adaptive_placementpb.DistributionStats, error)) *MockStore_LoadStats_Call {
+func (_c *MockStore_LoadStats_Call) RunAndReturn(run func(context.Context, *adaptive_placementpb.DistributionStats) error) *MockStore_LoadStats_Call {
 	_c.Call.Return(run)
 	return _c
 }

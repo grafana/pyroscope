@@ -9,10 +9,13 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/services"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement/adaptive_placementpb"
+	"github.com/grafana/pyroscope/pkg/iter"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockadaptive_placement"
 )
 
@@ -20,6 +23,7 @@ type managerSuite struct {
 	suite.Suite
 
 	logger  log.Logger
+	reg     *prometheus.Registry
 	config  Config
 	limits  *mockLimits
 	store   *mockadaptive_placement.MockStore
@@ -28,17 +32,20 @@ type managerSuite struct {
 
 func (s *managerSuite) SetupTest() {
 	s.logger = log.NewLogfmtLogger(io.Discard)
+	s.reg = prometheus.NewRegistry()
 	s.config = Config{
 		PlacementUpdateInterval:  15 * time.Second,
 		PlacementRetentionPeriod: 15 * time.Minute,
-		StatsAggregationWindow:   3 * time.Minute,
-		StatsRetentionPeriod:     5 * time.Minute,
+
+		StatsConfidencePeriod:  0,
+		StatsAggregationWindow: 3 * time.Minute,
+		StatsRetentionPeriod:   5 * time.Minute,
 	}
 	s.limits = new(mockLimits)
 	s.store = new(mockadaptive_placement.MockStore)
 	s.manager = NewManager(
 		s.logger,
-		nil,
+		s.reg,
 		s.config,
 		s.limits,
 		s.store,
@@ -69,6 +76,7 @@ func (s *managerSuite) Test_Manager_only_updates_rules_if_started() {
 
 	newRules := func(r *adaptive_placementpb.PlacementRules) bool { return r.CreatedAt > 100 }
 	s.store.On("StoreRules", mock.Anything, mock.MatchedBy(newRules)).Return(nil).Once()
+	s.store.On("StoreStats", mock.Anything, mock.Anything).Return(nil).Once()
 
 	s.manager.Start()
 	s.manager.updateRules(context.Background())
@@ -101,7 +109,49 @@ func (s *managerSuite) Test_Manager_updates_rules_if_no_rules_not_found() {
 
 	newRules := func(r *adaptive_placementpb.PlacementRules) bool { return r.CreatedAt > 0 }
 	s.store.On("StoreRules", mock.Anything, mock.MatchedBy(newRules)).Return(nil).Once()
+	s.store.On("StoreStats", mock.Anything, mock.Anything).Return(nil).Once()
 
 	s.manager.Start()
 	s.manager.updateRules(context.Background())
+}
+
+func (s *managerSuite) Test_Manager_exports_metrics() {
+	s.manager.config.ExportShardLimitMetrics = true
+	s.manager.config.ExportShardUsageMetrics = true
+	s.manager.config.ExportShardUsageBreakdownMetrics = true
+
+	oldRules := &adaptive_placementpb.PlacementRules{CreatedAt: 100}
+	s.store.On("LoadRules", mock.Anything).Return(oldRules, nil)
+
+	newRules := func(r *adaptive_placementpb.PlacementRules) bool { return r.CreatedAt > 100 }
+	s.store.On("StoreRules", mock.Anything, mock.MatchedBy(newRules)).Return(nil).Once()
+	s.store.On("StoreStats", mock.Anything, mock.Anything).Return(nil).Once()
+
+	s.limits.On("ShardingLimits", mock.Anything).Return(ShardingLimits{
+		DefaultDatasetShards: 2,
+		MinDatasetShards:     1,
+		UnitSizeBytes:        256 << 10,
+		BurstWindow:          time.Minute,
+		DecayWindow:          time.Minute,
+	})
+
+	s.manager.Stats().RecordStats(iter.NewSliceIterator([]Sample{
+		{TenantID: "tenant-a", DatasetName: "dataset-a", ShardID: 1, Size: 100 << 10},
+		{TenantID: "tenant-a", DatasetName: "dataset-a", ShardID: 2, Size: 100 << 10},
+		{TenantID: "tenant-b", DatasetName: "dataset-b", ShardID: 2, Size: 100 << 10},
+	}))
+
+	s.manager.Start()
+	s.manager.updateRules(context.Background())
+
+	n, err := testutil.GatherAndCount(s.reg,
+		"pyroscope_adaptive_sharding_rules_last_update_time",
+		"pyroscope_adaptive_sharding_rules",
+		"pyroscope_adaptive_sharding_stats",
+		"pyroscope_adaptive_sharding_dataset_shard_limit",
+		"pyroscope_adaptive_sharding_dataset_shard_usage_bytes_per_second",
+		"pyroscope_adaptive_sharding_dataset_shard_usage_breakdown_bytes_per_second",
+	)
+	s.Require().NoError(err)
+	s.Assert().Equal(10, n)
 }

@@ -3,6 +3,7 @@ package adaptive_placement
 import (
 	"context"
 	"errors"
+	"strconv"
 	"sync/atomic"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement/adaptive_placementpb"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 // Manager maintains placement rules and distribution stats in the store.
@@ -24,6 +26,7 @@ type Manager struct {
 	logger  log.Logger
 	config  Config
 	limits  Limits
+	metrics *managerMetrics
 
 	store Store
 	ruler *Ruler
@@ -38,11 +41,12 @@ func NewManager(
 	store Store,
 ) *Manager {
 	m := &Manager{
-		logger: logger,
-		config: config,
-		limits: limits,
-		store:  store,
-		stats:  NewDistributionStats(config.StatsAggregationWindow),
+		logger:  logger,
+		config:  config,
+		limits:  limits,
+		store:   store,
+		stats:   NewDistributionStats(config.StatsAggregationWindow),
+		metrics: newManagerMetrics(reg),
 	}
 	m.service = services.NewTimerService(
 		config.PlacementUpdateInterval,
@@ -67,17 +71,14 @@ func (m *Manager) stopping(error) error           { return nil }
 // signature: there's no case when the service stops on its own:
 // it's better to serve outdated rules than to not serve at all.
 func (m *Manager) updateRulesNoError(ctx context.Context) error {
-	m.updateRules(ctx)
+	util.Recover(func() { m.updateRules(ctx) })
 	return nil
 }
 
 func (m *Manager) updateRules(ctx context.Context) {
 	started := m.started.Load()
 	if started < 0 {
-		// Note that we only reset the ruler here, but not the stats:
-		// there's no harm in old samples as long as they are within
-		// the retention period.
-		m.ruler = nil
+		m.reset()
 		return
 	}
 	// Initialize the ruler if it's the first run after start.
@@ -94,6 +95,9 @@ func (m *Manager) updateRules(ctx context.Context) {
 	stats := m.stats.Build()
 	rules := m.ruler.BuildRules(stats)
 
+	m.metrics.rulesTotal.Set(float64(len(rules.Datasets)))
+	m.metrics.statsTotal.Set(float64(len(stats.Datasets)))
+
 	if time.Since(time.Unix(0, started)) < m.config.StatsConfidencePeriod {
 		// Although, we have enough data to build the rules, we may want
 		// to wait a bit longer to ensure that the stats are stable.
@@ -106,6 +110,25 @@ func (m *Manager) updateRules(ctx context.Context) {
 	if err := m.store.StoreRules(ctx, rules); err != nil {
 		m.logger.Log("msg", "failed to store placement rules", "err", err)
 	}
+
+	m.metrics.lastUpdate.SetToCurrentTime()
+	if err := m.store.StoreStats(ctx, stats); err != nil {
+		m.logger.Log("msg", "failed to store stats", "err", err)
+	}
+
+	m.exportMetrics(rules, stats)
+}
+
+func (m *Manager) reset() {
+	// Note that we only reset the ruler here, but not the stats:
+	// there's no harm in old samples as long as they are within
+	// the retention period.
+	m.ruler = nil
+	m.metrics.rulesTotal.Set(0)
+	m.metrics.statsTotal.Set(0)
+	m.metrics.datasetShardLimit.Reset()
+	m.metrics.datasetShardUsage.Reset()
+	m.metrics.datasetShardUsageBreakdown.Reset()
 }
 
 func (m *Manager) loadRules(ctx context.Context) bool {
@@ -126,4 +149,41 @@ func (m *Manager) loadRules(ctx context.Context) bool {
 	}
 	m.ruler.Load(rules)
 	return true
+}
+
+func (m *Manager) exportMetrics(
+	rules *adaptive_placementpb.PlacementRules,
+	stats *adaptive_placementpb.DistributionStats,
+) {
+	if m.config.ExportShardLimitMetrics {
+		for _, dataset := range rules.Datasets {
+			m.metrics.datasetShardLimit.WithLabelValues(
+				rules.Tenants[dataset.Tenant].TenantId,
+				dataset.Name,
+				strconv.Itoa(int(dataset.Limits.LoadBalancing))).
+				Set(float64(dataset.Limits.DatasetShardLimit))
+		}
+	}
+
+	if m.config.ExportShardUsageMetrics {
+		for _, dataset := range stats.Datasets {
+			m.metrics.datasetShardUsage.WithLabelValues(
+				stats.Tenants[dataset.Tenant].TenantId,
+				dataset.Name).
+				Set(float64(sum(dataset.Usage)))
+		}
+	}
+
+	if m.config.ExportShardUsageBreakdownMetrics {
+		for _, dataset := range stats.Datasets {
+			for i, ds := range dataset.Shards {
+				m.metrics.datasetShardUsageBreakdown.WithLabelValues(
+					stats.Tenants[dataset.Tenant].TenantId,
+					dataset.Name,
+					strconv.Itoa(int(stats.Shards[ds].Id)),
+					stats.Shards[ds].Owner).
+					Set(float64(dataset.Usage[i]))
+			}
+		}
+	}
 }
