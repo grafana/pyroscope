@@ -34,8 +34,8 @@ message ShardStats {
 }
 
 message PlacementLimits {
-  uint32 tenant_shard_limit = 1;
-  uint32 dataset_shard_limit = 2;
+  uint64 tenant_shard_limit = 1;
+  uint64 dataset_shard_limit = 2;
   LoadBalancing load_balancing = 3;
 }
 

@@ -159,7 +159,7 @@ func (d *datasetShards) placement(
 	d.lastUpdate = now
 	d.allocator.setLimits(limits)
 	d.limits.TenantShardLimit = limits.TenantShards
-	d.limits.DatasetShardLimit = uint32(d.allocator.observe(sum(stats.Usage), now))
+	d.limits.DatasetShardLimit = uint64(d.allocator.observe(sum(stats.Usage), now))
 	// Determine whether we need to change the load balancing strategy.
 	configured := limits
 	if configured.LoadBalancing != DynamicLoadBalancing {

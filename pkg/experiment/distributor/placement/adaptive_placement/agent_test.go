@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/services"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
@@ -21,6 +22,7 @@ type agentSuite struct {
 	suite.Suite
 
 	logger log.Logger
+	reg    *prometheus.Registry
 	config Config
 	limits *mockLimits
 	store  *mockadaptive_placement.MockStore
@@ -30,12 +32,13 @@ type agentSuite struct {
 
 func (s *agentSuite) SetupTest() {
 	s.logger = log.NewLogfmtLogger(io.Discard)
+	s.reg = prometheus.NewRegistry()
 	s.config.PlacementUpdateInterval = 15 * time.Second
 	s.limits = new(mockLimits)
 	s.store = new(mockadaptive_placement.MockStore)
 	s.agent = NewAgent(
 		s.logger,
-		nil,
+		s.reg,
 		s.config,
 		s.limits,
 		s.store,

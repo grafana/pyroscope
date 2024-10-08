@@ -53,7 +53,7 @@ func newShardAllocator(limits ShardingLimits) *shardAllocator {
 }
 
 func (a *shardAllocator) setLimits(limits ShardingLimits) {
-	a.unitSize = uint64(limits.UnitSizeBytes)
+	a.unitSize = limits.UnitSizeBytes
 	a.min = int(limits.MinDatasetShards)
 	a.max = int(limits.MaxDatasetShards)
 	a.burstWindow = limits.BurstWindow.Nanoseconds()

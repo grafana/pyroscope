@@ -1320,7 +1320,7 @@ func (m *PlacementLimits) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.TenantShardLimit |= uint32(b&0x7F) << shift
+				m.TenantShardLimit |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -1339,7 +1339,7 @@ func (m *PlacementLimits) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.DatasetShardLimit |= uint32(b&0x7F) << shift
+				m.DatasetShardLimit |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
