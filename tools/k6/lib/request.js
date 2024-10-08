@@ -9,6 +9,7 @@ import { READ_TOKEN, TENANT_ID, BASE_URL } from './env.js';
 export function doSelectMergeProfileRequest(body, headers) {
   const res = http.post(`${BASE_URL}/querier.v1.QuerierService/SelectMergeProfile`, JSON.stringify(body), {
     headers: withHeaders(headers),
+    tags: { name: "querier.v1.QuerierService/SelectMergeProfile" }
   });
 
   check(res, {
@@ -35,6 +36,7 @@ export function doRenderRequest(body, headers) {
 export function doSelectMergeStacktracesRequest(body, headers) {
   const res = http.post(`${BASE_URL}/querier.v1.QuerierService/SelectMergeStacktraces`, JSON.stringify(body), {
     headers: withHeaders(headers),
+    tags: { name: "querier.v1.QuerierService/SelectMergeStacktraces" }
   });
 
   check(res, {
@@ -45,6 +47,7 @@ export function doSelectMergeStacktracesRequest(body, headers) {
 export function doLabelNamesRequest(body, headers) {
   const res = http.post(`${BASE_URL}/querier.v1.QuerierService/LabelNames`, JSON.stringify(body), {
     headers: withHeaders(headers),
+    tags: { name: "querier.v1.QuerierService/LabelNames" }
   });
 
   check(res, {
@@ -55,6 +58,7 @@ export function doLabelNamesRequest(body, headers) {
 export function doSeriesRequest(body, headers) {
   const res = http.post(`${BASE_URL}/querier.v1.QuerierService/Series`, JSON.stringify(body), {
     headers: withHeaders(headers),
+    tags: { name: "querier.v1.QuerierService/Series" }
   });
 
   check(res, {
@@ -70,7 +74,7 @@ export function doRenderDiffRequest(body, headers) {
 
   const res = http.get(params.toString(), {
     headers: withHeaders(headers),
-    tags: { name: '/render' },
+    tags: { name: '/render-diff' },
   });
 
   check(res, {

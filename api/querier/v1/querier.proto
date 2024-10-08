@@ -162,6 +162,8 @@ message SelectSeriesRequest {
   optional types.v1.TimeSeriesAggregationType aggregation = 7;
   // Select stack traces that match the provided selector.
   optional types.v1.StackTraceSelector stack_trace_selector = 8;
+  // Select the top N series by total value.
+  optional int64 limit = 9;
 }
 
 message SelectSeriesResponse {

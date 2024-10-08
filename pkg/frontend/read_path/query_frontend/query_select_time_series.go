@@ -10,6 +10,7 @@ import (
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
@@ -50,6 +51,7 @@ func (q *QueryFrontend) SelectSeries(
 			TimeSeries: &queryv1.TimeSeriesQuery{
 				Step:    c.Msg.GetStep(),
 				GroupBy: c.Msg.GetGroupBy(),
+				Limit:   c.Msg.GetLimit(),
 			},
 		}},
 	})
@@ -59,5 +61,6 @@ func (q *QueryFrontend) SelectSeries(
 	if report == nil {
 		return connect.NewResponse(&querierv1.SelectSeriesResponse{}), nil
 	}
-	return connect.NewResponse(&querierv1.SelectSeriesResponse{Series: report.TimeSeries.TimeSeries}), nil
+	series := phlaremodel.TopSeries(report.TimeSeries.TimeSeries, int(c.Msg.GetLimit()))
+	return connect.NewResponse(&querierv1.SelectSeriesResponse{Series: series}), nil
 }

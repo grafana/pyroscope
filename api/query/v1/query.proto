@@ -156,6 +156,7 @@ message SeriesLabelsReport {
 message TimeSeriesQuery {
   double step = 1;
   repeated string group_by = 2;
+  int64 limit = 3;
 }
 
 message TimeSeriesReport {

@@ -195,6 +195,8 @@ Usage of ./pyroscope:
     	When running in single binary (--target=all) Pyroscope will push (Go SDK) profiles to itself. Set to true to disable self-profiling.
   -self-profiling.mutex-profile-fraction int
     	 (default 5)
+  -self-profiling.use-k6-middleware
+    	Read k6 labels from request headers and set them as dynamic profile tags.
   -server.graceful-shutdown-timeout duration
     	Timeout for graceful shutdowns (default 30s)
   -server.grpc-conn-limit int

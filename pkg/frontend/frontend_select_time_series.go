@@ -84,5 +84,6 @@ func (f *Frontend) SelectSeries(
 		return nil, err
 	}
 
-	return connect.NewResponse(&querierv1.SelectSeriesResponse{Series: m.TimeSeries()}), nil
+	series := m.Top(int(c.Msg.GetLimit()))
+	return connect.NewResponse(&querierv1.SelectSeriesResponse{Series: series}), nil
 }

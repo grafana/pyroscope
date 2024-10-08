@@ -21,7 +21,7 @@ type KubeDiscovery struct {
 	upd     Updates
 }
 
-func (g *KubeDiscovery) ServerError(srv Server) {
+func (g *KubeDiscovery) Rediscover() {
 
 }
 

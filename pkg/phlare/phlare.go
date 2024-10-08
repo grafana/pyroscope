@@ -134,6 +134,7 @@ type SelfProfilingConfig struct {
 	DisablePush          bool `yaml:"disable_push,omitempty"`
 	MutexProfileFraction int  `yaml:"mutex_profile_fraction,omitempty"`
 	BlockProfileRate     int  `yaml:"block_profile_rate,omitempty"`
+	UseK6Middleware      bool `yaml:"use_k6_middleware,omitempty"`
 }
 
 func (c *SelfProfilingConfig) RegisterFlags(f *flag.FlagSet) {
@@ -141,6 +142,7 @@ func (c *SelfProfilingConfig) RegisterFlags(f *flag.FlagSet) {
 	f.IntVar(&c.MutexProfileFraction, "self-profiling.mutex-profile-fraction", 5, "")
 	f.IntVar(&c.BlockProfileRate, "self-profiling.block-profile-rate", 5, "")
 	f.BoolVar(&c.DisablePush, "self-profiling.disable-push", false, "When running in single binary (--target=all) Pyroscope will push (Go SDK) profiles to itself. Set to true to disable self-profiling.")
+	f.BoolVar(&c.UseK6Middleware, "self-profiling.use-k6-middleware", false, "Read k6 labels from request headers and set them as dynamic profile tags.")
 }
 
 func (c *Config) RegisterFlags(f *flag.FlagSet) {

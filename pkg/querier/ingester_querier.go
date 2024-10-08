@@ -58,13 +58,15 @@ func forAllIngesters[T any](ctx context.Context, ingesterQuerier *IngesterQuerie
 	if err != nil {
 		return nil, err
 	}
-	return forGivenReplicationSet(ctx, func(addr string) (IngesterQueryClient, error) {
+
+	clientFactoryFn := func(addr string) (IngesterQueryClient, error) {
 		client, err := ingesterQuerier.pool.GetClientFor(addr)
 		if err != nil {
 			return nil, err
 		}
 		return client.(IngesterQueryClient), nil
-	}, replicationSet, f)
+	}
+	return forGivenReplicationSet(ctx, clientFactoryFn, replicationSet, f)
 }
 
 // forAllPlannedIngesters runs f, in parallel, for all ingesters part of the plan

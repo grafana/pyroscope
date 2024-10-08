@@ -13,7 +13,7 @@ import {
 export const options = {
   ext: {
     loadimpact: {
-      projectID: 3700226,
+      projectID: 16425,
       name: 'reads',
     },
   },

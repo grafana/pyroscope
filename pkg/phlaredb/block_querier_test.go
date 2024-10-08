@@ -29,6 +29,8 @@ import (
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 )
 
+const testDataPath = "./block/testdata/"
+
 func TestQuerierBlockEviction(t *testing.T) {
 	type testCase struct {
 		blocks     []string
@@ -105,7 +107,7 @@ func (p *profileCounter) Next() bool {
 }
 
 func TestBlockCompatability(t *testing.T) {
-	path := "./block/testdata/"
+	path := testDataPath
 	bucket, err := filesystem.NewBucket(path)
 	require.NoError(t, err)
 
@@ -156,7 +158,7 @@ func TestBlockCompatability(t *testing.T) {
 }
 
 func TestBlockCompatability_SelectMergeSpans(t *testing.T) {
-	path := "./block/testdata/"
+	path := testDataPath
 	bucket, err := filesystem.NewBucket(path)
 	require.NoError(t, err)
 
@@ -1385,4 +1387,23 @@ func testSelectMergeByStacktracesRace(t testing.TB, times int) {
 
 	require.NoError(t, g.Wait())
 	require.NoError(t, querier.Close())
+}
+
+func TestBlockMeta_loadsMetasIndividually(t *testing.T) {
+	path := testDataPath
+	bucket, err := filesystem.NewBucket(path)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	blockQuerier := NewBlockQuerier(ctx, bucket)
+	metas, err := blockQuerier.BlockMetas(ctx)
+	require.NoError(t, err)
+	require.NotEmpty(t, metas)
+
+	for _, meta := range metas {
+		singleMeta, err := blockQuerier.BlockMeta(ctx, meta.ULID.String())
+		require.NoError(t, err)
+
+		require.Equal(t, meta, singleMeta)
+	}
 }
