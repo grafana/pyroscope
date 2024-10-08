@@ -24,3 +24,10 @@ packages:
   github.com/grafana/pyroscope/pkg/experiment/metastore/discovery:
     interfaces:
       Discovery:
+  github.com/grafana/pyroscope/pkg/experiment/metastore/dlq:
+    interfaces:
+      LocalServer:
+  github.com/grafana/pyroscope/pkg/experiment/metastore/index:
+    interfaces:
+      Store:
+        config:

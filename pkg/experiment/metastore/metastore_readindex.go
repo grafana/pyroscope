@@ -37,7 +37,7 @@ func (m *Metastore) ReadIndex(ctx context.Context, req *metastorev1.ReadIndexReq
 
 	raftLogger().Log("msg", "verify_leader")
 	if err := m.raft.VerifyLeader().Error(); err != nil {
-		return new(metastorev1.ReadIndexResponse), err
+		return nil, wrapRetryableErrorWithRaftDetails(err, m.raft)
 	}
 
 	tcheck := time.NewTicker(tcheckFreq)
@@ -110,7 +110,7 @@ func (m *Metastore) CheckReady(ctx context.Context) (err error) {
 				if m.readySince.IsZero() {
 					m.readySince = time.Now()
 				}
-				minReadyTime := 30 * time.Second
+				minReadyTime := m.config.MinReadyDuration
 				if time.Since(m.readySince) < minReadyTime {
 					err := fmt.Errorf("waiting for %v after being ready", minReadyTime)
 					raftLogger().Log(status, notReady, "err", err)

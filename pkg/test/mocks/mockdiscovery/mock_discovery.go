@@ -52,35 +52,34 @@ func (_c *MockDiscovery_Close_Call) RunAndReturn(run func()) *MockDiscovery_Clos
 	return _c
 }
 
-// ServerError provides a mock function with given fields: srv
-func (_m *MockDiscovery) ServerError(srv discovery.Server) {
-	_m.Called(srv)
+// Rediscover provides a mock function with given fields:
+func (_m *MockDiscovery) Rediscover() {
+	_m.Called()
 }
 
-// MockDiscovery_ServerError_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ServerError'
-type MockDiscovery_ServerError_Call struct {
+// MockDiscovery_Rediscover_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Rediscover'
+type MockDiscovery_Rediscover_Call struct {
 	*mock.Call
 }
 
-// ServerError is a helper method to define mock.On call
-//   - srv discovery.Server
-func (_e *MockDiscovery_Expecter) ServerError(srv interface{}) *MockDiscovery_ServerError_Call {
-	return &MockDiscovery_ServerError_Call{Call: _e.mock.On("ServerError", srv)}
+// Rediscover is a helper method to define mock.On call
+func (_e *MockDiscovery_Expecter) Rediscover() *MockDiscovery_Rediscover_Call {
+	return &MockDiscovery_Rediscover_Call{Call: _e.mock.On("Rediscover")}
 }
 
-func (_c *MockDiscovery_ServerError_Call) Run(run func(srv discovery.Server)) *MockDiscovery_ServerError_Call {
+func (_c *MockDiscovery_Rediscover_Call) Run(run func()) *MockDiscovery_Rediscover_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(discovery.Server))
+		run()
 	})
 	return _c
 }
 
-func (_c *MockDiscovery_ServerError_Call) Return() *MockDiscovery_ServerError_Call {
+func (_c *MockDiscovery_Rediscover_Call) Return() *MockDiscovery_Rediscover_Call {
 	_c.Call.Return()
 	return _c
 }
 
-func (_c *MockDiscovery_ServerError_Call) RunAndReturn(run func(discovery.Server)) *MockDiscovery_ServerError_Call {
+func (_c *MockDiscovery_Rediscover_Call) RunAndReturn(run func()) *MockDiscovery_Rediscover_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -10,13 +10,14 @@ import (
 	"io"
 	"math/rand"
 	"mime/multipart"
-	"net"
 	"net/http"
 	"os"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/grafana/pyroscope/pkg/test"
 
 	"connectrpc.com/connect"
 	"github.com/prometheus/client_golang/prometheus"
@@ -37,23 +38,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
 )
 
-// getFreePorts returns a number of free local port for the tests to listen on. Note this will make sure the returned ports do not overlap, by stopping to listen once all ports are allocated
-func getFreePorts(len int) (ports []int, err error) {
-	ports = make([]int, len)
-	for i := 0; i < len; i++ {
-		var a *net.TCPAddr
-		if a, err = net.ResolveTCPAddr("tcp", "127.0.0.1:0"); err == nil {
-			var l *net.TCPListener
-			if l, err = net.ListenTCP("tcp", a); err != nil {
-				return nil, err
-			}
-			defer l.Close()
-			ports[i] = l.Addr().(*net.TCPAddr).Port
-		}
-	}
-	return ports, nil
-}
-
 type PyroscopeTest struct {
 	config phlare.Config
 	it     *phlare.Phlare
@@ -69,7 +53,7 @@ const storeInMemory = "inmemory"
 
 func (p *PyroscopeTest) Start(t *testing.T) {
 
-	ports, err := getFreePorts(2)
+	ports, err := test.GetFreePorts(2)
 	require.NoError(t, err)
 	p.httpPort = ports[0]
 	p.memberlistPort = ports[1]

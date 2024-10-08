@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/grafana/dskit/instrument"
+	"go.opentelemetry.io/otel/baggage"
 
 	"github.com/dustin/go-humanize"
 	"github.com/felixge/httpsnoop"
@@ -79,6 +80,27 @@ func WithTracingTransport() RoundTripperInstrumentFunc {
 		next = &nethttp.Transport{RoundTripper: next}
 		return RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
 			req = nethttp.TraceRequest(opentracing.GlobalTracer(), req)
+			return next.RoundTrip(req)
+		})
+	}
+}
+
+// WithBaggageTransport will set the Baggage header on the request if there is
+// any baggage in the context and it was not already set.
+func WithBaggageTransport() RoundTripperInstrumentFunc {
+	return func(next http.RoundTripper) http.RoundTripper {
+		return RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
+			_, ok := req.Header["Baggage"]
+			if ok {
+				return next.RoundTrip(req)
+			}
+
+			b := baggage.FromContext(req.Context())
+			if b.Len() == 0 {
+				return next.RoundTrip(req)
+			}
+
+			req.Header.Set("Baggage", b.String())
 			return next.RoundTrip(req)
 		})
 	}

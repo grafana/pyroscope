@@ -1,0 +1,183 @@
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole # needed for the discovery.kubernetes alloy component
+metadata:
+  name: grafana-alloy-role
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["list", "watch"]
+
+---
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: grafana-alloy
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: grafana-alloy-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: grafana-alloy-role
+subjects:
+  - kind: ServiceAccount
+    name: grafana-alloy
+    namespace: pyroscope-java
+
+---
+
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: grafana-alloy
+spec:
+  selector:
+    matchLabels:
+      app: grafana-alloy
+  template:
+    metadata:
+      labels:
+        app: grafana-alloy
+    spec:
+      serviceAccountName: grafana-alloy
+      containers:
+        - name: grafana-alloy
+          image: grafana/alloy
+          command:
+            - /bin/alloy
+            - run
+            - /etc/agent-config/config.river
+            - --server.http.listen-addr=0.0.0.0:12345
+          env:
+            - name: HOSTNAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: AGENT_MODE
+              value: flow
+          ports:
+            - containerPort: 12345
+          volumeMounts:
+            - name: agent-config
+              mountPath: /etc/agent-config
+          securityContext:
+            privileged: true
+            runAsGroup: 0
+            runAsUser: 0
+            capabilities:
+              add:
+                - PERFMON
+                - SYS_PTRACE
+                - SYS_RESOURCE
+                - SYS_ADMIN
+      volumes:
+        - name: agent-config
+          configMap:
+            name: agent-config
+      hostPID: true
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agent-config
+data:
+  config.river: |
+    logging {
+      level = "debug"
+      format = "logfmt"
+    }
+
+    // Discovers all kubernetes pods.
+    // Relies on serviceAccountName=grafana-alloy in the pod spec for permissions.
+    discovery.kubernetes "pods" {
+      role = "pod"
+    }
+
+    // Discovers all processes running on the node.
+    // Relies on a security context with elevated permissions for the alloy container (running as root).
+    // Relies on hostPID=true on the pod spec, to be able to see processes from other pods.
+    discovery.process "all" {
+      // Merges kubernetes and process data (using container_id), to attach kubernetes labels to discovered processes.
+      join = discovery.kubernetes.pods.targets
+    }
+
+    // Drops non-java processes and adjusts labels.    
+    discovery.relabel "java" {
+      targets = discovery.process.all.targets
+      // Drops non-java processes.
+      rule {
+        source_labels = ["__meta_process_exe"]
+        action = "keep"
+        regex = ".*/java$"
+      }
+      // Sets up the service_name using the namespace and container names.
+      rule {
+        source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_container_name"]
+        target_label = "service_name"
+        separator = "/"
+      }
+      // Sets up kubernetes labels (labels with the __ prefix are ultimately dropped).
+      rule {
+        action = "replace"
+        source_labels = ["__meta_kubernetes_pod_node_name"]
+        target_label = "node"
+      }
+      rule {
+        action = "replace"
+        source_labels = ["__meta_kubernetes_namespace"]
+        target_label = "namespace"
+      }
+      rule {
+        action = "replace"
+        source_labels = ["__meta_kubernetes_pod_name"]
+        target_label = "pod"
+      }
+      rule {
+        action = "replace"
+        source_labels = ["__meta_kubernetes_pod_container_name"]
+        target_label = "container"
+      }
+      // Sets up the cluster label.
+      // Relies on a pod-level annotation with the "cluster_name" name.
+      // Alternatively it can be set up using external_labels in pyroscope.write. 
+      rule {
+        action = "replace"
+        source_labels = ["__meta_kubernetes_pod_annotation_cluster_name"]
+        target_label = "cluster"
+      }
+    }
+
+    // Attaches the Pyroscope profiler to the processes returned by the discovery.relabel component.
+    // Relies on a security context with elevated permissions for the alloy container (running as root).
+    // Relies on hostPID=true on the pod spec, to be able to access processes from other pods.
+    pyroscope.java "java" {
+      profiling_config {
+        interval = "15s"
+        alloc = "512k"
+        cpu = true
+        lock = "10ms"
+        sample_rate = 100
+      }
+      forward_to = [pyroscope.write.local.receiver]
+      targets = discovery.relabel.java.output
+    }
+      
+    pyroscope.write "local" {
+      // Send metrics to the locally running Pyroscope instance.
+      endpoint {
+        url = "http://pyroscope:4040"
+      }
+      external_labels = {
+        "static_label" = "static_label_value",
+      }
+    }
+---

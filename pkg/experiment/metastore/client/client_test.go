@@ -6,6 +6,7 @@ import (
 	"github.com/grafana/dskit/grpcclient"
 	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/pkg/test"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockdiscovery"
 	"github.com/prometheus/prometheus/util/testutil"
 	"github.com/stretchr/testify/assert"
@@ -22,10 +23,10 @@ func TestUnavailable(t *testing.T) {
 	d.On("Subscribe", mock.Anything).Return()
 	l := testutil.NewLogger(t)
 	c := New(l, grpcclient.Config{}, d)
-	ports, err := getFreePorts(nServers)
+	ports, err := test.GetFreePorts(nServers)
 	assert.NoError(t, err)
 
-	d.On("ServerError", mock.Anything).Run(func(args mock.Arguments) {
+	d.On("Rediscover").Run(func(args mock.Arguments) {
 	}).Return()
 
 	c.updateServers(createServers(ports))
@@ -87,7 +88,7 @@ func testRediscoverWrongLeader(t *testing.T, f func(c *Client)) {
 	config := &grpcclient.Config{}
 	flagext.DefaultValues(config)
 	c := New(l, *config, d)
-	ports, err := getFreePorts(nServers * 2)
+	ports, err := test.GetFreePorts(nServers * 2)
 	assert.NoError(t, err)
 
 	p1 := ports[:nServers]
@@ -97,7 +98,7 @@ func testRediscoverWrongLeader(t *testing.T, f func(c *Client)) {
 	defer servers.Close()
 
 	verify := func() {}
-	d.On("ServerError", mock.Anything).Run(func(args mock.Arguments) {
+	d.On("Rediscover", mock.Anything).Run(func(args mock.Arguments) {
 		m.Lock()
 		defer m.Unlock()
 		if servers == nil {
@@ -114,4 +115,18 @@ func testRediscoverWrongLeader(t *testing.T, f func(c *Client)) {
 	c.updateServers(createServers(p1))
 	f(c)
 	verify()
+}
+
+func TestServerError(t *testing.T) {
+	d := mockdiscovery.NewMockDiscovery(t)
+	d.On("Subscribe", mock.Anything).Return()
+	l := testutil.NewLogger(t)
+	c := New(l, grpcclient.Config{}, d)
+
+	d.On("Rediscover").Run(func(args mock.Arguments) {
+	}).Return()
+
+	res, err := c.AddBlock(context.Background(), &metastorev1.AddBlockRequest{})
+	require.Error(t, err)
+	require.Nil(t, res)
 }

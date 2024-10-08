@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"path"
 	"runtime/pprof"
 	"slices"
 	"strings"
@@ -22,18 +21,13 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/ingester/memdb"
+	segmentstorage "github.com/grafana/pyroscope/pkg/experiment/ingester/storage"
 	"github.com/grafana/pyroscope/pkg/model"
 	pprofsplit "github.com/grafana/pyroscope/pkg/model/pprof_split"
 	pprofmodel "github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/util/math"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
-
-const pathSegments = "segments"
-const pathDLQ = "dlq"
-const pathAnon = tenant.DefaultTenantID
-const pathBlock = "block.bin"
 
 var ErrMetastoreDLQFailed = fmt.Errorf("failed to store block metadata in DLQ")
 
@@ -193,17 +187,15 @@ func (sw *segmentsWriter) newShard(sk shardKey) *shard {
 func (sw *segmentsWriter) newSegment(sh *shard, sk shardKey, sl log.Logger) *segment {
 	id := ulid.MustNew(ulid.Timestamp(time.Now()), rand.Reader)
 	sshard := fmt.Sprintf("%d", sk)
-	blockPath := path.Join(pathSegments, sshard, pathAnon, id.String(), pathBlock)
 	s := &segment{
-		l:         log.With(sl, "segment-id", id.String()),
-		ulid:      id,
-		heads:     make(map[serviceKey]serviceHead),
-		sw:        sw,
-		sh:        sh,
-		shard:     sk,
-		sshard:    sshard,
-		blockPath: blockPath,
-		doneChan:  make(chan struct{}, 0),
+		l:        log.With(sl, "segment-id", id.String()),
+		ulid:     id,
+		heads:    make(map[serviceKey]serviceHead),
+		sw:       sw,
+		sh:       sh,
+		shard:    sk,
+		sshard:   sshard,
+		doneChan: make(chan struct{}, 0),
 	}
 	return s
 }
@@ -234,7 +226,7 @@ func (s *segment) flush(ctx context.Context) (err error) {
 		return fmt.Errorf("failed to flush block %s: %w", s.ulid.String(), err)
 	}
 	// TODO(kolesnikovae): Add sane timeouts to all the operations.
-	if err = s.sw.uploadBlock(ctx, blockData, s); err != nil {
+	if err = s.sw.uploadBlock(ctx, blockData, blockMeta, s); err != nil {
 		return fmt.Errorf("failed to upload block %s: %w", s.ulid.String(), err)
 	}
 	if err = s.sw.storeMeta(ctx, blockMeta, s); err != nil {
@@ -406,7 +398,6 @@ type segment struct {
 	heads            map[serviceKey]serviceHead
 	headsLock        sync.RWMutex
 	sw               *segmentsWriter
-	blockPath        string
 	doneChan         chan struct{}
 	flushErr         error
 	flushErrMutex    sync.Mutex
@@ -517,16 +508,19 @@ func (s *segment) headForIngest(k serviceKey) *memdb.Head {
 	return nh
 }
 
-func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockData []byte, s *segment) error {
+func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockData []byte, meta *metastorev1.BlockMeta, s *segment) error {
 	t1 := time.Now()
 	defer func() {
 		sw.metrics.blockUploadDuration.WithLabelValues(s.sshard).Observe(time.Since(t1).Seconds())
 	}()
 	sw.metrics.segmentBlockSizeBytes.WithLabelValues(s.sshard).Observe(float64(len(blockData)))
-	if err := sw.bucket.Upload(ctx, s.blockPath, bytes.NewReader(blockData)); err != nil {
+
+	blockPath := segmentstorage.PathForSegment(meta)
+
+	if err := sw.bucket.Upload(ctx, blockPath, bytes.NewReader(blockData)); err != nil {
 		return err
 	}
-	sw.l.Log("msg", "uploaded block", "path", s.blockPath, "upload_duration", time.Since(t1))
+	sw.l.Log("msg", "uploaded block", "path", blockPath, "upload_duration", time.Since(t1))
 	return nil
 }
 
@@ -549,7 +543,7 @@ func (sw *segmentsWriter) storeMetaDLQ(ctx context.Context, meta *metastorev1.Bl
 		sw.metrics.storeMetaDLQ.WithLabelValues(s.sshard, "err").Inc()
 		return err
 	}
-	fullPath := path.Join(pathDLQ, s.sshard, pathAnon, s.ulid.String(), "meta.pb")
+	fullPath := segmentstorage.PathForDLQ(meta)
 	if err = sw.bucket.Upload(ctx, fullPath, bytes.NewReader(metaBlob)); err != nil {
 		sw.metrics.storeMetaDLQ.WithLabelValues(s.sshard, "err").Inc()
 		return fmt.Errorf("%w, %w", ErrMetastoreDLQFailed, err)

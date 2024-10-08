@@ -4,11 +4,11 @@ import (
 	"context"
 	"flag"
 	"fmt"
+
 	"net"
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/go-kit/log"
@@ -21,10 +21,13 @@ import (
 	raftwal "github.com/hashicorp/raft-wal"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/thanos-io/objstore"
 
 	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/dlq"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftleader"
 )
 
@@ -42,11 +45,14 @@ const (
 )
 
 type Config struct {
-	Address          string            `yaml:"address"`
-	GRPCClientConfig grpcclient.Config `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with the metastore."`
-	DataDir          string            `yaml:"data_dir"`
-	Raft             RaftConfig        `yaml:"raft"`
-	Compaction       CompactionConfig  `yaml:"compaction_config"`
+	Address           string            `yaml:"address"`
+	GRPCClientConfig  grpcclient.Config `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with the metastore."`
+	DataDir           string            `yaml:"data_dir"`
+	Raft              RaftConfig        `yaml:"raft"`
+	Compaction        CompactionConfig  `yaml:"compaction_config"`
+	MinReadyDuration  time.Duration     `yaml:"min_ready_duration" category:"advanced"`
+	DLQRecoveryPeriod time.Duration     `yaml:"dlq_recovery_period" category:"advanced"`
+	Index             index.Config      `yaml:"index_config"`
 }
 
 type RaftConfig struct {
@@ -67,8 +73,11 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.StringVar(&cfg.Address, prefix+"address", "localhost:9095", "")
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix(prefix+"grpc-client-config", f)
 	f.StringVar(&cfg.DataDir, prefix+"data-dir", "./data-metastore/data", "")
+	f.DurationVar(&cfg.MinReadyDuration, prefix+"min-ready-duration", 15*time.Second, "Minimum duration to wait after the internal readiness checks have passed but before succeeding the readiness endpoint. This is used to slowdown deployment controllers (eg. Kubernetes) after an instance is ready and before they proceed with a rolling update, to give the rest of the cluster instances enough time to receive some (DNS?) updates.")
+	f.DurationVar(&cfg.DLQRecoveryPeriod, prefix+"dlq-recovery-period", 15*time.Second, "Period for DLQ recovery loop.")
 	cfg.Raft.RegisterFlagsWithPrefix(prefix+"raft.", f)
 	cfg.Compaction.RegisterFlagsWithPrefix(prefix+"compaction.", f)
+	cfg.Index.RegisterFlagsWithPrefix(prefix+"index.", f)
 }
 
 func (cfg *Config) Validate() error {
@@ -118,7 +127,7 @@ type Metastore struct {
 	snapshots    *raft.FileSnapshotStore
 	transport    *raft.NetworkTransport
 	raft         *raft.Raft
-	leaderhealth *raftleader.HealthObserver //todo remove
+	leaderhealth *raftleader.LeaderObserver
 
 	logStore      raft.LogStore
 	stableStore   raft.StableStore
@@ -126,18 +135,17 @@ type Metastore struct {
 
 	walDir string
 
-	done       chan struct{}
-	wg         sync.WaitGroup
 	metrics    *metastoreMetrics
 	client     *metastoreclient.Client
 	readySince time.Time
 
 	dnsProvider *dns.Provider
+	dlq         *dlq.Recovery
 }
 
 type Limits interface{}
 
-func New(config Config, limits Limits, logger log.Logger, reg prometheus.Registerer, client *metastoreclient.Client) (*Metastore, error) {
+func New(config Config, limits Limits, logger log.Logger, reg prometheus.Registerer, client *metastoreclient.Client, bucket objstore.Bucket) (*Metastore, error) {
 	metrics := newMetastoreMetrics(reg)
 	m := &Metastore{
 		config:  config,
@@ -145,12 +153,14 @@ func New(config Config, limits Limits, logger log.Logger, reg prometheus.Registe
 		reg:     reg,
 		limits:  limits,
 		db:      newDB(config, logger, metrics),
-		done:    make(chan struct{}),
 		metrics: metrics,
 		client:  client,
 	}
 	m.leaderhealth = raftleader.NewRaftLeaderHealthObserver(logger, raftleader.NewMetrics(reg))
-	m.state = newMetastoreState(logger, m.db, m.reg, &config.Compaction)
+	m.state = newMetastoreState(logger, m.db, m.reg, &config.Compaction, &config.Index)
+	m.dlq = dlq.NewRecovery(dlq.RecoveryConfig{
+		Period: config.DLQRecoveryPeriod,
+	}, logger, m, bucket)
 	m.service = services.NewBasicService(m.starting, m.running, m.stopping)
 	return m, nil
 }
@@ -158,26 +168,24 @@ func New(config Config, limits Limits, logger log.Logger, reg prometheus.Registe
 func (m *Metastore) Service() services.Service { return m.service }
 
 func (m *Metastore) Shutdown() error {
+	m.dlq.Stop()
 	m.shutdownRaft()
 	m.db.shutdown()
 	return nil
 }
 
-func (m *Metastore) starting(context.Context) error {
+func (m *Metastore) starting(ctx context.Context) error {
 	if err := m.db.open(false); err != nil {
 		return fmt.Errorf("failed to initialize database: %w", err)
 	}
 	if err := m.initRaft(); err != nil {
 		return fmt.Errorf("failed to initialize raft: %w", err)
 	}
-	m.wg.Add(1)
-	go m.cleanupLoop()
+	m.dlq.Start()
 	return nil
 }
 
 func (m *Metastore) stopping(_ error) error {
-	close(m.done)
-	m.wg.Wait()
 	return m.Shutdown()
 }
 
@@ -233,7 +241,13 @@ func (m *Metastore) initRaft() (err error) {
 		_ = level.Info(m.logger).Log("msg", "restoring existing state, not bootstraping")
 	}
 
-	m.leaderhealth.Register(m.raft, metastoreRaftLeaderHealthServiceName)
+	m.leaderhealth.Register(m.raft, func(st raft.RaftState) {
+		if st == raft.Leader {
+			m.dlq.Start()
+		} else {
+			m.dlq.Stop()
+		}
+	})
 	return nil
 }
 
@@ -287,7 +301,7 @@ func (m *Metastore) shutdownRaft() {
 				_ = level.Error(m.logger).Log("msg", "failed to transfer leadership", "err", err)
 			}
 		}
-		m.leaderhealth.Deregister(m.raft, metastoreRaftLeaderHealthServiceName)
+		m.leaderhealth.Deregister(m.raft)
 		if err := m.raft.Shutdown().Error(); err != nil {
 			_ = level.Error(m.logger).Log("msg", "failed to shutdown raft", "err", err)
 		}

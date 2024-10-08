@@ -1,7 +1,7 @@
 package phlare
 
 import (
-	"strings"
+	"fmt"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/ring"
@@ -9,14 +9,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
-	kuberesolver2 "github.com/grafana/pyroscope/pkg/experiment/metastore/discovery/kuberesolver"
-
 	compactionworker "github.com/grafana/pyroscope/pkg/experiment/compactor"
 	segmentwriter "github.com/grafana/pyroscope/pkg/experiment/ingester"
 	segmentwriterclient "github.com/grafana/pyroscope/pkg/experiment/ingester/client"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore"
 	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
 	querybackend "github.com/grafana/pyroscope/pkg/experiment/query_backend"
 	querybackendclient "github.com/grafana/pyroscope/pkg/experiment/query_backend/client"
 	"github.com/grafana/pyroscope/pkg/util/health"
@@ -107,6 +105,7 @@ func (f *Phlare) initMetastore() (services.Service, error) {
 		logger,
 		f.reg,
 		f.metastoreClient,
+		f.storageBucket,
 	)
 	if err != nil {
 		return nil, err
@@ -121,17 +120,9 @@ func (f *Phlare) initMetastoreClient() (services.Service, error) {
 		return nil, err
 	}
 
-	kubeClient, err := kuberesolver2.NewInClusterK8sClient()
+	disc, err := discovery.NewDiscovery(f.logger, f.Cfg.Metastore.Address, f.reg)
 	if err != nil {
-		return nil, err
-	}
-	address := f.Cfg.Metastore.Address
-	if strings.HasPrefix(address, "dns:///_grpc._tcp.") {
-		address = strings.Replace(address, "dns:///_grpc._tcp.", "kubernetes:///", 1) // todo support dns discovery
-	}
-	disc, err := discovery.NewKubeResolverDiscovery(f.logger, address, kubeClient)
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create discovery: %w %s", err, f.Cfg.Metastore.Address)
 	}
 
 	f.metastoreClient = metastoreclient.New(

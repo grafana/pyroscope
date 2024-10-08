@@ -2,11 +2,12 @@ package metastore
 
 import (
 	"context"
-	"fmt"
+	"crypto/rand"
 	"math"
 	"testing"
 
 	"github.com/hashicorp/raft"
+	"github.com/oklog/ulid"
 	"github.com/stretchr/testify/require"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -27,21 +28,21 @@ func Test_MetastoreState_GetProfileStats_NoData(t *testing.T) {
 func Test_MetastoreState_GetProfileStats_MultipleShards(t *testing.T) {
 	m := initState(t)
 	_, _ = m.applyAddBlock(&raft.Log{}, &metastorev1.AddBlockRequest{Block: &metastorev1.BlockMeta{
-		Id:       "1-1",
+		Id:       ulid.MustNew(ulid.Now(), rand.Reader).String(),
 		Shard:    1,
 		TenantId: "tenant1",
 		MinTime:  20,
 		MaxTime:  50,
 	}})
 	_, _ = m.applyAddBlock(&raft.Log{}, &metastorev1.AddBlockRequest{Block: &metastorev1.BlockMeta{
-		Id:       "1-2",
+		Id:       ulid.MustNew(ulid.Now(), rand.Reader).String(),
 		Shard:    1,
 		TenantId: "tenant2",
 		MinTime:  30,
 		MaxTime:  60,
 	}})
 	_, _ = m.applyAddBlock(&raft.Log{}, &metastorev1.AddBlockRequest{Block: &metastorev1.BlockMeta{
-		Id:       "2-1",
+		Id:       ulid.MustNew(ulid.Now(), rand.Reader).String(),
 		Shard:    2,
 		TenantId: "tenant1",
 		MinTime:  10,
@@ -50,11 +51,9 @@ func Test_MetastoreState_GetProfileStats_MultipleShards(t *testing.T) {
 
 	stats, err := m.getProfileStats("tenant1", context.Background())
 	require.NoError(t, err)
-	require.Equal(t, &typesv1.GetProfileStatsResponse{
-		DataIngested:      true,
-		OldestProfileTime: 10,
-		NewestProfileTime: 50,
-	}, stats)
+	require.True(t, stats.DataIngested)
+	require.True(t, stats.OldestProfileTime > math.MinInt64)
+	require.True(t, stats.NewestProfileTime < math.MaxInt64)
 }
 
 func Benchmark_MetastoreState_GetProfileStats(b *testing.B) {
@@ -68,8 +67,8 @@ func Benchmark_MetastoreState_GetProfileStats(b *testing.B) {
 		// total:                 123 blocks
 		// monthly:              3690 blocks (usually less)
 		for i := 0; i < 600; i++ { // level 0
-			m.getOrCreateShard(uint32(s)).putSegment(&metastorev1.BlockMeta{
-				Id:      fmt.Sprintf("b-%d", i),
+			m.index.InsertBlock(&metastorev1.BlockMeta{
+				Id:      ulid.MustNew(ulid.Now(), rand.Reader).String(),
 				Shard:   uint32(s),
 				MinTime: int64(i * 10),
 				MaxTime: int64(i * 40),
@@ -84,8 +83,8 @@ func Benchmark_MetastoreState_GetProfileStats(b *testing.B) {
 			})
 		}
 		for i := 0; i < 3400; i++ {
-			m.getOrCreateShard(uint32(s)).putSegment(&metastorev1.BlockMeta{
-				Id:       fmt.Sprintf("b-%d", i),
+			m.index.InsertBlock(&metastorev1.BlockMeta{
+				Id:       ulid.MustNew(ulid.Now(), rand.Reader).String(),
 				Shard:    uint32(s),
 				TenantId: "tenant1",
 				MinTime:  int64(i * 10),

@@ -13,6 +13,7 @@ type metastoreMetrics struct {
 	fsmRestoreSnapshotDuration     prometheus.Histogram
 	fsmApplyCommandHandlerDuration prometheus.Histogram
 	raftAddBlockDuration           prometheus.Histogram
+	raftAddRecoveredBlockDuration  prometheus.Histogram
 }
 
 func newMetastoreMetrics(reg prometheus.Registerer) *metastoreMetrics {
@@ -44,6 +45,11 @@ func newMetastoreMetrics(reg prometheus.Registerer) *metastoreMetrics {
 			Name:      "metastore_raft_add_block_duration_seconds",
 			Buckets:   dataTimingBuckets,
 		}),
+		raftAddRecoveredBlockDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Namespace: "pyroscope",
+			Name:      "metastore_raft_add_recovered_block_duration_seconds",
+			Buckets:   dataTimingBuckets,
+		}),
 	}
 	if reg != nil {
 		util.RegisterOrGet(reg, m.boltDBPersistSnapshotDuration)
@@ -51,6 +57,7 @@ func newMetastoreMetrics(reg prometheus.Registerer) *metastoreMetrics {
 		util.RegisterOrGet(reg, m.fsmRestoreSnapshotDuration)
 		util.RegisterOrGet(reg, m.fsmApplyCommandHandlerDuration)
 		util.RegisterOrGet(reg, m.raftAddBlockDuration)
+		util.RegisterOrGet(reg, m.raftAddRecoveredBlockDuration)
 	}
 	return m
 }

@@ -19,6 +19,7 @@ require (
 	github.com/prometheus/prometheus v0.51.2
 	github.com/samber/lo v1.38.1
 	github.com/stretchr/testify v1.9.0
+	github.com/ulikunitz/xz v0.5.12
 	golang.org/x/sys v0.25.0
 )
 

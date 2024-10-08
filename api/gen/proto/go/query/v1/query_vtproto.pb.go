@@ -375,6 +375,7 @@ func (m *TimeSeriesQuery) CloneVT() *TimeSeriesQuery {
 	}
 	r := new(TimeSeriesQuery)
 	r.Step = m.Step
+	r.Limit = m.Limit
 	if rhs := m.GroupBy; rhs != nil {
 		tmpContainer := make([]string, len(rhs))
 		copy(tmpContainer, rhs)
@@ -990,6 +991,9 @@ func (this *TimeSeriesQuery) EqualVT(that *TimeSeriesQuery) bool {
 		if vx != vy {
 			return false
 		}
+	}
+	if this.Limit != that.Limit {
+		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
@@ -2209,6 +2213,11 @@ func (m *TimeSeriesQuery) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.Limit != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Limit))
+		i--
+		dAtA[i] = 0x18
+	}
 	if len(m.GroupBy) > 0 {
 		for iNdEx := len(m.GroupBy) - 1; iNdEx >= 0; iNdEx-- {
 			i -= len(m.GroupBy[iNdEx])
@@ -2815,6 +2824,9 @@ func (m *TimeSeriesQuery) SizeVT() (n int) {
 			l = len(s)
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
+	}
+	if m.Limit != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.Limit))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -5027,6 +5039,25 @@ func (m *TimeSeriesQuery) UnmarshalVT(dAtA []byte) error {
 			}
 			m.GroupBy = append(m.GroupBy, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Limit", wireType)
+			}
+			m.Limit = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Limit |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

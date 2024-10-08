@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 
@@ -15,7 +16,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/util/build"
-	"github.com/grafana/pyroscope/pkg/util/math"
 )
 
 type writerV2 struct {
@@ -138,30 +138,20 @@ func (w *writerV2) Flush() (err error) {
 }
 
 func (w *writerV2) writeStacktraces(partition *PartitionWriter) (err error) {
-	for ci, c := range partition.stacktraces.chunks {
-		stacks := c.stacks
-		if stacks == 0 {
-			stacks = uint32(len(partition.stacktraces.hashToIdx))
-		}
-		h := StacktraceBlockHeader{
-			Offset:             w.stacktraces.w.offset,
-			Size:               0, // Set later.
-			Partition:          partition.header.Partition,
-			BlockIndex:         uint16(ci),
-			Encoding:           StacktraceEncodingGroupVarint,
-			Stacktraces:        stacks,
-			StacktraceNodes:    c.tree.len(),
-			StacktraceMaxDepth: 0, // TODO
-			StacktraceMaxNodes: c.partition.maxNodesPerChunk,
-			CRC:                0, // Set later.
-		}
-		crc := crc32.New(castagnoli)
-		if h.Size, err = c.WriteTo(io.MultiWriter(crc, w.stacktraces)); err != nil {
-			return fmt.Errorf("writing stacktrace chunk data: %w", err)
-		}
-		h.CRC = crc.Sum32()
-		partition.header.Stacktraces = append(partition.header.Stacktraces, h)
+	h := StacktraceBlockHeader{
+		Offset:             w.stacktraces.w.offset,
+		Partition:          partition.header.Partition,
+		Encoding:           StacktraceEncodingGroupVarint,
+		Stacktraces:        uint32(len(partition.stacktraces.hashToIdx)),
+		StacktraceNodes:    partition.stacktraces.tree.len(),
+		StacktraceMaxNodes: math.MaxUint32,
 	}
+	crc := crc32.New(castagnoli)
+	if h.Size, err = partition.stacktraces.WriteTo(io.MultiWriter(crc, w.stacktraces)); err != nil {
+		return fmt.Errorf("writing stacktrace chunk data: %w", err)
+	}
+	h.CRC = crc.Sum32()
+	partition.header.Stacktraces = append(partition.header.Stacktraces, h)
 	return nil
 }
 
@@ -220,7 +210,7 @@ func (s *parquetWriter[M, P]) init(dir string, c ParquetConfig) (err error) {
 		return err
 	}
 	s.rowsBatch = make([]parquet.Row, 0, 128)
-	s.buffer = parquet.NewBuffer(s.persister.Schema(), parquet.ColumnBufferCapacity(s.config.MaxBufferRowCount))
+	s.buffer = parquet.NewBuffer(s.persister.Schema())
 	s.writer = parquet.NewGenericWriter[P](s.file, s.persister.Schema(),
 		parquet.CreatedBy("github.com/grafana/pyroscope/", build.Version, build.Revision),
 		parquet.PageBufferSize(3*1024*1024),
@@ -265,7 +255,7 @@ func (s *parquetWriter[M, P]) writeRows(values []M) (r RowRangeReference, err er
 }
 
 func (s *parquetWriter[M, P]) fillBatch(values []M) int {
-	m := math.Min(len(values), cap(s.rowsBatch))
+	m := min(len(values), cap(s.rowsBatch))
 	s.rowsBatch = s.rowsBatch[:m]
 	for i := 0; i < m; i++ {
 		row := s.rowsBatch[i][:0]

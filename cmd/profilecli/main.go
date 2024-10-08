@@ -79,6 +79,10 @@ func main() {
 	queryTracerCmd := app.Command("query-tracer", "Analyze query traces.")
 	queryTracerParams := addQueryTracerParams(queryTracerCmd)
 
+	queryBlocksCmd := app.Command("query-blocks", "Query on local/remote blocks")
+	queryBlocksSeriesCmd := queryBlocksCmd.Command("series", "Request series labels on local/remote blocks")
+	queryBlocksSeriesParams := addQueryBlocksSeriesParams(queryBlocksSeriesCmd)
+
 	uploadCmd := app.Command("upload", "Upload profile(s).")
 	uploadParams := addUploadParams(uploadCmd)
 
@@ -129,6 +133,11 @@ func main() {
 		}
 	case querySeriesCmd.FullCommand():
 		if err := querySeries(ctx, querySeriesParams); err != nil {
+			os.Exit(checkError(err))
+		}
+
+	case queryBlocksSeriesCmd.FullCommand():
+		if err := queryBlocksSeries(ctx, queryBlocksSeriesParams); err != nil {
 			os.Exit(checkError(err))
 		}
 

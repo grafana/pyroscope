@@ -17,6 +17,7 @@ import (
 	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftleader"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftlogpb"
 	"github.com/grafana/pyroscope/pkg/util"
 )
@@ -25,7 +26,6 @@ import (
 // when the request is converted to a Raft log entry.
 var commandTypeMap = map[reflect.Type]raftlogpb.CommandType{
 	reflect.TypeOf(new(metastorev1.AddBlockRequest)):           raftlogpb.CommandType_COMMAND_TYPE_ADD_BLOCK,
-	reflect.TypeOf(new(raftlogpb.TruncateCommand)):             raftlogpb.CommandType_COMMAND_TYPE_TRUNCATE,
 	reflect.TypeOf(new(compactorv1.PollCompactionJobsRequest)): raftlogpb.CommandType_COMMAND_TYPE_POLL_COMPACTION_JOBS_STATUS,
 }
 
@@ -34,9 +34,6 @@ var commandTypeMap = map[reflect.Type]raftlogpb.CommandType{
 var commandHandlers = map[raftlogpb.CommandType]commandHandler{
 	raftlogpb.CommandType_COMMAND_TYPE_ADD_BLOCK: func(fsm *FSM, cmd *raft.Log, raw []byte) fsmResponse {
 		return handleCommand(raw, cmd, fsm.state.applyAddBlock)
-	},
-	raftlogpb.CommandType_COMMAND_TYPE_TRUNCATE: func(fsm *FSM, cmd *raft.Log, raw []byte) fsmResponse {
-		return handleCommand(raw, cmd, fsm.state.applyTruncate)
 	},
 	raftlogpb.CommandType_COMMAND_TYPE_POLL_COMPACTION_JOBS_STATUS: func(fsm *FSM, cmd *raft.Log, raw []byte) fsmResponse {
 		return handleCommand(raw, cmd, fsm.state.applyPollCompactionJobs)
@@ -249,8 +246,5 @@ func wrapRetryableErrorWithRaftDetails(err error, raft *raft.Raft) error {
 }
 
 func shouldRetryCommand(err error) bool {
-	return errors.Is(err, raft.ErrLeadershipLost) ||
-		errors.Is(err, raft.ErrNotLeader) ||
-		errors.Is(err, raft.ErrLeadershipTransferInProgress) ||
-		errors.Is(err, raft.ErrRaftShutdown)
+	return raftleader.IsRaftLeadershipError(err)
 }
