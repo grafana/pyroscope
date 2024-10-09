@@ -303,7 +303,6 @@ type Phlare struct {
 	placementManager    *adaptiveplacement.Manager
 	metastore           *metastore.Metastore
 	metastoreClient     *metastoreclient.Client
-	queryBackend        *querybackend.QueryBackend
 	queryBackendClient  *querybackendclient.Client
 	compactionWorker    *compactionworker.Worker
 }
