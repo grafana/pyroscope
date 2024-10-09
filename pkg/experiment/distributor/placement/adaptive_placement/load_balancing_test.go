@@ -121,6 +121,11 @@ func Test_loadBalancingStrategy_relocation(t *testing.T) {
 			expected: FingerprintLoadBalancing,
 			target:   2, // 2/4
 		},
+		{
+			usage:    []uint64{2*unitSize - 1, 0},
+			expected: FingerprintLoadBalancing,
+			target:   1, // 1/2
+		},
 	} {
 		stats := &adaptive_placementpb.DatasetStats{
 			Shards: make([]uint32, len(test.usage)),
