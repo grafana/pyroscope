@@ -15,7 +15,7 @@ import (
 // and a load balancing function to distribute the
 // dataset keys.
 type AdaptivePlacement struct {
-	datasets atomic.Pointer[map[datasetKey]*adaptive_placementpb.PlacementLimits]
+	datasets atomic.Pointer[map[datasetKey]*adaptive_placementpb.DatasetPlacement]
 	limits   Limits
 }
 
@@ -53,13 +53,13 @@ func (a *AdaptivePlacement) defaultPolicy(k placement.Key) placement.Policy {
 }
 
 func (a *AdaptivePlacement) Update(rules *adaptive_placementpb.PlacementRules) {
-	datasets := make(map[datasetKey]*adaptive_placementpb.PlacementLimits, len(rules.Datasets))
+	datasets := make(map[datasetKey]*adaptive_placementpb.DatasetPlacement, len(rules.Datasets))
 	for _, dataset := range rules.Datasets {
 		k := datasetKey{
 			tenant:  rules.Tenants[dataset.Tenant].TenantId,
 			dataset: dataset.Name,
 		}
-		datasets[k] = dataset.Limits
+		datasets[k] = dataset
 	}
 	a.datasets.Store(&datasets)
 }

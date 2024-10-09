@@ -30,18 +30,17 @@ func (r *Ruler) Load(rules *adaptive_placementpb.PlacementRules) {
 		tenantLimits[i] = r.limits.ShardingLimits(t.TenantId)
 	}
 	for _, ds := range rules.Datasets {
-		if ds.Limits == nil {
-			continue
-		}
 		k := datasetKey{
 			tenant:  rules.Tenants[ds.Tenant].TenantId,
 			dataset: ds.Name,
 		}
 		limits := tenantLimits[ds.Tenant]
 		dataset := &datasetShards{
-			allocator:  newShardAllocator(limits),
-			lastUpdate: rules.CreatedAt,
-			limits:     ds.Limits,
+			allocator:     newShardAllocator(limits),
+			lastUpdate:    rules.CreatedAt,
+			tenantShards:  ds.TenantShardLimit,
+			datasetShards: ds.DatasetShardLimit,
+			loadBalancing: ds.LoadBalancing,
 		}
 		// NOTE(kolesnikovae): We prohibit decreasing the number
 		// of shards for the dataset till the expiration of the
@@ -50,7 +49,7 @@ func (r *Ruler) Load(rules *adaptive_placementpb.PlacementRules) {
 		// we won't shrink the dataset prematurely but will be
 		// able to scale out if needed.
 		dataset.allocator.decayOffset = rules.CreatedAt
-		dataset.allocator.currentMin = int(ds.Limits.DatasetShardLimit)
+		dataset.allocator.currentMin = int(ds.DatasetShardLimit)
 		r.datasets[k] = dataset
 	}
 }
@@ -81,12 +80,11 @@ func (r *Ruler) BuildRules(stats *adaptive_placementpb.DistributionStats) *adapt
 		dataset, ok := r.datasets[k]
 		if !ok {
 			dataset = &datasetShards{
-				allocator: new(shardAllocator),
-				limits: &adaptive_placementpb.PlacementLimits{
-					TenantShardLimit:  limits.TenantShards,
-					DatasetShardLimit: limits.DefaultDatasetShards,
-					LoadBalancing:     limits.LoadBalancing.proto(),
-				},
+				allocator:     new(shardAllocator),
+				lastUpdate:    stats.CreatedAt,
+				tenantShards:  limits.TenantShards,
+				datasetShards: limits.DefaultDatasetShards,
+				loadBalancing: limits.LoadBalancing.proto(),
 			}
 			r.datasets[k] = dataset
 		}
@@ -117,9 +115,11 @@ func (r *Ruler) BuildRules(stats *adaptive_placementpb.DistributionStats) *adapt
 			})
 		}
 		rules.Datasets = append(rules.Datasets, &adaptive_placementpb.DatasetPlacement{
-			Tenant: uint32(t),
-			Name:   k.dataset,
-			Limits: dataset.limits,
+			Tenant:            uint32(t),
+			Name:              k.dataset,
+			TenantShardLimit:  dataset.tenantShards,
+			DatasetShardLimit: dataset.datasetShards,
+			LoadBalancing:     dataset.loadBalancing,
 		})
 	}
 
@@ -144,11 +144,14 @@ func (k datasetKey) compare(x datasetKey) int {
 }
 
 type datasetShards struct {
-	limits    *adaptive_placementpb.PlacementLimits
 	allocator *shardAllocator
 	// Last time the dataset was updated,
 	// according to the stats update time.
 	lastUpdate int64
+	// Limits.
+	tenantShards  uint64
+	datasetShards uint64
+	loadBalancing adaptive_placementpb.LoadBalancing
 }
 
 func (d *datasetShards) placement(
@@ -158,18 +161,20 @@ func (d *datasetShards) placement(
 ) *adaptive_placementpb.DatasetPlacement {
 	d.lastUpdate = now
 	d.allocator.setLimits(limits)
-	d.limits.TenantShardLimit = limits.TenantShards
-	d.limits.DatasetShardLimit = uint64(d.allocator.observe(sum(stats.Usage), now))
+	d.tenantShards = limits.TenantShards
+	d.datasetShards = uint64(d.allocator.observe(sum(stats.Usage), now))
 	// Determine whether we need to change the load balancing strategy.
 	configured := limits
 	if configured.LoadBalancing != DynamicLoadBalancing {
-		d.limits.LoadBalancing = configured.LoadBalancing.proto()
-	} else if configured.LoadBalancing.needsDynamicBalancing(d.limits.LoadBalancing) {
-		d.limits.LoadBalancing = loadBalancingStrategy(stats, d.allocator.unitSize, d.allocator.target).proto()
+		d.loadBalancing = configured.LoadBalancing.proto()
+	} else if configured.LoadBalancing.needsDynamicBalancing(d.loadBalancing) {
+		d.loadBalancing = loadBalancingStrategy(stats, d.allocator.unitSize, d.allocator.target).proto()
 	}
 	return &adaptive_placementpb.DatasetPlacement{
-		Tenant: stats.Tenant,
-		Name:   stats.Name,
-		Limits: d.limits,
+		Tenant:            stats.Tenant,
+		Name:              stats.Name,
+		TenantShardLimit:  d.tenantShards,
+		DatasetShardLimit: d.datasetShards,
+		LoadBalancing:     d.loadBalancing,
 	}
 }

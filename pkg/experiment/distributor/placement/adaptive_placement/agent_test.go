@@ -72,6 +72,15 @@ func (s *agentSuite) Test_Agent_loads_rules_on_start() {
 	s.store.On("LoadRules", mock.Anything).
 		Return(&adaptive_placementpb.PlacementRules{}, nil)
 	s.Require().NoError(s.start())
+	s.Assert().NotNil(s.agent.rules)
+	s.Assert().NotNil(s.agent.Placement())
+}
+
+func (s *agentSuite) Test_Agent_service_doesnt_fail_if_rules_cant_be_found() {
+	s.store.On("LoadRules", mock.Anything).
+		Return((*adaptive_placementpb.PlacementRules)(nil), ErrRulesNotFound)
+	s.Require().NoError(s.start())
+	s.Assert().NotNil(s.agent.rules)
 	s.Assert().NotNil(s.agent.Placement())
 }
 
@@ -80,6 +89,7 @@ func (s *agentSuite) Test_Agent_service_fails_if_rules_cant_be_loaded() {
 		Return((*adaptive_placementpb.PlacementRules)(nil), fmt.Errorf("error"))
 	s.Require().Error(s.start())
 	s.Assert().Nil(s.agent.rules)
+	s.Assert().NotNil(s.agent.Placement())
 }
 
 func (s *agentSuite) Test_Agent_updates_placement_rules() {
@@ -111,11 +121,9 @@ func (s *agentSuite) Test_Agent_updates_placement_rules() {
 			},
 			Datasets: []*adaptive_placementpb.DatasetPlacement{
 				{
-					Name: "dataset-a",
-					Limits: &adaptive_placementpb.PlacementLimits{
-						TenantShardLimit:  10,
-						DatasetShardLimit: 10,
-					},
+					Name:              "dataset-a",
+					TenantShardLimit:  10,
+					DatasetShardLimit: 10,
 				},
 			},
 		}, nil).
@@ -159,11 +167,9 @@ func (s *agentSuite) Test_Agent_ignored_outdated_rules() {
 			},
 			Datasets: []*adaptive_placementpb.DatasetPlacement{
 				{
-					Name: "dataset-a",
-					Limits: &adaptive_placementpb.PlacementLimits{
-						TenantShardLimit:  10,
-						DatasetShardLimit: 10,
-					},
+					Name:              "dataset-a",
+					TenantShardLimit:  10,
+					DatasetShardLimit: 10,
 				},
 			},
 		}, nil).

@@ -157,7 +157,7 @@ func NewSegmentWriterClient(
 	logger log.Logger,
 	registry prometheus.Registerer,
 	ring ring.ReadRing,
-	placement distributor.Placement,
+	placement placement.Placement,
 	dialOpts ...grpc.DialOption,
 ) (*Client, error) {
 	pool, err := newConnPool(ring, logger, grpcClientConfig, dialOpts...)

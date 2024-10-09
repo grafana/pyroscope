@@ -170,8 +170,8 @@ func (m *Manager) exportMetrics(
 			m.metrics.datasetShardLimit.WithLabelValues(
 				rules.Tenants[dataset.Tenant].TenantId,
 				dataset.Name,
-				strconv.Itoa(int(dataset.Limits.LoadBalancing))).
-				Set(float64(dataset.Limits.DatasetShardLimit))
+				strconv.Itoa(int(dataset.LoadBalancing))).
+				Set(float64(dataset.DatasetShardLimit))
 		}
 	}
 

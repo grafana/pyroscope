@@ -2,6 +2,7 @@ package adaptive_placement
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -73,7 +74,12 @@ func (a *Agent) loadRulesNoError(ctx context.Context) error {
 
 func (a *Agent) loadRules(ctx context.Context) {
 	rules, err := a.store.LoadRules(ctx)
-	if err != nil {
+	switch {
+	case err == nil:
+	case errors.Is(err, ErrRulesNotFound):
+		_ = level.Warn(a.logger).Log("msg", "placement rules not found")
+		rules = &adaptive_placementpb.PlacementRules{CreatedAt: time.Now().UnixNano()}
+	default:
 		_ = level.Error(a.logger).Log("msg", "failed to load placement rules", "err", err)
 		return
 	}

@@ -64,22 +64,18 @@ func Test_AdaptivePlacement(t *testing.T) {
 		Datasets: []*adaptive_placementpb.DatasetPlacement{
 			{
 				// A placement rule may have a newer/different limit for the tenant.
-				Tenant: 0,
-				Name:   "dataset-a",
-				Limits: &adaptive_placementpb.PlacementLimits{
-					TenantShardLimit:  4,
-					DatasetShardLimit: 4,
-					LoadBalancing:     adaptive_placementpb.LoadBalancing_LOAD_BALANCING_ROUND_ROBIN,
-				},
+				Tenant:            0,
+				Name:              "dataset-a",
+				TenantShardLimit:  4,
+				DatasetShardLimit: 4,
+				LoadBalancing:     adaptive_placementpb.LoadBalancing_LOAD_BALANCING_ROUND_ROBIN,
 			},
 			{
-				Tenant: 0,
-				Name:   "dataset-a-2",
-				Limits: &adaptive_placementpb.PlacementLimits{
-					TenantShardLimit:  4,
-					DatasetShardLimit: 1,
-					LoadBalancing:     adaptive_placementpb.LoadBalancing_LOAD_BALANCING_FINGERPRINT,
-				},
+				Tenant:            0,
+				Name:              "dataset-a-2",
+				TenantShardLimit:  4,
+				DatasetShardLimit: 1,
+				LoadBalancing:     adaptive_placementpb.LoadBalancing_LOAD_BALANCING_FINGERPRINT,
 			},
 		},
 		CreatedAt: 1,

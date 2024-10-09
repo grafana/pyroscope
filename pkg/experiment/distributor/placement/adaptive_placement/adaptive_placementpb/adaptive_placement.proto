@@ -33,13 +33,6 @@ message ShardStats {
   string owner = 2;
 }
 
-// TODO: Embed into DatasetPlacement
-message PlacementLimits {
-  uint64 tenant_shard_limit = 1;
-  uint64 dataset_shard_limit = 2;
-  LoadBalancing load_balancing = 3;
-}
-
 enum LoadBalancing {
   LOAD_BALANCING_UNSPECIFIED = 0;
   LOAD_BALANCING_FINGERPRINT = 1;
@@ -59,5 +52,7 @@ message TenantPlacement {
 message DatasetPlacement {
   uint32 tenant = 1;
   string name = 2;
-  PlacementLimits limits = 3;
+  uint64 tenant_shard_limit = 3;
+  uint64 dataset_shard_limit = 4;
+  LoadBalancing load_balancing = 5;
 }
