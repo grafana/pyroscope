@@ -144,7 +144,6 @@ type Client struct {
 	logger  log.Logger
 	metrics *metrics
 
-	ring        ring.ReadRing
 	pool        *connpool.RingConnPool
 	distributor *distributor.Distributor
 
@@ -158,6 +157,7 @@ func NewSegmentWriterClient(
 	logger log.Logger,
 	registry prometheus.Registerer,
 	ring ring.ReadRing,
+	placement placement.Placement,
 	dialOpts ...grpc.DialOption,
 ) (*Client, error) {
 	pool, err := newConnPool(ring, logger, grpcClientConfig, dialOpts...)
@@ -167,9 +167,8 @@ func NewSegmentWriterClient(
 	c := &Client{
 		logger:      logger,
 		metrics:     newMetrics(registry),
-		ring:        ring,
+		distributor: distributor.NewDistributor(placement, ring),
 		pool:        pool,
-		distributor: distributor.NewDistributor(placement.DefaultPlacement),
 	}
 	c.subservices, err = services.NewManager(c.pool)
 	if err != nil {
@@ -204,8 +203,8 @@ func (c *Client) Push(
 	ctx context.Context,
 	req *segmentwriterv1.PushRequest,
 ) (*segmentwriterv1.PushResponse, error) {
-	k := distributor.NewTenantServiceDatasetKey(req.TenantId, req.Labels)
-	p, dErr := c.distributor.Distribute(k, c.ring)
+	k := distributor.NewTenantServiceDatasetKey(req.TenantId, req.Labels...)
+	p, dErr := c.distributor.Distribute(k)
 	if dErr != nil {
 		_ = level.Error(c.logger).Log(
 			"msg", "unable to distribute request",
@@ -214,16 +213,15 @@ func (c *Client) Push(
 		return nil, status.Error(codes.Unavailable, errServiceUnavailableMsg)
 	}
 
+	// In case of a failure, the request is sent to another instance.
+	// At most 5 attempts to push the data to the segment writer.
+	attempts := 5
+	instances := placement.ActiveInstances(p.Instances)
 	req.Shard = p.Shard
-	for { // The caller should cancel the context to break the loop.
-		instance, ok := p.Next()
-		if !ok {
-			_ = level.Error(c.logger).Log(
-				"msg", "no segment writer instances available for the request",
-				"tenant", req.TenantId)
-			return nil, status.Error(codes.Unavailable, errServiceUnavailableMsg)
-		}
 
+	for attempts > 0 && instances.Next() {
+		attempts--
+		instance := instances.At()
 		resp, err := c.pushToInstance(ctx, req, instance.Addr)
 		// Happy path.
 		if err == nil {
@@ -242,6 +240,12 @@ func (c *Client) Push(
 			return nil, status.Error(codes.Unavailable, errServiceUnavailableMsg)
 		}
 	}
+
+	_ = level.Error(c.logger).Log(
+		"msg", "no segment writer instances available for the request",
+		"tenant", req.TenantId)
+
+	return nil, status.Error(codes.Unavailable, errServiceUnavailableMsg)
 }
 
 func (c *Client) pushToInstance(

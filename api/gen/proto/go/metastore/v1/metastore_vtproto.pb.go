@@ -70,6 +70,7 @@ func (m *BlockMeta) CloneVT() *BlockMeta {
 	r.CompactionLevel = m.CompactionLevel
 	r.TenantId = m.TenantId
 	r.Size = m.Size
+	r.CreatedBy = m.CreatedBy
 	if rhs := m.Datasets; rhs != nil {
 		tmpContainer := make([]*Dataset, len(rhs))
 		for k, v := range rhs {
@@ -98,6 +99,16 @@ func (m *Dataset) CloneVT() *Dataset {
 	r.MinTime = m.MinTime
 	r.MaxTime = m.MaxTime
 	r.Size = m.Size
+	if rhs := m.TableOfContents; rhs != nil {
+		tmpContainer := make([]uint64, len(rhs))
+		copy(tmpContainer, rhs)
+		r.TableOfContents = tmpContainer
+	}
+	if rhs := m.ProfileTypes; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.ProfileTypes = tmpContainer
+	}
 	if rhs := m.Labels; rhs != nil {
 		tmpContainer := make([]*v1.Labels, len(rhs))
 		for k, v := range rhs {
@@ -108,16 +119,6 @@ func (m *Dataset) CloneVT() *Dataset {
 			}
 		}
 		r.Labels = tmpContainer
-	}
-	if rhs := m.TableOfContents; rhs != nil {
-		tmpContainer := make([]uint64, len(rhs))
-		copy(tmpContainer, rhs)
-		r.TableOfContents = tmpContainer
-	}
-	if rhs := m.ProfileTypes; rhs != nil {
-		tmpContainer := make([]string, len(rhs))
-		copy(tmpContainer, rhs)
-		r.ProfileTypes = tmpContainer
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -308,6 +309,9 @@ func (this *BlockMeta) EqualVT(that *BlockMeta) bool {
 		}
 	}
 	if this.Size != that.Size {
+		return false
+	}
+	if this.CreatedBy != that.CreatedBy {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -820,6 +824,13 @@ func (m *BlockMeta) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if len(m.CreatedBy) > 0 {
+		i -= len(m.CreatedBy)
+		copy(dAtA[i:], m.CreatedBy)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.CreatedBy)))
+		i--
+		dAtA[i] = 0x52
+	}
 	if m.Size != 0 {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Size))
 		i--
@@ -1277,6 +1288,10 @@ func (m *BlockMeta) SizeVT() (n int) {
 	}
 	if m.Size != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.Size))
+	}
+	l = len(m.CreatedBy)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -1796,6 +1811,38 @@ func (m *BlockMeta) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
+		case 10:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CreatedBy", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.CreatedBy = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

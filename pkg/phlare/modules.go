@@ -97,7 +97,8 @@ const (
 	QueryBackend        string = "query-backend"
 	QueryBackendClient  string = "query-backend-client"
 	CompactionWorker    string = "compaction-worker"
-	HealthService       string = "health-service"
+	PlacementAgent      string = "placement-agent"
+	PlacementManager    string = "placement-manager"
 )
 
 var objectStoreTypeStats = usagestats.NewString("store_object_type")

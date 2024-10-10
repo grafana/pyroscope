@@ -598,6 +598,9 @@
         "size": {
           "type": "string",
           "format": "uint64"
+        },
+        "createdBy": {
+          "type": "string"
         }
       }
     },
@@ -789,13 +792,6 @@
     "v1Dataset": {
       "type": "object",
       "properties": {
-        "labels": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1Labels"
-          }
-        },
         "tenantId": {
           "type": "string"
         },
@@ -828,7 +824,14 @@
           "items": {
             "type": "string"
           },
-          "description": "TODO: delete\nProfile types present in the tenant service data."
+          "description": "TODO: Delete. Use labels instead.\nProfile types present in the tenant service data."
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Labels"
+          }
         }
       }
     },

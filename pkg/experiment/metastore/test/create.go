@@ -3,15 +3,23 @@ package test
 import (
 	"context"
 	"fmt"
+	"net"
+	"testing"
+	"time"
+
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/services"
+
 	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore"
 	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
 	"github.com/grafana/pyroscope/pkg/test"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockdiscovery"
+	"github.com/grafana/pyroscope/pkg/validation"
+
 	"github.com/hashicorp/raft"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
@@ -19,9 +27,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/thanos-io/objstore"
 	"google.golang.org/grpc"
-	"net"
-	"testing"
-	"time"
 )
 
 func NewMetastoreSet(t *testing.T, cfg *metastore.Config, n int, bucket objstore.Bucket) MetastoreSet {
@@ -68,8 +73,8 @@ func NewMetastoreSet(t *testing.T, cfg *metastore.Config, n int, bucket objstore
 	require.NoError(t, err)
 
 	d := MockStaticDiscovery(t, servers)
-	cl := metastoreclient.New(l, cfg.GRPCClientConfig, d)
-	err = cl.Service().StartAsync(context.Background())
+	client := metastoreclient.New(l, cfg.GRPCClientConfig, d)
+	err = client.Service().StartAsync(context.Background())
 	require.NoError(t, err)
 
 	l.Log("grpcAddresses", fmt.Sprintf("%+v", grpcAddresses), "raftAddresses", fmt.Sprintf("%+v", raftAddresses))
@@ -81,9 +86,17 @@ func NewMetastoreSet(t *testing.T, cfg *metastore.Config, n int, bucket objstore
 		require.NoError(t, err)
 		cc, err := grpc.Dial(grpcAddresses[i], options...)
 		require.NoError(t, err)
-		il := log.With(l, "idx", bootstrapPeers[i])
+		logger := log.With(l, "idx", bootstrapPeers[i])
 		server := grpc.NewServer()
-		m, err := metastore.New(configs[i], nil, il, prometheus.NewRegistry(), cl, bucket)
+		registry := prometheus.NewRegistry()
+		placementManager := adaptive_placement.NewManager(
+			logger,
+			registry,
+			adaptive_placement.DefaultConfig(),
+			validation.MockDefaultOverrides(),
+			adaptive_placement.NewStore(bucket),
+		)
+		m, err := metastore.New(configs[i], logger, registry, client, bucket, placementManager)
 		require.NoError(t, err)
 		metastorev1.RegisterMetastoreServiceServer(server, m)
 		compactorv1.RegisterCompactionPlannerServer(server, m)
@@ -101,7 +114,7 @@ func NewMetastoreSet(t *testing.T, cfg *metastore.Config, n int, bucket objstore
 			Server:                  server,
 		})
 		err = m.Service().StartAsync(context.Background())
-		il.Log("msg", "service started")
+		logger.Log("msg", "service started")
 		require.NoError(t, err)
 	}
 
@@ -117,7 +130,7 @@ func NewMetastoreSet(t *testing.T, cfg *metastore.Config, n int, bucket objstore
 		return true
 	}, 10*time.Second, 100*time.Millisecond)
 
-	res.Client = cl
+	res.Client = client
 
 	return res
 }

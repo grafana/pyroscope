@@ -28,11 +28,10 @@ message BlockMeta {
   string tenant_id = 7;
   repeated Dataset datasets = 8;
   uint64 size = 9;
+  string created_by = 10;
 }
 
 message Dataset {
-  repeated types.v1.Labels labels = 8;
-
   string tenant_id = 1;
   string name = 2;
   int64 min_time = 3;
@@ -50,9 +49,10 @@ message Dataset {
   // Size of the section in bytes.
   uint64 size = 6;
 
-  // TODO: delete
+  // TODO: Delete. Use labels instead.
   // Profile types present in the tenant service data.
   repeated string profile_types = 7;
+  repeated types.v1.Labels labels = 8;
 }
 
 message QueryMetadataRequest {
