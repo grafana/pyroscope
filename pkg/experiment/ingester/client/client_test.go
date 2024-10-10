@@ -22,7 +22,7 @@ import (
 	"google.golang.org/grpc/test/bufconn"
 
 	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
-	"github.com/grafana/pyroscope/pkg/experiment/distributor"
+	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement"
 	"github.com/grafana/pyroscope/pkg/testhelper"
 )
 
@@ -37,6 +37,18 @@ func (m *segwriterServerMock) Push(
 ) (*segmentwriterv1.PushResponse, error) {
 	args := m.Called(ctx, req)
 	return args.Get(0).(*segmentwriterv1.PushResponse), args.Error(1)
+}
+
+type testPlacement struct{}
+
+func (testPlacement) Policy(k placement.Key) placement.Policy {
+	return placement.Policy{
+		TenantShards:  0, // Unlimited.
+		DatasetShards: 1,
+		PickShard: func(n int) int {
+			return int(k.Fingerprint % uint64(n))
+		},
+	}
 }
 
 type segwriterClientSuite struct {
@@ -74,7 +86,7 @@ func (s *segwriterClientSuite) SetupTest() {
 	var err error
 	s.client, err = NewSegmentWriterClient(
 		s.config, s.logger, nil, s.ring,
-		distributor.DefaultPlacement,
+		testPlacement{},
 		grpc.WithContextDialer(s.dialer))
 	s.Require().NoError(err)
 
@@ -134,7 +146,7 @@ func (s *segwriterClientSuite) Test_Push_EmptyRing() {
 	var err error
 	s.client, err = NewSegmentWriterClient(
 		s.config, s.logger, nil, emptyRing,
-		distributor.DefaultPlacement,
+		testPlacement{},
 		grpc.WithContextDialer(s.dialer))
 	s.Require().NoError(err)
 
@@ -202,7 +214,7 @@ func (s *segwriterClientSuite) Test_Push_DialError() {
 	var err error
 	s.client, err = NewSegmentWriterClient(
 		s.config, s.logger, nil, s.ring,
-		distributor.DefaultPlacement,
+		testPlacement{},
 		grpc.WithContextDialer(dialer))
 	s.Require().NoError(err)
 
@@ -222,7 +234,7 @@ func (s *segwriterClientSuite) Test_Push_DialError_Retry() {
 	var err error
 	s.client, err = NewSegmentWriterClient(
 		s.config, s.logger, nil, s.ring,
-		distributor.DefaultPlacement,
+		testPlacement{},
 		grpc.WithContextDialer(dialer))
 	s.Require().NoError(err)
 

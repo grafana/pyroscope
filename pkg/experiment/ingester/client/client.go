@@ -167,8 +167,8 @@ func NewSegmentWriterClient(
 	c := &Client{
 		logger:      logger,
 		metrics:     newMetrics(registry),
-		pool:        pool,
 		distributor: distributor.NewDistributor(placement, ring),
+		pool:        pool,
 	}
 	c.subservices, err = services.NewManager(c.pool)
 	if err != nil {

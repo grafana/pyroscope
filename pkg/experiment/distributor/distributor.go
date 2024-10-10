@@ -19,24 +19,6 @@ import (
 
 const defaultRingUpdateInterval = 5 * time.Second
 
-// TODO(kolesnikovae):
-//  - Naming.
-//  - Move to the placement.
-
-var DefaultPlacement = defaultPlacement{}
-
-type defaultPlacement struct{}
-
-func (defaultPlacement) Policy(k placement.Key) placement.Policy {
-	return placement.Policy{
-		TenantShards:  0, // Unlimited.
-		DatasetShards: 1,
-		PickShard: func(n int) int {
-			return int(k.Fingerprint % uint64(n))
-		},
-	}
-}
-
 type Distributor struct {
 	mu           sync.RWMutex
 	ring         ring.ReadRing
