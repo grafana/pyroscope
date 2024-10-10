@@ -1089,7 +1089,22 @@
       "type": "object",
       "properties": {
         "cookie": {
-          "type": "string"
+          "type": "string",
+          "title": "Deprecated"
+        },
+        "token": {
+          "type": "string",
+          "title": "base64 encoded encrypted token"
+        },
+        "tokenExpiresAt": {
+          "type": "string",
+          "format": "int64",
+          "description": "Unix ms timestamp of when the token expires."
+        },
+        "refreshTokenExpiresAt": {
+          "type": "string",
+          "format": "int64",
+          "description": "Unix ms timestamp of when the refresh token expires."
         }
       }
     },
@@ -1097,7 +1112,22 @@
       "type": "object",
       "properties": {
         "cookie": {
-          "type": "string"
+          "type": "string",
+          "title": "Deprecated"
+        },
+        "token": {
+          "type": "string",
+          "title": "base64 encoded encrypted token"
+        },
+        "tokenExpiresAt": {
+          "type": "string",
+          "format": "int64",
+          "description": "Unix ms timestamp of when the token expires."
+        },
+        "refreshTokenExpiresAt": {
+          "type": "string",
+          "format": "int64",
+          "description": "Unix ms timestamp of when the refresh token expires."
         }
       }
     },

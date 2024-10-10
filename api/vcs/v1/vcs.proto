@@ -21,13 +21,27 @@ message GithubLoginRequest {
 }
 
 message GithubLoginResponse {
+  // Deprecated
   string cookie = 1;
+  // base64 encoded encrypted token
+  string token = 2;
+  // Unix ms timestamp of when the token expires.
+  int64 token_expires_at = 3;
+  // Unix ms timestamp of when the refresh token expires.
+  int64 refresh_token_expires_at = 4;
 }
 
 message GithubRefreshRequest {}
 
 message GithubRefreshResponse {
+  // Deprecated
   string cookie = 1;
+  // base64 encoded encrypted token
+  string token = 2;
+  // Unix ms timestamp of when the token expires.
+  int64 token_expires_at = 3;
+  // Unix ms timestamp of when the refresh token expires.
+  int64 refresh_token_expires_at = 4;
 }
 
 message GetFileRequest {

@@ -23,9 +23,14 @@ const (
 	sessionCookieName = "pyroscope_git_session"
 )
 
-type gitSessionTokenCookie struct {
+// Deprecated
+type legacyGitSessionTokenCookie struct {
 	Metadata        string `json:"metadata"`
 	ExpiryTimestamp int64  `json:"expiry"`
+}
+
+type gitSessionTokenCookie struct {
+	Token *string `json:"token"`
 }
 
 const envVarGithubSessionSecret = "GITHUB_SESSION_SECRET"
@@ -102,14 +107,14 @@ func tokenFromRequest(ctx context.Context, req connect.AnyRequest) (*oauth2.Toke
 	return token, nil
 }
 
-// encodeToken encrypts then base64 encodes an OAuth token.
-func encodeToken(token *oauth2.Token, key []byte) (*http.Cookie, error) {
+// Deprecated: encodeTokenInCookie creates a cookie by encrypting then base64 encoding an OAuth token.
+func encodeTokenInCookie(token *oauth2.Token, key []byte) (*http.Cookie, error) {
 	encrypted, err := encryptToken(token, key)
 	if err != nil {
 		return nil, err
 	}
 
-	bytes, err := json.Marshal(gitSessionTokenCookie{
+	bytes, err := json.Marshal(legacyGitSessionTokenCookie{
 		Metadata:        encrypted,
 		ExpiryTimestamp: token.Expiry.UnixMilli(),
 	})
@@ -140,16 +145,32 @@ func decodeToken(value string, key []byte) (*oauth2.Token, error) {
 
 	sessionToken := gitSessionTokenCookie{}
 	err = json.Unmarshal(decoded, &sessionToken)
-	if err != nil {
-		// This may be a legacy cookie. Legacy cookies aren't base64 encoded
-		// JSON objects, but rather a base64 encoded crypto hash.
-		var innerErr error
-		token, innerErr = decryptToken(value, key)
+	if err != nil || sessionToken.Token == nil {
+		// This may be a legacy cookie. Legacy cookies are base64 encoded legacyGitSessionTokenCookie objects.
+		token, innerErr := decodeLegacyToken(decoded, key)
 		if innerErr != nil {
 			// Legacy fallback failed, return the original error.
 			return nil, err
 		}
 		return token, nil
+	}
+
+	token, err = decryptToken(*sessionToken.Token, key)
+	if err != nil {
+		return nil, err
+	}
+
+	return token, nil
+}
+
+// Deprecated: decodeLegacyToken decrypts a legacyGitSessionTokenCookie
+func decodeLegacyToken(value []byte, key []byte) (*oauth2.Token, error) {
+	var token *oauth2.Token
+
+	sessionToken := &legacyGitSessionTokenCookie{}
+	err := json.Unmarshal(value, sessionToken)
+	if err != nil || sessionToken == nil {
+		return nil, err
 	}
 
 	token, err = decryptToken(sessionToken.Metadata, key)
