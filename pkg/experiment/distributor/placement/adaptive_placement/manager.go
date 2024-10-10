@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -142,20 +143,18 @@ func (m *Manager) reset() {
 
 func (m *Manager) loadRules(ctx context.Context) bool {
 	rules, err := m.store.LoadRules(ctx)
-	if err != nil {
-		if !errors.Is(err, ErrRulesNotFound) {
-			m.logger.Log("msg", "failed to load placement rules", "err", err)
-			return false
-		}
+	switch {
+	case err == nil:
+	case errors.Is(err, ErrRulesNotFound):
+		_ = level.Warn(m.logger).Log("msg", "placement rules not found")
+		rules = &adaptive_placementpb.PlacementRules{CreatedAt: time.Now().UnixNano()}
+	default:
+		_ = level.Error(m.logger).Log("msg", "failed to load placement rules", "err", err)
+		return false
 	}
 	if m.ruler == nil {
 		m.ruler = NewRuler(m.limits)
 		m.startedAt = time.Now()
-	}
-	if rules == nil {
-		rules = &adaptive_placementpb.PlacementRules{
-			CreatedAt: time.Now().UnixNano(),
-		}
 	}
 	m.ruler.Load(rules)
 	return true
