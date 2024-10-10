@@ -20,7 +20,9 @@ func (m *Metastore) QueryMetadata(
 	ctx context.Context,
 	request *metastorev1.QueryMetadataRequest,
 ) (*metastorev1.QueryMetadataResponse, error) {
-	// TODO(kolesnikovae): ReadIndex
+	if err := m.readIndex(ctx); err != nil {
+		return nil, status.Error(codes.FailedPrecondition, fmt.Sprintf("failed to read index: %v", err))
+	}
 	return m.state.listBlocksForQuery(ctx, request)
 }
 

@@ -2,8 +2,12 @@ package metastore
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"sync"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -14,7 +18,9 @@ func (m *Metastore) GetProfileStats(
 	ctx context.Context,
 	r *metastorev1.GetProfileStatsRequest,
 ) (*typesv1.GetProfileStatsResponse, error) {
-	// TODO(kolesnikovae): ReadIndex
+	if err := m.readIndex(ctx); err != nil {
+		return nil, status.Error(codes.FailedPrecondition, fmt.Sprintf("failed to read index: %v", err))
+	}
 	return m.state.getProfileStats(r.TenantId, ctx)
 }
 
