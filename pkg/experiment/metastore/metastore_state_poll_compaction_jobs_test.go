@@ -306,6 +306,67 @@ func Test_RemoveInvalidJobsFromStorage(t *testing.T) {
 	verifyCompactionState(t, m)
 }
 
+func Test_PollJobsPerLevel(t *testing.T) {
+	requireJobs := func(t *testing.T, resp *compactorv1.PollCompactionJobsResponse, expectedLevel2Count map[int]int) {
+		res := make(map[int]int)
+		for _, job := range resp.CompactionJobs {
+			res[int(job.CompactionLevel)]++
+		}
+		require.Equal(t, expectedLevel2Count, res)
+	}
+	t.Run("JobCapacityLimit", func(t *testing.T) {
+		m := initState(t)
+		addLevel0Blocks(m, 40)
+		addLevel1Blocks(m, "t1", 30)
+		resp, err := m.pollCompactionJobs(&compactorv1.PollCompactionJobsRequest{
+			JobCapacity: 2,
+			PerBlockLevelJobCapacity: []uint32{
+				1,
+				2,
+			},
+		}, 20, 20)
+		require.NoError(t, err)
+		requireJobs(t, resp, map[int]int{
+			0: 1,
+			1: 1,
+		})
+	})
+
+	t.Run("JobCapacityNoLimit", func(t *testing.T) {
+		m := initState(t)
+		addLevel0Blocks(m, 40)
+		addLevel1Blocks(m, "t1", 30)
+		resp, err := m.pollCompactionJobs(&compactorv1.PollCompactionJobsRequest{
+			JobCapacity: 239,
+			PerBlockLevelJobCapacity: []uint32{
+				1,
+				2,
+			},
+		}, 20, 20)
+		require.NoError(t, err)
+		requireJobs(t, resp, map[int]int{
+			0: 1,
+			1: 2,
+		})
+	})
+	t.Run("OnlyL1", func(t *testing.T) {
+		m := initState(t)
+		addLevel0Blocks(m, 40)
+		addLevel1Blocks(m, "t1", 30)
+		resp, err := m.pollCompactionJobs(&compactorv1.PollCompactionJobsRequest{
+			JobCapacity: 239,
+			PerBlockLevelJobCapacity: []uint32{
+				0,
+				2,
+			},
+		}, 20, 20)
+		require.NoError(t, err)
+		requireJobs(t, resp, map[int]int{
+			1: 2,
+		})
+	})
+}
+
 func addLevel0Blocks(m *metastoreState, count int) []*metastorev1.BlockMeta {
 	blocks := make([]*metastorev1.BlockMeta, 0, count)
 	for i := 0; i < count; i++ {

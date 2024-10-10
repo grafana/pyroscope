@@ -16,6 +16,7 @@ message PollCompactionJobsRequest {
   repeated CompactionJobStatus job_status_updates = 1;
   // How many new jobs a worker can be assigned to.
   uint32 job_capacity = 2;
+  repeated uint32 per_block_level_job_capacity = 3;
 }
 
 message PollCompactionJobsResponse {
