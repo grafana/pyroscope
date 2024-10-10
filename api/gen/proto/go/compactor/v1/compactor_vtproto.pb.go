@@ -37,6 +37,11 @@ func (m *PollCompactionJobsRequest) CloneVT() *PollCompactionJobsRequest {
 		}
 		r.JobStatusUpdates = tmpContainer
 	}
+	if rhs := m.PerBlockLevelJobCapacity; rhs != nil {
+		tmpContainer := make([]uint32, len(rhs))
+		copy(tmpContainer, rhs)
+		r.PerBlockLevelJobCapacity = tmpContainer
+	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -235,6 +240,15 @@ func (this *PollCompactionJobsRequest) EqualVT(that *PollCompactionJobsRequest) 
 	}
 	if this.JobCapacity != that.JobCapacity {
 		return false
+	}
+	if len(this.PerBlockLevelJobCapacity) != len(that.PerBlockLevelJobCapacity) {
+		return false
+	}
+	for i, vx := range this.PerBlockLevelJobCapacity {
+		vy := that.PerBlockLevelJobCapacity[i]
+		if vx != vy {
+			return false
+		}
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
@@ -637,6 +651,26 @@ func (m *PollCompactionJobsRequest) MarshalToSizedBufferVT(dAtA []byte) (int, er
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.PerBlockLevelJobCapacity) > 0 {
+		var pksize2 int
+		for _, num := range m.PerBlockLevelJobCapacity {
+			pksize2 += protohelpers.SizeOfVarint(uint64(num))
+		}
+		i -= pksize2
+		j1 := i
+		for _, num := range m.PerBlockLevelJobCapacity {
+			for num >= 1<<7 {
+				dAtA[j1] = uint8(uint64(num)&0x7f | 0x80)
+				num >>= 7
+				j1++
+			}
+			dAtA[j1] = uint8(num)
+			j1++
+		}
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(pksize2))
+		i--
+		dAtA[i] = 0x1a
 	}
 	if m.JobCapacity != 0 {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.JobCapacity))
@@ -1069,6 +1103,13 @@ func (m *PollCompactionJobsRequest) SizeVT() (n int) {
 	if m.JobCapacity != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.JobCapacity))
 	}
+	if len(m.PerBlockLevelJobCapacity) > 0 {
+		l = 0
+		for _, e := range m.PerBlockLevelJobCapacity {
+			l += protohelpers.SizeOfVarint(uint64(e))
+		}
+		n += 1 + protohelpers.SizeOfVarint(uint64(l)) + l
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -1309,6 +1350,82 @@ func (m *PollCompactionJobsRequest) UnmarshalVT(dAtA []byte) error {
 				if b < 0x80 {
 					break
 				}
+			}
+		case 3:
+			if wireType == 0 {
+				var v uint32
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protohelpers.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					v |= uint32(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				m.PerBlockLevelJobCapacity = append(m.PerBlockLevelJobCapacity, v)
+			} else if wireType == 2 {
+				var packedLen int
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protohelpers.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					packedLen |= int(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				if packedLen < 0 {
+					return protohelpers.ErrInvalidLength
+				}
+				postIndex := iNdEx + packedLen
+				if postIndex < 0 {
+					return protohelpers.ErrInvalidLength
+				}
+				if postIndex > l {
+					return io.ErrUnexpectedEOF
+				}
+				var elementCount int
+				var count int
+				for _, integer := range dAtA[iNdEx:postIndex] {
+					if integer < 128 {
+						count++
+					}
+				}
+				elementCount = count
+				if elementCount != 0 && len(m.PerBlockLevelJobCapacity) == 0 {
+					m.PerBlockLevelJobCapacity = make([]uint32, 0, elementCount)
+				}
+				for iNdEx < postIndex {
+					var v uint32
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return protohelpers.ErrIntOverflow
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						v |= uint32(b&0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					m.PerBlockLevelJobCapacity = append(m.PerBlockLevelJobCapacity, v)
+				}
+			} else {
+				return fmt.Errorf("proto: wrong wireType = %d for field PerBlockLevelJobCapacity", wireType)
 			}
 		default:
 			iNdEx = preIndex

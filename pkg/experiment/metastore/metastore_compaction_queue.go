@@ -74,6 +74,16 @@ func (q *jobQueue) dequeue(now int64, raftLogIndex uint64) *compactionpb.Compact
 	return nil
 }
 
+func (q *jobQueue) dequeueFromLevel(level int, now int64, raftLogIndex uint64) *compactionpb.CompactionJob {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if level >= len(q.pqs) {
+		return nil
+	}
+	pq := &q.pqs[level]
+	return dequeue(q, pq, now, raftLogIndex)
+}
+
 func dequeue(q *jobQueue, pq *priorityQueue, now int64, raftLogIndex uint64) *compactionpb.CompactionJob {
 	if pq.Len() > 0 {
 		job := (*pq)[0]
@@ -204,6 +214,12 @@ func (q *jobQueue) growQueues(l uint32) *priorityQueue {
 		q.pqs = append(q.pqs, pq)
 	}
 	return &q.pqs[l]
+}
+
+func (q *jobQueue) levels() int {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	return len(q.pqs)
 }
 
 // TODO(kolesnikovae): container/heap is not very efficient,

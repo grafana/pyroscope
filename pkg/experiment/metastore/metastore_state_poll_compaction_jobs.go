@@ -174,7 +174,7 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 
 	resp = &compactorv1.PollCompactionJobsResponse{}
 	if request.JobCapacity > 0 {
-		newJobs := m.findJobsToAssign(int(request.JobCapacity), raftIndex, raftAppendedAtNanos)
+		newJobs := m.findJobsToAssign(int(request.JobCapacity), request.PerBlockLevelJobCapacity, raftIndex, raftAppendedAtNanos)
 		convertedJobs, invalidJobs := m.convertJobs(newJobs)
 		resp.CompactionJobs = convertedJobs
 		for _, j := range convertedJobs {
@@ -243,12 +243,13 @@ func (m *metastoreState) convertJobs(jobs []*compactionpb.CompactionJob) (conver
 	return convertedJobs, invalidJobs
 }
 
-func (m *metastoreState) findJobsToAssign(jobCapacity int, raftLogIndex uint64, now int64) []*compactionpb.CompactionJob {
+func (m *metastoreState) findJobsToAssign(jobCapacity int, perBlockLevelJobCapacity []uint32, raftLogIndex uint64, now int64) []*compactionpb.CompactionJob {
 	jobsToAssign := make([]*compactionpb.CompactionJob, 0, jobCapacity)
 	jobCount, newJobs, inProgressJobs, completedJobs, failedJobs, cancelledJobs := m.compactionJobQueue.stats()
 	level.Debug(m.logger).Log(
 		"msg", "looking for jobs to assign",
 		"job_capacity", jobCapacity,
+		"per_block_level_job_capacity", fmt.Sprintf("%+v", perBlockLevelJobCapacity),
 		"raft_log_index", raftLogIndex,
 		"job_queue_size", jobCount,
 		"new_jobs_in_queue_count", len(newJobs),
@@ -258,14 +259,25 @@ func (m *metastoreState) findJobsToAssign(jobCapacity int, raftLogIndex uint64, 
 		"cancelled_jobs_in_queue_count", len(cancelledJobs),
 	)
 
-	var j *compactionpb.CompactionJob
-	for len(jobsToAssign) < jobCapacity {
-		j = m.compactionJobQueue.dequeue(now, raftLogIndex)
-		if j == nil {
-			break
+	if len(perBlockLevelJobCapacity) == 0 {
+		levels := m.compactionJobQueue.levels()
+		perBlockLevelJobCapacity = make([]uint32, levels)
+		for i := 0; i < levels; i++ {
+			perBlockLevelJobCapacity[i] = uint32(jobCapacity)
 		}
-		level.Debug(m.logger).Log("msg", "assigning job to raftLogIndex", "job", j, "raft_log_index", raftLogIndex)
-		jobsToAssign = append(jobsToAssign, j)
+	}
+
+	var j *compactionpb.CompactionJob
+	for l := range perBlockLevelJobCapacity {
+		for len(jobsToAssign) < jobCapacity && perBlockLevelJobCapacity[l] > 0 {
+			j = m.compactionJobQueue.dequeueFromLevel(l, now, raftLogIndex)
+			if j == nil {
+				break
+			}
+			perBlockLevelJobCapacity[l]--
+			level.Debug(m.logger).Log("msg", "assigning job to raftLogIndex", "job", j, "raft_log_index", raftLogIndex)
+			jobsToAssign = append(jobsToAssign, j)
+		}
 	}
 
 	return jobsToAssign
