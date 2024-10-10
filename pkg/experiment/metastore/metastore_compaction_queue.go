@@ -2,7 +2,6 @@ package metastore
 
 import (
 	"container/heap"
-	"slices"
 	"sync"
 
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compactionpb"
@@ -20,7 +19,7 @@ import (
 type jobQueue struct {
 	mu   sync.Mutex
 	jobs map[string]*jobQueueEntry
-	pq   priorityQueue
+	pqs  []priorityQueue
 
 	lease int64
 }
@@ -30,13 +29,13 @@ type jobQueue struct {
 // Typically, callers should update jobs at the interval not exceeding
 // the half of the lease duration.
 func newJobQueue(lease int64) *jobQueue {
-	pq := make(priorityQueue, 0)
-	heap.Init(&pq)
-	return &jobQueue{
+	q := &jobQueue{
 		jobs:  make(map[string]*jobQueueEntry),
-		pq:    pq,
+		pqs:   nil,
 		lease: lease,
 	}
+	q.growQueues(5)
+	return q
 }
 
 type jobQueueEntry struct {
@@ -66,8 +65,18 @@ func (c *jobQueueEntry) less(x *jobQueueEntry) bool {
 func (q *jobQueue) dequeue(now int64, raftLogIndex uint64) *compactionpb.CompactionJob {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	for q.pq.Len() > 0 {
-		job := q.pq[0]
+	for j := range q.pqs {
+		pq := &q.pqs[j]
+		if job := dequeue(q, pq, now, raftLogIndex); job != nil {
+			return job
+		}
+	}
+	return nil
+}
+
+func dequeue(q *jobQueue, pq *priorityQueue, now int64, raftLogIndex uint64) *compactionpb.CompactionJob {
+	if pq.Len() > 0 {
+		job := (*pq)[0]
 		if job.Status == compactionpb.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS &&
 			now <= job.LeaseExpiresAt {
 			// If the top job is in progress and not expired, stop checking further
@@ -78,12 +87,12 @@ func (q *jobQueue) dequeue(now int64, raftLogIndex uint64) *compactionpb.Compact
 			return nil
 		}
 		// Actually remove it from the heap, update and push it back.
-		heap.Pop(&q.pq)
+		heap.Pop(pq)
 		job.LeaseExpiresAt = q.getNewDeadline(now)
 		job.Status = compactionpb.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS
 		// If job.status is "in progress", the ownership of the job is being revoked.
 		job.RaftLogIndex = raftLogIndex
-		heap.Push(&q.pq, job)
+		heap.Push(pq, job)
 		return job.CompactionJob
 	}
 	return nil
@@ -99,7 +108,7 @@ func (q *jobQueue) update(name string, now int64, raftLogIndex uint64) bool {
 		job.LeaseExpiresAt = q.getNewDeadline(now)
 		job.Status = compactionpb.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS
 		// De-prioritize the job, as the deadline has been postponed.
-		heap.Fix(&q.pq, job.index)
+		heap.Fix(q.pq(job.CompactionJob), job.index)
 		return true
 	}
 	return false
@@ -110,7 +119,7 @@ func (q *jobQueue) cancel(name string) {
 	defer q.mu.Unlock()
 	if job, exists := q.jobs[name]; exists {
 		job.Status = compactionpb.CompactionStatus_COMPACTION_STATUS_CANCELLED
-		heap.Fix(&q.pq, job.index)
+		heap.Fix(q.pq(job.CompactionJob), job.index)
 	}
 }
 
@@ -137,7 +146,7 @@ func (q *jobQueue) evict(name string, raftLogIndex uint64) bool {
 			return false
 		}
 		delete(q.jobs, name)
-		heap.Remove(&q.pq, job.index)
+		heap.Remove(q.pq(job.CompactionJob), job.index)
 	}
 	return true
 }
@@ -150,20 +159,16 @@ func (q *jobQueue) enqueue(job *compactionpb.CompactionJob) bool {
 	}
 	j := &jobQueueEntry{CompactionJob: job}
 	q.jobs[job.Name] = j
-	heap.Push(&q.pq, j)
+	heap.Push(q.pq(job), j)
 	return true
 }
 
-func (q *jobQueue) putJob(job *compactionpb.CompactionJob) {
-	q.jobs[job.Name] = &jobQueueEntry{CompactionJob: job}
-}
-
-func (q *jobQueue) rebuild() {
-	q.pq = slices.Grow(q.pq[0:], len(q.jobs))
-	for _, job := range q.jobs {
-		q.pq = append(q.pq, job)
+func (q *jobQueue) pq(job *compactionpb.CompactionJob) *priorityQueue {
+	l := job.CompactionLevel
+	if int(l) < len(q.pqs) {
+		return &q.pqs[l]
 	}
-	heap.Init(&q.pq)
+	return q.growQueues(l)
 }
 
 func (q *jobQueue) stats() (int, []string, []string, []string, []string, []string) {
@@ -190,6 +195,15 @@ func (q *jobQueue) stats() (int, []string, []string, []string, []string, []strin
 		}
 	}
 	return len(q.jobs), newJobs, inProgressJobs, completedJobs, failedJobs, cancelledJobs
+}
+
+func (q *jobQueue) growQueues(l uint32) *priorityQueue {
+	for i := len(q.pqs); i <= int(l); i++ {
+		pq := make(priorityQueue, 0)
+		heap.Init(&pq)
+		q.pqs = append(q.pqs, pq)
+	}
+	return &q.pqs[l]
 }
 
 // TODO(kolesnikovae): container/heap is not very efficient,
