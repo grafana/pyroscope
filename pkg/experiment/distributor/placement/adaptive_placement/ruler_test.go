@@ -12,13 +12,13 @@ import (
 
 type mockLimits struct{ mock.Mock }
 
-func (m *mockLimits) ShardingLimits(tenant string) ShardingLimits {
-	return m.Called(tenant).Get(0).(ShardingLimits)
+func (m *mockLimits) PlacementLimits(tenant string) PlacementLimits {
+	return m.Called(tenant).Get(0).(PlacementLimits)
 }
 
 func Test_Ruler(t *testing.T) {
 	const unitSize = 512 << 10
-	defaults := ShardingLimits{
+	defaults := PlacementLimits{
 		TenantShards:         10,
 		DefaultDatasetShards: 2,
 		MinDatasetShards:     1,
@@ -29,28 +29,28 @@ func Test_Ruler(t *testing.T) {
 		LoadBalancing:        DynamicLoadBalancing,
 	}
 
-	withDefaults := func(fn func(*ShardingLimits)) ShardingLimits {
+	withDefaults := func(fn func(*PlacementLimits)) PlacementLimits {
 		limits := defaults
 		fn(&limits)
 		return limits
 	}
 
-	defaultLimits := withDefaults(func(l *ShardingLimits) {})
+	defaultLimits := withDefaults(func(l *PlacementLimits) {})
 
 	m := new(mockLimits)
-	m.On("ShardingLimits", "tenant-a").
-		Return(withDefaults(func(l *ShardingLimits) {
+	m.On("PlacementLimits", "tenant-a").
+		Return(withDefaults(func(l *PlacementLimits) {
 			l.TenantShards = 20
 			l.DefaultDatasetShards = 3
 		}))
 
-	m.On("ShardingLimits", "tenant-b").Return(withDefaults(func(l *ShardingLimits) {
+	m.On("PlacementLimits", "tenant-b").Return(withDefaults(func(l *PlacementLimits) {
 		l.LoadBalancing = FingerprintLoadBalancing
 	}))
 
-	m.On("ShardingLimits", "tenant-c").Return(defaultLimits)
+	m.On("PlacementLimits", "tenant-c").Return(defaultLimits)
 
-	m.On("ShardingLimits", "tenant-d").Return(withDefaults(func(l *ShardingLimits) {
+	m.On("PlacementLimits", "tenant-d").Return(withDefaults(func(l *PlacementLimits) {
 		l.MinDatasetShards = 5
 		l.LoadBalancing = RoundRobinLoadBalancing
 	}))

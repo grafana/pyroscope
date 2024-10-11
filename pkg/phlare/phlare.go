@@ -218,7 +218,7 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 		c.AdaptivePlacement.RegisterFlags(throwaway)
 		c.LimitsConfig.WritePathOverrides.RegisterFlags(throwaway)
 		c.LimitsConfig.ReadPathOverrides.RegisterFlags(throwaway)
-		c.LimitsConfig.AdaptiveShardingLimits.RegisterFlags(throwaway)
+		c.LimitsConfig.AdaptivePlacementLimits.RegisterFlags(throwaway)
 	}
 
 	throwaway.VisitAll(func(f *flag.Flag) {

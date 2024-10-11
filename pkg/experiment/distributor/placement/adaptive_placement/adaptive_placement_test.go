@@ -12,7 +12,7 @@ import (
 
 func Test_AdaptivePlacement(t *testing.T) {
 	const unitSize = 512 << 10
-	defaults := ShardingLimits{
+	defaults := PlacementLimits{
 		TenantShards:         10,
 		DefaultDatasetShards: 2,
 		MinDatasetShards:     1,
@@ -23,15 +23,15 @@ func Test_AdaptivePlacement(t *testing.T) {
 		LoadBalancing:        DynamicLoadBalancing,
 	}
 
-	withDefaults := func(fn func(*ShardingLimits)) ShardingLimits {
+	withDefaults := func(fn func(*PlacementLimits)) PlacementLimits {
 		limits := defaults
 		fn(&limits)
 		return limits
 	}
 
 	m := new(mockLimits)
-	m.On("ShardingLimits", "tenant-a").Return(withDefaults(func(l *ShardingLimits) {}))
-	m.On("ShardingLimits", "tenant-b").Return(withDefaults(func(l *ShardingLimits) {
+	m.On("PlacementLimits", "tenant-a").Return(withDefaults(func(l *PlacementLimits) {}))
+	m.On("PlacementLimits", "tenant-b").Return(withDefaults(func(l *PlacementLimits) {
 		l.TenantShards = 20
 		l.DefaultDatasetShards = 3
 	}))

@@ -46,13 +46,13 @@ type shardAllocator struct {
 	currentMin  int   // Minimum number of shards in the current decay window.
 }
 
-func newShardAllocator(limits ShardingLimits) *shardAllocator {
+func newShardAllocator(limits PlacementLimits) *shardAllocator {
 	a := new(shardAllocator)
 	a.setLimits(limits)
 	return a
 }
 
-func (a *shardAllocator) setLimits(limits ShardingLimits) {
+func (a *shardAllocator) setLimits(limits PlacementLimits) {
 	a.unitSize = limits.UnitSizeBytes
 	a.min = int(limits.MinDatasetShards)
 	a.max = int(limits.MaxDatasetShards)

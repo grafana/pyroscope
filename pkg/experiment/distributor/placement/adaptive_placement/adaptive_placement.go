@@ -44,7 +44,7 @@ func (a *AdaptivePlacement) Policy(k placement.Key) placement.Policy {
 }
 
 func (a *AdaptivePlacement) defaultPolicy(k placement.Key) placement.Policy {
-	limits := a.limits.ShardingLimits(k.TenantID)
+	limits := a.limits.PlacementLimits(k.TenantID)
 	return placement.Policy{
 		TenantShards:  int(limits.TenantShards),
 		DatasetShards: int(limits.DefaultDatasetShards),

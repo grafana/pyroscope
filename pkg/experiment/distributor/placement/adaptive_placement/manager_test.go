@@ -127,7 +127,7 @@ func (s *managerSuite) Test_Manager_exports_metrics() {
 	s.store.On("StoreRules", mock.Anything, mock.MatchedBy(newRules)).Return(nil).Once()
 	s.store.On("StoreStats", mock.Anything, mock.Anything).Return(nil).Once()
 
-	s.limits.On("ShardingLimits", mock.Anything).Return(ShardingLimits{
+	s.limits.On("PlacementLimits", mock.Anything).Return(PlacementLimits{
 		DefaultDatasetShards: 2,
 		MinDatasetShards:     1,
 		UnitSizeBytes:        256 << 10,
@@ -145,12 +145,12 @@ func (s *managerSuite) Test_Manager_exports_metrics() {
 	s.manager.updateRules(context.Background())
 
 	n, err := testutil.GatherAndCount(s.reg,
-		"pyroscope_adaptive_sharding_rules_last_update_time",
-		"pyroscope_adaptive_sharding_rules",
-		"pyroscope_adaptive_sharding_stats",
-		"pyroscope_adaptive_sharding_dataset_shard_limit",
-		"pyroscope_adaptive_sharding_dataset_shard_usage_bytes_per_second",
-		"pyroscope_adaptive_sharding_dataset_shard_usage_breakdown_bytes_per_second",
+		"pyroscope_adaptive_placement_rules_last_update_time",
+		"pyroscope_adaptive_placement_rules",
+		"pyroscope_adaptive_placement_stats",
+		"pyroscope_adaptive_placement_dataset_shard_limit",
+		"pyroscope_adaptive_placement_dataset_shard_usage_bytes_per_second",
+		"pyroscope_adaptive_placement_dataset_shard_usage_per_shard_bytes_per_second",
 	)
 	s.Require().NoError(err)
 	s.Assert().Equal(10, n)

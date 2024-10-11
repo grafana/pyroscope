@@ -13,7 +13,7 @@ import (
 const (
 	pathRoot      = "adaptive_placement/"
 	rulesFilePath = pathRoot + "placement_rules.pb"
-	statsFilePath = pathRoot + "distribution_stats.pb"
+	statsFilePath = pathRoot + "placement_stats.pb"
 )
 
 var (

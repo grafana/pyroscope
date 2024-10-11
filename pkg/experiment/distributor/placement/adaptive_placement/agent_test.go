@@ -93,7 +93,7 @@ func (s *agentSuite) Test_Agent_service_fails_if_rules_cant_be_loaded() {
 }
 
 func (s *agentSuite) Test_Agent_updates_placement_rules() {
-	s.limits.On("ShardingLimits", "tenant-a").Return(ShardingLimits{
+	s.limits.On("PlacementLimits", "tenant-a").Return(PlacementLimits{
 		TenantShards:         1,
 		DefaultDatasetShards: 1,
 	})
@@ -139,7 +139,7 @@ func (s *agentSuite) Test_Agent_updates_placement_rules() {
 }
 
 func (s *agentSuite) Test_Agent_ignored_outdated_rules() {
-	s.limits.On("ShardingLimits", "tenant-a").Return(ShardingLimits{
+	s.limits.On("PlacementLimits", "tenant-a").Return(PlacementLimits{
 		TenantShards:         1,
 		DefaultDatasetShards: 1,
 	})

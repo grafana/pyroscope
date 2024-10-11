@@ -5,32 +5,30 @@ import (
 	"time"
 )
 
-const flagPrefix = "adaptive-sharding."
-
-// TODO(kolesnikovae): Rename to overrides?
+const flagPrefix = "adaptive-placement."
 
 type Limits interface {
-	ShardingLimits(tenant string) ShardingLimits
+	PlacementLimits(tenant string) PlacementLimits
 }
 
-// ShardingLimits defines the limits for adaptive sharding.
+// PlacementLimits defines the limits for adaptive sharding.
 // These parameters are tenant-specific.
-type ShardingLimits struct {
-	TenantShards         uint64        `yaml:"adaptive_sharding_tenant_shards" json:"adaptive_sharding_tenant_shards" doc:"hidden"`
-	DefaultDatasetShards uint64        `yaml:"adaptive_sharding_default_dataset_shards" json:"adaptive_sharding_default_dataset_shards" doc:"hidden"`
-	LoadBalancing        LoadBalancing `yaml:"adaptive_sharding_load_balancing" json:"adaptive_sharding_load_balancing" doc:"hidden"`
-	MinDatasetShards     uint64        `yaml:"adaptive_sharding_min_dataset_shards" json:"adaptive_sharding_min_dataset_shards" doc:"hidden"`
-	MaxDatasetShards     uint64        `yaml:"adaptive_sharding_max_dataset_shards" json:"adaptive_sharding_max_dataset_shards" doc:"hidden"`
-	UnitSizeBytes        uint64        `yaml:"adaptive_sharding_unit_size_bytes" json:"adaptive_sharding_unit_size_bytes" doc:"hidden"`
-	BurstWindow          time.Duration `yaml:"adaptive_sharding_burst_window" json:"adaptive_sharding_burst_window" doc:"hidden"`
-	DecayWindow          time.Duration `yaml:"adaptive_sharding_decay_window" json:"adaptive_sharding_decay_window" doc:"hidden"`
+type PlacementLimits struct {
+	TenantShards         uint64        `yaml:"adaptive_placement_tenant_shards" json:"adaptive_placement_tenant_shards" doc:"hidden"`
+	DefaultDatasetShards uint64        `yaml:"adaptive_placement_default_dataset_shards" json:"adaptive_placement_default_dataset_shards" doc:"hidden"`
+	LoadBalancing        LoadBalancing `yaml:"adaptive_placement_load_balancing" json:"adaptive_placement_load_balancing" doc:"hidden"`
+	MinDatasetShards     uint64        `yaml:"adaptive_placement_min_dataset_shards" json:"adaptive_placement_min_dataset_shards" doc:"hidden"`
+	MaxDatasetShards     uint64        `yaml:"adaptive_placement_max_dataset_shards" json:"adaptive_placement_max_dataset_shards" doc:"hidden"`
+	UnitSizeBytes        uint64        `yaml:"adaptive_placement_unit_size_bytes" json:"adaptive_placement_unit_size_bytes" doc:"hidden"`
+	BurstWindow          time.Duration `yaml:"adaptive_placement_burst_window" json:"adaptive_placement_burst_window" doc:"hidden"`
+	DecayWindow          time.Duration `yaml:"adaptive_placement_decay_window" json:"adaptive_placement_decay_window" doc:"hidden"`
 }
 
-func (o *ShardingLimits) RegisterFlags(f *flag.FlagSet) {
+func (o *PlacementLimits) RegisterFlags(f *flag.FlagSet) {
 	o.RegisterFlagsWithPrefix(flagPrefix, f)
 }
 
-func (o *ShardingLimits) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
+func (o *PlacementLimits) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	o.LoadBalancing = DynamicLoadBalancing
 	f.Var(&o.LoadBalancing, prefix+"load-balancing", "Load balancing strategy; "+validOptionsString+".")
 	f.Uint64Var(&o.TenantShards, prefix+"tenant-shards", 0, "Number of shards per tenant. If 0, the limit is not applied.")

@@ -25,9 +25,9 @@ func NewRuler(limits Limits) *Ruler {
 }
 
 func (r *Ruler) Load(rules *adaptive_placementpb.PlacementRules) {
-	tenantLimits := make([]ShardingLimits, len(rules.Tenants))
+	tenantLimits := make([]PlacementLimits, len(rules.Tenants))
 	for i, t := range rules.Tenants {
-		tenantLimits[i] = r.limits.ShardingLimits(t.TenantId)
+		tenantLimits[i] = r.limits.PlacementLimits(t.TenantId)
 	}
 	for _, ds := range rules.Datasets {
 		k := datasetKey{
@@ -61,11 +61,11 @@ func (r *Ruler) BuildRules(stats *adaptive_placementpb.DistributionStats) *adapt
 		CreatedAt: stats.CreatedAt,
 	}
 
-	tenantLimits := make([]ShardingLimits, len(stats.Tenants))
+	tenantLimits := make([]PlacementLimits, len(stats.Tenants))
 	tenants := make(map[string]int)
 	for i, t := range stats.Tenants {
 		tenants[t.TenantId] = i
-		tenantLimits[i] = r.limits.ShardingLimits(t.TenantId)
+		tenantLimits[i] = r.limits.PlacementLimits(t.TenantId)
 		rules.Tenants[i] = &adaptive_placementpb.TenantPlacement{
 			TenantId: t.TenantId,
 		}
@@ -156,7 +156,7 @@ type datasetShards struct {
 
 func (d *datasetShards) placement(
 	stats *adaptive_placementpb.DatasetStats,
-	limits ShardingLimits,
+	limits PlacementLimits,
 	now int64,
 ) *adaptive_placementpb.DatasetPlacement {
 	d.lastUpdate = now

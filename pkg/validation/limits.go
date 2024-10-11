@@ -107,11 +107,10 @@ type Limits struct {
 	// Write path overrides used in query-frontend.
 	ReadPathOverrides readpath.Config `yaml:",inline" json:",inline"`
 
-	// Adaptive sharding limits used in distributors and in the metastore.
-	// Distributors use these limits to determine how many shards to
-	// allocate to a tenant dataset by default, if no placement rules
-	// exist for the tenant.
-	AdaptiveShardingLimits adaptive_placement.ShardingLimits `yaml:",inline" json:",inline"`
+	// Adaptive placement limits used in distributors and in the metastore.
+	// Distributors use these limits to determine how many shards to allocate
+	// to a tenant dataset by default, if no placement rules defined.
+	AdaptivePlacementLimits adaptive_placement.PlacementLimits `yaml:",inline" json:",inline"`
 }
 
 // LimitError are errors that do not comply with the limits specified.
@@ -475,8 +474,8 @@ func (o *Overrides) ReadPathOverrides(tenantID string) readpath.Config {
 	return o.getOverridesForTenant(tenantID).ReadPathOverrides
 }
 
-func (o *Overrides) ShardingLimits(tenantID string) adaptive_placement.ShardingLimits {
-	return o.getOverridesForTenant(tenantID).AdaptiveShardingLimits
+func (o *Overrides) PlacementLimits(tenantID string) adaptive_placement.PlacementLimits {
+	return o.getOverridesForTenant(tenantID).AdaptivePlacementLimits
 }
 
 func (o *Overrides) DefaultLimits() *Limits {
