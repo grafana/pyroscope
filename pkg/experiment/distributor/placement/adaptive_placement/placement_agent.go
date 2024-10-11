@@ -88,10 +88,16 @@ func (a *Agent) loadRules(ctx context.Context) {
 		if rules.CreatedAt < a.rules.CreatedAt {
 			_ = level.Warn(a.logger).Log(
 				"msg", "placement rules are outdated",
-				"created_at", time.Unix(0, rules.CreatedAt))
+				"discovered", time.Unix(0, rules.CreatedAt),
+				"loaded", time.Unix(0, a.rules.CreatedAt),
+			)
 			return
 		}
 	}
+	_ = level.Info(a.logger).Log(
+		"msg", "loading placement rules",
+		"created_at", time.Unix(0, rules.CreatedAt),
+	)
 	a.placement.Update(rules)
 	a.rules = rules
 }

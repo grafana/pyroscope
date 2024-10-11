@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"os"
 
 	"github.com/thanos-io/objstore"
 
@@ -12,8 +13,8 @@ import (
 
 const (
 	pathRoot      = "adaptive_placement/"
-	rulesFilePath = pathRoot + "placement_rules.pb"
-	statsFilePath = pathRoot + "placement_stats.pb"
+	rulesFilePath = pathRoot + "placement_rules.binpb"
+	statsFilePath = pathRoot + "placement_stats.binpb"
 )
 
 var (
@@ -46,6 +47,7 @@ func (s *BucketStore) LoadRules(ctx context.Context) (*adaptive_placementpb.Plac
 		if s.bucket.IsObjNotFoundErr(err) {
 			return nil, ErrRulesNotFound
 		}
+		return nil, err
 	}
 	return &rules, nil
 }
@@ -56,6 +58,7 @@ func (s *BucketStore) LoadStats(ctx context.Context) (*adaptive_placementpb.Dist
 		if s.bucket.IsObjNotFoundErr(err) {
 			return nil, ErrStatsNotFound
 		}
+		return nil, err
 	}
 	return &stats, nil
 }
