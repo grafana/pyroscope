@@ -35,7 +35,7 @@ You need to have the following prerequisites to complete this tutorial:
 - The Docker Compose plugin (included with Docker Desktop)
 
 {{< admonition type="tip" >}}
-Alternatively, you can try out this example in our interactive learning environment: [Ride share tutorial with Pyroscope](https://killercoda.com/grafana-labs/course/pyroscope/ride-share-tutorial).
+Try this tutorial in an interactive learning environment: [Ride share tutorial with Pyroscope](https://killercoda.com/grafana-labs/course/pyroscope/ride-share-tutorial).
 
 It's a fully configured environment with all the dependencies installed.
 
