@@ -29,7 +29,7 @@ In this example, you learn:
 
 ## Before you begin
 
-Before you begin this tutorial you need to have the following prerequisites:
+You need to have the following prerequisites to complete this tutorial:
 - Git
 - [Docker](https://docs.docker.com/compose/install/)
 - The Docker Compose plugin (included with Docker Desktop)
