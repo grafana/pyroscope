@@ -7,17 +7,17 @@ weight: 10
 
 # Set up Go profiling in pull mode
 
-In pull mode, the collector, whether Grafana Alloy (preferred) or Grafana Agent (legacy), periodically retrieves profiles from Golang applications, specifically targeting the
+In pull mode, the collector, Grafana Alloy, periodically retrieves profiles from Golang applications, specifically targeting the
 `/debug/pprof/*` endpoints.
 
 To set up Golang profiling in pull mode, you need to:
 
 1. Expose pprof endpoints.
-2. Install a collector, either Grafana Alloy (preferred) or Grafana Agent (legacy).
+2. Install a collector, such as Grafana Alloy.
 3. Prepare the collector's configuration file.
 4. Start the collector.
 
-### Expose pprof endpoints
+## Expose pprof endpoints
 
 Ensure your Golang application exposes pprof endpoints.
 
@@ -34,27 +34,21 @@ Ensure your Golang application exposes pprof endpoints.
     import _ "github.com/grafana/pyroscope-go/godeltaprof/http/pprof"
     ```
 
-### Install the collector
+## Install the collector
 
 [//]: # (TODO&#40;korniltsev&#41; What should go here?)
 
-This procedure can be used with either Grafana Alloy or Grafana Agent collector.
-You can use the sample collector configuration file to send data to Pyroscope.
-This configuration file works for either Grafana Alloy or Grafana Agent in Flow mode.
-
-Grafana Alloy is the preferred collector.
+You can use the sample Alloy collector configuration file to send data to Pyroscope.
 
 To install Alloy, refer to [Grafana Alloy installation](https://grafana.com/docs/alloy/<ALLOY_VERSION>/get-started/install/).
 
-{{< docs/shared lookup="agent-deprecation.md" source="alloy" version="next" >}}
-
 ### Prepare the collector configuration file
 
-In the Grafana Alloy or Grafana Agent Flow configuration file, you need to add at least two blocks: `pyroscope.write` and `pyroscope.scrape`.
+In the Grafana Alloy configuration file, you need to add at least two blocks: `pyroscope.write` and `pyroscope.scrape`.
 
 1. Add `pyroscope.write` block.
 
-    ```river
+    ```alloy
     pyroscope.write "write_job_name" {
             endpoint {
                     url = "http://localhost:4040"
@@ -64,7 +58,7 @@ In the Grafana Alloy or Grafana Agent Flow configuration file, you need to add a
 
 1. Add `pyroscope.scrape` block.
 
-    ```river
+    ```alloy
     pyroscope.scrape "scrape_job_name" {
             targets    = [{"__address__" = "localhost:4040", "service_name" = "example_service"}]
             forward_to = [pyroscope.write.write_job_name.receiver]
@@ -115,14 +109,9 @@ In the Grafana Alloy or Grafana Agent Flow configuration file, you need to add a
     docker run -p 4040:4040 grafana/pyroscope
     ```
 
-1. Start the collector:
+1. To start Grafana Alloy v1.2 and later: Replace `configuration.alloy` with your configuration filename: <br> `alloy run configuration.alloy`
 
-  * To start Grafana Alloy v1.2: Replace `configuration.alloy` with your configuration file name: <br> `alloy run configuration.alloy`
-  * To start Grafana Alloy v1.0/1.1: Replace `configuration.alloy` with your configuration file name: <br> `alloy run --stability.level=public-preview configuration.alloy`
-    The `stability.level` option is required for `pyroscope.scrape` with Alloy v1.0 or v1.1. For more information about `stability.level`, refer to [The run command](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/cli/run/#permitted-stability-levels) documentation.
-  * To start Grafana Agent, replace `configuration.river` with your configuration file name: <br> ` grafana-agent-flow run configuration.river`
-
-1. Open a browser to http://localhost:4040. The page should list profiles.
+1. Open a browser to `http://localhost:4040`. The page should list profiles.
 
 ## Examples
 
@@ -132,7 +121,7 @@ Your Grafana Cloud URL, username, and password can be found on the "Details Page
 grafana.com.
 On this same page, create a token and use it as the Basic authentication password.
 
-```river
+```alloy
 pyroscope.write "write_job_name" {
         endpoint {
                 url = "<Grafana Cloud URL>"
@@ -149,7 +138,8 @@ pyroscope.write "write_job_name" {
 ### Discover Kubernetes targets
 
 1. Select all pods
-  ```river
+
+  ```alloy
   discovery.kubernetes "all_pods" {
           role = "pod"
   }
@@ -158,7 +148,7 @@ pyroscope.write "write_job_name" {
 1. Drop not running pods, create `namespace`, `pod`, `node` and `container` labels.
   Compose `service_name` label based on `namespace` and `container` labels.
   Select only services matching regex pattern `(ns1/.*)|(ns2/container-.*0)`.
-    ```river
+    ```alloy
 
     discovery.relabel "specific_pods" {
             targets = discovery.kubernetes.all_pods.targets
@@ -210,9 +200,9 @@ pyroscope.write "write_job_name" {
     }
     ```
 
-3. Use `discovery.relabel.specific_pods.output` as a target for `pyroscope.scrape` block.
+1. Use `discovery.relabel.specific_pods.output` as a target for `pyroscope.scrape` block.
 
-    ```river
+    ```alloy
         pyroscope.scrape "scrape_job_name" {
                 targets    = discovery.relabel.specific_pods.output
                 ...
@@ -237,20 +227,9 @@ router.PathPrefix("/debug/pprof").Handler(http.DefaultServeMux)
 
 ## References
 
-### Grafana Alloy
-
 - [Grafana Alloy](https://grafana.com/docs/alloy/<ALLOY_VERSION>/)
 - [pyroscope.scrape](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/pyroscope/pyroscope.scrape/)
 - [pyroscope.write](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/pyroscope/pyroscope.write/)
 - [discovery.kubernetes](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.kubernetes/)
 - [discovery.docker](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.docker/)
 - [discovery.relabel](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.relabel/)
-
-### Grafana Agent
-
-- [Example using grafana-agent](https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent-auto-instrumentation).
-- [pyroscope.scrape](https://grafana.com/docs/agent/<AGENT_VERSION>/flow/reference/components/pyroscope.scrape/)
-- [pyroscope.write](https://grafana.com/docs/agent/<AGENT_VERSION>/flow/reference/components/pyroscope.write/)
-- [discovery.kubernetes](https://grafana.com/docs/agent/<AGENT_VERSION>/flow/reference/components/discovery.kubernetes/)
-- [discovery.docker](https://grafana.com/docs/agent/<AGENT_VERSION>/flow/reference/components/discovery.docker/)
-- [discovery.relabel](https://grafana.com/docs/agent/<AGENT_VERSION>/flow/reference/components/discovery.relabel/)

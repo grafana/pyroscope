@@ -142,15 +142,15 @@ Use a custom namespace so that you don't have to overwrite the default namespace
    ```
 
 1. In a browser, go to the Grafana server at [http://localhost:3000](http://localhost:3000).
-1. On the left-hand side, go to **Configuration** > **Data sources**.
-1. Configure a new Pyroscope data source to query the Pyroscope server, by using the following settings:
+1. On the left side, go to **Configuration** > **Data sources**.
+1. Configure a Pyroscope data source to query the Pyroscope server, by using the following settings:
 
    | Field | Value                                                        |
    | ----- | ------------------------------------------------------------ |
    | Name  | Pyroscope                                                       |
    | URL   | `http://pyroscope-querier.pyroscope-test.svc.cluster.local.:4040/`   |
 
-   To add a data source, see [Add a data source](/docs/grafana/latest/datasources/add-a-data-source/).
+   To add a data source, refer to [Add a data source](/docs/grafana/latest/datasources/add-a-data-source/).
 
 1. Verify success:
 
@@ -184,9 +184,9 @@ Modify the Helm deployment by running:
 ## Optional: Scrape your own workload's profiles
 
 The Pyroscope chart uses a default configuration that causes its agent to scrape Pods, provided they have the correct annotations.
-This functionality uses [relabel_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config) and [kubernetes_sd_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#kubernetes_sd_config) you might be familiar with the Prometheus or Grafana Agent config.
+This functionality uses [relabel_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config) and [kubernetes_sd_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#kubernetes_sd_config) you might be familiar with the Prometheus or Grafana Alloy configuration.
 
-To get Pyroscope to scrape pods, you must add the following annotations to the  pods:
+To get Pyroscope to scrape pods, you must add the following annotations to the Pods:
 
 ```yaml
 metadata:
@@ -199,7 +199,7 @@ metadata:
     profiles.grafana.com/goroutine.port: "8080"
 ```
 
-The above example will scrape the `memory`, `cpu` and `goroutine` profiles from the `8080` port of the pod.
+The above example will scrape the `memory`, `cpu` and `goroutine` profiles from the `8080` port of the Pod.
 
 Each profile type has a set of corresponding annotations which allows customization of scraping per profile type.
 
@@ -225,7 +225,7 @@ The following table describes the annotations:
 | `profiles.grafana.com/<profile-type>.scheme` | The scheme to scrape the profile type from. | `http` |
 | `profiles.grafana.com/<profile-type>.path` | The path to scrape the profile type from. | default golang path |
 
-By default, the port will be discovered using named port `http2` or ending with `-metrics` or `-profiles`.
-If you don't have a named port, the scraping target will be dropped.
+By default, the port is discovered using named port `http2` or ending with `-metrics` or `-profiles`.
+If you don't have a named port, the scraping target is dropped.
 
 If you don't want to use the port name, then you can use the `profiles.grafana.com/<profile-type>.port` annotation to statically specify the port number.

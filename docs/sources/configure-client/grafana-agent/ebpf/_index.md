@@ -1,5 +1,5 @@
 ---
-title: "Profiling with eBPF with Grafana Agent"
+title: "Profiling with eBPF with Grafana Alloy"
 menuTitle: "Profiling with eBPF"
 description: "Learn about using eBPF for continuous profiling for performance optimization."
 weight: 20
@@ -8,7 +8,7 @@ aliases:
   - /docs/pyroscope/next/configure-client/language-sdks/ebpf
 ---
 
-# Profiling with eBPF with Grafana Agent
+# Profiling with eBPF with Grafana Alloy
 
 <img src="/media/docs/pyroscope/ebpf_logo_color_on_white.png" width="100px;" alt="eBPF"/>
 
@@ -25,9 +25,9 @@ eBPF's low overhead and fine-grained data collection make it an ideal choice for
 
 However, eBPF has some limitations that make it unsuitable for certain use cases:
 
-- It isn't a good fit for profiling applications that are not written in a supported language.
-- It can't be used to profile applications that are not running on Linux.
-- It does not support all profile types such as memory and contention/lock profiling.
+- It isn't a good fit for profiling applications that arn't written in a supported language.
+- It can't be used to profile applications that aren't running on Linux.
+- It doesn't support all profile types such as memory and contention/lock profiling.
 - eBPF requires root access to the host machine, which can be a problem in some environments.
 
 ## Supported languages
@@ -38,15 +38,12 @@ Python is the only supported high-level language, as long as `python_enabled=tru
 Other high-level languages like Java, Ruby, PHP, and JavaScript require additional work to show stack traces of methods in these languages correctly.
 Currently, the CPU usage for these languages is reported as belonging to the runtime's methods.
 
+## eBPF using Grafana Alloy
 
-## eBPF via the Grafana Agent
+The Grafana Alloy is a lightweight, all-in-one collector that can collect, transform, and ship observability data.
+For profiling, Grafana Alloy can be configured to collect eBPF profiles and send them to Pyroscope.
 
-{{< docs/shared lookup="agent-deprecation.md" source="alloy" version="next" >}}
+This section contains instructions for installing and configuring Grafana Alloy to collect eBPF profiles.
+For more information about Alloy itself, refer to the [Grafana Alloy documentation](https://grafana.com/docs/alloy/<ALLOY_VERSION>/).
 
-The Grafana Agent is a lightweight, all-in-one agent that can collect, transform, and ship observability data.
-For profiling, the Grafana Agent can be configured to collect eBPF profiles and send them to Pyroscope.
-
-This section contains instructions for installing and configuring the Grafana Agent to collect eBPF profiles.
-For more information about the Grafana Agent itself, see the [Grafana Agent documentation](/docs/agent/latest/flow/).
-
-[troubleshooting]: /docs/alloy/latest/reference/components/pyroscope/pyroscope.ebpf/#troubleshooting-unknown-symbols
+[troubleshooting]: /docs/alloy/<ALLOY_VERSION>/reference/components/pyroscope/pyroscope.ebpf/#troubleshooting-unknown-symbols

@@ -1,31 +1,29 @@
 ---
 title: "Set up eBPF profiling on Linux"
 menuTitle: "Set up on Linux"
-description: "Set up eBPF profiling with Grafana Agent on Linux machines."
+description: "Set up eBPF profiling with Grafana Alloy on Linux machines."
 weight: 20
 ---
 
 # Set up eBPF profiling on Linux
 
-To set up eBPF profiling with Grafana Agent on Linux, you need to:
+To set up eBPF profiling with Grafana Alloy on Linux, you need to:
 
 - Verify that your system meets the requirements.
-- Install the Grafana Agent Flow mode.
-- Create a Grafana Agent configuration file. For more information, refer to [Configuration reference][config-reference].
-- Run Grafana Agent or Grafana Alloy.
+- Install [Grafana Alloy](https://grafana.com/docs/alloy/<ALLOY_VERSION>/set-up/install/linux/).
+- Create a [Grafana Alloy configuration file](https://grafana.com/docs/alloy/<ALLOY_VERSION>/configure/linux/). For more information, refer to [Configuration reference](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/).
+- Run Grafana Alloy.
 - Finally, verify that profiles are received.
 
-{{< docs/shared lookup="agent-deprecation.md" source="alloy" version="next" >}}
-
-## Prerequisites
+## Before you begin
 
 Before you begin, you need:
 
-- A Pyroscope server where the agent will send profiling data.
-- Access to Grafana with the [Grafana Pyroscope datasource][pyroscope-ds] provisioned.
+- A Pyroscope server where Alloy can send profiling data.
+- Access to Grafana with the [Grafana Pyroscope data source][pyroscope-ds] provisioned.
 
 {{% admonition type="note" %}}
-If you don't have a Grafana and/or a Pyroscope server, you can use the [Grafana Cloud][gcloud] free plan to get started.
+If you don't have a Grafana or a Pyroscope server, you can use the [Grafana Cloud][gcloud] free plan to get started.
 {{% /admonition %}}
 
 ## Verify system meets the requirements
@@ -42,51 +40,41 @@ uname -r
 
 Make sure you have a kernel version >= 4.9.
 
-## Install the Grafana Agent
+## Install Grafana Alloy
 
-Follow the [installation instructions][agent-install] to download and install the Grafana Agent for your current Linux distribution.
+Follow the [installation instructions](https://grafana.com/docs/alloy/<ALLOY_VERSION>/set-up/install/linux/) to download and install Alloy for your current Linux distribution.
 
-Verify that the agent is correctly installed by running:
+## Configure Grafana Alloy
 
-```shell
-grafana-agent-flow --version
-```
+To configure the Alloy eBPF profiler to profile local processes, you'll need to set the `targets_only` flag to `false` and add a default target in the `pyroscope.ebpf` component.
+All processes are profiled and grouped under the default target.
 
-## Configure the Grafana Agent
+Create a file named `alloy.config` with the following content:
 
-To configure the Grafana Agent eBPF profiler to profile local processes, you'll need to set the `targets_only` flag to `false` and add a default target in the `pyroscope.ebpf` component.
-All processes will be profiled and grouped under the default target.
-
-{{% admonition type="note" %}}
-We're [working on a more flexible configuration](https://github.com/grafana/agent/pull/5858) that will allow you to specify which processes to profile.
-{{% /admonition %}}
-
-Create a file named `agent.river` with the following content:
-
-```river
+```alloy
 discovery.process "all" {
 
 }
 
-discovery.relabel "agent" {
+discovery.relabel "alloy" {
     targets = discovery.process.all.targets
     // Filter needed processes
     rule {
         source_labels = ["__meta_process_exe"]
-        regex = ".*/grafana-agent"
+        regex = ".*/alloy"
         action = "keep"
     }
 }
 
 pyroscope.ebpf "instance" {
  forward_to     = [pyroscope.write.endpoint.receiver]
- targets = discovery.relabel.agent.output
+ targets = discovery.relabel.alloy.output
 }
 
 pyroscope.scrape "local" {
   forward_to     = [pyroscope.write.endpoint.receiver]
   targets    = [
-    {"__address__" = "localhost:12345", "service_name"="grafana/agent"},
+    {"__address__" = "localhost:12345", "service_name"="grafana/alloy"},
   ]
 }
 
@@ -105,22 +93,30 @@ pyroscope.write "endpoint" {
 }
 ```
 
+For information about configuring Alloy, refer to [Grafana Alloy on Kubernetes](https://grafana.com/docs/alloy/<ALLOY_VERSION>/configure/kubernetes/).
+
+For information about the specific blocks used, refer to the [Grafana Alloy Reference](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/) and [`discovery.process`](https://grafana.com/docs/alloy/<AlLOY_VERSION>/reference/components/discovery/discovery.process/).
+
 Replace the `<URL>` placeholder with the appropriate server URL. This could be the Grafana Cloud URL or your own custom Pyroscope server URL.
 
 If you need to send data to Grafana Cloud, you'll have to configure HTTP Basic authentication. Replace `<User>` with your Grafana Cloud stack user and `<Password>` with your Grafana Cloud API key.
+
+For more information, refer to the [Configure the Grafana Pyroscope data source documentation](/docs/grafana-cloud/connect-externally-hosted/data-sources/pyroscope/configure-pyroscope-data-source/).
 
 {{% admonition type="note" %}}
 If you're using your own Pyroscope server, you can remove the `basic_auth` section altogether.
 {{% /admonition %}}
 
-For more information, refer to the [Configure the Grafana Pyroscope data source documentation](/docs/grafana-cloud/connect-externally-hosted/data-sources/pyroscope/configure-pyroscope-data-source/).
+## Start Grafana Alloy
 
-## Start the Grafana Agent
+{{< admonition type="note">}}
+The eBPF profiler requires root privileges.
+{{< /admonition >}}
 
-To start the Grafana Agent, run:
+To start the Grafana Alloy, run:
 
 ```shell
-grafana-agent-flow run agent.river
+alloy run alloy.config
 ```
 
 If you see the following error:
@@ -129,14 +125,12 @@ If you see the following error:
 level=error msg="component exited with error" component=pyroscope.ebpf.local_pods err="ebpf profiling session start: load bpf objects: field DisassociateCtty: program disassociate_ctty: map events: map create: operation not permitted (MEMLOCK may be too low, consider rlimit.RemoveMemlock)"
 ```
 
-Make sure you're running the agent with root privileges which are required for the eBPF profiler to work.
+Make sure you're running Alloy with root privileges which are required for the eBPF profiler to work.
 
 ## Verify profiles are received
 
-To verify that the profiles are received by the Pyroscope server, go to the Pyroscope UI or [Grafana Pyroscope datasource][pyroscope-ds]. Select a profile type and a service from the drop-down menu.
+To verify that the profiles are received by the Pyroscope server, go to the Pyroscope UI or [Grafana Pyroscope data source][pyroscope-ds]. Select a profile type and a service from the drop-down menu.
 
-[agent-install]: /docs/agent/latest/flow/setup/install/linux/
 [pyroscope-ds]: /docs/grafana/<GRAFANA_VERSION>/datasources/pyroscope/
 [config-reference]: ../configuration/
 [gcloud]: /products/cloud/
-[discovery.process](/docs/agent/next/flow/reference/components/discovery.process/)

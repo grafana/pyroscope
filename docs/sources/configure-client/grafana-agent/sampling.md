@@ -1,29 +1,29 @@
 ---
 title: "Sampling scrape targets"
 menuTitle: "Sampling targets"
-description: "Sampling scrape targets with the Grafana Agent"
+description: "Sampling scrape targets with Grafana Alloy"
 weight: 30
 ---
 
 # Sampling scrape targets
 
-Applications often have many instances deployed. While Pyroscope is designed to handle large amounts of profiling data, you may want only a subset of the application's instances to be scraped.
+Applications often have many instances deployed.
+While Pyroscope is designed to handle large amounts of profiling data, you may want only a subset of the application's instances to be scraped.
 
 For example, the volume of profiling data your application generates may make it unreasonable to profile every instance, or you might be targeting cost-reduction.
 
-Through configuration of Grafana Alloy (preferred) or Grafana Agent (legacy) collectors, Pyroscope can sample scrape targets.
-
-{{< docs/shared source="alloy" lookup="agent-deprecation.md" version="next" >}}
+Through configuration of Grafana Alloy collector, Pyroscope can sample scrape targets.
 
 ## Before you begin
 
 Make sure you understand how to configure the collector to scrape targets and are familiar with the component configuration language.
 Alloy configuration files use the Alloy [configuration syntax](https://grafana.com/docs/alloy/latest/concepts/configuration-syntax/).
-Agent Flow files use the [River](https://grafana.com/docs/agent/latest/flow/concepts/config-language/) language.
 
 ## Configuration
 
-The `hashmod` action and the `modulus` argument are used in conjunction to enable sampling behavior by sharding one or more labels. To read further on these concepts, refer to [rule block documentation](/docs/agent/latest/flow/reference/components/discovery.relabel#rule-block). In short, `hashmod` performs an MD5 hash on the source labels and `modulus` performs a modulus operation on the output.
+The `hashmod` action and the `modulus` argument are used in conjunction to enable sampling behavior by sharding one or more labels.
+To read further on these concepts, refer to [rule block documentation](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.relabel/#rule-block).
+In short, `hashmod` performs an MD5 hash on the source labels and `modulus` performs a modulus operation on the output.
 
 The sample size can be modified by changing the value of `modulus` in the `hashmod` action and the `regex` argument in the `keep` action.
 The `modulus` value defines the number of shards, while the `regex` value selects a subset of the shards.
@@ -37,7 +37,7 @@ Choose your source label(s) for the `hashmod` action carefully. They must unique
 For example, consider an application deployed on Kubernetes with 100 pod replicas, all uniquely identified by the label `pod_hash`.
 The following configuration is set to sample 15% of the pods:
 
-```river
+```alloy
 discovery.kubernetes "profile_pods" {
   role = "pod"
 }
