@@ -18,11 +18,12 @@ killercoda:
 
 # Ride share tutorial with Pyroscope
 
-This tutorial demonstrates a basic use case of Pyroscope by profiling a "Ride Share" application. In this example, you will learn:
+This tutorial demonstrates a basic use case of Pyroscope by profiling a "Ride Share" application.
+In this example, you learn:
 
-- How a application is instrumented with Pyroscope. Including techniques for dynamically tagging functions.
-- View the resulting profile data in the Pyroscope UI.
-- Integrating Pyroscope with Grafana to visualize the profile data.
+- How an application is instrumented with Pyroscope, including techniques for dynamically tagging functions.
+- How to view the resulting profile data in the Pyroscope UI.
+- How to integrate Pyroscope with Grafana to visualize the profile data.
 
 <!-- INTERACTIVE ignore START -->
 
