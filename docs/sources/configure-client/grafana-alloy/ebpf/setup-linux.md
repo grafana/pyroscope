@@ -46,7 +46,7 @@ Follow the [installation instructions](https://grafana.com/docs/alloy/<ALLOY_VER
 
 ## Configure Alloy
 
-To configure the Alloy eBPF profiler to profile local processes, you'll need to set the `targets_only` flag to `false` and add a default target in the `pyroscope.ebpf` component.
+To configure the Alloy eBPF profiler to profile local processes, use [discovery.process component](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.process/) and add a default target in the [`pyroscope.ebpf` component](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/pyroscope/pyroscope.ebpf/).
 All processes are profiled and grouped under the default target.
 
 Create a file named `alloy.config` with the following content:
