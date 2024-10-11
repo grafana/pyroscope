@@ -104,7 +104,7 @@ docker run \
     run --server.http.listen-addr=0.0.0.0:12345 /etc/alloy/alloy.config
 ```
 
-{{< admonition type="note >}}
+{{< admonition type="note" >}}
 The `--pid=host` and `--privileged` flags are required to profile local containers with eBPF.
 {{< /admonition >}}
 
