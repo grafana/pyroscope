@@ -47,9 +47,9 @@ Pyroscope.init({
 Pyroscope.start()
 ```
 
-[comment]: <> (TODO This needs its own page like https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/go_pull/)
+[comment]: <> (TODO This needs its own page like https://grafana.com/docs/pyroscope/latest/configure-client/grafana-alloy/go_pull/)
 {{< admonition type="note" >}}
-If you'd prefer, you can use Pull mode using [Grafana Alloy](https://grafana.com/docs/alloy/latest/) (recommended) or [Grafana Agent]({{< relref "../grafana-agent" >}}) (legacy).
+If you'd prefer, you can use Pull mode using [Grafana Alloy](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/grafana-alloy/go_pull/).
 {{< /admonition >}}
 
 
@@ -100,7 +100,7 @@ Pyroscope.start()
 
 #### Dynamic labels for Wall/CPU profiles
 
-In Wall/CPU profiles, labels can also be attached dynamically and help to separate different code paths:
+In Wall and CPU profiles, labels can also be attached dynamically and help to separate different code paths:
 
 ```javascript
 Pyroscope.wrapWithLabels({ vehicle: 'bike' }, () =>

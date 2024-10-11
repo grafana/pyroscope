@@ -1,14 +1,13 @@
 ---
 title: "Configuration reference"
-menuTitle: "Configuration Reference"
-description: "Grafana Agent eBPF Profiling configuration reference"
+menuTitle: "Configuration reference"
+description: "Grafana Alloy eBPF Profiling configuration reference"
 weight: 30
 ---
 
-
 ## Configuration reference
 
-Grafana Agent supports eBPF profiling in [Flow mode](https://grafana.com/docs/agent/latest/flow/).
+Grafana Alloy supports eBPF profiling.
 The configuration file is written in the [River](https://grafana.com/docs/agent/latest/flow/concepts/config-language/) language and is composed of components that are used to collect, transform, and send data.
 
 The `pyroscope.ebpf` component is used to collect application performance profiles via eBPF.
@@ -17,8 +16,10 @@ The `pyroscope.ebpf` component is used to collect application performance profil
 
 The `pyroscope.ebpf` runs on the host machine and collects stack traces associated with a process running on the current host.
 
-Using the `targets` argument, you can specify which processes and containers to profile on the machine. The `targets` can be from discovery components such as `discovery.process`, `dicovery.kubernetes`, `discovery.docker`, and `discovery.dockerswarm`.
-To relabel discovered targets and set your own labels you can use the `discovery.relabel` component. For more information, refer to [Components](/docs/agent/latest/flow/concepts/components/).
+Using the `targets` argument, you can specify which processes and containers to profile on the machine. The `targets` can be from discovery components such as `discovery.process`, [`discovery.kubernetes`](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.kubernetes/), [`discovery.docker`](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.docker/), and [`discovery.dockerswarm`](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.dockerswarm/).
+
+You can use the [`discovery.relabel`](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.relabel/) component to relabel discovered targets and set your own labels.
+For more information, refer to the [Components](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/) documentation.
 
 The `forward_to` parameter should point to a `pyroscope.write` component to send the collected profiles to your Pyroscope Server or [Grafana Cloud](/products/cloud/).
 
@@ -49,7 +50,7 @@ The `pyroscope.ebpf` component supports the following languages:
 
 When sending to Grafana Cloud Profiles, you can use the following `pyroscope.write` component configuration which makes uses of environment variables:
 
-```river
+```alloy
 pyroscope.write "endpoint" {
     endpoint {
         basic_auth {
@@ -124,4 +125,9 @@ Check out the following resources to learn more about eBPF profiling:
 
 - [The pros and cons of eBPF profiling](https://pyroscope.io/blog/ebpf-profiling-pros-cons) blog post (for more context on flame graphs below)
 - [Demo](https://play-pyroscope.grafana.org) showing breakdown of our examples cluster
-- Grafana Agent documentation for [pyroscope.ebpf](/docs/agent/latest/flow/reference/components/pyroscope.ebpf/), [pyroscope.write](/docs/agent/latest/flow/reference/components/pyroscope.write/), [discovery.kubernetes](/docs/agent/latest/flow/reference/components/discovery.kubernetes/), [discovery.relabel](/docs/agent/latest/flow/reference/components/discovery.relabel/) components
+- [Grafana Alloy](https://grafana.com/docs/alloy/<ALLOY_VERSION>/)
+- [pyroscope.scrape](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/pyroscope/pyroscope.scrape/)
+- [pyroscope.write](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/pyroscope/pyroscope.write/)
+- [discovery.kubernetes](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.kubernetes/)
+- [discovery.docker](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.docker/)
+- [discovery.relabel](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.relabel/)

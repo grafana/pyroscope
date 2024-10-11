@@ -1,27 +1,23 @@
 ---
-title: "Profiling Java using Grafana Alloy or Agent"
-menuTitle: "Profiling Java using Alloy or Agent"
-description: "Learn about using Grafana Alloy or Agent for continuous profiling Java processes for performance optimization."
+title: "Profiling Java using Grafana Alloy"
+menuTitle: "Profiling Java using Alloy"
+description: "Learn about using Grafana Alloy for continuous profiling Java processes for performance optimization."
 weight: 20
 ---
 
-# Profiling Java using Grafana Alloy or Agent
+# Profiling Java using Grafana Alloy
 
-Grafana Alloy (preferred) and Grafana Agent (legacy) in [Flow mode](/docs/agent/latest/flow/) support Java profiling.
-
+Grafana Alloy supports Java profiling.
 The collector configuration file is composed of components that are used to collect,
 transform, and send data.
-Alloy configuration files use the Alloy [configuration syntax](https://grafana.com/docs/alloy/<ALLOY_VERSION>/concepts/configuration-syntax/).
-Agent Flow files use the [River](https://grafana.com/docs/agent/<AGENT_VERSION>/flow/concepts/config-language/) language.
-
-{{< docs/shared lookup="agent-deprecation.md" source="alloy" version="next" >}}
+The Alloy configuration files use the Alloy [configuration syntax](https://grafana.com/docs/alloy/<ALLOY_VERSION>/concepts/configuration-syntax/).
 
 ## Configure the components
 
 The [`pyroscope.java` component](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/pyroscope/pyroscope.java/) is used to continuously profile Java processes running on the local Linux OS
 using [async-profiler](https://github.com/async-profiler/async-profiler).
 
-```river
+```alloy
 pyroscope.java "java" {
   profiling_config {
     interval = "15s"
@@ -75,18 +71,17 @@ see [profiler-options](https://github.com/async-profiler/async-profiler?tab=read
 
 ### Set privileges for the collector
 
-You must run the collector, either Grafana Alloy (recommended) or Agent (legacy), as root and inside host `pid` namespace for the `pyroscope.java`
-and `discover.process` components to work.
+You must run the collector, such Alloy, as root and inside host `pid` namespace for the `pyroscope.java` and `discover.process` components to work.
 
 ### Start the collector
 
-To start Grafana Alloy v1.2 and later, replace `configuration.alloy` with your configuration file name:
+To start Grafana Alloy v1.2 and later, replace `configuration.alloy` with your configuration filename:
 
 ```bash
 alloy run configuration.alloy
 ```
 
-To start Grafana Alloy v1.0/1.1, replace `configuration.alloy` with your configuration file name:
+To start Grafana Alloy v1.0 or 1.1, replace `configuration.alloy` with your configuration file name:
 
 ```bash
 alloy run --stability.level=public-preview configuration.alloy
@@ -94,10 +89,6 @@ alloy run --stability.level=public-preview configuration.alloy
 
 The `stability.level` option is required for `pyroscope.scrape` with Alloy v1.0 or v1.1. For more information about `stability.level`, refer to [the run command](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/cli/run/#permitted-stability-levels) documentation.
 
-To start Grafana Agent, replace `configuration.river` with your configuration filename:
-```bash
-grafana-agent-flow run configuration.river
-```
 
 ### Send data to Grafana Cloud Profiles
 
@@ -105,7 +96,7 @@ When sending to Grafana Cloud Profiles, you can use the following `pyroscope.wri
 
 Ensure that you have appropriately configured the `GC_URL`, `GC_USER`, and `GC_PASSWORD` environment variables.
 
-```river
+```alloy
 pyroscope.write "endpoint" {
     endpoint {
         basic_auth {
@@ -117,14 +108,13 @@ pyroscope.write "endpoint" {
 }
 ```
 
-
 ## Examples
 
 For more robust examples, refer to the [Grafana Alloy and Agent Auto-instrumentation](https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent-auto-instrumentation) examples in the Pyroscope repository.
 
 ### Profiling local process
 
-```river
+```alloy
 discovery.process "all" {
 }
 
@@ -167,7 +157,7 @@ pyroscope.write "example" {
 
 For a working example, refer to [Java profiling via auto-instrumentation example in Docker](https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent-auto-instrumentation/java/docker).
 
-```river
+```alloy
 discovery.docker "local_containers" {
   host = "unix:///var/run/docker.sock"
 }
@@ -214,8 +204,7 @@ pyroscope.write "example" {
 
 For a working example, refer to [Grafana Alloy Java profiling via auto-instrumentation with Kubernetes](https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent-auto-instrumentation/java/kubernetes).
 
-```river
-
+```alloy
 discovery.kubernetes "local_pods" {
   selectors {
     field = "spec.nodeName=" + env("HOSTNAME")
@@ -296,17 +285,9 @@ For more information:
 
 * [Examples](https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent-auto-instrumentation/java)
 
-### Grafana Alloy
-
 - [Grafana Alloy](https://grafana.com/docs/alloy/<ALLOY_VERSION>/)
 - [pyroscope.scrape](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/pyroscope/pyroscope.scrape/)
 - [pyroscope.write](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/pyroscope/pyroscope.write/)
 - [discovery.kubernetes](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.kubernetes/)
 - [discovery.docker](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.docker/)
 - [discovery.relabel](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.relabel/)
-
-### Grafana Agent
-
-* [`pyroscope.java`](/docs/agent/next/flow/reference/components/pyroscope.java/)
-* [`discovery.process`](/docs/agent/next/flow/reference/components/discovery.process/)
-* [`discovery.kubernetes`](/docs/agent/next/flow/reference/components/discovery.kubernetes/)
