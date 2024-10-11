@@ -3,6 +3,7 @@ package vcs
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"net/http"
 	"net/url"
 	"testing"
@@ -159,6 +160,28 @@ func Test_tokenFromRequest(t *testing.T) {
 		require.Equal(t, *wantToken, *gotToken)
 	})
 
+	t.Run("legacy token exists in request", func(t *testing.T) {
+		githubSessionSecret = []byte("16_byte_key_XXXX")
+
+		derivedKey, err := deriveEncryptionKeyForContext(ctx)
+		require.NoError(t, err)
+
+		wantToken := &oauth2.Token{
+			AccessToken:  "my_access_token",
+			TokenType:    "my_token_type",
+			RefreshToken: "my_refresh_token",
+			Expiry:       time.Unix(1713298947, 0).UTC(), // 2024-04-16T20:22:27.346Z
+		}
+
+		// The type of request here doesn't matter.
+		req := connect.NewRequest(&vcsv1.GetFileRequest{})
+		req.Header().Add("Cookie", testEncodeLegacyCookie(t, derivedKey, wantToken).String())
+
+		gotToken, err := tokenFromRequest(ctx, req)
+		require.NoError(t, err)
+		require.Equal(t, *wantToken, *gotToken)
+	})
+
 	t.Run("token does not exist in request", func(t *testing.T) {
 		githubSessionSecret = []byte("16_byte_key_XXXX")
 		wantErr := "failed to read cookie pyroscope_git_session: http: named cookie not present"
@@ -172,7 +195,7 @@ func Test_tokenFromRequest(t *testing.T) {
 	})
 }
 
-func Test_encodeToken(t *testing.T) {
+func Test_encodeTokenInCookie(t *testing.T) {
 	githubSessionSecret = []byte("16_byte_key_XXXX")
 	ctx := newTestContext()
 
@@ -186,7 +209,7 @@ func Test_encodeToken(t *testing.T) {
 		Expiry:       time.Unix(1713298947, 0).UTC(), // 2024-04-16T20:22:27.346Z
 	}
 
-	got, err := encodeToken(token, derivedKey)
+	got, err := encodeTokenInCookie(token, derivedKey)
 	require.NoError(t, err)
 	require.Equal(t, sessionCookieName, got.Name)
 	require.NotEmpty(t, got.Value)
@@ -202,7 +225,7 @@ func Test_decodeToken(t *testing.T) {
 	derivedKey, err := deriveEncryptionKeyForContext(ctx)
 	require.NoError(t, err)
 
-	t.Run("valid token", func(t *testing.T) {
+	t.Run("valid legacy token", func(t *testing.T) {
 		want := &oauth2.Token{
 			AccessToken:  "my_access_token",
 			TokenType:    "my_token_type",
@@ -258,10 +281,9 @@ func Test_tenantIsolation(t *testing.T) {
 	derivedKeyA, err := deriveEncryptionKeyForContext(ctxA)
 	require.NoError(t, err)
 
-	encodedTokenA, err := encodeToken(&oauth2.Token{
+	encodedTokenA := testEncodeCookie(t, derivedKeyA, &oauth2.Token{
 		AccessToken: "so_secret",
-	}, derivedKeyA)
-	require.NoError(t, err)
+	})
 
 	req := connect.NewRequest(&vcsv1.GetFileRequest{})
 	req.Header().Add("Cookie", encodedTokenA.String())
@@ -298,24 +320,32 @@ func newTestContextWithTenantID(tenantID string) context.Context {
 func testEncodeCookie(t *testing.T, key []byte, token *oauth2.Token) *http.Cookie {
 	t.Helper()
 
-	encoded, err := encodeToken(token, key)
-	require.NoError(t, err)
-
-	return encoded
-}
-
-func testEncodeLegacyCookie(t *testing.T, key []byte, token *oauth2.Token) *http.Cookie {
-	t.Helper()
-
 	encrypted, err := encryptToken(token, key)
 	require.NoError(t, err)
 
+	cookieValue := gitSessionTokenCookie{
+		Token: &encrypted,
+	}
+
+	jsonString, err := json.Marshal(cookieValue)
+	require.NoError(t, err)
+
+	encoded := base64.StdEncoding.EncodeToString(jsonString)
 	return &http.Cookie{
 		Name:     sessionCookieName,
-		Value:    encrypted,
+		Value:    encoded,
 		Expires:  token.Expiry,
 		HttpOnly: false,
 		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
 	}
+}
+
+func testEncodeLegacyCookie(t *testing.T, key []byte, token *oauth2.Token) *http.Cookie {
+	t.Helper()
+
+	encoded, err := encodeTokenInCookie(token, key)
+	require.NoError(t, err)
+
+	return encoded
 }
