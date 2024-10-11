@@ -67,14 +67,23 @@ func (q *Service) GithubLogin(ctx context.Context, req *connect.Request[vcsv1.Gi
 		return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("failed to authorize with GitHub"))
 	}
 
-	cookie, err := encodeToken(token, encryptionKey)
+	cookie, err := encodeTokenInCookie(token, encryptionKey)
+	if err != nil {
+		q.logger.Log("err", err, "msg", "failed to encode deprecated GitHub OAuth token")
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to authorize with GitHub"))
+	}
+
+	encoded, err := encryptToken(token, encryptionKey)
 	if err != nil {
 		q.logger.Log("err", err, "msg", "failed to encode GitHub OAuth token")
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to authorize with GitHub"))
 	}
 
 	res := &vcsv1.GithubLoginResponse{
-		Cookie: cookie.String(),
+		Cookie:                cookie.String(),
+		Token:                 encoded,
+		TokenExpiresAt:        token.Expiry.UnixMilli(),
+		RefreshTokenExpiresAt: time.Now().Add(githubRefreshExpiryDuration).UnixMilli(),
 	}
 	return connect.NewResponse(res), nil
 }
@@ -106,14 +115,23 @@ func (q *Service) GithubRefresh(ctx context.Context, req *connect.Request[vcsv1.
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to process token"))
 	}
 
-	cookie, err := encodeToken(newToken, derivedKey)
+	cookie, err := encodeTokenInCookie(newToken, derivedKey)
+	if err != nil {
+		q.logger.Log("err", err, "msg", "failed to encode deprecated GitHub OAuth token")
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to refresh token"))
+	}
+
+	encoded, err := encryptToken(newToken, derivedKey)
 	if err != nil {
 		q.logger.Log("err", err, "msg", "failed to encode GitHub OAuth token")
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to refresh token"))
 	}
 
 	res := &vcsv1.GithubRefreshResponse{
-		Cookie: cookie.String(),
+		Cookie:                cookie.String(),
+		Token:                 encoded,
+		TokenExpiresAt:        token.Expiry.UnixMilli(),
+		RefreshTokenExpiresAt: time.Now().Add(githubRefreshExpiryDuration).UnixMilli(),
 	}
 	return connect.NewResponse(res), nil
 }
