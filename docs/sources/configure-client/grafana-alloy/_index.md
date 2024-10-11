@@ -5,6 +5,7 @@ description: "Send data from your application using Grafana Alloy."
 weight: 10
 aliases:
   - /docs/phlare/latest/configure-client/grafana-agent/
+  - ./grafana-agent # /docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/grafana-agent/
 ---
 
 # Grafana Alloy
@@ -49,8 +50,8 @@ Benefits of eBPF profiling:
 ### Set up eBPF profiling
 
 1. Ensure your system runs a Linux kernel version 4.9 or newer.
-1. Install a collector, such as Grafana Alloy, on the target machine or container.
-1. Configure Alloy to use eBPF for profiling. Refer to the [eBPF documentation](/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/grafana-agent/ebpf) for detailed steps.
+1. Install a collector, such as Alloy, on the target machine or container.
+1. Configure Alloy to use eBPF for profiling. Refer to the [eBPF documentation](/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/grafana-alloy/ebpf) for detailed steps.
 1. The collector collects eBPF profiles and sends them to the Pyroscope server.
 
 ### Supported languages
@@ -76,8 +77,8 @@ In pull mode, the collector periodically retrieves profiles from Golang applicat
 ### Set up Golang profiling in pull mode
 
 1. Ensure your Golang application exposes pprof endpoints.
-1. Install and configure Grafana Alloy on the same machine or container where your application runs.
-1. Ensure Alloy is set to pull mode and targeting the correct pprof endpoints. For step-by-step instructions, visit the [Go (Pull Mode)](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/grafana-agent/go_pull) documentation.
+1. Install and configure Alloy on the same machine or container where your application runs.
+1. Ensure Alloy is set to pull mode and targeting the correct pprof endpoints. For step-by-step instructions, visit the [Go (Pull Mode)](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/grafana-alloy/go_pull) documentation.
 1. The collector queries the pprof endpoints of your Golang application, collects the profiles, and forwards them to the Pyroscope server.
 
 ## Next steps

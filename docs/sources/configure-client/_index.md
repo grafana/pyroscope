@@ -32,7 +32,7 @@ New installations should use Alloy.
 {{< docs/shared lookup="agent-deprecation.md" source="alloy" version="next" >}}
 
 Alloy is a component that runs alongside your application and periodically gathers profiling data from it.
-This method is suitable when you want to collect profiles from existing applications without modifying their source code.
+This method is suitable when you want to collect profiles from applications without modifying their source code.
 This approach is simplified with the eBPF profiling option that doesn't necessitate pull or push mechanisms.
 
 Here's how it works:
@@ -71,9 +71,9 @@ Here are some factors to consider when making the choice:
 To get started, choose one of the integrations below:
 <table>
    <tr>
-      <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/go_pull"><img src="https://github-production-user-asset-6210df.s3.amazonaws.com/223048/257522425-48683963-91ae-4caf-8c52-ce131e25bd65.png" width="100px;" alt=""/><br />
+      <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/grafana-alloy/go_pull"><img src="/media/docs/alloy/alloy_icon.png" width="100px;" alt=""/><br />
         <b>Grafana Alloy</b></a><br />
-          <a href="https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/go_pull/" title="Documentation">Documentation</a><br />
+          <a href="https://grafana.com/docs/pyroscope/latest/configure-client/grafana-alloy/go_pull/" title="Documentation">Documentation</a><br />
           <a href="https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent-auto-instrumentation" title="examples">Examples</a>
       </td>
       <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/go_push/"><img src="https://user-images.githubusercontent.com/23323466/178160549-2d69a325-56ec-4e19-bca7-d460d400b163.png" width="100px;" alt=""/><br />
@@ -86,9 +86,9 @@ To get started, choose one of the integrations below:
           <a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/java/">Documentation</a><br />
           <a href="https://github.com/grafana/pyroscope/tree/main/examples/language-sdk-instrumentation/java/rideshare" title="java-examples">Examples</a>
       </td>
-      <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/ebpf"><img src="https://user-images.githubusercontent.com/23323466/178160548-e974c080-808d-4c5d-be9b-c983a319b037.png" width="100px;" alt=""/><br />
+      <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/grafana-alloy/ebpf"><img src="https://user-images.githubusercontent.com/23323466/178160548-e974c080-808d-4c5d-be9b-c983a319b037.png" width="100px;" alt=""/><br />
         <b>eBPF</b></a><br />
-          <a href="https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/ebpf" title="Documentation">Documentation</a><br />
+          <a href="https://grafana.com/docs/pyroscope/latest/configure-client/grafana-alloy/ebpf" title="Documentation">Documentation</a><br />
           <a href="https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent-auto-instrumentation/ebpf" title="examples">Examples</a>
       </td>
       <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/python/"><img src="https://user-images.githubusercontent.com/23323466/178160553-c78b8c15-99b4-43f3-a2a0-252b6c4862b1.png" width="100px;" alt=""/><br />
@@ -123,7 +123,8 @@ To get started, choose one of the integrations below:
 
 ## Enriching profile data
 
-You can add tags to your profiles to help correlate them with your other telemetry signals. Some common tags that are used are version, region, environment, request types, etc.
+You can add tags to your profiles to help correlate them with your other telemetry signals.
+Commonly used tags include version, region, environment, and request types.
 You have the ability to add tags using both the SDK and Alloy.
 
 Valid tag formats may contain ASCII letters and digits, as well as underscores. It must match the regex `[a-zA-Z_][a-zA-Z0-9_]`.

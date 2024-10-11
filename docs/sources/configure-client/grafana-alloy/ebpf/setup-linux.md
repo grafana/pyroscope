@@ -10,7 +10,7 @@ weight: 20
 To set up eBPF profiling with Grafana Alloy on Linux, you need to:
 
 - Verify that your system meets the requirements.
-- Install [Grafana Alloy](https://grafana.com/docs/alloy/<ALLOY_VERSION>/set-up/install/linux/).
+- Install [Alloy](https://grafana.com/docs/alloy/<ALLOY_VERSION>/set-up/install/linux/).
 - Create an [Alloy configuration file](https://grafana.com/docs/alloy/<ALLOY_VERSION>/configure/linux/). For more information, refer to [Configuration reference](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/).
 - Run Alloy.
 - Finally, verify that profiles are received.
@@ -44,7 +44,7 @@ Make sure you have a kernel version >= 4.9.
 
 Follow the [installation instructions](https://grafana.com/docs/alloy/<ALLOY_VERSION>/set-up/install/linux/) to download and install Alloy for your current Linux distribution.
 
-## Configure Grafana Alloy
+## Configure Alloy
 
 To configure the Alloy eBPF profiler to profile local processes, you'll need to set the `targets_only` flag to `false` and add a default target in the `pyroscope.ebpf` component.
 All processes are profiled and grouped under the default target.
@@ -107,13 +107,13 @@ For more information, refer to the [Configure the Grafana Pyroscope data source 
 If you're using your own Pyroscope server, you can remove the `basic_auth` section altogether.
 {{% /admonition %}}
 
-## Start Grafana Alloy
+## Start Alloy
 
 {{< admonition type="note">}}
 The eBPF profiler requires root privileges.
 {{< /admonition >}}
 
-To start the Grafana Alloy, run:
+To start the Alloy, run:
 
 ```shell
 alloy run alloy.config

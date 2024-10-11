@@ -38,12 +38,12 @@ Python is the only supported high-level language, as long as `python_enabled=tru
 Other high-level languages like Java, Ruby, PHP, and JavaScript require additional work to show stack traces of methods in these languages correctly.
 Currently, the CPU usage for these languages is reported as belonging to the runtime's methods.
 
-## eBPF using Grafana Alloy
+## eBPF using Alloy
 
 Grafana Alloy is a lightweight, all-in-one collector that can collect, transform, and ship observability data.
-For profiling, Alloy can be configured to collect eBPF profiles and send them to Pyroscope.
+For profiling, you can configure Alloy to collect eBPF profiles and send them to Pyroscope.
 
 This section contains instructions for installing and configuring Alloy to collect eBPF profiles.
-For more information about Alloy itself, refer to the [Grafana Alloy documentation](https://grafana.com/docs/alloy/<ALLOY_VERSION>/).
+For more information about Alloy itself, refer to the [Alloy documentation](https://grafana.com/docs/alloy/<ALLOY_VERSION>/).
 
 [troubleshooting]: /docs/alloy/<ALLOY_VERSION>/reference/components/pyroscope/pyroscope.ebpf/#troubleshooting-unknown-symbols

@@ -36,7 +36,7 @@ go get github.com/grafana/pyroscope-go
 ```
 
 {{% admonition type="note" %}}
-If you'd prefer to use Pull mode you can do so using [Grafana Alloy](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/grafana-agent/).
+If you'd prefer to use Pull mode you can do so using [Grafana Alloy](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/grafana-alloy/).
 {{% /admonition %}}
 
 Then add the following code to your application:

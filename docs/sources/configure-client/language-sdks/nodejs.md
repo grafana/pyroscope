@@ -47,9 +47,9 @@ Pyroscope.init({
 Pyroscope.start()
 ```
 
-[comment]: <> (TODO This needs its own page like https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/go_pull/)
+[comment]: <> (TODO This needs its own page like https://grafana.com/docs/pyroscope/latest/configure-client/grafana-alloy/go_pull/)
 {{< admonition type="note" >}}
-If you'd prefer, you can use Pull mode using [Grafana Alloy](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/grafana-agent/go_pull/).
+If you'd prefer, you can use Pull mode using [Grafana Alloy](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/grafana-alloy/go_pull/).
 {{< /admonition >}}
 
 

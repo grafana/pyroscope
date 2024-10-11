@@ -42,7 +42,7 @@ docker info | grep Kernel
 
 The kernel version must be 4.9 or later.
 
-## Configure Grafana Alloy
+## Configure Alloy
 
 You can configure Alloy eBPF profiler to profile local containers.
 To do so, use the [`discovery.docker` component](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.docker/) to discover local containers and the [`pyroscope.ebpf` component](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/pyroscope/pyroscope.ebpf/) to profile them
@@ -88,8 +88,7 @@ For more information, refer to the [Configure the Grafana Pyroscope data source 
 If you're using your own Pyroscope server, you can remove the `basic_auth` section altogether.
 {{% /admonition %}}
 
-
-## Start Grafana Alloy
+## Start Alloy
 
 To start Alloy with Docker, run:
 

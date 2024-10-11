@@ -43,7 +43,7 @@ Make sure all nodes have a kernel version >= 4.9.
 
 ## Add the Grafana Helm repository
 
-We recommend using [Helm][helm] to install Grafana Alloy.
+Use [Helm][helm] to install Alloy.
 To add the Grafana Helm repository, run:
 
 ```shell
@@ -57,7 +57,7 @@ Verify that the repository was added successfully by running:
 helm search repo grafana/alloy
 ```
 
-The command returns a list of available versions of Grafana Alloy.
+The command returns a list of available versions of Alloy.
 
 ## Create an Alloy configuration file
 
