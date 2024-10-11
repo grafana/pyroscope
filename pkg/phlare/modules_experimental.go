@@ -2,6 +2,7 @@ package phlare
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/ring"
@@ -169,25 +170,31 @@ func (f *Phlare) initQueryBackendClient() (services.Service, error) {
 }
 
 func (f *Phlare) initPlacementAgent() (services.Service, error) {
-	store := adaptiveplacement.NewStore(f.storageBucket)
 	f.placementAgent = adaptiveplacement.NewAgent(
 		f.logger,
 		f.reg,
 		f.Cfg.AdaptivePlacement,
 		f.Overrides,
-		store,
+		f.adaptivePlacementStore(),
 	)
 	return f.placementAgent.Service(), nil
 }
 
 func (f *Phlare) initPlacementManager() (services.Service, error) {
-	store := adaptiveplacement.NewStore(f.storageBucket)
 	f.placementManager = adaptiveplacement.NewManager(
 		f.logger,
 		f.reg,
 		f.Cfg.AdaptivePlacement,
 		f.Overrides,
-		store,
+		f.adaptivePlacementStore(),
 	)
 	return f.placementManager.Service(), nil
+}
+
+func (f *Phlare) adaptivePlacementStore() adaptiveplacement.Store {
+	if slices.Contains(f.Cfg.Target, All) {
+		// Disables sharding in all-in-one scenario.
+		return adaptiveplacement.NewEmptyStore()
+	}
+	return adaptiveplacement.NewStore(f.storageBucket)
 }

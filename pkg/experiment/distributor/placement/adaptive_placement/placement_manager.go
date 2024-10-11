@@ -113,7 +113,7 @@ func (m *Manager) updateRules(ctx context.Context) {
 	m.metrics.statsTotal.Set(float64(len(stats.Datasets)))
 
 	if time.Since(m.startedAt) < m.config.StatsConfidencePeriod {
-		_ = level.Info(m.logger).Log("msg", "confidence period not expired, skipping update")
+		_ = level.Debug(m.logger).Log("msg", "confidence period not expired, skipping update")
 		return
 	}
 
@@ -121,7 +121,7 @@ func (m *Manager) updateRules(ctx context.Context) {
 		_ = level.Error(m.logger).Log("msg", "failed to store placement rules", "err", err)
 	} else {
 		m.metrics.lastUpdate.SetToCurrentTime()
-		_ = level.Info(m.logger).Log(
+		_ = level.Debug(m.logger).Log(
 			"msg", "placement rules updated",
 			"datasets", len(rules.Datasets),
 			"created_at", time.Unix(0, rules.CreatedAt),
@@ -131,7 +131,7 @@ func (m *Manager) updateRules(ctx context.Context) {
 	if err := m.store.StoreStats(ctx, stats); err != nil {
 		_ = level.Error(m.logger).Log("msg", "failed to store stats", "err", err)
 	} else {
-		_ = level.Info(m.logger).Log(
+		_ = level.Debug(m.logger).Log(
 			"msg", "placement stats updated",
 			"datasets", len(rules.Datasets),
 			"created_at", time.Unix(0, rules.CreatedAt),

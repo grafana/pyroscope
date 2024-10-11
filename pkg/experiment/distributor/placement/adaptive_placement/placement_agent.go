@@ -94,7 +94,7 @@ func (a *Agent) loadRules(ctx context.Context) {
 			return
 		}
 	}
-	_ = level.Info(a.logger).Log(
+	_ = level.Debug(a.logger).Log(
 		"msg", "loading placement rules",
 		"created_at", time.Unix(0, rules.CreatedAt),
 	)

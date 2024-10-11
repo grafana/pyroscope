@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"os"
+	"time"
 
 	"github.com/thanos-io/objstore"
 
@@ -97,4 +97,26 @@ func (s *BucketStore) put(ctx context.Context, name string, m vtProtoMessage) er
 		return err
 	}
 	return s.bucket.Upload(ctx, name, bytes.NewReader(b))
+}
+
+// EmptyStore is a Store implementation that always returns
+// empty rules and stats, and doesn't store anything.
+type EmptyStore struct{}
+
+func NewEmptyStore() *EmptyStore { return new(EmptyStore) }
+
+func (e *EmptyStore) LoadRules(context.Context) (*adaptive_placementpb.PlacementRules, error) {
+	return &adaptive_placementpb.PlacementRules{CreatedAt: time.Now().UnixNano()}, nil
+}
+
+func (e *EmptyStore) LoadStats(context.Context) (*adaptive_placementpb.DistributionStats, error) {
+	return &adaptive_placementpb.DistributionStats{CreatedAt: time.Now().UnixNano()}, nil
+}
+
+func (e *EmptyStore) StoreRules(context.Context, *adaptive_placementpb.PlacementRules) error {
+	return nil
+}
+
+func (e *EmptyStore) StoreStats(context.Context, *adaptive_placementpb.DistributionStats) error {
+	return nil
 }
