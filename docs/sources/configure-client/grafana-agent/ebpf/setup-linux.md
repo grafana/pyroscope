@@ -11,8 +11,8 @@ To set up eBPF profiling with Grafana Alloy on Linux, you need to:
 
 - Verify that your system meets the requirements.
 - Install [Grafana Alloy](https://grafana.com/docs/alloy/<ALLOY_VERSION>/set-up/install/linux/).
-- Create a [Grafana Alloy configuration file](https://grafana.com/docs/alloy/<ALLOY_VERSION>/configure/linux/). For more information, refer to [Configuration reference](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/).
-- Run Grafana Alloy.
+- Create an [Alloy configuration file](https://grafana.com/docs/alloy/<ALLOY_VERSION>/configure/linux/). For more information, refer to [Configuration reference](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/).
+- Run Alloy.
 - Finally, verify that profiles are received.
 
 ## Before you begin
@@ -40,7 +40,7 @@ uname -r
 
 Make sure you have a kernel version >= 4.9.
 
-## Install Grafana Alloy
+## Install Alloy
 
 Follow the [installation instructions](https://grafana.com/docs/alloy/<ALLOY_VERSION>/set-up/install/linux/) to download and install Alloy for your current Linux distribution.
 

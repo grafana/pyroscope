@@ -10,8 +10,8 @@ weight: 20
 To set up eBPF profiling with Grafana Alloy on Linux, you need to:
 
 - Verify that your system meets the requirements.
-- Create a Grafana Alloy configuration file. For more information, refer to the [Configuration reference][config-reference].
-- Run Grafana Alloy.
+- Create an Alloy configuration file. For more information, refer to the [Configuration reference][config-reference].
+- Run Alloy.
 - Verify that profiles are received.
 
 {{< docs/shared lookup="agent-deprecation.md" source="alloy" version="next" >}}
@@ -44,7 +44,7 @@ The kernel version must be 4.9 or later.
 
 ## Configure Grafana Alloy
 
-You can configure Grafana Alloy eBPF profiler to profile local containers.
+You can configure Alloy eBPF profiler to profile local containers.
 To do so, use the [`discovery.docker` component](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.docker/) to discover local containers and the [`pyroscope.ebpf` component](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/pyroscope/pyroscope.ebpf/) to profile them
 
 For more information about the Alloy configuration, refer to the [Alloy Components reference](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/).
@@ -91,7 +91,7 @@ If you're using your own Pyroscope server, you can remove the `basic_auth` secti
 
 ## Start Grafana Alloy
 
-To start Grafana Alloy with Docker, run:
+To start Alloy with Docker, run:
 
 ```shell
 docker run \

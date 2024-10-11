@@ -11,8 +11,8 @@ To set up eBPF profiling with Grafana Alloy on Kubernetes, you need to:
 
 - Verify that your cluster meets the prerequisites.
 - Add the Grafana helm repository.
-- Create a Grafana Alloy configuration file. For more information, refer to [Configuration reference][config-reference].
-- Install Grafana Alloy, refer to the [installation instructions](https://grafana.com/docs/alloy/<ALLOY_VERSION>/set-up/install/kubernetes/)
+- Create an Alloy configuration file. For more information, refer to [Configuration reference][config-reference].
+- Install Alloy, refer to the [installation instructions](https://grafana.com/docs/alloy/<ALLOY_VERSION>/set-up/install/kubernetes/)
 - Verify that profiles are received.
 
 ## Before you begin
@@ -59,7 +59,7 @@ helm search repo grafana/alloy
 
 The command returns a list of available versions of Grafana Alloy.
 
-## Create a Grafana Alloy configuration file
+## Create an Alloy configuration file
 
 Create a file named `values.yaml` with the content from the sample configuration file.
 
@@ -115,9 +115,9 @@ If you're using your own Pyroscope server, you can remove the `basic_auth` secti
 {{% /admonition %}}
 
 
-## Install the Grafana Alloy
+## Install Alloy
 
-To install the Grafana Alloy, run:
+To install Alloy, run:
 
 ```shell
 helm install pyroscope-ebpf grafana/alloy -f values.yaml

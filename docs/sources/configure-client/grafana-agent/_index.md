@@ -1,7 +1,7 @@
 ---
 title: "Grafana Alloy"
 menuTitle: "Grafana Alloy"
-description: "Send data from your application via using Grafana Alloy."
+description: "Send data from your application using Grafana Alloy."
 weight: 10
 aliases:
   - /docs/phlare/latest/configure-client/grafana-agent/
@@ -14,7 +14,7 @@ Both collectors support profiling with eBPF, Java, and Golang in pull mode.
 
 [Grafana Alloy](https://grafana.com/docs/alloy/<ALLOY_VERSION>/) is a vendor-neutral distribution of the OpenTelemetry (OTel) Collector.
 Alloy uniquely combines the very best OSS observability signals in the community.
-Grafana Alloy uses configuration files written in Alloy configuration syntax.
+Alloy uses configuration files written in Alloy configuration syntax.
 For  more information, refer to the [Alloy configuration syntax](https://grafana.com/docs/alloy/<ALLOY_VERSION>/get-started/configuration-syntax/).
 
 Alloy is the recommended collector instead of Grafana Agent.
@@ -82,7 +82,7 @@ In pull mode, the collector periodically retrieves profiles from Golang applicat
 
 ## Next steps
 
-Whether using eBPF for versatile system and application profiling or relying on Golang's built-in pprof endpoints in pull mode, Grafana Alloy collectors offer streamlined processes to gather essential profiling data.
+Whether using eBPF for versatile system and application profiling or relying on Golang's built-in pprof endpoints in pull mode, Alloy collectors offer streamlined processes to gather essential profiling data.
 Choose the method that best fits your application and infrastructure needs.
 
 [troubleshooting]: /docs/alloy/<ALLOY_VERSION>/reference/components/pyroscope/pyroscope.ebpf/#troubleshooting-unknown-symbols

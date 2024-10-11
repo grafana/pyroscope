@@ -44,7 +44,7 @@ To install Alloy, refer to [Grafana Alloy installation](https://grafana.com/docs
 
 ### Prepare the collector configuration file
 
-In the Grafana Alloy configuration file, you need to add at least two blocks: `pyroscope.write` and `pyroscope.scrape`.
+In the Alloy configuration file, you need to add at least two blocks: `pyroscope.write` and `pyroscope.scrape`.
 
 1. Add `pyroscope.write` block.
 
@@ -109,7 +109,7 @@ In the Grafana Alloy configuration file, you need to add at least two blocks: `p
     docker run -p 4040:4040 grafana/pyroscope
     ```
 
-1. To start Grafana Alloy v1.2 and later: Replace `configuration.alloy` with your configuration filename: <br> `alloy run configuration.alloy`
+1. To start Alloy v1.2 and later: Replace `configuration.alloy` with your configuration filename: <br> `alloy run configuration.alloy`
 
 1. Open a browser to `http://localhost:4040`. The page should list profiles.
 

@@ -40,10 +40,10 @@ Currently, the CPU usage for these languages is reported as belonging to the run
 
 ## eBPF using Grafana Alloy
 
-The Grafana Alloy is a lightweight, all-in-one collector that can collect, transform, and ship observability data.
-For profiling, Grafana Alloy can be configured to collect eBPF profiles and send them to Pyroscope.
+Grafana Alloy is a lightweight, all-in-one collector that can collect, transform, and ship observability data.
+For profiling, Alloy can be configured to collect eBPF profiles and send them to Pyroscope.
 
-This section contains instructions for installing and configuring Grafana Alloy to collect eBPF profiles.
+This section contains instructions for installing and configuring Alloy to collect eBPF profiles.
 For more information about Alloy itself, refer to the [Grafana Alloy documentation](https://grafana.com/docs/alloy/<ALLOY_VERSION>/).
 
 [troubleshooting]: /docs/alloy/<ALLOY_VERSION>/reference/components/pyroscope/pyroscope.ebpf/#troubleshooting-unknown-symbols

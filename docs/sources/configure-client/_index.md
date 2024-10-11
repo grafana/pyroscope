@@ -64,7 +64,7 @@ The method you choose depends on your specific use case and requirements.
 
 Here are some factors to consider when making the choice:
 
-- Ease of setup: The Grafana Alloy is an ideal choice for a quick and straightforward setup without modifying your application's code. eBPF profiling supports some languages (for example, Golang) better than others. More robust support for Python, Java, and other languages are in development.
+- Ease of setup: Grafana Alloy is an ideal choice for a quick and straightforward setup without modifying your application's code. eBPF profiling supports some languages (for example, Golang, Python) better than others. More robust support for Java and other languages is in development.
 - Language support: If you want more control over the profiling process and your application is written in a language supported by the Pyroscope SDKs, consider using the SDKs.
 - Flexibility: The Pyroscope SDKs offer greater flexibility in terms of customizing the profiling process and capturing specific sections of code with labels. If you have particular profiling needs or want to fine-tune the data collection process, the SDKs would be your best bet.
 

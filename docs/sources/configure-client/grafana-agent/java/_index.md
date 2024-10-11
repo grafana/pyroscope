@@ -71,7 +71,7 @@ see [profiler-options](https://github.com/async-profiler/async-profiler?tab=read
 
 ### Set privileges for the collector
 
-You must run the collector, either Grafana Alloy as root and inside host `pid` namespace for the `pyroscope.java` and `discover.process` components to work.
+You must run the collector, such Alloy, as root and inside host `pid` namespace for the `pyroscope.java` and `discover.process` components to work.
 
 ### Start the collector
 
