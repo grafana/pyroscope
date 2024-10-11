@@ -30,7 +30,7 @@ cards:
       description: Learn how to install and configure Grafana Pyroscope with several examples.
     - title: Instrument your app and configure the client
       href: ./configure-client/
-      description: When sending profiles to Pyroscope, you can choose between SDK instrumentation and auto-instrumentation using Grafana Alloy. This document explains these two techniques and guide you when to choose each one.
+      description: When sending profiles to Pyroscope, you can choose between SDK instrumentation and auto-instrumentation using Grafana Alloy. This document explains these two techniques and helps you choose one.
     - title: Configure the server
       href: ./configure-server/
       description: Configure your Pyroscope server to meet your needs by setting disk storage, tenant IDs, memberlist, proxies, shuffle sharding, and more. You can also use the server HTTP API.

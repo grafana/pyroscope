@@ -34,7 +34,7 @@ Grafana Agent is a legacy tool for collecting and forwarding profiling data.
 Agent supports for eBPF and Golang in pull mode.
 For information about Agent, refer to [Grafana Agent Flow](https://grafana.com/docs/agent/<AGENT_VERSION>/flow/).
 
-Instructions for using Grafana Agent is available in documentation for Pyroscope v1.8 and earlier.
+Instructions for using Grafana Agent are available in documentation for Pyroscope v1.8 and earlier.
 
 ## eBPF profiling
 
