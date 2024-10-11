@@ -1,32 +1,30 @@
 ---
 title: "Setup eBPF Profiling on Kubernetes"
 menuTitle: "Setting up on Kubernetes"
-description: "Setting up eBPF Profiling with Grafana Agent on Kubernetes"
+description: "Setting up eBPF Profiling with Grafana Alloy on Kubernetes"
 weight: 10
 ---
 
 # Setup eBPF Profiling on Kubernetes
 
-To set up eBPF profiling with Grafana Agent on Kubernetes, you need to:
+To set up eBPF profiling with Grafana Alloy on Kubernetes, you need to:
 
 - Verify that your cluster meets the prerequisites.
 - Add the Grafana helm repository.
-- Create a Grafana Agent configuration file. For more information, refer to [Configuration reference][config-reference].
-- Install Grafana Agent.
+- Create an Alloy configuration file. For more information, refer to [Configuration reference][config-reference].
+- Install Alloy, refer to the [installation instructions](https://grafana.com/docs/alloy/<ALLOY_VERSION>/set-up/install/kubernetes/)
 - Verify that profiles are received.
 
-{{< docs/shared lookup="agent-deprecation.md" source="alloy" version="next" >}}
-
-## Prerequisites
+## Before you begin
 
 Before you begin, you need:
 
 - [Helm][helm] and [kubectl][kubectl] installed with access to your Kubernetes cluster.
-- A Pyroscope server where the Agent will send profiling data.
+- A Pyroscope server where Alloy can send profiling data.
 - Access to Grafana with the [Grafana Pyroscope data source][pyroscope-ds] provisioned.
 
 {{< admonition type="note" >}}
-If you don't have a Grafana and/or a Pyroscope server, you can use the [Grafana Cloud][gcloud] free plan to get started.
+If you don't have a Grafana or a Pyroscope server, you can use the [Grafana Cloud][gcloud] free plan to get started.
 {{< /admonition >}}
 
 ## Verify that your cluster meets the requirements
@@ -45,7 +43,8 @@ Make sure all nodes have a kernel version >= 4.9.
 
 ## Add the Grafana Helm repository
 
-We recommend using [Helm][helm] to install Grafana Agent. To add the Grafana Helm repository, run:
+Use [Helm][helm] to install Alloy.
+To add the Grafana Helm repository, run:
 
 ```shell
 helm repo add grafana https://grafana.github.io/helm-charts
@@ -55,18 +54,17 @@ helm repo update
 Verify that the repository was added successfully by running:
 
 ```shell
-helm search repo grafana/grafana-agent
+helm search repo grafana/alloy
 ```
 
-It should return a list of available versions of Grafana Agent.
+The command returns a list of available versions of Alloy.
 
-## Create a Grafana Agent configuration file
+## Create an Alloy configuration file
 
-Create a file named `values.yaml` with the following content:
+Create a file named `values.yaml` with the content from the sample configuration file.
 
 ```yaml
-agent:
-  mode: 'flow'
+alloy:
   configMap:
     create: true
     content: |
@@ -100,29 +98,39 @@ controller:
   hostPID: true
 ```
 
-Replace the `<URL>` placeholder with the appropriate server URL. This could be the Grafana Cloud URL or your own custom Pyroscope server URL.
+For information about configuring Alloy, refer to [Grafana Alloy on Kubernetes](https://grafana.com/docs/alloy/<ALLOY_VERSION>/configure/kubernetes/).
 
-If you need to send data to Grafana Cloud, you'll have to configure HTTP Basic authentication. Replace `<User>` with your Grafana Cloud stack user and `<Password>` with your Grafana Cloud API key.
+For information about the specific blocks used, refer to the [Grafana Alloy Reference](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/).
+
+Replace the `<URL>` placeholder with the appropriate server URL.
+This could be the Grafana Cloud URL or your own custom Pyroscope server URL.
+
+If you need to send data to Grafana Cloud, you'll have to configure HTTP Basic authentication.
+Replace `<User>` with your Grafana Cloud stack user and `<Password>` with your Grafana Cloud API key.
+
+For more information, refer to the [Configure the Grafana Pyroscope data source documentation](/docs/grafana-cloud/connect-externally-hosted/data-sources/pyroscope/configure-pyroscope-data-source/).
 
 {{% admonition type="note" %}}
 If you're using your own Pyroscope server, you can remove the `basic_auth` section altogether.
 {{% /admonition %}}
 
-For more information, refer to the [Configure the Grafana Pyroscope data source documentation](/docs/grafana-cloud/connect-externally-hosted/data-sources/pyroscope/configure-pyroscope-data-source/).
 
-## Install the Grafana Agent
+## Install Alloy
 
-To install the Grafana Agent, run:
+To install Alloy, run:
 
 ```shell
-helm install pyroscope-ebpf grafana/grafana-agent -f values.yaml
+helm install pyroscope-ebpf grafana/alloy -f values.yaml
 ```
 
-Once configured, the Agent starts collecting eBPF profiles and send them to the Pyroscope server.
+Once configured, Alloy starts collecting eBPF profiles and sends them to the Pyroscope server.
 
 ## Verify profiles are received
 
-To verify that the profiles are received by the Pyroscope server, go to the Pyroscope UI or [Grafana Pyroscope datasource][pyroscope-ds]. Select a profile type and a service from the drop-down menu.
+To verify that the profiles are received by the Pyroscope server:
+
+1. Go to the Pyroscope UI or [Grafana Pyroscope data source][pyroscope-ds].
+1. Select a profile type and a service from the drop-down menu.
 
 [gcloud]: /products/cloud/
 [helm]: https://helm.sh/docs/intro/install/

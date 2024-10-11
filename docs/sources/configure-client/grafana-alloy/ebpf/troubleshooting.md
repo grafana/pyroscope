@@ -11,11 +11,11 @@ Learn how to troubleshoot and resolve eBPF installation issues.
 
 ## Profile interpreted languages
 
-Profiling interpreted languages like Ruby, JavaScript, etc., is not ideal using this implementation.
+Profiling interpreted languages like Ruby, JavaScript, etc., isn't ideal using this implementation.
 The JIT-compiled methods in these languages are typically not in ELF file format, demanding additional steps for
 profiling. For instance, using perf-map-agent and enabling frame pointers for Java.
 
-Interpreted methods will display the interpreter function’s name rather than the actual function.
+Interpreted methods display the interpreter function’s name rather than the actual function.
 
 ## Troubleshoot unknown symbols
 

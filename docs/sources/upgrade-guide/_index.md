@@ -64,7 +64,9 @@ We stripped the pyroscope CLI of all subcommands that were related to the client
 * `pyroscope connect`
 * `pyroscope agent`
 
-This strategic shift has been in the works for some time as we transition away from CLI-based profiling towards embracing native integrations. Moving forward, we encourage users to take advantage of native integrations tailored to specific programming languages, such as pip packages for Python, .NET packages for .NET applications, Ruby gems for Ruby applications, and so on. Our [eBPF integration]({{< relref "../configure-client/grafana-agent/ebpf" >}}) is also a good way to get profiling data for your whole cluster.
+This strategic shift has been in the works for some time as we transition away from CLI-based profiling towards embracing native integrations.
+Moving forward, we encourage users to take advantage of native integrations tailored to specific programming languages, such as pip packages for Python, .NET packages for .NET applications, Ruby gems for Ruby applications, and so on.
+The [eBPF integration](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/grafana-alloy/ebpf/) is also a good way to get profiling data for your whole cluster.
 
 By adopting native integrations, we aim to provide users with a more streamlined and efficient profiling experience, leveraging language-specific tools and libraries to deliver better performance, ease of use, and seamless integration with their respective applications.
 

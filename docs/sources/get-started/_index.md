@@ -74,13 +74,13 @@ Verify that you have installed [Docker](https://docs.docker.com/engine/install/)
 1. Configure Pyroscope to scrape profiles.
 
     By default, Pyroscope is configured to scrape itself.
-    To collect more profiles, you must either instrument your application with an SDK or use the Grafana Agent.
+    To collect more profiles, you must either instrument your application with an SDK or use Grafana Alloy.
 
     To learn more about language integrations and the Pyroscope agent, refer to [Pyroscope Agent]({{< relref "../configure-client/_index.md" >}}).
 
 ## Add a Pyroscope data source and query data
 
-1. In a new terminal, run a local Grafana server using Docker:
+1. In a terminal, run a local Grafana server using Docker:
 
     ```bash
     docker run --rm --name=grafana \
@@ -105,4 +105,4 @@ Verify that you have installed [Docker](https://docs.docker.com/engine/install/)
   To learn more about adding data sources, refer to [Add a data source](/docs/grafana/<GRAFANA_VERSION>/datasources/add-a-data-source/).
 
 When you have completed the tasks in this getting started guide, you can query profiles in [Grafana Explore](/docs/grafana/<GRAFANA_VERSION>/explore/)
-and create dashboard panels using the newly configured Pyroscope data source. For more information on working with dashboards with Grafana, see [Panels and visualizations](/docs/grafana/<GRAFANA_VERSION>/panels-visualizations/) in the Grafana documentation.
+and create dashboard panels using the newly configured Pyroscope data source. For more information on working with dashboards with Grafana, refer to [Panels and visualizations](/docs/grafana/<GRAFANA_VERSION>/panels-visualizations/) in the Grafana documentation.
