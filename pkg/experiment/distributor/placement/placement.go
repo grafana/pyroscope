@@ -58,6 +58,12 @@ type ShardMapping struct {
 // ActiveInstances returns an iterator that filters out inactive instances.
 // Note that active state does not mean that the instance is healthy.
 func ActiveInstances(i iter.Iterator[ring.InstanceDesc]) iter.Iterator[ring.InstanceDesc] {
+	return FilterInstances(InstanceSet(i), func(x *ring.InstanceDesc) bool {
+		return x.State != ring.ACTIVE
+	})
+}
+
+func InstanceSet(i iter.Iterator[ring.InstanceDesc]) iter.Iterator[ring.InstanceDesc] {
 	seen := make(map[string]struct{})
 	return FilterInstances(i, func(x *ring.InstanceDesc) bool {
 		k := x.Id
@@ -68,7 +74,7 @@ func ActiveInstances(i iter.Iterator[ring.InstanceDesc]) iter.Iterator[ring.Inst
 			return true
 		}
 		seen[k] = struct{}{}
-		return x.State != ring.ACTIVE
+		return false
 	})
 }
 

@@ -207,6 +207,7 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 			"segment-writer.num-tokens":                         "4",
 			"segment-writer.heartbeat-timeout":                  "1m",
 			"segment-writer.unregister-on-shutdown":             "false",
+			"segment-writer.min-ready-duration":                 "30s",
 		} {
 			overrides[k] = v
 		}

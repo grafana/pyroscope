@@ -26,9 +26,9 @@ var (
 		{Name: "service_name", Value: "my-service"},
 	}
 	testInstances = []ring.InstanceDesc{
-		{Addr: "a", Tokens: make([]uint32, 1)},
-		{Addr: "b", Tokens: make([]uint32, 1)},
-		{Addr: "c", State: ring.LEAVING, Tokens: make([]uint32, 1)},
+		{Id: "a", Tokens: make([]uint32, 1)},
+		{Id: "b", Tokens: make([]uint32, 1)},
+		{Id: "c", State: ring.LEAVING, Tokens: make([]uint32, 1)},
 	}
 	zeroShard = func(int) int { return 0 }
 )
@@ -134,9 +134,9 @@ func Test_RingUpdate(t *testing.T) {
 func Test_Distributor_Distribute(t *testing.T) {
 	m := new(mockplacement.MockPlacement)
 	r := testhelper.NewMockRing([]ring.InstanceDesc{
-		{Addr: "a", Tokens: make([]uint32, 4)},
-		{Addr: "b", Tokens: make([]uint32, 4)},
-		{Addr: "c", Tokens: make([]uint32, 4)},
+		{Id: "a", Tokens: make([]uint32, 4)},
+		{Id: "b", Tokens: make([]uint32, 4)},
+		{Id: "c", Tokens: make([]uint32, 4)},
 	}, 1)
 
 	d := NewDistributor(m, r)
@@ -188,7 +188,7 @@ func Test_Distributor_Distribute(t *testing.T) {
 func Test_distribution_iterator(t *testing.T) {
 	d := &distribution{
 		shards: []uint32{0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2},
-		desc:   []ring.InstanceDesc{{Addr: "a"}, {Addr: "b"}, {Addr: "c"}},
+		desc:   []ring.InstanceDesc{{Id: "a"}, {Id: "b"}, {Id: "c"}},
 	}
 
 	t.Run("empty ring", func(t *testing.T) {
@@ -442,7 +442,7 @@ func Test_permutation(t *testing.T) {
 func collectN(i iter.Iterator[ring.InstanceDesc], n int) []string {
 	s := make([]string, 0, n)
 	for n > 0 && i.Next() {
-		s = append(s, i.At().Addr)
+		s = append(s, i.At().Id)
 		n--
 	}
 	return s

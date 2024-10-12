@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-kit/log"
@@ -65,6 +66,7 @@ type Limits interface {
 }
 
 type SegmentWriterService struct {
+	serving atomic.Bool
 	services.Service
 	segmentwriterv1.UnimplementedSegmentWriterServiceServer
 
@@ -140,7 +142,11 @@ func New(
 }
 
 func (i *SegmentWriterService) starting(ctx context.Context) error {
-	return services.StartManagerAndAwaitHealthy(ctx, i.subservices)
+	if err := services.StartManagerAndAwaitHealthy(ctx, i.subservices); err != nil {
+		return err
+	}
+	i.serving.Store(true)
+	return nil
 }
 
 func (i *SegmentWriterService) running(ctx context.Context) error {
@@ -153,6 +159,7 @@ func (i *SegmentWriterService) running(ctx context.Context) error {
 }
 
 func (i *SegmentWriterService) stopping(_ error) error {
+	i.serving.Store(false)
 	errs := multierror.New()
 	errs.Add(services.StopManagerAndAwaitStopped(context.Background(), i.subservices))
 	errs.Add(i.segmentWriter.Stop())
@@ -160,6 +167,9 @@ func (i *SegmentWriterService) stopping(_ error) error {
 }
 
 func (i *SegmentWriterService) Push(ctx context.Context, req *segmentwriterv1.PushRequest) (*segmentwriterv1.PushResponse, error) {
+	if !i.serving.Load() {
+		return nil, status.Error(codes.Unavailable, "service is unavailable")
+	}
 	if req.TenantId == "" {
 		return nil, status.Error(codes.InvalidArgument, tenant.ErrNoTenantID.Error())
 	}

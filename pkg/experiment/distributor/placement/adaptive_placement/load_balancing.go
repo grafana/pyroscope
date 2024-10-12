@@ -74,7 +74,7 @@ func (lb LoadBalancing) pick(k placement.Key) func(int) int {
 
 func pickFingerprintMod(k placement.Key) func(int) int {
 	return func(n int) int {
-		return int(k.Fingerprint) % n
+		return int(k.Fingerprint % uint64(n))
 	}
 }
 

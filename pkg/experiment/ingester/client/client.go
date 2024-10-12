@@ -202,49 +202,52 @@ func (c *Client) stopping(_ error) error {
 func (c *Client) Push(
 	ctx context.Context,
 	req *segmentwriterv1.PushRequest,
-) (*segmentwriterv1.PushResponse, error) {
+) (resp *segmentwriterv1.PushResponse, err error) {
 	k := distributor.NewTenantServiceDatasetKey(req.TenantId, req.Labels...)
 	p, dErr := c.distributor.Distribute(k)
 	if dErr != nil {
 		_ = level.Error(c.logger).Log(
 			"msg", "unable to distribute request",
 			"tenant", req.TenantId,
-			"err", dErr)
+			"err", dErr,
+		)
 		return nil, status.Error(codes.Unavailable, errServiceUnavailableMsg)
 	}
 
 	// In case of a failure, the request is sent to another instance.
 	// At most 5 attempts to push the data to the segment writer.
-	attempts := 5
 	instances := placement.ActiveInstances(p.Instances)
 	req.Shard = p.Shard
-
-	for attempts > 0 && instances.Next() {
-		attempts--
+	for attempts := 5; attempts >= 0 && instances.Next() && ctx.Err() == nil; attempts-- {
 		instance := instances.At()
-		resp, err := c.pushToInstance(ctx, req, instance.Addr)
-		// Happy path.
+		logger := log.With(c.logger,
+			"tenant", req.TenantId,
+			"shard", req.Shard,
+			"instance_addr", instance.Addr,
+			"instance_id", instance.Id,
+			"attempts", attempts,
+		)
+		_ = level.Debug(logger).Log("msg", "sending request")
+		resp, err = c.pushToInstance(ctx, req, instance.Addr)
 		if err == nil {
 			return resp, nil
 		}
-		// Handle client errors explicitly.
 		if isClientError(err) {
 			return nil, err
 		}
 		if !isRetryable(err) {
-			_ = level.Error(c.logger).Log(
-				"msg", "failed to push data to segment writer",
-				"tenant", req.TenantId,
-				"instance", instance.Addr,
-				"err", err)
+			_ = level.Error(logger).Log("msg", "failed to push data to segment writer", "err", err)
 			return nil, status.Error(codes.Unavailable, errServiceUnavailableMsg)
 		}
+		_ = level.Warn(logger).Log("msg", "failed attempt to push data to segment writer", "err", err)
 	}
 
 	_ = level.Error(c.logger).Log(
 		"msg", "no segment writer instances available for the request",
-		"tenant", req.TenantId)
-
+		"tenant", req.TenantId,
+		"shard", req.Shard,
+		"last_err", err,
+	)
 	return nil, status.Error(codes.Unavailable, errServiceUnavailableMsg)
 }
 
@@ -289,17 +292,17 @@ func newConnPool(
 
 	p := ring_client.NewPool(
 		"segment-writer",
-		// Discovery is used to remove clients that can't be found
-		// in the ring, including unhealthy instances. CheckInterval
-		// specifies how frequently the stale clients are removed.
 		ring_client.PoolConfig{
 			CheckInterval: poolCleanupPeriod,
 			// Note that no health checks are performed: it's caller
-			// responsibility to pick the healthy clients.
+			// responsibility to pick a healthy instance.
 			HealthCheckEnabled:        false,
 			HealthCheckTimeout:        0,
 			MaxConcurrentHealthChecks: 0,
 		},
+		// Discovery is used to remove clients that can't be found
+		// in the ring, including unhealthy instances. CheckInterval
+		// specifies how frequently the stale clients are removed.
 		// Discovery builds a list of healthy instances.
 		// An instance is healthy, if it's heartbeat timestamp
 		// is not older than a configured threshold (intrinsic

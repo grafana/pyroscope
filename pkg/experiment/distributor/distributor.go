@@ -16,6 +16,7 @@ import (
 // NOTE(kolesnikovae): Essentially, we do not depend on the dskit/ring and
 // only use it as a discovery mechanism build on top of the memberlist.
 // It would be better to access the memberlist/serf directly.
+var op = ring.NewOp([]ring.InstanceState{ring.ACTIVE, ring.LEAVING, ring.PENDING, ring.JOINING}, nil)
 
 const defaultRingUpdateInterval = 5 * time.Second
 
@@ -116,7 +117,7 @@ func (d *distribution) isExpired(maxAge time.Duration) bool {
 }
 
 func (d *distribution) readRing(r ring.ReadRing) error {
-	all, err := r.GetAllHealthy(ring.Write)
+	all, err := r.GetAllHealthy(op)
 	if err != nil {
 		return err
 	}

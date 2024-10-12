@@ -77,9 +77,9 @@ func (s *segwriterClientSuite) SetupTest() {
 	s.config = grpcclient.Config{}
 	s.config.RegisterFlags(flag.NewFlagSet("", flag.PanicOnError))
 	instances := []ring.InstanceDesc{
-		{Addr: "a", Tokens: make([]uint32, 1)},
-		{Addr: "b", Tokens: make([]uint32, 1)},
-		{Addr: "c", Tokens: make([]uint32, 1)},
+		{Id: "a", Tokens: make([]uint32, 1)},
+		{Id: "b", Tokens: make([]uint32, 1)},
+		{Id: "c", Tokens: make([]uint32, 1)},
 	}
 	s.ring = testhelper.NewMockRing(instances, 1)
 
