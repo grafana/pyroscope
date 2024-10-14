@@ -2,7 +2,6 @@ package metastore
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -19,11 +18,11 @@ func (m *Metastore) ReadIndex(_ context.Context, req *metastorev1.ReadIndexReque
 	return &metastorev1.ReadIndexResponse{ReadIndex: commitIndex}, nil
 }
 
-// readIndex ensures the node is up-to-date for read operations,
-// providing linearizable read semantics. It calls the ReadIndex RPC
+// waitLeaderCommitIndexAppliedLocally ensures the node is up-to-date for read operations,
+// providing linearizable read semantics. It calls metastore client ReadIndex
 // and waits for the local applied index to catch up to the returned read index.
 // This method should be used before performing local reads to ensure consistency.
-func (m *Metastore) readIndex(ctx context.Context) error {
+func (m *Metastore) waitLeaderCommitIndexAppliedLocally(ctx context.Context) error {
 	r, err := m.client.ReadIndex(ctx, &metastorev1.ReadIndexRequest{})
 	if err != nil {
 		return err
@@ -46,24 +45,8 @@ func (m *Metastore) readIndex(ctx context.Context) error {
 	}
 }
 
-// CheckReady verifies if the node is ready to serve requests.
-// It ensures the node is up-to-date by:
-// 1. Performing a ReadIndex operation
-// 2. Waiting for the applied index to catch up to the read index
-// 3. Enforcing a minimum duration since first becoming ready
+// CheckReady verifies if the metastore is ready to serve requests by ensuring
+// the node is up-to-date with the leader's commit index.
 func (m *Metastore) CheckReady(ctx context.Context) error {
-	if err := m.readIndex(ctx); err != nil {
-		return err
-	}
-
-	if m.readySince.IsZero() {
-		m.readySince = time.Now()
-	}
-
-	minReadyTime := m.config.MinReadyDuration
-	if time.Since(m.readySince) < minReadyTime {
-		return fmt.Errorf("waiting for %v after being ready", minReadyTime)
-	}
-
-	return nil
+	return m.waitLeaderCommitIndexAppliedLocally(ctx)
 }

@@ -50,7 +50,6 @@ type Config struct {
 	DataDir           string            `yaml:"data_dir"`
 	Raft              RaftConfig        `yaml:"raft"`
 	Compaction        CompactionConfig  `yaml:"compaction_config"`
-	MinReadyDuration  time.Duration     `yaml:"min_ready_duration" category:"advanced"`
 	DLQRecoveryPeriod time.Duration     `yaml:"dlq_recovery_period" category:"advanced"`
 	Index             index.Config      `yaml:"index_config"`
 }
@@ -73,7 +72,6 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.StringVar(&cfg.Address, prefix+"address", "localhost:9095", "")
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix(prefix+"grpc-client-config", f)
 	f.StringVar(&cfg.DataDir, prefix+"data-dir", "./data-metastore/data", "")
-	f.DurationVar(&cfg.MinReadyDuration, prefix+"min-ready-duration", 15*time.Second, "Minimum duration to wait after the internal readiness checks have passed but before succeeding the readiness endpoint. This is used to slowdown deployment controllers (eg. Kubernetes) after an instance is ready and before they proceed with a rolling update, to give the rest of the cluster instances enough time to receive some (DNS?) updates.")
 	f.DurationVar(&cfg.DLQRecoveryPeriod, prefix+"dlq-recovery-period", 15*time.Second, "Period for DLQ recovery loop.")
 	cfg.Raft.RegisterFlagsWithPrefix(prefix+"raft.", f)
 	cfg.Compaction.RegisterFlagsWithPrefix(prefix+"compaction.", f)

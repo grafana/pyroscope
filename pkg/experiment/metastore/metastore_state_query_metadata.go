@@ -20,8 +20,9 @@ func (m *Metastore) QueryMetadata(
 	ctx context.Context,
 	request *metastorev1.QueryMetadataRequest,
 ) (*metastorev1.QueryMetadataResponse, error) {
-	if err := m.readIndex(ctx); err != nil {
-		return nil, status.Error(codes.FailedPrecondition, fmt.Sprintf("failed to read index: %v", err))
+	if err := m.waitLeaderCommitIndexAppliedLocally(ctx); err != nil {
+		level.Error(m.logger).Log("msg", "failed to wait for leader commit index", "err", err, "method", "QueryMetadata")
+		return nil, err
 	}
 	return m.state.listBlocksForQuery(ctx, request)
 }

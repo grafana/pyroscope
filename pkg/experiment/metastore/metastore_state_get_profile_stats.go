@@ -2,12 +2,10 @@ package metastore
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"sync"
 
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
+	"github.com/go-kit/log/level"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -18,8 +16,9 @@ func (m *Metastore) GetProfileStats(
 	ctx context.Context,
 	r *metastorev1.GetProfileStatsRequest,
 ) (*typesv1.GetProfileStatsResponse, error) {
-	if err := m.readIndex(ctx); err != nil {
-		return nil, status.Error(codes.FailedPrecondition, fmt.Sprintf("failed to read index: %v", err))
+	if err := m.waitLeaderCommitIndexAppliedLocally(ctx); err != nil {
+		level.Error(m.logger).Log("msg", "failed to wait for leader commit index", "err", err, "method", "GetProfileStats")
+		return nil, err
 	}
 	return m.state.getProfileStats(r.TenantId, ctx)
 }
