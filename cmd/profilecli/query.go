@@ -58,6 +58,7 @@ func (c *phlareClient) ingesterClient() ingesterv1connect.IngesterServiceClient 
 
 type queryParams struct {
 	*phlareClient
+	*queryBlocksParams
 	From  string
 	To    string
 	Query string
@@ -94,17 +95,28 @@ type queryMergeParams struct {
 	*queryParams
 	ProfileType        string
 	StacktraceSelector []string
+	Output             string
 }
 
 func addQueryMergeParams(queryCmd commander) *queryMergeParams {
 	params := new(queryMergeParams)
 	params.queryParams = addQueryParams(queryCmd)
+	params.queryBlocksParams = addQueryBlocksParams(queryCmd)
+	queryCmd.Flag("output", "How to output the result, examples: console, raw, pprof=./my.pprof").Default("console").StringVar(&params.Output)
 	queryCmd.Flag("profile-type", "Profile type to query.").Default("process_cpu:cpu:nanoseconds:cpu:nanoseconds").StringVar(&params.ProfileType)
 	queryCmd.Flag("stacktrace-selector", "Only query locations with those symbols. Provide multiple times starting with the root").StringsVar(&params.StacktraceSelector)
 	return params
 }
 
-func queryMerge(ctx context.Context, params *queryMergeParams, outputFlag string) (err error) {
+func queryMerge(ctx context.Context, params *queryMergeParams) (err error) {
+	if len(params.BlockIds) > 0 {
+		return queryBlocksMerge(ctx, params)
+	} else {
+		return queryPyroscopeMerge(ctx, params)
+	}
+}
+
+func queryPyroscopeMerge(ctx context.Context, params *queryMergeParams) (err error) {
 	from, to, err := params.parseFromTo()
 	if err != nil {
 		return err
@@ -119,19 +131,24 @@ func queryMerge(ctx context.Context, params *queryMergeParams, outputFlag string
 	}
 
 	if len(params.StacktraceSelector) > 0 {
-		locations := make([]*typesv1.Location, 0, len(params.StacktraceSelector))
-		for _, cs := range params.StacktraceSelector {
-			locations = append(locations, &typesv1.Location{
-				Name: cs,
-			})
-		}
-		req.StackTraceSelector = &typesv1.StackTraceSelector{
-			CallSite: locations,
-		}
-		level.Info(logger).Log("msg", "selecting with stackstrace selector", "call-site", fmt.Sprintf("%#+v", params.StacktraceSelector))
+		req.StackTraceSelector = getStackTraceSelector(params)
 	}
 
-	return selectMergeProfile(ctx, params.phlareClient, outputFlag, req)
+	return selectMergeProfile(ctx, params.phlareClient, params.Output, req)
+}
+
+func getStackTraceSelector(params *queryMergeParams) *typesv1.StackTraceSelector {
+	locations := make([]*typesv1.Location, 0, len(params.StacktraceSelector))
+	for _, cs := range params.StacktraceSelector {
+		locations = append(locations, &typesv1.Location{
+			Name: cs,
+		})
+	}
+	stackTraceSelector := &typesv1.StackTraceSelector{
+		CallSite: locations,
+	}
+	level.Info(logger).Log("msg", "selecting with stackstrace selector", "call-site", fmt.Sprintf("%#+v", params.StacktraceSelector))
+	return stackTraceSelector
 }
 
 func selectMergeProfile(ctx context.Context, client *phlareClient, outputFlag string, req *querierv1.SelectMergeProfileRequest) error {
@@ -158,7 +175,7 @@ func addQueryGoPGOParams(queryCmd commander) *queryGoPGOParams {
 	return params
 }
 
-func queryGoPGO(ctx context.Context, params *queryGoPGOParams, outputFlag string) (err error) {
+func queryGoPGO(ctx context.Context, params *queryGoPGOParams) (err error) {
 	from, to, err := params.parseFromTo()
 	if err != nil {
 		return err
@@ -169,11 +186,11 @@ func queryGoPGO(ctx context.Context, params *queryGoPGOParams, outputFlag string
 		"from", from,
 		"to", to,
 		"type", params.ProfileType,
-		"output", outputFlag,
+		"output", params.Output,
 		"keep-locations", params.KeepLocations,
 		"aggregate-callees", params.AggregateCallees,
 	)
-	return selectMergeProfile(ctx, params.phlareClient, outputFlag,
+	return selectMergeProfile(ctx, params.phlareClient, params.Output,
 		&querierv1.SelectMergeProfileRequest{
 			ProfileTypeID: params.ProfileType,
 			Start:         from.UnixMilli(),
@@ -197,12 +214,21 @@ type querySeriesParams struct {
 func addQuerySeriesParams(queryCmd commander) *querySeriesParams {
 	params := new(querySeriesParams)
 	params.queryParams = addQueryParams(queryCmd)
+	params.queryBlocksParams = addQueryBlocksParams(queryCmd)
 	queryCmd.Flag("label-names", "Filter returned labels to the supplied label names. Without any filter all labels are returned.").StringsVar(&params.LabelNames)
 	queryCmd.Flag("api-type", "Which API type to query (querier, ingester or store-gateway).").Default("querier").StringVar(&params.APIType)
 	return params
 }
 
 func querySeries(ctx context.Context, params *querySeriesParams) (err error) {
+	if len(params.BlockIds) > 0 {
+		return queryBlocksSeries(ctx, params)
+	} else {
+		return queryPyroscopeSeries(ctx, params)
+	}
+}
+
+func queryPyroscopeSeries(ctx context.Context, params *querySeriesParams) (err error) {
 	from, to, err := params.parseFromTo()
 	if err != nil {
 		return err

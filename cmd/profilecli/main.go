@@ -65,11 +65,11 @@ func main() {
 	tsdbSeriesFiles := tsdbSeriesCmd.Arg("file", "tsdb file path").Required().ExistingFiles()
 
 	queryCmd := app.Command("query", "Query profile store.")
-	queryMergeCmd := queryCmd.Command("merge", "Request merged profile.")
-	queryMergeOutput := queryMergeCmd.Flag("output", "How to output the result, examples: console, raw, pprof=./my.pprof").Default("console").String()
+	queryMergeCmd := queryCmd.Command("merge", "Request merged profile.").Hidden()
 	queryMergeParams := addQueryMergeParams(queryMergeCmd)
+	queryProfileCmd := queryCmd.Command("profile", "Request merged profile.")
+	queryProfileParams := addQueryMergeParams(queryProfileCmd)
 	queryGoPGOCmd := queryCmd.Command("go-pgo", "Request profile for Go PGO.")
-	queryGoPGOOutput := queryGoPGOCmd.Flag("output", "How to output the result, examples: console, raw, pprof=./my.pprof").Default("pprof=./default.pgo").String()
 	queryGoPGOParams := addQueryGoPGOParams(queryGoPGOCmd)
 	querySeriesCmd := queryCmd.Command("series", "Request series labels.")
 	querySeriesParams := addQuerySeriesParams(querySeriesCmd)
@@ -78,12 +78,6 @@ func main() {
 
 	queryTracerCmd := app.Command("query-tracer", "Analyze query traces.")
 	queryTracerParams := addQueryTracerParams(queryTracerCmd)
-
-	queryBlocksCmd := app.Command("query-blocks", "Query on local/remote blocks")
-	queryBlocksSeriesCmd := queryBlocksCmd.Command("series", "Request series labels on local/remote blocks")
-	queryBlocksSeriesParams := addQueryBlocksSeriesParams(queryBlocksSeriesCmd)
-	queryBlocksMergeCmd := queryBlocksCmd.Command("merge", "Request merged profile.")
-	queryBlocksMergeParams := addQueryBlocksMergeParams(queryBlocksMergeCmd)
 
 	uploadCmd := app.Command("upload", "Upload profile(s).")
 	uploadParams := addUploadParams(uploadCmd)
@@ -125,25 +119,22 @@ func main() {
 				os.Exit(checkError(err))
 			}
 		}
+	// Deprecated. Use `profilecli query profile` instead
 	case queryMergeCmd.FullCommand():
-		if err := queryMerge(ctx, queryMergeParams, *queryMergeOutput); err != nil {
+		level.Warn(logger).Log("msg", "profilecli query merge is deprecated, use profilecli query profile instead")
+		if err := queryMerge(ctx, queryMergeParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case queryProfileCmd.FullCommand():
+		if err := queryMerge(ctx, queryProfileParams); err != nil {
 			os.Exit(checkError(err))
 		}
 	case queryGoPGOCmd.FullCommand():
-		if err := queryGoPGO(ctx, queryGoPGOParams, *queryGoPGOOutput); err != nil {
+		if err := queryGoPGO(ctx, queryGoPGOParams); err != nil {
 			os.Exit(checkError(err))
 		}
 	case querySeriesCmd.FullCommand():
 		if err := querySeries(ctx, querySeriesParams); err != nil {
-			os.Exit(checkError(err))
-		}
-
-	case queryBlocksSeriesCmd.FullCommand():
-		if err := queryBlocksSeries(ctx, queryBlocksSeriesParams); err != nil {
-			os.Exit(checkError(err))
-		}
-	case queryBlocksMergeCmd.FullCommand():
-		if err := queryBlocksMerge(ctx, queryBlocksMergeParams); err != nil {
 			os.Exit(checkError(err))
 		}
 
