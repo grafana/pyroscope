@@ -350,7 +350,7 @@ $(BIN)/mockery: Makefile go.mod
 
 $(BIN)/updater: Makefile
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) GOPRIVATE=github.com/grafana/deployment_tools $(GO) install github.com/grafana/deployment_tools/drone/plugins/cmd/updater@d64d509
+	GOBIN=$(abspath $(@D)) GOPRIVATE=github.com/grafana/deployment_tools $(GO) install github.com/grafana/deployment_tools/docker/updater/cmd/updater@bd5794b4e488
 
 # Note: When updating the goreleaser version also update .github/workflow/release.yml and .git/workflow/weekly-release.yaml
 $(BIN)/goreleaser: Makefile go.mod
