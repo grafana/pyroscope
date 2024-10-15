@@ -4,11 +4,11 @@ import (
 	"context"
 	"flag"
 	"fmt"
-
 	"net"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-kit/log"
@@ -40,8 +40,6 @@ const (
 	raftTrailingLogs      = 18 << 10
 	raftSnapshotInterval  = 180 * time.Second
 	raftSnapshotThreshold = 8 << 10
-
-	metastoreRaftLeaderHealthServiceName = "metastore.v1.MetastoreService.RaftLeader"
 )
 
 type Config struct {
@@ -50,6 +48,7 @@ type Config struct {
 	DataDir           string            `yaml:"data_dir"`
 	Raft              RaftConfig        `yaml:"raft"`
 	Compaction        CompactionConfig  `yaml:"compaction_config"`
+	MinReadyDuration  time.Duration     `yaml:"min_ready_duration" category:"advanced"`
 	DLQRecoveryPeriod time.Duration     `yaml:"dlq_recovery_period" category:"advanced"`
 	Index             index.Config      `yaml:"index_config"`
 }
@@ -72,6 +71,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.StringVar(&cfg.Address, prefix+"address", "localhost:9095", "")
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix(prefix+"grpc-client-config", f)
 	f.StringVar(&cfg.DataDir, prefix+"data-dir", "./data-metastore/data", "")
+	f.DurationVar(&cfg.MinReadyDuration, prefix+"min-ready-duration", 15*time.Second, "Minimum duration to wait after the internal readiness checks have passed but before succeeding the readiness endpoint. This is used to slowdown deployment controllers (eg. Kubernetes) after an instance is ready and before they proceed with a rolling update, to give the rest of the cluster instances enough time to receive some (DNS?) updates.")
 	f.DurationVar(&cfg.DLQRecoveryPeriod, prefix+"dlq-recovery-period", 15*time.Second, "Period for DLQ recovery loop.")
 	cfg.Raft.RegisterFlagsWithPrefix(prefix+"raft.", f)
 	cfg.Compaction.RegisterFlagsWithPrefix(prefix+"compaction.", f)
@@ -133,8 +133,10 @@ type Metastore struct {
 
 	walDir string
 
-	metrics    *metastoreMetrics
-	client     *metastoreclient.Client
+	metrics *metastoreMetrics
+	client  *metastoreclient.Client
+
+	readyOnce  sync.Once
 	readySince time.Time
 
 	dnsProvider *dns.Provider
@@ -172,7 +174,7 @@ func (m *Metastore) Shutdown() error {
 	return nil
 }
 
-func (m *Metastore) starting(ctx context.Context) error {
+func (m *Metastore) starting(context.Context) error {
 	if err := m.db.open(false); err != nil {
 		return fmt.Errorf("failed to initialize database: %w", err)
 	}

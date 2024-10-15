@@ -21,7 +21,7 @@ func (m *Metastore) QueryMetadata(
 	request *metastorev1.QueryMetadataRequest,
 ) (*metastorev1.QueryMetadataResponse, error) {
 	if err := m.waitLeaderCommitIndexAppliedLocally(ctx); err != nil {
-		level.Error(m.logger).Log("msg", "failed to wait for leader commit index", "err", err, "method", "QueryMetadata")
+		level.Error(m.logger).Log("msg", "failed to wait for leader commit index", "err", err)
 		return nil, err
 	}
 	return m.state.listBlocksForQuery(ctx, request)

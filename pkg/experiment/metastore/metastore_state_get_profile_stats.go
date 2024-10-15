@@ -17,7 +17,7 @@ func (m *Metastore) GetProfileStats(
 	r *metastorev1.GetProfileStatsRequest,
 ) (*typesv1.GetProfileStatsResponse, error) {
 	if err := m.waitLeaderCommitIndexAppliedLocally(ctx); err != nil {
-		level.Error(m.logger).Log("msg", "failed to wait for leader commit index", "err", err, "method", "GetProfileStats")
+		level.Error(m.logger).Log("msg", "failed to wait for leader commit index", "err", err)
 		return nil, err
 	}
 	return m.state.getProfileStats(r.TenantId, ctx)

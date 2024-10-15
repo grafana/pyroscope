@@ -2,15 +2,14 @@ package metastore
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 )
 
-const tCheckFreq = 10 * time.Millisecond
-
 // ReadIndex returns the current commit index and verifies leadership.
-func (m *Metastore) ReadIndex(_ context.Context, req *metastorev1.ReadIndexRequest) (*metastorev1.ReadIndexResponse, error) {
+func (m *Metastore) ReadIndex(context.Context, *metastorev1.ReadIndexRequest) (*metastorev1.ReadIndexResponse, error) {
 	commitIndex := m.raft.CommitIndex()
 	if err := m.raft.VerifyLeader().Error(); err != nil {
 		return nil, wrapRetryableErrorWithRaftDetails(err, m.raft)
@@ -27,16 +26,18 @@ func (m *Metastore) waitLeaderCommitIndexAppliedLocally(ctx context.Context) err
 	if err != nil {
 		return err
 	}
+	if m.raft.AppliedIndex() >= r.ReadIndex {
+		return nil
+	}
 
-	t := time.NewTicker(tCheckFreq)
+	t := time.NewTicker(10 * time.Millisecond)
 	defer t.Stop()
 
 	// Wait for the read index to be applied
 	for {
 		select {
 		case <-t.C:
-			appliedIndex := m.raft.AppliedIndex()
-			if appliedIndex >= r.ReadIndex {
+			if m.raft.AppliedIndex() >= r.ReadIndex {
 				return nil
 			}
 		case <-ctx.Done():
@@ -45,8 +46,17 @@ func (m *Metastore) waitLeaderCommitIndexAppliedLocally(ctx context.Context) err
 	}
 }
 
-// CheckReady verifies if the metastore is ready to serve requests by ensuring
-// the node is up-to-date with the leader's commit index.
+// CheckReady verifies if the metastore is ready to serve requests by
+// ensuring the node is up-to-date with the leader's commit index.
 func (m *Metastore) CheckReady(ctx context.Context) error {
-	return m.waitLeaderCommitIndexAppliedLocally(ctx)
+	if err := m.waitLeaderCommitIndexAppliedLocally(ctx); err != nil {
+		return err
+	}
+	m.readyOnce.Do(func() {
+		m.readySince = time.Now()
+	})
+	if w := m.config.MinReadyDuration - time.Since(m.readySince); w > 0 {
+		return fmt.Errorf("%v before reporting readiness", w)
+	}
+	return nil
 }

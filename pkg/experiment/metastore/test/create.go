@@ -46,6 +46,7 @@ func NewMetastoreSet(t *testing.T, cfg *metastore.Config, n int, bucket objstore
 		bootstrapPeers[i] = fmt.Sprintf("%s/%s", raftAddresses[i], raftIds[i])
 
 		icfg := *cfg
+		icfg.MinReadyDuration = 0
 		icfg.Address = grpcAddresses[i]
 		icfg.DataDir = t.TempDir()
 		icfg.Raft.ServerID = raftIds[i]
