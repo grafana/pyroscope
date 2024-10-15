@@ -4,11 +4,11 @@ import (
 	"context"
 	"flag"
 	"fmt"
-
 	"net"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-kit/log"
@@ -40,8 +40,6 @@ const (
 	raftTrailingLogs      = 18 << 10
 	raftSnapshotInterval  = 180 * time.Second
 	raftSnapshotThreshold = 8 << 10
-
-	metastoreRaftLeaderHealthServiceName = "metastore.v1.MetastoreService.RaftLeader"
 )
 
 type Config struct {
@@ -135,8 +133,10 @@ type Metastore struct {
 
 	walDir string
 
-	metrics    *metastoreMetrics
-	client     *metastoreclient.Client
+	metrics *metastoreMetrics
+	client  *metastoreclient.Client
+
+	readyOnce  sync.Once
 	readySince time.Time
 
 	dnsProvider *dns.Provider
@@ -174,7 +174,7 @@ func (m *Metastore) Shutdown() error {
 	return nil
 }
 
-func (m *Metastore) starting(ctx context.Context) error {
+func (m *Metastore) starting(context.Context) error {
 	if err := m.db.open(false); err != nil {
 		return fmt.Errorf("failed to initialize database: %w", err)
 	}
