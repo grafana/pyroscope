@@ -4,8 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"go.uber.org/automaxprocs/maxprocs"
-	log2 "log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -68,11 +66,6 @@ func (cfg *Config) Validate() error {
 }
 
 func New(config Config, logger log.Logger, metastoreClient *metastoreclient.Client, storage objstore.Bucket, reg prometheus.Registerer) (*Worker, error) {
-	undo, err := maxprocs.Set(maxprocs.Logger(log2.Printf))
-	if err != nil {
-		_ = level.Error(logger).Log("msg", "failed to set maxprocs", "err", err)
-		undo()
-	}
 	workers := runtime.GOMAXPROCS(-1) * config.JobConcurrency
 	w := &Worker{
 		config:          config,
