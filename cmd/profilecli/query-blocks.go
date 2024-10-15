@@ -27,7 +27,7 @@ type blocksQueryParams struct {
 	Query           string
 }
 
-type blocksQueryMergeParams struct {
+type blocksQueryProfileParams struct {
 	*blocksQueryParams
 	Output             string
 	ProfileType        string
@@ -49,8 +49,8 @@ func addBlocksQueryParams(queryCmd commander) *blocksQueryParams {
 	return params
 }
 
-func addBlocksQueryMergeParams(queryCmd commander) *blocksQueryMergeParams {
-	params := new(blocksQueryMergeParams)
+func addBlocksQueryProfileParams(queryCmd commander) *blocksQueryProfileParams {
+	params := new(blocksQueryProfileParams)
 	params.blocksQueryParams = addBlocksQueryParams(queryCmd)
 	queryCmd.Flag("output", "How to output the result, examples: console, raw, pprof=./my.pprof").Default("console").StringVar(&params.Output)
 	queryCmd.Flag("profile-type", "Profile type to query.").Default("process_cpu:cpu:nanoseconds:cpu:nanoseconds").StringVar(&params.ProfileType)
@@ -65,12 +65,12 @@ func addBlocksQuerySeriesParams(queryCmd commander) *blocksQuerySeriesParams {
 	return params
 }
 
-func blocksQueryMerge(ctx context.Context, params *blocksQueryMergeParams) error {
-	level.Info(logger).Log("msg", "blocks query merge", "blockIds", fmt.Sprintf("%v", params.BlockIds), "path",
+func blocksQueryProfile(ctx context.Context, params *blocksQueryProfileParams) error {
+	level.Info(logger).Log("msg", "blocks query profile", "blockIds", fmt.Sprintf("%v", params.BlockIds), "path",
 		cfg.blocks.path, "bucketName", params.BucketName, "tenantId", params.TenantID, "query", params.Query, "type", params.ProfileType)
 
 	if len(params.BlockIds) > 1 {
-		return errors.New("query merge is limited to a single block")
+		return errors.New("query profile is limited to a single block")
 	}
 
 	profileType, err := model.ParseProfileTypeSelector(params.ProfileType)

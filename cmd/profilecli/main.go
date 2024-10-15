@@ -59,8 +59,8 @@ func main() {
 	blocksQueryCmd := blocksCmd.Command("query", "Query on local/remote blocks.")
 	blocksQuerySeriesCmd := blocksQueryCmd.Command("series", "Request series labels on local/remote blocks.")
 	blocksQuerySeriesParams := addBlocksQuerySeriesParams(blocksQuerySeriesCmd)
-	blocksQueryMergeCmd := blocksQueryCmd.Command("merge", "Request merged profile on local/remote block.")
-	blocksQueryMergeParams := addBlocksQueryMergeParams(blocksQueryMergeCmd)
+	blocksQueryProfileCmd := blocksQueryCmd.Command("profile", "Request merged profile on local/remote block.").Alias("merge")
+	blocksQueryProfileParams := addBlocksQueryProfileParams(blocksQueryProfileCmd)
 
 	parquetCmd := adminCmd.Command("parquet", "Operate on a Parquet file.")
 	parquetInspectCmd := parquetCmd.Command("inspect", "Inspect a parquet file's structure.")
@@ -71,9 +71,9 @@ func main() {
 	tsdbSeriesFiles := tsdbSeriesCmd.Arg("file", "tsdb file path").Required().ExistingFiles()
 
 	queryCmd := app.Command("query", "Query profile store.")
-	queryMergeCmd := queryCmd.Command("merge", "Request merged profile.")
-	queryMergeOutput := queryMergeCmd.Flag("output", "How to output the result, examples: console, raw, pprof=./my.pprof").Default("console").String()
-	queryMergeParams := addQueryMergeParams(queryMergeCmd)
+	queryProfileCmd := queryCmd.Command("profile", "Request merged profile.").Alias("merge")
+	queryProfileOutput := queryProfileCmd.Flag("output", "How to output the result, examples: console, raw, pprof=./my.pprof").Default("console").String()
+	queryProfileParams := addQueryProfileParams(queryProfileCmd)
 	queryGoPGOCmd := queryCmd.Command("go-pgo", "Request profile for Go PGO.")
 	queryGoPGOOutput := queryGoPGOCmd.Flag("output", "How to output the result, examples: console, raw, pprof=./my.pprof").Default("pprof=./default.pgo").String()
 	queryGoPGOParams := addQueryGoPGOParams(queryGoPGOCmd)
@@ -125,8 +125,8 @@ func main() {
 				os.Exit(checkError(err))
 			}
 		}
-	case queryMergeCmd.FullCommand():
-		if err := queryMerge(ctx, queryMergeParams, *queryMergeOutput); err != nil {
+	case queryProfileCmd.FullCommand():
+		if err := queryProfile(ctx, queryProfileParams, *queryProfileOutput); err != nil {
 			os.Exit(checkError(err))
 		}
 	case queryGoPGOCmd.FullCommand():
@@ -142,8 +142,8 @@ func main() {
 		if err := blocksQuerySeries(ctx, blocksQuerySeriesParams); err != nil {
 			os.Exit(checkError(err))
 		}
-	case blocksQueryMergeCmd.FullCommand():
-		if err := blocksQueryMerge(ctx, blocksQueryMergeParams); err != nil {
+	case blocksQueryProfileCmd.FullCommand():
+		if err := blocksQueryProfile(ctx, blocksQueryProfileParams); err != nil {
 			os.Exit(checkError(err))
 		}
 
