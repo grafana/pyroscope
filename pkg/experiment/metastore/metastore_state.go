@@ -11,6 +11,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"go.etcd.io/bbolt"
 
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/blockcleaner"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compactionpb"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
 )
@@ -30,7 +31,8 @@ type metastoreState struct {
 	compactionConfig  *CompactionConfig
 	indexConfig       *index.Config
 
-	index *index.Index
+	index        *index.Index
+	blockCleaner blockcleaner.Cleaner
 
 	compactionMutex          sync.Mutex
 	compactionJobBlockQueues map[tenantShard]*compactionJobBlockQueue
@@ -44,7 +46,14 @@ type compactionJobBlockQueue struct {
 	blocksByLevel map[uint32][]string
 }
 
-func newMetastoreState(logger log.Logger, db *boltdb, reg prometheus.Registerer, compactionCfg *CompactionConfig, indexCfg *index.Config) *metastoreState {
+func newMetastoreState(
+	logger log.Logger,
+	db *boltdb,
+	reg prometheus.Registerer,
+	compactionCfg *CompactionConfig,
+	indexCfg *index.Config,
+	blockCleaner blockcleaner.Cleaner,
+) *metastoreState {
 	return &metastoreState{
 		logger:                   logger,
 		index:                    index.NewIndex(newIndexStore(db, logger), logger, indexCfg),
@@ -54,6 +63,7 @@ func newMetastoreState(logger log.Logger, db *boltdb, reg prometheus.Registerer,
 		compactionMetrics:        newCompactionMetrics(reg),
 		compactionConfig:         compactionCfg,
 		indexConfig:              indexCfg,
+		blockCleaner:             blockCleaner,
 	}
 }
 
