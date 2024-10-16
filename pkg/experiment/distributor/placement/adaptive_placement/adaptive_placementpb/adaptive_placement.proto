@@ -29,7 +29,11 @@ message DatasetStats {
 }
 
 message ShardStats {
+  // Shard ID.
   uint32 id = 1;
+  // Owner represents the node that hosted the shard.
+  // There may be multiple entries for a single shard
+  // if it was relocated across different nodes.
   string owner = 2;
 }
 

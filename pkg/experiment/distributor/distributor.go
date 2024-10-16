@@ -206,8 +206,7 @@ type subring struct {
 func newSubring(n int) subring { return subring{n: n, b: n, d: n} }
 
 // The function creates a subring of the specified size for the given key.
-// The subring offset is calculated with the jump function and is limited
-// to m options (sequentially, from the ring beginning).
+// The subring offset is calculated with the jump function.
 func (s subring) subring(k uint64, size int) subring {
 	n := s
 	n.a, n.b = n.c, n.d
