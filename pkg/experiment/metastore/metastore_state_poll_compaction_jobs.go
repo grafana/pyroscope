@@ -192,18 +192,18 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 		}
 	}
 
+	err = m.writeToDb(stateUpdate, raftAppendedAtNanos)
+	if err != nil {
+		panic(fatalCommandError{fmt.Errorf("error persisting metadata state to db, %w", err)})
+	}
+
 	for key, blocks := range stateUpdate.deletedBlocks {
 		for _, block := range blocks {
 			err = m.blockCleaner.AddBlock(key.shard, key.tenant, block, raftAppendedAtNanos/1000)
 			if err != nil {
-				return err
+				panic(fatalCommandError{fmt.Errorf("error persisting block removals, %w", err)})
 			}
 		}
-	}
-
-	err = m.writeToDb(stateUpdate, raftAppendedAtNanos)
-	if err != nil {
-		panic(fatalCommandError{fmt.Errorf("error persisting metadata state to db, %w", err)})
 	}
 
 	return resp, nil
