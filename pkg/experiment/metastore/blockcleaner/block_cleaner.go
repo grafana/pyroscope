@@ -184,6 +184,7 @@ func (c *blockCleaner) cleanShard(ctx context.Context, shard uint32, now int64) 
 		level.Warn(c.logger).Log("msg", "failed to list removed blocks for shard", "err", err, "shard", shard)
 		return err
 	}
+	level.Info(c.logger).Log("msg", "cleaning removed blocks in shard", "shard", shard, "blocks", len(blocks))
 	for blockId, removalContext := range blocks {
 		if removalContext.expiryTs < now {
 			var key string
