@@ -114,7 +114,7 @@ func (c *blockCleaner) IsRemoved(blockId string) bool {
 func (c *blockCleaner) Start() {
 	ctx, cancel := context.WithCancel(context.Background())
 	c.cancel = cancel
-	_ := c.db().Update(func(tx *bbolt.Tx) error {
+	_ = c.db().Update(func(tx *bbolt.Tx) error {
 		_, err := tx.CreateBucketIfNotExists(removedBlocksBucketNameBytes)
 		return err
 	})
