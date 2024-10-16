@@ -82,7 +82,7 @@ func (c *blockCleaner) AddBlock(shard uint32, tenant string, blockId string, del
 		return nil
 	}
 	err := c.db().Update(func(tx *bbolt.Tx) error {
-		bkt, err := getPendingBlockRemovalsBucket(tx)
+		bkt, err := tx.CreateBucketIfNotExists(removedBlocksBucketNameBytes)
 		if err != nil {
 			return err
 		}
@@ -114,6 +114,10 @@ func (c *blockCleaner) IsRemoved(blockId string) bool {
 func (c *blockCleaner) Start() {
 	ctx, cancel := context.WithCancel(context.Background())
 	c.cancel = cancel
+	_ := c.db().Update(func(tx *bbolt.Tx) error {
+		_, err := tx.CreateBucketIfNotExists(removedBlocksBucketNameBytes)
+		return err
+	})
 	go c.loop(ctx)
 }
 
