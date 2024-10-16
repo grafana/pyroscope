@@ -16,7 +16,11 @@ type LeaderObserver struct {
 	c        chan raft.Observation
 	stop     chan struct{}
 	done     chan struct{}
-	cb       func(st raft.RaftState)
+	listeners       []LeaderListener
+}
+
+type LeaderListener interface {
+	OnLeaderChange(state raft.RaftState)
 }
 
 type metrics struct {
@@ -43,15 +47,16 @@ func NewRaftLeaderHealthObserver(logger log.Logger, reg prometheus.Registerer) *
 		c:       make(chan raft.Observation, 1),
 		stop:    make(chan struct{}),
 		done:    make(chan struct{}),
+		listeners: make([]LeaderListener, 0),
 	}
 }
 
-func (o *LeaderObserver) Register(r *raft.Raft, cb func(st raft.RaftState)) {
+func (o *LeaderObserver) Register(r *raft.Raft, listener LeaderListener) {
 	if o.raft != nil {
 		return
 	}
 	o.raft = r
-	o.cb = cb
+	o.listeners = append(o.listeners, listener)
 	_ = level.Debug(o.logger).Log("msg", "registering leader observer")
 	o.updateStatus()
 	go o.run()
