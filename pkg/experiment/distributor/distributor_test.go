@@ -141,8 +141,13 @@ func Test_Distributor_Distribute(t *testing.T) {
 
 	d := NewDistributor(m, r)
 	collect := func(offset, n int) []string {
-		k := NewTenantServiceDatasetKey("tenant-a")
-		m.On("Policy", mock.Anything, mock.Anything).Return(placement.Policy{
+		h := uint64(14046587775414411003)
+		k := placement.Key{
+			Tenant:      h,
+			Dataset:     h,
+			Fingerprint: h,
+		}
+		m.On("Policy", k).Return(placement.Policy{
 			TenantShards:  8,
 			DatasetShards: 4,
 			PickShard:     func(int) int { return offset },

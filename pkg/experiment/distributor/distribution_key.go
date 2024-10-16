@@ -1,30 +1,24 @@
 package distributor
 
 import (
-	"hash/fnv"
+	"github.com/cespare/xxhash/v2"
 
-	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 )
 
-// NewTenantServiceDatasetKey build a distribution key, where
-func NewTenantServiceDatasetKey(tenant string, labels ...*v1.LabelPair) placement.Key {
+// NewTenantServiceDatasetKey builds a distribution key, where the dataset
+// is the service name, and the fingerprint is the hash of the labels.
+// The resulting key references the tenant and dataset strings.
+func NewTenantServiceDatasetKey(tenant string, labels ...*typesv1.LabelPair) placement.Key {
 	dataset := phlaremodel.Labels(labels).Get(phlaremodel.LabelNameServiceName)
 	return placement.Key{
 		TenantID:    tenant,
 		DatasetName: dataset,
 
-		Tenant:      fnv64(tenant),
-		Dataset:     fnv64(tenant, dataset),
-		Fingerprint: fnv64(phlaremodel.LabelPairsString(labels)),
+		Tenant:      xxhash.Sum64String(tenant),
+		Dataset:     xxhash.Sum64String(dataset),
+		Fingerprint: phlaremodel.Labels(labels).Hash(),
 	}
-}
-
-func fnv64(keys ...string) uint64 {
-	h := fnv.New64a()
-	for _, k := range keys {
-		_, _ = h.Write([]byte(k))
-	}
-	return h.Sum64()
 }
