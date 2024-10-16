@@ -59,7 +59,6 @@ func main() {
 	blocksQueryCmd := blocksCmd.Command("query", "Query on local/remote blocks.")
 	blocksQuerySeriesCmd := blocksQueryCmd.Command("series", "Request series labels on local/remote blocks.")
 	blocksQuerySeriesParams := addBlocksQuerySeriesParams(blocksQuerySeriesCmd)
-
 	blocksQueryProfileCmd := blocksQueryCmd.Command("profile", "Request merged profile on local/remote block.").Alias("merge")
 	blocksQueryProfileParams := addBlocksQueryProfileParams(blocksQueryProfileCmd)
 

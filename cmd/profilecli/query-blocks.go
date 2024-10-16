@@ -49,7 +49,6 @@ func addBlocksQueryParams(queryCmd commander) *blocksQueryParams {
 	return params
 }
 
-
 func addBlocksQueryProfileParams(queryCmd commander) *blocksQueryProfileParams {
 	params := new(blocksQueryProfileParams)
 	params.blocksQueryParams = addBlocksQueryParams(queryCmd)
@@ -65,7 +64,6 @@ func addBlocksQuerySeriesParams(queryCmd commander) *blocksQuerySeriesParams {
 	queryCmd.Flag("label-names", "Filter returned labels to the supplied label names. Without any filter all labels are returned.").StringsVar(&params.LabelNames)
 	return params
 }
-
 
 func blocksQueryProfile(ctx context.Context, params *blocksQueryProfileParams) error {
 	level.Info(logger).Log("msg", "blocks query profile", "blockIds", fmt.Sprintf("%v", params.BlockIds), "path",
