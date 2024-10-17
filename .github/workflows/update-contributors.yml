@@ -2,7 +2,7 @@ name: Update Contributors in README
 
 on:
   schedule:
-    - cron: '0 0 1 * *'
+    - cron: '0 0 1-7 * SUN'
 
 jobs:
   update-contributors:
