@@ -35,7 +35,7 @@ type Config struct {
 }
 
 func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
-	_ = cfg.CompactedBlocksCleanupDelay.Set("30m")
+	_ = cfg.CompactedBlocksCleanupDelay.Set("1m")
 	f.Var(&cfg.CompactedBlocksCleanupDelay, prefix+"compacted-blocks-cleanup-delay", "")
 }
 
@@ -48,9 +48,10 @@ type CleanerLifecycler interface {
 }
 
 type Cleaner interface {
-	AddBlock(shard uint32, tenant string, blockId string, deletedTs int64) error
-	IsRemoved(blockId string) bool
-	DoCleanup(now int64) error
+	MarkBlock(shard uint32, tenant string, blockId string, deletedTs int64) error
+	IsMarked(blockId string) bool
+
+	RemoveExpiredBlocks(now int64) error
 }
 
 type RaftLog[Req, Resp proto.Message] interface {
@@ -69,7 +70,10 @@ type blockCleaner struct {
 	logger  log.Logger
 	cfg     *Config
 
-	cancel   context.CancelFunc
+	started  bool
+	mu       sync.Mutex
+	wg       sync.WaitGroup
+	cancel   func()
 	isLeader bool
 }
 
@@ -93,8 +97,8 @@ type blockRemovalContext struct {
 	expiryTs int64
 }
 
-func (c *blockCleaner) AddBlock(shard uint32, tenant string, blockId string, deletedTs int64) error {
-	if c.IsRemoved(blockId) {
+func (c *blockCleaner) MarkBlock(shard uint32, tenant string, blockId string, deletedTs int64) error {
+	if c.IsMarked(blockId) {
 		return nil
 	}
 	err := c.db().Update(func(tx *bbolt.Tx) error {
@@ -120,7 +124,7 @@ func (c *blockCleaner) AddBlock(shard uint32, tenant string, blockId string, del
 	return nil
 }
 
-func (c *blockCleaner) IsRemoved(blockId string) bool {
+func (c *blockCleaner) IsMarked(blockId string) bool {
 	c.blocksMu.Lock()
 	defer c.blocksMu.Unlock()
 	_, ok := c.blocks[blockId]
@@ -128,19 +132,30 @@ func (c *blockCleaner) IsRemoved(blockId string) bool {
 }
 
 func (c *blockCleaner) Start() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.started {
+		level.Info(c.logger).Log("msg", "blockc cleaner already started")
+		return
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	c.cancel = cancel
-	_ = c.db().Update(func(tx *bbolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists(removedBlocksBucketNameBytes)
-		return err
-	})
+	c.started = true
 	go c.loop(ctx)
+	level.Info(c.logger).Log("msg", "block cleaner started")
 }
 
 func (c *blockCleaner) Stop() {
-	if c.cancel != nil {
-		c.cancel()
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if !c.started {
+		level.Warn(c.logger).Log("msg", "block cleaner already stopped")
+		return
 	}
+	c.cancel()
+	c.started = false
+	c.wg.Wait()
+	level.Info(c.logger).Log("msg", "block cleaner stopped")
 }
 
 func (c *blockCleaner) loop(ctx context.Context) {
@@ -163,7 +178,7 @@ func (c *blockCleaner) loop(ctx context.Context) {
 	}
 }
 
-func (c *blockCleaner) DoCleanup(now int64) error {
+func (c *blockCleaner) RemoveExpiredBlocks(now int64) error {
 	shards, err := c.listShards()
 	if err != nil {
 		panic(fmt.Errorf("failed to list shards for pending block removals: %w", err))
@@ -171,6 +186,8 @@ func (c *blockCleaner) DoCleanup(now int64) error {
 	g, ctx := errgroup.WithContext(context.Background())
 	for _, shard := range shards {
 		g.Go(func() error {
+			c.wg.Add(1)
+			defer c.wg.Done()
 			return c.cleanShard(ctx, shard, now)
 		})
 	}

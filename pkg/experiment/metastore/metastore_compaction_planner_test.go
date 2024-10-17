@@ -67,8 +67,8 @@ func initState(tb testing.TB) *metastoreState {
 	err := db.open(false)
 	require.NoError(tb, err)
 	blockCleaner := mockblockcleaner.NewMockCleaner(tb)
-	blockCleaner.On("IsRemoved", mock.Anything).Return(false).Maybe()
-	blockCleaner.On("AddBlock", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+	blockCleaner.On("IsMarked", mock.Anything).Return(false).Maybe()
+	blockCleaner.On("MarkBlock", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 
 	m := newMetastoreState(util.Logger, db, reg, &config.Compaction, &index.DefaultConfig, blockCleaner)
 	require.NotNil(tb, m)

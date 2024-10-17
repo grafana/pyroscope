@@ -20,33 +20,34 @@ import (
 
 func Test_AddAndCheck(t *testing.T) {
 	db := createDb(t)
-	cleaner := newBlockCleaner(func() *bbolt.DB {
+	cleaner := newBlockCleaner(nil, func() *bbolt.DB {
 		return db
 	}, util.Logger, &Config{CompactedBlocksCleanupDelay: model.Duration(time.Second * 2)}, memory.NewInMemBucket())
 
 	blockId := ulid.MustNew(ulid.Now(), rand.Reader).String()
-	err := cleaner.AddBlock(0, "tenant", blockId, 1000)
+	err := cleaner.MarkBlock(0, "tenant", blockId, 1000)
 	require.NoError(t, err)
 
-	require.True(t, cleaner.IsRemoved(blockId))
+	require.True(t, cleaner.IsMarked(blockId))
 }
 
 func Test_AddAndRemove(t *testing.T) {
 	db := createDb(t)
-	cleaner := newBlockCleaner(func() *bbolt.DB {
+	cleaner := newBlockCleaner(nil, func() *bbolt.DB {
 		return db
 	}, util.Logger, &Config{CompactedBlocksCleanupDelay: model.Duration(time.Second * 2)}, memory.NewInMemBucket())
 	cleaner.isLeader = true
 
 	blockId := ulid.MustNew(ulid.Now(), rand.Reader).String()
-	err := cleaner.AddBlock(0, "tenant", blockId, 1000)
+	err := cleaner.MarkBlock(0, "tenant", blockId, 1000)
 	require.NoError(t, err)
-	err = cleaner.bkt.Upload(context.Background(), fmt.Sprintf("blocks/0/tenant/%s", blockId), bytes.NewReader([]byte{1, 2, 3}))
+	err = cleaner.bkt.Upload(context.Background(), fmt.Sprintf("blocks/0/tenant/%s/block.bin", blockId), bytes.NewReader([]byte{1, 2, 3}))
 	require.NoError(t, err)
 
-	cleaner.doCleanup(5000)
-	require.False(t, cleaner.IsRemoved(blockId))
-	inBucket, err := cleaner.bkt.Exists(context.Background(), fmt.Sprintf("blocks/0/tenant/%s", blockId))
+	err = cleaner.RemoveExpiredBlocks(5000)
+	require.NoError(t, err)
+	require.False(t, cleaner.IsMarked(blockId))
+	inBucket, err := cleaner.bkt.Exists(context.Background(), fmt.Sprintf("blocks/0/tenant/%s/block.bin", blockId))
 	require.NoError(t, err)
 	require.False(t, inBucket)
 }
