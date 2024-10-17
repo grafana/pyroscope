@@ -196,8 +196,6 @@ func (m *Metastore) starting(context.Context) error {
 		return fmt.Errorf("failed to initialize raft: %w", err)
 	}
 	m.leaderhealth.AddListener(m)
-	m.leaderhealth.AddListener(m.blockCleaner)
-	m.blockCleaner.Start()
 	return nil
 }
 
@@ -265,9 +263,11 @@ func (m *Metastore) OnLeaderChange(state raft.RaftState) {
 	if state == raft.Leader {
 		m.dlq.Start()
 		m.placementMgr.Start()
+		m.blockCleaner.Start()
 	} else {
 		m.dlq.Stop()
 		m.placementMgr.Stop()
+		m.blockCleaner.Stop()
 	}
 }
 

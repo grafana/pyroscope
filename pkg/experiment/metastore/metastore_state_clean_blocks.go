@@ -13,5 +13,5 @@ func (m *Metastore) ApplyCommand(req *raftlogpb.CleanBlocksRequest) (resp *anypb
 }
 
 func (m *metastoreState) applyCleanBlocks(log *raft.Log, request *raftlogpb.CleanBlocksRequest) (*anypb.Any, error) {
-	return nil, m.blockCleaner.DoCleanup(log.AppendedAt.UnixMilli())
+	return nil, m.blockCleaner.RemoveExpiredBlocks(log.AppendedAt.UnixMilli())
 }

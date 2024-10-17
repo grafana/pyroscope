@@ -17,61 +17,12 @@ func (_m *MockCleaner) EXPECT() *MockCleaner_Expecter {
 	return &MockCleaner_Expecter{mock: &_m.Mock}
 }
 
-// AddBlock provides a mock function with given fields: shard, tenant, blockId, deletedTs
-func (_m *MockCleaner) AddBlock(shard uint32, tenant string, blockId string, deletedTs int64) error {
-	ret := _m.Called(shard, tenant, blockId, deletedTs)
-
-	if len(ret) == 0 {
-		panic("no return value specified for AddBlock")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(uint32, string, string, int64) error); ok {
-		r0 = rf(shard, tenant, blockId, deletedTs)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockCleaner_AddBlock_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddBlock'
-type MockCleaner_AddBlock_Call struct {
-	*mock.Call
-}
-
-// AddBlock is a helper method to define mock.On call
-//   - shard uint32
-//   - tenant string
-//   - blockId string
-//   - deletedTs int64
-func (_e *MockCleaner_Expecter) AddBlock(shard interface{}, tenant interface{}, blockId interface{}, deletedTs interface{}) *MockCleaner_AddBlock_Call {
-	return &MockCleaner_AddBlock_Call{Call: _e.mock.On("AddBlock", shard, tenant, blockId, deletedTs)}
-}
-
-func (_c *MockCleaner_AddBlock_Call) Run(run func(shard uint32, tenant string, blockId string, deletedTs int64)) *MockCleaner_AddBlock_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(uint32), args[1].(string), args[2].(string), args[3].(int64))
-	})
-	return _c
-}
-
-func (_c *MockCleaner_AddBlock_Call) Return(_a0 error) *MockCleaner_AddBlock_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockCleaner_AddBlock_Call) RunAndReturn(run func(uint32, string, string, int64) error) *MockCleaner_AddBlock_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// IsRemoved provides a mock function with given fields: blockId
-func (_m *MockCleaner) IsRemoved(blockId string) bool {
+// IsMarked provides a mock function with given fields: blockId
+func (_m *MockCleaner) IsMarked(blockId string) bool {
 	ret := _m.Called(blockId)
 
 	if len(ret) == 0 {
-		panic("no return value specified for IsRemoved")
+		panic("no return value specified for IsMarked")
 	}
 
 	var r0 bool
@@ -84,30 +35,125 @@ func (_m *MockCleaner) IsRemoved(blockId string) bool {
 	return r0
 }
 
-// MockCleaner_IsRemoved_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsRemoved'
-type MockCleaner_IsRemoved_Call struct {
+// MockCleaner_IsMarked_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsMarked'
+type MockCleaner_IsMarked_Call struct {
 	*mock.Call
 }
 
-// IsRemoved is a helper method to define mock.On call
+// IsMarked is a helper method to define mock.On call
 //   - blockId string
-func (_e *MockCleaner_Expecter) IsRemoved(blockId interface{}) *MockCleaner_IsRemoved_Call {
-	return &MockCleaner_IsRemoved_Call{Call: _e.mock.On("IsRemoved", blockId)}
+func (_e *MockCleaner_Expecter) IsMarked(blockId interface{}) *MockCleaner_IsMarked_Call {
+	return &MockCleaner_IsMarked_Call{Call: _e.mock.On("IsMarked", blockId)}
 }
 
-func (_c *MockCleaner_IsRemoved_Call) Run(run func(blockId string)) *MockCleaner_IsRemoved_Call {
+func (_c *MockCleaner_IsMarked_Call) Run(run func(blockId string)) *MockCleaner_IsMarked_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(string))
 	})
 	return _c
 }
 
-func (_c *MockCleaner_IsRemoved_Call) Return(_a0 bool) *MockCleaner_IsRemoved_Call {
+func (_c *MockCleaner_IsMarked_Call) Return(_a0 bool) *MockCleaner_IsMarked_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockCleaner_IsRemoved_Call) RunAndReturn(run func(string) bool) *MockCleaner_IsRemoved_Call {
+func (_c *MockCleaner_IsMarked_Call) RunAndReturn(run func(string) bool) *MockCleaner_IsMarked_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// MarkBlock provides a mock function with given fields: shard, tenant, blockId, deletedTs
+func (_m *MockCleaner) MarkBlock(shard uint32, tenant string, blockId string, deletedTs int64) error {
+	ret := _m.Called(shard, tenant, blockId, deletedTs)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MarkBlock")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(uint32, string, string, int64) error); ok {
+		r0 = rf(shard, tenant, blockId, deletedTs)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockCleaner_MarkBlock_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MarkBlock'
+type MockCleaner_MarkBlock_Call struct {
+	*mock.Call
+}
+
+// MarkBlock is a helper method to define mock.On call
+//   - shard uint32
+//   - tenant string
+//   - blockId string
+//   - deletedTs int64
+func (_e *MockCleaner_Expecter) MarkBlock(shard interface{}, tenant interface{}, blockId interface{}, deletedTs interface{}) *MockCleaner_MarkBlock_Call {
+	return &MockCleaner_MarkBlock_Call{Call: _e.mock.On("MarkBlock", shard, tenant, blockId, deletedTs)}
+}
+
+func (_c *MockCleaner_MarkBlock_Call) Run(run func(shard uint32, tenant string, blockId string, deletedTs int64)) *MockCleaner_MarkBlock_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(uint32), args[1].(string), args[2].(string), args[3].(int64))
+	})
+	return _c
+}
+
+func (_c *MockCleaner_MarkBlock_Call) Return(_a0 error) *MockCleaner_MarkBlock_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockCleaner_MarkBlock_Call) RunAndReturn(run func(uint32, string, string, int64) error) *MockCleaner_MarkBlock_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// RemoveExpiredBlocks provides a mock function with given fields: now
+func (_m *MockCleaner) RemoveExpiredBlocks(now int64) error {
+	ret := _m.Called(now)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RemoveExpiredBlocks")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(int64) error); ok {
+		r0 = rf(now)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockCleaner_RemoveExpiredBlocks_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RemoveExpiredBlocks'
+type MockCleaner_RemoveExpiredBlocks_Call struct {
+	*mock.Call
+}
+
+// RemoveExpiredBlocks is a helper method to define mock.On call
+//   - now int64
+func (_e *MockCleaner_Expecter) RemoveExpiredBlocks(now interface{}) *MockCleaner_RemoveExpiredBlocks_Call {
+	return &MockCleaner_RemoveExpiredBlocks_Call{Call: _e.mock.On("RemoveExpiredBlocks", now)}
+}
+
+func (_c *MockCleaner_RemoveExpiredBlocks_Call) Run(run func(now int64)) *MockCleaner_RemoveExpiredBlocks_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(int64))
+	})
+	return _c
+}
+
+func (_c *MockCleaner_RemoveExpiredBlocks_Call) Return(_a0 error) *MockCleaner_RemoveExpiredBlocks_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockCleaner_RemoveExpiredBlocks_Call) RunAndReturn(run func(int64) error) *MockCleaner_RemoveExpiredBlocks_Call {
 	_c.Call.Return(run)
 	return _c
 }
