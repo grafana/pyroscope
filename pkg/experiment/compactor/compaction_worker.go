@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"runtime/debug"
 	"sync"
 	"time"
@@ -22,6 +23,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/client"
 	"github.com/grafana/pyroscope/pkg/experiment/query_backend/block"
 	"github.com/grafana/pyroscope/pkg/objstore"
+	_ "go.uber.org/automaxprocs"
 )
 
 type Worker struct {
@@ -39,10 +41,11 @@ type Worker struct {
 	completedJobs map[string]*compactorv1.CompactionJobStatus
 
 	queue chan *compactorv1.CompactionJob
+	wg    sync.WaitGroup
 }
 
 type Config struct {
-	JobCapacity     int           `yaml:"job_capacity"`
+	JobConcurrency  int           `yaml:"job_capacity"`
 	JobPollInterval time.Duration `yaml:"job_poll_interval"`
 	SmallObjectSize int           `yaml:"small_object_size_bytes"`
 	TempDir         string        `yaml:"temp_dir"`
@@ -51,7 +54,7 @@ type Config struct {
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	const prefix = "compaction-worker."
 	tempdir := filepath.Join(os.TempDir(), "pyroscope-compactor")
-	f.IntVar(&cfg.JobCapacity, prefix+"job-capacity", 3, "How many concurrent jobs will a compaction worker run at most.")
+	f.IntVar(&cfg.JobConcurrency, prefix+"job-concurrency", 1, "How many concurrent jobs will a compaction worker run at most.")
 	f.DurationVar(&cfg.JobPollInterval, prefix+"job-poll-interval", 5*time.Second, "How often will a compaction worker poll for jobs.")
 	f.IntVar(&cfg.SmallObjectSize, prefix+"small-object-size-bytes", 8<<20, "Size of the object that can be loaded in memory.")
 	f.StringVar(&cfg.TempDir, prefix+"temp-dir", tempdir, "Temporary directory for compaction jobs.")
@@ -63,6 +66,7 @@ func (cfg *Config) Validate() error {
 }
 
 func New(config Config, logger log.Logger, metastoreClient *metastoreclient.Client, storage objstore.Bucket, reg prometheus.Registerer) (*Worker, error) {
+	workers := runtime.GOMAXPROCS(-1) * config.JobConcurrency
 	w := &Worker{
 		config:          config,
 		logger:          logger,
@@ -72,7 +76,7 @@ func New(config Config, logger log.Logger, metastoreClient *metastoreclient.Clie
 		activeJobs:      make(map[string]*compactorv1.CompactionJob),
 		completedJobs:   make(map[string]*compactorv1.CompactionJobStatus),
 		metrics:         newMetrics(reg),
-		queue:           make(chan *compactorv1.CompactionJob, 2*config.JobCapacity),
+		queue:           make(chan *compactorv1.CompactionJob, workers),
 	}
 	w.BasicService = services.NewBasicService(w.starting, w.running, w.stopping)
 	return w, nil
@@ -85,29 +89,13 @@ func (w *Worker) starting(ctx context.Context) (err error) {
 func (w *Worker) running(ctx context.Context) error {
 	ticker := time.NewTicker(w.config.JobPollInterval)
 	defer ticker.Stop()
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-
-			case job := <-w.queue:
-				w.jobMutex.Lock()
-				delete(w.pendingJobs, job.Name)
-				w.activeJobs[job.Name] = job
-				w.jobMutex.Unlock()
-
-				_ = level.Info(w.logger).Log("msg", "starting compaction job", "job", job.Name)
-				status := w.startJob(ctx, job)
-				_ = level.Info(w.logger).Log("msg", "compaction job finished", "job", job.Name)
-
-				w.jobMutex.Lock()
-				delete(w.activeJobs, job.Name)
-				w.completedJobs[job.Name] = status
-				w.jobMutex.Unlock()
-			}
-		}
-	}()
+	for i := 0; i < cap(w.queue); i++ {
+		w.wg.Add(1)
+		go func() {
+			defer w.wg.Done()
+			w.jobsLoop(ctx)
+		}()
+	}
 
 	for {
 		select {
@@ -115,7 +103,32 @@ func (w *Worker) running(ctx context.Context) error {
 			w.poll(ctx)
 
 		case <-ctx.Done():
+			w.wg.Wait()
 			return nil
+		}
+	}
+}
+
+func (w *Worker) jobsLoop(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+
+		case job := <-w.queue:
+			w.jobMutex.Lock()
+			delete(w.pendingJobs, job.Name)
+			w.activeJobs[job.Name] = job
+			w.jobMutex.Unlock()
+
+			_ = level.Info(w.logger).Log("msg", "starting compaction job", "job", job.Name)
+			status := w.startJob(ctx, job)
+			_ = level.Info(w.logger).Log("msg", "compaction job finished", "job", job.Name)
+
+			w.jobMutex.Lock()
+			delete(w.activeJobs, job.Name)
+			w.completedJobs[job.Name] = status
+			w.jobMutex.Unlock()
 		}
 	}
 }
@@ -146,10 +159,7 @@ func (w *Worker) poll(ctx context.Context) {
 		pendingStatusUpdates = append(pendingStatusUpdates, update)
 	}
 
-	jobCapacity := w.config.JobCapacity - len(w.activeJobs) - len(w.pendingJobs)
-	if jobCapacity < 0 {
-		jobCapacity = 0
-	}
+	jobCapacity := cap(w.queue) - len(w.queue)
 	w.jobMutex.Unlock()
 
 	if len(pendingStatusUpdates) > 0 || jobCapacity > 0 {
