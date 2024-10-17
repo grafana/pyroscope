@@ -236,7 +236,7 @@ By default it looks for samples within the last hour, though this can be control
    - You can provide a custom time range using the `--from` and `--to` flags, for example, `--from="now-3h" --to="now"`.
    - You can specify the profile type via the `--profile-type` flag. The available profile types are listed in the output of the `profilecli query series` command.
 
-2. Construct and execute the Query Profile command.
+2. Construct and execute the `query profile` command.
 
    - Here's a basic command template:
      ```bash
