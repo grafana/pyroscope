@@ -27,4 +27,4 @@ jobs:
       ct_configfile: operations/pyroscope/helm/ct.yaml
     secrets:
       github_app_id: ${{ secrets.GH_RELEASES_APP_ID }}
-      github_app_private_key: ${{ secrets.GH_RELEASES_APP_PRIVATE_KEY }}
+      github_app_pem: ${{ secrets.GH_RELEASES_APP_PRIVATE_KEY }}
