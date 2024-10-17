@@ -6,6 +6,18 @@ on:
       - main
       - "release-[0-9]+.[0-9]+"
 
+# NOTE: We need to store GH_RELEASES_APP_ID and GH_RELEASES_APP_PRIVATE_KEY as repository secrets
+# (even though we already store them in Vault) due to limitations in how secrets can be
+# accessed and passed between different parts of a GitHub Actions workflow.
+#
+# The grafana/helm-charts/.github/workflows/update-helm-repo.yaml is a reusable workflow,
+# not a composite action. This means we can't run steps to retrieve secrets from Vault
+# before calling this workflow within the same job.
+#
+# While we have access to the grafana/shared-workflows/actions/get-vault-secrets@main action,
+# environment variables set by this action in one job are not accessible in other jobs or
+# in reusable workflows called from this workflow.
+
 jobs:
   call-update-helm-repo:
     uses: grafana/helm-charts/.github/workflows/update-helm-repo.yaml@main
@@ -14,4 +26,5 @@ jobs:
       cr_configfile: operations/pyroscope/helm/cr.yaml
       ct_configfile: operations/pyroscope/helm/ct.yaml
     secrets:
-      helm_repo_token: ${{ secrets.GH_BOT_ACCESS_TOKEN }}
+      github_app_id: ${{ secrets.GH_RELEASES_APP_ID }}
+      github_app_pem: ${{ secrets.GH_RELEASES_APP_PRIVATE_KEY }}
