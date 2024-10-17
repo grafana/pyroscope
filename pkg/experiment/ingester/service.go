@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/go-kit/log"
@@ -73,6 +74,7 @@ type SegmentWriterService struct {
 	logger   log.Logger
 	reg      prometheus.Registerer
 
+	requests           requests
 	lifecycler         *ring.Lifecycler
 	subservices        *services.Manager
 	subservicesWatcher *services.FailureWatcher
@@ -140,7 +142,11 @@ func New(
 }
 
 func (i *SegmentWriterService) starting(ctx context.Context) error {
-	return services.StartManagerAndAwaitHealthy(ctx, i.subservices)
+	if err := services.StartManagerAndAwaitHealthy(ctx, i.subservices); err != nil {
+		return err
+	}
+	i.requests.open()
+	return nil
 }
 
 func (i *SegmentWriterService) running(ctx context.Context) error {
@@ -153,6 +159,7 @@ func (i *SegmentWriterService) running(ctx context.Context) error {
 }
 
 func (i *SegmentWriterService) stopping(_ error) error {
+	i.requests.drain()
 	errs := multierror.New()
 	errs.Add(services.StopManagerAndAwaitStopped(context.Background(), i.subservices))
 	errs.Add(i.segmentWriter.Stop())
@@ -160,6 +167,11 @@ func (i *SegmentWriterService) stopping(_ error) error {
 }
 
 func (i *SegmentWriterService) Push(ctx context.Context, req *segmentwriterv1.PushRequest) (*segmentwriterv1.PushResponse, error) {
+	if !i.requests.add() {
+		return nil, status.Error(codes.Unavailable, "service is unavailable")
+	} else {
+		defer i.requests.done()
+	}
 	if req.TenantId == "" {
 		return nil, status.Error(codes.InvalidArgument, tenant.ErrNoTenantID.Error())
 	}
@@ -225,4 +237,60 @@ func (i *SegmentWriterService) CheckReady(ctx context.Context) error {
 		return fmt.Errorf("ingester not ready: %v", s)
 	}
 	return i.lifecycler.CheckReady(ctx)
+}
+
+// The requests utility emerged due to the need to handle request draining at
+// the service level.
+//
+// Ideally, this should be the responsibility of the server using the service.
+// However, since the server is a dependency of the service and is only
+// shut down after the service is stopped, requests may still arrive
+// after the Stop call. This issue arises from how we initialize modules.
+//
+// In other scenarios, request draining could be managed at a higher level,
+// such as in a load balancer or service discovery mechanism. The goal would
+// be to stop routing requests to an instance that is about to shut down.
+//
+// In our case, segment writer service instances are not directly exposed to
+// the outside world but are discoverable via the ring (see lifecycler).
+// There's no _reliable_ mechanism to ensure that all the ring members are
+// aware of fact that the instance is leaving, so requests may continue to
+// arrive within a short period of time, until the membership state converges.
+type requests struct {
+	mu      sync.RWMutex
+	wg      sync.WaitGroup
+	allowed bool // Indicates if new requests are allowed
+}
+
+// open allows new requests to be accepted.
+func (r *requests) open() {
+	r.mu.Lock()
+	r.allowed = true
+	r.mu.Unlock()
+}
+
+// add increments the WaitGroup if new requests are allowed.
+// Returns true if the request was accepted, false otherwise.
+func (r *requests) add() bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	if !r.allowed {
+		return false
+	}
+	r.wg.Add(1)
+	return true
+}
+
+// done decrements the WaitGroup, indicating a request has completed.
+func (r *requests) done() {
+	r.wg.Done()
+}
+
+// drain prevents new requests from being accepted and waits for
+// all ongoing requests to complete.
+func (r *requests) drain() {
+	r.mu.Lock()
+	r.allowed = false
+	r.mu.Unlock()
+	r.wg.Wait()
 }

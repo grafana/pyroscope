@@ -2,14 +2,15 @@ package phlare
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
-	"google.golang.org/grpc/health/grpc_health_v1"
 
 	compactionworker "github.com/grafana/pyroscope/pkg/experiment/compactor"
+	adaptiveplacement "github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
 	segmentwriter "github.com/grafana/pyroscope/pkg/experiment/ingester"
 	segmentwriterclient "github.com/grafana/pyroscope/pkg/experiment/ingester/client"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore"
@@ -17,7 +18,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
 	querybackend "github.com/grafana/pyroscope/pkg/experiment/query_backend"
 	querybackendclient "github.com/grafana/pyroscope/pkg/experiment/query_backend/client"
-	"github.com/grafana/pyroscope/pkg/util/health"
 )
 
 func (f *Phlare) initSegmentWriterRing() (_ services.Service, err error) {
@@ -64,10 +64,12 @@ func (f *Phlare) initSegmentWriterClient() (_ services.Service, err error) {
 	// Validation of the config is not required since
 	// it's already validated in initSegmentWriterRing.
 	logger := log.With(f.logger, "component", "segment-writer-client")
+	placement := f.placementAgent.Placement()
 	client, err := segmentwriterclient.NewSegmentWriterClient(
 		f.Cfg.SegmentWriter.GRPCClientConfig,
 		logger, f.reg,
 		f.segmentWriterRing,
+		placement,
 	)
 	if err != nil {
 		return nil, err
@@ -101,11 +103,11 @@ func (f *Phlare) initMetastore() (services.Service, error) {
 	logger := log.With(f.logger, "component", "metastore")
 	m, err := metastore.New(
 		f.Cfg.Metastore,
-		f.TenantLimits,
 		logger,
 		f.reg,
 		f.metastoreClient,
 		f.storageBucket,
+		f.placementManager,
 	)
 	if err != nil {
 		return nil, err
@@ -167,9 +169,32 @@ func (f *Phlare) initQueryBackendClient() (services.Service, error) {
 	return c.Service(), nil
 }
 
-func (f *Phlare) initHealthService() (services.Service, error) {
-	healthService := health.NewGRPCHealthService()
-	grpc_health_v1.RegisterHealthServer(f.Server.GRPC, healthService)
-	f.healthService = healthService
-	return healthService, nil
+func (f *Phlare) initPlacementAgent() (services.Service, error) {
+	f.placementAgent = adaptiveplacement.NewAgent(
+		f.logger,
+		f.reg,
+		f.Cfg.AdaptivePlacement,
+		f.Overrides,
+		f.adaptivePlacementStore(),
+	)
+	return f.placementAgent.Service(), nil
+}
+
+func (f *Phlare) initPlacementManager() (services.Service, error) {
+	f.placementManager = adaptiveplacement.NewManager(
+		f.logger,
+		f.reg,
+		f.Cfg.AdaptivePlacement,
+		f.Overrides,
+		f.adaptivePlacementStore(),
+	)
+	return f.placementManager.Service(), nil
+}
+
+func (f *Phlare) adaptivePlacementStore() adaptiveplacement.Store {
+	if slices.Contains(f.Cfg.Target, All) {
+		// Disables sharding in all-in-one scenario.
+		return adaptiveplacement.NewEmptyStore()
+	}
+	return adaptiveplacement.NewStore(f.storageBucket)
 }

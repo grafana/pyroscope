@@ -18,6 +18,7 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
+	"github.com/grafana/pyroscope/pkg/test/mocks/mockwritepath"
 )
 
 type routerTestSuite struct {
@@ -27,8 +28,8 @@ type routerTestSuite struct {
 	logger    log.Logger
 	registry  *prometheus.Registry
 	overrides *mockOverrides
-	ingester  *mockIngesterClient
-	segwriter *mockSegmentWriterClient
+	ingester  *mockwritepath.MockIngesterClient
+	segwriter *mockwritepath.MockSegmentWriterClient
 
 	request *distributormodel.PushRequest
 }
@@ -40,32 +41,12 @@ func (m *mockOverrides) WritePathOverrides(tenantID string) Config {
 	return args.Get(0).(Config)
 }
 
-type mockSegmentWriterClient struct{ mock.Mock }
-
-func (m *mockSegmentWriterClient) Push(
-	ctx context.Context,
-	request *segmentwriterv1.PushRequest,
-) (*segmentwriterv1.PushResponse, error) {
-	args := m.Called(ctx, request)
-	return args.Get(0).(*segmentwriterv1.PushResponse), args.Error(1)
-}
-
-type mockIngesterClient struct{ mock.Mock }
-
-func (m *mockIngesterClient) Push(
-	ctx context.Context,
-	request *distributormodel.PushRequest,
-) (*connect.Response[pushv1.PushResponse], error) {
-	args := m.Called(ctx, request)
-	return args.Get(0).(*connect.Response[pushv1.PushResponse]), args.Error(1)
-}
-
 func (s *routerTestSuite) SetupTest() {
 	s.logger = log.NewLogfmtLogger(io.Discard)
 	s.registry = prometheus.NewRegistry()
 	s.overrides = new(mockOverrides)
-	s.ingester = new(mockIngesterClient)
-	s.segwriter = new(mockSegmentWriterClient)
+	s.ingester = new(mockwritepath.MockIngesterClient)
+	s.segwriter = new(mockwritepath.MockSegmentWriterClient)
 
 	profile := &distributormodel.ProfileSample{Profile: &pprof.Profile{}}
 	s.request = &distributormodel.PushRequest{

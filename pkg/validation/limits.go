@@ -11,6 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	writepath "github.com/grafana/pyroscope/pkg/distributor/write_path"
+	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
 	readpath "github.com/grafana/pyroscope/pkg/frontend/read_path"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 )
@@ -100,11 +101,16 @@ type Limits struct {
 	RejectOlderThan model.Duration `yaml:"reject_older_than" json:"reject_older_than"`
 	RejectNewerThan model.Duration `yaml:"reject_newer_than" json:"reject_newer_than"`
 
-	// Write path overrides used in the write path router.
+	// Write path overrides used in distributor.
 	WritePathOverrides writepath.Config `yaml:",inline" json:",inline"`
 
-	// Write path overrides used in the read path router.
+	// Write path overrides used in query-frontend.
 	ReadPathOverrides readpath.Config `yaml:",inline" json:",inline"`
+
+	// Adaptive placement limits used in distributors and in the metastore.
+	// Distributors use these limits to determine how many shards to allocate
+	// to a tenant dataset by default, if no placement rules defined.
+	AdaptivePlacementLimits adaptive_placement.PlacementLimits `yaml:",inline" json:",inline"`
 }
 
 // LimitError are errors that do not comply with the limits specified.
@@ -466,6 +472,10 @@ func (o *Overrides) WritePathOverrides(tenantID string) writepath.Config {
 
 func (o *Overrides) ReadPathOverrides(tenantID string) readpath.Config {
 	return o.getOverridesForTenant(tenantID).ReadPathOverrides
+}
+
+func (o *Overrides) PlacementLimits(tenantID string) adaptive_placement.PlacementLimits {
+	return o.getOverridesForTenant(tenantID).AdaptivePlacementLimits
 }
 
 func (o *Overrides) DefaultLimits() *Limits {

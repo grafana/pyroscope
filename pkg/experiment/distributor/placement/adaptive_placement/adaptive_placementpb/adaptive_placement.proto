@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package adaptive_placement;
+
+// DistributionStats includes the data the Placement is built based on.
+message DistributionStats {
+  repeated TenantStats tenants = 1;
+  repeated DatasetStats datasets = 2;
+  repeated ShardStats shards = 3;
+  int64 created_at = 4;
+}
+
+message TenantStats {
+  string tenant_id = 1;
+}
+
+message DatasetStats {
+  uint32 tenant = 1; // Reference to TenantStats.
+  string name = 2;
+  // Shard value is a reference to ShardStats.
+  repeated uint32 shards = 3;
+  // Data rate in bytes per second for each shard.
+  // The dataset size is measured after being encoded
+  // in the block wire format.
+  repeated uint64 usage = 4;
+  // Standard deviation of the data rate across shards
+  // aggregated within a sliding time window.
+  uint64 std_dev = 5;
+}
+
+message ShardStats {
+  // Shard ID.
+  uint32 id = 1;
+  // Owner represents the node that hosted the shard.
+  // There may be multiple entries for a single shard
+  // if it was relocated across different nodes.
+  string owner = 2;
+}
+
+enum LoadBalancing {
+  LOAD_BALANCING_UNSPECIFIED = 0;
+  LOAD_BALANCING_FINGERPRINT = 1;
+  LOAD_BALANCING_ROUND_ROBIN = 2;
+}
+
+message PlacementRules {
+  repeated TenantPlacement tenants = 1;
+  repeated DatasetPlacement datasets = 2;
+  int64 created_at = 3;
+}
+
+message TenantPlacement {
+  string tenant_id = 1;
+}
+
+message DatasetPlacement {
+  uint32 tenant = 1;
+  string name = 2;
+  uint64 tenant_shard_limit = 3;
+  uint64 dataset_shard_limit = 4;
+  LoadBalancing load_balancing = 5;
+}
