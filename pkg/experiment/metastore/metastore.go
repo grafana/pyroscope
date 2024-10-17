@@ -117,7 +117,6 @@ type Metastore struct {
 	config Config
 	logger log.Logger
 	reg    prometheus.Registerer
-	bucket objstore.Bucket
 
 	// In-memory state.
 	state *metastoreState
@@ -163,13 +162,13 @@ func New(
 		config:       config,
 		logger:       logger,
 		reg:          reg,
-		bucket:       bucket,
 		db:           newDB(config, logger, metrics),
 		metrics:      metrics,
 		client:       client,
 		placementMgr: placementMgr,
 	}
-	m.blockCleaner = blockcleaner.New(m, func() *bbolt.DB { return m.db.boltdb }, m.logger, &m.config.BlockCleaner, m.bucket)
+	m.leaderhealth = raftleader.NewRaftLeaderHealthObserver(logger, reg)
+	m.blockCleaner = blockcleaner.New(m, func() *bbolt.DB { return m.db.boltdb }, m.logger, &m.config.BlockCleaner, bucket)
 	m.state = newMetastoreState(m.logger, m.db, m.reg, &m.config.Compaction, &m.config.Index, m.blockCleaner)
 	m.dlq = dlq.NewRecovery(dlq.RecoveryConfig{
 		Period: config.DLQRecoveryPeriod,
@@ -195,7 +194,6 @@ func (m *Metastore) starting(context.Context) error {
 	if err := m.initRaft(); err != nil {
 		return fmt.Errorf("failed to initialize raft: %w", err)
 	}
-	m.leaderhealth.AddListener(m)
 	return nil
 }
 
@@ -254,8 +252,17 @@ func (m *Metastore) initRaft() (err error) {
 	} else {
 		_ = level.Info(m.logger).Log("msg", "restoring existing state, not bootstraping")
 	}
-	m.leaderhealth = raftleader.NewRaftLeaderHealthObserver(m.raft, m.logger, m.reg)
-	m.leaderhealth.Start()
+	m.leaderhealth.Register(m.raft, func(st raft.RaftState) {
+		if st == raft.Leader {
+			m.dlq.Start()
+			m.placementMgr.Start()
+			m.blockCleaner.Start()
+		} else {
+			m.dlq.Stop()
+			m.placementMgr.Stop()
+			m.blockCleaner.Stop()
+		}
+	})
 	return nil
 }
 
@@ -321,7 +328,7 @@ func (m *Metastore) shutdownRaft() {
 				_ = level.Error(m.logger).Log("msg", "failed to transfer leadership", "err", err)
 			}
 		}
-		m.leaderhealth.Stop()
+		m.leaderhealth.Deregister()
 		if err := m.raft.Shutdown().Error(); err != nil {
 			_ = level.Error(m.logger).Log("msg", "failed to shutdown raft", "err", err)
 		}

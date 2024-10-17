@@ -11,7 +11,6 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/hashicorp/raft"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/thanos-io/objstore"
@@ -20,7 +19,6 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftleader"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftlogpb"
 )
 
@@ -41,7 +39,6 @@ func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 
 type CleanerLifecycler interface {
 	Cleaner
-	raftleader.LeaderListener
 
 	Start()
 	Stop()
@@ -141,6 +138,7 @@ func (c *blockCleaner) Start() {
 	ctx, cancel := context.WithCancel(context.Background())
 	c.cancel = cancel
 	c.started = true
+	c.isLeader = true
 	go c.loop(ctx)
 	level.Info(c.logger).Log("msg", "block cleaner started")
 }
@@ -358,8 +356,4 @@ func getBlockKey(blockId string, expiryTs int64, tenant string) []byte {
 	binary.BigEndian.PutUint64(blockKey[26:34], uint64(expiryTs))
 	copy(blockKey[34:], tenant)
 	return blockKey
-}
-
-func (c *blockCleaner) OnLeaderChange(state raft.RaftState) {
-	c.isLeader = state == raft.Leader
 }

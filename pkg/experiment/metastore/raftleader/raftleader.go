@@ -9,18 +9,14 @@ import (
 )
 
 type LeaderObserver struct {
-	logger    log.Logger
-	metrics   *metrics
-	raft      *raft.Raft
-	observer  *raft.Observer
-	c         chan raft.Observation
-	stop      chan struct{}
-	done      chan struct{}
-	listeners []LeaderListener
-}
-
-type LeaderListener interface {
-	OnLeaderChange(state raft.RaftState)
+	logger   log.Logger
+	metrics  *metrics
+	raft     *raft.Raft
+	observer *raft.Observer
+	c        chan raft.Observation
+	stop     chan struct{}
+	done     chan struct{}
+	cb       func(st raft.RaftState)
 }
 
 type metrics struct {
@@ -40,39 +36,37 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 	return m
 }
 
-func NewRaftLeaderHealthObserver(r *raft.Raft, logger log.Logger, reg prometheus.Registerer) *LeaderObserver {
+func NewRaftLeaderHealthObserver(logger log.Logger, reg prometheus.Registerer) *LeaderObserver {
 	return &LeaderObserver{
-		logger:    logger,
-		metrics:   newMetrics(reg),
-		c:         make(chan raft.Observation, 1),
-		raft:      r,
-		stop:      make(chan struct{}),
-		done:      make(chan struct{}),
-		listeners: make([]LeaderListener, 0),
+		logger:  logger,
+		metrics: newMetrics(reg),
+		c:       make(chan raft.Observation, 1),
+		stop:    make(chan struct{}),
+		done:    make(chan struct{}),
 	}
 }
 
-func (o *LeaderObserver) Start() {
+func (o *LeaderObserver) Register(r *raft.Raft, cb func(st raft.RaftState)) {
+	if o.raft != nil {
+		return
+	}
+	o.raft = r
+	o.cb = cb
+	_ = level.Debug(o.logger).Log("msg", "registering leader observer")
+	o.updateStatus()
 	go o.run()
-	_ = level.Debug(o.logger).Log("msg", "registering raft observer")
 	o.observer = raft.NewObserver(o.c, true, func(o *raft.Observation) bool {
 		_, ok := o.Data.(raft.LeaderObservation)
 		return ok
 	})
-	o.raft.RegisterObserver(o.observer)
+	r.RegisterObserver(o.observer)
 }
 
-func (o *LeaderObserver) Stop() {
+func (o *LeaderObserver) Deregister() {
 	close(o.stop)
 	<-o.done
 	_ = level.Debug(o.logger).Log("msg", "deregistering raft observer")
 	o.raft.DeregisterObserver(o.observer)
-}
-
-func (o *LeaderObserver) AddListener(listener LeaderListener) {
-	o.listeners = append(o.listeners, listener)
-	_ = level.Debug(o.logger).Log("msg", "added leader listener")
-	o.updateStatus(listener)
 }
 
 func (o *LeaderObserver) run() {
@@ -89,17 +83,11 @@ func (o *LeaderObserver) run() {
 	}
 }
 
-func (o *LeaderObserver) updateStatus(listeners ...LeaderListener) {
+func (o *LeaderObserver) updateStatus() {
 	state := o.raft.State()
-	if len(listeners) > 0 {
-		for _, listener := range listeners {
-			listener.OnLeaderChange(state)
-		}
-	} else {
-		for _, listener := range o.listeners {
-			listener.OnLeaderChange(state)
-		}
-		o.metrics.status.Set(float64(state))
-		_ = level.Info(o.logger).Log("msg", "updated raft state", "state", state)
+	if o.cb != nil {
+		o.cb(state)
 	}
+	o.metrics.status.Set(float64(state))
+	_ = level.Info(o.logger).Log("msg", "updated raft state", "state", state)
 }
