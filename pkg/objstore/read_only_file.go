@@ -54,6 +54,9 @@ func download(ctx context.Context, name string, src BucketReader, dir string) (f
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		_ = dst.Close()
+	}()
 	buf := bufferpool.GetBuffer(32 << 10)
 	defer bufferpool.Put(buf)
 	buf.B = buf.B[:cap(buf.B)]

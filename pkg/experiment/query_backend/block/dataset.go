@@ -55,15 +55,18 @@ func WithDatasetMaxSizeLoadInMemory(size int) DatasetOption {
 // is only initialized once. While it is possible to open the dataset
 // repeatedly after close, the caller must pass the failure reason to
 // the CloseWithError call, preventing further use, if applicable.
-func (s *Dataset) Open(ctx context.Context, sections ...Section) (err error) {
+func (s *Dataset) Open(ctx context.Context, sections ...Section) error {
 	return s.refs.IncErr(func() error {
-		return s.open(ctx, sections...)
+		if err := s.open(ctx, sections...); err != nil {
+			return fmt.Errorf("%w (%s)", err, s.obj.meta.Id)
+		}
+		return nil
 	})
 }
 
 func (s *Dataset) open(ctx context.Context, sections ...Section) (err error) {
 	if s.err != nil {
-		// The tenant dataset has been already closed with an error.
+		// The tenant dataset has already been closed with an error.
 		return s.err
 	}
 	if err = s.obj.Open(ctx); err != nil {

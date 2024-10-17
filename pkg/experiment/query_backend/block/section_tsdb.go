@@ -39,11 +39,13 @@ type tsdbBuffer struct {
 }
 
 func (b *tsdbBuffer) Close() (err error) {
-	if b.buf != nil {
-		bufferpool.Put(b.buf)
-	}
 	if b.index != nil {
 		err = b.index.Close()
+		b.index = nil
+	}
+	if b.buf != nil {
+		bufferpool.Put(b.buf)
+		b.buf = nil
 	}
 	return err
 }
