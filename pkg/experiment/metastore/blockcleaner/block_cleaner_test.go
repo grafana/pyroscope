@@ -22,7 +22,7 @@ func Test_AddAndCheck(t *testing.T) {
 	db := createDb(t)
 	cleaner := newBlockCleaner(nil, func() *bbolt.DB {
 		return db
-	}, util.Logger, &Config{CompactedBlocksCleanupDelay: model.Duration(time.Second * 2)}, memory.NewInMemBucket())
+	}, util.Logger, &Config{CompactedBlocksCleanupDelay: model.Duration(time.Second * 2)}, memory.NewInMemBucket(), nil)
 
 	blockId := ulid.MustNew(ulid.Now(), rand.Reader).String()
 	err := cleaner.MarkBlock(0, "tenant", blockId, 1000)
@@ -35,7 +35,7 @@ func Test_AddAndRemove(t *testing.T) {
 	db := createDb(t)
 	cleaner := newBlockCleaner(nil, func() *bbolt.DB {
 		return db
-	}, util.Logger, &Config{CompactedBlocksCleanupDelay: model.Duration(time.Second * 2)}, memory.NewInMemBucket())
+	}, util.Logger, &Config{CompactedBlocksCleanupDelay: model.Duration(time.Second * 2)}, memory.NewInMemBucket(), nil)
 	cleaner.isLeader = true
 
 	blockId := ulid.MustNew(ulid.Now(), rand.Reader).String()
