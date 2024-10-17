@@ -102,7 +102,7 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 					m.addBlockToCompactionJobQueue(b)
 				}
 				m.compactionMetrics.addedBlocks.WithLabelValues(
-					fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
+					fmt.Sprint(b.Shard), b.TenantId, fmt.Sprint(b.CompactionLevel)).Inc()
 
 				stateUpdate.updatedBlockQueues[blockTenantShard] = append(stateUpdate.updatedBlockQueues[blockTenantShard], b.CompactionLevel)
 			}
