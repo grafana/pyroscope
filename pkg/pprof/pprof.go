@@ -1331,6 +1331,11 @@ func sanitizeProfile(p *profilev1.Profile) {
 		if len(x.Value) != vs {
 			return true
 		}
+		for i := range x.Value {
+			if x.Value[i] < 0 {
+				x.Value[i] = 0
+			}
+		}
 		for i := range x.LocationId {
 			if x.LocationId[i] = t[x.LocationId[i]]; x.LocationId[i] == 0 {
 				return true

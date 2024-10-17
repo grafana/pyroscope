@@ -35,9 +35,11 @@ func TestNormalizeProfile(t *testing.T) {
 		},
 		Sample: []*profilev1.Sample{
 			{LocationId: []uint64{2, 3}, Value: []int64{0, 1}, Label: []*profilev1.Label{{Num: 10, Key: 1}, {Num: 11, Key: 1}}},
+			{LocationId: []uint64{3}, Value: []int64{-10, 2}, Label: []*profilev1.Label{{Num: 13, Key: 1}}},
 			// Those samples should be dropped.
 			{LocationId: []uint64{1, 2, 3}, Value: []int64{0, 0}, Label: []*profilev1.Label{{Num: 10, Key: 1}}},
 			{LocationId: []uint64{4}, Value: []int64{0, 0}, Label: []*profilev1.Label{{Num: 10, Key: 1}}},
+			{LocationId: []uint64{1, 2, 3}, Value: []int64{-1, -1}, Label: []*profilev1.Label{{Num: 10, Key: 1}}},
 		},
 		Mapping: []*profilev1.Mapping{{Id: 1, HasFunctions: true, MemoryStart: 100, MemoryLimit: 200, FileOffset: 200}},
 		Location: []*profilev1.Location{
@@ -76,6 +78,7 @@ func TestNormalizeProfile(t *testing.T) {
 		},
 		Sample: []*profilev1.Sample{
 			{LocationId: []uint64{1, 2}, Value: []int64{0, 1}, Label: []*profilev1.Label{}},
+			{LocationId: []uint64{2}, Value: []int64{0, 2}, Label: []*profilev1.Label{}},
 		},
 		Mapping: []*profilev1.Mapping{{
 			Id:           1,
