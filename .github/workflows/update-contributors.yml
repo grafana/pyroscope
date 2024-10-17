@@ -1,8 +1,8 @@
 name: Update Contributors in README
 
 on:
-  push:
-    branches: [main]
+  schedule:
+    - cron: '0 0 1-7 * SUN'
 
 jobs:
   update-contributors:
@@ -24,7 +24,7 @@ jobs:
           git config --local user.email 'dmitry+bot@pyroscope.io'
           if ! git diff --exit-code README.md; then
               git add README.md
-              git commit -m 'docs: updates the list of contributors in README [skip ci]'
+              git commit -m 'docs: updates the list of contributors in README'
               gh auth status
               git push --force https://x-access-token:${{ secrets.BOT_GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
           fi
