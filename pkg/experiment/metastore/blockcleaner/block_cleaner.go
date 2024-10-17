@@ -12,7 +12,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/pkg/errors"
-	"github.com/prometheus/common/model"
 	"github.com/thanos-io/objstore"
 	"go.etcd.io/bbolt"
 	"golang.org/x/sync/errgroup"
@@ -29,12 +28,13 @@ const (
 var removedBlocksBucketNameBytes = []byte(removedBlocksBucketName)
 
 type Config struct {
-	CompactedBlocksCleanupDelay model.Duration `yaml:"compacted_blocks_cleanup_delay"`
+	CompactedBlocksCleanupInterval time.Duration `yaml:"compacted_blocks_cleanup_interval"`
+	CompactedBlocksCleanupDelay    time.Duration `yaml:"compacted_blocks_cleanup_delay"`
 }
 
 func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
-	_ = cfg.CompactedBlocksCleanupDelay.Set("1m")
-	f.Var(&cfg.CompactedBlocksCleanupDelay, prefix+"compacted-blocks-cleanup-delay", "")
+	f.DurationVar(&cfg.CompactedBlocksCleanupDelay, prefix+"compacted-blocks-cleanup-delay", time.Minute*30, "The grace period for permanently deleting compacted blocks.")
+	f.DurationVar(&cfg.CompactedBlocksCleanupInterval, prefix+"compacted-blocks-cleanup-interval", time.Minute, "The interval at which block cleanup is performed.")
 }
 
 type CleanerLifecycler interface {
@@ -157,7 +157,7 @@ func (c *blockCleaner) Stop() {
 }
 
 func (c *blockCleaner) loop(ctx context.Context) {
-	t := time.NewTicker(1 * time.Minute) // TODO(aleks-p): Make configurable
+	t := time.NewTicker(c.cfg.CompactedBlocksCleanupInterval)
 	defer func() {
 		t.Stop()
 	}()
