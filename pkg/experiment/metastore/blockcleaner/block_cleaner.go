@@ -12,6 +12,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/thanos-io/objstore"
 	"go.etcd.io/bbolt"
 	"golang.org/x/sync/errgroup"
@@ -19,6 +20,7 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftlogpb"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 const (
@@ -57,6 +59,43 @@ type RaftLog[Req, Resp proto.Message] interface {
 
 type RaftLogCleanBlocks RaftLog[*raftlogpb.CleanBlocksRequest, *anypb.Any]
 
+type metrics struct {
+	markedBlocks         *prometheus.CounterVec
+	expiredBlocks        *prometheus.CounterVec
+	bucketObjectRemovals *prometheus.CounterVec
+}
+
+func newMetrics(reg prometheus.Registerer) *metrics {
+	m := &metrics{
+		markedBlocks: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "pyroscope",
+			Subsystem: "metastore",
+			Name:      "block_cleaner_marked_block_count",
+			Help:      "The number of blocks marked as removed",
+		}, []string{"tenant", "shard"}),
+		expiredBlocks: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "pyroscope",
+			Subsystem: "metastore",
+			Name:      "block_cleaner_expired_block_count",
+			Help:      "The number of marked blocks that expired and were removed",
+		}, []string{"tenant", "shard"}),
+		bucketObjectRemovals: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "pyroscope",
+			Subsystem: "metastore",
+			Name:      "block_cleaner_bucket_removal_count",
+			Help:      "The number of expired blocks that were removed from the bucket",
+		}, []string{"tenant", "shard"}),
+	}
+	if reg != nil {
+		util.Register(reg,
+			m.markedBlocks,
+			m.expiredBlocks,
+			m.bucketObjectRemovals,
+		)
+	}
+	return m
+}
+
 type blockCleaner struct {
 	blocks   map[string]struct{}
 	blocksMu sync.Mutex
@@ -66,6 +105,7 @@ type blockCleaner struct {
 	bkt     objstore.Bucket
 	logger  log.Logger
 	cfg     *Config
+	metrics *metrics
 
 	started  bool
 	mu       sync.Mutex
@@ -74,11 +114,25 @@ type blockCleaner struct {
 	isLeader bool
 }
 
-func New(raftLog RaftLogCleanBlocks, db func() *bbolt.DB, logger log.Logger, config *Config, bkt objstore.Bucket) CleanerLifecycler {
-	return newBlockCleaner(raftLog, db, logger, config, bkt)
+func New(
+	raftLog RaftLogCleanBlocks,
+	db func() *bbolt.DB,
+	logger log.Logger,
+	config *Config,
+	bkt objstore.Bucket,
+	reg prometheus.Registerer,
+) CleanerLifecycler {
+	return newBlockCleaner(raftLog, db, logger, config, bkt, reg)
 }
 
-func newBlockCleaner(raftLog RaftLogCleanBlocks, db func() *bbolt.DB, logger log.Logger, config *Config, bkt objstore.Bucket) *blockCleaner {
+func newBlockCleaner(
+	raftLog RaftLogCleanBlocks,
+	db func() *bbolt.DB,
+	logger log.Logger,
+	config *Config,
+	bkt objstore.Bucket,
+	reg prometheus.Registerer,
+) *blockCleaner {
 	return &blockCleaner{
 		blocks:  make(map[string]struct{}),
 		raftLog: raftLog,
@@ -86,6 +140,7 @@ func newBlockCleaner(raftLog RaftLogCleanBlocks, db func() *bbolt.DB, logger log
 		logger:  logger,
 		cfg:     config,
 		bkt:     bkt,
+		metrics: newMetrics(reg),
 	}
 }
 
@@ -118,6 +173,7 @@ func (c *blockCleaner) MarkBlock(shard uint32, tenant string, blockId string, de
 	c.blocksMu.Lock()
 	defer c.blocksMu.Unlock()
 	c.blocks[blockId] = struct{}{}
+	c.metrics.markedBlocks.WithLabelValues(tenant, fmt.Sprint(shard)).Inc()
 	return nil
 }
 
@@ -225,6 +281,7 @@ func (c *blockCleaner) cleanShard(ctx context.Context, shard uint32, now int64) 
 	cntDeletedBucket := 0
 	for blockId, removalContext := range blocks {
 		if removalContext.expiryTs < now {
+			metricLabels := []string{removalContext.tenant, fmt.Sprint(shard)}
 			if c.isLeader {
 				var key string
 				if removalContext.tenant != "" {
@@ -250,6 +307,7 @@ func (c *blockCleaner) cleanShard(ctx context.Context, shard uint32, now int64) 
 					// TODO(aleks-p): Detect if the error is "object does not exist" or something else. Handle each case appropriately.
 					continue
 				}
+				c.metrics.bucketObjectRemovals.WithLabelValues(metricLabels...).Inc()
 				cntDeletedBucket++
 			}
 			err = c.removeBlock(blockId, shard, removalContext)
@@ -268,7 +326,7 @@ func (c *blockCleaner) cleanShard(ctx context.Context, shard uint32, now int64) 
 				"shard", shard,
 				"tenant", removalContext.tenant,
 				"expiryTs", removalContext.expiryTs)
-			// TODO(aleks-p): add more logging, metrics
+			c.metrics.expiredBlocks.WithLabelValues(metricLabels...).Inc()
 			cntDeleted++
 		}
 	}
