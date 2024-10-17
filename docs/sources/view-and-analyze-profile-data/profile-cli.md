@@ -224,11 +224,11 @@ You can narrow the results down with the `--query` flag. See `profilecli help qu
 
 ### Reading a raw profile from a Pyroscope server
 
-You can use the `profilecli query merge` command to retrieve a merged (aggregated) profile from a Pyroscope server.
+You can use the `profilecli query profile` command to retrieve a merged (aggregated) profile from a Pyroscope server.
 The command merges all samples found in the profile store for the specified query and time range.
 By default it looks for samples within the last hour, though this can be controlled with the `--from` and `--to` flags. The source data can be narrowed down with the `--query` flag in the same way as with the `series` command.
 
-#### Query merge steps
+#### Query profile steps
 
 1. Specify optional flags.
 
@@ -236,7 +236,7 @@ By default it looks for samples within the last hour, though this can be control
    - You can provide a custom time range using the `--from` and `--to` flags, for example, `--from="now-3h" --to="now"`.
    - You can specify the profile type via the `--profile-type` flag. The available profile types are listed in the output of the `profilecli query series` command.
 
-2. Construct and execute the Query Merge command.
+2. Construct and execute the `query profile` command.
 
    - Here's a basic command template:
      ```bash
@@ -244,7 +244,7 @@ By default it looks for samples within the last hour, though this can be control
      export PROFILECLI_USERNAME=<username>
      export PROFILECLI_PASSWORD=<password>
 
-     profilecli query merge \
+     profilecli query profile \
          --profile-type=<profile_type> \
          --query='{<label_name>="<label_value>"' \
          --from="<from>" --to="<to>"
@@ -256,7 +256,7 @@ By default it looks for samples within the last hour, though this can be control
      export PROFILECLI_USERNAME=my_username
      export PROFILECLI_PASSWORD=my_password
 
-     profilecli query merge \
+     profilecli query profile \
          --profile-type=memory:inuse_space:bytes:space:bytes \
          --query='{service_name="my_application_name"}' \
          --from="now-1h" --to="now"
@@ -278,7 +278,7 @@ By default it looks for samples within the last hour, though this can be control
 ### Exporting a profile for Go PGO
 
 You can use the `profilecli query go-pgo` command to retrieve an aggregated profile from a Pyroscope server for use with Go PGO.
-Profiles retrieved with `profilecli query merge` include all samples found in the profile store, resulting in a large profile size.
+Profiles retrieved with `profilecli query profile` include all samples found in the profile store, resulting in a large profile size.
 The profile size may cause issues with network transfer and slow down the PGO process.
 In contrast, profiles retrieved with `profilecli query go-pgo` include only the information used in Go PGO, making them significantly smaller and more efficient to handle.
 By default, it looks for samples within the last hour, though this can be controlled with the `--from` and `--to` flags. The source data can be narrowed down with the `--query` flag in the same way as with the `query` command.

@@ -90,21 +90,21 @@ func addQueryParams(queryCmd commander) *queryParams {
 	return params
 }
 
-type queryMergeParams struct {
+type queryProfileParams struct {
 	*queryParams
 	ProfileType        string
 	StacktraceSelector []string
 }
 
-func addQueryMergeParams(queryCmd commander) *queryMergeParams {
-	params := new(queryMergeParams)
+func addQueryProfileParams(queryCmd commander) *queryProfileParams {
+	params := new(queryProfileParams)
 	params.queryParams = addQueryParams(queryCmd)
 	queryCmd.Flag("profile-type", "Profile type to query.").Default("process_cpu:cpu:nanoseconds:cpu:nanoseconds").StringVar(&params.ProfileType)
 	queryCmd.Flag("stacktrace-selector", "Only query locations with those symbols. Provide multiple times starting with the root").StringsVar(&params.StacktraceSelector)
 	return params
 }
 
-func queryMerge(ctx context.Context, params *queryMergeParams, outputFlag string) (err error) {
+func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag string) (err error) {
 	from, to, err := params.parseFromTo()
 	if err != nil {
 		return err
@@ -145,14 +145,14 @@ func selectMergeProfile(ctx context.Context, client *phlareClient, outputFlag st
 }
 
 type queryGoPGOParams struct {
-	*queryMergeParams
+	*queryProfileParams
 	KeepLocations    uint32
 	AggregateCallees bool
 }
 
 func addQueryGoPGOParams(queryCmd commander) *queryGoPGOParams {
 	params := new(queryGoPGOParams)
-	params.queryMergeParams = addQueryMergeParams(queryCmd)
+	params.queryProfileParams = addQueryProfileParams(queryCmd)
 	queryCmd.Flag("keep-locations", "Number of leaf locations to keep.").Default("5").Uint32Var(&params.KeepLocations)
 	queryCmd.Flag("aggregate-callees", "Aggregate samples for the same callee by ignoring the line numbers in the leaf locations.").Default("true").BoolVar(&params.AggregateCallees)
 	return params
