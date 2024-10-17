@@ -273,18 +273,6 @@ func (m *Metastore) initRaft() (err error) {
 	return nil
 }
 
-func (m *Metastore) OnLeaderChange(state raft.RaftState) {
-	if state == raft.Leader {
-		m.dlq.Start()
-		m.placementMgr.Start()
-		m.blockCleaner.Start()
-	} else {
-		m.dlq.Stop()
-		m.placementMgr.Stop()
-		m.blockCleaner.Stop()
-	}
-}
-
 func (m *Metastore) openRaftStore() (hasState bool, err error) {
 	if err = m.createRaftDirs(); err != nil {
 		return false, err
