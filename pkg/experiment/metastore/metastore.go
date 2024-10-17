@@ -117,6 +117,7 @@ type Metastore struct {
 	config Config
 	logger log.Logger
 	reg    prometheus.Registerer
+	bucket objstore.Bucket
 
 	// In-memory state.
 	state *metastoreState
@@ -162,14 +163,14 @@ func New(
 		config:       config,
 		logger:       logger,
 		reg:          reg,
+		bucket:       bucket,
 		db:           newDB(config, logger, metrics),
 		metrics:      metrics,
 		client:       client,
 		placementMgr: placementMgr,
 	}
-	m.leaderhealth = raftleader.NewRaftLeaderHealthObserver(logger, reg)
-	m.blockCleaner = blockcleaner.New(m, func() *bbolt.DB { return m.db.boltdb }, logger, &config.BlockCleaner, bucket)
-	m.state = newMetastoreState(logger, m.db, reg, &config.Compaction, &config.Index, m.blockCleaner)
+	m.blockCleaner = blockcleaner.New(m, func() *bbolt.DB { return m.db.boltdb }, m.logger, &m.config.BlockCleaner, m.bucket)
+	m.state = newMetastoreState(m.logger, m.db, m.reg, &m.config.Compaction, &m.config.Index, m.blockCleaner)
 	m.dlq = dlq.NewRecovery(dlq.RecoveryConfig{
 		Period: config.DLQRecoveryPeriod,
 	}, logger, m, bucket)
@@ -194,6 +195,8 @@ func (m *Metastore) starting(context.Context) error {
 	if err := m.initRaft(); err != nil {
 		return fmt.Errorf("failed to initialize raft: %w", err)
 	}
+	m.leaderhealth.AddListener(m)
+	m.leaderhealth.AddListener(m.blockCleaner)
 	m.blockCleaner.Start()
 	return nil
 }
@@ -253,9 +256,8 @@ func (m *Metastore) initRaft() (err error) {
 	} else {
 		_ = level.Info(m.logger).Log("msg", "restoring existing state, not bootstraping")
 	}
-
-	m.leaderhealth.Register(m.raft, m)
-	m.leaderhealth.Register(m.raft, m.blockCleaner)
+	m.leaderhealth = raftleader.NewRaftLeaderHealthObserver(m.raft, m.logger, m.reg)
+	m.leaderhealth.Start()
 	return nil
 }
 
@@ -319,7 +321,7 @@ func (m *Metastore) shutdownRaft() {
 				_ = level.Error(m.logger).Log("msg", "failed to transfer leadership", "err", err)
 			}
 		}
-		m.leaderhealth.Deregister()
+		m.leaderhealth.Stop()
 		if err := m.raft.Shutdown().Error(); err != nil {
 			_ = level.Error(m.logger).Log("msg", "failed to shutdown raft", "err", err)
 		}

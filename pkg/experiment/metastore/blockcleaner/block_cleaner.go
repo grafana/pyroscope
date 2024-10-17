@@ -41,8 +41,8 @@ func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 
 type CleanerLifecycler interface {
 	Cleaner
+	raftleader.LeaderListener
 
-	raftleader.Listener
 	Start()
 	Stop()
 }
