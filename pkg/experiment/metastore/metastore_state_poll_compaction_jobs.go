@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"time"
 
 	"github.com/go-kit/log/level"
 	"github.com/hashicorp/raft"
@@ -192,14 +193,14 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 		}
 	}
 
-	err = m.writeToDb(stateUpdate, raftAppendedAtNanos)
+	err = m.writeToDb(stateUpdate)
 	if err != nil {
 		panic(fatalCommandError{fmt.Errorf("error persisting metadata state to db, %w", err)})
 	}
 
 	for key, blocks := range stateUpdate.deletedBlocks {
 		for _, block := range blocks {
-			err = m.blockCleaner.AddBlock(key.shard, key.tenant, block, raftAppendedAtNanos/1000)
+			err = m.blockCleaner.AddBlock(key.shard, key.tenant, block, raftAppendedAtNanos/time.Millisecond.Nanoseconds())
 			if err != nil {
 				panic(fatalCommandError{fmt.Errorf("error persisting block removals, %w", err)})
 			}
@@ -280,7 +281,7 @@ func (m *metastoreState) findJobsToAssign(jobCapacity int, raftLogIndex uint64, 
 	return jobsToAssign
 }
 
-func (m *metastoreState) writeToDb(sTable *pollStateUpdate, raftAppendedAtNanos int64) error {
+func (m *metastoreState) writeToDb(sTable *pollStateUpdate) error {
 	return m.db.boltdb.Update(func(tx *bbolt.Tx) error {
 		for _, blocks := range sTable.newBlocks {
 			for _, block := range blocks {

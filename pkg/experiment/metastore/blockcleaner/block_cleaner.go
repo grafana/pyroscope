@@ -63,6 +63,10 @@ type blockCleaner struct {
 }
 
 func New(db func() *bbolt.DB, logger log.Logger, config *Config, bkt objstore.Bucket) CleanerLifecycler {
+	return newBlockCleaner(db, logger, config, bkt)
+}
+
+func newBlockCleaner(db func() *bbolt.DB, logger log.Logger, config *Config, bkt objstore.Bucket) *blockCleaner {
 	return &blockCleaner{
 		blocks: make(map[string]struct{}),
 		db:     db,
@@ -137,7 +141,7 @@ func (c *blockCleaner) loop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-t.C:
-			now := time.Now().Unix() // TODO(aleks-p): Should we run this through a Raft command?
+			now := time.Now().UnixMilli() // TODO(aleks-p): Should we run this through a Raft command?
 			c.doCleanup(now)
 		}
 	}
@@ -185,20 +189,28 @@ func (c *blockCleaner) cleanShard(ctx context.Context, shard uint32, now int64) 
 		return err
 	}
 	level.Info(c.logger).Log("msg", "cleaning removed blocks in shard", "shard", shard, "blocks", len(blocks))
+	cntDeleted := 0
+	cntDeletedBucket := 0
 	for blockId, removalContext := range blocks {
 		if removalContext.expiryTs < now {
-			var key string
-			if removalContext.tenant != "" {
-				key = filepath.Join("blocks", fmt.Sprint(shard), removalContext.tenant, blockId)
-			} else {
-				key = filepath.Join("segments", fmt.Sprint(shard), "anonymous", blockId)
-			}
 			if c.isLeader {
-				level.Debug(c.logger).Log("msg", "removing block from bucket", "shard", shard, "tenant", removalContext.tenant, "blockId", blockId)
+				var key string
+				if removalContext.tenant != "" {
+					key = filepath.Join("blocks", fmt.Sprint(shard), removalContext.tenant, blockId, "block.bin")
+				} else {
+					key = filepath.Join("segments", fmt.Sprint(shard), "anonymous", blockId, "block.bin")
+				}
+				level.Debug(c.logger).Log(
+					"msg", "removing block from bucket",
+					"shard", shard,
+					"tenant", removalContext.tenant,
+					"blockId", blockId,
+					"expiryTs", removalContext.expiryTs,
+					"bucket_key", key)
 				err := c.bkt.Delete(ctx, key)
 				if err != nil {
 					level.Warn(c.logger).Log(
-						"msg", "failed to removeBlock block from object store",
+						"msg", "failed to remove block from bucket",
 						"err", err,
 						"blockId", blockId,
 						"shard", shard,
@@ -206,6 +218,7 @@ func (c *blockCleaner) cleanShard(ctx context.Context, shard uint32, now int64) 
 					// TODO(aleks-p): Detect if the error is "object does not exist" or something else. Handle each case appropriately.
 					continue
 				}
+				cntDeletedBucket++
 			}
 			err = c.removeBlock(blockId, shard, removalContext)
 			if err != nil {
@@ -217,9 +230,17 @@ func (c *blockCleaner) cleanShard(ctx context.Context, shard uint32, now int64) 
 					"tenant", removalContext.tenant,
 					"expiry", removalContext.expiryTs)
 			}
+			level.Debug(c.logger).Log(
+				"msg", "removed block from pending block removals",
+				"blockId", blockId,
+				"shard", shard,
+				"tenant", removalContext.tenant,
+				"expiryTs", removalContext.expiryTs)
 			// TODO(aleks-p): add more logging, metrics
+			cntDeleted++
 		}
 	}
+	level.Info(c.logger).Log("msg", "finished shard cleanup", "shard", shard, "blocks_removed", cntDeleted, "blocks_removed_bucket", cntDeletedBucket)
 	return nil
 }
 
