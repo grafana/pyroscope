@@ -63,7 +63,7 @@ func (m *RaftLogEntry) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *TruncateCommand) MarshalVT() (dAtA []byte, err error) {
+func (m *CleanBlocksRequest) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -76,12 +76,12 @@ func (m *TruncateCommand) MarshalVT() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *TruncateCommand) MarshalToVT(dAtA []byte) (int, error) {
+func (m *CleanBlocksRequest) MarshalToVT(dAtA []byte) (int, error) {
 	size := m.SizeVT()
 	return m.MarshalToSizedBufferVT(dAtA[:size])
 }
 
-func (m *TruncateCommand) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+func (m *CleanBlocksRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m == nil {
 		return 0, nil
 	}
@@ -92,11 +92,6 @@ func (m *TruncateCommand) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
-	}
-	if m.Timestamp != 0 {
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Timestamp))
-		i--
-		dAtA[i] = 0x8
 	}
 	return len(dAtA) - i, nil
 }
@@ -118,15 +113,12 @@ func (m *RaftLogEntry) SizeVT() (n int) {
 	return n
 }
 
-func (m *TruncateCommand) SizeVT() (n int) {
+func (m *CleanBlocksRequest) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	if m.Timestamp != 0 {
-		n += 1 + protohelpers.SizeOfVarint(uint64(m.Timestamp))
-	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -235,7 +227,7 @@ func (m *RaftLogEntry) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *TruncateCommand) UnmarshalVT(dAtA []byte) error {
+func (m *CleanBlocksRequest) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -258,31 +250,12 @@ func (m *TruncateCommand) UnmarshalVT(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: TruncateCommand: wiretype end group for non-group")
+			return fmt.Errorf("proto: CleanBlocksRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: TruncateCommand: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: CleanBlocksRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Timestamp", wireType)
-			}
-			m.Timestamp = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Timestamp |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

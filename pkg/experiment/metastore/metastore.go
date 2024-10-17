@@ -168,7 +168,7 @@ func New(
 		placementMgr: placementMgr,
 	}
 	m.leaderhealth = raftleader.NewRaftLeaderHealthObserver(logger, reg)
-	m.blockCleaner = blockcleaner.New(func() *bbolt.DB { return m.db.boltdb }, logger, &config.BlockCleaner, bucket)
+	m.blockCleaner = blockcleaner.New(m, func() *bbolt.DB { return m.db.boltdb }, logger, &config.BlockCleaner, bucket)
 	m.state = newMetastoreState(logger, m.db, reg, &config.Compaction, &config.Index, m.blockCleaner)
 	m.dlq = dlq.NewRecovery(dlq.RecoveryConfig{
 		Period: config.DLQRecoveryPeriod,

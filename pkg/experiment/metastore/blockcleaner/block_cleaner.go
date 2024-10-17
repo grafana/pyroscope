@@ -17,8 +17,11 @@ import (
 	"github.com/thanos-io/objstore"
 	"go.etcd.io/bbolt"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftleader"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftlogpb"
 )
 
 const (
@@ -47,32 +50,41 @@ type CleanerLifecycler interface {
 type Cleaner interface {
 	AddBlock(shard uint32, tenant string, blockId string, deletedTs int64) error
 	IsRemoved(blockId string) bool
+	DoCleanup(now int64) error
 }
+
+type RaftLog[Req, Resp proto.Message] interface {
+	ApplyCommand(req Req) (resp Resp, err error)
+}
+
+type RaftLogCleanBlocks RaftLog[*raftlogpb.CleanBlocksRequest, *anypb.Any]
 
 type blockCleaner struct {
 	blocks   map[string]struct{}
 	blocksMu sync.Mutex
 
-	db     func() *bbolt.DB
-	bkt    objstore.Bucket
-	logger log.Logger
-	cfg    *Config
+	raftLog RaftLogCleanBlocks
+	db      func() *bbolt.DB
+	bkt     objstore.Bucket
+	logger  log.Logger
+	cfg     *Config
 
 	cancel   context.CancelFunc
 	isLeader bool
 }
 
-func New(db func() *bbolt.DB, logger log.Logger, config *Config, bkt objstore.Bucket) CleanerLifecycler {
-	return newBlockCleaner(db, logger, config, bkt)
+func New(raftLog RaftLogCleanBlocks, db func() *bbolt.DB, logger log.Logger, config *Config, bkt objstore.Bucket) CleanerLifecycler {
+	return newBlockCleaner(raftLog, db, logger, config, bkt)
 }
 
-func newBlockCleaner(db func() *bbolt.DB, logger log.Logger, config *Config, bkt objstore.Bucket) *blockCleaner {
+func newBlockCleaner(raftLog RaftLogCleanBlocks, db func() *bbolt.DB, logger log.Logger, config *Config, bkt objstore.Bucket) *blockCleaner {
 	return &blockCleaner{
-		blocks: make(map[string]struct{}),
-		db:     db,
-		logger: logger,
-		cfg:    config,
-		bkt:    bkt,
+		blocks:  make(map[string]struct{}),
+		raftLog: raftLog,
+		db:      db,
+		logger:  logger,
+		cfg:     config,
+		bkt:     bkt,
 	}
 }
 
@@ -141,13 +153,17 @@ func (c *blockCleaner) loop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-t.C:
-			now := time.Now().UnixMilli() // TODO(aleks-p): Should we run this through a Raft command?
-			c.doCleanup(now)
+			if c.isLeader {
+				_, err := c.raftLog.ApplyCommand(&raftlogpb.CleanBlocksRequest{})
+				if err != nil {
+					_ = level.Error(c.logger).Log("msg", "failed to apply truncate command", "err", err)
+				}
+			}
 		}
 	}
 }
 
-func (c *blockCleaner) doCleanup(now int64) {
+func (c *blockCleaner) DoCleanup(now int64) error {
 	shards, err := c.listShards()
 	if err != nil {
 		panic(fmt.Errorf("failed to list shards for pending block removals: %w", err))
@@ -162,6 +178,7 @@ func (c *blockCleaner) doCleanup(now int64) {
 	if err != nil {
 		level.Warn(c.logger).Log("msg", "error during pending block removal", "err", err)
 	}
+	return err
 }
 
 func (c *blockCleaner) listShards() ([]uint32, error) {
