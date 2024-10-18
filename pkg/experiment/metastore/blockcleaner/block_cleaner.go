@@ -19,6 +19,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftleader"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftlogpb"
 	"github.com/grafana/pyroscope/pkg/util"
 )
@@ -37,6 +38,11 @@ type Config struct {
 func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.DurationVar(&cfg.CompactedBlocksCleanupDelay, prefix+"compacted-blocks-cleanup-delay", time.Minute*30, "The grace period for permanently deleting compacted blocks.")
 	f.DurationVar(&cfg.CompactedBlocksCleanupInterval, prefix+"compacted-blocks-cleanup-interval", time.Minute, "The interval at which block cleanup is performed.")
+}
+
+type CleanerLifecycler interface {
+	raftleader.LeaderRoutine
+	LoadMarkers()
 }
 
 type RaftLog[Req, Resp proto.Message] interface {
@@ -87,7 +93,7 @@ type BlockCleaner struct {
 	blocksMu sync.Mutex
 
 	raftLog RaftLogCleanBlocks
-	db      func() *bbolt.DB
+	db      *bbolt.DB
 	bkt     objstore.Bucket
 	logger  log.Logger
 	cfg     *Config
@@ -102,7 +108,7 @@ type BlockCleaner struct {
 
 func New(
 	raftLog RaftLogCleanBlocks,
-	db func() *bbolt.DB,
+	db *bbolt.DB,
 	logger log.Logger,
 	config *Config,
 	bkt objstore.Bucket,
@@ -113,7 +119,7 @@ func New(
 
 func newBlockCleaner(
 	raftLog RaftLogCleanBlocks,
-	db func() *bbolt.DB,
+	db *bbolt.DB,
 	logger log.Logger,
 	config *Config,
 	bkt objstore.Bucket,
@@ -135,11 +141,38 @@ type blockRemovalContext struct {
 	expiryTs int64
 }
 
+func (c *BlockCleaner) LoadMarkers() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	_ = c.db.View(func(tx *bbolt.Tx) error {
+		bkt := tx.Bucket(removedBlocksBucketNameBytes)
+		if bkt == nil {
+			return nil
+		}
+		return bkt.ForEachBucket(func(k []byte) error {
+			shardBkt := bkt.Bucket(k)
+			if shardBkt == nil {
+				return nil
+			}
+			return shardBkt.ForEach(func(k, v []byte) error {
+				if len(k) < 34 {
+					return fmt.Errorf("block key too short (expected 34 chars, was %d)", len(k))
+				}
+				blockId := string(k[:26])
+				c.blocks[blockId] = struct{}{}
+				return nil
+			})
+		})
+	})
+	level.Info(c.logger).Log("msg", "loaded metastore block deletion markers", "marker_count", len(c.blocks))
+}
+
 func (c *BlockCleaner) MarkBlock(shard uint32, tenant string, blockId string, deletedTs int64) error {
 	if c.IsMarked(blockId) {
 		return nil
 	}
-	err := c.db().Update(func(tx *bbolt.Tx) error {
+	err := c.db.Update(func(tx *bbolt.Tx) error {
 		bkt, err := tx.CreateBucketIfNotExists(removedBlocksBucketNameBytes)
 		if err != nil {
 			return err
@@ -148,7 +181,7 @@ func (c *BlockCleaner) MarkBlock(shard uint32, tenant string, blockId string, de
 		if err != nil {
 			return err
 		}
-		expiryTs := deletedTs + time.Duration(c.cfg.CompactedBlocksCleanupDelay).Milliseconds()
+		expiryTs := deletedTs + c.cfg.CompactedBlocksCleanupDelay.Milliseconds()
 		blockKey := getBlockKey(blockId, expiryTs, tenant)
 
 		return shardBkt.Put(blockKey, []byte{})
@@ -239,7 +272,7 @@ func (c *BlockCleaner) RemoveExpiredBlocks(now int64) error {
 
 func (c *BlockCleaner) listShards() ([]uint32, error) {
 	shards := make([]uint32, 0)
-	err := c.db().View(func(tx *bbolt.Tx) error {
+	err := c.db.View(func(tx *bbolt.Tx) error {
 		bkt, err := getPendingBlockRemovalsBucket(tx)
 		if err != nil {
 			return err
@@ -321,7 +354,7 @@ func (c *BlockCleaner) cleanShard(ctx context.Context, shard uint32, now int64) 
 
 func (c *BlockCleaner) listBlocks(shard uint32) (map[string]*blockRemovalContext, error) {
 	blocks := make(map[string]*blockRemovalContext)
-	err := c.db().View(func(tx *bbolt.Tx) error {
+	err := c.db.View(func(tx *bbolt.Tx) error {
 		bkt, err := getPendingBlockRemovalsBucket(tx)
 		if err != nil {
 			return err
@@ -349,7 +382,7 @@ func (c *BlockCleaner) listBlocks(shard uint32) (map[string]*blockRemovalContext
 }
 
 func (c *BlockCleaner) removeBlock(blockId string, shard uint32, removalContext *blockRemovalContext) error {
-	err := c.db().Update(func(tx *bbolt.Tx) error {
+	err := c.db.Update(func(tx *bbolt.Tx) error {
 		bkt, err := getPendingBlockRemovalsBucket(tx)
 		if err != nil {
 			return err

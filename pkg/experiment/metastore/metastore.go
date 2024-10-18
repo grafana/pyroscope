@@ -22,7 +22,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/thanos-io/objstore"
-	"go.etcd.io/bbolt"
 
 	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -108,11 +107,6 @@ func (cfg *RaftConfig) Validate() error {
 	return nil
 }
 
-type RaftLeaderRoutine interface {
-	Start()
-	Stop()
-}
-
 type Metastore struct {
 	service services.Service
 	metastorev1.MetastoreServiceServer
@@ -122,6 +116,7 @@ type Metastore struct {
 	config Config
 	logger log.Logger
 	reg    prometheus.Registerer
+	bucket objstore.Bucket
 
 	// In-memory state.
 	state *metastoreState
@@ -151,7 +146,7 @@ type Metastore struct {
 	placementMgr *adaptiveplacement.Manager
 	dnsProvider  *dns.Provider
 	dlq          *dlq.Recovery
-	blockCleaner RaftLeaderRoutine
+	blockCleaner blockcleaner.CleanerLifecycler
 }
 
 func New(
@@ -167,22 +162,13 @@ func New(
 		config:       config,
 		logger:       logger,
 		reg:          reg,
+		bucket:       bucket,
 		db:           newDB(config, logger, metrics),
 		metrics:      metrics,
 		client:       client,
 		placementMgr: placementMgr,
 	}
 	m.leaderhealth = raftleader.NewRaftLeaderHealthObserver(logger, reg)
-	blockCleaner := blockcleaner.New(
-		m,
-		func() *bbolt.DB { return m.db.boltdb },
-		m.logger,
-		&m.config.BlockCleaner,
-		bucket,
-		reg,
-	)
-	m.blockCleaner = blockCleaner
-	m.state = newMetastoreState(m.logger, m.db, m.reg, &m.config.Compaction, &m.config.Index, blockCleaner)
 	m.dlq = dlq.NewRecovery(dlq.RecoveryConfig{
 		Period: config.DLQRecoveryPeriod,
 	}, logger, m, bucket)
@@ -204,6 +190,17 @@ func (m *Metastore) starting(context.Context) error {
 	if err := m.db.open(false); err != nil {
 		return fmt.Errorf("failed to initialize database: %w", err)
 	}
+	blockCleaner := blockcleaner.New(
+		m,
+		m.db.boltdb,
+		m.logger,
+		&m.config.BlockCleaner,
+		m.bucket,
+		m.reg,
+	)
+	blockCleaner.LoadMarkers()
+	m.blockCleaner = blockCleaner
+	m.state = newMetastoreState(m.logger, m.db, m.reg, &m.config.Compaction, &m.config.Index, blockCleaner)
 	if err := m.initRaft(); err != nil {
 		return fmt.Errorf("failed to initialize raft: %w", err)
 	}
