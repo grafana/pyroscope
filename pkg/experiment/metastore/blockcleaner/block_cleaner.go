@@ -39,20 +39,6 @@ func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.DurationVar(&cfg.CompactedBlocksCleanupInterval, prefix+"compacted-blocks-cleanup-interval", time.Minute, "The interval at which block cleanup is performed.")
 }
 
-type CleanerLifecycler interface {
-	Cleaner
-
-	Start()
-	Stop()
-}
-
-type Cleaner interface {
-	MarkBlock(shard uint32, tenant string, blockId string, deletedTs int64) error
-	IsMarked(blockId string) bool
-
-	RemoveExpiredBlocks(now int64) error
-}
-
 type RaftLog[Req, Resp proto.Message] interface {
 	ApplyCommand(req Req) (resp Resp, err error)
 }
@@ -96,7 +82,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 	return m
 }
 
-type blockCleaner struct {
+type BlockCleaner struct {
 	blocks   map[string]struct{}
 	blocksMu sync.Mutex
 
@@ -121,7 +107,7 @@ func New(
 	config *Config,
 	bkt objstore.Bucket,
 	reg prometheus.Registerer,
-) CleanerLifecycler {
+) *BlockCleaner {
 	return newBlockCleaner(raftLog, db, logger, config, bkt, reg)
 }
 
@@ -132,8 +118,8 @@ func newBlockCleaner(
 	config *Config,
 	bkt objstore.Bucket,
 	reg prometheus.Registerer,
-) *blockCleaner {
-	return &blockCleaner{
+) *BlockCleaner {
+	return &BlockCleaner{
 		blocks:  make(map[string]struct{}),
 		raftLog: raftLog,
 		db:      db,
@@ -149,7 +135,7 @@ type blockRemovalContext struct {
 	expiryTs int64
 }
 
-func (c *blockCleaner) MarkBlock(shard uint32, tenant string, blockId string, deletedTs int64) error {
+func (c *BlockCleaner) MarkBlock(shard uint32, tenant string, blockId string, deletedTs int64) error {
 	if c.IsMarked(blockId) {
 		return nil
 	}
@@ -177,14 +163,14 @@ func (c *blockCleaner) MarkBlock(shard uint32, tenant string, blockId string, de
 	return nil
 }
 
-func (c *blockCleaner) IsMarked(blockId string) bool {
+func (c *BlockCleaner) IsMarked(blockId string) bool {
 	c.blocksMu.Lock()
 	defer c.blocksMu.Unlock()
 	_, ok := c.blocks[blockId]
 	return ok
 }
 
-func (c *blockCleaner) Start() {
+func (c *BlockCleaner) Start() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.started {
@@ -199,7 +185,7 @@ func (c *blockCleaner) Start() {
 	level.Info(c.logger).Log("msg", "block cleaner started")
 }
 
-func (c *blockCleaner) Stop() {
+func (c *BlockCleaner) Stop() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if !c.started {
@@ -213,7 +199,7 @@ func (c *blockCleaner) Stop() {
 	level.Info(c.logger).Log("msg", "block cleaner stopped")
 }
 
-func (c *blockCleaner) loop(ctx context.Context) {
+func (c *BlockCleaner) loop(ctx context.Context) {
 	t := time.NewTicker(c.cfg.CompactedBlocksCleanupInterval)
 	defer func() {
 		t.Stop()
@@ -223,17 +209,15 @@ func (c *blockCleaner) loop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-t.C:
-			if c.isLeader {
-				_, err := c.raftLog.ApplyCommand(&raftlogpb.CleanBlocksRequest{})
-				if err != nil {
-					_ = level.Error(c.logger).Log("msg", "failed to apply truncate command", "err", err)
-				}
+			_, err := c.raftLog.ApplyCommand(&raftlogpb.CleanBlocksRequest{})
+			if err != nil {
+				_ = level.Error(c.logger).Log("msg", "failed to apply clean blocks command", "err", err)
 			}
 		}
 	}
 }
 
-func (c *blockCleaner) RemoveExpiredBlocks(now int64) error {
+func (c *BlockCleaner) RemoveExpiredBlocks(now int64) error {
 	shards, err := c.listShards()
 	if err != nil {
 		panic(fmt.Errorf("failed to list shards for pending block removals: %w", err))
@@ -253,7 +237,7 @@ func (c *blockCleaner) RemoveExpiredBlocks(now int64) error {
 	return err
 }
 
-func (c *blockCleaner) listShards() ([]uint32, error) {
+func (c *BlockCleaner) listShards() ([]uint32, error) {
 	shards := make([]uint32, 0)
 	err := c.db().View(func(tx *bbolt.Tx) error {
 		bkt, err := getPendingBlockRemovalsBucket(tx)
@@ -271,7 +255,7 @@ func (c *blockCleaner) listShards() ([]uint32, error) {
 	return shards, nil
 }
 
-func (c *blockCleaner) cleanShard(ctx context.Context, shard uint32, now int64) error {
+func (c *BlockCleaner) cleanShard(ctx context.Context, shard uint32, now int64) error {
 	blocks, err := c.listBlocks(shard)
 	if err != nil {
 		level.Warn(c.logger).Log("msg", "failed to list removed blocks for shard", "err", err, "shard", shard)
@@ -335,7 +319,7 @@ func (c *blockCleaner) cleanShard(ctx context.Context, shard uint32, now int64) 
 	return nil
 }
 
-func (c *blockCleaner) listBlocks(shard uint32) (map[string]*blockRemovalContext, error) {
+func (c *BlockCleaner) listBlocks(shard uint32) (map[string]*blockRemovalContext, error) {
 	blocks := make(map[string]*blockRemovalContext)
 	err := c.db().View(func(tx *bbolt.Tx) error {
 		bkt, err := getPendingBlockRemovalsBucket(tx)
@@ -364,7 +348,7 @@ func (c *blockCleaner) listBlocks(shard uint32) (map[string]*blockRemovalContext
 	return blocks, nil
 }
 
-func (c *blockCleaner) removeBlock(blockId string, shard uint32, removalContext *blockRemovalContext) error {
+func (c *BlockCleaner) removeBlock(blockId string, shard uint32, removalContext *blockRemovalContext) error {
 	err := c.db().Update(func(tx *bbolt.Tx) error {
 		bkt, err := getPendingBlockRemovalsBucket(tx)
 		if err != nil {

@@ -108,6 +108,11 @@ func (cfg *RaftConfig) Validate() error {
 	return nil
 }
 
+type RaftLeaderRoutine interface {
+	Start()
+	Stop()
+}
+
 type Metastore struct {
 	service services.Service
 	metastorev1.MetastoreServiceServer
@@ -146,7 +151,7 @@ type Metastore struct {
 	placementMgr *adaptiveplacement.Manager
 	dnsProvider  *dns.Provider
 	dlq          *dlq.Recovery
-	blockCleaner blockcleaner.CleanerLifecycler
+	blockCleaner RaftLeaderRoutine
 }
 
 func New(
@@ -168,7 +173,7 @@ func New(
 		placementMgr: placementMgr,
 	}
 	m.leaderhealth = raftleader.NewRaftLeaderHealthObserver(logger, reg)
-	m.blockCleaner = blockcleaner.New(
+	blockCleaner := blockcleaner.New(
 		m,
 		func() *bbolt.DB { return m.db.boltdb },
 		m.logger,
@@ -176,7 +181,8 @@ func New(
 		bucket,
 		reg,
 	)
-	m.state = newMetastoreState(m.logger, m.db, m.reg, &m.config.Compaction, &m.config.Index, m.blockCleaner)
+	m.blockCleaner = blockCleaner
+	m.state = newMetastoreState(m.logger, m.db, m.reg, &m.config.Compaction, &m.config.Index, blockCleaner)
 	m.dlq = dlq.NewRecovery(dlq.RecoveryConfig{
 		Period: config.DLQRecoveryPeriod,
 	}, logger, m, bucket)
