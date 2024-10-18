@@ -146,7 +146,7 @@ type Metastore struct {
 	placementMgr *adaptiveplacement.Manager
 	dnsProvider  *dns.Provider
 	dlq          *dlq.Recovery
-	blockCleaner blockcleaner.CleanerLifecycler
+	blockCleaner *blockCleaner
 }
 
 func New(
@@ -168,6 +168,7 @@ func New(
 		client:       client,
 		placementMgr: placementMgr,
 	}
+	m.state = newMetastoreState(m.logger, m.db, m.reg, &m.config.Compaction, &m.config.Index)
 	m.leaderhealth = raftleader.NewRaftLeaderHealthObserver(logger, reg)
 	m.dlq = dlq.NewRecovery(dlq.RecoveryConfig{
 		Period: config.DLQRecoveryPeriod,
@@ -190,20 +191,18 @@ func (m *Metastore) starting(context.Context) error {
 	if err := m.db.open(false); err != nil {
 		return fmt.Errorf("failed to initialize database: %w", err)
 	}
-	blockCleaner := blockcleaner.New(
-		m,
-		m.db.boltdb,
-		m.logger,
-		&m.config.BlockCleaner,
-		m.bucket,
-		m.reg,
-	)
-	blockCleaner.LoadMarkers()
-	m.blockCleaner = blockCleaner
-	m.state = newMetastoreState(m.logger, m.db, m.reg, &m.config.Compaction, &m.config.Index, blockCleaner)
+	// deletion markers rely on the db being opened
+	m.state.deletionMarkers = blockcleaner.NewDeletionMarkers(m.db.boltdb, &m.config.BlockCleaner, m.logger, m.reg)
+	m.state.deletionMarkers.Load()
+
 	if err := m.initRaft(); err != nil {
 		return fmt.Errorf("failed to initialize raft: %w", err)
 	}
+	// the block cleaner needs raft to apply a raft command, we hold a reference here because we control the lifecycle
+	m.blockCleaner = newBlockCleaner(&m.config.BlockCleaner, m.raft, &m.config.Raft, m.bucket, m.logger, m.reg)
+	// the raft command is implemented in metastoreState, we need to pass a reference to determine the scope of the cleanup
+	m.state.blockCleaner = m.blockCleaner
+	m.blockCleaner.Start()
 	return nil
 }
 
@@ -266,11 +265,9 @@ func (m *Metastore) initRaft() (err error) {
 		if st == raft.Leader {
 			m.dlq.Start()
 			m.placementMgr.Start()
-			m.blockCleaner.Start()
 		} else {
 			m.dlq.Stop()
 			m.placementMgr.Stop()
-			m.blockCleaner.Stop()
 		}
 	})
 	return nil

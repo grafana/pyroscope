@@ -52,7 +52,7 @@ func (m *Metastore) AddRecoveredBlock(_ context.Context, req *metastorev1.AddBlo
 }
 
 func (m *metastoreState) applyAddBlock(log *raft.Log, request *metastorev1.AddBlockRequest) (*metastorev1.AddBlockResponse, error) {
-	if m.blockCleaner.IsMarked(request.Block.Id) {
+	if m.deletionMarkers.IsMarked(request.Block.Id) {
 		_ = level.Warn(m.logger).Log("msg", "block already added and compacted", "block_id", request.Block.Id)
 		return &metastorev1.AddBlockResponse{}, nil
 	}

@@ -37,6 +37,3 @@ packages:
     interfaces:
       SegmentWriterClient:
       IngesterClient:
-  github.com/grafana/pyroscope/pkg/experiment/metastore/blockcleaner:
-    interfaces:
-      Cleaner:

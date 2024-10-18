@@ -200,7 +200,7 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 
 	for key, blocks := range stateUpdate.deletedBlocks {
 		for _, block := range blocks {
-			err = m.blockCleaner.MarkBlock(key.shard, key.tenant, block, raftAppendedAtNanos/time.Millisecond.Nanoseconds())
+			err = m.deletionMarkers.Mark(key.shard, key.tenant, block, raftAppendedAtNanos/time.Millisecond.Nanoseconds())
 			if err != nil {
 				panic(fatalCommandError{fmt.Errorf("error persisting block removals, %w", err)})
 			}

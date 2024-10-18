@@ -11,6 +11,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"go.etcd.io/bbolt"
 
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/blockcleaner"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compactionpb"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
 )
@@ -24,20 +25,17 @@ type tenantShard struct {
 	shard  uint32
 }
 
-type BlockCleaner interface {
-	MarkBlock(shard uint32, tenant string, blockId string, deletedTs int64) error
-	IsMarked(blockId string) bool
-	RemoveExpiredBlocks(now int64) error
-}
-
 type metastoreState struct {
 	logger            log.Logger
+	reg               prometheus.Registerer
 	compactionMetrics *compactionMetrics
 	compactionConfig  *CompactionConfig
-	indexConfig       *index.Config
 
-	index        *index.Index
-	blockCleaner BlockCleaner
+	index       *index.Index
+	indexConfig *index.Config
+
+	deletionMarkers *blockcleaner.DeletionMarkers
+	blockCleaner    *blockCleaner
 
 	compactionMutex          sync.Mutex
 	compactionJobBlockQueues map[tenantShard]*compactionJobBlockQueue
@@ -57,10 +55,10 @@ func newMetastoreState(
 	reg prometheus.Registerer,
 	compactionCfg *CompactionConfig,
 	indexCfg *index.Config,
-	blockCleaner BlockCleaner,
 ) *metastoreState {
 	return &metastoreState{
 		logger:                   logger,
+		reg:                      reg,
 		index:                    index.NewIndex(newIndexStore(db, logger), logger, indexCfg),
 		db:                       db,
 		compactionJobBlockQueues: make(map[tenantShard]*compactionJobBlockQueue),
@@ -68,17 +66,17 @@ func newMetastoreState(
 		compactionMetrics:        newCompactionMetrics(reg),
 		compactionConfig:         compactionCfg,
 		indexConfig:              indexCfg,
-		blockCleaner:             blockCleaner,
 	}
 }
 
 func (m *metastoreState) reset(db *boltdb) {
 	m.compactionMutex.Lock()
+	defer m.compactionMutex.Unlock()
 	clear(m.compactionJobBlockQueues)
 	m.index = index.NewIndex(newIndexStore(db, m.logger), m.logger, m.indexConfig)
 	m.compactionJobQueue = newJobQueue(m.compactionConfig.JobLeaseDuration.Nanoseconds())
 	m.db = db
-	m.compactionMutex.Unlock()
+	m.deletionMarkers.Reload(db.boltdb)
 }
 
 func (m *metastoreState) restore(db *boltdb) error {

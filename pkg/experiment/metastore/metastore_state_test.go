@@ -23,7 +23,7 @@ func TestMetadataStateManagement(t *testing.T) {
 	err := db.open(false)
 	require.NoError(t, err)
 
-	m := newMetastoreState(util.Logger, db, reg, &config.Compaction, &index.DefaultConfig, nil)
+	m := newMetastoreState(util.Logger, db, reg, &config.Compaction, &index.DefaultConfig)
 	require.NotNil(t, m)
 
 	t.Run("restore compaction state", func(t *testing.T) {
