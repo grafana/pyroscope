@@ -208,6 +208,7 @@ func (c *blockCleaner) Stop() {
 	}
 	c.cancel()
 	c.started = false
+	c.isLeader = false
 	c.wg.Wait()
 	level.Info(c.logger).Log("msg", "block cleaner stopped")
 }
