@@ -11,6 +11,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"go.etcd.io/bbolt"
 
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/blockcleaner"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compactionpb"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
 )
@@ -26,11 +27,15 @@ type tenantShard struct {
 
 type metastoreState struct {
 	logger            log.Logger
+	reg               prometheus.Registerer
 	compactionMetrics *compactionMetrics
 	compactionConfig  *CompactionConfig
-	indexConfig       *index.Config
 
-	index *index.Index
+	index       *index.Index
+	indexConfig *index.Config
+
+	deletionMarkers *blockcleaner.DeletionMarkers
+	blockCleaner    *blockCleaner
 
 	compactionMutex          sync.Mutex
 	compactionJobBlockQueues map[tenantShard]*compactionJobBlockQueue
@@ -44,9 +49,16 @@ type compactionJobBlockQueue struct {
 	blocksByLevel map[uint32][]string
 }
 
-func newMetastoreState(logger log.Logger, db *boltdb, reg prometheus.Registerer, compactionCfg *CompactionConfig, indexCfg *index.Config) *metastoreState {
+func newMetastoreState(
+	logger log.Logger,
+	db *boltdb,
+	reg prometheus.Registerer,
+	compactionCfg *CompactionConfig,
+	indexCfg *index.Config,
+) *metastoreState {
 	return &metastoreState{
 		logger:                   logger,
+		reg:                      reg,
 		index:                    index.NewIndex(newIndexStore(db, logger), logger, indexCfg),
 		db:                       db,
 		compactionJobBlockQueues: make(map[tenantShard]*compactionJobBlockQueue),
@@ -59,11 +71,12 @@ func newMetastoreState(logger log.Logger, db *boltdb, reg prometheus.Registerer,
 
 func (m *metastoreState) reset(db *boltdb) {
 	m.compactionMutex.Lock()
+	defer m.compactionMutex.Unlock()
 	clear(m.compactionJobBlockQueues)
 	m.index = index.NewIndex(newIndexStore(db, m.logger), m.logger, m.indexConfig)
 	m.compactionJobQueue = newJobQueue(m.compactionConfig.JobLeaseDuration.Nanoseconds())
 	m.db = db
-	m.compactionMutex.Unlock()
+	m.deletionMarkers.Reload(db.boltdb)
 }
 
 func (m *metastoreState) restore(db *boltdb) error {

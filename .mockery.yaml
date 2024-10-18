@@ -30,7 +30,6 @@ packages:
   github.com/grafana/pyroscope/pkg/experiment/metastore/index:
     interfaces:
       Store:
-        config:
   github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement:
     interfaces:
       Store:

@@ -13,6 +13,7 @@ pyroscope:
     write-path: "segment-writer"
     enable-query-backend: "true"
     querier.max-query-length: '7d'
+    metastore.block-cleaner.compacted-blocks-cleanup-delay: '1m'
 
   components:
     distributor:

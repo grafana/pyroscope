@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"time"
 
 	"github.com/go-kit/log/level"
 	"github.com/hashicorp/raft"
@@ -101,7 +102,7 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 					m.addBlockToCompactionJobQueue(b)
 				}
 				m.compactionMetrics.addedBlocks.WithLabelValues(
-					fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
+					fmt.Sprint(b.Shard), b.TenantId, fmt.Sprint(b.CompactionLevel)).Inc()
 
 				stateUpdate.updatedBlockQueues[blockTenantShard] = append(stateUpdate.updatedBlockQueues[blockTenantShard], b.CompactionLevel)
 			}
@@ -195,6 +196,15 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 	err = m.writeToDb(stateUpdate)
 	if err != nil {
 		panic(fatalCommandError{fmt.Errorf("error persisting metadata state to db, %w", err)})
+	}
+
+	for key, blocks := range stateUpdate.deletedBlocks {
+		for _, block := range blocks {
+			err = m.deletionMarkers.Mark(key.shard, key.tenant, block, raftAppendedAtNanos/time.Millisecond.Nanoseconds())
+			if err != nil {
+				panic(fatalCommandError{fmt.Errorf("error persisting block removals, %w", err)})
+			}
+		}
 	}
 
 	return resp, nil

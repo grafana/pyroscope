@@ -36,6 +36,11 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 	return m
 }
 
+type LeaderRoutine interface {
+	Start()
+	Stop()
+}
+
 func NewRaftLeaderHealthObserver(logger log.Logger, reg prometheus.Registerer) *LeaderObserver {
 	return &LeaderObserver{
 		logger:  logger,

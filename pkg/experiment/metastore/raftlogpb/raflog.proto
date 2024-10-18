@@ -11,8 +11,9 @@ enum CommandType {
   COMMAND_TYPE_UNKNOWN = 0;
   COMMAND_TYPE_ADD_BLOCK = 1;
   COMMAND_TYPE_POLL_COMPACTION_JOBS_STATUS = 2;
+  COMMAND_TYPE_CLEAN_BLOCKS = 3;
 }
 
-message TruncateCommand {
-  uint64 timestamp = 1;
+message CleanBlocksRequest {
+  string request_id = 1;
 }
