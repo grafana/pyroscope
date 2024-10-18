@@ -22,10 +22,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/thanos-io/objstore"
+	"go.etcd.io/bbolt"
 
 	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	adaptiveplacement "github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/blockcleaner"
 	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/dlq"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
@@ -44,14 +46,15 @@ const (
 )
 
 type Config struct {
-	Address           string            `yaml:"address"`
-	GRPCClientConfig  grpcclient.Config `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with the metastore."`
-	DataDir           string            `yaml:"data_dir"`
-	Raft              RaftConfig        `yaml:"raft"`
-	Compaction        CompactionConfig  `yaml:"compaction_config"`
-	MinReadyDuration  time.Duration     `yaml:"min_ready_duration" category:"advanced"`
-	DLQRecoveryPeriod time.Duration     `yaml:"dlq_recovery_period" category:"advanced"`
-	Index             index.Config      `yaml:"index_config"`
+	Address           string              `yaml:"address"`
+	GRPCClientConfig  grpcclient.Config   `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with the metastore."`
+	DataDir           string              `yaml:"data_dir"`
+	Raft              RaftConfig          `yaml:"raft"`
+	Compaction        CompactionConfig    `yaml:"compaction_config"`
+	MinReadyDuration  time.Duration       `yaml:"min_ready_duration" category:"advanced"`
+	DLQRecoveryPeriod time.Duration       `yaml:"dlq_recovery_period" category:"advanced"`
+	Index             index.Config        `yaml:"index_config"`
+	BlockCleaner      blockcleaner.Config `yaml:"block_cleaner_config"`
 }
 
 type RaftConfig struct {
@@ -77,6 +80,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	cfg.Raft.RegisterFlagsWithPrefix(prefix+"raft.", f)
 	cfg.Compaction.RegisterFlagsWithPrefix(prefix+"compaction.", f)
 	cfg.Index.RegisterFlagsWithPrefix(prefix+"index.", f)
+	cfg.BlockCleaner.RegisterFlagsWithPrefix(prefix+"block-cleaner.", f)
 }
 
 func (cfg *Config) Validate() error {
@@ -142,6 +146,7 @@ type Metastore struct {
 	placementMgr *adaptiveplacement.Manager
 	dnsProvider  *dns.Provider
 	dlq          *dlq.Recovery
+	blockCleaner blockcleaner.CleanerLifecycler
 }
 
 func New(
@@ -163,7 +168,15 @@ func New(
 		placementMgr: placementMgr,
 	}
 	m.leaderhealth = raftleader.NewRaftLeaderHealthObserver(logger, reg)
-	m.state = newMetastoreState(logger, m.db, reg, &config.Compaction, &config.Index)
+	m.blockCleaner = blockcleaner.New(
+		m,
+		func() *bbolt.DB { return m.db.boltdb },
+		m.logger,
+		&m.config.BlockCleaner,
+		bucket,
+		reg,
+	)
+	m.state = newMetastoreState(m.logger, m.db, m.reg, &m.config.Compaction, &m.config.Index, m.blockCleaner)
 	m.dlq = dlq.NewRecovery(dlq.RecoveryConfig{
 		Period: config.DLQRecoveryPeriod,
 	}, logger, m, bucket)
@@ -174,6 +187,7 @@ func New(
 func (m *Metastore) Service() services.Service { return m.service }
 
 func (m *Metastore) Shutdown() error {
+	m.blockCleaner.Stop()
 	m.dlq.Stop()
 	m.shutdownRaft()
 	m.db.shutdown()
@@ -245,14 +259,15 @@ func (m *Metastore) initRaft() (err error) {
 	} else {
 		_ = level.Info(m.logger).Log("msg", "restoring existing state, not bootstraping")
 	}
-
 	m.leaderhealth.Register(m.raft, func(st raft.RaftState) {
 		if st == raft.Leader {
 			m.dlq.Start()
 			m.placementMgr.Start()
+			m.blockCleaner.Start()
 		} else {
 			m.dlq.Stop()
 			m.placementMgr.Stop()
+			m.blockCleaner.Stop()
 		}
 	})
 	return nil
