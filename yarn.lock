@@ -14141,10 +14141,10 @@ update-browserslist-db@^1.1.0:
     escalade "^3.1.2"
     picocolors "^1.0.1"
 
-uplot@1.6.27:
-  version "1.6.27"
-  resolved "https://registry.yarnpkg.com/uplot/-/uplot-1.6.27.tgz#d282b98ea17f8980eadb2b7d634a8b11dd4521aa"
-  integrity sha512-78U4ss5YeU65kQkOC/QAKiyII+4uo+TYUJJKvuxRzeSpk/s5sjpY1TL0agkmhHBBShpvLtmbHIEiM7+C5lBULg==
+uplot@1.6.27, uplot@^1.6.31:
+  version "1.6.31"
+  resolved "https://registry.yarnpkg.com/uplot/-/uplot-1.6.31.tgz#092a4b586590e9794b679e1df885a15584b03698"
+  integrity sha512-sQZqSwVCbJGnFB4IQjQYopzj5CoTZJ4Br1fG/xdONimqgHmsacvCjNesdGDypNKFbrhLGIeshYhy89FxPF+H+w==
 
 uri-js@^4.2.2:
   version "4.4.1"

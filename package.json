@@ -184,6 +184,7 @@
     "semver": "^7.5.2",
     "trim": ">0.0.3",
     "trim-newlines": ">4.0.1",
-    "yargs-parser": ">18.1.1"
+    "yargs-parser": ">18.1.1",
+    "uplot": "^1.6.31"
   }
 }
