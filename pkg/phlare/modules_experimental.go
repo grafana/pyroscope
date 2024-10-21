@@ -198,3 +198,11 @@ func (f *Phlare) adaptivePlacementStore() adaptiveplacement.Store {
 	}
 	return adaptiveplacement.NewStore(f.storageBucket)
 }
+
+func (f *Phlare) initShutdownHelper() (services.Service, error) {
+	shutdownServer := func(error) error {
+		f.Server.GRPC.GracefulStop()
+		return nil
+	}
+	return services.NewIdleService(nil, shutdownServer), nil
+}
