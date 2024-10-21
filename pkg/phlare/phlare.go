@@ -415,13 +415,13 @@ func (f *Phlare) setupModuleManager() error {
 			SegmentWriterClient: {Overrides, API, SegmentWriterRing, PlacementAgent},
 			PlacementAgent:      {Overrides, API, Storage},
 			PlacementManager:    {Overrides, API, Storage},
-			ShutdownHelper:      {},
+			ShutdownHelper:      {Distributor, SegmentWriter, Metastore, QueryBackend},
 		}
 		for k, v := range experimentalModules {
 			deps[k] = v
 		}
 
-		deps[All] = append(deps[All], SegmentWriter, Metastore, CompactionWorker, QueryBackend)
+		deps[All] = append(deps[All], SegmentWriter, Metastore, CompactionWorker, QueryBackend, ShutdownHelper)
 		deps[QueryFrontend] = append(deps[QueryFrontend], MetastoreClient, QueryBackendClient)
 		deps[Distributor] = append(deps[Distributor], SegmentWriterClient)
 

@@ -754,9 +754,9 @@ func NewServerService(serv *server.Server, servicesToWaitFor func() []services.S
 			return nil
 		case err := <-serverDone:
 			if err != nil {
-				return err
+				return fmt.Errorf("server stopped unexpectedly: %w", err)
 			}
-			return fmt.Errorf("server stopped unexpectedly")
+			return nil
 		}
 	}
 
