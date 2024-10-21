@@ -3,12 +3,14 @@ package metastoreclient
 import (
 	"context"
 	"fmt"
-	"github.com/go-kit/log"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
-	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/raft"
 	"io"
 	"sync"
+
+	"github.com/go-kit/log"
+	"github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/raft"
+
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
 
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/services"
@@ -162,8 +164,14 @@ func dial(address string, grpcClientConfig grpcclient.Config, _ log.Logger) (*gr
 	}
 	// TODO: https://github.com/grpc/grpc-proto/blob/master/grpc/service_config/service_config.proto
 	options = append(options,
-		//grpc.WithDefaultServiceConfig(grpcServiceConfig),
+		grpc.WithDefaultServiceConfig(grpcServiceConfig),
 		grpc.WithUnaryInterceptor(otgrpc.OpenTracingClientInterceptor(opentracing.GlobalTracer())),
 	)
 	return grpc.Dial(address, options...)
 }
+
+const grpcServiceConfig = `{
+	"healthCheckConfig": {
+		"serviceName": "pyroscope.metastore"
+	}
+}`

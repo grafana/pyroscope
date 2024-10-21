@@ -3,7 +3,8 @@ package health
 import (
 	"context"
 
-	"github.com/grafana/dskit/services"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
@@ -11,29 +12,43 @@ import (
 )
 
 type Service interface {
-	SetServingStatus(string, grpc_health_v1.HealthCheckResponse_ServingStatus)
+	SetServing()
+	SetNotServing()
 }
 
 type noopService struct{}
 
 var NoOpService = noopService{}
 
-func (noopService) SetServingStatus(string, grpc_health_v1.HealthCheckResponse_ServingStatus) {}
+func (noopService) SetServing() {}
 
-func NewGRPCHealthService() *GRPCHealthService {
-	s := health.NewServer()
+func (noopService) SetNotServing() {}
+
+type GRPCHealthService struct {
+	logger log.Logger
+	name   string
+	server *health.Server
+}
+
+func NewGRPCHealthService(server *health.Server, logger log.Logger, name string) *GRPCHealthService {
 	return &GRPCHealthService{
-		Server: s,
-		Service: services.NewIdleService(nil, func(error) error {
-			s.Shutdown()
-			return nil
-		}),
+		logger: logger,
+		name:   name,
+		server: server,
 	}
 }
 
-type GRPCHealthService struct {
-	services.Service
-	*health.Server
+func (s *GRPCHealthService) setStatus(x grpc_health_v1.HealthCheckResponse_ServingStatus) {
+	level.Info(s.logger).Log("msg", "setting health status", "status", x)
+	s.server.SetServingStatus(s.name, x)
+}
+
+func (s *GRPCHealthService) SetServing() {
+	s.setStatus(grpc_health_v1.HealthCheckResponse_SERVING)
+}
+
+func (s *GRPCHealthService) SetNotServing() {
+	s.setStatus(grpc_health_v1.HealthCheckResponse_NOT_SERVING)
 }
 
 var NoOpClient = noOpClient{}

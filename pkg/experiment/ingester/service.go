@@ -27,6 +27,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/pkg/util/health"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
@@ -38,8 +39,7 @@ const (
 type Config struct {
 	GRPCClientConfig grpcclient.Config     `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with the segment writer."`
 	LifecyclerConfig ring.LifecyclerConfig `yaml:"lifecycler,omitempty"`
-	SegmentDuration  time.Duration         `yaml:"segmentDuration,omitempty"`
-	Async            bool                  `yaml:"async,omitempty"` //todo make it pertenant
+	SegmentDuration  time.Duration         `yaml:"segment_duration,omitempty"`
 }
 
 // RegisterFlags registers the flags.
@@ -47,8 +47,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	const prefix = "segment-writer"
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix(prefix, f)
 	cfg.LifecyclerConfig.RegisterFlagsWithPrefix(prefix+".", f, util.Logger)
-	f.DurationVar(&cfg.SegmentDuration, prefix+".segment.duration", 500*time.Millisecond, "Timeout when flushing segments to bucket.")
-	f.BoolVar(&cfg.Async, prefix+".async", false, "Enable async mode for segment writer.")
+	f.DurationVar(&cfg.SegmentDuration, prefix+".segment-duration", 500*time.Millisecond, "Timeout when flushing segments to bucket.")
 }
 
 func (cfg *Config) Validate() error {
@@ -68,11 +67,13 @@ type SegmentWriterService struct {
 	services.Service
 	segmentwriterv1.UnimplementedSegmentWriterServiceServer
 
-	cfg      Config
+	config   Config
 	dbConfig phlaredb.Config
 	logger   log.Logger
 	reg      prometheus.Registerer
+	health   health.Service
 
+	requests           util.InflightRequests
 	lifecycler         *ring.Lifecycler
 	subservices        *services.Manager
 	subservicesWatcher *services.FailureWatcher
@@ -94,22 +95,24 @@ func (i *ingesterFlusherCompat) Flush() {
 
 func New(
 	reg prometheus.Registerer,
-	log log.Logger,
-	cfg Config,
-	lim Limits,
+	logger log.Logger,
+	config Config,
+	limits Limits,
+	health health.Service,
 	storageBucket phlareobj.Bucket,
 	metastoreClient *metastoreclient.Client,
 ) (*SegmentWriterService, error) {
 	i := &SegmentWriterService{
-		cfg:           cfg,
-		logger:        log,
+		config:        config,
+		logger:        logger,
 		reg:           reg,
+		health:        health,
 		storageBucket: storageBucket,
 	}
 
 	var err error
 	i.lifecycler, err = ring.NewLifecycler(
-		cfg.LifecyclerConfig,
+		config.LifecyclerConfig,
 		&ingesterFlusherCompat{i},
 		RingName,
 		RingKey,
@@ -129,10 +132,9 @@ func New(
 	if metastoreClient == nil {
 		return nil, errors.New("metastore client is required for segment writer")
 	}
-	segmentMetrics := newSegmentMetrics(i.reg)
+	metrics := newSegmentMetrics(i.reg)
 	headMetrics := memdb.NewHeadMetricsWithPrefix(reg, "pyroscope_segment_writer")
-	config := segmentWriterConfig{segmentDuration: cfg.SegmentDuration}
-	i.segmentWriter = newSegmentWriter(i.logger, segmentMetrics, headMetrics, config, lim, storageBucket, metastoreClient)
+	i.segmentWriter = newSegmentWriter(i.logger, metrics, headMetrics, config, limits, storageBucket, metastoreClient)
 	i.subservicesWatcher = services.NewFailureWatcher()
 	i.subservicesWatcher.WatchManager(i.subservices)
 	i.Service = services.NewBasicService(i.starting, i.running, i.stopping)
@@ -140,7 +142,17 @@ func New(
 }
 
 func (i *SegmentWriterService) starting(ctx context.Context) error {
-	return services.StartManagerAndAwaitHealthy(ctx, i.subservices)
+	if err := services.StartManagerAndAwaitHealthy(ctx, i.subservices); err != nil {
+		return err
+	}
+	// The instance is ready to handle incoming requests.
+	// We do not have to wait for the lifecycler: its readiness check
+	// is used to rate limit the number of instances that can be coming
+	// or going at any one time, by only returning true if all instances
+	// are active.
+	i.requests.Open()
+	i.health.SetServing()
+	return nil
 }
 
 func (i *SegmentWriterService) running(ctx context.Context) error {
@@ -153,6 +165,8 @@ func (i *SegmentWriterService) running(ctx context.Context) error {
 }
 
 func (i *SegmentWriterService) stopping(_ error) error {
+	i.health.SetNotServing()
+	i.requests.Drain()
 	errs := multierror.New()
 	errs.Add(services.StopManagerAndAwaitStopped(context.Background(), i.subservices))
 	errs.Add(i.segmentWriter.Stop())
@@ -160,6 +174,14 @@ func (i *SegmentWriterService) stopping(_ error) error {
 }
 
 func (i *SegmentWriterService) Push(ctx context.Context, req *segmentwriterv1.PushRequest) (*segmentwriterv1.PushResponse, error) {
+	if !i.requests.Add() {
+		return nil, status.Error(codes.Unavailable, "service is unavailable")
+	} else {
+		defer func() {
+			i.requests.Done()
+		}()
+	}
+
 	if req.TenantId == "" {
 		return nil, status.Error(codes.InvalidArgument, tenant.ErrNoTenantID.Error())
 	}
@@ -173,11 +195,8 @@ func (i *SegmentWriterService) Push(ctx context.Context, req *segmentwriterv1.Pu
 	}
 
 	wait := i.segmentWriter.ingest(shardKey(req.Shard), func(segment segmentIngest) {
-		segment.ingest(ctx, req.TenantId, p.Profile, id, req.Labels)
+		segment.ingest(req.TenantId, p.Profile, id, req.Labels)
 	})
-	if i.cfg.Async {
-		return &segmentwriterv1.PushResponse{}, nil
-	}
 
 	flushStarted := time.Now()
 	defer func() {
@@ -217,7 +236,7 @@ func (i *SegmentWriterService) TransferOut(ctx context.Context) error {
 	return ring.ErrTransferDisabled
 }
 
-// CheckReady is used to indicate to k8s when the ingesters are ready for
+// CheckReady is used to indicate when the ingesters are ready for
 // the addition removal of another ingester. Returns 204 when the ingester is
 // ready, 500 otherwise.
 func (i *SegmentWriterService) CheckReady(ctx context.Context) error {
