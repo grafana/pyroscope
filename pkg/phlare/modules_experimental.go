@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
@@ -197,4 +198,33 @@ func (f *Phlare) adaptivePlacementStore() adaptiveplacement.Store {
 		return adaptiveplacement.NewEmptyStore()
 	}
 	return adaptiveplacement.NewStore(f.storageBucket)
+}
+
+// The shutdown helper utility emerged due to the need to handle request
+// draining at the server level.
+//
+// Since the server is a dependency of many services that handle requests
+// and is only shut down after the services have stopped, there's a possibility
+// that a de-initialized component may receive requests, which causes undefined
+// behaviour.
+//
+// In other scenarios, request draining could be managed at a higher level,
+// such as in a load balancer or the service discovery mechanism. However,
+// there's no _reliable_ mechanism to ensure that all the clients are informed
+// of the server's shutdown and confirmed that they have stopped sending
+// requests to this specific instance.
+//
+// The helper should be de-initialized first in the dependency chain;
+// immediately, it drains the gRPC server, thereby preventing any further
+// requests from being processed. THe helper does not affect the HTTP
+// server that serves metrics and profiles.
+func (f *Phlare) initShutdownHelper() (services.Service, error) {
+	shutdownServer := func(error) error {
+		if f.Server.GRPC != nil {
+			level.Info(f.logger).Log("msg", "shutting down gRPC server")
+			f.Server.GRPC.GracefulStop()
+		}
+		return nil
+	}
+	return services.NewIdleService(nil, shutdownServer), nil
 }

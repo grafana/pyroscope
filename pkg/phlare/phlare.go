@@ -415,25 +415,28 @@ func (f *Phlare) setupModuleManager() error {
 			SegmentWriterClient: {Overrides, API, SegmentWriterRing, PlacementAgent},
 			PlacementAgent:      {Overrides, API, Storage},
 			PlacementManager:    {Overrides, API, Storage},
+			ShutdownHelper:      {Distributor, SegmentWriter, Metastore, QueryBackend},
 		}
 		for k, v := range experimentalModules {
 			deps[k] = v
 		}
 
-		deps[All] = append(deps[All], SegmentWriter, Metastore, CompactionWorker, QueryBackend)
+		deps[All] = append(deps[All], SegmentWriter, Metastore, CompactionWorker, QueryBackend, ShutdownHelper)
 		deps[QueryFrontend] = append(deps[QueryFrontend], MetastoreClient, QueryBackendClient)
 		deps[Distributor] = append(deps[Distributor], SegmentWriterClient)
 
 		mm.RegisterModule(SegmentWriter, f.initSegmentWriter)
-		mm.RegisterModule(SegmentWriterRing, f.initSegmentWriterRing, modules.UserInvisibleModule)
-		mm.RegisterModule(SegmentWriterClient, f.initSegmentWriterClient, modules.UserInvisibleModule)
 		mm.RegisterModule(Metastore, f.initMetastore)
 		mm.RegisterModule(CompactionWorker, f.initCompactionWorker)
 		mm.RegisterModule(QueryBackend, f.initQueryBackend)
+
+		mm.RegisterModule(SegmentWriterRing, f.initSegmentWriterRing, modules.UserInvisibleModule)
+		mm.RegisterModule(SegmentWriterClient, f.initSegmentWriterClient, modules.UserInvisibleModule)
 		mm.RegisterModule(MetastoreClient, f.initMetastoreClient, modules.UserInvisibleModule)
 		mm.RegisterModule(QueryBackendClient, f.initQueryBackendClient, modules.UserInvisibleModule)
 		mm.RegisterModule(PlacementAgent, f.initPlacementAgent, modules.UserInvisibleModule)
 		mm.RegisterModule(PlacementManager, f.initPlacementManager, modules.UserInvisibleModule)
+		mm.RegisterModule(ShutdownHelper, f.initShutdownHelper, modules.UserInvisibleModule)
 	}
 
 	for mod, targets := range deps {

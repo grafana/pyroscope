@@ -27,6 +27,7 @@ import (
 var commandTypeMap = map[reflect.Type]raftlogpb.CommandType{
 	reflect.TypeOf(new(metastorev1.AddBlockRequest)):           raftlogpb.CommandType_COMMAND_TYPE_ADD_BLOCK,
 	reflect.TypeOf(new(compactorv1.PollCompactionJobsRequest)): raftlogpb.CommandType_COMMAND_TYPE_POLL_COMPACTION_JOBS_STATUS,
+	reflect.TypeOf(new(raftlogpb.CleanBlocksRequest)):          raftlogpb.CommandType_COMMAND_TYPE_CLEAN_BLOCKS,
 }
 
 // The map is used to determine the handler for the given command,
@@ -37,6 +38,9 @@ var commandHandlers = map[raftlogpb.CommandType]commandHandler{
 	},
 	raftlogpb.CommandType_COMMAND_TYPE_POLL_COMPACTION_JOBS_STATUS: func(fsm *FSM, cmd *raft.Log, raw []byte) fsmResponse {
 		return handleCommand(raw, cmd, fsm.state.applyPollCompactionJobs)
+	},
+	raftlogpb.CommandType_COMMAND_TYPE_CLEAN_BLOCKS: func(fsm *FSM, cmd *raft.Log, raw []byte) fsmResponse {
+		return handleCommand(raw, cmd, fsm.state.applyCleanBlocks)
 	},
 }
 

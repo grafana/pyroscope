@@ -99,6 +99,7 @@ const (
 	CompactionWorker    string = "compaction-worker"
 	PlacementAgent      string = "placement-agent"
 	PlacementManager    string = "placement-manager"
+	ShutdownHelper      string = "shutdown-helper"
 )
 
 var objectStoreTypeStats = usagestats.NewString("store_object_type")
@@ -753,9 +754,9 @@ func NewServerService(serv *server.Server, servicesToWaitFor func() []services.S
 			return nil
 		case err := <-serverDone:
 			if err != nil {
-				return err
+				return fmt.Errorf("server stopped unexpectedly: %w", err)
 			}
-			return fmt.Errorf("server stopped unexpectedly")
+			return nil
 		}
 	}
 
