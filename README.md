@@ -167,8 +167,8 @@ To start contributing, check out our [Contributing Guide](docs/internal/contribu
 <a href="https://github.com/Rperry2174"><img src="https://avatars.githubusercontent.com/u/23323466?v=4" title="Rperry2174" width="80" height="80"></a>
 <a href="https://github.com/korniltsev"><img src="https://avatars.githubusercontent.com/u/331773?v=4" title="korniltsev" width="80" height="80"></a>
 <a href="https://github.com/aocenas"><img src="https://avatars.githubusercontent.com/u/1014802?v=4" title="aocenas" width="80" height="80"></a>
-<a href="https://github.com/dogfrogfog"><img src="https://avatars.githubusercontent.com/u/47758224?v=4" title="dogfrogfog" width="80" height="80"></a>
 <a href="https://github.com/aleks-p"><img src="https://avatars.githubusercontent.com/u/8142643?v=4" title="aleks-p" width="80" height="80"></a>
+<a href="https://github.com/dogfrogfog"><img src="https://avatars.githubusercontent.com/u/47758224?v=4" title="dogfrogfog" width="80" height="80"></a>
 <a href="https://github.com/abeaumont"><img src="https://avatars.githubusercontent.com/u/80059?v=4" title="abeaumont" width="80" height="80"></a>
 <a href="https://github.com/pavelpashkovsky"><img src="https://avatars.githubusercontent.com/u/7372044?v=4" title="pavelpashkovsky" width="80" height="80"></a>
 <a href="https://github.com/bryanhuhta"><img src="https://avatars.githubusercontent.com/u/32787160?v=4" title="bryanhuhta" width="80" height="80"></a>
@@ -182,13 +182,13 @@ To start contributing, check out our [Contributing Guide](docs/internal/contribu
 <a href="https://github.com/grafakus"><img src="https://avatars.githubusercontent.com/u/146180665?v=4" title="grafakus" width="80" height="80"></a>
 <a href="https://github.com/joey-grafana"><img src="https://avatars.githubusercontent.com/u/90795735?v=4" title="joey-grafana" width="80" height="80"></a>
 <a href="https://github.com/Eve832"><img src="https://avatars.githubusercontent.com/u/81647476?v=4" title="Eve832" width="80" height="80"></a>
+<a href="https://github.com/marcsanmi"><img src="https://avatars.githubusercontent.com/u/8235696?v=4" title="marcsanmi" width="80" height="80"></a>
 <a href="https://github.com/iOliverNguyen"><img src="https://avatars.githubusercontent.com/u/6618620?v=4" title="iOliverNguyen" width="80" height="80"></a>
 <a href="https://github.com/AdrK"><img src="https://avatars.githubusercontent.com/u/15175440?v=4" title="AdrK" width="80" height="80"></a>
 <a href="https://github.com/alonlong"><img src="https://avatars.githubusercontent.com/u/3090383?v=4" title="alonlong" width="80" height="80"></a>
 <a href="https://github.com/Loggy"><img src="https://avatars.githubusercontent.com/u/3171097?v=4" title="Loggy" width="80" height="80"></a>
 <a href="https://github.com/RichiH"><img src="https://avatars.githubusercontent.com/u/754723?v=4" title="RichiH" width="80" height="80"></a>
 <a href="https://github.com/cjsampson"><img src="https://avatars.githubusercontent.com/u/8391857?v=4" title="cjsampson" width="80" height="80"></a>
-<a href="https://github.com/marcsanmi"><img src="https://avatars.githubusercontent.com/u/8235696?v=4" title="marcsanmi" width="80" height="80"></a>
 <a href="https://github.com/cristiangreco"><img src="https://avatars.githubusercontent.com/u/316923?v=4" title="cristiangreco" width="80" height="80"></a>
 <a href="https://github.com/BenAl1i"><img src="https://avatars.githubusercontent.com/u/96211182?v=4" title="BenAl1i" width="80" height="80"></a>
 <a href="https://github.com/alsoba13"><img src="https://avatars.githubusercontent.com/u/3586560?v=4" title="alsoba13" width="80" height="80"></a>
