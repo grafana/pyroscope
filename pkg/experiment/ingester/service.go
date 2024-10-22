@@ -82,17 +82,6 @@ type SegmentWriterService struct {
 	segmentWriter *segmentsWriter
 }
 
-type ingesterFlusherCompat struct {
-	*SegmentWriterService
-}
-
-func (i *ingesterFlusherCompat) Flush() {
-	err := i.SegmentWriterService.Flush()
-	if err != nil {
-		level.Error(i.SegmentWriterService.logger).Log("msg", "flush failed", "err", err)
-	}
-}
-
 func New(
 	reg prometheus.Registerer,
 	logger log.Logger,
@@ -110,13 +99,16 @@ func New(
 		storageBucket: storageBucket,
 	}
 
+	// The lifecycler is only used for discovery: it maintains the state of the
+	// instance in the ring and nothing more. Flush is managed explicitly at
+	// shutdown, and data/state transfer is not required.
 	var err error
 	i.lifecycler, err = ring.NewLifecycler(
 		config.LifecyclerConfig,
-		&ingesterFlusherCompat{i},
+		noOpTransferFlush{},
 		RingName,
 		RingKey,
-		true,
+		false,
 		i.logger, prometheus.WrapRegistererWithPrefix("pyroscope_segment_writer_", i.reg))
 	if err != nil {
 		return nil, err
@@ -147,7 +139,7 @@ func (i *SegmentWriterService) starting(ctx context.Context) error {
 	}
 	// The instance is ready to handle incoming requests.
 	// We do not have to wait for the lifecycler: its readiness check
-	// is used to rate limit the number of instances that can be coming
+	// is only used to limit the number of instances that can be coming
 	// or going at any one time, by only returning true if all instances
 	// are active.
 	i.requests.Open()
@@ -228,14 +220,6 @@ func (i *SegmentWriterService) Push(ctx context.Context, req *segmentwriterv1.Pu
 	}
 }
 
-func (i *SegmentWriterService) Flush() error {
-	return i.segmentWriter.Stop()
-}
-
-func (i *SegmentWriterService) TransferOut(ctx context.Context) error {
-	return ring.ErrTransferDisabled
-}
-
 // CheckReady is used to indicate when the ingesters are ready for
 // the addition removal of another ingester. Returns 204 when the ingester is
 // ready, 500 otherwise.
@@ -245,3 +229,8 @@ func (i *SegmentWriterService) CheckReady(ctx context.Context) error {
 	}
 	return i.lifecycler.CheckReady(ctx)
 }
+
+type noOpTransferFlush struct{}
+
+func (noOpTransferFlush) Flush()                            {}
+func (noOpTransferFlush) TransferOut(context.Context) error { return ring.ErrTransferDisabled }
