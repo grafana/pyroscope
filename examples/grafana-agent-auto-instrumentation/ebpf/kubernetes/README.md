@@ -12,7 +12,7 @@ eBPF profiling via Grafana Alloy is based on a few components:
 - `pyroscope.ebpf` for enabling eBPF profiling for specific applications
 - `pyroscope.write` for writing the profiles data to a remote endpoint
 
-Refer to the [official documentation](https://grafana.com/docs/agent/latest/flow/reference/components/pyroscope.ebpf/) for an in-depth understanding and additional configuration options for eBPF with Grafana Alloy.
+Refer to the [official documentation](https://grafana.com/docs/alloy/latest/reference/components/pyroscope/pyroscope.ebpf/) for an in-depth understanding and additional configuration options for eBPF with Grafana Alloy.
 Also, check the [Grafana Alloy Components reference](https://grafana.com/docs/alloy/latest/reference/components/) for more details on each used component.
 
 
@@ -37,4 +37,4 @@ After the deployment is operational, the Grafana Alloy will profile the Go and P
 
 ## Documentation
 
-Refer to the [official documentation](https://grafana.com/docs/agent/latest/flow/reference/components/pyroscope.ebpf/) for an in-depth understanding and additional configuration options for eBPF profiling with Grafana Alloy.
+Refer to the [official documentation](https://grafana.com/docs/alloy/latest/reference/components/pyroscope/pyroscope.ebpf/) for an in-depth understanding and additional configuration options for eBPF profiling with Grafana Alloy.
