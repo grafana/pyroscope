@@ -9,7 +9,7 @@ aiding in performance optimization.
 eBPF profiling via Grafana Alloy is based on a few components:
 - `discovery.kubernetes` for discovering Kubernetes pods
 - `discovery.relabel` for detecting and filtering target processes and setting up labels
-- `pyroscope.ebpf` for enabling EBPF profiling for specific applications
+- `pyroscope.ebpf` for enabling eBPF profiling for specific applications
 - `pyroscope.write` for writing the profiles data to a remote endpoint
 
 Refer to the [official documentation](https://grafana.com/docs/agent/latest/flow/reference/components/pyroscope.ebpf/) for an in-depth understanding and additional configuration options for eBPF with Grafana Alloy.
