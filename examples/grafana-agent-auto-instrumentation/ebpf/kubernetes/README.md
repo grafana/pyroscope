@@ -6,7 +6,7 @@ aiding in performance optimization.
 
 ## Overview
 
-EBPF profiling via Grafana Alloy is based on a few components:
+eBPF profiling via Grafana Alloy is based on a few components:
 - `discovery.kubernetes` for discovering Kubernetes pods
 - `discovery.relabel` for detecting and filtering target processes and setting up labels
 - `pyroscope.ebpf` for enabling EBPF profiling for specific applications
