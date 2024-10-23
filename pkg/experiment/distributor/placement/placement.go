@@ -2,9 +2,15 @@ package placement
 
 import (
 	"github.com/grafana/dskit/ring"
+
+	"github.com/grafana/pyroscope/pkg/iter"
 )
 
-// Key represents the distribution key.
+// Placement is a strategy to distribute keys over shards.
+type Placement interface {
+	Policy(Key) Policy
+}
+
 type Key struct {
 	TenantID    string
 	DatasetName string
@@ -14,54 +20,92 @@ type Key struct {
 	Fingerprint uint64
 }
 
-type Strategy interface {
-	// NumTenantShards returns the number of shards
-	// for a tenant from n total.
-	NumTenantShards(k Key, n uint32) (size uint32)
-	// NumDatasetShards returns the number of shards
-	// for a dataset from n total.
-	NumDatasetShards(k Key, n uint32) (size uint32)
+// Policy is a placement policy of a given key.
+type Policy struct {
+	// TenantShards returns the number of shards
+	// available to the tenant.
+	TenantShards int
+	// DatasetShards returns the number of shards
+	// available to the dataset from the tenant shards.
+	DatasetShards int
 	// PickShard returns the shard index
 	// for a given key from n total.
-	PickShard(k Key, n uint32) (shard uint32)
+	PickShard func(n int) int
 }
 
-var DefaultPlacement = defaultPlacement{}
-
-type defaultPlacement struct{}
-
-func (defaultPlacement) NumTenantShards(Key, uint32) uint32 { return 0 }
-
-func (defaultPlacement) NumDatasetShards(Key, uint32) uint32 { return 2 }
-
-func (defaultPlacement) PickShard(k Key, n uint32) uint32 { return uint32(k.Fingerprint % uint64(n)) }
-
-// Placement represents the placement for the given distribution key.
-type Placement struct {
-	// Note that the instances reference shared objects, and must not be modified.
-	Instances []*ring.InstanceDesc
+// ShardMapping represents the placement of a given key.
+//
+// Each key is mapped to one of the shards, based on the placement
+// strategy. In turn, each shard is associated with an instance.
+//
+// ShardMapping provides a number of instances that can host the key.
+// It is assumed, that the caller will use the first one by default,
+// and will try the rest in case of failure. This is done to avoid
+// excessive data distribution in case of temporary unavailability
+// of the instances: first, we try the instance that the key is
+// mapped to, then we try the instances that host the dataset, then
+// instances that host the tenant. Finally, we try any instances.
+//
+// Note that the instances are not guaranteed to be unique.
+// It's also not guaranteed that the instances are available.
+// Use ActiveInstances wrapper if you need to filter out inactive
+// instances and duplicates.
+type ShardMapping struct {
+	Instances iter.Iterator[ring.InstanceDesc]
 	Shard     uint32
-	visited   map[string]*ring.InstanceDesc
 }
 
-// Next returns the next available location address.
-func (p *Placement) Next() (instance *ring.InstanceDesc, ok bool) {
-	for len(p.Instances) > 0 {
-		instance, p.Instances = p.Instances[0], p.Instances[1:]
-		if instance.State == ring.ACTIVE && !p.isVisited(instance) {
-			return instance, true
+// ActiveInstances returns an iterator that filters out inactive instances.
+// Note that active state does not mean that the instance is healthy.
+func ActiveInstances(i iter.Iterator[ring.InstanceDesc]) iter.Iterator[ring.InstanceDesc] {
+	return FilterInstances(InstanceSet(i), func(x *ring.InstanceDesc) bool {
+		return x.State != ring.ACTIVE
+	})
+}
+
+func InstanceSet(i iter.Iterator[ring.InstanceDesc]) iter.Iterator[ring.InstanceDesc] {
+	seen := make(map[string]struct{})
+	return FilterInstances(i, func(x *ring.InstanceDesc) bool {
+		k := x.Id
+		if k == "" {
+			k = x.Addr
 		}
-	}
-	return nil, false
+		if _, ok := seen[k]; ok {
+			return true
+		}
+		seen[k] = struct{}{}
+		return false
+	})
 }
 
-func (p *Placement) isVisited(x *ring.InstanceDesc) bool {
-	if p.visited == nil {
-		p.visited = make(map[string]*ring.InstanceDesc, len(p.Instances))
+// FilterInstances returns an iterator that filters out
+// instances on which the filter function returns true.
+func FilterInstances(
+	i iter.Iterator[ring.InstanceDesc],
+	filter func(x *ring.InstanceDesc) bool,
+) iter.Iterator[ring.InstanceDesc] {
+	return &instances{
+		Iterator: i,
+		filter:   filter,
 	}
-	if _, ok := p.visited[x.Addr]; ok {
+}
+
+type instances struct {
+	iter.Iterator[ring.InstanceDesc]
+	filter func(*ring.InstanceDesc) bool
+	cur    ring.InstanceDesc
+}
+
+func (i *instances) At() ring.InstanceDesc { return i.cur }
+
+func (i *instances) Next() bool {
+	for i.Iterator.Next() {
+		x := i.Iterator.At()
+		if i.filter(&x) {
+			continue
+		}
+		i.cur = x
 		return true
 	}
-	p.visited[x.Addr] = x
 	return false
 }

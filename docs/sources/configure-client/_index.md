@@ -11,7 +11,7 @@ weight: 300
 # Configure the client to send profiles
 
 Pyroscope is a continuous profiling database that allows you to analyze the performance of your applications.
-When sending profiles to Pyroscope, you can choose between two primary methods: SDK instrumentation and auto-instrumentation using Grafana Alloy or Grafana Agent.
+When sending profiles to Pyroscope, you can choose between two primary methods: SDK instrumentation and auto-instrumentation using Grafana Alloy.
 
 This document explains these two techniques and guide you when to choose each one.
 
@@ -19,7 +19,7 @@ This document explains these two techniques and guide you when to choose each on
 
 ## About auto-instrumentation with Grafana Alloy or Agent collectors
 
-You can send data from your application using Grafana Alloy or Grafana Agent collectors.
+You can send data from your application using Grafana Alloy (preferred) or Grafana Agent (legacy) collectors.
 Both collectors support profiling with eBPF, Java, and Golang in pull mode.
 
 [Grafana Alloy](https://grafana.com/docs/alloy/latest/) is a vendor-neutral distribution of the OpenTelemetry (OTel) Collector.
@@ -31,8 +31,8 @@ New installations should use Alloy.
 
 {{< docs/shared lookup="agent-deprecation.md" source="alloy" version="next" >}}
 
-The Grafana collectors is a component that runs alongside your application and periodically gathers profiling data from it.
-This method is suitable when you want to collect profiles from existing applications without modifying their source code.
+Alloy is a component that runs alongside your application and periodically gathers profiling data from it.
+This method is suitable when you want to collect profiles from applications without modifying their source code.
 This approach is simplified with the eBPF profiling option that doesn't necessitate pull or push mechanisms.
 
 Here's how it works:
@@ -57,25 +57,23 @@ Here's how to use Pyroscope SDKs:
 By using the Pyroscope SDKs, you have the flexibility to customize the profiling process according to your application's specific requirements.
 You can selectively profile specific sections of code or send profiles at different intervals, depending on your needs.
 
-## Choose Grafana Agent or Pyroscope SDK to send profiles
+## Choose Grafana Alloy or Pyroscope SDK to send profiles
 
-{{< docs/shared lookup="agent-deprecation.md" source="alloy" version="next" >}}
-
-You can use Grafana Agent for auto-instrumentation or the Pyroscope instrumentation SDKs.
+You can use Grafana Alloy for auto-instrumentation or the Pyroscope instrumentation SDKs.
 The method you choose depends on your specific use case and requirements.
 
 Here are some factors to consider when making the choice:
 
-- Ease of setup: The Grafana Agent is an ideal choice for a quick and straightforward setup without modifying your application's code. Note that eBPF profiling supports some languages (for example, Golang) better than others. More robust support for Python, Java, and other languages are in development.
+- Ease of setup: Grafana Alloy is an ideal choice for a quick and straightforward setup without modifying your application's code. eBPF profiling supports some languages (for example, Golang, Python) better than others. More robust support for Java and other languages is in development.
 - Language support: If you want more control over the profiling process and your application is written in a language supported by the Pyroscope SDKs, consider using the SDKs.
 - Flexibility: The Pyroscope SDKs offer greater flexibility in terms of customizing the profiling process and capturing specific sections of code with labels. If you have particular profiling needs or want to fine-tune the data collection process, the SDKs would be your best bet.
 
 To get started, choose one of the integrations below:
 <table>
    <tr>
-      <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/go_pull"><img src="https://github-production-user-asset-6210df.s3.amazonaws.com/223048/257522425-48683963-91ae-4caf-8c52-ce131e25bd65.png" width="100px;" alt=""/><br />
-        <b>Grafana Agent</b></a><br />
-          <a href="https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/go_pull/" title="Documentation">Documentation</a><br />
+      <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/grafana-alloy/go_pull"><img src="/media/docs/alloy/alloy_icon.png" width="100px;" alt=""/><br />
+        <b>Grafana Alloy</b></a><br />
+          <a href="https://grafana.com/docs/pyroscope/latest/configure-client/grafana-alloy/go_pull/" title="Documentation">Documentation</a><br />
           <a href="https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent-auto-instrumentation" title="examples">Examples</a>
       </td>
       <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/go_push/"><img src="https://user-images.githubusercontent.com/23323466/178160549-2d69a325-56ec-4e19-bca7-d460d400b163.png" width="100px;" alt=""/><br />
@@ -88,9 +86,9 @@ To get started, choose one of the integrations below:
           <a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/java/">Documentation</a><br />
           <a href="https://github.com/grafana/pyroscope/tree/main/examples/language-sdk-instrumentation/java/rideshare" title="java-examples">Examples</a>
       </td>
-      <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/ebpf"><img src="https://user-images.githubusercontent.com/23323466/178160548-e974c080-808d-4c5d-be9b-c983a319b037.png" width="100px;" alt=""/><br />
+      <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/grafana-alloy/ebpf"><img src="https://user-images.githubusercontent.com/23323466/178160548-e974c080-808d-4c5d-be9b-c983a319b037.png" width="100px;" alt=""/><br />
         <b>eBPF</b></a><br />
-          <a href="https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/ebpf" title="Documentation">Documentation</a><br />
+          <a href="https://grafana.com/docs/pyroscope/latest/configure-client/grafana-alloy/ebpf" title="Documentation">Documentation</a><br />
           <a href="https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent-auto-instrumentation/ebpf" title="examples">Examples</a>
       </td>
       <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/python/"><img src="https://user-images.githubusercontent.com/23323466/178160553-c78b8c15-99b4-43f3-a2a0-252b6c4862b1.png" width="100px;" alt=""/><br />
@@ -125,10 +123,12 @@ To get started, choose one of the integrations below:
 
 ## Enriching profile data
 
-You can add tags to your profiles to help correlate them with your other telemetry signals. Some common tags that are used are version, region, environment, request types, etc. You have the ability to add tags using both the SDK and the agent.
+You can add tags to your profiles to help correlate them with your other telemetry signals.
+Commonly used tags include version, region, environment, and request types.
+You have the ability to add tags using both the SDK and Alloy.
 
 Valid tag formats may contain ASCII letters and digits, as well as underscores. It must match the regex `[a-zA-Z_][a-zA-Z0-9_]`.
-In Pyroscope, a period (`.`) is not a valid character inside of tags and labels.
+In Pyroscope, a period (`.`) isn't a valid character inside of tags and labels.
 
 ## Assistance with Pyroscope
 

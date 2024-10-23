@@ -22,6 +22,7 @@ import (
 	"google.golang.org/grpc/test/bufconn"
 
 	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement"
 	"github.com/grafana/pyroscope/pkg/testhelper"
 )
 
@@ -36,6 +37,18 @@ func (m *segwriterServerMock) Push(
 ) (*segmentwriterv1.PushResponse, error) {
 	args := m.Called(ctx, req)
 	return args.Get(0).(*segmentwriterv1.PushResponse), args.Error(1)
+}
+
+type testPlacement struct{}
+
+func (testPlacement) Policy(k placement.Key) placement.Policy {
+	return placement.Policy{
+		TenantShards:  0, // Unlimited.
+		DatasetShards: 1,
+		PickShard: func(n int) int {
+			return int(k.Fingerprint % uint64(n))
+		},
+	}
 }
 
 type segwriterClientSuite struct {
@@ -64,14 +77,17 @@ func (s *segwriterClientSuite) SetupTest() {
 	s.config = grpcclient.Config{}
 	s.config.RegisterFlags(flag.NewFlagSet("", flag.PanicOnError))
 	instances := []ring.InstanceDesc{
-		{Addr: "a", Tokens: make([]uint32, 1)},
-		{Addr: "b", Tokens: make([]uint32, 1)},
-		{Addr: "c", Tokens: make([]uint32, 1)},
+		{Id: "a", Tokens: make([]uint32, 1)},
+		{Id: "b", Tokens: make([]uint32, 1)},
+		{Id: "c", Tokens: make([]uint32, 1)},
 	}
 	s.ring = testhelper.NewMockRing(instances, 1)
 
 	var err error
-	s.client, err = NewSegmentWriterClient(s.config, s.logger, nil, s.ring, grpc.WithContextDialer(s.dialer))
+	s.client, err = NewSegmentWriterClient(
+		s.config, s.logger, nil, s.ring,
+		testPlacement{},
+		grpc.WithContextDialer(s.dialer))
 	s.Require().NoError(err)
 
 	s.done = make(chan struct{})
@@ -128,7 +144,10 @@ func (s *segwriterClientSuite) Test_Push_HappyPath() {
 func (s *segwriterClientSuite) Test_Push_EmptyRing() {
 	emptyRing := testhelper.NewMockRing(nil, 1)
 	var err error
-	s.client, err = NewSegmentWriterClient(s.config, s.logger, nil, emptyRing, grpc.WithContextDialer(s.dialer))
+	s.client, err = NewSegmentWriterClient(
+		s.config, s.logger, nil, emptyRing,
+		testPlacement{},
+		grpc.WithContextDialer(s.dialer))
 	s.Require().NoError(err)
 
 	_, err = s.client.Push(context.Background(), &segmentwriterv1.PushRequest{})
@@ -193,7 +212,10 @@ func (s *segwriterClientSuite) Test_Push_DialError() {
 		return nil, io.EOF
 	}
 	var err error
-	s.client, err = NewSegmentWriterClient(s.config, s.logger, nil, s.ring, grpc.WithContextDialer(dialer))
+	s.client, err = NewSegmentWriterClient(
+		s.config, s.logger, nil, s.ring,
+		testPlacement{},
+		grpc.WithContextDialer(dialer))
 	s.Require().NoError(err)
 
 	_, err = s.client.Push(context.Background(), &segmentwriterv1.PushRequest{})
@@ -210,7 +232,10 @@ func (s *segwriterClientSuite) Test_Push_DialError_Retry() {
 		return s.listener.Dial()
 	}
 	var err error
-	s.client, err = NewSegmentWriterClient(s.config, s.logger, nil, s.ring, grpc.WithContextDialer(dialer))
+	s.client, err = NewSegmentWriterClient(
+		s.config, s.logger, nil, s.ring,
+		testPlacement{},
+		grpc.WithContextDialer(dialer))
 	s.Require().NoError(err)
 
 	s.service.On("Push", mock.Anything, mock.Anything).

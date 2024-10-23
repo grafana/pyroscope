@@ -46,7 +46,7 @@ func main() {
 	adminCmd := app.Command("admin", "Administrative tasks for Pyroscope cluster operators.")
 
 	blocksCmd := adminCmd.Command("blocks", "Operate on Grafana Pyroscope's blocks.")
-	blocksCmd.Flag("path", "Path to blocks directory").Default("./data/local").StringVar(&cfg.blocks.path)
+	blocksCmd.Flag("path", "Path to blocks directory").Default("./data/anonymous/local").StringVar(&cfg.blocks.path)
 
 	blocksListCmd := blocksCmd.Command("list", "List blocks.")
 	blocksListCmd.Flag("restore-missing-meta", "").Default("false").BoolVar(&cfg.blocks.restoreMissingMeta)
@@ -55,6 +55,12 @@ func main() {
 	blocksCompactCmd.Arg("from", "The source input blocks to compact.").Required().ExistingDirVar(&cfg.blocks.compact.src)
 	blocksCompactCmd.Arg("dest", "The destination where compacted blocks should be stored.").Required().StringVar(&cfg.blocks.compact.dst)
 	blocksCompactCmd.Flag("shards", "The amount of shards to split output blocks into.").Default("0").IntVar(&cfg.blocks.compact.shards)
+
+	blocksQueryCmd := blocksCmd.Command("query", "Query on local/remote blocks.")
+	blocksQuerySeriesCmd := blocksQueryCmd.Command("series", "Request series labels on local/remote blocks.")
+	blocksQuerySeriesParams := addBlocksQuerySeriesParams(blocksQuerySeriesCmd)
+	blocksQueryProfileCmd := blocksQueryCmd.Command("profile", "Request merged profile on local/remote block.").Alias("merge")
+	blocksQueryProfileParams := addBlocksQueryProfileParams(blocksQueryProfileCmd)
 
 	parquetCmd := adminCmd.Command("parquet", "Operate on a Parquet file.")
 	parquetInspectCmd := parquetCmd.Command("inspect", "Inspect a parquet file's structure.")
@@ -65,9 +71,9 @@ func main() {
 	tsdbSeriesFiles := tsdbSeriesCmd.Arg("file", "tsdb file path").Required().ExistingFiles()
 
 	queryCmd := app.Command("query", "Query profile store.")
-	queryMergeCmd := queryCmd.Command("merge", "Request merged profile.")
-	queryMergeOutput := queryMergeCmd.Flag("output", "How to output the result, examples: console, raw, pprof=./my.pprof").Default("console").String()
-	queryMergeParams := addQueryMergeParams(queryMergeCmd)
+	queryProfileCmd := queryCmd.Command("profile", "Request merged profile.").Alias("merge")
+	queryProfileOutput := queryProfileCmd.Flag("output", "How to output the result, examples: console, raw, pprof=./my.pprof").Default("console").String()
+	queryProfileParams := addQueryProfileParams(queryProfileCmd)
 	queryGoPGOCmd := queryCmd.Command("go-pgo", "Request profile for Go PGO.")
 	queryGoPGOOutput := queryGoPGOCmd.Flag("output", "How to output the result, examples: console, raw, pprof=./my.pprof").Default("pprof=./default.pgo").String()
 	queryGoPGOParams := addQueryGoPGOParams(queryGoPGOCmd)
@@ -78,10 +84,6 @@ func main() {
 
 	queryTracerCmd := app.Command("query-tracer", "Analyze query traces.")
 	queryTracerParams := addQueryTracerParams(queryTracerCmd)
-
-	queryBlocksCmd := app.Command("query-blocks", "Query on local/remote blocks")
-	queryBlocksSeriesCmd := queryBlocksCmd.Command("series", "Request series labels on local/remote blocks")
-	queryBlocksSeriesParams := addQueryBlocksSeriesParams(queryBlocksSeriesCmd)
 
 	uploadCmd := app.Command("upload", "Upload profile(s).")
 	uploadParams := addUploadParams(uploadCmd)
@@ -123,8 +125,8 @@ func main() {
 				os.Exit(checkError(err))
 			}
 		}
-	case queryMergeCmd.FullCommand():
-		if err := queryMerge(ctx, queryMergeParams, *queryMergeOutput); err != nil {
+	case queryProfileCmd.FullCommand():
+		if err := queryProfile(ctx, queryProfileParams, *queryProfileOutput); err != nil {
 			os.Exit(checkError(err))
 		}
 	case queryGoPGOCmd.FullCommand():
@@ -136,8 +138,12 @@ func main() {
 			os.Exit(checkError(err))
 		}
 
-	case queryBlocksSeriesCmd.FullCommand():
-		if err := queryBlocksSeries(ctx, queryBlocksSeriesParams); err != nil {
+	case blocksQuerySeriesCmd.FullCommand():
+		if err := blocksQuerySeries(ctx, blocksQuerySeriesParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case blocksQueryProfileCmd.FullCommand():
+		if err := blocksQueryProfile(ctx, blocksQueryProfileParams); err != nil {
 			os.Exit(checkError(err))
 		}
 

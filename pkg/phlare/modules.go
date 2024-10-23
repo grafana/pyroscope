@@ -97,7 +97,9 @@ const (
 	QueryBackend        string = "query-backend"
 	QueryBackendClient  string = "query-backend-client"
 	CompactionWorker    string = "compaction-worker"
-	HealthService       string = "health-service"
+	PlacementAgent      string = "placement-agent"
+	PlacementManager    string = "placement-manager"
+	ShutdownHelper      string = "shutdown-helper"
 )
 
 var objectStoreTypeStats = usagestats.NewString("store_object_type")
@@ -752,9 +754,9 @@ func NewServerService(serv *server.Server, servicesToWaitFor func() []services.S
 			return nil
 		case err := <-serverDone:
 			if err != nil {
-				return err
+				return fmt.Errorf("server stopped unexpectedly: %w", err)
 			}
-			return fmt.Errorf("server stopped unexpectedly")
+			return nil
 		}
 	}
 

@@ -30,7 +30,7 @@ cards:
       description: Learn how to install and configure Grafana Pyroscope with several examples.
     - title: Instrument your app and configure the client
       href: ./configure-client/
-      description: When sending profiles to Pyroscope, you can choose between SDK instrumentation and auto-instrumentation using the Grafana Agent. This document explains these two techniques and guide you when to choose each one.
+      description: When sending profiles to Pyroscope, you can choose between SDK instrumentation and auto-instrumentation using Grafana Alloy. This document explains these two techniques and helps you choose one.
     - title: Configure the server
       href: ./configure-server/
       description: Configure your Pyroscope server to meet your needs by setting disk storage, tenant IDs, memberlist, proxies, shuffle sharding, and more. You can also use the server HTTP API.
@@ -52,8 +52,8 @@ Grafana Pyroscope is a multi-tenant, continuous profiling aggregation system, al
 This integration enables a cohesive correlation of profiling data with existing metrics, logs, and traces.
 
 Explore continuous profiling data to gain insights into application performance.
-You can query and analyze production data in a structure way. 
-Use the Pyroscope UI or Grafana to visualize the data. 
+You can query and analyze production data in a structured way.
+Use the Pyroscope UI or Grafana to visualize the data.
 
 <!--video style="border-radius: 1%; width: 75%; display: block; margin-left: auto; margin-right: auto;" autoplay loop>
   <source src="ui.webm" type="video/webm">

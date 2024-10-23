@@ -1,23 +1,14 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
-	"os"
 	"sort"
-	"strings"
 	"time"
 
 	"connectrpc.com/connect"
 	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log/level"
-	gprofile "github.com/google/pprof/profile"
-	"github.com/grafana/dskit/runutil"
-	"github.com/k0kubun/pp/v3"
-	"github.com/klauspost/compress/gzip"
-	"github.com/mattn/go-isatty"
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
@@ -30,12 +21,6 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/operations"
-)
-
-const (
-	outputConsole = "console"
-	outputRaw     = "raw"
-	outputPprof   = "pprof="
 )
 
 func (c *phlareClient) queryClient() querierv1connect.QuerierServiceClient {
@@ -105,21 +90,21 @@ func addQueryParams(queryCmd commander) *queryParams {
 	return params
 }
 
-type queryMergeParams struct {
+type queryProfileParams struct {
 	*queryParams
 	ProfileType        string
 	StacktraceSelector []string
 }
 
-func addQueryMergeParams(queryCmd commander) *queryMergeParams {
-	params := new(queryMergeParams)
+func addQueryProfileParams(queryCmd commander) *queryProfileParams {
+	params := new(queryProfileParams)
 	params.queryParams = addQueryParams(queryCmd)
 	queryCmd.Flag("profile-type", "Profile type to query.").Default("process_cpu:cpu:nanoseconds:cpu:nanoseconds").StringVar(&params.ProfileType)
 	queryCmd.Flag("stacktrace-selector", "Only query locations with those symbols. Provide multiple times starting with the root").StringsVar(&params.StacktraceSelector)
 	return params
 }
 
-func queryMerge(ctx context.Context, params *queryMergeParams, outputFlag string) (err error) {
+func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag string) (err error) {
 	from, to, err := params.parseFromTo()
 	if err != nil {
 		return err
@@ -156,72 +141,20 @@ func selectMergeProfile(ctx context.Context, client *phlareClient, outputFlag st
 		return errors.Wrap(err, "failed to query")
 	}
 
-	mypp := pp.New()
-	mypp.SetColoringEnabled(isatty.IsTerminal(os.Stdout.Fd()))
-	mypp.SetExportedOnly(true)
-
-	if outputFlag == outputConsole {
-		buf, err := resp.Msg.MarshalVT()
-		if err != nil {
-			return errors.Wrap(err, "failed to marshal protobuf")
-		}
-
-		p, err := gprofile.Parse(bytes.NewReader(buf))
-		if err != nil {
-			return errors.Wrap(err, "failed to parse profile")
-		}
-
-		fmt.Fprintln(output(ctx), p.String())
-		return nil
-
-	}
-
-	if outputFlag == outputRaw {
-		mypp.Print(resp.Msg)
-		return nil
-	}
-
-	if strings.HasPrefix(outputFlag, outputPprof) {
-		filePath := strings.TrimPrefix(outputFlag, outputPprof)
-		if filePath == "" {
-			return errors.New("no file path specified after pprof=")
-		}
-		buf, err := resp.Msg.MarshalVT()
-		if err != nil {
-			return errors.Wrap(err, "failed to marshal protobuf")
-		}
-
-		// open new file, fail when the file already exists
-		f, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0644)
-		if err != nil {
-			return errors.Wrap(err, "failed to create pprof file")
-		}
-		defer runutil.CloseWithErrCapture(&err, f, "failed to close pprof file")
-
-		gzipWriter := gzip.NewWriter(f)
-		defer runutil.CloseWithErrCapture(&err, gzipWriter, "failed to close pprof gzip writer")
-
-		if _, err := io.Copy(gzipWriter, bytes.NewReader(buf)); err != nil {
-			return errors.Wrap(err, "failed to write pprof")
-		}
-
-		return nil
-	}
-
-	return errors.Errorf("unknown output %s", outputFlag)
+	return outputMergeProfile(ctx, outputFlag, resp.Msg)
 }
 
 type queryGoPGOParams struct {
-	*queryMergeParams
+	*queryProfileParams
 	KeepLocations    uint32
 	AggregateCallees bool
 }
 
 func addQueryGoPGOParams(queryCmd commander) *queryGoPGOParams {
 	params := new(queryGoPGOParams)
-	params.queryMergeParams = addQueryMergeParams(queryCmd)
+	params.queryProfileParams = addQueryProfileParams(queryCmd)
 	queryCmd.Flag("keep-locations", "Number of leaf locations to keep.").Default("5").Uint32Var(&params.KeepLocations)
-	queryCmd.Flag("aggregate-callees", "Aggregate samples for the same callee by ignoring the line numbers in the leaf locations.").Default("true").BoolVar(&params.AggregateCallees)
+	queryCmd.Flag("aggregate-callees", "Default: true. Aggregate samples for the same callee by ignoring the line numbers in the leaf locations. Use --aggregate-callees to enable or --no-aggregate-callees to disable.").Default("true").BoolVar(&params.AggregateCallees)
 	return params
 }
 

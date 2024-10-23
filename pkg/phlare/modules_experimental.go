@@ -2,14 +2,16 @@ package phlare
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
-	"google.golang.org/grpc/health/grpc_health_v1"
 
 	compactionworker "github.com/grafana/pyroscope/pkg/experiment/compactor"
+	adaptiveplacement "github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
 	segmentwriter "github.com/grafana/pyroscope/pkg/experiment/ingester"
 	segmentwriterclient "github.com/grafana/pyroscope/pkg/experiment/ingester/client"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore"
@@ -17,7 +19,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
 	querybackend "github.com/grafana/pyroscope/pkg/experiment/query_backend"
 	querybackendclient "github.com/grafana/pyroscope/pkg/experiment/query_backend/client"
-	"github.com/grafana/pyroscope/pkg/util/health"
 )
 
 func (f *Phlare) initSegmentWriterRing() (_ services.Service, err error) {
@@ -64,10 +65,12 @@ func (f *Phlare) initSegmentWriterClient() (_ services.Service, err error) {
 	// Validation of the config is not required since
 	// it's already validated in initSegmentWriterRing.
 	logger := log.With(f.logger, "component", "segment-writer-client")
+	placement := f.placementAgent.Placement()
 	client, err := segmentwriterclient.NewSegmentWriterClient(
 		f.Cfg.SegmentWriter.GRPCClientConfig,
 		logger, f.reg,
 		f.segmentWriterRing,
+		placement,
 	)
 	if err != nil {
 		return nil, err
@@ -101,11 +104,11 @@ func (f *Phlare) initMetastore() (services.Service, error) {
 	logger := log.With(f.logger, "component", "metastore")
 	m, err := metastore.New(
 		f.Cfg.Metastore,
-		f.TenantLimits,
 		logger,
 		f.reg,
 		f.metastoreClient,
 		f.storageBucket,
+		f.placementManager,
 	)
 	if err != nil {
 		return nil, err
@@ -167,9 +170,61 @@ func (f *Phlare) initQueryBackendClient() (services.Service, error) {
 	return c.Service(), nil
 }
 
-func (f *Phlare) initHealthService() (services.Service, error) {
-	healthService := health.NewGRPCHealthService()
-	grpc_health_v1.RegisterHealthServer(f.Server.GRPC, healthService)
-	f.healthService = healthService
-	return healthService, nil
+func (f *Phlare) initPlacementAgent() (services.Service, error) {
+	f.placementAgent = adaptiveplacement.NewAgent(
+		f.logger,
+		f.reg,
+		f.Cfg.AdaptivePlacement,
+		f.Overrides,
+		f.adaptivePlacementStore(),
+	)
+	return f.placementAgent.Service(), nil
+}
+
+func (f *Phlare) initPlacementManager() (services.Service, error) {
+	f.placementManager = adaptiveplacement.NewManager(
+		f.logger,
+		f.reg,
+		f.Cfg.AdaptivePlacement,
+		f.Overrides,
+		f.adaptivePlacementStore(),
+	)
+	return f.placementManager.Service(), nil
+}
+
+func (f *Phlare) adaptivePlacementStore() adaptiveplacement.Store {
+	if slices.Contains(f.Cfg.Target, All) {
+		// Disables sharding in all-in-one scenario.
+		return adaptiveplacement.NewEmptyStore()
+	}
+	return adaptiveplacement.NewStore(f.storageBucket)
+}
+
+// The shutdown helper utility emerged due to the need to handle request
+// draining at the server level.
+//
+// Since the server is a dependency of many services that handle requests
+// and is only shut down after the services have stopped, there's a possibility
+// that a de-initialized component may receive requests, which causes undefined
+// behaviour.
+//
+// In other scenarios, request draining could be managed at a higher level,
+// such as in a load balancer or the service discovery mechanism. However,
+// there's no _reliable_ mechanism to ensure that all the clients are informed
+// of the server's shutdown and confirmed that they have stopped sending
+// requests to this specific instance.
+//
+// The helper should be de-initialized first in the dependency chain;
+// immediately, it drains the gRPC server, thereby preventing any further
+// requests from being processed. THe helper does not affect the HTTP
+// server that serves metrics and profiles.
+func (f *Phlare) initShutdownHelper() (services.Service, error) {
+	shutdownServer := func(error) error {
+		if f.Server.GRPC != nil {
+			level.Info(f.logger).Log("msg", "shutting down gRPC server")
+			f.Server.GRPC.GracefulStop()
+		}
+		return nil
+	}
+	return services.NewIdleService(nil, shutdownServer), nil
 }

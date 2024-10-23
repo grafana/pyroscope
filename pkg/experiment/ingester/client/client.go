@@ -144,7 +144,6 @@ type Client struct {
 	logger  log.Logger
 	metrics *metrics
 
-	ring        ring.ReadRing
 	pool        *connpool.RingConnPool
 	distributor *distributor.Distributor
 
@@ -158,6 +157,7 @@ func NewSegmentWriterClient(
 	logger log.Logger,
 	registry prometheus.Registerer,
 	ring ring.ReadRing,
+	placement placement.Placement,
 	dialOpts ...grpc.DialOption,
 ) (*Client, error) {
 	pool, err := newConnPool(ring, logger, grpcClientConfig, dialOpts...)
@@ -167,9 +167,8 @@ func NewSegmentWriterClient(
 	c := &Client{
 		logger:      logger,
 		metrics:     newMetrics(registry),
-		ring:        ring,
+		distributor: distributor.NewDistributor(placement, ring),
 		pool:        pool,
-		distributor: distributor.NewDistributor(placement.DefaultPlacement),
 	}
 	c.subservices, err = services.NewManager(c.pool)
 	if err != nil {
@@ -203,45 +202,53 @@ func (c *Client) stopping(_ error) error {
 func (c *Client) Push(
 	ctx context.Context,
 	req *segmentwriterv1.PushRequest,
-) (*segmentwriterv1.PushResponse, error) {
-	k := distributor.NewTenantServiceDatasetKey(req.TenantId, req.Labels)
-	p, dErr := c.distributor.Distribute(k, c.ring)
+) (resp *segmentwriterv1.PushResponse, err error) {
+	k := distributor.NewTenantServiceDatasetKey(req.TenantId, req.Labels...)
+	p, dErr := c.distributor.Distribute(k)
 	if dErr != nil {
 		_ = level.Error(c.logger).Log(
 			"msg", "unable to distribute request",
 			"tenant", req.TenantId,
-			"err", dErr)
+			"err", dErr,
+		)
 		return nil, status.Error(codes.Unavailable, errServiceUnavailableMsg)
 	}
 
+	// In case of a failure, the request is sent to another instance.
+	// At most 5 attempts to push the data to the segment writer.
+	instances := placement.ActiveInstances(p.Instances)
 	req.Shard = p.Shard
-	for { // The caller should cancel the context to break the loop.
-		instance, ok := p.Next()
-		if !ok {
-			_ = level.Error(c.logger).Log(
-				"msg", "no segment writer instances available for the request",
-				"tenant", req.TenantId)
-			return nil, status.Error(codes.Unavailable, errServiceUnavailableMsg)
-		}
-
-		resp, err := c.pushToInstance(ctx, req, instance.Addr)
-		// Happy path.
+	for attempts := 5; attempts >= 0 && instances.Next() && ctx.Err() == nil; attempts-- {
+		instance := instances.At()
+		logger := log.With(c.logger,
+			"tenant", req.TenantId,
+			"shard", req.Shard,
+			"instance_addr", instance.Addr,
+			"instance_id", instance.Id,
+			"attempts", attempts,
+		)
+		_ = level.Debug(logger).Log("msg", "sending request")
+		resp, err = c.pushToInstance(ctx, req, instance.Addr)
 		if err == nil {
 			return resp, nil
 		}
-		// Handle client errors explicitly.
 		if isClientError(err) {
 			return nil, err
 		}
 		if !isRetryable(err) {
-			_ = level.Error(c.logger).Log(
-				"msg", "failed to push data to segment writer",
-				"tenant", req.TenantId,
-				"instance", instance.Addr,
-				"err", err)
+			_ = level.Error(logger).Log("msg", "failed to push data to segment writer", "err", err)
 			return nil, status.Error(codes.Unavailable, errServiceUnavailableMsg)
 		}
+		_ = level.Warn(logger).Log("msg", "failed attempt to push data to segment writer", "err", err)
 	}
+
+	_ = level.Error(c.logger).Log(
+		"msg", "no segment writer instances available for the request",
+		"tenant", req.TenantId,
+		"shard", req.Shard,
+		"last_err", err,
+	)
+	return nil, status.Error(codes.Unavailable, errServiceUnavailableMsg)
 }
 
 func (c *Client) pushToInstance(
@@ -285,17 +292,17 @@ func newConnPool(
 
 	p := ring_client.NewPool(
 		"segment-writer",
-		// Discovery is used to remove clients that can't be found
-		// in the ring, including unhealthy instances. CheckInterval
-		// specifies how frequently the stale clients are removed.
 		ring_client.PoolConfig{
 			CheckInterval: poolCleanupPeriod,
 			// Note that no health checks are performed: it's caller
-			// responsibility to pick the healthy clients.
+			// responsibility to pick a healthy instance.
 			HealthCheckEnabled:        false,
 			HealthCheckTimeout:        0,
 			MaxConcurrentHealthChecks: 0,
 		},
+		// Discovery is used to remove clients that can't be found
+		// in the ring, including unhealthy instances. CheckInterval
+		// specifies how frequently the stale clients are removed.
 		// Discovery builds a list of healthy instances.
 		// An instance is healthy, if it's heartbeat timestamp
 		// is not older than a configured threshold (intrinsic
