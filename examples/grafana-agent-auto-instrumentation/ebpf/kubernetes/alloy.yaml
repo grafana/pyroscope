@@ -1,0 +1,177 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: pyroscope-ebpf
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole # needed for the discovery.kubernetes alloy component
+metadata:
+  name: grafana-alloy-role
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - get
+      - list
+      - watch
+
+---
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: grafana-alloy
+  namespace: pyroscope-ebpf
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: grafana-alloy-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: grafana-alloy-role
+subjects:
+  - kind: ServiceAccount
+    name: grafana-alloy
+    namespace: pyroscope-ebpf
+
+---
+
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: grafana-alloy
+  namespace: pyroscope-ebpf
+spec:
+  selector:
+    matchLabels:
+      app: grafana-alloy
+  template:
+    metadata:
+      labels:
+        app: grafana-alloy
+    spec:
+      serviceAccountName: grafana-alloy
+      containers:
+        - name: grafana-alloy
+          image: grafana/alloy:latest
+          command:
+            - /bin/alloy
+            - run
+            - /etc/agent-config/config.river
+            - --server.http.listen-addr=0.0.0.0:12345
+          env:
+            - name: HOSTNAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          ports:
+            - containerPort: 12345
+          volumeMounts:
+            - name: agent-config
+              mountPath: /etc/agent-config
+          securityContext:
+            privileged: true
+            runAsGroup: 0
+            runAsUser: 0
+      volumes:
+        - name: agent-config
+          configMap:
+            name: agent-config
+
+      hostPID: true
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agent-config
+  namespace: pyroscope-ebpf
+data:
+  config.river: |
+    // This is an example grafana agent config to set up eBPF profiling in kubernetes.
+    // for more info see https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/ebpf/setup-kubernetes/
+    logging {
+      level = "debug"
+      format = "logfmt"
+    }
+    
+    discovery.kubernetes "local_pods" {
+        selectors {
+          field = "spec.nodeName=" + env("HOSTNAME") // Note: this assume HOSTNAME is set to the node name
+          role = "pod"
+        }
+        role = "pod"
+    }
+    
+    discovery.relabel "specific_pods" {
+      targets = discovery.kubernetes.local_pods.targets
+      rule {
+        action = "drop"
+        regex = "Succeeded|Failed|Completed"
+        source_labels = ["__meta_kubernetes_pod_phase"]
+      }
+      
+      rule {
+        action = "replace"
+        source_labels = ["__meta_kubernetes_namespace"]
+        target_label = "namespace"
+      }
+      rule {
+        action = "replace"
+        source_labels = ["__meta_kubernetes_pod_name"]
+        target_label = "pod"
+      }
+      rule {
+        action = "replace"
+        source_labels = ["__meta_kubernetes_pod_node_name"]
+        target_label = "node"
+      }
+      
+      rule {
+        action = "replace"
+        source_labels = ["__meta_kubernetes_pod_container_name"]
+        target_label = "container"
+      }
+      
+      // provide arbitrary service_name label, otherwise it will be set to {__meta_kubernetes_namespace}/{__meta_kubernetes_pod_container_name}
+      rule {
+        action = "replace"
+        regex = "(.*)@(.*)"
+        replacement = "${1}/${2}"
+        separator = "@"
+        source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_container_name"]
+        target_label = "service_name"
+      }
+      
+      // Filter specific targets to profile
+      rule {
+        source_labels = ["service_name"]
+        regex = "(.*alloy|.*pyroscope|.*fast-slow)"
+        action = "keep"
+      }
+    }
+    
+    pyroscope.ebpf "instance" {
+        forward_to = [pyroscope.write.endpoint.receiver]
+        targets = discovery.relabel.specific_pods.output
+        python_enabled = true
+    }
+    
+    pyroscope.write "endpoint" {
+        endpoint {
+          url = "http://pyroscope.pyroscope-ebpf.svc.cluster.local.:4040"
+          // url = "<Grafana Cloud URL>"
+          // basic_auth {
+          //  username = "<Grafana Cloud User>"
+          //  password = "<Grafana Cloud Password>"
+          // }
+        }
+    }
+---
