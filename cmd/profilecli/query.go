@@ -154,7 +154,7 @@ func addQueryGoPGOParams(queryCmd commander) *queryGoPGOParams {
 	params := new(queryGoPGOParams)
 	params.queryProfileParams = addQueryProfileParams(queryCmd)
 	queryCmd.Flag("keep-locations", "Number of leaf locations to keep.").Default("5").Uint32Var(&params.KeepLocations)
-	queryCmd.Flag("aggregate-callees", "Aggregate samples for the same callee by ignoring the line numbers in the leaf locations.").Default("true").BoolVar(&params.AggregateCallees)
+	queryCmd.Flag("aggregate-callees", "Default: true. Aggregate samples for the same callee by ignoring the line numbers in the leaf locations. Use --aggregate-callees to enable or --no-aggregate-callees to disable.").Default("true").BoolVar(&params.AggregateCallees)
 	return params
 }
 
