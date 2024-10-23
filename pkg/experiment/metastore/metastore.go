@@ -27,10 +27,10 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	adaptiveplacement "github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/blockcleaner"
-	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/dlq"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftleader"
+	"github.com/grafana/pyroscope/pkg/util/health"
 )
 
 const (
@@ -113,10 +113,11 @@ type Metastore struct {
 	metastorev1.OperatorServiceServer
 	compactorv1.CompactionPlannerServer
 
-	config Config
-	logger log.Logger
-	reg    prometheus.Registerer
-	bucket objstore.Bucket
+	config  Config
+	logger  log.Logger
+	reg     prometheus.Registerer
+	metrics *metastoreMetrics
+	health  health.Service
 
 	// In-memory state.
 	state *metastoreState
@@ -137,23 +138,23 @@ type Metastore struct {
 
 	walDir string
 
-	metrics *metastoreMetrics
-	client  *metastoreclient.Client
-
-	readyOnce  sync.Once
-	readySince time.Time
-
+	bucket       objstore.Bucket
+	client       metastorev1.MetastoreServiceClient
 	placementMgr *adaptiveplacement.Manager
 	dnsProvider  *dns.Provider
 	dlq          *dlq.Recovery
 	blockCleaner *blockCleaner
+
+	readyOnce  sync.Once
+	readySince time.Time
 }
 
 func New(
 	config Config,
 	logger log.Logger,
 	reg prometheus.Registerer,
-	client *metastoreclient.Client,
+	healthService health.Service,
+	client metastorev1.MetastoreServiceClient,
 	bucket objstore.Bucket,
 	placementMgr *adaptiveplacement.Manager,
 ) (*Metastore, error) {
@@ -162,9 +163,10 @@ func New(
 		config:       config,
 		logger:       logger,
 		reg:          reg,
+		metrics:      metrics,
+		health:       healthService,
 		bucket:       bucket,
 		db:           newDB(config, logger, metrics),
-		metrics:      metrics,
 		client:       client,
 		placementMgr: placementMgr,
 	}
@@ -211,6 +213,7 @@ func (m *Metastore) stopping(_ error) error {
 }
 
 func (m *Metastore) running(ctx context.Context) error {
+	m.health.SetServing()
 	<-ctx.Done()
 	return nil
 }
@@ -308,22 +311,22 @@ func (m *Metastore) createRaftDirs() (err error) {
 
 func (m *Metastore) shutdownRaft() {
 	if m.raft != nil {
-		// If raft has been initialized, try to transfer leadership.
-		// Only after this we remove the leader health observer and
-		// shutdown the raft.
-		// There is a chance that client will still be trying to connect
-		// to this instance, therefore retrying is still required.
-		if err := m.raft.LeadershipTransfer().Error(); err != nil {
-			switch {
-			case errors.Is(err, raft.ErrNotLeader):
-				// Not a leader, nothing to do.
-			case strings.Contains(err.Error(), "cannot find peer"):
-				// It's likely that there's just one node in the cluster.
-			default:
-				_ = level.Error(m.logger).Log("msg", "failed to transfer leadership", "err", err)
-			}
-		}
 		m.leaderhealth.Deregister()
+		// We let clients observe the leadership transfer: it's their
+		// responsibility to connect to the new leader. We only need to
+		// make sure that any error returned to clients includes details
+		// about the raft leader, if applicable.
+		if err := m.TransferLeadership(); err == nil {
+			// We were the leader and managed to transfer leadership.
+			// Wait a bit to let the new leader settle.
+			_ = level.Info(m.logger).Log("msg", "waiting for leadership transfer to complete")
+			// TODO(kolesnikovae): Wait until ReadIndex of
+			//  the new leader catches up the local CommitIndex.
+			time.Sleep(m.config.MinReadyDuration)
+		}
+		// Tell clients to stop sending requests to this node.
+		// There are no any guarantees that clients will see or obey this.
+		m.health.SetNotServing()
 		if err := m.raft.Shutdown().Error(); err != nil {
 			_ = level.Error(m.logger).Log("msg", "failed to shutdown raft", "err", err)
 		}
@@ -338,4 +341,17 @@ func (m *Metastore) shutdownRaft() {
 			_ = level.Error(m.logger).Log("msg", "failed to close WAL", "err", err)
 		}
 	}
+}
+
+func (m *Metastore) TransferLeadership() (err error) {
+	switch err = m.raft.LeadershipTransfer().Error(); {
+	case err == nil:
+	case errors.Is(err, raft.ErrNotLeader):
+		// Not a leader, nothing to do.
+	case strings.Contains(err.Error(), "cannot find peer"):
+		// No peers, nothing to do.
+	default:
+		_ = level.Error(m.logger).Log("msg", "failed to transfer leadership", "err", err)
+	}
+	return err
 }

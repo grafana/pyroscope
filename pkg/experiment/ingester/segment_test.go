@@ -82,7 +82,7 @@ func TestSegmentIngest(t *testing.T) {
 }
 
 func ingestWithMetastoreAvailable(t *testing.T, chunks []inputChunk) {
-	sw := newTestSegmentWriter(t, defaultTestSegmentWriterConfig())
+	sw := newTestSegmentWriter(t, defaultTestConfig())
 	defer sw.Stop()
 	blocks := make(chan *metastorev1.BlockMeta, 128)
 
@@ -106,7 +106,7 @@ func ingestWithMetastoreAvailable(t *testing.T, chunks []inputChunk) {
 }
 
 func ingestWithDLQ(t *testing.T, chunks []inputChunk) {
-	sw := newTestSegmentWriter(t, defaultTestSegmentWriterConfig())
+	sw := newTestSegmentWriter(t, defaultTestConfig())
 	defer sw.Stop()
 	sw.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
 		Return(nil, fmt.Errorf("metastore unavailable"))
@@ -124,8 +124,8 @@ func ingestWithDLQ(t *testing.T, chunks []inputChunk) {
 }
 
 func TestIngestWait(t *testing.T) {
-	sw := newTestSegmentWriter(t, segmentWriterConfig{
-		segmentDuration: 100 * time.Millisecond,
+	sw := newTestSegmentWriter(t, Config{
+		SegmentDuration: 100 * time.Millisecond,
 	})
 
 	defer sw.Stop()
@@ -136,7 +136,7 @@ func TestIngestWait(t *testing.T) {
 	t1 := time.Now()
 	awaiter := sw.ingest(0, func(head segmentIngest) {
 		p := cpuProfile(42, 480, "svc1", "foo", "bar")
-		head.ingest(context.Background(), "t1", p.Profile, p.UUID, p.Labels)
+		head.ingest("t1", p.Profile, p.UUID, p.Labels)
 	})
 	err := awaiter.waitFlushed(context.Background())
 	require.NoError(t, err)
@@ -146,8 +146,8 @@ func TestIngestWait(t *testing.T) {
 
 func TestBusyIngestLoop(t *testing.T) {
 
-	sw := newTestSegmentWriter(t, segmentWriterConfig{
-		segmentDuration: 100 * time.Millisecond,
+	sw := newTestSegmentWriter(t, Config{
+		SegmentDuration: 100 * time.Millisecond,
 	})
 	defer sw.Stop()
 
@@ -207,7 +207,7 @@ func TestBusyIngestLoop(t *testing.T) {
 					ts := workerno*1000000000 + len(profiles)
 					awaiter := sw.ingest(1, func(head segmentIngest) {
 						p := cpuProfile(42, ts, "svc1", "foo", "bar")
-						head.ingest(context.Background(), "t1", p.CloneVT(), p.UUID, p.Labels)
+						head.ingest("t1", p.CloneVT(), p.UUID, p.Labels)
 						profiles = append(profiles, p)
 					})
 					awaiters = append(awaiters, awaiter)
@@ -247,8 +247,8 @@ func TestDLQFail(t *testing.T) {
 		l,
 		newSegmentMetrics(nil),
 		memdb.NewHeadMetricsWithPrefix(nil, ""),
-		segmentWriterConfig{
-			segmentDuration: 100 * time.Millisecond,
+		Config{
+			SegmentDuration: 100 * time.Millisecond,
 		},
 		validation.MockDefaultOverrides(),
 		bucket,
@@ -259,7 +259,7 @@ func TestDLQFail(t *testing.T) {
 	ing := func(head segmentIngest) {
 		ts += 420
 		p := cpuProfile(42, ts, "svc1", "foo", "bar")
-		head.ingest(context.Background(), "t1", p.Profile, p.UUID, p.Labels)
+		head.ingest("t1", p.Profile, p.UUID, p.Labels)
 	}
 
 	awaiter1 := res.ingest(0, ing)
@@ -292,8 +292,8 @@ func TestDatasetMinMaxTime(t *testing.T) {
 		l,
 		newSegmentMetrics(nil),
 		memdb.NewHeadMetricsWithPrefix(nil, ""),
-		segmentWriterConfig{
-			segmentDuration: 100 * time.Millisecond,
+		Config{
+			SegmentDuration: 100 * time.Millisecond,
 		},
 		validation.MockDefaultOverrides(),
 		bucket,
@@ -309,7 +309,7 @@ func TestDatasetMinMaxTime(t *testing.T) {
 	}
 	_ = res.ingest(1, func(head segmentIngest) {
 		for _, p := range data {
-			head.ingest(context.Background(), p.tenant, p.profile.Profile, p.profile.UUID, p.profile.Labels)
+			head.ingest(p.tenant, p.profile.Profile, p.profile.UUID, p.profile.Labels)
 		}
 	})
 	defer res.Stop()
@@ -333,8 +333,8 @@ func TestDatasetMinMaxTime(t *testing.T) {
 func TestQueryMultipleSeriesSingleTenant(t *testing.T) {
 	metas := make(chan *metastorev1.BlockMeta, 1)
 
-	sw := newTestSegmentWriter(t, segmentWriterConfig{
-		segmentDuration: 100 * time.Millisecond,
+	sw := newTestSegmentWriter(t, Config{
+		SegmentDuration: 100 * time.Millisecond,
 	})
 	defer sw.Stop()
 	sw.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
@@ -382,8 +382,8 @@ func TestDLQRecoveryMock(t *testing.T) {
 		{shard: 1, tenant: "tb", profile: cpuProfile(42, 239, "svc1", "kek", "foo", "bar")},
 	})
 
-	sw := newTestSegmentWriter(t, segmentWriterConfig{
-		segmentDuration: 100 * time.Millisecond,
+	sw := newTestSegmentWriter(t, Config{
+		SegmentDuration: 100 * time.Millisecond,
 	})
 	sw.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
 		Return(nil, fmt.Errorf("mock metastore unavailable"))
@@ -422,8 +422,8 @@ func TestDLQRecovery(t *testing.T) {
 		{shard: 1, tenant: tenant, profile: cpuProfile(42, int(ts), "svc1", "kek", "foo", "bar")},
 	})
 
-	sw := newTestSegmentWriter(t, segmentWriterConfig{
-		segmentDuration: 100 * time.Millisecond,
+	sw := newTestSegmentWriter(t, Config{
+		SegmentDuration: 100 * time.Millisecond,
 	})
 	sw.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
 		Return(nil, fmt.Errorf("mock metastore unavailable"))
@@ -471,7 +471,7 @@ type sw struct {
 	queryNo int
 }
 
-func newTestSegmentWriter(t *testing.T, cfg segmentWriterConfig) sw {
+func newTestSegmentWriter(t *testing.T, cfg Config) sw {
 	l := testutil.NewLogger(t)
 	bucket := memory.NewInMemBucket()
 	client := mockmetastorev1.NewMockMetastoreServiceClient(t)
@@ -492,9 +492,9 @@ func newTestSegmentWriter(t *testing.T, cfg segmentWriterConfig) sw {
 	}
 }
 
-func defaultTestSegmentWriterConfig() segmentWriterConfig {
-	return segmentWriterConfig{
-		segmentDuration: 1 * time.Second,
+func defaultTestConfig() Config {
+	return Config{
+		SegmentDuration: 1 * time.Second,
 	}
 }
 
@@ -683,7 +683,7 @@ func (sw *sw) ingestChunk(t *testing.T, chunk inputChunk, expectAwaitError bool)
 			defer wg.Done()
 			awaiter := sw.ingest(shardKey(it.shard), func(head segmentIngest) {
 				p := it.profile.CloneVT() // important to not rewrite original profile
-				head.ingest(context.Background(), it.tenant, p, it.profile.UUID, it.profile.Labels)
+				head.ingest(it.tenant, p, it.profile.UUID, it.profile.Labels)
 			})
 			err := awaiter.waitFlushed(context.Background())
 			if expectAwaitError {

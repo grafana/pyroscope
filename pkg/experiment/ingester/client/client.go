@@ -37,7 +37,7 @@ const (
 	cbMinSuccess     = 5
 	cbMaxFailures    = 3
 	cbClosedInterval = 0
-	cbOpenTimeout    = 5 * time.Second
+	cbOpenTimeout    = time.Second
 
 	poolCleanupPeriod = 15 * time.Second
 )
@@ -137,7 +137,10 @@ const grpcServiceConfig = `{
     "methodConfig": [{
         "name": [{"service": ""}],
         "retryPolicy": {}
-    }]
+    }],
+	"healthCheckConfig": {
+		"serviceName": "pyroscope.segment-writer"
+	}
 }`
 
 type Client struct {
@@ -218,14 +221,14 @@ func (c *Client) Push(
 	// At most 5 attempts to push the data to the segment writer.
 	instances := placement.ActiveInstances(p.Instances)
 	req.Shard = p.Shard
-	for attempts := 5; attempts >= 0 && instances.Next() && ctx.Err() == nil; attempts-- {
+	for attempts := 5; attempts >= 0 && instances.Next(); attempts-- {
 		instance := instances.At()
 		logger := log.With(c.logger,
 			"tenant", req.TenantId,
 			"shard", req.Shard,
 			"instance_addr", instance.Addr,
 			"instance_id", instance.Id,
-			"attempts", attempts,
+			"attempts_left", attempts,
 		)
 		_ = level.Debug(logger).Log("msg", "sending request")
 		resp, err = c.pushToInstance(ctx, req, instance.Addr)
@@ -240,6 +243,9 @@ func (c *Client) Push(
 			return nil, status.Error(codes.Unavailable, errServiceUnavailableMsg)
 		}
 		_ = level.Warn(logger).Log("msg", "failed attempt to push data to segment writer", "err", err)
+		if err = ctx.Err(); err != nil {
+			return nil, err
+		}
 	}
 
 	_ = level.Error(c.logger).Log(
@@ -248,6 +254,7 @@ func (c *Client) Push(
 		"shard", req.Shard,
 		"last_err", err,
 	)
+
 	return nil, status.Error(codes.Unavailable, errServiceUnavailableMsg)
 }
 
@@ -260,10 +267,13 @@ func (c *Client) pushToInstance(
 	if err != nil {
 		return nil, err
 	}
-	c.metrics.sentBytes.
-		WithLabelValues(strconv.Itoa(int(req.Shard)), req.TenantId, addr).
-		Observe(float64(len(req.Profile)))
-	return segmentwriterv1.NewSegmentWriterServiceClient(conn).Push(ctx, req)
+	resp, err := segmentwriterv1.NewSegmentWriterServiceClient(conn).Push(ctx, req)
+	if err == nil {
+		c.metrics.sentBytes.
+			WithLabelValues(strconv.Itoa(int(req.Shard)), req.TenantId, addr).
+			Observe(float64(len(req.Profile)))
+	}
+	return resp, err
 }
 
 func newConnPool(
@@ -294,8 +304,8 @@ func newConnPool(
 		"segment-writer",
 		ring_client.PoolConfig{
 			CheckInterval: poolCleanupPeriod,
-			// Note that no health checks are performed: it's caller
-			// responsibility to pick a healthy instance.
+			// Note that no health checks are not used:
+			// gGRPC health-checking is done at the gRPC connection level.
 			HealthCheckEnabled:        false,
 			HealthCheckTimeout:        0,
 			MaxConcurrentHealthChecks: 0,

@@ -38,7 +38,7 @@ var (
 	})
 
 	RecoveryInterceptor     recoveryInterceptor
-	GRPCRecoveryInterceptor = grpc_recovery.UnaryServerInterceptor(grpc_recovery.WithRecoveryHandler(PanicError))
+	RecoveryInterceptorGRPC = grpc_recovery.UnaryServerInterceptor(grpc_recovery.WithRecoveryHandler(PanicError))
 )
 
 func PanicError(p interface{}) error {
