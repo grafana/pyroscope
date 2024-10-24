@@ -1,0 +1,14 @@
+---
+apiVersion: 1
+datasources:
+  - uid: local-pyroscope
+    type: grafana-pyroscope-datasource
+    name: Pyroscope
+    url: http://pyroscope:4040
+    jsonData:
+      keepCookies: [pyroscope_git_session]
+    # Uncomment these if using with Grafana Cloud
+    # basicAuth: true
+    # basicAuthUser: '123456'
+    # secureJsonData:
+      # basicAuthPassword: PASSWORD
