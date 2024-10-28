@@ -137,3 +137,15 @@ To verify that the profiles are received by the Pyroscope server:
 [kubectl]: https://kubernetes.io/docs/tasks/tools/install-kubectl/
 [pyroscope-ds]: /docs/grafana/<GRAFANA_VERSION>/datasources/pyroscope/
 [config-reference]: ../configuration/
+
+## Considerations for Profiling Applications in Containers
+
+When profiling Python applications running in containers using the `pyroscope.ebpf` component in Alloy, consider the following:
+
+- **Kernel Version**: Ensure that the host system's kernel version is >= 4.9, as required by eBPF. This is crucial for the profiler to function correctly
+
+- **Container Privileges**: The eBPF profiler requires certain privileges to access kernel features. Ensure that the container running the profiler has the necessary permissions. This typically involves setting the container to run in privileged mode or adjusting security contexts
+
+- **Host PID Namespace**: The profiler may need access to the host's PID namespace to correctly attach to processes. Ensure that the `hostPID` is set to `true` in your Kubernetes configuration
+
+- **Network Access**: Ensure that the container has network access to send profiling data to the Pyroscope server. This may involve configuring network policies or service accounts
