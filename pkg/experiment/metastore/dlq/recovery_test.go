@@ -3,11 +3,10 @@ package dlq
 import (
 	"context"
 	"crypto/rand"
-	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	segmentstorage "github.com/grafana/pyroscope/pkg/experiment/ingester/storage"
-	"github.com/grafana/pyroscope/pkg/objstore/providers/memory"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mockdlq"
+	"sync"
+	"testing"
+	"time"
+
 	"github.com/oklog/ulid"
 	"github.com/prometheus/prometheus/util/testutil"
 	"github.com/stretchr/testify/assert"
@@ -15,9 +14,12 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"sync"
-	"testing"
-	"time"
+
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	segmentstorage "github.com/grafana/pyroscope/pkg/experiment/ingester/storage"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/raft_node/raftnodepb"
+	"github.com/grafana/pyroscope/pkg/objstore/providers/memory"
+	"github.com/grafana/pyroscope/pkg/test/mocks/mockdlq"
 )
 
 func TestRecoverTick(t *testing.T) {
@@ -76,7 +78,7 @@ func TestNotRaftLeader(t *testing.T) {
 	}
 
 	srv := mockdlq.NewMockLocalServer(t)
-	s, _ := status.New(codes.Unavailable, "mock metastore error").WithDetails(&typesv1.RaftDetails{Leader: string("239")})
+	s, _ := status.New(codes.Unavailable, "mock metastore error").WithDetails(&raftnodepb.RaftNode{Id: "239"})
 	srv.On("AddRecoveredBlock", mock.Anything, mock.Anything).
 		Once().
 		Return(nil, s.Err())

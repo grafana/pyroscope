@@ -8,11 +8,9 @@ import (
 
 	"github.com/hashicorp/raft"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/raft_node"
 )
 
 func invoke[R any](ctx context.Context, cl *Client,
@@ -50,21 +48,11 @@ func invoke[R any](ctx context.Context, cl *Client,
 			"server_address", it.srv.Raft.Address,
 			"server_resolved_laddress", it.srv.ResolvedAddress,
 		)
-		s, ok := status.FromError(err)
-		if ok && s.Code() == codes.Unavailable {
-			ds := s.Details()
-			detailsLeader := ""
-			if len(ds) > 0 {
-				for _, d := range ds {
-					if rd, ok := d.(*typesv1.RaftDetails); ok {
-						detailsLeader = rd.Leader
-						break
-					}
-				}
-			}
+		node, ok := raft_node.RaftLeaderFromStatusDetails(err)
+		if ok {
 			cl.mu.Lock()
 			if cl.leader == it.srv.Raft.ID {
-				cl.leader = raft.ServerID(detailsLeader)
+				cl.leader = raft.ServerID(node.Id)
 			}
 			cl.mu.Unlock()
 		}

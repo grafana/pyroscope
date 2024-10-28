@@ -16,8 +16,8 @@ import (
 	"google.golang.org/grpc/status"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/raft_node/raftnodepb"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockmetastorev1"
 )
 
@@ -123,8 +123,8 @@ func (m *mockServers) InitWrongLeader() func() {
 			if s.callNo == 1 {
 				s.leaderIndex = (srv.index + 1) % nServers
 				s, err := status.New(codes.Unavailable, fmt.Sprintf("test error not leader, leader is %s", testServerId(s.leaderIndex))).
-					WithDetails(&typesv1.RaftDetails{
-						Leader: string(testServerId(s.leaderIndex)),
+					WithDetails(&raftnodepb.RaftNode{
+						Id: string(testServerId(s.leaderIndex)),
 					})
 				assert.NoError(m.t, err)
 				return s.Err()

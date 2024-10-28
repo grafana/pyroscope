@@ -28,7 +28,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/blockcleaner"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/dlq"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftleader"
+	raftnode "github.com/grafana/pyroscope/pkg/experiment/metastore/raft_node"
 	"github.com/grafana/pyroscope/pkg/util/health"
 )
 
@@ -130,11 +130,11 @@ type Metastore struct {
 	db *boltdb
 
 	// Raft module.
-	wal          *raftwal.WAL
-	snapshots    *raft.FileSnapshotStore
-	transport    *raft.NetworkTransport
-	raft         *raft.Raft
-	leaderhealth *raftleader.LeaderObserver
+	wal       *raftwal.WAL
+	snapshots *raft.FileSnapshotStore
+	transport *raft.NetworkTransport
+	raft      *raft.Raft
+	observer  *raftnode.Observer
 
 	logStore      raft.LogStore
 	stableStore   raft.StableStore
@@ -175,7 +175,7 @@ func New(
 		placementMgr: placementMgr,
 	}
 	m.state = newMetastoreState(m.logger, m.db, m.reg, &m.config.Compaction, &m.config.Index)
-	m.leaderhealth = raftleader.NewRaftLeaderHealthObserver(logger, reg)
+	m.observer = raftnode.NewRaftLeaderObserver(logger, reg)
 	m.dlq = dlq.NewRecovery(dlq.RecoveryConfig{
 		Period: config.DLQRecoveryPeriod,
 	}, logger, m, bucket)
@@ -254,7 +254,7 @@ func (m *Metastore) initRaft() (err error) {
 	config.SnapshotInterval = raftSnapshotInterval
 	config.LocalID = raft.ServerID(m.config.Raft.ServerID)
 
-	fsm := newFSM(m.logger, m.db, m.state)
+	fsm := newFSM(m.logger, m.state)
 	m.raft, err = raft.NewRaft(config, fsm, m.logStore, m.stableStore, m.snapshotStore, m.transport)
 	if err != nil {
 		return fmt.Errorf("starting raft node: %w", err)
@@ -268,7 +268,7 @@ func (m *Metastore) initRaft() (err error) {
 	} else {
 		_ = level.Info(m.logger).Log("msg", "restoring existing state, not bootstraping")
 	}
-	m.leaderhealth.Register(m.raft, func(st raft.RaftState) {
+	m.observer.Register(m.raft, func(st raft.RaftState) {
 		if st == raft.Leader {
 			m.dlq.Start()
 			m.placementMgr.Start()
@@ -315,7 +315,7 @@ func (m *Metastore) createRaftDirs() (err error) {
 
 func (m *Metastore) shutdownRaft() {
 	if m.raft != nil {
-		m.leaderhealth.Deregister()
+		m.observer.Deregister()
 		// We let clients observe the leadership transfer: it's their
 		// responsibility to connect to the new leader. We only need to
 		// make sure that any error returned to clients includes details

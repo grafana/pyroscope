@@ -22,7 +22,7 @@ func (m *Metastore) PollCompactionJobs(_ context.Context, req *metastorev1.PollC
 		"raft_commit_index", m.raft.CommitIndex(),
 		"raft_last_index", m.raft.LastIndex(),
 		"raft_applied_index", m.raft.AppliedIndex())
-	_, resp, err := applyCommand[*metastorev1.PollCompactionJobsRequest, *metastorev1.PollCompactionJobsResponse](m.raft, req, m.config.Raft.ApplyTimeout)
+	_, resp, err := proposeCommand[*metastorev1.PollCompactionJobsRequest, *metastorev1.PollCompactionJobsResponse](m.raft, 0, req, m.config.Raft.ApplyTimeout)
 	if err != nil {
 		_ = level.Error(m.logger).Log("msg", "failed to apply poll compaction jobs", "raft_commit_index", m.raft.CommitIndex(), "err", err)
 	}

@@ -11,10 +11,11 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/thanos-io/objstore"
+
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	segmentstorage "github.com/grafana/pyroscope/pkg/experiment/ingester/storage"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftleader"
-	"github.com/thanos-io/objstore"
+	raftnode "github.com/grafana/pyroscope/pkg/experiment/metastore/raft_node"
 )
 
 type RecoveryConfig struct {
@@ -119,7 +120,7 @@ func (r *Recovery) recover(ctx context.Context, metaPath string) error {
 		Block: meta,
 	})
 	if err != nil {
-		if raftleader.IsRaftLeadershipError(err) {
+		if raftnode.IsRaftLeadershipError(err) {
 			return err
 		}
 		level.Error(r.l).Log("msg", "failed to add block", "err", err, "path", metaPath)

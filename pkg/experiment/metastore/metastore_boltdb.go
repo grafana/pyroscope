@@ -1,18 +1,15 @@
 package metastore
 
 import (
-	"context"
 	"encoding/binary"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
-	"runtime/pprof"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/hashicorp/raft"
 	"go.etcd.io/bbolt"
 )
 
@@ -27,12 +24,6 @@ type boltdb struct {
 	boltdb  *bbolt.DB
 	config  Config
 	path    string
-	metrics *metastoreMetrics
-}
-
-type snapshot struct {
-	logger  log.Logger
-	tx      *bbolt.Tx
 	metrics *metastoreMetrics
 }
 
@@ -156,56 +147,6 @@ func syncFD(f *os.File) (err error) {
 		return closeErr
 	}
 	return err
-}
-
-func (db *boltdb) createSnapshot() (*snapshot, error) {
-	s := snapshot{logger: db.logger, metrics: db.metrics}
-	tx, err := db.boltdb.Begin(false)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open a transaction for snapshot: %w", err)
-	}
-	s.tx = tx
-	return &s, nil
-}
-
-func (s *snapshot) Persist(sink raft.SnapshotSink) (err error) {
-	pprof.Do(context.Background(), pprof.Labels("metastore_op", "persist"), func(ctx context.Context) {
-		err = s.persist(sink)
-	})
-	return err
-}
-
-func (s *snapshot) persist(sink raft.SnapshotSink) error {
-	var err error
-	t1 := time.Now()
-	_ = s.logger.Log("msg", "persisting snapshot", "sink_id", sink.ID())
-	defer func() {
-		s.metrics.boltDBPersistSnapshotDuration.Observe(time.Since(t1).Seconds())
-		s.logger.Log("msg", "persisted snapshot", "sink_id", sink.ID(), "err", err, "duration", time.Since(t1))
-		if err != nil {
-			_ = s.logger.Log("msg", "failed to persist snapshot", "err", err)
-			if err = sink.Cancel(); err != nil {
-				_ = s.logger.Log("msg", "failed to cancel snapshot sink", "err", err)
-				return
-			}
-		}
-		if err = sink.Close(); err != nil {
-			_ = s.logger.Log("msg", "failed to close sink", "err", err)
-		}
-	}()
-	_ = level.Info(s.logger).Log("msg", "persisting snapshot")
-	if _, err = s.tx.WriteTo(sink); err != nil {
-		_ = level.Error(s.logger).Log("msg", "failed to write snapshot", "err", err)
-		return err
-	}
-	return nil
-}
-
-func (s *snapshot) Release() {
-	if s.tx != nil {
-		// This is an in-memory rollback, no error expected.
-		_ = s.tx.Rollback()
-	}
 }
 
 func getOrCreateSubBucket(parent *bbolt.Bucket, name []byte) (*bbolt.Bucket, error) {

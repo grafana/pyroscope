@@ -89,7 +89,7 @@ func (c *blockCleaner) runLoop() {
 			requestId := ulid.MustNew(ulid.Now(), rand.Reader).String()
 			c.lastRequestId = requestId
 			req := &raftlogpb.CleanBlocksRequest{RequestId: requestId}
-			_, _, err := applyCommand[*raftlogpb.CleanBlocksRequest, *anypb.Any](c.raft, req, c.raftCfg.ApplyTimeout)
+			_, _, err := proposeCommand[*raftlogpb.CleanBlocksRequest, *anypb.Any](c.raft, 0, req, c.raftCfg.ApplyTimeout)
 			if err != nil {
 				_ = level.Error(c.logger).Log("msg", "failed to apply clean blocks command", "err", err)
 			}

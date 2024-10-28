@@ -1,14 +1,13 @@
-package raftleader
+package raft_node
 
 import (
-	"github.com/prometheus/client_golang/prometheus"
-
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/hashicorp/raft"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
-type LeaderObserver struct {
+type Observer struct {
 	logger   log.Logger
 	metrics  *metrics
 	raft     *raft.Raft
@@ -36,13 +35,8 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 	return m
 }
 
-type LeaderRoutine interface {
-	Start()
-	Stop()
-}
-
-func NewRaftLeaderHealthObserver(logger log.Logger, reg prometheus.Registerer) *LeaderObserver {
-	return &LeaderObserver{
+func NewRaftLeaderObserver(logger log.Logger, reg prometheus.Registerer) *Observer {
+	return &Observer{
 		logger:  logger,
 		metrics: newMetrics(reg),
 		c:       make(chan raft.Observation, 1),
@@ -51,7 +45,7 @@ func NewRaftLeaderHealthObserver(logger log.Logger, reg prometheus.Registerer) *
 	}
 }
 
-func (o *LeaderObserver) Register(r *raft.Raft, cb func(st raft.RaftState)) {
+func (o *Observer) Register(r *raft.Raft, cb func(st raft.RaftState)) {
 	if o.raft != nil {
 		return
 	}
@@ -67,14 +61,14 @@ func (o *LeaderObserver) Register(r *raft.Raft, cb func(st raft.RaftState)) {
 	r.RegisterObserver(o.observer)
 }
 
-func (o *LeaderObserver) Deregister() {
+func (o *Observer) Deregister() {
 	close(o.stop)
 	<-o.done
 	_ = level.Debug(o.logger).Log("msg", "deregistering raft observer")
 	o.raft.DeregisterObserver(o.observer)
 }
 
-func (o *LeaderObserver) run() {
+func (o *Observer) run() {
 	defer func() {
 		close(o.done)
 	}()
@@ -88,7 +82,7 @@ func (o *LeaderObserver) run() {
 	}
 }
 
-func (o *LeaderObserver) updateStatus() {
+func (o *Observer) updateStatus() {
 	state := o.raft.State()
 	if o.cb != nil {
 		o.cb(state)

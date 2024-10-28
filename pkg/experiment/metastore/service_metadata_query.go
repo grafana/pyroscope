@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
@@ -16,15 +17,75 @@ import (
 	"github.com/grafana/pyroscope/pkg/model"
 )
 
-func (m *Metastore) QueryMetadata(
+type MetadataIndex interface {
+	FindBlocksInRange(start, end int64, tenants map[string]struct{}) ([]*metastorev1.BlockMeta, error)
+}
+
+func NewMetadataQueryService(
+	logger log.Logger,
+	metadataIndex MetadataIndex,
+	raftFollower RaftFollower,
+) *MetadataQueryService {
+	return &MetadataQueryService{
+		logger:        logger,
+		raftFollower:  raftFollower,
+		metadataIndex: metadataIndex,
+	}
+}
+
+type MetadataQueryService struct {
+	logger        log.Logger
+	raftFollower  RaftFollower
+	metadataIndex MetadataIndex
+}
+
+func (m *MetadataQueryService) QueryMetadata(
 	ctx context.Context,
 	request *metastorev1.QueryMetadataRequest,
 ) (*metastorev1.QueryMetadataResponse, error) {
-	if err := m.waitLeaderCommitIndexAppliedLocally(ctx); err != nil {
+	if err := m.raftFollower.WaitLeaderCommitIndexAppliedLocally(ctx); err != nil {
 		level.Error(m.logger).Log("msg", "failed to wait for leader commit index", "err", err)
 		return nil, err
 	}
-	return m.state.listBlocksForQuery(ctx, request)
+	return m.listBlocksForQuery(ctx, request)
+}
+
+func (m *MetadataQueryService) listBlocksForQuery(
+	ctx context.Context,
+	request *metastorev1.QueryMetadataRequest,
+) (*metastorev1.QueryMetadataResponse, error) {
+	q, err := newMetadataQuery(request)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	var resp metastorev1.QueryMetadataResponse
+	md := make(map[string]*metastorev1.BlockMeta, 32)
+	blocks, err := m.metadataIndex.FindBlocksInRange(q.startTime, q.endTime, q.tenants)
+	if err != nil {
+		level.Error(m.logger).Log("msg", "failed to list metastore blocks", "query", q, "err", err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	for _, block := range blocks {
+		var clone *metastorev1.BlockMeta
+		for _, svc := range block.Datasets {
+			if q.matchService(svc) {
+				if clone == nil {
+					clone = cloneBlockForQuery(block)
+					md[clone.Id] = clone
+				}
+				clone.Datasets = append(clone.Datasets, svc)
+			}
+		}
+	}
+
+	resp.Blocks = make([]*metastorev1.BlockMeta, 0, len(md))
+	for _, block := range md {
+		resp.Blocks = append(resp.Blocks, block)
+	}
+	slices.SortFunc(resp.Blocks, func(a, b *metastorev1.BlockMeta) int {
+		return strings.Compare(a.Id, b.Id)
+	})
+	return &resp, nil
 }
 
 type metadataQuery struct {
@@ -91,43 +152,4 @@ func cloneBlockForQuery(b *metastorev1.BlockMeta) *metastorev1.BlockMeta {
 	b.Datasets = datasets
 	c.Datasets = make([]*metastorev1.Dataset, 0, len(b.Datasets))
 	return c
-}
-
-func (m *metastoreState) listBlocksForQuery(
-	ctx context.Context,
-	request *metastorev1.QueryMetadataRequest,
-) (*metastorev1.QueryMetadataResponse, error) {
-	q, err := newMetadataQuery(request)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-	var resp metastorev1.QueryMetadataResponse
-
-	md := make(map[string]*metastorev1.BlockMeta, 32)
-	blocks, err := m.index.FindBlocksInRange(q.startTime, q.endTime, q.tenants)
-	if err != nil {
-		level.Error(m.logger).Log("msg", "failed to list metastore blocks", "query", q, "err", err)
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	for _, block := range blocks {
-		var clone *metastorev1.BlockMeta
-		for _, svc := range block.Datasets {
-			if q.matchService(svc) {
-				if clone == nil {
-					clone = cloneBlockForQuery(block)
-					md[clone.Id] = clone
-				}
-				clone.Datasets = append(clone.Datasets, svc)
-			}
-		}
-	}
-
-	resp.Blocks = make([]*metastorev1.BlockMeta, 0, len(md))
-	for _, block := range md {
-		resp.Blocks = append(resp.Blocks, block)
-	}
-	slices.SortFunc(resp.Blocks, func(a, b *metastorev1.BlockMeta) int {
-		return strings.Compare(a.Id, b.Id)
-	})
-	return &resp, nil
 }
