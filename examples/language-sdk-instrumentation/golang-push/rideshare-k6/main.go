@@ -68,10 +68,16 @@ func main() {
 
 	rideshare.Log.Print(context.Background(), "started ride-sharing app")
 
-	http.Handle("/", k6.LabelsFromBaggageHandler(otelhttp.NewHandler(http.HandlerFunc(index), "IndexHandler")))
-	http.Handle("/bike", k6.LabelsFromBaggageHandler(otelhttp.NewHandler(http.HandlerFunc(bikeRoute), "BikeHandler")))
-	http.Handle("/scooter", k6.LabelsFromBaggageHandler(otelhttp.NewHandler(http.HandlerFunc(scooterRoute), "ScooterHandler")))
-	http.Handle("/car", k6.LabelsFromBaggageHandler(otelhttp.NewHandler(http.HandlerFunc(carRoute), "CarHandler")))
+	routes := []route{
+		{"/", "IndexHandler", http.HandlerFunc(index)},
+		{"/bike", "BikeHandler", http.HandlerFunc(bikeRoute)},
+		{"/scooter", "ScooterHandler", http.HandlerFunc(scooterRoute)},
+		{"/car", "CarHandler", http.HandlerFunc(carRoute)},
+	}
+
+	routes = applyOtelMiddleware(routes)
+	routes = applyK6Middleware(routes)
+	registerRoutes(http.DefaultServeMux, routes)
 
 	addr := fmt.Sprintf(":%s", config.RideshareListenPort)
 	log.Fatal(http.ListenAndServe(addr, nil))
@@ -106,4 +112,30 @@ func setupOTEL(c rideshare.Config) (tp *sdktrace.TracerProvider, err error) {
 	))
 
 	return tp, err
+}
+
+type route struct {
+	Path    string
+	Name    string
+	Handler http.Handler
+}
+
+func registerRoutes(mux *http.ServeMux, handlers []route) {
+	for _, handler := range handlers {
+		mux.Handle(handler.Path, handler.Handler)
+	}
+}
+
+func applyOtelMiddleware(routes []route) []route {
+	for _, route := range routes {
+		route.Handler = otelhttp.NewHandler(route.Handler, route.Name)
+	}
+	return routes
+}
+
+func applyK6Middleware(routes []route) []route {
+	for _, route := range routes {
+		route.Handler = k6.LabelsFromBaggageHandler(route.Handler)
+	}
+	return routes
 }
