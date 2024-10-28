@@ -11,21 +11,22 @@ import (
 	"github.com/stretchr/testify/require"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
-func Test_MetastoreState_GetProfileStats_NoData(t *testing.T) {
+func Test_MetastoreState_GetTenant_NoData(t *testing.T) {
 	m := initState(t)
-	stats, err := m.getProfileStats("tenant", context.Background())
+	resp, err := m.getTenantStats("tenant", context.Background())
 	require.NoError(t, err)
-	require.Equal(t, &typesv1.GetProfileStatsResponse{
-		DataIngested:      false,
-		OldestProfileTime: math.MaxInt64,
-		NewestProfileTime: math.MinInt64,
-	}, stats)
+	require.Equal(t, &metastorev1.GetTenantResponse{
+		Stats: &metastorev1.TenantStats{
+			DataIngested:      false,
+			OldestProfileTime: math.MaxInt64,
+			NewestProfileTime: math.MinInt64,
+		},
+	}, resp)
 }
 
-func Test_MetastoreState_GetProfileStats_MultipleShards(t *testing.T) {
+func Test_MetastoreState_GetTenant_MultipleShards(t *testing.T) {
 	m := initState(t)
 	_, _ = m.applyAddBlock(&raft.Log{}, &metastorev1.AddBlockRequest{Block: &metastorev1.BlockMeta{
 		Id:       ulid.MustNew(ulid.Now(), rand.Reader).String(),
@@ -49,14 +50,14 @@ func Test_MetastoreState_GetProfileStats_MultipleShards(t *testing.T) {
 		MaxTime:  40,
 	}})
 
-	stats, err := m.getProfileStats("tenant1", context.Background())
+	resp, err := m.getTenantStats("tenant1", context.Background())
 	require.NoError(t, err)
-	require.True(t, stats.DataIngested)
-	require.True(t, stats.OldestProfileTime > math.MinInt64)
-	require.True(t, stats.NewestProfileTime < math.MaxInt64)
+	require.True(t, resp.Stats.DataIngested)
+	require.True(t, resp.Stats.OldestProfileTime > math.MinInt64)
+	require.True(t, resp.Stats.NewestProfileTime < math.MaxInt64)
 }
 
-func Benchmark_MetastoreState_GetProfileStats(b *testing.B) {
+func Benchmark_MetastoreState_GetTenant(b *testing.B) {
 	m := initState(b)
 	for s := 0; s < 64; s++ {
 		// in a real and worst case we would have ~3700 blocks per shard per month
@@ -97,8 +98,8 @@ func Benchmark_MetastoreState_GetProfileStats(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		stats, err := m.getProfileStats("tenant1", context.Background())
+		resp, err := m.getTenantStats("tenant1", context.Background())
 		require.NoError(b, err)
-		require.True(b, stats.DataIngested)
+		require.True(b, resp.Stats.DataIngested)
 	}
 }

@@ -7,30 +7,23 @@ import (
 	"sync"
 
 	"github.com/go-kit/log"
-	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/raft"
-
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
-
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/services"
+	"github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/raft"
 	otgrpc "github.com/opentracing-contrib/go-grpc"
 	"github.com/opentracing/opentracing-go"
 	"google.golang.org/grpc"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
 )
 
-var _ metastorev1.MetastoreServiceClient = (*Client)(nil)
-var _ metastorev1.CompactionPlannerClient = (*Client)(nil)
-
 type Client struct {
-	service services.Service
-
+	service   services.Service
 	discovery discovery.Discovery
 
-	mu sync.Mutex
-
+	mu               sync.Mutex
 	leader           raft.ServerID
 	servers          map[raft.ServerID]*client
 	stopped          bool
@@ -40,7 +33,11 @@ type Client struct {
 
 type client struct {
 	metastorev1.MetastoreServiceClient
+	metastorev1.MetadataQueryServiceClient
+	metastorev1.TenantServiceClient
 	metastorev1.CompactionPlannerClient
+	metastorev1.RaftNodeServiceClient
+
 	conn io.Closer
 	srv  discovery.Server
 }
@@ -48,15 +45,15 @@ type client struct {
 // todo
 type instance interface {
 	metastorev1.MetastoreServiceClient
+	metastorev1.MetadataQueryServiceClient
+	metastorev1.TenantServiceClient
 	metastorev1.CompactionPlannerClient
+	metastorev1.RaftNodeServiceClient
 }
 
 func New(logger log.Logger, grpcClientConfig grpcclient.Config, d discovery.Discovery) *Client {
-	var (
-		c = new(Client)
-	)
+	var c Client
 	logger = log.With(logger, "component", "metastore-client")
-
 	c.service = services.NewIdleService(c.starting, c.stopping)
 	c.logger = logger
 	c.grpcClientConfig = grpcClientConfig
@@ -65,7 +62,7 @@ func New(logger log.Logger, grpcClientConfig grpcclient.Config, d discovery.Disc
 	c.discovery.Subscribe(discovery.UpdateFunc(func(servers []discovery.Server) {
 		c.updateServers(servers)
 	}))
-	return c
+	return &c
 }
 
 func (c *Client) Service() services.Service      { return c.service }
@@ -149,10 +146,13 @@ func newClient(s discovery.Server, config grpcclient.Config, logger log.Logger) 
 		return nil, err
 	}
 	return &client{
-		MetastoreServiceClient:  metastorev1.NewMetastoreServiceClient(conn),
-		CompactionPlannerClient: metastorev1.NewCompactionPlannerClient(conn),
-		conn:                    conn,
-		srv:                     s,
+		MetastoreServiceClient:     metastorev1.NewMetastoreServiceClient(conn),
+		CompactionPlannerClient:    metastorev1.NewCompactionPlannerClient(conn),
+		MetadataQueryServiceClient: metastorev1.NewMetadataQueryServiceClient(conn),
+		TenantServiceClient:        metastorev1.NewTenantServiceClient(conn),
+		RaftNodeServiceClient:      metastorev1.NewRaftNodeServiceClient(conn),
+		conn:                       conn,
+		srv:                        s,
 	}, nil
 }
 

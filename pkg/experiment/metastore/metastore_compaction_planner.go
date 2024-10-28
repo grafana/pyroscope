@@ -1,7 +1,6 @@
 package metastore
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"strings"
@@ -115,10 +114,6 @@ func newCompactionMetrics(reg prometheus.Registerer) *compactionMetrics {
 		)
 	}
 	return m
-}
-
-func (m *Metastore) GetCompactionJobs(_ context.Context, req *metastorev1.GetCompactionRequest) (*metastorev1.GetCompactionResponse, error) {
-	return nil, nil
 }
 
 // compactBlock is the entry point for adding blocks to the compaction flow.

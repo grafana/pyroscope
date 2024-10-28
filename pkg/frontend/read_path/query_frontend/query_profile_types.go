@@ -31,7 +31,7 @@ func (q *QueryFrontend) ProfileTypes(
 		return connect.NewResponse(&querierv1.ProfileTypesResponse{}), nil
 	}
 
-	md, err := q.metastore.QueryMetadata(ctx, &metastorev1.QueryMetadataRequest{
+	md, err := q.metadataQueryClient.QueryMetadata(ctx, &metastorev1.QueryMetadataRequest{
 		TenantId:  tenants,
 		StartTime: req.Msg.Start,
 		EndTime:   req.Msg.End,

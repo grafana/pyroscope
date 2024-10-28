@@ -13,6 +13,12 @@ packages:
       MetastoreServiceClient:
       MetastoreServiceServer:
       CompactionPlannerServer:
+      MetadataQueryServiceClient:
+      MetadataQueryServiceServer:
+      TenantServiceClient:
+      TenantServiceServer:
+      RaftNodeServiceClient:
+      RaftNodeServiceServer:
   github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect:
     interfaces:
       QuerierServiceClient:

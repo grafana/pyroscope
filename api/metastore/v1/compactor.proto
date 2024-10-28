@@ -7,8 +7,6 @@ import "metastore/v1/metastore.proto";
 service CompactionPlanner {
   // Used to both retrieve jobs and update the jobs status at the same time.
   rpc PollCompactionJobs(PollCompactionJobsRequest) returns (PollCompactionJobsResponse) {}
-  // Used for admin purposes only.
-  rpc GetCompactionJobs(GetCompactionRequest) returns (GetCompactionResponse) {}
 }
 
 message PollCompactionJobsRequest {
@@ -19,13 +17,6 @@ message PollCompactionJobsRequest {
 }
 
 message PollCompactionJobsResponse {
-  repeated CompactionJob compaction_jobs = 1;
-}
-
-message GetCompactionRequest {}
-
-message GetCompactionResponse {
-  // A list of all compaction jobs
   repeated CompactionJob compaction_jobs = 1;
 }
 

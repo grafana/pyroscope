@@ -70,45 +70,6 @@ func (m *PollCompactionJobsResponse) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
-func (m *GetCompactionRequest) CloneVT() *GetCompactionRequest {
-	if m == nil {
-		return (*GetCompactionRequest)(nil)
-	}
-	r := new(GetCompactionRequest)
-	if len(m.unknownFields) > 0 {
-		r.unknownFields = make([]byte, len(m.unknownFields))
-		copy(r.unknownFields, m.unknownFields)
-	}
-	return r
-}
-
-func (m *GetCompactionRequest) CloneMessageVT() proto.Message {
-	return m.CloneVT()
-}
-
-func (m *GetCompactionResponse) CloneVT() *GetCompactionResponse {
-	if m == nil {
-		return (*GetCompactionResponse)(nil)
-	}
-	r := new(GetCompactionResponse)
-	if rhs := m.CompactionJobs; rhs != nil {
-		tmpContainer := make([]*CompactionJob, len(rhs))
-		for k, v := range rhs {
-			tmpContainer[k] = v.CloneVT()
-		}
-		r.CompactionJobs = tmpContainer
-	}
-	if len(m.unknownFields) > 0 {
-		r.unknownFields = make([]byte, len(m.unknownFields))
-		copy(r.unknownFields, m.unknownFields)
-	}
-	return r
-}
-
-func (m *GetCompactionResponse) CloneMessageVT() proto.Message {
-	return m.CloneVT()
-}
-
 func (m *CompactionJob) CloneVT() *CompactionJob {
 	if m == nil {
 		return (*CompactionJob)(nil)
@@ -270,55 +231,6 @@ func (this *PollCompactionJobsResponse) EqualMessageVT(thatMsg proto.Message) bo
 	}
 	return this.EqualVT(that)
 }
-func (this *GetCompactionRequest) EqualVT(that *GetCompactionRequest) bool {
-	if this == that {
-		return true
-	} else if this == nil || that == nil {
-		return false
-	}
-	return string(this.unknownFields) == string(that.unknownFields)
-}
-
-func (this *GetCompactionRequest) EqualMessageVT(thatMsg proto.Message) bool {
-	that, ok := thatMsg.(*GetCompactionRequest)
-	if !ok {
-		return false
-	}
-	return this.EqualVT(that)
-}
-func (this *GetCompactionResponse) EqualVT(that *GetCompactionResponse) bool {
-	if this == that {
-		return true
-	} else if this == nil || that == nil {
-		return false
-	}
-	if len(this.CompactionJobs) != len(that.CompactionJobs) {
-		return false
-	}
-	for i, vx := range this.CompactionJobs {
-		vy := that.CompactionJobs[i]
-		if p, q := vx, vy; p != q {
-			if p == nil {
-				p = &CompactionJob{}
-			}
-			if q == nil {
-				q = &CompactionJob{}
-			}
-			if !p.EqualVT(q) {
-				return false
-			}
-		}
-	}
-	return string(this.unknownFields) == string(that.unknownFields)
-}
-
-func (this *GetCompactionResponse) EqualMessageVT(thatMsg proto.Message) bool {
-	that, ok := thatMsg.(*GetCompactionResponse)
-	if !ok {
-		return false
-	}
-	return this.EqualVT(that)
-}
 func (this *CompactionJob) EqualVT(that *CompactionJob) bool {
 	if this == that {
 		return true
@@ -471,8 +383,6 @@ const _ = grpc.SupportPackageIsVersion7
 type CompactionPlannerClient interface {
 	// Used to both retrieve jobs and update the jobs status at the same time.
 	PollCompactionJobs(ctx context.Context, in *PollCompactionJobsRequest, opts ...grpc.CallOption) (*PollCompactionJobsResponse, error)
-	// Used for admin purposes only.
-	GetCompactionJobs(ctx context.Context, in *GetCompactionRequest, opts ...grpc.CallOption) (*GetCompactionResponse, error)
 }
 
 type compactionPlannerClient struct {
@@ -492,23 +402,12 @@ func (c *compactionPlannerClient) PollCompactionJobs(ctx context.Context, in *Po
 	return out, nil
 }
 
-func (c *compactionPlannerClient) GetCompactionJobs(ctx context.Context, in *GetCompactionRequest, opts ...grpc.CallOption) (*GetCompactionResponse, error) {
-	out := new(GetCompactionResponse)
-	err := c.cc.Invoke(ctx, "/metastore.v1.CompactionPlanner/GetCompactionJobs", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // CompactionPlannerServer is the server API for CompactionPlanner service.
 // All implementations must embed UnimplementedCompactionPlannerServer
 // for forward compatibility
 type CompactionPlannerServer interface {
 	// Used to both retrieve jobs and update the jobs status at the same time.
 	PollCompactionJobs(context.Context, *PollCompactionJobsRequest) (*PollCompactionJobsResponse, error)
-	// Used for admin purposes only.
-	GetCompactionJobs(context.Context, *GetCompactionRequest) (*GetCompactionResponse, error)
 	mustEmbedUnimplementedCompactionPlannerServer()
 }
 
@@ -518,9 +417,6 @@ type UnimplementedCompactionPlannerServer struct {
 
 func (UnimplementedCompactionPlannerServer) PollCompactionJobs(context.Context, *PollCompactionJobsRequest) (*PollCompactionJobsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PollCompactionJobs not implemented")
-}
-func (UnimplementedCompactionPlannerServer) GetCompactionJobs(context.Context, *GetCompactionRequest) (*GetCompactionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetCompactionJobs not implemented")
 }
 func (UnimplementedCompactionPlannerServer) mustEmbedUnimplementedCompactionPlannerServer() {}
 
@@ -553,24 +449,6 @@ func _CompactionPlanner_PollCompactionJobs_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
-func _CompactionPlanner_GetCompactionJobs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetCompactionRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(CompactionPlannerServer).GetCompactionJobs(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/metastore.v1.CompactionPlanner/GetCompactionJobs",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CompactionPlannerServer).GetCompactionJobs(ctx, req.(*GetCompactionRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // CompactionPlanner_ServiceDesc is the grpc.ServiceDesc for CompactionPlanner service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -581,10 +459,6 @@ var CompactionPlanner_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "PollCompactionJobs",
 			Handler:    _CompactionPlanner_PollCompactionJobs_Handler,
-		},
-		{
-			MethodName: "GetCompactionJobs",
-			Handler:    _CompactionPlanner_GetCompactionJobs_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -660,84 +534,6 @@ func (m *PollCompactionJobsResponse) MarshalToVT(dAtA []byte) (int, error) {
 }
 
 func (m *PollCompactionJobsResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
-	if m == nil {
-		return 0, nil
-	}
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.unknownFields != nil {
-		i -= len(m.unknownFields)
-		copy(dAtA[i:], m.unknownFields)
-	}
-	if len(m.CompactionJobs) > 0 {
-		for iNdEx := len(m.CompactionJobs) - 1; iNdEx >= 0; iNdEx-- {
-			size, err := m.CompactionJobs[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
-			i--
-			dAtA[i] = 0xa
-		}
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *GetCompactionRequest) MarshalVT() (dAtA []byte, err error) {
-	if m == nil {
-		return nil, nil
-	}
-	size := m.SizeVT()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *GetCompactionRequest) MarshalToVT(dAtA []byte) (int, error) {
-	size := m.SizeVT()
-	return m.MarshalToSizedBufferVT(dAtA[:size])
-}
-
-func (m *GetCompactionRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
-	if m == nil {
-		return 0, nil
-	}
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.unknownFields != nil {
-		i -= len(m.unknownFields)
-		copy(dAtA[i:], m.unknownFields)
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *GetCompactionResponse) MarshalVT() (dAtA []byte, err error) {
-	if m == nil {
-		return nil, nil
-	}
-	size := m.SizeVT()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *GetCompactionResponse) MarshalToVT(dAtA []byte) (int, error) {
-	size := m.SizeVT()
-	return m.MarshalToSizedBufferVT(dAtA[:size])
-}
-
-func (m *GetCompactionResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m == nil {
 		return 0, nil
 	}
@@ -1048,32 +844,6 @@ func (m *PollCompactionJobsResponse) SizeVT() (n int) {
 	return n
 }
 
-func (m *GetCompactionRequest) SizeVT() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	n += len(m.unknownFields)
-	return n
-}
-
-func (m *GetCompactionResponse) SizeVT() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if len(m.CompactionJobs) > 0 {
-		for _, e := range m.CompactionJobs {
-			l = e.SizeVT()
-			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-		}
-	}
-	n += len(m.unknownFields)
-	return n
-}
-
 func (m *CompactionJob) SizeVT() (n int) {
 	if m == nil {
 		return 0
@@ -1306,142 +1076,6 @@ func (m *PollCompactionJobsResponse) UnmarshalVT(dAtA []byte) error {
 		}
 		if fieldNum <= 0 {
 			return fmt.Errorf("proto: PollCompactionJobsResponse: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field CompactionJobs", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.CompactionJobs = append(m.CompactionJobs, &CompactionJob{})
-			if err := m.CompactionJobs[len(m.CompactionJobs)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *GetCompactionRequest) UnmarshalVT(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return protohelpers.ErrIntOverflow
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: GetCompactionRequest: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: GetCompactionRequest: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		default:
-			iNdEx = preIndex
-			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *GetCompactionResponse) UnmarshalVT(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return protohelpers.ErrIntOverflow
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: GetCompactionResponse: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: GetCompactionResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:

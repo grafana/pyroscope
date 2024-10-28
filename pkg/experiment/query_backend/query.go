@@ -11,7 +11,7 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
-	"github.com/grafana/pyroscope/pkg/experiment/query_backend/block"
+	block2 "github.com/grafana/pyroscope/pkg/experiment/block"
 )
 
 // TODO(kolesnikovae): We have a procedural definition of our queries,
@@ -46,10 +46,10 @@ func getQueryHandler(t queryv1.QueryType) (queryHandler, error) {
 
 var (
 	depMutex          = new(sync.RWMutex)
-	queryDependencies = map[queryv1.QueryType][]block.Section{}
+	queryDependencies = map[queryv1.QueryType][]block2.Section{}
 )
 
-func registerQueryDependencies(t queryv1.QueryType, deps ...block.Section) {
+func registerQueryDependencies(t queryv1.QueryType, deps ...block2.Section) {
 	depMutex.Lock()
 	defer depMutex.Unlock()
 	if _, ok := queryDependencies[t]; ok {
@@ -63,7 +63,7 @@ func registerQueryType(
 	rt queryv1.ReportType,
 	q queryHandler,
 	a aggregatorProvider,
-	deps ...block.Section,
+	deps ...block2.Section,
 ) {
 	registerQueryReportType(qt, rt)
 	registerQueryHandler(qt, q)
@@ -76,8 +76,8 @@ type queryContext struct {
 	log  log.Logger
 	meta *metastorev1.Dataset
 	req  *request
-	obj  *block.Object
-	ds   *block.Dataset
+	obj  *block2.Object
+	ds   *block2.Dataset
 	err  error
 }
 
@@ -86,7 +86,7 @@ func newQueryContext(
 	logger log.Logger,
 	meta *metastorev1.Dataset,
 	req *request,
-	obj *block.Object,
+	obj *block2.Object,
 ) *queryContext {
 	return &queryContext{
 		ctx:  ctx,
@@ -94,7 +94,7 @@ func newQueryContext(
 		req:  req,
 		meta: meta,
 		obj:  obj,
-		ds:   block.NewDataset(meta, obj),
+		ds:   block2.NewDataset(meta, obj),
 	}
 }
 
@@ -126,14 +126,14 @@ func (q *queryContext) close(err error) error {
 	return q.ds.CloseWithError(err)
 }
 
-func (q *queryContext) sections() []block.Section {
-	sections := make(map[block.Section]struct{}, 3)
+func (q *queryContext) sections() []block2.Section {
+	sections := make(map[block2.Section]struct{}, 3)
 	for _, qt := range q.req.src.Query {
 		for _, s := range queryDependencies[qt.QueryType] {
 			sections[s] = struct{}{}
 		}
 	}
-	unique := make([]block.Section, 0, len(sections))
+	unique := make([]block2.Section, 0, len(sections))
 	for s := range sections {
 		unique = append(unique, s)
 	}

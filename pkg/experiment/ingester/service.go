@@ -18,9 +18,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/ingester/memdb"
-	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
 	"github.com/grafana/pyroscope/pkg/model/relabel"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
@@ -89,7 +89,7 @@ func New(
 	limits Limits,
 	health health.Service,
 	storageBucket phlareobj.Bucket,
-	metastoreClient *metastoreclient.Client,
+	metastoreClient metastorev1.MetastoreServiceClient,
 ) (*SegmentWriterService, error) {
 	i := &SegmentWriterService{
 		config:        config,

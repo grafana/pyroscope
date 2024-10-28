@@ -29,7 +29,7 @@ func TestRaftDetailsAddBlock(t *testing.T) {
 		Id: ulid.MustNew(1, rand.Reader).String(),
 	}
 	for _, it := range ms.Instances {
-		_, err := it.MetastoreInstanceClient.AddBlock(context.Background(), &metastorev1.AddBlockRequest{
+		_, err := it.MetastoreServiceClient.AddBlock(context.Background(), &metastorev1.AddBlockRequest{
 			Block: m,
 		})
 		if err != nil {
@@ -49,7 +49,7 @@ func TestRaftDetailsPullCompaction(t *testing.T) {
 
 	errors := 0
 	for _, it := range ms.Instances {
-		_, err := it.CompactorInstanceClient.PollCompactionJobs(context.Background(), &metastorev1.PollCompactionJobsRequest{})
+		_, err := it.CompactionPlannerClient.PollCompactionJobs(context.Background(), &metastorev1.PollCompactionJobsRequest{})
 		if err != nil {
 			requireRaftDetails(t, err)
 			errors++

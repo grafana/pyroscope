@@ -22,7 +22,7 @@ func (m *Metastore) ReadIndex(context.Context, *metastorev1.ReadIndexRequest) (*
 // and waits for the local applied index to catch up to the returned read index.
 // This method should be used before performing local reads to ensure consistency.
 func (m *Metastore) waitLeaderCommitIndexAppliedLocally(ctx context.Context) error {
-	r, err := m.client.ReadIndex(ctx, &metastorev1.ReadIndexRequest{})
+	r, err := m.raftClient.ReadIndex(ctx, &metastorev1.ReadIndexRequest{})
 	if err != nil {
 		return err
 	}

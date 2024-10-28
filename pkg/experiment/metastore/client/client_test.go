@@ -66,16 +66,9 @@ func TestUnavailable_Rediscover_Wrong_Leader(t *testing.T) {
 			require.NotNil(t, res)
 		})
 	})
-	t.Run("GetCompactionJobs", func(t *testing.T) {
-		testRediscoverWrongLeader(t, func(c *Client) {
-			res, err := c.GetCompactionJobs(context.Background(), &metastorev1.GetCompactionRequest{})
-			require.NoError(t, err)
-			require.NotNil(t, res)
-		})
-	})
 	t.Run("GetProfileStats", func(t *testing.T) {
 		testRediscoverWrongLeader(t, func(c *Client) {
-			res, err := c.GetProfileStats(context.Background(), &metastorev1.GetProfileStatsRequest{})
+			res, err := c.GetTenant(context.Background(), &metastorev1.GetTenantRequest{})
 			require.NoError(t, err)
 			require.NotNil(t, res)
 		})

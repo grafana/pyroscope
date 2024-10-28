@@ -98,8 +98,13 @@ func NewMetastoreSet(t *testing.T, cfg *metastore.Config, n int, bucket objstore
 		)
 		m, err := metastore.New(configs[i], logger, registry, health.NoOpService, client, bucket, placementManager)
 		require.NoError(t, err)
+
 		metastorev1.RegisterMetastoreServiceServer(server, m)
+		metastorev1.RegisterMetadataQueryServiceServer(server, m)
 		metastorev1.RegisterCompactionPlannerServer(server, m)
+		metastorev1.RegisterRaftNodeServiceServer(server, m)
+		metastorev1.RegisterTenantServiceServer(server, m)
+
 		lis, err := net.Listen("tcp", grpcAddresses[i])
 		assert.NoError(t, err)
 		go func() {
@@ -107,11 +112,15 @@ func NewMetastoreSet(t *testing.T, cfg *metastore.Config, n int, bucket objstore
 			assert.NoError(t, err)
 		}()
 		res.Instances = append(res.Instances, MetastoreInstance{
-			Metastore:               m,
-			Connection:              cc,
-			MetastoreInstanceClient: metastorev1.NewMetastoreServiceClient(cc),
-			CompactorInstanceClient: metastorev1.NewCompactionPlannerClient(cc),
-			Server:                  server,
+			Metastore:  m,
+			Connection: cc,
+			Server:     server,
+
+			MetastoreServiceClient:     metastorev1.NewMetastoreServiceClient(cc),
+			CompactionPlannerClient:    metastorev1.NewCompactionPlannerClient(cc),
+			MetadataQueryServiceClient: metastorev1.NewMetadataQueryServiceClient(cc),
+			TenantServiceClient:        metastorev1.NewTenantServiceClient(cc),
+			RaftNodeServiceClient:      metastorev1.NewRaftNodeServiceClient(cc),
 		})
 		service := m.Service()
 		ctx := context.Background()
@@ -149,15 +158,15 @@ func MockStaticDiscovery(t *testing.T, servers []discovery.Server) *mockdiscover
 }
 
 type MetastoreInstance struct {
-	Metastore               *metastore.Metastore
-	Server                  *grpc.Server
-	Connection              *grpc.ClientConn
-	MetastoreInstanceClient metastorev1.MetastoreServiceClient
-	CompactorInstanceClient metastorev1.CompactionPlannerClient
-}
+	Metastore  *metastore.Metastore
+	Server     *grpc.Server
+	Connection *grpc.ClientConn
 
-func (i *MetastoreInstance) client() metastorev1.MetastoreServiceClient {
-	return i.MetastoreInstanceClient
+	metastorev1.MetastoreServiceClient
+	metastorev1.CompactionPlannerClient
+	metastorev1.MetadataQueryServiceClient
+	metastorev1.TenantServiceClient
+	metastorev1.RaftNodeServiceClient
 }
 
 type MetastoreSet struct {

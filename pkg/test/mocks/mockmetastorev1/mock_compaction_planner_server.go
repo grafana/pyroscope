@@ -22,65 +22,6 @@ func (_m *MockCompactionPlannerServer) EXPECT() *MockCompactionPlannerServer_Exp
 	return &MockCompactionPlannerServer_Expecter{mock: &_m.Mock}
 }
 
-// GetCompactionJobs provides a mock function with given fields: _a0, _a1
-func (_m *MockCompactionPlannerServer) GetCompactionJobs(_a0 context.Context, _a1 *metastorev1.GetCompactionRequest) (*metastorev1.GetCompactionResponse, error) {
-	ret := _m.Called(_a0, _a1)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetCompactionJobs")
-	}
-
-	var r0 *metastorev1.GetCompactionResponse
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *metastorev1.GetCompactionRequest) (*metastorev1.GetCompactionResponse, error)); ok {
-		return rf(_a0, _a1)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, *metastorev1.GetCompactionRequest) *metastorev1.GetCompactionResponse); ok {
-		r0 = rf(_a0, _a1)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*metastorev1.GetCompactionResponse)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, *metastorev1.GetCompactionRequest) error); ok {
-		r1 = rf(_a0, _a1)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockCompactionPlannerServer_GetCompactionJobs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetCompactionJobs'
-type MockCompactionPlannerServer_GetCompactionJobs_Call struct {
-	*mock.Call
-}
-
-// GetCompactionJobs is a helper method to define mock.On call
-//   - _a0 context.Context
-//   - _a1 *metastorev1.GetCompactionRequest
-func (_e *MockCompactionPlannerServer_Expecter) GetCompactionJobs(_a0 interface{}, _a1 interface{}) *MockCompactionPlannerServer_GetCompactionJobs_Call {
-	return &MockCompactionPlannerServer_GetCompactionJobs_Call{Call: _e.mock.On("GetCompactionJobs", _a0, _a1)}
-}
-
-func (_c *MockCompactionPlannerServer_GetCompactionJobs_Call) Run(run func(_a0 context.Context, _a1 *metastorev1.GetCompactionRequest)) *MockCompactionPlannerServer_GetCompactionJobs_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*metastorev1.GetCompactionRequest))
-	})
-	return _c
-}
-
-func (_c *MockCompactionPlannerServer_GetCompactionJobs_Call) Return(_a0 *metastorev1.GetCompactionResponse, _a1 error) *MockCompactionPlannerServer_GetCompactionJobs_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockCompactionPlannerServer_GetCompactionJobs_Call) RunAndReturn(run func(context.Context, *metastorev1.GetCompactionRequest) (*metastorev1.GetCompactionResponse, error)) *MockCompactionPlannerServer_GetCompactionJobs_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // PollCompactionJobs provides a mock function with given fields: _a0, _a1
 func (_m *MockCompactionPlannerServer) PollCompactionJobs(_a0 context.Context, _a1 *metastorev1.PollCompactionJobsRequest) (*metastorev1.PollCompactionJobsResponse, error) {
 	ret := _m.Called(_a0, _a1)

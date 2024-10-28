@@ -8,24 +8,31 @@ import (
 	"github.com/go-kit/log/level"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
 )
 
-func (m *Metastore) GetProfileStats(
+func (m *Metastore) GetTenant(
 	ctx context.Context,
-	r *metastorev1.GetProfileStatsRequest,
-) (*typesv1.GetProfileStatsResponse, error) {
+	r *metastorev1.GetTenantRequest,
+) (*metastorev1.GetTenantResponse, error) {
 	if err := m.waitLeaderCommitIndexAppliedLocally(ctx); err != nil {
 		level.Error(m.logger).Log("msg", "failed to wait for leader commit index", "err", err)
 		return nil, err
 	}
-	return m.state.getProfileStats(r.TenantId, ctx)
+	return m.state.getTenantStats(r.TenantId, ctx)
 }
 
-func (m *metastoreState) getProfileStats(tenant string, ctx context.Context) (*typesv1.GetProfileStatsResponse, error) {
+func (m *Metastore) DeleteTenant(
+	context.Context,
+	*metastorev1.DeleteTenantRequest,
+) (*metastorev1.DeleteTenantResponse, error) {
+	// TODO(kolesnikovae): Implement.
+	return new(metastorev1.DeleteTenantResponse), nil
+}
+
+func (m *metastoreState) getTenantStats(tenant string, ctx context.Context) (*metastorev1.GetTenantResponse, error) {
 	var respMutex sync.Mutex
-	resp := typesv1.GetProfileStatsResponse{
+	stats := &metastorev1.TenantStats{
 		DataIngested:      false,
 		OldestProfileTime: math.MaxInt64,
 		NewestProfileTime: math.MinInt64,
@@ -38,15 +45,17 @@ func (m *metastoreState) getProfileStats(tenant string, ctx context.Context) (*t
 		newest := p.EndTime().UnixMilli()
 		respMutex.Lock()
 		defer respMutex.Unlock()
-		resp.DataIngested = true
-		if oldest < resp.OldestProfileTime {
-			resp.OldestProfileTime = oldest
+		stats.DataIngested = true
+		if oldest < stats.OldestProfileTime {
+			stats.OldestProfileTime = oldest
 		}
-		if newest > resp.NewestProfileTime {
-			resp.NewestProfileTime = newest
+		if newest > stats.NewestProfileTime {
+			stats.NewestProfileTime = newest
 		}
 		return nil
 	})
-
-	return &resp, err
+	if err != nil {
+		return nil, err
+	}
+	return &metastorev1.GetTenantResponse{Stats: stats}, nil
 }

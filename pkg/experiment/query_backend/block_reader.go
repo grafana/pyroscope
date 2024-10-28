@@ -14,7 +14,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
-	"github.com/grafana/pyroscope/pkg/experiment/query_backend/block"
+	"github.com/grafana/pyroscope/pkg/experiment/block"
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/util"
 )

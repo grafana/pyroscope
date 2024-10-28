@@ -108,7 +108,12 @@ func (cfg *RaftConfig) Validate() error {
 
 type Metastore struct {
 	service services.Service
+
+	// TODO(kolesnikovae): Decompose
 	metastorev1.MetastoreServiceServer
+	metastorev1.MetadataQueryServiceServer
+	metastorev1.TenantServiceServer
+	metastorev1.RaftNodeServiceServer
 	metastorev1.OperatorServiceServer
 	metastorev1.CompactionPlannerServer
 
@@ -138,7 +143,7 @@ type Metastore struct {
 	walDir string
 
 	bucket       objstore.Bucket
-	client       metastorev1.MetastoreServiceClient
+	raftClient   metastorev1.RaftNodeServiceClient
 	placementMgr *adaptiveplacement.Manager
 	dnsProvider  *dns.Provider
 	dlq          *dlq.Recovery
@@ -153,7 +158,7 @@ func New(
 	logger log.Logger,
 	reg prometheus.Registerer,
 	healthService health.Service,
-	client metastorev1.MetastoreServiceClient,
+	raftClient metastorev1.RaftNodeServiceClient,
 	bucket objstore.Bucket,
 	placementMgr *adaptiveplacement.Manager,
 ) (*Metastore, error) {
@@ -166,7 +171,7 @@ func New(
 		health:       healthService,
 		bucket:       bucket,
 		db:           newDB(config, logger, metrics),
-		client:       client,
+		raftClient:   raftClient,
 		placementMgr: placementMgr,
 	}
 	m.state = newMetastoreState(m.logger, m.db, m.reg, &m.config.Compaction, &m.config.Index)

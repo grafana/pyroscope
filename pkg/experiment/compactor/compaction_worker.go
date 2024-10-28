@@ -21,8 +21,8 @@ import (
 	_ "go.uber.org/automaxprocs"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	block2 "github.com/grafana/pyroscope/pkg/experiment/block"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/client"
-	"github.com/grafana/pyroscope/pkg/experiment/query_backend/block"
 	"github.com/grafana/pyroscope/pkg/objstore"
 )
 
@@ -239,11 +239,11 @@ func (w *Worker) startJob(ctx context.Context, job *metastorev1.CompactionJob) *
 	// TODO(kolesnikovae): Return the actual error once we
 	//   can handle compaction failures in metastore.
 	compacted, err := pretendEverythingIsOK(func() ([]*metastorev1.BlockMeta, error) {
-		return block.Compact(ctx, job.Blocks, w.storage,
-			block.WithCompactionTempDir(tempdir),
-			block.WithCompactionObjectOptions(
-				block.WithObjectMaxSizeLoadInMemory(w.config.SmallObjectSize),
-				block.WithObjectDownload(sourcedir),
+		return block2.Compact(ctx, job.Blocks, w.storage,
+			block2.WithCompactionTempDir(tempdir),
+			block2.WithCompactionObjectOptions(
+				block2.WithObjectMaxSizeLoadInMemory(w.config.SmallObjectSize),
+				block2.WithObjectDownload(sourcedir),
 			),
 		)
 	})
