@@ -10,7 +10,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/services"
 
-	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore"
@@ -100,7 +99,7 @@ func NewMetastoreSet(t *testing.T, cfg *metastore.Config, n int, bucket objstore
 		m, err := metastore.New(configs[i], logger, registry, health.NoOpService, client, bucket, placementManager)
 		require.NoError(t, err)
 		metastorev1.RegisterMetastoreServiceServer(server, m)
-		compactorv1.RegisterCompactionPlannerServer(server, m)
+		metastorev1.RegisterCompactionPlannerServer(server, m)
 		lis, err := net.Listen("tcp", grpcAddresses[i])
 		assert.NoError(t, err)
 		go func() {
@@ -111,7 +110,7 @@ func NewMetastoreSet(t *testing.T, cfg *metastore.Config, n int, bucket objstore
 			Metastore:               m,
 			Connection:              cc,
 			MetastoreInstanceClient: metastorev1.NewMetastoreServiceClient(cc),
-			CompactorInstanceClient: compactorv1.NewCompactionPlannerClient(cc),
+			CompactorInstanceClient: metastorev1.NewCompactionPlannerClient(cc),
 			Server:                  server,
 		})
 		service := m.Service()
@@ -154,7 +153,7 @@ type MetastoreInstance struct {
 	Server                  *grpc.Server
 	Connection              *grpc.ClientConn
 	MetastoreInstanceClient metastorev1.MetastoreServiceClient
-	CompactorInstanceClient compactorv1.CompactionPlannerClient
+	CompactorInstanceClient metastorev1.CompactionPlannerClient
 }
 
 func (i *MetastoreInstance) client() metastorev1.MetastoreServiceClient {

@@ -23,7 +23,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/thanos-io/objstore"
 
-	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	adaptiveplacement "github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/blockcleaner"
@@ -111,7 +110,7 @@ type Metastore struct {
 	service services.Service
 	metastorev1.MetastoreServiceServer
 	metastorev1.OperatorServiceServer
-	compactorv1.CompactionPlannerServer
+	metastorev1.CompactionPlannerServer
 
 	config  Config
 	logger  log.Logger

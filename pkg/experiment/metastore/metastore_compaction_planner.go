@@ -12,7 +12,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"go.etcd.io/bbolt"
 
-	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compactionpb"
 	"github.com/grafana/pyroscope/pkg/util"
@@ -118,7 +117,7 @@ func newCompactionMetrics(reg prometheus.Registerer) *compactionMetrics {
 	return m
 }
 
-func (m *Metastore) GetCompactionJobs(_ context.Context, req *compactorv1.GetCompactionRequest) (*compactorv1.GetCompactionResponse, error) {
+func (m *Metastore) GetCompactionJobs(_ context.Context, req *metastorev1.GetCompactionRequest) (*metastorev1.GetCompactionResponse, error) {
 	return nil, nil
 }
 

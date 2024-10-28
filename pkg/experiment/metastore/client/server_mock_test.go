@@ -3,33 +3,33 @@ package metastoreclient
 import (
 	"context"
 	"fmt"
+	"net"
+	"sync"
+	"testing"
+
 	"github.com/go-kit/log"
-	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
-	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mockcompactorv1"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mockmetastorev1"
 	"github.com/hashicorp/raft"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"net"
-	"sync"
-	"testing"
+
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
+	"github.com/grafana/pyroscope/pkg/test/mocks/mockmetastorev1"
 )
 
 var _ metastorev1.MetastoreServiceServer = (*mockServer)(nil)
-var _ compactorv1.CompactionPlannerServer = (*mockServer)(nil)
+var _ metastorev1.CompactionPlannerServer = (*mockServer)(nil)
 
 type mockServer struct {
 	metastore *mockmetastorev1.MockMetastoreServiceServer
-	compactor *mockcompactorv1.MockCompactionPlannerServer
+	compactor *mockmetastorev1.MockCompactionPlannerServer
 
 	metastorev1.UnsafeMetastoreServiceServer
-	compactorv1.UnsafeCompactionPlannerServer
+	metastorev1.UnsafeCompactionPlannerServer
 	srv     *grpc.Server
 	id      raft.ServerID
 	index   int
@@ -40,11 +40,11 @@ func (m *mockServer) GetProfileStats(ctx context.Context, request *metastorev1.G
 	return m.metastore.GetProfileStats(ctx, request)
 }
 
-func (m *mockServer) PollCompactionJobs(ctx context.Context, request *compactorv1.PollCompactionJobsRequest) (*compactorv1.PollCompactionJobsResponse, error) {
+func (m *mockServer) PollCompactionJobs(ctx context.Context, request *metastorev1.PollCompactionJobsRequest) (*metastorev1.PollCompactionJobsResponse, error) {
 	return m.compactor.PollCompactionJobs(ctx, request)
 }
 
-func (m *mockServer) GetCompactionJobs(ctx context.Context, request *compactorv1.GetCompactionRequest) (*compactorv1.GetCompactionResponse, error) {
+func (m *mockServer) GetCompactionJobs(ctx context.Context, request *metastorev1.GetCompactionRequest) (*metastorev1.GetCompactionResponse, error) {
 	return m.compactor.GetCompactionJobs(ctx, request)
 }
 
@@ -79,7 +79,7 @@ func testServerId(i int) raft.ServerID {
 }
 
 var _ metastorev1.MetastoreServiceServer = (*mockServer)(nil)
-var _ compactorv1.CompactionPlannerServer = (*mockServer)(nil)
+var _ metastorev1.CompactionPlannerServer = (*mockServer)(nil)
 
 type mockServers struct {
 	t       *testing.T
@@ -141,11 +141,11 @@ func (m *mockServers) InitWrongLeader() func() {
 		srv.metastore.On("ReadIndex", mock.Anything, mock.Anything).Maybe().Return(func(context.Context, *metastorev1.ReadIndexRequest) (*metastorev1.ReadIndexResponse, error) {
 			return errOrT(&metastorev1.ReadIndexResponse{}, errf)
 		})
-		srv.compactor.On("PollCompactionJobs", mock.Anything, mock.Anything).Maybe().Return(func(context.Context, *compactorv1.PollCompactionJobsRequest) (*compactorv1.PollCompactionJobsResponse, error) {
-			return errOrT(&compactorv1.PollCompactionJobsResponse{}, errf)
+		srv.compactor.On("PollCompactionJobs", mock.Anything, mock.Anything).Maybe().Return(func(context.Context, *metastorev1.PollCompactionJobsRequest) (*metastorev1.PollCompactionJobsResponse, error) {
+			return errOrT(&metastorev1.PollCompactionJobsResponse{}, errf)
 		})
-		srv.compactor.On("GetCompactionJobs", mock.Anything, mock.Anything).Maybe().Return(func(context.Context, *compactorv1.GetCompactionRequest) (*compactorv1.GetCompactionResponse, error) {
-			return errOrT(&compactorv1.GetCompactionResponse{}, errf)
+		srv.compactor.On("GetCompactionJobs", mock.Anything, mock.Anything).Maybe().Return(func(context.Context, *metastorev1.GetCompactionRequest) (*metastorev1.GetCompactionResponse, error) {
+			return errOrT(&metastorev1.GetCompactionResponse{}, errf)
 		})
 		srv.metastore.On("GetProfileStats", mock.Anything, mock.Anything).Maybe().Return(func(context.Context, *metastorev1.GetProfileStatsRequest) (*typesv1.GetProfileStatsResponse, error) {
 			return errOrT(&typesv1.GetProfileStatsResponse{}, errf)
@@ -196,9 +196,9 @@ func newMockServer(t *testing.T) *mockServer {
 	res := &mockServer{
 		srv:       grpc.NewServer(),
 		metastore: mockmetastorev1.NewMockMetastoreServiceServer(t),
-		compactor: mockcompactorv1.NewMockCompactionPlannerServer(t),
+		compactor: mockmetastorev1.NewMockCompactionPlannerServer(t),
 	}
 	metastorev1.RegisterMetastoreServiceServer(res.srv, res)
-	compactorv1.RegisterCompactionPlannerServer(res.srv, res)
+	metastorev1.RegisterCompactionPlannerServer(res.srv, res)
 	return res
 }

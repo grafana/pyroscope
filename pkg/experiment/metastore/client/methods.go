@@ -11,7 +11,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
@@ -112,14 +111,14 @@ func (c *Client) ReadIndex(ctx context.Context, in *metastorev1.ReadIndexRequest
 	})
 }
 
-func (c *Client) PollCompactionJobs(ctx context.Context, in *compactorv1.PollCompactionJobsRequest, opts ...grpc.CallOption) (*compactorv1.PollCompactionJobsResponse, error) {
-	return invoke(ctx, c, func(ctx context.Context, instance instance) (*compactorv1.PollCompactionJobsResponse, error) {
+func (c *Client) PollCompactionJobs(ctx context.Context, in *metastorev1.PollCompactionJobsRequest, opts ...grpc.CallOption) (*metastorev1.PollCompactionJobsResponse, error) {
+	return invoke(ctx, c, func(ctx context.Context, instance instance) (*metastorev1.PollCompactionJobsResponse, error) {
 		return instance.PollCompactionJobs(ctx, in, opts...)
 	})
 }
 
-func (c *Client) GetCompactionJobs(ctx context.Context, in *compactorv1.GetCompactionRequest, opts ...grpc.CallOption) (*compactorv1.GetCompactionResponse, error) {
-	return invoke(ctx, c, func(ctx context.Context, instance instance) (*compactorv1.GetCompactionResponse, error) {
+func (c *Client) GetCompactionJobs(ctx context.Context, in *metastorev1.GetCompactionRequest, opts ...grpc.CallOption) (*metastorev1.GetCompactionResponse, error) {
+	return invoke(ctx, c, func(ctx context.Context, instance instance) (*metastorev1.GetCompactionResponse, error) {
 		return instance.GetCompactionJobs(ctx, in, opts...)
 	})
 }

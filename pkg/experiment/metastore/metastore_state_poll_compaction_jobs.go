@@ -10,12 +10,11 @@ import (
 	"github.com/hashicorp/raft"
 	"go.etcd.io/bbolt"
 
-	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compactionpb"
 )
 
-func (m *Metastore) PollCompactionJobs(_ context.Context, req *compactorv1.PollCompactionJobsRequest) (*compactorv1.PollCompactionJobsResponse, error) {
+func (m *Metastore) PollCompactionJobs(_ context.Context, req *metastorev1.PollCompactionJobsRequest) (*metastorev1.PollCompactionJobsResponse, error) {
 	level.Debug(m.logger).Log(
 		"msg", "received poll compaction jobs request",
 		"num_updates", len(req.JobStatusUpdates),
@@ -23,14 +22,14 @@ func (m *Metastore) PollCompactionJobs(_ context.Context, req *compactorv1.PollC
 		"raft_commit_index", m.raft.CommitIndex(),
 		"raft_last_index", m.raft.LastIndex(),
 		"raft_applied_index", m.raft.AppliedIndex())
-	_, resp, err := applyCommand[*compactorv1.PollCompactionJobsRequest, *compactorv1.PollCompactionJobsResponse](m.raft, req, m.config.Raft.ApplyTimeout)
+	_, resp, err := applyCommand[*metastorev1.PollCompactionJobsRequest, *metastorev1.PollCompactionJobsResponse](m.raft, req, m.config.Raft.ApplyTimeout)
 	if err != nil {
 		_ = level.Error(m.logger).Log("msg", "failed to apply poll compaction jobs", "raft_commit_index", m.raft.CommitIndex(), "err", err)
 	}
 	return resp, err
 }
 
-func (m *metastoreState) applyPollCompactionJobs(raft *raft.Log, request *compactorv1.PollCompactionJobsRequest) (resp *compactorv1.PollCompactionJobsResponse, err error) {
+func (m *metastoreState) applyPollCompactionJobs(raft *raft.Log, request *metastorev1.PollCompactionJobsRequest) (resp *metastorev1.PollCompactionJobsResponse, err error) {
 	level.Debug(m.logger).Log(
 		"msg", "applying poll compaction jobs",
 		"num_updates", len(request.JobStatusUpdates),
@@ -49,7 +48,7 @@ type pollStateUpdate struct {
 	updatedJobs        []string
 }
 
-func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJobsRequest, raftIndex uint64, raftAppendedAtNanos int64) (resp *compactorv1.PollCompactionJobsResponse, err error) {
+func (m *metastoreState) pollCompactionJobs(request *metastorev1.PollCompactionJobsRequest, raftIndex uint64, raftAppendedAtNanos int64) (resp *metastorev1.PollCompactionJobsResponse, err error) {
 	stateUpdate := &pollStateUpdate{
 		newBlocks:          make(map[tenantShard][]*metastorev1.BlockMeta),
 		deletedBlocks:      make(map[tenantShard][]string),
@@ -71,7 +70,7 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 		}
 		level.Debug(m.logger).Log("msg", "processing status update for compaction job", "job", jobUpdate.JobName, "status", jobUpdate.Status)
 		switch jobUpdate.Status {
-		case compactorv1.CompactionStatus_COMPACTION_STATUS_SUCCESS:
+		case metastorev1.CompactionStatus_COMPACTION_STATUS_SUCCESS:
 			// clean up the job, we don't keep completed jobs around
 			m.compactionJobQueue.evict(job.Name, job.RaftLogIndex)
 			jobKey := tenantShard{tenant: job.TenantId, shard: job.Shard}
@@ -119,7 +118,7 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 					fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
 				stateUpdate.deletedBlocks[jobKey] = append(stateUpdate.deletedBlocks[jobKey], b)
 			}
-		case compactorv1.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS:
+		case metastorev1.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS:
 			level.Debug(m.logger).Log(
 				"msg", "compaction job still in progress",
 				"job", job.Name,
@@ -129,7 +128,7 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 			)
 			m.compactionJobQueue.update(jobUpdate.JobName, raftAppendedAtNanos, jobUpdate.RaftLogIndex)
 			stateUpdate.updatedJobs = append(stateUpdate.updatedJobs, job.Name)
-		case compactorv1.CompactionStatus_COMPACTION_STATUS_FAILURE:
+		case metastorev1.CompactionStatus_COMPACTION_STATUS_FAILURE:
 			job.Failures += 1
 			level.Warn(m.logger).Log(
 				"msg", "compaction job failed",
@@ -173,7 +172,7 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 		}
 	}
 
-	resp = &compactorv1.PollCompactionJobsResponse{}
+	resp = &metastorev1.PollCompactionJobsResponse{}
 	if request.JobCapacity > 0 {
 		newJobs := m.findJobsToAssign(int(request.JobCapacity), raftIndex, raftAppendedAtNanos)
 		convertedJobs, invalidJobs := m.convertJobs(newJobs)
@@ -210,8 +209,8 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 	return resp, nil
 }
 
-func (m *metastoreState) convertJobs(jobs []*compactionpb.CompactionJob) (convertedJobs []*compactorv1.CompactionJob, invalidJobs []*compactionpb.CompactionJob) {
-	convertedJobs = make([]*compactorv1.CompactionJob, 0, len(jobs))
+func (m *metastoreState) convertJobs(jobs []*compactionpb.CompactionJob) (convertedJobs []*metastorev1.CompactionJob, invalidJobs []*compactionpb.CompactionJob) {
+	convertedJobs = make([]*metastorev1.CompactionJob, 0, len(jobs))
 	invalidJobs = make([]*compactionpb.CompactionJob, 0, len(jobs))
 	for _, job := range jobs {
 		// populate block metadata (workers rely on it)
@@ -234,12 +233,12 @@ func (m *metastoreState) convertJobs(jobs []*compactionpb.CompactionJob) (conver
 			continue
 		}
 
-		convertedJobs = append(convertedJobs, &compactorv1.CompactionJob{
+		convertedJobs = append(convertedJobs, &metastorev1.CompactionJob{
 			Name:   job.Name,
 			Blocks: blocks,
-			Status: &compactorv1.CompactionJobStatus{
+			Status: &metastorev1.CompactionJobStatus{
 				JobName:      job.Name,
-				Status:       compactorv1.CompactionStatus(job.Status),
+				Status:       metastorev1.CompactionStatus(job.Status),
 				RaftLogIndex: job.RaftLogIndex,
 				Shard:        job.Shard,
 				TenantId:     job.TenantId,

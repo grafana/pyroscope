@@ -9,16 +9,16 @@
       "name": "AdHocProfileService"
     },
     {
-      "name": "MetastoreService"
-    },
-    {
-      "name": "CompactionPlanner"
-    },
-    {
       "name": "PusherService"
     },
     {
       "name": "IngesterService"
+    },
+    {
+      "name": "MetastoreService"
+    },
+    {
+      "name": "CompactionPlanner"
     },
     {
       "name": "OperatorService"

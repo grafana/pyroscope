@@ -9,7 +9,6 @@ import (
 	"github.com/oklog/ulid"
 	"github.com/stretchr/testify/require"
 
-	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compactionpb"
 )
@@ -21,7 +20,7 @@ func Test_JobAssignments(t *testing.T) {
 	require.Equal(t, 2, len(m.compactionJobQueue.jobs))
 
 	// a worker asks for and gets 2 jobs assigned
-	resp, err := m.pollCompactionJobs(&compactorv1.PollCompactionJobsRequest{JobCapacity: 2}, 20, 20)
+	resp, err := m.pollCompactionJobs(&metastorev1.PollCompactionJobsRequest{JobCapacity: 2}, 20, 20)
 	require.NoError(t, err)
 	require.Equal(t, 2, len(resp.CompactionJobs))
 	for _, job := range resp.CompactionJobs {
@@ -32,7 +31,7 @@ func Test_JobAssignments(t *testing.T) {
 	verifyCompactionState(t, m)
 
 	// asking for more work results in 0 jobs
-	respEmptyQueue, err := m.pollCompactionJobs(&compactorv1.PollCompactionJobsRequest{JobCapacity: 1}, 20, 20)
+	respEmptyQueue, err := m.pollCompactionJobs(&metastorev1.PollCompactionJobsRequest{JobCapacity: 1}, 20, 20)
 	require.NoError(t, err)
 	require.Equal(t, 0, len(respEmptyQueue.CompactionJobs))
 	verifyCompactionState(t, m)
@@ -45,16 +44,16 @@ func Test_StatusUpdates_Success(t *testing.T) {
 	require.Equal(t, 2, len(m.compactionJobQueue.jobs))
 
 	// assign the 2 jobs
-	resp, err := m.pollCompactionJobs(&compactorv1.PollCompactionJobsRequest{JobCapacity: 2}, 20, 20)
+	resp, err := m.pollCompactionJobs(&metastorev1.PollCompactionJobsRequest{JobCapacity: 2}, 20, 20)
 	require.NoError(t, err)
 	require.Equal(t, 2, len(resp.CompactionJobs))
 
 	// mark the 2 jobs as completed with information about 2 compacted blocks
-	statusUpdates := []*compactorv1.CompactionJobStatus{
+	statusUpdates := []*metastorev1.CompactionJobStatus{
 		{
 			JobName: resp.CompactionJobs[0].Name,
-			Status:  compactorv1.CompactionStatus_COMPACTION_STATUS_SUCCESS,
-			CompletedJob: &compactorv1.CompletedJob{
+			Status:  metastorev1.CompactionStatus_COMPACTION_STATUS_SUCCESS,
+			CompletedJob: &metastorev1.CompletedJob{
 				Blocks: []*metastorev1.BlockMeta{createBlock(0, "", 1)},
 			},
 			RaftLogIndex: 20,
@@ -63,8 +62,8 @@ func Test_StatusUpdates_Success(t *testing.T) {
 		},
 		{
 			JobName: resp.CompactionJobs[1].Name,
-			Status:  compactorv1.CompactionStatus_COMPACTION_STATUS_SUCCESS,
-			CompletedJob: &compactorv1.CompletedJob{
+			Status:  metastorev1.CompactionStatus_COMPACTION_STATUS_SUCCESS,
+			CompletedJob: &metastorev1.CompletedJob{
 				Blocks: []*metastorev1.BlockMeta{createBlock(0, "", 1)},
 			},
 			RaftLogIndex: 20,
@@ -72,7 +71,7 @@ func Test_StatusUpdates_Success(t *testing.T) {
 			TenantId:     "",
 		},
 	}
-	_, err = m.pollCompactionJobs(&compactorv1.PollCompactionJobsRequest{JobStatusUpdates: statusUpdates}, 21, 21)
+	_, err = m.pollCompactionJobs(&metastorev1.PollCompactionJobsRequest{JobStatusUpdates: statusUpdates}, 21, 21)
 	require.NoError(t, err)
 	verifyCompactionState(t, m)
 
@@ -100,23 +99,23 @@ func Test_StatusUpdates_InProgress(t *testing.T) {
 	require.Equal(t, 1, len(m.compactionJobQueue.jobs))
 
 	// assign the job to a worker
-	resp, err := m.pollCompactionJobs(&compactorv1.PollCompactionJobsRequest{JobCapacity: 1}, 20, 20)
+	resp, err := m.pollCompactionJobs(&metastorev1.PollCompactionJobsRequest{JobCapacity: 1}, 20, 20)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(resp.CompactionJobs))
 	job := resp.CompactionJobs[0]
 	require.Equal(t, int64(15000000020), m.compactionJobQueue.jobs[job.Name].LeaseExpiresAt)
 
 	// send a "in progress" update from the worker
-	statusUpdates := []*compactorv1.CompactionJobStatus{
+	statusUpdates := []*metastorev1.CompactionJobStatus{
 		{
 			JobName:      resp.CompactionJobs[0].Name,
-			Status:       compactorv1.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS,
+			Status:       metastorev1.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS,
 			RaftLogIndex: 20,
 			Shard:        0,
 			TenantId:     "",
 		},
 	}
-	_, err = m.pollCompactionJobs(&compactorv1.PollCompactionJobsRequest{JobStatusUpdates: statusUpdates}, 21, 21)
+	_, err = m.pollCompactionJobs(&metastorev1.PollCompactionJobsRequest{JobStatusUpdates: statusUpdates}, 21, 21)
 	require.NoError(t, err)
 	verifyCompactionState(t, m)
 
@@ -134,7 +133,7 @@ func Test_OwnershipTransfer(t *testing.T) {
 	require.Equal(t, 1, len(m.compactionJobQueue.jobs))
 
 	// assign the job to a worker
-	resp, err := m.pollCompactionJobs(&compactorv1.PollCompactionJobsRequest{JobCapacity: 1}, 20, 20)
+	resp, err := m.pollCompactionJobs(&metastorev1.PollCompactionJobsRequest{JobCapacity: 1}, 20, 20)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(resp.CompactionJobs))
 	job := resp.CompactionJobs[0]
@@ -142,7 +141,7 @@ func Test_OwnershipTransfer(t *testing.T) {
 	require.Equal(t, uint64(20), m.compactionJobQueue.jobs[job.Name].RaftLogIndex)
 
 	// re-assign the job to a new worker when we are past the deadline
-	resp, err = m.pollCompactionJobs(&compactorv1.PollCompactionJobsRequest{JobCapacity: 1}, 21, 15000000021)
+	resp, err = m.pollCompactionJobs(&metastorev1.PollCompactionJobsRequest{JobCapacity: 1}, 21, 15000000021)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(resp.CompactionJobs))
 	job = resp.CompactionJobs[0]
@@ -151,26 +150,26 @@ func Test_OwnershipTransfer(t *testing.T) {
 	verifyCompactionState(t, m)
 
 	// reject a status update from the first worker
-	statusUpdates := []*compactorv1.CompactionJobStatus{
+	statusUpdates := []*metastorev1.CompactionJobStatus{
 		{
 			JobName:      resp.CompactionJobs[0].Name,
-			Status:       compactorv1.CompactionStatus_COMPACTION_STATUS_SUCCESS,
+			Status:       metastorev1.CompactionStatus_COMPACTION_STATUS_SUCCESS,
 			RaftLogIndex: 20,
 			Shard:        0,
 			TenantId:     "",
 		},
 	}
-	_, err = m.pollCompactionJobs(&compactorv1.PollCompactionJobsRequest{JobStatusUpdates: statusUpdates}, 20, 20)
+	_, err = m.pollCompactionJobs(&metastorev1.PollCompactionJobsRequest{JobStatusUpdates: statusUpdates}, 20, 20)
 	require.NoError(t, err)
 	require.NotNil(t, m.compactionJobQueue.jobs[job.Name])
 	require.Equalf(t, compactionpb.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS, m.compactionJobQueue.jobs[job.Name].Status, "status should be in progress")
 
 	// accept a status update from the second worker
-	statusUpdates = []*compactorv1.CompactionJobStatus{
+	statusUpdates = []*metastorev1.CompactionJobStatus{
 		{
 			JobName: resp.CompactionJobs[0].Name,
-			Status:  compactorv1.CompactionStatus_COMPACTION_STATUS_SUCCESS,
-			CompletedJob: &compactorv1.CompletedJob{
+			Status:  metastorev1.CompactionStatus_COMPACTION_STATUS_SUCCESS,
+			CompletedJob: &metastorev1.CompletedJob{
 				Blocks: []*metastorev1.BlockMeta{createBlock(0, "", 1)},
 			},
 			RaftLogIndex: 21,
@@ -178,7 +177,7 @@ func Test_OwnershipTransfer(t *testing.T) {
 			TenantId:     "",
 		},
 	}
-	_, err = m.pollCompactionJobs(&compactorv1.PollCompactionJobsRequest{JobStatusUpdates: statusUpdates}, 21, 30000000022)
+	_, err = m.pollCompactionJobs(&metastorev1.PollCompactionJobsRequest{JobStatusUpdates: statusUpdates}, 21, 30000000022)
 	require.NoError(t, err)
 	require.Nilf(t, m.compactionJobQueue.jobs[job.Name], "the job %s should be deleted", job.Name)
 }
@@ -192,16 +191,16 @@ func Test_CompactedBlockCanCreateNewJob(t *testing.T) {
 	addLevel1Blocks(m, "t1", 9)
 
 	// assign the job to a worker
-	resp, err := m.pollCompactionJobs(&compactorv1.PollCompactionJobsRequest{JobCapacity: 1}, 20, 20)
+	resp, err := m.pollCompactionJobs(&metastorev1.PollCompactionJobsRequest{JobCapacity: 1}, 20, 20)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(resp.CompactionJobs))
 
 	// complete the job with 2 compacted blocks
-	statusUpdates := []*compactorv1.CompactionJobStatus{
+	statusUpdates := []*metastorev1.CompactionJobStatus{
 		{
 			JobName: resp.CompactionJobs[0].Name,
-			Status:  compactorv1.CompactionStatus_COMPACTION_STATUS_SUCCESS,
-			CompletedJob: &compactorv1.CompletedJob{
+			Status:  metastorev1.CompactionStatus_COMPACTION_STATUS_SUCCESS,
+			CompletedJob: &metastorev1.CompletedJob{
 				Blocks: []*metastorev1.BlockMeta{
 					{
 						Id:              ulid.MustNew(ulid.Now(), rand.Reader).String(),
@@ -222,7 +221,7 @@ func Test_CompactedBlockCanCreateNewJob(t *testing.T) {
 			TenantId:     "",
 		},
 	}
-	resp, err = m.pollCompactionJobs(&compactorv1.PollCompactionJobsRequest{JobStatusUpdates: statusUpdates, JobCapacity: 1}, 20, 20)
+	resp, err = m.pollCompactionJobs(&metastorev1.PollCompactionJobsRequest{JobStatusUpdates: statusUpdates, JobCapacity: 1}, 20, 20)
 	require.NoError(t, err)
 
 	// the 9 original level-1 blocks and one of the new compacted blocks should form a new job
@@ -245,19 +244,19 @@ func Test_FailedCompaction(t *testing.T) {
 	addLevel0Blocks(m, 20)
 
 	// assign a job
-	resp, err := m.pollCompactionJobs(&compactorv1.PollCompactionJobsRequest{JobCapacity: 1}, 20, 20)
+	resp, err := m.pollCompactionJobs(&metastorev1.PollCompactionJobsRequest{JobCapacity: 1}, 20, 20)
 	require.NoError(t, err)
 	job := resp.CompactionJobs[0]
 
 	// fail the job
-	statusUpdates := []*compactorv1.CompactionJobStatus{
+	statusUpdates := []*metastorev1.CompactionJobStatus{
 		{
 			JobName:      job.Name,
-			Status:       compactorv1.CompactionStatus_COMPACTION_STATUS_FAILURE,
+			Status:       metastorev1.CompactionStatus_COMPACTION_STATUS_FAILURE,
 			RaftLogIndex: 20,
 		},
 	}
-	resp, err = m.pollCompactionJobs(&compactorv1.PollCompactionJobsRequest{JobStatusUpdates: statusUpdates, JobCapacity: 1}, 20, 20)
+	resp, err = m.pollCompactionJobs(&metastorev1.PollCompactionJobsRequest{JobStatusUpdates: statusUpdates, JobCapacity: 1}, 20, 20)
 	require.NoError(t, err)
 	require.NotNilf(t, m.compactionJobQueue.jobs[job.Name].CompactionJob, "the job %s should still exist", job.Name)
 	require.Equalf(t, uint32(1), m.compactionJobQueue.jobs[job.Name].CompactionJob.Failures, "the job %s should have 1 failure", job.Name)
@@ -265,7 +264,7 @@ func Test_FailedCompaction(t *testing.T) {
 	verifyCompactionState(t, m)
 
 	// fail the job a second time, this time it will get marked as cancelled
-	resp, err = m.pollCompactionJobs(&compactorv1.PollCompactionJobsRequest{JobStatusUpdates: statusUpdates, JobCapacity: 1}, 20, 20)
+	resp, err = m.pollCompactionJobs(&metastorev1.PollCompactionJobsRequest{JobStatusUpdates: statusUpdates, JobCapacity: 1}, 20, 20)
 	require.NoError(t, err)
 	require.Equalf(t, 0, len(resp.CompactionJobs), "no jobs should be left to assign")
 	require.Equalf(t, compactionpb.CompactionStatus_COMPACTION_STATUS_CANCELLED, m.compactionJobQueue.jobs[job.Name].Status, "the job status should be cancelled")
@@ -283,7 +282,7 @@ func Test_PanicWithDbErrors(t *testing.T) {
 	}()
 	// close the db, this should cause errors when persisting the state
 	_ = m.db.boltdb.Close()
-	_, _ = m.pollCompactionJobs(&compactorv1.PollCompactionJobsRequest{JobCapacity: 2}, 20, 20)
+	_, _ = m.pollCompactionJobs(&metastorev1.PollCompactionJobsRequest{JobCapacity: 2}, 20, 20)
 }
 
 func Test_RemoveInvalidJobsFromStorage(t *testing.T) {
@@ -299,7 +298,7 @@ func Test_RemoveInvalidJobsFromStorage(t *testing.T) {
 	m.index.ReplaceBlocks(sources, 0, "", []*metastorev1.BlockMeta{})
 
 	// try to assign the job
-	resp, err := m.pollCompactionJobs(&compactorv1.PollCompactionJobsRequest{JobCapacity: 1}, 20, 20)
+	resp, err := m.pollCompactionJobs(&metastorev1.PollCompactionJobsRequest{JobCapacity: 1}, 20, 20)
 	require.NoError(t, err)
 	require.Equal(t, 0, len(resp.CompactionJobs), "the one job in the queue became invalid")
 	require.Equal(t, 0, len(m.compactionJobQueue.jobs), "there should be no jobs in the queue")

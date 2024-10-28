@@ -14,7 +14,6 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 
-	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftleader"
@@ -26,7 +25,7 @@ import (
 // when the request is converted to a Raft log entry.
 var commandTypeMap = map[reflect.Type]raftlogpb.CommandType{
 	reflect.TypeOf(new(metastorev1.AddBlockRequest)):           raftlogpb.CommandType_COMMAND_TYPE_ADD_BLOCK,
-	reflect.TypeOf(new(compactorv1.PollCompactionJobsRequest)): raftlogpb.CommandType_COMMAND_TYPE_POLL_COMPACTION_JOBS_STATUS,
+	reflect.TypeOf(new(metastorev1.PollCompactionJobsRequest)): raftlogpb.CommandType_COMMAND_TYPE_POLL_COMPACTION_JOBS_STATUS,
 	reflect.TypeOf(new(raftlogpb.CleanBlocksRequest)):          raftlogpb.CommandType_COMMAND_TYPE_CLEAN_BLOCKS,
 }
 

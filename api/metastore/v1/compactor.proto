@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package compactor.v1;
+package metastore.v1;
 
 import "metastore/v1/metastore.proto";
 

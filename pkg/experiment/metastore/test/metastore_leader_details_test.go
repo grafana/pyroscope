@@ -11,7 +11,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore"
@@ -50,7 +49,7 @@ func TestRaftDetailsPullCompaction(t *testing.T) {
 
 	errors := 0
 	for _, it := range ms.Instances {
-		_, err := it.CompactorInstanceClient.PollCompactionJobs(context.Background(), &compactorv1.PollCompactionJobsRequest{})
+		_, err := it.CompactorInstanceClient.PollCompactionJobs(context.Background(), &metastorev1.PollCompactionJobsRequest{})
 		if err != nil {
 			requireRaftDetails(t, err)
 			errors++

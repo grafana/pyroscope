@@ -18,12 +18,11 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"google.golang.org/grpc"
 
-	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 )
 
 var _ metastorev1.MetastoreServiceClient = (*Client)(nil)
-var _ compactorv1.CompactionPlannerClient = (*Client)(nil)
+var _ metastorev1.CompactionPlannerClient = (*Client)(nil)
 
 type Client struct {
 	service services.Service
@@ -41,7 +40,7 @@ type Client struct {
 
 type client struct {
 	metastorev1.MetastoreServiceClient
-	compactorv1.CompactionPlannerClient
+	metastorev1.CompactionPlannerClient
 	conn io.Closer
 	srv  discovery.Server
 }
@@ -49,7 +48,7 @@ type client struct {
 // todo
 type instance interface {
 	metastorev1.MetastoreServiceClient
-	compactorv1.CompactionPlannerClient
+	metastorev1.CompactionPlannerClient
 }
 
 func New(logger log.Logger, grpcClientConfig grpcclient.Config, d discovery.Discovery) *Client {
@@ -151,7 +150,7 @@ func newClient(s discovery.Server, config grpcclient.Config, logger log.Logger) 
 	}
 	return &client{
 		MetastoreServiceClient:  metastorev1.NewMetastoreServiceClient(conn),
-		CompactionPlannerClient: compactorv1.NewCompactionPlannerClient(conn),
+		CompactionPlannerClient: metastorev1.NewCompactionPlannerClient(conn),
 		conn:                    conn,
 		srv:                     s,
 	}, nil

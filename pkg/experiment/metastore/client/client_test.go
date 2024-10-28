@@ -2,18 +2,19 @@ package metastoreclient
 
 import (
 	"context"
+	"sync"
+	"testing"
+
 	"github.com/grafana/dskit/flagext"
 	"github.com/grafana/dskit/grpcclient"
-	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
-	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	"github.com/grafana/pyroscope/pkg/test"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mockdiscovery"
 	"github.com/prometheus/prometheus/util/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"sync"
-	"testing"
+
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/pkg/test"
+	"github.com/grafana/pyroscope/pkg/test/mocks/mockdiscovery"
 )
 
 const nServers = 3
@@ -60,14 +61,14 @@ func TestUnavailable_Rediscover_Wrong_Leader(t *testing.T) {
 	})
 	t.Run("PollCompactionJobs", func(t *testing.T) {
 		testRediscoverWrongLeader(t, func(c *Client) {
-			res, err := c.PollCompactionJobs(context.Background(), &compactorv1.PollCompactionJobsRequest{})
+			res, err := c.PollCompactionJobs(context.Background(), &metastorev1.PollCompactionJobsRequest{})
 			require.NoError(t, err)
 			require.NotNil(t, res)
 		})
 	})
 	t.Run("GetCompactionJobs", func(t *testing.T) {
 		testRediscoverWrongLeader(t, func(c *Client) {
-			res, err := c.GetCompactionJobs(context.Background(), &compactorv1.GetCompactionRequest{})
+			res, err := c.GetCompactionJobs(context.Background(), &metastorev1.GetCompactionRequest{})
 			require.NoError(t, err)
 			require.NotNil(t, res)
 		})
