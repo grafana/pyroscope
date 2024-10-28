@@ -140,7 +140,7 @@ To verify that the profiles are received by the Pyroscope server:
 
 ## Considerations for Profiling Applications in Containers
 
-When profiling Python applications running in containers using the `pyroscope.ebpf` component in Alloy, consider the following:
+When profiling Python applications running in containers using the `pyroscope.ebpf` [component in Alloy](/docs/alloy/<ALLOY_VERSION>/reference/components/pyroscope/pyroscope.ebpf/), consider the following:
 
 - **Kernel Version**: Ensure that the host system's kernel version is >= 4.9, as required by eBPF. This is crucial for the profiler to function correctly
 
