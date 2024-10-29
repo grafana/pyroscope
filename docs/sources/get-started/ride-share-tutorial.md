@@ -255,7 +255,7 @@ Unfortunately, due to a bug within the Sandbox environment, the Explore Profiles
 
 ## Integrating Pyroscope with Grafana
 
-As part of the `docker-compose.yml` file, we have included a Grafana container that's pre-configured with the Pyroscope plugin:
+The `docker-compose.yml` file includes a Grafana container that's pre-configured with the Pyroscope plugin:
     
 ```yaml
   grafana:
