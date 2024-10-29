@@ -141,7 +141,8 @@ pyroscope.configure(
 	}
 )
 ```
-The reason this tag is considered static is due to the fact that the tag is set at the start of the application and doesn't change. In our case this is useful for grouping profiles on a per region basis. Allowing us to see the performance of the application per region.
+This tag is considered static is because the tag is set at the start of the application and doesn't change.
+In this case, it's useful for grouping profiles on a per region basis, which lets yousee the performance of the application per region.
 
 Open the Pyroscope UI to see how this tag is used:
 
