@@ -65,7 +65,7 @@ For more documentation on how to configure Pyroscope server, see [our server doc
 <img width="1728" alt="image" src="https://github.com/user-attachments/assets/67691443-6450-45b9-8064-f41056c88ade">
 
 ### Grafana Cloud
-The app UI and server are both installed and running auomatically -- just start sending data!
+The app UI and server are both installed and running automatically -- just start sending data!
 
 ### Grafana OSS
 You can run the Explore profiles UI in Grafana by installing the plugin from the [Grafana Plugin Directory](https://grafana.com/grafana/plugins/grafana-pyroscope-app/) 

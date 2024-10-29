@@ -37,6 +37,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
 	"github.com/samber/lo"
+	"google.golang.org/grpc/health"
 
 	"github.com/grafana/pyroscope/pkg/api"
 	apiversion "github.com/grafana/pyroscope/pkg/api/version"
@@ -306,6 +307,7 @@ type Phlare struct {
 	metastoreClient     *metastoreclient.Client
 	queryBackendClient  *querybackendclient.Client
 	compactionWorker    *compactionworker.Worker
+	healthServer        *health.Server
 }
 
 func New(cfg Config) (*Phlare, error) {
@@ -409,21 +411,21 @@ func (f *Phlare) setupModuleManager() error {
 		experimentalModules := map[string][]string{
 			SegmentWriter:       {Overrides, API, MemberlistKV, Storage, UsageReport, MetastoreClient},
 			Metastore:           {Overrides, API, MetastoreClient, Storage, PlacementManager},
-			CompactionWorker:    {Overrides, API, Storage, Overrides, MetastoreClient},
-			QueryBackend:        {Overrides, API, Storage, Overrides, QueryBackendClient},
+			CompactionWorker:    {Overrides, API, Storage, MetastoreClient},
+			QueryBackend:        {Overrides, API, Storage, QueryBackendClient},
 			SegmentWriterRing:   {Overrides, API, MemberlistKV},
 			SegmentWriterClient: {Overrides, API, SegmentWriterRing, PlacementAgent},
 			PlacementAgent:      {Overrides, API, Storage},
 			PlacementManager:    {Overrides, API, Storage},
-			ShutdownHelper:      {Distributor, SegmentWriter, Metastore, QueryBackend},
 		}
 		for k, v := range experimentalModules {
 			deps[k] = v
 		}
 
-		deps[All] = append(deps[All], SegmentWriter, Metastore, CompactionWorker, QueryBackend, ShutdownHelper)
+		deps[All] = append(deps[All], SegmentWriter, Metastore, CompactionWorker, QueryBackend)
 		deps[QueryFrontend] = append(deps[QueryFrontend], MetastoreClient, QueryBackendClient)
 		deps[Distributor] = append(deps[Distributor], SegmentWriterClient)
+		deps[Server] = append(deps[Server], HealthServer)
 
 		mm.RegisterModule(SegmentWriter, f.initSegmentWriter)
 		mm.RegisterModule(Metastore, f.initMetastore)
@@ -436,7 +438,7 @@ func (f *Phlare) setupModuleManager() error {
 		mm.RegisterModule(QueryBackendClient, f.initQueryBackendClient, modules.UserInvisibleModule)
 		mm.RegisterModule(PlacementAgent, f.initPlacementAgent, modules.UserInvisibleModule)
 		mm.RegisterModule(PlacementManager, f.initPlacementManager, modules.UserInvisibleModule)
-		mm.RegisterModule(ShutdownHelper, f.initShutdownHelper, modules.UserInvisibleModule)
+		mm.RegisterModule(HealthServer, f.initHealthServer, modules.UserInvisibleModule)
 	}
 
 	for mod, targets := range deps {
