@@ -124,7 +124,9 @@ Pyroscope includes a web-based UI that you can use to view the profile data. To 
 
 ### How tagging works
 
-In this example, the application is instrumented with Pyroscope using the Python SDK. The SDK allows you to tag functions with metadata that can be used to filter and group the profile data in the Pyroscope UI. In this example we have used two forms of tagging; static and dynamic.
+In this example, the application is instrumented with Pyroscope using the Python SDK.
+The SDK allows you to tag functions with metadata that can be used to filter and group the profile data in the Pyroscope UI.
+This example uses static and dynamic tagging.
 
 To start, let's take a look at a static tag use case. Within the `server.py` file, find the Pyroscope configuration:
 
