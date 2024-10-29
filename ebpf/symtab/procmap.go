@@ -63,7 +63,7 @@ type ProcMap struct {
 	// The permissions for this mapping
 	Perms *ProcMapPermissions
 	// The current offset into the file/fd (e.g., shared libs)
-	Offset int64
+	Offset uint64
 	// Device owner of this mapping (major:minor) in Mkdev format.
 	Dev uint64
 	// The inode of the device above
@@ -246,7 +246,7 @@ func ParseProcMapLine(line []byte, executableOnly bool) (*ProcMap, error) {
 		return nil, err
 	}
 
-	offset, err := strconv.ParseInt(tokenToStringUnsafe(offsetBytes), 16, 0)
+	offset, err := strconv.ParseUint(tokenToStringUnsafe(offsetBytes), 16, 0)
 	if err != nil {
 		return nil, err
 	}
