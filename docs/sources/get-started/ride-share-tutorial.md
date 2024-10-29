@@ -61,6 +61,8 @@ To simulate a highly available and distributed system, the app is deployed on th
 
 This is simulated by running three instances of the server in Docker containers. Each server instance is tagged with the region it represents.
 
+{{< figure max-width="100%" src="/media/docs/pyroscope/ride-share-demo.gif" caption="Getting started sample application" alt="Getting started sample application" >}}
+
 In this scenario a load generator will send mock-load to the 3 servers as well as their respective endpoints. This will allow us to see how the application is performing per region and per vehicle type.
 
 {{<docs/ignore>}}
