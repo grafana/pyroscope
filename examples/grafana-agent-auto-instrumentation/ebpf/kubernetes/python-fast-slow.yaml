@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: python-app
+  namespace: pyroscope-ebpf
+data:
+  main: |
+    #!/usr/bin/env python3
+
+    import logging
+    import os
+
+    def work(n):
+    	i = 0
+    	while i < n:
+    		i += 1
+
+    def fast_function():
+    		work(20000)
+
+    def slow_function():
+    	    work(80000)
+
+    if __name__ == "__main__":
+    	while True:
+    		fast_function()
+    		slow_function()
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: python-fast-slow
+  namespace: pyroscope-ebpf
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: python-fast-slow
+  template:
+    metadata:
+      labels:
+        app: python-fast-slow
+    spec:
+      containers:
+        - name: python-fast-slow
+          image: python:3.11
+          imagePullPolicy: IfNotPresent
+          command: [ "python3" ]
+          args: [ "/app/main.py" ]
+          volumeMounts:
+            - name: app
+              mountPath: /app
+      volumes:
+        - name: app
+          configMap:
+            name: python-app
+            items:
+              - key: main
+                path: main.py

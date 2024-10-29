@@ -3,15 +3,17 @@ package metastoreclient
 import (
 	"context"
 	"fmt"
-	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
-	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"math/rand"
+	"time"
+
 	"github.com/hashicorp/raft"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"math/rand"
-	"time"
+
+	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
 func invoke[R any](ctx context.Context, cl *Client,
@@ -19,7 +21,7 @@ func invoke[R any](ctx context.Context, cl *Client,
 ) (*R, error) {
 	const (
 		n        = 50
-		backoff  = 11 * time.Millisecond
+		backoff  = 51 * time.Millisecond
 		deadline = 500000000 * time.Millisecond
 	)
 

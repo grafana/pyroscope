@@ -18,6 +18,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
 	"github.com/grafana/pyroscope/pkg/test"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockdiscovery"
+	"github.com/grafana/pyroscope/pkg/util/health"
 	"github.com/grafana/pyroscope/pkg/validation"
 
 	"github.com/hashicorp/raft"
@@ -96,7 +97,7 @@ func NewMetastoreSet(t *testing.T, cfg *metastore.Config, n int, bucket objstore
 			validation.MockDefaultOverrides(),
 			adaptive_placement.NewStore(bucket),
 		)
-		m, err := metastore.New(configs[i], logger, registry, client, bucket, placementManager)
+		m, err := metastore.New(configs[i], logger, registry, health.NoOpService, client, bucket, placementManager)
 		require.NoError(t, err)
 		metastorev1.RegisterMetastoreServiceServer(server, m)
 		compactorv1.RegisterCompactionPlannerServer(server, m)
@@ -113,9 +114,11 @@ func NewMetastoreSet(t *testing.T, cfg *metastore.Config, n int, bucket objstore
 			CompactorInstanceClient: compactorv1.NewCompactionPlannerClient(cc),
 			Server:                  server,
 		})
-		err = m.Service().StartAsync(context.Background())
+		service := m.Service()
+		ctx := context.Background()
+		require.NoError(t, service.StartAsync(ctx))
+		require.NoError(t, service.AwaitRunning(ctx))
 		logger.Log("msg", "service started")
-		require.NoError(t, err)
 	}
 
 	require.Eventually(t, func() bool {
