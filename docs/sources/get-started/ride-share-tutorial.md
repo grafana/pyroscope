@@ -234,7 +234,9 @@ The `Diff` view allows you to see the difference between two time periods. This 
 1. Make sure to have set the `Baseline time range` and `Comparison time range` queries as per the previous step.
 1. Click on the `Execute` buttons.
 
-If we scroll down to compare the two time periods side by side we can see that the `eu-north` region (right hand side) we can see an excessive amount of time spent in the `find_nearest_vehicle` function. This confirms our suspicions that the mutex lock that is causing the function to block.
+Scroll down to compare the two time periods side by side.
+Note that the `eu-north` region (right side) shows an excessive amount of time spent in the `find_nearest_vehicle` function.
+This confirms the suspicions that the mutex lock that is causing the function to block.
 
 {{< figure max-width="100%" src="/media/docs/pyroscope/ride-share-diff-page.png" caption="Diff" alt="Diff" >}}
 
