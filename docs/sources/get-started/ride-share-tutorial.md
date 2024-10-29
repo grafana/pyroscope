@@ -109,7 +109,7 @@ This may take a few minutes to download the required images and build the demo a
  ✔ Container flask-us-east-1 Started  
 ```
 
-(Optional) To verify the containers are running run:
+Optional: To verify the containers are running, run:
 
 ```bash
 docker ps -a
