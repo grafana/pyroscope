@@ -164,7 +164,9 @@ def find_nearest_vehicle(n, vehicle):
             check_driver_availability(n)
 ```
 
-In this example we are `tag_wrapper` to tag the function with the vehicle type. Notice that the tag is dynamic as it changes based on the vehicle type. This is useful for grouping profiles on a per vehicle basis. Allowing us to see the performance of the application per vehicle type being requested.
+This example uses `tag_wrapper` to tag the function with the vehicle type.
+Notice that the tag is dynamic as it changes based on the vehicle type.
+This is useful for grouping profiles on a per vehicle basis. Allowing us to see the performance of the application per vehicle type being requested.
 
 Lets take a look within the Pyroscope UI to see how this tag is used:
 1. Open the Pyroscope UI in your browser at [http://localhost:4040](http://localhost:4040).
