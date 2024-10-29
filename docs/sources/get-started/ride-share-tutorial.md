@@ -63,7 +63,7 @@ This is simulated by running three instances of the server in Docker containers.
 
 {{< figure max-width="100%" src="/media/docs/pyroscope/ride-share-demo.gif" caption="Getting started sample application" alt="Getting started sample application" >}}
 
-In this scenario a load generator will send mock-load to the 3 servers as well as their respective endpoints. This will allow us to see how the application is performing per region and per vehicle type.
+In this scenario, a load generator will send mock-load to the three servers as well as their respective endpoints. This lets you see how the application performs per region and per vehicle type.
 
 {{<docs/ignore>}}
 {{< admonition type="tip" >}}
