@@ -168,7 +168,7 @@ This example uses `tag_wrapper` to tag the function with the vehicle type.
 Notice that the tag is dynamic as it changes based on the vehicle type.
 This is useful for grouping profiles on a per vehicle basis. Allowing us to see the performance of the application per vehicle type being requested.
 
-Lets take a look within the Pyroscope UI to see how this tag is used:
+Use the Pyroscope UI to see how this tag is used:
 1. Open the Pyroscope UI in your browser at [http://localhost:4040](http://localhost:4040).
 1. Click on `Tag Explorer` in the left-hand menu.
 1. Select the `vehicle` tag from the dropdown menu.
