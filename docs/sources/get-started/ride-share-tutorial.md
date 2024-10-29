@@ -151,7 +151,7 @@ You should now see a list of regions that the application is running in. You can
 
 {{< figure max-width="100%" src="/media/docs/pyroscope/ride-share-tag-region.png" caption="Region Tag" alt="Region Tag" >}}
 
-Next lets take a look at a dynamic tag use case. Within the `utils.py` file we can find the following function:
+Next, look at a dynamic tag use case. Within the `utils.py` file,  find the following function:
 
 ```python
 def find_nearest_vehicle(n, vehicle):
