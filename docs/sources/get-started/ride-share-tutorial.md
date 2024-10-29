@@ -83,7 +83,7 @@ A setup script runs in the background to install the necessary dependencies. Thi
 git clone https://github.com/grafana/pyroscope.git && cd pyroscope
 ```
 
-Navigate to the tutorial directory:
+1. Navigate to the tutorial directory:
 
 ```bash
 cd examples/language-sdk-instrumentation/python/rideshare/flask
