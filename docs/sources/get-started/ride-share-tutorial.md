@@ -271,7 +271,7 @@ The `docker-compose.yml` file includes a Grafana container that's pre-configured
     - 3000:3000
 ```
 
-We've also pre-configured the Pyroscope data source in Grafana. 
+Grafana is also pre-configured with the Pyroscope data source. 
 
 To access the Pyroscope app in Grafana, navigate to [http://localhost:3000/a/grafana-pyroscope-app](http://localhost:3000/a/grafana-pyroscope-app). 
 
