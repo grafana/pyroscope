@@ -277,7 +277,7 @@ To access the Pyroscope app in Grafana, navigate to [http://localhost:3000/a/gra
 
 ### Challenge
 
-As a challenge see if you can generate the same comparison we achieved in the Pyroscope UI within Grafana. It should look something like this:
+As a challenge, see if you can generate the same comparison done in the Pyroscope UI within Grafana. It should look something like this:
 
 {{< figure max-width="100%" src="/media/docs/pyroscope/ride-share-grafana.png" caption="Grafana" alt="Grafana" >}}
 
