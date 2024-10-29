@@ -46,7 +46,6 @@ Provide feedback, report bugs, and raise issues in the [Grafana Killercoda repos
 
 ## Background
 
-{{< figure max-width="100%" src="/media/docs/pyroscope/ride-share-demo.gif" caption="Getting started sample application" alt="Getting started sample application" >}}
 
 
 In this tutorial, you will profile a simple "Ride Share" application. The application is a Python Flask app that simulates a ride-sharing service. The app has three endpoints which are found in the `server.py` file:
