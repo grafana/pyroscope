@@ -245,3 +245,14 @@ func (m *metastoreState) loadCompactionPlan(b *bbolt.Bucket, blockQueue *compact
 	}
 	return nil
 }
+
+func persistBlock(tx *bbolt.Tx, pk index.PartitionKey, block *metastorev1.BlockMeta) error {
+	key := []byte(block.Id)
+	value, err := block.MarshalVT()
+	if err != nil {
+		return err
+	}
+	return updateBlockMetadataBucket(tx, pk, block.Shard, block.TenantId, func(bucket *bbolt.Bucket) error {
+		return bucket.Put(key, value)
+	})
+}

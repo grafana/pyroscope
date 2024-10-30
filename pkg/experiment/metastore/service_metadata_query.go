@@ -17,33 +17,33 @@ import (
 	"github.com/grafana/pyroscope/pkg/model"
 )
 
-type MetadataIndex interface {
+type QuerierIndex interface {
 	FindBlocksInRange(start, end int64, tenants map[string]struct{}) ([]*metastorev1.BlockMeta, error)
 }
 
 func NewMetadataQueryService(
 	logger log.Logger,
-	metadataIndex MetadataIndex,
+	index QuerierIndex,
 	raftFollower RaftFollower,
 ) *MetadataQueryService {
 	return &MetadataQueryService{
-		logger:        logger,
-		raftFollower:  raftFollower,
-		metadataIndex: metadataIndex,
+		logger:   logger,
+		follower: raftFollower,
+		index:    index,
 	}
 }
 
 type MetadataQueryService struct {
-	logger        log.Logger
-	raftFollower  RaftFollower
-	metadataIndex MetadataIndex
+	logger   log.Logger
+	follower RaftFollower
+	index    QuerierIndex
 }
 
 func (m *MetadataQueryService) QueryMetadata(
 	ctx context.Context,
 	request *metastorev1.QueryMetadataRequest,
 ) (*metastorev1.QueryMetadataResponse, error) {
-	if err := m.raftFollower.WaitLeaderCommitIndexAppliedLocally(ctx); err != nil {
+	if err := m.follower.WaitLeaderCommitIndexAppliedLocally(ctx); err != nil {
 		level.Error(m.logger).Log("msg", "failed to wait for leader commit index", "err", err)
 		return nil, err
 	}
@@ -51,7 +51,7 @@ func (m *MetadataQueryService) QueryMetadata(
 }
 
 func (m *MetadataQueryService) listBlocksForQuery(
-	ctx context.Context,
+	_ context.Context, // TODO(kolesnikovae): Handle cancellation.
 	request *metastorev1.QueryMetadataRequest,
 ) (*metastorev1.QueryMetadataResponse, error) {
 	q, err := newMetadataQuery(request)
@@ -60,7 +60,7 @@ func (m *MetadataQueryService) listBlocksForQuery(
 	}
 	var resp metastorev1.QueryMetadataResponse
 	md := make(map[string]*metastorev1.BlockMeta, 32)
-	blocks, err := m.metadataIndex.FindBlocksInRange(q.startTime, q.endTime, q.tenants)
+	blocks, err := m.index.FindBlocksInRange(q.startTime, q.endTime, q.tenants)
 	if err != nil {
 		level.Error(m.logger).Log("msg", "failed to list metastore blocks", "query", q, "err", err)
 		return nil, status.Error(codes.Internal, err.Error())

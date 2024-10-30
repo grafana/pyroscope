@@ -3,6 +3,8 @@ package fsm
 import (
 	"encoding/binary"
 	"fmt"
+
+	"google.golang.org/protobuf/proto"
 )
 
 type RaftLogEntryType uint32
@@ -31,6 +33,6 @@ func (c *RaftLogEntry) UnmarshalBinary(b []byte) error {
 }
 
 type Response struct {
-	Data []byte
+	Data proto.Message
 	Err  error
 }

@@ -22,6 +22,7 @@ type RaftLog interface {
 	Apply(cmd []byte, timeout time.Duration) raft.ApplyFuture
 }
 
+// Propose a change to a fsm.FSM through the raft log.
 func Propose[Req, Resp proto.Message](
 	raft RaftNode,
 	cmd fsm.RaftLogEntryType,
@@ -44,14 +45,8 @@ func Propose[Req, Resp proto.Message](
 		return resp, WithRaftLeaderStatusDetails(err, raft)
 	}
 	m := future.Response().(fsm.Response)
-	if m.Err != nil || len(m.Data) == 0 {
-		return resp, m.Err
+	if m.Data != nil {
+		resp = m.Data.(Resp)
 	}
-	vt, ok := any(resp).(interface{ UnmarshalVT([]byte) error })
-	if ok {
-		err = vt.UnmarshalVT(m.Data)
-	} else {
-		err = proto.Unmarshal(m.Data, resp)
-	}
-	return resp, err
+	return resp, m.Err
 }

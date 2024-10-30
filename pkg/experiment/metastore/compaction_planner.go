@@ -1,30 +1,22 @@
 package metastore
 
 import (
+	"encoding/binary"
 	"flag"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/cespare/xxhash/v2"
+	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/hashicorp/raft"
 	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compactionpb"
-	"github.com/grafana/pyroscope/pkg/util"
 )
-
-type CompactionConfig struct {
-	JobLeaseDuration time.Duration `yaml:"job_lease_duration"`
-	JobMaxFailures   int           `yaml:"job_max_failures"`
-}
-
-func (cfg *CompactionConfig) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
-	f.DurationVar(&cfg.JobLeaseDuration, prefix+"job-lease-duration", 15*time.Second, "")
-	f.IntVar(&cfg.JobMaxFailures, prefix+"job-max-failures", 3, "")
-}
 
 var (
 	// TODO aleks: for illustration purposes, to be moved externally
@@ -43,6 +35,16 @@ var (
 	}
 )
 
+type CompactionConfig struct {
+	JobLeaseDuration time.Duration `yaml:"job_lease_duration"`
+	JobMaxFailures   int           `yaml:"job_max_failures"`
+}
+
+func (cfg *CompactionConfig) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
+	f.DurationVar(&cfg.JobLeaseDuration, prefix+"job-lease-duration", 15*time.Second, "")
+	f.IntVar(&cfg.JobMaxFailures, prefix+"job-max-failures", 3, "")
+}
+
 type compactionStrategy struct {
 	levels             map[uint32]compactionLevelStrategy
 	defaultStrategy    compactionLevelStrategy
@@ -54,69 +56,26 @@ type compactionLevelStrategy struct {
 	maxTotalSizeBytes uint64
 }
 
-type compactionMetrics struct {
-	addedBlocks   *prometheus.CounterVec
-	deletedBlocks *prometheus.CounterVec
-	addedJobs     *prometheus.CounterVec
-	assignedJobs  *prometheus.CounterVec
-	completedJobs *prometheus.CounterVec
-	retriedJobs   *prometheus.CounterVec
-	discardedJobs *prometheus.CounterVec
+type tenantShard struct {
+	tenant string
+	shard  uint32
 }
 
-func newCompactionMetrics(reg prometheus.Registerer) *compactionMetrics {
-	m := &compactionMetrics{
-		addedBlocks: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Namespace: "pyroscope",
-			Name:      "metastore_compaction_added_blocks_count",
-			Help:      "The number of blocks added for compaction",
-		}, []string{"shard", "tenant", "level"}),
-		deletedBlocks: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Namespace: "pyroscope",
-			Name:      "metastore_compaction_deleted_blocks_count",
-			Help:      "The number of blocks deleted as a result of compaction",
-		}, []string{"shard", "tenant", "level"}),
-		addedJobs: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Namespace: "pyroscope",
-			Name:      "metastore_compaction_added_jobs_count",
-			Help:      "The number of created compaction jobs",
-		}, []string{"shard", "tenant", "level"}),
-		assignedJobs: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Namespace: "pyroscope",
-			Name:      "metastore_compaction_assigned_jobs_count",
-			Help:      "The number of assigned compaction jobs",
-		}, []string{"shard", "tenant", "level"}),
-		completedJobs: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Namespace: "pyroscope",
-			Name:      "metastore_compaction_completed_jobs_count",
-			Help:      "The number of completed compaction jobs",
-		}, []string{"shard", "tenant", "level"}),
-		retriedJobs: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Namespace: "pyroscope",
-			Name:      "metastore_compaction_retried_jobs_count",
-			Help:      "The number of retried compaction jobs",
-		}, []string{"shard", "tenant", "level"}),
-		discardedJobs: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Namespace: "pyroscope",
-			Name:      "metastore_compaction_discarded_jobs_count",
-			Help:      "The number of discarded compaction jobs",
-		}, []string{"shard", "tenant", "level"}),
-	}
-	if reg != nil {
-		util.Register(reg,
-			m.addedBlocks,
-			m.deletedBlocks,
-			m.addedJobs,
-			m.assignedJobs,
-			m.completedJobs,
-			m.retriedJobs,
-			m.discardedJobs,
-		)
-	}
-	return m
+type compactionPlanner struct {
+	logger                   log.Logger
+	compactionMutex          sync.Mutex
+	compactionJobBlockQueues map[tenantShard]*compactionJobBlockQueue
+	compactionJobQueue       *jobQueue
+	compactionMetrics        *compactionMetrics
+	compactionConfig         *CompactionConfig
 }
 
-// compactBlock is the entry point for adding blocks to the compaction flow.
+type compactionJobBlockQueue struct {
+	mu            sync.Mutex
+	blocksByLevel map[uint32][]string
+}
+
+// CompactBlock is the entry point for adding blocks to the compaction flow.
 //
 // We add the block to a queue identified by the block shard, tenant and compaction level.
 //
@@ -124,13 +83,13 @@ func newCompactionMetrics(reg prometheus.Registerer) *compactionMetrics {
 // we create a job and clear the queue.
 //
 // The method persists the optional job and the queue modification to both the memory state and the db.
-func (m *metastoreState) compactBlock(block *metastorev1.BlockMeta, tx *bbolt.Tx, raftLogIndex uint64) error {
+func (m *compactionPlanner) CompactBlock(tx *bbolt.Tx, raftLog *raft.Log, block *metastorev1.BlockMeta) error {
 	// create and store an optional compaction job
-	if job := m.tryCreateJob(block, raftLogIndex); job != nil {
-		if err := m.persistCompactionJob(block.Shard, block.TenantId, job, tx); err != nil {
+	if job := m.tryCreateJob(block, raftLog.Index); job != nil {
+		if err := persistCompactionJob(tx, block.Shard, block.TenantId, job); err != nil {
 			return err
 		}
-		if err := m.persistCompactionJobBlockQueue(block.Shard, block.TenantId, block.CompactionLevel, []string{}, tx); err != nil {
+		if err := persistCompactionJobBlockQueue(tx, block.Shard, block.TenantId, block.CompactionLevel, nil); err != nil {
 			return err
 		}
 		m.addCompactionJob(job)
@@ -143,7 +102,7 @@ func (m *metastoreState) compactBlock(block *metastorev1.BlockMeta, tx *bbolt.Tx
 		}
 		queue := m.getOrCreateCompactionBlockQueue(key).blocksByLevel[block.CompactionLevel]
 		queue = append(queue, block.Id)
-		if err := m.persistCompactionJobBlockQueue(block.Shard, block.TenantId, block.CompactionLevel, queue, tx); err != nil {
+		if err := persistCompactionJobBlockQueue(tx, block.Shard, block.TenantId, block.CompactionLevel, queue); err != nil {
 			return err
 		}
 		m.addBlockToCompactionJobQueue(block)
@@ -153,7 +112,7 @@ func (m *metastoreState) compactBlock(block *metastorev1.BlockMeta, tx *bbolt.Tx
 	return nil
 }
 
-func (m *metastoreState) tryCreateJob(block *metastorev1.BlockMeta, raftLogIndex uint64) *compactionpb.CompactionJob {
+func (m *compactionPlanner) tryCreateJob(block *metastorev1.BlockMeta, raftLogIndex uint64) *compactionpb.CompactionJob {
 	key := tenantShard{
 		tenant: block.TenantId,
 		shard:  block.Shard,
@@ -188,7 +147,7 @@ func (m *metastoreState) tryCreateJob(block *metastorev1.BlockMeta, raftLogIndex
 			blockIds = append(blockIds, b)
 		}
 		job = &compactionpb.CompactionJob{
-			Name:            fmt.Sprintf("L%d-S%d-%d", block.CompactionLevel, block.Shard, calculateHash(queuedBlocks)),
+			Name:            fmt.Sprintf("L%d-S%d-%d", block.CompactionLevel, block.Shard, hash(queuedBlocks)),
 			Blocks:          blockIds,
 			Status:          compactionpb.CompactionStatus_COMPACTION_STATUS_UNSPECIFIED,
 			Shard:           block.Shard,
@@ -206,6 +165,14 @@ func (m *metastoreState) tryCreateJob(block *metastorev1.BlockMeta, raftLogIndex
 	return job
 }
 
+func hash(blocks []string) uint64 {
+	b := make([]byte, 0, 1024)
+	for _, blk := range blocks {
+		b = append(b, blk...)
+	}
+	return xxhash.Sum64(b)
+}
+
 func getStrategyForLevel(compactionLevel uint32) compactionLevelStrategy {
 	strategy, ok := globalCompactionStrategy.levels[compactionLevel]
 	if !ok {
@@ -218,7 +185,7 @@ func (s compactionLevelStrategy) shouldCreateJob(blocks []string) bool {
 	return len(blocks) >= s.maxBlocks
 }
 
-func (m *metastoreState) addCompactionJob(job *compactionpb.CompactionJob) {
+func (m *compactionPlanner) addCompactionJob(job *compactionpb.CompactionJob) {
 	level.Debug(m.logger).Log(
 		"msg", "adding compaction job to priority queue",
 		"job", job.Name,
@@ -242,7 +209,7 @@ func (m *metastoreState) addCompactionJob(job *compactionpb.CompactionJob) {
 	blockQueue.blocksByLevel[job.CompactionLevel] = blockQueue.blocksByLevel[job.CompactionLevel][:0]
 }
 
-func (m *metastoreState) addBlockToCompactionJobQueue(block *metastorev1.BlockMeta) {
+func (m *compactionPlanner) addBlockToCompactionJobQueue(block *metastorev1.BlockMeta) {
 	key := tenantShard{
 		tenant: block.TenantId,
 		shard:  block.Shard,
@@ -260,37 +227,81 @@ func (m *metastoreState) addBlockToCompactionJobQueue(block *metastorev1.BlockMe
 	blockQueue.blocksByLevel[block.CompactionLevel] = append(blockQueue.blocksByLevel[block.CompactionLevel], block.Id)
 }
 
-func calculateHash(blocks []string) uint64 {
-	b := make([]byte, 0, 1024)
-	for _, blk := range blocks {
-		b = append(b, blk...)
+func (m *compactionPlanner) getOrCreateCompactionBlockQueue(key tenantShard) *compactionJobBlockQueue {
+	m.compactionMutex.Lock()
+	defer m.compactionMutex.Unlock()
+
+	if blockQueue, ok := m.compactionJobBlockQueues[key]; ok {
+		return blockQueue
 	}
-	return xxhash.Sum64(b)
+	plan := &compactionJobBlockQueue{
+		blocksByLevel: make(map[uint32][]string),
+	}
+	m.compactionJobBlockQueues[key] = plan
+	return plan
 }
 
-func (m *metastoreState) persistCompactionJob(shard uint32, tenant string, job *compactionpb.CompactionJob, tx *bbolt.Tx) error {
-	jobBucketName, jobKey := keyForCompactionJob(shard, tenant, job.Name)
-	if err := updateCompactionJobBucket(tx, jobBucketName, func(bucket *bbolt.Bucket) error {
-		data, _ := job.MarshalVT()
-		level.Debug(m.logger).Log("msg", "persisting compaction job", "job", job.Name, "storage_bucket", jobBucketName, "storage_key", jobKey)
-		return bucket.Put(jobKey, data)
-	}); err != nil {
-		return err
+func (m *compactionPlanner) findJob(name string) *compactionpb.CompactionJob {
+	m.compactionJobQueue.mu.Lock()
+	defer m.compactionJobQueue.mu.Unlock()
+	if jobEntry, exists := m.compactionJobQueue.jobs[name]; exists {
+		return jobEntry.CompactionJob
 	}
 	return nil
 }
 
-func (m *metastoreState) persistCompactionJobBlockQueue(shard uint32, tenant string, compactionLevel uint32, queue []string, tx *bbolt.Tx) error {
-	jobBucketName, _ := keyForCompactionJob(shard, tenant, "")
+const (
+	compactionBucketJobBlockQueuePrefix = "compaction-job-block-queue"
+	compactionJobBucketName             = "compaction_job"
+)
+
+var compactionJobBucketNameBytes = []byte(compactionJobBucketName)
+
+func persistCompactionJob(tx *bbolt.Tx, shard uint32, tenant string, job *compactionpb.CompactionJob) error {
+	jobBucketName, jobKey := tenantShardBucketAndKey(shard, tenant, job.Name)
+	bucket := compactionJobBucket(tx, jobBucketName)
+	data, _ := job.MarshalVT()
+	return bucket.Put(jobKey, data)
+}
+
+func persistCompactionJobBlockQueue(tx *bbolt.Tx, shard uint32, tenant string, compactionLevel uint32, queue []string) error {
 	blockQueue := &compactionpb.CompactionJobBlockQueue{
 		CompactionLevel: compactionLevel,
 		Shard:           shard,
 		Tenant:          tenant,
 		Blocks:          queue,
 	}
+	bucket, _ := tenantShardBucketAndKey(shard, tenant, "")
 	key := []byte(fmt.Sprintf("%s-%d", compactionBucketJobBlockQueuePrefix, compactionLevel))
-	return updateCompactionJobBucket(tx, jobBucketName, func(bucket *bbolt.Bucket) error {
-		data, _ := blockQueue.MarshalVT()
-		return bucket.Put(key, data)
-	})
+	value, _ := blockQueue.MarshalVT()
+	return compactionJobBucket(tx, bucket).Put(key, value)
+}
+
+// Bucket           |Key
+// [4:shard]<tenant>|[job_name]
+func tenantShardBucketAndKey(shard uint32, tenant string, k string) (bucket, key []byte) {
+	bucket = make([]byte, 4+len(tenant))
+	binary.BigEndian.PutUint32(bucket, shard)
+	copy(bucket[4:], tenant)
+	return bucket, []byte(k)
+}
+
+func compactionJobBucket(tx *bbolt.Tx, name []byte) *bbolt.Bucket {
+	return getOrCreateSubBucket(getOrCreateBucket(tx, compactionJobBucketNameBytes), name)
+}
+
+func getOrCreateBucket(tx *bbolt.Tx, name []byte) *bbolt.Bucket {
+	bucket := tx.Bucket(name)
+	if bucket == nil {
+		bucket, _ = bucket.CreateBucket(name)
+	}
+	return bucket
+}
+
+func getOrCreateSubBucket(parent *bbolt.Bucket, name []byte) *bbolt.Bucket {
+	bucket := parent.Bucket(name)
+	if bucket == nil {
+		bucket, _ = parent.CreateBucket(name)
+	}
+	return bucket
 }

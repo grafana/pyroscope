@@ -118,17 +118,10 @@ type Metastore struct {
 	metastorev1.OperatorServiceServer
 	metastorev1.CompactionPlannerServer
 
-	config  Config
-	logger  log.Logger
-	reg     prometheus.Registerer
-	metrics *metastoreMetrics
-	health  health.Service
-
-	// In-memory state.
-	state *metastoreState
-
-	// Persistent state.
-	db *boltdb
+	config Config
+	logger log.Logger
+	reg    prometheus.Registerer
+	health health.Service
 
 	// Raft module.
 	wal       *raftwal.WAL

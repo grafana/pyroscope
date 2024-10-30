@@ -20,25 +20,25 @@ type AddBlockCommandLog interface {
 	ProposeAddBlock(*metastorev1.AddBlockRequest) (*metastorev1.AddBlockResponse, error)
 }
 
-func NewMetastoreService(
+func NewInsertionService(
 	logger log.Logger,
 	stats DistributionStats,
 	raftLog AddBlockCommandLog,
-) *MetastoreService {
-	return &MetastoreService{
+) *InsertionService {
+	return &InsertionService{
 		logger:  logger,
 		stats:   stats,
 		raftLog: raftLog,
 	}
 }
 
-type MetastoreService struct {
+type InsertionService struct {
 	logger  log.Logger
 	stats   DistributionStats
 	raftLog AddBlockCommandLog
 }
 
-func (svc *MetastoreService) AddBlock(
+func (svc *InsertionService) AddBlock(
 	_ context.Context,
 	req *metastorev1.AddBlockRequest,
 ) (*metastorev1.AddBlockResponse, error) {

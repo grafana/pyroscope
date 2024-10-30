@@ -3,6 +3,7 @@ package fsm
 import (
 	"fmt"
 	"io"
+	"reflect"
 	"time"
 
 	"github.com/go-kit/log"
@@ -10,12 +11,13 @@ import (
 	"github.com/hashicorp/raft"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.etcd.io/bbolt"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/grafana/pyroscope/pkg/util"
 )
 
-type RaftCommandHandler interface {
-	Apply(*bbolt.Tx, *raft.Log, []byte) ([]byte, error)
+type RaftHandler[Req, Resp proto.Message] interface {
+	Apply(*bbolt.Tx, *raft.Log, Req) (Resp, error)
 }
 
 type StateRestorer interface {
@@ -27,25 +29,46 @@ type FSM struct {
 	metrics *metrics
 	db      *boltdb
 
-	handlers  map[RaftLogEntryType]RaftCommandHandler
+	handlers  map[RaftLogEntryType]handler
 	restorers []StateRestorer
 }
+
+type handler func(tx *bbolt.Tx, cmd *raft.Log, raw []byte) (proto.Message, error)
 
 func New(logger log.Logger, reg prometheus.Registerer, dir string) *FSM {
 	return &FSM{
 		logger:   logger,
 		db:       newDB(logger, dir),
 		metrics:  newMetrics(reg),
-		handlers: make(map[RaftLogEntryType]RaftCommandHandler),
+		handlers: make(map[RaftLogEntryType]handler),
 	}
-}
-
-func (fsm *FSM) RegisterRaftCommandHandler(t RaftLogEntryType, h RaftCommandHandler) {
-	fsm.handlers[t] = h
 }
 
 func (fsm *FSM) RegisterRestorer(r ...StateRestorer) {
 	fsm.restorers = append(fsm.restorers, r...)
+}
+
+func RegisterRaftHandler[Req, Resp proto.Message](fsm *FSM, t RaftLogEntryType, h RaftHandler[Req, Resp]) {
+	fsm.handlers[t] = func(tx *bbolt.Tx, cmd *raft.Log, raw []byte) (proto.Message, error) {
+		var err error
+		req := newProto[Req]()
+		vt, ok := any(req).(interface{ UnmarshalVT([]byte) error })
+		if ok {
+			err = vt.UnmarshalVT(raw)
+		} else {
+			err = proto.Unmarshal(raw, req)
+		}
+		if err != nil {
+			return nil, err
+		}
+		return h.Apply(tx, cmd, req)
+	}
+}
+
+func newProto[T proto.Message]() T {
+	var msg T
+	msgType := reflect.TypeOf(msg).Elem()
+	return reflect.New(msgType).Interface().(T)
 }
 
 type fsmError struct {
@@ -68,7 +91,7 @@ func (e *fsmError) Error() string {
 		e.log.Index, e.log.Term, e.log.AppendedAt, e.err)
 }
 
-func (fsm *FSM) Apply(log *raft.Log) interface{} {
+func (fsm *FSM) Apply(log *raft.Log) any {
 	switch log.Type {
 	case raft.LogNoop:
 	case raft.LogBarrier:
@@ -85,7 +108,7 @@ func (fsm *FSM) Apply(log *raft.Log) interface{} {
 // applyCommand receives raw command from the raft log (FSM.Apply),
 // and calls the corresponding handler on the _local_ FSM, based on
 // the command type.
-func (fsm *FSM) applyCommand(cmd *raft.Log) interface{} {
+func (fsm *FSM) applyCommand(cmd *raft.Log) any {
 	start := time.Now()
 	defer func() {
 		fsm.db.metrics.fsmApplyCommandHandlerDuration.Observe(time.Since(start).Seconds())
@@ -95,7 +118,7 @@ func (fsm *FSM) applyCommand(cmd *raft.Log) interface{} {
 		return errResponse(cmd, err)
 	}
 
-	handler, ok := fsm.handlers[e.Type]
+	handle, ok := fsm.handlers[e.Type]
 	if !ok {
 		return errResponse(cmd, fmt.Errorf("unknown command type: %d", e.Type))
 	}
@@ -119,7 +142,7 @@ func (fsm *FSM) applyCommand(cmd *raft.Log) interface{} {
 			resp.Err = util.PanicError(r)
 		}
 	}()
-	resp.Data, resp.Err = handler.Apply(tx, cmd, e.Data)
+	resp.Data, resp.Err = handle(tx, cmd, e.Data)
 	return resp
 }
 

@@ -1,43 +1,33 @@
 package metastore
 
 import (
-	"context"
 	"fmt"
 	"math"
-	"time"
 
+	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/hashicorp/raft"
 	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compactionpb"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/fsm"
 )
 
-func (m *Metastore) PollCompactionJobs(_ context.Context, req *metastorev1.PollCompactionJobsRequest) (*metastorev1.PollCompactionJobsResponse, error) {
-	level.Debug(m.logger).Log(
-		"msg", "received poll compaction jobs request",
-		"num_updates", len(req.JobStatusUpdates),
-		"job_capacity", req.JobCapacity,
-		"raft_commit_index", m.raft.CommitIndex(),
-		"raft_last_index", m.raft.LastIndex(),
-		"raft_applied_index", m.raft.AppliedIndex())
-	_, resp, err := proposeCommand[*metastorev1.PollCompactionJobsRequest, *metastorev1.PollCompactionJobsResponse](m.raft, 0, req, m.config.Raft.ApplyTimeout)
-	if err != nil {
-		_ = level.Error(m.logger).Log("msg", "failed to apply poll compaction jobs", "raft_commit_index", m.raft.CommitIndex(), "err", err)
-	}
-	return resp, err
+type Marker interface {
+	MarkDeleted(tx *bbolt.Tx, shard uint32, tenant string, block string, now int64)
 }
 
-func (m *metastoreState) applyPollCompactionJobs(raft *raft.Log, request *metastorev1.PollCompactionJobsRequest) (resp *metastorev1.PollCompactionJobsResponse, err error) {
-	level.Debug(m.logger).Log(
-		"msg", "applying poll compaction jobs",
-		"num_updates", len(request.JobStatusUpdates),
-		"job_capacity", request.JobCapacity,
-		"raft_log_index", raft.Index)
+type CompactorIndex interface {
+	InserterIndex
+	ReplaceBlocks(tx *bbolt.Tx, shard uint32, tenant string, new []*metastorev1.BlockMeta, old []string)
+	Delete(tx *bbolt.Tx, shard uint32, tenant, block string)
+}
 
-	return m.pollCompactionJobs(request, raft.Index, raft.AppendedAt.UnixNano())
+type PollCompactionJobsRequestHandler struct {
+	logger log.Logger
+	index  CompactorIndex
+	marker Marker
+	*compactionPlanner
 }
 
 type pollStateUpdate struct {
@@ -49,7 +39,7 @@ type pollStateUpdate struct {
 	updatedJobs        []string
 }
 
-func (m *metastoreState) pollCompactionJobs(request *metastorev1.PollCompactionJobsRequest, raftIndex uint64, raftAppendedAtNanos int64) (resp *metastorev1.PollCompactionJobsResponse, err error) {
+func (m *PollCompactionJobsRequestHandler) Apply(tx *bbolt.Tx, cmd *raft.Log, req *metastorev1.PollCompactionJobsRequest) (*metastorev1.PollCompactionJobsResponse, error) {
 	stateUpdate := &pollStateUpdate{
 		newBlocks:          make(map[tenantShard][]*metastorev1.BlockMeta),
 		deletedBlocks:      make(map[tenantShard][]string),
@@ -58,11 +48,10 @@ func (m *metastoreState) pollCompactionJobs(request *metastorev1.PollCompactionJ
 		deletedJobs:        make(map[tenantShard][]string),
 		updatedJobs:        make([]string, 0),
 	}
-
-	for _, jobUpdate := range request.JobStatusUpdates {
+	for _, jobUpdate := range req.JobStatusUpdates {
 		job := m.findJob(jobUpdate.JobName)
 		if job == nil {
-			level.Error(m.logger).Log("msg", "error processing update for compaction job, job not found", "job", jobUpdate.JobName, "err", err)
+			level.Error(m.logger).Log("msg", "error processing update for compaction job, job not found", "job", jobUpdate.JobName)
 			continue
 		}
 		if !m.compactionJobQueue.isOwner(job.Name, jobUpdate.RaftLogIndex) {
@@ -80,7 +69,7 @@ func (m *metastoreState) pollCompactionJobs(request *metastorev1.PollCompactionJ
 				fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
 
 			// next we'll replace source blocks with compacted ones
-			m.index.ReplaceBlocks(job.Blocks, job.Shard, job.TenantId, jobUpdate.CompletedJob.Blocks)
+			m.index.ReplaceBlocks(tx, job.Shard, job.TenantId, jobUpdate.CompletedJob.Blocks, job.Blocks)
 			for _, b := range jobUpdate.CompletedJob.Blocks {
 				level.Debug(m.logger).Log(
 					"msg", "added compacted block",
@@ -127,7 +116,7 @@ func (m *metastoreState) pollCompactionJobs(request *metastorev1.PollCompactionJ
 				"shard", job.Shard,
 				"level", job.CompactionLevel,
 			)
-			m.compactionJobQueue.update(jobUpdate.JobName, raftAppendedAtNanos, jobUpdate.RaftLogIndex)
+			m.compactionJobQueue.update(jobUpdate.JobName, cmd.AppendedAt.UnixNano(), jobUpdate.RaftLogIndex)
 			stateUpdate.updatedJobs = append(stateUpdate.updatedJobs, job.Name)
 		case metastorev1.CompactionStatus_COMPACTION_STATUS_FAILURE:
 			job.Failures += 1
@@ -173,9 +162,9 @@ func (m *metastoreState) pollCompactionJobs(request *metastorev1.PollCompactionJ
 		}
 	}
 
-	resp = &metastorev1.PollCompactionJobsResponse{}
-	if request.JobCapacity > 0 {
-		newJobs := m.findJobsToAssign(int(request.JobCapacity), raftIndex, raftAppendedAtNanos)
+	resp := &metastorev1.PollCompactionJobsResponse{}
+	if req.JobCapacity > 0 {
+		newJobs := m.findJobsToAssign(int(req.JobCapacity), cmd.Index, cmd.AppendedAt.UnixNano())
 		convertedJobs, invalidJobs := m.convertJobs(newJobs)
 		resp.CompactionJobs = convertedJobs
 		for _, j := range convertedJobs {
@@ -193,24 +182,21 @@ func (m *metastoreState) pollCompactionJobs(request *metastorev1.PollCompactionJ
 		}
 	}
 
-	err = m.writeToDb(stateUpdate)
+	err := m.writeToDb(tx, stateUpdate)
 	if err != nil {
-		panic(fsm.fatalCommandError{fmt.Errorf("error persisting metadata state to db, %w", err)})
+		return nil, err
 	}
 
 	for key, blocks := range stateUpdate.deletedBlocks {
 		for _, block := range blocks {
-			err = m.deletionMarkers.Mark(key.shard, key.tenant, block, raftAppendedAtNanos/time.Millisecond.Nanoseconds())
-			if err != nil {
-				panic(fsm.fatalCommandError{fmt.Errorf("error persisting block removals, %w", err)})
-			}
+			m.marker.MarkDeleted(tx, key.shard, key.tenant, block, cmd.AppendedAt.UnixNano())
 		}
 	}
 
 	return resp, nil
 }
 
-func (m *metastoreState) convertJobs(jobs []*compactionpb.CompactionJob) (convertedJobs []*metastorev1.CompactionJob, invalidJobs []*compactionpb.CompactionJob) {
+func (m *PollCompactionJobsRequestHandler) convertJobs(jobs []*compactionpb.CompactionJob) (convertedJobs []*metastorev1.CompactionJob, invalidJobs []*compactionpb.CompactionJob) {
 	convertedJobs = make([]*metastorev1.CompactionJob, 0, len(jobs))
 	invalidJobs = make([]*compactionpb.CompactionJob, 0, len(jobs))
 	for _, job := range jobs {
@@ -253,7 +239,7 @@ func (m *metastoreState) convertJobs(jobs []*compactionpb.CompactionJob) (conver
 	return convertedJobs, invalidJobs
 }
 
-func (m *metastoreState) findJobsToAssign(jobCapacity int, raftLogIndex uint64, now int64) []*compactionpb.CompactionJob {
+func (m *PollCompactionJobsRequestHandler) findJobsToAssign(jobCapacity int, raftLogIndex uint64, now int64) []*compactionpb.CompactionJob {
 	jobsToAssign := make([]*compactionpb.CompactionJob, 0, jobCapacity)
 	jobCount, newJobs, inProgressJobs, completedJobs, failedJobs, cancelledJobs := m.compactionJobQueue.stats()
 	level.Debug(m.logger).Log(
@@ -281,99 +267,74 @@ func (m *metastoreState) findJobsToAssign(jobCapacity int, raftLogIndex uint64, 
 	return jobsToAssign
 }
 
-func (m *metastoreState) writeToDb(sTable *pollStateUpdate) error {
-	return m.db.boltdb.Update(func(tx *bbolt.Tx) error {
-		for _, blocks := range sTable.newBlocks {
-			for _, block := range blocks {
-				err := m.persistBlock(tx, block)
-				if err != nil {
-					return err
-				}
-			}
+func (m *PollCompactionJobsRequestHandler) writeToDb(tx *bbolt.Tx, sTable *pollStateUpdate) error {
+	for _, blocks := range sTable.newBlocks {
+		for _, block := range blocks {
+			m.index.InsertBlock(tx, block)
 		}
-		for key, blocks := range sTable.deletedBlocks {
-			for _, block := range blocks {
-				err := m.deleteBlock(tx, key.shard, key.tenant, block)
-				if err != nil {
-					return err
-				}
-			}
+	}
+	for key, blocks := range sTable.deletedBlocks {
+		for _, block := range blocks {
+			m.index.Delete(tx, key.shard, key.tenant, block)
 		}
-		for _, jobName := range sTable.newJobs {
-			job := m.findJob(jobName)
-			if job == nil {
-				level.Error(m.logger).Log(
-					"msg", "a newly added job could not be found",
-					"job", jobName,
-				)
-				continue
-			}
-			err := m.persistCompactionJob(job.Shard, job.TenantId, job, tx)
-			if err != nil {
-				return err
-			}
+	}
+	for _, jobName := range sTable.newJobs {
+		job := m.findJob(jobName)
+		if job == nil {
+			level.Error(m.logger).Log(
+				"msg", "a newly added job could not be found",
+				"job", jobName,
+			)
+			continue
 		}
-		for key, levels := range sTable.updatedBlockQueues {
-			for _, l := range levels {
-				queue := m.getOrCreateCompactionBlockQueue(key).blocksByLevel[l]
-				if queue == nil {
-					level.Error(m.logger).Log(
-						"msg", "block queue not found",
-						"shard", key.shard,
-						"tenant", key.tenant,
-						"level", l,
-					)
-					continue
-				}
-				err := m.persistCompactionJobBlockQueue(key.shard, key.tenant, l, queue, tx)
-				if err != nil {
-					return err
-				}
-			}
-		}
-		for key, jobNames := range sTable.deletedJobs {
-			for _, jobName := range jobNames {
-				jBucket, jKey := keyForCompactionJob(key.shard, key.tenant, jobName)
-				err := updateCompactionJobBucket(tx, jBucket, func(bucket *bbolt.Bucket) error {
-					level.Debug(m.logger).Log(
-						"msg", "deleting job from storage",
-						"job", jobName,
-						"shard", key.shard,
-						"tenant", key.tenant,
-						"storage_bucket", string(jBucket),
-						"storage_key", string(jKey))
-					return bucket.Delete(jKey)
-				})
-				if err != nil {
-					return err
-				}
-			}
-		}
-		for _, jobName := range sTable.updatedJobs {
-			job := m.findJob(jobName)
-			if job == nil {
-				level.Error(m.logger).Log(
-					"msg", "an updated job could not be found",
-					"job", jobName,
-				)
-				continue
-			}
-			err := m.persistCompactionJob(job.Shard, job.TenantId, job, tx)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-}
-
-func (m *metastoreState) deleteBlock(tx *bbolt.Tx, shardId uint32, tenant, blockId string) error {
-	metas := m.index.FindPartitionMetas(blockId)
-	for _, meta := range metas {
-		err := updateBlockMetadataBucket(tx, meta.Key, shardId, tenant, func(bucket *bbolt.Bucket) error {
-			return bucket.Delete([]byte(blockId))
-		})
+		err := persistCompactionJob(tx, job.Shard, job.TenantId, job)
 		if err != nil {
+			return err
+		}
+	}
+	for key, levels := range sTable.updatedBlockQueues {
+		for _, l := range levels {
+			queue := m.getOrCreateCompactionBlockQueue(key).blocksByLevel[l]
+			if queue == nil {
+				level.Error(m.logger).Log(
+					"msg", "block queue not found",
+					"shard", key.shard,
+					"tenant", key.tenant,
+					"level", l,
+				)
+				continue
+			}
+			if err := persistCompactionJobBlockQueue(tx, key.shard, key.tenant, l, queue); err != nil {
+				return err
+			}
+		}
+	}
+	for key, jobNames := range sTable.deletedJobs {
+		for _, jobName := range jobNames {
+			bucket, k := tenantShardBucketAndKey(key.shard, key.tenant, jobName)
+			level.Debug(m.logger).Log(
+				"msg", "deleting job from storage",
+				"job", jobName,
+				"shard", key.shard,
+				"tenant", key.tenant,
+				"storage_bucket", string(bucket),
+				"storage_key", string(k),
+			)
+			if err := compactionJobBucket(tx, bucket).Delete(k); err != nil {
+				return err
+			}
+		}
+	}
+	for _, jobName := range sTable.updatedJobs {
+		job := m.findJob(jobName)
+		if job == nil {
+			level.Error(m.logger).Log(
+				"msg", "an updated job could not be found",
+				"job", jobName,
+			)
+			continue
+		}
+		if err := persistCompactionJob(tx, job.Shard, job.TenantId, job); err != nil {
 			return err
 		}
 	}
