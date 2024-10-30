@@ -27,6 +27,7 @@ import (
 	adaptiveplacement "github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/blockcleaner"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/dlq"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/fsm"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
 	raftnode "github.com/grafana/pyroscope/pkg/experiment/metastore/raft_node"
 	"github.com/grafana/pyroscope/pkg/util/health"
@@ -254,8 +255,8 @@ func (m *Metastore) initRaft() (err error) {
 	config.SnapshotInterval = raftSnapshotInterval
 	config.LocalID = raft.ServerID(m.config.Raft.ServerID)
 
-	fsm := newFSM(m.logger, m.state)
-	m.raft, err = raft.NewRaft(config, fsm, m.logStore, m.stableStore, m.snapshotStore, m.transport)
+	state := fsm.New(m.logger, m.reg, m.config.DataDir)
+	m.raft, err = raft.NewRaft(config, state, m.logStore, m.stableStore, m.snapshotStore, m.transport)
 	if err != nil {
 		return fmt.Errorf("starting raft node: %w", err)
 	}
@@ -358,4 +359,50 @@ func (m *Metastore) TransferLeadership() (err error) {
 		_ = level.Error(m.logger).Log("msg", "failed to transfer leadership", "err", err)
 	}
 	return err
+}
+
+// CheckReady verifies if the metastore is ready to serve requests by
+// ensuring the node is up-to-date with the leader's commit index.
+func (m *Metastore) CheckReady(ctx context.Context) error {
+	if err := m.waitLeaderCommitIndexAppliedLocally(ctx); err != nil {
+		return err
+	}
+	m.readyOnce.Do(func() {
+		m.readySince = time.Now()
+	})
+	if w := m.config.MinReadyDuration - time.Since(m.readySince); w > 0 {
+		return fmt.Errorf("%v before reporting readiness", w)
+	}
+	return nil
+}
+
+// TODO: Remove
+
+// waitLeaderCommitIndexAppliedLocally ensures the node is up-to-date for read operations,
+// providing linearizable read semantics. It calls metastore client ReadIndex
+// and waits for the local applied index to catch up to the returned read index.
+// This method should be used before performing local reads to ensure consistency.
+func (m *Metastore) waitLeaderCommitIndexAppliedLocally(ctx context.Context) error {
+	r, err := m.raftClient.ReadIndex(ctx, &metastorev1.ReadIndexRequest{})
+	if err != nil {
+		return err
+	}
+	if m.raft.AppliedIndex() >= r.ReadIndex {
+		return nil
+	}
+
+	t := time.NewTicker(10 * time.Millisecond)
+	defer t.Stop()
+
+	// Wait for the read index to be applied
+	for {
+		select {
+		case <-t.C:
+			if m.raft.AppliedIndex() >= r.ReadIndex {
+				return nil
+			}
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
 }

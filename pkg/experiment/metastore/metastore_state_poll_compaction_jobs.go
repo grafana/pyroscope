@@ -12,6 +12,7 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compactionpb"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/fsm"
 )
 
 func (m *Metastore) PollCompactionJobs(_ context.Context, req *metastorev1.PollCompactionJobsRequest) (*metastorev1.PollCompactionJobsResponse, error) {
@@ -194,14 +195,14 @@ func (m *metastoreState) pollCompactionJobs(request *metastorev1.PollCompactionJ
 
 	err = m.writeToDb(stateUpdate)
 	if err != nil {
-		panic(fatalCommandError{fmt.Errorf("error persisting metadata state to db, %w", err)})
+		panic(fsm.fatalCommandError{fmt.Errorf("error persisting metadata state to db, %w", err)})
 	}
 
 	for key, blocks := range stateUpdate.deletedBlocks {
 		for _, block := range blocks {
 			err = m.deletionMarkers.Mark(key.shard, key.tenant, block, raftAppendedAtNanos/time.Millisecond.Nanoseconds())
 			if err != nil {
-				panic(fatalCommandError{fmt.Errorf("error persisting block removals, %w", err)})
+				panic(fsm.fatalCommandError{fmt.Errorf("error persisting block removals, %w", err)})
 			}
 		}
 	}

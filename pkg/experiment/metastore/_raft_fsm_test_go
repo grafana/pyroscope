@@ -9,6 +9,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/fsm"
 )
 
 var testError = errors.New("test error")
@@ -23,7 +24,7 @@ func Test_handleCommandErrorHandling(t *testing.T) {
 	type testCase[Req proto.Message, Resp proto.Message] struct {
 		name      string
 		args      args[Req, Resp]
-		want      fsmResponse
+		want      fsm.fsmResponse
 		wantPanic bool
 	}
 	tests := []testCase[*metastorev1.AddBlockRequest, *metastorev1.AddBlockResponse]{
@@ -36,7 +37,7 @@ func Test_handleCommandErrorHandling(t *testing.T) {
 					return &metastorev1.AddBlockResponse{}, nil
 				},
 			},
-			want: fsmResponse{
+			want: fsm.fsmResponse{
 				msg: &metastorev1.AddBlockResponse{},
 				err: nil,
 			},
@@ -50,7 +51,7 @@ func Test_handleCommandErrorHandling(t *testing.T) {
 					return nil, testError
 				},
 			},
-			want: fsmResponse{
+			want: fsm.fsmResponse{
 				msg: typedNil,
 				err: testError,
 			},
@@ -61,7 +62,7 @@ func Test_handleCommandErrorHandling(t *testing.T) {
 				raw: make([]byte, 0),
 				cmd: &raft.Log{},
 				call: func(log *raft.Log, request *metastorev1.AddBlockRequest) (*metastorev1.AddBlockResponse, error) {
-					panic(fatalCommandError{testError})
+					panic(fsm.fatalCommandError{testError})
 				},
 			},
 			wantPanic: true,
