@@ -18,18 +18,10 @@ Profiling is an essential tool for understanding and optimizing application perf
 
 In Pyroscope, profiling types refer to different dimensions of application performance analysis, focusing on specific aspects like CPU usage, memory allocation, or thread synchronization.
 
-Pyroscope supports these profile types:
+[//]: # 'Shared content for available profile types'
+[//]: # 'This content is located in /pyroscope/docs/sources/shared/available-profile-types.md'
 
-* CPU
-* Memory (allocation objects, allocation space)
-* In use objects and in-use space
-* Goroutines
-* Mutex count and duration
-* Block count and duration
-* Lock count and duration
-* Exceptions
-* Wall
-* Heap
+{{< docs/shared source="pyroscope" lookup="available-profile-types.md" version="latest" >}}
 
 Refer to the Profile types tables for information on supported profile types based on instrumentation method.
 

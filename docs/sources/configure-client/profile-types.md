@@ -19,16 +19,10 @@ Profiling is an essential tool for understanding and optimizing application perf
 
 Profiling types refer to different dimensions of application performance analysis, focusing on specific aspects like CPU usage, memory allocation, or thread synchronization.
 
-Pyroscope supports these profile types:
+[//]: # 'Shared content for available profile types'
+[//]: # 'This content is located in /pyroscope/docs/sources/shared/available-profile-types.md'
 
-* CPU (CPU time, wall time)
-* Memory (allocation objects, allocation space, heap)
-* In use objects and in-use space
-* Goroutines
-* Mutex count and duration
-* Block count and duration
-* Lock count and duration
-* Exceptions
+{{< docs/shared source="pyroscope" lookup="available-profile-types.md" version="latest" >}}
 
 Refer to [Understand profiling types and their uses in Pyroscope](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/introduction/profiling-types/) for more details about the profile types.
 
@@ -44,23 +38,23 @@ For more information, refer to [Configure the client to send profiles with Grafa
 
 This table lists the available profile types based on auto instrumentation using Alloy.
 
-| Profile type   | Go (pull) | Java | eBPF (Go) | eBPF (Python) |
-| -------------- | --------- | ---- | --------- | ------------- |
-| CPU            | Yes       | Yes  | Yes       | Yes           |
-| Alloc Objects  | Yes       | Yes  |           |               |
-| Alloc Space    | Yes       | Yes  |           |               |
-| Inuse Objects  |           |      |           |               |
-| Inuse Space    |           |      |           |               |
-| Goroutines     | Yes       |      |           |               |
-| Mutex Count    |           |      |           |               |
-| Mutex Duration |           |      |           |               |
-| Block Count    | Yes       |      |           |               |
-| Block Duration | Yes       |      |           |               |
-| Lock Count     |           | Yes  |           |               |
-| Lock Duration  |           | Yes  |           |               |
-| Exceptions     |           |      |           |               |
-| Wall           |           |      |           |               |
-| Heap           |           |      |           |               |
+| Profile type   | Go (pull) | Java | eBPF (Go) |
+| -------------- | --------- | ---- | --------- |
+| CPU            | Yes       | Yes  | Yes       |
+| Alloc Objects  | Yes       | Yes  |           |
+| Alloc Space    | Yes       | Yes  |           |
+| Inuse Objects  |           |      |           |
+| Inuse Space    |           |      |           |
+| Goroutines     | Yes       |      |           |
+| Mutex Count    |           |      |           |
+| Mutex Duration |           |      |           |
+| Block Count    | Yes       |      |           |
+| Block Duration | Yes       |      |           |
+| Lock Count     |           | Yes  |           |
+| Lock Duration  |           | Yes  |           |
+| Exceptions     |           |      |           |
+| Wall           |           |      |           |
+| Heap           |           |      |           |
 
 ### Instrumentation with SDKs
 
@@ -85,7 +79,7 @@ This table lists the available profile types based on the language SDK.
 | Lock Count     |           | Yes  | Yes        |      |        |      |         |
 | Lock Duration  |           | Yes  | Yes        |      |        |      |         |
 | Exceptions     |           |      | Yes        |      |        |      |         |
-| Wall           |           |      | Yes        |      |        |      |         |
+| Wall           |           |      | Yes        |      |        |      | Yes     |
 | Heap           |           |      | Yes (7.0+) |      |        |      | Yes     |
 
 ## Profile types supported with span profiles
