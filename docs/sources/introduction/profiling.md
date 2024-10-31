@@ -2,7 +2,7 @@
 title: Profiling fundamentals
 menuTitle: Profiling fundamentals
 description: Discover the benefits of continuous profiling and its role in modern application performance analysis.
-weight: 20
+weight: 100
 keywords:
   - pyroscope
   - continuous profiling
