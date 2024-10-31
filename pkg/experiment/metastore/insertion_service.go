@@ -12,6 +12,8 @@ import (
 	"github.com/grafana/pyroscope/pkg/iter"
 )
 
+// TODO(kolesnikovae): Pass AddBlockCommandLog to DLQ.
+
 type DistributionStats interface {
 	RecordStats(iter.Iterator[adaptiveplacement.Sample])
 }
@@ -41,12 +43,9 @@ type InsertionService struct {
 func (svc *InsertionService) AddBlock(
 	_ context.Context,
 	req *metastorev1.AddBlockRequest,
-) (*metastorev1.AddBlockResponse, error) {
-	// TODO(kolesnikovae): Validate input.
-	logger := log.With(svc.logger, "shard", req.Block.Shard, "block_id", req.Block.Id, "ts", req.Block.MinTime)
-	_, err := ulid.Parse(req.Block.Id)
-	if err != nil {
-		_ = level.Warn(logger).Log("failed to parse block id", "err", err)
+) (resp *metastorev1.AddBlockResponse, err error) {
+	if err = SanitizeMetadata(req.Block); err != nil {
+		_ = level.Warn(svc.logger).Log("invalid metadata", "block_id", req.Block.Id, "err", err)
 		return nil, err
 	}
 
@@ -56,12 +55,18 @@ func (svc *InsertionService) AddBlock(
 		}
 	}()
 
-	resp, err := svc.raftLog.ProposeAddBlock(req)
-	if err != nil {
-		_ = level.Error(logger).Log("msg", "failed to add block", "err", err)
+	if resp, err = svc.raftLog.ProposeAddBlock(req); err != nil {
+		_ = level.Error(svc.logger).Log("msg", "failed to add block", "block_id", req.Block.Id, "err", err)
+		return nil, err
 	}
 
-	return resp, err
+	return resp, nil
+}
+
+func SanitizeMetadata(md *metastorev1.BlockMeta) error {
+	// TODO(kolesnikovae): Implement and refactor to the block package.
+	_, err := ulid.Parse(md.Id)
+	return err
 }
 
 func statSamplesFromMeta(md *metastorev1.BlockMeta) iter.Iterator[adaptiveplacement.Sample] {

@@ -731,6 +731,13 @@
         "compactionLevel": {
           "type": "integer",
           "format": "int64"
+        },
+        "deletedBlocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Blocks to delete after compaction.\nThe full block path is used."
         }
       },
       "description": "One compaction job may result in multiple output blocks."
@@ -745,8 +752,12 @@
           "$ref": "#/definitions/v1CompactionStatus",
           "description": "Status update allows the planner to keep\ntrack of the job ownership and compaction\nprogress:\n- If the job status is other than IN_PROGRESS,\n  the ownership of the job is revoked.\n- FAILURE must only be sent if the failure is\n  persistent and the compaction can't be accomplished.\n- completed_job must be empty if the status is\n  other than SUCCESS, and vice-versa.\n- UNSPECIFIED must be sent if the worker rejects\n  or cancels the compaction job.\n\nPartial results/status is not allowed."
         },
-        "completedJob": {
-          "$ref": "#/definitions/v1CompletedJob"
+        "compactedBlocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1BlockMeta"
+          }
         },
         "raftLogIndex": {
           "type": "string",
@@ -761,6 +772,13 @@
         "tenantId": {
           "type": "string",
           "description": "Optional, empty for compaction level 0."
+        },
+        "deletedBlocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Blocks deleted from the storage."
         }
       }
     },
@@ -785,18 +803,6 @@
         "COMPACTION_STATUS_CANCELLED"
       ],
       "default": "COMPACTION_STATUS_UNSPECIFIED"
-    },
-    "v1CompletedJob": {
-      "type": "object",
-      "properties": {
-        "blocks": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1BlockMeta"
-          }
-        }
-      }
     },
     "v1Dataset": {
       "type": "object",
@@ -1539,6 +1545,12 @@
           "items": {
             "type": "object",
             "$ref": "#/definitions/v1CompactionJob"
+          }
+        },
+        "cancelledJobs": {
+          "type": "array",
+          "items": {
+            "type": "string"
           }
         }
       }

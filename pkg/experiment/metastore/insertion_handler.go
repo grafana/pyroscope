@@ -20,36 +20,25 @@ type Compactor interface {
 	CompactBlock(*bbolt.Tx, *raft.Log, *metastorev1.BlockMeta) error
 }
 
-type DeletionMarkers interface {
-	IsMarked(block string) bool
-}
-
 type AddBlockRequestHandler struct {
 	logger    log.Logger
-	markers   DeletionMarkers
 	index     InserterIndex
 	compactor Compactor
 }
 
 func NewAddBlockHandler(
 	logger log.Logger,
-	markers DeletionMarkers,
 	index InserterIndex,
 	compactor Compactor,
 ) *AddBlockRequestHandler {
 	return &AddBlockRequestHandler{
 		logger:    logger,
-		markers:   markers,
 		index:     index,
 		compactor: compactor,
 	}
 }
 
 func (m *AddBlockRequestHandler) Apply(tx *bbolt.Tx, cmd *raft.Log, req *metastorev1.AddBlockRequest) (*metastorev1.AddBlockResponse, error) {
-	if m.markers.IsMarked(req.Block.Id) {
-		_ = level.Warn(m.logger).Log("msg", "block already added and compacted", "block", req.Block.Id)
-		return &metastorev1.AddBlockResponse{}, nil
-	}
 	found, err := m.index.InsertBlock(tx, req.Block)
 	if err != nil {
 		_ = level.Error(m.logger).Log("msg", "failed to add block to index", "block", req.Block.Id, "err", err)
@@ -65,21 +54,3 @@ func (m *AddBlockRequestHandler) Apply(tx *bbolt.Tx, cmd *raft.Log, req *metasto
 	}
 	return &metastorev1.AddBlockResponse{}, nil
 }
-
-/*
-
-func (m *Metastore) AddRecoveredBlock(_ context.Context, req *metastorev1.AddBlockRequest) (*metastorev1.AddBlockResponse, error) {
-	l := log.With(m.logger, "shard", req.Block.Shard, "block_id", req.Block.Id, "ts", req.Block.MinTime)
-	_ = level.Info(l).Log("msg", "adding recovered block")
-	t1 := time.Now()
-	defer func() {
-		m.metrics.raftAddRecoveredBlockDuration.Observe(time.Since(t1).Seconds())
-	}()
-	_, resp, err := proposeCommand[*metastorev1.AddBlockRequest, *metastorev1.AddBlockResponse](m.raft, 0, req, m.config.Raft.ApplyTimeout)
-	if err != nil {
-		_ = level.Error(l).Log("msg", "failed to apply add recovered block", "err", err)
-	}
-	return resp, err
-}
-
-*/

@@ -14,10 +14,13 @@ message PollCompactionJobsRequest {
   repeated CompactionJobStatus job_status_updates = 1;
   // How many new jobs a worker can be assigned to.
   uint32 job_capacity = 2;
+  // How many blocks to delete a worker can be assigned to.
+  uint32 cleanup_capacity = 3;
 }
 
 message PollCompactionJobsResponse {
   repeated CompactionJob compaction_jobs = 1;
+  repeated string cancelled_jobs = 2;
 }
 
 // One compaction job may result in multiple output blocks.
@@ -35,6 +38,9 @@ message CompactionJob {
   // Optional, empty for compaction level 0.
   string tenant_id = 7;
   uint32 compaction_level = 8;
+  // Blocks to delete after compaction.
+  // The full block path is used.
+  repeated string deleted_blocks = 9;
 }
 
 message CompactionOptions {
@@ -65,13 +71,15 @@ message CompactionJobStatus {
   //
   // Partial results/status is not allowed.
   CompactionStatus status = 2;
-  CompletedJob completed_job = 3;
+  repeated metastore.v1.BlockMeta compacted_blocks = 3;
   // Fencing token.
   uint64 raft_log_index = 4;
   // Shard the blocks belong to.
   uint32 shard = 5;
   // Optional, empty for compaction level 0.
   string tenant_id = 6;
+  // Blocks deleted from the storage.
+  repeated string deleted_blocks = 7;
 }
 
 enum CompactionStatus {
@@ -80,8 +88,4 @@ enum CompactionStatus {
   COMPACTION_STATUS_SUCCESS = 2;
   COMPACTION_STATUS_FAILURE = 3;
   COMPACTION_STATUS_CANCELLED = 4;
-}
-
-message CompletedJob {
-  repeated metastore.v1.BlockMeta blocks = 1;
 }

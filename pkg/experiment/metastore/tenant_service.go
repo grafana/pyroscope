@@ -12,25 +12,28 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
 )
 
-type PartitionIndexIterator interface {
+// TODO(kolesnikovae): The service should not know
+//  about partitions and the index implementation.
+
+type TenantIndex interface {
 	ForEachPartition(ctx context.Context, f func(*index.PartitionMeta) error) error
 }
 
 type TenantService struct {
-	logger         log.Logger
-	partitionIndex PartitionIndexIterator
-	raftFollower   RaftFollower
+	logger   log.Logger
+	index    TenantIndex
+	follower RaftFollower
 }
 
 func NewTenantService(
 	logger log.Logger,
-	partitionIndex PartitionIndexIterator,
+	partitionIndex TenantIndex,
 	raftFollower RaftFollower,
 ) *TenantService {
 	return &TenantService{
-		logger:         logger,
-		partitionIndex: partitionIndex,
-		raftFollower:   raftFollower,
+		logger:   logger,
+		index:    partitionIndex,
+		follower: raftFollower,
 	}
 }
 
@@ -38,7 +41,7 @@ func (svc *TenantService) GetTenant(
 	ctx context.Context,
 	r *metastorev1.GetTenantRequest,
 ) (*metastorev1.GetTenantResponse, error) {
-	if err := svc.raftFollower.WaitLeaderCommitIndexAppliedLocally(ctx); err != nil {
+	if err := svc.follower.WaitLeaderCommitIndexAppliedLocally(ctx); err != nil {
 		level.Error(svc.logger).Log("msg", "failed to wait for leader commit index", "err", err)
 		return nil, err
 	}
@@ -52,7 +55,7 @@ func (svc *TenantService) getTenantStats(tenant string, ctx context.Context) (*m
 		OldestProfileTime: math.MaxInt64,
 		NewestProfileTime: math.MinInt64,
 	}
-	err := svc.partitionIndex.ForEachPartition(ctx, func(p *index.PartitionMeta) error {
+	err := svc.index.ForEachPartition(ctx, func(p *index.PartitionMeta) error {
 		if !p.HasTenant(tenant) {
 			return nil
 		}
