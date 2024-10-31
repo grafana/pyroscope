@@ -1,8 +1,12 @@
 package metastore
 
 import (
+	"strconv"
+
 	"github.com/prometheus/client_golang/prometheus"
 
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/compactionpb"
 	"github.com/grafana/pyroscope/pkg/util"
 )
 
@@ -66,4 +70,20 @@ func newCompactionMetrics(reg prometheus.Registerer) *compactionMetrics {
 		)
 	}
 	return m
+}
+
+func compactionMetricDimsBlock(md *metastorev1.BlockMeta) []string {
+	return []string{
+		strconv.Itoa(int(md.Shard)),
+		md.TenantId,
+		strconv.Itoa(int(md.CompactionLevel)),
+	}
+}
+
+func compactionMetricDimsJob(md *compactionpb.CompactionJob) []string {
+	return []string{
+		strconv.Itoa(int(md.Shard)),
+		md.TenantId,
+		strconv.Itoa(int(md.CompactionLevel)),
+	}
 }

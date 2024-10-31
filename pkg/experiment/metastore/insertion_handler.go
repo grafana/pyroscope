@@ -17,7 +17,7 @@ type InserterIndex interface {
 }
 
 type Compactor interface {
-	CompactBlock(*bbolt.Tx, *raft.Log, *metastorev1.BlockMeta) error
+	CompactBlock(tx *bbolt.Tx, cmd *raft.Log, md *metastorev1.BlockMeta) error
 }
 
 type AddBlockRequestHandler struct {

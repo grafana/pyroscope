@@ -33,6 +33,8 @@ message CompactionJob {
   // The number of failures when processing this job. Used for retries.
   uint32 failures = 9;
   string last_failure_reason = 10;
+  // Timestamp in nanoseconds from Unix epoch when the job was added.
+  int64 added_at = 11;
 }
 
 enum CompactionStatus {

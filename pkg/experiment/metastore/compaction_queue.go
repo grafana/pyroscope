@@ -57,7 +57,10 @@ func (c *jobQueueEntry) less(x *jobQueueEntry) bool {
 		// Jobs with earlier deadlines should be at the top.
 		return c.LeaseExpiresAt < x.LeaseExpiresAt
 	}
-
+	//  TODO: Do we actually need this? Should we pick newest or oldest job?
+	//	if c.AddedAt != x.AddedAt {
+	//		return c.AddedAt < x.AddedAt
+	//	}
 	return c.Name < x.Name
 }
 
@@ -138,6 +141,15 @@ func (q *jobQueue) enqueue(job *compactionpb.CompactionJob) bool {
 	q.jobs[job.Name] = j
 	heap.Push(&q.pq, j)
 	return true
+}
+
+func (q *jobQueue) release(name string) {
+	if job, exists := q.jobs[name]; exists {
+		job.Status = compactionpb.CompactionStatus_COMPACTION_STATUS_UNSPECIFIED
+		job.RaftLogIndex = 0
+		job.LeaseExpiresAt = 0
+		heap.Fix(&q.pq, job.index)
+	}
 }
 
 func (q *jobQueue) putJob(job *compactionpb.CompactionJob) {
