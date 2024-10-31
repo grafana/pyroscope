@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package compaction;
 
-message CompactionJob {
+message StoredCompactionJob {
   // Unique name of the job.
   string name = 1;
   // List of the input blocks.
@@ -43,11 +43,4 @@ enum CompactionStatus {
   COMPACTION_STATUS_SUCCESS = 2;
   COMPACTION_STATUS_FAILURE = 3;
   COMPACTION_STATUS_CANCELLED = 4;
-}
-
-message CompactionJobBlockQueue {
-  uint32 compaction_level = 1;
-  uint32 shard = 2;
-  string tenant = 3;
-  repeated string blocks = 4;
 }

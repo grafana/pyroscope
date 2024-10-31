@@ -18,6 +18,7 @@ type compactionMetrics struct {
 	completedJobs *prometheus.CounterVec
 	retriedJobs   *prometheus.CounterVec
 	discardedJobs *prometheus.CounterVec
+	invalidJobs   *prometheus.CounterVec
 }
 
 func newCompactionMetrics(reg prometheus.Registerer) *compactionMetrics {
@@ -57,6 +58,11 @@ func newCompactionMetrics(reg prometheus.Registerer) *compactionMetrics {
 			Name:      "metastore_compaction_discarded_jobs_count",
 			Help:      "The number of discarded compaction jobs",
 		}, []string{"shard", "tenant", "level"}),
+		invalidJobs: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "pyroscope",
+			Name:      "metastore_compaction_invalid_jobs_count",
+			Help:      "The number of invalid compaction jobs",
+		}, []string{"shard", "tenant", "level"}),
 	}
 	if reg != nil {
 		util.Register(reg,
@@ -67,6 +73,7 @@ func newCompactionMetrics(reg prometheus.Registerer) *compactionMetrics {
 			m.completedJobs,
 			m.retriedJobs,
 			m.discardedJobs,
+			m.invalidJobs,
 		)
 	}
 	return m
@@ -80,7 +87,7 @@ func compactionMetricDimsBlock(md *metastorev1.BlockMeta) []string {
 	}
 }
 
-func compactionMetricDimsJob(md *compactionpb.CompactionJob) []string {
+func compactionMetricDimsJob(md *compactionpb.StoredCompactionJob) []string {
 	return []string{
 		strconv.Itoa(int(md.Shard)),
 		md.TenantId,

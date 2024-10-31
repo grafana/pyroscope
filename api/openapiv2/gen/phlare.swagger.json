@@ -732,12 +732,12 @@
           "type": "integer",
           "format": "int64"
         },
-        "deletedBlocks": {
+        "tombstones": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "Blocks to delete after compaction.\nThe full block path is used."
+          "description": "Blocks deleted from the index but present\nin the storage. The full block path is used."
         }
       },
       "description": "One compaction job may result in multiple output blocks."

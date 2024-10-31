@@ -30,7 +30,11 @@ type PlannerIndex interface {
 	InserterIndex
 	FindBlock(shard uint32, tenant, block string) *metastorev1.BlockMeta
 	ReplaceBlocks(tx *bbolt.Tx, shard uint32, tenant string, new []*metastorev1.BlockMeta, old []string) error
+	GetTombstones(tx *bbolt.Tx, cmd *raft.Log, shard uint32, tenant string) ([]string, error)
+	DeleteTombstones(tx *bbolt.Tx, tombstones []string) error
 }
+
+// TODO: Implement state loader for the compaction planner.
 
 type CompactionPlanner struct {
 	logger   log.Logger
@@ -85,7 +89,7 @@ func NewCompactionPlanner() *CompactionPlanner {
 	}
 }
 
-func (c *CompactionPlanner) CompactBlock(tx *bbolt.Tx, cmd *raft.Log, block *metastorev1.BlockMeta) (err error) {
+func (c *CompactionPlanner) CompactBlock(tx *bbolt.Tx, cmd *raft.Log, block *metastorev1.BlockMeta) error {
 	if block.CompactionLevel >= c.strategy.maxCompactionLevel {
 		return nil
 	}
@@ -105,12 +109,10 @@ func (c *CompactionPlanner) CompactBlock(tx *bbolt.Tx, cmd *raft.Log, block *met
 		return nil
 	}
 
-	// TODO: Collect garbage and add it to the job.
-
 	blocks := make([]string, len(queue))
 	copy(blocks, queue)
 	name := fmt.Sprintf("%d-L%d-S%d", hash(blocks), block.CompactionLevel, block.Shard)
-	job := &compactionpb.CompactionJob{
+	job := &compactionpb.StoredCompactionJob{
 		Name:            name,
 		Blocks:          blocks,
 		Shard:           block.Shard,
@@ -125,43 +127,39 @@ func (c *CompactionPlanner) CompactBlock(tx *bbolt.Tx, cmd *raft.Log, block *met
 	}
 
 	c.metrics.addedJobs.WithLabelValues(compactionMetricDimsJob(job)...).Inc()
-	level.Debug(c.logger).Log(
-		"msg", "created compaction job",
-		"job", name,
-		"shard", block.Shard,
-		"tenant", block.TenantId,
-		"compaction_level", block.CompactionLevel)
-
-	if err = c.cleanBlockQueue(tx, key, block.CompactionLevel); err != nil {
-		return err
-	}
-
-	return nil
+	level.Debug(c.logger).Log("msg", "created compaction job", "job", name, "tenant", block.TenantId)
+	return c.cleanBlockQueue(tx, key, block.CompactionLevel)
 }
 
-func (c *CompactionPlanner) UpdateJobStatus(tx *bbolt.Tx, cmd *raft.Log, status *metastorev1.CompactionJobStatus) error {
+func (c *CompactionPlanner) UpdateJobStatus(tx *bbolt.Tx, cmd *raft.Log, s *metastorev1.CompactionJobStatus) error {
 	// TODO(kolesnikovae): If this is not a terminal status and the job is not
 	//  found or not owned, return an error, so the worker stops handling the job.
-	job := c.findJob(status.JobName)
+	job := c.findJob(s.JobName)
 	if job == nil {
-		level.Error(c.logger).Log("msg", "error processing update for compaction job, job not found", "job", status.JobName)
-		return nil
-	}
-	if !c.queue.isOwner(job.Name, status.RaftLogIndex) {
-		level.Warn(c.logger).Log("msg", "job is not assigned to the worker", "job", status.JobName, "raft_log_index", status.RaftLogIndex)
 		return nil
 	}
 
-	level.Debug(c.logger).Log("msg", "processing status update for compaction job", "job", status.JobName, "status", status.Status)
-	switch status.Status {
+	if !c.queue.isOwner(job.Name, s.RaftLogIndex) {
+		level.Warn(c.logger).Log("msg", "job is not assigned to the worker; ignored", "job", s.JobName, "raft_log_index", s.RaftLogIndex)
+		return nil
+	}
+
+	level.Debug(c.logger).Log("msg", "processing status update for compaction job", "job", s.JobName, "status", s.Status)
+	if len(s.DeletedBlocks) > 0 {
+		if err := c.index.DeleteTombstones(tx, s.DeletedBlocks); err != nil {
+			return err
+		}
+	}
+
+	switch s.Status {
 	case metastorev1.CompactionStatus_COMPACTION_STATUS_SUCCESS:
-		return c.handleStatusSuccess(tx, cmd, status, job)
+		return c.handleStatusSuccess(tx, cmd, s, job)
 	case metastorev1.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS:
-		return c.handleStatusInProgress(tx, cmd, status)
+		return c.handleStatusInProgress(tx, cmd, s)
 	case metastorev1.CompactionStatus_COMPACTION_STATUS_FAILURE:
-		return c.handleStatusFailure(tx, status, job)
+		return c.handleStatusFailure(tx, s, job)
 	default:
-		level.Warn(c.logger).Log("msg", "unknown compaction job status", "job", status.JobName, "status", status.Status)
+		level.Warn(c.logger).Log("msg", "unknown compaction job status", "job", s.JobName)
 	}
 
 	return nil
@@ -171,7 +169,7 @@ func (c *CompactionPlanner) handleStatusSuccess(
 	tx *bbolt.Tx,
 	cmd *raft.Log,
 	status *metastorev1.CompactionJobStatus,
-	job *compactionpb.CompactionJob,
+	job *compactionpb.StoredCompactionJob,
 ) error {
 	if err := c.index.ReplaceBlocks(tx, job.Shard, job.TenantId, status.CompactedBlocks, job.Blocks); err != nil {
 		return err
@@ -201,26 +199,12 @@ func (c *CompactionPlanner) handleStatusInProgress(
 func (c *CompactionPlanner) handleStatusFailure(
 	tx *bbolt.Tx,
 	status *metastorev1.CompactionJobStatus,
-	job *compactionpb.CompactionJob,
+	job *compactionpb.StoredCompactionJob,
 ) error {
 	job.Failures += 1
-	level.Warn(c.logger).Log(
-		"msg", "compaction job failed",
-		"job", job.Name,
-		"tenant", job.TenantId,
-		"shard", job.Shard,
-		"level", job.CompactionLevel,
-		"failures", job.Failures,
-	)
+	level.Warn(c.logger).Log("msg", "compaction job failed", "job", job.Name, "failures", job.Failures)
 	if int(job.Failures) >= c.config.JobMaxFailures {
-		level.Error(c.logger).Log(
-			"msg", "compaction job reached max failures",
-			"job", job.Name,
-			"tenant", job.TenantId,
-			"shard", job.Shard,
-			"level", job.CompactionLevel,
-			"failures", job.Failures,
-		)
+		level.Error(c.logger).Log("msg", "compaction job reached max failures", "job", job.Name)
 		c.queue.cancel(job.Name)
 		c.metrics.discardedJobs.WithLabelValues(compactionMetricDimsJob(job)...).Inc()
 	} else {
@@ -230,79 +214,59 @@ func (c *CompactionPlanner) handleStatusFailure(
 	return c.persistJob(tx, status.JobName)
 }
 
-func (c *CompactionPlanner) AssignJobs(tx *bbolt.Tx, cmd *raft.Log, now int64, max uint32) ([]*metastorev1.CompactionJob, error) {
-	return nil, nil
+func (c *CompactionPlanner) AssignJobs(tx *bbolt.Tx, cmd *raft.Log, max uint32) ([]*metastorev1.CompactionJob, error) {
+	jobs := make([]*metastorev1.CompactionJob, 0, max)
+	for len(jobs) < int(max) {
+		stored := c.queue.dequeue(cmd.AppendedAt.UnixNano(), cmd.Index)
+		if stored == nil {
+			// No more jobs to assign.
+			return nil, nil
+		}
+		job, err := c.convertJob(tx, stored)
+		if err != nil {
+			return nil, err
+		}
+		if err = c.persistJob(tx, job.Name); err != nil {
+			return nil, err
+		}
+		job.Tombstones, err = c.index.GetTombstones(tx, cmd, job.Shard, job.TenantId)
+		if err != nil {
+			return nil, err
+		}
+		level.Debug(c.logger).Log("msg", "job assigned", "job", job.Name, "raft_log_index", cmd.Index)
+		c.metrics.assignedJobs.WithLabelValues(compactionMetricDimsJob(stored)...).Inc()
+		jobs = append(jobs, job)
+	}
+	return jobs, nil
 }
 
-func (c *CompactionPlanner) findJobsToAssign(jobCapacity int, raftLogIndex uint64, now int64) []*compactionpb.CompactionJob {
-	jobsToAssign := make([]*compactionpb.CompactionJob, 0, jobCapacity)
-	jobCount, newJobs, inProgressJobs, completedJobs, failedJobs, cancelledJobs := c.queue.stats()
-	level.Debug(c.logger).Log(
-		"msg", "looking for jobs to assign",
-		"job_capacity", jobCapacity,
-		"raft_log_index", raftLogIndex,
-		"job_queue_size", jobCount,
-		"new_jobs_in_queue_count", len(newJobs),
-		"in_progress_jobs_in_queue_count", len(inProgressJobs),
-		"completed_jobs_in_queue_count", len(completedJobs),
-		"failed_jobs_in_queue_count", len(failedJobs),
-		"cancelled_jobs_in_queue_count", len(cancelledJobs),
-	)
-
-	var j *compactionpb.CompactionJob
-	for len(jobsToAssign) < jobCapacity {
-		j = c.queue.dequeue(now, raftLogIndex)
-		if j == nil {
-			break
+func (c *CompactionPlanner) convertJob(tx *bbolt.Tx, job *compactionpb.StoredCompactionJob) (*metastorev1.CompactionJob, error) {
+	blocks := make([]*metastorev1.BlockMeta, len(job.Blocks))
+	for _, id := range job.Blocks {
+		b := c.index.FindBlock(job.Shard, job.TenantId, id)
+		if b == nil {
+			level.Error(c.logger).Log("msg", "block not found; deleting the job", "job", job.Name, "block", id)
+			c.metrics.invalidJobs.WithLabelValues(compactionMetricDimsJob(job)...).Inc()
+			return nil, c.deleteJob(tx, job.Name)
 		}
-		level.Debug(c.logger).Log("msg", "assigning job to raftLogIndex", "job", j, "raft_log_index", raftLogIndex)
-		jobsToAssign = append(jobsToAssign, j)
+		blocks = append(blocks, b)
 	}
-
-	return jobsToAssign
-}
-
-func (c *CompactionPlanner) convertJobs(jobs []*compactionpb.CompactionJob) (convertedJobs []*metastorev1.CompactionJob, invalidJobs []*compactionpb.CompactionJob) {
-	convertedJobs = make([]*metastorev1.CompactionJob, 0, len(jobs))
-	invalidJobs = make([]*compactionpb.CompactionJob, 0, len(jobs))
-	for _, job := range jobs {
-		// populate block metadata (workers rely on it)
-		blocks := make([]*metastorev1.BlockMeta, 0, len(job.Blocks))
-		for _, bId := range job.Blocks {
-			b := c.index.FindBlock(job.Shard, job.TenantId, bId)
-			if b == nil {
-				level.Error(c.logger).Log(
-					"msg", "failed to populate compaction job details, block not found",
-					"block", bId,
-					"shard", job.Shard,
-					"job", job.Name)
-				continue
-			}
-			blocks = append(blocks, b)
-		}
-		if len(blocks) == 0 {
-			invalidJobs = append(invalidJobs, job)
-			level.Warn(c.logger).Log("msg", "skipping assigned compaction job since it has no valid blocks", "job", job.Name)
-			continue
-		}
-
-		convertedJobs = append(convertedJobs, &metastorev1.CompactionJob{
-			Name:   job.Name,
-			Blocks: blocks,
-			Status: &metastorev1.CompactionJobStatus{
-				JobName:      job.Name,
-				Status:       metastorev1.CompactionStatus(job.Status),
-				RaftLogIndex: job.RaftLogIndex,
-				Shard:        job.Shard,
-				TenantId:     job.TenantId,
-			},
-			CompactionLevel: job.CompactionLevel,
-			RaftLogIndex:    job.RaftLogIndex,
-			Shard:           job.Shard,
-			TenantId:        job.TenantId,
-		})
-	}
-	return convertedJobs, invalidJobs
+	return &metastorev1.CompactionJob{
+		Name:    job.Name,
+		Options: nil,
+		Blocks:  blocks,
+		Status: &metastorev1.CompactionJobStatus{
+			JobName:      job.Name,
+			Status:       metastorev1.CompactionStatus(job.Status),
+			RaftLogIndex: job.RaftLogIndex,
+			Shard:        job.Shard,
+			TenantId:     job.TenantId,
+		},
+		RaftLogIndex:    job.RaftLogIndex,
+		Shard:           job.Shard,
+		TenantId:        job.TenantId,
+		CompactionLevel: job.CompactionLevel,
+	}, nil
 }
 
 func hash(blocks []string) uint64 {
@@ -353,24 +317,33 @@ func (c *CompactionPlanner) getOrCreateBlockQueue(key tenantShard) *blockQueue {
 	return bq
 }
 
-func (c *CompactionPlanner) findJob(name string) *compactionpb.CompactionJob {
-	if e, exists := c.queue.jobs[name]; exists {
-		return e.CompactionJob
+func (c *CompactionPlanner) findJob(name string) *compactionpb.StoredCompactionJob {
+	e, ok := c.queue.jobs[name]
+	if !ok {
+		level.Error(c.logger).Log("msg", "compaction job not found", "job", name)
+		c.metrics.invalidJobs.WithLabelValues(compactionMetricDimsJob(e.StoredCompactionJob)...).Inc()
+		return nil
 	}
-	return nil
+	return e.StoredCompactionJob
 }
 
 func (c *CompactionPlanner) persistJob(tx *bbolt.Tx, name string) error {
-	if e, ok := c.queue.jobs[name]; ok {
-		return persistCompactionJob(tx, e.CompactionJob)
+	job := c.findJob(name)
+	if job != nil {
+		return persistCompactionJob(tx, job)
 	}
 	return nil
 }
 
 func (c *CompactionPlanner) deleteJob(tx *bbolt.Tx, name string) error {
-	if e, ok := c.queue.jobs[name]; ok {
-		return deleteCompactionJob(tx, e.CompactionJob)
+	job := c.findJob(name)
+	if job != nil {
+		return nil
 	}
+	if err := deleteCompactionJob(tx, job); err != nil {
+		return err
+	}
+	c.metrics.deletedBlocks.WithLabelValues(compactionMetricDimsJob(job)...).Inc()
 	return nil
 }
 
@@ -384,13 +357,13 @@ var (
 	compactionBlockQueueBucketNameBytes = []byte(compactionBlockQueueBucketName)
 )
 
-func persistCompactionJob(tx *bbolt.Tx, job *compactionpb.CompactionJob) error {
+func persistCompactionJob(tx *bbolt.Tx, job *compactionpb.StoredCompactionJob) error {
 	bucket := tenantShardBucketName(job.Shard, job.TenantId)
 	data, _ := job.MarshalVT()
 	return compactionJobBucket(tx, bucket).Put([]byte(job.Name), data)
 }
 
-func deleteCompactionJob(tx *bbolt.Tx, job *compactionpb.CompactionJob) error {
+func deleteCompactionJob(tx *bbolt.Tx, job *compactionpb.StoredCompactionJob) error {
 	bucket := tenantShardBucketName(job.Shard, job.TenantId)
 	return compactionJobBucket(tx, bucket).Delete([]byte(job.Name))
 }
@@ -432,7 +405,7 @@ func compactionBlockQueueKey(index uint32, block string) []byte {
 	return k
 }
 
-// TODO: refactor  ----------------------------------------------------------------------------------------------------
+// TODO: refactor  -----------------------------------------------------------------------------------------------------
 
 func tenantShardBucketName(shard uint32, tenant string) (bucket []byte) {
 	bucket = make([]byte, 4+len(tenant))

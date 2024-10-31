@@ -95,10 +95,10 @@ func (m *CompactionJob) CloneVT() *CompactionJob {
 		}
 		r.Blocks = tmpContainer
 	}
-	if rhs := m.DeletedBlocks; rhs != nil {
+	if rhs := m.Tombstones; rhs != nil {
 		tmpContainer := make([]string, len(rhs))
 		copy(tmpContainer, rhs)
-		r.DeletedBlocks = tmpContainer
+		r.Tombstones = tmpContainer
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -286,11 +286,11 @@ func (this *CompactionJob) EqualVT(that *CompactionJob) bool {
 	if this.CompactionLevel != that.CompactionLevel {
 		return false
 	}
-	if len(this.DeletedBlocks) != len(that.DeletedBlocks) {
+	if len(this.Tombstones) != len(that.Tombstones) {
 		return false
 	}
-	for i, vx := range this.DeletedBlocks {
-		vy := that.DeletedBlocks[i]
+	for i, vx := range this.Tombstones {
+		vy := that.Tombstones[i]
 		if vx != vy {
 			return false
 		}
@@ -614,11 +614,11 @@ func (m *CompactionJob) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if len(m.DeletedBlocks) > 0 {
-		for iNdEx := len(m.DeletedBlocks) - 1; iNdEx >= 0; iNdEx-- {
-			i -= len(m.DeletedBlocks[iNdEx])
-			copy(dAtA[i:], m.DeletedBlocks[iNdEx])
-			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.DeletedBlocks[iNdEx])))
+	if len(m.Tombstones) > 0 {
+		for iNdEx := len(m.Tombstones) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.Tombstones[iNdEx])
+			copy(dAtA[i:], m.Tombstones[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Tombstones[iNdEx])))
 			i--
 			dAtA[i] = 0x4a
 		}
@@ -889,8 +889,8 @@ func (m *CompactionJob) SizeVT() (n int) {
 	if m.CompactionLevel != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.CompactionLevel))
 	}
-	if len(m.DeletedBlocks) > 0 {
-		for _, s := range m.DeletedBlocks {
+	if len(m.Tombstones) > 0 {
+		for _, s := range m.Tombstones {
 			l = len(s)
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
@@ -1449,7 +1449,7 @@ func (m *CompactionJob) UnmarshalVT(dAtA []byte) error {
 			}
 		case 9:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field DeletedBlocks", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Tombstones", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -1477,7 +1477,7 @@ func (m *CompactionJob) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.DeletedBlocks = append(m.DeletedBlocks, string(dAtA[iNdEx:postIndex]))
+			m.Tombstones = append(m.Tombstones, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

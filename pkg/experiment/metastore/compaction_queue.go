@@ -7,6 +7,8 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compactionpb"
 )
 
+// TODO: Implement prometheus collector for breakdown by status and level as gauges.
+
 // A priority queue for compaction jobs. Jobs are prioritized by the compaction
 // level, and the deadline time.
 //
@@ -41,7 +43,7 @@ type jobQueueEntry struct {
 	// The index of the job in the heap.
 	index int
 	// The original proto message.
-	*compactionpb.CompactionJob
+	*compactionpb.StoredCompactionJob
 }
 
 func (c *jobQueueEntry) less(x *jobQueueEntry) bool {
@@ -64,7 +66,7 @@ func (c *jobQueueEntry) less(x *jobQueueEntry) bool {
 	return c.Name < x.Name
 }
 
-func (q *jobQueue) dequeue(now int64, raftLogIndex uint64) *compactionpb.CompactionJob {
+func (q *jobQueue) dequeue(now int64, raftLogIndex uint64) *compactionpb.StoredCompactionJob {
 	for q.pq.Len() > 0 {
 		job := q.pq[0]
 		if job.Status == compactionpb.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS &&
@@ -83,7 +85,7 @@ func (q *jobQueue) dequeue(now int64, raftLogIndex uint64) *compactionpb.Compact
 		// If job.status is "in progress", the ownership of the job is being revoked.
 		job.RaftLogIndex = raftLogIndex
 		heap.Push(&q.pq, job)
-		return job.CompactionJob
+		return job.StoredCompactionJob
 	}
 	return nil
 }
@@ -133,11 +135,11 @@ func (q *jobQueue) evict(name string, raftLogIndex uint64) bool {
 	return true
 }
 
-func (q *jobQueue) enqueue(job *compactionpb.CompactionJob) bool {
+func (q *jobQueue) enqueue(job *compactionpb.StoredCompactionJob) bool {
 	if _, exists := q.jobs[job.Name]; exists {
 		return false
 	}
-	j := &jobQueueEntry{CompactionJob: job}
+	j := &jobQueueEntry{StoredCompactionJob: job}
 	q.jobs[job.Name] = j
 	heap.Push(&q.pq, j)
 	return true
@@ -152,8 +154,8 @@ func (q *jobQueue) release(name string) {
 	}
 }
 
-func (q *jobQueue) putJob(job *compactionpb.CompactionJob) {
-	q.jobs[job.Name] = &jobQueueEntry{CompactionJob: job}
+func (q *jobQueue) putJob(job *compactionpb.StoredCompactionJob) {
+	q.jobs[job.Name] = &jobQueueEntry{StoredCompactionJob: job}
 }
 
 func (q *jobQueue) rebuild() {

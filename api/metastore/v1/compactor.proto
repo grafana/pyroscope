@@ -38,9 +38,9 @@ message CompactionJob {
   // Optional, empty for compaction level 0.
   string tenant_id = 7;
   uint32 compaction_level = 8;
-  // Blocks to delete after compaction.
-  // The full block path is used.
-  repeated string deleted_blocks = 9;
+  // Blocks deleted from the index but present
+  // in the storage. The full block path is used.
+  repeated string tombstones = 9;
 }
 
 message CompactionOptions {
