@@ -68,7 +68,7 @@ For more documentation on how to configure Pyroscope server, see [our server doc
 The app UI and server are both installed and running automatically -- just start sending data!
 
 ### Grafana OSS
-You can run the Explore profiles UI in Grafana by installing the plugin from the [Grafana Plugin Directory](https://grafana.com/grafana/plugins/grafana-pyroscope-app/) 
+You can run the Explore profiles UI in Grafana by installing the plugin from the [Grafana Plugin Directory](https://grafana.com/grafana/plugins/grafana-pyroscope-app/)
 
 For more information, check out the [Explore Profiles README](https://github.com/grafana/explore-profiles)
 
@@ -137,7 +137,7 @@ Our documentation contains the most recent list of [supported languages] and als
 Let us know what other integrations you want to see in [our issues](https://github.com/grafana/pyroscope/issues?q=is%3Aissue+is%3Aopen+label%3Anew-profilers) or in [our slack](https://slack.grafana.com).
 
 [supported languages]: https://grafana.com/docs/pyroscope/latest/configure-client/
-[profile-types-languages]: https://grafana.com/docs/pyroscope/latest/view-and-analyze-profile-data/profiling-types/#available-profiling-types
+[profile-types-languages]: https://grafana.com/docs/pyroscope/latest/configure-client/profile-types/
 
 ## Credits
 

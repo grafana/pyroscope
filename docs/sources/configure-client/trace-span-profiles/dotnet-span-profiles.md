@@ -25,7 +25,7 @@ This integration lets you link traces with the profiling data and find resource 
 * Because of how sampling profilers work, spans shorter than the sample interval may not be captured.
 {{< /admonition >}}
 
-For a more detailed list of supported profile types, refer to [Profile types]().
+For a more detailed list of supported profile types, refer to [Profile types](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION/configure-client/profile-types/>).
 
 ## Before you begin
 

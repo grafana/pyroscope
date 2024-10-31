@@ -5,7 +5,7 @@ description: "Learn about using Grafana Alloy for continuous profiling Java proc
 weight: 20
 ---
 
-# Set up Java profilng using Grafana Alloy
+# Set up Java profiling using Grafana Alloy
 
 Grafana Alloy supports Java profiling.
 The collector configuration file is composed of components that are used to collect,
