@@ -17,20 +17,18 @@ keywords:
 
 Profiling is an essential tool for understanding and optimizing application performance. In Pyroscope, various profiling types allow for an in-depth analysis of different aspects of your application. This guide explores these types and explain their impact on your program.
 
-In Pyroscope, profiling types refer to different dimensions of application performance analysis, focusing on specific aspects like CPU usage, memory allocation, or thread synchronization.
+Profiling types refer to different dimensions of application performance analysis, focusing on specific aspects like CPU usage, memory allocation, or thread synchronization.
 
 Pyroscope supports these profile types:
 
-* CPU
-* Memory (allocation objects, allocation space)
+* CPU (CPU time, wall time)
+* Memory (allocation objects, allocation space, heap)
 * In use objects and in-use space
 * Goroutines
 * Mutex count and duration
 * Block count and duration
 * Lock count and duration
 * Exceptions
-* Wall
-* Heap
 
 Refer to [Understand profiling types and their uses in Pyroscope](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/introduction/profiling-types/) for more details about the profile types.
 
@@ -94,13 +92,12 @@ This table lists the available profile types based on the language SDK.
 
 Pyroscope can integrate with distributed tracing systems supporting the OpenTelemetry standard. This integration lets you link traces with the profiling data and find resource usage for specific lines of code for your trace spans.
 
-This table lists the available profile types for span profiles.
 
 Only CPU profile type is supported for span profiles.
 
 The following languages are supported:
 
--  [Go](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/trace-span-profiles/go-span-profiles/)
+- [Go](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/trace-span-profiles/go-span-profiles/)
 - [Java](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/trace-span-profiles/java-span-profiles/)
 - [Ruby](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/trace-span-profiles/ruby-span-profiles/)
 - [.NET](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/trace-span-profiles/dotnet-span-profiles/)
