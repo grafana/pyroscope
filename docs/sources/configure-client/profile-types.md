@@ -86,7 +86,6 @@ This table lists the available profile types based on the language SDK.
 
 Pyroscope can integrate with distributed tracing systems supporting the OpenTelemetry standard. This integration lets you link traces with the profiling data and find resource usage for specific lines of code for your trace spans.
 
-
 Only CPU profile type is supported for span profiles.
 
 The following languages are supported:
