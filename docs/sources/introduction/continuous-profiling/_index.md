@@ -2,7 +2,7 @@
 title: When to use continuous profiling
 menuTitle: When to use continuous profiling
 description: Discover the benefits of continuous profiling and its role in modern application performance analysis.
-weight: 20
+weight: 200
 keywords:
   - pyroscope
   - phlare

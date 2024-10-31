@@ -1,6 +1,6 @@
 ---
-title: "Profiling with eBPF with Grafana Alloy"
-menuTitle: "Profiling with eBPF"
+title: "Set up profiling with eBPF with Grafana Alloy"
+menuTitle: "Set up profiling with eBPF"
 description: "Learn about using eBPF for continuous profiling for performance optimization."
 weight: 20
 aliases:
@@ -8,17 +8,17 @@ aliases:
   - /docs/pyroscope/next/configure-client/language-sdks/ebpf
 ---
 
-# Profiling with eBPF with Grafana Alloy
+# Set up profiling with eBPF with Grafana Alloy
+
+eBPF is an advanced technology embedded into the Linux kernel. It stands for enhanced [Berkeley Packet Filter](https://en.wikipedia.org/wiki/EBPF) and revolutionizes the capability to run sandboxed code safely within the kernel space. This technology serves multiple use cases, such as networking, security, and performance monitoring without the need to alter kernel code or load additional modules.
 
 <img src="/media/docs/pyroscope/ebpf_logo_color_on_white.png" width="100px;" alt="eBPF"/>
 
 {{< youtube id="UX5aeL5KeZs" >}}
 
-eBPF is an advanced technology embedded into the Linux kernel. It stands for enhanced [Berkeley Packet Filter](https://en.wikipedia.org/wiki/EBPF) and revolutionizes the capability to run sandboxed code safely within the kernel space. This technology serves multiple use cases, such as networking, security, and performance monitoring without the need to alter kernel code or load additional modules.
-
 ## Benefits and tradeoffs of using eBPF for continuous profiling
 
-When it comes to application profiling, eBPF shines due to its high efficiency and minimal performance overhead.
+When it comes to application profiling, eBPF offers high efficiency and minimal performance overhead.
 eBPF enables the dynamic insertion of powerful monitoring code into live production systems.
 By leveraging eBPF, developers can gain insights into application behavior, track resource usage, and detect bottlenecks in a way that traditional profiling tools cannot match.
 eBPF's low overhead and fine-grained data collection make it an ideal choice for continuous, real-time profiling in performance-sensitive environments.

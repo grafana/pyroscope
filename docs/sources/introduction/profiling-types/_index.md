@@ -2,11 +2,9 @@
 title: Understand profiling types and their uses in Pyroscope
 menuTitle: Understand profiling types
 description: Learn about the different profiling types available in Pyroscope and how to effectively use them in your application performance analysis.
-weight: 30
-aliases:
-  - ../ingest-and-analyze-profile-data/profiling-types/
+weight: 300
 keywords:
-  - pyroscope
+  - profiles
   - profiling types
   - application performance
   - flame graphs
@@ -20,34 +18,24 @@ Profiling is an essential tool for understanding and optimizing application perf
 
 In Pyroscope, profiling types refer to different dimensions of application performance analysis, focusing on specific aspects like CPU usage, memory allocation, or thread synchronization.
 
-For information on auto-instrumentation and supported language SDKs, refer to [Configure the client]({{< relref "../../configure-client" >}}).
+Pyroscope supports these profile types:
 
-### Available profiling types
+* CPU
+* Memory (allocation objects, allocation space)
+* In use objects and in-use space
+* Goroutines
+* Mutex count and duration
+* Block count and duration
+* Lock count and duration
+* Exceptions
+* Wall
+* Heap
 
-Various languages support different profiling types.
-Pyroscope supports the following profiling types:
+Refer to the Profile types tables for information on supported profile types based on instrumentation method.
 
-| Profile Type       | Go    | Java  | .NET       | Ruby  | Python | Rust  | Node.js | eBPF (Go) | eBPF (Python)|
-|--------------------|-------|-------|------------|-------|--------|-------|---------|-----------|--------------|
-| CPU                | Yes   | Yes   | Yes        | Yes   | Yes    | Yes   | Yes     | Yes       | Yes          |
-| Alloc Objects      | Yes   | Yes   | Yes        |       |        |       |         |           |              |
-| Alloc Space        | Yes   | Yes   | Yes        |       |        |       |         |           |              |
-| Inuse Objects      | Yes   |       | Yes (7.0+) |       |        |       |         |           |              |
-| Inuse Space        | Yes   |       | Yes (7.0+) |       |        |       |         |           |              |
-| Goroutines         | Yes   |       |            |       |        |       |         |           |              |
-| Mutex Count        | Yes   |       | Yes        |       |        |       |         |           |              |
-| Mutex Duration     | Yes   |       | Yes        |       |        |       |         |           |              |
-| Block Count        | Yes   |       |            |       |        |       |         |           |              |
-| Block Duration     | Yes   |       |            |       |        |       |         |           |              |
-| Lock Count         |       | Yes   | Yes        |       |        |       |         |           |              |
-| Lock Duration      |       | Yes   | Yes        |       |        |       |         |           |              |
-| Exceptions         |       |       | Yes        |       |        |       |         |           |              |
-| Wall               |       |       | Yes        |       |        |       |         |           |              |
-| Heap               |       |       |            |       |        |       | Yes     |           |              |
+For information on auto-instrumentation and supported language SDKs, refer to [Configure the client](https://grafana.com/docs/pyroscope/latest/configure-client/).
 
 ## CPU profiling
-
-<!-- We can link to each of these from within the Pyroscope UI in the little (i) icon. -->
 
 CPU profiling measures the amount of CPU time consumed by different parts of your application code.
 High CPU usage can indicate inefficient code, leading to poor performance and increased operational costs.
