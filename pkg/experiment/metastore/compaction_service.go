@@ -37,5 +37,7 @@ func (m *CompactionService) PollCompactionJobs(
 	if err != nil {
 		_ = level.Error(m.logger).Log("msg", "failed to poll compaction jobs", "err", err)
 	}
+	// TODO(kolesnikovae): We could wrap the response with additional information such
+	//  as metrics, stats, etc. and handle it here to avoid mess with double-counting.
 	return resp, err
 }

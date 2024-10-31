@@ -13,7 +13,21 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compactionpb"
 )
 
-type CompactorIndex interface {
+// TODO(kolesnikovae):
+//  1. Now we have fatty handler and very thin planner. I believe, it should be
+//     the opposite. An interface like the one below may make things cleaner.
+//  2. We should not rewrite the whole block queue every time.
+//  3. We don't have to create compaction jobs immediately when the block added.
+//     It could be done in the AssignCompactionJobs implementation.
+//  4. Handler should not access the index directly, but through the planner.
+//  5. Deletion marking is a concern of the index implementation.
+
+type CompactionPlanner interface {
+	UpdateJobStatus(tx *bbolt.Tx, now int64, status metastorev1.CompactionJobStatus) error
+	AssignCompactionJobs(tx *bbolt.Tx, token uint64, now int64, max int) []*metastorev1.CompactionJob
+}
+
+type PlannerIndex interface {
 	InserterIndex
 	FindBlock(shard uint32, tenant, block string) *metastorev1.BlockMeta
 	ReplaceBlocks(tx *bbolt.Tx, shard uint32, tenant string, new []*metastorev1.BlockMeta, old []string) error
@@ -21,7 +35,7 @@ type CompactorIndex interface {
 
 type PollCompactionJobsRequestHandler struct {
 	logger log.Logger
-	index  CompactorIndex
+	index  PlannerIndex
 	*compactionPlanner
 }
 
