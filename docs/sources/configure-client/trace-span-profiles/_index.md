@@ -19,8 +19,7 @@ Key benefits and features:
 - Efficiency and cost savings: Quickly identify and address performance issues, reducing troubleshooting time and operational costs
 
 {{< admonition type="note">}}
-Span profiling is not effective on short spans (<20ms) because there are only a couple sampled profiles.
-This results in a statistically inaccurate profile.
+Span profiling is only effective on spans longer than 20ms to ensure statistical accuracy. 
 {{< /admonition >}}
 
 ## Get started
