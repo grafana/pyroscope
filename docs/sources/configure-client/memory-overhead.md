@@ -2,7 +2,7 @@
 title: Pyroscope memory overhead
 menuTitle: Memory overhead
 description: Learn about memory overhead for the Pyroscope client.
-weight: 200
+weight: 600
 ---
 
 # Pyroscope memory overhead

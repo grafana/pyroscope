@@ -1,11 +1,11 @@
 ---
-title: "Linking tracing and profiling with Span Profiles"
-menuTitle: "Linking traces and profiles"
+title: "Link tracing and profiling with Span Profiles"
+menuTitle: "Link traces and profiles"
 description: "Learn how to configure the client to Link tracing and profiling with span profiles."
-weight: 35
+weight: 400
 ---
 
-# Linking tracing and profiling with Span Profiles
+# Link tracing and profiling with Span Profiles
 
 Span Profiles are a powerful feature that further enhances the value of continuous profiling.
 Span Profiles offer a novel approach to profiling by providing detailed insights into specific execution scopes of applications, moving beyond the traditional system-wide analysis to offer a more dynamic, focused analysis of individual requests or trace spans.
@@ -18,17 +18,21 @@ Key benefits and features:
 - Seamless integration: Smoothly transition from a high-level trace overview to detailed profiling of specific trace spans within Grafana’s trace view
 - Efficiency and cost savings: Quickly identify and address performance issues, reducing troubleshooting time and operational costs
 
+{{< admonition type="note">}}
+Span profiling is only effective on spans longer than 20ms to ensure statistical accuracy. 
+{{< /admonition >}}
+
 ## Get started
 
 Select an option from the list below:
 
 - Configure Pyroscope: Begin sending profiling data to unlock the full potential of Span Profiles
 - Client-side packages: Easily link traces and profiles using available packages for Go, Java, Ruby, .NET, and Python
-  - Go: [Span profiles with Traces to profiles (Go)]({{< relref "./go-span-profiles" >}})
-  - Java: [Span profiles with Traces to profiles (Java)]({{< relref "./java-span-profiles" >}})
-  - Ruby: [Span profiles with Traces to profiles (Ruby)]({{< relref "./ruby-span-profiles" >}})
-  - .NET: [Span profiles with Traces to profiles (.NET)]({{< relref "./dotnet-span-profiles" >}})
-  - Python: [Span profiles with Traces to profiles (Python)]({{< relref "./python-span-profiles" >}})
-- Grafana Tempo: Visualize and analyze Span Profiles within the Grafana using a Tempo data source.
+  - Go: [Span profiles with Traces to profiles (Go)](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/trace-span-profiles/go-span-profiles/)
+  - Java: [Span profiles with Traces to profiles (Java)](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/trace-span-profiles/java-span-profiles/)
+  - Ruby: [Span profiles with Traces to profiles (Ruby)](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/trace-span-profiles/ruby-span-profiles/)
+  - .NET: [Span profiles with Traces to profiles (.NET)](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/trace-span-profiles/dotnet-span-profiles/)
+  - Python: [Span profiles with Traces to profiles (Python)](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/trace-span-profiles/python-span-profiles/)
+- [Configure the Tempo data source in Grafana or Grafana Cloud](/docs/grafana-cloud/connect-externally-hosted/data-sources/tempo/configure-tempo-data-source/) to discover linked traces and profiles.
 
-To learn more, check out our product announcement blog: [Introducing Span Profiles](/blog/2024/02/06/combining-tracing-and-profiling-for-enhanced-observability-introducing-span-profiles/).
+To learn more, check out the product announcement blog: [Introducing Span Profiles](/blog/2024/02/06/combining-tracing-and-profiling-for-enhanced-observability-introducing-span-profiles/).

@@ -2,7 +2,7 @@
 title: "AWS Lambda profiling extension"
 menuTitle: "AWS Lambda profiling extension"
 description: "Profiling AWS Lambda functions with Pyroscope"
-weight: 100
+weight: 500
 ---
 
 # AWS Lambda profiling extension

@@ -2,7 +2,7 @@
 title: "Pyroscope language SDKs"
 menuTitle: "Language SDKs"
 description: "Send data from your application using language SDKs."
-weight: 20
+weight: 300
 aliases:
   - /docs/phlare/latest/configure-client/language-sdks/
 ---
@@ -59,7 +59,7 @@ The following languages SDKs provide support for sending profiles from your appl
 </table>
 
 {{< admonition type="note" >}}
-Refer to [Available profiling types]({{< relref "../../view-and-analyze-profile-data/profiling-types#available-profiling-types" >}}) for a list of profile types supported by each language.
+Refer to [Available profiling types](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/profile-types/) for a list of profile types supported by each language.
 {{< /admonition >}}
 
 If you're interested in integrating other ecosystems, reach out to us on [GitHub](https://github.com/grafana/pyroscope/).

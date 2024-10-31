@@ -1,11 +1,11 @@
 ---
-title: "Profiling Java using Grafana Alloy"
-menuTitle: "Profiling Java using Alloy"
-description: "Learn about using Grafana Alloy for continuous profiling Java processes for performance optimization."
+title: "Set up Java profiling using Grafana Alloy"
+menuTitle: "Set up Java profiling"
+description: "Learn about using Grafana Alloy for continuous Java profiling processes for performance optimization."
 weight: 20
 ---
 
-# Profiling Java using Grafana Alloy
+# Set up Java profiling using Grafana Alloy
 
 Grafana Alloy supports Java profiling.
 The collector configuration file is composed of components that are used to collect,
