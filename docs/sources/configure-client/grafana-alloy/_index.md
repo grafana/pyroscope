@@ -2,7 +2,7 @@
 title: "Grafana Alloy"
 menuTitle: "Grafana Alloy"
 description: "Send data from your application using Grafana Alloy."
-weight: 10
+weight: 200
 aliases:
   - /docs/phlare/latest/configure-client/grafana-agent/
   - ./grafana-agent # /docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/grafana-agent/
@@ -24,7 +24,7 @@ New installations should use Alloy.
 The instructions in this section explain how to use Alloy.
 
 {{< admonition type="note" >}}
-Refer to [Available profiling types]({{< relref "../../view-and-analyze-profile-data/profiling-types#available-profiling-types" >}}) for a list of supported profile types.
+Refer to [Available profiling types](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/profile-types/) for a list of supported profile types.
 {{< /admonition >}}
 
 ## Legacy collector, Grafana Agent
