@@ -26,7 +26,20 @@ message GetCompactionRequest {}
 
 message GetCompactionResponse {
   // A list of all compaction jobs
-  repeated CompactionJob compaction_jobs = 1;
+  repeated AdminCompactionJob compaction_jobs = 1;
+}
+
+message AdminCompactionJob {
+  string name = 1;
+  repeated string blocks = 2;
+  uint32 compaction_level = 3;
+  uint64 raft_log_index = 4;
+  uint32 shard = 5;
+  string tenant_id = 6;
+  CompactionStatus status = 7;
+  int64 lease_expires_at = 8;
+  uint32 failures = 9;
+  string last_failure_reason = 10;
 }
 
 // One compaction job may result in multiple output blocks.

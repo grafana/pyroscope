@@ -119,7 +119,28 @@ func newCompactionMetrics(reg prometheus.Registerer) *compactionMetrics {
 }
 
 func (m *Metastore) GetCompactionJobs(_ context.Context, req *compactorv1.GetCompactionRequest) (*compactorv1.GetCompactionResponse, error) {
-	return nil, nil
+	m.state.compactionJobQueue.mu.Lock()
+	defer m.state.compactionJobQueue.mu.Unlock()
+	jobs := m.state.compactionJobQueue.pq
+	resp := &compactorv1.GetCompactionResponse{
+		CompactionJobs: make([]*compactorv1.AdminCompactionJob, 0, len(jobs)),
+	}
+
+	for _, job := range jobs {
+		resp.CompactionJobs = append(resp.CompactionJobs, &compactorv1.AdminCompactionJob{
+			Name:              job.Name,
+			Blocks:            job.Blocks,
+			CompactionLevel:   job.CompactionLevel,
+			RaftLogIndex:      job.RaftLogIndex,
+			Shard:             job.Shard,
+			TenantId:          job.TenantId,
+			Status:            compactorv1.CompactionStatus(job.Status),
+			LeaseExpiresAt:    job.LeaseExpiresAt,
+			Failures:          job.Failures,
+			LastFailureReason: job.LastFailureReason,
+		})
+	}
+	return resp, nil
 }
 
 // compactBlock is the entry point for adding blocks to the compaction flow.

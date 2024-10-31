@@ -191,6 +191,13 @@ func (m *metastoreState) pollCompactionJobs(request *compactorv1.PollCompactionJ
 			m.compactionJobQueue.evict(j.Name, math.MaxInt64)
 			stateUpdate.deletedJobs[key] = append(stateUpdate.deletedJobs[key], j.Name)
 		}
+		level.Debug(m.logger).Log(
+			"msg", "job assignment completed",
+			"capacity", request.JobCapacity,
+			"raft_log_index", raftIndex,
+			"raft_appended_at", raftAppendedAtNanos,
+			"assigned_jobs", len(stateUpdate.updatedJobs),
+			"invalid_jobs", len(invalidJobs))
 	}
 
 	err = m.writeToDb(stateUpdate)

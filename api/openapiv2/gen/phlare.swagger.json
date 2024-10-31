@@ -478,6 +478,49 @@
     "v1AddBlockResponse": {
       "type": "object"
     },
+    "v1AdminCompactionJob": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "blocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "compactionLevel": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "raftLogIndex": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "shard": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/v1CompactionStatus"
+        },
+        "leaseExpiresAt": {
+          "type": "string",
+          "format": "int64"
+        },
+        "failures": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "lastFailureReason": {
+          "type": "string"
+        }
+      }
+    },
     "v1AnalyzeQueryResponse": {
       "type": "object",
       "properties": {
@@ -1030,7 +1073,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/v1CompactionJob"
+            "$ref": "#/definitions/v1AdminCompactionJob"
           },
           "title": "A list of all compaction jobs"
         }
