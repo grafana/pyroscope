@@ -18,6 +18,11 @@ Key benefits and features:
 - Seamless integration: Smoothly transition from a high-level trace overview to detailed profiling of specific trace spans within Grafana’s trace view
 - Efficiency and cost savings: Quickly identify and address performance issues, reducing troubleshooting time and operational costs
 
+{{< admonition type="note">}}
+Span profiling is not effective on short spans (<20ms) because there are only a couple sampled profiles.
+This results in a statistically inaccurate profile.
+{{< /admonition >}}
+
 ## Get started
 
 Select an option from the list below:

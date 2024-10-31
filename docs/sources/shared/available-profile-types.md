@@ -1,10 +1,6 @@
 ---
 headless: true
 description: Shared file for available profile types.
-labels:
-  products:
-    - enterprise
-    - oss
 ---
 
 [//]: # 'This file documents the available profile types in Pyroscope.'

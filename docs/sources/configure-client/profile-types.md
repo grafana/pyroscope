@@ -38,7 +38,7 @@ For more information, refer to [Configure the client to send profiles with Grafa
 
 This table lists the available profile types based on auto instrumentation using Alloy.
 
-| Profile type   | Go (pull) | Java | eBPF (Go) |
+| Profile type   | Go (pull) | Java | eBPF      |
 | -------------- | --------- | ---- | --------- |
 | CPU            | Yes       | Yes  | Yes       |
 | Alloc Objects  | Yes       | Yes  |           |
