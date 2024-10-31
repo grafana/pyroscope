@@ -1,7 +1,7 @@
 ---
 title: "Set up Java profiling using Grafana Alloy"
 menuTitle: "Set up Java profiling"
-description: "Learn about using Grafana Alloy for continuous profiling Java processes for performance optimization."
+description: "Learn about using Grafana Alloy for continuous Java profiling processes for performance optimization."
 weight: 20
 ---
 
