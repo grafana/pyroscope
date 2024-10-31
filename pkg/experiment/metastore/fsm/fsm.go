@@ -12,8 +12,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
-
-	"github.com/grafana/pyroscope/pkg/util"
 )
 
 type RaftHandler[Req, Resp proto.Message] interface {
@@ -130,20 +128,21 @@ func (fsm *FSM) applyCommand(cmd *raft.Log) any {
 	if err != nil {
 		panic(fmt.Sprint("failed to create transaction:", err))
 	}
-	defer func() {
-		if err = tx.Commit(); err != nil {
-			panic(fmt.Sprint("failed to commit transaction:", err))
-		}
-	}()
 
-	var resp Response
-	defer func() {
-		if r := recover(); r != nil {
-			resp.Err = util.PanicError(r)
-		}
-	}()
-	resp.Data, resp.Err = handle(tx, cmd, e.Data)
-	return resp
+	data, err := handle(tx, cmd, e.Data)
+	if err != nil {
+		_ = tx.Rollback()
+		// TODO(kolesnikovae): This has to be a hard failure as we assume that
+		//  the in-memory state might have not been rolled back properly.
+		//  Handle more gracefully: handoff leadership, close the database, etc.
+		panic(fmt.Sprint("failed to apply command:", err))
+	}
+
+	if err = tx.Commit(); err != nil {
+		panic(fmt.Sprint("failed to commit transaction:", err))
+	}
+
+	return Response{Data: data, Err: err}
 }
 
 func (fsm *FSM) Restore(snapshot io.ReadCloser) error {

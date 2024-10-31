@@ -3,7 +3,6 @@ package metastore
 import (
 	"container/heap"
 	"slices"
-	"sync"
 
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compactionpb"
 )
@@ -18,7 +17,6 @@ import (
 // https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html
 
 type jobQueue struct {
-	mu   sync.Mutex
 	jobs map[string]*jobQueueEntry
 	pq   priorityQueue
 
@@ -64,8 +62,6 @@ func (c *jobQueueEntry) less(x *jobQueueEntry) bool {
 }
 
 func (q *jobQueue) dequeue(now int64, raftLogIndex uint64) *compactionpb.CompactionJob {
-	q.mu.Lock()
-	defer q.mu.Unlock()
 	for q.pq.Len() > 0 {
 		job := q.pq[0]
 		if job.Status == compactionpb.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS &&
@@ -90,8 +86,6 @@ func (q *jobQueue) dequeue(now int64, raftLogIndex uint64) *compactionpb.Compact
 }
 
 func (q *jobQueue) update(name string, now int64, raftLogIndex uint64) bool {
-	q.mu.Lock()
-	defer q.mu.Unlock()
 	if job, exists := q.jobs[name]; exists {
 		if job.RaftLogIndex > raftLogIndex {
 			return false
@@ -106,8 +100,6 @@ func (q *jobQueue) update(name string, now int64, raftLogIndex uint64) bool {
 }
 
 func (q *jobQueue) cancel(name string) {
-	q.mu.Lock()
-	defer q.mu.Unlock()
 	if job, exists := q.jobs[name]; exists {
 		job.Status = compactionpb.CompactionStatus_COMPACTION_STATUS_CANCELLED
 		heap.Fix(&q.pq, job.index)
@@ -119,8 +111,6 @@ func (q *jobQueue) getNewDeadline(now int64) int64 {
 }
 
 func (q *jobQueue) isOwner(name string, raftLogIndex uint64) bool {
-	q.mu.Lock()
-	defer q.mu.Unlock()
 	if job, exists := q.jobs[name]; exists {
 		if job.RaftLogIndex > raftLogIndex {
 			return false
@@ -130,8 +120,6 @@ func (q *jobQueue) isOwner(name string, raftLogIndex uint64) bool {
 }
 
 func (q *jobQueue) evict(name string, raftLogIndex uint64) bool {
-	q.mu.Lock()
-	defer q.mu.Unlock()
 	if job, exists := q.jobs[name]; exists {
 		if job.RaftLogIndex > raftLogIndex {
 			return false
@@ -143,8 +131,6 @@ func (q *jobQueue) evict(name string, raftLogIndex uint64) bool {
 }
 
 func (q *jobQueue) enqueue(job *compactionpb.CompactionJob) bool {
-	q.mu.Lock()
-	defer q.mu.Unlock()
 	if _, exists := q.jobs[job.Name]; exists {
 		return false
 	}
@@ -167,9 +153,6 @@ func (q *jobQueue) rebuild() {
 }
 
 func (q *jobQueue) stats() (int, []string, []string, []string, []string, []string) {
-	q.mu.Lock()
-	defer q.mu.Unlock()
-
 	newJobs := make([]string, 0)
 	inProgressJobs := make([]string, 0)
 	completedJobs := make([]string, 0)

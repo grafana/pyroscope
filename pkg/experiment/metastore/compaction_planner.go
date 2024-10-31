@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/cespare/xxhash/v2"
@@ -62,17 +61,15 @@ type tenantShard struct {
 }
 
 type compactionPlanner struct {
-	logger                   log.Logger
-	compactionMutex          sync.Mutex
-	compactionJobBlockQueues map[tenantShard]*compactionJobBlockQueue
-	compactionJobQueue       *jobQueue
-	compactionMetrics        *compactionMetrics
-	compactionConfig         *CompactionConfig
+	logger  log.Logger
+	config  *CompactionConfig
+	metrics *compactionMetrics
+	blocks  map[tenantShard]*blockQueue
+	queue   *jobQueue
 }
 
-type compactionJobBlockQueue struct {
-	mu            sync.Mutex
-	blocksByLevel map[uint32][]string
+type blockQueue struct {
+	levels map[uint32][]string
 }
 
 // CompactBlock is the entry point for adding blocks to the compaction flow.
@@ -89,25 +86,25 @@ func (m *compactionPlanner) CompactBlock(tx *bbolt.Tx, raftLog *raft.Log, block 
 		if err := persistCompactionJob(tx, block.Shard, block.TenantId, job); err != nil {
 			return err
 		}
-		if err := persistCompactionJobBlockQueue(tx, block.Shard, block.TenantId, block.CompactionLevel, nil); err != nil {
+		if err := persistBlockQueue(tx, block.Shard, block.TenantId, block.CompactionLevel, nil); err != nil {
 			return err
 		}
 		m.addCompactionJob(job)
-		m.compactionMetrics.addedJobs.WithLabelValues(
+		m.metrics.addedJobs.WithLabelValues(
 			fmt.Sprint(job.Shard), job.TenantId, fmt.Sprint(job.CompactionLevel)).Inc()
 	} else {
 		key := tenantShard{
 			tenant: block.TenantId,
 			shard:  block.Shard,
 		}
-		queue := m.getOrCreateCompactionBlockQueue(key).blocksByLevel[block.CompactionLevel]
+		queue := m.getOrCreateBlockQueue(key).levels[block.CompactionLevel]
 		queue = append(queue, block.Id)
-		if err := persistCompactionJobBlockQueue(tx, block.Shard, block.TenantId, block.CompactionLevel, queue); err != nil {
+		if err := persistBlockQueue(tx, block.Shard, block.TenantId, block.CompactionLevel, queue); err != nil {
 			return err
 		}
 		m.addBlockToCompactionJobQueue(block)
 	}
-	m.compactionMetrics.addedBlocks.WithLabelValues(
+	m.metrics.addedBlocks.WithLabelValues(
 		fmt.Sprint(block.Shard), block.TenantId, fmt.Sprint(block.CompactionLevel)).Inc()
 	return nil
 }
@@ -117,16 +114,14 @@ func (m *compactionPlanner) tryCreateJob(block *metastorev1.BlockMeta, raftLogIn
 		tenant: block.TenantId,
 		shard:  block.Shard,
 	}
-	blockQueue := m.getOrCreateCompactionBlockQueue(key)
-	blockQueue.mu.Lock()
-	defer blockQueue.mu.Unlock()
 
+	bq := m.getOrCreateBlockQueue(key)
 	if block.CompactionLevel >= globalCompactionStrategy.maxCompactionLevel {
 		level.Info(m.logger).Log("msg", "skipping block at max compaction level", "block", block.Id, "compaction_level", block.CompactionLevel)
 		return nil
 	}
 
-	queuedBlocks := append(blockQueue.blocksByLevel[block.CompactionLevel], block.Id)
+	queuedBlocks := append(bq.levels[block.CompactionLevel], block.Id)
 
 	level.Debug(m.logger).Log(
 		"msg", "adding block for compaction",
@@ -142,13 +137,13 @@ func (m *compactionPlanner) tryCreateJob(block *metastorev1.BlockMeta, raftLogIn
 
 	var job *compactionpb.CompactionJob
 	if strategy.shouldCreateJob(queuedBlocks) {
-		blockIds := make([]string, 0, len(queuedBlocks))
+		blocks := make([]string, 0, len(queuedBlocks))
 		for _, b := range queuedBlocks {
-			blockIds = append(blockIds, b)
+			blocks = append(blocks, b)
 		}
 		job = &compactionpb.CompactionJob{
-			Name:            fmt.Sprintf("L%d-S%d-%d", block.CompactionLevel, block.Shard, hash(queuedBlocks)),
-			Blocks:          blockIds,
+			Name:            fmt.Sprintf("%d-L%d-S%d", hash(queuedBlocks), block.CompactionLevel, block.Shard),
+			Blocks:          blocks,
 			Status:          compactionpb.CompactionStatus_COMPACTION_STATUS_UNSPECIFIED,
 			Shard:           block.Shard,
 			TenantId:        block.TenantId,
@@ -193,20 +188,17 @@ func (m *compactionPlanner) addCompactionJob(job *compactionpb.CompactionJob) {
 		"shard", job.Shard,
 		"compaction_level", job.CompactionLevel,
 	)
-	if ok := m.compactionJobQueue.enqueue(job); !ok {
+	if ok := m.queue.enqueue(job); !ok {
 		level.Warn(m.logger).Log("msg", "a compaction job with this name already exists", "job", job.Name)
 		return
 	}
-
 	// reset the pre-queue for this level
 	key := tenantShard{
 		tenant: job.TenantId,
 		shard:  job.Shard,
 	}
-	blockQueue := m.getOrCreateCompactionBlockQueue(key)
-	blockQueue.mu.Lock()
-	defer blockQueue.mu.Unlock()
-	blockQueue.blocksByLevel[job.CompactionLevel] = blockQueue.blocksByLevel[job.CompactionLevel][:0]
+	bq := m.getOrCreateBlockQueue(key)
+	bq.levels[job.CompactionLevel] = bq.levels[job.CompactionLevel][:0]
 }
 
 func (m *compactionPlanner) addBlockToCompactionJobQueue(block *metastorev1.BlockMeta) {
@@ -214,37 +206,27 @@ func (m *compactionPlanner) addBlockToCompactionJobQueue(block *metastorev1.Bloc
 		tenant: block.TenantId,
 		shard:  block.Shard,
 	}
-	blockQueue := m.getOrCreateCompactionBlockQueue(key)
-	blockQueue.mu.Lock()
-	defer blockQueue.mu.Unlock()
-
+	bq := m.getOrCreateBlockQueue(key)
 	level.Debug(m.logger).Log(
 		"msg", "adding block to compaction job block queue",
 		"block", block.Id,
 		"level", block.CompactionLevel,
 		"shard", block.Shard,
 		"tenant", block.TenantId)
-	blockQueue.blocksByLevel[block.CompactionLevel] = append(blockQueue.blocksByLevel[block.CompactionLevel], block.Id)
+	bq.levels[block.CompactionLevel] = append(bq.levels[block.CompactionLevel], block.Id)
 }
 
-func (m *compactionPlanner) getOrCreateCompactionBlockQueue(key tenantShard) *compactionJobBlockQueue {
-	m.compactionMutex.Lock()
-	defer m.compactionMutex.Unlock()
-
-	if blockQueue, ok := m.compactionJobBlockQueues[key]; ok {
-		return blockQueue
+func (m *compactionPlanner) getOrCreateBlockQueue(key tenantShard) *blockQueue {
+	if bq, ok := m.blocks[key]; ok {
+		return bq
 	}
-	plan := &compactionJobBlockQueue{
-		blocksByLevel: make(map[uint32][]string),
-	}
-	m.compactionJobBlockQueues[key] = plan
-	return plan
+	bq := &blockQueue{levels: make(map[uint32][]string)}
+	m.blocks[key] = bq
+	return bq
 }
 
 func (m *compactionPlanner) findJob(name string) *compactionpb.CompactionJob {
-	m.compactionJobQueue.mu.Lock()
-	defer m.compactionJobQueue.mu.Unlock()
-	if jobEntry, exists := m.compactionJobQueue.jobs[name]; exists {
+	if jobEntry, exists := m.queue.jobs[name]; exists {
 		return jobEntry.CompactionJob
 	}
 	return nil
@@ -258,14 +240,13 @@ const (
 var compactionJobBucketNameBytes = []byte(compactionJobBucketName)
 
 func persistCompactionJob(tx *bbolt.Tx, shard uint32, tenant string, job *compactionpb.CompactionJob) error {
-	jobBucketName, jobKey := tenantShardBucketAndKey(shard, tenant, job.Name)
-	bucket := compactionJobBucket(tx, jobBucketName)
+	bucket, key := tenantShardBucketAndKey(shard, tenant, job.Name)
 	data, _ := job.MarshalVT()
-	return bucket.Put(jobKey, data)
+	return compactionJobBucket(tx, bucket).Put(key, data)
 }
 
-func persistCompactionJobBlockQueue(tx *bbolt.Tx, shard uint32, tenant string, compactionLevel uint32, queue []string) error {
-	blockQueue := &compactionpb.CompactionJobBlockQueue{
+func persistBlockQueue(tx *bbolt.Tx, shard uint32, tenant string, compactionLevel uint32, queue []string) error {
+	bq := &compactionpb.CompactionJobBlockQueue{
 		CompactionLevel: compactionLevel,
 		Shard:           shard,
 		Tenant:          tenant,
@@ -273,7 +254,7 @@ func persistCompactionJobBlockQueue(tx *bbolt.Tx, shard uint32, tenant string, c
 	}
 	bucket, _ := tenantShardBucketAndKey(shard, tenant, "")
 	key := []byte(fmt.Sprintf("%s-%d", compactionBucketJobBlockQueuePrefix, compactionLevel))
-	value, _ := blockQueue.MarshalVT()
+	value, _ := bq.MarshalVT()
 	return compactionJobBucket(tx, bucket).Put(key, value)
 }
 
