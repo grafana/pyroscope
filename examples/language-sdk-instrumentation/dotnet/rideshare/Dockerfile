@@ -17,7 +17,7 @@ RUN sed -i -E 's|<TargetFramework>.*</TargetFramework>|<TargetFramework>net'$SDK
 RUN dotnet publish -o . --framework net$SDK_VERSION --runtime linux-x64 --no-self-contained
 
 # This fetches the SDK
-FROM --platform=linux/amd64 pyroscope/pyroscope-dotnet:0.8.20-glibc AS sdk
+FROM --platform=linux/amd64 pyroscope/pyroscope-dotnet:0.9.0-glibc AS sdk
 
 # Runtime only image of the targetplatfrom, so the platform the image will be running on.
 FROM --platform=linux/amd64 mcr.microsoft.com/dotnet/aspnet:$SDK_VERSION
