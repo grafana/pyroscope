@@ -52,7 +52,7 @@ func (b *Client) Invoke(ctx context.Context, req *queryv1.InvokeRequest) (*query
 }
 
 const grpcServiceConfig = `{
-    "loadBalancingPolicy":"round_robin",
+    "loadBalancingPolicy":"random",
     "methodConfig": [{
         "name": [{"service": ""}],
         "waitForReady": true,
