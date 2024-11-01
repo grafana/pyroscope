@@ -39,7 +39,7 @@ go get github.com/grafana/pyroscope-go
 If you'd prefer to use Pull mode you can do so using [Grafana Alloy](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/grafana-alloy/).
 {{% /admonition %}}
 
-Then add the following code to your application:
+Add the following code to your application:
 
 ```go
 package main
@@ -110,7 +110,7 @@ To enable mutex profiling, you need to add the following code to your applicatio
 runtime.SetMutexProfileFraction(rate)
 ```
 
-`rate` parameter controls the fraction of mutex contention events that are reported in the mutex profile. On average 1/rate events are reported.
+The `rate` parameter controls the fraction of mutex contention events that are reported in the mutex profile. On average, 1/rate events are reported.
 
 ### Block profiling
 
@@ -127,9 +127,19 @@ To enable block profiling, you need to add the following code to your applicatio
 runtime.SetBlockProfileRate(rate)
 ```
 
-`rate` parameter controls the fraction of goroutine blocking events that are reported in the blocking profile. The profiler aims to sample an average of one blocking event per rate nanoseconds spent blocked.
+The `rate` parameter controls the fraction of goroutine blocking events that are reported in the blocking profile.
+The profiler aims to sample an average of one blocking event per rate nanoseconds spent blocked.
 
 ## Send data to Pyroscope OSS or Grafana Cloud Profiles
+
+To configure the Golang SDK to send data to Pyroscope, replace the `<URL>` placeholder with the appropriate server URL.
+This could be the Grafana Cloud URL or your own custom Pyroscope server URL.
+
+If you need to send data to Grafana Cloud, you'll have to configure HTTP Basic authentication.
+Replace `<User>` with your Grafana Cloud stack user and `<Password>` with your Grafana Cloud API key.
+
+If your Pyroscope server has multi-tenancy enabled, you'll need to configure a tenant ID.
+Replace `<TenantID>` with your Pyroscope tenant ID.
 
 ```go
 pyroscope.Start(pyroscope.Config{
@@ -150,11 +160,24 @@ pyroscope.Start(pyroscope.Config{
 })
 ```
 
-To configure the Golang SDK to send data to Pyroscope, replace the `<URL>` placeholder with the appropriate server URL. This could be the Grafana Cloud URL or your own custom Pyroscope server URL.
+### Option for handling increased memory usage
 
-If you need to send data to Grafana Cloud, you'll have to configure HTTP Basic authentication. Replace `<User>` with your Grafana Cloud stack user and `<Password>` with your Grafana Cloud API key.
+Pyroscope may require additional when tracking a lot of objects. For example, a Go service that indexes large amounts of data requires more memory.
+This tracking can lead to higher CPU usage and potential CPU throttling.
 
-If your Pyroscope server has multi-tenancy enabled, you'll need to configure a tenant ID. Replace `<TenantID>` with your Pyroscope tenant ID.
+You can use `DisableGCRuns` in your Go configuration to disable automatic runtimes.
+If this flag is enabled, there is less GC running and therefore less CPU resources spent.
+However, the heap profile may be less precies.
+
+Add `DisableGCRuns: true` to the pyroscope.Start(pyroscope.Config) block.
+
+```go
+pyroscope.Start(pyroscope.Config{
+  ApplicationName:   "example.golang.app",
+  ServerAddress:     "<URL>",
+  // Disable automatic runtime.GC runs between getting the heap profiles.
+		DisableGCRuns:   true,
+```
 
 ## Golang profiling examples
 
