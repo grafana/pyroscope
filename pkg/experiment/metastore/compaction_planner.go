@@ -16,6 +16,11 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compactionpb"
 )
 
+var (
+	_ Compactor           = (*CompactionPlanner)(nil)
+	_ CompactionScheduler = (*CompactionPlanner)(nil)
+)
+
 type CompactionConfig struct {
 	JobLeaseDuration time.Duration `yaml:"job_lease_duration"`
 	JobMaxFailures   int           `yaml:"job_max_failures"`
@@ -30,8 +35,6 @@ type PlannerIndex interface {
 	InserterIndex
 	FindBlock(shard uint32, tenant, block string) *metastorev1.BlockMeta
 	ReplaceBlocks(tx *bbolt.Tx, shard uint32, tenant string, new []*metastorev1.BlockMeta, old []string) error
-	GetTombstones(tx *bbolt.Tx, cmd *raft.Log, shard uint32, tenant string) ([]string, error)
-	DeleteTombstones(tx *bbolt.Tx, tombstones []string) error
 }
 
 // TODO: Implement state loader for the compaction planner.
@@ -99,11 +102,12 @@ func (c *CompactionPlanner) CompactBlock(tx *bbolt.Tx, cmd *raft.Log, block *met
 		shard:  block.Shard,
 	}
 
+	// Put the block into the block queue and check if we need
+	// to create a compaction job from the queued blocks.
 	queue, err := c.enqueueBlock(tx, key, block)
 	if err != nil {
 		return err
 	}
-
 	c.metrics.addedBlocks.WithLabelValues(compactionMetricDimsBlock(block)...).Inc()
 	if !c.getStrategyForLevel(block.CompactionLevel).shouldCreateJob(queue) {
 		return nil
@@ -132,25 +136,17 @@ func (c *CompactionPlanner) CompactBlock(tx *bbolt.Tx, cmd *raft.Log, block *met
 }
 
 func (c *CompactionPlanner) UpdateJobStatus(tx *bbolt.Tx, cmd *raft.Log, s *metastorev1.CompactionJobStatus) error {
-	// TODO(kolesnikovae): If this is not a terminal status and the job is not
-	//  found or not owned, return an error, so the worker stops handling the job.
 	job := c.findJob(s.JobName)
 	if job == nil {
-		return nil
+		return ErrJobCanceled
 	}
 
 	if !c.queue.isOwner(job.Name, s.RaftLogIndex) {
-		level.Warn(c.logger).Log("msg", "job is not assigned to the worker; ignored", "job", s.JobName, "raft_log_index", s.RaftLogIndex)
-		return nil
+		level.Warn(c.logger).Log("msg", "job is not assigned to the worker; canceling", "job", s.JobName, "raft_log_index", s.RaftLogIndex)
+		return ErrJobCanceled
 	}
 
 	level.Debug(c.logger).Log("msg", "processing status update for compaction job", "job", s.JobName, "status", s.Status)
-	if len(s.DeletedBlocks) > 0 {
-		if err := c.index.DeleteTombstones(tx, s.DeletedBlocks); err != nil {
-			return err
-		}
-	}
-
 	switch s.Status {
 	case metastorev1.CompactionStatus_COMPACTION_STATUS_SUCCESS:
 		return c.handleStatusSuccess(tx, cmd, s, job)
@@ -160,9 +156,8 @@ func (c *CompactionPlanner) UpdateJobStatus(tx *bbolt.Tx, cmd *raft.Log, s *meta
 		return c.handleStatusFailure(tx, s, job)
 	default:
 		level.Warn(c.logger).Log("msg", "unknown compaction job status", "job", s.JobName)
+		return ErrJobCanceled
 	}
-
-	return nil
 }
 
 func (c *CompactionPlanner) handleStatusSuccess(
@@ -214,30 +209,22 @@ func (c *CompactionPlanner) handleStatusFailure(
 	return c.persistJob(tx, status.JobName)
 }
 
-func (c *CompactionPlanner) AssignJobs(tx *bbolt.Tx, cmd *raft.Log, max uint32) ([]*metastorev1.CompactionJob, error) {
-	jobs := make([]*metastorev1.CompactionJob, 0, max)
-	for len(jobs) < int(max) {
-		stored := c.queue.dequeue(cmd.AppendedAt.UnixNano(), cmd.Index)
-		if stored == nil {
-			// No more jobs to assign.
-			return nil, nil
-		}
-		job, err := c.convertJob(tx, stored)
-		if err != nil {
-			return nil, err
-		}
-		if err = c.persistJob(tx, job.Name); err != nil {
-			return nil, err
-		}
-		job.Tombstones, err = c.index.GetTombstones(tx, cmd, job.Shard, job.TenantId)
-		if err != nil {
-			return nil, err
-		}
-		level.Debug(c.logger).Log("msg", "job assigned", "job", job.Name, "raft_log_index", cmd.Index)
-		c.metrics.assignedJobs.WithLabelValues(compactionMetricDimsJob(stored)...).Inc()
-		jobs = append(jobs, job)
+func (c *CompactionPlanner) AssignJob(tx *bbolt.Tx, cmd *raft.Log) (*metastorev1.CompactionJob, error) {
+	stored := c.queue.dequeue(cmd.AppendedAt.UnixNano(), cmd.Index)
+	if stored == nil {
+		// No more jobs to assign.
+		return nil, nil
 	}
-	return jobs, nil
+	if err := c.persistJob(tx, stored.Name); err != nil {
+		return nil, err
+	}
+	job, err := c.convertJob(tx, stored)
+	if err != nil {
+		return nil, err
+	}
+	level.Debug(c.logger).Log("msg", "job assigned", "job", job.Name, "raft_log_index", cmd.Index)
+	c.metrics.assignedJobs.WithLabelValues(compactionMetricDimsJob(stored)...).Inc()
+	return job, nil
 }
 
 func (c *CompactionPlanner) convertJob(tx *bbolt.Tx, job *compactionpb.StoredCompactionJob) (*metastorev1.CompactionJob, error) {
@@ -289,6 +276,15 @@ func (s compactionLevelStrategy) shouldCreateJob(blocks []string) bool {
 	return len(blocks) >= s.maxBlocks
 }
 
+func (c *CompactionPlanner) getOrCreateBlockQueue(key tenantShard) *blockQueue {
+	if bq, ok := c.blocks[key]; ok {
+		return bq
+	}
+	bq := &blockQueue{levels: make(map[uint32][]string)}
+	c.blocks[key] = bq
+	return bq
+}
+
 func (c *CompactionPlanner) enqueueBlock(tx *bbolt.Tx, ts tenantShard, block *metastorev1.BlockMeta) ([]string, error) {
 	bq := c.getOrCreateBlockQueue(ts)
 	lvl := block.CompactionLevel
@@ -306,15 +302,6 @@ func (c *CompactionPlanner) cleanBlockQueue(tx *bbolt.Tx, ts tenantShard, level 
 	bq := c.getOrCreateBlockQueue(ts)
 	bq.levels[level] = bq.levels[level][:0]
 	return deleteCompactionBlockQueue(tx, ts, level)
-}
-
-func (c *CompactionPlanner) getOrCreateBlockQueue(key tenantShard) *blockQueue {
-	if bq, ok := c.blocks[key]; ok {
-		return bq
-	}
-	bq := &blockQueue{levels: make(map[uint32][]string)}
-	c.blocks[key] = bq
-	return bq
 }
 
 func (c *CompactionPlanner) findJob(name string) *compactionpb.StoredCompactionJob {

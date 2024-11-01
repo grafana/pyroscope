@@ -14,7 +14,8 @@ message PollCompactionJobsRequest {
   repeated CompactionJobStatus job_status_updates = 1;
   // How many new jobs a worker can be assigned to.
   uint32 job_capacity = 2;
-  // How many blocks to delete a worker can be assigned to.
+  // Max number of block tombstones a worker can clean up
+  // in a single compaction job.
   uint32 cleanup_capacity = 3;
 }
 

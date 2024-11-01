@@ -84,7 +84,8 @@ type PollCompactionJobsRequest struct {
 	JobStatusUpdates []*CompactionJobStatus `protobuf:"bytes,1,rep,name=job_status_updates,json=jobStatusUpdates,proto3" json:"job_status_updates,omitempty"`
 	// How many new jobs a worker can be assigned to.
 	JobCapacity uint32 `protobuf:"varint,2,opt,name=job_capacity,json=jobCapacity,proto3" json:"job_capacity,omitempty"`
-	// How many blocks to delete a worker can be assigned to.
+	// Max number of block tombstones a worker can clean up
+	// in a single compaction job.
 	CleanupCapacity uint32 `protobuf:"varint,3,opt,name=cleanup_capacity,json=cleanupCapacity,proto3" json:"cleanup_capacity,omitempty"`
 }
 
