@@ -2,7 +2,6 @@ package metastore
 
 import (
 	"container/heap"
-	"slices"
 	"sync"
 
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compactionpb"
@@ -47,17 +46,13 @@ type jobQueueEntry struct {
 }
 
 func (c *jobQueueEntry) less(x *jobQueueEntry) bool {
-	if c.Status != x.Status {
-		// Pick jobs in the "initial" (unspecified) state first.
-		return c.Status < x.Status
+	if c.LeaseExpiresAt != x.LeaseExpiresAt {
+		// Jobs with earlier deadlines should be at the top.
+		return c.LeaseExpiresAt < x.LeaseExpiresAt
 	}
 	if c.CompactionLevel != x.CompactionLevel {
 		// Compact lower level jobs first.
 		return c.CompactionLevel < x.CompactionLevel
-	}
-	if c.LeaseExpiresAt != x.LeaseExpiresAt {
-		// Jobs with earlier deadlines should be at the top.
-		return c.LeaseExpiresAt < x.LeaseExpiresAt
 	}
 
 	return c.Name < x.Name
@@ -66,7 +61,7 @@ func (c *jobQueueEntry) less(x *jobQueueEntry) bool {
 func (q *jobQueue) dequeue(now int64, raftLogIndex uint64) *compactionpb.CompactionJob {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	for q.pq.Len() > 0 {
+	if q.pq.Len() > 0 {
 		job := q.pq[0]
 		if job.Status == compactionpb.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS &&
 			now <= job.LeaseExpiresAt {
@@ -152,18 +147,6 @@ func (q *jobQueue) enqueue(job *compactionpb.CompactionJob) bool {
 	q.jobs[job.Name] = j
 	heap.Push(&q.pq, j)
 	return true
-}
-
-func (q *jobQueue) putJob(job *compactionpb.CompactionJob) {
-	q.jobs[job.Name] = &jobQueueEntry{CompactionJob: job}
-}
-
-func (q *jobQueue) rebuild() {
-	q.pq = slices.Grow(q.pq[0:], len(q.jobs))
-	for _, job := range q.jobs {
-		q.pq = append(q.pq, job)
-	}
-	heap.Init(&q.pq)
 }
 
 func (q *jobQueue) stats() (int, []string, []string, []string, []string, []string) {

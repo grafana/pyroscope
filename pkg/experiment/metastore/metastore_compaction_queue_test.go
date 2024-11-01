@@ -1,11 +1,16 @@
 package metastore
 
 import (
+	"math"
+	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/encoding/protojson"
 
+	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compactionpb"
 )
 
@@ -62,6 +67,40 @@ func Test_compactionJobQueue(t *testing.T) {
 
 	// No jobs left.
 	require.Nil(t, q.dequeue(now, 14))
+}
+
+func Test_compactionJobQueue_from_snapshot(t *testing.T) {
+	data, err := os.ReadFile("testdata/compaction_queue_snapshot.json")
+	require.NoError(t, err)
+	var jobs compactorv1.GetCompactionResponse
+	err = protojson.Unmarshal(data, &jobs)
+	require.NoError(t, err)
+
+	lease := 15 * time.Second.Nanoseconds() // Job lease duration.
+	q := newJobQueue(lease)
+
+	for _, j := range jobs.CompactionJobs {
+		e := q.enqueue(&compactionpb.CompactionJob{
+			Name:              j.Name,
+			Blocks:            j.Blocks,
+			CompactionLevel:   j.CompactionLevel,
+			RaftLogIndex:      j.RaftLogIndex,
+			Shard:             j.Shard,
+			TenantId:          j.TenantId,
+			Status:            compactionpb.CompactionStatus(j.Status),
+			LeaseExpiresAt:    j.LeaseExpiresAt,
+			Failures:          j.Failures,
+			LastFailureReason: j.LastFailureReason,
+		})
+		require.True(t, e)
+	}
+
+	for i := 0; i < q.pq.Len(); i++ {
+		j := q.dequeue(time.Now().UnixNano(), math.MaxInt64)
+		require.NotNilf(t, j, "nil element at %d", i)
+	}
+	j := q.dequeue(time.Now().UnixNano(), math.MaxInt64)
+	require.Nil(t, j)
 }
 
 func assertJob(t *testing.T, j *compactionpb.CompactionJob, name string, commitIndex uint64) {
