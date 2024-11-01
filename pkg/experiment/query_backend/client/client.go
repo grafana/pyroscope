@@ -52,15 +52,15 @@ func (b *Client) Invoke(ctx context.Context, req *queryv1.InvokeRequest) (*query
 }
 
 const grpcServiceConfig = `{
-    "loadBalancingPolicy":"random",
+    "loadBalancingPolicy":"least_request",
     "methodConfig": [{
         "name": [{"service": ""}],
         "waitForReady": true,
         "retryPolicy": {
-            "MaxAttempts": 500,
-            "InitialBackoff": ".01s",
-            "MaxBackoff": ".5s",
-            "BackoffMultiplier": 1.0,
+            "MaxAttempts": 10,
+            "InitialBackoff": ".5s",
+            "MaxBackoff": "2s",
+            "BackoffMultiplier": 1.1,
             "RetryableStatusCodes": [
               "UNAVAILABLE",
               "RESOURCE_EXHAUSTED"
