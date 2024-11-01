@@ -73,15 +73,15 @@ func updateDotnet() {
 	last := tags[len(tags)-1]
 	fmt.Println(last)
 
-	reDockerGlibc := regexp.MustCompile("COPY --from=pyroscope/pyroscope-dotnet:\\d+\\.\\d+\\.\\d+-glibc")
-	replDockerGlibc := fmt.Sprintf("COPY --from=pyroscope/pyroscope-dotnet:%s-glibc", last.version())
+	reDockerGlibc := regexp.MustCompile("pyroscope/pyroscope-dotnet:\\d+\\.\\d+\\.\\d+-glibc")
+	replDockerGlibc := fmt.Sprintf("pyroscope/pyroscope-dotnet:%s-glibc", last.version())
 	replaceInplace(reDockerGlibc, "examples/language-sdk-instrumentation/dotnet/fast-slow/Dockerfile", replDockerGlibc)
 	replaceInplace(reDockerGlibc, "examples/language-sdk-instrumentation/dotnet/rideshare/Dockerfile", replDockerGlibc)
 	replaceInplace(reDockerGlibc, "examples/language-sdk-instrumentation/dotnet/web-new/Dockerfile", replDockerGlibc)
 	replaceInplace(reDockerGlibc, "docs/sources/configure-client/language-sdks/dotnet.md", replDockerGlibc)
 
-	reDockerMusl := regexp.MustCompile("COPY --from=pyroscope/pyroscope-dotnet:\\d+\\.\\d+\\.\\d+-musl")
-	replDockerMusl := fmt.Sprintf("COPY --from=pyroscope/pyroscope-dotnet:%s-musl", last.version())
+	reDockerMusl := regexp.MustCompile("pyroscope/pyroscope-dotnet:\\d+\\.\\d+\\.\\d+-musl")
+	replDockerMusl := fmt.Sprintf("pyroscope/pyroscope-dotnet:%s-musl", last.version())
 	replaceInplace(reDockerMusl, "examples/language-sdk-instrumentation/dotnet/fast-slow/musl.Dockerfile", replDockerMusl)
 	replaceInplace(reDockerMusl, "examples/language-sdk-instrumentation/dotnet/rideshare/musl.Dockerfile", replDockerMusl)
 
