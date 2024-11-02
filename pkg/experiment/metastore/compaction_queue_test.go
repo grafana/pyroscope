@@ -1,6 +1,7 @@
 package metastore
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,22 +10,22 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compactionpb"
 )
 
-func Test_compactionJobQueue(t *testing.T) {
+func Test_compaction_job_queue_ownership(t *testing.T) {
 	var now int64      // Timestamp of the raft command.
 	lease := int64(10) // Job lease duration.
 	q := newJobQueue(lease)
 
-	assert.True(t, q.enqueue(&compactionpb.CompactionJob{
+	assert.True(t, q.enqueue(&compactionpb.StoredCompactionJob{
 		Name:            "job1",
 		RaftLogIndex:    1,
 		CompactionLevel: 0,
 	}))
-	assert.True(t, q.enqueue(&compactionpb.CompactionJob{
+	assert.True(t, q.enqueue(&compactionpb.StoredCompactionJob{
 		Name:            "job2",
 		RaftLogIndex:    2,
 		CompactionLevel: 1,
 	}))
-	assert.True(t, q.enqueue(&compactionpb.CompactionJob{
+	assert.True(t, q.enqueue(&compactionpb.StoredCompactionJob{
 		Name:            "job3",
 		RaftLogIndex:    3,
 		CompactionLevel: 0,
@@ -64,8 +65,150 @@ func Test_compactionJobQueue(t *testing.T) {
 	require.Nil(t, q.dequeue(now, 14))
 }
 
-func assertJob(t *testing.T, j *compactionpb.CompactionJob, name string, commitIndex uint64) {
+func assertJob(t *testing.T, j *compactionpb.StoredCompactionJob, name string, commitIndex uint64) {
 	require.NotNil(t, j)
 	assert.Equal(t, name, j.Name)
 	assert.Equal(t, commitIndex, j.RaftLogIndex)
+}
+
+func Test_compaction_job_queue_job_reassignment(t *testing.T) {
+	var now int64      // Timestamp of the raft command.
+	lease := int64(10) // Job lease duration.
+	q := newJobQueue(lease)
+
+	jobs := []*compactionpb.StoredCompactionJob{
+		{CompactionLevel: 2},
+		{CompactionLevel: 1},
+		{CompactionLevel: 1},
+		{CompactionLevel: 1},
+		{CompactionLevel: 0},
+		{CompactionLevel: 0},
+		{CompactionLevel: 0},
+		{CompactionLevel: 0},
+	}
+	for i, job := range jobs {
+		job.RaftLogIndex = uint64(i + 1)
+		job.Name = strconv.Itoa(len(jobs) - i)
+		assert.True(t, q.enqueue(job))
+	}
+
+	raftIndex := uint64(len(jobs) + 1)
+	now += 2 * lease // Not necessary as we have larger raft index.
+
+	actual := make([]*compactionpb.StoredCompactionJob, 0, len(jobs))
+	for i := 0; i < len(jobs); i++ {
+		actual = append(actual, q.dequeue(now, raftIndex))
+		raftIndex++
+	}
+
+	expected := []*compactionpb.StoredCompactionJob{
+		{
+			Name:            "1",
+			CompactionLevel: 0,
+			RaftLogIndex:    9,
+			LeaseExpiresAt:  30,
+			Status:          compactionpb.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS,
+		},
+		{
+			Name:            "2",
+			CompactionLevel: 0,
+			RaftLogIndex:    10,
+			LeaseExpiresAt:  30,
+			Status:          compactionpb.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS,
+		},
+		{
+			Name:            "3",
+			CompactionLevel: 0,
+			RaftLogIndex:    11,
+			LeaseExpiresAt:  30,
+			Status:          compactionpb.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS,
+		},
+		{
+			Name:            "4",
+			CompactionLevel: 0,
+			RaftLogIndex:    12,
+			LeaseExpiresAt:  30,
+			Status:          compactionpb.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS,
+		},
+		{
+			Name:            "5",
+			CompactionLevel: 1,
+			RaftLogIndex:    13,
+			LeaseExpiresAt:  30,
+			Status:          compactionpb.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS,
+		},
+		{
+			Name:            "6",
+			CompactionLevel: 1,
+			RaftLogIndex:    14,
+			LeaseExpiresAt:  30,
+			Status:          compactionpb.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS,
+		},
+		{
+			Name:            "7",
+			CompactionLevel: 1,
+			RaftLogIndex:    15,
+			LeaseExpiresAt:  30,
+			Status:          compactionpb.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS,
+		},
+		{
+			Name:            "8",
+			CompactionLevel: 2,
+			RaftLogIndex:    16,
+			LeaseExpiresAt:  30,
+			Status:          compactionpb.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS,
+		},
+	}
+
+	assert.Equal(t, expected, actual)
+}
+
+func Test_compaction_job_queue_job_cancel(t *testing.T) {
+	q := newJobQueue(10)
+	assert.True(t, q.enqueue(&compactionpb.StoredCompactionJob{
+		Name:            "1",
+		CompactionLevel: 0,
+		RaftLogIndex:    1,
+		LeaseExpiresAt:  30,
+	}))
+	assert.True(t, q.enqueue(&compactionpb.StoredCompactionJob{
+		Name:            "2",
+		CompactionLevel: 0,
+		RaftLogIndex:    2,
+		LeaseExpiresAt:  30,
+	}))
+
+	assert.True(t, q.cancel("1"))
+
+	// Lease expires.
+	// Seizing ownership of expired job.
+	assertJob(t, q.dequeue(10, 4), "2", 4)
+	// Canceled job does not pop up.
+	assert.Nil(t, q.dequeue(10, 5))
+	assert.True(t, q.evict("2", 6))
+	// Canceled job does not pop up.
+	assert.Nil(t, q.dequeue(100, 7))
+}
+
+func Test_compaction_job_queue_job_release(t *testing.T) {
+	q := newJobQueue(10)
+	assert.True(t, q.enqueue(&compactionpb.StoredCompactionJob{
+		Name:            "1",
+		CompactionLevel: 0,
+		RaftLogIndex:    1,
+		LeaseExpiresAt:  30,
+	}))
+	assert.True(t, q.enqueue(&compactionpb.StoredCompactionJob{
+		Name:            "2",
+		CompactionLevel: 0,
+		RaftLogIndex:    2,
+		LeaseExpiresAt:  30,
+	}))
+
+	assertJob(t, q.dequeue(10, 3), "1", 3)
+	assert.True(t, q.release("1"))
+
+	assertJob(t, q.dequeue(10, 4), "1", 4)
+	assertJob(t, q.dequeue(10, 5), "2", 5)
+	assert.Nil(t, q.dequeue(10, 6))
 }

@@ -10,15 +10,23 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/hashicorp/raft"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compactionpb"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 var (
 	_ Compactor           = (*CompactionPlanner)(nil)
 	_ CompactionScheduler = (*CompactionPlanner)(nil)
+)
+
+// TODO: Make it configurable.
+const (
+	defaultCompactionJobLeaseDuration = 15 * time.Second
+	defaultCompactionJobMaxFailures   = 3
 )
 
 type CompactionConfig struct {
@@ -41,7 +49,7 @@ type PlannerIndex interface {
 
 type CompactionPlanner struct {
 	logger   log.Logger
-	config   CompactionConfig
+	reg      prometheus.Registerer
 	metrics  *compactionMetrics
 	blocks   map[tenantShard]*blockQueue
 	strategy compactionStrategy
@@ -69,27 +77,29 @@ type blockQueue struct {
 	levels map[uint32][]string
 }
 
-func NewCompactionPlanner() *CompactionPlanner {
-	return &CompactionPlanner{
-		logger:  nil,
-		config:  CompactionConfig{},
-		metrics: nil,
-		blocks:  nil,
-		queue:   nil,
-		strategy: compactionStrategy{
-			levels: map[uint32]compactionLevelStrategy{
-				0: {maxBlocks: 20},
-			},
-			defaultStrategy: compactionLevelStrategy{
-				maxBlocks: 10,
-			},
-			maxCompactionLevel: 3,
-			// 0: 0.5
-			// 1: 10s
-			// 2: 100s
-			// 3: 1000s // 16m40s
+func NewCompactionPlanner(logger log.Logger, reg prometheus.Registerer) *CompactionPlanner {
+	s := compactionStrategy{
+		levels: map[uint32]compactionLevelStrategy{
+			0: {maxBlocks: 20},
 		},
+		defaultStrategy: compactionLevelStrategy{
+			maxBlocks: 10,
+		},
+		maxCompactionLevel: 3,
+		// 0: 0.5
+		// 1: 10s
+		// 2: 100s
+		// 3: 1000s // 16m40s
 	}
+	p := CompactionPlanner{
+		logger:   logger,
+		metrics:  newCompactionMetrics(reg),
+		blocks:   make(map[tenantShard]*blockQueue),
+		queue:    newJobQueue(defaultCompactionJobLeaseDuration.Nanoseconds()),
+		strategy: s,
+	}
+	util.Register(reg, newJobQueueStatsCollector(p.queue))
+	return &p
 }
 
 func (c *CompactionPlanner) CompactBlock(tx *bbolt.Tx, cmd *raft.Log, block *metastorev1.BlockMeta) error {
@@ -198,7 +208,7 @@ func (c *CompactionPlanner) handleStatusFailure(
 ) error {
 	job.Failures += 1
 	level.Warn(c.logger).Log("msg", "compaction job failed", "job", job.Name, "failures", job.Failures)
-	if int(job.Failures) >= c.config.JobMaxFailures {
+	if int(job.Failures) >= defaultCompactionJobMaxFailures {
 		level.Error(c.logger).Log("msg", "compaction job reached max failures", "job", job.Name)
 		c.queue.cancel(job.Name)
 		c.metrics.discardedJobs.WithLabelValues(compactionMetricDimsJob(job)...).Inc()
