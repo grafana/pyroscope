@@ -5,7 +5,8 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/compactionpb"
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 )
 
 // A priority queue for compaction jobs. Jobs are prioritized by the compaction
@@ -45,8 +46,7 @@ func newJobQueue(lease int64) *jobQueue {
 type jobQueueEntry struct {
 	// The index of the job in the heap.
 	index int
-	// The original proto message.
-	*compactionpb.StoredCompactionJob
+	*raft_log.CompactionJobState
 }
 
 func (c *jobQueueEntry) less(x *jobQueueEntry) bool {
@@ -69,7 +69,7 @@ func (q *jobQueue) level(x uint32) *priorityQueue {
 	return &q.levels[x]
 }
 
-func (q *jobQueue) dequeue(now int64, raftLogIndex uint64) *compactionpb.StoredCompactionJob {
+func (q *jobQueue) dequeue(now int64, raftLogIndex uint64) *raft_log.CompactionJobState {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	for i := range q.levels {
@@ -78,22 +78,22 @@ func (q *jobQueue) dequeue(now int64, raftLogIndex uint64) *compactionpb.StoredC
 			continue
 		}
 		job := pq[0]
-		if job.Status == compactionpb.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS && now <= job.LeaseExpiresAt {
+		if job.Status == metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS && now <= job.LeaseExpiresAt {
 			// If the top job is in progress and not expired, stop checking further
 			continue
 		}
-		if job.Status == compactionpb.CompactionStatus_COMPACTION_STATUS_CANCELLED {
+		if job.Status == metastorev1.CompactionJobStatus_COMPACTION_STATUS_CANCELLED {
 			// if we've reached cancelled jobs in the queue we have no work left
 			continue
 		}
 		// Remove the top job from the priority queue, update the status and lease and push it back.
 		heap.Pop(&pq)
 		job.LeaseExpiresAt = q.getNewDeadline(now)
-		job.Status = compactionpb.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS
+		job.Status = metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS
 		// If job.status is "in progress", the ownership of the job is being revoked.
 		job.RaftLogIndex = raftLogIndex
 		heap.Push(&pq, job)
-		return job.StoredCompactionJob
+		return job.CompactionJobState
 	}
 	return nil
 }
@@ -106,7 +106,7 @@ func (q *jobQueue) update(name string, now int64, raftLogIndex uint64) bool {
 			return false
 		}
 		job.LeaseExpiresAt = q.getNewDeadline(now)
-		job.Status = compactionpb.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS
+		job.Status = metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS
 		// De-prioritize the job, as the deadline has been postponed.
 		heap.Fix(q.level(job.CompactionLevel), job.index)
 		return true
@@ -118,7 +118,7 @@ func (q *jobQueue) cancel(name string) bool {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if job, exists := q.jobs[name]; exists {
-		job.Status = compactionpb.CompactionStatus_COMPACTION_STATUS_CANCELLED
+		job.Status = metastorev1.CompactionJobStatus_COMPACTION_STATUS_CANCELLED
 		heap.Fix(q.level(job.CompactionLevel), job.index)
 		return true
 	}
@@ -153,13 +153,13 @@ func (q *jobQueue) evict(name string, raftLogIndex uint64) bool {
 	return true
 }
 
-func (q *jobQueue) enqueue(job *compactionpb.StoredCompactionJob) bool {
+func (q *jobQueue) enqueue(job *raft_log.CompactionJobState) bool {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if _, exists := q.jobs[job.Name]; exists {
 		return false
 	}
-	j := &jobQueueEntry{StoredCompactionJob: job}
+	j := &jobQueueEntry{CompactionJobState: job}
 	q.jobs[job.Name] = j
 	heap.Push(q.level(job.CompactionLevel), j)
 	return true
@@ -169,7 +169,7 @@ func (q *jobQueue) release(name string) bool {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if job, exists := q.jobs[name]; exists {
-		job.Status = compactionpb.CompactionStatus_COMPACTION_STATUS_UNSPECIFIED
+		job.Status = metastorev1.CompactionJobStatus_COMPACTION_STATUS_UNSPECIFIED
 		job.RaftLogIndex = 0
 		job.LeaseExpiresAt = 0
 		heap.Fix(q.level(job.CompactionLevel), job.index)

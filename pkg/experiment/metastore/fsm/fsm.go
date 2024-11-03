@@ -14,9 +14,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type RaftHandler[Req, Resp proto.Message] interface {
-	Apply(*bbolt.Tx, *raft.Log, Req) (Resp, error)
-}
+type RaftHandler[Req, Resp proto.Message] func(*bbolt.Tx, *raft.Log, Req) (Resp, error)
 
 type StateRestorer interface {
 	Restore(*bbolt.Tx) error
@@ -46,7 +44,7 @@ func (fsm *FSM) RegisterRestorer(r ...StateRestorer) {
 	fsm.restorers = append(fsm.restorers, r...)
 }
 
-func RegisterRaftHandler[Req, Resp proto.Message](fsm *FSM, t RaftLogEntryType, h RaftHandler[Req, Resp]) {
+func RegisterRaftHandler[Req, Resp proto.Message](fsm *FSM, t RaftLogEntryType, handler RaftHandler[Req, Resp]) {
 	fsm.handlers[t] = func(tx *bbolt.Tx, cmd *raft.Log, raw []byte) (proto.Message, error) {
 		var err error
 		req := newProto[Req]()
@@ -59,7 +57,7 @@ func RegisterRaftHandler[Req, Resp proto.Message](fsm *FSM, t RaftLogEntryType, 
 		if err != nil {
 			return nil, err
 		}
-		return h.Apply(tx, cmd, req)
+		return handler(tx, cmd, req)
 	}
 }
 

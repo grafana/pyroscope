@@ -11,7 +11,7 @@ service CompactionPlanner {
 
 message PollCompactionJobsRequest {
   // A batch of status updates for in-progress jobs from a worker.
-  repeated CompactionJobStatus job_status_updates = 1;
+  repeated CompactionJobStatusUpdate status_updates = 1;
   // How many new jobs a worker can be assigned to.
   uint32 job_capacity = 2;
   // Max number of block tombstones a worker can clean up
@@ -21,69 +21,33 @@ message PollCompactionJobsRequest {
 
 message PollCompactionJobsResponse {
   repeated CompactionJob compaction_jobs = 1;
-  repeated string cancelled_jobs = 2;
+  repeated CompactionJobAssignment assignments = 2;
 }
 
-// One compaction job may result in multiple output blocks.
 message CompactionJob {
-  // Unique name of the job.
   string name = 1;
-  CompactionOptions options = 2;
-  // List of the input blocks.
-  repeated metastore.v1.BlockMeta blocks = 3;
-  CompactionJobStatus status = 4;
-  // Fencing token.
-  uint64 raft_log_index = 5;
-  // Shard the blocks belong to.
-  uint32 shard = 6;
-  // Optional, empty for compaction level 0.
-  string tenant_id = 7;
-  uint32 compaction_level = 8;
-  // Blocks deleted from the index but present
-  // in the storage. The full block path is used.
-  repeated string tombstones = 9;
+  uint32 shard = 2;
+  string tenant = 3;
+  uint32 compaction_level = 4;
+  repeated metastore.v1.BlockMeta source_blocks = 5;
+  repeated string tombstones = 6;
 }
 
-message CompactionOptions {
-  // Compaction planner should instruct the compactor
-  // worker how to compact the blocks:
-  //  - Limits and tenant overrides.
-  //  - Feature flags.
-
-  // How often the compaction worker should update
-  // the job status. If overdue, the job ownership
-  // is revoked.
-  uint64 status_update_interval_seconds = 1;
+message CompactionJobAssignment {
+  uint64 token = 1;
+  int64 lease_expires_at = 2;
+  CompactionJobStatus job_status = 3;
 }
 
-message CompactionJobStatus {
-  string job_name = 1;
-  // Status update allows the planner to keep
-  // track of the job ownership and compaction
-  // progress:
-  // - If the job status is other than IN_PROGRESS,
-  //   the ownership of the job is revoked.
-  // - FAILURE must only be sent if the failure is
-  //   persistent and the compaction can't be accomplished.
-  // - completed_job must be empty if the status is
-  //   other than SUCCESS, and vice-versa.
-  // - UNSPECIFIED must be sent if the worker rejects
-  //   or cancels the compaction job.
-  //
-  // Partial results/status is not allowed.
-  CompactionStatus status = 2;
-  repeated metastore.v1.BlockMeta compacted_blocks = 3;
-  // Fencing token.
-  uint64 raft_log_index = 4;
-  // Shard the blocks belong to.
-  uint32 shard = 5;
-  // Optional, empty for compaction level 0.
-  string tenant_id = 6;
-  // Blocks deleted from the storage.
-  repeated string deleted_blocks = 7;
+message CompactionJobStatusUpdate {
+  string name = 1;
+  uint64 token = 2;
+  CompactionJobStatus status = 3;
+  repeated metastore.v1.BlockMeta compacted_blocks = 4;
+  repeated string deleted_blocks = 5;
 }
 
-enum CompactionStatus {
+enum CompactionJobStatus {
   COMPACTION_STATUS_UNSPECIFIED = 0;
   COMPACTION_STATUS_IN_PROGRESS = 1;
   COMPACTION_STATUS_SUCCESS = 2;

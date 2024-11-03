@@ -7,7 +7,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/compactionpb"
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 )
 
 type jobQueueStatsCollector struct {
@@ -79,7 +79,7 @@ func (c *jobQueueStatsCollector) Collect(ch chan<- prometheus.Metric) {
 			if stats.jobs > 0 {
 				oldest := time.Since(time.Unix(0, stats.oldest)).Seconds()
 				newest := time.Since(time.Unix(0, stats.newest)).Seconds()
-				labels := []string{levelLabel, compactionpb.CompactionStatus(status).String()}
+				labels := []string{levelLabel, metastorev1.CompactionJobStatus(status).String()}
 				ch <- prometheus.MustNewConstMetric(c.jobsTotal, prometheus.GaugeValue, stats.jobs, labels...)
 				ch <- prometheus.MustNewConstMetric(c.oldestJob, prometheus.GaugeValue, oldest, labels...)
 				ch <- prometheus.MustNewConstMetric(c.newestJob, prometheus.GaugeValue, newest, labels...)

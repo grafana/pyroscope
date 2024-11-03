@@ -359,6 +359,38 @@
         }
       }
     },
+    "metastorev1CompactionJob": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "shard": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "tenant": {
+          "type": "string"
+        },
+        "compactionLevel": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "sourceBlocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1BlockMeta"
+          }
+        },
+        "tombstones": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "protobufAny": {
       "type": "object",
       "properties": {
@@ -693,107 +725,23 @@
         }
       }
     },
-    "v1CompactionJob": {
+    "v1CompactionJobAssignment": {
       "type": "object",
       "properties": {
-        "name": {
+        "token": {
           "type": "string",
-          "description": "Unique name of the job."
+          "format": "uint64"
         },
-        "options": {
-          "$ref": "#/definitions/v1CompactionOptions"
-        },
-        "blocks": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1BlockMeta"
-          },
-          "description": "List of the input blocks."
-        },
-        "status": {
-          "$ref": "#/definitions/v1CompactionJobStatus"
-        },
-        "raftLogIndex": {
+        "leaseExpiresAt": {
           "type": "string",
-          "format": "uint64",
-          "description": "Fencing token."
-        },
-        "shard": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Shard the blocks belong to."
-        },
-        "tenantId": {
-          "type": "string",
-          "description": "Optional, empty for compaction level 0."
-        },
-        "compactionLevel": {
-          "type": "integer",
           "format": "int64"
         },
-        "tombstones": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Blocks deleted from the index but present\nin the storage. The full block path is used."
-        }
-      },
-      "description": "One compaction job may result in multiple output blocks."
-    },
-    "v1CompactionJobStatus": {
-      "type": "object",
-      "properties": {
-        "jobName": {
-          "type": "string"
-        },
-        "status": {
-          "$ref": "#/definitions/v1CompactionStatus",
-          "description": "Status update allows the planner to keep\ntrack of the job ownership and compaction\nprogress:\n- If the job status is other than IN_PROGRESS,\n  the ownership of the job is revoked.\n- FAILURE must only be sent if the failure is\n  persistent and the compaction can't be accomplished.\n- completed_job must be empty if the status is\n  other than SUCCESS, and vice-versa.\n- UNSPECIFIED must be sent if the worker rejects\n  or cancels the compaction job.\n\nPartial results/status is not allowed."
-        },
-        "compactedBlocks": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1BlockMeta"
-          }
-        },
-        "raftLogIndex": {
-          "type": "string",
-          "format": "uint64",
-          "description": "Fencing token."
-        },
-        "shard": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Shard the blocks belong to."
-        },
-        "tenantId": {
-          "type": "string",
-          "description": "Optional, empty for compaction level 0."
-        },
-        "deletedBlocks": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Blocks deleted from the storage."
+        "jobStatus": {
+          "$ref": "#/definitions/v1CompactionJobStatus"
         }
       }
     },
-    "v1CompactionOptions": {
-      "type": "object",
-      "properties": {
-        "statusUpdateIntervalSeconds": {
-          "type": "string",
-          "format": "uint64",
-          "description": "How often the compaction worker should update\nthe job status. If overdue, the job ownership\nis revoked."
-        }
-      },
-      "description": "Compaction planner should instruct the compactor\n worker how to compact the blocks:\n  - Limits and tenant overrides.\n  - Feature flags."
-    },
-    "v1CompactionStatus": {
+    "v1CompactionJobStatus": {
       "type": "string",
       "enum": [
         "COMPACTION_STATUS_UNSPECIFIED",
@@ -803,6 +751,34 @@
         "COMPACTION_STATUS_CANCELLED"
       ],
       "default": "COMPACTION_STATUS_UNSPECIFIED"
+    },
+    "v1CompactionJobStatusUpdate": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "status": {
+          "$ref": "#/definitions/v1CompactionJobStatus"
+        },
+        "compactedBlocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1BlockMeta"
+          }
+        },
+        "deletedBlocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
     },
     "v1Dataset": {
       "type": "object",
@@ -1544,13 +1520,14 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/v1CompactionJob"
+            "$ref": "#/definitions/metastorev1CompactionJob"
           }
         },
-        "cancelledJobs": {
+        "assignments": {
           "type": "array",
           "items": {
-            "type": "string"
+            "type": "object",
+            "$ref": "#/definitions/v1CompactionJobAssignment"
           }
         }
       }

@@ -7,10 +7,7 @@ import (
 	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/fsm"
 )
-
-var _ fsm.RaftHandler[*metastorev1.AddBlockRequest, *metastorev1.AddBlockResponse] = (*AddBlockRequestHandler)(nil)
 
 type InserterIndex interface {
 	InsertBlock(*bbolt.Tx, *metastorev1.BlockMeta) (bool, error)
@@ -20,25 +17,27 @@ type Compactor interface {
 	CompactBlock(tx *bbolt.Tx, cmd *raft.Log, md *metastorev1.BlockMeta) error
 }
 
-type AddBlockRequestHandler struct {
+type InsertionCommandHandler struct {
 	logger    log.Logger
 	index     InserterIndex
 	compactor Compactor
 }
 
-func NewAddBlockHandler(
+func NewInsertionCommandHandler(
 	logger log.Logger,
 	index InserterIndex,
 	compactor Compactor,
-) *AddBlockRequestHandler {
-	return &AddBlockRequestHandler{
+) *InsertionCommandHandler {
+	return &InsertionCommandHandler{
 		logger:    logger,
 		index:     index,
 		compactor: compactor,
 	}
 }
 
-func (m *AddBlockRequestHandler) Apply(tx *bbolt.Tx, cmd *raft.Log, req *metastorev1.AddBlockRequest) (*metastorev1.AddBlockResponse, error) {
+func (m *InsertionCommandHandler) AddBlockMetadata(
+	tx *bbolt.Tx, cmd *raft.Log, req *metastorev1.AddBlockRequest,
+) (*metastorev1.AddBlockResponse, error) {
 	found, err := m.index.InsertBlock(tx, req.Block)
 	if err != nil {
 		_ = level.Error(m.logger).Log("msg", "failed to add block to index", "block", req.Block.Id, "err", err)

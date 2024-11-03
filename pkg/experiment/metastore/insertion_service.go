@@ -8,6 +8,7 @@ import (
 	"github.com/oklog/ulid"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 	adaptiveplacement "github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
 	"github.com/grafana/pyroscope/pkg/iter"
 )
@@ -19,7 +20,7 @@ type DistributionStats interface {
 }
 
 type AddBlockCommandLog interface {
-	ProposeAddBlock(*metastorev1.AddBlockRequest) (*metastorev1.AddBlockResponse, error)
+	AddBlockMetadata(proposal *raft_log.AddBlockMetadataRequest) (*raft_log.AddBlockMetadataResponse, error)
 }
 
 func NewInsertionService(
@@ -28,16 +29,16 @@ func NewInsertionService(
 	raftLog AddBlockCommandLog,
 ) *InsertionService {
 	return &InsertionService{
-		logger:  logger,
-		stats:   stats,
-		raftLog: raftLog,
+		logger: logger,
+		stats:  stats,
+		raft:   raftLog,
 	}
 }
 
 type InsertionService struct {
-	logger  log.Logger
-	stats   DistributionStats
-	raftLog AddBlockCommandLog
+	logger log.Logger
+	stats  DistributionStats
+	raft   AddBlockCommandLog
 }
 
 func (svc *InsertionService) AddBlock(
@@ -55,12 +56,13 @@ func (svc *InsertionService) AddBlock(
 		}
 	}()
 
-	if resp, err = svc.raftLog.ProposeAddBlock(req); err != nil {
+	proposal := &raft_log.AddBlockMetadataRequest{Metadata: req.Block}
+	if _, err = svc.raft.AddBlockMetadata(proposal); err != nil {
 		_ = level.Error(svc.logger).Log("msg", "failed to add block", "block_id", req.Block.Id, "err", err)
 		return nil, err
 	}
 
-	return resp, nil
+	return new(metastorev1.AddBlockResponse), nil
 }
 
 func SanitizeMetadata(md *metastorev1.BlockMeta) error {
