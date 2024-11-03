@@ -23,21 +23,21 @@ func newJobQueueStatsCollector(queue *jobQueue) prometheus.Collector {
 		queue: queue,
 
 		jobsTotal: prometheus.NewDesc(
-			"pyroscope_compaction_queue_jobs_total",
+			"compaction_queue_jobs_total",
 			"The number of active aggregates.",
 			[]string{"level", "status"},
 			nil,
 		),
 
 		oldestJob: prometheus.NewDesc(
-			"pyroscope_compaction_queue_max_job_age_seconds",
+			"compaction_queue_max_job_age_seconds",
 			"The oldest job age in seconds.",
 			[]string{"level", "status"},
 			nil,
 		),
 
 		newestJob: prometheus.NewDesc(
-			"pyroscope_compaction_queue_min_job_age_seconds",
+			"compaction_queue_min_job_age_seconds",
 			"The newest job age in seconds.",
 			[]string{"level", "status"},
 			nil,

@@ -18,24 +18,20 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 	var dataTimingBuckets = prometheus.ExponentialBucketsRange(0.01, 20, 48)
 	m := &metrics{
 		boltDBPersistSnapshotDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
-			Namespace: "pyroscope",
-			Name:      "metastore_boltdb_persist_snapshot_duration_seconds",
-			Buckets:   instrument.DefBuckets,
+			Name:    "metastore_boltdb_persist_snapshot_duration_seconds",
+			Buckets: instrument.DefBuckets,
 		}),
 		boltDBRestoreSnapshotDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
-			Namespace: "pyroscope",
-			Name:      "metastore_boltdb_restore_snapshot_duration_seconds",
-			Buckets:   dataTimingBuckets,
+			Name:    "metastore_boltdb_restore_snapshot_duration_seconds",
+			Buckets: dataTimingBuckets,
 		}),
 		fsmRestoreSnapshotDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
-			Namespace: "pyroscope",
-			Name:      "metastore_fsm_restore_snapshot_duration_seconds",
-			Buckets:   dataTimingBuckets,
+			Name:    "metastore_fsm_restore_snapshot_duration_seconds",
+			Buckets: dataTimingBuckets,
 		}),
 		fsmApplyCommandHandlerDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
-			Namespace: "pyroscope",
-			Name:      "metastore_fsm_apply_command_handler_duration_seconds",
-			Buckets:   dataTimingBuckets,
+			Name:    "metastore_fsm_apply_command_handler_duration_seconds",
+			Buckets: dataTimingBuckets,
 		}),
 	}
 	if reg != nil {
