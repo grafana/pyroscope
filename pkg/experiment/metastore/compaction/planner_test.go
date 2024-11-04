@@ -9,7 +9,7 @@ import (
 )
 
 func TestBlockIter(t *testing.T) {
-	q := newCompactionPlanner(defaultCompactionStrategy)
+	q := newQueue(defaultCompactionStrategy)
 	for i := 0; i < 1000; i++ {
 		q.enqueueBlock(&metastorev1.BlockMeta{
 			Id:              strconv.Itoa(i),

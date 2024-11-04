@@ -11,7 +11,7 @@ import (
 )
 
 func TestBlockQueue_Push(t *testing.T) {
-	q := newBlockQueue(blockBatchSize{3})
+	q := newBlockQueue(jobSizeCompactionStrategy{maxBlocksDefault: 3})
 	key := compactionKey{tenant: "t", shard: 1}
 
 	result := q.push(key, "1")
@@ -42,7 +42,7 @@ func TestBlockQueue_Push(t *testing.T) {
 }
 
 func TestBlockQueue_DuplicateBlock(t *testing.T) {
-	q := newBlockQueue(blockBatchSize{3})
+	q := newBlockQueue(jobSizeCompactionStrategy{maxBlocksDefault: 3})
 	key := compactionKey{tenant: "t", shard: 1}
 	block := "1"
 
@@ -53,7 +53,7 @@ func TestBlockQueue_DuplicateBlock(t *testing.T) {
 }
 
 func TestBlockQueue_Remove(t *testing.T) {
-	q := newBlockQueue(blockBatchSize{3})
+	q := newBlockQueue(jobSizeCompactionStrategy{maxBlocksDefault: 3})
 	key := compactionKey{tenant: "t", shard: 1}
 	q.push(key, "1")
 	q.push(key, "2")
@@ -70,7 +70,7 @@ func TestBlockQueue_Remove(t *testing.T) {
 }
 
 func TestBlockQueue_Remove_not_found(t *testing.T) {
-	q := newBlockQueue(blockBatchSize{3})
+	q := newBlockQueue(jobSizeCompactionStrategy{maxBlocksDefault: 3})
 	key := compactionKey{tenant: "t", shard: 1}
 	q.remove(key, "1")
 	q.push(key, "1")
@@ -82,7 +82,7 @@ func TestBlockQueue_Remove_not_found(t *testing.T) {
 }
 
 func TestBlockQueue_Linking(t *testing.T) {
-	q := newBlockQueue(blockBatchSize{2})
+	q := newBlockQueue(jobSizeCompactionStrategy{maxBlocksDefault: 2})
 	key := compactionKey{tenant: "t", shard: 1}
 
 	q.push(key, "1")
@@ -122,7 +122,7 @@ func TestBlockQueue_ExpectEmptyQueue(t *testing.T) {
 		numBlocksPerKey = 10
 	)
 
-	q := newBlockQueue(blockBatchSize{3})
+	q := newBlockQueue(jobSizeCompactionStrategy{maxBlocksDefault: 3})
 	keys := make([]compactionKey, numKeys)
 	for i := 0; i < numKeys; i++ {
 		keys[i] = compactionKey{
@@ -153,7 +153,7 @@ func TestBlockQueue_ExpectEmptyQueue(t *testing.T) {
 		staged, exists := q.staged[key]
 		require.True(t, exists)
 		for _, block := range staged.batch.blocks {
-			assert.Equal(t, removedBlock, block)
+			assert.Equal(t, removedBlockSentinel, block)
 		}
 	}
 
@@ -162,7 +162,7 @@ func TestBlockQueue_ExpectEmptyQueue(t *testing.T) {
 }
 
 func TestBlockQueue_iter(t *testing.T) {
-	q := newBlockQueue(blockBatchSize{3})
+	q := newBlockQueue(jobSizeCompactionStrategy{maxBlocksDefault: 3})
 	keys := []compactionKey{
 		{tenant: "t-1", shard: 1},
 		{tenant: "t-2", shard: 2},
@@ -172,7 +172,7 @@ func TestBlockQueue_iter(t *testing.T) {
 		q.push(keys[j%len(keys)], strconv.Itoa(j))
 	}
 
-	iter := q.iter()
+	iter := newBatchIter(q)
 	for _, expected := range []struct {
 		key    compactionKey
 		blocks []string
@@ -184,10 +184,12 @@ func TestBlockQueue_iter(t *testing.T) {
 		{key: keys[0], blocks: []string{"12", "14", "16"}},
 		{key: keys[1], blocks: []string{"13", "15", "17"}},
 	} {
-		b := iter.next()
-		assert.Equal(t, expected.key, b.compactionKey)
+		b, ok := iter.next()
+		require.True(t, ok)
+		assert.Equal(t, expected.key, b.staged.compactionKey)
 		assert.Equal(t, expected.blocks, b.blocks)
 	}
 
-	assert.Nil(t, iter.next())
+	_, ok := iter.next()
+	assert.False(t, ok)
 }

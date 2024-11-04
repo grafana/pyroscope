@@ -6,43 +6,50 @@ type compactionStrategy interface {
 	// canCompact is called before the block is
 	// enqueued to the compaction planing queue.
 	canCompact(md *metastorev1.BlockMeta) bool
-	batchStrategy(uint32) batchStrategy
-}
-
-type batchStrategy interface {
 	// compact is called before and after the
 	// block has been added to the batch.
 	flush(batch *batch) bool
+	// canAdd is called before the block is added to the job plan.
+	canAdd(*jobPlan, string) bool
+	// done is called after the block is added to the job plan.
+	done(*jobPlan) bool
 }
 
 const defaultBlockBatchSize = 10
 
-var defaultCompactionStrategy = simpleCompactionStrategy{
+var defaultCompactionStrategy = jobSizeCompactionStrategy{
 	maxBlocksPerLevel:  []uint32{20, 10, 10},
 	maxBlocksDefault:   defaultBlockBatchSize,
 	maxCompactionLevel: 3,
 }
 
-type simpleCompactionStrategy struct {
+type jobSizeCompactionStrategy struct {
 	maxBlocksPerLevel  []uint32
 	maxBlocksDefault   uint32
 	maxCompactionLevel uint32
 }
 
-func (s simpleCompactionStrategy) canCompact(md *metastorev1.BlockMeta) bool {
+func (s jobSizeCompactionStrategy) maxBlocks(l uint32) uint32 {
+	if l >= uint32(len(s.maxBlocksPerLevel)) || len(s.maxBlocksPerLevel) == 0 {
+		return s.maxBlocksDefault
+	}
+	return s.maxBlocksPerLevel[l]
+}
+
+func (s jobSizeCompactionStrategy) canCompact(md *metastorev1.BlockMeta) bool {
 	return md.CompactionLevel <= s.maxCompactionLevel
 }
 
-func (s simpleCompactionStrategy) batchStrategy(l uint32) batchStrategy {
-	if l >= uint32(len(s.maxBlocksPerLevel)) || len(s.maxBlocksPerLevel) == 0 {
-		return blockBatchSize{num: s.maxBlocksDefault}
-	}
-	return blockBatchSize{num: s.maxBlocksPerLevel[l]}
+func (s jobSizeCompactionStrategy) flush(b *batch) bool {
+	return b.size >= s.maxBlocks(b.staged.level)
 }
 
-// TODO(kolesnikovae): Check time range the batch covers.
-//   We should not compact blocks that are too far apart.
+func (s jobSizeCompactionStrategy) canAdd(j *jobPlan, _ string) bool {
+	// TODO(kolesnikovae): Check time range the batch covers.
+	//   We should not compact blocks that are too far apart.
+	return true
+}
 
-type blockBatchSize struct{ num uint32 }
-
-func (s blockBatchSize) flush(b *batch) bool { return b.size >= s.num }
+func (s jobSizeCompactionStrategy) done(j *jobPlan) bool {
+	return uint32(len(j.blocks)) < s.maxBlocks(j.level)
+}
