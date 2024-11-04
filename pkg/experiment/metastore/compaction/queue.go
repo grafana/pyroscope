@@ -23,7 +23,7 @@ func newQueue(strategy compactionStrategy) *queue {
 
 func (q *queue) level(x uint32) *compactionLevel {
 	s := x + 1 // Levels are 0-based.
-	if s >= uint32(len(q.levels)) {
+	if s > uint32(len(q.levels)) {
 		q.levels = slices.Grow(q.levels, int(s))[:s]
 		q.levels[x] = &compactionLevel{
 			blockQueue: newBlockQueue(q.strategy),
@@ -32,7 +32,14 @@ func (q *queue) level(x uint32) *compactionLevel {
 	return q.levels[x]
 }
 
-func (q *queue) enqueueBlock(md *metastorev1.BlockMeta) bool {
+func (q *queue) lookupLevel(x uint32) (*compactionLevel, bool) {
+	if x >= uint32(len(q.levels)) {
+		return nil, false
+	}
+	return q.levels[x], true
+}
+
+func (q *queue) enqueue(md *metastorev1.BlockMeta) bool {
 	if !q.strategy.canCompact(md) {
 		return false
 	}
@@ -42,6 +49,13 @@ func (q *queue) enqueueBlock(md *metastorev1.BlockMeta) bool {
 		level:  md.CompactionLevel,
 	}
 	return q.level(k.level).blockQueue.push(k, md.Id)
+}
+
+func (q *queue) remove(k compactionKey, blocks ...string) {
+	level, ok := q.lookupLevel(k.level)
+	if ok {
+		level.blockQueue.remove(k, blocks...)
+	}
 }
 
 func compareJobs(a *raft_log.CompactionJobState, b *raft_log.CompactionJobState) int {

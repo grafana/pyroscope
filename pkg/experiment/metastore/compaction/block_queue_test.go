@@ -186,7 +186,7 @@ func TestBlockQueue_iter(t *testing.T) {
 	} {
 		b, ok := iter.next()
 		require.True(t, ok)
-		assert.Equal(t, expected.key, b.staged.compactionKey)
+		assert.Equal(t, expected.key, b.staged.key)
 		assert.Equal(t, expected.blocks, b.blocks)
 	}
 

@@ -8,34 +8,25 @@ type compactionKey struct {
 	level  uint32
 }
 
-// blockQueue stages blocks as they are being added.
-// Once a batch of blocks within the compaction key
-// dimension reaches a certain size, it is pushed to
-// the linked list in the order of arrival.
+// blockQueue stages blocks as they are being added. Once a batch of blocks
+// within the compaction key reaches a certain size, it is pushed to the linked
+// list in the arrival order and to the compaction key queue.
 //
-// No pop operation is needed for the block queue:
-// the only way they leave the queue is through explicit
-// removal.
+// This allows to iterate over the blocks in the order of arrival within the
+// compaction dimension, while maintaining an ability to remove blocks from the
+// queue efficiently.
 //
-// Batch and block iterators provide the read access.
+// No pop operation is needed for the block queue: the only way blocks leave
+// the queue is through explicit removal. Batch and block iterators provide
+// the read access.
 type blockQueue struct {
-	head, tail *batch
-	staged     map[compactionKey]*stagedBlocks
 	strategy   compactionStrategy
-}
-
-func newBlockQueue(strategy compactionStrategy) *blockQueue {
-	if strategy == nil {
-		strategy = defaultCompactionStrategy
-	}
-	return &blockQueue{
-		staged:   make(map[compactionKey]*stagedBlocks),
-		strategy: strategy,
-	}
+	staged     map[compactionKey]*stagedBlocks
+	head, tail *batch
 }
 
 type stagedBlocks struct {
-	compactionKey
+	key  compactionKey
 	refs map[string]blockRef
 	// Incomplete batch of blocks.
 	batch *batch
@@ -54,13 +45,23 @@ type batch struct {
 	blocks []string
 	size   uint32
 	// Links to the global batch queue items:
-	// the compaction key may differ.
+	// the compaction key of batches may differ.
 	next, prev *batch
 	// Reference to the parent.
 	staged *stagedBlocks
 	// Reference to the staged blocks that
 	// share the same compaction key.
 	nextStaged, prevStaged *batch
+}
+
+func newBlockQueue(strategy compactionStrategy) *blockQueue {
+	if strategy == nil {
+		strategy = defaultCompactionStrategy
+	}
+	return &blockQueue{
+		staged:   make(map[compactionKey]*stagedBlocks),
+		strategy: strategy,
+	}
 }
 
 func (q *blockQueue) push(k compactionKey, block string) bool {
@@ -79,11 +80,11 @@ func (q *blockQueue) stagedBlocks(k compactionKey) *stagedBlocks {
 	staged, ok := q.staged[k]
 	if !ok {
 		staged = &stagedBlocks{
-			compactionKey: k,
-			refs:          make(map[string]blockRef),
+			refs: make(map[string]blockRef),
+			key:  k,
 		}
-		q.reset(staged)
 		q.staged[k] = staged
+		q.reset(staged)
 	}
 	return staged
 }
@@ -189,7 +190,9 @@ func (q *blockQueue) removeBatch(b *batch) {
 func newBatchIter(q *blockQueue) *batchIter { return &batchIter{batch: q.head} }
 
 // batchIter iterates over the batches in the queue, in the order of arrival.
-type batchIter struct{ batch *batch }
+type batchIter struct {
+	batch *batch
+}
 
 func (i *batchIter) next() (*batch, bool) {
 	if i.batch == nil {
@@ -200,36 +203,43 @@ func (i *batchIter) next() (*batch, bool) {
 	return b, b != nil
 }
 
-// batchIter iterates over the batches in the queue,
-// in the order of arrival within the compaction key.
+// batchIter iterates over the batches in the queue, in the order of arrival
+// within the compaction key. It's guaranteed that returned blocks are unique
+// across all batched.
 type blockIter struct {
-	batch *batch
-	i     int
+	visited map[string]struct{}
+	batch   *batch
+	i       int
 }
 
-func newBlockIter(b *batch) *blockIter { return &blockIter{batch: b} }
+func newBlockIter() *blockIter {
+	// Assuming that block IDs (16b ULID) are globally unique.
+	// We could achieve the same with more efficiency by marking visited
+	// batches. However, marking visited blocks seems to be more robust,
+	// and the size of the map is expected to be small.
+	visited := make(map[string]struct{}, 64)
+	visited[removedBlockSentinel] = struct{}{}
+	return &blockIter{visited: visited}
+}
+
+func (it *blockIter) setBatch(b *batch) {
+	it.batch = b
+	it.i = 0
+}
 
 func (it *blockIter) next() (string, bool) {
 	for it.batch != nil {
 		if it.i >= len(it.batch.blocks) {
-			it.batch = it.batch.nextStaged
-			it.i = 0
+			it.setBatch(it.batch.nextStaged)
 			continue
 		}
 		b := it.batch.blocks[it.i]
-		if b == removedBlockSentinel {
+		if _, visited := it.visited[b]; visited {
 			it.i++
 			continue
 		}
 		it.i++
 		return b, true
 	}
-	return removedBlockSentinel, false
-}
-
-func (it *blockIter) seek(n int) bool {
-	for i := 0; i < n; i++ {
-		it.next()
-	}
-	return it.batch != nil
+	return "", false
 }

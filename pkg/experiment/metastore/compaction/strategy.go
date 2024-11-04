@@ -9,10 +9,10 @@ type compactionStrategy interface {
 	// compact is called before and after the
 	// block has been added to the batch.
 	flush(batch *batch) bool
-	// canAdd is called before the block is added to the job plan.
-	canAdd(*jobPlan, string) bool
 	// done is called after the block is added to the job plan.
 	done(*jobPlan) bool
+	// TODO(kolesnikovae): We should not merge blocks that are too far apart.
+	// canAdd(*jobPlan, string) bool
 }
 
 const defaultBlockBatchSize = 10
@@ -41,15 +41,9 @@ func (s jobSizeCompactionStrategy) canCompact(md *metastorev1.BlockMeta) bool {
 }
 
 func (s jobSizeCompactionStrategy) flush(b *batch) bool {
-	return b.size >= s.maxBlocks(b.staged.level)
-}
-
-func (s jobSizeCompactionStrategy) canAdd(j *jobPlan, _ string) bool {
-	// TODO(kolesnikovae): Check time range the batch covers.
-	//   We should not compact blocks that are too far apart.
-	return true
+	return b.size >= s.maxBlocks(b.staged.key.level)
 }
 
 func (s jobSizeCompactionStrategy) done(j *jobPlan) bool {
-	return uint32(len(j.blocks)) < s.maxBlocks(j.level)
+	return uint32(len(j.blocks)) >= s.maxBlocks(j.level)
 }

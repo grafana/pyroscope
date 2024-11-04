@@ -8,23 +8,26 @@ import (
 )
 
 type jobPlan struct {
+	compactionKey
 	name   string
-	tenant string
-	shard  uint32
-	level  uint32
 	blocks []string
 }
 
 type jobPlanner struct {
 	strategy compactionStrategy
+	queue    *queue
+	level    uint32
 
-	queue   *queue
-	level   uint32
 	batches *batchIter
-	visited map[compactionKey]struct{}
+	blocks  *blockIter
+}
 
-	batch  *batch
-	blocks *blockIter
+func newJobPlanner(q *queue, s compactionStrategy) *jobPlanner {
+	return &jobPlanner{
+		blocks:   newBlockIter(),
+		strategy: s,
+		queue:    q,
+	}
 }
 
 // Plan compaction of the queued blocks. The algorithm is simple:
@@ -43,11 +46,9 @@ func (p *jobPlanner) nextJob() *jobPlan {
 				continue
 			}
 			p.batches = newBatchIter(c.blockQueue)
-			clear(p.visited)
 		}
 
-		var ok bool
-		p.batch, ok = p.batches.next()
+		b, ok := p.batches.next()
 		if !ok {
 			// We've done with the current level: no more batches
 			// in the in-order queue. Move to the next level.
@@ -55,42 +56,28 @@ func (p *jobPlanner) nextJob() *jobPlan {
 			p.level++
 			continue
 		}
-		if !p.visit(p.batch.staged.compactionKey) {
-			continue
-		}
 
 		// We've found the oldest batch, it's time to plan a job.
-		if p.blocks == nil {
-			p.blocks = newBlockIter(p.batch)
-		}
-
-		job.level = p.batch.staged.level
-		job.tenant = p.batch.staged.tenant
-		job.shard = p.batch.staged.shard
+		job.compactionKey = b.staged.key
 		job.blocks = job.blocks[:0]
+		p.blocks.setBatch(b)
 
 		// Once we finish with the current batch blocks, the iterator moves
 		// to the next batch–with-the-same-compaction-key, which is not
 		// necessarily the next in-order-batch from the batch iterator.
-		for j := 0; ; j++ {
+		for {
 			block, ok := p.blocks.next()
 			if !ok {
 				// No more blocks with this compaction key.
-				// The current job plan is to be cancelled.
+				// The current job plan is to be cancelled,
+				// and we will try the next in-order batch.
 				p.blocks = nil
 				break
 			}
 
-			if !p.strategy.canAdd(&job, block) && len(job.blocks) > 0 {
-				p.blocks = newBlockIter(p.batch)
-				p.blocks.seek(j - 1) // Undo next().
-				p.nameJobPlan(&job)
-				return &job
-			}
-
 			job.blocks = append(job.blocks, block)
 			if p.strategy.done(&job) {
-				p.nameJobPlan(&job)
+				p.name(&job)
 				return &job
 			}
 		}
@@ -99,15 +86,7 @@ func (p *jobPlanner) nextJob() *jobPlan {
 	return nil
 }
 
-func (p *jobPlanner) visit(k compactionKey) bool {
-	if _, ok := p.visited[k]; ok {
-		return false
-	}
-	p.visited[k] = struct{}{}
-	return true
-}
-
-func (p *jobPlanner) nameJobPlan(plan *jobPlan) {
+func (p *jobPlanner) name(plan *jobPlan) {
 	// Should be on stack; 16b per block; expected ~20 blocks.
 	buf := make([]byte, 0, 512)
 	for _, b := range plan.blocks {
