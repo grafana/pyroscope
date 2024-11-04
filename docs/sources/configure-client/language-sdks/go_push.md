@@ -169,7 +169,7 @@ You can use `DisableGCRuns` in your Go configuration to disable automatic runtim
 If this flag is enabled, there is less GC running and therefore less CPU resources spent.
 However, the heap profile may be less precies.
 
-Add `DisableGCRuns: true` to the pyroscope.Start(pyroscope.Config) block.
+Add `DisableGCRuns: true` to the `pyroscope.Start(pyroscope.Config)` block.
 
 ```go
 pyroscope.Start(pyroscope.Config{
