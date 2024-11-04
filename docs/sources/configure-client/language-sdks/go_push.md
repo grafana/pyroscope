@@ -162,7 +162,7 @@ pyroscope.Start(pyroscope.Config{
 
 ### Option: Use `DisableGCRuns` for handling increased memory usage
 
-Pyroscope may require additional when tracking a lot of objects. For example, a Go service that indexes large amounts of data requires more memory.
+Pyroscope may require additional resources when tracking a lot of objects. For example, a Go service that indexes large amounts of data requires more memory.
 This tracking can lead to higher CPU usage and potential CPU throttling.
 
 You can use `DisableGCRuns` in your Go configuration to disable automatic runtimes.
