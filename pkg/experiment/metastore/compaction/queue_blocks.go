@@ -1,5 +1,7 @@
 package compaction
 
+// TODO(kolesnikovae): Stats.
+
 type compactionKey struct {
 	// Order of the fields is not important.
 	// Can be generalized.
@@ -20,7 +22,7 @@ type compactionKey struct {
 // the queue is through explicit removal. Batch and block iterators provide
 // the read access.
 type blockQueue struct {
-	strategy   compactionStrategy
+	strategy   strategy
 	staged     map[compactionKey]*stagedBlocks
 	head, tail *batch
 }
@@ -41,8 +43,14 @@ type blockRef struct {
 	index int
 }
 
+type blockEntry struct {
+	id string // Block ID.
+	// Index of the command in the raft log.
+	raftIndex uint64
+}
+
 type batch struct {
-	blocks []string
+	blocks []blockEntry
 	size   uint32
 	// Links to the global batch queue items:
 	// the compaction key of batches may differ.
@@ -54,7 +62,7 @@ type batch struct {
 	nextStaged, prevStaged *batch
 }
 
-func newBlockQueue(strategy compactionStrategy) *blockQueue {
+func newBlockQueue(strategy strategy) *blockQueue {
 	if strategy == nil {
 		strategy = defaultCompactionStrategy
 	}
@@ -64,9 +72,9 @@ func newBlockQueue(strategy compactionStrategy) *blockQueue {
 	}
 }
 
-func (q *blockQueue) push(k compactionKey, block string) bool {
+func (q *blockQueue) push(k compactionKey, b blockEntry) bool {
 	staged := q.stagedBlocks(k)
-	if !staged.pushBlock(block) {
+	if !staged.pushBlock(b) {
 		return false
 	}
 	if q.strategy.flush(staged.batch) {
@@ -92,22 +100,34 @@ func (q *blockQueue) stagedBlocks(k compactionKey) *stagedBlocks {
 func (q *blockQueue) reset(s *stagedBlocks) {
 	s.batch = &batch{
 		// TODO(kolesnikovae): pool.
-		blocks: make([]string, 0, defaultBlockBatchSize),
+		blocks: make([]blockEntry, 0, defaultBlockBatchSize),
 		staged: s,
 	}
 }
 
-func (s *stagedBlocks) pushBlock(block string) bool {
-	if _, found := s.refs[block]; found {
+func (s *stagedBlocks) pushBlock(block blockEntry) bool {
+	if _, found := s.refs[block.id]; found {
 		return false
 	}
-	s.refs[block] = blockRef{batch: s.batch, index: len(s.batch.blocks)}
+	s.refs[block.id] = blockRef{batch: s.batch, index: len(s.batch.blocks)}
 	s.batch.blocks = append(s.batch.blocks, block)
 	s.batch.size++
 	return true
 }
 
-const removedBlockSentinel = ""
+func (q *blockQueue) lookup(key compactionKey, block string) blockEntry {
+	staged, ok := q.staged[key]
+	if !ok {
+		return zeroBlockEntry
+	}
+	ref, found := staged.refs[block]
+	if !found {
+		return zeroBlockEntry
+	}
+	return staged.batch.blocks[ref.index]
+}
+
+var zeroBlockEntry = blockEntry{}
 
 func (q *blockQueue) remove(key compactionKey, block ...string) {
 	staged, ok := q.staged[key]
@@ -121,7 +141,7 @@ func (q *blockQueue) remove(key compactionKey, block ...string) {
 		}
 		// We can't change the order of the blocks in the batch,
 		// because that would require updating all the block locations.
-		ref.batch.blocks[ref.index] = removedBlockSentinel
+		ref.batch.blocks[ref.index] = zeroBlockEntry
 		ref.batch.size--
 		if ref.batch.size == 0 {
 			q.removeBatch(ref.batch)
@@ -190,9 +210,7 @@ func (q *blockQueue) removeBatch(b *batch) {
 func newBatchIter(q *blockQueue) *batchIter { return &batchIter{batch: q.head} }
 
 // batchIter iterates over the batches in the queue, in the order of arrival.
-type batchIter struct {
-	batch *batch
-}
+type batchIter struct{ batch *batch }
 
 func (i *batchIter) next() (*batch, bool) {
 	if i.batch == nil {
@@ -218,7 +236,7 @@ func newBlockIter() *blockIter {
 	// batches. However, marking visited blocks seems to be more robust,
 	// and the size of the map is expected to be small.
 	visited := make(map[string]struct{}, 64)
-	visited[removedBlockSentinel] = struct{}{}
+	visited[zeroBlockEntry.id] = struct{}{}
 	return &blockIter{visited: visited}
 }
 
@@ -234,12 +252,12 @@ func (it *blockIter) next() (string, bool) {
 			continue
 		}
 		b := it.batch.blocks[it.i]
-		if _, visited := it.visited[b]; visited {
+		if _, visited := it.visited[b.id]; visited {
 			it.i++
 			continue
 		}
 		it.i++
-		return b, true
+		return b.id, true
 	}
 	return "", false
 }

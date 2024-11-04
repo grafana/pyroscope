@@ -108,7 +108,7 @@ func (m *CompactionService) PollCompactionJobs(
 		})
 	}
 
-	// All newly created compaction jobs are sent to the compaction worker.
+	// All newly created and re-assigned compaction jobs are sent to workers.
 	for _, job := range prepared.PlanUpdate.CompactionJobs {
 		resp.CompactionJobs = append(resp.CompactionJobs, &metastorev1.CompactionJob{
 			Name:            job.Name,

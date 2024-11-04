@@ -4,20 +4,20 @@ import (
 	"slices"
 	"strings"
 
-	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 )
 
 type queue struct {
-	strategy compactionStrategy
+	strategy strategy
 	levels   []*compactionLevel
 }
 
 type compactionLevel struct {
 	blockQueue *blockQueue
+	// TODO: jobQueue.
 }
 
-func newQueue(strategy compactionStrategy) *queue {
+func newQueue(strategy strategy) *queue {
 	return &queue{strategy: strategy}
 }
 
@@ -39,16 +39,16 @@ func (q *queue) lookupLevel(x uint32) (*compactionLevel, bool) {
 	return q.levels[x], true
 }
 
-func (q *queue) enqueue(md *metastorev1.BlockMeta) bool {
-	if !q.strategy.canCompact(md) {
-		return false
+func (q *queue) enqueue(c compactionKey, b blockEntry) bool {
+	return q.level(c.level).blockQueue.push(c, b)
+}
+
+func (q *queue) lookup(k compactionKey, id string) blockEntry {
+	level, ok := q.lookupLevel(k.level)
+	if ok {
+		return level.blockQueue.lookup(k, id)
 	}
-	k := compactionKey{
-		tenant: md.TenantId,
-		shard:  md.Shard,
-		level:  md.CompactionLevel,
-	}
-	return q.level(k.level).blockQueue.push(k, md.Id)
+	return zeroBlockEntry
 }
 
 func (q *queue) remove(k compactionKey, blocks ...string) {

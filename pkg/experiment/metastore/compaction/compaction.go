@@ -1,8 +1,19 @@
 package compaction
 
-import metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+import (
+	"github.com/hashicorp/raft"
 
-type compactionStrategy interface {
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
+)
+
+type Plan interface {
+	GetCompactionJob(*raft.Log) *metastorev1.CompactionJob
+	AssignJob(*raft.Log, *metastorev1.CompactionJob) *raft_log.CompactionJobState
+	UpdateJob(*raft.Log, *metastorev1.CompactionJobStatusUpdate) *raft_log.CompactionJobState
+}
+
+type strategy interface {
 	// canCompact is called before the block is
 	// enqueued to the compaction planing queue.
 	canCompact(md *metastorev1.BlockMeta) bool

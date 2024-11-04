@@ -1,104 +1,67 @@
 package compaction
 
 import (
-	"strconv"
-	"strings"
+	"github.com/hashicorp/raft"
 
-	"github.com/cespare/xxhash/v2"
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 )
 
-type jobPlan struct {
-	compactionKey
-	name   string
-	blocks []string
+type IndexReader interface {
+	LookupBlocks(tenant string, shard uint32, blocks []string) []*metastorev1.BlockMeta
+	GetTombstones(tenant string, shard uint32) []string
 }
 
-type jobPlanner struct {
-	strategy compactionStrategy
-	queue    *queue
-	level    uint32
-
-	batches *batchIter
-	blocks  *blockIter
+type Planner struct {
+	compactor *Compactor
+	index     IndexReader
 }
 
-func newJobPlanner(q *queue, s compactionStrategy) *jobPlanner {
-	return &jobPlanner{
-		blocks:   newBlockIter(),
-		strategy: s,
-		queue:    q,
+// Planner should be created by compactor as it owns the queue.
+func newPlanner(compactor *Compactor, index IndexReader) *Planner {
+	return &Planner{
+		compactor: compactor,
+		index:     index,
 	}
 }
 
-// Plan compaction of the queued blocks. The algorithm is simple:
-//   - Iterate block queues from low levels to higher ones.
-//   - Find the oldest batch in the order of arrival and try to compact it.
-//   - A batch may not translate into a job (e.g., if some blocks have been
-//     removed). Therefore, we navigate to the next batch with the same
-//     compaction key in this case.
-func (p *jobPlanner) nextJob() *jobPlan {
-	var job jobPlan
-	for p.level < uint32(len(p.queue.levels)) {
-		if p.batches == nil {
-			c := p.queue.levels[p.level]
-			if c == nil {
-				p.level++
-				continue
-			}
-			p.batches = newBatchIter(c.blockQueue)
-		}
-
-		b, ok := p.batches.next()
-		if !ok {
-			// We've done with the current level: no more batches
-			// in the in-order queue. Move to the next level.
-			p.batches = nil
-			p.level++
-			continue
-		}
-
-		// We've found the oldest batch, it's time to plan a job.
-		job.compactionKey = b.staged.key
-		job.blocks = job.blocks[:0]
-		p.blocks.setBatch(b)
-
-		// Once we finish with the current batch blocks, the iterator moves
-		// to the next batch–with-the-same-compaction-key, which is not
-		// necessarily the next in-order-batch from the batch iterator.
-		for {
-			block, ok := p.blocks.next()
-			if !ok {
-				// No more blocks with this compaction key.
-				// The current job plan is to be cancelled,
-				// and we will try the next in-order batch.
-				p.blocks = nil
-				break
-			}
-
-			job.blocks = append(job.blocks, block)
-			if p.strategy.done(&job) {
-				p.name(&job)
-				return &job
-			}
-		}
+func (p *Planner) NewPlan() Plan {
+	return &planUpdate{
+		builder: newJobBuilder(p.compactor.queue, p.compactor.strategy),
+		index:   p.index,
 	}
-
-	return nil
 }
 
-func (p *jobPlanner) name(plan *jobPlan) {
-	// Should be on stack; 16b per block; expected ~20 blocks.
-	buf := make([]byte, 0, 512)
-	for _, b := range plan.blocks {
-		buf = append(buf, b...)
+type planUpdate struct {
+	builder *jobBuilder
+	index   IndexReader
+}
+
+func (p planUpdate) GetCompactionJob(log *raft.Log) *metastorev1.CompactionJob {
+	// TODO: Find a job in queue.
+
+	job := p.builder.nextJob()
+	if job == nil {
+		return nil
 	}
-	var name strings.Builder
-	name.WriteString(strconv.FormatUint(xxhash.Sum64(buf), 10))
-	name.WriteByte('-')
-	name.WriteByte('S')
-	name.WriteString(strconv.FormatUint(uint64(plan.shard), 10))
-	name.WriteByte('-')
-	name.WriteByte('L')
-	name.WriteString(strconv.FormatUint(uint64(plan.level), 10))
-	plan.name = name.String()
+	blocks := p.index.LookupBlocks(job.tenant, job.shard, job.blocks)
+	tombstones := p.index.GetTombstones(job.tenant, job.shard)
+	return &metastorev1.CompactionJob{
+		Name:            job.name,
+		Shard:           job.shard,
+		Tenant:          job.tenant,
+		CompactionLevel: job.level,
+		SourceBlocks:    blocks,
+		Tombstones:      tombstones,
+	}
+}
+
+func (p planUpdate) AssignJob(log *raft.Log, job *metastorev1.CompactionJob) *raft_log.CompactionJobState {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (p planUpdate) UpdateJob(log *raft.Log, update *metastorev1.CompactionJobStatusUpdate) *raft_log.CompactionJobState {
+	//TODO implement me
+	panic("implement me")
 }
