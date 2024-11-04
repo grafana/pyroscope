@@ -15,8 +15,8 @@ type CompactionPlanner interface {
 }
 
 type CompactionPlanChange interface {
-	GetCompactionJob(*raft.Log) *raft_log.CompactionJob
-	AssignJob(*raft.Log, *raft_log.CompactionJob) *raft_log.CompactionJobState
+	GetCompactionJob(*raft.Log) *metastorev1.CompactionJob
+	AssignJob(*raft.Log, *metastorev1.CompactionJob) *raft_log.CompactionJobState
 	UpdateJob(*raft.Log, *metastorev1.CompactionJobStatusUpdate) *raft_log.CompactionJobState
 }
 
@@ -29,7 +29,7 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 	_ *bbolt.Tx, cmd *raft.Log, req *raft_log.GetCompactionPlanUpdateRequest,
 ) (*raft_log.GetCompactionPlanUpdateResponse, error) {
 	p := &raft_log.CompactionPlanUpdate{
-		CompactionJobs: make([]*raft_log.CompactionJob, 0, req.AssignJobsMax),
+		CompactionJobs: make([]*metastorev1.CompactionJob, 0, req.AssignJobsMax),
 		JobUpdates:     make([]*raft_log.CompactionJobState, 0, len(req.StatusUpdates)),
 	}
 

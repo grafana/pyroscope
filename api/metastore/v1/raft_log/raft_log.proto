@@ -36,18 +36,8 @@ message GetCompactionPlanUpdateResponse {
 }
 
 message CompactionPlanUpdate {
-  repeated CompactionJob compaction_jobs = 1;
+  repeated metastore.v1.CompactionJob compaction_jobs = 1;
   repeated CompactionJobState job_updates = 2;
-}
-
-message CompactionJob {
-  string name = 1;
-  string tenant = 2;
-  uint32 shard = 3;
-  uint32 compaction_level = 4;
-  repeated metastore.v1.BlockMeta source_blocks = 5;
-  repeated string tombstones = 6;
-  int64 added_at = 7;
 }
 
 // CompactionJobState in response to the compaction worker request.

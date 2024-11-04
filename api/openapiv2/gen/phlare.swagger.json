@@ -359,38 +359,6 @@
         }
       }
     },
-    "metastorev1CompactionJob": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "shard": {
-          "type": "integer",
-          "format": "int64"
-        },
-        "tenant": {
-          "type": "string"
-        },
-        "compactionLevel": {
-          "type": "integer",
-          "format": "int64"
-        },
-        "sourceBlocks": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1BlockMeta"
-          }
-        },
-        "tombstones": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
     "protobufAny": {
       "type": "object",
       "properties": {
@@ -722,6 +690,38 @@
         "URL": {
           "type": "string",
           "title": "the full URL to the commit"
+        }
+      }
+    },
+    "v1CompactionJob": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "shard": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "tenant": {
+          "type": "string"
+        },
+        "compactionLevel": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "sourceBlocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1BlockMeta"
+          }
+        },
+        "tombstones": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
@@ -1520,7 +1520,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/metastorev1CompactionJob"
+            "$ref": "#/definitions/v1CompactionJob"
           }
         },
         "assignments": {
