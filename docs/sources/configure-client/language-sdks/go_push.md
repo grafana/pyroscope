@@ -160,14 +160,27 @@ pyroscope.Start(pyroscope.Config{
 })
 ```
 
-### Option for handling increased memory usage
+### Option: Use `DisableGCRuns` for handling increased memory usage
 
 Pyroscope may require additional when tracking a lot of objects. For example, a Go service that indexes large amounts of data requires more memory.
 This tracking can lead to higher CPU usage and potential CPU throttling.
 
 You can use `DisableGCRuns` in your Go configuration to disable automatic runtimes.
-If this flag is enabled, there is less GC running and therefore less CPU resources spent.
-However, the heap profile may be less precies.
+If this flag is activated, there is less GC running and therefore less CPU resources spent.
+However, the heap profile may be less precise.
+
+#### Background
+
+In Go's pprof heap profiling, forcing garbage collection (GC) ensures accurate memory usage snapshots by removing uncollected objects.
+Without this step, the heap profile may include memory that has been allocated but is no longer in use--objects that stay in memory simply because they haven't been collected yet.
+This can mask or mimic memory leaks and introduce bias into the profiles, complicating their analysis.
+Therefore, Pyroscope defaults to forcing GC every time a heap profile is collected.
+
+However, in some cases, forcing GC can increase CPU usage, especially if there are many live objects in the heap.
+This issue is reflected by the appearance of the `runtime.GC` function in the CPU profile.
+If the problem has manifested, and some inaccuracy in the heap profile is acceptable, then it is advisable to disable this option to avoid performance degradation.
+
+#### Activate `DisableGCRuns`
 
 Add `DisableGCRuns: true` to the `pyroscope.Start(pyroscope.Config)` block.
 
