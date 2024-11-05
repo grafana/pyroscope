@@ -2,16 +2,19 @@ package compaction
 
 import (
 	"github.com/hashicorp/raft"
+	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 )
 
 type Plan interface {
-	GetCompactionJob(*raft.Log) *metastorev1.CompactionJob
-	AssignJob(*raft.Log, *metastorev1.CompactionJob) *raft_log.CompactionJobState
-	UpdateJob(*raft.Log, *metastorev1.CompactionJobStatusUpdate) *raft_log.CompactionJobState
+	UpdateJob(*bbolt.Tx, *raft.Log, *metastorev1.CompactionJobStatusUpdate) *raft_log.CompactionJobState
+	AssignJob(*bbolt.Tx, *raft.Log) (*metastorev1.CompactionJob, *raft_log.CompactionJobState)
+	CreateJob(*bbolt.Tx, *raft.Log) *metastorev1.CompactionJob
 }
+
+// TODO(kolesnikovae): Rename. This is not a strategy but rather a configuration.
 
 type strategy interface {
 	// canCompact is called before the block is
@@ -20,10 +23,8 @@ type strategy interface {
 	// compact is called before and after the
 	// block has been added to the batch.
 	flush(batch *batch) bool
-	// done is called after the block is added to the job plan.
-	done(*jobPlan) bool
-	// TODO(kolesnikovae): We should not merge blocks that are too far apart.
-	// canAdd(*jobPlan, string) bool
+	// complete is called after the block is added to the job plan.
+	complete(*jobPlan) bool
 }
 
 const defaultBlockBatchSize = 10
@@ -55,6 +56,6 @@ func (s jobSizeCompactionStrategy) flush(b *batch) bool {
 	return b.size >= s.maxBlocks(b.staged.key.level)
 }
 
-func (s jobSizeCompactionStrategy) done(j *jobPlan) bool {
+func (s jobSizeCompactionStrategy) complete(j *jobPlan) bool {
 	return uint32(len(j.blocks)) >= s.maxBlocks(j.level)
 }

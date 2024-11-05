@@ -22,7 +22,15 @@ type CompactedBlocks struct {
 type PlanUpdater struct {
 	compactor *Compactor
 	index     IndexWriter
-	store     Store
+	store     BlockQueueStore
+}
+
+func NewUpdater(c *Compactor, i IndexWriter, s BlockQueueStore) *PlanUpdater {
+	return &PlanUpdater{
+		compactor: c,
+		index:     i,
+		store:     s,
+	}
 }
 
 func (u *PlanUpdater) ApplyUpdate(tx *bbolt.Tx, plan *raft_log.CompactionPlanUpdate) error {
@@ -30,8 +38,11 @@ func (u *PlanUpdater) ApplyUpdate(tx *bbolt.Tx, plan *raft_log.CompactionPlanUpd
 }
 
 func (u *PlanUpdater) handleStatusSuccess(tx *bbolt.Tx, update *raft_log.CompactionJobState) error {
-	// TODO: Load the local version of the job from store.
-	//	var stored any
+	//TODO implement me
+	panic("implement me")
+
+	// // TODO: Load the local version of the job from store.
+	// var stored any
 	//
 	//	compacted := CompactedBlocks{
 	//		Tenant:    stored.Tenant,
@@ -40,6 +51,7 @@ func (u *PlanUpdater) handleStatusSuccess(tx *bbolt.Tx, update *raft_log.Compact
 	//		Deleted:   update.DeletedBlocks,
 	//		Compacted: update.CompactedBlocks,
 	//	}
+	//
 	//	if err := u.index.Replace(tx, compacted); err != nil {
 	//		return err
 	//	}
@@ -60,6 +72,5 @@ func (u *PlanUpdater) handleStatusSuccess(tx *bbolt.Tx, update *raft_log.Compact
 	//		}
 	//	}
 	//
-	//	return u.store.DeleteJob(update.Name)
-	return nil
+	// return u.store.DeleteJob(tx, update.Name)
 }

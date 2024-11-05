@@ -74,8 +74,10 @@ func (m *CompactionService) PollCompactionJobs(
 		return nil, err
 	}
 
-	// The response we sent to the worker differs from the compaction plan: the
-	// latter contains all state transitions including terminal ones.
+	// The response we sent to the worker differs from the compaction plan:
+	//  - the latter contains all state transitions including terminal ones
+	//  - re-assigned jobs are not written to the raft log (only the assignments) – TODO
+
 	resp := &metastorev1.PollCompactionJobsResponse{
 		CompactionJobs: make([]*metastorev1.CompactionJob, 0, len(prepared.PlanUpdate.CompactionJobs)),
 		Assignments:    make([]*metastorev1.CompactionJobAssignment, 0, len(prepared.PlanUpdate.JobUpdates)),

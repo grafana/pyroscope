@@ -10,10 +10,10 @@ import (
 type Compactor struct {
 	strategy strategy
 	queue    *queue
-	store    Store
+	store    BlockQueueStore
 }
 
-func NewCompactor(store Store) *Compactor {
+func NewCompactor(store BlockQueueStore) *Compactor {
 	c := Compactor{
 		strategy: defaultCompactionStrategy,
 		store:    store,
@@ -75,6 +75,10 @@ func (p *Compactor) reset() {
 	p.queue = newQueue(p.strategy)
 }
 
-func (p *Compactor) Planner(index IndexReader) *Planner {
-	return newPlanner(p, index)
+func (p *Compactor) Planner(index PlannerIndexReader) *Planner {
+	return NewPlanner(p, index)
+}
+
+func (p *Compactor) PlanUpdater(index IndexWriter) *PlanUpdater {
+	return NewUpdater(p, index, p.store)
 }

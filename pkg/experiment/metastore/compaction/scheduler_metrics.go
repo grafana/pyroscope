@@ -1,4 +1,4 @@
-package metastore
+package compaction
 
 import (
 	"slices"
@@ -10,34 +10,34 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 )
 
-type jobQueueStatsCollector struct {
-	queue *jobQueue
+type schedulerStatsCollector struct {
+	scheduler *scheduler
 
 	jobsTotal *prometheus.Desc
 	oldestJob *prometheus.Desc
 	newestJob *prometheus.Desc
 }
 
-func newJobQueueStatsCollector(queue *jobQueue) prometheus.Collector {
-	return &jobQueueStatsCollector{
-		queue: queue,
+func newSchedulerStatsCollector(sc *scheduler) prometheus.Collector {
+	return &schedulerStatsCollector{
+		scheduler: sc,
 
 		jobsTotal: prometheus.NewDesc(
-			"compaction_queue_jobs_total",
+			"compaction_scheduled_jobs_total",
 			"The number of active aggregates.",
 			[]string{"level", "status"},
 			nil,
 		),
 
 		oldestJob: prometheus.NewDesc(
-			"compaction_queue_max_job_age_seconds",
+			"compaction_scheduled_max_job_age_seconds",
 			"The oldest job age in seconds.",
 			[]string{"level", "status"},
 			nil,
 		),
 
 		newestJob: prometheus.NewDesc(
-			"compaction_queue_min_job_age_seconds",
+			"compaction_scheduled_min_job_age_seconds",
 			"The newest job age in seconds.",
 			[]string{"level", "status"},
 			nil,
@@ -45,22 +45,22 @@ func newJobQueueStatsCollector(queue *jobQueue) prometheus.Collector {
 	}
 }
 
-func (c *jobQueueStatsCollector) Describe(ch chan<- *prometheus.Desc) {
+func (c *schedulerStatsCollector) Describe(ch chan<- *prometheus.Desc) {
 	prometheus.DescribeByCollect(c, ch)
 }
 
-func (c *jobQueueStatsCollector) Collect(ch chan<- prometheus.Metric) {
+func (c *schedulerStatsCollector) Collect(ch chan<- prometheus.Metric) {
 	type levelStatusStats struct {
 		jobs   float64
 		oldest int64
 		newest int64
 	}
 
-	c.queue.mu.Lock()
-	levels := make([][]levelStatusStats, len(c.queue.levels))
-	for i := range c.queue.levels {
+	c.scheduler.mu.Lock()
+	levels := make([][]levelStatusStats, len(c.scheduler.levels))
+	for i := range c.scheduler.levels {
 		levels[i] = make([]levelStatusStats, 0, 5)
-		for _, job := range c.queue.levels[i] {
+		for _, job := range c.scheduler.levels[i] {
 			j := int(job.Status)
 			levels[i] = slices.Grow(levels[i], j+1)[:j+1]
 			levels[i][j].jobs++
@@ -71,7 +71,7 @@ func (c *jobQueueStatsCollector) Collect(ch chan<- prometheus.Metric) {
 			}
 		}
 	}
-	c.queue.mu.Unlock()
+	c.scheduler.mu.Unlock()
 
 	for level, statuses := range levels {
 		levelLabel := strconv.Itoa(level)

@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package compaction;
+
+message CompactionJob {
+  repeated string source_blocks = 1;
+  repeated string tombstones = 2;
+}

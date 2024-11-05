@@ -1,4 +1,4 @@
-package metastore
+package compaction
 
 import (
 	"strconv"
@@ -11,10 +11,10 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 )
 
-func Test_compaction_job_queue_ownership(t *testing.T) {
+func TestScheduler_ownership(t *testing.T) {
 	var now int64      // Timestamp of the raft command.
 	lease := int64(10) // Job lease duration.
-	q := newJobQueue(lease)
+	q := newScheduler(lease)
 
 	assert.True(t, q.enqueue(&raft_log.CompactionJobState{
 		Name:            "job1",
@@ -72,10 +72,10 @@ func assertJob(t *testing.T, j *raft_log.CompactionJobState, name string, commit
 	assert.Equal(t, commitIndex, j.RaftLogIndex)
 }
 
-func Test_compaction_job_queue_job_reassignment(t *testing.T) {
+func TestScheduler_job_reassignment(t *testing.T) {
 	var now int64      // Timestamp of the raft command.
 	lease := int64(10) // Job lease duration.
-	q := newJobQueue(lease)
+	q := newScheduler(lease)
 
 	jobs := []*raft_log.CompactionJobState{
 		{CompactionLevel: 2},
@@ -164,8 +164,8 @@ func Test_compaction_job_queue_job_reassignment(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
-func Test_compaction_job_queue_job_cancel(t *testing.T) {
-	q := newJobQueue(10)
+func TestScheduler_job_cancel(t *testing.T) {
+	q := newScheduler(10)
 	assert.True(t, q.enqueue(&raft_log.CompactionJobState{
 		Name:            "1",
 		CompactionLevel: 0,
@@ -191,8 +191,8 @@ func Test_compaction_job_queue_job_cancel(t *testing.T) {
 	assert.Nil(t, q.dequeue(100, 7))
 }
 
-func Test_compaction_job_queue_job_release(t *testing.T) {
-	q := newJobQueue(10)
+func TestScheduler_job_release(t *testing.T) {
+	q := newScheduler(10)
 	assert.True(t, q.enqueue(&raft_log.CompactionJobState{
 		Name:            "1",
 		CompactionLevel: 0,
