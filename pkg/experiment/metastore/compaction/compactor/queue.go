@@ -23,28 +23,17 @@ func newCompactionQueue(strategy strategy) *compactionQueue {
 	return &compactionQueue{strategy: strategy}
 }
 
-func (q *compactionQueue) enqueue(k compactionKey, e blockEntry) bool {
-	return q.levelBlockQueue(k.level).push(k, e)
+func (q *compactionQueue) push(k compactionKey, e blockEntry) bool {
+	return q.stagedBlocks(k).push(e)
 }
 
-func (q *compactionQueue) levelBlockQueue(level uint32) *blockQueue {
-	s := level + 1 // Levels are 0-based.
+func (q *compactionQueue) stagedBlocks(k compactionKey) *stagedBlocks {
+	s := k.level + 1 // Levels are 0-based.
 	if s > uint32(len(q.levels)) {
 		q.levels = slices.Grow(q.levels, int(s))[:s]
-		q.levels[level] = newBlockQueue(q.strategy)
+		q.levels[k.level] = newBlockQueue(q.strategy)
 	}
-	return q.levels[level]
-}
-
-func (q *compactionQueue) lookupStagedBlocks(k compactionKey) (*stagedBlocks, bool) {
-	if k.level >= uint32(len(q.levels)) {
-		return nil, false
-	}
-	staged, ok := q.levels[k.level].staged[k]
-	if !ok {
-		return nil, false
-	}
-	return staged, true
+	return q.levels[k.level].stagedBlocks(k)
 }
 
 // blockQueue stages blocks as they are being added. Once a batch of blocks
@@ -111,18 +100,6 @@ func newBlockQueue(strategy strategy) *blockQueue {
 	}
 }
 
-func (q *blockQueue) push(k compactionKey, b blockEntry) bool {
-	staged := q.stagedBlocks(k)
-	if !staged.pushBlock(b) {
-		return false
-	}
-	if q.strategy.flush(staged.batch) {
-		q.pushBatch(staged.batch)
-		q.resetStaged(staged)
-	}
-	return true
-}
-
 func (q *blockQueue) stagedBlocks(k compactionKey) *stagedBlocks {
 	staged, ok := q.staged[k]
 	if !ok {
@@ -131,28 +108,32 @@ func (q *blockQueue) stagedBlocks(k compactionKey) *stagedBlocks {
 			key:   k,
 			refs:  make(map[string]blockRef),
 		}
+		staged.reset()
 		q.staged[k] = staged
-		q.resetStaged(staged)
 	}
 	return staged
 }
 
-func (q *blockQueue) resetStaged(s *stagedBlocks) {
-	s.batch = &batch{
-		// TODO(kolesnikovae): pool.
-		blocks: make([]blockEntry, 0, defaultBlockBatchSize),
-		staged: s,
-	}
-}
-
-func (s *stagedBlocks) pushBlock(block blockEntry) bool {
+func (s *stagedBlocks) push(block blockEntry) bool {
 	if _, found := s.refs[block.id]; found {
 		return false
 	}
 	s.refs[block.id] = blockRef{batch: s.batch, index: len(s.batch.blocks)}
 	s.batch.blocks = append(s.batch.blocks, block)
 	s.batch.size++
+	if s.queue.strategy.flush(s.batch) {
+		s.queue.pushBatch(s.batch)
+		s.reset()
+	}
 	return true
+}
+
+func (s *stagedBlocks) reset() {
+	// TODO(kolesnikovae): get from pool.
+	s.batch = &batch{
+		blocks: make([]blockEntry, 0, defaultBlockBatchSize),
+		staged: s,
+	}
 }
 
 var zeroBlockEntry blockEntry
@@ -169,6 +150,7 @@ func (s *stagedBlocks) delete(block string) blockEntry {
 	ref.batch.size--
 	if ref.batch.size == 0 {
 		s.queue.removeBatch(ref.batch)
+		// TODO(kolesnikovae): return to pool.
 	}
 	delete(s.refs, block)
 	return e

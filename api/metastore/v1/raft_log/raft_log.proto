@@ -44,16 +44,25 @@ message CompactionPlanUpdate {
 message CompactionJobState {
   string name = 1;
   uint32 compaction_level = 2;
-
   metastore.v1.CompactionJobStatus status = 3;
+
   uint64 raft_log_index = 4;
   int64 lease_expires_at = 5;
   int64 failures = 6;
   int64 added_at = 7;
 
   // Only present if the status is SUCCESS.
-  repeated metastore.v1.BlockMeta compacted_blocks = 8;
-  repeated string deleted_blocks = 9;
+  CompactedBlocks compacted_blocks = 8;
+}
+
+message CompactedBlocks {
+  string job_name = 1;
+  string tenant = 2;
+  uint32 shard = 3;
+  uint32 compaction_level = 4;
+  repeated string source_blocks = 5;
+  repeated metastore.v1.BlockMeta compacted_blocks = 6;
+  repeated string deleted_blocks = 7;
 }
 
 // UpdateCompactionPlanRequest proposes compaction plan changes.

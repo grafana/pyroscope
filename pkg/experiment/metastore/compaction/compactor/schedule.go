@@ -8,14 +8,10 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 )
 
-type SchedulerIndexReader interface {
-}
-
 type compactionSchedule struct {
 	tx   *bbolt.Tx
-	raft *raft.Raft
+	raft *raft.Log
 
-	index     SchedulerIndexReader
 	scheduler *Scheduler
 }
 

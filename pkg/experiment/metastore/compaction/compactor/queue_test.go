@@ -16,18 +16,18 @@ func TestBlockQueue_Push(t *testing.T) {
 	q := newBlockQueue(jobSizeCompactionStrategy{maxBlocksDefault: 3})
 	key := compactionKey{tenant: "t", shard: 1}
 
-	result := q.push(key, testBlockEntry(1))
+	result := q.stagedBlocks(key).push(testBlockEntry(1))
 	require.True(t, result)
 	require.Equal(t, 1, len(q.staged[key].batch.blocks))
 	assert.Equal(t, testBlockEntry(1), q.staged[key].batch.blocks[0])
 
-	q.push(key, testBlockEntry(2))
-	q.push(key, testBlockEntry(3)) // Staged blocks formed the first batch.
+	q.stagedBlocks(key).push(testBlockEntry(2))
+	q.stagedBlocks(key).push(testBlockEntry(3)) // Staged blocks formed the first batch.
 	assert.Equal(t, 0, len(q.staged[key].batch.blocks))
 	assert.Equal(t, []blockEntry{testBlockEntry(1), testBlockEntry(2), testBlockEntry(3)}, q.head.blocks)
 
-	q.push(key, testBlockEntry(4))
-	q.push(key, testBlockEntry(5))
+	q.stagedBlocks(key).push(testBlockEntry(4))
+	q.stagedBlocks(key).push(testBlockEntry(5))
 	assert.Equal(t, 2, len(q.staged[key].batch.blocks))
 
 	q.remove(key, "1", "2") // Remove the first batch.
@@ -35,10 +35,10 @@ func TestBlockQueue_Push(t *testing.T) {
 	q.remove(key, "3")
 	assert.Nil(t, q.head)
 
-	q.push(key, testBlockEntry(6)) // Complete the second batch.
+	q.stagedBlocks(key).push(testBlockEntry(6)) // Complete the second batch.
 	assert.Equal(t, 0, len(q.staged[key].batch.blocks))
 
-	q.push(key, testBlockEntry(7))
+	q.stagedBlocks(key).push(testBlockEntry(7))
 	assert.Equal(t, []blockEntry{testBlockEntry(4), testBlockEntry(5), testBlockEntry(6)}, q.head.blocks)
 	assert.Equal(t, 1, len(q.staged[key].batch.blocks))
 }
@@ -47,8 +47,8 @@ func TestBlockQueue_DuplicateBlock(t *testing.T) {
 	q := newBlockQueue(jobSizeCompactionStrategy{maxBlocksDefault: 3})
 	key := compactionKey{tenant: "t", shard: 1}
 
-	require.True(t, q.push(key, testBlockEntry(1)))
-	require.False(t, q.push(key, testBlockEntry(1)))
+	require.True(t, q.stagedBlocks(key).push(testBlockEntry(1)))
+	require.False(t, q.stagedBlocks(key).push(testBlockEntry(1)))
 
 	assert.Equal(t, 1, len(q.staged[key].batch.blocks))
 }
@@ -56,8 +56,8 @@ func TestBlockQueue_DuplicateBlock(t *testing.T) {
 func TestBlockQueue_Remove(t *testing.T) {
 	q := newBlockQueue(jobSizeCompactionStrategy{maxBlocksDefault: 3})
 	key := compactionKey{tenant: "t", shard: 1}
-	q.push(key, testBlockEntry(1))
-	q.push(key, testBlockEntry(2))
+	q.stagedBlocks(key).push(testBlockEntry(1))
+	q.stagedBlocks(key).push(testBlockEntry(2))
 
 	q.remove(key, "1")
 	require.Empty(t, q.staged[key].batch.blocks[0])
@@ -74,10 +74,10 @@ func TestBlockQueue_Remove_not_found(t *testing.T) {
 	q := newBlockQueue(jobSizeCompactionStrategy{maxBlocksDefault: 3})
 	key := compactionKey{tenant: "t", shard: 1}
 	q.remove(key, "1")
-	q.push(key, testBlockEntry(1))
+	q.stagedBlocks(key).push(testBlockEntry(1))
 	q.remove(key, "2")
-	q.push(key, testBlockEntry(2))
-	q.push(key, testBlockEntry(3))
+	q.stagedBlocks(key).push(testBlockEntry(2))
+	q.stagedBlocks(key).push(testBlockEntry(3))
 
 	assert.Equal(t, []blockEntry{testBlockEntry(1), testBlockEntry(2), testBlockEntry(3)}, q.head.blocks)
 }
@@ -86,12 +86,12 @@ func TestBlockQueue_Linking(t *testing.T) {
 	q := newBlockQueue(jobSizeCompactionStrategy{maxBlocksDefault: 2})
 	key := compactionKey{tenant: "t", shard: 1}
 
-	q.push(key, testBlockEntry(1))
-	q.push(key, testBlockEntry(2))
+	q.stagedBlocks(key).push(testBlockEntry(1))
+	q.stagedBlocks(key).push(testBlockEntry(2))
 	require.NotNil(t, q.head)
 	assert.Equal(t, q.head, q.tail)
 
-	q.push(key, testBlockEntry(3))
+	q.stagedBlocks(key).push(testBlockEntry(3))
 	assert.NotNil(t, q.tail)
 	assert.Nil(t, q.tail.prev)
 	assert.NotNil(t, q.head)
@@ -99,12 +99,12 @@ func TestBlockQueue_Linking(t *testing.T) {
 	assert.Equal(t, []blockEntry{testBlockEntry(1), testBlockEntry(2)}, q.head.blocks)
 	assert.Equal(t, q.tail.blocks, q.head.blocks)
 
-	q.push(key, testBlockEntry(4))
+	q.stagedBlocks(key).push(testBlockEntry(4))
 	assert.NotNil(t, q.tail.prev)
 	assert.NotNil(t, q.head.next)
 
-	q.push(key, testBlockEntry(5))
-	q.push(key, testBlockEntry(6))
+	q.stagedBlocks(key).push(testBlockEntry(5))
+	q.stagedBlocks(key).push(testBlockEntry(6))
 	assert.NotNil(t, q.tail.prev.prev)
 	assert.NotNil(t, q.head.next.next)
 
@@ -136,7 +136,7 @@ func TestBlockQueue_ExpectEmptyQueue(t *testing.T) {
 	for _, key := range keys {
 		for j := 0; j < numBlocksPerKey; j++ {
 			block := testBlockEntry(j)
-			require.True(t, q.push(key, block))
+			require.True(t, q.stagedBlocks(key).push(block))
 			blocks[key] = append(blocks[key], block.id)
 		}
 	}
@@ -170,7 +170,7 @@ func TestBlockQueue_iter(t *testing.T) {
 	}
 
 	for j := 0; j < 20; j++ {
-		q.push(keys[j%len(keys)], testBlockEntry(j))
+		q.stagedBlocks(keys[j%len(keys)]).push(testBlockEntry(j))
 	}
 
 	iter := newBatchIter(q)

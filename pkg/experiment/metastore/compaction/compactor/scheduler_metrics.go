@@ -23,8 +23,8 @@ func newSchedulerStatsCollector(sc *Scheduler) prometheus.Collector {
 		scheduler: sc,
 
 		jobsTotal: prometheus.NewDesc(
-			"compaction_scheduled_jobs_total",
-			"The number of active aggregates.",
+			"compaction_scheduled_jobs",
+			"The number of jobs scheduled.",
 			[]string{"level", "status"},
 			nil,
 		),
@@ -57,10 +57,11 @@ func (c *schedulerStatsCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	c.scheduler.mu.Lock()
-	levels := make([][]levelStatusStats, len(c.scheduler.levels))
-	for i := range c.scheduler.levels {
+	q := c.scheduler.queue
+	levels := make([][]levelStatusStats, len(q.levels))
+	for i := range q.levels {
 		levels[i] = make([]levelStatusStats, 0, 5)
-		for _, job := range c.scheduler.levels[i] {
+		for _, job := range q.levels[i] {
 			j := int(job.Status)
 			levels[i] = slices.Grow(levels[i], j+1)[:j+1]
 			levels[i][j].jobs++

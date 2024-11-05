@@ -10,9 +10,10 @@ import (
 
 type Planner interface {
 	AddBlocks(*bbolt.Tx, *raft.Log, ...*metastorev1.BlockMeta) error
-	Planned(*bbolt.Tx, *metastorev1.CompactionJob) error
-	Compacted(*bbolt.Tx, CompactedBlocks) error
 	NewPlan(*bbolt.Tx) Plan
+	// Planned and Compacted methods is the way Scheduler communicates to planner.
+	Planned(*bbolt.Tx, *metastorev1.CompactionJob) error
+	Compacted(*bbolt.Tx, *raft_log.CompactedBlocks) error
 }
 
 type Plan interface {
@@ -20,21 +21,12 @@ type Plan interface {
 }
 
 type Scheduler interface {
-	AddJobs(*bbolt.Tx, ...*metastorev1.CompactionJob) error
-	UpdateSchedule(*bbolt.Tx, ...*raft_log.CompactionJobState) error
+	AddJobs(*bbolt.Tx, Planner, ...*metastorev1.CompactionJob) error
+	UpdateSchedule(*bbolt.Tx, Planner, ...*raft_log.CompactionJobState) error
 	NewSchedule(*bbolt.Tx, *raft.Log) Schedule
 }
 
 type Schedule interface {
 	UpdateJob(*metastorev1.CompactionJobStatusUpdate) *raft_log.CompactionJobState
 	AssignJob() (*metastorev1.CompactionJob, *raft_log.CompactionJobState)
-}
-
-type CompactedBlocks struct {
-	Tenant  string
-	Shard   uint32
-	Level   uint32
-	Source  []string
-	Deleted []string
-	Blocks  []*metastorev1.BlockMeta
 }

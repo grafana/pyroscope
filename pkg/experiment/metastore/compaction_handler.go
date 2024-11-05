@@ -58,10 +58,10 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 func (h *CompactionCommandHandler) UpdateCompactionPlan(
 	tx *bbolt.Tx, _ *raft.Log, req *raft_log.UpdateCompactionPlanRequest,
 ) (*raft_log.UpdateCompactionPlanResponse, error) {
-	if err := h.scheduler.AddJobs(tx, req.PlanUpdate.CompactionJobs...); err != nil {
+	if err := h.scheduler.AddJobs(tx, h.planner, req.PlanUpdate.CompactionJobs...); err != nil {
 		return nil, err
 	}
-	if err := h.scheduler.UpdateSchedule(tx, req.PlanUpdate.JobUpdates...); err != nil {
+	if err := h.scheduler.UpdateSchedule(tx, h.planner, req.PlanUpdate.JobUpdates...); err != nil {
 		return nil, err
 	}
 	return new(raft_log.UpdateCompactionPlanResponse), nil

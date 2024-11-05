@@ -28,6 +28,9 @@ func (p *compactionPlan) CreateJob() *metastorev1.CompactionJob {
 		return nil
 	}
 	blocks := p.index.LookupBlocks(p.tx, job.tenant, job.shard, job.blocks)
+	if len(blocks) == 0 {
+		return nil
+	}
 	tombstones := p.index.GetTombstones(p.tx, job.tenant, job.shard)
 	return &metastorev1.CompactionJob{
 		Name:            job.name,
