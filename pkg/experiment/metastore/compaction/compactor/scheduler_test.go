@@ -1,4 +1,4 @@
-package compaction
+package compactor
 
 import (
 	"strconv"
@@ -14,7 +14,7 @@ import (
 func TestScheduler_ownership(t *testing.T) {
 	var now int64      // Timestamp of the raft command.
 	lease := int64(10) // Job lease duration.
-	q := newScheduler(lease)
+	q := NewScheduler(lease)
 
 	assert.True(t, q.enqueue(&raft_log.CompactionJobState{
 		Name:            "job1",
@@ -75,7 +75,7 @@ func assertJob(t *testing.T, j *raft_log.CompactionJobState, name string, commit
 func TestScheduler_job_reassignment(t *testing.T) {
 	var now int64      // Timestamp of the raft command.
 	lease := int64(10) // Job lease duration.
-	q := newScheduler(lease)
+	q := NewScheduler(lease)
 
 	jobs := []*raft_log.CompactionJobState{
 		{CompactionLevel: 2},
@@ -165,7 +165,7 @@ func TestScheduler_job_reassignment(t *testing.T) {
 }
 
 func TestScheduler_job_cancel(t *testing.T) {
-	q := newScheduler(10)
+	q := NewScheduler(10)
 	assert.True(t, q.enqueue(&raft_log.CompactionJobState{
 		Name:            "1",
 		CompactionLevel: 0,
@@ -192,7 +192,7 @@ func TestScheduler_job_cancel(t *testing.T) {
 }
 
 func TestScheduler_job_release(t *testing.T) {
-	q := newScheduler(10)
+	q := NewScheduler(10)
 	assert.True(t, q.enqueue(&raft_log.CompactionJobState{
 		Name:            "1",
 		CompactionLevel: 0,

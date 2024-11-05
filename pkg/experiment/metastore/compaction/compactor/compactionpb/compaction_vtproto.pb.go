@@ -5,10 +5,11 @@
 package compactionpb
 
 import (
-	fmt "fmt"
-	protohelpers "github.com/planetscale/vtprotobuf/protohelpers"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	io "io"
+	"fmt"
+	"io"
+
+	"github.com/planetscale/vtprotobuf/protohelpers"
+	"google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (

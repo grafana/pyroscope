@@ -1,4 +1,4 @@
-package compaction
+package compactor
 
 import (
 	"container/heap"
@@ -7,6 +7,7 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction"
 )
 
 // Compaction job scheduler. Jobs are prioritized by the compaction level, and
@@ -16,7 +17,13 @@ import (
 // implemented using lease deadlines and fencing tokens:
 // https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html
 
-type scheduler struct {
+type Scheduler struct {
+	// Scheduler's feedback loop is implemented using the planner:
+	// when a new job is being added, we inform the planner that
+	// the plan is committed.
+	// When a job is being removed, we inform the planner that
+	planner compaction.Planner
+
 	// Although the scheduler is supposed to be used by a single planner
 	// in a synchronous manner, we still need to protect it from concurrent
 	// read accesses, such as stats collection, and listing jobs for debug
@@ -27,13 +34,13 @@ type scheduler struct {
 	lease  int64
 }
 
-// newScheduler creates a scheduler with the given lease duration.
+// NewScheduler creates a scheduler with the given lease duration.
 // Typically, callers should update jobs at the interval not exceeding
 // the half of the lease duration.
-func newScheduler(lease int64) *scheduler {
+func NewScheduler(lease int64) *Scheduler {
 	pq := make(priorityQueue, 0)
 	heap.Init(&pq)
-	return &scheduler{
+	return &Scheduler{
 		jobs:  make(map[string]*jobEntry),
 		lease: lease,
 	}
@@ -61,7 +68,7 @@ func (c *jobEntry) less(x *jobEntry) bool {
 	return c.Name < x.Name
 }
 
-func (sc *scheduler) level(x uint32) *priorityQueue {
+func (sc *Scheduler) level(x uint32) *priorityQueue {
 	s := x + 1 // Levels are 0-based.
 	if s >= uint32(len(sc.levels)) {
 		sc.levels = slices.Grow(sc.levels, int(s))[:s]
@@ -69,7 +76,7 @@ func (sc *scheduler) level(x uint32) *priorityQueue {
 	return &sc.levels[x]
 }
 
-func (sc *scheduler) enqueue(job *raft_log.CompactionJobState) bool {
+func (sc *Scheduler) enqueue(job *raft_log.CompactionJobState) bool {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
 	if _, exists := sc.jobs[job.Name]; exists {
@@ -81,7 +88,7 @@ func (sc *scheduler) enqueue(job *raft_log.CompactionJobState) bool {
 	return true
 }
 
-func (sc *scheduler) dequeue(now int64, raftLogIndex uint64) *raft_log.CompactionJobState {
+func (sc *Scheduler) dequeue(now int64, raftLogIndex uint64) *raft_log.CompactionJobState {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
 	for i := range sc.levels {
@@ -110,7 +117,7 @@ func (sc *scheduler) dequeue(now int64, raftLogIndex uint64) *raft_log.Compactio
 	return nil
 }
 
-func (sc *scheduler) update(name string, now int64, raftLogIndex uint64) bool {
+func (sc *Scheduler) update(name string, now int64, raftLogIndex uint64) bool {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
 	if job, exists := sc.jobs[name]; exists {
@@ -126,7 +133,7 @@ func (sc *scheduler) update(name string, now int64, raftLogIndex uint64) bool {
 	return false
 }
 
-func (sc *scheduler) cancel(name string) bool {
+func (sc *Scheduler) cancel(name string) bool {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
 	if job, exists := sc.jobs[name]; exists {
@@ -137,7 +144,7 @@ func (sc *scheduler) cancel(name string) bool {
 	return false
 }
 
-func (sc *scheduler) evict(name string, raftLogIndex uint64) bool {
+func (sc *Scheduler) evict(name string, raftLogIndex uint64) bool {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
 	if job, exists := sc.jobs[name]; exists {
@@ -150,7 +157,7 @@ func (sc *scheduler) evict(name string, raftLogIndex uint64) bool {
 	return true
 }
 
-func (sc *scheduler) release(name string) bool {
+func (sc *Scheduler) release(name string) bool {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
 	if job, exists := sc.jobs[name]; exists {
@@ -163,11 +170,11 @@ func (sc *scheduler) release(name string) bool {
 	return false
 }
 
-func (sc *scheduler) getNewDeadline(now int64) int64 {
+func (sc *Scheduler) getNewDeadline(now int64) int64 {
 	return now + sc.lease
 }
 
-func (sc *scheduler) isOwner(name string, raftLogIndex uint64) bool {
+func (sc *Scheduler) isOwner(name string, raftLogIndex uint64) bool {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
 	if job, exists := sc.jobs[name]; exists {
@@ -178,7 +185,7 @@ func (sc *scheduler) isOwner(name string, raftLogIndex uint64) bool {
 	return true
 }
 
-func (sc *scheduler) reset() {
+func (sc *Scheduler) reset() {
 	clear(sc.levels)
 	clear(sc.jobs)
 }

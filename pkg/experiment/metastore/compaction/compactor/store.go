@@ -1,10 +1,10 @@
-package compaction
+package compactor
 
 import (
 	"go.etcd.io/bbolt"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction/compactionpb"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction/compactor/compactionpb"
 	"github.com/grafana/pyroscope/pkg/iter"
 )
 

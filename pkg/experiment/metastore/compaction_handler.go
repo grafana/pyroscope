@@ -10,18 +10,10 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction"
 )
 
-type CompactionPlanner interface {
-	NewPlan() compaction.Plan
-}
-
-type CompactionPlan interface {
-	ApplyUpdate(*bbolt.Tx, *raft_log.CompactionPlanUpdate) error
-}
-
 type CompactionCommandHandler struct {
-	logger  log.Logger
-	planner CompactionPlanner
-	plan    CompactionPlan
+	logger    log.Logger
+	planner   compaction.Planner
+	scheduler compaction.Scheduler
 }
 
 func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
@@ -32,16 +24,15 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 		JobUpdates:     make([]*raft_log.CompactionJobState, 0, len(req.StatusUpdates)),
 	}
 
-	plan := h.planner.NewPlan()
-
 	// Request job status updates.
+	schedule := h.scheduler.NewSchedule(tx, cmd)
 	for _, status := range req.StatusUpdates {
-		p.JobUpdates = append(p.JobUpdates, plan.UpdateJob(tx, cmd, status))
+		p.JobUpdates = append(p.JobUpdates, schedule.UpdateJob(status))
 	}
 
 	// Request to assign new jobs.
 	for len(p.CompactionJobs) < int(req.AssignJobsMax) {
-		job, assignment := plan.AssignJob(tx, cmd)
+		job, assignment := schedule.AssignJob()
 		if job == nil {
 			break
 		}
@@ -52,8 +43,9 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 	// Request to create more jobs: we expect that at least
 	// the requested job capacity is utilized next time we ask
 	// for new assignments (this worker instance or not).
+	plan := h.planner.NewPlan(tx)
 	for len(p.CompactionJobs) < int(req.AssignJobsMax) {
-		job := plan.CreateJob(tx, cmd)
+		job := plan.CreateJob()
 		if job == nil {
 			break
 		}
@@ -66,7 +58,10 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 func (h *CompactionCommandHandler) UpdateCompactionPlan(
 	tx *bbolt.Tx, _ *raft.Log, req *raft_log.UpdateCompactionPlanRequest,
 ) (*raft_log.UpdateCompactionPlanResponse, error) {
-	if err := h.plan.ApplyUpdate(tx, req.PlanUpdate); err != nil {
+	if err := h.scheduler.AddJobs(tx, req.PlanUpdate.CompactionJobs...); err != nil {
+		return nil, err
+	}
+	if err := h.scheduler.UpdateSchedule(tx, req.PlanUpdate.JobUpdates...); err != nil {
 		return nil, err
 	}
 	return new(raft_log.UpdateCompactionPlanResponse), nil

@@ -1,4 +1,4 @@
-package compaction
+package compactor
 
 import (
 	"slices"
@@ -6,56 +6,45 @@ import (
 
 // TODO(kolesnikovae): Stats.
 
-type queue struct {
-	strategy strategy
-	levels   []*blockQueue
-}
-
-func newQueue(strategy strategy) *queue {
-	return &queue{strategy: strategy}
-}
-
-func (q *queue) level(x uint32) *blockQueue {
-	s := x + 1 // Levels are 0-based.
-	if s > uint32(len(q.levels)) {
-		q.levels = slices.Grow(q.levels, int(s))[:s]
-		q.levels[x] = newBlockQueue(q.strategy)
-	}
-	return q.levels[x]
-}
-
-func (q *queue) lookupLevel(x uint32) (*blockQueue, bool) {
-	if x >= uint32(len(q.levels)) {
-		return nil, false
-	}
-	return q.levels[x], true
-}
-
-func (q *queue) enqueue(c compactionKey, b blockEntry) bool {
-	return q.level(c.level).push(c, b)
-}
-
-func (q *queue) lookup(k compactionKey, id string) blockEntry {
-	level, ok := q.lookupLevel(k.level)
-	if ok {
-		return level.lookup(k, id)
-	}
-	return zeroBlockEntry
-}
-
-func (q *queue) remove(k compactionKey, blocks ...string) {
-	level, ok := q.lookupLevel(k.level)
-	if ok {
-		level.remove(k, blocks...)
-	}
-}
-
 type compactionKey struct {
 	// Order of the fields is not important.
 	// Can be generalized.
 	tenant string
 	shard  uint32
 	level  uint32
+}
+
+type compactionQueue struct {
+	strategy strategy
+	levels   []*blockQueue
+}
+
+func newCompactionQueue(strategy strategy) *compactionQueue {
+	return &compactionQueue{strategy: strategy}
+}
+
+func (q *compactionQueue) enqueue(k compactionKey, e blockEntry) bool {
+	return q.levelBlockQueue(k.level).push(k, e)
+}
+
+func (q *compactionQueue) levelBlockQueue(level uint32) *blockQueue {
+	s := level + 1 // Levels are 0-based.
+	if s > uint32(len(q.levels)) {
+		q.levels = slices.Grow(q.levels, int(s))[:s]
+		q.levels[level] = newBlockQueue(q.strategy)
+	}
+	return q.levels[level]
+}
+
+func (q *compactionQueue) lookupStagedBlocks(k compactionKey) (*stagedBlocks, bool) {
+	if k.level >= uint32(len(q.levels)) {
+		return nil, false
+	}
+	staged, ok := q.levels[k.level].staged[k]
+	if !ok {
+		return nil, false
+	}
+	return staged, true
 }
 
 // blockQueue stages blocks as they are being added. Once a batch of blocks
@@ -78,11 +67,13 @@ type blockQueue struct {
 type stagedBlocks struct {
 	key  compactionKey
 	refs map[string]blockRef
-	// Incomplete batch of blocks.
-	batch *batch
-	// Blocks produced for the compaction key.
+	// Queue of blocks sharing this compaction key.
 	head *batch
 	tail *batch
+	// Incomplete batch of blocks.
+	batch *batch
+	// Global queue.
+	queue *blockQueue
 }
 
 // blockRef points to the block in the batch.
@@ -127,7 +118,7 @@ func (q *blockQueue) push(k compactionKey, b blockEntry) bool {
 	}
 	if q.strategy.flush(staged.batch) {
 		q.pushBatch(staged.batch)
-		q.reset(staged)
+		q.resetStaged(staged)
 	}
 	return true
 }
@@ -136,16 +127,17 @@ func (q *blockQueue) stagedBlocks(k compactionKey) *stagedBlocks {
 	staged, ok := q.staged[k]
 	if !ok {
 		staged = &stagedBlocks{
-			refs: make(map[string]blockRef),
-			key:  k,
+			queue: q,
+			key:   k,
+			refs:  make(map[string]blockRef),
 		}
 		q.staged[k] = staged
-		q.reset(staged)
+		q.resetStaged(staged)
 	}
 	return staged
 }
 
-func (q *blockQueue) reset(s *stagedBlocks) {
+func (q *blockQueue) resetStaged(s *stagedBlocks) {
 	s.batch = &batch{
 		// TODO(kolesnikovae): pool.
 		blocks: make([]blockEntry, 0, defaultBlockBatchSize),
@@ -163,19 +155,24 @@ func (s *stagedBlocks) pushBlock(block blockEntry) bool {
 	return true
 }
 
-func (q *blockQueue) lookup(key compactionKey, block string) blockEntry {
-	staged, ok := q.staged[key]
-	if !ok {
-		return zeroBlockEntry
-	}
-	ref, found := staged.refs[block]
+var zeroBlockEntry blockEntry
+
+func (s *stagedBlocks) delete(block string) blockEntry {
+	ref, found := s.refs[block]
 	if !found {
 		return zeroBlockEntry
 	}
-	return staged.batch.blocks[ref.index]
+	// We can't change the order of the blocks in the batch,
+	// because that would require updating all the block locations.
+	e := ref.batch.blocks[ref.index]
+	ref.batch.blocks[ref.index] = zeroBlockEntry
+	ref.batch.size--
+	if ref.batch.size == 0 {
+		s.queue.removeBatch(ref.batch)
+	}
+	delete(s.refs, block)
+	return e
 }
-
-var zeroBlockEntry = blockEntry{}
 
 func (q *blockQueue) remove(key compactionKey, block ...string) {
 	staged, ok := q.staged[key]
@@ -183,18 +180,7 @@ func (q *blockQueue) remove(key compactionKey, block ...string) {
 		return
 	}
 	for _, b := range block {
-		ref, found := staged.refs[b]
-		if !found {
-			continue
-		}
-		// We can't change the order of the blocks in the batch,
-		// because that would require updating all the block locations.
-		ref.batch.blocks[ref.index] = zeroBlockEntry
-		ref.batch.size--
-		if ref.batch.size == 0 {
-			q.removeBatch(ref.batch)
-		}
-		delete(staged.refs, b)
+		staged.delete(b)
 	}
 }
 

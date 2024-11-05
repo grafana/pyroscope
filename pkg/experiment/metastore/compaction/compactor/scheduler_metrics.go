@@ -1,4 +1,4 @@
-package compaction
+package compactor
 
 import (
 	"slices"
@@ -11,14 +11,14 @@ import (
 )
 
 type schedulerStatsCollector struct {
-	scheduler *scheduler
+	scheduler *Scheduler
 
 	jobsTotal *prometheus.Desc
 	oldestJob *prometheus.Desc
 	newestJob *prometheus.Desc
 }
 
-func newSchedulerStatsCollector(sc *scheduler) prometheus.Collector {
+func newSchedulerStatsCollector(sc *Scheduler) prometheus.Collector {
 	return &schedulerStatsCollector{
 		scheduler: sc,
 
