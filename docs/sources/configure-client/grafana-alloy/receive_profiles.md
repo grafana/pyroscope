@@ -12,6 +12,8 @@ The `pyroscope.receive_http` component in Alloy receives profiles from applicati
 - Separation of infrastructure concerns (auth, routing) from application code
 - Centralized management of authentication and metadata enrichment
 
+For more information about this component, refer to the [pyroscope.receive_http component](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/pyroscope/pyroscope.receive_http/) documentation.
+
 To set up profile receiving, you need to:
 1. Configure Alloy components
 2. Configure your application's SDK
@@ -20,8 +22,8 @@ To set up profile receiving, you need to:
 ## Configure Alloy components
 
 The configuration requires at least two components:
-- `pyroscope.receive_http` to receive profiles via HTTP
-- `pyroscope.write` to forward profiles to Pyroscope
+- [`pyroscope.receive_http`](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/pyroscope/pyroscope.receive_http/) to receive profiles via HTTP
+- [`pyroscope.write`](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/pyroscope/pyroscope.write/) to forward profiles to Pyroscope
 
 Here's a basic configuration:
 
@@ -55,8 +57,12 @@ Check your specific language SDK documentation for the exact configuration optio
 
 ## Examples
 
+The examples in this section provide samples you can use as a starting point for your own configurations. 
+
 ### Basic receiving setup
+
 This example shows a basic setup receiving profiles on port 9090 and forwarding them to a local Pyroscope instance:
+
 
 ```alloy
 pyroscope.receive_http "default" {
