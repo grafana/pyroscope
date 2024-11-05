@@ -25,7 +25,8 @@ The configuration requires at least two components:
 - [`pyroscope.receive_http`](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/pyroscope/pyroscope.receive_http/) to receive profiles via HTTP
 - [`pyroscope.write`](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/pyroscope/pyroscope.write/) to forward profiles to Pyroscope
 
-Here's a basic configuration:
+Here's a basic configuration that sets up a simple profile collection pipeline.
+It creates a receiver to collect profiles from your applications and forwards them through a writer component to send them to the Pyroscope backend:
 
 ```alloy
 // Receives profiles over HTTP
