@@ -10,10 +10,7 @@ import (
 	"github.com/grafana/dskit/services"
 	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
-	"go.uber.org/atomic"
 	"golang.org/x/sync/errgroup"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
@@ -55,9 +52,6 @@ type QueryBackend struct {
 
 	backendClient QueryHandler
 	blockReader   QueryHandler
-
-	concurrency uint32
-	running     atomic.Uint32
 }
 
 func New(
@@ -73,8 +67,6 @@ func New(
 		reg:           reg,
 		backendClient: backendClient,
 		blockReader:   blockReader,
-
-		concurrency: defaultConcurrencyLimit,
 	}
 	q.service = services.NewIdleService(q.starting, q.stopping)
 	return &q, nil
@@ -96,9 +88,7 @@ func (q *QueryBackend) Invoke(
 	case queryplan.NodeMerge:
 		return q.merge(ctx, req, r.Children())
 	case queryplan.NodeRead:
-		return q.withThrottling(func() (*queryv1.InvokeResponse, error) {
-			return q.read(ctx, req, r.Blocks())
-		})
+		return q.read(ctx, req, r.Blocks())
 	default:
 		panic("query plan: unknown node type")
 	}
@@ -135,12 +125,4 @@ func (q *QueryBackend) read(
 		Blocks: iter.MustSlice(blocks),
 	}
 	return q.blockReader.Invoke(ctx, request)
-}
-
-func (q *QueryBackend) withThrottling(fn func() (*queryv1.InvokeResponse, error)) (*queryv1.InvokeResponse, error) {
-	defer q.running.Dec()
-	if q.running.Inc() > q.concurrency {
-		return nil, status.Error(codes.ResourceExhausted, "all minions are busy, please try later")
-	}
-	return fn()
 }

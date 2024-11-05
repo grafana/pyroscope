@@ -397,7 +397,8 @@ func (i *Index) collectTenantBlocks(p *indexPartition, start, end int64) []*meta
 	for _, s := range p.shards {
 		for _, block := range s.blocks {
 			if start < block.MaxTime && end >= block.MinTime {
-				blocks = append(blocks, block)
+				clone := block.CloneVT()
+				blocks = append(blocks, clone)
 			}
 		}
 	}
