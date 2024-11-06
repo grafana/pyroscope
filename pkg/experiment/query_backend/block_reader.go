@@ -74,7 +74,7 @@ func (b *BlockReader) Invoke(
 	}
 	g, ctx := errgroup.WithContext(ctx)
 	m := newAggregator(req)
-	for _, md := range req.QueryPlan.Blocks {
+	for _, md := range req.QueryPlan.Root.Blocks {
 		obj := block.NewObject(b.storage, md)
 		for _, meta := range md.Datasets {
 			c := newQueryContext(ctx, b.log, meta, vr, obj)
@@ -107,7 +107,7 @@ func validateRequest(req *queryv1.InvokeRequest) (*request, error) {
 	if len(req.Query) == 0 {
 		return nil, fmt.Errorf("no queries provided")
 	}
-	if req.QueryPlan == nil || len(req.QueryPlan.Blocks) == 0 {
+	if req.QueryPlan == nil || len(req.QueryPlan.Root.Blocks) == 0 {
 		return nil, fmt.Errorf("no blocks planned")
 	}
 	matchers, err := parser.ParseMetricSelector(req.LabelSelector)

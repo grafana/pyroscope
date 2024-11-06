@@ -14,8 +14,6 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
-	queryplan "github.com/grafana/pyroscope/pkg/experiment/query_backend/query_plan"
-	"github.com/grafana/pyroscope/pkg/iter"
 	"github.com/grafana/pyroscope/pkg/util"
 )
 
@@ -83,12 +81,11 @@ func (q *QueryBackend) Invoke(
 	span, ctx := opentracing.StartSpanFromContext(ctx, "QueryBackend.Invoke")
 	defer span.Finish()
 
-	p := queryplan.Open(req.QueryPlan)
-	switch r := p.Root(); r.Type {
-	case queryplan.NodeMerge:
-		return q.merge(ctx, req, r.Children())
-	case queryplan.NodeRead:
-		return q.read(ctx, req, r.Blocks())
+	switch r := req.QueryPlan.Root; r.Type {
+	case queryv1.QueryNodeType_MERGE:
+		return q.merge(ctx, req, r.Children)
+	case queryv1.QueryNodeType_READ:
+		return q.read(ctx, req, r.Blocks)
 	default:
 		panic("query plan: unknown node type")
 	}
@@ -97,14 +94,16 @@ func (q *QueryBackend) Invoke(
 func (q *QueryBackend) merge(
 	ctx context.Context,
 	request *queryv1.InvokeRequest,
-	children iter.Iterator[*queryplan.Node],
+	children []*queryv1.QueryNode,
 ) (*queryv1.InvokeResponse, error) {
 	request.QueryPlan = nil
 	m := newAggregator(request)
 	g, ctx := errgroup.WithContext(ctx)
-	for children.Next() {
+	for _, child := range children {
 		req := request.CloneVT()
-		req.QueryPlan = children.At().Plan().Proto()
+		req.QueryPlan = &queryv1.QueryPlan{
+			Root: child,
+		}
 		g.Go(util.RecoverPanic(func() error {
 			// TODO: Speculative retry.
 			return m.aggregateResponse(q.backendClient.Invoke(ctx, req))
@@ -119,10 +118,12 @@ func (q *QueryBackend) merge(
 func (q *QueryBackend) read(
 	ctx context.Context,
 	request *queryv1.InvokeRequest,
-	blocks iter.Iterator[*metastorev1.BlockMeta],
+	blocks []*metastorev1.BlockMeta,
 ) (*queryv1.InvokeResponse, error) {
 	request.QueryPlan = &queryv1.QueryPlan{
-		Blocks: iter.MustSlice(blocks),
+		Root: &queryv1.QueryNode{
+			Blocks: blocks,
+		},
 	}
 	return q.blockReader.Invoke(ctx, request)
 }

@@ -837,6 +837,11 @@
     },
     "v1Diagnostics": {
       "type": "object",
+      "properties": {
+        "queryPlan": {
+          "$ref": "#/definitions/v1QueryPlan"
+        }
+      },
       "description": "Diagnostic messages, events, statistics, analytics, etc."
     },
     "v1DiffResponse": {
@@ -1698,27 +1703,44 @@
         }
       }
     },
-    "v1QueryPlan": {
+    "v1QueryNode": {
       "type": "object",
       "properties": {
-        "graph": {
+        "type": {
+          "$ref": "#/definitions/v1QueryNodeType"
+        },
+        "children": {
           "type": "array",
           "items": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "description": "Each node is encoded with 3 values:\n - node type: 0 - read, 1 - merge;\n - range offset;\n - range length."
+            "type": "object",
+            "$ref": "#/definitions/v1QueryNode"
+          }
         },
         "blocks": {
           "type": "array",
           "items": {
             "type": "object",
             "$ref": "#/definitions/v1BlockMeta"
-          },
-          "description": "The blocks matching the query.\n\nTODO: Use opaque byte array to avoid unnecessary\n proto encoding/decoding overhead in transient nodes.\n Graph nodes reference ranges, thus each range could\n be a blob of bytes:\n repeated bytes block_ranges = 2;"
+          }
+        }
+      }
+    },
+    "v1QueryNodeType": {
+      "type": "string",
+      "enum": [
+        "MERGE",
+        "READ"
+      ],
+      "default": "MERGE"
+    },
+    "v1QueryPlan": {
+      "type": "object",
+      "properties": {
+        "root": {
+          "$ref": "#/definitions/v1QueryNode"
         }
       },
-      "description": "Query plan is represented by a DAG, where each node\nmight be either \"merge\" or \"read\" (leaves). Each node\nreferences a range: merge nodes refer to other nodes,\nwhile read nodes refer to the blocks."
+      "description": "Query plan is represented by a DAG, where each node\nmight be either \"merge\" or \"read\" (leaves). Each node\nreferences a section of the plan and the included blocks."
     },
     "v1QueryResponse": {
       "type": "object",
