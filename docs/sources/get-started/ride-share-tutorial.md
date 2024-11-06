@@ -184,9 +184,9 @@ You should now see a list of vehicle types that the application is using. You ca
 
 The first step when analyzing a profile outputted from your application, is to take note of the largest node which is where your application is spending the most resources. To discover this, you can use the `Flame Graph` view:
 
-1. Open the Profile Explorer in Grafana UI, which can be accessed using the following url: [http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer](http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer).
-1. Select the `Single View` tab.
-1. Make sure `flask-ride-sharing-app:process_cpu:cpu` is selected in the dropdown menu.
+1. Open Explore Profiles using the following url: [http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer](http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer).
+1. Select **Flame graph** from the **Exploration** path.
+1. Verify that  `flask-ride-sharing-app` is selected in the **Service** drop-down menu and `process_cpu/cpu` in the **Profile type** drop-down menu.
 
 It should look something like this:
 
