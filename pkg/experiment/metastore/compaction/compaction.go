@@ -24,12 +24,27 @@ type Plan interface {
 }
 
 type Scheduler interface {
-	AddJobs(*bbolt.Tx, Planner, ...*metastorev1.CompactionJob) error
-	UpdateSchedule(*bbolt.Tx, Planner, ...*raft_log.CompactionJobState) error
+	// NewSchedule is called to plan a schedule update. The proposed schedule
+	// will then be submitted for Raft consensus, with the leader's schedule
+	// being accepted as the final decision.
+	// Implementation note: Schedule planning should be considered a read
+	// operation and must have no side effects
 	NewSchedule(*bbolt.Tx, *raft.Log) Schedule
+	// AddJobs adds new jobs to the schedule. The jobs were accepted by
+	// the raft quorum: the scheduler must add them.
+	AddJobs(*bbolt.Tx, Planner, ...*metastorev1.CompactionJob) error
+	// UpdateSchedule updates the state of existing jobs. The changes
+	// were accepted by the raft quorum: the scheduler must update them.
+	UpdateSchedule(*bbolt.Tx, Planner, ...*raft_log.CompactionJobState) error
 }
 
 type Schedule interface {
+	// UpdateJob is called on behalf of the worker to update the job status.
+	// A nil state should be interpreted as "no new lease": stop the work.
+	// The scheduler must validate that the worker is allowed to update the job,
+	// by comparing the fencing token of the job. Refer to the documentation for
+	// details.
 	UpdateJob(*metastorev1.CompactionJobStatusUpdate) *raft_log.CompactionJobState
+	// AssignJob is called on behalf of the worker to request a new job.
 	AssignJob() (*metastorev1.CompactionJob, *raft_log.CompactionJobState)
 }
