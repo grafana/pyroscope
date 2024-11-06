@@ -12,7 +12,7 @@ aliases:
 Our .NET Profiler is a powerful tool designed to enhance the performance analysis and optimization of .NET applications. It seamlessly integrates with Pyroscope, offering real-time insights into the resource usage and bottlenecks within your .NET codebase. This integration empowers developers to pinpoint inefficiencies, improve application speed, and ensure resource-efficient operation.
 
 {{< admonition type="note" >}}
-Refer to [Available profiling types]({{< relref "../../view-and-analyze-profile-data/profiling-types#available-profiling-types" >}}) for a list of profile types supported by each language.
+Refer to [Available profiling types](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/profile-types/) for a list of profile types supported by each language.
 {{< /admonition >}}
 
 ## Supported profiling types
@@ -45,13 +45,13 @@ The Pyroscope server can be a local server for development or a remote server fo
 1. Obtain `Pyroscope.Profiler.Native.so` and `Pyroscope.Linux.ApiWrapper.x64.so` from the [latest tarball](https://github.com/pyroscope-io/pyroscope-dotnet/releases/):
 
 ```bash
-curl -s -L https://github.com/grafana/pyroscope-dotnet/releases/download/v0.8.19-pyroscope/pyroscope.0.8.19-glibc-x86_64.tar.gz  | tar xvz -C .
+curl -s -L https://github.com/grafana/pyroscope-dotnet/releases/download/v0.9.0-pyroscope/pyroscope.0.9.0-glibc-x86_64.tar.gz  | tar xvz -C .
 ```
 
 Or copy them from the [latest docker image](https://hub.docker.com/r/pyroscope/pyroscope-dotnet/tags). We have `glibc` and `musl` versions:
 ```dockerfile
-COPY --from=pyroscope/pyroscope-dotnet:0.8.19-glibc /Pyroscope.Profiler.Native.so ./Pyroscope.Profiler.Native.so
-COPY --from=pyroscope/pyroscope-dotnet:0.8.19-glibc /Pyroscope.Linux.ApiWrapper.x64.so ./Pyroscope.Linux.ApiWrapper.x64.so
+COPY --from=pyroscope/pyroscope-dotnet:0.9.0-glibc /Pyroscope.Profiler.Native.so ./Pyroscope.Profiler.Native.so
+COPY --from=pyroscope/pyroscope-dotnet:0.9.0-glibc /Pyroscope.Linux.ApiWrapper.x64.so ./Pyroscope.Linux.ApiWrapper.x64.so
 ````
 
 2. Set the following required environment variables to enable profiler

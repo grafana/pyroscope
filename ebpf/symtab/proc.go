@@ -82,7 +82,6 @@ func (p *ProcTable) Refresh() {
 	p.err = p.refreshProcMap(procMaps)
 	if p.err != nil {
 		_ = level.Error(p.logger).Log("err", p.err)
-	} else {
 	}
 }
 
