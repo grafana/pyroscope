@@ -14,6 +14,10 @@ The `pyroscope.receive_http` component in Alloy receives profiles from applicati
 
 For more information about this component, refer to the [pyroscope.receive_http component](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/pyroscope/pyroscope.receive_http/) documentation.
 
+{{< admonition type="note" >}}
+The `pyroscope.receive_http` component is currently in public preview. To use this component, set the `--stability.level` flag to `public-preview`. For more information about Alloy's run usage, refer to the [run command documentation](https://grafana.com/docs/grafana-cloud/send-data/alloy/reference/cli/run/#the-run-command) documentation.
+{{< /admonition >}}
+
 To set up profile receiving, you need to:
 1. Configure Alloy components
 2. Configure your application's SDK
