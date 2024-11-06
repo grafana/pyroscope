@@ -2,6 +2,7 @@ package compactor
 
 import (
 	"sync"
+	"time"
 
 	"github.com/hashicorp/raft"
 	"go.etcd.io/bbolt"
@@ -29,7 +30,7 @@ var _ compaction.Scheduler = (*Scheduler)(nil)
 type JobStore interface {
 	StoreJob(*bbolt.Tx, *metastorev1.CompactionJob) error
 	GetJob(tx *bbolt.Tx, name string) (*metastorev1.CompactionJob, error)
-	GetSourceBlocks(tx *bbolt.Tx, name string) ([]string, error)
+	GetCompactedBlocks(tx *bbolt.Tx, name string) (*raft_log.CompactedBlocks, error)
 	DeleteJob(tx *bbolt.Tx, name string) error
 	// Jobs are not loaded in memory.
 
@@ -39,7 +40,13 @@ type JobStore interface {
 	ListEntries(*bbolt.Tx) iter.Iterator[*raft_log.CompactionJobState]
 }
 
+type SchedulerConfig struct {
+	MaxFailures   uint32
+	LeaseDuration time.Duration
+}
+
 type Scheduler struct {
+	config SchedulerConfig
 	// Although the scheduler is supposed to be used by a single planner
 	// in a synchronous manner, we still need to protect it from concurrent
 	// read accesses, such as stats collection, and listing jobs for debug
@@ -52,10 +59,11 @@ type Scheduler struct {
 // NewScheduler creates a scheduler with the given lease duration.
 // Typically, callers should update jobs at the interval not exceeding
 // the half of the lease duration.
-func NewScheduler(store JobStore, lease int64) *Scheduler {
+func NewScheduler(config SchedulerConfig, store JobStore) *Scheduler {
 	return &Scheduler{
-		store: store,
-		queue: newJobQueue(lease),
+		config: config,
+		store:  store,
+		queue:  newJobQueue(),
 	}
 }
 
@@ -64,42 +72,36 @@ func (sc *Scheduler) NewSchedule(tx *bbolt.Tx, raft *raft.Log) compaction.Schedu
 		tx:        tx,
 		raft:      raft,
 		scheduler: sc,
+		assigner: &jobAssigner{
+			raft:  raft,
+			lease: sc.config.LeaseDuration,
+			queue: sc.queue,
+		},
 	}
 }
 
 func (sc *Scheduler) AddJobs(tx *bbolt.Tx, planner compaction.Planner, jobs ...*metastorev1.CompactionJob) error {
 	for _, job := range jobs {
-		if err := sc.addJob(tx, nil, planner, job); err != nil {
+		if err := sc.store.StoreJob(tx, job); err != nil {
+			return err
+		}
+		if err := planner.Planned(tx, job); err != nil {
 			return err
 		}
 	}
 	return nil
-}
-
-func (sc *Scheduler) addJob(tx *bbolt.Tx, _ *raft.Log, planner compaction.Planner, job *metastorev1.CompactionJob) error {
-	if err := sc.store.StoreJob(tx, job); err != nil {
-		return err
-	}
-	return planner.Planned(tx, job)
 }
 
 func (sc *Scheduler) UpdateSchedule(tx *bbolt.Tx, planner compaction.Planner, jobs ...*raft_log.CompactionJobState) error {
 	for _, job := range jobs {
-		if err := sc.updateJob(tx, planner, job); err != nil {
+		if job.Status == metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS {
+			return sc.deleteJob(tx, planner, job)
+		}
+		if err := sc.store.UpdateJobState(tx, job); err != nil {
 			return err
 		}
+		sc.queue.put(job)
 	}
-	return nil
-}
-
-func (sc *Scheduler) updateJob(tx *bbolt.Tx, planner compaction.Planner, job *raft_log.CompactionJobState) error {
-	if job.Status == metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS {
-		return sc.deleteJob(tx, planner, job)
-	}
-	if err := sc.store.UpdateJobState(tx, job); err != nil {
-		return err
-	}
-	sc.queue.put(job)
 	return nil
 }
 

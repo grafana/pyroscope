@@ -41,10 +41,13 @@ message CompactionJobAssignment {
 
 message CompactionJobStatusUpdate {
   string name = 1;
-  uint64 token = 2;
-  CompactionJobStatus status = 3;
-  repeated metastore.v1.BlockMeta compacted_blocks = 4;
-  repeated string deleted_blocks = 5;
+  string tenant = 2;
+  string shard = 3;
+  uint32 compaction_level = 4;
+  uint64 token = 5;
+  CompactionJobStatus status = 6;
+  repeated metastore.v1.BlockMeta compacted_blocks = 7;
+  repeated string deleted_blocks = 8;
 }
 
 enum CompactionJobStatus {
@@ -52,5 +55,5 @@ enum CompactionJobStatus {
   COMPACTION_STATUS_IN_PROGRESS = 1;
   COMPACTION_STATUS_SUCCESS = 2;
   COMPACTION_STATUS_FAILURE = 3;
-  COMPACTION_STATUS_CANCELLED = 4;
+  COMPACTION_STATUS_CANCELLED = 15;
 }

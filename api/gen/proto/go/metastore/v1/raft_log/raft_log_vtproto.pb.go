@@ -149,10 +149,10 @@ func (m *CompactionJobState) CloneVT() *CompactionJobState {
 	r.Name = m.Name
 	r.CompactionLevel = m.CompactionLevel
 	r.Status = m.Status
-	r.RaftLogIndex = m.RaftLogIndex
+	r.Token = m.Token
 	r.LeaseExpiresAt = m.LeaseExpiresAt
-	r.Failures = m.Failures
 	r.AddedAt = m.AddedAt
+	r.Failures = m.Failures
 	r.CompactedBlocks = m.CompactedBlocks.CloneVT()
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -411,16 +411,16 @@ func (this *CompactionJobState) EqualVT(that *CompactionJobState) bool {
 	if this.Status != that.Status {
 		return false
 	}
-	if this.RaftLogIndex != that.RaftLogIndex {
+	if this.Token != that.Token {
 		return false
 	}
 	if this.LeaseExpiresAt != that.LeaseExpiresAt {
 		return false
 	}
-	if this.Failures != that.Failures {
+	if this.AddedAt != that.AddedAt {
 		return false
 	}
-	if this.AddedAt != that.AddedAt {
+	if this.Failures != that.Failures {
 		return false
 	}
 	if !this.CompactedBlocks.EqualVT(that.CompactedBlocks) {
@@ -845,13 +845,13 @@ func (m *CompactionJobState) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x42
 	}
-	if m.AddedAt != 0 {
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.AddedAt))
+	if m.Failures != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Failures))
 		i--
 		dAtA[i] = 0x38
 	}
-	if m.Failures != 0 {
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Failures))
+	if m.AddedAt != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.AddedAt))
 		i--
 		dAtA[i] = 0x30
 	}
@@ -860,8 +860,8 @@ func (m *CompactionJobState) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x28
 	}
-	if m.RaftLogIndex != 0 {
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.RaftLogIndex))
+	if m.Token != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Token))
 		i--
 		dAtA[i] = 0x20
 	}
@@ -1176,17 +1176,17 @@ func (m *CompactionJobState) SizeVT() (n int) {
 	if m.Status != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.Status))
 	}
-	if m.RaftLogIndex != 0 {
-		n += 1 + protohelpers.SizeOfVarint(uint64(m.RaftLogIndex))
+	if m.Token != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.Token))
 	}
 	if m.LeaseExpiresAt != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.LeaseExpiresAt))
 	}
-	if m.Failures != 0 {
-		n += 1 + protohelpers.SizeOfVarint(uint64(m.Failures))
-	}
 	if m.AddedAt != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.AddedAt))
+	}
+	if m.Failures != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.Failures))
 	}
 	if m.CompactedBlocks != nil {
 		l = m.CompactedBlocks.SizeVT()
@@ -1860,9 +1860,9 @@ func (m *CompactionJobState) UnmarshalVT(dAtA []byte) error {
 			}
 		case 4:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field RaftLogIndex", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Token", wireType)
 			}
-			m.RaftLogIndex = 0
+			m.Token = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return protohelpers.ErrIntOverflow
@@ -1872,7 +1872,7 @@ func (m *CompactionJobState) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.RaftLogIndex |= uint64(b&0x7F) << shift
+				m.Token |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -1898,25 +1898,6 @@ func (m *CompactionJobState) UnmarshalVT(dAtA []byte) error {
 			}
 		case 6:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Failures", wireType)
-			}
-			m.Failures = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Failures |= int64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 7:
-			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field AddedAt", wireType)
 			}
 			m.AddedAt = 0
@@ -1930,6 +1911,25 @@ func (m *CompactionJobState) UnmarshalVT(dAtA []byte) error {
 				b := dAtA[iNdEx]
 				iNdEx++
 				m.AddedAt |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 7:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Failures", wireType)
+			}
+			m.Failures = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Failures |= uint32(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}

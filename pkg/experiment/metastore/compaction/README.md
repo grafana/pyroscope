@@ -49,7 +49,22 @@ See [Job Status Description](#job-status-description) for more details.
 ## Job Ownership
 
 Distributed locking implementation is inspired by [The Chubby lock service](https://static.googleusercontent.com/media/research.google.com/en//archive/chubby-osdi06.pdf)
-using the Raft protocol: the log entry index is used as the [fencing token](https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html)
+and [Leases: An Efficient Fault-Tolerant Mechanism
+for Distributed File Cache Consistency](https://dl.acm.org/doi/pdf/10.1145/74851.74870). The implementation is based on
+the Raft protocol.
+
+Ownership of a compaction job is granted to a compaction worker for a specified period – a *lease*:
+> A lease is a contract that gives its holder specified rights over property for a limited period of time.
+
+The real-time clock of the worker and the scheduler cannot be used; instead, the timestamp of the Raft log entry,
+assigned by the Raft leader when the entry is appended to the log, serves as the reference point in time.
+
+> The fact that leases are allocated by the current leader allows for spurious *lease invalidation* when the leader
+> changes and the clock skew exceeds the lease duration. This is acceptable because jobs will be reassigned repeatedly,
+> and the occurrence of the event should be very rare. However, the solution does not tolerate clock skews exceeding
+> the job lease duration (which is 15 seconds by default).
+
+The log entry index is used as the [fencing token](https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html)
 of protected resources (compaction jobs).
 
 The Raft log entry index is a monotonically increasing integer, guaranteed to be unique for each command.
@@ -59,9 +74,9 @@ assignment. The ownership of the job is confirmed if the provided token is great
 The job's token may change if the job is reassigned to another worker, and the new token is derived from the current
 Raft log index, which is guaranteed to be greater.
 
-> Authentication of the tokens is not assumed in this design, as the system operates in a trusted environment where
-> malicious workers can arbitrarily specify a token. In the future, we may consider implementing a basic authentication
-> mechanism based on cryptographic signatures to further ensure the integrity of token usage.
+> Token authentication is not enforced in this design, as the system operates in a trusted environment with cooperative
+> workers. However, m malicious workers can arbitrarily specify a token. In the future, we may consider implementing a
+> basic authentication mechanism based on cryptographic signatures to further ensure the integrity of token usage.
 >
 > This is an advisory locking mechanism, meaning resources are not automatically restricted from access when the lock
 > is not acquired. Consequently, a client might choose to delete source blocks associated with a compaction job or
@@ -88,14 +103,6 @@ The scheduler may revoke a job if the worker does not send the status update wit
 When a new assignment is requested by a worker, the scheduler inspects in-progress jobs and checks if the
 lease duration has expired. If the lease has expired, the job is reassigned to the worker requested for a
 new assignment.
-
-> The real-time clock of the worker and the scheduler cannot be used; the command timestamp (assigned by the Raft
-> leader when the entry is appended to the log) is used as a reference.
->
-> The fact that leases are allocated by the current leader allows for spurious *lease invalidation* when the leader
-> changes and the clock skew exceeds the lease duration. This is acceptable because jobs will be reassigned repeatedly,
-> and the occurrence of the event should be very rare. However, the solution does not tolerate clock skews exceeding
-> the job lease duration (which is 15 seconds by default).
 
 ---
 
@@ -195,3 +202,5 @@ stateDiagram-v2
 caused the cancellation are resolved, the job might be executed again. *The mechanism is not implemented yet*.
 
 * Job statuses `COMPACTION_STATUS_UNSPECIFIED` and `COMPACTION_STATUS_CANCELLED` are never sent over the wire.
+
+* Job statuses `COMPACTION_STATUS_SUCCESS` and `COMPACTION_STATUS_FAILURE` are never stored.

@@ -13,10 +13,8 @@ import (
 type compactionPlan struct {
 	tx *bbolt.Tx
 
-	index    PlannerIndexReader
-	strategy strategy
-	queue    *compactionQueue
-	level    uint32
+	planner *Planner
+	level   uint32
 
 	batches *batchIter
 	blocks  *blockIter
@@ -27,14 +25,11 @@ func (p *compactionPlan) CreateJob() (*metastorev1.CompactionJob, error) {
 	if plan == nil {
 		return nil, nil
 	}
-	blocks, err := p.index.LookupBlockMetadata(p.tx, plan.tenant, plan.shard, plan.blocks...)
+	blocks, err := p.planner.index.LookupBlockMetadata(p.tx, plan.tenant, plan.shard, plan.blocks...)
 	if err != nil {
 		return nil, err
 	}
-	if len(blocks) == 0 {
-		return nil, nil
-	}
-	tombstones, err := p.index.GetTombstones(p.tx, plan.tenant, plan.shard)
+	tombstones, err := p.planner.index.GetTombstones(p.tx, plan.tenant, plan.shard)
 	if err != nil {
 		return nil, err
 	}
@@ -45,6 +40,14 @@ func (p *compactionPlan) CreateJob() (*metastorev1.CompactionJob, error) {
 		CompactionLevel: plan.level,
 		SourceBlocks:    blocks,
 		Tombstones:      tombstones,
+	}
+	if len(job.SourceBlocks) == 0 {
+		// This should never happen: blocks will remain in the queue.
+		// If we leave the blocks in the queue they will be dangling there
+		// forever. Therefore, we remove it now: this is an exceptional
+		// case – no state should be changed in compactionSchedule.
+		_ = p.planner.Planned(p.tx, job)
+		return nil, nil
 	}
 	return job, nil
 }
@@ -63,9 +66,9 @@ type plannedJob struct {
 //     compaction key in this case.
 func (p *compactionPlan) nextJob() *plannedJob {
 	var job plannedJob
-	for p.level < uint32(len(p.queue.levels)) {
+	for p.level < uint32(len(p.planner.queue.levels)) {
 		if p.batches == nil {
-			level := p.queue.levels[p.level]
+			level := p.planner.queue.levels[p.level]
 			if level == nil {
 				p.level++
 				continue
@@ -100,7 +103,7 @@ func (p *compactionPlan) nextJob() *plannedJob {
 			}
 
 			job.blocks = append(job.blocks, block)
-			if p.strategy.complete(&job) {
+			if p.planner.strategy.complete(&job) {
 				nameJob(&job)
 				return &job
 			}

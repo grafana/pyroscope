@@ -758,6 +758,16 @@
         "name": {
           "type": "string"
         },
+        "tenant": {
+          "type": "string"
+        },
+        "shard": {
+          "type": "string"
+        },
+        "compactionLevel": {
+          "type": "integer",
+          "format": "int64"
+        },
         "token": {
           "type": "string",
           "format": "uint64"

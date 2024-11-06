@@ -135,6 +135,9 @@ func (m *CompactionJobStatusUpdate) CloneVT() *CompactionJobStatusUpdate {
 	}
 	r := new(CompactionJobStatusUpdate)
 	r.Name = m.Name
+	r.Tenant = m.Tenant
+	r.Shard = m.Shard
+	r.CompactionLevel = m.CompactionLevel
 	r.Token = m.Token
 	r.Status = m.Status
 	if rhs := m.CompactedBlocks; rhs != nil {
@@ -335,6 +338,15 @@ func (this *CompactionJobStatusUpdate) EqualVT(that *CompactionJobStatusUpdate) 
 		return false
 	}
 	if this.Name != that.Name {
+		return false
+	}
+	if this.Tenant != that.Tenant {
+		return false
+	}
+	if this.Shard != that.Shard {
+		return false
+	}
+	if this.CompactionLevel != that.CompactionLevel {
 		return false
 	}
 	if this.Token != that.Token {
@@ -747,7 +759,7 @@ func (m *CompactionJobStatusUpdate) MarshalToSizedBufferVT(dAtA []byte) (int, er
 			copy(dAtA[i:], m.DeletedBlocks[iNdEx])
 			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.DeletedBlocks[iNdEx])))
 			i--
-			dAtA[i] = 0x2a
+			dAtA[i] = 0x42
 		}
 	}
 	if len(m.CompactedBlocks) > 0 {
@@ -759,18 +771,37 @@ func (m *CompactionJobStatusUpdate) MarshalToSizedBufferVT(dAtA []byte) (int, er
 			i -= size
 			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
 			i--
-			dAtA[i] = 0x22
+			dAtA[i] = 0x3a
 		}
 	}
 	if m.Status != 0 {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Status))
 		i--
-		dAtA[i] = 0x18
+		dAtA[i] = 0x30
 	}
 	if m.Token != 0 {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Token))
 		i--
-		dAtA[i] = 0x10
+		dAtA[i] = 0x28
+	}
+	if m.CompactionLevel != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.CompactionLevel))
+		i--
+		dAtA[i] = 0x20
+	}
+	if len(m.Shard) > 0 {
+		i -= len(m.Shard)
+		copy(dAtA[i:], m.Shard)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Shard)))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if len(m.Tenant) > 0 {
+		i -= len(m.Tenant)
+		copy(dAtA[i:], m.Tenant)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Tenant)))
+		i--
+		dAtA[i] = 0x12
 	}
 	if len(m.Name) > 0 {
 		i -= len(m.Name)
@@ -890,6 +921,17 @@ func (m *CompactionJobStatusUpdate) SizeVT() (n int) {
 	l = len(m.Name)
 	if l > 0 {
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	l = len(m.Tenant)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	l = len(m.Shard)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.CompactionLevel != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.CompactionLevel))
 	}
 	if m.Token != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.Token))
@@ -1544,6 +1586,89 @@ func (m *CompactionJobStatusUpdate) UnmarshalVT(dAtA []byte) error {
 			m.Name = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Tenant", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Tenant = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Shard", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Shard = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CompactionLevel", wireType)
+			}
+			m.CompactionLevel = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.CompactionLevel |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 5:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Token", wireType)
 			}
@@ -1562,7 +1687,7 @@ func (m *CompactionJobStatusUpdate) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
-		case 3:
+		case 6:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Status", wireType)
 			}
@@ -1581,7 +1706,7 @@ func (m *CompactionJobStatusUpdate) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
-		case 4:
+		case 7:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field CompactedBlocks", wireType)
 			}
@@ -1615,7 +1740,7 @@ func (m *CompactionJobStatusUpdate) UnmarshalVT(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 5:
+		case 8:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field DeletedBlocks", wireType)
 			}

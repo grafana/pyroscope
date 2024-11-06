@@ -76,7 +76,7 @@ func (m *CompactionService) PollCompactionJobs(
 
 	// The response we sent to the worker differs from the compaction plan:
 	//  - the latter contains all state transitions including terminal ones
-	//  - re-assigned jobs are not written to the raft log (only the assignments) – TODO
+	//  - re-assigned jobs are not written to the raft log (only the assignments) – TODO?
 
 	resp := &metastorev1.PollCompactionJobsResponse{
 		CompactionJobs: make([]*metastorev1.CompactionJob, 0, len(prepared.PlanUpdate.CompactionJobs)),
@@ -89,25 +89,14 @@ func (m *CompactionService) PollCompactionJobs(
 	}
 
 	for _, update := range prepared.PlanUpdate.JobUpdates {
-		if update.Status != metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS {
+		if update.Status == metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS {
 			// Other statuses are not sent to workers.
-			continue
-		}
-		// If the fencing token of the job is greater than the token of the
-		// worker, the job has been revoked and assigned to another instance.
-		// We should signal the worker to cancel the job, as we won't accept
-		// any results.
-		if requested[update.Name].Token < update.RaftLogIndex {
 			resp.Assignments = append(resp.Assignments, &metastorev1.CompactionJobAssignment{
-				JobStatus: metastorev1.CompactionJobStatus_COMPACTION_STATUS_CANCELLED,
+				Token:          update.Token,
+				LeaseExpiresAt: update.LeaseExpiresAt,
+				JobStatus:      update.Status,
 			})
-			continue
 		}
-		resp.Assignments = append(resp.Assignments, &metastorev1.CompactionJobAssignment{
-			Token:          update.RaftLogIndex,
-			LeaseExpiresAt: update.LeaseExpiresAt,
-			JobStatus:      update.Status,
-		})
 	}
 
 	// All newly created and re-assigned compaction jobs are sent to workers.

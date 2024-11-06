@@ -40,16 +40,17 @@ message CompactionPlanUpdate {
   repeated CompactionJobState job_updates = 2;
 }
 
-// CompactionJobState in response to the compaction worker request.
+// CompactionJobState is produced in response to
+// the compaction worker status update request.
 message CompactionJobState {
   string name = 1;
   uint32 compaction_level = 2;
   metastore.v1.CompactionJobStatus status = 3;
 
-  uint64 raft_log_index = 4;
+  uint64 token = 4;
   int64 lease_expires_at = 5;
-  int64 failures = 6;
-  int64 added_at = 7;
+  int64 added_at = 6;
+  uint32 failures = 7;
 
   // Only present if the status is SUCCESS.
   CompactedBlocks compacted_blocks = 8;

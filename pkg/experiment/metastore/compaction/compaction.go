@@ -11,9 +11,8 @@ import (
 // TODO(kolesnikovae): Consider delegating tombstone management to the planner.
 
 type Planner interface {
-	NewPlan(*bbolt.Tx) Plan
-
 	AddBlocks(*bbolt.Tx, *raft.Log, ...*metastorev1.BlockMeta) error
+	NewPlan(*bbolt.Tx) Plan
 
 	// Planned and Compacted methods are called by Scheduler
 	// to communicate the progress back to the planner.
@@ -30,7 +29,7 @@ type Scheduler interface {
 	// will then be submitted for Raft consensus, with the leader's schedule
 	// being accepted as the final decision.
 	// Implementation note: Schedule planning should be considered a read
-	// operation and must have no side effects
+	// operation and must have no side effects.
 	NewSchedule(*bbolt.Tx, *raft.Log) Schedule
 
 	// AddJobs adds new jobs to the schedule. The jobs have no status yet:
@@ -43,12 +42,14 @@ type Scheduler interface {
 }
 
 type Schedule interface {
+	// AssignJob is called on behalf of the worker to request a new job.
+	// This method should be called before any UpdateJob to avoid assigning
+	// the same job unassigned as a result of the update (e.g, a job failure).
+	AssignJob() (*metastorev1.CompactionJob, *raft_log.CompactionJobState, error)
 	// UpdateJob is called on behalf of the worker to update the job status.
 	// A nil state should be interpreted as "no new lease": stop the work.
 	// The scheduler must validate that the worker is allowed to update the job,
 	// by comparing the fencing token of the job. Refer to the documentation for
 	// details.
 	UpdateJob(*metastorev1.CompactionJobStatusUpdate) (*raft_log.CompactionJobState, error)
-	// AssignJob is called on behalf of the worker to request a new job.
-	AssignJob() (*metastorev1.CompactionJob, *raft_log.CompactionJobState, error)
 }

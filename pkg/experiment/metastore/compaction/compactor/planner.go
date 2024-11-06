@@ -85,19 +85,6 @@ func (p *Planner) AddBlock(tx *bbolt.Tx, cmd *raft.Log, md *metastorev1.BlockMet
 	return nil
 }
 
-func (p *Planner) Restore(tx *bbolt.Tx) error {
-	// Reset in-memory state before loading entries from the store.
-	p.queue = newCompactionQueue(p.strategy)
-	entries := p.store.ListEntries(tx)
-	defer func() {
-		_ = entries.Close()
-	}()
-	for entries.Next() {
-		p.enqueue(entries.At())
-	}
-	return entries.Err()
-}
-
 func (p *Planner) enqueue(e BlockEntry) {
 	c := compactionKey{
 		tenant: e.Tenant,
@@ -116,11 +103,9 @@ func (p *Planner) enqueue(e BlockEntry) {
 
 func (p *Planner) NewPlan(tx *bbolt.Tx) compaction.Plan {
 	return &compactionPlan{
-		tx:       tx,
-		index:    p.index,
-		strategy: p.strategy,
-		queue:    p.queue,
-		blocks:   newBlockIter(),
+		tx:      tx,
+		planner: p,
+		blocks:  newBlockIter(),
 	}
 }
 
@@ -148,4 +133,17 @@ func (p *Planner) Compacted(tx *bbolt.Tx, compacted *raft_log.CompactedBlocks) e
 		return err
 	}
 	return p.index.DeleteTombstones(tx, compacted.DeletedBlocks)
+}
+
+func (p *Planner) Restore(tx *bbolt.Tx) error {
+	// Reset in-memory state before loading entries from the store.
+	p.queue = newCompactionQueue(p.strategy)
+	entries := p.store.ListEntries(tx)
+	defer func() {
+		_ = entries.Close()
+	}()
+	for entries.Next() {
+		p.enqueue(entries.At())
+	}
+	return entries.Err()
 }
