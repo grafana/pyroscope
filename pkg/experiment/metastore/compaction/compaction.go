@@ -10,8 +10,11 @@ import (
 
 type Planner interface {
 	AddBlocks(*bbolt.Tx, *raft.Log, ...*metastorev1.BlockMeta) error
+
 	NewPlan(*bbolt.Tx) Plan
-	// Planned and Compacted methods is the way Scheduler communicates to planner.
+
+	// Planned and Compacted methods are called by Scheduler
+	// to communicate the progress back to the planner.
 	Planned(*bbolt.Tx, *metastorev1.CompactionJob) error
 	Compacted(*bbolt.Tx, *raft_log.CompactedBlocks) error
 }
