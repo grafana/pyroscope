@@ -40,7 +40,7 @@ Priority handling:
 - `COMPACTION_STATUS_CANCELLED`: sentinel; the job will not be assigned.
 - The transient statuses communicated by the worker to the scheduler should not be stored in the priority queue:
     - `COMPACTION_STATUS_SUCCESS`: completed jobs are removed from the schedule immediately.
-    - `COMPACTION_STATUS_FAILURE`: the job is re-assigned or cancelled.
+    - `COMPACTION_STATUS_FAILURE`: the job is reassigned or cancelled.
 
 See [Job Status Description](#job-status-description) for more details.
 
@@ -48,22 +48,25 @@ See [Job Status Description](#job-status-description) for more details.
 
 ## Job Ownership
 
-Distributed locking is implemented by the Raft protocol: the log entry index is used as the
-[fencing token](https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html)
+Distributed locking implementation is inspired by [The Chubby lock service](https://static.googleusercontent.com/media/research.google.com/en//archive/chubby-osdi06.pdf)
+using the Raft protocol: the log entry index is used as the [fencing token](https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html)
 of protected resources (compaction jobs).
 
 The Raft log entry index is a monotonically increasing integer, guaranteed to be unique for each command.
 Each time a job is assigned to a worker, the worker is provided with the current Raft log index as the fencing token,
 which is also assigned to the job. For subsequent requests, the worker must provide the fencing token it was given at
 assignment. The ownership of the job is confirmed if the provided token is greater than or equal to the job's token.
-The job's token may change if the job is re-assigned to another worker, and the new token is derived from the current
+The job's token may change if the job is reassigned to another worker, and the new token is derived from the current
 Raft log index, which is guaranteed to be greater.
 
 > Authentication of the tokens is not assumed in this design, as the system operates in a trusted environment where
-> malicious workers can arbitrarily specify a token.
-> 
-> In the future, we may consider implementing a basic authentication mechanism based on cryptographic signatures to
-> further ensure the integrity of token usage.
+> malicious workers can arbitrarily specify a token. In the future, we may consider implementing a basic authentication
+> mechanism based on cryptographic signatures to further ensure the integrity of token usage.
+>
+> This is an advisory locking mechanism, meaning resources are not automatically restricted from access when the lock
+> is not acquired. Consequently, a client might choose to delete source blocks associated with a compaction job or
+> continue processing the job even without holding the lease. This behavior, however, should be avoided in the worker
+> implementation.
 
 ## Procedures
 
@@ -78,12 +81,12 @@ The worker should refresh the lease before it expires.
 The worker must send a status update to the scheduler to refresh the lease.
 The scheduler must update the lease expiration time if the worker still owns the job.
 
-### Lease Expiration
+### Job Reassignment
 
 The scheduler may revoke a job if the worker does not send the status update within the lease duration.
 
 When a new assignment is requested by a worker, the scheduler inspects in-progress jobs and checks if the
-lease duration has expired. If the lease has expired, the job is re-assigned to the worker requested for a
+lease duration has expired. If the lease has expired, the job is reassigned to the worker requested for a
 new assignment.
 
 > The real-time clock of the worker and the scheduler cannot be used; the command timestamp (assigned by the Raft
@@ -101,28 +104,28 @@ the scheduler must revoke the job:
 2. Allocate a new lease with an expiration period calculated starting from the current command timestamp.
 3. Set the fencing token to the current command index (guaranteed to be higher than the job fencing token).
 
-The lost job might be reassigned to the same worker instance if that instance happens to detect the loss before others:
-the "abandoned" job is assigned to the first worker that requests new assignments, and no unassigned jobs are available.
-
 The worker instance that has lost the job is not notified immediately. If the worker reports an update for the job that
 is not assigned to it, or if the job is not found (for example, it has been completed by another worker), the scheduler
-responds with in-progress status and the current (maximal) fencing token. This is a general mechanism to prevent the
-worker from unwanted processing of the job.
+does not allocate a new lease; the worker *should* stop processing. This is a general mechanism to prevent the worker
+from unwanted processing of the job.
+
+The lost job might be reassigned to the same worker instance if that instance happens to detect the loss before others:
+the "abandoned" job is assigned to the first worker that requests new assignments, and no unassigned jobs are available.
 
 ### Worker Refusal
 
 If the worker is not capable of executing the job, it may abandon the job without any further notifications.
-The scheduler will re-assign the job to another worker eventually.
+The scheduler will reassign the job to another worker eventually.
 
 ### Job Failure
 
-If the worker reports a failure explicitly, the scheduler must re-assign the job. Like in the case of worker refusal,
+If the worker reports a failure explicitly, the scheduler must reassign the job. Like in the case of worker refusal,
 the lease expiration mechanism can be used in combination with increasing the job fence as we don't want to assign the
 job to the same worker.
 
-Additionally, to avoid infinite re-assignment loops, the scheduler must keep track of the number of failures for each job.
-If the number of failures exceeds the threshold, the job must be marked as `COMPACTION_STATUS_CANCELLED` in the schedule
-and never re-assigned.
+Additionally, to avoid infinite reassignment loops, the scheduler must keep track of the number of failures for each
+job. If the number of failures exceeds the threshold, the job must be marked as `COMPACTION_STATUS_CANCELLED` in the
+schedule and never reassigned.
 
 There's no explicit mechanism to protect from malfunctioning or malicious workers.
 
@@ -175,13 +178,13 @@ stateDiagram-v2
 
 ### Worker to Scheduler
 
-| Status                          | Description                                                                                                                                                                                                                   |
-|---------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `COMPACTION_STATUS_UNSPECIFIED` | Not allowed.                                                                                                                                                                                                                  |
-| `COMPACTION_STATUS_IN_PROGRESS` | Job lease refresh. The scheduler must extend the lease of the job.                                                                                                                                                            | 
-| `COMPACTION_STATUS_SUCCESS`     | The job has been successfully completed. The scheduler must remove the job from the schedule and communicate the update to the planner.                                                                                       |
-| `COMPACTION_STATUS_FAILURE`     | The job has failed. The scheduler must increase the failure counter. If the counter does not exceed the threshold, the job is re-assigned. Otherwise, the scheduler must set the job status to `COMPACTION_STATUS_CANCELLED`. |
-| `COMPACTION_STATUS_CANCELLED`   | Not allowed.                                                                                                                                                                                                                  |
+| Status                          | Description                                                                                                                                                                                                                  |
+|---------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `COMPACTION_STATUS_UNSPECIFIED` | Not allowed.                                                                                                                                                                                                                 |
+| `COMPACTION_STATUS_IN_PROGRESS` | Job lease refresh. The scheduler must extend the lease of the job.                                                                                                                                                           | 
+| `COMPACTION_STATUS_SUCCESS`     | The job has been successfully completed. The scheduler must remove the job from the schedule and communicate the update to the planner.                                                                                      |
+| `COMPACTION_STATUS_FAILURE`     | The job has failed. The scheduler must increase the failure counter. If the counter does not exceed the threshold, the job is reassigned. Otherwise, the scheduler must set the job status to `COMPACTION_STATUS_CANCELLED`. |
+| `COMPACTION_STATUS_CANCELLED`   | Not allowed.                                                                                                                                                                                                                 |
 
 ### Notes
 
