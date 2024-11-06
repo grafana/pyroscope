@@ -25,12 +25,15 @@ var _ compaction.Scheduler = (*Scheduler)(nil)
 // distinguishes between the job and the job state.
 //
 // Implementation note: block metadata should never be stored in StoreJob:
-// those are in the metadata index and loaded on GetJob.
+// those are already stored in the metadata index.
 type JobStore interface {
 	StoreJob(*bbolt.Tx, *metastorev1.CompactionJob) error
 	GetJob(tx *bbolt.Tx, name string) (*metastorev1.CompactionJob, error)
+	GetSourceBlocks(tx *bbolt.Tx, name string) ([]string, error)
 	DeleteJob(tx *bbolt.Tx, name string) error
+	// Jobs are not loaded in memory.
 
+	GetJobState(tx *bbolt.Tx, name string) (*raft_log.CompactionJobState, error)
 	UpdateJobState(*bbolt.Tx, *raft_log.CompactionJobState) error
 	DeleteJobState(tx *bbolt.Tx, name string) error
 	ListEntries(*bbolt.Tx) iter.Iterator[*raft_log.CompactionJobState]
@@ -101,9 +104,6 @@ func (sc *Scheduler) updateJob(tx *bbolt.Tx, planner compaction.Planner, job *ra
 }
 
 func (sc *Scheduler) deleteJob(tx *bbolt.Tx, planner compaction.Planner, job *raft_log.CompactionJobState) error {
-	if err := planner.Compacted(tx, job.CompactedBlocks); err != nil {
-		return err
-	}
 	if err := sc.store.DeleteJob(tx, job.Name); err != nil {
 		return err
 	}
@@ -111,7 +111,7 @@ func (sc *Scheduler) deleteJob(tx *bbolt.Tx, planner compaction.Planner, job *ra
 		return err
 	}
 	sc.queue.delete(job)
-	return nil
+	return planner.Compacted(tx, job.CompactedBlocks)
 }
 
 func (sc *Scheduler) Restore(tx *bbolt.Tx) error {

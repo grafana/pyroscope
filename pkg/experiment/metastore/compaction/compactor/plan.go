@@ -22,24 +22,31 @@ type compactionPlan struct {
 	blocks  *blockIter
 }
 
-func (p *compactionPlan) CreateJob() *metastorev1.CompactionJob {
-	job := p.nextJob()
-	if job == nil {
-		return nil
+func (p *compactionPlan) CreateJob() (*metastorev1.CompactionJob, error) {
+	plan := p.nextJob()
+	if plan == nil {
+		return nil, nil
 	}
-	blocks := p.index.LookupBlocks(p.tx, job.tenant, job.shard, job.blocks)
+	blocks, err := p.index.LookupBlockMetadata(p.tx, plan.tenant, plan.shard, plan.blocks...)
+	if err != nil {
+		return nil, err
+	}
 	if len(blocks) == 0 {
-		return nil
+		return nil, nil
 	}
-	tombstones := p.index.GetTombstones(p.tx, job.tenant, job.shard)
-	return &metastorev1.CompactionJob{
-		Name:            job.name,
-		Shard:           job.shard,
-		Tenant:          job.tenant,
-		CompactionLevel: job.level,
+	tombstones, err := p.index.GetTombstones(p.tx, plan.tenant, plan.shard)
+	if err != nil {
+		return nil, err
+	}
+	job := &metastorev1.CompactionJob{
+		Name:            plan.name,
+		Shard:           plan.shard,
+		Tenant:          plan.tenant,
+		CompactionLevel: plan.level,
 		SourceBlocks:    blocks,
 		Tombstones:      tombstones,
 	}
+	return job, nil
 }
 
 type plannedJob struct {

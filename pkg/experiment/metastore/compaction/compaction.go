@@ -8,10 +8,12 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 )
 
-type Planner interface {
-	AddBlocks(*bbolt.Tx, *raft.Log, ...*metastorev1.BlockMeta) error
+// TODO(kolesnikovae): Consider delegating tombstone management to the planner.
 
+type Planner interface {
 	NewPlan(*bbolt.Tx) Plan
+
+	AddBlocks(*bbolt.Tx, *raft.Log, ...*metastorev1.BlockMeta) error
 
 	// Planned and Compacted methods are called by Scheduler
 	// to communicate the progress back to the planner.
@@ -20,7 +22,7 @@ type Planner interface {
 }
 
 type Plan interface {
-	CreateJob() *metastorev1.CompactionJob
+	CreateJob() (*metastorev1.CompactionJob, error)
 }
 
 type Scheduler interface {
@@ -30,11 +32,13 @@ type Scheduler interface {
 	// Implementation note: Schedule planning should be considered a read
 	// operation and must have no side effects
 	NewSchedule(*bbolt.Tx, *raft.Log) Schedule
-	// AddJobs adds new jobs to the schedule. The jobs were accepted by
-	// the raft quorum: the scheduler must add them.
+
+	// AddJobs adds new jobs to the schedule. The jobs have no status yet:
+	// corresponding entries should be added separately via UpdateSchedule.
+	// The jobs were accepted by the raft quorum: the scheduler MUST add them.
 	AddJobs(*bbolt.Tx, Planner, ...*metastorev1.CompactionJob) error
-	// UpdateSchedule updates the state of existing jobs. The changes
-	// were accepted by the raft quorum: the scheduler must update them.
+	// UpdateSchedule updates the state of existing jobs.
+	// The change was accepted by the raft quorum: the scheduler MUST apply it.
 	UpdateSchedule(*bbolt.Tx, Planner, ...*raft_log.CompactionJobState) error
 }
 
@@ -44,7 +48,7 @@ type Schedule interface {
 	// The scheduler must validate that the worker is allowed to update the job,
 	// by comparing the fencing token of the job. Refer to the documentation for
 	// details.
-	UpdateJob(*metastorev1.CompactionJobStatusUpdate) *raft_log.CompactionJobState
+	UpdateJob(*metastorev1.CompactionJobStatusUpdate) (*raft_log.CompactionJobState, error)
 	// AssignJob is called on behalf of the worker to request a new job.
-	AssignJob() (*metastorev1.CompactionJob, *raft_log.CompactionJobState)
+	AssignJob() (*metastorev1.CompactionJob, *raft_log.CompactionJobState, error)
 }

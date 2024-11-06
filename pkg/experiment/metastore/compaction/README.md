@@ -90,11 +90,12 @@ lease duration has expired. If the lease has expired, the job is reassigned to t
 new assignment.
 
 > The real-time clock of the worker and the scheduler cannot be used; the command timestamp (assigned by the Raft
-> leader) is used as a reference.
+> leader when the entry is appended to the log) is used as a reference.
 >
 > The fact that leases are allocated by the current leader allows for spurious *lease invalidation* when the leader
 > changes and the clock skew exceeds the lease duration. This is acceptable because jobs will be reassigned repeatedly,
-> and the occurrence of the event should be very rare.
+> and the occurrence of the event should be very rare. However, the solution does not tolerate clock skews exceeding
+> the job lease duration (which is 15 seconds by default).
 
 ---
 

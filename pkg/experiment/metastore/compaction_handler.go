@@ -24,15 +24,14 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 		JobUpdates:     make([]*raft_log.CompactionJobState, 0, len(req.StatusUpdates)),
 	}
 
-	// Request job status updates.
 	schedule := h.scheduler.NewSchedule(tx, cmd)
-	for _, status := range req.StatusUpdates {
-		p.JobUpdates = append(p.JobUpdates, schedule.UpdateJob(status))
-	}
 
-	// Request to assign new jobs.
+	// Try to assign new jobs first.
 	for len(p.CompactionJobs) < int(req.AssignJobsMax) {
-		job, assignment := schedule.AssignJob()
+		job, assignment, err := schedule.AssignJob()
+		if err != nil {
+			return nil, err
+		}
 		if job == nil {
 			break
 		}
@@ -40,12 +39,26 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 		p.JobUpdates = append(p.JobUpdates, assignment)
 	}
 
+	// Request job status updates.
+	for _, status := range req.StatusUpdates {
+		update, err := schedule.UpdateJob(status)
+		if err != nil {
+			return nil, err
+		}
+		if update != nil {
+			p.JobUpdates = append(p.JobUpdates, update)
+		}
+	}
+
 	// Request to create more jobs: we expect that at least
 	// the requested job capacity is utilized next time we ask
 	// for new assignments (this worker instance or not).
 	plan := h.planner.NewPlan(tx)
 	for len(p.CompactionJobs) < int(req.AssignJobsMax) {
-		job := plan.CreateJob()
+		job, err := plan.CreateJob()
+		if err != nil {
+			return nil, err
+		}
 		if job == nil {
 			break
 		}

@@ -18,8 +18,8 @@ type PlannerIndex interface {
 }
 
 type PlannerIndexReader interface {
-	LookupBlocks(tx *bbolt.Tx, tenant string, shard uint32, blocks []string) []*metastorev1.BlockMeta
-	GetTombstones(tx *bbolt.Tx, tenant string, shard uint32) []string
+	LookupBlockMetadata(tx *bbolt.Tx, tenant string, shard uint32, block ...string) ([]*metastorev1.BlockMeta, error)
+	GetTombstones(tx *bbolt.Tx, tenant string, shard uint32) ([]string, error)
 }
 
 type PlannerIndexWriter interface {
