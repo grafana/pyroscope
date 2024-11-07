@@ -1,6 +1,8 @@
 package compaction
 
 import (
+	"errors"
+
 	"github.com/hashicorp/raft"
 	"go.etcd.io/bbolt"
 
@@ -8,8 +10,10 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 )
 
+var ErrAlreadyCompacted = errors.New("block already compacted")
+
 type Compactor interface {
-	AddBlocks(*bbolt.Tx, *raft.Log, ...*metastorev1.BlockMeta) error
+	AddBlock(*bbolt.Tx, *raft.Log, *metastorev1.BlockMeta) error
 	DeleteBlocks(*bbolt.Tx, *raft.Log, *metastorev1.BlockList) error
 }
 

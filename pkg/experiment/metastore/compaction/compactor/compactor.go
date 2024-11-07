@@ -10,8 +10,10 @@ import (
 	"github.com/grafana/pyroscope/pkg/iter"
 )
 
-var _ compaction.Compactor = (*Compactor)(nil)
-var _ compaction.Planner = (*Compactor)(nil)
+var (
+	_ compaction.Compactor = (*Compactor)(nil)
+	_ compaction.Planner   = (*Compactor)(nil)
+)
 
 type BlockQueueStore interface {
 	StoreEntry(*bbolt.Tx, BlockEntry) error
@@ -19,8 +21,9 @@ type BlockQueueStore interface {
 	ListEntries(*bbolt.Tx) iter.Iterator[BlockEntry]
 }
 
-type TombstoneStore interface {
-	StoreTombstones(*bbolt.Tx, *metastorev1.BlockList) error
+type Tombstones interface {
+	Exists(*metastorev1.BlockMeta) bool
+	AddTombstones(*bbolt.Tx, *metastorev1.BlockList) error
 	DeleteTombstones(*bbolt.Tx, *metastorev1.BlockList) error
 	ListEntries(tx *bbolt.Tx, tenant string, shard uint32) iter.Iterator[string]
 }
@@ -37,7 +40,7 @@ type Compactor struct {
 	strategy   strategy
 	queue      *compactionQueue
 	store      BlockQueueStore
-	tombstones TombstoneStore
+	tombstones Tombstones
 }
 
 func NewCompactor(store BlockQueueStore) *Compactor {
@@ -49,16 +52,10 @@ func NewCompactor(store BlockQueueStore) *Compactor {
 	}
 }
 
-func (p *Compactor) AddBlocks(tx *bbolt.Tx, cmd *raft.Log, blocks ...*metastorev1.BlockMeta) error {
-	for _, md := range blocks {
-		if err := p.addBlock(tx, cmd, md); err != nil {
-			return err
-		}
+func (p *Compactor) AddBlock(tx *bbolt.Tx, cmd *raft.Log, md *metastorev1.BlockMeta) error {
+	if p.tombstones.Exists(md) {
+		return compaction.ErrAlreadyCompacted
 	}
-	return nil
-}
-
-func (p *Compactor) addBlock(tx *bbolt.Tx, cmd *raft.Log, md *metastorev1.BlockMeta) error {
 	if !p.strategy.canCompact(md) {
 		return nil
 	}
@@ -72,11 +69,10 @@ func (p *Compactor) addBlock(tx *bbolt.Tx, cmd *raft.Log, md *metastorev1.BlockM
 	if err := p.store.StoreEntry(tx, e); err != nil {
 		return err
 	}
-	p.enqueue(e)
-	return nil
+	return p.enqueue(e)
 }
 
-func (p *Compactor) enqueue(e BlockEntry) {
+func (p *Compactor) enqueue(e BlockEntry) error {
 	c := compactionKey{
 		tenant: e.Tenant,
 		shard:  e.Shard,
@@ -86,10 +82,14 @@ func (p *Compactor) enqueue(e BlockEntry) {
 		raftIndex: e.Index,
 		id:        e.ID,
 	}
-	if p.queue.push(c, b) {
-		// Another entry with the same block ID already exists.
-		// TODO: Add a log message, bump a metric, etc.
+	if !p.queue.push(c, b) {
+		return compaction.ErrAlreadyCompacted
 	}
+	return nil
+}
+
+func (p *Compactor) DeleteBlocks(tx *bbolt.Tx, _ *raft.Log, blocks *metastorev1.BlockList) error {
+	return p.tombstones.AddTombstones(tx, blocks)
 }
 
 func (p *Compactor) NewPlan(tx *bbolt.Tx) compaction.Plan {
@@ -102,42 +102,26 @@ func (p *Compactor) NewPlan(tx *bbolt.Tx) compaction.Plan {
 
 func (p *Compactor) Scheduled(tx *bbolt.Tx, jobs ...*raft_log.CompactionJobPlan) error {
 	for _, job := range jobs {
-		if err := p.planned(tx, job); err != nil {
-			return err
+		k := compactionKey{
+			tenant: job.Tenant,
+			shard:  job.Shard,
+			level:  job.CompactionLevel,
 		}
-	}
-	return nil
-}
-
-func (p *Compactor) planned(tx *bbolt.Tx, job *raft_log.CompactionJobPlan) error {
-	k := compactionKey{
-		tenant: job.Tenant,
-		shard:  job.Shard,
-		level:  job.CompactionLevel,
-	}
-	staged := p.queue.stagedBlocks(k)
-	for _, block := range job.SourceBlocks {
-		e := staged.delete(block)
-		if e == zeroBlockEntry {
-			continue
-		}
-		if err := p.store.DeleteEntry(tx, e.raftIndex, e.id); err != nil {
-			return err
+		staged := p.queue.stagedBlocks(k)
+		for _, block := range job.SourceBlocks {
+			e := staged.delete(block)
+			if e == zeroBlockEntry {
+				continue
+			}
+			if err := p.store.DeleteEntry(tx, e.raftIndex, e.id); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
 }
 
 func (p *Compactor) Compacted(tx *bbolt.Tx, jobs ...*raft_log.CompactionJobPlan) error {
-	for _, job := range jobs {
-		if err := p.compacted(tx, job); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (p *Compactor) compacted(tx *bbolt.Tx, jobs ...*raft_log.CompactionJobPlan) error {
 	for _, job := range jobs {
 		tombstones := &metastorev1.BlockList{
 			Tenant: job.Tenant,
@@ -149,10 +133,6 @@ func (p *Compactor) compacted(tx *bbolt.Tx, jobs ...*raft_log.CompactionJobPlan)
 		}
 	}
 	return nil
-}
-
-func (p *Compactor) DeleteBlocks(tx *bbolt.Tx, _ *raft.Log, blocks *metastorev1.BlockList) error {
-	return p.tombstones.StoreTombstones(tx, blocks)
 }
 
 func (p *Compactor) Restore(tx *bbolt.Tx) error {
