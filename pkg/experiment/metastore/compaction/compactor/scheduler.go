@@ -73,9 +73,9 @@ func (sc *Scheduler) NewSchedule(tx *bbolt.Tx, raft *raft.Log) compaction.Schedu
 		raft:      raft,
 		scheduler: sc,
 		assigner: &jobAssigner{
-			raft:  raft,
-			lease: sc.config.LeaseDuration,
-			queue: sc.queue,
+			raft:   raft,
+			config: sc.config,
+			queue:  sc.queue,
 		},
 	}
 }
@@ -102,6 +102,7 @@ func (sc *Scheduler) UpdateSchedule(tx *bbolt.Tx, planner compaction.Planner, jo
 		}
 		sc.queue.put(job)
 	}
+	// TODO: Bump all the stats here, right after the schedule update.
 	return nil
 }
 

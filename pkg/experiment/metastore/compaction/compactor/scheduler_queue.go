@@ -3,6 +3,7 @@ package compactor
 import (
 	"container/heap"
 	"slices"
+	"strings"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 )
@@ -15,23 +16,6 @@ type jobQueue struct {
 type jobEntry struct {
 	index int // The index of the job in the heap.
 	*raft_log.CompactionJobState
-}
-
-func (c *jobEntry) less(x *jobEntry) bool {
-	if c.Status != x.Status {
-		// Pick jobs in the "initial" (unspecified) state first:
-		// COMPACTION_STATUS_UNSPECIFIED <- Unassigned jobs.
-		// COMPACTION_STATUS_IN_PROGRESS <- Assigned jobs.
-		// COMPACTION_STATUS_SUCCESS <- Should never be in the queue.
-		// COMPACTION_STATUS_FAILURE <- Should never be in the queue.
-		// COMPACTION_STATUS_CANCELLED <- Unassigned jobs that should not be scheduled.
-		return c.Status < x.Status
-	}
-	if c.LeaseExpiresAt != x.LeaseExpiresAt {
-		// Jobs with earlier deadlines should be at the top.
-		return c.LeaseExpiresAt < x.LeaseExpiresAt
-	}
-	return c.Name < x.Name
 }
 
 func newJobQueue() *jobQueue {
@@ -50,6 +34,8 @@ func (q *jobQueue) level(x uint32) *priorityQueue {
 	}
 	return &q.levels[x]
 }
+
+// TODO: check nil queue, and non-zero index.
 
 func (q *jobQueue) put(state *raft_log.CompactionJobState) {
 	job, exists := q.jobs[state.Name]
@@ -72,11 +58,33 @@ func (q *jobQueue) delete(job *raft_log.CompactionJobState) {
 // TODO(kolesnikovae): container/heap is not very efficient,
 //  consider implementing own heap, specific to the case.
 
+// The function determines the scheduling order of the jobs.
+func compareJobs(a, b *jobEntry) int {
+	// Pick jobs in the "initial" (unspecified) state first:
+	// COMPACTION_STATUS_UNSPECIFIED <- Unassigned jobs.
+	// COMPACTION_STATUS_IN_PROGRESS <- Assigned jobs.
+	if a.Status != b.Status {
+		return int(a.Status - b.Status)
+	}
+	// Faulty jobs should wait.
+	if a.Failures != b.Failures {
+		return int(a.Failures - b.Failures)
+	}
+	// Jobs with earlier deadlines should go first.
+	if a.LeaseExpiresAt != b.LeaseExpiresAt {
+		return int(a.LeaseExpiresAt - b.LeaseExpiresAt)
+	}
+	// Tiebreaker: the job name must not bias the order.
+	return strings.Compare(a.Name, b.Name)
+}
+
 type priorityQueue []*jobEntry
 
 func (pq priorityQueue) Len() int { return len(pq) }
 
-func (pq priorityQueue) Less(i, j int) bool { return pq[i].less(pq[j]) }
+func (pq priorityQueue) Less(i, j int) bool {
+	return compareJobs(pq[i], pq[j]) < 0
+}
 
 func (pq priorityQueue) Swap(i, j int) {
 	pq[i], pq[j] = pq[j], pq[i]

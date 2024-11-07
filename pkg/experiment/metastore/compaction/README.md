@@ -29,18 +29,12 @@ assigned first, and the scheduler does not consider jobs of higher levels until 
 assigned.
 
 The priority is determined by several factors:
-1. Status (enum order).
-2. Lease expiration time: the job with the earliest lease expiration time is considered first.
-
-Priority handling:
-- `COMPACTION_STATUS_UNSPECIFIED`: unassigned jobs.
-- `COMPACTION_STATUS_IN_PROGRESS`: in-progress jobs:
-    - Jobs with expired leases come first.
-    - The first job with a non-expired lease is a sentinel: no more jobs are eligible for assignment at this level.
-- `COMPACTION_STATUS_CANCELLED`: sentinel; the job will not be assigned.
-- The transient statuses communicated by the worker to the scheduler should not be stored in the priority queue:
-    - `COMPACTION_STATUS_SUCCESS`: completed jobs are removed from the schedule immediately.
-    - `COMPACTION_STATUS_FAILURE`: the job is reassigned or cancelled.
+1. Compaction level.
+2. Status (enum order).
+   - `COMPACTION_STATUS_UNSPECIFIED`: unassigned jobs.
+   - `COMPACTION_STATUS_IN_PROGRESS`: in-progress jobs. The first job that can't be reassigned is a sentinel: no more jobs are eligible for assignment at this level.
+3. Failures: jobs with fewer failures are prioritized.
+4. Lease expiration time: the job with the earliest lease expiration time is considered first.
 
 See [Job Status Description](#job-status-description) for more details.
 
@@ -96,7 +90,7 @@ The worker should refresh the lease before it expires.
 The worker must send a status update to the scheduler to refresh the lease.
 The scheduler must update the lease expiration time if the worker still owns the job.
 
-### Job Reassignment
+### Reassignment
 
 The scheduler may revoke a job if the worker does not send the status update within the lease duration.
 
@@ -112,30 +106,24 @@ the scheduler must revoke the job:
 2. Allocate a new lease with an expiration period calculated starting from the current command timestamp.
 3. Set the fencing token to the current command index (guaranteed to be higher than the job fencing token).
 
-The worker instance that has lost the job is not notified immediately. If the worker reports an update for the job that
-is not assigned to it, or if the job is not found (for example, it has been completed by another worker), the scheduler
-does not allocate a new lease; the worker *should* stop processing. This is a general mechanism to prevent the worker
-from unwanted processing of the job.
+---
 
-The lost job might be reassigned to the same worker instance if that instance happens to detect the loss before others:
-the "abandoned" job is assigned to the first worker that requests new assignments, and no unassigned jobs are available.
+The worker instance that has lost the job is not notified immediately. If the worker reports an update for a job that it
+is not assigned to, or if the job is not found (for example, if it has been completed by another worker), the scheduler
+does not allocate a new lease; the worker should stop processing. This mechanism prevents the worker from processing
+jobs unnecessarily.
 
-### Worker Refusal
+If the worker is not capable of executing the job, it may abandon the job without further notifications. The scheduler
+will eventually reassign the job to another worker. The lost job might be reassigned to the same worker instance if that
+instance detects the loss before others do: abandoned jobs are assigned to the first worker that requests new
+assignments when no unassigned jobs are available.
 
-If the worker is not capable of executing the job, it may abandon the job without any further notifications.
-The scheduler will reassign the job to another worker eventually.
+There is no explicit mechanism for reporting a failure from the worker. In fact, the scheduler must not rely on error
+reports from workers, as jobs that cause workers to crash would yield no reports at all.
 
-### Job Failure
-
-If the worker reports a failure explicitly, the scheduler must reassign the job. Like in the case of worker refusal,
-the lease expiration mechanism can be used in combination with increasing the job fence as we don't want to assign the
-job to the same worker.
-
-Additionally, to avoid infinite reassignment loops, the scheduler must keep track of the number of failures for each
-job. If the number of failures exceeds the threshold, the job must be marked as `COMPACTION_STATUS_CANCELLED` in the
-schedule and never reassigned.
-
-There's no explicit mechanism to protect from malfunctioning or malicious workers.
+To avoid infinite reassignment loops, the scheduler keeps track of reassignments (failures) for each job. If the number
+of failures exceeds a set threshold, the job is not reassigned and remains at the bottom of the queue. Once the cause of
+failure is resolved, the limit can be temporarily increased to reprocess these jobs.
 
 ### Job Completion
 
@@ -151,56 +139,44 @@ stateDiagram-v2
     [*] --> Unassigned : Create Job
     Unassigned --> InProgress : Assign Job
     InProgress --> Success : Job Completed
-    InProgress --> Failure : Job Failed
-    InProgress --> InProgress: Job Lease Refresh
     InProgress --> LeaseExpired: Job Lease Expires
     LeaseExpired: Abandoned Job
 
-    Success --> [*] : Remove Job from Schedule
-    Failure --> InProgress : Reassign Job
-    LeaseExpired --> InProgress : Reassign Job
+    LeaseExpired --> Excluded: Failure Threshold Exceeded
+    Excluded: Faulty Job
 
-    Failure --> Cancelled : Failure Threshold Exceeded
-    Cancelled --> [*] : Job Ends
+    Success --> [*] : Remove Job from Schedule
+    LeaseExpired --> InProgress : Reassign Job
 
     Unassigned : COMPACTION_STATUS_UNSPECIFIED
     InProgress : COMPACTION_STATUS_IN_PROGRESS
-    Failure : COMPACTION_STATUS_FAILURE
-    Cancelled : COMPACTION_STATUS_CANCELLED
     Success : COMPACTION_STATUS_SUCCESS
 
     LeaseExpired : COMPACTION_STATUS_IN_PROGRESS
+    Excluded: COMPACTION_STATUS_IN_PROGRESS
 ```
 
 ### Communication
 
 ### Scheduler to Worker
 
-| Status                          | Description                                                                                                                                                                                                       |
-|---------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `COMPACTION_STATUS_UNSPECIFIED` | Not allowed.                                                                                                                                                                                                      |
-| `COMPACTION_STATUS_IN_PROGRESS` | Job lease refresh. If the fencing token of the new lease is greater that the worker's one, the worker should stop processing the job. Otherwise, the worker should refresh the new lease before the new deadline. |
-| `COMPACTION_STATUS_SUCCESS`     | Not allowed.                                                                                                                                                                                                      |
-| `COMPACTION_STATUS_FAILURE`     | Not allowed.                                                                                                                                                                                                      |
-| `COMPACTION_STATUS_CANCELLED`   | Not allowed.                                                                                                                                                                                                      |
+| Status                          | Description                                                                         |
+|---------------------------------|-------------------------------------------------------------------------------------|
+| `COMPACTION_STATUS_UNSPECIFIED` | Not allowed.                                                                        |
+| `COMPACTION_STATUS_IN_PROGRESS` | Job lease refresh. The worker should refresh the new lease before the new deadline. |
+| `COMPACTION_STATUS_SUCCESS`     | Not allowed.                                                                        |
+| ---                             | No lease refresh from the scheduler. The worker should stop processing.             |
 
 ### Worker to Scheduler
 
-| Status                          | Description                                                                                                                                                                                                                  |
-|---------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `COMPACTION_STATUS_UNSPECIFIED` | Not allowed.                                                                                                                                                                                                                 |
-| `COMPACTION_STATUS_IN_PROGRESS` | Job lease refresh. The scheduler must extend the lease of the job.                                                                                                                                                           | 
-| `COMPACTION_STATUS_SUCCESS`     | The job has been successfully completed. The scheduler must remove the job from the schedule and communicate the update to the planner.                                                                                      |
-| `COMPACTION_STATUS_FAILURE`     | The job has failed. The scheduler must increase the failure counter. If the counter does not exceed the threshold, the job is reassigned. Otherwise, the scheduler must set the job status to `COMPACTION_STATUS_CANCELLED`. |
-| `COMPACTION_STATUS_CANCELLED`   | Not allowed.                                                                                                                                                                                                                 |
+| Status                          | Description                                                                                                                             |
+|---------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------|
+| `COMPACTION_STATUS_UNSPECIFIED` | Not allowed.                                                                                                                            |
+| `COMPACTION_STATUS_IN_PROGRESS` | Job lease refresh. The scheduler must extend the lease of the job, if the worker still owns it.                                         | 
+| `COMPACTION_STATUS_SUCCESS`     | The job has been successfully completed. The scheduler must remove the job from the schedule and communicate the update to the planner. |
 
 ### Notes
 
-* The terminal job state is indicated by the following statuses:
-  - `COMPACTION_STATUS_SUCCESS`: The job has been successfully completed and must be removed from the schedule.
-  - `COMPACTION_STATUS_CANCELLED`: The job has been cancelled and will remain in the schedule. If the failures that
-caused the cancellation are resolved, the job might be executed again. *The mechanism is not implemented yet*.
-
-* Job statuses `COMPACTION_STATUS_UNSPECIFIED` and `COMPACTION_STATUS_CANCELLED` are never sent over the wire.
-
-* Job statuses `COMPACTION_STATUS_SUCCESS` and `COMPACTION_STATUS_FAILURE` are never stored.
+* Job status `COMPACTION_STATUS_UNSPECIFIED` is never sent over the wire between the scheduler and workers.
+* Job in `COMPACTION_STATUS_IN_PROGRESS` cannot be reassigned if its failure counter exceeds the threshold.
+* Job in `COMPACTION_STATUS_SUCCESS` is removed from the schedule immediately.

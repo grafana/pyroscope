@@ -35,19 +35,18 @@ func (p *compactionSchedule) UpdateJob(update *metastorev1.CompactionJobStatusUp
 	}
 
 	switch update.Status {
-	default:
-		// Not allowed and unknown status updates are ignored: eventually,
-		// the job will be reassigned. The same for status handlers: a nil
-		// state is returned, which is interpreted as "no new lease":
-		// stop the work.
-		return nil, nil
-
 	case metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS:
 		return p.handleInProgress(state), nil
+
 	case metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS:
 		return p.handleSuccess(state, update)
-	case metastorev1.CompactionJobStatus_COMPACTION_STATUS_FAILURE:
-		return p.handleFailure(state), nil
+
+	default:
+		// Not allowed and unknown status updates can be safely ignored:
+		// eventually, the job will be reassigned. The same for status
+		// handlers: a nil state is returned, which is interpreted as
+		// "no new lease, stop the work".
+		return nil, nil
 	}
 }
 
@@ -70,22 +69,6 @@ func (p *compactionSchedule) handleSuccess(
 func (p *compactionSchedule) handleInProgress(state *raft_log.CompactionJobState) *raft_log.CompactionJobState {
 	updated := state.CloneVT()
 	updated.LeaseExpiresAt = p.assigner.allocateLease()
-	return updated
-}
-
-func (p *compactionSchedule) handleFailure(state *raft_log.CompactionJobState) *raft_log.CompactionJobState {
-	updated := state.CloneVT()
-	// The worker shouldn't be able to take the job back immediately, using
-	// the current raft index as the token at assignment. Jobs are assigned
-	// before status updates, however we revoke the job explicitly.
-	updated.Token = p.raft.Index + 1
-	// Zero lease: the job will be prioritized for reassignment.
-	updated.LeaseExpiresAt = 0
-	updated.Status = metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS
-	updated.Failures++
-	if p.scheduler.config.MaxFailures > 0 && updated.Failures >= p.scheduler.config.MaxFailures {
-		updated.Status = metastorev1.CompactionJobStatus_COMPACTION_STATUS_CANCELLED
-	}
 	return updated
 }
 
@@ -118,7 +101,7 @@ func (p *compactionSchedule) deleteDangling(state *raft_log.CompactionJobState) 
 
 type jobAssigner struct {
 	raft   *raft.Log
-	lease  time.Duration
+	config SchedulerConfig
 	queue  *jobQueue
 	copied []priorityQueue
 	level  int
@@ -140,11 +123,15 @@ func (a *jobAssigner) assign() *raft_log.CompactionJobState {
 			return a.assignJob(job)
 
 		case metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS:
-			if a.now().UnixNano() > job.LeaseExpiresAt {
-				return a.reassignJob(job)
+			if a.shouldReassign(job) {
+				state := a.assignJob(job)
+				state.Failures++
+				return state
 			}
 		}
 
+		// If no jobs can be assigned at this level,
+		// we navigate to the next one.
 		a.level++
 	}
 
@@ -153,7 +140,7 @@ func (a *jobAssigner) assign() *raft_log.CompactionJobState {
 
 func (a *jobAssigner) now() time.Time { return a.raft.AppendedAt }
 
-func (a *jobAssigner) allocateLease() int64 { return a.now().Add(a.lease).UnixNano() }
+func (a *jobAssigner) allocateLease() int64 { return a.now().Add(a.config.LeaseDuration).UnixNano() }
 
 func (a *jobAssigner) assignJob(e *jobEntry) *raft_log.CompactionJobState {
 	job := e.CompactionJobState.CloneVT()
@@ -163,8 +150,10 @@ func (a *jobAssigner) assignJob(e *jobEntry) *raft_log.CompactionJobState {
 	return job
 }
 
-func (a *jobAssigner) reassignJob(e *jobEntry) *raft_log.CompactionJobState {
-	return a.assignJob(e)
+func (a *jobAssigner) shouldReassign(job *jobEntry) bool {
+	abandoned := a.now().UnixNano() > job.LeaseExpiresAt
+	faulty := a.config.MaxFailures > 0 && job.Failures > a.config.MaxFailures
+	return abandoned && !faulty
 }
 
 // The queue must not be modified by assigner. Therefore, we're copying the
