@@ -57,6 +57,109 @@ func (m *AddBlockResponse) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
+func (m *GetBlockMetadataRequest) CloneVT() *GetBlockMetadataRequest {
+	if m == nil {
+		return (*GetBlockMetadataRequest)(nil)
+	}
+	r := new(GetBlockMetadataRequest)
+	r.Blocks = m.Blocks.CloneVT()
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *GetBlockMetadataRequest) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *GetBlockMetadataResponse) CloneVT() *GetBlockMetadataResponse {
+	if m == nil {
+		return (*GetBlockMetadataResponse)(nil)
+	}
+	r := new(GetBlockMetadataResponse)
+	if rhs := m.Blocks; rhs != nil {
+		tmpContainer := make([]*BlockMeta, len(rhs))
+		for k, v := range rhs {
+			tmpContainer[k] = v.CloneVT()
+		}
+		r.Blocks = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *GetBlockMetadataResponse) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *BlockList) CloneVT() *BlockList {
+	if m == nil {
+		return (*BlockList)(nil)
+	}
+	r := new(BlockList)
+	r.Tenant = m.Tenant
+	r.Shard = m.Shard
+	if rhs := m.Blocks; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.Blocks = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *BlockList) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *ReplaceBlocksRequest) CloneVT() *ReplaceBlocksRequest {
+	if m == nil {
+		return (*ReplaceBlocksRequest)(nil)
+	}
+	r := new(ReplaceBlocksRequest)
+	r.SourceBlocks = m.SourceBlocks.CloneVT()
+	if rhs := m.NewBlocks; rhs != nil {
+		tmpContainer := make([]*BlockMeta, len(rhs))
+		for k, v := range rhs {
+			tmpContainer[k] = v.CloneVT()
+		}
+		r.NewBlocks = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *ReplaceBlocksRequest) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *ReplaceBlocksResponse) CloneVT() *ReplaceBlocksResponse {
+	if m == nil {
+		return (*ReplaceBlocksResponse)(nil)
+	}
+	r := new(ReplaceBlocksResponse)
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *ReplaceBlocksResponse) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
 func (m *BlockMeta) CloneVT() *BlockMeta {
 	if m == nil {
 		return (*BlockMeta)(nil)
@@ -77,6 +180,11 @@ func (m *BlockMeta) CloneVT() *BlockMeta {
 			tmpContainer[k] = v.CloneVT()
 		}
 		r.Datasets = tmpContainer
+	}
+	if rhs := m.Strings; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.Strings = tmpContainer
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -166,6 +274,141 @@ func (this *AddBlockResponse) EqualMessageVT(thatMsg proto.Message) bool {
 	}
 	return this.EqualVT(that)
 }
+func (this *GetBlockMetadataRequest) EqualVT(that *GetBlockMetadataRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if !this.Blocks.EqualVT(that.Blocks) {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *GetBlockMetadataRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*GetBlockMetadataRequest)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *GetBlockMetadataResponse) EqualVT(that *GetBlockMetadataResponse) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if len(this.Blocks) != len(that.Blocks) {
+		return false
+	}
+	for i, vx := range this.Blocks {
+		vy := that.Blocks[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &BlockMeta{}
+			}
+			if q == nil {
+				q = &BlockMeta{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *GetBlockMetadataResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*GetBlockMetadataResponse)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *BlockList) EqualVT(that *BlockList) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.Tenant != that.Tenant {
+		return false
+	}
+	if this.Shard != that.Shard {
+		return false
+	}
+	if len(this.Blocks) != len(that.Blocks) {
+		return false
+	}
+	for i, vx := range this.Blocks {
+		vy := that.Blocks[i]
+		if vx != vy {
+			return false
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *BlockList) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*BlockList)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *ReplaceBlocksRequest) EqualVT(that *ReplaceBlocksRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if !this.SourceBlocks.EqualVT(that.SourceBlocks) {
+		return false
+	}
+	if len(this.NewBlocks) != len(that.NewBlocks) {
+		return false
+	}
+	for i, vx := range this.NewBlocks {
+		vy := that.NewBlocks[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &BlockMeta{}
+			}
+			if q == nil {
+				q = &BlockMeta{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *ReplaceBlocksRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*ReplaceBlocksRequest)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *ReplaceBlocksResponse) EqualVT(that *ReplaceBlocksResponse) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *ReplaceBlocksResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*ReplaceBlocksResponse)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
 func (this *BlockMeta) EqualVT(that *BlockMeta) bool {
 	if this == that {
 		return true
@@ -215,6 +458,15 @@ func (this *BlockMeta) EqualVT(that *BlockMeta) bool {
 	}
 	if this.CreatedBy != that.CreatedBy {
 		return false
+	}
+	if len(this.Strings) != len(that.Strings) {
+		return false
+	}
+	for i, vx := range this.Strings {
+		vy := that.Strings[i]
+		if vx != vy {
+			return false
+		}
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
@@ -302,86 +554,158 @@ func (this *Dataset) EqualMessageVT(thatMsg proto.Message) bool {
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// MetastoreServiceClient is the client API for MetastoreService service.
+// IndexServiceClient is the client API for IndexService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type MetastoreServiceClient interface {
+type IndexServiceClient interface {
 	AddBlock(ctx context.Context, in *AddBlockRequest, opts ...grpc.CallOption) (*AddBlockResponse, error)
+	GetBlockMetadata(ctx context.Context, in *GetBlockMetadataRequest, opts ...grpc.CallOption) (*GetBlockMetadataResponse, error)
+	ReplaceBlocks(ctx context.Context, in *ReplaceBlocksRequest, opts ...grpc.CallOption) (*ReplaceBlocksResponse, error)
 }
 
-type metastoreServiceClient struct {
+type indexServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewMetastoreServiceClient(cc grpc.ClientConnInterface) MetastoreServiceClient {
-	return &metastoreServiceClient{cc}
+func NewIndexServiceClient(cc grpc.ClientConnInterface) IndexServiceClient {
+	return &indexServiceClient{cc}
 }
 
-func (c *metastoreServiceClient) AddBlock(ctx context.Context, in *AddBlockRequest, opts ...grpc.CallOption) (*AddBlockResponse, error) {
+func (c *indexServiceClient) AddBlock(ctx context.Context, in *AddBlockRequest, opts ...grpc.CallOption) (*AddBlockResponse, error) {
 	out := new(AddBlockResponse)
-	err := c.cc.Invoke(ctx, "/metastore.v1.MetastoreService/AddBlock", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/metastore.v1.IndexService/AddBlock", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// MetastoreServiceServer is the server API for MetastoreService service.
-// All implementations must embed UnimplementedMetastoreServiceServer
+func (c *indexServiceClient) GetBlockMetadata(ctx context.Context, in *GetBlockMetadataRequest, opts ...grpc.CallOption) (*GetBlockMetadataResponse, error) {
+	out := new(GetBlockMetadataResponse)
+	err := c.cc.Invoke(ctx, "/metastore.v1.IndexService/GetBlockMetadata", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *indexServiceClient) ReplaceBlocks(ctx context.Context, in *ReplaceBlocksRequest, opts ...grpc.CallOption) (*ReplaceBlocksResponse, error) {
+	out := new(ReplaceBlocksResponse)
+	err := c.cc.Invoke(ctx, "/metastore.v1.IndexService/ReplaceBlocks", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// IndexServiceServer is the server API for IndexService service.
+// All implementations must embed UnimplementedIndexServiceServer
 // for forward compatibility
-type MetastoreServiceServer interface {
+type IndexServiceServer interface {
 	AddBlock(context.Context, *AddBlockRequest) (*AddBlockResponse, error)
-	mustEmbedUnimplementedMetastoreServiceServer()
+	GetBlockMetadata(context.Context, *GetBlockMetadataRequest) (*GetBlockMetadataResponse, error)
+	ReplaceBlocks(context.Context, *ReplaceBlocksRequest) (*ReplaceBlocksResponse, error)
+	mustEmbedUnimplementedIndexServiceServer()
 }
 
-// UnimplementedMetastoreServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedMetastoreServiceServer struct {
+// UnimplementedIndexServiceServer must be embedded to have forward compatible implementations.
+type UnimplementedIndexServiceServer struct {
 }
 
-func (UnimplementedMetastoreServiceServer) AddBlock(context.Context, *AddBlockRequest) (*AddBlockResponse, error) {
+func (UnimplementedIndexServiceServer) AddBlock(context.Context, *AddBlockRequest) (*AddBlockResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddBlock not implemented")
 }
-func (UnimplementedMetastoreServiceServer) mustEmbedUnimplementedMetastoreServiceServer() {}
+func (UnimplementedIndexServiceServer) GetBlockMetadata(context.Context, *GetBlockMetadataRequest) (*GetBlockMetadataResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetBlockMetadata not implemented")
+}
+func (UnimplementedIndexServiceServer) ReplaceBlocks(context.Context, *ReplaceBlocksRequest) (*ReplaceBlocksResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ReplaceBlocks not implemented")
+}
+func (UnimplementedIndexServiceServer) mustEmbedUnimplementedIndexServiceServer() {}
 
-// UnsafeMetastoreServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to MetastoreServiceServer will
+// UnsafeIndexServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to IndexServiceServer will
 // result in compilation errors.
-type UnsafeMetastoreServiceServer interface {
-	mustEmbedUnimplementedMetastoreServiceServer()
+type UnsafeIndexServiceServer interface {
+	mustEmbedUnimplementedIndexServiceServer()
 }
 
-func RegisterMetastoreServiceServer(s grpc.ServiceRegistrar, srv MetastoreServiceServer) {
-	s.RegisterService(&MetastoreService_ServiceDesc, srv)
+func RegisterIndexServiceServer(s grpc.ServiceRegistrar, srv IndexServiceServer) {
+	s.RegisterService(&IndexService_ServiceDesc, srv)
 }
 
-func _MetastoreService_AddBlock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _IndexService_AddBlock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AddBlockRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MetastoreServiceServer).AddBlock(ctx, in)
+		return srv.(IndexServiceServer).AddBlock(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/metastore.v1.MetastoreService/AddBlock",
+		FullMethod: "/metastore.v1.IndexService/AddBlock",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MetastoreServiceServer).AddBlock(ctx, req.(*AddBlockRequest))
+		return srv.(IndexServiceServer).AddBlock(ctx, req.(*AddBlockRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// MetastoreService_ServiceDesc is the grpc.ServiceDesc for MetastoreService service.
+func _IndexService_GetBlockMetadata_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetBlockMetadataRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IndexServiceServer).GetBlockMetadata(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/metastore.v1.IndexService/GetBlockMetadata",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IndexServiceServer).GetBlockMetadata(ctx, req.(*GetBlockMetadataRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IndexService_ReplaceBlocks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReplaceBlocksRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IndexServiceServer).ReplaceBlocks(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/metastore.v1.IndexService/ReplaceBlocks",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IndexServiceServer).ReplaceBlocks(ctx, req.(*ReplaceBlocksRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// IndexService_ServiceDesc is the grpc.ServiceDesc for IndexService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var MetastoreService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "metastore.v1.MetastoreService",
-	HandlerType: (*MetastoreServiceServer)(nil),
+var IndexService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "metastore.v1.IndexService",
+	HandlerType: (*IndexServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "AddBlock",
-			Handler:    _MetastoreService_AddBlock_Handler,
+			Handler:    _IndexService_AddBlock_Handler,
+		},
+		{
+			MethodName: "GetBlockMetadata",
+			Handler:    _IndexService_GetBlockMetadata_Handler,
+		},
+		{
+			MethodName: "ReplaceBlocks",
+			Handler:    _IndexService_ReplaceBlocks_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -464,6 +788,236 @@ func (m *AddBlockResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *GetBlockMetadataRequest) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *GetBlockMetadataRequest) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *GetBlockMetadataRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.Blocks != nil {
+		size, err := m.Blocks.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *GetBlockMetadataResponse) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *GetBlockMetadataResponse) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *GetBlockMetadataResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.Blocks) > 0 {
+		for iNdEx := len(m.Blocks) - 1; iNdEx >= 0; iNdEx-- {
+			size, err := m.Blocks[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+			i--
+			dAtA[i] = 0xa
+		}
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *BlockList) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *BlockList) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *BlockList) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.Blocks) > 0 {
+		for iNdEx := len(m.Blocks) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.Blocks[iNdEx])
+			copy(dAtA[i:], m.Blocks[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Blocks[iNdEx])))
+			i--
+			dAtA[i] = 0x1a
+		}
+	}
+	if m.Shard != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Shard))
+		i--
+		dAtA[i] = 0x10
+	}
+	if len(m.Tenant) > 0 {
+		i -= len(m.Tenant)
+		copy(dAtA[i:], m.Tenant)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Tenant)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *ReplaceBlocksRequest) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ReplaceBlocksRequest) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *ReplaceBlocksRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.NewBlocks) > 0 {
+		for iNdEx := len(m.NewBlocks) - 1; iNdEx >= 0; iNdEx-- {
+			size, err := m.NewBlocks[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+			i--
+			dAtA[i] = 0x12
+		}
+	}
+	if m.SourceBlocks != nil {
+		size, err := m.SourceBlocks.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *ReplaceBlocksResponse) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ReplaceBlocksResponse) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *ReplaceBlocksResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	return len(dAtA) - i, nil
+}
+
 func (m *BlockMeta) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
@@ -493,6 +1047,15 @@ func (m *BlockMeta) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.Strings) > 0 {
+		for iNdEx := len(m.Strings) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.Strings[iNdEx])
+			copy(dAtA[i:], m.Strings[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Strings[iNdEx])))
+			i--
+			dAtA[i] = 0x7a
+		}
 	}
 	if len(m.CreatedBy) > 0 {
 		i -= len(m.CreatedBy)
@@ -699,6 +1262,89 @@ func (m *AddBlockResponse) SizeVT() (n int) {
 	return n
 }
 
+func (m *GetBlockMetadataRequest) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Blocks != nil {
+		l = m.Blocks.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *GetBlockMetadataResponse) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if len(m.Blocks) > 0 {
+		for _, e := range m.Blocks {
+			l = e.SizeVT()
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *BlockList) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Tenant)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.Shard != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.Shard))
+	}
+	if len(m.Blocks) > 0 {
+		for _, s := range m.Blocks {
+			l = len(s)
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *ReplaceBlocksRequest) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.SourceBlocks != nil {
+		l = m.SourceBlocks.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if len(m.NewBlocks) > 0 {
+		for _, e := range m.NewBlocks {
+			l = e.SizeVT()
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *ReplaceBlocksResponse) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	n += len(m.unknownFields)
+	return n
+}
+
 func (m *BlockMeta) SizeVT() (n int) {
 	if m == nil {
 		return 0
@@ -740,6 +1386,12 @@ func (m *BlockMeta) SizeVT() (n int) {
 	l = len(m.CreatedBy)
 	if l > 0 {
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if len(m.Strings) > 0 {
+		for _, s := range m.Strings {
+			l = len(s)
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
 	}
 	n += len(m.unknownFields)
 	return n
@@ -911,6 +1563,484 @@ func (m *AddBlockResponse) UnmarshalVT(dAtA []byte) error {
 		}
 		if fieldNum <= 0 {
 			return fmt.Errorf("proto: AddBlockResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *GetBlockMetadataRequest) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: GetBlockMetadataRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: GetBlockMetadataRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Blocks", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Blocks == nil {
+				m.Blocks = &BlockList{}
+			}
+			if err := m.Blocks.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *GetBlockMetadataResponse) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: GetBlockMetadataResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: GetBlockMetadataResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Blocks", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Blocks = append(m.Blocks, &BlockMeta{})
+			if err := m.Blocks[len(m.Blocks)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *BlockList) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: BlockList: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: BlockList: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Tenant", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Tenant = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Shard", wireType)
+			}
+			m.Shard = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Shard |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Blocks", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Blocks = append(m.Blocks, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ReplaceBlocksRequest) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ReplaceBlocksRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ReplaceBlocksRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SourceBlocks", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.SourceBlocks == nil {
+				m.SourceBlocks = &BlockList{}
+			}
+			if err := m.SourceBlocks.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NewBlocks", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.NewBlocks = append(m.NewBlocks, &BlockMeta{})
+			if err := m.NewBlocks[len(m.NewBlocks)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ReplaceBlocksResponse) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ReplaceBlocksResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ReplaceBlocksResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		default:
@@ -1207,6 +2337,38 @@ func (m *BlockMeta) UnmarshalVT(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.CreatedBy = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 15:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Strings", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Strings = append(m.Strings, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

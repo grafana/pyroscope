@@ -4,8 +4,10 @@ package metastore.v1;
 
 import "types/v1/types.proto";
 
-service MetastoreService {
+service IndexService {
   rpc AddBlock(AddBlockRequest) returns (AddBlockResponse) {}
+  rpc GetBlockMetadata(GetBlockMetadataRequest) returns (GetBlockMetadataResponse) {}
+  rpc ReplaceBlocks(ReplaceBlocksRequest) returns (ReplaceBlocksResponse) {}
 }
 
 message AddBlockRequest {
@@ -13,6 +15,27 @@ message AddBlockRequest {
 }
 
 message AddBlockResponse {}
+
+message GetBlockMetadataRequest {
+  BlockList blocks = 1;
+}
+
+message GetBlockMetadataResponse {
+  repeated BlockMeta blocks = 1;
+}
+
+message BlockList {
+  string tenant = 1;
+  uint32 shard = 2;
+  repeated string blocks = 3;
+}
+
+message ReplaceBlocksRequest {
+  BlockList source_blocks = 1;
+  repeated BlockMeta new_blocks = 2;
+}
+
+message ReplaceBlocksResponse {}
 
 message BlockMeta {
   uint64 format_version = 1;
@@ -26,6 +49,9 @@ message BlockMeta {
   repeated Dataset datasets = 8;
   uint64 size = 9;
   string created_by = 10;
+
+  // String table of the metadata entry.
+  repeated string strings = 15;
 }
 
 message Dataset {

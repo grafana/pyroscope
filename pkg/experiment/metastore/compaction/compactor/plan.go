@@ -7,46 +7,46 @@ import (
 	"github.com/cespare/xxhash/v2"
 	"go.etcd.io/bbolt"
 
-	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
+	"github.com/grafana/pyroscope/pkg/iter"
 )
 
-type compactionPlan struct {
+type plan struct {
 	tx *bbolt.Tx
 
-	planner *Planner
-	level   uint32
+	compactor *Compactor
+	level     uint32
 
 	batches *batchIter
 	blocks  *blockIter
 }
 
-func (p *compactionPlan) CreateJob() (*metastorev1.CompactionJob, error) {
-	plan := p.nextJob()
-	if plan == nil {
+func (p *plan) CreateJob() (*raft_log.CompactionJobPlan, error) {
+	planned := p.nextJob()
+	if planned == nil {
 		return nil, nil
 	}
-	blocks, err := p.planner.index.LookupBlockMetadata(p.tx, plan.tenant, plan.shard, plan.blocks...)
+
+	// TODO(kolesnikovae): Configurable batch size.
+	tombstones, err := iter.Slice(p.compactor.tombstones.ListEntries(p.tx, planned.tenant, planned.shard))
 	if err != nil {
 		return nil, err
 	}
-	tombstones, err := p.planner.index.GetTombstones(p.tx, plan.tenant, plan.shard)
-	if err != nil {
-		return nil, err
-	}
-	job := &metastorev1.CompactionJob{
-		Name:            plan.name,
-		Shard:           plan.shard,
-		Tenant:          plan.tenant,
-		CompactionLevel: plan.level,
-		SourceBlocks:    blocks,
-		Tombstones:      tombstones,
+
+	job := &raft_log.CompactionJobPlan{
+		Name:            planned.name,
+		Shard:           planned.shard,
+		Tenant:          planned.tenant,
+		CompactionLevel: planned.level,
+		SourceBlocks:    planned.blocks,
+		DeletedBlocks:   tombstones,
 	}
 	if len(job.SourceBlocks) == 0 {
 		// This should never happen: blocks will remain in the queue.
 		// If we leave the blocks in the queue they will be dangling there
 		// forever. Therefore, we remove it now: this is an exceptional
 		// case – no state should be changed in compactionSchedule.
-		_ = p.planner.Planned(p.tx, job)
+		_ = p.compactor.Scheduled(p.tx, job)
 		return nil, nil
 	}
 	return job, nil
@@ -64,11 +64,11 @@ type plannedJob struct {
 //   - A batch may not translate into a job (e.g., if some blocks have been
 //     removed). Therefore, we navigate to the next batch with the same
 //     compaction key in this case.
-func (p *compactionPlan) nextJob() *plannedJob {
+func (p *plan) nextJob() *plannedJob {
 	var job plannedJob
-	for p.level < uint32(len(p.planner.queue.levels)) {
+	for p.level < uint32(len(p.compactor.queue.levels)) {
 		if p.batches == nil {
-			level := p.planner.queue.levels[p.level]
+			level := p.compactor.queue.levels[p.level]
 			if level == nil {
 				p.level++
 				continue
@@ -103,7 +103,7 @@ func (p *compactionPlan) nextJob() *plannedJob {
 			}
 
 			job.blocks = append(job.blocks, block)
-			if p.planner.strategy.complete(&job) {
+			if p.compactor.strategy.complete(&job) {
 				nameJob(&job)
 				return &job
 			}
@@ -121,6 +121,9 @@ func nameJob(plan *plannedJob) {
 	}
 	var name strings.Builder
 	name.WriteString(strconv.FormatUint(xxhash.Sum64(buf), 10))
+	name.WriteByte('-')
+	name.WriteByte('T')
+	name.WriteString(plan.tenant)
 	name.WriteByte('-')
 	name.WriteByte('S')
 	name.WriteString(strconv.FormatUint(uint64(plan.shard), 10))

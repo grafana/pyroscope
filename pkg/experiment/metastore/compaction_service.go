@@ -2,6 +2,7 @@ package metastore
 
 import (
 	"context"
+	"slices"
 	"sync"
 
 	"github.com/go-kit/log"
@@ -65,50 +66,58 @@ func (m *CompactionService) PollCompactionJobs(
 		return nil, err
 	}
 
-	// Now that we have the plan, we need to propagate it through the raft log
-	// to ensure it is applied consistently across all replicas, regardless of
-	// their individual state or view of the plan.
-	proposal := &raft_log.UpdateCompactionPlanRequest{PlanUpdate: prepared.PlanUpdate}
-	if _, err = m.raft.UpdateCompactionPlan(proposal); err != nil {
-		_ = level.Error(m.logger).Log("msg", "failed to update compaction plan", "err", err)
-		return nil, err
-	}
-
-	// The response we sent to the worker differs from the compaction plan:
-	//  - the latter contains all state transitions including terminal ones
-	//  - re-assigned jobs are not written to the raft log (only the assignments) – TODO?
-
 	resp := &metastorev1.PollCompactionJobsResponse{
-		CompactionJobs: make([]*metastorev1.CompactionJob, 0, len(prepared.PlanUpdate.CompactionJobs)),
-		Assignments:    make([]*metastorev1.CompactionJobAssignment, 0, len(prepared.PlanUpdate.JobUpdates)),
+		CompactionJobs: make([]*metastorev1.CompactionJob, 0, len(prepared.PlanUpdate.NewJobs)),
+		Assignments:    make([]*metastorev1.CompactionJobAssignment, 0, len(prepared.PlanUpdate.ScheduleUpdates)),
 	}
 
-	requested := make(map[string]*metastorev1.CompactionJobStatusUpdate, len(request.StatusUpdates))
-	for _, update := range request.StatusUpdates {
-		requested[update.Name] = update
-	}
-
-	for _, update := range prepared.PlanUpdate.JobUpdates {
+	reassigned := make(map[string]struct{})
+	for _, update := range prepared.PlanUpdate.ScheduleUpdates {
 		if update.Status == metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS {
 			// Other statuses are not sent to workers.
 			resp.Assignments = append(resp.Assignments, &metastorev1.CompactionJobAssignment{
+				Name:           update.Name,
 				Token:          update.Token,
 				LeaseExpiresAt: update.LeaseExpiresAt,
 				JobStatus:      update.Status,
 			})
+			// Reassigned jobs are not written to the raft log (only the assignments).
+			// TODO(kolesnikovae): This behaviour should be configurable.
+			if update.Failures > 0 {
+				reassigned[update.Name] = struct{}{}
+			}
 		}
 	}
 
 	// All newly created and re-assigned compaction jobs are sent to workers.
-	for _, job := range prepared.PlanUpdate.CompactionJobs {
+	for _, job := range prepared.PlanUpdate.NewJobs {
 		resp.CompactionJobs = append(resp.CompactionJobs, &metastorev1.CompactionJob{
 			Name:            job.Name,
 			Shard:           job.Shard,
 			Tenant:          job.Tenant,
 			CompactionLevel: job.CompactionLevel,
 			SourceBlocks:    job.SourceBlocks,
-			Tombstones:      job.Tombstones,
+			DeletedBlocks:   job.DeletedBlocks,
 		})
+	}
+
+	// Now that we have the plan, we need to propagate it through the raft log
+	// to ensure it is applied consistently across all replicas, regardless of
+	// their individual state or view of the plan.
+
+	// The response we sent to the worker differs from the compaction plan:
+	//  - the latter contains all state transitions including terminal ones
+	//  - re-assigned jobs are not written to the raft log (only the assignments).
+	proposal := &raft_log.UpdateCompactionPlanRequest{PlanUpdate: prepared.PlanUpdate}
+	proposal.PlanUpdate.NewJobs = slices.DeleteFunc(proposal.PlanUpdate.NewJobs,
+		func(job *raft_log.CompactionJobPlan) bool {
+			_, ok := reassigned[job.Name]
+			return ok
+		})
+
+	if _, err = m.raft.UpdateCompactionPlan(proposal); err != nil {
+		_ = level.Error(m.logger).Log("msg", "failed to update compaction plan", "err", err)
+		return nil, err
 	}
 
 	return resp, nil

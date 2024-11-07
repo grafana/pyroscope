@@ -28,9 +28,8 @@ var _ compaction.Scheduler = (*Scheduler)(nil)
 // Implementation note: block metadata should never be stored in StoreJob:
 // those are already stored in the metadata index.
 type JobStore interface {
-	StoreJob(*bbolt.Tx, *metastorev1.CompactionJob) error
-	GetJob(tx *bbolt.Tx, name string) (*metastorev1.CompactionJob, error)
-	GetCompactedBlocks(tx *bbolt.Tx, name string) (*raft_log.CompactedBlocks, error)
+	StoreJob(*bbolt.Tx, *raft_log.CompactionJobPlan) error
+	GetJob(tx *bbolt.Tx, name string) (*raft_log.CompactionJobPlan, error)
 	DeleteJob(tx *bbolt.Tx, name string) error
 	// Jobs are not loaded in memory.
 
@@ -68,7 +67,7 @@ func NewScheduler(config SchedulerConfig, store JobStore) *Scheduler {
 }
 
 func (sc *Scheduler) NewSchedule(tx *bbolt.Tx, raft *raft.Log) compaction.Schedule {
-	return &compactionSchedule{
+	return &schedule{
 		tx:        tx,
 		raft:      raft,
 		scheduler: sc,
@@ -80,41 +79,39 @@ func (sc *Scheduler) NewSchedule(tx *bbolt.Tx, raft *raft.Log) compaction.Schedu
 	}
 }
 
-func (sc *Scheduler) AddJobs(tx *bbolt.Tx, planner compaction.Planner, jobs ...*metastorev1.CompactionJob) error {
-	for _, job := range jobs {
+func (sc *Scheduler) UpdateSchedule(tx *bbolt.Tx, p compaction.Planner, update *raft_log.CompactionPlanUpdate) error {
+	for _, job := range update.NewJobs {
 		if err := sc.store.StoreJob(tx, job); err != nil {
 			return err
 		}
-		if err := planner.Planned(tx, job); err != nil {
+	}
+	for _, state := range update.ScheduleUpdates {
+		if state.Status == metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS {
+			return sc.evict(tx, p, state)
+		}
+		if err := sc.store.UpdateJobState(tx, state); err != nil {
 			return err
 		}
+		sc.queue.put(state)
 	}
-	return nil
-}
 
-func (sc *Scheduler) UpdateSchedule(tx *bbolt.Tx, planner compaction.Planner, jobs ...*raft_log.CompactionJobState) error {
-	for _, job := range jobs {
-		if job.Status == metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS {
-			return sc.deleteJob(tx, planner, job)
-		}
-		if err := sc.store.UpdateJobState(tx, job); err != nil {
-			return err
-		}
-		sc.queue.put(job)
-	}
 	// TODO: Bump all the stats here, right after the schedule update.
-	return nil
+	return p.Scheduled(tx, update.NewJobs...)
 }
 
-func (sc *Scheduler) deleteJob(tx *bbolt.Tx, planner compaction.Planner, job *raft_log.CompactionJobState) error {
-	if err := sc.store.DeleteJob(tx, job.Name); err != nil {
+func (sc *Scheduler) evict(tx *bbolt.Tx, p compaction.Planner, state *raft_log.CompactionJobState) error {
+	job, err := sc.store.GetJob(tx, state.Name)
+	if err != nil {
 		return err
 	}
-	if err := sc.store.DeleteJobState(tx, job.Name); err != nil {
+	if err = sc.store.DeleteJob(tx, state.Name); err != nil {
 		return err
 	}
-	sc.queue.delete(job)
-	return planner.Compacted(tx, job.CompactedBlocks)
+	if err = sc.store.DeleteJobState(tx, state.Name); err != nil {
+		return err
+	}
+	sc.queue.delete(state)
+	return p.Compacted(tx, job)
 }
 
 func (sc *Scheduler) Restore(tx *bbolt.Tx) error {

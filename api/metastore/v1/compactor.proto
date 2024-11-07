@@ -29,31 +29,25 @@ message CompactionJob {
   uint32 shard = 2;
   string tenant = 3;
   uint32 compaction_level = 4;
-  repeated metastore.v1.BlockMeta source_blocks = 5;
-  repeated string tombstones = 6;
+  repeated string source_blocks = 5;
+  repeated string deleted_blocks = 6;
 }
 
 message CompactionJobAssignment {
-  uint64 token = 1;
-  int64 lease_expires_at = 2;
-  CompactionJobStatus job_status = 3;
+  string name = 1;
+  uint64 token = 2;
+  int64 lease_expires_at = 3;
+  CompactionJobStatus job_status = 4;
 }
 
 message CompactionJobStatusUpdate {
   string name = 1;
-  string tenant = 2;
-  string shard = 3;
-  uint32 compaction_level = 4;
-  uint64 token = 5;
-  CompactionJobStatus status = 6;
-  repeated metastore.v1.BlockMeta compacted_blocks = 7;
-  repeated string deleted_blocks = 8;
+  uint64 token = 2;
+  CompactionJobStatus status = 3;
 }
 
 enum CompactionJobStatus {
   COMPACTION_STATUS_UNSPECIFIED = 0;
   COMPACTION_STATUS_IN_PROGRESS = 1;
   COMPACTION_STATUS_SUCCESS = 2;
-  COMPACTION_STATUS_FAILURE = 3;
-  COMPACTION_STATUS_CANCELLED = 15;
 }

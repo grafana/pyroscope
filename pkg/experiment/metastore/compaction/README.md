@@ -2,9 +2,50 @@
 
 TODO
 
-## Sequence diagram
+## Sequence Diagram
 
-TODO
+```mermaid
+sequenceDiagram
+    participant SW as Segment Writer
+
+    box metastore
+        participant IS as Index Service
+        participant CS as Compaction Service
+    end
+
+    participant CW as Compaction Worker
+
+    loop Ingestion
+        SW ->>+IS: Add metadata for new segment
+        IS ->> IS: Add new block to compaction queue
+        Note over IS,CS: Services share access to compaction queue
+        IS ->> IS: Insert metadata entry
+        IS ->>-SW: Acknowledge new segment
+    end
+
+    loop Compaction
+        CW ->>+CS: Report status updates and request new compaction jobs
+        Note right of CS: Compaction planning, <br>job assignment, and scheduling 
+        CS  ->>-CW: Return assigned compaction jobs
+
+        CW ->> IS: Get block metadata for new job
+
+        CW ->>+CW: Execute compaction job
+        CW ->>-IS: Communicate job results
+
+        IS ->> CS: Schedule compaction of new blocks<br>and removal of replaced blocks
+        IS ->> IS: Replace compacted blocks
+    end
+
+```
+
+A more nuanced process lies behind the compaction planning:
+
+```mermaid
+sequenceDiagram
+
+
+```
 
 ---
 

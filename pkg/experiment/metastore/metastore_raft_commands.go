@@ -36,6 +36,12 @@ func (r *RaftProposer) AddBlockMetadata(proposal *raft_log.AddBlockMetadataReque
 		proposal)
 }
 
+func (r *RaftProposer) ReplaceBlocks(proposal *raft_log.AddBlockMetadataRequest) (*raft_log.AddBlockMetadataResponse, error) {
+	return propose[*raft_log.AddBlockMetadataRequest, *raft_log.AddBlockMetadataResponse](r,
+		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_REPLACE_BLOCK_METADATA),
+		proposal)
+}
+
 func (r *RaftProposer) GetCompactionPlanUpdate(proposal *raft_log.GetCompactionPlanUpdateRequest) (*raft_log.GetCompactionPlanUpdateResponse, error) {
 	return propose[*raft_log.GetCompactionPlanUpdateRequest, *raft_log.GetCompactionPlanUpdateResponse](r,
 		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_GET_COMPACTION_PLAN_UPDATE),

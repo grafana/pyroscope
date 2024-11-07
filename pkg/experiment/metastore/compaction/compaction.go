@@ -8,20 +8,20 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 )
 
-// TODO(kolesnikovae): Consider delegating tombstone management to the planner.
+type Compactor interface {
+	AddBlocks(*bbolt.Tx, *raft.Log, ...*metastorev1.BlockMeta) error
+	DeleteBlocks(*bbolt.Tx, *raft.Log, *metastorev1.BlockList) error
+}
 
 type Planner interface {
-	AddBlocks(*bbolt.Tx, *raft.Log, ...*metastorev1.BlockMeta) error
 	NewPlan(*bbolt.Tx) Plan
 
-	// Planned and Compacted methods are called by Scheduler
-	// to communicate the progress back to the planner.
-	Planned(*bbolt.Tx, *metastorev1.CompactionJob) error
-	Compacted(*bbolt.Tx, *raft_log.CompactedBlocks) error
+	Scheduled(*bbolt.Tx, ...*raft_log.CompactionJobPlan) error
+	Compacted(*bbolt.Tx, ...*raft_log.CompactionJobPlan) error
 }
 
 type Plan interface {
-	CreateJob() (*metastorev1.CompactionJob, error)
+	CreateJob() (*raft_log.CompactionJobPlan, error)
 }
 
 type Scheduler interface {
@@ -32,20 +32,17 @@ type Scheduler interface {
 	// operation and must have no side effects.
 	NewSchedule(*bbolt.Tx, *raft.Log) Schedule
 
-	// AddJobs adds new jobs to the schedule. The jobs have no status yet:
-	// corresponding entries should be added separately via UpdateSchedule.
-	// The jobs were accepted by the raft quorum: the scheduler MUST add them.
-	AddJobs(*bbolt.Tx, Planner, ...*metastorev1.CompactionJob) error
-	// UpdateSchedule updates the state of existing jobs.
+	// UpdateSchedule adds new jobs and updates state of existing ones.
 	// The change was accepted by the raft quorum: the scheduler MUST apply it.
-	UpdateSchedule(*bbolt.Tx, Planner, ...*raft_log.CompactionJobState) error
+	UpdateSchedule(*bbolt.Tx, Planner, *raft_log.CompactionPlanUpdate) error
 }
 
 type Schedule interface {
 	// AssignJob is called on behalf of the worker to request a new job.
 	// This method should be called before any UpdateJob to avoid assigning
 	// the same job unassigned as a result of the update (e.g, a job failure).
-	AssignJob() (*metastorev1.CompactionJob, *raft_log.CompactionJobState, error)
+	AssignJob() (*raft_log.CompactionJobPlan, *raft_log.CompactionJobState, error)
+
 	// UpdateJob is called on behalf of the worker to update the job status.
 	// A nil state should be interpreted as "no new lease": stop the work.
 	// The scheduler must validate that the worker is allowed to update the job,

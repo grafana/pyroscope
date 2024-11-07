@@ -5,7 +5,6 @@ import (
 	"github.com/hashicorp/raft"
 	"go.etcd.io/bbolt"
 
-	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction"
 )
@@ -20,14 +19,14 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 	tx *bbolt.Tx, cmd *raft.Log, req *raft_log.GetCompactionPlanUpdateRequest,
 ) (*raft_log.GetCompactionPlanUpdateResponse, error) {
 	p := &raft_log.CompactionPlanUpdate{
-		CompactionJobs: make([]*metastorev1.CompactionJob, 0, req.AssignJobsMax),
-		JobUpdates:     make([]*raft_log.CompactionJobState, 0, len(req.StatusUpdates)),
+		NewJobs:         make([]*raft_log.CompactionJobPlan, 0, req.AssignJobsMax),
+		ScheduleUpdates: make([]*raft_log.CompactionJobState, 0, len(req.StatusUpdates)),
 	}
 
 	schedule := h.scheduler.NewSchedule(tx, cmd)
 
 	// Try to assign new jobs first.
-	for len(p.CompactionJobs) < int(req.AssignJobsMax) {
+	for len(p.NewJobs) < int(req.AssignJobsMax) {
 		job, assignment, err := schedule.AssignJob()
 		if err != nil {
 			return nil, err
@@ -35,8 +34,8 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 		if job == nil {
 			break
 		}
-		p.CompactionJobs = append(p.CompactionJobs, job)
-		p.JobUpdates = append(p.JobUpdates, assignment)
+		p.NewJobs = append(p.NewJobs, job)
+		p.ScheduleUpdates = append(p.ScheduleUpdates, assignment)
 	}
 
 	// Request job status updates.
@@ -46,7 +45,7 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 			return nil, err
 		}
 		if update != nil {
-			p.JobUpdates = append(p.JobUpdates, update)
+			p.ScheduleUpdates = append(p.ScheduleUpdates, update)
 		}
 	}
 
@@ -54,7 +53,8 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 	// the requested job capacity is utilized next time we ask
 	// for new assignments (this worker instance or not).
 	plan := h.planner.NewPlan(tx)
-	for len(p.CompactionJobs) < int(req.AssignJobsMax) {
+
+	for len(p.NewJobs) < int(req.AssignJobsMax) {
 		job, err := plan.CreateJob()
 		if err != nil {
 			return nil, err
@@ -62,7 +62,7 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 		if job == nil {
 			break
 		}
-		p.CompactionJobs = append(p.CompactionJobs, job)
+		p.NewJobs = append(p.NewJobs, job)
 	}
 
 	return &raft_log.GetCompactionPlanUpdateResponse{PlanUpdate: p}, nil
@@ -71,10 +71,7 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 func (h *CompactionCommandHandler) UpdateCompactionPlan(
 	tx *bbolt.Tx, _ *raft.Log, req *raft_log.UpdateCompactionPlanRequest,
 ) (*raft_log.UpdateCompactionPlanResponse, error) {
-	if err := h.scheduler.AddJobs(tx, h.planner, req.PlanUpdate.CompactionJobs...); err != nil {
-		return nil, err
-	}
-	if err := h.scheduler.UpdateSchedule(tx, h.planner, req.PlanUpdate.JobUpdates...); err != nil {
+	if err := h.scheduler.UpdateSchedule(tx, h.planner, req.PlanUpdate); err != nil {
 		return nil, err
 	}
 	return new(raft_log.UpdateCompactionPlanResponse), nil

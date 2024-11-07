@@ -15,7 +15,7 @@
       "name": "IngesterService"
     },
     {
-      "name": "MetastoreService"
+      "name": "IndexService"
     },
     {
       "name": "CompactionPlanner"
@@ -567,6 +567,24 @@
         }
       }
     },
+    "v1BlockList": {
+      "type": "object",
+      "properties": {
+        "tenant": {
+          "type": "string"
+        },
+        "shard": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "blocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "v1BlockMeta": {
       "type": "object",
       "properties": {
@@ -610,6 +628,13 @@
         },
         "createdBy": {
           "type": "string"
+        },
+        "strings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "String table of the metadata entry."
         }
       }
     },
@@ -713,11 +738,10 @@
         "sourceBlocks": {
           "type": "array",
           "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1BlockMeta"
+            "type": "string"
           }
         },
-        "tombstones": {
+        "deletedBlocks": {
           "type": "array",
           "items": {
             "type": "string"
@@ -728,6 +752,9 @@
     "v1CompactionJobAssignment": {
       "type": "object",
       "properties": {
+        "name": {
+          "type": "string"
+        },
         "token": {
           "type": "string",
           "format": "uint64"
@@ -746,9 +773,7 @@
       "enum": [
         "COMPACTION_STATUS_UNSPECIFIED",
         "COMPACTION_STATUS_IN_PROGRESS",
-        "COMPACTION_STATUS_SUCCESS",
-        "COMPACTION_STATUS_FAILURE",
-        "COMPACTION_STATUS_CANCELLED"
+        "COMPACTION_STATUS_SUCCESS"
       ],
       "default": "COMPACTION_STATUS_UNSPECIFIED"
     },
@@ -758,35 +783,12 @@
         "name": {
           "type": "string"
         },
-        "tenant": {
-          "type": "string"
-        },
-        "shard": {
-          "type": "string"
-        },
-        "compactionLevel": {
-          "type": "integer",
-          "format": "int64"
-        },
         "token": {
           "type": "string",
           "format": "uint64"
         },
         "status": {
           "$ref": "#/definitions/v1CompactionJobStatus"
-        },
-        "compactedBlocks": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1BlockMeta"
-          }
-        },
-        "deletedBlocks": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
         }
       }
     },
@@ -941,6 +943,18 @@
           "type": "string",
           "format": "int64",
           "description": "Line number in source file."
+        }
+      }
+    },
+    "v1GetBlockMetadataResponse": {
+      "type": "object",
+      "properties": {
+        "blocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1BlockMeta"
+          }
         }
       }
     },
@@ -1838,6 +1852,9 @@
           "format": "uint64"
         }
       }
+    },
+    "v1ReplaceBlocksResponse": {
+      "type": "object"
     },
     "v1Report": {
       "type": "object",

@@ -12,14 +12,14 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 )
 
-type compactionSchedule struct {
+type schedule struct {
 	tx        *bbolt.Tx
 	raft      *raft.Log
 	scheduler *Scheduler
 	assigner  *jobAssigner
 }
 
-func (p *compactionSchedule) UpdateJob(update *metastorev1.CompactionJobStatusUpdate) (*raft_log.CompactionJobState, error) {
+func (p *schedule) UpdateJob(update *metastorev1.CompactionJobStatusUpdate) (*raft_log.CompactionJobState, error) {
 	state, err := p.scheduler.store.GetJobState(p.tx, update.Name)
 	if err != nil {
 		return nil, err
@@ -34,12 +34,15 @@ func (p *compactionSchedule) UpdateJob(update *metastorev1.CompactionJobStatusUp
 		return nil, nil
 	}
 
-	switch update.Status {
+	switch updated := state.CloneVT(); update.Status {
 	case metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS:
-		return p.handleInProgress(state), nil
+		updated.LeaseExpiresAt = p.assigner.allocateLease()
+		return updated, nil
 
 	case metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS:
-		return p.handleSuccess(state, update)
+		// This is a valid status update from the worker, and we don't
+		// need to do anything.
+		return updated, nil
 
 	default:
 		// Not allowed and unknown status updates can be safely ignored:
@@ -50,29 +53,7 @@ func (p *compactionSchedule) UpdateJob(update *metastorev1.CompactionJobStatusUp
 	}
 }
 
-func (p *compactionSchedule) handleSuccess(
-	state *raft_log.CompactionJobState,
-	update *metastorev1.CompactionJobStatusUpdate,
-) (*raft_log.CompactionJobState, error) {
-	prepared, err := p.scheduler.store.GetCompactedBlocks(p.tx, state.Name)
-	if err != nil {
-		return nil, err
-	}
-	compacted := prepared.CloneVT()
-	compacted.CompactedBlocks = update.CompactedBlocks
-	compacted.DeletedBlocks = update.DeletedBlocks
-	updated := state.CloneVT()
-	updated.CompactedBlocks = compacted
-	return updated, nil
-}
-
-func (p *compactionSchedule) handleInProgress(state *raft_log.CompactionJobState) *raft_log.CompactionJobState {
-	updated := state.CloneVT()
-	updated.LeaseExpiresAt = p.assigner.allocateLease()
-	return updated
-}
-
-func (p *compactionSchedule) AssignJob() (*metastorev1.CompactionJob, *raft_log.CompactionJobState, error) {
+func (p *schedule) AssignJob() (*raft_log.CompactionJobPlan, *raft_log.CompactionJobState, error) {
 	state := p.assigner.assign()
 	if state == nil {
 		return nil, nil, nil
@@ -93,7 +74,7 @@ func (p *compactionSchedule) AssignJob() (*metastorev1.CompactionJob, *raft_log.
 	return job, state, nil
 }
 
-func (p *compactionSchedule) deleteDangling(state *raft_log.CompactionJobState) {
+func (p *schedule) deleteDangling(state *raft_log.CompactionJobState) {
 	_ = p.scheduler.store.DeleteJobState(p.tx, state.Name)
 	_ = p.scheduler.store.DeleteJob(p.tx, state.Name)
 	p.assigner.queue.delete(state)
