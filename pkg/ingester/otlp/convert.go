@@ -1,9 +1,7 @@
 package otlp
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"time"
 
 	googleProfile "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -51,17 +49,8 @@ func ConvertOtelToGoogle(src *otelProfile.Profile) *googleProfile.Profile {
 	}
 
 	functionOffset := uint64(len(dst.Function)) + 1
-	for _, m := range src.Mapping {
-		dst.StringTable = append(dst.StringTable, fmt.Sprintf("%s", dst.StringTable[m.Filename]))
-		// i == 0 function_id = functionOffset
-		id := uint64(len(dst.Function)) + 1
-		dst.Function = append(dst.Function, &googleProfile.Function{
-			Id:   id,
-			Name: int64(len(dst.StringTable) - 1),
-		})
-	}
-
 	dst.Location = []*googleProfile.Location{}
+	locationMappingIndexAddressMap := make(map[uint64]uint64)
 	// Convert locations and mappings
 	for i, loc := range src.Location {
 		gl := convertLocationBack(loc)
@@ -72,6 +61,19 @@ func ConvertOtelToGoogle(src *otelProfile.Profile) *googleProfile.Profile {
 			})
 		}
 		dst.Location = append(dst.Location, gl)
+		locationMappingIndexAddressMap[loc.MappingIndex] = loc.Address
+	}
+
+	for _, m := range src.Mapping {
+		address, _ := locationMappingIndexAddressMap[m.Id]
+		addressStr := fmt.Sprintf("%s 0x%x", dst.StringTable[m.Filename], address)
+		dst.StringTable = append(dst.StringTable, addressStr)
+		// i == 0 function_id = functionOffset
+		id := uint64(len(dst.Function)) + 1
+		dst.Function = append(dst.Function, &googleProfile.Function{
+			Id:   id,
+			Name: int64(len(dst.StringTable) - 1),
+		})
 	}
 
 	// Convert samples
@@ -90,12 +92,12 @@ func ConvertOtelToGoogle(src *otelProfile.Profile) *googleProfile.Profile {
 		dst.DefaultSampleType = int64(len(dst.StringTable) - 2)
 	}
 
-	b, _ := json.MarshalIndent(src, "", "  ")
-	fmt.Println("src:")
-	_, _ = fmt.Fprintln(os.Stdout, string(b))
-	b, _ = json.MarshalIndent(dst, "", "  ")
-	fmt.Println("dst:")
-	_, _ = fmt.Fprintln(os.Stdout, string(b))
+	//b, _ := json.MarshalIndent(src, "", "  ")
+	//fmt.Println("src:")
+	//_, _ = fmt.Fprintln(os.Stdout, string(b))
+	//b, _ = json.MarshalIndent(dst, "", "  ")
+	//fmt.Println("dst:")
+	//_, _ = fmt.Fprintln(os.Stdout, string(b))
 
 	return dst
 }

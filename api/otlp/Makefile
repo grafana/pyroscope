@@ -16,7 +16,7 @@ endef
 OPENTELEMETRY_PROTO_SRC_DIR=.tmp/opentelemetry-proto
 
 # The SHA matching the current version of the proto to use
-OPENTELEMETRY_PROTO_VERSION=v0.20.0
+OPENTELEMETRY_PROTO_VERSION=v1.3.2
 
 # Find all .proto files.
 

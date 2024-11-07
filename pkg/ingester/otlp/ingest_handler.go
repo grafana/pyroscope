@@ -6,23 +6,24 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
+	"google.golang.org/grpc"
 
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/tenant"
-
 	pprofileotlp "github.com/grafana/pyroscope/api/otlp/collector/profiles/v1experimental"
+	"github.com/grafana/pyroscope/pkg/tenant"
 )
 
 type ingestHandler struct {
 	pprofileotlp.UnimplementedProfilesServiceServer
-	svc PushService
-	log log.Logger
+	svc     PushService
+	log     log.Logger
+	handler http.Handler
 }
 
 // TODO(@petethepig): split http and grpc
@@ -36,26 +37,31 @@ type PushService interface {
 }
 
 func NewOTLPIngestHandler(svc PushService, l log.Logger) Handler {
-	return &ingestHandler{
+	h := &ingestHandler{
 		svc: svc,
-		log: level.Error(l),
+		log: l,
 	}
+
+	grpcServer := grpc.NewServer()
+	pprofileotlp.RegisterProfilesServiceServer(grpcServer, h)
+
+	h.handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.ProtoMajor == 2 && strings.HasPrefix(r.Header.Get("Content-Type"), "application/grpc") {
+			grpcServer.ServeHTTP(w, r)
+			return
+		}
+
+		// Handle HTTP requests (if we want to support HTTP/Protobuf in future)
+		//if r.URL.Path == "/v1/profiles" {}
+
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	})
+
+	return h
 }
 
-// TODO(@petethepig): implement
-// TODO(@petethepig): split http and grpc
 func (h *ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	panic("not implemented")
-
-	req := &pushv1.PushRequest{}
-	_, err := h.svc.Push(r.Context(), connect.NewRequest(req))
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Internal Server Error: " + err.Error()))
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("OK"))
+	h.handler.ServeHTTP(w, r)
 }
 
 // TODO(@petethepig): split http and grpc

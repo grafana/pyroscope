@@ -9,6 +9,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+
 	"net/http"
 	"strings"
 
@@ -22,8 +23,6 @@ import (
 	"github.com/grafana/dskit/server"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 
-	pprofileotlp "github.com/grafana/pyroscope/api/otlp/collector/profiles/v1experimental"
-
 	"github.com/grafana/pyroscope/public"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/adhocprofiles/v1/adhocprofilesv1connect"
@@ -36,6 +35,7 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1/vcsv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/version/v1/versionv1connect"
 	"github.com/grafana/pyroscope/api/openapiv2"
+	pprofileotlp "github.com/grafana/pyroscope/api/otlp/collector/profiles/v1experimental"
 	"github.com/grafana/pyroscope/pkg/adhocprofiles"
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/compactor"
@@ -221,6 +221,7 @@ func (a *API) RegisterOverridesExporter(oe *exporter.OverridesExporter) {
 func (a *API) RegisterDistributor(d *distributor.Distributor) {
 	pyroscopeHandler := pyroscope.NewPyroscopeIngestHandler(d, a.logger)
 	otlpHandler := otlp.NewOTLPIngestHandler(d, a.logger)
+
 	a.RegisterRoute("/ingest", pyroscopeHandler, true, true, "POST")
 	a.RegisterRoute("/pyroscope/ingest", pyroscopeHandler, true, true, "POST")
 	pushv1connect.RegisterPusherServiceHandler(a.server.HTTP, d, a.connectOptionsAuthRecovery()...)
@@ -229,8 +230,9 @@ func (a *API) RegisterDistributor(d *distributor.Distributor) {
 		{Desc: "Ring status", Path: "/distributor/ring"},
 	})
 
-	pprofileotlp.RegisterProfilesServiceServer(a.server.GRPC, otlpHandler)
-	// pprofileotlp.RegisterGRPCServer(a.server.GRPC, otlpHandler)
+	pprofileotlp.RegisterProfilesServiceServer(a.server.GRPCOnHTTPServer, otlpHandler)
+
+	a.RegisterRoute("/opentelemetry.proto.collector.profiles.v1experimental.ProfilesService/Export", otlpHandler, true, true, "POST")
 
 	// TODO(@petethepig): implement http/protobuf and http/json support
 	// a.RegisterRoute("/v1/profiles", otlpHandler, true, true, "POST")

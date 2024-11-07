@@ -268,7 +268,7 @@ func NewProfilesServiceClient(cc *grpc.ClientConn) ProfilesServiceClient {
 
 func (c *profilesServiceClient) Export(ctx context.Context, in *ExportProfilesServiceRequest, opts ...grpc.CallOption) (*ExportProfilesServiceResponse, error) {
 	out := new(ExportProfilesServiceResponse)
-	err := c.cc.Invoke(ctx, "/opentelemetry.proto.collector.profiles.v1.ProfilesService/Export", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/opentelemetry.proto.collector.profiles.v1experimental.ProfilesService/Export", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -304,7 +304,7 @@ func _ProfilesService_Export_Handler(srv interface{}, ctx context.Context, dec f
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/opentelemetry.proto.collector.profiles.v1.ProfilesService/Export",
+		FullMethod: "/opentelemetry.proto.collector.profiles.v1experimental.ProfilesService/Export",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ProfilesServiceServer).Export(ctx, req.(*ExportProfilesServiceRequest))
@@ -313,7 +313,7 @@ func _ProfilesService_Export_Handler(srv interface{}, ctx context.Context, dec f
 }
 
 var _ProfilesService_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "opentelemetry.proto.collector.profiles.v1.ProfilesService",
+	ServiceName: "opentelemetry.proto.collector.profiles.v1experimental.ProfilesService",
 	HandlerType: (*ProfilesServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
