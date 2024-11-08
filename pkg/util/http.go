@@ -458,6 +458,7 @@ func WriteJSONResponse(w http.ResponseWriter, v interface{}) {
 // AuthenticateUser propagates the user ID from HTTP headers back to the request's context.
 // If on is false, it will inject the default tenant ID.
 func AuthenticateUser(on bool) middleware.Interface {
+	// TODO: @petethepig This logic is copied in otlp.*ingestHandler.Export. We should unify
 	return middleware.Func(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if !on {

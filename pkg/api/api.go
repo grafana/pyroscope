@@ -217,9 +217,9 @@ func (a *API) RegisterOverridesExporter(oe *exporter.OverridesExporter) {
 }
 
 // RegisterDistributor registers the endpoints associated with the distributor.
-func (a *API) RegisterDistributor(d *distributor.Distributor) {
+func (a *API) RegisterDistributor(d *distributor.Distributor, multitenancyEnabled bool) {
 	pyroscopeHandler := pyroscope.NewPyroscopeIngestHandler(d, a.logger)
-	otlpHandler := otlp.NewOTLPIngestHandler(d, a.logger)
+	otlpHandler := otlp.NewOTLPIngestHandler(d, a.logger, multitenancyEnabled)
 
 	a.RegisterRoute("/ingest", pyroscopeHandler, true, true, "POST")
 	a.RegisterRoute("/pyroscope/ingest", pyroscopeHandler, true, true, "POST")

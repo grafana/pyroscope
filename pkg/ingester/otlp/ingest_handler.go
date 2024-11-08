@@ -19,13 +19,15 @@ import (
 	pprofileotlp "github.com/grafana/pyroscope/api/otlp/collector/profiles/v1experimental"
 	v1 "github.com/grafana/pyroscope/api/otlp/common/v1"
 	"github.com/grafana/pyroscope/api/otlp/profiles/v1experimental"
+	"github.com/grafana/pyroscope/pkg/tenant"
 )
 
 type ingestHandler struct {
 	pprofileotlp.UnimplementedProfilesServiceServer
-	svc     PushService
-	log     log.Logger
-	handler http.Handler
+	svc                 PushService
+	log                 log.Logger
+	handler             http.Handler
+	multitenancyEnabled bool
 }
 
 type Handler interface {
@@ -37,10 +39,11 @@ type PushService interface {
 	Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error)
 }
 
-func NewOTLPIngestHandler(svc PushService, l log.Logger) Handler {
+func NewOTLPIngestHandler(svc PushService, l log.Logger, me bool) Handler {
 	h := &ingestHandler{
-		svc: svc,
-		log: l,
+		svc:                 svc,
+		log:                 l,
+		multitenancyEnabled: me,
 	}
 
 	grpcServer := grpc.NewServer()
@@ -65,13 +68,18 @@ func (h *ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.handler.ServeHTTP(w, r)
 }
 
-// TODO(@petethepig): split http and grpc
 func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfilesServiceRequest) (*pprofileotlp.ExportProfilesServiceResponse, error) {
+	// TODO: @petethepig This logic is copied from util.AuthenticateUser and should be refactored into a common function
 	// Extracts user ID from the request metadata and returns and injects the user ID in the context
-	_, ctx, err := user.ExtractFromGRPCRequest(ctx)
-	if err != nil {
-		level.Error(h.log).Log("msg", "failed to extract tenant ID from GRPC request", "err", err)
-		return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to extract tenant ID from GRPC request: %w", err)
+	if !h.multitenancyEnabled {
+		ctx = user.InjectOrgID(ctx, tenant.DefaultTenantID)
+	} else {
+		var err error
+		_, ctx, err = user.ExtractFromGRPCRequest(ctx)
+		if err != nil {
+			level.Error(h.log).Log("msg", "failed to extract tenant ID from GRPC request", "err", err)
+			return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to extract tenant ID from GRPC request: %w", err)
+		}
 	}
 
 	rps := er.ResourceProfiles
