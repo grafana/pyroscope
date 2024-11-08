@@ -264,16 +264,16 @@ func ValidateProfile(limits ProfileValidationLimits, tenantID string, prof *goog
 			}
 		}
 	}
-	// for _, location := range prof.Location {
-	// 	if location.Id == 0 {
-	// 		return NewErrorf(MalformedProfile, "location id is 0")
-	// 	}
-	// }
-	// for _, function := range prof.Function {
-	// 	if function.Id == 0 {
-	// 		return NewErrorf(MalformedProfile, "function id is 0")
-	// 	}
-	// }
+	for _, location := range prof.Location {
+		if location.Id == 0 {
+			return NewErrorf(MalformedProfile, "location id is 0")
+		}
+	}
+	for _, function := range prof.Function {
+		if function.Id == 0 {
+			return NewErrorf(MalformedProfile, "function id is 0")
+		}
+	}
 	for _, valueType := range prof.SampleType {
 		stt := prof.StringTable[valueType.Type]
 		if strings.Contains(stt, "-") {

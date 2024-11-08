@@ -10,13 +10,16 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
 
+	"github.com/grafana/dskit/user"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	pprofileotlp "github.com/grafana/pyroscope/api/otlp/collector/profiles/v1experimental"
-	"github.com/grafana/pyroscope/pkg/tenant"
+	v1 "github.com/grafana/pyroscope/api/otlp/common/v1"
+	"github.com/grafana/pyroscope/api/otlp/profiles/v1experimental"
 )
 
 type ingestHandler struct {
@@ -26,7 +29,6 @@ type ingestHandler struct {
 	handler http.Handler
 }
 
-// TODO(@petethepig): split http and grpc
 type Handler interface {
 	http.Handler
 	pprofileotlp.ProfilesServiceServer
@@ -66,40 +68,44 @@ func (h *ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // TODO(@petethepig): split http and grpc
 func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfilesServiceRequest) (*pprofileotlp.ExportProfilesServiceResponse, error) {
-
-	// TODO(@petethepig): make it tenant-aware
-	ctx = tenant.InjectTenantID(ctx, tenant.DefaultTenantID)
-
-	h.log.Log("msg", "Export called")
+	// Extracts user ID from the request metadata and returns and injects the user ID in the context
+	_, ctx, err := user.ExtractFromGRPCRequest(ctx)
+	if err != nil {
+		level.Error(h.log).Log("msg", "failed to extract tenant ID from GRPC request", "err", err)
+		return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to extract tenant ID from GRPC request: %w", err)
+	}
 
 	rps := er.ResourceProfiles
 	for i := 0; i < len(rps); i++ {
 		rp := rps[i]
 
-		labelsDst := []*typesv1.LabelPair{}
-		// TODO(@petethepig): make labels work
-		labelsDst = append(labelsDst, &typesv1.LabelPair{
-			Name:  "__name__",
-			Value: "process_cpu",
-		})
-		labelsDst = append(labelsDst, &typesv1.LabelPair{
-			Name:  "service_name",
-			Value: "otlp_test_app4",
-		})
-		labelsDst = append(labelsDst, &typesv1.LabelPair{
-			Name:  "__delta__",
-			Value: "false",
-		})
-		labelsDst = append(labelsDst, &typesv1.LabelPair{
-			Name:  "pyroscope_spy",
-			Value: "unknown",
-		})
+		// Get service name
+		serviceName := getServiceNameFromAttributes(rp.Resource.GetAttributes())
+
+		// Start with default labels
+		labels := getDefaultLabels(serviceName)
+
+		// Track processed attribute keys to avoid duplicates across levels
+		processedKeys := make(map[string]bool)
+
+		// Add resource attributes
+		labels = appendAttributesUnique(labels, rp.Resource.GetAttributes(), processedKeys)
 
 		sps := rp.ScopeProfiles
 		for j := 0; j < len(sps); j++ {
 			sp := sps[j]
+
+			// Add scope attributes
+			labels = appendAttributesUnique(labels, sp.Scope.GetAttributes(), processedKeys)
+
 			for k := 0; k < len(sp.Profiles); k++ {
 				p := sp.Profiles[k]
+
+				// Add profile attributes
+				labels = appendAttributesUnique(labels, p.GetAttributes(), processedKeys)
+
+				// Add profile-specific attributes from samples/attributetable
+				labels = appendProfileLabels(labels, p.Profile, processedKeys)
 
 				pprofBytes, err := OprofToPprof(p.Profile)
 				if err != nil {
@@ -111,7 +117,7 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 				req := &pushv1.PushRequest{
 					Series: []*pushv1.RawProfileSeries{
 						{
-							Labels: labelsDst,
+							Labels: labels,
 							Samples: []*pushv1.RawSample{{
 								RawProfile: pprofBytes,
 								ID:         uuid.New().String(),
@@ -126,8 +132,101 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 				}
 			}
 		}
-
 	}
 
 	return &pprofileotlp.ExportProfilesServiceResponse{}, nil
+}
+
+// getServiceNameFromAttributes extracts service name from OTLP resource attributes.
+// Returns "unknown" if service name is not found or empty.
+func getServiceNameFromAttributes(attrs []v1.KeyValue) string {
+	for _, attr := range attrs {
+		if attr.Key == "service.name" {
+			val := attr.GetValue()
+			if sv := val.GetStringValue(); sv != "" {
+				return sv
+			}
+			break
+		}
+	}
+	return "unknown"
+}
+
+// getDefaultLabels returns the required base labels for Pyroscope profiles
+func getDefaultLabels(serviceName string) []*typesv1.LabelPair {
+	return []*typesv1.LabelPair{
+		{
+			Name:  "__name__",
+			Value: "process_cpu",
+		},
+		{
+			Name:  "service_name",
+			Value: serviceName,
+		},
+		{
+			Name:  "__delta__",
+			Value: "false",
+		},
+		{
+			Name:  "pyroscope_spy",
+			Value: "unknown",
+		},
+	}
+}
+
+func appendAttributesUnique(labels []*typesv1.LabelPair, attrs []v1.KeyValue, processedKeys map[string]bool) []*typesv1.LabelPair {
+	for _, attr := range attrs {
+		// Skip if we've already seen this key at any level
+		if processedKeys[attr.Key] {
+			continue
+		}
+
+		val := attr.GetValue()
+		if sv := val.GetStringValue(); sv != "" {
+			labels = append(labels, &typesv1.LabelPair{
+				Name:  attr.Key,
+				Value: sv,
+			})
+			processedKeys[attr.Key] = true
+		}
+	}
+	return labels
+}
+
+func appendProfileLabels(labels []*typesv1.LabelPair, profile *v1experimental.Profile, processedKeys map[string]bool) []*typesv1.LabelPair {
+	if profile == nil {
+		return labels
+	}
+
+	// Create mapping of attribute indices to their values
+	attrMap := make(map[uint64]v1.AnyValue)
+	for i, attr := range profile.GetAttributeTable() {
+		val := attr.GetValue()
+		if val.GetValue() != nil {
+			attrMap[uint64(i)] = val
+		}
+	}
+
+	// Process only attributes referenced in samples
+	for _, sample := range profile.Sample {
+		for _, attrIdx := range sample.GetAttributes() {
+			attr := profile.AttributeTable[attrIdx]
+			// Skip if we've already processed this key at any level
+			if processedKeys[attr.Key] {
+				continue
+			}
+
+			if value, exists := attrMap[attrIdx]; exists {
+				if sv := value.GetStringValue(); sv != "" {
+					labels = append(labels, &typesv1.LabelPair{
+						Name:  attr.Key,
+						Value: sv,
+					})
+					processedKeys[attr.Key] = true
+				}
+			}
+		}
+	}
+
+	return labels
 }

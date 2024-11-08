@@ -35,7 +35,6 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1/vcsv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/version/v1/versionv1connect"
 	"github.com/grafana/pyroscope/api/openapiv2"
-	pprofileotlp "github.com/grafana/pyroscope/api/otlp/collector/profiles/v1experimental"
 	"github.com/grafana/pyroscope/pkg/adhocprofiles"
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/compactor"
@@ -229,8 +228,6 @@ func (a *API) RegisterDistributor(d *distributor.Distributor) {
 	a.indexPage.AddLinks(defaultWeight, "Distributor", []IndexPageLink{
 		{Desc: "Ring status", Path: "/distributor/ring"},
 	})
-
-	pprofileotlp.RegisterProfilesServiceServer(a.server.GRPCOnHTTPServer, otlpHandler)
 
 	a.RegisterRoute("/opentelemetry.proto.collector.profiles.v1experimental.ProfilesService/Export", otlpHandler, true, true, "POST")
 

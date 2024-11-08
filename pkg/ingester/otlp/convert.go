@@ -92,13 +92,6 @@ func ConvertOtelToGoogle(src *otelProfile.Profile) *googleProfile.Profile {
 		dst.DefaultSampleType = int64(len(dst.StringTable) - 2)
 	}
 
-	//b, _ := json.MarshalIndent(src, "", "  ")
-	//fmt.Println("src:")
-	//_, _ = fmt.Fprintln(os.Stdout, string(b))
-	//b, _ = json.MarshalIndent(dst, "", "  ")
-	//fmt.Println("dst:")
-	//_, _ = fmt.Fprintln(os.Stdout, string(b))
-
 	return dst
 }
 
