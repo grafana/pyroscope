@@ -79,14 +79,7 @@ func (svc *IndexService) GetBlockMetadata(
 	if err := svc.follower.WaitLeaderCommitIndexAppliedLocally(ctx); err != nil {
 		return nil, err
 	}
-	if r := req.GetBlocks(); r == nil || len(r.Blocks) == 0 {
-		return new(metastorev1.GetBlockMetadataResponse), nil
-	}
-	blocks, err := svc.index.GetBlockMetadata(ctx, &metastorev1.BlockList{
-		Tenant: req.Blocks.Tenant,
-		Shard:  req.Blocks.Shard,
-		Blocks: req.Blocks.Blocks,
-	})
+	blocks, err := svc.index.GetBlockMetadata(ctx, req.Blocks)
 	if err != nil {
 		return nil, err
 	}

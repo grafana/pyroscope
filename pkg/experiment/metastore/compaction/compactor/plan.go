@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/cespare/xxhash/v2"
+	"github.com/hashicorp/raft"
 	"go.etcd.io/bbolt"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
@@ -15,7 +16,8 @@ import (
 // The implementation must have no side effects or alter the
 // Compactor in any way.
 type plan struct {
-	tx *bbolt.Tx
+	tx  *bbolt.Tx
+	cmd *raft.Log
 
 	compactor *Compactor
 	level     uint32
@@ -31,7 +33,7 @@ func (p *plan) CreateJob() (*raft_log.CompactionJobPlan, error) {
 	}
 
 	// TODO(kolesnikovae): Configurable batch size.
-	tombstones, err := iter.Slice(p.compactor.index.ListExpiredTombstones(p.tx))
+	tombstones, err := iter.Slice(p.compactor.index.ListExpiredTombstones(p.tx, p.cmd))
 	if err != nil {
 		return nil, err
 	}
@@ -91,6 +93,7 @@ func (p *plan) nextJob() *plannedJob {
 		// We've found the oldest batch, it's time to plan a job.
 		job.compactionKey = b.staged.key
 		job.blocks = job.blocks[:0]
+		job.level++
 		p.blocks.setBatch(b)
 
 		// Once we finish with the current batch blocks, the iterator moves

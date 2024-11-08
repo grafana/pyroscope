@@ -22,11 +22,6 @@ func newJobQueue() *jobQueue {
 	return &jobQueue{jobs: make(map[string]*jobEntry)}
 }
 
-func (q *jobQueue) reset() {
-	clear(q.levels)
-	clear(q.jobs)
-}
-
 func (q *jobQueue) level(x uint32) *priorityQueue {
 	s := x + 1 // Levels are 0-based.
 	if s >= uint32(len(q.levels)) {

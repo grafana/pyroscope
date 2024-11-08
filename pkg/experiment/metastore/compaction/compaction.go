@@ -9,13 +9,21 @@ import (
 )
 
 type Compactor interface {
+	// AddBlock enqueues a new block for compaction.
+	// Implementation: the method must be idempotent.
 	AddBlock(*bbolt.Tx, *raft.Log, *metastorev1.BlockMeta) error
 }
 
 type Planner interface {
-	NewPlan(*bbolt.Tx) Plan
+	// NewPlan is used to plan new jobs. The proposed changes will then be
+	// submitted for Raft consensus, with the leader's jobs being accepted
+	// as the final decision.
+	// Implementation: Plan must not change the state of Planner.
+	NewPlan(*bbolt.Tx, *raft.Log) Plan
+
 	// Scheduled must be called for each job after it is scheduled
 	// to remove the job from future plans.
+	// Implementation: the method must be idempotent.
 	Scheduled(*bbolt.Tx, ...*raft_log.CompactionJobPlan) error
 }
 
@@ -24,15 +32,14 @@ type Plan interface {
 }
 
 type Scheduler interface {
-	// NewSchedule is called to plan a schedule update. The proposed schedule
+	// NewSchedule is used to plan a schedule update. The proposed schedule
 	// will then be submitted for Raft consensus, with the leader's schedule
 	// being accepted as the final decision.
-	// Implementation note: Schedule planning should be considered a read
-	// operation and must have no side effects.
+	// Implementation: Schedule must not change the state of Scheduler.
 	NewSchedule(*bbolt.Tx, *raft.Log) Schedule
 
 	// UpdateSchedule adds new jobs and updates state of existing ones.
-	// The change was accepted by the raft quorum: the scheduler MUST apply it.
+	// Implementation: the method must be idempotent.
 	UpdateSchedule(*bbolt.Tx, *raft_log.CompactionPlanUpdate) error
 }
 
@@ -42,23 +49,23 @@ type Schedule interface {
 	// The scheduler must validate that the worker is allowed to update the job,
 	// by comparing the fencing token of the job. Refer to the documentation for
 	// details.
-	UpdateJob(*metastorev1.CompactionJobStatusUpdate) (*Job, error)
+	UpdateJob(*metastorev1.CompactionJobStatusUpdate) (*JobUpdate, error)
 
 	// AssignJob is called on behalf of the worker to request a new job.
 	// This method should be called before any UpdateJob to avoid assigning
 	// the same job unassigned as a result of the update (e.g, a job failure).
-	AssignJob() (*Job, error)
+	AssignJob() (*JobUpdate, error)
 
 	// AddJob is called on behalf of the planner to add a new job to the schedule.
-	AddJob(*raft_log.CompactionJobPlan) (*Job, error)
+	AddJob(*raft_log.CompactionJobPlan) (*JobUpdate, error)
 }
 
-// Job represents an update of the compaction plan and the job schedule.
+// JobUpdate represents an update of the compaction job.
 // Job plan and state may be nil, depending on the context:
 //   - If the job is created, both state and plan are present.
 //   - If the job is completed, the state is nil, and the complete plan is present.
 //   - If the job is in progress, the state is present, and the plan is nil.
-type Job struct {
+type JobUpdate struct {
 	State *raft_log.CompactionJobState
 	Plan  *raft_log.CompactionJobPlan
 }

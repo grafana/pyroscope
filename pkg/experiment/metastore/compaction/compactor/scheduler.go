@@ -106,7 +106,7 @@ func (sc *Scheduler) UpdateSchedule(tx *bbolt.Tx, update *raft_log.CompactionPla
 
 func (sc *Scheduler) Restore(tx *bbolt.Tx) error {
 	// Reset in-memory state before loading entries from the store.
-	sc.queue.reset()
+	sc.queue = newJobQueue()
 	entries := sc.store.ListEntries(tx)
 	defer func() {
 		_ = entries.Close()

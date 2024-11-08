@@ -1,60 +1,126 @@
+# Pyroscope Compaction Process
+
+The document introduces the new compaction process design and outlines its implementation.
+
+## Background
+
+The compaction approach we currently use assumes that relatively large data blocks are merged into even larger ones,
+and the largest blocks are split into shards based on series fingerprints. This approach can lead to uncontrollably high
+memory consumption and is only suitable for delayed compaction, when the time range the blocks refer to is protected
+from writes ([quiesced](https://en.wikipedia.org/wiki/Quiesce)). Additionally, the compaction algorithm is designed for
+deduplication (replica reconciliation), which is not required in [the new ingestion pipeline](../../distributor/README.md#write-path).
+
+The new Pyroscope ingestion pipeline is designed to gather data in memory as small segments, which are periodically
+flushed to object storage, along with the metadata entries being added to the metastore index. Depending on
+the configuration and deployment scale, the number of segments created per second can increase significantly,
+reaching millions of objects per hour or day. This can lead to performance degradation in the query path due to high
+read amplification caused by the large number of small segments. In addition to read amplification, a high number of
+metadata entries can also lead to performance degradation across the entire cluster, impacting the write path as well.
+
+The new background compaction process helps mitigate this by merging small segments into larger ones, aiming to reduce
+the number of objects a query needs to fetch from object storage.
+
 # Compaction Service
 
-TODO
+The compaction service is responsible for planning compaction jobs, scheduling their execution, and updating the
+metastore index with the results. The compaction service resides within the metastore component, while the compaction
+worker is a separate service designed to scale out and in rapidly.
 
-## Sequence Diagram
+The diagram below illustrates the interaction between the compaction worker and the compaction service: workers poll
+the service on a regular basis to request new compaction jobs and report status updates.
 
-```mermaid
-sequenceDiagram
-    participant SW as Segment Writer
-
-    box metastore
-        participant IS as Index Service
-        participant CS as Compaction Service
-    end
-
-    participant CW as Compaction Worker
-
-    loop Ingestion
-        SW ->>+IS: Add metadata for new segment
-        IS ->> IS: Add new block to compaction queue
-        Note over IS,CS: Services share access to the compaction queue
-        IS ->> IS: Insert metadata entry
-        IS ->>-SW: Acknowledge new segment
-    end
-
-    loop Compaction
-        CW ->>+CS: Report status updates and request new compaction jobs
-        Note right of CS: Compaction planning<br>is performed on demand 
-        CS  ->>-CW: Return assigned compaction jobs
-
-        CW ->> IS: Get block metadata for new job
-
-        CW ->>+CW: Execute compaction job
-        CW ->>-CS: Communicate job status and results
-        CS ->> CS: Validate job status update
-        Note right of CS: Job ownership is handled using Raft <br>log entry index as a fencing token
-        CS ->>+IS: Replace compacted blocks
-        IS ->>-CS: Schedule compaction of new blocks
-        Note over IS,CS: Services share access to the metadata index
-        CS -->>CW: Acknowledge job completion
-    end
-
-```
-
-A more nuanced process lies behind the compaction planning:
+Critical sections are guaranteed to be executed serially in the context of the Raft state machine and within the same
+transaction. If the prepared compaction plan update is not accepted by the Raft log, the update plan is discarded, and
+the new leader will propose a new plan. The two-step process ensures that all the replicas use the same compaction plan,
+regardless of their internal state as long as the replicas can apply `UpdateCompactionPlan` change. This is true even
+in case if the compaction algorithm (the `GetCompactionPlanUpdate` step) changes across the replicas during the ongoing
+migration – version upgrade or downgrade.
 
 ```mermaid
 sequenceDiagram
+    participant W as Compaction Worker
 
+    box Compaction Service
+        participant H as Handler
+        participant R as Raft Log
+    end
 
+loop
+
+    W ->>+H: PollCompactionJobsRequest
+    H ->>R: GetCompactionPlanUpdate
+
+    critical FSM state read
+        create participant U as Plan Update
+        R ->>U: 
+        U ->>+S: Job status updates
+        Note right of U: Job ownership is protected with<br>leases with fencing token
+        S ->>-U: Job state changes
+        U ->>+S: Assign jobs
+        S ->>-U: Job state changes
+        U ->>+P: Create jobs
+        Note right of U: New jobs are created if<br>the scheduler queue is empty
+        P ->>P: Dequeue blocks
+        P ->>I: GetTombstones
+        I ->>P: Tombstones
+        P ->>-U: New jobs
+        U ->>+S: Add jobs
+        S ->>-U: Job state changes
+        destroy U
+        U ->>R: CompactionPlanUpdate
+        R ->>H: CompactionPlanUpdate
+    end
+
+    H ->>R: UpdateCompactionPlan
+
+    critical FSM state update
+        R ->>S: Update schedule<br>(new, completed, assigned, reassigned jobs)
+        R ->>P: Remove source blocks from the planner queue (new jobs)
+        R ->>I: Replace source blocks in the index (completed jobs)<br>Tombstones created for source blocks
+        I ->>+C: Add new blocks
+        C ->>C: Enqueue
+        C ->>-I: 
+        I ->>R: 
+        R ->>H: CompactionPlanUpdate
+    end
+
+    H ->> W: PollCompactionJobsResponse
+
+end
+
+    box FSM
+        participant C as Compactor
+        participant P as Planner
+        participant S as Scheduler
+        participant I as Metadata Index
+    end
 ```
 
 ---
 
 # Job Planner
 
-TODO
+Compaction jobs are planned on demand when requests are received from the compaction service.
+
+The compactor is responsible for maintaining a queue of source blocks eligible for compaction. Currently, this queue
+is a simple doubly-linked FIFO structure, populated with new block batches as they are added to the index. In the
+current implementation, a new compaction job is created once the sufficient number of blocks have been enqueued.
+
+The queue is segmented by the `Tenant`, `Shard`, and `Level` attributes of the block metadata entries, meaning that
+a block compaction never crosses these boundaries. This segmentation helps avoid unnecessary compactions of unrelated
+blocks. However, the downside is that blocks are never compacted across different shards, which can lead to suboptimal
+compaction results. Due to the dynamic data placement, it is possible for a tenant to be placed on a shard for only a
+short period of time. As a result, the data in that shard may not be compacted with other data from the same tenant.
+
+Cross-shard compaction is to be implemented as a future enhancement. The observed impact of the limitation is moderate.
+
+## Data Layout
+
+Profiling data from each service (identified by the `service_name` label) is stored as a separate dataset within a block.
+
+The block layout is composed of a collection of non-overlapping, independent datasets, each containing distinct data.
+At compaction, matching datasets from different blocks are merged: their tsdb index, symbols, and profiles
+are rewritten to optimize the data for efficient reading.
 
 ---
 
@@ -76,7 +142,8 @@ The priority is determined by several factors:
 1. Compaction level.
 2. Status (enum order).
    - `COMPACTION_STATUS_UNSPECIFIED`: unassigned jobs.
-   - `COMPACTION_STATUS_IN_PROGRESS`: in-progress jobs. The first job that can't be reassigned is a sentinel: no more jobs are eligible for assignment at this level.
+   - `COMPACTION_STATUS_IN_PROGRESS`: in-progress jobs. The first job that can't be reassigned is a sentinel:
+      no more jobs are eligible for assignment at this level.
 3. Failures: jobs with fewer failures are prioritized.
 4. Lease expiration time: the job with the earliest lease expiration time is considered first.
 

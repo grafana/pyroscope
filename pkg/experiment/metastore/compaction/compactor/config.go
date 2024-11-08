@@ -9,10 +9,10 @@ import (
 type strategy interface {
 	// canCompact is called before the block is
 	// enqueued to the compaction planing queue.
-	canCompact(md *metastorev1.BlockMeta) bool
+	canCompact(*metastorev1.BlockMeta) bool
 	// compact is called before and after the
 	// block has been added to the batch.
-	flush(batch *batch) bool
+	flush(*batch) bool
 	// complete is called after the block is added to the job plan.
 	complete(*plannedJob) bool
 }

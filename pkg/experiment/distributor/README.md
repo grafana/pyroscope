@@ -1,4 +1,4 @@
-# Pyroscope data distribution
+# Pyroscope Data Distribution
 
 ## Background
 

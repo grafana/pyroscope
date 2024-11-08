@@ -16,7 +16,7 @@ var (
 )
 
 type Index interface {
-	ListExpiredTombstones(*bbolt.Tx) iter.Iterator[string]
+	ListExpiredTombstones(*bbolt.Tx, *raft.Log) iter.Iterator[string]
 }
 
 type BlockQueueStore interface {
@@ -40,12 +40,13 @@ type Compactor struct {
 	index    Index
 }
 
-func NewCompactor(store BlockQueueStore) *Compactor {
+func NewCompactor(store BlockQueueStore, index Index) *Compactor {
 	config := defaultCompactionStrategy
 	return &Compactor{
 		strategy: config,
-		store:    store,
 		queue:    newCompactionQueue(config),
+		store:    store,
+		index:    index,
 	}
 }
 
@@ -80,9 +81,10 @@ func (p *Compactor) enqueue(e BlockEntry) bool {
 	return p.queue.push(c, b)
 }
 
-func (p *Compactor) NewPlan(tx *bbolt.Tx) compaction.Plan {
+func (p *Compactor) NewPlan(tx *bbolt.Tx, cmd *raft.Log) compaction.Plan {
 	return &plan{
 		tx:        tx,
+		cmd:       cmd,
 		compactor: p,
 		blocks:    newBlockIter(),
 	}

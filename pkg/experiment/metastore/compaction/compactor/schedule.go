@@ -23,14 +23,14 @@ type schedule struct {
 	assigner  *jobAssigner
 }
 
-func (p *schedule) AddJob(plan *raft_log.CompactionJobPlan) (*compaction.Job, error) {
+func (p *schedule) AddJob(plan *raft_log.CompactionJobPlan) (*compaction.JobUpdate, error) {
 	state := p.scheduler.queue.jobs[plan.Name]
 	if state != nil {
 		// Even if the job already exists, we will try to reset its state.
 		// This should never happen; indicates a bug in the compaction planner.
 	}
 
-	job := &compaction.Job{
+	job := &compaction.JobUpdate{
 		Plan: plan,
 		State: &raft_log.CompactionJobState{
 			Name:            plan.Name,
@@ -44,30 +44,30 @@ func (p *schedule) AddJob(plan *raft_log.CompactionJobPlan) (*compaction.Job, er
 	return job, nil
 }
 
-func (p *schedule) UpdateJob(update *metastorev1.CompactionJobStatusUpdate) (*compaction.Job, error) {
-	state := p.scheduler.queue.jobs[update.Name]
+func (p *schedule) UpdateJob(status *metastorev1.CompactionJobStatusUpdate) (*compaction.JobUpdate, error) {
+	state := p.scheduler.queue.jobs[status.Name]
 	if state == nil {
 		// This may happen if the job has been reassigned
 		// and completed by another worker.
 		return nil, nil
 	}
 
-	if state.Token > update.Token {
+	if state.Token > status.Token {
 		// The job is not assigned to this worker.
 		return nil, nil
 	}
 
-	switch newState := state.CloneVT(); update.Status {
+	switch newState := state.CloneVT(); status.Status {
 	case metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS:
 		// A regular lease renewal.
 		newState.LeaseExpiresAt = p.assigner.allocateLease()
-		return &compaction.Job{State: newState}, nil
+		return &compaction.JobUpdate{State: newState}, nil
 
 	case metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS:
 		// The state does not change: it will be removed when the update
 		// is applied. The contract requires scheduler to provide the completed
 		// job plan with results to the planner.
-		return p.completeJob(update)
+		return p.completeJob(status)
 
 	default:
 		// Not allowed and unknown status updates can be safely ignored:
@@ -79,23 +79,23 @@ func (p *schedule) UpdateJob(update *metastorev1.CompactionJobStatusUpdate) (*co
 	return nil, nil
 }
 
-func (p *schedule) completeJob(update *metastorev1.CompactionJobStatusUpdate) (*compaction.Job, error) {
-	completed := update.CompactedBlocks
+func (p *schedule) completeJob(status *metastorev1.CompactionJobStatusUpdate) (*compaction.JobUpdate, error) {
+	completed := status.CompactedBlocks
 	if completed == nil {
 		return nil, nil
 	}
 
-	job, err := p.loadJobPlan(update.Name)
+	job, err := p.loadJobPlan(status.Name)
 	if err != nil || job == nil {
 		return nil, err
 	}
 	job.DeletedBlocks = completed.DeletedBlocks
 	job.CompactedBlocks = completed.CompactedBlocks
 
-	return &compaction.Job{Plan: job}, nil
+	return &compaction.JobUpdate{Plan: job}, nil
 }
 
-func (p *schedule) AssignJob() (*compaction.Job, error) {
+func (p *schedule) AssignJob() (*compaction.JobUpdate, error) {
 	state := p.assigner.assign()
 	if state == nil {
 		return nil, nil
@@ -106,7 +106,7 @@ func (p *schedule) AssignJob() (*compaction.Job, error) {
 		return nil, err
 	}
 
-	return &compaction.Job{State: state, Plan: job}, err
+	return &compaction.JobUpdate{State: state, Plan: job}, err
 }
 
 func (p *schedule) loadJobPlan(name string) (*raft_log.CompactionJobPlan, error) {
@@ -185,7 +185,7 @@ func (a *jobAssigner) assignJob(e *jobEntry) *raft_log.CompactionJobState {
 
 func (a *jobAssigner) shouldReassign(job *jobEntry) bool {
 	abandoned := a.now().UnixNano() > job.LeaseExpiresAt
-	faulty := a.config.MaxFailures > 0 && job.Failures > a.config.MaxFailures
+	faulty := a.config.MaxFailures > 0 && job.Failures >= a.config.MaxFailures
 	return abandoned && !faulty
 }
 

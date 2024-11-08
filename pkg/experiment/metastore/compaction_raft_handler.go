@@ -11,14 +11,13 @@ import (
 )
 
 type IndexReplacer interface {
-	ReplaceBlocks(*bbolt.Tx, *metastorev1.CompactedBlocks) error
+	ReplaceBlocks(*bbolt.Tx, *raft.Log, *metastorev1.CompactedBlocks) error
 }
 
 type CompactionCommandHandler struct {
 	logger    log.Logger
 	planner   compaction.Planner
 	scheduler compaction.Scheduler
-	compactor compaction.Compactor
 	index     IndexReplacer
 }
 
@@ -48,7 +47,7 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 		// There are two possible outcomes: the job is completed, or its state
 		// has been updated. If state is not present, the job is completed, and
 		// the results are added to the job. Otherwise, this is an update, and
-		// the job plan is not changed (= not present).
+		// the job plan is not updated (= not present).
 		if job.State == nil {
 			p.CompletedJobs = append(p.CompletedJobs, job.Plan)
 		} else {
@@ -87,7 +86,7 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 	// Request to create more jobs: we expect that at least the requested job
 	// capacity is utilized next time we ask for new assignments (this worker
 	// instance or not).
-	plan := h.planner.NewPlan(tx)
+	plan := h.planner.NewPlan(tx, cmd)
 	for len(p.NewJobs) < int(req.AssignJobsMax) {
 		planned, err := plan.CreateJob()
 		if err != nil {
@@ -120,13 +119,8 @@ func (h *CompactionCommandHandler) UpdateCompactionPlan(
 			CompactedBlocks: job.CompactedBlocks,
 			DeletedBlocks:   job.DeletedBlocks,
 		}
-		if err := h.index.ReplaceBlocks(tx, compacted); err != nil {
+		if err := h.index.ReplaceBlocks(tx, cmd, compacted); err != nil {
 			return nil, err
-		}
-		for _, block := range compacted.CompactedBlocks {
-			if err := h.compactor.AddBlock(tx, cmd, block); err != nil {
-				return nil, err
-			}
 		}
 	}
 
