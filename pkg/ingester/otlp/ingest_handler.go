@@ -1,7 +1,6 @@
 package otlp
 
 import (
-	"connectrpc.com/connect"
 	"context"
 	"fmt"
 	"net/http"
