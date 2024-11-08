@@ -718,6 +718,24 @@
         }
       }
     },
+    "v1CompactedBlocks": {
+      "type": "object",
+      "properties": {
+        "compactedBlocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1BlockMeta"
+          }
+        },
+        "deletedBlocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "v1CompactionJob": {
       "type": "object",
       "properties": {
@@ -789,6 +807,10 @@
         },
         "status": {
           "$ref": "#/definitions/v1CompactionJobStatus"
+        },
+        "compactedBlocks": {
+          "$ref": "#/definitions/v1CompactedBlocks",
+          "description": "Only present if the job completed successfully."
         }
       }
     },
@@ -1852,9 +1874,6 @@
           "format": "uint64"
         }
       }
-    },
-    "v1ReplaceBlocksResponse": {
-      "type": "object"
     },
     "v1Report": {
       "type": "object",

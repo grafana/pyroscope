@@ -23,8 +23,8 @@ type QuerierIndex interface {
 
 func NewMetadataQueryService(
 	logger log.Logger,
-	index QuerierIndex,
 	raftFollower RaftFollower,
+	index QuerierIndex,
 ) *MetadataQueryService {
 	return &MetadataQueryService{
 		logger:   logger,

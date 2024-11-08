@@ -11,6 +11,9 @@ import (
 	"github.com/grafana/pyroscope/pkg/iter"
 )
 
+// plan should be used to prepare the compaction plan update.
+// The implementation must have no side effects or alter the
+// Compactor in any way.
 type plan struct {
 	tx *bbolt.Tx
 
@@ -28,7 +31,7 @@ func (p *plan) CreateJob() (*raft_log.CompactionJobPlan, error) {
 	}
 
 	// TODO(kolesnikovae): Configurable batch size.
-	tombstones, err := iter.Slice(p.compactor.tombstones.ListEntries(p.tx, planned.tenant, planned.shard))
+	tombstones, err := iter.Slice(p.compactor.index.ListExpiredTombstones(p.tx))
 	if err != nil {
 		return nil, err
 	}

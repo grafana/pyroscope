@@ -21,19 +21,19 @@ type TenantIndex interface {
 
 type TenantService struct {
 	logger   log.Logger
-	index    TenantIndex
 	follower RaftFollower
+	index    TenantIndex
 }
 
 func NewTenantService(
 	logger log.Logger,
-	partitionIndex TenantIndex,
 	raftFollower RaftFollower,
+	partitionIndex TenantIndex,
 ) *TenantService {
 	return &TenantService{
 		logger:   logger,
-		index:    partitionIndex,
 		follower: raftFollower,
+		index:    partitionIndex,
 	}
 }
 

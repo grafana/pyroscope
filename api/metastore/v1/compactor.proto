@@ -44,6 +44,13 @@ message CompactionJobStatusUpdate {
   string name = 1;
   uint64 token = 2;
   CompactionJobStatus status = 3;
+  // Only present if the job completed successfully.
+  CompactedBlocks compacted_blocks = 4;
+}
+
+message CompactedBlocks {
+  repeated metastore.v1.BlockMeta compacted_blocks = 1;
+  repeated string deleted_blocks = 2;
 }
 
 enum CompactionJobStatus {

@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement"
 	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement/adaptive_placementpb"
 	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement/ewma"
 	"github.com/grafana/pyroscope/pkg/iter"
@@ -31,15 +32,7 @@ func NewDistributionStats(window time.Duration) *DistributionStats {
 	}
 }
 
-type Sample struct {
-	TenantID    string
-	DatasetName string
-	ShardOwner  string
-	ShardID     uint32
-	Size        uint64
-}
-
-func (d *DistributionStats) RecordStats(samples iter.Iterator[Sample]) {
+func (d *DistributionStats) RecordStats(samples iter.Iterator[placement.StatsSample]) {
 	d.recordStats(time.Now().UnixNano(), samples)
 }
 
@@ -57,7 +50,7 @@ func (d *DistributionStats) Expire(before time.Time) {
 	}
 }
 
-func (d *DistributionStats) recordStats(now int64, samples iter.Iterator[Sample]) {
+func (d *DistributionStats) recordStats(now int64, samples iter.Iterator[placement.StatsSample]) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	for samples.Next() {

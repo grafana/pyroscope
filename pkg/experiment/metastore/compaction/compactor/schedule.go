@@ -10,8 +10,12 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction"
 )
 
+// schedule should be used to prepare the compaction plan update.
+// The implementation must have no side effects or alter the
+// Scheduler in any way.
 type schedule struct {
 	tx        *bbolt.Tx
 	raft      *raft.Log
@@ -19,65 +23,113 @@ type schedule struct {
 	assigner  *jobAssigner
 }
 
-func (p *schedule) UpdateJob(update *metastorev1.CompactionJobStatusUpdate) (*raft_log.CompactionJobState, error) {
-	state, err := p.scheduler.store.GetJobState(p.tx, update.Name)
-	if err != nil {
-		return nil, err
+func (p *schedule) AddJob(plan *raft_log.CompactionJobPlan) (*compaction.Job, error) {
+	state := p.scheduler.queue.jobs[plan.Name]
+	if state != nil {
+		// Even if the job already exists, we will try to reset its state.
+		// This should never happen; indicates a bug in the compaction planner.
 	}
+
+	job := &compaction.Job{
+		Plan: plan,
+		State: &raft_log.CompactionJobState{
+			Name:            plan.Name,
+			CompactionLevel: plan.CompactionLevel,
+			Status:          metastorev1.CompactionJobStatus_COMPACTION_STATUS_UNSPECIFIED,
+			AddedAt:         p.raft.AppendedAt.UnixNano(),
+			Token:           p.raft.Index,
+		},
+	}
+
+	return job, nil
+}
+
+func (p *schedule) UpdateJob(update *metastorev1.CompactionJobStatusUpdate) (*compaction.Job, error) {
+	state := p.scheduler.queue.jobs[update.Name]
 	if state == nil {
-		// The job is not found. This may happen if the job has been
-		// reassigned and completed by another worker.
+		// This may happen if the job has been reassigned
+		// and completed by another worker.
 		return nil, nil
 	}
+
 	if state.Token > update.Token {
 		// The job is not assigned to this worker.
 		return nil, nil
 	}
 
-	switch updated := state.CloneVT(); update.Status {
+	switch newState := state.CloneVT(); update.Status {
 	case metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS:
-		updated.LeaseExpiresAt = p.assigner.allocateLease()
-		return updated, nil
+		// A regular lease renewal.
+		newState.LeaseExpiresAt = p.assigner.allocateLease()
+		return &compaction.Job{State: newState}, nil
 
 	case metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS:
-		// This is a valid status update from the worker, and we don't
-		// need to do anything.
-		return updated, nil
+		// The state does not change: it will be removed when the update
+		// is applied. The contract requires scheduler to provide the completed
+		// job plan with results to the planner.
+		return p.completeJob(update)
 
 	default:
 		// Not allowed and unknown status updates can be safely ignored:
 		// eventually, the job will be reassigned. The same for status
 		// handlers: a nil state is returned, which is interpreted as
 		// "no new lease, stop the work".
+	}
+
+	return nil, nil
+}
+
+func (p *schedule) completeJob(update *metastorev1.CompactionJobStatusUpdate) (*compaction.Job, error) {
+	completed := update.CompactedBlocks
+	if completed == nil {
 		return nil, nil
 	}
+
+	job, err := p.loadJobPlan(update.Name)
+	if err != nil || job == nil {
+		return nil, err
+	}
+	job.DeletedBlocks = completed.DeletedBlocks
+	job.CompactedBlocks = completed.CompactedBlocks
+
+	return &compaction.Job{Plan: job}, nil
 }
 
-func (p *schedule) AssignJob() (*raft_log.CompactionJobPlan, *raft_log.CompactionJobState, error) {
+func (p *schedule) AssignJob() (*compaction.Job, error) {
 	state := p.assigner.assign()
 	if state == nil {
-		return nil, nil, nil
+		return nil, nil
 	}
-	job, err := p.scheduler.store.GetJob(p.tx, state.Name)
-	if err != nil {
-		return nil, nil, err
+
+	job, err := p.loadJobPlan(state.Name)
+	if err != nil || job == nil {
+		return nil, err
 	}
-	if job == nil {
-		// Job not found. This should never happen and likely indicates
-		// a data inconsistency. If we keep the job in the queue (as it
-		// cannot be assigned), it will be dangling there forever.
-		// Therefore, we remove it now: this is an exceptional case –
-		// no state should be changed in compactionSchedule.
-		p.deleteDangling(state)
-		return nil, nil, nil
-	}
-	return job, state, nil
+
+	return &compaction.Job{State: state, Plan: job}, err
 }
 
-func (p *schedule) deleteDangling(state *raft_log.CompactionJobState) {
-	_ = p.scheduler.store.DeleteJobState(p.tx, state.Name)
-	_ = p.scheduler.store.DeleteJob(p.tx, state.Name)
-	p.assigner.queue.delete(state)
+func (p *schedule) loadJobPlan(name string) (*raft_log.CompactionJobPlan, error) {
+	job, err := p.scheduler.store.GetJobPlan(p.tx, name)
+	if err != nil {
+		return nil, err
+	}
+	if job == nil {
+		// Job state exists without a plan. This should never happen.
+		// If we keep the job in the queue (as it cannot be assigned),
+		// it will be dangling there forever. Therefore, we remove it
+		// now: this is an exceptional case no state should be changed
+		// at scheduling.
+		p.deleteDangling(name)
+		return nil, nil
+	}
+	return job, nil
+}
+
+func (p *schedule) deleteDangling(name string) {
+	_ = p.scheduler.store.DeleteJobState(p.tx, name)
+	_ = p.scheduler.store.DeleteJobPlan(p.tx, name)
+	p.assigner.queue.delete(name)
 }
 
 type jobAssigner struct {

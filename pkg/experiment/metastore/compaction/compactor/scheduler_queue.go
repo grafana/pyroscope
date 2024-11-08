@@ -49,9 +49,9 @@ func (q *jobQueue) put(state *raft_log.CompactionJobState) {
 	heap.Push(q.level(state.CompactionLevel), j)
 }
 
-func (q *jobQueue) delete(job *raft_log.CompactionJobState) {
-	if j, exists := q.jobs[job.Name]; exists {
-		heap.Remove(q.level(job.CompactionLevel), q.jobs[j.Name].index)
+func (q *jobQueue) delete(name string) {
+	if j, exists := q.jobs[name]; exists {
+		heap.Remove(q.level(j.CompactionLevel), q.jobs[j.Name].index)
 	}
 }
 
@@ -60,9 +60,7 @@ func (q *jobQueue) delete(job *raft_log.CompactionJobState) {
 
 // The function determines the scheduling order of the jobs.
 func compareJobs(a, b *jobEntry) int {
-	// Pick jobs in the "initial" (unspecified) state first:
-	// COMPACTION_STATUS_UNSPECIFIED <- Unassigned jobs.
-	// COMPACTION_STATUS_IN_PROGRESS <- Assigned jobs.
+	// Pick jobs in the "initial" (unspecified) state first.
 	if a.Status != b.Status {
 		return int(a.Status - b.Status)
 	}

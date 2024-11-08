@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
 
+	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement"
 	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement/adaptive_placementpb"
 	"github.com/grafana/pyroscope/pkg/iter"
 	"github.com/grafana/pyroscope/pkg/util"
@@ -74,7 +75,9 @@ func NewManager(
 
 func (m *Manager) Service() services.Service { return m.service }
 
-func (m *Manager) RecordStats(samples iter.Iterator[Sample]) { m.stats.RecordStats(samples) }
+func (m *Manager) RecordStats(samples iter.Iterator[placement.StatsSample]) {
+	m.stats.RecordStats(samples)
+}
 
 func (m *Manager) Start() { m.started.Store(true) }
 func (m *Manager) Stop()  { m.started.Store(false) }

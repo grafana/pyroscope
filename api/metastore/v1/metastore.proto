@@ -7,7 +7,6 @@ import "types/v1/types.proto";
 service IndexService {
   rpc AddBlock(AddBlockRequest) returns (AddBlockResponse) {}
   rpc GetBlockMetadata(GetBlockMetadataRequest) returns (GetBlockMetadataResponse) {}
-  rpc ReplaceBlocks(ReplaceBlocksRequest) returns (ReplaceBlocksResponse) {}
 }
 
 message AddBlockRequest {
@@ -29,13 +28,6 @@ message BlockList {
   uint32 shard = 2;
   repeated string blocks = 3;
 }
-
-message ReplaceBlocksRequest {
-  BlockList source_blocks = 1;
-  repeated BlockMeta new_blocks = 2;
-}
-
-message ReplaceBlocksResponse {}
 
 message BlockMeta {
   uint64 format_version = 1;

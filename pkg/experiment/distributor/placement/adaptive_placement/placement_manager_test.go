@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement"
 	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement/adaptive_placementpb"
 	"github.com/grafana/pyroscope/pkg/iter"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockadaptive_placement"
@@ -135,7 +136,7 @@ func (s *managerSuite) Test_Manager_exports_metrics() {
 		DecayWindow:          time.Minute,
 	})
 
-	s.manager.RecordStats(iter.NewSliceIterator([]Sample{
+	s.manager.RecordStats(iter.NewSliceIterator([]placement.StatsSample{
 		{TenantID: "tenant-a", DatasetName: "dataset-a", ShardID: 1, Size: 100 << 10},
 		{TenantID: "tenant-a", DatasetName: "dataset-a", ShardID: 2, Size: 100 << 10},
 		{TenantID: "tenant-b", DatasetName: "dataset-b", ShardID: 2, Size: 100 << 10},

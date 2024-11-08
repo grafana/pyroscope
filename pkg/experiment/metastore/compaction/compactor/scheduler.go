@@ -7,7 +7,6 @@ import (
 	"github.com/hashicorp/raft"
 	"go.etcd.io/bbolt"
 
-	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction"
 	"github.com/grafana/pyroscope/pkg/iter"
@@ -28,10 +27,9 @@ var _ compaction.Scheduler = (*Scheduler)(nil)
 // Implementation note: block metadata should never be stored in StoreJob:
 // those are already stored in the metadata index.
 type JobStore interface {
-	StoreJob(*bbolt.Tx, *raft_log.CompactionJobPlan) error
-	GetJob(tx *bbolt.Tx, name string) (*raft_log.CompactionJobPlan, error)
-	DeleteJob(tx *bbolt.Tx, name string) error
-	// Jobs are not loaded in memory.
+	StoreJobPlan(*bbolt.Tx, *raft_log.CompactionJobPlan) error
+	GetJobPlan(tx *bbolt.Tx, name string) (*raft_log.CompactionJobPlan, error)
+	DeleteJobPlan(tx *bbolt.Tx, name string) error
 
 	GetJobState(tx *bbolt.Tx, name string) (*raft_log.CompactionJobState, error)
 	UpdateJobState(*bbolt.Tx, *raft_log.CompactionJobState) error
@@ -79,39 +77,31 @@ func (sc *Scheduler) NewSchedule(tx *bbolt.Tx, raft *raft.Log) compaction.Schedu
 	}
 }
 
-func (sc *Scheduler) UpdateSchedule(tx *bbolt.Tx, p compaction.Planner, update *raft_log.CompactionPlanUpdate) error {
+func (sc *Scheduler) UpdateSchedule(tx *bbolt.Tx, update *raft_log.CompactionPlanUpdate) error {
 	for _, job := range update.NewJobs {
-		if err := sc.store.StoreJob(tx, job); err != nil {
+		if err := sc.store.StoreJobPlan(tx, job); err != nil {
 			return err
 		}
 	}
+
 	for _, state := range update.ScheduleUpdates {
-		if state.Status == metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS {
-			return sc.evict(tx, p, state)
-		}
 		if err := sc.store.UpdateJobState(tx, state); err != nil {
 			return err
 		}
 		sc.queue.put(state)
 	}
 
-	// TODO: Bump all the stats here, right after the schedule update.
-	return p.Scheduled(tx, update.NewJobs...)
-}
+	for _, job := range update.CompletedJobs {
+		if err := sc.store.DeleteJobPlan(tx, job.Name); err != nil {
+			return err
+		}
+		if err := sc.store.DeleteJobState(tx, job.Name); err != nil {
+			return err
+		}
+		sc.queue.delete(job.Name)
+	}
 
-func (sc *Scheduler) evict(tx *bbolt.Tx, p compaction.Planner, state *raft_log.CompactionJobState) error {
-	job, err := sc.store.GetJob(tx, state.Name)
-	if err != nil {
-		return err
-	}
-	if err = sc.store.DeleteJob(tx, state.Name); err != nil {
-		return err
-	}
-	if err = sc.store.DeleteJobState(tx, state.Name); err != nil {
-		return err
-	}
-	sc.queue.delete(state)
-	return p.Compacted(tx, job)
+	return nil
 }
 
 func (sc *Scheduler) Restore(tx *bbolt.Tx) error {

@@ -12,33 +12,27 @@ import (
 )
 
 type RaftProposer struct {
-	raft         raftnode.RaftNode
 	logger       log.Logger
+	raftNode     raftnode.RaftNode
 	applyTimeout time.Duration
 }
 
-func NewRaftProposer(raft raftnode.RaftNode, logger log.Logger, applyTimeout time.Duration) *RaftProposer {
+func NewRaftProposer(logger log.Logger, raftNode raftnode.RaftNode, applyTimeout time.Duration) *RaftProposer {
 	return &RaftProposer{
-		raft:         raft,
 		logger:       logger,
+		raftNode:     raftNode,
 		applyTimeout: applyTimeout,
 	}
 }
 
 func propose[Req, Resp proto.Message](r *RaftProposer, cmd fsm.RaftLogEntryType, req Req) (Resp, error) {
 	// TODO(kolesnikovae): Log, metrics, etc.
-	return raftnode.Propose[Req, Resp](r.raft, cmd, req, r.applyTimeout)
+	return raftnode.Propose[Req, Resp](r.raftNode, cmd, req, r.applyTimeout)
 }
 
 func (r *RaftProposer) AddBlockMetadata(proposal *raft_log.AddBlockMetadataRequest) (*raft_log.AddBlockMetadataResponse, error) {
 	return propose[*raft_log.AddBlockMetadataRequest, *raft_log.AddBlockMetadataResponse](r,
 		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_ADD_BLOCK_METADATA),
-		proposal)
-}
-
-func (r *RaftProposer) ReplaceBlocks(proposal *raft_log.AddBlockMetadataRequest) (*raft_log.AddBlockMetadataResponse, error) {
-	return propose[*raft_log.AddBlockMetadataRequest, *raft_log.AddBlockMetadataResponse](r,
-		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_REPLACE_BLOCK_METADATA),
 		proposal)
 }
 

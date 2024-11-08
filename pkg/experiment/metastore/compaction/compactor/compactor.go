@@ -15,17 +15,14 @@ var (
 	_ compaction.Planner   = (*Compactor)(nil)
 )
 
+type Index interface {
+	ListExpiredTombstones(*bbolt.Tx) iter.Iterator[string]
+}
+
 type BlockQueueStore interface {
 	StoreEntry(*bbolt.Tx, BlockEntry) error
 	DeleteEntry(tx *bbolt.Tx, index uint64, id string) error
 	ListEntries(*bbolt.Tx) iter.Iterator[BlockEntry]
-}
-
-type Tombstones interface {
-	Exists(*metastorev1.BlockMeta) bool
-	AddTombstones(*bbolt.Tx, *metastorev1.BlockList) error
-	DeleteTombstones(*bbolt.Tx, *metastorev1.BlockList) error
-	ListEntries(tx *bbolt.Tx, tenant string, shard uint32) iter.Iterator[string]
 }
 
 type BlockEntry struct {
@@ -37,10 +34,10 @@ type BlockEntry struct {
 }
 
 type Compactor struct {
-	strategy   strategy
-	queue      *compactionQueue
-	store      BlockQueueStore
-	tombstones Tombstones
+	strategy strategy
+	queue    *compactionQueue
+	store    BlockQueueStore
+	index    Index
 }
 
 func NewCompactor(store BlockQueueStore) *Compactor {
@@ -53,9 +50,6 @@ func NewCompactor(store BlockQueueStore) *Compactor {
 }
 
 func (p *Compactor) AddBlock(tx *bbolt.Tx, cmd *raft.Log, md *metastorev1.BlockMeta) error {
-	if p.tombstones.Exists(md) {
-		return compaction.ErrAlreadyCompacted
-	}
 	if !p.strategy.canCompact(md) {
 		return nil
 	}
@@ -69,10 +63,11 @@ func (p *Compactor) AddBlock(tx *bbolt.Tx, cmd *raft.Log, md *metastorev1.BlockM
 	if err := p.store.StoreEntry(tx, e); err != nil {
 		return err
 	}
-	return p.enqueue(e)
+	p.enqueue(e)
+	return nil
 }
 
-func (p *Compactor) enqueue(e BlockEntry) error {
+func (p *Compactor) enqueue(e BlockEntry) bool {
 	c := compactionKey{
 		tenant: e.Tenant,
 		shard:  e.Shard,
@@ -82,14 +77,7 @@ func (p *Compactor) enqueue(e BlockEntry) error {
 		raftIndex: e.Index,
 		id:        e.ID,
 	}
-	if !p.queue.push(c, b) {
-		return compaction.ErrAlreadyCompacted
-	}
-	return nil
-}
-
-func (p *Compactor) DeleteBlocks(tx *bbolt.Tx, _ *raft.Log, blocks *metastorev1.BlockList) error {
-	return p.tombstones.AddTombstones(tx, blocks)
+	return p.queue.push(c, b)
 }
 
 func (p *Compactor) NewPlan(tx *bbolt.Tx) compaction.Plan {
@@ -121,20 +109,6 @@ func (p *Compactor) Scheduled(tx *bbolt.Tx, jobs ...*raft_log.CompactionJobPlan)
 	return nil
 }
 
-func (p *Compactor) Compacted(tx *bbolt.Tx, jobs ...*raft_log.CompactionJobPlan) error {
-	for _, job := range jobs {
-		tombstones := &metastorev1.BlockList{
-			Tenant: job.Tenant,
-			Shard:  job.Shard,
-			Blocks: job.DeletedBlocks,
-		}
-		if err := p.tombstones.DeleteTombstones(tx, tombstones); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func (p *Compactor) Restore(tx *bbolt.Tx) error {
 	// Reset in-memory state before loading entries from the store.
 	p.queue = newCompactionQueue(p.strategy)
@@ -143,7 +117,12 @@ func (p *Compactor) Restore(tx *bbolt.Tx) error {
 		_ = entries.Close()
 	}()
 	for entries.Next() {
-		p.enqueue(entries.At())
+		// The only error can be returned here is ErrAlreadyCompacted,
+		// which is impossible, unless there is a major bug in the
+		// block queue and/or in the store implementation.
+		if !p.enqueue(entries.At()) {
+			panic("compactor: block duplicate in the queue")
+		}
 	}
 	return entries.Err()
 }

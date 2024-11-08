@@ -38,9 +38,6 @@ const (
 	// IndexServiceGetBlockMetadataProcedure is the fully-qualified name of the IndexService's
 	// GetBlockMetadata RPC.
 	IndexServiceGetBlockMetadataProcedure = "/metastore.v1.IndexService/GetBlockMetadata"
-	// IndexServiceReplaceBlocksProcedure is the fully-qualified name of the IndexService's
-	// ReplaceBlocks RPC.
-	IndexServiceReplaceBlocksProcedure = "/metastore.v1.IndexService/ReplaceBlocks"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -48,14 +45,12 @@ var (
 	indexServiceServiceDescriptor                = v1.File_metastore_v1_metastore_proto.Services().ByName("IndexService")
 	indexServiceAddBlockMethodDescriptor         = indexServiceServiceDescriptor.Methods().ByName("AddBlock")
 	indexServiceGetBlockMetadataMethodDescriptor = indexServiceServiceDescriptor.Methods().ByName("GetBlockMetadata")
-	indexServiceReplaceBlocksMethodDescriptor    = indexServiceServiceDescriptor.Methods().ByName("ReplaceBlocks")
 )
 
 // IndexServiceClient is a client for the metastore.v1.IndexService service.
 type IndexServiceClient interface {
 	AddBlock(context.Context, *connect.Request[v1.AddBlockRequest]) (*connect.Response[v1.AddBlockResponse], error)
 	GetBlockMetadata(context.Context, *connect.Request[v1.GetBlockMetadataRequest]) (*connect.Response[v1.GetBlockMetadataResponse], error)
-	ReplaceBlocks(context.Context, *connect.Request[v1.ReplaceBlocksRequest]) (*connect.Response[v1.ReplaceBlocksResponse], error)
 }
 
 // NewIndexServiceClient constructs a client for the metastore.v1.IndexService service. By default,
@@ -80,12 +75,6 @@ func NewIndexServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(indexServiceGetBlockMetadataMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
-		replaceBlocks: connect.NewClient[v1.ReplaceBlocksRequest, v1.ReplaceBlocksResponse](
-			httpClient,
-			baseURL+IndexServiceReplaceBlocksProcedure,
-			connect.WithSchema(indexServiceReplaceBlocksMethodDescriptor),
-			connect.WithClientOptions(opts...),
-		),
 	}
 }
 
@@ -93,7 +82,6 @@ func NewIndexServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 type indexServiceClient struct {
 	addBlock         *connect.Client[v1.AddBlockRequest, v1.AddBlockResponse]
 	getBlockMetadata *connect.Client[v1.GetBlockMetadataRequest, v1.GetBlockMetadataResponse]
-	replaceBlocks    *connect.Client[v1.ReplaceBlocksRequest, v1.ReplaceBlocksResponse]
 }
 
 // AddBlock calls metastore.v1.IndexService.AddBlock.
@@ -106,16 +94,10 @@ func (c *indexServiceClient) GetBlockMetadata(ctx context.Context, req *connect.
 	return c.getBlockMetadata.CallUnary(ctx, req)
 }
 
-// ReplaceBlocks calls metastore.v1.IndexService.ReplaceBlocks.
-func (c *indexServiceClient) ReplaceBlocks(ctx context.Context, req *connect.Request[v1.ReplaceBlocksRequest]) (*connect.Response[v1.ReplaceBlocksResponse], error) {
-	return c.replaceBlocks.CallUnary(ctx, req)
-}
-
 // IndexServiceHandler is an implementation of the metastore.v1.IndexService service.
 type IndexServiceHandler interface {
 	AddBlock(context.Context, *connect.Request[v1.AddBlockRequest]) (*connect.Response[v1.AddBlockResponse], error)
 	GetBlockMetadata(context.Context, *connect.Request[v1.GetBlockMetadataRequest]) (*connect.Response[v1.GetBlockMetadataResponse], error)
-	ReplaceBlocks(context.Context, *connect.Request[v1.ReplaceBlocksRequest]) (*connect.Response[v1.ReplaceBlocksResponse], error)
 }
 
 // NewIndexServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -136,20 +118,12 @@ func NewIndexServiceHandler(svc IndexServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(indexServiceGetBlockMetadataMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
-	indexServiceReplaceBlocksHandler := connect.NewUnaryHandler(
-		IndexServiceReplaceBlocksProcedure,
-		svc.ReplaceBlocks,
-		connect.WithSchema(indexServiceReplaceBlocksMethodDescriptor),
-		connect.WithHandlerOptions(opts...),
-	)
 	return "/metastore.v1.IndexService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case IndexServiceAddBlockProcedure:
 			indexServiceAddBlockHandler.ServeHTTP(w, r)
 		case IndexServiceGetBlockMetadataProcedure:
 			indexServiceGetBlockMetadataHandler.ServeHTTP(w, r)
-		case IndexServiceReplaceBlocksProcedure:
-			indexServiceReplaceBlocksHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -165,8 +139,4 @@ func (UnimplementedIndexServiceHandler) AddBlock(context.Context, *connect.Reque
 
 func (UnimplementedIndexServiceHandler) GetBlockMetadata(context.Context, *connect.Request[v1.GetBlockMetadataRequest]) (*connect.Response[v1.GetBlockMetadataResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("metastore.v1.IndexService.GetBlockMetadata is not implemented"))
-}
-
-func (UnimplementedIndexServiceHandler) ReplaceBlocks(context.Context, *connect.Request[v1.ReplaceBlocksRequest]) (*connect.Response[v1.ReplaceBlocksResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("metastore.v1.IndexService.ReplaceBlocks is not implemented"))
 }

@@ -18,23 +18,26 @@ sequenceDiagram
     loop Ingestion
         SW ->>+IS: Add metadata for new segment
         IS ->> IS: Add new block to compaction queue
-        Note over IS,CS: Services share access to compaction queue
+        Note over IS,CS: Services share access to the compaction queue
         IS ->> IS: Insert metadata entry
         IS ->>-SW: Acknowledge new segment
     end
 
     loop Compaction
         CW ->>+CS: Report status updates and request new compaction jobs
-        Note right of CS: Compaction planning, <br>job assignment, and scheduling 
+        Note right of CS: Compaction planning<br>is performed on demand 
         CS  ->>-CW: Return assigned compaction jobs
 
         CW ->> IS: Get block metadata for new job
 
         CW ->>+CW: Execute compaction job
-        CW ->>-IS: Communicate job results
-
-        IS ->> CS: Schedule compaction of new blocks<br>and removal of replaced blocks
-        IS ->> IS: Replace compacted blocks
+        CW ->>-CS: Communicate job status and results
+        CS ->> CS: Validate job status update
+        Note right of CS: Job ownership is handled using Raft <br>log entry index as a fencing token
+        CS ->>+IS: Replace compacted blocks
+        IS ->>-CS: Schedule compaction of new blocks
+        Note over IS,CS: Services share access to the metadata index
+        CS -->>CW: Acknowledge job completion
     end
 
 ```

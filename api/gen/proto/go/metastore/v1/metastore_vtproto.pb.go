@@ -120,46 +120,6 @@ func (m *BlockList) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
-func (m *ReplaceBlocksRequest) CloneVT() *ReplaceBlocksRequest {
-	if m == nil {
-		return (*ReplaceBlocksRequest)(nil)
-	}
-	r := new(ReplaceBlocksRequest)
-	r.SourceBlocks = m.SourceBlocks.CloneVT()
-	if rhs := m.NewBlocks; rhs != nil {
-		tmpContainer := make([]*BlockMeta, len(rhs))
-		for k, v := range rhs {
-			tmpContainer[k] = v.CloneVT()
-		}
-		r.NewBlocks = tmpContainer
-	}
-	if len(m.unknownFields) > 0 {
-		r.unknownFields = make([]byte, len(m.unknownFields))
-		copy(r.unknownFields, m.unknownFields)
-	}
-	return r
-}
-
-func (m *ReplaceBlocksRequest) CloneMessageVT() proto.Message {
-	return m.CloneVT()
-}
-
-func (m *ReplaceBlocksResponse) CloneVT() *ReplaceBlocksResponse {
-	if m == nil {
-		return (*ReplaceBlocksResponse)(nil)
-	}
-	r := new(ReplaceBlocksResponse)
-	if len(m.unknownFields) > 0 {
-		r.unknownFields = make([]byte, len(m.unknownFields))
-		copy(r.unknownFields, m.unknownFields)
-	}
-	return r
-}
-
-func (m *ReplaceBlocksResponse) CloneMessageVT() proto.Message {
-	return m.CloneVT()
-}
-
 func (m *BlockMeta) CloneVT() *BlockMeta {
 	if m == nil {
 		return (*BlockMeta)(nil)
@@ -357,58 +317,6 @@ func (this *BlockList) EqualMessageVT(thatMsg proto.Message) bool {
 	}
 	return this.EqualVT(that)
 }
-func (this *ReplaceBlocksRequest) EqualVT(that *ReplaceBlocksRequest) bool {
-	if this == that {
-		return true
-	} else if this == nil || that == nil {
-		return false
-	}
-	if !this.SourceBlocks.EqualVT(that.SourceBlocks) {
-		return false
-	}
-	if len(this.NewBlocks) != len(that.NewBlocks) {
-		return false
-	}
-	for i, vx := range this.NewBlocks {
-		vy := that.NewBlocks[i]
-		if p, q := vx, vy; p != q {
-			if p == nil {
-				p = &BlockMeta{}
-			}
-			if q == nil {
-				q = &BlockMeta{}
-			}
-			if !p.EqualVT(q) {
-				return false
-			}
-		}
-	}
-	return string(this.unknownFields) == string(that.unknownFields)
-}
-
-func (this *ReplaceBlocksRequest) EqualMessageVT(thatMsg proto.Message) bool {
-	that, ok := thatMsg.(*ReplaceBlocksRequest)
-	if !ok {
-		return false
-	}
-	return this.EqualVT(that)
-}
-func (this *ReplaceBlocksResponse) EqualVT(that *ReplaceBlocksResponse) bool {
-	if this == that {
-		return true
-	} else if this == nil || that == nil {
-		return false
-	}
-	return string(this.unknownFields) == string(that.unknownFields)
-}
-
-func (this *ReplaceBlocksResponse) EqualMessageVT(thatMsg proto.Message) bool {
-	that, ok := thatMsg.(*ReplaceBlocksResponse)
-	if !ok {
-		return false
-	}
-	return this.EqualVT(that)
-}
 func (this *BlockMeta) EqualVT(that *BlockMeta) bool {
 	if this == that {
 		return true
@@ -560,7 +468,6 @@ const _ = grpc.SupportPackageIsVersion7
 type IndexServiceClient interface {
 	AddBlock(ctx context.Context, in *AddBlockRequest, opts ...grpc.CallOption) (*AddBlockResponse, error)
 	GetBlockMetadata(ctx context.Context, in *GetBlockMetadataRequest, opts ...grpc.CallOption) (*GetBlockMetadataResponse, error)
-	ReplaceBlocks(ctx context.Context, in *ReplaceBlocksRequest, opts ...grpc.CallOption) (*ReplaceBlocksResponse, error)
 }
 
 type indexServiceClient struct {
@@ -589,22 +496,12 @@ func (c *indexServiceClient) GetBlockMetadata(ctx context.Context, in *GetBlockM
 	return out, nil
 }
 
-func (c *indexServiceClient) ReplaceBlocks(ctx context.Context, in *ReplaceBlocksRequest, opts ...grpc.CallOption) (*ReplaceBlocksResponse, error) {
-	out := new(ReplaceBlocksResponse)
-	err := c.cc.Invoke(ctx, "/metastore.v1.IndexService/ReplaceBlocks", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // IndexServiceServer is the server API for IndexService service.
 // All implementations must embed UnimplementedIndexServiceServer
 // for forward compatibility
 type IndexServiceServer interface {
 	AddBlock(context.Context, *AddBlockRequest) (*AddBlockResponse, error)
 	GetBlockMetadata(context.Context, *GetBlockMetadataRequest) (*GetBlockMetadataResponse, error)
-	ReplaceBlocks(context.Context, *ReplaceBlocksRequest) (*ReplaceBlocksResponse, error)
 	mustEmbedUnimplementedIndexServiceServer()
 }
 
@@ -617,9 +514,6 @@ func (UnimplementedIndexServiceServer) AddBlock(context.Context, *AddBlockReques
 }
 func (UnimplementedIndexServiceServer) GetBlockMetadata(context.Context, *GetBlockMetadataRequest) (*GetBlockMetadataResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetBlockMetadata not implemented")
-}
-func (UnimplementedIndexServiceServer) ReplaceBlocks(context.Context, *ReplaceBlocksRequest) (*ReplaceBlocksResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ReplaceBlocks not implemented")
 }
 func (UnimplementedIndexServiceServer) mustEmbedUnimplementedIndexServiceServer() {}
 
@@ -670,24 +564,6 @@ func _IndexService_GetBlockMetadata_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
-func _IndexService_ReplaceBlocks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ReplaceBlocksRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(IndexServiceServer).ReplaceBlocks(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/metastore.v1.IndexService/ReplaceBlocks",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(IndexServiceServer).ReplaceBlocks(ctx, req.(*ReplaceBlocksRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // IndexService_ServiceDesc is the grpc.ServiceDesc for IndexService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -702,10 +578,6 @@ var IndexService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetBlockMetadata",
 			Handler:    _IndexService_GetBlockMetadata_Handler,
-		},
-		{
-			MethodName: "ReplaceBlocks",
-			Handler:    _IndexService_ReplaceBlocks_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -926,94 +798,6 @@ func (m *BlockList) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Tenant)))
 		i--
 		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *ReplaceBlocksRequest) MarshalVT() (dAtA []byte, err error) {
-	if m == nil {
-		return nil, nil
-	}
-	size := m.SizeVT()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *ReplaceBlocksRequest) MarshalToVT(dAtA []byte) (int, error) {
-	size := m.SizeVT()
-	return m.MarshalToSizedBufferVT(dAtA[:size])
-}
-
-func (m *ReplaceBlocksRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
-	if m == nil {
-		return 0, nil
-	}
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.unknownFields != nil {
-		i -= len(m.unknownFields)
-		copy(dAtA[i:], m.unknownFields)
-	}
-	if len(m.NewBlocks) > 0 {
-		for iNdEx := len(m.NewBlocks) - 1; iNdEx >= 0; iNdEx-- {
-			size, err := m.NewBlocks[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
-			i--
-			dAtA[i] = 0x12
-		}
-	}
-	if m.SourceBlocks != nil {
-		size, err := m.SourceBlocks.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *ReplaceBlocksResponse) MarshalVT() (dAtA []byte, err error) {
-	if m == nil {
-		return nil, nil
-	}
-	size := m.SizeVT()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *ReplaceBlocksResponse) MarshalToVT(dAtA []byte) (int, error) {
-	size := m.SizeVT()
-	return m.MarshalToSizedBufferVT(dAtA[:size])
-}
-
-func (m *ReplaceBlocksResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
-	if m == nil {
-		return 0, nil
-	}
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.unknownFields != nil {
-		i -= len(m.unknownFields)
-		copy(dAtA[i:], m.unknownFields)
 	}
 	return len(dAtA) - i, nil
 }
@@ -1311,36 +1095,6 @@ func (m *BlockList) SizeVT() (n int) {
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
 	}
-	n += len(m.unknownFields)
-	return n
-}
-
-func (m *ReplaceBlocksRequest) SizeVT() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.SourceBlocks != nil {
-		l = m.SourceBlocks.SizeVT()
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-	}
-	if len(m.NewBlocks) > 0 {
-		for _, e := range m.NewBlocks {
-			l = e.SizeVT()
-			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-		}
-	}
-	n += len(m.unknownFields)
-	return n
-}
-
-func (m *ReplaceBlocksResponse) SizeVT() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
 	n += len(m.unknownFields)
 	return n
 }
@@ -1871,178 +1625,6 @@ func (m *BlockList) UnmarshalVT(dAtA []byte) error {
 			}
 			m.Blocks = append(m.Blocks, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *ReplaceBlocksRequest) UnmarshalVT(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return protohelpers.ErrIntOverflow
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: ReplaceBlocksRequest: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: ReplaceBlocksRequest: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field SourceBlocks", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.SourceBlocks == nil {
-				m.SourceBlocks = &BlockList{}
-			}
-			if err := m.SourceBlocks.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field NewBlocks", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.NewBlocks = append(m.NewBlocks, &BlockMeta{})
-			if err := m.NewBlocks[len(m.NewBlocks)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *ReplaceBlocksResponse) UnmarshalVT(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return protohelpers.ErrIntOverflow
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: ReplaceBlocksResponse: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: ReplaceBlocksResponse: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

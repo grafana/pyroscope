@@ -5,108 +5,95 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/oklog/ulid"
-	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
-	adaptiveplacement "github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
+	"github.com/grafana/pyroscope/pkg/experiment/block"
+	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement"
 	"github.com/grafana/pyroscope/pkg/iter"
 )
 
-// TODO(kolesnikovae): Pass AddBlockCommandLog to DLQ.
-
 type IndexReader interface {
-	GetBlockMetadata(*bbolt.Tx, *metastorev1.BlockList) ([]*metastorev1.BlockMeta, error)
+	GetBlockMetadata(context.Context, *metastorev1.BlockList) ([]*metastorev1.BlockMeta, error)
 }
 
 type IndexCommandLog interface {
 	AddBlockMetadata(*raft_log.AddBlockMetadataRequest) (*raft_log.AddBlockMetadataResponse, error)
-	ReplaceBlocks(*raft_log.ReplaceBlockMetadataRequest) (*raft_log.ReplaceBlockMetadataResponse, error)
 }
 
 type PlacementStats interface {
-	RecordStats(iter.Iterator[adaptiveplacement.Sample])
+	RecordStats(iter.Iterator[placement.StatsSample])
 }
 
 func NewIndexService(
 	logger log.Logger,
 	raftLog IndexCommandLog,
+	follower RaftFollower,
 	index IndexReader,
 	stats PlacementStats,
 ) *IndexService {
 	return &IndexService{
-		logger: logger,
-		raft:   raftLog,
-		index:  index,
-		stats:  stats,
+		logger:   logger,
+		raftLog:  raftLog,
+		follower: follower,
+		index:    index,
+		stats:    stats,
 	}
 }
 
 type IndexService struct {
 	metastorev1.IndexServiceServer
 
-	logger log.Logger
-	raft   IndexCommandLog
-	index  IndexReader
-	stats  PlacementStats
+	logger   log.Logger
+	raftLog  IndexCommandLog
+	follower RaftFollower
+
+	index IndexReader
+	stats PlacementStats
 }
 
 func (svc *IndexService) AddBlock(
 	_ context.Context,
 	req *metastorev1.AddBlockRequest,
 ) (resp *metastorev1.AddBlockResponse, err error) {
-	if err = SanitizeMetadata(req.Block); err != nil {
+	if err = block.SanitizeMetadata(req.Block); err != nil {
 		_ = level.Warn(svc.logger).Log("invalid metadata", "block_id", req.Block.Id, "err", err)
 		return nil, err
 	}
-
 	defer func() {
 		if err == nil {
 			svc.stats.RecordStats(statsFromMetadata(req.Block))
 		}
 	}()
-
-	if _, err = svc.raft.AddBlockMetadata(&raft_log.AddBlockMetadataRequest{Metadata: req.Block}); err != nil {
+	if _, err = svc.raftLog.AddBlockMetadata(&raft_log.AddBlockMetadataRequest{Metadata: req.Block}); err != nil {
 		_ = level.Error(svc.logger).Log("msg", "failed to add block", "block_id", req.Block.Id, "err", err)
 		return nil, err
 	}
-
 	return new(metastorev1.AddBlockResponse), nil
 }
 
-func (svc *IndexService) ReplaceBlocks(
-	_ context.Context,
-	req *metastorev1.ReplaceBlocksRequest,
-) (resp *metastorev1.ReplaceBlocksResponse, err error) {
-	replace := &raft_log.ReplaceBlockMetadataRequest{
-		Tenant:       req.SourceBlocks.Tenant,
-		Shard:        req.SourceBlocks.Shard,
-		SourceBlocks: req.SourceBlocks.Blocks,
-		NewBlocks:    req.NewBlocks,
-	}
-	if _, err = svc.raft.ReplaceBlocks(replace); err != nil {
-		_ = level.Error(svc.logger).Log("msg", "failed to replace blocks in metadata index", "err", err)
+func (svc *IndexService) GetBlockMetadata(
+	ctx context.Context,
+	req *metastorev1.GetBlockMetadataRequest,
+) (*metastorev1.GetBlockMetadataResponse, error) {
+	if err := svc.follower.WaitLeaderCommitIndexAppliedLocally(ctx); err != nil {
 		return nil, err
 	}
-	return new(metastorev1.ReplaceBlocksResponse), nil
+	if r := req.GetBlocks(); r == nil || len(r.Blocks) == 0 {
+		return new(metastorev1.GetBlockMetadataResponse), nil
+	}
+	blocks, err := svc.index.GetBlockMetadata(ctx, &metastorev1.BlockList{
+		Tenant: req.Blocks.Tenant,
+		Shard:  req.Blocks.Shard,
+		Blocks: req.Blocks.Blocks,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &metastorev1.GetBlockMetadataResponse{Blocks: blocks}, nil
 }
 
-func (svc *IndexService) GetBlockMetadata(
-	_ context.Context,
-	req *metastorev1.GetBlockMetadataRequest,
-) (resp *metastorev1.GetBlockMetadataResponse, err error) {
-	// TODO(kolesnikovae): Implement
-	return nil, nil
-}
-
-func SanitizeMetadata(md *metastorev1.BlockMeta) error {
-	// TODO(kolesnikovae): Implement and refactor to the block package.
-	_, err := ulid.Parse(md.Id)
-	return err
-}
-
-func statsFromMetadata(md *metastorev1.BlockMeta) iter.Iterator[adaptiveplacement.Sample] {
+func statsFromMetadata(md *metastorev1.BlockMeta) iter.Iterator[placement.StatsSample] {
 	return &sampleIterator{md: md}
 }
 
@@ -126,9 +113,9 @@ func (s *sampleIterator) Next() bool {
 	return true
 }
 
-func (s *sampleIterator) At() adaptiveplacement.Sample {
+func (s *sampleIterator) At() placement.StatsSample {
 	ds := s.md.Datasets[s.cur-1]
-	return adaptiveplacement.Sample{
+	return placement.StatsSample{
 		TenantID:    ds.TenantId,
 		DatasetName: ds.Name,
 		ShardOwner:  s.md.CreatedBy,

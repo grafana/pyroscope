@@ -109,3 +109,13 @@ func (i *instances) Next() bool {
 	}
 	return false
 }
+
+// StatsSample represents a sample of statistics for a specific dataset's
+// distribution and placement across shards.
+type StatsSample struct {
+	TenantID    string
+	DatasetName string
+	ShardOwner  string
+	ShardID     uint32
+	Size        uint64
+}

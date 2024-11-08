@@ -9,10 +9,9 @@ enum RaftCommand {
   RAFT_COMMAND_UNKNOWN = 0;
 
   RAFT_COMMAND_ADD_BLOCK_METADATA = 1;
-  RAFT_COMMAND_REPLACE_BLOCK_METADATA = 2;
 
-  RAFT_COMMAND_GET_COMPACTION_PLAN_UPDATE = 3;
-  RAFT_COMMAND_UPDATE_COMPACTION_PLAN = 4;
+  RAFT_COMMAND_GET_COMPACTION_PLAN_UPDATE = 2;
+  RAFT_COMMAND_UPDATE_COMPACTION_PLAN = 3;
 }
 
 message AddBlockMetadataRequest {
@@ -20,15 +19,6 @@ message AddBlockMetadataRequest {
 }
 
 message AddBlockMetadataResponse {}
-
-message ReplaceBlockMetadataRequest {
-  string tenant = 1;
-  uint32 shard = 2;
-  repeated string source_blocks = 3;
-  repeated metastore.v1.BlockMeta new_blocks = 4;
-}
-
-message ReplaceBlockMetadataResponse {}
 
 // GetCompactionPlanUpdateRequest requests CompactionPlanUpdate.
 // The resulting plan should be proposed to the raft members.
@@ -48,8 +38,10 @@ message GetCompactionPlanUpdateResponse {
 }
 
 message CompactionPlanUpdate {
-  repeated CompactionJobPlan new_jobs = 1;
-  repeated CompactionJobState schedule_updates = 2;
+  repeated CompactionJobState schedule_updates = 1;
+  repeated CompactionJobPlan new_jobs = 2;
+  repeated CompactionJobPlan assigned_jobs = 3;
+  repeated CompactionJobPlan completed_jobs = 4;
 }
 
 // CompactionJobState is produced in response to

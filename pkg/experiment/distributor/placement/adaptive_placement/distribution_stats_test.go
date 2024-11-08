@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement"
 	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement/adaptive_placementpb"
 	"github.com/grafana/pyroscope/pkg/iter"
 )
@@ -16,7 +17,7 @@ func Test_StatsTracker(t *testing.T) {
 	var now time.Duration
 
 	for ; now < window; now += time.Second {
-		stats.recordStats(now.Nanoseconds(), iter.NewSliceIterator([]Sample{
+		stats.recordStats(now.Nanoseconds(), iter.NewSliceIterator([]placement.StatsSample{
 			{TenantID: "tenant-a", DatasetName: "dataset-a", ShardID: 1, Size: 10},
 			{TenantID: "tenant-a", DatasetName: "dataset-b", ShardID: 1, Size: 10},
 		}))
@@ -52,7 +53,7 @@ func Test_StatsTracker(t *testing.T) {
 	// Reassign dataset-a to shard 2 and add dataset-c.
 	for ; now < time.Second*20; now += time.Second {
 		stats.recordStats(now.Nanoseconds(),
-			iter.NewSliceIterator([]Sample{
+			iter.NewSliceIterator([]placement.StatsSample{
 				{TenantID: "tenant-a", DatasetName: "dataset-a", ShardID: 2, Size: 10}, // Moved from shard 1.
 				{TenantID: "tenant-a", DatasetName: "dataset-b", ShardID: 1, Size: 10}, // Not changed.
 				{TenantID: "tenant-b", DatasetName: "dataset-c", ShardID: 2, Size: 10}, // Added.
@@ -94,7 +95,7 @@ func Test_StatsTracker(t *testing.T) {
 	// Next 30 seconds nothing changes.
 	for ; now < time.Minute; now += time.Second {
 		stats.recordStats(now.Nanoseconds(),
-			iter.NewSliceIterator([]Sample{
+			iter.NewSliceIterator([]placement.StatsSample{
 				{TenantID: "tenant-a", DatasetName: "dataset-a", ShardID: 2, Size: 10},
 				{TenantID: "tenant-a", DatasetName: "dataset-b", ShardID: 1, Size: 10},
 				{TenantID: "tenant-b", DatasetName: "dataset-c", ShardID: 2, Size: 10},
