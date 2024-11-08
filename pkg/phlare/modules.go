@@ -23,10 +23,6 @@ import (
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
-	gclGrpc "github.com/platinummonkey/go-concurrency-limits/grpc"
-	"github.com/platinummonkey/go-concurrency-limits/limit"
-	"github.com/platinummonkey/go-concurrency-limits/limiter"
-	"github.com/platinummonkey/go-concurrency-limits/strategy"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/collectors/version"
@@ -44,6 +40,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/compactor"
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/embedded/grafana"
+	"github.com/grafana/pyroscope/pkg/experiment/query_backend"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	readpath "github.com/grafana/pyroscope/pkg/frontend/read_path"
 	queryfrontend "github.com/grafana/pyroscope/pkg/frontend/read_path/query_frontend"
@@ -511,18 +508,11 @@ func (f *Phlare) initServer() (services.Service, error) {
 	f.Cfg.Server.GRPCMiddleware = append(f.Cfg.Server.GRPCMiddleware, util.RecoveryInterceptorGRPC)
 
 	if f.Cfg.v2Experiment && slices.Contains(f.Cfg.Target, QueryBackend) {
-		limitsLogger := limit.NoopLimitLogger{}
-		serverLimit, err := limit.NewGradient2Limit("server-fixed-limit", 20, 50, 20, nil, 0.2, 600, limitsLogger, nil)
+		concurrencyInterceptor, err := query_backend.CreateConcurrencyInterceptor(f.logger)
 		if err != nil {
 			return nil, err
 		}
-		serverLimiter, err := limiter.NewDefaultLimiter(serverLimit, 1, 1000, 1e6, 100, strategy.NewSimpleStrategy(20), limitsLogger, nil)
-		if err != nil {
-			panic(err)
-		}
-		options := []gclGrpc.InterceptorOption{gclGrpc.WithName("grpc-unary-server"), gclGrpc.WithLimiter(serverLimiter)}
-		gclInterceptor := gclGrpc.UnaryServerInterceptor(options...)
-		f.Cfg.Server.GRPCMiddleware = append(f.Cfg.Server.GRPCMiddleware, gclInterceptor)
+		f.Cfg.Server.GRPCMiddleware = append(f.Cfg.Server.GRPCMiddleware, concurrencyInterceptor)
 	}
 
 	f.setupWorkerTimeout()

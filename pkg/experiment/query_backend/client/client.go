@@ -29,8 +29,6 @@ func New(address string, grpcClientConfig grpcclient.Config) (*Client, error) {
 }
 
 func dial(address string, grpcClientConfig grpcclient.Config) (*grpc.ClientConn, error) {
-	grpcClientConfig.BackoffOnRatelimits = false
-	grpcClientConfig.ConnectTimeout = 0
 	options, err := grpcClientConfig.DialOption(nil, nil)
 	if err != nil {
 		return nil, err
@@ -40,7 +38,7 @@ func dial(address string, grpcClientConfig grpcclient.Config) (*grpc.ClientConn,
 		grpc.WithUnaryInterceptor(otgrpc.OpenTracingClientInterceptor(opentracing.GlobalTracer())),
 		grpc.WithDefaultServiceConfig(grpcServiceConfig),
 	)
-	return grpc.Dial(address, options...)
+	return grpc.NewClient(address, options...)
 }
 
 func (b *Client) Service() services.Service      { return b.service }
@@ -58,13 +56,14 @@ const grpcServiceConfig = `{
         "waitForReady": true,
         "retryPolicy": {
             "MaxAttempts": 500,
-            "InitialBackoff": ".3s",
-            "MaxBackoff": "1s",
-            "BackoffMultiplier": 1.2,
+            "InitialBackoff": "1s",
+            "MaxBackoff": "2s",
+            "BackoffMultiplier": 1.1,
             "RetryableStatusCodes": [
               "UNAVAILABLE",
               "RESOURCE_EXHAUSTED"
             ]
-        }
+        },
+		"timeout": "20s"
     }]
 }`

@@ -17,8 +17,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/util"
 )
 
-const defaultConcurrencyLimit = 25
-
 type Config struct {
 	Address          string            `yaml:"address"`
 	GRPCClientConfig grpcclient.Config `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate between the query-frontends and the query-schedulers."`
