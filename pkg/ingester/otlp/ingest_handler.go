@@ -11,9 +11,9 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
+	"github.com/grafana/dskit/user"
 	"google.golang.org/grpc"
 
-	"github.com/grafana/dskit/user"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	pprofileotlp "github.com/grafana/pyroscope/api/otlp/collector/profiles/v1experimental"
@@ -111,7 +111,7 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 					return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to convert from OTLP to legacy pprof: %w", err)
 				}
 
-				os.WriteFile(".tmp/elastic.pprof", pprofBytes, 0644)
+				_ = os.WriteFile(".tmp/elastic.pprof", pprofBytes, 0644)
 
 				req := &pushv1.PushRequest{
 					Series: []*pushv1.RawProfileSeries{

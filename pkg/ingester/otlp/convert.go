@@ -6,6 +6,7 @@ import (
 
 	googleProfile "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	otelProfile "github.com/grafana/pyroscope/api/otlp/profiles/v1experimental"
+
 	"google.golang.org/protobuf/proto"
 )
 
@@ -65,7 +66,7 @@ func ConvertOtelToGoogle(src *otelProfile.Profile) *googleProfile.Profile {
 	}
 
 	for _, m := range src.Mapping {
-		address, _ := locationMappingIndexAddressMap[m.Id]
+		address := locationMappingIndexAddressMap[m.Id]
 		addressStr := fmt.Sprintf("%s 0x%x", dst.StringTable[m.Filename], address)
 		dst.StringTable = append(dst.StringTable, addressStr)
 		// i == 0 function_id = functionOffset

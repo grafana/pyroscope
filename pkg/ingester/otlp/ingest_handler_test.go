@@ -3,10 +3,11 @@ package otlp
 import (
 	"testing"
 
-	"github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/stretchr/testify/assert"
+
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	v1 "github.com/grafana/pyroscope/api/otlp/common/v1"
 	"github.com/grafana/pyroscope/api/otlp/profiles/v1experimental"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestGetServiceNameFromAttributes(t *testing.T) {
