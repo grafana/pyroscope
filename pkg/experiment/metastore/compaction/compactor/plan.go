@@ -1,6 +1,7 @@
 package compactor
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -19,11 +20,12 @@ type plan struct {
 	tx  *bbolt.Tx
 	cmd *raft.Log
 
+	// Read-only.
 	compactor *Compactor
+	batches   *batchIter
+	blocks    *blockIter
 
-	batches *batchIter
-	blocks  *blockIter
-	level   uint32
+	level uint32
 }
 
 func (p *plan) CreateJob() (*raft_log.CompactionJobPlan, error) {
@@ -109,6 +111,8 @@ func (p *plan) nextJob() *plannedJob {
 	return nil
 }
 
+// Job name is a variable length string that should be globally unique
+// and is used as a tiebreaker in the compaction job queue ordering.
 func nameJob(plan *plannedJob) {
 	// Should be on stack; 16b per block; expected ~20 blocks.
 	buf := make([]byte, 0, 512)
@@ -116,7 +120,7 @@ func nameJob(plan *plannedJob) {
 		buf = append(buf, b...)
 	}
 	var name strings.Builder
-	name.WriteString(strconv.FormatUint(xxhash.Sum64(buf), 10))
+	name.WriteString(fmt.Sprintf("%x", xxhash.Sum64(buf)))
 	name.WriteByte('-')
 	name.WriteByte('T')
 	name.WriteString(plan.tenant)
