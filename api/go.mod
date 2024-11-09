@@ -4,6 +4,7 @@ go 1.22.7
 
 require (
 	connectrpc.com/connect v1.16.2
+	github.com/gogo/protobuf v1.3.2
 	github.com/gorilla/mux v1.8.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.0
 	github.com/planetscale/vtprotobuf v0.6.0
