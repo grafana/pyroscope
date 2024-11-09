@@ -30,8 +30,6 @@ func (q *jobQueue) level(x uint32) *priorityQueue {
 	return &q.levels[x]
 }
 
-// TODO: check nil queue, and non-zero index.
-
 func (q *jobQueue) put(state *raft_log.CompactionJobState) {
 	job, exists := q.jobs[state.Name]
 	if exists {
@@ -40,29 +38,31 @@ func (q *jobQueue) put(state *raft_log.CompactionJobState) {
 		return
 	}
 	j := &jobEntry{CompactionJobState: state}
-	q.jobs[job.Name] = j
+	q.jobs[state.Name] = j
 	heap.Push(q.level(state.CompactionLevel), j)
 }
 
-func (q *jobQueue) delete(name string) {
+func (q *jobQueue) delete(name string) *raft_log.CompactionJobState {
 	if j, exists := q.jobs[name]; exists {
-		heap.Remove(q.level(j.CompactionLevel), q.jobs[j.Name].index)
+		delete(q.jobs, name)
+		return heap.Remove(q.level(j.CompactionLevel), j.index).(*jobEntry).CompactionJobState
 	}
+	return nil
 }
 
 // The function determines the scheduling order of the jobs.
 func compareJobs(a, b *jobEntry) int {
 	// Pick jobs in the "initial" (unspecified) state first.
 	if a.Status != b.Status {
-		return int(a.Status - b.Status)
+		return int(a.Status) - int(b.Status)
 	}
 	// Faulty jobs should wait.
 	if a.Failures != b.Failures {
-		return int(a.Failures - b.Failures)
+		return int(a.Failures) - int(b.Failures)
 	}
 	// Jobs with earlier deadlines should go first.
 	if a.LeaseExpiresAt != b.LeaseExpiresAt {
-		return int(a.LeaseExpiresAt - b.LeaseExpiresAt)
+		return int(a.LeaseExpiresAt) - int(b.LeaseExpiresAt)
 	}
 	// Tiebreaker: the job name must not bias the order.
 	return strings.Compare(a.Name, b.Name)
