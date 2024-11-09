@@ -64,17 +64,13 @@ func NewScheduler(config SchedulerConfig, store JobStore) *Scheduler {
 	}
 }
 
-func (sc *Scheduler) NewSchedule(tx *bbolt.Tx, raft *raft.Log) compaction.Schedule {
+func (sc *Scheduler) NewSchedule(tx *bbolt.Tx, cmd *raft.Log) compaction.Schedule {
 	return &schedule{
 		tx:        tx,
-		raft:      raft,
+		token:     cmd.Index,
+		now:       cmd.AppendedAt,
 		scheduler: sc,
-		assigner: &jobAssigner{
-			token:  raft.Index,
-			now:    raft.AppendedAt,
-			config: sc.config,
-			queue:  sc.queue,
-		},
+		updates:   make(map[string]*raft_log.CompactionJobUpdate),
 	}
 }
 
