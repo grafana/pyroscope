@@ -90,15 +90,15 @@ func (p *Compactor) NewPlan(tx *bbolt.Tx, cmd *raft.Log) compaction.Plan {
 	}
 }
 
-func (p *Compactor) Scheduled(tx *bbolt.Tx, jobs ...*raft_log.CompactionJobPlan) error {
+func (p *Compactor) Scheduled(tx *bbolt.Tx, jobs ...*raft_log.CompactionJobUpdate) error {
 	for _, job := range jobs {
 		k := compactionKey{
-			tenant: job.Tenant,
-			shard:  job.Shard,
-			level:  job.CompactionLevel,
+			tenant: job.Plan.Tenant,
+			shard:  job.Plan.Shard,
+			level:  job.Plan.CompactionLevel,
 		}
 		staged := p.queue.stagedBlocks(k)
-		for _, block := range job.SourceBlocks {
+		for _, block := range job.Plan.SourceBlocks {
 			e := staged.delete(block)
 			if e == zeroBlockEntry {
 				continue

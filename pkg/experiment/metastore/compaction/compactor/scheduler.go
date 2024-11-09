@@ -70,7 +70,8 @@ func (sc *Scheduler) NewSchedule(tx *bbolt.Tx, raft *raft.Log) compaction.Schedu
 		raft:      raft,
 		scheduler: sc,
 		assigner: &jobAssigner{
-			raft:   raft,
+			token:  raft.Index,
+			now:    raft.AppendedAt,
 			config: sc.config,
 			queue:  sc.queue,
 		},
@@ -79,26 +80,31 @@ func (sc *Scheduler) NewSchedule(tx *bbolt.Tx, raft *raft.Log) compaction.Schedu
 
 func (sc *Scheduler) UpdateSchedule(tx *bbolt.Tx, update *raft_log.CompactionPlanUpdate) error {
 	for _, job := range update.NewJobs {
-		if err := sc.store.StoreJobPlan(tx, job); err != nil {
+		if err := sc.store.StoreJobPlan(tx, job.Plan); err != nil {
 			return err
 		}
+		if err := sc.store.UpdateJobState(tx, job.State); err != nil {
+			return err
+		}
+		sc.queue.put(job.State)
 	}
 
-	for _, state := range update.ScheduleUpdates {
-		if err := sc.store.UpdateJobState(tx, state); err != nil {
+	for _, job := range update.AssignedJobs {
+		if err := sc.store.UpdateJobState(tx, job.State); err != nil {
 			return err
 		}
-		sc.queue.put(state)
+		sc.queue.put(job.State)
 	}
 
 	for _, job := range update.CompletedJobs {
-		if err := sc.store.DeleteJobPlan(tx, job.Name); err != nil {
+		name := job.Plan.Name
+		if err := sc.store.DeleteJobPlan(tx, name); err != nil {
 			return err
 		}
-		if err := sc.store.DeleteJobState(tx, job.Name); err != nil {
+		if err := sc.store.DeleteJobState(tx, name); err != nil {
 			return err
 		}
-		sc.queue.delete(job.Name)
+		sc.queue.delete(name)
 	}
 
 	return nil

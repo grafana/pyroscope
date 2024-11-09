@@ -10,7 +10,6 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction"
 )
 
 // schedule should be used to prepare the compaction plan update.
@@ -23,28 +22,19 @@ type schedule struct {
 	assigner  *jobAssigner
 }
 
-func (p *schedule) AddJob(plan *raft_log.CompactionJobPlan) (*compaction.JobUpdate, error) {
-	state := p.scheduler.queue.jobs[plan.Name]
-	if state != nil {
-		// Even if the job already exists, we will try to reset its state.
-		// This should never happen; indicates a bug in the compaction planner.
+func (p *schedule) AssignJob() (*raft_log.CompactionJobUpdate, error) {
+	state := p.assigner.assign()
+	if state == nil {
+		return nil, nil
 	}
-
-	job := &compaction.JobUpdate{
-		Plan: plan,
-		State: &raft_log.CompactionJobState{
-			Name:            plan.Name,
-			CompactionLevel: plan.CompactionLevel,
-			Status:          metastorev1.CompactionJobStatus_COMPACTION_STATUS_UNSPECIFIED,
-			AddedAt:         p.raft.AppendedAt.UnixNano(),
-			Token:           p.raft.Index,
-		},
+	job, err := p.loadJobPlan(state.Name)
+	if err != nil || job == nil {
+		return nil, err
 	}
-
-	return job, nil
+	return &raft_log.CompactionJobUpdate{State: state, Plan: job}, err
 }
 
-func (p *schedule) UpdateJob(status *metastorev1.CompactionJobStatusUpdate) (*compaction.JobUpdate, error) {
+func (p *schedule) UpdateJob(status *metastorev1.CompactionJobStatusUpdate) (*raft_log.CompactionJobUpdate, error) {
 	state := p.scheduler.queue.jobs[status.Name]
 	if state == nil {
 		// This may happen if the job has been reassigned
@@ -61,7 +51,7 @@ func (p *schedule) UpdateJob(status *metastorev1.CompactionJobStatusUpdate) (*co
 	case metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS:
 		// A regular lease renewal.
 		newState.LeaseExpiresAt = p.assigner.allocateLease()
-		return &compaction.JobUpdate{State: newState}, nil
+		return &raft_log.CompactionJobUpdate{State: newState}, nil
 
 	case metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS:
 		// The state does not change: it will be removed when the update
@@ -79,34 +69,46 @@ func (p *schedule) UpdateJob(status *metastorev1.CompactionJobStatusUpdate) (*co
 	return nil, nil
 }
 
-func (p *schedule) completeJob(status *metastorev1.CompactionJobStatusUpdate) (*compaction.JobUpdate, error) {
+func (p *schedule) completeJob(status *metastorev1.CompactionJobStatusUpdate) (*raft_log.CompactionJobUpdate, error) {
 	completed := status.CompactedBlocks
 	if completed == nil {
 		return nil, nil
 	}
-
 	job, err := p.loadJobPlan(status.Name)
 	if err != nil || job == nil {
 		return nil, err
 	}
+	// We always trust the compaction job results more that the plan.
+	// Theoretically, it's guaranteed that the stored list of source
+	// blocks is identical to the one reported by the worker. However,
+	// it's also guaranteed that the worker won't lie, and that these
+	// are the blocks it processed.
+	job.SourceBlocks = completed.SourceBlocks
 	job.DeletedBlocks = completed.DeletedBlocks
 	job.CompactedBlocks = completed.CompactedBlocks
-
-	return &compaction.JobUpdate{Plan: job}, nil
+	return &raft_log.CompactionJobUpdate{Plan: job}, nil
 }
 
-func (p *schedule) AssignJob() (*compaction.JobUpdate, error) {
-	state := p.assigner.assign()
-	if state == nil {
-		return nil, nil
+// AddJob creates a state for the new plan. The method must be called
+// after the last AssignJob and UpdateJob calls.
+func (p *schedule) AddJob(plan *raft_log.CompactionJobPlan) (*raft_log.CompactionJobUpdate, error) {
+	// TODO(kolesnikvoae): Job queue size limit.
+	state := p.scheduler.queue.jobs[plan.Name]
+	if state != nil {
+		// Even if the job already exists, we will try to reset its state.
+		// This should never happen; indicates a bug in the compaction planner.
 	}
-
-	job, err := p.loadJobPlan(state.Name)
-	if err != nil || job == nil {
-		return nil, err
+	job := raft_log.CompactionJobUpdate{
+		Plan: plan,
+		State: &raft_log.CompactionJobState{
+			Name:            plan.Name,
+			CompactionLevel: plan.CompactionLevel,
+			Status:          metastorev1.CompactionJobStatus_COMPACTION_STATUS_UNSPECIFIED,
+			AddedAt:         p.raft.AppendedAt.UnixNano(),
+			Token:           p.raft.Index,
+		},
 	}
-
-	return &compaction.JobUpdate{State: state, Plan: job}, err
+	return &job, nil
 }
 
 func (p *schedule) loadJobPlan(name string) (*raft_log.CompactionJobPlan, error) {
@@ -133,7 +135,8 @@ func (p *schedule) deleteDangling(name string) {
 }
 
 type jobAssigner struct {
-	raft   *raft.Log
+	token  uint64
+	now    time.Time
 	config SchedulerConfig
 	queue  *jobQueue
 	copied []priorityQueue
@@ -171,29 +174,25 @@ func (a *jobAssigner) assign() *raft_log.CompactionJobState {
 	return nil
 }
 
-func (a *jobAssigner) now() time.Time { return a.raft.AppendedAt }
-
-func (a *jobAssigner) allocateLease() int64 { return a.now().Add(a.config.LeaseDuration).UnixNano() }
+func (a *jobAssigner) allocateLease() int64 { return a.now.Add(a.config.LeaseDuration).UnixNano() }
 
 func (a *jobAssigner) assignJob(e *jobEntry) *raft_log.CompactionJobState {
 	job := e.CompactionJobState.CloneVT()
 	job.Status = metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS
 	job.LeaseExpiresAt = a.allocateLease()
-	job.Token = a.raft.Index
+	job.Token = a.token
 	return job
 }
 
 func (a *jobAssigner) shouldReassign(job *jobEntry) bool {
-	abandoned := a.now().UnixNano() > job.LeaseExpiresAt
+	abandoned := a.now.UnixNano() > job.LeaseExpiresAt
 	faulty := a.config.MaxFailures > 0 && job.Failures >= a.config.MaxFailures
 	return abandoned && !faulty
 }
 
 // The queue must not be modified by assigner. Therefore, we're copying the
-// queue levels lazily. The queue is supposed to be small (dozens of jobs
+// queue levels lazily. The queue is supposed to be small (hundreds of jobs
 // running concurrently); in the worst case, we have a ~24b alloc per entry.
-// Alternatively, we could push back the jobs to the queue, but it would
-// require an explicit rollback call.
 func (a *jobAssigner) queueLevelCopy(i int) *priorityQueue {
 	s := i + 1 // Levels are 0-based.
 	if s >= len(a.copied) || len(a.copied[i]) == 0 {

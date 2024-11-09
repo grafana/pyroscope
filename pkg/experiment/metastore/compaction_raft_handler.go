@@ -27,50 +27,58 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 	// We need to generate a plan of the update caused by the new status
 	// report from the worker. The plan will be used to update the schedule
 	// after the Raft consensus is reached.
+	plan := h.planner.NewPlan(tx, cmd)
+	schedule := h.scheduler.NewSchedule(tx, cmd)
+
 	p := &raft_log.CompactionPlanUpdate{
-		NewJobs:         make([]*raft_log.CompactionJobPlan, 0, req.AssignJobsMax),
-		ScheduleUpdates: make([]*raft_log.CompactionJobState, 0, len(req.StatusUpdates)),
+		NewJobs:       make([]*raft_log.CompactionJobUpdate, 0, req.AssignJobsMax),
+		AssignedJobs:  make([]*raft_log.CompactionJobUpdate, 0, len(req.StatusUpdates)),
+		CompletedJobs: make([]*raft_log.CompactionJobUpdate, 0, len(req.StatusUpdates)),
 	}
 
-	schedule := h.scheduler.NewSchedule(tx, cmd)
+	// Any status update may translate to either a job lease refresh, or a
+	// completed job. Status update might be rejected, if the worker has
+	// lost the job. We treat revoked jobs as vacant slots for new
+	// assignments, therefore we try to update jobs' status first.
+	var revoked int
 	for _, status := range req.StatusUpdates {
 		job, err := schedule.UpdateJob(status)
 		if err != nil {
 			return nil, err
 		}
-		if job == nil {
-			// Nil indicates that the job has been abandoned and reassigned,
-			// or the request is not valid. This may happen from time to time,
-			// and we should just ignore such requests.
-			continue
-		}
-		// There are two possible outcomes: the job is completed, or its state
-		// has been updated. If state is not present, the job is completed, and
-		// the results are added to the job. Otherwise, this is an update, and
-		// the job plan is not updated (= not present).
-		if job.State == nil {
-			p.CompletedJobs = append(p.CompletedJobs, job.Plan)
-		} else {
-			p.ScheduleUpdates = append(p.ScheduleUpdates, job.State)
+
+		switch {
+		case job == nil:
+			// Nil update indicates that the job has been abandoned and
+			// reassigned, or the request is not valid. This may happen
+			// from time to time, and we should just ignore such requests.
+			revoked++
+
+		case job.State == nil:
+			// Nil state indicates that the job has been completed.
+			p.CompletedJobs = append(p.CompletedJobs, job)
+
+		default:
+			// A state has been updated. As of now, this is always a regular
+			// job lease (assignment) refresh, which we need to propagate to
+			// the worker.
+			p.AssignedJobs = append(p.AssignedJobs, job)
 		}
 	}
 
-	// Try to assign existing jobs first. There are several reasons, the main
-	// one being to keep the scheduler job queue short. Otherwise, new jobs may
-	// be created and left in the queue unassigned for a long time if workers
-	// do not have enough capacity to process them promptly.
+	// AssignJobsMax tells us how many free slots the worker has. We need to
+	// account for the revoked jobs, as they are freeing the worker slots.
+	capacity := int(req.AssignJobsMax) + revoked
+
+	// NOTE(kolesnikovae): Next, we need to create new jobs and assign existing
+	// ones; On one hand, if we assign first, we may violate the SJF principle.
+	// If we plan new jobs first, it may cause starvation of lower-priority
+	// jobs, when the compaction worker does not keep up with the high-priority
+	// job influx.
 	//
-	// The worker may be left without new assignments, if the queue is empty
-	// at the moment. If the data flow is stable, this does not increase the
-	// job wait time any significantly: if new jobs are created due to our
-	// update (added compacted blocks), they cannot be smaller (have higher
-	// priority) than ones in the queue.
-	//
-	// However, this helps to prevent the case when the same worker handles
-	// a chain of jobs on its own, when no new blocks arrive, and no new jobs
-	// are created. Instead, we want others to pick the job to distribute the
-	// load more evenly.
-	for len(p.NewJobs) < int(req.AssignJobsMax) {
+	// As of now, we assign jobs before creating ones. If we change it, we need
+	// to make sure that the Schedule implementation allows doing this.
+	for assigned := 0; assigned < capacity; assigned++ {
 		job, err := schedule.AssignJob()
 		if err != nil {
 			return nil, err
@@ -79,15 +87,10 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 			// No more jobs to assign.
 			break
 		}
-		p.ScheduleUpdates = append(p.ScheduleUpdates, job.State)
-		p.AssignedJobs = append(p.AssignedJobs, job.Plan)
+		p.AssignedJobs = append(p.AssignedJobs, job)
 	}
 
-	// Request to create more jobs: we expect that at least the requested job
-	// capacity is utilized next time we ask for new assignments (this worker
-	// instance or not).
-	plan := h.planner.NewPlan(tx, cmd)
-	for len(p.NewJobs) < int(req.AssignJobsMax) {
+	for created := 0; created < capacity; created++ {
 		planned, err := plan.CreateJob()
 		if err != nil {
 			return nil, err
@@ -96,12 +99,11 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 			// No more jobs to create.
 			break
 		}
-		job, err := schedule.AddJob(planned)
+		newJob, err := schedule.AddJob(planned)
 		if err != nil {
 			return nil, err
 		}
-		p.NewJobs = append(p.NewJobs, planned)
-		p.ScheduleUpdates = append(p.ScheduleUpdates, job.State)
+		p.NewJobs = append(p.NewJobs, newJob)
 	}
 
 	return &raft_log.GetCompactionPlanUpdateResponse{PlanUpdate: p}, nil
@@ -116,8 +118,8 @@ func (h *CompactionCommandHandler) UpdateCompactionPlan(
 
 	for _, job := range req.PlanUpdate.CompletedJobs {
 		compacted := &metastorev1.CompactedBlocks{
-			CompactedBlocks: job.CompactedBlocks,
-			DeletedBlocks:   job.DeletedBlocks,
+			CompactedBlocks: job.Plan.CompactedBlocks,
+			DeletedBlocks:   job.Plan.DeletedBlocks,
 		}
 		if err := h.index.ReplaceBlocks(tx, cmd, compacted); err != nil {
 			return nil, err

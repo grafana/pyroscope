@@ -24,7 +24,7 @@ type Planner interface {
 	// Scheduled must be called for each job after it is scheduled
 	// to remove the job from future plans.
 	// Implementation: the method must be idempotent.
-	Scheduled(*bbolt.Tx, ...*raft_log.CompactionJobPlan) error
+	Scheduled(*bbolt.Tx, ...*raft_log.CompactionJobUpdate) error
 }
 
 type Plan interface {
@@ -45,27 +45,15 @@ type Scheduler interface {
 
 type Schedule interface {
 	// UpdateJob is called on behalf of the worker to update the job status.
-	// A nil state should be interpreted as "no new lease": stop the work.
+	// A nil response should be interpreted as "no new lease": stop the work.
 	// The scheduler must validate that the worker is allowed to update the job,
 	// by comparing the fencing token of the job. Refer to the documentation for
 	// details.
-	UpdateJob(*metastorev1.CompactionJobStatusUpdate) (*JobUpdate, error)
+	UpdateJob(*metastorev1.CompactionJobStatusUpdate) (*raft_log.CompactionJobUpdate, error)
 
 	// AssignJob is called on behalf of the worker to request a new job.
-	// This method should be called before any UpdateJob to avoid assigning
-	// the same job unassigned as a result of the update (e.g, a job failure).
-	AssignJob() (*JobUpdate, error)
+	AssignJob() (*raft_log.CompactionJobUpdate, error)
 
 	// AddJob is called on behalf of the planner to add a new job to the schedule.
-	AddJob(*raft_log.CompactionJobPlan) (*JobUpdate, error)
-}
-
-// JobUpdate represents an update of the compaction job.
-// Job plan and state may be nil, depending on the context:
-//   - If the job is created, both state and plan are present.
-//   - If the job is completed, the state is nil, and the complete plan is present.
-//   - If the job is in progress, the state is present, and the plan is nil.
-type JobUpdate struct {
-	State *raft_log.CompactionJobState
-	Plan  *raft_log.CompactionJobPlan
+	AddJob(*raft_log.CompactionJobPlan) (*raft_log.CompactionJobUpdate, error)
 }

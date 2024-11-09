@@ -20,10 +20,10 @@ type plan struct {
 	cmd *raft.Log
 
 	compactor *Compactor
-	level     uint32
 
 	batches *batchIter
 	blocks  *blockIter
+	level   uint32
 }
 
 func (p *plan) CreateJob() (*raft_log.CompactionJobPlan, error) {
@@ -31,14 +31,12 @@ func (p *plan) CreateJob() (*raft_log.CompactionJobPlan, error) {
 	if planned == nil {
 		return nil, nil
 	}
-
 	// TODO(kolesnikovae): Configurable batch size.
 	tombstones, err := iter.Slice(p.compactor.index.ListExpiredTombstones(p.tx, p.cmd))
 	if err != nil {
 		return nil, err
 	}
-
-	job := &raft_log.CompactionJobPlan{
+	job := raft_log.CompactionJobPlan{
 		Name:            planned.name,
 		Shard:           planned.shard,
 		Tenant:          planned.tenant,
@@ -46,15 +44,7 @@ func (p *plan) CreateJob() (*raft_log.CompactionJobPlan, error) {
 		SourceBlocks:    planned.blocks,
 		DeletedBlocks:   tombstones,
 	}
-	if len(job.SourceBlocks) == 0 {
-		// This should never happen: blocks will remain in the queue.
-		// If we leave the blocks in the queue they will be dangling there
-		// forever. Therefore, we remove it now: this is an exceptional
-		// case – no state should be changed in compactionSchedule.
-		_ = p.compactor.Scheduled(p.tx, job)
-		return nil, nil
-	}
-	return job, nil
+	return &job, nil
 }
 
 type plannedJob struct {

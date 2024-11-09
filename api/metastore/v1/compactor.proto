@@ -37,7 +37,7 @@ message CompactionJobAssignment {
   string name = 1;
   uint64 token = 2;
   int64 lease_expires_at = 3;
-  CompactionJobStatus job_status = 4;
+  CompactionJobStatus status = 4;
 }
 
 message CompactionJobStatusUpdate {
@@ -49,8 +49,9 @@ message CompactionJobStatusUpdate {
 }
 
 message CompactedBlocks {
-  repeated metastore.v1.BlockMeta compacted_blocks = 1;
-  repeated string deleted_blocks = 2;
+  repeated string source_blocks = 1;
+  repeated metastore.v1.BlockMeta compacted_blocks = 2;
+  repeated string deleted_blocks = 3;
 }
 
 enum CompactionJobStatus {

@@ -65,7 +65,6 @@ func (m *GetCompactionPlanUpdateRequest) CloneVT() *GetCompactionPlanUpdateReque
 	}
 	r := new(GetCompactionPlanUpdateRequest)
 	r.AssignJobsMax = m.AssignJobsMax
-	r.DeleteTombstonesMax = m.DeleteTombstonesMax
 	if rhs := m.StatusUpdates; rhs != nil {
 		tmpContainer := make([]*v1.CompactionJobStatusUpdate, len(rhs))
 		for k, v := range rhs {
@@ -112,29 +111,22 @@ func (m *CompactionPlanUpdate) CloneVT() *CompactionPlanUpdate {
 		return (*CompactionPlanUpdate)(nil)
 	}
 	r := new(CompactionPlanUpdate)
-	if rhs := m.ScheduleUpdates; rhs != nil {
-		tmpContainer := make([]*CompactionJobState, len(rhs))
-		for k, v := range rhs {
-			tmpContainer[k] = v.CloneVT()
-		}
-		r.ScheduleUpdates = tmpContainer
-	}
 	if rhs := m.NewJobs; rhs != nil {
-		tmpContainer := make([]*CompactionJobPlan, len(rhs))
+		tmpContainer := make([]*CompactionJobUpdate, len(rhs))
 		for k, v := range rhs {
 			tmpContainer[k] = v.CloneVT()
 		}
 		r.NewJobs = tmpContainer
 	}
 	if rhs := m.AssignedJobs; rhs != nil {
-		tmpContainer := make([]*CompactionJobPlan, len(rhs))
+		tmpContainer := make([]*CompactionJobUpdate, len(rhs))
 		for k, v := range rhs {
 			tmpContainer[k] = v.CloneVT()
 		}
 		r.AssignedJobs = tmpContainer
 	}
 	if rhs := m.CompletedJobs; rhs != nil {
-		tmpContainer := make([]*CompactionJobPlan, len(rhs))
+		tmpContainer := make([]*CompactionJobUpdate, len(rhs))
 		for k, v := range rhs {
 			tmpContainer[k] = v.CloneVT()
 		}
@@ -148,6 +140,24 @@ func (m *CompactionPlanUpdate) CloneVT() *CompactionPlanUpdate {
 }
 
 func (m *CompactionPlanUpdate) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *CompactionJobUpdate) CloneVT() *CompactionJobUpdate {
+	if m == nil {
+		return (*CompactionJobUpdate)(nil)
+	}
+	r := new(CompactionJobUpdate)
+	r.State = m.State.CloneVT()
+	r.Plan = m.Plan.CloneVT()
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *CompactionJobUpdate) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
@@ -319,9 +329,6 @@ func (this *GetCompactionPlanUpdateRequest) EqualVT(that *GetCompactionPlanUpdat
 	if this.AssignJobsMax != that.AssignJobsMax {
 		return false
 	}
-	if this.DeleteTombstonesMax != that.DeleteTombstonesMax {
-		return false
-	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
@@ -357,23 +364,6 @@ func (this *CompactionPlanUpdate) EqualVT(that *CompactionPlanUpdate) bool {
 	} else if this == nil || that == nil {
 		return false
 	}
-	if len(this.ScheduleUpdates) != len(that.ScheduleUpdates) {
-		return false
-	}
-	for i, vx := range this.ScheduleUpdates {
-		vy := that.ScheduleUpdates[i]
-		if p, q := vx, vy; p != q {
-			if p == nil {
-				p = &CompactionJobState{}
-			}
-			if q == nil {
-				q = &CompactionJobState{}
-			}
-			if !p.EqualVT(q) {
-				return false
-			}
-		}
-	}
 	if len(this.NewJobs) != len(that.NewJobs) {
 		return false
 	}
@@ -381,10 +371,10 @@ func (this *CompactionPlanUpdate) EqualVT(that *CompactionPlanUpdate) bool {
 		vy := that.NewJobs[i]
 		if p, q := vx, vy; p != q {
 			if p == nil {
-				p = &CompactionJobPlan{}
+				p = &CompactionJobUpdate{}
 			}
 			if q == nil {
-				q = &CompactionJobPlan{}
+				q = &CompactionJobUpdate{}
 			}
 			if !p.EqualVT(q) {
 				return false
@@ -398,10 +388,10 @@ func (this *CompactionPlanUpdate) EqualVT(that *CompactionPlanUpdate) bool {
 		vy := that.AssignedJobs[i]
 		if p, q := vx, vy; p != q {
 			if p == nil {
-				p = &CompactionJobPlan{}
+				p = &CompactionJobUpdate{}
 			}
 			if q == nil {
-				q = &CompactionJobPlan{}
+				q = &CompactionJobUpdate{}
 			}
 			if !p.EqualVT(q) {
 				return false
@@ -415,10 +405,10 @@ func (this *CompactionPlanUpdate) EqualVT(that *CompactionPlanUpdate) bool {
 		vy := that.CompletedJobs[i]
 		if p, q := vx, vy; p != q {
 			if p == nil {
-				p = &CompactionJobPlan{}
+				p = &CompactionJobUpdate{}
 			}
 			if q == nil {
-				q = &CompactionJobPlan{}
+				q = &CompactionJobUpdate{}
 			}
 			if !p.EqualVT(q) {
 				return false
@@ -430,6 +420,28 @@ func (this *CompactionPlanUpdate) EqualVT(that *CompactionPlanUpdate) bool {
 
 func (this *CompactionPlanUpdate) EqualMessageVT(thatMsg proto.Message) bool {
 	that, ok := thatMsg.(*CompactionPlanUpdate)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *CompactionJobUpdate) EqualVT(that *CompactionJobUpdate) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if !this.State.EqualVT(that.State) {
+		return false
+	}
+	if !this.Plan.EqualVT(that.Plan) {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *CompactionJobUpdate) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*CompactionJobUpdate)
 	if !ok {
 		return false
 	}
@@ -692,11 +704,6 @@ func (m *GetCompactionPlanUpdateRequest) MarshalToSizedBufferVT(dAtA []byte) (in
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if m.DeleteTombstonesMax != 0 {
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.DeleteTombstonesMax))
-		i--
-		dAtA[i] = 0x18
-	}
 	if m.AssignJobsMax != 0 {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.AssignJobsMax))
 		i--
@@ -811,7 +818,7 @@ func (m *CompactionPlanUpdate) MarshalToSizedBufferVT(dAtA []byte) (int, error) 
 			i -= size
 			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
 			i--
-			dAtA[i] = 0x22
+			dAtA[i] = 0x1a
 		}
 	}
 	if len(m.AssignedJobs) > 0 {
@@ -823,7 +830,7 @@ func (m *CompactionPlanUpdate) MarshalToSizedBufferVT(dAtA []byte) (int, error) 
 			i -= size
 			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
 			i--
-			dAtA[i] = 0x1a
+			dAtA[i] = 0x12
 		}
 	}
 	if len(m.NewJobs) > 0 {
@@ -835,20 +842,61 @@ func (m *CompactionPlanUpdate) MarshalToSizedBufferVT(dAtA []byte) (int, error) 
 			i -= size
 			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
 			i--
-			dAtA[i] = 0x12
-		}
-	}
-	if len(m.ScheduleUpdates) > 0 {
-		for iNdEx := len(m.ScheduleUpdates) - 1; iNdEx >= 0; iNdEx-- {
-			size, err := m.ScheduleUpdates[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
-			i--
 			dAtA[i] = 0xa
 		}
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *CompactionJobUpdate) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *CompactionJobUpdate) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *CompactionJobUpdate) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.Plan != nil {
+		size, err := m.Plan.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x12
+	}
+	if m.State != nil {
+		size, err := m.State.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0xa
 	}
 	return len(dAtA) - i, nil
 }
@@ -1149,9 +1197,6 @@ func (m *GetCompactionPlanUpdateRequest) SizeVT() (n int) {
 	if m.AssignJobsMax != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.AssignJobsMax))
 	}
-	if m.DeleteTombstonesMax != 0 {
-		n += 1 + protohelpers.SizeOfVarint(uint64(m.DeleteTombstonesMax))
-	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -1176,12 +1221,6 @@ func (m *CompactionPlanUpdate) SizeVT() (n int) {
 	}
 	var l int
 	_ = l
-	if len(m.ScheduleUpdates) > 0 {
-		for _, e := range m.ScheduleUpdates {
-			l = e.SizeVT()
-			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-		}
-	}
 	if len(m.NewJobs) > 0 {
 		for _, e := range m.NewJobs {
 			l = e.SizeVT()
@@ -1199,6 +1238,24 @@ func (m *CompactionPlanUpdate) SizeVT() (n int) {
 			l = e.SizeVT()
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *CompactionJobUpdate) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.State != nil {
+		l = m.State.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.Plan != nil {
+		l = m.Plan.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -1544,25 +1601,6 @@ func (m *GetCompactionPlanUpdateRequest) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
-		case 3:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field DeleteTombstonesMax", wireType)
-			}
-			m.DeleteTombstonesMax = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.DeleteTombstonesMax |= uint32(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
@@ -1703,40 +1741,6 @@ func (m *CompactionPlanUpdate) UnmarshalVT(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ScheduleUpdates", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.ScheduleUpdates = append(m.ScheduleUpdates, &CompactionJobState{})
-			if err := m.ScheduleUpdates[len(m.ScheduleUpdates)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field NewJobs", wireType)
 			}
 			var msglen int
@@ -1764,12 +1768,12 @@ func (m *CompactionPlanUpdate) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.NewJobs = append(m.NewJobs, &CompactionJobPlan{})
+			m.NewJobs = append(m.NewJobs, &CompactionJobUpdate{})
 			if err := m.NewJobs[len(m.NewJobs)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
-		case 3:
+		case 2:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field AssignedJobs", wireType)
 			}
@@ -1798,12 +1802,12 @@ func (m *CompactionPlanUpdate) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.AssignedJobs = append(m.AssignedJobs, &CompactionJobPlan{})
+			m.AssignedJobs = append(m.AssignedJobs, &CompactionJobUpdate{})
 			if err := m.AssignedJobs[len(m.AssignedJobs)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
-		case 4:
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field CompletedJobs", wireType)
 			}
@@ -1832,8 +1836,131 @@ func (m *CompactionPlanUpdate) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.CompletedJobs = append(m.CompletedJobs, &CompactionJobPlan{})
+			m.CompletedJobs = append(m.CompletedJobs, &CompactionJobUpdate{})
 			if err := m.CompletedJobs[len(m.CompletedJobs)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *CompactionJobUpdate) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: CompactionJobUpdate: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: CompactionJobUpdate: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field State", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.State == nil {
+				m.State = &CompactionJobState{}
+			}
+			if err := m.State.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Plan", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Plan == nil {
+				m.Plan = &CompactionJobPlan{}
+			}
+			if err := m.Plan.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

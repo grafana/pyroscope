@@ -28,7 +28,6 @@ message GetCompactionPlanUpdateRequest {
   // requested by the compaction worker.
   repeated metastore.v1.CompactionJobStatusUpdate status_updates = 1;
   uint32 assign_jobs_max = 2;
-  uint32 delete_tombstones_max = 3;
 }
 
 // GetCompactionPlanUpdateResponse includes the planned change.
@@ -38,10 +37,14 @@ message GetCompactionPlanUpdateResponse {
 }
 
 message CompactionPlanUpdate {
-  repeated CompactionJobState schedule_updates = 1;
-  repeated CompactionJobPlan new_jobs = 2;
-  repeated CompactionJobPlan assigned_jobs = 3;
-  repeated CompactionJobPlan completed_jobs = 4;
+  repeated CompactionJobUpdate new_jobs = 1;
+  repeated CompactionJobUpdate assigned_jobs = 2;
+  repeated CompactionJobUpdate completed_jobs = 3;
+}
+
+message CompactionJobUpdate {
+  CompactionJobState state = 1;
+  CompactionJobPlan plan = 2;
 }
 
 // CompactionJobState is produced in response to

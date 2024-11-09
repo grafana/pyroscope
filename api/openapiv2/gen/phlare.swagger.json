@@ -721,6 +721,12 @@
     "v1CompactedBlocks": {
       "type": "object",
       "properties": {
+        "sourceBlocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "compactedBlocks": {
           "type": "array",
           "items": {
@@ -781,7 +787,7 @@
           "type": "string",
           "format": "int64"
         },
-        "jobStatus": {
+        "status": {
           "$ref": "#/definitions/v1CompactionJobStatus"
         }
       }

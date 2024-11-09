@@ -50,9 +50,6 @@ func (q *jobQueue) delete(name string) {
 	}
 }
 
-// TODO(kolesnikovae): container/heap is not very efficient,
-//  consider implementing own heap, specific to the case.
-
 // The function determines the scheduling order of the jobs.
 func compareJobs(a, b *jobEntry) int {
 	// Pick jobs in the "initial" (unspecified) state first.
@@ -70,6 +67,10 @@ func compareJobs(a, b *jobEntry) int {
 	// Tiebreaker: the job name must not bias the order.
 	return strings.Compare(a.Name, b.Name)
 }
+
+// TODO(kolesnikovae): container/heap is not very efficient,
+//  consider implementing own heap, specific to the case.
+//  A treap might be suitable as well.
 
 type priorityQueue []*jobEntry
 

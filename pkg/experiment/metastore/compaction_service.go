@@ -40,9 +40,8 @@ func (m *CompactionService) PollCompactionJobs(
 	req *metastorev1.PollCompactionJobsRequest,
 ) (*metastorev1.PollCompactionJobsResponse, error) {
 	request := &raft_log.GetCompactionPlanUpdateRequest{
-		StatusUpdates:       req.StatusUpdates,
-		AssignJobsMax:       req.JobCapacity,
-		DeleteTombstonesMax: req.CleanupCapacity,
+		StatusUpdates: req.StatusUpdates,
+		AssignJobsMax: req.JobCapacity,
 	}
 
 	// This is a two-step process. To commit changes to the compaction plan,
@@ -66,37 +65,39 @@ func (m *CompactionService) PollCompactionJobs(
 
 	resp := &metastorev1.PollCompactionJobsResponse{
 		CompactionJobs: make([]*metastorev1.CompactionJob, 0, len(prepared.PlanUpdate.AssignedJobs)),
-		Assignments:    make([]*metastorev1.CompactionJobAssignment, 0, len(prepared.PlanUpdate.ScheduleUpdates)),
+		Assignments:    make([]*metastorev1.CompactionJobAssignment, 0, len(prepared.PlanUpdate.AssignedJobs)),
 	}
 
-	for _, update := range prepared.PlanUpdate.ScheduleUpdates {
-		if update.Status == metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS {
-			// Other statuses are not sent to workers.
-			resp.Assignments = append(resp.Assignments, &metastorev1.CompactionJobAssignment{
-				Name:           update.Name,
-				Token:          update.Token,
-				LeaseExpiresAt: update.LeaseExpiresAt,
-				JobStatus:      update.Status,
+	for _, assigned := range prepared.PlanUpdate.AssignedJobs {
+		assignment := assigned.State
+		resp.Assignments = append(resp.Assignments, &metastorev1.CompactionJobAssignment{
+			Name:           assignment.Name,
+			Token:          assignment.Token,
+			LeaseExpiresAt: assignment.LeaseExpiresAt,
+			Status:         assignment.Status,
+		})
+		// The job plan is only sent for newly assigned jobs.
+		// Lease renewals do not require the plan to be sent.
+		if assigned.Plan != nil {
+			job := assigned.Plan
+			resp.CompactionJobs = append(resp.CompactionJobs, &metastorev1.CompactionJob{
+				Name:            job.Name,
+				Shard:           job.Shard,
+				Tenant:          job.Tenant,
+				CompactionLevel: job.CompactionLevel,
+				SourceBlocks:    job.SourceBlocks,
+				DeletedBlocks:   job.DeletedBlocks,
 			})
 		}
 	}
 
-	// All assigned compaction jobs are sent to the worker.
-	for _, job := range prepared.PlanUpdate.AssignedJobs {
-		resp.CompactionJobs = append(resp.CompactionJobs, &metastorev1.CompactionJob{
-			Name:            job.Name,
-			Shard:           job.Shard,
-			Tenant:          job.Tenant,
-			CompactionLevel: job.CompactionLevel,
-			SourceBlocks:    job.SourceBlocks,
-			DeletedBlocks:   job.DeletedBlocks,
-		})
-	}
-
 	// Assigned jobs are not written to the raft log (only the assignments).
-	// TODO(kolesnikovae): This behaviour might be configurable.
+	// The plan has already been proposed in the past when the job has been
+	// created.
 	proposal := &raft_log.UpdateCompactionPlanRequest{PlanUpdate: prepared.PlanUpdate}
-	proposal.PlanUpdate.AssignedJobs = nil
+	for _, update := range proposal.PlanUpdate.AssignedJobs {
+		update.Plan = nil
+	}
 
 	// Now that we have the plan, we need to propagate it through the raft log
 	// to ensure it is applied consistently across all replicas, regardless of

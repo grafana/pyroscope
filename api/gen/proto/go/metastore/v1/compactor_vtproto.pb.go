@@ -116,7 +116,7 @@ func (m *CompactionJobAssignment) CloneVT() *CompactionJobAssignment {
 	r.Name = m.Name
 	r.Token = m.Token
 	r.LeaseExpiresAt = m.LeaseExpiresAt
-	r.JobStatus = m.JobStatus
+	r.Status = m.Status
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -153,6 +153,11 @@ func (m *CompactedBlocks) CloneVT() *CompactedBlocks {
 		return (*CompactedBlocks)(nil)
 	}
 	r := new(CompactedBlocks)
+	if rhs := m.SourceBlocks; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.SourceBlocks = tmpContainer
+	}
 	if rhs := m.CompactedBlocks; rhs != nil {
 		tmpContainer := make([]*BlockMeta, len(rhs))
 		for k, v := range rhs {
@@ -326,7 +331,7 @@ func (this *CompactionJobAssignment) EqualVT(that *CompactionJobAssignment) bool
 	if this.LeaseExpiresAt != that.LeaseExpiresAt {
 		return false
 	}
-	if this.JobStatus != that.JobStatus {
+	if this.Status != that.Status {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -372,6 +377,15 @@ func (this *CompactedBlocks) EqualVT(that *CompactedBlocks) bool {
 		return true
 	} else if this == nil || that == nil {
 		return false
+	}
+	if len(this.SourceBlocks) != len(that.SourceBlocks) {
+		return false
+	}
+	for i, vx := range this.SourceBlocks {
+		vy := that.SourceBlocks[i]
+		if vx != vy {
+			return false
+		}
 	}
 	if len(this.CompactedBlocks) != len(that.CompactedBlocks) {
 		return false
@@ -720,8 +734,8 @@ func (m *CompactionJobAssignment) MarshalToSizedBufferVT(dAtA []byte) (int, erro
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if m.JobStatus != 0 {
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.JobStatus))
+	if m.Status != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Status))
 		i--
 		dAtA[i] = 0x20
 	}
@@ -841,7 +855,7 @@ func (m *CompactedBlocks) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 			copy(dAtA[i:], m.DeletedBlocks[iNdEx])
 			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.DeletedBlocks[iNdEx])))
 			i--
-			dAtA[i] = 0x12
+			dAtA[i] = 0x1a
 		}
 	}
 	if len(m.CompactedBlocks) > 0 {
@@ -852,6 +866,15 @@ func (m *CompactedBlocks) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 			}
 			i -= size
 			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+			i--
+			dAtA[i] = 0x12
+		}
+	}
+	if len(m.SourceBlocks) > 0 {
+		for iNdEx := len(m.SourceBlocks) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.SourceBlocks[iNdEx])
+			copy(dAtA[i:], m.SourceBlocks[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.SourceBlocks[iNdEx])))
 			i--
 			dAtA[i] = 0xa
 		}
@@ -955,8 +978,8 @@ func (m *CompactionJobAssignment) SizeVT() (n int) {
 	if m.LeaseExpiresAt != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.LeaseExpiresAt))
 	}
-	if m.JobStatus != 0 {
-		n += 1 + protohelpers.SizeOfVarint(uint64(m.JobStatus))
+	if m.Status != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.Status))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -992,6 +1015,12 @@ func (m *CompactedBlocks) SizeVT() (n int) {
 	}
 	var l int
 	_ = l
+	if len(m.SourceBlocks) > 0 {
+		for _, s := range m.SourceBlocks {
+			l = len(s)
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
 	if len(m.CompactedBlocks) > 0 {
 		for _, e := range m.CompactedBlocks {
 			l = e.SizeVT()
@@ -1568,9 +1597,9 @@ func (m *CompactionJobAssignment) UnmarshalVT(dAtA []byte) error {
 			}
 		case 4:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field JobStatus", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Status", wireType)
 			}
-			m.JobStatus = 0
+			m.Status = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return protohelpers.ErrIntOverflow
@@ -1580,7 +1609,7 @@ func (m *CompactionJobAssignment) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.JobStatus |= CompactionJobStatus(b&0x7F) << shift
+				m.Status |= CompactionJobStatus(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -1795,6 +1824,38 @@ func (m *CompactedBlocks) UnmarshalVT(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SourceBlocks", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.SourceBlocks = append(m.SourceBlocks, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field CompactedBlocks", wireType)
 			}
 			var msglen int
@@ -1827,7 +1888,7 @@ func (m *CompactedBlocks) UnmarshalVT(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 2:
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field DeletedBlocks", wireType)
 			}
