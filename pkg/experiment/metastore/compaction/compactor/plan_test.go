@@ -27,7 +27,7 @@ func TestPlan_same_level(t *testing.T) {
 		{Tenant: "B", Shard: 2, Level: 0}, // TB-S2-L0
 		{Tenant: "A", Shard: 0, Level: 0},
 		{Tenant: "A", Shard: 1, Level: 0},
-		{Tenant: "A", Shard: 0, Level: 0}, // TB-S0-L0
+		{Tenant: "A", Shard: 0, Level: 0}, // TA-S0-L0
 		{Tenant: "B", Shard: 2, Level: 0},
 		{Tenant: "A", Shard: 1, Level: 0},
 	} {
@@ -243,4 +243,19 @@ func TestPlan_deleted_blocks(t *testing.T) {
 		planned = append(planned, j)
 	}
 	assert.Equal(t, expected, planned)
+}
+
+func TestPlan_deleted_batch(t *testing.T) {
+	c := NewCompactor(testStrategy, nil, nil)
+
+	for i, e := range []BlockEntry{{}, {}, {}} {
+		e.Index = uint64(i)
+		e.ID = strconv.Itoa(i)
+		c.enqueue(e)
+	}
+
+	c.queue.levels[0].remove(compactionKey{}, "0", "1", "2")
+
+	p := &plan{compactor: c, blocks: newBlockIter()}
+	assert.Nil(t, p.nextJob())
 }
