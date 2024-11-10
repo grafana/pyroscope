@@ -13,7 +13,7 @@ import (
 func testBlockEntry(id int) blockEntry { return blockEntry{id: strconv.Itoa(id)} }
 
 func TestBlockQueue_Push(t *testing.T) {
-	q := newBlockQueue(jobSizeCompactionStrategy{maxBlocksDefault: 3})
+	q := newBlockQueue(Strategy{MaxBlocksDefault: 3})
 	key := compactionKey{tenant: "t", shard: 1}
 
 	result := q.stagedBlocks(key).push(testBlockEntry(1))
@@ -44,7 +44,7 @@ func TestBlockQueue_Push(t *testing.T) {
 }
 
 func TestBlockQueue_DuplicateBlock(t *testing.T) {
-	q := newBlockQueue(jobSizeCompactionStrategy{maxBlocksDefault: 3})
+	q := newBlockQueue(Strategy{MaxBlocksDefault: 3})
 	key := compactionKey{tenant: "t", shard: 1}
 
 	require.True(t, q.stagedBlocks(key).push(testBlockEntry(1)))
@@ -54,7 +54,7 @@ func TestBlockQueue_DuplicateBlock(t *testing.T) {
 }
 
 func TestBlockQueue_Remove(t *testing.T) {
-	q := newBlockQueue(jobSizeCompactionStrategy{maxBlocksDefault: 3})
+	q := newBlockQueue(Strategy{MaxBlocksDefault: 3})
 	key := compactionKey{tenant: "t", shard: 1}
 	q.stagedBlocks(key).push(testBlockEntry(1))
 	q.stagedBlocks(key).push(testBlockEntry(2))
@@ -71,7 +71,7 @@ func TestBlockQueue_Remove(t *testing.T) {
 }
 
 func TestBlockQueue_RemoveNotFound(t *testing.T) {
-	q := newBlockQueue(jobSizeCompactionStrategy{maxBlocksDefault: 3})
+	q := newBlockQueue(Strategy{MaxBlocksDefault: 3})
 	key := compactionKey{tenant: "t", shard: 1}
 	q.remove(key, "1")
 	q.stagedBlocks(key).push(testBlockEntry(1))
@@ -83,7 +83,7 @@ func TestBlockQueue_RemoveNotFound(t *testing.T) {
 }
 
 func TestBlockQueue_Linking(t *testing.T) {
-	q := newBlockQueue(jobSizeCompactionStrategy{maxBlocksDefault: 2})
+	q := newBlockQueue(Strategy{MaxBlocksDefault: 2})
 	key := compactionKey{tenant: "t", shard: 1}
 
 	q.stagedBlocks(key).push(testBlockEntry(1))
@@ -93,20 +93,20 @@ func TestBlockQueue_Linking(t *testing.T) {
 
 	q.stagedBlocks(key).push(testBlockEntry(3))
 	assert.NotNil(t, q.tail)
-	assert.Nil(t, q.tail.prev)
+	assert.Nil(t, q.tail.prevG)
 	assert.NotNil(t, q.head)
-	assert.Nil(t, q.head.next)
+	assert.Nil(t, q.head.nextG)
 	assert.Equal(t, []blockEntry{testBlockEntry(1), testBlockEntry(2)}, q.head.blocks)
 	assert.Equal(t, q.tail.blocks, q.head.blocks)
 
 	q.stagedBlocks(key).push(testBlockEntry(4))
-	assert.NotNil(t, q.tail.prev)
-	assert.NotNil(t, q.head.next)
+	assert.NotNil(t, q.tail.prevG)
+	assert.NotNil(t, q.head.nextG)
 
 	q.stagedBlocks(key).push(testBlockEntry(5))
 	q.stagedBlocks(key).push(testBlockEntry(6))
-	assert.NotNil(t, q.tail.prev.prev)
-	assert.NotNil(t, q.head.next.next)
+	assert.NotNil(t, q.tail.prevG.prevG)
+	assert.NotNil(t, q.head.nextG.nextG)
 
 	q.remove(key, "3", "2")
 	q.remove(key, "4", "1")
@@ -123,7 +123,7 @@ func TestBlockQueue_ExpectEmptyQueue(t *testing.T) {
 		numBlocksPerKey = 10
 	)
 
-	q := newBlockQueue(jobSizeCompactionStrategy{maxBlocksDefault: 3})
+	q := newBlockQueue(Strategy{MaxBlocksDefault: 3})
 	keys := make([]compactionKey, numKeys)
 	for i := 0; i < numKeys; i++ {
 		keys[i] = compactionKey{
@@ -162,8 +162,36 @@ func TestBlockQueue_ExpectEmptyQueue(t *testing.T) {
 	assert.Nil(t, q.tail)
 }
 
+func TestBlockQueue_FlushByAge(t *testing.T) {
+	c := newCompactionQueue(Strategy{
+		MaxBlocksDefault: 5,
+		MaxBatchAge:      1,
+	})
+
+	for _, e := range []BlockEntry{
+		{Tenant: "A", Shard: 1, Level: 1, Index: 1, AppendedAt: 5, ID: "1"},
+		{Tenant: "A", Shard: 1, Level: 1, Index: 2, AppendedAt: 15, ID: "2"},
+		{Tenant: "A", Shard: 0, Level: 1, Index: 3, AppendedAt: 30, ID: "3"},
+	} {
+		c.push(e)
+	}
+
+	batches := make([]blockEntry, 0, 3)
+	iter := newBatchIter(c.blockQueue(1))
+	for {
+		b, ok := iter.next()
+		if !ok {
+			break
+		}
+		batches = append(batches, b.blocks...)
+	}
+
+	expected := []blockEntry{{"1", 1}, {"2", 2}}
+	assert.Equal(t, expected, batches)
+}
+
 func TestBlockQueue_BatchIterator(t *testing.T) {
-	q := newBlockQueue(jobSizeCompactionStrategy{maxBlocksDefault: 3})
+	q := newBlockQueue(Strategy{MaxBlocksDefault: 3})
 	keys := []compactionKey{
 		{tenant: "t-1", shard: 1},
 		{tenant: "t-2", shard: 2},

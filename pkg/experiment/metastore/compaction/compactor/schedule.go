@@ -23,7 +23,7 @@ type schedule struct {
 	// Uncommitted schedule updates.
 	updates map[string]*raft_log.CompactionJobUpdate
 	// Modified copy of the job queue.
-	copied []priorityQueue
+	copied []priorityJobQueue
 	level  int
 }
 
@@ -190,12 +190,12 @@ func (p *schedule) shouldReassign(job *jobEntry) bool {
 // The queue must not be modified by the assigner. Therefore, we're copying the
 // queue levels lazily. The queue is supposed to be small (hundreds of jobs
 // running concurrently); in the worst case, we have a ~24b alloc per entry.
-func (p *schedule) queueLevelCopy(i int) *priorityQueue {
+func (p *schedule) queueLevelCopy(i int) *priorityJobQueue {
 	s := i + 1 // Levels are 0-based.
 	if s >= len(p.copied) || len(p.copied[i]) == 0 {
 		p.copied = slices.Grow(p.copied, s)[:s]
 		level := *p.scheduler.queue.level(uint32(i))
-		p.copied[i] = make(priorityQueue, len(level))
+		p.copied[i] = make(priorityJobQueue, len(level))
 		for j, job := range level {
 			jobCopy := *job
 			p.copied[i][j] = &jobCopy

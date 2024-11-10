@@ -7,9 +7,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var testStrategy = Strategy{
+	MaxBlocksPerLevel: []uint64{3, 2, 2},
+	MaxBlocksDefault:  2,
+	MaxBatchAge:       0,
+}
+
 func TestPlan_same_level(t *testing.T) {
-	s := NewLevelBasedStrategy([]uint32{3, 2, 2}, 2)
-	c := NewCompactor(s, nil, nil)
+	c := NewCompactor(testStrategy, nil, nil)
 
 	var i int // The index is used outside the loop.
 	for _, e := range []BlockEntry{
@@ -93,8 +98,7 @@ func TestPlan_same_level(t *testing.T) {
 }
 
 func TestPlan_level_priority(t *testing.T) {
-	s := NewLevelBasedStrategy([]uint32{3, 2, 2}, 2)
-	c := NewCompactor(s, nil, nil)
+	c := NewCompactor(testStrategy, nil, nil)
 
 	// Lower level job should be planned first despite the arrival order.
 	var i int
@@ -134,8 +138,7 @@ func TestPlan_level_priority(t *testing.T) {
 }
 
 func TestPlan_empty_queue(t *testing.T) {
-	s := NewLevelBasedStrategy([]uint32{3, 2, 2}, 2)
-	c := NewCompactor(s, nil, nil)
+	c := NewCompactor(testStrategy, nil, nil)
 
 	p := &plan{compactor: c, blocks: newBlockIter()}
 	assert.Nil(t, p.nextJob())
@@ -168,8 +171,7 @@ func TestPlan_empty_queue(t *testing.T) {
 }
 
 func TestPlan_deleted_blocks(t *testing.T) {
-	s := NewLevelBasedStrategy([]uint32{3, 2, 2}, 2)
-	c := NewCompactor(s, nil, nil)
+	c := NewCompactor(testStrategy, nil, nil)
 
 	var i int // The index is used outside the loop.
 	for _, e := range []BlockEntry{

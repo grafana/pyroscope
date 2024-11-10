@@ -10,7 +10,7 @@ import (
 
 type jobQueue struct {
 	jobs   map[string]*jobEntry
-	levels []priorityQueue
+	levels []priorityJobQueue
 }
 
 type jobEntry struct {
@@ -22,7 +22,7 @@ func newJobQueue() *jobQueue {
 	return &jobQueue{jobs: make(map[string]*jobEntry)}
 }
 
-func (q *jobQueue) level(x uint32) *priorityQueue {
+func (q *jobQueue) level(x uint32) *priorityJobQueue {
 	s := x + 1 // Levels are 0-based.
 	if s >= uint32(len(q.levels)) {
 		q.levels = slices.Grow(q.levels, int(s))[:s]
@@ -72,28 +72,28 @@ func compareJobs(a, b *jobEntry) int {
 //  consider implementing own heap, specific to the case.
 //  A treap might be suitable as well.
 
-type priorityQueue []*jobEntry
+type priorityJobQueue []*jobEntry
 
-func (pq priorityQueue) Len() int { return len(pq) }
+func (pq priorityJobQueue) Len() int { return len(pq) }
 
-func (pq priorityQueue) Less(i, j int) bool {
+func (pq priorityJobQueue) Less(i, j int) bool {
 	return compareJobs(pq[i], pq[j]) < 0
 }
 
-func (pq priorityQueue) Swap(i, j int) {
+func (pq priorityJobQueue) Swap(i, j int) {
 	pq[i], pq[j] = pq[j], pq[i]
 	pq[i].index = i
 	pq[j].index = j
 }
 
-func (pq *priorityQueue) Push(x interface{}) {
+func (pq *priorityJobQueue) Push(x interface{}) {
 	n := len(*pq)
 	job := x.(*jobEntry)
 	job.index = n
 	*pq = append(*pq, job)
 }
 
-func (pq *priorityQueue) Pop() interface{} {
+func (pq *priorityJobQueue) Pop() interface{} {
 	old := *pq
 	n := len(old)
 	job := old[n-1]

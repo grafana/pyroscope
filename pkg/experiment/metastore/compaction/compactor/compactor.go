@@ -26,11 +26,12 @@ type BlockQueueStore interface {
 }
 
 type BlockEntry struct {
-	Index  uint64
-	ID     string
-	Tenant string
-	Shard  uint32
-	Level  uint32
+	Index      uint64
+	AppendedAt int64
+	ID         string
+	Tenant     string
+	Shard      uint32
+	Level      uint32
 }
 
 type Compactor struct {
@@ -55,11 +56,12 @@ func NewCompactor(strategy Strategy, store BlockQueueStore, index Index) *Compac
 
 func (p *Compactor) AddBlock(tx *bbolt.Tx, cmd *raft.Log, md *metastorev1.BlockMeta) error {
 	e := BlockEntry{
-		Index:  cmd.Index,
-		ID:     md.Id,
-		Shard:  md.Shard,
-		Level:  md.CompactionLevel,
-		Tenant: md.TenantId,
+		Index:      cmd.Index,
+		AppendedAt: cmd.AppendedAt.UnixNano(),
+		ID:         md.Id,
+		Shard:      md.Shard,
+		Level:      md.CompactionLevel,
+		Tenant:     md.TenantId,
 	}
 	if err := p.store.StoreEntry(tx, e); err != nil {
 		return err
@@ -69,16 +71,7 @@ func (p *Compactor) AddBlock(tx *bbolt.Tx, cmd *raft.Log, md *metastorev1.BlockM
 }
 
 func (p *Compactor) enqueue(e BlockEntry) bool {
-	c := compactionKey{
-		tenant: e.Tenant,
-		shard:  e.Shard,
-		level:  e.Level,
-	}
-	b := blockEntry{
-		raftIndex: e.Index,
-		id:        e.ID,
-	}
-	return p.queue.push(c, b)
+	return p.queue.push(e)
 }
 
 func (p *Compactor) NewPlan(tx *bbolt.Tx, cmd *raft.Log) compaction.Plan {
@@ -97,13 +90,13 @@ func (p *Compactor) Scheduled(tx *bbolt.Tx, jobs ...*raft_log.CompactionJobUpdat
 			shard:  job.Plan.Shard,
 			level:  job.Plan.CompactionLevel,
 		}
-		staged := p.queue.stagedBlocks(k)
+		staged := p.queue.blockQueue(k.level).stagedBlocks(k)
 		for _, block := range job.Plan.SourceBlocks {
 			e := staged.delete(block)
 			if e == zeroBlockEntry {
 				continue
 			}
-			if err := p.store.DeleteEntry(tx, e.raftIndex, e.id); err != nil {
+			if err := p.store.DeleteEntry(tx, e.index, e.id); err != nil {
 				return err
 			}
 		}
