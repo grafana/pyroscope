@@ -3,6 +3,8 @@ package compactor
 import (
 	"container/heap"
 	"slices"
+
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction/compactor/store"
 )
 
 type compactionKey struct {
@@ -84,7 +86,7 @@ func newCompactionQueue(strategy Strategy) *compactionQueue {
 	return &compactionQueue{strategy: strategy}
 }
 
-func (q *compactionQueue) push(e BlockEntry) bool {
+func (q *compactionQueue) push(e store.BlockEntry) bool {
 	level := q.blockQueue(e.Level)
 	staged := level.stagedBlocks(compactionKey{
 		tenant: e.Tenant,

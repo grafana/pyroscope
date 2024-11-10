@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction/compactor/store"
 )
 
 var testStrategy = Strategy{
@@ -17,7 +19,7 @@ func TestPlan_same_level(t *testing.T) {
 	c := NewCompactor(testStrategy, nil, nil)
 
 	var i int // The index is used outside the loop.
-	for _, e := range []BlockEntry{
+	for _, e := range []store.BlockEntry{
 		{Tenant: "A", Shard: 0, Level: 0},
 		{Tenant: "B", Shard: 2, Level: 0},
 		{Tenant: "A", Shard: 1, Level: 0},
@@ -78,7 +80,7 @@ func TestPlan_same_level(t *testing.T) {
 		},
 	}...)
 
-	for _, e := range []BlockEntry{
+	for _, e := range []store.BlockEntry{
 		{Tenant: "B", Shard: 2, Level: 0},
 		{Tenant: "A", Shard: 1, Level: 0}, // TA-S1-L0 is ready
 		{Tenant: "B", Shard: 2, Level: 0}, // TB-S2-L0
@@ -102,7 +104,7 @@ func TestPlan_level_priority(t *testing.T) {
 
 	// Lower level job should be planned first despite the arrival order.
 	var i int
-	for _, e := range []BlockEntry{
+	for _, e := range []store.BlockEntry{
 		{Tenant: "B", Shard: 2, Level: 1},
 		{Tenant: "A", Shard: 1, Level: 0},
 		{Tenant: "A", Shard: 1, Level: 0},
@@ -143,7 +145,7 @@ func TestPlan_empty_queue(t *testing.T) {
 	p := &plan{compactor: c, blocks: newBlockIter()}
 	assert.Nil(t, p.nextJob())
 
-	c.enqueue(BlockEntry{
+	c.enqueue(store.BlockEntry{
 		Index:  0,
 		ID:     "0",
 		Tenant: "A",
@@ -156,7 +158,7 @@ func TestPlan_empty_queue(t *testing.T) {
 	p = &plan{compactor: c, blocks: newBlockIter()}
 	assert.Nil(t, p.nextJob())
 
-	c.enqueue(BlockEntry{
+	c.enqueue(store.BlockEntry{
 		Index:  1,
 		ID:     "1",
 		Tenant: "A",
@@ -174,7 +176,7 @@ func TestPlan_deleted_blocks(t *testing.T) {
 	c := NewCompactor(testStrategy, nil, nil)
 
 	var i int // The index is used outside the loop.
-	for _, e := range []BlockEntry{
+	for _, e := range []store.BlockEntry{
 		{Tenant: "A", Shard: 1, Level: 0},
 		{Tenant: "B", Shard: 2, Level: 0},
 		{Tenant: "A", Shard: 1, Level: 0},
@@ -218,7 +220,7 @@ func TestPlan_deleted_blocks(t *testing.T) {
 
 	// Now we add some more blocks to make sure that the
 	// invalidated queue can still be compacted.
-	for _, e := range []BlockEntry{
+	for _, e := range []store.BlockEntry{
 		{Tenant: "A", Shard: 1, Level: 0},
 		{Tenant: "A", Shard: 1, Level: 0},
 		{Tenant: "A", Shard: 1, Level: 0},
@@ -248,7 +250,7 @@ func TestPlan_deleted_blocks(t *testing.T) {
 func TestPlan_deleted_batch(t *testing.T) {
 	c := NewCompactor(testStrategy, nil, nil)
 
-	for i, e := range []BlockEntry{{}, {}, {}} {
+	for i, e := range []store.BlockEntry{{}, {}, {}} {
 		e.Index = uint64(i)
 		e.ID = strconv.Itoa(i)
 		c.enqueue(e)

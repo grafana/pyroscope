@@ -7,6 +7,7 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction/compactor/store"
 	"github.com/grafana/pyroscope/pkg/iter"
 )
 
@@ -20,18 +21,9 @@ type Index interface {
 }
 
 type BlockQueueStore interface {
-	StoreEntry(*bbolt.Tx, BlockEntry) error
+	StoreEntry(*bbolt.Tx, store.BlockEntry) error
 	DeleteEntry(tx *bbolt.Tx, index uint64, id string) error
-	ListEntries(*bbolt.Tx) iter.Iterator[BlockEntry]
-}
-
-type BlockEntry struct {
-	Index      uint64
-	AppendedAt int64
-	ID         string
-	Tenant     string
-	Shard      uint32
-	Level      uint32
+	ListEntries(*bbolt.Tx) iter.Iterator[store.BlockEntry]
 }
 
 type Compactor struct {
@@ -55,7 +47,7 @@ func NewCompactor(strategy Strategy, store BlockQueueStore, index Index) *Compac
 }
 
 func (p *Compactor) AddBlock(tx *bbolt.Tx, cmd *raft.Log, md *metastorev1.BlockMeta) error {
-	e := BlockEntry{
+	e := store.BlockEntry{
 		Index:      cmd.Index,
 		AppendedAt: cmd.AppendedAt.UnixNano(),
 		ID:         md.Id,
@@ -70,7 +62,7 @@ func (p *Compactor) AddBlock(tx *bbolt.Tx, cmd *raft.Log, md *metastorev1.BlockM
 	return nil
 }
 
-func (p *Compactor) enqueue(e BlockEntry) bool {
+func (p *Compactor) enqueue(e store.BlockEntry) bool {
 	return p.queue.push(e)
 }
 

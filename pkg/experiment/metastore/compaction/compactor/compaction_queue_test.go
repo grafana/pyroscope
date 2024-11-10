@@ -8,6 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction/compactor/store"
 )
 
 func testBlockEntry(id int) blockEntry { return blockEntry{id: strconv.Itoa(id)} }
@@ -168,7 +170,7 @@ func TestBlockQueue_FlushByAge(t *testing.T) {
 		MaxBatchAge:      1,
 	})
 
-	for _, e := range []BlockEntry{
+	for _, e := range []store.BlockEntry{
 		{Tenant: "A", Shard: 1, Level: 1, Index: 1, AppendedAt: 5, ID: "1"},
 		{Tenant: "A", Shard: 1, Level: 1, Index: 2, AppendedAt: 15, ID: "2"},
 		{Tenant: "A", Shard: 0, Level: 1, Index: 3, AppendedAt: 30, ID: "3"},

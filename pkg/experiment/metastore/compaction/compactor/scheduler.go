@@ -1,7 +1,6 @@
 package compactor
 
 import (
-	"sync"
 	"time"
 
 	"github.com/hashicorp/raft"
@@ -44,13 +43,8 @@ type SchedulerConfig struct {
 
 type Scheduler struct {
 	config SchedulerConfig
-	// Although the scheduler is supposed to be used by a single planner
-	// in a synchronous manner, we still need to protect it from concurrent
-	// read accesses, such as stats collection, and listing jobs for debug
-	// purposes. This is a write-intensive path, so we use a regular mutex.
-	mu    sync.Mutex
-	queue *jobQueue
-	store JobStore
+	queue  *jobQueue
+	store  JobStore
 }
 
 // NewScheduler creates a scheduler with the given lease duration.

@@ -192,7 +192,7 @@ func (p *schedule) shouldReassign(job *jobEntry) bool {
 // running concurrently); in the worst case, we have a ~24b alloc per entry.
 func (p *schedule) queueLevelCopy(i int) *priorityJobQueue {
 	s := i + 1 // Levels are 0-based.
-	if s >= len(p.copied) || len(p.copied[i]) == 0 {
+	if s > len(p.copied) {
 		p.copied = slices.Grow(p.copied, s)[:s]
 		level := *p.scheduler.queue.level(uint32(i))
 		p.copied[i] = make(priorityJobQueue, len(level))

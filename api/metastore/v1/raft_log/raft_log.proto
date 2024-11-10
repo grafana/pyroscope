@@ -51,7 +51,7 @@ message CompactionJobUpdate {
 // the compaction worker status update request.
 message CompactionJobState {
   string name = 1;
-  uint32 compaction_level = 2;
+  uint32 compaction_level = 2; // TODO: remove.
   metastore.v1.CompactionJobStatus status = 3;
   uint64 token = 4;
   int64 lease_expires_at = 5;
