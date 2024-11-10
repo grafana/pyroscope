@@ -70,7 +70,7 @@ func TestBlockQueue_Remove(t *testing.T) {
 	require.Nil(t, q.tail)
 }
 
-func TestBlockQueue_Remove_not_found(t *testing.T) {
+func TestBlockQueue_RemoveNotFound(t *testing.T) {
 	q := newBlockQueue(jobSizeCompactionStrategy{maxBlocksDefault: 3})
 	key := compactionKey{tenant: "t", shard: 1}
 	q.remove(key, "1")
@@ -162,7 +162,7 @@ func TestBlockQueue_ExpectEmptyQueue(t *testing.T) {
 	assert.Nil(t, q.tail)
 }
 
-func TestBlockQueue_iter(t *testing.T) {
+func TestBlockQueue_BatchIterator(t *testing.T) {
 	q := newBlockQueue(jobSizeCompactionStrategy{maxBlocksDefault: 3})
 	keys := []compactionKey{
 		{tenant: "t-1", shard: 1},

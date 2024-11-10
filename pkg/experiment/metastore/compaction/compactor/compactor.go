@@ -28,32 +28,32 @@ type BlockQueueStore interface {
 type BlockEntry struct {
 	Index  uint64
 	ID     string
+	Tenant string
 	Shard  uint32
 	Level  uint32
-	Tenant string
 }
 
 type Compactor struct {
-	strategy strategy
+	strategy Strategy
 	queue    *compactionQueue
 	store    BlockQueueStore
 	index    Index
 }
 
-func NewCompactor(store BlockQueueStore, index Index) *Compactor {
-	config := defaultCompactionStrategy
+type Config struct {
+	Strategy Strategy
+}
+
+func NewCompactor(strategy Strategy, store BlockQueueStore, index Index) *Compactor {
 	return &Compactor{
-		strategy: config,
-		queue:    newCompactionQueue(config),
+		strategy: strategy,
+		queue:    newCompactionQueue(strategy),
 		store:    store,
 		index:    index,
 	}
 }
 
 func (p *Compactor) AddBlock(tx *bbolt.Tx, cmd *raft.Log, md *metastorev1.BlockMeta) error {
-	if !p.strategy.canCompact(md) {
-		return nil
-	}
 	e := BlockEntry{
 		Index:  cmd.Index,
 		ID:     md.Id,

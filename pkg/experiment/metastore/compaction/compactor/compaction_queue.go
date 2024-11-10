@@ -15,11 +15,11 @@ type compactionKey struct {
 }
 
 type compactionQueue struct {
-	strategy strategy
+	strategy Strategy
 	levels   []*blockQueue
 }
 
-func newCompactionQueue(strategy strategy) *compactionQueue {
+func newCompactionQueue(strategy Strategy) *compactionQueue {
 	return &compactionQueue{strategy: strategy}
 }
 
@@ -31,9 +31,13 @@ func (q *compactionQueue) stagedBlocks(k compactionKey) *stagedBlocks {
 	s := k.level + 1 // Levels are 0-based.
 	if s > uint32(len(q.levels)) {
 		q.levels = slices.Grow(q.levels, int(s))[:s]
-		q.levels[k.level] = newBlockQueue(q.strategy)
 	}
-	return q.levels[k.level].stagedBlocks(k)
+	level := q.levels[k.level]
+	if level == nil {
+		level = newBlockQueue(q.strategy)
+		q.levels[k.level] = level
+	}
+	return level.stagedBlocks(k)
 }
 
 // blockQueue stages blocks as they are being added. Once a batch of blocks
@@ -48,7 +52,7 @@ func (q *compactionQueue) stagedBlocks(k compactionKey) *stagedBlocks {
 // the queue is through explicit removal. Batch and block iterators provide
 // the read access.
 type blockQueue struct {
-	strategy   strategy
+	strategy   Strategy
 	staged     map[compactionKey]*stagedBlocks
 	head, tail *batch
 }
@@ -90,10 +94,7 @@ type batch struct {
 	nextSameKey, prevSameKey *batch
 }
 
-func newBlockQueue(strategy strategy) *blockQueue {
-	if strategy == nil {
-		strategy = defaultCompactionStrategy
-	}
+func newBlockQueue(strategy Strategy) *blockQueue {
 	return &blockQueue{
 		staged:   make(map[compactionKey]*stagedBlocks),
 		strategy: strategy,
@@ -271,6 +272,7 @@ func (it *blockIter) next() (string, bool) {
 			it.i++
 			continue
 		}
+		it.visited[b.id] = struct{}{}
 		it.i++
 		return b.id, true
 	}

@@ -115,9 +115,7 @@ func (p *schedule) completeJob(status *metastorev1.CompactionJobStatusUpdate) (*
 // after the last AssignJob and UpdateJob calls.
 func (p *schedule) AddJob(plan *raft_log.CompactionJobPlan) (*raft_log.CompactionJobUpdate, error) {
 	// TODO(kolesnikovae): Job queue size limit.
-	// Even if the job already exists, we will try to reset its state.
-	// This should never happen; indicates a bug in the compaction planner.
-	job := raft_log.CompactionJobUpdate{
+	job := &raft_log.CompactionJobUpdate{
 		Plan: plan,
 		State: &raft_log.CompactionJobState{
 			Name:            plan.Name,
@@ -127,7 +125,8 @@ func (p *schedule) AddJob(plan *raft_log.CompactionJobPlan) (*raft_log.Compactio
 			Token:           p.token,
 		},
 	}
-	return &job, nil
+	p.updates[job.Plan.Name] = job
+	return job, nil
 }
 
 func (p *schedule) nextAssignment() *raft_log.CompactionJobState {
@@ -146,6 +145,7 @@ func (p *schedule) nextAssignment() *raft_log.CompactionJobState {
 			// assigned and are in-progress or have been completed.
 			// This, however, does not prevent from reassigning a
 			// job that the worker has abandoned in the past.
+			// Newly created jobs are not considered here as well.
 			continue
 		}
 

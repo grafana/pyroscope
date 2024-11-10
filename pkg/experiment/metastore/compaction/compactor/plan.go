@@ -2,6 +2,7 @@ package compactor
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -49,7 +50,7 @@ func (p *plan) CreateJob() (*raft_log.CompactionJobPlan, error) {
 	return &job, nil
 }
 
-type plannedJob struct {
+type jobPlan struct {
 	compactionKey
 	name   string
 	blocks []string
@@ -61,8 +62,8 @@ type plannedJob struct {
 //   - A batch may not translate into a job (e.g., if some blocks have been
 //     removed). Therefore, we navigate to the next batch with the same
 //     compaction key in this case.
-func (p *plan) nextJob() *plannedJob {
-	var job plannedJob
+func (p *plan) nextJob() *jobPlan {
+	var job jobPlan
 	for p.level < uint32(len(p.compactor.queue.levels)) {
 		if p.batches == nil {
 			level := p.compactor.queue.levels[p.level]
@@ -83,9 +84,11 @@ func (p *plan) nextJob() *plannedJob {
 		}
 
 		// We've found the oldest batch, it's time to plan a job.
+		// Job levels are zero based: L0 job means that it includes blocks
+		// with compaction level 0. This can be altered (1-based levels):
+		// job.level++
 		job.compactionKey = b.staged.key
-		job.blocks = job.blocks[:0]
-		job.level++
+		job.blocks = slices.Grow(job.blocks, defaultBlockBatchSize)[:0]
 		p.blocks.setBatch(b)
 
 		// Once we finish with the current batch blocks, the iterator moves
@@ -113,7 +116,7 @@ func (p *plan) nextJob() *plannedJob {
 
 // Job name is a variable length string that should be globally unique
 // and is used as a tiebreaker in the compaction job queue ordering.
-func nameJob(plan *plannedJob) {
+func nameJob(plan *jobPlan) {
 	// Should be on stack; 16b per block; expected ~20 blocks.
 	buf := make([]byte, 0, 512)
 	for _, b := range plan.blocks {

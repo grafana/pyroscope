@@ -11,7 +11,7 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 )
 
-func TestSchedulerQueue_order(t *testing.T) {
+func TestJobQueue_order(t *testing.T) {
 	items := []*raft_log.CompactionJobState{
 		{
 			Name:            "job-6",
@@ -108,7 +108,7 @@ func TestSchedulerQueue_order(t *testing.T) {
 	}
 }
 
-func TestSchedulerQueue_delete(t *testing.T) {
+func TestJobQueue_delete(t *testing.T) {
 	q := newJobQueue()
 	items := []*raft_log.CompactionJobState{
 		{Name: "job-1"},
@@ -128,7 +128,7 @@ func TestSchedulerQueue_delete(t *testing.T) {
 	assert.Nil(t, jobQueuePop(q))
 }
 
-func TestSchedulerQueue_empty(t *testing.T) {
+func TestJobQueue_empty(t *testing.T) {
 	q := newJobQueue()
 	q.delete("job-1")
 	assert.Nil(t, jobQueuePop(q))
