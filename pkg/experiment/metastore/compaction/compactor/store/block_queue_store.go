@@ -26,17 +26,22 @@ func NewBlockQueueStore() *BlockQueueStore {
 	return &BlockQueueStore{bucketName: blockQueueBucketName}
 }
 
-func (b BlockQueueStore) StoreEntry(tx *bbolt.Tx, entry BlockEntry) error {
+func (s BlockQueueStore) CreateBuckets(tx *bbolt.Tx) error {
+	_, err := tx.CreateBucketIfNotExists(blockQueueBucketName)
+	return err
+}
+
+func (s BlockQueueStore) StoreEntry(tx *bbolt.Tx, entry BlockEntry) error {
 	e := marshalBlockEntry(entry)
-	return tx.Bucket(b.bucketName).Put(e.key, e.value)
+	return tx.Bucket(s.bucketName).Put(e.key, e.value)
 }
 
-func (b BlockQueueStore) DeleteEntry(tx *bbolt.Tx, index uint64, id string) error {
-	return tx.Bucket(b.bucketName).Delete(marshalBlockEntryKey(index, id))
+func (s BlockQueueStore) DeleteEntry(tx *bbolt.Tx, index uint64, id string) error {
+	return tx.Bucket(s.bucketName).Delete(marshalBlockEntryKey(index, id))
 }
 
-func (b BlockQueueStore) ListEntries(tx *bbolt.Tx) iter.Iterator[BlockEntry] {
-	return newBlockEntriesIterator(tx.Bucket(b.bucketName))
+func (s BlockQueueStore) ListEntries(tx *bbolt.Tx) iter.Iterator[BlockEntry] {
+	return newBlockEntriesIterator(tx.Bucket(s.bucketName))
 }
 
 type blockEntriesIterator struct {
