@@ -31,7 +31,7 @@ type JobStore interface {
 	DeleteJobPlan(tx *bbolt.Tx, name string) error
 
 	GetJobState(tx *bbolt.Tx, name string) (*raft_log.CompactionJobState, error)
-	UpdateJobState(*bbolt.Tx, *raft_log.CompactionJobState) error
+	StoreJobState(*bbolt.Tx, *raft_log.CompactionJobState) error
 	DeleteJobState(tx *bbolt.Tx, name string) error
 	ListEntries(*bbolt.Tx) iter.Iterator[*raft_log.CompactionJobState]
 }
@@ -73,14 +73,14 @@ func (sc *Scheduler) UpdateSchedule(tx *bbolt.Tx, _ *raft.Log, update *raft_log.
 		if err := sc.store.StoreJobPlan(tx, job.Plan); err != nil {
 			return err
 		}
-		if err := sc.store.UpdateJobState(tx, job.State); err != nil {
+		if err := sc.store.StoreJobState(tx, job.State); err != nil {
 			return err
 		}
 		sc.queue.put(job.State)
 	}
 
 	for _, job := range update.AssignedJobs {
-		if err := sc.store.UpdateJobState(tx, job.State); err != nil {
+		if err := sc.store.StoreJobState(tx, job.State); err != nil {
 			return err
 		}
 		sc.queue.put(job.State)

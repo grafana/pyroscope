@@ -332,12 +332,12 @@ func (_c *MockJobStore_StoreJobPlan_Call) RunAndReturn(run func(*bbolt.Tx, *raft
 	return _c
 }
 
-// UpdateJobState provides a mock function with given fields: _a0, _a1
-func (_m *MockJobStore) UpdateJobState(_a0 *bbolt.Tx, _a1 *raft_log.CompactionJobState) error {
+// StoreJobState provides a mock function with given fields: _a0, _a1
+func (_m *MockJobStore) StoreJobState(_a0 *bbolt.Tx, _a1 *raft_log.CompactionJobState) error {
 	ret := _m.Called(_a0, _a1)
 
 	if len(ret) == 0 {
-		panic("no return value specified for UpdateJobState")
+		panic("no return value specified for StoreJobState")
 	}
 
 	var r0 error
@@ -350,31 +350,31 @@ func (_m *MockJobStore) UpdateJobState(_a0 *bbolt.Tx, _a1 *raft_log.CompactionJo
 	return r0
 }
 
-// MockJobStore_UpdateJobState_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateJobState'
-type MockJobStore_UpdateJobState_Call struct {
+// MockJobStore_StoreJobState_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StoreJobState'
+type MockJobStore_StoreJobState_Call struct {
 	*mock.Call
 }
 
-// UpdateJobState is a helper method to define mock.On call
+// StoreJobState is a helper method to define mock.On call
 //   - _a0 *bbolt.Tx
 //   - _a1 *raft_log.CompactionJobState
-func (_e *MockJobStore_Expecter) UpdateJobState(_a0 interface{}, _a1 interface{}) *MockJobStore_UpdateJobState_Call {
-	return &MockJobStore_UpdateJobState_Call{Call: _e.mock.On("UpdateJobState", _a0, _a1)}
+func (_e *MockJobStore_Expecter) StoreJobState(_a0 interface{}, _a1 interface{}) *MockJobStore_StoreJobState_Call {
+	return &MockJobStore_StoreJobState_Call{Call: _e.mock.On("StoreJobState", _a0, _a1)}
 }
 
-func (_c *MockJobStore_UpdateJobState_Call) Run(run func(_a0 *bbolt.Tx, _a1 *raft_log.CompactionJobState)) *MockJobStore_UpdateJobState_Call {
+func (_c *MockJobStore_StoreJobState_Call) Run(run func(_a0 *bbolt.Tx, _a1 *raft_log.CompactionJobState)) *MockJobStore_StoreJobState_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(*bbolt.Tx), args[1].(*raft_log.CompactionJobState))
 	})
 	return _c
 }
 
-func (_c *MockJobStore_UpdateJobState_Call) Return(_a0 error) *MockJobStore_UpdateJobState_Call {
+func (_c *MockJobStore_StoreJobState_Call) Return(_a0 error) *MockJobStore_StoreJobState_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockJobStore_UpdateJobState_Call) RunAndReturn(run func(*bbolt.Tx, *raft_log.CompactionJobState) error) *MockJobStore_UpdateJobState_Call {
+func (_c *MockJobStore_StoreJobState_Call) RunAndReturn(run func(*bbolt.Tx, *raft_log.CompactionJobState) error) *MockJobStore_StoreJobState_Call {
 	_c.Call.Return(run)
 	return _c
 }

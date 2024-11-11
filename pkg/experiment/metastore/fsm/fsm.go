@@ -37,7 +37,7 @@ func New(logger log.Logger, reg prometheus.Registerer, dir string) (*FSM, error)
 		metrics:  newMetrics(reg),
 		handlers: make(map[RaftLogEntryType]handler),
 	}
-	fsm.db = newDB(logger, metrics, dir)
+	fsm.db = newDB(logger, fsm.metrics, dir)
 	if err := fsm.db.open(false); err != nil {
 		return nil, err
 	}

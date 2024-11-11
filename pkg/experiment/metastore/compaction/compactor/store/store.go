@@ -9,36 +9,36 @@ import (
 
 var ErrorNotFound = errors.New("not found")
 
-type KeyPrefix string
+type kv struct {
+	key   []byte
+	value []byte
+}
 
-func (p KeyPrefix) Key(name string) []byte { return append([]byte(p), name...) }
-func (p KeyPrefix) Matches(k []byte) bool  { return bytes.HasPrefix(k, []byte(p)) }
-
-const (
-	JobStateKeyPrefix KeyPrefix = "cs:"
-	JobPlanKeyPrefix  KeyPrefix = "cp:"
-)
-
-func newCursorIter(prefix KeyPrefix, cursor *bbolt.Cursor) *cursorIterator {
-	iter := cursorIterator{prefix: prefix, cursor: cursor}
-	iter.k, iter.v = cursor.Seek([]byte(prefix))
-	return &iter
+func newCursorIter(prefix []byte, cursor *bbolt.Cursor) *cursorIterator {
+	return &cursorIterator{prefix: prefix, cursor: cursor}
 }
 
 type cursorIterator struct {
-	prefix KeyPrefix
 	cursor *bbolt.Cursor
+	seek   bool
+	prefix []byte
 	k, v   []byte
 }
 
 func (c *cursorIterator) Next() bool {
-	if c.prefix.Matches(c.k) {
+	if !c.seek {
+		c.k, c.v = c.cursor.Seek(c.prefix)
+		c.seek = true
+	} else {
 		c.k, c.v = c.cursor.Next()
-		return c.k != nil
 	}
-	return false
+	return c.valid()
 }
 
-func (c *cursorIterator) At() []byte   { return c.v }
+func (c *cursorIterator) valid() bool {
+	return c.k != nil && (len(c.prefix) == 0 || bytes.HasPrefix(c.k, c.prefix))
+}
+
+func (c *cursorIterator) At() kv       { return kv{key: c.k, value: c.v} }
 func (c *cursorIterator) Err() error   { return nil }
 func (c *cursorIterator) Close() error { return nil }
