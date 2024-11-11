@@ -49,9 +49,13 @@ message CompactionJobUpdate {
 
 // CompactionJobState is produced in response to
 // the compaction worker status update request.
+//
+// Compaction level and other attributes that
+// affect the scheduling order or status update
+// handling should be included into the message.
 message CompactionJobState {
   string name = 1;
-  uint32 compaction_level = 2; // TODO: remove.
+  uint32 compaction_level = 2;
   metastore.v1.CompactionJobStatus status = 3;
   uint64 token = 4;
   int64 lease_expires_at = 5;
