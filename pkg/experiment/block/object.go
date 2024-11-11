@@ -17,14 +17,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/util/refctr"
 )
 
-// TODO Next:
-//  - Buffer pool.
-//  - In-memory threshold option.
-//  - Store the object size in metadata.
-//  - Separate storages for segments and compacted blocks.
-//  - Local cache? Useful for all-in-one deployments.
-//  - Distributed cache.
-
 type Section uint32
 
 const (

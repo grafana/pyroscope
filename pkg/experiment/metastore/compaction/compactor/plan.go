@@ -33,7 +33,6 @@ func (p *plan) CreateJob() (*raft_log.CompactionJobPlan, error) {
 	if planned == nil {
 		return nil, nil
 	}
-	// TODO(kolesnikovae): Configurable batch size.
 	tombstones, err := p.compactor.tombstones.GetTombstones(p.tx, p.cmd)
 	if err != nil {
 		return nil, err

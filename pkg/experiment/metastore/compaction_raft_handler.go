@@ -115,7 +115,9 @@ func (h *CompactionCommandHandler) UpdateCompactionPlan(
 	if err := h.planner.UpdatePlan(tx, cmd, req.PlanUpdate); err != nil {
 		return nil, err
 	}
-
+	if err := h.scheduler.UpdateSchedule(tx, cmd, req.PlanUpdate); err != nil {
+		return nil, err
+	}
 	for _, job := range req.PlanUpdate.CompletedJobs {
 		compacted := &metastorev1.CompactedBlocks{
 			SourceBlocks:    job.Plan.SourceBlocks,
@@ -125,10 +127,5 @@ func (h *CompactionCommandHandler) UpdateCompactionPlan(
 			return nil, err
 		}
 	}
-
-	if err := h.scheduler.UpdateSchedule(tx, cmd, req.PlanUpdate); err != nil {
-		return nil, err
-	}
-
 	return new(raft_log.UpdateCompactionPlanResponse), nil
 }

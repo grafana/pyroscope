@@ -13,9 +13,14 @@ import (
 var ErrAlreadyCompacted = errors.New("block already compacted")
 
 type Compactor interface {
-	// AddBlock enqueues a new block for compaction.
-	// Implementation: the method must be idempotent.
+	// AddBlock enqueues a new block for compaction. If the block has
+	// already been compacted, the method returns ErrAlreadyCompacted.
 	AddBlock(*bbolt.Tx, *raft.Log, *metastorev1.BlockMeta) error
+
+	// DeleteBlocks creates block tombstones for the given blocks.
+	// Objects will be eventually removed as part of the compaction job.
+	// Implementation: the method must be idempotent.
+	DeleteBlocks(*bbolt.Tx, *raft.Log, ...*metastorev1.BlockMeta) error
 }
 
 type Planner interface {
@@ -31,6 +36,7 @@ type Planner interface {
 }
 
 type Plan interface {
+	// CreateJob plans a new compaction job.
 	CreateJob() (*raft_log.CompactionJobPlan, error)
 }
 

@@ -61,10 +61,10 @@ message CompactionJobState {
 
 message CompactionJobPlan {
   string name = 1;
+  // Blocks to be compacted.
   string tenant = 2;
   uint32 shard = 3;
   uint32 compaction_level = 4;
-  // Blocks to be compacted.
   repeated string source_blocks = 5;
   // Objects to be deleted.
   metastore.v1.Tombstones tombstones = 6;

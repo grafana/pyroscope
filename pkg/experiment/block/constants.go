@@ -4,6 +4,12 @@ import (
 	"github.com/grafana/pyroscope/pkg/tenant"
 )
 
+// TODO(kolesnikovae):
+//  - FileNameDataObject = "data.bin"
+//  - Use blocks/ instead of segments/?
+//    - Is only needed if we want to separate storages for segments and compacted blocks.
+//    - Encode compaction level into path?
+
 const (
 	DirPathSegment    = "segments/"
 	DirPathBlock      = "blocks/"

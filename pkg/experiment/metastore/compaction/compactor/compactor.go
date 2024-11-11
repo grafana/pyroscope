@@ -6,6 +6,7 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
+	"github.com/grafana/pyroscope/pkg/experiment/block"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction/compactor/store"
 	"github.com/grafana/pyroscope/pkg/iter"
@@ -69,7 +70,11 @@ func (p *Compactor) AddBlock(tx *bbolt.Tx, cmd *raft.Log, md *metastorev1.BlockM
 	return nil
 }
 
-func (p *Compactor) DeleteBlock(tx *bbolt.Tx, cmd *raft.Log, tombstones *metastorev1.Tombstones) error {
+func (p *Compactor) DeleteBlocks(tx *bbolt.Tx, cmd *raft.Log, blocks ...*metastorev1.BlockMeta) error {
+	tombstones := &metastorev1.Tombstones{Blocks: make([]string, len(blocks))}
+	for i := range blocks {
+		tombstones.Blocks[i] = block.ObjectPath(blocks[i])
+	}
 	return p.tombstones.AddTombstones(tx, cmd, tombstones)
 }
 
@@ -95,8 +100,8 @@ func (p *Compactor) UpdatePlan(tx *bbolt.Tx, cmd *raft.Log, plan *raft_log.Compa
 			level:  job.Plan.CompactionLevel,
 		}
 		staged := p.queue.blockQueue(k.level).stagedBlocks(k)
-		for _, block := range job.Plan.SourceBlocks {
-			e := staged.delete(block)
+		for _, b := range job.Plan.SourceBlocks {
+			e := staged.delete(b)
 			if e == zeroBlockEntry {
 				continue
 			}
