@@ -16,8 +16,12 @@ var (
 	_ compaction.Planner   = (*Compactor)(nil)
 )
 
-type Index interface {
-	ListExpiredTombstones(*bbolt.Tx, *raft.Log) iter.Iterator[string]
+type TombstoneStore interface {
+	Exists(*metastorev1.BlockMeta) bool
+	AddTombstones(*bbolt.Tx, *raft.Log, *metastorev1.Tombstones) error
+	GetTombstones(*bbolt.Tx, *raft.Log) (*metastorev1.Tombstones, error)
+	DeleteTombstones(*bbolt.Tx, *raft.Log, *metastorev1.Tombstones) error
+	ListEntries(*bbolt.Tx) iter.Iterator[store.BlockEntry]
 }
 
 type BlockQueueStore interface {
@@ -27,26 +31,29 @@ type BlockQueueStore interface {
 }
 
 type Compactor struct {
-	strategy Strategy
-	queue    *compactionQueue
-	store    BlockQueueStore
-	index    Index
+	strategy   Strategy
+	queue      *compactionQueue
+	store      BlockQueueStore
+	tombstones TombstoneStore
 }
 
 type Config struct {
 	Strategy Strategy
 }
 
-func NewCompactor(strategy Strategy, store BlockQueueStore, index Index) *Compactor {
+func NewCompactor(strategy Strategy, store BlockQueueStore, tombstones TombstoneStore) *Compactor {
 	return &Compactor{
-		strategy: strategy,
-		queue:    newCompactionQueue(strategy),
-		store:    store,
-		index:    index,
+		strategy:   strategy,
+		queue:      newCompactionQueue(strategy),
+		store:      store,
+		tombstones: tombstones,
 	}
 }
 
 func (p *Compactor) AddBlock(tx *bbolt.Tx, cmd *raft.Log, md *metastorev1.BlockMeta) error {
+	if p.tombstones.Exists(md) {
+		return compaction.ErrAlreadyCompacted
+	}
 	e := store.BlockEntry{
 		Index:      cmd.Index,
 		AppendedAt: cmd.AppendedAt.UnixNano(),
@@ -62,6 +69,10 @@ func (p *Compactor) AddBlock(tx *bbolt.Tx, cmd *raft.Log, md *metastorev1.BlockM
 	return nil
 }
 
+func (p *Compactor) DeleteBlock(tx *bbolt.Tx, cmd *raft.Log, tombstones *metastorev1.Tombstones) error {
+	return p.tombstones.AddTombstones(tx, cmd, tombstones)
+}
+
 func (p *Compactor) enqueue(e store.BlockEntry) bool {
 	return p.queue.push(e)
 }
@@ -75,8 +86,9 @@ func (p *Compactor) NewPlan(tx *bbolt.Tx, cmd *raft.Log) compaction.Plan {
 	}
 }
 
-func (p *Compactor) Scheduled(tx *bbolt.Tx, jobs ...*raft_log.CompactionJobUpdate) error {
-	for _, job := range jobs {
+func (p *Compactor) UpdatePlan(tx *bbolt.Tx, cmd *raft.Log, plan *raft_log.CompactionPlanUpdate) error {
+	for _, job := range plan.NewJobs {
+		// Delete source blocks from the compaction queue.
 		k := compactionKey{
 			tenant: job.Plan.Tenant,
 			shard:  job.Plan.Shard,
@@ -92,7 +104,12 @@ func (p *Compactor) Scheduled(tx *bbolt.Tx, jobs ...*raft_log.CompactionJobUpdat
 				return err
 			}
 		}
+		// Delete tombstones that are scheduled for removal.
+		if err := p.tombstones.DeleteTombstones(tx, cmd, job.Plan.Tombstones); err != nil {
+			return err
+		}
 	}
+
 	return nil
 }
 

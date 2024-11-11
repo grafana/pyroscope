@@ -64,9 +64,12 @@ message CompactionJobPlan {
   string tenant = 2;
   uint32 shard = 3;
   uint32 compaction_level = 4;
+  // Blocks to be compacted.
   repeated string source_blocks = 5;
-  repeated metastore.v1.BlockMeta compacted_blocks = 6;
-  repeated string deleted_blocks = 7;
+  // Objects to be deleted.
+  metastore.v1.Tombstones tombstones = 6;
+  // Only present if the job completed successfully.
+  repeated metastore.v1.BlockMeta compacted_blocks = 7;
 }
 
 // UpdateCompactionPlanRequest proposes compaction plan changes.

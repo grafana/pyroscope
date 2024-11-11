@@ -68,7 +68,7 @@ func (sc *Scheduler) NewSchedule(tx *bbolt.Tx, cmd *raft.Log) compaction.Schedul
 	}
 }
 
-func (sc *Scheduler) UpdateSchedule(tx *bbolt.Tx, update *raft_log.CompactionPlanUpdate) error {
+func (sc *Scheduler) UpdateSchedule(tx *bbolt.Tx, _ *raft.Log, update *raft_log.CompactionPlanUpdate) error {
 	for _, job := range update.NewJobs {
 		if err := sc.store.StoreJobPlan(tx, job.Plan); err != nil {
 			return err

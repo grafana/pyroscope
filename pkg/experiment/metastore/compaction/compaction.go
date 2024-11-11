@@ -1,12 +1,16 @@
 package compaction
 
 import (
+	"errors"
+
 	"github.com/hashicorp/raft"
 	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 )
+
+var ErrAlreadyCompacted = errors.New("block already compacted")
 
 type Compactor interface {
 	// AddBlock enqueues a new block for compaction.
@@ -21,10 +25,9 @@ type Planner interface {
 	// Implementation: Plan must not change the state of Planner.
 	NewPlan(*bbolt.Tx, *raft.Log) Plan
 
-	// Scheduled must be called for each job after it is scheduled
-	// to remove the job from future plans.
+	// UpdatePlan communicates the status of the compaction job to the planner.
 	// Implementation: the method must be idempotent.
-	Scheduled(*bbolt.Tx, ...*raft_log.CompactionJobUpdate) error
+	UpdatePlan(*bbolt.Tx, *raft.Log, *raft_log.CompactionPlanUpdate) error
 }
 
 type Plan interface {
@@ -40,7 +43,7 @@ type Scheduler interface {
 
 	// UpdateSchedule adds new jobs and updates state of existing ones.
 	// Implementation: the method must be idempotent.
-	UpdateSchedule(*bbolt.Tx, *raft_log.CompactionPlanUpdate) error
+	UpdateSchedule(*bbolt.Tx, *raft.Log, *raft_log.CompactionPlanUpdate) error
 }
 
 // Schedule prepares changes to the compaction plan based on status updates

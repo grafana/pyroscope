@@ -11,7 +11,6 @@ import (
 	"go.etcd.io/bbolt"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
-	"github.com/grafana/pyroscope/pkg/iter"
 )
 
 // plan should be used to prepare the compaction plan update.
@@ -35,7 +34,7 @@ func (p *plan) CreateJob() (*raft_log.CompactionJobPlan, error) {
 		return nil, nil
 	}
 	// TODO(kolesnikovae): Configurable batch size.
-	tombstones, err := iter.Slice(p.compactor.index.ListExpiredTombstones(p.tx, p.cmd))
+	tombstones, err := p.compactor.tombstones.GetTombstones(p.tx, p.cmd)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +44,7 @@ func (p *plan) CreateJob() (*raft_log.CompactionJobPlan, error) {
 		Tenant:          planned.tenant,
 		CompactionLevel: planned.level,
 		SourceBlocks:    planned.blocks,
-		DeletedBlocks:   tombstones,
+		Tombstones:      tombstones,
 	}
 	return &job, nil
 }

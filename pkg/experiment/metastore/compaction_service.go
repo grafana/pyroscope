@@ -86,7 +86,7 @@ func (m *CompactionService) PollCompactionJobs(
 				Tenant:          job.Tenant,
 				CompactionLevel: job.CompactionLevel,
 				SourceBlocks:    job.SourceBlocks,
-				DeletedBlocks:   job.DeletedBlocks,
+				Tombstones:      job.Tombstones,
 			})
 		}
 	}

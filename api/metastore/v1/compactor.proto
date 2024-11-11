@@ -30,7 +30,11 @@ message CompactionJob {
   string tenant = 3;
   uint32 compaction_level = 4;
   repeated string source_blocks = 5;
-  repeated string deleted_blocks = 6;
+  Tombstones tombstones = 6;
+}
+
+message Tombstones {
+  repeated string blocks = 1;
 }
 
 message CompactionJobAssignment {
@@ -51,7 +55,6 @@ message CompactionJobStatusUpdate {
 message CompactedBlocks {
   repeated string source_blocks = 1;
   repeated metastore.v1.BlockMeta compacted_blocks = 2;
-  repeated string deleted_blocks = 3;
 }
 
 enum CompactionJobStatus {

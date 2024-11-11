@@ -112,21 +112,21 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 func (h *CompactionCommandHandler) UpdateCompactionPlan(
 	tx *bbolt.Tx, cmd *raft.Log, req *raft_log.UpdateCompactionPlanRequest,
 ) (*raft_log.UpdateCompactionPlanResponse, error) {
-	if err := h.planner.Scheduled(tx, req.PlanUpdate.NewJobs...); err != nil {
+	if err := h.planner.UpdatePlan(tx, cmd, req.PlanUpdate); err != nil {
 		return nil, err
 	}
 
 	for _, job := range req.PlanUpdate.CompletedJobs {
 		compacted := &metastorev1.CompactedBlocks{
+			SourceBlocks:    job.Plan.SourceBlocks,
 			CompactedBlocks: job.Plan.CompactedBlocks,
-			DeletedBlocks:   job.Plan.DeletedBlocks,
 		}
 		if err := h.index.ReplaceBlocks(tx, cmd, compacted); err != nil {
 			return nil, err
 		}
 	}
 
-	if err := h.scheduler.UpdateSchedule(tx, req.PlanUpdate); err != nil {
+	if err := h.scheduler.UpdateSchedule(tx, cmd, req.PlanUpdate); err != nil {
 		return nil, err
 	}
 

@@ -198,6 +198,13 @@ func (m *CompactionJobPlan) CloneVT() *CompactionJobPlan {
 		copy(tmpContainer, rhs)
 		r.SourceBlocks = tmpContainer
 	}
+	if rhs := m.Tombstones; rhs != nil {
+		if vtpb, ok := interface{}(rhs).(interface{ CloneVT() *v1.Tombstones }); ok {
+			r.Tombstones = vtpb.CloneVT()
+		} else {
+			r.Tombstones = proto.Clone(rhs).(*v1.Tombstones)
+		}
+	}
 	if rhs := m.CompactedBlocks; rhs != nil {
 		tmpContainer := make([]*v1.BlockMeta, len(rhs))
 		for k, v := range rhs {
@@ -208,11 +215,6 @@ func (m *CompactionJobPlan) CloneVT() *CompactionJobPlan {
 			}
 		}
 		r.CompactedBlocks = tmpContainer
-	}
-	if rhs := m.DeletedBlocks; rhs != nil {
-		tmpContainer := make([]string, len(rhs))
-		copy(tmpContainer, rhs)
-		r.DeletedBlocks = tmpContainer
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -511,6 +513,13 @@ func (this *CompactionJobPlan) EqualVT(that *CompactionJobPlan) bool {
 			return false
 		}
 	}
+	if equal, ok := interface{}(this.Tombstones).(interface{ EqualVT(*v1.Tombstones) bool }); ok {
+		if !equal.EqualVT(that.Tombstones) {
+			return false
+		}
+	} else if !proto.Equal(this.Tombstones, that.Tombstones) {
+		return false
+	}
 	if len(this.CompactedBlocks) != len(that.CompactedBlocks) {
 		return false
 	}
@@ -530,15 +539,6 @@ func (this *CompactionJobPlan) EqualVT(that *CompactionJobPlan) bool {
 			} else if !proto.Equal(p, q) {
 				return false
 			}
-		}
-	}
-	if len(this.DeletedBlocks) != len(that.DeletedBlocks) {
-		return false
-	}
-	for i, vx := range this.DeletedBlocks {
-		vy := that.DeletedBlocks[i]
-		if vx != vy {
-			return false
 		}
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -1001,15 +1001,6 @@ func (m *CompactionJobPlan) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if len(m.DeletedBlocks) > 0 {
-		for iNdEx := len(m.DeletedBlocks) - 1; iNdEx >= 0; iNdEx-- {
-			i -= len(m.DeletedBlocks[iNdEx])
-			copy(dAtA[i:], m.DeletedBlocks[iNdEx])
-			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.DeletedBlocks[iNdEx])))
-			i--
-			dAtA[i] = 0x3a
-		}
-	}
 	if len(m.CompactedBlocks) > 0 {
 		for iNdEx := len(m.CompactedBlocks) - 1; iNdEx >= 0; iNdEx-- {
 			if vtmsg, ok := interface{}(m.CompactedBlocks[iNdEx]).(interface {
@@ -1031,8 +1022,30 @@ func (m *CompactionJobPlan) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 				i = protohelpers.EncodeVarint(dAtA, i, uint64(len(encoded)))
 			}
 			i--
-			dAtA[i] = 0x32
+			dAtA[i] = 0x3a
 		}
+	}
+	if m.Tombstones != nil {
+		if vtmsg, ok := interface{}(m.Tombstones).(interface {
+			MarshalToSizedBufferVT([]byte) (int, error)
+		}); ok {
+			size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		} else {
+			encoded, err := proto.Marshal(m.Tombstones)
+			if err != nil {
+				return 0, err
+			}
+			i -= len(encoded)
+			copy(dAtA[i:], encoded)
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(encoded)))
+		}
+		i--
+		dAtA[i] = 0x32
 	}
 	if len(m.SourceBlocks) > 0 {
 		for iNdEx := len(m.SourceBlocks) - 1; iNdEx >= 0; iNdEx-- {
@@ -1319,6 +1332,16 @@ func (m *CompactionJobPlan) SizeVT() (n int) {
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
 	}
+	if m.Tombstones != nil {
+		if size, ok := interface{}(m.Tombstones).(interface {
+			SizeVT() int
+		}); ok {
+			l = size.SizeVT()
+		} else {
+			l = proto.Size(m.Tombstones)
+		}
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
 	if len(m.CompactedBlocks) > 0 {
 		for _, e := range m.CompactedBlocks {
 			if size, ok := interface{}(e).(interface {
@@ -1328,12 +1351,6 @@ func (m *CompactionJobPlan) SizeVT() (n int) {
 			} else {
 				l = proto.Size(e)
 			}
-			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-		}
-	}
-	if len(m.DeletedBlocks) > 0 {
-		for _, s := range m.DeletedBlocks {
-			l = len(s)
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
 	}
@@ -2348,6 +2365,50 @@ func (m *CompactionJobPlan) UnmarshalVT(dAtA []byte) error {
 			iNdEx = postIndex
 		case 6:
 			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Tombstones", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Tombstones == nil {
+				m.Tombstones = &v1.Tombstones{}
+			}
+			if unmarshal, ok := interface{}(m.Tombstones).(interface {
+				UnmarshalVT([]byte) error
+			}); ok {
+				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Tombstones); err != nil {
+					return err
+				}
+			}
+			iNdEx = postIndex
+		case 7:
+			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field CompactedBlocks", wireType)
 			}
 			var msglen int
@@ -2387,38 +2448,6 @@ func (m *CompactionJobPlan) UnmarshalVT(dAtA []byte) error {
 					return err
 				}
 			}
-			iNdEx = postIndex
-		case 7:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field DeletedBlocks", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.DeletedBlocks = append(m.DeletedBlocks, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

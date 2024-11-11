@@ -733,12 +733,6 @@
             "type": "object",
             "$ref": "#/definitions/v1BlockMeta"
           }
-        },
-        "deletedBlocks": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
         }
       }
     },
@@ -765,11 +759,8 @@
             "type": "string"
           }
         },
-        "deletedBlocks": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
+        "tombstones": {
+          "$ref": "#/definitions/v1Tombstones"
         }
       }
     },
@@ -2297,6 +2288,17 @@
           "items": {
             "type": "object",
             "$ref": "#/definitions/v1Series"
+          }
+        }
+      }
+    },
+    "v1Tombstones": {
+      "type": "object",
+      "properties": {
+        "blocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
           }
         }
       }
