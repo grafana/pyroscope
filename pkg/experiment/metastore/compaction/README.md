@@ -59,10 +59,8 @@ loop
         U ->>+S: Assign jobs
         S ->>-U: Job state changes
         U ->>+P: Create jobs
-        Note right of U: New jobs are created if<br>the scheduler queue is empty
-        P ->>P: Dequeue blocks
-        P ->>I: GetTombstones
-        I ->>P: Tombstones
+        Note right of U: New jobs are created if<br>workers have enough capacity
+        P ->>P: Dequeue blocks<br>and load tombstones
         P ->>-U: New jobs
         U ->>+S: Add jobs
         S ->>-U: Job state changes
@@ -76,8 +74,8 @@ loop
     critical FSM state update
         R ->>S: Update schedule<br>(new, completed, assigned, reassigned jobs)
         R ->>P: Remove source blocks from the planner queue (new jobs)
-        R ->>I: Replace source blocks in the index (completed jobs)<br>Tombstones created for source blocks
-        I ->>+C: Add new blocks
+        R ->>I: Replace source blocks in the index (completed jobs)
+        I ->>+C: Add new blocks and create<br>tombstones for deleted
         C ->>C: Enqueue
         C ->>-I: 
         I ->>R: 
