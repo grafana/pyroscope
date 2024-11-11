@@ -27,11 +27,11 @@ type boltdb struct {
 	path    string
 }
 
-func newDB(logger log.Logger, dir string) *boltdb {
+func newDB(logger log.Logger, metrics *metrics, dir string) *boltdb {
 	return &boltdb{
 		logger:  logger,
 		dir:     dir,
-		metrics: &metrics{},
+		metrics: metrics,
 	}
 }
 

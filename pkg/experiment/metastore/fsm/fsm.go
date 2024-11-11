@@ -31,13 +31,17 @@ type FSM struct {
 
 type handler func(tx *bbolt.Tx, cmd *raft.Log, raw []byte) (proto.Message, error)
 
-func New(logger log.Logger, reg prometheus.Registerer, dir string) *FSM {
-	return &FSM{
+func New(logger log.Logger, reg prometheus.Registerer, dir string) (*FSM, error) {
+	fsm := FSM{
 		logger:   logger,
-		db:       newDB(logger, dir),
 		metrics:  newMetrics(reg),
 		handlers: make(map[RaftLogEntryType]handler),
 	}
+	fsm.db = newDB(logger, metrics, dir)
+	if err := fsm.db.open(false); err != nil {
+		return nil, err
+	}
+	return &fsm, nil
 }
 
 func (fsm *FSM) RegisterRestorer(r ...StateRestorer) {

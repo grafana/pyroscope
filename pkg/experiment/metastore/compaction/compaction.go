@@ -10,6 +10,11 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 )
 
+// NOTE(kolesnikovae): To avoid dependencies on the underlying implementations:
+//  * We may replace Tx with "store" interfaces.
+//  * Raft log entry can also be replaced with something that
+//    can give us the sequence number and a timestamp.
+
 var ErrAlreadyCompacted = errors.New("block already compacted")
 
 type Compactor interface {
