@@ -21,6 +21,7 @@ type TombstoneStore interface {
 	Exists(*metastorev1.BlockMeta) bool
 	AddTombstones(*bbolt.Tx, *raft.Log, *metastorev1.Tombstones) error
 	GetTombstones(*bbolt.Tx, *raft.Log) (*metastorev1.Tombstones, error)
+	// GetTombstones(*bbolt.Tx, *raft.Log) iter.Iterator[*metastorev1.Tombstones]
 	DeleteTombstones(*bbolt.Tx, *raft.Log, *metastorev1.Tombstones) error
 	ListEntries(*bbolt.Tx) iter.Iterator[store.BlockEntry]
 }
@@ -75,6 +76,7 @@ func (p *Compactor) DeleteBlocks(tx *bbolt.Tx, cmd *raft.Log, blocks ...*metasto
 	for i := range blocks {
 		tombstones.Blocks[i] = block.ObjectPath(blocks[i])
 	}
+	// TODO: Generate a key for quick lookup.
 	return p.tombstones.AddTombstones(tx, cmd, tombstones)
 }
 
@@ -126,12 +128,7 @@ func (p *Compactor) Restore(tx *bbolt.Tx) error {
 		_ = entries.Close()
 	}()
 	for entries.Next() {
-		// The only error can be returned here is ErrAlreadyCompacted,
-		// which is impossible, unless there is a major bug in the
-		// block queue and/or in the store implementation.
-		if !p.enqueue(entries.At()) {
-			panic("compactor: block duplicate in the queue")
-		}
+		p.enqueue(entries.At())
 	}
 	return entries.Err()
 }
