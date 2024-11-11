@@ -66,7 +66,7 @@ func TestCompactor_DeleteBlock(t *testing.T) {
 	tombstoneStore.AssertExpectations(t)
 }
 
-func TestCompactor_AddBlock_CreateJob(t *testing.T) {
+func TestCompactor_UpdatePlan(t *testing.T) {
 	const N = 10
 
 	s := Strategy{
