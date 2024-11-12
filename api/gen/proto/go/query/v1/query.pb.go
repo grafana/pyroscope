@@ -442,9 +442,11 @@ func (x *InvokeRequest) GetOptions() *InvokeOptions {
 	return nil
 }
 
-// Query plan is represented by a DAG, where each node
-// might be either "merge" or "read" (leaves). Each node
-// references a section of the plan and the included blocks.
+// A query plan is represented by a directed acyclic graph (DAG),
+// where each node is either a "merge" node or a "read" node.
+//
+// Merge nodes reference other nodes in the plan as their "children".
+// Read nodes reference the blocks which contain the actual data to be processed.
 type QueryPlan struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

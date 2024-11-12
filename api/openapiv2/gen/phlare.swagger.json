@@ -1740,7 +1740,7 @@
           "$ref": "#/definitions/v1QueryNode"
         }
       },
-      "description": "Query plan is represented by a DAG, where each node\nmight be either \"merge\" or \"read\" (leaves). Each node\nreferences a section of the plan and the included blocks."
+      "description": "A query plan is represented by a directed acyclic graph (DAG),\nwhere each node is either a \"merge\" node or a \"read\" node.\n\nMerge nodes reference other nodes in the plan as their \"children\".\nRead nodes reference the blocks which contain the actual data to be processed."
     },
     "v1QueryResponse": {
       "type": "object",
