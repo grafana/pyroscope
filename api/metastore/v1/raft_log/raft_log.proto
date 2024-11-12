@@ -71,9 +71,10 @@ message CompactionJobPlan {
   uint32 compaction_level = 4;
   repeated string source_blocks = 5;
   // Objects to be deleted.
-  metastore.v1.Tombstones tombstones = 6;
+  repeated metastore.v1.Tombstones tombstones = 6;
   // Only present if the job completed successfully.
-  repeated metastore.v1.BlockMeta compacted_blocks = 7;
+  // Never stored in the metastore.
+  metastore.v1.CompactedBlocks compacted_blocks = 7;
 }
 
 // UpdateCompactionPlanRequest proposes compaction plan changes.

@@ -30,11 +30,24 @@ message CompactionJob {
   string tenant = 3;
   uint32 compaction_level = 4;
   repeated string source_blocks = 5;
-  Tombstones tombstones = 6;
+  repeated Tombstones tombstones = 6;
 }
 
+// Tombstones represent objects removed from the
+// index but still present in the storage layer.
 message Tombstones {
-  repeated string blocks = 1;
+  BlockTombstones blocks = 1;
+  // For now, we only have block tombstones created due to the
+  // compaction process. Later, we may add more types of tombstones,
+  // e.g, deleted tenant (shard), dataset, series etc.
+}
+
+message BlockTombstones {
+  string name = 1;
+  uint32 shard = 2;
+  string tenant = 3;
+  uint32 compaction_level = 4;
+  repeated string blocks = 5;
 }
 
 message CompactionJobAssignment {
@@ -53,7 +66,7 @@ message CompactionJobStatusUpdate {
 }
 
 message CompactedBlocks {
-  repeated string source_blocks = 1;
+  metastore.v1.BlockList source_blocks = 1;
   repeated metastore.v1.BlockMeta compacted_blocks = 2;
 }
 

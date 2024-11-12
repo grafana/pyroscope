@@ -199,22 +199,22 @@ func (m *CompactionJobPlan) CloneVT() *CompactionJobPlan {
 		r.SourceBlocks = tmpContainer
 	}
 	if rhs := m.Tombstones; rhs != nil {
-		if vtpb, ok := interface{}(rhs).(interface{ CloneVT() *v1.Tombstones }); ok {
-			r.Tombstones = vtpb.CloneVT()
-		} else {
-			r.Tombstones = proto.Clone(rhs).(*v1.Tombstones)
-		}
-	}
-	if rhs := m.CompactedBlocks; rhs != nil {
-		tmpContainer := make([]*v1.BlockMeta, len(rhs))
+		tmpContainer := make([]*v1.Tombstones, len(rhs))
 		for k, v := range rhs {
-			if vtpb, ok := interface{}(v).(interface{ CloneVT() *v1.BlockMeta }); ok {
+			if vtpb, ok := interface{}(v).(interface{ CloneVT() *v1.Tombstones }); ok {
 				tmpContainer[k] = vtpb.CloneVT()
 			} else {
-				tmpContainer[k] = proto.Clone(v).(*v1.BlockMeta)
+				tmpContainer[k] = proto.Clone(v).(*v1.Tombstones)
 			}
 		}
-		r.CompactedBlocks = tmpContainer
+		r.Tombstones = tmpContainer
+	}
+	if rhs := m.CompactedBlocks; rhs != nil {
+		if vtpb, ok := interface{}(rhs).(interface{ CloneVT() *v1.CompactedBlocks }); ok {
+			r.CompactedBlocks = vtpb.CloneVT()
+		} else {
+			r.CompactedBlocks = proto.Clone(rhs).(*v1.CompactedBlocks)
+		}
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -513,26 +513,19 @@ func (this *CompactionJobPlan) EqualVT(that *CompactionJobPlan) bool {
 			return false
 		}
 	}
-	if equal, ok := interface{}(this.Tombstones).(interface{ EqualVT(*v1.Tombstones) bool }); ok {
-		if !equal.EqualVT(that.Tombstones) {
-			return false
-		}
-	} else if !proto.Equal(this.Tombstones, that.Tombstones) {
+	if len(this.Tombstones) != len(that.Tombstones) {
 		return false
 	}
-	if len(this.CompactedBlocks) != len(that.CompactedBlocks) {
-		return false
-	}
-	for i, vx := range this.CompactedBlocks {
-		vy := that.CompactedBlocks[i]
+	for i, vx := range this.Tombstones {
+		vy := that.Tombstones[i]
 		if p, q := vx, vy; p != q {
 			if p == nil {
-				p = &v1.BlockMeta{}
+				p = &v1.Tombstones{}
 			}
 			if q == nil {
-				q = &v1.BlockMeta{}
+				q = &v1.Tombstones{}
 			}
-			if equal, ok := interface{}(p).(interface{ EqualVT(*v1.BlockMeta) bool }); ok {
+			if equal, ok := interface{}(p).(interface{ EqualVT(*v1.Tombstones) bool }); ok {
 				if !equal.EqualVT(q) {
 					return false
 				}
@@ -540,6 +533,15 @@ func (this *CompactionJobPlan) EqualVT(that *CompactionJobPlan) bool {
 				return false
 			}
 		}
+	}
+	if equal, ok := interface{}(this.CompactedBlocks).(interface {
+		EqualVT(*v1.CompactedBlocks) bool
+	}); ok {
+		if !equal.EqualVT(that.CompactedBlocks) {
+			return false
+		}
+	} else if !proto.Equal(this.CompactedBlocks, that.CompactedBlocks) {
+		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
@@ -1001,32 +1003,8 @@ func (m *CompactionJobPlan) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if len(m.CompactedBlocks) > 0 {
-		for iNdEx := len(m.CompactedBlocks) - 1; iNdEx >= 0; iNdEx-- {
-			if vtmsg, ok := interface{}(m.CompactedBlocks[iNdEx]).(interface {
-				MarshalToSizedBufferVT([]byte) (int, error)
-			}); ok {
-				size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
-				if err != nil {
-					return 0, err
-				}
-				i -= size
-				i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
-			} else {
-				encoded, err := proto.Marshal(m.CompactedBlocks[iNdEx])
-				if err != nil {
-					return 0, err
-				}
-				i -= len(encoded)
-				copy(dAtA[i:], encoded)
-				i = protohelpers.EncodeVarint(dAtA, i, uint64(len(encoded)))
-			}
-			i--
-			dAtA[i] = 0x3a
-		}
-	}
-	if m.Tombstones != nil {
-		if vtmsg, ok := interface{}(m.Tombstones).(interface {
+	if m.CompactedBlocks != nil {
+		if vtmsg, ok := interface{}(m.CompactedBlocks).(interface {
 			MarshalToSizedBufferVT([]byte) (int, error)
 		}); ok {
 			size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
@@ -1036,7 +1014,7 @@ func (m *CompactionJobPlan) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 			i -= size
 			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
 		} else {
-			encoded, err := proto.Marshal(m.Tombstones)
+			encoded, err := proto.Marshal(m.CompactedBlocks)
 			if err != nil {
 				return 0, err
 			}
@@ -1045,7 +1023,31 @@ func (m *CompactionJobPlan) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(encoded)))
 		}
 		i--
-		dAtA[i] = 0x32
+		dAtA[i] = 0x3a
+	}
+	if len(m.Tombstones) > 0 {
+		for iNdEx := len(m.Tombstones) - 1; iNdEx >= 0; iNdEx-- {
+			if vtmsg, ok := interface{}(m.Tombstones[iNdEx]).(interface {
+				MarshalToSizedBufferVT([]byte) (int, error)
+			}); ok {
+				size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+			} else {
+				encoded, err := proto.Marshal(m.Tombstones[iNdEx])
+				if err != nil {
+					return 0, err
+				}
+				i -= len(encoded)
+				copy(dAtA[i:], encoded)
+				i = protohelpers.EncodeVarint(dAtA, i, uint64(len(encoded)))
+			}
+			i--
+			dAtA[i] = 0x32
+		}
 	}
 	if len(m.SourceBlocks) > 0 {
 		for iNdEx := len(m.SourceBlocks) - 1; iNdEx >= 0; iNdEx-- {
@@ -1332,18 +1334,8 @@ func (m *CompactionJobPlan) SizeVT() (n int) {
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
 	}
-	if m.Tombstones != nil {
-		if size, ok := interface{}(m.Tombstones).(interface {
-			SizeVT() int
-		}); ok {
-			l = size.SizeVT()
-		} else {
-			l = proto.Size(m.Tombstones)
-		}
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-	}
-	if len(m.CompactedBlocks) > 0 {
-		for _, e := range m.CompactedBlocks {
+	if len(m.Tombstones) > 0 {
+		for _, e := range m.Tombstones {
 			if size, ok := interface{}(e).(interface {
 				SizeVT() int
 			}); ok {
@@ -1353,6 +1345,16 @@ func (m *CompactionJobPlan) SizeVT() (n int) {
 			}
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
+	}
+	if m.CompactedBlocks != nil {
+		if size, ok := interface{}(m.CompactedBlocks).(interface {
+			SizeVT() int
+		}); ok {
+			l = size.SizeVT()
+		} else {
+			l = proto.Size(m.CompactedBlocks)
+		}
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -2392,17 +2394,15 @@ func (m *CompactionJobPlan) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.Tombstones == nil {
-				m.Tombstones = &v1.Tombstones{}
-			}
-			if unmarshal, ok := interface{}(m.Tombstones).(interface {
+			m.Tombstones = append(m.Tombstones, &v1.Tombstones{})
+			if unmarshal, ok := interface{}(m.Tombstones[len(m.Tombstones)-1]).(interface {
 				UnmarshalVT([]byte) error
 			}); ok {
 				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 					return err
 				}
 			} else {
-				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Tombstones); err != nil {
+				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Tombstones[len(m.Tombstones)-1]); err != nil {
 					return err
 				}
 			}
@@ -2436,15 +2436,17 @@ func (m *CompactionJobPlan) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.CompactedBlocks = append(m.CompactedBlocks, &v1.BlockMeta{})
-			if unmarshal, ok := interface{}(m.CompactedBlocks[len(m.CompactedBlocks)-1]).(interface {
+			if m.CompactedBlocks == nil {
+				m.CompactedBlocks = &v1.CompactedBlocks{}
+			}
+			if unmarshal, ok := interface{}(m.CompactedBlocks).(interface {
 				UnmarshalVT([]byte) error
 			}); ok {
 				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 					return err
 				}
 			} else {
-				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.CompactedBlocks[len(m.CompactedBlocks)-1]); err != nil {
+				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.CompactedBlocks); err != nil {
 					return err
 				}
 			}

@@ -1,21 +1,29 @@
 package store
 
 import (
+	"errors"
+	"fmt"
+
 	"go.etcd.io/bbolt"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 	"github.com/grafana/pyroscope/pkg/iter"
 )
 
-type JobStore struct {
-	JobStateStore
-	JobPlanStore
-}
-
 var (
 	jobStateBucketName = []byte("compaction_job_state")
 	jobPlanBucketName  = []byte("compaction_job_plan")
 )
+
+var (
+	ErrInvalidJobState = errors.New("invalid job state entry")
+	ErrInvalidJobPlan  = errors.New("invalid job plan entry")
+)
+
+type JobStore struct {
+	JobStateStore
+	JobPlanStore
+}
 
 func NewJobStore() *JobStore {
 	return &JobStore{
@@ -37,21 +45,18 @@ func (s JobStore) CreateBuckets(tx *bbolt.Tx) error {
 type JobPlanStore struct{ bucketName []byte }
 
 func (s JobPlanStore) StoreJobPlan(tx *bbolt.Tx, plan *raft_log.CompactionJobPlan) error {
-	v, err := plan.MarshalVT()
-	if err != nil {
-		return err
-	}
+	v, _ := plan.MarshalVT()
 	return tx.Bucket(s.bucketName).Put([]byte(plan.Name), v)
 }
 
 func (s JobPlanStore) GetJobPlan(tx *bbolt.Tx, name string) (*raft_log.CompactionJobPlan, error) {
 	b := tx.Bucket(s.bucketName).Get([]byte(name))
 	if b == nil {
-		return nil, ErrorNotFound
+		return nil, fmt.Errorf("loading job plan %s: %w", name, ErrorNotFound)
 	}
 	var v raft_log.CompactionJobPlan
 	if err := v.UnmarshalVT(b); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %v", ErrInvalidJobPlan, err)
 	}
 	return &v, nil
 }
@@ -67,20 +72,17 @@ func (s JobStateStore) bucket(tx *bbolt.Tx) *bbolt.Bucket { return tx.Bucket(s.b
 func (s JobStateStore) GetJobState(tx *bbolt.Tx, name string) (*raft_log.CompactionJobState, error) {
 	b := s.bucket(tx).Get([]byte(name))
 	if b == nil {
-		return nil, ErrorNotFound
+		return nil, fmt.Errorf("loading job state %s: %w", name, ErrorNotFound)
 	}
 	var v raft_log.CompactionJobState
 	if err := v.UnmarshalVT(b); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %v", ErrInvalidJobState, err)
 	}
 	return &v, nil
 }
 
 func (s JobStateStore) StoreJobState(tx *bbolt.Tx, state *raft_log.CompactionJobState) error {
-	v, err := state.MarshalVT()
-	if err != nil {
-		return err
-	}
+	v, _ := state.MarshalVT()
 	return s.bucket(tx).Put([]byte(state.Name), v)
 }
 
@@ -107,13 +109,10 @@ func (x *jobEntriesIterator) Next() bool {
 		return false
 	}
 	e := x.iter.At()
-	if e.value == nil {
-		x.err = ErrorNotFound
-		return false
-	}
 	var s raft_log.CompactionJobState
 	x.err = s.UnmarshalVT(e.value)
 	if x.err != nil {
+		x.err = fmt.Errorf("%w: %v", ErrInvalidJobState, x.err)
 		return false
 	}
 	x.cur = &s

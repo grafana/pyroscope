@@ -6,7 +6,6 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
-	"github.com/grafana/pyroscope/pkg/experiment/block"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction/compactor/store"
 	"github.com/grafana/pyroscope/pkg/iter"
@@ -17,13 +16,8 @@ var (
 	_ compaction.Planner   = (*Compactor)(nil)
 )
 
-type TombstoneStore interface {
-	Exists(*metastorev1.BlockMeta) bool
-	AddTombstones(*bbolt.Tx, *raft.Log, *metastorev1.Tombstones) error
-	GetTombstones(*bbolt.Tx, *raft.Log) (*metastorev1.Tombstones, error)
-	// GetTombstones(*bbolt.Tx, *raft.Log) iter.Iterator[*metastorev1.Tombstones]
-	DeleteTombstones(*bbolt.Tx, *raft.Log, *metastorev1.Tombstones) error
-	ListEntries(*bbolt.Tx) iter.Iterator[store.BlockEntry]
+type Tombstones interface {
+	GetExpiredTombstones(*bbolt.Tx, *raft.Log) iter.Iterator[*metastorev1.Tombstones]
 }
 
 type BlockQueueStore interface {
@@ -36,14 +30,14 @@ type Compactor struct {
 	strategy   Strategy
 	queue      *compactionQueue
 	store      BlockQueueStore
-	tombstones TombstoneStore
+	tombstones Tombstones
 }
 
 type Config struct {
 	Strategy Strategy
 }
 
-func NewCompactor(strategy Strategy, store BlockQueueStore, tombstones TombstoneStore) *Compactor {
+func NewCompactor(strategy Strategy, store BlockQueueStore, tombstones Tombstones) *Compactor {
 	return &Compactor{
 		strategy:   strategy,
 		queue:      newCompactionQueue(strategy),
@@ -52,10 +46,7 @@ func NewCompactor(strategy Strategy, store BlockQueueStore, tombstones Tombstone
 	}
 }
 
-func (p *Compactor) AddBlock(tx *bbolt.Tx, cmd *raft.Log, md *metastorev1.BlockMeta) error {
-	if p.tombstones.Exists(md) {
-		return compaction.ErrAlreadyCompacted
-	}
+func (c *Compactor) AddBlock(tx *bbolt.Tx, cmd *raft.Log, md *metastorev1.BlockMeta) error {
 	e := store.BlockEntry{
 		Index:      cmd.Index,
 		AppendedAt: cmd.AppendedAt.UnixNano(),
@@ -64,36 +55,26 @@ func (p *Compactor) AddBlock(tx *bbolt.Tx, cmd *raft.Log, md *metastorev1.BlockM
 		Level:      md.CompactionLevel,
 		Tenant:     md.TenantId,
 	}
-	if err := p.store.StoreEntry(tx, e); err != nil {
+	if err := c.store.StoreEntry(tx, e); err != nil {
 		return err
 	}
-	p.enqueue(e)
+	c.enqueue(e)
 	return nil
 }
 
-func (p *Compactor) DeleteBlocks(tx *bbolt.Tx, cmd *raft.Log, blocks ...*metastorev1.BlockMeta) error {
-	tombstones := &metastorev1.Tombstones{Blocks: make([]string, len(blocks))}
-	for i := range blocks {
-		tombstones.Blocks[i] = block.ObjectPath(blocks[i])
-	}
-	// TODO: Generate a key for quick lookup.
-	return p.tombstones.AddTombstones(tx, cmd, tombstones)
+func (c *Compactor) enqueue(e store.BlockEntry) bool {
+	return c.queue.push(e)
 }
 
-func (p *Compactor) enqueue(e store.BlockEntry) bool {
-	return p.queue.push(e)
-}
-
-func (p *Compactor) NewPlan(tx *bbolt.Tx, cmd *raft.Log) compaction.Plan {
+func (c *Compactor) NewPlan(tx *bbolt.Tx, cmd *raft.Log) compaction.Plan {
 	return &plan{
-		tx:        tx,
-		cmd:       cmd,
-		compactor: p,
-		blocks:    newBlockIter(),
+		compactor:  c,
+		tombstones: c.tombstones.GetExpiredTombstones(tx, cmd),
+		blocks:     newBlockIter(),
 	}
 }
 
-func (p *Compactor) UpdatePlan(tx *bbolt.Tx, cmd *raft.Log, plan *raft_log.CompactionPlanUpdate) error {
+func (c *Compactor) UpdatePlan(tx *bbolt.Tx, _ *raft.Log, plan *raft_log.CompactionPlanUpdate) error {
 	for _, job := range plan.NewJobs {
 		// Delete source blocks from the compaction queue.
 		k := compactionKey{
@@ -101,34 +82,30 @@ func (p *Compactor) UpdatePlan(tx *bbolt.Tx, cmd *raft.Log, plan *raft_log.Compa
 			shard:  job.Plan.Shard,
 			level:  job.Plan.CompactionLevel,
 		}
-		staged := p.queue.blockQueue(k.level).stagedBlocks(k)
+		staged := c.queue.blockQueue(k.level).stagedBlocks(k)
 		for _, b := range job.Plan.SourceBlocks {
 			e := staged.delete(b)
 			if e == zeroBlockEntry {
 				continue
 			}
-			if err := p.store.DeleteEntry(tx, e.index, e.id); err != nil {
+			if err := c.store.DeleteEntry(tx, e.index, e.id); err != nil {
 				return err
 			}
-		}
-		// Delete tombstones that are scheduled for removal.
-		if err := p.tombstones.DeleteTombstones(tx, cmd, job.Plan.Tombstones); err != nil {
-			return err
 		}
 	}
 
 	return nil
 }
 
-func (p *Compactor) Restore(tx *bbolt.Tx) error {
+func (c *Compactor) Restore(tx *bbolt.Tx) error {
 	// Reset in-memory state before loading entries from the store.
-	p.queue = newCompactionQueue(p.strategy)
-	entries := p.store.ListEntries(tx)
+	c.queue = newCompactionQueue(c.strategy)
+	entries := c.store.ListEntries(tx)
 	defer func() {
 		_ = entries.Close()
 	}()
 	for entries.Next() {
-		p.enqueue(entries.At())
+		c.enqueue(entries.At())
 	}
 	return entries.Err()
 }

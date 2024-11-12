@@ -74,8 +74,8 @@ loop
     critical FSM state update
         R ->>S: Update schedule<br>(new, completed, assigned, reassigned jobs)
         R ->>P: Remove source blocks from the planner queue (new jobs)
-        R ->>I: Replace source blocks in the index (completed jobs)
-        I ->>+C: Add new blocks and create<br>tombstones for deleted
+        R ->>I: Replace source blocks in the index (completed jobs)<br>and create tombstones for deleted
+        I ->>+C: Add new blocks
         C ->>C: Enqueue
         C ->>-I: 
         I ->>R: 

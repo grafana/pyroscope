@@ -112,7 +112,7 @@ func TestSchedule_Update_JobCompleted(t *testing.T) {
 			Token:  1,
 			Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS,
 			CompactedBlocks: &metastorev1.CompactedBlocks{
-				SourceBlocks:    []string{"a", "b", "c"},
+				SourceBlocks:    &metastorev1.BlockList{Blocks: []string{"a", "b", "c"}},
 				CompactedBlocks: []*metastorev1.BlockMeta{{}},
 			},
 		})
@@ -123,8 +123,10 @@ func TestSchedule_Update_JobCompleted(t *testing.T) {
 			Tenant:          "A",
 			Shard:           1,
 			CompactionLevel: 0,
-			SourceBlocks:    []string{"a", "b", "c"},
-			CompactedBlocks: []*metastorev1.BlockMeta{{}},
+			CompactedBlocks: &metastorev1.CompactedBlocks{
+				SourceBlocks:    &metastorev1.BlockList{Blocks: []string{"a", "b", "c"}},
+				CompactedBlocks: []*metastorev1.BlockMeta{{}},
+			},
 		}, update.Plan)
 	}))
 
@@ -135,7 +137,7 @@ func TestSchedule_Update_JobCompleted(t *testing.T) {
 			Token:  0,
 			Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS,
 			CompactedBlocks: &metastorev1.CompactedBlocks{
-				SourceBlocks:    []string{"a", "b", "c"},
+				SourceBlocks:    &metastorev1.BlockList{Blocks: []string{"a", "b", "c"}},
 				CompactedBlocks: []*metastorev1.BlockMeta{{}},
 			},
 		})

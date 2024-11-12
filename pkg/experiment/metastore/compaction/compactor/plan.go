@@ -7,25 +7,22 @@ import (
 	"strings"
 
 	"github.com/cespare/xxhash/v2"
-	"github.com/hashicorp/raft"
-	"go.etcd.io/bbolt"
 
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
+	"github.com/grafana/pyroscope/pkg/iter"
 )
 
 // plan should be used to prepare the compaction plan update.
 // The implementation must have no side effects or alter the
 // Compactor in any way.
 type plan struct {
-	tx  *bbolt.Tx
-	cmd *raft.Log
-
-	// Read-only.
-	compactor *Compactor
-	batches   *batchIter
-	blocks    *blockIter
-
 	level uint32
+	// Read-only.
+	tombstones iter.Iterator[*metastorev1.Tombstones]
+	compactor  *Compactor
+	batches    *batchIter
+	blocks     *blockIter
 }
 
 func (p *plan) CreateJob() (*raft_log.CompactionJobPlan, error) {
@@ -33,19 +30,27 @@ func (p *plan) CreateJob() (*raft_log.CompactionJobPlan, error) {
 	if planned == nil {
 		return nil, nil
 	}
-	tombstones, err := p.compactor.tombstones.GetTombstones(p.tx, p.cmd)
-	if err != nil {
-		return nil, err
-	}
 	job := raft_log.CompactionJobPlan{
 		Name:            planned.name,
 		Shard:           planned.shard,
 		Tenant:          planned.tenant,
 		CompactionLevel: planned.level,
 		SourceBlocks:    planned.blocks,
-		Tombstones:      tombstones,
 	}
+	// TODO: Configurable level and batch size.
+	tombstones, err := p.getTombstones()
+	if err != nil {
+		return nil, err
+	}
+	job.Tombstones = append(job.Tombstones, tombstones)
 	return &job, nil
+}
+
+func (p *plan) getTombstones() (*metastorev1.Tombstones, error) {
+	if p.tombstones.Next() {
+		return p.tombstones.At(), nil
+	}
+	return nil, p.tombstones.Err()
 }
 
 type jobPlan struct {

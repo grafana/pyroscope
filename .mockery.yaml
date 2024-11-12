@@ -48,5 +48,5 @@ packages:
   github.com/grafana/pyroscope/pkg/experiment/metastore/compaction/compactor:
     interfaces:
       BlockQueueStore:
-      TombstoneStore:
+      Tombstones:
       JobStore:

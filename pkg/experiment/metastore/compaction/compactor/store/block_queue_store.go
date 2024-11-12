@@ -9,6 +9,11 @@ import (
 	"github.com/grafana/pyroscope/pkg/iter"
 )
 
+var ErrInvalidBlockEntry = errors.New("invalid block entry")
+
+var blockQueueBucketName = []byte("compaction_block_queue")
+
+// BlockEntry represents a block metadata entry in the compaction block queue.
 type BlockEntry struct {
 	Index      uint64
 	ID         string
@@ -18,9 +23,18 @@ type BlockEntry struct {
 	Tenant     string
 }
 
+// BlockQueueStore provides methods to store and retrieve block queues.
+// The store is optimized for two cases: load the entire queue (preserving
+// the original order) and remove an entry from the queue.
+//
+// Compactor maintains an in-memory queue of blocks to compact, therefore
+// the store never reads individual entries.
+//
+// NOTE(kolesnikovae): We can leverage the fact that removed entries are
+// always ordered in ascending order by index and use the same cursor when
+// removing entries from the database:
+// DeleteEntry(*bbolt.Tx, ...store.BlockEntry) error
 type BlockQueueStore struct{ bucketName []byte }
-
-var blockQueueBucketName = []byte("compaction_block_queue")
 
 func NewBlockQueueStore() *BlockQueueStore {
 	return &BlockQueueStore{bucketName: blockQueueBucketName}
@@ -90,13 +104,12 @@ func marshalBlockEntryKey(index uint64, id string) []byte {
 	return b
 }
 
-var ErrInvalidBlockEntry = errors.New("invalid block entry")
-
 func unmarshalBlockEntry(dst *BlockEntry, e kv) error {
 	if len(e.key) < 8 || len(e.value) < 16 {
 		return ErrInvalidBlockEntry
 	}
 	dst.Index = binary.BigEndian.Uint64(e.key)
+	dst.ID = string(e.key[8:])
 	dst.AppendedAt = int64(binary.BigEndian.Uint64(e.value[0:8]))
 	dst.Level = binary.BigEndian.Uint32(e.value[8:12])
 	dst.Shard = binary.BigEndian.Uint32(e.value[12:16])

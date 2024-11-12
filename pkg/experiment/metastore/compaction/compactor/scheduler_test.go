@@ -16,8 +16,8 @@ import (
 func TestScheduler_UpdateSchedule(t *testing.T) {
 	store := new(mockcompactor.MockJobStore)
 	store.On("StoreJobPlan", mock.Anything, &raft_log.CompactionJobPlan{Name: "1"}).Return(nil).Once()
-	store.On("UpdateJobState", mock.Anything, &raft_log.CompactionJobState{Name: "1"}).Return(nil).Once()
-	store.On("UpdateJobState", mock.Anything, &raft_log.CompactionJobState{Name: "2"}).Return(nil).Once()
+	store.On("StoreJobState", mock.Anything, &raft_log.CompactionJobState{Name: "1"}).Return(nil).Once()
+	store.On("StoreJobState", mock.Anything, &raft_log.CompactionJobState{Name: "2"}).Return(nil).Once()
 	store.On("DeleteJobPlan", mock.Anything, "3").Return(nil).Once()
 	store.On("DeleteJobState", mock.Anything, "3").Return(nil).Once()
 

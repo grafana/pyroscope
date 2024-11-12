@@ -680,6 +680,31 @@
         }
       }
     },
+    "v1BlockTombstones": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "shard": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "tenant": {
+          "type": "string"
+        },
+        "compactionLevel": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "blocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "v1CommitAuthor": {
       "type": "object",
       "properties": {
@@ -722,10 +747,7 @@
       "type": "object",
       "properties": {
         "sourceBlocks": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
+          "$ref": "#/definitions/v1BlockList"
         },
         "compactedBlocks": {
           "type": "array",
@@ -760,7 +782,11 @@
           }
         },
         "tombstones": {
-          "$ref": "#/definitions/v1Tombstones"
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Tombstones"
+          }
         }
       }
     },
@@ -2296,10 +2322,8 @@
       "type": "object",
       "properties": {
         "blocks": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
+          "$ref": "#/definitions/v1BlockTombstones",
+          "description": "For now, we only have block tombstones created\n due to the compaction process.\n Later, we may add more types of tombstones, e.g,\n delete tenant, delete shard, etc."
         }
       }
     },

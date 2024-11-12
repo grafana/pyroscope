@@ -178,65 +178,6 @@ func (_c *MockJobStore_GetJobPlan_Call) RunAndReturn(run func(*bbolt.Tx, string)
 	return _c
 }
 
-// GetJobState provides a mock function with given fields: tx, name
-func (_m *MockJobStore) GetJobState(tx *bbolt.Tx, name string) (*raft_log.CompactionJobState, error) {
-	ret := _m.Called(tx, name)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetJobState")
-	}
-
-	var r0 *raft_log.CompactionJobState
-	var r1 error
-	if rf, ok := ret.Get(0).(func(*bbolt.Tx, string) (*raft_log.CompactionJobState, error)); ok {
-		return rf(tx, name)
-	}
-	if rf, ok := ret.Get(0).(func(*bbolt.Tx, string) *raft_log.CompactionJobState); ok {
-		r0 = rf(tx, name)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*raft_log.CompactionJobState)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(*bbolt.Tx, string) error); ok {
-		r1 = rf(tx, name)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockJobStore_GetJobState_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetJobState'
-type MockJobStore_GetJobState_Call struct {
-	*mock.Call
-}
-
-// GetJobState is a helper method to define mock.On call
-//   - tx *bbolt.Tx
-//   - name string
-func (_e *MockJobStore_Expecter) GetJobState(tx interface{}, name interface{}) *MockJobStore_GetJobState_Call {
-	return &MockJobStore_GetJobState_Call{Call: _e.mock.On("GetJobState", tx, name)}
-}
-
-func (_c *MockJobStore_GetJobState_Call) Run(run func(tx *bbolt.Tx, name string)) *MockJobStore_GetJobState_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*bbolt.Tx), args[1].(string))
-	})
-	return _c
-}
-
-func (_c *MockJobStore_GetJobState_Call) Return(_a0 *raft_log.CompactionJobState, _a1 error) *MockJobStore_GetJobState_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockJobStore_GetJobState_Call) RunAndReturn(run func(*bbolt.Tx, string) (*raft_log.CompactionJobState, error)) *MockJobStore_GetJobState_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // ListEntries provides a mock function with given fields: _a0
 func (_m *MockJobStore) ListEntries(_a0 *bbolt.Tx) iter.Iterator[*raft_log.CompactionJobState] {
 	ret := _m.Called(_a0)

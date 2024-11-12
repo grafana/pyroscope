@@ -1,20 +1,16 @@
 package store
 
 import (
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.etcd.io/bbolt"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 )
 
-func Test_JobStateStore(t *testing.T) {
-	tempDir := t.TempDir()
-	db, err := bbolt.Open(filepath.Join(tempDir, "boltdb"), 0644, nil)
-	require.NoError(t, err)
+func TestJobStateStore(t *testing.T) {
+	db := testDB(t)
 
 	s := NewJobStore()
 	tx, err := db.Begin(true)
@@ -52,10 +48,8 @@ func Test_JobStateStore(t *testing.T) {
 	require.NoError(t, tx.Rollback())
 }
 
-func Test_JobPlanStore(t *testing.T) {
-	tempDir := t.TempDir()
-	db, err := bbolt.Open(filepath.Join(tempDir, "boltdb"), 0644, nil)
-	require.NoError(t, err)
+func TestJobPlanStore(t *testing.T) {
+	db := testDB(t)
 
 	s := NewJobStore()
 	tx, err := db.Begin(true)

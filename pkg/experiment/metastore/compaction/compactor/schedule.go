@@ -101,9 +101,8 @@ func (p *schedule) completeJob(status *metastorev1.CompactionJobStatusUpdate) (*
 	// blocks is identical to the one reported by the worker. However,
 	// it's also guaranteed that the worker won't lie, and that these
 	// are the blocks it processed.
-	completed := status.CompactedBlocks
-	job.SourceBlocks = completed.SourceBlocks
-	job.CompactedBlocks = completed.CompactedBlocks
+	job.SourceBlocks = nil
+	job.CompactedBlocks = status.CompactedBlocks
 	// Tombstones are taken from the stored job plan.
 	return &raft_log.CompactionJobUpdate{Plan: job}, nil
 }

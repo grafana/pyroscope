@@ -30,7 +30,6 @@ type JobStore interface {
 	GetJobPlan(tx *bbolt.Tx, name string) (*raft_log.CompactionJobPlan, error)
 	DeleteJobPlan(tx *bbolt.Tx, name string) error
 
-	GetJobState(tx *bbolt.Tx, name string) (*raft_log.CompactionJobState, error)
 	StoreJobState(*bbolt.Tx, *raft_log.CompactionJobState) error
 	DeleteJobState(tx *bbolt.Tx, name string) error
 	ListEntries(*bbolt.Tx) iter.Iterator[*raft_log.CompactionJobState]

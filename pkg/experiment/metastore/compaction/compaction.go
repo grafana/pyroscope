@@ -1,8 +1,6 @@
 package compaction
 
 import (
-	"errors"
-
 	"github.com/hashicorp/raft"
 	"go.etcd.io/bbolt"
 
@@ -15,17 +13,10 @@ import (
 //  * Raft log entry can also be replaced with something that
 //    can give us the sequence number and a timestamp.
 
-var ErrAlreadyCompacted = errors.New("block already compacted")
-
 type Compactor interface {
 	// AddBlock enqueues a new block for compaction. If the block has
 	// already been compacted, the method returns ErrAlreadyCompacted.
 	AddBlock(*bbolt.Tx, *raft.Log, *metastorev1.BlockMeta) error
-
-	// DeleteBlocks creates block tombstones for the given blocks.
-	// Objects will be eventually removed as part of the compaction job.
-	// Implementation: the method must be idempotent.
-	DeleteBlocks(*bbolt.Tx, *raft.Log, ...*metastorev1.BlockMeta) error
 }
 
 type Planner interface {
