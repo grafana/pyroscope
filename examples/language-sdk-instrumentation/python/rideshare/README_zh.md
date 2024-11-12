@@ -53,8 +53,9 @@ def find_nearest_vehicle(n, vehicle):
 ### 运行这个例子
 要运行该例子，请运行以下命令:
 ```
-# 拉取最新的 pyroscope 镜像:
+# 拉取最新的 pyroscope/pyroscope 镜像:
 docker pull grafana/pyroscope:latest
+docker pull grafana/grafana:latest
 
 # 运行示例项目:
 docker-compose up --build

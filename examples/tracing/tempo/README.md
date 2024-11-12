@@ -14,6 +14,10 @@ Pyroscope and Tempo datasources are provisioned automatically.
 The project can be run locally with the following commands:
 
 ```shell
+# Pull latest pyroscope and grafana images:
+docker pull grafana/pyroscope:latest
+docker pull grafana/grafana:latest
+
 docker-compose up
 ```
 

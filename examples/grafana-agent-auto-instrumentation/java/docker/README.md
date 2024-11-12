@@ -31,7 +31,11 @@ To use this example:
 3. Use Docker Compose to build and initiate the container:
 
 ```shell
-   docker-compose up --build
+# Pull latest pyroscope and grafana images:
+docker pull grafana/pyroscope:latest
+docker pull grafana/grafana:latest
+
+docker-compose up --build
 ```
 
 After the container is operational, the Grafana Agent profiles the Java application using he defined configuration.
