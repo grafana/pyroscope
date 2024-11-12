@@ -36,7 +36,7 @@ func Build(
 		return new(queryv1.QueryPlan)
 	}
 
-	// Create leaf nodes (reading from blocks)
+	// create leaf nodes and spread the blocks in a uniform way
 	var leafNodes []*queryv1.QueryNode
 	for i := 0; i < len(blocks); i += maxReads {
 		end := i + maxReads
@@ -49,13 +49,11 @@ func Build(
 		})
 	}
 
-	// Merge leaf nodes until we have a single root node
+	// create merge nodes until we reach a single root node
 	for len(leafNodes) > 1 {
-		// Calculate the number of nodes to merge
 		numNodes := len(leafNodes)
 		numMerges := int(math.Ceil(float64(numNodes) / float64(maxMerges)))
 
-		// Merge the nodes in a balanced way
 		var newLeafNodes []*queryv1.QueryNode
 		for i := 0; i < numMerges; i++ {
 			newNode := &queryv1.QueryNode{
