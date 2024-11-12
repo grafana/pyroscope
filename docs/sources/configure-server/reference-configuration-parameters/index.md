@@ -1998,6 +1998,8 @@ distributor_usage_groups:
 # CLI flag: -compactor.compactor-downsampler-enabled
 [compactor_downsampler_enabled: <boolean> | default = true]
 
+[tenant_settings_overrides: <map of string to string> | default = ]
+
 # S3 server-side encryption type. Required to enable server-side encryption
 # overrides for a specific tenant. If not set, the default S3 client settings
 # are used.

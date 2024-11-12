@@ -91,6 +91,9 @@ type Limits struct {
 	CompactorPartialBlockDeletionDelay model.Duration `yaml:"compactor_partial_block_deletion_delay" json:"compactor_partial_block_deletion_delay"`
 	CompactorDownsamplerEnabled        bool           `yaml:"compactor_downsampler_enabled" json:"compactor_downsampler_enabled"`
 
+	// Tenant settings.
+	TenantSettingsOverrides map[string]string `yaml:"tenant_settings_overrides" json:"tenant_settings_overrides"`
+
 	// This config doesn't have a CLI flag registered here because they're registered in
 	// their own original config struct.
 	S3SSEType                 string `yaml:"s3_sse_type" json:"s3_sse_type" doc:"nocli|description=S3 server-side encryption type. Required to enable server-side encryption overrides for a specific tenant. If not set, the default S3 client settings are used."`
@@ -423,6 +426,11 @@ func (o *Overrides) CompactorPartialBlockDeletionDelay(userID string) (delay tim
 // CompactorDownsamplerEnabled returns true if the downsampler is enabled for a given user.
 func (o *Overrides) CompactorDownsamplerEnabled(userId string) bool {
 	return o.getOverridesForTenant(userId).CompactorDownsamplerEnabled
+}
+
+// TenantSettingsOverrides returns the tenant settings overrides for a given tenant.
+func (o *Overrides) TenantSettingsOverrides(tenantID string) map[string]string {
+	return o.getOverridesForTenant(tenantID).TenantSettingsOverrides
 }
 
 // S3SSEType returns the per-tenant S3 SSE type.
