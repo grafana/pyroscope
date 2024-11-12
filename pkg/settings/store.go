@@ -19,3 +19,9 @@ type Store interface {
 	// Close the store.
 	Close() error
 }
+
+type Limits interface {
+	// TenantSettingsOverrides is a list of settings a given tenant that should always
+	// return the same value.
+	TenantSettingsOverrides(tenantID string) map[string]string
+}

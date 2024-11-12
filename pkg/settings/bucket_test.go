@@ -15,7 +15,7 @@ func TestMemoryBucket_Get(t *testing.T) {
 	tenantID := "[anonymous]"
 
 	t.Run("get settings are sorted", func(t *testing.T) {
-		mem, err := NewMemoryStore()
+		mem, err := NewMemoryStore(&fakeLimits{})
 		assert.NoError(t, err)
 
 		settings := []*settingsv1.Setting{
@@ -34,8 +34,48 @@ func TestMemoryBucket_Get(t *testing.T) {
 		}))
 	})
 
+	t.Run("returns override settings", func(t *testing.T) {
+		mem, err := NewMemoryStore(&fakeLimits{
+			Overrides: map[string]string{
+				"key2": "override2",
+			},
+		})
+		assert.NoError(t, err)
+
+		settings := []*settingsv1.Setting{
+			{Name: "key1", Value: "val1"},
+		}
+
+		for _, s := range settings {
+			_, err = mem.Set(ctx, tenantID, s)
+			assert.NoError(t, err)
+		}
+
+		got, err := mem.Get(ctx, tenantID)
+		assert.NoError(t, err)
+
+		want := []*settingsv1.Setting{
+			{
+				Name:       "key1",
+				Value:      "val1",
+				ModifiedAt: 0,
+				Readonly:   false,
+			},
+			{
+				Name:       "key2",
+				Value:      "override2",
+				ModifiedAt: 0,
+				Readonly:   true,
+			},
+		}
+		assert.Equal(t, want, got)
+		assert.True(t, sort.SliceIsSorted(got, func(i, j int) bool {
+			return got[i].Name < got[j].Name
+		}))
+	})
+
 	t.Run("don't get settings from another tenant", func(t *testing.T) {
-		mem, err := NewMemoryStore()
+		mem, err := NewMemoryStore(&fakeLimits{})
 		assert.NoError(t, err)
 
 		otherTenantID := "other"
@@ -69,7 +109,7 @@ func TestMemoryBucket_Set(t *testing.T) {
 	tenantID := "[anonymous]"
 
 	t.Run("set a new key", func(t *testing.T) {
-		mem, err := NewMemoryStore()
+		mem, err := NewMemoryStore(&fakeLimits{})
 		assert.NoError(t, err)
 
 		setting := &settingsv1.Setting{
@@ -82,7 +122,7 @@ func TestMemoryBucket_Set(t *testing.T) {
 	})
 
 	t.Run("update a key", func(t *testing.T) {
-		mem, err := NewMemoryStore()
+		mem, err := NewMemoryStore(&fakeLimits{})
 		assert.NoError(t, err)
 
 		setting := &settingsv1.Setting{
@@ -103,7 +143,7 @@ func TestMemoryBucket_Set(t *testing.T) {
 	})
 
 	t.Run("don't update a key that's too old", func(t *testing.T) {
-		mem, err := NewMemoryStore()
+		mem, err := NewMemoryStore(&fakeLimits{})
 		assert.NoError(t, err)
 
 		setting := &settingsv1.Setting{
@@ -122,5 +162,22 @@ func TestMemoryBucket_Set(t *testing.T) {
 		}
 		_, err = mem.Set(ctx, tenantID, newSetting)
 		assert.EqualError(t, err, "failed to update key1: newer update already written")
+	})
+
+	t.Run("don't update a key that's read-only", func(t *testing.T) {
+		mem, err := NewMemoryStore(&fakeLimits{
+			Overrides: map[string]string{
+				"key1": "override1",
+			},
+		})
+		assert.NoError(t, err)
+
+		newSetting := &settingsv1.Setting{
+			Name:       "key1",
+			Value:      "val1",
+			ModifiedAt: 10,
+		}
+		_, err = mem.Set(ctx, tenantID, newSetting)
+		assert.EqualError(t, err, "failed to update key1: setting is readonly")
 	})
 }

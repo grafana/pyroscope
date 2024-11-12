@@ -401,7 +401,7 @@ func (f *Phlare) setupModuleManager() error {
 		MemberlistKV:      {API},
 		Admin:             {API, Storage},
 		Version:           {API, MemberlistKV},
-		TenantSettings:    {API, Storage},
+		TenantSettings:    {Overrides, API, Storage},
 		AdHocProfiles:     {API, Overrides, Storage},
 		EmbeddedGrafana:   {API},
 	}

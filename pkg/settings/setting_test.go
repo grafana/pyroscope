@@ -242,6 +242,7 @@ func TestTenantSettings_Set(t *testing.T) {
 		ts := &TenantSettings{
 			store:  store,
 			logger: log.NewNopLogger(),
+			limits: &fakeLimits{},
 		}
 
 		ctx := tenant.InjectTenantID(context.Background(), "1234")
@@ -263,7 +264,7 @@ func TestTenantSettings_Set(t *testing.T) {
 func newTestTenantSettings(t *testing.T, initial map[string][]*settingsv1.Setting) (*TenantSettings, func()) {
 	t.Helper()
 
-	store, err := NewMemoryStore()
+	store, err := NewMemoryStore(&fakeLimits{})
 	require.NoError(t, err)
 
 	for tenant, settings := range initial {
@@ -276,6 +277,7 @@ func newTestTenantSettings(t *testing.T, initial map[string][]*settingsv1.Settin
 	ts := &TenantSettings{
 		store:  store,
 		logger: log.NewNopLogger(),
+		limits: &fakeLimits{},
 	}
 
 	cleanupFn := func() {
@@ -315,4 +317,12 @@ func (s *fakeStore) Flush(ctx context.Context) error {
 func (s *fakeStore) Close() error {
 	args := s.Called()
 	return args.Error(0)
+}
+
+type fakeLimits struct {
+	Overrides map[string]string
+}
+
+func (l *fakeLimits) TenantSettingsOverrides(tenantID string) map[string]string {
+	return l.Overrides
 }

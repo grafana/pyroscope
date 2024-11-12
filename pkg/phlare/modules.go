@@ -194,9 +194,9 @@ func (f *Phlare) initTenantSettings() (services.Service, error) {
 
 	switch {
 	case f.storageBucket != nil:
-		store, err = settings.NewBucketStore(f.storageBucket)
+		store, err = settings.NewBucketStore(f.storageBucket, f.Overrides)
 	default:
-		store, err = settings.NewMemoryStore()
+		store, err = settings.NewMemoryStore(f.Overrides)
 		level.Warn(f.logger).Log("msg", "using in-memory settings store, changes will be lost after shutdown")
 	}
 	if err != nil {

@@ -15,21 +15,26 @@ import (
 )
 
 var (
-	oldSettingErr    = errors.New("newer update already written")
+	oldSettingErr      = errors.New("newer update already written")
+	readonlySettingErr = errors.New("setting is readonly")
+)
+
+const (
 	settingsFilename = "tenant_settings.json"
 )
 
 // NewMemoryStore will create a settings store with an in-memory objstore
 // bucket.
-func NewMemoryStore() (Store, error) {
-	return NewBucketStore(objstore.NewInMemBucket())
+func NewMemoryStore(limits Limits) (Store, error) {
+	return NewBucketStore(objstore.NewInMemBucket(), limits)
 }
 
 // NewBucketStore will create a settings store with an objstore bucket.
-func NewBucketStore(bucket objstore.Bucket) (Store, error) {
+func NewBucketStore(bucket objstore.Bucket, limits Limits) (Store, error) {
 	store := &bucketStore{
 		store:  make(map[string]map[string]*settingsv1.Setting),
 		bucket: bucket,
+		limits: limits,
 	}
 
 	return store, nil
@@ -43,6 +48,9 @@ type bucketStore struct {
 
 	// bucket is an object store bucket.
 	bucket objstore.Bucket
+
+	// limits contains the tenant overrides.
+	limits Limits
 }
 
 func (s *bucketStore) Get(ctx context.Context, tenantID string) ([]*settingsv1.Setting, error) {
@@ -55,9 +63,24 @@ func (s *bucketStore) Get(ctx context.Context, tenantID string) ([]*settingsv1.S
 	}
 
 	tenantSettings := s.store[tenantID]
+	overrides := s.limits.TenantSettingsOverrides(tenantID)
 
 	settings := make([]*settingsv1.Setting, 0, len(s.store[tenantID]))
+	for name, value := range overrides {
+		settings = append(settings, &settingsv1.Setting{
+			Name:       name,
+			Value:      value,
+			ModifiedAt: 0,
+			Readonly:   true,
+		})
+	}
+
 	for _, setting := range tenantSettings {
+		_, ok := overrides[setting.Name]
+		if ok {
+			continue
+		}
+
 		settings = append(settings, setting)
 	}
 
@@ -79,6 +102,12 @@ func (s *bucketStore) Set(ctx context.Context, tenantID string, setting *setting
 	_, ok := s.store[tenantID]
 	if !ok {
 		s.store[tenantID] = make(map[string]*settingsv1.Setting, 1)
+	}
+
+	overrides := s.limits.TenantSettingsOverrides(tenantID)
+	_, ok = overrides[setting.Name]
+	if ok {
+		return nil, errors.Wrapf(readonlySettingErr, "failed to update %s", setting.Name)
 	}
 
 	oldSetting, ok := s.store[tenantID][setting.Name]

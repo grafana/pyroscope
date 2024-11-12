@@ -31,6 +31,7 @@ type TenantSettings struct {
 
 	store  Store
 	logger log.Logger
+	limits Limits
 }
 
 func (ts *TenantSettings) starting(ctx context.Context) error {
