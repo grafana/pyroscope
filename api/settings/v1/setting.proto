@@ -25,4 +25,5 @@ message Setting {
   string name = 1;
   string value = 2;
   int64 modifiedAt = 3;
+  bool readonly = 4;
 }

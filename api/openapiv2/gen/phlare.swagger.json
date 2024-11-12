@@ -2112,6 +2112,9 @@
         "modifiedAt": {
           "type": "string",
           "format": "int64"
+        },
+        "readonly": {
+          "type": "boolean"
         }
       }
     },

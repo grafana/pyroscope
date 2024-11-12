@@ -104,6 +104,7 @@ func (m *Setting) CloneVT() *Setting {
 	r.Name = m.Name
 	r.Value = m.Value
 	r.ModifiedAt = m.ModifiedAt
+	r.Readonly = m.Readonly
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -215,6 +216,9 @@ func (this *Setting) EqualVT(that *Setting) bool {
 		return false
 	}
 	if this.ModifiedAt != that.ModifiedAt {
+		return false
+	}
+	if this.Readonly != that.Readonly {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -549,6 +553,16 @@ func (m *Setting) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.Readonly {
+		i--
+		if m.Readonly {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x20
+	}
 	if m.ModifiedAt != 0 {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.ModifiedAt))
 		i--
@@ -641,6 +655,9 @@ func (m *Setting) SizeVT() (n int) {
 	}
 	if m.ModifiedAt != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.ModifiedAt))
+	}
+	if m.Readonly {
+		n += 2
 	}
 	n += len(m.unknownFields)
 	return n
@@ -1068,6 +1085,26 @@ func (m *Setting) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Readonly", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Readonly = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
