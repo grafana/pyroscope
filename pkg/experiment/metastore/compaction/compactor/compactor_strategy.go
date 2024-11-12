@@ -9,10 +9,16 @@ const (
 	defaultMaxBlockBatchAge = int64(15 * time.Minute)
 )
 
+// TODO: Probably everything here should be level specific.
+
 type Strategy struct {
-	MaxBlocksPerLevel []uint64
-	MaxBlocksDefault  uint64
-	MaxBatchAge       int64
+	MaxBlocksPerLevel  []uint64
+	MaxBlocksDefault   uint64
+	MaxBatchAge        int64
+	CleanupDelay       time.Duration
+	CleanupJobMinLevel int32
+	CleanupJobMaxLevel int32
+	CleanupBatchSize   int32
 }
 
 // compact is called after the block has been added to the batch.

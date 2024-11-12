@@ -19,11 +19,11 @@ import (
 
 func TestCompactor_AddBlock(t *testing.T) {
 	queueStore := new(mockcompactor.MockBlockQueueStore)
-	tombstoneStore := new(mockcompactor.MockTombstoneStore)
+	tombstones := new(mockcompactor.MockTombstones)
 
 	md := &metastorev1.BlockMeta{TenantId: "A", Shard: 0, CompactionLevel: 0, Id: "1"}
 	cmd := &raft.Log{Index: uint64(1), AppendedAt: time.Unix(0, 0)}
-	compactor := NewCompactor(testStrategy, queueStore, tombstoneStore)
+	compactor := NewCompactor(testConfig, queueStore, tombstones)
 
 	testErr := errors.New("x")
 	t.Run("fails if cannot store the entry", assertIdempotentSubtest(t, func(t *testing.T) {
@@ -32,24 +32,18 @@ func TestCompactor_AddBlock(t *testing.T) {
 	}))
 
 	queueStore.AssertExpectations(t)
-	tombstoneStore.AssertExpectations(t)
+	tombstones.AssertExpectations(t)
 }
 
 func TestCompactor_UpdatePlan(t *testing.T) {
 	const N = 10
 
-	s := Strategy{
-		MaxBlocksPerLevel: []uint64{3, 2, 2},
-		MaxBlocksDefault:  2,
-		MaxBatchAge:       0,
-	}
-
-	tombstones := new(mockcompactor.MockTombstoneStore)
+	tombstones := new(mockcompactor.MockTombstones)
 	queueStore := new(mockcompactor.MockBlockQueueStore)
 	queueStore.On("StoreEntry", mock.Anything, mock.Anything).
 		Return(nil).Times(N)
 
-	compactor := NewCompactor(s, queueStore, tombstones)
+	compactor := NewCompactor(testConfig, queueStore, tombstones)
 	now := time.Unix(0, 0)
 	for i := 0; i < N; i++ {
 		cmd := &raft.Log{Index: uint64(1), AppendedAt: now}
@@ -60,7 +54,7 @@ func TestCompactor_UpdatePlan(t *testing.T) {
 
 	planned := make([]*raft_log.CompactionJobPlan, 3)
 	assertIdempotent(t, func(t *testing.T) {
-		tombstones.On("GetExpiredTombstones", mock.Anything, mock.Anything).
+		tombstones.On("ListTombstones", mock.Anything).
 			Return(iter.NewEmptyIterator[*metastorev1.Tombstones](), nil)
 
 		planner := compactor.NewPlan(nil, &raft.Log{Index: uint64(2), AppendedAt: now})
@@ -110,11 +104,11 @@ func TestCompactor_Restore(t *testing.T) {
 		{Index: 3, ID: "3", Tenant: "A"},
 	}))
 
-	tombstoneStore := new(mockcompactor.MockTombstoneStore)
-	tombstoneStore.On("GetExpiredTombstones", mock.Anything, mock.Anything).
+	tombstones := new(mockcompactor.MockTombstones)
+	tombstones.On("ListTombstones", mock.Anything).
 		Return(iter.NewEmptyIterator[*metastorev1.Tombstones](), nil)
 
-	compactor := NewCompactor(testStrategy, queueStore, tombstoneStore)
+	compactor := NewCompactor(testConfig, queueStore, tombstones)
 	require.NoError(t, compactor.Restore(nil))
 
 	planner := compactor.NewPlan(nil, new(raft.Log))

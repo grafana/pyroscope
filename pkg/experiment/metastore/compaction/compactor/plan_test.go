@@ -9,14 +9,16 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction/compactor/store"
 )
 
-var testStrategy = Strategy{
-	MaxBlocksPerLevel: []uint64{3, 2, 2},
-	MaxBlocksDefault:  2,
-	MaxBatchAge:       0,
+var testConfig = Config{
+	Strategy: Strategy{
+		MaxBlocksPerLevel: []uint64{3, 2, 2},
+		MaxBlocksDefault:  2,
+		MaxBatchAge:       0,
+	},
 }
 
 func TestPlan_same_level(t *testing.T) {
-	c := NewCompactor(testStrategy, nil, nil)
+	c := NewCompactor(testConfig, nil, nil)
 
 	var i int // The index is used outside the loop.
 	for _, e := range []store.BlockEntry{
@@ -100,7 +102,7 @@ func TestPlan_same_level(t *testing.T) {
 }
 
 func TestPlan_level_priority(t *testing.T) {
-	c := NewCompactor(testStrategy, nil, nil)
+	c := NewCompactor(testConfig, nil, nil)
 
 	// Lower level job should be planned first despite the arrival order.
 	var i int
@@ -140,7 +142,7 @@ func TestPlan_level_priority(t *testing.T) {
 }
 
 func TestPlan_empty_queue(t *testing.T) {
-	c := NewCompactor(testStrategy, nil, nil)
+	c := NewCompactor(testConfig, nil, nil)
 
 	p := &plan{compactor: c, blocks: newBlockIter()}
 	assert.Nil(t, p.nextJob())
@@ -173,7 +175,7 @@ func TestPlan_empty_queue(t *testing.T) {
 }
 
 func TestPlan_deleted_blocks(t *testing.T) {
-	c := NewCompactor(testStrategy, nil, nil)
+	c := NewCompactor(testConfig, nil, nil)
 
 	var i int // The index is used outside the loop.
 	for _, e := range []store.BlockEntry{
@@ -248,7 +250,7 @@ func TestPlan_deleted_blocks(t *testing.T) {
 }
 
 func TestPlan_deleted_batch(t *testing.T) {
-	c := NewCompactor(testStrategy, nil, nil)
+	c := NewCompactor(testConfig, nil, nil)
 
 	for i, e := range []store.BlockEntry{{}, {}, {}} {
 		e.Index = uint64(i)

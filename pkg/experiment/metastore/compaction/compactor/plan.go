@@ -36,27 +36,16 @@ func (p *plan) CreateJob() (*raft_log.CompactionJobPlan, error) {
 		Tenant:          planned.tenant,
 		CompactionLevel: planned.level,
 		SourceBlocks:    planned.blocks,
+		Tombstones:      planned.tombstones,
 	}
-	// TODO: Configurable level and batch size.
-	tombstones, err := p.getTombstones()
-	if err != nil {
-		return nil, err
-	}
-	job.Tombstones = append(job.Tombstones, tombstones)
 	return &job, nil
-}
-
-func (p *plan) getTombstones() (*metastorev1.Tombstones, error) {
-	if p.tombstones.Next() {
-		return p.tombstones.At(), nil
-	}
-	return nil, p.tombstones.Err()
 }
 
 type jobPlan struct {
 	compactionKey
-	name   string
-	blocks []string
+	name       string
+	tombstones []*metastorev1.Tombstones
+	blocks     []string
 }
 
 // Plan compaction of the queued blocks. The algorithm is simple:
@@ -107,8 +96,9 @@ func (p *plan) nextJob() *jobPlan {
 			}
 
 			job.blocks = append(job.blocks, block)
-			if p.compactor.strategy.complete(&job) {
+			if p.compactor.config.complete(&job) {
 				nameJob(&job)
+				p.getTombstones(&job)
 				return &job
 			}
 		}
@@ -137,4 +127,17 @@ func nameJob(plan *jobPlan) {
 	name.WriteByte('L')
 	name.WriteString(strconv.FormatUint(uint64(plan.level), 10))
 	plan.name = name.String()
+}
+
+func (p *plan) getTombstones(job *jobPlan) {
+	if int32(p.level) > p.compactor.config.CleanupJobMaxLevel {
+		return
+	}
+	if int32(p.level) < p.compactor.config.CleanupJobMinLevel {
+		return
+	}
+	s := int(p.compactor.config.CleanupBatchSize)
+	for i := 0; i < s && p.tombstones.Next(); i++ {
+		job.tombstones = append(job.tombstones, p.tombstones.At())
+	}
 }

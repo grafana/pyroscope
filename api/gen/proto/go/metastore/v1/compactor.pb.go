@@ -278,6 +278,7 @@ func (x *CompactionJob) GetTombstones() []*Tombstones {
 	return nil
 }
 
+// Tombstones represent objects removed from the index but still stored.
 type Tombstones struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

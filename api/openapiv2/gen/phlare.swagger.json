@@ -2323,9 +2323,10 @@
       "properties": {
         "blocks": {
           "$ref": "#/definitions/v1BlockTombstones",
-          "description": "For now, we only have block tombstones created\n due to the compaction process.\n Later, we may add more types of tombstones, e.g,\n delete tenant, delete shard, etc."
+          "description": "For now, we only have block tombstones created due to the\n compaction process. Later, we may add more types of tombstones,\n e.g, deleted tenant (shard), partition, dataset, series etc.\n Exactly one member of Tombstones should be present."
         }
-      }
+      },
+      "description": "Tombstones represent objects removed from the index but still stored."
     },
     "v1TreeQuery": {
       "type": "object",

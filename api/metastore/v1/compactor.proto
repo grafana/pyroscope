@@ -33,13 +33,13 @@ message CompactionJob {
   repeated Tombstones tombstones = 6;
 }
 
-// Tombstones represent objects removed from the
-// index but still present in the storage layer.
+// Tombstones represent objects removed from the index but still stored.
 message Tombstones {
   BlockTombstones blocks = 1;
   // For now, we only have block tombstones created due to the
   // compaction process. Later, we may add more types of tombstones,
-  // e.g, deleted tenant (shard), dataset, series etc.
+  // e.g, deleted tenant (shard), partition, dataset, series etc.
+  // Exactly one member of Tombstones should be present.
 }
 
 message BlockTombstones {

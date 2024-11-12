@@ -10,12 +10,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction"
 )
 
-type Compactor interface {
-	compaction.Planner
-	compaction.Scheduler
-}
-
-type IndexWriter interface {
+type IndexReplacer interface {
 	ReplaceBlocks(*bbolt.Tx, *raft.Log, *metastorev1.CompactedBlocks) error
 }
 
@@ -25,8 +20,9 @@ type TombstoneDeleter interface {
 
 type CompactionCommandHandler struct {
 	logger     log.Logger
-	index      IndexWriter
-	compactor  Compactor
+	index      IndexReplacer
+	planner    compaction.Planner
+	scheduler  compaction.Scheduler
 	tombstones TombstoneDeleter
 }
 
@@ -36,8 +32,8 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 	// We need to generate a plan of the update caused by the new status
 	// report from the worker. The plan will be used to update the schedule
 	// after the Raft consensus is reached.
-	plan := h.compactor.NewPlan(tx, cmd)
-	schedule := h.compactor.NewSchedule(tx, cmd)
+	plan := h.planner.NewPlan(tx, cmd)
+	schedule := h.scheduler.NewSchedule(tx, cmd)
 
 	p := &raft_log.CompactionPlanUpdate{
 		NewJobs:       make([]*raft_log.CompactionJobUpdate, 0, req.AssignJobsMax),
@@ -121,10 +117,11 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 func (h *CompactionCommandHandler) UpdateCompactionPlan(
 	tx *bbolt.Tx, cmd *raft.Log, req *raft_log.UpdateCompactionPlanRequest,
 ) (*raft_log.UpdateCompactionPlanResponse, error) {
-	if err := h.compactor.UpdatePlan(tx, cmd, req.PlanUpdate); err != nil {
+	if err := h.planner.UpdatePlan(tx, cmd, req.PlanUpdate); err != nil {
 		return nil, err
 	}
-	if err := h.compactor.UpdateSchedule(tx, cmd, req.PlanUpdate); err != nil {
+
+	if err := h.scheduler.UpdateSchedule(tx, cmd, req.PlanUpdate); err != nil {
 		return nil, err
 	}
 

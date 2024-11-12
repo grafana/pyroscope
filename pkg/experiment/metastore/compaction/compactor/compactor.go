@@ -1,6 +1,8 @@
 package compactor
 
 import (
+	"time"
+
 	"github.com/hashicorp/raft"
 	"go.etcd.io/bbolt"
 
@@ -17,7 +19,7 @@ var (
 )
 
 type Tombstones interface {
-	GetExpiredTombstones(*bbolt.Tx, *raft.Log) iter.Iterator[*metastorev1.Tombstones]
+	ListTombstones(before time.Time) iter.Iterator[*metastorev1.Tombstones]
 }
 
 type BlockQueueStore interface {
@@ -26,21 +28,21 @@ type BlockQueueStore interface {
 	ListEntries(*bbolt.Tx) iter.Iterator[store.BlockEntry]
 }
 
+type Config struct {
+	Strategy
+}
+
 type Compactor struct {
-	strategy   Strategy
+	config     Config
 	queue      *compactionQueue
 	store      BlockQueueStore
 	tombstones Tombstones
 }
 
-type Config struct {
-	Strategy Strategy
-}
-
-func NewCompactor(strategy Strategy, store BlockQueueStore, tombstones Tombstones) *Compactor {
+func NewCompactor(config Config, store BlockQueueStore, tombstones Tombstones) *Compactor {
 	return &Compactor{
-		strategy:   strategy,
-		queue:      newCompactionQueue(strategy),
+		config:     config,
+		queue:      newCompactionQueue(config.Strategy),
 		store:      store,
 		tombstones: tombstones,
 	}
@@ -66,10 +68,12 @@ func (c *Compactor) enqueue(e store.BlockEntry) bool {
 	return c.queue.push(e)
 }
 
-func (c *Compactor) NewPlan(tx *bbolt.Tx, cmd *raft.Log) compaction.Plan {
+func (c *Compactor) NewPlan(_ *bbolt.Tx, cmd *raft.Log) compaction.Plan {
+	before := cmd.AppendedAt.Add(-c.config.CleanupDelay)
+	tombstones := c.tombstones.ListTombstones(before)
 	return &plan{
 		compactor:  c,
-		tombstones: c.tombstones.GetExpiredTombstones(tx, cmd),
+		tombstones: tombstones,
 		blocks:     newBlockIter(),
 	}
 }
@@ -99,7 +103,7 @@ func (c *Compactor) UpdatePlan(tx *bbolt.Tx, _ *raft.Log, plan *raft_log.Compact
 
 func (c *Compactor) Restore(tx *bbolt.Tx) error {
 	// Reset in-memory state before loading entries from the store.
-	c.queue = newCompactionQueue(c.strategy)
+	c.queue = newCompactionQueue(c.config.Strategy)
 	entries := c.store.ListEntries(tx)
 	defer func() {
 		_ = entries.Close()
