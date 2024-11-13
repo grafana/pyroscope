@@ -37,6 +37,7 @@ func dial(address string, grpcClientConfig grpcclient.Config) (*grpc.ClientConn,
 	options = append(options,
 		grpc.WithUnaryInterceptor(otgrpc.OpenTracingClientInterceptor(opentracing.GlobalTracer())),
 		grpc.WithDefaultServiceConfig(grpcServiceConfig),
+		grpc.WithMaxCallAttempts(500),
 	)
 	return grpc.NewClient(address, options...)
 }
@@ -64,6 +65,6 @@ const grpcServiceConfig = `{
               "RESOURCE_EXHAUSTED"
             ]
         },
-        "timeout": "20s"
+        "timeout": "30s"
     }]
 }`
