@@ -37,9 +37,8 @@ type Recovery struct {
 	srv    LocalServer
 	bucket objstore.Bucket
 
-	started bool
-	wg      sync.WaitGroup
 	m       sync.Mutex
+	started bool
 	cancel  func()
 }
 
@@ -74,13 +73,13 @@ func (r *Recovery) Stop() {
 		return
 	}
 	r.cancel()
-	r.wg.Wait()
 	r.started = false
 	r.l.Log("msg", "recovery stopped")
 }
 
 func (r *Recovery) recoverLoop(ctx context.Context) {
 	ticker := time.NewTicker(r.cfg.Period)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-ctx.Done():

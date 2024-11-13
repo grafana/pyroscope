@@ -220,6 +220,19 @@ func New(
 		m.cleanerHandler.CleanBlocks)
 
 	m.dlqRecovery = dlq.NewRecovery(config.DLQRecovery, logger, m.indexService, bucket)
+	// TODO: RunOnLeader( interface { Start(); Stop() })
+	m.observer.Register(m.raft, func(st raft.RaftState) {
+		if st == raft.Leader {
+			m.cleanerService.Start()
+			m.dlqRecovery.Start()
+			m.placement.Start()
+		} else {
+			m.cleanerService.Stop()
+			m.dlqRecovery.Stop()
+			m.placement.Stop()
+		}
+	})
+
 	m.service = services.NewBasicService(m.starting, m.running, m.stopping)
 	return m, nil
 }
@@ -296,22 +309,10 @@ func (m *Metastore) initRaft() (err error) {
 		_ = level.Info(m.logger).Log("msg", "restoring existing state, not bootstraping")
 	}
 
-	m.leader = raft_node.NewLeader(m.raft)
-	m.follower = raft_node.NewFollower(m.client, m.raft)
+	m.proposer = NewRaftProposer(m.logger, m.raft, m.config.Raft.ApplyTimeout)
 	m.observer = raft_node.NewRaftLeaderObserver(m.logger, m.reg)
-
-	m.observer.Register(m.raft, func(st raft.RaftState) {
-		if st == raft.Leader {
-			m.cleanerService.Start()
-			m.dlqRecovery.Start()
-			m.placement.Start()
-		} else {
-			m.cleanerService.Stop()
-			m.dlqRecovery.Stop()
-			m.placement.Stop()
-		}
-	})
-
+	m.follower = raft_node.NewFollower(m.client, m.raft)
+	m.leader = raft_node.NewLeader(m.raft)
 	return nil
 }
 

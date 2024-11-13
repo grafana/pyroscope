@@ -2,7 +2,6 @@ package metastore
 
 import (
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"math"
 	"strings"
@@ -584,11 +583,7 @@ func (h *CompactionCommandHandler) persistCompactionJobBlockQueue(shard uint32, 
 
 func (h *CompactionCommandHandler) restoreCompactionPlan(tx *bbolt.Tx) error {
 	cdb, err := getCompactionJobBucket(tx)
-	switch {
-	case err == nil:
-	case errors.Is(err, bbolt.ErrBucketNotFound):
-		return nil
-	default:
+	if err != nil {
 		return err
 	}
 	return cdb.ForEachBucket(func(name []byte) error {
@@ -697,15 +692,14 @@ func keyForCompactionJob(shard uint32, tenant string, jobName string) (bucket, k
 }
 
 func getCompactionJobBucket(tx *bbolt.Tx) (*bbolt.Bucket, error) {
-	cdb := tx.Bucket(compactionJobBucketNameBytes)
-	if cdb == nil {
-		return nil, bbolt.ErrBucketNotFound
-	}
-	return cdb, nil
+	return tx.CreateBucketIfNotExists(compactionJobBucketNameBytes)
 }
 
 func (h *CompactionCommandHandler) Restore(tx *bbolt.Tx) error {
 	clear(h.compactionJobBlockQueues)
 	h.compactionJobQueue = newJobQueue(h.config.JobLeaseDuration.Nanoseconds())
+	if _, err := tx.CreateBucketIfNotExists(compactionJobBucketNameBytes); err != nil {
+		return err
+	}
 	return h.restoreCompactionPlan(tx)
 }

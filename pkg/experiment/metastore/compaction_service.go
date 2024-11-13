@@ -9,13 +9,13 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 )
 
-type CompactionPlanLog interface {
+type CompactionCommandLog interface {
 	PollCompactionJobs(*metastorev1.PollCompactionJobsRequest) (*metastorev1.PollCompactionJobsResponse, error)
 }
 
 func NewCompactionService(
 	logger log.Logger,
-	raftLog CompactionPlanLog,
+	raftLog CompactionCommandLog,
 ) *CompactionService {
 	return &CompactionService{
 		logger: logger,
@@ -27,7 +27,7 @@ type CompactionService struct {
 	metastorev1.CompactionServiceServer
 
 	logger log.Logger
-	raft   CompactionPlanLog
+	raft   CompactionCommandLog
 }
 
 func (svc *CompactionService) PollCompactionJobs(

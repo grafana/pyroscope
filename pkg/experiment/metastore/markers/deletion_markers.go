@@ -87,13 +87,12 @@ func NewDeletionMarkers(logger log.Logger, cfg *Config, reg prometheus.Registere
 func (m *DeletionMarkers) Restore(tx *bbolt.Tx) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.blockMarkers = make(map[string]*BlockRemovalContext)
-
-	bkt := tx.Bucket(removedBlocksBucketNameBytes)
-	if bkt == nil {
-		return nil
+	clear(m.blockMarkers)
+	bkt, err := tx.CreateBucketIfNotExists(removedBlocksBucketNameBytes)
+	if err != nil {
+		return err
 	}
-	err := bkt.ForEachBucket(func(k []byte) error {
+	err = bkt.ForEachBucket(func(k []byte) error {
 		shardBkt := bkt.Bucket(k)
 		if shardBkt == nil {
 			return nil
@@ -220,11 +219,7 @@ func (m *DeletionMarkers) Remove(tx *bbolt.Tx, markers map[string]*BlockRemovalC
 }
 
 func getPendingBlockRemovalsBucket(tx *bbolt.Tx) (*bbolt.Bucket, error) {
-	bkt := tx.Bucket(removedBlocksBucketNameBytes)
-	if bkt == nil {
-		return nil, bbolt.ErrBucketNotFound
-	}
-	return bkt, nil
+	return tx.CreateBucketIfNotExists(removedBlocksBucketNameBytes)
 }
 
 func getOrCreateSubBucket(parent *bbolt.Bucket, name []byte) (*bbolt.Bucket, error) {

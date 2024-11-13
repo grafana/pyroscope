@@ -15,7 +15,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/markers"
 )
 
-type CleanerRaftLog interface {
+type CleanerCommandLog interface {
 	CleanBlocks(*raft_log.CleanBlocksRequest) (*anypb.Any, error)
 }
 
@@ -26,19 +26,18 @@ type LocalCleaner interface {
 type CleanerService struct {
 	config  markers.Config
 	logger  log.Logger
-	raftLog CleanerRaftLog
+	raftLog CleanerCommandLog
 	local   LocalCleaner
 
 	m       sync.Mutex
 	started bool
 	cancel  context.CancelFunc
-	wg      sync.WaitGroup
 }
 
 func NewCleanerService(
 	config markers.Config,
 	logger log.Logger,
-	raftLog CleanerRaftLog,
+	raftLog CleanerCommandLog,
 	local LocalCleaner,
 ) *CleanerService {
 	return &CleanerService{
@@ -71,17 +70,13 @@ func (svc *CleanerService) Stop() {
 		return
 	}
 	svc.cancel()
-	svc.wg.Wait()
 	svc.started = false
 	svc.logger.Log("msg", "cleaner stopped")
 }
 
 func (svc *CleanerService) runLoop(ctx context.Context) {
 	t := time.NewTicker(svc.config.CompactedBlocksCleanupInterval)
-	defer func() {
-		t.Stop()
-		svc.wg.Done()
-	}()
+	defer t.Stop()
 	for {
 		select {
 		case <-ctx.Done():

@@ -16,8 +16,8 @@ import (
 	"google.golang.org/grpc/status"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	segmentstorage "github.com/grafana/pyroscope/pkg/experiment/ingester/storage"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/raft_node/raftnodepb"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/memory"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockdlq"
 )
@@ -78,7 +78,10 @@ func TestNotRaftLeader(t *testing.T) {
 	}
 
 	srv := mockdlq.NewMockLocalServer(t)
-	s, _ := status.New(codes.Unavailable, "mock metastore error").WithDetails(&typesv1.RaftDetails{Leader: string("239")})
+	s, _ := status.New(codes.Unavailable, "mock metastore error").WithDetails(&raftnodepb.RaftNode{
+		Id:      "foo",
+		Address: "bar",
+	})
 	srv.On("AddRecoveredBlock", mock.Anything, mock.Anything).
 		Once().
 		Return(nil, s.Err())

@@ -82,7 +82,6 @@ type cacheKey struct {
 // The index requires a backing Store for loading data in memory. Data is loaded directly via LoadPartitions() or when
 // looking up blocks with FindBlock() or FindBlocksInRange().
 func NewIndex(store Store, logger log.Logger, cfg *Config) *Index {
-
 	// A fixed cache size gives us bounded memory footprint, however changes to the partition duration could reduce
 	// the cache effectiveness.
 	// TODO (aleks-p):
@@ -98,6 +97,8 @@ func NewIndex(store Store, logger log.Logger, cfg *Config) *Index {
 }
 
 func (i *Index) Restore(tx *bbolt.Tx) error {
+	i.allPartitions = i.allPartitions[:0]
+	clear(i.loadedPartitions)
 	i.LoadPartitions(tx)
 	return nil
 }

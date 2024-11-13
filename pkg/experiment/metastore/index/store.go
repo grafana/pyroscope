@@ -32,9 +32,9 @@ var partitionBucketNameBytes = []byte(partitionBucketName)
 var emptyTenantBucketNameBytes = []byte(emptyTenantBucketName)
 
 func getPartitionBucket(tx *bbolt.Tx) (*bbolt.Bucket, error) {
-	bkt := tx.Bucket(partitionBucketNameBytes)
-	if bkt == nil {
-		return nil, bbolt.ErrBucketNotFound
+	bkt, err := tx.CreateBucketIfNotExists(partitionBucketNameBytes)
+	if err != nil {
+		return nil, err
 	}
 	return bkt, nil
 }
