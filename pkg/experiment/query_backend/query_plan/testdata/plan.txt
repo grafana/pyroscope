@@ -1,46 +1,46 @@
-merge {children: 2, nodes: 21, blocks: 25}
-	merge {children: 3, nodes: 13, blocks: 18}
-		merge {children: 3, nodes: 4, blocks: 6}
-			read {children: 2, nodes: 1, blocks: 2}
+MERGE {children: 2, blocks: 0}
+	MERGE {children: 3, blocks: 0}
+		MERGE {children: 3, blocks: 0}
+			READ {children: 0, blocks: 2}
 				id:"1"
 				id:"2"
-			read {children: 2, nodes: 1, blocks: 2}
+			READ {children: 0, blocks: 2}
 				id:"3"
 				id:"4"
-			read {children: 2, nodes: 1, blocks: 2}
+			READ {children: 0, blocks: 2}
 				id:"5"
 				id:"6"
-		merge {children: 3, nodes: 4, blocks: 6}
-			read {children: 2, nodes: 1, blocks: 2}
+		MERGE {children: 3, blocks: 0}
+			READ {children: 0, blocks: 2}
 				id:"7"
 				id:"8"
-			read {children: 2, nodes: 1, blocks: 2}
+			READ {children: 0, blocks: 2}
 				id:"9"
 				id:"10"
-			read {children: 2, nodes: 1, blocks: 2}
+			READ {children: 0, blocks: 2}
 				id:"11"
 				id:"12"
-		merge {children: 3, nodes: 4, blocks: 6}
-			read {children: 2, nodes: 1, blocks: 2}
+		MERGE {children: 3, blocks: 0}
+			READ {children: 0, blocks: 2}
 				id:"13"
 				id:"14"
-			read {children: 2, nodes: 1, blocks: 2}
+			READ {children: 0, blocks: 2}
 				id:"15"
 				id:"16"
-			read {children: 2, nodes: 1, blocks: 2}
+			READ {children: 0, blocks: 2}
 				id:"17"
 				id:"18"
-	merge {children: 2, nodes: 7, blocks: 7}
-		merge {children: 3, nodes: 4, blocks: 6}
-			read {children: 2, nodes: 1, blocks: 2}
+	MERGE {children: 2, blocks: 0}
+		MERGE {children: 3, blocks: 0}
+			READ {children: 0, blocks: 2}
 				id:"19"
 				id:"20"
-			read {children: 2, nodes: 1, blocks: 2}
+			READ {children: 0, blocks: 2}
 				id:"21"
 				id:"22"
-			read {children: 2, nodes: 1, blocks: 2}
+			READ {children: 0, blocks: 2}
 				id:"23"
 				id:"24"
-		merge {children: 1, nodes: 2, blocks: 1}
-			read {children: 1, nodes: 1, blocks: 1}
+		MERGE {children: 1, blocks: 0}
+			READ {children: 0, blocks: 1}
 				id:"25"

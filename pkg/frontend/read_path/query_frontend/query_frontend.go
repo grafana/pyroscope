@@ -67,7 +67,6 @@ func (q *QueryFrontend) Query(
 		return new(queryv1.QueryResponse), nil
 	}
 
-	// TODO(kolesnikovae): Implement query planning.
 	// Randomize the order of blocks to avoid hotspots.
 	xrand.Shuffle(len(md.Blocks), func(i, j int) {
 		md.Blocks[i], md.Blocks[j] = md.Blocks[j], md.Blocks[i]
@@ -80,13 +79,16 @@ func (q *QueryFrontend) Query(
 		EndTime:       req.EndTime,
 		LabelSelector: req.LabelSelector,
 		Options:       &queryv1.InvokeOptions{},
-		QueryPlan:     p.Proto(),
+		QueryPlan:     p,
 		Query:         req.Query,
 	})
 	if err != nil {
 		return nil, err
 	}
-	// TODO(kolesnikovae): Diagnostics.
+	resp.Diagnostics = &queryv1.Diagnostics{
+		QueryPlan: p,
+		// TODO(kolesnikovae): Extend diagnostics
+	}
 	return &queryv1.QueryResponse{Reports: resp.Reports}, nil
 }
 

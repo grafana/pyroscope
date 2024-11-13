@@ -40,6 +40,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/compactor"
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/embedded/grafana"
+	"github.com/grafana/pyroscope/pkg/experiment/query_backend"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	readpath "github.com/grafana/pyroscope/pkg/frontend/read_path"
 	queryfrontend "github.com/grafana/pyroscope/pkg/frontend/read_path/query_frontend"
@@ -505,6 +506,14 @@ func (f *Phlare) initServer() (services.Service, error) {
 	f.Cfg.Server.DoNotAddDefaultHTTPMiddleware = true
 	f.Cfg.Server.ExcludeRequestInLog = true // gRPC-specific.
 	f.Cfg.Server.GRPCMiddleware = append(f.Cfg.Server.GRPCMiddleware, util.RecoveryInterceptorGRPC)
+
+	if f.Cfg.v2Experiment && slices.Contains(f.Cfg.Target, QueryBackend) {
+		concurrencyInterceptor, err := query_backend.CreateConcurrencyInterceptor(f.logger)
+		if err != nil {
+			return nil, err
+		}
+		f.Cfg.Server.GRPCMiddleware = append(f.Cfg.Server.GRPCMiddleware, concurrencyInterceptor)
+	}
 
 	f.setupWorkerTimeout()
 	if f.isModuleActive(QueryScheduler) {

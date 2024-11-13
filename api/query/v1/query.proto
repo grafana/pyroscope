@@ -52,24 +52,25 @@ message InvokeRequest {
   InvokeOptions options = 7;
 }
 
-// Query plan is represented by a DAG, where each node
-// might be either "merge" or "read" (leaves). Each node
-// references a range: merge nodes refer to other nodes,
-// while read nodes refer to the blocks.
+// A query plan is represented by a directed acyclic graph (DAG),
+// where each node is either a "merge" node or a "read" node.
+//
+// Merge nodes reference other nodes in the plan as their "children".
+// Read nodes reference the blocks which contain the actual data to be processed.
 message QueryPlan {
-  // Each node is encoded with 3 values:
-  //  - node type: 0 - read, 1 - merge;
-  //  - range offset;
-  //  - range length.
-  repeated uint32 graph = 1;
+  QueryNode root = 1;
+}
 
-  // The blocks matching the query.
-  repeated metastore.v1.BlockMeta blocks = 2;
-  // TODO: Use opaque byte array to avoid unnecessary
-  // proto encoding/decoding overhead in transient nodes.
-  // Graph nodes reference ranges, thus each range could
-  // be a blob of bytes:
-  // repeated bytes block_ranges = 2;
+message QueryNode {
+  Type type = 1;
+  repeated QueryNode children = 2;
+  repeated metastore.v1.BlockMeta blocks = 3;
+
+  enum Type {
+    UNKNOWN = 0;
+    MERGE = 1;
+    READ = 2;
+  }
 }
 
 message Query {
@@ -104,7 +105,9 @@ message InvokeResponse {
 }
 
 // Diagnostic messages, events, statistics, analytics, etc.
-message Diagnostics {}
+message Diagnostics {
+  QueryPlan query_plan = 1;
+}
 
 message Report {
   ReportType report_type = 1;
