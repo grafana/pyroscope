@@ -48,7 +48,7 @@ const (
 
 type Config struct {
 	Address          string             `yaml:"address"`
-	GRPCClientConfig grpcclient.Config  `yaml:"grpc_client_config" doc:"description=Configures the gRPC raftClient used to communicate with the metastore."`
+	GRPCClientConfig grpcclient.Config  `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with the metastore."`
 	DataDir          string             `yaml:"data_dir"`
 	Raft             RaftConfig         `yaml:"raft"`
 	Compaction       CompactionConfig   `yaml:"compaction_config" category:"advanced"`
@@ -77,7 +77,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.StringVar(&cfg.DataDir, prefix+"data-dir", "./data-metastore/data", "")
 	f.DurationVar(&cfg.MinReadyDuration, prefix+"min-ready-duration", 15*time.Second, "Minimum duration to wait after the internal readiness checks have passed but before succeeding the readiness endpoint. This is used to slowdown deployment controllers (eg. Kubernetes) after an instance is ready and before they proceed with a rolling update, to give the rest of the cluster instances enough time to receive some (DNS?) updates.")
 	cfg.Raft.RegisterFlagsWithPrefix(prefix+"raft.", f)
-	cfg.GRPCClientConfig.RegisterFlagsWithPrefix(prefix+"grpc-raftClient-config", f)
+	cfg.GRPCClientConfig.RegisterFlagsWithPrefix(prefix+"grpc-client-config", f)
 	cfg.Compaction.RegisterFlagsWithPrefix(prefix+"compaction.", f)
 	cfg.Index.RegisterFlagsWithPrefix(prefix+"index.", f)
 	cfg.BlockCleaner.RegisterFlagsWithPrefix(prefix+"block-cleaner.", f)
