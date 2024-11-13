@@ -11,9 +11,12 @@ weight: 300
 # Configure the client to send profiles
 
 Pyroscope is a continuous profiling database that allows you to analyze the performance of your applications.
-When sending profiles to Pyroscope, you can choose between two primary methods: SDK instrumentation and auto-instrumentation using Grafana Alloy.
+When sending profiles to Pyroscope, you can choose between three methods:
+1. Auto-instrumentation using Grafana Alloy
+2. SDK instrumentation
+3. SDK instrumentation through Grafana Alloy
 
-This document explains these two techniques and guide you when to choose each one.
+This document explains these techniques and guide you when to choose each one.
 
 ![Pyroscope agent server diagram](https://grafana.com/media/docs/pyroscope/pyroscope_client_server_diagram_09_18_2024.png)
 
@@ -57,16 +60,27 @@ Here's how to use Pyroscope SDKs:
 By using the Pyroscope SDKs, you have the flexibility to customize the profiling process according to your application's specific requirements.
 You can selectively profile specific sections of code or send profiles at different intervals, depending on your needs.
 
-## Choose Grafana Alloy or Pyroscope SDK to send profiles
+## About instrumentation with Pyroscope SDKs through Alloy
 
-You can use Grafana Alloy for auto-instrumentation or the Pyroscope instrumentation SDKs.
+Pyroscope SDKs can be configured to send profiles to Grafana Alloy first, which then forwards them to the Pyroscope server. This method combines the flexibility of SDK instrumentation with Alloy's infrastructure benefits.
+
+Here's how it works:
+1. Your application is instrumented with Pyroscope SDKs
+2. Instead of sending profiles directly to Pyroscope, the SDK sends them to Alloy's `pyroscope.receive_http` component
+3. Alloy processes and forwards the profiles to the Pyroscope server
+
+By sending profiles through Alloy, you benefit from lower latency as profiles are sent to a local Alloy instance instead of directly over the internet to Grafana Cloud. Your application code remains focused on instrumentation while infrastructure concerns like authentication and routing are handled by Alloy's configuration. This separation allows for centralized management of metadata, where you can enrich profiles with infrastructure labels such as Kubernetes metadata or environment tags without modifying application code.
+
+## Choose the right profiling method
+
+You can use Grafana Alloy for auto-instrumentation, the Pyroscope instrumentation SDKs directly, or SDKs through Alloy. 
 The method you choose depends on your specific use case and requirements.
 
 Here are some factors to consider when making the choice:
 
-- Ease of setup: Grafana Alloy is an ideal choice for a quick and straightforward setup without modifying your application's code. eBPF profiling supports some languages (for example, Golang, Python) better than others. More robust support for Java and other languages is in development.
-- Language support: If you want more control over the profiling process and your application is written in a language supported by the Pyroscope SDKs, consider using the SDKs.
-- Flexibility: The Pyroscope SDKs offer greater flexibility in terms of customizing the profiling process and capturing specific sections of code with labels. If you have particular profiling needs or want to fine-tune the data collection process, the SDKs would be your best bet.
+- Ease of setup: Grafana Alloy is an ideal choice for a quick and straightforward setup without modifying your application's code. eBPF profiling supports some languages (for example, Golang, Python) better than others. More robust support for Java and other languages is in development. Using SDKs through Alloy adds minimal setup complexity while providing infrastructure benefits.
+- Language support: If you want more control over the profiling process and your application is written in a language supported by the Pyroscope SDKs, consider using the SDKs - either directly or through Alloy depending on your infrastructure needs.
+- Flexibility: The Pyroscope SDKs offer greater flexibility in terms of customizing the profiling process and capturing specific sections of code with labels. If you have particular profiling needs or want to fine-tune the data collection process, the SDKs would be your best bet. When used with Alloy, you gain additional infrastructure flexibility without compromising SDK capabilities.
 
 To get started, choose one of the integrations below:
 <table>
