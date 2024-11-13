@@ -62,14 +62,15 @@ message QueryPlan {
 }
 
 message QueryNode {
-  QueryNodeType type = 1;
+  Type type = 1;
   repeated QueryNode children = 2;
   repeated metastore.v1.BlockMeta blocks = 3;
-}
 
-enum QueryNodeType {
-  MERGE = 0;
-  READ = 1;
+  enum Type {
+    UNKNOWN = 0;
+    MERGE = 1;
+    READ = 2;
+  }
 }
 
 message Query {

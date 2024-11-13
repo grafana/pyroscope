@@ -80,9 +80,9 @@ func (q *QueryBackend) Invoke(
 	defer span.Finish()
 
 	switch r := req.QueryPlan.Root; r.Type {
-	case queryv1.QueryNodeType_MERGE:
+	case queryv1.QueryNode_MERGE:
 		return q.merge(ctx, req, r.Children)
-	case queryv1.QueryNodeType_READ:
+	case queryv1.QueryNode_READ:
 		return q.read(ctx, req, r.Blocks)
 	default:
 		panic("query plan: unknown node type")

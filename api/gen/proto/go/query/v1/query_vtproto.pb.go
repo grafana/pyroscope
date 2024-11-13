@@ -3724,7 +3724,7 @@ func (m *QueryNode) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Type |= QueryNodeType(b&0x7F) << shift
+				m.Type |= QueryNode_Type(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}

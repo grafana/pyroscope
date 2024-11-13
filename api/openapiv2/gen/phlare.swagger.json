@@ -1728,10 +1728,11 @@
     "v1QueryNodeType": {
       "type": "string",
       "enum": [
+        "UNKNOWN",
         "MERGE",
         "READ"
       ],
-      "default": "MERGE"
+      "default": "UNKNOWN"
     },
     "v1QueryPlan": {
       "type": "object",

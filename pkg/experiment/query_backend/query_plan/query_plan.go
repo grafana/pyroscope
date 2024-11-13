@@ -44,7 +44,7 @@ func Build(
 			end = len(blocks)
 		}
 		leafNodes = append(leafNodes, &queryv1.QueryNode{
-			Type:   queryv1.QueryNodeType_READ,
+			Type:   queryv1.QueryNode_READ,
 			Blocks: blocks[i:end],
 		})
 	}
@@ -57,7 +57,7 @@ func Build(
 		var newLeafNodes []*queryv1.QueryNode
 		for i := 0; i < numMerges; i++ {
 			newNode := &queryv1.QueryNode{
-				Type: queryv1.QueryNodeType_MERGE,
+				Type: queryv1.QueryNode_MERGE,
 			}
 			for j := 0; j < maxMerges && len(leafNodes) > 0; j++ {
 				newNode.Children = append(newNode.Children, leafNodes[0])
@@ -82,12 +82,12 @@ func printPlan(w io.Writer, pad string, n *queryv1.QueryNode, debug bool) {
 	}
 
 	switch n.Type {
-	case queryv1.QueryNodeType_MERGE:
+	case queryv1.QueryNode_MERGE:
 		for _, child := range n.Children {
 			printPlan(w, pad+"\t", child, debug)
 		}
 
-	case queryv1.QueryNodeType_READ:
+	case queryv1.QueryNode_READ:
 		for _, block := range n.Blocks {
 			_, _ = fmt.Fprintf(w, pad+"\t"+"id:\"%s\"\n", block.Id)
 		}
