@@ -148,7 +148,7 @@ func (fsm *FSM) applyCommand(cmd *raft.Log) any {
 }
 
 func (fsm *FSM) ReadOnlyTx() *bbolt.Tx {
-	tx, err := fsm.db.boltdb.Begin(true)
+	tx, err := fsm.db.boltdb.Begin(false)
 	if err != nil {
 		panic(fmt.Sprint("failed to create read-only transaction:", err))
 	}
