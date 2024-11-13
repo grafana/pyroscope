@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/grafana/dskit/backoff"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/grafana/dskit/backoff"
+
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -119,13 +121,13 @@ func (m *Metastore) bootstrapPeersWithRetries() (peers []raft.Server, err error)
 		MaxBackoff: 10 * time.Second,
 		MaxRetries: 20,
 	}
-	backoff := backoff.New(context.Background(), backoffConfig)
-	for backoff.Ongoing() {
+	backOff := backoff.New(context.Background(), backoffConfig)
+	for backOff.Ongoing() {
 		if !attempt() {
-			backoff.Wait()
+			backOff.Wait()
 		} else {
 			return peers, nil
 		}
 	}
-	return nil, fmt.Errorf("failed to resolve bootstrap peers after %d retries %w", backoff.NumRetries(), err)
+	return nil, fmt.Errorf("failed to resolve bootstrap peers after %d retries %w", backOff.NumRetries(), err)
 }

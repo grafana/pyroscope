@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package metastore.v1;
+
+service RaftNodeService {
+  rpc ReadIndex(ReadIndexRequest) returns (ReadIndexResponse) {}
+}
+
+message ReadIndexRequest {}
+
+message ReadIndexResponse {
+  uint64 read_index = 1;
+}

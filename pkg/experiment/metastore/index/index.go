@@ -13,14 +13,17 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/oklog/ulid"
 	"github.com/prometheus/common/model"
+	"go.etcd.io/bbolt"
 	"golang.org/x/sync/errgroup"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 )
 
-type cacheKey struct {
-	partitionKey PartitionKey
-	tenant       string
+type Store interface {
+	ListPartitions(tx *bbolt.Tx) []PartitionKey
+	ListShards(tx *bbolt.Tx, p PartitionKey) []uint32
+	ListTenants(tx *bbolt.Tx, p PartitionKey, shard uint32) []string
+	ListBlocks(tx *bbolt.Tx, p PartitionKey, shard uint32, tenant string) []*metastorev1.BlockMeta
 }
 
 type Index struct {
@@ -62,11 +65,9 @@ type indexShard struct {
 	blocks map[string]*metastorev1.BlockMeta
 }
 
-type Store interface {
-	ListPartitions() []PartitionKey
-	ListShards(p PartitionKey) []uint32
-	ListTenants(p PartitionKey, shard uint32) []string
-	ListBlocks(p PartitionKey, shard uint32, tenant string) []*metastorev1.BlockMeta
+type cacheKey struct {
+	partitionKey PartitionKey
+	tenant       string
 }
 
 // NewIndex initializes a new metastore index.
@@ -96,14 +97,19 @@ func NewIndex(store Store, logger log.Logger, cfg *Config) *Index {
 	}
 }
 
+func (i *Index) Restore(tx *bbolt.Tx) error {
+	i.LoadPartitions(tx)
+	return nil
+}
+
 // LoadPartitions reads all partitions from the backing store and loads the recent ones in memory.
-func (i *Index) LoadPartitions() {
+func (i *Index) LoadPartitions(tx *bbolt.Tx) {
 	i.partitionMu.Lock()
 	defer i.partitionMu.Unlock()
 
 	i.allPartitions = make([]*PartitionMeta, 0)
-	for _, key := range i.store.ListPartitions() {
-		pMeta := i.loadPartitionMeta(key)
+	for _, key := range i.store.ListPartitions(tx) {
+		pMeta := i.loadPartitionMeta(tx, key)
 		level.Info(i.logger).Log(
 			"msg", "loaded metastore index partition",
 			"key", key,
@@ -114,7 +120,7 @@ func (i *Index) LoadPartitions() {
 
 		// load the currently active partition
 		if pMeta.contains(time.Now().UTC().UnixMilli()) {
-			i.loadEntirePartition(pMeta)
+			i.loadEntirePartition(tx, pMeta)
 		}
 	}
 	level.Info(i.logger).Log("msg", "loaded metastore index partitions", "count", len(i.allPartitions))
@@ -122,7 +128,7 @@ func (i *Index) LoadPartitions() {
 	i.sortPartitions()
 }
 
-func (i *Index) loadPartitionMeta(key PartitionKey) *PartitionMeta {
+func (i *Index) loadPartitionMeta(tx *bbolt.Tx, key PartitionKey) *PartitionMeta {
 	t, dur, _ := key.Parse()
 	pMeta := &PartitionMeta{
 		Key:       key,
@@ -131,8 +137,8 @@ func (i *Index) loadPartitionMeta(key PartitionKey) *PartitionMeta {
 		Tenants:   make([]string, 0),
 		tenantMap: make(map[string]struct{}),
 	}
-	for _, s := range i.store.ListShards(key) {
-		for _, t := range i.store.ListTenants(key, s) {
+	for _, s := range i.store.ListShards(tx, key) {
+		for _, t := range i.store.ListTenants(tx, key, s) {
 			pMeta.AddTenant(t)
 		}
 	}
@@ -159,9 +165,9 @@ func (i *Index) ForEachPartition(ctx context.Context, fn func(meta *PartitionMet
 	return nil
 }
 
-func (i *Index) loadEntirePartition(meta *PartitionMeta) {
-	for _, s := range i.store.ListShards(meta.Key) {
-		for _, t := range i.store.ListTenants(meta.Key, s) {
+func (i *Index) loadEntirePartition(tx *bbolt.Tx, meta *PartitionMeta) {
+	for _, s := range i.store.ListShards(tx, meta.Key) {
+		for _, t := range i.store.ListTenants(tx, meta.Key, s) {
 			cKey := cacheKey{
 				partitionKey: meta.Key,
 				tenant:       t,
@@ -182,14 +188,14 @@ func (i *Index) loadEntirePartition(meta *PartitionMeta) {
 				}
 				p.shards[s] = sh
 			}
-			for _, b := range i.store.ListBlocks(meta.Key, s, t) {
+			for _, b := range i.store.ListBlocks(tx, meta.Key, s, t) {
 				sh.blocks[b.Id] = b
 			}
 		}
 	}
 }
 
-func (i *Index) getOrLoadPartition(meta *PartitionMeta, tenant string) *indexPartition {
+func (i *Index) getOrLoadPartition(tx *bbolt.Tx, meta *PartitionMeta, tenant string) *indexPartition {
 	cKey := cacheKey{
 		partitionKey: meta.Key,
 		tenant:       tenant,
@@ -200,12 +206,12 @@ func (i *Index) getOrLoadPartition(meta *PartitionMeta, tenant string) *indexPar
 			meta:   meta,
 			shards: make(map[uint32]*indexShard),
 		}
-		for _, s := range i.store.ListShards(meta.Key) {
+		for _, s := range i.store.ListShards(tx, meta.Key) {
 			sh := &indexShard{
 				blocks: make(map[string]*metastorev1.BlockMeta),
 			}
 			p.shards[s] = sh
-			for _, b := range i.store.ListBlocks(meta.Key, s, tenant) {
+			for _, b := range i.store.ListBlocks(tx, meta.Key, s, tenant) {
 				sh.blocks[b.Id] = b
 			}
 		}
@@ -254,19 +260,18 @@ func (i *Index) findPartitionMeta(key PartitionKey) *PartitionMeta {
 }
 
 // InsertBlock is the primary way for adding blocks to the index.
-func (i *Index) InsertBlock(b *metastorev1.BlockMeta) {
+func (i *Index) InsertBlock(tx *bbolt.Tx, b *metastorev1.BlockMeta) {
 	i.partitionMu.Lock()
 	defer i.partitionMu.Unlock()
 
-	i.insertBlock(b)
+	i.insertBlock(tx, b)
 }
 
 // insertBlock is the underlying implementation for inserting blocks. It is the caller's responsibility to enforce safe
 // concurrent access. The method will create a new partition if needed.
-func (i *Index) insertBlock(b *metastorev1.BlockMeta) {
+func (i *Index) insertBlock(tx *bbolt.Tx, b *metastorev1.BlockMeta) {
 	meta := i.getOrCreatePartitionMeta(b)
-	p := i.getOrLoadPartition(meta, b.TenantId)
-
+	p := i.getOrLoadPartition(tx, meta, b.TenantId)
 	s, ok := p.shards[b.Shard]
 	if !ok {
 		s = &indexShard{
@@ -310,13 +315,13 @@ func (i *Index) getOrCreatePartitionMeta(b *metastorev1.BlockMeta) *PartitionMet
 
 // FindBlock tries to retrieve an existing block from the index. It will load the corresponding partition if it is not
 // already loaded. Returns nil if the block cannot be found.
-func (i *Index) FindBlock(shardNum uint32, tenant string, blockId string) *metastorev1.BlockMeta {
+func (i *Index) FindBlock(tx *bbolt.Tx, shardNum uint32, tenant string, blockId string) *metastorev1.BlockMeta {
 	// first try the currently mapped partition
 	key := i.CreatePartitionKey(blockId)
 	i.partitionMu.Lock()
 	defer i.partitionMu.Unlock()
 
-	b := i.findBlockInPartition(key, shardNum, tenant, blockId)
+	b := i.findBlockInPartition(tx, key, shardNum, tenant, blockId)
 	if b != nil {
 		return b
 	}
@@ -325,7 +330,7 @@ func (i *Index) FindBlock(shardNum uint32, tenant string, blockId string) *metas
 	t := ulid.Time(ulid.MustParse(blockId).Time()).UTC().UnixMilli()
 	for _, p := range i.allPartitions {
 		if p.contains(t) {
-			b := i.findBlockInPartition(p.Key, shardNum, tenant, blockId)
+			b := i.findBlockInPartition(tx, p.Key, shardNum, tenant, blockId)
 			if b != nil {
 				return b
 			}
@@ -334,13 +339,13 @@ func (i *Index) FindBlock(shardNum uint32, tenant string, blockId string) *metas
 	return nil
 }
 
-func (i *Index) findBlockInPartition(key PartitionKey, shard uint32, tenant string, blockId string) *metastorev1.BlockMeta {
+func (i *Index) findBlockInPartition(tx *bbolt.Tx, key PartitionKey, shard uint32, tenant string, blockId string) *metastorev1.BlockMeta {
 	meta := i.findPartitionMeta(key)
 	if meta == nil {
 		return nil
 	}
 
-	p := i.getOrLoadPartition(meta, tenant)
+	p := i.getOrLoadPartition(tx, meta, tenant)
 
 	s, _ := p.shards[shard]
 	if s == nil {
@@ -357,7 +362,7 @@ func (i *Index) findBlockInPartition(key PartitionKey, shard uint32, tenant stri
 // It is not enough to scan for partition keys that fall in the given time interval. Partitions are built on top of
 // block identifiers which refer to the moment a block was created and not to the timestamps of the profiles contained
 // within the block (min_time, max_time). This method works around this by including blocks from adjacent partitions.
-func (i *Index) FindBlocksInRange(start, end int64, tenants map[string]struct{}) ([]*metastorev1.BlockMeta, error) {
+func (i *Index) FindBlocksInRange(tx *bbolt.Tx, start, end int64, tenants map[string]struct{}) []*metastorev1.BlockMeta {
 	i.partitionMu.Lock()
 	defer i.partitionMu.Unlock()
 	startWithLookaround := start - i.Config.QueryLookaroundPeriod.Milliseconds()
@@ -371,19 +376,19 @@ func (i *Index) FindBlocksInRange(start, end int64, tenants map[string]struct{})
 				if !meta.HasTenant(t) {
 					continue
 				}
-				p := i.getOrLoadPartition(meta, t)
+				p := i.getOrLoadPartition(tx, meta, t)
 				tenantBlocks := i.collectTenantBlocks(p, start, end)
 				blocks = append(blocks, tenantBlocks...)
 
 				// return mixed blocks as well, we rely on the caller to filter out the data per tenant / service
-				p = i.getOrLoadPartition(meta, "")
+				p = i.getOrLoadPartition(tx, meta, "")
 				tenantBlocks = i.collectTenantBlocks(p, start, end)
 				blocks = append(blocks, tenantBlocks...)
 			}
 		}
 	}
 
-	return blocks, nil
+	return blocks
 }
 
 func (i *Index) sortPartitions() {
@@ -406,12 +411,12 @@ func (i *Index) collectTenantBlocks(p *indexPartition, start, end int64) []*meta
 
 // ReplaceBlocks removes source blocks from the index and inserts replacement blocks into the index. The intended usage
 // is for block compaction. The replacement blocks could be added to the same or a different partition.
-func (i *Index) ReplaceBlocks(sources []string, sourceShard uint32, sourceTenant string, replacements []*metastorev1.BlockMeta) {
+func (i *Index) ReplaceBlocks(tx *bbolt.Tx, sources []string, sourceShard uint32, sourceTenant string, replacements []*metastorev1.BlockMeta) {
 	i.partitionMu.Lock()
 	defer i.partitionMu.Unlock()
 
 	for _, newBlock := range replacements {
-		i.insertBlock(newBlock)
+		i.insertBlock(tx, newBlock)
 	}
 
 	for _, sourceBlock := range sources {

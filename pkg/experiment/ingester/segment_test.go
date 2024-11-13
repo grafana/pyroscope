@@ -239,7 +239,7 @@ func TestDLQFail(t *testing.T) {
 	bucket.On("Upload", mock.Anything, mock.MatchedBy(func(name string) bool {
 		return segmentstorage.IsDLQPath(name)
 	}), mock.Anything).Return(fmt.Errorf("mock upload DLQ error"))
-	client := mockmetastorev1.NewMockMetastoreServiceClient(t)
+	client := mockmetastorev1.NewMockIndexServiceClient(t)
 	client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
 		Return(nil, fmt.Errorf("mock add block error"))
 
@@ -282,7 +282,7 @@ func TestDatasetMinMaxTime(t *testing.T) {
 	l := testutil.NewLogger(t)
 	bucket := memory.NewInMemBucket()
 	metas := make(chan *metastorev1.BlockMeta)
-	client := mockmetastorev1.NewMockMetastoreServiceClient(t)
+	client := mockmetastorev1.NewMockIndexServiceClient(t)
 	client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
 		Run(func(args mock.Arguments) {
 			meta := args.Get(1).(*metastorev1.AddBlockRequest).Block
@@ -432,7 +432,7 @@ func TestDLQRecovery(t *testing.T) {
 
 	cfg := new(metastore.Config)
 	flagext.DefaultValues(cfg)
-	cfg.DLQRecoveryPeriod = 100 * time.Millisecond
+	cfg.DLQRecovery.Period = 100 * time.Millisecond
 	m := metastoretest.NewMetastoreSet(t, cfg, 3, sw.bucket)
 	defer m.Close()
 
@@ -466,7 +466,7 @@ func TestDLQRecovery(t *testing.T) {
 type sw struct {
 	*segmentsWriter
 	bucket  *memory.InMemBucket
-	client  *mockmetastorev1.MockMetastoreServiceClient
+	client  *mockmetastorev1.MockIndexServiceClient
 	t       *testing.T
 	queryNo int
 }
@@ -474,7 +474,7 @@ type sw struct {
 func newTestSegmentWriter(t *testing.T, cfg Config) sw {
 	l := testutil.NewLogger(t)
 	bucket := memory.NewInMemBucket()
-	client := mockmetastorev1.NewMockMetastoreServiceClient(t)
+	client := mockmetastorev1.NewMockIndexServiceClient(t)
 	res := newSegmentWriter(
 		l,
 		newSegmentMetrics(nil),

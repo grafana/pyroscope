@@ -38,7 +38,7 @@ func (q *QueryFrontend) Series(
 
 	if isProfileTypeQuery(c.Msg.LabelNames, c.Msg.Matchers) {
 		_ = level.Debug(q.logger).Log("msg", "listing profile types from metadata as series labels")
-		return listProfileTypesFromMetadataAsSeriesLabels(ctx, q.metastore, tenantIDs, c.Msg.Start, c.Msg.End, c.Msg.LabelNames)
+		return listProfileTypesFromMetadataAsSeriesLabels(ctx, q.metadataQueryClient, tenantIDs, c.Msg.Start, c.Msg.End, c.Msg.LabelNames)
 	}
 
 	labelSelector, err := buildLabelSelectorFromMatchers(c.Msg.Matchers)

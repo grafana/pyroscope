@@ -146,6 +146,7 @@ func (f *Phlare) initReadPathRouter() {
 		log.With(f.logger, "component", "query-frontend"),
 		f.Overrides,
 		f.metastoreClient,
+		f.metastoreClient,
 		f.queryBackendClient,
 	)
 

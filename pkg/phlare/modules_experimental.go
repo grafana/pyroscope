@@ -123,7 +123,7 @@ func (f *Phlare) initMetastore() (services.Service, error) {
 		return nil, err
 	}
 
-	f.API.RegisterMetastore(m)
+	m.Register(f.Server.GRPC)
 	f.metastore = m
 	return m.Service(), nil
 }

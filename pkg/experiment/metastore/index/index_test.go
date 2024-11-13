@@ -86,18 +86,17 @@ func TestIndex_FindBlocksInRange(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			store := mockindex.NewMockStore(t)
-			store.On("ListShards", mock.Anything).Return([]uint32{})
+			store.On("ListShards", mock.Anything, mock.Anything).Return([]uint32{})
 			i := index.NewIndex(store, util.Logger, &index.Config{
 				PartitionDuration:     time.Hour,
 				PartitionCacheSize:    24,
 				QueryLookaroundPeriod: time.Hour,
 			})
 			for _, b := range tt.blocks {
-				i.InsertBlock(b)
+				i.InsertBlock(nil, b)
 			}
 			tenantMap := map[string]struct{}{"tenant-1": {}}
-			found, err := i.FindBlocksInRange(tt.queryStart, tt.queryEnd, tenantMap)
-			require.NoError(t, err)
+			found := i.FindBlocksInRange(nil, tt.queryStart, tt.queryEnd, tenantMap)
 			require.Equal(t, tt.want, len(found))
 			for _, b := range found {
 				require.Truef(
@@ -111,9 +110,9 @@ func TestIndex_FindBlocksInRange(t *testing.T) {
 }
 
 func mockPartition(store *mockindex.MockStore, key index.PartitionKey, blocks []*metastorev1.BlockMeta) {
-	store.On("ListShards", key).Return([]uint32{0}).Maybe()
-	store.On("ListTenants", key, uint32(0)).Return([]string{""}).Maybe()
-	store.On("ListBlocks", key, uint32(0), "").Return(blocks).Maybe()
+	store.On("ListShards", mock.Anything, key).Return([]uint32{0}).Maybe()
+	store.On("ListTenants", mock.Anything, key, uint32(0)).Return([]string{""}).Maybe()
+	store.On("ListBlocks", mock.Anything, key, uint32(0), "").Return(blocks).Maybe()
 }
 
 func TestIndex_ForEachPartition(t *testing.T) {
@@ -127,11 +126,11 @@ func TestIndex_ForEachPartition(t *testing.T) {
 		"20240923T09.1h",
 		"20240923T10.1h",
 	}
-	store.On("ListPartitions").Return(keys)
+	store.On("ListPartitions", mock.Anything).Return(keys)
 	for _, key := range keys {
 		mockPartition(store, key, nil)
 	}
-	i.LoadPartitions()
+	i.LoadPartitions(nil)
 
 	visited := make(map[index.PartitionKey]struct{})
 	var mu sync.Mutex
@@ -206,7 +205,7 @@ func TestIndex_GetPartitionKey(t *testing.T) {
 
 func TestIndex_InsertBlock(t *testing.T) {
 	store := mockindex.NewMockStore(t)
-	store.On("ListShards", mock.Anything).Return([]uint32{})
+	store.On("ListShards", mock.Anything, mock.Anything).Return([]uint32{})
 	i := index.NewIndex(store, util.Logger, &index.Config{PartitionDuration: time.Hour, PartitionCacheSize: 1})
 	block := &metastorev1.BlockMeta{
 		Id:       createUlidString("2024-09-23T08:00:00.123Z"),
@@ -215,17 +214,15 @@ func TestIndex_InsertBlock(t *testing.T) {
 		MaxTime:  createTime("2024-09-23T08:05:00.000Z"),
 	}
 
-	i.InsertBlock(block)
-	require.NotNil(t, i.FindBlock(0, "tenant-1", block.Id))
-	blocks, err := i.FindBlocksInRange(createTime("2024-09-23T07:00:00.000Z"), createTime("2024-09-23T09:00:00.000Z"), map[string]struct{}{"tenant-1": {}})
-	require.NoError(t, err)
+	i.InsertBlock(nil, block)
+	require.NotNil(t, i.FindBlock(nil, 0, "tenant-1", block.Id))
+	blocks := i.FindBlocksInRange(nil, createTime("2024-09-23T07:00:00.000Z"), createTime("2024-09-23T09:00:00.000Z"), map[string]struct{}{"tenant-1": {}})
 	require.Len(t, blocks, 1)
 	require.Equal(t, block, blocks[0])
 
 	// inserting the block again is a noop
-	i.InsertBlock(block)
-	blocks, err = i.FindBlocksInRange(createTime("2024-09-23T07:00:00.000Z"), createTime("2024-09-23T09:00:00.000Z"), map[string]struct{}{"tenant-1": {}})
-	require.NoError(t, err)
+	i.InsertBlock(nil, block)
+	blocks = i.FindBlocksInRange(nil, createTime("2024-09-23T07:00:00.000Z"), createTime("2024-09-23T09:00:00.000Z"), map[string]struct{}{"tenant-1": {}})
 	require.Len(t, blocks, 1)
 	require.Equal(t, block, blocks[0])
 }
@@ -244,56 +241,56 @@ func TestIndex_LoadPartitions(t *testing.T) {
 	}
 
 	partitionKey := i.CreatePartitionKey(blocks[0].Id)
-	store.On("ListPartitions").Return([]index.PartitionKey{partitionKey})
-	store.On("ListShards", mock.Anything).Return([]uint32{0})
-	store.On("ListTenants", mock.Anything, mock.Anything).Return([]string{""})
-	store.On("ListBlocks", mock.Anything, mock.Anything, mock.Anything).Return(blocks)
+	store.On("ListPartitions", mock.Anything).Return([]index.PartitionKey{partitionKey})
+	store.On("ListShards", mock.Anything, mock.Anything).Return([]uint32{0})
+	store.On("ListTenants", mock.Anything, mock.Anything, mock.Anything).Return([]string{""})
+	store.On("ListBlocks", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(blocks)
 
 	// restore from store
-	i.LoadPartitions()
+	i.LoadPartitions(nil)
 
 	for _, b := range blocks {
-		require.NotNilf(t, i.FindBlock(b.Shard, b.TenantId, b.Id), "block %s not found", b.Id)
+		require.NotNilf(t, i.FindBlock(nil, b.Shard, b.TenantId, b.Id), "block %s not found", b.Id)
 	}
 }
 
 func TestIndex_ReplaceBlocks(t *testing.T) {
 	store := mockindex.NewMockStore(t)
-	store.On("ListShards", mock.Anything).Return([]uint32{})
+	store.On("ListShards", mock.Anything, mock.Anything).Return([]uint32{})
 	i := index.NewIndex(store, util.Logger, &index.DefaultConfig)
 	b1 := &metastorev1.BlockMeta{
 		Id: createUlidString("2024-09-23T08:00:00.123Z"),
 	}
-	i.InsertBlock(b1)
+	i.InsertBlock(nil, b1)
 	b2 := &metastorev1.BlockMeta{
 		Id: createUlidString("2024-09-23T08:00:00.123Z"),
 	}
-	i.InsertBlock(b2)
+	i.InsertBlock(nil, b2)
 
 	replacement := &metastorev1.BlockMeta{
 		Id:              createUlidString("2024-09-23T08:00:00.123Z"),
 		CompactionLevel: 1,
 		TenantId:        "tenant-1",
 	}
-	i.ReplaceBlocks([]string{b1.Id, b2.Id}, 0, "", []*metastorev1.BlockMeta{replacement})
+	i.ReplaceBlocks(nil, []string{b1.Id, b2.Id}, 0, "", []*metastorev1.BlockMeta{replacement})
 
-	require.Nil(t, i.FindBlock(0, "", b1.Id))
-	require.Nil(t, i.FindBlock(0, "", b2.Id))
-	require.NotNil(t, i.FindBlock(0, "tenant-1", replacement.Id))
+	require.Nil(t, i.FindBlock(nil, 0, "", b1.Id))
+	require.Nil(t, i.FindBlock(nil, 0, "", b2.Id))
+	require.NotNil(t, i.FindBlock(nil, 0, "tenant-1", replacement.Id))
 }
 
 func TestIndex_DurationChange(t *testing.T) {
 	store := mockindex.NewMockStore(t)
-	store.On("ListShards", mock.Anything).Return([]uint32{})
+	store.On("ListShards", mock.Anything, mock.Anything).Return([]uint32{})
 	i := index.NewIndex(store, util.Logger, &index.Config{PartitionDuration: 24 * time.Hour, PartitionCacheSize: 1})
 	b := &metastorev1.BlockMeta{
 		Id: createUlidString("2024-09-23T08:00:00.123Z"),
 	}
-	i.InsertBlock(b)
-	require.NotNil(t, i.FindBlock(0, "", b.Id))
+	i.InsertBlock(nil, b)
+	require.NotNil(t, i.FindBlock(nil, 0, "", b.Id))
 
 	i.Config.PartitionDuration = time.Hour
-	require.NotNil(t, i.FindBlock(0, "", b.Id))
+	require.NotNil(t, i.FindBlock(nil, 0, "", b.Id))
 }
 
 func TestIndex_UnloadPartitions(t *testing.T) {
@@ -307,33 +304,30 @@ func TestIndex_UnloadPartitions(t *testing.T) {
 		"20240923T09.1h",
 		"20240923T10.1h",
 	}
-	store.On("ListPartitions").Return(keys)
+	store.On("ListPartitions", mock.Anything).Return(keys)
 	for _, key := range keys {
 		mockPartition(store, key, nil)
 	}
-	i.LoadPartitions()
+	i.LoadPartitions(nil)
 	require.True(t, store.AssertNumberOfCalls(t, "ListShards", 5))
 
 	for _, key := range keys {
 		start, _, _ := key.Parse()
 		for c := 0; c < 10; c++ {
-			_, err := i.FindBlocksInRange(start.UnixMilli(), start.Add(5*time.Minute).UnixMilli(), map[string]struct{}{"": {}})
-			require.NoError(t, err)
+			i.FindBlocksInRange(nil, start.UnixMilli(), start.Add(5*time.Minute).UnixMilli(), map[string]struct{}{"": {}})
 		}
 	}
 	// multiple reads cause a single store access
 	require.True(t, store.AssertNumberOfCalls(t, "ListShards", 10))
 
 	for c := 0; c < 10; c++ {
-		_, err := i.FindBlocksInRange(createTime("2024-09-23T08:00:00.000Z"), createTime("2024-09-23T08:05:00.000Z"), map[string]struct{}{"": {}})
-		require.NoError(t, err)
+		i.FindBlocksInRange(nil, createTime("2024-09-23T08:00:00.000Z"), createTime("2024-09-23T08:05:00.000Z"), map[string]struct{}{"": {}})
 	}
 	// this partition is still loaded in memory
 	require.True(t, store.AssertNumberOfCalls(t, "ListShards", 10))
 
 	for c := 0; c < 10; c++ {
-		_, err := i.FindBlocksInRange(createTime("2024-09-23T06:00:00.000Z"), createTime("2024-09-23T06:05:00.000Z"), map[string]struct{}{"": {}})
-		require.NoError(t, err)
+		i.FindBlocksInRange(nil, createTime("2024-09-23T06:00:00.000Z"), createTime("2024-09-23T06:05:00.000Z"), map[string]struct{}{"": {}})
 	}
 	// this partition was unloaded
 	require.True(t, store.AssertNumberOfCalls(t, "ListShards", 11))

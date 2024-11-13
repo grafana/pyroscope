@@ -18,9 +18,9 @@ import (
 )
 
 func TestQueryFrontend_ProfileTypes(t *testing.T) {
-	metaClient := mockmetastorev1.NewMockMetastoreServiceClient(t)
+	metaClient := mockmetastorev1.NewMockMetadataQueryServiceClient(t)
 	limits := mockfrontend.NewMockLimits(t)
-	f := NewQueryFrontend(log.NewNopLogger(), limits, metaClient, nil)
+	f := NewQueryFrontend(log.NewNopLogger(), limits, metaClient, nil, nil)
 	require.NotNil(t, f)
 
 	limits.On("MaxQueryLookback", mock.Anything).Return(24 * time.Hour)
