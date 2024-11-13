@@ -65,6 +65,6 @@ const grpcServiceConfig = `{
               "RESOURCE_EXHAUSTED"
             ]
         },
-        "timeout": "30s"
+        "timeout": "20s"
     }]
 }`
