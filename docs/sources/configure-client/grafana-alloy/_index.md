@@ -81,6 +81,20 @@ In pull mode, the collector periodically retrieves profiles from Golang applicat
 1. Ensure Alloy is set to pull mode and targeting the correct pprof endpoints. For step-by-step instructions, visit the [Go (Pull Mode)](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/grafana-alloy/go_pull) documentation.
 1. The collector queries the pprof endpoints of your Golang application, collects the profiles, and forwards them to the Pyroscope server.
 
+## Receive profiles from Pyroscope SDKs
+
+Alloy can receive profiles from applications instrumented with Pyroscope SDKs through the `pyroscope.receive_http` component. This approach provides several key advantages:
+- Improved performance by sending profiles to a local Alloy instance instead of over the internet to Grafana Cloud, reducing latency and application impact
+- Separation of infrastructure concerns from application code - developers don't need to handle authentication, tenant configuration, or infrastructure labels in their code
+- Centralized management of authentication and metadata enrichment (for example, Kubernetes labels, business labels)
+
+This capability is not available in the legacy Grafana Agent.
+
+### Set up profile receiving
+
+1. Configure your application with a Pyroscope SDK pointing to receive endpoint for Alloy. 
+2. For step-by-step instructions, refer to the [Receive profiles from Pyroscope SDKs](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/grafana-alloy/receive_profiles) documentation.
+
 ## Next steps
 
 Whether using eBPF for versatile system and application profiling or relying on Golang's built-in pprof endpoints in pull mode, Alloy collectors offer streamlined processes to gather essential profiling data.
