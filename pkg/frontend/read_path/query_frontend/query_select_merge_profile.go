@@ -52,7 +52,10 @@ func (q *QueryFrontend) SelectMergeProfile(
 		LabelSelector: labelSelector,
 		Query: []*queryv1.Query{{
 			QueryType: queryv1.QueryType_QUERY_PPROF,
-			Pprof:     &queryv1.PprofQuery{MaxNodes: c.Msg.GetMaxNodes()},
+			Pprof: &queryv1.PprofQuery{
+				MaxNodes:           c.Msg.GetMaxNodes(),
+				StackTraceSelector: c.Msg.StackTraceSelector,
+			},
 		}},
 	})
 	if err != nil {

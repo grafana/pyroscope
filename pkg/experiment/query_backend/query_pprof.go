@@ -44,9 +44,13 @@ func queryPprof(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) 
 		columns.Value.ColumnIndex)
 	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
 
-	resolver := symdb.NewResolver(q.ctx, q.ds.Symbols(),
-		// TODO(kolesnikovae): Stack trace selector.
-		symdb.WithResolverMaxNodes(query.Pprof.MaxNodes))
+	resolverOptions := make([]symdb.ResolverOption, 0)
+	resolverOptions = append(resolverOptions, symdb.WithResolverMaxNodes(query.Pprof.MaxNodes))
+	if query.Pprof.StackTraceSelector != nil {
+		resolverOptions = append(resolverOptions, symdb.WithResolverStackTraceSelector(query.Pprof.StackTraceSelector))
+	}
+
+	resolver := symdb.NewResolver(q.ctx, q.ds.Symbols(), resolverOptions...)
 	defer resolver.Release()
 
 	for profiles.Next() {
