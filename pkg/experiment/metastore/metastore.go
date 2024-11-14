@@ -27,11 +27,13 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 	adaptiveplacement "github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction/compactor"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction/scheduler"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/dlq"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/fsm"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/markers"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raft_node"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/tombstones"
 	"github.com/grafana/pyroscope/pkg/util/health"
 )
 
@@ -48,14 +50,14 @@ const (
 
 type Config struct {
 	Address          string             `yaml:"address"`
-	GRPCClientConfig grpcclient.Config  `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with the metastore."`
 	DataDir          string             `yaml:"data_dir"`
-	Raft             RaftConfig         `yaml:"raft"`
-	Compaction       CompactionConfig   `yaml:"compaction_config" category:"advanced"`
 	MinReadyDuration time.Duration      `yaml:"min_ready_duration" category:"advanced"`
-	DLQRecovery      dlq.RecoveryConfig `yaml:"dlq_recovery" category:"advanced"`
-	Index            index.Config       `yaml:"index_config" category:"advanced"`
-	BlockCleaner     markers.Config     `yaml:"block_cleaner_config" category:"advanced"`
+	GRPCClientConfig grpcclient.Config  `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with the metastore."`
+	Raft             RaftConfig         `yaml:"raft"`
+	Index            index.Config       `yaml:",inline" category:"advanced"`
+	Compactor        compactor.Config   `yaml:",inline" category:"advanced"`
+	Scheduler        scheduler.Config   `yaml:",inline" category:"advanced"`
+	DLQRecovery      dlq.RecoveryConfig `yaml:",inline" category:"advanced"`
 }
 
 type RaftConfig struct {
@@ -78,9 +80,9 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.DurationVar(&cfg.MinReadyDuration, prefix+"min-ready-duration", 15*time.Second, "Minimum duration to wait after the internal readiness checks have passed but before succeeding the readiness endpoint. This is used to slowdown deployment controllers (eg. Kubernetes) after an instance is ready and before they proceed with a rolling update, to give the rest of the cluster instances enough time to receive some (DNS?) updates.")
 	cfg.Raft.RegisterFlagsWithPrefix(prefix+"raft.", f)
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix(prefix+"grpc-client-config", f)
-	cfg.Compaction.RegisterFlagsWithPrefix(prefix+"compaction.", f)
 	cfg.Index.RegisterFlagsWithPrefix(prefix+"index.", f)
-	cfg.BlockCleaner.RegisterFlagsWithPrefix(prefix+"block-cleaner.", f)
+	cfg.Compactor.RegisterFlagsWithPrefix(prefix+"compactor.", f)
+	cfg.Scheduler.RegisterFlagsWithPrefix(prefix+"compactor.", f)
 	cfg.DLQRecovery.RegisterFlagsWithPrefix(prefix+"dlq-recovery.", f)
 }
 
@@ -142,15 +144,14 @@ type Metastore struct {
 	dlqRecovery *dlq.Recovery
 
 	index        *index.Index
-	markers      *markers.DeletionMarkers
 	indexService *IndexService
 	indexHandler *IndexCommandHandler
+	tombstones   *tombstones.Tombstones
 
+	compactor         *compactor.Compactor
+	scheduler         *scheduler.Scheduler
 	compactionService *CompactionService
 	compactionHandler *CompactionCommandHandler
-
-	cleanerService *CleanerService
-	cleanerHandler *CleanerCommandHandler
 
 	tenantService   *TenantService
 	raftNodeService *RaftNodeService
@@ -189,42 +190,40 @@ func New(
 		return nil, fmt.Errorf("failed to initialize raft: %w", err)
 	}
 
-	indexStore := index.NewIndexStore(m.logger)
-	m.index = index.NewIndex(m.logger, indexStore, &config.Index)
-	m.markers = markers.NewDeletionMarkers(m.logger, &config.BlockCleaner, m.reg)
+	m.raftNodeService = NewRaftNodeService(m.leader)
+	m.operatorService = NewOperatorService(m.config, m.raft)
 
+	m.tombstones = tombstones.NewTombstones(tombstones.NewStore())
+	m.fsm.RegisterRestorer(m.tombstones)
+
+	m.index = index.NewIndex(m.logger, index.NewIndexStore(m.logger), &config.Index)
 	m.metadataService = NewMetadataQueryService(m.logger, m.follower, m.index)
 	m.tenantService = NewTenantService(m.logger, m.follower, m.index)
-	m.operatorService = NewOperatorService(m.config, m.raft)
-	m.raftNodeService = NewRaftNodeService(m.leader)
-
-	m.compactionService = NewCompactionService(m.logger, m.proposer)
-	m.compactionHandler = NewCompactionCommandHandler(m.logger, m.config.Compaction, m.index, m.markers, m.reg)
-	m.fsm.RegisterRestorer(m.compactionHandler)
-	fsm.RegisterRaftCommandHandler(m.fsm,
-		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_POLL_COMPACTION_JOBS),
-		m.compactionHandler.PollCompactionJobs)
+	m.compactor = compactor.NewCompactor(m.config.Compactor, compactor.NewStore(), m.tombstones)
+	m.scheduler = scheduler.NewScheduler(m.config.Scheduler, scheduler.NewStore())
 
 	m.indexService = NewIndexService(m.logger, m.proposer, m.placement)
-	m.indexHandler = NewIndexCommandHandler(m.logger, m.index, m.markers, m.compactionHandler)
+	m.indexHandler = NewIndexCommandHandler(m.logger, m.index, m.tombstones, m.compactor)
 	m.fsm.RegisterRestorer(m.index)
 	fsm.RegisterRaftCommandHandler(m.fsm,
-		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_ADD_BLOCK),
+		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_ADD_BLOCK_METADATA),
 		m.indexHandler.AddBlock)
 
-	m.cleanerHandler = NewCleanerCommandHandler(m.logger, m.bucket, m.markers, m.reg)
-	m.cleanerService = NewCleanerService(m.logger, m.config.BlockCleaner, m.proposer, m.cleanerHandler)
-	m.fsm.RegisterRestorer(m.markers)
+	m.compactionService = NewCompactionService(m.logger, m.proposer)
+	m.compactionHandler = NewCompactionCommandHandler(m.logger, m.index, m.compactor, m.scheduler, m.tombstones)
+	m.fsm.RegisterRestorer(m.compactor)
 	fsm.RegisterRaftCommandHandler(m.fsm,
-		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_CLEAN_BLOCKS),
-		m.cleanerHandler.CleanBlocks)
+		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_GET_COMPACTION_PLAN_UPDATE),
+		m.compactionHandler.GetCompactionPlanUpdate)
+	fsm.RegisterRaftCommandHandler(m.fsm,
+		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_UPDATE_COMPACTION_PLAN),
+		m.compactionHandler.UpdateCompactionPlan)
 
 	m.dlqRecovery = dlq.NewRecovery(logger, config.DLQRecovery, m.indexService, bucket)
 
 	// These are the services that only run on the raft leader.
 	// Keep in mind that the node may not be the leader at the moment the
 	// service is starting, so it should be able to handle conflicts.
-	m.observer.OnLeader(m.cleanerService)
 	m.observer.OnLeader(m.dlqRecovery)
 	m.observer.OnLeader(m.placement)
 
@@ -245,7 +244,6 @@ func (m *Metastore) Service() services.Service { return m.service }
 func (m *Metastore) starting(context.Context) error { return nil }
 
 func (m *Metastore) stopping(_ error) error {
-	m.cleanerService.Stop()
 	m.dlqRecovery.Stop()
 	m.shutdownRaft()
 	m.fsm.Shutdown()

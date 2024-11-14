@@ -10,7 +10,6 @@ import (
 	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/storeutils"
 )
 
 type indexStore struct {
@@ -131,20 +130,20 @@ func (m *indexStore) ListBlocks(tx *bbolt.Tx, key PartitionKey, shard uint32, te
 	return blocks
 }
 
-func UpdateBlockMetadataBucket(tx *bbolt.Tx, partKey PartitionKey, shard uint32, tenant string, fn func(*bbolt.Bucket) error) error {
+func updateBlockMetadataBucket(tx *bbolt.Tx, partKey PartitionKey, shard uint32, tenant string, fn func(*bbolt.Bucket) error) error {
 	bkt, err := getPartitionBucket(tx)
 	if err != nil {
 		return errors.Wrap(err, "root partition bucket missing")
 	}
 
-	partBkt, err := storeutils.GetOrCreateSubBucket(bkt, []byte(partKey))
+	partBkt, err := getOrCreateSubBucket(bkt, []byte(partKey))
 	if err != nil {
 		return errors.Wrapf(err, "error creating partition bucket for %s", partKey)
 	}
 
 	shardBktName := make([]byte, 4)
 	binary.BigEndian.PutUint32(shardBktName, shard)
-	shardBkt, err := storeutils.GetOrCreateSubBucket(partBkt, shardBktName)
+	shardBkt, err := getOrCreateSubBucket(partBkt, shardBktName)
 	if err != nil {
 		return errors.Wrapf(err, "error creating shard bucket for partiton %s and shard %d", partKey, shard)
 	}
@@ -153,10 +152,18 @@ func UpdateBlockMetadataBucket(tx *bbolt.Tx, partKey PartitionKey, shard uint32,
 	if len(tenantBktName) == 0 {
 		tenantBktName = emptyTenantBucketNameBytes
 	}
-	tenantBkt, err := storeutils.GetOrCreateSubBucket(shardBkt, tenantBktName)
+	tenantBkt, err := getOrCreateSubBucket(shardBkt, tenantBktName)
 	if err != nil {
 		return errors.Wrapf(err, "error creating tenant bucket for partition %s, shard %d and tenant %s", partKey, shard, tenant)
 	}
 
 	return fn(tenantBkt)
+}
+
+func getOrCreateSubBucket(parent *bbolt.Bucket, name []byte) (*bbolt.Bucket, error) {
+	bucket := parent.Bucket(name)
+	if bucket == nil {
+		return parent.CreateBucket(name)
+	}
+	return bucket, nil
 }

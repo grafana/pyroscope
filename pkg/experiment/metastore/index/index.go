@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/hashicorp/raft"
 	"github.com/oklog/ulid"
 	"github.com/prometheus/common/model"
 	"go.etcd.io/bbolt"
@@ -18,6 +19,8 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 )
+
+var ErrBlockExists = fmt.Errorf("block already exists")
 
 type Store interface {
 	ListPartitions(tx *bbolt.Tx) []PartitionKey
@@ -259,12 +262,33 @@ func (i *Index) findPartitionMeta(key PartitionKey) *PartitionMeta {
 	return nil
 }
 
-// InsertBlock is the primary way for adding blocks to the index.
-func (i *Index) InsertBlock(tx *bbolt.Tx, b *metastorev1.BlockMeta) {
+func (i *Index) InsertBlock(tx *bbolt.Tx, b *metastorev1.BlockMeta) error {
 	i.partitionMu.Lock()
 	defer i.partitionMu.Unlock()
-
+	if x := i.findBlock(tx, b.Shard, b.TenantId, b.Id); x != nil {
+		return ErrBlockExists
+	}
 	i.insertBlock(tx, b)
+	return i.persistBlock(tx, b)
+}
+
+func (i *Index) InsertBlockNoCheckNoPersist(tx *bbolt.Tx, b *metastorev1.BlockMeta) error {
+	i.partitionMu.Lock()
+	defer i.partitionMu.Unlock()
+	i.insertBlock(tx, b)
+	return nil
+}
+
+func (i *Index) persistBlock(tx *bbolt.Tx, b *metastorev1.BlockMeta) error {
+	pk := i.CreatePartitionKey(b.Id)
+	key := []byte(b.Id)
+	value, err := b.MarshalVT()
+	if err != nil {
+		return err
+	}
+	return updateBlockMetadataBucket(tx, pk, b.Shard, b.TenantId, func(bucket *bbolt.Bucket) error {
+		return bucket.Put(key, value)
+	})
 }
 
 // insertBlock is the underlying implementation for inserting blocks. It is the caller's responsibility to enforce safe
@@ -316,11 +340,15 @@ func (i *Index) getOrCreatePartitionMeta(b *metastorev1.BlockMeta) *PartitionMet
 // FindBlock tries to retrieve an existing block from the index. It will load the corresponding partition if it is not
 // already loaded. Returns nil if the block cannot be found.
 func (i *Index) FindBlock(tx *bbolt.Tx, shardNum uint32, tenant string, blockId string) *metastorev1.BlockMeta {
-	// first try the currently mapped partition
-	key := i.CreatePartitionKey(blockId)
 	i.partitionMu.Lock()
 	defer i.partitionMu.Unlock()
+	return i.findBlock(tx, shardNum, tenant, blockId)
+}
 
+func (i *Index) findBlock(tx *bbolt.Tx, shardNum uint32, tenant string, blockId string) *metastorev1.BlockMeta {
+	key := i.CreatePartitionKey(blockId)
+
+	// first try the currently mapped partition
 	b := i.findBlockInPartition(tx, key, shardNum, tenant, blockId)
 	if b != nil {
 		return b
@@ -412,17 +440,20 @@ func (i *Index) collectTenantBlocks(p *indexPartition, start, end int64) []*meta
 
 // ReplaceBlocks removes source blocks from the index and inserts replacement blocks into the index. The intended usage
 // is for block compaction. The replacement blocks could be added to the same or a different partition.
-func (i *Index) ReplaceBlocks(tx *bbolt.Tx, sources []string, sourceShard uint32, sourceTenant string, replacements []*metastorev1.BlockMeta) {
+func (i *Index) ReplaceBlocks(tx *bbolt.Tx, _ *raft.Log, compacted *metastorev1.CompactedBlocks) error {
 	i.partitionMu.Lock()
 	defer i.partitionMu.Unlock()
 
-	for _, newBlock := range replacements {
-		i.insertBlock(tx, newBlock)
+	for _, b := range compacted.CompactedBlocks {
+		i.insertBlock(tx, b)
 	}
 
-	for _, sourceBlock := range sources {
-		i.deleteBlock(sourceShard, sourceTenant, sourceBlock)
+	source := compacted.SourceBlocks
+	for _, b := range source.Blocks {
+		i.deleteBlock(source.Shard, source.Tenant, b)
 	}
+
+	return nil
 }
 
 // deleteBlock deletes a block from the index. It is the caller's responsibility to enforce safe concurrent access.

@@ -6,6 +6,7 @@ import "types/v1/types.proto";
 
 service IndexService {
   rpc AddBlock(AddBlockRequest) returns (AddBlockResponse) {}
+  rpc GetBlockMetadata(GetBlockMetadataRequest) returns (GetBlockMetadataResponse) {}
 }
 
 message AddBlockRequest {
@@ -13,6 +14,20 @@ message AddBlockRequest {
 }
 
 message AddBlockResponse {}
+
+message GetBlockMetadataRequest {
+  BlockList blocks = 1;
+}
+
+message GetBlockMetadataResponse {
+  repeated BlockMeta blocks = 1;
+}
+
+message BlockList {
+  string tenant = 1;
+  uint32 shard = 2;
+  repeated string blocks = 3;
+}
 
 message BlockMeta {
   uint64 format_version = 1;

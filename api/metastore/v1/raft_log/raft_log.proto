@@ -2,13 +2,84 @@ syntax = "proto3";
 
 package raft_log;
 
+import "metastore/v1/metastore.proto";
+import "metastore/v1/compactor.proto";
+
 enum RaftCommand {
   RAFT_COMMAND_UNKNOWN = 0;
-  RAFT_COMMAND_ADD_BLOCK = 1;
-  RAFT_COMMAND_POLL_COMPACTION_JOBS = 2;
-  RAFT_COMMAND_CLEAN_BLOCKS = 3;
+
+  RAFT_COMMAND_ADD_BLOCK_METADATA = 1;
+
+  RAFT_COMMAND_GET_COMPACTION_PLAN_UPDATE = 2;
+  RAFT_COMMAND_UPDATE_COMPACTION_PLAN = 3;
 }
 
-message CleanBlocksRequest {
-  string request_id = 1;
+message AddBlockMetadataRequest {
+  metastore.v1.BlockMeta metadata = 1;
 }
+
+message AddBlockMetadataResponse {}
+
+// GetCompactionPlanUpdateRequest requests CompactionPlanUpdate.
+// The resulting plan should be proposed to the raft members.
+// This is a read-only operation: it MUST NOT alter the state.
+message GetCompactionPlanUpdateRequest {
+  // CompactionJobStatusUpdate is a change
+  // requested by the compaction worker.
+  repeated metastore.v1.CompactionJobStatusUpdate status_updates = 1;
+  uint32 assign_jobs_max = 2;
+}
+
+// GetCompactionPlanUpdateResponse includes the planned change.
+// The plan should be proposed to the raft members.
+message GetCompactionPlanUpdateResponse {
+  CompactionPlanUpdate plan_update = 1;
+}
+
+message CompactionPlanUpdate {
+  repeated CompactionJobUpdate new_jobs = 1;
+  repeated CompactionJobUpdate assigned_jobs = 2;
+  repeated CompactionJobUpdate completed_jobs = 3;
+}
+
+message CompactionJobUpdate {
+  CompactionJobState state = 1;
+  CompactionJobPlan plan = 2;
+}
+
+// CompactionJobState is produced in response to
+// the compaction worker status update request.
+//
+// Compaction level and other attributes that
+// affect the scheduling order or status update
+// handling should be included into the message.
+message CompactionJobState {
+  string name = 1;
+  uint32 compaction_level = 2;
+  metastore.v1.CompactionJobStatus status = 3;
+  uint64 token = 4;
+  int64 lease_expires_at = 5;
+  int64 added_at = 6;
+  uint32 failures = 7;
+}
+
+message CompactionJobPlan {
+  string name = 1;
+  // Blocks to be compacted.
+  string tenant = 2;
+  uint32 shard = 3;
+  uint32 compaction_level = 4;
+  repeated string source_blocks = 5;
+  // Objects to be deleted.
+  repeated metastore.v1.Tombstones tombstones = 6;
+  // Only present if the job completed successfully.
+  // Never stored in the metastore.
+  metastore.v1.CompactedBlocks compacted_blocks = 7;
+}
+
+// UpdateCompactionPlanRequest proposes compaction plan changes.
+message UpdateCompactionPlanRequest {
+  CompactionPlanUpdate plan_update = 1;
+}
+
+message UpdateCompactionPlanResponse {}

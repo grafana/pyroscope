@@ -56,6 +56,10 @@ func (m *mockServer) AddBlock(ctx context.Context, request *metastorev1.AddBlock
 	return m.metastore.AddBlock(ctx, request)
 }
 
+func (m *mockServer) GetBlockMetadata(ctx context.Context, request *metastorev1.GetBlockMetadataRequest) (*metastorev1.GetBlockMetadataResponse, error) {
+	return m.metastore.GetBlockMetadata(ctx, request)
+}
+
 func (m *mockServer) QueryMetadata(ctx context.Context, request *metastorev1.QueryMetadataRequest) (*metastorev1.QueryMetadataResponse, error) {
 	return m.metadata.QueryMetadata(ctx, request)
 }

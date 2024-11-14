@@ -42,3 +42,9 @@ packages:
     interfaces:
       SegmentWriterClient:
       IngesterClient:
+
+  github.com/grafana/pyroscope/pkg/experiment/metastore/compaction/compactor:
+    interfaces:
+      BlockQueueStore:
+      Tombstones:
+      JobStore:

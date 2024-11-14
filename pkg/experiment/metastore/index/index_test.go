@@ -93,7 +93,7 @@ func TestIndex_FindBlocksInRange(t *testing.T) {
 				QueryLookaroundPeriod: time.Hour,
 			})
 			for _, b := range tt.blocks {
-				i.InsertBlock(nil, b)
+				i.InsertBlockNoCheckNoPersist(nil, b)
 			}
 			tenantMap := map[string]struct{}{"tenant-1": {}}
 			found := i.FindBlocksInRange(nil, tt.queryStart, tt.queryEnd, tenantMap)
@@ -214,14 +214,14 @@ func TestIndex_InsertBlock(t *testing.T) {
 		MaxTime:  createTime("2024-09-23T08:05:00.000Z"),
 	}
 
-	i.InsertBlock(nil, block)
+	i.InsertBlockNoCheckNoPersist(nil, block)
 	require.NotNil(t, i.FindBlock(nil, 0, "tenant-1", block.Id))
 	blocks := i.FindBlocksInRange(nil, createTime("2024-09-23T07:00:00.000Z"), createTime("2024-09-23T09:00:00.000Z"), map[string]struct{}{"tenant-1": {}})
 	require.Len(t, blocks, 1)
 	require.Equal(t, block, blocks[0])
 
 	// inserting the block again is a noop
-	i.InsertBlock(nil, block)
+	i.InsertBlockNoCheckNoPersist(nil, block)
 	blocks = i.FindBlocksInRange(nil, createTime("2024-09-23T07:00:00.000Z"), createTime("2024-09-23T09:00:00.000Z"), map[string]struct{}{"tenant-1": {}})
 	require.Len(t, blocks, 1)
 	require.Equal(t, block, blocks[0])
@@ -261,19 +261,28 @@ func TestIndex_ReplaceBlocks(t *testing.T) {
 	b1 := &metastorev1.BlockMeta{
 		Id: createUlidString("2024-09-23T08:00:00.123Z"),
 	}
-	i.InsertBlock(nil, b1)
+	i.InsertBlockNoCheckNoPersist(nil, b1)
 	b2 := &metastorev1.BlockMeta{
 		Id: createUlidString("2024-09-23T08:00:00.123Z"),
 	}
-	i.InsertBlock(nil, b2)
+	i.InsertBlockNoCheckNoPersist(nil, b2)
 
 	replacement := &metastorev1.BlockMeta{
 		Id:              createUlidString("2024-09-23T08:00:00.123Z"),
 		CompactionLevel: 1,
 		TenantId:        "tenant-1",
 	}
-	i.ReplaceBlocks(nil, []string{b1.Id, b2.Id}, 0, "", []*metastorev1.BlockMeta{replacement})
 
+	compacted := &metastorev1.CompactedBlocks{
+		SourceBlocks: &metastorev1.BlockList{
+			Tenant: "",
+			Shard:  0,
+			Blocks: []string{b1.Id, b2.Id},
+		},
+		CompactedBlocks: []*metastorev1.BlockMeta{replacement},
+	}
+
+	require.NoError(t, i.ReplaceBlocks(nil, nil, compacted))
 	require.Nil(t, i.FindBlock(nil, 0, "", b1.Id))
 	require.Nil(t, i.FindBlock(nil, 0, "", b2.Id))
 	require.NotNil(t, i.FindBlock(nil, 0, "tenant-1", replacement.Id))
@@ -286,7 +295,7 @@ func TestIndex_DurationChange(t *testing.T) {
 	b := &metastorev1.BlockMeta{
 		Id: createUlidString("2024-09-23T08:00:00.123Z"),
 	}
-	i.InsertBlock(nil, b)
+	i.InsertBlockNoCheckNoPersist(nil, b)
 	require.NotNil(t, i.FindBlock(nil, 0, "", b.Id))
 
 	i.Config.PartitionDuration = time.Hour

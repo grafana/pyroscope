@@ -567,6 +567,24 @@
         }
       }
     },
+    "v1BlockList": {
+      "type": "object",
+      "properties": {
+        "tenant": {
+          "type": "string"
+        },
+        "shard": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "blocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "v1BlockMeta": {
       "type": "object",
       "properties": {
@@ -655,6 +673,31 @@
         }
       }
     },
+    "v1BlockTombstones": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "shard": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "tenant": {
+          "type": "string"
+        },
+        "compactionLevel": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "blocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "v1CommitAuthor": {
       "type": "object",
       "properties": {
@@ -693,108 +736,97 @@
         }
       }
     },
-    "v1CompactionJob": {
+    "v1CompactedBlocks": {
       "type": "object",
       "properties": {
-        "name": {
-          "type": "string",
-          "description": "Unique name of the job."
+        "sourceBlocks": {
+          "$ref": "#/definitions/v1BlockList"
         },
-        "options": {
-          "$ref": "#/definitions/v1CompactionOptions"
-        },
-        "blocks": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1BlockMeta"
-          },
-          "description": "List of the input blocks."
-        },
-        "status": {
-          "$ref": "#/definitions/v1CompactionJobStatus"
-        },
-        "raftLogIndex": {
-          "type": "string",
-          "format": "uint64",
-          "description": "Fencing token."
-        },
-        "shard": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Shard the blocks belong to."
-        },
-        "tenantId": {
-          "type": "string",
-          "description": "Optional, empty for compaction level 0."
-        },
-        "compactionLevel": {
-          "type": "integer",
-          "format": "int64"
-        }
-      },
-      "description": "One compaction job may result in multiple output blocks."
-    },
-    "v1CompactionJobStatus": {
-      "type": "object",
-      "properties": {
-        "jobName": {
-          "type": "string"
-        },
-        "status": {
-          "$ref": "#/definitions/v1CompactionStatus",
-          "description": "Status update allows the planner to keep\ntrack of the job ownership and compaction\nprogress:\n- If the job status is other than IN_PROGRESS,\n  the ownership of the job is revoked.\n- FAILURE must only be sent if the failure is\n  persistent and the compaction can't be accomplished.\n- completed_job must be empty if the status is\n  other than SUCCESS, and vice-versa.\n- UNSPECIFIED must be sent if the worker rejects\n  or cancels the compaction job.\n\nPartial results/status is not allowed."
-        },
-        "completedJob": {
-          "$ref": "#/definitions/v1CompletedJob"
-        },
-        "raftLogIndex": {
-          "type": "string",
-          "format": "uint64",
-          "description": "Fencing token."
-        },
-        "shard": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Shard the blocks belong to."
-        },
-        "tenantId": {
-          "type": "string",
-          "description": "Optional, empty for compaction level 0."
-        }
-      }
-    },
-    "v1CompactionOptions": {
-      "type": "object",
-      "properties": {
-        "statusUpdateIntervalSeconds": {
-          "type": "string",
-          "format": "uint64",
-          "description": "How often the compaction worker should update\nthe job status. If overdue, the job ownership\nis revoked."
-        }
-      },
-      "description": "Compaction planner should instruct the compactor\n worker how to compact the blocks:\n  - Limits and tenant overrides.\n  - Feature flags."
-    },
-    "v1CompactionStatus": {
-      "type": "string",
-      "enum": [
-        "COMPACTION_STATUS_UNSPECIFIED",
-        "COMPACTION_STATUS_IN_PROGRESS",
-        "COMPACTION_STATUS_SUCCESS",
-        "COMPACTION_STATUS_FAILURE",
-        "COMPACTION_STATUS_CANCELLED"
-      ],
-      "default": "COMPACTION_STATUS_UNSPECIFIED"
-    },
-    "v1CompletedJob": {
-      "type": "object",
-      "properties": {
-        "blocks": {
+        "compactedBlocks": {
           "type": "array",
           "items": {
             "type": "object",
             "$ref": "#/definitions/v1BlockMeta"
           }
+        }
+      }
+    },
+    "v1CompactionJob": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "shard": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "tenant": {
+          "type": "string"
+        },
+        "compactionLevel": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "sourceBlocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tombstones": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Tombstones"
+          }
+        }
+      }
+    },
+    "v1CompactionJobAssignment": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "leaseExpiresAt": {
+          "type": "string",
+          "format": "int64"
+        },
+        "status": {
+          "$ref": "#/definitions/v1CompactionJobStatus"
+        }
+      }
+    },
+    "v1CompactionJobStatus": {
+      "type": "string",
+      "enum": [
+        "COMPACTION_STATUS_UNSPECIFIED",
+        "COMPACTION_STATUS_IN_PROGRESS",
+        "COMPACTION_STATUS_SUCCESS"
+      ],
+      "default": "COMPACTION_STATUS_UNSPECIFIED"
+    },
+    "v1CompactionJobStatusUpdate": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "status": {
+          "$ref": "#/definitions/v1CompactionJobStatus"
+        },
+        "compactedBlocks": {
+          "$ref": "#/definitions/v1CompactedBlocks",
+          "description": "Only present if the job completed successfully."
         }
       }
     },
@@ -954,6 +986,18 @@
           "type": "string",
           "format": "int64",
           "description": "Line number in source file."
+        }
+      }
+    },
+    "v1GetBlockMetadataResponse": {
+      "type": "object",
+      "properties": {
+        "blocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1BlockMeta"
+          }
         }
       }
     },
@@ -1544,6 +1588,13 @@
           "items": {
             "type": "object",
             "$ref": "#/definitions/v1CompactionJob"
+          }
+        },
+        "assignments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1CompactionJobAssignment"
           }
         }
       }
@@ -2285,6 +2336,16 @@
           }
         }
       }
+    },
+    "v1Tombstones": {
+      "type": "object",
+      "properties": {
+        "blocks": {
+          "$ref": "#/definitions/v1BlockTombstones",
+          "description": "For now, we only have block tombstones created due to the\n compaction process. Later, we may add more types of tombstones,\n e.g, deleted tenant (shard), partition, dataset, series etc.\n Exactly one member of Tombstones should be present."
+        }
+      },
+      "description": "Tombstones represent objects removed from the index but still stored."
     },
     "v1TreeQuery": {
       "type": "object",
