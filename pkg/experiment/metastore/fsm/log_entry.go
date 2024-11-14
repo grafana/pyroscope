@@ -16,7 +16,7 @@ type RaftLogEntry struct {
 
 func (c *RaftLogEntry) MarshalBinary() ([]byte, error) {
 	b := make([]byte, 4+len(c.Data))
-	binary.LittleEndian.PutUint32(b, uint32(c.Type))
+	binary.BigEndian.PutUint32(b, uint32(c.Type))
 	copy(b[4:], c.Data)
 	return b, nil
 }
@@ -27,7 +27,7 @@ func (c *RaftLogEntry) UnmarshalBinary(b []byte) error {
 	if len(b) < 4 {
 		return ErrInvalidCommand
 	}
-	c.Type = RaftLogEntryType(binary.LittleEndian.Uint32(b))
+	c.Type = RaftLogEntryType(binary.BigEndian.Uint32(b))
 	c.Data = b[4:]
 	return nil
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"strconv"
 	"time"
 
 	"github.com/go-kit/log"
@@ -37,10 +38,11 @@ func New(logger log.Logger, reg prometheus.Registerer, dir string) (*FSM, error)
 		metrics:  newMetrics(reg),
 		handlers: make(map[RaftLogEntryType]handler),
 	}
-	fsm.db = newDB(logger, fsm.metrics, dir)
-	if err := fsm.db.open(false); err != nil {
+	db := newDB(logger, fsm.metrics, dir)
+	if err := db.open(false); err != nil {
 		return nil, err
 	}
+	fsm.db = db
 	return &fsm, nil
 }
 
@@ -110,14 +112,18 @@ func (fsm *FSM) Apply(log *raft.Log) any {
 // the command type.
 func (fsm *FSM) applyCommand(cmd *raft.Log) any {
 	start := time.Now()
-	defer func() {
-		fsm.db.metrics.fsmApplyCommandHandlerDuration.Observe(time.Since(start).Seconds())
-	}()
 	var e RaftLogEntry
 	if err := e.UnmarshalBinary(cmd.Data); err != nil {
 		return errResponse(cmd, err)
 	}
 
+	// The DB is never restored while we're in the Apply method,
+	// we are safe to use it.
+	cmdType := strconv.FormatUint(uint64(e.Type), 10)
+	fsm.db.metrics.fsmApplyCommandSize.WithLabelValues(cmdType).Observe(float64(len(cmd.Data)))
+	defer func() {
+		fsm.db.metrics.fsmApplyCommandDuration.WithLabelValues(cmdType).Observe(time.Since(start).Seconds())
+	}()
 	handle, ok := fsm.handlers[e.Type]
 	if !ok {
 		return errResponse(cmd, fmt.Errorf("unknown command type: %d", e.Type))
@@ -128,7 +134,7 @@ func (fsm *FSM) applyCommand(cmd *raft.Log) any {
 	// the command.
 	tx, err := fsm.db.boltdb.Begin(true)
 	if err != nil {
-		panic(fmt.Sprint("failed to create transaction:", err))
+		panic(fmt.Sprint("failed to begin transaction:", err))
 	}
 
 	data, err := handle(tx, cmd, e.Data)
@@ -147,7 +153,7 @@ func (fsm *FSM) applyCommand(cmd *raft.Log) any {
 	return Response{Data: data, Err: err}
 }
 
-func (fsm *FSM) ReadOnlyTx() *bbolt.Tx {
+func (fsm *FSM) ReadTx() *bbolt.Tx {
 	tx, err := fsm.db.boltdb.Begin(false)
 	if err != nil {
 		panic(fmt.Sprint("failed to create read-only transaction:", err))

@@ -9,7 +9,7 @@ import (
 )
 
 type QuerierStore interface {
-	ReadOnlyTx() *bbolt.Tx
+	ReadTx() *bbolt.Tx
 }
 
 type Querier struct {
@@ -25,7 +25,7 @@ func NewQuerier(store QuerierStore, index *Index) *Querier {
 }
 
 func (q *Querier) FindBlocksInRange(start, end int64, tenants map[string]struct{}) []*metastorev1.BlockMeta {
-	tx := q.store.ReadOnlyTx()
+	tx := q.store.ReadTx()
 	defer func() {
 		_ = tx.Rollback()
 	}()

@@ -35,8 +35,9 @@ type CleanerCommandHandler struct {
 }
 
 func NewCleanerCommandHandler(
-	bucket objstore.Bucket,
 	logger log.Logger,
+	bucket objstore.Bucket,
+	markers DeletionMarkers,
 	reg prometheus.Registerer,
 ) *CleanerCommandHandler {
 	m := prometheus.NewCounterVec(prometheus.CounterOpts{
@@ -51,6 +52,7 @@ func NewCleanerCommandHandler(
 	return &CleanerCommandHandler{
 		logger:               logger,
 		bucket:               bucket,
+		markers:              markers,
 		bucketObjectRemovals: m,
 	}
 }

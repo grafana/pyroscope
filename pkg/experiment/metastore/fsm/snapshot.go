@@ -2,6 +2,7 @@ package fsm
 
 import (
 	"context"
+	"io"
 	"runtime/pprof"
 	"time"
 
@@ -40,12 +41,13 @@ func (s *snapshot) Persist(sink raft.SnapshotSink) (err error) {
 	}()
 
 	_ = level.Info(s.logger).Log("msg", "persisting snapshot")
-	if _, err = s.tx.WriteTo(sink); err != nil {
+	w := newSnapshotWriter(sink)
+	_, err = s.tx.WriteTo(w)
+	s.metrics.boltDBPersistSnapshotSize.Observe(float64(w.size))
+	if err != nil {
 		_ = level.Error(s.logger).Log("msg", "failed to write snapshot", "err", err)
-		return err
 	}
-
-	return nil
+	return err
 }
 
 func (s *snapshot) Release() {
@@ -53,4 +55,17 @@ func (s *snapshot) Release() {
 		// This is an in-memory rollback, no error expected.
 		_ = s.tx.Rollback()
 	}
+}
+
+type snapshotWriter struct {
+	io.Writer
+	size int
+}
+
+func newSnapshotWriter(w io.Writer) *snapshotWriter { return &snapshotWriter{Writer: w} }
+
+func (s *snapshotWriter) Write(p []byte) (int, error) {
+	s.size += len(p)
+	n, err := s.Writer.Write(p)
+	return n, err
 }

@@ -56,6 +56,7 @@ func (db *boltdb) open(readOnly bool) (err error) {
 	opts.ReadOnly = readOnly
 	opts.NoSync = true
 	opts.InitialMmapSize = boltDBInitialMmapSize
+	opts.FreelistType = bbolt.FreelistMapType
 	if db.boltdb, err = bbolt.Open(db.path, 0644, &opts); err != nil {
 		return fmt.Errorf("failed to open db: %w", err)
 	}
@@ -65,7 +66,7 @@ func (db *boltdb) open(readOnly bool) (err error) {
 
 func (db *boltdb) shutdown() {
 	// TODO(kolesnikovae): Wait for on-going transactions
-	//  created with ReadOnlyTx() to finish.
+	//  created with ReadTx() to finish.
 	if db.boltdb != nil {
 		if err := db.boltdb.Close(); err != nil {
 			_ = level.Error(db.logger).Log("msg", "failed to close database", "err", err)

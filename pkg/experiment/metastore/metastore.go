@@ -190,7 +190,7 @@ func New(
 	}
 
 	indexStore := index.NewIndexStore(m.logger)
-	m.index = index.NewIndex(indexStore, m.logger, &config.Index)
+	m.index = index.NewIndex(m.logger, indexStore, &config.Index)
 	m.markers = markers.NewDeletionMarkers(m.logger, &config.BlockCleaner, m.reg)
 
 	m.metadataService = NewMetadataQueryService(m.logger, m.follower, index.NewQuerier(m.fsm, m.index))
@@ -212,26 +212,21 @@ func New(
 		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_ADD_BLOCK),
 		m.indexHandler.AddBlock)
 
-	m.cleanerService = NewCleanerService(m.config.BlockCleaner, m.logger, m.proposer, m.cleanerHandler)
-	m.cleanerHandler = NewCleanerCommandHandler(m.bucket, m.logger, m.reg)
+	m.cleanerHandler = NewCleanerCommandHandler(m.logger, m.bucket, m.markers, m.reg)
+	m.cleanerService = NewCleanerService(m.logger, m.config.BlockCleaner, m.proposer, m.cleanerHandler)
 	m.fsm.RegisterRestorer(m.markers)
 	fsm.RegisterRaftHandler(m.fsm,
 		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_CLEAN_BLOCKS),
 		m.cleanerHandler.CleanBlocks)
 
-	m.dlqRecovery = dlq.NewRecovery(config.DLQRecovery, logger, m.indexService, bucket)
-	// TODO: RunOnLeader( interface { Start(); Stop() })
-	m.observer.Register(m.raft, func(st raft.RaftState) {
-		if st == raft.Leader {
-			m.cleanerService.Start()
-			m.dlqRecovery.Start()
-			m.placement.Start()
-		} else {
-			m.cleanerService.Stop()
-			m.dlqRecovery.Stop()
-			m.placement.Stop()
-		}
-	})
+	m.dlqRecovery = dlq.NewRecovery(logger, config.DLQRecovery, m.indexService, bucket)
+
+	// These are the services that only run on the raft leader.
+	// Keep in mind that the node may not be the leader at the moment the
+	// service is starting, so it should be able to handle conflicts.
+	m.observer.OnLeader(m.cleanerService)
+	m.observer.OnLeader(m.dlqRecovery)
+	m.observer.OnLeader(m.placement)
 
 	m.service = services.NewBasicService(m.starting, m.running, m.stopping)
 	return m, nil
@@ -310,7 +305,7 @@ func (m *Metastore) initRaft() (err error) {
 	}
 
 	m.proposer = NewRaftProposer(m.logger, m.raft, m.config.Raft.ApplyTimeout)
-	m.observer = raft_node.NewRaftLeaderObserver(m.logger, m.reg)
+	m.observer = raft_node.NewRaftStateObserver(m.logger, m.raft, m.reg)
 	m.follower = raft_node.NewFollower(m.client, m.raft)
 	m.leader = raft_node.NewLeader(m.raft)
 	return nil

@@ -87,7 +87,7 @@ func TestIndex_FindBlocksInRange(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			store := mockindex.NewMockStore(t)
 			store.On("ListShards", mock.Anything, mock.Anything).Return([]uint32{})
-			i := index.NewIndex(store, util.Logger, &index.Config{
+			i := index.NewIndex(util.Logger, store, &index.Config{
 				PartitionDuration:     time.Hour,
 				PartitionCacheSize:    24,
 				QueryLookaroundPeriod: time.Hour,
@@ -117,7 +117,7 @@ func mockPartition(store *mockindex.MockStore, key index.PartitionKey, blocks []
 
 func TestIndex_ForEachPartition(t *testing.T) {
 	store := mockindex.NewMockStore(t)
-	i := index.NewIndex(store, util.Logger, &index.Config{PartitionDuration: time.Hour})
+	i := index.NewIndex(util.Logger, store, &index.Config{PartitionDuration: time.Hour})
 
 	keys := []index.PartitionKey{
 		"20240923T06.1h",
@@ -197,7 +197,7 @@ func TestIndex_GetPartitionKey(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			i := index.NewIndex(mockindex.NewMockStore(t), util.Logger, &index.Config{PartitionDuration: tt.duration})
+			i := index.NewIndex(util.Logger, mockindex.NewMockStore(t), &index.Config{PartitionDuration: tt.duration})
 			assert.Equalf(t, tt.want, i.CreatePartitionKey(tt.blockId), "CreatePartitionKey(%v)", tt.blockId)
 		})
 	}
@@ -206,7 +206,7 @@ func TestIndex_GetPartitionKey(t *testing.T) {
 func TestIndex_InsertBlock(t *testing.T) {
 	store := mockindex.NewMockStore(t)
 	store.On("ListShards", mock.Anything, mock.Anything).Return([]uint32{})
-	i := index.NewIndex(store, util.Logger, &index.Config{PartitionDuration: time.Hour, PartitionCacheSize: 1})
+	i := index.NewIndex(util.Logger, store, &index.Config{PartitionDuration: time.Hour, PartitionCacheSize: 1})
 	block := &metastorev1.BlockMeta{
 		Id:       createUlidString("2024-09-23T08:00:00.123Z"),
 		TenantId: "tenant-1",
@@ -229,7 +229,7 @@ func TestIndex_InsertBlock(t *testing.T) {
 
 func TestIndex_LoadPartitions(t *testing.T) {
 	store := mockindex.NewMockStore(t)
-	i := index.NewIndex(store, util.Logger, &index.Config{PartitionDuration: time.Hour, PartitionCacheSize: 1})
+	i := index.NewIndex(util.Logger, store, &index.Config{PartitionDuration: time.Hour, PartitionCacheSize: 1})
 
 	blocks := make([]*metastorev1.BlockMeta, 0, 420)
 	for i := 0; i < 420; i++ {
@@ -257,7 +257,7 @@ func TestIndex_LoadPartitions(t *testing.T) {
 func TestIndex_ReplaceBlocks(t *testing.T) {
 	store := mockindex.NewMockStore(t)
 	store.On("ListShards", mock.Anything, mock.Anything).Return([]uint32{})
-	i := index.NewIndex(store, util.Logger, &index.DefaultConfig)
+	i := index.NewIndex(util.Logger, store, &index.DefaultConfig)
 	b1 := &metastorev1.BlockMeta{
 		Id: createUlidString("2024-09-23T08:00:00.123Z"),
 	}
@@ -282,7 +282,7 @@ func TestIndex_ReplaceBlocks(t *testing.T) {
 func TestIndex_DurationChange(t *testing.T) {
 	store := mockindex.NewMockStore(t)
 	store.On("ListShards", mock.Anything, mock.Anything).Return([]uint32{})
-	i := index.NewIndex(store, util.Logger, &index.Config{PartitionDuration: 24 * time.Hour, PartitionCacheSize: 1})
+	i := index.NewIndex(util.Logger, store, &index.Config{PartitionDuration: 24 * time.Hour, PartitionCacheSize: 1})
 	b := &metastorev1.BlockMeta{
 		Id: createUlidString("2024-09-23T08:00:00.123Z"),
 	}
@@ -295,7 +295,7 @@ func TestIndex_DurationChange(t *testing.T) {
 
 func TestIndex_UnloadPartitions(t *testing.T) {
 	store := mockindex.NewMockStore(t)
-	i := index.NewIndex(store, util.Logger, &index.Config{PartitionDuration: time.Hour, PartitionCacheSize: 3})
+	i := index.NewIndex(util.Logger, store, &index.Config{PartitionDuration: time.Hour, PartitionCacheSize: 3})
 
 	keys := []index.PartitionKey{
 		"20240923T06.1h",

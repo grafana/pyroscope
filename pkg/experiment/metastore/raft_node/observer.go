@@ -7,58 +7,79 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+// StateHandler is called every time the
+// Raft state change is observed.
+type StateHandler interface {
+	Observe(raft.RaftState)
+}
+
+// LeaderActivity is started when the node becomes a
+// leader and stopped when it stops being a leader.
+// The implementation must be idempotent.
+type LeaderActivity interface {
+	Start()
+	Stop()
+}
+
+type leaderStateHandler struct{ activity LeaderActivity }
+
+func (h *leaderStateHandler) Observe(state raft.RaftState) {
+	if state == raft.Leader {
+		h.activity.Start()
+	} else {
+		h.activity.Stop()
+	}
+}
+
 type Observer struct {
 	logger   log.Logger
-	metrics  *metrics
 	raft     *raft.Raft
 	observer *raft.Observer
+	state    *prometheus.GaugeVec
+	handlers []StateHandler
 	c        chan raft.Observation
 	stop     chan struct{}
 	done     chan struct{}
-	cb       func(st raft.RaftState)
 }
 
-type metrics struct {
-	status prometheus.Gauge
-}
-
-func newMetrics(reg prometheus.Registerer) *metrics {
-	m := &metrics{
-		status: prometheus.NewGauge(prometheus.GaugeOpts{
+func NewRaftStateObserver(logger log.Logger, r *raft.Raft, reg prometheus.Registerer) *Observer {
+	o := &Observer{
+		logger: logger,
+		raft:   r,
+		c:      make(chan raft.Observation, 1),
+		stop:   make(chan struct{}),
+		done:   make(chan struct{}),
+	}
+	o.state = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
 			Namespace: "pyroscope",
-			Name:      "metastore_raft_status",
-		}),
-	}
+			Subsystem: "metastore",
+			Name:      "raft_state",
+			Help:      "Current Raft state",
+		},
+		[]string{"state"},
+	)
 	if reg != nil {
-		reg.MustRegister(m.status)
+		reg.MustRegister(o.state)
 	}
-	return m
-}
-
-func NewRaftLeaderObserver(logger log.Logger, reg prometheus.Registerer) *Observer {
-	return &Observer{
-		logger:  logger,
-		metrics: newMetrics(reg),
-		c:       make(chan raft.Observation, 1),
-		stop:    make(chan struct{}),
-		done:    make(chan struct{}),
-	}
-}
-
-func (o *Observer) Register(r *raft.Raft, cb func(st raft.RaftState)) {
-	if o.raft != nil {
-		return
-	}
-	o.raft = r
-	o.cb = cb
-	_ = level.Debug(o.logger).Log("msg", "registering leader observer")
-	o.updateStatus()
-	go o.run()
+	_ = level.Debug(o.logger).Log("msg", "registering raft state observer")
 	o.observer = raft.NewObserver(o.c, true, func(o *raft.Observation) bool {
-		_, ok := o.Data.(raft.LeaderObservation)
+		_, ok := o.Data.(raft.RaftState)
 		return ok
 	})
 	r.RegisterObserver(o.observer)
+	o.updateRaftState()
+	go o.run()
+	return o
+}
+
+func (o *Observer) RegisterHandler(h StateHandler) {
+	o.handlers = append(o.handlers, h)
+	o.updateRaftState()
+}
+
+func (o *Observer) OnLeader(a LeaderActivity) {
+	o.RegisterHandler(&leaderStateHandler{activity: a})
 }
 
 func (o *Observer) Deregister() {
@@ -75,18 +96,19 @@ func (o *Observer) run() {
 	for {
 		select {
 		case <-o.c:
-			o.updateStatus()
+			o.updateRaftState()
 		case <-o.stop:
 			return
 		}
 	}
 }
 
-func (o *Observer) updateStatus() {
+func (o *Observer) updateRaftState() {
 	state := o.raft.State()
-	if o.cb != nil {
-		o.cb(state)
+	o.state.Reset()
+	o.state.WithLabelValues(state.String()).Set(1)
+	_ = level.Debug(o.logger).Log("msg", "raft state changed", "raft_state", state)
+	for _, h := range o.handlers {
+		h.Observe(state)
 	}
-	o.metrics.status.Set(float64(state))
-	_ = level.Info(o.logger).Log("msg", "updated raft state", "state", state)
 }

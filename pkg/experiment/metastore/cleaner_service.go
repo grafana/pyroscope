@@ -35,8 +35,8 @@ type CleanerService struct {
 }
 
 func NewCleanerService(
-	config markers.Config,
 	logger log.Logger,
+	config markers.Config,
 	raftLog CleanerCommandLog,
 	local LocalCleaner,
 ) *CleanerService {
