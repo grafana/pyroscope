@@ -144,7 +144,7 @@ JFR ingestion support uses the profile metadata to determine which profile types
 * `alloc_in_new_tlab_objects`, which indicates the number of new TLAB objects created.
 * `alloc_in_new_tlab_bytes`, which indicates the size in bytes of new TLAB objects created.
 * `alloc_outside_tlab_objects`, which indicates the number of new allocated objects outside any TLAB.
-* `alloc_in_new_tlab_bytes`, which indicates the size in bytes of new allocated objects outside any TLAB.
+* `alloc_outside_tlab_bytes`, which indicates the size in bytes of new allocated objects outside any TLAB.
 
 #### JFR with labels
 
