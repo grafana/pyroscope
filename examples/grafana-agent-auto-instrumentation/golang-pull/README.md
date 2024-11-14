@@ -13,6 +13,10 @@ Refer to [config file](agent/config/config.river) to see an example of how to co
 ### 2. Run Grafana agent, Grafana and Pyroscope
 
 ```shell
+# Pull latest pyroscope and grafana images:
+docker pull grafana/pyroscope:latest
+docker pull grafana/grafana:latest
+
 docker-compose up -d
 ```
 

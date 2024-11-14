@@ -43,8 +43,9 @@ To use any of the examples, run the following commands:
 # change directory
 cd express # or cd express-ts / cs express-pull
 
-# Pull latest pyroscope image:
+# Pull latest pyroscope and grafana images:
 docker pull grafana/pyroscope:latest
+docker pull grafana/grafana:latest
 
 # Run the example project:
 docker-compose up --build
