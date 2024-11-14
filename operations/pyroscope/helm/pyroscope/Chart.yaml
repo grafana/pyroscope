@@ -1,6 +1,7 @@
 apiVersion: v2
 name: pyroscope
 description: 🔥 horizontally-scalable, highly-available, multi-tenant continuous profiling aggregation system
+home: https://grafana.com/oss/pyroscope/
 type: application
 version: 1.9.1
 appVersion: 1.9.1
@@ -20,3 +21,6 @@ dependencies:
     version: 4.0.12
     repository: https://charts.min.io/
     condition: minio.enabled
+sources:
+  - https://github.com/grafana/pyroscope
+  - https://github.com/grafana/pyroscope/tree/main/operations/pyroscope/helm/pyroscope

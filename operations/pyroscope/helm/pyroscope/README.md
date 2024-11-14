@@ -4,6 +4,13 @@
 
 🔥 horizontally-scalable, highly-available, multi-tenant continuous profiling aggregation system
 
+**Homepage:** <https://grafana.com/oss/pyroscope/>
+
+## Source Code
+
+* <https://github.com/grafana/pyroscope>
+* <https://github.com/grafana/pyroscope/tree/main/operations/pyroscope/helm/pyroscope>
+
 ## Requirements
 
 | Repository | Name | Version |
