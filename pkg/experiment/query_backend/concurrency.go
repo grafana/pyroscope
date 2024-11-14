@@ -38,6 +38,7 @@ var (
 
 func CreateConcurrencyInterceptor(logger log.Logger) (grpc.UnaryServerInterceptor, error) {
 	gclLog := newGclLogger(logger)
+	// TODO(aleks-p): Implement metric registry
 	serverLimit, err := limit.NewGradient2Limit("query-backend-concurrency-limit", minLimit, maxLimit, initialLimit, queueSizeFn, smoothing, longWindow, gclLog, nil)
 	if err != nil {
 		return nil, err
