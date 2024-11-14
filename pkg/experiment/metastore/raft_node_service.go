@@ -3,6 +3,8 @@ package metastore
 import (
 	"context"
 
+	"go.etcd.io/bbolt"
+
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 )
 
@@ -10,10 +12,8 @@ type RaftLeader interface {
 	ReadIndex() (uint64, error)
 }
 
-// TODO(kolesnikovae): Ideally, this should be automatically injected to all
-//  read-only endpoints.
-
 type RaftFollower interface {
+	ConsistentRead(ctx context.Context, read func(*bbolt.Tx)) error
 	WaitLeaderCommitIndexAppliedLocally(ctx context.Context) error
 }
 

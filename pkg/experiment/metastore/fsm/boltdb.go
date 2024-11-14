@@ -65,8 +65,6 @@ func (db *boltdb) open(readOnly bool) (err error) {
 }
 
 func (db *boltdb) shutdown() {
-	// TODO(kolesnikovae): Wait for on-going transactions
-	//  created with ReadTx() to finish.
 	if db.boltdb != nil {
 		if err := db.boltdb.Close(); err != nil {
 			_ = level.Error(db.logger).Log("msg", "failed to close database", "err", err)

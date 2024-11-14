@@ -193,29 +193,29 @@ func New(
 	m.index = index.NewIndex(m.logger, indexStore, &config.Index)
 	m.markers = markers.NewDeletionMarkers(m.logger, &config.BlockCleaner, m.reg)
 
-	m.metadataService = NewMetadataQueryService(m.logger, m.follower, index.NewQuerier(m.fsm, m.index))
-	m.tenantService = NewTenantService(m.logger, m.follower, index.NewQuerier(m.fsm, m.index))
+	m.metadataService = NewMetadataQueryService(m.logger, m.follower, m.index)
+	m.tenantService = NewTenantService(m.logger, m.follower, m.index)
 	m.operatorService = NewOperatorService(m.config, m.raft)
 	m.raftNodeService = NewRaftNodeService(m.leader)
 
 	m.compactionService = NewCompactionService(m.logger, m.proposer)
 	m.compactionHandler = NewCompactionCommandHandler(m.logger, m.config.Compaction, m.index, m.markers, m.reg)
 	m.fsm.RegisterRestorer(m.compactionHandler)
-	fsm.RegisterRaftHandler(m.fsm,
+	fsm.RegisterRaftCommandHandler(m.fsm,
 		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_POLL_COMPACTION_JOBS),
 		m.compactionHandler.PollCompactionJobs)
 
 	m.indexService = NewIndexService(m.logger, m.proposer, m.placement)
 	m.indexHandler = NewIndexCommandHandler(m.logger, m.index, m.markers, m.compactionHandler)
 	m.fsm.RegisterRestorer(m.index)
-	fsm.RegisterRaftHandler(m.fsm,
+	fsm.RegisterRaftCommandHandler(m.fsm,
 		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_ADD_BLOCK),
 		m.indexHandler.AddBlock)
 
 	m.cleanerHandler = NewCleanerCommandHandler(m.logger, m.bucket, m.markers, m.reg)
 	m.cleanerService = NewCleanerService(m.logger, m.config.BlockCleaner, m.proposer, m.cleanerHandler)
 	m.fsm.RegisterRestorer(m.markers)
-	fsm.RegisterRaftHandler(m.fsm,
+	fsm.RegisterRaftCommandHandler(m.fsm,
 		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_CLEAN_BLOCKS),
 		m.cleanerHandler.CleanBlocks)
 
@@ -306,7 +306,7 @@ func (m *Metastore) initRaft() (err error) {
 
 	m.proposer = NewRaftProposer(m.logger, m.raft, m.config.Raft.ApplyTimeout)
 	m.observer = raft_node.NewRaftStateObserver(m.logger, m.raft, m.reg)
-	m.follower = raft_node.NewFollower(m.client, m.raft)
+	m.follower = raft_node.NewFollower(m.client, m.raft, m.fsm)
 	m.leader = raft_node.NewLeader(m.raft)
 	return nil
 }
@@ -346,7 +346,9 @@ func (m *Metastore) createRaftDirs() (err error) {
 
 func (m *Metastore) shutdownRaft() {
 	if m.raft != nil {
-		m.observer.Deregister()
+		// Tell clients to stop sending requests to this node.
+		// There are no any guarantees that clients will see or obey this.
+		m.health.SetNotServing()
 		// We let clients observe the leadership transfer: it's their
 		// responsibility to connect to the new leader. We only need to
 		// make sure that any error returned to clients includes details
@@ -359,9 +361,7 @@ func (m *Metastore) shutdownRaft() {
 			//  the new leader catches up the local CommitIndex.
 			time.Sleep(m.config.MinReadyDuration)
 		}
-		// Tell clients to stop sending requests to this node.
-		// There are no any guarantees that clients will see or obey this.
-		m.health.SetNotServing()
+		m.observer.Deregister()
 		if err := m.raft.Shutdown().Error(); err != nil {
 			_ = level.Error(m.logger).Log("msg", "failed to shutdown raft", "err", err)
 		}

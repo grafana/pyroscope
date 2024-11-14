@@ -6,7 +6,9 @@ import (
 	"sync"
 
 	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
+	"go.etcd.io/bbolt"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
@@ -37,13 +39,17 @@ func NewTenantService(
 
 func (svc *TenantService) GetTenant(
 	ctx context.Context,
-	r *metastorev1.GetTenantRequest,
-) (*metastorev1.GetTenantResponse, error) {
-	if err := svc.follower.WaitLeaderCommitIndexAppliedLocally(ctx); err != nil {
-		level.Error(svc.logger).Log("msg", "failed to wait for leader commit index", "err", err)
-		return nil, err
+	req *metastorev1.GetTenantRequest,
+) (resp *metastorev1.GetTenantResponse, err error) {
+	read := func(_ *bbolt.Tx) {
+		// Although we're not using transaction here, we need to ensure
+		// strong consistency of the read operation.
+		resp, err = svc.getTenantStats(req.TenantId, ctx)
 	}
-	return svc.getTenantStats(r.TenantId, ctx)
+	if readErr := svc.follower.ConsistentRead(ctx, read); readErr != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return resp, err
 }
 
 func (svc *TenantService) getTenantStats(tenant string, ctx context.Context) (*metastorev1.GetTenantResponse, error) {

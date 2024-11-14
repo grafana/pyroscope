@@ -10,6 +10,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
+	"go.etcd.io/bbolt"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -19,7 +20,7 @@ import (
 )
 
 type IndexQuerier interface {
-	FindBlocksInRange(start, end int64, tenants map[string]struct{}) []*metastorev1.BlockMeta
+	FindBlocksInRange(tx *bbolt.Tx, start, end int64, tenants map[string]struct{}) []*metastorev1.BlockMeta
 	ForEachPartition(ctx context.Context, f func(*index.PartitionMeta) error) error
 }
 
@@ -43,31 +44,34 @@ type MetadataQueryService struct {
 	index    IndexQuerier
 }
 
-func (m *MetadataQueryService) QueryMetadata(
+func (svc *MetadataQueryService) QueryMetadata(
 	ctx context.Context,
-	request *metastorev1.QueryMetadataRequest,
-) (*metastorev1.QueryMetadataResponse, error) {
-	if err := m.follower.WaitLeaderCommitIndexAppliedLocally(ctx); err != nil {
-		level.Error(m.logger).Log("msg", "failed to wait for leader commit index", "err", err)
-		return nil, err
+	req *metastorev1.QueryMetadataRequest,
+) (resp *metastorev1.QueryMetadataResponse, err error) {
+	read := func(tx *bbolt.Tx) {
+		resp, err = svc.listBlocksForQuery(ctx, tx, req)
 	}
-	return m.listBlocksForQuery(ctx, request)
+	if readErr := svc.follower.ConsistentRead(ctx, read); readErr != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return resp, err
 }
 
-func (m *MetadataQueryService) listBlocksForQuery(
+func (svc *MetadataQueryService) listBlocksForQuery(
 	_ context.Context, // TODO(kolesnikovae): Handle cancellation.
-	request *metastorev1.QueryMetadataRequest,
+	tx *bbolt.Tx,
+	req *metastorev1.QueryMetadataRequest,
 ) (*metastorev1.QueryMetadataResponse, error) {
-	q, err := newMetadataQuery(request)
+	q, err := newMetadataQuery(req)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	var resp metastorev1.QueryMetadataResponse
 	md := make(map[string]*metastorev1.BlockMeta, 32)
 
-	blocks := m.index.FindBlocksInRange(q.startTime, q.endTime, q.tenants)
+	blocks := svc.index.FindBlocksInRange(tx, q.startTime, q.endTime, q.tenants)
 	if err != nil {
-		level.Error(m.logger).Log("msg", "failed to list metastore blocks", "query", q, "err", err)
+		level.Error(svc.logger).Log("msg", "failed to list metastore blocks", "query", q, "err", err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	for _, block := range blocks {

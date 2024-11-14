@@ -2,21 +2,46 @@ package raft_node
 
 import (
 	"context"
+	"fmt"
 	"time"
+
+	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 )
 
+var ErrConsistentRead = fmt.Errorf("consistent read failed")
+
 type Follower struct {
 	client metastorev1.RaftNodeServiceClient
 	raft   RaftNode
+	fsm    FSM
 }
 
-func NewFollower(client metastorev1.RaftNodeServiceClient, raft RaftNode) *Follower {
+type FSM interface {
+	Read(func(*bbolt.Tx)) error
+}
+
+func NewFollower(client metastorev1.RaftNodeServiceClient, raft RaftNode, fsm FSM) *Follower {
 	return &Follower{
 		client: client,
 		raft:   raft,
+		fsm:    fsm,
 	}
+}
+
+// ConsistentRead performs a read operation on the follower's FSM.
+//
+// The transaction passed to the provided function has access to the most up-to-date
+// data, reflecting the updates from all prior write operations that were successful.
+func (f *Follower) ConsistentRead(ctx context.Context, fn func(*bbolt.Tx)) (err error) {
+	if err = f.WaitLeaderCommitIndexAppliedLocally(ctx); err == nil {
+		err = f.fsm.Read(fn)
+	}
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrConsistentRead, err)
+	}
+	return err
 }
 
 // WaitLeaderCommitIndexAppliedLocally ensures the node is up-to-date for read

@@ -5,6 +5,7 @@ import (
 	"io"
 	"reflect"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/go-kit/log"
@@ -24,7 +25,10 @@ type StateRestorer interface {
 type FSM struct {
 	logger  log.Logger
 	metrics *metrics
-	db      *boltdb
+
+	mu   sync.RWMutex
+	txns sync.WaitGroup
+	db   *boltdb
 
 	handlers  map[RaftLogEntryType]handler
 	restorers []StateRestorer
@@ -50,7 +54,7 @@ func (fsm *FSM) RegisterRestorer(r ...StateRestorer) {
 	fsm.restorers = append(fsm.restorers, r...)
 }
 
-func RegisterRaftHandler[Req, Resp proto.Message](fsm *FSM, t RaftLogEntryType, handler RaftHandler[Req, Resp]) {
+func RegisterRaftCommandHandler[Req, Resp proto.Message](fsm *FSM, t RaftLogEntryType, handler RaftHandler[Req, Resp]) {
 	fsm.handlers[t] = func(tx *bbolt.Tx, cmd *raft.Log, raw []byte) (proto.Message, error) {
 		var err error
 		req := newProto[Req]()
@@ -74,23 +78,23 @@ func newProto[T proto.Message]() T {
 }
 
 type fsmError struct {
-	log *raft.Log
+	cmd *raft.Log
 	err error
 }
 
-func errResponse(l *raft.Log, err error) Response {
-	return Response{Err: &fsmError{log: l, err: err}}
+func errResponse(cmd *raft.Log, err error) Response {
+	return Response{Err: &fsmError{cmd: cmd, err: err}}
 }
 
 func (e *fsmError) Error() string {
 	if e.err == nil {
 		return ""
 	}
-	if e.log == nil {
+	if e.cmd == nil {
 		return e.err.Error()
 	}
 	return fmt.Sprintf("term: %d; index: %d; appended_at: %v; error: %v",
-		e.log.Index, e.log.Term, e.log.AppendedAt, e.err)
+		e.cmd.Index, e.cmd.Term, e.cmd.AppendedAt, e.err)
 }
 
 func (fsm *FSM) Apply(log *raft.Log) any {
@@ -117,8 +121,6 @@ func (fsm *FSM) applyCommand(cmd *raft.Log) any {
 		return errResponse(cmd, err)
 	}
 
-	// The DB is never restored while we're in the Apply method,
-	// we are safe to use it.
 	cmdType := strconv.FormatUint(uint64(e.Type), 10)
 	fsm.db.metrics.fsmApplyCommandSize.WithLabelValues(cmdType).Observe(float64(len(cmd.Data)))
 	defer func() {
@@ -129,12 +131,11 @@ func (fsm *FSM) applyCommand(cmd *raft.Log) any {
 		return errResponse(cmd, fmt.Errorf("unknown command type: %d", e.Type))
 	}
 
-	// We can't do anything about the failure at the database level,
-	// so we panic here in a hope that other instances will handle
-	// the command.
+	// Apply is never called concurrently with Restore, so we don't need
+	// to lock the FSM: db.boltdb is guaranteed to be in a consistent state.
 	tx, err := fsm.db.boltdb.Begin(true)
 	if err != nil {
-		panic(fmt.Sprint("failed to begin transaction:", err))
+		panic(fmt.Sprint("failed to begin write transaction:", err))
 	}
 
 	data, err := handle(tx, cmd, e.Data)
@@ -146,6 +147,9 @@ func (fsm *FSM) applyCommand(cmd *raft.Log) any {
 		panic(fmt.Sprint("failed to apply command:", err))
 	}
 
+	// We can't do anything about the failure at the database level,
+	// so we panic here in a hope that other instances will handle
+	// the command.
 	if err = tx.Commit(); err != nil {
 		panic(fmt.Sprint("failed to commit transaction:", err))
 	}
@@ -153,12 +157,21 @@ func (fsm *FSM) applyCommand(cmd *raft.Log) any {
 	return Response{Data: data, Err: err}
 }
 
-func (fsm *FSM) ReadTx() *bbolt.Tx {
+func (fsm *FSM) Read(fn func(*bbolt.Tx)) error {
+	fsm.mu.RLock()
 	tx, err := fsm.db.boltdb.Begin(false)
+	fsm.txns.Add(1)
+	fsm.mu.RUnlock()
 	if err != nil {
-		panic(fmt.Sprint("failed to create read-only transaction:", err))
+		fsm.txns.Done()
+		return fmt.Errorf("failed to begin read transaction: %w", err)
 	}
-	return tx
+	defer func() {
+		_ = tx.Rollback()
+		fsm.txns.Done()
+	}()
+	fn(tx)
+	return nil
 }
 
 func (fsm *FSM) Restore(snapshot io.ReadCloser) error {
@@ -168,6 +181,12 @@ func (fsm *FSM) Restore(snapshot io.ReadCloser) error {
 		_ = snapshot.Close()
 		fsm.db.metrics.fsmRestoreSnapshotDuration.Observe(time.Since(start).Seconds())
 	}()
+	// Block all new transactions until we restore the snapshot.
+	// TODO(kolesnikovae): set not-serving service status to not
+	//  block incoming requests.
+	fsm.mu.Lock()
+	defer fsm.mu.Unlock()
+	fsm.txns.Wait()
 	if err := fsm.db.restore(snapshot); err != nil {
 		return fmt.Errorf("failed to restore from snapshot: %w", err)
 	}
