@@ -12,11 +12,15 @@ weight: 60
 
 # Profile CLI
 
-`profilecli` is a command-line utility that enables various productivity flows such as:
+Pyroscope provides a command-line interface (CLI), `profilecli`.
+This utility enables various productivity flows such as:
+
 - Interacting with a running Pyroscope server to upload profiles, query data, and more
 - Inspecting [Parquet](https://parquet.apache.org/docs/) files
 
-> Hint: Use the `help` command (`profilecli help`) to get a full list of capabilities as well as additional help information.
+{{< admonition type="tip">}}
+Use the `help` command (`profilecli help`) for a full list of capabilities and help information.
+{{< /admonition>}}
 
 ## Install Profile CLI
 
@@ -113,11 +117,11 @@ profilecli <command>
 If you're querying data from Cloud Profiles, be sure to use the url of your Cloud Profiles server in `PROFILECLI_URL` (e.g. `https://profiles-prod-001.grafana.net`) and **not** the url of your Grafana Cloud tenant (e.g. `<your tenant>.grafana.net`).
 {{< /admonition >}}
 
-## Uploading a profile to a Pyroscope server using `profilecli`
+## Upload a profile to a Pyroscope server using `profilecli`
 
 Using `profilecli` streamlines the process of uploading profiles to Pyroscope, making it a convenient alternative to manual HTTP requests.
 
-### Prerequisites
+### Before you begin
 
 - Ensure you have `profilecli` installed on your system by following the [installation](#install-profile-cli) steps above.
 - Have a profile file ready for upload. Note that you can only upload pprof files at this time.
@@ -170,11 +174,12 @@ Using `profilecli` streamlines the process of uploading profiles to Pyroscope, m
 
    - After running the command, you should see a confirmation message indicating a successful upload. If there are any issues, `profilecli` provides error messages to help you troubleshoot.
 
-## Querying a Pyroscope server using `profilecli`
+## Query a Pyroscope server using `profilecli`
 
-You can use the `profilecli query` command to look up the available profiles on a Pyroscope server and read actual profile data. This can be useful for debugging purposes or for integrating profiling in CI pipelines (for example to facilitate [profile-guided optimization](https://go.dev/doc/pgo)).
+You can use the `profilecli query` command to look up the available profiles on a Pyroscope server and read actual profile data.
+This can be useful for debugging purposes or for integrating profiling in CI pipelines (for example to facilitate [profile-guided optimization](https://go.dev/doc/pgo)).
 
-### Looking up available profiles on a Pyroscope server
+### Look up available profiles on a Pyroscope server
 
 You can use the `profilecli query series` command to look up the available profiles on a Pyroscope server.
 By default, it queries the last hour of data, though this can be controlled with the `--from` and `--to` flags.
@@ -182,7 +187,7 @@ You can narrow the results down with the `--query` flag. See `profilecli help qu
 
 #### Query series steps
 
-1. Optional: Specify a Query and a Time Range.
+1. Optional: Specify a query and a time range.
 
    - You can provide a label selector using the `--query` flag, for example: `--query='{service_name="my_application_name"}'`.
    - You can provide a custom time range using the `--from` and `--to` flags, for example, `--from="now-3h" --to="now"`.
@@ -222,7 +227,7 @@ You can narrow the results down with the `--query` flag. See `profilecli help qu
       }
      ```
 
-### Reading a raw profile from a Pyroscope server
+### Read a raw profile from a Pyroscope server
 
 You can use the `profilecli query profile` command to retrieve a merged (aggregated) profile from a Pyroscope server.
 The command merges all samples found in the profile store for the specified query and time range.
@@ -275,7 +280,7 @@ By default it looks for samples within the last hour, though this can be control
      ...
      ```
 
-### Exporting a profile for Go PGO
+### Export a profile for Go PGO
 
 You can use the `profilecli query go-pgo` command to retrieve an aggregated profile from a Pyroscope server for use with Go PGO.
 Profiles retrieved with `profilecli query profile` include all samples found in the profile store, resulting in a large profile size.
