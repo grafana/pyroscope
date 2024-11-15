@@ -84,15 +84,17 @@ func NewDeletionMarkers(logger log.Logger, cfg *Config, reg prometheus.Registere
 	}
 }
 
+func (m *DeletionMarkers) Init(tx *bbolt.Tx) error {
+	_, err := tx.CreateBucketIfNotExists(removedBlocksBucketNameBytes)
+	return err
+}
+
 func (m *DeletionMarkers) Restore(tx *bbolt.Tx) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	clear(m.blockMarkers)
-	bkt, err := tx.CreateBucketIfNotExists(removedBlocksBucketNameBytes)
-	if err != nil {
-		return err
-	}
-	err = bkt.ForEachBucket(func(k []byte) error {
+	bkt := tx.Bucket(removedBlocksBucketNameBytes)
+	err := bkt.ForEachBucket(func(k []byte) error {
 		shardBkt := bkt.Bucket(k)
 		if shardBkt == nil {
 			return nil

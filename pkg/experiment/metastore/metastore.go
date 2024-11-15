@@ -185,46 +185,55 @@ func New(
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize store: %w", err)
 	}
-	if err = m.initRaft(); err != nil {
-		return nil, fmt.Errorf("failed to initialize raft: %w", err)
-	}
 
+	// Initialization of the base components.
 	indexStore := index.NewIndexStore(m.logger)
 	m.index = index.NewIndex(m.logger, indexStore, &config.Index)
 	m.markers = markers.NewDeletionMarkers(m.logger, &config.BlockCleaner, m.reg)
 
-	m.metadataService = NewMetadataQueryService(m.logger, m.follower, m.index)
-	m.tenantService = NewTenantService(m.logger, m.follower, m.index)
-	m.operatorService = NewOperatorService(m.config, m.raft)
-	m.raftNodeService = NewRaftNodeService(m.leader)
-
-	m.compactionService = NewCompactionService(m.logger, m.proposer)
+	// FSM handlers that utilize the components.
 	m.compactionHandler = NewCompactionCommandHandler(m.logger, m.config.Compaction, m.index, m.markers, m.reg)
+	m.indexHandler = NewIndexCommandHandler(m.logger, m.index, m.markers, m.compactionHandler)
+	m.cleanerHandler = NewCleanerCommandHandler(m.logger, m.bucket, m.markers, m.reg)
+
+	m.fsm.RegisterRestorer(m.index)
 	m.fsm.RegisterRestorer(m.compactionHandler)
+	m.fsm.RegisterRestorer(m.markers)
+
 	fsm.RegisterRaftCommandHandler(m.fsm,
 		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_POLL_COMPACTION_JOBS),
 		m.compactionHandler.PollCompactionJobs)
 
-	m.indexService = NewIndexService(m.logger, m.proposer, m.placement)
-	m.indexHandler = NewIndexCommandHandler(m.logger, m.index, m.markers, m.compactionHandler)
-	m.fsm.RegisterRestorer(m.index)
 	fsm.RegisterRaftCommandHandler(m.fsm,
 		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_ADD_BLOCK),
 		m.indexHandler.AddBlock)
 
-	m.cleanerHandler = NewCleanerCommandHandler(m.logger, m.bucket, m.markers, m.reg)
-	m.cleanerService = NewCleanerService(m.logger, m.config.BlockCleaner, m.proposer, m.cleanerHandler)
 	m.fsm.RegisterRestorer(m.markers)
 	fsm.RegisterRaftCommandHandler(m.fsm,
 		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_CLEAN_BLOCKS),
 		m.cleanerHandler.CleanBlocks)
 
+	if err = m.fsm.Init(); err != nil {
+		return nil, fmt.Errorf("failed to initialize internal state: %w", err)
+	}
+	if err = m.initRaft(); err != nil {
+		return nil, fmt.Errorf("failed to initialize raft: %w", err)
+	}
+
+	// Services should be registered after FSM and Raft have been initialized.
+	// Services provide an interface to interact with the metastore.
+	m.indexService = NewIndexService(m.logger, m.proposer, m.placement)
+	m.compactionService = NewCompactionService(m.logger, m.proposer)
+	m.cleanerService = NewCleanerService(m.logger, m.config.BlockCleaner, m.proposer, m.cleanerHandler)
+	m.tenantService = NewTenantService(m.logger, m.follower, m.index)
+	m.metadataService = NewMetadataQueryService(m.logger, m.follower, m.index)
+	m.operatorService = NewOperatorService(m.config, m.raft)
+	m.raftNodeService = NewRaftNodeService(m.leader)
 	m.dlqRecovery = dlq.NewRecovery(logger, config.DLQRecovery, m.indexService, bucket)
 
 	// These are the services that only run on the raft leader.
 	// Keep in mind that the node may not be the leader at the moment the
 	// service is starting, so it should be able to handle conflicts.
-	m.observer.OnLeader(m.cleanerService)
 	m.observer.OnLeader(m.dlqRecovery)
 	m.observer.OnLeader(m.placement)
 

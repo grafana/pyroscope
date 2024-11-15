@@ -2,7 +2,6 @@ package fsm
 
 import (
 	"context"
-	"io"
 	"runtime/pprof"
 	"time"
 
@@ -24,28 +23,28 @@ func (s *snapshot) Persist(sink raft.SnapshotSink) (err error) {
 	defer pprof.SetGoroutineLabels(ctx)
 
 	start := time.Now()
-	_ = s.logger.Log("msg", "persisting snapshot", "sink_id", sink.ID())
+	level.Debug(s.logger).Log("msg", "persisting snapshot", "sink_id", sink.ID())
 	defer func() {
 		s.metrics.boltDBPersistSnapshotDuration.Observe(time.Since(start).Seconds())
-		s.logger.Log("msg", "persisted snapshot", "sink_id", sink.ID(), "err", err, "duration", time.Since(start))
-		if err != nil {
-			_ = s.logger.Log("msg", "failed to persist snapshot", "err", err)
-			if err = sink.Cancel(); err != nil {
-				_ = s.logger.Log("msg", "failed to cancel snapshot sink", "err", err)
-				return
+		if err == nil {
+			level.Info(s.logger).Log("msg", "persisted snapshot", "sink_id", sink.ID(), "duration", time.Since(start))
+			if err = sink.Close(); err != nil {
+				level.Error(s.logger).Log("msg", "failed to close sink", "err", err)
 			}
+			return
 		}
-		if err = sink.Close(); err != nil {
-			_ = s.logger.Log("msg", "failed to close sink", "err", err)
+		level.Error(s.logger).Log("msg", "failed to persist snapshot", "err", err)
+		if err = sink.Cancel(); err != nil {
+			level.Error(s.logger).Log("msg", "failed to cancel snapshot sink", "err", err)
 		}
 	}()
 
-	_ = level.Info(s.logger).Log("msg", "persisting snapshot")
-	w := newSnapshotWriter(sink)
-	_, err = s.tx.WriteTo(w)
-	s.metrics.boltDBPersistSnapshotSize.Observe(float64(w.size))
+	level.Info(s.logger).Log("msg", "persisting snapshot")
+	var n int64
+	n, err = s.tx.WriteTo(sink)
+	s.metrics.boltDBPersistSnapshotSize.Observe(float64(n))
 	if err != nil {
-		_ = level.Error(s.logger).Log("msg", "failed to write snapshot", "err", err)
+		level.Error(s.logger).Log("msg", "failed to write snapshot", "err", err)
 	}
 	return err
 }
@@ -55,17 +54,4 @@ func (s *snapshot) Release() {
 		// This is an in-memory rollback, no error expected.
 		_ = s.tx.Rollback()
 	}
-}
-
-type snapshotWriter struct {
-	io.Writer
-	size int
-}
-
-func newSnapshotWriter(w io.Writer) *snapshotWriter { return &snapshotWriter{Writer: w} }
-
-func (s *snapshotWriter) Write(p []byte) (int, error) {
-	s.size += len(p)
-	n, err := s.Writer.Write(p)
-	return n, err
 }

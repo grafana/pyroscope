@@ -56,7 +56,7 @@ func (db *boltdb) open(readOnly bool) (err error) {
 	opts.ReadOnly = readOnly
 	opts.NoSync = true
 	opts.InitialMmapSize = boltDBInitialMmapSize
-	opts.FreelistType = bbolt.FreelistMapType
+	//	opts.FreelistType = bbolt.FreelistMapType
 	if db.boltdb, err = bbolt.Open(db.path, 0644, &opts); err != nil {
 		return fmt.Errorf("failed to open db: %w", err)
 	}

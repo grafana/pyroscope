@@ -34,12 +34,10 @@ func Propose[Req, Resp proto.Message](
 			err = util.PanicError(r)
 		}
 	}()
-	c := fsm.RaftLogEntry{Type: cmd}
-	c.Data, err = proto.Marshal(payload)
+	raw, err := fsm.MarshalEntry(cmd, payload)
 	if err != nil {
 		return resp, err
 	}
-	raw, _ := c.MarshalBinary()
 	future := raft.Apply(raw, timeout)
 	if err = future.Error(); err != nil {
 		return resp, WithRaftLeaderStatusDetails(err, raft)

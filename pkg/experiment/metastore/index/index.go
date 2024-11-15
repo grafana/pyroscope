@@ -96,6 +96,11 @@ func NewIndex(logger log.Logger, store Store, cfg *Config) *Index {
 	}
 }
 
+func (i *Index) Init(tx *bbolt.Tx) error {
+	_, err := tx.CreateBucketIfNotExists(partitionBucketNameBytes)
+	return err
+}
+
 func (i *Index) Restore(tx *bbolt.Tx) error {
 	i.LoadPartitions(tx)
 	return nil
