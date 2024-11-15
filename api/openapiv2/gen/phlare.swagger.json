@@ -1546,7 +1546,10 @@
       "properties": {
         "maxNodes": {
           "type": "string",
-          "format": "int64",
+          "format": "int64"
+        },
+        "stackTraceSelector": {
+          "$ref": "#/definitions/v1StackTraceSelector",
           "description": "TODO(kolesnikovae): Go PGO options."
         }
       }
