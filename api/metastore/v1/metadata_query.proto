@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package metastore.v1;
+
+import "metastore/v1/metastore.proto";
+
+service MetadataQueryService {
+  rpc QueryMetadata(QueryMetadataRequest) returns (QueryMetadataResponse) {}
+}
+
+message QueryMetadataRequest {
+  repeated string tenant_id = 1;
+  int64 start_time = 2;
+  int64 end_time = 3;
+  string query = 4;
+}
+
+message QueryMetadataResponse {
+  repeated BlockMeta blocks = 1;
+}

@@ -13,9 +13,8 @@ import (
 
 func (q *QueryFrontend) GetProfileStats(
 	ctx context.Context,
-	req *connect.Request[typesv1.GetProfileStatsRequest],
+	_ *connect.Request[typesv1.GetProfileStatsRequest],
 ) (*connect.Response[typesv1.GetProfileStatsResponse], error) {
-
 	tenants, err := tenant.TenantIDs(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -25,11 +24,16 @@ func (q *QueryFrontend) GetProfileStats(
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("expected 1 tenant, got %d", len(tenants)))
 	}
 
-	stats, err := q.metastore.GetProfileStats(ctx, &metastorev1.GetProfileStatsRequest{
+	resp, err := q.tenantServiceClient.GetTenant(ctx, &metastorev1.GetTenantRequest{
 		TenantId: tenants[0],
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(stats), nil
+	stats := resp.GetStats()
+	return connect.NewResponse(&typesv1.GetProfileStatsResponse{
+		DataIngested:      stats.DataIngested,
+		OldestProfileTime: stats.OldestProfileTime,
+		NewestProfileTime: stats.NewestProfileTime,
+	}), nil
 }

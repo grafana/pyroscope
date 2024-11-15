@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package metastore.v1;
+
+service TenantService {
+  rpc GetTenant(GetTenantRequest) returns (GetTenantResponse) {}
+  rpc DeleteTenant(DeleteTenantRequest) returns (DeleteTenantResponse) {}
+}
+
+message GetTenantRequest {
+  string tenant_id = 1;
+}
+
+message GetTenantResponse {
+  TenantStats stats = 1;
+}
+
+message TenantStats {
+  // Whether we received any data at any time in the past.
+  bool data_ingested = 1;
+  // Milliseconds since epoch.
+  int64 oldest_profile_time = 2;
+  // Milliseconds since epoch.
+  int64 newest_profile_time = 3;
+}
+
+message DeleteTenantRequest {
+  string tenant_id = 1;
+}
+
+message DeleteTenantResponse {}

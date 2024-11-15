@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package raft_log;
+
+enum RaftCommand {
+  RAFT_COMMAND_UNKNOWN = 0;
+  RAFT_COMMAND_ADD_BLOCK = 1;
+  RAFT_COMMAND_POLL_COMPACTION_JOBS = 2;
+  RAFT_COMMAND_CLEAN_BLOCKS = 3;
+}
+
+message CleanBlocksRequest {
+  string request_id = 1;
+}

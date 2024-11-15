@@ -10,7 +10,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/services"
 
-	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore"
@@ -99,8 +98,8 @@ func NewMetastoreSet(t *testing.T, cfg *metastore.Config, n int, bucket objstore
 		)
 		m, err := metastore.New(configs[i], logger, registry, health.NoOpService, client, bucket, placementManager)
 		require.NoError(t, err)
-		metastorev1.RegisterMetastoreServiceServer(server, m)
-		compactorv1.RegisterCompactionPlannerServer(server, m)
+		m.Register(server)
+
 		lis, err := net.Listen("tcp", grpcAddresses[i])
 		assert.NoError(t, err)
 		go func() {
@@ -108,11 +107,15 @@ func NewMetastoreSet(t *testing.T, cfg *metastore.Config, n int, bucket objstore
 			assert.NoError(t, err)
 		}()
 		res.Instances = append(res.Instances, MetastoreInstance{
-			Metastore:               m,
-			Connection:              cc,
-			MetastoreInstanceClient: metastorev1.NewMetastoreServiceClient(cc),
-			CompactorInstanceClient: compactorv1.NewCompactionPlannerClient(cc),
-			Server:                  server,
+			Metastore:  m,
+			Connection: cc,
+			Server:     server,
+
+			IndexServiceClient:         metastorev1.NewIndexServiceClient(cc),
+			CompactionServiceClient:    metastorev1.NewCompactionServiceClient(cc),
+			MetadataQueryServiceClient: metastorev1.NewMetadataQueryServiceClient(cc),
+			TenantServiceClient:        metastorev1.NewTenantServiceClient(cc),
+			RaftNodeServiceClient:      metastorev1.NewRaftNodeServiceClient(cc),
 		})
 		service := m.Service()
 		ctx := context.Background()
@@ -150,15 +153,15 @@ func MockStaticDiscovery(t *testing.T, servers []discovery.Server) *mockdiscover
 }
 
 type MetastoreInstance struct {
-	Metastore               *metastore.Metastore
-	Server                  *grpc.Server
-	Connection              *grpc.ClientConn
-	MetastoreInstanceClient metastorev1.MetastoreServiceClient
-	CompactorInstanceClient compactorv1.CompactionPlannerClient
-}
+	Metastore  *metastore.Metastore
+	Server     *grpc.Server
+	Connection *grpc.ClientConn
 
-func (i *MetastoreInstance) client() metastorev1.MetastoreServiceClient {
-	return i.MetastoreInstanceClient
+	metastorev1.IndexServiceClient
+	metastorev1.CompactionServiceClient
+	metastorev1.MetadataQueryServiceClient
+	metastorev1.TenantServiceClient
+	metastorev1.RaftNodeServiceClient
 }
 
 type MetastoreSet struct {

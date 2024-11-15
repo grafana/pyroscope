@@ -18,7 +18,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 
-	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/client"
 	"github.com/grafana/pyroscope/pkg/experiment/query_backend/block"
@@ -36,11 +35,11 @@ type Worker struct {
 	metrics         *compactionWorkerMetrics
 
 	jobMutex      sync.RWMutex
-	pendingJobs   map[string]*compactorv1.CompactionJob
-	activeJobs    map[string]*compactorv1.CompactionJob
-	completedJobs map[string]*compactorv1.CompactionJobStatus
+	pendingJobs   map[string]*metastorev1.CompactionJob
+	activeJobs    map[string]*metastorev1.CompactionJob
+	completedJobs map[string]*metastorev1.CompactionJobStatus
 
-	queue chan *compactorv1.CompactionJob
+	queue chan *metastorev1.CompactionJob
 	wg    sync.WaitGroup
 }
 
@@ -72,11 +71,11 @@ func New(config Config, logger log.Logger, metastoreClient *metastoreclient.Clie
 		logger:          logger,
 		metastoreClient: metastoreClient,
 		storage:         storage,
-		pendingJobs:     make(map[string]*compactorv1.CompactionJob),
-		activeJobs:      make(map[string]*compactorv1.CompactionJob),
-		completedJobs:   make(map[string]*compactorv1.CompactionJobStatus),
+		pendingJobs:     make(map[string]*metastorev1.CompactionJob),
+		activeJobs:      make(map[string]*metastorev1.CompactionJob),
+		completedJobs:   make(map[string]*metastorev1.CompactionJobStatus),
 		metrics:         newMetrics(reg),
-		queue:           make(chan *compactorv1.CompactionJob, workers),
+		queue:           make(chan *metastorev1.CompactionJob, workers),
 	}
 	w.BasicService = services.NewBasicService(w.starting, w.running, w.stopping)
 	return w, nil
@@ -141,7 +140,7 @@ func (w *Worker) poll(ctx context.Context) {
 		"pending_jobs", len(w.pendingJobs),
 		"pending_updates", len(w.completedJobs))
 
-	pendingStatusUpdates := make([]*compactorv1.CompactionJobStatus, 0, len(w.completedJobs))
+	pendingStatusUpdates := make([]*metastorev1.CompactionJobStatus, 0, len(w.completedJobs))
 	for _, update := range w.completedJobs {
 		level.Debug(w.logger).Log("msg", "completed job update", "job", update.JobName, "status", update.Status)
 		pendingStatusUpdates = append(pendingStatusUpdates, update)
@@ -149,13 +148,13 @@ func (w *Worker) poll(ctx context.Context) {
 	for _, activeJob := range w.activeJobs {
 		level.Debug(w.logger).Log("msg", "in progress job update", "job", activeJob.Name)
 		update := activeJob.Status.CloneVT()
-		update.Status = compactorv1.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS
+		update.Status = metastorev1.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS
 		pendingStatusUpdates = append(pendingStatusUpdates, update)
 	}
 	for _, pendingJob := range w.pendingJobs {
 		level.Debug(w.logger).Log("msg", "pending job update", "job", pendingJob.Name)
 		update := pendingJob.Status.CloneVT()
-		update.Status = compactorv1.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS
+		update.Status = metastorev1.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS
 		pendingStatusUpdates = append(pendingStatusUpdates, update)
 	}
 
@@ -163,7 +162,7 @@ func (w *Worker) poll(ctx context.Context) {
 	w.jobMutex.Unlock()
 
 	if len(pendingStatusUpdates) > 0 || jobCapacity > 0 {
-		jobsResponse, err := w.metastoreClient.PollCompactionJobs(ctx, &compactorv1.PollCompactionJobsRequest{
+		jobsResponse, err := w.metastoreClient.PollCompactionJobs(ctx, &metastorev1.PollCompactionJobsRequest{
 			JobStatusUpdates: pendingStatusUpdates,
 			JobCapacity:      uint32(jobCapacity),
 		})
@@ -175,7 +174,7 @@ func (w *Worker) poll(ctx context.Context) {
 
 		level.Debug(w.logger).Log("msg", "poll response received", "compaction_jobs", len(jobsResponse.CompactionJobs))
 
-		pendingJobs := make([]*compactorv1.CompactionJob, 0, len(jobsResponse.CompactionJobs))
+		pendingJobs := make([]*metastorev1.CompactionJob, 0, len(jobsResponse.CompactionJobs))
 		for _, job := range jobsResponse.CompactionJobs {
 			pendingJobs = append(pendingJobs, job.CloneVT())
 		}
@@ -207,7 +206,7 @@ func (w *Worker) stopping(err error) error {
 	return nil
 }
 
-func (w *Worker) startJob(ctx context.Context, job *compactorv1.CompactionJob) *compactorv1.CompactionJobStatus {
+func (w *Worker) startJob(ctx context.Context, job *metastorev1.CompactionJob) *metastorev1.CompactionJobStatus {
 	jobStartTime := time.Now()
 	labels := []string{job.TenantId, fmt.Sprint(job.Shard), fmt.Sprint(job.CompactionLevel)}
 	statusName := "unknown"
@@ -275,18 +274,18 @@ func (w *Worker) startJob(ctx context.Context, job *compactorv1.CompactionJob) *
 				"datasets", len(c.Datasets))
 		}
 
-		job.Status.Status = compactorv1.CompactionStatus_COMPACTION_STATUS_SUCCESS
-		job.Status.CompletedJob = &compactorv1.CompletedJob{Blocks: compacted}
+		job.Status.Status = metastorev1.CompactionStatus_COMPACTION_STATUS_SUCCESS
+		job.Status.CompletedJob = &metastorev1.CompletedJob{Blocks: compacted}
 		statusName = "success"
 
 	case errors.Is(err, context.Canceled):
 		_ = level.Warn(logger).Log("msg", "job cancelled", "job", job.Name)
-		job.Status.Status = compactorv1.CompactionStatus_COMPACTION_STATUS_UNSPECIFIED
+		job.Status.Status = metastorev1.CompactionStatus_COMPACTION_STATUS_UNSPECIFIED
 		statusName = "cancelled"
 
 	default:
 		_ = level.Error(logger).Log("msg", "failed to compact blocks", "err", err, "job", job.Name)
-		job.Status.Status = compactorv1.CompactionStatus_COMPACTION_STATUS_FAILURE
+		job.Status.Status = metastorev1.CompactionStatus_COMPACTION_STATUS_FAILURE
 		statusName = "failure"
 	}
 

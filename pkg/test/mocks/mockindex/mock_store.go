@@ -5,6 +5,7 @@ package mockindex
 import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	index "github.com/grafana/pyroscope/pkg/experiment/metastore/index"
+	bbolt "go.etcd.io/bbolt"
 
 	mock "github.com/stretchr/testify/mock"
 )
@@ -22,17 +23,17 @@ func (_m *MockStore) EXPECT() *MockStore_Expecter {
 	return &MockStore_Expecter{mock: &_m.Mock}
 }
 
-// ListBlocks provides a mock function with given fields: p, shard, tenant
-func (_m *MockStore) ListBlocks(p index.PartitionKey, shard uint32, tenant string) []*metastorev1.BlockMeta {
-	ret := _m.Called(p, shard, tenant)
+// ListBlocks provides a mock function with given fields: tx, p, shard, tenant
+func (_m *MockStore) ListBlocks(tx *bbolt.Tx, p index.PartitionKey, shard uint32, tenant string) []*metastorev1.BlockMeta {
+	ret := _m.Called(tx, p, shard, tenant)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListBlocks")
 	}
 
 	var r0 []*metastorev1.BlockMeta
-	if rf, ok := ret.Get(0).(func(index.PartitionKey, uint32, string) []*metastorev1.BlockMeta); ok {
-		r0 = rf(p, shard, tenant)
+	if rf, ok := ret.Get(0).(func(*bbolt.Tx, index.PartitionKey, uint32, string) []*metastorev1.BlockMeta); ok {
+		r0 = rf(tx, p, shard, tenant)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*metastorev1.BlockMeta)
@@ -48,16 +49,17 @@ type MockStore_ListBlocks_Call struct {
 }
 
 // ListBlocks is a helper method to define mock.On call
+//   - tx *bbolt.Tx
 //   - p index.PartitionKey
 //   - shard uint32
 //   - tenant string
-func (_e *MockStore_Expecter) ListBlocks(p interface{}, shard interface{}, tenant interface{}) *MockStore_ListBlocks_Call {
-	return &MockStore_ListBlocks_Call{Call: _e.mock.On("ListBlocks", p, shard, tenant)}
+func (_e *MockStore_Expecter) ListBlocks(tx interface{}, p interface{}, shard interface{}, tenant interface{}) *MockStore_ListBlocks_Call {
+	return &MockStore_ListBlocks_Call{Call: _e.mock.On("ListBlocks", tx, p, shard, tenant)}
 }
 
-func (_c *MockStore_ListBlocks_Call) Run(run func(p index.PartitionKey, shard uint32, tenant string)) *MockStore_ListBlocks_Call {
+func (_c *MockStore_ListBlocks_Call) Run(run func(tx *bbolt.Tx, p index.PartitionKey, shard uint32, tenant string)) *MockStore_ListBlocks_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(index.PartitionKey), args[1].(uint32), args[2].(string))
+		run(args[0].(*bbolt.Tx), args[1].(index.PartitionKey), args[2].(uint32), args[3].(string))
 	})
 	return _c
 }
@@ -67,22 +69,22 @@ func (_c *MockStore_ListBlocks_Call) Return(_a0 []*metastorev1.BlockMeta) *MockS
 	return _c
 }
 
-func (_c *MockStore_ListBlocks_Call) RunAndReturn(run func(index.PartitionKey, uint32, string) []*metastorev1.BlockMeta) *MockStore_ListBlocks_Call {
+func (_c *MockStore_ListBlocks_Call) RunAndReturn(run func(*bbolt.Tx, index.PartitionKey, uint32, string) []*metastorev1.BlockMeta) *MockStore_ListBlocks_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// ListPartitions provides a mock function with given fields:
-func (_m *MockStore) ListPartitions() []index.PartitionKey {
-	ret := _m.Called()
+// ListPartitions provides a mock function with given fields: tx
+func (_m *MockStore) ListPartitions(tx *bbolt.Tx) []index.PartitionKey {
+	ret := _m.Called(tx)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListPartitions")
 	}
 
 	var r0 []index.PartitionKey
-	if rf, ok := ret.Get(0).(func() []index.PartitionKey); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(*bbolt.Tx) []index.PartitionKey); ok {
+		r0 = rf(tx)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]index.PartitionKey)
@@ -98,13 +100,14 @@ type MockStore_ListPartitions_Call struct {
 }
 
 // ListPartitions is a helper method to define mock.On call
-func (_e *MockStore_Expecter) ListPartitions() *MockStore_ListPartitions_Call {
-	return &MockStore_ListPartitions_Call{Call: _e.mock.On("ListPartitions")}
+//   - tx *bbolt.Tx
+func (_e *MockStore_Expecter) ListPartitions(tx interface{}) *MockStore_ListPartitions_Call {
+	return &MockStore_ListPartitions_Call{Call: _e.mock.On("ListPartitions", tx)}
 }
 
-func (_c *MockStore_ListPartitions_Call) Run(run func()) *MockStore_ListPartitions_Call {
+func (_c *MockStore_ListPartitions_Call) Run(run func(tx *bbolt.Tx)) *MockStore_ListPartitions_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(*bbolt.Tx))
 	})
 	return _c
 }
@@ -114,22 +117,22 @@ func (_c *MockStore_ListPartitions_Call) Return(_a0 []index.PartitionKey) *MockS
 	return _c
 }
 
-func (_c *MockStore_ListPartitions_Call) RunAndReturn(run func() []index.PartitionKey) *MockStore_ListPartitions_Call {
+func (_c *MockStore_ListPartitions_Call) RunAndReturn(run func(*bbolt.Tx) []index.PartitionKey) *MockStore_ListPartitions_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// ListShards provides a mock function with given fields: p
-func (_m *MockStore) ListShards(p index.PartitionKey) []uint32 {
-	ret := _m.Called(p)
+// ListShards provides a mock function with given fields: tx, p
+func (_m *MockStore) ListShards(tx *bbolt.Tx, p index.PartitionKey) []uint32 {
+	ret := _m.Called(tx, p)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListShards")
 	}
 
 	var r0 []uint32
-	if rf, ok := ret.Get(0).(func(index.PartitionKey) []uint32); ok {
-		r0 = rf(p)
+	if rf, ok := ret.Get(0).(func(*bbolt.Tx, index.PartitionKey) []uint32); ok {
+		r0 = rf(tx, p)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]uint32)
@@ -145,14 +148,15 @@ type MockStore_ListShards_Call struct {
 }
 
 // ListShards is a helper method to define mock.On call
+//   - tx *bbolt.Tx
 //   - p index.PartitionKey
-func (_e *MockStore_Expecter) ListShards(p interface{}) *MockStore_ListShards_Call {
-	return &MockStore_ListShards_Call{Call: _e.mock.On("ListShards", p)}
+func (_e *MockStore_Expecter) ListShards(tx interface{}, p interface{}) *MockStore_ListShards_Call {
+	return &MockStore_ListShards_Call{Call: _e.mock.On("ListShards", tx, p)}
 }
 
-func (_c *MockStore_ListShards_Call) Run(run func(p index.PartitionKey)) *MockStore_ListShards_Call {
+func (_c *MockStore_ListShards_Call) Run(run func(tx *bbolt.Tx, p index.PartitionKey)) *MockStore_ListShards_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(index.PartitionKey))
+		run(args[0].(*bbolt.Tx), args[1].(index.PartitionKey))
 	})
 	return _c
 }
@@ -162,22 +166,22 @@ func (_c *MockStore_ListShards_Call) Return(_a0 []uint32) *MockStore_ListShards_
 	return _c
 }
 
-func (_c *MockStore_ListShards_Call) RunAndReturn(run func(index.PartitionKey) []uint32) *MockStore_ListShards_Call {
+func (_c *MockStore_ListShards_Call) RunAndReturn(run func(*bbolt.Tx, index.PartitionKey) []uint32) *MockStore_ListShards_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// ListTenants provides a mock function with given fields: p, shard
-func (_m *MockStore) ListTenants(p index.PartitionKey, shard uint32) []string {
-	ret := _m.Called(p, shard)
+// ListTenants provides a mock function with given fields: tx, p, shard
+func (_m *MockStore) ListTenants(tx *bbolt.Tx, p index.PartitionKey, shard uint32) []string {
+	ret := _m.Called(tx, p, shard)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListTenants")
 	}
 
 	var r0 []string
-	if rf, ok := ret.Get(0).(func(index.PartitionKey, uint32) []string); ok {
-		r0 = rf(p, shard)
+	if rf, ok := ret.Get(0).(func(*bbolt.Tx, index.PartitionKey, uint32) []string); ok {
+		r0 = rf(tx, p, shard)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]string)
@@ -193,15 +197,16 @@ type MockStore_ListTenants_Call struct {
 }
 
 // ListTenants is a helper method to define mock.On call
+//   - tx *bbolt.Tx
 //   - p index.PartitionKey
 //   - shard uint32
-func (_e *MockStore_Expecter) ListTenants(p interface{}, shard interface{}) *MockStore_ListTenants_Call {
-	return &MockStore_ListTenants_Call{Call: _e.mock.On("ListTenants", p, shard)}
+func (_e *MockStore_Expecter) ListTenants(tx interface{}, p interface{}, shard interface{}) *MockStore_ListTenants_Call {
+	return &MockStore_ListTenants_Call{Call: _e.mock.On("ListTenants", tx, p, shard)}
 }
 
-func (_c *MockStore_ListTenants_Call) Run(run func(p index.PartitionKey, shard uint32)) *MockStore_ListTenants_Call {
+func (_c *MockStore_ListTenants_Call) Run(run func(tx *bbolt.Tx, p index.PartitionKey, shard uint32)) *MockStore_ListTenants_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(index.PartitionKey), args[1].(uint32))
+		run(args[0].(*bbolt.Tx), args[1].(index.PartitionKey), args[2].(uint32))
 	})
 	return _c
 }
@@ -211,7 +216,7 @@ func (_c *MockStore_ListTenants_Call) Return(_a0 []string) *MockStore_ListTenant
 	return _c
 }
 
-func (_c *MockStore_ListTenants_Call) RunAndReturn(run func(index.PartitionKey, uint32) []string) *MockStore_ListTenants_Call {
+func (_c *MockStore_ListTenants_Call) RunAndReturn(run func(*bbolt.Tx, index.PartitionKey, uint32) []string) *MockStore_ListTenants_Call {
 	_c.Call.Return(run)
 	return _c
 }

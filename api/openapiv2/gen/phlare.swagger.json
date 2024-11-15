@@ -9,19 +9,28 @@
       "name": "AdHocProfileService"
     },
     {
-      "name": "MetastoreService"
-    },
-    {
-      "name": "CompactionPlanner"
-    },
-    {
       "name": "PusherService"
     },
     {
       "name": "IngesterService"
     },
     {
+      "name": "IndexService"
+    },
+    {
+      "name": "CompactionService"
+    },
+    {
+      "name": "MetadataQueryService"
+    },
+    {
       "name": "OperatorService"
+    },
+    {
+      "name": "RaftNodeService"
+    },
+    {
+      "name": "TenantService"
     },
     {
       "name": "QuerierService"
@@ -835,6 +844,9 @@
         }
       }
     },
+    "v1DeleteTenantResponse": {
+      "type": "object"
+    },
     "v1Diagnostics": {
       "type": "object",
       "properties": {
@@ -1028,19 +1040,6 @@
         }
       }
     },
-    "v1GetCompactionResponse": {
-      "type": "object",
-      "properties": {
-        "compactionJobs": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1CompactionJob"
-          },
-          "title": "A list of all compaction jobs"
-        }
-      }
-    },
     "v1GetFileResponse": {
       "type": "object",
       "properties": {
@@ -1082,6 +1081,14 @@
             "type": "object",
             "$ref": "#/definitions/v1Setting"
           }
+        }
+      }
+    },
+    "v1GetTenantResponse": {
+      "type": "object",
+      "properties": {
+        "stats": {
+          "$ref": "#/definitions/v1TenantStats"
         }
       }
     },
@@ -2217,6 +2224,25 @@
       ],
       "default": "Voter",
       "description": "Suffrage values are chosen to match the Hashicorp Raft library suffrage\nvalues. See:\nhttps://github.com/hashicorp/raft/blob/42d34464b2d203e389e11ed6d43db698792c0604/configuration.go#L12-L24."
+    },
+    "v1TenantStats": {
+      "type": "object",
+      "properties": {
+        "dataIngested": {
+          "type": "boolean",
+          "description": "Whether we received any data at any time in the past."
+        },
+        "oldestProfileTime": {
+          "type": "string",
+          "format": "int64",
+          "description": "Milliseconds since epoch."
+        },
+        "newestProfileTime": {
+          "type": "string",
+          "format": "int64",
+          "description": "Milliseconds since epoch."
+        }
+      }
     },
     "v1TimeSeriesAggregationType": {
       "type": "string",

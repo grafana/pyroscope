@@ -8,12 +8,9 @@ import (
 
 	"github.com/hashicorp/raft"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
-	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/raft_node"
 )
 
 func invoke[R any](ctx context.Context, cl *Client,
@@ -51,21 +48,11 @@ func invoke[R any](ctx context.Context, cl *Client,
 			"server_address", it.srv.Raft.Address,
 			"server_resolved_laddress", it.srv.ResolvedAddress,
 		)
-		s, ok := status.FromError(err)
-		if ok && s.Code() == codes.Unavailable {
-			ds := s.Details()
-			detailsLeader := ""
-			if len(ds) > 0 {
-				for _, d := range ds {
-					if rd, ok := d.(*typesv1.RaftDetails); ok {
-						detailsLeader = rd.Leader
-						break
-					}
-				}
-			}
+		node, ok := raft_node.RaftLeaderFromStatusDetails(err)
+		if ok {
 			cl.mu.Lock()
 			if cl.leader == it.srv.Raft.ID {
-				cl.leader = raft.ServerID(detailsLeader)
+				cl.leader = raft.ServerID(node.Id)
 			}
 			cl.mu.Unlock()
 		}
@@ -112,20 +99,20 @@ func (c *Client) ReadIndex(ctx context.Context, in *metastorev1.ReadIndexRequest
 	})
 }
 
-func (c *Client) PollCompactionJobs(ctx context.Context, in *compactorv1.PollCompactionJobsRequest, opts ...grpc.CallOption) (*compactorv1.PollCompactionJobsResponse, error) {
-	return invoke(ctx, c, func(ctx context.Context, instance instance) (*compactorv1.PollCompactionJobsResponse, error) {
+func (c *Client) PollCompactionJobs(ctx context.Context, in *metastorev1.PollCompactionJobsRequest, opts ...grpc.CallOption) (*metastorev1.PollCompactionJobsResponse, error) {
+	return invoke(ctx, c, func(ctx context.Context, instance instance) (*metastorev1.PollCompactionJobsResponse, error) {
 		return instance.PollCompactionJobs(ctx, in, opts...)
 	})
 }
 
-func (c *Client) GetCompactionJobs(ctx context.Context, in *compactorv1.GetCompactionRequest, opts ...grpc.CallOption) (*compactorv1.GetCompactionResponse, error) {
-	return invoke(ctx, c, func(ctx context.Context, instance instance) (*compactorv1.GetCompactionResponse, error) {
-		return instance.GetCompactionJobs(ctx, in, opts...)
+func (c *Client) GetTenant(ctx context.Context, in *metastorev1.GetTenantRequest, opts ...grpc.CallOption) (*metastorev1.GetTenantResponse, error) {
+	return invoke(ctx, c, func(ctx context.Context, instance instance) (*metastorev1.GetTenantResponse, error) {
+		return instance.GetTenant(ctx, in, opts...)
 	})
 }
 
-func (c *Client) GetProfileStats(ctx context.Context, in *metastorev1.GetProfileStatsRequest, opts ...grpc.CallOption) (*typesv1.GetProfileStatsResponse, error) {
-	return invoke(ctx, c, func(ctx context.Context, instance instance) (*typesv1.GetProfileStatsResponse, error) {
-		return instance.GetProfileStats(ctx, in, opts...)
+func (c *Client) DeleteTenant(ctx context.Context, in *metastorev1.DeleteTenantRequest, opts ...grpc.CallOption) (*metastorev1.DeleteTenantResponse, error) {
+	return invoke(ctx, c, func(ctx context.Context, instance instance) (*metastorev1.DeleteTenantResponse, error) {
+		return instance.DeleteTenant(ctx, in, opts...)
 	})
 }

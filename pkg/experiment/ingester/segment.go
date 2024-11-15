@@ -39,7 +39,7 @@ type segmentsWriter struct {
 	limits    Limits
 	logger    log.Logger
 	bucket    objstore.Bucket
-	metastore metastorev1.MetastoreServiceClient
+	metastore metastorev1.IndexServiceClient
 
 	shards     map[shardKey]*shard
 	shardsLock sync.RWMutex
@@ -113,7 +113,7 @@ func (sh *shard) flushSegment(ctx context.Context) {
 	}()
 }
 
-func newSegmentWriter(l log.Logger, metrics *segmentMetrics, hm *memdb.HeadMetrics, config Config, limits Limits, bucket objstore.Bucket, metastoreClient metastorev1.MetastoreServiceClient) *segmentsWriter {
+func newSegmentWriter(l log.Logger, metrics *segmentMetrics, hm *memdb.HeadMetrics, config Config, limits Limits, bucket objstore.Bucket, metastoreClient metastorev1.IndexServiceClient) *segmentsWriter {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	sw := &segmentsWriter{
 		limits:      limits,

@@ -54,7 +54,7 @@ func isProfileTypeQuery(labels, matchers []string) bool {
 
 func listProfileTypesFromMetadataAsSeriesLabels(
 	ctx context.Context,
-	client metastorev1.MetastoreServiceClient,
+	client metastorev1.MetadataQueryServiceClient,
 	tenants []string,
 	startTime int64,
 	endTime int64,
@@ -71,7 +71,7 @@ func listProfileTypesFromMetadataAsSeriesLabels(
 
 func listProfileTypesFromMetadata(
 	ctx context.Context,
-	client metastorev1.MetastoreServiceClient,
+	client metastorev1.MetadataQueryServiceClient,
 	tenants []string,
 	startTime int64,
 	endTime int64,

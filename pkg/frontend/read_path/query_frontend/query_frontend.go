@@ -20,23 +20,27 @@ import (
 var _ querierv1connect.QuerierServiceClient = (*QueryFrontend)(nil)
 
 type QueryFrontend struct {
-	logger       log.Logger
-	limits       frontend.Limits
-	metastore    metastorev1.MetastoreServiceClient
-	querybackend *querybackendclient.Client
+	logger log.Logger
+	limits frontend.Limits
+
+	metadataQueryClient metastorev1.MetadataQueryServiceClient
+	tenantServiceClient metastorev1.TenantServiceClient
+	querybackendClient  *querybackendclient.Client
 }
 
 func NewQueryFrontend(
 	logger log.Logger,
 	limits frontend.Limits,
-	metastore metastorev1.MetastoreServiceClient,
-	querybackend *querybackendclient.Client,
+	metadataQueryClient metastorev1.MetadataQueryServiceClient,
+	tenantServiceClient metastorev1.TenantServiceClient,
+	querybackendClient *querybackendclient.Client,
 ) *QueryFrontend {
 	return &QueryFrontend{
-		logger:       logger,
-		limits:       limits,
-		metastore:    metastore,
-		querybackend: querybackend,
+		logger:              logger,
+		limits:              limits,
+		metadataQueryClient: metadataQueryClient,
+		tenantServiceClient: tenantServiceClient,
+		querybackendClient:  querybackendClient,
 	}
 }
 
@@ -54,7 +58,7 @@ func (q *QueryFrontend) Query(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	md, err := q.metastore.QueryMetadata(ctx, &metastorev1.QueryMetadataRequest{
+	md, err := q.metadataQueryClient.QueryMetadata(ctx, &metastorev1.QueryMetadataRequest{
 		TenantId:  tenants,
 		StartTime: req.StartTime,
 		EndTime:   req.EndTime,
@@ -73,7 +77,7 @@ func (q *QueryFrontend) Query(
 	})
 	p := queryplan.Build(md.Blocks, 4, 20)
 
-	resp, err := q.querybackend.Invoke(ctx, &queryv1.InvokeRequest{
+	resp, err := q.querybackendClient.Invoke(ctx, &queryv1.InvokeRequest{
 		Tenant:        tenants,
 		StartTime:     req.StartTime,
 		EndTime:       req.EndTime,

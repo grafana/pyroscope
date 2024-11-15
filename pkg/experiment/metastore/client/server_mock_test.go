@@ -3,49 +3,53 @@ package metastoreclient
 import (
 	"context"
 	"fmt"
+	"net"
+	"sync"
+	"testing"
+
 	"github.com/go-kit/log"
-	compactorv1 "github.com/grafana/pyroscope/api/gen/proto/go/compactor/v1"
-	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mockcompactorv1"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mockmetastorev1"
 	"github.com/hashicorp/raft"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"net"
-	"sync"
-	"testing"
+
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/raft_node/raftnodepb"
+	"github.com/grafana/pyroscope/pkg/test/mocks/mockmetastorev1"
 )
 
-var _ metastorev1.MetastoreServiceServer = (*mockServer)(nil)
-var _ compactorv1.CompactionPlannerServer = (*mockServer)(nil)
-
 type mockServer struct {
-	metastore *mockmetastorev1.MockMetastoreServiceServer
-	compactor *mockcompactorv1.MockCompactionPlannerServer
+	metastore *mockmetastorev1.MockIndexServiceServer
+	compactor *mockmetastorev1.MockCompactionServiceServer
+	metadata  *mockmetastorev1.MockMetadataQueryServiceServer
+	tenant    *mockmetastorev1.MockTenantServiceServer
+	raftNode  *mockmetastorev1.MockRaftNodeServiceServer
 
-	metastorev1.UnsafeMetastoreServiceServer
-	compactorv1.UnsafeCompactionPlannerServer
+	metastorev1.UnsafeIndexServiceServer
+	metastorev1.UnsafeCompactionServiceServer
+	metastorev1.UnsafeMetadataQueryServiceServer
+	metastorev1.UnsafeTenantServiceServer
+	metastorev1.UnsafeRaftNodeServiceServer
+
 	srv     *grpc.Server
 	id      raft.ServerID
 	index   int
 	address string
 }
 
-func (m *mockServer) GetProfileStats(ctx context.Context, request *metastorev1.GetProfileStatsRequest) (*typesv1.GetProfileStatsResponse, error) {
-	return m.metastore.GetProfileStats(ctx, request)
+func (m *mockServer) GetTenant(ctx context.Context, request *metastorev1.GetTenantRequest) (*metastorev1.GetTenantResponse, error) {
+	return m.tenant.GetTenant(ctx, request)
 }
 
-func (m *mockServer) PollCompactionJobs(ctx context.Context, request *compactorv1.PollCompactionJobsRequest) (*compactorv1.PollCompactionJobsResponse, error) {
+func (m *mockServer) DeleteTenant(ctx context.Context, request *metastorev1.DeleteTenantRequest) (*metastorev1.DeleteTenantResponse, error) {
+	return m.tenant.DeleteTenant(ctx, request)
+}
+
+func (m *mockServer) PollCompactionJobs(ctx context.Context, request *metastorev1.PollCompactionJobsRequest) (*metastorev1.PollCompactionJobsResponse, error) {
 	return m.compactor.PollCompactionJobs(ctx, request)
-}
-
-func (m *mockServer) GetCompactionJobs(ctx context.Context, request *compactorv1.GetCompactionRequest) (*compactorv1.GetCompactionResponse, error) {
-	return m.compactor.GetCompactionJobs(ctx, request)
 }
 
 func (m *mockServer) AddBlock(ctx context.Context, request *metastorev1.AddBlockRequest) (*metastorev1.AddBlockResponse, error) {
@@ -53,11 +57,11 @@ func (m *mockServer) AddBlock(ctx context.Context, request *metastorev1.AddBlock
 }
 
 func (m *mockServer) QueryMetadata(ctx context.Context, request *metastorev1.QueryMetadataRequest) (*metastorev1.QueryMetadataResponse, error) {
-	return m.metastore.QueryMetadata(ctx, request)
+	return m.metadata.QueryMetadata(ctx, request)
 }
 
 func (m *mockServer) ReadIndex(ctx context.Context, request *metastorev1.ReadIndexRequest) (*metastorev1.ReadIndexResponse, error) {
-	return m.metastore.ReadIndex(ctx, request)
+	return m.raftNode.ReadIndex(ctx, request)
 }
 
 func createServers(ports []int) []discovery.Server {
@@ -78,8 +82,8 @@ func testServerId(i int) raft.ServerID {
 	return raft.ServerID(fmt.Sprintf("id-%d", i))
 }
 
-var _ metastorev1.MetastoreServiceServer = (*mockServer)(nil)
-var _ compactorv1.CompactionPlannerServer = (*mockServer)(nil)
+var _ metastorev1.IndexServiceServer = (*mockServer)(nil)
+var _ metastorev1.CompactionServiceServer = (*mockServer)(nil)
 
 type mockServers struct {
 	t       *testing.T
@@ -116,8 +120,8 @@ func (m *mockServers) InitWrongLeader() func() {
 			if s.callNo == 1 {
 				s.leaderIndex = (srv.index + 1) % nServers
 				s, err := status.New(codes.Unavailable, fmt.Sprintf("test error not leader, leader is %s", testServerId(s.leaderIndex))).
-					WithDetails(&typesv1.RaftDetails{
-						Leader: string(testServerId(s.leaderIndex)),
+					WithDetails(&raftnodepb.RaftNode{
+						Id: string(testServerId(s.leaderIndex)),
 					})
 				assert.NoError(m.t, err)
 				return s.Err()
@@ -135,20 +139,17 @@ func (m *mockServers) InitWrongLeader() func() {
 		srv.metastore.On("AddBlock", mock.Anything, mock.Anything).Maybe().Return(func(context.Context, *metastorev1.AddBlockRequest) (*metastorev1.AddBlockResponse, error) {
 			return errOrT(&metastorev1.AddBlockResponse{}, errf)
 		})
-		srv.metastore.On("QueryMetadata", mock.Anything, mock.Anything).Maybe().Return(func(context.Context, *metastorev1.QueryMetadataRequest) (*metastorev1.QueryMetadataResponse, error) {
+		srv.metadata.On("QueryMetadata", mock.Anything, mock.Anything).Maybe().Return(func(context.Context, *metastorev1.QueryMetadataRequest) (*metastorev1.QueryMetadataResponse, error) {
 			return errOrT(&metastorev1.QueryMetadataResponse{}, errf)
 		})
-		srv.metastore.On("ReadIndex", mock.Anything, mock.Anything).Maybe().Return(func(context.Context, *metastorev1.ReadIndexRequest) (*metastorev1.ReadIndexResponse, error) {
+		srv.raftNode.On("ReadIndex", mock.Anything, mock.Anything).Maybe().Return(func(context.Context, *metastorev1.ReadIndexRequest) (*metastorev1.ReadIndexResponse, error) {
 			return errOrT(&metastorev1.ReadIndexResponse{}, errf)
 		})
-		srv.compactor.On("PollCompactionJobs", mock.Anything, mock.Anything).Maybe().Return(func(context.Context, *compactorv1.PollCompactionJobsRequest) (*compactorv1.PollCompactionJobsResponse, error) {
-			return errOrT(&compactorv1.PollCompactionJobsResponse{}, errf)
+		srv.compactor.On("PollCompactionJobs", mock.Anything, mock.Anything).Maybe().Return(func(context.Context, *metastorev1.PollCompactionJobsRequest) (*metastorev1.PollCompactionJobsResponse, error) {
+			return errOrT(&metastorev1.PollCompactionJobsResponse{}, errf)
 		})
-		srv.compactor.On("GetCompactionJobs", mock.Anything, mock.Anything).Maybe().Return(func(context.Context, *compactorv1.GetCompactionRequest) (*compactorv1.GetCompactionResponse, error) {
-			return errOrT(&compactorv1.GetCompactionResponse{}, errf)
-		})
-		srv.metastore.On("GetProfileStats", mock.Anything, mock.Anything).Maybe().Return(func(context.Context, *metastorev1.GetProfileStatsRequest) (*typesv1.GetProfileStatsResponse, error) {
-			return errOrT(&typesv1.GetProfileStatsResponse{}, errf)
+		srv.tenant.On("GetTenant", mock.Anything, mock.Anything).Maybe().Return(func(context.Context, *metastorev1.GetTenantRequest) (*metastorev1.GetTenantResponse, error) {
+			return errOrT(&metastorev1.GetTenantResponse{}, errf)
 		})
 	}
 	return func() {
@@ -195,10 +196,16 @@ func createMockServers(t *testing.T, l log.Logger, ports []int) *mockServers {
 func newMockServer(t *testing.T) *mockServer {
 	res := &mockServer{
 		srv:       grpc.NewServer(),
-		metastore: mockmetastorev1.NewMockMetastoreServiceServer(t),
-		compactor: mockcompactorv1.NewMockCompactionPlannerServer(t),
+		metastore: mockmetastorev1.NewMockIndexServiceServer(t),
+		compactor: mockmetastorev1.NewMockCompactionServiceServer(t),
+		metadata:  mockmetastorev1.NewMockMetadataQueryServiceServer(t),
+		tenant:    mockmetastorev1.NewMockTenantServiceServer(t),
+		raftNode:  mockmetastorev1.NewMockRaftNodeServiceServer(t),
 	}
-	metastorev1.RegisterMetastoreServiceServer(res.srv, res)
-	compactorv1.RegisterCompactionPlannerServer(res.srv, res)
+	metastorev1.RegisterIndexServiceServer(res.srv, res)
+	metastorev1.RegisterCompactionServiceServer(res.srv, res)
+	metastorev1.RegisterMetadataQueryServiceServer(res.srv, res)
+	metastorev1.RegisterTenantServiceServer(res.srv, res)
+	metastorev1.RegisterRaftNodeServiceServer(res.srv, res)
 	return res
 }

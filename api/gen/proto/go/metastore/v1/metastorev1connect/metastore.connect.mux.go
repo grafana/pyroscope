@@ -16,27 +16,12 @@ import (
 // version compiled into your binary.
 const _ = connect.IsAtLeastVersion0_1_0
 
-// RegisterMetastoreServiceHandler register an HTTP handler to a mux.Router from the service
+// RegisterIndexServiceHandler register an HTTP handler to a mux.Router from the service
 // implementation.
-func RegisterMetastoreServiceHandler(mux *mux.Router, svc MetastoreServiceHandler, opts ...connect.HandlerOption) {
-	mux.Handle("/metastore.v1.MetastoreService/AddBlock", connect.NewUnaryHandler(
-		"/metastore.v1.MetastoreService/AddBlock",
+func RegisterIndexServiceHandler(mux *mux.Router, svc IndexServiceHandler, opts ...connect.HandlerOption) {
+	mux.Handle("/metastore.v1.IndexService/AddBlock", connect.NewUnaryHandler(
+		"/metastore.v1.IndexService/AddBlock",
 		svc.AddBlock,
-		opts...,
-	))
-	mux.Handle("/metastore.v1.MetastoreService/QueryMetadata", connect.NewUnaryHandler(
-		"/metastore.v1.MetastoreService/QueryMetadata",
-		svc.QueryMetadata,
-		opts...,
-	))
-	mux.Handle("/metastore.v1.MetastoreService/ReadIndex", connect.NewUnaryHandler(
-		"/metastore.v1.MetastoreService/ReadIndex",
-		svc.ReadIndex,
-		opts...,
-	))
-	mux.Handle("/metastore.v1.MetastoreService/GetProfileStats", connect.NewUnaryHandler(
-		"/metastore.v1.MetastoreService/GetProfileStats",
-		svc.GetProfileStats,
 		opts...,
 	))
 }
