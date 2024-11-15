@@ -394,7 +394,7 @@ func (m *Metastore) TransferLeadership() (err error) {
 // CheckReady verifies if the metastore is ready to serve requests by
 // ensuring the node is up-to-date with the leader's commit index.
 func (m *Metastore) CheckReady(ctx context.Context) error {
-	if err := m.follower.WaitLeaderCommitIndexAppliedLocally(ctx); err != nil {
+	if _, err := m.follower.WaitLeaderCommitIndexAppliedLocally(ctx); err != nil {
 		return err
 	}
 	m.readyOnce.Do(func() {

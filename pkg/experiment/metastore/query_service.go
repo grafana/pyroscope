@@ -52,7 +52,7 @@ func (svc *MetadataQueryService) QueryMetadata(
 		resp, err = svc.listBlocksForQuery(ctx, tx, req)
 	}
 	if readErr := svc.follower.ConsistentRead(ctx, read); readErr != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, status.Error(codes.Unavailable, readErr.Error())
 	}
 	return resp, err
 }

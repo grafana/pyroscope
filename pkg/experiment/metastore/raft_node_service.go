@@ -13,8 +13,8 @@ type RaftLeader interface {
 }
 
 type RaftFollower interface {
+	WaitLeaderCommitIndexAppliedLocally(ctx context.Context) (applied uint64, err error)
 	ConsistentRead(ctx context.Context, read func(*bbolt.Tx)) error
-	WaitLeaderCommitIndexAppliedLocally(ctx context.Context) error
 }
 
 type RaftNodeService struct {

@@ -47,7 +47,7 @@ func (svc *TenantService) GetTenant(
 		resp, err = svc.getTenantStats(req.TenantId, ctx)
 	}
 	if readErr := svc.follower.ConsistentRead(ctx, read); readErr != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, status.Error(codes.Unavailable, readErr.Error())
 	}
 	return resp, err
 }
