@@ -8,11 +8,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/store"
+	"github.com/grafana/pyroscope/pkg/test"
 )
 
 func TestBlockQueueStore_StoreEntry(t *testing.T) {
-	db := store.TestDB(t)
+	db := test.BoltDB(t)
 
 	s := NewBlockQueueStore()
 	tx, err := db.Begin(true)
@@ -51,7 +51,7 @@ func TestBlockQueueStore_StoreEntry(t *testing.T) {
 }
 
 func TestBlockQueueStore_DeleteEntry(t *testing.T) {
-	db := store.TestDB(t)
+	db := test.BoltDB(t)
 
 	s := NewBlockQueueStore()
 	tx, err := db.Begin(true)

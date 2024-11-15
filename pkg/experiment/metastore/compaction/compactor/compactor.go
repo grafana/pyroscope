@@ -27,6 +27,7 @@ type BlockQueueStore interface {
 	StoreEntry(*bbolt.Tx, store.BlockEntry) error
 	DeleteEntry(tx *bbolt.Tx, index uint64, id string) error
 	ListEntries(*bbolt.Tx) iter.Iterator[store.BlockEntry]
+	CreateBuckets(*bbolt.Tx) error
 }
 
 type Config struct {
@@ -108,6 +109,10 @@ func (c *Compactor) UpdatePlan(tx *bbolt.Tx, _ *raft.Log, plan *raft_log.Compact
 	}
 
 	return nil
+}
+
+func (c *Compactor) Init(tx *bbolt.Tx) error {
+	return c.store.CreateBuckets(tx)
 }
 
 func (c *Compactor) Restore(tx *bbolt.Tx) error {

@@ -116,4 +116,7 @@ func TestCompactor_Restore(t *testing.T) {
 	planned, err := planner.CreateJob()
 	require.NoError(t, err)
 	require.NotEmpty(t, planned)
+
+	queueStore.AssertExpectations(t)
+	tombstones.AssertExpectations(t)
 }

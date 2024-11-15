@@ -42,7 +42,7 @@ func NewBlockQueueStore() *BlockQueueStore {
 }
 
 func (s BlockQueueStore) CreateBuckets(tx *bbolt.Tx) error {
-	_, err := tx.CreateBucketIfNotExists(blockQueueBucketName)
+	_, err := tx.CreateBucketIfNotExists(s.bucketName)
 	return err
 }
 

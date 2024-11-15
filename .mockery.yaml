@@ -48,3 +48,7 @@ packages:
       BlockQueueStore:
       Tombstones:
       JobStore:
+
+  github.com/grafana/pyroscope/pkg/experiment/metastore/compaction/scheduler:
+    interfaces:
+      JobStore:

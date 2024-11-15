@@ -35,6 +35,8 @@ type JobStore interface {
 	StoreJobState(*bbolt.Tx, *raft_log.CompactionJobState) error
 	DeleteJobState(tx *bbolt.Tx, name string) error
 	ListEntries(*bbolt.Tx) iter.Iterator[*raft_log.CompactionJobState]
+
+	CreateBuckets(*bbolt.Tx) error
 }
 
 type Config struct {
@@ -107,6 +109,10 @@ func (sc *Scheduler) UpdateSchedule(tx *bbolt.Tx, _ *raft.Log, update *raft_log.
 	}
 
 	return nil
+}
+
+func (sc *Scheduler) Init(tx *bbolt.Tx) error {
+	return sc.store.CreateBuckets(tx)
 }
 
 func (sc *Scheduler) Restore(tx *bbolt.Tx) error {

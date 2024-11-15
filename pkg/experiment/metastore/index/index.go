@@ -13,24 +13,26 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/hashicorp/raft"
 	"github.com/oklog/ulid"
-	"github.com/prometheus/common/model"
 	"go.etcd.io/bbolt"
 	"golang.org/x/sync/errgroup"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/store"
 )
 
 var ErrBlockExists = fmt.Errorf("block already exists")
 
 type Store interface {
-	ListPartitions(tx *bbolt.Tx) []PartitionKey
-	ListShards(tx *bbolt.Tx, p PartitionKey) []uint32
-	ListTenants(tx *bbolt.Tx, p PartitionKey, shard uint32) []string
-	ListBlocks(tx *bbolt.Tx, p PartitionKey, shard uint32, tenant string) []*metastorev1.BlockMeta
+	CreateBuckets(*bbolt.Tx) error
+	StoreBlock(*bbolt.Tx, store.PartitionKey, *metastorev1.BlockMeta) error
+	ListPartitions(*bbolt.Tx) []store.PartitionKey
+	ListShards(*bbolt.Tx, store.PartitionKey) []uint32
+	ListTenants(tx *bbolt.Tx, p store.PartitionKey, shard uint32) []string
+	ListBlocks(tx *bbolt.Tx, p store.PartitionKey, shard uint32, tenant string) []*metastorev1.BlockMeta
 }
 
 type Index struct {
-	Config *Config
+	config *Config
 
 	partitionMu      sync.Mutex
 	loadedPartitions map[cacheKey]*indexPartition
@@ -69,7 +71,7 @@ type indexShard struct {
 }
 
 type cacheKey struct {
-	partitionKey PartitionKey
+	partitionKey store.PartitionKey
 	tenant       string
 }
 
@@ -95,13 +97,12 @@ func NewIndex(logger log.Logger, store Store, cfg *Config) *Index {
 		allPartitions:    make([]*PartitionMeta, 0),
 		store:            store,
 		logger:           logger,
-		Config:           cfg,
+		config:           cfg,
 	}
 }
 
-func (i *Index) Restore(tx *bbolt.Tx) error {
-	i.LoadPartitions(tx)
-	return nil
+func NewStore() *store.IndexStore {
+	return store.NewIndexStore()
 }
 
 // LoadPartitions reads all partitions from the backing store and loads the recent ones in memory.
@@ -131,7 +132,7 @@ func (i *Index) LoadPartitions(tx *bbolt.Tx) {
 	i.sortPartitions()
 }
 
-func (i *Index) loadPartitionMeta(tx *bbolt.Tx, key PartitionKey) *PartitionMeta {
+func (i *Index) loadPartitionMeta(tx *bbolt.Tx, key store.PartitionKey) *PartitionMeta {
 	t, dur, _ := key.Parse()
 	pMeta := &PartitionMeta{
 		Key:       key,
@@ -225,35 +226,8 @@ func (i *Index) getOrLoadPartition(tx *bbolt.Tx, meta *PartitionMeta, tenant str
 	return p
 }
 
-// CreatePartitionKey creates a partition key for a block. It is meant to be used for newly inserted blocks, as it relies
-// on the index's currently configured partition duration to create the key.
-//
-// Note: Using this for existing blocks following a partition duration change can produce the wrong key. Callers should
-// verify that the returned partition actually contains the block.
-func (i *Index) CreatePartitionKey(blockId string) PartitionKey {
-	t := ulid.Time(ulid.MustParse(blockId).Time()).UTC()
-
-	var b strings.Builder
-	b.Grow(16)
-
-	year, month, day := t.Date()
-	b.WriteString(fmt.Sprintf("%04d%02d%02d", year, month, day))
-
-	partitionDuration := i.Config.PartitionDuration
-	if partitionDuration < 24*time.Hour {
-		hour := (t.Hour() / int(partitionDuration.Hours())) * int(partitionDuration.Hours())
-		b.WriteString(fmt.Sprintf("T%02d", hour))
-	}
-
-	mDuration := model.Duration(partitionDuration)
-	b.WriteString(".")
-	b.WriteString(mDuration.String())
-
-	return PartitionKey(b.String())
-}
-
 // findPartitionMeta retrieves the partition meta for the given key.
-func (i *Index) findPartitionMeta(key PartitionKey) *PartitionMeta {
+func (i *Index) findPartitionMeta(key store.PartitionKey) *PartitionMeta {
 	for _, p := range i.allPartitions {
 		if p.Key == key {
 			return p
@@ -269,7 +243,8 @@ func (i *Index) InsertBlock(tx *bbolt.Tx, b *metastorev1.BlockMeta) error {
 		return ErrBlockExists
 	}
 	i.insertBlock(tx, b)
-	return i.persistBlock(tx, b)
+	pk := store.CreatePartitionKey(b.Id, i.config.PartitionDuration)
+	return i.store.StoreBlock(tx, pk, b)
 }
 
 func (i *Index) InsertBlockNoCheckNoPersist(tx *bbolt.Tx, b *metastorev1.BlockMeta) error {
@@ -277,18 +252,6 @@ func (i *Index) InsertBlockNoCheckNoPersist(tx *bbolt.Tx, b *metastorev1.BlockMe
 	defer i.partitionMu.Unlock()
 	i.insertBlock(tx, b)
 	return nil
-}
-
-func (i *Index) persistBlock(tx *bbolt.Tx, b *metastorev1.BlockMeta) error {
-	pk := i.CreatePartitionKey(b.Id)
-	key := []byte(b.Id)
-	value, err := b.MarshalVT()
-	if err != nil {
-		return err
-	}
-	return updateBlockMetadataBucket(tx, pk, b.Shard, b.TenantId, func(bucket *bbolt.Bucket) error {
-		return bucket.Put(key, value)
-	})
 }
 
 // insertBlock is the underlying implementation for inserting blocks. It is the caller's responsibility to enforce safe
@@ -310,7 +273,7 @@ func (i *Index) insertBlock(tx *bbolt.Tx, b *metastorev1.BlockMeta) {
 }
 
 func (i *Index) getOrCreatePartitionMeta(b *metastorev1.BlockMeta) *PartitionMeta {
-	key := i.CreatePartitionKey(b.Id)
+	key := store.CreatePartitionKey(b.Id, i.config.PartitionDuration)
 	meta := i.findPartitionMeta(key)
 
 	if meta == nil {
@@ -346,7 +309,7 @@ func (i *Index) FindBlock(tx *bbolt.Tx, shardNum uint32, tenant string, blockId 
 }
 
 func (i *Index) findBlock(tx *bbolt.Tx, shardNum uint32, tenant string, blockId string) *metastorev1.BlockMeta {
-	key := i.CreatePartitionKey(blockId)
+	key := store.CreatePartitionKey(blockId, i.config.PartitionDuration)
 
 	// first try the currently mapped partition
 	b := i.findBlockInPartition(tx, key, shardNum, tenant, blockId)
@@ -367,7 +330,7 @@ func (i *Index) findBlock(tx *bbolt.Tx, shardNum uint32, tenant string, blockId 
 	return nil
 }
 
-func (i *Index) findBlockInPartition(tx *bbolt.Tx, key PartitionKey, shard uint32, tenant string, blockId string) *metastorev1.BlockMeta {
+func (i *Index) findBlockInPartition(tx *bbolt.Tx, key store.PartitionKey, shard uint32, tenant string, blockId string) *metastorev1.BlockMeta {
 	meta := i.findPartitionMeta(key)
 	if meta == nil {
 		return nil
@@ -393,8 +356,8 @@ func (i *Index) findBlockInPartition(tx *bbolt.Tx, key PartitionKey, shard uint3
 func (i *Index) FindBlocksInRange(tx *bbolt.Tx, start, end int64, tenants map[string]struct{}) []*metastorev1.BlockMeta {
 	i.partitionMu.Lock()
 	defer i.partitionMu.Unlock()
-	startWithLookaround := start - i.Config.QueryLookaroundPeriod.Milliseconds()
-	endWithLookaround := end + i.Config.QueryLookaroundPeriod.Milliseconds()
+	startWithLookaround := start - i.config.QueryLookaroundPeriod.Milliseconds()
+	endWithLookaround := end + i.config.QueryLookaroundPeriod.Milliseconds()
 
 	blocks := make([]*metastorev1.BlockMeta, 0)
 
@@ -459,7 +422,7 @@ func (i *Index) ReplaceBlocks(tx *bbolt.Tx, _ *raft.Log, compacted *metastorev1.
 // deleteBlock deletes a block from the index. It is the caller's responsibility to enforce safe concurrent access.
 func (i *Index) deleteBlock(shard uint32, tenant string, blockId string) {
 	// first try the currently mapped partition
-	key := i.CreatePartitionKey(blockId)
+	key := store.CreatePartitionKey(blockId, i.config.PartitionDuration)
 	if ok := i.tryDelete(key, shard, tenant, blockId); ok {
 		return
 	}
@@ -476,7 +439,7 @@ func (i *Index) deleteBlock(shard uint32, tenant string, blockId string) {
 	}
 }
 
-func (i *Index) tryDelete(key PartitionKey, shard uint32, tenant string, blockId string) bool {
+func (i *Index) tryDelete(key store.PartitionKey, shard uint32, tenant string, blockId string) bool {
 	meta := i.findPartitionMeta(key)
 	if meta == nil {
 		return false
@@ -523,7 +486,7 @@ func (i *Index) unloadPartitions() {
 	excessPerTenant := make(map[string]int)
 	for k, p := range i.loadedPartitions {
 		tenantPartitions[k.tenant] = append(tenantPartitions[k.tenant], p)
-		if len(tenantPartitions[k.tenant]) > i.Config.PartitionCacheSize {
+		if len(tenantPartitions[k.tenant]) > i.config.PartitionCacheSize {
 			excessPerTenant[k.tenant]++
 		}
 	}
@@ -553,4 +516,13 @@ func (i *Index) unloadPartitions() {
 			}
 		}
 	}
+}
+
+func (i *Index) Init(tx *bbolt.Tx) error {
+	return i.store.CreateBuckets(tx)
+}
+
+func (i *Index) Restore(tx *bbolt.Tx) error {
+	i.LoadPartitions(tx)
+	return nil
 }

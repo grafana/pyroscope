@@ -15,20 +15,24 @@ type TombstoneEntry struct {
 	*metastorev1.Tombstones
 }
 
-type TombstoneStore struct {
-}
+type TombstoneStore struct{}
 
-func (s TombstoneStore) StoreTombstones(tx *bbolt.Tx, entry TombstoneEntry) error {
+func (s *TombstoneStore) CreateBuckets(tx *bbolt.Tx) error {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (s TombstoneStore) DeleteTombstones(tx *bbolt.Tx, entry TombstoneEntry) error {
+func (s *TombstoneStore) StoreTombstones(tx *bbolt.Tx, entry TombstoneEntry) error {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (s TombstoneStore) ListEntries(tx *bbolt.Tx) iter.Iterator[TombstoneEntry] {
+func (s *TombstoneStore) DeleteTombstones(tx *bbolt.Tx, entry TombstoneEntry) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *TombstoneStore) ListEntries(tx *bbolt.Tx) iter.Iterator[TombstoneEntry] {
 	//TODO implement me
 	panic("implement me")
 }

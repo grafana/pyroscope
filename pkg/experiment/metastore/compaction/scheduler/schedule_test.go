@@ -12,11 +12,11 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 	"github.com/grafana/pyroscope/pkg/test"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mockcompactor"
+	"github.com/grafana/pyroscope/pkg/test/mocks/mockscheduler"
 )
 
 func TestSchedule_Update_LeaseRenewal(t *testing.T) {
-	store := new(mockcompactor.MockJobStore)
+	store := new(mockscheduler.MockJobStore)
 	config := Config{
 		MaxFailures:   3,
 		LeaseDuration: 10 * time.Second,
@@ -83,7 +83,7 @@ func TestSchedule_Update_LeaseRenewal(t *testing.T) {
 }
 
 func TestSchedule_Update_JobCompleted(t *testing.T) {
-	store := new(mockcompactor.MockJobStore)
+	store := new(mockscheduler.MockJobStore)
 	config := Config{
 		MaxFailures:   3,
 		LeaseDuration: 10 * time.Second,
@@ -148,7 +148,7 @@ func TestSchedule_Update_JobCompleted(t *testing.T) {
 }
 
 func TestSchedule_Assign(t *testing.T) {
-	store := new(mockcompactor.MockJobStore)
+	store := new(mockscheduler.MockJobStore)
 	config := Config{
 		MaxFailures:   3,
 		LeaseDuration: 10 * time.Second,
@@ -193,7 +193,7 @@ func TestSchedule_Assign(t *testing.T) {
 }
 
 func TestSchedule_ReAssign(t *testing.T) {
-	store := new(mockcompactor.MockJobStore)
+	store := new(mockscheduler.MockJobStore)
 	config := Config{
 		MaxFailures:   3,
 		LeaseDuration: 10 * time.Second,
@@ -236,7 +236,7 @@ func TestSchedule_ReAssign(t *testing.T) {
 }
 
 func TestSchedule_UpdateAssign(t *testing.T) {
-	store := new(mockcompactor.MockJobStore)
+	store := new(mockscheduler.MockJobStore)
 	config := Config{
 		MaxFailures:   3,
 		LeaseDuration: 10 * time.Second,
@@ -330,7 +330,7 @@ func TestSchedule_UpdateAssign(t *testing.T) {
 }
 
 func TestSchedule_Add(t *testing.T) {
-	store := new(mockcompactor.MockJobStore)
+	store := new(mockscheduler.MockJobStore)
 	config := Config{
 		MaxFailures:   3,
 		LeaseDuration: 10 * time.Second,

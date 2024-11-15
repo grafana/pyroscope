@@ -15,6 +15,7 @@ type TombstoneStore interface {
 	StoreTombstones(*bbolt.Tx, store.TombstoneEntry) error
 	DeleteTombstones(*bbolt.Tx, store.TombstoneEntry) error
 	ListEntries(*bbolt.Tx) iter.Iterator[store.TombstoneEntry]
+	CreateBuckets(*bbolt.Tx) error
 }
 
 type Tombstones struct {
@@ -151,6 +152,10 @@ func (x *Tombstones) deleteBlockTombstones(t *metastorev1.BlockTombstones) {
 	for _, b := range t.Blocks {
 		delete(m.blocks, b)
 	}
+}
+
+func (x *Tombstones) Init(tx *bbolt.Tx) error {
+	return x.store.CreateBuckets(tx)
 }
 
 func (x *Tombstones) Restore(tx *bbolt.Tx) error {

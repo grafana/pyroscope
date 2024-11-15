@@ -25,6 +25,52 @@ func (_m *MockBlockQueueStore) EXPECT() *MockBlockQueueStore_Expecter {
 	return &MockBlockQueueStore_Expecter{mock: &_m.Mock}
 }
 
+// CreateBuckets provides a mock function with given fields: _a0
+func (_m *MockBlockQueueStore) CreateBuckets(_a0 *bbolt.Tx) error {
+	ret := _m.Called(_a0)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateBuckets")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*bbolt.Tx) error); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockBlockQueueStore_CreateBuckets_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateBuckets'
+type MockBlockQueueStore_CreateBuckets_Call struct {
+	*mock.Call
+}
+
+// CreateBuckets is a helper method to define mock.On call
+//   - _a0 *bbolt.Tx
+func (_e *MockBlockQueueStore_Expecter) CreateBuckets(_a0 interface{}) *MockBlockQueueStore_CreateBuckets_Call {
+	return &MockBlockQueueStore_CreateBuckets_Call{Call: _e.mock.On("CreateBuckets", _a0)}
+}
+
+func (_c *MockBlockQueueStore_CreateBuckets_Call) Run(run func(_a0 *bbolt.Tx)) *MockBlockQueueStore_CreateBuckets_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*bbolt.Tx))
+	})
+	return _c
+}
+
+func (_c *MockBlockQueueStore_CreateBuckets_Call) Return(_a0 error) *MockBlockQueueStore_CreateBuckets_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockBlockQueueStore_CreateBuckets_Call) RunAndReturn(run func(*bbolt.Tx) error) *MockBlockQueueStore_CreateBuckets_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DeleteEntry provides a mock function with given fields: tx, index, id
 func (_m *MockBlockQueueStore) DeleteEntry(tx *bbolt.Tx, index uint64, id string) error {
 	ret := _m.Called(tx, index, id)

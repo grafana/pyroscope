@@ -16,12 +16,25 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// RaftHandler is a function that processes a Raft command.
+// The implementation MUST be idempotent.
 type RaftHandler[Req, Resp proto.Message] func(*bbolt.Tx, *raft.Log, Req) (Resp, error)
 
+// StateRestorer is called during the FSM initialization
+// to restore the state from a snapshot.
+// The implementation MUST be idempotent.
 type StateRestorer interface {
+	// Init is provided with a write transaction to initialize the state.
+	// FSM guarantees that Init is called synchronously and has exclusive
+	// access to the database.
+	Init(*bbolt.Tx) error
+	// Restore is provided with a read transaction to restore the state.
+	// Restore might be called concurrently with other StateRestorer
+	// instances.
 	Restore(*bbolt.Tx) error
 }
 
+// FSM implements the raft.FSM interface.
 type FSM struct {
 	logger  log.Logger
 	metrics *metrics
@@ -52,6 +65,26 @@ func New(logger log.Logger, reg prometheus.Registerer, dir string) (*FSM, error)
 
 func (fsm *FSM) RegisterRestorer(r ...StateRestorer) {
 	fsm.restorers = append(fsm.restorers, r...)
+}
+
+func (fsm *FSM) Init() (err error) {
+	tx, err := fsm.db.boltdb.Begin(true)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == nil {
+			err = tx.Commit()
+		} else {
+			_ = tx.Rollback()
+		}
+	}()
+	for _, r := range fsm.restorers {
+		if err = r.Init(tx); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func RegisterRaftCommandHandler[Req, Resp proto.Message](fsm *FSM, t RaftLogEntryType, handler RaftHandler[Req, Resp]) {
@@ -190,10 +223,14 @@ func (fsm *FSM) Restore(snapshot io.ReadCloser) error {
 	if err := fsm.db.restore(snapshot); err != nil {
 		return fmt.Errorf("failed to restore from snapshot: %w", err)
 	}
+	if err := fsm.Init(); err != nil {
+		return fmt.Errorf("failed to init state at restore: %w", err)
+	}
 	tx, err := fsm.db.boltdb.Begin(false)
 	if err != nil {
 		return fmt.Errorf("failed to open transaction at restore: %w", err)
 	}
+	// TODO(kolesnikovae): We can do this concurrently.
 	for _, r := range fsm.restorers {
 		if err = r.Restore(tx); err != nil {
 			return err

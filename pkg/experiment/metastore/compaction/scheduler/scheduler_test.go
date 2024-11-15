@@ -10,11 +10,11 @@ import (
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 	"github.com/grafana/pyroscope/pkg/iter"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mockcompactor"
+	"github.com/grafana/pyroscope/pkg/test/mocks/mockscheduler"
 )
 
 func TestScheduler_UpdateSchedule(t *testing.T) {
-	store := new(mockcompactor.MockJobStore)
+	store := new(mockscheduler.MockJobStore)
 	store.On("StoreJobPlan", mock.Anything, &raft_log.CompactionJobPlan{Name: "1"}).Return(nil).Once()
 	store.On("StoreJobState", mock.Anything, &raft_log.CompactionJobState{Name: "1"}).Return(nil).Once()
 	store.On("StoreJobState", mock.Anything, &raft_log.CompactionJobState{Name: "2"}).Return(nil).Once()
@@ -62,7 +62,7 @@ func TestScheduler_UpdateSchedule(t *testing.T) {
 }
 
 func TestScheduler_Restore(t *testing.T) {
-	store := new(mockcompactor.MockJobStore)
+	store := new(mockscheduler.MockJobStore)
 	scheduler := NewScheduler(Config{}, store)
 
 	store.On("ListEntries", mock.Anything).Return(iter.NewSliceIterator([]*raft_log.CompactionJobState{

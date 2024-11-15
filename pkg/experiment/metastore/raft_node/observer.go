@@ -78,7 +78,7 @@ func (o *Observer) RegisterHandler(h StateHandler) {
 	o.updateRaftState()
 }
 
-func (o *Observer) OnLeader(a LeaderActivity) {
+func (o *Observer) RunOnLeader(a LeaderActivity) {
 	o.RegisterHandler(&leaderStateHandler{activity: a})
 }
 

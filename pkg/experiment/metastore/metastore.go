@@ -186,32 +186,24 @@ func New(
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize store: %w", err)
 	}
-	if err = m.initRaft(); err != nil {
-		return nil, fmt.Errorf("failed to initialize raft: %w", err)
-	}
 
-	m.raftNodeService = NewRaftNodeService(m.leader)
-	m.operatorService = NewOperatorService(m.config, m.raft)
-
+	// Initialization of the base components.
 	m.tombstones = tombstones.NewTombstones(tombstones.NewStore())
-	m.fsm.RegisterRestorer(m.tombstones)
-
-	m.index = index.NewIndex(m.logger, index.NewIndexStore(m.logger), &config.Index)
-	m.metadataService = NewMetadataQueryService(m.logger, m.follower, m.index)
-	m.tenantService = NewTenantService(m.logger, m.follower, m.index)
+	m.index = index.NewIndex(m.logger, index.NewStore(), &config.Index)
 	m.compactor = compactor.NewCompactor(m.config.Compactor, compactor.NewStore(), m.tombstones)
 	m.scheduler = scheduler.NewScheduler(m.config.Scheduler, scheduler.NewStore())
 
-	m.indexService = NewIndexService(m.logger, m.proposer, m.placement)
-	m.indexHandler = NewIndexCommandHandler(m.logger, m.index, m.tombstones, m.compactor)
+	// FSM handlers that utilize the components.
 	m.fsm.RegisterRestorer(m.index)
+	m.fsm.RegisterRestorer(m.compactor)
+	m.fsm.RegisterRestorer(m.tombstones)
+
+	m.indexHandler = NewIndexCommandHandler(m.logger, m.index, m.tombstones, m.compactor)
 	fsm.RegisterRaftCommandHandler(m.fsm,
 		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_ADD_BLOCK_METADATA),
 		m.indexHandler.AddBlock)
 
-	m.compactionService = NewCompactionService(m.logger, m.proposer)
 	m.compactionHandler = NewCompactionCommandHandler(m.logger, m.index, m.compactor, m.scheduler, m.tombstones)
-	m.fsm.RegisterRestorer(m.compactor)
 	fsm.RegisterRaftCommandHandler(m.fsm,
 		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_GET_COMPACTION_PLAN_UPDATE),
 		m.compactionHandler.GetCompactionPlanUpdate)
@@ -219,13 +211,28 @@ func New(
 		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_UPDATE_COMPACTION_PLAN),
 		m.compactionHandler.UpdateCompactionPlan)
 
+	if err = m.fsm.Init(); err != nil {
+		return nil, fmt.Errorf("failed to initialize internal state: %w", err)
+	}
+	if err = m.initRaft(); err != nil {
+		return nil, fmt.Errorf("failed to initialize raft: %w", err)
+	}
+
+	// Services should be registered after FSM and Raft have been initialized.
+	// Services provide an interface to interact with the metastore.
+	m.indexService = NewIndexService(m.logger, m.proposer, m.placement)
+	m.compactionService = NewCompactionService(m.logger, m.proposer)
+	m.tenantService = NewTenantService(m.logger, m.follower, m.index)
+	m.metadataService = NewMetadataQueryService(m.logger, m.follower, m.index)
+	m.operatorService = NewOperatorService(m.config, m.raft)
+	m.raftNodeService = NewRaftNodeService(m.leader)
 	m.dlqRecovery = dlq.NewRecovery(logger, config.DLQRecovery, m.indexService, bucket)
 
 	// These are the services that only run on the raft leader.
 	// Keep in mind that the node may not be the leader at the moment the
 	// service is starting, so it should be able to handle conflicts.
-	m.observer.OnLeader(m.dlqRecovery)
-	m.observer.OnLeader(m.placement)
+	m.observer.RunOnLeader(m.dlqRecovery)
+	m.observer.RunOnLeader(m.placement)
 
 	m.service = services.NewBasicService(m.starting, m.running, m.stopping)
 	return m, nil
