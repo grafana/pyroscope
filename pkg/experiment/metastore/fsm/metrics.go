@@ -21,8 +21,6 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 	var dataTimingBuckets = prometheus.ExponentialBucketsRange(0.01, 20, 48)
 	m := &metrics{
 		boltDBPersistSnapshotDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
-			Namespace:                       "pyroscope",
-			Subsystem:                       "metastore",
 			Name:                            "boltdb_persist_snapshot_duration_seconds",
 			Buckets:                         dataTimingBuckets,
 			NativeHistogramBucketFactor:     1.1,
@@ -31,8 +29,6 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 		}),
 
 		boltDBPersistSnapshotSize: prometheus.NewHistogram(prometheus.HistogramOpts{
-			Namespace:                       "pyroscope",
-			Subsystem:                       "metastore",
 			Name:                            "boltdb_persist_snapshot_size_bytes",
 			NativeHistogramBucketFactor:     1.1,
 			NativeHistogramMaxBucketNumber:  100,
@@ -40,8 +36,6 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 		}),
 
 		boltDBRestoreSnapshotDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
-			Namespace:                       "pyroscope",
-			Subsystem:                       "metastore",
 			Name:                            "boltdb_restore_snapshot_duration_seconds",
 			Buckets:                         dataTimingBuckets,
 			NativeHistogramBucketFactor:     1.1,
@@ -50,8 +44,6 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 		}),
 
 		fsmRestoreSnapshotDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
-			Namespace:                       "pyroscope",
-			Subsystem:                       "metastore",
 			Name:                            "fsm_restore_snapshot_duration_seconds",
 			Buckets:                         dataTimingBuckets,
 			NativeHistogramBucketFactor:     1.1,
@@ -60,8 +52,6 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 		}),
 
 		fsmApplyCommandSize: prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Namespace:                       "pyroscope",
-			Subsystem:                       "metastore",
 			Name:                            "fsm_apply_command_size_bytes",
 			Buckets:                         prometheus.ExponentialBucketsRange(8, 64<<10, 48),
 			NativeHistogramBucketFactor:     1.1,
@@ -70,8 +60,6 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 		}, []string{"command"}),
 
 		fsmApplyCommandDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Namespace:                       "pyroscope",
-			Subsystem:                       "metastore",
 			Name:                            "fsm_apply_command_duration_seconds",
 			Buckets:                         dataTimingBuckets,
 			NativeHistogramBucketFactor:     1.1,

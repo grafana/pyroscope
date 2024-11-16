@@ -1,8 +1,0 @@
-syntax = "proto3";
-
-package raft_node;
-
-message RaftNode {
-  string id = 1;
-  string address = 2;
-}

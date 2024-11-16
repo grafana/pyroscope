@@ -10,7 +10,8 @@ import (
 	"google.golang.org/grpc"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/raft_node"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode/raftnodepb"
 )
 
 func invoke[R any](ctx context.Context, cl *Client,
@@ -48,7 +49,7 @@ func invoke[R any](ctx context.Context, cl *Client,
 			"server_address", it.srv.Raft.Address,
 			"server_resolved_laddress", it.srv.ResolvedAddress,
 		)
-		node, ok := raft_node.RaftLeaderFromStatusDetails(err)
+		node, ok := raftnode.RaftLeaderFromStatusDetails(err)
 		if ok {
 			cl.mu.Lock()
 			if cl.leader == it.srv.Raft.ID {
@@ -81,6 +82,8 @@ func (c *Client) selectInstance() *client {
 	return it
 }
 
+// TODO(kolesnikovae): Interceptor.
+
 func (c *Client) AddBlock(ctx context.Context, in *metastorev1.AddBlockRequest, opts ...grpc.CallOption) (*metastorev1.AddBlockResponse, error) {
 	return invoke(ctx, c, func(ctx context.Context, instance instance) (*metastorev1.AddBlockResponse, error) {
 		return instance.AddBlock(ctx, in, opts...)
@@ -90,12 +93,6 @@ func (c *Client) AddBlock(ctx context.Context, in *metastorev1.AddBlockRequest, 
 func (c *Client) QueryMetadata(ctx context.Context, in *metastorev1.QueryMetadataRequest, opts ...grpc.CallOption) (*metastorev1.QueryMetadataResponse, error) {
 	return invoke(ctx, c, func(ctx context.Context, instance instance) (*metastorev1.QueryMetadataResponse, error) {
 		return instance.QueryMetadata(ctx, in, opts...)
-	})
-}
-
-func (c *Client) ReadIndex(ctx context.Context, in *metastorev1.ReadIndexRequest, opts ...grpc.CallOption) (*metastorev1.ReadIndexResponse, error) {
-	return invoke(ctx, c, func(ctx context.Context, instance instance) (*metastorev1.ReadIndexResponse, error) {
-		return instance.ReadIndex(ctx, in, opts...)
 	})
 }
 
@@ -114,5 +111,17 @@ func (c *Client) GetTenant(ctx context.Context, in *metastorev1.GetTenantRequest
 func (c *Client) DeleteTenant(ctx context.Context, in *metastorev1.DeleteTenantRequest, opts ...grpc.CallOption) (*metastorev1.DeleteTenantResponse, error) {
 	return invoke(ctx, c, func(ctx context.Context, instance instance) (*metastorev1.DeleteTenantResponse, error) {
 		return instance.DeleteTenant(ctx, in, opts...)
+	})
+}
+
+func (c *Client) ReadIndex(ctx context.Context, in *raftnodepb.ReadIndexRequest, opts ...grpc.CallOption) (*raftnodepb.ReadIndexResponse, error) {
+	return invoke(ctx, c, func(ctx context.Context, instance instance) (*raftnodepb.ReadIndexResponse, error) {
+		return instance.ReadIndex(ctx, in, opts...)
+	})
+}
+
+func (c *Client) NodeInfo(ctx context.Context, in *raftnodepb.NodeInfoRequest, opts ...grpc.CallOption) (*raftnodepb.NodeInfoResponse, error) {
+	return invoke(ctx, c, func(ctx context.Context, instance instance) (*raftnodepb.NodeInfoResponse, error) {
+		return instance.NodeInfo(ctx, in, opts...)
 	})
 }

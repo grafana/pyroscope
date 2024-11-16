@@ -26,22 +26,22 @@ type IndexQuerier interface {
 
 func NewMetadataQueryService(
 	logger log.Logger,
-	follower RaftFollower,
+	state State,
 	index IndexQuerier,
 ) *MetadataQueryService {
 	return &MetadataQueryService{
-		logger:   logger,
-		follower: follower,
-		index:    index,
+		logger: logger,
+		state:  state,
+		index:  index,
 	}
 }
 
 type MetadataQueryService struct {
 	metastorev1.MetadataQueryServiceServer
 
-	logger   log.Logger
-	follower RaftFollower
-	index    IndexQuerier
+	logger log.Logger
+	state  State
+	index  IndexQuerier
 }
 
 func (svc *MetadataQueryService) QueryMetadata(
@@ -51,7 +51,7 @@ func (svc *MetadataQueryService) QueryMetadata(
 	read := func(tx *bbolt.Tx) {
 		resp, err = svc.listBlocksForQuery(ctx, tx, req)
 	}
-	if readErr := svc.follower.ConsistentRead(ctx, read); readErr != nil {
+	if readErr := svc.state.ConsistentRead(ctx, read); readErr != nil {
 		return nil, status.Error(codes.Unavailable, readErr.Error())
 	}
 	return resp, err

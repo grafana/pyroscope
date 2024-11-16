@@ -4,71 +4,40 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"net"
-	"os"
-	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/grafana/dskit/dns"
-	"github.com/grafana/dskit/flagext"
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/services"
-	"github.com/hashicorp/raft"
-	raftwal "github.com/hashicorp/raft-wal"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/thanos-io/objstore"
+	"go.etcd.io/bbolt"
 	"google.golang.org/grpc"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
-	adaptiveplacement "github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
+	placement "github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/dlq"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/fsm"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/markers"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/raft_node"
+	raft "github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode/raftnodepb"
 	"github.com/grafana/pyroscope/pkg/util/health"
-)
-
-const (
-	snapshotsRetain       = 3
-	walCacheEntries       = 512
-	transportConnPoolSize = 10
-	transportTimeout      = 10 * time.Second
-
-	raftTrailingLogs      = 18 << 10
-	raftSnapshotInterval  = 180 * time.Second
-	raftSnapshotThreshold = 8 << 10
 )
 
 type Config struct {
 	Address          string             `yaml:"address"`
 	GRPCClientConfig grpcclient.Config  `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with the metastore."`
 	DataDir          string             `yaml:"data_dir"`
-	Raft             RaftConfig         `yaml:"raft"`
+	Raft             raft.Config        `yaml:"raft"`
 	Compaction       CompactionConfig   `yaml:"compaction_config" category:"advanced"`
 	MinReadyDuration time.Duration      `yaml:"min_ready_duration" category:"advanced"`
 	DLQRecovery      dlq.RecoveryConfig `yaml:"dlq_recovery" category:"advanced"`
 	Index            index.Config       `yaml:"index_config" category:"advanced"`
 	BlockCleaner     markers.Config     `yaml:"block_cleaner_config" category:"advanced"`
-}
-
-type RaftConfig struct {
-	Dir string `yaml:"dir"`
-
-	BootstrapPeers       []string `yaml:"bootstrap_peers"`
-	BootstrapExpectPeers int      `yaml:"bootstrap_expect_peers"`
-
-	ServerID         string `yaml:"server_id"`
-	BindAddress      string `yaml:"bind_address"`
-	AdvertiseAddress string `yaml:"advertise_address"`
-
-	ApplyTimeout time.Duration `yaml:"apply_timeout" doc:"hidden"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
@@ -94,21 +63,6 @@ func (cfg *Config) Validate() error {
 	return cfg.Raft.Validate()
 }
 
-func (cfg *RaftConfig) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
-	f.StringVar(&cfg.Dir, prefix+"dir", "./data-metastore/raft", "")
-	f.Var((*flagext.StringSlice)(&cfg.BootstrapPeers), prefix+"bootstrap-peers", "")
-	f.IntVar(&cfg.BootstrapExpectPeers, prefix+"bootstrap-expect-peers", 1, "Expected number of peers including the local node.")
-	f.StringVar(&cfg.BindAddress, prefix+"bind-address", "localhost:9099", "")
-	f.StringVar(&cfg.ServerID, prefix+"server-id", "localhost:9099", "")
-	f.StringVar(&cfg.AdvertiseAddress, prefix+"advertise-address", "localhost:9099", "")
-	f.DurationVar(&cfg.ApplyTimeout, prefix+"apply-timeout", 5*time.Second, "")
-}
-
-func (cfg *RaftConfig) Validate() error {
-	// TODO(kolesnikovae): Check the params.
-	return nil
-}
-
 type Metastore struct {
 	service services.Service
 
@@ -117,28 +71,13 @@ type Metastore struct {
 	reg    prometheus.Registerer
 	health health.Service
 
-	// Raft module.
-	walDir        string
-	wal           *raftwal.WAL
-	snapshots     *raft.FileSnapshotStore
-	transport     *raft.NetworkTransport
-	raft          *raft.Raft
-	logStore      raft.LogStore
-	stableStore   raft.StableStore
-	snapshotStore raft.SnapshotStore
+	raft *raft.Node
+	fsm  *fsm.FSM
 
-	// Local state machine.
-	fsm *fsm.FSM
-	// An interface to make proposals.
-	proposer *RaftProposer
-	client   metastorev1.RaftNodeServiceClient
-	observer *raft_node.Observer
-	follower *raft_node.Follower
-	leader   *raft_node.Leader
+	followerRead *raft.StateReader[*bbolt.Tx]
 
 	bucket      objstore.Bucket
-	placement   *adaptiveplacement.Manager
-	dnsProvider *dns.Provider
+	placement   *placement.Manager
 	dlqRecovery *dlq.Recovery
 
 	index        *index.Index
@@ -153,8 +92,6 @@ type Metastore struct {
 	cleanerHandler *CleanerCommandHandler
 
 	tenantService   *TenantService
-	raftNodeService *RaftNodeService
-	operatorService *OperatorService
 	metadataService *MetadataQueryService
 
 	readyOnce  sync.Once
@@ -166,9 +103,9 @@ func New(
 	logger log.Logger,
 	reg prometheus.Registerer,
 	healthService health.Service,
-	client metastorev1.RaftNodeServiceClient,
+	client raftnodepb.RaftNodeServiceClient,
 	bucket objstore.Bucket,
-	placementMgr *adaptiveplacement.Manager,
+	placementMgr *placement.Manager,
 ) (*Metastore, error) {
 	m := &Metastore{
 		config:    config,
@@ -177,11 +114,11 @@ func New(
 		health:    healthService,
 		bucket:    bucket,
 		placement: placementMgr,
-		client:    client,
 	}
 
 	var err error
-	m.fsm, err = fsm.New(m.logger, m.reg, m.config.DataDir)
+	reg = prometheus.WrapRegistererWithPrefix("pyroscope_metastore_", reg)
+	m.fsm, err = fsm.New(m.logger, reg, m.config.DataDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize store: %w", err)
 	}
@@ -216,26 +153,32 @@ func New(
 	if err = m.fsm.Init(); err != nil {
 		return nil, fmt.Errorf("failed to initialize internal state: %w", err)
 	}
-	if err = m.initRaft(); err != nil {
+
+	if m.raft, err = raft.NewNode(m.logger, m.config.Raft, reg, m.fsm); err != nil {
 		return nil, fmt.Errorf("failed to initialize raft: %w", err)
 	}
 
+	// Create the read-only interface to the state.
+	// We're currently only using the Follower Read pattern, assuming that
+	// leader reads are done through the raft log. However, this should be
+	// optimized in the future to use the Leader Read pattern.
+	m.followerRead = m.newFollowerReader(client, m.raft, m.fsm)
+
 	// Services should be registered after FSM and Raft have been initialized.
 	// Services provide an interface to interact with the metastore.
-	m.indexService = NewIndexService(m.logger, m.proposer, m.placement)
-	m.compactionService = NewCompactionService(m.logger, m.proposer)
-	m.cleanerService = NewCleanerService(m.logger, m.config.BlockCleaner, m.proposer, m.cleanerHandler)
-	m.tenantService = NewTenantService(m.logger, m.follower, m.index)
-	m.metadataService = NewMetadataQueryService(m.logger, m.follower, m.index)
-	m.operatorService = NewOperatorService(m.config, m.raft)
-	m.raftNodeService = NewRaftNodeService(m.leader)
+	m.indexService = NewIndexService(m.logger, m.raft, m.placement)
+	m.compactionService = NewCompactionService(m.logger, m.raft)
+	m.cleanerService = NewCleanerService(m.logger, m.config.BlockCleaner, m.raft, m.cleanerHandler)
+	m.tenantService = NewTenantService(m.logger, m.followerRead, m.index)
+	m.metadataService = NewMetadataQueryService(m.logger, m.followerRead, m.index)
 	m.dlqRecovery = dlq.NewRecovery(logger, config.DLQRecovery, m.indexService, bucket)
 
 	// These are the services that only run on the raft leader.
 	// Keep in mind that the node may not be the leader at the moment the
 	// service is starting, so it should be able to handle conflicts.
-	m.observer.OnLeader(m.dlqRecovery)
-	m.observer.OnLeader(m.placement)
+	m.raft.RunOnLeader(m.dlqRecovery)
+	m.raft.RunOnLeader(m.placement)
+	m.raft.RunOnLeader(m.cleanerService)
 
 	m.service = services.NewBasicService(m.starting, m.running, m.stopping)
 	return m, nil
@@ -246,7 +189,7 @@ func (m *Metastore) Register(server *grpc.Server) {
 	metastorev1.RegisterCompactionServiceServer(server, m.compactionService)
 	metastorev1.RegisterMetadataQueryServiceServer(server, m.metadataService)
 	metastorev1.RegisterTenantServiceServer(server, m.tenantService)
-	metastorev1.RegisterRaftNodeServiceServer(server, m.raftNodeService)
+	m.raft.Register(server)
 }
 
 func (m *Metastore) Service() services.Service { return m.service }
@@ -256,7 +199,28 @@ func (m *Metastore) starting(context.Context) error { return nil }
 func (m *Metastore) stopping(_ error) error {
 	m.cleanerService.Stop()
 	m.dlqRecovery.Stop()
-	m.shutdownRaft()
+
+	// We let clients observe the leadership transfer: it's their
+	// responsibility to connect to the new leader. We only need to
+	// make sure that any error returned to clients includes details
+	// about the raft leader, if applicable.
+	if err := m.raft.TransferLeadership(); err == nil {
+		// We were the leader and managed to transfer leadership – wait a bit
+		// to let the new leader settle. During this period we're still serving
+		// requests, but return an error with the new leader address.
+		level.Info(m.logger).Log("msg", "waiting for leadership transfer to complete")
+		time.Sleep(m.config.MinReadyDuration)
+	}
+
+	// Tell clients to stop sending requests to this node. There are no any
+	// guarantees that clients will see or obey this. Normally, we would have
+	// stopped the gRPC server here, but we can't: it's managed by the service
+	// framework. Because of that we sleep another MinReadyDuration to let new
+	// client to discover that the node is not serving anymore.
+	m.health.SetNotServing()
+	time.Sleep(m.config.MinReadyDuration)
+
+	m.raft.Shutdown()
 	m.fsm.Shutdown()
 	return nil
 }
@@ -267,143 +231,10 @@ func (m *Metastore) running(ctx context.Context) error {
 	return nil
 }
 
-func (m *Metastore) initRaft() (err error) {
-	defer func() {
-		if err != nil {
-			// If the initialization fails, initialized components
-			// should be de-initialized gracefully.
-			m.shutdownRaft()
-		}
-	}()
-
-	hasState, err := m.openRaftStore()
-	if err != nil {
-		return err
-	}
-
-	addr, err := net.ResolveTCPAddr("tcp", m.config.Raft.AdvertiseAddress)
-	if err != nil {
-		return err
-	}
-	m.transport, err = raft.NewTCPTransport(m.config.Raft.BindAddress, addr, transportConnPoolSize, transportTimeout, os.Stderr)
-	if err != nil {
-		return err
-	}
-
-	config := raft.DefaultConfig()
-	// TODO: Wrap gokit
-	//	config.Logger
-	config.LogLevel = "debug"
-	config.TrailingLogs = raftTrailingLogs
-	config.SnapshotThreshold = raftSnapshotThreshold
-	config.SnapshotInterval = raftSnapshotInterval
-	config.LocalID = raft.ServerID(m.config.Raft.ServerID)
-
-	m.raft, err = raft.NewRaft(config, m.fsm, m.logStore, m.stableStore, m.snapshotStore, m.transport)
-	if err != nil {
-		return fmt.Errorf("starting raft node: %w", err)
-	}
-
-	if !hasState {
-		_ = level.Warn(m.logger).Log("msg", "no existing state found, trying to bootstrap cluster")
-		if err = m.bootstrap(); err != nil {
-			return fmt.Errorf("failed to bootstrap cluster: %w", err)
-		}
-	} else {
-		_ = level.Info(m.logger).Log("msg", "restoring existing state, not bootstraping")
-	}
-
-	m.proposer = NewRaftProposer(m.logger, m.raft, m.config.Raft.ApplyTimeout)
-	m.observer = raft_node.NewRaftStateObserver(m.logger, m.raft, m.reg)
-	m.follower = raft_node.NewFollower(m.client, m.raft, m.fsm)
-	m.leader = raft_node.NewLeader(m.raft)
-	return nil
-}
-
-func (m *Metastore) openRaftStore() (hasState bool, err error) {
-	if err = m.createRaftDirs(); err != nil {
-		return false, err
-	}
-	m.wal, err = raftwal.Open(m.walDir)
-	if err != nil {
-		return false, fmt.Errorf("failed to open WAL: %w", err)
-	}
-	m.snapshots, err = raft.NewFileSnapshotStore(m.config.Raft.Dir, snapshotsRetain, os.Stderr)
-	if err != nil {
-		return false, fmt.Errorf("failed to open shapshot store: %w", err)
-	}
-	m.logStore = m.wal
-	m.logStore, _ = raft.NewLogCache(walCacheEntries, m.logStore)
-	m.stableStore = m.wal
-	m.snapshotStore = m.snapshots
-	if hasState, err = raft.HasExistingState(m.logStore, m.stableStore, m.snapshotStore); err != nil {
-		return hasState, fmt.Errorf("failed to check for existing state: %w", err)
-	}
-	return hasState, nil
-}
-
-func (m *Metastore) createRaftDirs() (err error) {
-	m.walDir = filepath.Join(m.config.Raft.Dir, "wal")
-	if err = os.MkdirAll(m.walDir, 0755); err != nil {
-		return fmt.Errorf("WAL dir: %w", err)
-	}
-	if err = os.MkdirAll(m.config.Raft.Dir, 0755); err != nil {
-		return fmt.Errorf("snapshot directory: %w", err)
-	}
-	return nil
-}
-
-func (m *Metastore) shutdownRaft() {
-	if m.raft != nil {
-		// Tell clients to stop sending requests to this node.
-		// There are no any guarantees that clients will see or obey this.
-		m.health.SetNotServing()
-		// We let clients observe the leadership transfer: it's their
-		// responsibility to connect to the new leader. We only need to
-		// make sure that any error returned to clients includes details
-		// about the raft leader, if applicable.
-		if err := m.TransferLeadership(); err == nil {
-			// We were the leader and managed to transfer leadership.
-			// Wait a bit to let the new leader settle.
-			_ = level.Info(m.logger).Log("msg", "waiting for leadership transfer to complete")
-			// TODO(kolesnikovae): Wait until ReadIndex of
-			//  the new leader catches up the local CommitIndex.
-			time.Sleep(m.config.MinReadyDuration)
-		}
-		m.observer.Deregister()
-		if err := m.raft.Shutdown().Error(); err != nil {
-			_ = level.Error(m.logger).Log("msg", "failed to shutdown raft", "err", err)
-		}
-	}
-	if m.transport != nil {
-		if err := m.transport.Close(); err != nil {
-			_ = level.Error(m.logger).Log("msg", "failed to close transport", "err", err)
-		}
-	}
-	if m.wal != nil {
-		if err := m.wal.Close(); err != nil {
-			_ = level.Error(m.logger).Log("msg", "failed to close WAL", "err", err)
-		}
-	}
-}
-
-func (m *Metastore) TransferLeadership() (err error) {
-	switch err = m.raft.LeadershipTransfer().Error(); {
-	case err == nil:
-	case errors.Is(err, raft.ErrNotLeader):
-		// Not a leader, nothing to do.
-	case strings.Contains(err.Error(), "cannot find peer"):
-		// No peers, nothing to do.
-	default:
-		_ = level.Error(m.logger).Log("msg", "failed to transfer leadership", "err", err)
-	}
-	return err
-}
-
 // CheckReady verifies if the metastore is ready to serve requests by
 // ensuring the node is up-to-date with the leader's commit index.
 func (m *Metastore) CheckReady(ctx context.Context) error {
-	if _, err := m.follower.WaitLeaderCommitIndexAppliedLocally(ctx); err != nil {
+	if _, err := m.followerRead.WaitLeaderCommitIndexApplied(ctx); err != nil {
 		return err
 	}
 	m.readyOnce.Do(func() {

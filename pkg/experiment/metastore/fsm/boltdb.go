@@ -53,10 +53,16 @@ func (db *boltdb) open(readOnly bool) (err error) {
 	}
 
 	opts := *bbolt.DefaultOptions
+	// open is called with readOnly=true to verify the snapshot integrity.
 	opts.ReadOnly = readOnly
-	opts.NoSync = true
+	opts.PreLoadFreelist = !readOnly
 	opts.InitialMmapSize = boltDBInitialMmapSize
-	//	opts.FreelistType = bbolt.FreelistMapType
+	// Because of the nature of the metastore, we do not need to sync
+	// the database: the state is always restored from the snapshot.
+	opts.NoSync = true
+	opts.NoGrowSync = true
+	opts.NoFreelistSync = true
+	opts.FreelistType = bbolt.FreelistMapType
 	if db.boltdb, err = bbolt.Open(db.path, 0644, &opts); err != nil {
 		return fmt.Errorf("failed to open db: %w", err)
 	}

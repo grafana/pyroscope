@@ -9,17 +9,6 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/services"
-
-	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore"
-	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
-	"github.com/grafana/pyroscope/pkg/test"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mockdiscovery"
-	"github.com/grafana/pyroscope/pkg/util/health"
-	"github.com/grafana/pyroscope/pkg/validation"
-
 	"github.com/hashicorp/raft"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
@@ -27,6 +16,17 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/thanos-io/objstore"
 	"google.golang.org/grpc"
+
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore"
+	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode/raftnodepb"
+	"github.com/grafana/pyroscope/pkg/test"
+	"github.com/grafana/pyroscope/pkg/test/mocks/mockdiscovery"
+	"github.com/grafana/pyroscope/pkg/util/health"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 func NewMetastoreSet(t *testing.T, cfg *metastore.Config, n int, bucket objstore.Bucket) MetastoreSet {
@@ -115,7 +115,7 @@ func NewMetastoreSet(t *testing.T, cfg *metastore.Config, n int, bucket objstore
 			CompactionServiceClient:    metastorev1.NewCompactionServiceClient(cc),
 			MetadataQueryServiceClient: metastorev1.NewMetadataQueryServiceClient(cc),
 			TenantServiceClient:        metastorev1.NewTenantServiceClient(cc),
-			RaftNodeServiceClient:      metastorev1.NewRaftNodeServiceClient(cc),
+			RaftNodeServiceClient:      raftnodepb.NewRaftNodeServiceClient(cc),
 		})
 		service := m.Service()
 		ctx := context.Background()
@@ -161,7 +161,7 @@ type MetastoreInstance struct {
 	metastorev1.CompactionServiceClient
 	metastorev1.MetadataQueryServiceClient
 	metastorev1.TenantServiceClient
-	metastorev1.RaftNodeServiceClient
+	raftnodepb.RaftNodeServiceClient
 }
 
 type MetastoreSet struct {

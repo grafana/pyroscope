@@ -89,6 +89,43 @@ func (fsm *FSM) Init() error {
 	return nil
 }
 
+func (fsm *FSM) init() (err error) {
+	tx, err := fsm.db.boltdb.Begin(true)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == nil {
+			err = tx.Commit()
+		} else {
+			_ = tx.Rollback()
+		}
+	}()
+	for _, r := range fsm.restorers {
+		if err = r.Init(tx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (fsm *FSM) restore() error {
+	g, _ := errgroup.WithContext(context.Background())
+	for _, r := range fsm.restorers {
+		g.Go(func() error {
+			tx, err := fsm.db.boltdb.Begin(false)
+			if err != nil {
+				return err
+			}
+			defer func() {
+				_ = tx.Rollback()
+			}()
+			return r.Restore(tx)
+		})
+	}
+	return g.Wait()
+}
+
 // Restore restores the FSM state from a snapshot.
 func (fsm *FSM) Restore(snapshot io.ReadCloser) (err error) {
 	start := time.Now()
@@ -144,7 +181,6 @@ func (fsm *FSM) Apply(log *raft.Log) any {
 	case raft.LogNoop:
 	case raft.LogBarrier:
 	case raft.LogConfiguration:
-		// TODO(kolesnikovae): applyConfiguration
 	case raft.LogCommand:
 		return fsm.applyCommand(log)
 	default:
@@ -231,41 +267,4 @@ func (fsm *FSM) Shutdown() {
 	if fsm.db.boltdb != nil {
 		fsm.db.shutdown()
 	}
-}
-
-func (fsm *FSM) init() (err error) {
-	tx, err := fsm.db.boltdb.Begin(true)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err == nil {
-			err = tx.Commit()
-		} else {
-			_ = tx.Rollback()
-		}
-	}()
-	for _, r := range fsm.restorers {
-		if err = r.Init(tx); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (fsm *FSM) restore() error {
-	g, _ := errgroup.WithContext(context.Background())
-	for _, r := range fsm.restorers {
-		g.Go(func() error {
-			tx, err := fsm.db.boltdb.Begin(false)
-			if err != nil {
-				return err
-			}
-			defer func() {
-				_ = tx.Rollback()
-			}()
-			return r.Restore(tx)
-		})
-	}
-	return g.Wait()
 }

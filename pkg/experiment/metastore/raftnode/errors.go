@@ -1,4 +1,4 @@
-package raft_node
+package raftnode
 
 import (
 	"errors"
@@ -7,7 +7,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/raft_node/raftnodepb"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode/raftnodepb"
 )
 
 func IsRaftLeadershipError(err error) bool {
@@ -17,7 +17,11 @@ func IsRaftLeadershipError(err error) bool {
 		errors.Is(err, raft.ErrRaftShutdown)
 }
 
-func WithRaftLeaderStatusDetails(err error, raft RaftNode) error {
+type RaftLeaderLocator interface {
+	LeaderWithID() (raft.ServerAddress, raft.ServerID)
+}
+
+func WithRaftLeaderStatusDetails(err error, raft RaftLeaderLocator) error {
 	if err == nil || !IsRaftLeadershipError(err) {
 		return err
 	}
