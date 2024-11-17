@@ -9,27 +9,23 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/fsm"
 )
 
 // TODO(kolesnikovae): Validate input.
 // TODO(kolesnikovae): Instrument with metrics.
 
-type CompactionCommandLog interface {
-	GetCompactionPlanUpdate(*raft_log.GetCompactionPlanUpdateRequest) (*raft_log.GetCompactionPlanUpdateResponse, error)
-	UpdateCompactionPlan(*raft_log.UpdateCompactionPlanRequest) (*raft_log.UpdateCompactionPlanResponse, error)
-}
-
 type CompactionService struct {
 	metastorev1.CompactionServiceServer
 
 	logger log.Logger
-	raft   CompactionCommandLog
+	raft   Raft
 	mu     sync.Mutex
 }
 
 func NewCompactionService(
 	logger log.Logger,
-	raft CompactionCommandLog,
+	raft Raft,
 ) *CompactionService {
 	return &CompactionService{
 		logger: logger,
@@ -50,7 +46,11 @@ func (m *CompactionService) PollCompactionJobs(
 	// we need to ensure that all replicas apply exactly the same changes.
 	// Instead of relying on identical behavior across replicas and a
 	// reproducible compaction plan, we explicitly replicate the change.
-
+	//
+	// NOTE(kolesnikovae): We can use Leader Read optimization here. However,
+	// we would need to ensure synchronization between the compactor and the
+	// index. For now, the read operation is conducted through the raft log.
+	//
 	// Make sure that only one compaction plan update is in progress at a time.
 	// This lock does not introduce contention, as the raft log is synchronous.
 	m.mu.Lock()
@@ -59,12 +59,13 @@ func (m *CompactionService) PollCompactionJobs(
 	// First, we ask the current leader to prepare the change. This is a read
 	// operation conducted through the raft log: at this stage, we only
 	// prepare changes; the command handler does not alter the state.
-	prepared, err := m.raft.GetCompactionPlanUpdate(request)
+	planUpdate, err := m.raft.Propose(fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_GET_COMPACTION_PLAN_UPDATE), request)
 	if err != nil {
 		_ = level.Error(m.logger).Log("msg", "failed to prepare compaction plan", "err", err)
 		return nil, err
 	}
 
+	prepared := planUpdate.(*raft_log.GetCompactionPlanUpdateResponse)
 	resp := &metastorev1.PollCompactionJobsResponse{
 		CompactionJobs: make([]*metastorev1.CompactionJob, 0, len(prepared.PlanUpdate.AssignedJobs)),
 		Assignments:    make([]*metastorev1.CompactionJobAssignment, 0, len(prepared.PlanUpdate.AssignedJobs)),
@@ -94,8 +95,8 @@ func (m *CompactionService) PollCompactionJobs(
 	}
 
 	// Assigned jobs are not written to the raft log (only the assignments).
-	// The plan has already been proposed in the past when the job has been
-	// created.
+	// The plan has already been proposed and accepted in the past when the job
+	// was created.
 	proposal := &raft_log.UpdateCompactionPlanRequest{PlanUpdate: prepared.PlanUpdate}
 	for _, update := range proposal.PlanUpdate.AssignedJobs {
 		update.Plan = nil
@@ -104,7 +105,8 @@ func (m *CompactionService) PollCompactionJobs(
 	// Now that we have the plan, we need to propagate it through the raft log
 	// to ensure it is applied consistently across all replicas, regardless of
 	// their individual state or view of the plan.
-	if _, err = m.raft.UpdateCompactionPlan(proposal); err != nil {
+	_, err = m.raft.Propose(fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_UPDATE_COMPACTION_PLAN), proposal)
+	if err != nil {
 		_ = level.Error(m.logger).Log("msg", "failed to update compaction plan", "err", err)
 		return nil, err
 	}

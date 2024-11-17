@@ -23,6 +23,17 @@ type Strategy struct {
 	CleanupJobMaxLevel int32
 }
 
+func DefaultStrategy() Strategy {
+	return Strategy{
+		MaxBlocksPerLevel:  []uint64{20, 10, 10},
+		MaxBatchAge:        defaultMaxBlockBatchAge,
+		MaxBlocksDefault:   10,
+		CleanupBatchSize:   2,
+		CleanupDelay:       15 * time.Minute,
+		CleanupJobMaxLevel: 1,
+	}
+}
+
 // compact is called after the block has been added to the batch.
 // If the function returns true, the batch is flushed to the global
 // queue and becomes available for compaction.

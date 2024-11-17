@@ -16,11 +16,13 @@ type IndexReplacer interface {
 
 type TombstoneDeleter interface {
 	DeleteTombstones(*bbolt.Tx, *raft.Log, ...*metastorev1.Tombstones) error
+	AddTombstones(*bbolt.Tx, *raft.Log, *metastorev1.Tombstones) error
 }
 
 type CompactionCommandHandler struct {
 	logger     log.Logger
 	index      IndexReplacer
+	compactor  compaction.Compactor
 	planner    compaction.Planner
 	scheduler  compaction.Scheduler
 	tombstones TombstoneDeleter
@@ -29,6 +31,7 @@ type CompactionCommandHandler struct {
 func NewCompactionCommandHandler(
 	logger log.Logger,
 	index IndexReplacer,
+	compactor compaction.Compactor,
 	planner compaction.Planner,
 	scheduler compaction.Scheduler,
 	tombstones TombstoneDeleter,
@@ -36,6 +39,7 @@ func NewCompactionCommandHandler(
 	return &CompactionCommandHandler{
 		logger:     logger,
 		index:      index,
+		compactor:  compactor,
 		planner:    planner,
 		scheduler:  scheduler,
 		tombstones: tombstones,
@@ -141,15 +145,34 @@ func (h *CompactionCommandHandler) UpdateCompactionPlan(
 		return nil, err
 	}
 
-	for _, job := range req.PlanUpdate.CompletedJobs {
-		if err := h.index.ReplaceBlocks(tx, cmd, job.Plan.CompactedBlocks); err != nil {
+	for _, job := range req.PlanUpdate.NewJobs {
+		if err := h.tombstones.DeleteTombstones(tx, cmd, job.Plan.Tombstones...); err != nil {
 			return nil, err
 		}
 	}
 
-	for _, job := range req.PlanUpdate.NewJobs {
-		if err := h.tombstones.DeleteTombstones(tx, cmd, job.Plan.Tombstones...); err != nil {
+	for _, job := range req.PlanUpdate.CompletedJobs {
+		if err := h.index.ReplaceBlocks(tx, cmd, job.Plan.CompactedBlocks); err != nil {
 			return nil, err
+		}
+		source := job.Plan.CompactedBlocks.SourceBlocks
+		tombstones := &metastorev1.Tombstones{
+			Blocks: &metastorev1.BlockTombstones{
+				Name:            job.Plan.Name,
+				Shard:           job.Plan.Shard,
+				Tenant:          job.Plan.Tenant,
+				CompactionLevel: job.Plan.CompactionLevel,
+				Blocks:          source.Blocks,
+			},
+		}
+		err := h.tombstones.AddTombstones(tx, cmd, tombstones)
+		if err != nil {
+			return nil, err
+		}
+		for _, block := range job.Plan.CompactedBlocks.CompactedBlocks {
+			if err = h.compactor.Compact(tx, cmd, block); err != nil {
+				return nil, err
+			}
 		}
 	}
 

@@ -40,12 +40,13 @@ type JobStore interface {
 }
 
 type Config struct {
-	MaxFailures   uint32        `yaml:"compaction_max_failures" doc:""`
+	MaxFailures   uint64        `yaml:"compaction_max_failures" doc:""`
 	LeaseDuration time.Duration `yaml:"compaction_job_lease_duration" doc:""`
 }
 
 func (c *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
-	// TODO
+	f.Uint64Var(&c.MaxFailures, prefix+"compaction-max-failures", 3, "")
+	f.DurationVar(&c.LeaseDuration, prefix+"compaction-job-lease-duration", 15*time.Second, "")
 }
 
 type Scheduler struct {

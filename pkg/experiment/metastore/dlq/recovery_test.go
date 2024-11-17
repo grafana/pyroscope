@@ -17,7 +17,7 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	segmentstorage "github.com/grafana/pyroscope/pkg/experiment/ingester/storage"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/raft_node/raftnodepb"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode/raftnodepb"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/memory"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockdlq"
 )

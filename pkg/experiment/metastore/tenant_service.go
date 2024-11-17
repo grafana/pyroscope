@@ -20,20 +20,20 @@ import (
 type TenantService struct {
 	metastorev1.TenantServiceServer
 
-	logger   log.Logger
-	follower RaftFollower
-	index    IndexQuerier
+	logger log.Logger
+	state  State
+	index  IndexQuerier
 }
 
 func NewTenantService(
 	logger log.Logger,
-	follower RaftFollower,
+	state State,
 	index IndexQuerier,
 ) *TenantService {
 	return &TenantService{
-		logger:   logger,
-		follower: follower,
-		index:    index,
+		logger: logger,
+		state:  state,
+		index:  index,
 	}
 }
 
@@ -46,7 +46,7 @@ func (svc *TenantService) GetTenant(
 		// strong consistency of the read operation.
 		resp, err = svc.getTenantStats(req.TenantId, ctx)
 	}
-	if readErr := svc.follower.ConsistentRead(ctx, read); readErr != nil {
+	if readErr := svc.state.ConsistentRead(ctx, read); readErr != nil {
 		return nil, status.Error(codes.Unavailable, readErr.Error())
 	}
 	return resp, err

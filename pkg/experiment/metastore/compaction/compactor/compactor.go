@@ -35,6 +35,7 @@ type Config struct {
 }
 
 func (c *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
+	c.Strategy = DefaultStrategy()
 	// TODO
 }
 

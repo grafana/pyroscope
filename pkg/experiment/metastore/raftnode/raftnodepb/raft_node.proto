@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package raft_node;
+
+message RaftNode {
+  string id = 1;
+  string address = 2;
+}
+
+service RaftNodeService {
+  rpc ReadIndex(ReadIndexRequest) returns (ReadIndexResponse) {}
+  rpc NodeInfo(NodeInfoRequest) returns (NodeInfoResponse) {}
+}
+
+message ReadIndexRequest {}
+
+message ReadIndexResponse {
+  uint64 read_index = 1;
+}
+
+message NodeInfoRequest {}
+
+message NodeInfoResponse {
+  NodeInfo node = 1;
+}
+
+message NodeInfo {
+  string server_id = 1;
+  string advertised_address = 2;
+  string state = 3;
+  string leader_id = 4;
+  uint64 commit_index = 5;
+  uint64 applied_index = 6;
+  uint64 last_index = 7;
+
+  Stats stats = 8;
+  message Stats {
+    repeated string name = 1;
+    repeated string value = 2;
+  }
+
+  repeated Peer peers = 9;
+  message Peer {
+    string server_id = 1;
+    string server_address = 2;
+    string suffrage = 3;
+  }
+}

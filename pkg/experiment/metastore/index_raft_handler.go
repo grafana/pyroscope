@@ -33,13 +33,13 @@ type IndexCommandHandler struct {
 func NewIndexCommandHandler(
 	logger log.Logger,
 	index Index,
-	marks Tombstones,
+	tombstones Tombstones,
 	compactor Compactor,
 ) *IndexCommandHandler {
 	return &IndexCommandHandler{
 		logger:     logger,
 		index:      index,
-		tombstones: marks,
+		tombstones: tombstones,
 		compactor:  compactor,
 	}
 }

@@ -3,7 +3,7 @@ syntax = "proto3";
 package query.v1;
 
 import "google/v1/profile.proto";
-import "metastore/v1/metastore.proto";
+import "metastore/v1/types.proto";
 import "types/v1/types.proto";
 
 // QueryFrontendService is supposed to handle both access to the time series

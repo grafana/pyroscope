@@ -10,12 +10,9 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 	placement "github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/fsm"
 	"github.com/grafana/pyroscope/pkg/iter"
 )
-
-type IndexCommandLog interface {
-	AddBlockMetadata(request *raft_log.AddBlockMetadataRequest) (*raft_log.AddBlockMetadataResponse, error)
-}
 
 type PlacementStats interface {
 	RecordStats(iter.Iterator[placement.Sample])
@@ -23,7 +20,7 @@ type PlacementStats interface {
 
 func NewIndexService(
 	logger log.Logger,
-	raft IndexCommandLog,
+	raft Raft,
 	stats PlacementStats,
 ) *IndexService {
 	return &IndexService{
@@ -37,14 +34,14 @@ type IndexService struct {
 	metastorev1.IndexServiceServer
 
 	logger log.Logger
-	raft   IndexCommandLog
+	raft   Raft
 	stats  PlacementStats
 }
 
 func (svc *IndexService) AddBlock(
 	ctx context.Context,
 	req *metastorev1.AddBlockRequest,
-) (resp *metastorev1.AddBlockResponse, err error) {
+) (rsp *metastorev1.AddBlockResponse, err error) {
 	defer func() {
 		if err == nil {
 			svc.stats.RecordStats(statsFromMetadata(req.Block))
@@ -63,16 +60,20 @@ func (svc *IndexService) AddRecoveredBlock(
 func (svc *IndexService) addBlockMetadata(
 	_ context.Context,
 	req *metastorev1.AddBlockRequest,
-) (resp *metastorev1.AddBlockResponse, err error) {
-	if err = SanitizeMetadata(req.Block); err != nil {
+) (*metastorev1.AddBlockResponse, error) {
+	if err := SanitizeMetadata(req.Block); err != nil {
 		_ = level.Warn(svc.logger).Log("invalid metadata", "block_id", req.Block.Id, "err", err)
 		return nil, err
 	}
-	if _, err = svc.raft.AddBlockMetadata(&raft_log.AddBlockMetadataRequest{Metadata: req.Block}); err != nil {
+	resp, err := svc.raft.Propose(
+		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_ADD_BLOCK_METADATA),
+		&raft_log.AddBlockMetadataRequest{Metadata: req.Block},
+	)
+	if err != nil {
 		_ = level.Error(svc.logger).Log("msg", "failed to add block", "block_id", req.Block.Id, "err", err)
 		return nil, err
 	}
-	return new(metastorev1.AddBlockResponse), nil
+	return resp.(*metastorev1.AddBlockResponse), err
 }
 
 func statsFromMetadata(md *metastorev1.BlockMeta) iter.Iterator[placement.Sample] {

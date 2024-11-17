@@ -4,25 +4,6 @@ package metastore.v1;
 
 import "types/v1/types.proto";
 
-service IndexService {
-  rpc AddBlock(AddBlockRequest) returns (AddBlockResponse) {}
-  rpc GetBlockMetadata(GetBlockMetadataRequest) returns (GetBlockMetadataResponse) {}
-}
-
-message AddBlockRequest {
-  BlockMeta block = 1;
-}
-
-message AddBlockResponse {}
-
-message GetBlockMetadataRequest {
-  BlockList blocks = 1;
-}
-
-message GetBlockMetadataResponse {
-  repeated BlockMeta blocks = 1;
-}
-
 message BlockList {
   string tenant = 1;
   uint32 shard = 2;

@@ -18,8 +18,6 @@ packages:
       MetadataQueryServiceServer:
       TenantServiceClient:
       TenantServiceServer:
-      RaftNodeServiceClient:
-      RaftNodeServiceServer:
   github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect:
     interfaces:
       QuerierServiceClient:
@@ -42,13 +40,7 @@ packages:
     interfaces:
       SegmentWriterClient:
       IngesterClient:
-
-  github.com/grafana/pyroscope/pkg/experiment/metastore/compaction/compactor:
+  github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode/raftnodepb:
     interfaces:
-      BlockQueueStore:
-      Tombstones:
-      JobStore:
-
-  github.com/grafana/pyroscope/pkg/experiment/metastore/compaction/scheduler:
-    interfaces:
-      JobStore:
+      RaftNodeServiceClient:
+      RaftNodeServiceServer:

@@ -16,8 +16,10 @@ var blockQueueBucketName = []byte("compaction_block_queue")
 
 // BlockEntry represents a block metadata entry in the compaction block queue.
 type BlockEntry struct {
-	Index      uint64
-	ID         string
+	// Key. Ensures uniqueness and order.
+	Index uint64
+	ID    string
+	// Value. Needed to place the entry in the right queue.
 	AppendedAt int64
 	Level      uint32
 	Shard      uint32
