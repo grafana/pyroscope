@@ -9,15 +9,15 @@ import (
 
 var (
 	ErrConsistentRead = errors.New("consistent read failed")
-	ErrAborted        = errors.New("aborted")
 	ErrLagBehind      = errors.New("replica has fallen too far behind")
+	ErrAborted        = errors.New("aborted")
 )
 
 type Leader interface {
 	ReadIndex() (uint64, error)
 }
 
-type Follower[Tx any] interface {
+type FSM[Tx any] interface {
 	AppliedIndex() uint64
 	Read(func(Tx)) error
 }
@@ -27,7 +27,7 @@ type Follower[Tx any] interface {
 // state machines.
 type StateReader[Tx any] struct {
 	leader        Leader
-	follower      Follower[Tx]
+	fsm           FSM[Tx]
 	checkInterval time.Duration
 	maxDistance   uint64
 }
@@ -62,16 +62,16 @@ type StateReader[Tx any] struct {
 // The applied index is checked on the configured interval. It the distance
 // between the read index and the applied index exceeds the configured
 // threshold, the operation fails with ErrLagBehind. Any error returned by
-// the follower reader is wrapped with ErrConsistentRead.
+// the reader is wrapped with ErrConsistentRead.
 func NewStateReader[Tx any](
 	leader Leader,
-	follower Follower[Tx],
+	fsm FSM[Tx],
 	checkInterval time.Duration,
 	maxDistance uint64,
 ) *StateReader[Tx] {
 	return &StateReader[Tx]{
 		leader:        leader,
-		follower:      follower,
+		fsm:           fsm,
 		checkInterval: checkInterval,
 		maxDistance:   maxDistance,
 	}
@@ -84,7 +84,7 @@ func NewStateReader[Tx any](
 // most up-to-date data, reflecting the updates from all prior write operations
 // that were successful. If the function returns an error, it's guaranteed that
 // the state has not been accessed. These errors can and should be retried on
-// another follower.
+// another replica.
 //
 // Currently, each ConsistentRead requests the new read index from the leader.
 // It's possible to "pipeline" such queries to minimize communications by
@@ -115,7 +115,7 @@ func (r *StateReader[Tx]) consistentRead(ctx context.Context, read func(Tx)) err
 		// after the index check and before the transaction begins (blocking
 		// state restore). We perform the check again to detect this, and
 		// abort the operation if this is the case.
-		if r.follower.AppliedIndex() < applied {
+		if r.fsm.AppliedIndex() < applied {
 			readErr = ErrAborted
 			return
 		}
@@ -124,7 +124,7 @@ func (r *StateReader[Tx]) consistentRead(ctx context.Context, read func(Tx)) err
 		// the state we're accessing now.
 		read(tx)
 	}
-	if err = r.follower.Read(fn); err != nil {
+	if err = r.fsm.Read(fn); err != nil {
 		// The FSM might not be able to perform the read operation due to the
 		// underlying storage issues. In this case, we return the error before
 		// providing the transaction handle to the caller.
@@ -158,7 +158,7 @@ func (r *StateReader[tx]) WaitLeaderCommitIndexApplied(ctx context.Context) (uin
 }
 
 func (r *StateReader[tx]) checkAppliedIndex(readIndex uint64) (uint64, bool, error) {
-	applied := r.follower.AppliedIndex()
+	applied := r.fsm.AppliedIndex()
 	if r.maxDistance > 0 {
 		if delta := int(readIndex) - int(applied); delta > int(r.maxDistance) {
 			return 0, false, ErrLagBehind

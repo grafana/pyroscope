@@ -42,6 +42,9 @@ func (m *Metastore) newFollowerReader(
 	)
 }
 
+// leaderNode is an implementation of raftnode.Leader interface that
+// communicates with the leader using the RaftNode service client to
+// acquire its commit index (ReadIndex).
 type leaderNode struct {
 	client  raftnodepb.RaftNodeServiceClient
 	timeout time.Duration
@@ -57,6 +60,9 @@ func (l *leaderNode) ReadIndex() (uint64, error) {
 	return resp.ReadIndex, nil
 }
 
+// localNode represents the state machine of the local node.
+// In the current implementation, fsm.FSM does keep track of
+// the applied index, therefore we consult to raft to get it.
 type localNode struct {
 	node *raftnode.Node
 	fsm  *fsm.FSM
