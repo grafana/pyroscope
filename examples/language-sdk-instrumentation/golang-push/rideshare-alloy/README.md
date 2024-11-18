@@ -24,9 +24,14 @@ pyroscope.receive_http "default" {
 pyroscope.write "backend" {
     endpoint {
         url = "http://pyroscope:4040"
+        // url = "<Grafana Cloud URL>"
+        // basic_auth {
+        //     username = "<Grafana Cloud User>"
+        //     password = "<Grafana Cloud Password>"
+        // }
     }
     external_labels = {
-        "env" = "home-lab",
+        "env" = "production",
     }
 }
 ```
