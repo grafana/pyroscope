@@ -110,15 +110,14 @@ func New(
 	m := &Metastore{
 		config:    config,
 		logger:    logger,
-		reg:       reg,
+		reg:       prometheus.WrapRegistererWithPrefix("pyroscope_metastore_", reg),
 		health:    healthService,
 		bucket:    bucket,
 		placement: placementMgr,
 	}
 
 	var err error
-	reg = prometheus.WrapRegistererWithPrefix("pyroscope_metastore_", reg)
-	m.fsm, err = fsm.New(m.logger, reg, m.config.DataDir)
+	m.fsm, err = fsm.New(m.logger, m.reg, m.config.DataDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize store: %w", err)
 	}
@@ -154,7 +153,7 @@ func New(
 		return nil, fmt.Errorf("failed to initialize internal state: %w", err)
 	}
 
-	if m.raft, err = raft.NewNode(m.logger, m.config.Raft, reg, m.fsm); err != nil {
+	if m.raft, err = raft.NewNode(m.logger, m.config.Raft, m.reg, m.fsm); err != nil {
 		return nil, fmt.Errorf("failed to initialize raft: %w", err)
 	}
 

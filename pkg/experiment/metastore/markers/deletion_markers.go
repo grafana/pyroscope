@@ -23,16 +23,12 @@ type metrics struct {
 func newMetrics(reg prometheus.Registerer) *metrics {
 	m := &metrics{
 		markedBlocks: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Namespace: "pyroscope",
-			Subsystem: "metastore",
-			Name:      "block_cleaner_marked_block_count",
-			Help:      "The number of blocks marked as removed",
+			Name: "block_cleaner_marked_block_count",
+			Help: "The number of blocks marked as removed",
 		}, []string{"tenant", "shard"}),
 		expiredBlocks: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Namespace: "pyroscope",
-			Subsystem: "metastore",
-			Name:      "block_cleaner_expired_block_count",
-			Help:      "The number of marked blocks that expired and were removed",
+			Name: "block_cleaner_expired_block_count",
+			Help: "The number of marked blocks that expired and were removed",
 		}, []string{"tenant", "shard"}),
 	}
 	if reg != nil {
