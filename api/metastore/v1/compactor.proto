@@ -51,7 +51,7 @@ message CompactionJobAssignment {
   string name = 1;
   uint64 token = 2;
   int64 lease_expires_at = 3;
-  CompactionJobStatus status = 4;
+  CompactionJobStatus status = 4; // TODO: We probably don't need this field.
 }
 
 message CompactionJobStatusUpdate {

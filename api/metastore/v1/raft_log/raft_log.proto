@@ -7,9 +7,7 @@ import "metastore/v1/compactor.proto";
 
 enum RaftCommand {
   RAFT_COMMAND_UNKNOWN = 0;
-
   RAFT_COMMAND_ADD_BLOCK_METADATA = 1;
-
   RAFT_COMMAND_GET_COMPACTION_PLAN_UPDATE = 2;
   RAFT_COMMAND_UPDATE_COMPACTION_PLAN = 3;
 }

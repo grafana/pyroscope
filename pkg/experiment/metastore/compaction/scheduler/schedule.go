@@ -179,7 +179,7 @@ func (p *schedule) assignJob(e *jobEntry) *raft_log.CompactionJobState {
 func (p *schedule) shouldReassign(job *jobEntry) bool {
 	abandoned := p.now.UnixNano() > job.LeaseExpiresAt
 	limit := p.scheduler.config.MaxFailures
-	faulty := limit > 0 && job.Failures >= limit
+	faulty := limit > 0 && uint64(job.Failures) >= limit
 	return abandoned && !faulty
 }
 

@@ -7,8 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"runtime/debug"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-kit/log"
@@ -19,28 +19,30 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/client"
 	"github.com/grafana/pyroscope/pkg/experiment/query_backend/block"
 	"github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/util"
+
 	_ "go.uber.org/automaxprocs"
 )
 
 type Worker struct {
-	*services.BasicService
+	service services.Service
 
-	config          Config
-	logger          log.Logger
-	metastoreClient *metastoreclient.Client
-	storage         objstore.Bucket
-	metrics         *compactionWorkerMetrics
+	logger  log.Logger
+	config  Config
+	client  MetastoreClient
+	storage objstore.Bucket
+	metrics *metrics
 
-	jobMutex      sync.RWMutex
-	pendingJobs   map[string]*metastorev1.CompactionJob
-	activeJobs    map[string]*metastorev1.CompactionJob
-	completedJobs map[string]*metastorev1.CompactionJobStatus
+	jobs    map[string]*compactionJob
+	queue   chan *compactionJob
+	workers int
+	free    atomic.Int32
 
-	queue chan *metastorev1.CompactionJob
-	wg    sync.WaitGroup
+	stopped   atomic.Bool
+	closeOnce sync.Once
+	wg        sync.WaitGroup
 }
 
 type Config struct {
@@ -48,13 +50,15 @@ type Config struct {
 	JobPollInterval time.Duration `yaml:"job_poll_interval"`
 	SmallObjectSize int           `yaml:"small_object_size_bytes"`
 	TempDir         string        `yaml:"temp_dir"`
+	RequestTimeout  time.Duration `yaml:"request_timeout"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	const prefix = "compaction-worker."
 	tempdir := filepath.Join(os.TempDir(), "pyroscope-compactor")
-	f.IntVar(&cfg.JobConcurrency, prefix+"job-concurrency", 1, "How many concurrent jobs will a compaction worker run at most.")
-	f.DurationVar(&cfg.JobPollInterval, prefix+"job-poll-interval", 5*time.Second, "How often will a compaction worker poll for jobs.")
+	f.IntVar(&cfg.JobConcurrency, prefix+"job-concurrency", 1, "Number of concurrent jobs per core a compaction busy will run.")
+	f.DurationVar(&cfg.JobPollInterval, prefix+"job-poll-interval", 5*time.Second, "Interval between job requests")
+	f.DurationVar(&cfg.RequestTimeout, prefix+"request-timeout", 5*time.Second, "Job request timeout.")
 	f.IntVar(&cfg.SmallObjectSize, prefix+"small-object-size-bytes", 8<<20, "Size of the object that can be loaded in memory.")
 	f.StringVar(&cfg.TempDir, prefix+"temp-dir", tempdir, "Temporary directory for compaction jobs.")
 }
@@ -64,201 +68,266 @@ func (cfg *Config) Validate() error {
 	return nil
 }
 
-func New(config Config, logger log.Logger, metastoreClient *metastoreclient.Client, storage objstore.Bucket, reg prometheus.Registerer) (*Worker, error) {
-	workers := runtime.GOMAXPROCS(-1) * config.JobConcurrency
+type compactionJob struct {
+	ctx    context.Context
+	cancel context.CancelFunc
+	*metastorev1.CompactionJob
+	source []*metastorev1.BlockMeta
+
+	assignment *metastorev1.CompactionJobAssignment
+	compacted  *metastorev1.CompactedBlocks
+	done       atomic.Bool
+}
+
+type MetastoreClient interface {
+	metastorev1.CompactionServiceClient
+	metastorev1.IndexServiceClient
+}
+
+func New(
+	logger log.Logger,
+	config Config,
+	client MetastoreClient,
+	storage objstore.Bucket,
+	reg prometheus.Registerer,
+) (*Worker, error) {
 	w := &Worker{
-		config:          config,
-		logger:          logger,
-		metastoreClient: metastoreClient,
-		storage:         storage,
-		pendingJobs:     make(map[string]*metastorev1.CompactionJob),
-		activeJobs:      make(map[string]*metastorev1.CompactionJob),
-		completedJobs:   make(map[string]*metastorev1.CompactionJobStatus),
-		metrics:         newMetrics(reg),
-		queue:           make(chan *metastorev1.CompactionJob, workers),
+		config:  config,
+		logger:  logger,
+		client:  client,
+		storage: storage,
+		metrics: newMetrics(reg),
 	}
-	w.BasicService = services.NewBasicService(w.starting, w.running, w.stopping)
+
+	w.workers = runtime.GOMAXPROCS(-1) * config.JobConcurrency
+	if w.workers < 1 {
+		w.workers = 1
+	}
+	w.queue = make(chan *compactionJob, 2*w.workers)
+	w.jobs = make(map[string]*compactionJob, 2*w.workers)
+	w.free.Store(int32(w.workers))
+
+	w.service = services.NewBasicService(w.starting, w.running, w.stopping)
 	return w, nil
 }
 
-func (w *Worker) starting(ctx context.Context) (err error) {
-	return nil
-}
+func (w *Worker) Service() services.Service { return w.service }
+
+func (w *Worker) starting(context.Context) (err error) { return nil }
+
+func (w *Worker) stopping(error) error { return nil }
 
 func (w *Worker) running(ctx context.Context) error {
 	ticker := time.NewTicker(w.config.JobPollInterval)
 	defer ticker.Stop()
-	for i := 0; i < cap(w.queue); i++ {
-		w.wg.Add(1)
+
+	stopPolling := make(chan struct{})
+	pollingDone := make(chan struct{})
+	go func() {
+		defer close(pollingDone)
+		select {
+		case <-stopPolling:
+			return
+		case <-ticker.C:
+			w.poll()
+		}
+	}()
+
+	w.wg.Add(w.workers)
+	for i := 0; i < w.workers; i++ {
 		go func() {
 			defer w.wg.Done()
-			w.jobsLoop(ctx)
+			w.loop()
 		}()
 	}
 
-	for {
-		select {
-		case <-ticker.C:
-			w.poll(ctx)
+	<-ctx.Done()
+	// Wait for all threads to finish their work, continuing to report status
+	// updates about the in-progress jobs. First, signal to the poll loop that
+	// we're done with new jobs.
+	w.stopped.Store(true)
+	w.wg.Wait()
 
-		case <-ctx.Done():
-			w.wg.Wait()
-			return nil
-		}
-	}
-}
-
-func (w *Worker) jobsLoop(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-
-		case job := <-w.queue:
-			w.jobMutex.Lock()
-			delete(w.pendingJobs, job.Name)
-			w.activeJobs[job.Name] = job
-			w.jobMutex.Unlock()
-
-			_ = level.Info(w.logger).Log("msg", "starting compaction job", "job", job.Name)
-			status := w.startJob(ctx, job)
-			_ = level.Info(w.logger).Log("msg", "compaction job finished", "job", job.Name)
-
-			w.jobMutex.Lock()
-			delete(w.activeJobs, job.Name)
-			w.completedJobs[job.Name] = status
-			w.jobMutex.Unlock()
-		}
-	}
-}
-
-func (w *Worker) poll(ctx context.Context) {
-	w.jobMutex.Lock()
-	level.Debug(w.logger).Log(
-		"msg", "polling for compaction jobs and status updates",
-		"active_jobs", len(w.activeJobs),
-		"pending_jobs", len(w.pendingJobs),
-		"pending_updates", len(w.completedJobs))
-
-	pendingStatusUpdates := make([]*metastorev1.CompactionJobStatus, 0, len(w.completedJobs))
-	for _, update := range w.completedJobs {
-		level.Debug(w.logger).Log("msg", "completed job update", "job", update.JobName, "status", update.Status)
-		pendingStatusUpdates = append(pendingStatusUpdates, update)
-	}
-	for _, activeJob := range w.activeJobs {
-		level.Debug(w.logger).Log("msg", "in progress job update", "job", activeJob.Name)
-		update := activeJob.Status.CloneVT()
-		update.Status = metastorev1.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS
-		pendingStatusUpdates = append(pendingStatusUpdates, update)
-	}
-	for _, pendingJob := range w.pendingJobs {
-		level.Debug(w.logger).Log("msg", "pending job update", "job", pendingJob.Name)
-		update := pendingJob.Status.CloneVT()
-		update.Status = metastorev1.CompactionStatus_COMPACTION_STATUS_IN_PROGRESS
-		pendingStatusUpdates = append(pendingStatusUpdates, update)
-	}
-
-	jobCapacity := cap(w.queue) - len(w.queue)
-	w.jobMutex.Unlock()
-
-	if len(pendingStatusUpdates) > 0 || jobCapacity > 0 {
-		jobsResponse, err := w.metastoreClient.PollCompactionJobs(ctx, &metastorev1.PollCompactionJobsRequest{
-			JobStatusUpdates: pendingStatusUpdates,
-			JobCapacity:      uint32(jobCapacity),
-		})
-
-		if err != nil {
-			level.Error(w.logger).Log("msg", "failed to poll compaction jobs", "err", err)
-			return
-		}
-
-		level.Debug(w.logger).Log("msg", "poll response received", "compaction_jobs", len(jobsResponse.CompactionJobs))
-
-		pendingJobs := make([]*metastorev1.CompactionJob, 0, len(jobsResponse.CompactionJobs))
-		for _, job := range jobsResponse.CompactionJobs {
-			pendingJobs = append(pendingJobs, job.CloneVT())
-		}
-
-		w.jobMutex.Lock()
-		for _, update := range pendingStatusUpdates {
-			delete(w.completedJobs, update.JobName)
-		}
-		for _, job := range pendingJobs {
-			w.pendingJobs[job.Name] = job
-		}
-		w.jobMutex.Unlock()
-
-		for _, job := range pendingJobs {
-			select {
-			case w.queue <- job:
-			default:
-				level.Warn(w.logger).Log("msg", "dropping job", "job_name", job.Name)
-				w.jobMutex.Lock()
-				delete(w.pendingJobs, job.Name)
-				w.jobMutex.Unlock()
-			}
-		}
-	}
-}
-
-func (w *Worker) stopping(err error) error {
-	// TODO aleks: handle shutdown
+	// Now that all the threads are done, we stop the polling loop.
+	close(stopPolling)
+	<-pollingDone
 	return nil
 }
 
-func (w *Worker) startJob(ctx context.Context, job *metastorev1.CompactionJob) *metastorev1.CompactionJobStatus {
-	jobStartTime := time.Now()
-	labels := []string{job.TenantId, fmt.Sprint(job.Shard), fmt.Sprint(job.CompactionLevel)}
+func (w *Worker) poll() {
+	// Check if we want to stop polling for new jobs.
+	// Close the queue if this is not the case.
+	var capacity uint32
+	if w.stopped.Load() {
+		w.closeOnce.Do(func() {
+			close(w.queue)
+		})
+	} else {
+		// We report the number of free workers in a hope to get more jobs.
+		// Note that cap(w.queue) - len(w.queue) will only report 0 when all
+		// the workers are busy and the queue is full (in fact, doubling the
+		// reported capacity).
+		if free := w.free.Load(); free > 0 {
+			capacity = uint32(free)
+		}
+	}
+
+	updates := w.collectUpdates()
+	if len(updates) == 0 && capacity == 0 {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), w.config.RequestTimeout)
+	defer cancel()
+	resp, err := w.client.PollCompactionJobs(ctx, &metastorev1.PollCompactionJobsRequest{
+		StatusUpdates: updates,
+		JobCapacity:   capacity,
+	})
+	if err != nil {
+		level.Error(w.logger).Log("msg", "failed to poll compaction jobs", "err", err)
+		return
+	}
+
+	newJobs := w.handleResponse(resp)
+	for _, job := range newJobs {
+		select {
+		case w.queue <- job:
+		default:
+			level.Warn(w.logger).Log("msg", "dropping job", "job_name", job.Name)
+			w.remove(job)
+		}
+	}
+}
+
+func (w *Worker) collectUpdates() []*metastorev1.CompactionJobStatusUpdate {
+	updates := make([]*metastorev1.CompactionJobStatusUpdate, 0, len(w.jobs))
+	for _, job := range w.jobs {
+		if job.assignment == nil {
+			level.Warn(w.logger).Log("msg", "found a job without assigment", "job", job.Name)
+			w.remove(job)
+			continue
+		}
+
+		update := &metastorev1.CompactionJobStatusUpdate{
+			Name:  job.Name,
+			Token: job.assignment.Token,
+		}
+
+		switch done := job.done.Load(); {
+		case done && job.compacted != nil:
+			level.Info(w.logger).Log("msg", "sending update for completed job", "job", job.Name)
+			update.Status = metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS
+			update.CompactedBlocks = job.compacted
+			updates = append(updates, update)
+			w.remove(job) // If we fail to reach out to the server, we don't care.
+
+		case done && job.compacted == nil:
+			level.Warn(w.logger).Log("msg", "skipping update for abandoned job", "job", job.Name)
+			w.remove(job)
+
+		default:
+			level.Info(w.logger).Log("msg", "sending update for in-progress job", "job", job.Name)
+			update.Status = metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS
+			updates = append(updates, update)
+		}
+	}
+
+	return updates
+}
+
+func (w *Worker) handleResponse(resp *metastorev1.PollCompactionJobsResponse) (newJobs []*compactionJob) {
+	// Add new jobs. If the job already exists, update the assignment.
+	for _, job := range resp.CompactionJobs {
+		if running, found := w.jobs[job.Name]; found {
+			level.Warn(w.logger).Log("msg", "re-assignment of already running job; skipping", "job", job.Name)
+			w.remove(running)
+			continue
+		}
+		c := &compactionJob{CompactionJob: job}
+		c.ctx, c.cancel = context.WithCancel(context.Background())
+		w.jobs[job.Name] = c
+		newJobs = append(newJobs, c)
+	}
+
+	assignments := make(map[string]*metastorev1.CompactionJobAssignment, len(resp.Assignments))
+	for _, assignment := range resp.Assignments {
+		assignments[assignment.Name] = assignment
+	}
+	for _, job := range w.jobs {
+		if assignment, ok := assignments[job.assignment.Name]; ok {
+			// In theory, we should respect the lease expiration time.
+			// In practice, we have a static polling interval.
+			job.assignment = assignment
+		} else {
+			// The job is running without an assigment.
+			// We don't care how and when it ends.
+			w.remove(job)
+		}
+	}
+
+	return newJobs
+}
+
+func (w *Worker) remove(job *compactionJob) {
+	delete(w.jobs, job.Name)
+	job.cancel()
+}
+
+func (w *Worker) loop() {
+	for job := range w.queue {
+		w.free.Add(-1)
+		util.Recover(func() { w.runCompaction(job) })
+		job.done.Store(true)
+		w.free.Add(1)
+	}
+}
+
+func (w *Worker) runCompaction(job *compactionJob) {
+	start := time.Now()
+	labels := []string{job.Tenant, fmt.Sprint(job.Shard), fmt.Sprint(job.CompactionLevel)}
 	statusName := "unknown"
 	defer func() {
-		elapsed := time.Since(jobStartTime)
 		jobStatusLabel := append(labels, statusName)
-		w.metrics.jobDuration.WithLabelValues(jobStatusLabel...).Observe(elapsed.Seconds())
+		w.metrics.jobDuration.WithLabelValues(jobStatusLabel...).Observe(time.Since(start).Seconds())
 		w.metrics.jobsCompleted.WithLabelValues(jobStatusLabel...).Inc()
 		w.metrics.jobsInProgress.WithLabelValues(labels...).Dec()
 	}()
-	w.metrics.jobsInProgress.WithLabelValues(labels...).Inc()
 
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "StartCompactionJob",
+	w.metrics.jobsInProgress.WithLabelValues(labels...).Inc()
+	sp, ctx := opentracing.StartSpanFromContext(job.ctx, "runCompaction",
 		opentracing.Tag{Key: "Job", Value: job.String()},
-		opentracing.Tag{Key: "Tenant", Value: job.TenantId},
+		opentracing.Tag{Key: "Tenant", Value: job.Tenant},
 		opentracing.Tag{Key: "Shard", Value: job.Shard},
 		opentracing.Tag{Key: "CompactionLevel", Value: job.CompactionLevel},
-		opentracing.Tag{Key: "BlockCount", Value: len(job.Blocks)},
+		opentracing.Tag{Key: "SourceBlocks", Value: len(job.SourceBlocks)},
 	)
 	defer sp.Finish()
 
-	_ = level.Info(w.logger).Log(
-		"msg", "compacting blocks for job",
-		"job", job.Name,
-		"blocks", len(job.Blocks))
+	level.Info(w.logger).Log("msg", "starting compaction job", "job", job.Name)
+	if err := w.getBlockMetadata(job); err != nil {
+		return
+	}
 
 	tempdir := filepath.Join(w.config.TempDir, job.Name)
 	sourcedir := filepath.Join(tempdir, "source")
-	// TODO(kolesnikovae): Return the actual error once we
-	//   can handle compaction failures in metastore.
-	compacted, err := pretendEverythingIsOK(func() ([]*metastorev1.BlockMeta, error) {
-		return block.Compact(ctx, job.Blocks, w.storage,
-			block.WithCompactionTempDir(tempdir),
-			block.WithCompactionObjectOptions(
-				block.WithObjectMaxSizeLoadInMemory(w.config.SmallObjectSize),
-				block.WithObjectDownload(sourcedir),
-			),
-		)
-	})
+	compacted, err := block.Compact(ctx, job.source, w.storage,
+		block.WithCompactionTempDir(tempdir),
+		block.WithCompactionObjectOptions(
+			block.WithObjectMaxSizeLoadInMemory(w.config.SmallObjectSize),
+			block.WithObjectDownload(sourcedir),
+		))
 
 	logger := log.With(w.logger,
-		"job_name", job.Name,
-		"job_shard", job.Shard,
-		"job_tenant", job.TenantId,
-		"job_compaction_level", job.CompactionLevel,
-	)
+		"job", job.Name,
+		"shard", job.Shard,
+		"tenant", job.Tenant,
+		"compaction_level", job.CompactionLevel)
 
 	switch {
 	case err == nil:
 		_ = level.Info(logger).Log(
 			"msg", "successful compaction for job",
-			"input_blocks", len(job.Blocks),
+			"input_blocks", len(job.SourceBlocks),
 			"output_blocks", len(compacted))
 
 		for _, c := range compacted {
@@ -274,40 +343,59 @@ func (w *Worker) startJob(ctx context.Context, job *metastorev1.CompactionJob) *
 				"datasets", len(c.Datasets))
 		}
 
-		job.Status.Status = metastorev1.CompactionStatus_COMPACTION_STATUS_SUCCESS
-		job.Status.CompletedJob = &metastorev1.CompletedJob{Blocks: compacted}
 		statusName = "success"
+		job.compacted = &metastorev1.CompactedBlocks{
+			CompactedBlocks: compacted,
+			SourceBlocks: &metastorev1.BlockList{
+				Tenant: job.Tenant,
+				Shard:  job.Shard,
+				Blocks: job.SourceBlocks,
+			},
+		}
 
 	case errors.Is(err, context.Canceled):
 		_ = level.Warn(logger).Log("msg", "job cancelled", "job", job.Name)
-		job.Status.Status = metastorev1.CompactionStatus_COMPACTION_STATUS_UNSPECIFIED
 		statusName = "cancelled"
 
 	default:
 		_ = level.Error(logger).Log("msg", "failed to compact blocks", "err", err, "job", job.Name)
-		job.Status.Status = metastorev1.CompactionStatus_COMPACTION_STATUS_FAILURE
 		statusName = "failure"
 	}
-
-	return job.Status
 }
 
-func pretendEverythingIsOK(fn func() ([]*metastorev1.BlockMeta, error)) (m []*metastorev1.BlockMeta, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Println("ignoring compaction panic:", r)
-			fmt.Println(string(debug.Stack()))
-			m = nil
-		}
-		if err != nil {
-			if errors.Is(err, context.Canceled) {
-				// We can handle this.
-				return
-			}
-			fmt.Println("ignoring compaction error:", err)
-			m = nil
-		}
-		err = nil
-	}()
-	return fn()
+func (w *Worker) getBlockMetadata(job *compactionJob) error {
+	ctx, cancel := context.WithTimeout(job.ctx, w.config.RequestTimeout)
+	defer cancel()
+
+	resp, err := w.client.GetBlockMetadata(ctx, &metastorev1.GetBlockMetadataRequest{
+		Blocks: &metastorev1.BlockList{
+			Tenant: job.Tenant,
+			Shard:  job.Shard,
+			Blocks: job.SourceBlocks,
+		},
+	})
+	if err != nil {
+		level.Error(w.logger).Log("msg", "failed to get block metadata", "job", job.Name, "err", err)
+		return err
+	}
+
+	source := resp.GetBlocks()
+	if len(source) < 2 {
+		level.Warn(w.logger).Log(
+			"msg", "no block metadata found; skipping",
+			"blocks", len(job.SourceBlocks),
+			"blocks_found", len(source),
+			"job", job.Name)
+
+		return fmt.Errorf("no blocks to compact")
+	}
+
+	// Update the plan to reflect the actual compaction job state.
+	job.SourceBlocks = job.SourceBlocks[:0]
+	for _, b := range source {
+		job.SourceBlocks = append(job.SourceBlocks, b.Id)
+	}
+
+	job.source = source
+	return nil
 }

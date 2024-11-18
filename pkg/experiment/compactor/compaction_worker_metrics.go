@@ -2,14 +2,14 @@ package compactor
 
 import "github.com/prometheus/client_golang/prometheus"
 
-type compactionWorkerMetrics struct {
+type metrics struct {
 	jobsCompleted  *prometheus.CounterVec
 	jobsInProgress *prometheus.GaugeVec
 	jobDuration    *prometheus.HistogramVec
 }
 
-func newMetrics(r prometheus.Registerer) *compactionWorkerMetrics {
-	m := &compactionWorkerMetrics{}
+func newMetrics(r prometheus.Registerer) *metrics {
+	m := &metrics{}
 
 	m.jobsCompleted = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "pyroscope_compaction_jobs_completed_count",

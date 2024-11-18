@@ -90,9 +90,9 @@ func (f *Phlare) initCompactionWorker() (svc services.Service, err error) {
 		return nil, err
 	}
 	logger := log.With(f.logger, "component", "compaction-worker")
-	f.compactionWorker, err = compactionworker.New(
-		f.Cfg.CompactionWorker,
+	w, err := compactionworker.New(
 		logger,
+		f.Cfg.CompactionWorker,
 		f.metastoreClient,
 		f.storageBucket,
 		f.reg,
@@ -100,7 +100,8 @@ func (f *Phlare) initCompactionWorker() (svc services.Service, err error) {
 	if err != nil {
 		return nil, err
 	}
-	return f.compactionWorker, nil
+	f.compactionWorker = w
+	return w.Service(), nil
 }
 
 func (f *Phlare) initMetastore() (services.Service, error) {

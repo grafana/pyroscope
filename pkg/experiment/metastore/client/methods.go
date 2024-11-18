@@ -90,6 +90,12 @@ func (c *Client) AddBlock(ctx context.Context, in *metastorev1.AddBlockRequest, 
 	})
 }
 
+func (c *Client) GetBlockMetadata(ctx context.Context, in *metastorev1.GetBlockMetadataRequest, opts ...grpc.CallOption) (*metastorev1.GetBlockMetadataResponse, error) {
+	return invoke(ctx, c, func(ctx context.Context, instance instance) (*metastorev1.GetBlockMetadataResponse, error) {
+		return instance.GetBlockMetadata(ctx, in, opts...)
+	})
+}
+
 func (c *Client) QueryMetadata(ctx context.Context, in *metastorev1.QueryMetadataRequest, opts ...grpc.CallOption) (*metastorev1.QueryMetadataResponse, error) {
 	return invoke(ctx, c, func(ctx context.Context, instance instance) (*metastorev1.QueryMetadataResponse, error) {
 		return instance.QueryMetadata(ctx, in, opts...)
