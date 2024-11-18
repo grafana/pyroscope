@@ -48,7 +48,10 @@ func NewStore() *store.TombstoneStore {
 }
 
 func (x *Tombstones) Exists(md *metastorev1.BlockMeta) bool {
-	_, exists := x.blocks[tenantBlockKey{tenant: md.TenantId, shard: md.Shard}]
+	tenant, exists := x.blocks[tenantBlockKey{tenant: md.TenantId, shard: md.Shard}]
+	if exists {
+		_, exists = tenant.blocks[md.Id]
+	}
 	return exists
 }
 
@@ -61,7 +64,7 @@ func (x *Tombstones) ListTombstones(before time.Time) iter.Iterator[*metastorev1
 
 func (x *Tombstones) AddTombstones(tx *bbolt.Tx, cmd *raft.Log, t *metastorev1.Tombstones) error {
 	var k tombstoneKey
-	if k.set(t) {
+	if !k.set(t) {
 		return nil
 	}
 	v := store.TombstoneEntry{
@@ -86,7 +89,7 @@ func (x *Tombstones) DeleteTombstones(tx *bbolt.Tx, cmd *raft.Log, tombstones ..
 
 func (x *Tombstones) deleteTombstones(tx *bbolt.Tx, _ *raft.Log, t *metastorev1.Tombstones) error {
 	var k tombstoneKey
-	if k.set(t) {
+	if !k.set(t) {
 		return nil
 	}
 	e := x.delete(k)

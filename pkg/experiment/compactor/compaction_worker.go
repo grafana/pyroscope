@@ -119,17 +119,17 @@ func (w *Worker) stopping(error) error { return nil }
 
 func (w *Worker) running(ctx context.Context) error {
 	ticker := time.NewTicker(w.config.JobPollInterval)
-	defer ticker.Stop()
-
 	stopPolling := make(chan struct{})
 	pollingDone := make(chan struct{})
 	go func() {
 		defer close(pollingDone)
-		select {
-		case <-stopPolling:
-			return
-		case <-ticker.C:
-			w.poll()
+		for {
+			select {
+			case <-stopPolling:
+				return
+			case <-ticker.C:
+				w.poll()
+			}
 		}
 	}()
 
@@ -137,7 +137,13 @@ func (w *Worker) running(ctx context.Context) error {
 	for i := 0; i < w.workers; i++ {
 		go func() {
 			defer w.wg.Done()
-			w.loop()
+			level.Info(w.logger).Log("msg", "compaction worker thead started")
+			for job := range w.queue {
+				w.free.Add(-1)
+				util.Recover(func() { w.runCompaction(job) })
+				job.done.Store(true)
+				w.free.Add(1)
+			}
 		}()
 	}
 
@@ -146,9 +152,11 @@ func (w *Worker) running(ctx context.Context) error {
 	// updates about the in-progress jobs. First, signal to the poll loop that
 	// we're done with new jobs.
 	w.stopped.Store(true)
+	level.Info(w.logger).Log("msg", "waiting for all jobs to finish")
 	w.wg.Wait()
 
 	// Now that all the threads are done, we stop the polling loop.
+	ticker.Stop()
 	close(stopPolling)
 	<-pollingDone
 	return nil
@@ -160,6 +168,7 @@ func (w *Worker) poll() {
 	var capacity uint32
 	if w.stopped.Load() {
 		w.closeOnce.Do(func() {
+			level.Info(w.logger).Log("msg", "closing job queue")
 			close(w.queue)
 		})
 	} else {
@@ -174,9 +183,11 @@ func (w *Worker) poll() {
 
 	updates := w.collectUpdates()
 	if len(updates) == 0 && capacity == 0 {
+		level.Info(w.logger).Log("msg", "skipping polling", "updates", len(updates), "capacity", capacity)
 		return
 	}
 
+	level.Info(w.logger).Log("msg", "polling compaction jobs", "updates", len(updates), "capacity", capacity)
 	ctx, cancel := context.WithTimeout(context.Background(), w.config.RequestTimeout)
 	defer cancel()
 	resp, err := w.client.PollCompactionJobs(ctx, &metastorev1.PollCompactionJobsRequest{
@@ -285,15 +296,6 @@ func (w *Worker) handleResponse(resp *metastorev1.PollCompactionJobsResponse) (n
 	return newJobs
 }
 
-func (w *Worker) loop() {
-	for job := range w.queue {
-		w.free.Add(-1)
-		util.Recover(func() { w.runCompaction(job) })
-		job.done.Store(true)
-		w.free.Add(1)
-	}
-}
-
 func (w *Worker) runCompaction(job *compactionJob) {
 	start := time.Now()
 	labels := []string{job.Tenant, fmt.Sprint(job.Shard), fmt.Sprint(job.CompactionLevel)}
@@ -316,7 +318,7 @@ func (w *Worker) runCompaction(job *compactionJob) {
 	)
 	defer sp.Finish()
 
-	logger := log.With(w.logger, "job", job.Name, "tenant", job.Tenant)
+	logger := log.With(w.logger, "job", job.Name)
 	deleteGroup, deleteCtx := errgroup.WithContext(ctx)
 	for _, t := range job.Tombstones {
 		if b := t.GetBlocks(); b != nil {
@@ -349,13 +351,13 @@ func (w *Worker) runCompaction(job *compactionJob) {
 
 	switch {
 	case err == nil:
-		_ = level.Info(logger).Log(
-			"msg", "successful compaction for job",
+		level.Info(logger).Log(
+			"msg", "compaction finished successfully",
 			"input_blocks", len(job.SourceBlocks),
 			"output_blocks", len(compacted))
 
 		for _, c := range compacted {
-			_ = level.Info(logger).Log(
+			level.Info(logger).Log(
 				"msg", "new compacted block",
 				"block_id", c.Id,
 				"block_tenant", c.TenantId,
@@ -378,11 +380,11 @@ func (w *Worker) runCompaction(job *compactionJob) {
 		}
 
 	case errors.Is(err, context.Canceled):
-		_ = level.Warn(logger).Log("msg", "job cancelled")
+		level.Warn(logger).Log("msg", "job cancelled")
 		statusName = "cancelled"
 
 	default:
-		_ = level.Error(logger).Log("msg", "failed to compact blocks", "err", err)
+		level.Error(logger).Log("msg", "failed to compact blocks", "err", err)
 		statusName = "failure"
 	}
 
@@ -428,6 +430,13 @@ func (w *Worker) getBlockMetadata(logger log.Logger, job *compactionJob) error {
 }
 
 func (w *Worker) deleteBlocks(ctx context.Context, logger log.Logger, t *metastorev1.BlockTombstones) {
+	level.Info(logger).Log(
+		"msg", "deleting blocks",
+		"tenant", t.Tenant,
+		"shard", t.Shard,
+		"compaction_level", t.CompactionLevel,
+		"batch_size", len(t.Blocks),
+	)
 	for _, b := range t.Blocks {
 		path := block.BuildObjectPath(t.Tenant, t.Shard, t.CompactionLevel, b)
 		if err := w.storage.Delete(ctx, path); err != nil {
