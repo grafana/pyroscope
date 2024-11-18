@@ -792,7 +792,8 @@
           "format": "int64"
         },
         "status": {
-          "$ref": "#/definitions/v1CompactionJobStatus"
+          "$ref": "#/definitions/v1CompactionJobStatus",
+          "description": "TODO: We probably don't need this field."
         }
       }
     },

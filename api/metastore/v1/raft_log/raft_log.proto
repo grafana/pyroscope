@@ -2,8 +2,8 @@ syntax = "proto3";
 
 package raft_log;
 
-import "metastore/v1/types.proto";
 import "metastore/v1/compactor.proto";
+import "metastore/v1/types.proto";
 
 enum RaftCommand {
   RAFT_COMMAND_UNKNOWN = 0;

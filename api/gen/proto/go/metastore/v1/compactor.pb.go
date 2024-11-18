@@ -403,7 +403,7 @@ type CompactionJobAssignment struct {
 	Name           string              `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Token          uint64              `protobuf:"varint,2,opt,name=token,proto3" json:"token,omitempty"`
 	LeaseExpiresAt int64               `protobuf:"varint,3,opt,name=lease_expires_at,json=leaseExpiresAt,proto3" json:"lease_expires_at,omitempty"`
-	Status         CompactionJobStatus `protobuf:"varint,4,opt,name=status,proto3,enum=metastore.v1.CompactionJobStatus" json:"status,omitempty"`
+	Status         CompactionJobStatus `protobuf:"varint,4,opt,name=status,proto3,enum=metastore.v1.CompactionJobStatus" json:"status,omitempty"` // TODO: We probably don't need this field.
 }
 
 func (x *CompactionJobAssignment) Reset() {

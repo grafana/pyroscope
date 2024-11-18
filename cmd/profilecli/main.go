@@ -98,7 +98,7 @@ func main() {
 	readyCmd := app.Command("ready", "Check Pyroscope health.")
 	readyParams := addReadyParams(readyCmd)
 
-	raftCmd := adminCmd.Command("raft", "Operate on Raft cluster.").Hidden()
+	raftCmd := adminCmd.Command("raft", "Operate on Raft cluster.")
 	raftInfoCmd := raftCmd.Command("info", "Print info about a Raft node.")
 	raftInfoParams := addRaftInfoParams(raftInfoCmd)
 
