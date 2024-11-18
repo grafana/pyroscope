@@ -109,19 +109,23 @@ func NewObject(storage objstore.Bucket, meta *metastorev1.BlockMeta, opts ...Obj
 }
 
 func ObjectPath(md *metastorev1.BlockMeta) string {
+	return BuildObjectPath(md.TenantId, md.Shard, md.CompactionLevel, md.Id)
+}
+
+func BuildObjectPath(tenant string, shard uint32, level uint32, block string) string {
 	topLevel := DirPathBlock
-	tenantDirName := md.TenantId
-	if md.CompactionLevel == 0 {
+	tenantDirName := tenant
+	if level == 0 {
 		topLevel = DirPathSegment
 		tenantDirName = DirNameAnonTenant
 	}
 	var b strings.Builder
 	b.WriteString(topLevel)
-	b.WriteString(strconv.Itoa(int(md.Shard)))
+	b.WriteString(strconv.Itoa(int(shard)))
 	b.WriteByte('/')
 	b.WriteString(tenantDirName)
 	b.WriteByte('/')
-	b.WriteString(md.Id)
+	b.WriteString(block)
 	b.WriteByte('/')
 	b.WriteString(FileNameDataObject)
 	return b.String()

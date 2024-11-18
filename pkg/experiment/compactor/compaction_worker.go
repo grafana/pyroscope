@@ -17,13 +17,13 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	_ "go.uber.org/automaxprocs"
+	"golang.org/x/sync/errgroup"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/query_backend/block"
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/util"
-
-	_ "go.uber.org/automaxprocs"
 )
 
 type Worker struct {
@@ -188,6 +188,7 @@ func (w *Worker) poll() {
 		return
 	}
 
+	w.cleanup(updates)
 	newJobs := w.handleResponse(resp)
 	for _, job := range newJobs {
 		select {
@@ -202,12 +203,6 @@ func (w *Worker) poll() {
 func (w *Worker) collectUpdates() []*metastorev1.CompactionJobStatusUpdate {
 	updates := make([]*metastorev1.CompactionJobStatusUpdate, 0, len(w.jobs))
 	for _, job := range w.jobs {
-		if job.assignment == nil {
-			level.Warn(w.logger).Log("msg", "found a job without assigment", "job", job.Name)
-			w.remove(job)
-			continue
-		}
-
 		update := &metastorev1.CompactionJobStatusUpdate{
 			Name:  job.Name,
 			Token: job.assignment.Token,
@@ -219,11 +214,9 @@ func (w *Worker) collectUpdates() []*metastorev1.CompactionJobStatusUpdate {
 			update.Status = metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS
 			update.CompactedBlocks = job.compacted
 			updates = append(updates, update)
-			w.remove(job) // If we fail to reach out to the server, we don't care.
 
 		case done && job.compacted == nil:
 			level.Warn(w.logger).Log("msg", "skipping update for abandoned job", "job", job.Name)
-			w.remove(job)
 
 		default:
 			level.Info(w.logger).Log("msg", "sending update for in-progress job", "job", job.Name)
@@ -235,24 +228,26 @@ func (w *Worker) collectUpdates() []*metastorev1.CompactionJobStatusUpdate {
 	return updates
 }
 
-func (w *Worker) handleResponse(resp *metastorev1.PollCompactionJobsResponse) (newJobs []*compactionJob) {
-	// Add new jobs. If the job already exists, update the assignment.
-	for _, job := range resp.CompactionJobs {
-		if running, found := w.jobs[job.Name]; found {
-			level.Warn(w.logger).Log("msg", "re-assignment of already running job; skipping", "job", job.Name)
-			w.remove(running)
-			continue
+func (w *Worker) cleanup(updates []*metastorev1.CompactionJobStatusUpdate) {
+	for _, update := range updates {
+		if job := w.jobs[update.Name]; job != nil && job.done.Load() {
+			w.remove(job)
 		}
-		c := &compactionJob{CompactionJob: job}
-		c.ctx, c.cancel = context.WithCancel(context.Background())
-		w.jobs[job.Name] = c
-		newJobs = append(newJobs, c)
 	}
+}
 
+func (w *Worker) remove(job *compactionJob) {
+	delete(w.jobs, job.Name)
+	job.cancel()
+}
+
+func (w *Worker) handleResponse(resp *metastorev1.PollCompactionJobsResponse) (newJobs []*compactionJob) {
+	// Assignments by job name.
 	assignments := make(map[string]*metastorev1.CompactionJobAssignment, len(resp.Assignments))
 	for _, assignment := range resp.Assignments {
 		assignments[assignment.Name] = assignment
 	}
+
 	for _, job := range w.jobs {
 		if assignment, ok := assignments[job.assignment.Name]; ok {
 			// In theory, we should respect the lease expiration time.
@@ -261,16 +256,33 @@ func (w *Worker) handleResponse(resp *metastorev1.PollCompactionJobsResponse) (n
 		} else {
 			// The job is running without an assigment.
 			// We don't care how and when it ends.
+			level.Warn(w.logger).Log("msg", "job re-assigned to another worker; cancelling", "job", job.Name)
 			w.remove(job)
 		}
 	}
 
-	return newJobs
-}
+	for _, newJob := range resp.CompactionJobs {
+		if running, found := w.jobs[newJob.Name]; found {
+			level.Warn(w.logger).Log("msg", "job re-assigned to the same worker", "job", running.Name)
+			// We're free to chose what to do. For now, we update the
+			// assignment (in case if the token has changed) and let the
+			// running job to finish.
+			if running.assignment = assignments[running.Name]; running.assignment != nil {
+				continue
+			}
+		}
+		job := &compactionJob{CompactionJob: newJob}
+		if job.assignment = assignments[newJob.Name]; job.assignment == nil {
+			// That should not be possible, logging it here just in case.
+			level.Warn(w.logger).Log("msg", "found a job without assigment", "job", job.Name)
+			continue
+		}
+		job.ctx, job.cancel = context.WithCancel(context.Background())
+		newJobs = append(newJobs, job)
+		w.jobs[job.Name] = job
+	}
 
-func (w *Worker) remove(job *compactionJob) {
-	delete(w.jobs, job.Name)
-	job.cancel()
+	return newJobs
 }
 
 func (w *Worker) loop() {
@@ -300,11 +312,29 @@ func (w *Worker) runCompaction(job *compactionJob) {
 		opentracing.Tag{Key: "Shard", Value: job.Shard},
 		opentracing.Tag{Key: "CompactionLevel", Value: job.CompactionLevel},
 		opentracing.Tag{Key: "SourceBlocks", Value: len(job.SourceBlocks)},
+		opentracing.Tag{Key: "Tombstones", Value: len(job.Tombstones)},
 	)
 	defer sp.Finish()
 
-	level.Info(w.logger).Log("msg", "starting compaction job", "job", job.Name)
-	if err := w.getBlockMetadata(job); err != nil {
+	logger := log.With(w.logger, "job", job.Name, "tenant", job.Tenant)
+	deleteGroup, deleteCtx := errgroup.WithContext(ctx)
+	for _, t := range job.Tombstones {
+		if b := t.GetBlocks(); b != nil {
+			deleteGroup.Go(func() error {
+				// TODO(kolesnikovae): Clarify guarantees of cleanup.
+				// We're currently ignore any failures – it's unlikely that
+				// anyone wants to stop compaction because of a failed cleanup.
+				// However, we should make it configurable: if cleanup failed,
+				// the entire job is retried; blocks should be deleted before
+				// starting the compaction.
+				w.deleteBlocks(deleteCtx, logger, b)
+				return nil
+			})
+		}
+	}
+
+	level.Info(logger).Log("msg", "starting compaction job")
+	if err := w.getBlockMetadata(logger, job); err != nil {
 		return
 	}
 
@@ -316,12 +346,6 @@ func (w *Worker) runCompaction(job *compactionJob) {
 			block.WithObjectMaxSizeLoadInMemory(w.config.SmallObjectSize),
 			block.WithObjectDownload(sourcedir),
 		))
-
-	logger := log.With(w.logger,
-		"job", job.Name,
-		"shard", job.Shard,
-		"tenant", job.Tenant,
-		"compaction_level", job.CompactionLevel)
 
 	switch {
 	case err == nil:
@@ -354,16 +378,20 @@ func (w *Worker) runCompaction(job *compactionJob) {
 		}
 
 	case errors.Is(err, context.Canceled):
-		_ = level.Warn(logger).Log("msg", "job cancelled", "job", job.Name)
+		_ = level.Warn(logger).Log("msg", "job cancelled")
 		statusName = "cancelled"
 
 	default:
-		_ = level.Error(logger).Log("msg", "failed to compact blocks", "err", err, "job", job.Name)
+		_ = level.Error(logger).Log("msg", "failed to compact blocks", "err", err)
 		statusName = "failure"
 	}
+
+	// The only error returned by Wait is the context
+	// cancellation error handled above.
+	_ = deleteGroup.Wait()
 }
 
-func (w *Worker) getBlockMetadata(job *compactionJob) error {
+func (w *Worker) getBlockMetadata(logger log.Logger, job *compactionJob) error {
 	ctx, cancel := context.WithTimeout(job.ctx, w.config.RequestTimeout)
 	defer cancel()
 
@@ -375,18 +403,17 @@ func (w *Worker) getBlockMetadata(job *compactionJob) error {
 		},
 	})
 	if err != nil {
-		level.Error(w.logger).Log("msg", "failed to get block metadata", "job", job.Name, "err", err)
+		level.Error(logger).Log("msg", "failed to get block metadata", "err", err)
 		return err
 	}
 
 	source := resp.GetBlocks()
 	if len(source) < 2 {
-		level.Warn(w.logger).Log(
+		level.Warn(logger).Log(
 			"msg", "no block metadata found; skipping",
 			"blocks", len(job.SourceBlocks),
 			"blocks_found", len(source),
-			"job", job.Name)
-
+		)
 		return fmt.Errorf("no blocks to compact")
 	}
 
@@ -398,4 +425,16 @@ func (w *Worker) getBlockMetadata(job *compactionJob) error {
 
 	job.source = source
 	return nil
+}
+
+func (w *Worker) deleteBlocks(ctx context.Context, logger log.Logger, t *metastorev1.BlockTombstones) {
+	for _, b := range t.Blocks {
+		path := block.BuildObjectPath(t.Tenant, t.Shard, t.CompactionLevel, b)
+		if err := w.storage.Delete(ctx, path); err != nil {
+			if w.storage.IsObjNotFoundErr(err) {
+				continue
+			}
+			level.Warn(logger).Log("msg", "failed to delete block", "path", path, "err", err)
+		}
+	}
 }
