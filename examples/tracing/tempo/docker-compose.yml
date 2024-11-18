@@ -24,24 +24,6 @@ services:
     build:
       context: ../../language-sdk-instrumentation/golang-push/rideshare
 
-  rideshare-java-us-east:
-    ports:
-      - 5000
-    hostname: rideshare-java-us-east
-    environment:
-      <<: *env
-      OTEL_TRACES_EXPORTER: otlp
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4317
-      OTEL_SERVICE_NAME: rideshare.java.push.app
-      OTEL_METRICS_EXPORTER: none
-      OTEL_TRACES_SAMPLER: always_on
-      OTEL_PROPAGATORS: tracecontext
-      PYROSCOPE_LABELS: hostname=rideshare-java-us-east
-      REGION: us-east
-    build:
-      context: ../../language-sdk-instrumentation/java/rideshare
-      dockerfile: Dockerfile.otel-instrumentation
-
   rideshare-dotnet-eu-west:
     ports:
       - 5000
@@ -88,7 +70,6 @@ services:
       - ./loadgen
       - http://rideshare-go-ap-south:5000
       - http://rideshare-go-eu-north:5000
-      - http://rideshare-java-us-east:5000
       - http://rideshare-dotnet-eu-west:5000
       - http://rideshare-python-eu-east:5000
 
