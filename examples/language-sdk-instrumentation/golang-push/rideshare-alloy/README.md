@@ -4,10 +4,12 @@ This example demonstrates how to use Alloy to receive and forward profiles from 
 
 ## Architecture
 
-- Regional services (us-east, eu-north, ap-south) send profiles to Alloy
+- Regional services (us-east, eu-north, ap-south) push profiles to Alloy
 - Alloy receives profiles on port 9999 and forwards them to Pyroscope
 - Pyroscope stores and processes profiles
 - Grafana visualizes the profiling data
+
+![Pyroscope agent server diagram](https://grafana.com/media/docs/pyroscope/pyroscope_client_server_diagram_11_18_2024.png)
 
 ## Configuration
 
