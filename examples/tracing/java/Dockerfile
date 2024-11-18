@@ -41,10 +41,9 @@ COPY --from=builder /opt/app/build/libs/rideshare-1.0-SNAPSHOT.jar /opt/app/buil
 
 WORKDIR /opt/app
 
-ADD https://github.com/grafana/pyroscope-java/releases/download/v0.12.2/pyroscope.jar /opt/app/pyroscope.jar
 ADD https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v1.17.0/opentelemetry-javaagent.jar opentelemetry-javaagent.jar
 ADD https://repo1.maven.org/maven2/io/pyroscope/otel/0.10.1.11/otel-0.10.1.11.jar pyroscope-otel.jar
 
 EXPOSE 5000
 
-CMD ["java", "-Dserver.port=5000", "-javaagent:./opentelemetry-javaagent.jar", "-javaagent:pyroscope.jar", "-jar", "./build/libs/rideshare-1.0-SNAPSHOT.jar" ]
+CMD ["java", "-Dserver.port=5000", "-javaagent:./opentelemetry-javaagent.jar", "-jar", "./build/libs/rideshare-1.0-SNAPSHOT.jar" ]
