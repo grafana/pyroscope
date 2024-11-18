@@ -308,6 +308,39 @@ func (i *Index) FindBlock(tx *bbolt.Tx, shardNum uint32, tenant string, blockId 
 	return i.findBlock(tx, shardNum, tenant, blockId)
 }
 
+func (i *Index) FindBlocks(tx *bbolt.Tx, list *metastorev1.BlockList) []*metastorev1.BlockMeta {
+	i.partitionMu.Lock()
+	defer i.partitionMu.Unlock()
+
+	pk := make(map[store.PartitionKey]struct{})
+	left := make(map[string]struct{})
+	for _, block := range list.Blocks {
+		pk[store.CreatePartitionKey(block, i.config.PartitionDuration)] = struct{}{}
+		left[block] = struct{}{}
+	}
+
+	found := make([]*metastorev1.BlockMeta, 0, len(list.Blocks))
+	for k := range pk {
+		meta := i.findPartitionMeta(k)
+		if meta == nil {
+			continue
+		}
+		p := i.getOrLoadPartition(tx, meta, list.Tenant)
+		s, _ := p.shards[list.Shard]
+		if s == nil {
+			continue
+		}
+		for _, b := range list.Blocks {
+			if block := s.blocks[b]; block != nil {
+				found = append(found, block)
+				delete(left, b)
+			}
+		}
+	}
+
+	return found
+}
+
 func (i *Index) findBlock(tx *bbolt.Tx, shardNum uint32, tenant string, blockId string) *metastorev1.BlockMeta {
 	key := store.CreatePartitionKey(blockId, i.config.PartitionDuration)
 

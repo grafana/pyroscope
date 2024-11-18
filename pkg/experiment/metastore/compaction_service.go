@@ -37,11 +37,6 @@ func (m *CompactionService) PollCompactionJobs(
 	_ context.Context,
 	req *metastorev1.PollCompactionJobsRequest,
 ) (*metastorev1.PollCompactionJobsResponse, error) {
-	request := &raft_log.GetCompactionPlanUpdateRequest{
-		StatusUpdates: req.StatusUpdates,
-		AssignJobsMax: req.JobCapacity,
-	}
-
 	// This is a two-step process. To commit changes to the compaction plan,
 	// we need to ensure that all replicas apply exactly the same changes.
 	// Instead of relying on identical behavior across replicas and a
@@ -59,19 +54,18 @@ func (m *CompactionService) PollCompactionJobs(
 	// First, we ask the current leader to prepare the change. This is a read
 	// operation conducted through the raft log: at this stage, we only
 	// prepare changes; the command handler does not alter the state.
-	planUpdate, err := m.raft.Propose(fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_GET_COMPACTION_PLAN_UPDATE), request)
+	planUpdate, err := proposeGetCompactionPlanUpdate(m.raft, req)
 	if err != nil {
-		_ = level.Error(m.logger).Log("msg", "failed to prepare compaction plan", "err", err)
+		level.Error(m.logger).Log("msg", "failed to prepare compaction plan", "err", err)
 		return nil, err
 	}
 
-	prepared := planUpdate.(*raft_log.GetCompactionPlanUpdateResponse)
+	// Copy plan updates to the worker response.
 	resp := &metastorev1.PollCompactionJobsResponse{
-		CompactionJobs: make([]*metastorev1.CompactionJob, 0, len(prepared.PlanUpdate.AssignedJobs)),
-		Assignments:    make([]*metastorev1.CompactionJobAssignment, 0, len(prepared.PlanUpdate.AssignedJobs)),
+		CompactionJobs: make([]*metastorev1.CompactionJob, 0, len(planUpdate.AssignedJobs)),
+		Assignments:    make([]*metastorev1.CompactionJobAssignment, 0, len(planUpdate.AssignedJobs)),
 	}
-
-	for _, assigned := range prepared.PlanUpdate.AssignedJobs {
+	for _, assigned := range planUpdate.AssignedJobs {
 		assignment := assigned.State
 		resp.Assignments = append(resp.Assignments, &metastorev1.CompactionJobAssignment{
 			Name:           assignment.Name,
@@ -97,19 +91,38 @@ func (m *CompactionService) PollCompactionJobs(
 	// Assigned jobs are not written to the raft log (only the assignments).
 	// The plan has already been proposed and accepted in the past when the job
 	// was created.
-	proposal := &raft_log.UpdateCompactionPlanRequest{PlanUpdate: prepared.PlanUpdate}
-	for _, update := range proposal.PlanUpdate.AssignedJobs {
-		update.Plan = nil
+	for _, job := range planUpdate.AssignedJobs {
+		job.Plan = nil
 	}
 
 	// Now that we have the plan, we need to propagate it through the raft log
 	// to ensure it is applied consistently across all replicas, regardless of
 	// their individual state or view of the plan.
-	_, err = m.raft.Propose(fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_UPDATE_COMPACTION_PLAN), proposal)
-	if err != nil {
-		_ = level.Error(m.logger).Log("msg", "failed to update compaction plan", "err", err)
+	if err = proposeCompactionPlanUpdate(m.raft, planUpdate); err != nil {
+		level.Error(m.logger).Log("msg", "failed to update compaction plan", "err", err)
 		return nil, err
 	}
 
 	return resp, nil
+}
+
+func proposeGetCompactionPlanUpdate(raft Raft, req *metastorev1.PollCompactionJobsRequest) (*raft_log.CompactionPlanUpdate, error) {
+	resp, err := raft.Propose(
+		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_GET_COMPACTION_PLAN_UPDATE),
+		&raft_log.GetCompactionPlanUpdateRequest{
+			StatusUpdates: req.StatusUpdates,
+			AssignJobsMax: req.JobCapacity,
+		})
+	if err != nil {
+		return nil, err
+	}
+	return resp.(*raft_log.GetCompactionPlanUpdateResponse).GetPlanUpdate(), nil
+}
+
+func proposeCompactionPlanUpdate(raft Raft, update *raft_log.CompactionPlanUpdate) error {
+	_, err := raft.Propose(
+		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_UPDATE_COMPACTION_PLAN),
+		&raft_log.UpdateCompactionPlanRequest{PlanUpdate: update},
+	)
+	return err
 }

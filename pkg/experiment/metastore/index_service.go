@@ -6,6 +6,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/oklog/ulid"
+	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
@@ -21,11 +22,15 @@ type PlacementStats interface {
 func NewIndexService(
 	logger log.Logger,
 	raft Raft,
+	state State,
+	index IndexQuerier,
 	stats PlacementStats,
 ) *IndexService {
 	return &IndexService{
 		logger: logger,
 		raft:   raft,
+		state:  state,
+		index:  index,
 		stats:  stats,
 	}
 }
@@ -35,6 +40,8 @@ type IndexService struct {
 
 	logger log.Logger
 	raft   Raft
+	state  State
+	index  IndexQuerier
 	stats  PlacementStats
 }
 
@@ -65,15 +72,33 @@ func (svc *IndexService) addBlockMetadata(
 		_ = level.Warn(svc.logger).Log("invalid metadata", "block_id", req.Block.Id, "err", err)
 		return nil, err
 	}
-	resp, err := svc.raft.Propose(
-		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_ADD_BLOCK_METADATA),
-		&raft_log.AddBlockMetadataRequest{Metadata: req.Block},
-	)
-	if err != nil {
+	if err := proposeAddBlockMetadata(svc.raft, req.Block); err != nil {
 		_ = level.Error(svc.logger).Log("msg", "failed to add block", "block_id", req.Block.Id, "err", err)
 		return nil, err
 	}
-	return resp.(*metastorev1.AddBlockResponse), err
+	return new(metastorev1.AddBlockResponse), nil
+}
+
+func proposeAddBlockMetadata(raft Raft, md *metastorev1.BlockMeta) error {
+	_, err := raft.Propose(
+		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_ADD_BLOCK_METADATA),
+		&raft_log.AddBlockMetadataRequest{Metadata: md},
+	)
+	return err
+}
+
+func (svc *IndexService) GetBlockMetadata(
+	ctx context.Context,
+	req *metastorev1.GetBlockMetadataRequest,
+) (*metastorev1.GetBlockMetadataResponse, error) {
+	var found []*metastorev1.BlockMeta
+	err := svc.state.ConsistentRead(ctx, func(tx *bbolt.Tx) {
+		found = svc.index.FindBlocks(tx, req.GetBlocks())
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &metastorev1.GetBlockMetadataResponse{Blocks: found}, nil
 }
 
 func statsFromMetadata(md *metastorev1.BlockMeta) iter.Iterator[placement.Sample] {

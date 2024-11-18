@@ -163,8 +163,8 @@ func New(
 
 	// Services should be registered after FSM and Raft have been initialized.
 	// Services provide an interface to interact with the metastore.
-	m.indexService = NewIndexService(m.logger, m.raft, m.placement)
 	m.compactionService = NewCompactionService(m.logger, m.raft)
+	m.indexService = NewIndexService(m.logger, m.raft, m.followerRead, m.index, m.placement)
 	m.tenantService = NewTenantService(m.logger, m.followerRead, m.index)
 	m.metadataService = NewMetadataQueryService(m.logger, m.followerRead, m.index)
 	m.dlqRecovery = dlq.NewRecovery(logger, config.DLQRecovery, m.indexService, bucket)

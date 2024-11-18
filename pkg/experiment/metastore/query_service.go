@@ -20,6 +20,7 @@ import (
 )
 
 type IndexQuerier interface {
+	FindBlocks(tx *bbolt.Tx, list *metastorev1.BlockList) []*metastorev1.BlockMeta
 	FindBlocksInRange(tx *bbolt.Tx, start, end int64, tenants map[string]struct{}) []*metastorev1.BlockMeta
 	ForEachPartition(ctx context.Context, f func(*index.PartitionMeta) error) error
 }

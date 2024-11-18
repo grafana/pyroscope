@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/oklog/ulid"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
@@ -106,6 +107,22 @@ func TestIndex_FindBlocksInRange(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestIndex_FindBlocks(t *testing.T) {
+	mockStore := mockindex.NewMockStore(t)
+	mockStore.On("ListShards", mock.Anything, mock.Anything).Return([]uint32{})
+	i := index.NewIndex(util.Logger, mockStore, &index.Config{
+		PartitionDuration:     time.Hour,
+		PartitionCacheSize:    24,
+		QueryLookaroundPeriod: time.Hour,
+	})
+	a := test.ULID("2024-09-21T08:00:00.123Z")
+	b := test.ULID("2024-09-22T08:00:00.123Z")
+	c := test.ULID("2024-09-23T08:00:00.123Z")
+	i.InsertBlockNoCheckNoPersist(nil, &metastorev1.BlockMeta{Id: a})
+	i.InsertBlockNoCheckNoPersist(nil, &metastorev1.BlockMeta{Id: b})
+	assert.Len(t, i.FindBlocks(nil, &metastorev1.BlockList{Blocks: []string{a, b, c}}), 2)
 }
 
 func mockPartition(store *mockindex.MockStore, key store.PartitionKey, blocks []*metastorev1.BlockMeta) {
