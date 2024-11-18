@@ -52,7 +52,7 @@ EXPOSE 5000
 CMD ["java", "-Dserver.port=5000", "-jar", "./my-app.jar" ]
 ```
 
-By adding the OTel Java agent and the Pyroscope OTel Java Agent extensions, you can enrich your profiles with span IDs. This makes it possible to query for span-specific profiling data in Grafana Tempo:
+By adding the OTel Java agent and the Pyroscope OTel Java Agent extension, you can enrich your profiles with span IDs. This makes it possible to query for span-specific profiling data in Grafana Tempo:
 
 ```Dockerfile
 # [...]
@@ -60,7 +60,6 @@ By adding the OTel Java agent and the Pyroscope OTel Java Agent extensions, you 
 EXPOSE 5000
 
 ## Add required libararies
-ADD https://github.com/grafana/pyroscope-java/releases/download/v0.12.2/pyroscope.jar ./pyroscope.jar
 ADD https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v1.17.0/opentelemetry-javaagent.jar opentelemetry-javaagent.jar
 ADD https://repo1.maven.org/maven2/io/pyroscope/otel/0.10.1.11/otel-0.10.1.11.jar pyroscope-otel.jar
 
@@ -85,7 +84,7 @@ ENV PYROSCOPE_SERVER_ADDRESS=http://localhost:4040
 # ENV PYROSCOPE_BASIC_AUTH_PASSWORD=glc_secret ## Grafana Cloud Password / API Token
 
 ## Add the pyroscope and the opentelemetry java-agents
-CMD ["java", "-Dserver.port=5000", "-javaagent:./opentelemetry-javaagent.jar", "-javaagent:pyroscope.jar", "-jar", "./my-app.jar" ]
+CMD ["java", "-Dserver.port=5000", "-javaagent:./opentelemetry-javaagent.jar", "-jar", "./my-app.jar" ]
 ```
 
 ### Available configuration options
@@ -118,4 +117,4 @@ The profile type or app must be selected for the query to be valid. Grafana does
 
 ## Examples
 
-Check out the [examples](https://github.com/grafana/pyroscope/tree/main/examples/tracing/tempo) directory for a complete demo application that shows tracing integration features.
+Check out the [examples](https://github.com/grafana/pyroscope/tree/main/examples/tracing/java) directory for a complete demo application that shows tracing integration features.
