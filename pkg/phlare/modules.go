@@ -44,13 +44,13 @@ import (
 	"github.com/grafana/pyroscope/pkg/frontend"
 	readpath "github.com/grafana/pyroscope/pkg/frontend/read_path"
 	queryfrontend "github.com/grafana/pyroscope/pkg/frontend/read_path/query_frontend"
+	"github.com/grafana/pyroscope/pkg/frontend/vcs"
 	"github.com/grafana/pyroscope/pkg/ingester"
 	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/pkg/operations"
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/querier"
-	"github.com/grafana/pyroscope/pkg/querier/vcs"
 	"github.com/grafana/pyroscope/pkg/querier/worker"
 	"github.com/grafana/pyroscope/pkg/scheduler"
 	"github.com/grafana/pyroscope/pkg/settings"
@@ -318,7 +318,6 @@ func (f *Phlare) initQuerier() (services.Service, error) {
 	if !f.isModuleActive(QueryFrontend) {
 		f.API.RegisterPyroscopeHandlers(querierSvc)
 		f.API.RegisterQuerierServiceHandler(querierSvc)
-		f.API.RegisterVCSServiceHandler(querierSvc)
 	}
 
 	qWorker, err := worker.NewQuerierWorker(

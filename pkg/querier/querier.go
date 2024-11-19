@@ -31,14 +31,12 @@ import (
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1/vcsv1connect"
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/clientpool"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/phlaredb/bucketindex"
 	"github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/grafana/pyroscope/pkg/querier/vcs"
 	"github.com/grafana/pyroscope/pkg/storegateway"
 	pmath "github.com/grafana/pyroscope/pkg/util/math"
 	"github.com/grafana/pyroscope/pkg/util/spanlogger"
@@ -70,8 +68,6 @@ type Querier struct {
 
 	ingesterQuerier     *IngesterQuerier
 	storeGatewayQuerier *StoreGatewayQuerier
-
-	vcsv1connect.VCSServiceHandler
 
 	storageBucket        phlareobj.Bucket
 	tenantConfigProvider phlareobj.TenantConfigProvider
@@ -133,7 +129,6 @@ func New(params *NewQuerierParams) (*Querier, error) {
 			params.IngestersRing,
 		),
 		storeGatewayQuerier:  storeGatewayQuerier,
-		VCSServiceHandler:    vcs.New(params.Logger, params.Reg),
 		storageBucket:        params.StorageBucket,
 		tenantConfigProvider: params.CfgProvider,
 		limits:               params.Overrides,

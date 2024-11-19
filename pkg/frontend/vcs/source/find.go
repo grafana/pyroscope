@@ -13,7 +13,7 @@ import (
 	giturl "github.com/kubescape/go-git-url"
 
 	vcsv1 "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1"
-	"github.com/grafana/pyroscope/pkg/querier/vcs/client"
+	"github.com/grafana/pyroscope/pkg/frontend/vcs/client"
 )
 
 type VCSClient interface {
