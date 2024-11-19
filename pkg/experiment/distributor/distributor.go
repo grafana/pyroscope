@@ -11,6 +11,7 @@ import (
 	"github.com/grafana/dskit/ring"
 
 	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement"
+	"github.com/grafana/pyroscope/pkg/iter"
 )
 
 // NOTE(kolesnikovae): Essentially, we do not depend on the dskit/ring and
@@ -68,12 +69,23 @@ func (d *Distributor) updateDistribution(r ring.ReadRing, maxAge time.Duration) 
 	return nil
 }
 
+// emptyMapping is returned by distributor if the ring is empty.
+// This helps to handle a case when requests arrive before the
+// ring is populated (no instances registered).
+var emptyMapping = &placement.ShardMapping{
+	Instances: iter.NewEmptyIterator[ring.InstanceDesc](),
+	Shard:     0,
+}
+
 func (d *Distributor) distribute(k placement.Key) *placement.ShardMapping {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 	// Determine the number of shards for the tenant within the available
 	// space, and the dataset shards within the tenant subring.
 	s := len(d.distribution.shards)
+	if s == 0 {
+		return emptyMapping
+	}
 	p := d.placement.Policy(k)
 	tenantSize := p.TenantShards
 	if tenantSize == 0 || tenantSize > s {
