@@ -4,16 +4,6 @@ package metastore.v1;
 
 import "types/v1/types.proto";
 
-service IndexService {
-  rpc AddBlock(AddBlockRequest) returns (AddBlockResponse) {}
-}
-
-message AddBlockRequest {
-  BlockMeta block = 1;
-}
-
-message AddBlockResponse {}
-
 message BlockMeta {
   uint64 format_version = 1;
   string id = 2;

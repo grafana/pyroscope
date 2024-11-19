@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package metastore.v1;
 
-import "metastore/v1/metastore.proto";
+import "metastore/v1/types.proto";
 
 service MetadataQueryService {
   rpc QueryMetadata(QueryMetadataRequest) returns (QueryMetadataResponse) {}

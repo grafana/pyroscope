@@ -17,8 +17,9 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/raft_node/raftnodepb"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode/raftnodepb"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockmetastorev1"
+	"github.com/grafana/pyroscope/pkg/test/mocks/mockraftnodepb"
 )
 
 type mockServer struct {
@@ -26,13 +27,13 @@ type mockServer struct {
 	compactor *mockmetastorev1.MockCompactionServiceServer
 	metadata  *mockmetastorev1.MockMetadataQueryServiceServer
 	tenant    *mockmetastorev1.MockTenantServiceServer
-	raftNode  *mockmetastorev1.MockRaftNodeServiceServer
+	raftNode  *mockraftnodepb.MockRaftNodeServiceServer
 
 	metastorev1.UnsafeIndexServiceServer
 	metastorev1.UnsafeCompactionServiceServer
 	metastorev1.UnsafeMetadataQueryServiceServer
 	metastorev1.UnsafeTenantServiceServer
-	metastorev1.UnsafeRaftNodeServiceServer
+	raftnodepb.UnsafeRaftNodeServiceServer
 
 	srv     *grpc.Server
 	id      raft.ServerID
@@ -60,8 +61,12 @@ func (m *mockServer) QueryMetadata(ctx context.Context, request *metastorev1.Que
 	return m.metadata.QueryMetadata(ctx, request)
 }
 
-func (m *mockServer) ReadIndex(ctx context.Context, request *metastorev1.ReadIndexRequest) (*metastorev1.ReadIndexResponse, error) {
+func (m *mockServer) ReadIndex(ctx context.Context, request *raftnodepb.ReadIndexRequest) (*raftnodepb.ReadIndexResponse, error) {
 	return m.raftNode.ReadIndex(ctx, request)
+}
+
+func (m *mockServer) NodeInfo(ctx context.Context, request *raftnodepb.NodeInfoRequest) (*raftnodepb.NodeInfoResponse, error) {
+	return m.raftNode.NodeInfo(ctx, request)
 }
 
 func createServers(ports []int) []discovery.Server {
@@ -142,8 +147,8 @@ func (m *mockServers) InitWrongLeader() func() {
 		srv.metadata.On("QueryMetadata", mock.Anything, mock.Anything).Maybe().Return(func(context.Context, *metastorev1.QueryMetadataRequest) (*metastorev1.QueryMetadataResponse, error) {
 			return errOrT(&metastorev1.QueryMetadataResponse{}, errf)
 		})
-		srv.raftNode.On("ReadIndex", mock.Anything, mock.Anything).Maybe().Return(func(context.Context, *metastorev1.ReadIndexRequest) (*metastorev1.ReadIndexResponse, error) {
-			return errOrT(&metastorev1.ReadIndexResponse{}, errf)
+		srv.raftNode.On("ReadIndex", mock.Anything, mock.Anything).Maybe().Return(func(context.Context, *raftnodepb.ReadIndexRequest) (*raftnodepb.ReadIndexResponse, error) {
+			return errOrT(&raftnodepb.ReadIndexResponse{}, errf)
 		})
 		srv.compactor.On("PollCompactionJobs", mock.Anything, mock.Anything).Maybe().Return(func(context.Context, *metastorev1.PollCompactionJobsRequest) (*metastorev1.PollCompactionJobsResponse, error) {
 			return errOrT(&metastorev1.PollCompactionJobsResponse{}, errf)
@@ -200,12 +205,12 @@ func newMockServer(t *testing.T) *mockServer {
 		compactor: mockmetastorev1.NewMockCompactionServiceServer(t),
 		metadata:  mockmetastorev1.NewMockMetadataQueryServiceServer(t),
 		tenant:    mockmetastorev1.NewMockTenantServiceServer(t),
-		raftNode:  mockmetastorev1.NewMockRaftNodeServiceServer(t),
+		raftNode:  mockraftnodepb.NewMockRaftNodeServiceServer(t),
 	}
 	metastorev1.RegisterIndexServiceServer(res.srv, res)
 	metastorev1.RegisterCompactionServiceServer(res.srv, res)
 	metastorev1.RegisterMetadataQueryServiceServer(res.srv, res)
 	metastorev1.RegisterTenantServiceServer(res.srv, res)
-	metastorev1.RegisterRaftNodeServiceServer(res.srv, res)
+	raftnodepb.RegisterRaftNodeServiceServer(res.srv, res)
 	return res
 }

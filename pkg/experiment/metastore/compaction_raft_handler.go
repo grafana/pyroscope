@@ -582,10 +582,7 @@ func (h *CompactionCommandHandler) persistCompactionJobBlockQueue(shard uint32, 
 }
 
 func (h *CompactionCommandHandler) restoreCompactionPlan(tx *bbolt.Tx) error {
-	cdb, err := getCompactionJobBucket(tx)
-	if err != nil {
-		return err
-	}
+	cdb := tx.Bucket(compactionJobBucketNameBytes)
 	return cdb.ForEachBucket(func(name []byte) error {
 		shard, tenant, ok := storeutils.ParseTenantShardBucketName(name)
 		if !ok {
@@ -695,11 +692,15 @@ func getCompactionJobBucket(tx *bbolt.Tx) (*bbolt.Bucket, error) {
 	return tx.CreateBucketIfNotExists(compactionJobBucketNameBytes)
 }
 
-func (h *CompactionCommandHandler) Restore(tx *bbolt.Tx) error {
-	clear(h.compactionJobBlockQueues)
-	h.compactionJobQueue = newJobQueue(h.config.JobLeaseDuration.Nanoseconds())
+func (h *CompactionCommandHandler) Init(tx *bbolt.Tx) error {
 	if _, err := tx.CreateBucketIfNotExists(compactionJobBucketNameBytes); err != nil {
 		return err
 	}
+	return nil
+}
+
+func (h *CompactionCommandHandler) Restore(tx *bbolt.Tx) error {
+	clear(h.compactionJobBlockQueues)
+	h.compactionJobQueue = newJobQueue(h.config.JobLeaseDuration.Nanoseconds())
 	return h.restoreCompactionPlan(tx)
 }

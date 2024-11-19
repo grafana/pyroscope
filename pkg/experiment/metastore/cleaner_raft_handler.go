@@ -41,10 +41,8 @@ func NewCleanerCommandHandler(
 	reg prometheus.Registerer,
 ) *CleanerCommandHandler {
 	m := prometheus.NewCounterVec(prometheus.CounterOpts{
-		Namespace: "pyroscope",
-		Subsystem: "metastore",
-		Name:      "block_cleaner_bucket_removal_count",
-		Help:      "The number of expired blocks that were removed from the bucket",
+		Name: "block_cleaner_bucket_removal_count",
+		Help: "The number of expired blocks that were removed from the bucket",
 	}, []string{"tenant", "shard"})
 	if reg != nil {
 		reg.MustRegister(m)

@@ -16,7 +16,7 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	segmentstorage "github.com/grafana/pyroscope/pkg/experiment/ingester/storage"
-	raftnode "github.com/grafana/pyroscope/pkg/experiment/metastore/raft_node"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode"
 )
 
 type RecoveryConfig struct {

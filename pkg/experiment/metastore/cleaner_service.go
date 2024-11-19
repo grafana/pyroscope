@@ -9,15 +9,11 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/oklog/ulid"
-	"google.golang.org/protobuf/types/known/anypb"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/fsm"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/markers"
 )
-
-type CleanerCommandLog interface {
-	CleanBlocks(*raft_log.CleanBlocksRequest) (*anypb.Any, error)
-}
 
 type LocalCleaner interface {
 	ExpectRequest(request string)
@@ -26,7 +22,7 @@ type LocalCleaner interface {
 type CleanerService struct {
 	config  markers.Config
 	logger  log.Logger
-	raftLog CleanerCommandLog
+	raftLog Raft
 	local   LocalCleaner
 
 	m       sync.Mutex
@@ -37,7 +33,7 @@ type CleanerService struct {
 func NewCleanerService(
 	logger log.Logger,
 	config markers.Config,
-	raftLog CleanerCommandLog,
+	raftLog Raft,
 	local LocalCleaner,
 ) *CleanerService {
 	return &CleanerService{
@@ -85,7 +81,8 @@ func (svc *CleanerService) runLoop(ctx context.Context) {
 			requestID := ulid.MustNew(ulid.Now(), rand.Reader).String()
 			svc.local.ExpectRequest(requestID)
 			req := &raft_log.CleanBlocksRequest{RequestId: requestID}
-			if _, err := svc.raftLog.CleanBlocks(req); err != nil {
+			_, err := svc.raftLog.Propose(fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_CLEAN_BLOCKS), req)
+			if err != nil {
 				level.Error(svc.logger).Log("msg", "failed to apply clean blocks command", "err", err)
 			}
 		}

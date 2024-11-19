@@ -17,6 +17,7 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode/raftnodepb"
 )
 
 // TODO(kolesnikovae): Implement raft leader routing as a grpc load balancer or interceptor.
@@ -38,8 +39,7 @@ type client struct {
 	metastorev1.CompactionServiceClient
 	metastorev1.MetadataQueryServiceClient
 	metastorev1.TenantServiceClient
-	metastorev1.RaftNodeServiceClient
-	metastorev1.OperatorServiceClient
+	raftnodepb.RaftNodeServiceClient
 
 	conn io.Closer
 	srv  discovery.Server
@@ -51,8 +51,7 @@ type instance interface {
 	metastorev1.MetadataQueryServiceClient
 	metastorev1.TenantServiceClient
 	metastorev1.CompactionServiceClient
-	metastorev1.RaftNodeServiceClient
-	metastorev1.OperatorServiceClient
+	raftnodepb.RaftNodeServiceClient
 }
 
 func New(logger log.Logger, grpcClientConfig grpcclient.Config, d discovery.Discovery) *Client {
@@ -154,7 +153,7 @@ func newClient(s discovery.Server, config grpcclient.Config, logger log.Logger) 
 		CompactionServiceClient:    metastorev1.NewCompactionServiceClient(conn),
 		MetadataQueryServiceClient: metastorev1.NewMetadataQueryServiceClient(conn),
 		TenantServiceClient:        metastorev1.NewTenantServiceClient(conn),
-		RaftNodeServiceClient:      metastorev1.NewRaftNodeServiceClient(conn),
+		RaftNodeServiceClient:      raftnodepb.NewRaftNodeServiceClient(conn),
 		conn:                       conn,
 		srv:                        s,
 	}, nil

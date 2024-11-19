@@ -23,16 +23,12 @@ type metrics struct {
 func newMetrics(reg prometheus.Registerer) *metrics {
 	m := &metrics{
 		markedBlocks: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Namespace: "pyroscope",
-			Subsystem: "metastore",
-			Name:      "block_cleaner_marked_block_count",
-			Help:      "The number of blocks marked as removed",
+			Name: "block_cleaner_marked_block_count",
+			Help: "The number of blocks marked as removed",
 		}, []string{"tenant", "shard"}),
 		expiredBlocks: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Namespace: "pyroscope",
-			Subsystem: "metastore",
-			Name:      "block_cleaner_expired_block_count",
-			Help:      "The number of marked blocks that expired and were removed",
+			Name: "block_cleaner_expired_block_count",
+			Help: "The number of marked blocks that expired and were removed",
 		}, []string{"tenant", "shard"}),
 	}
 	if reg != nil {
@@ -84,15 +80,17 @@ func NewDeletionMarkers(logger log.Logger, cfg *Config, reg prometheus.Registere
 	}
 }
 
+func (m *DeletionMarkers) Init(tx *bbolt.Tx) error {
+	_, err := tx.CreateBucketIfNotExists(removedBlocksBucketNameBytes)
+	return err
+}
+
 func (m *DeletionMarkers) Restore(tx *bbolt.Tx) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	clear(m.blockMarkers)
-	bkt, err := tx.CreateBucketIfNotExists(removedBlocksBucketNameBytes)
-	if err != nil {
-		return err
-	}
-	err = bkt.ForEachBucket(func(k []byte) error {
+	bkt := tx.Bucket(removedBlocksBucketNameBytes)
+	err := bkt.ForEachBucket(func(k []byte) error {
 		shardBkt := bkt.Bucket(k)
 		if shardBkt == nil {
 			return nil

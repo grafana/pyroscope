@@ -7,15 +7,13 @@ import (
 	"github.com/go-kit/log/level"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/fsm"
 )
-
-type CompactionCommandLog interface {
-	PollCompactionJobs(*metastorev1.PollCompactionJobsRequest) (*metastorev1.PollCompactionJobsResponse, error)
-}
 
 func NewCompactionService(
 	logger log.Logger,
-	raftLog CompactionCommandLog,
+	raftLog Raft,
 ) *CompactionService {
 	return &CompactionService{
 		logger: logger,
@@ -27,7 +25,7 @@ type CompactionService struct {
 	metastorev1.CompactionServiceServer
 
 	logger log.Logger
-	raft   CompactionCommandLog
+	raft   Raft
 }
 
 func (svc *CompactionService) PollCompactionJobs(
@@ -38,10 +36,10 @@ func (svc *CompactionService) PollCompactionJobs(
 		"msg", "received poll compaction jobs request",
 		"num_updates", len(req.JobStatusUpdates),
 		"job_capacity", req.JobCapacity)
-	resp, err := svc.raft.PollCompactionJobs(req)
+	resp, err := svc.raft.Propose(fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_POLL_COMPACTION_JOBS), req)
 	if err != nil {
 		_ = level.Error(svc.logger).Log("msg", "failed to apply poll compaction jobs", "err", err)
 		return nil, err
 	}
-	return resp, nil
+	return resp.(*metastorev1.PollCompactionJobsResponse), nil
 }

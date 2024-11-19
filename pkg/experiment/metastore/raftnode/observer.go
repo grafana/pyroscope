@@ -1,4 +1,4 @@
-package raft_node
+package raftnode
 
 import (
 	"github.com/go-kit/log"
@@ -11,24 +11,6 @@ import (
 // Raft state change is observed.
 type StateHandler interface {
 	Observe(raft.RaftState)
-}
-
-// LeaderActivity is started when the node becomes a
-// leader and stopped when it stops being a leader.
-// The implementation must be idempotent.
-type LeaderActivity interface {
-	Start()
-	Stop()
-}
-
-type leaderStateHandler struct{ activity LeaderActivity }
-
-func (h *leaderStateHandler) Observe(state raft.RaftState) {
-	if state == raft.Leader {
-		h.activity.Start()
-	} else {
-		h.activity.Stop()
-	}
 }
 
 type Observer struct {
@@ -52,10 +34,8 @@ func NewRaftStateObserver(logger log.Logger, r *raft.Raft, reg prometheus.Regist
 	}
 	o.state = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Namespace: "pyroscope",
-			Subsystem: "metastore",
-			Name:      "raft_state",
-			Help:      "Current Raft state",
+			Name: "raft_state",
+			Help: "Current Raft state",
 		},
 		[]string{"state"},
 	)

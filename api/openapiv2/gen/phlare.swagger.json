@@ -15,19 +15,13 @@
       "name": "IngesterService"
     },
     {
-      "name": "IndexService"
-    },
-    {
       "name": "CompactionService"
     },
     {
+      "name": "IndexService"
+    },
+    {
       "name": "MetadataQueryService"
-    },
-    {
-      "name": "OperatorService"
-    },
-    {
-      "name": "RaftNodeService"
     },
     {
       "name": "TenantService"
@@ -1169,52 +1163,6 @@
       },
       "title": "Hints are used to propagate information about querying"
     },
-    "v1InfoResponse": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "state": {
-          "$ref": "#/definitions/v1State"
-        },
-        "leaderId": {
-          "type": "string"
-        },
-        "isStateVerified": {
-          "type": "boolean",
-          "description": "True if the state reported by this node matches the state the cluster\nreports. For example, if this node claims to be a leader, but the rest of\nthe cluster disagrees, this value will be false."
-        },
-        "lastLeaderContact": {
-          "type": "string",
-          "format": "int64",
-          "description": "Unix timestamp in milliseconds of when the leader last contacted this node."
-        },
-        "term": {
-          "type": "string",
-          "format": "uint64"
-        },
-        "suffrage": {
-          "$ref": "#/definitions/v1Suffrage"
-        },
-        "log": {
-          "$ref": "#/definitions/v1Log"
-        },
-        "snapshot": {
-          "$ref": "#/definitions/v1Snapshot"
-        },
-        "protocol": {
-          "$ref": "#/definitions/v1Protocol"
-        },
-        "peers": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1Peer"
-          }
-        }
-      }
-    },
     "v1InvokeOptions": {
       "type": "object",
       "description": "Query workers might not have access to the tenant\n overrides, therefore all the necessary options should\n be listed in the request explicitly."
@@ -1343,27 +1291,6 @@
           "type": "string",
           "format": "int64",
           "description": "Line number in source code."
-        }
-      }
-    },
-    "v1Log": {
-      "type": "object",
-      "properties": {
-        "commitIndex": {
-          "type": "string",
-          "format": "uint64"
-        },
-        "appliedIndex": {
-          "type": "string",
-          "format": "uint64"
-        },
-        "lastIndex": {
-          "type": "string",
-          "format": "uint64"
-        },
-        "fsmPendingLength": {
-          "type": "string",
-          "format": "uint64"
         }
       }
     },
@@ -1508,20 +1435,6 @@
         }
       }
     },
-    "v1Peer": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "address": {
-          "type": "string"
-        },
-        "suffrage": {
-          "$ref": "#/definitions/v1Suffrage"
-        }
-      }
-    },
     "v1Point": {
       "type": "object",
       "properties": {
@@ -1629,31 +1542,6 @@
         },
         "periodUnit": {
           "type": "string"
-        }
-      }
-    },
-    "v1Protocol": {
-      "type": "object",
-      "properties": {
-        "version": {
-          "type": "string",
-          "format": "uint64"
-        },
-        "minVersion": {
-          "type": "string",
-          "format": "uint64"
-        },
-        "maxVersion": {
-          "type": "string",
-          "format": "uint64"
-        },
-        "minSnapshotVersion": {
-          "type": "string",
-          "format": "uint64"
-        },
-        "maxSnapshotVersion": {
-          "type": "string",
-          "format": "uint64"
         }
       }
     },
@@ -1856,15 +1744,6 @@
         }
       },
       "title": "RawSample is the set of bytes that correspond to a pprof profile"
-    },
-    "v1ReadIndexResponse": {
-      "type": "object",
-      "properties": {
-        "readIndex": {
-          "type": "string",
-          "format": "uint64"
-        }
-      }
     },
     "v1Report": {
       "type": "object",
@@ -2148,19 +2027,6 @@
         }
       }
     },
-    "v1Snapshot": {
-      "type": "object",
-      "properties": {
-        "lastIndex": {
-          "type": "string",
-          "format": "uint64"
-        },
-        "lastTerm": {
-          "type": "string",
-          "format": "uint64"
-        }
-      }
-    },
     "v1StackTraceSelector": {
       "type": "object",
       "properties": {
@@ -2203,27 +2069,6 @@
         "MERGE_FORMAT_TREE"
       ],
       "default": "MERGE_FORMAT_UNSPECIFIED"
-    },
-    "v1State": {
-      "type": "string",
-      "enum": [
-        "Follower",
-        "Candidate",
-        "Leader",
-        "Shutdown"
-      ],
-      "default": "Follower",
-      "description": "State values are chosen to match the Hashicorp Raft library states. See:\nhttps://github.com/hashicorp/raft/blob/42d34464b2d203e389e11ed6d43db698792c0604/state.go#L15-L27."
-    },
-    "v1Suffrage": {
-      "type": "string",
-      "enum": [
-        "Voter",
-        "NonVoter",
-        "Staging"
-      ],
-      "default": "Voter",
-      "description": "Suffrage values are chosen to match the Hashicorp Raft library suffrage\nvalues. See:\nhttps://github.com/hashicorp/raft/blob/42d34464b2d203e389e11ed6d43db698792c0604/configuration.go#L12-L24."
     },
     "v1TenantStats": {
       "type": "object",

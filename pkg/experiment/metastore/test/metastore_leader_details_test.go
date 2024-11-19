@@ -11,7 +11,7 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/raft_node"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/memory"
 )
 
@@ -58,7 +58,7 @@ func TestRaftDetailsPullCompaction(t *testing.T) {
 
 func requireRaftDetails(t *testing.T, err error) {
 	t.Log("error", err)
-	leader, ok := raft_node.RaftLeaderFromStatusDetails(err)
+	leader, ok := raftnode.RaftLeaderFromStatusDetails(err)
 	require.True(t, ok)
 	t.Log("leader is", leader)
 }
