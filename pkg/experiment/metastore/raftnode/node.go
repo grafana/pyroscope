@@ -124,10 +124,6 @@ func NewNode(
 		}
 	}()
 
-	hasState, err := n.openStore()
-	if err != nil {
-		return nil, err
-	}
 	addr, err := net.ResolveTCPAddr("tcp", config.AdvertiseAddress)
 	if err != nil {
 		return nil, err
@@ -141,55 +137,64 @@ func NewNode(
 		return nil, err
 	}
 
+	if err = n.openStore(); err != nil {
+		return nil, err
+	}
+
+	return &n, nil
+}
+
+func (n *Node) Init() (err error) {
 	raftConfig := raft.DefaultConfig()
 	// TODO: Wrap gokit
 	//	config.Logger
 	raftConfig.LogLevel = "debug"
 
-	raftConfig.TrailingLogs = config.TrailingLogs
-	raftConfig.SnapshotThreshold = config.SnapshotThreshold
-	raftConfig.SnapshotInterval = config.SnapshotInterval
+	raftConfig.TrailingLogs = n.config.TrailingLogs
+	raftConfig.SnapshotThreshold = n.config.SnapshotThreshold
+	raftConfig.SnapshotInterval = n.config.SnapshotInterval
 	raftConfig.LocalID = raft.ServerID(n.config.ServerID)
 
-	n.raft, err = raft.NewRaft(raftConfig, fsm, n.logStore, n.stableStore, n.snapshotStore, n.transport)
+	n.raft, err = raft.NewRaft(raftConfig, n.fsm, n.logStore, n.stableStore, n.snapshotStore, n.transport)
 	if err != nil {
-		return nil, fmt.Errorf("starting raft node: %w", err)
+		return fmt.Errorf("starting raft node: %w", err)
 	}
+	n.observer = NewRaftStateObserver(n.logger, n.raft, n.reg)
+	n.service = NewRaftNodeService(n)
 
+	hasState, err := raft.HasExistingState(n.logStore, n.stableStore, n.snapshotStore)
+	if err != nil {
+		return fmt.Errorf("failed to check for existing state: %w", err)
+	}
 	if !hasState {
 		level.Warn(n.logger).Log("msg", "no existing state found, trying to bootstrap cluster")
 		if err = n.bootstrap(); err != nil {
-			return nil, fmt.Errorf("failed to bootstrap cluster: %w", err)
+			return fmt.Errorf("failed to bootstrap cluster: %w", err)
 		}
 	} else {
 		level.Debug(n.logger).Log("msg", "restoring existing state, not bootstrapping")
 	}
 
-	n.observer = NewRaftStateObserver(n.logger, n.raft, reg)
-	n.service = NewRaftNodeService(&n)
-	return &n, nil
+	return nil
 }
 
-func (n *Node) openStore() (hasState bool, err error) {
+func (n *Node) openStore() (err error) {
 	if err = n.createDirs(); err != nil {
-		return false, err
+		return err
 	}
 	n.wal, err = raftwal.Open(n.walDir)
 	if err != nil {
-		return false, fmt.Errorf("failed to open WAL: %w", err)
+		return fmt.Errorf("failed to open WAL: %w", err)
 	}
 	n.snapshots, err = raft.NewFileSnapshotStore(n.config.Dir, int(n.config.SnapshotsRetain), os.Stderr)
 	if err != nil {
-		return false, fmt.Errorf("failed to open shapshot store: %w", err)
+		return fmt.Errorf("failed to open shapshot store: %w", err)
 	}
 	n.logStore = n.wal
 	n.logStore, _ = raft.NewLogCache(int(n.config.WALCacheEntries), n.logStore)
 	n.stableStore = n.wal
 	n.snapshotStore = n.snapshots
-	if hasState, err = raft.HasExistingState(n.logStore, n.stableStore, n.snapshotStore); err != nil {
-		return hasState, fmt.Errorf("failed to check for existing state: %w", err)
-	}
-	return hasState, nil
+	return nil
 }
 
 func (n *Node) createDirs() (err error) {
@@ -220,6 +225,10 @@ func (n *Node) Shutdown() {
 			level.Error(n.logger).Log("msg", "failed to close WAL", "err", err)
 		}
 	}
+}
+
+func (n *Node) ListSnapshots() ([]*raft.SnapshotMeta, error) {
+	return n.snapshots.List()
 }
 
 func (n *Node) Register(server *grpc.Server) {

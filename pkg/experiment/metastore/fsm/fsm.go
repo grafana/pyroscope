@@ -303,7 +303,7 @@ func (fsm *FSM) initRaftBucket(tx *bbolt.Tx) error {
 func (fsm *FSM) storeAppliedIndex(tx *bbolt.Tx, term, index uint64) error {
 	b := tx.Bucket(raftBucketName)
 	if b == nil {
-		panic("raft bucket is missing")
+		return bbolt.ErrBucketNotFound
 	}
 	v := make([]byte, 16)
 	binary.BigEndian.PutUint64(v[0:8], term)
@@ -313,14 +313,16 @@ func (fsm *FSM) storeAppliedIndex(tx *bbolt.Tx, term, index uint64) error {
 	return b.Put(appliedIndexKey, v)
 }
 
+var errAppliedIndexInvalid = fmt.Errorf("invalid applied index")
+
 func (fsm *FSM) loadAppliedIndex(tx *bbolt.Tx) error {
 	b := tx.Bucket(raftBucketName)
 	if b == nil {
-		panic("raft bucket is missing")
+		return bbolt.ErrBucketNotFound
 	}
 	v := b.Get(appliedIndexKey)
 	if len(v) < 16 {
-		panic("invalid applied index")
+		return errAppliedIndexInvalid
 	}
 	fsm.appliedTerm = binary.BigEndian.Uint64(v[0:8])
 	fsm.appliedIndex = binary.BigEndian.Uint64(v[8:16])

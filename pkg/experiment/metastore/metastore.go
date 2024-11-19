@@ -148,12 +148,9 @@ func New(
 	m.fsm.RegisterRestorer(m.scheduler)
 	m.fsm.RegisterRestorer(m.index)
 
-	if err = m.fsm.Init(); err != nil {
-		return nil, fmt.Errorf("failed to initialize internal state: %w", err)
-	}
-
-	if m.raft, err = raft.NewNode(m.logger, m.config.Raft, reg, m.fsm); err != nil {
-		return nil, fmt.Errorf("failed to initialize raft: %w", err)
+	// We are ready to start raft as our FSM is fully configured.
+	if err = m.buildRaftNode(); err != nil {
+		return nil, err
 	}
 
 	// Create the read-only interface to the state.
@@ -178,6 +175,47 @@ func New(
 
 	m.service = services.NewBasicService(m.starting, m.running, m.stopping)
 	return m, nil
+}
+
+func (m *Metastore) buildRaftNode() (err error) {
+	// Raft is configured to always restore the state from the latest snapshot
+	// (via FSM.Restore), if it is present. Otherwise, when no snapshots
+	// available, the state must be initialized explicitly via FSM.Init before
+	// we call raft.Init, which starts applying the raft log.
+	if m.raft, err = raft.NewNode(m.logger, m.config.Raft, m.reg, m.fsm); err != nil {
+		return fmt.Errorf("failed to create raft node: %w", err)
+	}
+
+	// Newly created raft node is not yet initialized and does not alter our
+	// FSM in any way. However, it gives us access to the snapshot store, and
+	// we can check whether we need to initialize the state (expensive), or we
+	// can defer to raft snapshots. This is an optimization: we want to avoid
+	// restoring the state twice: once at Init, and then at Restore.
+	snapshots, err := m.raft.ListSnapshots()
+	if err != nil {
+		level.Error(m.logger).Log("msg", "failed to list snapshots", "err", err)
+		// We continue trying; in the worst case we will initialize the state
+		// and then restore a snapshot received from the leader.
+	}
+
+	if len(snapshots) == 0 {
+		level.Info(m.logger).Log("msg", "no state snapshots found")
+		// FSM won't be restored by raft, so we need to initialize it manually.
+		// Otherwise, raft will restore the state from a snapshot using
+		// fsm.Restore, which will initialize the state as well.
+		if err = m.fsm.Init(); err != nil {
+			level.Error(m.logger).Log("msg", "failed to initialize state", "err", err)
+			return err
+		}
+	} else {
+		level.Info(m.logger).Log("msg", "skipping state initialization as snapshots found")
+	}
+
+	if err = m.raft.Init(); err != nil {
+		return fmt.Errorf("failed to initialize raft: %w", err)
+	}
+
+	return nil
 }
 
 func (m *Metastore) Register(server *grpc.Server) {
