@@ -131,21 +131,22 @@ func New(
 
 	// FSM handlers that utilize the components.
 	m.indexHandler = NewIndexCommandHandler(m.logger, m.index, m.tombstones, m.compactor)
-	m.fsm.RegisterRestorer(m.index)
 	fsm.RegisterRaftCommandHandler(m.fsm,
 		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_ADD_BLOCK_METADATA),
 		m.indexHandler.AddBlock)
 
 	m.compactionHandler = NewCompactionCommandHandler(m.logger, m.index, m.compactor, m.compactor, m.scheduler, m.tombstones)
-	m.fsm.RegisterRestorer(m.compactor)
-	m.fsm.RegisterRestorer(m.scheduler)
-	m.fsm.RegisterRestorer(m.tombstones)
 	fsm.RegisterRaftCommandHandler(m.fsm,
 		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_GET_COMPACTION_PLAN_UPDATE),
 		m.compactionHandler.GetCompactionPlanUpdate)
 	fsm.RegisterRaftCommandHandler(m.fsm,
 		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_UPDATE_COMPACTION_PLAN),
 		m.compactionHandler.UpdateCompactionPlan)
+
+	m.fsm.RegisterRestorer(m.tombstones)
+	m.fsm.RegisterRestorer(m.compactor)
+	m.fsm.RegisterRestorer(m.scheduler)
+	m.fsm.RegisterRestorer(m.index)
 
 	if err = m.fsm.Init(); err != nil {
 		return nil, fmt.Errorf("failed to initialize internal state: %w", err)
