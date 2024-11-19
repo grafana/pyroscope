@@ -2137,6 +2137,12 @@
         "maxNodes": {
           "type": "string",
           "format": "int64"
+        },
+        "spanSelector": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },

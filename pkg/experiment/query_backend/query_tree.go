@@ -34,24 +34,49 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 	}
 	defer runutil.CloseWithErrCapture(&err, entries, "failed to close profile entry iterator")
 
+	spanSelector, err := model.NewSpanSelector(query.Tree.SpanSelector)
+	if err != nil {
+		return nil, err
+	}
+
 	var columns v1.SampleColumns
 	if err = columns.Resolve(q.ds.Profiles().Schema()); err != nil {
 		return nil, err
 	}
 
-	profiles := parquetquery.NewRepeatedRowIterator(q.ctx, entries, q.ds.Profiles().RowGroups(),
+	indices := []int{
 		columns.StacktraceID.ColumnIndex,
-		columns.Value.ColumnIndex)
+		columns.Value.ColumnIndex,
+	}
+	if len(spanSelector) > 0 {
+		indices = append(indices, columns.SpanID.ColumnIndex)
+	}
+
+	profiles := parquetquery.NewRepeatedRowIterator(q.ctx, entries, q.ds.Profiles().RowGroups(), indices...)
 	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
 
 	resolver := symdb.NewResolver(q.ctx, q.ds.Symbols(),
 		symdb.WithResolverMaxNodes(query.Tree.GetMaxNodes()))
 	defer resolver.Release()
 
-	for profiles.Next() {
-		p := profiles.At()
-		resolver.AddSamplesFromParquetRow(p.Row.Partition, p.Values[0], p.Values[1])
+	if len(spanSelector) > 0 {
+		for profiles.Next() {
+			p := profiles.At()
+			resolver.AddSamplesWithSpanSelectorFromParquetRow(
+				p.Row.Partition,
+				p.Values[0],
+				p.Values[1],
+				p.Values[2],
+				spanSelector,
+			)
+		}
+	} else {
+		for profiles.Next() {
+			p := profiles.At()
+			resolver.AddSamplesFromParquetRow(p.Row.Partition, p.Values[0], p.Values[1])
+		}
 	}
+
 	if err = profiles.Err(); err != nil {
 		return nil, err
 	}
