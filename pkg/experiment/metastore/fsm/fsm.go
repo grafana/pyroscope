@@ -2,6 +2,7 @@ package fsm
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"strconv"
@@ -46,6 +47,9 @@ type FSM struct {
 
 	handlers  map[RaftLogEntryType]handler
 	restorers []StateRestorer
+
+	appliedTerm  uint64
+	appliedIndex uint64
 }
 
 type handler func(tx *bbolt.Tx, cmd *raft.Log, raw []byte) (proto.Message, error)
@@ -101,6 +105,9 @@ func (fsm *FSM) init() (err error) {
 			_ = tx.Rollback()
 		}
 	}()
+	if err = fsm.initRaftBucket(tx); err != nil {
+		return fmt.Errorf("failed to init raft bucket: %w", err)
+	}
 	for _, r := range fsm.restorers {
 		if err = r.Init(tx); err != nil {
 			return err
@@ -110,17 +117,14 @@ func (fsm *FSM) init() (err error) {
 }
 
 func (fsm *FSM) restore() error {
+	if err := fsm.db.boltdb.View(fsm.loadAppliedIndex); err != nil {
+		return fmt.Errorf("failed to load applied index: %w", err)
+	}
+	level.Info(fsm.logger).Log("msg", "restoring state", "term", fsm.appliedTerm, "applied_index", fsm.appliedIndex)
 	g, _ := errgroup.WithContext(context.Background())
 	for _, r := range fsm.restorers {
 		g.Go(func() error {
-			tx, err := fsm.db.boltdb.Begin(false)
-			if err != nil {
-				return err
-			}
-			defer func() {
-				_ = tx.Rollback()
-			}()
-			return r.Restore(tx)
+			return fsm.db.boltdb.View(r.Restore)
 		})
 	}
 	return g.Wait()
@@ -198,6 +202,11 @@ func (fsm *FSM) applyCommand(cmd *raft.Log) any {
 	if err := e.UnmarshalBinary(cmd.Data); err != nil {
 		return errResponse(cmd, err)
 	}
+	if cmd.Index <= fsm.appliedIndex {
+		// Skip already applied commands at WAL restore.
+		// Note that the 0 index is a noop and is never applied to FSM.
+		return Response{}
+	}
 
 	cmdType := strconv.FormatUint(uint64(e.Type), 10)
 	fsm.db.metrics.fsmApplyCommandSize.WithLabelValues(cmdType).Observe(float64(len(cmd.Data)))
@@ -223,6 +232,10 @@ func (fsm *FSM) applyCommand(cmd *raft.Log) any {
 		// NOTE(kolesnikovae): This has to be a hard failure as we assume
 		// that the in-memory state might have not been rolled back properly.
 		panic(fmt.Sprint("failed to apply command:", err))
+	}
+
+	if err = fsm.storeAppliedIndex(tx, cmd.Term, cmd.Index); err != nil {
+		panic(fmt.Sprint("failed to store applied index: %w", err))
 	}
 
 	// We can't do anything about the failure at the database level, so we
@@ -267,4 +280,49 @@ func (fsm *FSM) Shutdown() {
 	if fsm.db.boltdb != nil {
 		fsm.db.shutdown()
 	}
+}
+
+var (
+	raftBucketName  = []byte("raft")
+	appliedIndexKey = []byte("term.applied_index")
+	// Value is encoded as [8]term + [8]index.
+)
+
+func (fsm *FSM) initRaftBucket(tx *bbolt.Tx) error {
+	b := tx.Bucket(raftBucketName)
+	if b != nil {
+		return nil
+	}
+	// If no bucket exists, we create a stub with 0 values.
+	if _, err := tx.CreateBucket(raftBucketName); err != nil {
+		return err
+	}
+	return fsm.storeAppliedIndex(tx, 0, 0)
+}
+
+func (fsm *FSM) storeAppliedIndex(tx *bbolt.Tx, term, index uint64) error {
+	b := tx.Bucket(raftBucketName)
+	if b == nil {
+		panic("raft bucket is missing")
+	}
+	v := make([]byte, 16)
+	binary.BigEndian.PutUint64(v[0:8], term)
+	binary.BigEndian.PutUint64(v[8:16], index)
+	fsm.appliedTerm = term
+	fsm.appliedIndex = index
+	return b.Put(appliedIndexKey, v)
+}
+
+func (fsm *FSM) loadAppliedIndex(tx *bbolt.Tx) error {
+	b := tx.Bucket(raftBucketName)
+	if b == nil {
+		panic("raft bucket is missing")
+	}
+	v := b.Get(appliedIndexKey)
+	if len(v) < 16 {
+		panic("invalid applied index")
+	}
+	fsm.appliedTerm = binary.BigEndian.Uint64(v[0:8])
+	fsm.appliedIndex = binary.BigEndian.Uint64(v[8:16])
+	return nil
 }
