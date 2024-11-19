@@ -60,6 +60,9 @@ func NewStore() *store.BlockQueueStore {
 }
 
 func (c *Compactor) Compact(tx *bbolt.Tx, cmd *raft.Log, md *metastorev1.BlockMeta) error {
+	if md.CompactionLevel >= c.config.MaxLevel {
+		return nil
+	}
 	e := store.BlockEntry{
 		Index:      cmd.Index,
 		AppendedAt: cmd.AppendedAt.UnixNano(),

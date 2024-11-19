@@ -14,6 +14,7 @@ const (
 type Strategy struct {
 	MaxBlocksPerLevel []uint64
 	MaxBatchAge       int64
+	MaxLevel          uint32
 
 	CleanupBatchSize int32
 	CleanupDelay     time.Duration
@@ -26,8 +27,9 @@ type Strategy struct {
 func DefaultStrategy() Strategy {
 	return Strategy{
 		MaxBlocksPerLevel:  []uint64{20, 10, 10},
-		MaxBatchAge:        defaultMaxBlockBatchAge,
 		MaxBlocksDefault:   10,
+		MaxLevel:           3,
+		MaxBatchAge:        defaultMaxBlockBatchAge,
 		CleanupBatchSize:   2,
 		CleanupDelay:       15 * time.Minute,
 		CleanupJobMaxLevel: 1,
