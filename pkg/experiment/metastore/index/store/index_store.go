@@ -65,6 +65,35 @@ func (m *IndexStore) StoreBlock(tx *bbolt.Tx, pk PartitionKey, b *metastorev1.Bl
 	return tenantBkt.Put(key, value)
 }
 
+func (m *IndexStore) DeleteBlockList(tx *bbolt.Tx, pk PartitionKey, list *metastorev1.BlockList) error {
+	partitions := getPartitionBucket(tx)
+	if partitions == nil {
+		return nil
+	}
+	partition := partitions.Bucket([]byte(pk))
+	if partition == nil {
+		return nil
+	}
+	shardBktName := make([]byte, 4)
+	binary.BigEndian.PutUint32(shardBktName, list.Shard)
+	shards := partition.Bucket(shardBktName)
+	if shards == nil {
+		return nil
+	}
+	tenantBktName := []byte(list.Tenant)
+	if len(tenantBktName) == 0 {
+		tenantBktName = emptyTenantBucketNameBytes
+	}
+	tenant := shards.Bucket(tenantBktName)
+	if tenant == nil {
+		return nil
+	}
+	for _, b := range list.Blocks {
+		return tenant.Delete([]byte(b))
+	}
+	return nil
+}
+
 func (m *IndexStore) ListPartitions(tx *bbolt.Tx) []PartitionKey {
 	partitionKeys := make([]PartitionKey, 0)
 	_ = getPartitionBucket(tx).ForEachBucket(func(name []byte) error {

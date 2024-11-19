@@ -241,7 +241,7 @@ func TestIndex_ReplaceBlocks(t *testing.T) {
 		CompactedBlocks: []*metastorev1.BlockMeta{replacement},
 	}
 
-	require.NoError(t, i.ReplaceBlocks(nil, nil, compacted))
+	require.NoError(t, i.ReplaceBlocksNoCheckNoPersist(nil, compacted))
 	require.Nil(t, i.FindBlock(nil, 0, "", b1.Id))
 	require.Nil(t, i.FindBlock(nil, 0, "", b2.Id))
 	require.NotNil(t, i.FindBlock(nil, 0, "tenant-1", replacement.Id))

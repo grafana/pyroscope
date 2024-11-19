@@ -71,6 +71,54 @@ func (_c *MockStore_CreateBuckets_Call) RunAndReturn(run func(*bbolt.Tx) error) 
 	return _c
 }
 
+// DeleteBlockList provides a mock function with given fields: _a0, _a1, _a2
+func (_m *MockStore) DeleteBlockList(_a0 *bbolt.Tx, _a1 store.PartitionKey, _a2 *metastorev1.BlockList) error {
+	ret := _m.Called(_a0, _a1, _a2)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteBlockList")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*bbolt.Tx, store.PartitionKey, *metastorev1.BlockList) error); ok {
+		r0 = rf(_a0, _a1, _a2)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockStore_DeleteBlockList_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteBlockList'
+type MockStore_DeleteBlockList_Call struct {
+	*mock.Call
+}
+
+// DeleteBlockList is a helper method to define mock.On call
+//   - _a0 *bbolt.Tx
+//   - _a1 store.PartitionKey
+//   - _a2 *metastorev1.BlockList
+func (_e *MockStore_Expecter) DeleteBlockList(_a0 interface{}, _a1 interface{}, _a2 interface{}) *MockStore_DeleteBlockList_Call {
+	return &MockStore_DeleteBlockList_Call{Call: _e.mock.On("DeleteBlockList", _a0, _a1, _a2)}
+}
+
+func (_c *MockStore_DeleteBlockList_Call) Run(run func(_a0 *bbolt.Tx, _a1 store.PartitionKey, _a2 *metastorev1.BlockList)) *MockStore_DeleteBlockList_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*bbolt.Tx), args[1].(store.PartitionKey), args[2].(*metastorev1.BlockList))
+	})
+	return _c
+}
+
+func (_c *MockStore_DeleteBlockList_Call) Return(_a0 error) *MockStore_DeleteBlockList_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockStore_DeleteBlockList_Call) RunAndReturn(run func(*bbolt.Tx, store.PartitionKey, *metastorev1.BlockList) error) *MockStore_DeleteBlockList_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ListBlocks provides a mock function with given fields: tx, p, shard, tenant
 func (_m *MockStore) ListBlocks(tx *bbolt.Tx, p store.PartitionKey, shard uint32, tenant string) []*metastorev1.BlockMeta {
 	ret := _m.Called(tx, p, shard, tenant)

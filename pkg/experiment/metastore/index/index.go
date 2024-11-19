@@ -11,7 +11,6 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/hashicorp/raft"
 	"github.com/oklog/ulid"
 	"go.etcd.io/bbolt"
 	"golang.org/x/sync/errgroup"
@@ -25,6 +24,8 @@ var ErrBlockExists = fmt.Errorf("block already exists")
 type Store interface {
 	CreateBuckets(*bbolt.Tx) error
 	StoreBlock(*bbolt.Tx, store.PartitionKey, *metastorev1.BlockMeta) error
+	DeleteBlockList(*bbolt.Tx, store.PartitionKey, *metastorev1.BlockList) error
+
 	ListPartitions(*bbolt.Tx) []store.PartitionKey
 	ListShards(*bbolt.Tx, store.PartitionKey) []uint32
 	ListTenants(tx *bbolt.Tx, p store.PartitionKey, shard uint32) []string
@@ -300,6 +301,23 @@ func (i *Index) getOrCreatePartitionMeta(b *metastorev1.BlockMeta) *PartitionMet
 	return meta
 }
 
+func (i *Index) getOrCreatePartitionMetaForCacheKey(k cacheKey) *PartitionMeta {
+	meta := i.findPartitionMeta(k.partitionKey)
+	if meta == nil {
+		ts, duration, _ := k.partitionKey.Parse()
+		meta = &PartitionMeta{
+			Key:       k.partitionKey,
+			Ts:        ts,
+			Duration:  duration,
+			Tenants:   make([]string, 0),
+			tenantMap: make(map[string]struct{}),
+		}
+		i.allPartitions = append(i.allPartitions, meta)
+		i.sortPartitions()
+	}
+	return meta
+}
+
 // FindBlock tries to retrieve an existing block from the index. It will load the corresponding partition if it is not
 // already loaded. Returns nil if the block cannot be found.
 func (i *Index) FindBlock(tx *bbolt.Tx, shardNum uint32, tenant string, blockId string) *metastorev1.BlockMeta {
@@ -330,7 +348,7 @@ func (i *Index) FindBlocks(tx *bbolt.Tx, list *metastorev1.BlockList) []*metasto
 		if s == nil {
 			continue
 		}
-		for _, b := range list.Blocks {
+		for b := range left {
 			if block := s.blocks[b]; block != nil {
 				found = append(found, block)
 				delete(left, b)
@@ -436,19 +454,71 @@ func (i *Index) collectTenantBlocks(p *indexPartition, start, end int64) []*meta
 
 // ReplaceBlocks removes source blocks from the index and inserts replacement blocks into the index. The intended usage
 // is for block compaction. The replacement blocks could be added to the same or a different partition.
-func (i *Index) ReplaceBlocks(tx *bbolt.Tx, _ *raft.Log, compacted *metastorev1.CompactedBlocks) error {
+func (i *Index) ReplaceBlocks(tx *bbolt.Tx, compacted *metastorev1.CompactedBlocks) error {
 	i.partitionMu.Lock()
 	defer i.partitionMu.Unlock()
+	if err := i.insertBlocks(tx, compacted.CompactedBlocks); err != nil {
+		return err
+	}
+	return i.deleteBlockList(tx, compacted.SourceBlocks)
+}
 
+func (i *Index) ReplaceBlocksNoCheckNoPersist(tx *bbolt.Tx, compacted *metastorev1.CompactedBlocks) error {
+	i.partitionMu.Lock()
+	defer i.partitionMu.Unlock()
 	for _, b := range compacted.CompactedBlocks {
 		i.insertBlock(tx, b)
 	}
-
 	source := compacted.SourceBlocks
 	for _, b := range source.Blocks {
 		i.deleteBlock(source.Shard, source.Tenant, b)
 	}
+	return nil
+}
 
+func (i *Index) insertBlocks(tx *bbolt.Tx, blocks []*metastorev1.BlockMeta) error {
+	for _, b := range blocks {
+		k := store.CreatePartitionKey(b.Id, i.config.PartitionDuration)
+		i.insertBlock(tx, b)
+		if err := i.store.StoreBlock(tx, k, b); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (i *Index) deleteBlockList(tx *bbolt.Tx, list *metastorev1.BlockList) error {
+	partitions := make(map[store.PartitionKey]*metastorev1.BlockList)
+	for _, block := range list.Blocks {
+		k := store.CreatePartitionKey(block, i.config.PartitionDuration)
+		v := partitions[k]
+		if v == nil {
+			v = &metastorev1.BlockList{
+				Shard:  list.Shard,
+				Tenant: list.Tenant,
+				Blocks: make([]string, 0, len(list.Blocks)),
+			}
+			partitions[k] = v
+		}
+		v.Blocks = append(v.Blocks, block)
+	}
+	for k, partitioned := range partitions {
+		if err := i.store.DeleteBlockList(tx, k, partitioned); err != nil {
+			return err
+		}
+		ck := cacheKey{partitionKey: k, tenant: list.Tenant}
+		loaded := i.loadedPartitions[ck]
+		if loaded == nil {
+			continue
+		}
+		shard := loaded.shards[partitioned.Shard]
+		if shard == nil {
+			continue
+		}
+		for _, b := range partitioned.Blocks {
+			delete(shard.blocks, b)
+		}
+	}
 	return nil
 }
 
