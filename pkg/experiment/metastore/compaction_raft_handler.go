@@ -11,7 +11,7 @@ import (
 )
 
 type IndexReplacer interface {
-	ReplaceBlocks(*bbolt.Tx, *raft.Log, *metastorev1.CompactedBlocks) error
+	ReplaceBlocks(*bbolt.Tx, *metastorev1.CompactedBlocks) error
 }
 
 type TombstoneDeleter interface {
@@ -152,7 +152,7 @@ func (h *CompactionCommandHandler) UpdateCompactionPlan(
 	}
 
 	for _, job := range req.PlanUpdate.CompletedJobs {
-		if err := h.index.ReplaceBlocks(tx, cmd, job.Plan.CompactedBlocks); err != nil {
+		if err := h.index.ReplaceBlocks(tx, job.Plan.CompactedBlocks); err != nil {
 			return nil, err
 		}
 		source := job.Plan.CompactedBlocks.SourceBlocks
