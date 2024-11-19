@@ -35,6 +35,15 @@ func newDB(logger log.Logger, metrics *metrics, dir string) *boltdb {
 	}
 }
 
+// open creates a new or opens an existing boltdb database.
+//
+// The only case in which we open the database in read-only mode is when we
+// restore it from a snapshot: before closing the database in use, we open
+// the snapshot in read-only mode to verify its integrity.
+//
+// Read-only mode guarantees the snapshot won't be corrupted by the current
+// process and allows loading the database more quickly (by skipping the
+// free page list preload).
 func (db *boltdb) open(readOnly bool) (err error) {
 	defer func() {
 		if err != nil {
