@@ -29,7 +29,9 @@ import (
 
 	"github.com/grafana/dskit/tenant"
 
+	"github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1/vcsv1connect"
 	"github.com/grafana/pyroscope/pkg/frontend/frontendpb"
+	"github.com/grafana/pyroscope/pkg/frontend/vcs"
 	"github.com/grafana/pyroscope/pkg/querier/stats"
 	"github.com/grafana/pyroscope/pkg/scheduler/schedulerdiscovery"
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
@@ -80,6 +82,7 @@ func (cfg *Config) Validate() error {
 type Frontend struct {
 	services.Service
 	connectgrpc.GRPCRoundTripper
+	vcsv1connect.VCSServiceHandler
 	frontendpb.UnimplementedFrontendForQuerierServer
 
 	cfg Config
@@ -150,6 +153,7 @@ func NewFrontend(cfg Config, limits Limits, log log.Logger, reg prometheus.Regis
 		schedulerWorkers:        schedulerWorkers,
 		schedulerWorkersWatcher: services.NewFailureWatcher(),
 		requests:                newRequestsInProgress(),
+		VCSServiceHandler:       vcs.New(log, reg),
 	}
 	f.GRPCRoundTripper = &realFrontendRoundTripper{frontend: f}
 	// Randomize to avoid getting responses from queries sent before restart, which could lead to mixing results

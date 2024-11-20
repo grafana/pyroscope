@@ -13,8 +13,8 @@ import (
 	"golang.org/x/mod/module"
 
 	vcsv1 "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1"
-	"github.com/grafana/pyroscope/pkg/querier/vcs/client"
-	"github.com/grafana/pyroscope/pkg/querier/vcs/source/golang"
+	"github.com/grafana/pyroscope/pkg/frontend/vcs/client"
+	"github.com/grafana/pyroscope/pkg/frontend/vcs/source/golang"
 )
 
 const (

@@ -7,7 +7,7 @@ import (
 	giturl "github.com/kubescape/go-git-url"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/grafana/pyroscope/pkg/querier/vcs/client"
+	"github.com/grafana/pyroscope/pkg/frontend/vcs/client"
 )
 
 type VCSClientMock struct {

@@ -13,7 +13,7 @@ func TestStandardLibraryURL(t *testing.T) {
 		expectedOk bool
 	}{
 		{
-			input:      "github.com/grafana/grafana/pkg/querier/vcs.go",
+			input:      "github.com/grafana/grafana/pkg/frontend/vcs.go",
 			expected:   "",
 			expectedOk: false,
 		},

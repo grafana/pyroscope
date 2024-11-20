@@ -16,8 +16,8 @@ import (
 
 	vcsv1 "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1/vcsv1connect"
-	"github.com/grafana/pyroscope/pkg/querier/vcs/client"
-	"github.com/grafana/pyroscope/pkg/querier/vcs/source"
+	"github.com/grafana/pyroscope/pkg/frontend/vcs/client"
+	"github.com/grafana/pyroscope/pkg/frontend/vcs/source"
 )
 
 var _ vcsv1connect.VCSServiceHandler = (*Service)(nil)
