@@ -11,24 +11,6 @@ spec:
       labels:
         app: otel-collector
     spec:
-#      initContainers:
-#      - name: wait-for-pyroscope
-#        image: busybox
-#        command: [ 'sh', '-c', '
-#          timeout=10;
-#          counter=0;
-#          while [ $counter -lt $timeout ]; do
-#            if nc -z pyroscope-service 4040; then
-#              echo "Pyroscope is up!";
-#              exit 0;
-#            fi;
-#            echo "Waiting for pyroscope... ($counter/$timeout)";
-#            counter=$((counter+1));
-#            sleep 1;
-#          done;
-#          echo "Timeout waiting for pyroscope";
-#          exit 1
-#        ' ]
       containers:
         - name: otel-collector
           image: otel/opentelemetry-collector-contrib:latest

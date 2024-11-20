@@ -4,7 +4,7 @@ services:
     image: otel/opentelemetry-collector-contrib:latest
     command: ["--config=/etc/otel-collector-config.yaml", "--feature-gates=service.profilesSupport"]
     volumes:
-      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+      - ./config/otel-collector-config.yaml:/etc/otel-collector-config.yaml
     ports:
       - "4317:4317"
       - "4318:4318"
@@ -29,6 +29,7 @@ services:
 
   pyroscope:
     image: grafana/pyroscope:latest
+    command: ["-self-profiling.disable-push=true"]
     ports:
       - "4040:4040"
     networks:

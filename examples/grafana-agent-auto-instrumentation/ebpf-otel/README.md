@@ -1,4 +1,4 @@
-# OpenTelemetry eBPF profiler example
+# OpenTelemetry eBPF profiler examples
 
 **⚠️ Important: Linux-only Support**
 This example can only be run on Linux systems (amd64/arm64) as it relies on eBPF technology which is specific to the Linux kernel. The profiler requires privileged access to system resources.
@@ -14,6 +14,8 @@ These examples demonstrate:
 
 Follow the build instructions:
 
+1. Build the profiler binary:
+
 ```bash
 # Clone the repository
 git clone https://github.com/open-telemetry/opentelemetry-ebpf-profiler
@@ -25,13 +27,18 @@ make docker-image
 # Build the profiler binary
 make agent
 ```
+
+2. Copy the built binary to the example directory:
+```bash
+# Copy the ebpf-profiler binary to the example directory
+cp ebpf-profiler /path/to/example/directory/
+```
 **Note:** The following examples will consider that an `ebpf-profiler` binary is already existing on each example root directory.
 
-For more details, please refer to opentelemetry-ebpf-profiler [docs](https://github.com/open-telemetry/opentelemetry-ebpf-profiler?tab=readme-ov-file#building)
+For more details, please refer to opentelemetry-ebpf-profiler [repository](https://github.com/open-telemetry/opentelemetry-ebpf-profiler)
 
 ## Docker example
-
-After building the profiler binary, start the environment:
+1. Start the environment:
 
 ```bash
 # Start all services
@@ -40,10 +47,15 @@ docker-compose up --build
 # To clean up
 docker-compose down
 ```
+2. Access the UI:
+```bash
+# Access Grafana
+http://localhost:3000
+```
 
 ## Kubernetes example
 
-1. After building the profiler binary, build and prepare the profiler image:
+1. Build and prepare the profiler image:
 
 ```bash
 # Build the image with the binary
@@ -64,4 +76,7 @@ kubectl delete -f kubernetes/
 ```bash
 # Port forward Grafana
 kubectl port-forward svc/grafana-service 3000:3000
+
+# Access Grafana
+http://localhost:3000
 ```
