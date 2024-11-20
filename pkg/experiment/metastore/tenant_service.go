@@ -12,6 +12,7 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode"
 )
 
 // TODO(kolesnikovae): The service should not know
@@ -41,9 +42,7 @@ func (svc *TenantService) GetTenant(
 	ctx context.Context,
 	req *metastorev1.GetTenantRequest,
 ) (resp *metastorev1.GetTenantResponse, err error) {
-	read := func(_ *bbolt.Tx) {
-		// Although we're not using transaction here, we need to ensure
-		// strong consistency of the read operation.
+	read := func(*bbolt.Tx, raftnode.ReadIndex) {
 		resp, err = svc.getTenantStats(req.TenantId, ctx)
 	}
 	if readErr := svc.state.ConsistentRead(ctx, read); readErr != nil {

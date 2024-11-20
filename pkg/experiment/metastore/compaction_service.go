@@ -54,7 +54,23 @@ func (m *CompactionService) PollCompactionJobs(
 	// First, we ask the current leader to prepare the change. This is a read
 	// operation conducted through the raft log: at this stage, we only
 	// prepare changes; the command handler does not alter the state.
-	planUpdate, err := proposeGetCompactionPlanUpdate(m.raft, req)
+	request := &raft_log.GetCompactionPlanUpdateRequest{
+		StatusUpdates: make([]*metastorev1.CompactionJobStatusUpdate, 0, len(req.StatusUpdates)),
+		AssignJobsMax: req.JobCapacity,
+	}
+	// We do not send the compacted blocks to the raft log to minimize the
+	// replication traffic. In fact, the compacted blocks are not needed for
+	// planning at this point.
+	for _, update := range req.StatusUpdates {
+		request.StatusUpdates = append(request.StatusUpdates, &metastorev1.CompactionJobStatusUpdate{
+			Name:            update.Name,
+			Token:           update.Token,
+			Status:          update.Status,
+			CompactedBlocks: update.CompactedBlocks, // TODO: Remove.
+		})
+	}
+
+	planUpdate, err := proposeGetCompactionPlanUpdate(m.raft, request)
 	if err != nil {
 		level.Error(m.logger).Log("msg", "failed to prepare compaction plan", "err", err)
 		return nil, err
@@ -98,7 +114,8 @@ func (m *CompactionService) PollCompactionJobs(
 	// Now that we have the plan, we need to propagate it through the raft log
 	// to ensure it is applied consistently across all replicas, regardless of
 	// their individual state or view of the plan.
-	if err = proposeCompactionPlanUpdate(m.raft, planUpdate); err != nil {
+	proposal := &raft_log.UpdateCompactionPlanRequest{PlanUpdate: planUpdate}
+	if err = proposeCompactionPlanUpdate(m.raft, proposal); err != nil {
 		level.Error(m.logger).Log("msg", "failed to update compaction plan", "err", err)
 		return nil, err
 	}
@@ -106,23 +123,15 @@ func (m *CompactionService) PollCompactionJobs(
 	return resp, nil
 }
 
-func proposeGetCompactionPlanUpdate(raft Raft, req *metastorev1.PollCompactionJobsRequest) (*raft_log.CompactionPlanUpdate, error) {
-	resp, err := raft.Propose(
-		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_GET_COMPACTION_PLAN_UPDATE),
-		&raft_log.GetCompactionPlanUpdateRequest{
-			StatusUpdates: req.StatusUpdates,
-			AssignJobsMax: req.JobCapacity,
-		})
+func proposeGetCompactionPlanUpdate(raft Raft, req *raft_log.GetCompactionPlanUpdateRequest) (*raft_log.CompactionPlanUpdate, error) {
+	resp, err := raft.Propose(fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_GET_COMPACTION_PLAN_UPDATE), req)
 	if err != nil {
 		return nil, err
 	}
 	return resp.(*raft_log.GetCompactionPlanUpdateResponse).GetPlanUpdate(), nil
 }
 
-func proposeCompactionPlanUpdate(raft Raft, update *raft_log.CompactionPlanUpdate) error {
-	_, err := raft.Propose(
-		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_UPDATE_COMPACTION_PLAN),
-		&raft_log.UpdateCompactionPlanRequest{PlanUpdate: update},
-	)
+func proposeCompactionPlanUpdate(raft Raft, req *raft_log.UpdateCompactionPlanRequest) error {
+	_, err := raft.Propose(fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_UPDATE_COMPACTION_PLAN), req)
 	return err
 }

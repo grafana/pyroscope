@@ -15,7 +15,8 @@ service RaftNodeService {
 message ReadIndexRequest {}
 
 message ReadIndexResponse {
-  uint64 read_index = 1;
+  uint64 commit_index = 1;
+  uint64 term = 2;
 }
 
 message NodeInfoRequest {}

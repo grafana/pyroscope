@@ -21,7 +21,7 @@ type Raft interface {
 // State represents a consistent read-only view of the metastore.
 // The write interface is provided through the FSM raft command handlers.
 type State interface {
-	ConsistentRead(context.Context, func(*bbolt.Tx)) error
+	ConsistentRead(context.Context, func(*bbolt.Tx, raftnode.ReadIndex)) error
 }
 
 // newFollowerReader creates a new follower reader – implementation of the
@@ -37,7 +37,7 @@ func (m *Metastore) newFollowerReader(
 		// raft node to implement Leader Read pattern.
 		&leaderNode{client: client, timeout: m.config.Raft.ApplyTimeout},
 		&localNode{node: node, fsm: fsm},
-		m.config.Raft.AppliedIndexCheckInterval,
+		m.config.Raft.LogIndexCheckInterval,
 		m.config.Raft.ReadIndexMaxDistance,
 	)
 }
@@ -50,14 +50,16 @@ type leaderNode struct {
 	timeout time.Duration
 }
 
-func (l *leaderNode) ReadIndex() (uint64, error) {
+func (l *leaderNode) ReadIndex() (read raftnode.ReadIndex, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), l.timeout)
 	defer cancel()
 	resp, err := l.client.ReadIndex(ctx, new(raftnodepb.ReadIndexRequest))
 	if err != nil {
-		return 0, err
+		return read, err
 	}
-	return resp.ReadIndex, nil
+	read.CommitIndex = resp.CommitIndex
+	read.Term = resp.Term
+	return read, nil
 }
 
 // localNode represents the state machine of the local node.

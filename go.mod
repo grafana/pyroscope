@@ -15,7 +15,7 @@ require (
 	github.com/dolthub/swiss v0.2.1
 	github.com/drone/envsubst v1.0.3
 	github.com/dustin/go-humanize v1.0.1
-	github.com/fatih/color v1.15.0
+	github.com/fatih/color v1.18.0
 	github.com/felixge/fgprof v0.9.4-0.20221116204635-ececf7638e93
 	github.com/felixge/httpsnoop v1.0.4
 	github.com/fsnotify/fsnotify v1.7.0
@@ -40,14 +40,14 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/golang-lru/v2 v2.0.7
-	github.com/hashicorp/raft v1.7.0
+	github.com/hashicorp/raft v1.7.2-0.20241119084901-7e8e836fe2e8
 	github.com/hashicorp/raft-wal v0.4.1
 	github.com/iancoleman/strcase v0.3.0
 	github.com/json-iterator/go v1.1.12
 	github.com/k0kubun/pp/v3 v3.2.0
 	github.com/klauspost/compress v1.17.10
 	github.com/kubescape/go-git-url v0.0.27
-	github.com/mattn/go-isatty v0.0.19
+	github.com/mattn/go-isatty v0.0.20
 	github.com/minio/minio-go/v7 v7.0.72
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/oauth2-proxy/oauth2-proxy/v7 v7.5.1
@@ -86,7 +86,7 @@ require (
 	golang.org/x/net v0.28.0
 	golang.org/x/oauth2 v0.21.0
 	golang.org/x/sync v0.8.0
-	golang.org/x/sys v0.25.0
+	golang.org/x/sys v0.27.0
 	golang.org/x/text v0.19.0
 	golang.org/x/time v0.6.0
 	gonum.org/v1/plot v0.14.0
@@ -179,14 +179,14 @@ require (
 	github.com/hashicorp/consul/api v1.28.2 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
-	github.com/hashicorp/go-hclog v1.6.2 // indirect
+	github.com/hashicorp/go-hclog v1.6.3 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/go-msgpack v1.1.5 // indirect
-	github.com/hashicorp/go-msgpack/v2 v2.1.1 // indirect
+	github.com/hashicorp/go-msgpack/v2 v2.1.2 // indirect
 	github.com/hashicorp/go-rootcerts v1.0.2 // indirect
 	github.com/hashicorp/go-sockaddr v1.0.6 // indirect
 	github.com/hashicorp/go-version v1.6.0 // indirect
-	github.com/hashicorp/golang-lru v0.6.0 // indirect
+	github.com/hashicorp/golang-lru v1.0.2 // indirect
 	github.com/hashicorp/memberlist v0.5.0 // indirect
 	github.com/hashicorp/serf v0.10.1 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect

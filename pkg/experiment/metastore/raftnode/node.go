@@ -33,9 +33,9 @@ type Config struct {
 	BindAddress      string `yaml:"bind_address"`
 	AdvertiseAddress string `yaml:"advertise_address"`
 
-	ApplyTimeout              time.Duration `yaml:"apply_timeout" doc:"hidden"`
-	AppliedIndexCheckInterval time.Duration `yaml:"applied_index_check_interval" doc:"hidden"`
-	ReadIndexMaxDistance      uint64        `yaml:"read_index_max_distance" doc:"hidden"`
+	ApplyTimeout          time.Duration `yaml:"apply_timeout" doc:"hidden"`
+	LogIndexCheckInterval time.Duration `yaml:"log_index_check_interval" doc:"hidden"`
+	ReadIndexMaxDistance  uint64        `yaml:"read_index_max_distance" doc:"hidden"`
 
 	WALCacheEntries       uint64        `yaml:"wal_cache_entries" doc:"hidden"`
 	TrailingLogs          uint64        `yaml:"trailing_logs" doc:"hidden"`
@@ -67,7 +67,7 @@ func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.StringVar(&cfg.AdvertiseAddress, prefix+"advertise-address", "localhost:9099", "")
 
 	f.DurationVar(&cfg.ApplyTimeout, prefix+"apply-timeout", 5*time.Second, "")
-	f.DurationVar(&cfg.AppliedIndexCheckInterval, prefix+"applied-index-check-interval", 14*time.Millisecond, "")
+	f.DurationVar(&cfg.LogIndexCheckInterval, prefix+"log-index-check-interval", 14*time.Millisecond, "")
 	f.Uint64Var(&cfg.ReadIndexMaxDistance, prefix+"read-index-max-distance", 10<<10, "")
 
 	f.Uint64Var(&cfg.WALCacheEntries, prefix+"wal-cache-entries", defaultWALCacheEntries, "")
@@ -286,43 +286,4 @@ func (n *Node) Propose(t fsm.RaftLogEntryType, m proto.Message) (resp proto.Mess
 		resp = r.Data
 	}
 	return resp, r.Err
-}
-
-func (n *Node) AppliedIndex() uint64 { return n.raft.AppliedIndex() }
-
-// ReadIndex implements the Read Index technique.
-// Please refer to the source Raft paper, paragraph 6.4. for details.
-// https://web.stanford.edu/~ouster/cgi-bin/papers/OngaroPhD.pdf.
-func (n *Node) ReadIndex() (uint64, error) {
-	// > If the leader has not yet marked an entry from its current term
-	// > committed, it waits until it has done so. The Leader Completeness
-	// > Property guarantees that a leader has all committed entries, but
-	// > at the start of its term, it may not know which those are. To find
-	// > out, it needs to commit an entry from its term. Raft handles this
-	// > by having each leader commit a blank no-op entry into the log at
-	// > the start of its term. As soon as this no-op entry is committed,
-	// > the leader’s commit index will be at least as large as any other
-	// > servers’ during its term.
-	//
-	// NOTE(kolesnikovae): CommitIndex always returns a valid commit index,
-	// even when no entries have been added in the current term.
-	// See the "runLeader" implementation (hashicorp raft) for details.
-	commitIndex := n.raft.CommitIndex()
-	// > The leader needs to make sure it has not been superseded by a newer
-	// > leader of which it is unaware. It issues a new round of heartbeats
-	// > and waits for their acknowledgments from a majority of the cluster.
-	// > Once these acknowledgments are received, the leader knows that there
-	// > could not have existed a leader for a greater term at the moment it
-	// > sent the heartbeats. Thus, the readIndex was, at the time, the
-	// > largest commit index ever seen by any server in the cluster.
-	err := n.raft.VerifyLeader().Error()
-	if err != nil {
-		// The error includes details about the actual leader the request
-		// should be directed to; the client should retry the operation.
-		return 0, WithRaftLeaderStatusDetails(err, n.raft)
-	}
-	// The commit index is up-to-date and the node is the leader: this is the
-	// lower bound of the state any query must operate against. This does not
-	// specify, however, that the upper bound (i.e. no snapshot isolation).
-	return commitIndex, nil
 }

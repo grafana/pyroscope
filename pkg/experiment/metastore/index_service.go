@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 	placement "github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/fsm"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode"
 	"github.com/grafana/pyroscope/pkg/iter"
 )
 
@@ -92,7 +93,7 @@ func (svc *IndexService) GetBlockMetadata(
 	req *metastorev1.GetBlockMetadataRequest,
 ) (*metastorev1.GetBlockMetadataResponse, error) {
 	var found []*metastorev1.BlockMeta
-	err := svc.state.ConsistentRead(ctx, func(tx *bbolt.Tx) {
+	err := svc.state.ConsistentRead(ctx, func(tx *bbolt.Tx, _ raftnode.ReadIndex) {
 		found = svc.index.FindBlocks(tx, req.GetBlocks())
 	})
 	if err != nil {
