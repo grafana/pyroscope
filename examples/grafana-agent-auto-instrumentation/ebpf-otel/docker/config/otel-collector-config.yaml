@@ -1,0 +1,39 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: "0.0.0.0:4317"
+      http:
+
+processors:
+  batch:
+
+exporters:
+  debug:
+    verbosity: detailed
+  otlp:
+    endpoint: "http://pyroscope:4040"
+    tls:
+      insecure: true
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug]
+    profiles:
+      receivers: [otlp]
+      exporters: [otlp]
+
+  telemetry:
+    logs:
+      level: debug

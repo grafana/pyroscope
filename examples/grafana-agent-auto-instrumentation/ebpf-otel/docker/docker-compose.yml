@@ -1,0 +1,54 @@
+version: '3'
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    command: ["--config=/etc/otel-collector-config.yaml", "--feature-gates=service.profilesSupport"]
+    volumes:
+      - ./config/otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    networks:
+      - otel-net
+    depends_on:
+      - pyroscope
+
+  otel-ebpf-profiler:
+    build: .
+    hostname: ebpf-profiler
+    privileged: true
+    pid: "host"
+    volumes:
+      - /sys/kernel/debug:/sys/kernel/debug
+      - /sys/fs/cgroup:/sys/fs/cgroup
+      - /proc:/proc
+    networks:
+      - otel-net
+    depends_on:
+      - otel-collector
+
+  pyroscope:
+    image: grafana/pyroscope:latest
+    command: ["-self-profiling.disable-push=true"]
+    ports:
+      - "4040:4040"
+    networks:
+      - otel-net
+
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      - GF_INSTALL_PLUGINS=grafana-pyroscope-app
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+    volumes:
+      - ./grafana-provisioning:/etc/grafana/provisioning
+    ports:
+      - "3000:3000"
+    networks:
+      - otel-net
+
+networks:
+  otel-net:
+    driver: bridge
