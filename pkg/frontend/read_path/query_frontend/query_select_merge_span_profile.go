@@ -53,7 +53,10 @@ func (q *QueryFrontend) SelectMergeSpanProfile(
 		LabelSelector: labelSelector,
 		Query: []*queryv1.Query{{
 			QueryType: queryv1.QueryType_QUERY_TREE,
-			Tree:      &queryv1.TreeQuery{MaxNodes: maxNodes},
+			Tree: &queryv1.TreeQuery{
+				MaxNodes:     maxNodes,
+				SpanSelector: c.Msg.SpanSelector,
+			},
 		}},
 	})
 	if err != nil {
