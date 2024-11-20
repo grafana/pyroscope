@@ -81,6 +81,9 @@ func (db *boltdb) open(readOnly bool) (err error) {
 
 func (db *boltdb) shutdown() {
 	if db.boltdb != nil {
+		if err := db.boltdb.Sync(); err != nil {
+			_ = level.Error(db.logger).Log("msg", "failed to sync database", "err", err)
+		}
 		if err := db.boltdb.Close(); err != nil {
 			_ = level.Error(db.logger).Log("msg", "failed to close database", "err", err)
 		}

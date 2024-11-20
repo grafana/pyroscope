@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -334,7 +335,10 @@ func (w *Worker) runCompaction(job *compactionJob) {
 		}
 	}
 
-	level.Info(logger).Log("msg", "starting compaction job")
+	level.Info(logger).Log(
+		"msg", "starting compaction job",
+		"source_blocks", strings.Join(job.SourceBlocks, " "),
+	)
 	if err := w.getBlockMetadata(logger, job); err != nil {
 		return
 	}
@@ -353,8 +357,8 @@ func (w *Worker) runCompaction(job *compactionJob) {
 		level.Info(logger).Log(
 			"msg", "compaction finished successfully",
 			"input_blocks", len(job.SourceBlocks),
-			"output_blocks", len(compacted))
-
+			"output_blocks", len(compacted),
+		)
 		for _, c := range compacted {
 			level.Info(logger).Log(
 				"msg", "new compacted block",
@@ -365,7 +369,8 @@ func (w *Worker) runCompaction(job *compactionJob) {
 				"block_compaction_level", c.CompactionLevel,
 				"block_min_time", c.MinTime,
 				"block_max_time", c.MinTime,
-				"datasets", len(c.Datasets))
+				"datasets", len(c.Datasets),
+			)
 		}
 
 		statusName = "success"
@@ -434,7 +439,7 @@ func (w *Worker) deleteBlocks(ctx context.Context, logger log.Logger, t *metasto
 		"tenant", t.Tenant,
 		"shard", t.Shard,
 		"compaction_level", t.CompactionLevel,
-		"batch_size", len(t.Blocks),
+		"blocks", strings.Join(t.Blocks, " "),
 	)
 	for _, b := range t.Blocks {
 		path := block.BuildObjectPath(t.Tenant, t.Shard, t.CompactionLevel, b)

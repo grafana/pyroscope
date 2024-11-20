@@ -64,6 +64,12 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 	var revoked int
 	for _, status := range req.StatusUpdates {
 		switch state := scheduler.UpdateJob(status); {
+		case state == nil:
+			// Nil state indicates that the job has been abandoned and
+			// reassigned, or the request is not valid. This may happen
+			// from time to time, and we should just ignore such requests.
+			revoked++
+
 		case state.Status == metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS:
 			p.CompletedJobs = append(p.CompletedJobs, &raft_log.CompletedCompactionJob{State: state})
 
@@ -71,11 +77,8 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 			p.UpdatedJobs = append(p.UpdatedJobs, &raft_log.UpdatedCompactionJob{State: state})
 
 		default:
-			// Unknown statuses are ignored.
-			// Nil state indicates that the job has been abandoned and
-			// reassigned, or the request is not valid. This may happen
-			// from time to time, and we should just ignore such requests.
-			revoked++
+			// Unknown statuses are ignored. From the worker perspective,
+			// the job is re-assigned.
 		}
 	}
 

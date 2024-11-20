@@ -1,9 +1,9 @@
 package store
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
-	"slices"
 
 	"go.etcd.io/bbolt"
 
@@ -129,7 +129,7 @@ func (m *IndexStore) ListTenants(tx *bbolt.Tx, key PartitionKey, shard uint32) [
 		return nil
 	}
 	_ = shardBkt.ForEachBucket(func(name []byte) error {
-		if slices.Equal(name, emptyTenantBucketNameBytes) {
+		if bytes.Equal(name, emptyTenantBucketNameBytes) {
 			tenants = append(tenants, "")
 		} else {
 			tenants = append(tenants, string(name))
