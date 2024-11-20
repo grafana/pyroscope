@@ -130,12 +130,6 @@ func (h *CompactionCommandHandler) UpdateCompactionPlan(
 	tx *bbolt.Tx, cmd *raft.Log, req *raft_log.UpdateCompactionPlanRequest,
 ) (*raft_log.UpdateCompactionPlanResponse, error) {
 	if req.Term != cmd.Term || req.GetPlanUpdate() == nil {
-		// The plan was proposed in a different term, which means that
-		// the raft leader might have changed since the plan was created,
-		// and might be not up-to-date. We abort the plan speculatively.
-		// We can't return an error here because this is a valid scenario;
-		// instead we return an empty response to indicate that the plan
-		// has not been accepted.
 		level.Warn(h.logger).Log(
 			"msg", "rejecting compaction plan update",
 			"current_term", cmd.Term,

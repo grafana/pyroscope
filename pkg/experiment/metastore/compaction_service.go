@@ -126,13 +126,19 @@ func (svc *CompactionService) PollCompactionJobs(
 		}
 	}
 
-	// Now that we have the plan, we need to propagate it through the raft log
-	// to ensure it is applied consistently across all replicas, regardless of
-	// their individual state or view of the plan.
-	//
-	// We also include the current term so that later we can verify that the
-	// leader has not changed, and the plan is still up-to-date.
+	// Now that we have the plan, we need to propagate it through the
+	// raft log to ensure it is applied consistently across all replicas,
+	// regardless of their individual state or view of the plan.
 	cmd = fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_UPDATE_COMPACTION_PLAN)
+
+	// We also include the current term of the planning step so that later
+	// we can verify that the leader has not changed, and the plan is still
+	// up-to-date. Otherwise, e.g., in the ABA case, when the current node
+	// loses leadership and gains is back in-between these two steps, we
+	// cannot guarantee that the proposed plan is still valid and up-to-date.
+	// The raft handler cannot return an error here (because this is a valid
+	// scenario, and we don't want to stop the node/cluster). Instead, an
+	// empty response would indicate that the plan is rejected.
 	proposal := &raft_log.UpdateCompactionPlanRequest{Term: prepared.Term, PlanUpdate: planUpdate}
 	if resp, err = svc.raft.Propose(cmd, proposal); err != nil {
 		level.Error(svc.logger).Log("msg", "failed to update compaction plan", "err", err)
@@ -144,7 +150,7 @@ func (svc *CompactionService) PollCompactionJobs(
 		return nil, status.Error(codes.FailedPrecondition, "failed to update compaction plan")
 	}
 
-	// As of now, accepted plan always matches the proposed one, so our prepared
-	// worker response is still valid.
+	// As of now, accepted plan always matches the proposed one,
+	// so our prepared worker response is still valid.
 	return workerResp, nil
 }
