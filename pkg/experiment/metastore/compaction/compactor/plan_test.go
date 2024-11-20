@@ -14,6 +14,7 @@ var testConfig = Config{
 		MaxBlocksPerLevel: []uint64{3, 2, 2},
 		MaxBlocksDefault:  2,
 		MaxBatchAge:       0,
+		MaxLevel:          3,
 	},
 }
 

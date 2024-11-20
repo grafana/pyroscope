@@ -27,17 +27,15 @@ func TestScheduler_UpdateSchedule(t *testing.T) {
 	scheduler.queue.put(&raft_log.CompactionJobState{Name: "3", Token: 1})
 
 	err := scheduler.UpdateSchedule(nil, &raft.Log{Index: 2}, &raft_log.CompactionPlanUpdate{
-		NewJobs: []*raft_log.CompactionJobUpdate{{
+		NewJobs: []*raft_log.NewCompactionJob{{
 			State: &raft_log.CompactionJobState{Name: "1"},
 			Plan:  &raft_log.CompactionJobPlan{Name: "1"},
 		}},
-		AssignedJobs: []*raft_log.CompactionJobUpdate{{
+		UpdatedJobs: []*raft_log.UpdatedCompactionJob{{
 			State: &raft_log.CompactionJobState{Name: "2"},
-			Plan:  &raft_log.CompactionJobPlan{Name: "2"},
 		}},
-		CompletedJobs: []*raft_log.CompactionJobUpdate{{
+		CompletedJobs: []*raft_log.CompletedCompactionJob{{
 			State: &raft_log.CompactionJobState{Name: "3"},
-			Plan:  &raft_log.CompactionJobPlan{Name: "3"},
 		}},
 	})
 

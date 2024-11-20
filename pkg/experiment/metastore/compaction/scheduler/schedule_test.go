@@ -33,52 +33,45 @@ func TestSchedule_Update_LeaseRenewal(t *testing.T) {
 
 	t.Run("Owner", test.AssertIdempotentSubtest(t, func(t *testing.T) {
 		s := scheduler.NewSchedule(nil, &raft.Log{Index: 1, AppendedAt: time.Unix(0, 0)})
-		update, err := s.UpdateJob(&metastorev1.CompactionJobStatusUpdate{
+		update := s.UpdateJob(&raft_log.CompactionJobStatusUpdate{
 			Name:   "1",
 			Token:  1,
 			Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS,
 		})
-		assert.NoError(t, err)
 		assert.Equal(t, &raft_log.CompactionJobState{
 			Name:            "1",
 			CompactionLevel: 0,
 			Status:          metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS,
 			Token:           1,
 			LeaseExpiresAt:  int64(config.LeaseDuration),
-		}, update.State)
+		}, update)
 	}))
 
 	t.Run("NotOwner", test.AssertIdempotentSubtest(t, func(t *testing.T) {
 		s := scheduler.NewSchedule(nil, &raft.Log{Index: 1, AppendedAt: time.Unix(0, 0)})
-		update, err := s.UpdateJob(&metastorev1.CompactionJobStatusUpdate{
+		assert.Nil(t, s.UpdateJob(&raft_log.CompactionJobStatusUpdate{
 			Name:   "1",
 			Token:  0,
 			Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS,
-		})
-		assert.NoError(t, err)
-		assert.Nil(t, update)
+		}))
 	}))
 
 	t.Run("JobCompleted", test.AssertIdempotentSubtest(t, func(t *testing.T) {
 		s := scheduler.NewSchedule(nil, &raft.Log{Index: 1, AppendedAt: time.Unix(0, 0)})
-		update, err := s.UpdateJob(&metastorev1.CompactionJobStatusUpdate{
+		assert.Nil(t, s.UpdateJob(&raft_log.CompactionJobStatusUpdate{
 			Name:   "0",
 			Token:  1,
 			Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS,
-		})
-		assert.NoError(t, err)
-		assert.Nil(t, update)
+		}))
 	}))
 
 	t.Run("WrongStatus", test.AssertIdempotentSubtest(t, func(t *testing.T) {
 		s := scheduler.NewSchedule(nil, &raft.Log{Index: 1, AppendedAt: time.Unix(0, 0)})
-		update, err := s.UpdateJob(&metastorev1.CompactionJobStatusUpdate{
+		assert.Nil(t, s.UpdateJob(&raft_log.CompactionJobStatusUpdate{
 			Name:   "1",
 			Token:  1,
 			Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_UNSPECIFIED,
-		})
-		assert.NoError(t, err)
-		assert.Nil(t, update)
+		}))
 	}))
 }
 
@@ -92,58 +85,33 @@ func TestSchedule_Update_JobCompleted(t *testing.T) {
 	scheduler := NewScheduler(config, store)
 	scheduler.queue.put(&raft_log.CompactionJobState{
 		Name:            "1",
-		CompactionLevel: 0,
+		CompactionLevel: 1,
 		Status:          metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS,
 		Token:           1,
-		LeaseExpiresAt:  0,
 	})
-	store.On("GetJobPlan", mock.Anything, "1").
-		Return(&raft_log.CompactionJobPlan{
-			Name:            "1",
-			Tenant:          "A",
-			Shard:           1,
-			CompactionLevel: 0,
-			SourceBlocks:    []string{"a", "b", "c"},
-		}, nil)
 
 	t.Run("Owner", test.AssertIdempotentSubtest(t, func(t *testing.T) {
 		s := scheduler.NewSchedule(nil, &raft.Log{Index: 1, AppendedAt: time.Unix(0, 0)})
-		update, err := s.UpdateJob(&metastorev1.CompactionJobStatusUpdate{
+		update := s.UpdateJob(&raft_log.CompactionJobStatusUpdate{
 			Name:   "1",
 			Token:  1,
 			Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS,
-			CompactedBlocks: &metastorev1.CompactedBlocks{
-				SourceBlocks:    &metastorev1.BlockList{Blocks: []string{"a", "b", "c"}},
-				CompactedBlocks: []*metastorev1.BlockMeta{{}},
-			},
 		})
-		assert.NoError(t, err)
-		assert.Nil(t, update.State)
-		assert.Equal(t, &raft_log.CompactionJobPlan{
+		assert.Equal(t, &raft_log.CompactionJobState{
 			Name:            "1",
-			Tenant:          "A",
-			Shard:           1,
-			CompactionLevel: 0,
-			CompactedBlocks: &metastorev1.CompactedBlocks{
-				SourceBlocks:    &metastorev1.BlockList{Blocks: []string{"a", "b", "c"}},
-				CompactedBlocks: []*metastorev1.BlockMeta{{}},
-			},
-		}, update.Plan)
+			CompactionLevel: 1,
+			Status:          metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS,
+			Token:           1,
+		}, update)
 	}))
 
 	t.Run("NotOwner", test.AssertIdempotentSubtest(t, func(t *testing.T) {
 		s := scheduler.NewSchedule(nil, &raft.Log{Index: 1, AppendedAt: time.Unix(0, 0)})
-		update, err := s.UpdateJob(&metastorev1.CompactionJobStatusUpdate{
+		assert.Nil(t, s.UpdateJob(&raft_log.CompactionJobStatusUpdate{
 			Name:   "1",
 			Token:  0,
 			Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS,
-			CompactedBlocks: &metastorev1.CompactedBlocks{
-				SourceBlocks:    &metastorev1.BlockList{Blocks: []string{"a", "b", "c"}},
-				CompactedBlocks: []*metastorev1.BlockMeta{{}},
-			},
-		})
-		assert.NoError(t, err)
-		assert.Nil(t, update)
+		}))
 	}))
 }
 
@@ -264,7 +232,7 @@ func TestSchedule_UpdateAssign(t *testing.T) {
 	// Lease is extended without reassignment if update arrives after the
 	// expiration, but this is the first worker requested assignment.
 	test.AssertIdempotent(t, func(t *testing.T) {
-		updates := []*metastorev1.CompactionJobStatusUpdate{
+		updates := []*raft_log.CompactionJobStatusUpdate{
 			{Name: "1", Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS, Token: 1},
 			{Name: "2", Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS, Token: 1},
 			{Name: "3", Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS, Token: 1},
@@ -273,11 +241,10 @@ func TestSchedule_UpdateAssign(t *testing.T) {
 		updatedAt := time.Second * 20
 		s := scheduler.NewSchedule(nil, &raft.Log{Index: 2, AppendedAt: time.Unix(0, int64(updatedAt))})
 		for i := range updates {
-			update, err := s.UpdateJob(updates[i])
-			require.NoError(t, err)
-			assert.Equal(t, metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS, update.State.Status)
-			assert.Equal(t, int64(updatedAt)+int64(config.LeaseDuration), update.State.LeaseExpiresAt)
-			assert.Equal(t, uint64(1), update.State.Token) // Token must not change.
+			update := s.UpdateJob(updates[i])
+			assert.Equal(t, metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS, update.Status)
+			assert.Equal(t, int64(updatedAt)+int64(config.LeaseDuration), update.LeaseExpiresAt)
+			assert.Equal(t, uint64(1), update.Token) // Token must not change.
 		}
 
 		update, err := s.AssignJob()
@@ -288,20 +255,16 @@ func TestSchedule_UpdateAssign(t *testing.T) {
 	// If the worker reports success status and its lease has expired but the
 	// job has not been reassigned, we accept the results.
 	test.AssertIdempotent(t, func(t *testing.T) {
-		empty := &metastorev1.CompactedBlocks{}
-		updates := []*metastorev1.CompactionJobStatusUpdate{
-			{Name: "1", Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS, Token: 1, CompactedBlocks: empty},
-			{Name: "2", Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS, Token: 1, CompactedBlocks: empty},
-			{Name: "3", Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS, Token: 1, CompactedBlocks: empty},
+		updates := []*raft_log.CompactionJobStatusUpdate{
+			{Name: "1", Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS, Token: 1},
+			{Name: "2", Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS, Token: 1},
+			{Name: "3", Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS, Token: 1},
 		}
 
 		updatedAt := time.Second * 20
 		s := scheduler.NewSchedule(nil, &raft.Log{Index: 2, AppendedAt: time.Unix(0, int64(updatedAt))})
 		for i := range updates {
-			update, err := s.UpdateJob(updates[i])
-			require.NoError(t, err)
-			assert.Nil(t, update.State) // Job is going to be deleted.
-			assert.NotNil(t, update.Plan)
+			assert.NotNil(t, s.UpdateJob(updates[i]))
 		}
 
 		update, err := s.AssignJob()
@@ -352,10 +315,7 @@ func TestSchedule_Add(t *testing.T) {
 	test.AssertIdempotent(t, func(t *testing.T) {
 		s := scheduler.NewSchedule(nil, &raft.Log{Index: 1, AppendedAt: time.Unix(0, 1)})
 		for i := range plans {
-			update, err := s.AddJob(plans[i])
-			require.NoError(t, err)
-			assert.Equal(t, plans[i], update.Plan)
-			assert.Equal(t, states[i], update.State)
+			assert.Equal(t, states[i], s.AddJob(plans[i]))
 		}
 	})
 }

@@ -24,25 +24,47 @@ message AddBlockMetadataResponse {}
 message GetCompactionPlanUpdateRequest {
   // CompactionJobStatusUpdate is a change
   // requested by the compaction worker.
-  repeated metastore.v1.CompactionJobStatusUpdate status_updates = 1;
+  repeated CompactionJobStatusUpdate status_updates = 1;
   uint32 assign_jobs_max = 2;
+}
+
+message CompactionJobStatusUpdate {
+  string name = 1;
+  uint64 token = 2;
+  metastore.v1.CompactionJobStatus status = 3;
 }
 
 // GetCompactionPlanUpdateResponse includes the planned change.
 // The plan should be proposed to the raft members.
 message GetCompactionPlanUpdateResponse {
-  CompactionPlanUpdate plan_update = 1;
+  uint64 term = 1;
+  CompactionPlanUpdate plan_update = 2;
 }
 
 message CompactionPlanUpdate {
-  repeated CompactionJobUpdate new_jobs = 1;
-  repeated CompactionJobUpdate assigned_jobs = 2;
-  repeated CompactionJobUpdate completed_jobs = 3;
+  repeated NewCompactionJob new_jobs = 1;
+  repeated AssignedCompactionJob assigned_jobs = 2;
+  repeated UpdatedCompactionJob updated_jobs = 3;
+  repeated CompletedCompactionJob completed_jobs = 4;
 }
 
-message CompactionJobUpdate {
+message NewCompactionJob {
   CompactionJobState state = 1;
   CompactionJobPlan plan = 2;
+}
+
+message AssignedCompactionJob {
+  CompactionJobState state = 1;
+  CompactionJobPlan plan = 2;
+}
+
+message UpdatedCompactionJob {
+  CompactionJobState state = 1;
+}
+
+message CompletedCompactionJob {
+  CompactionJobState state = 1;
+  metastore.v1.CompactedBlocks compacted_blocks = 2;
 }
 
 // CompactionJobState is produced in response to
@@ -70,14 +92,14 @@ message CompactionJobPlan {
   repeated string source_blocks = 5;
   // Objects to be deleted.
   repeated metastore.v1.Tombstones tombstones = 6;
-  // Only present if the job completed successfully.
-  // Never stored in the metastore.
-  metastore.v1.CompactedBlocks compacted_blocks = 7;
 }
 
 // UpdateCompactionPlanRequest proposes compaction plan changes.
 message UpdateCompactionPlanRequest {
-  CompactionPlanUpdate plan_update = 1;
+  uint64 term = 1;
+  CompactionPlanUpdate plan_update = 2;
 }
 
-message UpdateCompactionPlanResponse {}
+message UpdateCompactionPlanResponse {
+  CompactionPlanUpdate plan_update = 1;
+}

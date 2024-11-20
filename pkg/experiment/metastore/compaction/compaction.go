@@ -25,14 +25,13 @@ type Planner interface {
 	// as the final decision.
 	// Implementation: Plan must not change the state of Planner.
 	NewPlan(*bbolt.Tx, *raft.Log) Plan
-
 	// UpdatePlan communicates the status of the compaction job to the planner.
 	// Implementation: the method must be idempotent.
 	UpdatePlan(*bbolt.Tx, *raft.Log, *raft_log.CompactionPlanUpdate) error
 }
 
 type Plan interface {
-	// CreateJob plans a new compaction job.
+	// CreateJob creates plan of a new job.
 	CreateJob() (*raft_log.CompactionJobPlan, error)
 }
 
@@ -42,7 +41,6 @@ type Scheduler interface {
 	// being accepted as the final decision.
 	// Implementation: Schedule must not change the state of Scheduler.
 	NewSchedule(*bbolt.Tx, *raft.Log) Schedule
-
 	// UpdateSchedule adds new jobs and updates state of existing ones.
 	// Implementation: the method must be idempotent.
 	UpdateSchedule(*bbolt.Tx, *raft.Log, *raft_log.CompactionPlanUpdate) error
@@ -59,11 +57,9 @@ type Schedule interface {
 	// The scheduler must validate that the worker is allowed to update the
 	// job, by comparing the fencing token of the job.
 	// Refer to the documentation for details.
-	UpdateJob(*metastorev1.CompactionJobStatusUpdate) (*raft_log.CompactionJobUpdate, error)
-
+	UpdateJob(*raft_log.CompactionJobStatusUpdate) *raft_log.CompactionJobState
 	// AssignJob is called on behalf of the worker to request a new job.
-	AssignJob() (*raft_log.CompactionJobUpdate, error)
-
+	AssignJob() (*raft_log.AssignedCompactionJob, error)
 	// AddJob is called on behalf of the planner to add a new job to the schedule.
-	AddJob(*raft_log.CompactionJobPlan) (*raft_log.CompactionJobUpdate, error)
+	AddJob(*raft_log.CompactionJobPlan) *raft_log.CompactionJobState
 }

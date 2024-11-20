@@ -10,7 +10,6 @@ service CompactionService {
 }
 
 message PollCompactionJobsRequest {
-  // A batch of status updates for in-progress jobs from a worker.
   repeated CompactionJobStatusUpdate status_updates = 1;
   // How many new jobs a worker can be assigned to.
   uint32 job_capacity = 2;
@@ -51,7 +50,6 @@ message CompactionJobAssignment {
   string name = 1;
   uint64 token = 2;
   int64 lease_expires_at = 3;
-  CompactionJobStatus status = 4; // TODO: We probably don't need this field.
 }
 
 message CompactionJobStatusUpdate {
@@ -64,7 +62,7 @@ message CompactionJobStatusUpdate {
 
 message CompactedBlocks {
   metastore.v1.BlockList source_blocks = 1;
-  repeated metastore.v1.BlockMeta compacted_blocks = 2;
+  repeated metastore.v1.BlockMeta new_blocks = 2;
 }
 
 enum CompactionJobStatus {

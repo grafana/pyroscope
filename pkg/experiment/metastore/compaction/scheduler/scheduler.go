@@ -76,7 +76,7 @@ func (sc *Scheduler) NewSchedule(tx *bbolt.Tx, cmd *raft.Log) compaction.Schedul
 		token:     cmd.Index,
 		now:       cmd.AppendedAt,
 		scheduler: sc,
-		updates:   make(map[string]*raft_log.CompactionJobUpdate),
+		updates:   make(map[string]*raft_log.CompactionJobState),
 	}
 }
 
@@ -91,6 +91,13 @@ func (sc *Scheduler) UpdateSchedule(tx *bbolt.Tx, _ *raft.Log, update *raft_log.
 		sc.queue.put(job.State)
 	}
 
+	for _, job := range update.UpdatedJobs {
+		if err := sc.store.StoreJobState(tx, job.State); err != nil {
+			return err
+		}
+		sc.queue.put(job.State)
+	}
+
 	for _, job := range update.AssignedJobs {
 		if err := sc.store.StoreJobState(tx, job.State); err != nil {
 			return err
@@ -99,7 +106,7 @@ func (sc *Scheduler) UpdateSchedule(tx *bbolt.Tx, _ *raft.Log, update *raft_log.
 	}
 
 	for _, job := range update.CompletedJobs {
-		name := job.Plan.Name
+		name := job.State.Name
 		if err := sc.store.DeleteJobPlan(tx, name); err != nil {
 			return err
 		}

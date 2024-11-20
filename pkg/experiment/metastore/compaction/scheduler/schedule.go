@@ -21,65 +21,64 @@ type schedule struct {
 	// Read-only.
 	scheduler *Scheduler
 	// Uncommitted schedule updates.
-	updates map[string]*raft_log.CompactionJobUpdate
+	updates map[string]*raft_log.CompactionJobState
 	// Modified copy of the job queue.
 	copied []priorityJobQueue
 	level  int
 }
 
-func (p *schedule) AssignJob() (*raft_log.CompactionJobUpdate, error) {
+func (p *schedule) AssignJob() (*raft_log.AssignedCompactionJob, error) {
 	state := p.nextAssignment()
 	if state == nil {
 		return nil, nil
 	}
-	job, err := p.scheduler.store.GetJobPlan(p.tx, state.Name)
+	plan, err := p.scheduler.store.GetJobPlan(p.tx, state.Name)
 	if err != nil {
 		return nil, err
 	}
-	update := &raft_log.CompactionJobUpdate{
+	p.updates[state.Name] = state
+	assigned := &raft_log.AssignedCompactionJob{
 		State: state,
-		Plan:  job,
+		Plan:  plan,
 	}
-	p.updates[state.Name] = update
-	return update, err
+	return assigned, nil
 }
 
-func (p *schedule) UpdateJob(status *metastorev1.CompactionJobStatusUpdate) (*raft_log.CompactionJobUpdate, error) {
-	state, err := p.newStateForStatusReport(status)
-	if err != nil || state == nil {
-		return nil, err
+func (p *schedule) UpdateJob(status *raft_log.CompactionJobStatusUpdate) *raft_log.CompactionJobState {
+	state := p.newStateForStatusReport(status)
+	if state == nil {
+		return nil
 	}
 	// State changes should be taken into account when we assign jobs.
 	p.updates[status.Name] = state
-	return state, nil
+	return state
 }
 
 // handleStatusReport reports the job state change caused by the status report
 // from compaction worker. The function does not modify the actual job queue.
-func (p *schedule) newStateForStatusReport(status *metastorev1.CompactionJobStatusUpdate) (*raft_log.CompactionJobUpdate, error) {
+func (p *schedule) newStateForStatusReport(status *raft_log.CompactionJobStatusUpdate) *raft_log.CompactionJobState {
 	state := p.scheduler.queue.jobs[status.Name]
 	if state == nil {
 		// This may happen if the job has been reassigned
-		// and completed by another worker.
-		return nil, nil
+		// and completed by another worker; we respond in
+		// the same way.
+		return nil
 	}
 
 	if state.Token > status.Token {
 		// The job is not assigned to this worker.
-		return nil, nil
+		return nil
 	}
 
 	switch newState := state.CloneVT(); status.Status {
 	case metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS:
 		// A regular lease renewal.
 		newState.LeaseExpiresAt = p.allocateLease()
-		return &raft_log.CompactionJobUpdate{State: newState}, nil
+		return newState
 
 	case metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS:
-		// The state does not change: it will be removed when the update
-		// is applied. The contract requires scheduler to provide the completed
-		// job plan with results to the planner.
-		return p.completeJob(status)
+		newState.Status = status.Status
+		return newState
 
 	default:
 		// Not allowed and unknown status updates can be safely ignored:
@@ -88,41 +87,22 @@ func (p *schedule) newStateForStatusReport(status *metastorev1.CompactionJobStat
 		// "no new lease, stop the work".
 	}
 
-	return nil, nil
-}
-
-func (p *schedule) completeJob(status *metastorev1.CompactionJobStatusUpdate) (*raft_log.CompactionJobUpdate, error) {
-	job, err := p.scheduler.store.GetJobPlan(p.tx, status.Name)
-	if err != nil {
-		return nil, err
-	}
-	// We always trust the compaction job results more that the plan.
-	// Theoretically, it's guaranteed that the stored list of source
-	// blocks is identical to the one reported by the worker. However,
-	// it's also guaranteed that the worker won't lie, and that these
-	// are the blocks it processed.
-	job.SourceBlocks = nil
-	job.CompactedBlocks = status.CompactedBlocks
-	// Tombstones are taken from the stored job plan.
-	return &raft_log.CompactionJobUpdate{Plan: job}, nil
+	return nil
 }
 
 // AddJob creates a state for the new plan. The method must be called
 // after the last AssignJob and UpdateJob calls.
-func (p *schedule) AddJob(plan *raft_log.CompactionJobPlan) (*raft_log.CompactionJobUpdate, error) {
+func (p *schedule) AddJob(plan *raft_log.CompactionJobPlan) *raft_log.CompactionJobState {
 	// TODO(kolesnikovae): Job queue size limit.
-	job := &raft_log.CompactionJobUpdate{
-		Plan: plan,
-		State: &raft_log.CompactionJobState{
-			Name:            plan.Name,
-			CompactionLevel: plan.CompactionLevel,
-			Status:          metastorev1.CompactionJobStatus_COMPACTION_STATUS_UNSPECIFIED,
-			AddedAt:         p.now.UnixNano(),
-			Token:           p.token,
-		},
+	state := &raft_log.CompactionJobState{
+		Name:            plan.Name,
+		CompactionLevel: plan.CompactionLevel,
+		Status:          metastorev1.CompactionJobStatus_COMPACTION_STATUS_UNSPECIFIED,
+		AddedAt:         p.now.UnixNano(),
+		Token:           p.token,
 	}
-	p.updates[job.Plan.Name] = job
-	return job, nil
+	p.updates[state.Name] = state
+	return state
 }
 
 func (p *schedule) nextAssignment() *raft_log.CompactionJobState {

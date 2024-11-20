@@ -52,14 +52,9 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 	// We need to generate a plan of the update caused by the new status
 	// report from the worker. The plan will be used to update the schedule
 	// after the Raft consensus is reached.
-	plan := h.planner.NewPlan(tx, cmd)
-	schedule := h.scheduler.NewSchedule(tx, cmd)
-
-	p := &raft_log.CompactionPlanUpdate{
-		NewJobs:       make([]*raft_log.CompactionJobUpdate, 0, req.AssignJobsMax),
-		AssignedJobs:  make([]*raft_log.CompactionJobUpdate, 0, len(req.StatusUpdates)),
-		CompletedJobs: make([]*raft_log.CompactionJobUpdate, 0, len(req.StatusUpdates)),
-	}
+	planner := h.planner.NewPlan(tx, cmd)
+	scheduler := h.scheduler.NewSchedule(tx, cmd)
+	p := new(raft_log.CompactionPlanUpdate)
 
 	// Any status update may translate to either a job lease refresh, or a
 	// completed job. Status update might be rejected, if the worker has
@@ -67,27 +62,19 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 	// assignments, therefore we try to update jobs' status first.
 	var revoked int
 	for _, status := range req.StatusUpdates {
-		job, err := schedule.UpdateJob(status)
-		if err != nil {
-			return nil, err
-		}
+		switch state := scheduler.UpdateJob(status); {
+		case state.Status == metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS:
+			p.CompletedJobs = append(p.CompletedJobs, &raft_log.CompletedCompactionJob{State: state})
 
-		switch {
-		case job == nil:
-			// Nil update indicates that the job has been abandoned and
+		case state.Status == metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS:
+			p.UpdatedJobs = append(p.UpdatedJobs, &raft_log.UpdatedCompactionJob{State: state})
+
+		default:
+			// Unknown statuses are ignored.
+			// Nil state indicates that the job has been abandoned and
 			// reassigned, or the request is not valid. This may happen
 			// from time to time, and we should just ignore such requests.
 			revoked++
-
-		case job.State == nil:
-			// Nil state indicates that the job has been completed.
-			p.CompletedJobs = append(p.CompletedJobs, job)
-
-		default:
-			// A state has been updated. As of now, this is always a regular
-			// job lease (assignment) refresh, which we need to propagate to
-			// the worker.
-			p.AssignedJobs = append(p.AssignedJobs, job)
 		}
 	}
 
@@ -95,16 +82,16 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 	// account for the revoked jobs, as they are freeing the worker slots.
 	capacity := int(req.AssignJobsMax) + revoked
 
-	// NOTE(kolesnikovae): Next, we need to create new jobs and assign existing
-	// ones; On one hand, if we assign first, we may violate the SJF principle.
-	// If we plan new jobs first, it may cause starvation of lower-priority
-	// jobs, when the compaction worker does not keep up with the high-priority
-	// job influx.
+	// Next, we need to create new jobs and assign existing
 	//
-	// As of now, we assign jobs before creating ones. If we change it, we need
-	// to make sure that the Schedule implementation allows doing this.
+	// NOTE(kolesnikovae): On one hand, if we assign first, we may violate the
+	// SJF principle. If we plan new jobs first, it may cause starvation of
+	// lower-priority jobs, when the compaction worker does not keep up with
+	// the high-priority job influx. As of now, we assign jobs before creating
+	// ones. If we change it, we need to make sure that the Schedule
+	// implementation allows doing this.
 	for assigned := 0; assigned < capacity; assigned++ {
-		job, err := schedule.AssignJob()
+		job, err := scheduler.AssignJob()
 		if err != nil {
 			return nil, err
 		}
@@ -116,27 +103,36 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 	}
 
 	for created := 0; created < capacity; created++ {
-		planned, err := plan.CreateJob()
+		plan, err := planner.CreateJob()
 		if err != nil {
 			return nil, err
 		}
-		if planned == nil {
+		if plan == nil {
 			// No more jobs to create.
 			break
 		}
-		newJob, err := schedule.AddJob(planned)
-		if err != nil {
-			return nil, err
-		}
-		p.NewJobs = append(p.NewJobs, newJob)
+		p.NewJobs = append(p.NewJobs, &raft_log.NewCompactionJob{
+			State: scheduler.AddJob(plan),
+			Plan:  plan,
+		})
 	}
 
-	return &raft_log.GetCompactionPlanUpdateResponse{PlanUpdate: p}, nil
+	return &raft_log.GetCompactionPlanUpdateResponse{Term: cmd.Term, PlanUpdate: p}, nil
 }
 
 func (h *CompactionCommandHandler) UpdateCompactionPlan(
 	tx *bbolt.Tx, cmd *raft.Log, req *raft_log.UpdateCompactionPlanRequest,
 ) (*raft_log.UpdateCompactionPlanResponse, error) {
+	if req.Term != cmd.Term {
+		// The plan was proposed in a different term, which means that
+		// the raft leader might have changed since the plan was created,
+		// and might be not up-to-date. We abort the plan speculatively.
+		// We can't return an error here because this is a valid scenario;
+		// instead we return an empty response to indicate that the plan
+		// has not been accepted.
+		return new(raft_log.UpdateCompactionPlanResponse), nil
+	}
+
 	if err := h.planner.UpdatePlan(tx, cmd, req.PlanUpdate); err != nil {
 		return nil, err
 	}
@@ -152,29 +148,35 @@ func (h *CompactionCommandHandler) UpdateCompactionPlan(
 	}
 
 	for _, job := range req.PlanUpdate.CompletedJobs {
-		if err := h.index.ReplaceBlocks(tx, job.Plan.CompactedBlocks); err != nil {
+		compacted := job.GetCompactedBlocks()
+		if compacted == nil {
+			continue
+		}
+		if err := h.index.ReplaceBlocks(tx, compacted); err != nil {
 			return nil, err
 		}
-		source := job.Plan.CompactedBlocks.SourceBlocks
-		tombstones := &metastorev1.Tombstones{
-			Blocks: &metastorev1.BlockTombstones{
-				Name:            job.Plan.Name,
-				Shard:           job.Plan.Shard,
-				Tenant:          job.Plan.Tenant,
-				CompactionLevel: job.Plan.CompactionLevel,
-				Blocks:          source.Blocks,
-			},
-		}
-		err := h.tombstones.AddTombstones(tx, cmd, tombstones)
-		if err != nil {
+		if err := h.tombstones.AddTombstones(tx, cmd, blockTombstonesForCompletedJob(job)); err != nil {
 			return nil, err
 		}
-		for _, block := range job.Plan.CompactedBlocks.CompactedBlocks {
-			if err = h.compactor.Compact(tx, cmd, block); err != nil {
+		for _, block := range compacted.NewBlocks {
+			if err := h.compactor.Compact(tx, cmd, block); err != nil {
 				return nil, err
 			}
 		}
 	}
 
-	return new(raft_log.UpdateCompactionPlanResponse), nil
+	return &raft_log.UpdateCompactionPlanResponse{PlanUpdate: req.PlanUpdate}, nil
+}
+
+func blockTombstonesForCompletedJob(job *raft_log.CompletedCompactionJob) *metastorev1.Tombstones {
+	source := job.CompactedBlocks.SourceBlocks
+	return &metastorev1.Tombstones{
+		Blocks: &metastorev1.BlockTombstones{
+			Name:            job.State.Name,
+			Shard:           source.Shard,
+			Tenant:          source.Tenant,
+			CompactionLevel: job.State.CompactionLevel,
+			Blocks:          source.Blocks,
+		},
+	}
 }

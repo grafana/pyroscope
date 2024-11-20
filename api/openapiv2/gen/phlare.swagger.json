@@ -353,6 +353,25 @@
         }
       }
     },
+    "metastorev1CompactionJobStatusUpdate": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "status": {
+          "$ref": "#/definitions/v1CompactionJobStatus"
+        },
+        "compactedBlocks": {
+          "$ref": "#/definitions/v1CompactedBlocks",
+          "description": "Only present if the job completed successfully."
+        }
+      }
+    },
     "protobufAny": {
       "type": "object",
       "properties": {
@@ -736,7 +755,7 @@
         "sourceBlocks": {
           "$ref": "#/definitions/v1BlockList"
         },
-        "compactedBlocks": {
+        "newBlocks": {
           "type": "array",
           "items": {
             "type": "object",
@@ -790,10 +809,6 @@
         "leaseExpiresAt": {
           "type": "string",
           "format": "int64"
-        },
-        "status": {
-          "$ref": "#/definitions/v1CompactionJobStatus",
-          "description": "TODO: We probably don't need this field."
         }
       }
     },
@@ -805,25 +820,6 @@
         "COMPACTION_STATUS_SUCCESS"
       ],
       "default": "COMPACTION_STATUS_UNSPECIFIED"
-    },
-    "v1CompactionJobStatusUpdate": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "token": {
-          "type": "string",
-          "format": "uint64"
-        },
-        "status": {
-          "$ref": "#/definitions/v1CompactionJobStatus"
-        },
-        "compactedBlocks": {
-          "$ref": "#/definitions/v1CompactedBlocks",
-          "description": "Only present if the job completed successfully."
-        }
-      }
     },
     "v1Dataset": {
       "type": "object",

@@ -77,9 +77,9 @@ func TestCompactor_UpdatePlan(t *testing.T) {
 		Return(nil).Times(9)
 
 	test.AssertIdempotent(t, func(t *testing.T) {
-		newJobs := make([]*raft_log.CompactionJobUpdate, 3)
+		newJobs := make([]*raft_log.NewCompactionJob, 3)
 		for i := range planned {
-			newJobs[i] = &raft_log.CompactionJobUpdate{Plan: planned[i]}
+			newJobs[i] = &raft_log.NewCompactionJob{Plan: planned[i]}
 		}
 
 		update := &raft_log.CompactionPlanUpdate{NewJobs: newJobs}

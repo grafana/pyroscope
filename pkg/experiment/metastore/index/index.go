@@ -457,7 +457,7 @@ func (i *Index) collectTenantBlocks(p *indexPartition, start, end int64) []*meta
 func (i *Index) ReplaceBlocks(tx *bbolt.Tx, compacted *metastorev1.CompactedBlocks) error {
 	i.partitionMu.Lock()
 	defer i.partitionMu.Unlock()
-	if err := i.insertBlocks(tx, compacted.CompactedBlocks); err != nil {
+	if err := i.insertBlocks(tx, compacted.NewBlocks); err != nil {
 		return err
 	}
 	return i.deleteBlockList(tx, compacted.SourceBlocks)
@@ -466,7 +466,7 @@ func (i *Index) ReplaceBlocks(tx *bbolt.Tx, compacted *metastorev1.CompactedBloc
 func (i *Index) ReplaceBlocksNoCheckNoPersist(tx *bbolt.Tx, compacted *metastorev1.CompactedBlocks) error {
 	i.partitionMu.Lock()
 	defer i.partitionMu.Unlock()
-	for _, b := range compacted.CompactedBlocks {
+	for _, b := range compacted.NewBlocks {
 		i.insertBlock(tx, b)
 	}
 	source := compacted.SourceBlocks

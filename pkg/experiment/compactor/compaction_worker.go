@@ -371,7 +371,7 @@ func (w *Worker) runCompaction(job *compactionJob) {
 
 		statusName = "success"
 		job.compacted = &metastorev1.CompactedBlocks{
-			CompactedBlocks: compacted,
+			NewBlocks: compacted,
 			SourceBlocks: &metastorev1.BlockList{
 				Tenant: job.Tenant,
 				Shard:  job.Shard,
