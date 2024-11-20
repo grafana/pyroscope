@@ -2,6 +2,7 @@ package metastore
 
 import (
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/hashicorp/raft"
 	"go.etcd.io/bbolt"
 
@@ -93,6 +94,7 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 	for assigned := 0; assigned < capacity; assigned++ {
 		job, err := scheduler.AssignJob()
 		if err != nil {
+			level.Error(h.logger).Log("msg", "failed to assign compaction job", "err", err)
 			return nil, err
 		}
 		if job == nil {
@@ -105,6 +107,7 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 	for created := 0; created < capacity; created++ {
 		plan, err := planner.CreateJob()
 		if err != nil {
+			level.Error(h.logger).Log("msg", "failed to create compaction job", "err", err)
 			return nil, err
 		}
 		if plan == nil {
@@ -123,26 +126,34 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 func (h *CompactionCommandHandler) UpdateCompactionPlan(
 	tx *bbolt.Tx, cmd *raft.Log, req *raft_log.UpdateCompactionPlanRequest,
 ) (*raft_log.UpdateCompactionPlanResponse, error) {
-	if req.Term != cmd.Term {
+	if req.Term != cmd.Term || req.GetPlanUpdate() == nil {
 		// The plan was proposed in a different term, which means that
 		// the raft leader might have changed since the plan was created,
 		// and might be not up-to-date. We abort the plan speculatively.
 		// We can't return an error here because this is a valid scenario;
 		// instead we return an empty response to indicate that the plan
 		// has not been accepted.
+		level.Warn(h.logger).Log(
+			"msg", "rejecting compaction plan update",
+			"current_term", cmd.Term,
+			"request_term", req.Term,
+		)
 		return new(raft_log.UpdateCompactionPlanResponse), nil
 	}
 
 	if err := h.planner.UpdatePlan(tx, cmd, req.PlanUpdate); err != nil {
+		level.Error(h.logger).Log("msg", "failed to update compaction planner", "err", err)
 		return nil, err
 	}
 
 	if err := h.scheduler.UpdateSchedule(tx, cmd, req.PlanUpdate); err != nil {
+		level.Error(h.logger).Log("msg", "failed to update compaction schedule", "err", err)
 		return nil, err
 	}
 
 	for _, job := range req.PlanUpdate.NewJobs {
 		if err := h.tombstones.DeleteTombstones(tx, cmd, job.Plan.Tombstones...); err != nil {
+			level.Error(h.logger).Log("msg", "failed to delete tombstones", "err", err)
 			return nil, err
 		}
 	}
@@ -150,16 +161,20 @@ func (h *CompactionCommandHandler) UpdateCompactionPlan(
 	for _, job := range req.PlanUpdate.CompletedJobs {
 		compacted := job.GetCompactedBlocks()
 		if compacted == nil {
+			level.Error(h.logger).Log("msg", "compacted blocks are missing", "job", job.State.Name)
 			continue
 		}
 		if err := h.index.ReplaceBlocks(tx, compacted); err != nil {
+			level.Error(h.logger).Log("msg", "failed to replace blocks", "err", err)
 			return nil, err
 		}
 		if err := h.tombstones.AddTombstones(tx, cmd, blockTombstonesForCompletedJob(job)); err != nil {
+			level.Error(h.logger).Log("msg", "failed to add tombstones", "err", err)
 			return nil, err
 		}
 		for _, block := range compacted.NewBlocks {
 			if err := h.compactor.Compact(tx, cmd, block); err != nil {
+				level.Error(h.logger).Log("msg", "failed to compact block", "err", err)
 				return nil, err
 			}
 		}

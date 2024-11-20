@@ -238,7 +238,7 @@ func TestIndex_ReplaceBlocks(t *testing.T) {
 			Shard:  0,
 			Blocks: []string{b1.Id, b2.Id},
 		},
-		CompactedBlocks: []*metastorev1.BlockMeta{replacement},
+		NewBlocks: []*metastorev1.BlockMeta{replacement},
 	}
 
 	require.NoError(t, i.ReplaceBlocksNoCheckNoPersist(nil, compacted))

@@ -324,11 +324,10 @@ func (w *Worker) runCompaction(job *compactionJob) {
 		if b := t.GetBlocks(); b != nil {
 			deleteGroup.Go(func() error {
 				// TODO(kolesnikovae): Clarify guarantees of cleanup.
-				// We're currently ignore any failures – it's unlikely that
-				// anyone wants to stop compaction because of a failed cleanup.
-				// However, we should make it configurable: if cleanup failed,
-				// the entire job is retried; blocks should be deleted before
-				// starting the compaction.
+				// Currently, we ignore any cleanup failures, as it's unlikely
+				// that anyone would want to stop compaction due to a failed
+				// cleanup. However, we should make this behavior configurable:
+				// if cleanup fails, the entire job should be retried.
 				w.deleteBlocks(deleteCtx, logger, b)
 				return nil
 			})

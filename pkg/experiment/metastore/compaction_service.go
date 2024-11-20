@@ -114,13 +114,12 @@ func (svc *CompactionService) PollCompactionJobs(
 			SourceBlocks:    job.SourceBlocks,
 			Tombstones:      job.Tombstones,
 		})
+		// Assigned jobs are not written to the raft log (only the assignments):
+		// from our perspective (scheduler and planner) these are just job updates.
+		assigned.Plan = nil
 	}
 
-	// Assigned jobs are not written to the raft log (only the assignments):
-	// from our perspective (scheduler and planner) these are just job updates.
-	for _, job := range planUpdate.AssignedJobs {
-		job.Plan = nil
-	}
+	// Include the compacted blocks in the final proposal.
 	for _, job := range planUpdate.CompletedJobs {
 		if update := compacted[job.State.Name]; update != nil {
 			job.CompactedBlocks = update.CompactedBlocks
@@ -141,6 +140,7 @@ func (svc *CompactionService) PollCompactionJobs(
 	}
 	accepted := resp.(*raft_log.UpdateCompactionPlanResponse).GetPlanUpdate()
 	if accepted == nil {
+		level.Warn(svc.logger).Log("msg", "compaction plan update rejected")
 		return nil, status.Error(codes.FailedPrecondition, "failed to update compaction plan")
 	}
 
