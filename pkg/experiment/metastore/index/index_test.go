@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
@@ -311,4 +312,70 @@ func createBlock(key string, offset time.Duration) *metastorev1.BlockMeta {
 		MaxTime:  ts.Add(offset).Add(5 * time.Minute).UnixMilli(),
 		TenantId: "tenant-1",
 	}
+}
+
+func TestReplaceBlocks_Persistence(t *testing.T) {
+	db := test.BoltDB(t)
+	c := &index.Config{
+		PartitionDuration:     24 * time.Hour,
+		PartitionCacheSize:    7,
+		QueryLookaroundPeriod: time.Hour,
+	}
+	md1 := &metastorev1.BlockMeta{
+		Id:              test.ULID("2024-09-22T08:00:00.123Z"),
+		Shard:           3,
+		CompactionLevel: 0,
+		TenantId:        "",
+	}
+	md2 := &metastorev1.BlockMeta{
+		Id:              test.ULID("2024-09-22T08:01:00.123Z"),
+		Shard:           3,
+		CompactionLevel: 0,
+		TenantId:        "",
+	}
+	md3 := &metastorev1.BlockMeta{
+		Id:              test.ULID("2024-09-25T09:00:00.123Z"),
+		Shard:           3,
+		CompactionLevel: 1,
+		TenantId:        "x1",
+	}
+	md4 := &metastorev1.BlockMeta{
+		Id:              test.ULID("2024-09-25T09:01:00.123Z"),
+		Shard:           3,
+		CompactionLevel: 1,
+		TenantId:        "x2",
+	}
+
+	x := index.NewIndex(util.Logger, index.NewStore(), c)
+	require.NoError(t, db.Update(x.Init))
+	require.NoError(t, db.View(x.Restore))
+
+	require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+		return x.InsertBlock(tx, md1)
+	}))
+	require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+		return x.InsertBlock(tx, md2)
+	}))
+
+	require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+		return x.ReplaceBlocks(tx, &metastorev1.CompactedBlocks{
+			NewBlocks: []*metastorev1.BlockMeta{md3, md4},
+			SourceBlocks: &metastorev1.BlockList{
+				Tenant: md1.TenantId,
+				Shard:  md1.Shard,
+				Blocks: []string{md1.Id, md2.Id},
+			},
+		})
+	}))
+
+	x = index.NewIndex(util.Logger, index.NewStore(), c)
+	require.NoError(t, db.Update(x.Init))
+	require.NoError(t, db.View(x.Restore))
+	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
+		require.Nil(t, x.FindBlock(tx, md1.Shard, md1.TenantId, md1.Id))
+		require.Nil(t, x.FindBlock(tx, md2.Shard, md2.TenantId, md2.Id))
+		require.NotNil(t, x.FindBlock(tx, md3.Shard, md3.TenantId, md3.Id))
+		require.NotNil(t, x.FindBlock(tx, md4.Shard, md4.TenantId, md4.Id))
+		return nil
+	}))
 }

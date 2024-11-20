@@ -182,10 +182,11 @@ func (n *Node) readIndex() (ReadIndex, error) {
 	// See the "runLeader" and "dispatchLogs" implementation (hashicorp raft)
 	// for details: when the leader is elected, it issues a noop, we only need
 	// to ensure that the entry is committed before we access the current
-	// commit index (which may be greater than the current last index).
-	// We also keep track of the current term to ensure that the leader has not
-	// changed while we were waiting for the noop to be committed and heartbeat
-	// messages to be exchanged.
+	// commit index. This may incur substantial latency, if replicas are slow,
+	// but it's the only way to ensure that the leader has all committed
+	// entries. We also keep track of the current term to ensure that the
+	// leader has not changed while we were waiting for the noop to be
+	// committed and heartbeat messages to be exchanged.
 	if err := n.waitLastIndexCommitted(); err != nil {
 		return ReadIndex{}, err
 	}

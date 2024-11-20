@@ -89,7 +89,9 @@ func (m *IndexStore) DeleteBlockList(tx *bbolt.Tx, pk PartitionKey, list *metast
 		return nil
 	}
 	for _, b := range list.Blocks {
-		return tenant.Delete([]byte(b))
+		if err := tenant.Delete([]byte(b)); err != nil {
+			return err
+		}
 	}
 	return nil
 }

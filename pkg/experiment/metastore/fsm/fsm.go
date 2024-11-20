@@ -202,12 +202,11 @@ func (fsm *FSM) applyCommand(cmd *raft.Log) any {
 	if err := e.UnmarshalBinary(cmd.Data); err != nil {
 		return errResponse(cmd, err)
 	}
-	// TODO(kolesnikovae): Figure out why skipping applied commands causes issues.
-	// if cmd.Index <= fsm.appliedIndex {
-	// 	// Skip already applied commands at WAL restore.
-	// 	// Note that the 0 index is a noop and is never applied to FSM.
-	// 	return Response{}
-	// }
+	if cmd.Index <= fsm.appliedIndex {
+		// Skip already applied commands at WAL restore.
+		// Note that the 0 index is a noop and is never applied to FSM.
+		return Response{}
+	}
 
 	cmdType := strconv.FormatUint(uint64(e.Type), 10)
 	fsm.db.metrics.fsmApplyCommandSize.WithLabelValues(cmdType).Observe(float64(len(cmd.Data)))
