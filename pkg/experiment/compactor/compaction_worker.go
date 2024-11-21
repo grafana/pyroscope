@@ -36,10 +36,10 @@ type Worker struct {
 	storage objstore.Bucket
 	metrics *metrics
 
-	jobs    map[string]*compactionJob
-	queue   chan *compactionJob
-	workers int
-	free    atomic.Int32
+	jobs     map[string]*compactionJob
+	queue    chan *compactionJob
+	threads  int
+	capacity atomic.Int32
 
 	stopped   atomic.Bool
 	closeOnce sync.Once
@@ -70,14 +70,15 @@ func (cfg *Config) Validate() error {
 }
 
 type compactionJob struct {
+	*metastorev1.CompactionJob
+
 	ctx    context.Context
 	cancel context.CancelFunc
-	*metastorev1.CompactionJob
-	source []*metastorev1.BlockMeta
+	done   atomic.Bool
 
+	blocks     []*metastorev1.BlockMeta
 	assignment *metastorev1.CompactionJobAssignment
 	compacted  *metastorev1.CompactedBlocks
-	done       atomic.Bool
 }
 
 type MetastoreClient interface {
@@ -100,13 +101,13 @@ func New(
 		metrics: newMetrics(reg),
 	}
 
-	w.workers = runtime.GOMAXPROCS(-1) * config.JobConcurrency
-	if w.workers < 1 {
-		w.workers = 1
+	w.threads = runtime.GOMAXPROCS(-1) * config.JobConcurrency
+	if w.threads < 1 {
+		w.threads = 1
 	}
-	w.queue = make(chan *compactionJob, 2*w.workers)
-	w.jobs = make(map[string]*compactionJob, 2*w.workers)
-	w.free.Store(int32(w.workers))
+	w.queue = make(chan *compactionJob, 2*w.threads)
+	w.jobs = make(map[string]*compactionJob, 2*w.threads)
+	w.capacity.Store(int32(w.threads))
 
 	w.service = services.NewBasicService(w.starting, w.running, w.stopping)
 	return w, nil
@@ -134,16 +135,16 @@ func (w *Worker) running(ctx context.Context) error {
 		}
 	}()
 
-	w.wg.Add(w.workers)
-	for i := 0; i < w.workers; i++ {
+	w.wg.Add(w.threads)
+	for i := 0; i < w.threads; i++ {
 		go func() {
 			defer w.wg.Done()
-			level.Info(w.logger).Log("msg", "compaction worker thead started")
+			level.Info(w.logger).Log("msg", "compaction worker thread started")
 			for job := range w.queue {
-				w.free.Add(-1)
+				w.capacity.Add(-1)
 				util.Recover(func() { w.runCompaction(job) })
 				job.done.Store(true)
-				w.free.Add(1)
+				w.capacity.Add(1)
 			}
 		}()
 	}
@@ -177,8 +178,8 @@ func (w *Worker) poll() {
 		// Note that cap(w.queue) - len(w.queue) will only report 0 when all
 		// the workers are busy and the queue is full (in fact, doubling the
 		// reported capacity).
-		if free := w.free.Load(); free > 0 {
-			capacity = uint32(free)
+		if c := w.capacity.Load(); c > 0 {
+			capacity = uint32(c)
 		}
 	}
 
@@ -276,9 +277,9 @@ func (w *Worker) handleResponse(resp *metastorev1.PollCompactionJobsResponse) (n
 	for _, newJob := range resp.CompactionJobs {
 		if running, found := w.jobs[newJob.Name]; found {
 			level.Warn(w.logger).Log("msg", "job re-assigned to the same worker", "job", running.Name)
-			// We're free to chose what to do. For now, we update the
-			// assignment (in case if the token has changed) and let the
-			// running job to finish.
+			// We're free to choose what to do. For now, we update the
+			// assignment (in case the token has changed) and let the
+			// running job finish.
 			if running.assignment = assignments[running.Name]; running.assignment != nil {
 				continue
 			}
@@ -345,7 +346,7 @@ func (w *Worker) runCompaction(job *compactionJob) {
 
 	tempdir := filepath.Join(w.config.TempDir, job.Name)
 	sourcedir := filepath.Join(tempdir, "source")
-	compacted, err := block.Compact(ctx, job.source, w.storage,
+	compacted, err := block.Compact(ctx, job.blocks, w.storage,
 		block.WithCompactionTempDir(tempdir),
 		block.WithCompactionObjectOptions(
 			block.WithObjectMaxSizeLoadInMemory(w.config.SmallObjectSize),
@@ -414,7 +415,7 @@ func (w *Worker) getBlockMetadata(logger log.Logger, job *compactionJob) error {
 	}
 
 	source := resp.GetBlocks()
-	if len(source) < 2 {
+	if len(source) == 0 {
 		level.Warn(logger).Log(
 			"msg", "no block metadata found; skipping",
 			"blocks", len(job.SourceBlocks),
@@ -429,7 +430,7 @@ func (w *Worker) getBlockMetadata(logger log.Logger, job *compactionJob) error {
 		job.SourceBlocks = append(job.SourceBlocks, b.Id)
 	}
 
-	job.source = source
+	job.blocks = source
 	return nil
 }
 
