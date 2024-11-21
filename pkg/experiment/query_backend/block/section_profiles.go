@@ -164,7 +164,7 @@ type profilesWriter struct {
 	profiles uint64
 }
 
-func newProfileWriter(dst string, sizeTotal int64) (*profilesWriter, error) {
+func newProfileWriter(dst string, pageBufferSize int) (*profilesWriter, error) {
 	f, err := os.Create(filepath.Join(dst, FileNameProfilesParquet))
 	if err != nil {
 		return nil, err
@@ -174,7 +174,7 @@ func newProfileWriter(dst string, sizeTotal int64) (*profilesWriter, error) {
 		buf:  make([]parquet.Row, 1),
 		GenericWriter: parquet.NewGenericWriter[*schemav1.Profile](f,
 			parquet.CreatedBy("github.com/grafana/pyroscope/", build.Version, build.Revision),
-			parquet.PageBufferSize(estimatePageBufferSize(sizeTotal)),
+			parquet.PageBufferSize(pageBufferSize),
 			// Note that parquet keeps ALL RG pages in memory (ColumnPageBuffers).
 			parquet.MaxRowsPerRowGroup(maxRowsPerRowGroup),
 			schemav1.ProfilesSchema,
