@@ -41,7 +41,34 @@ func (n *Node) bootstrap() error {
 	return nil
 }
 
-func (n *Node) bootstrapPeers() ([]raft.Server, error) {
+func (n *Node) bootstrapPeersWithRetries() (peers []raft.Server, err error) {
+	prov := dns.NewProvider(n.logger, n.reg, dns.MiekgdnsResolverType)
+	attempt := func() bool {
+		peers, err = n.bootstrapPeers(prov)
+		level.Debug(n.logger).Log("msg", "resolving bootstrap peers", "peers", fmt.Sprint(peers), "err", err)
+		if err != nil {
+			_ = level.Error(n.logger).Log("msg", "failed to resolve bootstrap peers", "err", err)
+			return false
+		}
+		return true
+	}
+	backoffConfig := backoff.Config{
+		MinBackoff: 1 * time.Second,
+		MaxBackoff: 10 * time.Second,
+		MaxRetries: 20,
+	}
+	backOff := backoff.New(context.Background(), backoffConfig)
+	for backOff.Ongoing() {
+		if !attempt() {
+			backOff.Wait()
+		} else {
+			return peers, nil
+		}
+	}
+	return nil, fmt.Errorf("failed to resolve bootstrap peers after %d retries %w", backOff.NumRetries(), err)
+}
+
+func (n *Node) bootstrapPeers(prov *dns.Provider) ([]raft.Server, error) {
 	// The peer list always includes the local node.
 	peers := make([]raft.Server, 0, len(n.config.BootstrapPeers)+1)
 	peers = append(peers, raft.Server{
@@ -68,7 +95,6 @@ func (n *Node) bootstrapPeers() ([]raft.Server, error) {
 	if len(resolve) > 0 {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		prov := dns.NewProvider(n.logger, n.reg, dns.MiekgdnsResolverType)
 		if err := prov.Resolve(ctx, resolve); err != nil {
 			return nil, fmt.Errorf("failed to resolve bootstrap peers: %w", err)
 		}
@@ -101,30 +127,4 @@ func (n *Node) bootstrapPeers() ([]raft.Server, error) {
 			len(peers), n.config.BootstrapExpectPeers, peers)
 	}
 	return peers, nil
-}
-
-func (n *Node) bootstrapPeersWithRetries() (peers []raft.Server, err error) {
-	attempt := func() bool {
-		peers, err = n.bootstrapPeers()
-		level.Debug(n.logger).Log("msg", "resolving bootstrap peers", "peers", fmt.Sprint(peers), "err", err)
-		if err != nil {
-			_ = level.Error(n.logger).Log("msg", "failed to resolve bootstrap peers", "err", err)
-			return false
-		}
-		return true
-	}
-	backoffConfig := backoff.Config{
-		MinBackoff: 1 * time.Second,
-		MaxBackoff: 10 * time.Second,
-		MaxRetries: 20,
-	}
-	backOff := backoff.New(context.Background(), backoffConfig)
-	for backOff.Ongoing() {
-		if !attempt() {
-			backOff.Wait()
-		} else {
-			return peers, nil
-		}
-	}
-	return nil, fmt.Errorf("failed to resolve bootstrap peers after %d retries %w", backOff.NumRetries(), err)
 }
