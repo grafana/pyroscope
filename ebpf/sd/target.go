@@ -41,7 +41,6 @@ const (
 	OptionCollectKernel            = labelMetaPyroscopeOptionsPrefix + "collect_kernel"
 	OptionPythonFullFilePath       = labelMetaPyroscopeOptionsPrefix + "python_full_file_path"
 	OptionPythonEnabled            = labelMetaPyroscopeOptionsPrefix + "python_enabled"
-	OptionPythonProfilingType      = labelMetaPyroscopeOptionsPrefix + "python_profiling_type"
 	OptionPythonBPFDebugLogEnabled = labelMetaPyroscopeOptionsPrefix + "python_bpf_debug_log"
 	OptionPythonBPFErrorLogEnabled = labelMetaPyroscopeOptionsPrefix + "python_bpf_error_log"
 	OptionDemangle                 = labelMetaPyroscopeOptionsPrefix + "demangle"
