@@ -26,15 +26,28 @@ The compaction service is responsible for planning compaction jobs, scheduling t
 metastore index with the results. The compaction service resides within the metastore component, while the compaction
 worker is a separate service designed to scale out and in rapidly.
 
-The diagram below illustrates the interaction between the compaction worker and the compaction service: workers poll
-the service on a regular basis to request new compaction jobs and report status updates.
+The compaction service relies on the Raft protocol to guarantee consistency across the replicas. The diagram below
+illustrates the interaction between the compaction worker and the compaction service: workers poll the service on a
+regular basis to request new compaction jobs and report status updates.
 
-Critical sections are guaranteed to be executed serially in the context of the Raft state machine and within the same
-transaction. If the prepared compaction plan update is not accepted by the Raft log, the update plan is discarded, and
-the new leader will propose a new plan. The two-step process ensures that all the replicas use the same compaction plan,
-regardless of their internal state as long as the replicas can apply `UpdateCompactionPlan` change. This is true even
-in case if the compaction algorithm (the `GetCompactionPlanUpdate` step) changes across the replicas during the ongoing
-migration – version upgrade or downgrade.
+A status update is processed by the leader node in two steps, each of which is a Raft command committed to the log:
+1. First, the leader prepares the plan update – compaction job state changes based on the reported status updates.
+This is a read only operation that never modifies the node state.
+2. The leader proposes the plan update: all the replicas must apply the planned changes to their state in an idempotent
+way, if the proposal is accepted (committed to the Raft log).
+
+Critical sections are guaranteed to be executed serially in the context of the Raft state machine and by the same
+leader (within the same *term*), and atomically from the cluster's perspective. If the prepared compaction plan update
+is not accepted by the Raft log, the update plan is discarded, and the new leader will propose a new plan.
+
+The two-step process ensures that all the replicas use the same compaction plan, regardless of their internal state,
+as long as the replicas can apply `UpdateCompactionPlan`change. This is true even in case the compaction algorithm
+(the `GetCompactionPlanUpdate` step) changes across the replicas during the ongoing migration – version upgrade or
+downgrade.
+
+> As of now, both steps are committed to the Raft log. However, as an optimization, the first step – preparation,
+> can be implemented as a **Linearizable Read** through **Read Index** (which we already use in metadata queries)
+> to avoid unnecessary replication of the read-only operation.
 
 ```mermaid
 sequenceDiagram
@@ -98,11 +111,10 @@ end
 
 # Job Planner
 
-Compaction jobs are planned on demand when requests are received from the compaction service.
-
 The compactor is responsible for maintaining a queue of source blocks eligible for compaction. Currently, this queue
 is a simple doubly-linked FIFO structure, populated with new block batches as they are added to the index. In the
 current implementation, a new compaction job is created once the sufficient number of blocks have been enqueued.
+Compaction jobs are planned on demand when requests are received from the compaction service.
 
 The queue is segmented by the `Tenant`, `Shard`, and `Level` attributes of the block metadata entries, meaning that
 a block compaction never crosses these boundaries. This segmentation helps avoid unnecessary compactions of unrelated
@@ -117,8 +129,8 @@ Cross-shard compaction is to be implemented as a future enhancement. The observe
 Profiling data from each service (identified by the `service_name` label) is stored as a separate dataset within a block.
 
 The block layout is composed of a collection of non-overlapping, independent datasets, each containing distinct data.
-At compaction, matching datasets from different blocks are merged: their tsdb index, symbols, and profiles
-are rewritten to optimize the data for efficient reading.
+At compaction, matching datasets from different blocks are merged: their tsdb index, symbols, and profile tables are
+merged and rewritten to a new block, to optimize the data for efficient reading.
 
 ---
 
@@ -146,6 +158,21 @@ The priority is determined by several factors:
 4. Lease expiration time: the job with the earliest lease expiration time is considered first.
 
 See [Job Status Description](#job-status-description) for more details.
+
+> The challenge is that we don't know the capacity of our worker fleet in advance, and we have no control over them;
+they can appear and disappear at any time. Another problem is that in some failure modes, such as unavailability or
+lack of compaction workers, or temporary unavailability of the metastore service, the number of blocks to be compacted
+may reach significant levels (millions).
+>
+> Therefore, we use an adaptive approach to keep the scheduler's job queue short while ensuring the compaction
+workers are fully utilized. In every request, the worker specifies how many free slots it has available for new jobs.
+As the compaction procedure is a synchronous CPU-bound task, we use the number of logical CPU cores as the worker's max
+capacity and decrement it for each in-progress compaction job. When a new request arrives, it specifies the current
+worker's capacity, which serves as evidence that the entire worker fleet has enough resources to handle at least
+this number of jobs. Thus, for every request, we try to enqueue a number of jobs equal to the reported capacity.
+>
+> Over time, this ensures good balance between the number of jobs in the queue and the worker capacity utilization,
+even if there are millions of blocks to compact.
 
 ---
 
