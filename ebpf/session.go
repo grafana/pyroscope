@@ -691,7 +691,7 @@ func (s *session) selectProfilingType(pid uint32, target *sd.Target) procInfoLit
 	}
 	exe := filepath.Base(exePath)
 
-	if s.pythonEnabled(target) && strings.HasPrefix(exe, "python") || exe == "uwsgi" {
+	if s.pythonEnabled(target) && isPythonProfilingType(pid, exe, target) {
 		return procInfoLite{pid: pid, comm: string(comm), typ: pyrobpf.ProfilingTypePython}
 	}
 	return procInfoLite{pid: pid, comm: string(comm), typ: pyrobpf.ProfilingTypeFramepointers}
@@ -901,6 +901,29 @@ func (s *session) pythonEnabled(target *sd.Target) bool {
 		enabled = v
 	}
 	return enabled
+}
+
+func isPythonProfilingType(pid uint32, exe string, target *sd.Target) bool {
+	if v, present := target.GetFlag(sd.OptionPythonProfilingType); present {
+		return v
+	}
+	if strings.HasPrefix(exe, "python") {
+		return true
+	}
+	if exe == "uwsgi" {
+		return true
+	}
+	if exe == "streamlit" {
+		return true
+	}
+	pi, err := python.GetProcInfoForPid(pid) // todo(korniltsev): reorganize code to not do this twice
+	if err != nil {
+		return false
+	}
+	if pi.PythonMaps != nil || pi.LibPythonMaps != nil {
+		return true
+	}
+	return false
 }
 
 func (s *session) pythonBPFDebugLogEnabled(target *sd.Target) bool {

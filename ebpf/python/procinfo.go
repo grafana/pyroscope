@@ -3,6 +3,7 @@ package python
 import (
 	"bufio"
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -20,6 +21,21 @@ type ProcInfo struct {
 }
 
 var rePython = regexp.MustCompile("/.*/((?:lib)?python)(\\d+)\\.(\\d+)(?:[mu]?(-pyston\\d.\\d)?(?:\\.so)?)?(?:.1.0)?$")
+
+func GetProcInfoForPid(pid uint32) (ProcInfo, error) {
+	mapsFD, err := os.Open(fmt.Sprintf("/proc/%d/maps", pid))
+	if err != nil {
+		return ProcInfo{}, fmt.Errorf("reading proc maps %d: %w", pid, err)
+	}
+	defer mapsFD.Close()
+
+	info, err := GetProcInfo(bufio.NewScanner(mapsFD))
+
+	if err != nil {
+		return ProcInfo{}, fmt.Errorf("GetPythonProcInfo error %s: %w", fmt.Sprintf("/proc/%d/maps", pid), err)
+	}
+	return info, nil
+}
 
 // GetProcInfo parses /proc/pid/map of a python process.
 func GetProcInfo(s *bufio.Scanner) (ProcInfo, error) {
