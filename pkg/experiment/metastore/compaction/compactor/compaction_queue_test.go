@@ -15,7 +15,7 @@ import (
 func testBlockEntry(id int) blockEntry { return blockEntry{id: strconv.Itoa(id)} }
 
 func TestBlockQueue_Push(t *testing.T) {
-	q := newBlockQueue(Strategy{MaxBlocksDefault: 3})
+	q := newBlockQueue(Strategy{MaxBlocksDefault: 3}, nil)
 	key := compactionKey{tenant: "t", shard: 1}
 
 	result := q.stagedBlocks(key).push(testBlockEntry(1))
@@ -32,9 +32,9 @@ func TestBlockQueue_Push(t *testing.T) {
 	q.stagedBlocks(key).push(testBlockEntry(5))
 	assert.Equal(t, 2, len(q.staged[key].batch.blocks))
 
-	q.remove(key, "1", "2") // Remove the first batch.
+	remove(q, key, "1", "2") // Remove the first batch.
 	assert.Equal(t, []blockEntry{zeroBlockEntry, zeroBlockEntry, testBlockEntry(3)}, q.head.blocks)
-	q.remove(key, "3")
+	remove(q, key, "3")
 	assert.Nil(t, q.head)
 
 	q.stagedBlocks(key).push(testBlockEntry(6)) // Complete the second batch.
@@ -46,7 +46,7 @@ func TestBlockQueue_Push(t *testing.T) {
 }
 
 func TestBlockQueue_DuplicateBlock(t *testing.T) {
-	q := newBlockQueue(Strategy{MaxBlocksDefault: 3})
+	q := newBlockQueue(Strategy{MaxBlocksDefault: 3}, nil)
 	key := compactionKey{tenant: "t", shard: 1}
 
 	require.True(t, q.stagedBlocks(key).push(testBlockEntry(1)))
@@ -56,28 +56,28 @@ func TestBlockQueue_DuplicateBlock(t *testing.T) {
 }
 
 func TestBlockQueue_Remove(t *testing.T) {
-	q := newBlockQueue(Strategy{MaxBlocksDefault: 3})
+	q := newBlockQueue(Strategy{MaxBlocksDefault: 3}, nil)
 	key := compactionKey{tenant: "t", shard: 1}
 	q.stagedBlocks(key).push(testBlockEntry(1))
 	q.stagedBlocks(key).push(testBlockEntry(2))
 
-	q.remove(key, "1")
+	remove(q, key, "1")
 	require.Empty(t, q.staged[key].batch.blocks[0])
 
 	_, exists := q.staged[key].refs["1"]
 	assert.False(t, exists)
 
-	q.remove(key, "2")
+	remove(q, key, "2")
 	require.Nil(t, q.head)
 	require.Nil(t, q.tail)
 }
 
 func TestBlockQueue_RemoveNotFound(t *testing.T) {
-	q := newBlockQueue(Strategy{MaxBlocksDefault: 3})
+	q := newBlockQueue(Strategy{MaxBlocksDefault: 3}, nil)
 	key := compactionKey{tenant: "t", shard: 1}
-	q.remove(key, "1")
+	remove(q, key, "1")
 	q.stagedBlocks(key).push(testBlockEntry(1))
-	q.remove(key, "2")
+	remove(q, key, "2")
 	q.stagedBlocks(key).push(testBlockEntry(2))
 	q.stagedBlocks(key).push(testBlockEntry(3))
 
@@ -85,7 +85,7 @@ func TestBlockQueue_RemoveNotFound(t *testing.T) {
 }
 
 func TestBlockQueue_Linking(t *testing.T) {
-	q := newBlockQueue(Strategy{MaxBlocksDefault: 2})
+	q := newBlockQueue(Strategy{MaxBlocksDefault: 2}, nil)
 	key := compactionKey{tenant: "t", shard: 1}
 
 	q.stagedBlocks(key).push(testBlockEntry(1))
@@ -110,22 +110,22 @@ func TestBlockQueue_Linking(t *testing.T) {
 	assert.NotNil(t, q.tail.prevG.prevG)
 	assert.NotNil(t, q.head.nextG.nextG)
 
-	q.remove(key, "3", "2")
-	q.remove(key, "4", "1")
-	q.remove(key, "6")
-	q.remove(key, "5")
+	remove(q, key, "3", "2")
+	remove(q, key, "4", "1")
+	remove(q, key, "6")
+	remove(q, key, "5")
 
 	assert.Nil(t, q.head)
 	assert.Nil(t, q.tail)
 }
 
-func TestBlockQueue_ExpectEmptyQueue(t *testing.T) {
+func TestBlockQueue_EmptyQueue(t *testing.T) {
 	const (
-		numKeys         = 5
-		numBlocksPerKey = 10
+		numKeys         = 50
+		numBlocksPerKey = 100
 	)
 
-	q := newBlockQueue(Strategy{MaxBlocksDefault: 3})
+	q := newBlockQueue(Strategy{MaxBlocksDefault: 3}, nil)
 	keys := make([]compactionKey, numKeys)
 	for i := 0; i < numKeys; i++ {
 		keys[i] = compactionKey{
@@ -148,16 +148,16 @@ func TestBlockQueue_ExpectEmptyQueue(t *testing.T) {
 			s[i], s[j] = s[j], s[i]
 		})
 		for _, b := range s {
-			q.remove(key, b)
+			staged, ok := q.staged[key]
+			if !ok {
+				return
+			}
+			assert.NotEmpty(t, staged.delete(b))
 		}
 	}
 
 	for key := range blocks {
-		staged, exists := q.staged[key]
-		require.True(t, exists)
-		for _, block := range staged.batch.blocks {
-			assert.Equal(t, zeroBlockEntry, block)
-		}
+		require.Nil(t, q.staged[key])
 	}
 
 	assert.Nil(t, q.head)
@@ -165,11 +165,12 @@ func TestBlockQueue_ExpectEmptyQueue(t *testing.T) {
 }
 
 func TestBlockQueue_FlushByAge(t *testing.T) {
-	c := newCompactionQueue(Strategy{
+	s := Strategy{
 		MaxBlocksDefault: 5,
 		MaxBatchAge:      1,
-	})
+	}
 
+	c := newCompactionQueue(s, nil)
 	for _, e := range []store.BlockEntry{
 		{Tenant: "A", Shard: 1, Level: 1, Index: 1, AppendedAt: 5, ID: "1"},
 		{Tenant: "A", Shard: 1, Level: 1, Index: 2, AppendedAt: 15, ID: "2"},
@@ -179,7 +180,8 @@ func TestBlockQueue_FlushByAge(t *testing.T) {
 	}
 
 	batches := make([]blockEntry, 0, 3)
-	iter := newBatchIter(c.blockQueue(1))
+	q := c.blockQueue(1)
+	iter := newBatchIter(q)
 	for {
 		b, ok := iter.next()
 		if !ok {
@@ -189,11 +191,16 @@ func TestBlockQueue_FlushByAge(t *testing.T) {
 	}
 
 	expected := []blockEntry{{"1", 1}, {"2", 2}}
+	// "3" remains staged as we need another push to evict it.
 	assert.Equal(t, expected, batches)
+
+	staged := q.stagedBlocks(compactionKey{tenant: "A", shard: 1, level: 1})
+	assert.NotEmpty(t, staged.delete("1"))
+	assert.NotEmpty(t, staged.delete("2"))
 }
 
 func TestBlockQueue_BatchIterator(t *testing.T) {
-	q := newBlockQueue(Strategy{MaxBlocksDefault: 3})
+	q := newBlockQueue(Strategy{MaxBlocksDefault: 3}, nil)
 	keys := []compactionKey{
 		{tenant: "t-1", shard: 1},
 		{tenant: "t-2", shard: 2},
@@ -227,4 +234,14 @@ func TestBlockQueue_BatchIterator(t *testing.T) {
 
 	_, ok := iter.next()
 	assert.False(t, ok)
+}
+
+func remove(q *blockQueue, key compactionKey, block ...string) {
+	staged, ok := q.staged[key]
+	if !ok {
+		return
+	}
+	for _, b := range block {
+		staged.delete(b)
+	}
 }

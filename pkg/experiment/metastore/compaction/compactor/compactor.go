@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/raft"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -46,10 +47,16 @@ type Compactor struct {
 	tombstones Tombstones
 }
 
-func NewCompactor(config Config, store BlockQueueStore, tombstones Tombstones) *Compactor {
+func NewCompactor(
+	config Config,
+	store BlockQueueStore,
+	tombstones Tombstones,
+	reg prometheus.Registerer,
+) *Compactor {
+	queue := newCompactionQueue(config.Strategy, reg)
 	return &Compactor{
 		config:     config,
-		queue:      newCompactionQueue(config.Strategy),
+		queue:      queue,
 		store:      store,
 		tombstones: tombstones,
 	}
@@ -60,7 +67,7 @@ func NewStore() *store.BlockQueueStore {
 }
 
 func (c *Compactor) Compact(tx *bbolt.Tx, cmd *raft.Log, md *metastorev1.BlockMeta) error {
-	if md.CompactionLevel >= c.config.MaxLevel {
+	if uint(md.CompactionLevel) >= c.config.MaxLevel {
 		return nil
 	}
 	e := store.BlockEntry{
@@ -121,7 +128,7 @@ func (c *Compactor) Init(tx *bbolt.Tx) error {
 
 func (c *Compactor) Restore(tx *bbolt.Tx) error {
 	// Reset in-memory state before loading entries from the store.
-	c.queue = newCompactionQueue(c.config.Strategy)
+	c.queue.reset()
 	entries := c.store.ListEntries(tx)
 	defer func() {
 		_ = entries.Close()

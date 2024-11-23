@@ -1,6 +1,7 @@
 package compactor
 
 import (
+	"flag"
 	"time"
 )
 
@@ -12,35 +13,37 @@ const (
 // TODO: Almost everything here should be level specific.
 
 type Strategy struct {
-	MaxBlocksPerLevel []uint64
+	MaxBlocksPerLevel []uint
 	MaxBatchAge       int64
-	MaxLevel          uint32
+	MaxLevel          uint
 
 	CleanupBatchSize int32
 	CleanupDelay     time.Duration
 
-	MaxBlocksDefault   uint64
+	MaxBlocksDefault   uint
 	CleanupJobMinLevel int32
 	CleanupJobMaxLevel int32
 }
 
 func DefaultStrategy() Strategy {
 	return Strategy{
-		MaxBlocksPerLevel:  []uint64{20, 10, 10},
+		MaxBlocksPerLevel:  []uint{20, 10, 10},
 		MaxBlocksDefault:   10,
 		MaxLevel:           3,
-		MaxBatchAge:        defaultMaxBlockBatchAge,
+		MaxBatchAge:        3 * time.Minute.Nanoseconds(), //defaultMaxBlockBatchAge,
 		CleanupBatchSize:   2,
 		CleanupDelay:       15 * time.Minute,
 		CleanupJobMaxLevel: 1,
 	}
 }
 
+func (s *Strategy) RegisterFlags(prefix string, f *flag.FlagSet) {}
+
 // compact is called after the block has been added to the batch.
 // If the function returns true, the batch is flushed to the global
 // queue and becomes available for compaction.
 func (s Strategy) flush(b *batch) bool {
-	return b.size >= s.maxBlocks(b.staged.key.level)
+	return uint(b.size) >= s.maxBlocks(b.staged.key.level)
 }
 
 func (s Strategy) flushByAge(b *batch, now int64) bool {
@@ -55,10 +58,10 @@ func (s Strategy) flushByAge(b *batch, now int64) bool {
 // If the function returns true, the job plan is considered complete
 // and the job should be scheduled for execution.
 func (s Strategy) complete(j *jobPlan) bool {
-	return uint64(len(j.blocks)) >= s.maxBlocks(j.level)
+	return uint(len(j.blocks)) >= s.maxBlocks(j.level)
 }
 
-func (s Strategy) maxBlocks(l uint32) uint64 {
+func (s Strategy) maxBlocks(l uint32) uint {
 	if l >= uint32(len(s.MaxBlocksPerLevel)) || len(s.MaxBlocksPerLevel) == 0 {
 		return s.MaxBlocksDefault
 	}

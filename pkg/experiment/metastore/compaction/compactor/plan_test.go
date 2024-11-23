@@ -11,7 +11,7 @@ import (
 
 var testConfig = Config{
 	Strategy: Strategy{
-		MaxBlocksPerLevel: []uint64{3, 2, 2},
+		MaxBlocksPerLevel: []uint{3, 2, 2},
 		MaxBlocksDefault:  2,
 		MaxBatchAge:       0,
 		MaxLevel:          3,
@@ -19,7 +19,7 @@ var testConfig = Config{
 }
 
 func TestPlan_same_level(t *testing.T) {
-	c := NewCompactor(testConfig, nil, nil)
+	c := NewCompactor(testConfig, nil, nil, nil)
 
 	var i int // The index is used outside the loop.
 	for _, e := range []store.BlockEntry{
@@ -103,7 +103,7 @@ func TestPlan_same_level(t *testing.T) {
 }
 
 func TestPlan_level_priority(t *testing.T) {
-	c := NewCompactor(testConfig, nil, nil)
+	c := NewCompactor(testConfig, nil, nil, nil)
 
 	// Lower level job should be planned first despite the arrival order.
 	var i int
@@ -143,7 +143,7 @@ func TestPlan_level_priority(t *testing.T) {
 }
 
 func TestPlan_empty_queue(t *testing.T) {
-	c := NewCompactor(testConfig, nil, nil)
+	c := NewCompactor(testConfig, nil, nil, nil)
 
 	p := &plan{compactor: c, blocks: newBlockIter()}
 	assert.Nil(t, p.nextJob())
@@ -176,7 +176,7 @@ func TestPlan_empty_queue(t *testing.T) {
 }
 
 func TestPlan_deleted_blocks(t *testing.T) {
-	c := NewCompactor(testConfig, nil, nil)
+	c := NewCompactor(testConfig, nil, nil, nil)
 
 	var i int // The index is used outside the loop.
 	for _, e := range []store.BlockEntry{
@@ -194,7 +194,7 @@ func TestPlan_deleted_blocks(t *testing.T) {
 	}
 
 	// Invalidate TA-S1-L0 plan by removing some blocks.
-	c.queue.levels[0].remove(compactionKey{
+	remove(c.queue.levels[0], compactionKey{
 		tenant: "A",
 		shard:  1,
 		level:  0,
@@ -251,7 +251,7 @@ func TestPlan_deleted_blocks(t *testing.T) {
 }
 
 func TestPlan_deleted_batch(t *testing.T) {
-	c := NewCompactor(testConfig, nil, nil)
+	c := NewCompactor(testConfig, nil, nil, nil)
 
 	for i, e := range []store.BlockEntry{{}, {}, {}} {
 		e.Index = uint64(i)
@@ -259,7 +259,7 @@ func TestPlan_deleted_batch(t *testing.T) {
 		c.enqueue(e)
 	}
 
-	c.queue.levels[0].remove(compactionKey{}, "0", "1", "2")
+	remove(c.queue.levels[0], compactionKey{}, "0", "1", "2")
 
 	p := &plan{compactor: c, blocks: newBlockIter()}
 	assert.Nil(t, p.nextJob())

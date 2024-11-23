@@ -10,12 +10,12 @@ import (
 
 func BenchmarkCompactionQueue_Push(b *testing.B) {
 	s := Strategy{
-		MaxBlocksPerLevel: []uint64{20, 10, 10},
+		MaxBlocksPerLevel: []uint{20, 10, 10},
 		MaxBlocksDefault:  defaultBlockBatchSize,
 		MaxBatchAge:       defaultMaxBlockBatchAge,
 	}
 
-	q := newCompactionQueue(s)
+	q := newCompactionQueue(s, nil)
 	const (
 		tenants = 1
 		levels  = 1

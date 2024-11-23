@@ -3,8 +3,13 @@ package compactor
 import (
 	"container/heap"
 	"slices"
+	"sync"
+	"sync/atomic"
+
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction/compactor/store"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 type compactionKey struct {
@@ -16,8 +21,9 @@ type compactionKey struct {
 }
 
 type compactionQueue struct {
-	strategy Strategy
-	levels   []*blockQueue
+	strategy   Strategy
+	registerer prometheus.Registerer
+	levels     []*blockQueue
 }
 
 // blockQueue stages blocks as they are being added. Once a batch of blocks
@@ -32,8 +38,9 @@ type compactionQueue struct {
 // the queue is through explicit removal. Batch and block iterators provide
 // the read access.
 type blockQueue struct {
-	strategy Strategy
-	staged   map[compactionKey]*stagedBlocks
+	strategy   Strategy
+	registerer prometheus.Registerer
+	staged     map[compactionKey]*stagedBlocks
 	// Batches ordered by arrival.
 	head, tail *batch
 	// Priority queue by last update: we need to flush
@@ -51,11 +58,19 @@ type stagedBlocks struct {
 	// Incomplete batch of blocks.
 	batch *batch
 	// Map of block IDs to their locations in batches.
-	refs map[string]blockRef
+	refs  map[string]blockRef
+	stats *queueStats
 	// Parent block queue maintains a priority queue of
 	// incomplete batches by the last update time.
 	heapIndex int
 	updatedAt int64
+}
+
+type queueStats struct {
+	blocks   atomic.Int32
+	batches  atomic.Int32
+	rejected atomic.Int32
+	missed   atomic.Int32
 }
 
 // blockRef points to the block in the batch.
@@ -70,8 +85,9 @@ type blockEntry struct {
 }
 
 type batch struct {
+	flush  sync.Once
+	size   uint32
 	blocks []blockEntry
-	size   uint64
 	// Reference to the parent.
 	staged *stagedBlocks
 	// Links to the global batch queue items:
@@ -82,8 +98,15 @@ type batch struct {
 	next, prev *batch
 }
 
-func newCompactionQueue(strategy Strategy) *compactionQueue {
-	return &compactionQueue{strategy: strategy}
+func newCompactionQueue(strategy Strategy, registerer prometheus.Registerer) *compactionQueue {
+	return &compactionQueue{
+		strategy:   strategy,
+		registerer: registerer,
+	}
+}
+
+func (q *compactionQueue) reset() {
+	q.levels = q.levels[:0]
 }
 
 func (q *compactionQueue) push(e store.BlockEntry) bool {
@@ -110,17 +133,18 @@ func (q *compactionQueue) blockQueue(l uint32) *blockQueue {
 	}
 	level := q.levels[l]
 	if level == nil {
-		level = newBlockQueue(q.strategy)
+		level = newBlockQueue(q.strategy, q.registerer)
 		q.levels[l] = level
 	}
 	return level
 }
 
-func newBlockQueue(strategy Strategy) *blockQueue {
+func newBlockQueue(strategy Strategy, registerer prometheus.Registerer) *blockQueue {
 	return &blockQueue{
-		strategy: strategy,
-		staged:   make(map[compactionKey]*stagedBlocks),
-		updates:  new(priorityBlockQueue),
+		strategy:   strategy,
+		registerer: registerer,
+		staged:     make(map[compactionKey]*stagedBlocks),
+		updates:    new(priorityBlockQueue),
 	}
 }
 
@@ -131,29 +155,58 @@ func (q *blockQueue) stagedBlocks(k compactionKey) *stagedBlocks {
 			queue: q,
 			key:   k,
 			refs:  make(map[string]blockRef),
+			stats: new(queueStats),
 		}
-		staged.reset()
-		heap.Push(q.updates, staged)
+		staged.resetBatch()
 		q.staged[k] = staged
+		heap.Push(q.updates, staged)
+		collector := newQueueStatsCollector(staged)
+		util.RegisterOrGet(q.registerer, collector)
 	}
 	return staged
 }
 
+func (q *blockQueue) removeStaged(s *stagedBlocks) {
+	delete(q.staged, s.key)
+	if s.heapIndex < 0 {
+		// We usually end up here since s has already been evicted
+		// from the priority queue via Pop due to its age.
+		return
+	}
+	if s.heapIndex >= q.updates.Len() {
+		// Should not be possible.
+		return
+	}
+	heap.Remove(q.updates, s.heapIndex)
+}
+
 func (s *stagedBlocks) push(block blockEntry) bool {
 	if _, found := s.refs[block.id]; found {
+		s.stats.rejected.Add(1)
 		return false
 	}
 	s.refs[block.id] = blockRef{batch: s.batch, index: len(s.batch.blocks)}
 	s.batch.blocks = append(s.batch.blocks, block)
 	s.batch.size++
-	if s.queue.strategy.flush(s.batch) {
-		s.queue.pushBatch(s.batch)
-		s.reset()
+	s.stats.blocks.Add(1)
+	if s.queue.strategy.flush(s.batch) && !s.flush() {
+		// An attempt to flush the same batch twice.
+		// Should not be possible.
+		return false
 	}
 	return true
 }
 
-func (s *stagedBlocks) reset() {
+func (s *stagedBlocks) flush() (flushed bool) {
+	s.batch.flush.Do(func() {
+		s.queue.pushBatch(s.batch)
+		flushed = true
+	})
+	s.resetBatch()
+	return flushed
+}
+
+func (s *stagedBlocks) resetBatch() {
 	// TODO(kolesnikovae): get from pool.
 	s.batch = &batch{
 		blocks: make([]blockEntry, 0, defaultBlockBatchSize),
@@ -166,6 +219,7 @@ var zeroBlockEntry blockEntry
 func (s *stagedBlocks) delete(block string) blockEntry {
 	ref, found := s.refs[block]
 	if !found {
+		s.stats.missed.Add(1)
 		return zeroBlockEntry
 	}
 	// We can't change the order of the blocks in the batch,
@@ -173,22 +227,16 @@ func (s *stagedBlocks) delete(block string) blockEntry {
 	e := ref.batch.blocks[ref.index]
 	ref.batch.blocks[ref.index] = zeroBlockEntry
 	ref.batch.size--
+	s.stats.blocks.Add(-1)
 	if ref.batch.size == 0 {
 		s.queue.removeBatch(ref.batch)
 		// TODO(kolesnikovae): return to pool.
 	}
 	delete(s.refs, block)
+	if len(s.refs) == 0 {
+		s.queue.removeStaged(s)
+	}
 	return e
-}
-
-func (q *blockQueue) remove(key compactionKey, block ...string) {
-	staged, ok := q.staged[key]
-	if !ok {
-		return
-	}
-	for _, b := range block {
-		staged.delete(b)
-	}
 }
 
 func (q *blockQueue) pushBatch(b *batch) {
@@ -210,6 +258,7 @@ func (q *blockQueue) pushBatch(b *batch) {
 		b.staged.head = b
 	}
 	b.staged.tail = b
+	b.staged.stats.batches.Add(1)
 }
 
 func (q *blockQueue) removeBatch(b *batch) {
@@ -245,6 +294,7 @@ func (q *blockQueue) removeBatch(b *batch) {
 	}
 	b.next = nil
 	b.prev = nil
+	b.staged.stats.batches.Add(-1)
 }
 
 func (q *blockQueue) flushOldest(now int64) {
@@ -256,9 +306,8 @@ func (q *blockQueue) flushOldest(now int64) {
 	if !q.strategy.flushByAge(oldest.batch, now) {
 		return
 	}
-	q.pushBatch(oldest.batch)
 	heap.Pop(q.updates)
-	delete(q.staged, oldest.key)
+	oldest.flush()
 }
 
 type priorityBlockQueue []*stagedBlocks

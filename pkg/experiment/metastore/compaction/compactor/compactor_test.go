@@ -24,7 +24,7 @@ func TestCompactor_Compact(t *testing.T) {
 
 	md := &metastorev1.BlockMeta{TenantId: "A", Shard: 0, CompactionLevel: 0, Id: "1"}
 	cmd := &raft.Log{Index: uint64(1), AppendedAt: time.Unix(0, 0)}
-	compactor := NewCompactor(testConfig, queueStore, tombstones)
+	compactor := NewCompactor(testConfig, queueStore, tombstones, nil)
 
 	testErr := errors.New("x")
 	t.Run("fails if cannot store the entry", test.AssertIdempotentSubtest(t, func(t *testing.T) {
@@ -44,7 +44,7 @@ func TestCompactor_UpdatePlan(t *testing.T) {
 	queueStore.On("StoreEntry", mock.Anything, mock.Anything).
 		Return(nil).Times(N)
 
-	compactor := NewCompactor(testConfig, queueStore, tombstones)
+	compactor := NewCompactor(testConfig, queueStore, tombstones, nil)
 	now := time.Unix(0, 0)
 	for i := 0; i < N; i++ {
 		cmd := &raft.Log{Index: uint64(1), AppendedAt: now}
@@ -109,7 +109,7 @@ func TestCompactor_Restore(t *testing.T) {
 	tombstones.On("ListTombstones", mock.Anything).
 		Return(iter.NewEmptyIterator[*metastorev1.Tombstones](), nil)
 
-	compactor := NewCompactor(testConfig, queueStore, tombstones)
+	compactor := NewCompactor(testConfig, queueStore, tombstones, nil)
 	require.NoError(t, compactor.Restore(nil))
 
 	planner := compactor.NewPlan(nil, new(raft.Log))
