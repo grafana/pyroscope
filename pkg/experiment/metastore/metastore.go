@@ -126,7 +126,7 @@ func New(
 	m.index = index.NewIndex(m.logger, index.NewStore(), &config.Index)
 	m.tombstones = tombstones.NewTombstones(tombstones.NewStore())
 	m.compactor = compactor.NewCompactor(config.Compactor, compactor.NewStore(), m.tombstones, m.reg)
-	m.scheduler = scheduler.NewScheduler(config.Scheduler, scheduler.NewStore())
+	m.scheduler = scheduler.NewScheduler(config.Scheduler, scheduler.NewStore(), m.reg)
 
 	// FSM handlers that utilize the components.
 	m.indexHandler = NewIndexCommandHandler(m.logger, m.index, m.tombstones, m.compactor)

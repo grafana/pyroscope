@@ -8,9 +8,85 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 )
 
-type jobQueue struct {
+type schedulerQueue struct {
 	jobs   map[string]*jobEntry
-	levels []priorityJobQueue
+	levels []*jobQueue
+}
+
+func newJobQueue() *schedulerQueue {
+	return &schedulerQueue{
+		jobs: make(map[string]*jobEntry),
+	}
+}
+
+func (q *schedulerQueue) reset() {
+	q.levels = q.levels[:0]
+	clear(q.jobs)
+	q.resetStats()
+}
+
+func (q *schedulerQueue) put(state *raft_log.CompactionJobState) {
+	job, exists := q.jobs[state.Name]
+	level := q.level(state.CompactionLevel)
+	if exists {
+		level.update(job, state)
+		return
+	}
+	e := &jobEntry{CompactionJobState: state}
+	q.jobs[state.Name] = e
+	level.add(e)
+}
+
+func (q *schedulerQueue) delete(name string) *raft_log.CompactionJobState {
+	if e, exists := q.jobs[name]; exists {
+		delete(q.jobs, name)
+		return q.level(e.CompactionLevel).delete(e)
+	}
+	return nil
+}
+
+func (q *schedulerQueue) level(x uint32) *jobQueue {
+	s := x + 1 // Levels are 0-based.
+	if s >= uint32(len(q.levels)) {
+		q.levels = slices.Grow(q.levels, int(s))[:s]
+	}
+	level := q.levels[x]
+	if level == nil {
+		level = &jobQueue{
+			jobs:  new(priorityJobQueue),
+			stats: new(queueStats),
+		}
+		q.levels[x] = level
+	}
+	return level
+}
+
+func (q *schedulerQueue) resetStats() {
+	for _, level := range q.levels {
+		level.stats.reset()
+	}
+}
+
+type jobQueue struct {
+	jobs  *priorityJobQueue
+	stats *queueStats
+}
+
+type queueStats struct {
+	// Counters. Updated on access.
+	addedTotal      uint32
+	completedTotal  uint32
+	assignedTotal   uint32
+	reassignedTotal uint32
+	// Gauges. Updated periodically.
+	jobs       uint32
+	unassigned uint32
+	reassigned uint32
+	failed     uint32
+}
+
+func (s *queueStats) reset() {
+	*s = queueStats{}
 }
 
 type jobEntry struct {
@@ -18,36 +94,38 @@ type jobEntry struct {
 	*raft_log.CompactionJobState
 }
 
-func newJobQueue() *jobQueue {
-	return &jobQueue{jobs: make(map[string]*jobEntry)}
+func (q *jobQueue) add(e *jobEntry) {
+	q.stats.addedTotal++
+	heap.Push(q.jobs, e)
 }
 
-func (q *jobQueue) level(x uint32) *priorityJobQueue {
-	s := x + 1 // Levels are 0-based.
-	if s >= uint32(len(q.levels)) {
-		q.levels = slices.Grow(q.levels, int(s))[:s]
+func (q *jobQueue) update(e *jobEntry, state *raft_log.CompactionJobState) {
+	if e.Status == 0 && state.Status != 0 {
+		// Job given a status.
+		q.stats.assignedTotal++
 	}
-	return &q.levels[x]
+	if e.Status != 0 && e.Token != state.Token {
+		// Token change.
+		q.stats.reassignedTotal++
+	}
+	e.CompactionJobState = state
+	heap.Fix(q.jobs, e.index)
+	return
 }
 
-func (q *jobQueue) put(state *raft_log.CompactionJobState) {
-	job, exists := q.jobs[state.Name]
-	if exists {
-		job.CompactionJobState = state
-		heap.Fix(q.level(state.CompactionLevel), job.index)
-		return
-	}
-	j := &jobEntry{CompactionJobState: state}
-	q.jobs[state.Name] = j
-	heap.Push(q.level(state.CompactionLevel), j)
+func (q *jobQueue) delete(e *jobEntry) *raft_log.CompactionJobState {
+	q.stats.completedTotal++
+	heap.Remove(q.jobs, e.index)
+	return e.CompactionJobState
 }
 
-func (q *jobQueue) delete(name string) *raft_log.CompactionJobState {
-	if j, exists := q.jobs[name]; exists {
-		delete(q.jobs, name)
-		return heap.Remove(q.level(j.CompactionLevel), j.index).(*jobEntry).CompactionJobState
+func (q *jobQueue) clone() priorityJobQueue {
+	c := make(priorityJobQueue, q.jobs.Len())
+	for j, job := range *q.jobs {
+		jobCopy := *job
+		c[j] = &jobCopy
 	}
-	return nil
+	return c
 }
 
 // The function determines the scheduling order of the jobs.
@@ -61,6 +139,8 @@ func compareJobs(a, b *jobEntry) int {
 		return int(a.Failures) - int(b.Failures)
 	}
 	// Jobs with earlier deadlines should go first.
+	// A job that has been just added has no lease
+	// and will always go first.
 	if a.LeaseExpiresAt != b.LeaseExpiresAt {
 		return int(a.LeaseExpiresAt) - int(b.LeaseExpiresAt)
 	}

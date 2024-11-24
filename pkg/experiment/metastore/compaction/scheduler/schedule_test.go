@@ -22,7 +22,7 @@ func TestSchedule_Update_LeaseRenewal(t *testing.T) {
 		LeaseDuration: 10 * time.Second,
 	}
 
-	scheduler := NewScheduler(config, store)
+	scheduler := NewScheduler(config, store, nil)
 	scheduler.queue.put(&raft_log.CompactionJobState{
 		Name:            "1",
 		CompactionLevel: 0,
@@ -82,7 +82,7 @@ func TestSchedule_Update_JobCompleted(t *testing.T) {
 		LeaseDuration: 10 * time.Second,
 	}
 
-	scheduler := NewScheduler(config, store)
+	scheduler := NewScheduler(config, store, nil)
 	scheduler.queue.put(&raft_log.CompactionJobState{
 		Name:            "1",
 		CompactionLevel: 1,
@@ -122,7 +122,7 @@ func TestSchedule_Assign(t *testing.T) {
 		LeaseDuration: 10 * time.Second,
 	}
 
-	scheduler := NewScheduler(config, store)
+	scheduler := NewScheduler(config, store, nil)
 	plans := []*raft_log.CompactionJobPlan{
 		{Name: "2", Tenant: "A", Shard: 1, CompactionLevel: 0, SourceBlocks: []string{"d", "e", "f"}},
 		{Name: "3", Tenant: "A", Shard: 1, CompactionLevel: 0, SourceBlocks: []string{"j", "h", "i"}},
@@ -167,7 +167,7 @@ func TestSchedule_ReAssign(t *testing.T) {
 		LeaseDuration: 10 * time.Second,
 	}
 
-	scheduler := NewScheduler(config, store)
+	scheduler := NewScheduler(config, store, nil)
 	plans := []*raft_log.CompactionJobPlan{
 		{Name: "1", Tenant: "A", Shard: 1, SourceBlocks: []string{"a", "b", "c"}},
 		{Name: "2", Tenant: "A", Shard: 1, SourceBlocks: []string{"d", "e", "f"}},
@@ -210,7 +210,7 @@ func TestSchedule_UpdateAssign(t *testing.T) {
 		LeaseDuration: 10 * time.Second,
 	}
 
-	scheduler := NewScheduler(config, store)
+	scheduler := NewScheduler(config, store, nil)
 	plans := []*raft_log.CompactionJobPlan{
 		{Name: "1", Tenant: "A", Shard: 1, SourceBlocks: []string{"a", "b", "c"}},
 		{Name: "2", Tenant: "A", Shard: 1, SourceBlocks: []string{"d", "e", "f"}},
@@ -299,7 +299,7 @@ func TestSchedule_Add(t *testing.T) {
 		LeaseDuration: 10 * time.Second,
 	}
 
-	scheduler := NewScheduler(config, store)
+	scheduler := NewScheduler(config, store, nil)
 	plans := []*raft_log.CompactionJobPlan{
 		{Name: "1", Tenant: "A", Shard: 1, SourceBlocks: []string{"a", "b", "c"}},
 		{Name: "2", Tenant: "A", Shard: 1, SourceBlocks: []string{"d", "e", "f"}},

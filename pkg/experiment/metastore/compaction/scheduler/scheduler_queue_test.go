@@ -138,11 +138,11 @@ func TestJobQueue_empty(t *testing.T) {
 }
 
 // The function is for testing purposes only.
-func jobQueuePop(q *jobQueue) *raft_log.CompactionJobState {
+func jobQueuePop(q *schedulerQueue) *raft_log.CompactionJobState {
 	for i := range q.levels {
 		level := q.level(uint32(i))
-		if level.Len() > 0 {
-			x := heap.Pop(level).(*jobEntry).CompactionJobState
+		if level.jobs.Len() > 0 {
+			x := heap.Pop(level.jobs).(*jobEntry).CompactionJobState
 			delete(q.jobs, x.Name)
 			return x
 		}

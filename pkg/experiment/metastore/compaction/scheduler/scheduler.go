@@ -2,15 +2,18 @@ package scheduler
 
 import (
 	"flag"
+	"sync"
 	"time"
 
 	"github.com/hashicorp/raft"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.etcd.io/bbolt"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction/scheduler/store"
 	"github.com/grafana/pyroscope/pkg/iter"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 var _ compaction.Scheduler = (*Scheduler)(nil)
@@ -51,19 +54,25 @@ func (c *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 
 type Scheduler struct {
 	config Config
-	queue  *jobQueue
 	store  JobStore
+	// Although the job queue is only accessed for writes
+	// synchronously, the mutex is needed to collect stats.
+	mu    sync.Mutex
+	queue *schedulerQueue
 }
 
 // NewScheduler creates a scheduler with the given lease duration.
 // Typically, callers should update jobs at the interval not exceeding
 // the half of the lease duration.
-func NewScheduler(config Config, store JobStore) *Scheduler {
-	return &Scheduler{
+func NewScheduler(config Config, store JobStore, reg prometheus.Registerer) *Scheduler {
+	s := &Scheduler{
 		config: config,
 		store:  store,
 		queue:  newJobQueue(),
 	}
+	collector := newStatsCollector(s)
+	util.RegisterOrGet(reg, collector)
+	return s
 }
 
 func NewStore() *store.JobStore {
@@ -81,6 +90,9 @@ func (sc *Scheduler) NewSchedule(tx *bbolt.Tx, cmd *raft.Log) compaction.Schedul
 }
 
 func (sc *Scheduler) UpdateSchedule(tx *bbolt.Tx, _ *raft.Log, update *raft_log.CompactionPlanUpdate) error {
+	sc.mu.Lock()
+	defer sc.mu.Unlock()
+
 	for _, job := range update.NewJobs {
 		if err := sc.store.StoreJobPlan(tx, job.Plan); err != nil {
 			return err
@@ -124,8 +136,10 @@ func (sc *Scheduler) Init(tx *bbolt.Tx) error {
 }
 
 func (sc *Scheduler) Restore(tx *bbolt.Tx) error {
+	sc.mu.Lock()
+	defer sc.mu.Unlock()
 	// Reset in-memory state before loading entries from the store.
-	sc.queue = newJobQueue()
+	sc.queue.reset()
 	entries := sc.store.ListEntries(tx)
 	defer func() {
 		_ = entries.Close()
@@ -133,5 +147,7 @@ func (sc *Scheduler) Restore(tx *bbolt.Tx) error {
 	for entries.Next() {
 		sc.queue.put(entries.At())
 	}
+	// Zero all stats updated during Restore.
+	sc.queue.resetStats()
 	return entries.Err()
 }

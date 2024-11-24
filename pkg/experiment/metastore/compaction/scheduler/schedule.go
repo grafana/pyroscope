@@ -170,11 +170,8 @@ func (p *schedule) queueLevelCopy(i int) *priorityJobQueue {
 	s := i + 1 // Levels are 0-based.
 	if s > len(p.copied) {
 		p.copied = slices.Grow(p.copied, s)[:s]
-		level := *p.scheduler.queue.level(uint32(i))
-		p.copied[i] = make(priorityJobQueue, len(level))
-		for j, job := range level {
-			jobCopy := *job
-			p.copied[i][j] = &jobCopy
+		if p.copied[i] == nil {
+			p.copied[i] = p.scheduler.queue.level(uint32(i)).clone()
 		}
 	}
 	return &p.copied[i]
