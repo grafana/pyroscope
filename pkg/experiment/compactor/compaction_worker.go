@@ -445,7 +445,7 @@ func (w *Worker) deleteBlocks(ctx context.Context, logger log.Logger, t *metasto
 	for _, b := range t.Blocks {
 		path := block.BuildObjectPath(t.Tenant, t.Shard, t.CompactionLevel, b)
 		if err := w.storage.Delete(ctx, path); err != nil {
-			if w.storage.IsObjNotFoundErr(err) {
+			if objstore.IsNotExist(w.storage, err) {
 				level.Warn(logger).Log("msg", "block not found", "path", path, "err", err)
 				continue
 			}

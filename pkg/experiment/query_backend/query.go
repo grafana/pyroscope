@@ -9,7 +9,6 @@ import (
 	"github.com/iancoleman/strcase"
 	"github.com/opentracing/opentracing-go"
 
-	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/query_backend/block"
 )
@@ -72,50 +71,53 @@ func registerQueryType(
 }
 
 type queryContext struct {
-	ctx  context.Context
-	log  log.Logger
-	meta *metastorev1.Dataset
-	req  *request
-	obj  *block.Object
-	ds   *block.Dataset
-	err  error
+	ctx context.Context
+	log log.Logger
+	req *request
+	agg *reportAggregator
+	ds  *block.Dataset
+	err error
 }
 
 func newQueryContext(
 	ctx context.Context,
-	logger log.Logger,
-	meta *metastorev1.Dataset,
+	log log.Logger,
 	req *request,
-	obj *block.Object,
+	agg *reportAggregator,
+	ds *block.Dataset,
 ) *queryContext {
 	return &queryContext{
-		ctx:  ctx,
-		log:  logger,
-		req:  req,
-		meta: meta,
-		obj:  obj,
-		ds:   block.NewDataset(meta, obj),
+		ctx: ctx,
+		log: log,
+		req: req,
+		agg: agg,
+		ds:  ds,
 	}
 }
 
-func executeQuery(q *queryContext, query *queryv1.Query) (r *queryv1.Report, err error) {
+func executeQuery(q *queryContext, query *queryv1.Query) error {
 	var span opentracing.Span
 	span, q.ctx = opentracing.StartSpanFromContext(q.ctx, "executeQuery."+strcase.ToCamel(query.QueryType.String()))
 	defer span.Finish()
 	handle, err := getQueryHandler(query.QueryType)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if err = q.open(); err != nil {
-		return nil, fmt.Errorf("failed to initialize query context: %w", err)
+		return fmt.Errorf("failed to initialize query context: %w", err)
 	}
 	defer func() {
 		_ = q.close(err)
 	}()
-	if r, err = handle(q, query); r != nil {
-		r.ReportType = QueryReportType(query.QueryType)
+	r, err := handle(q, query)
+	if err != nil {
+		return err
 	}
-	return r, err
+	if r != nil {
+		r.ReportType = QueryReportType(query.QueryType)
+		return q.agg.aggregateReport(r)
+	}
+	return nil
 }
 
 func (q *queryContext) open() error {
