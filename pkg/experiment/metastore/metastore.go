@@ -110,13 +110,13 @@ func New(
 	m := &Metastore{
 		config:    config,
 		logger:    logger,
+		reg:       reg,
 		health:    healthService,
 		bucket:    bucket,
 		placement: placementMgr,
 	}
 
 	var err error
-	m.reg = prometheus.WrapRegistererWithPrefix("pyroscope_metastore_", reg)
 	m.fsm, err = fsm.New(m.logger, m.reg, m.config.DataDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize store: %w", err)

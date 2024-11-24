@@ -1,6 +1,10 @@
 package compactor
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/grafana/pyroscope/pkg/util"
+)
 
 type metrics struct {
 	jobsCompleted  *prometheus.CounterVec
@@ -9,28 +13,29 @@ type metrics struct {
 }
 
 func newMetrics(r prometheus.Registerer) *metrics {
-	m := &metrics{}
+	m := &metrics{
+		jobsCompleted: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "jobs_completed_total",
+			Help: "Total number of compaction jobs completed.",
+		}, []string{"tenant", "shard", "level", "status"}),
 
-	m.jobsCompleted = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "pyroscope_compaction_jobs_completed_count",
-		Help: "Total number of compactions that were executed.",
-	}, []string{"tenant", "shard", "level", "outcome"})
-	m.jobsInProgress = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "pyroscope_compaction_jobs_current",
-		Help: "The number of active compaction jobs per level",
-	}, []string{"tenant", "shard", "level"})
-	m.jobDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
-		Name:    "pyroscope_compaction_jobs_duration_seconds",
-		Help:    "Duration of compaction job runs",
-		Buckets: prometheus.ExponentialBuckets(1, 2, 14),
-	}, []string{"tenant", "shard", "level", "outcome"})
+		jobsInProgress: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "jobs_in_progress",
+			Help: "The number of active compaction jobs currently running.",
+		}, []string{"tenant", "shard", "level"}),
 
-	if r != nil {
-		r.MustRegister(
-			m.jobsCompleted,
-			m.jobsInProgress,
-			m.jobDuration,
-		)
+		jobDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
+			Name:    "job_duration_seconds",
+			Help:    "Duration of compaction job runs",
+			Buckets: prometheus.ExponentialBuckets(1, 2, 14),
+		}, []string{"tenant", "shard", "level", "status"}),
 	}
+
+	util.Register(r,
+		m.jobsCompleted,
+		m.jobsInProgress,
+		m.jobDuration,
+	)
+
 	return m
 }
