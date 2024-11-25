@@ -20,11 +20,11 @@ import (
 )
 
 type RecoveryConfig struct {
-	Period time.Duration `yaml:"check_interval"`
+	Period time.Duration `yaml:"dlq_recovery_check_interval"`
 }
 
 func (c *RecoveryConfig) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
-	f.DurationVar(&c.Period, prefix+"check-interval", 15*time.Second, "Dead Letter Queue check interval.")
+	f.DurationVar(&c.Period, prefix+"dlq-recovery-check-interval", 15*time.Second, "Dead Letter Queue check interval.")
 }
 
 type LocalServer interface {

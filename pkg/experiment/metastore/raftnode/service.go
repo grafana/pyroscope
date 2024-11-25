@@ -7,7 +7,7 @@ import (
 )
 
 type RaftNode interface {
-	ReadIndex() (uint64, error)
+	ReadIndex() (ReadIndex, error)
 	NodeInfo() (*raftnodepb.NodeInfo, error)
 }
 
@@ -25,11 +25,15 @@ func (svc *RaftNodeService) ReadIndex(
 	context.Context,
 	*raftnodepb.ReadIndexRequest,
 ) (*raftnodepb.ReadIndexResponse, error) {
-	readIndex, err := svc.node.ReadIndex()
+	read, err := svc.node.ReadIndex()
 	if err != nil {
 		return nil, err
 	}
-	return &raftnodepb.ReadIndexResponse{ReadIndex: readIndex}, nil
+	resp := &raftnodepb.ReadIndexResponse{
+		CommitIndex: read.CommitIndex,
+		Term:        read.Term,
+	}
+	return resp, nil
 }
 
 func (svc *RaftNodeService) NodeInfo(

@@ -35,17 +35,22 @@ const (
 const (
 	// IndexServiceAddBlockProcedure is the fully-qualified name of the IndexService's AddBlock RPC.
 	IndexServiceAddBlockProcedure = "/metastore.v1.IndexService/AddBlock"
+	// IndexServiceGetBlockMetadataProcedure is the fully-qualified name of the IndexService's
+	// GetBlockMetadata RPC.
+	IndexServiceGetBlockMetadataProcedure = "/metastore.v1.IndexService/GetBlockMetadata"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
 var (
-	indexServiceServiceDescriptor        = v1.File_metastore_v1_index_proto.Services().ByName("IndexService")
-	indexServiceAddBlockMethodDescriptor = indexServiceServiceDescriptor.Methods().ByName("AddBlock")
+	indexServiceServiceDescriptor                = v1.File_metastore_v1_index_proto.Services().ByName("IndexService")
+	indexServiceAddBlockMethodDescriptor         = indexServiceServiceDescriptor.Methods().ByName("AddBlock")
+	indexServiceGetBlockMetadataMethodDescriptor = indexServiceServiceDescriptor.Methods().ByName("GetBlockMetadata")
 )
 
 // IndexServiceClient is a client for the metastore.v1.IndexService service.
 type IndexServiceClient interface {
 	AddBlock(context.Context, *connect.Request[v1.AddBlockRequest]) (*connect.Response[v1.AddBlockResponse], error)
+	GetBlockMetadata(context.Context, *connect.Request[v1.GetBlockMetadataRequest]) (*connect.Response[v1.GetBlockMetadataResponse], error)
 }
 
 // NewIndexServiceClient constructs a client for the metastore.v1.IndexService service. By default,
@@ -64,12 +69,19 @@ func NewIndexServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(indexServiceAddBlockMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		getBlockMetadata: connect.NewClient[v1.GetBlockMetadataRequest, v1.GetBlockMetadataResponse](
+			httpClient,
+			baseURL+IndexServiceGetBlockMetadataProcedure,
+			connect.WithSchema(indexServiceGetBlockMetadataMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // indexServiceClient implements IndexServiceClient.
 type indexServiceClient struct {
-	addBlock *connect.Client[v1.AddBlockRequest, v1.AddBlockResponse]
+	addBlock         *connect.Client[v1.AddBlockRequest, v1.AddBlockResponse]
+	getBlockMetadata *connect.Client[v1.GetBlockMetadataRequest, v1.GetBlockMetadataResponse]
 }
 
 // AddBlock calls metastore.v1.IndexService.AddBlock.
@@ -77,9 +89,15 @@ func (c *indexServiceClient) AddBlock(ctx context.Context, req *connect.Request[
 	return c.addBlock.CallUnary(ctx, req)
 }
 
+// GetBlockMetadata calls metastore.v1.IndexService.GetBlockMetadata.
+func (c *indexServiceClient) GetBlockMetadata(ctx context.Context, req *connect.Request[v1.GetBlockMetadataRequest]) (*connect.Response[v1.GetBlockMetadataResponse], error) {
+	return c.getBlockMetadata.CallUnary(ctx, req)
+}
+
 // IndexServiceHandler is an implementation of the metastore.v1.IndexService service.
 type IndexServiceHandler interface {
 	AddBlock(context.Context, *connect.Request[v1.AddBlockRequest]) (*connect.Response[v1.AddBlockResponse], error)
+	GetBlockMetadata(context.Context, *connect.Request[v1.GetBlockMetadataRequest]) (*connect.Response[v1.GetBlockMetadataResponse], error)
 }
 
 // NewIndexServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -94,10 +112,18 @@ func NewIndexServiceHandler(svc IndexServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(indexServiceAddBlockMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	indexServiceGetBlockMetadataHandler := connect.NewUnaryHandler(
+		IndexServiceGetBlockMetadataProcedure,
+		svc.GetBlockMetadata,
+		connect.WithSchema(indexServiceGetBlockMetadataMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/metastore.v1.IndexService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case IndexServiceAddBlockProcedure:
 			indexServiceAddBlockHandler.ServeHTTP(w, r)
+		case IndexServiceGetBlockMetadataProcedure:
+			indexServiceGetBlockMetadataHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -109,4 +135,8 @@ type UnimplementedIndexServiceHandler struct{}
 
 func (UnimplementedIndexServiceHandler) AddBlock(context.Context, *connect.Request[v1.AddBlockRequest]) (*connect.Response[v1.AddBlockResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("metastore.v1.IndexService.AddBlock is not implemented"))
+}
+
+func (UnimplementedIndexServiceHandler) GetBlockMetadata(context.Context, *connect.Request[v1.GetBlockMetadataRequest]) (*connect.Response[v1.GetBlockMetadataResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("metastore.v1.IndexService.GetBlockMetadata is not implemented"))
 }

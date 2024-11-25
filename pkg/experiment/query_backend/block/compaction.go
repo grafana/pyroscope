@@ -10,7 +10,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/grafana/dskit/multierror"
 	"github.com/oklog/ulid"
@@ -23,7 +22,6 @@ import (
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 	"github.com/grafana/pyroscope/pkg/util"
@@ -108,21 +106,23 @@ func PlanCompaction(objects Objects) ([]*CompactionPlan, error) {
 	}
 
 	r := objects[0]
-	var c uint32
+	var level uint32
 	for _, obj := range objects {
 		if r.meta.Shard != obj.meta.Shard {
 			return nil, ErrShardMergeMismatch
 		}
-		c = max(c, obj.meta.CompactionLevel)
+		level = max(level, obj.meta.CompactionLevel)
 	}
-	c++
+	level++
 
+	// Assuming that the first block in the job is the oldest one.
+	timestamp := ulid.MustParse(r.meta.Id).Time()
 	m := make(map[string]*CompactionPlan)
 	for _, obj := range objects {
 		for _, s := range obj.meta.Datasets {
 			tm, ok := m[s.TenantId]
 			if !ok {
-				tm = newBlockCompaction(s.TenantId, r.meta.Shard, c)
+				tm = newBlockCompaction(timestamp, s.TenantId, r.meta.Shard, level)
 				m[s.TenantId] = tm
 			}
 			sm := tm.addDataset(s)
@@ -152,14 +152,14 @@ type CompactionPlan struct {
 	meta       *metastorev1.BlockMeta
 }
 
-func newBlockCompaction(tenantID string, shard uint32, compactionLevel uint32) *CompactionPlan {
+func newBlockCompaction(unixMilli uint64, tenantID string, shard uint32, compactionLevel uint32) *CompactionPlan {
 	return &CompactionPlan{
 		tenantID:   tenantID,
 		datasetMap: make(map[string]*datasetCompaction),
 		meta: &metastorev1.BlockMeta{
 			FormatVersion: 1,
 			// TODO(kolesnikovae): Make it deterministic?
-			Id:              ulid.MustNew(uint64(time.Now().UnixMilli()), rand.Reader).String(),
+			Id:              ulid.MustNew(unixMilli, rand.Reader).String(),
 			TenantId:        tenantID,
 			Shard:           shard,
 			CompactionLevel: compactionLevel,
@@ -171,10 +171,6 @@ func newBlockCompaction(tenantID string, shard uint32, compactionLevel uint32) *
 	}
 }
 
-func (b *CompactionPlan) Estimate() {
-	// TODO(kolesnikovae): Implement.
-}
-
 func (b *CompactionPlan) Compact(ctx context.Context, dst objstore.Bucket, tmpdir string) (m *metastorev1.BlockMeta, err error) {
 	w := NewBlockWriter(dst, ObjectPath(b.meta), tmpdir)
 	defer func() {
@@ -182,8 +178,6 @@ func (b *CompactionPlan) Compact(ctx context.Context, dst objstore.Bucket, tmpdi
 	}()
 	// Datasets are compacted in a strict order.
 	for _, s := range b.datasets {
-		s.estimate()
-		// TODO(kolesnikovae): Wait until the required resources are available?
 		if err = s.compact(ctx, w); err != nil {
 			return nil, fmt.Errorf("compacting block: %w", err)
 		}
@@ -212,29 +206,6 @@ func (b *CompactionPlan) addDataset(s *metastorev1.Dataset) *datasetCompaction {
 	return sm
 }
 
-type compactionEstimates struct {
-	inMemorySizeInputSymbols  int64
-	inMemorySizeInputIndex    int64
-	inMemorySizeInputProfiles int64
-
-	inMemorySizeOutputSymbols  int64
-	inMemorySizeOutputIndex    int64
-	inMemorySizeOutputProfiles int64
-
-	outputSizeIndex    int64
-	outputSizeSymbols  int64
-	outputSizeProfiles int64
-}
-
-func (m *compactionEstimates) inMemorySizeTotal() int64 {
-	return m.inMemorySizeInputSymbols +
-		m.inMemorySizeInputIndex +
-		m.inMemorySizeInputProfiles +
-		m.inMemorySizeOutputSymbols +
-		m.inMemorySizeOutputIndex +
-		m.inMemorySizeOutputProfiles
-}
-
 type datasetCompaction struct {
 	meta   *metastorev1.Dataset
 	ptypes map[string]struct{}
@@ -246,10 +217,9 @@ type datasetCompaction struct {
 	symbolsRewriter *symbolsRewriter
 	profilesWriter  *profilesWriter
 
-	estimates compactionEstimates
-	samples   uint64
-	series    uint64
-	profiles  uint64
+	samples  uint64
+	series   uint64
+	profiles uint64
 
 	flushOnce sync.Once
 }
@@ -300,56 +270,6 @@ func (m *datasetCompaction) compact(ctx context.Context, w *Writer) (err error) 
 	return nil
 }
 
-// TODO(kolesnikovae):
-//   - Add statistics to the block meta.
-//   - Measure. Ideally, we should track statistics.
-func (m *datasetCompaction) estimate() {
-	columns := len(schemav1.ProfilesSchema.Columns())
-	// Datasets are to be opened concurrently.
-	for _, s := range m.datasets {
-		s1 := s.sectionSize(SectionSymbols)
-		// It's likely that both symbols and tsdb sections will
-		// be heavily deduplicated, so the actual output size will
-		// be smaller than we estimate – to be deduced later.
-		m.estimates.outputSizeSymbols += s1
-		// Both the symbols and the tsdb are loaded into memory entirely.
-		// It's multiplied here according to experiments.
-		// https://gist.github.com/kolesnikovae/6f7bdc0b8a14174a8e63485300144b4a
-		m.estimates.inMemorySizeInputSymbols += s1 * 3 // Pessimistic estimate.
-
-		s2 := s.sectionSize(SectionTSDB)
-		m.estimates.outputSizeIndex += s2
-		// TSDB index is loaded into memory entirely, but is not decoded.
-		m.estimates.inMemorySizeInputIndex += int64(nextPowerOfTwo(uint32(s2)))
-
-		s3 := s.sectionSize(SectionProfiles)
-		m.estimates.outputSizeProfiles += s3
-		// All columns are to be opened.
-		// Assuming async read mode – 2 buffers per column:
-		m.estimates.inMemorySizeInputProfiles += int64(2 * columns * estimateReadBufferSize(s3))
-	}
-	const symbolsDuplicationRatio = 0.5 // Two blocks are likely to have a half of symbols in common.
-	m.estimates.outputSizeSymbols = int64(float64(m.estimates.outputSizeSymbols) * symbolsDuplicationRatio)
-	// Duplication of series and profiles is ignored.
-
-	// Output block memory footprint.
-	m.estimates.inMemorySizeOutputIndex = m.estimates.outputSizeIndex * 8       // A guess. We keep all labels in memory.
-	m.estimates.inMemorySizeOutputSymbols += m.estimates.outputSizeProfiles * 4 // Mind the lookup table of rewriter.
-	// This is the most difficult part to estimate.
-	// Parquet keeps ALL RG pages in memory. We have a limit of 10K rows per RG,
-	// therefore it's very likely, that the whole table will be loaded into memory,
-	// plus overhead of memory fragmentation. It's likely impossible to have a
-	// reasonable estimate here.
-	const rowSizeGuess = 2 << 10
-	// Worst case should be appx ~32MB. If a doubled estimated output size is less than that, use it.
-	columnBuffers := int64(nextPowerOfTwo(maxRowsPerRowGroup * rowSizeGuess))
-	if s := 2 * m.estimates.outputSizeProfiles; s < columnBuffers {
-		columnBuffers = s
-	}
-	pageBuffers := int64(columns * estimatePageBufferSize(m.estimates.outputSizeProfiles))
-	m.estimates.inMemorySizeOutputProfiles += columnBuffers + pageBuffers
-}
-
 func (m *datasetCompaction) open(ctx context.Context, path string) (err error) {
 	m.path = path
 	defer func() {
@@ -362,7 +282,12 @@ func (m *datasetCompaction) open(ctx context.Context, path string) (err error) {
 		return err
 	}
 
-	m.profilesWriter, err = newProfileWriter(m.path, m.estimates.outputSizeProfiles)
+	var estimatedProfileTableSize int64
+	for _, ds := range m.datasets {
+		estimatedProfileTableSize += ds.sectionSize(SectionProfiles)
+	}
+	pageBufferSize := estimatePageBufferSize(estimatedProfileTableSize)
+	m.profilesWriter, err = newProfileWriter(m.path, pageBufferSize)
 	if err != nil {
 		return err
 	}

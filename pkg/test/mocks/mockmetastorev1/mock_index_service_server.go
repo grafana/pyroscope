@@ -81,6 +81,65 @@ func (_c *MockIndexServiceServer_AddBlock_Call) RunAndReturn(run func(context.Co
 	return _c
 }
 
+// GetBlockMetadata provides a mock function with given fields: _a0, _a1
+func (_m *MockIndexServiceServer) GetBlockMetadata(_a0 context.Context, _a1 *metastorev1.GetBlockMetadataRequest) (*metastorev1.GetBlockMetadataResponse, error) {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetBlockMetadata")
+	}
+
+	var r0 *metastorev1.GetBlockMetadataResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *metastorev1.GetBlockMetadataRequest) (*metastorev1.GetBlockMetadataResponse, error)); ok {
+		return rf(_a0, _a1)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *metastorev1.GetBlockMetadataRequest) *metastorev1.GetBlockMetadataResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*metastorev1.GetBlockMetadataResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *metastorev1.GetBlockMetadataRequest) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockIndexServiceServer_GetBlockMetadata_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetBlockMetadata'
+type MockIndexServiceServer_GetBlockMetadata_Call struct {
+	*mock.Call
+}
+
+// GetBlockMetadata is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *metastorev1.GetBlockMetadataRequest
+func (_e *MockIndexServiceServer_Expecter) GetBlockMetadata(_a0 interface{}, _a1 interface{}) *MockIndexServiceServer_GetBlockMetadata_Call {
+	return &MockIndexServiceServer_GetBlockMetadata_Call{Call: _e.mock.On("GetBlockMetadata", _a0, _a1)}
+}
+
+func (_c *MockIndexServiceServer_GetBlockMetadata_Call) Run(run func(_a0 context.Context, _a1 *metastorev1.GetBlockMetadataRequest)) *MockIndexServiceServer_GetBlockMetadata_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*metastorev1.GetBlockMetadataRequest))
+	})
+	return _c
+}
+
+func (_c *MockIndexServiceServer_GetBlockMetadata_Call) Return(_a0 *metastorev1.GetBlockMetadataResponse, _a1 error) *MockIndexServiceServer_GetBlockMetadata_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockIndexServiceServer_GetBlockMetadata_Call) RunAndReturn(run func(context.Context, *metastorev1.GetBlockMetadataRequest) (*metastorev1.GetBlockMetadataResponse, error)) *MockIndexServiceServer_GetBlockMetadata_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // mustEmbedUnimplementedIndexServiceServer provides a mock function with given fields:
 func (_m *MockIndexServiceServer) mustEmbedUnimplementedIndexServiceServer() {
 	_m.Called()

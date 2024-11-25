@@ -2,10 +2,12 @@ package index
 
 import (
 	"time"
+
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/store"
 )
 
 type PartitionMeta struct {
-	Key      PartitionKey
+	Key      store.PartitionKey
 	Ts       time.Time
 	Duration time.Duration
 	Tenants  []string

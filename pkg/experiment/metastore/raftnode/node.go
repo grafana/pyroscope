@@ -33,9 +33,9 @@ type Config struct {
 	BindAddress      string `yaml:"bind_address"`
 	AdvertiseAddress string `yaml:"advertise_address"`
 
-	ApplyTimeout              time.Duration `yaml:"apply_timeout" doc:"hidden"`
-	AppliedIndexCheckInterval time.Duration `yaml:"applied_index_check_interval" doc:"hidden"`
-	ReadIndexMaxDistance      uint64        `yaml:"read_index_max_distance" doc:"hidden"`
+	ApplyTimeout          time.Duration `yaml:"apply_timeout" doc:"hidden"`
+	LogIndexCheckInterval time.Duration `yaml:"log_index_check_interval" doc:"hidden"`
+	ReadIndexMaxDistance  uint64        `yaml:"read_index_max_distance" doc:"hidden"`
 
 	WALCacheEntries       uint64        `yaml:"wal_cache_entries" doc:"hidden"`
 	TrailingLogs          uint64        `yaml:"trailing_logs" doc:"hidden"`
@@ -67,7 +67,7 @@ func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.StringVar(&cfg.AdvertiseAddress, prefix+"advertise-address", "localhost:9099", "")
 
 	f.DurationVar(&cfg.ApplyTimeout, prefix+"apply-timeout", 5*time.Second, "")
-	f.DurationVar(&cfg.AppliedIndexCheckInterval, prefix+"applied-index-check-interval", 14*time.Millisecond, "")
+	f.DurationVar(&cfg.LogIndexCheckInterval, prefix+"log-index-check-interval", 14*time.Millisecond, "")
 	f.Uint64Var(&cfg.ReadIndexMaxDistance, prefix+"read-index-max-distance", 10<<10, "")
 
 	f.Uint64Var(&cfg.WALCacheEntries, prefix+"wal-cache-entries", defaultWALCacheEntries, "")
@@ -124,10 +124,6 @@ func NewNode(
 		}
 	}()
 
-	hasState, err := n.openStore()
-	if err != nil {
-		return nil, err
-	}
 	addr, err := net.ResolveTCPAddr("tcp", config.AdvertiseAddress)
 	if err != nil {
 		return nil, err
@@ -141,55 +137,64 @@ func NewNode(
 		return nil, err
 	}
 
+	if err = n.openStore(); err != nil {
+		return nil, err
+	}
+
+	return &n, nil
+}
+
+func (n *Node) Init() (err error) {
 	raftConfig := raft.DefaultConfig()
 	// TODO: Wrap gokit
 	//	config.Logger
 	raftConfig.LogLevel = "debug"
 
-	raftConfig.TrailingLogs = config.TrailingLogs
-	raftConfig.SnapshotThreshold = config.SnapshotThreshold
-	raftConfig.SnapshotInterval = config.SnapshotInterval
+	raftConfig.TrailingLogs = n.config.TrailingLogs
+	raftConfig.SnapshotThreshold = n.config.SnapshotThreshold
+	raftConfig.SnapshotInterval = n.config.SnapshotInterval
 	raftConfig.LocalID = raft.ServerID(n.config.ServerID)
 
-	n.raft, err = raft.NewRaft(raftConfig, fsm, n.logStore, n.stableStore, n.snapshotStore, n.transport)
+	n.raft, err = raft.NewRaft(raftConfig, n.fsm, n.logStore, n.stableStore, n.snapshotStore, n.transport)
 	if err != nil {
-		return nil, fmt.Errorf("starting raft node: %w", err)
+		return fmt.Errorf("starting raft node: %w", err)
 	}
+	n.observer = NewRaftStateObserver(n.logger, n.raft, n.reg)
+	n.service = NewRaftNodeService(n)
 
+	hasState, err := raft.HasExistingState(n.logStore, n.stableStore, n.snapshotStore)
+	if err != nil {
+		return fmt.Errorf("failed to check for existing state: %w", err)
+	}
 	if !hasState {
 		level.Warn(n.logger).Log("msg", "no existing state found, trying to bootstrap cluster")
 		if err = n.bootstrap(); err != nil {
-			return nil, fmt.Errorf("failed to bootstrap cluster: %w", err)
+			return fmt.Errorf("failed to bootstrap cluster: %w", err)
 		}
 	} else {
 		level.Debug(n.logger).Log("msg", "restoring existing state, not bootstrapping")
 	}
 
-	n.observer = NewRaftStateObserver(n.logger, n.raft, reg)
-	n.service = NewRaftNodeService(&n)
-	return &n, nil
+	return nil
 }
 
-func (n *Node) openStore() (hasState bool, err error) {
+func (n *Node) openStore() (err error) {
 	if err = n.createDirs(); err != nil {
-		return false, err
+		return err
 	}
 	n.wal, err = raftwal.Open(n.walDir)
 	if err != nil {
-		return false, fmt.Errorf("failed to open WAL: %w", err)
+		return fmt.Errorf("failed to open WAL: %w", err)
 	}
 	n.snapshots, err = raft.NewFileSnapshotStore(n.config.Dir, int(n.config.SnapshotsRetain), os.Stderr)
 	if err != nil {
-		return false, fmt.Errorf("failed to open shapshot store: %w", err)
+		return fmt.Errorf("failed to open shapshot store: %w", err)
 	}
 	n.logStore = n.wal
 	n.logStore, _ = raft.NewLogCache(int(n.config.WALCacheEntries), n.logStore)
 	n.stableStore = n.wal
 	n.snapshotStore = n.snapshots
-	if hasState, err = raft.HasExistingState(n.logStore, n.stableStore, n.snapshotStore); err != nil {
-		return hasState, fmt.Errorf("failed to check for existing state: %w", err)
-	}
-	return hasState, nil
+	return nil
 }
 
 func (n *Node) createDirs() (err error) {
@@ -220,6 +225,10 @@ func (n *Node) Shutdown() {
 			level.Error(n.logger).Log("msg", "failed to close WAL", "err", err)
 		}
 	}
+}
+
+func (n *Node) ListSnapshots() ([]*raft.SnapshotMeta, error) {
+	return n.snapshots.List()
 }
 
 func (n *Node) Register(server *grpc.Server) {
@@ -277,43 +286,4 @@ func (n *Node) Propose(t fsm.RaftLogEntryType, m proto.Message) (resp proto.Mess
 		resp = r.Data
 	}
 	return resp, r.Err
-}
-
-func (n *Node) AppliedIndex() uint64 { return n.raft.AppliedIndex() }
-
-// ReadIndex implements the Read Index technique.
-// Please refer to the source Raft paper, paragraph 6.4. for details.
-// https://web.stanford.edu/~ouster/cgi-bin/papers/OngaroPhD.pdf.
-func (n *Node) ReadIndex() (uint64, error) {
-	// > If the leader has not yet marked an entry from its current term
-	// > committed, it waits until it has done so. The Leader Completeness
-	// > Property guarantees that a leader has all committed entries, but
-	// > at the start of its term, it may not know which those are. To find
-	// > out, it needs to commit an entry from its term. Raft handles this
-	// > by having each leader commit a blank no-op entry into the log at
-	// > the start of its term. As soon as this no-op entry is committed,
-	// > the leader’s commit index will be at least as large as any other
-	// > servers’ during its term.
-	//
-	// NOTE(kolesnikovae): CommitIndex always returns a valid commit index,
-	// even when no entries have been added in the current term.
-	// See the "runLeader" implementation (hashicorp raft) for details.
-	commitIndex := n.raft.CommitIndex()
-	// > The leader needs to make sure it has not been superseded by a newer
-	// > leader of which it is unaware. It issues a new round of heartbeats
-	// > and waits for their acknowledgments from a majority of the cluster.
-	// > Once these acknowledgments are received, the leader knows that there
-	// > could not have existed a leader for a greater term at the moment it
-	// > sent the heartbeats. Thus, the readIndex was, at the time, the
-	// > largest commit index ever seen by any server in the cluster.
-	err := n.raft.VerifyLeader().Error()
-	if err != nil {
-		// The error includes details about the actual leader the request
-		// should be directed to; the client should retry the operation.
-		return 0, WithRaftLeaderStatusDetails(err, n.raft)
-	}
-	// The commit index is up-to-date and the node is the leader: this is the
-	// lower bound of the state any query must operate against. This does not
-	// specify, however, that the upper bound (i.e. no snapshot isolation).
-	return commitIndex, nil
 }

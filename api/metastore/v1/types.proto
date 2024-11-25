@@ -4,6 +4,12 @@ package metastore.v1;
 
 import "types/v1/types.proto";
 
+message BlockList {
+  string tenant = 1;
+  uint32 shard = 2;
+  repeated string blocks = 3;
+}
+
 message BlockMeta {
   uint64 format_version = 1;
   string id = 2;

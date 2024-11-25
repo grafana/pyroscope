@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -28,7 +29,7 @@ import (
 //
 // A single Invoke request typically spans multiple blocks (objects).
 // Querying an object involves processing multiple datasets in parallel.
-// Multiple parallel queries can be executed on the same tenant datasets.
+// Multiple parallel queries can be executed on the same tenant dataset.
 //
 // Thus, queries share the same "execution context": the object and a tenant
 // dataset.
@@ -68,32 +69,41 @@ func (b *BlockReader) Invoke(
 ) (*queryv1.InvokeResponse, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "BlockReader.Invoke")
 	defer span.Finish()
-	vr, err := validateRequest(req)
+	r, err := validateRequest(req)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "request validation failed: %v", err)
 	}
+
 	g, ctx := errgroup.WithContext(ctx)
-	m := newAggregator(req)
+	agg := newAggregator(req)
+
+	qcs := make([]*queryContext, 0, len(req.Query)*len(req.QueryPlan.Root.Blocks))
 	for _, md := range req.QueryPlan.Root.Blocks {
-		obj := block.NewObject(b.storage, md)
-		for _, meta := range md.Datasets {
-			c := newQueryContext(ctx, b.log, meta, vr, obj)
-			for _, query := range req.Query {
-				q := query
-				g.Go(util.RecoverPanic(func() error {
-					r, err := executeQuery(c, q)
-					if err != nil {
-						return err
-					}
-					return m.aggregateReport(r)
-				}))
-			}
+		object := block.NewObject(b.storage, md)
+		for _, ds := range md.Datasets {
+			dataset := block.NewDataset(ds, object)
+			qcs = append(qcs, newQueryContext(ctx, b.log, r, agg, dataset))
 		}
 	}
+
+	for _, c := range qcs {
+		for _, query := range req.Query {
+			q := query
+			g.Go(util.RecoverPanic(func() error {
+				execErr := executeQuery(c, q)
+				if execErr != nil && objstore.IsNotExist(b.storage, execErr) {
+					level.Warn(b.log).Log("msg", "object not found", "err", execErr)
+					return nil
+				}
+				return execErr
+			}))
+		}
+	}
+
 	if err = g.Wait(); err != nil {
 		return nil, err
 	}
-	return m.response()
+	return agg.response()
 }
 
 type request struct {

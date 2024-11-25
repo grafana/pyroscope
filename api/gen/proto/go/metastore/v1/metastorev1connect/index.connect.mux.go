@@ -24,4 +24,9 @@ func RegisterIndexServiceHandler(mux *mux.Router, svc IndexServiceHandler, opts 
 		svc.AddBlock,
 		opts...,
 	))
+	mux.Handle("/metastore.v1.IndexService/GetBlockMetadata", connect.NewUnaryHandler(
+		"/metastore.v1.IndexService/GetBlockMetadata",
+		svc.GetBlockMetadata,
+		opts...,
+	))
 }

@@ -17,14 +17,14 @@ func Test_CompactBlocks(t *testing.T) {
 	ctx := context.Background()
 	bucket, _ := testutil.NewFilesystemBucket(t, ctx, "testdata")
 
-	var blockMetas metastorev1.CompletedJob // same contract, can break in the future
-	blockMetasData, err := os.ReadFile("testdata/block-metas.json")
+	var resp metastorev1.GetBlockMetadataResponse
+	raw, err := os.ReadFile("testdata/block-metas.json")
 	require.NoError(t, err)
-	err = protojson.Unmarshal(blockMetasData, &blockMetas)
+	err = protojson.Unmarshal(raw, &resp)
 	require.NoError(t, err)
 
 	dst, tempdir := testutil.NewFilesystemBucket(t, ctx, t.TempDir())
-	compactedBlocks, err := Compact(ctx, blockMetas.Blocks, bucket,
+	compactedBlocks, err := Compact(ctx, resp.Blocks, bucket,
 		WithCompactionDestination(dst),
 		WithCompactionTempDir(tempdir),
 		WithCompactionObjectOptions(

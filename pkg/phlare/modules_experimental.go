@@ -86,21 +86,20 @@ func (f *Phlare) initSegmentWriterClient() (_ services.Service, err error) {
 }
 
 func (f *Phlare) initCompactionWorker() (svc services.Service, err error) {
-	if err = f.Cfg.CompactionWorker.Validate(); err != nil {
-		return nil, err
-	}
 	logger := log.With(f.logger, "component", "compaction-worker")
-	f.compactionWorker, err = compactionworker.New(
-		f.Cfg.CompactionWorker,
+	registerer := prometheus.WrapRegistererWithPrefix("pyroscope_compaction_worker_", f.reg)
+	w, err := compactionworker.New(
 		logger,
+		f.Cfg.CompactionWorker,
 		f.metastoreClient,
 		f.storageBucket,
-		f.reg,
+		registerer,
 	)
 	if err != nil {
 		return nil, err
 	}
-	return f.compactionWorker, nil
+	f.compactionWorker = w
+	return w.Service(), nil
 }
 
 func (f *Phlare) initMetastore() (services.Service, error) {
@@ -110,10 +109,11 @@ func (f *Phlare) initMetastore() (services.Service, error) {
 
 	logger := log.With(f.logger, "component", "metastore")
 	healthService := health.NewGRPCHealthService(f.healthServer, logger, "pyroscope.metastore")
+	registerer := prometheus.WrapRegistererWithPrefix("pyroscope_metastore_", f.reg)
 	m, err := metastore.New(
 		f.Cfg.Metastore,
 		logger,
-		f.reg,
+		registerer,
 		healthService,
 		f.metastoreClient,
 		f.storageBucket,
