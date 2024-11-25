@@ -9,43 +9,27 @@ import (
 type statsCollector struct {
 	s *Scheduler
 
-	jobs       *prometheus.Desc
-	unassigned *prometheus.Desc
-	reassigned *prometheus.Desc
-	failed     *prometheus.Desc
-
 	addedTotal      *prometheus.Desc
 	completedTotal  *prometheus.Desc
 	assignedTotal   *prometheus.Desc
 	reassignedTotal *prometheus.Desc
+
+	// Gauge showing the job queue status breakdown.
+	jobs *prometheus.Desc
 }
 
 const schedulerQueueMetricsPrefix = "compaction_scheduler_queue_"
 
 func newStatsCollector(s *Scheduler) *statsCollector {
 	variableLabels := []string{"level"}
+	statusGaugeLabels := append(variableLabels, "status")
 	return &statsCollector{
 		s: s,
 
 		jobs: prometheus.NewDesc(
 			schedulerQueueMetricsPrefix+"jobs",
 			"The total number of jobs in the queue.",
-			variableLabels, nil,
-		),
-		unassigned: prometheus.NewDesc(
-			schedulerQueueMetricsPrefix+"unassigned_jobs",
-			"The total number of unassigned jobs in the queue.",
-			variableLabels, nil,
-		),
-		reassigned: prometheus.NewDesc(
-			schedulerQueueMetricsPrefix+"reassigned_jobs",
-			"The total number of reassigned jobs in the queue.",
-			variableLabels, nil,
-		),
-		failed: prometheus.NewDesc(
-			schedulerQueueMetricsPrefix+"failed_jobs",
-			"The total number of failed jobs in the queue.",
-			variableLabels, nil,
+			statusGaugeLabels, nil,
 		),
 
 		addedTotal: prometheus.NewDesc(
@@ -73,9 +57,6 @@ func newStatsCollector(s *Scheduler) *statsCollector {
 
 func (c *statsCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.jobs
-	ch <- c.unassigned
-	ch <- c.reassigned
-	ch <- c.failed
 	ch <- c.addedTotal
 	ch <- c.completedTotal
 	ch <- c.assignedTotal
@@ -95,7 +76,6 @@ func (c *statsCollector) collectMetrics() []prometheus.Metric {
 	metrics := make([]prometheus.Metric, 0, 8*len(c.s.queue.levels))
 	for i, q := range c.s.queue.levels {
 		var stats queueStats
-		stats.jobs = uint32(q.jobs.Len())
 		for _, e := range *q.jobs {
 			switch {
 			case e.Status == 0:
@@ -105,13 +85,13 @@ func (c *statsCollector) collectMetrics() []prometheus.Metric {
 			case e.Failures > 0:
 				stats.reassigned++
 			default:
-				// Assigned in-progress.
+				stats.assigned++
 			}
 		}
 
 		// Update stored gauges. Those are not used at the moment,
 		// but can help planning schedule updates in the future.
-		q.stats.jobs = stats.jobs
+		q.stats.assigned = stats.assigned
 		q.stats.unassigned = stats.unassigned
 		q.stats.reassigned = stats.reassigned
 		q.stats.failed = stats.failed
@@ -124,10 +104,10 @@ func (c *statsCollector) collectMetrics() []prometheus.Metric {
 
 		level := strconv.Itoa(i)
 		metrics = append(metrics,
-			prometheus.MustNewConstMetric(c.jobs, prometheus.GaugeValue, float64(stats.jobs), level),
-			prometheus.MustNewConstMetric(c.unassigned, prometheus.GaugeValue, float64(stats.unassigned), level),
-			prometheus.MustNewConstMetric(c.reassigned, prometheus.GaugeValue, float64(stats.reassigned), level),
-			prometheus.MustNewConstMetric(c.failed, prometheus.GaugeValue, float64(stats.failed), level),
+			prometheus.MustNewConstMetric(c.jobs, prometheus.GaugeValue, float64(stats.assigned), level, "assigned"),
+			prometheus.MustNewConstMetric(c.jobs, prometheus.GaugeValue, float64(stats.unassigned), level, "unassigned"),
+			prometheus.MustNewConstMetric(c.jobs, prometheus.GaugeValue, float64(stats.reassigned), level, "reassigned"),
+			prometheus.MustNewConstMetric(c.jobs, prometheus.GaugeValue, float64(stats.failed), level, "failed"),
 			prometheus.MustNewConstMetric(c.addedTotal, prometheus.CounterValue, float64(stats.addedTotal), level),
 			prometheus.MustNewConstMetric(c.completedTotal, prometheus.CounterValue, float64(stats.completedTotal), level),
 			prometheus.MustNewConstMetric(c.assignedTotal, prometheus.CounterValue, float64(stats.assignedTotal), level),

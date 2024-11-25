@@ -58,8 +58,9 @@ type stagedBlocks struct {
 	// Incomplete batch of blocks.
 	batch *batch
 	// Map of block IDs to their locations in batches.
-	refs  map[string]blockRef
-	stats *queueStats
+	refs      map[string]blockRef
+	stats     *queueStats
+	collector *queueStatsCollector
 	// Parent block queue maintains a priority queue of
 	// incomplete batches by the last update time.
 	heapIndex int
@@ -106,6 +107,14 @@ func newCompactionQueue(strategy Strategy, registerer prometheus.Registerer) *co
 }
 
 func (q *compactionQueue) reset() {
+	for _, level := range q.levels {
+		if level != nil {
+			for _, s := range level.staged {
+				level.removeStaged(s)
+			}
+		}
+	}
+	clear(q.levels)
 	q.levels = q.levels[:0]
 }
 
@@ -160,13 +169,18 @@ func (q *blockQueue) stagedBlocks(k compactionKey) *stagedBlocks {
 		staged.resetBatch()
 		q.staged[k] = staged
 		heap.Push(q.updates, staged)
-		collector := newQueueStatsCollector(staged)
-		util.RegisterOrGet(q.registerer, collector)
+		if q.registerer != nil {
+			staged.collector = newQueueStatsCollector(staged)
+			util.RegisterOrGet(q.registerer, staged.collector)
+		}
 	}
 	return staged
 }
 
 func (q *blockQueue) removeStaged(s *stagedBlocks) {
+	if s.collector != nil {
+		q.registerer.Unregister(s.collector)
+	}
 	delete(q.staged, s.key)
 	if s.heapIndex < 0 {
 		// We usually end up here since s has already been evicted

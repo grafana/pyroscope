@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -14,6 +15,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/services"
+	"github.com/oklog/ulid"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -217,6 +219,10 @@ func (w *Worker) collectUpdates() []*metastorev1.CompactionJobStatusUpdate {
 			updates = append(updates, update)
 
 		case done && job.compacted == nil:
+			// We're not sending a status update for the job and expect that the
+			// assigment is to be revoked. The job is to be removed at the next
+			// poll response handling: all jobs without assignments are canceled
+			// and removed.
 			level.Warn(w.logger).Log("msg", "skipping update for abandoned job", "job", job.Name)
 
 		default:
@@ -232,7 +238,21 @@ func (w *Worker) collectUpdates() []*metastorev1.CompactionJobStatusUpdate {
 func (w *Worker) cleanup(updates []*metastorev1.CompactionJobStatusUpdate) {
 	for _, update := range updates {
 		if job := w.jobs[update.Name]; job != nil && job.done.Load() {
-			w.remove(job)
+			switch update.Status {
+			case metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS:
+				// In the vast majority of cases, we end up here.
+				w.remove(job)
+
+			case metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS:
+				// It is possible that the job has been completed after we
+				// prepared the status update: keep the job for the next
+				// poll iteration.
+
+			default:
+				// Workers never send other statuses. It's unexpected to get here.
+				level.Warn(w.logger).Log("msg", "unexpected job status transition; removing the job", "job", job.Name)
+				w.remove(job)
+			}
 		}
 	}
 }
@@ -288,12 +308,12 @@ func (w *Worker) handleResponse(resp *metastorev1.PollCompactionJobsResponse) (n
 
 func (w *Worker) runCompaction(job *compactionJob) {
 	start := time.Now()
-	labels := []string{job.Tenant, fmt.Sprint(job.Shard), fmt.Sprint(job.CompactionLevel)}
-	statusName := "unknown"
+	labels := []string{job.Tenant, strconv.Itoa(int(job.CompactionLevel))}
+	statusName := "failure"
 	defer func() {
-		jobStatusLabel := append(labels, statusName)
-		w.metrics.jobDuration.WithLabelValues(jobStatusLabel...).Observe(time.Since(start).Seconds())
-		w.metrics.jobsCompleted.WithLabelValues(jobStatusLabel...).Inc()
+		labelsWithStatus := append(labels, statusName)
+		w.metrics.jobDuration.WithLabelValues(labelsWithStatus...).Observe(time.Since(start).Seconds())
+		w.metrics.jobsCompleted.WithLabelValues(labelsWithStatus...).Inc()
 		w.metrics.jobsInProgress.WithLabelValues(labels...).Dec()
 	}()
 
@@ -372,13 +392,15 @@ func (w *Worker) runCompaction(job *compactionJob) {
 			},
 		}
 
+		firstBlock := time.UnixMilli(int64(ulid.MustParse(job.blocks[0].Id).Time()))
+		w.metrics.timeToCompaction.WithLabelValues(labels...).Observe(time.Since(firstBlock).Seconds())
+
 	case errors.Is(err, context.Canceled):
 		level.Warn(logger).Log("msg", "job cancelled")
 		statusName = "cancelled"
 
 	default:
 		level.Error(logger).Log("msg", "failed to compact blocks", "err", err)
-		statusName = "failure"
 	}
 
 	// The only error returned by Wait is the context

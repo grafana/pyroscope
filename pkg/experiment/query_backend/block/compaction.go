@@ -10,7 +10,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/grafana/dskit/multierror"
 	"github.com/oklog/ulid"
@@ -107,21 +106,23 @@ func PlanCompaction(objects Objects) ([]*CompactionPlan, error) {
 	}
 
 	r := objects[0]
-	var c uint32
+	var level uint32
 	for _, obj := range objects {
 		if r.meta.Shard != obj.meta.Shard {
 			return nil, ErrShardMergeMismatch
 		}
-		c = max(c, obj.meta.CompactionLevel)
+		level = max(level, obj.meta.CompactionLevel)
 	}
-	c++
+	level++
 
+	// Assuming that the first block in the job is the oldest one.
+	timestamp := ulid.MustParse(r.meta.Id).Time()
 	m := make(map[string]*CompactionPlan)
 	for _, obj := range objects {
 		for _, s := range obj.meta.Datasets {
 			tm, ok := m[s.TenantId]
 			if !ok {
-				tm = newBlockCompaction(s.TenantId, r.meta.Shard, c)
+				tm = newBlockCompaction(timestamp, s.TenantId, r.meta.Shard, level)
 				m[s.TenantId] = tm
 			}
 			sm := tm.addDataset(s)
@@ -151,14 +152,14 @@ type CompactionPlan struct {
 	meta       *metastorev1.BlockMeta
 }
 
-func newBlockCompaction(tenantID string, shard uint32, compactionLevel uint32) *CompactionPlan {
+func newBlockCompaction(unixMilli uint64, tenantID string, shard uint32, compactionLevel uint32) *CompactionPlan {
 	return &CompactionPlan{
 		tenantID:   tenantID,
 		datasetMap: make(map[string]*datasetCompaction),
 		meta: &metastorev1.BlockMeta{
 			FormatVersion: 1,
 			// TODO(kolesnikovae): Make it deterministic?
-			Id:              ulid.MustNew(uint64(time.Now().UnixMilli()), rand.Reader).String(),
+			Id:              ulid.MustNew(unixMilli, rand.Reader).String(),
 			TenantId:        tenantID,
 			Shard:           shard,
 			CompactionLevel: compactionLevel,

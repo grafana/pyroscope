@@ -20,9 +20,9 @@ func newJobQueue() *schedulerQueue {
 }
 
 func (q *schedulerQueue) reset() {
-	q.levels = q.levels[:0]
 	clear(q.jobs)
-	q.resetStats()
+	clear(q.levels)
+	q.levels = q.levels[:0]
 }
 
 func (q *schedulerQueue) put(state *raft_log.CompactionJobState) {
@@ -63,7 +63,9 @@ func (q *schedulerQueue) level(x uint32) *jobQueue {
 
 func (q *schedulerQueue) resetStats() {
 	for _, level := range q.levels {
-		level.stats.reset()
+		if level != nil {
+			level.stats.reset()
+		}
 	}
 }
 
@@ -79,7 +81,7 @@ type queueStats struct {
 	assignedTotal   uint32
 	reassignedTotal uint32
 	// Gauges. Updated periodically.
-	jobs       uint32
+	assigned   uint32
 	unassigned uint32
 	reassigned uint32
 	failed     uint32
