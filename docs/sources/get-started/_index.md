@@ -104,5 +104,6 @@ Verify that you have installed [Docker](https://docs.docker.com/engine/install/)
 
   To learn more about adding data sources, refer to [Add a data source](/docs/grafana/<GRAFANA_VERSION>/datasources/add-a-data-source/).
 
-When you have completed the tasks in this getting started guide, you can query profiles in [Grafana Explore](/docs/grafana/<GRAFANA_VERSION>/explore/)
-and create dashboard panels using the newly configured Pyroscope data source. For more information on working with dashboards with Grafana, refer to [Panels and visualizations](/docs/grafana/<GRAFANA_VERSION>/panels-visualizations/) in the Grafana documentation.
+1. In a browser, go to [Explore Profiles](/docs/grafana/<GRAFANA_VERSION>/explore/simplified-exploration/profiles/) in your Grafana instance at [https://localhost:3000/a/grafana-pyroscope-app/profiles-explorer](https://localhost:3000/a/grafana-pyroscope-app/profiles-explorer). This will let you use an intuitive interface for exploring your profile data.
+
+When you have completed the tasks in this getting started guide, you can create dashboard panels using the newly configured Pyroscope data source. For more information on working with dashboards with Grafana, refer to [Panels and visualizations](/docs/grafana/<GRAFANA_VERSION>/panels-visualizations/) in the Grafana documentation.
