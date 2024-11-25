@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -18,7 +17,6 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
-	_ "go.uber.org/automaxprocs"
 	"golang.org/x/sync/errgroup"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -47,26 +45,21 @@ type Worker struct {
 }
 
 type Config struct {
-	JobConcurrency  int           `yaml:"job_capacity"`
-	JobPollInterval time.Duration `yaml:"job_poll_interval"`
-	SmallObjectSize int           `yaml:"small_object_size_bytes"`
-	TempDir         string        `yaml:"temp_dir"`
-	RequestTimeout  time.Duration `yaml:"request_timeout"`
+	JobConcurrency  util.ConcurrencyLimit `yaml:"job_capacity"`
+	JobPollInterval time.Duration         `yaml:"job_poll_interval"`
+	SmallObjectSize int                   `yaml:"small_object_size_bytes"`
+	TempDir         string                `yaml:"temp_dir"`
+	RequestTimeout  time.Duration         `yaml:"request_timeout"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	const prefix = "compaction-worker."
 	tempdir := filepath.Join(os.TempDir(), "pyroscope-compactor")
-	f.IntVar(&cfg.JobConcurrency, prefix+"job-concurrency", 1, "Number of concurrent jobs per core a compaction busy will run.")
+	f.TextVar(&cfg.JobConcurrency, prefix+"job-concurrency", util.GoMaxProcsConcurrencyLimit(), "Number of concurrent jobs compaction worker will run. Defaults to the number of CPU cores.")
 	f.DurationVar(&cfg.JobPollInterval, prefix+"job-poll-interval", 5*time.Second, "Interval between job requests")
 	f.DurationVar(&cfg.RequestTimeout, prefix+"request-timeout", 5*time.Second, "Job request timeout.")
 	f.IntVar(&cfg.SmallObjectSize, prefix+"small-object-size-bytes", 8<<20, "Size of the object that can be loaded in memory.")
 	f.StringVar(&cfg.TempDir, prefix+"temp-dir", tempdir, "Temporary directory for compaction jobs.")
-}
-
-func (cfg *Config) Validate() error {
-	// TODO(kolesnikovae): implement.
-	return nil
 }
 
 type compactionJob struct {
@@ -100,15 +93,10 @@ func New(
 		storage: storage,
 		metrics: newMetrics(reg),
 	}
-
-	w.threads = runtime.GOMAXPROCS(-1) * config.JobConcurrency
-	if w.threads < 1 {
-		w.threads = 1
-	}
+	w.threads = int(config.JobConcurrency)
 	w.queue = make(chan *compactionJob, 2*w.threads)
 	w.jobs = make(map[string]*compactionJob, 2*w.threads)
 	w.capacity.Store(int32(w.threads))
-
 	w.service = services.NewBasicService(w.starting, w.running, w.stopping)
 	return w, nil
 }

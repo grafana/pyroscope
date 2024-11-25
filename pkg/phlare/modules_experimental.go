@@ -86,9 +86,6 @@ func (f *Phlare) initSegmentWriterClient() (_ services.Service, err error) {
 }
 
 func (f *Phlare) initCompactionWorker() (svc services.Service, err error) {
-	if err = f.Cfg.CompactionWorker.Validate(); err != nil {
-		return nil, err
-	}
 	logger := log.With(f.logger, "component", "compaction-worker")
 	registerer := prometheus.WrapRegistererWithPrefix("pyroscope_compaction_worker_", f.reg)
 	w, err := compactionworker.New(
