@@ -115,8 +115,16 @@ func Flags(cfg flagext.Registerer, logger log.Logger) map[uintptr]*flag.Flag {
 			return
 		}
 
-		ptr := reflect.ValueOf(f.Value).Pointer()
-		flags[ptr] = f
+		val := reflect.ValueOf(f.Value)
+		if val.Kind() == reflect.Ptr || val.CanAddr() {
+			var addr uintptr
+			if val.Kind() != reflect.Ptr {
+				addr = val.UnsafeAddr()
+			} else {
+				addr = val.Pointer()
+			}
+			flags[addr] = f
+		}
 	})
 
 	return flags
