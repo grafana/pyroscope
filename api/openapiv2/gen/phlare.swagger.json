@@ -951,6 +951,17 @@
         }
       }
     },
+    "v1FunctionList": {
+      "type": "object",
+      "properties": {
+        "functions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "v1GetBlockStatsResponse": {
       "type": "object",
       "properties": {
@@ -1435,6 +1446,32 @@
         }
       }
     },
+    "v1MetricsQuery": {
+      "type": "object",
+      "properties": {
+        "functionsByServiceName": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/v1FunctionList"
+          }
+        }
+      }
+    },
+    "v1MetricsReport": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "$ref": "#/definitions/v1MetricsQuery"
+        },
+        "timeSeries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Series"
+          }
+        }
+      }
+    },
     "v1Point": {
       "type": "object",
       "properties": {
@@ -1568,7 +1605,10 @@
           "$ref": "#/definitions/v1TreeQuery"
         },
         "pprof": {
-          "$ref": "#/definitions/v1PprofQuery",
+          "$ref": "#/definitions/v1PprofQuery"
+        },
+        "metrics": {
+          "$ref": "#/definitions/v1MetricsQuery",
           "description": "function_details\n call_graph\n top_table\n ..."
         }
       }
@@ -1704,7 +1744,8 @@
         "QUERY_SERIES_LABELS",
         "QUERY_TIME_SERIES",
         "QUERY_TREE",
-        "QUERY_PPROF"
+        "QUERY_PPROF",
+        "QUERY_METRICS"
       ],
       "default": "QUERY_UNSPECIFIED"
     },
@@ -1769,6 +1810,9 @@
         },
         "pprof": {
           "$ref": "#/definitions/v1PprofReport"
+        },
+        "metrics": {
+          "$ref": "#/definitions/v1MetricsReport"
         }
       }
     },
@@ -1781,7 +1825,8 @@
         "REPORT_SERIES_LABELS",
         "REPORT_TIME_SERIES",
         "REPORT_TREE",
-        "REPORT_PPROF"
+        "REPORT_PPROF",
+        "REPORT_METRICS"
       ],
       "default": "REPORT_UNSPECIFIED"
     },

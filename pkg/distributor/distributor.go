@@ -9,7 +9,9 @@ import (
 	"fmt"
 	"hash/fnv"
 	"net/http"
+	slices2 "slices"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
 
@@ -341,10 +343,152 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		}
 	}
 
+	//var requestId = uuid.New()
 	if req.TotalProfiles == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("no profiles received"))
 	}
+	for _, series := range req.Series {
+		if series.Labels[7].Value != "ride-sharing-app" || series.Labels[5].Value != "ap-south" {
+			continue
+		}
+		if len(series.Samples) > 1 {
+			_ = level.Error(d.logger).Log("msg", "Multiple samples!!!!")
+			continue
+		}
+		var dict = series.Samples[0].Profile.Profile.StringTable
+		level.Info(d.logger).Log("msg", "New samples lets goooo")
+		var profile = series.Samples[0].Profile.Profile
+		for num, sample := range profile.Sample {
+			var stacktraces string
+			for _, locationId := range sample.LocationId {
+				var location = profile.Location[locationId-1]
+				var stacktrace string
+				for _, line := range location.Line {
+					var function = profile.Function[line.FunctionId-1]
+					stacktrace += dict[function.Name] + ", " + dict[function.Filename] + " (" + strconv.FormatInt(function.StartLine, 10) + ")\n"
+				}
+				stacktraces += stacktrace + "\n\n"
+			}
+			var labels []LabelPair
+			for _, label := range sample.Label {
+				labels = append(labels, LabelPair{
+					Name:  dict[label.Key],
+					Value: dict[label.Str],
+				})
+			}
 
+			var period = strconv.FormatInt(profile.Period, 10) + " " + dict[profile.PeriodType.Type] + " " + dict[profile.PeriodType.Unit]
+
+			var values string
+			for i, value := range sample.Value {
+				values += strconv.FormatInt(value, 10) + " " + dict[profile.SampleType[i].Unit] + " (" + dict[profile.SampleType[i].Type] + "), "
+			}
+			level.Info(d.logger).Log("msg", "",
+				"sample", num,
+				"labels", stringify(labels),
+				"stactrace", stacktraces,
+				"period", period,
+				"timeNanos", time.Unix(profile.TimeNanos/1000000000, 0),
+				"duration", profile.DurationNanos/1000000000.0,
+				"values", values,
+			)
+
+		}
+
+		// 8->9 (14) protobuf.go > varint
+		// 10->9 (27) protobuf.go > uint64
+		// 11->9 (60) protobuf.go > int64
+		// 12->9 (65) protobuf.go > int64Opt
+		// 13->14 (514) proto.go > emitLocation
+		// req.Series[0].Labels[7].Value == "ride-sharing-app"
+		// len(req.Series[0].Samples[0].Profile.Profile.Location[0].Line) > 2
+		//var seriesId = uuid.New()
+		/* req.Series[0].Samples[0].Profile.Period != 524288 && req.Series[0].Samples[0].Profile.Period != 10000000 && req.Series[0].Samples[0].Profile.Period != 1
+		           var found = false
+		   			for _, label := range series.Labels {
+		   				if label.Name == phlaremodel.LabelNameServiceName && label.Value == "ride-sharing-app" {
+		   					found = true
+		   				}
+		   			}
+		   			if !found {
+		   				continue
+		   			}
+		   			println("Request ---------------------------------------------------------------")*/
+		/*var globalLabels []LabelPair
+		  for _, label := range series.Labels {
+		  	globalLabels = append(globalLabels, LabelPair{
+		  		Name:  label.Name,
+		  		Value: label.Value,
+		  	})
+		  }
+		  slices2.SortFunc(globalLabels, func(a, b LabelPair) int {
+		  	if a.Name < b.Name {
+		  		return -1
+		  	} else if a.Name > b.Name {
+		  		return 1
+		  	}
+		  	return 0
+		  })
+		  for _, sample := range series.Samples {
+		  	for _, sample2 := range sample.Profile.Profile.Sample {
+		  		var labels []LabelPair
+		  		for _, label := range sample2.Label {
+		  			labelId := label.Key
+		  			labelValue := label.Str
+		  			labels = append(labels, LabelPair{
+		  				Name:  sample.Profile.Profile.StringTable[labelId],
+		  				Value: sample.Profile.Profile.StringTable[labelValue],
+		  			})
+		  		}
+
+		  		fmt.Print("requestId=", requestId, ", ", "seriesId=", seriesId, ", ")
+
+		  		for _, label := range globalLabels {
+		  			fmt.Print(label.Name, "=", label.Value, ", ")
+		  		}
+		  		slices2.SortFunc(labels, func(a, b LabelPair) int {
+		  			if a.Name < b.Name {
+		  				return -1
+		  			} else if a.Name > b.Name {
+		  				return 1
+		  			}
+		  			return 0
+		  		})
+		  		for _, label := range labels {
+		  			fmt.Print(label.Name, "=", label.Value, ", ")
+		  		}
+		  		fmt.Println()
+		  	}
+		  }*/
+
+		/*var found = false
+		  for _, label := range series.Labels {
+		  	if label.Name == phlaremodel.LabelNameServiceName && label.Value == "ride-sharing-app" {
+		  		found = true
+		  	}
+		  }
+		  if !found {
+		  	continue
+		  }
+		  vehicle := ""
+		  for _, label := range series.Labels {
+		  	if label.Name == "vehicle" {
+		  		vehicle = label.Value
+		  	}
+		  }
+		  if vehicle == "" {
+		  	continue
+		  }
+		  region := ""
+		  for _, label := range series.Labels {
+		  	if label.Name == "region" {
+		  		region = label.Value
+		  	}
+		  }*/
+		//fmt.Println(region, vehicle)
+		/*for b, sample := range series.Samples {
+		  }*/
+	}
 	// Normalisation is quite an expensive operation,
 	// therefore it should be done after the rate limit check.
 	for _, series := range req.Series {
@@ -378,6 +522,27 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		return nil, err
 	}
 	return connect.NewResponse(&pushv1.PushResponse{}), nil
+}
+
+func stringify(s []LabelPair) string {
+	slices2.SortFunc(s, func(a, b LabelPair) int {
+		if a.Name < b.Name {
+			return -1
+		} else if a.Name > b.Name {
+			return 1
+		}
+		return 0
+	})
+	var result string
+	for _, label := range s {
+		result += label.Name + "=" + label.Value + ", "
+	}
+	return result
+}
+
+type LabelPair struct {
+	Name  string
+	Value string
 }
 
 // If aggregation is configured for the tenant, we try to determine

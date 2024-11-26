@@ -83,6 +83,7 @@ message Query {
   TimeSeriesQuery time_series = 5;
   TreeQuery tree = 6;
   PprofQuery pprof = 7;
+  MetricsQuery metrics = 8;
   // function_details
   // call_graph
   // top_table
@@ -97,6 +98,7 @@ enum QueryType {
   QUERY_TIME_SERIES = 4;
   QUERY_TREE = 5;
   QUERY_PPROF = 6;
+  QUERY_METRICS = 7;
 }
 
 message InvokeResponse {
@@ -119,6 +121,7 @@ message Report {
   TimeSeriesReport time_series = 5;
   TreeReport tree = 6;
   PprofReport pprof = 7;
+  MetricsReport metrics = 8;
 }
 
 enum ReportType {
@@ -129,6 +132,7 @@ enum ReportType {
   REPORT_TIME_SERIES = 4;
   REPORT_TREE = 5;
   REPORT_PPROF = 6;
+  REPORT_METRICS = 7;
 }
 
 message LabelNamesQuery {}
@@ -185,4 +189,17 @@ message PprofQuery {
 message PprofReport {
   PprofQuery query = 1;
   bytes pprof = 2;
+}
+
+message MetricsQuery {
+  map<string, FunctionList> functionsByServiceName = 1;
+}
+
+message MetricsReport {
+  MetricsQuery query = 1;
+  repeated types.v1.Series time_series = 2;
+}
+
+message FunctionList {
+  repeated string functions = 1;
 }

@@ -17,12 +17,15 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	labels2 "github.com/prometheus/prometheus/model/labels"
+	_ "go.uber.org/automaxprocs"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/client"
+	"github.com/grafana/pyroscope/pkg/experiment/query_backend"
 	"github.com/grafana/pyroscope/pkg/experiment/query_backend/block"
 	"github.com/grafana/pyroscope/pkg/objstore"
-	_ "go.uber.org/automaxprocs"
 )
 
 type Worker struct {
@@ -41,6 +44,8 @@ type Worker struct {
 
 	queue chan *metastorev1.CompactionJob
 	wg    sync.WaitGroup
+
+	exporter *Exporter
 }
 
 type Config struct {
@@ -76,6 +81,7 @@ func New(config Config, logger log.Logger, metastoreClient *metastoreclient.Clie
 		completedJobs:   make(map[string]*metastorev1.CompactionJobStatus),
 		metrics:         newMetrics(reg),
 		queue:           make(chan *metastorev1.CompactionJob, workers),
+		exporter:        NewExporter(),
 	}
 	w.BasicService = services.NewBasicService(w.starting, w.running, w.stopping)
 	return w, nil
@@ -274,6 +280,10 @@ func (w *Worker) startJob(ctx context.Context, job *metastorev1.CompactionJob) *
 				"datasets", len(c.Datasets))
 		}
 
+		if job.CompactionLevel == 0 {
+			w.exportMetricsFromCompactedBlocks(ctx, compacted)
+		}
+
 		job.Status.Status = metastorev1.CompactionStatus_COMPACTION_STATUS_SUCCESS
 		job.Status.CompletedJob = &metastorev1.CompletedJob{Blocks: compacted}
 		statusName = "success"
@@ -290,6 +300,76 @@ func (w *Worker) startJob(ctx context.Context, job *metastorev1.CompactionJob) *
 	}
 
 	return job.Status
+}
+
+func (w *Worker) exportMetricsFromCompactedBlocks(ctx context.Context, compacted []*metastorev1.BlockMeta) {
+	functions := map[string]*queryv1.FunctionList{
+		// TODO:
+		// This must be richer. First, it should be split by tenant.
+		// Also, we could have functions associated to service_name
+		// while others are just collected generally no matter what
+		// service_name we handle
+		"pyroscope": {
+			Functions: []string{
+				"net/http.HandlerFunc.ServeHTTP",
+				"runtime.gcBgMarkWorker",
+			},
+		},
+		"ride-sharing-app": {
+			Functions: []string{
+				"net/http.HandlerFunc.ServeHTTP",
+				"runtime.gcBgMarkWorker",
+			},
+		},
+	}
+	for _, c := range compacted {
+		reader := query_backend.NewBlockReader(w.logger, w.storage)
+		var res, _ = reader.Invoke(ctx,
+			&queryv1.InvokeRequest{
+				Tenant:    []string{c.TenantId},
+				StartTime: c.MinTime,
+				EndTime:   c.MaxTime,
+				Query: []*queryv1.Query{{
+					QueryType: queryv1.QueryType_QUERY_METRICS,
+					Metrics: &queryv1.MetricsQuery{
+						FunctionsByServiceName: functions,
+					},
+				}},
+				QueryPlan: &queryv1.QueryPlan{
+					Root: &queryv1.QueryNode{
+						Blocks: []*metastorev1.BlockMeta{c},
+					},
+				},
+				LabelSelector: "{}",
+			},
+		)
+
+		// convert metrics into the expected export format
+		wr := WriteRequest{}
+		for _, series := range res.Reports[0].Metrics.GetTimeSeries() {
+			timeSeries := TimeSeries{}
+			for _, label := range series.Labels {
+				timeSeries.Labels = append(timeSeries.Labels, labels2.Label{
+					Name:  label.Name,
+					Value: label.Value,
+				})
+			}
+			for _, point := range series.Points {
+				timeSeries.Samples = append(timeSeries.Samples, Sample{
+					Value:     point.Value,
+					Timestamp: point.Timestamp,
+				})
+			}
+			wr.TimeSeries = append(wr.TimeSeries, timeSeries)
+		}
+		if len(wr.TimeSeries) > 0 {
+			go func() {
+				if sendErr := w.exporter.Send(context.Background(), &wr); sendErr != nil {
+					_ = w.logger.Log("msg", "failed to push metrics", "err", sendErr)
+				}
+			}()
+		}
+	}
 }
 
 func pretendEverythingIsOK(fn func() ([]*metastorev1.BlockMeta, error)) (m []*metastorev1.BlockMeta, err error) {

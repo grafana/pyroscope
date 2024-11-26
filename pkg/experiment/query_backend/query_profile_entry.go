@@ -18,6 +18,7 @@ func profileEntryIterator(q *queryContext, groupBy ...string) (iter.Iterator[Pro
 	if err != nil {
 		return nil, err
 	}
+	// eliminar series per tal de mirar totes?
 	results := parquetquery.NewBinaryJoinIterator(0,
 		q.ds.Profiles().Column(q.ctx, "SeriesIndex", parquetquery.NewMapPredicate(series)),
 		q.ds.Profiles().Column(q.ctx, "TimeNanos", parquetquery.NewIntBetweenPredicate(q.req.startTime, q.req.endTime)),
@@ -72,7 +73,12 @@ func getSeriesLabels(reader phlaredb.IndexReader, matchers []*labels.Matcher, by
 	series := make(map[uint32]seriesLabels)
 	l := make(phlaremodel.Labels, 0, 6)
 	for postings.Next() {
-		fp, err := reader.SeriesBy(postings.At(), &l, &chunks, by...)
+		var fp uint64
+		if len(by) == 0 {
+			fp, err = reader.Series(postings.At(), &l, &chunks)
+		} else {
+			fp, err = reader.SeriesBy(postings.At(), &l, &chunks, by...)
+		}
 		if err != nil {
 			return nil, err
 		}
