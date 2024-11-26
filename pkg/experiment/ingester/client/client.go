@@ -13,8 +13,6 @@ import (
 	"github.com/grafana/dskit/ring"
 	ring_client "github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
-	otgrpc "github.com/opentracing-contrib/go-grpc"
-	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sony/gobreaker/v2"
@@ -289,10 +287,7 @@ func newConnPool(
 
 	// The options (including interceptors) are shared by all client connections.
 	options = append(options, dialOpts...)
-	options = append(options,
-		grpc.WithUnaryInterceptor(otgrpc.OpenTracingClientInterceptor(opentracing.GlobalTracer())),
-		grpc.WithDefaultServiceConfig(grpcServiceConfig),
-	)
+	options = append(options, grpc.WithDefaultServiceConfig(grpcServiceConfig))
 
 	// Note that circuit breaker must be created per client conn.
 	factory := connpool.NewConnPoolFactory(func(desc ring.InstanceDesc) []grpc.DialOption {
@@ -304,8 +299,8 @@ func newConnPool(
 		"segment-writer",
 		ring_client.PoolConfig{
 			CheckInterval: poolCleanupPeriod,
-			// Note that no health checks are not used:
-			// gGRPC health-checking is done at the gRPC connection level.
+			// Note that health checks are not used: gGRPC health-checking
+			// is done at the gRPC connection level.
 			HealthCheckEnabled:        false,
 			HealthCheckTimeout:        0,
 			MaxConcurrentHealthChecks: 0,
