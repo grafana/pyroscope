@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 	"unicode"
+	"unsafe"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/flagext"
@@ -116,10 +117,14 @@ func Flags(cfg flagext.Registerer, logger log.Logger) map[uintptr]*flag.Flag {
 		}
 
 		val := reflect.ValueOf(f.Value)
-		if val.CanAddr() {
-			flags[val.UnsafeAddr()] = f
-		} else if val.Kind() == reflect.Ptr {
+		if val.Kind() == reflect.Ptr {
 			flags[val.Pointer()] = f
+		} else if val.CanAddr() {
+			flags[val.UnsafeAddr()] = f
+		} else if val.CanInterface() {
+			flags[uintptr(unsafe.Pointer(&f.Value))] = f
+		} else {
+			panic("cannot get pointer to flag value")
 		}
 	})
 
