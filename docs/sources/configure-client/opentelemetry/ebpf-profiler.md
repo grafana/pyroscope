@@ -5,7 +5,7 @@ description: Pyroscope's experimental support for OpenTelemetry profiles
 weight: 10
 ---
 
-# OpenTelemetry Profiles Support (Experimental)
+# OpenTelemetry profiles support (experimental)
 
 Pyroscope now includes experimental support for receiving and visualizing profiles from OpenTelemetry sources. This integration allows you to:
 
