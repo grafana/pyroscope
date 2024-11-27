@@ -70,6 +70,7 @@ var _ = Describe("ValidateAppName", func() {
 
 		testCases := []testCase{
 			{"foo.BAR-1.2_baz_qux", nil},
+			{"namespace/service", nil},
 
 			{"", ErrAppNameIsRequired},
 			{"#", ErrInvalidAppName},
