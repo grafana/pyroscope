@@ -5,8 +5,6 @@ import (
 
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/services"
-	"github.com/opentracing-contrib/go-grpc"
-	"github.com/opentracing/opentracing-go"
 	"google.golang.org/grpc"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
@@ -35,7 +33,6 @@ func dial(address string, grpcClientConfig grpcclient.Config) (*grpc.ClientConn,
 	}
 	// TODO: https://github.com/grpc/grpc-proto/blob/master/grpc/service_config/service_config.proto
 	options = append(options,
-		grpc.WithUnaryInterceptor(otgrpc.OpenTracingClientInterceptor(opentracing.GlobalTracer())),
 		grpc.WithDefaultServiceConfig(grpcServiceConfig),
 		grpc.WithMaxCallAttempts(500),
 	)

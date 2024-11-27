@@ -11,8 +11,6 @@ import (
 	"github.com/grafana/dskit/services"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/raft"
-	otgrpc "github.com/opentracing-contrib/go-grpc"
-	"github.com/opentracing/opentracing-go"
 	"google.golang.org/grpc"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -165,10 +163,7 @@ func dial(address string, grpcClientConfig grpcclient.Config, _ log.Logger) (*gr
 		return nil, err
 	}
 	// TODO: https://github.com/grpc/grpc-proto/blob/master/grpc/service_config/service_config.proto
-	options = append(options,
-		grpc.WithDefaultServiceConfig(grpcServiceConfig),
-		grpc.WithUnaryInterceptor(otgrpc.OpenTracingClientInterceptor(opentracing.GlobalTracer())),
-	)
+	options = append(options, grpc.WithDefaultServiceConfig(grpcServiceConfig))
 	return grpc.Dial(address, options...)
 }
 
