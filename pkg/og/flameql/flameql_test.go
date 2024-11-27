@@ -44,6 +44,7 @@ var _ = Describe("ValidateTagKey", func() {
 		testCases := []testCase{
 			{"foo_BAR_12_baz_qux", nil},
 			{"service.namespace", nil},
+			{"namespace/service", nil},
 
 			{ReservedTagKeyName, ErrTagKeyReserved},
 			{"", ErrTagKeyIsRequired},
