@@ -13,6 +13,20 @@ import (
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 )
 
+// As we expect rows to be very small, we want to fetch a bigger
+// batch of rows at once to amortize the latency of reading.
+const bigBatchSize = 2 << 10
+
+type ProfileEntry struct {
+	RowNum      int64
+	Timestamp   model.Time
+	Fingerprint model.Fingerprint
+	Labels      phlaremodel.Labels
+	Partition   uint64
+}
+
+func (e ProfileEntry) RowNumber() int64 { return e.RowNum }
+
 func profileEntryIterator(q *queryContext, groupBy ...string) (iter.Iterator[ProfileEntry], error) {
 	series, err := getSeriesLabels(q.ds.Index(), q.req.matchers, groupBy...)
 	if err != nil {
@@ -28,7 +42,7 @@ func profileEntryIterator(q *queryContext, groupBy ...string) (iter.Iterator[Pro
 
 	buf := make([][]parquet.Value, 3)
 	entries := iter.NewAsyncBatchIterator[*parquetquery.IteratorResult, ProfileEntry](
-		results, 128,
+		results, bigBatchSize,
 		func(r *parquetquery.IteratorResult) ProfileEntry {
 			buf = r.Columns(buf,
 				schemav1.SeriesIndexColumnName,
@@ -47,16 +61,6 @@ func profileEntryIterator(q *queryContext, groupBy ...string) (iter.Iterator[Pro
 	)
 	return entries, nil
 }
-
-type ProfileEntry struct {
-	RowNum      int64
-	Timestamp   model.Time
-	Fingerprint model.Fingerprint
-	Labels      phlaremodel.Labels
-	Partition   uint64
-}
-
-func (e ProfileEntry) RowNumber() int64 { return e.RowNum }
 
 type seriesLabels struct {
 	fingerprint model.Fingerprint

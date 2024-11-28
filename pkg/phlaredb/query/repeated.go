@@ -38,6 +38,19 @@ const (
 	//
 	// How many values we expect per a row, the upper boundary?
 	repeatedRowColumnIteratorReadSize = 2 << 10
+
+	// Batch size specifies how many rows to read from a column at once.
+	// Note that the batched rows are buffered in-memory but do not reference
+	// the pages from which they were read.
+	//
+	// The default value is extremely conservative, as in most cases, rows are
+	// quite large (e.g., profile samples). Given that we run many queries
+	// concurrently, the memory waste outweighs the benefits of the "read-ahead"
+	// optimization that batching is intended to provide.
+	//
+	// However, in cases where the rows are small (such as in time series),
+	// the value should be increased significantly.
+	defaultBatchSize = 4
 )
 
 func NewRepeatedRowIterator[T any](
@@ -46,16 +59,22 @@ func NewRepeatedRowIterator[T any](
 	rowGroups []parquet.RowGroup,
 	columns ...int,
 ) iter.Iterator[RepeatedRow[T]] {
+	return NewRepeatedRowIteratorBatchSize(ctx, rows, rowGroups, defaultBatchSize, columns...)
+}
+
+func NewRepeatedRowIteratorBatchSize[T any](
+	ctx context.Context,
+	rows iter.Iterator[T],
+	rowGroups []parquet.RowGroup,
+	batchSize int64,
+	columns ...int,
+) iter.Iterator[RepeatedRow[T]] {
 	rows, rowNumbers := iter.Tee(rows)
 	return &repeatedRowIterator[T]{
 		rows: rows,
 		columns: NewMultiColumnIterator(ctx,
 			WrapWithRowNumber(rowNumbers),
-			// Batch size specifies how many rows to be read
-			// from a column at once. Note that the batched rows
-			// are buffered in-memory, but not reference pages
-			// they were read from.
-			4,
+			int(batchSize),
 			rowGroups,
 			columns...,
 		),
