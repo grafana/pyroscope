@@ -408,12 +408,8 @@ github.com/grafana/alloy/syntax v0.1.0 h1:+1xQakvQPH6N0y9+q2Fu5QePyzrve6i1wMNuXd
 github.com/grafana/alloy/syntax v0.1.0/go.mod h1:8H9ToCc1M8F6A+je4rIH6saIe1MUCmjSk+Uje+LNLEo=
 github.com/grafana/dskit v0.0.0-20231221015914-de83901bf4d6 h1:Z78JZ7pa6InQ5BcMB27M+NMTZ7LV+MXgOd3dZPfEdG4=
 github.com/grafana/dskit v0.0.0-20231221015914-de83901bf4d6/go.mod h1:kkWM4WUV230bNG3urVRWPBnSJHs64y/0RmWjftnnn0c=
-github.com/grafana/jfr-parser v0.8.1-0.20240228024232-8abcb81c304c h1:vNY68kvB3UYSeh7zHehOpfqk6CCpLYmuYKnF53GTpSk=
-github.com/grafana/jfr-parser v0.8.1-0.20240228024232-8abcb81c304c/go.mod h1:M5u1ux34Qo47ZBWksbMYVk40s7dvU3WMVYpxweEu4R0=
 github.com/grafana/jfr-parser v0.9.2-0.20241016061537-a8d22a1cd731 h1:6DSw297/vhUX0jtu4wPv4afpp6kul2go5yIbeV9utIQ=
 github.com/grafana/jfr-parser v0.9.2-0.20241016061537-a8d22a1cd731/go.mod h1:KYbwbvXtBoOsYw9b9w8R01dbM5oVfopljq3hA1WDJMQ=
-github.com/grafana/jfr-parser/pprof v0.0.0-20240228024232-8abcb81c304c h1:tGu1DTlK+gbYR/uBUcRhT2OZB1dSauxamLtDuSUj7AQ=
-github.com/grafana/jfr-parser/pprof v0.0.0-20240228024232-8abcb81c304c/go.mod h1:P5406BrWxjahTzVF6aCSumNI1KPlZJc0zO0v+zKZ4gc=
 github.com/grafana/jfr-parser/pprof v0.0.4-0.20241016061537-a8d22a1cd731 h1:fx47/oN2tsCwl6bd+RJapCH+57p+jiO+dOp71qhyLdc=
 github.com/grafana/jfr-parser/pprof v0.0.4-0.20241016061537-a8d22a1cd731/go.mod h1:MccKegViSw2NsyXNww1yuIcaQlw6LxP/DT0CHlsfRgw=
 github.com/grafana/memberlist v0.3.1-0.20220708130638-bd88e10a3d91 h1:/NipyHnOmvRsVzj81j2qE0VxsvsqhOB0f4vJIhk2qCQ=
