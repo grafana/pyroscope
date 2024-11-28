@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction/compactor/store"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction"
 )
 
 func BenchmarkCompactionQueue_Push(b *testing.B) {
@@ -42,7 +42,7 @@ func BenchmarkCompactionQueue_Push(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		for j, key := range keys {
-			q.push(store.BlockEntry{
+			q.push(compaction.BlockEntry{
 				Index:      uint64(j),
 				AppendedAt: writes[j],
 				ID:         strconv.Itoa(j),

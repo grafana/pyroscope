@@ -58,7 +58,7 @@ func WithDatasetMaxSizeLoadInMemory(size int) DatasetOption {
 func (s *Dataset) Open(ctx context.Context, sections ...Section) error {
 	return s.refs.IncErr(func() error {
 		if err := s.open(ctx, sections...); err != nil {
-			return fmt.Errorf("%w (%s)", err, s.obj.meta.Id)
+			return fmt.Errorf("%w (%s)", err, ID(s.obj.meta))
 		}
 		return nil
 	})

@@ -2,7 +2,6 @@ package block
 
 import (
 	"context"
-	"crypto/rand"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,7 +11,6 @@ import (
 	"sync"
 
 	"github.com/grafana/dskit/multierror"
-	"github.com/oklog/ulid"
 	"github.com/parquet-go/parquet-go"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/storage"
@@ -115,18 +113,17 @@ func PlanCompaction(objects Objects) ([]*CompactionPlan, error) {
 	}
 	level++
 
-	// Assuming that the first block in the job is the oldest one.
-	timestamp := ulid.MustParse(r.meta.Id).Time()
+	g := NewULIDGenerator(objects)
 	m := make(map[string]*CompactionPlan)
 	for _, obj := range objects {
 		for _, s := range obj.meta.Datasets {
-			tm, ok := m[s.TenantId]
+			tm, ok := m[obj.meta.StringTable[s.Tenant]]
 			if !ok {
-				tm = newBlockCompaction(timestamp, s.TenantId, r.meta.Shard, level)
-				m[s.TenantId] = tm
+				tm = newBlockCompaction(g.ULID().String(), obj.meta.StringTable[s.Tenant], r.meta.Shard, level)
+				m[obj.meta.StringTable[s.Tenant]] = tm
 			}
-			sm := tm.addDataset(s)
 			// Bind objects to datasets.
+			sm := tm.addDataset(obj.meta, s)
 			sm.append(NewDataset(s, obj))
 		}
 	}
@@ -135,44 +132,49 @@ func PlanCompaction(objects Objects) ([]*CompactionPlan, error) {
 	for _, tm := range m {
 		ordered = append(ordered, tm)
 		slices.SortFunc(tm.datasets, func(a, b *datasetCompaction) int {
-			return strings.Compare(a.meta.Name, b.meta.Name)
+			return strings.Compare(a.name, b.name)
 		})
 	}
 	slices.SortFunc(ordered, func(a, b *CompactionPlan) int {
-		return strings.Compare(a.tenantID, b.tenantID)
+		return strings.Compare(a.tenant, b.tenant)
 	})
 
 	return ordered, nil
 }
 
 type CompactionPlan struct {
-	tenantID   string
-	datasetMap map[string]*datasetCompaction
+	tenant     string
+	path       string
+	datasetMap map[int32]*datasetCompaction
 	datasets   []*datasetCompaction
 	meta       *metastorev1.BlockMeta
+	strings    *StringTable
 }
 
-func newBlockCompaction(unixMilli uint64, tenantID string, shard uint32, compactionLevel uint32) *CompactionPlan {
-	return &CompactionPlan{
-		tenantID:   tenantID,
-		datasetMap: make(map[string]*datasetCompaction),
-		meta: &metastorev1.BlockMeta{
-			FormatVersion: 1,
-			// TODO(kolesnikovae): Make it deterministic?
-			Id:              ulid.MustNew(unixMilli, rand.Reader).String(),
-			TenantId:        tenantID,
-			Shard:           shard,
-			CompactionLevel: compactionLevel,
-			Datasets:        nil,
-			MinTime:         0,
-			MaxTime:         0,
-			Size:            0,
-		},
+func newBlockCompaction(
+	id string,
+	tenant string,
+	shard uint32,
+	compactionLevel uint32,
+) *CompactionPlan {
+	p := &CompactionPlan{
+		tenant:     tenant,
+		datasetMap: make(map[int32]*datasetCompaction),
+		strings:    NewStringTable(),
 	}
+	p.path = BuildObjectPath(tenant, shard, compactionLevel, id)
+	p.meta = &metastorev1.BlockMeta{
+		FormatVersion:   1,
+		Id:              p.strings.Put(id),
+		Tenant:          p.strings.Put(tenant),
+		Shard:           shard,
+		CompactionLevel: compactionLevel,
+	}
+	return p
 }
 
 func (b *CompactionPlan) Compact(ctx context.Context, dst objstore.Bucket, tmpdir string) (m *metastorev1.BlockMeta, err error) {
-	w := NewBlockWriter(dst, ObjectPath(b.meta), tmpdir)
+	w := NewBlockWriter(dst, b.path, tmpdir)
 	defer func() {
 		err = multierror.New(err, w.Close()).Err()
 	}()
@@ -187,14 +189,17 @@ func (b *CompactionPlan) Compact(ctx context.Context, dst objstore.Bucket, tmpdi
 		return nil, fmt.Errorf("flushing block writer: %w", err)
 	}
 	b.meta.Size = w.Offset()
+	b.meta.StringTable = b.strings.Strings
 	return b.meta, nil
 }
 
-func (b *CompactionPlan) addDataset(s *metastorev1.Dataset) *datasetCompaction {
-	sm, ok := b.datasetMap[s.Name]
+func (b *CompactionPlan) addDataset(md *metastorev1.BlockMeta, s *metastorev1.Dataset) *datasetCompaction {
+	name := b.strings.Put(md.StringTable[s.Name])
+	tenant := b.strings.Put(md.StringTable[s.Tenant])
+	sm, ok := b.datasetMap[name]
 	if !ok {
-		sm = newDatasetCompaction(s.TenantId, s.Name)
-		b.datasetMap[s.Name] = sm
+		sm = b.newDatasetCompaction(tenant, name)
+		b.datasetMap[name] = sm
 		b.datasets = append(b.datasets, sm)
 	}
 	if b.meta.MinTime == 0 || s.MinTime < b.meta.MinTime {
@@ -207,8 +212,12 @@ func (b *CompactionPlan) addDataset(s *metastorev1.Dataset) *datasetCompaction {
 }
 
 type datasetCompaction struct {
+	// Dataset name.
+	name   string
+	parent *CompactionPlan
+
 	meta   *metastorev1.Dataset
-	ptypes map[string]struct{}
+	ptypes map[int32]struct{}
 	path   string // Set at open.
 
 	datasets []*Dataset
@@ -224,12 +233,14 @@ type datasetCompaction struct {
 	flushOnce sync.Once
 }
 
-func newDatasetCompaction(tenantID, name string) *datasetCompaction {
+func (b *CompactionPlan) newDatasetCompaction(tenant, name int32) *datasetCompaction {
 	return &datasetCompaction{
-		ptypes: make(map[string]struct{}, 10),
+		name:   b.strings.Strings[name],
+		parent: b,
+		ptypes: make(map[int32]struct{}, 10),
 		meta: &metastorev1.Dataset{
-			TenantId: tenantID,
-			Name:     name,
+			Tenant: tenant,
+			Name:   name,
 			// Updated at append.
 			MinTime: 0,
 			MaxTime: 0,
@@ -250,7 +261,8 @@ func (m *datasetCompaction) append(s *Dataset) {
 		m.meta.MaxTime = s.meta.MaxTime
 	}
 	for _, pt := range s.meta.ProfileTypes {
-		m.ptypes[pt] = struct{}{}
+		ptn := m.parent.strings.Put(s.obj.meta.StringTable[pt])
+		m.ptypes[ptn] = struct{}{}
 	}
 }
 
@@ -388,11 +400,10 @@ func (m *datasetCompaction) writeTo(w *Writer) (err error) {
 		return err
 	}
 	m.meta.Size = w.Offset() - off
-	m.meta.ProfileTypes = make([]string, 0, len(m.ptypes))
+	m.meta.ProfileTypes = make([]int32, 0, len(m.ptypes))
 	for pt := range m.ptypes {
 		m.meta.ProfileTypes = append(m.meta.ProfileTypes, pt)
 	}
-	sort.Strings(m.meta.ProfileTypes)
 	return nil
 }
 

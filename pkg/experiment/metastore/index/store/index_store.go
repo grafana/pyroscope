@@ -20,6 +20,13 @@ var (
 	emptyTenantBucketNameBytes = []byte(emptyTenantBucketName)
 )
 
+type PartitionBlocks struct {
+	Tenant  string
+	Shard   uint32
+	Blocks  []*metastorev1.BlockMeta
+	Strings []string
+}
+
 type IndexStore struct{}
 
 func NewIndexStore() *IndexStore {
@@ -36,7 +43,7 @@ func (m *IndexStore) CreateBuckets(tx *bbolt.Tx) error {
 }
 
 func (m *IndexStore) StoreBlock(tx *bbolt.Tx, pk PartitionKey, b *metastorev1.BlockMeta) error {
-	key := []byte(b.Id)
+	key := []byte(b.StringTable[b.Id])
 	value, err := b.MarshalVT()
 	if err != nil {
 		return err
@@ -53,13 +60,13 @@ func (m *IndexStore) StoreBlock(tx *bbolt.Tx, pk PartitionKey, b *metastorev1.Bl
 		return fmt.Errorf("error creating shard bucket for partiton %s and shard %d: %w", pk, b.Shard, err)
 	}
 
-	tenantBktName := []byte(b.TenantId)
+	tenantBktName := []byte(b.StringTable[b.Tenant])
 	if len(tenantBktName) == 0 {
 		tenantBktName = emptyTenantBucketNameBytes
 	}
 	tenantBkt, err := getOrCreateSubBucket(shardBkt, tenantBktName)
 	if err != nil {
-		return fmt.Errorf("error creating tenant bucket for partition %s, shard %d and tenant %s: %w", pk, b.Shard, b.TenantId, err)
+		return err
 	}
 
 	return tenantBkt.Put(key, value)

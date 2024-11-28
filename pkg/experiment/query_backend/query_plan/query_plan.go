@@ -7,6 +7,7 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/block"
 )
 
 // Build creates a query plan from the list of block metadata.
@@ -88,8 +89,8 @@ func printPlan(w io.Writer, pad string, n *queryv1.QueryNode, debug bool) {
 		}
 
 	case queryv1.QueryNode_READ:
-		for _, block := range n.Blocks {
-			_, _ = fmt.Fprintf(w, pad+"\t"+"id:\"%s\"\n", block.Id)
+		for _, md := range n.Blocks {
+			_, _ = fmt.Fprintf(w, pad+"\t"+"id:\"%s\"\n", block.ID(md))
 		}
 
 	default:

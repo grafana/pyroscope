@@ -21,8 +21,8 @@ import (
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/block"
 	"github.com/grafana/pyroscope/pkg/experiment/ingester/memdb"
-	segmentstorage "github.com/grafana/pyroscope/pkg/experiment/ingester/storage"
 	"github.com/grafana/pyroscope/pkg/model"
 	pprofsplit "github.com/grafana/pyroscope/pkg/model/pprof_split"
 	pprofmodel "github.com/grafana/pyroscope/pkg/pprof"
@@ -238,17 +238,19 @@ func (s *segment) flush(ctx context.Context) (err error) {
 func (s *segment) flushBlock(heads []flushedServiceHead) ([]byte, *metastorev1.BlockMeta, error) {
 	t1 := time.Now()
 	hostname, _ := os.Hostname()
+
+	stringTable := block.NewStringTable()
 	meta := &metastorev1.BlockMeta{
 		FormatVersion:   1,
-		Id:              s.ulid.String(),
-		MinTime:         0,
-		MaxTime:         0,
+		Id:              stringTable.Put(s.ulid.String()),
+		Tenant:          0,
 		Shard:           uint32(s.shard),
 		CompactionLevel: 0,
-		TenantId:        "",
-		Datasets:        make([]*metastorev1.Dataset, 0, len(heads)),
+		CreatedBy:       stringTable.Put(hostname),
+		MinTime:         0,
+		MaxTime:         0,
 		Size:            0,
-		CreatedBy:       hostname,
+		Datasets:        make([]*metastorev1.Dataset, 0, len(heads)),
 	}
 
 	blockFile := bytes.NewBuffer(nil)
@@ -256,7 +258,7 @@ func (s *segment) flushBlock(heads []flushedServiceHead) ([]byte, *metastorev1.B
 	w := withWriterOffset(blockFile)
 
 	for i, e := range heads {
-		svc, err := concatSegmentHead(e, w)
+		svc, err := concatSegmentHead(e, w, stringTable)
 		if err != nil {
 			_ = level.Error(s.logger).Log("msg", "failed to concat segment head", "err", err)
 			continue
@@ -272,12 +274,13 @@ func (s *segment) flushBlock(heads []flushedServiceHead) ([]byte, *metastorev1.B
 		meta.Datasets = append(meta.Datasets, svc)
 	}
 
+	meta.StringTable = stringTable.Strings
 	meta.Size = uint64(w.offset)
 	s.debuginfo.flushBlockDuration = time.Since(t1)
 	return blockFile.Bytes(), meta, nil
 }
 
-func concatSegmentHead(e flushedServiceHead, w *writerOffset) (*metastorev1.Dataset, error) {
+func concatSegmentHead(e flushedServiceHead, w *writerOffset, s *block.StringTable) (*metastorev1.Dataset, error) {
 	tenantServiceOffset := w.offset
 
 	ptypes := e.head.Meta.ProfileTypeNames
@@ -296,17 +299,21 @@ func concatSegmentHead(e flushedServiceHead, w *writerOffset) (*metastorev1.Data
 	tenantServiceSize := w.offset - tenantServiceOffset
 
 	svc := &metastorev1.Dataset{
-		TenantId: e.key.tenant,
-		Name:     e.key.service,
-		MinTime:  e.head.Meta.MinTimeNanos / 1e6,
-		MaxTime:  e.head.Meta.MaxTimeNanos / 1e6,
-		Size:     uint64(tenantServiceSize),
+		Tenant:  s.Put(e.key.tenant),
+		Name:    s.Put(e.key.service),
+		MinTime: e.head.Meta.MinTimeNanos / 1e6,
+		MaxTime: e.head.Meta.MaxTimeNanos / 1e6,
+		Size:    uint64(tenantServiceSize),
 		//  - 0: profiles.parquet
 		//  - 1: index.tsdb
 		//  - 2: symbols.symdb
 		TableOfContents: offsets,
-		ProfileTypes:    ptypes,
+		ProfileTypes:    make([]int32, len(ptypes)),
 	}
+	for i, p := range ptypes {
+		svc.ProfileTypes[i] = s.Put(p)
+	}
+
 	return svc, nil
 }
 
@@ -512,7 +519,7 @@ func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockData []byte, met
 	}()
 	sw.metrics.segmentBlockSizeBytes.WithLabelValues(s.sshard).Observe(float64(len(blockData)))
 
-	blockPath := segmentstorage.PathForSegment(meta)
+	blockPath := block.ObjectPath(meta)
 
 	if err := sw.bucket.Upload(ctx, blockPath, bytes.NewReader(blockData)); err != nil {
 		return err
@@ -540,7 +547,7 @@ func (sw *segmentsWriter) storeMetaDLQ(ctx context.Context, meta *metastorev1.Bl
 		sw.metrics.storeMetaDLQ.WithLabelValues(s.sshard, "err").Inc()
 		return err
 	}
-	fullPath := segmentstorage.PathForDLQ(meta)
+	fullPath := block.MetadataDLQObjectPath(meta)
 	if err = sw.bucket.Upload(ctx, fullPath, bytes.NewReader(metaBlob)); err != nil {
 		sw.metrics.storeMetaDLQ.WithLabelValues(s.sshard, "err").Inc()
 		return fmt.Errorf("%w, %w", ErrMetastoreDLQFailed, err)

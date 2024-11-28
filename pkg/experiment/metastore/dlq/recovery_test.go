@@ -2,12 +2,10 @@ package dlq
 
 import (
 	"context"
-	"crypto/rand"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/oklog/ulid"
 	"github.com/prometheus/prometheus/util/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -16,7 +14,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	segmentstorage "github.com/grafana/pyroscope/pkg/experiment/ingester/storage"
+	"github.com/grafana/pyroscope/pkg/experiment/block"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode/raftnodepb"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/memory"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockdlq"
@@ -25,20 +23,23 @@ import (
 func TestRecoverTick(t *testing.T) {
 	metas := []*metastorev1.BlockMeta{
 		{
-			Id:    ulid.MustNew(3, rand.Reader).String(),
-			Shard: 2,
+			Id:          1,
+			Shard:       2,
+			StringTable: []string{"", "3"},
 		},
 		{
-			Id:    ulid.MustNew(1, rand.Reader).String(),
-			Shard: 1,
+			Id:          1,
+			Shard:       1,
+			StringTable: []string{"", "1"},
 		},
 		{
-			Id:    ulid.MustNew(2, rand.Reader).String(),
-			Shard: 2,
+			Id:          1,
+			Shard:       2,
+			StringTable: []string{"", "2"},
 		},
 	}
-	actual := []*metastorev1.BlockMeta{}
 
+	var actual []*metastorev1.BlockMeta
 	srv := mockdlq.NewMockLocalServer(t)
 	srv.On("AddRecoveredBlock", mock.Anything, mock.Anything).
 		Times(3).
@@ -64,7 +65,7 @@ func TestRecoverTick(t *testing.T) {
 
 	require.Equal(t, len(actual), len(expected))
 	for i := range actual {
-		require.Equal(t, actual[i].Id, expected[i].Id)
+		require.Equal(t, block.ID(actual[i]), block.ID(expected[i]))
 		require.Equal(t, actual[i].Shard, expected[i].Shard)
 	}
 }
@@ -72,8 +73,9 @@ func TestRecoverTick(t *testing.T) {
 func TestNotRaftLeader(t *testing.T) {
 	metas := []*metastorev1.BlockMeta{
 		{
-			Id:    ulid.MustNew(3, rand.Reader).String(),
-			Shard: 2,
+			Id:          1,
+			Shard:       2,
+			StringTable: []string{"", "1"},
 		},
 	}
 
@@ -100,21 +102,24 @@ func TestNotRaftLeader(t *testing.T) {
 func TestStartStop(t *testing.T) {
 	metas := []*metastorev1.BlockMeta{
 		{
-			Id:    ulid.MustNew(3, rand.Reader).String(),
-			Shard: 2,
+			Id:          1,
+			Shard:       2,
+			StringTable: []string{"", "3"},
 		},
 		{
-			Id:    ulid.MustNew(1, rand.Reader).String(),
-			Shard: 1,
+			Id:          1,
+			Shard:       1,
+			StringTable: []string{"", "1"},
 		},
 		{
-			Id:    ulid.MustNew(2, rand.Reader).String(),
-			Shard: 2,
+			Id:          1,
+			Shard:       2,
+			StringTable: []string{"", "2"},
 		},
 	}
 	m := new(sync.Mutex)
-	actual := []*metastorev1.BlockMeta{}
 
+	var actual []*metastorev1.BlockMeta
 	srv := mockdlq.NewMockLocalServer(t)
 	srv.On("AddRecoveredBlock", mock.Anything, mock.Anything).
 		Times(3).
@@ -149,12 +154,12 @@ func TestStartStop(t *testing.T) {
 
 	require.Equal(t, len(actual), len(expected))
 	for i := range actual {
-		require.Equal(t, actual[i].Id, expected[i].Id)
+		require.Equal(t, block.ID(actual[i]), block.ID(expected[i]))
 		require.Equal(t, actual[i].Shard, expected[i].Shard)
 	}
 }
 
 func addMeta(bucket *memory.InMemBucket, meta *metastorev1.BlockMeta) {
 	data, _ := meta.MarshalVT()
-	bucket.Set(segmentstorage.PathForDLQ(meta), data)
+	bucket.Set(block.MetadataDLQObjectPath(meta), data)
 }

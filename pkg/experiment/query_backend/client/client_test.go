@@ -118,7 +118,7 @@ func Test_Concurrency(t *testing.T) {
 	blocks := make([]*metastorev1.BlockMeta, 0, nBlocksInQuery)
 	for i := 0; i < nBlocksInQuery; i++ {
 		blocks = append(blocks, &metastorev1.BlockMeta{
-			Id: fmt.Sprintf("block-%d", i),
+			Id: int32(i),
 		})
 	}
 

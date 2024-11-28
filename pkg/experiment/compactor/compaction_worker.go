@@ -15,14 +15,13 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/services"
-	"github.com/oklog/ulid"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/errgroup"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	"github.com/grafana/pyroscope/pkg/experiment/query_backend/block"
+	"github.com/grafana/pyroscope/pkg/experiment/block"
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/util"
 )
@@ -371,13 +370,13 @@ func (w *Worker) runCompaction(job *compactionJob) {
 		for _, c := range compacted {
 			level.Info(logger).Log(
 				"msg", "new compacted block",
-				"block_id", c.Id,
-				"block_tenant", c.TenantId,
+				"block_id", block.ID(c),
+				"block_tenant", c.StringTable[c.Tenant],
 				"block_shard", c.Shard,
-				"block_size", c.Size,
 				"block_compaction_level", c.CompactionLevel,
 				"block_min_time", c.MinTime,
 				"block_max_time", c.MinTime,
+				"block_size", c.Size,
 				"datasets", len(c.Datasets),
 			)
 		}
@@ -392,7 +391,7 @@ func (w *Worker) runCompaction(job *compactionJob) {
 			},
 		}
 
-		firstBlock := time.UnixMilli(int64(ulid.MustParse(job.blocks[0].Id).Time()))
+		firstBlock := block.Timestamp(job.blocks[0])
 		w.metrics.timeToCompaction.WithLabelValues(labels...).Observe(time.Since(firstBlock).Seconds())
 
 	case errors.Is(err, context.Canceled):
@@ -437,7 +436,7 @@ func (w *Worker) getBlockMetadata(logger log.Logger, job *compactionJob) error {
 	// Update the plan to reflect the actual compaction job state.
 	job.SourceBlocks = job.SourceBlocks[:0]
 	for _, b := range source {
-		job.SourceBlocks = append(job.SourceBlocks, b.Id)
+		job.SourceBlocks = append(job.SourceBlocks, b.StringTable[b.Id])
 	}
 
 	job.blocks = source

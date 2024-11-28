@@ -15,6 +15,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/block"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode"
 	"github.com/grafana/pyroscope/pkg/model"
@@ -81,15 +82,15 @@ func (svc *MetadataQueryService) listBlocksForQuery(
 		level.Error(svc.logger).Log("msg", "failed to list metastore blocks", "query", q, "err", err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	for _, block := range blocks {
+	for _, b := range blocks {
 		var clone *metastorev1.BlockMeta
-		for _, svc := range block.Datasets {
-			if q.matchService(svc) {
+		for _, ds := range b.Datasets {
+			if q.matchService(ds) {
 				if clone == nil {
-					clone = cloneBlockForQuery(block)
-					md[clone.Id] = clone
+					clone = cloneBlockForQuery(b)
+					md[block.ID(clone)] = clone
 				}
-				clone.Datasets = append(clone.Datasets, svc)
+				clone.Datasets = append(clone.Datasets, ds)
 			}
 		}
 	}
@@ -143,16 +144,16 @@ func newMetadataQuery(request *metastorev1.QueryMetadataRequest) (*metadataQuery
 	return q, nil
 }
 
-func (q *metadataQuery) matchService(s *metastorev1.Dataset) bool {
-	_, ok := q.tenants[s.TenantId]
+func (q *metadataQuery) matchService(md *metastorev1.BlockMeta, ds *metastorev1.Dataset) bool {
+	_, ok := q.tenants[ds.TenantId]
 	if !ok {
 		return false
 	}
-	if !inRange(s.MinTime, s.MaxTime, q.startTime, q.endTime) {
+	if !inRange(ds.MinTime, ds.MaxTime, q.startTime, q.endTime) {
 		return false
 	}
 	if q.serviceMatcher != nil {
-		return q.serviceMatcher.Matches(s.Name)
+		return q.serviceMatcher.Matches(ds.Name)
 	}
 	return true
 }

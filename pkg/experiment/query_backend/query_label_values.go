@@ -9,7 +9,7 @@ import (
 	"github.com/prometheus/prometheus/storage"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
-	"github.com/grafana/pyroscope/pkg/experiment/query_backend/block"
+	"github.com/grafana/pyroscope/pkg/experiment/block"
 	"github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 )

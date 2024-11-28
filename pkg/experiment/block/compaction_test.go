@@ -2,10 +2,12 @@ package block
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"
 
@@ -33,6 +35,9 @@ func Test_CompactBlocks(t *testing.T) {
 	)
 
 	require.NoError(t, err)
-	require.Len(t, compactedBlocks, 1)
-	// TODO: Assertions.
+	compactedJson, err := json.MarshalIndent(compactedBlocks, "", "  ")
+	require.NoError(t, err)
+	expectedJson, err := os.ReadFile("testdata/compacted.golden")
+	require.NoError(t, err)
+	assert.Equal(t, string(expectedJson), string(compactedJson))
 }

@@ -53,7 +53,7 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 	// We need to generate a plan of the update caused by the new status
 	// report from the worker. The plan will be used to update the schedule
 	// after the Raft consensus is reached.
-	planner := h.planner.NewPlan(tx, cmd)
+	planner := h.planner.NewPlan(cmd)
 	scheduler := h.scheduler.NewSchedule(tx, cmd)
 	p := new(raft_log.CompactionPlanUpdate)
 
@@ -138,12 +138,12 @@ func (h *CompactionCommandHandler) UpdateCompactionPlan(
 		return new(raft_log.UpdateCompactionPlanResponse), nil
 	}
 
-	if err := h.planner.UpdatePlan(tx, cmd, req.PlanUpdate); err != nil {
+	if err := h.planner.UpdatePlan(tx, req.PlanUpdate); err != nil {
 		level.Error(h.logger).Log("msg", "failed to update compaction planner", "err", err)
 		return nil, err
 	}
 
-	if err := h.scheduler.UpdateSchedule(tx, cmd, req.PlanUpdate); err != nil {
+	if err := h.scheduler.UpdateSchedule(tx, req.PlanUpdate); err != nil {
 		level.Error(h.logger).Log("msg", "failed to update compaction schedule", "err", err)
 		return nil, err
 	}
@@ -161,19 +161,19 @@ func (h *CompactionCommandHandler) UpdateCompactionPlan(
 			level.Error(h.logger).Log("msg", "compacted blocks are missing", "job", job.State.Name)
 			continue
 		}
-		if err := h.index.ReplaceBlocks(tx, compacted); err != nil {
-			level.Error(h.logger).Log("msg", "failed to replace blocks", "err", err)
-			return nil, err
-		}
 		if err := h.tombstones.AddTombstones(tx, cmd, blockTombstonesForCompletedJob(job)); err != nil {
 			level.Error(h.logger).Log("msg", "failed to add tombstones", "err", err)
 			return nil, err
 		}
 		for _, block := range compacted.NewBlocks {
-			if err := h.compactor.Compact(tx, cmd, block); err != nil {
+			if err := h.compactor.Compact(tx, compaction.NewBlockEntry(cmd, block)); err != nil {
 				level.Error(h.logger).Log("msg", "failed to compact block", "err", err)
 				return nil, err
 			}
+		}
+		if err := h.index.ReplaceBlocks(tx, compacted); err != nil {
+			level.Error(h.logger).Log("msg", "failed to replace blocks", "err", err)
+			return nil, err
 		}
 	}
 
