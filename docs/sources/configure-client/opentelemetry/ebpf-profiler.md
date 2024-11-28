@@ -1,5 +1,5 @@
 ---
-title: OpenTelemetry Profiles Support (Experimental)
+title: OpenTelemetry profiles support (experimental)
 menuTitle: OpenTelemetry Profiles
 description: Pyroscope's experimental support for OpenTelemetry profiles
 weight: 10
@@ -7,15 +7,17 @@ weight: 10
 
 # OpenTelemetry profiles support (experimental)
 
-Pyroscope now includes experimental support for receiving and visualizing profiles from OpenTelemetry sources. This integration allows you to:
+{{< docs/experimental product="OpenTelemetry profiles" >}}
+
+Pyroscope includes experimental support for receiving and visualizing profiles from OpenTelemetry sources. This integration allows you to:
 
 - Collect system-wide profiles using the [OpenTelemetry eBPF profiler](https://github.com/open-telemetry/opentelemetry-ebpf-profiler)
 - Process profile data through the OpenTelemetry Collector
 - Visualize profiles in Grafana using Pyroscope
 
-## Important Notes About Current Status
+## Considerations
 
-Before getting started, please be aware of the following limitations:
+Before getting started, you should consider the following limitations:
 
 - The OpenTelemetry profiles protocol ([proto files](https://github.com/open-telemetry/opentelemetry-proto/tree/main/opentelemetry/proto/profiles)) is under active development:
     - Breaking changes are expected and have occurred
@@ -43,8 +45,8 @@ The profile collection pipeline consists of:
 3. **Pyroscope**: Stores and processes profiles
 4. **Grafana**: Visualizes profile data
 
-## Getting Started
+## Get started
 
-For detailed setup instructions and working examples, refer to our [examples repository](https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent-auto-instrumentation/ebpf-otel).
+For detailed setup instructions and working examples, refer to the [examples repository](https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent-auto-instrumentation/ebpf-otel).
 
 The examples demonstrate deployments for both Docker and Kubernetes environments.
