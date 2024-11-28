@@ -44,8 +44,8 @@ func download(ctx context.Context, name string, src BucketReader, dir string) (f
 	defer func() {
 		if err != nil {
 			_ = f.Close()
-			_ = r.Close()
 		}
+		_ = r.Close()
 	}()
 	if err = os.MkdirAll(dir, 0755); err != nil {
 		return nil, err
