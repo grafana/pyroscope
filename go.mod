@@ -30,7 +30,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/grafana/alloy/syntax v0.1.0
 	github.com/grafana/dskit v0.0.0-20231221015914-de83901bf4d6
-	github.com/grafana/jfr-parser/pprof v0.0.0-20240228024232-8abcb81c304c
+	github.com/grafana/jfr-parser/pprof v0.0.4-0.20241016061537-a8d22a1cd731
 	github.com/grafana/pyroscope-go v1.2.0
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.8
 	github.com/grafana/pyroscope-go/x/k6 v0.0.0-20241003203156-a917cea171d3
@@ -175,7 +175,7 @@ require (
 	github.com/google/s2a-go v0.1.7 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.2 // indirect
 	github.com/googleapis/gax-go/v2 v2.12.3 // indirect
-	github.com/grafana/jfr-parser v0.8.1-0.20240228024232-8abcb81c304c // indirect
+	github.com/grafana/jfr-parser v0.9.2-0.20241016061537-a8d22a1cd731 // indirect
 	github.com/hashicorp/consul/api v1.28.2 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
