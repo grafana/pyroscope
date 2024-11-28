@@ -123,7 +123,11 @@ func (w *Worker) running(ctx context.Context) error {
 		for {
 			select {
 			case <-stopPolling:
+				// Now that all the threads are done, we need to
+				// send the final status updates.
+				w.poll()
 				return
+
 			case <-ticker.C:
 				w.poll()
 			}
