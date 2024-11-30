@@ -21,7 +21,8 @@ type schedule struct {
 	// Read-only.
 	scheduler *Scheduler
 	// Uncommitted schedule updates.
-	updates map[string]*raft_log.CompactionJobState
+	updates   map[string]*raft_log.CompactionJobState
+	addedJobs int
 	// Modified copy of the job queue.
 	copied []priorityJobQueue
 	level  int
@@ -90,10 +91,29 @@ func (p *schedule) newStateForStatusReport(status *raft_log.CompactionJobStatusU
 	return nil
 }
 
-// AddJob creates a state for the new plan. The method must be called
-// after the last AssignJob and UpdateJob calls.
+// AddJob creates a state for the newly planned job.
+//
+// The method must be called after the last AssignJob and UpdateJob calls.
+// It returns an empty state if the queue size limit is reached.
+//
+// TODO(kolesnikovae): Implement displacement policy.
+// When the scheduler queue is full, no new jobs can be added. Currently,
+// it's possible that all jobs fail and can't be retried, and consequently,
+// can't leave the queue, blocking the entire compaction process until the
+// failure or queue limit is increased. Additionally, it's possible for a
+// job to never be completed and thus remain in the queue indefinitely.
+//
+// One way to implement this is to evict the job with the highest number of
+// failures (exceeding a configurable threshold, in addition to MaxFailures).
+// This way, we can easily remove the job least likely to succeed.
+// However, this needs to be handled explicitly in UpdateSchedule; at this
+// point, we can only identify candidates for eviction.
 func (p *schedule) AddJob(plan *raft_log.CompactionJobPlan) *raft_log.CompactionJobState {
-	// TODO(kolesnikovae): Job queue size limit.
+	if limit := p.scheduler.config.MaxQueueSize; limit > 0 {
+		if size := uint64(p.addedJobs + p.scheduler.queue.size()); size >= limit {
+			return nil
+		}
+	}
 	state := &raft_log.CompactionJobState{
 		Name:            plan.Name,
 		CompactionLevel: plan.CompactionLevel,
@@ -102,6 +122,7 @@ func (p *schedule) AddJob(plan *raft_log.CompactionJobPlan) *raft_log.Compaction
 		Token:           p.token,
 	}
 	p.updates[state.Name] = state
+	p.addedJobs++
 	return state
 }
 
@@ -109,6 +130,11 @@ func (p *schedule) nextAssignment() *raft_log.CompactionJobState {
 	// We don't need to check the job ownership here: the worker asks
 	// for a job assigment (new ownership).
 	for p.level < len(p.scheduler.queue.levels) {
+		// We evict the job from our copy of the queue: each job is only
+		// accessible once. When we reach the bottom of the queue (the first
+		// failed job, or the last job in the queue), we move to the next
+		// level. Note that we check all in-progress jobs if there are not
+		// enough unassigned jobs in the queue.
 		pq := p.queueLevelCopy(p.level)
 		if pq.Len() == 0 {
 			p.level++
@@ -130,15 +156,17 @@ func (p *schedule) nextAssignment() *raft_log.CompactionJobState {
 			return p.assignJob(job)
 
 		case metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS:
-			if p.shouldReassign(job) {
+			if p.isFailed(job) {
+				// We reached the bottom of the queue: only failed jobs left.
+				p.level++
+				continue
+			}
+			if p.isAbandoned(job) {
 				state := p.assignJob(job)
 				state.Failures++
 				return state
 			}
 		}
-
-		// If no jobs can be assigned at this level.
-		p.level++
 	}
 
 	return nil
@@ -156,11 +184,13 @@ func (p *schedule) assignJob(e *jobEntry) *raft_log.CompactionJobState {
 	return job
 }
 
-func (p *schedule) shouldReassign(job *jobEntry) bool {
-	abandoned := p.now.UnixNano() > job.LeaseExpiresAt
+func (p *schedule) isAbandoned(job *jobEntry) bool {
+	return p.now.UnixNano() > job.LeaseExpiresAt
+}
+
+func (p *schedule) isFailed(job *jobEntry) bool {
 	limit := p.scheduler.config.MaxFailures
-	faulty := limit > 0 && uint64(job.Failures) >= limit
-	return abandoned && !faulty
+	return limit > 0 && uint64(job.Failures) >= limit
 }
 
 // The queue must not be modified by the assigner. Therefore, we're copying the

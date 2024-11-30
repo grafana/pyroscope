@@ -117,8 +117,14 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 			// No more jobs to create.
 			break
 		}
+		state := scheduler.AddJob(plan)
+		if state == nil {
+			// Scheduler declined the job. The only case when this may happen
+			// is when the scheduler queue is full.
+			break
+		}
 		p.NewJobs = append(p.NewJobs, &raft_log.NewCompactionJob{
-			State: scheduler.AddJob(plan),
+			State: state,
 			Plan:  plan,
 		})
 	}
