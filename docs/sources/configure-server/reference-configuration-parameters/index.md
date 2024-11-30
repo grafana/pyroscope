@@ -846,7 +846,16 @@ The `query_frontend` block configures the query-frontend.
 # IP address to advertise to the querier (via scheduler) (default is
 # auto-detected from network interfaces).
 # CLI flag: -query-frontend.instance-addr
-[address: <string> | default = ""]
+[instance_addr: <string> | default = ""]
+
+# Enable using a IPv6 instance address. (default false)
+# CLI flag: -query-frontend.instance-enable-ipv6
+[instance_enable_ipv6: <boolean> | default = false]
+
+# Port to advertise to query-scheduler and querier (defaults to
+# -server.http-listen-port).
+# CLI flag: -query-frontend.instance-port
+[instance_port: <int> | default = 0]
 ```
 
 ### frontend_worker
