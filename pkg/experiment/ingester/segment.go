@@ -239,7 +239,7 @@ func (s *segment) flushBlock(heads []flushedServiceHead) ([]byte, *metastorev1.B
 	t1 := time.Now()
 	hostname, _ := os.Hostname()
 
-	stringTable := block.NewStringTable()
+	stringTable := block.NewMetadataStringTable()
 	meta := &metastorev1.BlockMeta{
 		FormatVersion:   1,
 		Id:              stringTable.Put(s.ulid.String()),
@@ -280,7 +280,7 @@ func (s *segment) flushBlock(heads []flushedServiceHead) ([]byte, *metastorev1.B
 	return blockFile.Bytes(), meta, nil
 }
 
-func concatSegmentHead(e flushedServiceHead, w *writerOffset, s *block.StringTable) (*metastorev1.Dataset, error) {
+func concatSegmentHead(e flushedServiceHead, w *writerOffset, s *block.MetadataStrings) (*metastorev1.Dataset, error) {
 	tenantServiceOffset := w.offset
 
 	ptypes := e.head.Meta.ProfileTypeNames

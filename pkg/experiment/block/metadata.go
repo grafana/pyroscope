@@ -3,12 +3,14 @@ package block
 import (
 	"io"
 	"math/rand"
+	"sync"
 	"time"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/oklog/ulid"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/pkg/iter"
 )
 
 func ID(md *metastorev1.BlockMeta) string {
@@ -29,20 +31,31 @@ func SanitizeMetadata(md *metastorev1.BlockMeta) error {
 	return err
 }
 
-type StringTable struct {
+var stringTablePool = sync.Pool{
+	New: func() any { return NewMetadataStringTable() },
+}
+
+type MetadataStrings struct {
 	Dict    map[string]int32
 	Strings []string
 }
 
-func NewStringTable() *StringTable {
+func NewMetadataStringTable() *MetadataStrings {
 	var empty string
-	return &StringTable{
+	return &MetadataStrings{
 		Dict:    map[string]int32{empty: 0},
 		Strings: []string{empty},
 	}
 }
 
-func (t *StringTable) Put(s string) int32 {
+func (t *MetadataStrings) Reset() {
+	clear(t.Dict)
+	t.Dict[""] = 0
+	t.Strings[0] = ""
+	t.Strings = t.Strings[:1]
+}
+
+func (t *MetadataStrings) Put(s string) int32 {
 	if i, ok := t.Dict[s]; ok {
 		return i
 	}
@@ -52,18 +65,30 @@ func (t *StringTable) Put(s string) int32 {
 	return i
 }
 
-func (t *StringTable) Lookup(i int32) string {
+func (t *MetadataStrings) Lookup(i int32) string {
 	if i < 0 || int(i) >= len(t.Strings) {
 		return ""
 	}
 	return t.Strings[i]
 }
 
-func (t *StringTable) Import(src *metastorev1.BlockMeta) {
-	// TODO: Pool.
+// Import strings from the metadata entry and update the references.
+// Strings that are already present in the table are to be deleted
+// from the input, while newly imported strings are preserved.
+func (t *MetadataStrings) Import(src *metastorev1.BlockMeta) {
+	if len(src.StringTable) < 2 {
+		return
+	}
+	// TODO: Pool?
 	lut := make([]int32, len(src.StringTable))
+	n := len(t.Strings)
 	for i, s := range src.StringTable {
-		lut[i] = t.Put(s)
+		x := t.Put(s)
+		lut[i] = x
+		// Zero the string if it's already in the table.
+		if x > 0 && x < int32(n) {
+			src.StringTable[i] = ""
+		}
 	}
 	src.Id = lut[src.Id]
 	src.Tenant = lut[src.Tenant]
@@ -75,34 +100,39 @@ func (t *StringTable) Import(src *metastorev1.BlockMeta) {
 			ds.ProfileTypes[i] = lut[p]
 		}
 	}
-}
-
-func (t *StringTable) Export(dst *metastorev1.BlockMeta) {
-	dst.StringTable = make([]string, 1, 32*len(dst.Datasets))
-	dst.Id = 1
-	dst.Tenant = 2
-	dst.CreatedBy = 3
-	dst.StringTable = append(dst.StringTable,
-		t.Strings[dst.Id],
-		t.Strings[dst.Tenant],
-		t.Strings[dst.CreatedBy],
-	)
-	n := int32(len(dst.StringTable))
-	for _, ds := range dst.Datasets {
-		dst.StringTable = append(dst.StringTable,
-			t.Strings[ds.Tenant],
-			t.Strings[ds.Name],
-		)
-		ds.Tenant = n
-		n++
-		ds.Name = n
-		n++
-		for i := range ds.ProfileTypes {
-			dst.StringTable = append(dst.StringTable, t.Strings[ds.ProfileTypes[i]])
-			ds.ProfileTypes[i] = n
-			n++
+	var j int
+	for i := range src.StringTable {
+		if i == 0 || len(src.StringTable[i]) != 0 {
+			src.StringTable[j] = src.StringTable[i]
+			j++
 		}
 	}
+	src.StringTable = src.StringTable[:j]
+}
+
+func (t *MetadataStrings) Export(dst *metastorev1.BlockMeta) {
+	n := stringTablePool.Get().(*MetadataStrings)
+	defer stringTablePool.Put(n)
+	dst.Id = n.Put(t.Lookup(dst.Id))
+	dst.Tenant = n.Put(t.Lookup(dst.Tenant))
+	dst.CreatedBy = n.Put(t.Lookup(dst.CreatedBy))
+	for _, ds := range dst.Datasets {
+		ds.Tenant = n.Put(t.Lookup(ds.Tenant))
+		ds.Name = n.Put(t.Lookup(ds.Name))
+		for i := range ds.ProfileTypes {
+			ds.ProfileTypes[i] = n.Put(t.Lookup(ds.ProfileTypes[i]))
+		}
+	}
+	dst.StringTable = make([]string, len(n.Strings))
+	copy(dst.StringTable, n.Strings)
+	n.Reset()
+}
+
+func (t *MetadataStrings) Load(x iter.Iterator[string]) error {
+	for x.Next() {
+		t.Put(x.At())
+	}
+	return x.Err()
 }
 
 // ULIDGenerator generates deterministic ULIDs for blocks in an

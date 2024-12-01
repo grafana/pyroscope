@@ -7,10 +7,10 @@ import (
 )
 
 type PartitionMeta struct {
-	Key      store.PartitionKey
-	Ts       time.Time
-	Duration time.Duration
-	Tenants  []string
+	Key       store.PartitionKey
+	Timestamp time.Time
+	Duration  time.Duration
+	Tenants   []string
 
 	tenantMap map[string]struct{}
 }
@@ -22,11 +22,11 @@ func (m *PartitionMeta) HasTenant(tenant string) bool {
 }
 
 func (m *PartitionMeta) StartTime() time.Time {
-	return m.Ts
+	return m.Timestamp
 }
 
 func (m *PartitionMeta) EndTime() time.Time {
-	return m.Ts.Add(m.Duration)
+	return m.Timestamp.Add(m.Duration)
 }
 
 func (m *PartitionMeta) loadTenants() {
@@ -50,15 +50,15 @@ func (m *PartitionMeta) compare(other *PartitionMeta) int {
 	if m == other {
 		return 0
 	}
-	return m.Ts.Compare(other.Ts)
+	return m.Timestamp.Compare(other.Timestamp)
 }
 
 // [ m.StartTime(), m.EndTime() )
-func (m *PartitionMeta) overlaps(start, end int64) bool {
-	return start < m.EndTime().UnixMilli() && end >= m.StartTime().UnixMilli()
+func (m *PartitionMeta) overlaps(start, end time.Time) bool {
+	return start.Before(m.EndTime()) && !end.Before(m.StartTime())
 }
 
 // [ m.StartTime(), m.EndTime() )
-func (m *PartitionMeta) contains(t int64) bool {
-	return t >= m.StartTime().UnixMilli() && t < m.EndTime().UnixMilli()
+func (m *PartitionMeta) contains(t time.Time) bool {
+	return !t.Before(m.StartTime()) && t.Before(m.EndTime())
 }

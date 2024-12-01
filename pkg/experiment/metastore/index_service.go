@@ -20,11 +20,15 @@ type PlacementStats interface {
 	RecordStats(iter.Iterator[placement.Sample])
 }
 
+type IndexBlockFinder interface {
+	FindBlocks(*bbolt.Tx, *metastorev1.BlockList) []*metastorev1.BlockMeta
+}
+
 func NewIndexService(
 	logger log.Logger,
 	raft Raft,
 	state State,
-	index IndexQuerier,
+	index IndexBlockFinder,
 	stats PlacementStats,
 ) *IndexService {
 	return &IndexService{
@@ -42,7 +46,7 @@ type IndexService struct {
 	logger log.Logger
 	raft   Raft
 	state  State
-	index  IndexQuerier
+	index  IndexBlockFinder
 	stats  PlacementStats
 }
 

@@ -148,7 +148,7 @@ type CompactionPlan struct {
 	datasetMap map[int32]*datasetCompaction
 	datasets   []*datasetCompaction
 	meta       *metastorev1.BlockMeta
-	strings    *StringTable
+	strings    *MetadataStrings
 }
 
 func newBlockCompaction(
@@ -160,7 +160,7 @@ func newBlockCompaction(
 	p := &CompactionPlan{
 		tenant:     tenant,
 		datasetMap: make(map[int32]*datasetCompaction),
-		strings:    NewStringTable(),
+		strings:    NewMetadataStringTable(),
 	}
 	p.path = BuildObjectPath(tenant, shard, compactionLevel, id)
 	p.meta = &metastorev1.BlockMeta{

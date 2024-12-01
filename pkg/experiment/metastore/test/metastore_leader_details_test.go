@@ -24,7 +24,8 @@ func TestRaftDetailsAddBlock(t *testing.T) {
 
 	errors := 0
 	m := &metastorev1.BlockMeta{
-		Id: ulid.MustNew(1, rand.Reader).String(),
+		Id:          1,
+		StringTable: []string{"", ulid.MustNew(1, rand.Reader).String()},
 	}
 	for _, it := range ms.Instances {
 		_, err := it.IndexServiceClient.AddBlock(context.Background(), &metastorev1.AddBlockRequest{
