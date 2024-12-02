@@ -1,6 +1,7 @@
 package index
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"math"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/oklog/ulid"
 	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -19,73 +21,74 @@ import (
 	"github.com/grafana/pyroscope/pkg/iter"
 )
 
-var ErrBlockExists = fmt.Errorf("block already exists")
-
-type Store interface {
-	CreateBuckets(*bbolt.Tx) error
-	StoreBlock(tx *bbolt.Tx, p store.PartitionKey, shard uint32, tenant string, id string, md *metastorev1.BlockMeta) error
-	StoreStrings(tx *bbolt.Tx, p store.PartitionKey, shard uint32, tenant string, offset int, strings []string) error
-	LoadStrings(tx *bbolt.Tx, p store.PartitionKey, shard uint32, tenant string) iter.Iterator[string]
-	DeleteBlockList(*bbolt.Tx, store.PartitionKey, *metastorev1.BlockList) error
-
-	ListPartitions(*bbolt.Tx) []store.PartitionKey
-	ListShards(*bbolt.Tx, store.PartitionKey) []uint32
-	ListTenants(tx *bbolt.Tx, p store.PartitionKey, shard uint32) []string
-	ListBlocks(tx *bbolt.Tx, p store.PartitionKey, shard uint32, tenant string) []*metastorev1.BlockMeta
-}
-
-type Index struct {
-	config *Config
-
-	partitionMu      sync.Mutex
-	loadedPartitions map[cacheKey]*indexPartition
-	partitions       []*PartitionMeta
-
-	store  Store
-	logger log.Logger
-}
-
-type Config struct {
-	// FIXME(kolesnikovae): This parameter is not fully supported.
-	PartitionDuration     time.Duration `yaml:"partition_duration" doc:"hidden"`
-	PartitionCacheSize    int           `yaml:"partition_cache_size"`
-	QueryLookaroundPeriod time.Duration `yaml:"query_lookaround_period"`
-}
-
-func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
-	f.DurationVar(&cfg.PartitionDuration, prefix+"partition-duration", DefaultConfig.PartitionDuration, "")
-	f.IntVar(&cfg.PartitionCacheSize, prefix+"partition-cache-size", DefaultConfig.PartitionCacheSize, "How many partitions to keep loaded in memory.")
-	f.DurationVar(&cfg.QueryLookaroundPeriod, prefix+"query-lookaround-period", DefaultConfig.QueryLookaroundPeriod, "")
-}
-
 const (
+	partitionDuration = 6 * time.Hour
 	// Indicates that partitions within this window are "protected" from being unloaded.
 	partitionProtectionWindow = 30 * time.Minute
-	partitionDuration         = 6 * time.Hour
+	partitionTenantCacheSize  = 32
 )
+
+var ErrBlockExists = fmt.Errorf("block already exists")
 
 var DefaultConfig = Config{
 	PartitionDuration:     partitionDuration,
 	QueryLookaroundPeriod: partitionDuration,
-	PartitionCacheSize:    7,
+	PartitionCacheSize:    partitionTenantCacheSize,
+}
+
+type Config struct {
+	PartitionCacheSize    int `yaml:"partition_cache_size"`
+	PartitionDuration     time.Duration
+	QueryLookaroundPeriod time.Duration `yaml:"query_lookaround_period"`
+}
+
+func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
+	// FIXME(kolesnikovae): This parameter is not fully supported.
+	//  Overlapping partitions are difficult to handle correctly;
+	//  without an interval tree, it may also be inefficient.
+	//  Instead, we should consider immutable partition ranges:
+	//  once a partition is created, all the keys targeting the
+	//  time range of the partition should be directed to it.
+	cfg.PartitionDuration = DefaultConfig.PartitionDuration
+	f.IntVar(&cfg.PartitionCacheSize, prefix+"partition-cache-size", DefaultConfig.PartitionCacheSize, "How many partitions to keep loaded in memory per tenant.")
+	f.DurationVar(&cfg.QueryLookaroundPeriod, prefix+"query-lookaround-period", DefaultConfig.QueryLookaroundPeriod, "")
+}
+
+type Store interface {
+	CreateBuckets(*bbolt.Tx) error
+
+	StoreBlock(tx *bbolt.Tx, shard *store.TenantShard, md *metastorev1.BlockMeta) error
+	DeleteBlockList(*bbolt.Tx, store.PartitionKey, *metastorev1.BlockList) error
+
+	ListPartitions(*bbolt.Tx) ([]*store.Partition, error)
+	LoadTenantShard(*bbolt.Tx, store.PartitionKey, string, uint32) (*store.TenantShard, error)
+}
+
+type Index struct {
+	logger log.Logger
+	config *Config
+	store  Store
+
+	mu               sync.Mutex
+	loadedPartitions map[tenantPartitionKey]*indexPartition
+	partitions       []*store.Partition
+}
+
+type tenantPartitionKey struct {
+	partition store.PartitionKey
+	tenant    string
 }
 
 type indexPartition struct {
-	meta       *PartitionMeta
-	accessedAt time.Time
+	partition  *store.Partition
+	tenant     string
 	shards     map[uint32]*indexShard
+	accessedAt time.Time
 }
 
 type indexShard struct {
-	tenant  string
-	shard   uint32
-	blocks  map[string]*metastorev1.BlockMeta
-	strings *block.MetadataStrings
-}
-
-type cacheKey struct {
-	partitionKey store.PartitionKey
-	tenant       string
+	blocks map[string]*metastorev1.BlockMeta
+	*store.TenantShard
 }
 
 // NewIndex initializes a new metastore index.
@@ -99,16 +102,16 @@ type cacheKey struct {
 //
 // The index requires a backing Store for loading data in memory. Data is loaded directly via LoadPartitions() or when
 // looking up blocks with FindBlock() or FindBlocksInRange().
-func NewIndex(logger log.Logger, store Store, cfg *Config) *Index {
+func NewIndex(logger log.Logger, s Store, cfg *Config) *Index {
 	// A fixed cache size gives us bounded memory footprint, however changes to the partition duration could reduce
 	// the cache effectiveness.
 	// TODO (aleks-p):
 	//  - resize the cache at runtime when the config changes
 	//  - consider auto-calculating the cache size to ensure we hold data for e.g., the last 24 hours
 	return &Index{
-		loadedPartitions: make(map[cacheKey]*indexPartition, cfg.PartitionCacheSize),
-		partitions:       make([]*PartitionMeta, 0),
-		store:            store,
+		loadedPartitions: make(map[tenantPartitionKey]*indexPartition, cfg.PartitionCacheSize),
+		partitions:       make([]*store.Partition, 0),
+		store:            s,
 		logger:           logger,
 		config:           cfg,
 	}
@@ -118,239 +121,168 @@ func NewStore() *store.IndexStore {
 	return store.NewIndexStore()
 }
 
-// LoadPartitions reads all partitions from the backing store and loads the recent ones in memory.
-func (i *Index) LoadPartitions(tx *bbolt.Tx) {
-	i.partitionMu.Lock()
-	defer i.partitionMu.Unlock()
+func (i *Index) Init(tx *bbolt.Tx) error {
+	return i.store.CreateBuckets(tx)
+}
 
-	i.partitions = i.partitions[:0]
+func (i *Index) Restore(tx *bbolt.Tx) error {
+	i.mu.Lock()
+	defer i.mu.Unlock()
+
+	i.partitions = nil
 	clear(i.loadedPartitions)
-	for _, key := range i.store.ListPartitions(tx) {
-		p := i.loadPartitionMeta(tx, key)
-		level.Info(i.logger).Log(
-			"msg", "loaded metastore index partition",
-			"key", key,
-			"ts", p.Timestamp.Format(time.RFC3339),
-			"duration", p.Duration,
-			"tenants", strings.Join(p.Tenants, ","))
-		i.partitions = append(i.partitions, p)
 
-		// load the currently active partition
-		if p.contains(time.Now()) {
-			i.loadEntirePartition(tx, p)
-		}
+	var err error
+	i.partitions, err = i.store.ListPartitions(tx)
+	if err != nil {
+		return err
 	}
-	level.Info(i.logger).Log("msg", "loaded metastore index partitions", "count", len(i.partitions))
 
-	i.sortPartitions()
-}
-
-func (i *Index) loadPartitionMeta(tx *bbolt.Tx, key store.PartitionKey) *PartitionMeta {
-	timestamp, duration, _ := key.Parse()
-	p := &PartitionMeta{
-		Key:       key,
-		Timestamp: timestamp,
-		Duration:  duration,
-		Tenants:   make([]string, 0),
-		tenantMap: make(map[string]struct{}),
-	}
-	for _, s := range i.store.ListShards(tx, key) {
-		for _, t := range i.store.ListTenants(tx, key, s) {
-			p.AddTenant(t)
-		}
-	}
-	return p
-}
-
-func (i *Index) loadEntirePartition(tx *bbolt.Tx, p *PartitionMeta) {
-	for _, s := range i.store.ListShards(tx, p.Key) {
-		for _, t := range i.store.ListTenants(tx, p.Key, s) {
-			k := cacheKey{partitionKey: p.Key, tenant: t}
-			partition, ok := i.loadedPartitions[k]
-			if !ok {
-				partition = newIndexPartition(p)
-				i.loadedPartitions[k] = partition
-			}
-			shard, ok := partition.shards[s]
-			if !ok {
-				shard = newIndexShard(s, t)
-				partition.shards[s] = shard
-			}
-			shard.load(tx, i.store, p, s, t)
-		}
-	}
-}
-
-func (i *Index) getOrCreatePartition(tx *bbolt.Tx, p *PartitionMeta, tenant string) *indexPartition {
-	k := cacheKey{partitionKey: p.Key, tenant: tenant}
-	partition, ok := i.loadedPartitions[k]
-	if !ok {
-		partition = newIndexPartition(p)
-		partition.load(tx, i.store, tenant)
-		i.loadedPartitions[k] = partition
-	}
-	partition.accessedAt = time.Now()
-	i.unloadPartitions()
-	return partition
-}
-
-func (i *Index) getOrLoadPartition(tx *bbolt.Tx, p *PartitionMeta, tenant string) *indexPartition {
-	if !p.HasTenant(tenant) {
-		return nil
-	}
-	k := cacheKey{partitionKey: p.Key, tenant: tenant}
-	partition, ok := i.loadedPartitions[k]
-	if ok {
-		return partition
-	}
-	partition = newIndexPartition(p)
-	if !partition.load(tx, i.store, tenant) {
-		// Just a safety check to avoid displacing
-		// partitions that are still in use.
-		return nil
-	}
-	partition.accessedAt = time.Now()
-	i.loadedPartitions[k] = partition
-	i.unloadPartitions()
-	return partition
-}
-
-// findPartitionMeta retrieves the partition meta for the given key.
-func (i *Index) findPartitionMeta(key store.PartitionKey) *PartitionMeta {
 	for _, p := range i.partitions {
-		if p.Key == key {
-			return p
+		level.Info(i.logger).Log(
+			"msg", "found metastore index partition",
+			"timestamp", p.Key.Timestamp.Format(time.RFC3339),
+			"duration", p.Key.Duration,
+			"tenants", len(p.TenantShards),
+		)
+		if i.shouldKeepPartition(p) {
+			level.Info(i.logger).Log("msg", "loading partition in memory")
+			if err = i.loadPartition(tx, p); err != nil {
+				return err
+			}
+		}
+	}
+
+	level.Info(i.logger).Log("msg", "loaded metastore index partitions", "count", len(i.partitions))
+	i.sortPartitions()
+	return nil
+}
+
+func (i *Index) shouldKeepPartition(p *store.Partition) bool {
+	now := time.Now()
+	low := now.Add(-partitionProtectionWindow)
+	high := now.Add(partitionProtectionWindow)
+	return p.Overlaps(low, high)
+}
+
+func (i *Index) sortPartitions() {
+	slices.SortFunc(i.partitions, func(a, b *store.Partition) int {
+		return a.Compare(b)
+	})
+}
+
+func (i *Index) loadPartition(tx *bbolt.Tx, p *store.Partition) error {
+	for tenant, shards := range p.TenantShards {
+		partition := newIndexPartition(p, tenant)
+		k := tenantPartitionKey{partition: p.Key, tenant: tenant}
+		i.loadedPartitions[k] = partition
+		for shard := range shards {
+			s, err := i.store.LoadTenantShard(tx, p.Key, tenant, shard)
+			if err != nil {
+				level.Error(i.logger).Log("msg", "failed to load shard", "partition", p.Key.Timestamp, "shard", shard, "tenant", tenant)
+				return err
+			}
+			partition.shards[shard] = newIndexShard(s)
 		}
 	}
 	return nil
 }
 
 func (i *Index) InsertBlock(tx *bbolt.Tx, b *metastorev1.BlockMeta) error {
-	i.partitionMu.Lock()
-	defer i.partitionMu.Unlock()
-	if i.findBlock(tx, b.Shard, block.Tenant(b), block.ID(b)) {
-		return ErrBlockExists
-	}
+	i.mu.Lock()
+	defer i.mu.Unlock()
 	return i.insertBlock(tx, b)
 }
 
 // insertBlock is the underlying implementation for inserting blocks. It is the caller's responsibility to enforce safe
 // concurrent access. The method will create a new partition if needed.
 func (i *Index) insertBlock(tx *bbolt.Tx, b *metastorev1.BlockMeta) error {
-	p := i.getOrCreatePartitionMeta(b)
-	partition := i.getOrCreatePartition(tx, p, block.Tenant(b))
-	shard, ok := partition.shards[b.Shard]
-	if !ok {
-		shard = newIndexShard(b.Shard, block.Tenant(b))
-		partition.shards[b.Shard] = shard
+	p := i.getOrCreatePartition(b)
+	shard, err := i.getOrCreateTenantShard(tx, p, block.Tenant(b), b.Shard)
+	if err != nil {
+		return err
 	}
-	return shard.insert(tx, i.store, partition.meta, b)
+	return shard.insert(tx, i.store, b)
 }
 
-func (i *Index) getOrCreatePartitionMeta(b *metastorev1.BlockMeta) *PartitionMeta {
-	key := store.CreatePartitionKey(block.ID(b), i.config.PartitionDuration)
-	p := i.findPartitionMeta(key)
+func (i *Index) getOrCreatePartition(b *metastorev1.BlockMeta) *store.Partition {
+	t := ulid.Time(ulid.MustParse(b.Id).Time())
+	k := store.NewPartitionKey(t, i.config.PartitionDuration)
+	p := i.findPartition(k)
 	if p == nil {
-		timestamp, duration, _ := key.Parse()
-		p = &PartitionMeta{
-			Key:       key,
-			Timestamp: timestamp,
-			Duration:  duration,
-			Tenants:   make([]string, 0),
-			tenantMap: make(map[string]struct{}),
-		}
+		level.Debug(i.logger).Log("msg", "creating new metastore index partition", "key", k)
+		p = store.NewPartition(k)
 		i.partitions = append(i.partitions, p)
 		i.sortPartitions()
-	}
-	if block.Tenant(b) != "" {
-		p.AddTenant(block.Tenant(b))
-	} else {
-		for _, ds := range b.Datasets {
-			p.AddTenant(b.StringTable[ds.Tenant])
-		}
 	}
 	return p
 }
 
-func (i *Index) FindBlocks(tx *bbolt.Tx, list *metastorev1.BlockList) []*metastorev1.BlockMeta {
-	i.partitionMu.Lock()
-	defer i.partitionMu.Unlock()
-
-	partitions := make(map[store.PartitionKey]struct{})
-	left := make(map[string]struct{})
-	for _, id := range list.Blocks {
-		partitions[store.CreatePartitionKey(id, i.config.PartitionDuration)] = struct{}{}
-		left[id] = struct{}{}
+func (i *Index) findPartition(key store.PartitionKey) *store.Partition {
+	for _, p := range i.partitions {
+		if p.Key.Equal(key) {
+			return p
+		}
 	}
+	return nil
+}
 
-	found := make([]*metastorev1.BlockMeta, 0, len(list.Blocks))
-	for key := range partitions {
-		p := i.findPartitionMeta(key)
+func (i *Index) getOrCreateTenantShard(tx *bbolt.Tx, p *store.Partition, tenant string, shard uint32) (*indexShard, error) {
+	k := tenantPartitionKey{partition: p.Key, tenant: tenant}
+	partition, ok := i.loadedPartitions[k]
+	if !ok {
+		i.unloadPartitions()
+		partition = newIndexPartition(p, tenant)
+		if err := partition.loadTenant(tx, i.store, tenant); err != nil {
+			return nil, err
+		}
+		i.loadedPartitions[k] = partition
+	}
+	s, ok := partition.shards[shard]
+	if !ok {
+		s = newIndexShard(&store.TenantShard{
+			Partition:   p.Key,
+			Tenant:      tenant,
+			Shard:       shard,
+			StringTable: block.NewMetadataStringTable(),
+		})
+		partition.shards[shard] = s
+		// This is the only way we "remember" the tenant shard.
+		p.AddTenantShard(tenant, shard)
+	}
+	partition.accessedAt = time.Now()
+	return s, nil
+}
+
+func (i *Index) FindBlocks(tx *bbolt.Tx, list *metastorev1.BlockList) ([]*metastorev1.BlockMeta, error) {
+	i.mu.Lock()
+	defer i.mu.Unlock()
+	metas := make([]*metastorev1.BlockMeta, 0, len(list.Blocks))
+	for k, partitioned := range i.partitionedList(list) {
+		p := i.findPartition(k)
 		if p == nil {
 			continue
 		}
-		partition := i.getOrLoadPartition(tx, p, list.Tenant)
-		if partition == nil {
+		s, err := i.getOrLoadTenantShard(tx, p, partitioned.Tenant, partitioned.Shard)
+		if err != nil {
+			return nil, err
+		}
+		if s == nil {
 			continue
 		}
-		shard, _ := partition.shards[list.Shard]
-		if shard == nil {
-			continue
-		}
-		for b := range left {
-			if md := shard.get(b); md != nil {
-				found = append(found, md)
-				delete(left, b)
+		for _, b := range partitioned.Blocks {
+			if md := s.getBlock(b); md != nil {
+				metas = append(metas, md)
 			}
 		}
 	}
-
-	return found
+	return metas, nil
 }
 
-func (i *Index) findBlock(tx *bbolt.Tx, shard uint32, tenant string, blockID string) bool {
-	key := store.CreatePartitionKey(blockID, i.config.PartitionDuration)
-	p := i.findPartitionMeta(key)
-	if p == nil {
-		return false
-	}
-
-	partition := i.getOrLoadPartition(tx, p, tenant)
-	if partition == nil {
-		return false
-	}
-	s := partition.shards[shard]
-	if s == nil {
-		return false
-	}
-
-	_, ok := s.blocks[blockID]
-	return ok
-}
-
-func (i *Index) sortPartitions() {
-	slices.SortFunc(i.partitions, func(a, b *PartitionMeta) int {
-		return a.compare(b)
-	})
-}
-
-// ReplaceBlocks removes source blocks from the index and inserts replacement blocks into the index. The intended usage
-// is for block compaction. The replacement blocks could be added to the same or a different partition.
-func (i *Index) ReplaceBlocks(tx *bbolt.Tx, compacted *metastorev1.CompactedBlocks) error {
-	i.partitionMu.Lock()
-	defer i.partitionMu.Unlock()
-	for _, b := range compacted.NewBlocks {
-		if err := i.insertBlock(tx, b); err != nil {
-			return err
-		}
-	}
-	return i.deleteBlockList(tx, compacted.SourceBlocks)
-}
-
-func (i *Index) deleteBlockList(tx *bbolt.Tx, list *metastorev1.BlockList) error {
+func (i *Index) partitionedList(list *metastorev1.BlockList) map[store.PartitionKey]*metastorev1.BlockList {
 	partitions := make(map[store.PartitionKey]*metastorev1.BlockList)
 	for _, b := range list.Blocks {
-		k := store.CreatePartitionKey(b, i.config.PartitionDuration)
+		k := store.NewPartitionKey(ulid.Time(ulid.MustParse(b).Time()), i.config.PartitionDuration)
 		v := partitions[k]
 		if v == nil {
 			v = &metastorev1.BlockList{
@@ -362,21 +294,70 @@ func (i *Index) deleteBlockList(tx *bbolt.Tx, list *metastorev1.BlockList) error
 		}
 		v.Blocks = append(v.Blocks, b)
 	}
-	for k, partitioned := range partitions {
+	return partitions
+}
+
+func (i *Index) getOrLoadTenantShard(tx *bbolt.Tx, p *store.Partition, tenant string, shard uint32) (*indexShard, error) {
+	// Check if we've seen any data for the tenant shard at all.
+	shards, ok := p.TenantShards[tenant]
+	if !ok {
+		return nil, nil
+	}
+	if _, ok = shards[shard]; !ok {
+		return nil, nil
+	}
+	k := tenantPartitionKey{partition: p.Key, tenant: tenant}
+	partition, ok := i.loadedPartitions[k]
+	if !ok {
+		// Read from store.
+		partition = newIndexPartition(p, tenant)
+		if err := partition.loadTenant(tx, i.store, tenant); err != nil {
+			return nil, err
+		}
+		if len(partition.shards) == 0 {
+			return nil, nil
+		}
+		i.unloadPartitions()
+		i.loadedPartitions[k] = partition
+	}
+	partition.accessedAt = time.Now()
+	return partition.shards[shard], nil
+}
+
+// ReplaceBlocks removes source blocks from the index and inserts replacement blocks into the index. The intended usage
+// is for block compaction. The replacement blocks could be added to the same or a different partition.
+func (i *Index) ReplaceBlocks(tx *bbolt.Tx, compacted *metastorev1.CompactedBlocks) error {
+	i.mu.Lock()
+	defer i.mu.Unlock()
+	for _, b := range compacted.NewBlocks {
+		if err := i.insertBlock(tx, b); err != nil {
+			if errors.Is(err, ErrBlockExists) {
+				continue
+			}
+			return err
+		}
+	}
+	return i.deleteBlockList(tx, compacted.SourceBlocks)
+}
+
+func (i *Index) deleteBlockList(tx *bbolt.Tx, list *metastorev1.BlockList) error {
+	for k, partitioned := range i.partitionedList(list) {
 		if err := i.store.DeleteBlockList(tx, k, partitioned); err != nil {
 			return err
 		}
-		ck := cacheKey{partitionKey: k, tenant: list.Tenant}
-		partition := i.loadedPartitions[ck]
-		if partition == nil {
+		p := i.findPartition(k)
+		if p == nil {
 			continue
 		}
-		shard := partition.shards[partitioned.Shard]
-		if shard == nil {
+		s, err := i.getOrLoadTenantShard(tx, p, partitioned.Tenant, partitioned.Shard)
+		if err != nil {
+			return err
+		}
+		if s == nil {
 			continue
 		}
 		for _, b := range partitioned.Blocks {
-			delete(shard.blocks, b)
+			delete(s.blocks, b)
 		}
 	}
 	return nil
@@ -402,30 +383,21 @@ func (i *Index) unloadPartitions() {
 		})
 		level.Debug(i.logger).Log("msg", "unloading metastore index partitions", "tenant", t, "to_remove", len(partitions))
 		for _, p := range partitions {
-			if p.meta.overlaps(time.Now().Add(-partitionProtectionWindow), time.Now().Add(partitionProtectionWindow)) {
+			if i.shouldKeepPartition(p.partition) {
 				continue
 			}
-			level.Debug(i.logger).Log("unloading metastore index partition", "key", p.meta.Key, "accessed_at", p.accessedAt.Format(time.RFC3339))
-			cKey := cacheKey{
-				partitionKey: p.meta.Key,
-				tenant:       t,
+			level.Debug(i.logger).Log("unloading metastore index partition", "key", p.partition.Key, "accessed_at", p.accessedAt.Format(time.RFC3339))
+			k := tenantPartitionKey{
+				partition: p.partition.Key,
+				tenant:    t,
 			}
-			delete(i.loadedPartitions, cKey)
+			delete(i.loadedPartitions, k)
 			toRemove--
 			if toRemove == 0 {
 				break
 			}
 		}
 	}
-}
-
-func (i *Index) Init(tx *bbolt.Tx) error {
-	return i.store.CreateBuckets(tx)
-}
-
-func (i *Index) Restore(tx *bbolt.Tx) error {
-	i.LoadPartitions(tx)
-	return nil
 }
 
 func (i *Index) GetTenantStats(tenant string) *metastorev1.TenantStats {
@@ -435,8 +407,8 @@ func (i *Index) GetTenantStats(tenant string) *metastorev1.TenantStats {
 		NewestProfileTime: math.MinInt64,
 	}
 
-	i.partitionMu.Lock()
-	defer i.partitionMu.Unlock()
+	i.mu.Lock()
+	defer i.mu.Unlock()
 
 	for _, p := range i.partitions {
 		if !p.HasTenant(tenant) {
@@ -461,8 +433,8 @@ func (i *Index) QueryMetadata(tx *bbolt.Tx, query MetadataQuery) iter.Iterator[*
 	if err != nil {
 		return iter.NewErrIterator[*metastorev1.BlockMeta](err)
 	}
-	i.partitionMu.Lock()
-	defer i.partitionMu.Unlock()
+	i.mu.Lock()
+	defer i.mu.Unlock()
 	// TODO(kolesnikovae): We collect blocks with the mutex held, which
 	//  will cause contention and latency issues. Fix it once we make
 	//  locks more granular (partition-tenant-shard level).
@@ -478,15 +450,12 @@ func (i *Index) shardIterator(tx *bbolt.Tx, startTime, endTime time.Time, tenant
 	endTime = endTime.Add(i.config.QueryLookaroundPeriod)
 	si := shardIterator{
 		tx:         tx,
-		partitions: make([]*PartitionMeta, 0, len(i.partitions)),
-		tenants:    make([]string, 1, 1+len(tenants)), // +1 For anon tenant.
+		partitions: make([]*store.Partition, 0, len(i.partitions)),
+		tenants:    tenants,
 		index:      i,
 	}
-	for _, t := range tenants {
-		si.tenants = append(si.tenants, t)
-	}
 	for _, p := range i.partitions {
-		if !p.overlaps(startTime, endTime) {
+		if !p.Overlaps(startTime, endTime) {
 			continue
 		}
 		for _, t := range si.tenants {
@@ -499,76 +468,54 @@ func (i *Index) shardIterator(tx *bbolt.Tx, startTime, endTime time.Time, tenant
 	return &si
 }
 
-func newIndexPartition(p *PartitionMeta) *indexPartition {
+func newIndexPartition(p *store.Partition, tenant string) *indexPartition {
 	return &indexPartition{
-		meta:   p,
-		shards: make(map[uint32]*indexShard),
+		partition:  p,
+		tenant:     tenant,
+		shards:     make(map[uint32]*indexShard),
+		accessedAt: time.Now(),
 	}
 }
 
-func (p *indexPartition) load(tx *bbolt.Tx, store Store, tenant string) (loaded bool) {
-	for _, s := range store.ListShards(tx, p.meta.Key) {
-		shard := newIndexShard(s, tenant)
-		if shard.load(tx, store, p.meta, s, tenant) {
-			p.shards[s] = shard
-			loaded = true
+func (p *indexPartition) loadTenant(tx *bbolt.Tx, store Store, tenant string) error {
+	for shard := range p.partition.TenantShards[tenant] {
+		s, err := store.LoadTenantShard(tx, p.partition.Key, tenant, shard)
+		if err != nil {
+			return err
+		}
+		if len(s.Blocks) > 0 {
+			p.shards[shard] = newIndexShard(s)
 		}
 	}
-	return loaded
+	return nil
 }
 
-func newIndexShard(shard uint32, tenant string) *indexShard {
-	return &indexShard{
-		tenant:  tenant,
-		shard:   shard,
-		blocks:  make(map[string]*metastorev1.BlockMeta),
-		strings: block.NewMetadataStringTable(),
+func newIndexShard(s *store.TenantShard) *indexShard {
+	x := &indexShard{
+		blocks:      make(map[string]*metastorev1.BlockMeta),
+		TenantShard: s,
 	}
+	for _, md := range s.Blocks {
+		x.blocks[md.Id] = md
+	}
+	return x
 }
 
-func (s *indexShard) load(tx *bbolt.Tx, store Store, p *PartitionMeta, shard uint32, tenant string) bool {
-	stringIter := store.LoadStrings(tx, p.Key, shard, tenant)
-	defer func() {
-		_ = stringIter.Close()
-	}()
-	// TODO: Error handling.
-	if err := s.strings.Load(stringIter); err != nil {
-		return false
+func (s *indexShard) insert(tx *bbolt.Tx, x Store, md *metastorev1.BlockMeta) error {
+	if _, ok := s.blocks[md.Id]; ok {
+		return ErrBlockExists
 	}
-	if len(s.strings.Strings) == 0 {
-		return false
-	}
-	for _, b := range store.ListBlocks(tx, p.Key, shard, tenant) {
-		s.blocks[s.strings.Strings[b.Id]] = b
-	}
-	return len(s.blocks) > 0
+	s.blocks[md.Id] = md
+	return x.StoreBlock(tx, s.TenantShard, md)
 }
 
-func (s *indexShard) insert(tx *bbolt.Tx, store Store, p *PartitionMeta, md *metastorev1.BlockMeta) error {
-	// Keep params as they may be removed at strings.Import.
-	blockID := block.ID(md)
-	tenant := block.Tenant(md)
-	shard := md.Shard
-	if _, ok := s.blocks[blockID]; ok {
-		return nil
-	}
-	// Clear the string table to save memory.
-	s.strings.Import(md)
-	if err := store.StoreStrings(tx, p.Key, shard, tenant, len(s.strings.Strings), md.StringTable); err != nil {
-		return err
-	}
-	s.blocks[blockID] = md
-	md.StringTable = nil
-	return store.StoreBlock(tx, p.Key, shard, tenant, blockID, md)
-}
-
-func (s *indexShard) get(blockID string) *metastorev1.BlockMeta {
+func (s *indexShard) getBlock(blockID string) *metastorev1.BlockMeta {
 	md, ok := s.blocks[blockID]
 	if !ok {
 		return nil
 	}
 	mdCopy := md.CloneVT()
-	s.strings.Export(mdCopy)
+	s.TenantShard.StringTable.Export(mdCopy)
 	return mdCopy
 }
 
@@ -576,14 +523,15 @@ type shardIterator struct {
 	tx         *bbolt.Tx
 	index      *Index
 	tenants    []string
-	partitions []*PartitionMeta
+	partitions []*store.Partition
 	shards     []*indexShard
 	cur        int
+	err        error
 }
 
 func (si *shardIterator) Close() error { return nil }
 
-func (si *shardIterator) Err() error { return nil }
+func (si *shardIterator) Err() error { return si.err }
 
 func (si *shardIterator) At() *indexShard { return si.shards[si.cur] }
 
@@ -601,14 +549,21 @@ func (si *shardIterator) Next() bool {
 	return si.cur < len(si.shards)
 }
 
-func (si *shardIterator) loadShards(p *PartitionMeta) {
+func (si *shardIterator) loadShards(p *store.Partition) {
 	for _, t := range si.tenants {
-		partition := si.index.getOrLoadPartition(si.tx, p, t)
-		if partition == nil {
+		shards := p.TenantShards[t]
+		if shards == nil {
 			continue
 		}
-		for _, shard := range partition.shards {
-			si.shards = append(si.shards, shard)
+		for s := range shards {
+			shard, err := si.index.getOrLoadTenantShard(si.tx, p, t, s)
+			if err != nil {
+				si.err = err
+				return
+			}
+			if shard != nil {
+				si.shards = append(si.shards, shard)
+			}
 		}
 	}
 	slices.SortFunc(si.shards, compareShards)
@@ -616,8 +571,9 @@ func (si *shardIterator) loadShards(p *PartitionMeta) {
 }
 
 func compareShards(a, b *indexShard) int {
-	if a.tenant == b.tenant {
-		return int(a.shard) - int(b.shard)
+	cmp := strings.Compare(a.Tenant, b.Tenant)
+	if cmp == 0 {
+		return int(a.Shard) - int(b.Shard)
 	}
-	return strings.Compare(a.tenant, b.tenant)
+	return cmp
 }

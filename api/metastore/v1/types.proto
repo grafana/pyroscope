@@ -10,7 +10,10 @@ message BlockList {
 
 message BlockMeta {
   uint32 format_version = 1;
-  int32 id = 2;
+  // Block ID is a unique identifier for the block.
+  // This is the only field that is not included into
+  // the string table.
+  string id = 2;
   // Optional. Empty if compaction level is 0.
   int32 tenant = 3;
   uint32 shard = 4;
@@ -20,7 +23,7 @@ message BlockMeta {
   int32 created_by = 8;
   uint64 size = 9;
   repeated Dataset datasets = 10;
-  // String table contains all strings of the block.
+  // String table contains strings of the block.
   // By convention, the first string is always an empty string.
   repeated string string_table = 11;
 }

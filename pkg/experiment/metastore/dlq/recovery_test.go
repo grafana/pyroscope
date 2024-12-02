@@ -23,19 +23,16 @@ import (
 func TestRecoverTick(t *testing.T) {
 	metas := []*metastorev1.BlockMeta{
 		{
-			Id:          1,
-			Shard:       2,
-			StringTable: []string{"", "3"},
+			Id:    "3",
+			Shard: 2,
 		},
 		{
-			Id:          1,
-			Shard:       1,
-			StringTable: []string{"", "1"},
+			Id:    "1",
+			Shard: 1,
 		},
 		{
-			Id:          1,
-			Shard:       2,
-			StringTable: []string{"", "2"},
+			Id:    "2",
+			Shard: 2,
 		},
 	}
 
@@ -65,7 +62,7 @@ func TestRecoverTick(t *testing.T) {
 
 	require.Equal(t, len(actual), len(expected))
 	for i := range actual {
-		require.Equal(t, block.ID(actual[i]), block.ID(expected[i]))
+		require.Equal(t, actual[i].Id, expected[i].Id)
 		require.Equal(t, actual[i].Shard, expected[i].Shard)
 	}
 }
@@ -73,9 +70,8 @@ func TestRecoverTick(t *testing.T) {
 func TestNotRaftLeader(t *testing.T) {
 	metas := []*metastorev1.BlockMeta{
 		{
-			Id:          1,
-			Shard:       2,
-			StringTable: []string{"", "1"},
+			Id:    "1",
+			Shard: 2,
 		},
 	}
 
@@ -102,19 +98,16 @@ func TestNotRaftLeader(t *testing.T) {
 func TestStartStop(t *testing.T) {
 	metas := []*metastorev1.BlockMeta{
 		{
-			Id:          1,
-			Shard:       2,
-			StringTable: []string{"", "3"},
+			Id:    "3",
+			Shard: 2,
 		},
 		{
-			Id:          1,
-			Shard:       1,
-			StringTable: []string{"", "1"},
+			Id:    "1",
+			Shard: 1,
 		},
 		{
-			Id:          1,
-			Shard:       2,
-			StringTable: []string{"", "2"},
+			Id:    "2",
+			Shard: 2,
 		},
 	}
 	m := new(sync.Mutex)
@@ -154,7 +147,7 @@ func TestStartStop(t *testing.T) {
 
 	require.Equal(t, len(actual), len(expected))
 	for i := range actual {
-		require.Equal(t, block.ID(actual[i]), block.ID(expected[i]))
+		require.Equal(t, actual[i].Id, expected[i].Id)
 		require.Equal(t, actual[i].Shard, expected[i].Shard)
 	}
 }

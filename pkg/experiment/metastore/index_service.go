@@ -6,6 +6,8 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"go.etcd.io/bbolt"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
@@ -21,7 +23,7 @@ type PlacementStats interface {
 }
 
 type IndexBlockFinder interface {
-	FindBlocks(*bbolt.Tx, *metastorev1.BlockList) []*metastorev1.BlockMeta
+	FindBlocks(*bbolt.Tx, *metastorev1.BlockList) ([]*metastorev1.BlockMeta, error)
 }
 
 func NewIndexService(
@@ -53,7 +55,7 @@ type IndexService struct {
 func (svc *IndexService) AddBlock(
 	ctx context.Context,
 	req *metastorev1.AddBlockRequest,
-) (rsp *metastorev1.AddBlockResponse, err error) {
+) (resp *metastorev1.AddBlockResponse, err error) {
 	defer func() {
 		if err == nil {
 			svc.stats.RecordStats(statsFromMetadata(req.Block))
@@ -74,7 +76,7 @@ func (svc *IndexService) addBlockMetadata(
 	req *metastorev1.AddBlockRequest,
 ) (*metastorev1.AddBlockResponse, error) {
 	if err := block.SanitizeMetadata(req.Block); err != nil {
-		level.Warn(svc.logger).Log("invalid metadata", "block", block.ID(req.Block), "err", err)
+		level.Warn(svc.logger).Log("invalid metadata", "block", req.Block.Id, "err", err)
 		return nil, err
 	}
 	_, err := svc.raft.Propose(
@@ -82,7 +84,7 @@ func (svc *IndexService) addBlockMetadata(
 		&raft_log.AddBlockMetadataRequest{Metadata: req.Block},
 	)
 	if err != nil {
-		level.Error(svc.logger).Log("msg", "failed to add block", "block", block.ID(req.Block), "err", err)
+		level.Error(svc.logger).Log("msg", "failed to add block", "block", req.Block.Id, "err", err)
 		return nil, err
 	}
 	return new(metastorev1.AddBlockResponse), nil
@@ -91,11 +93,18 @@ func (svc *IndexService) addBlockMetadata(
 func (svc *IndexService) GetBlockMetadata(
 	ctx context.Context,
 	req *metastorev1.GetBlockMetadataRequest,
-) (*metastorev1.GetBlockMetadataResponse, error) {
-	var found []*metastorev1.BlockMeta
-	err := svc.state.ConsistentRead(ctx, func(tx *bbolt.Tx, _ raftnode.ReadIndex) {
-		found = svc.index.FindBlocks(tx, req.GetBlocks())
-	})
+) (resp *metastorev1.GetBlockMetadataResponse, err error) {
+	read := func(tx *bbolt.Tx, _ raftnode.ReadIndex) {
+		resp, err = svc.getBlockMetadata(tx, req.GetBlocks())
+	}
+	if readErr := svc.state.ConsistentRead(ctx, read); readErr != nil {
+		return nil, status.Error(codes.Unavailable, readErr.Error())
+	}
+	return resp, err
+}
+
+func (svc *IndexService) getBlockMetadata(tx *bbolt.Tx, list *metastorev1.BlockList) (*metastorev1.GetBlockMetadataResponse, error) {
+	found, err := svc.index.FindBlocks(tx, list)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +134,7 @@ func (s *sampleIterator) Next() bool {
 func (s *sampleIterator) At() placement.Sample {
 	ds := s.md.Datasets[s.cur-1]
 	return placement.Sample{
-		TenantID:    block.Tenant(s.md),
+		TenantID:    s.md.StringTable[ds.Tenant],
 		DatasetName: s.md.StringTable[ds.Name],
 		ShardOwner:  s.md.StringTable[s.md.CreatedBy],
 		ShardID:     s.md.Shard,

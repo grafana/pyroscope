@@ -1,8 +1,8 @@
 [
   {
     "format_version": 1,
-    "id": 1,
-    "tenant": 2,
+    "id": "01J2VJR31P221PP7MVJSX7E468",
+    "tenant": 1,
     "shard": 1,
     "compaction_level": 1,
     "min_time": 1721060010831,
@@ -10,8 +10,8 @@
     "size": 150042,
     "datasets": [
       {
-        "tenant": 2,
-        "name": 5,
+        "tenant": 1,
+        "name": 4,
         "min_time": 1721060010831,
         "max_time": 1721060033248,
         "table_of_contents": [
@@ -22,8 +22,8 @@
         "size": 35057
       },
       {
-        "tenant": 2,
-        "name": 4,
+        "tenant": 1,
+        "name": 3,
         "min_time": 1721060015603,
         "max_time": 1721060033802,
         "table_of_contents": [
@@ -34,8 +34,8 @@
         "size": 76886
       },
       {
-        "tenant": 2,
-        "name": 3,
+        "tenant": 1,
+        "name": 2,
         "min_time": 1721060013534,
         "max_time": 1721060035611,
         "table_of_contents": [
@@ -48,7 +48,6 @@
     ],
     "string_table": [
       "",
-      "01J2VJR31P221PP7MVJSX7E468",
       "anonymous",
       "pyroscope-test/query-frontend",
       "pyroscope-test/ingester",

@@ -606,8 +606,8 @@
           "format": "int64"
         },
         "id": {
-          "type": "integer",
-          "format": "int32"
+          "type": "string",
+          "description": "Block ID is a unique identifier for the block.\nThis is the only field that is not included into\nthe string table."
         },
         "tenant": {
           "type": "integer",
@@ -650,7 +650,7 @@
           "items": {
             "type": "string"
           },
-          "description": "String table contains all strings of the block.\nBy convention, the first string is always an empty string."
+          "description": "String table contains strings of the block.\nBy convention, the first string is always an empty string."
         }
       }
     },

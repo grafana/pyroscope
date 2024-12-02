@@ -165,7 +165,7 @@ func newBlockCompaction(
 	p.path = BuildObjectPath(tenant, shard, compactionLevel, id)
 	p.meta = &metastorev1.BlockMeta{
 		FormatVersion:   1,
-		Id:              p.strings.Put(id),
+		Id:              id,
 		Tenant:          p.strings.Put(tenant),
 		Shard:           shard,
 		CompactionLevel: compactionLevel,

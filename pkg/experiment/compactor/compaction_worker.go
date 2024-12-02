@@ -370,8 +370,8 @@ func (w *Worker) runCompaction(job *compactionJob) {
 		for _, c := range compacted {
 			level.Info(logger).Log(
 				"msg", "new compacted block",
-				"block_id", block.ID(c),
-				"block_tenant", c.StringTable[c.Tenant],
+				"block_id", c.Id,
+				"block_tenant", block.Tenant(c),
 				"block_shard", c.Shard,
 				"block_compaction_level", c.CompactionLevel,
 				"block_min_time", c.MinTime,
@@ -436,7 +436,7 @@ func (w *Worker) getBlockMetadata(logger log.Logger, job *compactionJob) error {
 	// Update the plan to reflect the actual compaction job state.
 	job.SourceBlocks = job.SourceBlocks[:0]
 	for _, b := range source {
-		job.SourceBlocks = append(job.SourceBlocks, b.StringTable[b.Id])
+		job.SourceBlocks = append(job.SourceBlocks, b.Id)
 	}
 
 	job.blocks = source

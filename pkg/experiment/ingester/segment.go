@@ -242,7 +242,7 @@ func (s *segment) flushBlock(heads []flushedServiceHead) ([]byte, *metastorev1.B
 	stringTable := block.NewMetadataStringTable()
 	meta := &metastorev1.BlockMeta{
 		FormatVersion:   1,
-		Id:              stringTable.Put(s.ulid.String()),
+		Id:              s.ulid.String(),
 		Tenant:          0,
 		Shard:           uint32(s.shard),
 		CompactionLevel: 0,

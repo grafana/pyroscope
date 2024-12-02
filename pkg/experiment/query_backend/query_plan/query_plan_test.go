@@ -3,7 +3,6 @@ package query_plan
 import (
 	"bytes"
 	"os"
-	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,23 +12,20 @@ import (
 )
 
 func Test_Plan(t *testing.T) {
-	block := func(i int) *metastorev1.BlockMeta {
-		return &metastorev1.BlockMeta{Id: 1, StringTable: []string{"", strconv.Itoa(i)}}
-	}
 	blocks := []*metastorev1.BlockMeta{
-		block(1), block(2),
-		block(3), block(4),
-		block(5), block(6),
-		block(7), block(8),
-		block(9), block(10),
-		block(11), block(12),
-		block(13), block(14),
-		block(15), block(16),
-		block(17), block(18),
-		block(19), block(20),
-		block(21), block(22),
-		block(23), block(24),
-		block(25),
+		{Id: "1"}, {Id: "2"},
+		{Id: "3"}, {Id: "4"},
+		{Id: "5"}, {Id: "6"},
+		{Id: "7"}, {Id: "8"},
+		{Id: "9"}, {Id: "10"},
+		{Id: "11"}, {Id: "12"},
+		{Id: "13"}, {Id: "14"},
+		{Id: "15"}, {Id: "16"},
+		{Id: "17"}, {Id: "18"},
+		{Id: "19"}, {Id: "20"},
+		{Id: "21"}, {Id: "22"},
+		{Id: "23"}, {Id: "24"},
+		{Id: "25"},
 	}
 
 	p := Build(blocks, 2, 3)

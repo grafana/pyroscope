@@ -73,7 +73,7 @@ func NewBlockEntry(cmd *raft.Log, md *metastorev1.BlockMeta) BlockEntry {
 	return BlockEntry{
 		Index:      cmd.Index,
 		AppendedAt: cmd.AppendedAt.UnixNano(),
-		ID:         block.ID(md),
+		ID:         md.Id,
 		Tenant:     block.Tenant(md),
 		Shard:      md.Shard,
 		Level:      md.CompactionLevel,

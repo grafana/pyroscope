@@ -116,7 +116,7 @@ func (r *Recovery) recover(ctx context.Context, metaPath string) error {
 		return nil
 	}
 	shard, _ := strconv.ParseUint(sshard, 10, 64)
-	if ulid != block.ID(meta) || meta.Shard != uint32(shard) {
+	if ulid != meta.Id || meta.Shard != uint32(shard) {
 		level.Error(r.logger).Log("msg", "unexpected block meta", "path", metaPath, "meta", fmt.Sprintf("%+v", meta))
 		return nil
 	}

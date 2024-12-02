@@ -1,14 +1,14 @@
 {
   "blocks": [
     {
-      "id": 1,
+      "id": "01J2VJR31PT3X4NDJC4Q2BHWQ1",
       "minTime": "1721060035611",
       "maxTime": "1721060035611",
       "shard": 1,
       "datasets": [
         {
-          "tenant": 2,
-          "name": 3,
+          "tenant": 1,
+          "name": 2,
           "minTime": "1721060035611",
           "maxTime": "1721060035611",
           "tableOfContents": [
@@ -21,20 +21,19 @@
       ],
       "stringTable": [
         "",
-        "01J2VJR31PT3X4NDJC4Q2BHWQ1",
         "anonymous",
         "pyroscope-test/query-frontend"
       ]
     },
     {
-      "id": 1,
+      "id": "01J2VJQPYDC160REPAD2VN88XN",
       "minTime": "1721060023235",
       "maxTime": "1721060023235",
       "shard": 1,
       "datasets": [
         {
-          "tenant": 2,
-          "name": 3,
+          "tenant": 1,
+          "name": 2,
           "minTime": "1721060023235",
           "maxTime": "1721060023235",
           "tableOfContents": [
@@ -47,20 +46,19 @@
       ],
       "stringTable": [
         "",
-        "01J2VJQPYDC160REPAD2VN88XN",
         "anonymous",
         "pyroscope-test/ingester"
       ]
     },
     {
-      "id": 1,
+      "id": "01J2VJQRGBK8YFWVV8K1MPRRWM",
       "minTime": "1721060010831",
       "maxTime": "1721060010831",
       "shard": 1,
       "datasets": [
         {
-          "tenant": 2,
-          "name": 3,
+          "tenant": 1,
+          "name": 2,
           "minTime": "1721060010831",
           "maxTime": "1721060010831",
           "tableOfContents": [
@@ -73,20 +71,19 @@
       ],
       "stringTable": [
         "",
-        "01J2VJQRGBK8YFWVV8K1MPRRWM",
         "anonymous",
         "pyroscope-test/alloy"
       ]
     },
     {
-      "id": 1,
+      "id": "01J2VJQRTMSCY4VDYBP5N4N5JK",
       "minTime": "1721060025159",
       "maxTime": "1721060025159",
       "shard": 1,
       "datasets": [
         {
-          "tenant": 2,
-          "name": 3,
+          "tenant": 1,
+          "name": 2,
           "minTime": "1721060025159",
           "maxTime": "1721060025159",
           "tableOfContents": [
@@ -99,20 +96,19 @@
       ],
       "stringTable": [
         "",
-        "01J2VJQRTMSCY4VDYBP5N4N5JK",
         "anonymous",
         "pyroscope-test/query-frontend"
       ]
     },
     {
-      "id": 1,
+      "id": "01J2VJQTJ3PGF7KB39ARR1BX3Y",
       "minTime": "1721060026913",
       "maxTime": "1721060026913",
       "shard": 1,
       "datasets": [
         {
-          "tenant": 2,
-          "name": 3,
+          "tenant": 1,
+          "name": 2,
           "minTime": "1721060026913",
           "maxTime": "1721060026913",
           "tableOfContents": [
@@ -125,20 +121,19 @@
       ],
       "stringTable": [
         "",
-        "01J2VJQTJ3PGF7KB39ARR1BX3Y",
         "anonymous",
         "pyroscope-test/ingester"
       ]
     },
     {
-      "id": 1,
+      "id": "01J2VJQV544TF571FDSK2H692P",
       "minTime": "1721060013534",
       "maxTime": "1721060013534",
       "shard": 1,
       "datasets": [
         {
-          "tenant": 2,
-          "name": 3,
+          "tenant": 1,
+          "name": 2,
           "minTime": "1721060013534",
           "maxTime": "1721060013534",
           "tableOfContents": [
@@ -151,20 +146,19 @@
       ],
       "stringTable": [
         "",
-        "01J2VJQV544TF571FDSK2H692P",
         "anonymous",
         "pyroscope-test/query-frontend"
       ]
     },
     {
-      "id": 1,
+      "id": "01J2VJQX8DYHSEBK7BAQSCJBMG",
       "minTime": "1721060015603",
       "maxTime": "1721060015603",
       "shard": 1,
       "datasets": [
         {
-          "tenant": 2,
-          "name": 3,
+          "tenant": 1,
+          "name": 2,
           "minTime": "1721060015603",
           "maxTime": "1721060015603",
           "tableOfContents": [
@@ -177,20 +171,19 @@
       ],
       "stringTable": [
         "",
-        "01J2VJQX8DYHSEBK7BAQSCJBMG",
         "anonymous",
         "pyroscope-test/ingester"
       ]
     },
     {
-      "id": 1,
+      "id": "01J2VJQYQVZTPZMMJKE7F2XC47",
       "minTime": "1721060031203",
       "maxTime": "1721060031203",
       "shard": 1,
       "datasets": [
         {
-          "tenant": 2,
-          "name": 3,
+          "tenant": 1,
+          "name": 2,
           "minTime": "1721060031203",
           "maxTime": "1721060031203",
           "tableOfContents": [
@@ -203,20 +196,19 @@
       ],
       "stringTable": [
         "",
-        "01J2VJQYQVZTPZMMJKE7F2XC47",
         "anonymous",
         "pyroscope-test/ingester"
       ]
     },
     {
-      "id": 1,
+      "id": "01J2VJQZPARDJQ779S1JMV0XQA",
       "minTime": "1721060032190",
       "maxTime": "1721060032190",
       "shard": 1,
       "datasets": [
         {
-          "tenant": 2,
-          "name": 3,
+          "tenant": 1,
+          "name": 2,
           "minTime": "1721060032190",
           "maxTime": "1721060032190",
           "tableOfContents": [
@@ -229,20 +221,19 @@
       ],
       "stringTable": [
         "",
-        "01J2VJQZPARDJQ779S1JMV0XQA",
         "anonymous",
         "pyroscope-test/ingester"
       ]
     },
     {
-      "id": 1,
+      "id": "01J2VJR0R3NQS23SDADNA6XHCM",
       "minTime": "1721060033248",
       "maxTime": "1721060033802",
       "shard": 1,
       "datasets": [
         {
-          "tenant": 2,
-          "name": 3,
+          "tenant": 1,
+          "name": 2,
           "minTime": "1721060033248",
           "maxTime": "1721060033248",
           "tableOfContents": [
@@ -253,8 +244,8 @@
           "size": "27397"
         },
         {
-          "tenant": 2,
-          "name": 4,
+          "tenant": 1,
+          "name": 3,
           "minTime": "1721060033680",
           "maxTime": "1721060033802",
           "tableOfContents": [
@@ -267,7 +258,6 @@
       ],
       "stringTable": [
         "",
-        "01J2VJR0R3NQS23SDADNA6XHCM",
         "anonymous",
         "pyroscope-test/alloy",
         "pyroscope-test/ingester"

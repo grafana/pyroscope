@@ -109,7 +109,7 @@ func NewObject(storage objstore.Bucket, md *metastorev1.BlockMeta, opts ...Objec
 }
 
 func ObjectPath(md *metastorev1.BlockMeta) string {
-	return BuildObjectPath(Tenant(md), md.Shard, md.CompactionLevel, ID(md))
+	return BuildObjectPath(Tenant(md), md.Shard, md.CompactionLevel, md.Id)
 }
 
 func BuildObjectPath(tenant string, shard uint32, level uint32, block string) string {
@@ -144,7 +144,7 @@ func MetadataDLQObjectPath(md *metastorev1.BlockMeta) string {
 	b.WriteByte('/')
 	b.WriteString(tenantDirName)
 	b.WriteByte('/')
-	b.WriteString(ID(md))
+	b.WriteString(md.Id)
 	b.WriteByte('/')
 	b.WriteString(FileNameMetadataObject)
 	return b.String()
@@ -225,7 +225,7 @@ func (obj *Object) closeErr(err error) (closeErr error) {
 func (obj *Object) Meta() *metastorev1.BlockMeta { return obj.meta }
 
 func (obj *Object) Download(ctx context.Context) error {
-	dir := filepath.Join(obj.downloadDir, ID(obj.meta))
+	dir := filepath.Join(obj.downloadDir, obj.meta.Id)
 	local, err := objstore.Download(ctx, obj.path, obj.storage, dir)
 	if err != nil {
 		return err

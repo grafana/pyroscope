@@ -5,16 +5,14 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"unicode/utf8"
 
 	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/block"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/store"
 	"github.com/grafana/pyroscope/pkg/iter"
 )
-
-// TODO(kolesnikovae): Handle ALL errors; don't panic in the read path.
 
 const (
 	partitionBucketName          = "partition"
@@ -23,112 +21,42 @@ const (
 )
 
 var (
+	ErrInvalidStringTable = errors.New("malformed string table")
+)
+
+var (
 	partitionBucketNameBytes          = []byte(partitionBucketName)
 	emptyTenantBucketNameBytes        = []byte(emptyTenantBucketName)
 	tenantShardStringsBucketNameBytes = []byte(tenantShardStringsBucketName)
 )
 
-type PartitionBlocks struct {
-	Tenant  string
-	Shard   uint32
-	Blocks  []*metastorev1.BlockMeta
-	Strings []string
+type Entry struct {
+	Partition   PartitionKey
+	Shard       uint32
+	Tenant      string
+	BlockID     string
+	BlockMeta   *metastorev1.BlockMeta
+	StringTable *block.MetadataStrings
+}
+
+type TenantShard struct {
+	Partition   PartitionKey
+	Tenant      string
+	Shard       uint32
+	Blocks      []*metastorev1.BlockMeta
+	StringTable *block.MetadataStrings
 }
 
 type IndexStore struct{}
 
-func NewIndexStore() *IndexStore {
-	return &IndexStore{}
-}
-
-func (m *IndexStore) CreateBuckets(tx *bbolt.Tx) error {
-	_, err := tx.CreateBucketIfNotExists(partitionBucketNameBytes)
-	return err
-}
-
-func (m *IndexStore) StoreBlock(tx *bbolt.Tx, pk PartitionKey, shard uint32, tenant, id string, md *metastorev1.BlockMeta) error {
-	tenantShard, err := getOrCreateTenantShard(tx, pk, shard, tenant)
-	if err != nil {
-		return err
+func tenantBucketName(tenant string) []byte {
+	if tenant == "" {
+		return emptyTenantBucketNameBytes
 	}
-	value, err := md.MarshalVT()
-	if err != nil {
-		return err
-	}
-	return tenantShard.Put([]byte(id), value)
+	return []byte(tenant)
 }
 
-func (m *IndexStore) ListPartitions(tx *bbolt.Tx) []PartitionKey {
-	partitions := make([]PartitionKey, 0)
-	_ = getPartition(tx).ForEachBucket(func(name []byte) error {
-		partitions = append(partitions, PartitionKey(name))
-		return nil
-	})
-	return partitions
-}
-
-func (m *IndexStore) ListShards(tx *bbolt.Tx, key PartitionKey) []uint32 {
-	shards := make([]uint32, 0)
-	partition := getPartition(tx).Bucket([]byte(key))
-	if partition == nil {
-		return nil
-	}
-	_ = partition.ForEachBucket(func(name []byte) error {
-		shards = append(shards, binary.BigEndian.Uint32(name))
-		return nil
-	})
-	return shards
-}
-
-func (m *IndexStore) ListTenants(tx *bbolt.Tx, key PartitionKey, shard uint32) []string {
-	tenants := make([]string, 0)
-	partition := getPartition(tx).Bucket([]byte(key))
-	if partition == nil {
-		return nil
-	}
-	shardBkt := partition.Bucket(binary.BigEndian.AppendUint32(nil, shard))
-	if shardBkt == nil {
-		return nil
-	}
-	_ = shardBkt.ForEachBucket(func(name []byte) error {
-		if bytes.Equal(name, emptyTenantBucketNameBytes) {
-			tenants = append(tenants, "")
-		} else {
-			tenants = append(tenants, string(name))
-		}
-		return nil
-	})
-	return tenants
-}
-
-func (m *IndexStore) ListBlocks(tx *bbolt.Tx, key PartitionKey, shard uint32, tenant string) []*metastorev1.BlockMeta {
-	tenantShard := getTenantShard(tx, key, shard, tenant)
-	if tenantShard == nil {
-		return nil
-	}
-	blocks := make([]*metastorev1.BlockMeta, 0)
-	_ = tenantShard.ForEach(func(k, v []byte) error {
-		var md metastorev1.BlockMeta
-		if err := md.UnmarshalVT(v); err != nil {
-			panic(fmt.Sprintf("failed to unmarshal block %q: %v", string(k), err))
-		}
-		blocks = append(blocks, &md)
-		return nil
-	})
-	return blocks
-}
-
-func (m *IndexStore) DeleteBlockList(tx *bbolt.Tx, pk PartitionKey, list *metastorev1.BlockList) error {
-	tenantShard := getTenantShard(tx, pk, list.Shard, list.Tenant)
-	for _, b := range list.Blocks {
-		if err := tenantShard.Delete([]byte(b)); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func getPartition(tx *bbolt.Tx) *bbolt.Bucket {
+func getPartitionsBucket(tx *bbolt.Tx) *bbolt.Bucket {
 	return tx.Bucket(partitionBucketNameBytes)
 }
 
@@ -140,69 +68,162 @@ func getOrCreateSubBucket(parent *bbolt.Bucket, name []byte) (*bbolt.Bucket, err
 	return bucket, nil
 }
 
-func getTenantShard(tx *bbolt.Tx, key PartitionKey, shard uint32, tenant string) *bbolt.Bucket {
-	partition := getPartition(tx).Bucket([]byte(key))
-	if partition == nil {
+func NewIndexStore() *IndexStore {
+	return &IndexStore{}
+}
+
+func (m *IndexStore) CreateBuckets(tx *bbolt.Tx) error {
+	_, err := tx.CreateBucketIfNotExists(partitionBucketNameBytes)
+	return err
+}
+
+func (m *IndexStore) StoreBlock(tx *bbolt.Tx, shard *TenantShard, md *metastorev1.BlockMeta) error {
+	bucket, err := getOrCreateTenantShard(tx, shard.Partition, shard.Tenant, shard.Shard)
+	if err != nil {
+		return err
+	}
+	n := len(shard.StringTable.Strings)
+	shard.StringTable.Import(md)
+	if added := shard.StringTable.Strings[n:]; len(added) > 0 {
+		strings, err := getOrCreateSubBucket(bucket, tenantShardStringsBucketNameBytes)
+		if err != nil {
+			return err
+		}
+		k := binary.BigEndian.AppendUint32(nil, uint32(n))
+		v := encodeStrings(added)
+		if err = strings.Put(k, v); err != nil {
+			return err
+		}
+	}
+	md.StringTable = nil
+	value, err := md.MarshalVT()
+	if err != nil {
+		return err
+	}
+	return bucket.Put([]byte(md.Id), value)
+}
+
+func (m *IndexStore) ListPartitions(tx *bbolt.Tx) ([]*Partition, error) {
+	var partitions []*Partition
+	root := getPartitionsBucket(tx)
+	return partitions, root.ForEachBucket(func(partitionKey []byte) error {
+		var k PartitionKey
+		if err := k.UnmarshalBinary(partitionKey); err != nil {
+			return fmt.Errorf("%w: %x", err, partitionKey)
+		}
+
+		p := NewPartition(k)
+		partition := root.Bucket(partitionKey)
+		err := partition.ForEachBucket(func(tenant []byte) error {
+			shards := make(map[uint32]struct{})
+			err := partition.Bucket(tenant).ForEachBucket(func(shard []byte) error {
+				shards[binary.BigEndian.Uint32(shard)] = struct{}{}
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+			if bytes.Compare(tenant, emptyTenantBucketNameBytes) == 0 {
+				tenant = nil
+			}
+			p.TenantShards[string(tenant)] = shards
+			return nil
+		})
+
+		if err != nil {
+			return err
+		}
+
+		partitions = append(partitions, p)
 		return nil
-	}
-	shards := partition.Bucket(binary.BigEndian.AppendUint32(nil, shard))
-	if shards == nil {
-		return nil
-	}
-	if tenant == "" {
-		tenant = emptyTenantBucketName
-	}
-	tenantShard := shards.Bucket([]byte(tenant))
+	})
+}
+
+func (m *IndexStore) DeleteBlockList(tx *bbolt.Tx, p PartitionKey, list *metastorev1.BlockList) error {
+	tenantShard := getTenantShard(tx, p, list.Tenant, list.Shard)
 	if tenantShard == nil {
 		return nil
 	}
-	return tenantShard
+	for _, b := range list.Blocks {
+		if err := tenantShard.Delete([]byte(b)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func getOrCreateTenantShard(tx *bbolt.Tx, key PartitionKey, shard uint32, tenant string) (*bbolt.Bucket, error) {
-	partition, err := getOrCreateSubBucket(getPartition(tx), []byte(key))
-	if err != nil {
-		return nil, fmt.Errorf("error creating partition bucket for %s: %w", key, err)
+func getTenantShard(tx *bbolt.Tx, p PartitionKey, tenant string, shard uint32) *bbolt.Bucket {
+	if partition := getPartitionsBucket(tx).Bucket(p.Bytes()); partition != nil {
+		if shards := partition.Bucket(tenantBucketName(tenant)); shards != nil {
+			return shards.Bucket(binary.BigEndian.AppendUint32(nil, shard))
+		}
 	}
-	shards, err := getOrCreateSubBucket(partition, binary.BigEndian.AppendUint32(nil, shard))
+	return nil
+}
+
+func (m *IndexStore) LoadTenantShard(tx *bbolt.Tx, p PartitionKey, tenant string, shard uint32) (*TenantShard, error) {
+	s, err := m.loadTenantShard(tx, p, tenant, shard)
 	if err != nil {
-		return nil, fmt.Errorf("error creating shard bucket for partiton %s and shard %d: %w", key, shard, err)
+		return nil, fmt.Errorf("error loading tenant shard %s/%d partition %q: %w", tenant, shard, p, err)
 	}
-	if tenant == "" {
-		tenant = emptyTenantBucketName
-	}
-	tenantShard, err := getOrCreateSubBucket(shards, []byte(tenant))
+	return s, nil
+}
+
+func (m *IndexStore) loadTenantShard(tx *bbolt.Tx, p PartitionKey, tenant string, shard uint32) (*TenantShard, error) {
+	tenantShard, err := getOrCreateTenantShard(tx, p, tenant, shard)
 	if err != nil {
-		return nil, fmt.Errorf("error creating shard bucket for tenant %s in parititon %v: %w", tenant, key, err)
+		return nil, err
+	}
+
+	s := TenantShard{
+		Partition:   p,
+		Tenant:      tenant,
+		Shard:       shard,
+		StringTable: block.NewMetadataStringTable(),
+	}
+
+	strings := tenantShard.Bucket(tenantShardStringsBucketNameBytes)
+	if strings == nil {
+		return &s, nil
+	}
+	stringsIter := newStringIter(store.NewCursorIter(nil, strings.Cursor()))
+	defer func() {
+		_ = stringsIter.Close()
+	}()
+	if err = s.StringTable.Load(stringsIter); err != nil {
+		return nil, err
+	}
+
+	err = tenantShard.ForEach(func(k, v []byte) error {
+		var md metastorev1.BlockMeta
+		if err = md.UnmarshalVT(v); err != nil {
+			return fmt.Errorf("failed to unmarshal block %q: %w", string(k), err)
+		}
+		s.Blocks = append(s.Blocks, &md)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &s, nil
+}
+
+func getOrCreateTenantShard(tx *bbolt.Tx, p PartitionKey, tenant string, shard uint32) (*bbolt.Bucket, error) {
+	partition, err := getOrCreateSubBucket(getPartitionsBucket(tx), p.Bytes())
+	if err != nil {
+		return nil, fmt.Errorf("error creating partition bucket for %s: %w", p, err)
+	}
+	shards, err := getOrCreateSubBucket(partition, tenantBucketName(tenant))
+	if err != nil {
+		return nil, fmt.Errorf("error creating shard bucket for tenant %s in parititon %v: %w", tenant, p, err)
+	}
+	tenantShard, err := getOrCreateSubBucket(shards, binary.BigEndian.AppendUint32(nil, shard))
+	if err != nil {
+		return nil, fmt.Errorf("error creating shard bucket for partiton %s and shard %d: %w", p, shard, err)
 	}
 	return tenantShard, nil
 }
-
-func (m *IndexStore) StoreStrings(tx *bbolt.Tx, p PartitionKey, shard uint32, tenant string, offset int, s []string) error {
-	tenantShard, err := getOrCreateTenantShard(tx, p, shard, tenant)
-	if err != nil {
-		return err
-	}
-	strings, err := getOrCreateSubBucket(tenantShard, tenantShardStringsBucketNameBytes)
-	if err != nil {
-		return err
-	}
-	return strings.Put(binary.BigEndian.AppendUint32(nil, uint32(offset)), encodeStrings(s))
-}
-
-func (m *IndexStore) LoadStrings(tx *bbolt.Tx, p PartitionKey, shard uint32, tenant string) iter.Iterator[string] {
-	tenantShard := getTenantShard(tx, p, shard, tenant)
-	if tenantShard == nil {
-		return iter.NewEmptyIterator[string]()
-	}
-	strings := tenantShard.Bucket(tenantShardStringsBucketNameBytes)
-	if strings == nil {
-		return iter.NewEmptyIterator[string]()
-	}
-	return newStringIter(store.NewCursorIter(nil, strings.Cursor()))
-}
-
-var ErrInvalidStringTable = errors.New("malformed string table")
 
 type stringIterator struct {
 	iter.Iterator[store.KV]
@@ -272,11 +293,7 @@ func decodeStrings(dst []string, data []byte) ([]string, error) {
 		if len(data) < offset+int(size) {
 			return dst, ErrInvalidStringTable
 		}
-		strData := data[offset : offset+int(size)]
-		if !utf8.Valid(strData) {
-			return dst, ErrInvalidStringTable
-		}
-		dst = append(dst, string(strData))
+		dst = append(dst, string(data[offset:offset+int(size)]))
 		offset += int(size)
 	}
 	return dst, nil

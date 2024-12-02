@@ -3,6 +3,7 @@ package index
 import (
 	"fmt"
 	"slices"
+	"sort"
 	"strings"
 	"time"
 
@@ -63,9 +64,9 @@ func newMetadataQuery(index *Index, query MetadataQuery) (*metadataQuery, error)
 	q := &metadataQuery{
 		startTime: query.StartTime,
 		endTime:   query.EndTime,
-		tenants:   query.Tenant,
 		index:     index,
 	}
+	q.buildTenantList(query.Tenant)
 	for _, m := range selectors {
 		if m.Name == model.LabelNameServiceName && q.matcher == nil {
 			q.matcher = m
@@ -76,6 +77,19 @@ func newMetadataQuery(index *Index, query MetadataQuery) (*metadataQuery, error)
 	// queried, but that's not really necessary: querying an irrelevant
 	// profile type is rather a rare/invalid case.
 	return q, nil
+}
+
+func (q *metadataQuery) buildTenantList(tenants []string) {
+	m := make(map[string]struct{}, len(tenants)+1)
+	for _, t := range tenants {
+		m[t] = struct{}{}
+	}
+	m[""] = struct{}{}
+	q.tenants = make([]string, 0, len(m))
+	for t := range m {
+		q.tenants = append(q.tenants, t)
+	}
+	sort.Strings(q.tenants)
 }
 
 func (q *metadataQuery) iterator(tx *bbolt.Tx) *iterator {
@@ -120,12 +134,12 @@ func (mi *iterator) Next() bool {
 
 func (mi *iterator) copyMatched(shard *indexShard) bool {
 	for _, md := range shard.blocks {
-		if match := mi.metadataMatch(shard.strings, md); match != nil {
+		if match := mi.metadataMatch(shard.StringTable, md); match != nil {
 			mi.metas = append(mi.metas, match)
 		}
 	}
 	slices.SortFunc(mi.metas, func(a, b *metastorev1.BlockMeta) int {
-		return int(a.MinTime - b.MinTime)
+		return strings.Compare(a.Id, b.Id)
 	})
 	return len(mi.metas) > 0
 }
@@ -135,12 +149,13 @@ func (mi *iterator) metadataMatch(s *block.MetadataStrings, md *metastorev1.Bloc
 		return nil
 	}
 	var mdCopy *metastorev1.BlockMeta
-	for _, ds := range md.Datasets {
+	datasets := md.Datasets
+	for _, ds := range datasets {
 		if mi.datasetMatches(s, ds) {
 			if mdCopy == nil {
 				mdCopy = cloneMetadataForQuery(md)
 			}
-			mdCopy.Datasets = append(mdCopy.Datasets, ds)
+			mdCopy.Datasets = append(mdCopy.Datasets, ds.CloneVT())
 		}
 	}
 	if mdCopy != nil {

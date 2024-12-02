@@ -13,21 +13,20 @@ import (
 	"github.com/grafana/pyroscope/pkg/iter"
 )
 
-func ID(md *metastorev1.BlockMeta) string {
-	return md.StringTable[md.Id]
-}
-
 func Tenant(md *metastorev1.BlockMeta) string {
+	if md.Tenant <= 0 || int(md.Tenant) >= len(md.StringTable) {
+		return ""
+	}
 	return md.StringTable[md.Tenant]
 }
 
 func Timestamp(md *metastorev1.BlockMeta) time.Time {
-	return time.UnixMilli(int64(ulid.MustParse(ID(md)).Time()))
+	return time.UnixMilli(int64(ulid.MustParse(md.Id).Time()))
 }
 
 func SanitizeMetadata(md *metastorev1.BlockMeta) error {
 	// TODO(kolesnikovae): Implement.
-	_, err := ulid.Parse(ID(md))
+	_, err := ulid.Parse(md.Id)
 	return err
 }
 
@@ -46,6 +45,13 @@ func NewMetadataStringTable() *MetadataStrings {
 		Dict:    map[string]int32{empty: 0},
 		Strings: []string{empty},
 	}
+}
+
+func (t *MetadataStrings) IsEmpty() bool {
+	if len(t.Strings) == 0 {
+		return true
+	}
+	return len(t.Strings) == 1 && t.Strings[0] == ""
 }
 
 func (t *MetadataStrings) Reset() {
@@ -73,24 +79,16 @@ func (t *MetadataStrings) Lookup(i int32) string {
 }
 
 // Import strings from the metadata entry and update the references.
-// Strings that are already present in the table are to be deleted
-// from the input, while newly imported strings are preserved.
 func (t *MetadataStrings) Import(src *metastorev1.BlockMeta) {
 	if len(src.StringTable) < 2 {
 		return
 	}
 	// TODO: Pool?
 	lut := make([]int32, len(src.StringTable))
-	n := len(t.Strings)
 	for i, s := range src.StringTable {
 		x := t.Put(s)
 		lut[i] = x
-		// Zero the string if it's already in the table.
-		if x > 0 && x < int32(n) {
-			src.StringTable[i] = ""
-		}
 	}
-	src.Id = lut[src.Id]
 	src.Tenant = lut[src.Tenant]
 	src.CreatedBy = lut[src.CreatedBy]
 	for _, ds := range src.Datasets {
@@ -100,20 +98,11 @@ func (t *MetadataStrings) Import(src *metastorev1.BlockMeta) {
 			ds.ProfileTypes[i] = lut[p]
 		}
 	}
-	var j int
-	for i := range src.StringTable {
-		if i == 0 || len(src.StringTable[i]) != 0 {
-			src.StringTable[j] = src.StringTable[i]
-			j++
-		}
-	}
-	src.StringTable = src.StringTable[:j]
 }
 
 func (t *MetadataStrings) Export(dst *metastorev1.BlockMeta) {
 	n := stringTablePool.Get().(*MetadataStrings)
 	defer stringTablePool.Put(n)
-	dst.Id = n.Put(t.Lookup(dst.Id))
 	dst.Tenant = n.Put(t.Lookup(dst.Tenant))
 	dst.CreatedBy = n.Put(t.Lookup(dst.CreatedBy))
 	for _, ds := range dst.Datasets {
@@ -154,7 +143,7 @@ func NewULIDGenerator(objects Objects) *ULIDGenerator {
 	}
 	buf := make([]byte, 0, 1<<10)
 	for _, obj := range objects {
-		buf = append(buf, ID(obj.meta)...)
+		buf = append(buf, obj.meta.Id...)
 	}
 	seed := xxhash.Sum64(buf)
 	// Reference block.
@@ -162,7 +151,7 @@ func NewULIDGenerator(objects Objects) *ULIDGenerator {
 	// Assuming that the first object is the oldest one.
 	r := objects[0]
 	return &ULIDGenerator{
-		timestamp: ulid.MustParse(ID(r.meta)).Time(),
+		timestamp: ulid.MustParse(r.meta.Id).Time(),
 		entropy:   rand.New(rand.NewSource(int64(seed))),
 	}
 }
