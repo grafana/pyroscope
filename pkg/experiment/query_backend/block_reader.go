@@ -73,6 +73,7 @@ func (b *BlockReader) Invoke(
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "request validation failed: %v", err)
 	}
+	r.setTraceTags(span)
 
 	g, ctx := errgroup.WithContext(ctx)
 	agg := newAggregator(req)
@@ -111,6 +112,23 @@ type request struct {
 	matchers  []*labels.Matcher
 	startTime int64 // Unix nano.
 	endTime   int64 // Unix nano.
+}
+
+func (r *request) setTraceTags(span opentracing.Span) {
+	if r.src == nil {
+		return
+	}
+	span.SetTag("start_time", model.Time(r.src.StartTime).Time().String())
+	span.SetTag("end_time", model.Time(r.src.EndTime).Time().String())
+	span.SetTag("matchers", r.src.LabelSelector)
+
+	if len(r.src.Query) > 0 {
+		queryTypes := make([]string, 0, len(r.src.Query))
+		for _, q := range r.src.Query {
+			queryTypes = append(queryTypes, q.QueryType.String())
+		}
+		span.SetTag("query_types", queryTypes)
+	}
 }
 
 func validateRequest(req *queryv1.InvokeRequest) (*request, error) {
