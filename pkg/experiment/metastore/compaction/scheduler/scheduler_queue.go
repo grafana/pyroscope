@@ -45,6 +45,16 @@ func (q *schedulerQueue) delete(name string) *raft_log.CompactionJobState {
 	return nil
 }
 
+func (q *schedulerQueue) size() int {
+	var size int
+	for _, level := range q.levels {
+		if level != nil {
+			size += level.jobs.Len()
+		}
+	}
+	return size
+}
+
 func (q *schedulerQueue) level(x uint32) *jobQueue {
 	s := x + 1 // Levels are 0-based.
 	if s >= uint32(len(q.levels)) {
@@ -136,7 +146,9 @@ func compareJobs(a, b *jobEntry) int {
 	if a.Status != b.Status {
 		return int(a.Status) - int(b.Status)
 	}
-	// Faulty jobs should wait.
+	// Faulty jobs should wait. Our aim is to put them at the
+	// end of the queue, after all the jobs we may consider
+	// for assigment.
 	if a.Failures != b.Failures {
 		return int(a.Failures) - int(b.Failures)
 	}

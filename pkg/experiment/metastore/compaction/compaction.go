@@ -55,5 +55,6 @@ type Schedule interface {
 	// AssignJob is called on behalf of the worker to request a new job.
 	AssignJob() (*raft_log.AssignedCompactionJob, error)
 	// AddJob is called on behalf of the planner to add a new job to the schedule.
+	// The scheduler may decline the job by returning a nil state.
 	AddJob(*raft_log.CompactionJobPlan) *raft_log.CompactionJobState
 }
