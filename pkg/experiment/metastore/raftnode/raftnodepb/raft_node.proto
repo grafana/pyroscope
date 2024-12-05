@@ -9,7 +9,14 @@ message RaftNode {
 
 service RaftNodeService {
   rpc ReadIndex(ReadIndexRequest) returns (ReadIndexResponse) {}
+}
+
+service RaftNodeOpsService {
   rpc NodeInfo(NodeInfoRequest) returns (NodeInfoResponse) {}
+  rpc RemoveNode(RemoveNodeRequest) returns (RemoveNodeResponse) {}
+  rpc AddNode(AddNodeRequest) returns (AddNodeResponse) {}
+  rpc DemoteLeader(DemoteLeaderRequest) returns (DemoteLeaderResponse) {}
+  rpc PromoteToLeader(PromoteToLeaderRequest) returns (PromoteToLeaderResponse) {}
 }
 
 message ReadIndexRequest {}
@@ -46,4 +53,30 @@ message NodeInfo {
     string server_address = 2;
     string suffrage = 3;
   }
+
+  uint64 current_term = 10;
+  string build_version = 11;
+  string build_revision = 12;
 }
+
+message RemoveNodeRequest {
+  string server_id = 1;
+}
+
+message RemoveNodeResponse {}
+
+message AddNodeRequest {
+  string server_id = 1;
+}
+
+message AddNodeResponse {}
+
+message DemoteLeaderRequest {
+  string server_id = 1;
+}
+message DemoteLeaderResponse {}
+
+message PromoteToLeaderRequest {
+  string server_id = 1;
+}
+message PromoteToLeaderResponse {}
