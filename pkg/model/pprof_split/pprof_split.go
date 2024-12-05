@@ -93,11 +93,24 @@ func addSampleLabelsToLabelsBuilder(b *phlaremodel.LabelsBuilder, p *profilev1.P
 			// skip if label value is not a string
 			continue
 		}
-		if b.Get(name) != "" {
+		prev := b.Get(name)
+		override := p.StringTable[l.Str]
+		if prev != "" {
 			// do nothing if label name already exists
+			if name == "service_name" {
+				// TODO this is just for POC, do not merge this
+				// allow overriding service_name from "unknown" or "unspecified" to something more meaningful
+				// defined in sample label. todo this is invalid for v2 as it happens too late after segment selection
+				// In otel profielr:
+				//   - service.name specified by the profiler as empty string
+				//   - service_name specified in the symbolication-POC branch
+				if (prev == "unknown" || prev == "unspecified") && (override != "unknown" && override != "unspecified") {
+					b.Set(name, override)
+				}
+			}
 			continue
 		}
-		b.Set(name, p.StringTable[l.Str])
+		b.Set(name, override)
 	}
 }
 
