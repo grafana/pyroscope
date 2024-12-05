@@ -9,10 +9,15 @@ import (
 type RaftNode interface {
 	ReadIndex() (ReadIndex, error)
 	NodeInfo() (*raftnodepb.NodeInfo, error)
+	RemoveNode(*raftnodepb.RemoveNodeRequest) (*raftnodepb.RemoveNodeResponse, error)
+	AddNode(*raftnodepb.AddNodeRequest) (*raftnodepb.AddNodeResponse, error)
+	DemoteLeader(*raftnodepb.DemoteLeaderRequest) (*raftnodepb.DemoteLeaderResponse, error)
+	PromoteToLeader(*raftnodepb.PromoteToLeaderRequest) (*raftnodepb.PromoteToLeaderResponse, error)
 }
 
 type RaftNodeService struct {
 	raftnodepb.RaftNodeServiceServer
+	raftnodepb.RaftNodeOpsServiceServer
 	node RaftNode
 }
 
@@ -45,4 +50,32 @@ func (svc *RaftNodeService) NodeInfo(
 		return nil, err
 	}
 	return &raftnodepb.NodeInfoResponse{Node: info}, nil
+}
+
+func (svc *RaftNodeService) RemoveNode(
+	_ context.Context,
+	r *raftnodepb.RemoveNodeRequest,
+) (*raftnodepb.RemoveNodeResponse, error) {
+	return svc.node.RemoveNode(r)
+}
+
+func (svc *RaftNodeService) AddNode(
+	_ context.Context,
+	r *raftnodepb.AddNodeRequest,
+) (*raftnodepb.AddNodeResponse, error) {
+	return svc.node.AddNode(r)
+}
+
+func (svc *RaftNodeService) DemoteLeader(
+	_ context.Context,
+	r *raftnodepb.DemoteLeaderRequest,
+) (*raftnodepb.DemoteLeaderResponse, error) {
+	return svc.node.DemoteLeader(r)
+}
+
+func (svc *RaftNodeService) PromoteToLeader(
+	_ context.Context,
+	r *raftnodepb.PromoteToLeaderRequest,
+) (*raftnodepb.PromoteToLeaderResponse, error) {
+	return svc.node.PromoteToLeader(r)
 }

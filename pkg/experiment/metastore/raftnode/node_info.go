@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode/raftnodepb"
+	"github.com/grafana/pyroscope/pkg/util/build"
 )
 
 func (n *Node) NodeInfo() (*raftnodepb.NodeInfo, error) {
@@ -26,6 +27,9 @@ func (n *Node) NodeInfo() (*raftnodepb.NodeInfo, error) {
 		LastIndex:         n.raft.LastIndex(),
 		Stats:             statsProto(n.raft.Stats()),
 		Peers:             make([]*raftnodepb.NodeInfo_Peer, len(config.Servers)),
+		CurrentTerm:       n.raft.CurrentTerm(),
+		BuildVersion:      build.Version,
+		BuildRevision:     build.Revision,
 	}
 
 	for i, server := range config.Servers {

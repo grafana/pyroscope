@@ -38,6 +38,7 @@ type client struct {
 	metastorev1.MetadataQueryServiceClient
 	metastorev1.TenantServiceClient
 	raftnodepb.RaftNodeServiceClient
+	raftnodepb.RaftNodeOpsServiceClient
 
 	conn io.Closer
 	srv  discovery.Server
@@ -50,6 +51,7 @@ type instance interface {
 	metastorev1.TenantServiceClient
 	metastorev1.CompactionServiceClient
 	raftnodepb.RaftNodeServiceClient
+	raftnodepb.RaftNodeOpsServiceClient
 }
 
 func New(logger log.Logger, grpcClientConfig grpcclient.Config, d discovery.Discovery) *Client {
@@ -152,6 +154,7 @@ func newClient(s discovery.Server, config grpcclient.Config, logger log.Logger) 
 		MetadataQueryServiceClient: metastorev1.NewMetadataQueryServiceClient(conn),
 		TenantServiceClient:        metastorev1.NewTenantServiceClient(conn),
 		RaftNodeServiceClient:      raftnodepb.NewRaftNodeServiceClient(conn),
+		RaftNodeOpsServiceClient:   raftnodepb.NewRaftNodeOpsServiceClient(conn),
 		conn:                       conn,
 		srv:                        s,
 	}, nil

@@ -19,6 +19,7 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 	placement "github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/admin"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction/compactor"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction/scheduler"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/dlq"
@@ -94,6 +95,8 @@ type Metastore struct {
 	tenantService   *TenantService
 	metadataService *MetadataQueryService
 
+	admin *admin.MetastoreAdmin
+
 	readyOnce  sync.Once
 	readySince time.Time
 }
@@ -104,6 +107,7 @@ func New(
 	reg prometheus.Registerer,
 	healthService health.Service,
 	client raftnodepb.RaftNodeServiceClient,
+	opsClient raftnodepb.RaftNodeOpsServiceClient,
 	bucket objstore.Bucket,
 	placementMgr *placement.Manager,
 ) (*Metastore, error) {
@@ -117,6 +121,11 @@ func New(
 	}
 
 	var err error
+	m.admin, err = admin.NewAdmin(opsClient, logger, config.Address)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize admin: %w", err)
+	}
+
 	m.fsm, err = fsm.New(m.logger, m.reg, m.config.DataDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize store: %w", err)
@@ -223,6 +232,10 @@ func (m *Metastore) Register(server *grpc.Server) {
 	metastorev1.RegisterMetadataQueryServiceServer(server, m.metadataService)
 	metastorev1.RegisterTenantServiceServer(server, m.tenantService)
 	m.raft.Register(server)
+}
+
+func (m *Metastore) Admin() *admin.MetastoreAdmin {
+	return m.admin
 }
 
 func (m *Metastore) Service() services.Service { return m.service }

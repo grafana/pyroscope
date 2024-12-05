@@ -123,6 +123,7 @@ func (f *Phlare) initMetastore() (services.Service, error) {
 		registerer,
 		healthService,
 		f.metastoreClient,
+		f.metastoreClient,
 		f.storageBucket,
 		f.placementManager,
 	)
@@ -131,6 +132,7 @@ func (f *Phlare) initMetastore() (services.Service, error) {
 	}
 
 	m.Register(f.Server.GRPC)
+	f.API.RegisterMetastoreAdmin(m.Admin())
 	f.metastore = m
 	return m.Service(), nil
 }

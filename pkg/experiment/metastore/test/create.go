@@ -96,7 +96,7 @@ func NewMetastoreSet(t *testing.T, cfg *metastore.Config, n int, bucket objstore
 			validation.MockDefaultOverrides(),
 			adaptive_placement.NewStore(bucket),
 		)
-		m, err := metastore.New(configs[i], logger, registry, health.NoOpService, client, bucket, placementManager)
+		m, err := metastore.New(configs[i], logger, registry, health.NoOpService, client, client, bucket, placementManager)
 		require.NoError(t, err)
 		m.Register(server)
 
