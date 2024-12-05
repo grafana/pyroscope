@@ -119,7 +119,7 @@ For more documentation on how to add the Pyroscope agent to your code, see the [
       </td>
       <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/ebpf/"><img src="https://user-images.githubusercontent.com/23323466/178160548-e974c080-808d-4c5d-be9b-c983a319b037.png" width="100px;" alt=""/><br />
         <b>eBPF</b></a><br />
-          <a href="https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/ebpf/" title="Documentation">Documentation</a><br />
+          <a href="https://grafana.com/docs/pyroscope/latest/configure-client/grafana-alloy/ebpf/" title="Documentation">Documentation</a><br />
           <a href="https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent-auto-instrumentation/ebpf" title="examples">Examples</a>
       </td>
       <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/rust/"><img src="https://user-images.githubusercontent.com/23323466/178160555-fb6aeee7-5d31-4bcb-9e3e-41e9f2f7d5b4.png" width="100px;" alt=""/><br />
