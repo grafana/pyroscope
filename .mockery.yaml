@@ -24,6 +24,9 @@ packages:
   github.com/grafana/pyroscope/pkg/frontend:
     interfaces:
       Limits:
+  github.com/grafana/pyroscope/pkg/ingester/otlp:
+    interfaces:
+      PushService:
   github.com/grafana/pyroscope/pkg/experiment/metastore/discovery:
     interfaces:
       Discovery:

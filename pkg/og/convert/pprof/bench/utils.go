@@ -39,7 +39,19 @@ func WriteGzipFile(f string, data []byte) error {
 	return g.Close()
 }
 
+type StackCollapseOptions struct {
+	ValueIdx   int
+	Scale      float64
+	WithLabels bool
+}
+
 func StackCollapseProto(p *profilev1.Profile, valueIDX int, scale float64) []string {
+	return StackCollapseProtoWithOptions(p, StackCollapseOptions{ValueIdx: valueIDX, Scale: scale})
+}
+
+func StackCollapseProtoWithOptions(p *profilev1.Profile, opt StackCollapseOptions) []string {
+	var valueIDX int = opt.ValueIdx
+	var scale float64 = opt.Scale
 	type stack struct {
 		funcs string
 		value int64
@@ -69,8 +81,17 @@ func StackCollapseProto(p *profilev1.Profile, valueIDX int, scale float64) []str
 		if scale != 1 {
 			v = int64(float64(v) * scale)
 		}
+
+		sls := ""
+		if opt.WithLabels {
+			ls := []string{}
+			for _, label := range s.Label {
+				ls = append(ls, fmt.Sprintf("(%s = %s)", p.StringTable[label.Key], p.StringTable[label.Str]))
+			}
+			sls = strings.Join(ls, ", ") + " ||| "
+		}
 		ret = append(ret, stack{
-			funcs: strings.Join(funcs, ";"),
+			funcs: sls + strings.Join(funcs, ";"),
 			value: v,
 		})
 	}
