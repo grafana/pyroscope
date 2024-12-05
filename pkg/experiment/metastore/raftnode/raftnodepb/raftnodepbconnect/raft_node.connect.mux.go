@@ -24,9 +24,34 @@ func RegisterRaftNodeServiceHandler(mux *mux.Router, svc RaftNodeServiceHandler,
 		svc.ReadIndex,
 		opts...,
 	))
-	mux.Handle("/raft_node.RaftNodeService/NodeInfo", connect.NewUnaryHandler(
-		"/raft_node.RaftNodeService/NodeInfo",
+}
+
+// RegisterRaftNodeOpsServiceHandler register an HTTP handler to a mux.Router from the service
+// implementation.
+func RegisterRaftNodeOpsServiceHandler(mux *mux.Router, svc RaftNodeOpsServiceHandler, opts ...connect.HandlerOption) {
+	mux.Handle("/raft_node.RaftNodeOpsService/NodeInfo", connect.NewUnaryHandler(
+		"/raft_node.RaftNodeOpsService/NodeInfo",
 		svc.NodeInfo,
+		opts...,
+	))
+	mux.Handle("/raft_node.RaftNodeOpsService/RemoveNode", connect.NewUnaryHandler(
+		"/raft_node.RaftNodeOpsService/RemoveNode",
+		svc.RemoveNode,
+		opts...,
+	))
+	mux.Handle("/raft_node.RaftNodeOpsService/AddNode", connect.NewUnaryHandler(
+		"/raft_node.RaftNodeOpsService/AddNode",
+		svc.AddNode,
+		opts...,
+	))
+	mux.Handle("/raft_node.RaftNodeOpsService/DemoteLeader", connect.NewUnaryHandler(
+		"/raft_node.RaftNodeOpsService/DemoteLeader",
+		svc.DemoteLeader,
+		opts...,
+	))
+	mux.Handle("/raft_node.RaftNodeOpsService/PromoteToLeader", connect.NewUnaryHandler(
+		"/raft_node.RaftNodeOpsService/PromoteToLeader",
+		svc.PromoteToLeader,
 		opts...,
 	))
 }
