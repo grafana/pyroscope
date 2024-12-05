@@ -1,20 +1,22 @@
 package otlp
 
 import (
-	"connectrpc.com/connect"
 	"context"
 	"fmt"
+	"strings"
+	"testing"
+
+	"connectrpc.com/connect"
+	"github.com/prometheus/prometheus/util/testutil"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	v1experimental2 "github.com/grafana/pyroscope/api/otlp/collector/profiles/v1experimental"
 	"github.com/grafana/pyroscope/api/otlp/profiles/v1experimental"
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockotlp"
-	"github.com/prometheus/prometheus/util/testutil"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
-	"strings"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 
