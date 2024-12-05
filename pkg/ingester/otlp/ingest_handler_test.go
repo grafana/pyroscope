@@ -7,7 +7,6 @@ import (
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	v1 "github.com/grafana/pyroscope/api/otlp/common/v1"
-	"github.com/grafana/pyroscope/api/otlp/profiles/v1experimental"
 )
 
 func TestGetServiceNameFromAttributes(t *testing.T) {
@@ -142,95 +141,6 @@ func TestAppendAttributesUnique(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := appendAttributesUnique(tt.existingAttrs, tt.newAttrs, tt.processedKeys)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestAppendProfileLabels(t *testing.T) {
-	tests := []struct {
-		name          string
-		existingAttrs []*typesv1.LabelPair
-		profile       *v1experimental.Profile
-		processedKeys map[string]bool
-		expected      []*typesv1.LabelPair
-	}{
-		{
-			name:          "nil profile",
-			existingAttrs: []*typesv1.LabelPair{{Name: "existing", Value: "value"}},
-			profile:       nil,
-			processedKeys: make(map[string]bool),
-			expected:      []*typesv1.LabelPair{{Name: "existing", Value: "value"}},
-		},
-		{
-			name: "profile with sample attributes",
-			existingAttrs: []*typesv1.LabelPair{
-				{Name: "existing", Value: "value"},
-			},
-			profile: &v1experimental.Profile{
-				AttributeTable: []v1.KeyValue{
-					{
-						Key: "thread.name",
-						Value: v1.AnyValue{
-							Value: &v1.AnyValue_StringValue{
-								StringValue: "thread1",
-							},
-						},
-					},
-					{
-						Key: "container.id",
-						Value: v1.AnyValue{
-							Value: &v1.AnyValue_StringValue{
-								StringValue: "test-container",
-							},
-						},
-					},
-				},
-				Sample: []*v1experimental.Sample{
-					{
-						Attributes: []uint64{0, 1},
-					},
-				},
-			},
-			processedKeys: map[string]bool{"existing": true},
-			expected: []*typesv1.LabelPair{
-				{Name: "existing", Value: "value"},
-				{Name: "thread.name", Value: "thread1"},
-				{Name: "container.id", Value: "test-container"},
-			},
-		},
-		{
-			name: "duplicate attributes in profile",
-			existingAttrs: []*typesv1.LabelPair{
-				{Name: "thread.name", Value: "main"},
-			},
-			profile: &v1experimental.Profile{
-				AttributeTable: []v1.KeyValue{
-					{
-						Key: "thread.name",
-						Value: v1.AnyValue{
-							Value: &v1.AnyValue_StringValue{
-								StringValue: "thread1",
-							},
-						},
-					},
-				},
-				Sample: []*v1experimental.Sample{
-					{
-						Attributes: []uint64{0},
-					},
-				},
-			},
-			processedKeys: map[string]bool{"thread.name": true},
-			expected: []*typesv1.LabelPair{
-				{Name: "thread.name", Value: "main"},
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := appendProfileLabels(tt.existingAttrs, tt.profile, tt.processedKeys)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
