@@ -30,6 +30,15 @@ func ConvertOtelToGoogle(src *otelProfile.Profile) *googleProfile.Profile {
 		Comment:           src.Comment,
 		Mapping:           convertMappingsBack(src.Mapping),
 	}
+	stringmap := make(map[string]int)
+	addstr := func(s string) int64 {
+		if _, ok := stringmap[s]; !ok {
+			stringmap[s] = len(dst.StringTable)
+			dst.StringTable = append(dst.StringTable, s)
+		}
+		return int64(stringmap[s])
+	}
+	addstr("")
 
 	if dst.TimeNanos == 0 {
 		dst.TimeNanos = time.Now().UnixNano()
@@ -48,49 +57,44 @@ func ConvertOtelToGoogle(src *otelProfile.Profile) *googleProfile.Profile {
 		gf.Id = uint64(i + 1)
 		dst.Function = append(dst.Function, gf)
 	}
+	funcmap := map[string]uint64{}
+	addfunc := func(s string) uint64 {
+		if _, ok := funcmap[s]; !ok {
+			funcmap[s] = uint64(len(dst.Function)) + 1
+			dst.Function = append(dst.Function, &googleProfile.Function{
+				Id:   funcmap[s],
+				Name: addstr(s),
+			})
+		}
+		return funcmap[s]
+	}
 
-	functionOffset := uint64(len(dst.Function)) + 1
 	dst.Location = []*googleProfile.Location{}
-	locationMappingIndexAddressMap := make(map[uint64]uint64)
 	// Convert locations and mappings
 	for i, loc := range src.Location {
 		gl := convertLocationBack(loc)
 		gl.Id = uint64(i + 1)
 		if len(gl.Line) == 0 {
+			m := src.Mapping[loc.MappingIndex]
 			gl.Line = append(gl.Line, &googleProfile.Line{
-				FunctionId: loc.MappingIndex + functionOffset,
+				FunctionId: addfunc(fmt.Sprintf("%s 0x%x", src.StringTable[m.Filename], loc.Address)),
 			})
 		}
 		dst.Location = append(dst.Location, gl)
-		locationMappingIndexAddressMap[loc.MappingIndex] = loc.Address
-	}
-
-	for _, m := range src.Mapping {
-		address := locationMappingIndexAddressMap[m.Id]
-		addressStr := fmt.Sprintf("%s 0x%x", dst.StringTable[m.Filename], address)
-		dst.StringTable = append(dst.StringTable, addressStr)
-		// i == 0 function_id = functionOffset
-		id := uint64(len(dst.Function)) + 1
-		dst.Function = append(dst.Function, &googleProfile.Function{
-			Id:   id,
-			Name: int64(len(dst.StringTable) - 1),
-		})
 	}
 
 	// Convert samples
 	for _, sample := range src.Sample {
-		gs := convertSampleBack(sample, src.LocationIndices)
+		gs := convertSampleBack(src, sample, src.LocationIndices, addstr)
 		dst.Sample = append(dst.Sample, gs)
 	}
 
 	if len(dst.SampleType) == 0 {
-		dst.StringTable = append(dst.StringTable, "samples")
-		dst.StringTable = append(dst.StringTable, "ms")
 		dst.SampleType = []*googleProfile.ValueType{{
-			Type: int64(len(dst.StringTable) - 2),
-			Unit: int64(len(dst.StringTable) - 1),
+			Type: addstr("samples"),
+			Unit: addstr("ms"),
 		}}
-		dst.DefaultSampleType = int64(len(dst.StringTable) - 2)
+		dst.DefaultSampleType = addstr("samples")
 	}
 
 	return dst
@@ -147,7 +151,7 @@ func convertFunctionBack(of *otelProfile.Function) *googleProfile.Function {
 	}
 }
 
-func convertSampleBack(os *otelProfile.Sample, locationIndexes []int64) *googleProfile.Sample {
+func convertSampleBack(p *otelProfile.Profile, os *otelProfile.Sample, locationIndexes []int64, addstr func(s string) int64) *googleProfile.Sample {
 	gs := &googleProfile.Sample{
 		Value: os.Value,
 	}
@@ -155,12 +159,26 @@ func convertSampleBack(os *otelProfile.Sample, locationIndexes []int64) *googleP
 	if len(gs.Value) == 0 {
 		gs.Value = []int64{int64(len(os.TimestampsUnixNano))}
 	}
+	convertSampleAttributesToLabelsBack(p, os, gs, addstr)
 
 	for i := os.LocationsStartIndex; i < os.LocationsStartIndex+os.LocationsLength; i++ {
 		gs.LocationId = append(gs.LocationId, uint64(locationIndexes[i]+1))
 	}
 
 	return gs
+}
+
+func convertSampleAttributesToLabelsBack(p *otelProfile.Profile, os *otelProfile.Sample, gs *googleProfile.Sample, addstr func(s string) int64) {
+	gs.Label = make([]*googleProfile.Label, 0, len(os.Attributes))
+	for _, attribute := range os.Attributes {
+		att := p.AttributeTable[attribute]
+		if att.Value.GetStringValue() != "" {
+			gs.Label = append(gs.Label, &googleProfile.Label{
+				Key: addstr(att.Key),
+				Str: addstr(att.Value.GetStringValue()),
+			})
+		}
+	}
 }
 
 // convertMappingsBack converts a slice of OpenTelemetry Mapping entries to Google Mapping entries.

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -18,7 +17,6 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	pprofileotlp "github.com/grafana/pyroscope/api/otlp/collector/profiles/v1experimental"
 	v1 "github.com/grafana/pyroscope/api/otlp/common/v1"
-	"github.com/grafana/pyroscope/api/otlp/profiles/v1experimental"
 	"github.com/grafana/pyroscope/pkg/tenant"
 )
 
@@ -111,15 +109,10 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 				// Add profile attributes
 				labels = appendAttributesUnique(labels, p.GetAttributes(), processedKeys)
 
-				// Add profile-specific attributes from samples/attributetable
-				labels = appendProfileLabels(labels, p.Profile, processedKeys)
-
 				pprofBytes, err := OprofToPprof(p.Profile)
 				if err != nil {
 					return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to convert from OTLP to legacy pprof: %w", err)
 				}
-
-				_ = os.WriteFile(".tmp/elastic.pprof", pprofBytes, 0644)
 
 				req := &pushv1.PushRequest{
 					Series: []*pushv1.RawProfileSeries{
@@ -197,43 +190,5 @@ func appendAttributesUnique(labels []*typesv1.LabelPair, attrs []v1.KeyValue, pr
 			processedKeys[attr.Key] = true
 		}
 	}
-	return labels
-}
-
-func appendProfileLabels(labels []*typesv1.LabelPair, profile *v1experimental.Profile, processedKeys map[string]bool) []*typesv1.LabelPair {
-	if profile == nil {
-		return labels
-	}
-
-	// Create mapping of attribute indices to their values
-	attrMap := make(map[uint64]v1.AnyValue)
-	for i, attr := range profile.GetAttributeTable() {
-		val := attr.GetValue()
-		if val.GetValue() != nil {
-			attrMap[uint64(i)] = val
-		}
-	}
-
-	// Process only attributes referenced in samples
-	for _, sample := range profile.Sample {
-		for _, attrIdx := range sample.GetAttributes() {
-			attr := profile.AttributeTable[attrIdx]
-			// Skip if we've already processed this key at any level
-			if processedKeys[attr.Key] {
-				continue
-			}
-
-			if value, exists := attrMap[attrIdx]; exists {
-				if sv := value.GetStringValue(); sv != "" {
-					labels = append(labels, &typesv1.LabelPair{
-						Name:  attr.Key,
-						Value: sv,
-					})
-					processedKeys[attr.Key] = true
-				}
-			}
-		}
-	}
-
 	return labels
 }
