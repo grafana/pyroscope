@@ -31,7 +31,7 @@ func invoke[R any](ctx context.Context, cl *Client,
 		if err != nil {
 			return nil, fmt.Errorf("metastore client timeout %w", err)
 		}
-		it := cl.selectInstance()
+		it := cl.selectInstance(false)
 		if it == nil {
 			cl.logger.Log("msg", "no instances available, backoff and retry")
 			time.Sleep(backoff)
@@ -56,6 +56,16 @@ func invoke[R any](ctx context.Context, cl *Client,
 				cl.leader = raft.ServerID(node.Id)
 			}
 			cl.mu.Unlock()
+		} else {
+			// A node can be removed from Raft for maintenance. In this state, it can't return the Raft leader.
+			// We try a random client instead, which even if not the right one should still point us to the leader.
+			//
+			// TODO aleks-p: See if we can do this for specific codes / messages.
+			//  Currently, most operations will return "codes.Unavailable - node is not the leader"
+			//  but some will timeout instead (e.g., MetadataQueryService which fails to do a consistent read).
+			cl.logger.Log("msg", "selecting a new leader", "err", err, "cur_leader", cl.leader)
+			cl.selectInstance(true)
+			cl.logger.Log("msg", "selected a new leader", "new_leader", cl.leader)
 		}
 		time.Sleep(backoff)
 		cl.discovery.Rediscover()
@@ -63,10 +73,10 @@ func invoke[R any](ctx context.Context, cl *Client,
 	return nil, fmt.Errorf("metastore client retries failed")
 }
 
-func (c *Client) selectInstance() *client {
+func (c *Client) selectInstance(override bool) *client {
 	c.mu.Lock()
 	it := c.servers[c.leader]
-	if it == nil && len(c.servers) > 0 {
+	if (it == nil || override) && len(c.servers) > 0 {
 		idx := rand.Intn(len(c.servers))
 		j := 0
 		for k, v := range c.servers {
@@ -129,5 +139,29 @@ func (c *Client) ReadIndex(ctx context.Context, in *raftnodepb.ReadIndexRequest,
 func (c *Client) NodeInfo(ctx context.Context, in *raftnodepb.NodeInfoRequest, opts ...grpc.CallOption) (*raftnodepb.NodeInfoResponse, error) {
 	return invoke(ctx, c, func(ctx context.Context, instance instance) (*raftnodepb.NodeInfoResponse, error) {
 		return instance.NodeInfo(ctx, in, opts...)
+	})
+}
+
+func (c *Client) RemoveNode(ctx context.Context, in *raftnodepb.RemoveNodeRequest, opts ...grpc.CallOption) (*raftnodepb.RemoveNodeResponse, error) {
+	return invoke(ctx, c, func(ctx context.Context, instance instance) (*raftnodepb.RemoveNodeResponse, error) {
+		return instance.RemoveNode(ctx, in, opts...)
+	})
+}
+
+func (c *Client) AddNode(ctx context.Context, in *raftnodepb.AddNodeRequest, opts ...grpc.CallOption) (*raftnodepb.AddNodeResponse, error) {
+	return invoke(ctx, c, func(ctx context.Context, instance instance) (*raftnodepb.AddNodeResponse, error) {
+		return instance.AddNode(ctx, in, opts...)
+	})
+}
+
+func (c *Client) DemoteLeader(ctx context.Context, in *raftnodepb.DemoteLeaderRequest, opts ...grpc.CallOption) (*raftnodepb.DemoteLeaderResponse, error) {
+	return invoke(ctx, c, func(ctx context.Context, instance instance) (*raftnodepb.DemoteLeaderResponse, error) {
+		return instance.DemoteLeader(ctx, in, opts...)
+	})
+}
+
+func (c *Client) PromoteToLeader(ctx context.Context, in *raftnodepb.PromoteToLeaderRequest, opts ...grpc.CallOption) (*raftnodepb.PromoteToLeaderResponse, error) {
+	return invoke(ctx, c, func(ctx context.Context, instance instance) (*raftnodepb.PromoteToLeaderResponse, error) {
+		return instance.PromoteToLeader(ctx, in, opts...)
 	})
 }
