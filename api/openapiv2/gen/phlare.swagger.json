@@ -602,19 +602,17 @@
       "type": "object",
       "properties": {
         "formatVersion": {
-          "type": "string",
-          "format": "uint64"
+          "type": "integer",
+          "format": "int64"
         },
         "id": {
-          "type": "string"
-        },
-        "minTime": {
           "type": "string",
-          "format": "int64"
+          "description": "Block ID is a unique identifier for the block.\nThis is the only field that is not included into\nthe string table."
         },
-        "maxTime": {
-          "type": "string",
-          "format": "int64"
+        "tenant": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Optional. Empty if compaction level is 0."
         },
         "shard": {
           "type": "integer",
@@ -624,9 +622,21 @@
           "type": "integer",
           "format": "int64"
         },
-        "tenantId": {
+        "minTime": {
           "type": "string",
-          "description": "Optional. Empty if compaction level is 0."
+          "format": "int64"
+        },
+        "maxTime": {
+          "type": "string",
+          "format": "int64"
+        },
+        "createdBy": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "size": {
+          "type": "string",
+          "format": "uint64"
         },
         "datasets": {
           "type": "array",
@@ -635,12 +645,12 @@
             "$ref": "#/definitions/v1Dataset"
           }
         },
-        "size": {
-          "type": "string",
-          "format": "uint64"
-        },
-        "createdBy": {
-          "type": "string"
+        "stringTable": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "String table contains strings of the block.\nBy convention, the first string is always an empty string."
         }
       }
     },
@@ -824,11 +834,13 @@
     "v1Dataset": {
       "type": "object",
       "properties": {
-        "tenantId": {
-          "type": "string"
+        "tenant": {
+          "type": "integer",
+          "format": "int32"
         },
         "name": {
-          "type": "string"
+          "type": "integer",
+          "format": "int32"
         },
         "minTime": {
           "type": "string",
@@ -854,16 +866,18 @@
         "profileTypes": {
           "type": "array",
           "items": {
-            "type": "string"
+            "type": "integer",
+            "format": "int32"
           },
           "description": "TODO: Delete. Use labels instead.\nProfile types present in the tenant service data."
         },
         "labels": {
           "type": "array",
           "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1Labels"
-          }
+            "type": "integer",
+            "format": "int32"
+          },
+          "description": "Length prefixed label key-value pairs."
         }
       }
     },

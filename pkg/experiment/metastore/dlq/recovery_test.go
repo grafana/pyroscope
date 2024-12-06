@@ -2,12 +2,10 @@ package dlq
 
 import (
 	"context"
-	"crypto/rand"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/oklog/ulid"
 	"github.com/prometheus/prometheus/util/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -16,7 +14,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	segmentstorage "github.com/grafana/pyroscope/pkg/experiment/ingester/storage"
+	"github.com/grafana/pyroscope/pkg/experiment/block"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode/raftnodepb"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/memory"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockdlq"
@@ -25,20 +23,20 @@ import (
 func TestRecoverTick(t *testing.T) {
 	metas := []*metastorev1.BlockMeta{
 		{
-			Id:    ulid.MustNew(3, rand.Reader).String(),
+			Id:    "3",
 			Shard: 2,
 		},
 		{
-			Id:    ulid.MustNew(1, rand.Reader).String(),
+			Id:    "1",
 			Shard: 1,
 		},
 		{
-			Id:    ulid.MustNew(2, rand.Reader).String(),
+			Id:    "2",
 			Shard: 2,
 		},
 	}
-	actual := []*metastorev1.BlockMeta{}
 
+	var actual []*metastorev1.BlockMeta
 	srv := mockdlq.NewMockLocalServer(t)
 	srv.On("AddRecoveredBlock", mock.Anything, mock.Anything).
 		Times(3).
@@ -72,7 +70,7 @@ func TestRecoverTick(t *testing.T) {
 func TestNotRaftLeader(t *testing.T) {
 	metas := []*metastorev1.BlockMeta{
 		{
-			Id:    ulid.MustNew(3, rand.Reader).String(),
+			Id:    "1",
 			Shard: 2,
 		},
 	}
@@ -100,21 +98,21 @@ func TestNotRaftLeader(t *testing.T) {
 func TestStartStop(t *testing.T) {
 	metas := []*metastorev1.BlockMeta{
 		{
-			Id:    ulid.MustNew(3, rand.Reader).String(),
+			Id:    "3",
 			Shard: 2,
 		},
 		{
-			Id:    ulid.MustNew(1, rand.Reader).String(),
+			Id:    "1",
 			Shard: 1,
 		},
 		{
-			Id:    ulid.MustNew(2, rand.Reader).String(),
+			Id:    "2",
 			Shard: 2,
 		},
 	}
 	m := new(sync.Mutex)
-	actual := []*metastorev1.BlockMeta{}
 
+	var actual []*metastorev1.BlockMeta
 	srv := mockdlq.NewMockLocalServer(t)
 	srv.On("AddRecoveredBlock", mock.Anything, mock.Anything).
 		Times(3).
@@ -156,5 +154,5 @@ func TestStartStop(t *testing.T) {
 
 func addMeta(bucket *memory.InMemBucket, meta *metastorev1.BlockMeta) {
 	data, _ := meta.MarshalVT()
-	bucket.Set(segmentstorage.PathForDLQ(meta), data)
+	bucket.Set(block.MetadataDLQObjectPath(meta), data)
 }

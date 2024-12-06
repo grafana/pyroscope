@@ -42,7 +42,7 @@ func (s *snapshot) Persist(sink raft.SnapshotSink) (err error) {
 	level.Info(s.logger).Log("msg", "persisting snapshot")
 	var n int64
 	n, err = s.tx.WriteTo(sink)
-	s.metrics.boltDBPersistSnapshotSize.Observe(float64(n))
+	s.metrics.boltDBPersistSnapshotSize.Set(float64(n))
 	if err != nil {
 		level.Error(s.logger).Log("msg", "failed to write snapshot", "err", err)
 	}

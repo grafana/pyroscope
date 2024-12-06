@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction"
 	"github.com/grafana/pyroscope/pkg/test"
 )
 
@@ -19,9 +20,9 @@ func TestBlockQueueStore_StoreEntry(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, s.CreateBuckets(tx))
 
-	entries := make([]BlockEntry, 1000)
+	entries := make([]compaction.BlockEntry, 1000)
 	for i := range entries {
-		entries[i] = BlockEntry{
+		entries[i] = compaction.BlockEntry{
 			Index:      uint64(i),
 			ID:         strconv.Itoa(i),
 			AppendedAt: time.Now().UnixNano(),
@@ -58,9 +59,9 @@ func TestBlockQueueStore_DeleteEntry(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, s.CreateBuckets(tx))
 
-	entries := make([]BlockEntry, 1000)
+	entries := make([]compaction.BlockEntry, 1000)
 	for i := range entries {
-		entries[i] = BlockEntry{
+		entries[i] = compaction.BlockEntry{
 			Index:      uint64(i),
 			ID:         strconv.Itoa(i),
 			AppendedAt: time.Now().UnixNano(),

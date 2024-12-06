@@ -7,8 +7,8 @@
       "shard": 1,
       "datasets": [
         {
-          "tenantId": "anonymous",
-          "name": "pyroscope-test/query-frontend",
+          "tenant": 1,
+          "name": 2,
           "minTime": "1721060035611",
           "maxTime": "1721060035611",
           "tableOfContents": [
@@ -18,6 +18,11 @@
           ],
           "size": "19471"
         }
+      ],
+      "stringTable": [
+        "",
+        "anonymous",
+        "pyroscope-test/query-frontend"
       ]
     },
     {
@@ -27,8 +32,8 @@
       "shard": 1,
       "datasets": [
         {
-          "tenantId": "anonymous",
-          "name": "pyroscope-test/ingester",
+          "tenant": 1,
+          "name": 2,
           "minTime": "1721060023235",
           "maxTime": "1721060023235",
           "tableOfContents": [
@@ -38,6 +43,11 @@
           ],
           "size": "22242"
         }
+      ],
+      "stringTable": [
+        "",
+        "anonymous",
+        "pyroscope-test/ingester"
       ]
     },
     {
@@ -47,8 +57,8 @@
       "shard": 1,
       "datasets": [
         {
-          "tenantId": "anonymous",
-          "name": "pyroscope-test/alloy",
+          "tenant": 1,
+          "name": 2,
           "minTime": "1721060010831",
           "maxTime": "1721060010831",
           "tableOfContents": [
@@ -58,6 +68,11 @@
           ],
           "size": "17664"
         }
+      ],
+      "stringTable": [
+        "",
+        "anonymous",
+        "pyroscope-test/alloy"
       ]
     },
     {
@@ -67,8 +82,8 @@
       "shard": 1,
       "datasets": [
         {
-          "tenantId": "anonymous",
-          "name": "pyroscope-test/query-frontend",
+          "tenant": 1,
+          "name": 2,
           "minTime": "1721060025159",
           "maxTime": "1721060025159",
           "tableOfContents": [
@@ -78,6 +93,11 @@
           ],
           "size": "21765"
         }
+      ],
+      "stringTable": [
+        "",
+        "anonymous",
+        "pyroscope-test/query-frontend"
       ]
     },
     {
@@ -87,8 +107,8 @@
       "shard": 1,
       "datasets": [
         {
-          "tenantId": "anonymous",
-          "name": "pyroscope-test/ingester",
+          "tenant": 1,
+          "name": 2,
           "minTime": "1721060026913",
           "maxTime": "1721060026913",
           "tableOfContents": [
@@ -98,6 +118,11 @@
           ],
           "size": "28169"
         }
+      ],
+      "stringTable": [
+        "",
+        "anonymous",
+        "pyroscope-test/ingester"
       ]
     },
     {
@@ -107,8 +132,8 @@
       "shard": 1,
       "datasets": [
         {
-          "tenantId": "anonymous",
-          "name": "pyroscope-test/query-frontend",
+          "tenant": 1,
+          "name": 2,
           "minTime": "1721060013534",
           "maxTime": "1721060013534",
           "tableOfContents": [
@@ -118,6 +143,11 @@
           ],
           "size": "15785"
         }
+      ],
+      "stringTable": [
+        "",
+        "anonymous",
+        "pyroscope-test/query-frontend"
       ]
     },
     {
@@ -127,8 +157,8 @@
       "shard": 1,
       "datasets": [
         {
-          "tenantId": "anonymous",
-          "name": "pyroscope-test/ingester",
+          "tenant": 1,
+          "name": 2,
           "minTime": "1721060015603",
           "maxTime": "1721060015603",
           "tableOfContents": [
@@ -138,6 +168,11 @@
           ],
           "size": "27431"
         }
+      ],
+      "stringTable": [
+        "",
+        "anonymous",
+        "pyroscope-test/ingester"
       ]
     },
     {
@@ -147,8 +182,8 @@
       "shard": 1,
       "datasets": [
         {
-          "tenantId": "anonymous",
-          "name": "pyroscope-test/ingester",
+          "tenant": 1,
+          "name": 2,
           "minTime": "1721060031203",
           "maxTime": "1721060031203",
           "tableOfContents": [
@@ -158,6 +193,11 @@
           ],
           "size": "36655"
         }
+      ],
+      "stringTable": [
+        "",
+        "anonymous",
+        "pyroscope-test/ingester"
       ]
     },
     {
@@ -167,8 +207,8 @@
       "shard": 1,
       "datasets": [
         {
-          "tenantId": "anonymous",
-          "name": "pyroscope-test/ingester",
+          "tenant": 1,
+          "name": 2,
           "minTime": "1721060032190",
           "maxTime": "1721060032190",
           "tableOfContents": [
@@ -178,6 +218,11 @@
           ],
           "size": "24273"
         }
+      ],
+      "stringTable": [
+        "",
+        "anonymous",
+        "pyroscope-test/ingester"
       ]
     },
     {
@@ -187,8 +232,8 @@
       "shard": 1,
       "datasets": [
         {
-          "tenantId": "anonymous",
-          "name": "pyroscope-test/alloy",
+          "tenant": 1,
+          "name": 2,
           "minTime": "1721060033248",
           "maxTime": "1721060033248",
           "tableOfContents": [
@@ -199,8 +244,8 @@
           "size": "27397"
         },
         {
-          "tenantId": "anonymous",
-          "name": "pyroscope-test/ingester",
+          "tenant": 1,
+          "name": 3,
           "minTime": "1721060033680",
           "maxTime": "1721060033802",
           "tableOfContents": [
@@ -210,6 +255,12 @@
           ],
           "size": "50561"
         }
+      ],
+      "stringTable": [
+        "",
+        "anonymous",
+        "pyroscope-test/alloy",
+        "pyroscope-test/ingester"
       ]
     }
   ]

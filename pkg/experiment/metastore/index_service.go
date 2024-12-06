@@ -5,11 +5,13 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/oklog/ulid"
 	"go.etcd.io/bbolt"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
+	"github.com/grafana/pyroscope/pkg/experiment/block"
 	placement "github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/fsm"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode"
@@ -20,11 +22,15 @@ type PlacementStats interface {
 	RecordStats(iter.Iterator[placement.Sample])
 }
 
+type IndexBlockFinder interface {
+	FindBlocks(*bbolt.Tx, *metastorev1.BlockList) ([]*metastorev1.BlockMeta, error)
+}
+
 func NewIndexService(
 	logger log.Logger,
 	raft Raft,
 	state State,
-	index IndexQuerier,
+	index IndexBlockFinder,
 	stats PlacementStats,
 ) *IndexService {
 	return &IndexService{
@@ -42,14 +48,14 @@ type IndexService struct {
 	logger log.Logger
 	raft   Raft
 	state  State
-	index  IndexQuerier
+	index  IndexBlockFinder
 	stats  PlacementStats
 }
 
 func (svc *IndexService) AddBlock(
 	ctx context.Context,
 	req *metastorev1.AddBlockRequest,
-) (rsp *metastorev1.AddBlockResponse, err error) {
+) (resp *metastorev1.AddBlockResponse, err error) {
 	defer func() {
 		if err == nil {
 			svc.stats.RecordStats(statsFromMetadata(req.Block))
@@ -69,33 +75,36 @@ func (svc *IndexService) addBlockMetadata(
 	_ context.Context,
 	req *metastorev1.AddBlockRequest,
 ) (*metastorev1.AddBlockResponse, error) {
-	if err := SanitizeMetadata(req.Block); err != nil {
-		_ = level.Warn(svc.logger).Log("invalid metadata", "block_id", req.Block.Id, "err", err)
+	if err := block.SanitizeMetadata(req.Block); err != nil {
+		level.Warn(svc.logger).Log("invalid metadata", "block", req.Block.Id, "err", err)
 		return nil, err
 	}
-	if err := proposeAddBlockMetadata(svc.raft, req.Block); err != nil {
-		_ = level.Error(svc.logger).Log("msg", "failed to add block", "block_id", req.Block.Id, "err", err)
+	_, err := svc.raft.Propose(
+		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_ADD_BLOCK_METADATA),
+		&raft_log.AddBlockMetadataRequest{Metadata: req.Block},
+	)
+	if err != nil {
+		level.Error(svc.logger).Log("msg", "failed to add block", "block", req.Block.Id, "err", err)
 		return nil, err
 	}
 	return new(metastorev1.AddBlockResponse), nil
 }
 
-func proposeAddBlockMetadata(raft Raft, md *metastorev1.BlockMeta) error {
-	_, err := raft.Propose(
-		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_ADD_BLOCK_METADATA),
-		&raft_log.AddBlockMetadataRequest{Metadata: md},
-	)
-	return err
-}
-
 func (svc *IndexService) GetBlockMetadata(
 	ctx context.Context,
 	req *metastorev1.GetBlockMetadataRequest,
-) (*metastorev1.GetBlockMetadataResponse, error) {
-	var found []*metastorev1.BlockMeta
-	err := svc.state.ConsistentRead(ctx, func(tx *bbolt.Tx, _ raftnode.ReadIndex) {
-		found = svc.index.FindBlocks(tx, req.GetBlocks())
-	})
+) (resp *metastorev1.GetBlockMetadataResponse, err error) {
+	read := func(tx *bbolt.Tx, _ raftnode.ReadIndex) {
+		resp, err = svc.getBlockMetadata(tx, req.GetBlocks())
+	}
+	if readErr := svc.state.ConsistentRead(ctx, read); readErr != nil {
+		return nil, status.Error(codes.Unavailable, readErr.Error())
+	}
+	return resp, err
+}
+
+func (svc *IndexService) getBlockMetadata(tx *bbolt.Tx, list *metastorev1.BlockList) (*metastorev1.GetBlockMetadataResponse, error) {
+	found, err := svc.index.FindBlocks(tx, list)
 	if err != nil {
 		return nil, err
 	}
@@ -125,17 +134,10 @@ func (s *sampleIterator) Next() bool {
 func (s *sampleIterator) At() placement.Sample {
 	ds := s.md.Datasets[s.cur-1]
 	return placement.Sample{
-		TenantID:    ds.TenantId,
-		DatasetName: ds.Name,
-		ShardOwner:  s.md.CreatedBy,
+		TenantID:    s.md.StringTable[ds.Tenant],
+		DatasetName: s.md.StringTable[ds.Name],
+		ShardOwner:  s.md.StringTable[s.md.CreatedBy],
 		ShardID:     s.md.Shard,
 		Size:        ds.Size,
 	}
-}
-
-// TODO(kolesnikovae): Implement and refactor to the block package.
-
-func SanitizeMetadata(md *metastorev1.BlockMeta) error {
-	_, err := ulid.Parse(md.Id)
-	return err
 }

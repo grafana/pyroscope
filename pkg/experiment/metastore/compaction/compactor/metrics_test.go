@@ -5,13 +5,13 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction/compactor/store"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction"
 )
 
 func TestCollectorRegistration(t *testing.T) {
 	reg := prometheus.NewRegistry()
 	for i := 0; i < 2; i++ {
-		entries := []store.BlockEntry{
+		entries := []compaction.BlockEntry{
 			{Tenant: "A", Shard: 0, Level: 0},
 			{Tenant: "A", Shard: 0, Level: 1},
 			{Tenant: "A", Shard: 0, Level: 1},

@@ -95,11 +95,11 @@ func WithObjectDownload(dir string) ObjectOption {
 	}
 }
 
-func NewObject(storage objstore.Bucket, meta *metastorev1.BlockMeta, opts ...ObjectOption) *Object {
+func NewObject(storage objstore.Bucket, md *metastorev1.BlockMeta, opts ...ObjectOption) *Object {
 	o := &Object{
 		storage: storage,
-		meta:    meta,
-		path:    ObjectPath(meta),
+		meta:    md,
+		path:    ObjectPath(md),
 		memSize: defaultObjectSizeLoadInMemory,
 	}
 	for _, opt := range opts {
@@ -109,18 +109,19 @@ func NewObject(storage objstore.Bucket, meta *metastorev1.BlockMeta, opts ...Obj
 }
 
 func ObjectPath(md *metastorev1.BlockMeta) string {
-	return BuildObjectPath(md.TenantId, md.Shard, md.CompactionLevel, md.Id)
+	return BuildObjectPath(Tenant(md), md.Shard, md.CompactionLevel, md.Id)
 }
 
 func BuildObjectPath(tenant string, shard uint32, level uint32, block string) string {
-	topLevel := DirPathBlock
+	topLevel := DirNameBlock
 	tenantDirName := tenant
 	if level == 0 {
-		topLevel = DirPathSegment
+		topLevel = DirNameSegment
 		tenantDirName = DirNameAnonTenant
 	}
 	var b strings.Builder
 	b.WriteString(topLevel)
+	b.WriteByte('/')
 	b.WriteString(strconv.Itoa(int(shard)))
 	b.WriteByte('/')
 	b.WriteString(tenantDirName)
@@ -128,6 +129,24 @@ func BuildObjectPath(tenant string, shard uint32, level uint32, block string) st
 	b.WriteString(block)
 	b.WriteByte('/')
 	b.WriteString(FileNameDataObject)
+	return b.String()
+}
+
+func MetadataDLQObjectPath(md *metastorev1.BlockMeta) string {
+	var b strings.Builder
+	tenantDirName := DirNameAnonTenant
+	if md.CompactionLevel > 0 {
+		tenantDirName = Tenant(md)
+	}
+	b.WriteString(DirNameDLQ)
+	b.WriteByte('/')
+	b.WriteString(strconv.Itoa(int(md.Shard)))
+	b.WriteByte('/')
+	b.WriteString(tenantDirName)
+	b.WriteByte('/')
+	b.WriteString(md.Id)
+	b.WriteByte('/')
+	b.WriteString(FileNameMetadataObject)
 	return b.String()
 }
 

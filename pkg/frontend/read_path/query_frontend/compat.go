@@ -76,7 +76,7 @@ func listProfileTypesFromMetadata(
 	startTime int64,
 	endTime int64,
 ) (*ptypes, error) {
-	md, err := client.QueryMetadata(ctx, &metastorev1.QueryMetadataRequest{
+	resp, err := client.QueryMetadata(ctx, &metastorev1.QueryMetadataRequest{
 		TenantId:  tenants,
 		StartTime: startTime,
 		EndTime:   endTime,
@@ -85,10 +85,18 @@ func listProfileTypesFromMetadata(
 	if err != nil {
 		return nil, err
 	}
-	p := newProfileTypesResponseBuilder(len(md.Blocks) * 8)
-	for _, m := range md.Blocks {
-		for _, s := range m.Datasets {
-			p.addServiceProfileTypes(s.Name, s.ProfileTypes...)
+	p := newProfileTypesResponseBuilder(len(resp.Blocks) * 8)
+	for _, md := range resp.Blocks {
+		for _, ds := range md.Datasets {
+			s := md.StringTable[ds.Name]
+			sp, ok := p.services[s]
+			if !ok {
+				sp = make(map[string]struct{}, len(ds.ProfileTypes))
+				p.services[s] = sp
+			}
+			for _, t := range ds.ProfileTypes {
+				sp[md.StringTable[t]] = struct{}{}
+			}
 		}
 	}
 	return p, nil
@@ -159,17 +167,6 @@ type ptypes struct {
 
 func newProfileTypesResponseBuilder(size int) *ptypes {
 	return &ptypes{services: make(map[string]map[string]struct{}, size)}
-}
-
-func (p *ptypes) addServiceProfileTypes(s string, types ...string) {
-	sp, ok := p.services[s]
-	if !ok {
-		sp = make(map[string]struct{}, len(types))
-		p.services[s] = sp
-	}
-	for _, t := range types {
-		sp[t] = struct{}{}
-	}
 }
 
 func (p *ptypes) buildSeriesLabels(names []string) (labels []*typesv1.Labels) {

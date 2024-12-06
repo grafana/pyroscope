@@ -29,29 +29,25 @@ func TestQueryFrontend_ProfileTypes(t *testing.T) {
 		Blocks: []*metastorev1.BlockMeta{
 			{
 				Datasets: []*metastorev1.Dataset{
-					{
-						ProfileTypes: []string{
-							"memory:inuse_space:bytes:space:byte",
-							"process_cpu:cpu:nanoseconds:cpu:nanoseconds",
-							"mutex:delay:nanoseconds:mutex:count",
-						},
-					},
-					{
-						ProfileTypes: []string{
-							"memory:alloc_in_new_tlab_objects:count:space:bytes",
-							"process_cpu:cpu:nanoseconds:cpu:nanoseconds",
-						},
-					},
+					{ProfileTypes: []int32{1, 2, 3}},
+					{ProfileTypes: []int32{4, 2}},
+				},
+				StringTable: []string{
+					"",
+					"memory:inuse_space:bytes:space:byte",
+					"process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+					"mutex:delay:nanoseconds:mutex:count",
+					"memory:alloc_in_new_tlab_objects:count:space:bytes",
 				},
 			},
 			{
 				Datasets: []*metastorev1.Dataset{
-					{
-						ProfileTypes: []string{
-							"mutex:contentions:count:mutex:count",
-							"mutex:delay:nanoseconds:mutex:count",
-						},
-					},
+					{ProfileTypes: []int32{1, 2}},
+				},
+				StringTable: []string{
+					"",
+					"mutex:contentions:count:mutex:count",
+					"mutex:delay:nanoseconds:mutex:count",
 				},
 			},
 		},

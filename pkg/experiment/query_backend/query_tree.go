@@ -6,7 +6,7 @@ import (
 	"github.com/grafana/dskit/runutil"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
-	"github.com/grafana/pyroscope/pkg/experiment/query_backend/block"
+	"github.com/grafana/pyroscope/pkg/experiment/block"
 	"github.com/grafana/pyroscope/pkg/model"
 	parquetquery "github.com/grafana/pyroscope/pkg/phlaredb/query"
 	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"

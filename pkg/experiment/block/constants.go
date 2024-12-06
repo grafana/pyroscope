@@ -5,12 +5,14 @@ import (
 )
 
 const (
-	DirPathSegment    = "segments/"
-	DirPathBlock      = "blocks/"
+	DirNameSegment    = "segments"
+	DirNameBlock      = "blocks"
+	DirNameDLQ        = "dlq"
 	DirNameAnonTenant = tenant.DefaultTenantID
 
 	FileNameProfilesParquet = "profiles.parquet"
 	FileNameDataObject      = "block.bin"
+	FileNameMetadataObject  = "meta.pb"
 )
 
 const (

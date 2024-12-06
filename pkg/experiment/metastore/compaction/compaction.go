@@ -6,11 +6,12 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
+	"github.com/grafana/pyroscope/pkg/experiment/block"
 )
 
 type Compactor interface {
 	// Compact enqueues a new block for compaction
-	Compact(*bbolt.Tx, *raft.Log, *metastorev1.BlockMeta) error
+	Compact(*bbolt.Tx, BlockEntry) error
 }
 
 type Planner interface {
@@ -18,10 +19,10 @@ type Planner interface {
 	// submitted for Raft consensus, with the leader's jobs being accepted
 	// as the final decision.
 	// Implementation: Plan must not change the state of the Planner.
-	NewPlan(*bbolt.Tx, *raft.Log) Plan
+	NewPlan(*raft.Log) Plan
 	// UpdatePlan communicates the status of the compaction job to the planner.
 	// Implementation: This method must be idempotent.
-	UpdatePlan(*bbolt.Tx, *raft.Log, *raft_log.CompactionPlanUpdate) error
+	UpdatePlan(*bbolt.Tx, *raft_log.CompactionPlanUpdate) error
 }
 
 type Plan interface {
@@ -37,7 +38,7 @@ type Scheduler interface {
 	NewSchedule(*bbolt.Tx, *raft.Log) Schedule
 	// UpdateSchedule adds new jobs and updates the state of existing ones.
 	// Implementation: This method must be idempotent.
-	UpdateSchedule(*bbolt.Tx, *raft.Log, *raft_log.CompactionPlanUpdate) error
+	UpdateSchedule(*bbolt.Tx, *raft_log.CompactionPlanUpdate) error
 }
 
 // Schedule prepares changes to the compaction plan based on status updates
@@ -57,4 +58,25 @@ type Schedule interface {
 	// AddJob is called on behalf of the planner to add a new job to the schedule.
 	// The scheduler may decline the job by returning a nil state.
 	AddJob(*raft_log.CompactionJobPlan) *raft_log.CompactionJobState
+}
+
+// BlockEntry represents a block metadata entry compaction operates on.
+type BlockEntry struct {
+	Index      uint64
+	AppendedAt int64
+	ID         string
+	Tenant     string
+	Shard      uint32
+	Level      uint32
+}
+
+func NewBlockEntry(cmd *raft.Log, md *metastorev1.BlockMeta) BlockEntry {
+	return BlockEntry{
+		Index:      cmd.Index,
+		AppendedAt: cmd.AppendedAt.UnixNano(),
+		ID:         md.Id,
+		Tenant:     block.Tenant(md),
+		Shard:      md.Shard,
+		Level:      md.CompactionLevel,
+	}
 }

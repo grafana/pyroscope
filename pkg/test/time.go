@@ -14,9 +14,14 @@ func ULID(t string) string {
 	return l.String()
 }
 
-func Time(t string) int64 {
+func UnixMilli(t string) int64 {
 	ts, _ := time.Parse(time.RFC3339, t)
 	return ts.UnixMilli()
+}
+
+func Time(t string) time.Time {
+	x, _ := time.Parse(time.RFC3339, t)
+	return x
 }
 
 func Duration(d string) time.Duration {

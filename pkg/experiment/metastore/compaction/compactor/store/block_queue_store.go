@@ -6,6 +6,7 @@ import (
 
 	"go.etcd.io/bbolt"
 
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/store"
 	"github.com/grafana/pyroscope/pkg/iter"
 )
@@ -13,18 +14,6 @@ import (
 var ErrInvalidBlockEntry = errors.New("invalid block entry")
 
 var blockQueueBucketName = []byte("compaction_block_queue")
-
-// BlockEntry represents a block metadata entry in the compaction block queue.
-type BlockEntry struct {
-	// Key. Ensures uniqueness and order.
-	Index uint64
-	ID    string
-	// Value. Needed to place the entry in the right queue.
-	AppendedAt int64
-	Level      uint32
-	Shard      uint32
-	Tenant     string
-}
 
 // BlockQueueStore provides methods to store and retrieve block queues.
 // The store is optimized for two cases: load the entire queue (preserving
@@ -48,7 +37,7 @@ func (s BlockQueueStore) CreateBuckets(tx *bbolt.Tx) error {
 	return err
 }
 
-func (s BlockQueueStore) StoreEntry(tx *bbolt.Tx, entry BlockEntry) error {
+func (s BlockQueueStore) StoreEntry(tx *bbolt.Tx, entry compaction.BlockEntry) error {
 	e := marshalBlockEntry(entry)
 	return tx.Bucket(s.bucketName).Put(e.Key, e.Value)
 }
@@ -57,13 +46,13 @@ func (s BlockQueueStore) DeleteEntry(tx *bbolt.Tx, index uint64, id string) erro
 	return tx.Bucket(s.bucketName).Delete(marshalBlockEntryKey(index, id))
 }
 
-func (s BlockQueueStore) ListEntries(tx *bbolt.Tx) iter.Iterator[BlockEntry] {
+func (s BlockQueueStore) ListEntries(tx *bbolt.Tx) iter.Iterator[compaction.BlockEntry] {
 	return newBlockEntriesIterator(tx.Bucket(s.bucketName))
 }
 
 type blockEntriesIterator struct {
 	iter *store.CursorIterator
-	cur  BlockEntry
+	cur  compaction.BlockEntry
 	err  error
 }
 
@@ -79,7 +68,7 @@ func (x *blockEntriesIterator) Next() bool {
 	return x.err == nil
 }
 
-func (x *blockEntriesIterator) At() BlockEntry { return x.cur }
+func (x *blockEntriesIterator) At() compaction.BlockEntry { return x.cur }
 
 func (x *blockEntriesIterator) Close() error { return x.iter.Close() }
 
@@ -90,7 +79,7 @@ func (x *blockEntriesIterator) Err() error {
 	return x.err
 }
 
-func marshalBlockEntry(e BlockEntry) store.KV {
+func marshalBlockEntry(e compaction.BlockEntry) store.KV {
 	k := marshalBlockEntryKey(e.Index, e.ID)
 	b := make([]byte, 8+4+4+len(e.Tenant))
 	binary.BigEndian.PutUint64(b[0:8], uint64(e.AppendedAt))
@@ -107,7 +96,7 @@ func marshalBlockEntryKey(index uint64, id string) []byte {
 	return b
 }
 
-func unmarshalBlockEntry(dst *BlockEntry, e store.KV) error {
+func unmarshalBlockEntry(dst *compaction.BlockEntry, e store.KV) error {
 	if len(e.Key) < 8 || len(e.Value) < 16 {
 		return ErrInvalidBlockEntry
 	}

@@ -47,10 +47,10 @@ func NewStore() *store.TombstoneStore {
 	return store.NewTombstoneStore()
 }
 
-func (x *Tombstones) Exists(md *metastorev1.BlockMeta) bool {
-	tenant, exists := x.blocks[tenantBlockKey{tenant: md.TenantId, shard: md.Shard}]
+func (x *Tombstones) Exists(tenant string, shard uint32, block string) bool {
+	t, exists := x.blocks[tenantBlockKey{tenant: tenant, shard: shard}]
 	if exists {
-		_, exists = tenant.blocks[md.Id]
+		_, exists = t.blocks[block]
 	}
 	return exists
 }

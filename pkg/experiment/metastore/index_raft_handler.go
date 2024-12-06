@@ -8,6 +8,7 @@ import (
 	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
 )
 
@@ -16,25 +17,21 @@ type Index interface {
 }
 
 type Tombstones interface {
-	Exists(*metastorev1.BlockMeta) bool
-}
-
-type Compactor interface {
-	Compact(*bbolt.Tx, *raft.Log, *metastorev1.BlockMeta) error
+	Exists(tenant string, shard uint32, block string) bool
 }
 
 type IndexCommandHandler struct {
 	logger     log.Logger
 	index      Index
 	tombstones Tombstones
-	compactor  Compactor
+	compactor  compaction.Compactor
 }
 
 func NewIndexCommandHandler(
 	logger log.Logger,
 	index Index,
 	tombstones Tombstones,
-	compactor Compactor,
+	compactor compaction.Compactor,
 ) *IndexCommandHandler {
 	return &IndexCommandHandler{
 		logger:     logger,
@@ -45,21 +42,22 @@ func NewIndexCommandHandler(
 }
 
 func (m *IndexCommandHandler) AddBlock(tx *bbolt.Tx, cmd *raft.Log, req *metastorev1.AddBlockRequest) (*metastorev1.AddBlockResponse, error) {
-	if m.tombstones.Exists(req.Block) {
-		level.Warn(m.logger).Log("msg", "block already added and compacted", "block_id", req.Block.Id)
+	e := compaction.NewBlockEntry(cmd, req.Block)
+	if m.tombstones.Exists(e.Tenant, e.Shard, e.ID) {
+		level.Warn(m.logger).Log("msg", "block already added and compacted", "block", e.ID)
 		return new(metastorev1.AddBlockResponse), nil
 	}
 	if err := m.index.InsertBlock(tx, req.Block); err != nil {
 		if errors.Is(err, index.ErrBlockExists) {
-			level.Warn(m.logger).Log("msg", "block already added", "block_id", req.Block.Id)
+			level.Warn(m.logger).Log("msg", "block already added", "block", e.ID)
 			return new(metastorev1.AddBlockResponse), nil
 		}
-		level.Error(m.logger).Log("msg", "failed to add block to index", "block_id", req.Block.Id)
+		level.Error(m.logger).Log("msg", "failed to add block to index", "block", e.ID, "err", err)
 		return nil, err
 	}
-	if err := m.compactor.Compact(tx, cmd, req.Block); err != nil {
-		level.Error(m.logger).Log("msg", "failed to add block to compaction", "block", req.Block.Id, "err", err)
+	if err := m.compactor.Compact(tx, e); err != nil {
+		level.Error(m.logger).Log("msg", "failed to add block to compaction", "block", e.ID, "err", err)
 		return nil, err
 	}
-	return &metastorev1.AddBlockResponse{}, nil
+	return new(metastorev1.AddBlockResponse), nil
 }

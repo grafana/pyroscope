@@ -1,0 +1,57 @@
+[
+  {
+    "format_version": 1,
+    "id": "01J2VJR31P221PP7MVJSX7E468",
+    "tenant": 1,
+    "shard": 1,
+    "compaction_level": 1,
+    "min_time": 1721060010831,
+    "max_time": 1721060035611,
+    "size": 150042,
+    "datasets": [
+      {
+        "tenant": 1,
+        "name": 4,
+        "min_time": 1721060010831,
+        "max_time": 1721060033248,
+        "table_of_contents": [
+          0,
+          4689,
+          8118
+        ],
+        "size": 35057
+      },
+      {
+        "tenant": 1,
+        "name": 3,
+        "min_time": 1721060015603,
+        "max_time": 1721060033802,
+        "table_of_contents": [
+          35057,
+          42688,
+          49619
+        ],
+        "size": 76886
+      },
+      {
+        "tenant": 1,
+        "name": 2,
+        "min_time": 1721060013534,
+        "max_time": 1721060035611,
+        "table_of_contents": [
+          111943,
+          117040,
+          121502
+        ],
+        "size": 38099
+      }
+    ],
+    "string_table": [
+      "",
+      "anonymous",
+      "pyroscope-test/query-frontend",
+      "pyroscope-test/ingester",
+      "pyroscope-test/alloy"
+    ]
+  }
+]

@@ -25,9 +25,9 @@ type Tombstones interface {
 }
 
 type BlockQueueStore interface {
-	StoreEntry(*bbolt.Tx, store.BlockEntry) error
+	StoreEntry(*bbolt.Tx, compaction.BlockEntry) error
 	DeleteEntry(tx *bbolt.Tx, index uint64, id string) error
-	ListEntries(*bbolt.Tx) iter.Iterator[store.BlockEntry]
+	ListEntries(*bbolt.Tx) iter.Iterator[compaction.BlockEntry]
 	CreateBuckets(*bbolt.Tx) error
 }
 
@@ -66,30 +66,22 @@ func NewStore() *store.BlockQueueStore {
 	return store.NewBlockQueueStore()
 }
 
-func (c *Compactor) Compact(tx *bbolt.Tx, cmd *raft.Log, md *metastorev1.BlockMeta) error {
-	if uint(md.CompactionLevel) >= c.config.MaxLevel {
+func (c *Compactor) Compact(tx *bbolt.Tx, entry compaction.BlockEntry) error {
+	if uint(entry.Level) >= c.config.MaxLevel {
 		return nil
 	}
-	e := store.BlockEntry{
-		Index:      cmd.Index,
-		AppendedAt: cmd.AppendedAt.UnixNano(),
-		ID:         md.Id,
-		Shard:      md.Shard,
-		Level:      md.CompactionLevel,
-		Tenant:     md.TenantId,
-	}
-	if err := c.store.StoreEntry(tx, e); err != nil {
+	if err := c.store.StoreEntry(tx, entry); err != nil {
 		return err
 	}
-	c.enqueue(e)
+	c.enqueue(entry)
 	return nil
 }
 
-func (c *Compactor) enqueue(e store.BlockEntry) bool {
+func (c *Compactor) enqueue(e compaction.BlockEntry) bool {
 	return c.queue.push(e)
 }
 
-func (c *Compactor) NewPlan(_ *bbolt.Tx, cmd *raft.Log) compaction.Plan {
+func (c *Compactor) NewPlan(cmd *raft.Log) compaction.Plan {
 	before := cmd.AppendedAt.Add(-c.config.CleanupDelay)
 	tombstones := c.tombstones.ListTombstones(before)
 	return &plan{
@@ -99,7 +91,7 @@ func (c *Compactor) NewPlan(_ *bbolt.Tx, cmd *raft.Log) compaction.Plan {
 	}
 }
 
-func (c *Compactor) UpdatePlan(tx *bbolt.Tx, _ *raft.Log, plan *raft_log.CompactionPlanUpdate) error {
+func (c *Compactor) UpdatePlan(tx *bbolt.Tx, plan *raft_log.CompactionPlanUpdate) error {
 	for _, job := range plan.NewJobs {
 		// Delete source blocks from the compaction queue.
 		k := compactionKey{

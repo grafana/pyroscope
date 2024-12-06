@@ -8,7 +8,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction/compactor/store"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction"
 	"github.com/grafana/pyroscope/pkg/util"
 )
 
@@ -118,7 +118,7 @@ func (q *compactionQueue) reset() {
 	q.levels = q.levels[:0]
 }
 
-func (q *compactionQueue) push(e store.BlockEntry) bool {
+func (q *compactionQueue) push(e compaction.BlockEntry) bool {
 	level := q.blockQueue(e.Level)
 	staged := level.stagedBlocks(compactionKey{
 		tenant: e.Tenant,
