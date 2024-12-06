@@ -358,7 +358,7 @@ func (q *Querier) labelValuesFromStoreGateway(ctx context.Context, req *typesv1.
 	return responses, nil
 }
 
-func (q *Querier) labelNamesFromStoreGateway(ctx context.Context, req *typesv1.LabelNamesRequest) ([]ResponseFromReplica[[]string], error) {
+func (q *Querier) labelNamesFromStoreGateway(ctx context.Context, req *typesv1.LabelNamesRequest) ([]ResponseFromReplica[*typesv1.LabelNamesResponse], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "LabelNames StoreGateway")
 	defer sp.Finish()
 
@@ -367,12 +367,12 @@ func (q *Querier) labelNamesFromStoreGateway(ctx context.Context, req *typesv1.L
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	responses, err := forAllStoreGateways(ctx, tenantID, q.storeGatewayQuerier, func(ctx context.Context, ic StoreGatewayQueryClient) ([]string, error) {
+	responses, err := forAllStoreGateways(ctx, tenantID, q.storeGatewayQuerier, func(ctx context.Context, ic StoreGatewayQueryClient) (*typesv1.LabelNamesResponse, error) {
 		res, err := ic.LabelNames(ctx, connect.NewRequest(req))
 		if err != nil {
 			return nil, err
 		}
-		return res.Msg.Names, nil
+		return res.Msg, nil
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
