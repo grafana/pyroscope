@@ -163,28 +163,6 @@ func Slice[T any](it Iterator[T]) ([]T, error) {
 	return result, it.Err()
 }
 
-func Collect[T any](ctx context.Context, n int, it Iterator[T]) ([]T, error) {
-	if s, ok := it.(*sliceIterator[T]); ok {
-		return s.list, nil
-	}
-	var result []T
-	defer func() {
-		_ = it.Close()
-	}()
-	var i int
-	for it.Next() {
-		if i >= n {
-			i = 0
-			if ctx.Err() != nil {
-				return result, ctx.Err()
-			}
-		}
-		result = append(result, it.At())
-		i++
-	}
-	return result, it.Err()
-}
-
 func MustSlice[T any](it Iterator[T]) []T {
 	s, err := Slice(it)
 	if err != nil {

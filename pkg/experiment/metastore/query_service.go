@@ -55,12 +55,11 @@ func (svc *MetadataQueryService) QueryMetadata(
 }
 
 func (svc *MetadataQueryService) queryMetadata(
-	ctx context.Context,
+	_ context.Context,
 	tx *bbolt.Tx,
 	req *metastorev1.QueryMetadataRequest,
 ) (*metastorev1.QueryMetadataResponse, error) {
-	// check ctx every 1000 entries.
-	metas, err := iter.Collect(ctx, 1000, svc.index.QueryMetadata(tx, index.MetadataQuery{
+	metas, err := iter.Slice(svc.index.QueryMetadata(tx, index.MetadataQuery{
 		Expr:      req.Query,
 		StartTime: time.UnixMilli(req.StartTime),
 		EndTime:   time.UnixMilli(req.EndTime),
@@ -68,9 +67,6 @@ func (svc *MetadataQueryService) queryMetadata(
 	}))
 	if err == nil {
 		return &metastorev1.QueryMetadataResponse{Blocks: metas}, nil
-	}
-	if ctx.Err() != nil {
-		return nil, status.FromContextError(err).Err()
 	}
 	var invalid *index.InvalidQueryError
 	if errors.As(err, &invalid) {
