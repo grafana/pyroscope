@@ -30,7 +30,7 @@ func DefaultStrategy() Strategy {
 		MaxBlocksPerLevel:  []uint{20, 10, 10},
 		MaxBlocksDefault:   10,
 		MaxLevel:           3,
-		MaxBatchAge:        3 * time.Minute.Nanoseconds(), //defaultMaxBlockBatchAge,
+		MaxBatchAge:        defaultMaxBlockBatchAge,
 		CleanupBatchSize:   2,
 		CleanupDelay:       15 * time.Minute,
 		CleanupJobMaxLevel: 1,

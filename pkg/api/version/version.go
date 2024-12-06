@@ -178,7 +178,7 @@ func New(cfg util.CommonRingConfig, logger log.Logger, reg prometheus.Registerer
 		return nil, errors.Wrap(err, "failed to initialize versions' KV store")
 	}
 
-	instanceAddr, err := ring.GetInstanceAddr(cfg.InstanceAddr, cfg.InstanceInterfaceNames, logger, false)
+	instanceAddr, err := ring.GetInstanceAddr(cfg.InstanceAddr, cfg.InstanceInterfaceNames, logger, cfg.EnableIPv6)
 	if err != nil {
 		return nil, err
 	}

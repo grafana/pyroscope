@@ -106,9 +106,6 @@ type Config struct {
 	ConfigExpandEnv bool   `yaml:"-"`
 
 	// Experimental modules.
-	// TODO(kolesnikovae):
-	//  - Generalized experimental features?
-	//  - Better naming.
 	v2Experiment      bool
 	SegmentWriter     segmentwriter.Config     `yaml:"segment_writer" doc:"hidden"`
 	Metastore         metastore.Config         `yaml:"metastore" doc:"hidden"`

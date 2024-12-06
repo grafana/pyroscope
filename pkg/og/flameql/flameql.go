@@ -101,7 +101,7 @@ func IsTagKeyRuneAllowed(r rune) bool {
 }
 
 func IsAppNameRuneAllowed(r rune) bool {
-	return r == '-' || r == '.' || IsTagKeyRuneAllowed(r)
+	return r == '-' || r == '.' || r == '/' || IsTagKeyRuneAllowed(r)
 }
 
 func IsTagKeyReserved(k string) bool {

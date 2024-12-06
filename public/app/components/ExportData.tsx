@@ -14,7 +14,6 @@ import { createBiggestInterval } from '@pyroscope/util/timerange';
 import { downloadWithOrgID } from '@pyroscope/services/base';
 import { faShareSquare } from '@fortawesome/free-solid-svg-icons/faShareSquare';
 import { Field, Message } from 'protobufjs/light';
-import { flameGraphUpload } from '@pyroscope/services/flamegraphcom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { format } from 'date-fns';
 import { isRouteActive, ROUTES } from '@pyroscope/pages/routes';
@@ -173,40 +172,6 @@ function ExportData(props: ExportDataProps) {
     }
   };
 
-  const downloadFlamegraphDotCom = async () => {
-    if (!exportFlamegraphDotCom) {
-      return;
-    }
-
-    const { flamebearer } = props;
-
-    const defaultExportName = getFilename(
-      flamebearer.metadata.appName,
-      flamebearer.metadata.startTime,
-      flamebearer.metadata.endTime
-    );
-    // get user input from modal
-    const customExportName = await getCustomExportName(defaultExportName);
-    // return if user cancels the modal
-    if (!customExportName) {
-      return;
-    }
-
-    const url = await flameGraphUpload(customExportName, flamebearer);
-    if (url.isErr) {
-      handleError(dispatch, 'Failed to export to flamegraph.com', url.error);
-      return;
-    }
-
-    const dlLink = document.createElement('a');
-    dlLink.target = '_blank';
-    dlLink.href = url.value;
-
-    document.body.appendChild(dlLink);
-    dlLink.click();
-    document.body.removeChild(dlLink);
-  };
-
   const downloadPNG = async () => {
     if (exportPNG) {
       const { flamebearer } = props;
@@ -344,16 +309,6 @@ function ExportData(props: ExportDataProps) {
             >
               {' '}
               html
-            </button>
-          )}
-          {exportFlamegraphDotCom && (
-            <button
-              className={styles.dropdownMenuItem}
-              type="button"
-              onClick={downloadFlamegraphDotCom}
-            >
-              {' '}
-              flamegraph.com
             </button>
           )}
         </div>

@@ -40,7 +40,7 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 		return nil, err
 	}
 
-	rows := parquetquery.NewRepeatedRowIterator(q.ctx, entries, q.ds.Profiles().RowGroups(), column.ColumnIndex)
+	rows := parquetquery.NewRepeatedRowIteratorBatchSize(q.ctx, entries, q.ds.Profiles().RowGroups(), bigBatchSize, column.ColumnIndex)
 	defer runutil.CloseWithErrCapture(&err, rows, "failed to close column iterator")
 
 	builder := phlaremodel.NewTimeSeriesBuilder(query.TimeSeries.GroupBy...)

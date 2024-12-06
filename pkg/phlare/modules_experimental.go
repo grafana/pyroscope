@@ -3,11 +3,16 @@ package phlare
 import (
 	"fmt"
 	"slices"
+	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/dskit/middleware"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
+	otgrpc "github.com/opentracing-contrib/go-grpc"
+	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
+	"google.golang.org/grpc"
 	grpchealth "google.golang.org/grpc/health"
 
 	compactionworker "github.com/grafana/pyroscope/pkg/experiment/compactor"
@@ -19,6 +24,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
 	querybackend "github.com/grafana/pyroscope/pkg/experiment/query_backend"
 	querybackendclient "github.com/grafana/pyroscope/pkg/experiment/query_backend/client"
+	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/health"
 )
 
@@ -68,6 +74,7 @@ func (f *Phlare) initSegmentWriter() (services.Service, error) {
 }
 
 func (f *Phlare) initSegmentWriterClient() (_ services.Service, err error) {
+	f.Cfg.SegmentWriter.GRPCClientConfig.Middleware = f.grpcClientInterceptors()
 	// Validation of the config is not required since
 	// it's already validated in initSegmentWriterRing.
 	logger := log.With(f.logger, "component", "segment-writer-client")
@@ -138,6 +145,7 @@ func (f *Phlare) initMetastoreClient() (services.Service, error) {
 		return nil, fmt.Errorf("failed to create discovery: %w %s", err, f.Cfg.Metastore.Address)
 	}
 
+	f.Cfg.Metastore.GRPCClientConfig.Middleware = f.grpcClientInterceptors()
 	f.metastoreClient = metastoreclient.New(
 		f.logger,
 		f.Cfg.Metastore.GRPCClientConfig,
@@ -169,6 +177,7 @@ func (f *Phlare) initQueryBackendClient() (services.Service, error) {
 	if err := f.Cfg.QueryBackend.Validate(); err != nil {
 		return nil, err
 	}
+	f.Cfg.QueryBackend.GRPCClientConfig.Middleware = f.grpcClientInterceptors()
 	c, err := querybackendclient.New(
 		f.Cfg.QueryBackend.Address,
 		f.Cfg.QueryBackend.GRPCClientConfig,
@@ -213,4 +222,22 @@ func (f *Phlare) adaptivePlacementStore() adaptiveplacement.Store {
 func (f *Phlare) initHealthServer() (services.Service, error) {
 	f.healthServer = grpchealth.NewServer()
 	return nil, nil
+}
+
+func (f *Phlare) grpcClientInterceptors() []grpc.UnaryClientInterceptor {
+	requestDuration := util.RegisterOrGet(f.reg, prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Namespace:                       "pyroscope",
+		Subsystem:                       "grpc_client",
+		Name:                            "request_duration_seconds",
+		Help:                            "Time (in seconds) spent waiting for gRPC response.",
+		Buckets:                         prometheus.DefBuckets,
+		NativeHistogramBucketFactor:     1.1,
+		NativeHistogramMaxBucketNumber:  50,
+		NativeHistogramMinResetDuration: time.Hour,
+	}, []string{"method", "status_code"}))
+
+	return []grpc.UnaryClientInterceptor{
+		middleware.UnaryClientInstrumentInterceptor(requestDuration, middleware.ReportGRPCStatusOption),
+		otgrpc.OpenTracingClientInterceptor(opentracing.GlobalTracer()),
+	}
 }
