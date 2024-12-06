@@ -16,6 +16,7 @@ import (
 	"github.com/grafana/dskit/kv/codec"
 	"github.com/grafana/dskit/kv/memberlist"
 	"github.com/grafana/dskit/middleware"
+	"github.com/grafana/dskit/netutil"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/runtimeconfig"
 	"github.com/grafana/dskit/server"
@@ -107,15 +108,10 @@ const (
 var objectStoreTypeStats = usagestats.NewString("store_object_type")
 
 func (f *Phlare) initQueryFrontend() (services.Service, error) {
-	if f.Cfg.Frontend.Addr == "" {
-		addr, err := util.GetFirstAddressOf(f.Cfg.Frontend.InfNames)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to get frontend address")
-		}
-
-		f.Cfg.Frontend.Addr = addr
+	var err error
+	if f.Cfg.Frontend.Addr, err = f.getFrontendAddress(); err != nil {
+		return nil, fmt.Errorf("failed to get frontend address: %w", err)
 	}
-
 	if f.Cfg.Frontend.Port == 0 {
 		f.Cfg.Frontend.Port = f.Cfg.Server.HTTPListenPort
 	}
@@ -135,6 +131,17 @@ func (f *Phlare) initQueryFrontend() (services.Service, error) {
 	}
 
 	return frontendSvc, nil
+}
+
+func (f *Phlare) getFrontendAddress() (addr string, err error) {
+	addr = f.Cfg.Frontend.Addr
+	if f.Cfg.Frontend.AddrOld != "" {
+		addr = f.Cfg.Frontend.AddrOld
+	}
+	if addr != "" {
+		return addr, nil
+	}
+	return netutil.GetFirstAddressOf(f.Cfg.Frontend.InfNames, f.logger, f.Cfg.Frontend.EnableIPv6)
 }
 
 func (f *Phlare) initReadPathRouter() {

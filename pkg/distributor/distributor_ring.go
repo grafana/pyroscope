@@ -17,7 +17,7 @@ const (
 )
 
 func toBasicLifecyclerConfig(cfg util.CommonRingConfig, logger log.Logger) (ring.BasicLifecyclerConfig, error) {
-	instanceAddr, err := ring.GetInstanceAddr(cfg.InstanceAddr, cfg.InstanceInterfaceNames, logger, false)
+	instanceAddr, err := ring.GetInstanceAddr(cfg.InstanceAddr, cfg.InstanceInterfaceNames, logger, cfg.EnableIPv6)
 	if err != nil {
 		return ring.BasicLifecyclerConfig{}, err
 	}

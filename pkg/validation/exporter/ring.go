@@ -65,7 +65,7 @@ func (c *RingConfig) RegisterFlags(f *flag.FlagSet, logger log.Logger) {
 
 // toBasicLifecyclerConfig transforms a RingConfig into configuration that can be used to create a BasicLifecycler.
 func (c *RingConfig) toBasicLifecyclerConfig(logger log.Logger) (ring.BasicLifecyclerConfig, error) {
-	instanceAddr, err := ring.GetInstanceAddr(c.Ring.InstanceAddr, c.Ring.InstanceInterfaceNames, logger, true)
+	instanceAddr, err := ring.GetInstanceAddr(c.Ring.InstanceAddr, c.Ring.InstanceInterfaceNames, logger, c.Ring.EnableIPv6)
 	if err != nil {
 		return ring.BasicLifecyclerConfig{}, err
 	}

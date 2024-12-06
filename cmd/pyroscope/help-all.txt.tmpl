@@ -615,8 +615,12 @@ Usage of ./pyroscope:
     	Override the expected name on the server certificate.
   -query-frontend.instance-addr string
     	IP address to advertise to the querier (via scheduler) (default is auto-detected from network interfaces).
+  -query-frontend.instance-enable-ipv6
+    	Enable using a IPv6 instance address. (default false)
   -query-frontend.instance-interface-names string
     	List of network interface names to look up when finding the instance IP address. This address is sent to query-scheduler and querier, which uses it to send the query response back to query-frontend. (default [<private network interfaces>])
+  -query-frontend.instance-port int
+    	Port to advertise to query-scheduler and querier (defaults to -server.http-listen-port).
   -query-frontend.scheduler-worker-concurrency int
     	Number of concurrent workers forwarding queries to single query-scheduler. (default 5)
   -query-scheduler.grpc-client-config.backoff-max-period duration
