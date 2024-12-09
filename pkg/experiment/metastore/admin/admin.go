@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"slices"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/go-kit/log"
@@ -22,15 +21,17 @@ import (
 type formActionHandler func(http.ResponseWriter, *http.Request, string) error
 
 type MetastoreAdmin struct {
+	logger log.Logger
+
+	servers      []discovery.Server
 	leaderClient raftnodepb.RaftNodeOpsServiceClient
-	logger       log.Logger
-	clients      []raftnodepb.RaftNodeOpsServiceClient
-	clientsMu    sync.Mutex
 
-	disc discovery.Discovery
-
-	servers        []discovery.Server
 	actionHandlers map[string]formActionHandler
+}
+
+type metastoreClient struct {
+	raftnodepb.RaftNodeOpsServiceClient
+	conn *grpc.ClientConn
 }
 
 func NewAdmin(
@@ -59,17 +60,6 @@ func (a *MetastoreAdmin) Servers(servers []discovery.Server) {
 	slices.SortFunc(a.servers, func(a, b discovery.Server) int {
 		return strings.Compare(string(a.Raft.ID), string(b.Raft.ID))
 	})
-	a.clientsMu.Lock()
-	defer a.clientsMu.Unlock()
-
-	a.clients = slices.Grow(a.clients, len(a.servers))[:0]
-	for _, s := range a.servers {
-		c, err := a.newClient(s.ResolvedAddress)
-		if err != nil {
-			level.Error(a.logger).Log("msg", "failed to create client", "server", s, "err", err)
-		}
-		a.clients = append(a.clients, c)
-	}
 }
 
 func (a *MetastoreAdmin) NodeListHandler() http.Handler {
@@ -118,9 +108,9 @@ func (a *MetastoreAdmin) fetchRaftState(ctx context.Context) (*raftNodeState, er
 	numRaftNodes := 0
 	nodes := make([]*metastoreNode, 0, len(a.servers))
 
-	for i, s := range a.servers {
-		cl := a.clients[i]
-		if cl == nil {
+	for _, s := range a.servers {
+		cl, err := newClient(s.ResolvedAddress)
+		if err != nil {
 			level.Warn(a.logger).Log("msg", "missing client for server", "server", s)
 			continue
 		}
@@ -131,6 +121,8 @@ func (a *MetastoreAdmin) fetchRaftState(ctx context.Context) (*raftNodeState, er
 		nodes = append(nodes, node)
 
 		res, err := cl.NodeInfo(ctx, &raftnodepb.NodeInfoRequest{})
+		_ = cl.conn.Close()
+
 		if err != nil {
 			level.Warn(a.logger).Log("msg", "error fetching node info", "server", s, "err", err)
 			continue
@@ -171,13 +163,16 @@ func (a *MetastoreAdmin) fetchRaftState(ctx context.Context) (*raftNodeState, er
 	}, nil
 }
 
-func (a *MetastoreAdmin) newClient(address string) (raftnodepb.RaftNodeOpsServiceClient, error) {
+func newClient(address string) (*metastoreClient, error) {
 	// TODO aleks-p: do we need more configuration here?
-	client, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}
-	return raftnodepb.NewRaftNodeOpsServiceClient(client), nil
+	return &metastoreClient{
+		RaftNodeOpsServiceClient: raftnodepb.NewRaftNodeOpsServiceClient(conn),
+		conn:                     conn,
+	}, nil
 }
 
 func (a *MetastoreAdmin) addFormActionHandlers() {
