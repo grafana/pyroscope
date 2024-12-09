@@ -94,6 +94,7 @@ const (
 
 	Metastore           string = "metastore"
 	MetastoreClient     string = "metastore-client"
+	MetastoreAdmin      string = "metastore-admin"
 	SegmentWriter       string = "segment-writer"
 	SegmentWriterRing   string = "segment-writer-ring"
 	SegmentWriterClient string = "segment-writer-client"
