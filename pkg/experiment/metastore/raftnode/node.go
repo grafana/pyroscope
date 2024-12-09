@@ -235,7 +235,6 @@ func (n *Node) ListSnapshots() ([]*raft.SnapshotMeta, error) {
 
 func (n *Node) Register(server *grpc.Server) {
 	raftnodepb.RegisterRaftNodeServiceServer(server, n.service)
-	raftnodepb.RegisterRaftNodeOpsServiceServer(server, n.service)
 }
 
 // LeaderActivity is started when the node becomes a leader and stopped

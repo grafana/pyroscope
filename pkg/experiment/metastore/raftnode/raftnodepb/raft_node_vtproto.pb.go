@@ -32,6 +32,11 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type RaftNodeServiceClient interface {
 	ReadIndex(ctx context.Context, in *ReadIndexRequest, opts ...grpc.CallOption) (*ReadIndexResponse, error)
+	NodeInfo(ctx context.Context, in *NodeInfoRequest, opts ...grpc.CallOption) (*NodeInfoResponse, error)
+	RemoveNode(ctx context.Context, in *RemoveNodeRequest, opts ...grpc.CallOption) (*RemoveNodeResponse, error)
+	AddNode(ctx context.Context, in *AddNodeRequest, opts ...grpc.CallOption) (*AddNodeResponse, error)
+	DemoteLeader(ctx context.Context, in *DemoteLeaderRequest, opts ...grpc.CallOption) (*DemoteLeaderResponse, error)
+	PromoteToLeader(ctx context.Context, in *PromoteToLeaderRequest, opts ...grpc.CallOption) (*PromoteToLeaderResponse, error)
 }
 
 type raftNodeServiceClient struct {
@@ -51,11 +56,61 @@ func (c *raftNodeServiceClient) ReadIndex(ctx context.Context, in *ReadIndexRequ
 	return out, nil
 }
 
+func (c *raftNodeServiceClient) NodeInfo(ctx context.Context, in *NodeInfoRequest, opts ...grpc.CallOption) (*NodeInfoResponse, error) {
+	out := new(NodeInfoResponse)
+	err := c.cc.Invoke(ctx, "/raft_node.RaftNodeService/NodeInfo", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *raftNodeServiceClient) RemoveNode(ctx context.Context, in *RemoveNodeRequest, opts ...grpc.CallOption) (*RemoveNodeResponse, error) {
+	out := new(RemoveNodeResponse)
+	err := c.cc.Invoke(ctx, "/raft_node.RaftNodeService/RemoveNode", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *raftNodeServiceClient) AddNode(ctx context.Context, in *AddNodeRequest, opts ...grpc.CallOption) (*AddNodeResponse, error) {
+	out := new(AddNodeResponse)
+	err := c.cc.Invoke(ctx, "/raft_node.RaftNodeService/AddNode", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *raftNodeServiceClient) DemoteLeader(ctx context.Context, in *DemoteLeaderRequest, opts ...grpc.CallOption) (*DemoteLeaderResponse, error) {
+	out := new(DemoteLeaderResponse)
+	err := c.cc.Invoke(ctx, "/raft_node.RaftNodeService/DemoteLeader", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *raftNodeServiceClient) PromoteToLeader(ctx context.Context, in *PromoteToLeaderRequest, opts ...grpc.CallOption) (*PromoteToLeaderResponse, error) {
+	out := new(PromoteToLeaderResponse)
+	err := c.cc.Invoke(ctx, "/raft_node.RaftNodeService/PromoteToLeader", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RaftNodeServiceServer is the server API for RaftNodeService service.
 // All implementations must embed UnimplementedRaftNodeServiceServer
 // for forward compatibility
 type RaftNodeServiceServer interface {
 	ReadIndex(context.Context, *ReadIndexRequest) (*ReadIndexResponse, error)
+	NodeInfo(context.Context, *NodeInfoRequest) (*NodeInfoResponse, error)
+	RemoveNode(context.Context, *RemoveNodeRequest) (*RemoveNodeResponse, error)
+	AddNode(context.Context, *AddNodeRequest) (*AddNodeResponse, error)
+	DemoteLeader(context.Context, *DemoteLeaderRequest) (*DemoteLeaderResponse, error)
+	PromoteToLeader(context.Context, *PromoteToLeaderRequest) (*PromoteToLeaderResponse, error)
 	mustEmbedUnimplementedRaftNodeServiceServer()
 }
 
@@ -65,6 +120,21 @@ type UnimplementedRaftNodeServiceServer struct {
 
 func (UnimplementedRaftNodeServiceServer) ReadIndex(context.Context, *ReadIndexRequest) (*ReadIndexResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReadIndex not implemented")
+}
+func (UnimplementedRaftNodeServiceServer) NodeInfo(context.Context, *NodeInfoRequest) (*NodeInfoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method NodeInfo not implemented")
+}
+func (UnimplementedRaftNodeServiceServer) RemoveNode(context.Context, *RemoveNodeRequest) (*RemoveNodeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveNode not implemented")
+}
+func (UnimplementedRaftNodeServiceServer) AddNode(context.Context, *AddNodeRequest) (*AddNodeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddNode not implemented")
+}
+func (UnimplementedRaftNodeServiceServer) DemoteLeader(context.Context, *DemoteLeaderRequest) (*DemoteLeaderResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DemoteLeader not implemented")
+}
+func (UnimplementedRaftNodeServiceServer) PromoteToLeader(context.Context, *PromoteToLeaderRequest) (*PromoteToLeaderResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PromoteToLeader not implemented")
 }
 func (UnimplementedRaftNodeServiceServer) mustEmbedUnimplementedRaftNodeServiceServer() {}
 
@@ -97,6 +167,96 @@ func _RaftNodeService_ReadIndex_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RaftNodeService_NodeInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(NodeInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RaftNodeServiceServer).NodeInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/raft_node.RaftNodeService/NodeInfo",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RaftNodeServiceServer).NodeInfo(ctx, req.(*NodeInfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RaftNodeService_RemoveNode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveNodeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RaftNodeServiceServer).RemoveNode(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/raft_node.RaftNodeService/RemoveNode",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RaftNodeServiceServer).RemoveNode(ctx, req.(*RemoveNodeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RaftNodeService_AddNode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddNodeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RaftNodeServiceServer).AddNode(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/raft_node.RaftNodeService/AddNode",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RaftNodeServiceServer).AddNode(ctx, req.(*AddNodeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RaftNodeService_DemoteLeader_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DemoteLeaderRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RaftNodeServiceServer).DemoteLeader(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/raft_node.RaftNodeService/DemoteLeader",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RaftNodeServiceServer).DemoteLeader(ctx, req.(*DemoteLeaderRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RaftNodeService_PromoteToLeader_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PromoteToLeaderRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RaftNodeServiceServer).PromoteToLeader(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/raft_node.RaftNodeService/PromoteToLeader",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RaftNodeServiceServer).PromoteToLeader(ctx, req.(*PromoteToLeaderRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RaftNodeService_ServiceDesc is the grpc.ServiceDesc for RaftNodeService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -108,235 +268,25 @@ var RaftNodeService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "ReadIndex",
 			Handler:    _RaftNodeService_ReadIndex_Handler,
 		},
-	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "experiment/metastore/raftnode/raftnodepb/raft_node.proto",
-}
-
-// RaftNodeOpsServiceClient is the client API for RaftNodeOpsService service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type RaftNodeOpsServiceClient interface {
-	NodeInfo(ctx context.Context, in *NodeInfoRequest, opts ...grpc.CallOption) (*NodeInfoResponse, error)
-	RemoveNode(ctx context.Context, in *RemoveNodeRequest, opts ...grpc.CallOption) (*RemoveNodeResponse, error)
-	AddNode(ctx context.Context, in *AddNodeRequest, opts ...grpc.CallOption) (*AddNodeResponse, error)
-	DemoteLeader(ctx context.Context, in *DemoteLeaderRequest, opts ...grpc.CallOption) (*DemoteLeaderResponse, error)
-	PromoteToLeader(ctx context.Context, in *PromoteToLeaderRequest, opts ...grpc.CallOption) (*PromoteToLeaderResponse, error)
-}
-
-type raftNodeOpsServiceClient struct {
-	cc grpc.ClientConnInterface
-}
-
-func NewRaftNodeOpsServiceClient(cc grpc.ClientConnInterface) RaftNodeOpsServiceClient {
-	return &raftNodeOpsServiceClient{cc}
-}
-
-func (c *raftNodeOpsServiceClient) NodeInfo(ctx context.Context, in *NodeInfoRequest, opts ...grpc.CallOption) (*NodeInfoResponse, error) {
-	out := new(NodeInfoResponse)
-	err := c.cc.Invoke(ctx, "/raft_node.RaftNodeOpsService/NodeInfo", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *raftNodeOpsServiceClient) RemoveNode(ctx context.Context, in *RemoveNodeRequest, opts ...grpc.CallOption) (*RemoveNodeResponse, error) {
-	out := new(RemoveNodeResponse)
-	err := c.cc.Invoke(ctx, "/raft_node.RaftNodeOpsService/RemoveNode", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *raftNodeOpsServiceClient) AddNode(ctx context.Context, in *AddNodeRequest, opts ...grpc.CallOption) (*AddNodeResponse, error) {
-	out := new(AddNodeResponse)
-	err := c.cc.Invoke(ctx, "/raft_node.RaftNodeOpsService/AddNode", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *raftNodeOpsServiceClient) DemoteLeader(ctx context.Context, in *DemoteLeaderRequest, opts ...grpc.CallOption) (*DemoteLeaderResponse, error) {
-	out := new(DemoteLeaderResponse)
-	err := c.cc.Invoke(ctx, "/raft_node.RaftNodeOpsService/DemoteLeader", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *raftNodeOpsServiceClient) PromoteToLeader(ctx context.Context, in *PromoteToLeaderRequest, opts ...grpc.CallOption) (*PromoteToLeaderResponse, error) {
-	out := new(PromoteToLeaderResponse)
-	err := c.cc.Invoke(ctx, "/raft_node.RaftNodeOpsService/PromoteToLeader", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// RaftNodeOpsServiceServer is the server API for RaftNodeOpsService service.
-// All implementations must embed UnimplementedRaftNodeOpsServiceServer
-// for forward compatibility
-type RaftNodeOpsServiceServer interface {
-	NodeInfo(context.Context, *NodeInfoRequest) (*NodeInfoResponse, error)
-	RemoveNode(context.Context, *RemoveNodeRequest) (*RemoveNodeResponse, error)
-	AddNode(context.Context, *AddNodeRequest) (*AddNodeResponse, error)
-	DemoteLeader(context.Context, *DemoteLeaderRequest) (*DemoteLeaderResponse, error)
-	PromoteToLeader(context.Context, *PromoteToLeaderRequest) (*PromoteToLeaderResponse, error)
-	mustEmbedUnimplementedRaftNodeOpsServiceServer()
-}
-
-// UnimplementedRaftNodeOpsServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedRaftNodeOpsServiceServer struct {
-}
-
-func (UnimplementedRaftNodeOpsServiceServer) NodeInfo(context.Context, *NodeInfoRequest) (*NodeInfoResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method NodeInfo not implemented")
-}
-func (UnimplementedRaftNodeOpsServiceServer) RemoveNode(context.Context, *RemoveNodeRequest) (*RemoveNodeResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RemoveNode not implemented")
-}
-func (UnimplementedRaftNodeOpsServiceServer) AddNode(context.Context, *AddNodeRequest) (*AddNodeResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AddNode not implemented")
-}
-func (UnimplementedRaftNodeOpsServiceServer) DemoteLeader(context.Context, *DemoteLeaderRequest) (*DemoteLeaderResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DemoteLeader not implemented")
-}
-func (UnimplementedRaftNodeOpsServiceServer) PromoteToLeader(context.Context, *PromoteToLeaderRequest) (*PromoteToLeaderResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method PromoteToLeader not implemented")
-}
-func (UnimplementedRaftNodeOpsServiceServer) mustEmbedUnimplementedRaftNodeOpsServiceServer() {}
-
-// UnsafeRaftNodeOpsServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to RaftNodeOpsServiceServer will
-// result in compilation errors.
-type UnsafeRaftNodeOpsServiceServer interface {
-	mustEmbedUnimplementedRaftNodeOpsServiceServer()
-}
-
-func RegisterRaftNodeOpsServiceServer(s grpc.ServiceRegistrar, srv RaftNodeOpsServiceServer) {
-	s.RegisterService(&RaftNodeOpsService_ServiceDesc, srv)
-}
-
-func _RaftNodeOpsService_NodeInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(NodeInfoRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(RaftNodeOpsServiceServer).NodeInfo(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/raft_node.RaftNodeOpsService/NodeInfo",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RaftNodeOpsServiceServer).NodeInfo(ctx, req.(*NodeInfoRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _RaftNodeOpsService_RemoveNode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RemoveNodeRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(RaftNodeOpsServiceServer).RemoveNode(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/raft_node.RaftNodeOpsService/RemoveNode",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RaftNodeOpsServiceServer).RemoveNode(ctx, req.(*RemoveNodeRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _RaftNodeOpsService_AddNode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AddNodeRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(RaftNodeOpsServiceServer).AddNode(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/raft_node.RaftNodeOpsService/AddNode",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RaftNodeOpsServiceServer).AddNode(ctx, req.(*AddNodeRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _RaftNodeOpsService_DemoteLeader_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DemoteLeaderRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(RaftNodeOpsServiceServer).DemoteLeader(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/raft_node.RaftNodeOpsService/DemoteLeader",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RaftNodeOpsServiceServer).DemoteLeader(ctx, req.(*DemoteLeaderRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _RaftNodeOpsService_PromoteToLeader_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(PromoteToLeaderRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(RaftNodeOpsServiceServer).PromoteToLeader(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/raft_node.RaftNodeOpsService/PromoteToLeader",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RaftNodeOpsServiceServer).PromoteToLeader(ctx, req.(*PromoteToLeaderRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-// RaftNodeOpsService_ServiceDesc is the grpc.ServiceDesc for RaftNodeOpsService service.
-// It's only intended for direct use with grpc.RegisterService,
-// and not to be introspected or modified (even as a copy)
-var RaftNodeOpsService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "raft_node.RaftNodeOpsService",
-	HandlerType: (*RaftNodeOpsServiceServer)(nil),
-	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "NodeInfo",
-			Handler:    _RaftNodeOpsService_NodeInfo_Handler,
+			Handler:    _RaftNodeService_NodeInfo_Handler,
 		},
 		{
 			MethodName: "RemoveNode",
-			Handler:    _RaftNodeOpsService_RemoveNode_Handler,
+			Handler:    _RaftNodeService_RemoveNode_Handler,
 		},
 		{
 			MethodName: "AddNode",
-			Handler:    _RaftNodeOpsService_AddNode_Handler,
+			Handler:    _RaftNodeService_AddNode_Handler,
 		},
 		{
 			MethodName: "DemoteLeader",
-			Handler:    _RaftNodeOpsService_DemoteLeader_Handler,
+			Handler:    _RaftNodeService_DemoteLeader_Handler,
 		},
 		{
 			MethodName: "PromoteToLeader",
-			Handler:    _RaftNodeOpsService_PromoteToLeader_Handler,
+			Handler:    _RaftNodeService_PromoteToLeader_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

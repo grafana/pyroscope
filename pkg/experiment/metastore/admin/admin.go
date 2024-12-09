@@ -2,7 +2,6 @@ package admin
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"slices"
 	"strings"
@@ -27,7 +26,7 @@ type Admin struct {
 	logger log.Logger
 
 	servers      []discovery.Server
-	leaderClient raftnodepb.RaftNodeOpsServiceClient
+	leaderClient raftnodepb.RaftNodeServiceClient
 
 	actionHandlers map[string]formActionHandler
 }
@@ -37,12 +36,12 @@ func (a *Admin) Service() services.Service {
 }
 
 type metastoreClient struct {
-	raftnodepb.RaftNodeOpsServiceClient
+	raftnodepb.RaftNodeServiceClient
 	conn *grpc.ClientConn
 }
 
 func New(
-	client raftnodepb.RaftNodeOpsServiceClient,
+	client raftnodepb.RaftNodeServiceClient,
 	logger log.Logger,
 	metastoreAddress string,
 ) (*Admin, error) {
@@ -79,10 +78,6 @@ func (a *Admin) NodeListHandler() http.Handler {
 			for fieldName, handler := range a.actionHandlers {
 				field := r.FormValue(fieldName)
 				if field != "" {
-					if err := a.canPerformOperation(r.Context(), fieldName, field); err != nil {
-						httputil.Error(w, err)
-						return
-					}
 					if err := handler(w, r, field); err != nil {
 						httputil.Error(w, err)
 						return
@@ -180,8 +175,8 @@ func newClient(address string) (*metastoreClient, error) {
 		return nil, err
 	}
 	return &metastoreClient{
-		RaftNodeOpsServiceClient: raftnodepb.NewRaftNodeOpsServiceClient(conn),
-		conn:                     conn,
+		RaftNodeServiceClient: raftnodepb.NewRaftNodeServiceClient(conn),
+		conn:                  conn,
 	}, nil
 }
 
@@ -214,50 +209,4 @@ func (a *Admin) addFormActionHandlers() {
 		_, err := a.leaderClient.DemoteLeader(r.Context(), &raftnodepb.DemoteLeaderRequest{ServerId: serverId})
 		return err
 	}
-}
-
-// The admin page can be open for a long time before an action is executed and the Raft state when the page is viewed
-// can be different from the current state. Therefore, any time an operation is invoked we fetch the entire state and
-// verify that the operation still makes sense.
-//
-// Alternatively, we could send along the state and verify that it hasn't changed.
-func (a *Admin) canPerformOperation(ctx context.Context, operation string, serverId string) error {
-	raftState, err := a.fetchRaftState(ctx)
-	if err != nil {
-		return err
-	}
-	var targetNode *metastoreNode
-	for _, node := range raftState.Nodes {
-		if node.RaftServerId == serverId {
-			targetNode = node
-			break
-		}
-	}
-	if targetNode == nil {
-		return fmt.Errorf("node %s could not be found", serverId)
-	}
-	switch operation {
-	case "add":
-		if targetNode.ObservedLeader != "" {
-			return fmt.Errorf("node is already a member")
-		}
-	case "remove":
-		if targetNode.ObservedLeader == "" {
-			return fmt.Errorf("node is not a member")
-		}
-	case "demote":
-		if targetNode.RaftServerId != raftState.LeaderId {
-			return fmt.Errorf("node is not the leader")
-		}
-	case "promote":
-		if targetNode.ObservedLeader == "" {
-			return fmt.Errorf("node is not a member")
-		}
-		if targetNode.RaftServerId == raftState.LeaderId {
-			return fmt.Errorf("node is already the leader")
-		}
-	default:
-		return fmt.Errorf("unknown operation")
-	}
-	return nil
 }

@@ -9,9 +9,6 @@ message RaftNode {
 
 service RaftNodeService {
   rpc ReadIndex(ReadIndexRequest) returns (ReadIndexResponse) {}
-}
-
-service RaftNodeOpsService {
   rpc NodeInfo(NodeInfoRequest) returns (NodeInfoResponse) {}
   rpc RemoveNode(RemoveNodeRequest) returns (RemoveNodeResponse) {}
   rpc AddNode(AddNodeRequest) returns (AddNodeResponse) {}
