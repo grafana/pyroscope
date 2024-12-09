@@ -10,7 +10,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/model"
 )
 
-func TestLabelBuilder_Build(t *testing.T) {
+func TestLabelBuilder_CreateLabels(t *testing.T) {
 	strings := NewMetadataStringTable()
 	b := NewLabelBuilder(strings).
 		WithConstantPairs("foo", "0").
@@ -58,6 +58,24 @@ func TestLabelBuilder_Reuse(t *testing.T) {
 	assert.Equal(t, []string{
 		"service_name=service_b;another_label=another_value;",
 	}, labelStrings(b.Build(), strings))
+}
+
+func TestLabelBuilder_Put(t *testing.T) {
+	strings := NewMetadataStringTable()
+	b := NewLabelBuilder(strings)
+
+	// a=b, a=b; a=b, a=b;
+	b.Put([]int32{2, 1, 2, 1, 2, 2, 1, 2, 1, 2}, []string{"", "a", "b"})
+	b.Put([]int32{2, 1, 2, 1, 2, 2, 1, 2, 1, 2}, []string{"", "a", "b"})
+
+	// c=d, c=d; c=d, c=d;
+	b.Put([]int32{2, 1, 2, 1, 2, 2, 1, 2, 1, 2}, []string{"", "c", "d"})
+	b.Put([]int32{2, 1, 2, 1, 2}, []string{"", "c", "d"})
+
+	assert.Equal(t, []int32{
+		2, 1, 2, 1, 2,
+		2, 3, 4, 3, 4,
+	}, b.Build())
 }
 
 func labelStrings(v []int32, s *MetadataStrings) []string {

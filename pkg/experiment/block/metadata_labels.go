@@ -12,11 +12,14 @@ import (
 	"github.com/grafana/pyroscope/pkg/model"
 )
 
+// TODO(kolesnikovae): LabelBuilder pool.
+
 type LabelBuilder struct {
 	strings  *MetadataStrings
 	labels   []int32
 	constant []int32
 	keys     []int32
+	seen     map[string]struct{}
 }
 
 func NewLabelBuilder(strings *MetadataStrings) *LabelBuilder {
@@ -57,6 +60,48 @@ func (lb *LabelBuilder) CreateLabels(values ...string) bool {
 		lb.labels = append(lb.labels, lb.keys[i], lb.strings.Put(values[i]))
 	}
 	return true
+}
+
+func (lb *LabelBuilder) Put(x []int32, strings []string) {
+	if len(x) == 0 {
+		return
+	}
+	if lb.seen == nil {
+		lb.seen = make(map[string]struct{})
+	}
+	var skip int
+	for i, v := range x {
+		if i == skip {
+			skip += int(v)*2 + 1
+			continue
+		}
+		x[i] = lb.strings.Put(strings[v])
+	}
+	lb.labels = slices.Grow(lb.labels, len(x))
+	pairs := LabelPairs(x)
+	for pairs.Next() {
+		lb.putPairs(pairs.At())
+	}
+}
+
+func (lb *LabelBuilder) putPairs(p []int32) {
+	if len(p) == 0 {
+		return
+	}
+	// We only copy the labels if this is the first time we see it.
+	// The fact that we assume that the order of labels is the same
+	// across all datasets is a precondition, therefore, we can
+	// use pairs as a key.
+	k := *(*string)(unsafe.Pointer(&p))
+	if _, ok := lb.seen[k]; ok {
+		return
+	}
+	lb.labels = append(lb.labels, int32(len(p)/2))
+	off := len(lb.labels)
+	lb.labels = append(lb.labels, p...)
+	v := lb.labels[off:]
+	k = *(*string)(unsafe.Pointer(&v))
+	lb.seen[k] = struct{}{}
 }
 
 func (lb *LabelBuilder) Build() []int32 {

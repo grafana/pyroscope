@@ -9,7 +9,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"unsafe"
 
 	"github.com/grafana/dskit/multierror"
 	"github.com/parquet-go/parquet-go"
@@ -120,7 +119,12 @@ func PlanCompaction(objects Objects) ([]*CompactionPlan, error) {
 		for _, s := range obj.meta.Datasets {
 			tm, ok := m[obj.meta.StringTable[s.Tenant]]
 			if !ok {
-				tm = newBlockCompaction(g.ULID().String(), obj.meta.StringTable[s.Tenant], r.meta.Shard, level)
+				tm = newBlockCompaction(
+					g.ULID().String(),
+					obj.meta.StringTable[s.Tenant],
+					r.meta.Shard,
+					level,
+				)
 				m[obj.meta.StringTable[s.Tenant]] = tm
 			}
 			// Bind objects to datasets.
@@ -217,7 +221,7 @@ type datasetCompaction struct {
 	name   string
 	parent *CompactionPlan
 	meta   *metastorev1.Dataset
-	labels map[string]struct{}
+	labels *LabelBuilder
 	path   string // Set at open.
 
 	datasets []*Dataset
@@ -237,7 +241,7 @@ func (b *CompactionPlan) newDatasetCompaction(tenant, name int32) *datasetCompac
 	return &datasetCompaction{
 		parent: b,
 		name:   b.strings.Strings[name],
-		labels: make(map[string]struct{}),
+		labels: NewLabelBuilder(b.strings),
 		meta: &metastorev1.Dataset{
 			Tenant: tenant,
 			Name:   name,
@@ -260,26 +264,7 @@ func (m *datasetCompaction) append(s *Dataset) {
 	if s.meta.MaxTime > m.meta.MaxTime {
 		m.meta.MaxTime = s.meta.MaxTime
 	}
-	m.addLabels(s)
-}
-
-func (m *datasetCompaction) addLabels(s *Dataset) {
-	var skip int
-	for i, v := range s.meta.Labels {
-		if i == skip {
-			skip += int(v)*2 + 1
-			continue
-		}
-		s.meta.Labels[i] = m.parent.strings.Put(s.obj.meta.StringTable[v])
-	}
-	// We only copy the labels if this is the first time we see it.
-	k := *(*string)(unsafe.Pointer(&s.meta.Labels))
-	// The fact that we assume that the order of labels
-	// is the same across all datasets is a precondition.
-	if _, ok := m.labels[k]; !ok {
-		m.labels[string(s.meta.Labels)] = struct{}{}
-		m.meta.Labels = append(m.meta.Labels, s.meta.Labels...)
-	}
+	m.labels.Put(s.meta.Labels, s.obj.meta.StringTable)
 }
 
 func (m *datasetCompaction) compact(ctx context.Context, w *Writer) (err error) {
@@ -416,6 +401,7 @@ func (m *datasetCompaction) writeTo(w *Writer) (err error) {
 		return err
 	}
 	m.meta.Size = w.Offset() - off
+	m.meta.Labels = m.labels.Build()
 	return nil
 }
 
