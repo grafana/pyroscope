@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/raft"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (
@@ -162,6 +163,8 @@ func (r *StateReader[tx]) WaitLeaderCommitIndexApplied(ctx context.Context) (Rea
 }
 
 func (n *Node) ReadIndex() (ReadIndex, error) {
+	timer := prometheus.NewTimer(n.metrics.read)
+	defer timer.ObserveDuration()
 	v, err := n.readIndex()
 	return v, WithRaftLeaderStatusDetails(err, n.raft)
 }
