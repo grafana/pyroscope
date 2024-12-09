@@ -50,6 +50,7 @@ import (
 	segmentwriter "github.com/grafana/pyroscope/pkg/experiment/ingester"
 	segmentwriterclient "github.com/grafana/pyroscope/pkg/experiment/ingester/client"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore"
+	metastoreadmin "github.com/grafana/pyroscope/pkg/experiment/metastore/admin"
 	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
 	querybackend "github.com/grafana/pyroscope/pkg/experiment/query_backend"
 	querybackendclient "github.com/grafana/pyroscope/pkg/experiment/query_backend/client"
@@ -302,6 +303,7 @@ type Phlare struct {
 	placementManager    *adaptiveplacement.Manager
 	metastore           *metastore.Metastore
 	metastoreClient     *metastoreclient.Client
+	metastoreAdmin      *metastoreadmin.Admin
 	queryBackendClient  *querybackendclient.Client
 	compactionWorker    *compactionworker.Worker
 	healthServer        *health.Server
@@ -408,6 +410,7 @@ func (f *Phlare) setupModuleManager() error {
 		experimentalModules := map[string][]string{
 			SegmentWriter:       {Overrides, API, MemberlistKV, Storage, UsageReport, MetastoreClient},
 			Metastore:           {Overrides, API, MetastoreClient, Storage, PlacementManager},
+			MetastoreAdmin:      {API, MetastoreClient},
 			CompactionWorker:    {Overrides, API, Storage, MetastoreClient},
 			QueryBackend:        {Overrides, API, Storage, QueryBackendClient},
 			SegmentWriterRing:   {Overrides, API, MemberlistKV},
@@ -423,6 +426,7 @@ func (f *Phlare) setupModuleManager() error {
 		deps[QueryFrontend] = append(deps[QueryFrontend], MetastoreClient, QueryBackendClient)
 		deps[Distributor] = append(deps[Distributor], SegmentWriterClient)
 		deps[Server] = append(deps[Server], HealthServer)
+		deps[Admin] = append(deps[Admin], MetastoreAdmin)
 
 		mm.RegisterModule(SegmentWriter, f.initSegmentWriter)
 		mm.RegisterModule(Metastore, f.initMetastore)
@@ -432,6 +436,7 @@ func (f *Phlare) setupModuleManager() error {
 		mm.RegisterModule(SegmentWriterRing, f.initSegmentWriterRing, modules.UserInvisibleModule)
 		mm.RegisterModule(SegmentWriterClient, f.initSegmentWriterClient, modules.UserInvisibleModule)
 		mm.RegisterModule(MetastoreClient, f.initMetastoreClient, modules.UserInvisibleModule)
+		mm.RegisterModule(MetastoreAdmin, f.initMetastoreAdmin, modules.UserInvisibleModule)
 		mm.RegisterModule(QueryBackendClient, f.initQueryBackendClient, modules.UserInvisibleModule)
 		mm.RegisterModule(PlacementAgent, f.initPlacementAgent, modules.UserInvisibleModule)
 		mm.RegisterModule(PlacementManager, f.initPlacementManager, modules.UserInvisibleModule)
