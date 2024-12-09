@@ -1643,6 +1643,18 @@
         }
       }
     },
+    "v1QueryMetadataLabelsResponse": {
+      "type": "object",
+      "properties": {
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Labels"
+          }
+        }
+      }
+    },
     "v1QueryMetadataResponse": {
       "type": "object",
       "properties": {

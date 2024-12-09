@@ -463,7 +463,7 @@ func (m *Dataset) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		}
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(pksize2))
 		i--
-		dAtA[i] = 0x3a
+		dAtA[i] = 0x42
 	}
 	if m.Size != 0 {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Size))
@@ -1260,7 +1260,7 @@ func (m *Dataset) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
-		case 7:
+		case 8:
 			if wireType == 0 {
 				var v int32
 				for shift := uint(0); ; shift += 7 {

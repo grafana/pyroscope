@@ -45,6 +45,7 @@ message Dataset {
   repeated uint64 table_of_contents = 5;
   // Size of the section in bytes.
   uint64 size = 6;
+  reserved 7;
   // Length prefixed label key-value pairs.
-  repeated int32 labels = 7;
+  repeated int32 labels = 8;
 }
