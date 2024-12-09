@@ -22,7 +22,7 @@ import (
 type formActionHandler func(http.ResponseWriter, *http.Request, string) error
 
 type MetastoreAdmin struct {
-	sharedClient raftnodepb.RaftNodeOpsServiceClient
+	leaderClient raftnodepb.RaftNodeOpsServiceClient
 	logger       log.Logger
 	clients      []raftnodepb.RaftNodeOpsServiceClient
 	clientsMu    sync.Mutex
@@ -39,7 +39,7 @@ func NewAdmin(
 	metastoreAddress string,
 ) (*MetastoreAdmin, error) {
 	adm := &MetastoreAdmin{
-		sharedClient:   client,
+		leaderClient:   client,
 		logger:         logger,
 		actionHandlers: make(map[string]formActionHandler),
 	}
@@ -182,7 +182,7 @@ func (a *MetastoreAdmin) newClient(address string) (raftnodepb.RaftNodeOpsServic
 
 func (a *MetastoreAdmin) addFormActionHandlers() {
 	a.actionHandlers["add"] = func(w http.ResponseWriter, r *http.Request, serverId string) error {
-		_, err := a.sharedClient.AddNode(r.Context(), &raftnodepb.AddNodeRequest{ServerId: serverId})
+		_, err := a.leaderClient.AddNode(r.Context(), &raftnodepb.AddNodeRequest{ServerId: serverId})
 		return err
 	}
 	a.actionHandlers["remove"] = func(w http.ResponseWriter, r *http.Request, serverId string) error {
@@ -193,20 +193,20 @@ func (a *MetastoreAdmin) addFormActionHandlers() {
 		if raftState.LeaderId == serverId {
 			// In theory, this shouldn't be needed since Raft should elect a new leader upon removal.
 			// In practice, a successful leader election doesn't always occur and demoting first is safer.
-			_, err = a.sharedClient.DemoteLeader(r.Context(), &raftnodepb.DemoteLeaderRequest{ServerId: serverId})
+			_, err = a.leaderClient.DemoteLeader(r.Context(), &raftnodepb.DemoteLeaderRequest{ServerId: serverId})
 			if err != nil {
 				return err
 			}
 		}
-		_, err = a.sharedClient.RemoveNode(r.Context(), &raftnodepb.RemoveNodeRequest{ServerId: serverId})
+		_, err = a.leaderClient.RemoveNode(r.Context(), &raftnodepb.RemoveNodeRequest{ServerId: serverId})
 		return err
 	}
 	a.actionHandlers["promote"] = func(w http.ResponseWriter, r *http.Request, serverId string) error {
-		_, err := a.sharedClient.PromoteToLeader(r.Context(), &raftnodepb.PromoteToLeaderRequest{ServerId: serverId})
+		_, err := a.leaderClient.PromoteToLeader(r.Context(), &raftnodepb.PromoteToLeaderRequest{ServerId: serverId})
 		return err
 	}
 	a.actionHandlers["demote"] = func(w http.ResponseWriter, r *http.Request, serverId string) error {
-		_, err := a.sharedClient.DemoteLeader(r.Context(), &raftnodepb.DemoteLeaderRequest{ServerId: serverId})
+		_, err := a.leaderClient.DemoteLeader(r.Context(), &raftnodepb.DemoteLeaderRequest{ServerId: serverId})
 		return err
 	}
 }
