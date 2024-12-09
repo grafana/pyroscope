@@ -17,7 +17,6 @@ type RaftNode interface {
 
 type RaftNodeService struct {
 	raftnodepb.RaftNodeServiceServer
-	raftnodepb.RaftNodeOpsServiceServer
 	node RaftNode
 }
 

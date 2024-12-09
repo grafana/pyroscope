@@ -13,8 +13,8 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode/raftnodepb/raftnodepbconnect"
 )
 
-func (c *phlareClient) metadataOperatorClient() raftnodepbconnect.RaftNodeOpsServiceClient {
-	return raftnodepbconnect.NewRaftNodeOpsServiceClient(
+func (c *phlareClient) metadataOperatorClient() raftnodepbconnect.RaftNodeServiceClient {
+	return raftnodepbconnect.NewRaftNodeServiceClient(
 		c.httpClient(),
 		c.URL,
 		append(
