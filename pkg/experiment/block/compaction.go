@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"unsafe"
 
 	"github.com/grafana/dskit/multierror"
 	"github.com/parquet-go/parquet-go"
@@ -215,9 +216,8 @@ type datasetCompaction struct {
 	// Dataset name.
 	name   string
 	parent *CompactionPlan
-
 	meta   *metastorev1.Dataset
-	ptypes map[int32]struct{}
+	labels map[string]struct{}
 	path   string // Set at open.
 
 	datasets []*Dataset
@@ -235,9 +235,9 @@ type datasetCompaction struct {
 
 func (b *CompactionPlan) newDatasetCompaction(tenant, name int32) *datasetCompaction {
 	return &datasetCompaction{
-		name:   b.strings.Strings[name],
 		parent: b,
-		ptypes: make(map[int32]struct{}, 10),
+		name:   b.strings.Strings[name],
+		labels: make(map[string]struct{}),
 		meta: &metastorev1.Dataset{
 			Tenant: tenant,
 			Name:   name,
@@ -247,7 +247,7 @@ func (b *CompactionPlan) newDatasetCompaction(tenant, name int32) *datasetCompac
 			// Updated at writeTo.
 			TableOfContents: nil,
 			Size:            0,
-			ProfileTypes:    nil,
+			Labels:          nil,
 		},
 	}
 }
@@ -260,9 +260,25 @@ func (m *datasetCompaction) append(s *Dataset) {
 	if s.meta.MaxTime > m.meta.MaxTime {
 		m.meta.MaxTime = s.meta.MaxTime
 	}
-	for _, pt := range s.meta.ProfileTypes {
-		ptn := m.parent.strings.Put(s.obj.meta.StringTable[pt])
-		m.ptypes[ptn] = struct{}{}
+	m.addLabels(s)
+}
+
+func (m *datasetCompaction) addLabels(s *Dataset) {
+	var skip int
+	for i, v := range s.meta.Labels {
+		if i == skip {
+			skip += int(v)*2 + 1
+			continue
+		}
+		s.meta.Labels[i] = m.parent.strings.Put(s.obj.meta.StringTable[v])
+	}
+	// We only copy the labels if this is the first time we see it.
+	k := *(*string)(unsafe.Pointer(&s.meta.Labels))
+	// The fact that we assume that the order of labels
+	// is the same across all datasets is a precondition.
+	if _, ok := m.labels[k]; !ok {
+		m.labels[string(s.meta.Labels)] = struct{}{}
+		m.meta.Labels = append(m.meta.Labels, s.meta.Labels...)
 	}
 }
 
@@ -400,10 +416,6 @@ func (m *datasetCompaction) writeTo(w *Writer) (err error) {
 		return err
 	}
 	m.meta.Size = w.Offset() - off
-	m.meta.ProfileTypes = make([]int32, 0, len(m.ptypes))
-	for pt := range m.ptypes {
-		m.meta.ProfileTypes = append(m.meta.ProfileTypes, pt)
-	}
 	return nil
 }
 

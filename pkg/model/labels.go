@@ -313,7 +313,7 @@ func LabelsFromStrings(ss ...string) Labels {
 
 // CompareLabelPairs compares the two label sets.
 // The result will be 0 if a==b, <0 if a < b, and >0 if a > b.
-func CompareLabelPairs(a []*typesv1.LabelPair, b []*typesv1.LabelPair) int {
+func CompareLabelPairs(a, b []*typesv1.LabelPair) int {
 	l := len(a)
 	if len(b) < l {
 		l = len(b)
@@ -335,6 +335,10 @@ func CompareLabelPairs(a []*typesv1.LabelPair, b []*typesv1.LabelPair) int {
 	}
 	// If all labels so far were in common, the set with fewer labels comes first.
 	return len(a) - len(b)
+}
+
+func CompareLabels(a, b Labels) int {
+	return CompareLabelPairs(a, b)
 }
 
 // LabelsBuilder allows modifying Labels.

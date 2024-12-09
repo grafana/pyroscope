@@ -45,10 +45,6 @@ message Dataset {
   repeated uint64 table_of_contents = 5;
   // Size of the section in bytes.
   uint64 size = 6;
-
-  // TODO: Delete. Use labels instead.
-  // Profile types present in the tenant service data.
-  repeated int32 profile_types = 7;
   // Length prefixed label key-value pairs.
-  repeated int32 labels = 8;
+  repeated int32 labels = 7;
 }

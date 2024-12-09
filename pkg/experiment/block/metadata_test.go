@@ -1,12 +1,112 @@
 package block
 
 import (
+	"bytes"
 	"testing"
 
+	"github.com/oklog/ulid"
 	"github.com/stretchr/testify/assert"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 )
+
+func TestMetadata_New(t *testing.T) {
+	blockID := ulid.MustNew(123, bytes.NewReader([]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11})).String()
+	strings := NewMetadataStringTable()
+	md := &metastorev1.BlockMeta{
+		FormatVersion:   0,
+		Id:              blockID,
+		Tenant:          0,
+		Shard:           1,
+		CompactionLevel: 0,
+		MinTime:         123,
+		MaxTime:         456,
+		CreatedBy:       strings.Put("ingester-a"),
+		Size:            567,
+		Datasets:        nil,
+		StringTable:     nil,
+	}
+
+	b := NewLabelBuilder(strings)
+	for _, tenant := range []string{"tenant-a", "tenant-b"} {
+		for _, dataset := range []string{"service_a", "service_b"} {
+			ds := &metastorev1.Dataset{
+				Tenant:          strings.Put(tenant),
+				Name:            strings.Put(dataset),
+				MinTime:         123,
+				MaxTime:         456,
+				TableOfContents: []uint64{1, 2, 3},
+				Size:            567,
+				Labels:          nil,
+			}
+
+			b.WithConstantPairs("service_name", dataset).WithLabelNames("__profile_type__")
+			for _, n := range []string{"cpu", "memory"} {
+				b.CreateLabels(n)
+			}
+			ds.Labels = b.Build()
+			md.Datasets = append(md.Datasets, ds)
+		}
+	}
+	md.StringTable = strings.Strings
+
+	expected := &metastorev1.BlockMeta{
+		FormatVersion:   0,
+		Id:              "000000003V000G40R40M30E209",
+		Tenant:          0,
+		Shard:           1,
+		CompactionLevel: 0,
+		MinTime:         123,
+		MaxTime:         456,
+		CreatedBy:       1,
+		Size:            567,
+		Datasets: []*metastorev1.Dataset{
+			{
+				Tenant:          2,
+				Name:            3,
+				MinTime:         123,
+				MaxTime:         456,
+				TableOfContents: []uint64{1, 2, 3},
+				Size:            567,
+				Labels:          []int32{2, 4, 3, 5, 6, 2, 4, 3, 5, 7},
+			},
+			{
+				Tenant:          2,
+				Name:            8,
+				MinTime:         123,
+				MaxTime:         456,
+				TableOfContents: []uint64{1, 2, 3},
+				Size:            567,
+				Labels:          []int32{2, 4, 8, 5, 6, 2, 4, 8, 5, 7},
+			},
+			{
+				Tenant:          9,
+				Name:            3,
+				MinTime:         123,
+				MaxTime:         456,
+				TableOfContents: []uint64{1, 2, 3},
+				Size:            567,
+				Labels:          []int32{2, 4, 3, 5, 6, 2, 4, 3, 5, 7},
+			},
+			{
+				Tenant:          9,
+				Name:            8,
+				MinTime:         123,
+				MaxTime:         456,
+				TableOfContents: []uint64{1, 2, 3},
+				Size:            567,
+				Labels:          []int32{2, 4, 8, 5, 6, 2, 4, 8, 5, 7},
+			},
+		},
+		StringTable: []string{
+			"", "ingester-a",
+			"tenant-a", "service_a", "service_name", "__profile_type__", "cpu", "memory",
+			"service_b", "tenant-b",
+		},
+	}
+
+	assert.Equal(t, expected, md)
+}
 
 func TestMetadataStrings_Import(t *testing.T) {
 	md1 := &metastorev1.BlockMeta{
@@ -14,13 +114,14 @@ func TestMetadataStrings_Import(t *testing.T) {
 		Tenant:    0,
 		CreatedBy: 1,
 		Datasets: []*metastorev1.Dataset{
-			{Tenant: 2, Name: 3, ProfileTypes: []int32{4, 5, 6}},
-			{Tenant: 7, Name: 8, ProfileTypes: []int32{5, 6, 9}},
+			{Tenant: 2, Name: 3, Labels: []int32{2, 10, 3, 11, 4, 2, 10, 3, 11, 5, 2, 10, 3, 11, 6}},
+			{Tenant: 7, Name: 8, Labels: []int32{2, 10, 8, 11, 5, 2, 10, 8, 11, 6, 2, 10, 8, 11, 9}},
 		},
 		StringTable: []string{
 			"", "ingester",
 			"tenant-a", "dataset-a", "1", "2", "3",
 			"tenant-b", "dataset-b", "4",
+			"service_name", "__profile_type__",
 		},
 	}
 
@@ -33,8 +134,8 @@ func TestMetadataStrings_Import(t *testing.T) {
 	// Exactly the same metadata.
 	md2 := md1.CloneVT()
 	table.Import(md2)
-	assert.Len(t, md2.StringTable, 10)
-	assert.Len(t, table.Strings, 10)
+	assert.Len(t, md2.StringTable, 12)
+	assert.Len(t, table.Strings, 12)
 	assert.Equal(t, table.Strings, md2.StringTable)
 
 	md3 := &metastorev1.BlockMeta{
@@ -42,13 +143,14 @@ func TestMetadataStrings_Import(t *testing.T) {
 		Tenant:    0,
 		CreatedBy: 1,
 		Datasets: []*metastorev1.Dataset{
-			{Tenant: 2, Name: 3, ProfileTypes: []int32{4, 5, 6}},
-			{Tenant: 7, Name: 8, ProfileTypes: []int32{4, 9}},
+			{Tenant: 2, Name: 3, Labels: []int32{2, 10, 3, 11, 4, 2, 10, 3, 11, 5, 2, 10, 3, 11, 6}},
+			{Tenant: 7, Name: 8, Labels: []int32{2, 10, 8, 11, 4, 2, 10, 8, 11, 9}},
 		},
 		StringTable: []string{
 			"", "ingester",
 			"tenant-a", "dataset-a", "1", "2", "3",
 			"tenant-c", "dataset-c", "5",
+			"service_name", "__profile_type__",
 		},
 	}
 
@@ -58,18 +160,19 @@ func TestMetadataStrings_Import(t *testing.T) {
 		Tenant:    0,
 		CreatedBy: 1,
 		Datasets: []*metastorev1.Dataset{
-			{Tenant: 2, Name: 3, ProfileTypes: []int32{4, 5, 6}},
-			{Tenant: 10, Name: 11, ProfileTypes: []int32{4, 12}},
+			{Tenant: 2, Name: 3, Labels: []int32{2, 10, 3, 11, 4, 2, 10, 3, 11, 5, 2, 10, 3, 11, 6}},
+			{Tenant: 12, Name: 13, Labels: []int32{2, 10, 13, 11, 4, 2, 10, 13, 11, 14}},
 		},
 		StringTable: []string{
 			"", "ingester",
 			"tenant-a", "dataset-a", "1", "2", "3",
 			"tenant-c", "dataset-c", "5",
+			"service_name", "__profile_type__",
 		},
 	}
 
 	assert.Equal(t, expected, md3)
-	assert.Len(t, table.Strings, 13)
+	assert.Len(t, table.Strings, 15)
 }
 
 func TestMetadataStrings_Export(t *testing.T) {
@@ -79,6 +182,7 @@ func TestMetadataStrings_Export(t *testing.T) {
 		"ingester",
 		"tenant-a", "dataset-a", "1", "2", "3",
 		"tenant-b", "dataset-b", "4",
+		"service_name", "__profile_type__",
 	} {
 		table.Put(s)
 	}
@@ -88,8 +192,8 @@ func TestMetadataStrings_Export(t *testing.T) {
 		Tenant:    0,
 		CreatedBy: 6,
 		Datasets: []*metastorev1.Dataset{
-			{Tenant: 7, Name: 8, ProfileTypes: []int32{9, 10, 11}},
-			{Tenant: 12, Name: 13, ProfileTypes: []int32{10, 11, 14}},
+			{Tenant: 7, Name: 8, Labels: []int32{2, 15, 8, 16, 9, 2, 15, 8, 16, 10, 2, 15, 8, 16, 11}},
+			{Tenant: 12, Name: 13, Labels: []int32{2, 15, 13, 16, 10, 2, 15, 13, 16, 11, 2, 15, 13, 16, 14}},
 		},
 	}
 
@@ -100,12 +204,12 @@ func TestMetadataStrings_Export(t *testing.T) {
 		Tenant:    0,
 		CreatedBy: 1,
 		Datasets: []*metastorev1.Dataset{
-			{Tenant: 2, Name: 3, ProfileTypes: []int32{4, 5, 6}},
-			{Tenant: 7, Name: 8, ProfileTypes: []int32{5, 6, 9}},
+			{Tenant: 2, Name: 3, Labels: []int32{2, 4, 3, 5, 6, 2, 4, 3, 5, 7, 2, 4, 3, 5, 8}},
+			{Tenant: 9, Name: 10, Labels: []int32{2, 4, 10, 5, 7, 2, 4, 10, 5, 8, 2, 4, 10, 5, 11}},
 		},
 		StringTable: []string{
 			"", "ingester",
-			"tenant-a", "dataset-a", "1", "2", "3",
+			"tenant-a", "dataset-a", "service_name", "__profile_type__", "1", "2", "3",
 			"tenant-b", "dataset-b", "4",
 		},
 	}

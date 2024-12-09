@@ -863,14 +863,6 @@
           "format": "uint64",
           "description": "Size of the section in bytes."
         },
-        "profileTypes": {
-          "type": "array",
-          "items": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "description": "TODO: Delete. Use labels instead.\nProfile types present in the tenant service data."
-        },
         "labels": {
           "type": "array",
           "items": {
