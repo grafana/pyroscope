@@ -298,7 +298,7 @@ func concatSegmentHead(e flushedServiceHead, w *writerOffset, s *block.MetadataS
 
 	tenantServiceSize := w.offset - tenantServiceOffset
 
-	svc := &metastorev1.Dataset{
+	ds := &metastorev1.Dataset{
 		Tenant:  s.Put(e.key.tenant),
 		Name:    s.Put(e.key.service),
 		MinTime: e.head.Meta.MinTimeNanos / 1e6,
@@ -308,13 +308,20 @@ func concatSegmentHead(e flushedServiceHead, w *writerOffset, s *block.MetadataS
 		//  - 1: index.tsdb
 		//  - 2: symbols.symdb
 		TableOfContents: offsets,
-		ProfileTypes:    make([]int32, len(ptypes)),
-	}
-	for i, p := range ptypes {
-		svc.ProfileTypes[i] = s.Put(p)
+		Labels:          nil,
 	}
 
-	return svc, nil
+	lb := block.NewLabelBuilder(s).
+		WithConstantPairs(model.LabelNameServiceName, e.key.service).
+		WithLabelNames(model.LabelNameProfileType)
+
+	for _, profileType := range ptypes {
+		lb.CreateLabels(profileType)
+	}
+
+	ds.Labels = lb.Build()
+
+	return ds, nil
 }
 
 func (s *segment) flushHeads(ctx context.Context) (moved []flushedServiceHead) {

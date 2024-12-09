@@ -2,9 +2,11 @@ package query_frontend
 
 import (
 	"context"
-	"sort"
+	"slices"
+	"strings"
 
 	"connectrpc.com/connect"
+	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/tenant"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -18,7 +20,6 @@ func (q *QueryFrontend) ProfileTypes(
 	ctx context.Context,
 	req *connect.Request[querierv1.ProfileTypesRequest],
 ) (*connect.Response[querierv1.ProfileTypesResponse], error) {
-
 	tenants, err := tenant.TenantIDs(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -31,43 +32,34 @@ func (q *QueryFrontend) ProfileTypes(
 		return connect.NewResponse(&querierv1.ProfileTypesResponse{}), nil
 	}
 
-	resp, err := q.metadataQueryClient.QueryMetadata(ctx, &metastorev1.QueryMetadataRequest{
+	resp, err := q.metadataQueryClient.QueryMetadataLabels(ctx, &metastorev1.QueryMetadataLabelsRequest{
 		TenantId:  tenants,
 		StartTime: req.Msg.Start,
 		EndTime:   req.Msg.End,
 		Query:     "{}",
+		Labels:    []string{phlaremodel.LabelNameProfileType},
 	})
 
 	if err != nil {
 		return nil, err
 	}
 
-	pTypesFromMetadata := make(map[string]*typesv1.ProfileType)
-	for _, md := range resp.Blocks {
-		for _, ds := range md.Datasets {
-			for _, p := range ds.ProfileTypes {
-				t := md.StringTable[p]
-				if _, ok := pTypesFromMetadata[t]; !ok {
-					profileType, err := phlaremodel.ParseProfileTypeSelector(t)
-					if err != nil {
-						return nil, err
-					}
-					pTypesFromMetadata[t] = profileType
-				}
-			}
+	types := make([]*typesv1.ProfileType, 0, len(resp.Labels))
+	for _, ls := range resp.Labels {
+		var typ *typesv1.ProfileType
+		if len(ls.Labels) == 1 && ls.Labels[0].Name == phlaremodel.LabelNameProfileType {
+			typ, err = phlaremodel.ParseProfileTypeSelector(ls.Labels[0].Value)
 		}
+		if err != nil || typ == nil {
+			level.Warn(q.logger).Log("msg", "malformed label set", "labels", phlaremodel.LabelPairsString(ls.Labels))
+			continue
+		}
+		types = append(types, typ)
 	}
 
-	var profileTypes []*typesv1.ProfileType
-	for _, pType := range pTypesFromMetadata {
-		profileTypes = append(profileTypes, pType)
-	}
-
-	sort.Slice(profileTypes, func(i, j int) bool {
-		return profileTypes[i].ID < profileTypes[j].ID
+	slices.SortFunc(types, func(a, b *typesv1.ProfileType) int {
+		return strings.Compare(a.ID, b.ID)
 	})
 
-	return connect.NewResponse(&querierv1.ProfileTypesResponse{
-		ProfileTypes: profileTypes,
-	}), nil
+	return connect.NewResponse(&querierv1.ProfileTypesResponse{ProfileTypes: types}), nil
 }

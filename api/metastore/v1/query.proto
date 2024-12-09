@@ -3,9 +3,11 @@ syntax = "proto3";
 package metastore.v1;
 
 import "metastore/v1/types.proto";
+import "types/v1/types.proto";
 
 service MetadataQueryService {
   rpc QueryMetadata(QueryMetadataRequest) returns (QueryMetadataResponse) {}
+  rpc QueryMetadataLabels(QueryMetadataLabelsRequest) returns (QueryMetadataLabelsResponse) {}
 }
 
 message QueryMetadataRequest {
@@ -17,4 +19,16 @@ message QueryMetadataRequest {
 
 message QueryMetadataResponse {
   repeated BlockMeta blocks = 1;
+}
+
+message QueryMetadataLabelsRequest {
+  repeated string tenant_id = 1;
+  int64 start_time = 2;
+  int64 end_time = 3;
+  string query = 4;
+  repeated string labels = 5;
+}
+
+message QueryMetadataLabelsResponse {
+  repeated types.v1.Labels labels = 1;
 }
