@@ -33,6 +33,11 @@ type MetadataQuery struct {
 	Tenant    []string
 }
 
+type MetadataLabelQuery struct {
+	MetadataQuery
+	Labels []string
+}
+
 func (q *MetadataQuery) String() string {
 	return fmt.Sprintf("start: %v, end: %v, tenants: %v, expr: %v",
 		q.StartTime,
