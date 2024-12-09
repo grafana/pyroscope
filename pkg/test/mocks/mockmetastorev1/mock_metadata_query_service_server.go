@@ -81,6 +81,65 @@ func (_c *MockMetadataQueryServiceServer_QueryMetadata_Call) RunAndReturn(run fu
 	return _c
 }
 
+// QueryMetadataLabels provides a mock function with given fields: _a0, _a1
+func (_m *MockMetadataQueryServiceServer) QueryMetadataLabels(_a0 context.Context, _a1 *metastorev1.QueryMetadataLabelsRequest) (*metastorev1.QueryMetadataLabelsResponse, error) {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for QueryMetadataLabels")
+	}
+
+	var r0 *metastorev1.QueryMetadataLabelsResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *metastorev1.QueryMetadataLabelsRequest) (*metastorev1.QueryMetadataLabelsResponse, error)); ok {
+		return rf(_a0, _a1)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *metastorev1.QueryMetadataLabelsRequest) *metastorev1.QueryMetadataLabelsResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*metastorev1.QueryMetadataLabelsResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *metastorev1.QueryMetadataLabelsRequest) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockMetadataQueryServiceServer_QueryMetadataLabels_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'QueryMetadataLabels'
+type MockMetadataQueryServiceServer_QueryMetadataLabels_Call struct {
+	*mock.Call
+}
+
+// QueryMetadataLabels is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *metastorev1.QueryMetadataLabelsRequest
+func (_e *MockMetadataQueryServiceServer_Expecter) QueryMetadataLabels(_a0 interface{}, _a1 interface{}) *MockMetadataQueryServiceServer_QueryMetadataLabels_Call {
+	return &MockMetadataQueryServiceServer_QueryMetadataLabels_Call{Call: _e.mock.On("QueryMetadataLabels", _a0, _a1)}
+}
+
+func (_c *MockMetadataQueryServiceServer_QueryMetadataLabels_Call) Run(run func(_a0 context.Context, _a1 *metastorev1.QueryMetadataLabelsRequest)) *MockMetadataQueryServiceServer_QueryMetadataLabels_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*metastorev1.QueryMetadataLabelsRequest))
+	})
+	return _c
+}
+
+func (_c *MockMetadataQueryServiceServer_QueryMetadataLabels_Call) Return(_a0 *metastorev1.QueryMetadataLabelsResponse, _a1 error) *MockMetadataQueryServiceServer_QueryMetadataLabels_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockMetadataQueryServiceServer_QueryMetadataLabels_Call) RunAndReturn(run func(context.Context, *metastorev1.QueryMetadataLabelsRequest) (*metastorev1.QueryMetadataLabelsResponse, error)) *MockMetadataQueryServiceServer_QueryMetadataLabels_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // mustEmbedUnimplementedMetadataQueryServiceServer provides a mock function with given fields:
 func (_m *MockMetadataQueryServiceServer) mustEmbedUnimplementedMetadataQueryServiceServer() {
 	_m.Called()

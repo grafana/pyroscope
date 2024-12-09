@@ -65,6 +65,10 @@ func (m *mockServer) QueryMetadata(ctx context.Context, request *metastorev1.Que
 	return m.metadata.QueryMetadata(ctx, request)
 }
 
+func (m *mockServer) QueryMetadataLabels(ctx context.Context, request *metastorev1.QueryMetadataLabelsRequest) (*metastorev1.QueryMetadataLabelsResponse, error) {
+	return m.metadata.QueryMetadataLabels(ctx, request)
+}
+
 func (m *mockServer) ReadIndex(ctx context.Context, request *raftnodepb.ReadIndexRequest) (*raftnodepb.ReadIndexResponse, error) {
 	return m.raftNode.ReadIndex(ctx, request)
 }
