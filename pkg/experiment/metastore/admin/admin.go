@@ -164,7 +164,6 @@ func (a *MetastoreAdmin) fetchRaftState(ctx context.Context) (*raftNodeState, er
 }
 
 func newClient(address string) (*metastoreClient, error) {
-	// TODO aleks-p: do we need more configuration here?
 	conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
