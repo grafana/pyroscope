@@ -2,6 +2,7 @@ package query_frontend
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"sort"
 
@@ -13,6 +14,12 @@ import (
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+)
+
+var (
+	errMissingServiceName = errors.New("service name is missing")
+	errMissingProfileType = errors.New("profile type is missing")
+	errInvalidProfileType = errors.New("invalid profile type")
 )
 
 var profileTypeLabels2 = []string{
@@ -97,14 +104,14 @@ func sanitizeProfileTypeMetadataLabels(ls *typesv1.Labels, names []string) error
 		}
 	}
 	if serviceName == "" {
-		return errors.New("missing service name")
+		return errMissingServiceName
 	}
 	if profileType == "" {
-		return errors.New("missing profile type")
+		return errMissingProfileType
 	}
 	pt, err := phlaremodel.ParseProfileTypeSelector(profileType)
 	if err != nil {
-		return errors.New("invalid profile type")
+		return fmt.Errorf("%w: %w", errInvalidProfileType, err)
 	}
 	if len(names) == 5 {
 		// Replace the labels with the expected ones.
