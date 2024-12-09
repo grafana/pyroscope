@@ -185,8 +185,8 @@ func (a *MetastoreAdmin) addFormActionHandlers() {
 			return err
 		}
 		if raftState.LeaderId == serverId {
-			// In theory, this shouldn't be needed since Raft should elect a new leader upon removal.
-			// In practice, a successful leader election doesn't always occur and demoting first is safer.
+			// Without this, the removed node cannot be re-added later because Raft gets shuts down on the node.
+			// Alternatively, we could set raftConfig.ShutdownOnRemove to false.
 			_, err = a.leaderClient.DemoteLeader(r.Context(), &raftnodepb.DemoteLeaderRequest{ServerId: serverId})
 			if err != nil {
 				return err

@@ -18,7 +18,7 @@ func (n *Node) RemoveNode(request *raftnodepb.RemoveNodeRequest) (*raftnodepb.Re
 	for _, s := range raftConfig.Servers {
 		if s.ID == raft.ServerID(request.ServerId) {
 			if err := n.raft.RemoveServer(s.ID, 0, 0).Error(); err != nil {
-				return nil, err
+				return nil, WithRaftLeaderStatusDetails(err, n.raft)
 			}
 			return &raftnodepb.RemoveNodeResponse{}, nil
 		}
