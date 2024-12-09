@@ -73,6 +73,22 @@ func (m *mockServer) NodeInfo(ctx context.Context, request *raftnodepb.NodeInfoR
 	return m.raftNode.NodeInfo(ctx, request)
 }
 
+func (m *mockServer) RemoveNode(ctx context.Context, request *raftnodepb.RemoveNodeRequest) (*raftnodepb.RemoveNodeResponse, error) {
+	return m.raftNode.RemoveNode(ctx, request)
+}
+
+func (m *mockServer) AddNode(ctx context.Context, request *raftnodepb.AddNodeRequest) (*raftnodepb.AddNodeResponse, error) {
+	return m.raftNode.AddNode(ctx, request)
+}
+
+func (m *mockServer) DemoteLeader(ctx context.Context, request *raftnodepb.DemoteLeaderRequest) (*raftnodepb.DemoteLeaderResponse, error) {
+	return m.raftNode.DemoteLeader(ctx, request)
+}
+
+func (m *mockServer) PromoteToLeader(ctx context.Context, request *raftnodepb.PromoteToLeaderRequest) (*raftnodepb.PromoteToLeaderResponse, error) {
+	return m.raftNode.PromoteToLeader(ctx, request)
+}
+
 func createServers(ports []int) []discovery.Server {
 	var servers []discovery.Server
 	for i := 0; i < nServers; i++ {
