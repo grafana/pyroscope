@@ -454,7 +454,7 @@ func (i *Index) QueryMetadata(tx *bbolt.Tx, query MetadataQuery) iter.Iterator[*
 }
 
 func (i *Index) QueryMetadataLabels(tx *bbolt.Tx, query MetadataLabelQuery) ([]*typesv1.Labels, error) {
-	q, err := newMetadataQuery(i, query.MetadataQuery)
+	q, err := newMetadataQuery(i, query.MetadataQuery, query.Labels...)
 	if err != nil {
 		return nil, err
 	}

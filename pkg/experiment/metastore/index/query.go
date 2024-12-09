@@ -225,7 +225,7 @@ type metadataLabelQuerier struct {
 
 func (mi *metadataLabelQuerier) queryLabels() (*model.LabelMerger, error) {
 	if len(mi.query.labels) == 0 {
-		return nil, nil
+		return mi.labels, nil
 	}
 	for mi.shards.Next() {
 		mi.collectLabels(mi.shards.At())
@@ -237,7 +237,11 @@ func (mi *metadataLabelQuerier) queryLabels() (*model.LabelMerger, error) {
 }
 
 func (mi *metadataLabelQuerier) collectLabels(shard *indexShard) {
-	m := block.NewLabelMatcher(shard.StringTable, mi.query.matchers)
+	m := block.NewLabelMatcher(
+		shard.StringTable,
+		mi.query.matchers,
+		mi.query.labels...,
+	)
 	if !m.IsValid() {
 		return
 	}
