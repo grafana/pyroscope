@@ -94,11 +94,6 @@ func (m *Dataset) CloneVT() *Dataset {
 		copy(tmpContainer, rhs)
 		r.TableOfContents = tmpContainer
 	}
-	if rhs := m.ProfileTypes; rhs != nil {
-		tmpContainer := make([]int32, len(rhs))
-		copy(tmpContainer, rhs)
-		r.ProfileTypes = tmpContainer
-	}
 	if rhs := m.Labels; rhs != nil {
 		tmpContainer := make([]int32, len(rhs))
 		copy(tmpContainer, rhs)
@@ -244,15 +239,6 @@ func (this *Dataset) EqualVT(that *Dataset) bool {
 	}
 	if this.Size != that.Size {
 		return false
-	}
-	if len(this.ProfileTypes) != len(that.ProfileTypes) {
-		return false
-	}
-	for i, vx := range this.ProfileTypes {
-		vy := that.ProfileTypes[i]
-		if vx != vy {
-			return false
-		}
 	}
 	if len(this.Labels) != len(that.Labels) {
 		return false
@@ -477,17 +463,21 @@ func (m *Dataset) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		}
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(pksize2))
 		i--
-		dAtA[i] = 0x42
+		dAtA[i] = 0x3a
 	}
-	if len(m.ProfileTypes) > 0 {
+	if m.Size != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Size))
+		i--
+		dAtA[i] = 0x30
+	}
+	if len(m.TableOfContents) > 0 {
 		var pksize4 int
-		for _, num := range m.ProfileTypes {
+		for _, num := range m.TableOfContents {
 			pksize4 += protohelpers.SizeOfVarint(uint64(num))
 		}
 		i -= pksize4
 		j3 := i
-		for _, num1 := range m.ProfileTypes {
-			num := uint64(num1)
+		for _, num := range m.TableOfContents {
 			for num >= 1<<7 {
 				dAtA[j3] = uint8(uint64(num)&0x7f | 0x80)
 				num >>= 7
@@ -497,31 +487,6 @@ func (m *Dataset) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 			j3++
 		}
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(pksize4))
-		i--
-		dAtA[i] = 0x3a
-	}
-	if m.Size != 0 {
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Size))
-		i--
-		dAtA[i] = 0x30
-	}
-	if len(m.TableOfContents) > 0 {
-		var pksize6 int
-		for _, num := range m.TableOfContents {
-			pksize6 += protohelpers.SizeOfVarint(uint64(num))
-		}
-		i -= pksize6
-		j5 := i
-		for _, num := range m.TableOfContents {
-			for num >= 1<<7 {
-				dAtA[j5] = uint8(uint64(num)&0x7f | 0x80)
-				num >>= 7
-				j5++
-			}
-			dAtA[j5] = uint8(num)
-			j5++
-		}
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(pksize6))
 		i--
 		dAtA[i] = 0x2a
 	}
@@ -648,13 +613,6 @@ func (m *Dataset) SizeVT() (n int) {
 	}
 	if m.Size != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.Size))
-	}
-	if len(m.ProfileTypes) > 0 {
-		l = 0
-		for _, e := range m.ProfileTypes {
-			l += protohelpers.SizeOfVarint(uint64(e))
-		}
-		n += 1 + protohelpers.SizeOfVarint(uint64(l)) + l
 	}
 	if len(m.Labels) > 0 {
 		l = 0
@@ -1303,82 +1261,6 @@ func (m *Dataset) UnmarshalVT(dAtA []byte) error {
 				}
 			}
 		case 7:
-			if wireType == 0 {
-				var v int32
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return protohelpers.ErrIntOverflow
-					}
-					if iNdEx >= l {
-						return io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					v |= int32(b&0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				m.ProfileTypes = append(m.ProfileTypes, v)
-			} else if wireType == 2 {
-				var packedLen int
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return protohelpers.ErrIntOverflow
-					}
-					if iNdEx >= l {
-						return io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					packedLen |= int(b&0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				if packedLen < 0 {
-					return protohelpers.ErrInvalidLength
-				}
-				postIndex := iNdEx + packedLen
-				if postIndex < 0 {
-					return protohelpers.ErrInvalidLength
-				}
-				if postIndex > l {
-					return io.ErrUnexpectedEOF
-				}
-				var elementCount int
-				var count int
-				for _, integer := range dAtA[iNdEx:postIndex] {
-					if integer < 128 {
-						count++
-					}
-				}
-				elementCount = count
-				if elementCount != 0 && len(m.ProfileTypes) == 0 {
-					m.ProfileTypes = make([]int32, 0, elementCount)
-				}
-				for iNdEx < postIndex {
-					var v int32
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return protohelpers.ErrIntOverflow
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						v |= int32(b&0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-					m.ProfileTypes = append(m.ProfileTypes, v)
-				}
-			} else {
-				return fmt.Errorf("proto: wrong wireType = %d for field ProfileTypes", wireType)
-			}
-		case 8:
 			if wireType == 0 {
 				var v int32
 				for shift := uint(0); ; shift += 7 {

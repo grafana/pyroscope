@@ -13,6 +13,8 @@ import (
 	"github.com/grafana/pyroscope/pkg/iter"
 )
 
+// TODO(kolesnikovae): Refactor to a sub-package.
+
 func Tenant(md *metastorev1.BlockMeta) string {
 	if md.Tenant <= 0 || int(md.Tenant) >= len(md.StringTable) {
 		return ""
@@ -78,6 +80,13 @@ func (t *MetadataStrings) Lookup(i int32) string {
 	return t.Strings[i]
 }
 
+func (t *MetadataStrings) LookupString(s string) int32 {
+	if i, ok := t.Dict[s]; ok {
+		return i
+	}
+	return -1
+}
+
 // Import strings from the metadata entry and update the references.
 func (t *MetadataStrings) Import(src *metastorev1.BlockMeta) {
 	if len(src.StringTable) < 2 {
@@ -94,8 +103,13 @@ func (t *MetadataStrings) Import(src *metastorev1.BlockMeta) {
 	for _, ds := range src.Datasets {
 		ds.Tenant = lut[ds.Tenant]
 		ds.Name = lut[ds.Name]
-		for i, p := range ds.ProfileTypes {
-			ds.ProfileTypes[i] = lut[p]
+		var skip int
+		for i, v := range ds.Labels {
+			if i == skip {
+				skip += int(v)*2 + 1
+				continue
+			}
+			ds.Labels[i] = lut[v]
 		}
 	}
 }
@@ -108,8 +122,13 @@ func (t *MetadataStrings) Export(dst *metastorev1.BlockMeta) {
 	for _, ds := range dst.Datasets {
 		ds.Tenant = n.Put(t.Lookup(ds.Tenant))
 		ds.Name = n.Put(t.Lookup(ds.Name))
-		for i := range ds.ProfileTypes {
-			ds.ProfileTypes[i] = n.Put(t.Lookup(ds.ProfileTypes[i]))
+		var skip int
+		for i, v := range ds.Labels {
+			if i == skip {
+				skip += int(v)*2 + 1
+				continue
+			}
+			ds.Labels[i] = n.Put(t.Lookup(ds.Labels[i]))
 		}
 	}
 	dst.StringTable = make([]string, len(n.Strings))
