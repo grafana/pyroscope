@@ -201,12 +201,19 @@ func datasetMatches(
 		return false
 	}
 	pairs := block.LabelPairs(ds.Labels)
+	var matches bool
 	for pairs.Next() {
 		if m.Matches(pairs.At()) {
+			matches = true
+		}
+		// If no labels are specified, we can return early.
+		// Otherwise, we need to scan all the datasets to
+		// collect the labels.
+		if matches && len(q.labels) == 0 {
 			return true
 		}
 	}
-	return false
+	return matches
 }
 
 func newMetadataLabelQuerier(tx *bbolt.Tx, q *metadataQuery) *metadataLabelQuerier {
