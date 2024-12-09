@@ -16,12 +16,11 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode"
 	"github.com/grafana/pyroscope/pkg/iter"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 )
 
 type IndexQuerier interface {
 	QueryMetadata(*bbolt.Tx, index.MetadataQuery) iter.Iterator[*metastorev1.BlockMeta]
-	QueryMetadataLabels(*bbolt.Tx, index.MetadataLabelQuery) iter.Iterator[*typesv1.Labels]
+	QueryMetadataLabels(*bbolt.Tx, index.MetadataLabelQuery) ([]*typesv1.Labels, error)
 }
 
 type MetadataQueryService struct {
@@ -97,7 +96,7 @@ func (svc *MetadataQueryService) queryMetadataLabels(
 	tx *bbolt.Tx,
 	req *metastorev1.QueryMetadataLabelsRequest,
 ) (*metastorev1.QueryMetadataLabelsResponse, error) {
-	labels, err := iter.Slice(svc.index.QueryMetadataLabels(tx, index.MetadataLabelQuery{
+	labels, err := svc.index.QueryMetadataLabels(tx, index.MetadataLabelQuery{
 		Labels: req.Labels,
 		MetadataQuery: index.MetadataQuery{
 			Expr:      req.Query,
@@ -105,9 +104,8 @@ func (svc *MetadataQueryService) queryMetadataLabels(
 			EndTime:   time.UnixMilli(req.EndTime),
 			Tenant:    req.TenantId,
 		},
-	}))
+	})
 	if err == nil {
-		phlaremodel.SortLabels(labels)
 		return &metastorev1.QueryMetadataLabelsResponse{Labels: labels}, nil
 	}
 	var invalid *index.InvalidQueryError

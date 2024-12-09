@@ -88,7 +88,7 @@ func (a *seriesLabelsAggregator) build() *queryv1.Report {
 	return &queryv1.Report{
 		SeriesLabels: &queryv1.SeriesLabelsReport{
 			Query:        a.query,
-			SeriesLabels: a.series.SeriesLabels(),
+			SeriesLabels: a.series.Labels(),
 		},
 	}
 }

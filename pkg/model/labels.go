@@ -515,12 +515,3 @@ func ServiceVersionFromLabels(lbls Labels) (ServiceVersion, bool) {
 		RootPath:   rootPath,
 	}, repo != "" || gitref != "" || rootPath != ""
 }
-
-func SortLabels(l []*typesv1.Labels) {
-	for _, ls := range l {
-		sort.Sort(Labels(ls.Labels))
-	}
-	slices.SortFunc(l, func(a, b *typesv1.Labels) int {
-		return CompareLabelPairs(a.Labels, b.Labels)
-	})
-}
