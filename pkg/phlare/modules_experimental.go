@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/middleware"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
@@ -20,6 +21,7 @@ import (
 	segmentwriter "github.com/grafana/pyroscope/pkg/experiment/ingester"
 	segmentwriterclient "github.com/grafana/pyroscope/pkg/experiment/ingester/client"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore"
+	metastoreadmin "github.com/grafana/pyroscope/pkg/experiment/metastore/admin"
 	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
 	querybackend "github.com/grafana/pyroscope/pkg/experiment/query_backend"
@@ -123,7 +125,6 @@ func (f *Phlare) initMetastore() (services.Service, error) {
 		registerer,
 		healthService,
 		f.metastoreClient,
-		f.metastoreClient,
 		f.storageBucket,
 		f.placementManager,
 	)
@@ -132,7 +133,6 @@ func (f *Phlare) initMetastore() (services.Service, error) {
 	}
 
 	m.Register(f.Server.GRPC)
-	f.API.RegisterMetastoreAdmin(m.Admin())
 	f.metastore = m
 	return m.Service(), nil
 }
@@ -154,6 +154,22 @@ func (f *Phlare) initMetastoreClient() (services.Service, error) {
 		disc,
 	)
 	return f.metastoreClient.Service(), nil
+}
+
+func (f *Phlare) initMetastoreAdmin() (services.Service, error) {
+	level.Info(f.logger).Log("msg", "initializing metastore admin")
+	if err := f.Cfg.Metastore.Validate(); err != nil {
+		return nil, err
+	}
+
+	var err error
+	f.metastoreAdmin, err = metastoreadmin.New(f.metastoreClient, f.logger, f.Cfg.Metastore.Address)
+	if err != nil {
+		return nil, err
+	}
+	level.Info(f.logger).Log("msg", "registering metastore admin routes")
+	f.API.RegisterMetastoreAdmin(f.metastoreAdmin)
+	return f.metastoreAdmin.Service(), nil
 }
 
 func (f *Phlare) initQueryBackend() (services.Service, error) {

@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/grafana/dskit/services"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -20,7 +21,9 @@ import (
 
 type formActionHandler func(http.ResponseWriter, *http.Request, string) error
 
-type MetastoreAdmin struct {
+type Admin struct {
+	service services.Service
+
 	logger log.Logger
 
 	servers      []discovery.Server
@@ -29,22 +32,27 @@ type MetastoreAdmin struct {
 	actionHandlers map[string]formActionHandler
 }
 
+func (a *Admin) Service() services.Service {
+	return a.service
+}
+
 type metastoreClient struct {
 	raftnodepb.RaftNodeOpsServiceClient
 	conn *grpc.ClientConn
 }
 
-func NewAdmin(
+func New(
 	client raftnodepb.RaftNodeOpsServiceClient,
 	logger log.Logger,
 	metastoreAddress string,
-) (*MetastoreAdmin, error) {
-	adm := &MetastoreAdmin{
+) (*Admin, error) {
+	adm := &Admin{
 		leaderClient:   client,
 		logger:         logger,
 		actionHandlers: make(map[string]formActionHandler),
 	}
 	adm.addFormActionHandlers()
+	adm.service = services.NewIdleService(adm.starting, adm.stopping)
 
 	disc, err := discovery.NewDiscovery(logger, metastoreAddress, nil)
 	if err != nil {
@@ -55,14 +63,17 @@ func NewAdmin(
 	return adm, nil
 }
 
-func (a *MetastoreAdmin) Servers(servers []discovery.Server) {
+func (a *Admin) starting(context.Context) error { return nil }
+func (a *Admin) stopping(error) error           { return nil }
+
+func (a *Admin) Servers(servers []discovery.Server) {
 	a.servers = servers
 	slices.SortFunc(a.servers, func(a, b discovery.Server) int {
 		return strings.Compare(string(a.Raft.ID), string(b.Raft.ID))
 	})
 }
 
-func (a *MetastoreAdmin) NodeListHandler() http.Handler {
+func (a *Admin) NodeListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
 			for fieldName, handler := range a.actionHandlers {
@@ -100,7 +111,7 @@ func (a *MetastoreAdmin) NodeListHandler() http.Handler {
 	})
 }
 
-func (a *MetastoreAdmin) fetchRaftState(ctx context.Context) (*raftNodeState, error) {
+func (a *Admin) fetchRaftState(ctx context.Context) (*raftNodeState, error) {
 	leaderId := ""
 	maxLeaderCount := 0
 	leaderCounts := make(map[string]int)
@@ -174,7 +185,7 @@ func newClient(address string) (*metastoreClient, error) {
 	}, nil
 }
 
-func (a *MetastoreAdmin) addFormActionHandlers() {
+func (a *Admin) addFormActionHandlers() {
 	a.actionHandlers["add"] = func(w http.ResponseWriter, r *http.Request, serverId string) error {
 		_, err := a.leaderClient.AddNode(r.Context(), &raftnodepb.AddNodeRequest{ServerId: serverId})
 		return err
@@ -210,7 +221,7 @@ func (a *MetastoreAdmin) addFormActionHandlers() {
 // verify that the operation still makes sense.
 //
 // Alternatively, we could send along the state and verify that it hasn't changed.
-func (a *MetastoreAdmin) canPerformOperation(ctx context.Context, operation string, serverId string) error {
+func (a *Admin) canPerformOperation(ctx context.Context, operation string, serverId string) error {
 	raftState, err := a.fetchRaftState(ctx)
 	if err != nil {
 		return err
