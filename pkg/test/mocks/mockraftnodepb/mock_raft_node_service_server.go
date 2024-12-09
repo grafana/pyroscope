@@ -22,6 +22,124 @@ func (_m *MockRaftNodeServiceServer) EXPECT() *MockRaftNodeServiceServer_Expecte
 	return &MockRaftNodeServiceServer_Expecter{mock: &_m.Mock}
 }
 
+// AddNode provides a mock function with given fields: _a0, _a1
+func (_m *MockRaftNodeServiceServer) AddNode(_a0 context.Context, _a1 *raftnodepb.AddNodeRequest) (*raftnodepb.AddNodeResponse, error) {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddNode")
+	}
+
+	var r0 *raftnodepb.AddNodeResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *raftnodepb.AddNodeRequest) (*raftnodepb.AddNodeResponse, error)); ok {
+		return rf(_a0, _a1)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *raftnodepb.AddNodeRequest) *raftnodepb.AddNodeResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*raftnodepb.AddNodeResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *raftnodepb.AddNodeRequest) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRaftNodeServiceServer_AddNode_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddNode'
+type MockRaftNodeServiceServer_AddNode_Call struct {
+	*mock.Call
+}
+
+// AddNode is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *raftnodepb.AddNodeRequest
+func (_e *MockRaftNodeServiceServer_Expecter) AddNode(_a0 interface{}, _a1 interface{}) *MockRaftNodeServiceServer_AddNode_Call {
+	return &MockRaftNodeServiceServer_AddNode_Call{Call: _e.mock.On("AddNode", _a0, _a1)}
+}
+
+func (_c *MockRaftNodeServiceServer_AddNode_Call) Run(run func(_a0 context.Context, _a1 *raftnodepb.AddNodeRequest)) *MockRaftNodeServiceServer_AddNode_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*raftnodepb.AddNodeRequest))
+	})
+	return _c
+}
+
+func (_c *MockRaftNodeServiceServer_AddNode_Call) Return(_a0 *raftnodepb.AddNodeResponse, _a1 error) *MockRaftNodeServiceServer_AddNode_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRaftNodeServiceServer_AddNode_Call) RunAndReturn(run func(context.Context, *raftnodepb.AddNodeRequest) (*raftnodepb.AddNodeResponse, error)) *MockRaftNodeServiceServer_AddNode_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// DemoteLeader provides a mock function with given fields: _a0, _a1
+func (_m *MockRaftNodeServiceServer) DemoteLeader(_a0 context.Context, _a1 *raftnodepb.DemoteLeaderRequest) (*raftnodepb.DemoteLeaderResponse, error) {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DemoteLeader")
+	}
+
+	var r0 *raftnodepb.DemoteLeaderResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *raftnodepb.DemoteLeaderRequest) (*raftnodepb.DemoteLeaderResponse, error)); ok {
+		return rf(_a0, _a1)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *raftnodepb.DemoteLeaderRequest) *raftnodepb.DemoteLeaderResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*raftnodepb.DemoteLeaderResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *raftnodepb.DemoteLeaderRequest) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRaftNodeServiceServer_DemoteLeader_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DemoteLeader'
+type MockRaftNodeServiceServer_DemoteLeader_Call struct {
+	*mock.Call
+}
+
+// DemoteLeader is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *raftnodepb.DemoteLeaderRequest
+func (_e *MockRaftNodeServiceServer_Expecter) DemoteLeader(_a0 interface{}, _a1 interface{}) *MockRaftNodeServiceServer_DemoteLeader_Call {
+	return &MockRaftNodeServiceServer_DemoteLeader_Call{Call: _e.mock.On("DemoteLeader", _a0, _a1)}
+}
+
+func (_c *MockRaftNodeServiceServer_DemoteLeader_Call) Run(run func(_a0 context.Context, _a1 *raftnodepb.DemoteLeaderRequest)) *MockRaftNodeServiceServer_DemoteLeader_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*raftnodepb.DemoteLeaderRequest))
+	})
+	return _c
+}
+
+func (_c *MockRaftNodeServiceServer_DemoteLeader_Call) Return(_a0 *raftnodepb.DemoteLeaderResponse, _a1 error) *MockRaftNodeServiceServer_DemoteLeader_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRaftNodeServiceServer_DemoteLeader_Call) RunAndReturn(run func(context.Context, *raftnodepb.DemoteLeaderRequest) (*raftnodepb.DemoteLeaderResponse, error)) *MockRaftNodeServiceServer_DemoteLeader_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NodeInfo provides a mock function with given fields: _a0, _a1
 func (_m *MockRaftNodeServiceServer) NodeInfo(_a0 context.Context, _a1 *raftnodepb.NodeInfoRequest) (*raftnodepb.NodeInfoResponse, error) {
 	ret := _m.Called(_a0, _a1)
@@ -81,6 +199,65 @@ func (_c *MockRaftNodeServiceServer_NodeInfo_Call) RunAndReturn(run func(context
 	return _c
 }
 
+// PromoteToLeader provides a mock function with given fields: _a0, _a1
+func (_m *MockRaftNodeServiceServer) PromoteToLeader(_a0 context.Context, _a1 *raftnodepb.PromoteToLeaderRequest) (*raftnodepb.PromoteToLeaderResponse, error) {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PromoteToLeader")
+	}
+
+	var r0 *raftnodepb.PromoteToLeaderResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *raftnodepb.PromoteToLeaderRequest) (*raftnodepb.PromoteToLeaderResponse, error)); ok {
+		return rf(_a0, _a1)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *raftnodepb.PromoteToLeaderRequest) *raftnodepb.PromoteToLeaderResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*raftnodepb.PromoteToLeaderResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *raftnodepb.PromoteToLeaderRequest) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRaftNodeServiceServer_PromoteToLeader_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PromoteToLeader'
+type MockRaftNodeServiceServer_PromoteToLeader_Call struct {
+	*mock.Call
+}
+
+// PromoteToLeader is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *raftnodepb.PromoteToLeaderRequest
+func (_e *MockRaftNodeServiceServer_Expecter) PromoteToLeader(_a0 interface{}, _a1 interface{}) *MockRaftNodeServiceServer_PromoteToLeader_Call {
+	return &MockRaftNodeServiceServer_PromoteToLeader_Call{Call: _e.mock.On("PromoteToLeader", _a0, _a1)}
+}
+
+func (_c *MockRaftNodeServiceServer_PromoteToLeader_Call) Run(run func(_a0 context.Context, _a1 *raftnodepb.PromoteToLeaderRequest)) *MockRaftNodeServiceServer_PromoteToLeader_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*raftnodepb.PromoteToLeaderRequest))
+	})
+	return _c
+}
+
+func (_c *MockRaftNodeServiceServer_PromoteToLeader_Call) Return(_a0 *raftnodepb.PromoteToLeaderResponse, _a1 error) *MockRaftNodeServiceServer_PromoteToLeader_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRaftNodeServiceServer_PromoteToLeader_Call) RunAndReturn(run func(context.Context, *raftnodepb.PromoteToLeaderRequest) (*raftnodepb.PromoteToLeaderResponse, error)) *MockRaftNodeServiceServer_PromoteToLeader_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ReadIndex provides a mock function with given fields: _a0, _a1
 func (_m *MockRaftNodeServiceServer) ReadIndex(_a0 context.Context, _a1 *raftnodepb.ReadIndexRequest) (*raftnodepb.ReadIndexResponse, error) {
 	ret := _m.Called(_a0, _a1)
@@ -136,6 +313,65 @@ func (_c *MockRaftNodeServiceServer_ReadIndex_Call) Return(_a0 *raftnodepb.ReadI
 }
 
 func (_c *MockRaftNodeServiceServer_ReadIndex_Call) RunAndReturn(run func(context.Context, *raftnodepb.ReadIndexRequest) (*raftnodepb.ReadIndexResponse, error)) *MockRaftNodeServiceServer_ReadIndex_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// RemoveNode provides a mock function with given fields: _a0, _a1
+func (_m *MockRaftNodeServiceServer) RemoveNode(_a0 context.Context, _a1 *raftnodepb.RemoveNodeRequest) (*raftnodepb.RemoveNodeResponse, error) {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RemoveNode")
+	}
+
+	var r0 *raftnodepb.RemoveNodeResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *raftnodepb.RemoveNodeRequest) (*raftnodepb.RemoveNodeResponse, error)); ok {
+		return rf(_a0, _a1)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *raftnodepb.RemoveNodeRequest) *raftnodepb.RemoveNodeResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*raftnodepb.RemoveNodeResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *raftnodepb.RemoveNodeRequest) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRaftNodeServiceServer_RemoveNode_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RemoveNode'
+type MockRaftNodeServiceServer_RemoveNode_Call struct {
+	*mock.Call
+}
+
+// RemoveNode is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *raftnodepb.RemoveNodeRequest
+func (_e *MockRaftNodeServiceServer_Expecter) RemoveNode(_a0 interface{}, _a1 interface{}) *MockRaftNodeServiceServer_RemoveNode_Call {
+	return &MockRaftNodeServiceServer_RemoveNode_Call{Call: _e.mock.On("RemoveNode", _a0, _a1)}
+}
+
+func (_c *MockRaftNodeServiceServer_RemoveNode_Call) Run(run func(_a0 context.Context, _a1 *raftnodepb.RemoveNodeRequest)) *MockRaftNodeServiceServer_RemoveNode_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*raftnodepb.RemoveNodeRequest))
+	})
+	return _c
+}
+
+func (_c *MockRaftNodeServiceServer_RemoveNode_Call) Return(_a0 *raftnodepb.RemoveNodeResponse, _a1 error) *MockRaftNodeServiceServer_RemoveNode_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRaftNodeServiceServer_RemoveNode_Call) RunAndReturn(run func(context.Context, *raftnodepb.RemoveNodeRequest) (*raftnodepb.RemoveNodeResponse, error)) *MockRaftNodeServiceServer_RemoveNode_Call {
 	_c.Call.Return(run)
 	return _c
 }
