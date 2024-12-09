@@ -4,11 +4,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/iter"
+	"github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/test"
 	"github.com/grafana/pyroscope/pkg/util"
 )
@@ -26,12 +29,12 @@ func TestIndex_Query(t *testing.T) {
 		MaxTime:   maxT,
 		CreatedBy: 1,
 		Datasets: []*metastorev1.Dataset{
-			{Tenant: 2, Name: 3, ProfileTypes: []int32{4, 5, 6}, MinTime: minT, MaxTime: minT},
-			{Tenant: 7, Name: 8, ProfileTypes: []int32{5, 6, 9}, MinTime: maxT, MaxTime: maxT},
+			{Tenant: 2, Name: 3, MinTime: minT, MaxTime: minT, Labels: []int32{2, 4, 3, 5, 6}},
+			{Tenant: 7, Name: 8, MinTime: maxT, MaxTime: maxT, Labels: []int32{2, 4, 8, 5, 9}},
 		},
 		StringTable: []string{
 			"", "ingester",
-			"tenant-a", "dataset-a", "1", "2", "3",
+			"tenant-a", "dataset-a", "service_name", "__profile_type__", "1",
 			"tenant-b", "dataset-b", "4",
 		},
 	}
@@ -44,11 +47,10 @@ func TestIndex_Query(t *testing.T) {
 		MaxTime:   maxT,
 		CreatedBy: 2,
 		Datasets: []*metastorev1.Dataset{
-			{Tenant: 1, Name: 3, ProfileTypes: []int32{4, 5, 6}, MinTime: minT, MaxTime: minT},
+			{Tenant: 1, Name: 3, MinTime: minT, MaxTime: minT, Labels: []int32{2, 4, 3, 5, 6}},
 		},
 		StringTable: []string{
-			"", "tenant-a", "ingester",
-			"dataset-a", "1", "2", "3",
+			"", "tenant-a", "ingester", "dataset-a", "service_name", "__profile_type__", "1",
 		},
 	}
 
@@ -60,11 +62,10 @@ func TestIndex_Query(t *testing.T) {
 		MaxTime:   maxT,
 		CreatedBy: 2,
 		Datasets: []*metastorev1.Dataset{
-			{Tenant: 1, Name: 3, ProfileTypes: []int32{4, 5, 6}, MinTime: minT, MaxTime: minT},
+			{Tenant: 1, Name: 3, MinTime: minT, MaxTime: minT, Labels: []int32{2, 4, 3, 5, 6}},
 		},
 		StringTable: []string{
-			"", "tenant-a", "ingester",
-			"dataset-a", "1", "2", "3",
+			"", "tenant-a", "ingester", "dataset-a", "service_name", "__profile_type__", "1",
 		},
 	}
 
@@ -104,39 +105,33 @@ func TestIndex_Query(t *testing.T) {
 		t.Run("DatasetFilter", func(t *testing.T) {
 			expected := []*metastorev1.BlockMeta{
 				{
-					Id:        md.Id,
-					Tenant:    0,
-					MinTime:   minT,
-					MaxTime:   maxT,
-					CreatedBy: 1,
-					Datasets: []*metastorev1.Dataset{
-						{Tenant: 2, Name: 3, ProfileTypes: []int32{4, 5, 6}, MinTime: minT, MaxTime: minT},
-					},
-					StringTable: []string{"", "ingester", "tenant-a", "dataset-a", "1", "2", "3"},
+					Id:          md.Id,
+					Tenant:      0,
+					MinTime:     minT,
+					MaxTime:     maxT,
+					CreatedBy:   1,
+					Datasets:    []*metastorev1.Dataset{{Tenant: 2, Name: 3, MinTime: minT, MaxTime: minT}},
+					StringTable: []string{"", "ingester", "tenant-a", "dataset-a"},
 				},
 				{
-					Id:        md2.Id,
-					Tenant:    1,
-					Shard:     1,
-					MinTime:   minT,
-					MaxTime:   maxT,
-					CreatedBy: 2,
-					Datasets: []*metastorev1.Dataset{
-						{Tenant: 1, Name: 3, ProfileTypes: []int32{4, 5, 6}, MinTime: minT, MaxTime: minT},
-					},
-					StringTable: []string{"", "tenant-a", "ingester", "dataset-a", "1", "2", "3"},
+					Id:          md2.Id,
+					Tenant:      1,
+					Shard:       1,
+					MinTime:     minT,
+					MaxTime:     maxT,
+					CreatedBy:   2,
+					Datasets:    []*metastorev1.Dataset{{Tenant: 1, Name: 3, MinTime: minT, MaxTime: minT}},
+					StringTable: []string{"", "tenant-a", "ingester", "dataset-a"},
 				},
 				{
-					Id:        md3.Id,
-					Tenant:    1,
-					Shard:     1,
-					MinTime:   minT,
-					MaxTime:   maxT,
-					CreatedBy: 2,
-					Datasets: []*metastorev1.Dataset{
-						{Tenant: 1, Name: 3, ProfileTypes: []int32{4, 5, 6}, MinTime: minT, MaxTime: minT},
-					},
-					StringTable: []string{"", "tenant-a", "ingester", "dataset-a", "1", "2", "3"},
+					Id:          md3.Id,
+					Tenant:      1,
+					Shard:       1,
+					MinTime:     minT,
+					MaxTime:     maxT,
+					CreatedBy:   2,
+					Datasets:    []*metastorev1.Dataset{{Tenant: 1, Name: 3, MinTime: minT, MaxTime: minT}},
+					StringTable: []string{"", "tenant-a", "ingester", "dataset-a"},
 				},
 			}
 
@@ -159,6 +154,27 @@ func TestIndex_Query(t *testing.T) {
 			}))
 			require.NoError(t, err)
 			require.Empty(t, found)
+		})
+
+		t.Run("Labels", func(t *testing.T) {
+			labels, err := index.QueryMetadataLabels(tx, MetadataLabelQuery{
+				Labels: []string{
+					model.LabelNameProfileType,
+					model.LabelNameServiceName,
+				},
+				MetadataQuery: MetadataQuery{
+					Expr:      `{service_name=~"dataset.*"}`,
+					StartTime: time.UnixMilli(minT),
+					EndTime:   time.UnixMilli(maxT),
+					Tenant:    []string{"tenant-a"},
+				},
+			})
+			require.NoError(t, err)
+			require.NotEmpty(t, labels)
+			assert.Equal(t, []*typesv1.Labels{{Labels: []*typesv1.LabelPair{
+				{Name: model.LabelNameProfileType, Value: "1"},
+				{Name: model.LabelNameServiceName, Value: "dataset-a"},
+			}}}, labels)
 		})
 	}
 
