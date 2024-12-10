@@ -1,4 +1,3 @@
-version: '3'
 services:
   pyroscope:
     image: grafana/pyroscope:latest
