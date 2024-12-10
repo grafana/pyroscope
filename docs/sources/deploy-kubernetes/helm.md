@@ -128,9 +128,13 @@ Use a custom namespace so that you don't have to overwrite the default namespace
      --set env.GF_AUTH_ANONYMOUS_ORG_ROLE=Admin \
      --set env.GF_DIAGNOSTICS_PROFILING_ENABLED=true \
      --set env.GF_DIAGNOSTICS_PROFILING_ADDR=0.0.0.0 \
-     --set env.GF_DIAGNOSTICS_PROFILING_PORT=6060 \
-     --set-string 'podAnnotations.pyroscope\.grafana\.com/scrape=true' \
-     --set-string 'podAnnotations.pyroscope\.grafana\.com/port=6060'
+     --set env.GF_DIAGNOSTICS_PROFILING_PORT=9094 \
+     --set-string 'podAnnotations.profiles\.grafana\.com/cpu\.scrape=true' \
+     --set-string 'podAnnotations.profiles\.grafana\.com/cpu\.port=9094' \
+     --set-string 'podAnnotations.profiles\.grafana\.com/memory\.scrape=true' \
+     --set-string 'podAnnotations.profiles\.grafana\.com/memory\.port=9094' \
+     --set-string 'podAnnotations.profiles\.grafana\.com/goroutine\.scrape=true' \
+     --set-string 'podAnnotations.profiles\.grafana\.com/goroutine\.port=9094'
    ```
 
    For details, see [Deploy Grafana on Kubernetes](/docs/grafana/latest/setup-grafana/installation/kubernetes/).
