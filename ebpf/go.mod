@@ -1,6 +1,6 @@
 module github.com/grafana/pyroscope/ebpf
 
-go 1.22.7
+go 1.22
 
 require (
 	connectrpc.com/connect v1.16.2
