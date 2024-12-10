@@ -97,11 +97,8 @@ func (k counterKey) compare(x counterKey) int {
 	if c := strings.Compare(k.dataset, x.dataset); c != 0 {
 		return c
 	}
-	if k.shard.id < x.shard.id {
-		return -1
-	}
-	if k.shard.id > x.shard.id {
-		return 1
+	if k.shard.id != x.shard.id {
+		return int(k.shard.id) - int(x.shard.id)
 	}
 	return strings.Compare(k.shard.owner, x.shard.owner)
 }

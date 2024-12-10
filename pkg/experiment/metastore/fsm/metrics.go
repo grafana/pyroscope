@@ -10,7 +10,7 @@ import (
 
 type metrics struct {
 	boltDBPersistSnapshotDuration prometheus.Histogram
-	boltDBPersistSnapshotSize     prometheus.Histogram
+	boltDBPersistSnapshotSize     prometheus.Gauge
 	boltDBRestoreSnapshotDuration prometheus.Histogram
 	fsmRestoreSnapshotDuration    prometheus.Histogram
 	fsmApplyCommandSize           *prometheus.HistogramVec
@@ -28,11 +28,8 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			NativeHistogramMinResetDuration: time.Hour,
 		}),
 
-		boltDBPersistSnapshotSize: prometheus.NewHistogram(prometheus.HistogramOpts{
-			Name:                            "boltdb_persist_snapshot_size_bytes",
-			NativeHistogramBucketFactor:     1.1,
-			NativeHistogramMaxBucketNumber:  100,
-			NativeHistogramMinResetDuration: time.Hour,
+		boltDBPersistSnapshotSize: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "boltdb_persist_snapshot_size_bytes",
 		}),
 
 		boltDBRestoreSnapshotDuration: prometheus.NewHistogram(prometheus.HistogramOpts{

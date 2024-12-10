@@ -15,7 +15,7 @@ import (
 	"github.com/thanos-io/objstore"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	segmentstorage "github.com/grafana/pyroscope/pkg/experiment/ingester/storage"
+	"github.com/grafana/pyroscope/pkg/experiment/block"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode"
 )
 
@@ -91,7 +91,7 @@ func (r *Recovery) recoverLoop(ctx context.Context) {
 }
 
 func (r *Recovery) recoverTick(ctx context.Context) {
-	err := r.bucket.Iter(ctx, segmentstorage.PathDLQ, func(metaPath string) error {
+	err := r.bucket.Iter(ctx, block.DirNameDLQ, func(metaPath string) error {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}

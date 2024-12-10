@@ -10,24 +10,27 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/grafana/dskit/flagext"
-
-	"github.com/grafana/pyroscope/pkg/experiment/metastore"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mockdlq"
-
 	gprofile "github.com/google/pprof/profile"
+	"github.com/grafana/dskit/flagext"
+	model2 "github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/util/testutil"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingesterv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/block"
 	"github.com/grafana/pyroscope/pkg/experiment/ingester/memdb"
 	testutil2 "github.com/grafana/pyroscope/pkg/experiment/ingester/memdb/testutil"
-	segmentstorage "github.com/grafana/pyroscope/pkg/experiment/ingester/storage"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/dlq"
 	metastoretest "github.com/grafana/pyroscope/pkg/experiment/metastore/test"
 	"github.com/grafana/pyroscope/pkg/model"
@@ -37,16 +40,10 @@ import (
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	testutil3 "github.com/grafana/pyroscope/pkg/phlaredb/block/testutil"
 	pprofth "github.com/grafana/pyroscope/pkg/pprof/testhelper"
+	"github.com/grafana/pyroscope/pkg/test/mocks/mockdlq"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockmetastorev1"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockobjstore"
 	"github.com/grafana/pyroscope/pkg/validation"
-
-	model2 "github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/util/testutil"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/atomic"
 )
 
 func TestSegmentIngest(t *testing.T) {
@@ -155,11 +152,11 @@ func TestBusyIngestLoop(t *testing.T) {
 	readCtx, readCancel := context.WithCancel(context.Background())
 	metaChan := make(chan *metastorev1.BlockMeta)
 	defer sw.Stop()
-	cnt := atomic.NewInt32(0)
+	var cnt atomic.Int32
 	sw.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
 		Run(func(args mock.Arguments) {
 			metaChan <- args.Get(1).(*metastorev1.AddBlockRequest).Block
-			if cnt.Inc() == 3 {
+			if cnt.Add(1) == 3 {
 				writeCancel()
 			}
 		}).Return(new(metastorev1.AddBlockResponse), nil)
@@ -234,10 +231,10 @@ func TestDLQFail(t *testing.T) {
 	l := testutil.NewLogger(t)
 	bucket := mockobjstore.NewMockBucket(t)
 	bucket.On("Upload", mock.Anything, mock.MatchedBy(func(name string) bool {
-		return segmentstorage.IsSegmentPath(name)
+		return isSegmentPath(name)
 	}), mock.Anything).Return(nil)
 	bucket.On("Upload", mock.Anything, mock.MatchedBy(func(name string) bool {
-		return segmentstorage.IsDLQPath(name)
+		return isDLQPath(name)
 	}), mock.Anything).Return(fmt.Errorf("mock upload DLQ error"))
 	client := mockmetastorev1.NewMockIndexServiceClient(t)
 	client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
@@ -501,19 +498,20 @@ func defaultTestConfig() Config {
 func (sw *sw) createBlocksFromMetas(blocks []*metastorev1.BlockMeta) tenantClients {
 	dir := sw.t.TempDir()
 	for _, meta := range blocks {
-		blobReader, err := sw.bucket.Get(context.Background(), segmentstorage.PathForSegment(meta))
+		blobReader, err := sw.bucket.Get(context.Background(), block.ObjectPath(meta))
 		require.NoError(sw.t, err)
 		blob, err := io.ReadAll(blobReader)
 		require.NoError(sw.t, err)
 
-		for _, ts := range meta.Datasets {
-			profiles := blob[ts.TableOfContents[0]:ts.TableOfContents[1]]
-			tsdb := blob[ts.TableOfContents[1]:ts.TableOfContents[2]]
-			symbols := blob[ts.TableOfContents[2] : ts.TableOfContents[0]+ts.Size]
+		for _, ds := range meta.Datasets {
+			tenant := meta.StringTable[ds.Tenant]
+			profiles := blob[ds.TableOfContents[0]:ds.TableOfContents[1]]
+			tsdb := blob[ds.TableOfContents[1]:ds.TableOfContents[2]]
+			symbols := blob[ds.TableOfContents[2] : ds.TableOfContents[0]+ds.Size]
 			testutil3.CreateBlockFromMemory(sw.t,
-				filepath.Join(dir, ts.TenantId),
-				model2.TimeFromUnixNano(ts.MinTime*1e6), //todo  do not use 1e6, add comments to minTime clarifying the unit
-				model2.TimeFromUnixNano(ts.MaxTime*1e6),
+				filepath.Join(dir, tenant),
+				model2.TimeFromUnixNano(ds.MinTime*1e6), //todo  do not use 1e6, add comments to minTime clarifying the unit
+				model2.TimeFromUnixNano(ds.MaxTime*1e6),
 				profiles,
 				tsdb,
 				symbols,
@@ -524,10 +522,10 @@ func (sw *sw) createBlocksFromMetas(blocks []*metastorev1.BlockMeta) tenantClien
 	res := make(tenantClients)
 	for _, meta := range blocks {
 		for _, ds := range meta.Datasets {
-			tenant := ds.TenantId
+			tenant := meta.StringTable[ds.Tenant]
 			if _, ok := res[tenant]; !ok {
 				// todo consider not using BlockQuerier for tests
-				blockBucket, err := filesystem.NewBucket(filepath.Join(dir, ds.TenantId))
+				blockBucket, err := filesystem.NewBucket(filepath.Join(dir, tenant))
 				blockQuerier := phlaredb.NewBlockQuerier(context.Background(), blockBucket)
 
 				err = blockQuerier.Sync(context.Background())
@@ -655,9 +653,8 @@ func (sw *sw) getMetadataDLQ() []*metastorev1.BlockMeta {
 	objects := sw.bucket.Objects()
 	dlqFiles := []string{}
 	for s := range objects {
-		if segmentstorage.IsDLQPath(s) {
+		if isDLQPath(s) {
 			dlqFiles = append(dlqFiles, s)
-		} else {
 		}
 	}
 	slices.Sort(dlqFiles)
@@ -923,4 +920,20 @@ func (g *timestampGenerator) next() int {
 			return int(ts)
 		}
 	}
+}
+
+func isDLQPath(p string) bool {
+	fs := strings.Split(p, "/")
+	return len(fs) == 5 &&
+		fs[0] == block.DirNameDLQ &&
+		fs[2] == block.DirNameAnonTenant &&
+		fs[4] == block.FileNameMetadataObject
+}
+
+func isSegmentPath(p string) bool {
+	fs := strings.Split(p, "/")
+	return len(fs) == 5 &&
+		fs[0] == block.DirNameSegment &&
+		fs[2] == block.DirNameAnonTenant &&
+		fs[4] == block.FileNameDataObject
 }

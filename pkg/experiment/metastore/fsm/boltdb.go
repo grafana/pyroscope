@@ -16,7 +16,10 @@ import (
 const (
 	boltDBFileName        = "metastore.boltdb"
 	boltDBSnapshotName    = "metastore_snapshot.boltdb"
+	boltDBCompactedName   = "metastore_compacted.boltdb"
 	boltDBInitialMmapSize = 1 << 30
+
+	boltDBCompactionMaxTxnSize = 64 << 10
 )
 
 type boltdb struct {
@@ -65,7 +68,11 @@ func (db *boltdb) open(readOnly bool) (err error) {
 	// open is called with readOnly=true to verify the snapshot integrity.
 	opts.ReadOnly = readOnly
 	opts.PreLoadFreelist = !readOnly
-	opts.InitialMmapSize = boltDBInitialMmapSize
+	if !readOnly {
+		// If we open the DB for restoration/compaction, we don't need
+		// a large mmap size as no writes are performed.
+		opts.InitialMmapSize = boltDBInitialMmapSize
+	}
 	// Because of the nature of the metastore, we do not need to sync
 	// the database: the state is always restored from the snapshot.
 	opts.NoSync = true
@@ -82,10 +89,10 @@ func (db *boltdb) open(readOnly bool) (err error) {
 func (db *boltdb) shutdown() {
 	if db.boltdb != nil {
 		if err := db.boltdb.Sync(); err != nil {
-			_ = level.Error(db.logger).Log("msg", "failed to sync database", "err", err)
+			level.Error(db.logger).Log("msg", "failed to sync database", "err", err)
 		}
 		if err := db.boltdb.Close(); err != nil {
-			_ = level.Error(db.logger).Log("msg", "failed to close database", "err", err)
+			level.Error(db.logger).Log("msg", "failed to close database", "err", err)
 		}
 	}
 }
@@ -96,22 +103,38 @@ func (db *boltdb) restore(snapshot io.Reader) error {
 		db.metrics.boltDBRestoreSnapshotDuration.Observe(time.Since(start).Seconds())
 	}()
 	// Snapshot is a full copy of the database, therefore we copy
-	// it on disk and use it instead of the current database.
+	// it on disk, compact, and use it instead of the current database.
+	// Compacting the snapshot is necessary to reclaim the space
+	// that the source database no longer has use for. This is rather
+	// wasteful to do it at restoration time, but it helps to reduce
+	// the footprint and latencies caused by the snapshot capturing.
+	// Ideally, this should be done in the background, outside the
+	// snapshot-restore path; however, this will require broad locks
+	// and will impact the transactions.
 	path, err := db.copySnapshot(snapshot)
 	if err == nil {
-		// First check the snapshot.
-		restored := *db
-		restored.path = path
-		err = restored.open(true)
-		// Also check applied index.
+		restored := &boltdb{
+			logger:  db.logger,
+			metrics: db.metrics,
+			dir:     db.dir,
+			path:    path,
+		}
+		// Open in Read-Only mode.
+		if err = restored.open(true); err == nil {
+			var compacted *boltdb
+			if compacted, err = restored.compact(); err == nil {
+				path = compacted.path
+			}
+		}
 		restored.shutdown()
+		err = os.RemoveAll(restored.path)
 	}
 	if err != nil {
 		return fmt.Errorf("failed to restore snapshot: %w", err)
 	}
 	// Note that we do not keep the previous database: in case if the
 	// snapshot is corrupted, we should try another one.
-	return db.openSnapshot(path)
+	return db.openPath(path)
 }
 
 func (db *boltdb) copySnapshot(snapshot io.Reader) (path string, err error) {
@@ -127,7 +150,36 @@ func (db *boltdb) copySnapshot(snapshot io.Reader) (path string, err error) {
 	return path, err
 }
 
-func (db *boltdb) openSnapshot(path string) (err error) {
+func (db *boltdb) compact() (compacted *boltdb, err error) {
+	level.Info(db.logger).Log("msg", "compacting snapshot")
+	src := db.boltdb
+	compacted = &boltdb{
+		logger:  db.logger,
+		metrics: db.metrics,
+		dir:     db.dir,
+		path:    filepath.Join(db.dir, boltDBCompactedName),
+	}
+	if err = compacted.open(false); err != nil {
+		return nil, fmt.Errorf("failed to create db for compaction: %w", err)
+	}
+	defer compacted.shutdown()
+	dst := compacted.boltdb
+	if err = bbolt.Compact(dst, src, boltDBCompactionMaxTxnSize); err != nil {
+		return nil, fmt.Errorf("failed to compact db: %w", err)
+	}
+	level.Info(db.logger).Log("msg", "boltdb compaction ratio", "ratio", float64(compacted.size())/float64(db.size()))
+	return compacted, nil
+}
+
+func (db *boltdb) size() int64 {
+	fi, err := os.Stat(db.path)
+	if err != nil {
+		return 0
+	}
+	return fi.Size()
+}
+
+func (db *boltdb) openPath(path string) (err error) {
 	db.shutdown()
 	if err = os.Rename(path, db.path); err != nil {
 		return err

@@ -88,8 +88,8 @@ func printPlan(w io.Writer, pad string, n *queryv1.QueryNode, debug bool) {
 		}
 
 	case queryv1.QueryNode_READ:
-		for _, block := range n.Blocks {
-			_, _ = fmt.Fprintf(w, pad+"\t"+"id:\"%s\"\n", block.Id)
+		for _, md := range n.Blocks {
+			_, _ = fmt.Fprintf(w, pad+"\t"+"id:\"%s\"\n", md.Id)
 		}
 
 	default:

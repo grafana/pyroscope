@@ -2,14 +2,11 @@ package metastore
 
 import (
 	"context"
-	"fmt"
-	"slices"
-	"strings"
+	"errors"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/promql/parser"
 	"go.etcd.io/bbolt"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -17,13 +14,19 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode"
-	"github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/iter"
 )
 
 type IndexQuerier interface {
-	FindBlocks(tx *bbolt.Tx, list *metastorev1.BlockList) []*metastorev1.BlockMeta
-	FindBlocksInRange(tx *bbolt.Tx, start, end int64, tenants map[string]struct{}) []*metastorev1.BlockMeta
-	ForEachPartition(ctx context.Context, f func(*index.PartitionMeta) error) error
+	QueryMetadata(*bbolt.Tx, index.MetadataQuery) iter.Iterator[*metastorev1.BlockMeta]
+}
+
+type MetadataQueryService struct {
+	metastorev1.MetadataQueryServiceServer
+
+	logger log.Logger
+	state  State
+	index  IndexQuerier
 }
 
 func NewMetadataQueryService(
@@ -38,25 +41,12 @@ func NewMetadataQueryService(
 	}
 }
 
-type MetadataQueryService struct {
-	metastorev1.MetadataQueryServiceServer
-
-	logger log.Logger
-	state  State
-	index  IndexQuerier
-}
-
 func (svc *MetadataQueryService) QueryMetadata(
 	ctx context.Context,
 	req *metastorev1.QueryMetadataRequest,
 ) (resp *metastorev1.QueryMetadataResponse, err error) {
 	read := func(tx *bbolt.Tx, _ raftnode.ReadIndex) {
-		// NOTE(kolesnikovae): that there's a little chance that we read
-		// applied changes not yet committed by the quorum, because we
-		// ignore the read index. This is fine in 99.(9)% of cases.
-		// In the future we should ensure isolation that ensure that we
-		// do not access the state beyond the read index.
-		resp, err = svc.listBlocksForQuery(ctx, tx, req)
+		resp, err = svc.queryMetadata(ctx, tx, req)
 	}
 	if readErr := svc.state.ConsistentRead(ctx, read); readErr != nil {
 		return nil, status.Error(codes.Unavailable, readErr.Error())
@@ -64,108 +54,24 @@ func (svc *MetadataQueryService) QueryMetadata(
 	return resp, err
 }
 
-func (svc *MetadataQueryService) listBlocksForQuery(
-	_ context.Context, // TODO(kolesnikovae): Handle cancellation.
+func (svc *MetadataQueryService) queryMetadata(
+	_ context.Context,
 	tx *bbolt.Tx,
 	req *metastorev1.QueryMetadataRequest,
 ) (*metastorev1.QueryMetadataResponse, error) {
-	q, err := newMetadataQuery(req)
-	if err != nil {
+	metas, err := iter.Slice(svc.index.QueryMetadata(tx, index.MetadataQuery{
+		Expr:      req.Query,
+		StartTime: time.UnixMilli(req.StartTime),
+		EndTime:   time.UnixMilli(req.EndTime),
+		Tenant:    req.TenantId,
+	}))
+	if err == nil {
+		return &metastorev1.QueryMetadataResponse{Blocks: metas}, nil
+	}
+	var invalid *index.InvalidQueryError
+	if errors.As(err, &invalid) {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	var resp metastorev1.QueryMetadataResponse
-	md := make(map[string]*metastorev1.BlockMeta, 32)
-
-	blocks := svc.index.FindBlocksInRange(tx, q.startTime, q.endTime, q.tenants)
-	if err != nil {
-		level.Error(svc.logger).Log("msg", "failed to list metastore blocks", "query", q, "err", err)
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	for _, block := range blocks {
-		var clone *metastorev1.BlockMeta
-		for _, svc := range block.Datasets {
-			if q.matchService(svc) {
-				if clone == nil {
-					clone = cloneBlockForQuery(block)
-					md[clone.Id] = clone
-				}
-				clone.Datasets = append(clone.Datasets, svc)
-			}
-		}
-	}
-
-	resp.Blocks = make([]*metastorev1.BlockMeta, 0, len(md))
-	for _, block := range md {
-		resp.Blocks = append(resp.Blocks, block)
-	}
-	slices.SortFunc(resp.Blocks, func(a, b *metastorev1.BlockMeta) int {
-		return strings.Compare(a.Id, b.Id)
-	})
-	return &resp, nil
-}
-
-type metadataQuery struct {
-	startTime      int64
-	endTime        int64
-	tenants        map[string]struct{}
-	serviceMatcher *labels.Matcher
-}
-
-func (q *metadataQuery) String() string {
-	return fmt.Sprintf("start: %d, end: %d, tenants: %v, serviceMatcher: %v", q.startTime, q.endTime, q.tenants, q.serviceMatcher)
-}
-
-func newMetadataQuery(request *metastorev1.QueryMetadataRequest) (*metadataQuery, error) {
-	if len(request.TenantId) == 0 {
-		return nil, fmt.Errorf("tenant_id is required")
-	}
-	q := &metadataQuery{
-		startTime: request.StartTime,
-		endTime:   request.EndTime,
-		tenants:   make(map[string]struct{}, len(request.TenantId)),
-	}
-	for _, tenant := range request.TenantId {
-		q.tenants[tenant] = struct{}{}
-	}
-	selectors, err := parser.ParseMetricSelector(request.Query)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse label selectors: %w", err)
-	}
-	for _, m := range selectors {
-		if m.Name == model.LabelNameServiceName {
-			q.serviceMatcher = m
-			break
-		}
-	}
-	// We could also validate that the service has the profile type
-	// queried, but that's not really necessary: querying an irrelevant
-	// profile type is rather a rare/invalid case.
-	return q, nil
-}
-
-func (q *metadataQuery) matchService(s *metastorev1.Dataset) bool {
-	_, ok := q.tenants[s.TenantId]
-	if !ok {
-		return false
-	}
-	if !inRange(s.MinTime, s.MaxTime, q.startTime, q.endTime) {
-		return false
-	}
-	if q.serviceMatcher != nil {
-		return q.serviceMatcher.Matches(s.Name)
-	}
-	return true
-}
-
-func inRange(blockStart, blockEnd, queryStart, queryEnd int64) bool {
-	return blockStart <= queryEnd && blockEnd >= queryStart
-}
-
-func cloneBlockForQuery(b *metastorev1.BlockMeta) *metastorev1.BlockMeta {
-	datasets := b.Datasets
-	b.Datasets = nil
-	c := b.CloneVT()
-	b.Datasets = datasets
-	c.Datasets = make([]*metastorev1.Dataset, 0, len(b.Datasets))
-	return c
+	level.Error(svc.logger).Log("msg", "failed to query metadata", "err", err)
+	return nil, status.Error(codes.Internal, err.Error())
 }

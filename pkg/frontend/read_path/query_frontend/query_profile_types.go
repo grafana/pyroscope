@@ -31,7 +31,7 @@ func (q *QueryFrontend) ProfileTypes(
 		return connect.NewResponse(&querierv1.ProfileTypesResponse{}), nil
 	}
 
-	md, err := q.metadataQueryClient.QueryMetadata(ctx, &metastorev1.QueryMetadataRequest{
+	resp, err := q.metadataQueryClient.QueryMetadata(ctx, &metastorev1.QueryMetadataRequest{
 		TenantId:  tenants,
 		StartTime: req.Msg.Start,
 		EndTime:   req.Msg.End,
@@ -43,15 +43,16 @@ func (q *QueryFrontend) ProfileTypes(
 	}
 
 	pTypesFromMetadata := make(map[string]*typesv1.ProfileType)
-	for _, b := range md.Blocks {
-		for _, d := range b.Datasets {
-			for _, pType := range d.ProfileTypes {
-				if _, ok := pTypesFromMetadata[pType]; !ok {
-					profileType, err := phlaremodel.ParseProfileTypeSelector(pType)
+	for _, md := range resp.Blocks {
+		for _, ds := range md.Datasets {
+			for _, p := range ds.ProfileTypes {
+				t := md.StringTable[p]
+				if _, ok := pTypesFromMetadata[t]; !ok {
+					profileType, err := phlaremodel.ParseProfileTypeSelector(t)
 					if err != nil {
 						return nil, err
 					}
-					pTypesFromMetadata[pType] = profileType
+					pTypesFromMetadata[t] = profileType
 				}
 			}
 		}

@@ -10,7 +10,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
-	"github.com/grafana/pyroscope/pkg/experiment/query_backend/block"
+	"github.com/grafana/pyroscope/pkg/experiment/block"
 )
 
 // TODO(kolesnikovae): We have a procedural definition of our queries,
