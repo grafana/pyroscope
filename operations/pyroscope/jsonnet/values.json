@@ -65,10 +65,7 @@
     "persistence": {
       "size": "5Gi"
     },
-    "podAnnotations": {
-      "phlare.grafana.com/port": "9000",
-      "phlare.grafana.com/scrape": "true"
-    },
+    "podAnnotations": {},
     "replicas": 1,
     "resources": {
       "requests": {

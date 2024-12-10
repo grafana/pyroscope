@@ -243,9 +243,7 @@ minio:
     requests:
       cpu: 100m
       memory: 128Mi
-  podAnnotations:
-    phlare.grafana.com/scrape: "true"
-    phlare.grafana.com/port: "9000"
+  podAnnotations: {}
 
 ingress:
   enabled: false

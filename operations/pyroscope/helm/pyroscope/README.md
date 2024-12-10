@@ -27,7 +27,7 @@
 | alloy | object | `{"alloy":{"clustering":{"enabled":true},"configMap":{"create":false,"name":"alloy-config-pyroscope"},"stabilityLevel":"public-preview"},"controller":{"podAnnotations":{"profiles.grafana.com/cpu.port_name":"http-metrics","profiles.grafana.com/cpu.scrape":"true","profiles.grafana.com/goroutine.port_name":"http-metrics","profiles.grafana.com/goroutine.scrape":"true","profiles.grafana.com/memory.port_name":"http-metrics","profiles.grafana.com/memory.scrape":"true"},"replicas":1,"type":"statefulset"},"enabled":true}` | ----------------------------------- |
 | ingress.className | string | `""` |  |
 | ingress.enabled | bool | `false` |  |
-| minio | object | `{"buckets":[{"name":"grafana-pyroscope-data","policy":"none","purge":false}],"drivesPerNode":2,"enabled":false,"persistence":{"size":"5Gi"},"podAnnotations":{"phlare.grafana.com/port":"9000","phlare.grafana.com/scrape":"true"},"replicas":1,"resources":{"requests":{"cpu":"100m","memory":"128Mi"}},"rootPassword":"supersecret","rootUser":"grafana-pyroscope"}` | ----------------------------------- |
+| minio | object | `{"buckets":[{"name":"grafana-pyroscope-data","policy":"none","purge":false}],"drivesPerNode":2,"enabled":false,"persistence":{"size":"5Gi"},"podAnnotations":{},"replicas":1,"resources":{"requests":{"cpu":"100m","memory":"128Mi"}},"rootPassword":"supersecret","rootUser":"grafana-pyroscope"}` | ----------------------------------- |
 | pyroscope.affinity | object | `{}` |  |
 | pyroscope.cluster_domain | string | `".cluster.local."` | Kubernetes cluster domain suffix for DNS discovery |
 | pyroscope.components | object | `{}` |  |
