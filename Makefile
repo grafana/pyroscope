@@ -322,7 +322,7 @@ $(BIN)/gomodifytags: Makefile go.mod
 
 $(BIN)/kind: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install sigs.k8s.io/kind@v0.17.0
+	GOBIN=$(abspath $(@D)) $(GO) install sigs.k8s.io/kind@v0.25.0
 
 $(BIN)/tk: Makefile go.mod $(BIN)/jb
 	@mkdir -p $(@D)
@@ -440,7 +440,7 @@ deploy: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
 .PHONY: deploy-micro-services
 deploy-micro-services: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
 	# Ensure to delete existing service, that has been created manually by the deploy target
-	kubectl delete svc --field-selector metadata.name=pyroscope-micro-services-query-frontend -l app.kubernetes.io/managed-by!=Helm
+	kubectl delete svc --field-selector metadata.name=pyroscope-micro-services-query-frontend -l app.kubernetes.io/managed-by!=Helm || true
 	$(call deploy,pyroscope-micro-services,--values=operations/pyroscope/helm/pyroscope/values-micro-services.yaml --set pyroscope.components.querier.resources=null --set pyroscope.components.distributor.resources=null --set pyroscope.components.ingester.resources=null --set pyroscope.components.store-gateway.resources=null --set pyroscope.components.compactor.resources=null)
 
 .PHONY: deploy-monitoring
