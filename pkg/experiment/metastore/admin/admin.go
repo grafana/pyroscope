@@ -191,7 +191,7 @@ func findCurrentTerm(nodes []*metastoreNode) uint64 {
 	// TODO aleks-p: in case of a mismatch in reported current terms, we bypass any validation
 	term := uint64(math.MaxUint64)
 	if len(terms) == 1 {
-		for k, _ := range terms {
+		for k := range terms {
 			term = k
 		}
 	}
