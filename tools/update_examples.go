@@ -9,17 +9,15 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
-
-	"github.com/grafana/regexp"
 )
 
 var ghToken string
 
-// this program requires gh cli, bundle, go to be installed
-// todo run it by cron & create a PR if needed
+// this program requires ruby, bundle, yarn, go to be installed
 func main() {
 
 	getGHToken()
@@ -34,7 +32,7 @@ func main() {
 }
 
 func getGHToken() {
-	ghToken, _ = s.sh("gh auth token")
+	ghToken = os.Getenv("GITHUB_TOKEN")
 }
 
 func extractNodeJSVersion(tag Tag) *version {
