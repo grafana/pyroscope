@@ -2948,8 +2948,6 @@ spec:
       annotations:
         checksum/secrets: 2e760de5dbcac8daf468cd56713bca0aac7d7adc4445e2488b352dbb2b529507
         checksum/config: 925d78a7321daaaa06a6dc4ee47dbaf5b8952be192bdbb57f13805ad472ce4e1
-        phlare.grafana.com/port: "9000"
-        phlare.grafana.com/scrape: "true"
     spec:
       securityContext:
         runAsUser: 1000

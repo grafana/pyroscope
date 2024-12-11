@@ -115,7 +115,7 @@ pyroscope:
 
   ## ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
   ## If you set enabled as "True", you need :
-  ## - create a pv which above 10Gi and has same namespace with phlare
+  ## - create a pv which above 10Gi and has same namespace with pyroscope
   ## - keep storageClassName same with below setting
   persistence:
     enabled: false
@@ -125,7 +125,7 @@ pyroscope:
     annotations: {}
     # selector:
     #   matchLabels:
-    #     app.kubernetes.io/name: phlare
+    #     app.kubernetes.io/name: pyroscope
     # subPath: ""
     # existingClaim:
 
@@ -243,9 +243,7 @@ minio:
     requests:
       cpu: 100m
       memory: 128Mi
-  podAnnotations:
-    phlare.grafana.com/scrape: "true"
-    phlare.grafana.com/port: "9000"
+  podAnnotations: {}
 
 ingress:
   enabled: false
