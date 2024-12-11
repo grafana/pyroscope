@@ -33,7 +33,7 @@ GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH) -X $(VPREFIX).Version=$(IMAGE
 GO_GCFLAGS_DEBUG := all="-N -l"
 
 # Folders with go.mod file
-GO_MOD_PATHS := api/ ebpf/ examples/language-sdk-instrumentation/golang-push/rideshare examples/language-sdk-instrumentation/golang-push/simple/
+GO_MOD_PATHS := api/ ebpf/ examples/language-sdk-instrumentation/golang-push/rideshare examples/language-sdk-instrumentation/golang-push/rideshare-alloy examples/language-sdk-instrumentation/golang-push/rideshare-k6 examples/language-sdk-instrumentation/golang-push/simple/ examples/tracing/golang-push/ examples/golang-pgo/
 
 # Add extra arguments to helm commands
 HELM_ARGS =
@@ -164,12 +164,12 @@ go/mod_tidy_root:
 	# doesn't work for go workspace
 	# GO111MODULE=on go mod verify
 	go work sync
-	GO111MODULE=on go mod tidy
+	GO111MODULE=on go mod tidy -go 1.22
 
 .PHONY: go/mod_tidy/%
 go/mod_tidy/%: go/mod_tidy_root
 	cd "$*" && GO111MODULE=on go mod download
-	cd "$*" && GO111MODULE=on go mod tidy
+	cd "$*" && GO111MODULE=on go mod tidy -go 1.22
 
 .PHONY: fmt
 fmt: $(BIN)/golangci-lint $(BIN)/buf $(BIN)/tk ## Automatically fix some lint errors
