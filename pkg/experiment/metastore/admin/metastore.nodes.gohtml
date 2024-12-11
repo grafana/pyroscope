@@ -55,16 +55,30 @@
             </div>
         </div>
         <div class="row my-3">
+            <h2>
+                Observed Leaders
+                <span
+                        class="text-info ms-2"
+                        data-bs-toggle="tooltip"
+                        data-bs-placement="top"
+                        title="Lists the leaders reported by individual Raft nodes, as well how many times each leader was observed. In a healthy cluster this should show a single leader."
+                >
+                <i class="bi bi-info-circle"></i>
+            </span>
+            </h2>
+            {{ range $server, $count := .Raft.ObservedLeaders }}
             <div class="col-12">
                 <div class="alert alert-success" role="alert">
-                    Current leader is <strong>{{ .Raft.LeaderId }}</strong>
+                    <strong>{{ $server }}</strong> <span class="badge rounded-pill text-bg-info">{{ $count }}</span>
                 </div>
             </div>
+            {{ end }}
         </div>
 
         <div class="row gy-4">
             <h2>Nodes</h2>
             <form action="" method="POST">
+                <input type="hidden" name="current-term" value="{{ .Raft.CurrentTerm }}">
                 {{ $numNodes := .Raft.NumNodes }}
                 {{ range $index, $node := .Raft.Nodes }}
                 <div class="col-12">
@@ -102,15 +116,19 @@
                             </div>
                             <div class="card-detail-row">
                                 <div class="card-detail-label">Observed Leader:</div>
-                                {{ $observedLeader := $node.ObservedLeader }}
-                                {{ if eq $observedLeader ""}}
-                                    {{ $observedLeader = "n/a "}}
+                                {{ $leaderId := $node.LeaderId }}
+                                {{ if eq $leaderId ""}}
+                                    {{ $leaderId = "n/a "}}
                                 {{ end }}
-                                <div class="card-detail-value">{{ $observedLeader }} (term {{ $node.CurrentTerm }})</div>
+                                <div class="card-detail-value">{{ $leaderId }} (term {{ $node.CurrentTerm }})</div>
                             </div>
                             <div class="card-detail-row">
                                 <div class="card-detail-label">Commit / Applied / Last Index:</div>
                                 <div class="card-detail-value">{{ $node.CommitIndex }} / {{ $node.AppliedIndex }} / {{ $node.LastIndex }}</div>
+                            </div>
+                            <div class="card-detail-row">
+                                <div class="card-detail-label">Peers:</div>
+                                <div class="card-detail-value">{{ $node.NumPeers }} (config index {{ $node.ConfigIndex }})</div>
                             </div>
                             <div class="card-detail-row">
                                 <div class="card-detail-label">Stats:</div>
@@ -149,9 +167,9 @@
                                 <button class="btn btn-warning me-2" name="demote" value="{{ $node.RaftServerId }}" type="submit">Demote</button>
                                 {{ end }}
                             </div>
-                            {{ if and $node.Member (gt $numNodes 1) }}
+                            {{ if and (and $node.Member (gt $numNodes 1)) (ne $node.State "Leader") }}
                             <div>
-                                <button class="btn btn-danger center" name="remove" value="{{ $node.RaftServerId }}" type="submit">Remove</button>
+                                <button class="btn btn-danger center" name="remove" value="{{ $node.RaftServerId }}" type="submit">Leave Cluster</button>
                             </div>
                             {{ end }}
                         </div>
@@ -191,6 +209,8 @@
     </div>
 </footer>
 <script type="text/javascript">
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
 </script>
 </body>
 </html>

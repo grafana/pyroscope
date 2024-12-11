@@ -67,10 +67,10 @@ var (
 type RaftNodeServiceClient interface {
 	ReadIndex(context.Context, *connect.Request[raftnodepb.ReadIndexRequest]) (*connect.Response[raftnodepb.ReadIndexResponse], error)
 	NodeInfo(context.Context, *connect.Request[raftnodepb.NodeInfoRequest]) (*connect.Response[raftnodepb.NodeInfoResponse], error)
-	RemoveNode(context.Context, *connect.Request[raftnodepb.RemoveNodeRequest]) (*connect.Response[raftnodepb.RemoveNodeResponse], error)
-	AddNode(context.Context, *connect.Request[raftnodepb.AddNodeRequest]) (*connect.Response[raftnodepb.AddNodeResponse], error)
-	DemoteLeader(context.Context, *connect.Request[raftnodepb.DemoteLeaderRequest]) (*connect.Response[raftnodepb.DemoteLeaderResponse], error)
-	PromoteToLeader(context.Context, *connect.Request[raftnodepb.PromoteToLeaderRequest]) (*connect.Response[raftnodepb.PromoteToLeaderResponse], error)
+	RemoveNode(context.Context, *connect.Request[raftnodepb.NodeChangeRequest]) (*connect.Response[raftnodepb.NodeChangeResponse], error)
+	AddNode(context.Context, *connect.Request[raftnodepb.NodeChangeRequest]) (*connect.Response[raftnodepb.NodeChangeResponse], error)
+	DemoteLeader(context.Context, *connect.Request[raftnodepb.NodeChangeRequest]) (*connect.Response[raftnodepb.NodeChangeResponse], error)
+	PromoteToLeader(context.Context, *connect.Request[raftnodepb.NodeChangeRequest]) (*connect.Response[raftnodepb.NodeChangeResponse], error)
 }
 
 // NewRaftNodeServiceClient constructs a client for the raft_node.RaftNodeService service. By
@@ -95,25 +95,25 @@ func NewRaftNodeServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(raftNodeServiceNodeInfoMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
-		removeNode: connect.NewClient[raftnodepb.RemoveNodeRequest, raftnodepb.RemoveNodeResponse](
+		removeNode: connect.NewClient[raftnodepb.NodeChangeRequest, raftnodepb.NodeChangeResponse](
 			httpClient,
 			baseURL+RaftNodeServiceRemoveNodeProcedure,
 			connect.WithSchema(raftNodeServiceRemoveNodeMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
-		addNode: connect.NewClient[raftnodepb.AddNodeRequest, raftnodepb.AddNodeResponse](
+		addNode: connect.NewClient[raftnodepb.NodeChangeRequest, raftnodepb.NodeChangeResponse](
 			httpClient,
 			baseURL+RaftNodeServiceAddNodeProcedure,
 			connect.WithSchema(raftNodeServiceAddNodeMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
-		demoteLeader: connect.NewClient[raftnodepb.DemoteLeaderRequest, raftnodepb.DemoteLeaderResponse](
+		demoteLeader: connect.NewClient[raftnodepb.NodeChangeRequest, raftnodepb.NodeChangeResponse](
 			httpClient,
 			baseURL+RaftNodeServiceDemoteLeaderProcedure,
 			connect.WithSchema(raftNodeServiceDemoteLeaderMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
-		promoteToLeader: connect.NewClient[raftnodepb.PromoteToLeaderRequest, raftnodepb.PromoteToLeaderResponse](
+		promoteToLeader: connect.NewClient[raftnodepb.NodeChangeRequest, raftnodepb.NodeChangeResponse](
 			httpClient,
 			baseURL+RaftNodeServicePromoteToLeaderProcedure,
 			connect.WithSchema(raftNodeServicePromoteToLeaderMethodDescriptor),
@@ -126,10 +126,10 @@ func NewRaftNodeServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 type raftNodeServiceClient struct {
 	readIndex       *connect.Client[raftnodepb.ReadIndexRequest, raftnodepb.ReadIndexResponse]
 	nodeInfo        *connect.Client[raftnodepb.NodeInfoRequest, raftnodepb.NodeInfoResponse]
-	removeNode      *connect.Client[raftnodepb.RemoveNodeRequest, raftnodepb.RemoveNodeResponse]
-	addNode         *connect.Client[raftnodepb.AddNodeRequest, raftnodepb.AddNodeResponse]
-	demoteLeader    *connect.Client[raftnodepb.DemoteLeaderRequest, raftnodepb.DemoteLeaderResponse]
-	promoteToLeader *connect.Client[raftnodepb.PromoteToLeaderRequest, raftnodepb.PromoteToLeaderResponse]
+	removeNode      *connect.Client[raftnodepb.NodeChangeRequest, raftnodepb.NodeChangeResponse]
+	addNode         *connect.Client[raftnodepb.NodeChangeRequest, raftnodepb.NodeChangeResponse]
+	demoteLeader    *connect.Client[raftnodepb.NodeChangeRequest, raftnodepb.NodeChangeResponse]
+	promoteToLeader *connect.Client[raftnodepb.NodeChangeRequest, raftnodepb.NodeChangeResponse]
 }
 
 // ReadIndex calls raft_node.RaftNodeService.ReadIndex.
@@ -143,22 +143,22 @@ func (c *raftNodeServiceClient) NodeInfo(ctx context.Context, req *connect.Reque
 }
 
 // RemoveNode calls raft_node.RaftNodeService.RemoveNode.
-func (c *raftNodeServiceClient) RemoveNode(ctx context.Context, req *connect.Request[raftnodepb.RemoveNodeRequest]) (*connect.Response[raftnodepb.RemoveNodeResponse], error) {
+func (c *raftNodeServiceClient) RemoveNode(ctx context.Context, req *connect.Request[raftnodepb.NodeChangeRequest]) (*connect.Response[raftnodepb.NodeChangeResponse], error) {
 	return c.removeNode.CallUnary(ctx, req)
 }
 
 // AddNode calls raft_node.RaftNodeService.AddNode.
-func (c *raftNodeServiceClient) AddNode(ctx context.Context, req *connect.Request[raftnodepb.AddNodeRequest]) (*connect.Response[raftnodepb.AddNodeResponse], error) {
+func (c *raftNodeServiceClient) AddNode(ctx context.Context, req *connect.Request[raftnodepb.NodeChangeRequest]) (*connect.Response[raftnodepb.NodeChangeResponse], error) {
 	return c.addNode.CallUnary(ctx, req)
 }
 
 // DemoteLeader calls raft_node.RaftNodeService.DemoteLeader.
-func (c *raftNodeServiceClient) DemoteLeader(ctx context.Context, req *connect.Request[raftnodepb.DemoteLeaderRequest]) (*connect.Response[raftnodepb.DemoteLeaderResponse], error) {
+func (c *raftNodeServiceClient) DemoteLeader(ctx context.Context, req *connect.Request[raftnodepb.NodeChangeRequest]) (*connect.Response[raftnodepb.NodeChangeResponse], error) {
 	return c.demoteLeader.CallUnary(ctx, req)
 }
 
 // PromoteToLeader calls raft_node.RaftNodeService.PromoteToLeader.
-func (c *raftNodeServiceClient) PromoteToLeader(ctx context.Context, req *connect.Request[raftnodepb.PromoteToLeaderRequest]) (*connect.Response[raftnodepb.PromoteToLeaderResponse], error) {
+func (c *raftNodeServiceClient) PromoteToLeader(ctx context.Context, req *connect.Request[raftnodepb.NodeChangeRequest]) (*connect.Response[raftnodepb.NodeChangeResponse], error) {
 	return c.promoteToLeader.CallUnary(ctx, req)
 }
 
@@ -166,10 +166,10 @@ func (c *raftNodeServiceClient) PromoteToLeader(ctx context.Context, req *connec
 type RaftNodeServiceHandler interface {
 	ReadIndex(context.Context, *connect.Request[raftnodepb.ReadIndexRequest]) (*connect.Response[raftnodepb.ReadIndexResponse], error)
 	NodeInfo(context.Context, *connect.Request[raftnodepb.NodeInfoRequest]) (*connect.Response[raftnodepb.NodeInfoResponse], error)
-	RemoveNode(context.Context, *connect.Request[raftnodepb.RemoveNodeRequest]) (*connect.Response[raftnodepb.RemoveNodeResponse], error)
-	AddNode(context.Context, *connect.Request[raftnodepb.AddNodeRequest]) (*connect.Response[raftnodepb.AddNodeResponse], error)
-	DemoteLeader(context.Context, *connect.Request[raftnodepb.DemoteLeaderRequest]) (*connect.Response[raftnodepb.DemoteLeaderResponse], error)
-	PromoteToLeader(context.Context, *connect.Request[raftnodepb.PromoteToLeaderRequest]) (*connect.Response[raftnodepb.PromoteToLeaderResponse], error)
+	RemoveNode(context.Context, *connect.Request[raftnodepb.NodeChangeRequest]) (*connect.Response[raftnodepb.NodeChangeResponse], error)
+	AddNode(context.Context, *connect.Request[raftnodepb.NodeChangeRequest]) (*connect.Response[raftnodepb.NodeChangeResponse], error)
+	DemoteLeader(context.Context, *connect.Request[raftnodepb.NodeChangeRequest]) (*connect.Response[raftnodepb.NodeChangeResponse], error)
+	PromoteToLeader(context.Context, *connect.Request[raftnodepb.NodeChangeRequest]) (*connect.Response[raftnodepb.NodeChangeResponse], error)
 }
 
 // NewRaftNodeServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -245,18 +245,18 @@ func (UnimplementedRaftNodeServiceHandler) NodeInfo(context.Context, *connect.Re
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("raft_node.RaftNodeService.NodeInfo is not implemented"))
 }
 
-func (UnimplementedRaftNodeServiceHandler) RemoveNode(context.Context, *connect.Request[raftnodepb.RemoveNodeRequest]) (*connect.Response[raftnodepb.RemoveNodeResponse], error) {
+func (UnimplementedRaftNodeServiceHandler) RemoveNode(context.Context, *connect.Request[raftnodepb.NodeChangeRequest]) (*connect.Response[raftnodepb.NodeChangeResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("raft_node.RaftNodeService.RemoveNode is not implemented"))
 }
 
-func (UnimplementedRaftNodeServiceHandler) AddNode(context.Context, *connect.Request[raftnodepb.AddNodeRequest]) (*connect.Response[raftnodepb.AddNodeResponse], error) {
+func (UnimplementedRaftNodeServiceHandler) AddNode(context.Context, *connect.Request[raftnodepb.NodeChangeRequest]) (*connect.Response[raftnodepb.NodeChangeResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("raft_node.RaftNodeService.AddNode is not implemented"))
 }
 
-func (UnimplementedRaftNodeServiceHandler) DemoteLeader(context.Context, *connect.Request[raftnodepb.DemoteLeaderRequest]) (*connect.Response[raftnodepb.DemoteLeaderResponse], error) {
+func (UnimplementedRaftNodeServiceHandler) DemoteLeader(context.Context, *connect.Request[raftnodepb.NodeChangeRequest]) (*connect.Response[raftnodepb.NodeChangeResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("raft_node.RaftNodeService.DemoteLeader is not implemented"))
 }
 
-func (UnimplementedRaftNodeServiceHandler) PromoteToLeader(context.Context, *connect.Request[raftnodepb.PromoteToLeaderRequest]) (*connect.Response[raftnodepb.PromoteToLeaderResponse], error) {
+func (UnimplementedRaftNodeServiceHandler) PromoteToLeader(context.Context, *connect.Request[raftnodepb.NodeChangeRequest]) (*connect.Response[raftnodepb.NodeChangeResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("raft_node.RaftNodeService.PromoteToLeader is not implemented"))
 }

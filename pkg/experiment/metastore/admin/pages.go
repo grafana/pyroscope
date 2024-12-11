@@ -18,22 +18,25 @@ type metastoreNode struct {
 	ResolvedAddress   string
 
 	// from Raft
-	Member         bool
-	State          string
-	CommitIndex    uint64
-	AppliedIndex   uint64
-	LastIndex      uint64
-	ObservedLeader string
-	CurrentTerm    uint64
-	BuildVersion   string
-	BuildRevision  string
-	Stats          map[string]string
+	Member        bool
+	State         string
+	CommitIndex   uint64
+	AppliedIndex  uint64
+	LastIndex     uint64
+	LeaderId      string
+	ConfigIndex   uint64
+	NumPeers      int
+	CurrentTerm   uint64
+	BuildVersion  string
+	BuildRevision string
+	Stats         map[string]string
 }
 
 type raftNodeState struct {
-	Nodes    []*metastoreNode
-	LeaderId string
-	NumNodes int
+	Nodes           []*metastoreNode
+	ObservedLeaders map[string]int
+	CurrentTerm     uint64
+	NumNodes        int
 }
 
 type nodesPageContent struct {
