@@ -85,10 +85,11 @@ func (cfg *Config) Validate() error {
 }
 
 type Node struct {
-	logger log.Logger
-	config Config
-	reg    prometheus.Registerer
-	fsm    raft.FSM
+	logger  log.Logger
+	config  Config
+	metrics *metrics
+	reg     prometheus.Registerer
+	fsm     raft.FSM
 
 	walDir        string
 	wal           *raftwal.WAL
@@ -110,10 +111,11 @@ func NewNode(
 	fsm raft.FSM,
 ) (_ *Node, err error) {
 	n := Node{
-		logger: logger,
-		config: config,
-		reg:    reg,
-		fsm:    fsm,
+		logger:  logger,
+		config:  config,
+		metrics: newMetrics(reg),
+		reg:     reg,
+		fsm:     fsm,
 	}
 
 	defer func() {
@@ -159,7 +161,7 @@ func (n *Node) Init() (err error) {
 	if err != nil {
 		return fmt.Errorf("starting raft node: %w", err)
 	}
-	n.observer = NewRaftStateObserver(n.logger, n.raft, n.reg)
+	n.observer = NewRaftStateObserver(n.logger, n.raft, n.metrics.state)
 	n.service = NewRaftNodeService(n)
 
 	hasState, err := raft.HasExistingState(n.logStore, n.stableStore, n.snapshotStore)
@@ -272,11 +274,12 @@ func (n *Node) TransferLeadership() (err error) {
 // Propose makes an attempt to apply the given command to the FSM.
 // The function returns an error if node is not the leader.
 func (n *Node) Propose(t fsm.RaftLogEntryType, m proto.Message) (resp proto.Message, err error) {
-	// TODO: logs, stats?
 	raw, err := fsm.MarshalEntry(t, m)
 	if err != nil {
 		return nil, err
 	}
+	timer := prometheus.NewTimer(n.metrics.apply)
+	defer timer.ObserveDuration()
 	future := n.raft.Apply(raw, n.config.ApplyTimeout)
 	if err = future.Error(); err != nil {
 		return nil, WithRaftLeaderStatusDetails(err, n.raft)

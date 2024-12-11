@@ -24,25 +24,16 @@ type Observer struct {
 	done     chan struct{}
 }
 
-func NewRaftStateObserver(logger log.Logger, r *raft.Raft, reg prometheus.Registerer) *Observer {
+func NewRaftStateObserver(logger log.Logger, r *raft.Raft, state *prometheus.GaugeVec) *Observer {
 	o := &Observer{
 		logger: logger,
 		raft:   r,
 		c:      make(chan raft.Observation, 1),
 		stop:   make(chan struct{}),
 		done:   make(chan struct{}),
+		state:  state,
 	}
-	o.state = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Name: "raft_state",
-			Help: "Current Raft state",
-		},
-		[]string{"state"},
-	)
-	if reg != nil {
-		reg.MustRegister(o.state)
-	}
-	_ = level.Debug(o.logger).Log("msg", "registering raft state observer")
+	level.Debug(o.logger).Log("msg", "registering raft state observer")
 	o.observer = raft.NewObserver(o.c, true, func(o *raft.Observation) bool {
 		_, ok := o.Data.(raft.RaftState)
 		return ok
@@ -58,14 +49,10 @@ func (o *Observer) RegisterHandler(h StateHandler) {
 	o.updateRaftState()
 }
 
-func (o *Observer) OnLeader(a LeaderActivity) {
-	o.RegisterHandler(&leaderStateHandler{activity: a})
-}
-
 func (o *Observer) Deregister() {
 	close(o.stop)
 	<-o.done
-	_ = level.Debug(o.logger).Log("msg", "deregistering raft observer")
+	level.Debug(o.logger).Log("msg", "deregistering raft observer")
 	o.raft.DeregisterObserver(o.observer)
 }
 
@@ -85,9 +72,11 @@ func (o *Observer) run() {
 
 func (o *Observer) updateRaftState() {
 	state := o.raft.State()
-	o.state.Reset()
-	o.state.WithLabelValues(state.String()).Set(1)
-	_ = level.Debug(o.logger).Log("msg", "raft state changed", "raft_state", state)
+	level.Debug(o.logger).Log("msg", "raft state changed", "raft_state", state)
+	if o.state != nil {
+		o.state.Reset()
+		o.state.WithLabelValues(state.String()).Set(1)
+	}
 	for _, h := range o.handlers {
 		h.Observe(state)
 	}
