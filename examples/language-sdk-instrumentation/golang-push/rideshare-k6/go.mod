@@ -6,7 +6,7 @@ require (
 	github.com/agoda-com/opentelemetry-logs-go v0.4.1
 	github.com/grafana/otel-profiling-go v0.5.1
 	github.com/grafana/pyroscope-go v1.1.1
-	github.com/grafana/pyroscope-go/x/k6 v0.0.0-20241003203156-a917cea171d3
+	github.com/grafana/pyroscope-go/x/k6 v0.0.0-20241129154546-3e89ad952d8f
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.47.0
 	go.opentelemetry.io/otel v1.22.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.22.0

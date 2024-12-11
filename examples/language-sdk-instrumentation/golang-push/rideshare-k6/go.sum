@@ -26,8 +26,8 @@ github.com/grafana/pyroscope-go v1.1.1 h1:PQoUU9oWtO3ve/fgIiklYuGilvsm8qaGhlY4Vw
 github.com/grafana/pyroscope-go v1.1.1/go.mod h1:Mw26jU7jsL/KStNSGGuuVYdUq7Qghem5P8aXYXSXG88=
 github.com/grafana/pyroscope-go/godeltaprof v0.1.8 h1:iwOtYXeeVSAeYefJNaxDytgjKtUuKQbJqgAIjlnicKg=
 github.com/grafana/pyroscope-go/godeltaprof v0.1.8/go.mod h1:2+l7K7twW49Ct4wFluZD3tZ6e0SjanjcUUBPVD/UuGU=
-github.com/grafana/pyroscope-go/x/k6 v0.0.0-20241003203156-a917cea171d3 h1:GtwQDlBz8aJHMy2Ko28UDRGgGzi7v4Vf20+ZyXaGy7M=
-github.com/grafana/pyroscope-go/x/k6 v0.0.0-20241003203156-a917cea171d3/go.mod h1:nfbW6/4ke3ywlqLb+Zgr9t1z9Zv3m+2ImUp+vbkzHpc=
+github.com/grafana/pyroscope-go/x/k6 v0.0.0-20241129154546-3e89ad952d8f h1:5v8jrCB7XCFPo4tXxqHyYbJfuRxTdCtkWYwGW54qpfM=
+github.com/grafana/pyroscope-go/x/k6 v0.0.0-20241129154546-3e89ad952d8f/go.mod h1:nfbW6/4ke3ywlqLb+Zgr9t1z9Zv3m+2ImUp+vbkzHpc=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.1 h1:6UKoz5ujsI55KNpsJH3UwCq3T8kKbZwNZBNPuTTje8U=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.1/go.mod h1:YvJ2f6MplWDhfxiUC3KpyTy76kYUZA4W3pTv/wdKQ9Y=
 github.com/klauspost/compress v1.17.8 h1:YcnTYrq7MikUT7k0Yb5eceMmALQPYBW/Xltxn0NAMnU=
