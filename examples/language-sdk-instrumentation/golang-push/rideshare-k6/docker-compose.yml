@@ -41,6 +41,11 @@ services:
     image: grafana/pyroscope:latest
     ports:
     - 4040:4040
+    volumes:
+    - ./grafana-provisioning/pyroscope:/etc/pyroscope
+    command:
+    - -config.file
+    - /etc/pyroscope/config.yml
 
   load-generator:
     build:
