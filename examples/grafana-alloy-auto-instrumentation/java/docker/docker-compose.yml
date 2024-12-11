@@ -7,17 +7,14 @@ services:
     image: grafana/pyroscope:latest
     ports:
     - 4040:4040
-  agent:
-    image: grafana/agent:main
+  alloy:
+    image: grafana/alloy:main
     volumes:
-    - ./config.river:/etc/agent-config/config.river
+    - ./config.alloy:/etc/alloy-config/config.alloy
     command:
     - run
-    - /etc/agent-config/config.river
+    - /etc/alloy-config/config.alloy
     - --server.http.listen-addr=0.0.0.0:12345
-    environment:
-      HOSTNAME: agent
-      AGENT_MODE: flow
     ports:
     - 12345:12345
     privileged: true

@@ -53,20 +53,13 @@ spec:
           command:
             - /bin/alloy
             - run
-            - /etc/agent-config/config.river
+            - /etc/alloy-config/config.alloy
             - --server.http.listen-addr=0.0.0.0:12345
-          env:
-            - name: HOSTNAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: spec.nodeName
-            - name: AGENT_MODE
-              value: flow
           ports:
             - containerPort: 12345
           volumeMounts:
-            - name: agent-config
-              mountPath: /etc/agent-config
+            - name: alloy-config
+              mountPath: /etc/alloy-config
           securityContext:
             privileged: true
             runAsGroup: 0
@@ -78,9 +71,9 @@ spec:
                 - SYS_RESOURCE
                 - SYS_ADMIN
       volumes:
-        - name: agent-config
+        - name: alloy-config
           configMap:
-            name: agent-config
+            name: alloy-config
       hostPID: true
 
 ---
@@ -88,9 +81,9 @@ spec:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: agent-config
+  name: alloy-config
 data:
-  config.river: |
+  config.alloy: |
     logging {
       level = "debug"
       format = "logfmt"

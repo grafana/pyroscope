@@ -4,20 +4,18 @@ services:
     ports:
     - 4040:4040
   app:
-    image: grafana/agent:main
+    image: grafana/alloy:main
     user: root
     privileged: true
     pid: host
-    environment:
-    - AGENT_MODE=flow
     volumes:
-    - ./config.river:/config.river
+    - ./config.alloy:/config.alloy
     ports:
     - 12345:12345
     command:
     - run
-    - /config.river
-    - --storage.path=/tmp/agent
+    - /config.alloy
+    - --storage.path=/tmp/alloy
     - --server.http.listen-addr=0.0.0.0:12345
   grafana:
     image: grafana/grafana:latest
