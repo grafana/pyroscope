@@ -375,11 +375,6 @@ $(BIN)/linux_amd64/dlv: Makefile go.mod
 		ln -f $(BIN)/dlv "$@"; \
 	fi
 
-$(BIN)/trunk: Makefile
-	@mkdir -p $(@D)
-	curl -L https://trunk.io/releases/trunk -o $(@D)/trunk
-	chmod +x $(@D)/trunk
-
 .PHONY: cve/check
 cve/check:
 	docker run -t -i --rm --volume "$(CURDIR)/:/repo" -u "$(shell id -u)" aquasec/trivy:0.45.1 filesystem --cache-dir /repo/.cache/trivy --scanners vuln --skip-dirs .tmp/ --skip-dirs node_modules/ --skip-dirs tools/monitoring/vendor/ /repo
@@ -396,14 +391,6 @@ helm/docs: $(BIN)/helm
 .PHONY: goreleaser/lint
 goreleaser/lint: $(BIN)/goreleaser
 	$(BIN)/goreleaser check
-
-.PHONY: trunk/lint
-trunk/lint: $(BIN)/trunk
-	$(BIN)/trunk check
-
-.PHONY: trunk/fmt
-trunk/fmt: $(BIN)/trunk
-	$(BIN)/trunk fmt
 
 .PHONY: helm/check
 helm/check: $(BIN)/kubeconform $(BIN)/helm
