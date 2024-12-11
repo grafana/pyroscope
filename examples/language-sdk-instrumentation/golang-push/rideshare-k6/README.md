@@ -29,3 +29,6 @@ test against the Rideshare service.
 ```
 k6 run load.js
 ```
+
+Finally, navigate to http://localhost:3000 and open the Explore Profiles app. After a small delay, k6 test metadata should begin to appears as labels on the
+"ride-sharing-app" application tile.

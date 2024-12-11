@@ -1,0 +1,2 @@
+self_profiling:
+  use_k6_middleware: true
