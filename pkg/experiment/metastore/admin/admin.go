@@ -2,8 +2,10 @@ package admin
 
 import (
 	"context"
+	"math"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -18,7 +20,12 @@ import (
 	httputil "github.com/grafana/pyroscope/pkg/util/http"
 )
 
-type formActionHandler func(http.ResponseWriter, *http.Request, string) error
+type configChangeRequest struct {
+	serverId    string
+	currentTerm uint64
+}
+
+type formActionHandler func(http.ResponseWriter, *http.Request, configChangeRequest) error
 
 type Admin struct {
 	service services.Service
@@ -78,7 +85,16 @@ func (a *Admin) NodeListHandler() http.Handler {
 			for fieldName, handler := range a.actionHandlers {
 				field := r.FormValue(fieldName)
 				if field != "" {
-					if err := handler(w, r, field); err != nil {
+					changeRequest := configChangeRequest{
+						serverId: field,
+					}
+					if currentTerm := r.FormValue("current-term"); currentTerm != "" {
+						parsedTerm, err := strconv.ParseUint(currentTerm, 10, 64)
+						if err == nil {
+							changeRequest.currentTerm = parsedTerm
+						}
+					}
+					if err := handler(w, r, changeRequest); err != nil {
 						httputil.Error(w, err)
 						return
 					}
@@ -107,10 +123,7 @@ func (a *Admin) NodeListHandler() http.Handler {
 }
 
 func (a *Admin) fetchRaftState(ctx context.Context) (*raftNodeState, error) {
-	leaderId := ""
-	maxLeaderCount := 0
-	leaderCounts := make(map[string]int)
-
+	observedLeaders := make(map[string]int)
 	numRaftNodes := 0
 	nodes := make([]*metastoreNode, 0, len(a.servers))
 
@@ -138,7 +151,9 @@ func (a *Admin) fetchRaftState(ctx context.Context) (*raftNodeState, error) {
 		node.RaftServerId = nInfo.ServerId
 		node.Member = nInfo.LeaderId != ""
 		node.State = nInfo.State
-		node.ObservedLeader = nInfo.LeaderId
+		node.LeaderId = nInfo.LeaderId
+		node.ConfigIndex = nInfo.ConfigurationIndex
+		node.NumPeers = len(nInfo.Peers)
 		node.CurrentTerm = nInfo.CurrentTerm
 		node.LastIndex = nInfo.LastIndex
 		node.CommitIndex = nInfo.CommitIndex
@@ -152,21 +167,35 @@ func (a *Admin) fetchRaftState(ctx context.Context) (*raftNodeState, error) {
 
 		if node.Member {
 			numRaftNodes++
-		}
-
-		// Each node has its own view of the world and can be out of sync with the rest.
-		// We choose the leader to be the one that is observed as the leader the most times.
-		leaderCounts[node.ObservedLeader]++
-		if leaderCounts[node.ObservedLeader] > maxLeaderCount && node.ObservedLeader != "" {
-			maxLeaderCount = leaderCounts[node.ObservedLeader]
-			leaderId = node.ObservedLeader
+			observedLeaders[node.LeaderId]++
 		}
 	}
+
+	currentTerm := findCurrentTerm(nodes)
+
 	return &raftNodeState{
-		Nodes:    nodes,
-		LeaderId: leaderId,
-		NumNodes: numRaftNodes,
+		Nodes:           nodes,
+		ObservedLeaders: observedLeaders,
+		CurrentTerm:     currentTerm,
+		NumNodes:        numRaftNodes,
 	}, nil
+}
+
+func findCurrentTerm(nodes []*metastoreNode) uint64 {
+	terms := make(map[uint64]int)
+	for _, node := range nodes {
+		if node.Member {
+			terms[node.CurrentTerm]++
+		}
+	}
+	// TODO aleks-p: in case of a mismatch in reported current terms, we bypass any validation
+	term := uint64(math.MaxUint64)
+	if len(terms) == 1 {
+		for k, _ := range terms {
+			term = k
+		}
+	}
+	return term
 }
 
 func newClient(address string) (*metastoreClient, error) {
@@ -181,32 +210,32 @@ func newClient(address string) (*metastoreClient, error) {
 }
 
 func (a *Admin) addFormActionHandlers() {
-	a.actionHandlers["add"] = func(w http.ResponseWriter, r *http.Request, serverId string) error {
-		_, err := a.leaderClient.AddNode(r.Context(), &raftnodepb.AddNodeRequest{ServerId: serverId})
+	a.actionHandlers["add"] = func(w http.ResponseWriter, r *http.Request, cr configChangeRequest) error {
+		_, err := a.leaderClient.AddNode(r.Context(), &raftnodepb.NodeChangeRequest{
+			ServerId:    cr.serverId,
+			CurrentTerm: cr.currentTerm,
+		})
 		return err
 	}
-	a.actionHandlers["remove"] = func(w http.ResponseWriter, r *http.Request, serverId string) error {
-		raftState, err := a.fetchRaftState(r.Context())
-		if err != nil {
-			return err
-		}
-		if raftState.LeaderId == serverId {
-			// Without this, the removed node cannot be re-added later because Raft gets shuts down on the node.
-			// Alternatively, we could set raftConfig.ShutdownOnRemove to false.
-			_, err = a.leaderClient.DemoteLeader(r.Context(), &raftnodepb.DemoteLeaderRequest{ServerId: serverId})
-			if err != nil {
-				return err
-			}
-		}
-		_, err = a.leaderClient.RemoveNode(r.Context(), &raftnodepb.RemoveNodeRequest{ServerId: serverId})
+	a.actionHandlers["remove"] = func(w http.ResponseWriter, r *http.Request, cr configChangeRequest) error {
+		_, err := a.leaderClient.RemoveNode(r.Context(), &raftnodepb.NodeChangeRequest{
+			ServerId:    cr.serverId,
+			CurrentTerm: cr.currentTerm,
+		})
 		return err
 	}
-	a.actionHandlers["promote"] = func(w http.ResponseWriter, r *http.Request, serverId string) error {
-		_, err := a.leaderClient.PromoteToLeader(r.Context(), &raftnodepb.PromoteToLeaderRequest{ServerId: serverId})
+	a.actionHandlers["promote"] = func(w http.ResponseWriter, r *http.Request, cr configChangeRequest) error {
+		_, err := a.leaderClient.PromoteToLeader(r.Context(), &raftnodepb.NodeChangeRequest{
+			ServerId:    cr.serverId,
+			CurrentTerm: cr.currentTerm,
+		})
 		return err
 	}
-	a.actionHandlers["demote"] = func(w http.ResponseWriter, r *http.Request, serverId string) error {
-		_, err := a.leaderClient.DemoteLeader(r.Context(), &raftnodepb.DemoteLeaderRequest{ServerId: serverId})
+	a.actionHandlers["demote"] = func(w http.ResponseWriter, r *http.Request, cr configChangeRequest) error {
+		_, err := a.leaderClient.DemoteLeader(r.Context(), &raftnodepb.NodeChangeRequest{
+			ServerId:    cr.serverId,
+			CurrentTerm: cr.currentTerm,
+		})
 		return err
 	}
 }
