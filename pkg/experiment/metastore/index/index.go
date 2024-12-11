@@ -426,6 +426,9 @@ func (i *Index) GetTenantStats(tenant string) *metastorev1.TenantStats {
 			stats.NewestProfileTime = newest
 		}
 	}
+	if !stats.DataIngested {
+		return new(metastorev1.TenantStats)
+	}
 
 	return stats
 }
