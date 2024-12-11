@@ -15,7 +15,7 @@ module.exports = {
     publicPath: '',
   },
   resolve: {
-    extensions: ['.ts', '.tsx', '.es6', '.js', '.json', '.svg'],
+    extensions: ['.ts', '.tsx', '.es6', '.js', '.json', '.svg', '.ttf'],
     modules: ['node_modules', path.resolve('public')],
 
     // TODO: unify with tsconfig.json
@@ -116,6 +116,10 @@ module.exports = {
             },
           },
         ],
+      },
+      {
+        test: /\.ttf$/,
+        type: 'asset/resource'
       },
     ],
   },
