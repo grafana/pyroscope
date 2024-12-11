@@ -17,7 +17,7 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/experiment/block"
+	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/store"
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
@@ -200,7 +200,7 @@ func (i *Index) InsertBlock(tx *bbolt.Tx, b *metastorev1.BlockMeta) error {
 // concurrent access. The method will create a new partition if needed.
 func (i *Index) insertBlock(tx *bbolt.Tx, b *metastorev1.BlockMeta) error {
 	p := i.getOrCreatePartition(b)
-	shard, err := i.getOrCreateTenantShard(tx, p, block.Tenant(b), b.Shard)
+	shard, err := i.getOrCreateTenantShard(tx, p, metadata.Tenant(b), b.Shard)
 	if err != nil {
 		return err
 	}
@@ -246,7 +246,7 @@ func (i *Index) getOrCreateTenantShard(tx *bbolt.Tx, p *store.Partition, tenant 
 			Partition:   p.Key,
 			Tenant:      tenant,
 			Shard:       shard,
-			StringTable: block.NewMetadataStringTable(),
+			StringTable: metadata.NewStringTable(),
 		})
 		partition.shards[shard] = s
 		// This is the only way we "remember" the tenant shard.

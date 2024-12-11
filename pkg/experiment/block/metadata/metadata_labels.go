@@ -1,8 +1,7 @@
-package block
+package metadata
 
 import (
 	"slices"
-	"unsafe"
 
 	"github.com/prometheus/prometheus/model/labels"
 	"golang.org/x/exp/maps"
@@ -15,14 +14,14 @@ import (
 // TODO(kolesnikovae): LabelBuilder pool.
 
 type LabelBuilder struct {
-	strings  *MetadataStrings
+	strings  *StringTable
 	labels   []int32
 	constant []int32
 	keys     []int32
 	seen     map[string]struct{}
 }
 
-func NewLabelBuilder(strings *MetadataStrings) *LabelBuilder {
+func NewLabelBuilder(strings *StringTable) *LabelBuilder {
 	return &LabelBuilder{strings: strings}
 }
 
@@ -92,15 +91,12 @@ func (lb *LabelBuilder) putPairs(p []int32) {
 	// The fact that we assume that the order of labels is the same
 	// across all datasets is a precondition, therefore, we can
 	// use pairs as a key.
-	k := *(*string)(unsafe.Pointer(&p))
+	k := string(p)
 	if _, ok := lb.seen[k]; ok {
 		return
 	}
 	lb.labels = append(lb.labels, int32(len(p)/2))
-	off := len(lb.labels)
 	lb.labels = append(lb.labels, p...)
-	v := lb.labels[off:]
-	k = *(*string)(unsafe.Pointer(&v))
 	lb.seen[k] = struct{}{}
 }
 
@@ -153,7 +149,7 @@ type matcher struct {
 	name int32
 }
 
-func NewLabelMatcher(strings *MetadataStrings, matchers []*labels.Matcher, keep ...string) *LabelMatcher {
+func NewLabelMatcher(strings *StringTable, matchers []*labels.Matcher, keep ...string) *LabelMatcher {
 	lm := &LabelMatcher{
 		eq:      make([]matcher, 0, len(matchers)),
 		neq:     make([]matcher, 0, len(matchers)),
@@ -188,12 +184,12 @@ func NewLabelMatcher(strings *MetadataStrings, matchers []*labels.Matcher, keep 
 func (lm *LabelMatcher) IsValid() bool { return !lm.nomatch }
 
 func (lm *LabelMatcher) Matches(pairs []int32) bool {
-	k := *(*string)(unsafe.Pointer(&pairs))
+	k := string(pairs)
 	m, found := lm.checked[k]
 	if !found {
 		m = lm.checkMatches(pairs)
 		// Copy the key.
-		lm.checked[string(pairs)] = m
+		lm.checked[k] = m
 		if m {
 			lm.matched++
 		}

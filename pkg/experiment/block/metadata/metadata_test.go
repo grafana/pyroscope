@@ -1,4 +1,4 @@
-package block
+package metadata
 
 import (
 	"bytes"
@@ -12,7 +12,7 @@ import (
 
 func TestMetadata_New(t *testing.T) {
 	blockID := ulid.MustNew(123, bytes.NewReader([]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11})).String()
-	strings := NewMetadataStringTable()
+	strings := NewStringTable()
 	md := &metastorev1.BlockMeta{
 		FormatVersion:   0,
 		Id:              blockID,
@@ -125,7 +125,7 @@ func TestMetadataStrings_Import(t *testing.T) {
 		},
 	}
 
-	table := NewMetadataStringTable()
+	table := NewStringTable()
 	md1c := md1.CloneVT()
 	table.Import(md1c)
 	assert.Equal(t, md1, md1c)
@@ -176,7 +176,7 @@ func TestMetadataStrings_Import(t *testing.T) {
 }
 
 func TestMetadataStrings_Export(t *testing.T) {
-	table := NewMetadataStringTable()
+	table := NewStringTable()
 	for _, s := range []string{
 		"", "x1", "x2", "x3", "x4", "x5",
 		"ingester",

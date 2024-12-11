@@ -12,7 +12,7 @@ import (
 	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	"github.com/grafana/pyroscope/pkg/experiment/block"
+	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/store"
 	"github.com/grafana/pyroscope/pkg/iter"
 	"github.com/grafana/pyroscope/pkg/model"
@@ -129,7 +129,7 @@ func (mi *blockMetadataIterator) Next() bool {
 }
 
 func (mi *blockMetadataIterator) collectBlockMetadata(shard *indexShard) bool {
-	matcher := block.NewLabelMatcher(shard.StringTable, mi.query.matchers)
+	matcher := metadata.NewLabelMatcher(shard.StringTable, mi.query.matchers)
 	if !matcher.IsValid() {
 		return false
 	}
@@ -146,8 +146,8 @@ func (mi *blockMetadataIterator) collectBlockMetadata(shard *indexShard) bool {
 
 func blockMetadataMatches(
 	q *metadataQuery,
-	s *block.MetadataStrings,
-	m *block.LabelMatcher,
+	s *metadata.StringTable,
+	m *metadata.LabelMatcher,
 	md *metastorev1.BlockMeta,
 ) *metastorev1.BlockMeta {
 	if !q.overlaps(time.UnixMilli(md.MinTime), time.UnixMilli(md.MaxTime)) {
@@ -190,8 +190,8 @@ func cloneDatasetMetadataForQuery(ds *metastorev1.Dataset) *metastorev1.Dataset 
 
 func datasetMatches(
 	q *metadataQuery,
-	s *block.MetadataStrings,
-	m *block.LabelMatcher,
+	s *metadata.StringTable,
+	m *metadata.LabelMatcher,
 	ds *metastorev1.Dataset,
 ) bool {
 	if _, ok := q.tenantMap[s.Lookup(ds.Tenant)]; !ok {
@@ -200,15 +200,15 @@ func datasetMatches(
 	if !q.overlaps(time.UnixMilli(ds.MinTime), time.UnixMilli(ds.MaxTime)) {
 		return false
 	}
-	pairs := block.LabelPairs(ds.Labels)
+	pairs := metadata.LabelPairs(ds.Labels)
 	var matches bool
 	for pairs.Next() {
 		if m.Matches(pairs.At()) {
 			matches = true
 		}
 		// If no labels are specified, we can return early.
-		// Otherwise, we need to scan all the datasets to
-		// collect the labels.
+		// Otherwise, we need to scan all the label sets to
+		// collect matching ones.
 		if matches && len(q.labels) == 0 {
 			return true
 		}
@@ -244,7 +244,7 @@ func (mi *metadataLabelQuerier) queryLabels() (*model.LabelMerger, error) {
 }
 
 func (mi *metadataLabelQuerier) collectLabels(shard *indexShard) {
-	m := block.NewLabelMatcher(
+	m := metadata.NewLabelMatcher(
 		shard.StringTable,
 		mi.query.matchers,
 		mi.query.labels...,

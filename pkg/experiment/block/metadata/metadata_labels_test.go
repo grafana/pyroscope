@@ -1,4 +1,4 @@
-package block
+package metadata
 
 import (
 	"testing"
@@ -11,7 +11,7 @@ import (
 )
 
 func TestLabelBuilder_CreateLabels(t *testing.T) {
-	strings := NewMetadataStringTable()
+	strings := NewStringTable()
 	b := NewLabelBuilder(strings).
 		WithConstantPairs("foo", "0").
 		WithLabelNames("bar", "baz")
@@ -33,7 +33,7 @@ func TestLabelBuilder_CreateLabels(t *testing.T) {
 }
 
 func TestLabelBuilder_Reuse(t *testing.T) {
-	strings := NewMetadataStringTable()
+	strings := NewStringTable()
 	b := NewLabelBuilder(strings).
 		WithConstantPairs("service_name", "service_a").
 		WithLabelNames("__profile_type__")
@@ -61,7 +61,7 @@ func TestLabelBuilder_Reuse(t *testing.T) {
 }
 
 func TestLabelBuilder_Put(t *testing.T) {
-	strings := NewMetadataStringTable()
+	strings := NewStringTable()
 	b := NewLabelBuilder(strings)
 
 	// a=b, a=b; a=b, a=b;
@@ -78,7 +78,7 @@ func TestLabelBuilder_Put(t *testing.T) {
 	}, b.Build())
 }
 
-func labelStrings(v []int32, s *MetadataStrings) []string {
+func labelStrings(v []int32, s *StringTable) []string {
 	var ls []string
 	pairs := LabelPairs(v)
 	for pairs.Next() {
@@ -94,7 +94,7 @@ func labelStrings(v []int32, s *MetadataStrings) []string {
 }
 
 func TestLabelMatcher_Matches(t *testing.T) {
-	strings := NewMetadataStringTable()
+	strings := NewStringTable()
 	b := NewLabelBuilder(strings)
 
 	b.WithConstantPairs("service_name", "service_a")
@@ -148,7 +148,7 @@ func TestLabelMatcher_Matches(t *testing.T) {
 }
 
 func Benchmark_LabelMatcher_Matches(b *testing.B) {
-	strings := NewMetadataStringTable()
+	strings := NewStringTable()
 
 	lb := NewLabelBuilder(strings).
 		WithConstantPairs("service_name", "service_a").

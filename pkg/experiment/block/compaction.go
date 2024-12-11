@@ -17,6 +17,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
@@ -153,7 +154,7 @@ type CompactionPlan struct {
 	datasetMap map[int32]*datasetCompaction
 	datasets   []*datasetCompaction
 	meta       *metastorev1.BlockMeta
-	strings    *MetadataStrings
+	strings    *metadata.StringTable
 }
 
 func newBlockCompaction(
@@ -165,7 +166,7 @@ func newBlockCompaction(
 	p := &CompactionPlan{
 		tenant:     tenant,
 		datasetMap: make(map[int32]*datasetCompaction),
-		strings:    NewMetadataStringTable(),
+		strings:    metadata.NewStringTable(),
 	}
 	p.path = BuildObjectPath(tenant, shard, compactionLevel, id)
 	p.meta = &metastorev1.BlockMeta{
@@ -221,7 +222,7 @@ type datasetCompaction struct {
 	name   string
 	parent *CompactionPlan
 	meta   *metastorev1.Dataset
-	labels *LabelBuilder
+	labels *metadata.LabelBuilder
 	path   string // Set at open.
 
 	datasets []*Dataset
@@ -241,7 +242,7 @@ func (b *CompactionPlan) newDatasetCompaction(tenant, name int32) *datasetCompac
 	return &datasetCompaction{
 		parent: b,
 		name:   b.strings.Strings[name],
-		labels: NewLabelBuilder(b.strings),
+		labels: metadata.NewLabelBuilder(b.strings),
 		meta: &metastorev1.Dataset{
 			Tenant: tenant,
 			Name:   name,

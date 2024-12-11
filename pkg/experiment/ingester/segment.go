@@ -22,6 +22,7 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block"
+	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
 	"github.com/grafana/pyroscope/pkg/experiment/ingester/memdb"
 	"github.com/grafana/pyroscope/pkg/model"
 	pprofsplit "github.com/grafana/pyroscope/pkg/model/pprof_split"
@@ -239,7 +240,7 @@ func (s *segment) flushBlock(heads []flushedServiceHead) ([]byte, *metastorev1.B
 	t1 := time.Now()
 	hostname, _ := os.Hostname()
 
-	stringTable := block.NewMetadataStringTable()
+	stringTable := metadata.NewStringTable()
 	meta := &metastorev1.BlockMeta{
 		FormatVersion:   1,
 		Id:              s.ulid.String(),
@@ -280,7 +281,7 @@ func (s *segment) flushBlock(heads []flushedServiceHead) ([]byte, *metastorev1.B
 	return blockFile.Bytes(), meta, nil
 }
 
-func concatSegmentHead(e flushedServiceHead, w *writerOffset, s *block.MetadataStrings) (*metastorev1.Dataset, error) {
+func concatSegmentHead(e flushedServiceHead, w *writerOffset, s *metadata.StringTable) (*metastorev1.Dataset, error) {
 	tenantServiceOffset := w.offset
 
 	ptypes := e.head.Meta.ProfileTypeNames
@@ -311,7 +312,7 @@ func concatSegmentHead(e flushedServiceHead, w *writerOffset, s *block.MetadataS
 		Labels:          nil,
 	}
 
-	lb := block.NewLabelBuilder(s).
+	lb := metadata.NewLabelBuilder(s).
 		WithConstantPairs(model.LabelNameServiceName, e.key.service).
 		WithLabelNames(model.LabelNameProfileType)
 
