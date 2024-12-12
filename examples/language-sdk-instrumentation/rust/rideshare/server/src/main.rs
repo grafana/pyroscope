@@ -127,7 +127,7 @@ fn check_driver_availability(search_radius: u64) {
     let mut _i: u64 = 0;
 
     let start_time = std::time::Instant::now();
-    while start_time.elapsed().as_secs() < (search_radius / 2) {
+    while start_time.elapsed().as_secs() < (search_radius) {
         _i += 1;
     }
     // Every 4 minutes this will artificially create make requests in eu-north region slow
@@ -145,7 +145,7 @@ fn mutex_lock(search_radius: u64) {
     let mut _i: u64 = 0;
 
     let start_time = std::time::Instant::now();
-    while start_time.elapsed().as_secs() < (search_radius * 10) {
+    while start_time.elapsed().as_secs() < (search_radius * 5) {
         _i += 1;
     }
 }
