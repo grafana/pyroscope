@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode/raftnodepb"
+	"github.com/grafana/pyroscope/pkg/util/build"
 )
 
 func (n *Node) NodeInfo() (*raftnodepb.NodeInfo, error) {
@@ -17,15 +18,19 @@ func (n *Node) NodeInfo() (*raftnodepb.NodeInfo, error) {
 	_, leaderID := n.raft.LeaderWithID()
 
 	info := &raftnodepb.NodeInfo{
-		ServerId:          n.config.ServerID,
-		AdvertisedAddress: n.config.AdvertiseAddress,
-		State:             n.raft.State().String(),
-		LeaderId:          string(leaderID),
-		CommitIndex:       n.raft.CommitIndex(),
-		AppliedIndex:      n.raft.AppliedIndex(),
-		LastIndex:         n.raft.LastIndex(),
-		Stats:             statsProto(n.raft.Stats()),
-		Peers:             make([]*raftnodepb.NodeInfo_Peer, len(config.Servers)),
+		ServerId:           n.config.ServerID,
+		AdvertisedAddress:  n.config.AdvertiseAddress,
+		State:              n.raft.State().String(),
+		LeaderId:           string(leaderID),
+		CommitIndex:        n.raft.CommitIndex(),
+		AppliedIndex:       n.raft.AppliedIndex(),
+		LastIndex:          n.raft.LastIndex(),
+		Stats:              statsProto(n.raft.Stats()),
+		Peers:              make([]*raftnodepb.NodeInfo_Peer, len(config.Servers)),
+		ConfigurationIndex: configFuture.Index(),
+		CurrentTerm:        n.raft.CurrentTerm(),
+		BuildVersion:       build.Version,
+		BuildRevision:      build.Revision,
 	}
 
 	for i, server := range config.Servers {

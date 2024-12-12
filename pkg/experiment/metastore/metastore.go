@@ -117,6 +117,7 @@ func New(
 	}
 
 	var err error
+
 	m.fsm, err = fsm.New(m.logger, m.reg, m.config.DataDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize store: %w", err)
