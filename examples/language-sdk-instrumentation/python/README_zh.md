@@ -1,5 +1,5 @@
 ### Pyroscope Rideshare 示例
-![python_example_architecture_05_00](https://user-images.githubusercontent.com/23323466/135728737-0c5e54ca-1e78-4c6d-933c-145f441c96a9.gif)
+![python_example_architecture_new_00](https://user-images.githubusercontent.com/23323466/173369382-267af200-6126-4bd0-8607-a933e8400dbb.gif)
 
 #### _用其他语言阅读此文。_
 <kbd>[English](README.md)</kbd>
@@ -53,7 +53,7 @@ def find_nearest_vehicle(n, vehicle):
 ### 运行这个例子
 要运行该例子，请运行以下命令:
 ```
-# 拉取最新的 pyroscope/grafana 镜像:
+# 拉取最新的 pyroscope/pyroscope 镜像:
 docker pull grafana/pyroscope:latest
 docker pull grafana/grafana:latest
 

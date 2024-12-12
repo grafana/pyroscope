@@ -1,42 +1,57 @@
 ## Continuous Profiling for Python applications
+
 ### Profiling a Python Rideshare App with Pyroscope
-![python_example_architecture_05_00](https://user-images.githubusercontent.com/23323466/135728737-0c5e54ca-1e78-4c6d-933c-145f441c96a9.gif)
+
+![python_example_architecture_new_00](https://user-images.githubusercontent.com/23323466/173369382-267af200-6126-4bd0-8607-a933e8400dbb.gif)
 
 #### _Read this in other languages._
+
 <kbd>[简体中文](README_zh.md)</kbd>
 
 Note: For documentation on the Pyroscope pip package visit [our website](https://pyroscope.io/docs/python/)
+
+## Live Demo
+
+Feel free to check out the [live demo](https://play.grafana.org/a/grafana-pyroscope-app/profiles-explorer?searchText=&panelType=time-series&layout=grid&hideNoData=off&explorationType=flame-graph&var-serviceName=pyroscope-rideshare-python&var-profileMetricId=process_cpu:cpu:nanoseconds:cpu:nanoseconds&var-dataSource=grafanacloud-profiles) of this example on our demo page.
+
 ## Background
+
 In this example we show a simplified, basic use case of Pyroscope. We simulate a "ride share" company which has three endpoints found in `server.py`:
+
 - `/bike`    : calls the `order_bike(search_radius)` function to order a bike
 - `/car`     : calls the `order_car(search_radius)` function to order a car
 - `/scooter` : calls the `order_scooter(search_radius)` function to order a scooter
 
-We also simulate running 3 distinct servers in 3 different regions (via [docker-compose.yml](https://github.com/pyroscope-io/pyroscope/blob/main/examples/python/docker-compose.yml))
+We also simulate running 3 distinct servers in 3 different regions:
+
 - us-east
 - eu-north
 - ap-south
 
 One of the most useful capabilities of Pyroscope is the ability to tag your data in a way that is meaningful to you. In this case, we have two natural divisions, and so we "tag" our data to represent those:
+
 - `region`: statically tags the region of the server running the code
 - `vehicle`: dynamically tags the endpoint (similar to how one might tag a controller rails)
 
-
 ## Tagging static region
+
 Tagging something static, like the `region`, can be done in the initialization code in the `config.tags` variable:
-```
+
+```python
 pyroscope.configure(
     application_name       = "ride-sharing-app",
-    server_address = "http://pyroscope:4040",
-    tags           = {
+    server_address         = "http://pyroscope:4040",
+    tags                   = {
         "region":   f'{os.getenv("REGION")}', # Tags the region based off the environment variable
     }
 )
 ```
 
 ## Tagging dynamically within functions
+
 Tagging something more dynamically, like we do for the `vehicle` tag can be done inside our utility `find_nearest_vehicle()` function using a `with pyroscope.tag_wrapper()` block
-```
+
+```python
 def find_nearest_vehicle(n, vehicle):
     with pyroscope.tag_wrapper({ "vehicle": vehicle}):
         i = 0
@@ -46,14 +61,22 @@ def find_nearest_vehicle(n, vehicle):
 ```
 
 What this block does, is:
+
 1. Add the tag `{ "vehicle" => "car" }`
 2. execute the `find_nearest_vehicle()` function
 3. Before the block ends it will (behind the scenes) remove the `{ "vehicle" => "car" }` from the application since that block is complete
 
 ## Resulting flame graph / performance results from the example
+
 ### Running the example
+
+Try out one of the Django, Flask, or FastAPI examples located in the `rideshare` directory by running the following commands:
+
+```shell
+
 To run the example run the following commands:
-```
+
+```shell
 # Pull latest pyroscope and grafana images:
 docker pull grafana/pyroscope:latest
 docker pull grafana/grafana:latest
@@ -68,36 +91,41 @@ docker-compose up --build
 What this example will do is run all the code mentioned above and also send some mock-load to the 3 servers as well as their respective 3 endpoints. If you select our application: `ride-sharing-app.cpu` from the dropdown, you should see a flame graph that looks like this (below). After we give 20-30 seconds for the flame graph to update and then click the refresh button we see our 3 functions at the bottom of the flame graph taking CPU resources _proportional to the size_ of their respective `search_radius` parameters.
 
 ## Where's the performance bottleneck?
-![python_first_slide_05](https://user-images.githubusercontent.com/23323466/135881284-c75a5b65-6151-44fb-a459-c1f9559cb51a.jpg)
 
-The first step when analyzing a profile outputted from your application, is to take note of the _largest node_ which is where your application is spending the most resources. In this case, it happens to be the `order_car` function.
+Profiling is most effective for applications that contain tags. The first step when analyzing performance from your application, is to use the Tag Explorer page in order to determine if any tags are consuming more resources than others.
 
-The benefit of using the Pyroscope package, is that now that we can investigate further as to _why_ the `order_car()` function is problematic. Tagging both `region` and `vehicle` allows us to test two good hypotheses:
-- Something is wrong with the `/car` endpoint code
-- Something is wrong with one of our regions
+![vehicle_tag_breakdown](https://user-images.githubusercontent.com/23323466/191306637-a601f463-a247-4588-a285-639424a08b87.png)
 
-To analyze this we can select one or more tags from the "Select Tag" dropdown:
+![image](https://user-images.githubusercontent.com/23323466/191319887-8fff2605-dc74-48ba-b0b7-918e3c95ed91.png)
 
-![image](https://user-images.githubusercontent.com/23323466/135525308-b81e87b0-6ffb-4ef0-a6bf-3338483d0fc4.png)
+The benefit of using Pyroscope, is that by tagging both `region` and `vehicle` and looking at the Tag Explorer page we can hypothesize:
 
-## Narrowing in on the Issue Using Tags
-Knowing there is an issue with the `order_car()` function we automatically select that tag. Then, after inspecting multiple `region` tags, it becomes clear by looking at the timeline that there is an issue with the `eu-north` region, where it alternates between high-cpu times and low-cpu times.
+- Something is wrong with the `/car` endpoint code where `car` vehicle tag is consuming **68% of CPU**
+- Something is wrong with one of our regions where `eu-north` region tag is consuming **54% of CPU**
 
-We can also see that the `mutex_lock()` function is consuming almost 70% of CPU resources during this time period.
-![python_second_slide_05](https://user-images.githubusercontent.com/23323466/135805908-ae9a1650-51fc-457a-8c47-0b56e8538b08.jpg)
+From the flame graph we can see that for the `eu-north` tag the biggest performance impact comes from the `find_nearest_vehicle()` function which consumes close to **68% of cpu**. To analyze this we can go directly to the comparison page using the comparison dropdown.
 
 ## Comparing two time periods
-Using Pyroscope's "comparison view" we can actually select two different time ranges from the timeline to compare the resulting flame graphs. The pink section on the left timeline results in the left flame graph, and the blue section on the right represents the right flame graph.
 
-When we select a period of low-cpu utilization and a period of high-cpu utilization we can see that there is clearly different behavior in the `mutex_lock()` function where it takes **51% of CPU** during low-cpu times and **78% of CPU** during high-cpu times.
-![python_third_slide_05](https://user-images.githubusercontent.com/23323466/135805969-55fdee40-fe0c-412d-9ec0-0bbc6a748ed4.jpg)
+Using Pyroscope's "comparison view" we can actually select two different queries and compare the resulting flame graphs:
+- Left flame graph: `{ region != "eu-north", ... }`
+- Right flame graph: `{ region = "eu-north", ... }`
+
+When we select a period of low-cpu utilization and a period of high-cpu utilization we can see that there is clearly different behavior in the `find_nearest_vehicle()` function where it takes:
+- Left flame graph: **22% of CPU** when `{ region != "eu-north", ... }`
+- Right flame graph: **82% of CPU** when `{ region = "eu-north", ... }`
+
+![python_pop_out_library_comparison_00](https://user-images.githubusercontent.com/23323466/191374975-d374db02-4cb1-48d5-bc1a-6194193a9f09.png)
 
 ## Visualizing diff between two flame graphs
+
 While the difference _in this case_ is stark enough to see in the comparison view, sometimes the diff between the two flame graphs is better visualized with them overlayed over each other. Without changing any parameters, we can simply select the diff view tab and see the difference represented in a color-coded diff flame graph.
-![python_fourth_slide_05](https://user-images.githubusercontent.com/23323466/135805986-594ffa3b-e735-4f91-875d-4f76fdff2b60.jpg)
+![find_nearest_vehicle_diff](https://user-images.githubusercontent.com/23323466/191320888-b49eb7de-06d5-4e6b-b9ac-198d7c9e2fcf.png)
 
 ### More use cases
+
 We have been beta testing this feature with several different companies and some of the ways that we've seen companies tag their performance data:
+- Linking profiles with trace data
 - Tagging controllers
 - Tagging regions
 - Tagging jobs from a redis / sidekiq / rabbitmq queue
@@ -107,6 +135,7 @@ We have been beta testing this feature with several different companies and some
 - Etc...
 
 ### Future Roadmap
+
 We would love for you to try out this example and see what ways you can adapt this to your python application. Continuous profiling has become an increasingly popular tool for the monitoring and debugging of performance issues (arguably the fourth pillar of observability).
 
 We'd love to continue to improve this pip package by adding things like integrations with popular tools, memory profiling, etc. and we would love to hear what features _you would like to see_.
