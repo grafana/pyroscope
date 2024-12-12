@@ -98,5 +98,5 @@ If your Pyroscope server has multi-tenancy enabled, you'll need to configure a t
 ## Python profiling examples
 
 Check out the following resources to learn more about Python profiling:
-- [Python examples](https://github.com/pyroscope-io/pyroscope/tree/main/examples/language-sdk-instrumentation/python)
-- [Python demo](https://play.grafana.org/a/grafana-pyroscope-app/profiles-explorer?searchText=&panelType=time-series&layout=grid&hideNoData=off&explorationType=flame-graph&var-serviceName=pyroscope-rideshare-python&var-profileMetricId=process_cpu:cpu:nanoseconds:cpu:nanoseconds&var-dataSource=grafanacloud-profiles) showing Python example with tags
+- [Python examples](https://github.com/pyroscope-io/pyroscope/tree/main/examples/language-sdk-instrumentation/python) demonstrating how Django, Flask, and FastAPI apps can be profiled with Pyroscope.
+- A [Python demo](https://play.grafana.org/a/grafana-pyroscope-app/profiles-explorer?searchText=&panelType=time-series&layout=grid&hideNoData=off&explorationType=flame-graph&var-serviceName=pyroscope-rideshare-python&var-profileMetricId=process_cpu:cpu:nanoseconds:cpu:nanoseconds&var-dataSource=grafanacloud-profiles) on play.grafana.org.
