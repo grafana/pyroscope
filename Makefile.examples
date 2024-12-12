@@ -1,7 +1,21 @@
+GITHUB_REPOSITORY ?= grafana/pyroscope
 
 .PHONY: tools/update_examples
 tools/update_examples:
-	go run tools/update_examples.go
+	docker build -t update_pyroscope_examples -f tools/update_examples.Dockerfile  tools
+	docker run --rm  -e GITHUB_TOKEN=$(GITHUB_TOKEN) -v$(shell pwd):/pyroscope -w /pyroscope update_pyroscope_examples bash -l -c "go run tools/update_examples.go"
+
+.PHONY: tools/update_examples_pr
+tools/update_examples_pr:
+	git config --local user.name 'Pyroscope Bot'
+	git config --local user.email 'dmitry+bot@pyroscope.io'
+	git checkout -b gh_bot_examples_update
+	git add .
+	git commit -m "chore(examples): update examples"
+	git push -f https://x-access-token:$(GITHUB_TOKEN)@github.com/$(GITHUB_REPOSITORY).git gh_bot_examples_update
+	gh pr create --head gh_bot_examples_update --title "chore(examples): update examples" --body "make tools/update_examples" --repo $(GITHUB_REPOSITORY) || \
+	   gh pr edit gh_bot_examples_update --title "chore(examples): update examples" --body "make tools/update_examples" --repo $(GITHUB_REPOSITORY)
+
 
 .PHONY: rideshare/docker/push
 rideshare/docker/push: rideshare/docker/push-golang rideshare/docker/push-loadgen rideshare/docker/push-python rideshare/docker/push-ruby rideshare/docker/push-dotnet rideshare/docker/push-java rideshare/docker/push-rust
