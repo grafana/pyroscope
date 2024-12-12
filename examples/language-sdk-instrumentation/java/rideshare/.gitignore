@@ -3,3 +3,4 @@ build/
 .gradle
 pyroscope.jar
 out/
+bin/
