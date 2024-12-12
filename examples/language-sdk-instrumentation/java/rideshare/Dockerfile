@@ -37,6 +37,6 @@ COPY --from=builder /opt/app/build/libs/rideshare-1.0-SNAPSHOT.jar /opt/app/buil
 
 WORKDIR /opt/app
 
-ADD https://github.com/grafana/pyroscope-java/releases/download/v0.15.0/pyroscope.jar /opt/app/pyroscope.jar
+ADD https://github.com/grafana/pyroscope-java/releases/download/v0.15.2/pyroscope.jar /opt/app/pyroscope.jar
 
 CMD sh -c "exec java -Dserver.port=${RIDESHARE_LISTEN_PORT} -javaagent:pyroscope.jar -jar ./build/libs/rideshare-1.0-SNAPSHOT.jar"
