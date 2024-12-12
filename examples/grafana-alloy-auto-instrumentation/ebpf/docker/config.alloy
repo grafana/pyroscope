@@ -6,7 +6,7 @@ discovery.docker "all" {
 discovery.relabel "pyroscope" {
     targets = discovery.docker.all.targets
     // Filter needed containers based on docker labels
-    // See more info at reference doc https://grafana.com/docs/agent/next/flow/reference/components/discovery.docker/
+    // See more info at reference doc https://grafana.com/docs/alloy/next/reference/components/discovery/discovery.docker/
     rule {
         source_labels = ["__meta_docker_container_name"]
         regex = ".*pyroscope.*"

@@ -1,25 +1,24 @@
 services:
+  java:
+    build:
+      context: .
+      dockerfile: java.Dockerfile
   pyroscope:
-    image: grafana/pyroscope
+    image: grafana/pyroscope:latest
     ports:
     - 4040:4040
-  grafana-agent:
-    image: grafana/agent:main
-    user: root
-    privileged: true
-    pid: host
-    environment:
-    - AGENT_MODE=flow
+  alloy:
+    image: grafana/alloy:latest
     volumes:
-    - /var/run/docker.sock:/var/run/docker.sock
-    - ./config.river:/config.river
-    ports:
-    - 12345:12345
+    - ./config.alloy:/etc/alloy-config/config.alloy
     command:
     - run
-    - /config.river
-    - --storage.path=/tmp/agent
+    - /etc/alloy-config/config.alloy
     - --server.http.listen-addr=0.0.0.0:12345
+    ports:
+    - 12345:12345
+    privileged: true
+    pid: host
   grafana:
     image: grafana/grafana:latest
     environment:

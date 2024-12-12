@@ -63,7 +63,7 @@ spec:
           command:
             - /bin/alloy
             - run
-            - /etc/agent-config/config.river
+            - /etc/alloy-config/config.alloy
             - --server.http.listen-addr=0.0.0.0:12345
           env:
             - name: HOSTNAME
@@ -73,16 +73,16 @@ spec:
           ports:
             - containerPort: 12345
           volumeMounts:
-            - name: agent-config
-              mountPath: /etc/agent-config
+            - name: alloy-config
+              mountPath: /etc/alloy-config
           securityContext:
             privileged: true
             runAsGroup: 0
             runAsUser: 0
       volumes:
-        - name: agent-config
+        - name: alloy-config
           configMap:
-            name: agent-config
+            name: alloy-config
 
       hostPID: true
 
@@ -91,12 +91,12 @@ spec:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: agent-config
+  name: alloy-config
   namespace: pyroscope-ebpf
 data:
-  config.river: |
-    // This is an example grafana agent config to set up eBPF profiling in kubernetes.
-    // for more info see https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/ebpf/setup-kubernetes/
+  config.alloy: |
+    // This is an example grafana alloy config to set up eBPF profiling in kubernetes.
+    // for more info see https://grafana.com/docs/pyroscope/latest/configure-client/grafana-alloy/ebpf/setup-kubernetes/
     logging {
       level = "debug"
       format = "logfmt"

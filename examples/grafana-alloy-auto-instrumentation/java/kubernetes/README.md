@@ -14,12 +14,12 @@ Java profiling via Grafana Alloy is based on a few components:
 - `pyroscope.java` for enabling profiling for specific applications
 - `pyroscope.write` for writing the profiles data to a remote endpoint
 
-Refer to the [official documentation](https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/java/) for an in-depth understanding and additional configuration options for Java profiling with Grafana Alloy.
+Refer to the [official documentation](https://grafana.com/docs/pyroscope/latest/configure-client/grafana-alloy/java/) for an in-depth understanding and additional configuration options for Java profiling with Grafana Alloy.
 Also, check the [Grafana Alloy Components reference](https://grafana.com/docs/alloy/latest/reference/components/) for more details on each used component.
 
 ### async-profiler
 
-The `pyroscope.java` agent component internally uses the [async-profiler](https://github.com/async-profiler/async-profiler) library.
+The `pyroscope.java` component internally uses the [async-profiler](https://github.com/async-profiler/async-profiler) library.
 This approach offers a key advantage over other instrumentation mechanisms in that you can profile applications that are already running without interruptions (code changes, config changes or restarts).
 
 Under the hood, this is achieved by attaching to the application at a process level and issuing commands to control profiling.
@@ -44,4 +44,4 @@ The example will deploy a Grafana instance in the same cluster, available via th
 
 ## Documentation
 
-Refer to the [official documentation](https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/java/) for an in-depth understanding and additional configuration options for Java profiling with Grafana Alloy.
+Refer to the [official documentation](https://grafana.com/docs/pyroscope/latest/configure-client/grafana-alloy/java/) for an in-depth understanding and additional configuration options for Java profiling with Grafana Alloy.
