@@ -10,7 +10,7 @@ docker pull grafana/grafana:latest
 docker-compose up --build
 
 # Reset the database (if needed):
-# docker-compose down
+docker-compose down
 ```
 
 Navigate to [Grafana](http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer?explorationType=flame-graph&var-serviceName=django-ride-sharing-app&var-profileMetricId=process_cpu:cpu:nanoseconds:cpu:nanoseconds) to Explore Profiles.
