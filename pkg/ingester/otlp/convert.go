@@ -177,6 +177,11 @@ func convertSampleAttributesToLabelsBack(p *otelProfile.Profile, os *otelProfile
 				Key: addstr(att.Key),
 				Str: addstr(att.Value.GetStringValue()),
 			})
+		} else if att.Value.GetIntValue() != 0 {
+			gs.Label = append(gs.Label, &googleProfile.Label{
+				Key: addstr(att.Key),
+				Str: addstr(fmt.Sprintf("%d", att.Value.GetIntValue())),
+			})
 		}
 	}
 }
