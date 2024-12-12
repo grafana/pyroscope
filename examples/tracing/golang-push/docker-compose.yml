@@ -1,6 +1,13 @@
 services:
   pyroscope:
     image: grafana/pyroscope
+    command: [ "-config.file=/etc/pyroscope.yml" ]
+    environment:
+      JAEGER_SAMPLER_TYPE: const
+      JAEGER_SAMPLER_PARAM: "1"
+      JAEGER_ENDPOINT: http://tempo:14268/api/traces
+    volumes:
+      - ./pyroscope/pyroscope.yml:/etc/pyroscope.yml
     ports:
     - "4040:4040"
 
