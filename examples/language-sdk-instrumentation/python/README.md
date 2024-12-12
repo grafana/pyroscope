@@ -8,7 +8,7 @@
 
 <kbd>[简体中文](README_zh.md)</kbd>
 
-Note: For documentation on the Pyroscope pip package visit [our website](https://pyroscope.io/docs/python/)
+Note: For documentation on the Pyroscope pip package visit [our website](https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/python/)
 
 ## Live Demo
 

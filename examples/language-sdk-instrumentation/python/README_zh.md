@@ -4,7 +4,7 @@
 #### _用其他语言阅读此文。_
 <kbd>[English](README.md)</kbd>
 
-注意：关于Pyroscope pip包的文档，请访问[我们的网站](https://pyroscope.io/docs/python/)
+注意：关于Pyroscope pip包的文档，请访问[我们的网站](https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/python/)
 ## 背景介绍
 
 在这个例子中，我们展示了 Pyroscope 的一个简化的基本用例。我们模拟了一个 "骑行共享" 公司，它有三个请求端点，可以在`server.py`中找到：
