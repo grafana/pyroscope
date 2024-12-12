@@ -33,7 +33,7 @@ GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH) -X $(VPREFIX).Version=$(IMAGE
 GO_GCFLAGS_DEBUG := all="-N -l"
 
 # Folders with go.mod file
-GO_MOD_PATHS := api/ ebpf/ examples/language-sdk-instrumentation/golang-push/rideshare examples/language-sdk-instrumentation/golang-push/simple/
+GO_MOD_PATHS := api/ ebpf/ examples/language-sdk-instrumentation/golang-push/rideshare examples/language-sdk-instrumentation/golang-push/rideshare-alloy examples/language-sdk-instrumentation/golang-push/rideshare-k6 examples/language-sdk-instrumentation/golang-push/simple/ examples/tracing/golang-push/ examples/golang-pgo/
 
 # Add extra arguments to helm commands
 HELM_ARGS =
@@ -164,12 +164,12 @@ go/mod_tidy_root:
 	# doesn't work for go workspace
 	# GO111MODULE=on go mod verify
 	go work sync
-	GO111MODULE=on go mod tidy
+	GO111MODULE=on go mod tidy -go 1.22
 
 .PHONY: go/mod_tidy/%
 go/mod_tidy/%: go/mod_tidy_root
 	cd "$*" && GO111MODULE=on go mod download
-	cd "$*" && GO111MODULE=on go mod tidy
+	cd "$*" && GO111MODULE=on go mod tidy -go 1.22
 
 .PHONY: fmt
 fmt: $(BIN)/golangci-lint $(BIN)/buf $(BIN)/tk ## Automatically fix some lint errors
@@ -322,7 +322,7 @@ $(BIN)/gomodifytags: Makefile go.mod
 
 $(BIN)/kind: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install sigs.k8s.io/kind@v0.17.0
+	GOBIN=$(abspath $(@D)) $(GO) install sigs.k8s.io/kind@v0.25.0
 
 $(BIN)/tk: Makefile go.mod $(BIN)/jb
 	@mkdir -p $(@D)
@@ -375,11 +375,6 @@ $(BIN)/linux_amd64/dlv: Makefile go.mod
 		ln -f $(BIN)/dlv "$@"; \
 	fi
 
-$(BIN)/trunk: Makefile
-	@mkdir -p $(@D)
-	curl -L https://trunk.io/releases/trunk -o $(@D)/trunk
-	chmod +x $(@D)/trunk
-
 .PHONY: cve/check
 cve/check:
 	docker run -t -i --rm --volume "$(CURDIR)/:/repo" -u "$(shell id -u)" aquasec/trivy:0.45.1 filesystem --cache-dir /repo/.cache/trivy --scanners vuln --skip-dirs .tmp/ --skip-dirs node_modules/ --skip-dirs tools/monitoring/vendor/ /repo
@@ -396,14 +391,6 @@ helm/docs: $(BIN)/helm
 .PHONY: goreleaser/lint
 goreleaser/lint: $(BIN)/goreleaser
 	$(BIN)/goreleaser check
-
-.PHONY: trunk/lint
-trunk/lint: $(BIN)/trunk
-	$(BIN)/trunk check
-
-.PHONY: trunk/fmt
-trunk/fmt: $(BIN)/trunk
-	$(BIN)/trunk fmt
 
 .PHONY: helm/check
 helm/check: $(BIN)/kubeconform $(BIN)/helm
@@ -440,7 +427,7 @@ deploy: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
 .PHONY: deploy-micro-services
 deploy-micro-services: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
 	# Ensure to delete existing service, that has been created manually by the deploy target
-	kubectl delete svc --field-selector metadata.name=pyroscope-micro-services-query-frontend -l app.kubernetes.io/managed-by!=Helm
+	kubectl delete svc --field-selector metadata.name=pyroscope-micro-services-query-frontend -l app.kubernetes.io/managed-by!=Helm || true
 	$(call deploy,pyroscope-micro-services,--values=operations/pyroscope/helm/pyroscope/values-micro-services.yaml --set pyroscope.components.querier.resources=null --set pyroscope.components.distributor.resources=null --set pyroscope.components.ingester.resources=null --set pyroscope.components.store-gateway.resources=null --set pyroscope.components.compactor.resources=null)
 
 .PHONY: deploy-monitoring
