@@ -135,7 +135,7 @@ fn check_driver_availability(search_radius: u64) {
     // flamegraph
     let time_minutes = Local::now().minute();
     if std::env::var("REGION").unwrap_or_else(|_| "eu-north".to_owned()) == "eu-north"
-        && (time_minutes * 8 % 4 == 0)
+        && (time_minutes % 4 == 0)
     {
         mutex_lock(search_radius);
     }
