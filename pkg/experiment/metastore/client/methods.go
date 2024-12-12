@@ -8,6 +8,8 @@ import (
 
 	"github.com/hashicorp/raft"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode"
@@ -31,7 +33,7 @@ func invoke[R any](ctx context.Context, cl *Client,
 		if err != nil {
 			return nil, fmt.Errorf("metastore client timeout %w", err)
 		}
-		it := cl.selectInstance()
+		it := cl.selectInstance(false)
 		if it == nil {
 			cl.logger.Log("msg", "no instances available, backoff and retry")
 			time.Sleep(backoff)
@@ -47,15 +49,26 @@ func invoke[R any](ctx context.Context, cl *Client,
 			"err", err,
 			"server_id", it.srv.Raft.ID,
 			"server_address", it.srv.Raft.Address,
-			"server_resolved_laddress", it.srv.ResolvedAddress,
+			"server_resolved_address", it.srv.ResolvedAddress,
 		)
 		node, ok := raftnode.RaftLeaderFromStatusDetails(err)
 		if ok {
 			cl.mu.Lock()
 			if cl.leader == it.srv.Raft.ID {
+				cl.logger.Log("msg", "changing metastore client leader", "current", cl.leader, "new", node.Id)
 				cl.leader = raft.ServerID(node.Id)
 			}
 			cl.mu.Unlock()
+		} else {
+			// Some errors will not contain the Raft leader. This is a valid scenario, e.g., when a node gets removed
+			// for maintenance. We try to move to a different client instance.
+			cl.selectInstance(true)
+		}
+		// A workaround to prevent retries for specific error codes. This needs a larger refactoring later on.
+		switch status.Code(err) {
+		case codes.InvalidArgument:
+			cl.logger.Log("msg", "skip metastore retries", "err", err, "leader", cl.leader)
+			return nil, err
 		}
 		time.Sleep(backoff)
 		cl.discovery.Rediscover()
@@ -63,10 +76,12 @@ func invoke[R any](ctx context.Context, cl *Client,
 	return nil, fmt.Errorf("metastore client retries failed")
 }
 
-func (c *Client) selectInstance() *client {
+func (c *Client) selectInstance(override bool) *client {
 	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	it := c.servers[c.leader]
-	if it == nil && len(c.servers) > 0 {
+	if (it == nil || override) && len(c.servers) > 0 {
 		idx := rand.Intn(len(c.servers))
 		j := 0
 		for k, v := range c.servers {
@@ -78,7 +93,6 @@ func (c *Client) selectInstance() *client {
 			j++
 		}
 	}
-	c.mu.Unlock()
 	return it
 }
 
@@ -129,5 +143,29 @@ func (c *Client) ReadIndex(ctx context.Context, in *raftnodepb.ReadIndexRequest,
 func (c *Client) NodeInfo(ctx context.Context, in *raftnodepb.NodeInfoRequest, opts ...grpc.CallOption) (*raftnodepb.NodeInfoResponse, error) {
 	return invoke(ctx, c, func(ctx context.Context, instance instance) (*raftnodepb.NodeInfoResponse, error) {
 		return instance.NodeInfo(ctx, in, opts...)
+	})
+}
+
+func (c *Client) RemoveNode(ctx context.Context, in *raftnodepb.RemoveNodeRequest, opts ...grpc.CallOption) (*raftnodepb.RemoveNodeResponse, error) {
+	return invoke(ctx, c, func(ctx context.Context, instance instance) (*raftnodepb.RemoveNodeResponse, error) {
+		return instance.RemoveNode(ctx, in, opts...)
+	})
+}
+
+func (c *Client) AddNode(ctx context.Context, in *raftnodepb.AddNodeRequest, opts ...grpc.CallOption) (*raftnodepb.AddNodeResponse, error) {
+	return invoke(ctx, c, func(ctx context.Context, instance instance) (*raftnodepb.AddNodeResponse, error) {
+		return instance.AddNode(ctx, in, opts...)
+	})
+}
+
+func (c *Client) DemoteLeader(ctx context.Context, in *raftnodepb.DemoteLeaderRequest, opts ...grpc.CallOption) (*raftnodepb.DemoteLeaderResponse, error) {
+	return invoke(ctx, c, func(ctx context.Context, instance instance) (*raftnodepb.DemoteLeaderResponse, error) {
+		return instance.DemoteLeader(ctx, in, opts...)
+	})
+}
+
+func (c *Client) PromoteToLeader(ctx context.Context, in *raftnodepb.PromoteToLeaderRequest, opts ...grpc.CallOption) (*raftnodepb.PromoteToLeaderResponse, error) {
+	return invoke(ctx, c, func(ctx context.Context, instance instance) (*raftnodepb.PromoteToLeaderResponse, error) {
+		return instance.PromoteToLeader(ctx, in, opts...)
 	})
 }
