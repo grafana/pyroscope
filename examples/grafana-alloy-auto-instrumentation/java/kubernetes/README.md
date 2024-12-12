@@ -42,6 +42,19 @@ To use this example:
 After the deployment is operational, the Grafana Alloy will profile the Java application using the defined configuration.
 The example will deploy a Grafana instance in the same cluster, available via the `grafana` service at port 3000.
 
+### Observe profiling data
+
+You can open grafana in your browser by port-forwarding traffic to the service:
+```shell
+kubectl port-forward -n pyroscope-java deployment/grafana 3000 3000
+```
+
+Now that everything is set up, you can browse profiling data through the [Explore profiles app](http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer).
+
+![image](https://github.com/user-attachments/assets/16f5559a-0bbc-4cf3-9589-fa4374bbc7e8)
+![image](https://github.com/user-attachments/assets/ca28d228-93c3-4e16-a63c-285005c7b203)
+
+
 ## Documentation
 
 Refer to the [official documentation](https://grafana.com/docs/pyroscope/latest/configure-client/grafana-alloy/java/) for an in-depth understanding and additional configuration options for Java profiling with Grafana Alloy.
