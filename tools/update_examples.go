@@ -29,6 +29,7 @@ func main() {
 	updatePython()
 	updateDotnet()
 	updateNodeJS()
+	updateRust()
 }
 
 func getGHToken() {
@@ -64,6 +65,19 @@ func updateNodeJS() {
 		replaceInplace(rePackageJson, filepath.Join(path, "package.json"), replPackageJson)
 		s.sh(fmt.Sprintf(`cd "%s"       && yarn`, path))
 	}
+}
+
+func updateRust() {
+	libTags := getTagsV("grafana/pyroscope-rs", extractRSVersion("lib"))
+	lastLibTag := libTags[len(libTags)-1]
+	fmt.Println(lastLibTag)
+	pprofRsTags := getTagsV("grafana/pyroscope-rs", extractRSVersion("pprofrs"))
+	lastPprofRsTag := pprofRsTags[len(pprofRsTags)-1]
+	fmt.Println(lastPprofRsTag)
+	s.sh(fmt.Sprintf("cd examples/language-sdk-instrumentation/rust/rideshare/server && cargo add pyroscope@^%s", lastLibTag.version()))
+	s.sh(fmt.Sprintf("cd examples/language-sdk-instrumentation/rust/rideshare/server && cargo add pyroscope_pprofrs@^%s", lastPprofRsTag.version()))
+	s.sh(fmt.Sprintf("cd examples/language-sdk-instrumentation/rust/basic && cargo add pyroscope@^%s", lastLibTag.version()))
+	s.sh(fmt.Sprintf("cd examples/language-sdk-instrumentation/rust/basic && cargo add pyroscope_pprofrs@^%s", lastPprofRsTag.version()))
 }
 
 func updateDotnet() {

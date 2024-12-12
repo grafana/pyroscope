@@ -1,7 +1,7 @@
 ## Rust Example
 
-To run the rideshare example run the following commands:
-```shell
+To run the basic example run the following commands:
+```
 # Pull latest pyroscope and grafana images:
 docker pull grafana/pyroscope:latest
 docker pull grafana/grafana:latest
@@ -14,7 +14,6 @@ docker compose up --build
 ```
 
 Example output:
-![Image](https://github.com/user-attachments/assets/0c402f72-3936-4c27-a22e-9b7af456fb21)
-![Image](https://github.com/user-attachments/assets/b5f51af8-57d6-4dd6-b98e-44f5162d2ca2)
 
-
+![Image](https://github.com/user-attachments/assets/65c3000f-3170-4d41-94d4-257413f1f54d)
+![Image](https://github.com/user-attachments/assets/d9948c21-ab74-4e7c-aef4-ac376751a51f)
