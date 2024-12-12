@@ -4,7 +4,7 @@
 
 ![ruby_example_architecture_new_00](https://user-images.githubusercontent.com/23323466/173369670-ba6fe5ce-eab0-4824-94dd-c72255efc063.gif)
 
-Note: For documentation on the Pyroscope ruby gem visit [our website](https://pyroscope.io/docs/ruby/)
+Note: For documentation on the Pyroscope ruby gem visit [our website](https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/ruby/).
 
 ## Live Demo
 
