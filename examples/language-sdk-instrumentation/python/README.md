@@ -73,10 +73,6 @@ What this block does, is:
 Try out one of the Django, Flask, or FastAPI examples located in the `rideshare` directory by running the following commands:
 
 ```shell
-
-To run the example run the following commands:
-
-```shell
 # Pull latest pyroscope and grafana images:
 docker pull grafana/pyroscope:latest
 docker pull grafana/grafana:latest
