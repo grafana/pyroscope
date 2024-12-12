@@ -8,7 +8,7 @@ services:
     ports:
     - 4040:4040
   alloy:
-    image: grafana/alloy:main
+    image: grafana/alloy:latest
     volumes:
     - ./config.alloy:/etc/alloy-config/config.alloy
     command:

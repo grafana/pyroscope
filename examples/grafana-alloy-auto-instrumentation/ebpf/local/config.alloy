@@ -18,16 +18,16 @@ discovery.relabel "alloy" {
     // Filter needed processes
     rule {
         source_labels = ["__meta_process_exe"]
-        regex = ".*/grafana-alloy"
+        regex = ".*/alloy"
         action = "keep"
     }
      // provide arbitrary service_name label, otherwise it will be "unspecified"
     rule {
         source_labels = ["__meta_process_exe"]
         target_label = "service_name"
-        regex = ".*/grafana-alloy"
+        regex = ".*/alloy"
         action = "replace"
-        replacement = "ebpf/local/grafana-alloy"
+        replacement = "ebpf/local/alloy"
     }
 }
 
