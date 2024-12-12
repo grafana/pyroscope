@@ -6,6 +6,8 @@ The docker compose consists of:
 - Pyroscope for continuous profiling
 - Grafana for visualization
 - Load Generator for simulating traffic
+  
+For a detailed guide about Python span profiles configuration, refer to the docs [Pyroscope documentation](https://grafana.com/docs/pyroscope/latest/configure-client/trace-span-profiles/python-span-profiles/).
  
 The `rideshare` app generates traces and profiling data that should be available in Grafana.
 Pyroscope and Tempo datasources are provisioned automatically.
@@ -34,11 +36,6 @@ and have `pyroscope.profile.id` attribute set to the corresponding span ID.
 Please note that presence of the attribute does not necessarily
 indicate that the span has a profile: stack trace samples might not be collected, if the utilized CPU time is
 less than the sample interval (10ms).
-
-### Instrumentation
-
-- `rideshare` demo application instrumented with OpenTelemetry: [OTel integration](https://github.com/grafana/otel-profiling-python)
-- `pyroscope` itself is instrumented with opentracing-go SDK and [spanprofiler](https://github.com/grafana/dskit/tree/main/spanprofiler) for profiling integration.
 
 ### Grafana Tempo configuration
 

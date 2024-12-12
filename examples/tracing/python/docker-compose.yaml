@@ -4,10 +4,10 @@ services:
     ports:
       - "4040:4040"
 
-  rideshare-python-us-east:
+  us-east:
     ports:
       - "5000"
-    hostname: rideshare-python-us-east
+    hostname: us-east
     environment: &env
       OTLP_URL: tempo:4318
       OTLP_INSECURE: 1
@@ -18,32 +18,32 @@ services:
       OTEL_METRICS_EXPORTER: none
       OTEL_TRACES_SAMPLER: always_on
       OTEL_PROPAGATORS: tracecontext
-      PYROSCOPE_LABELS: hostname=rideshare-python-us-east
+      PYROSCOPE_LABELS: hostname=us-east
       REGION: us-east
       PYROSCOPE_SERVER_ADDRESS: http://pyroscope:4040
       PYTHONUNBUFFERED: 1  # Python-specific: Ensures logging output isn't buffered
     build:
       context: .
 
-  rideshare-python-eu-north:
+  eu-north:
     ports:
       - "5000"
-    hostname: rideshare-python-eu-north
+    hostname: eu-north
     environment:
       <<: *env
       REGION: eu-north
-      PYROSCOPE_LABELS: hostname=rideshare-python-eu-north
+      PYROSCOPE_LABELS: hostname=eu-north
     build:
       context: .
 
-  rideshare-python-ap-south:
+  ap-south:
     ports:
       - "5000"
-    hostname: rideshare-python-ap-south
+    hostname: ap-south
     environment:
       <<: *env
       REGION: ap-south
-      PYROSCOPE_LABELS: hostname=rideshare-python-ap-south
+      PYROSCOPE_LABELS: hostname=ap-south
     build:
       context: .
 
@@ -54,9 +54,9 @@ services:
       dockerfile: Dockerfile.load-generator
     command:
       - ./loadgen
-      - http://rideshare-python-ap-south:5000
-      - http://rideshare-python-eu-north:5000
-      - http://rideshare-python-us-east:5000
+      - http://ap-south:5000
+      - http://eu-north:5000
+      - http://us-east:5000
 
   grafana:
     image: grafana/grafana:latest
