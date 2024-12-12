@@ -12,3 +12,5 @@ docker-compose up --build
 # Reset the database (if needed):
 # docker-compose down
 ```
+
+Navigate to [Grafana](http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer?explorationType=flame-graph&var-serviceName=flask-ride-sharing-app&var-profileMetricId=process_cpu:cpu:nanoseconds:cpu:nanoseconds) to Explore Profiles.
