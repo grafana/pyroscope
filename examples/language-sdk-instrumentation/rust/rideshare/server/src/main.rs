@@ -15,16 +15,12 @@ enum Vehicle {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Force rustc to display the log messages in the console.
     std::env::set_var("RUST_LOG", "trace");
 
-    // Initialize the logger.
-    pretty_env_logger::init_timed(); // Get Pyroscope server address from environment variable.
+    pretty_env_logger::init_timed();
 
-    // Get Pyroscope server address from environment variable.
     let server_address = std::env::var("PYROSCOPE_SERVER_ADDRESS")
         .unwrap_or_else(|_| "http://localhost:4040".to_string());
-    // Get Region from environment variable.
     let region = std::env::var("REGION").unwrap_or_else(|_| "us-east".to_string());
 
     let app_name = std::env::var("PYROSCOPE_APPLICATION_NAME")
@@ -36,7 +32,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let auth_password = std::env::var("PYROSCOPE_BASIC_AUTH_PASSWORD")
         .unwrap_or_else(|_| "".to_string());
 
-    // Configure Pyroscope client.
     let agent = PyroscopeAgent::builder(server_address, app_name.to_owned())
         .basic_auth(auth_user, auth_password)
         .backend(pprof_backend(PprofConfig::new().sample_rate(100)))
@@ -44,7 +39,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build()
         .unwrap();
 
-    // Start the Pyroscope client.
     let agent_running = agent.start()?;
 
     // Root Route
@@ -61,7 +55,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let add = Arc::new(add_tag);
     let remove = Arc::new(remove_tag);
 
-    // Bike Route
     let bike = warp::path("bike").map(move || {
         add("vehicle".to_string(), "bike".to_string());
         order_bike(1);
@@ -74,7 +67,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let add = Arc::new(add_tag);
     let remove = Arc::new(remove_tag);
 
-    // Scooter Route
     let scooter = warp::path("scooter").map(move || {
         add("vehicle".to_string(), "scooter".to_string());
         order_scooter(2);
@@ -87,7 +79,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let add = Arc::new(add_tag);
     let remove = Arc::new(remove_tag);
 
-    // Car Route
     let car = warp::path("car").map(move || {
         add("vehicle".to_string(), "car".to_string());
         order_car(3);
@@ -96,16 +87,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "Car ordered"
     });
 
-    // Create a routes filter.
     let routes = warp::get().and(root).or(bike).or(scooter).or(car);
 
-    // Serve the routes.
     warp::serve(routes).run(([0, 0, 0, 0], 5000)).await;
 
-    // Stop the Pyroscope client.
     let agent_ready = agent_running.stop()?;
 
-    // Shutdown PyroscopeAgent
     agent_ready.shutdown();
 
     Ok(())
@@ -127,7 +114,7 @@ fn find_nearest_vehicle(search_radius: u64, vehicle: Vehicle) {
     let mut _i: u64 = 0;
 
     let start_time = std::time::Instant::now();
-    while start_time.elapsed().as_secs() < search_radius {
+    while start_time.elapsed().as_millis() < u128::from(search_radius * 200) {
         _i += 1;
     }
 
@@ -140,7 +127,7 @@ fn check_driver_availability(search_radius: u64) {
     let mut _i: u64 = 0;
 
     let start_time = std::time::Instant::now();
-    while start_time.elapsed().as_secs() < (search_radius / 2) {
+    while start_time.elapsed().as_millis() < u128::from(search_radius * 200) {
         _i += 1;
     }
     // Every 4 minutes this will artificially create make requests in eu-north region slow
@@ -148,7 +135,7 @@ fn check_driver_availability(search_radius: u64) {
     // flamegraph
     let time_minutes = Local::now().minute();
     if std::env::var("REGION").unwrap_or_else(|_| "eu-north".to_owned()) == "eu-north"
-        && (time_minutes * 8 % 4 == 0)
+        && (time_minutes % 4 == 0)
     {
         mutex_lock(search_radius);
     }
@@ -158,7 +145,7 @@ fn mutex_lock(search_radius: u64) {
     let mut _i: u64 = 0;
 
     let start_time = std::time::Instant::now();
-    while start_time.elapsed().as_secs() < (search_radius * 10) {
+    while start_time.elapsed().as_millis() < u128::from(search_radius * 4000) {
         _i += 1;
     }
 }

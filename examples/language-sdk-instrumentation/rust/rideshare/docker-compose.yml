@@ -1,8 +1,8 @@
 services:
   pyroscope:
     image: grafana/pyroscope
-    ports:
-    - 4040:4040
+    command:
+      - -self-profiling.disable-push=true
   us-east:
     ports:
     - 5000
