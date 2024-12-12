@@ -22,7 +22,7 @@ docker pull grafana/grafana:latest
 docker compose up
 ```
 
-Using the [Explore Profiles app], you can inspect the profiles for different request types.:
+Using the [Explore Profiles app], you can inspect the profiles for different request types:
 
 
 [Explore Profiles app]:http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer?searchText=&panelType=time-series&layout=grid&hideNoData=off&explorationType=labels&var-serviceName=ride-sharing-app&var-profileMetricId=process_cpu:cpu:nanoseconds:cpu:nanoseconds&var-dataSource=pyroscope&var-groupBy=all&var-filters=
