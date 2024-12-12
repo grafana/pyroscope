@@ -211,28 +211,28 @@ func newClient(address string) (*metastoreClient, error) {
 
 func (a *Admin) addFormActionHandlers() {
 	a.actionHandlers["add"] = func(w http.ResponseWriter, r *http.Request, cr configChangeRequest) error {
-		_, err := a.leaderClient.AddNode(r.Context(), &raftnodepb.NodeChangeRequest{
+		_, err := a.leaderClient.AddNode(r.Context(), &raftnodepb.AddNodeRequest{
 			ServerId:    cr.serverId,
 			CurrentTerm: cr.currentTerm,
 		})
 		return err
 	}
 	a.actionHandlers["remove"] = func(w http.ResponseWriter, r *http.Request, cr configChangeRequest) error {
-		_, err := a.leaderClient.RemoveNode(r.Context(), &raftnodepb.NodeChangeRequest{
+		_, err := a.leaderClient.RemoveNode(r.Context(), &raftnodepb.RemoveNodeRequest{
 			ServerId:    cr.serverId,
 			CurrentTerm: cr.currentTerm,
 		})
 		return err
 	}
 	a.actionHandlers["promote"] = func(w http.ResponseWriter, r *http.Request, cr configChangeRequest) error {
-		_, err := a.leaderClient.PromoteToLeader(r.Context(), &raftnodepb.NodeChangeRequest{
+		_, err := a.leaderClient.PromoteToLeader(r.Context(), &raftnodepb.PromoteToLeaderRequest{
 			ServerId:    cr.serverId,
 			CurrentTerm: cr.currentTerm,
 		})
 		return err
 	}
 	a.actionHandlers["demote"] = func(w http.ResponseWriter, r *http.Request, cr configChangeRequest) error {
-		_, err := a.leaderClient.DemoteLeader(r.Context(), &raftnodepb.NodeChangeRequest{
+		_, err := a.leaderClient.DemoteLeader(r.Context(), &raftnodepb.DemoteLeaderRequest{
 			ServerId:    cr.serverId,
 			CurrentTerm: cr.currentTerm,
 		})

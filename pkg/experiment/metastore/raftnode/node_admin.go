@@ -11,7 +11,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode/raftnodepb"
 )
 
-func (n *Node) RemoveNode(request *raftnodepb.NodeChangeRequest) (*raftnodepb.NodeChangeResponse, error) {
+func (n *Node) RemoveNode(request *raftnodepb.RemoveNodeRequest) (*raftnodepb.RemoveNodeResponse, error) {
 	level.Info(n.logger).Log("msg", "removing node", "id", request.ServerId)
 
 	// Send a round of heartbeats to confirm we are the leader. If we are not, the request will be retried on the leader node.
@@ -38,10 +38,10 @@ func (n *Node) RemoveNode(request *raftnodepb.NodeChangeRequest) (*raftnodepb.No
 	}
 
 	level.Info(n.logger).Log("msg", "node removed", "id", request.ServerId)
-	return &raftnodepb.NodeChangeResponse{}, nil
+	return &raftnodepb.RemoveNodeResponse{}, nil
 }
 
-func (n *Node) AddNode(request *raftnodepb.NodeChangeRequest) (*raftnodepb.NodeChangeResponse, error) {
+func (n *Node) AddNode(request *raftnodepb.AddNodeRequest) (*raftnodepb.AddNodeResponse, error) {
 	level.Info(n.logger).Log("msg", "adding node", "id", request.ServerId)
 
 	// Send a round of heartbeats to confirm we are the leader. If we are not, the request will be retried on the leader node.
@@ -62,10 +62,10 @@ func (n *Node) AddNode(request *raftnodepb.NodeChangeRequest) (*raftnodepb.NodeC
 	}
 
 	level.Info(n.logger).Log("msg", "node added", "id", request.ServerId)
-	return &raftnodepb.NodeChangeResponse{}, nil
+	return &raftnodepb.AddNodeResponse{}, nil
 }
 
-func (n *Node) DemoteLeader(request *raftnodepb.NodeChangeRequest) (*raftnodepb.NodeChangeResponse, error) {
+func (n *Node) DemoteLeader(request *raftnodepb.DemoteLeaderRequest) (*raftnodepb.DemoteLeaderResponse, error) {
 	level.Info(n.logger).Log("msg", "demoting node", "id", request.ServerId)
 
 	// Send a round of heartbeats to confirm we are the leader. If we are not, the request will be retried on the leader node.
@@ -92,10 +92,10 @@ func (n *Node) DemoteLeader(request *raftnodepb.NodeChangeRequest) (*raftnodepb.
 	}
 
 	level.Info(n.logger).Log("msg", "node demoted", "id", request.ServerId)
-	return &raftnodepb.NodeChangeResponse{}, nil
+	return &raftnodepb.DemoteLeaderResponse{}, nil
 }
 
-func (n *Node) PromoteToLeader(request *raftnodepb.NodeChangeRequest) (*raftnodepb.NodeChangeResponse, error) {
+func (n *Node) PromoteToLeader(request *raftnodepb.PromoteToLeaderRequest) (*raftnodepb.PromoteToLeaderResponse, error) {
 	level.Info(n.logger).Log("msg", "promoting node", "id", request.ServerId)
 
 	// Send a round of heartbeats to confirm we are the leader. If we are not, the request will be retried on the leader node.
@@ -122,7 +122,7 @@ func (n *Node) PromoteToLeader(request *raftnodepb.NodeChangeRequest) (*raftnode
 	}
 
 	level.Info(n.logger).Log("msg", "node promoted", "id", request.ServerId)
-	return &raftnodepb.NodeChangeResponse{}, nil
+	return &raftnodepb.PromoteToLeaderResponse{}, nil
 }
 
 func (n *Node) verifyCurrentTerm(requestTerm uint64) error {

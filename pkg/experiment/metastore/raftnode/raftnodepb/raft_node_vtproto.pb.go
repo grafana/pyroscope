@@ -33,10 +33,10 @@ const _ = grpc.SupportPackageIsVersion7
 type RaftNodeServiceClient interface {
 	ReadIndex(ctx context.Context, in *ReadIndexRequest, opts ...grpc.CallOption) (*ReadIndexResponse, error)
 	NodeInfo(ctx context.Context, in *NodeInfoRequest, opts ...grpc.CallOption) (*NodeInfoResponse, error)
-	RemoveNode(ctx context.Context, in *NodeChangeRequest, opts ...grpc.CallOption) (*NodeChangeResponse, error)
-	AddNode(ctx context.Context, in *NodeChangeRequest, opts ...grpc.CallOption) (*NodeChangeResponse, error)
-	DemoteLeader(ctx context.Context, in *NodeChangeRequest, opts ...grpc.CallOption) (*NodeChangeResponse, error)
-	PromoteToLeader(ctx context.Context, in *NodeChangeRequest, opts ...grpc.CallOption) (*NodeChangeResponse, error)
+	RemoveNode(ctx context.Context, in *RemoveNodeRequest, opts ...grpc.CallOption) (*RemoveNodeResponse, error)
+	AddNode(ctx context.Context, in *AddNodeRequest, opts ...grpc.CallOption) (*AddNodeResponse, error)
+	DemoteLeader(ctx context.Context, in *DemoteLeaderRequest, opts ...grpc.CallOption) (*DemoteLeaderResponse, error)
+	PromoteToLeader(ctx context.Context, in *PromoteToLeaderRequest, opts ...grpc.CallOption) (*PromoteToLeaderResponse, error)
 }
 
 type raftNodeServiceClient struct {
@@ -65,8 +65,8 @@ func (c *raftNodeServiceClient) NodeInfo(ctx context.Context, in *NodeInfoReques
 	return out, nil
 }
 
-func (c *raftNodeServiceClient) RemoveNode(ctx context.Context, in *NodeChangeRequest, opts ...grpc.CallOption) (*NodeChangeResponse, error) {
-	out := new(NodeChangeResponse)
+func (c *raftNodeServiceClient) RemoveNode(ctx context.Context, in *RemoveNodeRequest, opts ...grpc.CallOption) (*RemoveNodeResponse, error) {
+	out := new(RemoveNodeResponse)
 	err := c.cc.Invoke(ctx, "/raft_node.RaftNodeService/RemoveNode", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -74,8 +74,8 @@ func (c *raftNodeServiceClient) RemoveNode(ctx context.Context, in *NodeChangeRe
 	return out, nil
 }
 
-func (c *raftNodeServiceClient) AddNode(ctx context.Context, in *NodeChangeRequest, opts ...grpc.CallOption) (*NodeChangeResponse, error) {
-	out := new(NodeChangeResponse)
+func (c *raftNodeServiceClient) AddNode(ctx context.Context, in *AddNodeRequest, opts ...grpc.CallOption) (*AddNodeResponse, error) {
+	out := new(AddNodeResponse)
 	err := c.cc.Invoke(ctx, "/raft_node.RaftNodeService/AddNode", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -83,8 +83,8 @@ func (c *raftNodeServiceClient) AddNode(ctx context.Context, in *NodeChangeReque
 	return out, nil
 }
 
-func (c *raftNodeServiceClient) DemoteLeader(ctx context.Context, in *NodeChangeRequest, opts ...grpc.CallOption) (*NodeChangeResponse, error) {
-	out := new(NodeChangeResponse)
+func (c *raftNodeServiceClient) DemoteLeader(ctx context.Context, in *DemoteLeaderRequest, opts ...grpc.CallOption) (*DemoteLeaderResponse, error) {
+	out := new(DemoteLeaderResponse)
 	err := c.cc.Invoke(ctx, "/raft_node.RaftNodeService/DemoteLeader", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -92,8 +92,8 @@ func (c *raftNodeServiceClient) DemoteLeader(ctx context.Context, in *NodeChange
 	return out, nil
 }
 
-func (c *raftNodeServiceClient) PromoteToLeader(ctx context.Context, in *NodeChangeRequest, opts ...grpc.CallOption) (*NodeChangeResponse, error) {
-	out := new(NodeChangeResponse)
+func (c *raftNodeServiceClient) PromoteToLeader(ctx context.Context, in *PromoteToLeaderRequest, opts ...grpc.CallOption) (*PromoteToLeaderResponse, error) {
+	out := new(PromoteToLeaderResponse)
 	err := c.cc.Invoke(ctx, "/raft_node.RaftNodeService/PromoteToLeader", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -107,10 +107,10 @@ func (c *raftNodeServiceClient) PromoteToLeader(ctx context.Context, in *NodeCha
 type RaftNodeServiceServer interface {
 	ReadIndex(context.Context, *ReadIndexRequest) (*ReadIndexResponse, error)
 	NodeInfo(context.Context, *NodeInfoRequest) (*NodeInfoResponse, error)
-	RemoveNode(context.Context, *NodeChangeRequest) (*NodeChangeResponse, error)
-	AddNode(context.Context, *NodeChangeRequest) (*NodeChangeResponse, error)
-	DemoteLeader(context.Context, *NodeChangeRequest) (*NodeChangeResponse, error)
-	PromoteToLeader(context.Context, *NodeChangeRequest) (*NodeChangeResponse, error)
+	RemoveNode(context.Context, *RemoveNodeRequest) (*RemoveNodeResponse, error)
+	AddNode(context.Context, *AddNodeRequest) (*AddNodeResponse, error)
+	DemoteLeader(context.Context, *DemoteLeaderRequest) (*DemoteLeaderResponse, error)
+	PromoteToLeader(context.Context, *PromoteToLeaderRequest) (*PromoteToLeaderResponse, error)
 	mustEmbedUnimplementedRaftNodeServiceServer()
 }
 
@@ -124,16 +124,16 @@ func (UnimplementedRaftNodeServiceServer) ReadIndex(context.Context, *ReadIndexR
 func (UnimplementedRaftNodeServiceServer) NodeInfo(context.Context, *NodeInfoRequest) (*NodeInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NodeInfo not implemented")
 }
-func (UnimplementedRaftNodeServiceServer) RemoveNode(context.Context, *NodeChangeRequest) (*NodeChangeResponse, error) {
+func (UnimplementedRaftNodeServiceServer) RemoveNode(context.Context, *RemoveNodeRequest) (*RemoveNodeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveNode not implemented")
 }
-func (UnimplementedRaftNodeServiceServer) AddNode(context.Context, *NodeChangeRequest) (*NodeChangeResponse, error) {
+func (UnimplementedRaftNodeServiceServer) AddNode(context.Context, *AddNodeRequest) (*AddNodeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddNode not implemented")
 }
-func (UnimplementedRaftNodeServiceServer) DemoteLeader(context.Context, *NodeChangeRequest) (*NodeChangeResponse, error) {
+func (UnimplementedRaftNodeServiceServer) DemoteLeader(context.Context, *DemoteLeaderRequest) (*DemoteLeaderResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DemoteLeader not implemented")
 }
-func (UnimplementedRaftNodeServiceServer) PromoteToLeader(context.Context, *NodeChangeRequest) (*NodeChangeResponse, error) {
+func (UnimplementedRaftNodeServiceServer) PromoteToLeader(context.Context, *PromoteToLeaderRequest) (*PromoteToLeaderResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PromoteToLeader not implemented")
 }
 func (UnimplementedRaftNodeServiceServer) mustEmbedUnimplementedRaftNodeServiceServer() {}
@@ -186,7 +186,7 @@ func _RaftNodeService_NodeInfo_Handler(srv interface{}, ctx context.Context, dec
 }
 
 func _RaftNodeService_RemoveNode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(NodeChangeRequest)
+	in := new(RemoveNodeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -198,13 +198,13 @@ func _RaftNodeService_RemoveNode_Handler(srv interface{}, ctx context.Context, d
 		FullMethod: "/raft_node.RaftNodeService/RemoveNode",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RaftNodeServiceServer).RemoveNode(ctx, req.(*NodeChangeRequest))
+		return srv.(RaftNodeServiceServer).RemoveNode(ctx, req.(*RemoveNodeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _RaftNodeService_AddNode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(NodeChangeRequest)
+	in := new(AddNodeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -216,13 +216,13 @@ func _RaftNodeService_AddNode_Handler(srv interface{}, ctx context.Context, dec 
 		FullMethod: "/raft_node.RaftNodeService/AddNode",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RaftNodeServiceServer).AddNode(ctx, req.(*NodeChangeRequest))
+		return srv.(RaftNodeServiceServer).AddNode(ctx, req.(*AddNodeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _RaftNodeService_DemoteLeader_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(NodeChangeRequest)
+	in := new(DemoteLeaderRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -234,13 +234,13 @@ func _RaftNodeService_DemoteLeader_Handler(srv interface{}, ctx context.Context,
 		FullMethod: "/raft_node.RaftNodeService/DemoteLeader",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RaftNodeServiceServer).DemoteLeader(ctx, req.(*NodeChangeRequest))
+		return srv.(RaftNodeServiceServer).DemoteLeader(ctx, req.(*DemoteLeaderRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _RaftNodeService_PromoteToLeader_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(NodeChangeRequest)
+	in := new(PromoteToLeaderRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -252,7 +252,7 @@ func _RaftNodeService_PromoteToLeader_Handler(srv interface{}, ctx context.Conte
 		FullMethod: "/raft_node.RaftNodeService/PromoteToLeader",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RaftNodeServiceServer).PromoteToLeader(ctx, req.(*NodeChangeRequest))
+		return srv.(RaftNodeServiceServer).PromoteToLeader(ctx, req.(*PromoteToLeaderRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -719,7 +719,7 @@ func (m *NodeInfo) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *NodeChangeRequest) MarshalVT() (dAtA []byte, err error) {
+func (m *RemoveNodeRequest) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -732,12 +732,12 @@ func (m *NodeChangeRequest) MarshalVT() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *NodeChangeRequest) MarshalToVT(dAtA []byte) (int, error) {
+func (m *RemoveNodeRequest) MarshalToVT(dAtA []byte) (int, error) {
 	size := m.SizeVT()
 	return m.MarshalToSizedBufferVT(dAtA[:size])
 }
 
-func (m *NodeChangeRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+func (m *RemoveNodeRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m == nil {
 		return 0, nil
 	}
@@ -752,7 +752,7 @@ func (m *NodeChangeRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.CurrentTerm != 0 {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.CurrentTerm))
 		i--
-		dAtA[i] = 0x18
+		dAtA[i] = 0x10
 	}
 	if len(m.ServerId) > 0 {
 		i -= len(m.ServerId)
@@ -764,7 +764,7 @@ func (m *NodeChangeRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *NodeChangeResponse) MarshalVT() (dAtA []byte, err error) {
+func (m *RemoveNodeResponse) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -777,12 +777,246 @@ func (m *NodeChangeResponse) MarshalVT() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *NodeChangeResponse) MarshalToVT(dAtA []byte) (int, error) {
+func (m *RemoveNodeResponse) MarshalToVT(dAtA []byte) (int, error) {
 	size := m.SizeVT()
 	return m.MarshalToSizedBufferVT(dAtA[:size])
 }
 
-func (m *NodeChangeResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+func (m *RemoveNodeResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *AddNodeRequest) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *AddNodeRequest) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *AddNodeRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.CurrentTerm != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.CurrentTerm))
+		i--
+		dAtA[i] = 0x10
+	}
+	if len(m.ServerId) > 0 {
+		i -= len(m.ServerId)
+		copy(dAtA[i:], m.ServerId)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.ServerId)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *AddNodeResponse) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *AddNodeResponse) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *AddNodeResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *DemoteLeaderRequest) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *DemoteLeaderRequest) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *DemoteLeaderRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.CurrentTerm != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.CurrentTerm))
+		i--
+		dAtA[i] = 0x10
+	}
+	if len(m.ServerId) > 0 {
+		i -= len(m.ServerId)
+		copy(dAtA[i:], m.ServerId)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.ServerId)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *DemoteLeaderResponse) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *DemoteLeaderResponse) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *DemoteLeaderResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *PromoteToLeaderRequest) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *PromoteToLeaderRequest) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *PromoteToLeaderRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.CurrentTerm != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.CurrentTerm))
+		i--
+		dAtA[i] = 0x10
+	}
+	if len(m.ServerId) > 0 {
+		i -= len(m.ServerId)
+		copy(dAtA[i:], m.ServerId)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.ServerId)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *PromoteToLeaderResponse) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *PromoteToLeaderResponse) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *PromoteToLeaderResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m == nil {
 		return 0, nil
 	}
@@ -968,7 +1202,7 @@ func (m *NodeInfo) SizeVT() (n int) {
 	return n
 }
 
-func (m *NodeChangeRequest) SizeVT() (n int) {
+func (m *RemoveNodeRequest) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -985,7 +1219,88 @@ func (m *NodeChangeRequest) SizeVT() (n int) {
 	return n
 }
 
-func (m *NodeChangeResponse) SizeVT() (n int) {
+func (m *RemoveNodeResponse) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *AddNodeRequest) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.ServerId)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.CurrentTerm != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.CurrentTerm))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *AddNodeResponse) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *DemoteLeaderRequest) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.ServerId)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.CurrentTerm != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.CurrentTerm))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *DemoteLeaderResponse) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *PromoteToLeaderRequest) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.ServerId)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.CurrentTerm != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.CurrentTerm))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *PromoteToLeaderResponse) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -2058,7 +2373,7 @@ func (m *NodeInfo) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *NodeChangeRequest) UnmarshalVT(dAtA []byte) error {
+func (m *RemoveNodeRequest) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2081,10 +2396,10 @@ func (m *NodeChangeRequest) UnmarshalVT(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: NodeChangeRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: RemoveNodeRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: NodeChangeRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: RemoveNodeRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -2119,7 +2434,7 @@ func (m *NodeChangeRequest) UnmarshalVT(dAtA []byte) error {
 			}
 			m.ServerId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 3:
+		case 2:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field CurrentTerm", wireType)
 			}
@@ -2160,7 +2475,7 @@ func (m *NodeChangeRequest) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *NodeChangeResponse) UnmarshalVT(dAtA []byte) error {
+func (m *RemoveNodeResponse) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2183,10 +2498,469 @@ func (m *NodeChangeResponse) UnmarshalVT(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: NodeChangeResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: RemoveNodeResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: NodeChangeResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: RemoveNodeResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *AddNodeRequest) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: AddNodeRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: AddNodeRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ServerId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ServerId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CurrentTerm", wireType)
+			}
+			m.CurrentTerm = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.CurrentTerm |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *AddNodeResponse) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: AddNodeResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: AddNodeResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *DemoteLeaderRequest) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: DemoteLeaderRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: DemoteLeaderRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ServerId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ServerId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CurrentTerm", wireType)
+			}
+			m.CurrentTerm = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.CurrentTerm |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *DemoteLeaderResponse) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: DemoteLeaderResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: DemoteLeaderResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *PromoteToLeaderRequest) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: PromoteToLeaderRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: PromoteToLeaderRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ServerId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ServerId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CurrentTerm", wireType)
+			}
+			m.CurrentTerm = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.CurrentTerm |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *PromoteToLeaderResponse) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: PromoteToLeaderResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: PromoteToLeaderResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		default:

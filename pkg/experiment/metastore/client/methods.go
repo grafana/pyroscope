@@ -146,26 +146,26 @@ func (c *Client) NodeInfo(ctx context.Context, in *raftnodepb.NodeInfoRequest, o
 	})
 }
 
-func (c *Client) RemoveNode(ctx context.Context, in *raftnodepb.NodeChangeRequest, opts ...grpc.CallOption) (*raftnodepb.NodeChangeResponse, error) {
-	return invoke(ctx, c, func(ctx context.Context, instance instance) (*raftnodepb.NodeChangeResponse, error) {
+func (c *Client) RemoveNode(ctx context.Context, in *raftnodepb.RemoveNodeRequest, opts ...grpc.CallOption) (*raftnodepb.RemoveNodeResponse, error) {
+	return invoke(ctx, c, func(ctx context.Context, instance instance) (*raftnodepb.RemoveNodeResponse, error) {
 		return instance.RemoveNode(ctx, in, opts...)
 	})
 }
 
-func (c *Client) AddNode(ctx context.Context, in *raftnodepb.NodeChangeRequest, opts ...grpc.CallOption) (*raftnodepb.NodeChangeResponse, error) {
-	return invoke(ctx, c, func(ctx context.Context, instance instance) (*raftnodepb.NodeChangeResponse, error) {
+func (c *Client) AddNode(ctx context.Context, in *raftnodepb.AddNodeRequest, opts ...grpc.CallOption) (*raftnodepb.AddNodeResponse, error) {
+	return invoke(ctx, c, func(ctx context.Context, instance instance) (*raftnodepb.AddNodeResponse, error) {
 		return instance.AddNode(ctx, in, opts...)
 	})
 }
 
-func (c *Client) DemoteLeader(ctx context.Context, in *raftnodepb.NodeChangeRequest, opts ...grpc.CallOption) (*raftnodepb.NodeChangeResponse, error) {
-	return invoke(ctx, c, func(ctx context.Context, instance instance) (*raftnodepb.NodeChangeResponse, error) {
+func (c *Client) DemoteLeader(ctx context.Context, in *raftnodepb.DemoteLeaderRequest, opts ...grpc.CallOption) (*raftnodepb.DemoteLeaderResponse, error) {
+	return invoke(ctx, c, func(ctx context.Context, instance instance) (*raftnodepb.DemoteLeaderResponse, error) {
 		return instance.DemoteLeader(ctx, in, opts...)
 	})
 }
 
-func (c *Client) PromoteToLeader(ctx context.Context, in *raftnodepb.NodeChangeRequest, opts ...grpc.CallOption) (*raftnodepb.NodeChangeResponse, error) {
-	return invoke(ctx, c, func(ctx context.Context, instance instance) (*raftnodepb.NodeChangeResponse, error) {
+func (c *Client) PromoteToLeader(ctx context.Context, in *raftnodepb.PromoteToLeaderRequest, opts ...grpc.CallOption) (*raftnodepb.PromoteToLeaderResponse, error) {
+	return invoke(ctx, c, func(ctx context.Context, instance instance) (*raftnodepb.PromoteToLeaderResponse, error) {
 		return instance.PromoteToLeader(ctx, in, opts...)
 	})
 }
