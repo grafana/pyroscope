@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"net/http"
+	"log"
 	"os"
 	"runtime"
 	"sync"
@@ -49,18 +49,19 @@ func solveMystery(wg *sync.WaitGroup) {
 }
 
 func main() {
-	// Pyroscope configuration
+	// These 2 lines are only required if you're using mutex or block profiling
 	runtime.SetMutexProfileFraction(5)
 	runtime.SetBlockProfileRate(5)
 
-	pyroscope.Start(pyroscope.Config{
+	// Pyroscope configuration
+	profiler, err := pyroscope.Start(pyroscope.Config{
 		ApplicationName: "detective.mystery.app",
-		ServerAddress:   "https://profiles-prod-001.grafana.net", // if OSS then http://localhost:4040
+		ServerAddress:   "https://profiles-prod-001.grafana.net", // If OSS, then "http://pyroscope.local:4040"
 		// Optional HTTP Basic authentication
-		BasicAuthUser:     "<User>",     // 900009
-		BasicAuthPassword: "<Password>", // glc_SAMPLEAPIKEY0000000000==
-		Logger:            pyroscope.StandardLogger,
-		Tags:              map[string]string{"hostname": os.Getenv("HOSTNAME")},
+		// BasicAuthUser:     "<User>",     // 900009
+		// BasicAuthPassword: "<Password>", // glc_SAMPLEAPIKEY0000000000==
+		Logger: pyroscope.StandardLogger,
+		Tags:   map[string]string{"hostname": os.Getenv("HOSTNAME")},
 		ProfileTypes: []pyroscope.ProfileType{
 			pyroscope.ProfileCPU,
 			pyroscope.ProfileAllocObjects,
@@ -74,16 +75,17 @@ func main() {
 			pyroscope.ProfileBlockDuration,
 		},
 	})
+	if err != nil {
+		log.Fatalf("Error starting profiler: %v", err)
+	}
+	defer profiler.Stop()
+
+	// pyroscope.Start is non-blocking: the profiler will start shortly.
+	// To ensure we don't miss the investigation, we wait briefly.
+	time.Sleep(time.Second)
 
 	var wg sync.WaitGroup
-
-	// Server for pprof
-	go func() {
-		fmt.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
-	wg.Add(1) // pprof - so we won't exit prematurely
-
-	wg.Add(4) // Adding 4 detective tasks
+	wg.Add(5) // Adding 5 detective tasks
 	go gatherClues(&wg)
 	go analyzeEvidence(&wg)
 	go interviewWitnesses(&wg)
