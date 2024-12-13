@@ -48,8 +48,9 @@ func (e *env) projectName() string {
 func (e *env) newCmd(ctx context.Context, args ...string) *exec.Cmd {
 	c := exec.CommandContext(
 		ctx,
-		"docker-compose",
+		"docker",
 		append([]string{
+			"compose",
 			"--file", e.path,
 			"--project-directory", e.dir,
 			"--project-name", e.projectName(),
