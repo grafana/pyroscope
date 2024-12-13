@@ -78,45 +78,41 @@ docker pull grafana/pyroscope:latest
 docker pull grafana/grafana:latest
 
 # Run the example project:
-docker-compose up --build
+docker compose up --build
 
 # Reset the database (if needed):
-# docker-compose down
+docker compose down
 ```
 
-What this example will do is run all the code mentioned above and also send some mock-load to the 3 servers as well as their respective 3 endpoints. If you select our application: `ride-sharing-app.cpu` from the dropdown, you should see a flame graph that looks like this (below). After we give 20-30 seconds for the flame graph to update and then click the refresh button we see our 3 functions at the bottom of the flame graph taking CPU resources _proportional to the size_ of their respective `search_radius` parameters.
+What this example will do is run all the code mentioned above and also send some mock-load to the 3 servers as well as their respective 3 endpoints. If you select our application: `ride-sharing-app` from the dropdown, you should see a flame graph that looks like this (below). After we give 20-30 seconds for the flame graph to update and then click the refresh button we see our 3 functions at the bottom of the flame graph taking CPU resources _proportional to the size_ of their respective `search_radius` parameters.
 
 ## Where's the performance bottleneck?
 
-Profiling is most effective for applications that contain tags. The first step when analyzing performance from your application, is to use the Tag Explorer page in order to determine if any tags are consuming more resources than others.
+![python_slide_1](https://github.com/user-attachments/assets/1d38ddbf-2a9e-4f07-8d70-343cff878307)
 
-![vehicle_tag_breakdown](https://user-images.githubusercontent.com/23323466/191306637-a601f463-a247-4588-a285-639424a08b87.png)
+The first step when analyzing a profile outputted from your application, is to take note of the _largest node_ which is where your application is spending the most resources. In this case, it happens to be the `order_car` function.
 
-![image](https://user-images.githubusercontent.com/23323466/191319887-8fff2605-dc74-48ba-b0b7-918e3c95ed91.png)
+The benefit of using the Pyroscope package, is that now that we can investigate further as to _why_ the `order_car` function is problematic. Tagging both `region` and `vehicle` allows us to test two good hypotheses:
+- Something is wrong with the `/car` endpoint code
+- Something is wrong with one of our regions
 
-The benefit of using Pyroscope, is that by tagging both `region` and `vehicle` and looking at the Tag Explorer page we can hypothesize:
+To analyze this we can select one or more labels on the "Labels" page:
 
-- Something is wrong with the `/car` endpoint code where `car` vehicle tag is consuming **68% of CPU**
-- Something is wrong with one of our regions where `eu-north` region tag is consuming **54% of CPU**
+![python_slide_2](https://github.com/user-attachments/assets/5a8ee6ed-d2e1-42f3-98f3-d977adfccd08)
 
-From the flame graph we can see that for the `eu-north` tag the biggest performance impact comes from the `find_nearest_vehicle()` function which consumes close to **68% of cpu**. To analyze this we can go directly to the comparison page using the comparison dropdown.
+## Narrowing in on the Issue Using Labels
 
-## Comparing two time periods
+Knowing there is an issue with the `order_car` function we automatically select that tag. Then, after inspecting multiple `region` tags, it becomes clear by looking at the timeline that there is an issue with the `eu-north` region, where it alternates between high-cpu times and low-cpu times.
 
-Using Pyroscope's "comparison view" we can actually select two different queries and compare the resulting flame graphs:
-- Left flame graph: `{ region != "eu-north", ... }`
-- Right flame graph: `{ region = "eu-north", ... }`
+We can also see that the `find_nearest_vehicle` function is consuming almost 70% of CPU resources during this time period.
 
-When we select a period of low-cpu utilization and a period of high-cpu utilization we can see that there is clearly different behavior in the `find_nearest_vehicle()` function where it takes:
-- Left flame graph: **22% of CPU** when `{ region != "eu-north", ... }`
-- Right flame graph: **82% of CPU** when `{ region = "eu-north", ... }`
-
-![python_pop_out_library_comparison_00](https://user-images.githubusercontent.com/23323466/191374975-d374db02-4cb1-48d5-bc1a-6194193a9f09.png)
+![python_slide_3](https://github.com/user-attachments/assets/57614064-bced-4363-bdba-b028c132e1e9)
 
 ## Visualizing diff between two flame graphs
 
 While the difference _in this case_ is stark enough to see in the comparison view, sometimes the diff between the two flame graphs is better visualized with them overlayed over each other. Without changing any parameters, we can simply select the diff view tab and see the difference represented in a color-coded diff flame graph.
-![find_nearest_vehicle_diff](https://user-images.githubusercontent.com/23323466/191320888-b49eb7de-06d5-4e6b-b9ac-198d7c9e2fcf.png)
+
+![python_slide_4](https://github.com/user-attachments/assets/9c89458f-f7fb-4561-80a2-6a86c7c2ed4c)
 
 ### More use cases
 
