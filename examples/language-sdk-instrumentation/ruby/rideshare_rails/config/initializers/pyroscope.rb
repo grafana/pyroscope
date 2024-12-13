@@ -1,6 +1,6 @@
 require 'pyroscope/otel'
 
-app_name = ENV.fetch("PYROSCOPE_APPLICATION_NAME", "rails-ride-sharing-app")
+app_name = ENV.fetch("PYROSCOPE_APPLICATION_NAME", "ride-sharing-app")
 pyroscope_server_address = ENV.fetch("PYROSCOPE_SERVER_ADDRESS", "http://pyroscope:4040")
 jaeger_endpoint = ENV.fetch("JAEGER_ENDPOINT", "http://localhost:14268/api/traces")
 
