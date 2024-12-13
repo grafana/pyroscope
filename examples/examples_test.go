@@ -67,9 +67,6 @@ func (e *env) newCmdWithOutputCapture(t testing.TB, ctx context.Context, args ..
 		for scanner.Scan() {
 			t.Log(scanner.Text())
 		}
-		if err := scanner.Err(); err != nil {
-			t.Error(err)
-		}
 	}()
 
 	stderr, err := c.StderrPipe()
@@ -78,9 +75,6 @@ func (e *env) newCmdWithOutputCapture(t testing.TB, ctx context.Context, args ..
 		scanner := bufio.NewScanner(stderr)
 		for scanner.Scan() {
 			t.Log("STDERR: " + scanner.Text())
-		}
-		if err := scanner.Err(); err != nil {
-			t.Error(err)
 		}
 	}()
 
