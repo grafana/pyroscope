@@ -19,6 +19,7 @@ spec:
       containers:
         - name: profiler
           image: test-ebpf-profiler:latest
+          command: ["/usr/local/bin/ebpf-profiler", "-collection-agent", "otel-collector-service:4317", "-no-kernel-version-check", "-disable-tls", "-v"]
           imagePullPolicy: Never # Use local image
           securityContext:
             privileged: true

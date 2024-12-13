@@ -39,10 +39,10 @@ minikube image load test-ebpf-profiler:latest
 2. Deploy to Kubernetes:
 ```bash
 # Apply the manifests
-kubectl apply -f kubernetes/
+kubectl apply -f .
 
 # Clean up
-kubectl delete -f kubernetes/
+kubectl delete -f .
 ```
 3. Access the UI:
 ```bash
@@ -52,3 +52,6 @@ kubectl port-forward svc/grafana-service 3000:3000
 # Access Grafana
 http://localhost:3000
 ```
+
+## Example output:
+![Image](https://github.com/user-attachments/assets/15ff58d4-218a-43dd-9835-df12e13ced3f)

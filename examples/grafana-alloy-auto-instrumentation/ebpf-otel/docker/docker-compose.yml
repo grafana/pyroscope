@@ -14,7 +14,8 @@ services:
       - pyroscope
 
   otel-ebpf-profiler:
-    build: .
+    build: ..
+    command: ["-collection-agent", "otel-collector:4317", "-no-kernel-version-check", "-disable-tls"]
     hostname: ebpf-profiler
     privileged: true
     pid: "host"
