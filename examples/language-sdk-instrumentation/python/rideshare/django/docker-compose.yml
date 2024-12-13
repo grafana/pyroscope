@@ -3,13 +3,31 @@ services:
     image: grafana/pyroscope
     ports:
     - 4040:4040
-  web:
+  us-east:
     build: ./app
     command: python manage.py runserver 0.0.0.0:8000
-    ports:
-    - 8000:8000
+    env_file:
+      - ./.env.dev
+    environment:
+      - REGION=us-east
+    depends_on:
+      - db
+  eu-north:
+    build: ./app
+    command: python manage.py runserver 0.0.0.0:8000
+    env_file:
+      - ./.env.dev
+    environment:
+      - REGION=eu-north
+    depends_on:
+      - db
+  ap-south:
+    build: ./app
+    command: python manage.py runserver 0.0.0.0:8000
     env_file:
     - ./.env.dev
+    environment:
+      - REGION=ap-south
     depends_on:
     - db
   db:
