@@ -9,43 +9,15 @@ These examples demonstrate:
 2. OpenTelemetry Collector receiving and processing the data from the profiler
 3. Pyroscope receiving and visualizing the profiles via Grafana
 
-## Prerequisites
-**⚠️ Important:** Since the [profiler image](https://hub.docker.com/r/otel/opentelemetry-ebpf-profiler-dev) is not publicly available yet, you need to build the profiler binary first.
-
-Follow the build instructions:
-
-1. Build the profiler binary:
-
-```bash
-# Clone the repository
-git clone https://github.com/open-telemetry/opentelemetry-ebpf-profiler
-cd opentelemetry-ebpf-profiler
-
-# Build the environment
-make docker-image
-
-# Build the profiler binary
-make agent
-```
-
-2. Copy the built binary to the example directory:
-```bash
-# Copy the ebpf-profiler binary to the example directory
-cp ebpf-profiler /path/to/example/directory/
-```
-**Note:** The following examples will consider that an `ebpf-profiler` binary is already existing on each example root directory.
-
-For more details, please refer to opentelemetry-ebpf-profiler [repository](https://github.com/open-telemetry/opentelemetry-ebpf-profiler)
-
 ## Docker example
 1. Start the environment:
 
 ```bash
 # Start all services
-docker-compose up --build
+docker compose up --build
 
 # To clean up
-docker-compose down
+docker compose down
 ```
 2. Access the UI:
 ```bash

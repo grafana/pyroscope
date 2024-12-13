@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: pyroscope
-          image: grafana/pyroscope:latest
+          image: grafana/pyroscope:weekly-f96-1886f2c42 # todo switch to latest once 1.11 released
           args:
             - "-self-profiling.disable-push=true"
           ports:

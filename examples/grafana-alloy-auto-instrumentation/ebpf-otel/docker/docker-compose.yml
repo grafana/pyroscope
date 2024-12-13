@@ -27,7 +27,7 @@ services:
       - otel-collector
 
   pyroscope:
-    image: grafana/pyroscope:latest
+    image: grafana/pyroscope:weekly-f96-1886f2c42 # todo switch to latest once 1.11 released
     command: ["-self-profiling.disable-push=true"]
     ports:
       - "4040:4040"
