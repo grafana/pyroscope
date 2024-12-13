@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -38,6 +39,12 @@ type status struct {
 	State string `json:"State"`
 }
 
+func (e *env) projectName() string {
+	h := sha256.New()
+	_, _ = h.Write([]byte(e.dir))
+	return fmt.Sprintf("%s_%x", filepath.Base(e.dir), h.Sum(nil)[0:2])
+}
+
 func (e *env) newCmd(ctx context.Context, args ...string) *exec.Cmd {
 	c := exec.CommandContext(
 		ctx,
@@ -45,6 +52,7 @@ func (e *env) newCmd(ctx context.Context, args ...string) *exec.Cmd {
 		append([]string{
 			"--file", e.path,
 			"--project-directory", e.dir,
+			"--project-name", e.projectName(),
 		}, args...)...)
 	return c
 }
@@ -203,10 +211,15 @@ func TestDockerComposeBuildRun(t *testing.T) {
 	out, err := exec.Command("git", "ls-files", "**/docker-compose.yml").Output()
 	require.NoError(t, err)
 
-	for _, path := range strings.Split(string(out), "\n") {
+	var envs []*env
+	for _, path := range strings.Split(strings.TrimSpace(string(out)), "\n") {
 		e := &env{dir: filepath.Dir(path), path: path}
+		envs = append(envs, e)
+	}
 
-		t.Run(e.dir, func(t *testing.T) {
+	for i := range envs {
+		t.Run(envs[i].dir, func(t *testing.T) {
+			e := envs[i]
 			t.Parallel()
 			ctx, cancel := context.WithTimeout(ctx, timeoutPerExample)
 			defer cancel()
