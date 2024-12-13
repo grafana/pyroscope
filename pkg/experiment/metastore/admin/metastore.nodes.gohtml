@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Metastore Admin - Nodes</title>
+
+    <link rel="stylesheet" href="/static/bootstrap-5.3.3.min.css">
+    <link rel="stylesheet" href="/static/bootstrap-icons-1.8.1.css">
+    <link rel="stylesheet" href="/static/pyroscope-styles.css">
+    <script src="/static/bootstrap-5.3.3.bundle.min.js"></script>
+
+    <style>
+        .card-detail-row {
+            display: flex;
+            margin-bottom: 0.5rem;
+        }
+        .card-detail-label {
+            flex: 0 0 20%;
+            font-weight: bold;
+            text-align: right;
+            padding-right: 1rem;
+        }
+        .card-detail-value {
+            flex: 0 0 80%;
+        }
+        @media (max-width: 768px) {
+            .card-detail-row {
+                flex-direction: column;
+            }
+            .card-detail-label {
+                text-align: left;
+                padding-right: 0;
+                margin-bottom: 0.25rem;
+            }
+        }
+        .card {
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+<main>
+    <div class="container mt-5">
+        <div class="header row border-bottom py-3 flex-column-reverse flex-sm-row">
+            <div class="col-12 col-sm-9 text-center text-sm-start">
+                <h1>Metastore: Grafana Pyroscope</h1>
+            </div>
+            <div class="col-12 col-sm-3 text-center text-sm-end mb-3 mb-sm-0">
+                <a href="/">
+                    <img alt="Pyroscope logo" class="pyroscope-brand" src="/static/pyroscope-logo.png">
+                </a>
+            </div>
+        </div>
+        <div class="row my-3">
+            <h2>
+                Observed Leaders
+                <span
+                        class="text-info ms-2"
+                        data-bs-toggle="tooltip"
+                        data-bs-placement="right"
+                        title="Lists the leaders reported by individual Raft nodes, as well how many times each leader was observed.
+                        In a healthy cluster this should show a single leader, though this may not be the case during leadership transitions.">
+                <i class="bi bi-info-circle"></i>
+            </span>
+            </h2>
+            {{ range $server, $count := .Raft.ObservedLeaders }}
+            <div class="col-12">
+                <div class="alert alert-success" role="alert">
+                    <strong>{{ $server }}</strong> <span class="badge rounded-pill text-bg-info">{{ $count }}</span>
+                </div>
+            </div>
+            {{ end }}
+        </div>
+
+        <div class="row gy-4">
+            <h2>Nodes</h2>
+            <form action="" method="POST">
+                <input type="hidden" name="current-term" value="{{ .Raft.CurrentTerm }}">
+                {{ $numNodes := .Raft.NumNodes }}
+                {{ range $index, $node := .Raft.Nodes }}
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            {{ $node.DiscoveryServerId }}
+                        </div>
+                        <div class="card-body">
+                            <div class="card-detail-row">
+                                <div class="card-detail-label">Discovery Server ID:</div>
+                                <div class="card-detail-value">{{ $node.DiscoveryServerId }}</div>
+                            </div>
+                            <div class="card-detail-row">
+                                <div class="card-detail-label">Resolved Address:</div>
+                                <div class="card-detail-value">{{ $node.ResolvedAddress }}</div>
+                            </div>
+                            <div class="card-detail-row">
+                                <div class="card-detail-label">Build Version:</div>
+                                <div class="card-detail-value">{{ $node.BuildVersion }} (revision {{ $node.BuildRevision }})</div>
+                            </div>
+                            <hr/>
+                            <div class="card-detail-row">
+                                <div class="card-detail-label">Raft Member:</div>
+                                <div class="card-detail-value">
+                                    {{ if $node.Member }}
+                                        <span class="badge text-bg-success">yes</span> ({{ $node.State }})
+                                    {{ else }}
+                                        <span class="badge text-bg-warning">no</span>
+                                    {{ end }}
+                                </div>
+                            </div>
+                            <div class="card-detail-row">
+                                <div class="card-detail-label">Raft Server ID:</div>
+                                <div class="card-detail-value">{{ $node.RaftServerId }}</div>
+                            </div>
+                            <div class="card-detail-row">
+                                <div class="card-detail-label">Observed Leader:</div>
+                                {{ $leaderId := $node.LeaderId }}
+                                {{ if eq $leaderId ""}}
+                                    {{ $leaderId = "n/a "}}
+                                {{ end }}
+                                <div class="card-detail-value">{{ $leaderId }} (term {{ $node.CurrentTerm }})</div>
+                            </div>
+                            <div class="card-detail-row">
+                                <div class="card-detail-label">Commit / Applied / Last Index:</div>
+                                <div class="card-detail-value">{{ $node.CommitIndex }} / {{ $node.AppliedIndex }} / {{ $node.LastIndex }}</div>
+                            </div>
+                            <div class="card-detail-row">
+                                <div class="card-detail-label">Peers:</div>
+                                <div class="card-detail-value">{{ $node.NumPeers }} (config index {{ $node.ConfigIndex }})</div>
+                            </div>
+                            <div class="card-detail-row">
+                                <div class="card-detail-label">Stats:</div>
+                                <div class="card-detail-value">
+                                    <p class="d-inline-flex gap-1">
+                                        <a class="btn btn-sm btn-info" data-bs-toggle="collapse" href="#stats-{{ $index }}" role="button" aria-expanded="false" aria-controls="stats-{{ $index }}">
+                                            View
+                                        </a>
+                                    </p>
+                                    <div class="collapse" id="stats-{{ $index }}">
+                                        <div class="card card-body">
+                                            <table class="table-responsive">
+                                                <tbody>
+                                                {{ range $k, $v := $node.Stats }}
+                                                    <tr>
+                                                        <td>{{ $k }}</td>
+                                                        <td>{{ $v }}</td>
+                                                    </tr>
+                                                {{ end }}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer d-flex justify-content-between bg-transparent">
+                            <div>
+                                {{ if not $node.Member }}
+                                <button class="btn btn-warning" name="add" value="{{ $node.RaftServerId }}" type="submit">Join Cluster</button>
+                                {{ end }}
+                                {{ if and $node.Member (ne $node.State "Leader") }}
+                                <button class="btn btn-warning me-2" name="promote" value="{{ $node.RaftServerId }}" type="submit">Promote</button>
+                                {{ end }}
+                                {{ if and (eq $node.State "Leader") (gt $numNodes 1) }}
+                                <button class="btn btn-warning me-2" name="demote" value="{{ $node.RaftServerId }}" type="submit">Demote</button>
+                                {{ end }}
+                            </div>
+                            {{ if and (and $node.Member (gt $numNodes 1)) (ne $node.State "Leader") }}
+                            <div>
+                                <button class="btn btn-danger center" name="remove" value="{{ $node.RaftServerId }}" type="submit">Leave Cluster</button>
+                            </div>
+                            {{ end }}
+                        </div>
+                    </div>
+                </div>
+                {{ end }}
+            </form>
+        </div>
+
+        <div class="row gy-4">
+            <h2>Discovery</h2>
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover table-striped">
+                    <thead>
+                    <tr>
+                        <th>Server</th>
+                        <th>Resolved Address</th>
+                    </tr>
+                    </thead>
+
+                    <tbody>
+                    {{ range .DiscoveredServers }}
+                        <tr>
+                            <td class="align-middle font-monospace small">{{ .Raft.ID }}</td>
+                            <td class="align-middle font-monospace small">{{ .ResolvedAddress }}</td>
+                        </tr>
+                    {{ end }}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</main>
+<footer class="footer mt-auto py-3">
+    <div class="container">
+        <small class="text-muted">Status @ {{ .Now.Format "2006-01-02 15:04:05.000" }}</small>
+    </div>
+</footer>
+<script type="text/javascript">
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
+</script>
+</body>
+</html>
