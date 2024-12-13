@@ -47,8 +47,7 @@ services:
       context: .
       dockerfile: Dockerfile.load-generator
     environment:
-    - PYROSCOPE_SERVER_ADDRESS=http://alloy:9999 # TODO: direclty to pyroscope?
-#    - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040 # TODO: direclty to pyroscope?
+    - PYROSCOPE_SERVER_ADDRESS=http://alloy:9999
 
   grafana:
     image: grafana/grafana:latest
