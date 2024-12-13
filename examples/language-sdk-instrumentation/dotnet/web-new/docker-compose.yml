@@ -9,7 +9,8 @@ services:
       ASPNETCORE_URLS: http://*:5000
     ports:
     - 5000:5000
-    build: ''
+    build:
+      context: .
   grafana:
     image: grafana/grafana:latest
     environment:
