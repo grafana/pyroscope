@@ -41,6 +41,15 @@ docker-compose up --build
 
 After the container is operational, Grafana Alloy profiles the Java application using he defined configuration.
 
+### Observe profiling data
+
+Now that everything is set up, you can browse profiling data through the [Explore profiles app](http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer).
+
+![image](https://github.com/user-attachments/assets/16f5559a-0bbc-4cf3-9589-fa4374bbc7e8)
+![image](https://github.com/user-attachments/assets/ca28d228-93c3-4e16-a63c-285005c7b203)
+
+
+
 ## Considerations
 
 You need root privileges to run Grafana Alloy for profiling. It must be executed within the host's PID namespace.
