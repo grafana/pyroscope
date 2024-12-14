@@ -108,11 +108,11 @@ To analyze this we can select one or more tags on the "Labels" page:
 
 ## Narrowing in on the Issue Using Tags
 
-Knowing there is an issue with the `order_car` function we automatically select that tag. Then, after inspecting
-multiple `region` tags, it becomes clear by looking at the timeline that there is an issue with the `eu-north` region,
+Since you know there is an issue with the `order_car` function,  select that tag. After inspecting
+multiple `region` tags, the timeline shows that there is an issue with the `eu-north` region,
 where it alternates between high-cpu times and low-cpu times.
 
-We can also see that the `mutex_lock()` function is consuming almost 70% of CPU resources during this time period.
+Note that the `mutex_lock()` function is consuming almost 70% of CPU resources during this time period.
 
 ![Image](https://github.com/user-attachments/assets/12fc0912-8b65-4c24-9284-b0aa1eef45ba)
 
