@@ -119,7 +119,7 @@ We can also see that the `mutex_lock()` function is consuming almost 70% of CPU 
 ## Visualizing Diff Between Two Flame graphs
 
 While the difference _in this case_ is stark enough to see in the comparison view, sometimes the diff between the two
-flame graphs is better visualized with them overlayed over each other. Without changing any parameters, we can simply
+flame graphs is better visualized with them overlayed over each other. Without changing any parameters, you can
 select the diff view tab and see the difference represented in a color-coded diff flame graph.
 
 ![Image](https://github.com/user-attachments/assets/97f6e51c-4211-4a0a-8f11-d2ee0402e396)
