@@ -9,7 +9,7 @@ for [rust push mode](https://grafana.com/docs/pyroscope/latest/configure-client/
 
 ## Background
 
-In this example we show a simplified, basic use case of Pyroscope. We simulate a "ride share" company which has three
+This example shows a simplified, basic use case of Pyroscope that uses a "ride share" company which has three
 endpoints found in `main.rs`:
 
 - `/bike`    : calls the `order_bike(search_radius)` function to order a bike
