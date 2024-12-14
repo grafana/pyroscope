@@ -23,8 +23,8 @@ via [docker-compose.yml](https://github.com/grafana/pyroscope/blob/main/examples
 - eu-north
 - ap-south
 
-One of the most useful capabilities of Pyroscope is the ability to tag your data in a way that is meaningful to you. In
-this case, we have two natural divisions, and so we "tag" our data to represent those:
+Pyroscope lets you tag your data in a way that is meaningful to you. In
+this case, there are two natural divisions, and so data is "tagged" to represent them:
 
 - `region`: statically tags the region of the server running the code
 - `vehicle`: dynamically tags the endpoint (similar to how one might tag a controller)
