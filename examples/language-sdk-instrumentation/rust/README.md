@@ -43,7 +43,7 @@ let agent = PyroscopeAgent::builder(server_address, app_name.to_owned())
 
 ## Tagging dynamically within functions
 
-Tagging something more dynamically, like we do for the `vehicle` tag can be done using `PyroscopeAgent#tag_wrapper`
+Tagging something more dynamically can be done using `PyroscopeAgent#tag_wrapper`. For example, you'd use code like this for the `vehicle` tag:
 
 ```rust
 let (add_tag, remove_tag) = agent_running.tag_wrapper();
