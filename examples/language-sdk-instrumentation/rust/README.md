@@ -57,7 +57,7 @@ let car = warp::path("car").map(move || {
 });
 ```
 
-What this block does, is:
+This block does the following:
 
 1. Add the label `vehicle=car`
 2. Execute the `order_car` function
