@@ -96,7 +96,7 @@ of their respective `search_radius` parameters.
 To analyze a profile outputted from your application, take note of the _largest node_ which is
 where your application is spending the most resources. In this case, it happens to be the `order_car` function.
 
-The benefit of using the Pyroscope package, is that now that we can investigate further as to _why_ the `order_car()`
+ThePyroscope package lets you investigate further as to _why_ the `order_car()`
 function is problematic. Tagging both `region` and `vehicle` allows us to test two good hypotheses:
 
 - Something is wrong with the `/car` endpoint code
