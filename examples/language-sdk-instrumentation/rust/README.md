@@ -16,8 +16,8 @@ endpoints found in `main.rs`:
 - `/car`     : calls the `order_car(search_radius)` function to order a car
 - `/scooter` : calls the `order_scooter(search_radius)` function to order a scooter
 
-We also simulate running 3 distinct servers in 3 different regions (
-via [docker-compose.yml](https://github.com/grafana/pyroscope/blob/main/examples/language-sdk-instrumentation/rust/rideshare/docker-compose.yml))
+The example also simulates running 3 distinct servers in 3 different regions (
+via [docker-compose.yml](https://github.com/grafana/pyroscope/blob/main/examples/language-sdk-instrumentation/rust/rideshare/docker-compose.yml)):
 
 - us-east
 - eu-north
