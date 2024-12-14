@@ -4,8 +4,8 @@
 
 ![Image](https://github.com/user-attachments/assets/9a6e50a1-b8df-4923-9632-79ace3fea216)
 
-Note: For documentation on Pyroscope's Rust integration visit our website
-for [rust push mode](https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/rust/)
+> [!NOTE]  
+> For documentation on Pyroscope's Rust integration, refer to the [Rust push mode](https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/rust/) documentation.
 
 ## Background
 
