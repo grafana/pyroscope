@@ -93,7 +93,7 @@ of their respective `search_radius` parameters.
 
 ![Image](https://github.com/user-attachments/assets/d4b0f85d-cc8d-4058-b019-1c5198849676)
 
-The first step when analyzing a profile outputted from your application, is to take note of the _largest node_ which is
+To analyze a profile outputted from your application, take note of the _largest node_ which is
 where your application is spending the most resources. In this case, it happens to be the `order_car` function.
 
 The benefit of using the Pyroscope package, is that now that we can investigate further as to _why_ the `order_car()`
