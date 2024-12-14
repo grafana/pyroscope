@@ -67,7 +67,7 @@ This block does the following:
 
 ### Running the example
 
-To run the example run the following commands:
+To run the example, use the following commands:
 
 ```
 # Pull latest pyroscope and grafana images:
