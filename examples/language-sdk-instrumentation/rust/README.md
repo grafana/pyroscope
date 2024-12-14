@@ -81,10 +81,10 @@ docker-compose up --build
 # docker-compose down
 ```
 
-What this example will do is run all the code mentioned above and also send some mock-load to the 3 servers as well as
-their respective 3 endpoints. If you select our application: `rust-ride-sharing-app` from the dropdown, you should see a
-flame graph that looks like this (below). After we give 20-30 seconds for the flame graph to update and then click the
-refresh button we see our 3 functions at the bottom of the flame graph taking CPU resources _proportional to the size_
+This example runs all the code mentioned above and also sends some mock-load to the 3 servers as well as
+their respective 3 endpoints. If you select `rust-ride-sharing-app` from the dropdown, you should see a
+flame graph that looks like this (below). Wait 20-30 seconds for the flame graph to update, and then click the
+refresh button to see 3 functions at the bottom of the flame graph taking CPU `resources _proportional` to the `size_`
 of their respective `search_radius` parameters.
 
 [//]: # (http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer?searchText=&panelType=time-series&layout=grid&hideNoData=off&explorationType=flame-graph&var-serviceName=rust-ride-sharing-app&var-profileMetricId=process_cpu:cpu:nanoseconds:cpu:nanoseconds&var-dataSource=local-pyroscope&var-groupBy=all&var-filters=&maxNodes=16384&from=now-5m&to=now&var-filtersBaseline=&var-filtersComparison=)
