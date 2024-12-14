@@ -102,7 +102,7 @@ function is problematic. Tagging both `region` and `vehicle` allows us to test t
 - Something is wrong with the `/car` endpoint code
 - Something is wrong with one of our regions
 
-To analyze this we can select one or more tags on the "Labels" page:
+To analyze this, select one or more tags on the "Labels" page:
 
 ![Image](https://github.com/user-attachments/assets/3e5cb3ac-609e-493a-ae4d-248de150a33b)
 
