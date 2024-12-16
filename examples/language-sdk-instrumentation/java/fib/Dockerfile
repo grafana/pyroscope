@@ -4,7 +4,7 @@ WORKDIR /opt/app
 
 RUN apt-get update && apt-get install ca-certificates -y && update-ca-certificates && apt-get install -y git
 
-ADD https://github.com/grafana/pyroscope-java/releases/download/v0.15.0/pyroscope.jar /opt/app/pyroscope.jar
+ADD https://github.com/grafana/pyroscope-java/releases/download/v0.15.2/pyroscope.jar /opt/app/pyroscope.jar
 
 COPY Main.java ./
 

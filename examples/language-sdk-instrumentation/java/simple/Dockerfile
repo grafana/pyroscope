@@ -2,7 +2,7 @@ FROM openjdk:11.0.11-jdk
 
 WORKDIR /opt/app
 
-ADD https://github.com/grafana/pyroscope-java/releases/download/v0.15.0/pyroscope.jar /opt/app/pyroscope.jar
+ADD https://github.com/grafana/pyroscope-java/releases/download/v0.15.2/pyroscope.jar /opt/app/pyroscope.jar
 
 COPY Main.java ./Main.java
 RUN javac Main.java
