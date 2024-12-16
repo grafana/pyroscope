@@ -60,7 +60,7 @@ func updateNodeJS() {
 
 	replPackageJson := fmt.Sprintf(`    "@pyroscope/nodejs": "v%s",`, last.version())
 	rePackageJson := regexp.MustCompile(`    "@pyroscope/nodejs": "[^"]+",`)
-	for _, x := range []string{"express", "express-pull", "express-ts", "express-ts-inline"} {
+	for _, x := range []string{"express", "express-pull", "express-ts", "express-ts-inline", "tinyhttp"} {
 		path := filepath.Join("examples/language-sdk-instrumentation/nodejs", x)
 		replaceInplace(rePackageJson, filepath.Join(path, "package.json"), replPackageJson)
 		s.sh(fmt.Sprintf(`cd "%s"       && yarn`, path))
