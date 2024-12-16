@@ -10,7 +10,7 @@
   "author": "",
   "license": "Apache-2.0",
   "dependencies": {
-    "@pyroscope/nodejs": "0.4.0",
+    "@pyroscope/nodejs": "v0.4.1",
     "express": "^4.19.2",
     "morgan": "^1.10.0"
   },

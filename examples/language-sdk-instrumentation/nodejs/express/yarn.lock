@@ -66,15 +66,16 @@
   resolved "https://registry.yarnpkg.com/@protobufjs/utf8/-/utf8-1.1.0.tgz#a777360b5b39a1a2e5106f8e858f2fd2d060c570"
   integrity sha512-Vvn3zZrhQZkkBE8LSuW3em98c0FwgO4nxzv6OdSxPKJIEKY2bGbHn+mhGIPerzI4twdxaP8/0+06HBpwf345Lw==
 
-"@pyroscope/nodejs@v0.4.0":
-  version "0.4.0"
-  resolved "https://registry.yarnpkg.com/@pyroscope/nodejs/-/nodejs-0.4.0.tgz#913bfdeb764462fb46d8f6defabd682631c21542"
-  integrity sha512-To75AyiEr7eS74fLXZUDlSHAWuOfBh/euL3JvYK376WoubtoaafPLzSgK/7XtWxYk+7ogjYQYpnuFk9/w+cgXA==
+"@pyroscope/nodejs@v0.4.1":
+  version "0.4.1"
+  resolved "https://registry.yarnpkg.com/@pyroscope/nodejs/-/nodejs-0.4.1.tgz#5c12f49ec42a50040b6084ec928496937683243a"
+  integrity sha512-Qh4Iyj7No6BDHJcdMkUXw6YRI/X3gkU1q1GJamJwF/n68E94tZosExQVYU4PFmX3NEl27N6SBhcXEo3qbEB0AA==
   dependencies:
     "@datadog/pprof" "^5.3.0"
     axios "^0.28.0"
     debug "^4.3.3"
     form-data "^4.0.0"
+    p-limit "^3.1.0"
     regenerator-runtime "^0.13.11"
     source-map "^0.7.3"
 
