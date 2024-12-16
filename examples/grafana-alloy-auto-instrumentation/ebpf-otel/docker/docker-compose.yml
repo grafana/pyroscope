@@ -1,6 +1,7 @@
 services:
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:latest
+    # fixed versions for pyroscope, otel-collector, otel-profiler due to protocol changes
+    image: otel/opentelemetry-collector-contrib:0.114.0 
     command: ["--config=/etc/otel-collector-config.yaml", "--feature-gates=service.profilesSupport"]
     volumes:
       - ./config/otel-collector-config.yaml:/etc/otel-collector-config.yaml
@@ -13,7 +14,8 @@ services:
       - pyroscope
 
   otel-ebpf-profiler:
-    build: .
+    build: ..
+    command: ["-collection-agent", "otel-collector:4317", "-no-kernel-version-check", "-disable-tls"]
     hostname: ebpf-profiler
     privileged: true
     pid: "host"
@@ -27,7 +29,8 @@ services:
       - otel-collector
 
   pyroscope:
-    image: grafana/pyroscope:latest
+    # fixed versions for pyroscope, otel-collector, otel-profiler due to protocol changes
+    image: grafana/pyroscope:weekly-f96-1886f2c42 
     command: ["-self-profiling.disable-push=true"]
     ports:
       - "4040:4040"

@@ -9,43 +9,15 @@ These examples demonstrate:
 2. OpenTelemetry Collector receiving and processing the data from the profiler
 3. Pyroscope receiving and visualizing the profiles via Grafana
 
-## Prerequisites
-**⚠️ Important:** Since the [profiler image](https://hub.docker.com/r/otel/opentelemetry-ebpf-profiler-dev) is not publicly available yet, you need to build the profiler binary first.
-
-Follow the build instructions:
-
-1. Build the profiler binary:
-
-```bash
-# Clone the repository
-git clone https://github.com/open-telemetry/opentelemetry-ebpf-profiler
-cd opentelemetry-ebpf-profiler
-
-# Build the environment
-make docker-image
-
-# Build the profiler binary
-make agent
-```
-
-2. Copy the built binary to the example directory:
-```bash
-# Copy the ebpf-profiler binary to the example directory
-cp ebpf-profiler /path/to/example/directory/
-```
-**Note:** The following examples will consider that an `ebpf-profiler` binary is already existing on each example root directory.
-
-For more details, please refer to opentelemetry-ebpf-profiler [repository](https://github.com/open-telemetry/opentelemetry-ebpf-profiler)
-
 ## Docker example
 1. Start the environment:
 
 ```bash
 # Start all services
-docker-compose up --build
+docker compose up --build
 
 # To clean up
-docker-compose down
+docker compose down
 ```
 2. Access the UI:
 ```bash
@@ -67,10 +39,10 @@ minikube image load test-ebpf-profiler:latest
 2. Deploy to Kubernetes:
 ```bash
 # Apply the manifests
-kubectl apply -f kubernetes/
+kubectl apply -f .
 
 # Clean up
-kubectl delete -f kubernetes/
+kubectl delete -f .
 ```
 3. Access the UI:
 ```bash
@@ -80,3 +52,6 @@ kubectl port-forward svc/grafana-service 3000:3000
 # Access Grafana
 http://localhost:3000
 ```
+
+## Example output:
+![Image](https://github.com/user-attachments/assets/15ff58d4-218a-43dd-9835-df12e13ced3f)
