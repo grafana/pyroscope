@@ -2,7 +2,7 @@
 
 This example demonstrates how to use Alloy to receive and forward profiles from the rideshare example application.
 
-To learn more about the `pyroscope.receive_http` component in Alloy, visit [our website](https://grafana.com/docs/pyroscope/latest/configure-client/grafana-alloy/receive_profiles/).
+To learn more about the `pyroscope.receive_http` component in Alloy, refer to the [`receive_profiles`](https://grafana.com/docs/pyroscope/latest/configure-client/grafana-alloy/receive_profiles/) documentation.
 
 ## Architecture
 
