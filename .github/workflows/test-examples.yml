@@ -1,10 +1,6 @@
 name: Test Examples
 on:
   workflow_dispatch:
-  # TODO: consider cronjob to run this at night
-  push:  # THIS SHOULD BE REMOVED BEFORE MERGE
-    branches:
-      - 20241212_testing-examples
 
 concurrency:
   # Cancel any running workflow for the same branch when new commits are pushed.
