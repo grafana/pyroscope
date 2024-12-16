@@ -13,10 +13,10 @@
     pprof-format "^2.1.0"
     source-map "^0.7.4"
 
-"@pyroscope/nodejs@v0.4.2":
-  version "0.4.2"
-  resolved "https://registry.yarnpkg.com/@pyroscope/nodejs/-/nodejs-0.4.2.tgz#1c61238dd8825aab57f66c7064ed2a9db422dc69"
-  integrity sha512-qqLJGLfs45enyJPwMoaTc9vakjxYZX/hxBHsD3jUVJEifDIsgVcm2jvqyBTZuiYRBt9O0MYPeSPoNnkUD3mHfQ==
+"@pyroscope/nodejs@v0.4.3":
+  version "0.4.3"
+  resolved "https://registry.yarnpkg.com/@pyroscope/nodejs/-/nodejs-0.4.3.tgz#9219a9fb0ae23d80313ff29261dd3e41f56cd571"
+  integrity sha512-RpQ71SnBvMt7RErgCVgQ3wyKnsVQYntWXDNQVOiBujHsgIW20u+o3J9luEcM9IbCdm/Qsa9NV/SvhZevdcALQA==
   dependencies:
     "@datadog/pprof" "^5.4.1"
     axios "^0.28.0"
