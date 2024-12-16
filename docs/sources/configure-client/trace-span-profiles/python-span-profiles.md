@@ -76,5 +76,5 @@ Refer to the [data source configuration documentation](https://grafana.com/docs/
 ## Examples
 
 Check out these demo applications for span profiles:
-- [Python example](https://github.com/grafana/pyroscope/tree/main/examples/tracing/tempo/python)
+- [Python example](https://github.com/grafana/pyroscope/tree/main/examples/tracing/python)
 - [Other examples](https://github.com/grafana/pyroscope/tree/main/examples/tracing/tempo) in multiple languages

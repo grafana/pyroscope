@@ -1,0 +1,87 @@
+services:
+  pyroscope:
+    image: grafana/pyroscope
+    ports:
+      - "4040:4040"
+
+  us-east:
+    ports:
+      - "5000"
+    hostname: us-east
+    environment: &env
+      OTLP_URL: tempo:4318
+      OTLP_INSECURE: 1
+      DEBUG_LOGGER: 1
+      OTEL_LOG_LEVEL: debug
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://tempo:4318"
+      OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
+      OTEL_SDK_DEBUG: "true"
+      OTEL_SERVICE_NAME: rideshare.ruby.push.app
+      OTEL_METRICS_EXPORTER: none
+      OTEL_TRACES_SAMPLER: always_on
+      OTEL_PROPAGATORS: tracecontext
+      REGION: us-east
+      PYROSCOPE_LABELS: hostname=us-east
+      PYROSCOPE_SERVER_ADDRESS: http://pyroscope:4040
+    build:
+      context: .
+
+  eu-north:
+    ports:
+      - "5000"
+    hostname: eu-north
+    environment:
+      <<: *env
+      REGION: eu-north
+      PYROSCOPE_LABELS: hostname=eu-north
+    build:
+      context: .
+
+  ap-south:
+    ports:
+      - "5000"
+    hostname: ap-south
+    environment:
+      <<: *env
+      REGION: ap-south
+      PYROSCOPE_LABELS: hostname=ap-south
+    build:
+      context: .
+
+  load-generator:
+    environment: *env
+    build:
+      context: ../../language-sdk-instrumentation/golang-push/rideshare
+      dockerfile: Dockerfile.load-generator
+    command:
+      - ./loadgen
+      - http://us-east:5000
+      - http://eu-north:5000
+      - http://ap-south:5000
+
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      - GF_INSTALL_PLUGINS=grafana-pyroscope-app
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+      - GF_FEATURE_TOGGLES_ENABLE=traceToProfiles tracesEmbeddedFlameGraph
+    volumes:
+      - ./grafana-provisioning:/etc/grafana/provisioning
+    ports:
+      - "3000:3000"
+
+  tempo:
+    image: grafana/tempo:latest
+    command: [ "-config.file=/etc/tempo.yml" ]
+    volumes:
+      - ./tempo/tempo.yml:/etc/tempo.yml
+    ports:
+      - "14268:14268"  # jaeger ingest
+      - "3200:3200"    # tempo
+      - "9095:9095"    # tempo grpc
+      - "4317:4317"    # otlp grpc
+      - "4318:4318"    # otlp http
+      - "9411:9411"    # zipkin
