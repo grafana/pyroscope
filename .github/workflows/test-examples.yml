@@ -1,5 +1,7 @@
 name: Test Examples
 on:
+  schedule:
+    - cron: '13 1 * * *'
   workflow_dispatch:
 
 concurrency:
