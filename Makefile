@@ -75,6 +75,14 @@ else
 	$(BIN)/gotestsum -- $(GO_TEST_FLAGS) -skip $(EBPF_TESTS) ./... ./ebpf/...
 endif
 
+# Run test on examples
+# This can also be used to run it on a subset of tests
+# $ make examples/test RUN=TestDockerComposeBuildRun/tracing/java
+.PHONY: examples/test
+examples/test: RUN := .*
+examples/test: $(BIN)/gotestsum
+	$(BIN)/gotestsum --format testname -- --count 1 --timeout 1h --tags examples -run "$(RUN)" ./examples
+
 .PHONY: build
 build: frontend/build go/bin ## Do a production build (requiring the frontend build to be present)
 
