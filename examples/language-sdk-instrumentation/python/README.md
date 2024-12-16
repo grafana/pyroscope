@@ -10,6 +10,10 @@
 
 Note: For documentation on the Pyroscope pip package visit [our website](https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/python/)
 
+## Interactive Tutorial
+
+Explore our [interactive Ride Share tutorial](https://killercoda.com/grafana-labs/course/pyroscope/ride-share-tutorial) on KillerCoda, where you can learn how to use Pyroscope by profiling a "Ride Share" application.
+
 ## Live Demo
 
 Feel free to check out the [live demo](https://play.grafana.org/a/grafana-pyroscope-app/profiles-explorer?searchText=&panelType=time-series&layout=grid&hideNoData=off&explorationType=flame-graph&var-serviceName=pyroscope-rideshare-python&var-profileMetricId=process_cpu:cpu:nanoseconds:cpu:nanoseconds&var-dataSource=grafanacloud-profiles) of this example on our demo page.
