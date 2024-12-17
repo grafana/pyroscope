@@ -31,14 +31,25 @@ const (
 	// SSES3 config type constant to configure S3 server side encryption with AES-256
 	// https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingServerSideEncryption.html
 	SSES3 = "SSE-S3"
+
+	// https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#path-style-access
+	PathStyleLookup = "path-style"
+
+	// https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#virtual-hosted-style-access
+	VirtualHostedStyleLookup = "virtual-hosted-style"
+
+	AutoLookup = "auto"
 )
 
 var (
 	supportedSignatureVersions     = []string{SignatureVersionV4, SignatureVersionV2}
 	supportedSSETypes              = []string{SSEKMS, SSES3}
+	supportedBucketLookupTypes     = []string{PathStyleLookup, VirtualHostedStyleLookup, AutoLookup}
 	errUnsupportedSignatureVersion = errors.New("unsupported signature version")
 	errUnsupportedSSEType          = errors.New("unsupported S3 SSE type")
 	errInvalidSSEContext           = errors.New("invalid S3 SSE encryption context")
+	errBucketLookupConfigConflict  = errors.New("cannot use s3.force-path-style = true and s3.bucket-lookup-type = virtual-hosted-style at the same time")
+	errUnsupportedBucketLookupType = errors.New("invalid S3 bucket lookup type")
 )
 
 // HTTPConfig stores the http.Transport configuration for the s3 minio client.
@@ -78,6 +89,7 @@ type Config struct {
 	Insecure         bool           `yaml:"insecure" category:"advanced"`
 	SignatureVersion string         `yaml:"signature_version" category:"advanced"`
 	ForcePathStyle   bool           `yaml:"force_path_style" category:"advanced"`
+	BucketLookupType string         `yaml:"bucket_lookup_type" category:"advanced"`
 
 	SSE  SSEConfig  `yaml:"sse"`
 	HTTP HTTPConfig `yaml:"http"`
@@ -96,7 +108,8 @@ func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.StringVar(&cfg.Region, prefix+"s3.region", "", "S3 region. If unset, the client will issue a S3 GetBucketLocation API call to autodetect it.")
 	f.StringVar(&cfg.Endpoint, prefix+"s3.endpoint", "", "The S3 bucket endpoint. It could be an AWS S3 endpoint listed at https://docs.aws.amazon.com/general/latest/gr/s3.html or the address of an S3-compatible service in hostname:port format.")
 	f.BoolVar(&cfg.Insecure, prefix+"s3.insecure", false, "If enabled, use http:// for the S3 endpoint instead of https://. This could be useful in local dev/test environments while using an S3-compatible backend storage, like Minio.")
-	f.BoolVar(&cfg.ForcePathStyle, prefix+"s3.force-path-style", false, "Set this to `true` to force the bucket lookup to be using path-style.")
+	f.BoolVar(&cfg.ForcePathStyle, prefix+"s3.force-path-style", false, "Deprecated, use s3.bucket-lookup-type instead. Set this to `true` to force the bucket lookup to be using path-style.")
+	f.StringVar(&cfg.BucketLookupType, prefix+"s3.bucket-lookup-type", AutoLookup, fmt.Sprintf("S3 bucket lookup style, use one of: %v", supportedBucketLookupTypes))
 	f.StringVar(&cfg.SignatureVersion, prefix+"s3.signature-version", SignatureVersionV4, fmt.Sprintf("The signature version to use for authenticating against S3. Supported values are: %s.", strings.Join(supportedSignatureVersions, ", ")))
 	cfg.SSE.RegisterFlagsWithPrefix(prefix+"s3.sse.", f)
 	cfg.HTTP.RegisterFlagsWithPrefix(prefix, f)
@@ -106,6 +119,14 @@ func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 func (cfg *Config) Validate() error {
 	if !lo.Contains(supportedSignatureVersions, cfg.SignatureVersion) {
 		return errUnsupportedSignatureVersion
+	}
+
+	if cfg.ForcePathStyle && cfg.BucketLookupType == VirtualHostedStyleLookup {
+		return errBucketLookupConfigConflict
+	}
+
+	if !lo.Contains(supportedBucketLookupTypes, cfg.BucketLookupType) {
+		return errUnsupportedBucketLookupType
 	}
 
 	if err := cfg.SSE.Validate(); err != nil {

@@ -117,3 +117,44 @@ func TestParseKMSEncryptionContext(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, expected, actual)
 }
+
+func TestConfig_Validate(t *testing.T) {
+	tests := map[string]struct {
+		setup    func() *Config
+		expected error
+	}{
+		"should pass with default config": {
+			setup: func() *Config {
+				cfg := &Config{}
+				flagext.DefaultValues(cfg)
+
+				return cfg
+			},
+		},
+		"should fail on invalid bucket lookup style": {
+			setup: func() *Config {
+				cfg := &Config{}
+				flagext.DefaultValues(cfg)
+				cfg.BucketLookupType = "invalid"
+				return cfg
+			},
+			expected: errUnsupportedBucketLookupType,
+		},
+		"should fail if force-path-style conflicts with bucket-lookup-type": {
+			setup: func() *Config {
+				cfg := &Config{}
+				flagext.DefaultValues(cfg)
+				cfg.ForcePathStyle = true
+				cfg.BucketLookupType = VirtualHostedStyleLookup
+				return cfg
+			},
+			expected: errBucketLookupConfigConflict,
+		},
+	}
+
+	for testName, testData := range tests {
+		t.Run(testName, func(t *testing.T) {
+			assert.Equal(t, testData.expected, testData.setup().Validate())
+		})
+	}
+}
