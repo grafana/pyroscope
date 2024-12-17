@@ -47,6 +47,6 @@ The profile collection pipeline consists of:
 
 ## Get started
 
-For detailed setup instructions and working examples, refer to the [examples repository](https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent-auto-instrumentation/ebpf-otel).
+For detailed setup instructions and working examples, refer to the [examples repository](https://github.com/grafana/pyroscope/tree/main/examples/grafana-alloy-auto-instrumentation/ebpf-otel).
 
 The examples demonstrate deployments for both Docker and Kubernetes environments.

@@ -85,6 +85,24 @@ func main() {
 }
 ```
 
+Alternatively, if you want more control over the profiling process, you can manually handle the profiler initialization and termination:
+
+```go
+  profiler, err := pyroscope.Start(pyroscope.Config{
+    // omitted for brevity 
+  })
+  if err != nil {
+    // the only reason this would fail is if the configuration is not valid
+    log.Fatalf("failed to start Pyroscope: %v", err)
+  }
+  defer profiler.Stop()
+
+  // your code goes here
+}
+```
+
+This approach may be necessary if you need to ensure that the last profile is sent before the application exits.
+
 ### Add profiling labels to your application
 
 You can add tags (labels) to the profiling data. These tags can be used to filter the data in the UI. There is a custom API that's in line with the go-native pprof API:

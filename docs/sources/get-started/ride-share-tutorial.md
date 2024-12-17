@@ -186,7 +186,7 @@ To discover this, you can use the **Flame graph** view:
 
 1. Open Explore Profiles using the following url: [http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer](http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer).
 1. Select **Flame graph** from the **Exploration** path.
-1. Verify that  `flask-ride-sharing-app` is selected in the **Service** drop-down menu and `process_cpu/cpu` in the **Profile type** drop-down menu.
+1. Verify that  `ride-sharing-app` is selected in the **Service** drop-down menu and `process_cpu/cpu` in the **Profile type** drop-down menu.
 
 It should look something like this:
 
