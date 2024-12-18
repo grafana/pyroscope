@@ -24,7 +24,7 @@ pyroscope:
           memory: 1Gi
         requests:
           memory: 256Mi
-          cpu: 1
+          cpu: 500m
     query-frontend:
       kind: Deployment
       replicaCount: 2
@@ -39,7 +39,7 @@ pyroscope:
           memory: 1Gi
         requests:
           memory: 256Mi
-          cpu: 100m
+          cpu: 500m
     query-scheduler:
       kind: Deployment
       replicaCount: 2
@@ -53,7 +53,7 @@ pyroscope:
           memory: 1Gi
         requests:
           memory: 256Mi
-          cpu: 100m
+          cpu: 500m
     distributor:
       kind: Deployment
       replicaCount: 2
@@ -73,10 +73,10 @@ pyroscope:
       terminationGracePeriodSeconds: 600
       resources:
         limits:
-          memory: 16Gi
+          memory: 1Gi
         requests:
-          memory: 8Gi
-          cpu: 1
+          memory: 256Mi
+          cpu: 500m
     compactor:
       kind: StatefulSet
       replicaCount: 3
@@ -85,10 +85,10 @@ pyroscope:
         enabled: false
       resources:
         limits:
-          memory: 16Gi
+          memory: 1Gi
         requests:
-          memory: 8Gi
-          cpu: 1
+          memory: 256Mi
+          cpu: 500m
     store-gateway:
       kind: StatefulSet
       replicaCount: 3
@@ -98,10 +98,10 @@ pyroscope:
         enabled: false
       resources:
         limits:
-          memory: 16Gi
+          memory: 1Gi
         requests:
-          memory: 8Gi
-          cpu: 1
+          memory: 256Mi
+          cpu: 500m
       readinessProbe:
         # The store gateway can be configured to wait on startup for ring stability to be reached before it becomes
         # ready. See the `store-gateway.sharding-ring.wait-stability-min-duration` server argument for more information.
