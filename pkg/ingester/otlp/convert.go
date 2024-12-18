@@ -6,14 +6,7 @@ import (
 
 	googleProfile "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	otelProfile "github.com/grafana/pyroscope/api/otlp/profiles/v1experimental"
-
-	"google.golang.org/protobuf/proto"
 )
-
-func OprofToPprof(p *otelProfile.Profile) ([]byte, error) {
-	dst := ConvertOtelToGoogle(p)
-	return proto.Marshal(dst)
-}
 
 type profileBuilder struct {
 	src                     *otelProfile.Profile
@@ -86,12 +79,8 @@ func (p *profileBuilder) addfunc(s string) uint64 {
 	return idx
 }
 
-func (p *profileBuilder) build() *googleProfile.Profile {
-	return p.dst
-}
-
 // ConvertOtelToGoogle converts an OpenTelemetry profile to a Google profile.
-func ConvertOtelToGoogle(src *otelProfile.Profile) *googleProfile.Profile {
+func ConvertOtelToGoogle(src *otelProfile.Profile) map[string]*googleProfile.Profile {
 	svc2Profile := make(map[string]*profileBuilder)
 	for _, sample := range src.Sample {
 		svc := serviceNameFromSample(src, sample)
@@ -103,20 +92,21 @@ func ConvertOtelToGoogle(src *otelProfile.Profile) *googleProfile.Profile {
 		p.convertSampleBack(sample)
 	}
 
-	for _, p := range svc2Profile {
-		return p.build()
+	result := make(map[string]*googleProfile.Profile)
+	for svc, p := range svc2Profile {
+		result[svc] = p.dst
 	}
 
-	return nil
+	return result
 }
 
 func serviceNameFromSample(p *otelProfile.Profile, sample *otelProfile.Sample) string {
-	//for _, attributeIndex := range sample.Attributes {
-	//	attribute := p.AttributeTable[attributeIndex]
-	//	if attribute.Key == "service.name" {
-	//		return attribute.Value.GetStringValue()
-	//	}
-	//}
+	for _, attributeIndex := range sample.Attributes {
+		attribute := p.AttributeTable[attributeIndex]
+		if attribute.Key == "service.name" {
+			return attribute.Value.GetStringValue()
+		}
+	}
 	return ""
 }
 

@@ -342,48 +342,48 @@ func TestDifferentServiceNames(t *testing.T) {
 		Address:      0x1100,
 		Line: []*v1experimental.Line{{
 			FunctionIndex: 0,
-			Line:         10,
+			Line:          10,
 		}},
 	}, {
 		MappingIndex: 0, // service-a.so
 		Address:      0x1200,
 		Line: []*v1experimental.Line{{
 			FunctionIndex: 1,
-			Line:         20,
+			Line:          20,
 		}},
 	}, {
 		MappingIndex: 1, // service-b.so
 		Address:      0x2100,
 		Line: []*v1experimental.Line{{
 			FunctionIndex: 2,
-			Line:         30,
+			Line:          30,
 		}},
 	}, {
 		MappingIndex: 1, // service-b.so
 		Address:      0x2200,
 		Line: []*v1experimental.Line{{
 			FunctionIndex: 3,
-			Line:         40,
+			Line:          40,
 		}},
 	}}
 
 	// Add functions
 	otlpb.profile.Function = []*v1experimental.Function{{
-		Name:      otlpb.addstr("serviceA_func1"),
+		Name:       otlpb.addstr("serviceA_func1"),
 		SystemName: otlpb.addstr("serviceA_func1"),
-		Filename:  otlpb.addstr("service_a.go"),
+		Filename:   otlpb.addstr("service_a.go"),
 	}, {
-		Name:      otlpb.addstr("serviceA_func2"),
+		Name:       otlpb.addstr("serviceA_func2"),
 		SystemName: otlpb.addstr("serviceA_func2"),
-		Filename:  otlpb.addstr("service_a.go"),
+		Filename:   otlpb.addstr("service_a.go"),
 	}, {
-		Name:      otlpb.addstr("serviceB_func1"),
+		Name:       otlpb.addstr("serviceB_func1"),
 		SystemName: otlpb.addstr("serviceB_func1"),
-		Filename:  otlpb.addstr("service_b.go"),
+		Filename:   otlpb.addstr("service_b.go"),
 	}, {
-		Name:      otlpb.addstr("serviceB_func2"),
+		Name:       otlpb.addstr("serviceB_func2"),
 		SystemName: otlpb.addstr("serviceB_func2"),
-		Filename:  otlpb.addstr("service_b.go"),
+		Filename:   otlpb.addstr("service_b.go"),
 	}}
 
 	otlpb.profile.LocationIndices = []int64{0, 1, 2, 3}
@@ -392,13 +392,13 @@ func TestDifferentServiceNames(t *testing.T) {
 	otlpb.profile.Sample = []*v1experimental.Sample{{
 		LocationsStartIndex: 0,
 		LocationsLength:     2, // Use first two locations
-		Value:              []int64{100},
-		Attributes:         []uint64{0},
+		Value:               []int64{100},
+		Attributes:          []uint64{0},
 	}, {
 		LocationsStartIndex: 2,
 		LocationsLength:     2, // Use last two locations
-		Value:              []int64{200},
-		Attributes:         []uint64{1},
+		Value:               []int64{200},
+		Attributes:          []uint64{1},
 	}}
 
 	// Set up the attribute table with different service names
@@ -434,8 +434,8 @@ func TestDifferentServiceNames(t *testing.T) {
 	require.Equal(t, 2, len(profiles))
 
 	expectedStacks := map[string]string{
-		"service-a": " ||| serviceA_func2;serviceA_func1 100",
-		"service-b": " ||| serviceB_func2;serviceB_func1 200",
+		"service-a": "(service.name = service-a) ||| serviceA_func2;serviceA_func1 100",
+		"service-b": "(service.name = service-b) ||| serviceB_func2;serviceB_func1 200",
 	}
 
 	// Verify service names and stacktraces in the profiles
@@ -445,7 +445,7 @@ func TestDifferentServiceNames(t *testing.T) {
 		for _, label := range p.Series[0].Labels {
 			seriesLabelsMap[label.Name] = label.Value
 		}
-		
+
 		serviceName := seriesLabelsMap["service_name"]
 		require.Contains(t, []string{"service-a", "service-b"}, serviceName)
 
