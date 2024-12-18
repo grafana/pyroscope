@@ -314,6 +314,156 @@ func TestSampleAttributes(t *testing.T) {
 	assert.Equal(t, "(process = firefox) ||| firefox.so 0x2e;firefox.so 0x1e 239", ss[1])
 }
 
+func TestDifferentServiceNames(t *testing.T) {
+	// Create a profile with two samples having different service.name attributes
+	// Expect them to be pushed as separate profiles
+	svc := mockotlp.NewMockPushService(t)
+	var profiles []*pushv1.PushRequest
+	svc.On("Push", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		c := (args.Get(1)).(*connect.Request[pushv1.PushRequest])
+		profiles = append(profiles, c.Msg)
+	}).Return(nil, nil)
+
+	otlpb := new(otlpbuilder)
+	// Create mappings for both services
+	otlpb.profile.Mapping = []*v1experimental.Mapping{{
+		MemoryStart: 0x1000,
+		MemoryLimit: 0x2000,
+		Filename:    otlpb.addstr("service-a.so"),
+	}, {
+		MemoryStart: 0x2000,
+		MemoryLimit: 0x3000,
+		Filename:    otlpb.addstr("service-b.so"),
+	}}
+
+	// Create different locations for each service
+	otlpb.profile.Location = []*v1experimental.Location{{
+		MappingIndex: 0, // service-a.so
+		Address:      0x1100,
+		Line: []*v1experimental.Line{{
+			FunctionIndex: 0,
+			Line:         10,
+		}},
+	}, {
+		MappingIndex: 0, // service-a.so
+		Address:      0x1200,
+		Line: []*v1experimental.Line{{
+			FunctionIndex: 1,
+			Line:         20,
+		}},
+	}, {
+		MappingIndex: 1, // service-b.so
+		Address:      0x2100,
+		Line: []*v1experimental.Line{{
+			FunctionIndex: 2,
+			Line:         30,
+		}},
+	}, {
+		MappingIndex: 1, // service-b.so
+		Address:      0x2200,
+		Line: []*v1experimental.Line{{
+			FunctionIndex: 3,
+			Line:         40,
+		}},
+	}}
+
+	// Add functions
+	otlpb.profile.Function = []*v1experimental.Function{{
+		Name:      otlpb.addstr("serviceA_func1"),
+		SystemName: otlpb.addstr("serviceA_func1"),
+		Filename:  otlpb.addstr("service_a.go"),
+	}, {
+		Name:      otlpb.addstr("serviceA_func2"),
+		SystemName: otlpb.addstr("serviceA_func2"),
+		Filename:  otlpb.addstr("service_a.go"),
+	}, {
+		Name:      otlpb.addstr("serviceB_func1"),
+		SystemName: otlpb.addstr("serviceB_func1"),
+		Filename:  otlpb.addstr("service_b.go"),
+	}, {
+		Name:      otlpb.addstr("serviceB_func2"),
+		SystemName: otlpb.addstr("serviceB_func2"),
+		Filename:  otlpb.addstr("service_b.go"),
+	}}
+
+	otlpb.profile.LocationIndices = []int64{0, 1, 2, 3}
+
+	// Create two samples with different service.name attributes and different stacktraces
+	otlpb.profile.Sample = []*v1experimental.Sample{{
+		LocationsStartIndex: 0,
+		LocationsLength:     2, // Use first two locations
+		Value:              []int64{100},
+		Attributes:         []uint64{0},
+	}, {
+		LocationsStartIndex: 2,
+		LocationsLength:     2, // Use last two locations
+		Value:              []int64{200},
+		Attributes:         []uint64{1},
+	}}
+
+	// Set up the attribute table with different service names
+	otlpb.profile.AttributeTable = []v1.KeyValue{{
+		Key: "service.name",
+		Value: v1.AnyValue{
+			Value: &v1.AnyValue_StringValue{
+				StringValue: "service-a",
+			},
+		},
+	}, {
+		Key: "service.name",
+		Value: v1.AnyValue{
+			Value: &v1.AnyValue_StringValue{
+				StringValue: "service-b",
+			},
+		},
+	}}
+
+	req := &v1experimental2.ExportProfilesServiceRequest{
+		ResourceProfiles: []*v1experimental.ResourceProfiles{{
+			ScopeProfiles: []*v1experimental.ScopeProfiles{{
+				Profiles: []*v1experimental.ProfileContainer{{
+					Profile: &otlpb.profile,
+				}}}}}}}
+
+	logger := testutil.NewLogger(t)
+	h := NewOTLPIngestHandler(svc, logger, false)
+	_, err := h.Export(context.Background(), req)
+	require.NoError(t, err)
+
+	// We should have two separate profiles
+	require.Equal(t, 2, len(profiles))
+
+	expectedStacks := map[string]string{
+		"service-a": " ||| serviceA_func2;serviceA_func1 100",
+		"service-b": " ||| serviceB_func2;serviceB_func1 200",
+	}
+
+	// Verify service names and stacktraces in the profiles
+	for _, p := range profiles {
+		require.Equal(t, 1, len(p.Series))
+		seriesLabelsMap := make(map[string]string)
+		for _, label := range p.Series[0].Labels {
+			seriesLabelsMap[label.Name] = label.Value
+		}
+		
+		serviceName := seriesLabelsMap["service_name"]
+		require.Contains(t, []string{"service-a", "service-b"}, serviceName)
+
+		// Verify the stacktrace
+		gp := new(googlev1.Profile)
+		err = gp.UnmarshalVT(p.Series[0].Samples[0].RawProfile)
+		require.NoError(t, err)
+
+		ss := bench.StackCollapseProtoWithOptions(gp, bench.StackCollapseOptions{
+			ValueIdx:   0,
+			Scale:      1,
+			WithLabels: true,
+		})
+		require.Equal(t, 1, len(ss))
+		assert.Equal(t, expectedStacks[serviceName], ss[0])
+	}
+}
+
 type otlpbuilder struct {
 	profile   v1experimental.Profile
 	stringmap map[string]int64
