@@ -8,6 +8,27 @@ import (
 	otelProfile "github.com/grafana/pyroscope/api/otlp/profiles/v1experimental"
 )
 
+// ConvertOtelToGoogle converts an OpenTelemetry profile to a Google profile.
+func ConvertOtelToGoogle(src *otelProfile.Profile) map[string]*googleProfile.Profile {
+	svc2Profile := make(map[string]*profileBuilder)
+	for _, sample := range src.Sample {
+		svc := serviceNameFromSample(src, sample)
+		p, ok := svc2Profile[svc]
+		if !ok {
+			p = newProfileBuilder(src)
+			svc2Profile[svc] = p
+		}
+		p.convertSampleBack(sample)
+	}
+
+	result := make(map[string]*googleProfile.Profile)
+	for svc, p := range svc2Profile {
+		result[svc] = p.dst
+	}
+
+	return result
+}
+
 type profileBuilder struct {
 	src                     *otelProfile.Profile
 	dst                     *googleProfile.Profile
@@ -27,10 +48,8 @@ func newProfileBuilder(src *otelProfile.Profile) *profileBuilder {
 		mappingMap:              make(map[*otelProfile.Mapping]uint64),
 		unsymbolziedFuncNameMap: make(map[string]uint64),
 		dst: &googleProfile.Profile{
-			SampleType:        convertSampleTypesBack(src.SampleType),
 			TimeNanos:         src.TimeNanos,
 			DurationNanos:     src.DurationNanos,
-			PeriodType:        convertValueTypeBack(src.PeriodType),
 			Period:            src.Period,
 			DefaultSampleType: src.DefaultSampleType,
 			DropFrames:        src.DropFrames,
@@ -39,6 +58,8 @@ func newProfileBuilder(src *otelProfile.Profile) *profileBuilder {
 		},
 	}
 	res.addstr("")
+	res.dst.SampleType = res.convertSampleTypesBack(src.SampleType)
+	res.dst.PeriodType = res.convertValueTypeBack(src.PeriodType)
 	if len(res.dst.SampleType) == 0 {
 		res.dst.SampleType = []*googleProfile.ValueType{{
 			Type: res.addstr("samples"),
@@ -79,27 +100,6 @@ func (p *profileBuilder) addfunc(s string) uint64 {
 	return idx
 }
 
-// ConvertOtelToGoogle converts an OpenTelemetry profile to a Google profile.
-func ConvertOtelToGoogle(src *otelProfile.Profile) map[string]*googleProfile.Profile {
-	svc2Profile := make(map[string]*profileBuilder)
-	for _, sample := range src.Sample {
-		svc := serviceNameFromSample(src, sample)
-		p, ok := svc2Profile[svc]
-		if !ok {
-			p = newProfileBuilder(src)
-			svc2Profile[svc] = p
-		}
-		p.convertSampleBack(sample)
-	}
-
-	result := make(map[string]*googleProfile.Profile)
-	for svc, p := range svc2Profile {
-		result[svc] = p.dst
-	}
-
-	return result
-}
-
 func serviceNameFromSample(p *otelProfile.Profile, sample *otelProfile.Sample) string {
 	for _, attributeIndex := range sample.Attributes {
 		attribute := p.AttributeTable[attributeIndex]
@@ -110,24 +110,24 @@ func serviceNameFromSample(p *otelProfile.Profile, sample *otelProfile.Sample) s
 	return ""
 }
 
-func convertSampleTypesBack(ost []*otelProfile.ValueType) []*googleProfile.ValueType {
+func (p *profileBuilder) convertSampleTypesBack(ost []*otelProfile.ValueType) []*googleProfile.ValueType {
 	var gst []*googleProfile.ValueType
 	for _, st := range ost {
 		gst = append(gst, &googleProfile.ValueType{
-			Type: st.Type,
-			Unit: st.Unit,
+			Type: p.addstr(p.src.StringTable[st.Type]),
+			Unit: p.addstr(p.src.StringTable[st.Unit]),
 		})
 	}
 	return gst
 }
 
-func convertValueTypeBack(ovt *otelProfile.ValueType) *googleProfile.ValueType {
+func (p *profileBuilder) convertValueTypeBack(ovt *otelProfile.ValueType) *googleProfile.ValueType {
 	if ovt == nil {
 		return nil
 	}
 	return &googleProfile.ValueType{
-		Type: ovt.Type,
-		Unit: ovt.Unit,
+		Type: p.addstr(p.src.StringTable[ovt.Type]),
+		Unit: p.addstr(p.src.StringTable[ovt.Unit]),
 	}
 }
 

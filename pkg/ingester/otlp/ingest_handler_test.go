@@ -418,6 +418,17 @@ func TestDifferentServiceNames(t *testing.T) {
 		},
 	}}
 
+	// Add sample types and period type
+	otlpb.profile.SampleType = []*v1experimental.ValueType{{
+		Type: otlpb.addstr("cpu"),
+		Unit: otlpb.addstr("nanoseconds"),
+	}}
+	otlpb.profile.PeriodType = &v1experimental.ValueType{
+		Type: otlpb.addstr("cpu"),
+		Unit: otlpb.addstr("nanoseconds"),
+	}
+	otlpb.profile.Period = 10000000 // 10ms
+
 	req := &v1experimental2.ExportProfilesServiceRequest{
 		ResourceProfiles: []*v1experimental.ResourceProfiles{{
 			ScopeProfiles: []*v1experimental.ScopeProfiles{{
@@ -438,7 +449,7 @@ func TestDifferentServiceNames(t *testing.T) {
 		"service-b": "(service.name = service-b) ||| serviceB_func2;serviceB_func1 200",
 	}
 
-	// Verify service names and stacktraces in the profiles
+	// Verify service names, stacktraces, and profile metadata in the profiles
 	for _, p := range profiles {
 		require.Equal(t, 1, len(p.Series))
 		seriesLabelsMap := make(map[string]string)
@@ -449,11 +460,23 @@ func TestDifferentServiceNames(t *testing.T) {
 		serviceName := seriesLabelsMap["service_name"]
 		require.Contains(t, []string{"service-a", "service-b"}, serviceName)
 
-		// Verify the stacktrace
+		// Verify the profile contents
 		gp := new(googlev1.Profile)
 		err = gp.UnmarshalVT(p.Series[0].Samples[0].RawProfile)
 		require.NoError(t, err)
 
+		// Verify sample types
+		require.Equal(t, 1, len(gp.SampleType))
+		assert.Equal(t, "cpu", gp.StringTable[gp.SampleType[0].Type])
+		assert.Equal(t, "nanoseconds", gp.StringTable[gp.SampleType[0].Unit])
+
+		// Verify period type
+		require.NotNil(t, gp.PeriodType)
+		assert.Equal(t, "cpu", gp.StringTable[gp.PeriodType.Type])
+		assert.Equal(t, "nanoseconds", gp.StringTable[gp.PeriodType.Unit])
+		assert.Equal(t, int64(10000000), gp.Period)
+
+		// Verify stacktraces
 		ss := bench.StackCollapseProtoWithOptions(gp, bench.StackCollapseOptions{
 			ValueIdx:   0,
 			Scale:      1,
