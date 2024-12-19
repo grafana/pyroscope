@@ -39,6 +39,7 @@ type profileBuilder struct {
 	unsymbolziedFuncNameMap map[string]uint64
 	locationMap             map[*otelProfile.Location]uint64
 	mappingMap              map[*otelProfile.Mapping]uint64
+	cpuConversion           bool
 }
 
 func newProfileBuilder(src *otelProfile.Profile) *profileBuilder {
@@ -68,7 +69,22 @@ func newProfileBuilder(src *otelProfile.Profile) *profileBuilder {
 			Unit: res.addstr("ms"),
 		}}
 		res.dst.DefaultSampleType = res.addstr("samples")
+	} else if len(res.dst.SampleType) == 1 && res.dst.PeriodType != nil && res.dst.Period != 0 {
+		profileType := fmt.Sprintf("%s:%s:%s:%s",
+			res.dst.StringTable[res.dst.SampleType[0].Type],
+			res.dst.StringTable[res.dst.SampleType[0].Unit],
+			res.dst.StringTable[res.dst.PeriodType.Type],
+			res.dst.StringTable[res.dst.PeriodType.Unit],
+		)
+		if profileType == "samples:count:cpu:nanoseconds" {
+			res.dst.SampleType = []*googleProfile.ValueType{{
+				Type: res.addstr("cpu"),
+				Unit: res.addstr("nanoseconds"),
+			}}
+			res.cpuConversion = true
+		}
 	}
+
 	if res.dst.TimeNanos == 0 {
 		res.dst.TimeNanos = time.Now().UnixNano()
 	}
@@ -191,6 +207,8 @@ func (p *profileBuilder) convertSampleBack(os *otelProfile.Sample) *googleProfil
 
 	if len(gs.Value) == 0 {
 		gs.Value = []int64{int64(len(os.TimestampsUnixNano))}
+	} else if len(gs.Value) == 1 && p.cpuConversion {
+		gs.Value[0] *= p.src.Period
 	}
 	p.convertSampleAttributesToLabelsBack(os, gs)
 

@@ -430,8 +430,8 @@ func TestDifferentServiceNames(t *testing.T) {
 	}}
 
 	otlpb.profile.SampleType = []*v1experimental.ValueType{{
-		Type: otlpb.addstr("cpu"),
-		Unit: otlpb.addstr("nanoseconds"),
+		Type: otlpb.addstr("samples"),
+		Unit: otlpb.addstr("count"),
 	}}
 	otlpb.profile.PeriodType = &v1experimental.ValueType{
 		Type: otlpb.addstr("cpu"),
@@ -454,9 +454,9 @@ func TestDifferentServiceNames(t *testing.T) {
 	require.Equal(t, 3, len(profiles))
 
 	expectedStacks := map[string]string{
-		"service-a": " ||| serviceA_func2;serviceA_func1 100",
-		"service-b": " ||| serviceB_func2;serviceB_func1 200",
-		"unknown":   " ||| serviceC_func3;serviceC_func3 700",
+		"service-a": " ||| serviceA_func2;serviceA_func1 1000000000",
+		"service-b": " ||| serviceB_func2;serviceB_func1 2000000000",
+		"unknown":   " ||| serviceC_func3;serviceC_func3 7000000000",
 	}
 
 	for _, p := range profiles {
