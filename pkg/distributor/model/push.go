@@ -10,6 +10,7 @@ type RawProfileType string
 
 const RawProfileTypePPROF = RawProfileType("pprof")
 const RawProfileTypeJFR = RawProfileType("jfr")
+const RawProfileTypeOTEL = RawProfileType("otel")
 
 type PushRequest struct {
 	TenantID       string

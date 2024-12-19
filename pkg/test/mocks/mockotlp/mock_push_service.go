@@ -9,6 +9,8 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 
+	model "github.com/grafana/pyroscope/pkg/distributor/model"
+
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 )
 
@@ -25,20 +27,20 @@ func (_m *MockPushService) EXPECT() *MockPushService_Expecter {
 	return &MockPushService_Expecter{mock: &_m.Mock}
 }
 
-// Push provides a mock function with given fields: ctx, req
-func (_m *MockPushService) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
+// PushParsed provides a mock function with given fields: ctx, req
+func (_m *MockPushService) PushParsed(ctx context.Context, req *model.PushRequest) (*connect.Response[pushv1.PushResponse], error) {
 	ret := _m.Called(ctx, req)
 
 	if len(ret) == 0 {
-		panic("no return value specified for Push")
+		panic("no return value specified for PushParsed")
 	}
 
 	var r0 *connect.Response[pushv1.PushResponse]
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *model.PushRequest) (*connect.Response[pushv1.PushResponse], error)); ok {
 		return rf(ctx, req)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *connect.Request[pushv1.PushRequest]) *connect.Response[pushv1.PushResponse]); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *model.PushRequest) *connect.Response[pushv1.PushResponse]); ok {
 		r0 = rf(ctx, req)
 	} else {
 		if ret.Get(0) != nil {
@@ -46,7 +48,7 @@ func (_m *MockPushService) Push(ctx context.Context, req *connect.Request[pushv1
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *connect.Request[pushv1.PushRequest]) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *model.PushRequest) error); ok {
 		r1 = rf(ctx, req)
 	} else {
 		r1 = ret.Error(1)
@@ -55,31 +57,31 @@ func (_m *MockPushService) Push(ctx context.Context, req *connect.Request[pushv1
 	return r0, r1
 }
 
-// MockPushService_Push_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Push'
-type MockPushService_Push_Call struct {
+// MockPushService_PushParsed_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PushParsed'
+type MockPushService_PushParsed_Call struct {
 	*mock.Call
 }
 
-// Push is a helper method to define mock.On call
+// PushParsed is a helper method to define mock.On call
 //   - ctx context.Context
-//   - req *connect.Request[pushv1.PushRequest]
-func (_e *MockPushService_Expecter) Push(ctx interface{}, req interface{}) *MockPushService_Push_Call {
-	return &MockPushService_Push_Call{Call: _e.mock.On("Push", ctx, req)}
+//   - req *model.PushRequest
+func (_e *MockPushService_Expecter) PushParsed(ctx interface{}, req interface{}) *MockPushService_PushParsed_Call {
+	return &MockPushService_PushParsed_Call{Call: _e.mock.On("PushParsed", ctx, req)}
 }
 
-func (_c *MockPushService_Push_Call) Run(run func(ctx context.Context, req *connect.Request[pushv1.PushRequest])) *MockPushService_Push_Call {
+func (_c *MockPushService_PushParsed_Call) Run(run func(ctx context.Context, req *model.PushRequest)) *MockPushService_PushParsed_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*connect.Request[pushv1.PushRequest]))
+		run(args[0].(context.Context), args[1].(*model.PushRequest))
 	})
 	return _c
 }
 
-func (_c *MockPushService_Push_Call) Return(_a0 *connect.Response[pushv1.PushResponse], _a1 error) *MockPushService_Push_Call {
+func (_c *MockPushService_PushParsed_Call) Return(_a0 *connect.Response[pushv1.PushResponse], _a1 error) *MockPushService_PushParsed_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockPushService_Push_Call) RunAndReturn(run func(context.Context, *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error)) *MockPushService_Push_Call {
+func (_c *MockPushService_PushParsed_Call) RunAndReturn(run func(context.Context, *model.PushRequest) (*connect.Response[pushv1.PushResponse], error)) *MockPushService_PushParsed_Call {
 	_c.Call.Return(run)
 	return _c
 }

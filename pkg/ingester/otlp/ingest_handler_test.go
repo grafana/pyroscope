@@ -6,13 +6,12 @@ import (
 	"strings"
 	"testing"
 
-	"connectrpc.com/connect"
+	"github.com/grafana/pyroscope/pkg/distributor/model"
+
 	"github.com/prometheus/prometheus/util/testutil"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	v1experimental2 "github.com/grafana/pyroscope/api/otlp/collector/profiles/v1experimental"
 	"github.com/grafana/pyroscope/api/otlp/profiles/v1experimental"
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
@@ -165,10 +164,10 @@ func TestSymbolizedFunctionNames(t *testing.T) {
 	// Create two unsymbolized locations at 0x1e0 and 0x2f0
 	// Expect both of them to be present in the converted pprof
 	svc := mockotlp.NewMockPushService(t)
-	var profiles [][]byte
-	svc.On("Push", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
-		c := (args.Get(1)).(*connect.Request[pushv1.PushRequest])
-		profiles = append(profiles, c.Msg.Series[0].Samples[0].RawProfile)
+	var profiles []*model.PushRequest
+	svc.On("PushParsed", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		c := (args.Get(1)).(*model.PushRequest)
+		profiles = append(profiles, c)
 	}).Return(nil, nil)
 
 	otlpb := new(otlpbuilder)
@@ -204,9 +203,7 @@ func TestSymbolizedFunctionNames(t *testing.T) {
 	assert.NoError(t, err)
 	require.Equal(t, 1, len(profiles))
 
-	gp := new(googlev1.Profile)
-	err = gp.UnmarshalVT(profiles[0])
-	require.NoError(t, err)
+	gp := profiles[0].Series[0].Samples[0].Profile.Profile
 
 	ss := bench.StackCollapseProtoWithOptions(gp, bench.StackCollapseOptions{
 		ValueIdx:   0,
@@ -222,10 +219,10 @@ func TestSampleAttributes(t *testing.T) {
 	// one process=firefox, the other process=chrome
 	// expect both of them to be present in the converted pprof as labels, but not series labels
 	svc := mockotlp.NewMockPushService(t)
-	var profiles []*pushv1.PushRequest
-	svc.On("Push", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
-		c := (args.Get(1)).(*connect.Request[pushv1.PushRequest])
-		profiles = append(profiles, c.Msg)
+	var profiles []*model.PushRequest
+	svc.On("PushParsed", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		c := (args.Get(1)).(*model.PushRequest)
+		profiles = append(profiles, c)
 	}).Return(nil, nil)
 
 	otlpb := new(otlpbuilder)
@@ -300,9 +297,7 @@ func TestSampleAttributes(t *testing.T) {
 	assert.Equal(t, "", seriesLabelsMap["process"])
 	assert.NotContains(t, seriesLabelsMap, "service.name")
 
-	gp := new(googlev1.Profile)
-	err = gp.UnmarshalVT(profiles[0].Series[0].Samples[0].RawProfile)
-	require.NoError(t, err)
+	gp := profiles[0].Series[0].Samples[0].Profile.Profile
 
 	ss := bench.StackCollapseProtoWithOptions(gp, bench.StackCollapseOptions{
 		ValueIdx:   0,
@@ -319,10 +314,10 @@ func TestDifferentServiceNames(t *testing.T) {
 	// Create a profile with two samples having different service.name attributes
 	// Expect them to be pushed as separate profiles
 	svc := mockotlp.NewMockPushService(t)
-	var profiles []*pushv1.PushRequest
-	svc.On("Push", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
-		c := (args.Get(1)).(*connect.Request[pushv1.PushRequest])
-		profiles = append(profiles, c.Msg)
+	var profiles []*model.PushRequest
+	svc.On("PushParsed", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		c := (args.Get(1)).(*model.PushRequest)
+		profiles = append(profiles, c)
 	}).Return(nil, nil)
 
 	otlpb := new(otlpbuilder)
@@ -475,9 +470,7 @@ func TestDifferentServiceNames(t *testing.T) {
 		require.Contains(t, []string{"service-a", "service-b", "unknown"}, serviceName)
 		assert.NotContains(t, seriesLabelsMap, "service.name")
 
-		gp := new(googlev1.Profile)
-		err = gp.UnmarshalVT(p.Series[0].Samples[0].RawProfile)
-		require.NoError(t, err)
+		gp := p.Series[0].Samples[0].Profile.Profile
 
 		require.Equal(t, 1, len(gp.SampleType))
 		assert.Equal(t, "cpu", gp.StringTable[gp.SampleType[0].Type])

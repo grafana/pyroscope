@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"strings"
 
-	model2 "github.com/prometheus/common/model"
-
-	"github.com/grafana/pyroscope/pkg/model"
+	distirbutormodel "github.com/grafana/pyroscope/pkg/distributor/model"
+	pyromodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/pprof"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
@@ -38,7 +38,7 @@ type Handler interface {
 }
 
 type PushService interface {
-	Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error)
+	PushParsed(ctx context.Context, req *distirbutormodel.PushRequest) (*connect.Response[pushv1.PushResponse], error)
 }
 
 func NewOTLPIngestHandler(svc PushService, l log.Logger, me bool) Handler {
@@ -114,24 +114,24 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 						Value: svc,
 					})
 
-					pprofBytes, err := pprofProfile.MarshalVT()
-					if err != nil {
-						return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to marshal pprof profile: %w", err)
-					}
-
-					req := &pushv1.PushRequest{
-						Series: []*pushv1.RawProfileSeries{
+					req := &distirbutormodel.PushRequest{
+						RawProfileSize: p.Profile.Size(),
+						RawProfileType: distirbutormodel.RawProfileTypeOTEL,
+						Series: []*distirbutormodel.ProfileSeries{
 							{
 								Labels: labels,
-								Samples: []*pushv1.RawSample{{
-									RawProfile: pprofBytes,
-									ID:         uuid.New().String(),
-								}},
+								Samples: []*distirbutormodel.ProfileSample{
+									{
+										RawProfile: nil,
+										Profile:    pprof.RawFromProto(pprofProfile),
+										ID:         uuid.New().String(),
+									},
+								},
 							},
 						},
 					}
 
-					_, err = h.svc.Push(ctx, connect.NewRequest(req))
+					_, err := h.svc.PushParsed(ctx, req)
 					if err != nil {
 						h.log.Log("msg", "failed to push profile", "err", err)
 						return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to make a GRPC request: %w", err)
@@ -163,15 +163,15 @@ func getServiceNameFromAttributes(attrs []v1.KeyValue) string {
 func getDefaultLabels() []*typesv1.LabelPair {
 	return []*typesv1.LabelPair{
 		{
-			Name:  model2.MetricNameLabel,
+			Name:  pyromodel.LabelNameProfileName,
 			Value: "process_cpu",
 		},
 		{
-			Name:  model.LabelNameDelta,
+			Name:  pyromodel.LabelNameDelta,
 			Value: "false",
 		},
 		{
-			Name:  model.LabelNameOTEL,
+			Name:  pyromodel.LabelNameOTEL,
 			Value: "true",
 		},
 		{
