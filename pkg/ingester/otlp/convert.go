@@ -205,6 +205,9 @@ func (p *profileBuilder) convertSampleAttributesToLabelsBack(os *otelProfile.Sam
 	gs.Label = make([]*googleProfile.Label, 0, len(os.Attributes))
 	for _, attribute := range os.Attributes {
 		att := p.src.AttributeTable[attribute]
+		if att.Key == "service.name" {
+			continue
+		}
 		if att.Value.GetStringValue() != "" {
 			gs.Label = append(gs.Label, &googleProfile.Label{
 				Key: p.addstr(att.Key),

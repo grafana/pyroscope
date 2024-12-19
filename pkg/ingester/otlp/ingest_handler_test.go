@@ -298,6 +298,7 @@ func TestSampleAttributes(t *testing.T) {
 		seriesLabelsMap[label.Name] = label.Value
 	}
 	assert.Equal(t, "", seriesLabelsMap["process"])
+	assert.NotContains(t, seriesLabelsMap, "service.name")
 
 	gp := new(googlev1.Profile)
 	err = gp.UnmarshalVT(profiles[0].Series[0].Samples[0].RawProfile)
@@ -445,8 +446,8 @@ func TestDifferentServiceNames(t *testing.T) {
 	require.Equal(t, 2, len(profiles))
 
 	expectedStacks := map[string]string{
-		"service-a": "(service.name = service-a) ||| serviceA_func2;serviceA_func1 100",
-		"service-b": "(service.name = service-b) ||| serviceB_func2;serviceB_func1 200",
+		"service-a": " ||| serviceA_func2;serviceA_func1 100",
+		"service-b": " ||| serviceB_func2;serviceB_func1 200",
 	}
 
 	// Verify service names, stacktraces, and profile metadata in the profiles
@@ -459,6 +460,7 @@ func TestDifferentServiceNames(t *testing.T) {
 
 		serviceName := seriesLabelsMap["service_name"]
 		require.Contains(t, []string{"service-a", "service-b"}, serviceName)
+		assert.NotContains(t, seriesLabelsMap, "service.name")
 
 		// Verify the profile contents
 		gp := new(googlev1.Profile)
@@ -484,6 +486,7 @@ func TestDifferentServiceNames(t *testing.T) {
 		})
 		require.Equal(t, 1, len(ss))
 		assert.Equal(t, expectedStacks[serviceName], ss[0])
+		assert.NotContains(t, ss[0], "service.name")
 	}
 }
 
