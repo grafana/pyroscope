@@ -326,7 +326,6 @@ func TestDifferentServiceNames(t *testing.T) {
 	}).Return(nil, nil)
 
 	otlpb := new(otlpbuilder)
-	// Create mappings for both services
 	otlpb.profile.Mapping = []*v1experimental.Mapping{{
 		MemoryStart: 0x1000,
 		MemoryLimit: 0x2000,
@@ -335,9 +334,12 @@ func TestDifferentServiceNames(t *testing.T) {
 		MemoryStart: 0x2000,
 		MemoryLimit: 0x3000,
 		Filename:    otlpb.addstr("service-b.so"),
+	}, {
+		MemoryStart: 0x4000,
+		MemoryLimit: 0x5000,
+		Filename:    otlpb.addstr("service-c.so"),
 	}}
 
-	// Create different locations for each service
 	otlpb.profile.Location = []*v1experimental.Location{{
 		MappingIndex: 0, // service-a.so
 		Address:      0x1100,
@@ -366,9 +368,15 @@ func TestDifferentServiceNames(t *testing.T) {
 			FunctionIndex: 3,
 			Line:          40,
 		}},
+	}, {
+		MappingIndex: 2, // service-c.so
+		Address:      0xef0,
+		Line: []*v1experimental.Line{{
+			FunctionIndex: 4,
+			Line:          50,
+		}},
 	}}
 
-	// Add functions
 	otlpb.profile.Function = []*v1experimental.Function{{
 		Name:       otlpb.addstr("serviceA_func1"),
 		SystemName: otlpb.addstr("serviceA_func1"),
@@ -385,11 +393,14 @@ func TestDifferentServiceNames(t *testing.T) {
 		Name:       otlpb.addstr("serviceB_func2"),
 		SystemName: otlpb.addstr("serviceB_func2"),
 		Filename:   otlpb.addstr("service_b.go"),
+	}, {
+		Name:       otlpb.addstr("serviceC_func3"),
+		SystemName: otlpb.addstr("serviceC_func3"),
+		Filename:   otlpb.addstr("service_c.go"),
 	}}
 
-	otlpb.profile.LocationIndices = []int64{0, 1, 2, 3}
+	otlpb.profile.LocationIndices = []int64{0, 1, 2, 3, 4, 4}
 
-	// Create two samples with different service.name attributes and different stacktraces
 	otlpb.profile.Sample = []*v1experimental.Sample{{
 		LocationsStartIndex: 0,
 		LocationsLength:     2, // Use first two locations
@@ -397,12 +408,16 @@ func TestDifferentServiceNames(t *testing.T) {
 		Attributes:          []uint64{0},
 	}, {
 		LocationsStartIndex: 2,
-		LocationsLength:     2, // Use last two locations
+		LocationsLength:     2,
 		Value:               []int64{200},
 		Attributes:          []uint64{1},
+	}, {
+		LocationsStartIndex: 4,
+		LocationsLength:     2,
+		Value:               []int64{700},
+		Attributes:          []uint64{},
 	}}
 
-	// Set up the attribute table with different service names
 	otlpb.profile.AttributeTable = []v1.KeyValue{{
 		Key: "service.name",
 		Value: v1.AnyValue{
@@ -419,7 +434,6 @@ func TestDifferentServiceNames(t *testing.T) {
 		},
 	}}
 
-	// Add sample types and period type
 	otlpb.profile.SampleType = []*v1experimental.ValueType{{
 		Type: otlpb.addstr("cpu"),
 		Unit: otlpb.addstr("nanoseconds"),
@@ -442,15 +456,14 @@ func TestDifferentServiceNames(t *testing.T) {
 	_, err := h.Export(context.Background(), req)
 	require.NoError(t, err)
 
-	// We should have two separate profiles
-	require.Equal(t, 2, len(profiles))
+	require.Equal(t, 3, len(profiles))
 
 	expectedStacks := map[string]string{
 		"service-a": " ||| serviceA_func2;serviceA_func1 100",
 		"service-b": " ||| serviceB_func2;serviceB_func1 200",
+		"unknown":   " ||| serviceC_func3;serviceC_func3 700",
 	}
 
-	// Verify service names, stacktraces, and profile metadata in the profiles
 	for _, p := range profiles {
 		require.Equal(t, 1, len(p.Series))
 		seriesLabelsMap := make(map[string]string)
@@ -459,26 +472,22 @@ func TestDifferentServiceNames(t *testing.T) {
 		}
 
 		serviceName := seriesLabelsMap["service_name"]
-		require.Contains(t, []string{"service-a", "service-b"}, serviceName)
+		require.Contains(t, []string{"service-a", "service-b", "unknown"}, serviceName)
 		assert.NotContains(t, seriesLabelsMap, "service.name")
 
-		// Verify the profile contents
 		gp := new(googlev1.Profile)
 		err = gp.UnmarshalVT(p.Series[0].Samples[0].RawProfile)
 		require.NoError(t, err)
 
-		// Verify sample types
 		require.Equal(t, 1, len(gp.SampleType))
 		assert.Equal(t, "cpu", gp.StringTable[gp.SampleType[0].Type])
 		assert.Equal(t, "nanoseconds", gp.StringTable[gp.SampleType[0].Unit])
 
-		// Verify period type
 		require.NotNil(t, gp.PeriodType)
 		assert.Equal(t, "cpu", gp.StringTable[gp.PeriodType.Type])
 		assert.Equal(t, "nanoseconds", gp.StringTable[gp.PeriodType.Unit])
 		assert.Equal(t, int64(10000000), gp.Period)
 
-		// Verify stacktraces
 		ss := bench.StackCollapseProtoWithOptions(gp, bench.StackCollapseOptions{
 			ValueIdx:   0,
 			Scale:      1,
