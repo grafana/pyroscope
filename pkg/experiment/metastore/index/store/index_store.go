@@ -9,7 +9,7 @@ import (
 	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	"github.com/grafana/pyroscope/pkg/experiment/block"
+	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/store"
 	"github.com/grafana/pyroscope/pkg/iter"
 )
@@ -36,7 +36,7 @@ type Entry struct {
 	Tenant      string
 	BlockID     string
 	BlockMeta   *metastorev1.BlockMeta
-	StringTable *block.MetadataStrings
+	StringTable *metadata.StringTable
 }
 
 type TenantShard struct {
@@ -44,7 +44,7 @@ type TenantShard struct {
 	Tenant      string
 	Shard       uint32
 	Blocks      []*metastorev1.BlockMeta
-	StringTable *block.MetadataStrings
+	StringTable *metadata.StringTable
 }
 
 type IndexStore struct{}
@@ -179,7 +179,7 @@ func (m *IndexStore) loadTenantShard(tx *bbolt.Tx, p PartitionKey, tenant string
 		Partition:   p,
 		Tenant:      tenant,
 		Shard:       shard,
-		StringTable: block.NewMetadataStringTable(),
+		StringTable: metadata.NewStringTable(),
 	}
 
 	strings := tenantShard.Bucket(tenantShardStringsBucketNameBytes)
