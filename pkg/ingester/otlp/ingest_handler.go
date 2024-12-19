@@ -84,51 +84,54 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 	for i := 0; i < len(rps); i++ {
 		rp := rps[i]
 
-		// Get service name
 		serviceName := getServiceNameFromAttributes(rp.Resource.GetAttributes())
-
-		// Start with default labels
-		labels := getDefaultLabels(serviceName)
-
-		// Track processed attribute keys to avoid duplicates across levels
-		processedKeys := make(map[string]bool)
-
-		// Add resource attributes
-		labels = appendAttributesUnique(labels, rp.Resource.GetAttributes(), processedKeys)
 
 		sps := rp.ScopeProfiles
 		for j := 0; j < len(sps); j++ {
 			sp := sps[j]
 
-			// Add scope attributes
-			labels = appendAttributesUnique(labels, sp.Scope.GetAttributes(), processedKeys)
-
 			for k := 0; k < len(sp.Profiles); k++ {
 				p := sp.Profiles[k]
 
-				// Add profile attributes
-				labels = appendAttributesUnique(labels, p.GetAttributes(), processedKeys)
+				pprofProfiles := ConvertOtelToGoogle(p.Profile)
 
-				pprofBytes, err := OprofToPprof(p.Profile)
-				if err != nil {
-					return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to convert from OTLP to legacy pprof: %w", err)
-				}
+				for samplesServiceName, pprofProfile := range pprofProfiles {
+					labels := getDefaultLabels()
+					processedKeys := make(map[string]bool)
+					labels = appendAttributesUnique(labels, rp.Resource.GetAttributes(), processedKeys)
+					labels = appendAttributesUnique(labels, sp.Scope.GetAttributes(), processedKeys)
+					labels = appendAttributesUnique(labels, p.GetAttributes(), processedKeys)
+					svc := samplesServiceName
+					if svc == "" {
+						svc = serviceName
+					}
+					labels = append(labels, &typesv1.LabelPair{
+						Name:  "service_name",
+						Value: svc,
+					})
 
-				req := &pushv1.PushRequest{
-					Series: []*pushv1.RawProfileSeries{
-						{
-							Labels: labels,
-							Samples: []*pushv1.RawSample{{
-								RawProfile: pprofBytes,
-								ID:         uuid.New().String(),
-							}},
+					pprofBytes, err := pprofProfile.MarshalVT()
+					if err != nil {
+						return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to marshal pprof profile: %w", err)
+					}
+
+					req := &pushv1.PushRequest{
+						Series: []*pushv1.RawProfileSeries{
+							{
+								Labels: labels,
+								Samples: []*pushv1.RawSample{{
+									RawProfile: pprofBytes,
+									ID:         uuid.New().String(),
+								}},
+							},
 						},
-					},
-				}
-				_, err = h.svc.Push(ctx, connect.NewRequest(req))
-				if err != nil {
-					h.log.Log("msg", "failed to push profile", "err", err)
-					return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to make a GRPC request: %w", err)
+					}
+
+					_, err = h.svc.Push(ctx, connect.NewRequest(req))
+					if err != nil {
+						h.log.Log("msg", "failed to push profile", "err", err)
+						return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to make a GRPC request: %w", err)
+					}
 				}
 			}
 		}
@@ -153,15 +156,11 @@ func getServiceNameFromAttributes(attrs []v1.KeyValue) string {
 }
 
 // getDefaultLabels returns the required base labels for Pyroscope profiles
-func getDefaultLabels(serviceName string) []*typesv1.LabelPair {
+func getDefaultLabels() []*typesv1.LabelPair {
 	return []*typesv1.LabelPair{
 		{
 			Name:  "__name__",
 			Value: "process_cpu",
-		},
-		{
-			Name:  "service_name",
-			Value: serviceName,
 		},
 		{
 			Name:  "__delta__",

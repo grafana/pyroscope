@@ -298,6 +298,7 @@ func TestSampleAttributes(t *testing.T) {
 		seriesLabelsMap[label.Name] = label.Value
 	}
 	assert.Equal(t, "", seriesLabelsMap["process"])
+	assert.NotContains(t, seriesLabelsMap, "service.name")
 
 	gp := new(googlev1.Profile)
 	err = gp.UnmarshalVT(profiles[0].Series[0].Samples[0].RawProfile)
@@ -312,6 +313,190 @@ func TestSampleAttributes(t *testing.T) {
 	require.Equal(t, 2, len(ss))
 	assert.Equal(t, "(process = chrome) ||| chrome.so 0x4e;chrome.so 0x3e 61423", ss[0])
 	assert.Equal(t, "(process = firefox) ||| firefox.so 0x2e;firefox.so 0x1e 239", ss[1])
+}
+
+func TestDifferentServiceNames(t *testing.T) {
+	// Create a profile with two samples having different service.name attributes
+	// Expect them to be pushed as separate profiles
+	svc := mockotlp.NewMockPushService(t)
+	var profiles []*pushv1.PushRequest
+	svc.On("Push", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		c := (args.Get(1)).(*connect.Request[pushv1.PushRequest])
+		profiles = append(profiles, c.Msg)
+	}).Return(nil, nil)
+
+	otlpb := new(otlpbuilder)
+	otlpb.profile.Mapping = []*v1experimental.Mapping{{
+		MemoryStart: 0x1000,
+		MemoryLimit: 0x2000,
+		Filename:    otlpb.addstr("service-a.so"),
+	}, {
+		MemoryStart: 0x2000,
+		MemoryLimit: 0x3000,
+		Filename:    otlpb.addstr("service-b.so"),
+	}, {
+		MemoryStart: 0x4000,
+		MemoryLimit: 0x5000,
+		Filename:    otlpb.addstr("service-c.so"),
+	}}
+
+	otlpb.profile.Location = []*v1experimental.Location{{
+		MappingIndex: 0, // service-a.so
+		Address:      0x1100,
+		Line: []*v1experimental.Line{{
+			FunctionIndex: 0,
+			Line:          10,
+		}},
+	}, {
+		MappingIndex: 0, // service-a.so
+		Address:      0x1200,
+		Line: []*v1experimental.Line{{
+			FunctionIndex: 1,
+			Line:          20,
+		}},
+	}, {
+		MappingIndex: 1, // service-b.so
+		Address:      0x2100,
+		Line: []*v1experimental.Line{{
+			FunctionIndex: 2,
+			Line:          30,
+		}},
+	}, {
+		MappingIndex: 1, // service-b.so
+		Address:      0x2200,
+		Line: []*v1experimental.Line{{
+			FunctionIndex: 3,
+			Line:          40,
+		}},
+	}, {
+		MappingIndex: 2, // service-c.so
+		Address:      0xef0,
+		Line: []*v1experimental.Line{{
+			FunctionIndex: 4,
+			Line:          50,
+		}},
+	}}
+
+	otlpb.profile.Function = []*v1experimental.Function{{
+		Name:       otlpb.addstr("serviceA_func1"),
+		SystemName: otlpb.addstr("serviceA_func1"),
+		Filename:   otlpb.addstr("service_a.go"),
+	}, {
+		Name:       otlpb.addstr("serviceA_func2"),
+		SystemName: otlpb.addstr("serviceA_func2"),
+		Filename:   otlpb.addstr("service_a.go"),
+	}, {
+		Name:       otlpb.addstr("serviceB_func1"),
+		SystemName: otlpb.addstr("serviceB_func1"),
+		Filename:   otlpb.addstr("service_b.go"),
+	}, {
+		Name:       otlpb.addstr("serviceB_func2"),
+		SystemName: otlpb.addstr("serviceB_func2"),
+		Filename:   otlpb.addstr("service_b.go"),
+	}, {
+		Name:       otlpb.addstr("serviceC_func3"),
+		SystemName: otlpb.addstr("serviceC_func3"),
+		Filename:   otlpb.addstr("service_c.go"),
+	}}
+
+	otlpb.profile.LocationIndices = []int64{0, 1, 2, 3, 4, 4}
+
+	otlpb.profile.Sample = []*v1experimental.Sample{{
+		LocationsStartIndex: 0,
+		LocationsLength:     2, // Use first two locations
+		Value:               []int64{100},
+		Attributes:          []uint64{0},
+	}, {
+		LocationsStartIndex: 2,
+		LocationsLength:     2,
+		Value:               []int64{200},
+		Attributes:          []uint64{1},
+	}, {
+		LocationsStartIndex: 4,
+		LocationsLength:     2,
+		Value:               []int64{700},
+		Attributes:          []uint64{},
+	}}
+
+	otlpb.profile.AttributeTable = []v1.KeyValue{{
+		Key: "service.name",
+		Value: v1.AnyValue{
+			Value: &v1.AnyValue_StringValue{
+				StringValue: "service-a",
+			},
+		},
+	}, {
+		Key: "service.name",
+		Value: v1.AnyValue{
+			Value: &v1.AnyValue_StringValue{
+				StringValue: "service-b",
+			},
+		},
+	}}
+
+	otlpb.profile.SampleType = []*v1experimental.ValueType{{
+		Type: otlpb.addstr("cpu"),
+		Unit: otlpb.addstr("nanoseconds"),
+	}}
+	otlpb.profile.PeriodType = &v1experimental.ValueType{
+		Type: otlpb.addstr("cpu"),
+		Unit: otlpb.addstr("nanoseconds"),
+	}
+	otlpb.profile.Period = 10000000 // 10ms
+
+	req := &v1experimental2.ExportProfilesServiceRequest{
+		ResourceProfiles: []*v1experimental.ResourceProfiles{{
+			ScopeProfiles: []*v1experimental.ScopeProfiles{{
+				Profiles: []*v1experimental.ProfileContainer{{
+					Profile: &otlpb.profile,
+				}}}}}}}
+
+	logger := testutil.NewLogger(t)
+	h := NewOTLPIngestHandler(svc, logger, false)
+	_, err := h.Export(context.Background(), req)
+	require.NoError(t, err)
+
+	require.Equal(t, 3, len(profiles))
+
+	expectedStacks := map[string]string{
+		"service-a": " ||| serviceA_func2;serviceA_func1 100",
+		"service-b": " ||| serviceB_func2;serviceB_func1 200",
+		"unknown":   " ||| serviceC_func3;serviceC_func3 700",
+	}
+
+	for _, p := range profiles {
+		require.Equal(t, 1, len(p.Series))
+		seriesLabelsMap := make(map[string]string)
+		for _, label := range p.Series[0].Labels {
+			seriesLabelsMap[label.Name] = label.Value
+		}
+
+		serviceName := seriesLabelsMap["service_name"]
+		require.Contains(t, []string{"service-a", "service-b", "unknown"}, serviceName)
+		assert.NotContains(t, seriesLabelsMap, "service.name")
+
+		gp := new(googlev1.Profile)
+		err = gp.UnmarshalVT(p.Series[0].Samples[0].RawProfile)
+		require.NoError(t, err)
+
+		require.Equal(t, 1, len(gp.SampleType))
+		assert.Equal(t, "cpu", gp.StringTable[gp.SampleType[0].Type])
+		assert.Equal(t, "nanoseconds", gp.StringTable[gp.SampleType[0].Unit])
+
+		require.NotNil(t, gp.PeriodType)
+		assert.Equal(t, "cpu", gp.StringTable[gp.PeriodType.Type])
+		assert.Equal(t, "nanoseconds", gp.StringTable[gp.PeriodType.Unit])
+		assert.Equal(t, int64(10000000), gp.Period)
+
+		ss := bench.StackCollapseProtoWithOptions(gp, bench.StackCollapseOptions{
+			ValueIdx:   0,
+			Scale:      1,
+			WithLabels: true,
+		})
+		require.Equal(t, 1, len(ss))
+		assert.Equal(t, expectedStacks[serviceName], ss[0])
+		assert.NotContains(t, ss[0], "service.name")
+	}
 }
 
 type otlpbuilder struct {
