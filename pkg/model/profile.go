@@ -70,13 +70,15 @@ func NewSpanSelector(spans []string) (SpanSelector, error) {
 	return m, nil
 }
 
-func StacktracePartitionFromProfile(lbls []Labels, p *profilev1.Profile) uint64 {
-	return xxhash.Sum64String(stacktracePartitionKeyFromProfile(lbls, p))
+func StacktracePartitionFromProfile(lbls []Labels, p *profilev1.Profile, otel bool) uint64 {
+	return xxhash.Sum64String(stacktracePartitionKeyFromProfile(lbls, p, otel))
 }
 
-func stacktracePartitionKeyFromProfile(lbls []Labels, p *profilev1.Profile) string {
-	// take the first mapping (which is the main binary's file basename)
-	if len(p.Mapping) > 0 {
+func stacktracePartitionKeyFromProfile(lbls []Labels, p *profilev1.Profile, otel bool) string {
+	// Take the first mapping (which is the main binary's file basename)
+	// OTEL (at least from ebpf profiler at the time of writing) mappings are unreliable and ordered unpredictably and
+	// have no VA addresses (only relative to the shared object base)
+	if len(p.Mapping) > 0 && !otel {
 		if filenameID := p.Mapping[0].Filename; filenameID > 0 {
 			if filename := extractMappingFilename(p.StringTable[filenameID]); filename != "" {
 				return filename
