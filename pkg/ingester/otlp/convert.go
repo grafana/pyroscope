@@ -8,6 +8,8 @@ import (
 	otelProfile "github.com/grafana/pyroscope/api/otlp/profiles/v1experimental"
 )
 
+const serviceNameKey = "service.name"
+
 // ConvertOtelToGoogle converts an OpenTelemetry profile to a Google profile.
 func ConvertOtelToGoogle(src *otelProfile.Profile) map[string]*googleProfile.Profile {
 	svc2Profile := make(map[string]*profileBuilder)
@@ -103,7 +105,7 @@ func (p *profileBuilder) addfunc(s string) uint64 {
 func serviceNameFromSample(p *otelProfile.Profile, sample *otelProfile.Sample) string {
 	for _, attributeIndex := range sample.Attributes {
 		attribute := p.AttributeTable[attributeIndex]
-		if attribute.Key == "service.name" {
+		if attribute.Key == serviceNameKey {
 			return attribute.Value.GetStringValue()
 		}
 	}
@@ -205,7 +207,7 @@ func (p *profileBuilder) convertSampleAttributesToLabelsBack(os *otelProfile.Sam
 	gs.Label = make([]*googleProfile.Label, 0, len(os.Attributes))
 	for _, attribute := range os.Attributes {
 		att := p.src.AttributeTable[attribute]
-		if att.Key == "service.name" {
+		if att.Key == serviceNameKey {
 			continue
 		}
 		if att.Value.GetStringValue() != "" {
