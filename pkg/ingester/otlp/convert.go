@@ -5,7 +5,7 @@ import (
 	"time"
 
 	googleProfile "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	otelProfile "github.com/grafana/pyroscope/api/otlp/profiles/v1experimental"
+	otelProfile "github.com/grafana/pyroscope/api/otlp/profiles/v1development"
 )
 
 const serviceNameKey = "service.name"
@@ -51,18 +51,15 @@ func newProfileBuilder(src *otelProfile.Profile) *profileBuilder {
 		mappingMap:              make(map[*otelProfile.Mapping]uint64),
 		unsymbolziedFuncNameMap: make(map[string]uint64),
 		dst: &googleProfile.Profile{
-			TimeNanos:         src.TimeNanos,
-			DurationNanos:     src.DurationNanos,
-			Period:            src.Period,
-			DefaultSampleType: src.DefaultSampleType,
-			DropFrames:        src.DropFrames,
-			KeepFrames:        src.KeepFrames,
-			Comment:           src.Comment,
+			TimeNanos:     src.TimeNanos,
+			DurationNanos: src.DurationNanos,
+			Period:        src.Period,
 		},
 	}
 	res.addstr("")
 	res.dst.SampleType = res.convertSampleTypesBack(src.SampleType)
 	res.dst.PeriodType = res.convertValueTypeBack(src.PeriodType)
+	res.dst.DefaultSampleType = res.addstr(src.StringTable[src.DefaultSampleTypeStrindex])
 	if len(res.dst.SampleType) == 0 {
 		res.dst.SampleType = []*googleProfile.ValueType{{
 			Type: res.addstr("samples"),
@@ -119,7 +116,7 @@ func (p *profileBuilder) addfunc(s string) uint64 {
 }
 
 func serviceNameFromSample(p *otelProfile.Profile, sample *otelProfile.Sample) string {
-	for _, attributeIndex := range sample.Attributes {
+	for _, attributeIndex := range sample.AttributeIndices {
 		attribute := p.AttributeTable[attributeIndex]
 		if attribute.Key == serviceNameKey {
 			return attribute.Value.GetStringValue()
@@ -132,8 +129,8 @@ func (p *profileBuilder) convertSampleTypesBack(ost []*otelProfile.ValueType) []
 	var gst []*googleProfile.ValueType
 	for _, st := range ost {
 		gst = append(gst, &googleProfile.ValueType{
-			Type: p.addstr(p.src.StringTable[st.Type]),
-			Unit: p.addstr(p.src.StringTable[st.Unit]),
+			Type: p.addstr(p.src.StringTable[st.TypeStrindex]),
+			Unit: p.addstr(p.src.StringTable[st.UnitStrindex]),
 		})
 	}
 	return gst
@@ -144,8 +141,8 @@ func (p *profileBuilder) convertValueTypeBack(ovt *otelProfile.ValueType) *googl
 		return nil
 	}
 	return &googleProfile.ValueType{
-		Type: p.addstr(p.src.StringTable[ovt.Type]),
-		Unit: p.addstr(p.src.StringTable[ovt.Unit]),
+		Type: p.addstr(p.src.StringTable[ovt.TypeStrindex]),
+		Unit: p.addstr(p.src.StringTable[ovt.UnitStrindex]),
 	}
 }
 
@@ -153,7 +150,8 @@ func (p *profileBuilder) convertLocationBack(ol *otelProfile.Location) uint64 {
 	if i, ok := p.locationMap[ol]; ok {
 		return i
 	}
-	om := p.src.Mapping[ol.MappingIndex]
+	lmi := ol.MappingIndex_.(*otelProfile.Location_MappingIndex)
+	om := p.src.MappingTable[lmi.MappingIndex]
 	gl := &googleProfile.Location{
 		MappingId: p.convertMappingBack(om),
 		Address:   ol.Address,
@@ -166,7 +164,7 @@ func (p *profileBuilder) convertLocationBack(ol *otelProfile.Location) uint64 {
 
 	if len(gl.Line) == 0 {
 		gl.Line = append(gl.Line, &googleProfile.Line{
-			FunctionId: p.addfunc(fmt.Sprintf("%s 0x%x", p.src.StringTable[om.Filename], ol.Address)),
+			FunctionId: p.addfunc(fmt.Sprintf("%s 0x%x", p.src.StringTable[om.FilenameStrindex], ol.Address)),
 		})
 	}
 
@@ -179,7 +177,7 @@ func (p *profileBuilder) convertLocationBack(ol *otelProfile.Location) uint64 {
 // convertLineBack converts an OpenTelemetry Line to a Google Line.
 func (p *profileBuilder) convertLineBack(ol *otelProfile.Line) *googleProfile.Line {
 	return &googleProfile.Line{
-		FunctionId: p.convertFunctionBack(p.src.Function[ol.FunctionIndex]),
+		FunctionId: p.convertFunctionBack(p.src.FunctionTable[ol.FunctionIndex]),
 		Line:       ol.Line,
 	}
 }
@@ -189,9 +187,9 @@ func (p *profileBuilder) convertFunctionBack(of *otelProfile.Function) uint64 {
 		return i
 	}
 	gf := &googleProfile.Function{
-		Name:       p.addstr(p.src.StringTable[of.Name]),
-		SystemName: p.addstr(p.src.StringTable[of.SystemName]),
-		Filename:   p.addstr(p.src.StringTable[of.Filename]),
+		Name:       p.addstr(p.src.StringTable[of.NameStrindex]),
+		SystemName: p.addstr(p.src.StringTable[of.SystemNameStrindex]),
+		Filename:   p.addstr(p.src.StringTable[of.FilenameStrindex]),
 		StartLine:  of.StartLine,
 	}
 	p.dst.Function = append(p.dst.Function, gf)
@@ -213,7 +211,7 @@ func (p *profileBuilder) convertSampleBack(os *otelProfile.Sample) *googleProfil
 	p.convertSampleAttributesToLabelsBack(os, gs)
 
 	for i := os.LocationsStartIndex; i < os.LocationsStartIndex+os.LocationsLength; i++ {
-		gs.LocationId = append(gs.LocationId, p.convertLocationBack(p.src.Location[p.src.LocationIndices[i]]))
+		gs.LocationId = append(gs.LocationId, p.convertLocationBack(p.src.LocationTable[p.src.LocationIndices[i]]))
 	}
 
 	p.dst.Sample = append(p.dst.Sample, gs)
@@ -222,8 +220,8 @@ func (p *profileBuilder) convertSampleBack(os *otelProfile.Sample) *googleProfil
 }
 
 func (p *profileBuilder) convertSampleAttributesToLabelsBack(os *otelProfile.Sample, gs *googleProfile.Sample) {
-	gs.Label = make([]*googleProfile.Label, 0, len(os.Attributes))
-	for _, attribute := range os.Attributes {
+	gs.Label = make([]*googleProfile.Label, 0, len(os.AttributeIndices))
+	for _, attribute := range os.AttributeIndices {
 		att := p.src.AttributeTable[attribute]
 		if att.Key == serviceNameKey {
 			continue
@@ -244,11 +242,11 @@ func (p *profileBuilder) convertMappingBack(om *otelProfile.Mapping) uint64 {
 	}
 
 	gm := &googleProfile.Mapping{
-		MemoryStart:     om.MemoryStart,
-		MemoryLimit:     om.MemoryLimit,
-		FileOffset:      om.FileOffset,
-		Filename:        p.addstr(p.src.StringTable[om.Filename]),
-		BuildId:         p.addstr(p.src.StringTable[om.BuildId]),
+		MemoryStart: om.MemoryStart,
+		MemoryLimit: om.MemoryLimit,
+		FileOffset:  om.FileOffset,
+		Filename:    p.addstr(p.src.StringTable[om.FilenameStrindex]),
+		//BuildId:         p.addstr(p.src.StringTable[om.BuildId]), //todo
 		HasFunctions:    om.HasFunctions,
 		HasFilenames:    om.HasFilenames,
 		HasLineNumbers:  om.HasLineNumbers,

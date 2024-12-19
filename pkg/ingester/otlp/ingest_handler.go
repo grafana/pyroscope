@@ -19,7 +19,7 @@ import (
 
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	pprofileotlp "github.com/grafana/pyroscope/api/otlp/collector/profiles/v1experimental"
+	pprofileotlp "github.com/grafana/pyroscope/api/otlp/collector/profiles/v1development"
 	v1 "github.com/grafana/pyroscope/api/otlp/common/v1"
 	"github.com/grafana/pyroscope/pkg/tenant"
 )
@@ -97,14 +97,13 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 			for k := 0; k < len(sp.Profiles); k++ {
 				p := sp.Profiles[k]
 
-				pprofProfiles := ConvertOtelToGoogle(p.Profile)
+				pprofProfiles := ConvertOtelToGoogle(p)
 
 				for samplesServiceName, pprofProfile := range pprofProfiles {
 					labels := getDefaultLabels()
 					processedKeys := make(map[string]bool)
 					labels = appendAttributesUnique(labels, rp.Resource.GetAttributes(), processedKeys)
 					labels = appendAttributesUnique(labels, sp.Scope.GetAttributes(), processedKeys)
-					labels = appendAttributesUnique(labels, p.GetAttributes(), processedKeys)
 					svc := samplesServiceName
 					if svc == "" {
 						svc = serviceName
@@ -115,7 +114,7 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 					})
 
 					req := &distirbutormodel.PushRequest{
-						RawProfileSize: p.Profile.Size(),
+						RawProfileSize: p.Size(),
 						RawProfileType: distirbutormodel.RawProfileTypeOTEL,
 						Series: []*distirbutormodel.ProfileSeries{
 							{
