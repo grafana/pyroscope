@@ -39,8 +39,10 @@ func newS3Config(cfg Config) (s3.Config, error) {
 	}
 
 	bucketLookupType := s3.AutoLookup
-	if cfg.ForcePathStyle {
+	if cfg.ForcePathStyle || cfg.BucketLookupType == PathStyleLookup {
 		bucketLookupType = s3.PathLookup
+	} else if cfg.BucketLookupType == VirtualHostedStyleLookup {
+		bucketLookupType = s3.VirtualHostLookup
 	}
 
 	return s3.Config{
