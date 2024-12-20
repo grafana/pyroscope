@@ -38,6 +38,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/phlaredb/bucketindex"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/storegateway"
+	"github.com/grafana/pyroscope/pkg/util"
 	pmath "github.com/grafana/pyroscope/pkg/util/math"
 	"github.com/grafana/pyroscope/pkg/util/spanlogger"
 	"github.com/grafana/pyroscope/pkg/validation"
@@ -289,9 +290,9 @@ func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[typesv1.L
 		if err != nil {
 			return nil, err
 		}
-		return connect.NewResponse(&typesv1.LabelNamesResponse{
-			Names: uniqueSortedStrings(responses),
-		}), nil
+
+		res := uniqueSortedLabelNames(responses)
+		return connect.NewResponse(res), nil
 	}
 
 	storeQueries := splitQueryToStores(model.Time(req.Msg.Start), model.Time(req.Msg.End), model.Now(), q.cfg.QueryStoreAfter, nil)
@@ -300,7 +301,7 @@ func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[typesv1.L
 	}
 	storeQueries.Log(level.Debug(spanlogger.FromContext(ctx, q.logger)))
 
-	var responses []ResponseFromReplica[[]string]
+	var responses []ResponseFromReplica[*typesv1.LabelNamesResponse]
 	var lock sync.Mutex
 	group, gCtx := errgroup.WithContext(ctx)
 
@@ -337,9 +338,8 @@ func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[typesv1.L
 		return nil, err
 	}
 
-	return connect.NewResponse(&typesv1.LabelNamesResponse{
-		Names: uniqueSortedStrings(responses),
-	}), nil
+	res := uniqueSortedLabelNames(responses)
+	return connect.NewResponse(res), nil
 }
 
 func (q *Querier) blockSelect(ctx context.Context, start, end model.Time) (blockPlan, error) {
@@ -774,9 +774,10 @@ func (sq storeQuery) SeriesRequest(req *querierv1.SeriesRequest) *ingestv1.Serie
 
 func (sq storeQuery) LabelNamesRequest(req *typesv1.LabelNamesRequest) *typesv1.LabelNamesRequest {
 	return &typesv1.LabelNamesRequest{
-		Matchers: req.Matchers,
-		Start:    int64(sq.start),
-		End:      int64(sq.end),
+		Matchers:           req.Matchers,
+		Start:              int64(sq.start),
+		End:                int64(sq.end),
+		IncludeCardinality: req.IncludeCardinality,
 	}
 }
 
@@ -1029,25 +1030,6 @@ func (q *Querier) selectSeries(ctx context.Context, req *connect.Request[querier
 	return responses, nil
 }
 
-func uniqueSortedStrings(responses []ResponseFromReplica[[]string]) []string {
-	total := 0
-	for _, r := range responses {
-		total += len(r.response)
-	}
-	unique := make(map[string]struct{}, total)
-	result := make([]string, 0, total)
-	for _, r := range responses {
-		for _, elem := range r.response {
-			if _, ok := unique[elem]; !ok {
-				unique[elem] = struct{}{}
-				result = append(result, elem)
-			}
-		}
-	}
-	sort.Strings(result)
-	return result
-}
-
 func (q *Querier) selectSpanProfile(ctx context.Context, req *querierv1.SelectMergeSpanProfileRequest) (*phlaremodel.Tree, error) {
 	// determine the block hints
 	plan, err := q.blockSelect(ctx, model.Time(req.Start), model.Time(req.End))
@@ -1103,4 +1085,32 @@ func (q *Querier) selectSpanProfile(ctx context.Context, req *querierv1.SelectMe
 	}
 	storegatewayTree.Merge(ingesterTree)
 	return storegatewayTree, nil
+}
+
+func uniqueSortedStrings(responses []ResponseFromReplica[[]string]) []string {
+	total := 0
+	for _, r := range responses {
+		total += len(r.response)
+	}
+	unique := make(map[string]struct{}, total)
+	result := make([]string, 0, total)
+	for _, r := range responses {
+		for _, elem := range r.response {
+			if _, ok := unique[elem]; !ok {
+				unique[elem] = struct{}{}
+				result = append(result, elem)
+			}
+		}
+	}
+	sort.Strings(result)
+	return result
+}
+
+func uniqueSortedLabelNames(responses []ResponseFromReplica[*typesv1.LabelNamesResponse]) *typesv1.LabelNamesResponse {
+	innerResponses := make([]*typesv1.LabelNamesResponse, len(responses))
+	for i, r := range responses {
+		innerResponses[i] = r.response
+	}
+
+	return util.MergeLabelNames(innerResponses)
 }

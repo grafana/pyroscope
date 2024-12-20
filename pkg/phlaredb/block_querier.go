@@ -496,7 +496,10 @@ func (b *singleBlockQuerier) LabelNames(ctx context.Context, req *connect.Reques
 		iters = append(iters, iter)
 	}
 
-	nameSet := make(map[string]struct{})
+	// Maps label name to a set of label values.
+	nameSet := make(map[string]map[string]struct{})
+	includeCardinality := req.Msg.IncludeCardinality != nil && *req.Msg.IncludeCardinality
+
 	iter := index.Intersect(iters...)
 	for iter.Next() {
 		names, err := b.index.LabelNamesFor(iter.At())
@@ -508,18 +511,46 @@ func (b *singleBlockQuerier) LabelNames(ctx context.Context, req *connect.Reques
 		}
 
 		for _, name := range names {
-			nameSet[name] = struct{}{}
+			var value string
+			if includeCardinality {
+				value, err = b.index.LabelValueFor(iter.At(), name)
+				if err != nil {
+					if err == storage.ErrNotFound {
+						continue
+					}
+					return nil, err
+				}
+
+				if _, ok := nameSet[name]; !ok {
+					nameSet[name] = map[string]struct{}{value: {}}
+				} else {
+					nameSet[name][value] = struct{}{}
+				}
+			} else {
+				if _, ok := nameSet[name]; !ok {
+					nameSet[name] = map[string]struct{}{}
+				}
+			}
 		}
 	}
 
-	names := make([]string, 0, len(nameSet))
-	for name := range nameSet {
-		names = append(names, name)
+	res := &typesv1.LabelNamesResponse{
+		Names: make([]string, 0, len(nameSet)),
 	}
-	slices.Sort(names)
-	return connect.NewResponse(&typesv1.LabelNamesResponse{
-		Names: names,
-	}), nil
+	if includeCardinality {
+		res.EstimatedCardinality = make([]int64, 0, len(nameSet))
+		for name, cardinality := range nameSet {
+			res.Names = append(res.Names, name)
+			res.EstimatedCardinality = append(res.EstimatedCardinality, int64(len(cardinality)))
+		}
+	} else {
+		for name := range nameSet {
+			res.Names = append(res.Names, name)
+		}
+	}
+
+	util.SortLabelNamesResponse(res)
+	return connect.NewResponse(res), nil
 }
 
 func (b *singleBlockQuerier) BlockID() string {
@@ -1404,7 +1435,7 @@ func LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequ
 		return nil, err
 	}
 
-	var labelNames []string
+	responses := make([]*typesv1.LabelNamesResponse, 0, len(queriers))
 	var lock sync.Mutex
 	group, ctx := errgroup.WithContext(ctx)
 
@@ -1419,7 +1450,7 @@ func LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequ
 			}
 
 			lock.Lock()
-			labelNames = append(labelNames, res.Msg.Names...)
+			responses = append(responses, res.Msg)
 			lock.Unlock()
 			return nil
 		}))
@@ -1429,10 +1460,8 @@ func LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequ
 		return nil, err
 	}
 
-	slices.Sort(labelNames)
-	return &typesv1.LabelNamesResponse{
-		Names: lo.Uniq(labelNames),
-	}, nil
+	res := util.MergeLabelNames(responses)
+	return res, nil
 }
 
 func Series(ctx context.Context, req *ingestv1.SeriesRequest, blockGetter BlockGetter) (*ingestv1.SeriesResponse, error) {
