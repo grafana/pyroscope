@@ -2,7 +2,7 @@
 title: Pyroscope and profiling in Grafana
 menuTitle: Pyroscope in Grafana
 description: Learn about how you can use profile data in Grafana.
-weight: 400
+weight: 500
 keywords:
   - Pyroscope
   - Profiling
@@ -13,15 +13,15 @@ keywords:
 
 # Pyroscope and profiling in Grafana
 
-Pyroscope can be used alongside the other Grafana tools such as Loki, Tempo, Mimir, and k6.
+Grafana Pyroscope can be used alongside the other Grafana tools such as Loki, Tempo, Mimir, and k6.
 You can use Pyroscope to get the most granular insight into your application and how you can use it to fix issues that you may have identified via metrics, logs, traces, or anything else.
 
-You can use Pyroscope within Grafana by using the [Pyroscope data source plugin](https://grafana.com/docs/grafana/<GRAFANA_VERSION>/datasources/grafana-pyroscope/).
-This plugin lets you query Pyroscope data from within Grafana and visualize it alongside your other Grafana data.
+Within Grafana and Grafana Cloud, you can use the [Pyroscope data source](https://grafana.com/docs/grafana/<GRAFANA_VERSION>/datasources/grafana-pyroscope/) to query and visualize profile data from within Grafana.
 
 ## Visualize traces and profiles data
 
-Here is a screenshot of the **Explore** page where combined traces and profiles to be able to see granular line-level detail when available for a trace span. This allows you to see the exact function that's causing a bottleneck in your application as well as a specific request.
+Here is a screenshot of the **Explore** page where combined traces and profiles to be able to see granular line-level detail when available for a trace span.
+This lets you see the exact function that's causing a bottleneck in your application as well as a specific request.
 
 ![trace-profiler-view](https://grafana.com/static/img/pyroscope/pyroscope-trace-profiler-view-2023-11-30.png)
 

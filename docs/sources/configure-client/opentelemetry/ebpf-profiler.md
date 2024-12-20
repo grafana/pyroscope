@@ -2,7 +2,7 @@
 title: OpenTelemetry profiling support
 menuTitle: OpenTelemetry profiling
 description: OpenTelemetry profiling support in Pyroscope
-weight: 10
+weight: 150
 ---
 
 # OpenTelemetry profiling support

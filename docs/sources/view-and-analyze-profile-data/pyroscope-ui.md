@@ -16,6 +16,9 @@ keywords:
 Pyroscope's UI is designed to make it easy to visualize and analyze profiling data.
 There are several different modes for viewing, analyzing, uploading, and comparing profiling data.
 
+The Pyroscope UI is only available with Pyroscope open source.
+In Grafana and Grafana Cloud, you can use [Explore Profiles](https://grafana.com/docs/grafana/<GRAFANA_VERSION>/explore/simplified-exploration/profiles/) to inspect your profiling data.
+
 ![Screenshot of Pyroscope UI](/media/docs/pyroscope/screenshot-pyroscope-comparison-view.png)
 
 While code profiling has been a long-standing practice, continuous profiling represents a modern and more advanced approach to performance monitoring. This technique adds two critical dimensions to traditional profiles:
