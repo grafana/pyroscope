@@ -1,0 +1,29 @@
+logging {
+  level = "debug"
+  format = "logfmt"
+}
+
+pyroscope.write "example" {
+  // Send metrics to a locally running Pyroscope instance.
+  endpoint {
+    url = "http://pyroscope:4040"
+
+    // To send data to Grafana Cloud you'll need to provide username and password.
+    // basic_auth {
+    //   username = "myuser"
+    //   password = "mypassword"
+    // }
+  }
+  external_labels = {
+    "env" = "example",
+  }
+}
+
+
+pyroscope.scrape "default" {
+  targets = [
+    {"__address__" = "pyroscope:4040", "service_name"="pyroscope"},
+    {"__address__" = "alloy:12345", "service_name"="alloy"},
+  ]
+  forward_to = [pyroscope.write.example.receiver]
+}

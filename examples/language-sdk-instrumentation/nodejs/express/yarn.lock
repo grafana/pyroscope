@@ -2,10 +2,10 @@
 # yarn lockfile v1
 
 
-"@datadog/pprof@^5.3.0":
-  version "5.3.0"
-  resolved "https://registry.yarnpkg.com/@datadog/pprof/-/pprof-5.3.0.tgz#c2f58d328ecced7f99887f1a559d7fe3aecb9219"
-  integrity sha512-53z2Q3K92T6Pf4vz4Ezh8kfkVEvLzbnVqacZGgcbkP//q0joFzO8q00Etw1S6NdnCX0XmX08ULaF4rUI5r14mw==
+"@datadog/pprof@^5.4.1":
+  version "5.4.1"
+  resolved "https://registry.yarnpkg.com/@datadog/pprof/-/pprof-5.4.1.tgz#08c9bcf5d8efb2eeafdfc9f5bb5402f79fb41266"
+  integrity sha512-IvpL96e/cuh8ugP5O8Czdup7XQOLHeIDgM5pac5W7Lc1YzGe5zTtebKFpitvb1CPw1YY+1qFx0pWGgKP2kOfHg==
   dependencies:
     delay "^5.0.0"
     node-gyp-build "<4.0"
@@ -66,15 +66,16 @@
   resolved "https://registry.yarnpkg.com/@protobufjs/utf8/-/utf8-1.1.0.tgz#a777360b5b39a1a2e5106f8e858f2fd2d060c570"
   integrity sha512-Vvn3zZrhQZkkBE8LSuW3em98c0FwgO4nxzv6OdSxPKJIEKY2bGbHn+mhGIPerzI4twdxaP8/0+06HBpwf345Lw==
 
-"@pyroscope/nodejs@v0.4.0":
-  version "0.4.0"
-  resolved "https://registry.yarnpkg.com/@pyroscope/nodejs/-/nodejs-0.4.0.tgz#913bfdeb764462fb46d8f6defabd682631c21542"
-  integrity sha512-To75AyiEr7eS74fLXZUDlSHAWuOfBh/euL3JvYK376WoubtoaafPLzSgK/7XtWxYk+7ogjYQYpnuFk9/w+cgXA==
+"@pyroscope/nodejs@v0.4.3":
+  version "0.4.3"
+  resolved "https://registry.yarnpkg.com/@pyroscope/nodejs/-/nodejs-0.4.3.tgz#9219a9fb0ae23d80313ff29261dd3e41f56cd571"
+  integrity sha512-RpQ71SnBvMt7RErgCVgQ3wyKnsVQYntWXDNQVOiBujHsgIW20u+o3J9luEcM9IbCdm/Qsa9NV/SvhZevdcALQA==
   dependencies:
-    "@datadog/pprof" "^5.3.0"
+    "@datadog/pprof" "^5.4.1"
     axios "^0.28.0"
     debug "^4.3.3"
     form-data "^4.0.0"
+    p-limit "^3.1.0"
     regenerator-runtime "^0.13.11"
     source-map "^0.7.3"
 

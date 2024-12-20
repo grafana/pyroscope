@@ -9,17 +9,15 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
-
-	"github.com/grafana/regexp"
 )
 
 var ghToken string
 
-// this program requires gh cli, bundle, go to be installed
-// todo run it by cron & create a PR if needed
+// this program requires ruby, bundle, yarn, go to be installed
 func main() {
 
 	getGHToken()
@@ -31,14 +29,15 @@ func main() {
 	updatePython()
 	updateDotnet()
 	updateNodeJS()
+	updateRust()
 }
 
 func getGHToken() {
-	ghToken, _ = s.sh("gh auth token")
+	ghToken = os.Getenv("GITHUB_TOKEN")
 }
 
 func extractNodeJSVersion(tag Tag) *version {
-	re := regexp.MustCompile("(v)(\\d+).(\\d+).(\\d+)")
+	re := regexp.MustCompile(`(v)(\d+).(\d+).(\d+)`)
 	match := re.FindStringSubmatch(tag.Name)
 	if match != nil {
 		if match[1] == "v" {
@@ -61,11 +60,24 @@ func updateNodeJS() {
 
 	replPackageJson := fmt.Sprintf(`    "@pyroscope/nodejs": "v%s",`, last.version())
 	rePackageJson := regexp.MustCompile(`    "@pyroscope/nodejs": "[^"]+",`)
-	for _, x := range []string{"express", "express-pull", "express-ts", "express-ts-inline"} {
+	for _, x := range []string{"express", "express-pull", "express-ts", "express-ts-inline", "tinyhttp"} {
 		path := filepath.Join("examples/language-sdk-instrumentation/nodejs", x)
 		replaceInplace(rePackageJson, filepath.Join(path, "package.json"), replPackageJson)
 		s.sh(fmt.Sprintf(`cd "%s"       && yarn`, path))
 	}
+}
+
+func updateRust() {
+	libTags := getTagsV("grafana/pyroscope-rs", extractRSVersion("lib"))
+	lastLibTag := libTags[len(libTags)-1]
+	fmt.Println(lastLibTag)
+	pprofRsTags := getTagsV("grafana/pyroscope-rs", extractRSVersion("pprofrs"))
+	lastPprofRsTag := pprofRsTags[len(pprofRsTags)-1]
+	fmt.Println(lastPprofRsTag)
+	s.sh(fmt.Sprintf("cd examples/language-sdk-instrumentation/rust/rideshare/server && cargo add pyroscope@^%s", lastLibTag.version()))
+	s.sh(fmt.Sprintf("cd examples/language-sdk-instrumentation/rust/rideshare/server && cargo add pyroscope_pprofrs@^%s", lastPprofRsTag.version()))
+	s.sh(fmt.Sprintf("cd examples/language-sdk-instrumentation/rust/basic && cargo add pyroscope@^%s", lastLibTag.version()))
+	s.sh(fmt.Sprintf("cd examples/language-sdk-instrumentation/rust/basic && cargo add pyroscope_pprofrs@^%s", lastPprofRsTag.version()))
 }
 
 func updateDotnet() {
@@ -73,19 +85,19 @@ func updateDotnet() {
 	last := tags[len(tags)-1]
 	fmt.Println(last)
 
-	reDockerGlibc := regexp.MustCompile("pyroscope/pyroscope-dotnet:\\d+\\.\\d+\\.\\d+-glibc")
+	reDockerGlibc := regexp.MustCompile(`pyroscope/pyroscope-dotnet:\d+\.\d+\.\d+-glibc`)
 	replDockerGlibc := fmt.Sprintf("pyroscope/pyroscope-dotnet:%s-glibc", last.version())
 	replaceInplace(reDockerGlibc, "examples/language-sdk-instrumentation/dotnet/fast-slow/Dockerfile", replDockerGlibc)
 	replaceInplace(reDockerGlibc, "examples/language-sdk-instrumentation/dotnet/rideshare/Dockerfile", replDockerGlibc)
 	replaceInplace(reDockerGlibc, "examples/language-sdk-instrumentation/dotnet/web-new/Dockerfile", replDockerGlibc)
 	replaceInplace(reDockerGlibc, "docs/sources/configure-client/language-sdks/dotnet.md", replDockerGlibc)
 
-	reDockerMusl := regexp.MustCompile("pyroscope/pyroscope-dotnet:\\d+\\.\\d+\\.\\d+-musl")
+	reDockerMusl := regexp.MustCompile(`pyroscope/pyroscope-dotnet:\d+\.\d+\.\d+-musl`)
 	replDockerMusl := fmt.Sprintf("pyroscope/pyroscope-dotnet:%s-musl", last.version())
 	replaceInplace(reDockerMusl, "examples/language-sdk-instrumentation/dotnet/fast-slow/musl.Dockerfile", replDockerMusl)
 	replaceInplace(reDockerMusl, "examples/language-sdk-instrumentation/dotnet/rideshare/musl.Dockerfile", replDockerMusl)
 
-	reUrl := regexp.MustCompile("https://github\\.com/grafana/pyroscope-dotnet/releases/download/v\\d+\\.\\d+\\.\\d+-pyroscope/pyroscope.\\d+\\.\\d+\\.\\d+-glibc-x86_64.tar.gz")
+	reUrl := regexp.MustCompile(`https://github\.com/grafana/pyroscope-dotnet/releases/download/v\d+\.\d+\.\d+-pyroscope/pyroscope.\d+\.\d+\.\d+-glibc-x86_64.tar.gz`)
 	replUrl := fmt.Sprintf("https://github.com/grafana/pyroscope-dotnet/releases/download/v%s-pyroscope/pyroscope.%s-glibc-x86_64.tar.gz", last.version(), last.version())
 	replaceInplace(reUrl, "docs/sources/configure-client/language-sdks/dotnet.md", replUrl)
 }
@@ -95,7 +107,7 @@ func updatePython() {
 	last := tags[len(tags)-1]
 	fmt.Println(last)
 
-	re := regexp.MustCompile("pyroscope-io==\\d+\\.\\d+\\.\\d+")
+	re := regexp.MustCompile(`pyroscope-io==\d+\.\d+\.\d+`)
 	repl := fmt.Sprintf("pyroscope-io==%s", last.version())
 	replaceInplace(re, "examples/language-sdk-instrumentation/python/simple/requirements.txt", repl)
 	replaceInplace(re, "examples/language-sdk-instrumentation/python/rideshare/flask/Dockerfile", repl)
@@ -109,7 +121,7 @@ func updateRuby() {
 	last := tags[len(tags)-1]
 	fmt.Println(last)
 
-	re := regexp.MustCompile("gem ['\"]pyroscope['\"].*")
+	re := regexp.MustCompile(`gem ['"]pyroscope['"].*`)
 	repl := fmt.Sprintf("gem 'pyroscope', '= %s'", last.version())
 	replaceInplace(re, "examples/language-sdk-instrumentation/ruby/rideshare/Gemfile", repl)
 	replaceInplace(re, "examples/language-sdk-instrumentation/ruby/rideshare_rails/Gemfile", repl)
@@ -124,18 +136,18 @@ func updateJava() {
 	tags := getTagsV("grafana/pyroscope-java", extractGoVersion(""))
 	last := tags[len(tags)-1]
 	fmt.Println(last)
-	reJarURL := regexp.MustCompile("https://github\\.com/grafana/pyroscope-java/releases/download/(v\\d+\\.\\d+\\.\\d+)/pyroscope\\.jar")
+	reJarURL := regexp.MustCompile(`https://github\.com/grafana/pyroscope-java/releases/download/(v\d+\.\d+\.\d+)/pyroscope\.jar`)
 	lastJarURL := "https://github.com/grafana/pyroscope-java/releases/download/" + last.versionV() + "/pyroscope.jar"
 	replaceInplace(reJarURL, "examples/language-sdk-instrumentation/java/fib/Dockerfile", lastJarURL)
 	replaceInplace(reJarURL, "examples/language-sdk-instrumentation/java/simple/Dockerfile", lastJarURL)
 	replaceInplace(reJarURL, "examples/language-sdk-instrumentation/java/rideshare/Dockerfile", lastJarURL)
 
-	reGradelDep := regexp.MustCompile("implementation\\(\"io\\.pyroscope:agent:\\d+\\.\\d+\\.\\d+\"\\)")
+	reGradelDep := regexp.MustCompile(`implementation\("io\.pyroscope:agent:\d+\.\d+\.\d+"\)`)
 	lastGradleDep := fmt.Sprintf("implementation(\"io.pyroscope:agent:%s\")", last.version())
 	replaceInplace(reGradelDep, "examples/language-sdk-instrumentation/java/rideshare/build.gradle.kts", lastGradleDep)
 	replaceInplace(reGradelDep, "docs/sources/configure-client/language-sdks/java.md", lastGradleDep)
 
-	reMaven := regexp.MustCompile("<version>\\d+\\.\\d+\\.\\d+</version>")
+	reMaven := regexp.MustCompile(`<version>\d+\.\d+\.\d+</version>`)
 	replMaven := fmt.Sprintf("<version>%s</version>", last.version())
 	replaceInplace(reMaven, "docs/sources/configure-client/language-sdks/java.md", replMaven)
 
@@ -176,7 +188,7 @@ func updateGolang() {
 
 func extractGoVersion(module string) func(tag Tag) *version {
 	return func(tag Tag) *version {
-		re := regexp.MustCompile("([^/]*)/?v(\\d+).(\\d+).(\\d+)")
+		re := regexp.MustCompile(`([^/]*)/?v(\d+).(\d+).(\d+)`)
 		match := re.FindStringSubmatch(tag.Name)
 		if match != nil {
 			//fmt.Println(len(match), match)
@@ -196,7 +208,7 @@ func extractGoVersion(module string) func(tag Tag) *version {
 
 func extractRSVersion(module string) func(tag Tag) *version {
 	return func(tag Tag) *version {
-		re := regexp.MustCompile("(\\S+)-(\\d+).(\\d+).(\\d+)")
+		re := regexp.MustCompile(`(\S+)-(\d+).(\d+).(\d+)`)
 		match := re.FindStringSubmatch(tag.Name)
 		if match != nil {
 			//fmt.Println(len(match), match)
@@ -216,7 +228,7 @@ func extractRSVersion(module string) func(tag Tag) *version {
 
 func extractDotnetVersion() func(tag Tag) *version {
 	return func(tag Tag) *version {
-		re := regexp.MustCompile("v(\\d+).(\\d+).(\\d+)-pyroscope")
+		re := regexp.MustCompile(`v(\d+).(\d+).(\d+)-pyroscope`)
 		match := re.FindStringSubmatch(tag.Name)
 		if match != nil {
 			fmt.Println(len(match), match)

@@ -17,7 +17,7 @@ If you are familiar with profiling and flame graphs, then you'll be happy to kno
 ## Auto-instrumentation and language SDK instrumentation examples
 
 Pyroscope is a continuous profiling database that allows you to analyze the performance of your applications.
-When sending profiles to Pyroscope, you can choose between two primary methods: SDK Instrumentation and auto-instrumentation using the Grafana Agent.
+When sending profiles to Pyroscope, you can choose between two primary methods: SDK Instrumentation and auto-instrumentation using Grafana Alloy.
 
 ![Pyroscope agent server diagram](https://grafana.com/media/docs/pyroscope/pyroscope_client_server_diagram_09_18_2024.png)
 
@@ -26,7 +26,7 @@ When sending profiles to Pyroscope, you can choose between two primary methods: 
 You can send data from your application using Grafana Alloy or Grafana Agent collectors.
 Both collectors support profiling with eBPF, Java, and Golang in pull mode.
 
-For examples using auto-instrumentation with the collectors, try the `grafana-agent-auto-instrumentation` example.
+For examples using auto-instrumentation with the collectors, try the `grafana-alloy-auto-instrumentation` example.
 
 [Grafana Alloy](https://grafana.com/docs/alloy/latest/) is a vendor-neutral distribution of the OpenTelemetry (OTel) Collector.
 Alloy uniquely combines the very best OSS observability signals in the community.
@@ -71,10 +71,10 @@ Here are some factors to consider when making the choice:
 To get started, choose one of the integrations below:
 <table>
    <tr>
-      <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/go_pull"><img src="https://github-production-user-asset-6210df.s3.amazonaws.com/223048/257522425-48683963-91ae-4caf-8c52-ce131e25bd65.png" width="100px;" alt=""/><br />
-        <b>Grafana Agent</b></a><br />
-          <a href="https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/go_pull/" title="Documentation">Documentation</a><br />
-          <a href="https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent-auto-instrumentation" title="examples">Examples</a>
+      <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/grafana-alloy/go_pull"><img src="https://grafana.com/media/docs/alloy/alloy_icon.png" width="100px;" alt=""/><br />
+        <b>Grafana Alloy</b></a><br />
+          <a href="https://grafana.com/docs/pyroscope/latest/configure-client/grafana-alloy/go_pull/" title="Documentation">Documentation</a><br />
+          <a href="https://github.com/grafana/pyroscope/tree/main/examples/grafana-alloy-auto-instrumentation" title="examples">Examples</a>
       </td>
       <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/go_push/"><img src="https://user-images.githubusercontent.com/23323466/178160549-2d69a325-56ec-4e19-bca7-d460d400b163.png" width="100px;" alt=""/><br />
         <b>Golang</b></a><br />
@@ -86,10 +86,10 @@ To get started, choose one of the integrations below:
           <a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/java/">Documentation</a><br />
           <a href="https://github.com/grafana/pyroscope/tree/main/examples/language-sdk-instrumentation/java/rideshare" title="java-examples">Examples</a>
       </td>
-      <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/ebpf"><img src="https://user-images.githubusercontent.com/23323466/178160548-e974c080-808d-4c5d-be9b-c983a319b037.png" width="100px;" alt=""/><br />
+      <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/grafana-alloy/ebpf"><img src="https://user-images.githubusercontent.com/23323466/178160548-e974c080-808d-4c5d-be9b-c983a319b037.png" width="100px;" alt=""/><br />
         <b>eBPF</b></a><br />
-          <a href="https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/ebpf" title="Documentation">Documentation</a><br />
-          <a href="https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent-auto-instrumentation/ebpf" title="examples">Examples</a>
+          <a href="https://grafana.com/docs/pyroscope/latest/configure-client/grafana-alloy/ebpf" title="Documentation">Documentation</a><br />
+          <a href="https://github.com/grafana/pyroscope/tree/main/examples/grafana-alloy-auto-instrumentation/ebpf" title="examples">Examples</a>
       </td>
       <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/python/"><img src="https://user-images.githubusercontent.com/23323466/178160553-c78b8c15-99b4-43f3-a2a0-252b6c4862b1.png" width="100px;" alt=""/><br />
         <b>Python</b></a><br />

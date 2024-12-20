@@ -1,0 +1,45 @@
+name: Update Examples Cron
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  update-examples-cron:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - id: get-secrets
+        uses: grafana/shared-workflows/actions/get-vault-secrets@main
+        with:
+          repo_secrets: |
+            GITHUB_APP_ID=pyroscope-development-app:app-id
+            GITHUB_APP_INSTALLATION_ID=pyroscope-development-app:app-installation-id
+            GITHUB_APP_PRIVATE_KEY=pyroscope-development-app:app-private-key
+
+      - name: Generate token
+        id: generate_token
+        uses: tibdex/github-app-token@v2
+        with:
+          app_id: ${{ env.GITHUB_APP_ID }}
+          installation_retrieval_mode: id
+          installation_retrieval_payload: ${{ env.GITHUB_APP_INSTALLATION_ID }}
+          private_key: ${{ env.GITHUB_APP_PRIVATE_KEY }}
+
+      - run: |
+          make tools/update_examples
+          if ! git diff --exit-code;
+          then
+            make tools/update_examples_pr
+          fi
+        env:
+          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}

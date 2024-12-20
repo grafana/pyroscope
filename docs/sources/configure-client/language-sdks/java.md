@@ -51,12 +51,12 @@ First, add the Pyroscope dependency:
 <dependency>
   <groupId>io.pyroscope</groupId>
   <artifactId>agent</artifactId>
-  <version>0.15.0</version>
+  <version>0.15.2</version>
 </dependency>
 ```
 
 ```gradle
-implementation("io.pyroscope:agent:0.15.0")
+implementation("io.pyroscope:agent:0.15.2")
 ```
 
 {{< /code >}}

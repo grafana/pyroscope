@@ -3,7 +3,9 @@ import requests
 import time
 
 HOSTS = [
-    'web',
+    'us-east',
+    'eu-north',
+    'ap-south',
 ]
 
 VEHICLES = [
@@ -14,8 +16,7 @@ VEHICLES = [
 
 if __name__ == "__main__":
     print(f"starting load generator")
-    time.sleep(15)
-    print('done sleeping')
+    time.sleep(3)
     while True:
         host = HOSTS[random.randint(0, len(HOSTS) - 1)]
         vehicle = VEHICLES[random.randint(0, len(VEHICLES) - 1)]
@@ -27,4 +28,4 @@ if __name__ == "__main__":
         except BaseException as e:
             print (f"http error {e}")
 
-        time.sleep(random.uniform(0.2, 0.4))
+        time.sleep(random.uniform(0.1, 0.2))

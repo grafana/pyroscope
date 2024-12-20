@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: ebpf-profiler
+spec:
+  selector:
+    matchLabels:
+      app: ebpf-profiler
+  template:
+    metadata:
+      labels:
+        app: ebpf-profiler
+    spec:
+      hostPID: true
+      initContainers:
+        - name: wait-for-collector
+          image: busybox
+          command: [ 'sh', '-c', 'echo "Waiting 15s for collector to be ready..." && sleep 15' ]
+      containers:
+        - name: profiler
+          image: test-ebpf-profiler:latest
+          command: ["/usr/local/bin/ebpf-profiler", "-collection-agent", "otel-collector-service:4317", "-no-kernel-version-check", "-disable-tls", "-v"]
+          imagePullPolicy: Never # Use local image
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: kernel-debug
+              mountPath: /sys/kernel/debug
+            - name: proc
+              mountPath: /proc
+            - name: cgroup
+              mountPath: /sys/fs/cgroup
+      volumes:
+        - name: kernel-debug
+          hostPath:
+            path: /sys/kernel/debug
+        - name: proc
+          hostPath:
+            path: /proc
+        - name: cgroup
+          hostPath:
+            path: /sys/fs/cgroup

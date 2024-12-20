@@ -1,0 +1,78 @@
+services:
+  pyroscope:
+    image: grafana/pyroscope
+    command: [ "-config.file=/etc/pyroscope.yml" ]
+    environment:
+      JAEGER_SAMPLER_TYPE: const
+      JAEGER_SAMPLER_PARAM: "1"
+      JAEGER_ENDPOINT: http://tempo:14268/api/traces
+    volumes:
+      - ./pyroscope/pyroscope.yml:/etc/pyroscope.yml
+    ports:
+    - "4040:4040"
+
+  us-east:
+    ports:
+    - "5000"
+    environment: &env
+      PYROSCOPE_SERVER_ADDRESS: http://pyroscope:4040
+      OTLP_URL: tempo:4318
+      OTLP_INSECURE: 1
+      DEBUG_LOGGER: 1
+      REGION: us-east
+    build:
+      context: .
+  eu-north:
+    ports:
+    - "5000"
+    environment:
+      <<: *env
+      REGION: eu-north
+    build:
+      context: .
+  ap-south:
+    ports:
+    - "5000"
+    environment:
+      <<: *env
+      REGION: ap-south
+    build:
+      context: .
+
+  load-generator:
+    environment:
+      <<: *env
+    build:
+      context: .
+      dockerfile: Dockerfile.load-generator
+    command:
+      - ./loadgen
+      - http://us-east:5000
+      - http://eu-north:5000
+      - http://ap-south:5000
+
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+    - GF_INSTALL_PLUGINS=grafana-pyroscope-app
+    - GF_AUTH_ANONYMOUS_ENABLED=true
+    - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    - GF_AUTH_DISABLE_LOGIN_FORM=true
+    - GF_FEATURE_TOGGLES_ENABLE=traceToProfiles tracesEmbeddedFlameGraph
+    volumes:
+    - ./grafana-provisioning:/etc/grafana/provisioning
+    ports:
+    - "3000:3000"
+
+  tempo:
+    image: grafana/tempo:latest
+    command: [ "-config.file=/etc/tempo.yml" ]
+    volumes:
+      - ./tempo/tempo.yml:/etc/tempo.yml
+    ports:
+      - "14268:14268"  # jaeger ingest
+      - "3200:3200"   # tempo
+      - "9095:9095" # tempo grpc
+      - "4317:4317"  # otlp grpc
+      - "4318:4318"  # otlp http
+      - "9411:9411"   # zipkin

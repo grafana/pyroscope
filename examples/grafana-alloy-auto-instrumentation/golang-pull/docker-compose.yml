@@ -1,0 +1,30 @@
+services:
+  grafana:
+    image: grafana/grafana:latest
+    volumes:
+      - ./grafana-provisioning:/etc/grafana/provisioning
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
+      - ./grafana/home.json:/default-dashboard.json
+    environment:
+      - GF_INSTALL_PLUGINS=grafana-pyroscope-app
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+    ports:
+      - 3000:3000
+
+  pyroscope:
+    image: 'grafana/pyroscope:latest'
+    ports:
+      - 4040:4040
+
+  alloy:
+    image: grafana/alloy:latest
+    volumes:
+      - ./alloy/config.alloy:/etc/alloy/config.alloy
+    command:
+      - run
+      - /etc/alloy/config.alloy
+      - --server.http.listen-addr=0.0.0.0:12345
+    ports:
+      - "12345:12345"

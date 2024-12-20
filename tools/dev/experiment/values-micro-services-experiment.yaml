@@ -13,7 +13,6 @@ pyroscope:
     write-path: "segment-writer"
     enable-query-backend: "true"
     querier.max-query-length: '7d'
-    metastore.block-cleaner.compacted-blocks-cleanup-delay: '1m'
 
   components:
     distributor:
@@ -75,6 +74,10 @@ pyroscope:
     # TODO(bryan) Remove this once we eliminate the need for the query
     # scheduler in v2.
     query-scheduler:
+      kind: Deployment
+      replicaCount: 1
+
+    admin:
       kind: Deployment
       replicaCount: 1
 

@@ -1,0 +1,32 @@
+services:
+  java:
+    build:
+      context: .
+      dockerfile: java.Dockerfile
+  pyroscope:
+    image: grafana/pyroscope:latest
+    ports:
+    - 4040:4040
+  alloy:
+    image: grafana/alloy:latest
+    volumes:
+    - ./config.alloy:/etc/alloy-config/config.alloy
+    command:
+    - run
+    - /etc/alloy-config/config.alloy
+    - --server.http.listen-addr=0.0.0.0:12345
+    ports:
+    - 12345:12345
+    privileged: true
+    pid: host
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+    - GF_INSTALL_PLUGINS=grafana-pyroscope-app
+    - GF_AUTH_ANONYMOUS_ENABLED=true
+    - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    - GF_AUTH_DISABLE_LOGIN_FORM=true
+    volumes:
+    - ./grafana-provisioning:/etc/grafana/provisioning
+    ports:
+    - 3000:3000

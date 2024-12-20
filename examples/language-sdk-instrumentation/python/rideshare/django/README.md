@@ -1,15 +1,16 @@
-# Dockerizing Django with Pyroscope, Postgres, Gunicorn, and Nginx
-This is a simple rideshare example that adds Pyroscope to a Django application and uses it to profile various routes
+# Django Example
 
-### Development
-Uses the default Django development server.
+To run the example run the following commands:
+```
+# Pull latest pyroscope and grafana images:
+docker pull grafana/pyroscope:latest
+docker pull grafana/grafana:latest
 
-1. Rename *.env.dev-sample* to *.env.dev*.
-1. Update the environment variables in the *docker-compose.yml* and *.env.dev* files.
-1. Build the images and run the containers:
+# Run the example project:
+docker compose up --build
 
-    ```sh
-    $ docker-compose up -d --build
-    ```
+# Reset the database (if needed):
+docker compose down
+```
 
-    Test it out at [http://localhost:8000](http://localhost:8000). The "app" folder is mounted into the container and your code changes apply automatically.
+Navigate to [Grafana](http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer?explorationType=flame-graph&var-serviceName=ride-sharing-app&var-profileMetricId=process_cpu:cpu:nanoseconds:cpu:nanoseconds) to Explore Profiles.

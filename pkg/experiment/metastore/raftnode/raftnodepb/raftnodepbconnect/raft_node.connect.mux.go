@@ -29,4 +29,24 @@ func RegisterRaftNodeServiceHandler(mux *mux.Router, svc RaftNodeServiceHandler,
 		svc.NodeInfo,
 		opts...,
 	))
+	mux.Handle("/raft_node.RaftNodeService/RemoveNode", connect.NewUnaryHandler(
+		"/raft_node.RaftNodeService/RemoveNode",
+		svc.RemoveNode,
+		opts...,
+	))
+	mux.Handle("/raft_node.RaftNodeService/AddNode", connect.NewUnaryHandler(
+		"/raft_node.RaftNodeService/AddNode",
+		svc.AddNode,
+		opts...,
+	))
+	mux.Handle("/raft_node.RaftNodeService/DemoteLeader", connect.NewUnaryHandler(
+		"/raft_node.RaftNodeService/DemoteLeader",
+		svc.DemoteLeader,
+		opts...,
+	))
+	mux.Handle("/raft_node.RaftNodeService/PromoteToLeader", connect.NewUnaryHandler(
+		"/raft_node.RaftNodeService/PromoteToLeader",
+		svc.PromoteToLeader,
+		opts...,
+	))
 }

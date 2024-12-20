@@ -93,7 +93,6 @@
     "jest-image-snapshot": "^5.2.0",
     "lint-staged": "^15.0.2",
     "mini-css-extract-plugin": "^2.7.5",
-    "msw": "^0.36.3",
     "optimize-css-assets-webpack-plugin": "^6.0.1",
     "prettier": "2.8.8",
     "react-svg-loader": "^3.0.3",
@@ -116,9 +115,9 @@
     "@fortawesome/free-regular-svg-icons": "~5.15.2",
     "@fortawesome/free-solid-svg-icons": "~5.14.0",
     "@fortawesome/react-fontawesome": "~0.1.11",
-    "@grafana/data": "10.3.0-147665",
-    "@grafana/flamegraph": "10.3.0-147665",
-    "@grafana/ui": "10.3.0-147665",
+    "@grafana/data": "11.4.0",
+    "@grafana/flamegraph": "11.4.0",
+    "@grafana/ui": "11.4.0",
     "@hookform/resolvers": "^2.9.8",
     "@mui/base": "5.0.0-alpha.98",
     "@mui/material": "5.10.11",
@@ -185,6 +184,8 @@
     "trim": ">0.0.3",
     "trim-newlines": ">4.0.1",
     "yargs-parser": ">18.1.1",
+    "path-to-regexp": "^1.9.0",
+    "nanoid": "^3.3.8",
     "uplot": "^1.6.31"
   }
 }

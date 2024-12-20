@@ -2,6 +2,8 @@
 
 This example demonstrates how to use Alloy to receive and forward profiles from the rideshare example application.
 
+To learn more about the `pyroscope.receive_http` component in Alloy, refer to the [`receive_profiles`](https://grafana.com/docs/pyroscope/latest/configure-client/grafana-alloy/receive_profiles/) documentation.
+
 ## Architecture
 
 - Regional services (us-east, eu-north, ap-south) push profiles to Alloy
@@ -51,7 +53,5 @@ docker-compose up --build
 # Reset if needed
 docker-compose down
 ```
-Access services:
 
-- Grafana: http://localhost:3000
-- Pyroscope: http://localhost:4040
+Navigate to [Grafana](http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer?explorationType=flame-graph&var-serviceName=ride-sharing-app&var-profileMetricId=process_cpu:cpu:nanoseconds:cpu:nanoseconds) to Explore Profiles.

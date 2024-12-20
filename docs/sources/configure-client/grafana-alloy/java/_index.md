@@ -110,7 +110,7 @@ pyroscope.write "endpoint" {
 
 ## Examples
 
-For more robust examples, refer to the [Grafana Alloy and Agent Auto-instrumentation](https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent-auto-instrumentation) examples in the Pyroscope repository.
+For more robust examples, refer to the [Grafana Alloy and Agent Auto-instrumentation](https://github.com/grafana/pyroscope/tree/main/examples/grafana-alloy-auto-instrumentation) examples in the Pyroscope repository.
 
 ### Profiling local process
 
@@ -155,7 +155,7 @@ pyroscope.write "example" {
 
 ### Profiling Docker containers
 
-For a working example, refer to [Java profiling via auto-instrumentation example in Docker](https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent-auto-instrumentation/java/docker).
+For a working example, refer to [Java profiling via auto-instrumentation example in Docker](https://github.com/grafana/pyroscope/tree/main/examples/grafana-alloy-auto-instrumentation/java/docker).
 
 ```alloy
 discovery.docker "local_containers" {
@@ -202,7 +202,7 @@ pyroscope.write "example" {
 
 ### Profiling Kubernetes pods
 
-For a working example, refer to [Grafana Alloy Java profiling via auto-instrumentation with Kubernetes](https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent-auto-instrumentation/java/kubernetes).
+For a working example, refer to [Grafana Alloy Java profiling via auto-instrumentation with Kubernetes](https://github.com/grafana/pyroscope/tree/main/examples/grafana-alloy-auto-instrumentation/java/kubernetes).
 
 ```alloy
 discovery.kubernetes "local_pods" {
@@ -283,7 +283,7 @@ pyroscope.write "example" {
 
 For more information:
 
-* [Examples](https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent-auto-instrumentation/java)
+* [Examples](https://github.com/grafana/pyroscope/tree/main/examples/grafana-alloy-auto-instrumentation/java)
 
 - [Grafana Alloy](https://grafana.com/docs/alloy/<ALLOY_VERSION>/)
 - [pyroscope.scrape](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/pyroscope/pyroscope.scrape/)
