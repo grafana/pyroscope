@@ -6,6 +6,7 @@ import (
 	"log"
 
 	pprof "github.com/google/pprof/profile"
+
 	"github.com/grafana/pyroscope/pkg/experiment/symbolization"
 )
 
@@ -95,10 +96,13 @@ func main() {
 }
 
 // localDebuginfodClient provides a way to use local debug info files instead of fetching from a server
+//
+//nolint:all
 type localDebuginfodClient struct {
 	debugFilePath string
 }
 
+//nolint:all
 func (c *localDebuginfodClient) FetchDebuginfo(buildID string) (string, error) {
 	return c.debugFilePath, nil
 }
