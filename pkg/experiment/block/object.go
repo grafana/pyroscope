@@ -11,6 +11,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/bufferpool"
@@ -109,7 +110,7 @@ func NewObject(storage objstore.Bucket, md *metastorev1.BlockMeta, opts ...Objec
 }
 
 func ObjectPath(md *metastorev1.BlockMeta) string {
-	return BuildObjectPath(Tenant(md), md.Shard, md.CompactionLevel, md.Id)
+	return BuildObjectPath(metadata.Tenant(md), md.Shard, md.CompactionLevel, md.Id)
 }
 
 func BuildObjectPath(tenant string, shard uint32, level uint32, block string) string {
@@ -136,7 +137,7 @@ func MetadataDLQObjectPath(md *metastorev1.BlockMeta) string {
 	var b strings.Builder
 	tenantDirName := DirNameAnonTenant
 	if md.CompactionLevel > 0 {
-		tenantDirName = Tenant(md)
+		tenantDirName = metadata.Tenant(md)
 	}
 	b.WriteString(DirNameDLQ)
 	b.WriteByte('/')
