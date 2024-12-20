@@ -3,7 +3,7 @@ headless: true
 description: Shared file for intro to flame graphs.
 ---
 
-[//]: # 'Learh about flame graphs.'
+[//]: # 'Learn about flame graphs.'
 [//]: # 'This shared file is included in these locations:'
 [//]: # '/pyroscope/docs/sources/introduction/flamegraphs.md'
 [//]: # '/website/content/grafana-cloud/monitor-applications/profiles/introduction/flamegraphs.md'
