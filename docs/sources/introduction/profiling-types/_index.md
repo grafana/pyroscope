@@ -10,7 +10,7 @@ keywords:
   - flame graphs
 ---
 
-# Understand profiling types and their uses
+# Profiling types and their uses
 
 Profiling is an essential tool for understanding and optimizing application performance.
 In Grafana Pyroscope, various profiling types allow for an in-depth analysis of different aspects of your application.
