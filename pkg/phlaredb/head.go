@@ -194,6 +194,8 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 
 	delta := phlaremodel.Labels(externalLabels).Get(phlaremodel.LabelNameDelta) != "false"
 	externalLabels = phlaremodel.Labels(externalLabels).Delete(phlaremodel.LabelNameDelta)
+	otel := phlaremodel.Labels(externalLabels).Get(phlaremodel.LabelNameOTEL) == "true"
+	externalLabels = phlaremodel.Labels(externalLabels).Delete(phlaremodel.LabelNameOTEL)
 
 	enforceLabelOrder := phlaremodel.Labels(externalLabels).Get(phlaremodel.LabelNameOrder) == phlaremodel.LabelOrderEnforced
 	externalLabels = phlaremodel.Labels(externalLabels).Delete(phlaremodel.LabelNameOrder)
@@ -207,7 +209,7 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 	}
 
 	// determine the stacktraces partition ID
-	partition := phlaremodel.StacktracePartitionFromProfile(lbls, p)
+	partition := phlaremodel.StacktracePartitionFromProfile(lbls, p, otel)
 
 	metricName := phlaremodel.Labels(externalLabels).Get(model.MetricNameLabel)
 
