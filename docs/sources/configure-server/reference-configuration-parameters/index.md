@@ -2,7 +2,7 @@
 description: Describes parameters used to configure Pyroscope.
 menuTitle: Configuration parameters
 title: Pyroscope configuration parameters
-weight: 70
+weight: 300
 aliases:
   - /docs/phlare/latest/operators-guide/configuring/reference-configuration-parameters/
   - /docs/phlare/latest/configure-server/reference-configuration-parameters/
@@ -629,7 +629,7 @@ ring:
 
       # Override the default cipher suite list (separated by commas). Allowed
       # values:
-      # 
+      #
       # Secure Ciphers:
       # - TLS_AES_128_GCM_SHA256
       # - TLS_AES_256_GCM_SHA384
@@ -644,7 +644,7 @@ ring:
       # - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
       # - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
       # - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
-      # 
+      #
       # Insecure Ciphers:
       # - TLS_RSA_WITH_RC4_128_SHA
       # - TLS_RSA_WITH_3DES_EDE_CBC_SHA
@@ -812,7 +812,7 @@ lifecycler:
 
         # Override the default cipher suite list (separated by commas). Allowed
         # values:
-        # 
+        #
         # Secure Ciphers:
         # - TLS_AES_128_GCM_SHA256
         # - TLS_AES_256_GCM_SHA384
@@ -827,7 +827,7 @@ lifecycler:
         # - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
         # - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
         # - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
-        # 
+        #
         # Insecure Ciphers:
         # - TLS_RSA_WITH_RC4_128_SHA
         # - TLS_RSA_WITH_3DES_EDE_CBC_SHA
@@ -1178,7 +1178,7 @@ sharding_ring:
 
       # Override the default cipher suite list (separated by commas). Allowed
       # values:
-      # 
+      #
       # Secure Ciphers:
       # - TLS_AES_128_GCM_SHA256
       # - TLS_AES_256_GCM_SHA384
@@ -1193,7 +1193,7 @@ sharding_ring:
       # - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
       # - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
       # - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
-      # 
+      #
       # Insecure Ciphers:
       # - TLS_RSA_WITH_RC4_128_SHA
       # - TLS_RSA_WITH_3DES_EDE_CBC_SHA
@@ -1527,7 +1527,7 @@ sharding_ring:
 
       # Override the default cipher suite list (separated by commas). Allowed
       # values:
-      # 
+      #
       # Secure Ciphers:
       # - TLS_AES_128_GCM_SHA256
       # - TLS_AES_256_GCM_SHA384
@@ -1542,7 +1542,7 @@ sharding_ring:
       # - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
       # - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
       # - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
-      # 
+      #
       # Insecure Ciphers:
       # - TLS_RSA_WITH_RC4_128_SHA
       # - TLS_RSA_WITH_3DES_EDE_CBC_SHA
@@ -1735,7 +1735,7 @@ backoff_config:
 [tls_insecure_skip_verify: <boolean> | default = false]
 
 # Override the default cipher suite list (separated by commas). Allowed values:
-# 
+#
 # Secure Ciphers:
 # - TLS_AES_128_GCM_SHA256
 # - TLS_AES_256_GCM_SHA384
@@ -1750,7 +1750,7 @@ backoff_config:
 # - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
 # - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
 # - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
-# 
+#
 # Insecure Ciphers:
 # - TLS_RSA_WITH_RC4_128_SHA
 # - TLS_RSA_WITH_3DES_EDE_CBC_SHA
@@ -1948,7 +1948,7 @@ The `memberlist` block configures the Gossip memberlist.
 [tls_insecure_skip_verify: <boolean> | default = false]
 
 # Override the default cipher suite list (separated by commas). Allowed values:
-# 
+#
 # Secure Ciphers:
 # - TLS_AES_128_GCM_SHA256
 # - TLS_AES_256_GCM_SHA384
@@ -1963,7 +1963,7 @@ The `memberlist` block configures the Gossip memberlist.
 # - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
 # - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
 # - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
-# 
+#
 # Insecure Ciphers:
 # - TLS_RSA_WITH_RC4_128_SHA
 # - TLS_RSA_WITH_3DES_EDE_CBC_SHA
