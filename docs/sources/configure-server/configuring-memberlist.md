@@ -1,14 +1,14 @@
 ---
 description: Learn how to configure Pyroscope memberlist.
-menuTitle: Configuring memberlist
-title: Configuring Pyroscope memberlist
-weight: 50
+menuTitle: Configure memberlist
+title: Configure Pyroscope memberlist
+weight: 500
 aliases:
   - /docs/phlare/latest/operators-guide/configuring/configuring-memberlist/
   - /docs/phlare/latest/configure-server/configuring-memberlist/
 ---
 
-# Configuring Pyroscope memberlist
+# Configure Pyroscope memberlist
 
 [Hash rings]({{< relref "../reference-pyroscope-architecture/hash-ring/index.md" >}}) are a distributed consistent hashing scheme and are widely used by Pyroscope for sharding and replication.
 Pyroscope only supports hash ring via the memberlist protocol.

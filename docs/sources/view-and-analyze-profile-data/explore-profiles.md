@@ -2,7 +2,7 @@
 title: Use Explore Profiles to investigate issues
 menuTitle: Use Explore Profiles
 description: Learn about Explore Profiles app to investigate issues using your profiling data.
-weight: 350
+weight: 100
 keywords:
   - profiles
   - performance analysis

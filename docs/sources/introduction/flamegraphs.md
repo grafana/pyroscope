@@ -4,7 +4,7 @@ menuTitle: Flame graphs
 description: Learn about flame graphs to help visualize performance data.
 weight: 400
 aliases:
-  - ../view-and-analyze-profile-data/flamegraphs # https://grafana.com/docs/pyroscope/latest/view-and-analyze-profile-data/flamegraphs/
+  - ../view-and-analyze-profile-data/flamegraphs # https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/view-and-analyze-profile-data/flamegraphs/
   -
 keywords:
   - Pyroscope

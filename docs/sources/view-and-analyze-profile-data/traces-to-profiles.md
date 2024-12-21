@@ -2,7 +2,7 @@
 title: Traces to profiles
 menuTitle: Traces to profiles
 description: Learn about traces to profiles integration in Grafana and Grafana Cloud.
-weight: 150
+weight: 500
 keywords:
   - pyroscope
   - continuous profiling
