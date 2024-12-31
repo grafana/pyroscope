@@ -241,12 +241,20 @@ func (p *profileBuilder) convertMappingBack(om *otelProfile.Mapping) uint64 {
 		return i
 	}
 
+	buildID := ""
+	for _, attributeIndex := range om.AttributeIndices {
+		attr := p.src.AttributeTable[attributeIndex]
+		fmt.Printf("%s %s\n", attr.Key, attr.Value.GetStringValue())
+		if attr.Key == "process.executable.build_id.gnu" {
+			buildID = attr.Value.GetStringValue()
+		}
+	}
 	gm := &googleProfile.Mapping{
-		MemoryStart: om.MemoryStart,
-		MemoryLimit: om.MemoryLimit,
-		FileOffset:  om.FileOffset,
-		Filename:    p.addstr(p.src.StringTable[om.FilenameStrindex]),
-		//BuildId:         p.addstr(p.src.StringTable[om.BuildId]), //todo
+		MemoryStart:     om.MemoryStart,
+		MemoryLimit:     om.MemoryLimit,
+		FileOffset:      om.FileOffset,
+		Filename:        p.addstr(p.src.StringTable[om.FilenameStrindex]),
+		BuildId:         p.addstr(buildID),
 		HasFunctions:    om.HasFunctions,
 		HasFilenames:    om.HasFilenames,
 		HasLineNumbers:  om.HasLineNumbers,
