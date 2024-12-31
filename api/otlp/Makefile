@@ -16,11 +16,11 @@ endef
 OPENTELEMETRY_PROTO_SRC_DIR=.tmp/opentelemetry-proto
 
 # The SHA matching the current version of the proto to use
-OPENTELEMETRY_PROTO_VERSION=v1.3.2
+OPENTELEMETRY_PROTO_VERSION=v1.5.0
 
 # Find all .proto files.
 
-OPENTELEMETRY_PROTO_FILES := $(subst $(OPENTELEMETRY_PROTO_SRC_DIR)/,,$(wildcard $(OPENTELEMETRY_PROTO_SRC_DIR)/opentelemetry/proto/*/v1/*.proto $(OPENTELEMETRY_PROTO_SRC_DIR)/opentelemetry/proto/collector/*/v1/*.proto $(OPENTELEMETRY_PROTO_SRC_DIR)/opentelemetry/proto/*/v1experimental/*.proto $(OPENTELEMETRY_PROTO_SRC_DIR)/opentelemetry/proto/collector/*/v1experimental/*.proto))
+OPENTELEMETRY_PROTO_FILES := $(subst $(OPENTELEMETRY_PROTO_SRC_DIR)/,,$(wildcard $(OPENTELEMETRY_PROTO_SRC_DIR)/opentelemetry/proto/*/v1/*.proto $(OPENTELEMETRY_PROTO_SRC_DIR)/opentelemetry/proto/collector/*/v1/*.proto $(OPENTELEMETRY_PROTO_SRC_DIR)/opentelemetry/proto/*/v1development/*.proto $(OPENTELEMETRY_PROTO_SRC_DIR)/opentelemetry/proto/collector/*/v1development/*.proto))
 
 # Target directory to write generated files to.
 # PROTO_TARGET_GEN_DIR=otlp
@@ -35,7 +35,7 @@ PROTO_PACKAGE=github.com/grafana/pyroscope/$(PROTO_TARGET_GEN_DIR)
 # Intermediate directory used during generation.
 PROTO_INTERMEDIATE_DIR=.tmp/patched-otlp-proto
 
-DOCKER_PROTOBUF ?= otel/build-protobuf:0.9.0
+DOCKER_PROTOBUF ?= otel/build-protobuf:0.23.0
 PROTOC := docker run --rm -u ${shell id -u} -v${PWD}:${PWD} -w${PWD}/$(PROTO_INTERMEDIATE_DIR) ${DOCKER_PROTOBUF} --proto_path=${PWD}
 PROTO_INCLUDES := -I/usr/include/github.com/gogo/protobuf -I./
 
@@ -72,7 +72,7 @@ genproto_sub:
 	# reserved 1000 -> repeated ScopeLogs deprecated_scope_logs = 1000;
 	sed 's/reserved 1000;/repeated ScopeLogs deprecated_scope_logs = 1000;/g' $(PROTO_INTERMEDIATE_DIR)/opentelemetry/proto/logs/v1/logs.proto 1<> $(PROTO_INTERMEDIATE_DIR)/opentelemetry/proto/logs/v1/logs.proto
 	# reserved 1000 -> repeated ScopeProfiles deprecated_scope_profiles = 1000;
-	sed 's/reserved 1000;/repeated ScopeProfiles deprecated_scope_profiles = 1000;/g' $(PROTO_INTERMEDIATE_DIR)/opentelemetry/proto/profiles/v1experimental/profiles.proto 1<> $(PROTO_INTERMEDIATE_DIR)/opentelemetry/proto/profiles/v1experimental/profiles.proto
+	sed 's/reserved 1000;/repeated ScopeProfiles deprecated_scope_profiles = 1000;/g' $(PROTO_INTERMEDIATE_DIR)/opentelemetry/proto/profiles/v1development/profiles.proto 1<> $(PROTO_INTERMEDIATE_DIR)/opentelemetry/proto/profiles/v1development/profiles.proto
 	# reserved 1000 -> repeated ScopeMetrics deprecated_scope_metrics = 1000;
 	sed 's/reserved 1000;/repeated ScopeMetrics deprecated_scope_metrics = 1000;/g' $(PROTO_INTERMEDIATE_DIR)/opentelemetry/proto/metrics/v1/metrics.proto 1<> $(PROTO_INTERMEDIATE_DIR)/opentelemetry/proto/metrics/v1/metrics.proto
 	# reserved 1000 -> repeated ScopeSpans deprecated_scope_spans = 1000;
