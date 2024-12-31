@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	v1experimental2 "github.com/grafana/pyroscope/api/otlp/collector/profiles/v1experimental"
-	"github.com/grafana/pyroscope/api/otlp/profiles/v1experimental"
+	v1experimental2 "github.com/grafana/pyroscope/api/otlp/collector/profiles/v1development"
+	v1experimental "github.com/grafana/pyroscope/api/otlp/profiles/v1development"
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockotlp"
 
@@ -171,21 +171,21 @@ func TestSymbolizedFunctionNames(t *testing.T) {
 	}).Return(nil, nil)
 
 	otlpb := new(otlpbuilder)
-	otlpb.profile.Mapping = []*v1experimental.Mapping{{
-		MemoryStart: 0x1000,
-		MemoryLimit: 0x1000,
-		Filename:    otlpb.addstr("file1.so"),
+	otlpb.profile.MappingTable = []*v1experimental.Mapping{{
+		MemoryStart:      0x1000,
+		MemoryLimit:      0x1000,
+		FilenameStrindex: otlpb.addstr("file1.so"),
 	}}
-	otlpb.profile.Location = []*v1experimental.Location{{
-		MappingIndex: 0,
-		Address:      0x1e0,
-		Line:         nil,
+	otlpb.profile.LocationTable = []*v1experimental.Location{{
+		MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 0},
+		Address:       0x1e0,
+		Line:          nil,
 	}, {
-		MappingIndex: 0,
-		Address:      0x2f0,
-		Line:         nil,
+		MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 0},
+		Address:       0x2f0,
+		Line:          nil,
 	}}
-	otlpb.profile.LocationIndices = []int64{0, 1}
+	otlpb.profile.LocationIndices = []int32{0, 1}
 	otlpb.profile.Sample = []*v1experimental.Sample{{
 		LocationsStartIndex: 0,
 		LocationsLength:     2,
@@ -194,9 +194,9 @@ func TestSymbolizedFunctionNames(t *testing.T) {
 	req := &v1experimental2.ExportProfilesServiceRequest{
 		ResourceProfiles: []*v1experimental.ResourceProfiles{{
 			ScopeProfiles: []*v1experimental.ScopeProfiles{{
-				Profiles: []*v1experimental.ProfileContainer{{
-					Profile: &otlpb.profile,
-				}}}}}}}
+				Profiles: []*v1experimental.Profile{
+					&otlpb.profile,
+				}}}}}}
 	logger := testutil.NewLogger(t)
 	h := NewOTLPIngestHandler(svc, logger, false)
 	_, err := h.Export(context.Background(), req)
@@ -226,40 +226,40 @@ func TestSampleAttributes(t *testing.T) {
 	}).Return(nil, nil)
 
 	otlpb := new(otlpbuilder)
-	otlpb.profile.Mapping = []*v1experimental.Mapping{{
-		MemoryStart: 0x1000,
-		MemoryLimit: 0x1000,
-		Filename:    otlpb.addstr("firefox.so"),
+	otlpb.profile.MappingTable = []*v1experimental.Mapping{{
+		MemoryStart:      0x1000,
+		MemoryLimit:      0x1000,
+		FilenameStrindex: otlpb.addstr("firefox.so"),
 	}, {
-		MemoryStart: 0x1000,
-		MemoryLimit: 0x1000,
-		Filename:    otlpb.addstr("chrome.so"),
+		MemoryStart:      0x1000,
+		MemoryLimit:      0x1000,
+		FilenameStrindex: otlpb.addstr("chrome.so"),
 	}}
 
-	otlpb.profile.Location = []*v1experimental.Location{{
-		MappingIndex: 0,
-		Address:      0x1e,
+	otlpb.profile.LocationTable = []*v1experimental.Location{{
+		MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 0},
+		Address:       0x1e,
 	}, {
-		MappingIndex: 0,
-		Address:      0x2e,
+		MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 0},
+		Address:       0x2e,
 	}, {
-		MappingIndex: 1,
-		Address:      0x3e,
+		MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 1},
+		Address:       0x3e,
 	}, {
-		MappingIndex: 1,
-		Address:      0x4e,
+		MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 1},
+		Address:       0x4e,
 	}}
-	otlpb.profile.LocationIndices = []int64{0, 1, 2, 3}
+	otlpb.profile.LocationIndices = []int32{0, 1, 2, 3}
 	otlpb.profile.Sample = []*v1experimental.Sample{{
 		LocationsStartIndex: 0,
 		LocationsLength:     2,
 		Value:               []int64{0xef},
-		Attributes:          []uint64{0},
+		AttributeIndices:    []int32{0},
 	}, {
 		LocationsStartIndex: 2,
 		LocationsLength:     2,
 		Value:               []int64{0xefef},
-		Attributes:          []uint64{1},
+		AttributeIndices:    []int32{1},
 	}}
 	otlpb.profile.AttributeTable = []v1.KeyValue{{
 		Key: "process",
@@ -279,9 +279,9 @@ func TestSampleAttributes(t *testing.T) {
 	req := &v1experimental2.ExportProfilesServiceRequest{
 		ResourceProfiles: []*v1experimental.ResourceProfiles{{
 			ScopeProfiles: []*v1experimental.ScopeProfiles{{
-				Profiles: []*v1experimental.ProfileContainer{{
-					Profile: &otlpb.profile,
-				}}}}}}}
+				Profiles: []*v1experimental.Profile{
+					&otlpb.profile,
+				}}}}}}
 	logger := testutil.NewLogger(t)
 	h := NewOTLPIngestHandler(svc, logger, false)
 	_, err := h.Export(context.Background(), req)
@@ -321,96 +321,96 @@ func TestDifferentServiceNames(t *testing.T) {
 	}).Return(nil, nil)
 
 	otlpb := new(otlpbuilder)
-	otlpb.profile.Mapping = []*v1experimental.Mapping{{
-		MemoryStart: 0x1000,
-		MemoryLimit: 0x2000,
-		Filename:    otlpb.addstr("service-a.so"),
+	otlpb.profile.MappingTable = []*v1experimental.Mapping{{
+		MemoryStart:      0x1000,
+		MemoryLimit:      0x2000,
+		FilenameStrindex: otlpb.addstr("service-a.so"),
 	}, {
-		MemoryStart: 0x2000,
-		MemoryLimit: 0x3000,
-		Filename:    otlpb.addstr("service-b.so"),
+		MemoryStart:      0x2000,
+		MemoryLimit:      0x3000,
+		FilenameStrindex: otlpb.addstr("service-b.so"),
 	}, {
-		MemoryStart: 0x4000,
-		MemoryLimit: 0x5000,
-		Filename:    otlpb.addstr("service-c.so"),
+		MemoryStart:      0x4000,
+		MemoryLimit:      0x5000,
+		FilenameStrindex: otlpb.addstr("service-c.so"),
 	}}
 
-	otlpb.profile.Location = []*v1experimental.Location{{
-		MappingIndex: 0, // service-a.so
-		Address:      0x1100,
+	otlpb.profile.LocationTable = []*v1experimental.Location{{
+		MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 0}, // service-a.so
+		Address:       0x1100,
 		Line: []*v1experimental.Line{{
 			FunctionIndex: 0,
 			Line:          10,
 		}},
 	}, {
-		MappingIndex: 0, // service-a.so
-		Address:      0x1200,
+		MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 0}, // service-a.so
+		Address:       0x1200,
 		Line: []*v1experimental.Line{{
 			FunctionIndex: 1,
 			Line:          20,
 		}},
 	}, {
-		MappingIndex: 1, // service-b.so
-		Address:      0x2100,
+		MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 1}, // service-b.so
+		Address:       0x2100,
 		Line: []*v1experimental.Line{{
 			FunctionIndex: 2,
 			Line:          30,
 		}},
 	}, {
-		MappingIndex: 1, // service-b.so
-		Address:      0x2200,
+		MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 1}, // service-b.so
+		Address:       0x2200,
 		Line: []*v1experimental.Line{{
 			FunctionIndex: 3,
 			Line:          40,
 		}},
 	}, {
-		MappingIndex: 2, // service-c.so
-		Address:      0xef0,
+		MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 2}, // service-c.so
+		Address:       0xef0,
 		Line: []*v1experimental.Line{{
 			FunctionIndex: 4,
 			Line:          50,
 		}},
 	}}
 
-	otlpb.profile.Function = []*v1experimental.Function{{
-		Name:       otlpb.addstr("serviceA_func1"),
-		SystemName: otlpb.addstr("serviceA_func1"),
-		Filename:   otlpb.addstr("service_a.go"),
+	otlpb.profile.FunctionTable = []*v1experimental.Function{{
+		NameStrindex:       otlpb.addstr("serviceA_func1"),
+		SystemNameStrindex: otlpb.addstr("serviceA_func1"),
+		FilenameStrindex:   otlpb.addstr("service_a.go"),
 	}, {
-		Name:       otlpb.addstr("serviceA_func2"),
-		SystemName: otlpb.addstr("serviceA_func2"),
-		Filename:   otlpb.addstr("service_a.go"),
+		NameStrindex:       otlpb.addstr("serviceA_func2"),
+		SystemNameStrindex: otlpb.addstr("serviceA_func2"),
+		FilenameStrindex:   otlpb.addstr("service_a.go"),
 	}, {
-		Name:       otlpb.addstr("serviceB_func1"),
-		SystemName: otlpb.addstr("serviceB_func1"),
-		Filename:   otlpb.addstr("service_b.go"),
+		NameStrindex:       otlpb.addstr("serviceB_func1"),
+		SystemNameStrindex: otlpb.addstr("serviceB_func1"),
+		FilenameStrindex:   otlpb.addstr("service_b.go"),
 	}, {
-		Name:       otlpb.addstr("serviceB_func2"),
-		SystemName: otlpb.addstr("serviceB_func2"),
-		Filename:   otlpb.addstr("service_b.go"),
+		NameStrindex:       otlpb.addstr("serviceB_func2"),
+		SystemNameStrindex: otlpb.addstr("serviceB_func2"),
+		FilenameStrindex:   otlpb.addstr("service_b.go"),
 	}, {
-		Name:       otlpb.addstr("serviceC_func3"),
-		SystemName: otlpb.addstr("serviceC_func3"),
-		Filename:   otlpb.addstr("service_c.go"),
+		NameStrindex:       otlpb.addstr("serviceC_func3"),
+		SystemNameStrindex: otlpb.addstr("serviceC_func3"),
+		FilenameStrindex:   otlpb.addstr("service_c.go"),
 	}}
 
-	otlpb.profile.LocationIndices = []int64{0, 1, 2, 3, 4, 4}
+	otlpb.profile.LocationIndices = []int32{0, 1, 2, 3, 4, 4}
 
 	otlpb.profile.Sample = []*v1experimental.Sample{{
 		LocationsStartIndex: 0,
 		LocationsLength:     2, // Use first two locations
 		Value:               []int64{100},
-		Attributes:          []uint64{0},
+		AttributeIndices:    []int32{0},
 	}, {
 		LocationsStartIndex: 2,
 		LocationsLength:     2,
 		Value:               []int64{200},
-		Attributes:          []uint64{1},
+		AttributeIndices:    []int32{1},
 	}, {
 		LocationsStartIndex: 4,
 		LocationsLength:     2,
 		Value:               []int64{700},
-		Attributes:          []uint64{},
+		AttributeIndices:    []int32{},
 	}}
 
 	otlpb.profile.AttributeTable = []v1.KeyValue{{
@@ -430,21 +430,21 @@ func TestDifferentServiceNames(t *testing.T) {
 	}}
 
 	otlpb.profile.SampleType = []*v1experimental.ValueType{{
-		Type: otlpb.addstr("samples"),
-		Unit: otlpb.addstr("count"),
+		TypeStrindex: otlpb.addstr("samples"),
+		UnitStrindex: otlpb.addstr("count"),
 	}}
 	otlpb.profile.PeriodType = &v1experimental.ValueType{
-		Type: otlpb.addstr("cpu"),
-		Unit: otlpb.addstr("nanoseconds"),
+		TypeStrindex: otlpb.addstr("cpu"),
+		UnitStrindex: otlpb.addstr("nanoseconds"),
 	}
 	otlpb.profile.Period = 10000000 // 10ms
 
 	req := &v1experimental2.ExportProfilesServiceRequest{
 		ResourceProfiles: []*v1experimental.ResourceProfiles{{
 			ScopeProfiles: []*v1experimental.ScopeProfiles{{
-				Profiles: []*v1experimental.ProfileContainer{{
-					Profile: &otlpb.profile,
-				}}}}}}}
+				Profiles: []*v1experimental.Profile{
+					&otlpb.profile,
+				}}}}}}
 
 	logger := testutil.NewLogger(t)
 	h := NewOTLPIngestHandler(svc, logger, false)
@@ -494,17 +494,17 @@ func TestDifferentServiceNames(t *testing.T) {
 
 type otlpbuilder struct {
 	profile   v1experimental.Profile
-	stringmap map[string]int64
+	stringmap map[string]int32
 }
 
-func (o *otlpbuilder) addstr(s string) int64 {
+func (o *otlpbuilder) addstr(s string) int32 {
 	if o.stringmap == nil {
-		o.stringmap = make(map[string]int64)
+		o.stringmap = make(map[string]int32)
 	}
 	if idx, ok := o.stringmap[s]; ok {
 		return idx
 	}
-	idx := int64(len(o.stringmap))
+	idx := int32(len(o.stringmap))
 	o.stringmap[s] = idx
 	o.profile.StringTable = append(o.profile.StringTable, s)
 	return idx

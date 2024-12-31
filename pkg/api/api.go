@@ -229,7 +229,7 @@ func (a *API) RegisterDistributor(d *distributor.Distributor, multitenancyEnable
 		{Desc: "Ring status", Path: "/distributor/ring"},
 	})
 
-	a.RegisterRoute("/opentelemetry.proto.collector.profiles.v1experimental.ProfilesService/Export", otlpHandler, true, true, "POST")
+	a.RegisterRoute("/opentelemetry.proto.collector.profiles.v1development.ProfilesService/Export", otlpHandler, true, true, "POST")
 
 	// TODO(@petethepig): implement http/protobuf and http/json support
 	// a.RegisterRoute("/v1/profiles", otlpHandler, true, true, "POST")
