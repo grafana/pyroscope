@@ -46,10 +46,10 @@ genproto-cleanup:
 # Generate OTLP Protobuf Go files. This will place generated files in PROTO_TARGET_GEN_DIR.
 genproto: genproto-cleanup
 # TODO(@petethepig): undo this
-	mkdir -p ${OPENTELEMETRY_PROTO_SRC_DIR}
-	curl -sSL https://api.github.com/repos/open-telemetry/opentelemetry-proto/tarball/${OPENTELEMETRY_PROTO_VERSION} | tar xz --strip 1 -C ${OPENTELEMETRY_PROTO_SRC_DIR}
+# mkdir -p ${OPENTELEMETRY_PROTO_SRC_DIR}
+# curl -sSL https://api.github.com/repos/open-telemetry/opentelemetry-proto/tarball/${OPENTELEMETRY_PROTO_VERSION} | tar xz --strip 1 -C ${OPENTELEMETRY_PROTO_SRC_DIR}
 # # Call a sub-make to ensure OPENTELEMETRY_PROTO_FILES is populated
-	#rsync -av ../../otel/opentelemetry-proto/ ${OPENTELEMETRY_PROTO_SRC_DIR}
+	rsync -av ../../otel/opentelemetry-proto/ ${OPENTELEMETRY_PROTO_SRC_DIR}
 	$(MAKE) genproto_sub
 	$(MAKE) genproto-cleanup
 
