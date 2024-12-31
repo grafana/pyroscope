@@ -24,6 +24,7 @@ const (
 	LabelNameProfileType        = "__profile_type__"
 	LabelNameServiceNamePrivate = "__service_name__"
 	LabelNameDelta              = "__delta__"
+	LabelNameOTEL               = "__otel__"
 	LabelNameProfileName        = pmodel.MetricNameLabel
 	LabelNamePeriodType         = "__period_type__"
 	LabelNamePeriodUnit         = "__period_unit__"
