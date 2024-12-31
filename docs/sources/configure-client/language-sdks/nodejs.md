@@ -57,7 +57,7 @@ If you'd prefer, you can use Pull mode using [Grafana Alloy](https://grafana.com
 
 | Init parameter                | ENVIRONMENT VARIABLE                      | Type           | DESCRIPTION                                                                       |
 |-------------------------------|-------------------------------------------|----------------|-----------------------------------------------------------------------------------|
-| `appName:                     | `PYROSCOPE_APPLICATION_NAME`              | String         | Sets the `service_name` label                                                     |
+| `appName:`                    | `PYROSCOPE_APPLICATION_NAME`              | String         | Sets the `service_name` label                                                     |
 | `serverAddress:`              | `PYROSCOPE_SERVER_ADDRESS`                | String         | URL of the Pyroscope Server                                                       |
 | `basicAuthUser:`              | n/a                                       | String         | Username for basic auth / Grafana Cloud stack user ID (Default `""`)              |
 | `basicAuthPassword:`          | n/a                                       | String         | Password for basic auth / Grafana Cloud API key (Default `""`)                    |
