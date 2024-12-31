@@ -66,7 +66,7 @@ genproto_sub:
 
 	# # Patch proto files. See proto_patch.sed for patching rules.
 	# @echo Modify them in the intermediate directory.
-	$(foreach file,$(OPENTELEMETRY_PROTO_FILES),$(call exec-command,sed -f /home/korniltsev/pyroscope/api/otlp/proto_patch.sed $(OPENTELEMETRY_PROTO_SRC_DIR)/$(file) > $(PROTO_INTERMEDIATE_DIR)/$(file)))
+	$(foreach file,$(OPENTELEMETRY_PROTO_FILES),$(call exec-command,sed -f api/otlp/proto_patch.sed $(OPENTELEMETRY_PROTO_SRC_DIR)/$(file) > $(PROTO_INTERMEDIATE_DIR)/$(file)))
 
 	# HACK: Workaround for istio 1.15 / envoy 1.23.1 mistakenly emitting deprecated field.
 	# reserved 1000 -> repeated ScopeLogs deprecated_scope_logs = 1000;
