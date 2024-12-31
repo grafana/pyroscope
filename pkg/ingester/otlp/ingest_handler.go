@@ -6,6 +6,10 @@ import (
 	"net/http"
 	"strings"
 
+	model2 "github.com/prometheus/common/model"
+
+	"github.com/grafana/pyroscope/pkg/model"
+
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -159,12 +163,16 @@ func getServiceNameFromAttributes(attrs []v1.KeyValue) string {
 func getDefaultLabels() []*typesv1.LabelPair {
 	return []*typesv1.LabelPair{
 		{
-			Name:  "__name__",
+			Name:  model2.MetricNameLabel,
 			Value: "process_cpu",
 		},
 		{
-			Name:  "__delta__",
+			Name:  model.LabelNameDelta,
 			Value: "false",
+		},
+		{
+			Name:  model.LabelNameOTEL,
+			Value: "true",
 		},
 		{
 			Name:  "pyroscope_spy",
