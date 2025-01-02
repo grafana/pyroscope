@@ -29,7 +29,8 @@ var otlpTestDatas = []otlpTestData{
 		name:        "unsymbolized profile from otel-ebpf-profiler",
 		profilePath: "testdata/otel-ebpf-profiler-unsymbolized.pb.bin",
 		expectedMetrics: []expectedProfile{
-			{"process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+			{
+				"process_cpu:cpu:nanoseconds:cpu:nanoseconds",
 				map[string]string{"service_name": "unknown"},
 				"testdata/otel-ebpf-profiler-unsymbolized.json",
 			},
@@ -39,9 +40,15 @@ var otlpTestDatas = []otlpTestData{
 		name:        "symbolized (with some help from pyroscope-ebpf profiler) profile from otel-ebpf-profiler",
 		profilePath: "testdata/otel-ebpf-profiler-pyrosymbolized.pb.bin",
 		expectedMetrics: []expectedProfile{
-			{"process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+			{
+				"process_cpu:cpu:nanoseconds:cpu:nanoseconds",
 				map[string]string{"service_name": "unknown"},
-				"testdata/otel-ebpf-profiler-pyrosymbolized.json",
+				"testdata/otel-ebpf-profiler-pyrosymbolized-unknown.json",
+			},
+			{
+				"process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+				map[string]string{"service_name": "otel-ebpf-docker//loving_robinson"},
+				"testdata/otel-ebpf-profiler-pyrosymbolized-docker.json",
 			},
 		},
 	},
@@ -78,7 +85,7 @@ func TestIngestOTLP(t *testing.T) {
 			for _, metric := range td.expectedMetrics {
 
 				expectedBytes, err := os.ReadFile(metric.expectedJsonPath)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 
 				query := make(map[string]string)
 				for k, v := range metric.query {
@@ -106,7 +113,6 @@ func TestIngestOTLP(t *testing.T) {
 
 				assert.JSONEq(t, string(expectedBytes), actualStr)
 
-				_ = os.WriteFile(metric.expectedJsonPath, []byte(actualStr), 0644)
 			}
 		})
 	}
