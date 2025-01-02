@@ -1,5 +1,7 @@
 package org.example.rideshare;
 
+import io.pyroscope.labels.LabelsSet;
+import io.pyroscope.labels.Pyroscope;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -14,16 +16,18 @@ public class OrderService {
     public static final Duration OP_DURATION = Duration.of(200, ChronoUnit.MILLIS);
 
     public synchronized void findNearestVehicle(int searchRadius, String vehicle) {
-        AtomicLong i = new AtomicLong();
-        Instant end = Instant.now()
-                .plus(OP_DURATION.multipliedBy(searchRadius));
-        while (Instant.now().compareTo(end) <= 0) {
-            i.incrementAndGet();
-        }
+        Pyroscope.LabelsWrapper.run(new LabelsSet("vehicle", vehicle), () -> {
+            AtomicLong i = new AtomicLong();
+            Instant end = Instant.now()
+                    .plus(OP_DURATION.multipliedBy(searchRadius));
+            while (Instant.now().compareTo(end) <= 0) {
+                i.incrementAndGet();
+            }
 
-        if (vehicle.equals("car")) {
-            checkDriverAvailability(searchRadius);
-        }
+            if (vehicle.equals("car")) {
+                checkDriverAvailability(searchRadius);
+            }
+        });
     }
 
     private void checkDriverAvailability(int searchRadius) {
