@@ -2,9 +2,10 @@ package otlp
 
 import (
 	"context"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"os"
 	"testing"
+
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 
 	"github.com/grafana/pyroscope/pkg/distributor/model"
 

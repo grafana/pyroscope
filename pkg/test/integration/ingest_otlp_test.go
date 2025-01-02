@@ -2,14 +2,16 @@ package integration
 
 import (
 	"context"
-	profilesv1 "github.com/grafana/pyroscope/api/otlp/collector/profiles/v1development"
-	commonv1 "github.com/grafana/pyroscope/api/otlp/common/v1"
-	"github.com/grafana/pyroscope/pkg/og/convert/pprof/strprofile"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	profilesv1 "github.com/grafana/pyroscope/api/otlp/collector/profiles/v1development"
+	commonv1 "github.com/grafana/pyroscope/api/otlp/common/v1"
+	"github.com/grafana/pyroscope/pkg/og/convert/pprof/strprofile"
 )
 
 type otlpTestData struct {
@@ -104,12 +106,13 @@ func TestIngestOTLP(t *testing.T) {
 					NoTime:     true,
 					NoDuration: true,
 				})
+				assert.NoError(t, err)
 
 				pprofDumpFileName := strings.ReplaceAll(metric.expectedJsonPath, ".json", ".pprof.pb.bin") // for debugging
 				pprof, err := resp.Msg.MarshalVT()
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				err = os.WriteFile(pprofDumpFileName, pprof, 0644)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 
 				assert.JSONEq(t, string(expectedBytes), actualStr)
 
