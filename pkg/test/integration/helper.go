@@ -30,12 +30,15 @@ import (
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	profilesv1 "github.com/grafana/pyroscope/api/otlp/collector/profiles/v1development"
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/cfg"
 	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
 	"github.com/grafana/pyroscope/pkg/phlare"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type PyroscopeTest struct {
@@ -393,7 +396,10 @@ func (b *RequestBuilder) SelectMergeProfile(metric string, query map[string]stri
 		cnt++
 	}
 	selector.WriteString("{")
-	add("service_name", b.AppName)
+	if query["service_name"] == "" {
+		add("service_name", b.AppName)
+	}
+
 	for k, v := range query {
 		add(k, v)
 	}
@@ -407,4 +413,14 @@ func (b *RequestBuilder) SelectMergeProfile(metric string, query map[string]stri
 	}))
 	require.NoError(b.t, err)
 	return resp
+}
+
+func (b *RequestBuilder) OtelPushClient() profilesv1.ProfilesServiceClient {
+	grpcAddr := strings.TrimPrefix(b.url, "http://")
+
+	conn, err := grpc.NewClient(grpcAddr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
+	require.NoError(b.t, err)
+
+	return profilesv1.NewProfilesServiceClient(conn)
 }

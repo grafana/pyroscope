@@ -59,17 +59,17 @@ type Sample struct {
 type Profile struct {
 	SampleTypes   []SampleType `json:"sample_types"`
 	Samples       []Sample     `json:"samples"`
-	TimeNanos     int64        `json:"time_nanos,omitempty"`
-	DurationNanos int64        `json:"duration_nanos,omitempty"`
-	Period        int64        `json:"period,omitempty"`
+	TimeNanos     string       `json:"time_nanos,omitempty"`
+	DurationNanos string       `json:"duration_nanos,omitempty"`
+	Period        string       `json:"period,omitempty"`
 }
 
 // Stringify converts a profile to a human-readable JSON representation
 func Stringify(p *profilev1.Profile, opts Options) (string, error) {
 	sp := Profile{
-		TimeNanos:     p.TimeNanos,
-		DurationNanos: p.DurationNanos,
-		Period:        p.Period,
+		TimeNanos:     fmt.Sprintf("%d", p.TimeNanos),
+		DurationNanos: fmt.Sprintf("%d", p.DurationNanos),
+		Period:        fmt.Sprintf("%d", p.Period),
 	}
 
 	// Process sample types
