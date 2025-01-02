@@ -87,3 +87,9 @@ The profile type or app must be selected for the query to be valid. Grafana does
 ## Examples
 
 Check out the [examples](https://github.com/grafana/pyroscope/tree/main/examples/tracing/tempo) directory for a complete demo application that shows tracing integration features.
+
+## Examples
+
+Check out these demo applications for span profiles:
+- [Ruby example](https://github.com/grafana/pyroscope/tree/main/examples/tracing/ruby)
+- [Other examples](https://github.com/grafana/pyroscope/tree/main/examples/tracing/tempo) in multiple languages

@@ -543,6 +543,183 @@ pool_config:
   # Timeout for ingester client healthcheck RPCs.
   # CLI flag: -distributor.health-check-timeout
   [remote_timeout: <duration> | default = 5s]
+
+ring:
+  # The key-value store used to share the hash ring across multiple instances.
+  kvstore:
+    # Backend storage to use for the ring. Supported values are: consul, etcd,
+    # inmemory, memberlist, multi.
+    # CLI flag: -distributor.ring.store
+    [store: <string> | default = "memberlist"]
+
+    # The prefix for the keys in the store. Should end with a /.
+    # CLI flag: -distributor.ring.prefix
+    [prefix: <string> | default = "collectors/"]
+
+    consul:
+      # Hostname and port of Consul.
+      # CLI flag: -distributor.ring.consul.hostname
+      [host: <string> | default = "localhost:8500"]
+
+      # ACL Token used to interact with Consul.
+      # CLI flag: -distributor.ring.consul.acl-token
+      [acl_token: <string> | default = ""]
+
+      # HTTP timeout when talking to Consul
+      # CLI flag: -distributor.ring.consul.client-timeout
+      [http_client_timeout: <duration> | default = 20s]
+
+      # Enable consistent reads to Consul.
+      # CLI flag: -distributor.ring.consul.consistent-reads
+      [consistent_reads: <boolean> | default = false]
+
+      # Rate limit when watching key or prefix in Consul, in requests per
+      # second. 0 disables the rate limit.
+      # CLI flag: -distributor.ring.consul.watch-rate-limit
+      [watch_rate_limit: <float> | default = 1]
+
+      # Burst size used in rate limit. Values less than 1 are treated as 1.
+      # CLI flag: -distributor.ring.consul.watch-burst-size
+      [watch_burst_size: <int> | default = 1]
+
+      # Maximum duration to wait before retrying a Compare And Swap (CAS)
+      # operation.
+      # CLI flag: -distributor.ring.consul.cas-retry-delay
+      [cas_retry_delay: <duration> | default = 1s]
+
+    etcd:
+      # The etcd endpoints to connect to.
+      # CLI flag: -distributor.ring.etcd.endpoints
+      [endpoints: <list of strings> | default = []]
+
+      # The dial timeout for the etcd connection.
+      # CLI flag: -distributor.ring.etcd.dial-timeout
+      [dial_timeout: <duration> | default = 10s]
+
+      # The maximum number of retries to do for failed ops.
+      # CLI flag: -distributor.ring.etcd.max-retries
+      [max_retries: <int> | default = 10]
+
+      # Enable TLS.
+      # CLI flag: -distributor.ring.etcd.tls-enabled
+      [tls_enabled: <boolean> | default = false]
+
+      # Path to the client certificate, which will be used for authenticating
+      # with the server. Also requires the key path to be configured.
+      # CLI flag: -distributor.ring.etcd.tls-cert-path
+      [tls_cert_path: <string> | default = ""]
+
+      # Path to the key for the client certificate. Also requires the client
+      # certificate to be configured.
+      # CLI flag: -distributor.ring.etcd.tls-key-path
+      [tls_key_path: <string> | default = ""]
+
+      # Path to the CA certificates to validate server certificate against. If
+      # not set, the host's root CA certificates are used.
+      # CLI flag: -distributor.ring.etcd.tls-ca-path
+      [tls_ca_path: <string> | default = ""]
+
+      # Override the expected name on the server certificate.
+      # CLI flag: -distributor.ring.etcd.tls-server-name
+      [tls_server_name: <string> | default = ""]
+
+      # Skip validating server certificate.
+      # CLI flag: -distributor.ring.etcd.tls-insecure-skip-verify
+      [tls_insecure_skip_verify: <boolean> | default = false]
+
+      # Override the default cipher suite list (separated by commas). Allowed
+      # values:
+      # 
+      # Secure Ciphers:
+      # - TLS_AES_128_GCM_SHA256
+      # - TLS_AES_256_GCM_SHA384
+      # - TLS_CHACHA20_POLY1305_SHA256
+      # - TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA
+      # - TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA
+      # - TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA
+      # - TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA
+      # - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+      # - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+      # - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+      # - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+      # - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
+      # - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
+      # 
+      # Insecure Ciphers:
+      # - TLS_RSA_WITH_RC4_128_SHA
+      # - TLS_RSA_WITH_3DES_EDE_CBC_SHA
+      # - TLS_RSA_WITH_AES_128_CBC_SHA
+      # - TLS_RSA_WITH_AES_256_CBC_SHA
+      # - TLS_RSA_WITH_AES_128_CBC_SHA256
+      # - TLS_RSA_WITH_AES_128_GCM_SHA256
+      # - TLS_RSA_WITH_AES_256_GCM_SHA384
+      # - TLS_ECDHE_ECDSA_WITH_RC4_128_SHA
+      # - TLS_ECDHE_RSA_WITH_RC4_128_SHA
+      # - TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA
+      # - TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256
+      # - TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
+      # CLI flag: -distributor.ring.etcd.tls-cipher-suites
+      [tls_cipher_suites: <string> | default = ""]
+
+      # Override the default minimum TLS version. Allowed values: VersionTLS10,
+      # VersionTLS11, VersionTLS12, VersionTLS13
+      # CLI flag: -distributor.ring.etcd.tls-min-version
+      [tls_min_version: <string> | default = ""]
+
+      # Etcd username.
+      # CLI flag: -distributor.ring.etcd.username
+      [username: <string> | default = ""]
+
+      # Etcd password.
+      # CLI flag: -distributor.ring.etcd.password
+      [password: <string> | default = ""]
+
+    multi:
+      # Primary backend storage used by multi-client.
+      # CLI flag: -distributor.ring.multi.primary
+      [primary: <string> | default = ""]
+
+      # Secondary backend storage used by multi-client.
+      # CLI flag: -distributor.ring.multi.secondary
+      [secondary: <string> | default = ""]
+
+      # Mirror writes to secondary store.
+      # CLI flag: -distributor.ring.multi.mirror-enabled
+      [mirror_enabled: <boolean> | default = false]
+
+      # Timeout for storing value to secondary store.
+      # CLI flag: -distributor.ring.multi.mirror-timeout
+      [mirror_timeout: <duration> | default = 2s]
+
+  # Period at which to heartbeat to the ring. 0 = disabled.
+  # CLI flag: -distributor.ring.heartbeat-period
+  [heartbeat_period: <duration> | default = 15s]
+
+  # The heartbeat timeout after which distributors are considered unhealthy
+  # within the ring. 0 = never (timeout disabled).
+  # CLI flag: -distributor.ring.heartbeat-timeout
+  [heartbeat_timeout: <duration> | default = 1m]
+
+  # Instance ID to register in the ring.
+  # CLI flag: -distributor.ring.instance-id
+  [instance_id: <string> | default = "<hostname>"]
+
+  # List of network interface names to look up when finding the instance IP
+  # address.
+  # CLI flag: -distributor.ring.instance-interface-names
+  [instance_interface_names: <list of strings> | default = [<private network interfaces>]]
+
+  # Port to advertise in the ring (defaults to -server.http-listen-port).
+  # CLI flag: -distributor.ring.instance-port
+  [instance_port: <int> | default = 0]
+
+  # IP address to advertise in the ring. Default is auto-detected.
+  # CLI flag: -distributor.ring.instance-addr
+  [instance_addr: <string> | default = ""]
+
+  # Enable using a IPv6 instance address. (default false)
+  # CLI flag: -distributor.ring.instance-enable-ipv6
+  [instance_enable_ipv6: <boolean> | default = false]
 ```
 
 ### ingester
@@ -846,7 +1023,16 @@ The `query_frontend` block configures the query-frontend.
 # IP address to advertise to the querier (via scheduler) (default is
 # auto-detected from network interfaces).
 # CLI flag: -query-frontend.instance-addr
-[address: <string> | default = ""]
+[instance_addr: <string> | default = ""]
+
+# Enable using a IPv6 instance address. (default false)
+# CLI flag: -query-frontend.instance-enable-ipv6
+[instance_enable_ipv6: <boolean> | default = false]
+
+# Port to advertise to query-scheduler and querier (defaults to
+# -server.http-listen-port).
+# CLI flag: -query-frontend.instance-port
+[instance_port: <int> | default = 0]
 ```
 
 ### frontend_worker
