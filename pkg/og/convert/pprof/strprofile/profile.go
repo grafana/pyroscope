@@ -11,6 +11,8 @@ import (
 // Options controls what information is included in the stringified output
 type Options struct {
 	NoPrettyPrint bool
+	NoDuration    bool
+	NoTime        bool
 }
 
 // Location represents a denormalized location
@@ -67,9 +69,13 @@ type Profile struct {
 // Stringify converts a profile to a human-readable JSON representation
 func Stringify(p *profilev1.Profile, opts Options) (string, error) {
 	sp := Profile{
-		TimeNanos:     fmt.Sprintf("%d", p.TimeNanos),
-		DurationNanos: fmt.Sprintf("%d", p.DurationNanos),
-		Period:        fmt.Sprintf("%d", p.Period),
+		Period: fmt.Sprintf("%d", p.Period),
+	}
+	if !opts.NoTime {
+		sp.TimeNanos = fmt.Sprintf("%d", p.TimeNanos)
+	}
+	if !opts.NoDuration {
+		sp.DurationNanos = fmt.Sprintf("%d", p.DurationNanos)
 	}
 
 	// Process sample types

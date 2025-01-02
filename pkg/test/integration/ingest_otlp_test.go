@@ -2,16 +2,14 @@ package integration
 
 import (
 	"context"
+	profilesv1 "github.com/grafana/pyroscope/api/otlp/collector/profiles/v1development"
 	commonv1 "github.com/grafana/pyroscope/api/otlp/common/v1"
+	"github.com/grafana/pyroscope/pkg/og/convert/pprof/strprofile"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"os"
 	"strings"
 	"testing"
-	"time"
-
-	profilesv1 "github.com/grafana/pyroscope/api/otlp/collector/profiles/v1development"
-	"github.com/grafana/pyroscope/pkg/og/convert/pprof/strprofile"
 )
 
 type otlpTestData struct {
@@ -28,12 +26,22 @@ type expectedProfile struct {
 
 var otlpTestDatas = []otlpTestData{
 	{
-		name:        "t1",
+		name:        "unsymbolized profile from otel-ebpf-profiler",
 		profilePath: "testdata/otel-ebpf-profiler-unsymbolized.pb.bin",
 		expectedMetrics: []expectedProfile{
 			{"process_cpu:cpu:nanoseconds:cpu:nanoseconds",
 				map[string]string{"service_name": "unknown"},
 				"testdata/otel-ebpf-profiler-unsymbolized.json",
+			},
+		},
+	},
+	{
+		name:        "symbolized (with some help from pyroscope-ebpf profiler) profile from otel-ebpf-profiler",
+		profilePath: "testdata/otel-ebpf-profiler-pyrosymbolized.pb.bin",
+		expectedMetrics: []expectedProfile{
+			{"process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+				map[string]string{"service_name": "unknown"},
+				"testdata/otel-ebpf-profiler-pyrosymbolized.json",
 			},
 		},
 	},
@@ -51,7 +59,7 @@ func TestIngestOTLP(t *testing.T) {
 
 			profileBytes, err := os.ReadFile(td.profilePath)
 			require.NoError(t, err)
-			var profile profilesv1.ExportProfilesServiceRequest
+			var profile = new(profilesv1.ExportProfilesServiceRequest)
 			err = profile.Unmarshal(profileBytes)
 			require.NoError(t, err)
 
@@ -60,15 +68,11 @@ func TestIngestOTLP(t *testing.T) {
 					sp.Scope.Attributes = append(sp.Scope.Attributes, commonv1.KeyValue{
 						Key: "test_run_no", Value: commonv1.AnyValue{Value: &commonv1.AnyValue_StringValue{StringValue: runNo}},
 					})
-					for _, p := range sp.Profiles {
-						p.DurationNanos = (time.Second * 10).Nanoseconds()
-						p.TimeNanos = int64(time.Unix(10, 0).Nanosecond())
-					}
 				}
 			}
 
 			client := rb.OtelPushClient()
-			_, err = client.Export(context.Background(), &profile)
+			_, err = client.Export(context.Background(), profile)
 			require.NoError(t, err)
 
 			for _, metric := range td.expectedMetrics {
@@ -89,15 +93,19 @@ func TestIngestOTLP(t *testing.T) {
 				assert.NotEmpty(t, resp.Msg.Mapping)
 				assert.NotEmpty(t, resp.Msg.Location)
 
-				actualStr, err := strprofile.Stringify(resp.Msg, strprofile.Options{})
+				actualStr, err := strprofile.Stringify(resp.Msg, strprofile.Options{
+					NoTime:     true,
+					NoDuration: true,
+				})
 
-				pprofDumpFileName := strings.ReplaceAll(metric.expectedJsonPath, ".json", ".pprof.pb.bin")
+				pprofDumpFileName := strings.ReplaceAll(metric.expectedJsonPath, ".json", ".pprof.pb.bin") // for debugging
 				pprof, err := resp.Msg.MarshalVT()
 				require.NoError(t, err)
 				err = os.WriteFile(pprofDumpFileName, pprof, 0644)
 				require.NoError(t, err)
 
 				assert.JSONEq(t, string(expectedBytes), actualStr)
+
 				_ = os.WriteFile(metric.expectedJsonPath, []byte(actualStr), 0644)
 			}
 		})
