@@ -1,0 +1,58 @@
+{
+  "sample_types": [
+    {
+      "type": "cpu",
+      "unit": "nanoseconds"
+    }
+  ],
+  "samples": [
+    {
+      "locations": [
+        {
+          "address": "0x1100",
+          "lines": [
+            {
+              "function": {
+                "name": "serviceA_func1",
+                "system_name": "serviceA_func1",
+                "filename": "service_a.go"
+              },
+              "line": 10
+            }
+          ],
+          "mapping": {
+            "start": "0x1000",
+            "limit": "0x2000",
+            "offset": "0x0",
+            "filename": "service-a.so"
+          }
+        },
+        {
+          "address": "0x1200",
+          "lines": [
+            {
+              "function": {
+                "name": "serviceA_func2",
+                "system_name": "serviceA_func2",
+                "filename": "service_a.go"
+              },
+              "line": 20
+            }
+          ],
+          "mapping": {
+            "start": "0x1000",
+            "limit": "0x2000",
+            "offset": "0x0",
+            "filename": "service-a.so"
+          }
+        }
+      ],
+      "values": [
+        1000000000
+      ]
+    }
+  ],
+  "time_nanos": 239,
+  "duration_nanos": 10000000000,
+  "period": 10000000
+}

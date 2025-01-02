@@ -1,0 +1,51 @@
+{
+  "sample_types": [
+    {
+      "type": "samples",
+      "unit": "ms"
+    }
+  ],
+  "samples": [
+    {
+      "locations": [
+        {
+          "address": "0x1e0",
+          "lines": [
+            {
+              "function": {
+                "name": "file1.so 0x1e0"
+              }
+            }
+          ],
+          "mapping": {
+            "start": "0x1000",
+            "limit": "0x1000",
+            "offset": "0x0",
+            "filename": "file1.so"
+          }
+        },
+        {
+          "address": "0x2f0",
+          "lines": [
+            {
+              "function": {
+                "name": "file1.so 0x2f0"
+              }
+            }
+          ],
+          "mapping": {
+            "start": "0x1000",
+            "limit": "0x1000",
+            "offset": "0x0",
+            "filename": "file1.so"
+          }
+        }
+      ],
+      "values": [
+        239
+      ]
+    }
+  ],
+  "time_nanos": 239,
+  "duration_nanos": 10000000000
+}
