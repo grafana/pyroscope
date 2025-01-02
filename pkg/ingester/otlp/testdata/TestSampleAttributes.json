@@ -97,6 +97,7 @@
       ]
     }
   ],
-  "time_nanos": 239,
-  "duration_nanos": 10000000000
+  "time_nanos": "239",
+  "duration_nanos": "10000000000",
+  "period": "0"
 }
