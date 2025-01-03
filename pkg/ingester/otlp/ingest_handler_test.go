@@ -218,8 +218,6 @@ func TestSymbolizedFunctionNames(t *testing.T) {
 	expectedJSON := readJSONFile(t, "testdata/TestSymbolizedFunctionNames.json")
 	assert.JSONEq(t, expectedJSON, jsonStr)
 
-	os.WriteFile("testdata/TestSymbolizedFunctionNames.json", []byte(jsonStr), 0666)
-
 }
 
 func TestSampleAttributes(t *testing.T) {
@@ -486,8 +484,6 @@ func TestDifferentServiceNames(t *testing.T) {
 		assert.NoError(t, err)
 		assert.JSONEq(t, expectedJson, jsonStr)
 		assert.NotContains(t, jsonStr, "service.name")
-
-		os.WriteFile(expectedJsonPath, []byte(jsonStr), 0666)
 
 	}
 }
