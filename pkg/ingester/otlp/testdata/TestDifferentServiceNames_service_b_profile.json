@@ -11,45 +11,19 @@
         {
           "address": "0x2100",
           "lines": [
-            {
-              "function": {
-                "name": "serviceB_func1",
-                "system_name": "serviceB_func1",
-                "filename": "service_b.go"
-              },
-              "line": 30
-            }
+            "serviceB_func1[serviceB_func1]@service_b.go:30"
           ],
-          "mapping": {
-            "start": "0x2000",
-            "limit": "0x3000",
-            "offset": "0x0",
-            "filename": "service-b.so"
-          }
+          "mapping": "0x2000-0x3000@0x0 service-b.so()"
         },
         {
           "address": "0x2200",
           "lines": [
-            {
-              "function": {
-                "name": "serviceB_func2",
-                "system_name": "serviceB_func2",
-                "filename": "service_b.go"
-              },
-              "line": 40
-            }
+            "serviceB_func2[serviceB_func2]@service_b.go:40"
           ],
-          "mapping": {
-            "start": "0x2000",
-            "limit": "0x3000",
-            "offset": "0x0",
-            "filename": "service-b.so"
-          }
+          "mapping": "0x2000-0x3000@0x0 service-b.so()"
         }
       ],
-      "values": [
-        2000000000
-      ]
+      "values": "2000000000"
     }
   ],
   "time_nanos": "239",

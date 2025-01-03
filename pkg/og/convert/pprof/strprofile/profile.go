@@ -3,20 +3,23 @@ package strprofile
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strconv"
+	"strings"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 )
 
-// Options controls what information is included in the stringified output
 type Options struct {
 	NoPrettyPrint bool
 	NoDuration    bool
 	NoTime        bool
+	NoCompact     bool
+	IncludeIDs    bool
 }
 
-// Location represents a denormalized location
 type Location struct {
+	ID      uint64   `json:"id,omitempty"`
 	Address string   `json:"address,omitempty"`
 	Lines   []Line   `json:"lines,omitempty"`
 	Mapping *Mapping `json:"mapping,omitempty"`
@@ -28,6 +31,7 @@ type Line struct {
 }
 
 type Function struct {
+	ID         uint64 `json:"id,omitempty"`
 	Name       string `json:"name"`
 	SystemName string `json:"system_name,omitempty"`
 	Filename   string `json:"filename,omitempty"`
@@ -35,6 +39,7 @@ type Function struct {
 }
 
 type Mapping struct {
+	ID       uint64 `json:"id,omitempty"`
 	Start    string `json:"start"`
 	Limit    string `json:"limit"`
 	Offset   string `json:"offset,omitempty"`
@@ -66,8 +71,51 @@ type Profile struct {
 	Period        string       `json:"period,omitempty"`
 }
 
-// Stringify converts a profile to a human-readable JSON representation
+type CompactLocation struct {
+	ID      uint64   `json:"id,omitempty"`
+	Address string   `json:"address,omitempty"`
+	Lines   []string `json:"lines,omitempty"`
+	Mapping string   `json:"mapping,omitempty"`
+}
+
+type CompactSample struct {
+	Locations []CompactLocation `json:"locations,omitempty"`
+	Values    string            `json:"values"`
+	Labels    string            `json:"labels,omitempty"`
+}
+
+type CompactProfile struct {
+	SampleTypes   []SampleType    `json:"sample_types"`
+	Samples       []CompactSample `json:"samples"`
+	TimeNanos     string          `json:"time_nanos,omitempty"`
+	DurationNanos string          `json:"duration_nanos,omitempty"`
+	Period        string          `json:"period,omitempty"`
+}
+
 func Stringify(p *profilev1.Profile, opts Options) (string, error) {
+	var err error
+	var sp interface{}
+
+	if !opts.NoCompact {
+		sp = ToCompactProfile(p, opts)
+	} else {
+		sp = ToDetailedProfile(p, opts)
+	}
+
+	var jsonData []byte
+	if !opts.NoPrettyPrint {
+		jsonData, err = json.MarshalIndent(sp, "", "  ")
+	} else {
+		jsonData, err = json.Marshal(sp)
+	}
+	if err != nil {
+		return "", err
+	}
+
+	return string(jsonData), nil
+}
+
+func ToDetailedProfile(p *profilev1.Profile, opts Options) Profile {
 	sp := Profile{
 		Period: fmt.Sprintf("%d", p.Period),
 	}
@@ -78,7 +126,6 @@ func Stringify(p *profilev1.Profile, opts Options) (string, error) {
 		sp.DurationNanos = fmt.Sprintf("%d", p.DurationNanos)
 	}
 
-	// Process sample types
 	for _, st := range p.SampleType {
 		sp.SampleTypes = append(sp.SampleTypes, SampleType{
 			Type: p.StringTable[st.Type],
@@ -97,13 +144,11 @@ func Stringify(p *profilev1.Profile, opts Options) (string, error) {
 		mappingMap[m.Id] = m
 	}
 
-	// Process samples
 	for _, sample := range p.Sample {
 		ss := Sample{
 			Values: sample.Value,
 		}
 
-		// Process locations
 		for _, locID := range sample.LocationId {
 			loc := findLocation(p.Location, locID)
 			if loc == nil {
@@ -113,31 +158,40 @@ func Stringify(p *profilev1.Profile, opts Options) (string, error) {
 			sLoc := Location{
 				Address: fmt.Sprintf("0x%x", loc.Address),
 			}
+			if opts.IncludeIDs {
+				sLoc.ID = loc.Id
+			}
 
-			// Process mapping
 			if loc.MappingId != 0 {
 				if mapping := mappingMap[loc.MappingId]; mapping != nil {
-					sLoc.Mapping = &Mapping{
+					m := &Mapping{
 						Start:    fmt.Sprintf("0x%x", mapping.MemoryStart),
 						Limit:    fmt.Sprintf("0x%x", mapping.MemoryLimit),
 						Offset:   fmt.Sprintf("0x%x", mapping.FileOffset),
 						Filename: p.StringTable[mapping.Filename],
 						BuildID:  p.StringTable[mapping.BuildId],
 					}
+					if opts.IncludeIDs {
+						m.ID = mapping.Id
+					}
+					sLoc.Mapping = m
 				}
 			}
 
-			// Process lines
 			for _, line := range loc.Line {
 				if fn := functionMap[line.FunctionId]; fn != nil {
+					f := &Function{
+						Name:       p.StringTable[fn.Name],
+						SystemName: p.StringTable[fn.SystemName],
+						Filename:   p.StringTable[fn.Filename],
+						StartLine:  fn.StartLine,
+					}
+					if opts.IncludeIDs {
+						f.ID = fn.Id
+					}
 					sLine := Line{
-						Function: &Function{
-							Name:       p.StringTable[fn.Name],
-							SystemName: p.StringTable[fn.SystemName],
-							Filename:   p.StringTable[fn.Filename],
-							StartLine:  fn.StartLine,
-						},
-						Line: line.Line,
+						Function: f,
+						Line:     line.Line,
 					}
 					sLoc.Lines = append(sLoc.Lines, sLine)
 				}
@@ -146,7 +200,6 @@ func Stringify(p *profilev1.Profile, opts Options) (string, error) {
 			ss.Locations = append(ss.Locations, sLoc)
 		}
 
-		// Process labels
 		if len(sample.Label) > 0 {
 			ss.Labels = make([]Label, 0, len(sample.Label))
 			for _, label := range sample.Label {
@@ -166,22 +219,116 @@ func Stringify(p *profilev1.Profile, opts Options) (string, error) {
 
 		sp.Samples = append(sp.Samples, ss)
 	}
-
-	var jsonData []byte
-	var err error
-	if !opts.NoPrettyPrint {
-		jsonData, err = json.MarshalIndent(sp, "", "  ")
-	} else {
-		jsonData, err = json.Marshal(sp)
-	}
-	if err != nil {
-		return "", err
-	}
-
-	return string(jsonData), nil
+	return sp
 }
 
-// Helper function to find a location by ID
+func ToCompactProfile(p *profilev1.Profile, opts Options) CompactProfile {
+	sp := CompactProfile{
+		Period: fmt.Sprintf("%d", p.Period),
+	}
+	if !opts.NoTime {
+		sp.TimeNanos = fmt.Sprintf("%d", p.TimeNanos)
+	}
+	if !opts.NoDuration {
+		sp.DurationNanos = fmt.Sprintf("%d", p.DurationNanos)
+	}
+
+	for _, st := range p.SampleType {
+		sp.SampleTypes = append(sp.SampleTypes, SampleType{
+			Type: p.StringTable[st.Type],
+			Unit: p.StringTable[st.Unit],
+		})
+	}
+
+	functionMap := make(map[uint64]*profilev1.Function)
+	for _, f := range p.Function {
+		functionMap[f.Id] = f
+	}
+
+	mappingMap := make(map[uint64]*profilev1.Mapping)
+	for _, m := range p.Mapping {
+		mappingMap[m.Id] = m
+	}
+
+	for _, sample := range p.Sample {
+		values := make([]string, len(sample.Value))
+		for i, v := range sample.Value {
+			values[i] = strconv.FormatInt(v, 10)
+		}
+
+		ss := CompactSample{
+			Values: strings.Join(values, ","),
+		}
+
+		for _, locID := range sample.LocationId {
+			loc := findLocation(p.Location, locID)
+			if loc == nil {
+				continue
+			}
+
+			sLoc := CompactLocation{
+				Address: fmt.Sprintf("0x%x", loc.Address),
+			}
+			if opts.IncludeIDs {
+				sLoc.ID = loc.Id
+			}
+
+			if loc.MappingId != 0 {
+				if mapping := mappingMap[loc.MappingId]; mapping != nil {
+					idStr := ""
+					if opts.IncludeIDs {
+						idStr = fmt.Sprintf("[id=%d]", mapping.Id)
+					}
+					sLoc.Mapping = fmt.Sprintf("0x%x-0x%x@0x%x %s(%s)%s",
+						mapping.MemoryStart,
+						mapping.MemoryLimit,
+						mapping.FileOffset,
+						p.StringTable[mapping.Filename],
+						p.StringTable[mapping.BuildId],
+						idStr)
+				}
+			}
+
+			for _, line := range loc.Line {
+				if fn := functionMap[line.FunctionId]; fn != nil {
+					idStr := ""
+					if opts.IncludeIDs {
+						idStr = fmt.Sprintf("[id=%d]", fn.Id)
+					}
+					lineStr := fmt.Sprintf("%s[%s]@%s:%d%s",
+						p.StringTable[fn.Name],
+						p.StringTable[fn.SystemName],
+						p.StringTable[fn.Filename],
+						line.Line,
+						idStr)
+					sLoc.Lines = append(sLoc.Lines, lineStr)
+				}
+			}
+
+			ss.Locations = append(ss.Locations, sLoc)
+		}
+
+		if len(sample.Label) > 0 {
+			labels := make([]string, 0, len(sample.Label))
+			for _, label := range sample.Label {
+				key := p.StringTable[label.Key]
+				var value string
+				if label.Str != 0 {
+					value = p.StringTable[label.Str]
+				} else {
+					value = strconv.FormatInt(label.Num, 10)
+				}
+				labels = append(labels, fmt.Sprintf("%s=%s", key, value))
+			}
+			sort.Strings(labels)
+			ss.Labels = strings.Join(labels, ",")
+		}
+
+		sp.Samples = append(sp.Samples, ss)
+	}
+	return sp
+}
+
 func findLocation(locations []*profilev1.Location, id uint64) *profilev1.Location {
 	for _, loc := range locations {
 		if loc.Id == id {

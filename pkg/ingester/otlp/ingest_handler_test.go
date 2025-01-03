@@ -209,14 +209,17 @@ func TestSymbolizedFunctionNames(t *testing.T) {
 	h := NewOTLPIngestHandler(svc, logger, false)
 	_, err := h.Export(context.Background(), req)
 	assert.NoError(t, err)
-	require.Equal(t, 1, len(profiles))
+	assert.Equal(t, 1, len(profiles))
 
 	gp := profiles[0].Series[0].Samples[0].Profile.Profile
 
 	jsonStr, err := strprofile.Stringify(gp, strprofile.Options{})
-	require.NoError(t, err)
+	assert.NoError(t, err)
 	expectedJSON := readJSONFile(t, "testdata/TestSymbolizedFunctionNames.json")
-	require.JSONEq(t, expectedJSON, jsonStr)
+	assert.JSONEq(t, expectedJSON, jsonStr)
+
+	os.WriteFile("testdata/TestSymbolizedFunctionNames.json", []byte(jsonStr), 0666)
+
 }
 
 func TestSampleAttributes(t *testing.T) {
@@ -306,9 +309,10 @@ func TestSampleAttributes(t *testing.T) {
 	gp := profiles[0].Series[0].Samples[0].Profile.Profile
 
 	jsonStr, err := strprofile.Stringify(gp, strprofile.Options{})
-	require.NoError(t, err)
+	assert.NoError(t, err)
 	expectedJSON := readJSONFile(t, "testdata/TestSampleAttributes.json")
-	require.JSONEq(t, expectedJSON, jsonStr)
+	assert.Equal(t, expectedJSON, jsonStr)
+
 }
 
 func TestDifferentServiceNames(t *testing.T) {
@@ -455,16 +459,17 @@ func TestDifferentServiceNames(t *testing.T) {
 	require.Equal(t, 3, len(profiles))
 
 	expectedProfiles := map[string]string{
-		"{__name__=\"process_cpu\", __delta__=\"false\", __otel__=\"true\", pyroscope_spy=\"unknown\", service_name=\"service-a\"}": readJSONFile(t, "testdata/TestDifferentServiceNames_service_a_profile.json"),
-		"{__name__=\"process_cpu\", __delta__=\"false\", __otel__=\"true\", pyroscope_spy=\"unknown\", service_name=\"service-b\"}": readJSONFile(t, "testdata/TestDifferentServiceNames_service_b_profile.json"),
-		"{__name__=\"process_cpu\", __delta__=\"false\", __otel__=\"true\", pyroscope_spy=\"unknown\", service_name=\"unknown\"}":   readJSONFile(t, "testdata/TestDifferentServiceNames_unknown_profile.json"),
+		"{__name__=\"process_cpu\", __delta__=\"false\", __otel__=\"true\", pyroscope_spy=\"unknown\", service_name=\"service-a\"}": "testdata/TestDifferentServiceNames_service_a_profile.json",
+		"{__name__=\"process_cpu\", __delta__=\"false\", __otel__=\"true\", pyroscope_spy=\"unknown\", service_name=\"service-b\"}": "testdata/TestDifferentServiceNames_service_b_profile.json",
+		"{__name__=\"process_cpu\", __delta__=\"false\", __otel__=\"true\", pyroscope_spy=\"unknown\", service_name=\"unknown\"}":   "testdata/TestDifferentServiceNames_unknown_profile.json",
 	}
 
 	for _, p := range profiles {
 		require.Equal(t, 1, len(p.Series))
 		series := phlaremodel.Labels(p.Series[0].Labels).ToPrometheusLabels().String()
 		assert.Contains(t, expectedProfiles, series)
-		expectedJson := expectedProfiles[series]
+		expectedJsonPath := expectedProfiles[series]
+		expectedJson := readJSONFile(t, expectedJsonPath)
 
 		gp := p.Series[0].Samples[0].Profile.Profile
 
@@ -478,9 +483,12 @@ func TestDifferentServiceNames(t *testing.T) {
 		assert.Equal(t, int64(10000000), gp.Period)
 
 		jsonStr, err := strprofile.Stringify(gp, strprofile.Options{})
-		require.NoError(t, err)
-		require.JSONEq(t, expectedJson, jsonStr)
+		assert.NoError(t, err)
+		assert.JSONEq(t, expectedJson, jsonStr)
 		assert.NotContains(t, jsonStr, "service.name")
+
+		os.WriteFile(expectedJsonPath, []byte(jsonStr), 0666)
+
 	}
 }
 

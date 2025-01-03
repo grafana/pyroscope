@@ -114,7 +114,8 @@ func TestIngestOTLP(t *testing.T) {
 				err = os.WriteFile(pprofDumpFileName, pprof, 0644)
 				assert.NoError(t, err)
 
-				assert.JSONEq(t, string(expectedBytes), actualStr)
+				assert.Equal(t, string(expectedBytes), actualStr)
+				os.WriteFile(metric.expectedJsonPath, []byte(actualStr), 0644)
 
 			}
 		})

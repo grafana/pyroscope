@@ -11,90 +11,40 @@
         {
           "address": "0x1e",
           "lines": [
-            {
-              "function": {
-                "name": "firefox.so 0x1e"
-              }
-            }
+            "firefox.so 0x1e[]@:0"
           ],
-          "mapping": {
-            "start": "0x1000",
-            "limit": "0x1000",
-            "offset": "0x0",
-            "filename": "firefox.so"
-          }
+          "mapping": "0x1000-0x1000@0x0 firefox.so()"
         },
         {
           "address": "0x2e",
           "lines": [
-            {
-              "function": {
-                "name": "firefox.so 0x2e"
-              }
-            }
+            "firefox.so 0x2e[]@:0"
           ],
-          "mapping": {
-            "start": "0x1000",
-            "limit": "0x1000",
-            "offset": "0x0",
-            "filename": "firefox.so"
-          }
+          "mapping": "0x1000-0x1000@0x0 firefox.so()"
         }
       ],
-      "values": [
-        239
-      ],
-      "labels": [
-        {
-          "key": "process",
-          "value": "firefox"
-        }
-      ]
+      "values": "239",
+      "labels": "process=firefox"
     },
     {
       "locations": [
         {
           "address": "0x3e",
           "lines": [
-            {
-              "function": {
-                "name": "chrome.so 0x3e"
-              }
-            }
+            "chrome.so 0x3e[]@:0"
           ],
-          "mapping": {
-            "start": "0x1000",
-            "limit": "0x1000",
-            "offset": "0x0",
-            "filename": "chrome.so"
-          }
+          "mapping": "0x1000-0x1000@0x0 chrome.so()"
         },
         {
           "address": "0x4e",
           "lines": [
-            {
-              "function": {
-                "name": "chrome.so 0x4e"
-              }
-            }
+            "chrome.so 0x4e[]@:0"
           ],
-          "mapping": {
-            "start": "0x1000",
-            "limit": "0x1000",
-            "offset": "0x0",
-            "filename": "chrome.so"
-          }
+          "mapping": "0x1000-0x1000@0x0 chrome.so()"
         }
       ],
-      "values": [
-        61423
-      ],
-      "labels": [
-        {
-          "key": "process",
-          "value": "chrome"
-        }
-      ]
+      "values": "61423",
+      "labels": "process=chrome"
     }
   ],
   "time_nanos": "239",

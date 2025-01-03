@@ -11,45 +11,19 @@
         {
           "address": "0xef0",
           "lines": [
-            {
-              "function": {
-                "name": "serviceC_func3",
-                "system_name": "serviceC_func3",
-                "filename": "service_c.go"
-              },
-              "line": 50
-            }
+            "serviceC_func3[serviceC_func3]@service_c.go:50"
           ],
-          "mapping": {
-            "start": "0x4000",
-            "limit": "0x5000",
-            "offset": "0x0",
-            "filename": "service-c.so"
-          }
+          "mapping": "0x4000-0x5000@0x0 service-c.so()"
         },
         {
           "address": "0xef0",
           "lines": [
-            {
-              "function": {
-                "name": "serviceC_func3",
-                "system_name": "serviceC_func3",
-                "filename": "service_c.go"
-              },
-              "line": 50
-            }
+            "serviceC_func3[serviceC_func3]@service_c.go:50"
           ],
-          "mapping": {
-            "start": "0x4000",
-            "limit": "0x5000",
-            "offset": "0x0",
-            "filename": "service-c.so"
-          }
+          "mapping": "0x4000-0x5000@0x0 service-c.so()"
         }
       ],
-      "values": [
-        7000000000
-      ]
+      "values": "7000000000"
     }
   ],
   "time_nanos": "239",

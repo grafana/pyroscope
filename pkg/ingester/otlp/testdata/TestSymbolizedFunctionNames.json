@@ -11,42 +11,22 @@
         {
           "address": "0x1e0",
           "lines": [
-            {
-              "function": {
-                "name": "file1.so 0x1e0"
-              }
-            }
+            "file1.so 0x1e0[]@:0"
           ],
-          "mapping": {
-            "start": "0x1000",
-            "limit": "0x1000",
-            "offset": "0x0",
-            "filename": "file1.so"
-          }
+          "mapping": "0x1000-0x1000@0x0 file1.so()"
         },
         {
           "address": "0x2f0",
           "lines": [
-            {
-              "function": {
-                "name": "file1.so 0x2f0"
-              }
-            }
+            "file1.so 0x2f0[]@:0"
           ],
-          "mapping": {
-            "start": "0x1000",
-            "limit": "0x1000",
-            "offset": "0x0",
-            "filename": "file1.so"
-          }
+          "mapping": "0x1000-0x1000@0x0 file1.so()"
         }
       ],
-      "values": [
-        239
-      ]
+      "values": "239"
     }
   ],
   "time_nanos": "239",
-  "period": "0",
-  "duration_nanos": "10000000000"
+  "duration_nanos": "10000000000",
+  "period": "0"
 }
