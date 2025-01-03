@@ -64,7 +64,7 @@ Check your specific language SDK documentation for the exact configuration optio
 
 The examples in this section provide samples you can use as a starting point for your own configurations. 
 
-Explore the [example](https://github.com/grafana/pyroscope/tree/main/examples/language-sdk-instrumentation/golang-push/rideshare-alloy) in our GitHub repository to learn how to configure Grafana Alloy to receive profiles from a Golang application instrumented with Pyroscope.
+Explore the [example](https://github.com/grafana/pyroscope/tree/main/examples/language-sdk-instrumentation/golang-push/rideshare-alloy) in the Pyroscope GitHub repository to learn how to configure Grafana Alloy to receive profiles from a Golang application instrumented with Pyroscope.
 
 ### Basic receiving setup
 

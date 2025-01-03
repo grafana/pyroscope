@@ -6,6 +6,10 @@ import (
 	"net/http"
 	"strings"
 
+	distirbutormodel "github.com/grafana/pyroscope/pkg/distributor/model"
+	pyromodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/pprof"
+
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -15,7 +19,7 @@ import (
 
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	pprofileotlp "github.com/grafana/pyroscope/api/otlp/collector/profiles/v1experimental"
+	pprofileotlp "github.com/grafana/pyroscope/api/otlp/collector/profiles/v1development"
 	v1 "github.com/grafana/pyroscope/api/otlp/common/v1"
 	"github.com/grafana/pyroscope/pkg/tenant"
 )
@@ -34,7 +38,7 @@ type Handler interface {
 }
 
 type PushService interface {
-	Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error)
+	PushParsed(ctx context.Context, req *distirbutormodel.PushRequest) (*connect.Response[pushv1.PushResponse], error)
 }
 
 func NewOTLPIngestHandler(svc PushService, l log.Logger, me bool) Handler {
@@ -93,14 +97,13 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 			for k := 0; k < len(sp.Profiles); k++ {
 				p := sp.Profiles[k]
 
-				pprofProfiles := ConvertOtelToGoogle(p.Profile)
+				pprofProfiles := ConvertOtelToGoogle(p)
 
 				for samplesServiceName, pprofProfile := range pprofProfiles {
 					labels := getDefaultLabels()
 					processedKeys := make(map[string]bool)
 					labels = appendAttributesUnique(labels, rp.Resource.GetAttributes(), processedKeys)
 					labels = appendAttributesUnique(labels, sp.Scope.GetAttributes(), processedKeys)
-					labels = appendAttributesUnique(labels, p.GetAttributes(), processedKeys)
 					svc := samplesServiceName
 					if svc == "" {
 						svc = serviceName
@@ -110,24 +113,24 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 						Value: svc,
 					})
 
-					pprofBytes, err := pprofProfile.MarshalVT()
-					if err != nil {
-						return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to marshal pprof profile: %w", err)
-					}
-
-					req := &pushv1.PushRequest{
-						Series: []*pushv1.RawProfileSeries{
+					req := &distirbutormodel.PushRequest{
+						RawProfileSize: p.Size(),
+						RawProfileType: distirbutormodel.RawProfileTypeOTEL,
+						Series: []*distirbutormodel.ProfileSeries{
 							{
 								Labels: labels,
-								Samples: []*pushv1.RawSample{{
-									RawProfile: pprofBytes,
-									ID:         uuid.New().String(),
-								}},
+								Samples: []*distirbutormodel.ProfileSample{
+									{
+										RawProfile: nil,
+										Profile:    pprof.RawFromProto(pprofProfile),
+										ID:         uuid.New().String(),
+									},
+								},
 							},
 						},
 					}
 
-					_, err = h.svc.Push(ctx, connect.NewRequest(req))
+					_, err := h.svc.PushParsed(ctx, req)
 					if err != nil {
 						h.log.Log("msg", "failed to push profile", "err", err)
 						return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to make a GRPC request: %w", err)
@@ -159,12 +162,16 @@ func getServiceNameFromAttributes(attrs []v1.KeyValue) string {
 func getDefaultLabels() []*typesv1.LabelPair {
 	return []*typesv1.LabelPair{
 		{
-			Name:  "__name__",
+			Name:  pyromodel.LabelNameProfileName,
 			Value: "process_cpu",
 		},
 		{
-			Name:  "__delta__",
+			Name:  pyromodel.LabelNameDelta,
 			Value: "false",
+		},
+		{
+			Name:  pyromodel.LabelNameOTEL,
+			Value: "true",
 		},
 		{
 			Name:  "pyroscope_spy",

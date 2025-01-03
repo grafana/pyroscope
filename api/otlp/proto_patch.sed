@@ -4,7 +4,7 @@ s+package opentelemetry.proto.\(.*\).v1;+package opentelemetry.proto.\1.v1;\
 \
 import "gogoproto/gogo.proto";+g
 
-s+package opentelemetry.proto.\(.*\).v1experimental;+package opentelemetry.proto.\1.v1experimental;\
+s+package opentelemetry.proto.\(.*\).v1development;+package opentelemetry.proto.\1.v1development;\
 \
 import "gogoproto/gogo.proto";+g
 
