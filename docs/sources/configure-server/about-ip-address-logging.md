@@ -10,7 +10,7 @@ weight: 600
 
 # IP address logging of a reverse proxy
 
-If a reverse proxy is used in front of Grafana Pyroscope, it might be difficult to troubleshoot errors.
+Note that using a reverse proxy in front of Grafana Pyroscope can make it difficult to troubleshoot errors.
 You can use the following settings to log the IP address passed along by the reverse proxy in headers such as `X-Forwarded-For`.
 
 - `-server.log-source-ips-enabled`

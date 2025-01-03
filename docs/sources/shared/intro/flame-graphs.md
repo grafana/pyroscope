@@ -25,11 +25,11 @@ These graphs provide a clear, intuitive understanding of resource allocation and
 
 <!-- vale Grafana.Spelling = YES -->
 
-## How is a flame graph created?
+## How Pyroscope creates flame graphs 
 
 This diagram shows how code is turned into a flame graph.
 In this case, Pyroscope samples the stacktrace of your application to understand how many CPU cycles are spent in each function.
-It would then aggregate this data and turn it into a flame graph.
+It then aggregates this data and turns it into a flame graph.
 
 ![code to flame graph diagram](https://grafana.com/static/img/pyroscope/code-to-flamegraph-animation.gif)
 

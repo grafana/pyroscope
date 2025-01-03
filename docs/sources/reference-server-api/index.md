@@ -16,7 +16,7 @@ Grafana Pyroscope server exposes an HTTP API for querying profiling data and ing
 Pyroscope doesn't include an authentication layer. Operators should use an authenticating reverse proxy for security.
 
 In multi-tenant mode, Pyroscope requires the X-Scope-OrgID HTTP header set to a string identifying the tenant.
-This responsibility should be handled by the authenticating reverse proxy. For more information, refer to the [multi-tenancy documentation](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/about-tenant-ids/).
+The authenticating reverse proxy handles this responsibility. For more information, refer to the [multi-tenancy documentation](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/about-tenant-ids/).
 
 ## Ingestion
 

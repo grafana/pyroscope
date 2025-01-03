@@ -49,7 +49,7 @@ Adopting continuous profiling with tools like Grafana Pyroscope and Explore Prof
 
 ![Infographic illustrating key business benefits](https://grafana.com/static/img/pyroscope/cost-cutting-diagram.png)
 
-### Reduce operational costs
+### Reduced operational costs
 
 By providing in-depth insights into application performance, profiling empowers teams to identify and eliminate inefficiencies, leading to significant savings in areas like observability, incident management, messaging/queuing, deployment tools, and infrastructure.
 

@@ -7,6 +7,6 @@ weight: 400
 
 # Configure storage
 
-Grafana Pyroscope provides storage configuration options for local and object storage discussed on the pages below.
+Grafana Pyroscope provides storage configuration options for local and object storage.
 
 {{< section withDescriptions="true">}}

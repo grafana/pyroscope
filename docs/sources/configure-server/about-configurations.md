@@ -33,7 +33,7 @@ There is no harm in passing a configuration that is specific to one component (s
 In such a case, the configuration is simply ignored.
 
 If necessary, you can use advanced CLI flags to override specific values on a particular Pyroscope component or replica.
-This can be helpful if you want to change a parameter that's specific to a certain component, without having to do a full restart of all other components.
+This is helpful if you want to change a parameter that's specific to a certain component, without having to do a full restart of all other components.
 
 The most common use case for CLI flags is to use the `-target` flag to run Pyroscope as microservices.
 By setting the `-target` CLI flag, all Pyroscope components share the same configuration file, but you can make them behave as a given component by specifying a `-target` command-line value, such as `-target=ingester` or `-target=querier`.
