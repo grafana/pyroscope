@@ -7,7 +7,7 @@ weight: 101
 
 # Span profiles with Traces to profiles for Java
 
-Span Profiles represents a major shift in profiling methodology, enabling deeper analysis of both tracing and profiling data.
+Span Profiles represent a major shift in profiling methodology, enabling deeper analysis of both tracing and profiling data.
 Traditional continuous profiling provides an application-wide view over fixed intervals.
 In contrast, Span Profiles delivers focused, dynamic analysis on specific execution scopes within applications, such as individual requests or specific trace spans.
 
@@ -40,7 +40,8 @@ Your applications must be instrumented for profiling and tracing before you can 
 
 ## Configure the otel-profiling-java package
 
-To start collecting Span Profiles for your Java application, you need to include [otel-profiling-java](https://github.com/pyroscope-io/otel-profiling-java) as an extension to your application.
+To start collecting Span Profiles for your Java application, you need to include [otel-profiling-java](https://github.com/pyroscope-io/otel-profiling-java) as an extension
+for the [OTel Java agent](https://opentelemetry.io/docs/zero-code/java/agent/).
 
 Assuming you have this sample application Docker image:
 
@@ -61,7 +62,7 @@ EXPOSE 5000
 
 ## Add required libararies
 ADD https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v1.17.0/opentelemetry-javaagent.jar opentelemetry-javaagent.jar
-ADD https://repo1.maven.org/maven2/io/pyroscope/otel/0.10.1.11/otel-0.10.1.11.jar pyroscope-otel.jar
+ADD https://repo1.maven.org/maven2/io/pyroscope/otel/0.11.0/otel-0.11.0.jar pyroscope-otel.jar
 
 ENV PYROSCOPE_APPLICATION_NAME=my-app
 ENV PYROSCOPE_FORMAT=jfr
@@ -83,14 +84,14 @@ ENV PYROSCOPE_SERVER_ADDRESS=http://localhost:4040
 # ENV PYROSCOPE_BASIC_AUTH_USER=123     ## Grafana Cloud Username
 # ENV PYROSCOPE_BASIC_AUTH_PASSWORD=glc_secret ## Grafana Cloud Password / API Token
 
-## Add the pyroscope and the opentelemetry java-agents
+## Add the opentelemetry java agent
 CMD ["java", "-Dserver.port=5000", "-javaagent:./opentelemetry-javaagent.jar", "-jar", "./my-app.jar" ]
 ```
 
 ### Available configuration options
 
 | Flag                             | Description                                                                                                                                                                                                                                                                                                             | Default |
-| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+|----------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|
 | `otel.pyroscope.start.profiling` | Boolean flag to start PyroscopeAgent. Set to false if you want to start the PyroscopeAgent manually.                                                                                                                                                                                                                    | `true`  |
 | `otel.pyroscope.root.span.only`  | Boolean flag. When enabled, the tracer will annotate only the first span created locally (the root span), but the profile will include samples of all the nested spans. This may be helpful in case if the trace consists of multiple spans shorter than 10ms and profiler can't collect and annotate samples properly. | `true`  |
 | `otel.pyroscope.add.span.name`   | Boolean flag. Controls whether the span name added to profile labels.                                                                                                                                                                                                                                                   | `true`  |
