@@ -1,0 +1,32 @@
+{
+  "sample_types": [
+    {
+      "type": "cpu",
+      "unit": "nanoseconds"
+    }
+  ],
+  "samples": [
+    {
+      "locations": [
+        {
+          "address": "0x2100",
+          "lines": [
+            "serviceB_func1[serviceB_func1]@service_b.go:30"
+          ],
+          "mapping": "0x2000-0x3000@0x0 service-b.so()"
+        },
+        {
+          "address": "0x2200",
+          "lines": [
+            "serviceB_func2[serviceB_func2]@service_b.go:40"
+          ],
+          "mapping": "0x2000-0x3000@0x0 service-b.so()"
+        }
+      ],
+      "values": "2000000000"
+    }
+  ],
+  "time_nanos": "239",
+  "duration_nanos": "10000000000",
+  "period": "10000000"
+}
