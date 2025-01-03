@@ -410,13 +410,13 @@ helm/check: $(BIN)/kubeconform $(BIN)/helm
 	$(BIN)/helm template -n default --kube-version "1.23.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ \
 		| tee ./operations/pyroscope/helm/pyroscope/rendered/single-binary.yaml \
 		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.23.0
-	$(BIN)/helm template -n default --kube-version "1.23.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ --values operations/pyroscope/helm/pyroscope/values-micro-services.yaml \
+	$(BIN)/helm template -n default --kube-version "1.23.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ --values operations/pyroscope/helm/pyroscope/values-micro-services-small.yaml\
 		| tee ./operations/pyroscope/helm/pyroscope/rendered/micro-services.yaml \
 		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.23.0
 	$(BIN)/helm template -n default --kube-version "1.23.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ --values operations/pyroscope/helm/pyroscope/values-micro-services-hpa.yaml \
 		| tee ./operations/pyroscope/helm/pyroscope/rendered/micro-services-hpa.yaml \
 		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.23.0
-	cat operations/pyroscope/helm/pyroscope/values-micro-services.yaml \
+	cat operations/pyroscope/helm/pyroscope/values-micro-services-small.yaml\
 		| go run ./tools/yaml-to-json \
 		> ./operations/pyroscope/jsonnet/values-micro-services.json
 		cat operations/pyroscope/helm/pyroscope/values-micro-services-hpa.yaml \
@@ -436,7 +436,7 @@ deploy: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
 deploy-micro-services: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
 	# Ensure to delete existing service, that has been created manually by the deploy target
 	kubectl delete svc --field-selector metadata.name=pyroscope-micro-services-query-frontend -l app.kubernetes.io/managed-by!=Helm || true
-	$(call deploy,pyroscope-micro-services,--values=operations/pyroscope/helm/pyroscope/values-micro-services.yaml --set pyroscope.components.querier.resources=null --set pyroscope.components.distributor.resources=null --set pyroscope.components.ingester.resources=null --set pyroscope.components.store-gateway.resources=null --set pyroscope.components.compactor.resources=null)
+	$(call deploy,pyroscope-micro-services,--values=operations/pyroscope/helm/pyroscope/values-micro-services-small.yaml--set pyroscope.components.querier.resources=null --set pyroscope.components.distributor.resources=null --set pyroscope.components.ingester.resources=null --set pyroscope.components.store-gateway.resources=null --set pyroscope.components.compactor.resources=null)
 
 .PHONY: deploy-monitoring
 deploy-monitoring: $(BIN)/tk $(BIN)/kind tools/monitoring/environments/default/spec.json
