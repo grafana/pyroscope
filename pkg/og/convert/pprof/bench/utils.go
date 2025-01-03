@@ -22,7 +22,6 @@ func ReadGzipFile(f string) ([]byte, error) {
 		return nil, err
 	}
 	return io.ReadAll(g)
-
 }
 
 func WriteGzipFile(f string, data []byte) error {
@@ -113,7 +112,6 @@ func StackCollapseProtoWithOptions(p *profilev1.Profile, opt StackCollapseOption
 			continue
 		}
 		unique = append(unique, s)
-
 	}
 
 	res := []string{}

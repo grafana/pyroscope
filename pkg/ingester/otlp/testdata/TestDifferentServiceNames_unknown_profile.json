@@ -1,0 +1,32 @@
+{
+  "sample_types": [
+    {
+      "type": "cpu",
+      "unit": "nanoseconds"
+    }
+  ],
+  "samples": [
+    {
+      "locations": [
+        {
+          "address": "0xef0",
+          "lines": [
+            "serviceC_func3[serviceC_func3]@service_c.go:50"
+          ],
+          "mapping": "0x4000-0x5000@0x0 service-c.so()"
+        },
+        {
+          "address": "0xef0",
+          "lines": [
+            "serviceC_func3[serviceC_func3]@service_c.go:50"
+          ],
+          "mapping": "0x4000-0x5000@0x0 service-c.so()"
+        }
+      ],
+      "values": "7000000000"
+    }
+  ],
+  "time_nanos": "239",
+  "duration_nanos": "10000000000",
+  "period": "10000000"
+}

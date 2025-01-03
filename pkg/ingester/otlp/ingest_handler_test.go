@@ -2,9 +2,10 @@ package otlp
 
 import (
 	"context"
-	"fmt"
-	"strings"
+	"os"
 	"testing"
+
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 
 	"github.com/grafana/pyroscope/pkg/distributor/model"
 
@@ -14,7 +15,7 @@ import (
 
 	v1experimental2 "github.com/grafana/pyroscope/api/otlp/collector/profiles/v1development"
 	v1experimental "github.com/grafana/pyroscope/api/otlp/profiles/v1development"
-	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
+	"github.com/grafana/pyroscope/pkg/og/convert/pprof/strprofile"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockotlp"
 
 	"github.com/stretchr/testify/assert"
@@ -160,6 +161,12 @@ func TestAppendAttributesUnique(t *testing.T) {
 	}
 }
 
+func readJSONFile(t *testing.T, filename string) string {
+	data, err := os.ReadFile(filename)
+	require.NoError(t, err)
+	return string(data)
+}
+
 func TestSymbolizedFunctionNames(t *testing.T) {
 	// Create two unsymbolized locations at 0x1e0 and 0x2f0
 	// Expect both of them to be present in the converted pprof
@@ -191,6 +198,7 @@ func TestSymbolizedFunctionNames(t *testing.T) {
 		LocationsLength:     2,
 		Value:               []int64{0xef},
 	}}
+	otlpb.profile.TimeNanos = 239
 	req := &v1experimental2.ExportProfilesServiceRequest{
 		ResourceProfiles: []*v1experimental.ResourceProfiles{{
 			ScopeProfiles: []*v1experimental.ScopeProfiles{{
@@ -201,17 +209,15 @@ func TestSymbolizedFunctionNames(t *testing.T) {
 	h := NewOTLPIngestHandler(svc, logger, false)
 	_, err := h.Export(context.Background(), req)
 	assert.NoError(t, err)
-	require.Equal(t, 1, len(profiles))
+	assert.Equal(t, 1, len(profiles))
 
 	gp := profiles[0].Series[0].Samples[0].Profile.Profile
 
-	ss := bench.StackCollapseProtoWithOptions(gp, bench.StackCollapseOptions{
-		ValueIdx:   0,
-		Scale:      1,
-		WithLabels: true,
-	})
-	require.Equal(t, 1, len(ss))
-	require.Equal(t, " ||| file1.so 0x2f0;file1.so 0x1e0 239", ss[0])
+	jsonStr, err := strprofile.Stringify(gp, strprofile.Options{})
+	assert.NoError(t, err)
+	expectedJSON := readJSONFile(t, "testdata/TestSymbolizedFunctionNames.json")
+	assert.JSONEq(t, expectedJSON, jsonStr)
+
 }
 
 func TestSampleAttributes(t *testing.T) {
@@ -276,6 +282,7 @@ func TestSampleAttributes(t *testing.T) {
 			},
 		},
 	}}
+	otlpb.profile.TimeNanos = 239
 	req := &v1experimental2.ExportProfilesServiceRequest{
 		ResourceProfiles: []*v1experimental.ResourceProfiles{{
 			ScopeProfiles: []*v1experimental.ScopeProfiles{{
@@ -299,15 +306,11 @@ func TestSampleAttributes(t *testing.T) {
 
 	gp := profiles[0].Series[0].Samples[0].Profile.Profile
 
-	ss := bench.StackCollapseProtoWithOptions(gp, bench.StackCollapseOptions{
-		ValueIdx:   0,
-		Scale:      1,
-		WithLabels: true,
-	})
-	fmt.Printf("%s \n", strings.Join(ss, "\n"))
-	require.Equal(t, 2, len(ss))
-	assert.Equal(t, "(process = chrome) ||| chrome.so 0x4e;chrome.so 0x3e 61423", ss[0])
-	assert.Equal(t, "(process = firefox) ||| firefox.so 0x2e;firefox.so 0x1e 239", ss[1])
+	jsonStr, err := strprofile.Stringify(gp, strprofile.Options{})
+	assert.NoError(t, err)
+	expectedJSON := readJSONFile(t, "testdata/TestSampleAttributes.json")
+	assert.Equal(t, expectedJSON, jsonStr)
+
 }
 
 func TestDifferentServiceNames(t *testing.T) {
@@ -438,7 +441,7 @@ func TestDifferentServiceNames(t *testing.T) {
 		UnitStrindex: otlpb.addstr("nanoseconds"),
 	}
 	otlpb.profile.Period = 10000000 // 10ms
-
+	otlpb.profile.TimeNanos = 239
 	req := &v1experimental2.ExportProfilesServiceRequest{
 		ResourceProfiles: []*v1experimental.ResourceProfiles{{
 			ScopeProfiles: []*v1experimental.ScopeProfiles{{
@@ -453,22 +456,18 @@ func TestDifferentServiceNames(t *testing.T) {
 
 	require.Equal(t, 3, len(profiles))
 
-	expectedStacks := map[string]string{
-		"service-a": " ||| serviceA_func2;serviceA_func1 1000000000",
-		"service-b": " ||| serviceB_func2;serviceB_func1 2000000000",
-		"unknown":   " ||| serviceC_func3;serviceC_func3 7000000000",
+	expectedProfiles := map[string]string{
+		"{__name__=\"process_cpu\", __delta__=\"false\", __otel__=\"true\", pyroscope_spy=\"unknown\", service_name=\"service-a\"}": "testdata/TestDifferentServiceNames_service_a_profile.json",
+		"{__name__=\"process_cpu\", __delta__=\"false\", __otel__=\"true\", pyroscope_spy=\"unknown\", service_name=\"service-b\"}": "testdata/TestDifferentServiceNames_service_b_profile.json",
+		"{__name__=\"process_cpu\", __delta__=\"false\", __otel__=\"true\", pyroscope_spy=\"unknown\", service_name=\"unknown\"}":   "testdata/TestDifferentServiceNames_unknown_profile.json",
 	}
 
 	for _, p := range profiles {
 		require.Equal(t, 1, len(p.Series))
-		seriesLabelsMap := make(map[string]string)
-		for _, label := range p.Series[0].Labels {
-			seriesLabelsMap[label.Name] = label.Value
-		}
-
-		serviceName := seriesLabelsMap["service_name"]
-		require.Contains(t, []string{"service-a", "service-b", "unknown"}, serviceName)
-		assert.NotContains(t, seriesLabelsMap, "service.name")
+		series := phlaremodel.Labels(p.Series[0].Labels).ToPrometheusLabels().String()
+		assert.Contains(t, expectedProfiles, series)
+		expectedJsonPath := expectedProfiles[series]
+		expectedJson := readJSONFile(t, expectedJsonPath)
 
 		gp := p.Series[0].Samples[0].Profile.Profile
 
@@ -481,14 +480,11 @@ func TestDifferentServiceNames(t *testing.T) {
 		assert.Equal(t, "nanoseconds", gp.StringTable[gp.PeriodType.Unit])
 		assert.Equal(t, int64(10000000), gp.Period)
 
-		ss := bench.StackCollapseProtoWithOptions(gp, bench.StackCollapseOptions{
-			ValueIdx:   0,
-			Scale:      1,
-			WithLabels: true,
-		})
-		require.Equal(t, 1, len(ss))
-		assert.Equal(t, expectedStacks[serviceName], ss[0])
-		assert.NotContains(t, ss[0], "service.name")
+		jsonStr, err := strprofile.Stringify(gp, strprofile.Options{})
+		assert.NoError(t, err)
+		assert.JSONEq(t, expectedJson, jsonStr)
+		assert.NotContains(t, jsonStr, "service.name")
+
 	}
 }
 
