@@ -7,7 +7,7 @@ weight: 103
 
 # Span profiles with Traces to profiles for .NET
 
-Span Profiles represents a shift in profiling methodology.
+Span Profiles represent a shift in profiling methodology.
 Traditional continuous profiling provides an application-wide view over fixed intervals.
 In contrast, Span Profiles delivers focused, dynamic analysis on specific execution scopes within applications, such as individual requests or specific trace spans.
 
