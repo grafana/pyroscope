@@ -11,7 +11,7 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
-	"github.com/grafana/pyroscope/pkg/experiment/block"
+	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
 	placement "github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/fsm"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode"
@@ -75,7 +75,7 @@ func (svc *IndexService) addBlockMetadata(
 	_ context.Context,
 	req *metastorev1.AddBlockRequest,
 ) (*metastorev1.AddBlockResponse, error) {
-	if err := block.SanitizeMetadata(req.Block); err != nil {
+	if err := metadata.Sanitize(req.Block); err != nil {
 		level.Warn(svc.logger).Log("invalid metadata", "block", req.Block.Id, "err", err)
 		return nil, err
 	}
