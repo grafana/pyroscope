@@ -2,7 +2,7 @@
 description: Describes parameters used to configure Pyroscope.
 menuTitle: Configuration parameters
 title: Pyroscope configuration parameters
-weight: 70
+weight: 300
 aliases:
   - /docs/phlare/latest/operators-guide/configuring/reference-configuration-parameters/
   - /docs/phlare/latest/configure-server/reference-configuration-parameters/

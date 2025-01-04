@@ -2,7 +2,7 @@
 title: Use the Pyroscope UI to explore profiling data
 menuTitle: Use the Pyroscope UI
 description: How to use the Pyroscope UI to explore profile data.
-weight: 40
+weight: 200
 aliases:
   - ../ingest-and-analyze-profile-data/profile-ui/
 keywords:
@@ -15,6 +15,9 @@ keywords:
 
 Pyroscope's UI is designed to make it easy to visualize and analyze profiling data.
 There are several different modes for viewing, analyzing, uploading, and comparing profiling data.
+
+The Pyroscope UI is only available with Pyroscope open source.
+In Grafana and Grafana Cloud, you can use [Explore Profiles](https://grafana.com/docs/grafana/<GRAFANA_VERSION>/explore/simplified-exploration/profiles/) to inspect your profiling data.
 
 ![Screenshot of Pyroscope UI](/media/docs/pyroscope/screenshot-pyroscope-comparison-view.png)
 

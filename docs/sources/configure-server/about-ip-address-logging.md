@@ -3,14 +3,14 @@ aliases:
   - /docs/phlare/latest/operators-guide/configuring/about-ip-address-logging/
   - /docs/pyroscope/latest/configure-server/about-ip-address-logging/
 description: Troubleshoot errors by logging IP addresses of reverse proxies.
-menuTitle: About IP address logging of a reverse proxy
-title: About Grafana Pyroscope IP address logging of a reverse proxy
-weight: 60
+menuTitle: IP address logging of a reverse proxy
+title: IP address logging of a reverse proxy
+weight: 600
 ---
 
-# About Grafana Pyroscope IP address logging of a reverse proxy
+# IP address logging of a reverse proxy
 
-If a reverse proxy is used in front of Pyroscope, it might be difficult to troubleshoot errors.
+Note that using a reverse proxy in front of Grafana Pyroscope can make it difficult to troubleshoot errors.
 You can use the following settings to log the IP address passed along by the reverse proxy in headers such as `X-Forwarded-For`.
 
 - `-server.log-source-ips-enabled`

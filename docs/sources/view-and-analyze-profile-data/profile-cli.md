@@ -7,7 +7,7 @@ aliases:
 description: Getting started with the profile CLI tool.
 menuTitle: Profile CLI
 title: Profile CLI
-weight: 60
+weight: 500
 ---
 
 # Profile CLI
