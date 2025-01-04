@@ -1,9 +1,9 @@
 GEM
   remote: https://rubygems.org/
   specs:
-    ffi (1.17.0-aarch64-linux-gnu)
-    ffi (1.17.0-arm64-darwin)
-    ffi (1.17.0-x86_64-linux-gnu)
+    ffi (1.17.1-aarch64-linux-gnu)
+    ffi (1.17.1-arm64-darwin)
+    ffi (1.17.1-x86_64-linux-gnu)
     pyroscope (0.5.12-aarch64-linux)
       ffi
     pyroscope (0.5.12-arm64-darwin)
