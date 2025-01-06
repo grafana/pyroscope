@@ -2,19 +2,23 @@ syntax = "proto3";
 
 package metastore.v1;
 
-message BlockList {
-  string tenant = 1;
-  uint32 shard = 2;
-  repeated string blocks = 3;
-}
-
+// BlockMeta is a metadata entry that describes the block's contents. A block
+// is a collection of datasets that share certain properties, such as shard ID,
+// compaction level, tenant ID, time range, creation time, and more.
+//
+// The block content's format denotes the binary format of the datasets and the
+// metadata entry (to address logical dependencies). Each dataset has its own
+// table of contents that lists the sections within the dataset. Each dataset
+// has its own set of attributes (labels) that describe its specific contents.
 message BlockMeta {
   uint32 format_version = 1;
+
   // Block ID is a unique identifier for the block.
   // This is the only field that is not included into
   // the string table.
   string id = 2;
-  // Optional. Empty if compaction level is 0.
+
+  // If empty, datasets belong to distinct tenants.
   int32 tenant = 3;
   uint32 shard = 4;
   uint32 compaction_level = 5;
@@ -23,6 +27,7 @@ message BlockMeta {
   int32 created_by = 8;
   uint64 size = 9;
   repeated Dataset datasets = 10;
+
   // String table contains strings of the block.
   // By convention, the first string is always an empty string.
   repeated string string_table = 11;
@@ -43,12 +48,67 @@ message Dataset {
   //  - 1: index.tsdb
   //  - 2: symbols.symdb
   repeated uint64 table_of_contents = 5;
-  // Size of the section in bytes.
-  uint64 size = 6;
 
-  // TODO: Delete. Use labels instead.
-  // Profile types present in the tenant service data.
-  repeated int32 profile_types = 7;
+  // Size of the dataset in bytes.
+  uint64 size = 6;
+  reserved 7;
+
   // Length prefixed label key-value pairs.
+  //
+  // Multiple label sets can be associated with a dataset to denote relationships
+  // across multiple dimensions. For example, each dataset currently stores data
+  // for multiple profile types:
+  //   - service_name=A, profile_type=cpu
+  //   - service_name=A, profile_type=memory
+  //
+  // Labels are primarily used to filter datasets based on their attributes.
+  // For instance, labels can be used to select datasets containing a specific
+  // service.
+  //
+  // The set of attributes is extensible and can grow over time. For example, a
+  // namespace attribute could be added to datasets:
+  //   - service_name=A, profile_type=cpu
+  //   - service_name=A, profile_type=memory
+  //   - service_name=B, namespace=N, profile_type=cpu
+  //   - service_name=B, namespace=N, profile_type=memory
+  //   - service_name=C, namespace=N, profile_type=cpu
+  //   - service_name=C, namespace=N, profile_type=memory
+  //
+  // This organization enables querying datasets by namespace without accessing
+  // the block contents, which significantly improves performance.
+  //
+  // Metadata labels are not required to be included in the block's TSDB index
+  // and may be orthogonal to the data dimensions. Generally, attributes serve
+  // two primary purposes:
+  //   - To create data scopes that span multiple service, reducing the need to
+  //     scan the entire set of block satisfying the query expression, i.e.,
+  //     the time range and tenant ID.
+  //   - To provide additional information about datasets without altering the
+  //     storage schema or access methods.
+  //
+  // For example, this approach can support cost attribution or similar breakdown
+  // analyses. It can also handle data dependencies (e.g., links to external data)
+  // using labels.
+  //
+  // The cardinality of the labels is expected to remain relatively low (fewer
+  // than a million unique combinations globally). However, this depends on the
+  // metadata storage system.
+  //
+  // Metadata labels are represented as a slice of `int32` values that refer to
+  // strings in the metadata entry's string table. The slice is a sequence of
+  // length-prefixed key-value (KV) pairs:
+  //
+  // len(2) | k1 | v1 | k2 | v2 | len(3) | k1 | v3 | k2 | v4 | k3 | v5
+  //
+  // The order of KV pairs is not defined. The format is optimized for indexing
+  // rather than querying, and it is not intended to be the most space-efficient
+  // representation. Since entries are supposed to be indexed, the redundancy of
+  // denormalized relationships is not a concern.
   repeated int32 labels = 8;
+}
+
+message BlockList {
+  string tenant = 1;
+  uint32 shard = 2;
+  repeated string blocks = 3;
 }

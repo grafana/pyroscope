@@ -6,7 +6,7 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
-	"github.com/grafana/pyroscope/pkg/experiment/block"
+	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
 )
 
 type Compactor interface {
@@ -75,7 +75,7 @@ func NewBlockEntry(cmd *raft.Log, md *metastorev1.BlockMeta) BlockEntry {
 		Index:      cmd.Index,
 		AppendedAt: cmd.AppendedAt.UnixNano(),
 		ID:         md.Id,
-		Tenant:     block.Tenant(md),
+		Tenant:     metadata.Tenant(md),
 		Shard:      md.Shard,
 		Level:      md.CompactionLevel,
 	}
