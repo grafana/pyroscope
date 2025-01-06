@@ -52,7 +52,7 @@ func (r *Router) Series(
 			m := phlaremodel.NewLabelMerger()
 			m.MergeSeries(a.LabelsSet)
 			m.MergeSeries(b.LabelsSet)
-			return &querierv1.SeriesResponse{LabelsSet: m.SeriesLabels()}, nil
+			return &querierv1.SeriesResponse{LabelsSet: m.Labels()}, nil
 		})
 }
 

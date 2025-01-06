@@ -17,6 +17,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
@@ -119,7 +120,12 @@ func PlanCompaction(objects Objects) ([]*CompactionPlan, error) {
 		for _, s := range obj.meta.Datasets {
 			tm, ok := m[obj.meta.StringTable[s.Tenant]]
 			if !ok {
-				tm = newBlockCompaction(g.ULID().String(), obj.meta.StringTable[s.Tenant], r.meta.Shard, level)
+				tm = newBlockCompaction(
+					g.ULID().String(),
+					obj.meta.StringTable[s.Tenant],
+					r.meta.Shard,
+					level,
+				)
 				m[obj.meta.StringTable[s.Tenant]] = tm
 			}
 			// Bind objects to datasets.
@@ -148,7 +154,7 @@ type CompactionPlan struct {
 	datasetMap map[int32]*datasetCompaction
 	datasets   []*datasetCompaction
 	meta       *metastorev1.BlockMeta
-	strings    *MetadataStrings
+	strings    *metadata.StringTable
 }
 
 func newBlockCompaction(
@@ -160,7 +166,7 @@ func newBlockCompaction(
 	p := &CompactionPlan{
 		tenant:     tenant,
 		datasetMap: make(map[int32]*datasetCompaction),
-		strings:    NewMetadataStringTable(),
+		strings:    metadata.NewStringTable(),
 	}
 	p.path = BuildObjectPath(tenant, shard, compactionLevel, id)
 	p.meta = &metastorev1.BlockMeta{
@@ -215,9 +221,8 @@ type datasetCompaction struct {
 	// Dataset name.
 	name   string
 	parent *CompactionPlan
-
 	meta   *metastorev1.Dataset
-	ptypes map[int32]struct{}
+	labels *metadata.LabelBuilder
 	path   string // Set at open.
 
 	datasets []*Dataset
@@ -235,9 +240,9 @@ type datasetCompaction struct {
 
 func (b *CompactionPlan) newDatasetCompaction(tenant, name int32) *datasetCompaction {
 	return &datasetCompaction{
-		name:   b.strings.Strings[name],
 		parent: b,
-		ptypes: make(map[int32]struct{}, 10),
+		name:   b.strings.Strings[name],
+		labels: metadata.NewLabelBuilder(b.strings),
 		meta: &metastorev1.Dataset{
 			Tenant: tenant,
 			Name:   name,
@@ -247,7 +252,7 @@ func (b *CompactionPlan) newDatasetCompaction(tenant, name int32) *datasetCompac
 			// Updated at writeTo.
 			TableOfContents: nil,
 			Size:            0,
-			ProfileTypes:    nil,
+			Labels:          nil,
 		},
 	}
 }
@@ -260,10 +265,7 @@ func (m *datasetCompaction) append(s *Dataset) {
 	if s.meta.MaxTime > m.meta.MaxTime {
 		m.meta.MaxTime = s.meta.MaxTime
 	}
-	for _, pt := range s.meta.ProfileTypes {
-		ptn := m.parent.strings.Put(s.obj.meta.StringTable[pt])
-		m.ptypes[ptn] = struct{}{}
-	}
+	m.labels.Put(s.meta.Labels, s.obj.meta.StringTable)
 }
 
 func (m *datasetCompaction) compact(ctx context.Context, w *Writer) (err error) {
@@ -400,10 +402,7 @@ func (m *datasetCompaction) writeTo(w *Writer) (err error) {
 		return err
 	}
 	m.meta.Size = w.Offset() - off
-	m.meta.ProfileTypes = make([]int32, 0, len(m.ptypes))
-	for pt := range m.ptypes {
-		m.meta.ProfileTypes = append(m.meta.ProfileTypes, pt)
-	}
+	m.meta.Labels = m.labels.Build()
 	return nil
 }
 

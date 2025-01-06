@@ -24,6 +24,7 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block"
+	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/util"
 )
@@ -380,7 +381,7 @@ func (w *Worker) runCompaction(job *compactionJob) {
 			level.Info(logger).Log(
 				"msg", "new compacted block",
 				"block_id", c.Id,
-				"block_tenant", block.Tenant(c),
+				"block_tenant", metadata.Tenant(c),
 				"block_shard", c.Shard,
 				"block_compaction_level", c.CompactionLevel,
 				"block_min_time", c.MinTime,
@@ -400,7 +401,7 @@ func (w *Worker) runCompaction(job *compactionJob) {
 			},
 		}
 
-		firstBlock := block.Timestamp(job.blocks[0])
+		firstBlock := metadata.Timestamp(job.blocks[0])
 		w.metrics.timeToCompaction.WithLabelValues(labels...).Observe(time.Since(firstBlock).Seconds())
 
 	case errors.Is(err, context.Canceled):
