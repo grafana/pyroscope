@@ -1122,6 +1122,7 @@ func TestPush_ShuffleSharding(t *testing.T) {
 			LocationId: []uint64{1},
 			Value:      []int64{1},
 		}},
+		StringTable: []string{""},
 	}).WriteTo(&buf)
 	require.NoError(t, err)
 	profileBytes := buf.Bytes()

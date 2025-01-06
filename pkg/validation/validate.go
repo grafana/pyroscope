@@ -274,6 +274,10 @@ func ValidateProfile(limits ProfileValidationLimits, tenantID string, prof *goog
 			return NewErrorf(MalformedProfile, "function id is 0")
 		}
 	}
+
+	if err := validateStringTableAccess(prof); err != nil {
+		return err
+	}
 	for _, valueType := range prof.SampleType {
 		stt := prof.StringTable[valueType.Type]
 		if strings.Contains(stt, "-") {
@@ -281,9 +285,48 @@ func ValidateProfile(limits ProfileValidationLimits, tenantID string, prof *goog
 		}
 		// todo check if sample type is valid from the promql parser perspective
 	}
+
 	for _, s := range prof.StringTable {
 		if !utf8.ValidString(s) {
 			return NewErrorf(MalformedProfile, "invalid utf8 string hex: %s", hex.EncodeToString([]byte(s)))
+		}
+	}
+	return nil
+}
+
+func validateStringTableAccess(prof *googlev1.Profile) error {
+	if len(prof.StringTable) == 0 || prof.StringTable[0] != "" {
+		return NewErrorf(MalformedProfile, "string 0 should be empty string")
+	}
+	for _, valueType := range prof.SampleType {
+		if int(valueType.Type) >= len(prof.StringTable) {
+			return NewErrorf(MalformedProfile, "sample type type string index out of range")
+		}
+	}
+	for _, sample := range prof.Sample {
+		for _, lbl := range sample.Label {
+			if int(lbl.Str) >= len(prof.StringTable) || int(lbl.Key) >= len(prof.StringTable) {
+				return NewErrorf(MalformedProfile, "sample label string index out of range")
+			}
+		}
+	}
+	for _, function := range prof.Function {
+		if int(function.Name) >= len(prof.StringTable) {
+			return NewErrorf(MalformedProfile, "function name string index out of range")
+		}
+		if int(function.SystemName) >= len(prof.StringTable) {
+			return NewErrorf(MalformedProfile, "function system name index string out of range")
+		}
+		if int(function.Filename) >= len(prof.StringTable) {
+			return NewErrorf(MalformedProfile, "function file name string index out of range")
+		}
+	}
+	for _, mapping := range prof.Mapping {
+		if int(mapping.Filename) >= len(prof.StringTable) {
+			return NewErrorf(MalformedProfile, "mapping file name string index out of range")
+		}
+		if int(mapping.BuildId) >= len(prof.StringTable) {
+			return NewErrorf(MalformedProfile, "mapping build id string index out of range")
 		}
 	}
 	return nil
