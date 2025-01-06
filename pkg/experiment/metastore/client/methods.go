@@ -116,6 +116,12 @@ func (c *Client) QueryMetadata(ctx context.Context, in *metastorev1.QueryMetadat
 	})
 }
 
+func (c *Client) QueryMetadataLabels(ctx context.Context, in *metastorev1.QueryMetadataLabelsRequest, opts ...grpc.CallOption) (*metastorev1.QueryMetadataLabelsResponse, error) {
+	return invoke(ctx, c, func(ctx context.Context, instance instance) (*metastorev1.QueryMetadataLabelsResponse, error) {
+		return instance.QueryMetadataLabels(ctx, in, opts...)
+	})
+}
+
 func (c *Client) PollCompactionJobs(ctx context.Context, in *metastorev1.PollCompactionJobsRequest, opts ...grpc.CallOption) (*metastorev1.PollCompactionJobsResponse, error) {
 	return invoke(ctx, c, func(ctx context.Context, instance instance) (*metastorev1.PollCompactionJobsResponse, error) {
 		return instance.PollCompactionJobs(ctx, in, opts...)

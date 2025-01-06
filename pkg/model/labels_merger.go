@@ -81,7 +81,15 @@ func (m *LabelMerger) MergeSeries(series []*typesv1.Labels) {
 	}
 }
 
-func (m *LabelMerger) SeriesLabels() []*typesv1.Labels {
+func (m *LabelMerger) MergeLabels(ls []Labels) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, l := range ls {
+		m.series[l.Hash()] = &typesv1.Labels{Labels: l}
+	}
+}
+
+func (m *LabelMerger) Labels() []*typesv1.Labels {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	s := make([]*typesv1.Labels, len(m.series))

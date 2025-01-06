@@ -17,7 +17,6 @@ services:
       OTEL_TRACES_SAMPLER: always_on
       OTEL_PROPAGATORS: tracecontext
       REGION: us-east
-      PYROSCOPE_LABELS: region=us-east
       PYROSCOPE_SERVER_ADDRESS: http://pyroscope:4040
     build:
       context: .
