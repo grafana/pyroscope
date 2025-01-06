@@ -297,7 +297,7 @@ func TestValidateProfile(t *testing.T) {
 		{
 			"truncate labels and stacktrace",
 			&googlev1.Profile{
-				StringTable: []string{"foo", "/foo/bar"},
+				StringTable: []string{"", "foo", "/foo/bar"},
 				Sample: []*googlev1.Sample{
 					{
 						LocationId: []uint64{0, 1, 2, 3, 4, 5},
@@ -312,7 +312,7 @@ func TestValidateProfile(t *testing.T) {
 			nil,
 			func(t *testing.T, profile *googlev1.Profile) {
 				t.Helper()
-				require.Equal(t, []string{"foo", "bar"}, profile.StringTable)
+				require.Equal(t, []string{"", "foo", "bar"}, profile.StringTable)
 				require.Equal(t, []uint64{4, 5}, profile.Sample[0].LocationId)
 			},
 		},
@@ -345,7 +345,8 @@ func TestValidateProfile(t *testing.T) {
 		{
 			name: "just in the ingestion window",
 			profile: &googlev1.Profile{
-				TimeNanos: now.Add(-1 * time.Minute).UnixNano(),
+				TimeNanos:   now.Add(-1 * time.Minute).UnixNano(),
+				StringTable: []string{""},
 			},
 			limits: MockLimits{
 				RejectOlderThanValue: time.Hour,
@@ -353,8 +354,10 @@ func TestValidateProfile(t *testing.T) {
 			},
 		},
 		{
-			name:    "without timestamp",
-			profile: &googlev1.Profile{},
+			name: "without timestamp",
+			profile: &googlev1.Profile{
+				StringTable: []string{""},
+			},
 			limits: MockLimits{
 				RejectOlderThanValue: time.Hour,
 				RejectNewerThanValue: 10 * time.Minute,

@@ -352,6 +352,73 @@ func TestGodeltaprofRelabelPush(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
+func TestPushStringTableOOBSampleType(t *testing.T) {
+	const blockSize = 1024
+	const metric = "godeltaprof_memory"
+
+	p := PyroscopeTest{}
+	p.Start(t)
+	defer p.Stop(t)
+
+	testdata := []struct {
+		name        string
+		corrupt     func(p *testhelper.ProfileBuilder)
+		expectedErr string
+	}{
+		{
+			name: "sample type",
+			corrupt: func(p *testhelper.ProfileBuilder) {
+				p.SampleType[0].Type = 100500
+			},
+			expectedErr: "sample type type string index out of range",
+		},
+		{
+			name: "function name",
+			corrupt: func(p *testhelper.ProfileBuilder) {
+				p.Function[0].Name = 100500
+			},
+			expectedErr: "function name string index out of range",
+		},
+		{
+			name: "mapping",
+			corrupt: func(p *testhelper.ProfileBuilder) {
+				p.Mapping[0].Filename = 100500
+			},
+			expectedErr: "mapping file name string index out of range",
+		},
+		{
+			name: "Sample label",
+			corrupt: func(p *testhelper.ProfileBuilder) {
+				p.Sample[0].Label = []*profilev1.Label{{
+					Key: 100500,
+				}}
+			},
+			expectedErr: "sample label string index out of range",
+		},
+		{
+			name: "String 0 not empty",
+			corrupt: func(p *testhelper.ProfileBuilder) {
+				p.StringTable[0] = "hmmm"
+			},
+			expectedErr: "string 0 should be empty string",
+		},
+	}
+	for _, td := range testdata {
+		t.Run(td.name, func(t *testing.T) {
+			p1 := testhelper.NewProfileBuilder(time.Now().Add(-time.Second).UnixNano()).
+				MemoryProfile().
+				ForStacktraceString("my", "other").
+				AddSamples(239, 239*blockSize, 1000, 1000*blockSize)
+			td.corrupt(p1)
+			p1bs, err := p1.Profile.MarshalVT()
+			require.NoError(t, err)
+
+			rb := p.NewRequestBuilder(t)
+			rb.Push(rb.PushPPROFRequestFromBytes(p1bs, metric), 400, td.expectedErr)
+		})
+	}
+}
+
 func TestPush(t *testing.T) {
 	p := new(PyroscopeTest)
 	p.Start(t)
