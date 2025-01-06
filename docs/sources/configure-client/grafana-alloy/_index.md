@@ -92,7 +92,7 @@ This capability is not available in the legacy Grafana Agent.
 
 ### Set up profile receiving
 
-1. Configure your application with a Pyroscope SDK pointing to receive the endpoints for Alloy.
+1. Configure your application with a Pyroscope SDK pointing to the `pyroscope.receive_http` Alloy component.
 2. For step-by-step instructions, refer to the [Receive profiles from Pyroscope SDKs](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/grafana-alloy/receive_profiles) documentation.
 
 ## Next steps
