@@ -9,7 +9,7 @@ weight: 650
 
 # Server HTTP API
 
-Grafana Pyroscope server exposes an HTTP API for querying profiling data and ingesting profiling data from other sources.
+Grafana Pyroscope exposes an HTTP API for querying profiling data and ingesting profiling data from other sources.
 
 ## Authentication
 

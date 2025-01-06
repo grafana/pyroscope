@@ -27,7 +27,7 @@ The supported backends are:
 
 To use an AWS S3 or S3-compatible bucket for long term storage, you can find Pyroscope's configuration parameters [in the reference config][aws_ref]. Apart from those parameters, it is also possible to supply configuration  parameters using [the well-known environment variables][aws_enf] of the AWS SDK.
 
-At a minimum, you will need to provide a values for the `bucket_name`, `endpoint`, `access_key_id`, and `secret_access_key` keys.
+At a minimum, you will need to provide values for the `bucket_name`, `endpoint`, `access_key_id`, and `secret_access_key` keys.
 
 [aws_ref]: {{< relref "../reference-configuration-parameters/#s3_storage_backend" >}}
 [aws_enf]: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html

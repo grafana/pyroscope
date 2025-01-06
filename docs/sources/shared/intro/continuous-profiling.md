@@ -15,7 +15,7 @@ description: Shared file for intro to continuous profiling.
 
 Continuous profiling is a systematic method of collecting and analyzing performance data from production systems.
 
-Traditionally, profiling is used to debug application on an as-needed basis.
+Traditionally, profiling is used to debug applications on an as-needed basis.
 For example, you can run a benchmark tool locally and get a `pprof` file in Go or connect to a misbehaving prod instance and pull a flame graph from a `JFR` file in Java.
 This method is good for debugging, but not robust enough for production.
 
