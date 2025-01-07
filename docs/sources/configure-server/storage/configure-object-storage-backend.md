@@ -1,20 +1,20 @@
 ---
-title: "Configure Pyroscope object storage backend"
+title: "Configure object storage backend"
 menuTitle: "Configure object storage"
 description: "Learn how to configure Pyroscope to use different object storage backend implementations."
-weight: 40
 aliases:
   - /docs/phlare/latest/configure-server/configure-object-storage-backend/
+  - ../configure-object-storage-backend/ # https://grafana.com/docs/pyroscope/latest/configure-server/configure-object-storage-backend/
 ---
 
-# Configure Pyroscope object storage backend
+# Configure object storage backend
 
-Pyroscope can use different object storage services to persist blocks containing the profiles data.
-Blocks are flushed by ingesters [on disk]({{< relref "./configure-disk-storage" >}}) first then are uploaded to the object store.
+Grafana Pyroscope can use different object storage services to persist blocks containing the profiles data.
+Blocks are flushed by ingesters [on disk](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/storage/configure-disk-storage/) first then are uploaded to the object store.
 
 The supported backends are:
 
-- [Amazon S3](https://aws.amazon.com/s3/) (and compatible implementations like [MinIO](https://min.io/))
+- [Amazon S3](https://aws.amazon.com/s3/) and compatible implementations like [MinIO](https://min.io/)
 - [Google Cloud Storage](https://cloud.google.com/storage)
 - [Azure Blob Storage](https://azure.microsoft.com/es-es/services/storage/blobs/)
 - [Swift (OpenStack Object Storage)](https://wiki.openstack.org/wiki/Swift)
@@ -27,9 +27,9 @@ The supported backends are:
 
 To use an AWS S3 or S3-compatible bucket for long term storage, you can find Pyroscope's configuration parameters [in the reference config][aws_ref]. Apart from those parameters, it is also possible to supply configuration  parameters using [the well-known environment variables][aws_enf] of the AWS SDK.
 
-At a minimum, you will need to provide a values for the `bucket_name`, `endpoint`, `access_key_id`, and `secret_access_key` keys.
+At a minimum, you will need to provide values for the `bucket_name`, `endpoint`, `access_key_id`, and `secret_access_key` keys.
 
-[aws_ref]: {{< relref "./reference-configuration-parameters/#s3_storage_backend" >}}
+[aws_ref]: {{< relref "../reference-configuration-parameters/#s3_storage_backend" >}}
 [aws_enf]: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html
 
 ### Example using an AWS Bucket
@@ -68,7 +68,7 @@ storage:
 
 To use a Google Cloud Storage (GCS) bucket for long term storage, you can find Pyroscope's configuration parameters [in the reference config][gcs_ref].
 
-[gcs_ref]: {{< relref "./reference-configuration-parameters#gcs_storage_backend" >}}
+[gcs_ref]: {{< relref "../reference-configuration-parameters#gcs_storage_backend" >}}
 
 At a minimum, you will need to provide a values for the `bucket_name` and a service account. To supply the service account there are two ways:
 
@@ -103,7 +103,7 @@ storage:
 
 To use an Azure Blob Storage bucket for long term storage, you can find Pyroscope's configuration parameters [in the reference config][azure_ref].
 
-[azure_ref]: {{< relref "./reference-configuration-parameters#azure_storage_backend" >}}
+[azure_ref]: {{< relref "../reference-configuration-parameters#azure_storage_backend" >}}
 
 If `user_assigned_id` is used, authentication is done via user-assigned managed identity.
 
@@ -113,7 +113,7 @@ If `user_assigned_id` is used, authentication is done via user-assigned managed 
 
 To use a Swift (OpenStack Object Storage) bucket for long term storage, you can find Pyroscope's configuration parameters [in the reference config][swift_ref].
 
-[swift_ref]: {{< relref "./reference-configuration-parameters#swift_storage_backend" >}}
+[swift_ref]: {{< relref "../reference-configuration-parameters#swift_storage_backend" >}}
 
 >If the `name` of a user, project or tenant is used one must also specify its domain by ID or name. Various examples for OpenStack authentication can be found in the [official documentation](https://developer.openstack.org/api-ref/identity/v3/index.html?expanded=password-authentication-with-scoped-authorization-detail#password-authentication-with-unscoped-authorization).
 

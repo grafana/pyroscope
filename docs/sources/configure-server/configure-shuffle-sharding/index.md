@@ -2,7 +2,7 @@
 description: Learn how to configure shuffle sharding.
 menuTitle: Shuffle sharding
 title: Configure Grafana Pyroscope shuffle sharding
-weight: 80
+weight: 800
 ---
 
 # Configure Grafana Pyroscope shuffle sharding
