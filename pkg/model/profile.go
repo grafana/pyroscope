@@ -70,31 +70,26 @@ func NewSpanSelector(spans []string) (SpanSelector, error) {
 	return m, nil
 }
 
-func StacktracePartitionFromProfile(lbls []Labels, p *profilev1.Profile, otel bool) uint64 {
-	return xxhash.Sum64String(stacktracePartitionKeyFromProfile(lbls, p, otel))
+func SymbolsPartitionForProfile(ls Labels, partitionLabel string, p *profilev1.Profile) uint64 {
+	return xxhash.Sum64String(symbolsPartitionKeyForProfile(ls, partitionLabel, p))
 }
 
-func stacktracePartitionKeyFromProfile(lbls []Labels, p *profilev1.Profile, otel bool) string {
-	// Take the first mapping (which is the main binary's file basename)
-	// OTEL (at least from ebpf profiler at the time of writing) mappings are unreliable and ordered unpredictably and
-	// have no VA addresses (only relative to the shared object base)
-	if len(p.Mapping) > 0 && !otel {
-		if filenameID := p.Mapping[0].Filename; filenameID > 0 {
-			if filename := extractMappingFilename(p.StringTable[filenameID]); filename != "" {
-				return filename
+func symbolsPartitionKeyForProfile(ls Labels, partitionLabel string, p *profilev1.Profile) string {
+	if partitionLabel == "" {
+		// Only use the main binary's file basename as the partition key
+		// if the partition label is not specified.
+		if len(p.Mapping) > 0 {
+			if filenameID := p.Mapping[0].Filename; filenameID > 0 {
+				if filename := extractMappingFilename(p.StringTable[filenameID]); filename != "" {
+					return filename
+				}
 			}
 		}
+		partitionLabel = LabelNameServiceName
 	}
-
-	// failing that look through the labels for the ServiceName
-	if len(lbls) > 0 {
-		for _, lbl := range lbls[0] {
-			if lbl.Name == LabelNameServiceName {
-				return lbl.Value
-			}
-		}
+	if value := ls.Get(partitionLabel); value != "" {
+		return value
 	}
-
 	return "unknown"
 }
 
@@ -104,7 +99,8 @@ func extractMappingFilename(filename string) string {
 	if filename == "" ||
 		strings.HasPrefix(filename, "[") ||
 		strings.HasPrefix(filename, "linux-vdso") ||
-		strings.HasPrefix(filename, "/dev/dri/") {
+		strings.HasPrefix(filename, "/dev/dri/") ||
+		strings.HasPrefix(filename, "//anon") {
 		return ""
 	}
 	// Like filepath.ToSlash but doesn't rely on OS.
