@@ -78,4 +78,4 @@ Pyroscope requires any of the following object stores for the block files:
 - [OpenStack Swift](https://wiki.openstack.org/wiki/Swift)
 - Local Filesystem (single node only)
 
-For more information, refer to [configure object storage]({{< relref "../../configure-server/configure-object-storage-backend.md" >}}) and [configure disk storage]({{< relref "../../configure-server/configure-disk-storage.md" >}}).
+For more information, refer to [configure object storage](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/storage/configure-object-storage-backend/) and [configure disk storage](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/storage/configure-disk-storage/).
