@@ -1,23 +1,27 @@
 ---
 description: Learn about the Pyrocope server API
-menuTitle: Server HTTP API
-title: Pyroscope server HTTP API
-weight: 20
+menuTitle: "Reference: Server HTTP API"
+title: Server HTTP API
+aliases:
+  - ../configure-server/about-server-api/ # https://grafana.com/docs/pyroscope/latest/configure-server/about-server-api/
+weight: 650
 ---
 
-# Pyroscope server HTTP API
+# Server HTTP API
 
-Pyroscope server exposes an HTTP API for querying profiling data and ingesting profiling data from other sources.
+Grafana Pyroscope exposes an HTTP API for querying profiling data and ingesting profiling data from other sources.
 
 ## Authentication
 
-Grafana Pyroscope doesn't include an authentication layer. Operators should use an authenticating reverse proxy for security.
+Pyroscope doesn't include an authentication layer. Operators should use an authenticating reverse proxy for security.
 
-In multi-tenant mode, Pyroscope requires the X-Scope-OrgID HTTP header set to a string identifying the tenant. This responsibility should be handled by the authenticating reverse proxy. For more information, refer to the [multi-tenancy documentation]({{< relref "./about-tenant-ids" >}}).
+In multi-tenant mode, Pyroscope requires the X-Scope-OrgID HTTP header set to a string identifying the tenant.
+The authenticating reverse proxy handles this responsibility. For more information, refer to the [multi-tenancy documentation](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/about-tenant-ids/).
 
 ## Ingestion
 
-There is one primary endpoint: POST /ingest. It accepts profile data in the request body and metadata as query parameters.
+There is one primary endpoint: `POST /ingest`.
+It accepts profile data in the request body and metadata as query parameters.
 
 The following query parameters are accepted:
 
@@ -44,7 +48,8 @@ Some of the query parameters depend on the format of profiling data. Pyroscope c
 
 ### Text formats
 
-These formats handle simple ingestion of profiling data, such as `cpu` samples, and typically don't support metadata (e.g., labels) within the format. All necessary metadata is derived from query parameters, and the format is specified by the `format` query parameter.
+These formats handle simple ingestion of profiling data, such as `cpu` samples, and typically don't support metadata (for example, labels) within the format.
+All necessary metadata is derived from query parameters, and the format is specified by the `format` query parameter.
 
 **Supported formats:**
 
@@ -69,7 +74,7 @@ The `pprof` format is a widely used binary profiling data format, particularly p
 When using this format, certain query parameters have specific behaviors:
 
 - **format**: This should be set to `pprof`.
-- **name**: This parameter contains the _prefix_ of the application name. Since a single request might include multiple profile types, the complete application name is formed by concatenating this prefix with the profile type. For instance, if you send CPU profiling data and set `name` to `my-app{}`, it will be displayed in pyroscope as `my-app.cpu{}`.
+- **name**: This parameter contains the _prefix_ of the application name. Since a single request might include multiple profile types, the complete application name is formed by concatenating this prefix with the profile type. For instance, if you send CPU profiling data and set `name` to `my-app{}`, it is displayed in Pyroscope as `my-app.cpu{}`.
 - **units**, **aggregationType**, and **sampleRate**: These parameters are ignored. The actual values are determined based on the profile types present in the data (refer to the "Sample Type Configuration" section for more details).
 
 #### Sample type configuration
@@ -285,7 +290,7 @@ Note that a single offset has to be provided, values such as `now-3h30m` will no
 **Validation**
 
 The `from` and `until` parameters are subject to validation rules related to `max_query_lookback` and `max_query_length` server parameters.
-You can find more details on these parameters in the [limits section]({{< relref "./reference-configuration-parameters#limits" >}}) of the server configuration docs.
+You can find more details on these parameters in the [limits section](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/reference-configuration-parameters#limits) of the server configuration docs.
 
 - If `max_query_lookback` is configured and`from` is before `now - max_query_lookback`, `from` will be set to `now - max_query_lookback`.
 - If `max_query_lookback` is configured and `until` is before `now - max_query_lookback` the query will not be executed.
@@ -312,9 +317,9 @@ When a value is provided, it is capped to the `max_flamegraph_nodes_max` configu
 The `groupBy` parameter impacts the output for the time series portion of the response.
 When a valid label is provided, the response contains as many series as there are label values for the given label.
 
-{{% admonition type="note" %}}
+{{< admonition type="note" >}}
 Pyroscope supports a single label for the group by functionality.
-{{% /admonition %}}
+{{< /admonition >}}
 
 ### Query output
 
@@ -419,4 +424,4 @@ See [this Python script](https://github.com/grafana/pyroscope/tree/main/examples
 
 The `profilecli` tool can also be used to interact with the Pyroscope server API.
 The tool supports operations such as ingesting profiles, querying for existing profiles, and more.
-Refer to the [Profile CLI]({{< relref "../view-and-analyze-profile-data/profile-cli" >}}) page for more information.
+Refer to the [Profile CLI](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/view-and-analyze-profile-data/profile-cli/) page for more information.
