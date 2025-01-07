@@ -164,8 +164,8 @@ To start contributing, check out our [Contributing Guide](docs/internal/contribu
 <a href="https://github.com/cyriltovena"><img src="https://avatars.githubusercontent.com/u/1053421?v=4" title="cyriltovena" width="80" height="80"></a>
 <a href="https://github.com/eh-am"><img src="https://avatars.githubusercontent.com/u/6951209?v=4" title="eh-am" width="80" height="80"></a>
 <a href="https://github.com/kolesnikovae"><img src="https://avatars.githubusercontent.com/u/12090599?v=4" title="kolesnikovae" width="80" height="80"></a>
-<a href="https://github.com/Rperry2174"><img src="https://avatars.githubusercontent.com/u/23323466?v=4" title="Rperry2174" width="80" height="80"></a>
 <a href="https://github.com/korniltsev"><img src="https://avatars.githubusercontent.com/u/331773?v=4" title="korniltsev" width="80" height="80"></a>
+<a href="https://github.com/Rperry2174"><img src="https://avatars.githubusercontent.com/u/23323466?v=4" title="Rperry2174" width="80" height="80"></a>
 <a href="https://github.com/aocenas"><img src="https://avatars.githubusercontent.com/u/1014802?v=4" title="aocenas" width="80" height="80"></a>
 <a href="https://github.com/aleks-p"><img src="https://avatars.githubusercontent.com/u/8142643?v=4" title="aleks-p" width="80" height="80"></a>
 <a href="https://github.com/dogfrogfog"><img src="https://avatars.githubusercontent.com/u/47758224?v=4" title="dogfrogfog" width="80" height="80"></a>
