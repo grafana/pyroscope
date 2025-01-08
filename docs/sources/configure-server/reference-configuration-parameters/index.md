@@ -115,6 +115,11 @@ pyroscopedb:
   # CLI flag: -pyroscopedb.row-group-target-size
   [row_group_target_size: <int> | default = 1342177280]
 
+  # Specifies the dimension by which symbols are partitioned. By default, the
+  # partitioning is determined automatically.
+  # CLI flag: -pyroscopedb.symbols-partition-label
+  [symbols_partition_label: <string> | default = ""]
+
   # How much available disk space to keep in GiB
   # CLI flag: -pyroscopedb.retention-policy-min-free-disk-gb
   [min_free_disk_gb: <int> | default = 10]
