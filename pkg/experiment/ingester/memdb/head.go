@@ -45,21 +45,17 @@ type Head struct {
 }
 
 func NewHead(metrics *HeadMetrics) *Head {
-	h := &Head{
+	return &Head{
 		metrics: metrics,
 		symbols: symdb.NewPartitionWriter(0, &symdb.Config{
-			Version: symdb.FormatV3,
-			Stacktraces: symdb.StacktracesConfig{
-				MaxNodesPerChunk: 4 << 20,
-			},
+			Version:     symdb.FormatV3,
+			Stacktraces: symdb.StacktracesConfig{MaxNodesPerChunk: math.MaxUint32},
 		}),
 		totalSamples: atomic.NewUint64(0),
 		minTimeNanos: math.MaxInt64,
 		maxTimeNanos: 0,
 		profiles:     newProfileIndex(metrics),
 	}
-
-	return h
 }
 
 func (h *Head) Ingest(p *profilev1.Profile, id uuid.UUID, externalLabels []*typesv1.LabelPair) {
