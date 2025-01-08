@@ -16,7 +16,8 @@ const (
 )
 
 type stacktraceTree struct {
-	nodes []node
+	nodes        []node
+	hashedStacks map[uint64]uint32
 }
 
 type node struct {
@@ -31,7 +32,10 @@ func newStacktraceTree(size int) *stacktraceTree {
 	if size < 1 {
 		size = 1
 	}
-	t := stacktraceTree{nodes: make([]node, 1, size)}
+	t := stacktraceTree{
+		nodes:        make([]node, 1, size),
+		hashedStacks: make(map[uint64]uint32, size),
+	}
 	t.nodes[0] = node{
 		p:  sentinel,
 		fc: sentinel,
@@ -45,6 +49,18 @@ const sentinel = -1
 func (t *stacktraceTree) len() uint32 { return uint32(len(t.nodes)) }
 
 func (t *stacktraceTree) insert(refs []uint64) uint32 {
+	// Many stacks are repeating. So we benefit from an optimization that
+	// can quickly map the input sequence back to a node without
+	// walking the tree. We simply cache a map of stack digest back to the
+	// node index. If there's a hit, we avoid a stack walk to resolve
+	// the leaf node. If not, we pay a penalty for computing the hash
+	// and performing a map lookup.
+	digest := hashLocations(refs)
+	existing, ok := t.hashedStacks[digest]
+	if ok {
+		return existing
+	}
+
 	var (
 		n = &t.nodes[0]
 		i = n.fc
@@ -84,6 +100,8 @@ func (t *stacktraceTree) insert(refs []uint64) uint32 {
 		}
 		i = n.ns
 	}
+
+	t.hashedStacks[digest] = uint32(x)
 
 	return uint32(x)
 }
