@@ -750,7 +750,10 @@ func newSymbolsCompactor(path string, version symdb.FormatVersion) *symbolsCompa
 		version: symdb.FormatV2,
 		w: symdb.NewSymDB(symdb.DefaultConfig().
 			WithVersion(symdb.FormatV2).
-			WithDirectory(dst)),
+			WithDirectory(dst).
+			WithParquetConfig(symdb.ParquetConfig{
+				MaxBufferRowCount: defaultParquetConfig.MaxBufferRowCount,
+			})),
 		dst:       dst,
 		rewriters: make(map[BlockReader]*symdb.Rewriter),
 	}

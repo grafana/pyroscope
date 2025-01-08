@@ -2,7 +2,6 @@ package symdb
 
 import (
 	"context"
-	"math"
 	"sort"
 	"sync"
 	"time"
@@ -103,14 +102,10 @@ type Config struct {
 }
 
 type StacktracesConfig struct {
-	// DEPRECATED: the parameter is not used and
-	// will be removed in the future versions.
 	MaxNodesPerChunk uint32
 }
 
 type ParquetConfig struct {
-	// DEPRECATED: the parameter is not used and
-	// will be removed in the future versions.
 	MaxBufferRowCount int
 }
 
@@ -135,11 +130,25 @@ const statsUpdateInterval = 5 * time.Second
 func DefaultConfig() *Config {
 	return &Config{
 		Version: FormatV2,
+		Stacktraces: StacktracesConfig{
+			// At the moment chunks are loaded in memory at once.
+			// Due to the fact that chunking causes some duplication,
+			// it's better to keep them large.
+			MaxNodesPerChunk: 4 << 20,
+		},
+		Parquet: ParquetConfig{
+			MaxBufferRowCount: 100 << 10,
+		},
 	}
 }
 
 func (c *Config) WithDirectory(dir string) *Config {
 	c.Dir = dir
+	return c
+}
+
+func (c *Config) WithParquetConfig(pc ParquetConfig) *Config {
+	c.Parquet = pc
 	return c
 }
 
@@ -152,8 +161,6 @@ func NewSymDB(c *Config) *SymDB {
 	if c == nil {
 		c = DefaultConfig()
 	}
-	c.Parquet.MaxBufferRowCount = math.MaxInt
-	c.Stacktraces.MaxNodesPerChunk = math.MaxUint32
 	db := &SymDB{
 		config:     *c,
 		partitions: make(map[uint64]*PartitionWriter),
@@ -190,7 +197,7 @@ func (s *SymDB) PartitionWriter(partition uint64) *PartitionWriter {
 func NewPartitionWriter(partition uint64, config *Config) *PartitionWriter {
 	p := PartitionWriter{
 		header:      PartitionHeader{Partition: partition},
-		stacktraces: newStacktraces(),
+		stacktraces: newStacktracesPartition(config.Stacktraces.MaxNodesPerChunk),
 	}
 	switch config.Version {
 	case FormatV2:
