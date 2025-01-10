@@ -7,6 +7,7 @@ package s3
 
 import (
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/prometheus/common/model"
 	"github.com/thanos-io/objstore"
 	"github.com/thanos-io/objstore/providers/s3"
@@ -19,6 +20,8 @@ func NewBucketClient(cfg Config, name string, logger log.Logger) (objstore.Bucke
 		return nil, err
 	}
 
+	warnForDeprecatedConfigFields(cfg, logger)
+
 	return s3.NewBucketWithConfig(logger, s3Cfg, name)
 }
 
@@ -28,6 +31,8 @@ func NewBucketReaderClient(cfg Config, name string, logger log.Logger) (objstore
 	if err != nil {
 		return nil, err
 	}
+
+	warnForDeprecatedConfigFields(cfg, logger)
 
 	return s3.NewBucketWithConfig(logger, s3Cfg, name)
 }
@@ -68,4 +73,10 @@ func newS3Config(cfg Config) (s3.Config, error) {
 		// Enforce signature version 2 if CLI flag is set
 		SignatureV2: cfg.SignatureVersion == SignatureVersionV2,
 	}, nil
+}
+
+func warnForDeprecatedConfigFields(cfg Config, logger log.Logger) {
+	if cfg.ForcePathStyle {
+		level.Warn(logger).Log("msg", "S3 bucket client config has a deprecated s3.force-path-style flag set. Please, use s3.bucket-lookup-type instead.")
+	}
 }

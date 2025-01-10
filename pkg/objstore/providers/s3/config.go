@@ -121,7 +121,7 @@ func (cfg *Config) Validate() error {
 		return errUnsupportedSignatureVersion
 	}
 
-	if cfg.ForcePathStyle && cfg.BucketLookupType == VirtualHostedStyleLookup {
+	if cfg.ForcePathStyle && cfg.BucketLookupType != AutoLookup && cfg.BucketLookupType != PathStyleLookup {
 		return errBucketLookupConfigConflict
 	}
 
