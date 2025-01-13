@@ -50,6 +50,12 @@ const (
 	// RaftNodeServicePromoteToLeaderProcedure is the fully-qualified name of the RaftNodeService's
 	// PromoteToLeader RPC.
 	RaftNodeServicePromoteToLeaderProcedure = "/raft_node.RaftNodeService/PromoteToLeader"
+	// RaftNodeServiceGetSnapshotsProcedure is the fully-qualified name of the RaftNodeService's
+	// GetSnapshots RPC.
+	RaftNodeServiceGetSnapshotsProcedure = "/raft_node.RaftNodeService/GetSnapshots"
+	// RaftNodeServiceTakeSnapshotProcedure is the fully-qualified name of the RaftNodeService's
+	// TakeSnapshot RPC.
+	RaftNodeServiceTakeSnapshotProcedure = "/raft_node.RaftNodeService/TakeSnapshot"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -61,6 +67,8 @@ var (
 	raftNodeServiceAddNodeMethodDescriptor         = raftNodeServiceServiceDescriptor.Methods().ByName("AddNode")
 	raftNodeServiceDemoteLeaderMethodDescriptor    = raftNodeServiceServiceDescriptor.Methods().ByName("DemoteLeader")
 	raftNodeServicePromoteToLeaderMethodDescriptor = raftNodeServiceServiceDescriptor.Methods().ByName("PromoteToLeader")
+	raftNodeServiceGetSnapshotsMethodDescriptor    = raftNodeServiceServiceDescriptor.Methods().ByName("GetSnapshots")
+	raftNodeServiceTakeSnapshotMethodDescriptor    = raftNodeServiceServiceDescriptor.Methods().ByName("TakeSnapshot")
 )
 
 // RaftNodeServiceClient is a client for the raft_node.RaftNodeService service.
@@ -71,6 +79,8 @@ type RaftNodeServiceClient interface {
 	AddNode(context.Context, *connect.Request[raftnodepb.AddNodeRequest]) (*connect.Response[raftnodepb.AddNodeResponse], error)
 	DemoteLeader(context.Context, *connect.Request[raftnodepb.DemoteLeaderRequest]) (*connect.Response[raftnodepb.DemoteLeaderResponse], error)
 	PromoteToLeader(context.Context, *connect.Request[raftnodepb.PromoteToLeaderRequest]) (*connect.Response[raftnodepb.PromoteToLeaderResponse], error)
+	GetSnapshots(context.Context, *connect.Request[raftnodepb.GetSnapshotsRequest]) (*connect.Response[raftnodepb.GetSnapshotsResponse], error)
+	TakeSnapshot(context.Context, *connect.Request[raftnodepb.TakeSnapshotRequest]) (*connect.Response[raftnodepb.TakeSnapshotResponse], error)
 }
 
 // NewRaftNodeServiceClient constructs a client for the raft_node.RaftNodeService service. By
@@ -119,6 +129,18 @@ func NewRaftNodeServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(raftNodeServicePromoteToLeaderMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		getSnapshots: connect.NewClient[raftnodepb.GetSnapshotsRequest, raftnodepb.GetSnapshotsResponse](
+			httpClient,
+			baseURL+RaftNodeServiceGetSnapshotsProcedure,
+			connect.WithSchema(raftNodeServiceGetSnapshotsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		takeSnapshot: connect.NewClient[raftnodepb.TakeSnapshotRequest, raftnodepb.TakeSnapshotResponse](
+			httpClient,
+			baseURL+RaftNodeServiceTakeSnapshotProcedure,
+			connect.WithSchema(raftNodeServiceTakeSnapshotMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -130,6 +152,8 @@ type raftNodeServiceClient struct {
 	addNode         *connect.Client[raftnodepb.AddNodeRequest, raftnodepb.AddNodeResponse]
 	demoteLeader    *connect.Client[raftnodepb.DemoteLeaderRequest, raftnodepb.DemoteLeaderResponse]
 	promoteToLeader *connect.Client[raftnodepb.PromoteToLeaderRequest, raftnodepb.PromoteToLeaderResponse]
+	getSnapshots    *connect.Client[raftnodepb.GetSnapshotsRequest, raftnodepb.GetSnapshotsResponse]
+	takeSnapshot    *connect.Client[raftnodepb.TakeSnapshotRequest, raftnodepb.TakeSnapshotResponse]
 }
 
 // ReadIndex calls raft_node.RaftNodeService.ReadIndex.
@@ -162,6 +186,16 @@ func (c *raftNodeServiceClient) PromoteToLeader(ctx context.Context, req *connec
 	return c.promoteToLeader.CallUnary(ctx, req)
 }
 
+// GetSnapshots calls raft_node.RaftNodeService.GetSnapshots.
+func (c *raftNodeServiceClient) GetSnapshots(ctx context.Context, req *connect.Request[raftnodepb.GetSnapshotsRequest]) (*connect.Response[raftnodepb.GetSnapshotsResponse], error) {
+	return c.getSnapshots.CallUnary(ctx, req)
+}
+
+// TakeSnapshot calls raft_node.RaftNodeService.TakeSnapshot.
+func (c *raftNodeServiceClient) TakeSnapshot(ctx context.Context, req *connect.Request[raftnodepb.TakeSnapshotRequest]) (*connect.Response[raftnodepb.TakeSnapshotResponse], error) {
+	return c.takeSnapshot.CallUnary(ctx, req)
+}
+
 // RaftNodeServiceHandler is an implementation of the raft_node.RaftNodeService service.
 type RaftNodeServiceHandler interface {
 	ReadIndex(context.Context, *connect.Request[raftnodepb.ReadIndexRequest]) (*connect.Response[raftnodepb.ReadIndexResponse], error)
@@ -170,6 +204,8 @@ type RaftNodeServiceHandler interface {
 	AddNode(context.Context, *connect.Request[raftnodepb.AddNodeRequest]) (*connect.Response[raftnodepb.AddNodeResponse], error)
 	DemoteLeader(context.Context, *connect.Request[raftnodepb.DemoteLeaderRequest]) (*connect.Response[raftnodepb.DemoteLeaderResponse], error)
 	PromoteToLeader(context.Context, *connect.Request[raftnodepb.PromoteToLeaderRequest]) (*connect.Response[raftnodepb.PromoteToLeaderResponse], error)
+	GetSnapshots(context.Context, *connect.Request[raftnodepb.GetSnapshotsRequest]) (*connect.Response[raftnodepb.GetSnapshotsResponse], error)
+	TakeSnapshot(context.Context, *connect.Request[raftnodepb.TakeSnapshotRequest]) (*connect.Response[raftnodepb.TakeSnapshotResponse], error)
 }
 
 // NewRaftNodeServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -214,6 +250,18 @@ func NewRaftNodeServiceHandler(svc RaftNodeServiceHandler, opts ...connect.Handl
 		connect.WithSchema(raftNodeServicePromoteToLeaderMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	raftNodeServiceGetSnapshotsHandler := connect.NewUnaryHandler(
+		RaftNodeServiceGetSnapshotsProcedure,
+		svc.GetSnapshots,
+		connect.WithSchema(raftNodeServiceGetSnapshotsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	raftNodeServiceTakeSnapshotHandler := connect.NewUnaryHandler(
+		RaftNodeServiceTakeSnapshotProcedure,
+		svc.TakeSnapshot,
+		connect.WithSchema(raftNodeServiceTakeSnapshotMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/raft_node.RaftNodeService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case RaftNodeServiceReadIndexProcedure:
@@ -228,6 +276,10 @@ func NewRaftNodeServiceHandler(svc RaftNodeServiceHandler, opts ...connect.Handl
 			raftNodeServiceDemoteLeaderHandler.ServeHTTP(w, r)
 		case RaftNodeServicePromoteToLeaderProcedure:
 			raftNodeServicePromoteToLeaderHandler.ServeHTTP(w, r)
+		case RaftNodeServiceGetSnapshotsProcedure:
+			raftNodeServiceGetSnapshotsHandler.ServeHTTP(w, r)
+		case RaftNodeServiceTakeSnapshotProcedure:
+			raftNodeServiceTakeSnapshotHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -259,4 +311,12 @@ func (UnimplementedRaftNodeServiceHandler) DemoteLeader(context.Context, *connec
 
 func (UnimplementedRaftNodeServiceHandler) PromoteToLeader(context.Context, *connect.Request[raftnodepb.PromoteToLeaderRequest]) (*connect.Response[raftnodepb.PromoteToLeaderResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("raft_node.RaftNodeService.PromoteToLeader is not implemented"))
+}
+
+func (UnimplementedRaftNodeServiceHandler) GetSnapshots(context.Context, *connect.Request[raftnodepb.GetSnapshotsRequest]) (*connect.Response[raftnodepb.GetSnapshotsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("raft_node.RaftNodeService.GetSnapshots is not implemented"))
+}
+
+func (UnimplementedRaftNodeServiceHandler) TakeSnapshot(context.Context, *connect.Request[raftnodepb.TakeSnapshotRequest]) (*connect.Response[raftnodepb.TakeSnapshotResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("raft_node.RaftNodeService.TakeSnapshot is not implemented"))
 }

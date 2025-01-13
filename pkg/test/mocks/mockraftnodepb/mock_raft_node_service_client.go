@@ -173,6 +173,80 @@ func (_c *MockRaftNodeServiceClient_DemoteLeader_Call) RunAndReturn(run func(con
 	return _c
 }
 
+// GetSnapshots provides a mock function with given fields: ctx, in, opts
+func (_m *MockRaftNodeServiceClient) GetSnapshots(ctx context.Context, in *raftnodepb.GetSnapshotsRequest, opts ...grpc.CallOption) (*raftnodepb.GetSnapshotsResponse, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetSnapshots")
+	}
+
+	var r0 *raftnodepb.GetSnapshotsResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *raftnodepb.GetSnapshotsRequest, ...grpc.CallOption) (*raftnodepb.GetSnapshotsResponse, error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *raftnodepb.GetSnapshotsRequest, ...grpc.CallOption) *raftnodepb.GetSnapshotsResponse); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*raftnodepb.GetSnapshotsResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *raftnodepb.GetSnapshotsRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRaftNodeServiceClient_GetSnapshots_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetSnapshots'
+type MockRaftNodeServiceClient_GetSnapshots_Call struct {
+	*mock.Call
+}
+
+// GetSnapshots is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *raftnodepb.GetSnapshotsRequest
+//   - opts ...grpc.CallOption
+func (_e *MockRaftNodeServiceClient_Expecter) GetSnapshots(ctx interface{}, in interface{}, opts ...interface{}) *MockRaftNodeServiceClient_GetSnapshots_Call {
+	return &MockRaftNodeServiceClient_GetSnapshots_Call{Call: _e.mock.On("GetSnapshots",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockRaftNodeServiceClient_GetSnapshots_Call) Run(run func(ctx context.Context, in *raftnodepb.GetSnapshotsRequest, opts ...grpc.CallOption)) *MockRaftNodeServiceClient_GetSnapshots_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*raftnodepb.GetSnapshotsRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockRaftNodeServiceClient_GetSnapshots_Call) Return(_a0 *raftnodepb.GetSnapshotsResponse, _a1 error) *MockRaftNodeServiceClient_GetSnapshots_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRaftNodeServiceClient_GetSnapshots_Call) RunAndReturn(run func(context.Context, *raftnodepb.GetSnapshotsRequest, ...grpc.CallOption) (*raftnodepb.GetSnapshotsResponse, error)) *MockRaftNodeServiceClient_GetSnapshots_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NodeInfo provides a mock function with given fields: ctx, in, opts
 func (_m *MockRaftNodeServiceClient) NodeInfo(ctx context.Context, in *raftnodepb.NodeInfoRequest, opts ...grpc.CallOption) (*raftnodepb.NodeInfoResponse, error) {
 	_va := make([]interface{}, len(opts))
@@ -465,6 +539,80 @@ func (_c *MockRaftNodeServiceClient_RemoveNode_Call) Return(_a0 *raftnodepb.Remo
 }
 
 func (_c *MockRaftNodeServiceClient_RemoveNode_Call) RunAndReturn(run func(context.Context, *raftnodepb.RemoveNodeRequest, ...grpc.CallOption) (*raftnodepb.RemoveNodeResponse, error)) *MockRaftNodeServiceClient_RemoveNode_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// TakeSnapshot provides a mock function with given fields: ctx, in, opts
+func (_m *MockRaftNodeServiceClient) TakeSnapshot(ctx context.Context, in *raftnodepb.TakeSnapshotRequest, opts ...grpc.CallOption) (*raftnodepb.TakeSnapshotResponse, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for TakeSnapshot")
+	}
+
+	var r0 *raftnodepb.TakeSnapshotResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *raftnodepb.TakeSnapshotRequest, ...grpc.CallOption) (*raftnodepb.TakeSnapshotResponse, error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *raftnodepb.TakeSnapshotRequest, ...grpc.CallOption) *raftnodepb.TakeSnapshotResponse); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*raftnodepb.TakeSnapshotResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *raftnodepb.TakeSnapshotRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRaftNodeServiceClient_TakeSnapshot_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'TakeSnapshot'
+type MockRaftNodeServiceClient_TakeSnapshot_Call struct {
+	*mock.Call
+}
+
+// TakeSnapshot is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *raftnodepb.TakeSnapshotRequest
+//   - opts ...grpc.CallOption
+func (_e *MockRaftNodeServiceClient_Expecter) TakeSnapshot(ctx interface{}, in interface{}, opts ...interface{}) *MockRaftNodeServiceClient_TakeSnapshot_Call {
+	return &MockRaftNodeServiceClient_TakeSnapshot_Call{Call: _e.mock.On("TakeSnapshot",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockRaftNodeServiceClient_TakeSnapshot_Call) Run(run func(ctx context.Context, in *raftnodepb.TakeSnapshotRequest, opts ...grpc.CallOption)) *MockRaftNodeServiceClient_TakeSnapshot_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*raftnodepb.TakeSnapshotRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockRaftNodeServiceClient_TakeSnapshot_Call) Return(_a0 *raftnodepb.TakeSnapshotResponse, _a1 error) *MockRaftNodeServiceClient_TakeSnapshot_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRaftNodeServiceClient_TakeSnapshot_Call) RunAndReturn(run func(context.Context, *raftnodepb.TakeSnapshotRequest, ...grpc.CallOption) (*raftnodepb.TakeSnapshotResponse, error)) *MockRaftNodeServiceClient_TakeSnapshot_Call {
 	_c.Call.Return(run)
 	return _c
 }

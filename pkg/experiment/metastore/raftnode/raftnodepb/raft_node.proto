@@ -9,11 +9,15 @@ message RaftNode {
 
 service RaftNodeService {
   rpc ReadIndex(ReadIndexRequest) returns (ReadIndexResponse) {}
+
   rpc NodeInfo(NodeInfoRequest) returns (NodeInfoResponse) {}
   rpc RemoveNode(RemoveNodeRequest) returns (RemoveNodeResponse) {}
   rpc AddNode(AddNodeRequest) returns (AddNodeResponse) {}
   rpc DemoteLeader(DemoteLeaderRequest) returns (DemoteLeaderResponse) {}
   rpc PromoteToLeader(PromoteToLeaderRequest) returns (PromoteToLeaderResponse) {}
+
+  rpc GetSnapshots(GetSnapshotsRequest) returns (GetSnapshotsResponse) {}
+  rpc TakeSnapshot(TakeSnapshotRequest) returns (TakeSnapshotResponse) {}
 }
 
 message ReadIndexRequest {}
@@ -44,13 +48,7 @@ message NodeInfo {
     repeated string value = 2;
   }
 
-  repeated Peer peers = 9;
-  message Peer {
-    string server_id = 1;
-    string server_address = 2;
-    string suffrage = 3;
-  }
-
+  repeated RaftServer peers = 9;
   uint64 configuration_index = 10;
   uint64 current_term = 11;
   string build_version = 12;
@@ -82,3 +80,29 @@ message PromoteToLeaderRequest {
   uint64 current_term = 2;
 }
 message PromoteToLeaderResponse {}
+
+message GetSnapshotsRequest {}
+
+message GetSnapshotsResponse {
+  repeated RaftSnapshot snapshots = 1;
+}
+
+message TakeSnapshotRequest {}
+
+message TakeSnapshotResponse {}
+
+message RaftSnapshot {
+  int64 version = 1;
+  string id = 2;
+  uint64 index = 3;
+  uint64 term = 4;
+  repeated RaftServer servers = 5;
+  uint64 configuration_index = 6;
+  string size = 7;
+}
+
+message RaftServer {
+  string server_id = 1;
+  string server_address = 2;
+  string suffrage = 3;
+}

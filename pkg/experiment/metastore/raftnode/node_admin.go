@@ -3,6 +3,7 @@ package raftnode
 import (
 	"fmt"
 
+	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log/level"
 	"github.com/hashicorp/raft"
 	"google.golang.org/grpc/codes"
@@ -123,6 +124,43 @@ func (n *Node) PromoteToLeader(request *raftnodepb.PromoteToLeaderRequest) (*raf
 
 	level.Info(n.logger).Log("msg", "node promoted", "id", request.ServerId)
 	return &raftnodepb.PromoteToLeaderResponse{}, nil
+}
+
+func (n *Node) GetSnapshots(request *raftnodepb.GetSnapshotsRequest) (*raftnodepb.GetSnapshotsResponse, error) {
+	snapshots, err := n.ListSnapshots()
+	if err != nil {
+		return nil, err
+	}
+	res := &raftnodepb.GetSnapshotsResponse{
+		Snapshots: make([]*raftnodepb.RaftSnapshot, 0, len(snapshots)),
+	}
+	for _, snapshot := range snapshots {
+		servers := make([]*raftnodepb.RaftServer, 0, len(snapshot.Configuration.Servers))
+		for _, server := range snapshot.Configuration.Servers {
+			servers = append(servers, &raftnodepb.RaftServer{
+				ServerId:      string(server.ID),
+				ServerAddress: string(server.Address),
+				Suffrage:      server.Suffrage.String(),
+			})
+		}
+		res.Snapshots = append(res.Snapshots, &raftnodepb.RaftSnapshot{
+			Version:            int64(snapshot.Version),
+			Id:                 snapshot.ID,
+			Index:              snapshot.Index,
+			Term:               snapshot.Term,
+			Servers:            servers,
+			ConfigurationIndex: snapshot.ConfigurationIndex,
+			Size:               humanize.Bytes(uint64(snapshot.Size)),
+		})
+	}
+	return res, nil
+}
+
+func (n *Node) TakeSnapshot(request *raftnodepb.TakeSnapshotRequest) (*raftnodepb.TakeSnapshotResponse, error) {
+	if err := n.raft.Snapshot().Error(); err != nil {
+		return nil, err
+	}
+	return &raftnodepb.TakeSnapshotResponse{}, nil
 }
 
 func (n *Node) verifyCurrentTerm(requestTerm uint64) error {

@@ -26,7 +26,7 @@ func (n *Node) NodeInfo() (*raftnodepb.NodeInfo, error) {
 		AppliedIndex:       n.raft.AppliedIndex(),
 		LastIndex:          n.raft.LastIndex(),
 		Stats:              statsProto(n.raft.Stats()),
-		Peers:              make([]*raftnodepb.NodeInfo_Peer, len(config.Servers)),
+		Peers:              make([]*raftnodepb.RaftServer, len(config.Servers)),
 		ConfigurationIndex: configFuture.Index(),
 		CurrentTerm:        n.raft.CurrentTerm(),
 		BuildVersion:       build.Version,
@@ -34,7 +34,7 @@ func (n *Node) NodeInfo() (*raftnodepb.NodeInfo, error) {
 	}
 
 	for i, server := range config.Servers {
-		info.Peers[i] = &raftnodepb.NodeInfo_Peer{
+		info.Peers[i] = &raftnodepb.RaftServer{
 			ServerId:      string(server.ID),
 			ServerAddress: string(server.Address),
 			Suffrage:      server.Suffrage.String(),

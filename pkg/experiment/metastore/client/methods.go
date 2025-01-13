@@ -175,3 +175,15 @@ func (c *Client) PromoteToLeader(ctx context.Context, in *raftnodepb.PromoteToLe
 		return instance.PromoteToLeader(ctx, in, opts...)
 	})
 }
+
+func (c *Client) GetSnapshots(ctx context.Context, in *raftnodepb.GetSnapshotsRequest, opts ...grpc.CallOption) (*raftnodepb.GetSnapshotsResponse, error) {
+	return invoke(ctx, c, func(ctx context.Context, instance instance) (*raftnodepb.GetSnapshotsResponse, error) {
+		return instance.GetSnapshots(ctx, in, opts...)
+	})
+}
+
+func (c *Client) TakeSnapshot(ctx context.Context, in *raftnodepb.TakeSnapshotRequest, opts ...grpc.CallOption) (*raftnodepb.TakeSnapshotResponse, error) {
+	return invoke(ctx, c, func(ctx context.Context, instance instance) (*raftnodepb.TakeSnapshotResponse, error) {
+		return instance.TakeSnapshot(ctx, in, opts...)
+	})
+}

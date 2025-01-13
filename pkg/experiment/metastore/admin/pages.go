@@ -6,10 +6,14 @@ import (
 	"time"
 
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode/raftnodepb"
 )
 
 //go:embed metastore.nodes.gohtml
 var nodesPageHtml string
+
+//go:embed metastore.snapshots.gohtml
+var snapshotsPageHtml string
 
 type metastoreNode struct {
 	// from Discovery
@@ -45,8 +49,15 @@ type nodesPageContent struct {
 	Now               time.Time
 }
 
+type snapshotsPageContent struct {
+	Node      *metastoreNode
+	Snapshots []*raftnodepb.RaftSnapshot
+	Now       time.Time
+}
+
 type templates struct {
-	nodesTemplate *template.Template
+	nodesTemplate     *template.Template
+	snapshotsTemplate *template.Template
 }
 
 var pageTemplates = initTemplates()
@@ -54,8 +65,11 @@ var pageTemplates = initTemplates()
 func initTemplates() *templates {
 	nodesTemplate := template.New("nodes")
 	template.Must(nodesTemplate.Parse(nodesPageHtml))
+	snapshotsTemplate := template.New("snapshots")
+	template.Must(snapshotsTemplate.Parse(snapshotsPageHtml))
 	t := &templates{
-		nodesTemplate: nodesTemplate,
+		nodesTemplate:     nodesTemplate,
+		snapshotsTemplate: snapshotsTemplate,
 	}
 	return t
 }

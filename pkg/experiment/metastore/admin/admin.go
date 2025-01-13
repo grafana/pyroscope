@@ -2,6 +2,8 @@ package admin
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"math"
 	"net/http"
 	"slices"
@@ -11,6 +13,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/gorilla/mux"
 	"github.com/grafana/dskit/services"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -122,6 +125,55 @@ func (a *Admin) NodeListHandler() http.Handler {
 	})
 }
 
+func (a *Admin) SnapshotsHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		serverId := vars["node"]
+		if serverId == "" {
+			httputil.Error(w, errors.New("no server id provided"))
+			return
+		}
+		client, err := a.newClientForServerId(serverId)
+		if r.Method == http.MethodPost {
+			if field := r.FormValue("snapshot"); field != "" {
+				_, err = client.TakeSnapshot(r.Context(), &raftnodepb.TakeSnapshotRequest{})
+				if err != nil {
+					httputil.Error(w, err)
+					return
+				}
+			}
+			w.Header().Set("Location", "#")
+			w.WriteHeader(http.StatusFound)
+			return
+		}
+
+		nodeInfoRes, err := client.NodeInfo(r.Context(), &raftnodepb.NodeInfoRequest{})
+		if err != nil {
+			httputil.Error(w, err)
+			return
+		}
+		snapshotsRes, err := client.GetSnapshots(r.Context(), &raftnodepb.GetSnapshotsRequest{})
+		if err != nil {
+			httputil.Error(w, err)
+			return
+		}
+
+		node := &metastoreNode{
+			DiscoveryServerId: serverId,
+		}
+		a.readNodeInfo(node, nodeInfoRes.Node)
+
+		err = pageTemplates.snapshotsTemplate.Execute(w, snapshotsPageContent{
+			Node:      node,
+			Snapshots: snapshotsRes.Snapshots,
+			Now:       time.Now().UTC(),
+		})
+		if err != nil {
+			httputil.Error(w, err)
+		}
+	})
+}
+
 func (a *Admin) fetchRaftState(ctx context.Context) (*raftNodeState, error) {
 	observedLeaders := make(map[string]int)
 	numRaftNodes := 0
@@ -148,22 +200,7 @@ func (a *Admin) fetchRaftState(ctx context.Context) (*raftNodeState, error) {
 		}
 		nInfo := res.Node
 
-		node.RaftServerId = nInfo.ServerId
-		node.Member = nInfo.LeaderId != ""
-		node.State = nInfo.State
-		node.LeaderId = nInfo.LeaderId
-		node.ConfigIndex = nInfo.ConfigurationIndex
-		node.NumPeers = len(nInfo.Peers)
-		node.CurrentTerm = nInfo.CurrentTerm
-		node.LastIndex = nInfo.LastIndex
-		node.CommitIndex = nInfo.CommitIndex
-		node.AppliedIndex = nInfo.AppliedIndex
-		node.BuildVersion = nInfo.BuildVersion
-		node.BuildRevision = nInfo.BuildRevision
-		node.Stats = make(map[string]string)
-		for i, n := range nInfo.Stats.Name {
-			node.Stats[n] = nInfo.Stats.Value[i]
-		}
+		a.readNodeInfo(node, nInfo)
 
 		if node.Member {
 			numRaftNodes++
@@ -179,6 +216,25 @@ func (a *Admin) fetchRaftState(ctx context.Context) (*raftNodeState, error) {
 		CurrentTerm:     currentTerm,
 		NumNodes:        numRaftNodes,
 	}, nil
+}
+
+func (a *Admin) readNodeInfo(dst *metastoreNode, src *raftnodepb.NodeInfo) {
+	dst.RaftServerId = src.ServerId
+	dst.Member = src.LeaderId != ""
+	dst.State = src.State
+	dst.LeaderId = src.LeaderId
+	dst.ConfigIndex = src.ConfigurationIndex
+	dst.NumPeers = len(src.Peers)
+	dst.CurrentTerm = src.CurrentTerm
+	dst.LastIndex = src.LastIndex
+	dst.CommitIndex = src.CommitIndex
+	dst.AppliedIndex = src.AppliedIndex
+	dst.BuildVersion = src.BuildVersion
+	dst.BuildRevision = src.BuildRevision
+	dst.Stats = make(map[string]string)
+	for i, n := range src.Stats.Name {
+		dst.Stats[n] = src.Stats.Value[i]
+	}
 }
 
 func findCurrentTerm(nodes []*metastoreNode) uint64 {
@@ -207,6 +263,19 @@ func newClient(address string) (*metastoreClient, error) {
 		RaftNodeServiceClient: raftnodepb.NewRaftNodeServiceClient(conn),
 		conn:                  conn,
 	}, nil
+}
+
+func (a *Admin) newClientForServerId(serverId string) (*metastoreClient, error) {
+	address := ""
+	for _, s := range a.servers {
+		if string(s.Raft.ID) == serverId {
+			address = s.ResolvedAddress
+		}
+	}
+	if address == "" {
+		return nil, fmt.Errorf("no server found with id %s", serverId)
+	}
+	return newClient(address)
 }
 
 func (a *Admin) addFormActionHandlers() {

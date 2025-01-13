@@ -13,6 +13,8 @@ type RaftNode interface {
 	AddNode(request *raftnodepb.AddNodeRequest) (*raftnodepb.AddNodeResponse, error)
 	DemoteLeader(request *raftnodepb.DemoteLeaderRequest) (*raftnodepb.DemoteLeaderResponse, error)
 	PromoteToLeader(request *raftnodepb.PromoteToLeaderRequest) (*raftnodepb.PromoteToLeaderResponse, error)
+	GetSnapshots(request *raftnodepb.GetSnapshotsRequest) (*raftnodepb.GetSnapshotsResponse, error)
+	TakeSnapshot(request *raftnodepb.TakeSnapshotRequest) (*raftnodepb.TakeSnapshotResponse, error)
 }
 
 type RaftNodeService struct {
@@ -77,4 +79,18 @@ func (svc *RaftNodeService) PromoteToLeader(
 	r *raftnodepb.PromoteToLeaderRequest,
 ) (*raftnodepb.PromoteToLeaderResponse, error) {
 	return svc.node.PromoteToLeader(r)
+}
+
+func (svc *RaftNodeService) GetSnapshots(
+	_ context.Context,
+	r *raftnodepb.GetSnapshotsRequest,
+) (*raftnodepb.GetSnapshotsResponse, error) {
+	return svc.node.GetSnapshots(r)
+}
+
+func (svc *RaftNodeService) TakeSnapshot(
+	_ context.Context,
+	r *raftnodepb.TakeSnapshotRequest,
+) (*raftnodepb.TakeSnapshotResponse, error) {
+	return svc.node.TakeSnapshot(r)
 }

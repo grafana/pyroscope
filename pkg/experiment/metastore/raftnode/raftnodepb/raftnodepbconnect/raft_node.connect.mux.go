@@ -49,4 +49,14 @@ func RegisterRaftNodeServiceHandler(mux *mux.Router, svc RaftNodeServiceHandler,
 		svc.PromoteToLeader,
 		opts...,
 	))
+	mux.Handle("/raft_node.RaftNodeService/GetSnapshots", connect.NewUnaryHandler(
+		"/raft_node.RaftNodeService/GetSnapshots",
+		svc.GetSnapshots,
+		opts...,
+	))
+	mux.Handle("/raft_node.RaftNodeService/TakeSnapshot", connect.NewUnaryHandler(
+		"/raft_node.RaftNodeService/TakeSnapshot",
+		svc.TakeSnapshot,
+		opts...,
+	))
 }

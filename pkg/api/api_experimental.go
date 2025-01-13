@@ -30,6 +30,7 @@ func (a *API) RegisterQueryBackend(svc *querybackend.QueryBackend) {
 
 func (a *API) RegisterMetastoreAdmin(adm *metastoreadmin.Admin) {
 	a.RegisterRoute("/metastore-nodes", adm.NodeListHandler(), false, true, "GET", "POST")
+	a.RegisterRoute("/metastore-nodes/{node}/snapshots", adm.SnapshotsHandler(), false, true, "GET", "POST")
 	a.indexPage.AddLinks(defaultWeight, "Metastore", []IndexPageLink{
 		{Desc: "Nodes", Path: "/metastore-nodes"},
 	})

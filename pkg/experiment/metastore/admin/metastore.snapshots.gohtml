@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Metastore Admin - Snapshots</title>
+
+    <link rel="stylesheet" href="/static/bootstrap-5.3.3.min.css">
+    <link rel="stylesheet" href="/static/bootstrap-icons-1.8.1.css">
+    <link rel="stylesheet" href="/static/pyroscope-styles.css">
+    <script src="/static/bootstrap-5.3.3.bundle.min.js"></script>
+
+    <style>
+        .card-detail-row {
+            display: flex;
+            margin-bottom: 0.5rem;
+        }
+        .card-detail-label {
+            flex: 0 0 20%;
+            font-weight: bold;
+            text-align: right;
+            padding-right: 1rem;
+        }
+        .card-detail-value {
+            flex: 0 0 80%;
+        }
+        @media (max-width: 768px) {
+            .card-detail-row {
+                flex-direction: column;
+            }
+            .card-detail-label {
+                text-align: left;
+                padding-right: 0;
+                margin-bottom: 0.25rem;
+            }
+        }
+        .card {
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+<main>
+    <div class="container mt-5">
+        <div class="header row border-bottom py-3 flex-column-reverse flex-sm-row">
+            <div class="col-12 col-sm-9 text-center text-sm-start">
+                <h1>Metastore Snapshots</h1>
+            </div>
+            <div class="col-12 col-sm-3 text-center text-sm-end mb-3 mb-sm-0">
+                <a href="../../metastore-nodes">
+                    <img alt="Pyroscope logo" class="pyroscope-brand" src="/static/pyroscope-logo.png">
+                </a>
+            </div>
+        </div>
+        <div class="row gy-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        {{ .Node.DiscoveryServerId }}
+                    </div>
+                    <div class="card-body">
+                        <div class="card-detail-row">
+                            <div class="card-detail-label">Discovery Server ID:</div>
+                            <div class="card-detail-value">{{ .Node.DiscoveryServerId }}</div>
+                        </div>
+                        <div class="card-detail-row">
+                            <div class="card-detail-label">Build Version:</div>
+                            <div class="card-detail-value">{{ .Node.BuildVersion }} (revision {{ .Node.BuildRevision }})</div>
+                        </div>
+                        <hr/>
+                        <div class="card-detail-row">
+                            <div class="card-detail-label">Raft Member:</div>
+                            <div class="card-detail-value">
+                                {{ if .Node.Member }}
+                                    <span class="badge text-bg-success">yes</span> ({{ .Node.State }})
+                                {{ else }}
+                                    <span class="badge text-bg-warning">no</span>
+                                {{ end }}
+                            </div>
+                        </div>
+                        <div class="card-detail-row">
+                            <div class="card-detail-label">Observed Leader:</div>
+                            {{ $leaderId := .Node.LeaderId }}
+                            {{ if eq $leaderId ""}}
+                                {{ $leaderId = "n/a "}}
+                            {{ end }}
+                            <div class="card-detail-value">{{ $leaderId }} (term {{ .Node.CurrentTerm }})</div>
+                        </div>
+                        <div class="card-detail-row">
+                            <div class="card-detail-label">Commit / Applied / Last Index:</div>
+                            <div class="card-detail-value">{{ .Node.CommitIndex }} / {{ .Node.AppliedIndex }} / {{ .Node.LastIndex }}</div>
+                        </div>
+                        <div class="card-detail-row">
+                            <div class="card-detail-label">Peers:</div>
+                            <div class="card-detail-value">{{ .Node.NumPeers }} (config index {{ .Node.ConfigIndex }})</div>
+                        </div>
+                        <div class="card-detail-row">
+                            <div class="card-detail-label">Stats:</div>
+                            <div class="card-detail-value">
+                                <p class="d-inline-flex gap-1">
+                                    <a class="btn btn-sm btn-info" data-bs-toggle="collapse" href="#stats" role="button" aria-expanded="false" aria-controls="stats">
+                                        View
+                                    </a>
+                                </p>
+                                <div class="collapse" id="stats">
+                                    <div class="card card-body">
+                                        <table class="table-responsive">
+                                            <tbody>
+                                            {{ range $k, $v := .Node.Stats }}
+                                                <tr>
+                                                    <td>{{ $k }}</td>
+                                                    <td>{{ $v }}</td>
+                                                </tr>
+                                            {{ end }}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer d-flex justify-content-between bg-transparent">
+                        <form action="" method="POST">
+                            <button class="btn btn-warning" name="snapshot" value="{{ .Node.DiscoveryServerId }}" type="submit">Take Snapshot</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row gy-4">
+            <h2>Snapshots</h2>
+            {{ range $index, $snapshot := .Snapshots }}
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        {{ $snapshot.Id }}
+                    </div>
+                    <div class="card-body">
+                        <div class="card-detail-row">
+                            <div class="card-detail-label">Size:</div>
+                            <div class="card-detail-value">{{ $snapshot.Size }}</div>
+                        </div>
+                        <div class="card-detail-row">
+                            <div class="card-detail-label">Version:</div>
+                            <div class="card-detail-value">{{ $snapshot.Version }}</div>
+                        </div>
+                        <div class="card-detail-row">
+                            <div class="card-detail-label">Id:</div>
+                            <div class="card-detail-value">{{ $snapshot.Id }}</div>
+                        </div>
+                        <div class="card-detail-row">
+                            <div class="card-detail-label">Index:</div>
+                            <div class="card-detail-value">{{ $snapshot.Index }}</div>
+                        </div>
+                        <div class="card-detail-row">
+                            <div class="card-detail-label">Term:</div>
+                            <div class="card-detail-value">{{ $snapshot.Term }}</div>
+                        </div>
+                        <div class="card-detail-row">
+                            <div class="card-detail-label">Servers:</div>
+                            <div class="card-detail-value">
+                                <p class="d-inline-flex gap-1">
+                                    <a class="btn btn-sm btn-info" data-bs-toggle="collapse" href="#servers-{{ $index }}" role="button" aria-expanded="false" aria-controls="servers-{{ $index }}">
+                                        View
+                                    </a>
+                                </p>
+                                <div class="collapse" id="servers-{{ $index }}">
+                                    <div class="card card-body">
+                                        <ul>
+                                            {{ range $i, $server := .Servers }}
+                                            <li>{{ $server.ServerId }} ({{ $server.Suffrage }})</li>
+                                            {{ end }}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-detail-row">
+                            <div class="card-detail-label">Config Index:</div>
+                            <div class="card-detail-value">{{ $snapshot.ConfigurationIndex }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {{ end }}
+        </div>
+    </div>
+</main>
+<footer class="footer mt-auto py-3">
+    <div class="container">
+        <small class="text-muted">Status @ {{ .Now.Format "2006-01-02 15:04:05.000" }}</small>
+    </div>
+</footer>
+<script type="text/javascript">
+</script>
+</body>
+</html>

@@ -93,6 +93,14 @@ func (m *mockServer) PromoteToLeader(ctx context.Context, request *raftnodepb.Pr
 	return m.raftNode.PromoteToLeader(ctx, request)
 }
 
+func (m *mockServer) GetSnapshots(ctx context.Context, request *raftnodepb.GetSnapshotsRequest) (*raftnodepb.GetSnapshotsResponse, error) {
+	return m.raftNode.GetSnapshots(ctx, request)
+}
+
+func (m *mockServer) TakeSnapshot(ctx context.Context, request *raftnodepb.TakeSnapshotRequest) (*raftnodepb.TakeSnapshotResponse, error) {
+	return m.raftNode.TakeSnapshot(ctx, request)
+}
+
 func createServers(ports []int) []discovery.Server {
 	var servers []discovery.Server
 	for i := 0; i < nServers; i++ {
