@@ -22,22 +22,22 @@ The CI will automatically handle the build and create a draft GitHub release.
 
 Once ready, you can edit and publish the draft release on GitHub. You will need to take the release notes and append them to the `CHANGELOG.md` file in the root of the repository.
 
-The list of changes from the CHANGELOG.md file form the basis of the public-facing release notes. Release notes are added to the [public Pyroscope documentation](https://grafana.com/docs/pyroscope/latest/release-notes/). These release notes follow the same pattern for each release: 
+The list of changes from the CHANGELOG.md file form the basis of the public-facing release notes. Release notes are added to the [public Pyroscope documentation](https://grafana.com/docs/pyroscope/latest/release-notes/). These release notes follow the same pattern for each release:
 
-1. Copy the previous release's page (i.e., V1-3.md) to the new release number. Change the version information and page weight in the file's frontmatter. 
+1. Copy the previous release's page (i.e., V1-3.md) to the new release number. Change the version information and [page weight](https://grafana.com/docs/writers-toolkit/write/front-matter/#weight) in the file's frontmatter.
 2. Update the page title (Version x.x release notes) and add a few sentences about the main updates in the release.
-3. Features and enhancements section with list of updates
-4. (optional) Breaking changes section with a list of these changes and their impact (this section can also be used to update the [Upgrade page](https://grafana.com/docs/pyroscope/latest/upgrade-guide/)).
-5. Bug fixes section with a list of updates.
-6. Documentation updates section with a list of updates.
+3. Add a Features and enhancements section with list of updates. Refer to previous release notes for examples.
+4. (optional) Add a Breaking changes section with a list of these changes and their impact (this section can also be used to update the [Upgrade page](https://grafana.com/docs/pyroscope/latest/upgrade-guide/)).
+5. Add a Bug fixes section with a list of updates.
+6. Add a Documentation updates section with a list of updates.
 
-For help writing release notes, refer to the [Writers' Toolkit](https://grafana.com/docs/writers-toolkit/write/). 
+For help writing release notes, refer to the [Writers' Toolkit](https://grafana.com/docs/writers-toolkit/write/).
 
 Please do not delete GitHub releases that were once public.
 
-To release a minor version simply merge fixes to the release branch then create and push a new tag. (e.g. `v0.x.1`)
+To release a minor version, simply merge fixes to the release branch then create and push a new tag. (e.g. `v0.x.1`). Any bugfixes or other entries should be added to the existing release notes for that version under a new heading with the version number.
 
-> For helm charts, you need to merge a PR that bumps the chart version in the main branch (no tagging required), the ci will automatically publish the chart to the [helm repository](https://grafana.github.io/helm-charts).
+> For helm charts, you need to merge a PR that bumps the chart version in the main branch (no tagging required), the CI will automatically publish the chart to the [helm repository](https://grafana.github.io/helm-charts).
 
 ## Manual Release Process
 
@@ -66,4 +66,4 @@ make release
 
 > Make sure to have a [GitHub Token](https://goreleaser.com/scm/github/?h=github#github) `GITHUB_TOKEN` correctly set.
 
-Make sure to create the release notes and CHANGELOG for any manual release. 
+Make sure to create the release notes and CHANGELOG for any manual release.
