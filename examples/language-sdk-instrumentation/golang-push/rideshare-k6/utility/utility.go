@@ -10,6 +10,7 @@ import (
 	"github.com/grafana/pyroscope-go"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/baggage"
 )
 
 const durationConstant = time.Duration(200 * time.Millisecond)
@@ -34,7 +35,7 @@ func mutexLock(n int64) {
 	}
 }
 
-func checkDriverAvailability(n int64) {
+func checkDriverAvailability(ctx context.Context, n int64) {
 	var i int64 = 0
 
 	// start time is number of seconds since epoch
@@ -46,10 +47,12 @@ func checkDriverAvailability(n int64) {
 		}
 	})
 
-	// Every other minute this will artificially create make requests in eu-north region slow
-	// this is just for demonstration purposes to show how performance impacts show up in the
-	// flamegraph
-	force_mutex_lock := time.Now().Minute()%2 == 0
+	// Get scenario from baggage
+	b := baggage.FromContext(ctx)
+	scenario := b.Member("k6.scenario").Value()
+
+	// Check if we should force mutex lock based on region OR high load scenario
+	force_mutex_lock := time.Now().Minute()%2 == 0 || scenario == "high_load"
 	if os.Getenv("REGION") == "eu-north" && force_mutex_lock {
 		mutexLock(n)
 	}
@@ -69,7 +72,7 @@ func FindNearestVehicle(ctx context.Context, searchRadius int64, vehicle string)
 		}
 
 		if vehicle == "car" {
-			checkDriverAvailability(searchRadius)
+			checkDriverAvailability(ctx, searchRadius)
 		}
 	})
 }

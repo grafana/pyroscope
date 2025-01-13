@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"rideshare/bike"
 	"rideshare/car"
@@ -18,21 +19,46 @@ import (
 	"github.com/grafana/pyroscope-go/x/k6"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/baggage"
 	"go.opentelemetry.io/otel/propagation"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
+func logK6Baggage(ctx context.Context, r *http.Request) {
+	baggageHeader := r.Header.Get("Baggage")
+	if baggageHeader == "" {
+		rideshare.Log.Print(ctx, "No baggage header found")
+		return
+	}
+
+	b, err := baggage.Parse(baggageHeader)
+	if err != nil {
+		rideshare.Log.Print(ctx, fmt.Sprintf("Error parsing baggage: %v", err))
+		return
+	}
+
+	for _, m := range b.Members() {
+		if strings.HasPrefix(m.Key(), "k6.") {
+			key := strings.ReplaceAll(m.Key(), ".", "_")
+			rideshare.Log.Print(ctx, fmt.Sprintf("K6 Baggage: %s=%s", key, m.Value()))
+		}
+	}
+}
+
 func bikeRoute(w http.ResponseWriter, r *http.Request) {
+	logK6Baggage(r.Context(), r)
 	bike.OrderBike(r.Context(), 1)
 	w.Write([]byte("<h1>Bike ordered</h1>"))
 }
 
 func scooterRoute(w http.ResponseWriter, r *http.Request) {
+	logK6Baggage(r.Context(), r)
 	scooter.OrderScooter(r.Context(), 2)
 	w.Write([]byte("<h1>Scooter ordered</h1>"))
 }
 
 func carRoute(w http.ResponseWriter, r *http.Request) {
+	logK6Baggage(r.Context(), r)
 	car.OrderCar(r.Context(), 3)
 	w.Write([]byte("<h1>Car ordered</h1>"))
 }
