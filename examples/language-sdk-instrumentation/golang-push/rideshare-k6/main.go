@@ -153,8 +153,8 @@ func registerRoutes(mux *http.ServeMux, handlers []route) {
 }
 
 func applyOtelMiddleware(routes []route) []route {
-	for _, route := range routes {
-		route.Handler = otelhttp.NewHandler(route.Handler, route.Name)
+	for i := range routes {
+		routes[i].Handler = otelhttp.NewHandler(routes[i].Handler, routes[i].Name)
 	}
 	return routes
 }
@@ -162,7 +162,6 @@ func applyOtelMiddleware(routes []route) []route {
 // applyK6Middleware adds the k6 instrumentation middleware to all routes. This
 // enables the Pyroscope SDK to label the profiles with k6 test metadata.
 func applyK6Middleware(routes []route) []route {
-	// Create a new slice with the same length
 	for i := range routes {
 		routes[i].Handler = k6.LabelsFromBaggageHandler(routes[i].Handler)
 	}
