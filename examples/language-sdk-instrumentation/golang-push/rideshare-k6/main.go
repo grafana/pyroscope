@@ -162,8 +162,9 @@ func applyOtelMiddleware(routes []route) []route {
 // applyK6Middleware adds the k6 instrumentation middleware to all routes. This
 // enables the Pyroscope SDK to label the profiles with k6 test metadata.
 func applyK6Middleware(routes []route) []route {
-	for _, route := range routes {
-		route.Handler = k6.LabelsFromBaggageHandler(route.Handler)
+	// Create a new slice with the same length
+	for i := range routes {
+		routes[i].Handler = k6.LabelsFromBaggageHandler(routes[i].Handler)
 	}
 	return routes
 }
