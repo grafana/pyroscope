@@ -47,9 +47,15 @@ func checkDriverAvailability(ctx context.Context, n int64) {
 		}
 	})
 
-	// Get scenario from baggage and log it
+	// Get and log all baggage members
 	b := baggage.FromContext(ctx)
+	println("BAGGAGE_DEBUG: All baggage members:")
+	for _, member := range b.Members() {
+		println("BAGGAGE_DEBUG: Key:", member.Key(), "Value:", member.Value())
+	}
+
 	scenario := b.Member("k6.scenario").Value()
+
 	println("BAGGAGE_DEBUG: Scenario value from baggage:", scenario)
 
 	// Check if we should force mutex lock based on region OR high load scenario
