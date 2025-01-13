@@ -101,8 +101,8 @@ func main() {
 		{"/car", "CarHandler", http.HandlerFunc(carRoute)},
 	}
 
-	routes = applyOtelMiddleware(routes)
 	routes = applyK6Middleware(routes)
+	routes = applyOtelMiddleware(routes)
 	registerRoutes(http.DefaultServeMux, routes)
 
 	addr := fmt.Sprintf(":%s", config.RideshareListenPort)
