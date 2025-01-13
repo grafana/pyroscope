@@ -47,13 +47,17 @@ func checkDriverAvailability(ctx context.Context, n int64) {
 		}
 	})
 
-	// Get scenario from baggage
+	// Get scenario from baggage and log it
 	b := baggage.FromContext(ctx)
 	scenario := b.Member("k6.scenario").Value()
+	println("BAGGAGE_DEBUG: Scenario value from baggage:", scenario)
 
 	// Check if we should force mutex lock based on region OR high load scenario
 	force_mutex_lock := time.Now().Minute()%2 == 0 || scenario == "high_load"
+	println("BAGGAGE_DEBUG: Force mutex lock:", force_mutex_lock, "Region:", os.Getenv("REGION"), "Scenario:", scenario)
+
 	if os.Getenv("REGION") == "eu-north" && force_mutex_lock {
+		println("BAGGAGE_DEBUG: Triggering mutex lock in eu-north")
 		mutexLock(n)
 	}
 }
