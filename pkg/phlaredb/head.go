@@ -64,6 +64,7 @@ type Head struct {
 	metaLock         sync.RWMutex
 	meta             *block.Meta
 
+	config        Config
 	parquetConfig *ParquetConfig
 	symdb         *symdb.SymDB
 	profiles      *profileStore
@@ -93,6 +94,7 @@ func NewHead(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*Hea
 		meta:         block.NewMeta(),
 		totalSamples: atomic.NewUint64(0),
 
+		config:        cfg,
 		parquetConfig: &parquetConfig,
 		limiter:       limiter,
 		updatedAt:     atomic.NewTime(time.Now()),
@@ -194,24 +196,26 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 
 	delta := phlaremodel.Labels(externalLabels).Get(phlaremodel.LabelNameDelta) != "false"
 	externalLabels = phlaremodel.Labels(externalLabels).Delete(phlaremodel.LabelNameDelta)
+
 	otel := phlaremodel.Labels(externalLabels).Get(phlaremodel.LabelNameOTEL) == "true"
 	externalLabels = phlaremodel.Labels(externalLabels).Delete(phlaremodel.LabelNameOTEL)
 
 	enforceLabelOrder := phlaremodel.Labels(externalLabels).Get(phlaremodel.LabelNameOrder) == phlaremodel.LabelOrderEnforced
 	externalLabels = phlaremodel.Labels(externalLabels).Delete(phlaremodel.LabelNameOrder)
 
-	lbls, seriesFingerprints := phlarelabels.CreateProfileLabels(enforceLabelOrder, p, externalLabels...)
+	metricName := phlaremodel.Labels(externalLabels).Get(model.MetricNameLabel)
+	symbolsPartitionLabel := h.config.SymbolsPartitionLabel
+	if otel && symbolsPartitionLabel == "" {
+		symbolsPartitionLabel = phlaremodel.LabelNameServiceName
+	}
+	partition := phlaremodel.SymbolsPartitionForProfile(externalLabels, symbolsPartitionLabel, p)
 
+	lbls, seriesFingerprints := phlarelabels.CreateProfileLabels(enforceLabelOrder, p, externalLabels...)
 	for i, fp := range seriesFingerprints {
 		if err := h.limiter.AllowProfile(fp, lbls[i], p.TimeNanos); err != nil {
 			return err
 		}
 	}
-
-	// determine the stacktraces partition ID
-	partition := phlaremodel.StacktracePartitionFromProfile(lbls, p, otel)
-
-	metricName := phlaremodel.Labels(externalLabels).Get(model.MetricNameLabel)
 
 	var profileIngested bool
 	for idxType, profile := range h.symdb.WriteProfileSymbols(partition, p) {

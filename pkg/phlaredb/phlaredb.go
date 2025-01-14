@@ -48,7 +48,8 @@ type Config struct {
 	MaxBlockDuration time.Duration `yaml:"max_block_duration,omitempty"`
 
 	// TODO: docs
-	RowGroupTargetSize uint64 `yaml:"row_group_target_size"`
+	RowGroupTargetSize    uint64 `yaml:"row_group_target_size"`
+	SymbolsPartitionLabel string `yaml:"symbols_partition_label"`
 
 	// Those configs should not be exposed to the user, rather they should be determined by pyroscope itself.
 	// Currently, they are solely used for test cases.
@@ -71,6 +72,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.StringVar(&cfg.DataPath, "pyroscopedb.data-path", "./data", "Directory used for local storage.")
 	f.DurationVar(&cfg.MaxBlockDuration, "pyroscopedb.max-block-duration", 1*time.Hour, "Upper limit to the duration of a Pyroscope block.")
 	f.Uint64Var(&cfg.RowGroupTargetSize, "pyroscopedb.row-group-target-size", 10*128*1024*1024, "How big should a single row group be uncompressed") // This should roughly be 128MiB compressed
+	f.StringVar(&cfg.SymbolsPartitionLabel, "pyroscopedb.symbols-partition-label", "", "Specifies the dimension by which symbols are partitioned. By default, the partitioning is determined automatically.")
 	f.Uint64Var(&cfg.MinFreeDisk, "pyroscopedb.retention-policy-min-free-disk-gb", DefaultMinFreeDisk, "How much available disk space to keep in GiB")
 	f.Float64Var(&cfg.MinDiskAvailablePercentage, "pyroscopedb.retention-policy-min-disk-available-percentage", DefaultMinDiskAvailablePercentage, "Which percentage of free disk space to keep")
 	f.DurationVar(&cfg.EnforcementInterval, "pyroscopedb.retention-policy-enforcement-interval", DefaultRetentionPolicyEnforcementInterval, "How often to enforce disk retention")
