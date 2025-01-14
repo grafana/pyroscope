@@ -39,6 +39,7 @@ import (
 	"google.golang.org/grpc/health"
 
 	"github.com/grafana/pyroscope-go"
+
 	"github.com/grafana/pyroscope/pkg/api"
 	apiversion "github.com/grafana/pyroscope/pkg/api/version"
 	"github.com/grafana/pyroscope/pkg/cfg"
