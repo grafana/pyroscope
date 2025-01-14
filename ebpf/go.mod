@@ -20,7 +20,7 @@ require (
 	github.com/samber/lo v1.38.1
 	github.com/stretchr/testify v1.9.0
 	github.com/ulikunitz/xz v0.5.12
-	golang.org/x/sys v0.25.0
+	golang.org/x/sys v0.28.0
 )
 
 require (
@@ -38,9 +38,9 @@ require (
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	golang.org/x/exp v0.0.0-20240119083558-1b970713d09a // indirect
-	golang.org/x/net v0.26.0 // indirect
+	golang.org/x/net v0.33.0 // indirect
 	golang.org/x/oauth2 v0.21.0 // indirect
-	golang.org/x/text v0.19.0 // indirect
+	golang.org/x/text v0.21.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240318140521-94a12d6c2237 // indirect
 	google.golang.org/grpc v1.62.1 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
