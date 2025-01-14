@@ -4,9 +4,11 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 )
 
-func Test_filename_extraction(t *testing.T) {
+func Test_extractMappingFilename(t *testing.T) {
 	assert.Equal(t, "app", extractMappingFilename(`app`))
 	assert.Equal(t, "app", extractMappingFilename(`./app`))
 	assert.Equal(t, "app", extractMappingFilename(`/usr/bin/app`))
@@ -32,5 +34,66 @@ func Test_filename_extraction(t *testing.T) {
 	assert.Equal(t, "", extractMappingFilename(""))
 	assert.Equal(t, "", extractMappingFilename(`[vdso]`))
 	assert.Equal(t, "", extractMappingFilename(`[vsyscall]`))
+	assert.Equal(t, "", extractMappingFilename(`//anon`))
 	assert.Equal(t, "not a path actually", extractMappingFilename(`not a path actually`))
+}
+
+func Test_symbolsPartitionKeyForProfile(t *testing.T) {
+	tests := []struct {
+		name           string
+		partitionLabel string
+		labels         Labels
+		profile        *profilev1.Profile
+		expected       string
+	}{
+		{
+			partitionLabel: "",
+			profile:        &profilev1.Profile{Mapping: []*profilev1.Mapping{}},
+			expected:       "unknown",
+		},
+		{
+			partitionLabel: "",
+			profile:        &profilev1.Profile{Mapping: []*profilev1.Mapping{}},
+			labels:         Labels{{Name: LabelNameServiceName, Value: "service_foo"}},
+			expected:       "service_foo",
+		},
+		{
+			partitionLabel: "",
+			profile: &profilev1.Profile{
+				Mapping:     []*profilev1.Mapping{{Filename: 1}},
+				StringTable: []string{"", "filename"},
+			},
+			expected: "filename",
+		},
+		{
+			partitionLabel: "partition",
+			profile:        &profilev1.Profile{},
+			labels:         Labels{{Name: "partition", Value: "partitionValue"}},
+			expected:       "partitionValue",
+		},
+		{ // partition label is specified but not found: mapping is ignored.
+			partitionLabel: "partition",
+			profile: &profilev1.Profile{
+				Mapping:     []*profilev1.Mapping{{Filename: 1}},
+				StringTable: []string{"", "valid_filename"},
+			},
+			expected: "unknown",
+		},
+		{
+			partitionLabel: "partition",
+			profile: &profilev1.Profile{
+				Mapping:     []*profilev1.Mapping{{Filename: 1}},
+				StringTable: []string{"", "valid_filename"},
+			},
+			expected: "partitionValue",
+			labels:   Labels{{Name: "partition", Value: "partitionValue"}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := symbolsPartitionKeyForProfile(tt.labels, tt.partitionLabel, tt.profile)
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
 }
