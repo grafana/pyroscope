@@ -31,13 +31,14 @@ import (
 	"github.com/grafana/dskit/signals"
 	"github.com/grafana/dskit/spanprofiler"
 	wwtracing "github.com/grafana/dskit/tracing"
-	"github.com/grafana/pyroscope-go"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
 	"github.com/samber/lo"
 	"google.golang.org/grpc/health"
+
+	"github.com/grafana/pyroscope-go"
 
 	"github.com/grafana/pyroscope/pkg/api"
 	apiversion "github.com/grafana/pyroscope/pkg/api/version"

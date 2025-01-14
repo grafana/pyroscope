@@ -901,6 +901,8 @@ Usage of ./pyroscope:
     	JSON either from a Google Developers Console client_credentials.json file, or a Google Developers service account key. Needs to be valid JSON, not a filesystem path.
   -storage.s3.access-key-id string
     	S3 access key ID
+  -storage.s3.bucket-lookup-type string
+    	S3 bucket lookup style, use one of: [path-style virtual-hosted-style auto] (default "auto")
   -storage.s3.bucket-name string
     	S3 bucket name
   -storage.s3.endpoint string
@@ -908,7 +910,7 @@ Usage of ./pyroscope:
   -storage.s3.expect-continue-timeout duration
     	The time to wait for a server's first response headers after fully writing the request headers if the request has an Expect header. 0 to send the request body immediately. (default 1s)
   -storage.s3.force-path-style
-    	Set this to `true` to force the bucket lookup to be using path-style.
+    	Deprecated, use s3.bucket-lookup-type instead. Set this to `true` to force the bucket lookup to be using path-style.
   -storage.s3.http.idle-conn-timeout duration
     	The time an idle connection will remain idle before closing. (default 1m30s)
   -storage.s3.http.insecure-skip-verify
