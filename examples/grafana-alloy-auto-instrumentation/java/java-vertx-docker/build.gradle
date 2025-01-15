@@ -1,0 +1,35 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+}
+
+group = 'org.example.pyrovertx'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    vertxVersion = '4.5.1'
+}
+
+dependencies {
+    implementation platform("io.vertx:vertx-stack-depchain:$vertxVersion")
+    implementation 'io.vertx:vertx-web'
+    implementation 'io.vertx:vertx-web-client'
+
+    implementation 'ch.qos.logback:logback-classic:1.4.14'
+}
+
+application {
+    mainClass = 'org.example.pyrovertx.MainVerticle'
+}
+
+shadowJar {
+    archiveClassifier.set('')
+    manifest {
+        attributes 'Main-Class': 'org.example.pyrovertx.MainVerticle'
+    }
+}
