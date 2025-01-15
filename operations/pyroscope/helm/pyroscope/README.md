@@ -1,6 +1,6 @@
 # pyroscope
 
-![Version: 1.11.0](https://img.shields.io/badge/Version-1.11.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.11.0](https://img.shields.io/badge/AppVersion-1.11.0-informational?style=flat-square)
+![Version: 1.12.0](https://img.shields.io/badge/Version-1.12.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.12.0](https://img.shields.io/badge/AppVersion-1.12.0-informational?style=flat-square)
 
 🔥 horizontally-scalable, highly-available, multi-tenant continuous profiling aggregation system
 
@@ -31,7 +31,7 @@
 | pyroscope.affinity | object | `{}` |  |
 | pyroscope.cluster_domain | string | `".cluster.local."` | Kubernetes cluster domain suffix for DNS discovery |
 | pyroscope.components | object | `{}` |  |
-| pyroscope.config | string | The config depends on other values been set, details can be found in [`values.yaml`](./values.yaml) | Contains Phlare's configuration as a string. |
+| pyroscope.config | string | The config depends on other values been set, details can be found in [`values.yaml`](./values.yaml) | Contains Pyroscope's configuration as a string. |
 | pyroscope.dnsPolicy | string | `"ClusterFirst"` |  |
 | pyroscope.extraArgs."log.level" | string | `"debug"` |  |
 | pyroscope.extraEnvFrom | list | `[]` | Environment variables from secrets or configmaps to add to the pods |
@@ -76,7 +76,7 @@
 | pyroscope.serviceAccount.annotations | object | `{}` |  |
 | pyroscope.serviceAccount.create | bool | `true` |  |
 | pyroscope.serviceAccount.name | string | `""` |  |
-| pyroscope.structuredConfig | object | `{}` | Allows to override Phlare's configuration using structured format. |
+| pyroscope.structuredConfig | object | `{}` | Allows to override Pyroscope's configuration using structured format. |
 | pyroscope.tenantOverrides | object | `{}` | Allows to add tenant specific overrides to the default limit configuration. |
 | pyroscope.tolerations | list | `[]` |  |
 | pyroscope.topologySpreadConstraints | list | `[]` | Topology Spread Constraints |
