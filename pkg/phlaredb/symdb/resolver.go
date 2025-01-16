@@ -11,6 +11,7 @@ import (
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/symbolizer"
 	"github.com/grafana/pyroscope/pkg/model"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/pprof"
@@ -37,6 +38,8 @@ type Resolver struct {
 
 	maxNodes int64
 	sts      *typesv1.StackTraceSelector
+
+	symbolizer *symbolizer.Symbolizer
 }
 
 type ResolverOption func(*Resolver)
@@ -54,6 +57,12 @@ func WithResolverMaxConcurrent(n int) ResolverOption {
 func WithResolverMaxNodes(n int64) ResolverOption {
 	return func(r *Resolver) {
 		r.maxNodes = n
+	}
+}
+
+func WithSymbolizer(s *symbolizer.Symbolizer) ResolverOption {
+	return func(r *Resolver) {
+		r.symbolizer = s
 	}
 }
 
@@ -273,7 +282,9 @@ func (r *Resolver) withSymbols(ctx context.Context, fn func(*Symbols, *SampleApp
 			if err := p.fetch(ctx); err != nil {
 				return err
 			}
-			return fn(p.reader.Symbols(), p.samples)
+			symbols := p.reader.Symbols()
+			symbols.SetSymbolizer(r.symbolizer)
+			return fn(symbols, p.samples)
 		}))
 	}
 	return g.Wait()
@@ -294,4 +305,19 @@ func (r *Symbols) Tree(
 	maxNodes int64,
 ) (*model.Tree, error) {
 	return buildTree(ctx, r, appender, maxNodes)
+}
+
+func (r *Symbols) SetSymbolizer(sym *symbolizer.Symbolizer) {
+	r.Symbolizer = sym
+}
+
+func (r *Symbols) needsDebuginfodSymbolization(loc *schemav1.InMemoryLocation, mapping *schemav1.InMemoryMapping) bool {
+	if r.Symbolizer == nil {
+		return false
+	}
+	if len(loc.Line) == 0 {
+		// Must have mapping with build ID
+		return mapping != nil && mapping.BuildId != 0
+	}
+	return false
 }
