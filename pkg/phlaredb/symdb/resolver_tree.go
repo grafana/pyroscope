@@ -4,8 +4,10 @@ import (
 	"context"
 	"sync"
 
+	pprof "github.com/google/pprof/profile"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/grafana/pyroscope/pkg/experiment/symbolizer"
 	"github.com/grafana/pyroscope/pkg/iter"
 	"github.com/grafana/pyroscope/pkg/model"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
@@ -19,6 +21,13 @@ func buildTree(
 	appender *SampleAppender,
 	maxNodes int64,
 ) (*model.Tree, error) {
+	// Try debuginfod symbolization first
+	if symbols != nil && symbols.Symbolizer != nil {
+		if err := symbolizeLocations(ctx, symbols); err != nil {
+			// TODO: Log error but continue? partial symbolization is better than none
+		}
+	}
+
 	// If the number of samples is large (> 128K) and the StacktraceResolver
 	// implements the range iterator, we will be building the tree based on
 	// the parent pointer tree of the partition (a copy of). The only exception
@@ -238,4 +247,86 @@ func minValue(nodes []Node, maxNodes int64) int64 {
 		return 0
 	}
 	return h[0]
+}
+
+func symbolizeLocations(ctx context.Context, symbols *Symbols) error {
+	type locToSymbolize struct {
+		idx     int32
+		loc     *schemav1.InMemoryLocation
+		mapping *schemav1.InMemoryMapping
+	}
+	locsByBuildId := make(map[string][]locToSymbolize)
+
+	// Find all locations needing symbolization
+	for i, loc := range symbols.Locations {
+		if mapping := &symbols.Mappings[loc.MappingId]; symbols.needsDebuginfodSymbolization(&loc, mapping) {
+			buildIDStr := symbols.Strings[mapping.BuildId]
+			locsByBuildId[buildIDStr] = append(locsByBuildId[buildIDStr], locToSymbolize{
+				idx:     int32(i),
+				loc:     &loc,
+				mapping: mapping,
+			})
+		}
+	}
+
+	for buildID, locs := range locsByBuildId {
+		req := symbolizer.Request{
+			BuildID: buildID,
+			Mappings: []symbolizer.RequestMapping{{
+				Locations: make([]*symbolizer.Location, len(locs)),
+			}},
+		}
+
+		for i, loc := range locs {
+			req.Mappings[0].Locations[i] = &symbolizer.Location{
+				Address: loc.loc.Address,
+				Mapping: &pprof.Mapping{
+					Start:   loc.mapping.MemoryStart,
+					Limit:   loc.mapping.MemoryLimit,
+					Offset:  loc.mapping.FileOffset,
+					BuildID: buildID,
+				},
+			}
+		}
+
+		if err := symbols.Symbolizer.Symbolize(ctx, req); err != nil {
+			// TODO: log/process errors but continue with other build IDs
+			continue
+		}
+
+		// Store symbolization results back
+		for i, symLoc := range req.Mappings[0].Locations {
+			if len(symLoc.Lines) > 0 {
+				// Get the original location we're updating
+				locIdx := locs[i].idx
+
+				// Clear the existing lines for the location
+				symbols.Locations[locIdx].Line = nil
+
+				for _, line := range symLoc.Lines {
+					// Create string entries first
+					nameIdx := uint32(len(symbols.Strings))
+					symbols.Strings = append(symbols.Strings, line.Function.Name)
+
+					filenameIdx := uint32(len(symbols.Strings))
+					symbols.Strings = append(symbols.Strings, line.Function.Filename)
+
+					// Create function entry
+					funcId := uint32(len(symbols.Functions))
+					symbols.Functions = append(symbols.Functions, schemav1.InMemoryFunction{
+						Id:        uint64(funcId),
+						Name:      nameIdx,
+						Filename:  filenameIdx,
+						StartLine: uint32(line.Function.StartLine),
+					})
+
+					symbols.Locations[locIdx].Line = append(symbols.Locations[locIdx].Line, schemav1.InMemoryLine{
+						FunctionId: funcId,
+						Line:       int32(line.Line),
+					})
+				}
+			}
+		}
+	}
+	return nil
 }

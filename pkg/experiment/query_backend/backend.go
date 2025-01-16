@@ -14,16 +14,19 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/symbolizer"
 	"github.com/grafana/pyroscope/pkg/util"
 )
 
 type Config struct {
 	Address          string            `yaml:"address"`
 	GRPCClientConfig grpcclient.Config `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate between the query-frontends and the query-schedulers."`
+	DebuginfodURL    string            `yaml:"debuginfod_url"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.StringVar(&cfg.Address, "query-backend.address", "localhost:9095", "")
+	f.StringVar(&cfg.DebuginfodURL, "query-backend.debuginfod-url", "https://debuginfod.elfutils.org", "URL of the debuginfod server")
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix("query-backend.grpc-client-config", f)
 }
 
@@ -48,6 +51,8 @@ type QueryBackend struct {
 
 	backendClient QueryHandler
 	blockReader   QueryHandler
+
+	symbolizer *symbolizer.Symbolizer
 }
 
 func New(
@@ -57,13 +62,27 @@ func New(
 	backendClient QueryHandler,
 	blockReader QueryHandler,
 ) (*QueryBackend, error) {
+	var sym *symbolizer.Symbolizer
+	if config.DebuginfodURL != "" {
+		sym = symbolizer.NewSymbolizer(
+			symbolizer.NewDebuginfodClient(config.DebuginfodURL),
+		)
+	}
+
 	q := QueryBackend{
 		config:        config,
 		logger:        logger,
 		reg:           reg,
 		backendClient: backendClient,
 		blockReader:   blockReader,
+		symbolizer:    sym,
 	}
+
+	// Pass symbolizer to BlockReader if it's the right type
+	if br, ok := blockReader.(*BlockReader); ok {
+		br.symbolizer = sym
+	}
+
 	q.service = services.NewIdleService(q.starting, q.stopping)
 	return &q, nil
 }

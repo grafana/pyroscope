@@ -9,6 +9,7 @@ import (
 	"time"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/symbolizer"
 	"github.com/grafana/pyroscope/pkg/iter"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
@@ -31,6 +32,8 @@ type Symbols struct {
 	Mappings    []schemav1.InMemoryMapping
 	Functions   []schemav1.InMemoryFunction
 	Strings     []string
+
+	Symbolizer *symbolizer.Symbolizer
 }
 
 type PartitionStats struct {
