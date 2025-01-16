@@ -1,4 +1,4 @@
-package symbolization
+package symbolizer
 
 import (
 	"context"
@@ -92,7 +92,7 @@ func (s *Symbolizer) Symbolize(ctx context.Context, req Request) error {
 				continue // Skip errors for individual addresses
 			}
 
-			// Update the location directly (this is why Parca modifies the request - it's updating the shared locations)
+			// Update the location directly
 			loc.Lines = lines
 		}
 	}
