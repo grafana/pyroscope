@@ -7,7 +7,7 @@ import (
 
 	pprof "github.com/google/pprof/profile"
 
-	"github.com/grafana/pyroscope/pkg/experiment/symbolization"
+	"github.com/grafana/pyroscope/pkg/experiment/symbolizer"
 )
 
 const (
@@ -16,12 +16,12 @@ const (
 )
 
 func main() {
-	client := symbolization.NewDebuginfodClient(debuginfodBaseURL)
+	client := symbolizer.NewDebuginfodClient(debuginfodBaseURL)
 
 	// Alternatively, use a local debug info file:
 	//client := &localDebuginfodClient{debugFilePath: "/path/to/your/debug/file"}
 
-	symbolizer := symbolization.NewSymbolizer(client)
+	s := symbolizer.NewSymbolizer(client)
 	ctx := context.Background()
 
 	_, err := client.FetchDebuginfo(buildID)
@@ -31,11 +31,11 @@ func main() {
 	//defer os.Remove(debugFilePath)
 
 	// Create a request to symbolize specific addresses
-	req := symbolization.Request{
+	req := symbolizer.Request{
 		BuildID: buildID,
-		Mappings: []symbolization.RequestMapping{
+		Mappings: []symbolizer.RequestMapping{
 			{
-				Locations: []*symbolization.Location{
+				Locations: []*symbolizer.Location{
 					{
 						Address: 0x1500,
 						Mapping: &pprof.Mapping{},
@@ -53,7 +53,7 @@ func main() {
 		},
 	}
 
-	if err := symbolizer.Symbolize(ctx, req); err != nil {
+	if err := s.Symbolize(ctx, req); err != nil {
 		log.Fatalf("Failed to symbolize: %v", err)
 	}
 

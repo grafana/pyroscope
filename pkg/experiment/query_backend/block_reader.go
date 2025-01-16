@@ -16,6 +16,7 @@ import (
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block"
+	"github.com/grafana/pyroscope/pkg/experiment/symbolizer"
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/util"
 )
@@ -47,6 +48,8 @@ import (
 type BlockReader struct {
 	log     log.Logger
 	storage objstore.Bucket
+
+	symbolizer *symbolizer.Symbolizer
 
 	// TODO:
 	//  - Use a worker pool instead of the errgroup.
@@ -83,7 +86,7 @@ func (b *BlockReader) Invoke(
 		object := block.NewObject(b.storage, md)
 		for _, ds := range md.Datasets {
 			dataset := block.NewDataset(ds, object)
-			qcs = append(qcs, newQueryContext(ctx, b.log, r, agg, dataset))
+			qcs = append(qcs, newQueryContext(ctx, b.log, r, agg, dataset, b.symbolizer))
 		}
 	}
 
