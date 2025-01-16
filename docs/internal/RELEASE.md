@@ -20,9 +20,9 @@ To release a new version of the project you need to follow the following steps:
 
 The CI will automatically handle the build and create a draft GitHub release.
 
-Once ready, you can edit and publish the draft release on GitHub. You will need to take the release notes and append them to the `CHANGELOG.md` file in the root of the repository.
+Once ready, you can edit and publish the draft release on GitHub.
 
-The list of changes from the CHANGELOG.md file form the basis of the public-facing release notes. Release notes are added to the [public Pyroscope documentation](https://grafana.com/docs/pyroscope/latest/release-notes/). These release notes follow the same pattern for each release:
+The list of changes from the GitHub release form the basis of the public-facing release notes. Release notes are added to the [public Pyroscope documentation](https://grafana.com/docs/pyroscope/latest/release-notes/). These release notes follow the same pattern for each release:
 
 1. Copy the previous release's page (i.e., V1-3.md) to the new release number. Change the version information and [page weight](https://grafana.com/docs/writers-toolkit/write/front-matter/#weight) in the file's frontmatter.
 2. Update the page title (Version x.x release notes) and add a few sentences about the main updates in the release.
@@ -35,7 +35,7 @@ For help writing release notes, refer to the [Writers' Toolkit](https://grafana.
 
 Please do not delete GitHub releases that were once public.
 
-To release a minor version, simply merge fixes to the release branch then create and push a new tag. (e.g. `v0.x.1`). Any bugfixes or other entries should be added to the existing release notes for that version under a new heading with the version number.
+To release a patch version, simply merge fixes to the release branch then create and push a new tag. (e.g. `v0.x.1`). Any bugfixes or other entries should be added to the existing release notes for that version under a new heading with the version number.
 
 > For helm charts, you need to merge a PR that bumps the chart version in the main branch (no tagging required), the CI will automatically publish the chart to the [helm repository](https://grafana.github.io/helm-charts).
 
