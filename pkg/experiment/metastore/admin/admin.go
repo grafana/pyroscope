@@ -2,6 +2,7 @@ package admin
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"net/http"
 	"slices"
@@ -15,6 +16,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode/raftnodepb"
 	httputil "github.com/grafana/pyroscope/pkg/util/http"
@@ -33,7 +35,9 @@ type Admin struct {
 	logger log.Logger
 
 	servers      []discovery.Server
-	leaderClient raftnodepb.RaftNodeServiceClient
+	leaderClient raftnodepb.RaftNodeServiceClient // used to make operational calls (e.g., removing nodes)
+
+	metastoreClient *metastoreclient.Client // used to test the metastoreclient.Client implementation
 
 	actionHandlers map[string]formActionHandler
 }
@@ -42,7 +46,7 @@ func (a *Admin) Service() services.Service {
 	return a.service
 }
 
-type metastoreClient struct {
+type raftNodeServiceClient struct {
 	raftnodepb.RaftNodeServiceClient
 	conn *grpc.ClientConn
 }
@@ -51,11 +55,13 @@ func New(
 	client raftnodepb.RaftNodeServiceClient,
 	logger log.Logger,
 	metastoreAddress string,
+	metastoreClient *metastoreclient.Client,
 ) (*Admin, error) {
 	adm := &Admin{
-		leaderClient:   client,
-		logger:         logger,
-		actionHandlers: make(map[string]formActionHandler),
+		leaderClient:    client,
+		logger:          logger,
+		actionHandlers:  make(map[string]formActionHandler),
+		metastoreClient: metastoreClient,
 	}
 	adm.addFormActionHandlers()
 	adm.service = services.NewIdleService(adm.starting, adm.stopping)
@@ -198,12 +204,12 @@ func findCurrentTerm(nodes []*metastoreNode) uint64 {
 	return term
 }
 
-func newClient(address string) (*metastoreClient, error) {
+func newClient(address string) (*raftNodeServiceClient, error) {
 	conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}
-	return &metastoreClient{
+	return &raftNodeServiceClient{
 		RaftNodeServiceClient: raftnodepb.NewRaftNodeServiceClient(conn),
 		conn:                  conn,
 	}, nil
@@ -238,4 +244,34 @@ func (a *Admin) addFormActionHandlers() {
 		})
 		return err
 	}
+}
+
+func (a *Admin) ClientTestHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		raftState, err := a.fetchRaftState(r.Context())
+		if err != nil {
+			httputil.Error(w, err)
+			return
+		}
+
+		response := ""
+
+		if r.Method == http.MethodPost {
+			res, err := a.metastoreClient.ReadIndex(r.Context(), &raftnodepb.ReadIndexRequest{})
+			if err != nil {
+				response = err.Error()
+			} else {
+				response = fmt.Sprintf("Success! (index: %d, term: %d)", res.CommitIndex, res.Term)
+			}
+		}
+
+		err = pageTemplates.clientTestTemplate.Execute(w, clientTestPageContent{
+			Raft:         raftState,
+			Now:          time.Now().UTC(),
+			TestResponse: response,
+		})
+		if err != nil {
+			httputil.Error(w, err)
+		}
+	})
 }

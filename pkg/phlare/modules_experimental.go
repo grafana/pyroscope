@@ -163,7 +163,7 @@ func (f *Phlare) initMetastoreAdmin() (services.Service, error) {
 	}
 
 	var err error
-	f.metastoreAdmin, err = metastoreadmin.New(f.metastoreClient, f.logger, f.Cfg.Metastore.Address)
+	f.metastoreAdmin, err = metastoreadmin.New(f.metastoreClient, f.logger, f.Cfg.Metastore.Address, f.metastoreClient)
 	if err != nil {
 		return nil, err
 	}

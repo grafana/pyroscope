@@ -11,6 +11,9 @@ import (
 //go:embed metastore.nodes.gohtml
 var nodesPageHtml string
 
+//go:embed metastore.client.gohtml
+var clientTestPageHtml string
+
 type metastoreNode struct {
 	// from Discovery
 	DiscoveryServerId string
@@ -45,8 +48,15 @@ type nodesPageContent struct {
 	Now               time.Time
 }
 
+type clientTestPageContent struct {
+	Raft         *raftNodeState
+	Now          time.Time
+	TestResponse string
+}
+
 type templates struct {
-	nodesTemplate *template.Template
+	nodesTemplate      *template.Template
+	clientTestTemplate *template.Template
 }
 
 var pageTemplates = initTemplates()
@@ -54,8 +64,11 @@ var pageTemplates = initTemplates()
 func initTemplates() *templates {
 	nodesTemplate := template.New("nodes")
 	template.Must(nodesTemplate.Parse(nodesPageHtml))
+	clientTestTemplate := template.New("clientTest")
+	template.Must(clientTestTemplate.Parse(clientTestPageHtml))
 	t := &templates{
-		nodesTemplate: nodesTemplate,
+		nodesTemplate:      nodesTemplate,
+		clientTestTemplate: clientTestTemplate,
 	}
 	return t
 }
