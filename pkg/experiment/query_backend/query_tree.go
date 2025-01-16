@@ -56,7 +56,9 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
 
 	resolver := symdb.NewResolver(q.ctx, q.ds.Symbols(),
-		symdb.WithResolverMaxNodes(query.Tree.GetMaxNodes()))
+		symdb.WithResolverMaxNodes(query.Tree.GetMaxNodes()),
+		symdb.WithSymbolizer(q.symbolizer))
+
 	defer resolver.Release()
 
 	if len(spanSelector) > 0 {
