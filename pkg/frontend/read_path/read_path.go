@@ -16,5 +16,5 @@ func (o *Config) RegisterFlags(f *flag.FlagSet) {
 	f.BoolVar(&o.EnableQueryBackend, "enable-query-backend", false,
 		"This parameter specifies whether the new query backend is enabled.")
 	f.Var((*flagext.Time)(&o.EnableQueryBackendFrom), "enable-query-backend-from",
-		"This parameter specifies the point in time from which data is queried from the new query backend.")
+		"This parameter specifies the point in time from which data is queried from the new query backend. The format if RFC3339 (2020-10-20T00:00:00Z)")
 }

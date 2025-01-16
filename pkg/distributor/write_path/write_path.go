@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"time"
 )
 
 // WritePath controls the write path.
@@ -53,9 +54,11 @@ func (m *WritePath) Set(text string) error {
 func (m *WritePath) String() string { return string(*m) }
 
 type Config struct {
-	WritePath           WritePath `yaml:"write_path" json:"write_path" doc:"hidden"`
-	IngesterWeight      float64   `yaml:"write_path_ingester_weight" json:"write_path_ingester_weight" doc:"hidden"`
-	SegmentWriterWeight float64   `yaml:"write_path_segment_writer_weight" json:"write_path_segment_writer_weight" doc:"hidden"`
+	WritePath            WritePath     `yaml:"write_path" json:"write_path" doc:"hidden"`
+	IngesterWeight       float64       `yaml:"write_path_ingester_weight" json:"write_path_ingester_weight" doc:"hidden"`
+	SegmentWriterWeight  float64       `yaml:"write_path_segment_writer_weight" json:"write_path_segment_writer_weight" doc:"hidden"`
+	SegmentWriterTimeout time.Duration `yaml:"write_path_segment_writer_timeout" json:"write_path_segment_writer_timeout" doc:"hidden"`
+	AsyncIngest          bool          `yaml:"async_ingest" json:"async_ingest" doc:"hidden"`
 }
 
 func (o *Config) RegisterFlags(f *flag.FlagSet) {
@@ -65,4 +68,6 @@ func (o *Config) RegisterFlags(f *flag.FlagSet) {
 		"Specifies the fraction [0:1] that should be send to ingester in combined mode. 0 means no traffics is sent to ingester. 1 means 100% of requests are sent to ingester.")
 	f.Float64Var(&o.SegmentWriterWeight, "write-path.segment-writer-weight", 0,
 		"Specifies the fraction [0:1] that should be send to segment-writer in combined mode. 0 means no traffics is sent to segment-writer. 1 means 100% of requests are sent to segment-writer.")
+	f.DurationVar(&o.SegmentWriterTimeout, "write-path.segment-writer-timeout", 5*time.Second, "Timeout for segment writer requests.")
+	f.BoolVar(&o.AsyncIngest, "async-ingest", false, "If true, the write path will not wait for the segment-writer to finish processing the request. Writes to ingester always synchronous.")
 }
