@@ -49,7 +49,7 @@ func parseAll(rawData []byte, md ingestion.Metadata) ([]*storage.PutInput, error
 		EndTime:    md.EndTime,
 		SpyName:    md.SpyName,
 		SampleRate: md.SampleRate,
-		Key:        md.Key,
+		LabelSet:   md.LabelSet,
 	}
 
 	for _, prof := range file.Profiles {
@@ -67,7 +67,7 @@ func parseOne(prof *profile, putInput storage.PutInput, frames []frame, multi bo
 	putInput.Units = prof.Unit.chooseMetadataUnit()
 	putInput.AggregationType = metadata.SumAggregationType
 	if multi {
-		putInput.Key = prof.Unit.chooseKey(putInput.Key)
+		putInput.LabelSet = prof.Unit.chooseKey(putInput.LabelSet)
 	}
 
 	// TODO(petethepig): We need a way to tell if it's a default or a value set by user

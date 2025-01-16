@@ -200,7 +200,7 @@ func (p *RawProfile) metricName(profile *pprof.Profile) string {
 }
 
 func (p *RawProfile) createLabels(profile *pprof.Profile, md ingestion.Metadata) []*v1.LabelPair {
-	ls := make([]*v1.LabelPair, 0, len(md.Key.Labels())+4)
+	ls := make([]*v1.LabelPair, 0, len(md.LabelSet.Labels())+4)
 	ls = append(ls, &v1.LabelPair{
 		Name:  labels.MetricName,
 		Value: p.metricName(profile),
@@ -209,12 +209,12 @@ func (p *RawProfile) createLabels(profile *pprof.Profile, md ingestion.Metadata)
 		Value: "false",
 	}, &v1.LabelPair{
 		Name:  "service_name",
-		Value: md.Key.AppName(),
+		Value: md.LabelSet.ServiceName(),
 	}, &v1.LabelPair{
 		Name:  phlaremodel.LabelNamePyroscopeSpy,
 		Value: md.SpyName,
 	})
-	for k, v := range md.Key.Labels() {
+	for k, v := range md.LabelSet.Labels() {
 		if !phlaremodel.IsLabelAllowedForIngestion(k) {
 			continue
 		}

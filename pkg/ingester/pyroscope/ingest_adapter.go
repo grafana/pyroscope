@@ -69,7 +69,7 @@ const (
 )
 
 func (p *pyroscopeIngesterAdapter) Put(ctx context.Context, pi *storage.PutInput) error {
-	if pi.Key.HasProfileID() {
+	if pi.LabelSet.HasProfileID() {
 		return nil
 	}
 	metric, stType, stUnit, app, err := convertMetadata(pi)
@@ -107,7 +107,7 @@ func (p *pyroscopeIngesterAdapter) Put(ctx context.Context, pi *storage.PutInput
 	}
 	req := &pushv1.PushRequest{}
 	series := &pushv1.RawProfileSeries{
-		Labels: make([]*typesv1.LabelPair, 0, 3+len(pi.Key.Labels())),
+		Labels: make([]*typesv1.LabelPair, 0, 3+len(pi.LabelSet.Labels())),
 	}
 	series.Labels = append(series.Labels, &typesv1.LabelPair{
 		Name:  labels.MetricName,
@@ -123,7 +123,7 @@ func (p *pyroscopeIngesterAdapter) Put(ctx context.Context, pi *storage.PutInput
 		})
 	}
 	hasServiceName := false
-	for k, v := range pi.Key.Labels() {
+	for k, v := range pi.LabelSet.Labels() {
 		if !phlaremodel.IsLabelAllowedForIngestion(k) {
 			continue
 		}
@@ -163,7 +163,11 @@ func (p *pyroscopeIngesterAdapter) Evaluate(input *storage.PutInput) (storage.Sa
 	return nil, false // noop
 }
 
-func (p *pyroscopeIngesterAdapter) parseToPprof(ctx context.Context, in *ingestion.IngestInput, pprofable ingestion.ParseableToPprof) error {
+func (p *pyroscopeIngesterAdapter) parseToPprof(
+	ctx context.Context,
+	in *ingestion.IngestInput,
+	pprofable ingestion.ParseableToPprof,
+) error {
 	plainReq, err := pprofable.ParseToPprof(ctx, in.Metadata)
 	if err != nil {
 		return fmt.Errorf("parsing IngestInput-pprof failed %w", err)
@@ -171,7 +175,7 @@ func (p *pyroscopeIngesterAdapter) parseToPprof(ctx context.Context, in *ingesti
 	if len(plainReq.Series) == 0 {
 		tenantID, _ := tenant.ExtractTenantIDFromContext(ctx)
 		_ = level.Debug(p.log).Log("msg", "empty profile",
-			"application", in.Metadata.Key.AppName(),
+			"application", in.Metadata.LabelSet.ServiceName(),
 			"orgID", tenantID)
 		return nil
 	}
@@ -183,7 +187,7 @@ func (p *pyroscopeIngesterAdapter) parseToPprof(ctx context.Context, in *ingesti
 }
 
 func convertMetadata(pi *storage.PutInput) (metricName, stType, stUnit, app string, err error) {
-	app = pi.Key.AppName()
+	app = pi.LabelSet.ServiceName()
 	parts := strings.Split(app, ".")
 	if len(parts) <= 1 {
 		stType = stTypeCPU

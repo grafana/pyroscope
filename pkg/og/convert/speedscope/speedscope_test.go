@@ -6,9 +6,10 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"github.com/grafana/pyroscope/api/model/labelset"
 	"github.com/grafana/pyroscope/pkg/og/ingestion"
 	"github.com/grafana/pyroscope/pkg/og/storage/metadata"
-	"github.com/grafana/pyroscope/pkg/og/storage/segment"
 
 	"github.com/grafana/pyroscope/pkg/og/storage"
 )
@@ -25,13 +26,13 @@ var _ = Describe("Speedscope", func() {
 		data, err := os.ReadFile("testdata/simple.speedscope.json")
 		Expect(err).ToNot(HaveOccurred())
 
-		key, err := segment.ParseKey("foo")
+		key, err := labelset.Parse("foo")
 		Expect(err).ToNot(HaveOccurred())
 
 		ingester := new(mockIngester)
 		profile := &RawProfile{RawData: data}
 
-		md := ingestion.Metadata{Key: key, SampleRate: 100}
+		md := ingestion.Metadata{LabelSet: key, SampleRate: 100}
 		err = profile.Parse(context.Background(), ingester, nil, md)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -39,7 +40,7 @@ var _ = Describe("Speedscope", func() {
 		input := ingester.actual[0]
 
 		Expect(input.Units).To(Equal(metadata.SamplesUnits))
-		Expect(input.Key.Normalized()).To(Equal("foo{}"))
+		Expect(input.LabelSet.Normalized()).To(Equal("foo{}"))
 		expectedResult := `a;b 500
 a;b;c 500
 a;b;d 400
@@ -52,13 +53,13 @@ a;b;d 400
 		data, err := os.ReadFile("testdata/two-sampled.speedscope.json")
 		Expect(err).ToNot(HaveOccurred())
 
-		key, err := segment.ParseKey("foo{x=y}")
+		key, err := labelset.Parse("foo{x=y}")
 		Expect(err).ToNot(HaveOccurred())
 
 		ingester := new(mockIngester)
 		profile := &RawProfile{RawData: data}
 
-		md := ingestion.Metadata{Key: key, SampleRate: 100}
+		md := ingestion.Metadata{LabelSet: key, SampleRate: 100}
 		err = profile.Parse(context.Background(), ingester, nil, md)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -66,7 +67,7 @@ a;b;d 400
 
 		input := ingester.actual[0]
 		Expect(input.Units).To(Equal(metadata.SamplesUnits))
-		Expect(input.Key.Normalized()).To(Equal("foo.seconds{x=y}"))
+		Expect(input.LabelSet.Normalized()).To(Equal("foo.seconds{x=y}"))
 		expectedResult := `a;b 500
 a;b;c 500
 a;b;d 400
