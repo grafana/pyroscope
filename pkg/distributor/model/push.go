@@ -68,3 +68,29 @@ func getProfileLanguageFromSpy(spyName string) string {
 		return "rust"
 	}
 }
+
+func (req *PushRequest) Clone() *PushRequest {
+	c := &PushRequest{
+		TenantID:               req.TenantID,
+		RawProfileSize:         req.RawProfileSize,
+		RawProfileType:         req.RawProfileType,
+		Series:                 make([]*ProfileSeries, len(req.Series)),
+		TotalProfiles:          req.TotalProfiles,
+		TotalBytesUncompressed: req.TotalBytesUncompressed,
+	}
+	for i, s := range req.Series {
+		c.Series[i] = &ProfileSeries{
+			Labels:   phlaremodel.Labels(s.Labels).Clone(),
+			Samples:  make([]*ProfileSample, len(s.Samples)),
+			Language: s.Language,
+		}
+		for j, p := range s.Samples {
+			c.Series[i].Samples[j] = &ProfileSample{
+				Profile:    &pprof.Profile{Profile: p.Profile.Profile.CloneVT()},
+				RawProfile: nil,
+				ID:         p.ID,
+			}
+		}
+	}
+	return c
+}

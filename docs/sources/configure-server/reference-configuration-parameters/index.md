@@ -115,6 +115,11 @@ pyroscopedb:
   # CLI flag: -pyroscopedb.row-group-target-size
   [row_group_target_size: <int> | default = 1342177280]
 
+  # Specifies the dimension by which symbols are partitioned. By default, the
+  # partitioning is determined automatically.
+  # CLI flag: -pyroscopedb.symbols-partition-label
+  [symbols_partition_label: <string> | default = ""]
+
   # How much available disk space to keep in GiB
   # CLI flag: -pyroscopedb.retention-policy-min-free-disk-gb
   [min_free_disk_gb: <int> | default = 10]
@@ -629,7 +634,7 @@ ring:
 
       # Override the default cipher suite list (separated by commas). Allowed
       # values:
-      #
+      # 
       # Secure Ciphers:
       # - TLS_AES_128_GCM_SHA256
       # - TLS_AES_256_GCM_SHA384
@@ -644,7 +649,7 @@ ring:
       # - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
       # - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
       # - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
-      #
+      # 
       # Insecure Ciphers:
       # - TLS_RSA_WITH_RC4_128_SHA
       # - TLS_RSA_WITH_3DES_EDE_CBC_SHA
@@ -812,7 +817,7 @@ lifecycler:
 
         # Override the default cipher suite list (separated by commas). Allowed
         # values:
-        #
+        # 
         # Secure Ciphers:
         # - TLS_AES_128_GCM_SHA256
         # - TLS_AES_256_GCM_SHA384
@@ -827,7 +832,7 @@ lifecycler:
         # - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
         # - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
         # - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
-        #
+        # 
         # Insecure Ciphers:
         # - TLS_RSA_WITH_RC4_128_SHA
         # - TLS_RSA_WITH_3DES_EDE_CBC_SHA
@@ -1178,7 +1183,7 @@ sharding_ring:
 
       # Override the default cipher suite list (separated by commas). Allowed
       # values:
-      #
+      # 
       # Secure Ciphers:
       # - TLS_AES_128_GCM_SHA256
       # - TLS_AES_256_GCM_SHA384
@@ -1193,7 +1198,7 @@ sharding_ring:
       # - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
       # - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
       # - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
-      #
+      # 
       # Insecure Ciphers:
       # - TLS_RSA_WITH_RC4_128_SHA
       # - TLS_RSA_WITH_3DES_EDE_CBC_SHA
@@ -1527,7 +1532,7 @@ sharding_ring:
 
       # Override the default cipher suite list (separated by commas). Allowed
       # values:
-      #
+      # 
       # Secure Ciphers:
       # - TLS_AES_128_GCM_SHA256
       # - TLS_AES_256_GCM_SHA384
@@ -1542,7 +1547,7 @@ sharding_ring:
       # - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
       # - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
       # - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
-      #
+      # 
       # Insecure Ciphers:
       # - TLS_RSA_WITH_RC4_128_SHA
       # - TLS_RSA_WITH_3DES_EDE_CBC_SHA
@@ -1735,7 +1740,7 @@ backoff_config:
 [tls_insecure_skip_verify: <boolean> | default = false]
 
 # Override the default cipher suite list (separated by commas). Allowed values:
-#
+# 
 # Secure Ciphers:
 # - TLS_AES_128_GCM_SHA256
 # - TLS_AES_256_GCM_SHA384
@@ -1750,7 +1755,7 @@ backoff_config:
 # - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
 # - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
 # - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
-#
+# 
 # Insecure Ciphers:
 # - TLS_RSA_WITH_RC4_128_SHA
 # - TLS_RSA_WITH_3DES_EDE_CBC_SHA
@@ -1948,7 +1953,7 @@ The `memberlist` block configures the Gossip memberlist.
 [tls_insecure_skip_verify: <boolean> | default = false]
 
 # Override the default cipher suite list (separated by commas). Allowed values:
-#
+# 
 # Secure Ciphers:
 # - TLS_AES_128_GCM_SHA256
 # - TLS_AES_256_GCM_SHA384
@@ -1963,7 +1968,7 @@ The `memberlist` block configures the Gossip memberlist.
 # - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
 # - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
 # - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
-#
+# 
 # Insecure Ciphers:
 # - TLS_RSA_WITH_RC4_128_SHA
 # - TLS_RSA_WITH_3DES_EDE_CBC_SHA
@@ -2248,9 +2253,14 @@ The s3_backend block configures the connection to Amazon S3 object storage backe
 # CLI flag: -storage.s3.signature-version
 [signature_version: <string> | default = "v4"]
 
-# Set this to `true` to force the bucket lookup to be using path-style.
+# Deprecated, use s3.bucket-lookup-type instead. Set this to `true` to force the
+# bucket lookup to be using path-style.
 # CLI flag: -storage.s3.force-path-style
 [force_path_style: <boolean> | default = false]
+
+# S3 bucket lookup style, use one of: [path-style virtual-hosted-style auto]
+# CLI flag: -storage.s3.bucket-lookup-type
+[bucket_lookup_type: <string> | default = "auto"]
 
 sse:
   # Enable AWS Server Side Encryption. Supported values: SSE-KMS, SSE-S3.

@@ -122,6 +122,7 @@ func (s *routerTestSuite) Test_SegmentWriterPath() {
 func (s *routerTestSuite) Test_CombinedPath() {
 	const (
 		N = 100
+		w = 10 // Concurrent workers.
 		f = 0.5
 		d = 0.3 // Allowed delta: note that f is just a probability.
 	)
@@ -134,22 +135,34 @@ func (s *routerTestSuite) Test_CombinedPath() {
 
 	var sentIngester atomic.Uint32
 	s.ingester.On("Push", mock.Anything, mock.Anything).
-		Run(func(mock.Arguments) { sentIngester.Add(1) }).
+		Run(func(m mock.Arguments) {
+			sentIngester.Add(1)
+			// Assert that no race condition occurs: we delete series
+			// attempting to access it concurrently with segment writer
+			// that should convert the distributor request to a segment
+			// writer request.
+			m.Get(1).(*distributormodel.PushRequest).Series = nil
+		}).
 		Return(new(connect.Response[pushv1.PushResponse]), nil)
 
 	var sentSegwriter atomic.Uint32
 	s.segwriter.On("Push", mock.Anything, mock.Anything).
-		Run(func(mock.Arguments) { sentSegwriter.Add(1) }).
+		Run(func(m mock.Arguments) {
+			sentSegwriter.Add(1)
+			m.Get(1).(*segmentwriterv1.PushRequest).Profile = nil
+		}).
 		Return(new(segmentwriterv1.PushResponse), nil)
 
-	for i := 0; i < N; i++ {
-		s.Assert().NoError(s.router.Send(context.Background(), s.request))
+	for i := 0; i < w; i++ {
+		for j := 0; j < N; j++ {
+			s.Assert().NoError(s.router.Send(context.Background(), s.request.Clone()))
+		}
 	}
 
 	s.router.inflight.Wait()
-	expected := N * f
+	expected := N * f * w
 	delta := expected * d
-	s.Assert().Equal(N, int(sentIngester.Load()))
+	s.Assert().Equal(N*w, int(sentIngester.Load()))
 	s.Assert().Greater(int(sentSegwriter.Load()), int(expected-delta))
 	s.Assert().Less(int(sentSegwriter.Load()), int(expected+delta))
 }

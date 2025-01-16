@@ -89,6 +89,10 @@ func (cfg *StorageBackendConfig) RegisterFlagsWithPrefix(prefix string, f *flag.
 }
 
 func (cfg *StorageBackendConfig) Validate() error {
+	if cfg.Backend == None {
+		return nil
+	}
+
 	if !lo.Contains(cfg.supportedBackends(), cfg.Backend) {
 		return ErrUnsupportedStorageBackend
 	}
