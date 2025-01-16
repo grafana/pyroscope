@@ -58,12 +58,11 @@ type Config struct {
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	const prefix = "compaction-worker."
-	tempdir := filepath.Join(os.TempDir(), "pyroscope-compactor")
 	f.IntVar(&cfg.JobConcurrency, prefix+"job-concurrency", 0, "Number of concurrent jobs compaction worker will run. Defaults to the number of CPU cores.")
 	f.DurationVar(&cfg.JobPollInterval, prefix+"job-poll-interval", 5*time.Second, "Interval between job requests")
 	f.DurationVar(&cfg.RequestTimeout, prefix+"request-timeout", 5*time.Second, "Job request timeout.")
 	f.IntVar(&cfg.SmallObjectSize, prefix+"small-object-size-bytes", 8<<20, "Size of the object that can be loaded in memory.")
-	f.StringVar(&cfg.TempDir, prefix+"temp-dir", tempdir, "Temporary directory for compaction jobs.")
+	f.StringVar(&cfg.TempDir, prefix+"temp-dir", os.TempDir(), "Temporary directory for compaction jobs.")
 }
 
 type compactionJob struct {
@@ -90,6 +89,11 @@ func New(
 	storage objstore.Bucket,
 	reg prometheus.Registerer,
 ) (*Worker, error) {
+	config.TempDir = filepath.Join(filepath.Clean(config.TempDir), "pyroscope-compactor")
+	_ = os.RemoveAll(config.TempDir)
+	if err := os.MkdirAll(config.TempDir, 0o777); err != nil {
+		return nil, fmt.Errorf("failed to create compactor directory: %w", err)
+	}
 	w := &Worker{
 		config:  config,
 		logger:  logger,
@@ -369,6 +373,11 @@ func (w *Worker) runCompaction(job *compactionJob) {
 			block.WithObjectMaxSizeLoadInMemory(w.config.SmallObjectSize),
 			block.WithObjectDownload(sourcedir),
 		))
+	defer func() {
+		if err = os.RemoveAll(tempdir); err != nil {
+			level.Warn(logger).Log("msg", "failed to remove compaction directory", "path", tempdir, "err", err)
+		}
+	}()
 
 	switch {
 	case err == nil:
