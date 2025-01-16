@@ -1,4 +1,4 @@
-package symbolization
+package symbolizer
 
 import (
 	"debug/elf"
