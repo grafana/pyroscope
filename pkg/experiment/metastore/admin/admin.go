@@ -254,22 +254,23 @@ func (a *Admin) ClientTestHandler() http.Handler {
 			return
 		}
 
-		response := ""
+		content := clientTestPageContent{
+			Raft: raftState,
+			Now:  time.Now().UTC(),
+		}
 
 		if r.Method == http.MethodPost {
+			start := time.Now()
 			res, err := a.metastoreClient.ReadIndex(r.Context(), &raftnodepb.ReadIndexRequest{})
+			content.TestResponseTime = time.Since(start)
 			if err != nil {
-				response = err.Error()
+				content.TestResponse = err.Error()
 			} else {
-				response = fmt.Sprintf("Success! (index: %d, term: %d)", res.CommitIndex, res.Term)
+				content.TestResponse = fmt.Sprintf("Success! (index: %d, term: %d)", res.CommitIndex, res.Term)
 			}
 		}
 
-		err = pageTemplates.clientTestTemplate.Execute(w, clientTestPageContent{
-			Raft:         raftState,
-			Now:          time.Now().UTC(),
-			TestResponse: response,
-		})
+		err = pageTemplates.clientTestTemplate.Execute(w, content)
 		if err != nil {
 			httputil.Error(w, err)
 		}

@@ -17,25 +17,30 @@
             display: flex;
             margin-bottom: 0.5rem;
         }
+
         .card-detail-label {
             flex: 0 0 20%;
             font-weight: bold;
             text-align: right;
             padding-right: 1rem;
         }
+
         .card-detail-value {
             flex: 0 0 80%;
         }
+
         @media (max-width: 768px) {
             .card-detail-row {
                 flex-direction: column;
             }
+
             .card-detail-label {
                 text-align: left;
                 padding-right: 0;
                 margin-bottom: 0.25rem;
             }
         }
+
         .card {
             margin-bottom: 1rem;
         }
@@ -54,78 +59,71 @@
                 </a>
             </div>
         </div>
-        <div class="row my-3">
-            <h2>
-                Observed Leaders
-                <span
-                        class="text-info ms-2"
-                        data-bs-toggle="tooltip"
-                        data-bs-placement="right"
-                        title="Lists the leaders reported by individual Raft nodes, as well how many times each leader was observed.
-                        In a healthy cluster this should show a single leader, though this may not be the case during leadership transitions.">
-                <i class="bi bi-info-circle"></i>
-            </span>
-            </h2>
-            {{ range $server, $count := .Raft.ObservedLeaders }}
-            <div class="col-12">
-                <div class="alert alert-success" role="alert">
-                    <strong>{{ $server }}</strong> <span class="badge rounded-pill text-bg-info">{{ $count }}</span>
-                </div>
-            </div>
-            {{ end }}
-        </div>
-
         <div class="row gy-4">
             <h2>Nodes</h2>
             <form action="" method="POST">
                 <input type="hidden" name="current-term" value="{{ .Raft.CurrentTerm }}">
                 {{ $numNodes := .Raft.NumNodes }}
                 {{ range $index, $node := .Raft.Nodes }}
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-header">
-                            {{ $node.DiscoveryServerId }}
-                        </div>
-                        <div class="card-body">
-                            <div class="card-detail-row">
-                                <div class="card-detail-label">Resolved Address:</div>
-                                <div class="card-detail-value">{{ $node.ResolvedAddress }}</div>
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                {{ $node.RaftServerId }}
                             </div>
-                            <div class="card-detail-row">
-                                <div class="card-detail-label">Raft Member:</div>
-                                <div class="card-detail-value">
-                                    {{ if $node.Member }}
-                                        <span class="badge text-bg-success">yes</span> ({{ $node.State }})
-                                    {{ else }}
-                                        <span class="badge text-bg-warning">no</span>
-                                    {{ end }}
+                            <div class="card-body">
+                                <div class="card-detail-row">
+                                    <div class="card-detail-label">Resolved Address:</div>
+                                    <div class="card-detail-value">{{ $node.ResolvedAddress }}</div>
                                 </div>
-                            </div>
-                            <div class="card-detail-row">
-                                <div class="card-detail-label">Raft Server ID:</div>
-                                <div class="card-detail-value">{{ $node.RaftServerId }}</div>
-                            </div>
-                            <div class="card-detail-row">
-                                <div class="card-detail-label">Observed Leader:</div>
-                                {{ $leaderId := $node.LeaderId }}
-                                {{ if eq $leaderId ""}}
-                                    {{ $leaderId = "n/a "}}
-                                {{ end }}
-                                <div class="card-detail-value">{{ $leaderId }} (term {{ $node.CurrentTerm }})</div>
+                                <div class="card-detail-row">
+                                    <div class="card-detail-label">Raft Member:</div>
+                                    <div class="card-detail-value">
+                                        {{ if $node.Member }}
+                                            <span class="badge text-bg-success">yes</span> ({{ $node.State }})
+                                        {{ else }}
+                                            <span class="badge text-bg-warning">no</span>
+                                        {{ end }}
+                                    </div>
+                                </div>
+                                <div class="card-detail-row">
+                                    <div class="card-detail-label">Raft Server ID:</div>
+                                    <div class="card-detail-value">{{ $node.RaftServerId }}</div>
+                                </div>
+                                <div class="card-detail-row">
+                                    <div class="card-detail-label">Observed Leader:</div>
+                                    {{ $leaderId := $node.LeaderId }}
+                                    {{ if eq $leaderId ""}}
+                                        {{ $leaderId = "n/a "}}
+                                    {{ end }}
+                                    <div class="card-detail-value">{{ $leaderId }} (term {{ $node.CurrentTerm }})</div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
                 {{ end }}
             </form>
         </div>
 
         <div class="row gy-4">
-            <h2>Client Test</h2>
-            <form action="" method="POST">
-                <button class="btn btn-info me-2" name="test" type="submit">Test</button>
-                {{ .TestResponse }}
-            </form>
+            <h2>Client Test</h2><div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <form action="" method="POST">
+                            <button class="btn btn-info me-2" name="test" type="submit">Test</button>
+                        </form>
+                    </div>
+                    <div class="card-body">
+                        <div class="card-detail-row">
+                            <div class="card-detail-label">Response</div>
+                            <div class="card-detail-value">{{ .TestResponse }}</div>
+                        </div>
+                        <div class="card-detail-row">
+                            <div class="card-detail-label">Response Time</div>
+                            <div class="card-detail-value">{{ .TestResponseTime }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </main>

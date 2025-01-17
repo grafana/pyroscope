@@ -49,9 +49,10 @@ type nodesPageContent struct {
 }
 
 type clientTestPageContent struct {
-	Raft         *raftNodeState
-	Now          time.Time
-	TestResponse string
+	Raft             *raftNodeState
+	Now              time.Time
+	TestResponse     string
+	TestResponseTime time.Duration
 }
 
 type templates struct {
