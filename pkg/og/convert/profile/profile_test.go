@@ -6,9 +6,9 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/grafana/pyroscope/api/model/labelset"
 	"github.com/grafana/pyroscope/pkg/og/ingestion"
 	"github.com/grafana/pyroscope/pkg/og/storage"
-	"github.com/grafana/pyroscope/pkg/og/storage/segment"
 )
 
 type mockIngester struct{ actual []*storage.PutInput }
@@ -54,7 +54,7 @@ var _ = Describe("metrics exporter", func() {
 
 	JustBeforeEach(func() {
 		ingester = new(mockIngester)
-		md = ingestion.Metadata{Key: new(segment.Key)}
+		md = ingestion.Metadata{LabelSet: new(labelset.LabelSet)}
 		p = RawProfile{
 			Format:  ingestion.FormatGroups,
 			RawData: []byte("foo;bar 1\nfoo;baz 2\n"),

@@ -6,8 +6,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/grafana/pyroscope/api/model/labelset"
 	"github.com/grafana/pyroscope/pkg/og/storage/metadata"
-	"github.com/grafana/pyroscope/pkg/og/storage/segment"
 	"github.com/grafana/pyroscope/pkg/og/storage/tree"
 )
 
@@ -32,7 +32,7 @@ type SampleObserver interface {
 type PutInput struct {
 	StartTime       time.Time
 	EndTime         time.Time
-	Key             *segment.Key
+	LabelSet        *labelset.LabelSet
 	Val             *tree.Tree
 	SpyName         string
 	SampleRate      uint32

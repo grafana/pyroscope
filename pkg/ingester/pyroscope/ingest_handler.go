@@ -17,13 +17,13 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 
+	"github.com/grafana/pyroscope/api/model/labelset"
 	"github.com/grafana/pyroscope/pkg/og/agent/types"
 	"github.com/grafana/pyroscope/pkg/og/convert/jfr"
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof"
 	"github.com/grafana/pyroscope/pkg/og/convert/profile"
 	"github.com/grafana/pyroscope/pkg/og/ingestion"
 	"github.com/grafana/pyroscope/pkg/og/storage/metadata"
-	"github.com/grafana/pyroscope/pkg/og/storage/segment"
 	"github.com/grafana/pyroscope/pkg/og/util/attime"
 )
 
@@ -70,7 +70,7 @@ func (h ingestHandler) ingestInputFromRequest(r *http.Request) (*ingestion.Inges
 		err   error
 	)
 
-	input.Metadata.Key, err = segment.ParseKey(q.Get("name"))
+	input.Metadata.LabelSet, err = labelset.Parse(q.Get("name"))
 	if err != nil {
 		return nil, fmt.Errorf("name: %w", err)
 	}

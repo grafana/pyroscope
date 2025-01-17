@@ -3,8 +3,8 @@ package speedscope
 import (
 	"fmt"
 
+	"github.com/grafana/pyroscope/api/model/labelset"
 	"github.com/grafana/pyroscope/pkg/og/storage/metadata"
-	"github.com/grafana/pyroscope/pkg/og/storage/segment"
 )
 
 type unit string
@@ -70,9 +70,9 @@ func (u unit) chooseMetadataUnit() metadata.Units {
 	}
 }
 
-func (u unit) chooseKey(orig *segment.Key) *segment.Key {
+func (u unit) chooseKey(orig *labelset.LabelSet) *labelset.LabelSet {
 	// This means we'll have duplicate keys if multiple profiles have the same units. Probably ok.
-	name := fmt.Sprintf("%s.%s", orig.AppName(), u)
+	name := fmt.Sprintf("%s.%s", orig.ServiceName(), u)
 	result := orig.Clone()
 	result.Add("__name__", name)
 	return result
