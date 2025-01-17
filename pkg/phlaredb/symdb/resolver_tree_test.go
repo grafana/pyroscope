@@ -284,7 +284,7 @@ func Test_buildTree_Symbolization(t *testing.T) {
 				return "testdata/unsymbolized.debug", nil
 			},
 		}
-		sym := symbolizer.NewSymbolizer(mockClient)
+		sym := symbolizer.NewSymbolizer(mockClient, nil)
 		symbols.SetSymbolizer(sym)
 
 		appender := NewSampleAppender()
@@ -343,7 +343,7 @@ func Test_buildTree_Symbolization(t *testing.T) {
 				return "", fmt.Errorf("symbolization failed")
 			},
 		}
-		sym := symbolizer.NewSymbolizer(mockClient)
+		sym := symbolizer.NewSymbolizer(mockClient, nil)
 		symbols.SetSymbolizer(sym)
 
 		appender := NewSampleAppender()
