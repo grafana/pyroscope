@@ -2,6 +2,7 @@ package symdb
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	pprof "github.com/google/pprof/profile"
@@ -23,8 +24,9 @@ func buildTree(
 ) (*model.Tree, error) {
 	// Try debuginfod symbolization first
 	if symbols != nil && symbols.Symbolizer != nil {
+		//nolint:staticcheck
 		if err := symbolizeLocations(ctx, symbols); err != nil {
-			// TODO: Log error but continue? partial symbolization is better than none
+			// TODO: Log/process error but continue? partial symbolization is better than none
 		}
 	}
 
@@ -250,6 +252,8 @@ func minValue(nodes []Node, maxNodes int64) int64 {
 }
 
 func symbolizeLocations(ctx context.Context, symbols *Symbols) error {
+	var errs []error
+
 	type locToSymbolize struct {
 		idx     int32
 		loc     *schemav1.InMemoryLocation
@@ -259,11 +263,12 @@ func symbolizeLocations(ctx context.Context, symbols *Symbols) error {
 
 	// Find all locations needing symbolization
 	for i, loc := range symbols.Locations {
+		locCopy := loc
 		if mapping := &symbols.Mappings[loc.MappingId]; symbols.needsDebuginfodSymbolization(&loc, mapping) {
 			buildIDStr := symbols.Strings[mapping.BuildId]
 			locsByBuildId[buildIDStr] = append(locsByBuildId[buildIDStr], locToSymbolize{
 				idx:     int32(i),
-				loc:     &loc,
+				loc:     &locCopy,
 				mapping: mapping,
 			})
 		}
@@ -290,7 +295,7 @@ func symbolizeLocations(ctx context.Context, symbols *Symbols) error {
 		}
 
 		if err := symbols.Symbolizer.Symbolize(ctx, req); err != nil {
-			// TODO: log/process errors but continue with other build IDs
+			errs = append(errs, fmt.Errorf("symbolize build ID %s: %w", buildID, err))
 			continue
 		}
 
@@ -328,5 +333,10 @@ func symbolizeLocations(ctx context.Context, symbols *Symbols) error {
 			}
 		}
 	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("symbolization errors: %v", errs)
+	}
+
 	return nil
 }
