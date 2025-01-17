@@ -4,7 +4,13 @@ import (
 	"context"
 	"debug/dwarf"
 	"debug/elf"
+	"flag"
 	"fmt"
+	"io"
+	"os"
+	"time"
+
+	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
 )
 
 // DwarfResolver implements the liner interface
@@ -37,44 +43,106 @@ func (d *DwarfResolver) Close() error {
 	return d.file.Close()
 }
 
-type Symbolizer struct {
-	client DebuginfodClient
+type Config struct {
+	DebuginfodURL string                `yaml:"debuginfod_url"`
+	Cache         CacheConfig           `yaml:"cache"`
+	Storage       objstoreclient.Config `yaml:"storage"`
 }
 
-func NewSymbolizer(client DebuginfodClient) *Symbolizer {
+type Symbolizer struct {
+	client DebuginfodClient
+	cache  DebugInfoCache
+}
+
+func NewSymbolizer(client DebuginfodClient, cache DebugInfoCache) *Symbolizer {
+	if cache == nil {
+		cache = NewNullCache()
+	}
 	return &Symbolizer{
 		client: client,
+		cache:  cache,
 	}
 }
 
+func NewFromConfig(ctx context.Context, cfg Config) (*Symbolizer, error) {
+	client := NewDebuginfodClient(cfg.DebuginfodURL)
+
+	// Default to no caching
+	var cache = NewNullCache()
+
+	if cfg.Cache.Enabled {
+		if cfg.Storage.Backend == "" {
+			return nil, fmt.Errorf("storage configuration required when cache is enabled")
+		}
+		bucket, err := objstoreclient.NewBucket(ctx, cfg.Storage, "debuginfo")
+		if err != nil {
+			return nil, fmt.Errorf("create debug info storage: %w", err)
+		}
+		cache = NewObjstoreCache(bucket, cfg.Cache.MaxAge)
+	}
+
+	return &Symbolizer{
+		client: client,
+		cache:  cache,
+	}, nil
+}
+
 func (s *Symbolizer) Symbolize(ctx context.Context, req Request) error {
-	// Fetch debug info file
-	debugFilePath, err := s.client.FetchDebuginfo(req.BuildID)
+	debugReader, err := s.cache.Get(ctx, req.BuildID)
+	if err == nil {
+		defer debugReader.Close()
+		return s.symbolizeFromReader(ctx, debugReader, req)
+	}
+
+	// Cache miss - fetch from debuginfod
+	filepath, err := s.client.FetchDebuginfo(req.BuildID)
 	if err != nil {
 		return fmt.Errorf("fetch debuginfo: %w", err)
 	}
 
-	// Open ELF file
-	f, err := elf.Open(debugFilePath)
+	// Open for symbolization
+	f, err := os.Open(filepath)
 	if err != nil {
-		return fmt.Errorf("open ELF file: %w", err)
+		return fmt.Errorf("open debug file: %w", err)
 	}
 	defer f.Close()
 
+	// Cache it for future use
+	if _, err := f.Seek(0, 0); err != nil {
+		return fmt.Errorf("seek file: %w", err)
+	}
+	if err := s.cache.Put(ctx, req.BuildID, f); err != nil {
+		// TODO: Log it but don't fail?
+	}
+
+	// Seek back to start for symbolization
+	if _, err := f.Seek(0, 0); err != nil {
+		return fmt.Errorf("seek file: %w", err)
+	}
+
+	return s.symbolizeFromReader(ctx, f, req)
+}
+
+func (s *Symbolizer) symbolizeFromReader(ctx context.Context, r io.ReadCloser, req Request) error {
+	elfFile, err := elf.NewFile(io.NewSectionReader(r.(io.ReaderAt), 0, 1<<63-1))
+	if err != nil {
+		return fmt.Errorf("create ELF file from reader: %w", err)
+	}
+	defer elfFile.Close()
+
 	// Get executable info for address normalization
-	ei, err := ExecutableInfoFromELF(f)
+	ei, err := ExecutableInfoFromELF(elfFile)
 	if err != nil {
 		return fmt.Errorf("executable info from ELF: %w", err)
 	}
 
 	// Create liner
-	liner, err := NewDwarfResolver(f)
+	liner, err := NewDwarfResolver(elfFile)
 	if err != nil {
 		return fmt.Errorf("create liner: %w", err)
 	}
 	//defer liner.Close()
 
-	// Process each mapping's locations
 	for _, mapping := range req.Mappings {
 		for _, loc := range mapping.Locations {
 			addr, err := MapRuntimeAddress(loc.Address, ei, Mapping{
@@ -92,7 +160,6 @@ func (s *Symbolizer) Symbolize(ctx context.Context, req Request) error {
 				continue // Skip errors for individual addresses
 			}
 
-			// Update the location directly
 			loc.Lines = lines
 		}
 	}
@@ -100,40 +167,10 @@ func (s *Symbolizer) Symbolize(ctx context.Context, req Request) error {
 	return nil
 }
 
-func (s *Symbolizer) SymbolizeAll(ctx context.Context, buildID string) error {
-	// Reuse the existing debuginfo file
-	debugFilePath, err := s.client.FetchDebuginfo(buildID)
-	if err != nil {
-		return fmt.Errorf("fetch debuginfo: %w", err)
-	}
+func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
+	f.StringVar(&cfg.DebuginfodURL, prefix+".debuginfod-url", "https://debuginfod.elfutils.org", "URL of the debuginfod server")
 
-	f, err := elf.Open(debugFilePath)
-	if err != nil {
-		return fmt.Errorf("open ELF file: %w", err)
-	}
-	defer f.Close()
-
-	debugData, err := f.DWARF()
-	if err != nil {
-		return fmt.Errorf("get DWARF data: %w", err)
-	}
-
-	debugInfo := NewDWARFInfo(debugData)
-	allSymbols := debugInfo.SymbolizeAllAddresses()
-
-	fmt.Println("\nSymbolizing all addresses in DWARF file:")
-	fmt.Println("----------------------------------------")
-
-	for addr, lines := range allSymbols {
-		fmt.Printf("\nAddress: 0x%x\n", addr)
-		for _, line := range lines {
-			fmt.Printf("  Function: %s\n", line.Function.Name)
-			fmt.Printf("  File: %s\n", line.Function.Filename)
-			fmt.Printf("  Line: %d\n", line.Line)
-			fmt.Printf("  StartLine: %d\n", line.Function.StartLine)
-			fmt.Println("----------------------------------------")
-		}
-	}
-
-	return nil
+	cachePrefix := prefix + ".cache"
+	f.BoolVar(&cfg.Cache.Enabled, cachePrefix+".enabled", false, "Enable debug info caching")
+	f.DurationVar(&cfg.Cache.MaxAge, cachePrefix+".max-age", 7*24*time.Hour, "Maximum age of cached debug info")
 }
