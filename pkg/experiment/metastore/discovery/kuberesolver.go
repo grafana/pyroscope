@@ -2,13 +2,15 @@ package discovery
 
 import (
 	"fmt"
-	"github.com/go-kit/log"
-	kuberesolver2 "github.com/grafana/pyroscope/pkg/experiment/metastore/discovery/kuberesolver"
-	"github.com/hashicorp/raft"
-	"google.golang.org/grpc/resolver"
 	"net/url"
 	"strings"
 	"sync"
+
+	"github.com/go-kit/log"
+	"github.com/hashicorp/raft"
+	"google.golang.org/grpc/resolver"
+
+	kuberesolver2 "github.com/grafana/pyroscope/pkg/experiment/metastore/discovery/kuberesolver"
 )
 
 type KubeDiscovery struct {
@@ -97,7 +99,7 @@ func convertEndpoints(e kuberesolver2.Endpoints, ti targetInfo) []Server {
 					continue
 				}
 				podName := addr.TargetRef.Name
-				raftServerId := fmt.Sprintf("%s.%s.%s:%d", podName, ti.service, ti.namespace, port.Port)
+				raftServerId := fmt.Sprintf("%s.%s.%s.svc.cluster.local.:%d", podName, ti.service, ti.namespace, port.Port)
 
 				servers = append(servers, Server{
 					ResolvedAddress: fmt.Sprintf("%s:%d", addr.IP, port.Port),

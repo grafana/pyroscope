@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"strings"
 	"time"
 
+	"github.com/go-kit/log/level"
 	"github.com/hashicorp/raft"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -54,9 +56,9 @@ func invoke[R any](ctx context.Context, cl *Client,
 		node, ok := raftnode.RaftLeaderFromStatusDetails(err)
 		if ok {
 			cl.mu.Lock()
-			if cl.leader == it.srv.Raft.ID {
+			if strings.Contains(string(it.srv.Raft.ID), string(cl.leader)) {
 				cl.logger.Log("msg", "changing metastore client leader", "current", cl.leader, "new", node.Id)
-				cl.leader = raft.ServerID(node.Id)
+				cl.leader = stripPort(node.Id)
 			}
 			cl.mu.Unlock()
 		} else {
@@ -88,12 +90,21 @@ func (c *Client) selectInstance(override bool) *client {
 			if j == idx {
 				it = v
 				c.leader = k
+				level.Debug(c.logger).Log("msg", "selected a random metastore server", "new_leader", c.leader)
 				break
 			}
 			j++
 		}
 	}
 	return it
+}
+
+func stripPort(server string) raft.ServerID {
+	serverWithoutPort := server
+	if idx := strings.LastIndex(serverWithoutPort, ":"); idx != -1 {
+		serverWithoutPort = serverWithoutPort[:idx]
+	}
+	return raft.ServerID(serverWithoutPort)
 }
 
 // TODO(kolesnikovae): Interceptor.

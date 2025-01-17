@@ -89,7 +89,8 @@ func (c *Client) updateServers(servers []discovery.Server) {
 	c.logger.Log("msg", "updating servers", "servers", fmt.Sprintf("%+v", servers))
 	byID := make(map[raft.ServerID][]discovery.Server, len(servers))
 	for _, srv := range servers {
-		byID[srv.Raft.ID] = append(byID[srv.Raft.ID], srv)
+		id := stripPort(string(srv.Raft.ID))
+		byID[id] = append(byID[id], srv)
 	}
 	for k, ss := range byID {
 		if len(ss) > 1 {
