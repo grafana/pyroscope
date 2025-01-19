@@ -16,12 +16,12 @@ const (
 )
 
 func main() {
-	client := symbolizer.NewDebuginfodClient(debuginfodBaseURL)
+	client := symbolizer.NewDebuginfodClient(debuginfodBaseURL, nil)
 
 	// Alternatively, use a local debug info file:
 	//client := &localDebuginfodClient{debugFilePath: "/path/to/your/debug/file"}
 
-	s := symbolizer.NewSymbolizer(client, nil)
+	s := symbolizer.NewSymbolizer(client, nil, nil)
 	ctx := context.Background()
 
 	_, err := client.FetchDebuginfo(buildID)
