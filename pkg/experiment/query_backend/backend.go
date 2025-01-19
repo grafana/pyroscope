@@ -66,7 +66,7 @@ func New(
 	var sym *symbolizer.Symbolizer
 	if config.Symbolizer.DebuginfodURL != "" {
 		var err error
-		sym, err = symbolizer.NewFromConfig(context.Background(), config.Symbolizer)
+		sym, err = symbolizer.NewFromConfig(context.Background(), config.Symbolizer, reg)
 		if err != nil {
 			return nil, fmt.Errorf("create symbolizer: %w", err)
 		}
