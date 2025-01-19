@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"os"
+	"runtime"
 	"runtime/pprof"
 	"slices"
 	"strings"
@@ -17,6 +18,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/oklog/ulid"
 	"github.com/thanos-io/objstore"
+	"golang.org/x/exp/maps"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -44,9 +46,10 @@ type segmentsWriter struct {
 
 	shards     map[shardKey]*shard
 	shardsLock sync.RWMutex
+	pool       workerPool
 
-	cancelCtx context.Context
-	cancel    context.CancelFunc
+	ctx    context.Context
+	cancel context.CancelFunc
 
 	metrics     *segmentMetrics
 	headMetrics *memdb.HeadMetrics
@@ -115,7 +118,6 @@ func (sh *shard) flushSegment(ctx context.Context) {
 }
 
 func newSegmentWriter(l log.Logger, metrics *segmentMetrics, hm *memdb.HeadMetrics, config Config, limits Limits, bucket objstore.Bucket, metastoreClient metastorev1.IndexServiceClient) *segmentsWriter {
-	ctx, cancelFunc := context.WithCancel(context.Background())
 	sw := &segmentsWriter{
 		limits:      limits,
 		metrics:     metrics,
@@ -125,10 +127,14 @@ func newSegmentWriter(l log.Logger, metrics *segmentMetrics, hm *memdb.HeadMetri
 		bucket:      bucket,
 		shards:      make(map[shardKey]*shard),
 		metastore:   metastoreClient,
-		cancel:      cancelFunc,
-		cancelCtx:   ctx,
 	}
-
+	sw.ctx, sw.cancel = context.WithCancel(context.Background())
+	// One worker per CPU core, but not less than 4.
+	flushWorkers := runtime.GOMAXPROCS(-1)
+	if config.FlushConcurrency > 0 {
+		flushWorkers = int(config.FlushConcurrency)
+	}
+	sw.pool.run(max(4, flushWorkers))
 	return sw
 }
 
@@ -153,7 +159,7 @@ func (sw *segmentsWriter) ingest(shard shardKey, fn func(head segmentIngest)) (a
 	return s.ingest(fn)
 }
 
-func (sw *segmentsWriter) Stop() error {
+func (sw *segmentsWriter) stop() error {
 	sw.logger.Log("msg", "stopping segments writer")
 	sw.cancel()
 	sw.shardsLock.Lock()
@@ -161,8 +167,8 @@ func (sw *segmentsWriter) Stop() error {
 	for _, s := range sw.shards {
 		s.wg.Wait()
 	}
+	sw.pool.stop()
 	sw.logger.Log("msg", "segments writer stopped")
-
 	return nil
 }
 
@@ -177,10 +183,11 @@ func (sw *segmentsWriter) newShard(sk shardKey) *shard {
 	sh.wg.Add(1)
 	go func() {
 		defer sh.wg.Done()
-		sh.loop(sw.cancelCtx)
+		sh.loop(sw.ctx)
 	}()
 	return sh
 }
+
 func (sw *segmentsWriter) newSegment(sh *shard, sk shardKey, sl log.Logger) *segment {
 	id := ulid.MustNew(ulid.Timestamp(time.Now()), rand.Reader)
 	sshard := fmt.Sprintf("%d", sk)
@@ -210,6 +217,8 @@ func (s *segment) flush(ctx context.Context) (err error) {
 		close(s.doneChan)
 		s.sw.metrics.flushSegmentDuration.WithLabelValues(s.sshard).Observe(time.Since(t1).Seconds())
 	}()
+
+	// TODO(kolesnikovae): Stream flushed heads to the next stage.
 	pprof.Do(ctx, pprof.Labels("segment_op", "flush_heads"), func(ctx context.Context) {
 		heads = s.flushHeads(ctx)
 	})
@@ -331,39 +340,43 @@ func (s *segment) flushHeads(ctx context.Context) (moved []flushedServiceHead) {
 		s.sw.metrics.flushHeadsDuration.WithLabelValues(s.sshard).Observe(time.Since(t1).Seconds())
 		s.debuginfo.flushHeadsDuration = time.Since(t1)
 	}()
-	wg := sync.WaitGroup{}
-	mutex := new(sync.Mutex)
-	for _, e := range s.heads {
-		wg.Add(1)
-		e := e
-		go func() {
-			defer wg.Done()
-			eFlushed, err := s.flushHead(ctx, e)
 
+	heads := maps.Values(s.heads)
+	moved = make([]flushedServiceHead, len(heads))
+	slices.SortFunc(heads, func(a, b serviceHead) int {
+		return a.key.compare(b.key)
+	})
+
+	var flush sync.WaitGroup
+	flush.Add(len(heads))
+	for i, h := range heads {
+		s.sw.pool.do(func() {
+			defer flush.Done()
+			flushed, err := s.flushHead(ctx, h)
 			if err != nil {
 				level.Error(s.logger).Log("msg", "failed to flush head", "err", err)
+				return
 			}
-			if eFlushed != nil {
-				if eFlushed.Meta.NumSamples == 0 {
-					_ = level.Debug(s.logger).Log("msg", "skipping empty head")
-					return
-				} else {
-					mutex.Lock()
-					moved = append(moved, flushedServiceHead{e.key, eFlushed})
-					mutex.Unlock()
-				}
+			if flushed == nil {
+				level.Debug(s.logger).Log("msg", "skipping nil head")
+				return
 			}
-		}()
+			if flushed.Meta.NumSamples == 0 {
+				level.Debug(s.logger).Log("msg", "skipping empty head")
+				return
+			}
+			moved[i] = flushedServiceHead{
+				key:  h.key,
+				head: flushed,
+			}
+		})
 	}
-	wg.Wait()
 
-	slices.SortFunc(moved, func(i, j flushedServiceHead) int {
-		c := strings.Compare(i.key.tenant, j.key.tenant)
-		if c != 0 {
-			return c
-		}
-		return strings.Compare(i.key.service, j.key.service)
+	flush.Wait()
+	moved = slices.DeleteFunc(moved, func(x flushedServiceHead) bool {
+		return x.head == nil
 	})
+
 	return moved
 }
 
@@ -393,6 +406,14 @@ type serviceKey struct {
 	tenant  string
 	service string
 }
+
+func (k serviceKey) compare(x serviceKey) int {
+	if k.tenant != x.tenant {
+		return strings.Compare(k.tenant, x.tenant)
+	}
+	return strings.Compare(k.service, x.service)
+}
+
 type serviceHead struct {
 	key  serviceKey
 	head *memdb.Head
@@ -562,4 +583,35 @@ func (sw *segmentsWriter) storeMetaDLQ(ctx context.Context, meta *metastorev1.Bl
 	}
 	sw.metrics.storeMetaDLQ.WithLabelValues(s.sshard, "OK").Inc()
 	return nil
+}
+
+type workerPool struct {
+	workers sync.WaitGroup
+	jobs    chan func()
+}
+
+func (p *workerPool) run(n int) {
+	if p.jobs != nil {
+		return
+	}
+	p.jobs = make(chan func())
+	p.workers.Add(n)
+	for i := 0; i < n; i++ {
+		go func() {
+			defer p.workers.Done()
+			for job := range p.jobs {
+				job()
+			}
+		}()
+	}
+}
+
+// do must not be called after stop.
+func (p *workerPool) do(job func()) {
+	p.jobs <- job
+}
+
+func (p *workerPool) stop() {
+	close(p.jobs)
+	p.workers.Wait()
 }

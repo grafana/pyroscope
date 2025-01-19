@@ -40,6 +40,7 @@ type Config struct {
 	GRPCClientConfig grpcclient.Config     `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with the segment writer."`
 	LifecyclerConfig ring.LifecyclerConfig `yaml:"lifecycler,omitempty"`
 	SegmentDuration  time.Duration         `yaml:"segment_duration,omitempty"`
+	FlushConcurrency uint                  `yaml:"flush_concurrency,omitempty"`
 }
 
 // RegisterFlags registers the flags.
@@ -48,6 +49,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix(prefix, f)
 	cfg.LifecyclerConfig.RegisterFlagsWithPrefix(prefix+".", f, util.Logger)
 	f.DurationVar(&cfg.SegmentDuration, prefix+".segment-duration", 500*time.Millisecond, "Timeout when flushing segments to bucket.")
+	f.UintVar(&cfg.FlushConcurrency, prefix+".flush-concurrency", 0, "Number of concurrent flushes. Defaults to the number of CPUs.")
 }
 
 func (cfg *Config) Validate() error {
@@ -161,7 +163,7 @@ func (i *SegmentWriterService) stopping(_ error) error {
 	i.requests.Drain()
 	errs := multierror.New()
 	errs.Add(services.StopManagerAndAwaitStopped(context.Background(), i.subservices))
-	errs.Add(i.segmentWriter.Stop())
+	errs.Add(i.segmentWriter.stop())
 	return errs.Err()
 }
 
