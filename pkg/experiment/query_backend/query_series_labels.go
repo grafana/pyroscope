@@ -8,7 +8,7 @@ import (
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block"
-	"github.com/grafana/pyroscope/pkg/model"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 )
@@ -24,27 +24,14 @@ func init() {
 }
 
 func querySeriesLabels(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
-	postings, err := getPostings(q.ds.Index(), q.req.matchers...)
+	m, err := getSeriesLabels(q.ds.Index(), q.req.matchers)
 	if err != nil {
 		return nil, err
 	}
-	var tmp model.Labels
-	var c []index.ChunkMeta
-	l := make(map[uint64]model.Labels)
-	for postings.Next() {
-		fp, _ := q.ds.Index().SeriesBy(postings.At(), &tmp, &c, query.SeriesLabels.LabelNames...)
-		if _, ok := l[fp]; ok {
-			continue
-		}
-		l[fp] = tmp.Clone()
-	}
-	if err = postings.Err(); err != nil {
-		return nil, err
-	}
-	series := make([]*typesv1.Labels, len(l))
+	series := make([]*typesv1.Labels, len(m))
 	var i int
-	for _, s := range l {
-		series[i] = &typesv1.Labels{Labels: s}
+	for _, s := range m {
+		series[i] = &typesv1.Labels{Labels: s.labels}
 		i++
 	}
 	resp := &queryv1.Report{
@@ -67,7 +54,7 @@ func getPostings(reader phlaredb.IndexReader, matchers ...*labels.Matcher) (inde
 type seriesLabelsAggregator struct {
 	init   sync.Once
 	query  *queryv1.SeriesLabelsQuery
-	series *model.LabelMerger
+	series *phlaremodel.LabelMerger
 }
 
 func newSeriesLabelsAggregator(*queryv1.InvokeRequest) aggregator {
@@ -78,7 +65,7 @@ func (a *seriesLabelsAggregator) aggregate(report *queryv1.Report) error {
 	r := report.SeriesLabels
 	a.init.Do(func() {
 		a.query = r.Query.CloneVT()
-		a.series = model.NewLabelMerger()
+		a.series = phlaremodel.NewLabelMerger()
 	})
 	a.series.MergeSeries(r.SeriesLabels)
 	return nil
