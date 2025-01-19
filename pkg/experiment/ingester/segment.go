@@ -5,9 +5,10 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"io"
+	"math"
 	"os"
 	"runtime"
-	"runtime/pprof"
 	"slices"
 	"strings"
 	"sync"
@@ -29,7 +30,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/model"
 	pprofsplit "github.com/grafana/pyroscope/pkg/model/pprof_split"
 	pprofmodel "github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/grafana/pyroscope/pkg/util/math"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
@@ -194,7 +194,7 @@ func (sw *segmentsWriter) newSegment(sh *shard, sk shardKey, sl log.Logger) *seg
 	s := &segment{
 		logger:   log.With(sl, "segment-id", id.String()),
 		ulid:     id,
-		heads:    make(map[serviceKey]serviceHead),
+		heads:    make(map[datasetKey]dataset),
 		sw:       sw,
 		sh:       sh,
 		shard:    sk,
@@ -206,8 +206,6 @@ func (sw *segmentsWriter) newSegment(sh *shard, sk shardKey, sl log.Logger) *seg
 
 func (s *segment) flush(ctx context.Context) (err error) {
 	t1 := time.Now()
-	var heads []flushedServiceHead
-
 	defer func() {
 		if err != nil {
 			s.flushErrMutex.Lock()
@@ -218,16 +216,18 @@ func (s *segment) flush(ctx context.Context) (err error) {
 		s.sw.metrics.flushSegmentDuration.WithLabelValues(s.sshard).Observe(time.Since(t1).Seconds())
 	}()
 
-	// TODO(kolesnikovae): Stream flushed heads to the next stage.
-	pprof.Do(ctx, pprof.Labels("segment_op", "flush_heads"), func(ctx context.Context) {
-		heads = s.flushHeads(ctx)
-	})
-	s.debuginfo.movedHeads = len(heads)
-	if len(heads) == 0 {
+	// TODO(kolesnikovae): Remove ctx:
+	//  - It is always the Background context.
+	//      This is bad: uploadBlock and storeMeta should have timeout. We don't have to take it from the outside.
+	//  - It's not used in the function chain.
+	//  - We don't want to cancel flush.
+	stream := s.flushHeads(ctx)
+	s.debuginfo.movedHeads = len(stream.heads)
+	if len(stream.heads) == 0 {
 		return nil
 	}
 
-	blockData, blockMeta, err := s.flushBlock(heads)
+	blockData, blockMeta, err := s.flushBlock(stream)
 	if err != nil {
 		return fmt.Errorf("failed to flush block %s: %w", s.ulid.String(), err)
 	}
@@ -245,8 +245,8 @@ func (s *segment) flush(ctx context.Context) (err error) {
 	return nil
 }
 
-func (s *segment) flushBlock(heads []flushedServiceHead) ([]byte, *metastorev1.BlockMeta, error) {
-	t1 := time.Now()
+func (s *segment) flushBlock(stream flushStream) ([]byte, *metastorev1.BlockMeta, error) {
+	start := time.Now()
 	hostname, _ := os.Hostname()
 
 	stringTable := metadata.NewStringTable()
@@ -257,62 +257,69 @@ func (s *segment) flushBlock(heads []flushedServiceHead) ([]byte, *metastorev1.B
 		Shard:           uint32(s.shard),
 		CompactionLevel: 0,
 		CreatedBy:       stringTable.Put(hostname),
-		MinTime:         0,
+		MinTime:         math.MaxInt64,
 		MaxTime:         0,
 		Size:            0,
-		Datasets:        make([]*metastorev1.Dataset, 0, len(heads)),
+		Datasets:        make([]*metastorev1.Dataset, 0, len(stream.heads)),
 	}
 
+	// TODO(kolesnikovae): Stream upload, do not use an intermediate buffer.
 	blockFile := bytes.NewBuffer(nil)
 
-	w := withWriterOffset(blockFile)
-
-	for i, e := range heads {
-		svc, err := concatSegmentHead(e, w, stringTable)
+	w := &writerOffset{Writer: blockFile}
+	for stream.Next() {
+		f := stream.At()
+		svc, err := concatSegmentHead(f, w, stringTable)
 		if err != nil {
-			_ = level.Error(s.logger).Log("msg", "failed to concat segment head", "err", err)
+			level.Error(s.logger).Log("msg", "failed to concat segment head", "err", err)
 			continue
 		}
-		if i == 0 {
-			meta.MinTime = svc.MinTime
-			meta.MaxTime = svc.MaxTime
-		} else {
-			meta.MinTime = math.Min(meta.MinTime, svc.MinTime)
-			meta.MaxTime = math.Max(meta.MaxTime, svc.MaxTime)
-		}
-		s.sw.metrics.headSizeBytes.WithLabelValues(s.sshard, e.key.tenant).Observe(float64(svc.Size))
+		meta.MinTime = min(meta.MinTime, svc.MinTime)
+		meta.MaxTime = max(meta.MaxTime, svc.MaxTime)
 		meta.Datasets = append(meta.Datasets, svc)
+		s.sw.metrics.headSizeBytes.WithLabelValues(s.sshard, f.head.key.tenant).Observe(float64(svc.Size))
 	}
 
 	meta.StringTable = stringTable.Strings
 	meta.Size = uint64(w.offset)
-	s.debuginfo.flushBlockDuration = time.Since(t1)
+	s.debuginfo.flushBlockDuration = time.Since(start)
 	return blockFile.Bytes(), meta, nil
 }
 
-func concatSegmentHead(e flushedServiceHead, w *writerOffset, s *metadata.StringTable) (*metastorev1.Dataset, error) {
+type writerOffset struct {
+	io.Writer
+	offset int64
+}
+
+func (w *writerOffset) Write(p []byte) (n int, err error) {
+	n, err = w.Writer.Write(p)
+	w.offset += int64(n)
+	return n, err
+}
+
+func concatSegmentHead(f *headFlush, w *writerOffset, s *metadata.StringTable) (*metastorev1.Dataset, error) {
 	tenantServiceOffset := w.offset
 
-	ptypes := e.head.Meta.ProfileTypeNames
+	ptypes := f.flushed.Meta.ProfileTypeNames
 
 	offsets := []uint64{0, 0, 0}
 
 	offsets[0] = uint64(w.offset)
-	_, _ = w.Write(e.head.Profiles)
+	_, _ = w.Write(f.flushed.Profiles)
 
 	offsets[1] = uint64(w.offset)
-	_, _ = w.Write(e.head.Index)
+	_, _ = w.Write(f.flushed.Index)
 
 	offsets[2] = uint64(w.offset)
-	_, _ = w.Write(e.head.Symbols)
+	_, _ = w.Write(f.flushed.Symbols)
 
 	tenantServiceSize := w.offset - tenantServiceOffset
 
 	ds := &metastorev1.Dataset{
-		Tenant:  s.Put(e.key.tenant),
-		Name:    s.Put(e.key.service),
-		MinTime: e.head.Meta.MinTimeNanos / 1e6,
-		MaxTime: e.head.Meta.MaxTimeNanos / 1e6,
+		Tenant:  s.Put(f.head.key.tenant),
+		Name:    s.Put(f.head.key.service),
+		MinTime: f.flushed.Meta.MinTimeNanos / 1e6,
+		MaxTime: f.flushed.Meta.MaxTimeNanos / 1e6,
 		Size:    uint64(tenantServiceSize),
 		//  - 0: profiles.parquet
 		//  - 1: index.tsdb
@@ -322,37 +329,32 @@ func concatSegmentHead(e flushedServiceHead, w *writerOffset, s *metadata.String
 	}
 
 	lb := metadata.NewLabelBuilder(s).
-		WithConstantPairs(model.LabelNameServiceName, e.key.service).
+		WithConstantPairs(model.LabelNameServiceName, f.head.key.service).
 		WithLabelNames(model.LabelNameProfileType)
-
 	for _, profileType := range ptypes {
 		lb.CreateLabels(profileType)
 	}
-
 	ds.Labels = lb.Build()
 
 	return ds, nil
 }
 
-func (s *segment) flushHeads(ctx context.Context) (moved []flushedServiceHead) {
-	t1 := time.Now()
-	defer func() {
-		s.sw.metrics.flushHeadsDuration.WithLabelValues(s.sshard).Observe(time.Since(t1).Seconds())
-		s.debuginfo.flushHeadsDuration = time.Since(t1)
-	}()
-
+func (s *segment) flushHeads(ctx context.Context) flushStream {
 	heads := maps.Values(s.heads)
-	moved = make([]flushedServiceHead, len(heads))
-	slices.SortFunc(heads, func(a, b serviceHead) int {
+	slices.SortFunc(heads, func(a, b dataset) int {
 		return a.key.compare(b.key)
 	})
 
-	var flush sync.WaitGroup
-	flush.Add(len(heads))
-	for i, h := range heads {
+	stream := make([]*headFlush, len(heads))
+	for i := range heads {
+		f := &headFlush{
+			head: heads[i],
+			done: make(chan struct{}),
+		}
+		stream[i] = f
 		s.sw.pool.do(func() {
-			defer flush.Done()
-			flushed, err := s.flushHead(ctx, h)
+			defer close(f.done)
+			flushed, err := s.flushHead(ctx, f.head)
 			if err != nil {
 				level.Error(s.logger).Log("msg", "failed to flush head", "err", err)
 				return
@@ -365,22 +367,35 @@ func (s *segment) flushHeads(ctx context.Context) (moved []flushedServiceHead) {
 				level.Debug(s.logger).Log("msg", "skipping empty head")
 				return
 			}
-			moved[i] = flushedServiceHead{
-				key:  h.key,
-				head: flushed,
-			}
+			f.flushed = flushed
 		})
 	}
 
-	flush.Wait()
-	moved = slices.DeleteFunc(moved, func(x flushedServiceHead) bool {
-		return x.head == nil
-	})
-
-	return moved
+	return flushStream{heads: stream}
 }
 
-func (s *segment) flushHead(ctx context.Context, e serviceHead) (*memdb.FlushedHead, error) {
+type flushStream struct {
+	heads []*headFlush
+	cur   *headFlush
+	n     int
+}
+
+func (s *flushStream) At() *headFlush { return s.cur }
+
+func (s *flushStream) Next() bool {
+	for s.n < len(s.heads) {
+		f := s.heads[s.n]
+		s.n++
+		<-f.done
+		if f.flushed != nil {
+			s.cur = f
+			return true
+		}
+	}
+	return false
+}
+
+func (s *segment) flushHead(ctx context.Context, e dataset) (*memdb.FlushedHead, error) {
 	th := time.Now()
 	flushed, err := e.head.Flush(ctx)
 	if err != nil {
@@ -402,26 +417,28 @@ func (s *segment) flushHead(ctx context.Context, e serviceHead) (*memdb.FlushedH
 	return flushed, nil
 }
 
-type serviceKey struct {
+type datasetKey struct {
 	tenant  string
 	service string
 }
 
-func (k serviceKey) compare(x serviceKey) int {
+func (k datasetKey) compare(x datasetKey) int {
 	if k.tenant != x.tenant {
 		return strings.Compare(k.tenant, x.tenant)
 	}
 	return strings.Compare(k.service, x.service)
 }
 
-type serviceHead struct {
-	key  serviceKey
+type dataset struct {
+	key  datasetKey
 	head *memdb.Head
 }
 
-type flushedServiceHead struct {
-	key  serviceKey
-	head *memdb.FlushedHead
+type headFlush struct {
+	head    dataset
+	flushed *memdb.FlushedHead
+	// protects head
+	done chan struct{}
 }
 
 type segment struct {
@@ -429,13 +446,15 @@ type segment struct {
 	shard            shardKey
 	sshard           string
 	inFlightProfiles sync.WaitGroup
-	heads            map[serviceKey]serviceHead
+	heads            map[datasetKey]dataset
 	headsLock        sync.RWMutex
-	sw               *segmentsWriter
-	doneChan         chan struct{}
-	flushErr         error
-	flushErrMutex    sync.Mutex
 	logger           log.Logger
+	sw               *segmentsWriter
+
+	// TODO(kolesnikovae): Revisit.
+	doneChan      chan struct{}
+	flushErr      error
+	flushErrMutex sync.Mutex
 
 	debuginfo struct {
 		movedHeads         int
@@ -469,7 +488,7 @@ func (s *segment) waitFlushed(ctx context.Context) error {
 }
 
 func (s *segment) ingest(tenantID string, p *profilev1.Profile, id uuid.UUID, labels []*typesv1.LabelPair) {
-	k := serviceKey{
+	k := datasetKey{
 		tenant:  tenantID,
 		service: model.Labels(labels).Get(model.LabelNameServiceName),
 	}
@@ -516,7 +535,7 @@ func (v *sampleAppender) Discarded(profiles, bytes int) {
 	v.discardedBytes += bytes
 }
 
-func (s *segment) headForIngest(k serviceKey) *memdb.Head {
+func (s *segment) headForIngest(k datasetKey) *memdb.Head {
 	s.headsLock.RLock()
 	h, ok := s.heads[k]
 	s.headsLock.RUnlock()
@@ -533,7 +552,7 @@ func (s *segment) headForIngest(k serviceKey) *memdb.Head {
 
 	nh := memdb.NewHead(s.sw.headMetrics)
 
-	s.heads[k] = serviceHead{
+	s.heads[k] = dataset{
 		key:  k,
 		head: nh,
 	}
