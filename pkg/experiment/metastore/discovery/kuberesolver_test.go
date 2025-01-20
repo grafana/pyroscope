@@ -2,12 +2,14 @@ package discovery
 
 import (
 	"fmt"
-	kuberesolver2 "github.com/grafana/pyroscope/pkg/experiment/metastore/discovery/kuberesolver"
+	"testing"
+	"time"
+
 	"github.com/hashicorp/raft"
 	"github.com/prometheus/prometheus/util/testutil"
 	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
+
+	kuberesolver2 "github.com/grafana/pyroscope/pkg/experiment/metastore/discovery/kuberesolver"
 )
 
 func TestDebugLocalhost(t *testing.T) {
@@ -91,22 +93,22 @@ func TestConvert(t *testing.T) {
 		{
 			ResolvedAddress: "10.244.1.5:9095",
 			Raft: raft.Server{
-				ID:      raft.ServerID("pyroscope-metastore-0.pyroscope-metastore-headless.pyroscope-test:9095"),
-				Address: raft.ServerAddress("pyroscope-metastore-0.pyroscope-metastore-headless.pyroscope-test:9095"),
+				ID:      raft.ServerID("pyroscope-metastore-0.pyroscope-metastore-headless.pyroscope-test.svc.cluster.local.:9095"),
+				Address: raft.ServerAddress("pyroscope-metastore-0.pyroscope-metastore-headless.pyroscope-test.svc.cluster.local.:9095"),
 			},
 		},
 		{
 			ResolvedAddress: "10.244.2.7:9095",
 			Raft: raft.Server{
-				ID:      raft.ServerID("pyroscope-metastore-1.pyroscope-metastore-headless.pyroscope-test:9095"),
-				Address: raft.ServerAddress("pyroscope-metastore-1.pyroscope-metastore-headless.pyroscope-test:9095"),
+				ID:      raft.ServerID("pyroscope-metastore-1.pyroscope-metastore-headless.pyroscope-test.svc.cluster.local.:9095"),
+				Address: raft.ServerAddress("pyroscope-metastore-1.pyroscope-metastore-headless.pyroscope-test.svc.cluster.local.:9095"),
 			},
 		},
 		{
 			ResolvedAddress: "10.244.3.7:9095",
 			Raft: raft.Server{
-				ID:      raft.ServerID("pyroscope-metastore-2.pyroscope-metastore-headless.pyroscope-test:9095"),
-				Address: raft.ServerAddress("pyroscope-metastore-2.pyroscope-metastore-headless.pyroscope-test:9095"),
+				ID:      raft.ServerID("pyroscope-metastore-2.pyroscope-metastore-headless.pyroscope-test.svc.cluster.local.:9095"),
+				Address: raft.ServerAddress("pyroscope-metastore-2.pyroscope-metastore-headless.pyroscope-test.svc.cluster.local.:9095"),
 			},
 		},
 	}
