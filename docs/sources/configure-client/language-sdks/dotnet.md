@@ -45,13 +45,13 @@ The Pyroscope server can be a local server for development or a remote server fo
 1. Obtain `Pyroscope.Profiler.Native.so` and `Pyroscope.Linux.ApiWrapper.x64.so` from the [latest tarball](https://github.com/pyroscope-io/pyroscope-dotnet/releases/):
 
 ```bash
-curl -s -L https://github.com/grafana/pyroscope-dotnet/releases/download/v0.9.3-pyroscope/pyroscope.0.9.3-glibc-x86_64.tar.gz  | tar xvz -C .
+curl -s -L https://github.com/grafana/pyroscope-dotnet/releases/download/v0.9.4-pyroscope/pyroscope.0.9.4-glibc-x86_64.tar.gz  | tar xvz -C .
 ```
 
 Or copy them from the [latest docker image](https://hub.docker.com/r/pyroscope/pyroscope-dotnet/tags). We have `glibc` and `musl` versions:
 ```dockerfile
-COPY --from=pyroscope/pyroscope-dotnet:0.9.3-glibc /Pyroscope.Profiler.Native.so ./Pyroscope.Profiler.Native.so
-COPY --from=pyroscope/pyroscope-dotnet:0.9.3-glibc /Pyroscope.Linux.ApiWrapper.x64.so ./Pyroscope.Linux.ApiWrapper.x64.so
+COPY --from=pyroscope/pyroscope-dotnet:0.9.4-glibc /Pyroscope.Profiler.Native.so ./Pyroscope.Profiler.Native.so
+COPY --from=pyroscope/pyroscope-dotnet:0.9.4-glibc /Pyroscope.Linux.ApiWrapper.x64.so ./Pyroscope.Linux.ApiWrapper.x64.so
 ````
 
 2. Set the following required environment variables to enable profiler
