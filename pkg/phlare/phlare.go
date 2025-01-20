@@ -433,7 +433,7 @@ func (f *Phlare) setupModuleManager() error {
 		RuntimeConfig:     {API},
 		IngesterRing:      {API, MemberlistKV},
 		MemberlistKV:      {API},
-		Admin:             {API, Storage, MetastoreAdmin},
+		Admin:             {API, Storage},
 		Version:           {API, MemberlistKV},
 		TenantSettings:    {API, Storage},
 		AdHocProfiles:     {API, Overrides, Storage},
