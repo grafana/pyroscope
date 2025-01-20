@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/hashicorp/raft"
 	"google.golang.org/grpc/resolver"
 
@@ -39,7 +40,7 @@ func NewKubeResolverDiscovery(l log.Logger, target string, client kuberesolver2.
 	if err != nil {
 		return nil, err
 	}
-	l.Log("msg", "parsed target", "target_namespace", ti.namespace, "target_service", ti.service, "target_port", ti.port)
+	level.Info(l).Log("msg", "parsed target", "target_namespace", ti.namespace, "target_service", ti.service, "target_port", ti.port)
 
 	res := &KubeDiscovery{
 		l:  l,
@@ -79,7 +80,7 @@ func (g *KubeDiscovery) Close() {
 func (g *KubeDiscovery) resolved(e kuberesolver2.Endpoints) {
 	for _, subset := range e.Subsets {
 		for _, addr := range subset.Addresses {
-			g.l.Log("msg", "resolved", "ip", addr.IP, "targetRef", fmt.Sprintf("%+v", addr.TargetRef))
+			level.Debug(g.l).Log("msg", "resolved", "ip", addr.IP, "targetRef", fmt.Sprintf("%+v", addr.TargetRef))
 		}
 	}
 	g.updLock.Lock()

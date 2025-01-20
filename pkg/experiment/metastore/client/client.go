@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/services"
 	"github.com/hashicorp/go-multierror"
@@ -76,7 +77,7 @@ func (c *Client) stopping(error) error {
 	var multiErr error
 	for _, srv := range c.servers {
 		err := srv.conn.Close()
-		c.logger.Log("msg", "connection closed", "resolved_address", srv.srv.ResolvedAddress, "raft_address", srv.srv.Raft.Address)
+		level.Debug(c.logger).Log("msg", "connection closed", "resolved_address", srv.srv.ResolvedAddress, "raft_address", srv.srv.Raft.Address)
 		if err != nil {
 			multiErr = multierror.Append(multiErr, err)
 		}
@@ -86,7 +87,7 @@ func (c *Client) stopping(error) error {
 }
 
 func (c *Client) updateServers(servers []discovery.Server) {
-	c.logger.Log("msg", "updating servers", "servers", fmt.Sprintf("%+v", servers))
+	level.Info(c.logger).Log("msg", "updating servers", "servers", fmt.Sprintf("%+v", servers))
 	byID := make(map[raft.ServerID][]discovery.Server, len(servers))
 	for _, srv := range servers {
 		id := stripPort(string(srv.Raft.ID))
@@ -94,7 +95,7 @@ func (c *Client) updateServers(servers []discovery.Server) {
 	}
 	for k, ss := range byID {
 		if len(ss) > 1 {
-			c.logger.Log("msg", "multiple servers with the same ID", "id", k, "servers", ss)
+			level.Warn(c.logger).Log("msg", "multiple servers with the same ID", "id", k, "servers", ss)
 			delete(byID, k)
 		}
 	}
@@ -112,16 +113,16 @@ func (c *Client) updateServers(servers []discovery.Server) {
 			if prev.srv == s[0] {
 				newServers[k] = prev
 				clientSet[prev] = struct{}{}
-				c.logger.Log("msg", "server already exists", "id", k, "server", s[0])
+				level.Debug(c.logger).Log("msg", "server already exists", "id", k, "server", fmt.Sprintf("%+v", s[0]))
 				continue
 			}
 		}
 		cl, err := newClient(s[0], c.grpcClientConfig, c.logger)
 		if err != nil {
-			c.logger.Log("msg", "failed to crate client", "err", err)
+			level.Error(c.logger).Log("msg", "failed to create client", "err", err)
 			continue
 		}
-		c.logger.Log("msg", "new client created", "resolved_address", cl.srv.ResolvedAddress, "raft_address", cl.srv.Raft.Address)
+		level.Info(c.logger).Log("msg", "new client created", "resolved_address", cl.srv.ResolvedAddress, "raft_address", cl.srv.Raft.Address)
 		newServers[k] = cl
 		clientSet[cl] = struct{}{}
 	}
@@ -129,9 +130,9 @@ func (c *Client) updateServers(servers []discovery.Server) {
 		if _, ok := clientSet[oldClient]; !ok {
 			err := oldClient.conn.Close()
 			if err != nil {
-				c.logger.Log("msg", "failed to close connection", "err", err)
+				level.Warn(c.logger).Log("msg", "failed to close connection", "err", err)
 			} else {
-				c.logger.Log("msg", "connection closed", "resolved_address", oldClient.srv.ResolvedAddress, "raft_address", oldClient.srv.Raft.Address)
+				level.Debug(c.logger).Log("msg", "connection closed", "resolved_address", oldClient.srv.ResolvedAddress, "raft_address", oldClient.srv.Raft.Address)
 			}
 		}
 	}
