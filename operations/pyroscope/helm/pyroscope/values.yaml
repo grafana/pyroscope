@@ -151,10 +151,10 @@ pyroscope:
   # run specific components separately
   components: {}
 
-  # -- Allows to override Phlare's configuration using structured format.
+  # -- Allows to override Pyroscope's configuration using structured format.
   structuredConfig: {}
 
-  # -- Contains Phlare's configuration as a string.
+  # -- Contains Pyroscope's configuration as a string.
   # @default -- The config depends on other values been set, details can be found in [`values.yaml`](./values.yaml)
   config: |
     {{- if .Values.minio.enabled }}

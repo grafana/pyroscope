@@ -1,4 +1,4 @@
-package segment
+package labelset
 
 import (
 	"math/rand"
@@ -19,13 +19,13 @@ func BenchmarkKey_Parse(b *testing.B) {
 	}
 
 	labels["__name__"] = "benchmark.key.parse"
-	keyStr := NewKey(labels).Normalized()
+	keyStr := New(labels).Normalized()
 
 	b.ReportAllocs()
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		if _, err := ParseKey(keyStr); err != nil {
+		if _, err := Parse(keyStr); err != nil {
 			b.Fatal(err)
 		}
 	}

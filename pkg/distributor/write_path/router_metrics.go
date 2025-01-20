@@ -2,6 +2,7 @@ package writepath
 
 import (
 	"strconv"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -13,9 +14,13 @@ type metrics struct {
 func newMetrics(reg prometheus.Registerer) *metrics {
 	m := &metrics{
 		durationHistogram: prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Name:    "pyroscope_write_path_downstream_request_duration_seconds",
-			Buckets: prometheus.ExponentialBucketsRange(0.001, 10, 30),
-			Help:    "Duration of downstream requests made by the write path router.",
+			Name: "pyroscope_write_path_downstream_request_duration_seconds",
+			Help: "Duration of downstream requests made by the write path router.",
+
+			Buckets:                         prometheus.ExponentialBucketsRange(0.001, 10, 30),
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  32,
+			NativeHistogramMinResetDuration: time.Hour,
 		}, []string{"route", "primary", "status"}),
 	}
 	if reg != nil {

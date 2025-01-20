@@ -25,7 +25,7 @@ func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, exporter 
 	input := &storage.PutInput{
 		StartTime:       md.StartTime,
 		EndTime:         md.EndTime,
-		Key:             md.Key,
+		LabelSet:        md.LabelSet,
 		SpyName:         md.SpyName,
 		SampleRate:      md.SampleRate,
 		Units:           md.Units,
