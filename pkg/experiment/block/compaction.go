@@ -10,7 +10,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/cespare/xxhash/v2"
+	"github.com/google/uuid"
 	"github.com/grafana/dskit/multierror"
+	"github.com/oklog/ulid"
 	"github.com/parquet-go/parquet-go"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/storage"
@@ -18,6 +21,7 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
+	"github.com/grafana/pyroscope/pkg/experiment/metrics"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
@@ -62,6 +66,7 @@ func Compact(
 	ctx context.Context,
 	blocks []*metastorev1.BlockMeta,
 	storage objstore.Bucket,
+	workerId uuid.UUID,
 	options ...CompactionOption,
 ) (m []*metastorev1.BlockMeta, err error) {
 	c := &compactionConfig{
@@ -74,7 +79,7 @@ func Compact(
 	}
 
 	objects := ObjectsFromMetas(storage, blocks, c.objectOptions...)
-	plan, err := PlanCompaction(objects)
+	plan, err := PlanCompaction(objects, workerId)
 	if err != nil {
 		return nil, err
 	}
@@ -93,12 +98,20 @@ func Compact(
 			return nil, compactionErr
 		}
 		compacted = append(compacted, md)
+
+		if p.metricsExporter != nil {
+			go func() {
+				if sendErr := p.SendRecordedMetrics(); sendErr != nil {
+					println("ERROR", sendErr) // TODO
+				}
+			}()
+		}
 	}
 
 	return compacted, nil
 }
 
-func PlanCompaction(objects Objects) ([]*CompactionPlan, error) {
+func PlanCompaction(objects Objects, workerId uuid.UUID) ([]*CompactionPlan, error) {
 	if len(objects) == 0 {
 		// Even if there's just a single object, we still need to rewrite it.
 		return nil, ErrNoBlocksToMerge
@@ -125,6 +138,7 @@ func PlanCompaction(objects Objects) ([]*CompactionPlan, error) {
 					obj.meta.StringTable[s.Tenant],
 					r.meta.Shard,
 					level,
+					workerId,
 				)
 				m[obj.meta.StringTable[s.Tenant]] = tm
 			}
@@ -149,12 +163,14 @@ func PlanCompaction(objects Objects) ([]*CompactionPlan, error) {
 }
 
 type CompactionPlan struct {
-	tenant     string
-	path       string
-	datasetMap map[int32]*datasetCompaction
-	datasets   []*datasetCompaction
-	meta       *metastorev1.BlockMeta
-	strings    *metadata.StringTable
+	tenant          string
+	path            string
+	datasetMap      map[int32]*datasetCompaction
+	datasets        []*datasetCompaction
+	meta            *metastorev1.BlockMeta
+	strings         *metadata.StringTable
+	metricsExporter *metrics.Exporter
+	workerId        uuid.UUID
 }
 
 func newBlockCompaction(
@@ -162,11 +178,13 @@ func newBlockCompaction(
 	tenant string,
 	shard uint32,
 	compactionLevel uint32,
+	workerId uuid.UUID,
 ) *CompactionPlan {
 	p := &CompactionPlan{
 		tenant:     tenant,
 		datasetMap: make(map[int32]*datasetCompaction),
 		strings:    metadata.NewStringTable(),
+		workerId:   workerId,
 	}
 	p.path = BuildObjectPath(tenant, shard, compactionLevel, id)
 	p.meta = &metastorev1.BlockMeta{
@@ -175,6 +193,9 @@ func newBlockCompaction(
 		Tenant:          p.strings.Put(tenant),
 		Shard:           shard,
 		CompactionLevel: compactionLevel,
+	}
+	if compactionLevel == 1 {
+		p.metricsExporter = metrics.NewExporter(tenant)
 	}
 	return p
 }
@@ -188,6 +209,9 @@ func (b *CompactionPlan) Compact(ctx context.Context, dst objstore.Bucket, tmpdi
 	for _, s := range b.datasets {
 		if err = s.compact(ctx, w); err != nil {
 			return nil, fmt.Errorf("compacting block: %w", err)
+		}
+		if b.metricsExporter != nil {
+			b.metricsExporter.AppendMetrics(s.metricsRecorder.Recordings)
 		}
 		b.meta.Datasets = append(b.meta.Datasets, s.meta)
 	}
@@ -217,6 +241,10 @@ func (b *CompactionPlan) addDataset(md *metastorev1.BlockMeta, s *metastorev1.Da
 	return sm
 }
 
+func (c *CompactionPlan) SendRecordedMetrics() error {
+	return c.metricsExporter.Send()
+}
+
 type datasetCompaction struct {
 	// Dataset name.
 	name   string
@@ -236,6 +264,9 @@ type datasetCompaction struct {
 	profiles uint64
 
 	flushOnce sync.Once
+
+	workerId        uuid.UUID
+	metricsRecorder *metrics.Recorder
 }
 
 func (b *CompactionPlan) newDatasetCompaction(tenant, name int32) *datasetCompaction {
@@ -254,6 +285,7 @@ func (b *CompactionPlan) newDatasetCompaction(tenant, name int32) *datasetCompac
 			Size:            0,
 			Labels:          nil,
 		},
+		workerId: b.workerId,
 	}
 }
 
@@ -309,6 +341,13 @@ func (m *datasetCompaction) open(ctx context.Context, path string) (err error) {
 	m.indexRewriter = newIndexRewriter(m.path)
 	m.symbolsRewriter = newSymbolsRewriter(m.path)
 
+	if m.parent.meta.CompactionLevel == 1 {
+		recordingTime := int64(ulid.MustParse(m.parent.meta.Id).Time())
+		rules := metrics.RecordingRulesFromTenant(m.parent.tenant)
+		pyroscopeInstance := pyroscopeInstanceHash(m.parent.meta.Shard, m.workerId)
+		m.metricsRecorder = metrics.NewRecorder(rules, recordingTime, pyroscopeInstance)
+	}
+
 	g, ctx := errgroup.WithContext(ctx)
 	for _, s := range m.datasets {
 		s := s
@@ -328,6 +367,13 @@ func (m *datasetCompaction) open(ctx context.Context, path string) (err error) {
 	}
 
 	return nil
+}
+
+func pyroscopeInstanceHash(shard uint32, id uuid.UUID) string {
+	buf := make([]byte, 0, 40)
+	buf = append(buf, byte(shard>>24), byte(shard>>16), byte(shard>>8), byte(shard))
+	buf = append(buf, id.String()...)
+	return fmt.Sprintf("%x", xxhash.Sum64(buf))
 }
 
 func (m *datasetCompaction) mergeAndClose(ctx context.Context) (err error) {
@@ -365,6 +411,9 @@ func (m *datasetCompaction) writeRow(r ProfileEntry) (err error) {
 	}
 	if err = m.symbolsRewriter.rewriteRow(r); err != nil {
 		return err
+	}
+	if m.metricsRecorder != nil {
+		m.metricsRecorder.RecordRow(r.Fingerprint, r.Labels, r.Row.TotalValue())
 	}
 	return m.profilesWriter.writeRow(r)
 }
