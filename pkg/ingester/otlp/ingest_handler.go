@@ -99,6 +99,11 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 
 				pprofProfiles := ConvertOtelToGoogle(p)
 
+				req := &distirbutormodel.PushRequest{
+					RawProfileSize: p.Size(),
+					RawProfileType: distirbutormodel.RawProfileTypeOTEL,
+				}
+
 				for samplesServiceName, pprofProfile := range pprofProfiles {
 					labels := getDefaultLabels()
 					processedKeys := make(map[string]bool)
@@ -113,28 +118,22 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 						Value: svc,
 					})
 
-					req := &distirbutormodel.PushRequest{
-						RawProfileSize: p.Size(),
-						RawProfileType: distirbutormodel.RawProfileTypeOTEL,
-						Series: []*distirbutormodel.ProfileSeries{
+					s := &distirbutormodel.ProfileSeries{
+						Labels: labels,
+						Samples: []*distirbutormodel.ProfileSample{
 							{
-								Labels: labels,
-								Samples: []*distirbutormodel.ProfileSample{
-									{
-										RawProfile: nil,
-										Profile:    pprof.RawFromProto(pprofProfile),
-										ID:         uuid.New().String(),
-									},
-								},
+								RawProfile: nil,
+								Profile:    pprof.RawFromProto(pprofProfile),
+								ID:         uuid.New().String(),
 							},
 						},
 					}
-
-					_, err := h.svc.PushParsed(ctx, req)
-					if err != nil {
-						h.log.Log("msg", "failed to push profile", "err", err)
-						return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to make a GRPC request: %w", err)
-					}
+					req.Series = append(req.Series, s)
+				}
+				_, err := h.svc.PushParsed(ctx, req)
+				if err != nil {
+					h.log.Log("msg", "failed to push profile", "err", err)
+					return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to make a GRPC request: %w", err)
 				}
 			}
 		}
