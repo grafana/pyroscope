@@ -2,10 +2,12 @@ package metastoreclient
 
 import (
 	"context"
-	"fmt"
 	"math/rand"
+	"strings"
 	"time"
 
+	"github.com/go-kit/log/level"
+	"github.com/grafana/dskit/backoff"
 	"github.com/hashicorp/raft"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -19,44 +21,45 @@ import (
 func invoke[R any](ctx context.Context, cl *Client,
 	f func(ctx context.Context, instance instance) (*R, error),
 ) (*R, error) {
+	backoffConfig := backoff.Config{
+		MinBackoff: 10 * time.Millisecond,
+		MaxBackoff: 100 * time.Millisecond,
+		MaxRetries: 50,
+	}
 	const (
-		n        = 50
-		backoff  = 51 * time.Millisecond
-		deadline = 500000000 * time.Millisecond
+		deadline = 20 * time.Second
 	)
 
 	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(deadline))
 	defer cancel()
 
-	for i := 0; i < n; i++ {
-		err := ctx.Err()
-		if err != nil {
-			return nil, fmt.Errorf("metastore client timeout %w", err)
-		}
+	var res *R
+	var err error
+
+	attempt := func() (done bool) {
 		it := cl.selectInstance(false)
 		if it == nil {
 			cl.logger.Log("msg", "no instances available, backoff and retry")
-			time.Sleep(backoff)
-			cl.discovery.Rediscover()
-			continue
+			return false
 		}
-		res, err := f(ctx, it)
-		if err == nil {
-			return res, nil
+		responseFromAttempt, errFromAttempt := f(ctx, it)
+		if errFromAttempt == nil {
+			res = responseFromAttempt
+			return true
 		}
 		cl.logger.Log(
 			"msg", "metastore client error",
-			"err", err,
+			"err", errFromAttempt,
 			"server_id", it.srv.Raft.ID,
 			"server_address", it.srv.Raft.Address,
 			"server_resolved_address", it.srv.ResolvedAddress,
 		)
-		node, ok := raftnode.RaftLeaderFromStatusDetails(err)
+		node, ok := raftnode.RaftLeaderFromStatusDetails(errFromAttempt)
 		if ok {
 			cl.mu.Lock()
-			if cl.leader == it.srv.Raft.ID {
+			if strings.Contains(string(it.srv.Raft.ID), string(cl.leader)) {
 				cl.logger.Log("msg", "changing metastore client leader", "current", cl.leader, "new", node.Id)
-				cl.leader = raft.ServerID(node.Id)
+				cl.leader = stripPort(node.Id)
 			}
 			cl.mu.Unlock()
 		} else {
@@ -65,15 +68,27 @@ func invoke[R any](ctx context.Context, cl *Client,
 			cl.selectInstance(true)
 		}
 		// A workaround to prevent retries for specific error codes. This needs a larger refactoring later on.
-		switch status.Code(err) {
+		switch status.Code(errFromAttempt) {
 		case codes.InvalidArgument:
 			cl.logger.Log("msg", "skip metastore retries", "err", err, "leader", cl.leader)
-			return nil, err
+			err = errFromAttempt
+			return true
 		}
-		time.Sleep(backoff)
-		cl.discovery.Rediscover()
+		return false
 	}
-	return nil, fmt.Errorf("metastore client retries failed")
+
+	b := backoff.New(ctx, backoffConfig)
+
+	for b.Ongoing() {
+		if !attempt() {
+			b.Wait()
+			cl.discovery.Rediscover()
+		} else {
+			return res, err
+		}
+	}
+
+	return nil, b.Err()
 }
 
 func (c *Client) selectInstance(override bool) *client {
@@ -88,12 +103,21 @@ func (c *Client) selectInstance(override bool) *client {
 			if j == idx {
 				it = v
 				c.leader = k
+				level.Debug(c.logger).Log("msg", "selected a random metastore server", "new_leader", c.leader)
 				break
 			}
 			j++
 		}
 	}
 	return it
+}
+
+func stripPort(server string) raft.ServerID {
+	serverWithoutPort := server
+	if idx := strings.LastIndex(serverWithoutPort, ":"); idx != -1 {
+		serverWithoutPort = serverWithoutPort[:idx]
+	}
+	return raft.ServerID(serverWithoutPort)
 }
 
 // TODO(kolesnikovae): Interceptor.
