@@ -163,6 +163,15 @@ func (s *segwriterClientSuite) Test_Push_ClientError_Cancellation() {
 	s.Assert().Equal(codes.Canceled.String(), status.Code(err).String())
 }
 
+func (s *segwriterClientSuite) Test_Push_ClientError_Deadline() {
+	s.service.On("Push", mock.Anything, mock.Anything).
+		Return(new(segmentwriterv1.PushResponse), context.DeadlineExceeded).
+		Once()
+
+	_, err := s.client.Push(context.Background(), &segmentwriterv1.PushRequest{})
+	s.Assert().Equal(codes.DeadlineExceeded.String(), status.Code(err).String())
+}
+
 func (s *segwriterClientSuite) Test_Push_ClientError_InvalidArgument() {
 	s.service.On("Push", mock.Anything, mock.Anything).
 		Return(new(segmentwriterv1.PushResponse), status.Error(codes.InvalidArgument, errServiceUnavailableMsg)).

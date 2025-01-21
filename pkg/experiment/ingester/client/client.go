@@ -63,11 +63,12 @@ func isClientError(err error) bool {
 	switch status.Code(err) {
 	case codes.InvalidArgument,
 		codes.Canceled,
+		codes.DeadlineExceeded,
 		codes.PermissionDenied,
 		codes.Unauthenticated:
 		return true
 	default:
-		return errors.Is(err, context.Canceled)
+		return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
 	}
 }
 
@@ -119,9 +120,7 @@ func shouldBeHandledByCaller(err error) bool {
 	if errors.Is(err, os.ErrDeadlineExceeded) {
 		return false
 	}
-	switch status.Code(err) {
-	case codes.Unavailable,
-		codes.DeadlineExceeded:
+	if status.Code(err) == codes.Unavailable {
 		return false
 	}
 	// The error handling is returned back the caller: the circuit
@@ -207,7 +206,7 @@ func (c *Client) Push(
 	k := distributor.NewTenantServiceDatasetKey(req.TenantId, req.Labels...)
 	p, dErr := c.distributor.Distribute(k)
 	if dErr != nil {
-		_ = level.Error(c.logger).Log(
+		level.Error(c.logger).Log(
 			"msg", "unable to distribute request",
 			"tenant", req.TenantId,
 			"err", dErr,
@@ -228,7 +227,7 @@ func (c *Client) Push(
 			"instance_id", instance.Id,
 			"attempts_left", attempts,
 		)
-		_ = level.Debug(logger).Log("msg", "sending request")
+		level.Debug(logger).Log("msg", "sending request")
 		resp, err = c.pushToInstance(ctx, req, instance.Addr)
 		if err == nil {
 			return resp, nil
@@ -237,16 +236,16 @@ func (c *Client) Push(
 			return nil, err
 		}
 		if !isRetryable(err) {
-			_ = level.Error(logger).Log("msg", "failed to push data to segment writer", "err", err)
+			level.Error(logger).Log("msg", "failed to push data to segment writer", "err", err)
 			return nil, status.Error(codes.Unavailable, errServiceUnavailableMsg)
 		}
-		_ = level.Warn(logger).Log("msg", "failed attempt to push data to segment writer", "err", err)
+		level.Warn(logger).Log("msg", "failed attempt to push data to segment writer", "err", err)
 		if err = ctx.Err(); err != nil {
 			return nil, err
 		}
 	}
 
-	_ = level.Error(c.logger).Log(
+	level.Error(c.logger).Log(
 		"msg", "no segment writer instances available for the request",
 		"tenant", req.TenantId,
 		"shard", req.Shard,
