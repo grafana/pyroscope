@@ -27,6 +27,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	"github.com/prometheus/common/expfmt"
+
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
@@ -43,11 +45,11 @@ import (
 )
 
 type PyroscopeTest struct {
-	config phlare.Config
-	it     *phlare.Phlare
-	wg     sync.WaitGroup
-	reg    prometheus.Registerer
-
+	config         phlare.Config
+	it             *phlare.Phlare
+	wg             sync.WaitGroup
+	prevReg        prometheus.Registerer
+	reg            *prometheus.Registry
 	httpPort       int
 	memberlistPort int
 }
@@ -62,8 +64,9 @@ func (p *PyroscopeTest) Start(t *testing.T) {
 	p.httpPort = ports[0]
 	p.memberlistPort = ports[1]
 
-	p.reg = prometheus.DefaultRegisterer
-	prometheus.DefaultRegisterer = prometheus.NewRegistry()
+	p.prevReg = prometheus.DefaultRegisterer
+	p.reg = prometheus.NewRegistry()
+	prometheus.DefaultRegisterer = p.reg
 
 	err = cfg.DynamicUnmarshal(&p.config, []string{"pyroscope"}, flag.NewFlagSet("pyroscope", flag.ContinueOnError))
 	require.NoError(t, err)
@@ -115,7 +118,7 @@ func (p *PyroscopeTest) Start(t *testing.T) {
 
 func (p *PyroscopeTest) Stop(t *testing.T) {
 	defer func() {
-		prometheus.DefaultRegisterer = p.reg
+		prometheus.DefaultRegisterer = p.prevReg
 	}()
 	p.it.SignalHandler.Stop()
 	p.wg.Wait()
@@ -129,6 +132,26 @@ func (p *PyroscopeTest) ringActive() bool {
 }
 func (p *PyroscopeTest) URL() string {
 	return fmt.Sprintf("http://%s:%d", address, p.httpPort)
+}
+
+func (p *PyroscopeTest) Metrics(t testing.TB, keep func(string) bool) string {
+	dto, err := p.reg.Gather()
+	require.NoError(t, err)
+	gotBuf := bytes.NewBuffer(nil)
+	enc := expfmt.NewEncoder(gotBuf, expfmt.NewFormat(expfmt.TypeTextPlain))
+	for _, mf := range dto {
+		if err := enc.Encode(mf); err != nil {
+			require.NoError(t, err)
+		}
+	}
+	split := strings.Split(gotBuf.String(), "\n")
+	res := []string{}
+	for _, line := range split {
+		if keep(line) {
+			res = append(res, line)
+		}
+	}
+	return strings.Join(res, "\n")
 }
 
 func httpBodyContains(url string, needle string) bool {

@@ -454,7 +454,8 @@ func TestDifferentServiceNames(t *testing.T) {
 	_, err := h.Export(context.Background(), req)
 	require.NoError(t, err)
 
-	require.Equal(t, 3, len(profiles))
+	require.Equal(t, 1, len(profiles))
+	require.Equal(t, 3, len(profiles[0].Series))
 
 	expectedProfiles := map[string]string{
 		"{__name__=\"process_cpu\", __delta__=\"false\", __otel__=\"true\", pyroscope_spy=\"unknown\", service_name=\"service-a\"}": "testdata/TestDifferentServiceNames_service_a_profile.json",
@@ -462,14 +463,13 @@ func TestDifferentServiceNames(t *testing.T) {
 		"{__name__=\"process_cpu\", __delta__=\"false\", __otel__=\"true\", pyroscope_spy=\"unknown\", service_name=\"unknown\"}":   "testdata/TestDifferentServiceNames_unknown_profile.json",
 	}
 
-	for _, p := range profiles {
-		require.Equal(t, 1, len(p.Series))
-		series := phlaremodel.Labels(p.Series[0].Labels).ToPrometheusLabels().String()
+	for _, s := range profiles[0].Series {
+		series := phlaremodel.Labels(s.Labels).ToPrometheusLabels().String()
 		assert.Contains(t, expectedProfiles, series)
 		expectedJsonPath := expectedProfiles[series]
 		expectedJson := readJSONFile(t, expectedJsonPath)
 
-		gp := p.Series[0].Samples[0].Profile.Profile
+		gp := s.Samples[0].Profile.Profile
 
 		require.Equal(t, 1, len(gp.SampleType))
 		assert.Equal(t, "cpu", gp.StringTable[gp.SampleType[0].Type])
