@@ -77,6 +77,18 @@ type compactionJob struct {
 	compacted  *metastorev1.CompactedBlocks
 }
 
+// String representation of the compaction job.
+// Is only used for logging and metrics.
+type jobStatus string
+
+const (
+	statusSuccess   jobStatus = "success"
+	statusFailure   jobStatus = "failure"
+	statusCancelled jobStatus = "cancelled"
+	statusNoMeta    jobStatus = "metadata_not_found"
+	statusNoBlocks  jobStatus = "blocks_not_found"
+)
+
 type MetastoreClient interface {
 	metastorev1.CompactionServiceClient
 	metastorev1.IndexServiceClient
@@ -232,7 +244,7 @@ func (w *Worker) collectUpdates() []*metastorev1.CompactionJobStatusUpdate {
 			updates = append(updates, update)
 
 		case done && job.compacted == nil:
-			// We're not sending a status update for the job and expect that the
+			// We're not sending the status update for the job and expect that the
 			// assigment is to be revoked. The job is to be removed at the next
 			// poll response handling: all jobs without assignments are canceled
 			// and removed.
@@ -322,9 +334,9 @@ func (w *Worker) handleResponse(resp *metastorev1.PollCompactionJobsResponse) (n
 func (w *Worker) runCompaction(job *compactionJob) {
 	start := time.Now()
 	labels := []string{job.Tenant, strconv.Itoa(int(job.CompactionLevel))}
-	statusName := "failure"
+	statusName := statusFailure
 	defer func() {
-		labelsWithStatus := append(labels, statusName)
+		labelsWithStatus := append(labels, string(statusName))
 		w.metrics.jobDuration.WithLabelValues(labelsWithStatus...).Observe(time.Since(start).Seconds())
 		w.metrics.jobsCompleted.WithLabelValues(labelsWithStatus...).Inc()
 		w.metrics.jobsInProgress.WithLabelValues(labels...).Dec()
@@ -342,6 +354,13 @@ func (w *Worker) runCompaction(job *compactionJob) {
 	defer sp.Finish()
 
 	logger := log.With(w.logger, "job", job.Name)
+	level.Info(logger).Log("msg", "starting compaction job", "source_blocks", strings.Join(job.SourceBlocks, " "))
+	if err := w.getBlockMetadata(logger, job); err != nil {
+		// The error is likely to be transient, therefore the job is not failed,
+		// but just abandoned – another worker will pick it up and try again.
+		return
+	}
+
 	deleteGroup, deleteCtx := errgroup.WithContext(ctx)
 	for _, t := range job.Tombstones {
 		if b := t.GetBlocks(); b != nil {
@@ -357,11 +376,19 @@ func (w *Worker) runCompaction(job *compactionJob) {
 		}
 	}
 
-	level.Info(logger).Log(
-		"msg", "starting compaction job",
-		"source_blocks", strings.Join(job.SourceBlocks, " "),
-	)
-	if err := w.getBlockMetadata(logger, job); err != nil {
+	if len(job.blocks) == 0 {
+		// This is a very bad situation that we do not expect, unless the
+		// metastore is restored from a snapshot: no metadata found for the
+		// job source blocks. There's no point in retrying or failing the
+		// job (which is likely to be retried by another worker), so we just
+		// skip it. The same for the situation when no block objects can be
+		// found in storage, which may happen if the blocks are deleted manually.
+		level.Error(logger).Log("msg", "no block metadata found; skipping")
+		job.compacted = &metastorev1.CompactedBlocks{SourceBlocks: new(metastorev1.BlockList)}
+		statusName = statusNoMeta
+		// We, however, want to remove the tombstones: those are not the
+		// blocks we were supposed to compact.
+		_ = deleteGroup.Wait()
 		return
 	}
 
@@ -387,7 +414,7 @@ func (w *Worker) runCompaction(job *compactionJob) {
 			"output_blocks", len(compacted),
 		)
 		for _, c := range compacted {
-			level.Info(logger).Log(
+			level.Debug(logger).Log(
 				"msg", "new compacted block",
 				"block_id", c.Id,
 				"block_tenant", metadata.Tenant(c),
@@ -399,8 +426,6 @@ func (w *Worker) runCompaction(job *compactionJob) {
 				"datasets", len(c.Datasets),
 			)
 		}
-
-		statusName = "success"
 		job.compacted = &metastorev1.CompactedBlocks{
 			NewBlocks: compacted,
 			SourceBlocks: &metastorev1.BlockList{
@@ -412,13 +437,20 @@ func (w *Worker) runCompaction(job *compactionJob) {
 
 		firstBlock := metadata.Timestamp(job.blocks[0])
 		w.metrics.timeToCompaction.WithLabelValues(labels...).Observe(time.Since(firstBlock).Seconds())
+		statusName = statusSuccess
 
 	case errors.Is(err, context.Canceled):
-		level.Warn(logger).Log("msg", "job cancelled")
-		statusName = "cancelled"
+		level.Warn(logger).Log("msg", "compaction cancelled")
+		statusName = statusCancelled
+
+	case w.storage.IsObjNotFoundErr(err):
+		level.Error(logger).Log("msg", "failed to find blocks", "err", err)
+		job.compacted = &metastorev1.CompactedBlocks{SourceBlocks: new(metastorev1.BlockList)}
+		statusName = statusNoBlocks
 
 	default:
 		level.Error(logger).Log("msg", "failed to compact blocks", "err", err)
+		statusName = statusFailure
 	}
 
 	// The only error returned by Wait is the context
@@ -442,23 +474,13 @@ func (w *Worker) getBlockMetadata(logger log.Logger, job *compactionJob) error {
 		return err
 	}
 
-	source := resp.GetBlocks()
-	if len(source) == 0 {
-		level.Warn(logger).Log(
-			"msg", "no block metadata found; skipping",
-			"blocks", len(job.SourceBlocks),
-			"blocks_found", len(source),
-		)
-		return fmt.Errorf("no blocks to compact")
-	}
-
+	job.blocks = resp.GetBlocks()
 	// Update the plan to reflect the actual compaction job state.
 	job.SourceBlocks = job.SourceBlocks[:0]
-	for _, b := range source {
+	for _, b := range job.blocks {
 		job.SourceBlocks = append(job.SourceBlocks, b.Id)
 	}
 
-	job.blocks = source
 	return nil
 }
 
