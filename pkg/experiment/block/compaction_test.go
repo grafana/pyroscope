@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -27,7 +26,7 @@ func Test_CompactBlocks(t *testing.T) {
 	require.NoError(t, err)
 
 	dst, tempdir := testutil.NewFilesystemBucket(t, ctx, t.TempDir())
-	compactedBlocks, err := Compact(ctx, resp.Blocks, bucket, uuid.New(),
+	compactedBlocks, err := Compact(ctx, resp.Blocks, bucket,
 		WithCompactionDestination(dst),
 		WithCompactionTempDir(tempdir),
 		WithCompactionObjectOptions(
