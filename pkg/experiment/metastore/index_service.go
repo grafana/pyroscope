@@ -77,7 +77,7 @@ func (svc *IndexService) addBlockMetadata(
 ) (*metastorev1.AddBlockResponse, error) {
 	if err := metadata.Sanitize(req.Block); err != nil {
 		level.Warn(svc.logger).Log("invalid metadata", "block", req.Block.Id, "err", err)
-		return nil, err
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	_, err := svc.raft.Propose(
 		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_ADD_BLOCK_METADATA),
