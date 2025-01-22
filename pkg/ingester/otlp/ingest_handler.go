@@ -130,6 +130,9 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 					}
 					req.Series = append(req.Series, s)
 				}
+				if len(req.Series) == 0 {
+					continue
+				}
 				_, err := h.svc.PushParsed(ctx, req)
 				if err != nil {
 					h.log.Log("msg", "failed to push profile", "err", err)
