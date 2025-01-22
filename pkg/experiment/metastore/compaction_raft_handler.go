@@ -163,8 +163,8 @@ func (h *CompactionCommandHandler) UpdateCompactionPlan(
 
 	for _, job := range req.PlanUpdate.CompletedJobs {
 		compacted := job.GetCompactedBlocks()
-		if compacted == nil {
-			level.Error(h.logger).Log("msg", "compacted blocks are missing", "job", job.State.Name)
+		if compacted == nil || compacted.SourceBlocks == nil || len(compacted.NewBlocks) == 0 {
+			level.Warn(h.logger).Log("msg", "compacted blocks are missing; skipping", "job", job.State.Name)
 			continue
 		}
 		if err := h.tombstones.AddTombstones(tx, cmd, blockTombstonesForCompletedJob(job)); err != nil {
