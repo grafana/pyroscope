@@ -2,17 +2,17 @@ package dlq
 
 import (
 	"context"
+	"errors"
 	"flag"
-	"fmt"
 	"io"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/thanos-io/objstore"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block"
@@ -91,62 +91,71 @@ func (r *Recovery) recoverLoop(ctx context.Context) {
 }
 
 func (r *Recovery) recoverTick(ctx context.Context) {
-	err := r.bucket.Iter(ctx, block.DirNameDLQ, func(metaPath string) error {
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-		return r.recover(ctx, metaPath)
+	err := r.bucket.Iter(ctx, block.DirNameDLQ, func(path string) error {
+		return r.recover(ctx, path)
 	}, objstore.WithRecursiveIter)
 	if err != nil {
-		level.Error(r.logger).Log("msg", "failed to iterate over dlq", "err", err)
+		level.Error(r.logger).Log("msg", "failed to recover block metadata", "err", err)
 	}
 }
 
-func (r *Recovery) recover(ctx context.Context, metaPath string) error {
-	fields := strings.Split(metaPath, "/")
-	if len(fields) != 5 {
-		r.logger.Log("msg", "unexpected path", "path", metaPath)
-		return nil
-	}
-	sshard := fields[1]
-	ulid := fields[3]
-	meta, err := r.get(ctx, metaPath)
-	if err != nil {
-		level.Error(r.logger).Log("msg", "failed to get block meta", "err", err, "path", metaPath)
-		return nil
-	}
-	shard, _ := strconv.ParseUint(sshard, 10, 64)
-	if ulid != meta.Id || meta.Shard != uint32(shard) {
-		level.Error(r.logger).Log("msg", "unexpected block meta", "path", metaPath, "meta", fmt.Sprintf("%+v", meta))
-		return nil
-	}
-	if _, err = r.metastore.AddRecoveredBlock(ctx, &metastorev1.AddBlockRequest{Block: meta}); err != nil {
-		if raftnode.IsRaftLeadershipError(err) {
-			return err
+func (r *Recovery) recover(ctx context.Context, path string) (err error) {
+	defer func() {
+		if err == nil {
+			// In case we return no error, the block is considered recovered and will be deleted.
+			if delErr := r.bucket.Delete(ctx, path); delErr != nil {
+				level.Warn(r.logger).Log("msg", "failed to delete block metadata", "err", delErr, "path", path)
+			}
 		}
-		level.Error(r.logger).Log("msg", "failed to add block", "err", err, "path", metaPath)
+	}()
+
+	b, err := r.readObject(ctx, path)
+	switch {
+	case err == nil:
+	case errors.Is(err, context.Canceled):
+		return err
+	case r.bucket.IsObjNotFoundErr(err):
+		// This is somewhat opportunistic: the error is likely caused by a competing recovery
+		// process that has already recovered the block, before we've discovered that the
+		// leadership has changed.
+		level.Warn(r.logger).Log("msg", "block metadata not found; skipping", "path", path)
+		return nil
+	default:
+		// This is somewhat opportunistic, as we don't know if the error is transient or not.
+		// we should consider an explicit retry mechanism with backoff and a limit on the
+		// number of attempts.
+		level.Warn(r.logger).Log("msg", "failed to read block metadata; to be retried", "err", err, "path", path)
+		return err
+	}
+
+	var meta metastorev1.BlockMeta
+	if err = meta.UnmarshalVT(b); err != nil {
+		level.Error(r.logger).Log("msg", "invalid block metadata; skipping", "err", err, "path", path)
 		return nil
 	}
-	err = r.bucket.Delete(ctx, metaPath)
-	if err != nil {
-		level.Error(r.logger).Log("msg", "failed to delete block meta", "err", err, "path", metaPath)
+
+	switch _, err = r.metastore.AddRecoveredBlock(ctx, &metastorev1.AddBlockRequest{Block: &meta}); {
+	case err == nil:
+		return nil
+	case status.Code(err) == codes.InvalidArgument:
+		level.Error(r.logger).Log("msg", "invalid block metadata", "err", err, "path", path)
+		return nil
+	case raftnode.IsRaftLeadershipError(err):
+		level.Warn(r.logger).Log("msg", "leadership change; recovery interrupted", "err", err, "path", path)
+		return err
+	default:
+		level.Error(r.logger).Log("msg", "failed to add block metadata; to be retried", "err", err, "path", path)
+		return err
 	}
-	return nil
 }
 
-func (r *Recovery) get(ctx context.Context, metaPath string) (*metastorev1.BlockMeta, error) {
-	meta, err := r.bucket.Get(ctx, metaPath)
+func (r *Recovery) readObject(ctx context.Context, path string) ([]byte, error) {
+	rc, err := r.bucket.Get(ctx, path)
 	if err != nil {
 		return nil, err
 	}
-	metaBytes, err := io.ReadAll(meta)
-	if err != nil {
-		return nil, err
-	}
-	recovered := new(metastorev1.BlockMeta)
-	err = recovered.UnmarshalVT(metaBytes)
-	if err != nil {
-		return nil, err
-	}
-	return recovered, nil
+	defer func() {
+		_ = rc.Close()
+	}()
+	return io.ReadAll(rc)
 }
