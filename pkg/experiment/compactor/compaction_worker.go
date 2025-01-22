@@ -15,7 +15,6 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/google/uuid"
 	"github.com/grafana/dskit/services"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
@@ -47,8 +46,6 @@ type Worker struct {
 	stopped   atomic.Bool
 	closeOnce sync.Once
 	wg        sync.WaitGroup
-
-	id uuid.UUID
 }
 
 type Config struct {
@@ -115,7 +112,6 @@ func New(
 		client:  client,
 		storage: storage,
 		metrics: newMetrics(reg),
-		id:      uuid.New(),
 	}
 	w.threads = config.JobConcurrency
 	if w.threads < 1 {
@@ -398,7 +394,7 @@ func (w *Worker) runCompaction(job *compactionJob) {
 
 	tempdir := filepath.Join(w.config.TempDir, job.Name)
 	sourcedir := filepath.Join(tempdir, "source")
-	compacted, err := block.Compact(ctx, job.blocks, w.storage, w.id,
+	compacted, err := block.Compact(ctx, job.blocks, w.storage,
 		block.WithCompactionTempDir(tempdir),
 		block.WithCompactionObjectOptions(
 			block.WithObjectMaxSizeLoadInMemory(w.config.SmallObjectSize),

@@ -16,7 +16,7 @@ func RecordingRulesFromTenant(tenant string) []*RecordingRule {
 	return []*RecordingRule{
 		{
 			profileType: "process_cpu:samples:count:cpu:nanoseconds",
-			metricName:  "test_pyroscope_exported",
+			metricName:  "ride_sharing_app_car_cpu_nanoseconds",
 			matchers: []*labels.Matcher{
 				{
 					Type:  labels.MatchEqual,
@@ -30,6 +30,23 @@ func RecordingRulesFromTenant(tenant string) []*RecordingRule {
 				},
 			},
 			keepLabels: []string{"region"},
+		},
+		{
+			profileType: "process_cpu:samples:count:cpu:nanoseconds",
+			metricName:  "ride_sharing_app_car_all_regions_cpu_nanoseconds",
+			matchers: []*labels.Matcher{
+				{
+					Type:  labels.MatchEqual,
+					Name:  "service_name",
+					Value: "ride-sharing-app",
+				},
+				{
+					Type:  labels.MatchEqual,
+					Name:  "vehicle",
+					Value: "car",
+				},
+			},
+			keepLabels: []string{},
 		},
 	}
 }
