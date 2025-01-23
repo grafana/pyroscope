@@ -11,15 +11,42 @@ import (
 
 type Recorder struct {
 	Recordings        []*Recording
-	labelsMaps        map[model.Fingerprint]map[string]string
 	recordingTime     int64
 	pyroscopeInstance string
 }
 
 type Recording struct {
-	rule RecordingRule
-	fps  map[model.Fingerprint]*AggregatedFingerprint
-	data map[AggregatedFingerprint]*TimeSeries
+	rule  RecordingRule
+	data  map[AggregatedFingerprint]*TimeSeries
+	state *recordingState
+}
+
+type recordingState struct {
+	fp         *model.Fingerprint
+	matches    bool
+	timeSeries *TimeSeries
+}
+
+func (r *Recording) InitState(fp model.Fingerprint, lbls phlaremodel.Labels, pyroscopeInstance string, recordingTime int64) {
+	r.state.fp = &fp
+	labelsMap := map[string]string{}
+	for _, label := range lbls {
+		labelsMap[label.Name] = label.Value
+	}
+	r.state.matches = r.matches(labelsMap)
+	if !r.state.matches {
+		return
+	}
+
+	exportedLabels := generateExportedLabels(labelsMap, r, pyroscopeInstance)
+	sort.Sort(exportedLabels)
+	aggregatedFp := AggregatedFingerprint(exportedLabels.Hash())
+	timeSeries, ok := r.data[aggregatedFp]
+	if !ok {
+		timeSeries = newTimeSeries(exportedLabels, recordingTime)
+		r.data[aggregatedFp] = timeSeries
+	}
+	r.state.timeSeries = timeSeries
 }
 
 type AggregatedFingerprint model.Fingerprint
@@ -39,41 +66,29 @@ func NewRecorder(recordingRules []*RecordingRule, recordingTime int64, pyroscope
 	for i, rule := range recordingRules {
 		recordings[i] = &Recording{
 			rule: *rule,
-			fps:  make(map[model.Fingerprint]*AggregatedFingerprint),
+			// fps:  make(map[model.Fingerprint]*AggregatedFingerprint),
 			data: make(map[AggregatedFingerprint]*TimeSeries),
+			state: &recordingState{
+				fp: nil,
+			},
 		}
 	}
 	return &Recorder{
 		Recordings:        recordings,
-		labelsMaps:        make(map[model.Fingerprint]map[string]string),
 		recordingTime:     recordingTime,
 		pyroscopeInstance: pyroscopeInstance,
 	}
 }
 
 func (r *Recorder) RecordRow(fp model.Fingerprint, lbls phlaremodel.Labels, totalValue int64) {
-	labelsMap := r.getOrCreateLabelsMap(fp, lbls)
-
 	for _, recording := range r.Recordings {
-		aggregatedFp, matches := recording.matches(fp, labelsMap)
-		if !matches {
+		if recording.state.fp == nil || *recording.state.fp != fp {
+			recording.InitState(fp, lbls, r.pyroscopeInstance, r.recordingTime)
+		}
+		if !recording.state.matches {
 			continue
 		}
-		if aggregatedFp == nil {
-			// first time this series appears
-			exportedLabels := r.generateExportedLabels(labelsMap, recording)
-
-			sort.Sort(exportedLabels)
-			f := AggregatedFingerprint(exportedLabels.Hash())
-			aggregatedFp = &f
-
-			recording.fps[fp] = aggregatedFp
-			_, ok := recording.data[*aggregatedFp]
-			if !ok {
-				recording.data[*aggregatedFp] = newTimeSeries(exportedLabels, r.recordingTime)
-			}
-		}
-		recording.data[*aggregatedFp].Samples[0].Value += float64(totalValue)
+		recording.state.timeSeries.Samples[0].Value += float64(totalValue)
 	}
 }
 
@@ -89,7 +104,7 @@ func newTimeSeries(exportedLabels labels.Labels, time int64) *TimeSeries {
 	}
 }
 
-func (r *Recorder) generateExportedLabels(labelsMap map[string]string, rec *Recording) labels.Labels {
+func generateExportedLabels(labelsMap map[string]string, rec *Recording, pyroscopeInstance string) labels.Labels {
 	exportedLabels := labels.Labels{
 		labels.Label{
 			Name:  "__name__",
@@ -97,7 +112,7 @@ func (r *Recorder) generateExportedLabels(labelsMap map[string]string, rec *Reco
 		},
 		labels.Label{
 			Name:  "__pyroscope_instance__",
-			Value: r.pyroscopeInstance,
+			Value: pyroscopeInstance,
 		},
 	}
 	// Add filters as exported labels
@@ -120,33 +135,14 @@ func (r *Recorder) generateExportedLabels(labelsMap map[string]string, rec *Reco
 	return exportedLabels
 }
 
-func (r *Recording) matches(fp model.Fingerprint, labelsMap map[string]string) (*AggregatedFingerprint, bool) {
-	aggregatedFp, seen := r.fps[fp]
-	if seen {
-		// we've seen this series before
-		return aggregatedFp, seen
-	}
+func (r *Recording) matches(labelsMap map[string]string) bool {
 	if r.rule.profileType != labelsMap["__profile_type__"] {
-		return nil, false
+		return false
 	}
 	for _, matcher := range r.rule.matchers {
-		// assume labels.MatchEqual for every matcher:
-		if labelsMap[matcher.Name] != matcher.Value {
-			return nil, false
+		if !matcher.Matches(labelsMap[matcher.Name]) {
+			return false
 		}
 	}
-	return nil, true
-}
-
-func (r *Recorder) getOrCreateLabelsMap(fp model.Fingerprint, lbls phlaremodel.Labels) map[string]string {
-	// get or populate label map
-	labelsMap, ok := r.labelsMaps[fp]
-	if !ok {
-		labelsMap = map[string]string{}
-		for _, label := range lbls {
-			labelsMap[label.Name] = label.Value
-		}
-		r.labelsMaps[fp] = labelsMap
-	}
-	return labelsMap
+	return true
 }
