@@ -7,8 +7,6 @@ weight: 150
 
 # OpenTelemetry profiling support
 
-{{< docs/experimental product="OpenTelemetry profiles" >}}
-
 Pyroscope includes **experimental** support for receiving and visualizing profiles from OpenTelemetry sources. This integration allows you to:
 
 - Collect system-wide profiles using the [OpenTelemetry eBPF profiler](https://github.com/open-telemetry/opentelemetry-ebpf-profiler)
