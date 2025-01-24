@@ -25,6 +25,7 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block"
 	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
+	metricsexport "github.com/grafana/pyroscope/pkg/experiment/metrics"
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/util"
 )
@@ -399,7 +400,9 @@ func (w *Worker) runCompaction(job *compactionJob) {
 		block.WithCompactionObjectOptions(
 			block.WithObjectMaxSizeLoadInMemory(w.config.SmallObjectSize),
 			block.WithObjectDownload(sourcedir),
-		))
+		),
+		block.WithSampleObserver(newSampleObserver(job)),
+	)
 	defer func() {
 		if err = os.RemoveAll(tempdir); err != nil {
 			level.Warn(logger).Log("msg", "failed to remove compaction directory", "path", tempdir, "err", err)
@@ -456,6 +459,13 @@ func (w *Worker) runCompaction(job *compactionJob) {
 	// The only error returned by Wait is the context
 	// cancellation error handled above.
 	_ = deleteGroup.Wait()
+}
+
+func newSampleObserver(job *compactionJob) block.SampleObserver {
+	if job.CompactionLevel == 0 {
+		return metricsexport.NewMetricsObserver(job.Tenant, job.blocks[0])
+	}
+	return &block.NoOpObserver{}
 }
 
 func (w *Worker) getBlockMetadata(logger log.Logger, job *compactionJob) error {
