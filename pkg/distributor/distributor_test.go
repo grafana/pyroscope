@@ -27,6 +27,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grafana/pyroscope/pkg/distributor/quota"
 	testhelper2 "github.com/grafana/pyroscope/pkg/pprof/testhelper"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -300,6 +301,26 @@ func Test_Limits(t *testing.T) {
 			}),
 			expectedCode:             connect.CodeInvalidArgument,
 			expectedValidationReason: validation.LabelNameTooLong,
+		},
+		{
+			description: "quota_reached",
+			pushReq:     &pushv1.PushRequest{},
+			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+				l := validation.MockDefaultLimits()
+				l.IngestionQuota = &quota.Config{
+					PeriodType:      "hour",
+					PeriodLimitMb:   128,
+					NextPeriodStart: 1737721086,
+					QuotaReached:    true,
+					QuotaSampling: quota.SamplingConfig{
+						NumRequests: 0,
+						Period:      time.Minute,
+					},
+				}
+				tenantLimits["user-1"] = l
+			}),
+			expectedCode:             connect.CodeResourceExhausted,
+			expectedValidationReason: validation.QuotaReached,
 		},
 	}
 
