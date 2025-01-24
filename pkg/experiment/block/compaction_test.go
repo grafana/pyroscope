@@ -32,6 +32,7 @@ func Test_CompactBlocks(t *testing.T) {
 		WithCompactionObjectOptions(
 			WithObjectDownload(filepath.Join(tempdir, "source")),
 			WithObjectMaxSizeLoadInMemory(0)), // Force download.
+		WithSampleObserver(&NoOpObserver{}),
 	)
 
 	require.NoError(t, err)

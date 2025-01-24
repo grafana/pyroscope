@@ -66,7 +66,6 @@ func NewRecorder(recordingRules []*RecordingRule, recordingTime int64, pyroscope
 	for i, rule := range recordingRules {
 		recordings[i] = &Recording{
 			rule: *rule,
-			// fps:  make(map[model.Fingerprint]*AggregatedFingerprint),
 			data: make(map[AggregatedFingerprint]*TimeSeries),
 			state: &recordingState{
 				fp: nil,
@@ -111,7 +110,7 @@ func generateExportedLabels(labelsMap map[string]string, rec *Recording, pyrosco
 			Value: rec.rule.metricName,
 		},
 		labels.Label{
-			Name:  "__pyroscope_instance__",
+			Name:  "pyroscope_instance",
 			Value: pyroscopeInstance,
 		},
 	}

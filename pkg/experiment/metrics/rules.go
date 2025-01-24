@@ -11,7 +11,7 @@ type RecordingRule struct {
 	keepLabels  []string
 }
 
-func RecordingRulesFromTenant(tenant string) []*RecordingRule {
+func recordingRulesFromTenant(tenant string) []*RecordingRule {
 	// TODO
 	return []*RecordingRule{
 		{
