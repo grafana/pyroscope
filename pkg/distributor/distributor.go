@@ -307,6 +307,8 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		d.metrics.receivedCompressedBytes.WithLabelValues(string(profName), tenantID).Observe(float64(req.RawProfileSize))
 	}
 
+	d.calculateRequestSize(req)
+
 	if err := d.checkQuota(tenantID, req); err != nil {
 		return nil, err
 	}
@@ -718,6 +720,17 @@ func (d *Distributor) limitMaxSessionsPerSeries(maxSessionsPerSeries int, labels
 }
 
 func (d *Distributor) rateLimit(tenantID string, req *distributormodel.PushRequest) error {
+	if !d.ingestionRateLimiter.AllowN(time.Now(), tenantID, int(req.TotalBytesUncompressed)) {
+		validation.DiscardedProfiles.WithLabelValues(string(validation.RateLimited), tenantID).Add(float64(req.TotalProfiles))
+		validation.DiscardedBytes.WithLabelValues(string(validation.RateLimited), tenantID).Add(float64(req.TotalBytesUncompressed))
+		return connect.NewError(connect.CodeResourceExhausted,
+			fmt.Errorf("push rate limit (%s) exceeded while adding %s", humanize.IBytes(uint64(d.limits.IngestionRateBytes(tenantID))), humanize.IBytes(uint64(req.TotalBytesUncompressed))),
+		)
+	}
+	return nil
+}
+
+func (d *Distributor) calculateRequestSize(req *distributormodel.PushRequest) {
 	for _, series := range req.Series {
 		// include the labels in the size calculation
 		for _, lbs := range series.Labels {
@@ -729,15 +742,6 @@ func (d *Distributor) rateLimit(tenantID string, req *distributormodel.PushReque
 			req.TotalBytesUncompressed += int64(raw.Profile.SizeVT())
 		}
 	}
-	// rate limit the request
-	if !d.ingestionRateLimiter.AllowN(time.Now(), tenantID, int(req.TotalBytesUncompressed)) {
-		validation.DiscardedProfiles.WithLabelValues(string(validation.RateLimited), tenantID).Add(float64(req.TotalProfiles))
-		validation.DiscardedBytes.WithLabelValues(string(validation.RateLimited), tenantID).Add(float64(req.TotalBytesUncompressed))
-		return connect.NewError(connect.CodeResourceExhausted,
-			fmt.Errorf("push rate limit (%s) exceeded while adding %s", humanize.IBytes(uint64(d.limits.IngestionRateBytes(tenantID))), humanize.IBytes(uint64(req.TotalBytesUncompressed))),
-		)
-	}
-	return nil
 }
 
 func (d *Distributor) checkQuota(tenantID string, req *distributormodel.PushRequest) error {
