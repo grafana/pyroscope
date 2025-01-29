@@ -874,6 +874,9 @@
         }
       }
     },
+    "v1DeleteSettingsResponse": {
+      "type": "object"
+    },
     "v1DeleteTenantResponse": {
       "type": "object"
     },
