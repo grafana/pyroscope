@@ -56,8 +56,8 @@ const (
 	FlameGraphLimit       Reason = "flamegraph_limit"
 	QueryMissingTimeRange Reason = "missing_time_range"
 
-	// QuotaReached is a reason for discarding a request when an ingestion quota has been reached.
-	QuotaReached Reason = "quota_reached"
+	// IngestLimitReached is a reason for discarding a request when an ingestion limit has been reached.
+	IngestLimitReached Reason = "ingest_limit_reached"
 
 	// Those profiles were dropped because of relabeling rules
 	DroppedByRelabelRules Reason = "dropped_by_relabel_rules"

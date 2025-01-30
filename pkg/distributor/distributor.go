@@ -37,8 +37,8 @@ import (
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/clientpool"
 	"github.com/grafana/pyroscope/pkg/distributor/aggregator"
+	"github.com/grafana/pyroscope/pkg/distributor/ingest_limits"
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
-	"github.com/grafana/pyroscope/pkg/distributor/quota"
 	writepath "github.com/grafana/pyroscope/pkg/distributor/write_path"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	pprofsplit "github.com/grafana/pyroscope/pkg/model/pprof_split"
@@ -100,7 +100,7 @@ type Distributor struct {
 	ingestionRateLimiter   *limiter.RateLimiter
 	aggregator             *aggregator.MultiTenantAggregator[*pprof.ProfileMerge]
 	asyncRequests          sync.WaitGroup
-	quotaSampler           *quota.Sampler
+	ingestionLimitsSampler *ingest_limits.Sampler
 
 	subservices        *services.Manager
 	subservicesWatcher *services.FailureWatcher
@@ -119,7 +119,7 @@ type Distributor struct {
 type Limits interface {
 	IngestionRateBytes(tenantID string) float64
 	IngestionBurstSizeBytes(tenantID string) int
-	IngestionQuota(tenantID string) *quota.Config
+	IngestionLimit(tenantID string) *ingest_limits.Config
 	IngestionTenantShardSize(tenantID string) int
 	MaxLabelNameLength(tenantID string) int
 	MaxLabelValueLength(tenantID string) int
@@ -190,9 +190,9 @@ func New(
 		return nil, err
 	}
 
-	d.quotaSampler = quota.NewSampler(distributorsRing)
+	d.ingestionLimitsSampler = ingest_limits.NewSampler(distributorsRing)
 
-	subservices = append(subservices, distributorsLifecycler, distributorsRing, d.aggregator, d.quotaSampler)
+	subservices = append(subservices, distributorsLifecycler, distributorsRing, d.aggregator, d.ingestionLimitsSampler)
 
 	d.ingestionRateLimiter = limiter.NewRateLimiter(newGlobalRateStrategy(newIngestionRateStrategy(limits), d), 10*time.Second)
 	d.distributorsLifecycler = distributorsLifecycler
@@ -309,7 +309,7 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 
 	d.calculateRequestSize(req)
 
-	if err := d.checkQuota(tenantID, req); err != nil {
+	if err := d.checkIngestLimit(tenantID, req); err != nil {
 		return nil, err
 	}
 
@@ -744,22 +744,22 @@ func (d *Distributor) calculateRequestSize(req *distributormodel.PushRequest) {
 	}
 }
 
-func (d *Distributor) checkQuota(tenantID string, req *distributormodel.PushRequest) error {
-	q := d.limits.IngestionQuota(tenantID)
-	if q == nil {
+func (d *Distributor) checkIngestLimit(tenantID string, req *distributormodel.PushRequest) error {
+	l := d.limits.IngestionLimit(tenantID)
+	if l == nil {
 		return nil
 	}
 
-	if q.QuotaReached {
-		// we want to allow a very small portion of the traffic after reaching the quota
-		if d.quotaSampler.AllowRequest(tenantID, q.QuotaSampling) {
+	if l.LimitReached {
+		// we want to allow a very small portion of the traffic after reaching the limit
+		if d.ingestionLimitsSampler.AllowRequest(tenantID, l.Sampling) {
 			return nil
 		}
-		nextPeriodStart := time.Unix(q.NextPeriodStart, 0).UTC().Format(time.RFC3339)
-		validation.DiscardedProfiles.WithLabelValues(string(validation.QuotaReached), tenantID).Add(float64(req.TotalProfiles))
-		validation.DiscardedBytes.WithLabelValues(string(validation.QuotaReached), tenantID).Add(float64(req.TotalBytesUncompressed))
+		limitResetTime := time.Unix(l.LimitResetTime, 0).UTC().Format(time.RFC3339)
+		validation.DiscardedProfiles.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalProfiles))
+		validation.DiscardedBytes.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalBytesUncompressed))
 		return connect.NewError(connect.CodeResourceExhausted,
-			fmt.Errorf("quota of %s/%s reached, period resets at %s", humanize.IBytes(uint64(q.PeriodLimitMb*1024*1024)), q.PeriodType, nextPeriodStart))
+			fmt.Errorf("limit of %s/%s reached, next reset at %s", humanize.IBytes(uint64(l.PeriodLimitMb*1024*1024)), l.PeriodType, limitResetTime))
 	}
 
 	return nil

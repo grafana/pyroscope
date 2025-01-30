@@ -1,4 +1,4 @@
-package quota
+package ingest_limits
 
 import (
 	"sync"
@@ -43,7 +43,7 @@ func TestTenantTrackerAllowRequest(t *testing.T) {
 		expectAllowed  int
 	}{
 		{
-			name:           "Within quota",
+			name:           "Within limit",
 			replicaCount:   2,
 			windowDuration: 5 * time.Second,
 			maxRequests:    5,
@@ -51,7 +51,7 @@ func TestTenantTrackerAllowRequest(t *testing.T) {
 			expectAllowed:  3,
 		},
 		{
-			name:           "Exceed quota",
+			name:           "Exceed limit",
 			replicaCount:   2,
 			windowDuration: 5 * time.Second,
 			maxRequests:    3,

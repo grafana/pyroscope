@@ -1,4 +1,4 @@
-package quota
+package ingest_limits
 
 import (
 	"context"
@@ -16,7 +16,7 @@ type tenantTracker struct {
 }
 
 // Sampler provides a very simple time-based probabilistic sampling,
-// intended to be used when a tenant quota has been reached.
+// intended to be used when a tenant limit has been reached.
 //
 // The sampler will allow a number of requests in a time interval.
 // Once the interval is over, the number of allowed requests resets.
