@@ -29,4 +29,9 @@ func RegisterSettingsServiceHandler(mux *mux.Router, svc SettingsServiceHandler,
 		svc.Set,
 		opts...,
 	))
+	mux.Handle("/settings.v1.SettingsService/Delete", connect.NewUnaryHandler(
+		"/settings.v1.SettingsService/Delete",
+		svc.Delete,
+		opts...,
+	))
 }

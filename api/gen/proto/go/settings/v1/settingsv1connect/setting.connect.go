@@ -37,19 +37,23 @@ const (
 	SettingsServiceGetProcedure = "/settings.v1.SettingsService/Get"
 	// SettingsServiceSetProcedure is the fully-qualified name of the SettingsService's Set RPC.
 	SettingsServiceSetProcedure = "/settings.v1.SettingsService/Set"
+	// SettingsServiceDeleteProcedure is the fully-qualified name of the SettingsService's Delete RPC.
+	SettingsServiceDeleteProcedure = "/settings.v1.SettingsService/Delete"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
 var (
-	settingsServiceServiceDescriptor   = v1.File_settings_v1_setting_proto.Services().ByName("SettingsService")
-	settingsServiceGetMethodDescriptor = settingsServiceServiceDescriptor.Methods().ByName("Get")
-	settingsServiceSetMethodDescriptor = settingsServiceServiceDescriptor.Methods().ByName("Set")
+	settingsServiceServiceDescriptor      = v1.File_settings_v1_setting_proto.Services().ByName("SettingsService")
+	settingsServiceGetMethodDescriptor    = settingsServiceServiceDescriptor.Methods().ByName("Get")
+	settingsServiceSetMethodDescriptor    = settingsServiceServiceDescriptor.Methods().ByName("Set")
+	settingsServiceDeleteMethodDescriptor = settingsServiceServiceDescriptor.Methods().ByName("Delete")
 )
 
 // SettingsServiceClient is a client for the settings.v1.SettingsService service.
 type SettingsServiceClient interface {
 	Get(context.Context, *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.GetSettingsResponse], error)
 	Set(context.Context, *connect.Request[v1.SetSettingsRequest]) (*connect.Response[v1.SetSettingsResponse], error)
+	Delete(context.Context, *connect.Request[v1.DeleteSettingsRequest]) (*connect.Response[v1.DeleteSettingsResponse], error)
 }
 
 // NewSettingsServiceClient constructs a client for the settings.v1.SettingsService service. By
@@ -74,13 +78,20 @@ func NewSettingsServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(settingsServiceSetMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		delete: connect.NewClient[v1.DeleteSettingsRequest, v1.DeleteSettingsResponse](
+			httpClient,
+			baseURL+SettingsServiceDeleteProcedure,
+			connect.WithSchema(settingsServiceDeleteMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // settingsServiceClient implements SettingsServiceClient.
 type settingsServiceClient struct {
-	get *connect.Client[v1.GetSettingsRequest, v1.GetSettingsResponse]
-	set *connect.Client[v1.SetSettingsRequest, v1.SetSettingsResponse]
+	get    *connect.Client[v1.GetSettingsRequest, v1.GetSettingsResponse]
+	set    *connect.Client[v1.SetSettingsRequest, v1.SetSettingsResponse]
+	delete *connect.Client[v1.DeleteSettingsRequest, v1.DeleteSettingsResponse]
 }
 
 // Get calls settings.v1.SettingsService.Get.
@@ -93,10 +104,16 @@ func (c *settingsServiceClient) Set(ctx context.Context, req *connect.Request[v1
 	return c.set.CallUnary(ctx, req)
 }
 
+// Delete calls settings.v1.SettingsService.Delete.
+func (c *settingsServiceClient) Delete(ctx context.Context, req *connect.Request[v1.DeleteSettingsRequest]) (*connect.Response[v1.DeleteSettingsResponse], error) {
+	return c.delete.CallUnary(ctx, req)
+}
+
 // SettingsServiceHandler is an implementation of the settings.v1.SettingsService service.
 type SettingsServiceHandler interface {
 	Get(context.Context, *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.GetSettingsResponse], error)
 	Set(context.Context, *connect.Request[v1.SetSettingsRequest]) (*connect.Response[v1.SetSettingsResponse], error)
+	Delete(context.Context, *connect.Request[v1.DeleteSettingsRequest]) (*connect.Response[v1.DeleteSettingsResponse], error)
 }
 
 // NewSettingsServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -117,12 +134,20 @@ func NewSettingsServiceHandler(svc SettingsServiceHandler, opts ...connect.Handl
 		connect.WithSchema(settingsServiceSetMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	settingsServiceDeleteHandler := connect.NewUnaryHandler(
+		SettingsServiceDeleteProcedure,
+		svc.Delete,
+		connect.WithSchema(settingsServiceDeleteMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/settings.v1.SettingsService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case SettingsServiceGetProcedure:
 			settingsServiceGetHandler.ServeHTTP(w, r)
 		case SettingsServiceSetProcedure:
 			settingsServiceSetHandler.ServeHTTP(w, r)
+		case SettingsServiceDeleteProcedure:
+			settingsServiceDeleteHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -138,4 +163,8 @@ func (UnimplementedSettingsServiceHandler) Get(context.Context, *connect.Request
 
 func (UnimplementedSettingsServiceHandler) Set(context.Context, *connect.Request[v1.SetSettingsRequest]) (*connect.Response[v1.SetSettingsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("settings.v1.SettingsService.Set is not implemented"))
+}
+
+func (UnimplementedSettingsServiceHandler) Delete(context.Context, *connect.Request[v1.DeleteSettingsRequest]) (*connect.Response[v1.DeleteSettingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("settings.v1.SettingsService.Delete is not implemented"))
 }

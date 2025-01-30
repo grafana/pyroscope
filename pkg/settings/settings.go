@@ -13,7 +13,10 @@ import (
 	"github.com/pkg/errors"
 
 	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/settings/v1/settingsv1connect"
 )
+
+var _ settingsv1connect.SettingsServiceHandler = (*TenantSettings)(nil)
 
 func New(store Store, logger log.Logger) (*TenantSettings, error) {
 	ts := &TenantSettings{
@@ -117,4 +120,26 @@ func (ts *TenantSettings) Set(ctx context.Context, req *connect.Request[settings
 	return connect.NewResponse(&settingsv1.SetSettingsResponse{
 		Setting: setting,
 	}), nil
+}
+
+func (ts *TenantSettings) Delete(ctx context.Context, req *connect.Request[settingsv1.DeleteSettingsRequest]) (*connect.Response[settingsv1.DeleteSettingsResponse], error) {
+	tenantID, err := tenant.TenantID(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	if req.Msg == nil || req.Msg.Name == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("no setting name provided"))
+	}
+
+	modifiedAt := time.Now().UnixMilli()
+	err = ts.store.Delete(ctx, tenantID, req.Msg.Name, modifiedAt)
+	if err != nil {
+		if errors.Is(err, oldSettingErr) {
+			return nil, connect.NewError(connect.CodeAlreadyExists, err)
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(&settingsv1.DeleteSettingsResponse{}), nil
 }
