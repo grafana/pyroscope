@@ -153,6 +153,7 @@ func (c *Collection) storeForTenant(ctx context.Context) (*bucketStore, error) {
 		c.bucket,
 		k,
 		c.cfg.PyroscopeURL,
+		c.cfg.AlloyTemplatePath,
 	)
 	c.stores[k] = s
 	return s, nil

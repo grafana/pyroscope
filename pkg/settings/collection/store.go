@@ -32,23 +32,26 @@ func (k storeKey) path() string {
 
 // write through cache for the bucket
 type bucketStore struct {
-	logger log.Logger
-	bucket objstore.Bucket
-	apiURL string
-	key    storeKey
-	path   string
+	logger            log.Logger
+	bucket            objstore.Bucket
+	apiURL            string
+	alloyTemplatePath string
+
+	key  storeKey
+	path string
 
 	cacheLock sync.RWMutex
 	cache     *settingsv1.ListCollectionRulesResponse
 }
 
-func newBucketStore(logger log.Logger, bucket objstore.Bucket, key storeKey, apiURL string) *bucketStore {
+func newBucketStore(logger log.Logger, bucket objstore.Bucket, key storeKey, apiURL string, alloyTemplatePath string) *bucketStore {
 	return &bucketStore{
-		logger: logger,
-		bucket: bucket,
-		key:    key,
-		apiURL: apiURL,
-		path:   key.path() + ".json",
+		logger:            logger,
+		bucket:            bucket,
+		key:               key,
+		apiURL:            apiURL,
+		path:              key.path() + ".json",
+		alloyTemplatePath: alloyTemplatePath,
 	}
 }
 
@@ -105,10 +108,18 @@ var alloyTemplate string
 func (b *bucketStore) template(s *settingsv1.CollectionRuleStore) (string, error) {
 	vars := b.varsFromStore(s)
 
-	// generate the pyroscope config
-	var config strings.Builder
+	// generate the pyroscope alloy config
+	var (
+		config         strings.Builder
+		err            error
+		configTemplate = template.New("config.alloy.gotempl")
+	)
 
-	configTemplate, err := template.New("config.alloy.gotempl").Parse(alloyTemplate)
+	if b.alloyTemplatePath != "" {
+		configTemplate, err = configTemplate.ParseFiles(b.alloyTemplatePath)
+	} else {
+		configTemplate, err = configTemplate.Parse(alloyTemplate)
+	}
 	if err != nil {
 		return "", fmt.Errorf("error parsing alloy collection template: %w", err)
 	}
