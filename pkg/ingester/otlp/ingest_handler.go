@@ -97,7 +97,10 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 			for k := 0; k < len(sp.Profiles); k++ {
 				p := sp.Profiles[k]
 
-				pprofProfiles := ConvertOtelToGoogle(p)
+				pprofProfiles, err := ConvertOtelToGoogle(p)
+				if err != nil {
+					return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to convert otel profile: %w", err)
+				}
 
 				req := &distirbutormodel.PushRequest{
 					RawProfileSize: p.Size(),
@@ -106,7 +109,8 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 
 				for samplesServiceName, pprofProfile := range pprofProfiles {
 					labels := getDefaultLabels()
-					processedKeys := make(map[string]bool)
+					labels = append(labels, pprofProfile.name)
+					processedKeys := map[string]bool{pyromodel.LabelNameProfileName: true}
 					labels = appendAttributesUnique(labels, rp.Resource.GetAttributes(), processedKeys)
 					labels = appendAttributesUnique(labels, sp.Scope.GetAttributes(), processedKeys)
 					svc := samplesServiceName
@@ -114,7 +118,7 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 						svc = serviceName
 					}
 					labels = append(labels, &typesv1.LabelPair{
-						Name:  "service_name",
+						Name:  pyromodel.LabelNameServiceName,
 						Value: svc,
 					})
 
@@ -123,7 +127,7 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 						Samples: []*distirbutormodel.ProfileSample{
 							{
 								RawProfile: nil,
-								Profile:    pprof.RawFromProto(pprofProfile),
+								Profile:    pprof.RawFromProto(pprofProfile.profile),
 								ID:         uuid.New().String(),
 							},
 						},
@@ -133,7 +137,7 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 				if len(req.Series) == 0 {
 					continue
 				}
-				_, err := h.svc.PushParsed(ctx, req)
+				_, err = h.svc.PushParsed(ctx, req)
 				if err != nil {
 					h.log.Log("msg", "failed to push profile", "err", err)
 					return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to make a GRPC request: %w", err)
@@ -164,20 +168,12 @@ func getServiceNameFromAttributes(attrs []v1.KeyValue) string {
 func getDefaultLabels() []*typesv1.LabelPair {
 	return []*typesv1.LabelPair{
 		{
-			Name:  pyromodel.LabelNameProfileName,
-			Value: "process_cpu",
-		},
-		{
 			Name:  pyromodel.LabelNameDelta,
 			Value: "false",
 		},
 		{
 			Name:  pyromodel.LabelNameOTEL,
 			Value: "true",
-		},
-		{
-			Name:  "pyroscope_spy",
-			Value: "unknown",
 		},
 	}
 }

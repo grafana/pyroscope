@@ -43,6 +43,8 @@ const (
 	LabelNamePyroscopeSpy = "pyroscope_spy"
 
 	labelSep = '\xfe'
+
+	ProfileNameOffCpu = "off_cpu" // todo better name?
 )
 
 // Labels is a sorted set of labels. Order has to be guaranteed upon
