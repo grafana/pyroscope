@@ -66,6 +66,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/querier/worker"
 	"github.com/grafana/pyroscope/pkg/scheduler"
 	"github.com/grafana/pyroscope/pkg/scheduler/schedulerdiscovery"
+	"github.com/grafana/pyroscope/pkg/settings"
 	"github.com/grafana/pyroscope/pkg/storegateway"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/tracing"
@@ -91,9 +92,10 @@ type Config struct {
 	MemberlistKV      memberlist.KVConfig    `yaml:"memberlist"`
 	PhlareDB          phlaredb.Config        `yaml:"pyroscopedb,omitempty"`
 	Tracing           tracing.Config         `yaml:"tracing"`
-	OverridesExporter exporter.Config        `yaml:"overrides_exporter" doc:"hidden"`
+	OverridesExporter exporter.Config        `yaml:"overrides_exporter"      doc:"hidden"`
 	RuntimeConfig     runtimeconfig.Config   `yaml:"runtime_config"`
 	Compactor         compactor.Config       `yaml:"compactor"`
+	TenantSettings    settings.Config        `yaml:"tenant_settings"`
 
 	Storage       StorageConfig       `yaml:"storage"`
 	SelfProfiling SelfProfilingConfig `yaml:"self_profiling,omitempty"`
@@ -109,10 +111,10 @@ type Config struct {
 
 	// Experimental modules.
 	v2Experiment      bool
-	SegmentWriter     segmentwriter.Config     `yaml:"segment_writer" doc:"hidden"`
-	Metastore         metastore.Config         `yaml:"metastore" doc:"hidden"`
-	QueryBackend      querybackend.Config      `yaml:"query_backend" doc:"hidden"`
-	CompactionWorker  compactionworker.Config  `yaml:"compaction_worker" doc:"hidden"`
+	SegmentWriter     segmentwriter.Config     `yaml:"segment_writer"     doc:"hidden"`
+	Metastore         metastore.Config         `yaml:"metastore"          doc:"hidden"`
+	QueryBackend      querybackend.Config      `yaml:"query_backend"      doc:"hidden"`
+	CompactionWorker  compactionworker.Config  `yaml:"compaction_worker"  doc:"hidden"`
 	AdaptivePlacement adaptiveplacement.Config `yaml:"adaptive_placement" doc:"hidden"`
 }
 
@@ -142,8 +144,18 @@ func (c *SelfProfilingConfig) RegisterFlags(f *flag.FlagSet) {
 	// these are values that worked well in OG Pyroscope Cloud without adding much overhead
 	f.IntVar(&c.MutexProfileFraction, "self-profiling.mutex-profile-fraction", 5, "")
 	f.IntVar(&c.BlockProfileRate, "self-profiling.block-profile-rate", 5, "")
-	f.BoolVar(&c.DisablePush, "self-profiling.disable-push", false, "When running in single binary (--target=all) Pyroscope will push (Go SDK) profiles to itself. Set to true to disable self-profiling.")
-	f.BoolVar(&c.UseK6Middleware, "self-profiling.use-k6-middleware", false, "Read k6 labels from request headers and set them as dynamic profile tags.")
+	f.BoolVar(
+		&c.DisablePush,
+		"self-profiling.disable-push",
+		false,
+		"When running in single binary (--target=all) Pyroscope will push (Go SDK) profiles to itself. Set to true to disable self-profiling.",
+	)
+	f.BoolVar(
+		&c.UseK6Middleware,
+		"self-profiling.use-k6-middleware",
+		false,
+		"Read k6 labels from request headers and set them as dynamic profile tags.",
+	)
 }
 
 func (c *Config) RegisterFlags(f *flag.FlagSet) {
@@ -157,8 +169,18 @@ func (c *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) 
 	f.StringVar(&c.ConfigFile, "config.file", "", "yaml file to load")
 	f.Var(&c.Target, "target", "Comma-separated list of Pyroscope modules to load. "+
 		"The alias 'all' can be used in the list to load a number of core modules and will enable single-binary mode. ")
-	f.BoolVar(&c.MultitenancyEnabled, "auth.multitenancy-enabled", false, "When set to true, incoming HTTP requests must specify tenant ID in HTTP X-Scope-OrgId header. When set to false, tenant ID anonymous is used instead.")
-	f.BoolVar(&c.ConfigExpandEnv, "config.expand-env", false, "Expands ${var} in config according to the values of the environment variables.")
+	f.BoolVar(
+		&c.MultitenancyEnabled,
+		"auth.multitenancy-enabled",
+		false,
+		"When set to true, incoming HTTP requests must specify tenant ID in HTTP X-Scope-OrgId header. When set to false, tenant ID anonymous is used instead.",
+	)
+	f.BoolVar(
+		&c.ConfigExpandEnv,
+		"config.expand-env",
+		false,
+		"Expands ${var} in config according to the values of the environment variables.",
+	)
 	f.BoolVar(&c.ShowBanner, "config.show_banner", true, "Prints the application banner at startup.")
 
 	c.registerServerFlagsWithChangedDefaultValues(f)
@@ -175,6 +197,7 @@ func (c *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) 
 	c.Compactor.RegisterFlags(f, log.NewLogfmtLogger(os.Stderr))
 	c.API.RegisterFlags(f)
 	c.EmbeddedGrafana.RegisterFlags(f)
+	c.TenantSettings.RegisterFlags(f)
 }
 
 // registerServerFlagsWithChangedDefaultValues registers *Config.Server flags, but overrides some defaults set by the dskit package.
@@ -269,6 +292,10 @@ func (c *Config) Validate() error {
 	}
 
 	if err := c.Storage.Bucket.Validate(); err != nil {
+		return err
+	}
+
+	if err := c.TenantSettings.Validate(); err != nil {
 		return err
 	}
 
@@ -416,7 +443,18 @@ func (f *Phlare) setupModuleManager() error {
 
 	// Add dependencies
 	deps := map[string][]string{
-		All: {Ingester, Distributor, QueryFrontend, QueryScheduler, Querier, StoreGateway, Compactor, Admin, TenantSettings, AdHocProfiles},
+		All: {
+			Ingester,
+			Distributor,
+			QueryFrontend,
+			QueryScheduler,
+			Querier,
+			StoreGateway,
+			Compactor,
+			Admin,
+			TenantSettings,
+			AdHocProfiles,
+		},
 
 		Server:            {GRPCGateway},
 		API:               {Server},
@@ -575,7 +613,8 @@ func (f *Phlare) Run() error {
 		for m, s := range serviceMap {
 			if s == service {
 				if service.FailureCase() == modules.ErrStopProcess {
-					level.Info(f.logger).Log("msg", "received stop signal via return error", "module", m, "error", service.FailureCase())
+					level.Info(f.logger).
+						Log("msg", "received stop signal via return error", "module", m, "error", service.FailureCase())
 				} else {
 					level.Error(f.logger).Log("msg", "module failed", "module", m, "error", service.FailureCase())
 				}
