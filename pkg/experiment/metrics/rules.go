@@ -135,20 +135,11 @@ func parseRule(rule *settingsv1.Setting) *RecordingRule {
 	}
 
 	return &RecordingRule{
-		profileType: parseProfileType(parsed.ProfileType),
+		profileType: parsed.ProfileType,
 		metricName:  "pyroscope_exported_metrics_" + parsed.Name, // TODO sanitize
 		matchers:    parseMatchers(parsed.Matcher, parsed.ServiceName),
 		keepLabels:  parsed.Labels, // [] != All
 	}
-}
-
-func parseProfileType(profileType string) string {
-	//TODO
-	switch profileType {
-	case "cpu":
-		return "process_cpu:cpu:nanoseconds:cpu:nanoseconds"
-	}
-	return "process_cpu:cpu:nanoseconds:cpu:nanoseconds"
 }
 
 func parseMatchers(matchersString string, serviceName string) []*labels.Matcher {

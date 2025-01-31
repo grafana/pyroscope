@@ -114,28 +114,7 @@ func generateExportedLabels(labelsMap map[string]string, rec *Recording, pyrosco
 			Value: pyroscopeInstance,
 		},
 	}
-	// Add filters as exported labels
-	/*
-			TODO: do we want this?
-			Adding filters as exported labels seems unoffensive / ambiguous when using like this:
-				matchers -> [vehicle="car"]   (the exported metric will include a single-value label "vehicle"
-		  But it's different for more complex matchers:
-			  matchers -> [pod=~"prod-us-.*"]
-					here, if we export pod, we are generating new series for each production US pod. While if we don't export it,
-		      a single serie is generated that aggregates all prod US pods.
 
-			Maybe we should not include this and let the user choose if they want to keep the pod label or not.
-	*/
-
-	for _, matcher := range rec.rule.matchers {
-		labelValue, ok := labelsMap[matcher.Name]
-		if ok {
-			exportedLabels = append(exportedLabels, labels.Label{
-				Name:  matcher.Name,
-				Value: labelValue,
-			})
-		}
-	}
 	// Keep the expected labels
 	for _, label := range rec.rule.keepLabels {
 		labelValue, ok := labelsMap[label]
@@ -150,7 +129,7 @@ func generateExportedLabels(labelsMap map[string]string, rec *Recording, pyrosco
 }
 
 func (r *Recording) matches(labelsMap map[string]string) bool {
-	if r.rule.profileType != labelsMap["__profile_type__"] {
+	if r.rule.profileType != labelsMap["__type__"] {
 		return false
 	}
 	for _, matcher := range r.rule.matchers {
