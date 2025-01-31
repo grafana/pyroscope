@@ -30,22 +30,29 @@ type Config struct {
 	AlloyTemplatePath string `yaml:"alloy_template_path" category:"experimental"`
 }
 
+const (
+	flagPrefix            = "tenant-settings.collection-rules."
+	flagEnabled           = flagPrefix + "enabled"
+	flagPyroscopeURL      = flagPrefix + "pyroscope-url"
+	flagAlloyTemplatePath = flagPrefix + "alloy-template-path"
+)
+
 func (cfg *Config) RegisterFlags(fs *flag.FlagSet) {
 	fs.BoolVar(
 		&cfg.Enabled,
-		"tenant-settings.collection-rules.enabled",
+		flagEnabled,
 		false,
 		"Enable the storing of collection config in tenant settings.",
 	)
 	fs.StringVar(
 		&cfg.PyroscopeURL,
-		"tenant-settings.collection-rules.pyroscope-url",
+		flagPyroscopeURL,
 		"",
 		"The public facing URL of the Pyroscope instance.",
 	)
 	fs.StringVar(
 		&cfg.AlloyTemplatePath,
-		"tenant-settings.collection-rules.alloy-template-path",
+		flagAlloyTemplatePath,
 		"",
 		"Override the default alloy go template.",
 	)
@@ -58,16 +65,19 @@ func (cfg *Config) Validate() error {
 
 	if cfg.PyroscopeURL == "" {
 		return fmt.Errorf(
-			"tenant_settings.collection_rule.spyroscope_url is required when the tenant_settings.collection_rules.enabled is set",
+			"%s is required when %s is set",
+			flagPyroscopeURL,
+			flagEnabled,
 		)
 	}
 
 	if cfg.AlloyTemplatePath != "" {
 		if _, err := os.ReadFile(cfg.AlloyTemplatePath); err != nil {
 			return fmt.Errorf(
-				"tenant_settings.collection_rule.alloy_template_path is not readable: %w", err,
+				"%s is not readable: %w",
+				flagAlloyTemplatePath,
+				err,
 			)
-
 		}
 	}
 
