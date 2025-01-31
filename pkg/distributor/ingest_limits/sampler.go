@@ -11,7 +11,7 @@ import (
 
 type tenantTracker struct {
 	mu                sync.Mutex
-	lastWindowStart   time.Time
+	lastRequestTime   time.Time
 	remainingRequests int
 }
 
@@ -21,10 +21,8 @@ type tenantTracker struct {
 // The sampler will allow a number of requests in a time interval.
 // Once the interval is over, the number of allowed requests resets.
 //
-// When there is more than a single distributor replica,
-// we introduce a probability for a request to be allowed defined as 1 / num_replicas.
-//
-// Caveats: we might allow  noisy tenant on a large cluster wi
+// We introduce a probability function for a request to be allowed defined as 1 / num_replicas,
+// to account for the size of the cluster and because tracking is done in memory.
 type Sampler struct {
 	*services.BasicService
 
@@ -97,7 +95,7 @@ func (s *Sampler) AllowRequest(tenantID string, config SamplingConfig) bool {
 	tracker, exists := s.tenants[tenantID]
 	if !exists {
 		tracker = &tenantTracker{
-			lastWindowStart:   time.Now(),
+			lastRequestTime:   time.Now(),
 			remainingRequests: config.NumRequests,
 		}
 		s.tenants[tenantID] = tracker
@@ -114,8 +112,8 @@ func (b *tenantTracker) AllowRequest(replicaCount int, windowDuration time.Durat
 	now := time.Now()
 
 	// rotate window if enough time has passed
-	if now.Sub(b.lastWindowStart) >= windowDuration {
-		b.lastWindowStart = now
+	if now.Sub(b.lastRequestTime) >= windowDuration {
+		b.lastRequestTime = now
 		b.remainingRequests = maxRequests
 	}
 
@@ -136,7 +134,7 @@ func (s *Sampler) removeStaleTenants() {
 	s.mu.Lock()
 	cutoff := time.Now().Add(-s.maxAge)
 	for tenantID, tracker := range s.tenants {
-		if tracker.lastWindowStart.Before(cutoff) {
+		if tracker.lastRequestTime.Before(cutoff) {
 			delete(s.tenants, tenantID)
 		}
 	}

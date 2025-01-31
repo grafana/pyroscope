@@ -71,7 +71,7 @@ func TestTenantTrackerAllowRequest(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			tracker := &tenantTracker{
-				lastWindowStart:   time.Now(),
+				lastRequestTime:   time.Now(),
 				remainingRequests: tc.maxRequests,
 			}
 
