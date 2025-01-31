@@ -111,7 +111,7 @@ func (b *tenantTracker) AllowRequest(replicaCount int, windowDuration time.Durat
 
 	now := time.Now()
 
-	// rotate window if enough time has passed
+	// reset tracking data if enough time has passed
 	if now.Sub(b.lastRequestTime) >= windowDuration {
 		b.lastRequestTime = now
 		b.remainingRequests = maxRequests
