@@ -3,12 +3,11 @@ package otlp
 import (
 	"context"
 	"fmt"
-	"net/http"
-	"strings"
-
 	distirbutormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	pyromodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
+	"net/http"
+	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
