@@ -182,6 +182,10 @@ func (m *UpsertCollectionRuleRequest) CloneVT() *UpsertCollectionRuleRequest {
 		}
 		r.Services = tmpContainer
 	}
+	if rhs := m.ObservedLastUpdated; rhs != nil {
+		tmpVal := *rhs
+		r.ObservedLastUpdated = &tmpVal
+	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -565,6 +569,9 @@ func (this *UpsertCollectionRuleRequest) EqualVT(that *UpsertCollectionRuleReque
 		return false
 	}
 	if !this.Java.EqualVT(that.Java) {
+		return false
+	}
+	if p, q := this.ObservedLastUpdated, that.ObservedLastUpdated; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -1520,6 +1527,11 @@ func (m *UpsertCollectionRuleRequest) MarshalToSizedBufferVT(dAtA []byte) (int, 
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.ObservedLastUpdated != nil {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(*m.ObservedLastUpdated))
+		i--
+		dAtA[i] = 0x28
+	}
 	if m.Java != nil {
 		size, err := m.Java.MarshalToSizedBufferVT(dAtA[:i])
 		if err != nil {
@@ -2115,6 +2127,9 @@ func (m *UpsertCollectionRuleRequest) SizeVT() (n int) {
 	if m.Java != nil {
 		l = m.Java.SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.ObservedLastUpdated != nil {
+		n += 1 + protohelpers.SizeOfVarint(uint64(*m.ObservedLastUpdated))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -3131,6 +3146,26 @@ func (m *UpsertCollectionRuleRequest) UnmarshalVT(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ObservedLastUpdated", wireType)
+			}
+			var v int64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.ObservedLastUpdated = &v
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

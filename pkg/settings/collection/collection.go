@@ -138,7 +138,12 @@ func (c *Collection) storeForTenant(ctx context.Context) (*bucketStore, error) {
 	}
 
 	// now create a new store
-	s = newBucketStore(c.bucket, k, c.cfg.PyroscopeURL)
+	s = newBucketStore(
+		log.With(c.logger, "tenant", tenantID),
+		c.bucket,
+		k,
+		c.cfg.PyroscopeURL,
+	)
 	c.stores[k] = s
 	return s, nil
 

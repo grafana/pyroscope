@@ -177,9 +177,11 @@ func TestUpsertCollectionRule(t *testing.T) {
 		require.NoError(t, err)
 	})
 	t.Run("update to valid rule", func(t *testing.T) {
+		observedLastUpdated := timeNow().UnixMilli()
 		_, err := coll.UpsertCollectionRule(ctx, connect.NewRequest(&settingsv1.UpsertCollectionRuleRequest{
-			Name: "my-valid-rule",
-			Ebpf: &settingsv1.EBPFSettings{Enabled: true},
+			ObservedLastUpdated: &observedLastUpdated,
+			Name:                "my-valid-rule",
+			Ebpf:                &settingsv1.EBPFSettings{Enabled: true},
 			Services: []*settingsv1.ServiceData{
 				{Name: "valid-service", Enabled: true},
 				{Name: "second-valid-service", Enabled: false},
@@ -194,6 +196,16 @@ func TestUpsertCollectionRule(t *testing.T) {
 			string(data),
 		)
 
+	})
+	t.Run("conflicting update", func(t *testing.T) {
+		observedLastUpdated := timeNow().Add(-time.Hour).UnixMilli()
+		_, err := coll.UpsertCollectionRule(ctx, connect.NewRequest(&settingsv1.UpsertCollectionRuleRequest{
+			ObservedLastUpdated: &observedLastUpdated,
+			Name:                "my-valid-rule",
+			Ebpf:                &settingsv1.EBPFSettings{Enabled: true},
+			Services:            []*settingsv1.ServiceData{},
+		}))
+		require.ErrorContains(t, err, "already_exists: Conflicting update, please try again")
 	})
 	t.Run("invalid rule name", func(t *testing.T) {
 		_, err := coll.UpsertCollectionRule(ctx, connect.NewRequest(&settingsv1.UpsertCollectionRuleRequest{

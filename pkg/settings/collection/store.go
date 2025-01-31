@@ -10,8 +10,11 @@ import (
 	"strings"
 	"sync"
 	"text/template"
+	"time"
 
 	"connectrpc.com/connect"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/grafana/alloy/syntax/parser"
 	"github.com/thanos-io/objstore"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -29,6 +32,7 @@ func (k storeKey) path() string {
 
 // write through cache for the bucket
 type bucketStore struct {
+	logger log.Logger
 	bucket objstore.Bucket
 	apiURL string
 	key    storeKey
@@ -38,8 +42,9 @@ type bucketStore struct {
 	cache     *settingsv1.ListCollectionRulesResponse
 }
 
-func newBucketStore(bucket objstore.Bucket, key storeKey, apiURL string) *bucketStore {
+func newBucketStore(logger log.Logger, bucket objstore.Bucket, key storeKey, apiURL string) *bucketStore {
 	return &bucketStore{
+		logger: logger,
 		bucket: bucket,
 		key:    key,
 		apiURL: apiURL,
@@ -224,6 +229,17 @@ func (b *bucketStore) upsertRule(ctx context.Context, rule *settingsv1.UpsertCol
 		// create a new rule
 		pos = len(data.Rules)
 		data.Rules = append(data.Rules, &settingsv1.CollectionRuleStore{})
+	} else {
+		// check if there had been a conflicted updated
+		storedRule := data.Rules[pos]
+		if rule.ObservedLastUpdated != nil && *rule.ObservedLastUpdated != storedRule.LastUpdated {
+			level.Warn(b.logger).Log(
+				"msg", "conflicting update, please try again",
+				"observed_last_updated", time.UnixMilli(*rule.ObservedLastUpdated),
+				"stored_last_updated", time.UnixMilli(storedRule.LastUpdated),
+			)
+			return connect.NewError(connect.CodeAlreadyExists, fmt.Errorf("Conflicting update, please try again"))
+		}
 	}
 
 	data.Rules[pos].Name = rule.Name

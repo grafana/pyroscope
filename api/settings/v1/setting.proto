@@ -53,6 +53,7 @@ message UpsertCollectionRuleRequest {
   repeated ServiceData services = 2;
   optional EBPFSettings ebpf = 3;
   optional JavaSettings java = 4;
+  optional int64 observed_last_updated = 5; // this is observed_last_updated in milliseconds unix time. Can be used to avoid update conflicts
 }
 
 message GetCollectionRuleRequest {
