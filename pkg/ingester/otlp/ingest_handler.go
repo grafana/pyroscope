@@ -3,9 +3,6 @@ package otlp
 import (
 	"context"
 	"fmt"
-	distirbutormodel "github.com/grafana/pyroscope/pkg/distributor/model"
-	pyromodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/pprof"
 	"net/http"
 	"strings"
 
@@ -14,13 +11,15 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
 	"github.com/grafana/dskit/user"
-	"google.golang.org/grpc"
-
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	pprofileotlp "github.com/grafana/pyroscope/api/otlp/collector/profiles/v1development"
 	v1 "github.com/grafana/pyroscope/api/otlp/common/v1"
+	distirbutormodel "github.com/grafana/pyroscope/pkg/distributor/model"
+	pyromodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/tenant"
+	"google.golang.org/grpc"
 )
 
 type ingestHandler struct {

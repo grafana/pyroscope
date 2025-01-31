@@ -2,12 +2,12 @@ package otlp
 
 import (
 	"fmt"
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	pyromodel "github.com/grafana/pyroscope/pkg/model"
 	"time"
 
 	googleProfile "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	otelProfile "github.com/grafana/pyroscope/api/otlp/profiles/v1development"
+	pyromodel "github.com/grafana/pyroscope/pkg/model"
 )
 
 const serviceNameKey = "service.name"
