@@ -26,7 +26,7 @@ var timeNow = time.Now
 
 type Config struct {
 	Enabled           bool   `yaml:"enabled"             category:"experimental"`
-	PyroscopeURL      string `yaml:"pyroscope_url"       category:"experimental"` // required to be set
+	PyroscopeURL      string `yaml:"pyroscope_url"       category:"experimental"` // required to be set when enabled is true
 	AlloyTemplatePath string `yaml:"alloy_template_path" category:"experimental"`
 }
 

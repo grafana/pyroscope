@@ -47,7 +47,7 @@ message EBPFSettings {
   bool enabled = 1;
 }
 
-// CollectionRuleUpsertRequest is used to create / update a collection rule.
+// UpsertCollectionRuleRequest is used to create / update a collection rule.
 message UpsertCollectionRuleRequest {
   string name = 1;
   repeated ServiceData services = 2;

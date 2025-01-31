@@ -411,7 +411,7 @@ func (x *EBPFSettings) GetEnabled() bool {
 	return false
 }
 
-// CollectionRuleUpsertRequest is used to create / update a collection rule.
+// UpsertCollectionRuleRequest is used to create / update a collection rule.
 type UpsertCollectionRuleRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
