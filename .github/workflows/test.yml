@@ -100,10 +100,9 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v4
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
+        uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@v1
+        uses: docker/setup-buildx-action@v2
       - name: Set up go
         uses: actions/setup-go@v5
         with:
@@ -122,10 +121,9 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v4
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
+        uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@v1
+        uses: docker/setup-buildx-action@v2
       - name: Set up go
         uses: actions/setup-go@v5
         with:
@@ -135,7 +133,7 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Pyroscope Build & push multi-arch image # todo make it multi-arch
+      - name: Pyroscope Build & push multi-arch image
         id: build-push
         run: |
           make docker-image/pyroscope/push-multiarch "BUILDX_ARGS=--cache-from=type=gha --cache-to=type=gha"
