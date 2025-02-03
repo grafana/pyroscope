@@ -232,10 +232,10 @@ define multiarch_build
 	$(eval build_cmd=docker-image/pyroscope/$(if $(push_image),push,build)$(if $(debug_build),-debug))
 	$(eval image_name=$(IMAGE_PREFIX)$(shell basename $(@D)):$(if $(debug_build),debug.)$(IMAGE_TAG))
 
-	GOOS=linux GOARCH=arm64 IMAGE_TAG="$(IMAGE_TAG)-arm64" IMAGE_PLATFORM=linux/arm64 $(MAKE) $(build_cmd)
-	GOOS=linux GOARCH=amd64 IMAGE_TAG="$(IMAGE_TAG)-amd64" IMAGE_PLATFORM=linux/amd64 $(MAKE) $(build_cmd)
+	GOOS=linux GOARCH=arm64 IMAGE_TAG="$(IMAGE_TAG)-arm64" $(MAKE) $(build_cmd) IMAGE_PLATFORM=linux/arm64
+	GOOS=linux GOARCH=amd64 IMAGE_TAG="$(IMAGE_TAG)-amd64" $(MAKE) $(build_cmd) IMAGE_PLATFORM=linux/amd64
 
-	$(if $(PUSH_IMAGE), \
+	$(if $(push_image), \
 		docker manifest create --amend "$(image_name)" "$(image_name)-amd64" "$(image_name)-arm64" && \
 		docker manifest push "$(image_name)")
 endef
