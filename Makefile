@@ -38,6 +38,9 @@ GO_MOD_PATHS := api/ ebpf/ examples/language-sdk-instrumentation/golang-push/rid
 # Add extra arguments to helm commands
 HELM_ARGS =
 
+# Local deployment params
+KIND_CLUSTER = pyroscope-dev
+
 .PHONY: help
 help: ## Describe useful make targets
 	@grep -E '^[a-zA-Z_/-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ": .*?## "}; {printf "%-50s %s\n", $$1, $$2}'
@@ -254,11 +257,11 @@ docker-image/pyroscope/push-multiarch-debug:
 	$(call multiarch_build,push,debug)
 
 .PHONY: docker-image/pyroscope/build-debug
-docker-image/pyroscope/build-debug: frontend/build go/bin-debug dlv
+docker-image/pyroscope/build-debug: frontend/build go/bin-debug docker-image/pyroscope/dlv
 	$(call docker_buildx,--load,debug.)
 
 .PHONY: docker-image/pyroscope/push-debug
-docker-image/pyroscope/push-debug: frontend/build go/bin-debug dlv
+docker-image/pyroscope/push-debug: frontend/build go/bin-debug docker-image/pyroscope/dlv
 	$(call docker_buildx,--push,debug.)
 
 .PHONY: docker-image/pyroscope/build
@@ -268,6 +271,14 @@ docker-image/pyroscope/build: frontend/build go/bin
 .PHONY: docker-image/pyroscope/push
 docker-image/pyroscope/push: frontend/build go/bin
 	$(call docker_buildx,--push,)
+
+.PHONY: docker-image/pyroscope/dlv
+docker-image/pyroscope/dlv:
+    # dlv is not intended for local use and is to be installed in the
+    # platform-specific docker image together with the main Pyroscope binary.
+	@mkdir -p $(@D)
+	GOPATH=$(CURDIR)/.tmp CGO_ENABLED=0 $(GO) install -ldflags "-s -w -extldflags '-static'" github.com/go-delve/delve/cmd/dlv@v1.23.0
+	mv $(CURDIR)/.tmp/bin/$(GOOS)_$(GOARCH)/dlv $(CURDIR)/.tmp/bin/dlv
 
 define UPDATER_CONFIG_JSON
 {
@@ -397,23 +408,15 @@ $(BIN)/gotestsum: Makefile go.mod
 	@mkdir -p $(@D)
 	GOBIN=$(abspath $(@D)) $(GO) install gotest.tools/gotestsum@v1.9.0
 
-dlv:
-    # dlv is not intended for local use and is to be installed in the
-    # platform-specific docker image together with the main Pyroscope binary.
-	@mkdir -p $(@D)
-	GOPATH=$(CURDIR)/.tmp CGO_ENABLED=0 $(GO) install -ldflags "-s -w -extldflags '-static'" github.com/go-delve/delve/cmd/dlv@v1.23.0
-	mv $(CURDIR)/.tmp/bin/$(GOOS)_$(GOARCH)/dlv $(CURDIR)/.tmp/bin/dlv
-
 .PHONY: cve/check
 cve/check:
 	docker run -t -i --rm --volume "$(CURDIR)/:/repo" -u "$(shell id -u)" aquasec/trivy:0.45.1 filesystem --cache-dir /repo/.cache/trivy --scanners vuln --skip-dirs .tmp/ --skip-dirs node_modules/ --skip-dirs tools/monitoring/vendor/ /repo
-
-KIND_CLUSTER = pyroscope-dev
 
 .PHONY: helm/lint
 helm/lint: $(BIN)/helm
 	$(BIN)/helm lint ./operations/pyroscope/helm/pyroscope/
 
+.PHONY: helm/docs
 helm/docs: $(BIN)/helm
 	docker run --rm --volume "$(CURDIR)/operations/pyroscope/helm:/helm-docs" -u "$(shell id -u)" jnorwood/helm-docs:v1.8.1
 
