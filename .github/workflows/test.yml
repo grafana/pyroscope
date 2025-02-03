@@ -138,7 +138,7 @@ jobs:
       - name: Pyroscope Build & push multi-arch image # todo make it multi-arch
         id: build-push
         run: |
-          make docker-image/pyroscope/push docker-image/pyroscope/push-debug "BUILDX_ARGS=--cache-from=type=gha --cache-to=type=gha"
+          make docker-image/pyroscope/push-multiarch "BUILDX_ARGS=--cache-from=type=gha --cache-to=type=gha"
 
   deploy-dev-001:
     if: github.event_name == 'push' && github.repository == 'grafana/pyroscope' && github.ref == 'refs/heads/main'
