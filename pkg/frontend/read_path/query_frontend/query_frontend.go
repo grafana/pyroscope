@@ -65,6 +65,9 @@ func (q *QueryFrontend) Query(
 	}
 
 	blocks, err := q.QueryMetadata(ctx, req)
+	if err != nil {
+		return nil, err
+	}
 	if len(blocks) == 0 {
 		return new(queryv1.QueryResponse), nil
 	}
