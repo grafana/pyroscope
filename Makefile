@@ -274,8 +274,8 @@ docker-image/pyroscope/push: frontend/build go/bin
 
 .PHONY: docker-image/pyroscope/dlv
 docker-image/pyroscope/dlv:
-    # dlv is not intended for local use and is to be installed in the
-    # platform-specific docker image together with the main Pyroscope binary.
+	# dlv is not intended for local use and is to be installed in the
+	# platform-specific docker image together with the main Pyroscope binary.
 	@mkdir -p $(@D)
 	GOPATH=$(CURDIR)/.tmp CGO_ENABLED=0 $(GO) install -ldflags "-s -w -extldflags '-static'" github.com/go-delve/delve/cmd/dlv@v1.23.0
 	mv $(CURDIR)/.tmp/bin/$(GOOS)_$(GOARCH)/dlv $(CURDIR)/.tmp/bin/dlv
