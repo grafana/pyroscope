@@ -28,6 +28,8 @@ Before getting started, you should consider the following limitations:
 
 - We recommend evaluating this feature for development and testing purposes, but waiting for protocol stabilization before production use
 
+> **Note:** OpenTelemetry profiling is currently not supported in Grafana Cloud. Direct ingestion of OpenTelemetry profiles through OTLP endpoints is planned for future releases. For now, please use the [examples](https://github.com/grafana/pyroscope/tree/main/examples/grafana-alloy-auto-instrumentation/ebpf-otel) provided which work with local Pyroscope deployments.
+
 ## Requirements
 
 - Linux system (amd64/arm64) for eBPF profiler
