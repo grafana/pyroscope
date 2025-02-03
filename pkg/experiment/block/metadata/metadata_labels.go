@@ -13,6 +13,11 @@ import (
 
 // TODO(kolesnikovae): LabelBuilder pool.
 
+const (
+	LabelNameTenantDataset = "__tenant_dataset__"
+	LabelValueDatasetIndex = "dataset_index"
+)
+
 type LabelBuilder struct {
 	strings  *StringTable
 	labels   []int32
@@ -105,6 +110,12 @@ func (lb *LabelBuilder) Build() []int32 {
 	copy(c, lb.labels)
 	lb.labels = lb.labels[:0]
 	return c
+}
+
+func (lb *LabelBuilder) BuildPairs(pairs ...string) []int32 {
+	lb.WithConstantPairs(pairs...)
+	lb.CreateLabels()
+	return lb.Build()
 }
 
 func LabelPairs(ls []int32) iter.Iterator[[]int32] { return &labelPairs{labels: ls} }

@@ -2,6 +2,7 @@ package symdb
 
 import (
 	"context"
+	"io"
 	"math"
 	"sort"
 	"sync"
@@ -96,10 +97,12 @@ type SymDB struct {
 }
 
 type Config struct {
-	Dir         string
-	Version     FormatVersion
-	Stacktraces StacktracesConfig
-	Parquet     ParquetConfig
+	Dir           string
+	Version       FormatVersion
+	Stacktraces   StacktracesConfig
+	Parquet       ParquetConfig
+	NoStatsUpdate bool
+	Writer        io.Writer // V3 only.
 }
 
 type StacktracesConfig struct {
@@ -166,8 +169,10 @@ func NewSymDB(c *Config) *SymDB {
 		db.config.Version = FormatV2
 		db.writer = newWriterV2(c)
 	}
-	db.wg.Add(1)
-	go db.updateStatsLoop()
+	if !c.NoStatsUpdate {
+		db.wg.Add(1)
+		go db.updateStatsLoop()
+	}
 	return db
 }
 

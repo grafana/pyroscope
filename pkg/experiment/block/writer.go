@@ -75,10 +75,15 @@ func (b *Writer) ReadFromFile(file string) (err error) {
 	defer func() {
 		_ = f.Close()
 	}()
-	b.buf.B = b.buf.B[:cap(b.buf.B)]
-	n, err := io.CopyBuffer(b.w, f, b.buf.B)
-	b.off += uint64(n)
+	_, err = b.ReadFrom(f)
 	return err
+}
+
+func (b *Writer) ReadFrom(r io.Reader) (n int64, err error) {
+	b.buf.B = b.buf.B[:cap(b.buf.B)]
+	n, err = io.CopyBuffer(b.w, r, b.buf.B)
+	b.off += uint64(n)
+	return n, err
 }
 
 func (b *Writer) Offset() uint64 { return b.off }

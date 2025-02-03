@@ -1,10 +1,10 @@
 package block
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
@@ -18,9 +18,9 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
+	memindex "github.com/grafana/pyroscope/pkg/experiment/ingester/memdb/index"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/objstore"
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 	"github.com/grafana/pyroscope/pkg/util"
@@ -149,12 +149,13 @@ func PlanCompaction(objects Objects) ([]*CompactionPlan, error) {
 }
 
 type CompactionPlan struct {
-	tenant     string
-	path       string
-	datasetMap map[int32]*datasetCompaction
-	datasets   []*datasetCompaction
-	meta       *metastorev1.BlockMeta
-	strings    *metadata.StringTable
+	tenant       string
+	path         string
+	datasetMap   map[int32]*datasetCompaction
+	datasets     []*datasetCompaction
+	meta         *metastorev1.BlockMeta
+	strings      *metadata.StringTable
+	datasetIndex *datasetIndex
 }
 
 func newBlockCompaction(
@@ -164,9 +165,10 @@ func newBlockCompaction(
 	compactionLevel uint32,
 ) *CompactionPlan {
 	p := &CompactionPlan{
-		tenant:     tenant,
-		datasetMap: make(map[int32]*datasetCompaction),
-		strings:    metadata.NewStringTable(),
+		tenant:       tenant,
+		datasetMap:   make(map[int32]*datasetCompaction),
+		strings:      metadata.NewStringTable(),
+		datasetIndex: newDatasetIndex(),
 	}
 	p.path = BuildObjectPath(tenant, shard, compactionLevel, id)
 	p.meta = &metastorev1.BlockMeta{
@@ -191,12 +193,41 @@ func (b *CompactionPlan) Compact(ctx context.Context, dst objstore.Bucket, tmpdi
 		}
 		b.meta.Datasets = append(b.meta.Datasets, s.meta)
 	}
+	if err = b.writeDatasetIndex(w); err != nil {
+		return nil, fmt.Errorf("writing tenant index: %w", err)
+	}
+	b.meta.StringTable = b.strings.Strings
 	if err = w.Flush(ctx); err != nil {
 		return nil, fmt.Errorf("flushing block writer: %w", err)
 	}
 	b.meta.Size = w.Offset()
-	b.meta.StringTable = b.strings.Strings
 	return b.meta, nil
+}
+
+func (b *CompactionPlan) writeDatasetIndex(w *Writer) error {
+	if err := b.datasetIndex.Flush(); err != nil {
+		return err
+	}
+	off := w.Offset()
+	n, err := w.ReadFrom(bytes.NewReader(b.datasetIndex.indexRewriter.buf))
+	if err != nil {
+		return err
+	}
+	labels := metadata.NewLabelBuilder(b.strings).BuildPairs(
+		metadata.LabelNameTenantDataset,
+		metadata.LabelValueDatasetIndex,
+	)
+	b.meta.Datasets = append(b.meta.Datasets, &metastorev1.Dataset{
+		Tenant:  b.meta.Tenant,
+		Name:    0, // Anonymous.
+		MinTime: b.meta.MinTime,
+		MaxTime: b.meta.MaxTime,
+		// FIXME: We mimic the default layout: empty profiles, index, and empty symbols.
+		TableOfContents: []uint64{off, off, w.Offset()},
+		Size:            uint64(n),
+		Labels:          labels,
+	})
+	return nil
 }
 
 func (b *CompactionPlan) addDataset(md *metastorev1.BlockMeta, s *metastorev1.Dataset) *datasetCompaction {
@@ -275,8 +306,8 @@ func (m *datasetCompaction) compact(ctx context.Context, w *Writer) (err error) 
 	defer func() {
 		err = multierror.New(err, m.cleanup()).Err()
 	}()
-	if err = m.mergeAndClose(ctx); err != nil {
-		return fmt.Errorf("failed to merge profiles: %w", err)
+	if err = multierror.New(m.merge(ctx), m.close()).Err(); err != nil {
+		return fmt.Errorf("failed to merge datasets: %w", err)
 	}
 	if err = m.writeTo(w); err != nil {
 		return fmt.Errorf("failed to write sections: %w", err)
@@ -306,8 +337,8 @@ func (m *datasetCompaction) open(ctx context.Context, path string) (err error) {
 		return err
 	}
 
-	m.indexRewriter = newIndexRewriter(m.path)
-	m.symbolsRewriter = newSymbolsRewriter(m.path)
+	m.indexRewriter = newIndexRewriter()
+	m.symbolsRewriter = newSymbolsRewriter()
 
 	g, ctx := errgroup.WithContext(ctx)
 	for _, s := range m.datasets {
@@ -328,13 +359,6 @@ func (m *datasetCompaction) open(ctx context.Context, path string) (err error) {
 	}
 
 	return nil
-}
-
-func (m *datasetCompaction) mergeAndClose(ctx context.Context) (err error) {
-	defer func() {
-		err = multierror.New(err, m.close()).Err()
-	}()
-	return m.merge(ctx)
 }
 
 func (m *datasetCompaction) merge(ctx context.Context) (err error) {
@@ -363,6 +387,9 @@ func (m *datasetCompaction) writeRow(r ProfileEntry) (err error) {
 	if err = m.indexRewriter.rewriteRow(r); err != nil {
 		return err
 	}
+	if err = m.parent.datasetIndex.writeRow(r); err != nil {
+		return err
+	}
 	if err = m.symbolsRewriter.rewriteRow(r); err != nil {
 		return err
 	}
@@ -378,27 +405,24 @@ func (m *datasetCompaction) close() (err error) {
 		m.samples = m.symbolsRewriter.samples
 		m.series = m.indexRewriter.NumSeries()
 		m.profiles = m.profilesWriter.profiles
-		m.symbolsRewriter = nil
-		m.indexRewriter = nil
-		m.profilesWriter = nil
-		// Note that m.datasets are closed by merge
-		// iterator as they reach the end of the profile
-		// table. We do it here again just in case.
-		// TODO(kolesnikovae): Double check error handling.
-		m.datasets = nil
 		err = merr.Err()
 	})
 	return err
 }
 
-func (m *datasetCompaction) writeTo(w *Writer) (err error) {
+func (m *datasetCompaction) writeTo(w *Writer) error {
 	off := w.Offset()
-	m.meta.TableOfContents, err = w.ReadFromFiles(
-		FileNameProfilesParquet,
-		block.IndexFilename,
-		symdb.DefaultFileName,
-	)
-	if err != nil {
+	m.meta.TableOfContents = make([]uint64, 0, 3)
+	m.meta.TableOfContents = append(m.meta.TableOfContents, w.Offset())
+	if err := w.ReadFromFile(FileNameProfilesParquet); err != nil {
+		return err
+	}
+	m.meta.TableOfContents = append(m.meta.TableOfContents, w.Offset())
+	if _, err := w.ReadFrom(bytes.NewReader(m.indexRewriter.buf)); err != nil {
+		return err
+	}
+	m.meta.TableOfContents = append(m.meta.TableOfContents, w.Offset())
+	if _, err := w.ReadFrom(bytes.NewReader(m.symbolsRewriter.buf.Bytes())); err != nil {
 		return err
 	}
 	m.meta.Size = w.Offset() - off
@@ -410,10 +434,9 @@ func (m *datasetCompaction) cleanup() error {
 	return os.RemoveAll(m.path)
 }
 
-func newIndexRewriter(path string) *indexRewriter {
+func newIndexRewriter() *indexRewriter {
 	return &indexRewriter{
 		symbols: make(map[string]struct{}),
-		path:    path,
 	}
 }
 
@@ -422,8 +445,7 @@ type indexRewriter struct {
 	symbols    map[string]struct{}
 	chunks     []index.ChunkMeta // one chunk per series
 	previousFp model.Fingerprint
-
-	path string
+	buf        []byte
 }
 
 type seriesLabels struct {
@@ -457,11 +479,10 @@ func (rw *indexRewriter) rewriteRow(e ProfileEntry) error {
 func (rw *indexRewriter) NumSeries() uint64 { return uint64(len(rw.series)) }
 
 func (rw *indexRewriter) Flush() error {
-	w, err := index.NewWriterSize(context.Background(),
-		filepath.Join(rw.path, block.IndexFilename),
-		// There is no particular reason to use a buffer (bufio.Writer)
-		// larger than the default one when writing on disk
-		4<<10)
+	// TODO(kolesnikovae):
+	//  * Estimate size.
+	//  * Use buffer pool.
+	w, err := memindex.NewWriter(context.Background(), 256<<10)
 	if err != nil {
 		return err
 	}
@@ -487,10 +508,13 @@ func (rw *indexRewriter) Flush() error {
 		}
 	}
 
-	return w.Close()
+	err = w.Close()
+	rw.buf = w.ReleaseIndex()
+	return err
 }
 
 type symbolsRewriter struct {
+	buf     *bytes.Buffer
 	w       *symdb.SymDB
 	rw      map[*Dataset]*symdb.Rewriter
 	samples uint64
@@ -498,12 +522,19 @@ type symbolsRewriter struct {
 	stacktraces []uint32
 }
 
-func newSymbolsRewriter(path string) *symbolsRewriter {
+func newSymbolsRewriter() *symbolsRewriter {
+	// TODO(kolesnikovae):
+	//  * Estimate size.
+	//  * Use buffer pool.
+	buf := bytes.NewBuffer(make([]byte, 0, 1<<20))
 	return &symbolsRewriter{
-		rw: make(map[*Dataset]*symdb.Rewriter),
-		w: symdb.NewSymDB(symdb.DefaultConfig().
-			WithVersion(symdb.FormatV3).
-			WithDirectory(path)),
+		buf: buf,
+		rw:  make(map[*Dataset]*symdb.Rewriter),
+		w: symdb.NewSymDB(&symdb.Config{
+			Version:       symdb.FormatV3,
+			Writer:        buf,
+			NoStatsUpdate: true,
+		}),
 	}
 }
 
@@ -539,3 +570,21 @@ func (s *symbolsRewriter) loadStacktraceIDs(values []parquet.Value) {
 }
 
 func (s *symbolsRewriter) Flush() error { return s.w.Flush() }
+
+type datasetIndex struct {
+	indexRewriter *indexRewriter
+}
+
+func newDatasetIndex() *datasetIndex {
+	return &datasetIndex{
+		indexRewriter: newIndexRewriter(),
+	}
+}
+
+func (s *datasetIndex) writeRow(r ProfileEntry) error {
+	return s.indexRewriter.rewriteRow(r)
+}
+
+func (s *datasetIndex) Flush() error {
+	return s.indexRewriter.Flush()
+}
