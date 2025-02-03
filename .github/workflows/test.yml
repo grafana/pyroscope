@@ -130,23 +130,18 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: 1.22.11
-      - uses: actions/setup-node@v3
-        with:
-          node-version: lts/hydrogen
-          cache: yarn
-      - name: Login to GCR
+      - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
-          registry: us.gcr.io
-          username: _json_key
-          password: ${{ secrets.GCR_JSON_KEY }}
-      - name: Pyroscope Build & push multi-arch image
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Pyroscope Build & push multi-arch image # todo make it multi-arch
         id: build-push
         run: |
           make docker-image/pyroscope/push docker-image/pyroscope/push-debug "BUILDX_ARGS=--cache-from=type=gha --cache-to=type=gha"
 
   deploy-dev-001:
-    if: github.event_name == 'push' && github.repository == 'grafana/pyroscope'
+    if: github.event_name == 'push' && github.repository == 'grafana/pyroscope' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     needs: [build-push]
     steps:
