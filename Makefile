@@ -235,9 +235,7 @@ define multiarch_build
 	GOOS=linux GOARCH=arm64 IMAGE_TAG="$(IMAGE_TAG)-arm64" $(MAKE) $(build_cmd) IMAGE_PLATFORM=linux/arm64
 	GOOS=linux GOARCH=amd64 IMAGE_TAG="$(IMAGE_TAG)-amd64" $(MAKE) $(build_cmd) IMAGE_PLATFORM=linux/amd64
 
-	$(if $(push_image), \
-		docker manifest create --amend "$(image_name)" "$(image_name)-amd64" "$(image_name)-arm64" && \
-		docker manifest push "$(image_name)")
+	$(if $(push_image), docker buildx imagetools create --tag "$(image_name)" "$(image_name)-amd64" "$(image_name)-arm64")
 endef
 
 .PHONY: docker-image/pyroscope/build-multiarch
