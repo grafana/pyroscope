@@ -2020,20 +2020,6 @@ The `limits` block configures default and per-tenant limits imposed by component
 # CLI flag: -distributor.ingestion-burst-size-mb
 [ingestion_burst_size_mb: <float> | default = 2]
 
-ingestion_limit:
-  [period_type: <string> | default = ""]
-
-  [period_limit_mb: <int> | default = ]
-
-  [limit_reset_time: <int> | default = ]
-
-  [limit_reached: <boolean> | default = ]
-
-  sampling:
-    [num_requests: <int> | default = ]
-
-    [period: <duration> | default = ]
-
 # Maximum length accepted for label names.
 # CLI flag: -validation.max-length-label-name
 [max_label_name_length: <int> | default = 1024]

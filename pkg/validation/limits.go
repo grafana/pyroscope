@@ -33,7 +33,7 @@ type Limits struct {
 	// Distributor enforced limits.
 	IngestionRateMB        float64               `yaml:"ingestion_rate_mb" json:"ingestion_rate_mb"`
 	IngestionBurstSizeMB   float64               `yaml:"ingestion_burst_size_mb" json:"ingestion_burst_size_mb"`
-	IngestionLimit         *ingest_limits.Config `yaml:"ingestion_limit" json:"ingestion_limit"`
+	IngestionLimit         *ingest_limits.Config `yaml:"ingestion_limit" json:"ingestion_limit" category:"advanced" doc:"hidden"`
 	MaxLabelNameLength     int                   `yaml:"max_label_name_length" json:"max_label_name_length"`
 	MaxLabelValueLength    int                   `yaml:"max_label_value_length" json:"max_label_value_length"`
 	MaxLabelNamesPerSeries int                   `yaml:"max_label_names_per_series" json:"max_label_names_per_series"`
