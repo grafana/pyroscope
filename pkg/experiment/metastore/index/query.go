@@ -182,6 +182,7 @@ func cloneBlockMetadataForQuery(b *metastorev1.BlockMeta) *metastorev1.BlockMeta
 
 func cloneDatasetMetadataForQuery(ds *metastorev1.Dataset) *metastorev1.Dataset {
 	ls := ds.Labels
+	// TODO: Preserve __labels__
 	ds.Labels = nil
 	c := ds.CloneVT()
 	ds.Labels = ls

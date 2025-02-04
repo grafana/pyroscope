@@ -213,7 +213,7 @@ func (obj *Object) ReadMetadata(ctx context.Context) error {
 		return fmt.Errorf("reading block metadata %s: %w", obj.path, err)
 	}
 	var meta metastorev1.BlockMeta
-	if err := meta.UnmarshalVT(buf.B); err != nil {
+	if err := metadata.Decode(buf.B, &meta); err != nil {
 		return fmt.Errorf("decoding block metadata %s: %w", obj.path, err)
 	}
 	obj.meta = &meta

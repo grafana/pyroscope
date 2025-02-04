@@ -1,46 +1,80 @@
 package block
 
 import (
+	"bufio"
 	"context"
 	"io"
 	"os"
 	"path/filepath"
 	"strconv"
 
+	"github.com/grafana/dskit/multierror"
+
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/util/bufferpool"
 )
 
 // TODO(kolesnikovae):
-//  - Avoid staging files where possible.
-//  - If stage files are required, at least avoid
-//    recreating them for each tenant dataset.
-//  - objstore.Bucket should provide object writer.
+//  * Get rid of the staging files.
+//  * Pipe upload reader.
 
 type Writer struct {
 	storage objstore.Bucket
 	path    string
 	local   string
 	off     uint64
-	w       *os.File
+	w       *bufio.Writer
+	f       *os.File
 
 	tmp string
 	n   int
 	cur string
 
+	// Used by CopyBuffer when copying
+	// data from staging files.
 	buf *bufferpool.Buffer
 }
 
-func NewBlockWriter(storage objstore.Bucket, path string, tmp string) *Writer {
-	b := &Writer{
+func NewBlockWriter(storage objstore.Bucket, path string, tmp string) (*Writer, error) {
+	w := &Writer{
 		storage: storage,
 		path:    path,
 		tmp:     tmp,
 		local:   filepath.Join(tmp, FileNameDataObject),
 		buf:     bufferpool.GetBuffer(compactionCopyBufferSize),
 	}
-	return b
+	if err := w.open(); err != nil {
+		return nil, err
+	}
+	return w, nil
 }
+
+func (b *Writer) open() (err error) {
+	if b.f, err = os.Create(b.local); err != nil {
+		return err
+	}
+	b.w = bufio.NewWriter(b.f)
+	return nil
+}
+
+func (b *Writer) Close() error {
+	var merr multierror.MultiError
+	if b.w != nil {
+		merr.Add(b.w.Flush())
+		b.w = nil
+	}
+	if b.buf != nil {
+		bufferpool.Put(b.buf)
+		b.buf = nil
+	}
+	if b.f != nil {
+		merr.Add(b.f.Close())
+		b.f = nil
+	}
+	return merr.Err()
+}
+
+func (b *Writer) Offset() uint64 { return b.off }
 
 // Dir returns path to the new temp directory.
 func (b *Writer) Dir() string {
@@ -49,25 +83,10 @@ func (b *Writer) Dir() string {
 	return b.cur
 }
 
-// ReadFromFiles located in the directory Dir.
-func (b *Writer) ReadFromFiles(files ...string) (toc []uint64, err error) {
-	toc = make([]uint64, len(files))
-	for i := range files {
-		toc[i] = b.off
-		if err = b.ReadFromFile(files[i]); err != nil {
-			break
-		}
-	}
-	return toc, err
-}
+func (b *Writer) Write(p []byte) (n int, err error) { return b.w.Write(p) }
 
 // ReadFromFile located in the directory Dir.
 func (b *Writer) ReadFromFile(file string) (err error) {
-	if b.w == nil {
-		if b.w, err = os.Create(b.local); err != nil {
-			return err
-		}
-	}
 	f, err := os.Open(filepath.Join(b.cur, file))
 	if err != nil {
 		return err
@@ -86,10 +105,8 @@ func (b *Writer) ReadFrom(r io.Reader) (n int64, err error) {
 	return n, err
 }
 
-func (b *Writer) Offset() uint64 { return b.off }
-
-func (b *Writer) Flush(ctx context.Context) error {
-	if err := b.w.Close(); err != nil {
+func (b *Writer) Upload(ctx context.Context) error {
+	if err := b.Close(); err != nil {
 		return err
 	}
 	b.w = nil
@@ -100,13 +117,5 @@ func (b *Writer) Flush(ctx context.Context) error {
 	defer func() {
 		_ = f.Close()
 	}()
-	return b.storage.Upload(ctx, b.path, f)
-}
-
-func (b *Writer) Close() error {
-	bufferpool.Put(b.buf)
-	if b.w != nil {
-		return b.w.Close()
-	}
-	return nil
+	return b.storage.Upload(ctx, b.path, bufio.NewReader(f))
 }

@@ -281,6 +281,10 @@ func (s *segment) flushBlock(stream flushStream) ([]byte, *metastorev1.BlockMeta
 	}
 
 	meta.StringTable = stringTable.Strings
+	meta.MetadataOffset = uint64(w.offset)
+	if err := metadata.Encode(w, meta); err != nil {
+		return nil, nil, fmt.Errorf("failed to encode metadata: %w", err)
+	}
 	meta.Size = uint64(w.offset)
 	s.debuginfo.flushBlockDuration = time.Since(start)
 	return blockFile.Bytes(), meta, nil

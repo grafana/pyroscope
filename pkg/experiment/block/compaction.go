@@ -182,7 +182,10 @@ func newBlockCompaction(
 }
 
 func (b *CompactionPlan) Compact(ctx context.Context, dst objstore.Bucket, tmpdir string) (m *metastorev1.BlockMeta, err error) {
-	w := NewBlockWriter(dst, b.path, tmpdir)
+	w, err := NewBlockWriter(dst, b.path, tmpdir)
+	if err != nil {
+		return nil, err
+	}
 	defer func() {
 		err = multierror.New(err, w.Close()).Err()
 	}()
@@ -198,7 +201,11 @@ func (b *CompactionPlan) Compact(ctx context.Context, dst objstore.Bucket, tmpdi
 		return nil, fmt.Errorf("writing tenant index: %w", err)
 	}
 	b.meta.StringTable = b.strings.Strings
-	if err = w.Flush(ctx); err != nil {
+	b.meta.MetadataOffset = w.Offset()
+	if err = metadata.Encode(w, b.meta); err != nil {
+		return nil, fmt.Errorf("writing metadata: %w", err)
+	}
+	if err = w.Upload(ctx); err != nil {
 		return nil, fmt.Errorf("flushing block writer: %w", err)
 	}
 	b.meta.Size = w.Offset()
