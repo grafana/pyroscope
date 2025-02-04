@@ -19,47 +19,9 @@ import (
 )
 
 // TODO Next:
-//  - Buffer pool.
-//  - In-memory threshold option.
-//  - Store the object size in metadata.
 //  - Separate storages for segments and compacted blocks.
 //  - Local cache? Useful for all-in-one deployments.
 //  - Distributed cache.
-
-type Section uint32
-
-const (
-	// Table of contents sections.
-	_ Section = iota
-	SectionProfiles
-	SectionTSDB
-	SectionSymbols
-)
-
-var allSections = []Section{
-	SectionProfiles,
-	SectionTSDB,
-	SectionSymbols,
-}
-
-var (
-	// Version-specific.
-	sectionNames   = [...][]string{1: {"invalid", "profiles", "tsdb", "symbols"}}
-	sectionIndices = [...][]int{1: {-1, 0, 1, 2}}
-)
-
-func (sc Section) open(ctx context.Context, s *Dataset) (err error) {
-	switch sc {
-	case SectionTSDB:
-		return openTSDB(ctx, s)
-	case SectionSymbols:
-		return openSymbols(ctx, s)
-	case SectionProfiles:
-		return openProfileTable(ctx, s)
-	default:
-		panic(fmt.Sprintf("bug: unknown section: %d", sc))
-	}
-}
 
 // Object represents a block or a segment in the object storage.
 type Object struct {
@@ -184,6 +146,7 @@ func (obj *Object) open(ctx context.Context) (err error) {
 		// The object will be read from the storage directly.
 		return nil
 	}
+	// TODO(kolesnikovae): This almost never happens – remove.
 	obj.buf = bufferpool.GetBuffer(int(obj.meta.Size))
 	defer func() {
 		if err != nil {
@@ -223,8 +186,6 @@ func (obj *Object) closeErr(err error) (closeErr error) {
 	return closeErr
 }
 
-func (obj *Object) Meta() *metastorev1.BlockMeta { return obj.meta }
-
 func (obj *Object) Download(ctx context.Context) error {
 	dir := filepath.Join(obj.downloadDir, obj.meta.Id)
 	local, err := objstore.Download(ctx, obj.path, obj.storage, dir)
@@ -233,6 +194,29 @@ func (obj *Object) Download(ctx context.Context) error {
 	}
 	obj.storage = local
 	obj.local = local
+	return nil
+}
+
+func (obj *Object) Metadata() *metastorev1.BlockMeta { return obj.meta }
+
+// ReadMetadata fetches the full block metadata from the storage
+// and replaces the one specified when the object was created.
+func (obj *Object) ReadMetadata(ctx context.Context) error {
+	if obj.meta.MetadataOffset == 0 {
+		return nil
+	}
+	buf := bufferpool.GetBuffer(16 << 10)
+	defer bufferpool.Put(buf)
+	offset := int64(obj.meta.MetadataOffset)
+	size := int64(obj.meta.Size) - offset
+	if err := objstore.ReadRange(ctx, buf, obj.path, obj.storage, offset, size); err != nil {
+		return fmt.Errorf("reading block metadata %s: %w", obj.path, err)
+	}
+	var meta metastorev1.BlockMeta
+	if err := meta.UnmarshalVT(buf.B); err != nil {
+		return fmt.Errorf("decoding block metadata %s: %w", obj.path, err)
+	}
+	obj.meta = &meta
 	return nil
 }
 

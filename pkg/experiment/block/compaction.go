@@ -155,7 +155,7 @@ type CompactionPlan struct {
 	datasets     []*datasetCompaction
 	meta         *metastorev1.BlockMeta
 	strings      *metadata.StringTable
-	datasetIndex *datasetIndex
+	datasetIndex *datasetIndexWriter
 }
 
 func newBlockCompaction(
@@ -168,7 +168,7 @@ func newBlockCompaction(
 		tenant:       tenant,
 		datasetMap:   make(map[int32]*datasetCompaction),
 		strings:      metadata.NewStringTable(),
-		datasetIndex: newDatasetIndex(),
+		datasetIndex: newDatasetIndexWriter(),
 	}
 	p.path = BuildObjectPath(tenant, shard, compactionLevel, id)
 	p.meta = &metastorev1.BlockMeta{
@@ -187,7 +187,8 @@ func (b *CompactionPlan) Compact(ctx context.Context, dst objstore.Bucket, tmpdi
 		err = multierror.New(err, w.Close()).Err()
 	}()
 	// Datasets are compacted in a strict order.
-	for _, s := range b.datasets {
+	for i, s := range b.datasets {
+		b.datasetIndex.resetDatasetIndex(uint32(i))
 		if err = s.compact(ctx, w); err != nil {
 			return nil, fmt.Errorf("compacting block: %w", err)
 		}
@@ -209,13 +210,13 @@ func (b *CompactionPlan) writeDatasetIndex(w *Writer) error {
 		return err
 	}
 	off := w.Offset()
-	n, err := w.ReadFrom(bytes.NewReader(b.datasetIndex.indexRewriter.buf))
+	n, err := w.ReadFrom(bytes.NewReader(b.datasetIndex.buf))
 	if err != nil {
 		return err
 	}
 	labels := metadata.NewLabelBuilder(b.strings).BuildPairs(
 		metadata.LabelNameTenantDataset,
-		metadata.LabelValueDatasetIndex,
+		metadata.LabelValueDatasetTSDBIndex,
 	)
 	b.meta.Datasets = append(b.meta.Datasets, &metastorev1.Dataset{
 		Tenant:  b.meta.Tenant,
@@ -223,6 +224,7 @@ func (b *CompactionPlan) writeDatasetIndex(w *Writer) error {
 		MinTime: b.meta.MinTime,
 		MaxTime: b.meta.MaxTime,
 		// FIXME: We mimic the default layout: empty profiles, index, and empty symbols.
+		//  Instead, it should be handled at the query time: substitute the dataset layout.
 		TableOfContents: []uint64{off, off, w.Offset()},
 		Size:            uint64(n),
 		Labels:          labels,
@@ -571,20 +573,75 @@ func (s *symbolsRewriter) loadStacktraceIDs(values []parquet.Value) {
 
 func (s *symbolsRewriter) Flush() error { return s.w.Flush() }
 
-type datasetIndex struct {
-	indexRewriter *indexRewriter
+// datasetIndexWriter is identical with indexRewriter,
+// except it writes dataset ID instead of series ID.
+type datasetIndexWriter struct {
+	series   []seriesLabels
+	chunks   []index.ChunkMeta
+	previous model.Fingerprint
+	symbols  map[string]struct{}
+	idx      uint32
+	buf      []byte
 }
 
-func newDatasetIndex() *datasetIndex {
-	return &datasetIndex{
-		indexRewriter: newIndexRewriter(),
+func newDatasetIndexWriter() *datasetIndexWriter {
+	return &datasetIndexWriter{
+		symbols: make(map[string]struct{}),
 	}
 }
 
-func (s *datasetIndex) writeRow(r ProfileEntry) error {
-	return s.indexRewriter.rewriteRow(r)
+func (rw *datasetIndexWriter) resetDatasetIndex(i uint32) { rw.idx = i }
+
+func (rw *datasetIndexWriter) writeRow(e ProfileEntry) error {
+	if rw.previous != e.Fingerprint || len(rw.series) == 0 {
+		series := e.Labels.Clone()
+		for _, l := range series {
+			rw.symbols[l.Name] = struct{}{}
+			rw.symbols[l.Value] = struct{}{}
+		}
+		rw.series = append(rw.series, seriesLabels{
+			labels:      series,
+			fingerprint: e.Fingerprint,
+		})
+		rw.chunks = append(rw.chunks, index.ChunkMeta{
+			SeriesIndex: rw.idx,
+		})
+		rw.previous = e.Fingerprint
+	}
+	return nil
 }
 
-func (s *datasetIndex) Flush() error {
-	return s.indexRewriter.Flush()
+func (rw *datasetIndexWriter) Flush() error {
+	// TODO(kolesnikovae):
+	//  * Estimate size.
+	//  * Use buffer pool.
+	w, err := memindex.NewWriter(context.Background(), 1<<20)
+	if err != nil {
+		return err
+	}
+
+	// Sort symbols
+	symbols := make([]string, 0, len(rw.symbols))
+	for s := range rw.symbols {
+		symbols = append(symbols, s)
+	}
+	sort.Strings(symbols)
+
+	// Add symbols
+	for _, symbol := range symbols {
+		if err = w.AddSymbol(symbol); err != nil {
+			return err
+		}
+	}
+
+	// Add Series
+	for i, series := range rw.series {
+		if err = w.AddSeries(storage.SeriesRef(i), series.labels, series.fingerprint, rw.chunks[i]); err != nil {
+			return err
+		}
+	}
+
+	err = w.Close()
+	rw.buf = w.ReleaseIndex()
+	return err
 }

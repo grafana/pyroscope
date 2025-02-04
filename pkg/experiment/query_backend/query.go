@@ -8,9 +8,13 @@ import (
 	"github.com/go-kit/log"
 	"github.com/iancoleman/strcase"
 	"github.com/opentracing/opentracing-go"
+	"github.com/prometheus/prometheus/model/labels"
+	"golang.org/x/sync/errgroup"
 
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block"
+	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
 )
 
 // TODO(kolesnikovae): We have a procedural definition of our queries,
@@ -140,4 +144,90 @@ func (q *queryContext) sections() []block.Section {
 		unique = append(unique, s)
 	}
 	return unique
+}
+
+type blockContext struct {
+	ctx context.Context
+	log log.Logger
+	req *request
+	obj *block.Object
+	idx *metastorev1.Dataset
+}
+
+func newBlockContext(
+	ctx context.Context,
+	log log.Logger,
+	req *request,
+	obj *block.Object,
+) *blockContext {
+	return &blockContext{
+		ctx: ctx,
+		log: log,
+		req: req,
+		obj: obj,
+	}
+}
+
+func (q *blockContext) needsDatasetLookup() bool {
+	md := q.obj.Metadata()
+	if len(md.Datasets) > 1 {
+		// The metadata explicitly lists datasets to be queried.
+		return false
+	}
+	ds := md.Datasets[0]
+	t := metadata.OpenStringTable(md)
+	m := metadata.NewLabelMatcher(t, []*labels.Matcher{{
+		Type:  labels.MatchEqual,
+		Name:  metadata.LabelNameTenantDataset,
+		Value: metadata.LabelValueDatasetTSDBIndex,
+	}})
+	matches := m.Matches(ds.Labels)
+	if !matches {
+		return false
+	}
+	qc := queryContext{req: q.req}
+	if s := qc.sections(); len(s) == 1 && s[0] == block.SectionTSDB {
+		// The block has a dataset tsdb index and the queries
+		// only need TSDB data. In this case, we can serve the
+		// query directly using the dataset index, without need
+		// to access datasets.
+		return false
+	}
+	q.idx = ds
+	return true
+}
+
+func (q *blockContext) lookupDatasets() error {
+	ds := block.NewDataset(q.idx, q.obj)
+	defer func() {
+		if ds.Index() != nil {
+			_ = ds.Close()
+		}
+	}()
+
+	g, ctx := errgroup.WithContext(q.ctx)
+	g.Go(func() error {
+		return q.obj.ReadMetadata(ctx)
+	})
+	g.Go(func() error {
+		return ds.Open(q.ctx, block.SectionTSDB)
+	})
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
+	md := q.obj.Metadata()
+	datasetIDs, err := getSeriesIDs(ds.Index(), q.req.matchers...)
+	if err != nil {
+		return err
+	}
+	var j int
+	for i := range md.Datasets {
+		if _, ok := datasetIDs[uint32(i)]; ok {
+			md.Datasets[j] = md.Datasets[i]
+			j++
+		}
+	}
+	md.Datasets = md.Datasets[:j]
+	return nil
 }

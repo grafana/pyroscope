@@ -78,26 +78,29 @@ func (b *BlockReader) Invoke(
 	g, ctx := errgroup.WithContext(ctx)
 	agg := newAggregator(req)
 
-	qcs := make([]*queryContext, 0, len(req.Query)*len(req.QueryPlan.Root.Blocks))
 	for _, md := range req.QueryPlan.Root.Blocks {
-		object := block.NewObject(b.storage, md)
-		for _, ds := range md.Datasets {
-			dataset := block.NewDataset(ds, object)
-			qcs = append(qcs, newQueryContext(ctx, b.log, r, agg, dataset))
+		bc := newBlockContext(ctx, b.log, r, block.NewObject(b.storage, md))
+		if bc.needsDatasetLookup() {
+			// TODO: Async.
+			lookupErr := bc.lookupDatasets()
+			if lookupErr != nil && objstore.IsNotExist(b.storage, lookupErr) {
+				level.Warn(b.log).Log("msg", "object not found", "err", lookupErr)
+				continue
+			}
 		}
-	}
-
-	for _, c := range qcs {
-		for _, query := range req.Query {
-			q := query
-			g.Go(util.RecoverPanic(func() error {
-				execErr := executeQuery(c, q)
-				if execErr != nil && objstore.IsNotExist(b.storage, execErr) {
-					level.Warn(b.log).Log("msg", "object not found", "err", execErr)
-					return nil
-				}
-				return execErr
-			}))
+		for _, ds := range bc.obj.Metadata().Datasets {
+			qc := newQueryContext(ctx, b.log, r, agg, block.NewDataset(ds, bc.obj))
+			for _, query := range req.Query {
+				q := query
+				g.Go(util.RecoverPanic(func() error {
+					execErr := executeQuery(qc, q)
+					if execErr != nil && objstore.IsNotExist(b.storage, execErr) {
+						level.Warn(b.log).Log("msg", "object not found", "err", execErr)
+						return nil
+					}
+					return execErr
+				}))
+			}
 		}
 	}
 

@@ -116,7 +116,7 @@ func (q *QueryFrontend) QueryMetadata(
 	if len(matchers) == 0 {
 		matchers = []*labels.Matcher{{
 			Name:  metadata.LabelNameTenantDataset,
-			Value: metadata.LabelValueDatasetIndex,
+			Value: metadata.LabelValueDatasetTSDBIndex,
 			Type:  labels.MatchEqual,
 		}}
 	}

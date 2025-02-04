@@ -634,6 +634,10 @@
           "type": "integer",
           "format": "int32"
         },
+        "metadataOffset": {
+          "type": "string",
+          "format": "uint64"
+        },
         "size": {
           "type": "string",
           "format": "uint64"

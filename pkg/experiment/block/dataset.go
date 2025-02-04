@@ -18,6 +18,41 @@ import (
 	"github.com/grafana/pyroscope/pkg/util/refctr"
 )
 
+type Section uint32
+
+const (
+	// Table of contents sections.
+	_ Section = iota
+	SectionProfiles
+	SectionTSDB
+	SectionSymbols
+)
+
+var allSections = []Section{
+	SectionProfiles,
+	SectionTSDB,
+	SectionSymbols,
+}
+
+var (
+	// Version-specific.
+	sectionNames   = [...][]string{1: {"invalid", "profiles", "tsdb", "symbols"}}
+	sectionIndices = [...][]int{1: {-1, 0, 1, 2}}
+)
+
+func (sc Section) open(ctx context.Context, s *Dataset) (err error) {
+	switch sc {
+	case SectionTSDB:
+		return openTSDB(ctx, s)
+	case SectionSymbols:
+		return openSymbols(ctx, s)
+	case SectionProfiles:
+		return openProfileTable(ctx, s)
+	default:
+		panic(fmt.Sprintf("bug: unknown section: %d", sc))
+	}
+}
+
 type Dataset struct {
 	meta *metastorev1.Dataset
 	obj  *Object

@@ -69,7 +69,7 @@
       "pyroscope-test/ingester",
       "pyroscope-test/alloy",
       "__tenant_dataset__",
-      "dataset_index"
+      "dataset_tsdb_index"
     ]
   }
 ]

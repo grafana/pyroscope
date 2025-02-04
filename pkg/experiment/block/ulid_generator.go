@@ -36,7 +36,7 @@ func NewULIDGenerator(objects Objects) *ULIDGenerator {
 	// Assuming that the first object is the oldest one.
 	r := objects[0]
 	return &ULIDGenerator{
-		timestamp: ulid.MustParse(r.Meta().Id).Time(),
+		timestamp: ulid.MustParse(r.Metadata().Id).Time(),
 		entropy:   rand.New(rand.NewSource(int64(seed))),
 	}
 }

@@ -160,9 +160,9 @@ func (i *SegmentWriterService) running(ctx context.Context) error {
 
 func (i *SegmentWriterService) stopping(_ error) error {
 	i.health.SetNotServing()
-	i.requests.Drain()
 	errs := multierror.New()
 	errs.Add(services.StopManagerAndAwaitStopped(context.Background(), i.subservices))
+	i.requests.Drain()
 	errs.Add(i.segmentWriter.stop())
 	return errs.Err()
 }

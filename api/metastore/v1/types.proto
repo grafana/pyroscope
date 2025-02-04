@@ -25,6 +25,7 @@ message BlockMeta {
   int64 min_time = 6;
   int64 max_time = 7;
   int32 created_by = 8;
+  uint64 metadata_offset = 12;
   uint64 size = 9;
   repeated Dataset datasets = 10;
 

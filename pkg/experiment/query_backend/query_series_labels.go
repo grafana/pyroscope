@@ -3,14 +3,10 @@ package query_backend
 import (
 	"sync"
 
-	"github.com/prometheus/prometheus/model/labels"
-
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/phlaredb"
-	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 )
 
 func init() {
@@ -41,14 +37,6 @@ func querySeriesLabels(q *queryContext, query *queryv1.Query) (*queryv1.Report, 
 		},
 	}
 	return resp, nil
-}
-
-func getPostings(reader phlaredb.IndexReader, matchers ...*labels.Matcher) (index.Postings, error) {
-	if len(matchers) == 0 {
-		k, v := index.AllPostingsKey()
-		return reader.Postings(k, nil, v)
-	}
-	return phlaredb.PostingsForMatchers(reader, nil, matchers...)
 }
 
 type seriesLabelsAggregator struct {

@@ -137,3 +137,14 @@ func (t *StringTable) Load(x iter.Iterator[string]) error {
 	}
 	return x.Err()
 }
+
+func OpenStringTable(src *metastorev1.BlockMeta) *StringTable {
+	t := &StringTable{
+		Dict:    make(map[string]int32, len(src.StringTable)),
+		Strings: src.StringTable,
+	}
+	for i, s := range src.StringTable {
+		t.Dict[s] = int32(i)
+	}
+	return t
+}
