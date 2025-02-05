@@ -15,9 +15,10 @@ import (
 )
 
 type otlpTestData struct {
-	name            string
-	profilePath     string
-	expectedMetrics []expectedProfile
+	name             string
+	profilePath      string
+	expectedProfiles []expectedProfile
+	assertMetrics    func(t *testing.T, p *PyroscopeTest)
 }
 
 type expectedProfile struct {
@@ -30,18 +31,21 @@ var otlpTestDatas = []otlpTestData{
 	{
 		name:        "unsymbolized profile from otel-ebpf-profiler",
 		profilePath: "testdata/otel-ebpf-profiler-unsymbolized.pb.bin",
-		expectedMetrics: []expectedProfile{
+		expectedProfiles: []expectedProfile{
 			{
 				"process_cpu:cpu:nanoseconds:cpu:nanoseconds",
 				map[string]string{"service_name": "unknown"},
 				"testdata/otel-ebpf-profiler-unsymbolized.json",
 			},
 		},
+		assertMetrics: func(t *testing.T, p *PyroscopeTest) {
+
+		},
 	},
 	{
 		name:        "symbolized (with some help from pyroscope-ebpf profiler) profile from otel-ebpf-profiler",
 		profilePath: "testdata/otel-ebpf-profiler-pyrosymbolized.pb.bin",
-		expectedMetrics: []expectedProfile{
+		expectedProfiles: []expectedProfile{
 			{
 				"process_cpu:cpu:nanoseconds:cpu:nanoseconds",
 				map[string]string{"service_name": "unknown"},
@@ -53,16 +57,23 @@ var otlpTestDatas = []otlpTestData{
 				"testdata/otel-ebpf-profiler-pyrosymbolized-docker.json",
 			},
 		},
+		assertMetrics: func(t *testing.T, p *PyroscopeTest) {
+			actual := p.Metrics(t, func(s string) bool {
+				return strings.HasPrefix(s, "pyroscope_distributor_received_compressed_bytes_sum")
+			})
+			expected := `pyroscope_distributor_received_compressed_bytes_sum{tenant="anonymous",type="otel"} 95673`
+			require.Equal(t, expected, actual)
+			p.TempAppName()
+		},
 	},
 }
 
 func TestIngestOTLP(t *testing.T) {
-	p := new(PyroscopeTest)
-	p.Start(t)
-	defer p.Stop(t)
-
 	for _, td := range otlpTestDatas {
 		t.Run(td.name, func(t *testing.T) {
+			p := new(PyroscopeTest)
+			p.Start(t)
+			defer p.Stop(t)
 			rb := p.NewRequestBuilder(t)
 			runNo := p.TempAppName()
 
@@ -84,7 +95,7 @@ func TestIngestOTLP(t *testing.T) {
 			_, err = client.Export(context.Background(), profile)
 			require.NoError(t, err)
 
-			for _, metric := range td.expectedMetrics {
+			for _, metric := range td.expectedProfiles {
 
 				expectedBytes, err := os.ReadFile(metric.expectedJsonPath)
 				assert.NoError(t, err)
@@ -116,6 +127,7 @@ func TestIngestOTLP(t *testing.T) {
 
 				assert.Equal(t, string(expectedBytes), actualStr)
 			}
+			td.assertMetrics(t, p)
 		})
 	}
 }

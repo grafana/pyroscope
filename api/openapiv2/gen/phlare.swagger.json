@@ -42,6 +42,9 @@
       "name": "SettingsService"
     },
     {
+      "name": "CollectionRulesService"
+    },
+    {
       "name": "StatusService"
     },
     {
@@ -878,6 +881,9 @@
         }
       }
     },
+    "v1DeleteCollectionRuleResponse": {
+      "type": "object"
+    },
     "v1DeleteTenantResponse": {
       "type": "object"
     },
@@ -895,6 +901,14 @@
       "properties": {
         "flamegraph": {
           "$ref": "#/definitions/v1FlameGraphDiff"
+        }
+      }
+    },
+    "v1EBPFSettings": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
         }
       }
     },
@@ -1046,6 +1060,41 @@
         },
         "data": {
           "$ref": "#/definitions/v1GetBuildInfoData"
+        }
+      }
+    },
+    "v1GetCollectionRuleResponse": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "services": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1ServiceData"
+          }
+        },
+        "ebpf": {
+          "$ref": "#/definitions/v1EBPFSettings"
+        },
+        "java": {
+          "$ref": "#/definitions/v1JavaSettings"
+        },
+        "lastUpdated": {
+          "type": "string",
+          "format": "int64",
+          "title": "milliseconds unix time of last update"
+        },
+        "generation": {
+          "type": "string",
+          "format": "int64",
+          "title": "incremented on each update"
+        },
+        "configuration": {
+          "type": "string",
+          "title": "generated configuration block in alloy syntax"
         }
       }
     },
@@ -1234,6 +1283,14 @@
         }
       }
     },
+    "v1JavaSettings": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      }
+    },
     "v1LabelNamesQuery": {
       "type": "object"
     },
@@ -1343,6 +1400,23 @@
           "type": "string",
           "format": "int64",
           "description": "Line number in source code."
+        }
+      }
+    },
+    "v1ListCollectionRulesResponse": {
+      "type": "object",
+      "properties": {
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1GetCollectionRuleResponse"
+          }
+        },
+        "generation": {
+          "type": "string",
+          "format": "int64",
+          "title": "incremented on each update"
         }
       }
     },
@@ -2072,6 +2146,17 @@
           "type": "string",
           "format": "int64",
           "title": "timestamp in milliseconds"
+        }
+      }
+    },
+    "v1ServiceData": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
         }
       }
     },
