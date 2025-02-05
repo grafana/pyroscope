@@ -51,7 +51,7 @@ type Config struct {
 func (c *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.Uint64Var(&c.MaxFailures, prefix+"compaction-max-failures", 3, "")
 	f.DurationVar(&c.LeaseDuration, prefix+"compaction-job-lease-duration", 15*time.Second, "")
-	f.Uint64Var(&c.MaxQueueSize, prefix+"compaction-max-job-queue-size", 2000, "")
+	f.Uint64Var(&c.MaxQueueSize, prefix+"compaction-max-job-queue-size", 10000, "")
 }
 
 type Scheduler struct {
@@ -94,6 +94,17 @@ func (sc *Scheduler) NewSchedule(tx *bbolt.Tx, cmd *raft.Log) compaction.Schedul
 func (sc *Scheduler) UpdateSchedule(tx *bbolt.Tx, update *raft_log.CompactionPlanUpdate) error {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
+
+	for _, job := range update.EvictedJobs {
+		name := job.State.Name
+		if err := sc.store.DeleteJobPlan(tx, name); err != nil {
+			return err
+		}
+		if err := sc.store.DeleteJobState(tx, name); err != nil {
+			return err
+		}
+		sc.queue.evict(name)
+	}
 
 	for _, job := range update.NewJobs {
 		if err := sc.store.StoreJobPlan(tx, job.Plan); err != nil {

@@ -13,6 +13,7 @@ type statsCollector struct {
 	completedTotal  *prometheus.Desc
 	assignedTotal   *prometheus.Desc
 	reassignedTotal *prometheus.Desc
+	evictedTotal    *prometheus.Desc
 
 	// Gauge showing the job queue status breakdown.
 	jobs *prometheus.Desc
@@ -52,6 +53,11 @@ func newStatsCollector(s *Scheduler) *statsCollector {
 			"The total number of jobs reassigned.",
 			variableLabels, nil,
 		),
+		evictedTotal: prometheus.NewDesc(
+			schedulerQueueMetricsPrefix+"evicted_jobs_total",
+			"The total number of jobs evicted.",
+			variableLabels, nil,
+		),
 	}
 }
 
@@ -61,6 +67,7 @@ func (c *statsCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.completedTotal
 	ch <- c.assignedTotal
 	ch <- c.reassignedTotal
+	ch <- c.evictedTotal
 }
 
 func (c *statsCollector) Collect(ch chan<- prometheus.Metric) {
@@ -101,6 +108,7 @@ func (c *statsCollector) collectMetrics() []prometheus.Metric {
 		stats.completedTotal = q.stats.completedTotal
 		stats.assignedTotal = q.stats.assignedTotal
 		stats.reassignedTotal = q.stats.reassignedTotal
+		stats.evictedTotal = q.stats.evictedTotal
 
 		level := strconv.Itoa(i)
 		metrics = append(metrics,
@@ -112,6 +120,7 @@ func (c *statsCollector) collectMetrics() []prometheus.Metric {
 			prometheus.MustNewConstMetric(c.completedTotal, prometheus.CounterValue, float64(stats.completedTotal), level),
 			prometheus.MustNewConstMetric(c.assignedTotal, prometheus.CounterValue, float64(stats.assignedTotal), level),
 			prometheus.MustNewConstMetric(c.reassignedTotal, prometheus.CounterValue, float64(stats.reassignedTotal), level),
+			prometheus.MustNewConstMetric(c.evictedTotal, prometheus.CounterValue, float64(stats.evictedTotal), level),
 		)
 	}
 

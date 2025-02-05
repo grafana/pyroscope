@@ -343,9 +343,9 @@ func TestSchedule_Add(t *testing.T) {
 func TestSchedule_QueueSizeLimit(t *testing.T) {
 	store := new(mockscheduler.MockJobStore)
 	config := Config{
+		MaxQueueSize:  2,
 		MaxFailures:   3,
 		LeaseDuration: 10 * time.Second,
-		MaxQueueSize:  2,
 	}
 
 	scheduler := NewScheduler(config, store, nil)
@@ -365,5 +365,139 @@ func TestSchedule_QueueSizeLimit(t *testing.T) {
 		assert.Equal(t, states[0], s.AddJob(plans[0]))
 		assert.Equal(t, states[1], s.AddJob(plans[1]))
 		assert.Nil(t, s.AddJob(plans[2]))
+	})
+}
+
+func TestSchedule_AssignEvict(t *testing.T) {
+	store := new(mockscheduler.MockJobStore)
+	config := Config{
+		MaxQueueSize:  2,
+		MaxFailures:   3,
+		LeaseDuration: 10 * time.Second,
+	}
+
+	scheduler := NewScheduler(config, store, nil)
+	plans := []*raft_log.CompactionJobPlan{
+		{Name: "3"},
+	}
+	for _, p := range plans {
+		store.On("GetJobPlan", mock.Anything, p.Name).Return(p, nil)
+	}
+
+	states := []*raft_log.CompactionJobState{
+		{Name: "1", Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS, Token: 1, LeaseExpiresAt: 0, Failures: 3},
+		{Name: "2", Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS, Token: 1, LeaseExpiresAt: 0, Failures: 3},
+		{Name: "3", Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS, Token: 1, LeaseExpiresAt: 0, Failures: 0},
+	}
+	for _, s := range states {
+		scheduler.queue.put(s)
+	}
+
+	test.AssertIdempotent(t, func(t *testing.T) {
+		updatedAt := time.Second * 20
+		s := scheduler.NewSchedule(nil, &raft.Log{Index: 2, AppendedAt: time.Unix(0, int64(updatedAt))})
+		// Eviction is only possible when no jobs are available for assignment.
+		assert.Nil(t, s.EvictJob())
+		// Assign all the available jobs.
+		update, err := s.AssignJob()
+		require.NoError(t, err)
+		assert.Equal(t, "3", update.State.Name)
+		update, err = s.AssignJob()
+		require.NoError(t, err)
+		assert.Nil(t, update)
+		// Now that no jobs can be assigned, we can try eviction.
+		assert.NotNil(t, s.EvictJob())
+		assert.Nil(t, s.EvictJob())
+	})
+}
+
+func TestSchedule_Evict(t *testing.T) {
+	store := new(mockscheduler.MockJobStore)
+	config := Config{
+		MaxQueueSize:  2,
+		MaxFailures:   3,
+		LeaseDuration: 10 * time.Second,
+	}
+
+	scheduler := NewScheduler(config, store, nil)
+	states := []*raft_log.CompactionJobState{
+		{Name: "1", Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS, Token: 1, LeaseExpiresAt: 0, Failures: 3},
+		{Name: "2", Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS, Token: 1, LeaseExpiresAt: 0, Failures: 3},
+		{Name: "3", Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS, Token: 1, LeaseExpiresAt: 0, Failures: 3},
+	}
+	for _, s := range states {
+		scheduler.queue.put(s)
+	}
+
+	test.AssertIdempotent(t, func(t *testing.T) {
+		updatedAt := time.Second * 20
+		s := scheduler.NewSchedule(nil, &raft.Log{Index: 2, AppendedAt: time.Unix(0, int64(updatedAt))})
+		// Eviction is only possible when no jobs are available for assignment.
+		update, err := s.AssignJob()
+		require.NoError(t, err)
+		assert.Nil(t, update)
+		assert.NotNil(t, s.EvictJob())
+		assert.NotNil(t, s.EvictJob())
+		assert.Nil(t, s.EvictJob())
+	})
+}
+
+func TestSchedule_NoEvict(t *testing.T) {
+	store := new(mockscheduler.MockJobStore)
+	config := Config{
+		MaxQueueSize:  5,
+		MaxFailures:   3,
+		LeaseDuration: 10 * time.Second,
+	}
+
+	scheduler := NewScheduler(config, store, nil)
+	states := []*raft_log.CompactionJobState{
+		{Name: "1", Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS, Token: 1, LeaseExpiresAt: 0, Failures: 3},
+		{Name: "2", Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS, Token: 1, LeaseExpiresAt: 0, Failures: 3},
+		{Name: "3", Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS, Token: 1, LeaseExpiresAt: 0, Failures: 3},
+	}
+	for _, s := range states {
+		scheduler.queue.put(s)
+	}
+
+	test.AssertIdempotent(t, func(t *testing.T) {
+		updatedAt := time.Second * 20
+		s := scheduler.NewSchedule(nil, &raft.Log{Index: 2, AppendedAt: time.Unix(0, int64(updatedAt))})
+		// Eviction is only possible when no jobs are available for assignment.
+		update, err := s.AssignJob()
+		require.NoError(t, err)
+		assert.Nil(t, update)
+		// Eviction is only possible when the queue size limit is reached.
+		assert.Nil(t, s.EvictJob())
+	})
+}
+
+func TestSchedule_NoEvictNoQueueSizeLimit(t *testing.T) {
+	store := new(mockscheduler.MockJobStore)
+	config := Config{
+		MaxQueueSize:  0,
+		MaxFailures:   3,
+		LeaseDuration: 10 * time.Second,
+	}
+
+	scheduler := NewScheduler(config, store, nil)
+	states := []*raft_log.CompactionJobState{
+		{Name: "1", Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS, Token: 1, LeaseExpiresAt: 0, Failures: 3},
+		{Name: "2", Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS, Token: 1, LeaseExpiresAt: 0, Failures: 3},
+		{Name: "3", Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS, Token: 1, LeaseExpiresAt: 0, Failures: 3},
+	}
+	for _, s := range states {
+		scheduler.queue.put(s)
+	}
+
+	test.AssertIdempotent(t, func(t *testing.T) {
+		updatedAt := time.Second * 20
+		s := scheduler.NewSchedule(nil, &raft.Log{Index: 2, AppendedAt: time.Unix(0, int64(updatedAt))})
+		// Eviction is only possible when no jobs are available for assignment.
+		update, err := s.AssignJob()
+		require.NoError(t, err)
+		assert.Nil(t, update)
+		// Eviction is not possible if the queue size limit is not set.
+		assert.Nil(t, s.EvictJob())
 	})
 }

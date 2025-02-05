@@ -19,7 +19,9 @@ func TestScheduler_UpdateSchedule(t *testing.T) {
 	store.On("StoreJobState", mock.Anything, &raft_log.CompactionJobState{Name: "1"}).Return(nil).Once()
 	store.On("StoreJobState", mock.Anything, &raft_log.CompactionJobState{Name: "2"}).Return(nil).Once()
 	store.On("DeleteJobPlan", mock.Anything, "3").Return(nil).Once()
+	store.On("DeleteJobPlan", mock.Anything, "4").Return(nil).Once()
 	store.On("DeleteJobState", mock.Anything, "3").Return(nil).Once()
+	store.On("DeleteJobState", mock.Anything, "4").Return(nil).Once()
 
 	scheduler := NewScheduler(Config{}, store, nil)
 	scheduler.queue.put(&raft_log.CompactionJobState{Name: "1", Token: 1})
@@ -36,6 +38,9 @@ func TestScheduler_UpdateSchedule(t *testing.T) {
 		}},
 		CompletedJobs: []*raft_log.CompletedCompactionJob{{
 			State: &raft_log.CompactionJobState{Name: "3"},
+		}},
+		EvictedJobs: []*raft_log.EvictedCompactionJob{{
+			State: &raft_log.CompactionJobState{Name: "4"},
 		}},
 	})
 
