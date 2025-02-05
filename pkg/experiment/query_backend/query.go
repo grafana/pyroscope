@@ -200,9 +200,7 @@ func (q *blockContext) needsDatasetLookup() bool {
 func (q *blockContext) lookupDatasets() error {
 	ds := block.NewDataset(q.idx, q.obj)
 	defer func() {
-		if ds.Index() != nil {
-			_ = ds.Close()
-		}
+		_ = ds.Close()
 	}()
 
 	g, ctx := errgroup.WithContext(q.ctx)

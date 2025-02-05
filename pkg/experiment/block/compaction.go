@@ -80,17 +80,17 @@ func Compact(
 	}
 
 	if err = objects.Open(ctx); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("objects.Open: %w", err)
 	}
 	defer func() {
-		err = multierror.New(err, objects.Close()).Err()
+		_ = objects.Close()
 	}()
 
 	compacted := make([]*metastorev1.BlockMeta, 0, len(plan))
 	for _, p := range plan {
 		md, compactionErr := p.Compact(ctx, c.destination, c.tempdir)
 		if compactionErr != nil {
-			return nil, compactionErr
+			return nil, err
 		}
 		compacted = append(compacted, md)
 	}
@@ -184,7 +184,7 @@ func newBlockCompaction(
 func (b *CompactionPlan) Compact(ctx context.Context, dst objstore.Bucket, tmpdir string) (m *metastorev1.BlockMeta, err error) {
 	w, err := NewBlockWriter(dst, b.path, tmpdir)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("block writer: %w", err)
 	}
 	defer func() {
 		err = multierror.New(err, w.Close()).Err()
@@ -205,10 +205,10 @@ func (b *CompactionPlan) Compact(ctx context.Context, dst objstore.Bucket, tmpdi
 	if err = metadata.Encode(w, b.meta); err != nil {
 		return nil, fmt.Errorf("writing metadata: %w", err)
 	}
+	b.meta.Size = w.Offset()
 	if err = w.Upload(ctx); err != nil {
 		return nil, fmt.Errorf("flushing block writer: %w", err)
 	}
-	b.meta.Size = w.Offset()
 	return b.meta, nil
 }
 
@@ -315,7 +315,7 @@ func (m *datasetCompaction) compact(ctx context.Context, w *Writer) (err error) 
 	defer func() {
 		err = multierror.New(err, m.cleanup()).Err()
 	}()
-	if err = multierror.New(m.merge(ctx), m.close()).Err(); err != nil {
+	if err = m.mergeAndClose(ctx); err != nil {
 		return fmt.Errorf("failed to merge datasets: %w", err)
 	}
 	if err = m.writeTo(w); err != nil {
@@ -370,6 +370,13 @@ func (m *datasetCompaction) open(ctx context.Context, path string) (err error) {
 	return nil
 }
 
+func (m *datasetCompaction) mergeAndClose(ctx context.Context) (err error) {
+	defer func() {
+		err = multierror.New(err, m.close()).Err()
+	}()
+	return m.merge(ctx)
+}
+
 func (m *datasetCompaction) merge(ctx context.Context) (err error) {
 	rows, err := NewMergeRowProfileIterator(m.datasets)
 	if err != nil {
@@ -393,10 +400,10 @@ func (m *datasetCompaction) merge(ctx context.Context) (err error) {
 }
 
 func (m *datasetCompaction) writeRow(r ProfileEntry) (err error) {
-	if err = m.indexRewriter.rewriteRow(r); err != nil {
+	if err = m.parent.datasetIndex.writeRow(r); err != nil {
 		return err
 	}
-	if err = m.parent.datasetIndex.writeRow(r); err != nil {
+	if err = m.indexRewriter.rewriteRow(r); err != nil {
 		return err
 	}
 	if err = m.symbolsRewriter.rewriteRow(r); err != nil {
