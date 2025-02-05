@@ -14,7 +14,14 @@ concurrency:
 
 jobs:
   regular-path:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: github-hosted-ubuntu-arm64
+    runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -27,10 +34,11 @@ jobs:
         with:
           go-version: "1.22.11"
           cache: true
-      - run: yarn --frozen-lockfile
+      - name: Install node-canvas
+        run: sudo apt-get update && sudo apt-get install build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
       - run: make build
       - name: Cypress run
-        uses: cypress-io/github-action@v5
+        uses: cypress-io/github-action@v6
         with:
           wait-on: http://localhost:4040/ready
           start: make run
@@ -57,12 +65,13 @@ jobs:
         with:
           go-version: "1.22.11"
           cache: true
-      - run: yarn --frozen-lockfile
+      - name: Install node-canvas
+        run: sudo apt-get update && sudo apt-get install build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
       - run: make build
       - name: run nginx with /foobar/
         run: docker compose -f scripts/base-url/docker-compose.yaml up -d
       - name: Cypress run
-        uses: cypress-io/github-action@v5
+        uses: cypress-io/github-action@v6
         with:
           wait-on: http://localhost:8080/foobar/ready
           start: |
