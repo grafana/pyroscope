@@ -19,20 +19,17 @@ var (
 	settingsFilename = "tenant_settings.json"
 )
 
-// NewMemoryStore will create a settings store with an in-memory objstore
-// bucket.
-func NewMemoryStore() (Store, error) {
-	return NewBucketStore(objstore.NewInMemBucket())
+// newMemoryStore will create a settings store with an in-memory bucket.
+func newMemoryStore() store {
+	return newBucketStore(objstore.NewInMemBucket())
 }
 
 // NewBucketStore will create a settings store with an objstore bucket.
-func NewBucketStore(bucket objstore.Bucket) (Store, error) {
-	store := &bucketStore{
+func newBucketStore(bucket objstore.Bucket) store {
+	return &bucketStore{
 		store:  make(map[string]map[string]*settingsv1.Setting),
 		bucket: bucket,
 	}
-
-	return store, nil
 }
 
 type bucketStore struct {
