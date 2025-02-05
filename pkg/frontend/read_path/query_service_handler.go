@@ -22,6 +22,7 @@ func (r *Router) LabelValues(
 	c *connect.Request[typesv1.LabelValuesRequest],
 ) (*connect.Response[typesv1.LabelValuesResponse], error) {
 	return Query[typesv1.LabelValuesRequest, typesv1.LabelValuesResponse](ctx, r, c,
+		func(_, _ *typesv1.LabelValuesRequest) {},
 		func(a, b *typesv1.LabelValuesResponse) (*typesv1.LabelValuesResponse, error) {
 			m := phlaremodel.NewLabelMerger()
 			m.MergeLabelValues(a.Names)
@@ -35,6 +36,7 @@ func (r *Router) LabelNames(
 	c *connect.Request[typesv1.LabelNamesRequest],
 ) (*connect.Response[typesv1.LabelNamesResponse], error) {
 	return Query[typesv1.LabelNamesRequest, typesv1.LabelNamesResponse](ctx, r, c,
+		func(_, _ *typesv1.LabelNamesRequest) {},
 		func(a, b *typesv1.LabelNamesResponse) (*typesv1.LabelNamesResponse, error) {
 			m := phlaremodel.NewLabelMerger()
 			m.MergeLabelNames(a.Names)
@@ -48,6 +50,7 @@ func (r *Router) Series(
 	c *connect.Request[querierv1.SeriesRequest],
 ) (*connect.Response[querierv1.SeriesResponse], error) {
 	return Query[querierv1.SeriesRequest, querierv1.SeriesResponse](ctx, r, c,
+		func(_, _ *querierv1.SeriesRequest) {},
 		func(a, b *querierv1.SeriesResponse) (*querierv1.SeriesResponse, error) {
 			m := phlaremodel.NewLabelMerger()
 			m.MergeSeries(a.LabelsSet)
@@ -65,6 +68,7 @@ func (r *Router) SelectMergeStacktraces(
 	f := c.Msg.Format
 	c.Msg.Format = querierv1.ProfileFormat_PROFILE_FORMAT_TREE
 	resp, err := Query[querierv1.SelectMergeStacktracesRequest, querierv1.SelectMergeStacktracesResponse](ctx, r, c,
+		func(_, _ *querierv1.SelectMergeStacktracesRequest) {},
 		func(a, b *querierv1.SelectMergeStacktracesResponse) (*querierv1.SelectMergeStacktracesResponse, error) {
 			m := phlaremodel.NewTreeMerger()
 			if err := m.MergeTreeBytes(a.Tree); err != nil {
@@ -94,6 +98,7 @@ func (r *Router) SelectMergeSpanProfile(
 	f := c.Msg.Format
 	c.Msg.Format = querierv1.ProfileFormat_PROFILE_FORMAT_TREE
 	resp, err := Query[querierv1.SelectMergeSpanProfileRequest, querierv1.SelectMergeSpanProfileResponse](ctx, r, c,
+		func(_, _ *querierv1.SelectMergeSpanProfileRequest) {},
 		func(a, b *querierv1.SelectMergeSpanProfileResponse) (*querierv1.SelectMergeSpanProfileResponse, error) {
 			m := phlaremodel.NewTreeMerger()
 			if err := m.MergeTreeBytes(a.Tree); err != nil {
@@ -119,6 +124,7 @@ func (r *Router) SelectMergeProfile(
 	c *connect.Request[querierv1.SelectMergeProfileRequest],
 ) (*connect.Response[profilev1.Profile], error) {
 	return Query[querierv1.SelectMergeProfileRequest, profilev1.Profile](ctx, r, c,
+		func(_, _ *querierv1.SelectMergeProfileRequest) {},
 		func(a, b *profilev1.Profile) (*profilev1.Profile, error) {
 			var m pprof.ProfileMerge
 			if err := m.Merge(a); err != nil {
@@ -135,12 +141,18 @@ func (r *Router) SelectSeries(
 	ctx context.Context,
 	c *connect.Request[querierv1.SelectSeriesRequest],
 ) (*connect.Response[querierv1.SelectSeriesResponse], error) {
-	var limit int
-	if limit = int(c.Msg.GetLimit()); limit > 0 {
-		// Limit must be applied after merging.
-		c.Msg.Limit = nil
-	}
+	limit := int(c.Msg.GetLimit())
 	return Query[querierv1.SelectSeriesRequest, querierv1.SelectSeriesResponse](ctx, r, c,
+		func(a, b *querierv1.SelectSeriesRequest) {
+			// If both frontends are queries, the limit must
+			// be applied after merging the time series, as
+			// the function is not associative. Otherwise, each
+			// frontend applies the limit independently.
+			if a != nil && b != nil && limit > 0 {
+				a.Limit = nil
+				b.Limit = nil
+			}
+		},
 		func(a, b *querierv1.SelectSeriesResponse) (*querierv1.SelectSeriesResponse, error) {
 			m := phlaremodel.NewTimeSeriesMerger(true)
 			m.MergeTimeSeries(a.Series)
@@ -191,8 +203,8 @@ func (r *Router) AnalyzeQuery(
 	ctx context.Context,
 	req *connect.Request[querierv1.AnalyzeQueryRequest],
 ) (*connect.Response[querierv1.AnalyzeQueryResponse], error) {
-	if r.frontend != nil {
-		return r.frontend.AnalyzeQuery(ctx, req)
+	if r.oldFrontend != nil {
+		return r.oldFrontend.AnalyzeQuery(ctx, req)
 	}
 	return connect.NewResponse(&querierv1.AnalyzeQueryResponse{}), nil
 }
@@ -202,6 +214,7 @@ func (r *Router) GetProfileStats(
 	c *connect.Request[typesv1.GetProfileStatsRequest],
 ) (*connect.Response[typesv1.GetProfileStatsResponse], error) {
 	return Query[typesv1.GetProfileStatsRequest, typesv1.GetProfileStatsResponse](ctx, r, c,
+		func(_, _ *typesv1.GetProfileStatsRequest) {},
 		func(a, b *typesv1.GetProfileStatsResponse) (*typesv1.GetProfileStatsResponse, error) {
 			oldestProfileTime := a.OldestProfileTime
 			newestProfileTime := a.NewestProfileTime
@@ -224,6 +237,7 @@ func (r *Router) ProfileTypes(
 	c *connect.Request[querierv1.ProfileTypesRequest],
 ) (*connect.Response[querierv1.ProfileTypesResponse], error) {
 	return Query[querierv1.ProfileTypesRequest, querierv1.ProfileTypesResponse](ctx, r, c,
+		func(_, _ *querierv1.ProfileTypesRequest) {},
 		func(a, b *querierv1.ProfileTypesResponse) (*querierv1.ProfileTypesResponse, error) {
 			pTypes := a.ProfileTypes
 			for _, pType := range b.ProfileTypes {

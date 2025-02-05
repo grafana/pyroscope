@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Metastore Admin - Client Test</title>
+
+    <link rel="stylesheet" href="/static/bootstrap-5.3.3.min.css">
+    <link rel="stylesheet" href="/static/bootstrap-icons-1.8.1.css">
+    <link rel="stylesheet" href="/static/pyroscope-styles.css">
+    <script src="/static/bootstrap-5.3.3.bundle.min.js"></script>
+
+    <style>
+        .card-detail-row {
+            display: flex;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-detail-label {
+            flex: 0 0 20%;
+            font-weight: bold;
+            text-align: right;
+            padding-right: 1rem;
+        }
+
+        .card-detail-value {
+            flex: 0 0 80%;
+        }
+
+        @media (max-width: 768px) {
+            .card-detail-row {
+                flex-direction: column;
+            }
+
+            .card-detail-label {
+                text-align: left;
+                padding-right: 0;
+                margin-bottom: 0.25rem;
+            }
+        }
+
+        .card {
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+<main>
+    <div class="container mt-5">
+        <div class="header row border-bottom py-3 flex-column-reverse flex-sm-row">
+            <div class="col-12 col-sm-9 text-center text-sm-start">
+                <h1>Metastore: Grafana Pyroscope</h1>
+            </div>
+            <div class="col-12 col-sm-3 text-center text-sm-end mb-3 mb-sm-0">
+                <a href="/">
+                    <img alt="Pyroscope logo" class="pyroscope-brand" src="/static/pyroscope-logo.png">
+                </a>
+            </div>
+        </div>
+        <div class="row gy-4">
+            <h2>Nodes</h2>
+            <form action="" method="POST">
+                <input type="hidden" name="current-term" value="{{ .Raft.CurrentTerm }}">
+                {{ $numNodes := .Raft.NumNodes }}
+                {{ range $index, $node := .Raft.Nodes }}
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                {{ $node.RaftServerId }}
+                            </div>
+                            <div class="card-body">
+                                <div class="card-detail-row">
+                                    <div class="card-detail-label">Resolved Address:</div>
+                                    <div class="card-detail-value">{{ $node.ResolvedAddress }}</div>
+                                </div>
+                                <div class="card-detail-row">
+                                    <div class="card-detail-label">Raft Member:</div>
+                                    <div class="card-detail-value">
+                                        {{ if $node.Member }}
+                                            <span class="badge text-bg-success">yes</span> ({{ $node.State }})
+                                        {{ else }}
+                                            <span class="badge text-bg-warning">no</span>
+                                        {{ end }}
+                                    </div>
+                                </div>
+                                <div class="card-detail-row">
+                                    <div class="card-detail-label">Raft Server ID:</div>
+                                    <div class="card-detail-value">{{ $node.RaftServerId }}</div>
+                                </div>
+                                <div class="card-detail-row">
+                                    <div class="card-detail-label">Observed Leader:</div>
+                                    {{ $leaderId := $node.LeaderId }}
+                                    {{ if eq $leaderId ""}}
+                                        {{ $leaderId = "n/a "}}
+                                    {{ end }}
+                                    <div class="card-detail-value">{{ $leaderId }} (term {{ $node.CurrentTerm }})</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {{ end }}
+            </form>
+        </div>
+
+        <div class="row gy-4">
+            <h2>Client Test</h2><div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <form action="" method="POST">
+                            <button class="btn btn-info me-2" name="test" type="submit">Test</button>
+                        </form>
+                    </div>
+                    <div class="card-body">
+                        <div class="card-detail-row">
+                            <div class="card-detail-label">Response</div>
+                            <div class="card-detail-value">{{ .TestResponse }}</div>
+                        </div>
+                        <div class="card-detail-row">
+                            <div class="card-detail-label">Response Time</div>
+                            <div class="card-detail-value">{{ .TestResponseTime }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+<footer class="footer mt-auto py-3">
+    <div class="container">
+        <small class="text-muted">Status @ {{ .Now.Format "2006-01-02 15:04:05.000" }}</small>
+    </div>
+</footer>
+<script type="text/javascript">
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
+</script>
+</body>
+</html>
