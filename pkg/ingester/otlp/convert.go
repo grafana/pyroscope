@@ -102,7 +102,7 @@ func newProfileBuilder(src *otelProfile.Profile) *profileBuilder {
 			}
 			res.sampleProcessingTypes[i] = sampleConversionTypeSamplesToNanos
 		}
-                // Identify off cpu profiles
+		// Identify off cpu profiles
 		if profileType == "events:nanoseconds::" && len(res.dst.SampleType) == 1 {
 			res.sampleProcessingTypes[i] = sampleConversionTypeSumEvents
 			res.name = &typesv1.LabelPair{
@@ -263,6 +263,8 @@ func (p *profileBuilder) convertSampleBack(os *otelProfile.Sample) (*googleProfi
 		case sampleConversionTypeSamplesToNanos:
 			gs.Value[i] *= p.src.Period
 		case sampleConversionTypeSumEvents:
+			// For off-CPU profiles, aggregate all sample values into a single sum
+			// since pprof cannot represent variable-length sample values
 			sum := int64(0)
 			for _, v := range gs.Value {
 				sum += v
