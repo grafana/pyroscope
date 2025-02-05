@@ -3,6 +3,40 @@ pyroscope.receive_http "default" {
         listen_address = "0.0.0.0"
         listen_port = 9999
     }
+    forward_to = [pyroscope.relabel.filter_profiles.receiver]
+}
+
+pyroscope.relabel "filter_profiles" {
+    // Convert region to datacenter
+    rule {
+        action = "replace"
+        source_labels = ["region"]
+        target_label = "datacenter"
+    }
+
+    // Add environment label
+    rule {
+        action = "replace"
+        target_label = "environment"
+        replacement = "demo"
+    }
+
+    // Add component label based on application name
+    rule {
+        action = "replace"
+        source_labels = ["__name__"]
+        target_label = "component"
+        regex = "ride-sharing-app.*"
+        replacement = "backend"
+    }
+    rule {
+        action = "replace"
+        source_labels = ["__name__"]
+        target_label = "component"
+        regex = "load-generator.*"
+        replacement = "load-generator"
+    }
+
     forward_to = [pyroscope.write.backend.receiver]
 }
 
