@@ -102,7 +102,6 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 		}
 		if job != nil {
 			p.AssignedJobs = append(p.AssignedJobs, job)
-			continue
 		}
 	}
 
@@ -129,7 +128,7 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 			// is when the scheduler queue is full; theoretically, this should
 			// not happen, because we evicted jobs before creating new ones.
 			// However, if all the jobs are healthy, we may end up here.
-			level.Warn(h.logger).Log("msg", "failed to create compaction job", "err", err)
+			level.Warn(h.logger).Log("msg", "compaction job rejected by scheduler")
 			break
 		}
 		p.NewJobs = append(p.NewJobs, &raft_log.NewCompactionJob{
