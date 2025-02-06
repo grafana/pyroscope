@@ -227,13 +227,11 @@ func (b *CompactionPlan) writeDatasetIndex(w *Writer) error {
 		metadata.LabelValueDatasetTSDBIndex,
 	)
 	b.meta.Datasets = append(b.meta.Datasets, &metastorev1.Dataset{
-		Tenant:  b.meta.Tenant,
-		Name:    0, // Anonymous.
-		MinTime: b.meta.MinTime,
-		MaxTime: b.meta.MaxTime,
-		// FIXME: We mimic the default layout: empty profiles, index, and empty symbols.
-		//  Instead, it should be handled at the query time: substitute the dataset layout.
-		TableOfContents: []uint64{off, off, w.Offset()},
+		Tenant:          b.meta.Tenant,
+		Name:            0, // Anonymous.
+		MinTime:         b.meta.MinTime,
+		MaxTime:         b.meta.MaxTime,
+		TableOfContents: []uint64{off},
 		Size:            uint64(n),
 		Labels:          labels,
 	})

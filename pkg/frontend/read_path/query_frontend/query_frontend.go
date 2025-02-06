@@ -71,11 +71,11 @@ func (q *QueryFrontend) Query(
 	if len(blocks) == 0 {
 		return new(queryv1.QueryResponse), nil
 	}
-
 	// Randomize the order of blocks to avoid hotspots.
 	xrand.Shuffle(len(blocks), func(i, j int) {
 		blocks[i], blocks[j] = blocks[j], blocks[i]
 	})
+	// TODO(kolesnikovae): Should be dynamic.
 	p := queryplan.Build(blocks, 4, 20)
 
 	resp, err := q.querybackendClient.Invoke(ctx, &queryv1.InvokeRequest{
@@ -110,25 +110,34 @@ func (q *QueryFrontend) QueryMetadata(
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+	query := &metastorev1.QueryMetadataRequest{
+		TenantId:  tenants,
+		StartTime: req.StartTime,
+		EndTime:   req.EndTime,
+	}
+
+	// Delete all labels but service_name. If no labels left, request the
+	// dataset index for query backend to lookup datasets to be accessed.
 	matchers = slices.DeleteFunc(matchers, func(m *labels.Matcher) bool {
 		return m.Name != phlaremodel.LabelNameServiceName
 	})
 	if len(matchers) == 0 {
+		// We preserve the __tenant_dataset__= label: this is needed for the
+		// query backend to identify that the dataset is the tenant-wide index,
+		// and a dataset lookup is needed.
+		query.Labels = []string{metadata.LabelNameTenantDataset}
 		matchers = []*labels.Matcher{{
 			Name:  metadata.LabelNameTenantDataset,
 			Value: metadata.LabelValueDatasetTSDBIndex,
 			Type:  labels.MatchEqual,
 		}}
 	}
-	query := matchersToLabelSelector(matchers)
-	md, err := q.metadataQueryClient.QueryMetadata(ctx, &metastorev1.QueryMetadataRequest{
-		TenantId:  tenants,
-		StartTime: req.StartTime,
-		EndTime:   req.EndTime,
-		Query:     query,
-	})
+
+	query.Query = matchersToLabelSelector(matchers)
+	md, err := q.metadataQueryClient.QueryMetadata(ctx, query)
 	if err != nil {
 		return nil, err
 	}
+
 	return md.Blocks, nil
 }

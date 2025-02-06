@@ -171,9 +171,10 @@ func newBlockContext(
 func (q *blockContext) needsDatasetLookup() bool {
 	md := q.obj.Metadata()
 	if len(md.Datasets) > 1 {
-		// The metadata explicitly lists datasets to be queried.
+		// The blocks metadata explicitly lists datasets to be queried.
 		return false
 	}
+
 	ds := md.Datasets[0]
 	t := metadata.OpenStringTable(md)
 	m := metadata.NewLabelMatcher(t, []*labels.Matcher{{
@@ -185,14 +186,21 @@ func (q *blockContext) needsDatasetLookup() bool {
 	if !matches {
 		return false
 	}
+
+	// The block contains a dataset TSDB index.
+	//
+	// If a query only requires TSDB data, we can serve it using
+	// the dataset index without accessing the full dataset.
 	qc := queryContext{req: q.req}
 	if s := qc.sections(); len(s) == 1 && s[0] == block.SectionTSDB {
-		// The block has a dataset tsdb index and the queries
-		// only need TSDB data. In this case, we can serve the
-		// query directly using the dataset index, without need
-		// to access datasets.
+		// Create a TOC with a TSDB entry pointing to the dataset index.
+		// This allows the dataset to be used like a regular one.
+		// Version-specific behavior.
+		offset := ds.TableOfContents[0]
+		ds.TableOfContents = []uint64{offset, offset, ds.Size}
 		return false
 	}
+
 	q.idx = ds
 	return true
 }
