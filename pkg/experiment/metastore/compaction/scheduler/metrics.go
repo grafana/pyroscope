@@ -76,11 +76,10 @@ func (c *statsCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 }
 
-func (c *statsCollector) collectMetrics() []prometheus.Metric {
+func (c *statsCollector) collectStats(fn func(level int, stats queueStats)) {
 	c.s.mu.Lock()
 	defer c.s.mu.Unlock()
 
-	metrics := make([]prometheus.Metric, 0, 8*len(c.s.queue.levels))
 	for i, q := range c.s.queue.levels {
 		var stats queueStats
 		for _, e := range *q.jobs {
@@ -110,7 +109,14 @@ func (c *statsCollector) collectMetrics() []prometheus.Metric {
 		stats.reassignedTotal = q.stats.reassignedTotal
 		stats.evictedTotal = q.stats.evictedTotal
 
-		level := strconv.Itoa(i)
+		fn(i, stats)
+	}
+}
+
+func (c *statsCollector) collectMetrics() []prometheus.Metric {
+	metrics := make([]prometheus.Metric, 0, 8*len(c.s.queue.levels))
+	c.collectStats(func(l int, stats queueStats) {
+		level := strconv.Itoa(l)
 		metrics = append(metrics,
 			prometheus.MustNewConstMetric(c.jobs, prometheus.GaugeValue, float64(stats.assigned), level, "assigned"),
 			prometheus.MustNewConstMetric(c.jobs, prometheus.GaugeValue, float64(stats.unassigned), level, "unassigned"),
@@ -122,7 +128,6 @@ func (c *statsCollector) collectMetrics() []prometheus.Metric {
 			prometheus.MustNewConstMetric(c.reassignedTotal, prometheus.CounterValue, float64(stats.reassignedTotal), level),
 			prometheus.MustNewConstMetric(c.evictedTotal, prometheus.CounterValue, float64(stats.evictedTotal), level),
 		)
-	}
-
+	})
 	return metrics
 }

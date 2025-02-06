@@ -24,11 +24,16 @@ func TestScheduler_UpdateSchedule(t *testing.T) {
 	store.On("DeleteJobState", mock.Anything, "4").Return(nil).Once()
 
 	scheduler := NewScheduler(Config{}, store, nil)
-	scheduler.queue.put(&raft_log.CompactionJobState{Name: "1", Token: 1})
-	scheduler.queue.put(&raft_log.CompactionJobState{Name: "2", Token: 1})
-	scheduler.queue.put(&raft_log.CompactionJobState{Name: "3", Token: 1})
+	for _, job := range []*raft_log.CompactionJobState{
+		{Name: "1"},
+		{Name: "2"},
+		{Name: "3"},
+		{Name: "4"},
+	} {
+		scheduler.queue.put(job)
+	}
 
-	err := scheduler.UpdateSchedule(nil, &raft_log.CompactionPlanUpdate{
+	update := &raft_log.CompactionPlanUpdate{
 		NewJobs: []*raft_log.NewCompactionJob{{
 			State: &raft_log.CompactionJobState{Name: "1"},
 			Plan:  &raft_log.CompactionJobPlan{Name: "1"},
@@ -42,9 +47,9 @@ func TestScheduler_UpdateSchedule(t *testing.T) {
 		EvictedJobs: []*raft_log.EvictedCompactionJob{{
 			State: &raft_log.CompactionJobState{Name: "4"},
 		}},
-	})
+	}
 
-	require.NoError(t, err)
+	require.NoError(t, scheduler.UpdateSchedule(nil, update))
 	s := scheduler.NewSchedule(nil, &raft.Log{Index: 3})
 
 	store.On("GetJobPlan", mock.Anything, "1").Return(new(raft_log.CompactionJobPlan), nil).Once()
@@ -60,6 +65,18 @@ func TestScheduler_UpdateSchedule(t *testing.T) {
 	assigment, err = s.AssignJob()
 	require.NoError(t, err)
 	assert.Nil(t, assigment)
+
+	assert.Equal(t, jobQueuePop(scheduler.queue), update.NewJobs[0].State)
+	assert.Equal(t, jobQueuePop(scheduler.queue), update.UpdatedJobs[0].State)
+	assert.Nil(t, jobQueuePop(scheduler.queue))
+	newStatsCollector(scheduler).collectStats(func(level int, stats queueStats) {
+		assert.Equal(t, 0, level)
+		assert.Equal(t, stats, queueStats{
+			addedTotal:     4,
+			completedTotal: 1,
+			evictedTotal:   1,
+		})
+	})
 
 	store.AssertExpectations(t)
 }
