@@ -449,8 +449,8 @@ func (i *Index) QueryMetadata(tx *bbolt.Tx, query MetadataQuery) iter.Iterator[*
 	return iter.NewSliceIterator(metas)
 }
 
-func (i *Index) QueryMetadataLabels(tx *bbolt.Tx, query MetadataLabelQuery) ([]*typesv1.Labels, error) {
-	q, err := newMetadataQuery(i, query.MetadataQuery, query.Labels...)
+func (i *Index) QueryMetadataLabels(tx *bbolt.Tx, query MetadataQuery) ([]*typesv1.Labels, error) {
+	q, err := newMetadataQuery(i, query)
 	if err != nil {
 		return nil, err
 	}

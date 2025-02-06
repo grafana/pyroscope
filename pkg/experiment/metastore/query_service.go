@@ -20,7 +20,7 @@ import (
 
 type IndexQuerier interface {
 	QueryMetadata(*bbolt.Tx, index.MetadataQuery) iter.Iterator[*metastorev1.BlockMeta]
-	QueryMetadataLabels(*bbolt.Tx, index.MetadataLabelQuery) ([]*typesv1.Labels, error)
+	QueryMetadataLabels(*bbolt.Tx, index.MetadataQuery) ([]*typesv1.Labels, error)
 }
 
 type MetadataQueryService struct {
@@ -62,10 +62,11 @@ func (svc *MetadataQueryService) queryMetadata(
 	req *metastorev1.QueryMetadataRequest,
 ) (*metastorev1.QueryMetadataResponse, error) {
 	metas, err := iter.Slice(svc.index.QueryMetadata(tx, index.MetadataQuery{
-		Expr:      req.Query,
+		Tenant:    req.TenantId,
 		StartTime: time.UnixMilli(req.StartTime),
 		EndTime:   time.UnixMilli(req.EndTime),
-		Tenant:    req.TenantId,
+		Expr:      req.Query,
+		Labels:    req.Labels,
 	}))
 	if err == nil {
 		return &metastorev1.QueryMetadataResponse{Blocks: metas}, nil
@@ -96,14 +97,12 @@ func (svc *MetadataQueryService) queryMetadataLabels(
 	tx *bbolt.Tx,
 	req *metastorev1.QueryMetadataLabelsRequest,
 ) (*metastorev1.QueryMetadataLabelsResponse, error) {
-	labels, err := svc.index.QueryMetadataLabels(tx, index.MetadataLabelQuery{
-		Labels: req.Labels,
-		MetadataQuery: index.MetadataQuery{
-			Expr:      req.Query,
-			StartTime: time.UnixMilli(req.StartTime),
-			EndTime:   time.UnixMilli(req.EndTime),
-			Tenant:    req.TenantId,
-		},
+	labels, err := svc.index.QueryMetadataLabels(tx, index.MetadataQuery{
+		Tenant:    req.TenantId,
+		StartTime: time.UnixMilli(req.StartTime),
+		EndTime:   time.UnixMilli(req.EndTime),
+		Expr:      req.Query,
+		Labels:    req.Labels,
 	})
 	if err == nil {
 		return &metastorev1.QueryMetadataLabelsResponse{Labels: labels}, nil

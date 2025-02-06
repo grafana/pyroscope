@@ -194,7 +194,73 @@ func NewLabelMatcher(strings *StringTable, matchers []*labels.Matcher, keep ...s
 
 func (lm *LabelMatcher) IsValid() bool { return !lm.nomatch }
 
-func (lm *LabelMatcher) Matches(pairs []int32) bool {
+func (lm *LabelMatcher) Matches(labels []int32) bool {
+	pairs := LabelPairs(labels)
+	var matches bool
+	for pairs.Next() {
+		if lm.MatchesPairs(pairs.At()) {
+			matches = true
+			// If no keep labels are specified, we can return early.
+			// Otherwise, we need to scan all the label sets to
+			// collect matching ones.
+			if len(lm.keep) == 0 {
+				return true
+			}
+		}
+	}
+	return matches
+}
+
+// CollectMatches returns a new set of labels with only the labels
+// that satisfy the match expressions and that are in the keep list.
+func (lm *LabelMatcher) CollectMatches(dst, labels []int32) ([]int32, bool) {
+	pairs := LabelPairs(labels)
+	var matches bool
+	for pairs.Next() {
+		p := pairs.At()
+		if lm.MatchesPairs(p) {
+			matches = true
+			// If no keep labels are specified, we can return early.
+			// Otherwise, we need to scan all the label sets to
+			// collect matching ones.
+			if len(lm.keep) == 0 {
+				return dst, true
+			}
+			dst = lm.strip(dst, p)
+		}
+	}
+	return dst, matches
+}
+
+// strip returns a new length-prefixed slice of pairs
+// with only the labels that are in the keep list.
+func (lm *LabelMatcher) strip(dst, pairs []int32) []int32 {
+	// Length-prefix stub: we only know it after we iterate
+	// over the pairs.
+	s := len(dst)
+	c := len(lm.keep) * 2
+	dst = slices.Grow(dst, c+1)
+	dst = append(dst, 0)
+	var m int32
+	for _, n := range lm.keep {
+		if n < 1 {
+			// Ignore not found labels.
+			continue
+		}
+		for k := 0; k < len(pairs); k += 2 {
+			if pairs[k] == n {
+				dst = append(dst, pairs[k], pairs[k+1])
+				m++
+				break
+			}
+		}
+	}
+	// Write the actual number of pairs as a prefix.
+	dst[s] = m
+	return dst
+}
+
+func (lm *LabelMatcher) MatchesPairs(pairs []int32) bool {
 	k := string(pairs)
 	m, found := lm.checked[k]
 	if !found {
@@ -243,7 +309,7 @@ func (lm *LabelMatcher) checkMatches(pairs []int32) bool {
 	return true
 }
 
-func (lm *LabelMatcher) Matched() []model.Labels {
+func (lm *LabelMatcher) AllMatches() []model.Labels {
 	if len(lm.keep) == 0 || lm.nomatch || len(lm.checked) == 0 {
 		return nil
 	}
