@@ -140,7 +140,6 @@ func (q *jobQueue) update(e *jobEntry, state *raft_log.CompactionJobState) {
 }
 
 func (q *jobQueue) delete(e *jobEntry) *raft_log.CompactionJobState {
-	q.stats.completedTotal++
 	heap.Remove(q.jobs, e.index)
 	return e.CompactionJobState
 }
