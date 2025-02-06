@@ -42,7 +42,6 @@ func (p *schedule) AssignJob() (*raft_log.AssignedCompactionJob, error) {
 		State: state,
 		Plan:  plan,
 	}
-	p.evicted++
 	return assigned, nil
 }
 
@@ -95,7 +94,7 @@ func (p *schedule) newStateForStatusReport(status *raft_log.CompactionJobStatusU
 func (p *schedule) EvictJob() *raft_log.CompactionJobState {
 	limit := p.scheduler.config.MaxQueueSize
 	size := uint64(p.scheduler.queue.size() - p.evicted)
-	if limit == 0 || size < limit {
+	if limit == 0 || size <= limit {
 		return nil
 	}
 	for level := 0; level < len(p.scheduler.queue.levels); level++ {

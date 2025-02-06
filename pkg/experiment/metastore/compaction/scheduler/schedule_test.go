@@ -378,7 +378,7 @@ func TestSchedule_AssignEvict(t *testing.T) {
 
 	scheduler := NewScheduler(config, store, nil)
 	plans := []*raft_log.CompactionJobPlan{
-		{Name: "3"},
+		{Name: "4"},
 	}
 	for _, p := range plans {
 		store.On("GetJobPlan", mock.Anything, p.Name).Return(p, nil)
@@ -387,7 +387,8 @@ func TestSchedule_AssignEvict(t *testing.T) {
 	states := []*raft_log.CompactionJobState{
 		{Name: "1", Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS, Token: 1, LeaseExpiresAt: 0, Failures: 3},
 		{Name: "2", Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS, Token: 1, LeaseExpiresAt: 0, Failures: 3},
-		{Name: "3", Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS, Token: 1, LeaseExpiresAt: 0, Failures: 0},
+		{Name: "3", Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS, Token: 1, LeaseExpiresAt: 0, Failures: 3},
+		{Name: "4", Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS, Token: 1, LeaseExpiresAt: 0, Failures: 0},
 	}
 	for _, s := range states {
 		scheduler.queue.put(s)
@@ -401,12 +402,14 @@ func TestSchedule_AssignEvict(t *testing.T) {
 		// Assign all the available jobs.
 		update, err := s.AssignJob()
 		require.NoError(t, err)
-		assert.Equal(t, "3", update.State.Name)
+		assert.Equal(t, "4", update.State.Name)
 		update, err = s.AssignJob()
 		require.NoError(t, err)
 		assert.Nil(t, update)
 		// Now that no jobs can be assigned, we can try eviction.
 		assert.NotNil(t, s.EvictJob())
+		assert.NotNil(t, s.EvictJob())
+		// MaxQueueSize reached.
 		assert.Nil(t, s.EvictJob())
 	})
 }
@@ -436,7 +439,6 @@ func TestSchedule_Evict(t *testing.T) {
 		update, err := s.AssignJob()
 		require.NoError(t, err)
 		assert.Nil(t, update)
-		assert.NotNil(t, s.EvictJob())
 		assert.NotNil(t, s.EvictJob())
 		assert.Nil(t, s.EvictJob())
 	})
