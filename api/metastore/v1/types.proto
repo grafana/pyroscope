@@ -35,6 +35,8 @@ message BlockMeta {
 }
 
 message Dataset {
+  uint32 format = 9;
+
   int32 tenant = 1;
   int32 name = 2;
   int64 min_time = 3;
@@ -44,10 +46,15 @@ message Dataset {
   // service region. The offsets are absolute.
   //
   // The interpretation of the table of contents is specific
-  // to the metadata format version. By default, the sections are:
+  // to the format.
+  //
+  // By default (format 0), the sections are:
   //  - 0: profiles.parquet
   //  - 1: index.tsdb
   //  - 2: symbols.symdb
+  //
+  // Format 1 corresponds to the tenant-wide index:
+  //  - 0: index.tsdb (dataset index)
   repeated uint64 table_of_contents = 5;
 
   // Size of the dataset in bytes.

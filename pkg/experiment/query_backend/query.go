@@ -8,13 +8,11 @@ import (
 	"github.com/go-kit/log"
 	"github.com/iancoleman/strcase"
 	"github.com/opentracing/opentracing-go"
-	"github.com/prometheus/prometheus/model/labels"
 	"golang.org/x/sync/errgroup"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block"
-	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
 )
 
 // TODO(kolesnikovae): We have a procedural definition of our queries,
@@ -170,39 +168,22 @@ func newBlockContext(
 
 func (q *blockContext) needsDatasetLookup() bool {
 	md := q.obj.Metadata()
-	if len(md.Datasets) > 1 {
+	if len(md.Datasets) != 1 {
 		// The blocks metadata explicitly lists datasets to be queried.
 		return false
 	}
-
 	ds := md.Datasets[0]
-	t := metadata.OpenStringTable(md)
-	m := metadata.NewLabelMatcher(t, []*labels.Matcher{{
-		Type:  labels.MatchEqual,
-		Name:  metadata.LabelNameTenantDataset,
-		Value: metadata.LabelValueDatasetTSDBIndex,
-	}})
-	matches := m.Matches(ds.Labels)
-	if !matches {
+	if ds.Format != 1 {
 		return false
 	}
-
-	// The block contains a dataset TSDB index.
-	//
-	// If a query only requires TSDB data, we can serve it using
-	// the dataset index without accessing the full dataset.
-	qc := queryContext{req: q.req}
-	if s := qc.sections(); len(s) == 1 && s[0] == block.SectionTSDB {
-		// Create a TOC with a TSDB entry pointing to the dataset index.
-		// This allows the dataset to be used like a regular one.
-		// Version-specific behavior.
-		offset := ds.TableOfContents[0]
-		ds.TableOfContents = []uint64{offset, offset, ds.Size}
-		return false
-	}
-
 	q.idx = ds
-	return true
+	// If the query only requires TSDB data, we can serve it using
+	// the dataset index without accessing the full dataset; therefore,
+	// we report that the dataset lookup is not needed, meaning the
+	// dataset is to be queried as usual.
+	s := (&queryContext{req: q.req}).sections()
+	indexOnly := len(s) == 1 && s[0] == block.SectionTSDB
+	return !indexOnly
 }
 
 func (q *blockContext) lookupDatasets() error {
@@ -216,7 +197,7 @@ func (q *blockContext) lookupDatasets() error {
 		return q.obj.ReadMetadata(ctx)
 	})
 	g.Go(func() error {
-		return ds.Open(ctx, block.SectionTSDB)
+		return ds.Open(ctx, block.SectionDatasetIndex)
 	})
 	if err := g.Wait(); err != nil {
 		return err

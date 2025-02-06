@@ -83,7 +83,11 @@ func (b *Writer) Dir() string {
 	return b.cur
 }
 
-func (b *Writer) Write(p []byte) (n int, err error) { return b.w.Write(p) }
+func (b *Writer) Write(p []byte) (n int, err error) {
+	n, err = b.w.Write(p)
+	b.off += uint64(n)
+	return n, err
+}
 
 // ReadFromFile located in the directory Dir.
 func (b *Writer) ReadFromFile(file string) (err error) {

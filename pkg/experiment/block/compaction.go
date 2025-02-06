@@ -222,11 +222,15 @@ func (b *CompactionPlan) writeDatasetIndex(w *Writer) error {
 	if err != nil {
 		return err
 	}
+	// We annotate the dataset with the
+	// __tenant_dataset__ = "dataset_tsdb_index" label,
+	// so the dataset index metadata can be queried.
 	labels := metadata.NewLabelBuilder(b.strings).BuildPairs(
 		metadata.LabelNameTenantDataset,
 		metadata.LabelValueDatasetTSDBIndex,
 	)
 	b.meta.Datasets = append(b.meta.Datasets, &metastorev1.Dataset{
+		Format:          1,
 		Tenant:          b.meta.Tenant,
 		Name:            0, // Anonymous.
 		MinTime:         b.meta.MinTime,
@@ -352,7 +356,11 @@ func (m *datasetCompaction) open(ctx context.Context, path string) (err error) {
 	for _, s := range m.datasets {
 		s := s
 		g.Go(util.RecoverPanic(func() error {
-			if openErr := s.Open(ctx, allSections...); openErr != nil {
+			if openErr := s.Open(ctx,
+				SectionProfiles,
+				SectionTSDB,
+				SectionSymbols,
+			); openErr != nil {
 				return fmt.Errorf("opening tenant dataset (block %s): %w", s.obj.path, openErr)
 			}
 			return nil

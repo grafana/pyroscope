@@ -18,26 +18,46 @@ import (
 	"github.com/grafana/pyroscope/pkg/util/refctr"
 )
 
+type DatasetFormat uint32
+
+const (
+	DatasetFormat0 DatasetFormat = iota
+	DatasetFormat1
+)
+
 type Section uint32
 
 const (
-	// Table of contents sections.
-	_ Section = iota
-	SectionProfiles
+	SectionProfiles Section = iota
 	SectionTSDB
 	SectionSymbols
+	SectionDatasetIndex
 )
 
-var allSections = []Section{
-	SectionProfiles,
-	SectionTSDB,
-	SectionSymbols,
+type sectionDesc struct {
+	// The section entry index in the table of contents.
+	index int
+	// The name is only used in log and error messages.
+	name string
 }
 
 var (
-	// Version-specific.
-	sectionNames   = [...][]string{1: {"invalid", "profiles", "tsdb", "symbols"}}
-	sectionIndices = [...][]int{1: {-1, 0, 1, 2}}
+	// Format: section => desc
+	sections = [...][]sectionDesc{
+		DatasetFormat0: {
+			SectionProfiles: sectionDesc{index: 0, name: "profiles"},
+			SectionTSDB:     sectionDesc{index: 1, name: "tsdb"},
+			SectionSymbols:  sectionDesc{index: 2, name: "symbols"},
+		},
+		DatasetFormat1: {
+			// The dataset index can be used instead of the tsdb section of the
+			// dataset. Therefore, it has an alias record: if a query accesses
+			// the tsdb index of the dataset, it will access the tenant-wide
+			// dataset index.
+			SectionDatasetIndex: sectionDesc{index: 0, name: "dataset_tsdb_index"},
+			SectionTSDB:         sectionDesc{index: 0, name: "dataset_tsdb_index"},
+		},
+	}
 )
 
 func (sc Section) open(ctx context.Context, s *Dataset) (err error) {
@@ -48,6 +68,8 @@ func (sc Section) open(ctx context.Context, s *Dataset) (err error) {
 		return openSymbols(ctx, s)
 	case SectionProfiles:
 		return openProfileTable(ctx, s)
+	case SectionDatasetIndex:
+		return openDatasetIndex(ctx, s)
 	default:
 		panic(fmt.Sprintf("bug: unknown section: %d", sc))
 	}
@@ -101,14 +123,14 @@ func (s *Dataset) Open(ctx context.Context, sections ...Section) error {
 
 func (s *Dataset) open(ctx context.Context, sections ...Section) (err error) {
 	if s.err != nil {
-		// The tenant dataset has already been closed with an error.
+		// The dataset has already been closed with an error.
 		return s.err
 	}
 	if err = s.obj.Open(ctx); err != nil {
 		return fmt.Errorf("failed to open object: %w", err)
 	}
 	defer func() {
-		// Close the object here because the tenant dataset won't be
+		// Close the object here because the dataset won't be
 		// closed if it fails to open.
 		if err != nil {
 			_ = s.closeErr(err)
@@ -126,7 +148,7 @@ func (s *Dataset) open(ctx context.Context, sections ...Section) (err error) {
 		sc := sc
 		g.Go(util.RecoverPanic(func() error {
 			if openErr := sc.open(ctx, s); openErr != nil {
-				return fmt.Errorf("openning section %v: %w", s.sectionName(sc), openErr)
+				return fmt.Errorf("openning section %v: %w", s.section(sc).name, openErr)
 			}
 			return nil
 		}))
@@ -136,7 +158,7 @@ func (s *Dataset) open(ctx context.Context, sections ...Section) (err error) {
 
 func (s *Dataset) Close() error { return s.CloseWithError(nil) }
 
-// CloseWithError closes the tenant dataset and disposes all the resources
+// CloseWithError closes the dataset and disposes all the resources
 // associated with it.
 //
 // Any further attempts to open the dataset will return the provided error.
@@ -169,7 +191,7 @@ func (s *Dataset) closeErr(err error) error {
 	return merr.Err()
 }
 
-func (s *Dataset) Meta() *metastorev1.Dataset { return s.meta }
+func (s *Dataset) Metadata() *metastorev1.Dataset { return s.meta }
 
 func (s *Dataset) Profiles() *ParquetFile { return s.profiles }
 
@@ -179,39 +201,26 @@ func (s *Dataset) Symbols() symdb.SymbolsReader { return s.symbols }
 
 func (s *Dataset) Index() phlaredb.IndexReader { return s.tsdb.index }
 
-// Offset of the tenant dataset section within the object.
+// Offset of the dataset section within the object.
 func (s *Dataset) offset() uint64 { return s.meta.TableOfContents[0] }
 
-func (s *Dataset) sectionIndex(sc Section) int {
-	var n []int
-	switch s.obj.meta.FormatVersion {
-	default:
-		n = sectionIndices[1]
+func (s *Dataset) section(sc Section) sectionDesc {
+	if int(s.meta.Format) >= len(sections) {
+		panic(fmt.Sprintf("bug: unknown dataset format: %d", s.meta.Format))
 	}
-	if int(sc) >= len(n) {
-		panic(fmt.Sprintf("bug: invalid section index: %d (total: %d)", sc, len(n)))
+	f := sections[s.meta.Format]
+	if int(sc) >= len(f) {
+		panic(fmt.Sprintf("bug: invalid section index: %d", int(sc)))
 	}
-	return n[sc]
-}
-
-func (s *Dataset) sectionName(sc Section) string {
-	var n []string
-	switch s.obj.meta.FormatVersion {
-	default:
-		n = sectionNames[1]
-	}
-	if int(sc) >= len(n) {
-		panic(fmt.Sprintf("bug: invalid section index: %d (total: %d)", sc, len(n)))
-	}
-	return n[sc]
+	return f[sc]
 }
 
 func (s *Dataset) sectionOffset(sc Section) int64 {
-	return int64(s.meta.TableOfContents[s.sectionIndex(sc)])
+	return int64(s.meta.TableOfContents[s.section(sc).index])
 }
 
 func (s *Dataset) sectionSize(sc Section) int64 {
-	idx := s.sectionIndex(sc)
+	idx := s.section(sc).index
 	off := s.meta.TableOfContents[idx]
 	var next uint64
 	if idx == len(s.meta.TableOfContents)-1 {
@@ -225,18 +234,15 @@ func (s *Dataset) sectionSize(sc Section) int64 {
 func (s *Dataset) inMemoryBuffer() []byte {
 	if s.obj.buf != nil {
 		// If the entire object is loaded into memory,
-		// return the tenant dataset sub-slice.
+		// return the dataset sub-slice.
 		lo := s.offset()
 		hi := lo + s.meta.Size
 		buf := s.obj.buf.B
 		return buf[lo:hi]
 	}
 	if s.buf != nil {
-		// Otherwise, if the tenant dataset is loaded into memory
-		// individually, return the buffer.
 		return s.buf.B
 	}
-	// Otherwise, the tenant dataset is not loaded into memory.
 	return nil
 }
 
