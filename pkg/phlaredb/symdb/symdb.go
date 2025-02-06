@@ -97,17 +97,22 @@ type SymDB struct {
 }
 
 type Config struct {
-	Dir           string
-	Version       FormatVersion
-	Stacktraces   StacktracesConfig
-	Parquet       ParquetConfig
-	NoStatsUpdate bool
-	Writer        io.Writer // V3 only.
+	Version FormatVersion
+	// Output writer. Optional, V3 only.
+	Writer io.WriteCloser
+
+	// DEPRECATED: the parameter is not used and
+	// will be removed in the future versions.
+	Dir string
+	// DEPRECATED: the parameter is not used and
+	// will be removed in the future versions.
+	Stacktraces StacktracesConfig
+	// DEPRECATED: the parameter is not used and
+	// will be removed in the future versions.
+	Parquet ParquetConfig
 }
 
 type StacktracesConfig struct {
-	// DEPRECATED: the parameter is not used and
-	// will be removed in the future versions.
 	MaxNodesPerChunk uint32
 }
 
@@ -169,10 +174,8 @@ func NewSymDB(c *Config) *SymDB {
 		db.config.Version = FormatV2
 		db.writer = newWriterV2(c)
 	}
-	if !c.NoStatsUpdate {
-		db.wg.Add(1)
-		go db.updateStatsLoop()
-	}
+	db.wg.Add(1)
+	go db.updateStatsLoop()
 	return db
 }
 

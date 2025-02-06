@@ -63,6 +63,9 @@ func newEncodersV3() encodersV3 {
 
 func (w *writerV3) writePartitions(partitions []*PartitionWriter) (err error) {
 	if dst := w.config.Writer; dst != nil {
+		defer func() {
+			_ = w.config.Writer.Close()
+		}()
 		return w.writePartitionsWithWriter(withWriterOffset(dst), partitions)
 	}
 	if err = os.MkdirAll(w.config.Dir, 0o755); err != nil {
@@ -74,7 +77,7 @@ func (w *writerV3) writePartitions(partitions []*PartitionWriter) (err error) {
 		return err
 	}
 	defer func() {
-		err = f.Close()
+		_ = f.Close()
 		w.files = []block.File{f.meta()}
 	}()
 	return w.writePartitionsWithWriter(f.w, partitions)

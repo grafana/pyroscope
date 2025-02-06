@@ -208,7 +208,7 @@ func (q *blockContext) lookupDatasets() error {
 		return q.obj.ReadMetadata(ctx)
 	})
 	g.Go(func() error {
-		return ds.Open(q.ctx, block.SectionTSDB)
+		return ds.Open(ctx, block.SectionTSDB)
 	})
 	if err := g.Wait(); err != nil {
 		return err

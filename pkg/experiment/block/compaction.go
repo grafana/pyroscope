@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"slices"
 	"sort"
@@ -547,12 +548,15 @@ func newSymbolsRewriter() *symbolsRewriter {
 		buf: buf,
 		rw:  make(map[*Dataset]*symdb.Rewriter),
 		w: symdb.NewSymDB(&symdb.Config{
-			Version:       symdb.FormatV3,
-			Writer:        buf,
-			NoStatsUpdate: true,
+			Version: symdb.FormatV3,
+			Writer:  &nopWriteCloser{buf},
 		}),
 	}
 }
+
+type nopWriteCloser struct{ io.Writer }
+
+func (*nopWriteCloser) Close() error { return nil }
 
 func (s *symbolsRewriter) rewriteRow(e ProfileEntry) (err error) {
 	rw := s.rewriterFor(e.Dataset)
