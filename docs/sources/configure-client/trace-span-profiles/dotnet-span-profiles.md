@@ -80,4 +80,6 @@ Refer to the [Tempo data source configuration documentation](https://grafana.com
 
 ## Examples
 
-Check out the [examples](https://github.com/grafana/pyroscope/tree/main/examples/tracing/tempo) directory for a complete demo application of span profiles in multiple languages.
+Check out these demo applications for span profiles:
+- [.NET example](https://github.com/grafana/pyroscope/tree/main/examples/tracing/dotnet)
+- [Other examples](https://github.com/grafana/pyroscope/tree/main/examples/tracing/tempo) in multiple languages
