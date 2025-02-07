@@ -164,7 +164,8 @@ var castagnoli = crc32.MakeTable(crc32.Castagnoli)
 //	be_uint32 | size of the raw metadata
 //	be_uint32 | CRC32 of the raw metadata and size
 func Encode(w io.Writer, md *metastorev1.BlockMeta) error {
-	ww := crc32.New(castagnoli)
+	crc := crc32.New(castagnoli)
+	w = io.MultiWriter(w, crc)
 	b, _ := md.MarshalVT()
 	n, err := w.Write(b)
 	if err != nil {
@@ -173,7 +174,7 @@ func Encode(w io.Writer, md *metastorev1.BlockMeta) error {
 	if err = binary.Write(w, binary.BigEndian, uint32(n)); err != nil {
 		return err
 	}
-	return binary.Write(w, binary.BigEndian, ww.Sum32())
+	return binary.Write(w, binary.BigEndian, crc.Sum32())
 }
 
 // Decode metadata encoded with Encode.
@@ -183,11 +184,12 @@ func Decode(b []byte, md *metastorev1.BlockMeta) error {
 	}
 	crc := binary.BigEndian.Uint32(b[len(b)-4:])
 	size := binary.BigEndian.Uint32(b[len(b)-8 : len(b)-4])
-	if size != uint32(len(b)-8) {
+	off := len(b) - 8 - int(size)
+	if off < 0 {
 		return fmt.Errorf("%w: invalid size", ErrMetadataInvalid)
 	}
-	if crc32.Checksum(b[:len(b)-4], castagnoli) != crc {
+	if crc32.Checksum(b[off:len(b)-4], castagnoli) != crc {
 		return fmt.Errorf("%w: invalid CRC", ErrMetadataInvalid)
 	}
-	return md.UnmarshalVT(b[:len(b)-8])
+	return md.UnmarshalVT(b[off : len(b)-8])
 }
