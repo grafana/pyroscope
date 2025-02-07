@@ -228,7 +228,7 @@ func extractRSVersion(module string) func(tag Tag) *version {
 
 func extractDotnetVersion() func(tag Tag) *version {
 	return func(tag Tag) *version {
-		re := regexp.MustCompile(`v(\d+).(\d+).(\d+)-pyroscope`)
+		re := regexp.MustCompile(`v(\d+).(\d+).(\d+)$`)
 		match := re.FindStringSubmatch(tag.Name)
 		if match != nil {
 			fmt.Println(len(match), match)

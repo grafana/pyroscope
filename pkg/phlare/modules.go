@@ -184,7 +184,12 @@ func (f *Phlare) initRuntimeConfig() (services.Service, error) {
 	// make sure to set default limits before we start loading configuration into memory
 	validation.SetDefaultLimitsForYAMLUnmarshalling(f.Cfg.LimitsConfig)
 
-	serv, err := runtimeconfig.New(f.Cfg.RuntimeConfig, "pyroscope", prometheus.WrapRegistererWithPrefix("pyroscope_", f.reg), log.With(f.logger, "component", "runtime-config"))
+	serv, err := runtimeconfig.New(
+		f.Cfg.RuntimeConfig,
+		"pyroscope",
+		prometheus.WrapRegistererWithPrefix("pyroscope_", f.reg),
+		log.With(f.logger, "component", "runtime-config"),
+	)
 	if err == nil {
 		// TenantLimits just delegates to RuntimeConfig and doesn't have any state or need to do
 		// anything in the start/stopping phase. Thus we can create it as part of runtime config
@@ -193,27 +198,16 @@ func (f *Phlare) initRuntimeConfig() (services.Service, error) {
 	}
 
 	f.RuntimeConfig = serv
-	f.API.RegisterRuntimeConfig(runtimeConfigHandler(f.RuntimeConfig, f.Cfg.LimitsConfig), validation.TenantLimitsHandler(f.Cfg.LimitsConfig, f.TenantLimits))
+	f.API.RegisterRuntimeConfig(
+		runtimeConfigHandler(f.RuntimeConfig, f.Cfg.LimitsConfig),
+		validation.TenantLimitsHandler(f.Cfg.LimitsConfig, f.TenantLimits),
+	)
 
 	return serv, err
 }
 
 func (f *Phlare) initTenantSettings() (services.Service, error) {
-	var store settings.Store
-	var err error
-
-	switch {
-	case f.storageBucket != nil:
-		store, err = settings.NewBucketStore(f.storageBucket)
-	default:
-		store, err = settings.NewMemoryStore()
-		level.Warn(f.logger).Log("msg", "using in-memory settings store, changes will be lost after shutdown")
-	}
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to init settings store")
-	}
-
-	settings, err := settings.New(store, log.With(f.logger, "component", TenantSettings))
+	settings, err := settings.New(f.Cfg.TenantSettings, f.storageBucket, log.With(f.logger, "component", TenantSettings))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to init settings service")
 	}
@@ -280,7 +274,13 @@ func (f *Phlare) initCompactor() (serv services.Service, err error) {
 		return nil, nil
 	}
 
-	f.Compactor, err = compactor.NewMultitenantCompactor(f.Cfg.Compactor, f.storageBucket, f.Overrides, log.With(f.logger, "component", "compactor"), f.reg)
+	f.Compactor, err = compactor.NewMultitenantCompactor(
+		f.Cfg.Compactor,
+		f.storageBucket,
+		f.Overrides,
+		log.With(f.logger, "component", "compactor"),
+		f.reg,
+	)
 	if err != nil {
 		return
 	}
@@ -424,7 +424,13 @@ func (f *Phlare) initMemberlistKV() (services.Service, error) {
 }
 
 func (f *Phlare) initIngesterRing() (_ services.Service, err error) {
-	f.ingesterRing, err = ring.New(f.Cfg.Ingester.LifecyclerConfig.RingConfig, "ingester", "ring", log.With(f.logger, "component", "ring"), prometheus.WrapRegistererWithPrefix("pyroscope_", f.reg))
+	f.ingesterRing, err = ring.New(
+		f.Cfg.Ingester.LifecyclerConfig.RingConfig,
+		"ingester",
+		"ring",
+		log.With(f.logger, "component", "ring"),
+		prometheus.WrapRegistererWithPrefix("pyroscope_", f.reg),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -436,7 +442,8 @@ func (f *Phlare) initStorage() (_ services.Service, err error) {
 	objectStoreTypeStats.Set(f.Cfg.Storage.Bucket.Backend)
 	if cfg := f.Cfg.Storage.Bucket; cfg.Backend != objstoreclient.None {
 		if cfg.Backend == objstoreclient.Filesystem {
-			level.Warn(f.logger).Log("msg", "when running with storage.backend 'filesystem' it is important that all replicas/components share the same filesystem")
+			level.Warn(f.logger).
+				Log("msg", "when running with storage.backend 'filesystem' it is important that all replicas/components share the same filesystem")
 		}
 		b, err := objstoreclient.NewBucket(
 			f.context(),
@@ -465,7 +472,14 @@ func (f *Phlare) context() context.Context {
 func (f *Phlare) initIngester() (_ services.Service, err error) {
 	f.Cfg.Ingester.LifecyclerConfig.ListenPort = f.Cfg.Server.HTTPListenPort
 
-	svc, err := ingester.New(f.context(), f.Cfg.Ingester, f.Cfg.PhlareDB, f.storageBucket, f.Overrides, f.Cfg.Querier.QueryStoreAfter)
+	svc, err := ingester.New(
+		f.context(),
+		f.Cfg.Ingester,
+		f.Cfg.PhlareDB,
+		f.storageBucket,
+		f.Overrides,
+		f.Cfg.Querier.QueryStoreAfter,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -644,7 +658,10 @@ type statusService struct {
 	actualConfig  *Config
 }
 
-func (s *statusService) GetBuildInfo(ctx context.Context, req *statusv1.GetBuildInfoRequest) (*statusv1.GetBuildInfoResponse, error) {
+func (s *statusService) GetBuildInfo(
+	ctx context.Context,
+	req *statusv1.GetBuildInfoRequest,
+) (*statusv1.GetBuildInfoResponse, error) {
 	version := build.GetVersion()
 	return &statusv1.GetBuildInfoResponse{
 		Status: "success",

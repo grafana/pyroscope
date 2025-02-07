@@ -2,6 +2,7 @@ package settings
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"time"
 
@@ -11,14 +12,39 @@ import (
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/tenant"
 	"github.com/pkg/errors"
+	"github.com/thanos-io/objstore"
 
 	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/settings/v1/settingsv1connect"
+	"github.com/grafana/pyroscope/pkg/settings/collection"
 )
 
-func New(store Store, logger log.Logger) (*TenantSettings, error) {
+type Config struct {
+	Collection collection.Config `yaml:"collection_rules"`
+}
+
+func (cfg *Config) RegisterFlags(fs *flag.FlagSet) {
+	cfg.Collection.RegisterFlags(fs)
+}
+
+func (cfg *Config) Validate() error {
+	return cfg.Collection.Validate()
+}
+
+func New(cfg Config, bucket objstore.Bucket, logger log.Logger) (*TenantSettings, error) {
+	if bucket == nil {
+		bucket = objstore.NewInMemBucket()
+		level.Warn(logger).Log("msg", "using in-memory settings store, changes will be lost after shutdown")
+	}
+
 	ts := &TenantSettings{
-		store:  store,
-		logger: logger,
+		CollectionRulesServiceHandler: &settingsv1connect.UnimplementedCollectionRulesServiceHandler{},
+		store:                         newBucketStore(bucket),
+		logger:                        logger,
+	}
+
+	if cfg.Collection.Enabled {
+		ts.CollectionRulesServiceHandler = collection.New(cfg.Collection, bucket, logger)
 	}
 
 	ts.Service = services.NewBasicService(ts.starting, ts.running, ts.stopping)
@@ -28,8 +54,9 @@ func New(store Store, logger log.Logger) (*TenantSettings, error) {
 
 type TenantSettings struct {
 	services.Service
+	settingsv1connect.CollectionRulesServiceHandler
 
-	store  Store
+	store  store
 	logger log.Logger
 }
 
@@ -76,7 +103,10 @@ func (ts *TenantSettings) stopping(_ error) error {
 	return nil
 }
 
-func (ts *TenantSettings) Get(ctx context.Context, req *connect.Request[settingsv1.GetSettingsRequest]) (*connect.Response[settingsv1.GetSettingsResponse], error) {
+func (ts *TenantSettings) Get(
+	ctx context.Context,
+	req *connect.Request[settingsv1.GetSettingsRequest],
+) (*connect.Response[settingsv1.GetSettingsResponse], error) {
 	tenantID, err := tenant.TenantID(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -92,7 +122,10 @@ func (ts *TenantSettings) Get(ctx context.Context, req *connect.Request[settings
 	}), nil
 }
 
-func (ts *TenantSettings) Set(ctx context.Context, req *connect.Request[settingsv1.SetSettingsRequest]) (*connect.Response[settingsv1.SetSettingsResponse], error) {
+func (ts *TenantSettings) Set(
+	ctx context.Context,
+	req *connect.Request[settingsv1.SetSettingsRequest],
+) (*connect.Response[settingsv1.SetSettingsResponse], error) {
 	tenantID, err := tenant.TenantID(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)

@@ -15,15 +15,14 @@ func TestMemoryBucket_Get(t *testing.T) {
 	tenantID := "[anonymous]"
 
 	t.Run("get settings are sorted", func(t *testing.T) {
-		mem, err := NewMemoryStore()
-		assert.NoError(t, err)
+		mem := newMemoryStore()
 
 		settings := []*settingsv1.Setting{
 			{Name: "key1", Value: "val1"},
 			{Name: "key2", Value: "val2"},
 		}
 		for _, s := range settings {
-			_, err = mem.Set(ctx, tenantID, s)
+			_, err := mem.Set(ctx, tenantID, s)
 			assert.NoError(t, err)
 		}
 		got, err := mem.Get(ctx, tenantID)
@@ -35,8 +34,8 @@ func TestMemoryBucket_Get(t *testing.T) {
 	})
 
 	t.Run("don't get settings from another tenant", func(t *testing.T) {
-		mem, err := NewMemoryStore()
-		assert.NoError(t, err)
+		var err error
+		mem := newMemoryStore()
 
 		otherTenantID := "other"
 
@@ -69,8 +68,7 @@ func TestMemoryBucket_Set(t *testing.T) {
 	tenantID := "[anonymous]"
 
 	t.Run("set a new key", func(t *testing.T) {
-		mem, err := NewMemoryStore()
-		assert.NoError(t, err)
+		mem := newMemoryStore()
 
 		setting := &settingsv1.Setting{
 			Name:  "key1",
@@ -82,8 +80,7 @@ func TestMemoryBucket_Set(t *testing.T) {
 	})
 
 	t.Run("update a key", func(t *testing.T) {
-		mem, err := NewMemoryStore()
-		assert.NoError(t, err)
+		mem := newMemoryStore()
 
 		setting := &settingsv1.Setting{
 			Name:  "key1",
@@ -103,8 +100,7 @@ func TestMemoryBucket_Set(t *testing.T) {
 	})
 
 	t.Run("don't update a key that's too old", func(t *testing.T) {
-		mem, err := NewMemoryStore()
-		assert.NoError(t, err)
+		mem := newMemoryStore()
 
 		setting := &settingsv1.Setting{
 			Name:       "key1",

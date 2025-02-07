@@ -1,0 +1,91 @@
+// THIS IS A GENERATED REMOTE CONFIGURATION.
+//
+//   * You can edit the contents and matchers for this configuration without them being overwritten.
+//   * If you delete ALL generated configurations, the latest default versions will be recreated.
+//   * This configuration requires the following environment variables to be set wherever alloy is running:
+//     * GCLOUD_RW_API_KEY: The Grafana Cloud API key with write access to Pyroscope.
+//     * HOSTNAME: The nodeName of kubernetes
+
+// Write profiles to your Grafana Cloud Pyroscope instance.
+pyroscope.write "endpoint" {
+	endpoint {
+		url = "https://profiles-dev-007.grafana-dev.net/"
+
+		basic_auth {
+			username = "user-a"
+			password = sys.env("GCLOUD_RW_API_KEY")
+		}
+	}
+}
+
+discovery.kubernetes "local_pods" {
+	role = "pod"
+
+	selectors {
+		field = "spec.nodeName=" + sys.env("HOSTNAME")
+		role  = "pod"
+	}
+}
+
+discovery.relabel "local_pods" {
+	targets = discovery.kubernetes.local_pods.targets
+
+	rule {
+		action        = "drop"
+		regex         = "Succeeded|Failed"
+		source_labels = ["__meta_kubernetes_pod_phase"]
+	}
+
+	rule {
+		action        = "replace"
+		regex         = "(.*)@(.*)"
+		replacement   = "${1}/${2}"
+		separator     = "@"
+		source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_container_name"]
+		target_label  = "service_name"
+	}
+
+	rule {
+		action = "labelmap"
+		regex  = "__meta_kubernetes_pod_label_(.+)"
+	}
+
+	rule {
+		action        = "replace"
+		source_labels = ["__meta_kubernetes_namespace"]
+		target_label  = "namespace"
+	}
+
+	rule {
+		action        = "replace"
+		source_labels = ["__meta_kubernetes_pod_name"]
+		target_label  = "pod"
+	}
+
+	rule {
+		action        = "replace"
+		source_labels = ["__meta_kubernetes_node_name"]
+		target_label  = "node"
+	}
+
+	rule {
+		action        = "replace"
+		source_labels = ["__meta_kubernetes_pod_container_name"]
+		target_label  = "container"
+	}
+}
+
+discovery.relabel "filtered_pods" {
+	targets = discovery.relabel.local_pods.output
+
+	rule {
+		action        = "drop"
+		regex         = `service-b|service-hack\.\*"`
+		source_labels = ["service_name"]
+	}
+}
+
+pyroscope.java "local_pods" {
+	forward_to = [pyroscope.write.endpoint.receiver]
+	targets    = discovery.relabel.filtered_pods.output
+}

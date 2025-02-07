@@ -16,9 +16,6 @@ builds:
     goarch:
       - amd64
       - arm64
-      - arm
-    goarm:
-      - "7"
     main: ./cmd/pyroscope
     mod_timestamp: "{{ .CommitTimestamp }}"
     flags:
@@ -52,9 +49,6 @@ builds:
     goarch:
       - amd64
       - arm64
-      - arm
-    goarm:
-      - "7"
     ignore:
       - goos: windows
         goarch: arm
@@ -86,30 +80,17 @@ dockers:
   - use: buildx
     goos: linux
     goarch: arm64
+    dockerfile: ./cmd/pyroscope/Dockerfile
+    ids:
+      - pyroscope
+      - profilecli
     extra_files:
       - cmd/pyroscope/pyroscope.yaml
-    dockerfile: ./cmd/pyroscope/Dockerfile
     image_templates:
       - "grafana/{{ .ProjectName }}:{{ .Version }}-arm64v8"
       - "grafana/{{ .ProjectName }}:latest-arm64v8"
     build_flag_templates:
       - "--platform=linux/arm64/v8"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.title={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-  - use: buildx
-    goos: linux
-    goarch: arm
-    goarm: "7"
-    dockerfile: ./cmd/pyroscope/Dockerfile
-    extra_files:
-      - cmd/pyroscope/pyroscope.yaml
-    image_templates:
-      - "grafana/{{ .ProjectName }}:{{ .Version }}-armv7"
-      - "grafana/{{ .ProjectName }}:latest-armv7"
-    build_flag_templates:
-      - "--platform=linux/arm/v7"
       - "--label=org.opencontainers.image.created={{.Date}}"
       - "--label=org.opencontainers.image.title={{.ProjectName}}"
       - "--label=org.opencontainers.image.revision={{.FullCommit}}"
@@ -120,12 +101,10 @@ docker_manifests:
     image_templates:
       - grafana/{{ .ProjectName }}:{{ .Version }}-amd64
       - grafana/{{ .ProjectName }}:{{ .Version }}-arm64v8
-      - grafana/{{ .ProjectName }}:{{ .Version }}-armv7
   - name_template: grafana/{{ .ProjectName }}:latest
     image_templates:
       - grafana/{{ .ProjectName }}:latest-amd64
       - grafana/{{ .ProjectName }}:latest-arm64v8
-      - grafana/{{ .ProjectName }}:latest-armv7
 nfpms:
   - id: pyroscope
     formats:

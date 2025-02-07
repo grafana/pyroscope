@@ -43,6 +43,25 @@ var otlpTestDatas = []otlpTestData{
 		},
 	},
 	{
+		name:        "symbolized profile from otel-ebpf-profiler with offcpu enabled",
+		profilePath: "testdata/otel-ebpf-profiler-offcpu.pb.bin",
+		expectedProfiles: []expectedProfile{
+			{
+				"process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+				map[string]string{"service_name": "unknown"},
+				"testdata/otel-ebpf-profiler-offcpu-cpu.json",
+			},
+			{
+				"off_cpu:events:nanoseconds::",
+				map[string]string{"service_name": "unknown"},
+				"testdata/otel-ebpf-profiler-offcpu.json",
+			},
+		},
+		assertMetrics: func(t *testing.T, p *PyroscopeTest) {
+
+		},
+	},
+	{
 		name:        "symbolized (with some help from pyroscope-ebpf profiler) profile from otel-ebpf-profiler",
 		profilePath: "testdata/otel-ebpf-profiler-pyrosymbolized.pb.bin",
 		expectedProfiles: []expectedProfile{
@@ -97,9 +116,6 @@ func TestIngestOTLP(t *testing.T) {
 
 			for _, metric := range td.expectedProfiles {
 
-				expectedBytes, err := os.ReadFile(metric.expectedJsonPath)
-				assert.NoError(t, err)
-
 				query := make(map[string]string)
 				for k, v := range metric.query {
 					query[k] = v
@@ -124,6 +140,9 @@ func TestIngestOTLP(t *testing.T) {
 				assert.NoError(t, err)
 				err = os.WriteFile(pprofDumpFileName, pprof, 0644)
 				assert.NoError(t, err)
+
+				expectedBytes, err := os.ReadFile(metric.expectedJsonPath)
+				require.NoError(t, err)
 
 				assert.Equal(t, string(expectedBytes), actualStr)
 			}

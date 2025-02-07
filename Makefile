@@ -19,7 +19,7 @@ GOPRIVATE=github.com/grafana/frostdb
 
 # Boiler plate for building Docker containers.
 # All this must go at top of file I'm afraid.
-IMAGE_PREFIX ?= us.gcr.io/kubernetes-dev/
+IMAGE_PREFIX ?= grafana/
 
 IMAGE_TAG ?= $(shell ./tools/image-tag)
 GIT_REVISION := $(shell git rev-parse --short HEAD)
@@ -37,6 +37,9 @@ GO_MOD_PATHS := api/ ebpf/ examples/language-sdk-instrumentation/golang-push/rid
 
 # Add extra arguments to helm commands
 HELM_ARGS =
+
+# Local deployment params
+KIND_CLUSTER = pyroscope-dev
 
 .PHONY: help
 help: ## Describe useful make targets
@@ -197,7 +200,7 @@ check/go/mod: go/mod
 
 
 define docker_buildx
-	docker buildx build $(1) --platform $(IMAGE_PLATFORM) $(BUILDX_ARGS) --build-arg=revision=$(GIT_REVISION) -t $(IMAGE_PREFIX)$(shell basename $(@D)):$(2)latest -t $(IMAGE_PREFIX)$(shell basename $(@D)):$(2)$(IMAGE_TAG) -f cmd/$(shell basename $(@D))/$(2)Dockerfile .
+	docker buildx build $(1) --platform $(IMAGE_PLATFORM) $(BUILDX_ARGS) --build-arg=revision=$(GIT_REVISION) -t $(IMAGE_PREFIX)$(shell basename $(@D)):$(2)$(IMAGE_TAG) -f cmd/$(shell basename $(@D))/$(2)Dockerfile .
 endef
 
 define deploy
@@ -217,29 +220,63 @@ define deploy
 		--set pyroscope.extraArgs."pyroscopedb\.max-block-duration"=5m
 endef
 
+# Function to handle multiarch image build. Depending on the
+# debug_build and push_image args, we run one of:
+#  - docker-image/pyroscope/build
+#  - docker-image/pyroscope/build-debug
+#  - docker-image/pyroscope/push
+#  - docker-image/pyroscope/push-debug
+define multiarch_build
+	$(eval push_image=$(1))
+	$(eval debug_build=$(2))
+	$(eval build_cmd=docker-image/pyroscope/$(if $(push_image),push,build)$(if $(debug_build),-debug))
+	$(eval image_name=$(IMAGE_PREFIX)$(shell basename $(@D)):$(if $(debug_build),debug.)$(IMAGE_TAG))
+
+	GOOS=linux GOARCH=arm64 IMAGE_TAG="$(IMAGE_TAG)-arm64" $(MAKE) $(build_cmd) IMAGE_PLATFORM=linux/arm64
+	GOOS=linux GOARCH=amd64 IMAGE_TAG="$(IMAGE_TAG)-amd64" $(MAKE) $(build_cmd) IMAGE_PLATFORM=linux/amd64
+
+	$(if $(push_image), docker buildx imagetools create --tag "$(image_name)" "$(image_name)-amd64" "$(image_name)-arm64")
+endef
+
+.PHONY: docker-image/pyroscope/build-multiarch
+docker-image/pyroscope/build-multiarch:
+	$(call multiarch_build,,)
+
+.PHONY: docker-image/pyroscope/build-multiarch-debug
+docker-image/pyroscope/build-multiarch-debug:
+	$(call multiarch_build,,debug)
+
+.PHONY: docker-image/pyroscope/push-multiarch
+docker-image/pyroscope/push-multiarch:
+	$(call multiarch_build,push,)
+
+.PHONY: docker-image/pyroscope/push-multiarch-debug
+docker-image/pyroscope/push-multiarch-debug:
+	$(call multiarch_build,push,debug)
+
 .PHONY: docker-image/pyroscope/build-debug
-docker-image/pyroscope/build-debug: GOOS=linux
-docker-image/pyroscope/build-debug: GOARCH=amd64
-docker-image/pyroscope/build-debug: frontend/build go/bin-debug $(BIN)/linux_amd64/dlv
+docker-image/pyroscope/build-debug: frontend/build go/bin-debug docker-image/pyroscope/dlv
 	$(call docker_buildx,--load,debug.)
 
 .PHONY: docker-image/pyroscope/push-debug
-docker-image/pyroscope/push-debug: GOOS=linux
-docker-image/pyroscope/push-debug: GOARCH=amd64
-docker-image/pyroscope/push-debug: frontend/build go/bin-debug $(BIN)/linux_amd64/dlv
+docker-image/pyroscope/push-debug: frontend/build go/bin-debug docker-image/pyroscope/dlv
 	$(call docker_buildx,--push,debug.)
 
 .PHONY: docker-image/pyroscope/build
-docker-image/pyroscope/build: GOOS=linux
-docker-image/pyroscope/build: GOARCH=amd64
 docker-image/pyroscope/build: frontend/build go/bin
 	$(call docker_buildx,--load --iidfile .docker-image-id-pyroscope,)
 
 .PHONY: docker-image/pyroscope/push
-docker-image/pyroscope/push: GOOS=linux
-docker-image/pyroscope/push: GOARCH=amd64
 docker-image/pyroscope/push: frontend/build go/bin
 	$(call docker_buildx,--push,)
+
+.PHONY: docker-image/pyroscope/dlv
+docker-image/pyroscope/dlv:
+	# dlv is not intended for local use and is to be installed in the
+	# platform-specific docker image together with the main Pyroscope binary.
+	@mkdir -p $(@D)
+	GOPATH=$(CURDIR)/.tmp CGO_ENABLED=0 $(GO) install -ldflags "-s -w -extldflags '-static'" github.com/go-delve/delve/cmd/dlv@v1.23.0
+	mv $(CURDIR)/.tmp/bin/$(GOOS)_$(GOARCH)/dlv $(CURDIR)/.tmp/bin/dlv
 
 define UPDATER_CONFIG_JSON
 {
@@ -369,30 +406,15 @@ $(BIN)/gotestsum: Makefile go.mod
 	@mkdir -p $(@D)
 	GOBIN=$(abspath $(@D)) $(GO) install gotest.tools/gotestsum@v1.9.0
 
-DLV_VERSION=v1.23.0
-
-$(BIN)/dlv: Makefile go.mod
-	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) CGO_ENABLED=0 $(GO) install -ldflags "-s -w -extldflags '-static'" github.com/go-delve/delve/cmd/dlv@$(DLV_VERSION)
-
-$(BIN)/linux_amd64/dlv: Makefile go.mod
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 GOPATH=$(CURDIR)/.tmp $(GO) install -ldflags "-s -w -extldflags '-static'" github.com/go-delve/delve/cmd/dlv@$(DLV_VERSION);
-	# Create a hardlink if you are on linux_amd64, so we are able to use the same dockerfile
-	if [[ "$(shell $(GO) env GOOS)" == "linux" && "$(shell $(GO) env GOARCH)" == "amd64" ]]; then \
-		mkdir -p "$(@D)"; \
-		ln -f $(BIN)/dlv "$@"; \
-	fi
-
 .PHONY: cve/check
 cve/check:
 	docker run -t -i --rm --volume "$(CURDIR)/:/repo" -u "$(shell id -u)" aquasec/trivy:0.45.1 filesystem --cache-dir /repo/.cache/trivy --scanners vuln --skip-dirs .tmp/ --skip-dirs node_modules/ --skip-dirs tools/monitoring/vendor/ /repo
-
-KIND_CLUSTER = pyroscope-dev
 
 .PHONY: helm/lint
 helm/lint: $(BIN)/helm
 	$(BIN)/helm lint ./operations/pyroscope/helm/pyroscope/
 
+.PHONY: helm/docs
 helm/docs: $(BIN)/helm
 	docker run --rm --volume "$(CURDIR)/operations/pyroscope/helm:/helm-docs" -u "$(shell id -u)" jnorwood/helm-docs:v1.8.1
 

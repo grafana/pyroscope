@@ -5,13 +5,20 @@ import (
 	"time"
 
 	googleProfile "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	otelProfile "github.com/grafana/pyroscope/api/otlp/profiles/v1development"
+	pyromodel "github.com/grafana/pyroscope/pkg/model"
 )
 
 const serviceNameKey = "service.name"
 
+type convertedProfile struct {
+	profile *googleProfile.Profile
+	name    *typesv1.LabelPair
+}
+
 // ConvertOtelToGoogle converts an OpenTelemetry profile to a Google profile.
-func ConvertOtelToGoogle(src *otelProfile.Profile) map[string]*googleProfile.Profile {
+func ConvertOtelToGoogle(src *otelProfile.Profile) (map[string]convertedProfile, error) {
 	svc2Profile := make(map[string]*profileBuilder)
 	for _, sample := range src.Sample {
 		svc := serviceNameFromSample(src, sample)
@@ -20,16 +27,26 @@ func ConvertOtelToGoogle(src *otelProfile.Profile) map[string]*googleProfile.Pro
 			p = newProfileBuilder(src)
 			svc2Profile[svc] = p
 		}
-		p.convertSampleBack(sample)
+		if _, err := p.convertSampleBack(sample); err != nil {
+			return nil, err
+		}
 	}
 
-	result := make(map[string]*googleProfile.Profile)
+	result := make(map[string]convertedProfile)
 	for svc, p := range svc2Profile {
-		result[svc] = p.dst
+		result[svc] = convertedProfile{p.dst, p.name}
 	}
 
-	return result
+	return result, nil
 }
+
+type sampleConversionType int
+
+const (
+	sampleConversionTypeNone           sampleConversionType = 0
+	sampleConversionTypeSamplesToNanos sampleConversionType = 1
+	sampleConversionTypeSumEvents      sampleConversionType = 2
+)
 
 type profileBuilder struct {
 	src                     *otelProfile.Profile
@@ -39,7 +56,9 @@ type profileBuilder struct {
 	unsymbolziedFuncNameMap map[string]uint64
 	locationMap             map[*otelProfile.Location]uint64
 	mappingMap              map[*otelProfile.Mapping]uint64
-	cpuConversion           bool
+
+	sampleProcessingTypes []sampleConversionType
+	name                  *typesv1.LabelPair
 }
 
 func newProfileBuilder(src *otelProfile.Profile) *profileBuilder {
@@ -66,19 +85,36 @@ func newProfileBuilder(src *otelProfile.Profile) *profileBuilder {
 			Unit: res.addstr("ms"),
 		}}
 		res.dst.DefaultSampleType = res.addstr("samples")
-	} else if len(res.dst.SampleType) == 1 && res.dst.PeriodType != nil && res.dst.Period != 0 {
-		profileType := fmt.Sprintf("%s:%s:%s:%s",
-			res.dst.StringTable[res.dst.SampleType[0].Type],
-			res.dst.StringTable[res.dst.SampleType[0].Unit],
-			res.dst.StringTable[res.dst.PeriodType.Type],
-			res.dst.StringTable[res.dst.PeriodType.Unit],
-		)
+	}
+	res.sampleProcessingTypes = make([]sampleConversionType, len(res.dst.SampleType))
+	for i := 0; i < len(res.dst.SampleType); i++ {
+		profileType := res.profileType(i)
 		if profileType == "samples:count:cpu:nanoseconds" {
-			res.dst.SampleType = []*googleProfile.ValueType{{
+			res.dst.SampleType[i] = &googleProfile.ValueType{
 				Type: res.addstr("cpu"),
 				Unit: res.addstr("nanoseconds"),
-			}}
-			res.cpuConversion = true
+			}
+			if len(res.dst.SampleType) == 1 {
+				res.name = &typesv1.LabelPair{
+					Name:  pyromodel.LabelNameProfileName,
+					Value: "process_cpu",
+				}
+			}
+			res.sampleProcessingTypes[i] = sampleConversionTypeSamplesToNanos
+		}
+		// Identify off cpu profiles
+		if profileType == "events:nanoseconds::" && len(res.dst.SampleType) == 1 {
+			res.sampleProcessingTypes[i] = sampleConversionTypeSumEvents
+			res.name = &typesv1.LabelPair{
+				Name:  pyromodel.LabelNameProfileName,
+				Value: pyromodel.ProfileNameOffCpu,
+			}
+		}
+	}
+	if res.name == nil {
+		res.name = &typesv1.LabelPair{
+			Name:  pyromodel.LabelNameProfileName,
+			Value: "process_cpu", // guess
 		}
 	}
 
@@ -89,6 +125,22 @@ func newProfileBuilder(src *otelProfile.Profile) *profileBuilder {
 		res.dst.DurationNanos = (time.Second * 10).Nanoseconds()
 	}
 	return res
+}
+
+func (p *profileBuilder) profileType(idx int) string {
+	var (
+		periodType, periodUnit string
+	)
+	if p.dst.PeriodType != nil && p.dst.Period != 0 {
+		periodType = p.dst.StringTable[p.dst.PeriodType.Type]
+		periodUnit = p.dst.StringTable[p.dst.PeriodType.Unit]
+	}
+	return fmt.Sprintf("%s:%s:%s:%s",
+		p.dst.StringTable[p.dst.SampleType[idx].Type],
+		p.dst.StringTable[p.dst.SampleType[idx].Unit],
+		periodType,
+		periodUnit,
+	)
 }
 
 func (p *profileBuilder) addstr(s string) int64 {
@@ -198,16 +250,32 @@ func (p *profileBuilder) convertFunctionBack(of *otelProfile.Function) uint64 {
 	return gf.Id
 }
 
-func (p *profileBuilder) convertSampleBack(os *otelProfile.Sample) *googleProfile.Sample {
+func (p *profileBuilder) convertSampleBack(os *otelProfile.Sample) (*googleProfile.Sample, error) {
 	gs := &googleProfile.Sample{
 		Value: os.Value,
 	}
-
 	if len(gs.Value) == 0 {
-		gs.Value = []int64{int64(len(os.TimestampsUnixNano))}
-	} else if len(gs.Value) == 1 && p.cpuConversion {
-		gs.Value[0] *= p.src.Period
+		return nil, fmt.Errorf("sample value is required")
 	}
+
+	for i, typ := range p.sampleProcessingTypes {
+		switch typ {
+		case sampleConversionTypeSamplesToNanos:
+			gs.Value[i] *= p.src.Period
+		case sampleConversionTypeSumEvents:
+			// For off-CPU profiles, aggregate all sample values into a single sum
+			// since pprof cannot represent variable-length sample values
+			sum := int64(0)
+			for _, v := range gs.Value {
+				sum += v
+			}
+			gs.Value = []int64{sum}
+		}
+	}
+	if p.dst.Period != 0 && p.dst.PeriodType != nil && len(gs.Value) != len(p.dst.SampleType) {
+		return nil, fmt.Errorf("sample values length mismatch %d %d", len(gs.Value), len(p.dst.SampleType))
+	}
+
 	p.convertSampleAttributesToLabelsBack(os, gs)
 
 	for i := os.LocationsStartIndex; i < os.LocationsStartIndex+os.LocationsLength; i++ {
@@ -216,7 +284,7 @@ func (p *profileBuilder) convertSampleBack(os *otelProfile.Sample) *googleProfil
 
 	p.dst.Sample = append(p.dst.Sample, gs)
 
-	return gs
+	return gs, nil
 }
 
 func (p *profileBuilder) convertSampleAttributesToLabelsBack(os *otelProfile.Sample, gs *googleProfile.Sample) {

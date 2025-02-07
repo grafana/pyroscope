@@ -27,9 +27,9 @@ type routerTestSuite struct {
 	logger   log.Logger
 	registry *prometheus.Registry
 
-	overrides *mockOverrides
-	frontend  *mockquerierv1connect.MockQuerierServiceClient
-	backend   *mockquerierv1connect.MockQuerierServiceClient
+	overrides   *mockOverrides
+	oldFrontend *mockquerierv1connect.MockQuerierServiceClient
+	newFrontend *mockquerierv1connect.MockQuerierServiceClient
 
 	ctx context.Context
 }
@@ -45,13 +45,13 @@ func (s *routerTestSuite) SetupTest() {
 	s.logger = log.NewLogfmtLogger(io.Discard)
 	s.registry = prometheus.NewRegistry()
 	s.overrides = new(mockOverrides)
-	s.frontend = new(mockquerierv1connect.MockQuerierServiceClient)
-	s.backend = new(mockquerierv1connect.MockQuerierServiceClient)
+	s.oldFrontend = new(mockquerierv1connect.MockQuerierServiceClient)
+	s.newFrontend = new(mockquerierv1connect.MockQuerierServiceClient)
 	s.router = NewRouter(
 		s.logger,
 		s.overrides,
-		s.frontend,
-		s.backend,
+		s.oldFrontend,
+		s.newFrontend,
 	)
 	s.ctx = tenant.InjectTenantID(context.Background(), "tenant-a")
 }
@@ -60,8 +60,8 @@ func (s *routerTestSuite) BeforeTest(_, _ string) {}
 
 func (s *routerTestSuite) AfterTest(_, _ string) {
 	s.overrides.AssertExpectations(s.T())
-	s.frontend.AssertExpectations(s.T())
-	s.backend.AssertExpectations(s.T())
+	s.oldFrontend.AssertExpectations(s.T())
+	s.newFrontend.AssertExpectations(s.T())
 }
 
 func TestRouterSuite(t *testing.T) { suite.Run(t, new(routerTestSuite)) }
@@ -70,18 +70,18 @@ func (s *routerTestSuite) Test_FrontendOnly() {
 	s.overrides.On("ReadPathOverrides", "tenant-a").Return(Config{EnableQueryBackend: false})
 
 	expected := connect.NewResponse(&typesv1.LabelNamesResponse{Names: []string{"foo", "bar"}})
-	s.frontend.On("LabelNames", mock.Anything, mock.Anything).Return(expected, nil).Once()
+	s.oldFrontend.On("LabelNames", mock.Anything, mock.Anything).Return(expected, nil).Once()
 
 	resp, err := s.router.LabelNames(s.ctx, connect.NewRequest(&typesv1.LabelNamesRequest{}))
 	s.Require().NoError(err)
 	s.Assert().Equal(expected, resp)
 }
 
-func (s *routerTestSuite) Test_BackendOnly() {
+func (s *routerTestSuite) Test_NewFrontendOnly() {
 	s.overrides.On("ReadPathOverrides", "tenant-a").Return(Config{EnableQueryBackend: true})
 
 	expected := connect.NewResponse(&typesv1.LabelNamesResponse{Names: []string{"foo", "bar"}})
-	s.backend.On("LabelNames", mock.Anything, mock.Anything).Return(expected, nil).Once()
+	s.newFrontend.On("LabelNames", mock.Anything, mock.Anything).Return(expected, nil).Once()
 
 	resp, err := s.router.LabelNames(s.ctx, connect.NewRequest(&typesv1.LabelNamesRequest{}))
 	s.Require().NoError(err)
@@ -96,11 +96,11 @@ func (s *routerTestSuite) Test_Combined() {
 
 	req1 := connect.NewRequest(&typesv1.LabelNamesRequest{Start: 10, End: 19999})
 	resp1 := connect.NewResponse(&typesv1.LabelNamesResponse{Names: []string{"foo", "bar"}})
-	s.frontend.On("LabelNames", mock.Anything, req1).Return(resp1, nil).Once()
+	s.oldFrontend.On("LabelNames", mock.Anything, req1).Return(resp1, nil).Once()
 
 	req2 := connect.NewRequest(&typesv1.LabelNamesRequest{Start: 20000, End: math.MaxInt64})
 	resp2 := connect.NewResponse(&typesv1.LabelNamesResponse{Names: []string{"baz", "foo", "qux"}})
-	s.backend.On("LabelNames", mock.Anything, req2).Return(resp2, nil).Once()
+	s.newFrontend.On("LabelNames", mock.Anything, req2).Return(resp2, nil).Once()
 
 	expected := connect.NewResponse(&typesv1.LabelNamesResponse{Names: []string{"bar", "baz", "foo", "qux"}})
 	resp, err := s.router.LabelNames(s.ctx, connect.NewRequest(&typesv1.LabelNamesRequest{
@@ -120,7 +120,7 @@ func (s *routerTestSuite) Test_Combined_BeforeSplit() {
 
 	expected := connect.NewResponse(&typesv1.LabelNamesResponse{Names: []string{"foo", "bar"}})
 	req := connect.NewRequest(&typesv1.LabelNamesRequest{Start: 10, End: 10000})
-	s.frontend.On("LabelNames", mock.Anything, req).Return(expected, nil).Once()
+	s.oldFrontend.On("LabelNames", mock.Anything, req).Return(expected, nil).Once()
 
 	resp, err := s.router.LabelNames(s.ctx, req)
 	s.Require().NoError(err)
@@ -135,7 +135,7 @@ func (s *routerTestSuite) Test_Combined_AfterSplit() {
 
 	expected := connect.NewResponse(&typesv1.LabelNamesResponse{Names: []string{"foo", "bar"}})
 	req := connect.NewRequest(&typesv1.LabelNamesRequest{Start: 30000, End: 40000})
-	s.backend.On("LabelNames", mock.Anything, req).Return(expected, nil).Once()
+	s.newFrontend.On("LabelNames", mock.Anything, req).Return(expected, nil).Once()
 
 	resp, err := s.router.LabelNames(s.ctx, req)
 	s.Require().NoError(err)
@@ -150,8 +150,8 @@ func (s *routerTestSuite) Test_LabelNames() {
 
 	req := connect.NewRequest(&typesv1.LabelNamesRequest{Start: 10, End: 10000})
 	expected := connect.NewResponse(&typesv1.LabelNamesResponse{Names: []string{"bar", "foo"}})
-	s.frontend.On("LabelNames", mock.Anything, mock.Anything).Return(expected, nil).Once()
-	s.backend.On("LabelNames", mock.Anything, mock.Anything).Return(expected, nil).Once()
+	s.oldFrontend.On("LabelNames", mock.Anything, mock.Anything).Return(expected, nil).Once()
+	s.newFrontend.On("LabelNames", mock.Anything, mock.Anything).Return(expected, nil).Once()
 
 	resp, err := s.router.LabelNames(s.ctx, req)
 	s.Require().NoError(err)
@@ -166,8 +166,8 @@ func (s *routerTestSuite) Test_LabelValues() {
 
 	req := connect.NewRequest(&typesv1.LabelValuesRequest{Start: 10, End: 10000})
 	expected := connect.NewResponse(&typesv1.LabelValuesResponse{Names: []string{"bar", "foo"}})
-	s.frontend.On("LabelValues", mock.Anything, mock.Anything).Return(expected, nil).Once()
-	s.backend.On("LabelValues", mock.Anything, mock.Anything).Return(expected, nil).Once()
+	s.oldFrontend.On("LabelValues", mock.Anything, mock.Anything).Return(expected, nil).Once()
+	s.newFrontend.On("LabelValues", mock.Anything, mock.Anything).Return(expected, nil).Once()
 
 	resp, err := s.router.LabelValues(s.ctx, req)
 	s.Require().NoError(err)
@@ -187,8 +187,8 @@ func (s *routerTestSuite) Test_Series() {
 		},
 	})
 
-	s.frontend.On("Series", mock.Anything, mock.Anything).Return(expected, nil).Once()
-	s.backend.On("Series", mock.Anything, mock.Anything).Return(expected, nil).Once()
+	s.oldFrontend.On("Series", mock.Anything, mock.Anything).Return(expected, nil).Once()
+	s.newFrontend.On("Series", mock.Anything, mock.Anything).Return(expected, nil).Once()
 
 	resp, err := s.router.Series(s.ctx, req)
 	s.Require().NoError(err)
@@ -209,7 +209,7 @@ func (s *routerTestSuite) Test_TimeSeries_Limit() {
 		},
 	})
 
-	s.frontend.On("SelectSeries",
+	s.oldFrontend.On("SelectSeries",
 		mock.Anything, connect.NewRequest(&querierv1.SelectSeriesRequest{Start: 10, End: 4999})).
 		Return(connect.NewResponse(&querierv1.SelectSeriesResponse{
 			Series: []*typesv1.Series{
@@ -217,7 +217,7 @@ func (s *routerTestSuite) Test_TimeSeries_Limit() {
 				{Labels: model.LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 2}}},
 			}}), nil).Once()
 
-	s.backend.On("SelectSeries",
+	s.newFrontend.On("SelectSeries",
 		mock.Anything, connect.NewRequest(&querierv1.SelectSeriesRequest{Start: 5000, End: 10000})).
 		Return(connect.NewResponse(&querierv1.SelectSeriesResponse{
 			Series: []*typesv1.Series{
@@ -225,6 +225,42 @@ func (s *routerTestSuite) Test_TimeSeries_Limit() {
 				{Labels: model.LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}}},
 			}}), nil).Once()
 
+	resp, err := s.router.SelectSeries(s.ctx, req)
+	s.Require().NoError(err)
+	s.Assert().Equal(expected, resp)
+}
+
+func (s *routerTestSuite) Test_TimeSeries_Limit_NewFrontendOnly() {
+	s.overrides.On("ReadPathOverrides", "tenant-a").Return(Config{
+		EnableQueryBackend: true,
+	})
+
+	one := int64(1)
+	req := connect.NewRequest(&querierv1.SelectSeriesRequest{Start: 10, End: 10000, Limit: &one})
+	expected := connect.NewResponse(&querierv1.SelectSeriesResponse{
+		Series: []*typesv1.Series{
+			{Labels: model.LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 3}}},
+		},
+	})
+
+	s.newFrontend.On("SelectSeries", mock.Anything, req).Return(expected, nil).Once()
+	resp, err := s.router.SelectSeries(s.ctx, req)
+	s.Require().NoError(err)
+	s.Assert().Equal(expected, resp)
+}
+
+func (s *routerTestSuite) Test_TimeSeries_Limit_OldFrontendOnly() {
+	s.overrides.On("ReadPathOverrides", "tenant-a").Return(Config{})
+
+	one := int64(1)
+	req := connect.NewRequest(&querierv1.SelectSeriesRequest{Start: 10, End: 10000, Limit: &one})
+	expected := connect.NewResponse(&querierv1.SelectSeriesResponse{
+		Series: []*typesv1.Series{
+			{Labels: model.LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 3}}},
+		},
+	})
+
+	s.oldFrontend.On("SelectSeries", mock.Anything, req).Return(expected, nil).Once()
 	resp, err := s.router.SelectSeries(s.ctx, req)
 	s.Require().NoError(err)
 	s.Assert().Equal(expected, resp)
@@ -244,7 +280,7 @@ func (s *routerTestSuite) Test_TimeSeries_NoLimit() {
 		},
 	})
 
-	s.frontend.On("SelectSeries",
+	s.oldFrontend.On("SelectSeries",
 		mock.Anything, connect.NewRequest(&querierv1.SelectSeriesRequest{Start: 10, End: 4999})).
 		Return(connect.NewResponse(&querierv1.SelectSeriesResponse{
 			Series: []*typesv1.Series{
@@ -252,7 +288,7 @@ func (s *routerTestSuite) Test_TimeSeries_NoLimit() {
 				{Labels: model.LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 2}}},
 			}}), nil).Once()
 
-	s.backend.On("SelectSeries",
+	s.newFrontend.On("SelectSeries",
 		mock.Anything, connect.NewRequest(&querierv1.SelectSeriesRequest{Start: 5000, End: 10000})).
 		Return(connect.NewResponse(&querierv1.SelectSeriesResponse{
 			Series: []*typesv1.Series{

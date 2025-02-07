@@ -3,6 +3,8 @@ package otlp
 import (
 	"context"
 	"os"
+	"sort"
+	"strings"
 	"testing"
 
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
@@ -163,60 +165,166 @@ func TestAppendAttributesUnique(t *testing.T) {
 
 func readJSONFile(t *testing.T, filename string) string {
 	data, err := os.ReadFile(filename)
-	require.NoError(t, err)
+	require.NoError(t, err, "filename: "+filename)
 	return string(data)
 }
 
-func TestSymbolizedFunctionNames(t *testing.T) {
-	// Create two unsymbolized locations at 0x1e0 and 0x2f0
-	// Expect both of them to be present in the converted pprof
-	svc := mockotlp.NewMockPushService(t)
-	var profiles []*model.PushRequest
-	svc.On("PushParsed", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
-		c := (args.Get(1)).(*model.PushRequest)
-		profiles = append(profiles, c)
-	}).Return(nil, nil)
+func TestConversion(t *testing.T) {
 
-	otlpb := new(otlpbuilder)
-	otlpb.profile.MappingTable = []*v1experimental.Mapping{{
-		MemoryStart:      0x1000,
-		MemoryLimit:      0x1000,
-		FilenameStrindex: otlpb.addstr("file1.so"),
-	}}
-	otlpb.profile.LocationTable = []*v1experimental.Location{{
-		MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 0},
-		Address:       0x1e0,
-		Line:          nil,
-	}, {
-		MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 0},
-		Address:       0x2f0,
-		Line:          nil,
-	}}
-	otlpb.profile.LocationIndices = []int32{0, 1}
-	otlpb.profile.Sample = []*v1experimental.Sample{{
-		LocationsStartIndex: 0,
-		LocationsLength:     2,
-		Value:               []int64{0xef},
-	}}
-	otlpb.profile.TimeNanos = 239
-	req := &v1experimental2.ExportProfilesServiceRequest{
-		ResourceProfiles: []*v1experimental.ResourceProfiles{{
-			ScopeProfiles: []*v1experimental.ScopeProfiles{{
-				Profiles: []*v1experimental.Profile{
-					&otlpb.profile,
-				}}}}}}
-	logger := testutil.NewLogger(t)
-	h := NewOTLPIngestHandler(svc, logger, false)
-	_, err := h.Export(context.Background(), req)
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(profiles))
+	testdata := []struct {
+		name             string
+		expectedJsonFile string
+		expectedError    string
+		profile          func() *otlpbuilder
+	}{
+		{
+			name:             "symbolized function names",
+			expectedJsonFile: "testdata/TestSymbolizedFunctionNames.json",
+			profile: func() *otlpbuilder {
+				b := new(otlpbuilder)
+				b.profile.MappingTable = []*v1experimental.Mapping{{
+					MemoryStart:      0x1000,
+					MemoryLimit:      0x1000,
+					FilenameStrindex: b.addstr("file1.so"),
+				}}
+				b.profile.LocationTable = []*v1experimental.Location{{
+					MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 0},
+					Address:       0x1e0,
+					Line:          nil,
+				}, {
+					MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 0},
+					Address:       0x2f0,
+					Line:          nil,
+				}}
+				b.profile.LocationIndices = []int32{0, 1}
+				b.profile.Sample = []*v1experimental.Sample{{
+					LocationsStartIndex: 0,
+					LocationsLength:     2,
+					Value:               []int64{0xef},
+				}}
+				return b
+			},
+		},
+		{
+			name:             "offcpu",
+			expectedJsonFile: "testdata/TestConversionOffCpu.json",
+			profile: func() *otlpbuilder {
+				b := new(otlpbuilder)
+				b.profile.SampleType = []*v1experimental.ValueType{{
+					TypeStrindex: b.addstr("events"),
+					UnitStrindex: b.addstr("nanoseconds"),
+				}}
+				b.profile.MappingTable = []*v1experimental.Mapping{{
+					MemoryStart:      0x1000,
+					MemoryLimit:      0x1000,
+					FilenameStrindex: b.addstr("file1.so"),
+				}}
+				b.profile.LocationTable = []*v1experimental.Location{{
+					MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 0},
+					Address:       0x1e0,
+				}, {
+					MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 0},
+					Address:       0x2f0,
+				}, {
+					MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 0},
+					Address:       0x3f0,
+				}}
+				b.profile.LocationIndices = []int32{0, 1, 2}
+				b.profile.Sample = []*v1experimental.Sample{{
+					LocationsStartIndex: 0,
+					LocationsLength:     2,
+					Value:               []int64{0xef},
+				}, {
+					LocationsStartIndex: 2,
+					LocationsLength:     1,
+					Value:               []int64{1, 2, 3, 4, 5, 6},
+				}}
+				return b
+			},
+		},
+		{
+			name:          "samples with different value sizes ",
+			expectedError: "sample values length mismatch",
+			profile: func() *otlpbuilder {
+				b := new(otlpbuilder)
+				b.profile.SampleType = []*v1experimental.ValueType{{
+					TypeStrindex: b.addstr("wrote_type"),
+					UnitStrindex: b.addstr("wrong_unit"),
+				}}
+				b.profile.MappingTable = []*v1experimental.Mapping{{
+					MemoryStart:      0x1000,
+					MemoryLimit:      0x1000,
+					FilenameStrindex: b.addstr("file1.so"),
+				}}
+				b.profile.LocationTable = []*v1experimental.Location{{
+					MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 0},
+					Address:       0x1e0,
+				}, {
+					MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 0},
+					Address:       0x2f0,
+				}, {
+					MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 0},
+					Address:       0x3f0,
+				}}
+				b.profile.LocationIndices = []int32{0, 1, 2}
+				b.profile.PeriodType = &v1experimental.ValueType{
+					TypeStrindex:           b.addstr("period_type"),
+					UnitStrindex:           b.addstr("period_unit"),
+					AggregationTemporality: 0,
+				}
+				b.profile.Period = 100
+				b.profile.Sample = []*v1experimental.Sample{{
+					LocationsStartIndex: 0,
+					LocationsLength:     2,
+					Value:               []int64{0xef},
+				}, {
+					LocationsStartIndex: 2,
+					LocationsLength:     1,
+					Value:               []int64{1, 2, 3, 4, 5, 6}, // should be rejected because of that
+				}}
+				return b
+			},
+		},
+	}
 
-	gp := profiles[0].Series[0].Samples[0].Profile.Profile
+	for _, td := range testdata {
+		td := td
 
-	jsonStr, err := strprofile.Stringify(gp, strprofile.Options{})
-	assert.NoError(t, err)
-	expectedJSON := readJSONFile(t, "testdata/TestSymbolizedFunctionNames.json")
-	assert.JSONEq(t, expectedJSON, jsonStr)
+		t.Run(td.name, func(t *testing.T) {
+			svc := mockotlp.NewMockPushService(t)
+			var profiles []*model.PushRequest
+			svc.On("PushParsed", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+				c := (args.Get(1)).(*model.PushRequest)
+				profiles = append(profiles, c)
+			}).Return(nil, nil).Maybe()
+			b := td.profile()
+			b.profile.TimeNanos = 239
+			req := &v1experimental2.ExportProfilesServiceRequest{
+				ResourceProfiles: []*v1experimental.ResourceProfiles{{
+					ScopeProfiles: []*v1experimental.ScopeProfiles{{
+						Profiles: []*v1experimental.Profile{
+							&b.profile,
+						}}}}}}
+			logger := testutil.NewLogger(t)
+			h := NewOTLPIngestHandler(svc, logger, false)
+			_, err := h.Export(context.Background(), req)
+
+			if td.expectedError == "" {
+				require.NoError(t, err)
+				require.Equal(t, 1, len(profiles))
+
+				gp := profiles[0].Series[0].Samples[0].Profile.Profile
+
+				jsonStr, err := strprofile.Stringify(gp, strprofile.Options{})
+				assert.NoError(t, err)
+				expectedJSON := readJSONFile(t, td.expectedJsonFile)
+				assert.JSONEq(t, expectedJSON, jsonStr)
+			} else {
+				require.Error(t, err)
+				require.True(t, strings.Contains(err.Error(), td.expectedError))
+			}
+		})
+	}
 
 }
 
@@ -320,6 +428,9 @@ func TestDifferentServiceNames(t *testing.T) {
 	var profiles []*model.PushRequest
 	svc.On("PushParsed", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		c := (args.Get(1)).(*model.PushRequest)
+		for _, series := range c.Series {
+			sort.Sort(phlaremodel.Labels(series.Labels))
+		}
 		profiles = append(profiles, c)
 	}).Return(nil, nil)
 
@@ -458,9 +569,9 @@ func TestDifferentServiceNames(t *testing.T) {
 	require.Equal(t, 3, len(profiles[0].Series))
 
 	expectedProfiles := map[string]string{
-		"{__name__=\"process_cpu\", __delta__=\"false\", __otel__=\"true\", pyroscope_spy=\"unknown\", service_name=\"service-a\"}": "testdata/TestDifferentServiceNames_service_a_profile.json",
-		"{__name__=\"process_cpu\", __delta__=\"false\", __otel__=\"true\", pyroscope_spy=\"unknown\", service_name=\"service-b\"}": "testdata/TestDifferentServiceNames_service_b_profile.json",
-		"{__name__=\"process_cpu\", __delta__=\"false\", __otel__=\"true\", pyroscope_spy=\"unknown\", service_name=\"unknown\"}":   "testdata/TestDifferentServiceNames_unknown_profile.json",
+		"{__delta__=\"false\", __name__=\"process_cpu\", __otel__=\"true\", service_name=\"service-a\"}": "testdata/TestDifferentServiceNames_service_a_profile.json",
+		"{__delta__=\"false\", __name__=\"process_cpu\", __otel__=\"true\", service_name=\"service-b\"}": "testdata/TestDifferentServiceNames_service_b_profile.json",
+		"{__delta__=\"false\", __name__=\"process_cpu\", __otel__=\"true\", service_name=\"unknown\"}":   "testdata/TestDifferentServiceNames_unknown_profile.json",
 	}
 
 	for _, s := range profiles[0].Series {

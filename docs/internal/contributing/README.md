@@ -81,7 +81,7 @@ replace `image: grafana/pyroscope` with the local tag name you got from docker-i
 
 ```
   pyroscope:
-    image: us.gcr.io/kubernetes-dev/pyroscope:main-470125e1-WIP
+    image: grafana/pyroscope:main-470125e1-WIP
     ports:
       - '4040:4040'
 ```
