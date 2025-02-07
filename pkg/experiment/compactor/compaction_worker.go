@@ -55,7 +55,7 @@ type Config struct {
 	SmallObjectSize       int           `yaml:"small_object_size_bytes"`
 	TempDir               string        `yaml:"temp_dir"`
 	RequestTimeout        time.Duration `yaml:"request_timeout"`
-	EnableMetricsExporter bool          `yaml:"enable_metrics_exporter"`
+	MetricsExporterEnabled bool          `yaml:"metrics_exporter_enabled"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
