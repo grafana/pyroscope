@@ -25,23 +25,24 @@ type Config struct {
 	password config.Secret
 }
 
-func NewExporter(tenant string) *Exporter {
+func NewExporter(tenant string, recordings []*Recording) *Exporter {
 	cfg := configFromTenant(tenant)
-	return &Exporter{
+	exporter := &Exporter{
 		config: cfg,
 		data:   map[AggregatedFingerprint]*TimeSeries{},
 	}
-}
-
-func (e *Exporter) AppendMetrics(recordings []*Recording) {
 	for _, r := range recordings {
 		for fp, ts := range r.data {
-			e.data[fp] = ts
+			exporter.data[fp] = ts
 		}
 	}
+	return exporter
 }
 
 func (e *Exporter) Send() error {
+	if len(e.data) == 0 {
+		return nil
+	}
 	if e.client == nil {
 		e.client = newClient(e.config)
 	}
@@ -78,7 +79,7 @@ func newClient(cfg Config) remote.WriteClient {
 		panic(err)
 	}
 
-	c, err := remote.NewWriteClient("exporter", &remote.ClientConfig{
+	c, err := remote.NewWriteClient("pyroscope-metrics-exporter", &remote.ClientConfig{
 		URL:     &config.URL{URL: wURL},
 		Timeout: model.Duration(time.Second * 10),
 		HTTPClientConfig: config.HTTPClientConfig{

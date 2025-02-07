@@ -10,16 +10,16 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/block"
 )
 
-type MetricsObserver struct {
+type MetricsExporterSampleObserver struct {
 	tenant   string
 	recorder *Recorder
 }
 
-func NewMetricsObserver(tenant string, meta *metastorev1.BlockMeta) *MetricsObserver {
+func NewMetricsExporterSampleObserver(tenant string, meta *metastorev1.BlockMeta) *MetricsExporterSampleObserver {
 	recordingTime := int64(ulid.MustParse(meta.Id).Time())
 	rules := recordingRulesFromTenant(tenant)
 	pyroscopeInstance := pyroscopeInstanceHash(meta.Shard, meta.CreatedBy)
-	return &MetricsObserver{
+	return &MetricsExporterSampleObserver{
 		tenant:   tenant,
 		recorder: NewRecorder(rules, recordingTime, pyroscopeInstance),
 	}
@@ -32,12 +32,13 @@ func pyroscopeInstanceHash(shard uint32, createdBy int32) string {
 	return fmt.Sprintf("%x", xxhash.Sum64(buf))
 }
 
-func (o *MetricsObserver) Observe(row block.ProfileEntry) {
+func (o *MetricsExporterSampleObserver) Observe(row block.ProfileEntry) {
 	o.recorder.RecordRow(row.Fingerprint, row.Labels, row.Row.TotalValue())
 }
 
-func (o *MetricsObserver) Flush() error {
-	exporter := NewExporter(o.tenant)
-	exporter.AppendMetrics(o.recorder.Recordings)
-	return exporter.Send()
+func (o *MetricsExporterSampleObserver) Flush() error {
+	go func() {
+		NewExporter(o.tenant, o.recorder.Recordings).Send() // TODO log error
+	}()
+	return nil
 }

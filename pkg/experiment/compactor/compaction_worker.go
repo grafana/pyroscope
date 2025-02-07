@@ -463,7 +463,7 @@ func (w *Worker) runCompaction(job *compactionJob) {
 
 func newSampleObserver(job *compactionJob) block.SampleObserver {
 	if job.CompactionLevel == 0 {
-		return metricsexport.NewMetricsObserver(job.Tenant, job.blocks[0])
+		return metricsexport.NewMetricsExporterSampleObserver(job.Tenant, job.blocks[0])
 	}
 	return &block.NoOpObserver{}
 }
