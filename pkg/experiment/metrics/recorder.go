@@ -114,13 +114,7 @@ func generateExportedLabels(labelsMap map[string]string, rec *Recording, pyrosco
 			Value: pyroscopeInstance,
 		},
 	}
-	// Add filters as exported labels
-	for _, matcher := range rec.rule.matchers {
-		exportedLabels = append(exportedLabels, labels.Label{
-			Name:  matcher.Name,
-			Value: matcher.Value,
-		})
-	}
+
 	// Keep the expected labels
 	for _, label := range rec.rule.keepLabels {
 		labelValue, ok := labelsMap[label]
@@ -135,7 +129,7 @@ func generateExportedLabels(labelsMap map[string]string, rec *Recording, pyrosco
 }
 
 func (r *Recording) matches(labelsMap map[string]string) bool {
-	if r.rule.profileType != labelsMap["__profile_type__"] {
+	if r.rule.profileType != labelsMap["__type__"] {
 		return false
 	}
 	for _, matcher := range r.rule.matchers {
