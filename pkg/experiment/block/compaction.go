@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"slices"
 	"sort"
 	"strings"
@@ -40,12 +39,6 @@ func WithCompactionObjectOptions(options ...ObjectOption) CompactionOption {
 	}
 }
 
-func WithCompactionTempDir(tempdir string) CompactionOption {
-	return func(p *compactionConfig) {
-		p.tempdir = tempdir
-	}
-}
-
 func WithCompactionDestination(storage objstore.Bucket) CompactionOption {
 	return func(p *compactionConfig) {
 		p.destination = storage
@@ -54,7 +47,6 @@ func WithCompactionDestination(storage objstore.Bucket) CompactionOption {
 
 type compactionConfig struct {
 	objectOptions []ObjectOption
-	tempdir       string
 	source        objstore.BucketReader
 	destination   objstore.Bucket
 }
@@ -66,7 +58,6 @@ func Compact(
 	options ...CompactionOption,
 ) (m []*metastorev1.BlockMeta, err error) {
 	c := &compactionConfig{
-		tempdir:     os.TempDir(),
 		source:      storage,
 		destination: storage,
 	}
@@ -89,9 +80,9 @@ func Compact(
 
 	compacted := make([]*metastorev1.BlockMeta, 0, len(plan))
 	for _, p := range plan {
-		md, compactionErr := p.Compact(ctx, c.destination, c.tempdir)
+		md, compactionErr := p.Compact(ctx, c.destination)
 		if compactionErr != nil {
-			return nil, err
+			return nil, compactionErr
 		}
 		compacted = append(compacted, md)
 	}
@@ -182,14 +173,12 @@ func newBlockCompaction(
 	return p
 }
 
-func (b *CompactionPlan) Compact(ctx context.Context, dst objstore.Bucket, tmpdir string) (m *metastorev1.BlockMeta, err error) {
-	w, err := NewBlockWriter(dst, b.path, tmpdir)
-	if err != nil {
-		return nil, fmt.Errorf("block writer: %w", err)
-	}
+func (b *CompactionPlan) Compact(ctx context.Context, dst objstore.Bucket) (m *metastorev1.BlockMeta, err error) {
+	w := NewBlockWriter(ctx, dst, b.path)
 	defer func() {
-		err = multierror.New(err, w.Close()).Err()
+		_ = w.Close()
 	}()
+
 	// Datasets are compacted in a strict order.
 	for i, s := range b.datasets {
 		b.datasetIndex.resetDatasetIndex(uint32(i))
@@ -207,7 +196,7 @@ func (b *CompactionPlan) Compact(ctx context.Context, dst objstore.Bucket, tmpdi
 		return nil, fmt.Errorf("writing metadata: %w", err)
 	}
 	b.meta.Size = w.Offset()
-	if err = w.Upload(ctx); err != nil {
+	if err = w.Close(); err != nil {
 		return nil, fmt.Errorf("flushing block writer: %w", err)
 	}
 	return b.meta, nil
@@ -266,7 +255,6 @@ type datasetCompaction struct {
 	parent *CompactionPlan
 	meta   *metastorev1.Dataset
 	labels *metadata.LabelBuilder
-	path   string // Set at open.
 
 	datasets []*Dataset
 
@@ -312,42 +300,38 @@ func (m *datasetCompaction) append(s *Dataset) {
 }
 
 func (m *datasetCompaction) compact(ctx context.Context, w *Writer) (err error) {
-	if err = m.open(ctx, w.Dir()); err != nil {
+	off := w.Offset()
+	m.meta.TableOfContents = make([]uint64, 0, 3)
+	m.meta.TableOfContents = append(m.meta.TableOfContents, w.Offset())
+
+	if err = m.open(ctx, w); err != nil {
 		return fmt.Errorf("failed to open sections for compaction: %w", err)
 	}
-	defer func() {
-		err = multierror.New(err, m.cleanup()).Err()
-	}()
 	if err = m.mergeAndClose(ctx); err != nil {
 		return fmt.Errorf("failed to merge datasets: %w", err)
 	}
-	if err = m.writeTo(w); err != nil {
-		return fmt.Errorf("failed to write sections: %w", err)
+
+	m.meta.TableOfContents = append(m.meta.TableOfContents, w.Offset())
+	if _, err = w.ReadFrom(bytes.NewReader(m.indexRewriter.buf)); err != nil {
+		return fmt.Errorf("failed to read index: %w", err)
 	}
+	m.meta.TableOfContents = append(m.meta.TableOfContents, w.Offset())
+	if _, err = w.ReadFrom(bytes.NewReader(m.symbolsRewriter.buf.Bytes())); err != nil {
+		return fmt.Errorf("failed to read symbols: %w", err)
+	}
+
+	m.meta.Size = w.Offset() - off
+	m.meta.Labels = m.labels.Build()
 	return nil
 }
 
-func (m *datasetCompaction) open(ctx context.Context, path string) (err error) {
-	m.path = path
-	defer func() {
-		if err != nil {
-			err = multierror.New(err, m.cleanup()).Err()
-		}
-	}()
-
-	if err = os.MkdirAll(m.path, 0o777); err != nil {
-		return err
-	}
-
+func (m *datasetCompaction) open(ctx context.Context, w io.Writer) (err error) {
 	var estimatedProfileTableSize int64
 	for _, ds := range m.datasets {
 		estimatedProfileTableSize += ds.sectionSize(SectionProfiles)
 	}
 	pageBufferSize := estimatePageBufferSize(estimatedProfileTableSize)
-	m.profilesWriter, err = newProfileWriter(m.path, pageBufferSize)
-	if err != nil {
-		return err
-	}
+	m.profilesWriter = newProfileWriter(pageBufferSize, w)
 
 	m.indexRewriter = newIndexRewriter()
 	m.symbolsRewriter = newSymbolsRewriter()
@@ -373,7 +357,6 @@ func (m *datasetCompaction) open(ctx context.Context, path string) (err error) {
 		}
 		return merr.Err()
 	}
-
 	return nil
 }
 
@@ -431,30 +414,6 @@ func (m *datasetCompaction) close() (err error) {
 		err = merr.Err()
 	})
 	return err
-}
-
-func (m *datasetCompaction) writeTo(w *Writer) error {
-	off := w.Offset()
-	m.meta.TableOfContents = make([]uint64, 0, 3)
-	m.meta.TableOfContents = append(m.meta.TableOfContents, w.Offset())
-	if err := w.ReadFromFile(FileNameProfilesParquet); err != nil {
-		return err
-	}
-	m.meta.TableOfContents = append(m.meta.TableOfContents, w.Offset())
-	if _, err := w.ReadFrom(bytes.NewReader(m.indexRewriter.buf)); err != nil {
-		return err
-	}
-	m.meta.TableOfContents = append(m.meta.TableOfContents, w.Offset())
-	if _, err := w.ReadFrom(bytes.NewReader(m.symbolsRewriter.buf.Bytes())); err != nil {
-		return err
-	}
-	m.meta.Size = w.Offset() - off
-	m.meta.Labels = m.labels.Build()
-	return nil
-}
-
-func (m *datasetCompaction) cleanup() error {
-	return os.RemoveAll(m.path)
 }
 
 func newIndexRewriter() *indexRewriter {
