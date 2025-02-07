@@ -443,7 +443,7 @@ func (w *Worker) runCompaction(job *compactionJob) {
 		level.Warn(logger).Log("msg", "compaction cancelled")
 		statusName = statusCancelled
 
-	case w.storage.IsObjNotFoundErr(err):
+	case objstore.IsNotExist(w.storage, err):
 		level.Error(logger).Log("msg", "failed to find blocks", "err", err)
 		job.compacted = &metastorev1.CompactedBlocks{SourceBlocks: new(metastorev1.BlockList)}
 		statusName = statusNoBlocks
