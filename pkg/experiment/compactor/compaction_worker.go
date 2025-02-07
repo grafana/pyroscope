@@ -50,11 +50,12 @@ type Worker struct {
 }
 
 type Config struct {
-	JobConcurrency  int           `yaml:"job_capacity"`
-	JobPollInterval time.Duration `yaml:"job_poll_interval"`
-	SmallObjectSize int           `yaml:"small_object_size_bytes"`
-	TempDir         string        `yaml:"temp_dir"`
-	RequestTimeout  time.Duration `yaml:"request_timeout"`
+	JobConcurrency        int           `yaml:"job_capacity"`
+	JobPollInterval       time.Duration `yaml:"job_poll_interval"`
+	SmallObjectSize       int           `yaml:"small_object_size_bytes"`
+	TempDir               string        `yaml:"temp_dir"`
+	RequestTimeout        time.Duration `yaml:"request_timeout"`
+	EnableMetricsExporter bool          `yaml:"enable_metrics_exporter"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
@@ -64,6 +65,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.DurationVar(&cfg.RequestTimeout, prefix+"request-timeout", 5*time.Second, "Job request timeout.")
 	f.IntVar(&cfg.SmallObjectSize, prefix+"small-object-size-bytes", 8<<20, "Size of the object that can be loaded in memory.")
 	f.StringVar(&cfg.TempDir, prefix+"temp-dir", os.TempDir(), "Temporary directory for compaction jobs.")
+	f.BoolVar(&cfg.EnableMetricsExporter, "enable-metrics-exporter", false, "This parameter specifies whether the metrics exporter is enabled.")
 }
 
 type compactionJob struct {
@@ -401,7 +403,7 @@ func (w *Worker) runCompaction(job *compactionJob) {
 			block.WithObjectMaxSizeLoadInMemory(w.config.SmallObjectSize),
 			block.WithObjectDownload(sourcedir),
 		),
-		block.WithSampleObserver(newSampleObserver(job)),
+		block.WithSampleObserver(newSampleObserver(w.config.EnableMetricsExporter, job)),
 	)
 	defer func() {
 		if err = os.RemoveAll(tempdir); err != nil {
@@ -461,8 +463,8 @@ func (w *Worker) runCompaction(job *compactionJob) {
 	_ = deleteGroup.Wait()
 }
 
-func newSampleObserver(job *compactionJob) block.SampleObserver {
-	if job.CompactionLevel == 0 {
+func newSampleObserver(enableMetricsExporter bool, job *compactionJob) block.SampleObserver {
+	if enableMetricsExporter && job.CompactionLevel == 0 {
 		return metricsexport.NewMetricsExporterSampleObserver(job.Tenant, job.blocks[0])
 	}
 	return &block.NoOpObserver{}
