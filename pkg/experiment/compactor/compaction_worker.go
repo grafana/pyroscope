@@ -65,7 +65,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.DurationVar(&cfg.RequestTimeout, prefix+"request-timeout", 5*time.Second, "Job request timeout.")
 	f.IntVar(&cfg.SmallObjectSize, prefix+"small-object-size-bytes", 8<<20, "Size of the object that can be loaded in memory.")
 	f.StringVar(&cfg.TempDir, prefix+"temp-dir", os.TempDir(), "Temporary directory for compaction jobs.")
-	f.BoolVar(&cfg.EnableMetricsExporter, "enable-metrics-exporter", false, "This parameter specifies whether the metrics exporter is enabled.")
+	f.BoolVar(&cfg.EnableMetricsExporter, prefix+"metrics-exporter.enabled", false, "This parameter specifies whether the metrics exporter is enabled.")
 }
 
 type compactionJob struct {
