@@ -110,6 +110,11 @@ func PlanCompaction(objects Objects) ([]*CompactionPlan, error) {
 	m := make(map[string]*CompactionPlan)
 	for _, obj := range objects {
 		for _, s := range obj.meta.Datasets {
+			if s.Name == 0 {
+				// Anonymous dataset is never compacted:
+				// it is rebuilt based on the actual block contents.
+				continue
+			}
 			tm, ok := m[obj.meta.StringTable[s.Tenant]]
 			if !ok {
 				tm = newBlockCompaction(

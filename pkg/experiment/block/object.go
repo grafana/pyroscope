@@ -220,6 +220,10 @@ func (obj *Object) ReadMetadata(ctx context.Context) error {
 	return nil
 }
 
+func (obj *Object) IsNotExists(err error) bool {
+	return objstore.IsNotExist(obj.storage, err)
+}
+
 // ObjectsFromMetas binds block metas to corresponding objects in the storage.
 func ObjectsFromMetas(storage objstore.Bucket, blocks []*metastorev1.BlockMeta, options ...ObjectOption) Objects {
 	objects := make([]*Object, len(blocks))

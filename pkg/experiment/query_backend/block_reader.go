@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -20,19 +19,13 @@ import (
 	"github.com/grafana/pyroscope/pkg/util"
 )
 
-// Block reader reads objects from the object storage. Each block is currently
-// represented by a single object.
+// BlockReader reads blocks from object storage. Each block is represented by
+// a single object, which consists of datasets – regions within the object
+// that contain tenant data.
 //
-// An object consists of data sets – regions within the block that include some
-// tenant data. Each such dataset consists of 3 sections: profile table, TSDB,
-// and symbol database.
-//
-// A single Invoke request typically spans multiple blocks (objects).
-// Querying an object involves processing multiple datasets in parallel.
+// A single Invoke request may span multiple blocks (objects).
+// Querying an object could involve processing multiple datasets in parallel.
 // Multiple parallel queries can be executed on the same tenant dataset.
-//
-// Thus, queries share the same "execution context": the object and a tenant
-// dataset.
 //
 // object-a    dataset-a   query-a
 //                         query-b
@@ -79,29 +72,15 @@ func (b *BlockReader) Invoke(
 	agg := newAggregator(req)
 
 	for _, md := range req.QueryPlan.Root.Blocks {
-		bc := newBlockContext(ctx, b.log, r, block.NewObject(b.storage, md))
-		if bc.needsDatasetLookup() {
-			// TODO: Async.
-			lookupErr := bc.lookupDatasets()
-			if lookupErr != nil && objstore.IsNotExist(b.storage, lookupErr) {
-				level.Warn(b.log).Log("msg", "object not found", "err", lookupErr)
-				continue
-			}
-		}
-		for _, ds := range bc.obj.Metadata().Datasets {
-			qc := newQueryContext(ctx, b.log, r, agg, block.NewDataset(ds, bc.obj))
-			for _, query := range req.Query {
-				q := query
-				g.Go(util.RecoverPanic(func() error {
-					execErr := executeQuery(qc, q)
-					if execErr != nil && objstore.IsNotExist(b.storage, execErr) {
-						level.Warn(b.log).Log("msg", "object not found", "err", execErr)
-						return nil
-					}
-					return execErr
-				}))
-			}
-		}
+		obj := block.NewObject(b.storage, md)
+		g.Go(util.RecoverPanic((&blockContext{
+			ctx: ctx,
+			log: b.log,
+			req: r,
+			agg: agg,
+			obj: obj,
+			grp: g,
+		}).execute))
 	}
 
 	if err = g.Wait(); err != nil {
@@ -136,16 +115,15 @@ func (r *request) setTraceTags(span opentracing.Span) {
 
 func validateRequest(req *queryv1.InvokeRequest) (*request, error) {
 	if len(req.Query) == 0 {
-		return nil, fmt.Errorf("no queries provided")
+		return nil, fmt.Errorf("no query provided")
 	}
 	if req.QueryPlan == nil || len(req.QueryPlan.Root.Blocks) == 0 {
-		return nil, fmt.Errorf("no blocks planned")
+		return nil, fmt.Errorf("no blocks to query")
 	}
 	matchers, err := parser.ParseMetricSelector(req.LabelSelector)
 	if err != nil {
 		return nil, fmt.Errorf("label selection is invalid: %w", err)
 	}
-	// TODO: Validate the rest, just in case.
 	r := request{
 		src:       req,
 		matchers:  matchers,

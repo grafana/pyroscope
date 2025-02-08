@@ -6,13 +6,16 @@ import (
 	"sync"
 
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/iancoleman/strcase"
 	"github.com/opentracing/opentracing-go"
+	otlog "github.com/opentracing/opentracing-go/log"
 	"golang.org/x/sync/errgroup"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 // TODO(kolesnikovae): We have a procedural definition of our queries,
@@ -72,32 +75,122 @@ func registerQueryType(
 	registerAggregator(rt, a)
 }
 
-type queryContext struct {
+type blockContext struct {
 	ctx context.Context
 	log log.Logger
 	req *request
 	agg *reportAggregator
+	obj *block.Object
+	idx *metastorev1.Dataset
+	grp *errgroup.Group
+}
+
+func (b *blockContext) execute() error {
+	var span opentracing.Span
+	span, b.ctx = opentracing.StartSpanFromContext(b.ctx, "blockContext.execute")
+	var wg sync.WaitGroup
+	defer func() {
+		wg.Wait()
+		span.Finish()
+	}()
+
+	if b.needsDatasetLookup() {
+		if err := b.lookupDatasets(); err != nil {
+			if b.obj.IsNotExists(err) {
+				level.Warn(b.log).Log("msg", "object not found", "err", err)
+				return nil
+			}
+			return fmt.Errorf("failed to lookup datasets: %w", err)
+		}
+	}
+
+	for _, ds := range b.obj.Metadata().Datasets {
+		q := &queryContext{blockContext: b, ds: block.NewDataset(ds, b.obj)}
+		for _, query := range b.req.src.Query {
+			wg.Add(1)
+			b.grp.Go(util.RecoverPanic(func() error {
+				defer wg.Done()
+				return q.execute(query)
+			}))
+		}
+	}
+
+	return nil
+}
+
+func (b *blockContext) needsDatasetLookup() bool {
+	md := b.obj.Metadata()
+	if len(md.Datasets) != 1 {
+		// The blocks metadata explicitly lists datasets to be queried.
+		return false
+	}
+	ds := md.Datasets[0]
+	if ds.Format != 1 {
+		return false
+	}
+	b.idx = ds
+
+	// If the query only requires TSDB data, we can serve it using
+	// the dataset index without accessing the full dataset; therefore,
+	// we report that the dataset lookup is not needed, meaning the
+	// dataset is to be queried as usual.
+	s := (&queryContext{blockContext: b}).sections()
+	indexOnly := len(s) == 1 && s[0] == block.SectionTSDB
+
+	opentracing.SpanFromContext(b.ctx).
+		SetTag("dataset_index_query", true).
+		SetTag("dataset_index_query_index_only", indexOnly)
+
+	return !indexOnly
+}
+
+func (b *blockContext) lookupDatasets() error {
+	// As query execution has not started yet,
+	// we can safely open datasets.
+	ds := block.NewDataset(b.idx, b.obj)
+	defer func() {
+		_ = ds.Close()
+	}()
+
+	g, ctx := errgroup.WithContext(b.ctx)
+	g.Go(func() error {
+		return b.obj.ReadMetadata(ctx)
+	})
+	g.Go(func() error {
+		return ds.Open(ctx, block.SectionDatasetIndex)
+	})
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
+	md := b.obj.Metadata()
+	datasetIDs, err := getSeriesIDs(ds.Index(), b.req.matchers...)
+	if err != nil {
+		return err
+	}
+
+	var j int
+	for i := range md.Datasets {
+		if _, ok := datasetIDs[uint32(i)]; ok {
+			md.Datasets[j] = md.Datasets[i]
+			j++
+		}
+	}
+	md.Datasets = md.Datasets[:j]
+
+	opentracing.SpanFromContext(b.ctx).
+		LogFields(otlog.String("msg", "dataset tsdb index lookup complete"))
+
+	return nil
+}
+
+type queryContext struct {
+	*blockContext
 	ds  *block.Dataset
 	err error
 }
 
-func newQueryContext(
-	ctx context.Context,
-	log log.Logger,
-	req *request,
-	agg *reportAggregator,
-	ds *block.Dataset,
-) *queryContext {
-	return &queryContext{
-		ctx: ctx,
-		log: log,
-		req: req,
-		agg: agg,
-		ds:  ds,
-	}
-}
-
-func executeQuery(q *queryContext, query *queryv1.Query) error {
+func (q *queryContext) execute(query *queryv1.Query) error {
 	var span opentracing.Span
 	span, q.ctx = opentracing.StartSpanFromContext(q.ctx, "executeQuery."+strcase.ToCamel(query.QueryType.String()))
 	defer span.Finish()
@@ -105,12 +198,18 @@ func executeQuery(q *queryContext, query *queryv1.Query) error {
 	if err != nil {
 		return err
 	}
-	if err = q.open(); err != nil {
+
+	if err = q.ds.Open(q.ctx, q.sections()...); err != nil {
+		if q.obj.IsNotExists(err) {
+			level.Warn(q.log).Log("msg", "object not found", "err", err)
+			return nil
+		}
 		return fmt.Errorf("failed to initialize query context: %w", err)
 	}
 	defer func() {
-		_ = q.close(err)
+		_ = q.ds.CloseWithError(err)
 	}()
+
 	r, err := handle(q, query)
 	if err != nil {
 		return err
@@ -119,15 +218,8 @@ func executeQuery(q *queryContext, query *queryv1.Query) error {
 		r.ReportType = QueryReportType(query.QueryType)
 		return q.agg.aggregateReport(r)
 	}
+
 	return nil
-}
-
-func (q *queryContext) open() error {
-	return q.ds.Open(q.ctx, q.sections()...)
-}
-
-func (q *queryContext) close(err error) error {
-	return q.ds.CloseWithError(err)
 }
 
 func (q *queryContext) sections() []block.Section {
@@ -142,79 +234,4 @@ func (q *queryContext) sections() []block.Section {
 		unique = append(unique, s)
 	}
 	return unique
-}
-
-type blockContext struct {
-	ctx context.Context
-	log log.Logger
-	req *request
-	obj *block.Object
-	idx *metastorev1.Dataset
-}
-
-func newBlockContext(
-	ctx context.Context,
-	log log.Logger,
-	req *request,
-	obj *block.Object,
-) *blockContext {
-	return &blockContext{
-		ctx: ctx,
-		log: log,
-		req: req,
-		obj: obj,
-	}
-}
-
-func (q *blockContext) needsDatasetLookup() bool {
-	md := q.obj.Metadata()
-	if len(md.Datasets) != 1 {
-		// The blocks metadata explicitly lists datasets to be queried.
-		return false
-	}
-	ds := md.Datasets[0]
-	if ds.Format != 1 {
-		return false
-	}
-	q.idx = ds
-	// If the query only requires TSDB data, we can serve it using
-	// the dataset index without accessing the full dataset; therefore,
-	// we report that the dataset lookup is not needed, meaning the
-	// dataset is to be queried as usual.
-	s := (&queryContext{req: q.req}).sections()
-	indexOnly := len(s) == 1 && s[0] == block.SectionTSDB
-	return !indexOnly
-}
-
-func (q *blockContext) lookupDatasets() error {
-	ds := block.NewDataset(q.idx, q.obj)
-	defer func() {
-		_ = ds.Close()
-	}()
-
-	g, ctx := errgroup.WithContext(q.ctx)
-	g.Go(func() error {
-		return q.obj.ReadMetadata(ctx)
-	})
-	g.Go(func() error {
-		return ds.Open(ctx, block.SectionDatasetIndex)
-	})
-	if err := g.Wait(); err != nil {
-		return err
-	}
-
-	md := q.obj.Metadata()
-	datasetIDs, err := getSeriesIDs(ds.Index(), q.req.matchers...)
-	if err != nil {
-		return err
-	}
-	var j int
-	for i := range md.Datasets {
-		if _, ok := datasetIDs[uint32(i)]; ok {
-			md.Datasets[j] = md.Datasets[i]
-			j++
-		}
-	}
-	md.Datasets = md.Datasets[:j]
-	return nil
 }
