@@ -27,7 +27,7 @@ services:
       context: .
 
   alloy:
-    image: grafana/alloy:latest
+    image: grafana/alloy-dev:latest
     command:
       - run
       - /etc/alloy/config.alloy
@@ -36,6 +36,7 @@ services:
       - ./config.alloy:/etc/alloy/config.alloy
     ports:
       - "9999:9999"
+      - "12345:12345"
 
   pyroscope:
     image: grafana/pyroscope:latest
