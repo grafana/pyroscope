@@ -401,7 +401,7 @@ func (w *Worker) runCompaction(job *compactionJob) {
 			block.WithObjectMaxSizeLoadInMemory(w.config.SmallObjectSize),
 			block.WithObjectDownload(sourcedir),
 		),
-		block.WithSampleObserver(newSampleObserver(job)),
+		block.WithSampleObserver(newSampleObserver(job, w.logger)),
 	)
 	defer func() {
 		if err = os.RemoveAll(tempdir); err != nil {
@@ -461,9 +461,9 @@ func (w *Worker) runCompaction(job *compactionJob) {
 	_ = deleteGroup.Wait()
 }
 
-func newSampleObserver(job *compactionJob) block.SampleObserver {
+func newSampleObserver(job *compactionJob, logger log.Logger) block.SampleObserver {
 	if job.CompactionLevel == 0 {
-		return metricsexport.NewMetricsExporterSampleObserver(job.Tenant, job.blocks[0])
+		return metricsexport.NewMetricsExporterSampleObserver(job.Tenant, job.blocks[0], logger)
 	}
 	return &block.NoOpObserver{}
 }
