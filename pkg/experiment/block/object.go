@@ -146,7 +146,6 @@ func (obj *Object) open(ctx context.Context) (err error) {
 		// The object will be read from the storage directly.
 		return nil
 	}
-	// TODO(kolesnikovae): This almost never happens – remove.
 	obj.buf = bufferpool.GetBuffer(int(obj.meta.Size))
 	defer func() {
 		if err != nil {

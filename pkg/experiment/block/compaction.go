@@ -324,8 +324,15 @@ func (m *datasetCompaction) compact(ctx context.Context, w *Writer) (err error) 
 	if err = m.open(ctx, w); err != nil {
 		return fmt.Errorf("failed to open sections for compaction: %w", err)
 	}
-	if err = m.mergeAndClose(ctx); err != nil {
+	defer func() {
+		_ = m.close()
+	}()
+
+	if err = m.merge(ctx); err != nil {
 		return fmt.Errorf("failed to merge datasets: %w", err)
+	}
+	if err = m.flush(); err != nil {
+		return fmt.Errorf("failed to flush compacted dataset: %w", err)
 	}
 
 	m.meta.TableOfContents = append(m.meta.TableOfContents, w.Offset())
@@ -377,13 +384,6 @@ func (m *datasetCompaction) open(ctx context.Context, w io.Writer) (err error) {
 	return nil
 }
 
-func (m *datasetCompaction) mergeAndClose(ctx context.Context) (err error) {
-	defer func() {
-		err = multierror.New(err, m.close()).Err()
-	}()
-	return m.merge(ctx)
-}
-
 func (m *datasetCompaction) merge(ctx context.Context) (err error) {
 	rows, err := NewMergeRowProfileIterator(m.datasets)
 	if err != nil {
@@ -419,7 +419,7 @@ func (m *datasetCompaction) writeRow(r ProfileEntry) (err error) {
 	return m.profilesWriter.writeRow(r)
 }
 
-func (m *datasetCompaction) close() (err error) {
+func (m *datasetCompaction) flush() (err error) {
 	m.flushOnce.Do(func() {
 		merr := multierror.New()
 		merr.Add(m.symbolsRewriter.Flush())
@@ -430,6 +430,15 @@ func (m *datasetCompaction) close() (err error) {
 		m.profiles = m.profilesWriter.profiles
 		err = merr.Err()
 	})
+	return err
+}
+
+func (m *datasetCompaction) close() error {
+	err := m.flush()
+	m.symbolsRewriter = nil
+	m.indexRewriter = nil
+	m.profilesWriter = nil
+	m.datasets = nil
 	return err
 }
 
