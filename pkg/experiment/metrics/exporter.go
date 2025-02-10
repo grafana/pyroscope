@@ -14,7 +14,6 @@ import (
 )
 
 type Exporter struct {
-	config Config
 	client remote.WriteClient
 	data   map[AggregatedFingerprint]*TimeSeries
 }
@@ -25,26 +24,30 @@ type Config struct {
 	password config.Secret
 }
 
-func NewExporter(tenant string, recordings []*Recording) *Exporter {
-	cfg := configFromTenant(tenant)
+func NewExporter(tenant string, recordings []*Recording) (*Exporter, error) {
 	exporter := &Exporter{
-		config: cfg,
-		data:   map[AggregatedFingerprint]*TimeSeries{},
+		data: map[AggregatedFingerprint]*TimeSeries{},
 	}
 	for _, r := range recordings {
 		for fp, ts := range r.data {
 			exporter.data[fp] = ts
 		}
 	}
-	return exporter
+	if len(exporter.data) != 0 {
+		cfg := configFromTenant(tenant)
+		client, err := newClient(cfg)
+		if err != nil {
+			return nil, err
+		}
+		exporter.client = client
+	}
+	return exporter, nil
 }
 
 func (e *Exporter) Send() error {
-	if len(e.data) == 0 {
-		return nil
-	}
 	if e.client == nil {
-		e.client = newClient(e.config)
+		// no client = no data to send
+		return nil
 	}
 
 	p := &prompb.WriteRequest{Timeseries: make([]prompb.TimeSeries, 0, len(e.data))}
@@ -73,13 +76,13 @@ func (e *Exporter) Send() error {
 	return e.client.Store(context.Background(), snappy.Encode(nil, buf.Bytes()), 0)
 }
 
-func newClient(cfg Config) remote.WriteClient {
+func newClient(cfg Config) (remote.WriteClient, error) {
 	wURL, err := url.Parse(cfg.url)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	c, err := remote.NewWriteClient("pyroscope-metrics-exporter", &remote.ClientConfig{
+	c, err := remote.NewWriteClient("exporter", &remote.ClientConfig{
 		URL:     &config.URL{URL: wURL},
 		Timeout: model.Duration(time.Second * 10),
 		HTTPClientConfig: config.HTTPClientConfig{
@@ -88,15 +91,17 @@ func newClient(cfg Config) remote.WriteClient {
 				Password: cfg.password,
 			},
 		},
-		SigV4Config:      nil,
-		AzureADConfig:    nil,
-		Headers:          nil,
+		SigV4Config:   nil,
+		AzureADConfig: nil,
+		Headers: map[string]string{
+			"User-Agent": "pyroscope-metrics-exporter",
+		},
 		RetryOnRateLimit: false,
 	})
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return c
+	return c, nil
 }
 
 func configFromTenant(tenant string) Config {

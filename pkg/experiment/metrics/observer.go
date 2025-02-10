@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/cespare/xxhash/v2"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/oklog/ulid"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -13,15 +15,17 @@ import (
 type MetricsExporterSampleObserver struct {
 	tenant   string
 	recorder *Recorder
+	logger   log.Logger
 }
 
-func NewMetricsExporterSampleObserver(tenant string, meta *metastorev1.BlockMeta) *MetricsExporterSampleObserver {
+func NewMetricsExporterSampleObserver(tenant string, meta *metastorev1.BlockMeta, logger log.Logger) *MetricsExporterSampleObserver {
 	recordingTime := int64(ulid.MustParse(meta.Id).Time())
 	rules := recordingRulesFromTenant(tenant)
 	pyroscopeInstance := pyroscopeInstanceHash(meta.Shard, meta.CreatedBy)
 	return &MetricsExporterSampleObserver{
 		tenant:   tenant,
 		recorder: NewRecorder(rules, recordingTime, pyroscopeInstance),
+		logger:   logger,
 	}
 }
 
@@ -38,7 +42,15 @@ func (o *MetricsExporterSampleObserver) Observe(row block.ProfileEntry) {
 
 func (o *MetricsExporterSampleObserver) Flush() error {
 	go func() {
-		NewExporter(o.tenant, o.recorder.Recordings).Send() // TODO log error
+		exporter, err := NewExporter(o.tenant, o.recorder.Recordings)
+		if err != nil {
+			level.Error(o.logger).Log("msg", "error creating metrics exporter", "err", err)
+			return
+		}
+
+		if err = exporter.Send(); err != nil {
+			level.Error(o.logger).Log("msg", "error sending recording metrics", "err", err)
+		}
 	}()
 	return nil
 }
