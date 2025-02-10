@@ -215,6 +215,8 @@ func (obj *Object) ReadMetadata(ctx context.Context) error {
 	if err := metadata.Decode(buf.B, &meta); err != nil {
 		return fmt.Errorf("decoding block metadata %s: %w", obj.path, err)
 	}
+	// Size is not stored in the metadata, so we need to preserve it.
+	meta.Size = obj.meta.Size
 	obj.meta = &meta
 	return nil
 }
