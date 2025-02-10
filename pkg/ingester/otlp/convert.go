@@ -218,12 +218,6 @@ func (p *profileBuilder) convertLocationBack(ol *otelProfile.Location) (uint64, 
 		gl.Line[i] = p.convertLineBack(line)
 	}
 
-	if len(gl.Line) == 0 {
-		gl.Line = append(gl.Line, &googleProfile.Line{
-			FunctionId: p.addfunc(fmt.Sprintf("%s 0x%x", p.src.StringTable[om.FilenameStrindex], ol.Address)),
-		})
-	}
-
 	p.dst.Location = append(p.dst.Location, gl)
 	gl.Id = uint64(len(p.dst.Location))
 	p.locationMap[ol] = gl.Id

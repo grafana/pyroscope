@@ -2,12 +2,16 @@ package query_frontend
 
 import (
 	"context"
+	"flag"
+	"fmt"
 	"math/rand"
 	"slices"
 	"sync"
 
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/tenant"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
 	"google.golang.org/grpc/codes"
@@ -18,11 +22,16 @@ import (
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
 	queryplan "github.com/grafana/pyroscope/pkg/experiment/query_backend/query_plan"
+	"github.com/grafana/pyroscope/pkg/experiment/symbolizer"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 )
 
 var _ querierv1connect.QuerierServiceClient = (*QueryFrontend)(nil)
+
+type Config struct {
+	Symbolizer symbolizer.Config `yaml:"symbolizer"`
+}
 
 type QueryBackend interface {
 	Invoke(ctx context.Context, req *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error)
@@ -35,6 +44,7 @@ type QueryFrontend struct {
 	metadataQueryClient metastorev1.MetadataQueryServiceClient
 	tenantServiceClient metastorev1.TenantServiceClient
 	querybackend        QueryBackend
+	symbolizer          symbolizer.TreeSymbolizer
 }
 
 func NewQueryFrontend(
@@ -43,14 +53,26 @@ func NewQueryFrontend(
 	metadataQueryClient metastorev1.MetadataQueryServiceClient,
 	tenantServiceClient metastorev1.TenantServiceClient,
 	querybackendClient QueryBackend,
-) *QueryFrontend {
+	cfg Config,
+	reg prometheus.Registerer,
+) (*QueryFrontend, error) {
+	var sym symbolizer.TreeSymbolizer
+	if cfg.Symbolizer.DebuginfodURL != "" {
+		s, err := symbolizer.NewFromConfig(context.Background(), cfg.Symbolizer, reg)
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize symbolizer: %w", err)
+		}
+		sym = s
+	}
+
 	return &QueryFrontend{
 		logger:              logger,
 		limits:              limits,
 		metadataQueryClient: metadataQueryClient,
 		tenantServiceClient: tenantServiceClient,
 		querybackend:        querybackendClient,
-	}
+		symbolizer:          sym,
+	}, nil
 }
 
 var xrand = rand.New(rand.NewSource(4349676827832284783))
@@ -100,6 +122,19 @@ func (q *QueryFrontend) Query(
 	if resp.Diagnostics == nil {
 		resp.Diagnostics = new(queryv1.Diagnostics)
 	}
+
+	// Only symbolize tree reports (used for flamegraphs)
+	if q.symbolizer != nil {
+		for _, report := range resp.Reports {
+			if report.Tree != nil {
+				if err := q.symbolizer.SymbolizeTree(ctx, report.Tree); err != nil {
+					// Log error but continue - partial symbolization is better than none?
+					level.Error(q.logger).Log("msg", "tree symbolization failed", "err", err)
+				}
+			}
+		}
+	}
+
 	resp.Diagnostics.QueryPlan = p
 	return &queryv1.QueryResponse{Reports: resp.Reports}, nil
 }
@@ -147,4 +182,8 @@ func (q *QueryFrontend) QueryMetadata(
 	}
 
 	return md.Blocks, nil
+}
+
+func (c *Config) RegisterFlags(f *flag.FlagSet) {
+	c.Symbolizer.RegisterFlagsWithPrefix("query-frontend.symbolizer", f)
 }

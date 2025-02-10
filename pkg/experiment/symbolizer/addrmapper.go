@@ -59,7 +59,8 @@ func MapRuntimeAddress(runtimeAddr uint64, ei *BinaryLayout, m Mapping) (uint64,
 		return runtimeAddr, fmt.Errorf("calculate base offset: %w", err)
 	}
 
-	return runtimeAddr - baseOffset, nil
+	result := runtimeAddr - baseOffset
+	return result, nil
 }
 
 // CalculateBase determines the base address adjustment needed for address translation.
