@@ -13,19 +13,20 @@ import (
 )
 
 type MetricsExporterSampleObserver struct {
-	tenant   string
-	recorder *Recorder
-	logger   log.Logger
+	tenant            string
+	recorder          *Recorder
+	recordingTime     int64
+	pyroscopeInstance string
+	logger            log.Logger
 }
 
-func NewMetricsExporterSampleObserver(tenant string, meta *metastorev1.BlockMeta, logger log.Logger) *MetricsExporterSampleObserver {
+func NewMetricsExporterSampleObserver(meta *metastorev1.BlockMeta, logger log.Logger) *MetricsExporterSampleObserver {
 	recordingTime := int64(ulid.MustParse(meta.Id).Time())
-	rules := recordingRulesFromTenant(tenant)
 	pyroscopeInstance := pyroscopeInstanceHash(meta.Shard, meta.CreatedBy)
 	return &MetricsExporterSampleObserver{
-		tenant:   tenant,
-		recorder: NewRecorder(rules, recordingTime, pyroscopeInstance),
-		logger:   logger,
+		recordingTime:     recordingTime,
+		pyroscopeInstance: pyroscopeInstance,
+		logger:            logger,
 	}
 }
 
@@ -36,13 +37,20 @@ func pyroscopeInstanceHash(shard uint32, createdBy int32) string {
 	return fmt.Sprintf("%x", xxhash.Sum64(buf))
 }
 
+func (o *MetricsExporterSampleObserver) Init(tenant string) {
+	o.tenant = tenant
+	o.recorder = NewRecorder(recordingRulesFromTenant(tenant), o.recordingTime, o.pyroscopeInstance)
+}
+
 func (o *MetricsExporterSampleObserver) Observe(row block.ProfileEntry) {
 	o.recorder.RecordRow(row.Fingerprint, row.Labels, row.Row.TotalValue())
 }
 
 func (o *MetricsExporterSampleObserver) Flush() error {
-	go func() {
-		exporter, err := NewExporter(o.tenant, o.recorder.Recordings)
+	rec := o.recorder
+	o.recorder = nil
+	go func(tenant string, recorder *Recorder) {
+		exporter, err := NewExporter(tenant, recorder.Recordings)
 		if err != nil {
 			level.Error(o.logger).Log("msg", "error creating metrics exporter", "err", err)
 			return
@@ -51,6 +59,6 @@ func (o *MetricsExporterSampleObserver) Flush() error {
 		if err = exporter.Send(); err != nil {
 			level.Error(o.logger).Log("msg", "error sending recording metrics", "err", err)
 		}
-	}()
+	}(o.tenant, rec)
 	return nil
 }

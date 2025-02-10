@@ -66,6 +66,9 @@ type compactionConfig struct {
 }
 
 type SampleObserver interface {
+	// Init is called at the beginning of the compaction job.
+	Init(tenant string)
+
 	// Observe is called before the compactor appends the entry
 	// to the output block. This method must not modify the entry.
 	Observe(ProfileEntry)
@@ -78,6 +81,8 @@ type SampleObserver interface {
 }
 
 type NoOpObserver struct{}
+
+func (o *NoOpObserver) Init(tenant string) {}
 
 func (o *NoOpObserver) Observe(row ProfileEntry) {
 }
@@ -217,6 +222,7 @@ func (b *CompactionPlan) Compact(
 	defer func() {
 		err = multierror.New(err, w.Close()).Err()
 	}()
+	observer.Init(b.tenant)
 	// Datasets are compacted in a strict order.
 	for _, s := range b.datasets {
 		s.registerSampleObserver(observer)
