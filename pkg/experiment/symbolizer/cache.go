@@ -105,11 +105,9 @@ func NewNullCache() DebugInfoCache {
 }
 
 func (n *NullCache) Get(ctx context.Context, buildID string) (io.ReadCloser, error) {
-	// Always return cache miss
 	return nil, fmt.Errorf("cache miss")
 }
 
 func (n *NullCache) Put(ctx context.Context, buildID string, reader io.Reader) error {
-	// Do nothing
 	return nil
 }
