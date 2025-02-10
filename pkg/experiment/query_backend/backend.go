@@ -4,31 +4,27 @@ import (
 	"context"
 	"flag"
 	"fmt"
+
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/services"
-	"github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/errgroup"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
-	"github.com/grafana/pyroscope/pkg/experiment/symbolizer"
 	"github.com/grafana/pyroscope/pkg/util"
 )
 
 type Config struct {
 	Address          string            `yaml:"address"`
 	GRPCClientConfig grpcclient.Config `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate between the query-frontends and the query-schedulers."`
-	Symbolizer       symbolizer.Config `yaml:"symbolizer"`
-	DebugStorage     client.Config     `yaml:"debug_storage"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.StringVar(&cfg.Address, "query-backend.address", "localhost:9095", "")
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix("query-backend.grpc-client-config", f)
-	cfg.Symbolizer.RegisterFlagsWithPrefix("query-backend.symbolizer", f)
 }
 
 func (cfg *Config) Validate() error {
@@ -52,8 +48,6 @@ type QueryBackend struct {
 
 	backendClient QueryHandler
 	blockReader   QueryHandler
-
-	symbolizer *symbolizer.Symbolizer
 }
 
 func New(
@@ -63,29 +57,13 @@ func New(
 	backendClient QueryHandler,
 	blockReader QueryHandler,
 ) (*QueryBackend, error) {
-	var sym *symbolizer.Symbolizer
-	if config.Symbolizer.DebuginfodURL != "" {
-		var err error
-		sym, err = symbolizer.NewFromConfig(context.Background(), config.Symbolizer, reg)
-		if err != nil {
-			return nil, fmt.Errorf("create symbolizer: %w", err)
-		}
-	}
-
 	q := QueryBackend{
 		config:        config,
 		logger:        logger,
 		reg:           reg,
 		backendClient: backendClient,
 		blockReader:   blockReader,
-		symbolizer:    sym,
 	}
-
-	// Pass symbolizer to BlockReader if it's the right type
-	if br, ok := blockReader.(*BlockReader); ok {
-		br.symbolizer = sym
-	}
-
 	q.service = services.NewIdleService(q.starting, q.stopping)
 	return &q, nil
 }
