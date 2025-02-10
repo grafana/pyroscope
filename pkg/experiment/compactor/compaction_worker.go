@@ -395,6 +395,7 @@ func (w *Worker) runCompaction(job *compactionJob) {
 	tempdir := filepath.Join(w.config.TempDir, job.Name)
 	sourcedir := filepath.Join(tempdir, "source")
 	compacted, err := block.Compact(ctx, job.blocks, w.storage,
+		block.WithCompactionTempDir(tempdir),
 		block.WithCompactionObjectOptions(
 			block.WithObjectMaxSizeLoadInMemory(w.config.SmallObjectSize),
 			block.WithObjectDownload(sourcedir),

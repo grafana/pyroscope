@@ -4,41 +4,36 @@ import (
 	"bufio"
 	"context"
 	"io"
-	"sync"
+	"os"
+	"path/filepath"
 
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/util/bufferpool"
 )
 
 type Writer struct {
-	w   *bufio.Writer
-	off uint64
-
-	pipeReader *io.PipeReader
-	pipeWriter *io.PipeWriter
+	path string
+	f    *os.File
+	w    *bufio.Writer
+	off  uint64
 	// Used by CopyBuffer when copying data to pipe.
 	buf *bufferpool.Buffer
-
-	ctx    context.Context
-	cancel context.CancelFunc
-	wg     sync.WaitGroup
 }
 
-func NewBlockWriter(ctx context.Context, storage objstore.Bucket, path string) *Writer {
-	w := &Writer{buf: bufferpool.GetBuffer(compactionCopyBufferSize)}
-
-	w.ctx, w.cancel = context.WithCancel(ctx)
-	w.pipeReader, w.pipeWriter = io.Pipe()
-	w.w = bufio.NewWriterSize(w.pipeWriter, compactionUploadBufferSize)
-
-	w.wg.Add(1)
-	go func() {
-		defer w.wg.Done()
-		err := storage.Upload(w.ctx, path, w.pipeReader)
-		_ = w.pipeWriter.CloseWithError(err)
-	}()
-
-	return w
+func NewBlockWriter(tmpdir string) (*Writer, error) {
+	var err error
+	if err = os.MkdirAll(tmpdir, 0755); err != nil {
+		return nil, err
+	}
+	w := &Writer{
+		buf:  bufferpool.GetBuffer(compactionCopyBufferSize),
+		path: filepath.Join(tmpdir, FileNameDataObject),
+	}
+	if w.f, err = os.Create(w.path); err != nil {
+		return nil, err
+	}
+	w.w = bufio.NewWriterSize(w.f, compactionUploadBufferSize)
+	return w, nil
 }
 
 func (w *Writer) Write(p []byte) (n int, err error) {
@@ -56,22 +51,23 @@ func (w *Writer) ReadFrom(r io.Reader) (n int64, err error) {
 
 func (w *Writer) Offset() uint64 { return w.off }
 
-func (w *Writer) Close() error {
-	if w.cancel == nil {
-		return nil
+func (w *Writer) Upload(ctx context.Context, bucket objstore.Bucket, path string) error {
+	if err := w.w.Flush(); err != nil {
+		return err
 	}
+	if _, err := w.f.Seek(0, 0); err != nil {
+		return err
+	}
+	return bucket.Upload(ctx, path, w.f)
+}
 
-	err := w.w.Flush()
-	// Send EOF to the pipe to unblock the upload goroutine.
-	_ = w.pipeWriter.Close()
-	_ = w.pipeReader.Close()
-	w.cancel()
-	w.wg.Wait()
-	w.cancel = nil
+func (w *Writer) Close() error {
 	if w.buf != nil {
 		bufferpool.Put(w.buf)
 		w.buf = nil
 	}
-
+	err := w.f.Close()
+	w.f = nil
+	w.w = nil
 	return err
 }

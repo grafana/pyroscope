@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"slices"
 	"sort"
 	"strings"
@@ -39,6 +40,12 @@ func WithCompactionObjectOptions(options ...ObjectOption) CompactionOption {
 	}
 }
 
+func WithCompactionTempDir(tempdir string) CompactionOption {
+	return func(p *compactionConfig) {
+		p.tempdir = tempdir
+	}
+}
+
 func WithCompactionDestination(storage objstore.Bucket) CompactionOption {
 	return func(p *compactionConfig) {
 		p.destination = storage
@@ -49,6 +56,7 @@ type compactionConfig struct {
 	objectOptions []ObjectOption
 	source        objstore.BucketReader
 	destination   objstore.Bucket
+	tempdir       string
 }
 
 func Compact(
@@ -60,6 +68,7 @@ func Compact(
 	c := &compactionConfig{
 		source:      storage,
 		destination: storage,
+		tempdir:     os.TempDir(),
 	}
 	for _, option := range options {
 		option(c)
@@ -80,7 +89,7 @@ func Compact(
 
 	compacted := make([]*metastorev1.BlockMeta, 0, len(plan))
 	for _, p := range plan {
-		md, compactionErr := p.Compact(ctx, c.destination)
+		md, compactionErr := p.Compact(ctx, c.destination, c.tempdir)
 		if compactionErr != nil {
 			return nil, compactionErr
 		}
@@ -178,8 +187,11 @@ func newBlockCompaction(
 	return p
 }
 
-func (b *CompactionPlan) Compact(ctx context.Context, dst objstore.Bucket) (m *metastorev1.BlockMeta, err error) {
-	w := NewBlockWriter(ctx, dst, b.path)
+func (b *CompactionPlan) Compact(ctx context.Context, dst objstore.Bucket, tempdir string) (m *metastorev1.BlockMeta, err error) {
+	w, err := NewBlockWriter(tempdir)
+	if err != nil {
+		return nil, fmt.Errorf("creating block writer: %w", err)
+	}
 	defer func() {
 		_ = w.Close()
 	}()
@@ -201,8 +213,8 @@ func (b *CompactionPlan) Compact(ctx context.Context, dst objstore.Bucket) (m *m
 		return nil, fmt.Errorf("writing metadata: %w", err)
 	}
 	b.meta.Size = w.Offset()
-	if err = w.Close(); err != nil {
-		return nil, fmt.Errorf("flushing block writer: %w", err)
+	if err = w.Upload(ctx, dst, b.path); err != nil {
+		return nil, fmt.Errorf("uploading block: %w", err)
 	}
 	return b.meta, nil
 }
