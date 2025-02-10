@@ -291,10 +291,10 @@ func (b *builder) addEdge(edge *Edge, from, to int, hasNodelets bool) {
 	attr := fmt.Sprintf(`label=" %s%s"`, w, inline)
 	if b.config.Total != 0 {
 		// Note: edge.weight > b.config.Total is possible for profile diffs.
-		if weight := 1 + int(min64(abs64(edge.WeightValue()*100/b.config.Total), 100)); weight > 1 {
+		if weight := 1 + int(min(abs64(edge.WeightValue()*100/b.config.Total), 100)); weight > 1 {
 			attr = fmt.Sprintf(`%s weight=%d`, attr, weight)
 		}
-		if width := 1 + int(min64(abs64(edge.WeightValue()*5/b.config.Total), 5)); width > 1 {
+		if width := 1 + int(min(abs64(edge.WeightValue()*5/b.config.Total), 5)); width > 1 {
 			attr = fmt.Sprintf(`%s penwidth=%d`, attr, width)
 		}
 		attr = fmt.Sprintf(`%s color="%s"`, attr,
@@ -354,7 +354,7 @@ func dotColor(score float64, isBackground bool) string {
 	}
 
 	// Limit the score values to the range [-1.0, 1.0].
-	score = math.Max(-1.0, math.Min(1.0, score))
+	score = max(-1.0, min(1.0, score))
 
 	// Reduce saturation near score=0 (so it is colored grey, rather than yellow).
 	if math.Abs(score) < 0.2 {
@@ -468,13 +468,6 @@ func (b *builder) tagGroupLabel(g []*Tag) (label string, flat, cum int64) {
 	// much smaller than other values which appear, so the range of tag sizes
 	// sometimes would appear to be "0..0" when scaled to the selected output unit.
 	return measurement.Label(min.Value, min.Unit) + ".." + measurement.Label(max.Value, max.Unit), f, c
-}
-
-func min64(a, b int64) int64 {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 // escapeAllForDot applies escapeForDot to all strings in the given slice.
