@@ -147,6 +147,27 @@ func TestLabelMatcher_Matches(t *testing.T) {
 	}}, m.AllMatches())
 }
 
+func Test_LabelMatcher_All(t *testing.T) {
+	strings := NewStringTable()
+	x := NewLabelBuilder(strings).BuildPairs(
+		LabelNameTenantDataset,
+		LabelValueDatasetTSDBIndex,
+	)
+
+	m := NewLabelMatcher(strings,
+		[]*labels.Matcher{},
+		"service_name",
+		"__profile_type__",
+	)
+
+	assert.True(t, m.IsValid())
+	assert.True(t, m.Matches(x))
+	assert.Equal(t, []model.Labels{{
+		&typesv1.LabelPair{Name: "service_name", Value: ""},
+		&typesv1.LabelPair{Name: "__profile_type__", Value: ""},
+	}}, m.AllMatches())
+}
+
 func TestLabelMatcher_Collect(t *testing.T) {
 	strings := NewStringTable()
 	b := NewLabelBuilder(strings)
