@@ -1,6 +1,9 @@
 package symbolizer
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/prometheus/client_golang/prometheus"
+)
 
 type Metrics struct {
 	registerer prometheus.Registerer
@@ -19,13 +22,15 @@ type Metrics struct {
 	cacheOperationDuration  *prometheus.HistogramVec
 	cacheExpiredTotal       prometheus.Counter
 
-	// Symbolization metrics
-	//symbolizationDuration  prometheus.Histogram
-	//symbolizationLocations *prometheus.CounterVec
-	symbolizationRequestsTotal      prometheus.Counter
-	symbolizationRequestErrorsTotal *prometheus.CounterVec
-	symbolizationDuration           prometheus.Histogram
-	symbolizationLocationTotal      *prometheus.CounterVec
+	// Symbolization tree-level metrics
+	symbolizeRequestsTotal prometheus.Counter
+	symbolizeErrorsTotal   *prometheus.CounterVec
+	symbolizeDuration      prometheus.Histogram
+
+	// Internal symbolization metrics
+	symbolizeLocationTotal    *prometheus.CounterVec
+	symbolizeInternalErrors   *prometheus.CounterVec
+	symbolizeInternalDuration prometheus.Histogram
 }
 
 func NewMetrics(reg prometheus.Registerer) *Metrics {
@@ -81,27 +86,38 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 			Name: "pyroscope_symbolizer_cache_expired_total",
 			Help: "Total number of expired items removed from cache",
 		}),
-		symbolizationRequestsTotal: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: "pyroscope_symbolizer_requests_total",
-			Help: "Total number of symbolization requests",
+		symbolizeRequestsTotal: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "pyroscope_symbolizer_tree_requests_total",
+			Help: "Total number of tree symbolization requests",
 		}),
-		symbolizationRequestErrorsTotal: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "pyroscope_symbolizer_request_errors_total",
-			Help: "Total number of symbolization errors",
+		symbolizeErrorsTotal: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "pyroscope_symbolizer_tree_errors_total",
+			Help: "Total number of tree symbolization errors",
 		}, []string{"reason"}),
-		symbolizationDuration: prometheus.NewHistogram(
-			prometheus.HistogramOpts{
-				Name:    "pyroscope_symbolizer_duration_seconds",
-				Help:    "Time spent performing symbolization",
-				Buckets: []float64{.01, .05, .1, .5, 1, 5, 10, 30},
-			},
-		),
-		symbolizationLocationTotal: prometheus.NewCounterVec(prometheus.CounterOpts{
+		symbolizeDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Name:    "pyroscope_symbolizer_tree_duration_seconds",
+			Help:    "Time spent performing tree symbolization",
+			Buckets: []float64{.01, .05, .1, .5, 1, 5, 10, 30},
+		}),
+		symbolizeLocationTotal: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "pyroscope_symbolizer_locations_total",
 			Help: "Total number of locations processed",
 		}, []string{"status"}),
+		symbolizeInternalErrors: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "pyroscope_symbolizer_internal_errors_total",
+			Help: "Total number of internal symbolization errors",
+		}, []string{"reason"}),
+		symbolizeInternalDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Name:    "pyroscope_symbolizer_internal_duration_seconds",
+			Help:    "Time spent performing internal symbolization operations",
+			Buckets: []float64{.01, .05, .1, .5, 1, 5, 10, 30},
+		}),
 	}
-	m.register()
+
+	if reg != nil {
+		m.register()
+	}
+
 	return m
 }
 
@@ -121,14 +137,16 @@ func (m *Metrics) register() {
 		m.cacheMissesTotal,
 		m.cacheOperationDuration,
 		m.cacheExpiredTotal,
-		m.symbolizationRequestsTotal,
-		m.symbolizationRequestErrorsTotal,
-		m.symbolizationDuration,
-		m.symbolizationLocationTotal,
+		m.symbolizeRequestsTotal,
+		m.symbolizeErrorsTotal,
+		m.symbolizeDuration,
+		m.symbolizeLocationTotal,
+		m.symbolizeInternalErrors,
+		m.symbolizeInternalDuration,
 	}
 
 	for _, collector := range collectors {
-		m.registerer.MustRegister(collector)
+		util.RegisterOrGet(m.registerer, collector)
 	}
 }
 
@@ -148,10 +166,12 @@ func (m *Metrics) Unregister() {
 		m.cacheMissesTotal,
 		m.cacheOperationDuration,
 		m.cacheExpiredTotal,
-		m.symbolizationRequestsTotal,
-		m.symbolizationRequestErrorsTotal,
-		m.symbolizationDuration,
-		m.symbolizationLocationTotal,
+		m.symbolizeRequestsTotal,
+		m.symbolizeErrorsTotal,
+		m.symbolizeDuration,
+		m.symbolizeLocationTotal,
+		m.symbolizeInternalErrors,
+		m.symbolizeInternalDuration,
 	}
 
 	for _, collector := range collectors {

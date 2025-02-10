@@ -13,12 +13,31 @@ import (
 	pprof "github.com/google/pprof/profile"
 )
 
+type FunctionInfo struct {
+	Ranges    []FunctionRange
+	Locations []SymbolLocation
+}
+
+type FunctionRange struct {
+	StartAddr uint64
+	EndAddr   uint64
+}
+type InlineInfo struct {
+	Name      string
+	File      string
+	Line      int
+	StartAddr uint64
+	EndAddr   uint64
+}
+
 // DWARFInfo implements the liner interface
 type DWARFInfo struct {
 	debugData           *dwarf.Data
 	lineEntries         map[dwarf.Offset][]dwarf.LineEntry
 	subprograms         map[dwarf.Offset][]*godwarf.Tree
 	abstractSubprograms map[dwarf.Offset]*dwarf.Entry
+	addressMap          map[uint64]*FunctionInfo  // Quick address lookups
+	functionMap         map[string]*FunctionRange // Function name lookups
 }
 
 // NewDWARFInfo creates a new liner using DWARF debug info
@@ -28,10 +47,17 @@ func NewDWARFInfo(debugData *dwarf.Data) *DWARFInfo {
 		lineEntries:         make(map[dwarf.Offset][]dwarf.LineEntry),
 		subprograms:         make(map[dwarf.Offset][]*godwarf.Tree),
 		abstractSubprograms: make(map[dwarf.Offset]*dwarf.Entry),
+		addressMap:          make(map[uint64]*FunctionInfo),
+		functionMap:         make(map[string]*FunctionRange),
 	}
 }
 
 func (d *DWARFInfo) ResolveAddress(_ context.Context, addr uint64) ([]SymbolLocation, error) {
+	// Try optimized lookup first
+	if locations, ok := d.resolveFromOptimizedMaps(addr); ok {
+		return locations, nil
+	}
+
 	er := reader.New(d.debugData)
 	cu, err := er.SeekPC(addr)
 	if err != nil {
@@ -78,60 +104,19 @@ func (d *DWARFInfo) ResolveAddress(_ context.Context, addr uint64) ([]SymbolLoca
 		Line: line,
 	})
 
-	// Enhanced inline function processing
-	for _, tr := range reader.InlineStack(targetTree, addr) {
-
-		var functionName string
-		if tr.Tag == dwarf.TagSubprogram {
-			functionName, ok = targetTree.Entry.Val(dwarf.AttrName).(string)
-			if !ok {
-				functionName = ""
-			}
-		} else {
-			if abstractOffset, ok := tr.Entry.Val(dwarf.AttrAbstractOrigin).(dwarf.Offset); ok {
-				if abstractOrigin, exists := d.abstractSubprograms[abstractOffset]; exists {
-					functionName = d.getFunctionName(abstractOrigin)
-				} else {
-					functionName = "?"
-				}
-			} else {
-				functionName = "?"
-			}
-		}
-
-		declLine, ok := tr.Entry.Val(dwarf.AttrDeclLine).(int64)
-		if !ok {
-			declLine = 0
-		}
-
-		file, line := d.findLineInfo(d.lineEntries[cu.Offset], tr.Ranges)
-
+	inlines := d.processInlineFunctions(targetTree, addr, cu.Offset)
+	for _, inline := range inlines {
 		lines = append(lines, SymbolLocation{
 			Function: &pprof.Function{
-				Name:      functionName,
-				Filename:  file,
-				StartLine: declLine,
+				Name:      inline.Name,
+				Filename:  inline.File,
+				StartLine: int64(inline.Line),
 			},
-			Line: line,
+			Line: int64(inline.Line),
 		})
 	}
 
 	return lines, nil
-}
-
-func (d *DWARFInfo) resolveFunctionName(entry *dwarf.Entry) string {
-	if entry == nil {
-		return "?"
-	}
-
-	if name, ok := entry.Val(dwarf.AttrName).(string); ok {
-		return name
-	}
-	if name, ok := entry.Val(dwarf.AttrLinkageName).(string); ok {
-		return name
-	}
-
-	return "?"
 }
 
 func (d *DWARFInfo) buildLookupTables(cu *dwarf.Entry) error {
@@ -165,6 +150,11 @@ func (d *DWARFInfo) buildLookupTables(cu *dwarf.Entry) error {
 	// Process subprograms and their trees
 	if err := d.processSubprogramEntries(cu); err != nil {
 		return fmt.Errorf("process subprogram entries: %w", err)
+	}
+
+	// Build optimized maps for this CU
+	if err := d.buildOptimizedMaps(cu.Offset); err != nil {
+		return fmt.Errorf("build optimized maps: %w", err)
 	}
 
 	return nil
@@ -288,73 +278,6 @@ func (d *DWARFInfo) findLineInfo(entries []dwarf.LineEntry, ranges [][2]uint64) 
 	return "?", 0
 }
 
-func (d *DWARFInfo) getFunctionName(entry *dwarf.Entry) string {
-	name := "?"
-	ok := false
-	if entry != nil {
-		for _, field := range entry.Field {
-			if field.Attr == dwarf.AttrName {
-				name, ok = field.Val.(string)
-				if !ok {
-					name = "?"
-				}
-			}
-		}
-	}
-	return name
-}
-
-func (d *DWARFInfo) SymbolizeAllAddresses() map[uint64][]SymbolLocation {
-	results := make(map[uint64][]SymbolLocation)
-
-	// Get all compilation units
-	reader := d.debugData.Reader()
-	for {
-		entry, err := reader.Next()
-		if err != nil || entry == nil {
-			break
-		}
-
-		if entry.Tag != dwarf.TagCompileUnit {
-			continue
-		}
-
-		// Get ranges for this compilation unit
-		ranges, err := d.debugData.Ranges(entry)
-		if err != nil {
-			fmt.Printf("Warning: Failed to get ranges for CU: %v\n", err)
-			continue
-		}
-
-		for _, rng := range ranges {
-			// Skip invalid ranges
-			if rng[0] >= rng[1] {
-				continue
-			}
-
-			// Sample multiple points in this range
-			addresses := []uint64{
-				rng[0],                     // start
-				rng[0] + (rng[1]-rng[0])/2, // middle
-				rng[1] - 1,                 // end (exclusive)
-			}
-
-			for _, addr := range addresses {
-				lines, err := d.ResolveAddress(context.Background(), addr)
-				if err != nil {
-					continue
-				}
-
-				if len(lines) > 0 {
-					results[addr] = lines
-				}
-			}
-		}
-	}
-
-	return results
-}
-
 func (d *DWARFInfo) scanAbstractSubprograms() error {
 	reader := d.debugData.Reader()
 	// Scan from the start, don't stop at first CU
@@ -370,4 +293,111 @@ func (d *DWARFInfo) scanAbstractSubprograms() error {
 		}
 	}
 	return nil
+}
+
+func (d *DWARFInfo) resolveFromOptimizedMaps(addr uint64) ([]SymbolLocation, bool) {
+	for _, info := range d.addressMap {
+		for _, rang := range info.Ranges {
+			if addr >= rang.StartAddr && addr < rang.EndAddr {
+				return info.Locations, true
+			}
+		}
+	}
+	return nil, false
+}
+
+func (d *DWARFInfo) buildOptimizedMaps(cuOffset dwarf.Offset) error {
+	for _, tree := range d.subprograms[cuOffset] {
+		name := d.resolveFunctionName(tree)
+		if name == "?" {
+			continue
+		}
+
+		if len(tree.Ranges) == 0 {
+			continue
+		}
+
+		filename, line := d.findLineInfo(d.lineEntries[cuOffset], tree.Ranges)
+
+		// Build locations once
+		locations := []SymbolLocation{{
+			Function: &pprof.Function{
+				Name:      name,
+				Filename:  filename,
+				StartLine: int64(line),
+			},
+			Line: int64(line),
+		}}
+
+		// Add inline locations
+		inlines := d.processInlineFunctions(tree, tree.Ranges[0][0], cuOffset)
+		for _, inline := range inlines {
+			locations = append(locations, SymbolLocation{
+				Function: &pprof.Function{
+					Name:      inline.Name,
+					Filename:  inline.File,
+					StartLine: int64(inline.Line),
+				},
+				Line: int64(inline.Line),
+			})
+		}
+
+		info := &FunctionInfo{
+			Ranges:    make([]FunctionRange, len(tree.Ranges)),
+			Locations: locations,
+		}
+
+		for i, rang := range tree.Ranges {
+			info.Ranges[i] = FunctionRange{
+				StartAddr: rang[0],
+				EndAddr:   rang[1],
+			}
+		}
+
+		// Store in addressMap using first range start as key
+		d.addressMap[tree.Ranges[0][0]] = info
+
+		// Store in functionMap
+		d.functionMap[name] = &FunctionRange{
+			StartAddr: tree.Ranges[0][0],
+			EndAddr:   tree.Ranges[0][1],
+		}
+
+	}
+	return nil
+}
+
+func (d *DWARFInfo) processInlineFunctions(tree *godwarf.Tree, addr uint64, cuOffset dwarf.Offset) []InlineInfo {
+	var inlines []InlineInfo
+	for _, inline := range reader.InlineStack(tree, addr) {
+		inlineName := d.resolveFunctionName(inline)
+		if inlineName == "?" {
+			continue
+		}
+
+		filename, line := d.findLineInfo(d.lineEntries[cuOffset], inline.Ranges)
+		inlines = append(inlines, InlineInfo{
+			Name:      inlineName,
+			File:      filename,
+			Line:      int(line),
+			StartAddr: inline.Ranges[0][0],
+			EndAddr:   inline.Ranges[0][1],
+		})
+	}
+	return inlines
+}
+
+func (d *DWARFInfo) resolveFunctionName(entry *godwarf.Tree) string {
+	if entry == nil {
+		return "?"
+	}
+
+	if name, ok := entry.Val(dwarf.AttrName).(string); ok {
+		return name
+	}
+	if name, ok := entry.Val(dwarf.AttrLinkageName).(string); ok {
+		return name
+	}
+
+	return "?"
 }

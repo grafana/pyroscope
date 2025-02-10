@@ -1,6 +1,7 @@
 package symbolizer
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,21 +16,44 @@ type DebuginfodClient interface {
 }
 
 type debuginfodClient struct {
-	baseURL string
-	metrics *Metrics
+	baseURL    string
+	metrics    *Metrics
+	httpClient *http.Client
 }
 
 func NewDebuginfodClient(baseURL string, metrics *Metrics) DebuginfodClient {
+	// Create a default transport with reasonable timeouts
+	transport := &http.Transport{
+		MaxIdleConnsPerHost: 10,
+		IdleConnTimeout:     90 * time.Second,
+		TLSHandshakeTimeout: 10 * time.Second,
+	}
+
+	client := &http.Client{
+		Transport: transport,
+		Timeout:   30 * time.Second, // Overall timeout for requests
+	}
+
 	return &debuginfodClient{
-		baseURL: baseURL,
-		metrics: metrics,
+		baseURL:    baseURL,
+		metrics:    metrics,
+		httpClient: client,
 	}
 }
 
 // FetchDebuginfo fetches the debuginfo file for a specific build ID.
 func (c *debuginfodClient) FetchDebuginfo(buildID string) (string, error) {
-	c.metrics.debuginfodRequestsTotal.Inc()
 	start := time.Now()
+	var err error
+	c.metrics.debuginfodRequestsTotal.Inc()
+	defer func() {
+		status := "success"
+		if err != nil {
+			status = "error"
+			c.metrics.debuginfodRequestErrorsTotal.WithLabelValues("http").Inc()
+		}
+		c.metrics.debuginfodRequestDuration.WithLabelValues(status).Observe(time.Since(start).Seconds())
+	}()
 
 	sanitizedBuildID, err := sanitizeBuildID(buildID)
 	if err != nil {
@@ -39,7 +63,16 @@ func (c *debuginfodClient) FetchDebuginfo(buildID string) (string, error) {
 
 	url := fmt.Sprintf("%s/buildid/%s/debuginfo", c.baseURL, sanitizedBuildID)
 
-	resp, err := http.Get(url)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
+	if err != nil {
+		c.metrics.debuginfodRequestErrorsTotal.WithLabelValues("request_creation").Inc()
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Accept-Encoding", "gzip, deflate")
+
+	resp, err := c.httpClient.Do(req)
+	//resp, err := http.Get(url)
 	if err != nil {
 		c.metrics.debuginfodRequestErrorsTotal.WithLabelValues("http").Inc()
 		c.metrics.debuginfodRequestDuration.WithLabelValues("error").Observe(time.Since(start).Seconds())
@@ -65,7 +98,6 @@ func (c *debuginfodClient) FetchDebuginfo(buildID string) (string, error) {
 	outFile, err := os.Create(filePath)
 	if err != nil {
 		c.metrics.debuginfodRequestErrorsTotal.WithLabelValues("file_create").Inc()
-		c.metrics.debuginfodRequestDuration.WithLabelValues("error").Observe(time.Since(start).Seconds())
 		return "", fmt.Errorf("failed to create temp file: %w", err)
 	}
 	defer outFile.Close()
@@ -73,11 +105,8 @@ func (c *debuginfodClient) FetchDebuginfo(buildID string) (string, error) {
 	_, err = io.Copy(outFile, resp.Body)
 	if err != nil {
 		c.metrics.debuginfodRequestErrorsTotal.WithLabelValues("write").Inc()
-		c.metrics.debuginfodRequestDuration.WithLabelValues("error").Observe(time.Since(start).Seconds())
 		return "", fmt.Errorf("failed to write debuginfod to file: %w", err)
 	}
-
-	c.metrics.debuginfodRequestDuration.WithLabelValues("success").Observe(time.Since(start).Seconds())
 
 	return filePath, nil
 }
