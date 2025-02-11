@@ -153,8 +153,10 @@ func (b *blockContext) lookupDatasets() error {
 	}()
 
 	g, ctx := errgroup.WithContext(b.ctx)
-	g.Go(func() error {
-		return b.obj.ReadMetadata(ctx)
+	var md *metastorev1.BlockMeta
+	g.Go(func() (err error) {
+		md, err = b.obj.ReadMetadata(ctx)
+		return err
 	})
 	g.Go(func() error {
 		return ds.Open(ctx, block.SectionDatasetIndex)
@@ -163,7 +165,6 @@ func (b *blockContext) lookupDatasets() error {
 		return err
 	}
 
-	md := b.obj.Metadata()
 	datasetIDs, err := getSeriesIDs(ds.Index(), b.req.matchers...)
 	if err != nil {
 		return err
@@ -177,6 +178,7 @@ func (b *blockContext) lookupDatasets() error {
 		}
 	}
 	md.Datasets = md.Datasets[:j]
+	b.obj.SetMetadata(md)
 
 	opentracing.SpanFromContext(b.ctx).
 		LogFields(otlog.String("msg", "dataset tsdb index lookup complete"))

@@ -198,27 +198,29 @@ func (obj *Object) Download(ctx context.Context) error {
 
 func (obj *Object) Metadata() *metastorev1.BlockMeta { return obj.meta }
 
-// ReadMetadata fetches the full block metadata from the storage
-// and replaces the one specified when the object was created.
-func (obj *Object) ReadMetadata(ctx context.Context) error {
+func (obj *Object) SetMetadata(md *metastorev1.BlockMeta) { obj.meta = md }
+
+// ReadMetadata fetches the full block metadata from the storage.
+// It the object does not include the metadata offset, the method
+// returns the metadata entry the object was opened with.
+func (obj *Object) ReadMetadata(ctx context.Context) (*metastorev1.BlockMeta, error) {
 	if obj.meta.MetadataOffset == 0 {
-		return nil
+		return obj.meta, nil
 	}
 	buf := bufferpool.GetBuffer(16 << 10)
 	defer bufferpool.Put(buf)
 	offset := int64(obj.meta.MetadataOffset)
 	size := int64(obj.meta.Size) - offset
 	if err := objstore.ReadRange(ctx, buf, obj.path, obj.storage, offset, size); err != nil {
-		return fmt.Errorf("reading block metadata %s: %w", obj.path, err)
+		return nil, fmt.Errorf("reading block metadata %s: %w", obj.path, err)
 	}
 	var meta metastorev1.BlockMeta
 	if err := metadata.Decode(buf.B, &meta); err != nil {
-		return fmt.Errorf("decoding block metadata %s: %w", obj.path, err)
+		return nil, fmt.Errorf("decoding block metadata %s: %w", obj.path, err)
 	}
 	// Size is not stored in the metadata, so we need to preserve it.
 	meta.Size = obj.meta.Size
-	obj.meta = &meta
-	return nil
+	return &meta, nil
 }
 
 func (obj *Object) IsNotExists(err error) bool {
