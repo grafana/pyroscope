@@ -40,9 +40,22 @@ func (q *schedulerQueue) put(state *raft_log.CompactionJobState) {
 func (q *schedulerQueue) delete(name string) *raft_log.CompactionJobState {
 	if e, exists := q.jobs[name]; exists {
 		delete(q.jobs, name)
-		return q.level(e.CompactionLevel).delete(e)
+		level := q.level(e.CompactionLevel)
+		level.delete(e)
+		level.stats.completedTotal++
+		return e.CompactionJobState
 	}
 	return nil
+}
+
+// evict is identical to delete, but it updates the eviction stats.
+func (q *schedulerQueue) evict(name string) {
+	if e, exists := q.jobs[name]; exists {
+		delete(q.jobs, name)
+		level := q.level(e.CompactionLevel)
+		level.delete(e)
+		level.stats.evictedTotal++
+	}
 }
 
 func (q *schedulerQueue) size() int {
@@ -90,6 +103,7 @@ type queueStats struct {
 	completedTotal  uint32
 	assignedTotal   uint32
 	reassignedTotal uint32
+	evictedTotal    uint32
 	// Gauges. Updated periodically.
 	assigned   uint32
 	unassigned uint32
@@ -126,7 +140,6 @@ func (q *jobQueue) update(e *jobEntry, state *raft_log.CompactionJobState) {
 }
 
 func (q *jobQueue) delete(e *jobEntry) *raft_log.CompactionJobState {
-	q.stats.completedTotal++
 	heap.Remove(q.jobs, e.index)
 	return e.CompactionJobState
 }
