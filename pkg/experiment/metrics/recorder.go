@@ -17,14 +17,14 @@ type Recorder struct {
 
 type Recording struct {
 	rule  RecordingRule
-	data  map[AggregatedFingerprint]*TimeSeries
+	data  map[AggregatedFingerprint]*Sample
 	state *recordingState
 }
 
 type recordingState struct {
-	fp         *model.Fingerprint
-	matches    bool
-	timeSeries *TimeSeries
+	fp      *model.Fingerprint
+	matches bool
+	sample  *Sample
 }
 
 func (r *Recording) InitState(fp model.Fingerprint, lbls phlaremodel.Labels, pyroscopeInstance string, recordingTime int64) {
@@ -41,22 +41,18 @@ func (r *Recording) InitState(fp model.Fingerprint, lbls phlaremodel.Labels, pyr
 	exportedLabels := generateExportedLabels(labelsMap, r, pyroscopeInstance)
 	sort.Sort(exportedLabels)
 	aggregatedFp := AggregatedFingerprint(exportedLabels.Hash())
-	timeSeries, ok := r.data[aggregatedFp]
+	sample, ok := r.data[aggregatedFp]
 	if !ok {
-		timeSeries = newTimeSeries(exportedLabels, recordingTime)
-		r.data[aggregatedFp] = timeSeries
+		sample = newSample(exportedLabels, recordingTime)
+		r.data[aggregatedFp] = sample
 	}
-	r.state.timeSeries = timeSeries
+	r.state.sample = sample
 }
 
 type AggregatedFingerprint model.Fingerprint
 
-type TimeSeries struct {
-	Labels  labels.Labels
-	Samples []Sample
-}
-
 type Sample struct {
+	Labels    labels.Labels
 	Value     float64
 	Timestamp int64
 }
@@ -66,7 +62,7 @@ func NewRecorder(recordingRules []*RecordingRule, recordingTime int64, pyroscope
 	for i, rule := range recordingRules {
 		recordings[i] = &Recording{
 			rule: *rule,
-			data: make(map[AggregatedFingerprint]*TimeSeries),
+			data: make(map[AggregatedFingerprint]*Sample),
 			state: &recordingState{
 				fp: nil,
 			},
@@ -87,19 +83,15 @@ func (r *Recorder) RecordRow(fp model.Fingerprint, lbls phlaremodel.Labels, tota
 		if !recording.state.matches {
 			continue
 		}
-		recording.state.timeSeries.Samples[0].Value += float64(totalValue)
+		recording.state.sample.Value += float64(totalValue)
 	}
 }
 
-func newTimeSeries(exportedLabels labels.Labels, time int64) *TimeSeries {
-	return &TimeSeries{
-		Labels: exportedLabels,
-		Samples: []Sample{
-			{
-				Value:     float64(0),
-				Timestamp: time,
-			},
-		},
+func newSample(exportedLabels labels.Labels, time int64) *Sample {
+	return &Sample{
+		Labels:    exportedLabels,
+		Value:     float64(0),
+		Timestamp: time,
 	}
 }
 

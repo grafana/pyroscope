@@ -15,7 +15,7 @@ import (
 
 type Exporter struct {
 	client remote.WriteClient
-	data   map[AggregatedFingerprint]*TimeSeries
+	data   map[AggregatedFingerprint]*Sample
 }
 
 type Config struct {
@@ -26,7 +26,7 @@ type Config struct {
 
 func NewExporter(tenant string, recordings []*Recording) (*Exporter, error) {
 	exporter := &Exporter{
-		data: map[AggregatedFingerprint]*TimeSeries{},
+		data: map[AggregatedFingerprint]*Sample{},
 	}
 	for _, r := range recordings {
 		for fp, ts := range r.data {
@@ -51,20 +51,20 @@ func (e *Exporter) Send() error {
 	}
 
 	p := &prompb.WriteRequest{Timeseries: make([]prompb.TimeSeries, 0, len(e.data))}
-	for _, ts := range e.data {
+	for _, sample := range e.data {
 		pts := prompb.TimeSeries{
-			Labels: make([]prompb.Label, 0, len(ts.Labels)),
+			Labels: make([]prompb.Label, 0, len(sample.Labels)),
+			Samples: []prompb.Sample{
+				{
+					Value:     sample.Value,
+					Timestamp: sample.Timestamp,
+				},
+			},
 		}
-		for _, l := range ts.Labels {
+		for _, l := range sample.Labels {
 			pts.Labels = append(pts.Labels, prompb.Label{
 				Name:  l.Name,
 				Value: l.Value,
-			})
-		}
-		for _, s := range ts.Samples {
-			pts.Samples = append(pts.Samples, prompb.Sample{
-				Value:     s.Value,
-				Timestamp: s.Timestamp,
 			})
 		}
 		p.Timeseries = append(p.Timeseries, pts)
