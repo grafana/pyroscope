@@ -13,6 +13,8 @@ type Config struct {
 	LimitReached bool `yaml:"limit_reached" json:"limit_reached"`
 	// Sampling controls the sampling parameters when the limit is reached.
 	Sampling SamplingConfig `yaml:"sampling" json:"sampling"`
+	// UsageGroups controls ingestion for pre-configured usage groups.
+	UsageGroups map[string]UsageGroup `yaml:"usage_groups" json:"usage_groups"`
 }
 
 // SamplingConfig describes the params of a simple probabilistic sampling mechanism.
@@ -22,4 +24,9 @@ type Config struct {
 type SamplingConfig struct {
 	NumRequests int           `yaml:"num_requests" json:"num_requests"`
 	Period      time.Duration `yaml:"period" json:"period"`
+}
+
+type UsageGroup struct {
+	PeriodLimitMb int  `yaml:"period_limit_mb" json:"period_limit_mb"`
+	LimitReached  bool `yaml:"limit_reached" json:"limit_reached"`
 }
