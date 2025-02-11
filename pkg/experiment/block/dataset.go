@@ -51,9 +51,9 @@ var (
 		},
 		DatasetFormat1: {
 			// The dataset index can be used instead of the tsdb section of the
-			// dataset. Therefore, it has an alias record: if a query accesses
-			// the tsdb index of the dataset, it will access the tenant-wide
-			// dataset index.
+			// dataset in cases where SeriesIndex is not used. Therefore, it has
+			// an alias record: if a query accesses the tsdb index of the dataset,
+			// it will access the tenant-wide dataset index.
 			SectionDatasetIndex: sectionDesc{index: 0, name: "dataset_tsdb_index"},
 			SectionTSDB:         sectionDesc{index: 0, name: "dataset_tsdb_index"},
 		},
