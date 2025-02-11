@@ -55,6 +55,9 @@ type Schedule interface {
 	UpdateJob(*raft_log.CompactionJobStatusUpdate) *raft_log.CompactionJobState
 	// AssignJob is called on behalf of the worker to request a new job.
 	AssignJob() (*raft_log.AssignedCompactionJob, error)
+	// EvictJob is called on behalf of the planner to evict jobs that cannot
+	// be assigned to workers, and free up resources for new jobs.
+	EvictJob() *raft_log.CompactionJobState
 	// AddJob is called on behalf of the planner to add a new job to the schedule.
 	// The scheduler may decline the job by returning a nil state.
 	AddJob(*raft_log.CompactionJobPlan) *raft_log.CompactionJobState

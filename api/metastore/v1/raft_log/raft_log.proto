@@ -46,6 +46,7 @@ message CompactionPlanUpdate {
   repeated AssignedCompactionJob assigned_jobs = 2;
   repeated UpdatedCompactionJob updated_jobs = 3;
   repeated CompletedCompactionJob completed_jobs = 4;
+  repeated EvictedCompactionJob evicted_jobs = 5;
 }
 
 message NewCompactionJob {
@@ -65,6 +66,10 @@ message UpdatedCompactionJob {
 message CompletedCompactionJob {
   CompactionJobState state = 1;
   metastore.v1.CompactedBlocks compacted_blocks = 2;
+}
+
+message EvictedCompactionJob {
+  CompactionJobState state = 1;
 }
 
 // CompactionJobState is produced in response to

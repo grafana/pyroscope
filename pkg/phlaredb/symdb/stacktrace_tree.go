@@ -6,8 +6,6 @@ import (
 	"unsafe"
 
 	"github.com/dgryski/go-groupvarint"
-
-	"github.com/grafana/pyroscope/pkg/util/math"
 )
 
 const (
@@ -321,7 +319,7 @@ func (d *treeDecoder) unmarshal(t *parentPointerTree, r io.Reader) error {
 			// group buffer, whichever is smaller.
 			xn := len(t.nodes) - np // remaining nodes
 			// Note that g should always be a multiple of 4.
-			g = g[:math.Min((xn+xn%2)*2, d.groupBuffer)]
+			g = g[:min((xn+xn%2)*2, d.groupBuffer)]
 			if len(g)%4 != 0 {
 				return io.ErrUnexpectedEOF
 			}

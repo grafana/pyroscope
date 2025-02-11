@@ -54,7 +54,7 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 	// report from the worker. The plan will be used to update the schedule
 	// after the Raft consensus is reached.
 	planner := h.planner.NewPlan(cmd)
-	scheduler := h.scheduler.NewSchedule(tx, cmd)
+	schedule := h.scheduler.NewSchedule(tx, cmd)
 	p := new(raft_log.CompactionPlanUpdate)
 
 	// Any status update may translate to either a job lease refresh, or a
@@ -63,7 +63,7 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 	// assignments, therefore we try to update jobs' status first.
 	var revoked int
 	for _, status := range req.StatusUpdates {
-		switch state := scheduler.UpdateJob(status); {
+		switch state := schedule.UpdateJob(status); {
 		case state == nil:
 			// Nil state indicates that the job has been abandoned and
 			// reassigned, or the request is not valid. This may happen
@@ -95,19 +95,24 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 	// ones. If we change it, we need to make sure that the Schedule
 	// implementation allows doing this.
 	for assigned := 0; assigned < capacity; assigned++ {
-		job, err := scheduler.AssignJob()
+		job, err := schedule.AssignJob()
 		if err != nil {
 			level.Error(h.logger).Log("msg", "failed to assign compaction job", "err", err)
 			return nil, err
 		}
-		if job == nil {
-			// No more jobs to assign.
-			break
+		if job != nil {
+			p.AssignedJobs = append(p.AssignedJobs, job)
 		}
-		p.AssignedJobs = append(p.AssignedJobs, job)
 	}
 
 	for created := 0; created < capacity; created++ {
+		// Evict jobs that cannot be assigned to workers.
+		if evicted := schedule.EvictJob(); evicted != nil {
+			level.Debug(h.logger).Log("msg", "planning to evict failed job", "job", evicted.Name)
+			p.EvictedJobs = append(p.EvictedJobs, &raft_log.EvictedCompactionJob{
+				State: evicted,
+			})
+		}
 		plan, err := planner.CreateJob()
 		if err != nil {
 			level.Error(h.logger).Log("msg", "failed to create compaction job", "err", err)
@@ -117,10 +122,13 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 			// No more jobs to create.
 			break
 		}
-		state := scheduler.AddJob(plan)
+		state := schedule.AddJob(plan)
 		if state == nil {
 			// Scheduler declined the job. The only case when this may happen
-			// is when the scheduler queue is full.
+			// is when the scheduler queue is full; theoretically, this should
+			// not happen, because we evicted jobs before creating new ones.
+			// However, if all the jobs are healthy, we may end up here.
+			level.Warn(h.logger).Log("msg", "compaction job rejected by scheduler")
 			break
 		}
 		p.NewJobs = append(p.NewJobs, &raft_log.NewCompactionJob{
