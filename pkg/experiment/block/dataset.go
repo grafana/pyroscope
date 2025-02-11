@@ -76,6 +76,9 @@ func (sc Section) open(ctx context.Context, s *Dataset) (err error) {
 }
 
 type Dataset struct {
+	tenant string
+	name   string
+
 	meta *metastorev1.Dataset
 	obj  *Object
 
@@ -92,6 +95,8 @@ type Dataset struct {
 
 func NewDataset(meta *metastorev1.Dataset, obj *Object) *Dataset {
 	return &Dataset{
+		tenant:  obj.meta.StringTable[meta.Tenant],
+		name:    obj.meta.StringTable[meta.Name],
 		meta:    meta,
 		obj:     obj,
 		memSize: defaultTenantDatasetSizeLoadInMemory,
@@ -190,6 +195,10 @@ func (s *Dataset) closeErr(err error) error {
 	}
 	return merr.Err()
 }
+
+func (s *Dataset) TenantID() string { return s.tenant }
+
+func (s *Dataset) Name() string { return s.name }
 
 func (s *Dataset) Metadata() *metastorev1.Dataset { return s.meta }
 
