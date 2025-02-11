@@ -67,7 +67,7 @@ type compactionConfig struct {
 }
 
 type SampleObserver interface {
-	// Init is called at the beginning of the compaction job.
+	// Init is called at the beginning of the compaction plan.
 	Init(tenant string)
 
 	// Observe is called before the compactor appends the entry
