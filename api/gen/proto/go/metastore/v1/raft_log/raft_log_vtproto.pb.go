@@ -153,6 +153,13 @@ func (m *CompactionPlanUpdate) CloneVT() *CompactionPlanUpdate {
 		}
 		r.CompletedJobs = tmpContainer
 	}
+	if rhs := m.EvictedJobs; rhs != nil {
+		tmpContainer := make([]*EvictedCompactionJob, len(rhs))
+		for k, v := range rhs {
+			tmpContainer[k] = v.CloneVT()
+		}
+		r.EvictedJobs = tmpContainer
+	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -238,6 +245,23 @@ func (m *CompletedCompactionJob) CloneVT() *CompletedCompactionJob {
 }
 
 func (m *CompletedCompactionJob) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *EvictedCompactionJob) CloneVT() *EvictedCompactionJob {
+	if m == nil {
+		return (*EvictedCompactionJob)(nil)
+	}
+	r := new(EvictedCompactionJob)
+	r.State = m.State.CloneVT()
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *EvictedCompactionJob) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
@@ -531,6 +555,23 @@ func (this *CompactionPlanUpdate) EqualVT(that *CompactionPlanUpdate) bool {
 			}
 		}
 	}
+	if len(this.EvictedJobs) != len(that.EvictedJobs) {
+		return false
+	}
+	for i, vx := range this.EvictedJobs {
+		vy := that.EvictedJobs[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &EvictedCompactionJob{}
+			}
+			if q == nil {
+				q = &EvictedCompactionJob{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
@@ -627,6 +668,25 @@ func (this *CompletedCompactionJob) EqualVT(that *CompletedCompactionJob) bool {
 
 func (this *CompletedCompactionJob) EqualMessageVT(thatMsg proto.Message) bool {
 	that, ok := thatMsg.(*CompletedCompactionJob)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *EvictedCompactionJob) EqualVT(that *EvictedCompactionJob) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if !this.State.EqualVT(that.State) {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *EvictedCompactionJob) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*EvictedCompactionJob)
 	if !ok {
 		return false
 	}
@@ -1034,6 +1094,18 @@ func (m *CompactionPlanUpdate) MarshalToSizedBufferVT(dAtA []byte) (int, error) 
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if len(m.EvictedJobs) > 0 {
+		for iNdEx := len(m.EvictedJobs) - 1; iNdEx >= 0; iNdEx-- {
+			size, err := m.EvictedJobs[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+			i--
+			dAtA[i] = 0x2a
+		}
+	}
 	if len(m.CompletedJobs) > 0 {
 		for iNdEx := len(m.CompletedJobs) - 1; iNdEx >= 0; iNdEx-- {
 			size, err := m.CompletedJobs[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
@@ -1285,6 +1357,49 @@ func (m *CompletedCompactionJob) MarshalToSizedBufferVT(dAtA []byte) (int, error
 		}
 		i--
 		dAtA[i] = 0x12
+	}
+	if m.State != nil {
+		size, err := m.State.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *EvictedCompactionJob) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *EvictedCompactionJob) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *EvictedCompactionJob) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
 	}
 	if m.State != nil {
 		size, err := m.State.MarshalToSizedBufferVT(dAtA[:i])
@@ -1666,6 +1781,12 @@ func (m *CompactionPlanUpdate) SizeVT() (n int) {
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
 	}
+	if len(m.EvictedJobs) > 0 {
+		for _, e := range m.EvictedJobs {
+			l = e.SizeVT()
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -1738,6 +1859,20 @@ func (m *CompletedCompactionJob) SizeVT() (n int) {
 		} else {
 			l = proto.Size(m.CompactedBlocks)
 		}
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *EvictedCompactionJob) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.State != nil {
+		l = m.State.SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	n += len(m.unknownFields)
@@ -2491,6 +2626,40 @@ func (m *CompactionPlanUpdate) UnmarshalVT(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field EvictedJobs", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.EvictedJobs = append(m.EvictedJobs, &EvictedCompactionJob{})
+			if err := m.EvictedJobs[len(m.EvictedJobs)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
@@ -2953,6 +3122,93 @@ func (m *CompletedCompactionJob) UnmarshalVT(dAtA []byte) error {
 				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.CompactedBlocks); err != nil {
 					return err
 				}
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *EvictedCompactionJob) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: EvictedCompactionJob: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: EvictedCompactionJob: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field State", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.State == nil {
+				m.State = &CompactionJobState{}
+			}
+			if err := m.State.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
 			}
 			iNdEx = postIndex
 		default:
