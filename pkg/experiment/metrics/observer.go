@@ -28,7 +28,7 @@ type SampleObserver struct {
 
 type Recording struct {
 	rule  RecordingRule
-	data  map[AggregatedFingerprint]*Sample
+	data  map[model.Fingerprint]*Sample
 	state *recordingState
 }
 
@@ -63,7 +63,7 @@ func (o *SampleObserver) Init(tenant string) {
 	for i, rule := range recordingRules {
 		o.Recordings[i] = &Recording{
 			rule: *rule,
-			data: make(map[AggregatedFingerprint]*Sample),
+			data: make(map[model.Fingerprint]*Sample),
 			state: &recordingState{
 				fp: nil,
 			},
@@ -130,7 +130,7 @@ func (r *Recording) InitState(fp model.Fingerprint, lbls phlaremodel.Labels, pyr
 
 	exportedLabels := generateExportedLabels(labelsMap, r, pyroscopeInstance)
 	sort.Sort(exportedLabels)
-	aggregatedFp := AggregatedFingerprint(exportedLabels.Hash())
+	aggregatedFp := model.Fingerprint(exportedLabels.Hash())
 	sample, ok := r.data[aggregatedFp]
 	if !ok {
 		sample = newSample(exportedLabels, recordingTime)
@@ -138,8 +138,6 @@ func (r *Recording) InitState(fp model.Fingerprint, lbls phlaremodel.Labels, pyr
 	}
 	r.state.sample = sample
 }
-
-type AggregatedFingerprint model.Fingerprint
 
 type Sample struct {
 	Labels    labels.Labels
