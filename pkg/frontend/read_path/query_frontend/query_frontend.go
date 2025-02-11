@@ -16,7 +16,6 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
-	querybackendclient "github.com/grafana/pyroscope/pkg/experiment/query_backend/client"
 	queryplan "github.com/grafana/pyroscope/pkg/experiment/query_backend/query_plan"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
@@ -24,13 +23,17 @@ import (
 
 var _ querierv1connect.QuerierServiceClient = (*QueryFrontend)(nil)
 
+type QueryBackend interface {
+	Invoke(ctx context.Context, req *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error)
+}
+
 type QueryFrontend struct {
 	logger log.Logger
 	limits frontend.Limits
 
 	metadataQueryClient metastorev1.MetadataQueryServiceClient
 	tenantServiceClient metastorev1.TenantServiceClient
-	querybackendClient  *querybackendclient.Client
+	querybackend        QueryBackend
 }
 
 func NewQueryFrontend(
@@ -38,14 +41,14 @@ func NewQueryFrontend(
 	limits frontend.Limits,
 	metadataQueryClient metastorev1.MetadataQueryServiceClient,
 	tenantServiceClient metastorev1.TenantServiceClient,
-	querybackendClient *querybackendclient.Client,
+	querybackendClient QueryBackend,
 ) *QueryFrontend {
 	return &QueryFrontend{
 		logger:              logger,
 		limits:              limits,
 		metadataQueryClient: metadataQueryClient,
 		tenantServiceClient: tenantServiceClient,
-		querybackendClient:  querybackendClient,
+		querybackend:        querybackendClient,
 	}
 }
 
@@ -78,7 +81,7 @@ func (q *QueryFrontend) Query(
 	// TODO(kolesnikovae): Should be dynamic.
 	p := queryplan.Build(blocks, 4, 20)
 
-	resp, err := q.querybackendClient.Invoke(ctx, &queryv1.InvokeRequest{
+	resp, err := q.querybackend.Invoke(ctx, &queryv1.InvokeRequest{
 		Tenant:        tenants,
 		StartTime:     req.StartTime,
 		EndTime:       req.EndTime,
@@ -116,10 +119,11 @@ func (q *QueryFrontend) QueryMetadata(
 		EndTime:   req.EndTime,
 	}
 
-	// Delete all labels but service_name. If no labels left, request the
-	// dataset index for query backend to lookup datasets to be accessed.
+	// Delete all matchers but service_name with strict match. If no matchers
+	// left, request the dataset index for query backend to lookup block datasets
+	// locally.
 	matchers = slices.DeleteFunc(matchers, func(m *labels.Matcher) bool {
-		return m.Name != phlaremodel.LabelNameServiceName
+		return !(m.Name == phlaremodel.LabelNameServiceName && m.Type == labels.MatchEqual)
 	})
 	if len(matchers) == 0 {
 		// We preserve the __tenant_dataset__= label: this is needed for the
