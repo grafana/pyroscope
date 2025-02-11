@@ -13,7 +13,6 @@ import (
 
 	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/slices"
-	"github.com/grafana/pyroscope/pkg/util/math"
 )
 
 var (
@@ -184,7 +183,7 @@ type mappingsBlockDecoder struct {
 
 func newMappingsDecoder(h SymbolsBlockHeader) (*symbolsDecoder[v1.InMemoryMapping], error) {
 	if h.Format == BlockMappingsV1 {
-		headerSize := math.Max(mappingsBlockHeaderMinSize, h.BlockHeaderSize)
+		headerSize := max(mappingsBlockHeaderMinSize, h.BlockHeaderSize)
 		return newSymbolsDecoder[v1.InMemoryMapping](h, &mappingsBlockDecoder{headerSize: headerSize}), nil
 	}
 	return nil, fmt.Errorf("%w: unknown mappings format: %d", ErrUnknownVersion, h.Format)

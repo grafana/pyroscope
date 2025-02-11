@@ -259,7 +259,14 @@ reports from workers, as jobs that cause workers to crash would yield no reports
 
 To avoid infinite reassignment loops, the scheduler keeps track of reassignments (failures) for each job. If the number
 of failures exceeds a set threshold, the job is not reassigned and remains at the bottom of the queue. Once the cause of
-failure is resolved, the limit can be temporarily increased to reprocess these jobs.
+failure is resolved, the error limit can be temporarily increased to reprocess these jobs.
+
+The scheduler queue has a size limit. Typically, the only scenario in which this limit is reached is when the compaction
+process is not functioning correctly (e.g., due to a bug in the compaction procedure), preventing blocks from being
+compacted and resulting in many jobs remaining in a failed state. Once the queue size limit is reached, failed jobs are
+evicted, meaning the corresponding blocks will never be compacted. This may cause read amplification of the data queries
+and bloat the metadata index. Therefore, the limit should be large enough. The recommended course of action is to roll
+back or fix the bug and restart the compaction process, temporarily increasing the error limit if necessary.
 
 ### Job Completion
 

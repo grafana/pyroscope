@@ -10,7 +10,6 @@ import (
 	"unsafe"
 
 	"github.com/grafana/pyroscope/pkg/slices"
-	"github.com/grafana/pyroscope/pkg/util/math"
 )
 
 const maxStringLen = 1<<16 - 1
@@ -120,7 +119,7 @@ type stringsBlockDecoder struct {
 
 func newStringsDecoder(h SymbolsBlockHeader) (*symbolsDecoder[string], error) {
 	if h.Format == BlockStringsV1 {
-		headerSize := math.Max(stringsBlockHeaderMinSize, h.BlockHeaderSize)
+		headerSize := max(stringsBlockHeaderMinSize, h.BlockHeaderSize)
 		return newSymbolsDecoder[string](h, &stringsBlockDecoder{headerSize: headerSize}), nil
 	}
 	return nil, fmt.Errorf("%w: unknown strings format: %d", ErrUnknownVersion, h.Format)

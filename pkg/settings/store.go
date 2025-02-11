@@ -6,7 +6,7 @@ import (
 	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
 )
 
-type Store interface {
+type store interface {
 	// Get settings for a tenant.
 	Get(ctx context.Context, tenantID string) ([]*settingsv1.Setting, error)
 

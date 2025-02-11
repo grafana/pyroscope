@@ -13,7 +13,6 @@ import (
 
 	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/slices"
-	"github.com/grafana/pyroscope/pkg/util/math"
 )
 
 const maxLocationLines = 255
@@ -177,7 +176,7 @@ type locationsBlockDecoder struct {
 
 func newLocationsDecoder(h SymbolsBlockHeader) (*symbolsDecoder[v1.InMemoryLocation], error) {
 	if h.Format == BlockLocationsV1 {
-		headerSize := math.Max(locationsBlockHeaderMinSize, h.BlockHeaderSize)
+		headerSize := max(locationsBlockHeaderMinSize, h.BlockHeaderSize)
 		return newSymbolsDecoder[v1.InMemoryLocation](h, &locationsBlockDecoder{headerSize: headerSize}), nil
 	}
 	return nil, fmt.Errorf("%w: unknown locations format: %d", ErrUnknownVersion, h.Format)

@@ -10,6 +10,7 @@ import (
 	"github.com/prometheus/common/model"
 	"gopkg.in/yaml.v3"
 
+	"github.com/grafana/pyroscope/pkg/distributor/ingest_limits"
 	writepath "github.com/grafana/pyroscope/pkg/distributor/write_path"
 	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
 	readpath "github.com/grafana/pyroscope/pkg/frontend/read_path"
@@ -30,13 +31,14 @@ const (
 // to support tenant-friendly duration format (e.g: "1h30m45s") in JSON value.
 type Limits struct {
 	// Distributor enforced limits.
-	IngestionRateMB        float64 `yaml:"ingestion_rate_mb" json:"ingestion_rate_mb"`
-	IngestionBurstSizeMB   float64 `yaml:"ingestion_burst_size_mb" json:"ingestion_burst_size_mb"`
-	MaxLabelNameLength     int     `yaml:"max_label_name_length" json:"max_label_name_length"`
-	MaxLabelValueLength    int     `yaml:"max_label_value_length" json:"max_label_value_length"`
-	MaxLabelNamesPerSeries int     `yaml:"max_label_names_per_series" json:"max_label_names_per_series"`
-	MaxSessionsPerSeries   int     `yaml:"max_sessions_per_series" json:"max_sessions_per_series"`
-	EnforceLabelsOrder     bool    `yaml:"enforce_labels_order" json:"enforce_labels_order"`
+	IngestionRateMB        float64               `yaml:"ingestion_rate_mb" json:"ingestion_rate_mb"`
+	IngestionBurstSizeMB   float64               `yaml:"ingestion_burst_size_mb" json:"ingestion_burst_size_mb"`
+	IngestionLimit         *ingest_limits.Config `yaml:"ingestion_limit" json:"ingestion_limit" category:"advanced" doc:"hidden"`
+	MaxLabelNameLength     int                   `yaml:"max_label_name_length" json:"max_label_name_length"`
+	MaxLabelValueLength    int                   `yaml:"max_label_value_length" json:"max_label_value_length"`
+	MaxLabelNamesPerSeries int                   `yaml:"max_label_names_per_series" json:"max_label_names_per_series"`
+	MaxSessionsPerSeries   int                   `yaml:"max_sessions_per_series" json:"max_sessions_per_series"`
+	EnforceLabelsOrder     bool                  `yaml:"enforce_labels_order" json:"enforce_labels_order"`
 
 	MaxProfileSizeBytes              int `yaml:"max_profile_size_bytes" json:"max_profile_size_bytes"`
 	MaxProfileStacktraceSamples      int `yaml:"max_profile_stacktrace_samples" json:"max_profile_stacktrace_samples"`
@@ -268,6 +270,10 @@ func (o *Overrides) IngestionRateBytes(tenantID string) float64 {
 // IngestionBurstSizeBytes returns the burst size for ingestion rate.
 func (o *Overrides) IngestionBurstSizeBytes(tenantID string) int {
 	return int(o.getOverridesForTenant(tenantID).IngestionBurstSizeMB * bytesInMB)
+}
+
+func (o *Overrides) IngestionLimit(tenantID string) *ingest_limits.Config {
+	return o.getOverridesForTenant(tenantID).IngestionLimit
 }
 
 // IngestionTenantShardSize returns the ingesters shard size for a given user.

@@ -38,7 +38,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/phlaredb/bucketindex"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/storegateway"
-	pmath "github.com/grafana/pyroscope/pkg/util/math"
 	"github.com/grafana/pyroscope/pkg/util/spanlogger"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
@@ -826,10 +825,10 @@ func splitQueryToStores(start, end model.Time, now model.Time, queryStoreAfter t
 	queries.queryStoreAfter = queryStoreAfter
 	cutOff := now.Add(-queryStoreAfter)
 	if start.Before(cutOff) {
-		queries.storeGateway = storeQuery{shouldQuery: true, start: start, end: pmath.Min(cutOff, end)}
+		queries.storeGateway = storeQuery{shouldQuery: true, start: start, end: min(cutOff, end)}
 	}
 	if end.After(cutOff) {
-		queries.ingester = storeQuery{shouldQuery: true, start: pmath.Max(cutOff, start), end: end}
+		queries.ingester = storeQuery{shouldQuery: true, start: max(cutOff, start), end: end}
 		// Note that the ranges must not overlap.
 		if queries.storeGateway.shouldQuery {
 			queries.ingester.start++
