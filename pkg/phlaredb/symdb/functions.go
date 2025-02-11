@@ -13,7 +13,6 @@ import (
 
 	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/slices"
-	"github.com/grafana/pyroscope/pkg/util/math"
 )
 
 var (
@@ -135,7 +134,7 @@ type functionsBlockDecoder struct {
 
 func newFunctionsDecoder(h SymbolsBlockHeader) (*symbolsDecoder[v1.InMemoryFunction], error) {
 	if h.Format == BlockFunctionsV1 {
-		headerSize := math.Max(functionsBlockHeaderMinSize, h.BlockHeaderSize)
+		headerSize := max(functionsBlockHeaderMinSize, h.BlockHeaderSize)
 		return newSymbolsDecoder[v1.InMemoryFunction](h, &functionsBlockDecoder{headerSize: headerSize}), nil
 	}
 	return nil, fmt.Errorf("%w: unknown functions format: %d", ErrUnknownVersion, h.Format)

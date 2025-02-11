@@ -211,7 +211,7 @@ func combineTree(leftTree, rightTree *Tree) (*Tree, *Tree) {
 // by filling with non existing nodes
 // and sorting lexicographically
 func combineNodes(leftNodes, rghtNodes []*node) ([]*node, []*node) {
-	size := nextPow2(maxInt(len(leftNodes), len(rghtNodes)))
+	size := nextPow2(max(len(leftNodes), len(rghtNodes)))
 	leftResult := make([]*node, 0, size)
 	rghtResult := make([]*node, 0, size)
 
@@ -244,27 +244,6 @@ func combineNodes(leftNodes, rghtNodes []*node) ([]*node, []*node) {
 	return leftResult, rghtResult
 }
 
-func maxUint64(a, b uint64) uint64 {
-	if a > b {
-		return a
-	}
-	return b
-}
-
-func maxInt(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
-func max(a, b int64) int64 {
-	if a > b {
-		return a
-	}
-	return b
-}
-
 func nextPow2(a int) int {
 	a--
 	a |= a >> 1
@@ -289,7 +268,7 @@ func combineMinValues(leftTree, rightTree *Tree, maxNodes int) uint64 {
 	}
 	c := cappedarr.New(maxNodes)
 	combineIterateWithTotal(leftTree, rightTree, func(left uint64, right uint64) bool {
-		return c.Push(maxUint64(left, right))
+		return c.Push(max(left, right))
 	})
 	return c.MinValue()
 }

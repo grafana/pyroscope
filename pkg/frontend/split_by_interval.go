@@ -2,8 +2,6 @@ package frontend
 
 import (
 	"time"
-
-	"github.com/grafana/pyroscope/pkg/util/math"
 )
 
 // TimeIntervalIterator splits a time range into non-overlapping sub-ranges,
@@ -50,7 +48,7 @@ func NewTimeIntervalIterator(startTime, endTime time.Time, interval time.Duratio
 	for _, option := range options {
 		option(i)
 	}
-	i.interval = math.Max(i.interval, i.alignment)
+	i.interval = max(i.interval, i.alignment)
 	return i
 }
 
