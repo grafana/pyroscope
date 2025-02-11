@@ -178,6 +178,11 @@ func Encode(w io.Writer, md *metastorev1.BlockMeta) error {
 }
 
 // Decode metadata encoded with Encode.
+//
+// Note that the metadata decoded from the object has zero Size field,
+// as the block size is not known at the point the metadata is written.
+// It is expected that the caller has access to the block object and
+// can set the Size field after reading the metadata.
 func Decode(b []byte, md *metastorev1.BlockMeta) error {
 	if len(b) <= 8 {
 		return fmt.Errorf("%w: invalid size", ErrMetadataInvalid)

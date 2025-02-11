@@ -40,4 +40,20 @@ func Test_CompactBlocks(t *testing.T) {
 	expectedJson, err := os.ReadFile("testdata/compacted.golden")
 	require.NoError(t, err)
 	assert.Equal(t, string(expectedJson), string(compactedJson))
+
+	t.Run("Compact compacted blocks", func(t *testing.T) {
+		compactedBlocks, err = Compact(ctx, compactedBlocks, dst,
+			WithCompactionDestination(dst),
+			WithCompactionTempDir(tempdir),
+			WithCompactionObjectOptions(
+				WithObjectDownload(filepath.Join(tempdir, "source")),
+				WithObjectMaxSizeLoadInMemory(0)), // Force download.
+		)
+
+		require.NoError(t, err)
+		require.Len(t, compactedBlocks, 1)
+		b := compactedBlocks[0]
+		require.NotZero(t, b.Size)
+		require.NotZero(t, len(b.Datasets))
+	})
 }
