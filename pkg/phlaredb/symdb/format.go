@@ -12,7 +12,6 @@ import (
 	"github.com/parquet-go/parquet-go/encoding/delta"
 
 	"github.com/grafana/pyroscope/pkg/slices"
-	"github.com/grafana/pyroscope/pkg/util/math"
 )
 
 // V1 and V2:
@@ -769,7 +768,7 @@ func newSymbolsEncoder[T any](e symbolsBlockEncoder[T]) *symbolsEncoder[T] {
 func (e *symbolsEncoder[T]) encode(w io.Writer, items []T) (err error) {
 	l := len(items)
 	for i := 0; i < l; i += e.blockSize {
-		block := items[i:math.Min(i+e.blockSize, l)]
+		block := items[i:min(i+e.blockSize, l)]
 		if err = e.blockEncoder.encode(w, block); err != nil {
 			return err
 		}
@@ -800,7 +799,7 @@ func (d *symbolsDecoder[T]) decode(dst []T, r io.Reader) error {
 	blocks := int((d.h.Length + d.h.BlockSize - 1) / d.h.BlockSize)
 	for i := 0; i < blocks; i++ {
 		lo := i * int(d.h.BlockSize)
-		hi := math.Min(lo+int(d.h.BlockSize), int(d.h.Length))
+		hi := min(lo+int(d.h.BlockSize), int(d.h.Length))
 		block := dst[lo:hi]
 		if err := d.d.decode(r, block); err != nil {
 			return fmt.Errorf("malformed block (format %d): %w", d.h.Format, err)

@@ -27,7 +27,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/model"
 	pprofsplit "github.com/grafana/pyroscope/pkg/model/pprof_split"
 	pprofmodel "github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/grafana/pyroscope/pkg/util/math"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
@@ -268,8 +267,8 @@ func (s *segment) flushBlock(heads []flushedServiceHead) ([]byte, *metastorev1.B
 			meta.MinTime = svc.MinTime
 			meta.MaxTime = svc.MaxTime
 		} else {
-			meta.MinTime = math.Min(meta.MinTime, svc.MinTime)
-			meta.MaxTime = math.Max(meta.MaxTime, svc.MaxTime)
+			meta.MinTime = min(meta.MinTime, svc.MinTime)
+			meta.MaxTime = max(meta.MaxTime, svc.MaxTime)
 		}
 		s.sw.metrics.headSizeBytes.WithLabelValues(s.sshard, e.key.tenant).Observe(float64(svc.Size))
 		meta.Datasets = append(meta.Datasets, svc)
