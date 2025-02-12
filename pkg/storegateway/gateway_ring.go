@@ -2,7 +2,8 @@ package storegateway
 
 import (
 	"flag"
-	"fmt"
+	"net"
+	"strconv"
 	"time"
 
 	"github.com/go-kit/log"
@@ -109,7 +110,7 @@ func (cfg *RingConfig) ToLifecyclerConfig(logger log.Logger) (ring.BasicLifecycl
 
 	return ring.BasicLifecyclerConfig{
 		ID:                              cfg.Ring.InstanceID,
-		Addr:                            fmt.Sprintf("%s:%d", instanceAddr, instancePort),
+		Addr:                            net.JoinHostPort(instanceAddr, strconv.Itoa(instancePort)),
 		Zone:                            cfg.InstanceZone,
 		HeartbeatPeriod:                 cfg.Ring.HeartbeatPeriod,
 		HeartbeatTimeout:                cfg.Ring.HeartbeatTimeout,
