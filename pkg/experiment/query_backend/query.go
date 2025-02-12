@@ -81,7 +81,6 @@ type blockContext struct {
 	req *request
 	agg *reportAggregator
 	obj *block.Object
-	idx *metastorev1.Dataset
 	grp *errgroup.Group
 }
 
@@ -94,8 +93,8 @@ func (b *blockContext) execute() error {
 		span.Finish()
 	}()
 
-	if b.needsDatasetLookup() {
-		if err := b.lookupDatasets(); err != nil {
+	if idx := b.datasetIndex(); idx != nil {
+		if err := b.lookupDatasets(idx); err != nil {
 			if b.obj.IsNotExists(err) {
 				level.Warn(b.log).Log("msg", "object not found", "err", err)
 				return nil
@@ -118,38 +117,39 @@ func (b *blockContext) execute() error {
 	return nil
 }
 
-func (b *blockContext) needsDatasetLookup() bool {
+// datasetIndex returns the dataset index if it is present in
+// the metadata and the query needs to lookup datasets.
+func (b *blockContext) datasetIndex() *metastorev1.Dataset {
 	md := b.obj.Metadata()
 	if len(md.Datasets) != 1 {
 		// The blocks metadata explicitly lists datasets to be queried.
-		return false
+		return nil
 	}
 	ds := md.Datasets[0]
-	if ds.Format != 1 {
-		return false
+	if block.DatasetFormat(ds.Format) != block.DatasetFormat1 {
+		return nil
 	}
-	b.idx = ds
 
-	// If the query only requires TSDB data, we can serve it using
-	// the dataset index without accessing the full dataset; therefore,
-	// we report that the dataset lookup is not needed, meaning the
-	// dataset is to be queried as usual.
+	// If the query only requires TSDB data, we can serve
+	// it using the dataset index.
 	s := (&queryContext{blockContext: b}).sections()
 	indexOnly := len(s) == 1 && s[0] == block.SectionTSDB
+	if indexOnly {
+		opentracing.SpanFromContext(b.ctx).SetTag("dataset_index_query_index_only", indexOnly)
+		return nil
+	}
 
-	opentracing.SpanFromContext(b.ctx).
-		SetTag("dataset_index_query", true).
-		SetTag("dataset_index_query_index_only", indexOnly)
-
-	return !indexOnly
+	return ds
 }
 
-func (b *blockContext) lookupDatasets() error {
+func (b *blockContext) lookupDatasets(ds *metastorev1.Dataset) error {
+	opentracing.SpanFromContext(b.ctx).SetTag("dataset_index_query", true)
+
 	// As query execution has not started yet,
 	// we can safely open datasets.
-	ds := block.NewDataset(b.idx, b.obj)
+	idx := block.NewDataset(ds, b.obj)
 	defer func() {
-		_ = ds.Close()
+		_ = idx.Close()
 	}()
 
 	g, ctx := errgroup.WithContext(b.ctx)
@@ -159,13 +159,13 @@ func (b *blockContext) lookupDatasets() error {
 		return err
 	})
 	g.Go(func() error {
-		return ds.Open(ctx, block.SectionDatasetIndex)
+		return idx.Open(ctx, block.SectionDatasetIndex)
 	})
 	if err := g.Wait(); err != nil {
 		return err
 	}
 
-	datasetIDs, err := getSeriesIDs(ds.Index(), b.req.matchers...)
+	datasetIDs, err := getSeriesIDs(idx.Index(), b.req.matchers...)
 	if err != nil {
 		return err
 	}

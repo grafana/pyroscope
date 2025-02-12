@@ -118,25 +118,25 @@ func PlanCompaction(objects Objects) ([]*CompactionPlan, error) {
 	g := NewULIDGenerator(objects)
 	m := make(map[string]*CompactionPlan)
 	for _, obj := range objects {
-		for _, s := range obj.meta.Datasets {
-			if s.Name == 0 {
+		for _, ds := range obj.meta.Datasets {
+			if ds.Name == 0 {
 				// Anonymous dataset is never compacted:
 				// it is rebuilt based on the actual block contents.
 				continue
 			}
-			tm, ok := m[obj.meta.StringTable[s.Tenant]]
+			tm, ok := m[obj.meta.StringTable[ds.Tenant]]
 			if !ok {
 				tm = newBlockCompaction(
 					g.ULID().String(),
-					obj.meta.StringTable[s.Tenant],
+					obj.meta.StringTable[ds.Tenant],
 					r.meta.Shard,
 					level,
 				)
-				m[obj.meta.StringTable[s.Tenant]] = tm
+				m[obj.meta.StringTable[ds.Tenant]] = tm
 			}
 			// Bind objects to datasets.
-			sm := tm.addDataset(obj.meta, s)
-			sm.append(NewDataset(s, obj))
+			sm := tm.addDataset(obj.meta, ds)
+			sm.append(NewDataset(ds, obj))
 		}
 	}
 
@@ -198,7 +198,7 @@ func (b *CompactionPlan) Compact(ctx context.Context, dst objstore.Bucket, tempd
 
 	// Datasets are compacted in a strict order.
 	for i, s := range b.datasets {
-		b.datasetIndex.resetDatasetIndex(uint32(i))
+		b.datasetIndex.setIndex(uint32(i))
 		if err = s.compact(ctx, w); err != nil {
 			return nil, fmt.Errorf("compacting block: %w", err)
 		}
@@ -224,7 +224,7 @@ func (b *CompactionPlan) writeDatasetIndex(w *Writer) error {
 		return err
 	}
 	off := w.Offset()
-	n, err := w.ReadFrom(bytes.NewReader(b.datasetIndex.buf))
+	n, err := io.Copy(w, bytes.NewReader(b.datasetIndex.buf))
 	if err != nil {
 		return err
 	}
@@ -336,11 +336,11 @@ func (m *datasetCompaction) compact(ctx context.Context, w *Writer) (err error) 
 	}
 
 	m.meta.TableOfContents = append(m.meta.TableOfContents, w.Offset())
-	if _, err = w.ReadFrom(bytes.NewReader(m.indexRewriter.buf)); err != nil {
+	if _, err = io.Copy(w, bytes.NewReader(m.indexRewriter.buf)); err != nil {
 		return fmt.Errorf("failed to read index: %w", err)
 	}
 	m.meta.TableOfContents = append(m.meta.TableOfContents, w.Offset())
-	if _, err = w.ReadFrom(bytes.NewReader(m.symbolsRewriter.buf.Bytes())); err != nil {
+	if _, err = io.Copy(w, bytes.NewReader(m.symbolsRewriter.buf.Bytes())); err != nil {
 		return fmt.Errorf("failed to read symbols: %w", err)
 	}
 
@@ -599,7 +599,7 @@ func newDatasetIndexWriter() *datasetIndexWriter {
 	}
 }
 
-func (rw *datasetIndexWriter) resetDatasetIndex(i uint32) { rw.idx = i }
+func (rw *datasetIndexWriter) setIndex(i uint32) { rw.idx = i }
 
 func (rw *datasetIndexWriter) writeRow(e ProfileEntry) error {
 	if rw.previous != e.Fingerprint || len(rw.series) == 0 {
