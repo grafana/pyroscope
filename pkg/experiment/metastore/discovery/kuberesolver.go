@@ -2,7 +2,9 @@ package discovery
 
 import (
 	"fmt"
+	"net"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -103,7 +105,7 @@ func convertEndpoints(e kuberesolver2.Endpoints, ti targetInfo) []Server {
 				raftServerId := fmt.Sprintf("%s.%s.%s.svc.cluster.local.:%d", podName, ti.service, ti.namespace, port.Port)
 
 				servers = append(servers, Server{
-					ResolvedAddress: fmt.Sprintf("%s:%d", addr.IP, port.Port),
+					ResolvedAddress: net.JoinHostPort(addr.IP, strconv.Itoa(port.Port)),
 					Raft: raft.Server{
 						ID:      raft.ServerID(raftServerId),
 						Address: raft.ServerAddress(raftServerId),
