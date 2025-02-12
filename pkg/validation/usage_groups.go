@@ -126,6 +126,10 @@ func (m UsageGroupMatch) CountDiscardedBytes(reason string, n int64) {
 	}
 }
 
+func (m UsageGroupMatch) Names() []string {
+	return m.names
+}
+
 func NewUsageGroupConfig(m map[string]string) (UsageGroupConfig, error) {
 	if len(m) > maxUsageGroups {
 		return UsageGroupConfig{}, fmt.Errorf("maximum number of usage groups is %d, got %d", maxUsageGroups, len(m))

@@ -323,7 +323,7 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		profName := phlaremodel.Labels(series.Labels).Get(ProfileName)
 
 		groups := usageGroups.GetUsageGroups(tenantID, series.Labels)
-		if err := d.checkUsageGroupsIngestLimit(tenantID, groups, req); err != nil {
+		if err := d.checkUsageGroupsIngestLimit(tenantID, groups.Names(), req); err != nil {
 			return nil, err
 		}
 
@@ -770,22 +770,24 @@ func (d *Distributor) checkIngestLimit(tenantID string, req *distributormodel.Pu
 	return nil
 }
 
-func (d *Distributor) checkUsageGroupsIngestLimit(tenantID string, groups validation.UsageGroupMatch, req *distributormodel.PushRequest) error {
+func (d *Distributor) checkUsageGroupsIngestLimit(tenantID string, groupsInRequest []string, req *distributormodel.PushRequest) error {
 	l := d.limits.IngestionLimit(tenantID)
 	if l == nil || len(l.UsageGroups) == 0 {
 		return nil
 	}
 
-	for groupName, limit := range l.UsageGroups {
-		if limit.LimitReached {
-			if d.ingestionLimitsSampler.AllowRequest(tenantID, l.Sampling) {
-				return nil
+	for _, group := range groupsInRequest {
+		if limit, ok := l.UsageGroups[group]; ok {
+			if limit.LimitReached {
+				if d.ingestionLimitsSampler.AllowRequest(tenantID, l.Sampling) {
+					return nil
+				}
+				limitResetTime := time.Unix(l.LimitResetTime, 0).UTC().Format(time.RFC3339)
+				validation.DiscardedProfiles.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalProfiles))
+				validation.DiscardedBytes.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalBytesUncompressed))
+				return connect.NewError(connect.CodeResourceExhausted,
+					fmt.Errorf("limit of %s/%s reached for usage group %s, next reset at %s", humanize.IBytes(uint64(limit.PeriodLimitMb*1024*1024)), l.PeriodType, group, limitResetTime))
 			}
-			limitResetTime := time.Unix(l.LimitResetTime, 0).UTC().Format(time.RFC3339)
-			validation.DiscardedProfiles.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalProfiles))
-			validation.DiscardedBytes.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalBytesUncompressed))
-			return connect.NewError(connect.CodeResourceExhausted,
-				fmt.Errorf("limit of %s/%s reached for usage group %s, next reset at %s", humanize.IBytes(uint64(limit.PeriodLimitMb*1024*1024)), l.PeriodType, groupName, limitResetTime))
 		}
 	}
 
