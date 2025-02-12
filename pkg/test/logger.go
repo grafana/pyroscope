@@ -9,17 +9,15 @@ import (
 	"github.com/go-kit/log"
 )
 
-type testingLogger struct {
+type TestingLogger struct {
 	t testing.TB
 }
 
-func NewTestingLogger(t testing.TB) log.Logger {
-	return &testingLogger{
-		t: t,
-	}
+func NewTestingLogger(t testing.TB) *TestingLogger {
+	return &TestingLogger{t: t}
 }
 
-func (l *testingLogger) Log(keyvals ...interface{}) error {
+func (l *TestingLogger) Log(keyvals ...interface{}) error {
 	l.t.Helper()
 	buf := bytes.NewBuffer(nil)
 	lf := log.NewLogfmtLogger(buf)

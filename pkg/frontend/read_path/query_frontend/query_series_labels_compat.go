@@ -54,13 +54,12 @@ func (q *QueryFrontend) isProfileTypeQuery(labels, matchers []string) bool {
 
 func (q *QueryFrontend) queryProfileTypeMetadataLabels(
 	ctx context.Context,
-	client metastorev1.MetadataQueryServiceClient,
 	tenants []string,
 	startTime int64,
 	endTime int64,
 	labels []string,
 ) (*connect.Response[querierv1.SeriesResponse], error) {
-	meta, err := client.QueryMetadataLabels(ctx, &metastorev1.QueryMetadataLabelsRequest{
+	meta, err := q.metadataQueryClient.QueryMetadataLabels(ctx, &metastorev1.QueryMetadataLabelsRequest{
 		TenantId:  tenants,
 		StartTime: startTime,
 		EndTime:   endTime,

@@ -80,7 +80,7 @@ func TestSegmentIngest(t *testing.T) {
 
 func ingestWithMetastoreAvailable(t *testing.T, chunks []inputChunk) {
 	sw := newTestSegmentWriter(t, defaultTestConfig())
-	defer sw.Stop()
+	defer sw.stop()
 	blocks := make(chan *metastorev1.BlockMeta, 128)
 
 	sw.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
@@ -104,7 +104,7 @@ func ingestWithMetastoreAvailable(t *testing.T, chunks []inputChunk) {
 
 func ingestWithDLQ(t *testing.T, chunks []inputChunk) {
 	sw := newTestSegmentWriter(t, defaultTestConfig())
-	defer sw.Stop()
+	defer sw.stop()
 	sw.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
 		Return(nil, fmt.Errorf("metastore unavailable"))
 	ingestedChunks := make([]inputChunk, 0, len(chunks))
@@ -125,7 +125,7 @@ func TestIngestWait(t *testing.T) {
 		SegmentDuration: 100 * time.Millisecond,
 	})
 
-	defer sw.Stop()
+	defer sw.stop()
 	sw.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		time.Sleep(1 * time.Second)
 	}).Return(new(metastorev1.AddBlockResponse), nil)
@@ -146,12 +146,12 @@ func TestBusyIngestLoop(t *testing.T) {
 	sw := newTestSegmentWriter(t, Config{
 		SegmentDuration: 100 * time.Millisecond,
 	})
-	defer sw.Stop()
+	defer sw.stop()
 
 	writeCtx, writeCancel := context.WithCancel(context.Background())
 	readCtx, readCancel := context.WithCancel(context.Background())
 	metaChan := make(chan *metastorev1.BlockMeta)
-	defer sw.Stop()
+
 	var cnt atomic.Int32
 	sw.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
 		Run(func(args mock.Arguments) {
@@ -251,7 +251,7 @@ func TestDLQFail(t *testing.T) {
 		bucket,
 		client,
 	)
-	defer res.Stop()
+	defer res.stop()
 	ts := 420
 	ing := func(head segmentIngest) {
 		ts += 420
@@ -309,7 +309,7 @@ func TestDatasetMinMaxTime(t *testing.T) {
 			head.ingest(p.tenant, p.profile.Profile, p.profile.UUID, p.profile.Labels)
 		}
 	})
-	defer res.Stop()
+	defer res.stop()
 	block := <-metas
 
 	expected := [][2]int{
@@ -333,7 +333,7 @@ func TestQueryMultipleSeriesSingleTenant(t *testing.T) {
 	sw := newTestSegmentWriter(t, Config{
 		SegmentDuration: 100 * time.Millisecond,
 	})
-	defer sw.Stop()
+	defer sw.stop()
 	sw.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
 		Run(func(args mock.Arguments) {
 			metas <- args.Get(1).(*metastorev1.AddBlockRequest).Block

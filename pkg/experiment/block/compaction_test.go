@@ -35,9 +35,28 @@ func Test_CompactBlocks(t *testing.T) {
 	)
 
 	require.NoError(t, err)
+	require.Len(t, compactedBlocks, 1)
+	require.NotZero(t, compactedBlocks[0].Size)
+	require.Len(t, compactedBlocks[0].Datasets, 4)
+
 	compactedJson, err := json.MarshalIndent(compactedBlocks, "", "  ")
 	require.NoError(t, err)
 	expectedJson, err := os.ReadFile("testdata/compacted.golden")
 	require.NoError(t, err)
 	assert.Equal(t, string(expectedJson), string(compactedJson))
+
+	t.Run("Compact compacted blocks", func(t *testing.T) {
+		compactedBlocks, err = Compact(ctx, compactedBlocks, dst,
+			WithCompactionDestination(dst),
+			WithCompactionTempDir(tempdir),
+			WithCompactionObjectOptions(
+				WithObjectDownload(filepath.Join(tempdir, "source")),
+				WithObjectMaxSizeLoadInMemory(0)), // Force download.
+		)
+
+		require.NoError(t, err)
+		require.Len(t, compactedBlocks, 1)
+		require.NotZero(t, compactedBlocks[0].Size)
+		require.Len(t, compactedBlocks[0].Datasets, 4)
+	})
 }

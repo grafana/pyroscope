@@ -2,16 +2,18 @@ package memdb
 
 import (
 	"context"
+	"sort"
+	"sync"
+
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/storage"
+	"go.uber.org/atomic"
+
 	memindex "github.com/grafana/pyroscope/pkg/experiment/ingester/memdb/index"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
-	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/storage"
-	"go.uber.org/atomic"
-	"sort"
-	"sync"
 )
 
 type profileSeries struct {

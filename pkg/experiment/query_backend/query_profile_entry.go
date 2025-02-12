@@ -92,3 +92,33 @@ func getSeriesLabels(reader phlaredb.IndexReader, matchers []*labels.Matcher, by
 
 	return series, postings.Err()
 }
+
+func getPostings(reader phlaredb.IndexReader, matchers ...*labels.Matcher) (index.Postings, error) {
+	if len(matchers) == 0 {
+		k, v := index.AllPostingsKey()
+		return reader.Postings(k, nil, v)
+	}
+	return phlaredb.PostingsForMatchers(reader, nil, matchers...)
+}
+
+func getSeriesIDs(reader phlaredb.IndexReader, matchers ...*labels.Matcher) (map[uint32]struct{}, error) {
+	postings, err := getPostings(reader, matchers...)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = postings.Close()
+	}()
+	visited := make(map[uint32]struct{})
+	chunks := make([]index.ChunkMeta, 1)
+	for postings.Next() {
+		if _, err = reader.Series(postings.At(), nil, &chunks); err != nil {
+			return nil, err
+		}
+		visited[chunks[0].SeriesIndex] = struct{}{}
+	}
+	if err = postings.Err(); err != nil {
+		return nil, err
+	}
+	return visited, nil
+}

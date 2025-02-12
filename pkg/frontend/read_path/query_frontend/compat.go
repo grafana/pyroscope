@@ -1,15 +1,47 @@
 package query_frontend
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
+	"connectrpc.com/connect"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	querybackend "github.com/grafana/pyroscope/pkg/experiment/query_backend"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
+	"github.com/grafana/pyroscope/pkg/util/http"
 )
+
+// querySingle is a helper method that expects a single report
+// of the appropriate type in the response; this method in an
+// adapter to the old query API.
+func (q *QueryFrontend) querySingle(
+	ctx context.Context,
+	req *queryv1.QueryRequest,
+) (*queryv1.Report, error) {
+	if len(req.Query) != 1 {
+		// Nil report is a valid response.
+		return nil, nil
+	}
+	t := querybackend.QueryReportType(req.Query[0].QueryType)
+	resp, err := q.Query(ctx, req)
+	if err != nil {
+		code, sanitized := http.ClientHTTPStatusAndError(err)
+		return nil, connect.NewError(connectgrpc.HTTPToCode(int32(code)), sanitized)
+	}
+	var r *queryv1.Report
+	for _, x := range resp.Reports {
+		if x.ReportType == t {
+			r = x
+			break
+		}
+	}
+	return r, nil
+}
 
 func buildLabelSelectorFromMatchers(matchers []string) (string, error) {
 	parsed, err := parseMatchers(matchers)
@@ -59,13 +91,4 @@ func matchersToLabelSelector(matchers []*labels.Matcher) string {
 	}
 	q.WriteByte('}')
 	return q.String()
-}
-
-func findReport(r queryv1.ReportType, reports []*queryv1.Report) *queryv1.Report {
-	for _, x := range reports {
-		if x.ReportType == r {
-			return x
-		}
-	}
-	return nil
 }

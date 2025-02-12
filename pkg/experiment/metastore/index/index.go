@@ -12,7 +12,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/oklog/ulid"
-	"github.com/prometheus/prometheus/model/labels"
 	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -20,7 +19,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/store"
 	"github.com/grafana/pyroscope/pkg/iter"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 )
 
 const (
@@ -442,11 +440,6 @@ func (i *Index) QueryMetadata(tx *bbolt.Tx, query MetadataQuery) iter.Iterator[*
 	if err != nil {
 		return iter.NewErrIterator[*metastorev1.BlockMeta](err)
 	}
-	// Currently, we only inspect the service name label.
-	// We could extend this to match any labels of a dataset.
-	q.matchers = slices.DeleteFunc(q.matchers, func(m *labels.Matcher) bool {
-		return m.Name != phlaremodel.LabelNameServiceName
-	})
 	i.mu.Lock()
 	metas, err := iter.Slice[*metastorev1.BlockMeta](newBlockMetadataIterator(tx, q))
 	i.mu.Unlock()
@@ -456,8 +449,8 @@ func (i *Index) QueryMetadata(tx *bbolt.Tx, query MetadataQuery) iter.Iterator[*
 	return iter.NewSliceIterator(metas)
 }
 
-func (i *Index) QueryMetadataLabels(tx *bbolt.Tx, query MetadataLabelQuery) ([]*typesv1.Labels, error) {
-	q, err := newMetadataQuery(i, query.MetadataQuery, query.Labels...)
+func (i *Index) QueryMetadataLabels(tx *bbolt.Tx, query MetadataQuery) ([]*typesv1.Labels, error) {
+	q, err := newMetadataQuery(i, query)
 	if err != nil {
 		return nil, err
 	}

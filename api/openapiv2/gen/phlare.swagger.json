@@ -637,6 +637,10 @@
           "type": "integer",
           "format": "int32"
         },
+        "metadataOffset": {
+          "type": "string",
+          "format": "uint64"
+        },
         "size": {
           "type": "string",
           "format": "uint64"
@@ -838,6 +842,10 @@
     "v1Dataset": {
       "type": "object",
       "properties": {
+        "format": {
+          "type": "integer",
+          "format": "int64"
+        },
         "tenant": {
           "type": "integer",
           "format": "int32"
@@ -860,7 +868,7 @@
             "type": "string",
             "format": "uint64"
           },
-          "description": "Table of contents lists data sections within the tenant\nservice region. The offsets are absolute.\n\nThe interpretation of the table of contents is specific\nto the metadata format version. By default, the sections are:\n - 0: profiles.parquet\n - 1: index.tsdb\n - 2: symbols.symdb"
+          "description": "Table of contents lists data sections within the tenant\nservice region. The offsets are absolute.\n\nThe interpretation of the table of contents is specific\nto the format.\n\nBy default (format 0), the sections are:\n - 0: profiles.parquet\n - 1: index.tsdb\n - 2: symbols.symdb\n\nFormat 1 corresponds to the tenant-wide index:\n - 0: index.tsdb (dataset index)"
         },
         "size": {
           "type": "string",

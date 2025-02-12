@@ -14,12 +14,9 @@ import (
 
 type writerV3 struct {
 	config *Config
-
-	index    IndexFile
-	dataFile *fileWriter
-	files    []block.File
-	footer   Footer
-
+	index  IndexFile
+	footer Footer
+	files  []block.File
 	encodersV3
 }
 
@@ -39,28 +36,65 @@ func newWriterV3(c *Config) *writerV3 {
 	}
 }
 
+func newIndexFileV3() IndexFile {
+	return IndexFile{
+		Header: IndexHeader{
+			Magic:   symdbMagic,
+			Version: FormatV3,
+		},
+	}
+}
+
+func newFooterV3() Footer {
+	return Footer{
+		Magic:   symdbMagic,
+		Version: FormatV3,
+	}
+}
+
+func newEncodersV3() encodersV3 {
+	return encodersV3{
+		stringsEncoder:   newStringsEncoder(),
+		mappingsEncoder:  newMappingsEncoder(),
+		functionsEncoder: newFunctionsEncoder(),
+		locationsEncoder: newLocationsEncoder(),
+	}
+}
+
 func (w *writerV3) writePartitions(partitions []*PartitionWriter) (err error) {
+	if dst := w.config.Writer; dst != nil {
+		defer func() {
+			_ = w.config.Writer.Close()
+		}()
+		return w.writePartitionsWithWriter(withWriterOffset(dst), partitions)
+	}
 	if err = os.MkdirAll(w.config.Dir, 0o755); err != nil {
 		return fmt.Errorf("failed to create directory %q: %w", w.config.Dir, err)
 	}
-	if w.dataFile, err = w.newFile(DefaultFileName); err != nil {
+	var f *fileWriter
+	f, err = w.newFile(DefaultFileName)
+	if err != nil {
 		return err
 	}
 	defer func() {
-		err = w.dataFile.Close()
-		w.files = []block.File{w.dataFile.meta()}
+		_ = f.Close()
+		w.files = []block.File{f.meta()}
 	}()
+	return w.writePartitionsWithWriter(f.w, partitions)
+}
+
+func (w *writerV3) writePartitionsWithWriter(f *writerOffset, partitions []*PartitionWriter) (err error) {
 	for _, p := range partitions {
-		if err = writePartitionV3(w.dataFile.w, &w.encodersV3, p); err != nil {
+		if err = writePartitionV3(f, &w.encodersV3, p); err != nil {
 			return fmt.Errorf("failed to write partition: %w", err)
 		}
 		w.index.PartitionHeaders = append(w.index.PartitionHeaders, &p.header)
 	}
-	w.footer.IndexOffset = uint64(w.dataFile.w.offset)
-	if _, err = w.index.WriteTo(w.dataFile); err != nil {
+	w.footer.IndexOffset = uint64(f.offset)
+	if _, err = w.index.WriteTo(f); err != nil {
 		return fmt.Errorf("failed to write index: %w", err)
 	}
-	if _, err = w.dataFile.Write(w.footer.MarshalBinary()); err != nil {
+	if _, err = f.Write(w.footer.MarshalBinary()); err != nil {
 		return fmt.Errorf("failed to write footer: %w", err)
 	}
 	return nil
@@ -142,29 +176,4 @@ func WritePartition(p *PartitionWriter, dst io.Writer) error {
 		return fmt.Errorf("failed to write footer: %w", err)
 	}
 	return nil
-}
-
-func newEncodersV3() encodersV3 {
-	return encodersV3{
-		stringsEncoder:   newStringsEncoder(),
-		mappingsEncoder:  newMappingsEncoder(),
-		functionsEncoder: newFunctionsEncoder(),
-		locationsEncoder: newLocationsEncoder(),
-	}
-}
-
-func newFooterV3() Footer {
-	return Footer{
-		Magic:   symdbMagic,
-		Version: FormatV3,
-	}
-}
-
-func newIndexFileV3() IndexFile {
-	return IndexFile{
-		Header: IndexHeader{
-			Magic:   symdbMagic,
-			Version: FormatV3,
-		},
-	}
 }

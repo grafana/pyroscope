@@ -1,13 +1,14 @@
 [
   {
     "format_version": 1,
-    "id": "01J2VJR31P221PP7MVJSX7E468",
+    "id": "01J2VJR31PJTT89RKM1ZG8BSB9",
     "tenant": 1,
     "shard": 1,
     "compaction_level": 1,
     "min_time": 1721060010831,
     "max_time": 1721060035611,
-    "size": 150042,
+    "metadata_offset": 159353,
+    "size": 159680,
     "datasets": [
       {
         "tenant": 1,
@@ -44,6 +45,21 @@
           121502
         ],
         "size": 38099
+      },
+      {
+        "format": 1,
+        "tenant": 1,
+        "min_time": 1721060010831,
+        "max_time": 1721060035611,
+        "table_of_contents": [
+          150042
+        ],
+        "size": 9311,
+        "labels": [
+          1,
+          5,
+          6
+        ]
       }
     ],
     "string_table": [
@@ -51,7 +67,9 @@
       "anonymous",
       "pyroscope-test/query-frontend",
       "pyroscope-test/ingester",
-      "pyroscope-test/alloy"
+      "pyroscope-test/alloy",
+      "__tenant_dataset__",
+      "dataset_tsdb_index"
     ]
   }
 ]

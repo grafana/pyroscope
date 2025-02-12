@@ -24,6 +24,9 @@ packages:
   github.com/grafana/pyroscope/pkg/frontend:
     interfaces:
       Limits:
+  github.com/grafana/pyroscope/pkg/frontend/read_path/query_frontend:
+    interfaces:
+      QueryBackend:
   github.com/grafana/pyroscope/pkg/ingester/otlp:
     interfaces:
       PushService:

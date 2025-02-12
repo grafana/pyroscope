@@ -9,6 +9,10 @@ import (
 	"github.com/grafana/pyroscope/pkg/util/bufferpool"
 )
 
+func openDatasetIndex(ctx context.Context, s *Dataset) error {
+	return openTSDB(ctx, s)
+}
+
 func openTSDB(ctx context.Context, s *Dataset) (err error) {
 	offset := s.sectionOffset(SectionTSDB)
 	size := s.sectionSize(SectionTSDB)
