@@ -51,11 +51,44 @@ func WithCompactionDestination(storage objstore.Bucket) CompactionOption {
 	}
 }
 
+func WithSampleObserver(observer SampleObserver) CompactionOption {
+	return func(p *compactionConfig) {
+		p.sampleObserver = observer
+	}
+}
+
 type compactionConfig struct {
-	objectOptions []ObjectOption
-	tempdir       string
-	source        objstore.BucketReader
-	destination   objstore.Bucket
+	objectOptions  []ObjectOption
+	tempdir        string
+	source         objstore.BucketReader
+	destination    objstore.Bucket
+	sampleObserver SampleObserver
+}
+
+type SampleObserver interface {
+	// Init is called at the beginning of the compaction plan.
+	Init(tenant string)
+
+	// Observe is called before the compactor appends the entry
+	// to the output block. This method must not modify the entry.
+	Observe(ProfileEntry)
+
+	// Flush is called before the compactor flushes the output dataset.
+	// This call invalidates all references (such as symbols) to the source
+	// and output blocks. Any error returned by the call terminates the
+	// compaction job: it's caller responsibility to suppress errors.
+	Flush() error
+}
+
+type NoOpObserver struct{}
+
+func (o *NoOpObserver) Init(tenant string) {}
+
+func (o *NoOpObserver) Observe(row ProfileEntry) {
+}
+
+func (o *NoOpObserver) Flush() error {
+	return nil
 }
 
 func Compact(
@@ -88,7 +121,7 @@ func Compact(
 
 	compacted := make([]*metastorev1.BlockMeta, 0, len(plan))
 	for _, p := range plan {
-		md, compactionErr := p.Compact(ctx, c.destination, c.tempdir)
+		md, compactionErr := p.Compact(ctx, c.destination, c.tempdir, c.sampleObserver)
 		if compactionErr != nil {
 			return nil, compactionErr
 		}
@@ -179,17 +212,27 @@ func newBlockCompaction(
 	return p
 }
 
-func (b *CompactionPlan) Compact(ctx context.Context, dst objstore.Bucket, tmpdir string) (m *metastorev1.BlockMeta, err error) {
+func (b *CompactionPlan) Compact(
+	ctx context.Context,
+	dst objstore.Bucket,
+	tmpdir string,
+	observer SampleObserver,
+) (m *metastorev1.BlockMeta, err error) {
 	w := NewBlockWriter(dst, b.path, tmpdir)
 	defer func() {
 		err = multierror.New(err, w.Close()).Err()
 	}()
+	observer.Init(b.tenant)
 	// Datasets are compacted in a strict order.
 	for _, s := range b.datasets {
+		s.registerSampleObserver(observer)
 		if err = s.compact(ctx, w); err != nil {
 			return nil, fmt.Errorf("compacting block: %w", err)
 		}
 		b.meta.Datasets = append(b.meta.Datasets, s.meta)
+	}
+	if err = observer.Flush(); err != nil {
+		return nil, fmt.Errorf("flushing sample observer: %w", err)
 	}
 	if err = w.Flush(ctx); err != nil {
 		return nil, fmt.Errorf("flushing block writer: %w", err)
@@ -236,6 +279,8 @@ type datasetCompaction struct {
 	profiles uint64
 
 	flushOnce sync.Once
+
+	observer SampleObserver
 }
 
 func (b *CompactionPlan) newDatasetCompaction(tenant, name int32) *datasetCompaction {
@@ -282,6 +327,10 @@ func (m *datasetCompaction) compact(ctx context.Context, w *Writer) (err error) 
 		return fmt.Errorf("failed to write sections: %w", err)
 	}
 	return nil
+}
+
+func (m *datasetCompaction) registerSampleObserver(observer SampleObserver) {
+	m.observer = observer
 }
 
 func (m *datasetCompaction) open(ctx context.Context, path string) (err error) {
@@ -366,6 +415,7 @@ func (m *datasetCompaction) writeRow(r ProfileEntry) (err error) {
 	if err = m.symbolsRewriter.rewriteRow(r); err != nil {
 		return err
 	}
+	m.observer.Observe(r)
 	return m.profilesWriter.writeRow(r)
 }
 
