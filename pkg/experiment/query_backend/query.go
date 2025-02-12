@@ -11,6 +11,7 @@ import (
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block"
+	"github.com/grafana/pyroscope/pkg/experiment/symbolizer"
 )
 
 // TODO(kolesnikovae): We have a procedural definition of our queries,
@@ -71,12 +72,13 @@ func registerQueryType(
 }
 
 type queryContext struct {
-	ctx context.Context
-	log log.Logger
-	req *request
-	agg *reportAggregator
-	ds  *block.Dataset
-	err error
+	ctx        context.Context
+	log        log.Logger
+	req        *request
+	agg        *reportAggregator
+	ds         *block.Dataset
+	err        error
+	symbolizer *symbolizer.Symbolizer
 }
 
 func newQueryContext(
@@ -85,13 +87,15 @@ func newQueryContext(
 	req *request,
 	agg *reportAggregator,
 	ds *block.Dataset,
+	symbolizer *symbolizer.Symbolizer,
 ) *queryContext {
 	return &queryContext{
-		ctx: ctx,
-		log: log,
-		req: req,
-		agg: agg,
-		ds:  ds,
+		ctx:        ctx,
+		log:        log,
+		req:        req,
+		agg:        agg,
+		ds:         ds,
+		symbolizer: symbolizer,
 	}
 }
 
