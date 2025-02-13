@@ -777,18 +777,18 @@ func (d *Distributor) checkUsageGroupsIngestLimit(tenantID string, groupsInReque
 	}
 
 	for _, group := range groupsInRequest {
-		if limit, ok := l.UsageGroups[group]; ok {
-			if limit.LimitReached {
-				if d.ingestionLimitsSampler.AllowRequest(tenantID, l.Sampling) {
-					return nil
-				}
-				limitResetTime := time.Unix(l.LimitResetTime, 0).UTC().Format(time.RFC3339)
-				validation.DiscardedProfiles.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalProfiles))
-				validation.DiscardedBytes.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalBytesUncompressed))
-				return connect.NewError(connect.CodeResourceExhausted,
-					fmt.Errorf("limit of %s/%s reached for usage group %s, next reset at %s", humanize.IBytes(uint64(limit.PeriodLimitMb*1024*1024)), l.PeriodType, group, limitResetTime))
-			}
+		limit, ok := l.UsageGroups[group]
+		if !ok || !limit.LimitReached {
+			continue
 		}
+		if d.ingestionLimitsSampler.AllowRequest(tenantID, l.Sampling) {
+			return nil
+		}
+		limitResetTime := time.Unix(l.LimitResetTime, 0).UTC().Format(time.RFC3339)
+		validation.DiscardedProfiles.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalProfiles))
+		validation.DiscardedBytes.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalBytesUncompressed))
+		return connect.NewError(connect.CodeResourceExhausted,
+			fmt.Errorf("limit of %s/%s reached for usage group %s, next reset at %s", humanize.IBytes(uint64(limit.PeriodLimitMb*1024*1024)), l.PeriodType, group, limitResetTime))
 	}
 
 	return nil
