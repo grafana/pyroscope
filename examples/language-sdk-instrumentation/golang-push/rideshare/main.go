@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"rideshare/bike"
 	"rideshare/car"
@@ -18,8 +19,13 @@ import (
 	otellogs "github.com/agoda-com/opentelemetry-logs-go"
 	otelpyroscope "github.com/grafana/otel-profiling-go"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
+	mmetric "go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )
 
 func bikeRoute(w http.ResponseWriter, r *http.Request) {
@@ -59,9 +65,19 @@ func main() {
 	if err != nil {
 		log.Fatalf("error starting pyroscope profiler: %v", err)
 	}
+
 	defer func() {
 		_ = p.Stop()
 	}()
+
+	histogram, err := otel.GetMeterProvider().Meter("histogram").Float64Histogram(
+		"handler.duration",
+		mmetric.WithDescription("The duration of handler execution."),
+		mmetric.WithUnit("s"),
+	)
+	if err != nil {
+		panic(err)
+	}
 
 	cleanup := utility.InitWorkerPool(config)
 	defer cleanup()
@@ -69,9 +85,27 @@ func main() {
 	rideshare.Log.Print(context.Background(), "started ride-sharing app")
 
 	http.Handle("/", otelhttp.NewHandler(http.HandlerFunc(index), "IndexHandler"))
-	http.Handle("/bike", otelhttp.NewHandler(http.HandlerFunc(bikeRoute), "BikeHandler"))
-	http.Handle("/scooter", otelhttp.NewHandler(http.HandlerFunc(scooterRoute), "ScooterHandler"))
-	http.Handle("/car", otelhttp.NewHandler(http.HandlerFunc(carRoute), "CarHandler"))
+
+	http.Handle("/bike", otelhttp.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		bikeRoute(w, r)
+		duration := time.Since(start)
+		histogram.Record(r.Context(), duration.Seconds())
+	}), "BikeHandler"))
+
+	http.Handle("/scooter", otelhttp.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		scooterRoute(w, r)
+		duration := time.Since(start)
+		histogram.Record(r.Context(), duration.Seconds())
+	}), "ScooterHandler"))
+
+	http.Handle("/car", otelhttp.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		carRoute(w, r)
+		duration := time.Since(start)
+		histogram.Record(r.Context(), duration.Seconds())
+	}), "CarHandler"))
 
 	addr := fmt.Sprintf(":%s", config.RideshareListenPort)
 	log.Fatal(http.ListenAndServe(addr, nil))
@@ -105,5 +139,45 @@ func setupOTEL(c rideshare.Config) (tp *sdktrace.TracerProvider, err error) {
 		propagation.Baggage{},
 	))
 
+	// Create resource.
+	res, err := newResource()
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a meter provider.
+	// You can pass this instance directly to your instrumented code if it
+	// accepts a MeterProvider instance.
+	mp, err := newMeterProvider(res)
+	if err != nil {
+		return nil, err
+	}
+
+	otel.SetMeterProvider(mp)
+
 	return tp, err
+}
+
+func newResource() (*resource.Resource, error) {
+	return resource.Merge(resource.Default(),
+		resource.NewWithAttributes(semconv.SchemaURL,
+			semconv.ServiceName("rideshare-service"),
+			semconv.ServiceVersion("0.1.0"),
+		))
+}
+
+func newMeterProvider(res *resource.Resource) (*metric.MeterProvider, error) {
+	metricExporter, err := stdoutmetric.New()
+	if err != nil {
+		return nil, err
+	}
+
+	meterProvider := metric.NewMeterProvider(
+		metric.WithResource(res),
+		metric.WithReader(metric.NewPeriodicReader(metricExporter,
+			// Default is 1m. Set to 3s for demonstrative purposes.
+			metric.WithInterval(3*time.Second))),
+	)
+
+	return meterProvider, nil
 }
