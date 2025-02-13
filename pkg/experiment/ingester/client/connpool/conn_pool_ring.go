@@ -22,9 +22,9 @@ type ConnPool interface {
 	services.Service
 }
 
-type RingConnPool struct{ *ring_client.Pool }
+type Pool struct{ *ring_client.Pool }
 
-func (p *RingConnPool) GetConnFor(addr string) (grpc.ClientConnInterface, error) {
+func (p *Pool) GetConnFor(addr string) (grpc.ClientConnInterface, error) {
 	c, err := p.Pool.GetClientFor(addr)
 	if err != nil {
 		return nil, err

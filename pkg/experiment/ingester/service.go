@@ -34,6 +34,9 @@ import (
 const (
 	RingName = "segment-writer"
 	RingKey  = "segment-writer-ring"
+
+	minFlushConcurrency    = 8
+	defaultSegmentDuration = 500 * time.Millisecond
 )
 
 type Config struct {
@@ -48,8 +51,8 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	const prefix = "segment-writer"
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix(prefix, f)
 	cfg.LifecyclerConfig.RegisterFlagsWithPrefix(prefix+".", f, util.Logger)
-	f.DurationVar(&cfg.SegmentDuration, prefix+".segment-duration", 500*time.Millisecond, "Timeout when flushing segments to bucket.")
-	f.UintVar(&cfg.FlushConcurrency, prefix+".flush-concurrency", 0, "Number of concurrent flushes. Defaults to the number of CPUs.")
+	f.DurationVar(&cfg.SegmentDuration, prefix+".segment-duration", defaultSegmentDuration, "Timeout when flushing segments to bucket.")
+	f.UintVar(&cfg.FlushConcurrency, prefix+".flush-concurrency", 0, "Number of concurrent flushes. Defaults to the number of CPUs, but not less than 8.")
 }
 
 func (cfg *Config) Validate() error {
@@ -162,6 +165,7 @@ func (i *SegmentWriterService) stopping(_ error) error {
 	i.health.SetNotServing()
 	errs := multierror.New()
 	errs.Add(services.StopManagerAndAwaitStopped(context.Background(), i.subservices))
+	time.Sleep(i.config.LifecyclerConfig.MinReadyDuration)
 	i.requests.Drain()
 	errs.Add(i.segmentWriter.stop())
 	return errs.Err()

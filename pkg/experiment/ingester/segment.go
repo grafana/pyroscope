@@ -18,6 +18,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
 	"github.com/oklog/ulid"
+	"github.com/opentracing/opentracing-go"
 	"github.com/thanos-io/objstore"
 	"golang.org/x/exp/maps"
 
@@ -129,12 +130,11 @@ func newSegmentWriter(l log.Logger, metrics *segmentMetrics, hm *memdb.HeadMetri
 		metastore:   metastoreClient,
 	}
 	sw.ctx, sw.cancel = context.WithCancel(context.Background())
-	// One worker per CPU core, but not less than 4.
 	flushWorkers := runtime.GOMAXPROCS(-1)
 	if config.FlushConcurrency > 0 {
 		flushWorkers = int(config.FlushConcurrency)
 	}
-	sw.pool.run(max(4, flushWorkers))
+	sw.pool.run(max(minFlushConcurrency, flushWorkers))
 	return sw
 }
 
@@ -205,6 +205,13 @@ func (sw *segmentsWriter) newSegment(sh *shard, sk shardKey, sl log.Logger) *seg
 }
 
 func (s *segment) flush(ctx context.Context) (err error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "segment.flush", opentracing.Tags{
+		"block_id": s.ulid.String(),
+		"datasets": len(s.heads),
+		"shard":    s.shard,
+	})
+	defer span.Finish()
+
 	t1 := time.Now()
 	defer func() {
 		if err != nil {
@@ -216,11 +223,6 @@ func (s *segment) flush(ctx context.Context) (err error) {
 		s.sw.metrics.flushSegmentDuration.WithLabelValues(s.sshard).Observe(time.Since(t1).Seconds())
 	}()
 
-	// TODO(kolesnikovae): Remove ctx:
-	//  - It is always the Background context.
-	//      This is bad: uploadBlock and storeMeta should have timeout. We don't have to take it from the outside.
-	//  - It's not used in the function chain.
-	//  - We don't want to cancel flush.
 	stream := s.flushHeads(ctx)
 	s.debuginfo.movedHeads = len(stream.heads)
 	if len(stream.heads) == 0 {
