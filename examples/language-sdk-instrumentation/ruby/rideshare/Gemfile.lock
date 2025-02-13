@@ -14,7 +14,7 @@ GEM
       ffi
     pyroscope (0.5.12-x86_64-linux)
       ffi
-    rack (2.2.8.1)
+    rack (2.2.11)
     rack-protection (2.2.4)
       rack
     ruby2_keywords (0.0.5)
