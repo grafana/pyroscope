@@ -69,7 +69,7 @@ GEM
     pyroscope-otel (0.1.1)
       opentelemetry-api (~> 1.1.0)
       pyroscope (~> 0.5.1)
-    rack (2.2.10)
+    rack (2.2.11)
     rack-protection (2.2.4)
       rack
     rake (13.2.1)
