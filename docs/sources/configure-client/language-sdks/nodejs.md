@@ -71,7 +71,7 @@ If you'd prefer, you can use Pull mode using [Grafana Alloy](https://grafana.com
 | `heapStackDepth:`             | `PYROSCOPE_HEAP_STACK_DEPTH`              | Number         | Maximum stack depth for heap samples (Default `64`)                               |
 | `wall.SamplingDurationMs:`     | `PYROSCOPE_WALL_SAMPLING_DURATION_MS`     | Number         | Duration of a single wall profile (Default `60000`)                               |
 | `wall.SamplingIntervalMicros:` | `PYROSCOPE_WALL_SAMPLING_INTERVAL_MICROS` | Number         | Interval of how often wall samples are collected (Default `10000`                 |
-| `wall.CollectCpuTime:`         | `PYROSCOPE_WALL_COLLECT_CPU_TIME`         | Boolean        | Required for CPU profiling. Enable CPU time collection for wall profiles (Default `false`)                    |
+| `wall.CollectCpuTime:`         | `PYROSCOPE_WALL_COLLECT_CPU_TIME`         | Boolean        | Required for CPU profiling. Enable CPU time collection as part of the wall profiler (Default `false`)                    |
 | `tags:`                       | n/a                                       | [LabelSet]     | Static labels applying to all profiles collected (Default `{}`)                   |
 | `sourceMapper:`               | n/a                                       | [SourceMapper] | Provide source file mapping information (Default `undefined`)                     |
 
