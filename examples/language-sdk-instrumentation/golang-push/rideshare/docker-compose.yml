@@ -58,5 +58,6 @@ services:
       --enable-feature=native-histograms
       --config.file=/etc/prometheus/prometheus.yml
       --storage.tsdb.path=/prometheus
+      --web.enable-otlp-receiver
     volumes:
       - ./prometheus-provisioning/prometheus.yaml:/etc/prometheus/prometheus.yml
