@@ -104,6 +104,21 @@ func TestUsageGroupConfig_GetUsageGroups(t *testing.T) {
 				tenantID: "tenant1",
 			},
 		},
+		{
+			Name:     "disjoint_labels_do_not_match",
+			TenantID: "tenant1",
+			Config: UsageGroupConfig{
+				config: map[string][]*labels.Matcher{
+					"app/foo": testMustParseMatcher(t, `{namespace="foo", container="bar"}`),
+				},
+			},
+			Labels: phlaremodel.Labels{
+				{Name: "service_name", Value: "foo"},
+			},
+			Want: UsageGroupMatch{
+				tenantID: "tenant1",
+			},
+		},
 	}
 
 	for _, tt := range tests {

@@ -180,10 +180,18 @@ func matchesAll(matchers []*labels.Matcher, lbls phlaremodel.Labels) bool {
 	}
 
 	for _, m := range matchers {
+		matched := false
 		for _, lbl := range lbls {
-			if lbl.Name == m.Name && !m.Matches(lbl.Value) {
-				return false
+			if lbl.Name == m.Name {
+				if !m.Matches(lbl.Value) {
+					return false
+				}
+				matched = true
+				break
 			}
+		}
+		if !matched {
+			return false
 		}
 	}
 	return true
