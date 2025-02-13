@@ -358,7 +358,7 @@ func Test_Limits(t *testing.T) {
 					},
 				}
 				usageGroupCfg, err := validation.NewUsageGroupConfig(map[string]string{
-					"group-1": "{cluster=\"us-central1\"}",
+					"group-1": "{service_name=\"svc\"}",
 				})
 				require.NoError(t, err)
 				l.DistributorUsageGroups = &usageGroupCfg
