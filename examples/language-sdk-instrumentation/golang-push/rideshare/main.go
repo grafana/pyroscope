@@ -20,6 +20,7 @@ import (
 	sdklogs "github.com/agoda-com/opentelemetry-logs-go/sdk/logs"
 	otelpyroscope "github.com/grafana/otel-profiling-go"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	mmetric "go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
@@ -90,21 +91,36 @@ func main() {
 		start := time.Now()
 		bikeRoute(w, r)
 		duration := time.Since(start)
-		histogram.Record(r.Context(), duration.Seconds())
+		histogram.Record(r.Context(), duration.Seconds(),
+			mmetric.WithAttributes(
+				attribute.String("vehicle", "bike"),
+				attribute.String("route", "/bike"),
+			),
+		)
 	}), "BikeHandler"))
 
 	http.Handle("/scooter", otelhttp.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		scooterRoute(w, r)
 		duration := time.Since(start)
-		histogram.Record(r.Context(), duration.Seconds())
+		histogram.Record(r.Context(), duration.Seconds(),
+			mmetric.WithAttributes(
+				attribute.String("vehicle", "scooter"),
+				attribute.String("route", "/scooter"),
+			),
+		)
 	}), "ScooterHandler"))
 
 	http.Handle("/car", otelhttp.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		carRoute(w, r)
 		duration := time.Since(start)
-		histogram.Record(r.Context(), duration.Seconds())
+		histogram.Record(r.Context(), duration.Seconds(),
+			mmetric.WithAttributes(
+				attribute.String("vehicle", "car"),
+				attribute.String("route", "/car"),
+			),
+		)
 	}), "CarHandler"))
 
 	addr := fmt.Sprintf(":%s", config.RideshareListenPort)

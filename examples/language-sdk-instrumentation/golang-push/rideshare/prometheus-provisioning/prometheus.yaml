@@ -2,6 +2,12 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
+otlp:
+  promote_resource_attributes:
+    - service.name
+    - cloud.region
+    - host.name
+
 scrape_configs:
   - job_name: grafana
     static_configs:

@@ -70,9 +70,6 @@ type Config struct {
 	OTLPBasicAuthPassword string
 	OTLPTracesUrlPath     string
 
-	OTLPMetricsEndpoint string
-	OTLPMetricsUrlPath  string
-
 	UseDebugTracer  bool
 	UseDebugLogger  bool
 	UseDebugMeterer bool
@@ -103,9 +100,6 @@ func ReadConfig() Config {
 		OTLPBasicAuthUser:     os.Getenv("OTLP_BASIC_AUTH_USER"),
 		OTLPBasicAuthPassword: os.Getenv("OTLP_BASIC_AUTH_PASSWORD"),
 		OTLPTracesUrlPath:     os.Getenv("OTLP_TRACES_URL_PATH"),
-
-		OTLPMetricsEndpoint: os.Getenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT"),
-		OTLPMetricsUrlPath:  os.Getenv("OTLP_METRICS_URL_PATH"),
 
 		UseDebugTracer:  os.Getenv("DEBUG_TRACER") == "1",
 		UseDebugLogger:  os.Getenv("DEBUG_LOGGER") == "1",
@@ -251,15 +245,10 @@ func debugTracerProvider() (*sdktrace.TracerProvider, error) {
 }
 
 func MeterProvider(c Config) (*sdkmetric.MeterProvider, error) {
-	url := c.OTLPUrl
-	if c.OTLPMetricsEndpoint != "" {
-		url = c.OTLPMetricsEndpoint
-	}
-
 	// Default is 1m. Set to 3s for demonstrative purposes.
 	interval := 3 * time.Second
 
-	if c.UseDebugMeterer || url == "" {
+	if c.UseDebugMeterer {
 		// create stdout exporter, when no OTLP url is set
 		exp, err := stdoutmetric.New()
 		if err != nil {
@@ -273,23 +262,8 @@ func MeterProvider(c Config) (*sdkmetric.MeterProvider, error) {
 		), nil
 	}
 
-	fmt.Printf("OTLPUrl: %s\n", url)
-
 	ctx := context.Background()
-	opts := []otlpmetrichttp.Option{otlpmetrichttp.WithEndpoint(url)}
-	if c.OTLPMetricsUrlPath != "" {
-		opts = append(opts, otlpmetrichttp.WithURLPath(c.OTLPMetricsUrlPath))
-	}
-	if c.OTLPInsecure {
-		opts = append(opts, otlpmetrichttp.WithInsecure())
-	}
-	if c.OTLPBasicAuthUser != "" {
-		opts = append(opts, otlpmetrichttp.WithHeaders(map[string]string{
-			"Authorization": "Basic " + basicAuth(c.OTLPBasicAuthUser, c.OTLPBasicAuthPassword),
-		}))
-	}
-
-	exp, err := otlpmetrichttp.New(ctx, opts...)
+	exp, err := otlpmetrichttp.New(ctx)
 	if err != nil {
 		return nil, err
 	}
