@@ -90,7 +90,7 @@ func (b *bucketStore) varsFromStore(s *settingsv1.CollectionRuleStore) *pyroscop
 //go:embed config.alloy.gotempl
 var alloyTemplate string
 
-func (b *bucketStore) template(s *settingsv1.CollectionRuleStore) (string, error) {
+func (b *bucketStore) template(ctx context.Context, s *settingsv1.CollectionRuleStore) (string, error) {
 	vars := b.varsFromStore(s)
 
 	// generate the pyroscope alloy config
@@ -109,8 +109,18 @@ func (b *bucketStore) template(s *settingsv1.CollectionRuleStore) (string, error
 		return "", fmt.Errorf("error parsing alloy collection template: %w", err)
 	}
 
+	// check if context is still active
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
+
 	if err := configTemplate.Execute(&config, vars); err != nil {
 		return "", fmt.Errorf("error executing alloy collection template: %w", err)
+	}
+
+	// check if context is still active
+	if err := ctx.Err(); err != nil {
+		return "", err
 	}
 
 	if _, err := parser.ParseFile("", []byte(config.String())); err != nil {
@@ -198,7 +208,7 @@ func (b *bucketStore) get(ctx context.Context, name string) (*settingsv1.GetColl
 }
 
 func (b *bucketStore) convertFromStoreRule(ctx context.Context, store *settingsv1.CollectionRuleStore, api *settingsv1.GetCollectionRuleResponse) error {
-	config, err := b.template(store)
+	config, err := b.template(ctx, store)
 	if err != nil {
 		return err
 	}
