@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package settings.v1;
+
+import "types/v1/types.proto";
+
+// Assume:
+// 1:1 mapping between tenant and RemoteWriteTarget
+
+message RecordingRuleSetting {
+  repeated RecordingRule rules = 1;
+}
+
+message RecordingRule {
+  // Unique id of the recording rule whithin the tenant.
+  string id = 1;
+  repeated string matchers = 2;
+  repeated string group_by = 3;
+  repeated types.v1.LabelPair external_labels = 4;
+}
