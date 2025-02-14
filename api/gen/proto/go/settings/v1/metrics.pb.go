@@ -73,7 +73,7 @@ type RecordingRule struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// Unique id of the recording rule whitin the tenant.
+	// Unique id of the recording rule within the tenant.
 	Id             string          `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Matchers       []string        `protobuf:"bytes,2,rep,name=matchers,proto3" json:"matchers,omitempty"`
 	GroupBy        []string        `protobuf:"bytes,3,rep,name=group_by,json=groupBy,proto3" json:"group_by,omitempty"`
