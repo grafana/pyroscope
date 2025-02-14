@@ -10,7 +10,9 @@ import (
 	"flag"
 	"fmt"
 	"math/rand"
+	"net"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
@@ -145,7 +147,7 @@ type enqueueResult struct {
 func NewFrontend(cfg Config, limits Limits, log log.Logger, reg prometheus.Registerer) (*Frontend, error) {
 	requestsCh := make(chan *frontendRequest)
 
-	schedulerWorkers, err := newFrontendSchedulerWorkers(cfg, fmt.Sprintf("%s:%d", cfg.Addr, cfg.Port), requestsCh, log, reg)
+	schedulerWorkers, err := newFrontendSchedulerWorkers(cfg, net.JoinHostPort(cfg.Addr, strconv.Itoa(cfg.Port)), requestsCh, log, reg)
 	if err != nil {
 		return nil, err
 	}
