@@ -40,8 +40,13 @@ Add the following code to your application:
 const Pyroscope = require('@pyroscope/nodejs');
 
 Pyroscope.init({
-  serverAddress: 'http://pyroscope:4040',
-  appName: 'myNodeService'
+    serverAddress: 'http://pyroscope:4040',
+    appName: 'myNodeService',
+    // Enable CPU time collection for wall profiles
+    // This is required for CPU profiling functionality
+    // wall: {
+    //   collectCpuTime: true
+    // }
 });
 
 Pyroscope.start()
@@ -64,9 +69,9 @@ If you'd prefer, you can use Pull mode using [Grafana Alloy](https://grafana.com
 | `flushIntervalMs:`            | `PYROSCOPE_FLUSH_INTERVAL_MS`             | Number         | Interval when profiles are sent to the server (Default `60000`)                   |
 | `heapSamplingIntervalBytes`   | `PYROSCOPE_HEAP_SAMPLING_INTERVAL_BYTES`  | Number         | Average number of bytes between samples. (Default `524288`)                       |
 | `heapStackDepth:`             | `PYROSCOPE_HEAP_STACK_DEPTH`              | Number         | Maximum stack depth for heap samples (Default `64`)                               |
-| `wallSamplingDurationMs:`     | `PYROSCOPE_WALL_SAMPLING_DURATION_MS`     | Number         | Duration of a single wall profile (Default `60000`)                               |
-| `wallSamplingIntervalMicros:` | `PYROSCOPE_WALL_SAMPLING_INTERVAL_MICROS` | Number         | Interval of how often wall samples are collected (Default `10000`                 |
-| `wallCollectCpuTime:`         | `PYROSCOPE_WALL_COLLECT_CPU_TIME`         | Boolean        | Enable CPU time collection for wall profiles (Default `false`)                    |
+| `wall.SamplingDurationMs:`     | `PYROSCOPE_WALL_SAMPLING_DURATION_MS`     | Number         | Duration of a single wall profile (Default `60000`)                               |
+| `wall.SamplingIntervalMicros:` | `PYROSCOPE_WALL_SAMPLING_INTERVAL_MICROS` | Number         | Interval of how often wall samples are collected (Default `10000`                 |
+| `wall.CollectCpuTime:`         | `PYROSCOPE_WALL_COLLECT_CPU_TIME`         | Boolean        | Required for CPU profiling. Enable CPU time collection as part of the wall profiler (Default `false`)                    |
 | `tags:`                       | n/a                                       | [LabelSet]     | Static labels applying to all profiles collected (Default `{}`)                   |
 | `sourceMapper:`               | n/a                                       | [SourceMapper] | Provide source file mapping information (Default `undefined`)                     |
 
