@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"net"
+	"strconv"
 	"sync"
 	"time"
 
@@ -187,7 +189,7 @@ func New(cfg util.CommonRingConfig, logger log.Logger, reg prometheus.Registerer
 	svc := &Service{
 		store:   client,
 		id:      cfg.InstanceID,
-		addr:    fmt.Sprintf("%s:%d", instanceAddr, instancePort),
+		addr:    net.JoinHostPort(instanceAddr, strconv.Itoa(instancePort)),
 		cfg:     cfg,
 		logger:  log.With(logger, "component", "versions"),
 		cancel:  cancel,
