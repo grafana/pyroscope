@@ -17,15 +17,13 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	otellogs "github.com/agoda-com/opentelemetry-logs-go"
+	sdklogs "github.com/agoda-com/opentelemetry-logs-go/sdk/logs"
 	otelpyroscope "github.com/grafana/otel-profiling-go"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
 	mmetric "go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
-	"go.opentelemetry.io/otel/sdk/metric"
-	"go.opentelemetry.io/otel/sdk/resource"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )
 
 func bikeRoute(w http.ResponseWriter, r *http.Request) {
@@ -55,9 +53,11 @@ func index(w http.ResponseWriter, r *http.Request) {
 func main() {
 	config := rideshare.ReadConfig()
 
-	tp, _ := setupOTEL(config)
+	tp, lp, mp, _ := setupOTEL(config)
 	defer func() {
 		_ = tp.Shutdown(context.Background())
+		_ = lp.Shutdown(context.Background())
+		_ = mp.Shutdown(context.Background())
 	}()
 
 	p, err := rideshare.Profiler(config)
@@ -111,15 +111,15 @@ func main() {
 	log.Fatal(http.ListenAndServe(addr, nil))
 }
 
-func setupOTEL(c rideshare.Config) (tp *sdktrace.TracerProvider, err error) {
+func setupOTEL(c rideshare.Config) (tp *sdktrace.TracerProvider, lp *sdklogs.LoggerProvider, mp *sdkmetric.MeterProvider, err error) {
 	tp, err = rideshare.TracerProvider(c)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 
-	lp, err := rideshare.LoggerProvider(c)
+	lp, err = rideshare.LoggerProvider(c)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 	otellogs.SetLoggerProvider(lp)
 
@@ -139,45 +139,11 @@ func setupOTEL(c rideshare.Config) (tp *sdktrace.TracerProvider, err error) {
 		propagation.Baggage{},
 	))
 
-	// Create resource.
-	res, err := newResource()
+	mp, err = rideshare.MeterProvider(c)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
-
-	// Create a meter provider.
-	// You can pass this instance directly to your instrumented code if it
-	// accepts a MeterProvider instance.
-	mp, err := newMeterProvider(res)
-	if err != nil {
-		return nil, err
-	}
-
 	otel.SetMeterProvider(mp)
 
-	return tp, err
-}
-
-func newResource() (*resource.Resource, error) {
-	return resource.Merge(resource.Default(),
-		resource.NewWithAttributes(semconv.SchemaURL,
-			semconv.ServiceName("rideshare-service"),
-			semconv.ServiceVersion("0.1.0"),
-		))
-}
-
-func newMeterProvider(res *resource.Resource) (*metric.MeterProvider, error) {
-	metricExporter, err := stdoutmetric.New()
-	if err != nil {
-		return nil, err
-	}
-
-	meterProvider := metric.NewMeterProvider(
-		metric.WithResource(res),
-		metric.WithReader(metric.NewPeriodicReader(metricExporter,
-			// Default is 1m. Set to 3s for demonstrative purposes.
-			metric.WithInterval(3*time.Second))),
-	)
-
-	return meterProvider, nil
+	return tp, lp, mp, err
 }

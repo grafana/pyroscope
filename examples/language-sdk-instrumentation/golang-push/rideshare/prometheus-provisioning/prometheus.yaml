@@ -7,6 +7,14 @@ scrape_configs:
     static_configs:
       - targets:
           - host.docker.internal:3000
+  - job_name: pyroscope
+    static_configs:
+      - targets:
+          - host.docker.internal:4040
+  - job_name: prometheus
+    static_configs:
+      - targets:
+          - host.docker.internal:9099
   - job_name: rideshare
     static_configs:
       - targets:

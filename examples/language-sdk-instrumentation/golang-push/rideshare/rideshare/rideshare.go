@@ -15,9 +15,12 @@ import (
 	sdklogs "github.com/agoda-com/opentelemetry-logs-go/sdk/logs"
 	"github.com/grafana/pyroscope-go"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.20.0"
@@ -67,9 +70,13 @@ type Config struct {
 	OTLPBasicAuthPassword string
 	OTLPTracesUrlPath     string
 
-	UseDebugTracer bool
-	UseDebugLogger bool
-	Tags           map[string]string
+	OTLPMetricsEndpoint string
+	OTLPMetricsUrlPath  string
+
+	UseDebugTracer  bool
+	UseDebugLogger  bool
+	UseDebugMeterer bool
+	Tags            map[string]string
 
 	ParametersPoolSize       int
 	ParametersPoolBufferSize int
@@ -97,8 +104,12 @@ func ReadConfig() Config {
 		OTLPBasicAuthPassword: os.Getenv("OTLP_BASIC_AUTH_PASSWORD"),
 		OTLPTracesUrlPath:     os.Getenv("OTLP_TRACES_URL_PATH"),
 
-		UseDebugTracer: os.Getenv("DEBUG_TRACER") == "1",
-		UseDebugLogger: os.Getenv("DEBUG_LOGGER") == "1",
+		OTLPMetricsEndpoint: os.Getenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT"),
+		OTLPMetricsUrlPath:  os.Getenv("OTLP_METRICS_URL_PATH"),
+
+		UseDebugTracer:  os.Getenv("DEBUG_TRACER") == "1",
+		UseDebugLogger:  os.Getenv("DEBUG_LOGGER") == "1",
+		UseDebugMeterer: os.Getenv("DEBUG_METERER") == "1",
 		Tags: map[string]string{
 			"region":             os.Getenv("REGION"),
 			"hostname":           hostname,
@@ -237,6 +248,60 @@ func debugTracerProvider() (*sdktrace.TracerProvider, error) {
 		return nil, err
 	}
 	return sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(sdktrace.NewSimpleSpanProcessor(exp))), nil
+}
+
+func MeterProvider(c Config) (*sdkmetric.MeterProvider, error) {
+	url := c.OTLPUrl
+	if c.OTLPMetricsEndpoint != "" {
+		url = c.OTLPMetricsEndpoint
+	}
+
+	// Default is 1m. Set to 3s for demonstrative purposes.
+	interval := 3 * time.Second
+
+	if c.UseDebugMeterer || url == "" {
+		// create stdout exporter, when no OTLP url is set
+		exp, err := stdoutmetric.New()
+		if err != nil {
+			return nil, err
+		}
+
+		return sdkmetric.NewMeterProvider(
+			sdkmetric.WithResource(newResource(c)),
+			sdkmetric.WithReader(sdkmetric.NewPeriodicReader(exp,
+				sdkmetric.WithInterval(interval))),
+		), nil
+	}
+
+	fmt.Printf("OTLPUrl: %s\n", url)
+
+	ctx := context.Background()
+	opts := []otlpmetrichttp.Option{otlpmetrichttp.WithEndpoint(url)}
+	if c.OTLPMetricsUrlPath != "" {
+		opts = append(opts, otlpmetrichttp.WithURLPath(c.OTLPMetricsUrlPath))
+	}
+	if c.OTLPInsecure {
+		opts = append(opts, otlpmetrichttp.WithInsecure())
+	}
+	if c.OTLPBasicAuthUser != "" {
+		opts = append(opts, otlpmetrichttp.WithHeaders(map[string]string{
+			"Authorization": "Basic " + basicAuth(c.OTLPBasicAuthUser, c.OTLPBasicAuthPassword),
+		}))
+	}
+
+	exp, err := otlpmetrichttp.New(ctx, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a new tracer provider with a batch span processor and the otlp exporter.
+	mp := sdkmetric.NewMeterProvider(
+		sdkmetric.WithResource(newResource(c)),
+		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(exp,
+			sdkmetric.WithInterval(interval))),
+	)
+
+	return mp, nil
 }
 
 func Profiler(c Config) (*pyroscope.Profiler, error) {

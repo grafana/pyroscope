@@ -7,6 +7,8 @@ services:
     - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
     - PARAMETERS_POOL_SIZE=1000
     - PARAMETERS_POOL_BUFFER_SIZE_KB=1000
+    - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+    - OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=http://prometheus:9090/api/v1/otlp/v1/metrics
     build:
       context: .
   eu-north:
@@ -15,6 +17,8 @@ services:
     environment:
     - REGION=eu-north
     - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
+    - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+    - OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=http://prometheus:9090/api/v1/otlp/v1/metrics
     build:
       context: .
   ap-south:
@@ -23,6 +27,8 @@ services:
     environment:
     - REGION=ap-south
     - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
+    - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+    - OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=http://prometheus:9090/api/v1/otlp/v1/metrics
     build:
       context: .
   pyroscope:
