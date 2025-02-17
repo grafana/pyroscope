@@ -32,11 +32,7 @@ type MetadataQuery struct {
 	StartTime time.Time
 	EndTime   time.Time
 	Tenant    []string
-}
-
-type MetadataLabelQuery struct {
-	MetadataQuery
-	Labels []string
+	Labels    []string
 }
 
 func (q *MetadataQuery) String() string {
@@ -57,7 +53,7 @@ type metadataQuery struct {
 	index     *Index
 }
 
-func newMetadataQuery(index *Index, query MetadataQuery, labels ...string) (*metadataQuery, error) {
+func newMetadataQuery(index *Index, query MetadataQuery) (*metadataQuery, error) {
 	if len(query.Tenant) == 0 {
 		return nil, &InvalidQueryError{Query: query, Err: fmt.Errorf("tenant_id is required")}
 	}
@@ -70,7 +66,7 @@ func newMetadataQuery(index *Index, query MetadataQuery, labels ...string) (*met
 		endTime:   query.EndTime,
 		index:     index,
 		matchers:  matchers,
-		labels:    labels,
+		labels:    query.Labels,
 	}
 	q.buildTenantMap(query.Tenant)
 	return q, nil
@@ -92,6 +88,10 @@ func (q *metadataQuery) buildTenantMap(tenants []string) {
 
 func (q *metadataQuery) overlaps(start, end time.Time) bool {
 	return start.Before(q.endTime) && !end.Before(q.startTime)
+}
+
+func (q *metadataQuery) overlapsUnixMilli(start, end int64) bool {
+	return q.overlaps(time.UnixMilli(start), time.UnixMilli(end))
 }
 
 func newBlockMetadataIterator(tx *bbolt.Tx, q *metadataQuery) *blockMetadataIterator {
@@ -129,7 +129,11 @@ func (mi *blockMetadataIterator) Next() bool {
 }
 
 func (mi *blockMetadataIterator) collectBlockMetadata(shard *indexShard) bool {
-	matcher := metadata.NewLabelMatcher(shard.StringTable, mi.query.matchers)
+	matcher := metadata.NewLabelMatcher(
+		shard.StringTable,
+		mi.query.matchers,
+		mi.query.labels...,
+	)
 	if !matcher.IsValid() {
 		return false
 	}
@@ -150,17 +154,29 @@ func blockMetadataMatches(
 	m *metadata.LabelMatcher,
 	md *metastorev1.BlockMeta,
 ) *metastorev1.BlockMeta {
-	if !q.overlaps(time.UnixMilli(md.MinTime), time.UnixMilli(md.MaxTime)) {
+	if !q.overlapsUnixMilli(md.MinTime, md.MaxTime) {
 		return nil
 	}
 	var mdCopy *metastorev1.BlockMeta
-	datasets := md.Datasets
-	for _, ds := range datasets {
-		if datasetMatches(q, s, m, ds) {
+	var ok bool
+	matches := make([]int32, 0, 8)
+	for _, ds := range md.Datasets {
+		if _, ok := q.tenantMap[s.Lookup(ds.Tenant)]; !ok {
+			continue
+		}
+		if !q.overlapsUnixMilli(ds.MinTime, ds.MaxTime) {
+			continue
+		}
+		matches = matches[:0]
+		if matches, ok = m.CollectMatches(matches, ds.Labels); ok {
 			if mdCopy == nil {
 				mdCopy = cloneBlockMetadataForQuery(md)
 			}
 			dsCopy := cloneDatasetMetadataForQuery(ds)
+			if len(matches) > 0 {
+				dsCopy.Labels = make([]int32, len(matches))
+				copy(dsCopy.Labels, matches)
+			}
 			mdCopy.Datasets = append(mdCopy.Datasets, dsCopy)
 		}
 	}
@@ -176,7 +192,7 @@ func cloneBlockMetadataForQuery(b *metastorev1.BlockMeta) *metastorev1.BlockMeta
 	b.Datasets = nil
 	c := b.CloneVT()
 	b.Datasets = datasets
-	c.Datasets = make([]*metastorev1.Dataset, 0, len(b.Datasets))
+	c.Datasets = make([]*metastorev1.Dataset, 0, 8)
 	return c
 }
 
@@ -186,34 +202,6 @@ func cloneDatasetMetadataForQuery(ds *metastorev1.Dataset) *metastorev1.Dataset 
 	c := ds.CloneVT()
 	ds.Labels = ls
 	return c
-}
-
-func datasetMatches(
-	q *metadataQuery,
-	s *metadata.StringTable,
-	m *metadata.LabelMatcher,
-	ds *metastorev1.Dataset,
-) bool {
-	if _, ok := q.tenantMap[s.Lookup(ds.Tenant)]; !ok {
-		return false
-	}
-	if !q.overlaps(time.UnixMilli(ds.MinTime), time.UnixMilli(ds.MaxTime)) {
-		return false
-	}
-	pairs := metadata.LabelPairs(ds.Labels)
-	var matches bool
-	for pairs.Next() {
-		if m.Matches(pairs.At()) {
-			matches = true
-		}
-		// If no labels are specified, we can return early.
-		// Otherwise, we need to scan all the label sets to
-		// collect matching ones.
-		if matches && len(q.labels) == 0 {
-			return true
-		}
-	}
-	return matches
 }
 
 func newMetadataLabelQuerier(tx *bbolt.Tx, q *metadataQuery) *metadataLabelQuerier {
@@ -253,14 +241,20 @@ func (mi *metadataLabelQuerier) collectLabels(shard *indexShard) {
 		return
 	}
 	for _, md := range shard.blocks {
-		if !mi.query.overlaps(time.UnixMilli(md.MinTime), time.UnixMilli(md.MaxTime)) {
+		if !mi.query.overlapsUnixMilli(md.MinTime, md.MaxTime) {
 			continue
 		}
 		for _, ds := range md.Datasets {
-			datasetMatches(mi.query, shard.StringTable, m, ds)
+			if _, ok := mi.query.tenantMap[shard.StringTable.Lookup(ds.Tenant)]; !ok {
+				continue
+			}
+			if !mi.query.overlapsUnixMilli(ds.MinTime, ds.MaxTime) {
+				continue
+			}
+			m.Matches(ds.Labels)
 		}
 	}
-	mi.labels.MergeLabels(m.Matched())
+	mi.labels.MergeLabels(m.AllMatches())
 }
 
 type shardIterator struct {
