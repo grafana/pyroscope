@@ -15,6 +15,7 @@ message QueryMetadataRequest {
   int64 start_time = 2;
   int64 end_time = 3;
   string query = 4;
+  repeated string labels = 5;
 }
 
 message QueryMetadataResponse {

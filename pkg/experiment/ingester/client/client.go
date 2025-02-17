@@ -144,7 +144,7 @@ type Client struct {
 	logger  log.Logger
 	metrics *metrics
 
-	pool        *connpool.RingConnPool
+	pool        *connpool.Pool
 	distributor *distributor.Distributor
 
 	service     services.Service
@@ -264,7 +264,11 @@ func (c *Client) pushToInstance(
 	if err != nil {
 		return nil, err
 	}
-	resp, err := segmentwriterv1.NewSegmentWriterServiceClient(conn).Push(ctx, req)
+	// We explicitly force the client to not wait for the connection:
+	// if the connection is not ready, the client will go to the next
+	// instance.
+	client := segmentwriterv1.NewSegmentWriterServiceClient(conn)
+	resp, err := client.Push(ctx, req, grpc.WaitForReady(false))
 	if err == nil {
 		c.metrics.sentBytes.
 			WithLabelValues(strconv.Itoa(int(req.Shard)), req.TenantId, addr).
@@ -278,7 +282,7 @@ func newConnPool(
 	logger log.Logger,
 	grpcClientConfig grpcclient.Config,
 	dialOpts ...grpc.DialOption,
-) (*connpool.RingConnPool, error) {
+) (*connpool.Pool, error) {
 	options, err := grpcClientConfig.DialOption(nil, nil)
 	if err != nil {
 		return nil, err
@@ -286,7 +290,12 @@ func newConnPool(
 
 	// The options (including interceptors) are shared by all client connections.
 	options = append(options, dialOpts...)
-	options = append(options, grpc.WithDefaultServiceConfig(grpcServiceConfig))
+	options = append(options,
+		grpc.WithDefaultServiceConfig(grpcServiceConfig),
+		// Just in case: we explicitly disable the built-in
+		// retry mechanism of the gRPC client.
+		grpc.WithDisableRetry(),
+	)
 
 	// Note that circuit breaker must be created per client conn.
 	factory := connpool.NewConnPoolFactory(func(desc ring.InstanceDesc) []grpc.DialOption {
@@ -317,5 +326,5 @@ func newConnPool(
 		logger,
 	)
 
-	return &connpool.RingConnPool{Pool: p}, nil
+	return &connpool.Pool{Pool: p}, nil
 }

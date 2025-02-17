@@ -1,107 +1,55 @@
 package block
 
 import (
+	"bufio"
 	"context"
-	"io"
 	"os"
 	"path/filepath"
-	"strconv"
 
 	"github.com/grafana/pyroscope/pkg/objstore"
-	"github.com/grafana/pyroscope/pkg/util/bufferpool"
 )
 
-// TODO(kolesnikovae):
-//  - Avoid staging files where possible.
-//  - If stage files are required, at least avoid
-//    recreating them for each tenant dataset.
-//  - objstore.Bucket should provide object writer.
-
 type Writer struct {
-	storage objstore.Bucket
-	path    string
-	local   string
-	off     uint64
-	w       *os.File
-
-	tmp string
-	n   int
-	cur string
-
-	buf *bufferpool.Buffer
+	path string
+	f    *os.File
+	w    *bufio.Writer
+	off  uint64
 }
 
-func NewBlockWriter(storage objstore.Bucket, path string, tmp string) *Writer {
-	b := &Writer{
-		storage: storage,
-		path:    path,
-		tmp:     tmp,
-		local:   filepath.Join(tmp, FileNameDataObject),
-		buf:     bufferpool.GetBuffer(compactionCopyBufferSize),
+func NewBlockWriter(tmpdir string) (*Writer, error) {
+	var err error
+	if err = os.MkdirAll(tmpdir, 0755); err != nil {
+		return nil, err
 	}
-	return b
-}
-
-// Dir returns path to the new temp directory.
-func (b *Writer) Dir() string {
-	b.n++
-	b.cur = filepath.Join(b.tmp, strconv.Itoa(b.n))
-	return b.cur
-}
-
-// ReadFromFiles located in the directory Dir.
-func (b *Writer) ReadFromFiles(files ...string) (toc []uint64, err error) {
-	toc = make([]uint64, len(files))
-	for i := range files {
-		toc[i] = b.off
-		if err = b.ReadFromFile(files[i]); err != nil {
-			break
-		}
+	w := &Writer{path: filepath.Join(tmpdir, FileNameDataObject)}
+	if w.f, err = os.Create(w.path); err != nil {
+		return nil, err
 	}
-	return toc, err
+	w.w = bufio.NewWriter(w.f)
+	return w, nil
 }
 
-// ReadFromFile located in the directory Dir.
-func (b *Writer) ReadFromFile(file string) (err error) {
-	if b.w == nil {
-		if b.w, err = os.Create(b.local); err != nil {
-			return err
-		}
-	}
-	f, err := os.Open(filepath.Join(b.cur, file))
-	if err != nil {
+func (w *Writer) Write(p []byte) (n int, err error) {
+	n, err = w.w.Write(p)
+	w.off += uint64(n)
+	return n, err
+}
+
+func (w *Writer) Offset() uint64 { return w.off }
+
+func (w *Writer) Upload(ctx context.Context, bucket objstore.Bucket, path string) error {
+	if err := w.w.Flush(); err != nil {
 		return err
 	}
-	defer func() {
-		_ = f.Close()
-	}()
-	b.buf.B = b.buf.B[:cap(b.buf.B)]
-	n, err := io.CopyBuffer(b.w, f, b.buf.B)
-	b.off += uint64(n)
+	if _, err := w.f.Seek(0, 0); err != nil {
+		return err
+	}
+	return bucket.Upload(ctx, path, w.f)
+}
+
+func (w *Writer) Close() error {
+	err := w.f.Close()
+	w.f = nil
+	w.w = nil
 	return err
-}
-
-func (b *Writer) Offset() uint64 { return b.off }
-
-func (b *Writer) Flush(ctx context.Context) error {
-	if err := b.w.Close(); err != nil {
-		return err
-	}
-	b.w = nil
-	f, err := os.Open(b.local)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		_ = f.Close()
-	}()
-	return b.storage.Upload(ctx, b.path, f)
-}
-
-func (b *Writer) Close() error {
-	bufferpool.Put(b.buf)
-	if b.w != nil {
-		return b.w.Close()
-	}
-	return nil
 }

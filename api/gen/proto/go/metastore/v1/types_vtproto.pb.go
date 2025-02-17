@@ -32,6 +32,7 @@ func (m *BlockMeta) CloneVT() *BlockMeta {
 	r.MinTime = m.MinTime
 	r.MaxTime = m.MaxTime
 	r.CreatedBy = m.CreatedBy
+	r.MetadataOffset = m.MetadataOffset
 	r.Size = m.Size
 	if rhs := m.Datasets; rhs != nil {
 		tmpContainer := make([]*Dataset, len(rhs))
@@ -61,6 +62,7 @@ func (m *Dataset) CloneVT() *Dataset {
 		return (*Dataset)(nil)
 	}
 	r := new(Dataset)
+	r.Format = m.Format
 	r.Tenant = m.Tenant
 	r.Name = m.Name
 	r.MinTime = m.MinTime
@@ -169,6 +171,9 @@ func (this *BlockMeta) EqualVT(that *BlockMeta) bool {
 			return false
 		}
 	}
+	if this.MetadataOffset != that.MetadataOffset {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
@@ -217,6 +222,9 @@ func (this *Dataset) EqualVT(that *Dataset) bool {
 		if vx != vy {
 			return false
 		}
+	}
+	if this.Format != that.Format {
+		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
@@ -288,6 +296,11 @@ func (m *BlockMeta) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.MetadataOffset != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.MetadataOffset))
+		i--
+		dAtA[i] = 0x60
 	}
 	if len(m.StringTable) > 0 {
 		for iNdEx := len(m.StringTable) - 1; iNdEx >= 0; iNdEx-- {
@@ -389,6 +402,11 @@ func (m *Dataset) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.Format != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Format))
+		i--
+		dAtA[i] = 0x48
 	}
 	if len(m.Labels) > 0 {
 		var pksize2 int
@@ -559,6 +577,9 @@ func (m *BlockMeta) SizeVT() (n int) {
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
 	}
+	if m.MetadataOffset != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.MetadataOffset))
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -597,6 +618,9 @@ func (m *Dataset) SizeVT() (n int) {
 			l += protohelpers.SizeOfVarint(uint64(e))
 		}
 		n += 1 + protohelpers.SizeOfVarint(uint64(l)) + l
+	}
+	if m.Format != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.Format))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -904,6 +928,25 @@ func (m *BlockMeta) UnmarshalVT(dAtA []byte) error {
 			}
 			m.StringTable = append(m.StringTable, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
+		case 12:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MetadataOffset", wireType)
+			}
+			m.MetadataOffset = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.MetadataOffset |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
@@ -1201,6 +1244,25 @@ func (m *Dataset) UnmarshalVT(dAtA []byte) error {
 				}
 			} else {
 				return fmt.Errorf("proto: wrong wireType = %d for field Labels", wireType)
+			}
+		case 9:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Format", wireType)
+			}
+			m.Format = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Format |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
 			}
 		default:
 			iNdEx = preIndex

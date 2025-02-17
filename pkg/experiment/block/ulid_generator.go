@@ -1,6 +1,7 @@
 package block
 
 import (
+	"encoding/binary"
 	"io"
 	"math/rand"
 	"time"
@@ -29,6 +30,9 @@ func NewULIDGenerator(objects Objects) *ULIDGenerator {
 	buf := make([]byte, 0, 1<<10)
 	for _, obj := range objects {
 		buf = append(buf, obj.meta.Id...)
+		// We also include the compaction level
+		// to allow for single-block compactions.
+		buf = binary.BigEndian.AppendUint32(buf, obj.meta.CompactionLevel)
 	}
 	seed := xxhash.Sum64(buf)
 	// Reference block.
@@ -36,7 +40,7 @@ func NewULIDGenerator(objects Objects) *ULIDGenerator {
 	// Assuming that the first object is the oldest one.
 	r := objects[0]
 	return &ULIDGenerator{
-		timestamp: ulid.MustParse(r.Meta().Id).Time(),
+		timestamp: ulid.MustParse(r.Metadata().Id).Time(),
 		entropy:   rand.New(rand.NewSource(int64(seed))),
 	}
 }

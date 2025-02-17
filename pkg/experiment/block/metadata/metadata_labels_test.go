@@ -131,12 +131,12 @@ func TestLabelMatcher_Matches(t *testing.T) {
 
 	pairs := LabelPairs(setA)
 	for pairs.Next() {
-		matches = append(matches, m.Matches(pairs.At()))
+		matches = append(matches, m.MatchesPairs(pairs.At()))
 	}
 
 	pairs = LabelPairs(setB)
 	for pairs.Next() {
-		matches = append(matches, m.Matches(pairs.At()))
+		matches = append(matches, m.MatchesPairs(pairs.At()))
 	}
 
 	assert.Equal(t, expected, matches)
@@ -144,7 +144,73 @@ func TestLabelMatcher_Matches(t *testing.T) {
 		&typesv1.LabelPair{Name: "service_name", Value: "service_a"},
 		&typesv1.LabelPair{Name: "__profile_type__", Value: "cpu:a"},
 		&typesv1.LabelPair{Name: "none", Value: ""},
-	}}, m.Matched())
+	}}, m.AllMatches())
+}
+
+func Test_LabelMatcher_All(t *testing.T) {
+	strings := NewStringTable()
+	x := NewLabelBuilder(strings).BuildPairs(
+		LabelNameTenantDataset,
+		LabelValueDatasetTSDBIndex,
+	)
+
+	m := NewLabelMatcher(strings,
+		[]*labels.Matcher{},
+		"service_name",
+		"__profile_type__",
+	)
+
+	assert.True(t, m.IsValid())
+	assert.True(t, m.Matches(x))
+	assert.Equal(t, []model.Labels{{
+		&typesv1.LabelPair{Name: "service_name", Value: ""},
+		&typesv1.LabelPair{Name: "__profile_type__", Value: ""},
+	}}, m.AllMatches())
+}
+
+func TestLabelMatcher_Collect(t *testing.T) {
+	strings := NewStringTable()
+	b := NewLabelBuilder(strings)
+
+	b.WithConstantPairs("service_name", "service_a")
+	b.WithLabelNames("__profile_type__")
+	b.CreateLabels("cpu:a")
+	b.CreateLabels("cpu:b")
+	b.CreateLabels("memory")
+	setA := b.Build()
+	assert.Equal(t, []string{
+		"service_name=service_a;__profile_type__=cpu:a;",
+		"service_name=service_a;__profile_type__=cpu:b;",
+		"service_name=service_a;__profile_type__=memory;",
+	}, labelStrings(setA, strings))
+
+	b.WithConstantPairs("service_name", "service_b")
+	b.CreateLabels("cpu:a")
+	b.CreateLabels("cpu:b")
+	setB := b.Build()
+	assert.Equal(t, []string{
+		"service_name=service_b;__profile_type__=cpu:a;",
+		"service_name=service_b;__profile_type__=cpu:b;",
+	}, labelStrings(setB, strings))
+
+	m := NewLabelMatcher(strings, []*labels.Matcher{
+		labels.MustNewMatcher(labels.MatchEqual, "service_name", "service_a"),
+		labels.MustNewMatcher(labels.MatchRegexp, "__profile_type__", "cpu.*")},
+		"service_name",
+		"none")
+	assert.True(t, m.IsValid())
+
+	matches, ok := m.CollectMatches(nil, setA)
+	assert.True(t, ok)
+	assert.Equal(t, []string{
+		"service_name=service_a;",
+		"service_name=service_a;",
+	}, labelStrings(matches, strings))
+
+	matches = matches[:0]
+	matches, ok = m.CollectMatches(matches, setB)
+	assert.False(t, ok)
+	assert.Len(t, matches, 0)
 }
 
 func Benchmark_LabelMatcher_Matches(b *testing.B) {
@@ -166,7 +232,7 @@ func Benchmark_LabelMatcher_Matches(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		pairs := LabelPairs(ls)
 		for pairs.Next() {
-			m.Matches(pairs.At())
+			m.MatchesPairs(pairs.At())
 		}
 	}
 }

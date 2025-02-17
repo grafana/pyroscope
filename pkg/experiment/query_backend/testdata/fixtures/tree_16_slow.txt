@@ -1,0 +1,12 @@
+.
+└── runtime.main: self 0 total 2985820298582
+    └── main.main: self 0 total 2985820298582
+        └── github.com/pyroscope-io/client/pyroscope.TagWrapper: self 0 total 2985820298582
+            └── runtime/pprof.Do: self 0 total 2985820298582
+                └── github.com/pyroscope-io/client/pyroscope.TagWrapper.func1: self 0 total 2985820298582
+                    └── main.main.func2: self 0 total 2985820298582
+                        └── main.slowFunction: self 0 total 2985820298582
+                            └── runtime/pprof.Do: self 0 total 2985820298582
+                                └── main.slowFunction.func1: self 0 total 2985820298582
+                                    └── main.work: self 2875070287507 total 2985820298582
+                                        └── runtime.asyncPreempt: self 110750011075 total 110750011075
