@@ -49,6 +49,7 @@ func (m *RecordingRule) CloneVT() *RecordingRule {
 	}
 	r := new(RecordingRule)
 	r.Id = m.Id
+	r.MetricName = m.MetricName
 	if rhs := m.Matchers; rhs != nil {
 		tmpContainer := make([]string, len(rhs))
 		copy(tmpContainer, rhs)
@@ -121,6 +122,9 @@ func (this *RecordingRule) EqualVT(that *RecordingRule) bool {
 		return false
 	}
 	if this.Id != that.Id {
+		return false
+	}
+	if this.MetricName != that.MetricName {
 		return false
 	}
 	if len(this.Matchers) != len(that.Matchers) {
@@ -268,7 +272,7 @@ func (m *RecordingRule) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 				i = protohelpers.EncodeVarint(dAtA, i, uint64(len(encoded)))
 			}
 			i--
-			dAtA[i] = 0x22
+			dAtA[i] = 0x2a
 		}
 	}
 	if len(m.GroupBy) > 0 {
@@ -277,7 +281,7 @@ func (m *RecordingRule) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 			copy(dAtA[i:], m.GroupBy[iNdEx])
 			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.GroupBy[iNdEx])))
 			i--
-			dAtA[i] = 0x1a
+			dAtA[i] = 0x22
 		}
 	}
 	if len(m.Matchers) > 0 {
@@ -286,8 +290,15 @@ func (m *RecordingRule) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 			copy(dAtA[i:], m.Matchers[iNdEx])
 			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Matchers[iNdEx])))
 			i--
-			dAtA[i] = 0x12
+			dAtA[i] = 0x1a
 		}
+	}
+	if len(m.MetricName) > 0 {
+		i -= len(m.MetricName)
+		copy(dAtA[i:], m.MetricName)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.MetricName)))
+		i--
+		dAtA[i] = 0x12
 	}
 	if len(m.Id) > 0 {
 		i -= len(m.Id)
@@ -322,6 +333,10 @@ func (m *RecordingRule) SizeVT() (n int) {
 	var l int
 	_ = l
 	l = len(m.Id)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	l = len(m.MetricName)
 	if l > 0 {
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
@@ -501,6 +516,38 @@ func (m *RecordingRule) UnmarshalVT(dAtA []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MetricName", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.MetricName = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Matchers", wireType)
 			}
 			var stringLen uint64
@@ -531,7 +578,7 @@ func (m *RecordingRule) UnmarshalVT(dAtA []byte) error {
 			}
 			m.Matchers = append(m.Matchers, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
-		case 3:
+		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field GroupBy", wireType)
 			}
@@ -563,7 +610,7 @@ func (m *RecordingRule) UnmarshalVT(dAtA []byte) error {
 			}
 			m.GroupBy = append(m.GroupBy, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
-		case 4:
+		case 5:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ExternalLabels", wireType)
 			}

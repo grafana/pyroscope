@@ -11,7 +11,8 @@ message RecordingRuleSetting {
 message RecordingRule {
   // Unique id of the recording rule within the tenant.
   string id = 1;
-  repeated string matchers = 2;
-  repeated string group_by = 3;
-  repeated types.v1.LabelPair external_labels = 4;
+  string metric_name = 2;
+  repeated string matchers = 3;
+  repeated string group_by = 4;
+  repeated types.v1.LabelPair external_labels = 5;
 }
