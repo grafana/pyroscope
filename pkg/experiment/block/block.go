@@ -19,9 +19,8 @@ const (
 	defaultObjectSizeLoadInMemory        = 1 << 20
 	defaultTenantDatasetSizeLoadInMemory = 1 << 20
 
-	maxRowsPerRowGroup       = 10 << 10
-	symbolsPrefetchSize      = 32 << 10
-	compactionCopyBufferSize = 32 << 10
+	maxRowsPerRowGroup  = 10 << 10
+	symbolsPrefetchSize = 32 << 10
 )
 
 func estimateReadBufferSize(s int64) int {
