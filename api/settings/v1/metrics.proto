@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package settings.v1;
+
+import "types/v1/types.proto";
+
+message RecordingRuleSetting {
+  repeated RecordingRule rules = 1;
+}
+
+message RecordingRule {
+  // Unique id of the recording rule within the tenant.
+  string id = 1;
+  string metric_name = 2;
+  repeated string matchers = 3;
+  repeated string group_by = 4;
+  repeated types.v1.LabelPair external_labels = 5;
+}

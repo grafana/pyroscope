@@ -1,6 +1,11 @@
 package metadata
 
 import (
+	"encoding/binary"
+	"errors"
+	"fmt"
+	"hash/crc32"
+	"io"
 	"sync"
 	"time"
 
@@ -9,6 +14,8 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/iter"
 )
+
+var ErrMetadataInvalid = errors.New("metadata: invalid metadata")
 
 func Tenant(md *metastorev1.BlockMeta) string {
 	if md.Tenant <= 0 || int(md.Tenant) >= len(md.StringTable) {
@@ -136,4 +143,58 @@ func (t *StringTable) Load(x iter.Iterator[string]) error {
 		t.Put(x.At())
 	}
 	return x.Err()
+}
+
+func OpenStringTable(src *metastorev1.BlockMeta) *StringTable {
+	t := &StringTable{
+		Dict:    make(map[string]int32, len(src.StringTable)),
+		Strings: src.StringTable,
+	}
+	for i, s := range src.StringTable {
+		t.Dict[s] = int32(i)
+	}
+	return t
+}
+
+var castagnoli = crc32.MakeTable(crc32.Castagnoli)
+
+// Encode writes the metadata to the writer in the following format:
+//
+//	raw       | protobuf-encoded metadata
+//	be_uint32 | size of the raw metadata
+//	be_uint32 | CRC32 of the raw metadata and size
+func Encode(w io.Writer, md *metastorev1.BlockMeta) error {
+	crc := crc32.New(castagnoli)
+	w = io.MultiWriter(w, crc)
+	b, _ := md.MarshalVT()
+	n, err := w.Write(b)
+	if err != nil {
+		return err
+	}
+	if err = binary.Write(w, binary.BigEndian, uint32(n)); err != nil {
+		return err
+	}
+	return binary.Write(w, binary.BigEndian, crc.Sum32())
+}
+
+// Decode metadata encoded with Encode.
+//
+// Note that the metadata decoded from the object has zero Size field,
+// as the block size is not known at the point the metadata is written.
+// It is expected that the caller has access to the block object and
+// can set the Size field after reading the metadata.
+func Decode(b []byte, md *metastorev1.BlockMeta) error {
+	if len(b) <= 8 {
+		return fmt.Errorf("%w: invalid size", ErrMetadataInvalid)
+	}
+	crc := binary.BigEndian.Uint32(b[len(b)-4:])
+	size := binary.BigEndian.Uint32(b[len(b)-8 : len(b)-4])
+	off := len(b) - 8 - int(size)
+	if off < 0 {
+		return fmt.Errorf("%w: invalid size", ErrMetadataInvalid)
+	}
+	if crc32.Checksum(b[off:len(b)-4], castagnoli) != crc {
+		return fmt.Errorf("%w: invalid CRC", ErrMetadataInvalid)
+	}
+	return md.UnmarshalVT(b[off : len(b)-8])
 }

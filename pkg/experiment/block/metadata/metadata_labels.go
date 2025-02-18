@@ -2,6 +2,8 @@ package metadata
 
 import (
 	"slices"
+	"strings"
+	"unsafe"
 
 	"github.com/prometheus/prometheus/model/labels"
 	"golang.org/x/exp/maps"
@@ -12,6 +14,11 @@ import (
 )
 
 // TODO(kolesnikovae): LabelBuilder pool.
+
+const (
+	LabelNameTenantDataset     = "__tenant_dataset__"
+	LabelValueDatasetTSDBIndex = "dataset_tsdb_index"
+)
 
 type LabelBuilder struct {
 	strings  *StringTable
@@ -91,13 +98,13 @@ func (lb *LabelBuilder) putPairs(p []int32) {
 	// The fact that we assume that the order of labels is the same
 	// across all datasets is a precondition, therefore, we can
 	// use pairs as a key.
-	k := string(p)
+	k := int32string(p)
 	if _, ok := lb.seen[k]; ok {
 		return
 	}
 	lb.labels = append(lb.labels, int32(len(p)/2))
 	lb.labels = append(lb.labels, p...)
-	lb.seen[k] = struct{}{}
+	lb.seen[strings.Clone(k)] = struct{}{}
 }
 
 func (lb *LabelBuilder) Build() []int32 {
@@ -105,6 +112,12 @@ func (lb *LabelBuilder) Build() []int32 {
 	copy(c, lb.labels)
 	lb.labels = lb.labels[:0]
 	return c
+}
+
+func (lb *LabelBuilder) BuildPairs(pairs ...string) []int32 {
+	lb.WithConstantPairs(pairs...)
+	lb.CreateLabels()
+	return lb.Build()
 }
 
 func LabelPairs(ls []int32) iter.Iterator[[]int32] { return &labelPairs{labels: ls} }
@@ -183,13 +196,78 @@ func NewLabelMatcher(strings *StringTable, matchers []*labels.Matcher, keep ...s
 
 func (lm *LabelMatcher) IsValid() bool { return !lm.nomatch }
 
-func (lm *LabelMatcher) Matches(pairs []int32) bool {
-	k := string(pairs)
+func (lm *LabelMatcher) Matches(labels []int32) bool {
+	pairs := LabelPairs(labels)
+	var matches bool
+	for pairs.Next() {
+		if lm.MatchesPairs(pairs.At()) {
+			matches = true
+			// If no keep labels are specified, we can return early.
+			// Otherwise, we need to scan all the label sets to
+			// collect matching ones.
+			if len(lm.keep) == 0 {
+				return true
+			}
+		}
+	}
+	return matches
+}
+
+// CollectMatches returns a new set of labels with only the labels
+// that satisfy the match expressions and that are in the keep list.
+func (lm *LabelMatcher) CollectMatches(dst, labels []int32) ([]int32, bool) {
+	pairs := LabelPairs(labels)
+	var matches bool
+	for pairs.Next() {
+		p := pairs.At()
+		if lm.MatchesPairs(p) {
+			matches = true
+			// If no keep labels are specified, we can return early.
+			// Otherwise, we need to scan all the label sets to
+			// collect matching ones.
+			if len(lm.keep) == 0 {
+				return dst, true
+			}
+			dst = lm.strip(dst, p)
+		}
+	}
+	return dst, matches
+}
+
+// strip returns a new length-prefixed slice of pairs
+// with only the labels that are in the keep list.
+func (lm *LabelMatcher) strip(dst, pairs []int32) []int32 {
+	// Length-prefix stub: we only know it after we iterate
+	// over the pairs.
+	s := len(dst)
+	c := len(lm.keep) * 2
+	dst = slices.Grow(dst, c+1)
+	dst = append(dst, 0)
+	var m int32
+	for _, n := range lm.keep {
+		if n < 1 {
+			// Ignore not found labels.
+			continue
+		}
+		for k := 0; k < len(pairs); k += 2 {
+			if pairs[k] == n {
+				dst = append(dst, pairs[k], pairs[k+1])
+				m++
+				break
+			}
+		}
+	}
+	// Write the actual number of pairs as a prefix.
+	dst[s] = m
+	return dst
+}
+
+func (lm *LabelMatcher) MatchesPairs(pairs []int32) bool {
+	k := int32string(pairs)
 	m, found := lm.checked[k]
 	if !found {
 		m = lm.checkMatches(pairs)
-		// Copy the key.
-		lm.checked[k] = m
+		lm.checked[strings.Clone(k)] = m
 		if m {
 			lm.matched++
 		}
@@ -232,24 +310,23 @@ func (lm *LabelMatcher) checkMatches(pairs []int32) bool {
 	return true
 }
 
-func (lm *LabelMatcher) Matched() []model.Labels {
+func (lm *LabelMatcher) AllMatches() []model.Labels {
 	if len(lm.keep) == 0 || lm.nomatch || len(lm.checked) == 0 {
 		return nil
 	}
 	matched := make(map[string]model.Labels, lm.matched)
 	for k, match := range lm.checked {
 		if match {
-			values := lm.values(k)
-			if _, found := matched[values]; !found {
-				matched[values] = lm.labels([]int32(values))
+			values := lm.values(int32s(k))
+			if _, found := matched[int32string(values)]; !found {
+				matched[strings.Clone(int32string(values))] = lm.labels(values)
 			}
 		}
 	}
 	return maps.Values(matched)
 }
 
-func (lm *LabelMatcher) values(pairs string) string {
-	p := []int32(pairs)
+func (lm *LabelMatcher) values(pairs []int32) []int32 {
 	values := make([]int32, len(lm.keep))
 	for i, n := range lm.keep {
 		if n < 1 {
@@ -257,13 +334,13 @@ func (lm *LabelMatcher) values(pairs string) string {
 			continue
 		}
 		for k := 0; k < len(pairs); k += 2 {
-			if p[k] == n {
-				values[i] = p[k+1]
+			if pairs[k] == n {
+				values[i] = pairs[k+1]
 				break
 			}
 		}
 	}
-	return string(values)
+	return values
 }
 
 func (lm *LabelMatcher) labels(values []int32) model.Labels {
@@ -275,4 +352,18 @@ func (lm *LabelMatcher) labels(values []int32) model.Labels {
 		}
 	}
 	return ls
+}
+
+func int32string(data []int32) string {
+	if len(data) == 0 {
+		return ""
+	}
+	return unsafe.String((*byte)(unsafe.Pointer(&data[0])), len(data)*4)
+}
+
+func int32s(s string) []int32 {
+	if len(s) == 0 {
+		return nil
+	}
+	return unsafe.Slice((*int32)(unsafe.Pointer(unsafe.StringData(s))), len(s)/4)
 }
