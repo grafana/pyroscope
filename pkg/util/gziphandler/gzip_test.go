@@ -621,7 +621,8 @@ func BenchmarkParseEncodings(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for range b.N {
-		parseEncodings(req.Header.Get(acceptEncoding))
+		_, err := parseEncodings(req.Header.Get(acceptEncoding))
+		assert.Error(b, err)
 	}
 }
 
