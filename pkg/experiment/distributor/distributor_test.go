@@ -160,7 +160,7 @@ func Test_Distributor_Distribute(t *testing.T) {
 	//   0 1 2 3 4 5 6 7 8 9 10 11  all shards
 	//   * * * *         > * *  *   tenant (size 8, offset 8)
 	//       > *         * *        dataset (size 4, offset 6+8 mod 12 = 2)
-	//   a a a b b b c c a b c  c   shuffling (see d.distribution.shards)
+	//   2 1 0 1 1 2 2 0 1 0 0  2   shuffling (see d.distribution.shards)
 	//   ----------------------------------------------------------------------
 	//       0 1         2 3 4      PickShard 0 (offset within dataset)
 	//                       ^      borrowed from the tenant
@@ -170,13 +170,13 @@ func Test_Distributor_Distribute(t *testing.T) {
 	//       1 2         3 0 4      PickShard 3
 
 	// Identical keys have identical placement.
-	assert.Equal(t, []string{"a", "b", "a", "b", "c"}, collect(0, 5))
-	assert.Equal(t, []string{"a", "b", "a", "b", "c"}, collect(0, 5))
+	assert.Equal(t, []string{"a", "b", "b", "a", "a"}, collect(0, 5))
+	assert.Equal(t, []string{"a", "b", "b", "a", "a"}, collect(0, 5))
 
 	// Placement of different keys in the dataset is bound.
-	assert.Equal(t, []string{"b", "a", "b", "a", "c"}, collect(1, 5))
-	assert.Equal(t, []string{"a", "b", "a", "b", "c"}, collect(2, 5))
-	assert.Equal(t, []string{"b", "a", "b", "a", "c"}, collect(3, 5))
+	assert.Equal(t, []string{"b", "b", "a", "a", "a"}, collect(1, 5))
+	assert.Equal(t, []string{"b", "a", "a", "b", "a"}, collect(2, 5))
+	assert.Equal(t, []string{"a", "a", "b", "b", "a"}, collect(3, 5))
 
 	// Now we're trying to collect more instances than available.
 	//   0 1 2 3 4 5 6  7  8 9 10 11  all shards
@@ -186,8 +186,8 @@ func Test_Distributor_Distribute(t *testing.T) {
 	//   6 7 2 3 8 9 10 11 0 1 4  5
 	//   ^ ^                   ^  ^   borrowed from the tenant
 	//           ^ ^ ^  ^             borrowed from the top ring
-	//   a a a b b b c  c  a b c  c   shuffling (see d.distribution.shards)
-	assert.Equal(t, []string{"a", "b", "a", "b", "c", "c", "a", "a", "b", "b", "c", "c"}, collect(2, 13))
+	//   2 1 0 1 1 2 2  0  1 0 0  2   shuffling (see d.distribution.shards)
+	assert.Equal(t, []string{"b", "a", "a", "b", "a", "c", "c", "b", "b", "c", "c", "a"}, collect(2, 13))
 }
 
 func Test_distribution_iterator(t *testing.T) {
@@ -419,25 +419,24 @@ func Test_permutation(t *testing.T) {
 		p.resize(i)
 		actual = append(actual, copyP(p.v))
 	}
-
 	expected := [][]uint32{
 		{},
-		{2, 3, 1, 0},
-		{2, 3, 1, 5, 6, 4, 7, 0},
-		{2, 3, 1, 5, 6, 4, 9, 11, 0, 7, 8, 10},
-		{2, 3, 1, 5, 12, 4, 14, 11, 15, 7, 8, 13, 6, 10, 9, 0},
-		{2, 3, 18, 5, 12, 4, 14, 11, 15, 7, 8, 13, 6, 10, 9, 19, 17, 16, 1, 0},
-		{2, 3, 18, 5, 12, 4, 14, 11, 15, 22, 8, 13, 6, 10, 9, 19, 17, 21, 1, 20, 0, 16, 23, 7},
-		{2, 3, 18, 5, 12, 4, 14, 11, 15, 22, 8, 13, 6, 27, 9, 19, 24, 21, 1, 20, 0, 16, 23, 26, 17, 10, 7, 25},
-		{28, 3, 18, 5, 12, 29, 14, 11, 15, 22, 8, 13, 31, 27, 9, 19, 24, 21, 1, 20, 0, 16, 23, 26, 30, 10, 7, 25, 2, 4, 17, 6},
-		{28, 3, 18, 5, 12, 29, 14, 11, 15, 22, 8, 13, 31, 27, 9, 19, 24, 21, 1, 20, 0, 16, 23, 26, 30, 10, 7, 25, 2, 4, 17, 6},
-		{2, 3, 18, 5, 12, 4, 14, 11, 15, 22, 8, 13, 6, 27, 9, 19, 24, 21, 1, 20, 0, 16, 23, 26, 17, 10, 7, 25},
-		{2, 3, 18, 5, 12, 4, 14, 11, 15, 22, 8, 13, 6, 10, 9, 19, 17, 21, 1, 20, 0, 16, 23, 7},
-		{2, 3, 18, 5, 12, 4, 14, 11, 15, 7, 8, 13, 6, 10, 9, 19, 17, 16, 1, 0},
-		{2, 3, 1, 5, 12, 4, 14, 11, 15, 7, 8, 13, 6, 10, 9, 0},
-		{2, 3, 1, 5, 6, 4, 9, 11, 0, 7, 8, 10},
-		{2, 3, 1, 5, 6, 4, 7, 0},
-		{2, 3, 1, 0},
+		{3, 1, 0, 2},
+		{3, 6, 0, 5, 7, 4, 1, 2},
+		{11, 6, 0, 5, 7, 8, 9, 2, 4, 1, 3, 10},
+		{11, 6, 0, 5, 14, 8, 15, 2, 12, 1, 3, 13, 4, 10, 7, 9},
+		{11, 6, 0, 19, 14, 8, 15, 2, 12, 17, 3, 18, 4, 16, 7, 9, 10, 1, 13, 5},
+		{11, 6, 0, 19, 14, 8, 15, 2, 21, 17, 3, 18, 4, 16, 7, 22, 10, 1, 23, 5, 9, 12, 20, 13},
+		{11, 6, 0, 19, 14, 8, 15, 2, 26, 17, 25, 18, 24, 16, 7, 22, 10, 1, 23, 5, 9, 12, 20, 13, 4, 3, 27, 21},
+		{11, 6, 0, 28, 31, 8, 15, 2, 26, 17, 25, 18, 24, 16, 7, 22, 10, 1, 23, 5, 30, 12, 20, 13, 4, 29, 27, 21, 19, 3, 9, 14},
+		{11, 6, 0, 28, 31, 8, 15, 2, 26, 17, 25, 18, 24, 16, 7, 22, 10, 1, 23, 5, 30, 12, 20, 13, 4, 29, 27, 21, 19, 3, 9, 14},
+		{11, 6, 0, 19, 14, 8, 15, 2, 26, 17, 25, 18, 24, 16, 7, 22, 10, 1, 23, 5, 9, 12, 20, 13, 4, 3, 27, 21},
+		{11, 6, 0, 19, 14, 8, 15, 2, 21, 17, 3, 18, 4, 16, 7, 22, 10, 1, 23, 5, 9, 12, 20, 13},
+		{11, 6, 0, 19, 14, 8, 15, 2, 12, 17, 3, 18, 4, 16, 7, 9, 10, 1, 13, 5},
+		{11, 6, 0, 5, 14, 8, 15, 2, 12, 1, 3, 13, 4, 10, 7, 9},
+		{11, 6, 0, 5, 7, 8, 9, 2, 4, 1, 3, 10},
+		{3, 6, 0, 5, 7, 4, 1, 2},
+		{3, 1, 0, 2},
 		{},
 	}
 
