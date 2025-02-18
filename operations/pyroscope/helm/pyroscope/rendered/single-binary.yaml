@@ -1022,36 +1022,6 @@ rules:
     resources: ["replicasets"]
     verbs: ["get", "list", "watch"]
 ---
-# Source: pyroscope/templates/rbac.yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: default-pyroscope-dev
-  namespace: default
-  labels:
-    helm.sh/chart: pyroscope-1.12.0
-    app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.12.0"
-    app.kubernetes.io/managed-by: Helm
-rules:
-- apiGroups:
-  - ""
-  - "discovery.k8s.io"
-  resources:
-  - pods
-  - endpoints
-  verbs:
-  - list
-  - get
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - nodes
-  verbs:
-  - get
----
 # Source: pyroscope/charts/alloy/templates/rbac.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -1073,27 +1043,6 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: pyroscope-dev-alloy
-    namespace: default
----
-# Source: pyroscope/templates/rbac.yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: default-pyroscope-dev
-  namespace: default
-  labels:
-    helm.sh/chart: pyroscope-1.12.0
-    app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.12.0"
-    app.kubernetes.io/managed-by: Helm
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: default-pyroscope-dev
-subjects:
-  - kind: ServiceAccount
-    name: pyroscope-dev
     namespace: default
 ---
 # Source: pyroscope/charts/alloy/templates/cluster_service.yaml
