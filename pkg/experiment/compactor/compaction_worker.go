@@ -192,7 +192,9 @@ func (w *Worker) running(ctx context.Context) error {
 	<-pollingDone
 	// Force exporter to send all staged samples (depends on the implementation)
 	// Must be a blocking call.
-	w.exporter.Flush()
+	if w.exporter != nil {
+		w.exporter.Flush()
+	}
 	return nil
 }
 
