@@ -297,6 +297,7 @@ func (ce *canaryExporter) testPyroscopeCell(ctx context.Context) error {
 	p.Labels = p.Labels[:0]
 	p.CustomProfile("deadmans_switch", "made_up", "profilos", "made_up", "profilos")
 	p.WithLabels(
+		"service_name", "pyroscope-canary-exporter",
 		"job", "canary-exporter",
 		"instance", ce.hostname,
 	)
@@ -351,7 +352,7 @@ func (ce *canaryExporter) testPyroscopeCell(ctx context.Context) error {
 		respQueryInstant, err := ce.params.queryClient().SelectMergeProfile(rCtx, connect.NewRequest(&querierv1.SelectMergeProfileRequest{
 			Start:         now.UnixMilli(),
 			End:           now.Add(5 * time.Second).UnixMilli(),
-			LabelSelector: fmt.Sprintf(`{job="canary-exporter", instance="%s"}`, ce.hostname),
+			LabelSelector: fmt.Sprintf(`{service_name="pyroscope-canary-exporter", job="canary-exporter", instance="%s"}`, ce.hostname),
 			ProfileTypeID: "deadmans_switch:made_up:profilos:made_up:profilos",
 		}))
 		if err != nil {
