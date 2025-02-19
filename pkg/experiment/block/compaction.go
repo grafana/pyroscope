@@ -59,37 +59,17 @@ func WithSampleObserver(observer SampleObserver) CompactionOption {
 }
 
 type compactionConfig struct {
-	objectOptions []ObjectOption
-	source        objstore.BucketReader
-	destination   objstore.Bucket
-	tempdir       string
+	objectOptions  []ObjectOption
+	source         objstore.BucketReader
+	destination    objstore.Bucket
+	tempdir        string
 	sampleObserver SampleObserver
 }
 
 type SampleObserver interface {
-	// Init is called at the beginning of the compaction plan.
-	Init(tenant string)
-
 	// Observe is called before the compactor appends the entry
 	// to the output block. This method must not modify the entry.
 	Observe(ProfileEntry)
-
-	// Flush is called before the compactor flushes the output dataset.
-	// This call invalidates all references (such as symbols) to the source
-	// and output blocks. Any error returned by the call terminates the
-	// compaction job: it's caller responsibility to suppress errors.
-	Flush() error
-}
-
-type NoOpObserver struct{}
-
-func (o *NoOpObserver) Init(tenant string) {}
-
-func (o *NoOpObserver) Observe(row ProfileEntry) {
-}
-
-func (o *NoOpObserver) Flush() error {
-	return nil
 }
 
 func Compact(
@@ -188,12 +168,12 @@ func PlanCompaction(objects Objects) ([]*CompactionPlan, error) {
 }
 
 type CompactionPlan struct {
-	tenant          string
-	path            string
-	datasetMap      map[int32]*datasetCompaction
-	datasets        []*datasetCompaction
-	meta            *metastorev1.BlockMeta
-	strings         *metadata.StringTable
+	tenant       string
+	path         string
+	datasetMap   map[int32]*datasetCompaction
+	datasets     []*datasetCompaction
+	meta         *metastorev1.BlockMeta
+	strings      *metadata.StringTable
 	datasetIndex *datasetIndexWriter
 }
 
@@ -233,7 +213,7 @@ func (b *CompactionPlan) Compact(
 	defer func() {
 		_ = w.Close()
 	}()
-	observer.Init(b.tenant)
+
 	// Datasets are compacted in a strict order.
 	for i, s := range b.datasets {
 		b.datasetIndex.setIndex(uint32(i))
@@ -242,9 +222,6 @@ func (b *CompactionPlan) Compact(
 			return nil, fmt.Errorf("compacting block: %w", err)
 		}
 		b.meta.Datasets = append(b.meta.Datasets, s.meta)
-	}
-	if err = observer.Flush(); err != nil {
-		return nil, fmt.Errorf("flushing sample observer: %w", err)
 	}
 	if err = b.writeDatasetIndex(w); err != nil {
 		return nil, fmt.Errorf("writing tenant index: %w", err)
@@ -432,13 +409,6 @@ func (m *datasetCompaction) open(ctx context.Context, w io.Writer) (err error) {
 	return nil
 }
 
-func (m *datasetCompaction) mergeAndClose(ctx context.Context) (err error) {
-	defer func() {
-		err = multierror.New(err, m.close()).Err()
-	}()
-	return m.merge(ctx)
-}
-
 func (m *datasetCompaction) merge(ctx context.Context) (err error) {
 	rows, err := NewMergeRowProfileIterator(m.datasets)
 	if err != nil {
@@ -471,7 +441,9 @@ func (m *datasetCompaction) writeRow(r ProfileEntry) (err error) {
 	if err = m.symbolsRewriter.rewriteRow(r); err != nil {
 		return err
 	}
-	m.observer.Observe(r)
+	if m.observer != nil {
+		m.observer.Observe(r)
+	}
 	return m.profilesWriter.writeRow(r)
 }
 
