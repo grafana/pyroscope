@@ -22,7 +22,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.22.11
+          go-version: 1.23.6
       - name: Format
         run: make fmt check/unstaged-changes
   check-generated:
@@ -33,7 +33,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.22.11
+          go-version: 1.23.6
       - name: Check generated files
         run: make generate check/unstaged-changes
   test:
@@ -51,7 +51,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.22.11
+          go-version: 1.23.6
       - name: Go Mod
         run: make check/go/mod
       - name: Test
@@ -64,7 +64,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.22.11
+          go-version: 1.23.6
       - name: Run linter
         run: make lint
       - name: Check helm manifests
@@ -113,7 +113,7 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.22.11
+          go-version: 1.23.6
       - uses: actions/setup-node@v3
         with:
           node-version: lts/hydrogen
@@ -134,7 +134,7 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.22.11
+          go-version: 1.23.6
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
