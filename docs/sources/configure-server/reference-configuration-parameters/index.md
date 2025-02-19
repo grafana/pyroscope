@@ -173,6 +173,76 @@ tenant_settings:
     # CLI flag: -tenant-settings.recording-rules.enabled
     [enabled: <boolean> | default = false]
 
+query_frontend:
+  symbolizer:
+    # URL of the debuginfod server
+    # CLI flag: -query-frontend.symbolizer.debuginfod-url
+    [debuginfod_url: <string> | default = "https://debuginfod.elfutils.org"]
+
+    cache:
+      # Enable debug info caching
+      # CLI flag: -query-frontend.symbolizer.cache.enabled
+      [enabled: <boolean> | default = false]
+
+      # Maximum age of cached debug info
+      # CLI flag: -query-frontend.symbolizer.cache.max-age
+      [max_age: <duration> | default = 168h]
+
+    storage:
+      [backend: <string> | default = ""]
+
+      # The s3_backend block configures the connection to Amazon S3 object
+      # storage backend.
+      [s3: <s3_storage_backend>]
+
+      # The gcs_backend block configures the connection to Google Cloud Storage
+      # object storage backend.
+      [gcs: <gcs_storage_backend>]
+
+      # The azure_storage_backend block configures the connection to Azure
+      # object storage backend.
+      [azure: <azure_storage_backend>]
+
+      # The swift_storage_backend block configures the connection to OpenStack
+      # Object Storage (Swift) object storage backend.
+      [swift: <swift_storage_backend>]
+
+      cos:
+        [bucket: <string> | default = ""]
+
+        [region: <string> | default = ""]
+
+        [app_id: <string> | default = ""]
+
+        [endpoint: <string> | default = ""]
+
+        [secret_key: <string> | default = ""]
+
+        [secret_id: <string> | default = ""]
+
+        http:
+          [idle_conn_timeout: <duration> | default = ]
+
+          [response_header_timeout: <duration> | default = ]
+
+          [insecure_skip_verify: <boolean> | default = ]
+
+          [tls_handshake_timeout: <duration> | default = ]
+
+          [expect_continue_timeout: <duration> | default = ]
+
+          [max_idle_connections: <int> | default = ]
+
+          [max_idle_connections_per_host: <int> | default = ]
+
+          [max_connections_per_host: <int> | default = ]
+
+      # The filesystem_storage_backend block configures the usage of local file
+      # system as object storage backend.
+      [filesystem: <filesystem_storage_backend>]
+
+      [storage_prefix: <string> | default = ""]
+
 storage:
   # Backend storage to use. Supported backends are: s3, gcs, azure, swift,
   # filesystem, cos.
@@ -181,18 +251,25 @@ storage:
 
   # The s3_backend block configures the connection to Amazon S3 object storage
   # backend.
+  # The CLI flags prefix for this block configuration is: storage.s3.endpoint
   [s3: <s3_storage_backend>]
 
   # The gcs_backend block configures the connection to Google Cloud Storage
   # object storage backend.
+  # The CLI flags prefix for this block configuration is:
+  # storage.gcs.bucket-name
   [gcs: <gcs_storage_backend>]
 
   # The azure_storage_backend block configures the connection to Azure object
   # storage backend.
+  # The CLI flags prefix for this block configuration is:
+  # storage.azure.account-name
   [azure: <azure_storage_backend>]
 
   # The swift_storage_backend block configures the connection to OpenStack
   # Object Storage (Swift) object storage backend.
+  # The CLI flags prefix for this block configuration is:
+  # storage.swift.auth-version
   [swift: <swift_storage_backend>]
 
   cos:
@@ -260,6 +337,7 @@ storage:
 
   # The filesystem_storage_backend block configures the usage of local file
   # system as object storage backend.
+  # The CLI flags prefix for this block configuration is: storage.filesystem.dir
   [filesystem: <filesystem_storage_backend>]
 
   # Prefix for all objects stored in the backend storage. For simplicity, it may
@@ -2235,13 +2313,18 @@ distributor_usage_groups:
 
 ### s3_storage_backend
 
-The s3_backend block configures the connection to Amazon S3 object storage backend.
+The s3_backend block configures the connection to Amazon S3 object storage backend. The supported CLI flags `<prefix>` used to reference this configuration block are:
+
+- _no prefix_
+- `storage.s3.endpoint`
+
+&nbsp;
 
 ```yaml
 # The S3 bucket endpoint. It could be an AWS S3 endpoint listed at
 # https://docs.aws.amazon.com/general/latest/gr/s3.html or the address of an
 # S3-compatible service in hostname:port format.
-# CLI flag: -storage.s3.endpoint
+# CLI flag: -<prefix>
 [endpoint: <string> | default = ""]
 
 # S3 region. If unset, the client will issue a S3 GetBucketLocation API call to
@@ -2336,11 +2419,16 @@ http:
 
 ### gcs_storage_backend
 
-The gcs_backend block configures the connection to Google Cloud Storage object storage backend.
+The gcs_backend block configures the connection to Google Cloud Storage object storage backend. The supported CLI flags `<prefix>` used to reference this configuration block are:
+
+- _no prefix_
+- `storage.gcs.bucket-name`
+
+&nbsp;
 
 ```yaml
 # GCS bucket name
-# CLI flag: -storage.gcs.bucket-name
+# CLI flag: -<prefix>
 [bucket_name: <string> | default = ""]
 
 # JSON either from a Google Developers Console client_credentials.json file, or
@@ -2398,11 +2486,16 @@ http:
 
 ### azure_storage_backend
 
-The `azure_storage_backend` block configures the connection to Azure object storage backend.
+The `azure_storage_backend` block configures the connection to Azure object storage backend. The supported CLI flags `<prefix>` used to reference this configuration block are:
+
+- _no prefix_
+- `storage.azure.account-name`
+
+&nbsp;
 
 ```yaml
 # Azure storage account name
-# CLI flag: -storage.azure.account-name
+# CLI flag: -<prefix>
 [account_name: <string> | default = ""]
 
 # Azure storage account key. If unset, Azure managed identities will be used for
@@ -2438,11 +2531,16 @@ The `azure_storage_backend` block configures the connection to Azure object stor
 
 ### swift_storage_backend
 
-The `swift_storage_backend` block configures the connection to OpenStack Object Storage (Swift) object storage backend.
+The `swift_storage_backend` block configures the connection to OpenStack Object Storage (Swift) object storage backend. The supported CLI flags `<prefix>` used to reference this configuration block are:
+
+- _no prefix_
+- `storage.swift.auth-version`
+
+&nbsp;
 
 ```yaml
 # OpenStack Swift authentication API version. 0 to autodetect.
-# CLI flag: -storage.swift.auth-version
+# CLI flag: -<prefix>
 [auth_version: <int> | default = 0]
 
 # OpenStack Swift authentication URL
@@ -2520,11 +2618,16 @@ The `swift_storage_backend` block configures the connection to OpenStack Object 
 
 ### filesystem_storage_backend
 
-The `filesystem_storage_backend` block configures the usage of local file system as object storage backend.
+The `filesystem_storage_backend` block configures the usage of local file system as object storage backend. The supported CLI flags `<prefix>` used to reference this configuration block are:
+
+- _no prefix_
+- `storage.filesystem.dir`
+
+&nbsp;
 
 ```yaml
 # Local filesystem storage directory.
-# CLI flag: -storage.filesystem.dir
+# CLI flag: -<prefix>
 [dir: <string> | default = "./data-shared"]
 ```
 
