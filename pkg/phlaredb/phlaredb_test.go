@@ -56,7 +56,7 @@ func ingestProfiles(b testing.TB, db *PhlareDB, generator func(tsNano int64, t t
 	for i := from; i <= to; i += int64(step) {
 		p, name := generator(i, b)
 		require.NoError(b, db.Ingest(
-			context.Background(), p, uuid.New(), append(externalLabels, &typesv1.LabelPair{Name: model.MetricNameLabel, Value: name})...))
+			context.Background(), p, uuid.New(), nil, append(externalLabels, &typesv1.LabelPair{Name: model.MetricNameLabel, Value: name})...))
 	}
 }
 

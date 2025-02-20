@@ -32,9 +32,9 @@ pyroscope_head_profiles_created_total{profile_name="test"} 2
 
 func TestHeadMetrics(t *testing.T) {
 	head := newTestHead(t)
-	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), uuid.New()))
-	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), uuid.New()))
-	require.NoError(t, head.Ingest(context.Background(), newProfileBaz(), uuid.New()))
+	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), uuid.New(), nil))
+	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), uuid.New(), nil))
+	require.NoError(t, head.Ingest(context.Background(), newProfileBaz(), uuid.New(), nil))
 	head.updateSymbolsMemUsage(new(symdb.MemoryStats))
 	time.Sleep(time.Second)
 	require.NoError(t, testutil.GatherAndCompare(head.reg,
@@ -54,7 +54,7 @@ pyroscope_head_received_sample_values_total{profile_name=""} 3
 pyroscope_head_size_bytes{type="functions"} 96
 pyroscope_head_size_bytes{type="locations"} 152
 pyroscope_head_size_bytes{type="mappings"} 96
-pyroscope_head_size_bytes{type="profiles"} 420
+pyroscope_head_size_bytes{type="profiles"} 468
 pyroscope_head_size_bytes{type="stacktraces"} 96
 pyroscope_head_size_bytes{type="strings"} 66
 
