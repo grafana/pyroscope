@@ -3,15 +3,19 @@ package metrics
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/gogo/protobuf/proto"
+	"github.com/grafana/dskit/instrument"
 	"github.com/klauspost/compress/snappy"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/prompb"
@@ -28,6 +32,8 @@ type StaticExporter struct {
 	wg     sync.WaitGroup
 
 	logger log.Logger
+
+	metrics *clientMetrics
 }
 
 const (
@@ -38,7 +44,7 @@ const (
 	metricsExporterUserAgent = "pyroscope-metrics-exporter"
 )
 
-func NewStaticExporterFromEnvVars(logger log.Logger) (Exporter, error) {
+func NewStaticExporterFromEnvVars(logger log.Logger, reg prometheus.Registerer) (Exporter, error) {
 	remoteUrl := os.Getenv(envVarRemoteUrl)
 	user := os.Getenv(envVarRemoteUser)
 	password := os.Getenv(envVarRemotePassword)
@@ -46,16 +52,18 @@ func NewStaticExporterFromEnvVars(logger log.Logger) (Exporter, error) {
 		return nil, fmt.Errorf("unable to load metrics exporter configuration, %s, %s and %s must be defined",
 			envVarRemoteUrl, envVarRemoteUser, envVarRemotePassword)
 	}
+	metrics := newMetrics(reg)
 
-	client, err := newClient(remoteUrl, user, password)
+	client, err := newClient(remoteUrl, user, password, metrics)
 	if err != nil {
 		return nil, err
 	}
 
 	return &StaticExporter{
-		client: client,
-		wg:     sync.WaitGroup{},
-		logger: logger,
+		client:  client,
+		wg:      sync.WaitGroup{},
+		logger:  logger,
+		metrics: metrics,
 	}, nil
 }
 
@@ -82,14 +90,13 @@ func (e *StaticExporter) Flush() {
 	e.wg.Wait()
 }
 
-func newClient(remoteUrl, user, password string) (remote.WriteClient, error) {
+func newClient(remoteUrl, user, password string, m *clientMetrics) (remote.WriteClient, error) {
 	wURL, err := url.Parse(remoteUrl)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: enhance client with metrics
-	return remote.NewWriteClient("exporter", &remote.ClientConfig{
+	client, err := remote.NewWriteClient("exporter", &remote.ClientConfig{
 		URL:     &config.URL{URL: wURL},
 		Timeout: model.Duration(time.Second * 10),
 		HTTPClientConfig: config.HTTPClientConfig{
@@ -103,4 +110,51 @@ func newClient(remoteUrl, user, password string) (remote.WriteClient, error) {
 		},
 		RetryOnRateLimit: false,
 	})
+	if err != nil {
+		return nil, err
+	}
+	t := client.(*remote.Client).Client.Transport
+	client.(*remote.Client).Client.Transport = &RoundTripper{m, t}
+	return client, nil
+}
+
+type clientMetrics struct {
+	requestDuration *prometheus.HistogramVec
+}
+
+func newMetrics(reg prometheus.Registerer) *clientMetrics {
+	m := &clientMetrics{
+		requestDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
+			Namespace: "pyroscope",
+			Subsystem: "metrics_exporter",
+			Name:      "client_request_duration_seconds",
+			Help:      "Time (in seconds) spent on remote_write",
+			Buckets:   instrument.DefBuckets,
+		}, []string{"route", "status_code"}),
+	}
+	if reg != nil {
+		reg.MustRegister(
+			m.requestDuration,
+		)
+	}
+	return m
+}
+
+type RoundTripper struct {
+	metrics *clientMetrics
+	next    http.RoundTripper
+}
+
+func (m *RoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	start := time.Now()
+	resp, err := m.next.RoundTrip(req)
+	duration := time.Since(start)
+
+	statusCode := ""
+	if resp != nil {
+		statusCode = strconv.Itoa(resp.StatusCode)
+	}
+
+	m.metrics.requestDuration.WithLabelValues(req.RequestURI, statusCode).Observe(duration.Seconds())
+	return resp, err
 }

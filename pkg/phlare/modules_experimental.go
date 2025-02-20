@@ -106,7 +106,7 @@ func (f *Phlare) initCompactionWorker() (svc services.Service, err error) {
 		if err != nil {
 			return nil, err
 		}
-		exporter, err = metrics.NewStaticExporterFromEnvVars(f.logger)
+		exporter, err = metrics.NewStaticExporterFromEnvVars(f.logger, f.reg)
 		if err != nil {
 			return nil, err
 		}
