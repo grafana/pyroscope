@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"sync"
 
-	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/thanos-io/objstore"
@@ -104,7 +103,7 @@ func (s *GenericStore[T, H]) Delete(ctx context.Context, id string) error {
 				return nil
 			}
 		}
-		return connect.NewError(connect.CodeNotFound, fmt.Errorf("no element with id='%s' found", id))
+		return ErrElementNotFound
 	})
 }
 
@@ -138,7 +137,11 @@ func (s *GenericStore[T, H]) Upsert(ctx context.Context, elem T, observedGenerat
 				"observed_generation", observedGeneration,
 				"stored_generation", storedGeneration,
 			)
-			return connect.NewError(connect.CodeAlreadyExists, fmt.Errorf("Conflicting update, please try again"))
+
+			return &ErrConflictGeneration{
+				ObservedGeneration: *observedGeneration,
+				StoreGeneration:    storedGeneration,
+			}
 		}
 
 		s.helper.SetGeneration(elem, storedGeneration+1)

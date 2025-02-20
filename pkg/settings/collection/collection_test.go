@@ -241,7 +241,7 @@ func TestListCollectionRules(t *testing.T) {
 		storePath := filepath.Join(coll.bucketPath, "user-a/settings/collection.v1.json")
 		require.NoError(t, os.MkdirAll(filepath.Dir(storePath), 0o755))
 		require.NoError(t, os.WriteFile(
-			filepath.Join(coll.bucketPath, "user-a/settings/collection.v1.json"),
+			storePath,
 			[]byte(legacyStoreJSON),
 			0o644,
 		))
@@ -277,7 +277,7 @@ func TestListCollectionRules(t *testing.T) {
 		storePath := filepath.Join(coll.bucketPath, "user-a/settings/collection.v1.json")
 		require.NoError(t, os.MkdirAll(filepath.Dir(storePath), 0o755))
 		require.NoError(t, os.WriteFile(
-			filepath.Join(coll.bucketPath, "user-a/settings/collection.v1.json"),
+			storePath,
 			[]byte(genericStoreJSON),
 			0o644,
 		))

@@ -177,7 +177,6 @@ func (b *bucketStore) template(s varSource) (string, error) {
 
 // updates or create a new rule
 func (b *bucketStore) upsertRule(ctx context.Context, rule *settingsv1.UpsertCollectionRuleRequest) error {
-
 	cfg, err := b.template(rule)
 	if err != nil {
 		return err
@@ -197,7 +196,6 @@ func (b *bucketStore) upsertRule(ctx context.Context, rule *settingsv1.UpsertCol
 		api,
 		rule.ObservedGeneration,
 	)
-
 }
 
 func (b *bucketStore) get(ctx context.Context, name string) (*settingsv1.GetCollectionRuleResponse, error) {

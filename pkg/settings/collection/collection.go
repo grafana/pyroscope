@@ -198,7 +198,7 @@ func (c *Collection) GetCollectionRule(
 
 	resp, err := s.get(ctx, req.Msg.Name)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, err
 	}
 
 	return connect.NewResponse(resp), nil
@@ -219,11 +219,15 @@ func (c *Collection) UpsertCollectionRule(
 	}
 
 	if err := s.upsertRule(ctx, req.Msg); err != nil {
+		var cErr *store.ErrConflictGeneration
+		if errors.As(err, &cErr) {
+			return nil, connect.NewError(connect.CodeAlreadyExists, fmt.Errorf("Conflicting update, please try again"))
+		}
 		return nil, err
 	}
 	resp, err := s.get(ctx, req.Msg.Name)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, err
 	}
 
 	return connect.NewResponse(resp), nil
@@ -262,6 +266,9 @@ func (c *Collection) DeleteCollectionRule(
 	}
 
 	if err := s.store.Delete(ctx, req.Msg.Name); err != nil {
+		if err == store.ErrElementNotFound {
+			return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("no rule with name='%s' found", req.Msg.Name))
+		}
 		return nil, err
 	}
 
