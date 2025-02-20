@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/require"
@@ -174,25 +173,15 @@ func TestSymbolizeTree(t *testing.T) {
 			mockClient := &mockDebuginfodClient{buildID: tt.buildID}
 			s := NewProfileSymbolizer(mockClient, NewNullCache(), NewMetrics(nil))
 
-			// Marshal profile into tree report
-			data, err := tt.profile.MarshalVT()
-			require.NoError(t, err)
-			report := &queryv1.TreeReport{Tree: data}
-
 			// Run symbolization
-			err = s.SymbolizeTree(context.Background(), report)
+			err := s.SymbolizePprof(context.Background(), tt.profile)
 			if tt.wantErr {
 				require.Error(t, err)
 				return
 			}
 			require.NoError(t, err)
 
-			// Unmarshal result for validation
-			result := &googlev1.Profile{}
-			err = result.UnmarshalVT(report.Tree)
-			require.NoError(t, err)
-
-			tt.validate(t, result)
+			tt.validate(t, tt.profile)
 		})
 	}
 }
@@ -219,39 +208,21 @@ func TestSymbolizerMetrics(t *testing.T) {
 					}},
 					StringTable: []string{"", "build-id"},
 				}
-				data, _ := profile.MarshalVT()
-				return s.SymbolizeTree(ctx, &queryv1.TreeReport{Tree: data})
+				return s.SymbolizePprof(ctx, profile)
 			},
 			expected: `
-		        # HELP pyroscope_symbolizer_tree_requests_total Total number of tree symbolization requests
-		        # TYPE pyroscope_symbolizer_tree_requests_total counter
-		        pyroscope_symbolizer_tree_requests_total 1
+				# HELP pyroscope_profile_symbolization_total Total number of profiles processed for symbolization
+				# TYPE pyroscope_profile_symbolization_total counter
+				pyroscope_profile_symbolization_total 1
 
-		        # HELP pyroscope_symbolizer_locations_total Total number of locations processed
-		        # TYPE pyroscope_symbolizer_locations_total counter
-		        pyroscope_symbolizer_locations_total{status="success"} 1
+				# HELP pyroscope_debug_symbol_resolutions_total Total number of debug symbol resolutions attempted by status
+				# TYPE pyroscope_debug_symbol_resolutions_total counter
+				pyroscope_debug_symbol_resolutions_total{status="success"} 1
 
-		        # HELP pyroscope_symbolizer_internal_errors_total Total number of internal symbolization errors
-		        # TYPE pyroscope_symbolizer_internal_errors_total counter
-		        pyroscope_symbolizer_internal_errors_total{reason="success"} 1
 		    `,
 			metricNames: []string{
-				"pyroscope_symbolizer_tree_requests_total",
-				"pyroscope_symbolizer_locations_total",
-			},
-		},
-		{
-			name: "unmarshal error",
-			setup: func(s *ProfileSymbolizer, ctx context.Context) error {
-				return s.SymbolizeTree(ctx, &queryv1.TreeReport{Tree: []byte("invalid")})
-			},
-			expected: `
-				# HELP pyroscope_symbolizer_tree_errors_total Total number of tree symbolization errors
-				# TYPE pyroscope_symbolizer_tree_errors_total counter
-				pyroscope_symbolizer_tree_errors_total{reason="unmarshal_error"} 1
-			`,
-			metricNames: []string{
-				"pyroscope_symbolizer_tree_errors_total",
+				"pyroscope_profile_symbolization_total",
+				"pyroscope_debug_symbol_resolutions_total",
 			},
 		},
 		{
@@ -267,21 +238,20 @@ func TestSymbolizerMetrics(t *testing.T) {
 					}},
 					StringTable: []string{"", "unknown-build-id"},
 				}
-				data, _ := profile.MarshalVT()
-				return s.SymbolizeTree(ctx, &queryv1.TreeReport{Tree: data})
+				return s.SymbolizePprof(ctx, profile)
 			},
 			expected: `
-				# HELP pyroscope_symbolizer_tree_errors_total Total number of tree symbolization errors
-				# TYPE pyroscope_symbolizer_tree_errors_total counter
-				pyroscope_symbolizer_tree_errors_total{reason="symbolization_error"} 1
-		
-				# HELP pyroscope_symbolizer_internal_errors_total Total number of internal symbolization errors
-				# TYPE pyroscope_symbolizer_internal_errors_total counter
-				pyroscope_symbolizer_internal_errors_total{reason="debuginfod_error"} 1
+				# HELP pyroscope_profile_symbolization_errors_total Total number of profile symbolization errors
+				# TYPE pyroscope_profile_symbolization_errors_total counter
+				pyroscope_profile_symbolization_errors_total{reason="symbolization_error"} 1
+
+				# HELP pyroscope_debug_symbol_resolution_errors_total Total number of debug symbol resolution errors by reason
+				# TYPE pyroscope_debug_symbol_resolution_errors_total counter
+				pyroscope_debug_symbol_resolution_errors_total{reason="debuginfod_error"} 1
 			`,
 			metricNames: []string{
-				"pyroscope_symbolizer_tree_errors_total",
-				"pyroscope_symbolizer_internal_errors_total",
+				"pyroscope_profile_symbolization_errors_total",
+				"pyroscope_debug_symbol_resolution_errors_total",
 			},
 		},
 	}
@@ -307,7 +277,7 @@ type mockDebuginfodClient struct {
 	buildID string
 }
 
-func (m *mockDebuginfodClient) FetchDebuginfo(buildID string) (string, error) {
+func (m *mockDebuginfodClient) FetchDebuginfo(_ context.Context, buildID string) (string, error) {
 	if buildID != m.buildID {
 		return "", fmt.Errorf("unknown build ID")
 	}

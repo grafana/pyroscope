@@ -22,15 +22,15 @@ type Metrics struct {
 	cacheOperationDuration  *prometheus.HistogramVec
 	cacheExpiredTotal       prometheus.Counter
 
-	// Symbolization tree-level metrics
-	symbolizeRequestsTotal prometheus.Counter
-	symbolizeErrorsTotal   *prometheus.CounterVec
-	symbolizeDuration      prometheus.Histogram
+	// Symbolization pprof level metrics
+	profileSymbolizationTotal    prometheus.Counter
+	profileSymbolizationErrors   *prometheus.CounterVec
+	profileSymbolizationDuration prometheus.Histogram
 
 	// Internal symbolization metrics
-	symbolizeLocationTotal    *prometheus.CounterVec
-	symbolizeInternalErrors   *prometheus.CounterVec
-	symbolizeInternalDuration prometheus.Histogram
+	debugSymbolResolutionsTotal   *prometheus.CounterVec
+	debugSymbolResolutionErrors   *prometheus.CounterVec
+	debugSymbolResolutionDuration prometheus.Histogram
 }
 
 func NewMetrics(reg prometheus.Registerer) *Metrics {
@@ -86,30 +86,31 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 			Name: "pyroscope_symbolizer_cache_expired_total",
 			Help: "Total number of expired items removed from cache",
 		}),
-		symbolizeRequestsTotal: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: "pyroscope_symbolizer_tree_requests_total",
-			Help: "Total number of tree symbolization requests",
+		profileSymbolizationTotal: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "pyroscope_profile_symbolization_total",
+			Help: "Total number of profiles processed for symbolization",
 		}),
-		symbolizeErrorsTotal: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "pyroscope_symbolizer_tree_errors_total",
-			Help: "Total number of tree symbolization errors",
+		profileSymbolizationErrors: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "pyroscope_profile_symbolization_errors_total",
+			Help: "Total number of profile symbolization errors",
 		}, []string{"reason"}),
-		symbolizeDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
-			Name:    "pyroscope_symbolizer_tree_duration_seconds",
-			Help:    "Time spent performing tree symbolization",
+
+		profileSymbolizationDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Name:    "pyroscope_profile_symbolization_duration_seconds",
+			Help:    "Time spent performing profile symbolization",
 			Buckets: []float64{.01, .05, .1, .5, 1, 5, 10, 30},
 		}),
-		symbolizeLocationTotal: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "pyroscope_symbolizer_locations_total",
-			Help: "Total number of locations processed",
+		debugSymbolResolutionsTotal: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "pyroscope_debug_symbol_resolutions_total",
+			Help: "Total number of debug symbol resolutions attempted by status",
 		}, []string{"status"}),
-		symbolizeInternalErrors: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "pyroscope_symbolizer_internal_errors_total",
-			Help: "Total number of internal symbolization errors",
+		debugSymbolResolutionErrors: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "pyroscope_debug_symbol_resolution_errors_total",
+			Help: "Total number of debug symbol resolution errors by reason",
 		}, []string{"reason"}),
-		symbolizeInternalDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
-			Name:    "pyroscope_symbolizer_internal_duration_seconds",
-			Help:    "Time spent performing internal symbolization operations",
+		debugSymbolResolutionDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Name:    "pyroscope_debug_symbol_resolution_duration_seconds",
+			Help:    "Time spent resolving debug symbols from ELF files",
 			Buckets: []float64{.01, .05, .1, .5, 1, 5, 10, 30},
 		}),
 	}
@@ -137,12 +138,12 @@ func (m *Metrics) register() {
 		m.cacheMissesTotal,
 		m.cacheOperationDuration,
 		m.cacheExpiredTotal,
-		m.symbolizeRequestsTotal,
-		m.symbolizeErrorsTotal,
-		m.symbolizeDuration,
-		m.symbolizeLocationTotal,
-		m.symbolizeInternalErrors,
-		m.symbolizeInternalDuration,
+		m.profileSymbolizationTotal,
+		m.profileSymbolizationErrors,
+		m.profileSymbolizationDuration,
+		m.debugSymbolResolutionsTotal,
+		m.debugSymbolResolutionErrors,
+		m.debugSymbolResolutionDuration,
 	}
 
 	for _, collector := range collectors {
@@ -166,12 +167,12 @@ func (m *Metrics) Unregister() {
 		m.cacheMissesTotal,
 		m.cacheOperationDuration,
 		m.cacheExpiredTotal,
-		m.symbolizeRequestsTotal,
-		m.symbolizeErrorsTotal,
-		m.symbolizeDuration,
-		m.symbolizeLocationTotal,
-		m.symbolizeInternalErrors,
-		m.symbolizeInternalDuration,
+		m.profileSymbolizationTotal,
+		m.profileSymbolizationErrors,
+		m.profileSymbolizationDuration,
+		m.debugSymbolResolutionsTotal,
+		m.debugSymbolResolutionErrors,
+		m.debugSymbolResolutionDuration,
 	}
 
 	for _, collector := range collectors {
