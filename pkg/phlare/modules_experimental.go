@@ -102,7 +102,7 @@ func (f *Phlare) initCompactionWorker() (svc services.Service, err error) {
 	var ruler metrics.Ruler
 	var exporter metrics.Exporter
 	if f.Cfg.CompactionWorker.MetricsExporterEnabled {
-		ruler, err = metrics.NewStaticRulerFromEnvVars()
+		ruler, err = metrics.NewStaticRulerFromEnvVars(f.logger)
 		if err != nil {
 			return nil, err
 		}

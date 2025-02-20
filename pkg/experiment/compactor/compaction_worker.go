@@ -29,7 +29,7 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block"
 	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
-	metrics2 "github.com/grafana/pyroscope/pkg/experiment/metrics"
+	"github.com/grafana/pyroscope/pkg/experiment/metrics"
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/util"
 )
@@ -41,7 +41,7 @@ type Worker struct {
 	config  Config
 	client  MetastoreClient
 	storage objstore.Bucket
-	metrics *metrics
+	metrics *compactionWorkerMetrics
 
 	jobs     map[string]*compactionJob
 	queue    chan *compactionJob
@@ -52,8 +52,8 @@ type Worker struct {
 	closeOnce sync.Once
 	wg        sync.WaitGroup
 
-	exporter metrics2.Exporter
-	ruler    metrics2.Ruler
+	exporter metrics.Exporter
+	ruler    metrics.Ruler
 }
 
 type Config struct {
@@ -110,8 +110,8 @@ func New(
 	client MetastoreClient,
 	storage objstore.Bucket,
 	reg prometheus.Registerer,
-	ruler metrics2.Ruler,
-	exporter metrics2.Exporter,
+	ruler metrics.Ruler,
+	exporter metrics.Exporter,
 ) (*Worker, error) {
 	config.TempDir = filepath.Join(filepath.Clean(config.TempDir), "pyroscope-compactor")
 	_ = os.RemoveAll(config.TempDir)
@@ -485,7 +485,7 @@ func (w *Worker) runCompaction(job *compactionJob) {
 	_ = deleteGroup.Wait()
 }
 
-func (w *Worker) buildSampleObserver(md *metastorev1.BlockMeta) *metrics2.SampleObserver {
+func (w *Worker) buildSampleObserver(md *metastorev1.BlockMeta) *metrics.SampleObserver {
 	if !w.config.MetricsExporterEnabled || md.CompactionLevel > 0 {
 		return nil
 	}
@@ -494,7 +494,7 @@ func (w *Worker) buildSampleObserver(md *metastorev1.BlockMeta) *metrics2.Sample
 		Name:  "pyroscope_instance",
 		Value: pyroscopeInstanceHash(md.Shard, uint32(md.CreatedBy)),
 	}
-	return metrics2.NewSampleObserver(recordingTime, w.exporter, w.ruler, pyroscopeInstanceLabel)
+	return metrics.NewSampleObserver(recordingTime, w.exporter, w.ruler, pyroscopeInstanceLabel)
 }
 
 func pyroscopeInstanceHash(shard uint32, createdBy uint32) string {

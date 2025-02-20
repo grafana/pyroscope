@@ -52,9 +52,9 @@ func (_c *MockExporter_Flush_Call) RunAndReturn(run func()) *MockExporter_Flush_
 	return _c
 }
 
-// Send provides a mock function with given fields: tenant, samples
-func (_m *MockExporter) Send(tenant string, samples []prompb.TimeSeries) error {
-	ret := _m.Called(tenant, samples)
+// Send provides a mock function with given fields: tenant, series
+func (_m *MockExporter) Send(tenant string, series []prompb.TimeSeries) error {
+	ret := _m.Called(tenant, series)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Send")
@@ -62,7 +62,7 @@ func (_m *MockExporter) Send(tenant string, samples []prompb.TimeSeries) error {
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(string, []prompb.TimeSeries) error); ok {
-		r0 = rf(tenant, samples)
+		r0 = rf(tenant, series)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -77,12 +77,12 @@ type MockExporter_Send_Call struct {
 
 // Send is a helper method to define mock.On call
 //   - tenant string
-//   - samples []prompb.TimeSeries
-func (_e *MockExporter_Expecter) Send(tenant interface{}, samples interface{}) *MockExporter_Send_Call {
-	return &MockExporter_Send_Call{Call: _e.mock.On("Send", tenant, samples)}
+//   - series []prompb.TimeSeries
+func (_e *MockExporter_Expecter) Send(tenant interface{}, series interface{}) *MockExporter_Send_Call {
+	return &MockExporter_Send_Call{Call: _e.mock.On("Send", tenant, series)}
 }
 
-func (_c *MockExporter_Send_Call) Run(run func(tenant string, samples []prompb.TimeSeries)) *MockExporter_Send_Call {
+func (_c *MockExporter_Send_Call) Run(run func(tenant string, series []prompb.TimeSeries)) *MockExporter_Send_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(string), args[1].([]prompb.TimeSeries))
 	})

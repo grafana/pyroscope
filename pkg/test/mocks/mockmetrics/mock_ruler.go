@@ -3,7 +3,7 @@
 package mockmetrics
 
 import (
-	metrics "github.com/grafana/pyroscope/pkg/experiment/metrics"
+	model "github.com/grafana/pyroscope/pkg/model"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -21,19 +21,19 @@ func (_m *MockRuler) EXPECT() *MockRuler_Expecter {
 }
 
 // RecordingRules provides a mock function with given fields: tenant
-func (_m *MockRuler) RecordingRules(tenant string) []*metrics.RecordingRule {
+func (_m *MockRuler) RecordingRules(tenant string) []*model.RecordingRule {
 	ret := _m.Called(tenant)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RecordingRules")
 	}
 
-	var r0 []*metrics.RecordingRule
-	if rf, ok := ret.Get(0).(func(string) []*metrics.RecordingRule); ok {
+	var r0 []*model.RecordingRule
+	if rf, ok := ret.Get(0).(func(string) []*model.RecordingRule); ok {
 		r0 = rf(tenant)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*metrics.RecordingRule)
+			r0 = ret.Get(0).([]*model.RecordingRule)
 		}
 	}
 
@@ -58,12 +58,12 @@ func (_c *MockRuler_RecordingRules_Call) Run(run func(tenant string)) *MockRuler
 	return _c
 }
 
-func (_c *MockRuler_RecordingRules_Call) Return(_a0 []*metrics.RecordingRule) *MockRuler_RecordingRules_Call {
+func (_c *MockRuler_RecordingRules_Call) Return(_a0 []*model.RecordingRule) *MockRuler_RecordingRules_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockRuler_RecordingRules_Call) RunAndReturn(run func(string) []*metrics.RecordingRule) *MockRuler_RecordingRules_Call {
+func (_c *MockRuler_RecordingRules_Call) RunAndReturn(run func(string) []*model.RecordingRule) *MockRuler_RecordingRules_Call {
 	_c.Call.Return(run)
 	return _c
 }

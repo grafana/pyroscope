@@ -18,11 +18,6 @@ import (
 	"github.com/prometheus/prometheus/storage/remote"
 )
 
-type Exporter interface {
-	Send(tenant string, samples []prompb.TimeSeries) error
-	Flush()
-}
-
 type StaticExporter struct {
 	client remote.WriteClient
 	wg     sync.WaitGroup
@@ -31,9 +26,9 @@ type StaticExporter struct {
 }
 
 const (
-	envVarRemoteUrl      = "METRICS_EXPORTER_REMOTE_URL"
-	envVarRemoteUser     = "METRICS_EXPORTER_REMOTE_USER"
-	envVarRemotePassword = "METRICS_EXPORTER_REMOTE_PASSWORD"
+	envVarRemoteUrl      = "PYROSCOPE_METRICS_EXPORTER_REMOTE_URL"
+	envVarRemoteUser     = "PYROSCOPE_METRICS_EXPORTER_REMOTE_USER"
+	envVarRemotePassword = "PYROSCOPE_METRICS_EXPORTER_REMOTE_PASSWORD"
 
 	metricsExporterUserAgent = "pyroscope-metrics-exporter"
 )
