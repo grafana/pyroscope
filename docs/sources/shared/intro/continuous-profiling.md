@@ -28,7 +28,7 @@ It uses low-overhead sampling to collect profiles from production systems and st
 Using continuous profiling gives you a more holistic view of your application and how it behaves in production.
 
 Grafana offers Grafana Pyroscope and Grafana Cloud Profiles (powered by Pyroscope) to collect and store your profiling data.
-You can use Grafana Explore Profiles to inspect profile data and investigate issues.
+You can use Grafana Profiles Drilldown to inspect profile data and investigate issues.
 
 ## Benefits
 
@@ -41,7 +41,7 @@ Why prioritize continuous profiling?
 
 ## Use cases
 
-Adopting continuous profiling with tools like Grafana Pyroscope and Explore Profiles can lead to significant business advantages:
+Adopting continuous profiling with tools like Grafana Pyroscope and Profiles Drilldown can lead to significant business advantages:
 
 1. **Reduced operational costs:** Optimization of resource usage can significantly cut down cloud and infrastructure expenses
 2. **Reduced latency:** Identifying and addressing performance bottlenecks leads to faster and more efficient applications
@@ -70,5 +70,5 @@ This granular insight allows for targeted optimization, leading to faster applic
 
 ### Enhanced incident management
 
-Pyroscope and Explore Profiles streamline incident management by offering immediate, actionable insights into application performance issues.
+Pyroscope and Profiles Drilldown streamline incident management by offering immediate, actionable insights into application performance issues.
 With continuous profiling, teams can quickly pinpoint the root cause of an incident, reducing the mean time to resolution (MTTR) and enhancing overall system reliability and user satisfaction.
