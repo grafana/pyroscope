@@ -9,7 +9,7 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
 
-	v1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
+	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
 	"github.com/grafana/pyroscope/pkg/model"
 )
 
@@ -42,7 +42,7 @@ type RecordingRule struct {
 func NewStaticRulerFromEnvVars() (Ruler, error) {
 	jsonRules := os.Getenv(envVarRecordingRules)
 
-	var rules []*v1.RecordingRule
+	var rules []*settingsv1.RecordingRule
 	if err := json.Unmarshal([]byte(jsonRules), &rules); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal recording rules: %w", err)
 	}
@@ -63,7 +63,7 @@ func (r StaticAnonymousRuler) RecordingRules(string) []*RecordingRule {
 	return r.rules
 }
 
-func validateRule(rule *v1.RecordingRule) (*RecordingRule, error) {
+func validateRule(rule *settingsv1.RecordingRule) (*RecordingRule, error) {
 	// validate metric name
 	if !validMetricName.MatchString(rule.MetricName) {
 		return nil, fmt.Errorf("invalid metric name: %s", rule.MetricName)
