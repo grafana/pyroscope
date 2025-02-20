@@ -22,11 +22,7 @@ type Location struct {
 
 // Request represents a symbolization request for multiple addresses
 type Request struct {
-	BuildID  string
-	Mappings []RequestMapping
-}
-
-type RequestMapping struct {
+	BuildID   string
 	Locations []*Location
 }
 
@@ -41,5 +37,4 @@ type Mapping struct {
 // SymbolResolver converts memory addresses to source code locations
 type SymbolResolver interface {
 	ResolveAddress(ctx context.Context, addr uint64) ([]SymbolLocation, error)
-	//Close() error
 }

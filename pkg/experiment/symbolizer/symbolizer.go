@@ -16,7 +16,6 @@ import (
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"github.com/prometheus/client_golang/prometheus"
 
-	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
 )
 
@@ -26,11 +25,11 @@ type Config struct {
 	Storage       objstoreclient.Config `yaml:"storage"`
 }
 
-type TreeSymbolizer interface {
-	SymbolizeTree(ctx context.Context, report *queryv1.TreeReport) error
+type Symbolizer interface {
+	SymbolizePprof(ctx context.Context, profile *googlev1.Profile) error
 }
 
-// ProfileSymbolizer implements TreeSymbolizer
+// ProfileSymbolizer implements Symbolizer
 type ProfileSymbolizer struct {
 	client  DebuginfodClient
 	cache   DebugInfoCache
@@ -69,19 +68,12 @@ func NewProfileSymbolizer(client DebuginfodClient, cache DebugInfoCache, metrics
 	}
 }
 
-func (s *ProfileSymbolizer) SymbolizeTree(ctx context.Context, report *queryv1.TreeReport) error {
+func (s *ProfileSymbolizer) SymbolizePprof(ctx context.Context, profile *googlev1.Profile) error {
 	start := time.Now()
 	defer func() {
-		s.metrics.symbolizeDuration.Observe(time.Since(start).Seconds())
+		s.metrics.profileSymbolizationDuration.Observe(time.Since(start).Seconds())
 	}()
-	s.metrics.symbolizeRequestsTotal.Inc()
-
-	// Unmarshal the pprof profile from the tree
-	profile := &googlev1.Profile{}
-	if err := profile.UnmarshalVT(report.Tree); err != nil {
-		s.metrics.symbolizeErrorsTotal.WithLabelValues("unmarshal_error").Inc()
-		return fmt.Errorf("unmarshal profile from tree: %w", err)
-	}
+	s.metrics.profileSymbolizationTotal.Inc()
 
 	// Group locations by mapping ID
 	type locToSymbolize struct {
@@ -127,15 +119,13 @@ func (s *ProfileSymbolizer) SymbolizeTree(ctx context.Context, report *queryv1.T
 
 		// Create symbolization request for this mapping group
 		req := Request{
-			BuildID: buildID,
-			Mappings: []RequestMapping{{
-				Locations: make([]*Location, len(locs)),
-			}},
+			BuildID:   buildID,
+			Locations: make([]*Location, len(locs)),
 		}
 
 		// Prepare locations for symbolization
 		for i, loc := range locs {
-			req.Mappings[0].Locations[i] = &Location{
+			req.Locations[i] = &Location{
 				Address: loc.loc.Address,
 				Mapping: &pprof.Mapping{
 					Start:   mapping.MemoryStart,
@@ -152,7 +142,7 @@ func (s *ProfileSymbolizer) SymbolizeTree(ctx context.Context, report *queryv1.T
 		}
 
 		// Store symbolization results back into profile
-		for i, symLoc := range req.Mappings[0].Locations {
+		for i, symLoc := range req.Locations {
 			if len(symLoc.Lines) > 0 {
 				locIdx := locs[i].idx
 				profile.Location[locIdx].Line = make([]*googlev1.Line, len(symLoc.Lines))
@@ -209,15 +199,8 @@ func (s *ProfileSymbolizer) SymbolizeTree(ctx context.Context, report *queryv1.T
 		mapping.HasLineNumbers = true
 	}
 
-	// Marshal the updated profile back into the report
-	newBytes, err := profile.MarshalVT()
-	if err != nil {
-		return fmt.Errorf("marshal profile to tree: %w", err)
-	}
-	report.Tree = newBytes
-
 	if len(errs) > 0 {
-		s.metrics.symbolizeErrorsTotal.WithLabelValues("symbolization_error").Inc()
+		s.metrics.profileSymbolizationErrors.WithLabelValues("symbolization_error").Inc()
 		return fmt.Errorf("symbolization errors: %v", errs)
 	}
 
@@ -227,7 +210,7 @@ func (s *ProfileSymbolizer) SymbolizeTree(ctx context.Context, report *queryv1.T
 func (s *ProfileSymbolizer) Symbolize(ctx context.Context, req *Request) error {
 	start := time.Now()
 	defer func() {
-		s.metrics.symbolizeInternalDuration.Observe(time.Since(start).Seconds())
+		s.metrics.debugSymbolResolutionDuration.Observe(time.Since(start).Seconds())
 	}()
 
 	//debugReader, err := s.cache.Get(ctx, req.BuildID)
@@ -237,16 +220,16 @@ func (s *ProfileSymbolizer) Symbolize(ctx context.Context, req *Request) error {
 	//}
 
 	// Cache miss - fetch from debuginfod
-	filepath, err := s.client.FetchDebuginfo(req.BuildID)
+	filepath, err := s.client.FetchDebuginfo(ctx, req.BuildID)
 	if err != nil {
-		s.metrics.symbolizeInternalErrors.WithLabelValues("debuginfod_error").Inc()
+		s.metrics.debugSymbolResolutionErrors.WithLabelValues("debuginfod_error").Inc()
 		return fmt.Errorf("fetch debuginfo: %w", err)
 	}
 
 	// Open for symbolization
 	f, err := os.Open(filepath)
 	if err != nil {
-		s.metrics.symbolizeInternalErrors.WithLabelValues("file_error").Inc()
+		s.metrics.debugSymbolResolutionErrors.WithLabelValues("file_error").Inc()
 		return fmt.Errorf("open debug file: %w", err)
 	}
 	defer f.Close()
@@ -284,7 +267,7 @@ func (s *ProfileSymbolizer) symbolizeFromReader(ctx context.Context, r io.ReadCl
 	sr := io.NewSectionReader(reader, 0, 1<<63-1)
 	elfFile, err := elf.NewFile(sr)
 	if err != nil {
-		s.metrics.symbolizeInternalErrors.WithLabelValues("elf_error").Inc()
+		s.metrics.debugSymbolResolutionErrors.WithLabelValues("elf_error").Inc()
 		return fmt.Errorf("create ELF file from reader: %w", err)
 	}
 	defer elfFile.Close()
@@ -292,40 +275,37 @@ func (s *ProfileSymbolizer) symbolizeFromReader(ctx context.Context, r io.ReadCl
 	// Get executable info for address normalization
 	ei, err := ExecutableInfoFromELF(elfFile)
 	if err != nil {
-		s.metrics.symbolizeInternalErrors.WithLabelValues("elf_info_error").Inc()
+		s.metrics.debugSymbolResolutionErrors.WithLabelValues("elf_info_error").Inc()
 		return fmt.Errorf("executable info from ELF: %w", err)
 	}
 
 	// Create liner
 	liner, err := NewDwarfResolver(elfFile)
 	if err != nil {
-		s.metrics.symbolizeInternalErrors.WithLabelValues("dwarf_error").Inc()
+		s.metrics.debugSymbolResolutionErrors.WithLabelValues("dwarf_error").Inc()
 		return fmt.Errorf("create DWARF resolver: %w", err)
 	}
-	//defer liner.Close()
 
-	for _, mapping := range req.Mappings {
-		for _, loc := range mapping.Locations {
-			addr, err := MapRuntimeAddress(loc.Address, ei, Mapping{
-				Start:  loc.Mapping.Start,
-				Limit:  loc.Mapping.Limit,
-				Offset: loc.Mapping.Offset,
-			})
-			if err != nil {
-				s.metrics.symbolizeInternalErrors.WithLabelValues("error").Inc()
-				return fmt.Errorf("normalize address: %w", err)
-			}
-
-			// Get source lines for the address
-			lines, err := liner.ResolveAddress(ctx, addr)
-			if err != nil {
-				s.metrics.symbolizeInternalErrors.WithLabelValues("error").Inc()
-				return fmt.Errorf("resolve address: %w", err)
-			}
-
-			loc.Lines = lines
-			s.metrics.symbolizeLocationTotal.WithLabelValues("success").Inc()
+	for _, loc := range req.Locations {
+		addr, err := MapRuntimeAddress(loc.Address, ei, Mapping{
+			Start:  loc.Mapping.Start,
+			Limit:  loc.Mapping.Limit,
+			Offset: loc.Mapping.Offset,
+		})
+		if err != nil {
+			s.metrics.debugSymbolResolutionErrors.WithLabelValues("error").Inc()
+			return fmt.Errorf("normalize address: %w", err)
 		}
+
+		// Get source lines for the address
+		lines, err := liner.ResolveAddress(ctx, addr)
+		if err != nil {
+			s.metrics.debugSymbolResolutionErrors.WithLabelValues("error").Inc()
+			return fmt.Errorf("resolve address: %w", err)
+		}
+
+		loc.Lines = lines
+		s.metrics.debugSymbolResolutionsTotal.WithLabelValues("success").Inc()
 	}
 
 	return nil

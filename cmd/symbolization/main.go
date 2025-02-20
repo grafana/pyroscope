@@ -6,7 +6,6 @@ import (
 	"log"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/symbolizer"
 )
 
@@ -25,7 +24,7 @@ func main() {
 	s := symbolizer.NewProfileSymbolizer(client, nil, symbolizer.NewMetrics(nil))
 	ctx := context.Background()
 
-	_, err := client.FetchDebuginfo(buildID)
+	_, err := client.FetchDebuginfo(ctx, buildID)
 	if err != nil {
 		log.Fatalf("Failed to fetch debug info: %v", err)
 	}
@@ -83,25 +82,12 @@ func main() {
 		StringTable: []string{"", buildID},
 	}
 
-	// Marshal profile into tree report
-	data, err := profile.MarshalVT()
-	if err != nil {
-		log.Fatalf("Failed to marshal profile: %v", err)
-	}
-	report := &queryv1.TreeReport{Tree: data}
-
 	// Run symbolization
-	if err := s.SymbolizeTree(ctx, report); err != nil {
+	if err := s.SymbolizePprof(ctx, profile); err != nil {
 		log.Fatalf("Failed to symbolize: %v", err)
 	}
 
-	// Unmarshal result for printing
-	result := &googlev1.Profile{}
-	if err := result.UnmarshalVT(report.Tree); err != nil {
-		log.Fatalf("Failed to unmarshal result: %v", err)
-	}
-
-	printResults(result)
+	printResults(profile)
 }
 
 func printResults(p *googlev1.Profile) {
