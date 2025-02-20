@@ -9,7 +9,6 @@ import (
 	"sync"
 
 	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/tenant"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
@@ -44,7 +43,7 @@ type QueryFrontend struct {
 	metadataQueryClient metastorev1.MetadataQueryServiceClient
 	tenantServiceClient metastorev1.TenantServiceClient
 	querybackend        QueryBackend
-	symbolizer          symbolizer.TreeSymbolizer
+	symbolizer          symbolizer.ProfileSymbolizer
 }
 
 func NewQueryFrontend(
@@ -56,13 +55,13 @@ func NewQueryFrontend(
 	cfg Config,
 	reg prometheus.Registerer,
 ) (*QueryFrontend, error) {
-	var sym symbolizer.TreeSymbolizer
+	var sym symbolizer.ProfileSymbolizer
 	if cfg.Symbolizer.DebuginfodURL != "" {
 		s, err := symbolizer.NewFromConfig(context.Background(), cfg.Symbolizer, reg)
 		if err != nil {
 			return nil, fmt.Errorf("failed to initialize symbolizer: %w", err)
 		}
-		sym = s
+		sym = *s
 	}
 
 	return &QueryFrontend{
@@ -121,18 +120,6 @@ func (q *QueryFrontend) Query(
 	// TODO(kolesnikovae): Extend diagnostics
 	if resp.Diagnostics == nil {
 		resp.Diagnostics = new(queryv1.Diagnostics)
-	}
-
-	// Only symbolize tree reports (used for flamegraphs)
-	if q.symbolizer != nil {
-		for _, report := range resp.Reports {
-			if report.Tree != nil {
-				if err := q.symbolizer.SymbolizeTree(ctx, report.Tree); err != nil {
-					// Log error but continue - partial symbolization is better than none?
-					level.Error(q.logger).Log("msg", "tree symbolization failed", "err", err)
-				}
-			}
-		}
 	}
 
 	resp.Diagnostics.QueryPlan = p
