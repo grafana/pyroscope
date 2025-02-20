@@ -903,6 +903,9 @@ func extractSampleSeries(
 				rules,
 				v,
 			)
+			for _, vSer := range v.series {
+				vSer.Annotations = series.Annotations
+			}
 			result = append(result, v.series...)
 			bytesRelabelDropped += float64(v.discardedBytes)
 			profilesRelabelDropped += float64(v.discardedProfiles)
