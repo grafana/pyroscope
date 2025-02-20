@@ -11,7 +11,6 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/grafana/alloy/syntax/parser"
 	"github.com/thanos-io/objstore"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -103,23 +102,30 @@ type pyroscopeRule struct {
 	SourceLabels string
 }
 
-func (b *bucketStore) varsFromStore(s *settingsv1.CollectionRuleStore) *pyroscopeVars {
+type varSource interface {
+	GetEbpf() *settingsv1.EBPFSettings
+	GetJava() *settingsv1.JavaSettings
+	GetServices() []*settingsv1.ServiceData
+}
+
+func (b *bucketStore) varsFromStore(s varSource) *pyroscopeVars {
 	vars := &pyroscopeVars{
 		PyroscopeURL:      b.apiURL,
 		PyroscopeUsername: b.key.TenantID,
 		EBPF:              &settingsv1.EBPFSettings{Enabled: false},
 		Java:              &settingsv1.JavaSettings{Enabled: false},
 	}
-	if s.Ebpf != nil {
-		vars.EBPF = s.Ebpf
+	if s := s.GetEbpf(); s != nil {
+		vars.EBPF = s
 	}
-	if s.Java != nil {
-		vars.Java = s.Java
+	if s := s.GetJava(); s != nil {
+		vars.Java = s
 	}
 
 	// build rules
-	drops := make([]string, 0, len(s.Services))
-	for _, svc := range s.Services {
+	services := s.GetServices()
+	drops := make([]string, 0, len(services))
+	for _, svc := range services {
 		if !svc.Enabled {
 			drops = append(drops, regexp.QuoteMeta(svc.Name))
 		}
@@ -139,7 +145,7 @@ func (b *bucketStore) varsFromStore(s *settingsv1.CollectionRuleStore) *pyroscop
 //go:embed config.alloy.gotempl
 var alloyTemplate string
 
-func (b *bucketStore) template(s *settingsv1.CollectionRuleStore) (string, error) {
+func (b *bucketStore) template(s varSource) (string, error) {
 	vars := b.varsFromStore(s)
 
 	// generate the pyroscope alloy config
@@ -171,61 +177,27 @@ func (b *bucketStore) template(s *settingsv1.CollectionRuleStore) (string, error
 
 // updates or create a new rule
 func (b *bucketStore) upsertRule(ctx context.Context, rule *settingsv1.UpsertCollectionRuleRequest) error {
-	return b.store.Update(ctx, func(coll *store.Collection[*settingsv1.GetCollectionRuleResponse]) error {
-		// iterate over the store list to find the rule
-		pos := -1
-		for idx, r := range coll.Elements {
-			if r.Name == rule.Name {
-				pos = idx
-			}
-		}
 
-		if pos == -1 {
-			// create a new rule
-			pos = len(coll.Elements)
-			coll.Elements = append(coll.Elements, &settingsv1.GetCollectionRuleResponse{
-				Generation: 1,
-			})
-		} else {
-			// check if there had been a conflicted updated
-			storedRule := coll.Elements[pos]
-			if rule.ObservedGeneration != nil && *rule.ObservedGeneration != storedRule.Generation {
-				level.Warn(b.logger).Log(
-					"msg", "conflicting update, please try again",
-					"observed_generation", *rule.ObservedGeneration,
-					"stored_generation", storedRule.Generation,
-				)
-				return connect.NewError(connect.CodeAlreadyExists, fmt.Errorf("Conflicting update, please try again"))
-			}
-			coll.Elements[pos].Generation = storedRule.Generation + 1
-		}
+	cfg, err := b.template(rule)
+	if err != nil {
+		return err
+	}
 
-		coll.Elements[pos].Name = rule.Name
-		coll.Elements[pos].Services = rule.Services
-		coll.Elements[pos].Ebpf = rule.Ebpf
-		coll.Elements[pos].Java = rule.Java
-		coll.Elements[pos].LastUpdated = timeNow().UnixMilli()
+	api := &settingsv1.GetCollectionRuleResponse{
+		Name:          rule.Name,
+		Services:      rule.Services,
+		Ebpf:          rule.Ebpf,
+		Java:          rule.Java,
+		LastUpdated:   timeNow().UnixMilli(),
+		Configuration: cfg,
+	}
 
-		return nil
-	})
+	return b.store.Upsert(
+		ctx,
+		api,
+		rule.ObservedGeneration,
+	)
 
-}
-
-func (b *bucketStore) deleteRule(ctx context.Context, name string) error {
-	return b.store.Update(ctx, func(coll *store.Collection[*settingsv1.GetCollectionRuleResponse]) error {
-
-		// iterate over the rules to find the rule
-		for idx, r := range coll.Elements {
-			if r.Name == name {
-				// delete the rule
-				coll.Elements = append(coll.Elements[:idx], coll.Elements[idx+1:]...)
-
-				// return early and save the ruleset
-				return nil
-			}
-		}
-		return connect.NewError(connect.CodeNotFound, fmt.Errorf("no rule with name='%s' found", name))
-	})
 }
 
 func (b *bucketStore) get(ctx context.Context, name string) (*settingsv1.GetCollectionRuleResponse, error) {

@@ -261,8 +261,8 @@ func (c *Collection) DeleteCollectionRule(
 		return nil, err
 	}
 
-	if err := s.deleteRule(ctx, req.Msg.Name); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+	if err := s.store.Delete(ctx, req.Msg.Name); err != nil {
+		return nil, err
 	}
 
 	return connect.NewResponse(&settingsv1.DeleteCollectionRuleResponse{}), nil

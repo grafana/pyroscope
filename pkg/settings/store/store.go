@@ -9,7 +9,9 @@ import (
 	"strconv"
 	"sync"
 
+	"connectrpc.com/connect"
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/thanos-io/objstore"
 	"google.golang.org/protobuf/proto"
 )
@@ -83,8 +85,64 @@ func (s *GenericStore[T, H]) Get(ctx context.Context) (*Collection[T], error) {
 	return s.cache, nil
 }
 
-// Update will under write lock, call a callback that updates the store. If there is an error returned, the update will be cancelled.
-func (s *GenericStore[T, H]) Update(
+func (s *GenericStore[T, H]) Delete(ctx context.Context, id string) error {
+	return s.update(ctx, func(coll *Collection[T]) error {
+		// iterate over the rules to find the rule
+		for idx, e := range coll.Elements {
+			if s.helper.ID(e) == id {
+				// delete the rule
+				coll.Elements = append(coll.Elements[:idx], coll.Elements[idx+1:]...)
+
+				// return early and save the ruleset
+				return nil
+			}
+		}
+		return connect.NewError(connect.CodeNotFound, fmt.Errorf("no element with id='%s' found", id))
+	})
+}
+
+func (s *GenericStore[T, H]) Upsert(ctx context.Context, elem T, observedGeneration *int64) error {
+	return s.update(ctx, func(coll *Collection[T]) error {
+		// iterate over the store list to find the element with the same idx
+		pos := -1
+		for idx, e := range coll.Elements {
+			if s.helper.ID(e) == s.helper.ID(elem) {
+				pos = idx
+			}
+		}
+
+		// new element required
+		if pos == -1 {
+			// create a new rule
+			coll.Elements = append(coll.Elements, elem)
+
+			// by definition, the generation of a new element is 1
+			s.helper.SetGeneration(elem, 1)
+
+			return nil
+		}
+
+		// check if there had been a conflicted updated
+		storedElem := coll.Elements[pos]
+		storedGeneration := s.helper.GetGeneration(storedElem)
+		if observedGeneration != nil && *observedGeneration != storedGeneration {
+			level.Warn(s.logger).Log(
+				"msg", "conflicting update, please try again",
+				"observed_generation", observedGeneration,
+				"stored_generation", storedGeneration,
+			)
+			return connect.NewError(connect.CodeAlreadyExists, fmt.Errorf("Conflicting update, please try again"))
+		}
+
+		s.helper.SetGeneration(elem, storedGeneration+1)
+		coll.Elements[pos] = elem
+
+		return nil
+	})
+}
+
+// update will under write lock, call a callback that updates the store. If there is an error returned, the update will be cancelled.
+func (s *GenericStore[T, H]) update(
 	ctx context.Context,
 	updateF func(col *Collection[T]) error,
 ) error {
