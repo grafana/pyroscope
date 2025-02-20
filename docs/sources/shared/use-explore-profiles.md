@@ -25,7 +25,7 @@ The main use cases are the following:
 Profiles Drilldown provides an intuitive interface to specifically support these use cases.
 You get a holistic view of all of your services and how they're functioning, but also the ability to drill down for more targeted root cause analysis.
 
-![Profiles Drilldown home screen](/media/docs/explore-profiles/explore-profiles-homescreen-v0.1.17.png)
+![Profiles Drilldown home screen](/media/docs/explore-profiles/explore-profiles-homescreen-v1.png)
 
 Profiles Drilldown offers a convenient platform to analyze profiles and get insights that are impossible to get from using other traditional signals like logs, metrics, or tracing.
 
