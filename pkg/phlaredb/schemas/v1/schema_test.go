@@ -100,7 +100,8 @@ func newProfiles() []*Profile {
 					},
 				},
 			},
-			Comments: []int64{},
+			Comments:    []int64{},
+			Annotations: []*Annotation{},
 		},
 		{
 			ID:          uuid.MustParse("00000000-0000-0000-0000-000000000001"),
@@ -120,7 +121,8 @@ func newProfiles() []*Profile {
 					},
 				},
 			},
-			Comments: []int64{},
+			Comments:    []int64{},
+			Annotations: []*Annotation{},
 		},
 		{
 			ID:          uuid.MustParse("00000000-0000-0000-0000-000000000002"),
@@ -133,7 +135,8 @@ func newProfiles() []*Profile {
 					Labels:       []*profilev1.Label{},
 				},
 			},
-			Comments: []int64{},
+			Comments:    []int64{},
+			Annotations: []*Annotation{{Body: "test annotation"}},
 		},
 		{
 			ID:          uuid.MustParse("00000000-0000-0000-0000-000000000002"),
@@ -146,7 +149,8 @@ func newProfiles() []*Profile {
 					Labels:       []*profilev1.Label{},
 				},
 			},
-			Comments: []int64{},
+			Comments:    []int64{},
+			Annotations: []*Annotation{},
 		},
 	}
 }

@@ -264,7 +264,7 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 					if err != nil {
 						return err
 					}
-					if err = instance.Ingest(ctx, p, id, series.Labels...); err != nil {
+					if err = instance.Ingest(ctx, p, id, series.Annotations, series.Labels...); err != nil {
 						reason := validation.ReasonOf(err)
 						if reason != validation.Unknown {
 							validation.DiscardedProfiles.WithLabelValues(string(reason), instance.tenantID).Add(float64(1))

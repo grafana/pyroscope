@@ -654,7 +654,7 @@ func newBlock(t testing.TB, generator func() []*testhelper.ProfileBuilder) *sing
 
 	// ingest.
 	for _, p := range generator() {
-		require.NoError(t, h.Ingest(ctx, p.Profile, p.UUID, p.Labels...))
+		require.NoError(t, h.Ingest(ctx, p.Profile, p.UUID, nil, p.Labels...))
 	}
 
 	require.NoError(t, h.Flush(ctx))
