@@ -74,7 +74,7 @@ With the span processor registered, spans created automatically (for example, HT
 
 ## View the span profiles in Grafana
 
-To view the span profiles in Grafana Explore or Grafana Explore Traces, you need to have a Grafana instance running and a Tempo data source configured to link traces and profiles.
+To view the span profiles in Grafana Explore or Grafana Traces Drilldown, you need to have a Grafana instance running and a Tempo data source configured to link traces and profiles.
 
 Refer to the [Tempo data source configuration documentation](https://grafana.com/docs/grafana/<GRAFANA_VERSION>/datasources/tempo/configure-tempo-data-source) to see how to configure the visualization to link traces with profiles.
 
