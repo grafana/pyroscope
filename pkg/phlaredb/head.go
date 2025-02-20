@@ -188,7 +188,7 @@ func (h *Head) isStale(maxT int64, now time.Time) bool {
 	return now.After(time.Unix(0, maxT))
 }
 
-func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, externalLabels ...*typesv1.LabelPair) error {
+func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, annotations []*typesv1.ProfileAnnotation, externalLabels ...*typesv1.LabelPair) error {
 	if len(p.Sample) == 0 {
 		level.Debug(h.logger).Log("msg", "profile has no samples", "labels", externalLabels)
 		return nil
@@ -233,6 +233,12 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 			level.Debug(h.logger).Log("msg", "profile is empty after delta computation", "metricName", metricName)
 			continue
 		}
+
+		annotationBodies := make([]string, 0, len(annotations))
+		for _, annotation := range annotations {
+			annotationBodies = append(annotationBodies, annotation.Body)
+		}
+		profile.Annotations = annotationBodies
 
 		if err := h.profiles.ingest(ctx, []schemav1.InMemoryProfile{profile}, lbls[idxType], metricName); err != nil {
 			return err
