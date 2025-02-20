@@ -81,7 +81,7 @@ var (
 	stacktracePartitionColIndex int
 	totalValueColIndex          int
 
-	annotationsColumnPath = strings.Split("Annotations.list.element.Body", ".")
+	AnnotationsColumnPath = strings.Split("Annotations.list.element.Body", ".")
 	annotationsColIndex   int
 
 	downsampledValueColIndex int
@@ -125,7 +125,7 @@ func init() {
 	}
 	totalValueColIndex = totalValueCol.ColumnIndex
 
-	annotationsCol, ok := ProfilesSchema.Lookup(annotationsColumnPath...)
+	annotationsCol, ok := ProfilesSchema.Lookup(AnnotationsColumnPath...)
 	if !ok {
 		panic(fmt.Errorf("annotations column not found"))
 	}

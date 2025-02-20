@@ -247,7 +247,7 @@ func TestMergeSampleByLabels(t *testing.T) {
 			expected: []*typesv1.Series{
 				{
 					Labels: []*typesv1.LabelPair{},
-					Points: []*typesv1.Point{{Timestamp: 15000, Value: 7}},
+					Points: []*typesv1.Point{{Timestamp: 15000, Value: 7, Annotations: []*typesv1.ProfileAnnotation{}}},
 				},
 			},
 		},
@@ -271,11 +271,13 @@ func TestMergeSampleByLabels(t *testing.T) {
 			expected: []*typesv1.Series{
 				{
 					Labels: []*typesv1.LabelPair{{Name: "foo", Value: "bar"}},
-					Points: []*typesv1.Point{{Timestamp: 15000, Value: 1}, {Timestamp: 30000, Value: 1}},
+					Points: []*typesv1.Point{
+						{Timestamp: 15000, Value: 1, Annotations: []*typesv1.ProfileAnnotation{}},
+						{Timestamp: 30000, Value: 1, Annotations: []*typesv1.ProfileAnnotation{}}},
 				},
 				{
 					Labels: []*typesv1.LabelPair{{Name: "foo", Value: "buzz"}},
-					Points: []*typesv1.Point{{Timestamp: 15000, Value: 1}},
+					Points: []*typesv1.Point{{Timestamp: 15000, Value: 1, Annotations: []*typesv1.ProfileAnnotation{}}},
 				},
 			},
 		},
@@ -299,7 +301,10 @@ func TestMergeSampleByLabels(t *testing.T) {
 			expected: []*typesv1.Series{
 				{
 					Labels: []*typesv1.LabelPair{},
-					Points: []*typesv1.Point{{Timestamp: 15000, Value: 1}, {Timestamp: 15000, Value: 1}, {Timestamp: 30000, Value: 1}},
+					Points: []*typesv1.Point{
+						{Timestamp: 15000, Value: 1, Annotations: []*typesv1.ProfileAnnotation{}},
+						{Timestamp: 15000, Value: 1, Annotations: []*typesv1.ProfileAnnotation{}},
+						{Timestamp: 30000, Value: 1, Annotations: []*typesv1.ProfileAnnotation{}}},
 				},
 			},
 		},
@@ -371,7 +376,7 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 			expected: []*typesv1.Series{
 				{
 					Labels: []*typesv1.LabelPair{},
-					Points: []*typesv1.Point{{Timestamp: 15000, Value: 7}},
+					Points: []*typesv1.Point{{Timestamp: 15000, Value: 7, Annotations: []*typesv1.ProfileAnnotation{}}},
 				},
 			},
 		},
@@ -395,11 +400,13 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 			expected: []*typesv1.Series{
 				{
 					Labels: []*typesv1.LabelPair{{Name: "foo", Value: "bar"}},
-					Points: []*typesv1.Point{{Timestamp: 15000, Value: 1}, {Timestamp: 30000, Value: 1}},
+					Points: []*typesv1.Point{
+						{Timestamp: 15000, Value: 1, Annotations: []*typesv1.ProfileAnnotation{}},
+						{Timestamp: 30000, Value: 1, Annotations: []*typesv1.ProfileAnnotation{}}},
 				},
 				{
 					Labels: []*typesv1.LabelPair{{Name: "foo", Value: "buzz"}},
-					Points: []*typesv1.Point{{Timestamp: 15000, Value: 1}},
+					Points: []*typesv1.Point{{Timestamp: 15000, Value: 1, Annotations: []*typesv1.ProfileAnnotation{}}},
 				},
 			},
 		},
@@ -423,7 +430,10 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 			expected: []*typesv1.Series{
 				{
 					Labels: []*typesv1.LabelPair{},
-					Points: []*typesv1.Point{{Timestamp: 15000, Value: 1}, {Timestamp: 15000, Value: 1}, {Timestamp: 30000, Value: 1}},
+					Points: []*typesv1.Point{
+						{Timestamp: 15000, Value: 1, Annotations: []*typesv1.ProfileAnnotation{}},
+						{Timestamp: 15000, Value: 1, Annotations: []*typesv1.ProfileAnnotation{}},
+						{Timestamp: 30000, Value: 1, Annotations: []*typesv1.ProfileAnnotation{}}},
 				},
 			},
 		},

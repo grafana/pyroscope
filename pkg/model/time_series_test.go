@@ -29,11 +29,11 @@ func Test_RangeSeriesSum(t *testing.T) {
 			out: []*typesv1.Series{
 				{
 					Points: []*typesv1.Point{
-						{Timestamp: 1, Value: 2},
-						{Timestamp: 2, Value: 2},
-						{Timestamp: 3, Value: 3},
-						{Timestamp: 4, Value: 4},
-						{Timestamp: 5, Value: 5},
+						{Timestamp: 1, Value: 2, Annotations: []*typesv1.ProfileAnnotation{}},
+						{Timestamp: 2, Value: 2, Annotations: []*typesv1.ProfileAnnotation{}},
+						{Timestamp: 3, Value: 3, Annotations: []*typesv1.ProfileAnnotation{}},
+						{Timestamp: 4, Value: 4, Annotations: []*typesv1.ProfileAnnotation{}},
+						{Timestamp: 5, Value: 5, Annotations: []*typesv1.ProfileAnnotation{}},
 					},
 				},
 			},
@@ -55,18 +55,18 @@ func Test_RangeSeriesSum(t *testing.T) {
 				{
 					Labels: seriesA,
 					Points: []*typesv1.Point{
-						{Timestamp: 1, Value: 1},
-						{Timestamp: 2, Value: 1},
-						{Timestamp: 4, Value: 4},
-						{Timestamp: 5, Value: 5},
+						{Timestamp: 1, Value: 1, Annotations: []*typesv1.ProfileAnnotation{}},
+						{Timestamp: 2, Value: 1, Annotations: []*typesv1.ProfileAnnotation{}},
+						{Timestamp: 4, Value: 4, Annotations: []*typesv1.ProfileAnnotation{}},
+						{Timestamp: 5, Value: 5, Annotations: []*typesv1.ProfileAnnotation{}},
 					},
 				},
 				{
 					Labels: seriesB,
 					Points: []*typesv1.Point{
-						{Timestamp: 1, Value: 1},
-						{Timestamp: 3, Value: 2},
-						{Timestamp: 4, Value: 8},
+						{Timestamp: 1, Value: 1, Annotations: []*typesv1.ProfileAnnotation{}},
+						{Timestamp: 3, Value: 2, Annotations: []*typesv1.ProfileAnnotation{}},
+						{Timestamp: 4, Value: 8, Annotations: []*typesv1.ProfileAnnotation{}},
 					},
 				},
 			},
@@ -101,10 +101,10 @@ func Test_RangeSeriesAvg(t *testing.T) {
 			out: []*typesv1.Series{
 				{
 					Points: []*typesv1.Point{
-						{Timestamp: 1, Value: 1.5}, // avg of 1 and 2
-						{Timestamp: 2, Value: 2.5}, // avg of 2 and 3
-						{Timestamp: 3, Value: 4},
-						{Timestamp: 4, Value: 5},
+						{Timestamp: 1, Value: 1.5, Annotations: []*typesv1.ProfileAnnotation{}}, // avg of 1 and 2
+						{Timestamp: 2, Value: 2.5, Annotations: []*typesv1.ProfileAnnotation{}}, // avg of 2 and 3
+						{Timestamp: 3, Value: 4, Annotations: []*typesv1.ProfileAnnotation{}},
+						{Timestamp: 4, Value: 5, Annotations: []*typesv1.ProfileAnnotation{}},
 					},
 				},
 			},
@@ -127,18 +127,18 @@ func Test_RangeSeriesAvg(t *testing.T) {
 				{
 					Labels: seriesA,
 					Points: []*typesv1.Point{
-						{Timestamp: 1, Value: 1},
-						{Timestamp: 2, Value: 1.5}, // avg of 1 and 2
-						{Timestamp: 4, Value: 4},
-						{Timestamp: 5, Value: 5},
+						{Timestamp: 1, Value: 1, Annotations: []*typesv1.ProfileAnnotation{}},
+						{Timestamp: 2, Value: 1.5, Annotations: []*typesv1.ProfileAnnotation{}}, // avg of 1 and 2
+						{Timestamp: 4, Value: 4, Annotations: []*typesv1.ProfileAnnotation{}},
+						{Timestamp: 5, Value: 5, Annotations: []*typesv1.ProfileAnnotation{}},
 					},
 				},
 				{
 					Labels: seriesB,
 					Points: []*typesv1.Point{
-						{Timestamp: 1, Value: 1},
-						{Timestamp: 3, Value: 1.5}, // avg of 1 and 2
-						{Timestamp: 4, Value: 5},   // avg of 4 and 6
+						{Timestamp: 1, Value: 1, Annotations: []*typesv1.ProfileAnnotation{}},
+						{Timestamp: 3, Value: 1.5, Annotations: []*typesv1.ProfileAnnotation{}}, // avg of 1 and 2
+						{Timestamp: 4, Value: 5, Annotations: []*typesv1.ProfileAnnotation{}},   // avg of 4 and 6
 					},
 				},
 			},
