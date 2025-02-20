@@ -53,3 +53,7 @@ packages:
     interfaces:
       RaftNodeServiceClient:
       RaftNodeServiceServer:
+  github.com/grafana/pyroscope/pkg/experiment/metrics:
+    interfaces:
+      Exporter:
+      Ruler:

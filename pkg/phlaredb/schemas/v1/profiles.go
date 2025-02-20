@@ -74,6 +74,7 @@ var (
 	valueColIndex               int
 	timeNanoColIndex            int
 	stacktracePartitionColIndex int
+	totalValueColIndex          int
 
 	downsampledValueColIndex int
 
@@ -110,6 +111,11 @@ func init() {
 		panic(fmt.Errorf("StacktracePartition column not found"))
 	}
 	stacktracePartitionColIndex = stacktracePartitionCol.ColumnIndex
+	totalValueCol, ok := ProfilesSchema.Lookup(TotalValueColumnName)
+	if !ok {
+		panic(fmt.Errorf("TotalValue column not found"))
+	}
+	totalValueColIndex = totalValueCol.ColumnIndex
 
 	downsampledValueCol, ok := DownsampledProfilesSchema.Lookup(SampleValueColumnPath...)
 	if !ok {
@@ -668,6 +674,8 @@ func (p ProfileRow) SeriesIndex() uint32 {
 func (p ProfileRow) StacktracePartitionID() uint64 {
 	return p[stacktracePartitionColIndex].Uint64()
 }
+
+func (p ProfileRow) TotalValue() int64 { return p[totalValueColIndex].Int64() }
 
 func (p ProfileRow) TimeNanos() int64 {
 	var ts int64

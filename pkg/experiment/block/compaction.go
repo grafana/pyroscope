@@ -52,11 +52,24 @@ func WithCompactionDestination(storage objstore.Bucket) CompactionOption {
 	}
 }
 
+func WithSampleObserver(observer SampleObserver) CompactionOption {
+	return func(p *compactionConfig) {
+		p.sampleObserver = observer
+	}
+}
+
 type compactionConfig struct {
-	objectOptions []ObjectOption
-	source        objstore.BucketReader
-	destination   objstore.Bucket
-	tempdir       string
+	objectOptions  []ObjectOption
+	source         objstore.BucketReader
+	destination    objstore.Bucket
+	tempdir        string
+	sampleObserver SampleObserver
+}
+
+type SampleObserver interface {
+	// Observe is called before the compactor appends the entry
+	// to the output block. This method must not modify the entry.
+	Observe(ProfileEntry)
 }
 
 func Compact(
@@ -89,7 +102,7 @@ func Compact(
 
 	compacted := make([]*metastorev1.BlockMeta, 0, len(plan))
 	for _, p := range plan {
-		md, compactionErr := p.Compact(ctx, c.destination, c.tempdir)
+		md, compactionErr := p.Compact(ctx, c.destination, c.tempdir, c.sampleObserver)
 		if compactionErr != nil {
 			return nil, compactionErr
 		}
@@ -187,7 +200,12 @@ func newBlockCompaction(
 	return p
 }
 
-func (b *CompactionPlan) Compact(ctx context.Context, dst objstore.Bucket, tempdir string) (m *metastorev1.BlockMeta, err error) {
+func (b *CompactionPlan) Compact(
+	ctx context.Context,
+	dst objstore.Bucket,
+	tempdir string,
+	observer SampleObserver,
+) (m *metastorev1.BlockMeta, err error) {
 	w, err := NewBlockWriter(tempdir)
 	if err != nil {
 		return nil, fmt.Errorf("creating block writer: %w", err)
@@ -199,6 +217,7 @@ func (b *CompactionPlan) Compact(ctx context.Context, dst objstore.Bucket, tempd
 	// Datasets are compacted in a strict order.
 	for i, s := range b.datasets {
 		b.datasetIndex.setIndex(uint32(i))
+		s.registerSampleObserver(observer)
 		if err = s.compact(ctx, w); err != nil {
 			return nil, fmt.Errorf("compacting block: %w", err)
 		}
@@ -284,6 +303,8 @@ type datasetCompaction struct {
 	profiles uint64
 
 	flushOnce sync.Once
+
+	observer SampleObserver
 }
 
 func (b *CompactionPlan) newDatasetCompaction(tenant, name int32) *datasetCompaction {
@@ -347,6 +368,10 @@ func (m *datasetCompaction) compact(ctx context.Context, w *Writer) (err error) 
 	m.meta.Size = w.Offset() - off
 	m.meta.Labels = m.labels.Build()
 	return nil
+}
+
+func (m *datasetCompaction) registerSampleObserver(observer SampleObserver) {
+	m.observer = observer
 }
 
 func (m *datasetCompaction) open(ctx context.Context, w io.Writer) (err error) {
@@ -415,6 +440,9 @@ func (m *datasetCompaction) writeRow(r ProfileEntry) (err error) {
 	}
 	if err = m.symbolsRewriter.rewriteRow(r); err != nil {
 		return err
+	}
+	if m.observer != nil {
+		m.observer.Observe(r)
 	}
 	return m.profilesWriter.writeRow(r)
 }
