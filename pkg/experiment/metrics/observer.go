@@ -69,6 +69,16 @@ func (o *SampleObserver) initObserver(tenant string) {
 	}
 }
 
+// Observe manages two kind of states.
+//   - Per tenant state:
+//     Gets initialized on first/new tenant. It fetches tenant's rules and creates a new Recording for each rule.
+//     Data of old state is flushed to the exporter.
+//   - Recording states, per batch of rows:
+//     Every recording (hence every rule) has a state that is scoped to every batch of rows of the same fingerprint.
+//     When a new row fingerprint is detected, new state is computed for every recording.
+//     That state holds whether the rule matches the new batch of rows, and a reference of the Series/sample to
+//     be aggregated to. Note that every rule will eventually create multiple single-sample (aggregated) series,
+//     depending on the rule.KeepLabels space. More info in initState
 func (o *SampleObserver) Observe(row block.ProfileEntry) {
 	tenant := row.Dataset.TenantID()
 	if o.state == nil {
@@ -124,6 +134,9 @@ func (o *SampleObserver) Close() {
 	}
 }
 
+// initState compute labelsMap for quick lookups. Then check whether row matches the filters
+// if filter match, then labels to export are computed, and fetch/create the series where the value needs to be
+// aggregated. This state is hold for the following rows with the same fingerprint, so we can observe those faster
 func (r *Recording) initState(fp model.Fingerprint, rowLabels phlaremodel.Labels, externalLabels labels.Labels) {
 	r.state.fp = &fp
 	labelsMap := map[string]string{}
