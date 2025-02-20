@@ -175,7 +175,7 @@ go/mod_tidy_root:
 	# doesn't work for go workspace
 	# GO111MODULE=on go mod verify
 	go work sync
-	GO111MODULE=on go mod tidy -go 1.22
+	GO111MODULE=on go mod tidy -go 1.22.0
 
 .PHONY: go/mod_tidy/%
 go/mod_tidy/%: go/mod_tidy_root
