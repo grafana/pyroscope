@@ -99,7 +99,7 @@ func TestMergeSampleByStacktraces(t *testing.T) {
 
 			input, expected := tc.in()
 			for _, p := range input {
-				require.NoError(t, db.Ingest(ctx, p.Profile, p.UUID, p.Labels...))
+				require.NoError(t, db.Ingest(ctx, p.Profile, p.UUID, nil, p.Labels...))
 			}
 
 			require.NoError(t, db.Flush(context.Background(), true, ""))
@@ -205,7 +205,7 @@ func TestHeadMergeSampleByStacktraces(t *testing.T) {
 
 			input, expected := tc.in()
 			for _, p := range input {
-				require.NoError(t, db.Ingest(ctx, p.Profile, p.UUID, p.Labels...))
+				require.NoError(t, db.Ingest(ctx, p.Profile, p.UUID, nil, p.Labels...))
 			}
 			profiles, err := db.queriers().SelectMatchingProfiles(ctx, &ingestv1.SelectProfilesRequest{
 				LabelSelector: `{}`,
@@ -314,7 +314,7 @@ func TestMergeSampleByLabels(t *testing.T) {
 			require.NoError(t, err)
 
 			for _, p := range tc.in() {
-				require.NoError(t, db.Ingest(ctx, p.Profile, p.UUID, p.Labels...))
+				require.NoError(t, db.Ingest(ctx, p.Profile, p.UUID, nil, p.Labels...))
 			}
 
 			require.NoError(t, db.Flush(context.Background(), true, ""))
@@ -438,7 +438,7 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 			require.NoError(t, err)
 
 			for _, p := range tc.in() {
-				require.NoError(t, db.Ingest(ctx, p.Profile, p.UUID, p.Labels...))
+				require.NoError(t, db.Ingest(ctx, p.Profile, p.UUID, nil, p.Labels...))
 			}
 
 			profileIt, err := db.queriers().SelectMatchingProfiles(ctx, &ingestv1.SelectProfilesRequest{
@@ -475,7 +475,7 @@ func TestMergePprof(t *testing.T) {
 	require.NoError(t, err)
 
 	for i := 0; i < 3; i++ {
-		require.NoError(t, db.Ingest(ctx, generateProfile(t, i*1000), uuid.New(), &typesv1.LabelPair{
+		require.NoError(t, db.Ingest(ctx, generateProfile(t, i*1000), uuid.New(), nil, &typesv1.LabelPair{
 			Name:  model.MetricNameLabel,
 			Value: "process_cpu",
 		}))
@@ -533,7 +533,7 @@ func TestHeadMergePprof(t *testing.T) {
 	require.NoError(t, err)
 
 	for i := 0; i < 3; i++ {
-		require.NoError(t, db.Ingest(ctx, generateProfile(t, i*1000), uuid.New(), &typesv1.LabelPair{
+		require.NoError(t, db.Ingest(ctx, generateProfile(t, i*1000), uuid.New(), nil, &typesv1.LabelPair{
 			Name:  model.MetricNameLabel,
 			Value: "process_cpu",
 		}))
@@ -581,7 +581,7 @@ func TestMergeSpans(t *testing.T) {
 	}, NoLimit, ctx.localBucketClient)
 	require.NoError(t, err)
 
-	require.NoError(t, db.Ingest(ctx, generateProfileWithSpans(t, 1000), uuid.New(), &typesv1.LabelPair{
+	require.NoError(t, db.Ingest(ctx, generateProfileWithSpans(t, 1000), uuid.New(), nil, &typesv1.LabelPair{
 		Name:  model.MetricNameLabel,
 		Value: "process_cpu",
 	}))
@@ -632,7 +632,7 @@ func TestHeadMergeSpans(t *testing.T) {
 	}, NoLimit, ctx.localBucketClient)
 	require.NoError(t, err)
 
-	require.NoError(t, db.Ingest(ctx, generateProfileWithSpans(t, 1000), uuid.New(), &typesv1.LabelPair{
+	require.NoError(t, db.Ingest(ctx, generateProfileWithSpans(t, 1000), uuid.New(), nil, &typesv1.LabelPair{
 		Name:  model.MetricNameLabel,
 		Value: "process_cpu",
 	}))
