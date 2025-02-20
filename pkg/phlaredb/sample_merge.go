@@ -169,7 +169,12 @@ func mergeByLabels[T Profile](
 	if err != nil {
 		return nil, err
 	}
-	profiles := query.NewRepeatedRowIterator(ctx, rows, profileSource.RowGroups(), column.ColumnIndex)
+	annotationsColumn, err := v1.ResolveColumnByPath(profileSource.Schema(), v1.AnnotationsColumnPath)
+	if err != nil {
+		return nil, err
+	}
+
+	profiles := query.NewRepeatedRowIterator(ctx, rows, profileSource.RowGroups(), column.ColumnIndex, annotationsColumn.ColumnIndex)
 	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
 
 	seriesBuilder := phlaremodel.NewTimeSeriesBuilder(by...)
@@ -178,11 +183,17 @@ func mergeByLabels[T Profile](
 		values := profiles.At()
 		p := values.Row
 		var total int64
+		annotations := make([]string, 0)
 		for _, e := range values.Values {
-			total += e[0].Int64()
+			switch e[0].Kind() {
+			case parquet.Int64:
+				total += e[0].Int64()
+			case parquet.ByteArray:
+				annotations = append(annotations, e[0].String())
+			default:
+			}
 		}
-		seriesBuilder.Add(p.Fingerprint(), p.Labels(), int64(p.Timestamp()), float64(total))
-
+		seriesBuilder.Add(p.Fingerprint(), p.Labels(), int64(p.Timestamp()), float64(total), annotations)
 	}
 	return seriesBuilder.Build(), profiles.Err()
 }
@@ -214,7 +225,7 @@ func mergeByLabelsWithStackTraceSelector[T Profile](
 		if err = r.CallSiteValuesParquet(&v, h.StacktracePartition(), row.Values[0], row.Values[1]); err != nil {
 			return nil, err
 		}
-		seriesBuilder.Add(h.Fingerprint(), h.Labels(), int64(h.Timestamp()), float64(v.Total))
+		seriesBuilder.Add(h.Fingerprint(), h.Labels(), int64(h.Timestamp()), float64(v.Total), nil)
 	}
 
 	return seriesBuilder.Build(), profiles.Err()

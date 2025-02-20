@@ -74,9 +74,9 @@ func TestCompact(t *testing.T) {
 	series, err := querier.MergeByLabels(ctx, it, nil, "job")
 	require.NoError(t, err)
 	require.Equal(t, []*typesv1.Series{
-		{Labels: phlaremodel.LabelsFromStrings("job", "a"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: int64(1000)}}},
-		{Labels: phlaremodel.LabelsFromStrings("job", "b"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: int64(2000)}}},
-		{Labels: phlaremodel.LabelsFromStrings("job", "c"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: int64(3000)}}},
+		{Labels: phlaremodel.LabelsFromStrings("job", "a"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: int64(1000), Annotations: []*typesv1.ProfileAnnotation{}}}},
+		{Labels: phlaremodel.LabelsFromStrings("job", "b"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: int64(2000), Annotations: []*typesv1.ProfileAnnotation{}}}},
+		{Labels: phlaremodel.LabelsFromStrings("job", "c"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: int64(3000), Annotations: []*typesv1.ProfileAnnotation{}}}},
 	}, series)
 
 	it, err = querier.SelectMatchingProfiles(ctx, matchAll)
@@ -141,9 +141,9 @@ func TestCompactWithDownsampling(t *testing.T) {
 	series, err := querier.MergeByLabels(ctx, it, nil, "job")
 	require.NoError(t, err)
 	require.Equal(t, []*typesv1.Series{
-		{Labels: phlaremodel.LabelsFromStrings("job", "a"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: (time.Hour - time.Minute).Milliseconds()}}},
-		{Labels: phlaremodel.LabelsFromStrings("job", "b"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: (time.Hour + time.Minute).Milliseconds()}}},
-		{Labels: phlaremodel.LabelsFromStrings("job", "c"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: (time.Hour + 6*time.Minute).Milliseconds()}}},
+		{Labels: phlaremodel.LabelsFromStrings("job", "a"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: (time.Hour - time.Minute).Milliseconds(), Annotations: []*typesv1.ProfileAnnotation{}}}},
+		{Labels: phlaremodel.LabelsFromStrings("job", "b"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: (time.Hour + time.Minute).Milliseconds(), Annotations: []*typesv1.ProfileAnnotation{}}}},
+		{Labels: phlaremodel.LabelsFromStrings("job", "c"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: (time.Hour + 6*time.Minute).Milliseconds(), Annotations: []*typesv1.ProfileAnnotation{}}}},
 	}, series)
 
 	it, err = querier.SelectMatchingProfiles(ctx, matchAll)
@@ -308,7 +308,7 @@ func generatePoints(t *testing.T, from, through model.Time) []*typesv1.Point {
 	t.Helper()
 	var points []*typesv1.Point
 	for ts := from; ts.Before(through) || ts.Equal(through); ts = ts.Add(time.Second) {
-		points = append(points, &typesv1.Point{Timestamp: int64(ts), Value: 1})
+		points = append(points, &typesv1.Point{Timestamp: int64(ts), Value: 1, Annotations: []*typesv1.ProfileAnnotation{}})
 	}
 	return points
 }

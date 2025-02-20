@@ -132,6 +132,8 @@ func (m *TimeSeriesMerger) mergePoints(points []*typesv1.Point) int {
 		}
 		if m.sum {
 			points[j].Value += points[i].Value
+			// TODO aleks-p: remove duplicates
+			points[j].Annotations = append(points[j].Annotations, points[i].Annotations...)
 		}
 	}
 	return j + 1
