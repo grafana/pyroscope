@@ -16,6 +16,7 @@ import (
 	"github.com/grafana/dskit/instrument"
 	"github.com/klauspost/compress/snappy"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/prompb"
@@ -47,7 +48,7 @@ func NewStaticExporterFromEnvVars(logger log.Logger, reg prometheus.Registerer) 
 		return nil, fmt.Errorf("unable to load metrics exporter configuration, %s, %s and %s must be defined",
 			envVarRemoteUrl, envVarRemoteUser, envVarRemotePassword)
 	}
-	metrics := newMetrics(reg)
+	metrics := newMetrics(reg, remoteUrl)
 
 	client, err := newClient(remoteUrl, user, password, metrics)
 	if err != nil {
@@ -109,7 +110,7 @@ func newClient(remoteUrl, user, password string, m *clientMetrics) (remote.Write
 		return nil, err
 	}
 	t := client.(*remote.Client).Client.Transport
-	client.(*remote.Client).Client.Transport = &RoundTripper{m, t}
+	client.(*remote.Client).Client.Transport = promhttp.InstrumentRoundTripperDuration(m.requestDuration, t)
 	return client, nil
 }
 
@@ -117,7 +118,7 @@ type clientMetrics struct {
 	requestDuration *prometheus.HistogramVec
 }
 
-func newMetrics(reg prometheus.Registerer) *clientMetrics {
+func newMetrics(reg prometheus.Registerer, remoteUrl string) *clientMetrics {
 	m := &clientMetrics{
 		requestDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Namespace: "pyroscope",
@@ -125,10 +126,11 @@ func newMetrics(reg prometheus.Registerer) *clientMetrics {
 			Name:      "client_request_duration_seconds",
 			Help:      "Time (in seconds) spent on remote_write",
 			Buckets:   instrument.DefBuckets,
-		}, []string{"route", "status_code"}),
+		}, []string{}),
 	}
 	if reg != nil {
-		reg.MustRegister(
+		remoteUrlReg := prometheus.WrapRegistererWith(prometheus.Labels{"url": remoteUrl}, reg)
+		remoteUrlReg.MustRegister(
 			m.requestDuration,
 		)
 	}
