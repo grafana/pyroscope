@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strconv"
@@ -13,11 +14,21 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/thanos-io/objstore"
-	"google.golang.org/protobuf/proto"
 )
 
 type Key struct {
 	TenantID string
+}
+
+var ErrElementNotFound = errors.New("element not found")
+
+type ErrConflictGeneration struct {
+	ObservedGeneration int64
+	StoreGeneration    int64
+}
+
+func (e ErrConflictGeneration) Error() string {
+	return fmt.Sprintf("conflicting update, please try again: observed_generation=%d, store_generation=%d", e.ObservedGeneration, e.StoreGeneration)
 }
 
 type StoreHelper[T any] interface {
@@ -34,11 +45,7 @@ type Collection[T any] struct {
 	Elements   []T
 }
 
-type StoreType interface {
-	proto.Message
-}
-
-type GenericStore[T StoreType, H StoreHelper[T]] struct {
+type GenericStore[T any, H StoreHelper[T]] struct {
 	logger log.Logger
 	bucket objstore.Bucket
 	helper H
@@ -48,7 +55,7 @@ type GenericStore[T StoreType, H StoreHelper[T]] struct {
 	cache     *Collection[T]
 }
 
-func New[T StoreType, H StoreHelper[T]](
+func New[T any, H StoreHelper[T]](
 	logger log.Logger, bucket objstore.Bucket, key Key, helper H,
 ) *GenericStore[T, H] {
 	return &GenericStore[T, H]{
