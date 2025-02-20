@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package settings.v1;
+
+service CollectionRulesService {
+  rpc GetCollectionRule(GetCollectionRuleRequest) returns (GetCollectionRuleResponse) {}
+  rpc UpsertCollectionRule(UpsertCollectionRuleRequest) returns (GetCollectionRuleResponse) {}
+  rpc ListCollectionRules(ListCollectionRulesRequest) returns (ListCollectionRulesResponse) {}
+  rpc DeleteCollectionRule(DeleteCollectionRuleRequest) returns (DeleteCollectionRuleResponse) {}
+}
+
+message ServiceData {
+  string name = 1;
+  bool enabled = 2;
+}
+
+message JavaSettings {
+  bool enabled = 1;
+}
+
+message EBPFSettings {
+  bool enabled = 1;
+}
+
+// UpsertCollectionRuleRequest is used to create / update a collection rule.
+message UpsertCollectionRuleRequest {
+  string name = 1;
+  repeated ServiceData services = 2;
+  optional EBPFSettings ebpf = 3;
+  optional JavaSettings java = 4;
+  reserved 5; // deprecated: used to be observed_last_updated use observed_generation instead
+  optional int64 observed_generation = 6; // this is observed_generation of the existing object. Can be used to avoid update conflicts
+}
+
+message GetCollectionRuleRequest {
+  string name = 1;
+}
+
+message GetCollectionRuleResponse {
+  string name = 1;
+  repeated ServiceData services = 2;
+  optional EBPFSettings ebpf = 3;
+  optional JavaSettings java = 4;
+  int64 last_updated = 5; // milliseconds unix time of last update
+  int64 generation = 6; //  incremented on each update
+  string configuration = 7; // generated configuration block in alloy syntax
+}
+
+message ListCollectionRulesRequest {}
+
+message ListCollectionRulesResponse {
+  repeated GetCollectionRuleResponse rules = 1;
+  int64 generation = 2; //  incremented on each update
+}
+
+message DeleteCollectionRuleRequest {
+  string name = 1;
+}
+
+message DeleteCollectionRuleResponse {}
+
+// CollectionRuleStore is how the message gets stored in object store
+message CollectionRuleStore {
+  string name = 1;
+  repeated ServiceData services = 2;
+  EBPFSettings ebpf = 3;
+  JavaSettings java = 4;
+  int64 last_updated = 5; // milliseconds unix time
+  int64 generation = 6; // milliseconds unix time
+}
