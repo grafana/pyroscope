@@ -44,7 +44,7 @@ func NewStaticRulerFromEnvVars() (Ruler, error) {
 
 	var rules []*v1.RecordingRule
 	if err := json.Unmarshal([]byte(jsonRules), &rules); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal recording rules: %w", err)
 	}
 
 	ruler := &StaticAnonymousRuler{
