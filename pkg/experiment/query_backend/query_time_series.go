@@ -46,12 +46,7 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 	builder := phlaremodel.NewTimeSeriesBuilder(query.TimeSeries.GroupBy...)
 	for rows.Next() {
 		row := rows.At()
-		builder.Add(
-			row.Row.Fingerprint,
-			row.Row.Labels,
-			int64(row.Row.Timestamp),
-			float64(row.Values[0][0].Int64()),
-		)
+		builder.Add(row.Row.Fingerprint, row.Row.Labels, int64(row.Row.Timestamp), float64(row.Values[0][0].Int64()), nil)
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err
