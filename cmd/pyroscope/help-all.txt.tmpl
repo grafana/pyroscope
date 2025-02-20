@@ -625,6 +625,12 @@ Usage of ./pyroscope:
     	Port to advertise to query-scheduler and querier (defaults to -server.http-listen-port).
   -query-frontend.scheduler-worker-concurrency int
     	Number of concurrent workers forwarding queries to single query-scheduler. (default 5)
+  -query-frontend.symbolizer.cache.enabled
+    	Enable debug info caching
+  -query-frontend.symbolizer.cache.max-age duration
+    	Maximum age of cached debug info (default 168h0m0s)
+  -query-frontend.symbolizer.debuginfod-url string
+    	URL of the debuginfod server (default "https://debuginfod.elfutils.org")
   -query-scheduler.grpc-client-config.backoff-max-period duration
     	Maximum delay when backing off. (default 10s)
   -query-scheduler.grpc-client-config.backoff-min-period duration
