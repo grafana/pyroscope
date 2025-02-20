@@ -3,14 +3,14 @@ package store
 import (
 	"bytes"
 	"context"
-	"errors"
-	"io"
+	"encoding/json"
+	"fmt"
 	"path/filepath"
+	"strconv"
 	"sync"
 
 	"github.com/go-kit/log"
 	"github.com/thanos-io/objstore"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -18,36 +18,46 @@ type Key struct {
 	TenantID string
 }
 
-type GenericStore[T any, PT interface {
-	proto.Message
-	*T
-}] struct {
-	logger log.Logger
-	bucket objstore.Bucket
-	path   string
+type StoreHelper[T any] interface {
+	ID(T) string
+	GetGeneration(T) int64
+	SetGeneration(T, int64)
+	FromStore(json.RawMessage) (T, error)
+	ToStore(T) (json.RawMessage, error)
+	TypePath() string
+}
 
-	cacheLock sync.RWMutex
-	cache     PT
+type Collection[T any] struct {
+	Generation int64
+	Elements   []T
 }
 
 type StoreType interface {
 	proto.Message
 }
 
-func New[T any, PT interface {
-	StoreType
-	*T
-}](
-	logger log.Logger, bucket objstore.Bucket, key Key, path string,
-) *GenericStore[T, PT] {
-	return &GenericStore[T, PT]{
+type GenericStore[T StoreType, H StoreHelper[T]] struct {
+	logger log.Logger
+	bucket objstore.Bucket
+	helper H
+	path   string
+
+	cacheLock sync.RWMutex
+	cache     *Collection[T]
+}
+
+func New[T StoreType, H StoreHelper[T]](
+	logger log.Logger, bucket objstore.Bucket, key Key, helper H,
+) *GenericStore[T, H] {
+	return &GenericStore[T, H]{
 		logger: logger,
 		bucket: bucket,
-		path:   filepath.Join(key.TenantID, path) + ".json",
+		helper: helper,
+		path:   filepath.Join(key.TenantID, helper.TypePath()) + ".json",
 	}
 }
 
-func (s *GenericStore[T, PT]) Get(ctx context.Context) (PT, error) {
+func (s *GenericStore[T, H]) Get(ctx context.Context) (*Collection[T], error) {
 	// serve from cache if available
 	s.cacheLock.RLock()
 	if s.cache != nil {
@@ -73,13 +83,10 @@ func (s *GenericStore[T, PT]) Get(ctx context.Context) (PT, error) {
 	return s.cache, nil
 }
 
-// If the update callback returns this, it will not update, but it also won't return an error
-var ErrUpdateAbort = errors.New("abort update")
-
 // Update will under write lock, call a callback that updates the store. If there is an error returned, the update will be cancelled.
-func (s *GenericStore[T, PT]) Update(
+func (s *GenericStore[T, H]) Update(
 	ctx context.Context,
-	updateF func(v PT) error,
+	updateF func(col *Collection[T]) error,
 ) error {
 	// get write lock and fetch from bucket
 	s.cacheLock.Lock()
@@ -92,9 +99,7 @@ func (s *GenericStore[T, PT]) Update(
 	}
 
 	// call callback
-	if err := updateF(data); err == ErrUpdateAbort {
-		return nil
-	} else if err != nil {
+	if err := updateF(data); err != nil {
 		return err
 	}
 
@@ -102,32 +107,57 @@ func (s *GenericStore[T, PT]) Update(
 	return s.unsafeFlush(ctx, data)
 }
 
-func (s *GenericStore[T, PT]) getFromBucket(ctx context.Context) (PT, error) {
+type storeStruct struct {
+	Generation     string            `json:"generation"`
+	Elements       []json.RawMessage `json:"elements,omitempty"`
+	ElementsCompat []json.RawMessage `json:"rules,omitempty"`
+}
+
+func (s *GenericStore[T, H]) getFromBucket(ctx context.Context) (*Collection[T], error) {
 	// fetch from bucket
 	r, err := s.bucket.Get(ctx, s.path)
 	if s.bucket.IsObjNotFoundErr(err) {
-		return new(T), nil
+		return &Collection[T]{
+			Elements: make([]T, 0),
+		}, nil
 	}
 	if err != nil {
 		return nil, err
 	}
 
-	bodyJson, err := io.ReadAll(r)
+	var storeStruct storeStruct
+	if err := json.NewDecoder(r).Decode(&storeStruct); err != nil {
+		return nil, err
+	}
+
+	// handle compatibility with old model
+	if len(storeStruct.Elements) == 0 {
+		storeStruct.Elements = storeStruct.ElementsCompat
+	}
+
+	var (
+		result = make([]T, len(storeStruct.Elements))
+	)
+	for idx, element := range storeStruct.Elements {
+		result[idx], err = s.helper.FromStore(element)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	generation, err := strconv.ParseInt(storeStruct.Generation, 10, 64)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invalid generation: %s", storeStruct.Generation)
 	}
 
-	// unmarshal the data
-	var data PT = new(T)
-	if err := protojson.Unmarshal(bodyJson, data); err != nil {
-		return nil, err
-	}
-
-	return data, nil
+	return &Collection[T]{
+		Generation: generation,
+		Elements:   result,
+	}, nil
 }
 
 // unsafeLoad reads from bucket into the cache, only call with write lock held
-func (s *GenericStore[T, PT]) unsafeLoadCache(ctx context.Context) error {
+func (s *GenericStore[T, H]) unsafeLoadCache(ctx context.Context) error {
 	// fetch from bucket
 	data, err := s.getFromBucket(ctx)
 	if err != nil {
@@ -139,12 +169,22 @@ func (s *GenericStore[T, PT]) unsafeLoadCache(ctx context.Context) error {
 }
 
 // unsafeFlush writes from arguments into the bucket and then reset cache. Only call with write lock held
-func (s *GenericStore[T, PT]) unsafeFlush(ctx context.Context, data PT) error {
-	// increment generation
-	// TODO:	data.SetGeneration(data.GetGeneration() + 1)
+func (s *GenericStore[T, H]) unsafeFlush(ctx context.Context, coll *Collection[T]) error {
+	var (
+		data = storeStruct{
+			Elements:   make([]json.RawMessage, len(coll.Elements)),
+			Generation: strconv.FormatInt(coll.Generation+1, 10),
+		}
+		err error
+	)
+	for idx, element := range coll.Elements {
+		data.Elements[idx], err = s.helper.ToStore(element)
+		if err != nil {
+			return err
+		}
+	}
 
-	// marshal the data
-	dataJson, err := protojson.Marshal(data)
+	dataJson, err := json.Marshal(data)
 	if err != nil {
 		return err
 	}

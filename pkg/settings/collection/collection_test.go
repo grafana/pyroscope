@@ -22,7 +22,10 @@ type testCollection struct {
 	bucketPath string
 }
 
-const v1StoreJSON = `{"rules":[{"name":"my-valid-rule","ebpf":{"enabled": true},"services":[{"name":"valid-service","enabled":true},{"name":"second-valid-service"}],"lastUpdated":"1737625895123"}],"generation":"2"}`
+const (
+	legacyStoreJSON  = `{"rules":[{"name":"my-valid-rule","generation":"2","ebpf":{"enabled": true},"services":[{"name":"valid-service","enabled":true},{"name":"second-valid-service"}],"lastUpdated":"1737625895123"}],"generation":"2"}`
+	genericStoreJSON = `{"elements":[{"name":"my-valid-rule","generation":"2","ebpf":{"enabled": true},"services":[{"name":"valid-service","enabled":true},{"name":"second-valid-service"}],"lastUpdated":"1737625895123"}],"generation":"2"}`
+)
 
 func newTestCollection(t testing.TB) *testCollection {
 	logger := log.NewNopLogger()
@@ -177,11 +180,11 @@ func TestUpsertCollectionRule(t *testing.T) {
 		require.NoError(t, err)
 	})
 	t.Run("update to valid rule", func(t *testing.T) {
-		observedLastUpdated := timeNow().UnixMilli()
+		observedGeneration := int64(1)
 		_, err := coll.UpsertCollectionRule(ctx, connect.NewRequest(&settingsv1.UpsertCollectionRuleRequest{
-			ObservedLastUpdated: &observedLastUpdated,
-			Name:                "my-valid-rule",
-			Ebpf:                &settingsv1.EBPFSettings{Enabled: true},
+			ObservedGeneration: &observedGeneration,
+			Name:               "my-valid-rule",
+			Ebpf:               &settingsv1.EBPFSettings{Enabled: true},
 			Services: []*settingsv1.ServiceData{
 				{Name: "valid-service", Enabled: true},
 				{Name: "second-valid-service", Enabled: false},
@@ -192,18 +195,18 @@ func TestUpsertCollectionRule(t *testing.T) {
 		require.NoError(t, err)
 		require.JSONEq(
 			t,
-			v1StoreJSON,
+			genericStoreJSON,
 			string(data),
 		)
 
 	})
 	t.Run("conflicting update", func(t *testing.T) {
-		observedLastUpdated := timeNow().Add(-time.Hour).UnixMilli()
+		observedGeneration := int64(1)
 		_, err := coll.UpsertCollectionRule(ctx, connect.NewRequest(&settingsv1.UpsertCollectionRuleRequest{
-			ObservedLastUpdated: &observedLastUpdated,
-			Name:                "my-valid-rule",
-			Ebpf:                &settingsv1.EBPFSettings{Enabled: true},
-			Services:            []*settingsv1.ServiceData{},
+			ObservedGeneration: &observedGeneration,
+			Name:               "my-valid-rule",
+			Ebpf:               &settingsv1.EBPFSettings{Enabled: true},
+			Services:           []*settingsv1.ServiceData{},
 		}))
 		require.ErrorContains(t, err, "already_exists: Conflicting update, please try again")
 	})
@@ -234,12 +237,48 @@ func TestListCollectionRules(t *testing.T) {
 	coll := newTestCollection(t)
 	ctx := user.InjectOrgID(context.Background(), "user-a")
 
-	t.Run("list from storage format", func(t *testing.T) {
+	t.Run("list from legacy storage format", func(t *testing.T) {
 		storePath := filepath.Join(coll.bucketPath, "user-a/settings/collection.v1.json")
 		require.NoError(t, os.MkdirAll(filepath.Dir(storePath), 0o755))
 		require.NoError(t, os.WriteFile(
 			filepath.Join(coll.bucketPath, "user-a/settings/collection.v1.json"),
-			[]byte(v1StoreJSON),
+			[]byte(legacyStoreJSON),
+			0o644,
+		))
+
+		resp, err := coll.ListCollectionRules(ctx, connect.NewRequest(&settingsv1.ListCollectionRulesRequest{}))
+		require.NoError(t, err)
+
+		require.Len(t, resp.Msg.Rules, 1)
+
+		// reset config
+		resp.Msg.Rules[0].Configuration = ""
+
+		testhelper.EqualProto(t, &settingsv1.ListCollectionRulesResponse{
+			Rules: []*settingsv1.GetCollectionRuleResponse{
+				{
+					Name: "my-valid-rule",
+					Services: []*settingsv1.ServiceData{
+						{Name: "valid-service", Enabled: true},
+						{Name: "second-valid-service", Enabled: false},
+					},
+					Ebpf:        &settingsv1.EBPFSettings{Enabled: true},
+					Java:        &settingsv1.JavaSettings{Enabled: false},
+					Generation:  2,
+					LastUpdated: 1737625895123,
+				},
+			},
+			Generation: 2,
+		}, resp.Msg)
+
+	})
+
+	t.Run("list from generic store format", func(t *testing.T) {
+		storePath := filepath.Join(coll.bucketPath, "user-a/settings/collection.v1.json")
+		require.NoError(t, os.MkdirAll(filepath.Dir(storePath), 0o755))
+		require.NoError(t, os.WriteFile(
+			filepath.Join(coll.bucketPath, "user-a/settings/collection.v1.json"),
+			[]byte(genericStoreJSON),
 			0o644,
 		))
 
