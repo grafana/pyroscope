@@ -25,7 +25,7 @@ These graphs provide a clear, intuitive understanding of resource allocation and
 
 <!-- vale Grafana.Spelling = YES -->
 
-## How Pyroscope creates flame graphs 
+## How Pyroscope creates flame graphs
 
 This diagram shows how code is turned into a flame graph.
 In this case, Pyroscope samples the stacktrace of your application to understand how many CPU cycles are spent in each function.
@@ -51,6 +51,6 @@ This is a CPU profile, but profiles can represent many other types of resource s
 
 ## Flame graph visualization panel UI
 
-To learn more about the flame graph user interface in Grafana, Grafana Cloud, and Explore Profiles, refer to [Flame graph visualization panel](https://grafana.com/docs/grafana-cloud/visualizations/panels-visualizations/visualizations/flame-graph).
+To learn more about the flame graph user interface in Grafana, Grafana Cloud, and Profiles Drilldown, refer to [Flame graph visualization panel](https://grafana.com/docs/grafana-cloud/visualizations/panels-visualizations/visualizations/flame-graph).
 
 To learn more about the flame graph in the Pyroscope UI, refer to [Pyroscope UI](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/view-and-analyze-profile-data/pyroscope-ui/).
