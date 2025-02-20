@@ -2,53 +2,71 @@ package symbolizer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"time"
 )
 
 type DebuginfodClient interface {
-	FetchDebuginfo(buildID string) (string, error)
+	FetchDebuginfo(ctx context.Context, buildID string) (string, error)
 }
 
-type debuginfodClient struct {
-	baseURL    string
-	metrics    *Metrics
+type debuginfodClientConfig struct {
+	baseURL     string
+	maxRetries  int
+	backoffTime time.Duration
+	// userAgent   string
 	httpClient *http.Client
 }
 
+type debuginfodClient struct {
+	cfg     debuginfodClientConfig
+	metrics *Metrics
+}
+
 func NewDebuginfodClient(baseURL string, metrics *Metrics) DebuginfodClient {
-	// Create a default transport with reasonable timeouts
 	transport := &http.Transport{
 		MaxIdleConnsPerHost: 10,
 		IdleConnTimeout:     90 * time.Second,
 		TLSHandshakeTimeout: 10 * time.Second,
 	}
 
-	client := &http.Client{
-		Transport: transport,
-		Timeout:   30 * time.Second, // Overall timeout for requests
-	}
-
 	return &debuginfodClient{
-		baseURL:    baseURL,
-		metrics:    metrics,
-		httpClient: client,
+		cfg: debuginfodClientConfig{
+			baseURL:     baseURL,
+			maxRetries:  3,
+			backoffTime: time.Second,
+			// userAgent:   "Pyroscope-Symbolizer/1.0",
+			httpClient: &http.Client{
+				Transport: transport,
+				Timeout:   30 * time.Second,
+				CheckRedirect: func(req *http.Request, via []*http.Request) error {
+					if len(via) >= 3 {
+						return fmt.Errorf("stopped after 3 redirects")
+					}
+					return nil
+				},
+			},
+		},
+		metrics: metrics,
 	}
 }
 
 // FetchDebuginfo fetches the debuginfo file for a specific build ID.
-func (c *debuginfodClient) FetchDebuginfo(buildID string) (string, error) {
+func (c *debuginfodClient) FetchDebuginfo(ctx context.Context, buildID string) (string, error) {
 	start := time.Now()
-	var err error
+	var lastErr error
 	c.metrics.debuginfodRequestsTotal.Inc()
 	defer func() {
 		status := "success"
-		if err != nil {
+		if lastErr != nil {
 			status = "error"
 			c.metrics.debuginfodRequestErrorsTotal.WithLabelValues("http").Inc()
 		}
@@ -61,54 +79,98 @@ func (c *debuginfodClient) FetchDebuginfo(buildID string) (string, error) {
 		return "", err
 	}
 
-	url := fmt.Sprintf("%s/buildid/%s/debuginfo", c.baseURL, sanitizedBuildID)
+	url := fmt.Sprintf("%s/buildid/%s/debuginfo", c.cfg.baseURL, sanitizedBuildID)
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
+	// Implement retries with exponential backoff
+	for attempt := 0; attempt < c.cfg.maxRetries; attempt++ {
+		if attempt > 0 {
+			if ctx.Err() != nil {
+				return "", ctx.Err()
+			}
+			time.Sleep(c.cfg.backoffTime * time.Duration(attempt))
+		}
+
+		filePath, err := c.doRequest(ctx, url, sanitizedBuildID)
+		if err == nil {
+			return filePath, nil
+		}
+
+		lastErr = err
+		if !isRetryableError(err) {
+			break
+		}
+	}
+
+	return "", fmt.Errorf("failed to fetch debuginfo after %d attempts: %w", c.cfg.maxRetries, lastErr)
+}
+
+func (c *debuginfodClient) doRequest(ctx context.Context, url, buildID string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		c.metrics.debuginfodRequestErrorsTotal.WithLabelValues("request_creation").Inc()
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
 
 	req.Header.Set("Accept-Encoding", "gzip, deflate")
 
-	resp, err := c.httpClient.Do(req)
-	//resp, err := http.Get(url)
+	resp, err := c.cfg.httpClient.Do(req)
 	if err != nil {
-		c.metrics.debuginfodRequestErrorsTotal.WithLabelValues("http").Inc()
-		c.metrics.debuginfodRequestDuration.WithLabelValues("error").Observe(time.Since(start).Seconds())
-		return "", fmt.Errorf("failed to fetch debuginfod: %w", err)
+		return "", fmt.Errorf("failed to execute request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		c.metrics.debuginfodRequestErrorsTotal.WithLabelValues("http").Inc()
-		c.metrics.debuginfodRequestDuration.WithLabelValues("error").Observe(time.Since(start).Seconds())
-		return "", fmt.Errorf("unexpected HTTP status: %s", resp.Status)
+		return "", fmt.Errorf("unexpected HTTP status: %d %s", resp.StatusCode, resp.Status)
 	}
 
-	// Record file size from Content-Length if available
-	if contentLength := resp.ContentLength; contentLength > 0 {
+	return c.saveDebugInfo(resp.Body, buildID, resp.ContentLength)
+}
+
+func (c *debuginfodClient) saveDebugInfo(body io.Reader, buildID string, contentLength int64) (string, error) {
+	if contentLength > 0 {
 		c.metrics.debuginfodFileSize.Observe(float64(contentLength))
 	}
 
-	// TODO: Avoid file operations and handle debuginfo in memory.
-	// Save the debuginfo to a temporary file
 	tempDir := os.TempDir()
-	filePath := filepath.Join(tempDir, fmt.Sprintf("%s.elf", sanitizedBuildID))
+	filePath := filepath.Join(tempDir, fmt.Sprintf("%s.elf", buildID))
+
 	outFile, err := os.Create(filePath)
 	if err != nil {
-		c.metrics.debuginfodRequestErrorsTotal.WithLabelValues("file_create").Inc()
 		return "", fmt.Errorf("failed to create temp file: %w", err)
 	}
 	defer outFile.Close()
 
-	_, err = io.Copy(outFile, resp.Body)
-	if err != nil {
-		c.metrics.debuginfodRequestErrorsTotal.WithLabelValues("write").Inc()
-		return "", fmt.Errorf("failed to write debuginfod to file: %w", err)
+	if _, err := io.Copy(outFile, body); err != nil {
+		os.Remove(filePath) // Clean up on error
+		return "", fmt.Errorf("failed to write debug info: %w", err)
 	}
 
 	return filePath, nil
+}
+
+func isRetryableError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+		return false
+	}
+
+	if os.IsTimeout(err) {
+		return true
+	}
+
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		return urlErr.Temporary()
+	}
+
+	// All 5xx errors are retryable
+	if strings.Contains(err.Error(), "status: 5") {
+		return true
+	}
+
+	return false
 }
 
 // sanitizeBuildID ensures that the buildID is a safe and valid string for use in file paths.
