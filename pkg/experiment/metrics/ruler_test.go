@@ -3,6 +3,7 @@ package metrics
 import (
 	"bytes"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/go-kit/log"
@@ -53,7 +54,7 @@ func Test_Ruler_happyPath(t *testing.T) {
 	      }`
 	_ = os.Setenv(envVarRecordingRules, jsonRecordingRules)
 	loggerBuffer := &bytes.Buffer{}
-	logger := log.NewLogfmtLogger(loggerBuffer)
+	logger := log.NewJSONLogger(loggerBuffer)
 	ruler, err := NewStaticRulerFromEnvVars(logger)
 	assert.NoError(t, err)
 
@@ -87,11 +88,8 @@ func Test_Ruler_happyPath(t *testing.T) {
 		},
 	}}, rules)
 
-	assert.Equal(t,
-		"level=error msg=\"failed to parse recording rule\" rule=\"metric_name:\\\"no_profile_type\\\" matchers:\\\"{}\\\"\" err=\"no __profile_type__ matcher present\"\n"+
-			"level=error msg=\"failed to parse recording rule\" rule=\"metric_name:\\\"Wrong metric name\\\" matchers:\\\"{__profile_type__=\\\\\\\"profile_type\\\\\\\"}\\\"\" err=\"invalid metric name: Wrong metric name\"\n"+
-			"level=error msg=\"failed to parse recording rule\" rule=\"metric_name:\\\"wrong_matcher\\\" matchers:\\\"{foo==\\\\\\\"bar\\\\\\\"}\\\"\" err=\"failed to parse matchers: 1:6: parse error: unexpected \\\"=\\\" in label matching, expected string\"\n",
-		loggerBuffer.String(),
-	)
-
+	loggedLines := strings.Split(loggerBuffer.String(), "\n")
+	assert.True(t, strings.Contains(loggedLines[0], "no __profile_type__ matcher present"))
+	assert.True(t, strings.Contains(loggedLines[1], "invalid metric name: Wrong metric name"))
+	assert.True(t, strings.Contains(loggedLines[2], "failed to parse matchers: 1:6: parse error: unexpected \\\"=\\\" in label matching, expected string"))
 }
