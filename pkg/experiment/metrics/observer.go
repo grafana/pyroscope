@@ -28,19 +28,14 @@ type observerState struct {
 
 type recording struct {
 	rule  *phlaremodel.RecordingRule
-	data  map[model.Fingerprint]prompb.TimeSeries
+	data  map[model.Fingerprint]*prompb.TimeSeries
 	state *recordingState
 }
 
 type recordingState struct {
 	fp      model.Fingerprint
 	matches bool
-	series  *prompb.TimeSeries
-}
-
-type Sample struct {
-	Labels labels.Labels
-	Value  float64
+	sample  *prompb.Sample
 }
 
 type Ruler interface {
@@ -75,7 +70,7 @@ func (o *SampleObserver) initObserver(tenant string) {
 	for i, rule := range recordingRules {
 		o.state.recordings[i] = &recording{
 			rule:  rule,
-			data:  make(map[model.Fingerprint]prompb.TimeSeries),
+			data:  make(map[model.Fingerprint]*prompb.TimeSeries),
 			state: &recordingState{},
 		}
 	}
@@ -88,7 +83,7 @@ func (o *SampleObserver) initObserver(tenant string) {
 //   - recording states, per batch of rows:
 //     Every recording (hence every rule) has a state that is scoped to every batch of rows of the same fingerprint.
 //     When a new row fingerprint is detected, new state is computed for every recording.
-//     That state holds whether the rule matches the new batch of rows, and a reference of the series to
+//     That state holds whether the rule matches the new batch of rows, and a reference of the sample to
 //     be aggregated to. Note that every rule will eventually create multiple single-sample (aggregated) series,
 //     depending on the rule.GroupBy space. More info in initState
 //
@@ -109,7 +104,7 @@ func (o *SampleObserver) Observe(row block.ProfileEntry) {
 			rec.initState(row.Fingerprint, row.Labels, o.externalLabels, o.recordingTime)
 		}
 		if rec.state.matches {
-			rec.state.series.Samples[0].Value += float64(row.Row.TotalValue())
+			rec.state.sample.Value += float64(row.Row.TotalValue())
 		}
 	}
 }
@@ -118,7 +113,7 @@ func (o *SampleObserver) flush() {
 	timeSeries := make([]prompb.TimeSeries, 0)
 	for _, rec := range o.state.recordings {
 		for _, series := range rec.data {
-			timeSeries = append(timeSeries, series)
+			timeSeries = append(timeSeries, *series)
 		}
 	}
 	if len(timeSeries) > 0 {
@@ -156,10 +151,10 @@ func (r *recording) initState(fp model.Fingerprint, rowLabels phlaremodel.Labels
 		series = newTimeSeries(exportedLabels, recordingTime)
 		r.data[aggregatedFp] = series
 	}
-	r.state.series = &series
+	r.state.sample = &series.Samples[0]
 }
 
-func newTimeSeries(exportedLabels labels.Labels, recordingTime int64) prompb.TimeSeries {
+func newTimeSeries(exportedLabels labels.Labels, recordingTime int64) *prompb.TimeSeries {
 	// prompb.Labels don't implement sort interface, so we need to use labels.Labels and transform it later
 	pbLabels := make([]prompb.Label, 0, len(exportedLabels))
 	for _, label := range exportedLabels {
@@ -168,7 +163,7 @@ func newTimeSeries(exportedLabels labels.Labels, recordingTime int64) prompb.Tim
 			Value: label.Value,
 		})
 	}
-	series := prompb.TimeSeries{
+	series := &prompb.TimeSeries{
 		Labels: pbLabels,
 		Samples: []prompb.Sample{
 			{
