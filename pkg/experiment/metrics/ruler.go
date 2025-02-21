@@ -1,12 +1,12 @@
 package metrics
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/goccy/go-json"
 
 	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
 	"github.com/grafana/pyroscope/pkg/model"
