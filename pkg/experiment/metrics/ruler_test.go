@@ -14,7 +14,7 @@ import (
 
 func Test_Ruler_missconfigured(t *testing.T) {
 	_, err := NewStaticRulerFromEnvVars(log.NewNopLogger())
-	assert.EqualError(t, err, "failed to unmarshal recording rules: expected {} for map", "Empty env var should result in error at creating ruler")
+	assert.EqualError(t, err, "failed to unmarshal recording rules: unexpected end of JSON input", "Empty env var should result in error at creating ruler")
 }
 
 func Test_Ruler_happyPath(t *testing.T) {
