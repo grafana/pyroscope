@@ -65,12 +65,15 @@ func New[T any, H StoreHelper[T]](
 	}
 }
 
-func (s *GenericStore[T, H]) Get(ctx context.Context) (*Collection[T], error) {
+// ReadTxn is a transaction that runs under the read lock of the cache. The Collection should not be mutated at all.
+type ReadTxn[T any] func(context.Context, *Collection[T]) error
+
+func (s *GenericStore[T, H]) Read(ctx context.Context, txn ReadTxn[T]) error {
 	// serve from cache if available
 	s.cacheLock.RLock()
 	if s.cache != nil {
-		s.cacheLock.RUnlock()
-		return s.cache, nil
+		defer s.cacheLock.RUnlock()
+		return txn(ctx, s.cache)
 	}
 	s.cacheLock.RUnlock()
 
@@ -80,19 +83,32 @@ func (s *GenericStore[T, H]) Get(ctx context.Context) (*Collection[T], error) {
 
 	// check again if cache is available in the meantime
 	if s.cache != nil {
-		return s.cache, nil
+		return txn(ctx, s.cache)
 	}
 
 	// load from bucket
 	if err := s.unsafeLoadCache(ctx); err != nil {
-		return nil, err
+		return err
 	}
 
-	return s.cache, nil
+	return txn(ctx, s.cache)
+}
+
+func (s *GenericStore[T, H]) Get(ctx context.Context) (*Collection[T], error) {
+	var result *Collection[T]
+	err := s.Read(ctx, func(ctx context.Context, coll *Collection[T]) error {
+		result = coll
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+
 }
 
 func (s *GenericStore[T, H]) Delete(ctx context.Context, id string) error {
-	return s.update(ctx, func(coll *Collection[T]) error {
+	return s.Update(ctx, func(_ context.Context, coll *Collection[T]) error {
 		// iterate over the rules to find the rule
 		for idx, e := range coll.Elements {
 			if s.helper.ID(e) == id {
@@ -108,7 +124,7 @@ func (s *GenericStore[T, H]) Delete(ctx context.Context, id string) error {
 }
 
 func (s *GenericStore[T, H]) Upsert(ctx context.Context, elem T, observedGeneration *int64) error {
-	return s.update(ctx, func(coll *Collection[T]) error {
+	return s.Update(ctx, func(_ context.Context, coll *Collection[T]) error {
 		// iterate over the store list to find the element with the same idx
 		pos := -1
 		for idx, e := range coll.Elements {
@@ -151,10 +167,12 @@ func (s *GenericStore[T, H]) Upsert(ctx context.Context, elem T, observedGenerat
 	})
 }
 
-// update will under write lock, call a callback that updates the store. If there is an error returned, the update will be cancelled.
-func (s *GenericStore[T, H]) update(
+type UpdateTxn[T any] func(context.Context, *Collection[T]) error
+
+// Update will under write lock, call a transaction the Collection. If there is an error returned, the update will be cancelled.
+func (s *GenericStore[T, H]) Update(
 	ctx context.Context,
-	updateF func(col *Collection[T]) error,
+	txn UpdateTxn[T],
 ) error {
 	// get write lock and fetch from bucket
 	s.cacheLock.Lock()
@@ -167,7 +185,7 @@ func (s *GenericStore[T, H]) update(
 	}
 
 	// call callback
-	if err := updateF(data); err != nil {
+	if err := txn(ctx, data); err != nil {
 		return err
 	}
 
