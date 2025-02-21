@@ -73,9 +73,9 @@ EBPF_TESTS='^TestEBPF.*'
 .PHONY: go/test
 go/test: $(BIN)/gotestsum
 ifeq ($(GOOS),darwin)
-	$(BIN)/gotestsum -- $(GO_TEST_FLAGS) ./...
+	$(BIN)/gotestsum --rerun-fails=2 --packages './...' -- $(GO_TEST_FLAGS)
 else
-	$(BIN)/gotestsum -- $(GO_TEST_FLAGS) -skip $(EBPF_TESTS) ./... ./ebpf/...
+	$(BIN)/gotestsum --rerun-fails=2 --packages './... ./ebpf/...' -- $(GO_TEST_FLAGS) -skip $(EBPF_TESTS)
 endif
 
 # Run test on examples
