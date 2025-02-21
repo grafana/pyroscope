@@ -42,6 +42,9 @@
       "name": "CollectionRulesService"
     },
     {
+      "name": "RecordingRulesService"
+    },
+    {
       "name": "SettingsService"
     },
     {
@@ -1424,6 +1427,18 @@
         }
       }
     },
+    "v1ListRecordingRulesResponse": {
+      "type": "object",
+      "properties": {
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1RecordingRule2"
+          }
+        }
+      }
+    },
     "v1Mapping": {
       "type": "object",
       "properties": {
@@ -1893,6 +1908,48 @@
         }
       },
       "title": "RawSample is the set of bytes that correspond to a pprof profile"
+    },
+    "v1RecordingRule2": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "metricName": {
+          "type": "string"
+        },
+        "serviceName": {
+          "type": "string"
+        },
+        "profileType": {
+          "type": "string"
+        },
+        "matchers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "groupBy": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "externalLabels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "prometheusDataSource": {
+          "type": "string"
+        },
+        "lastUpdated": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
     },
     "v1Report": {
       "type": "object",

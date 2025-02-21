@@ -5,9 +5,13 @@
 package settingsv1
 
 import (
+	context "context"
 	fmt "fmt"
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	protohelpers "github.com/planetscale/vtprotobuf/protohelpers"
+	grpc "google.golang.org/grpc"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
 	proto "google.golang.org/protobuf/proto"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	io "io"
@@ -20,13 +24,89 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+func (m *RecordingRule2) CloneVT() *RecordingRule2 {
+	if m == nil {
+		return (*RecordingRule2)(nil)
+	}
+	r := new(RecordingRule2)
+	r.Id = m.Id
+	r.MetricName = m.MetricName
+	r.ServiceName = m.ServiceName
+	r.ProfileType = m.ProfileType
+	r.PrometheusDataSource = m.PrometheusDataSource
+	r.LastUpdated = m.LastUpdated
+	if rhs := m.Matchers; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.Matchers = tmpContainer
+	}
+	if rhs := m.GroupBy; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.GroupBy = tmpContainer
+	}
+	if rhs := m.ExternalLabels; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.ExternalLabels = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *RecordingRule2) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *ListRecordingRulesRequest) CloneVT() *ListRecordingRulesRequest {
+	if m == nil {
+		return (*ListRecordingRulesRequest)(nil)
+	}
+	r := new(ListRecordingRulesRequest)
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *ListRecordingRulesRequest) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *ListRecordingRulesResponse) CloneVT() *ListRecordingRulesResponse {
+	if m == nil {
+		return (*ListRecordingRulesResponse)(nil)
+	}
+	r := new(ListRecordingRulesResponse)
+	if rhs := m.Rules; rhs != nil {
+		tmpContainer := make([]*RecordingRule2, len(rhs))
+		for k, v := range rhs {
+			tmpContainer[k] = v.CloneVT()
+		}
+		r.Rules = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *ListRecordingRulesResponse) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
 func (m *RecordingRuleSetting) CloneVT() *RecordingRuleSetting {
 	if m == nil {
 		return (*RecordingRuleSetting)(nil)
 	}
 	r := new(RecordingRuleSetting)
 	if rhs := m.Rules; rhs != nil {
-		tmpContainer := make([]*RecordingRule, len(rhs))
+		tmpContainer := make([]*RecordingRule2, len(rhs))
 		for k, v := range rhs {
 			tmpContainer[k] = v.CloneVT()
 		}
@@ -82,6 +162,116 @@ func (m *RecordingRule) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
+func (this *RecordingRule2) EqualVT(that *RecordingRule2) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.Id != that.Id {
+		return false
+	}
+	if this.MetricName != that.MetricName {
+		return false
+	}
+	if this.ServiceName != that.ServiceName {
+		return false
+	}
+	if this.ProfileType != that.ProfileType {
+		return false
+	}
+	if len(this.Matchers) != len(that.Matchers) {
+		return false
+	}
+	for i, vx := range this.Matchers {
+		vy := that.Matchers[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if len(this.GroupBy) != len(that.GroupBy) {
+		return false
+	}
+	for i, vx := range this.GroupBy {
+		vy := that.GroupBy[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if len(this.ExternalLabels) != len(that.ExternalLabels) {
+		return false
+	}
+	for i, vx := range this.ExternalLabels {
+		vy := that.ExternalLabels[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if this.PrometheusDataSource != that.PrometheusDataSource {
+		return false
+	}
+	if this.LastUpdated != that.LastUpdated {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *RecordingRule2) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*RecordingRule2)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *ListRecordingRulesRequest) EqualVT(that *ListRecordingRulesRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *ListRecordingRulesRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*ListRecordingRulesRequest)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *ListRecordingRulesResponse) EqualVT(that *ListRecordingRulesResponse) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if len(this.Rules) != len(that.Rules) {
+		return false
+	}
+	for i, vx := range this.Rules {
+		vy := that.Rules[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &RecordingRule2{}
+			}
+			if q == nil {
+				q = &RecordingRule2{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *ListRecordingRulesResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*ListRecordingRulesResponse)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
 func (this *RecordingRuleSetting) EqualVT(that *RecordingRuleSetting) bool {
 	if this == that {
 		return true
@@ -95,10 +285,10 @@ func (this *RecordingRuleSetting) EqualVT(that *RecordingRuleSetting) bool {
 		vy := that.Rules[i]
 		if p, q := vx, vy; p != q {
 			if p == nil {
-				p = &RecordingRule{}
+				p = &RecordingRule2{}
 			}
 			if q == nil {
-				q = &RecordingRule{}
+				q = &RecordingRule2{}
 			}
 			if !p.EqualVT(q) {
 				return false
@@ -176,6 +366,276 @@ func (this *RecordingRule) EqualMessageVT(thatMsg proto.Message) bool {
 	}
 	return this.EqualVT(that)
 }
+
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the grpc package it is being compiled against.
+// Requires gRPC-Go v1.32.0 or later.
+const _ = grpc.SupportPackageIsVersion7
+
+// RecordingRulesServiceClient is the client API for RecordingRulesService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type RecordingRulesServiceClient interface {
+	ListRecordingRules(ctx context.Context, in *ListRecordingRulesRequest, opts ...grpc.CallOption) (*ListRecordingRulesResponse, error)
+}
+
+type recordingRulesServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewRecordingRulesServiceClient(cc grpc.ClientConnInterface) RecordingRulesServiceClient {
+	return &recordingRulesServiceClient{cc}
+}
+
+func (c *recordingRulesServiceClient) ListRecordingRules(ctx context.Context, in *ListRecordingRulesRequest, opts ...grpc.CallOption) (*ListRecordingRulesResponse, error) {
+	out := new(ListRecordingRulesResponse)
+	err := c.cc.Invoke(ctx, "/settings.v1.RecordingRulesService/ListRecordingRules", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// RecordingRulesServiceServer is the server API for RecordingRulesService service.
+// All implementations must embed UnimplementedRecordingRulesServiceServer
+// for forward compatibility
+type RecordingRulesServiceServer interface {
+	ListRecordingRules(context.Context, *ListRecordingRulesRequest) (*ListRecordingRulesResponse, error)
+	mustEmbedUnimplementedRecordingRulesServiceServer()
+}
+
+// UnimplementedRecordingRulesServiceServer must be embedded to have forward compatible implementations.
+type UnimplementedRecordingRulesServiceServer struct {
+}
+
+func (UnimplementedRecordingRulesServiceServer) ListRecordingRules(context.Context, *ListRecordingRulesRequest) (*ListRecordingRulesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListRecordingRules not implemented")
+}
+func (UnimplementedRecordingRulesServiceServer) mustEmbedUnimplementedRecordingRulesServiceServer() {}
+
+// UnsafeRecordingRulesServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to RecordingRulesServiceServer will
+// result in compilation errors.
+type UnsafeRecordingRulesServiceServer interface {
+	mustEmbedUnimplementedRecordingRulesServiceServer()
+}
+
+func RegisterRecordingRulesServiceServer(s grpc.ServiceRegistrar, srv RecordingRulesServiceServer) {
+	s.RegisterService(&RecordingRulesService_ServiceDesc, srv)
+}
+
+func _RecordingRulesService_ListRecordingRules_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListRecordingRulesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RecordingRulesServiceServer).ListRecordingRules(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/settings.v1.RecordingRulesService/ListRecordingRules",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RecordingRulesServiceServer).ListRecordingRules(ctx, req.(*ListRecordingRulesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// RecordingRulesService_ServiceDesc is the grpc.ServiceDesc for RecordingRulesService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var RecordingRulesService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "settings.v1.RecordingRulesService",
+	HandlerType: (*RecordingRulesServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "ListRecordingRules",
+			Handler:    _RecordingRulesService_ListRecordingRules_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "settings/v1/metrics.proto",
+}
+
+func (m *RecordingRule2) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RecordingRule2) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *RecordingRule2) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.LastUpdated != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.LastUpdated))
+		i--
+		dAtA[i] = 0x48
+	}
+	if len(m.PrometheusDataSource) > 0 {
+		i -= len(m.PrometheusDataSource)
+		copy(dAtA[i:], m.PrometheusDataSource)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.PrometheusDataSource)))
+		i--
+		dAtA[i] = 0x42
+	}
+	if len(m.ExternalLabels) > 0 {
+		for iNdEx := len(m.ExternalLabels) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.ExternalLabels[iNdEx])
+			copy(dAtA[i:], m.ExternalLabels[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.ExternalLabels[iNdEx])))
+			i--
+			dAtA[i] = 0x3a
+		}
+	}
+	if len(m.GroupBy) > 0 {
+		for iNdEx := len(m.GroupBy) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.GroupBy[iNdEx])
+			copy(dAtA[i:], m.GroupBy[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.GroupBy[iNdEx])))
+			i--
+			dAtA[i] = 0x32
+		}
+	}
+	if len(m.Matchers) > 0 {
+		for iNdEx := len(m.Matchers) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.Matchers[iNdEx])
+			copy(dAtA[i:], m.Matchers[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Matchers[iNdEx])))
+			i--
+			dAtA[i] = 0x2a
+		}
+	}
+	if len(m.ProfileType) > 0 {
+		i -= len(m.ProfileType)
+		copy(dAtA[i:], m.ProfileType)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.ProfileType)))
+		i--
+		dAtA[i] = 0x22
+	}
+	if len(m.ServiceName) > 0 {
+		i -= len(m.ServiceName)
+		copy(dAtA[i:], m.ServiceName)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.ServiceName)))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if len(m.MetricName) > 0 {
+		i -= len(m.MetricName)
+		copy(dAtA[i:], m.MetricName)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.MetricName)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Id) > 0 {
+		i -= len(m.Id)
+		copy(dAtA[i:], m.Id)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Id)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *ListRecordingRulesRequest) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ListRecordingRulesRequest) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *ListRecordingRulesRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *ListRecordingRulesResponse) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ListRecordingRulesResponse) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *ListRecordingRulesResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.Rules) > 0 {
+		for iNdEx := len(m.Rules) - 1; iNdEx >= 0; iNdEx-- {
+			size, err := m.Rules[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+			i--
+			dAtA[i] = 0xa
+		}
+	}
+	return len(dAtA) - i, nil
+}
+
 func (m *RecordingRuleSetting) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
@@ -310,6 +770,83 @@ func (m *RecordingRule) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *RecordingRule2) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Id)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	l = len(m.MetricName)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	l = len(m.ServiceName)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	l = len(m.ProfileType)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if len(m.Matchers) > 0 {
+		for _, s := range m.Matchers {
+			l = len(s)
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	if len(m.GroupBy) > 0 {
+		for _, s := range m.GroupBy {
+			l = len(s)
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	if len(m.ExternalLabels) > 0 {
+		for _, s := range m.ExternalLabels {
+			l = len(s)
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	l = len(m.PrometheusDataSource)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.LastUpdated != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.LastUpdated))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *ListRecordingRulesRequest) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *ListRecordingRulesResponse) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if len(m.Rules) > 0 {
+		for _, e := range m.Rules {
+			l = e.SizeVT()
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
 func (m *RecordingRuleSetting) SizeVT() (n int) {
 	if m == nil {
 		return 0
@@ -368,6 +905,468 @@ func (m *RecordingRule) SizeVT() (n int) {
 	return n
 }
 
+func (m *RecordingRule2) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: RecordingRule2: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: RecordingRule2: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Id = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MetricName", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.MetricName = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ServiceName", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ServiceName = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ProfileType", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ProfileType = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Matchers", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Matchers = append(m.Matchers, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 6:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field GroupBy", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.GroupBy = append(m.GroupBy, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 7:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ExternalLabels", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ExternalLabels = append(m.ExternalLabels, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 8:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field PrometheusDataSource", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.PrometheusDataSource = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 9:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LastUpdated", wireType)
+			}
+			m.LastUpdated = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.LastUpdated |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ListRecordingRulesRequest) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ListRecordingRulesRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ListRecordingRulesRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ListRecordingRulesResponse) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ListRecordingRulesResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ListRecordingRulesResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Rules", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Rules = append(m.Rules, &RecordingRule2{})
+			if err := m.Rules[len(m.Rules)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func (m *RecordingRuleSetting) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
@@ -426,7 +1425,7 @@ func (m *RecordingRuleSetting) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Rules = append(m.Rules, &RecordingRule{})
+			m.Rules = append(m.Rules, &RecordingRule2{})
 			if err := m.Rules[len(m.Rules)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}

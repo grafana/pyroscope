@@ -4,8 +4,30 @@ package settings.v1;
 
 import "types/v1/types.proto";
 
+service RecordingRulesService {
+  rpc ListRecordingRules(ListRecordingRulesRequest) returns (ListRecordingRulesResponse) {}
+}
+
+message RecordingRule2 {
+  string id = 1;
+  string metric_name = 2;
+  string service_name = 3;
+  string profile_type = 4;
+  repeated string matchers = 5;
+  repeated string group_by = 6;
+  repeated string external_labels = 7;
+  string prometheus_data_source = 8;
+  int64 last_updated = 9;
+}
+
+message ListRecordingRulesRequest {}
+
+message ListRecordingRulesResponse {
+  repeated RecordingRule2 rules = 1;
+}
+
 message RecordingRuleSetting {
-  repeated RecordingRule rules = 1;
+  repeated RecordingRule2 rules = 1;
 }
 
 message RecordingRule {
