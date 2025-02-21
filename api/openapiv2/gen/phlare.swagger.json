@@ -39,10 +39,10 @@
       "name": "SegmentWriterService"
     },
     {
-      "name": "SettingsService"
+      "name": "CollectionRulesService"
     },
     {
-      "name": "CollectionRulesService"
+      "name": "SettingsService"
     },
     {
       "name": "StatusService"
