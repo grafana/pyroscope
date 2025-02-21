@@ -3,10 +3,8 @@ package metrics
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"net/url"
 	"os"
-	"strconv"
 	"sync"
 	"time"
 
@@ -129,29 +127,11 @@ func newMetrics(reg prometheus.Registerer, remoteUrl string) *clientMetrics {
 		}, []string{}),
 	}
 	if reg != nil {
+		// TODO(alsoba13): include tenant label once we have a client per tenant/datasource in place
 		remoteUrlReg := prometheus.WrapRegistererWith(prometheus.Labels{"url": remoteUrl}, reg)
 		remoteUrlReg.MustRegister(
 			m.requestDuration,
 		)
 	}
 	return m
-}
-
-type RoundTripper struct {
-	metrics *clientMetrics
-	next    http.RoundTripper
-}
-
-func (m *RoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	start := time.Now()
-	resp, err := m.next.RoundTrip(req)
-	duration := time.Since(start)
-
-	statusCode := ""
-	if resp != nil {
-		statusCode = strconv.Itoa(resp.StatusCode)
-	}
-
-	m.metrics.requestDuration.WithLabelValues(req.RequestURI, statusCode).Observe(duration.Seconds())
-	return resp, err
 }
