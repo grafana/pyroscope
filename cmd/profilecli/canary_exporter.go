@@ -42,6 +42,7 @@ type canaryExporterParams struct {
 	*phlareClient
 	ListenAddress string
 	TestFrequency time.Duration
+	TestDelay     time.Duration
 }
 
 func addCanaryExporterParams(ceCmd commander) *canaryExporterParams {
@@ -50,6 +51,7 @@ func addCanaryExporterParams(ceCmd commander) *canaryExporterParams {
 	)
 	ceCmd.Flag("listen-address", "Listen address for the canary exporter.").Default(":4101").StringVar(&params.ListenAddress)
 	ceCmd.Flag("test-frequency", "How often the specified Pyroscope cell should be tested.").Default("15s").DurationVar(&params.TestFrequency)
+	ceCmd.Flag("test-delay", "The delay between ingest and query requests.").Default("2s").DurationVar(&params.TestDelay)
 	params.phlareClient = addPhlareClient(ceCmd)
 
 	return params
@@ -348,6 +350,13 @@ func (ce *canaryExporter) testPyroscopeCell(ctx context.Context) error {
 		defer func() {
 			done(result)
 		}()
+
+		if ce.params.TestDelay > 0 {
+			select {
+			case <-time.After(ce.params.TestDelay):
+			case <-ctx.Done():
+			}
+		}
 
 		respQueryInstant, err := ce.params.queryClient().SelectMergeProfile(rCtx, connect.NewRequest(&querierv1.SelectMergeProfileRequest{
 			Start:         now.UnixMilli(),
