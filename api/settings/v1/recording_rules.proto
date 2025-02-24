@@ -58,13 +58,3 @@ message RecordingRules_Store {
   repeated RecordingRule_Store rules = 1;
   int64 generation = 2;
 }
-
-// Old RecordingRule definition, this is replaced by RecordingRule_Store
-message RecordingRule {
-  // Unique id of the recording rule within the tenant.
-  string id = 1;
-  string metric_name = 2;
-  repeated string matchers = 3;
-  repeated string group_by = 4;
-  repeated types.v1.LabelPair external_labels = 5;
-}
