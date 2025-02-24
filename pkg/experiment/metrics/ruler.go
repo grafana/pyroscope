@@ -55,6 +55,8 @@ func (r StaticRuler) RecordingRules(tenant string) []*model.RecordingRule {
 	return r.rules[tenant]
 }
 
+// TenantSettingsRuler is a thread-safe ruler that retrieves rules from tenant-settings service.
+// It has a per-tenant cache: rulesPerTenant
 type TenantSettingsRuler struct {
 	rulesPerTenant map[string]*tenantCache
 	mu             sync.RWMutex
@@ -102,6 +104,7 @@ func (r *TenantSettingsRuler) fetchRecordingRules(tenant string) []*model.Record
 	return []*model.RecordingRule{}
 }
 
+// tenantCache is a thread-safe cache that holds an expirable array of rules.
 type tenantCache struct {
 	value    []*model.RecordingRule
 	ttl      time.Time
@@ -109,6 +112,9 @@ type tenantCache struct {
 	mu       sync.Mutex
 }
 
+// get returns the stored value if present and not expired.
+// Otherwise, a single call to initFunc will be performed to retrieve the value and hold it for future calls within
+// the ttl.
 func (c *tenantCache) get() []*model.RecordingRule {
 	if c.value != nil && time.Now().Before(c.ttl) {
 		// value exists and didn't expired
