@@ -2,20 +2,37 @@ package recording
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"strings"
 	"sync"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/tenant"
+	prom "github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/promql/parser"
+	"github.com/thanos-io/objstore"
+	"golang.org/x/exp/rand"
 
 	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/settings/v1/settingsv1connect"
-	"github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/settings/store"
 )
 
 var _ settingsv1connect.RecordingRulesServiceHandler = (*RecordingRules)(nil)
+
+func New(cfg Config, bucket objstore.Bucket, logger log.Logger) *RecordingRules {
+	return &RecordingRules{
+		cfg:    cfg,
+		bucket: bucket,
+		logger: logger,
+		stores: make(map[store.Key]*bucketStore),
+	}
+}
 
 type RecordingRules struct {
 	cfg    Config
@@ -29,12 +46,12 @@ type RecordingRules struct {
 func (r *RecordingRules) ListRecordingRules(ctx context.Context, req *connect.Request[settingsv1.ListRecordingRulesRequest]) (*connect.Response[settingsv1.ListRecordingRulesResponse], error) {
 	s, err := r.storeForTenant(ctx)
 	if err != nil {
-		return nil, err
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
 	rules, err := s.List(ctx)
 	if err != nil {
-		return nil, err
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
 	res := &settingsv1.ListRecordingRulesResponse{
@@ -48,24 +65,27 @@ func (r *RecordingRules) ListRecordingRules(ctx context.Context, req *connect.Re
 }
 
 func (r *RecordingRules) InsertRecordingRule(ctx context.Context, req *connect.Request[settingsv1.InsertRecordingRuleRequest]) (*connect.Response[settingsv1.InsertRecordingRuleResponse], error) {
-	// TODO(bryan): Validate request
+	err := validateInsert(req.Msg)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid request: %v", err))
+	}
 
 	s, err := r.storeForTenant(ctx)
 	if err != nil {
-		return nil, err
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
 	newRule := &settingsv1.RecordingRule_Store{
-		Id:             req.Msg.Id,
-		MetricName:     req.Msg.MetricName,
-		Matchers:       req.Msg.Matchers,
-		GroupBy:        req.Msg.GroupBy,
-		ExternalLabels: req.Msg.ExternalLabels,
-		DataSourceName: req.Msg.PrometheusDataSource,
+		Id:                   generateID(10),
+		MetricName:           req.Msg.MetricName,
+		Matchers:             req.Msg.Matchers,
+		GroupBy:              req.Msg.GroupBy,
+		ExternalLabels:       req.Msg.ExternalLabels,
+		PrometheusDataSource: req.Msg.PrometheusDataSource,
 	}
-	newRule, err = s.insert(ctx, newRule)
+	newRule, err = s.Insert(ctx, newRule)
 	if err != nil {
-		return nil, err
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
 	res := &settingsv1.InsertRecordingRuleResponse{
@@ -75,16 +95,19 @@ func (r *RecordingRules) InsertRecordingRule(ctx context.Context, req *connect.R
 }
 
 func (r *RecordingRules) DeleteRecordingRule(ctx context.Context, req *connect.Request[settingsv1.DeleteRecordingRuleRequest]) (*connect.Response[settingsv1.DeleteRecordingRuleResponse], error) {
-	// TODO(bryan): Validate request (id can't be blank)
+	err := validateDelete(req.Msg)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid request: %v", err))
+	}
 
 	s, err := r.storeForTenant(ctx)
 	if err != nil {
-		return nil, err
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	err = s.delete(ctx, req.Msg.Id)
+	err = s.Delete(ctx, req.Msg.Id)
 	if err != nil {
-		return nil, err
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
 	res := &settingsv1.DeleteRecordingRuleResponse{}
@@ -119,17 +142,91 @@ func (r *RecordingRules) storeForTenant(ctx context.Context) (*bucketStore, erro
 	return tenantStore, nil
 }
 
+func validateInsert(req *settingsv1.InsertRecordingRuleRequest) error {
+	// Format fields.
+	req.MetricName = strings.TrimSpace(req.MetricName)
+	req.PrometheusDataSource = strings.TrimSpace(req.PrometheusDataSource)
+
+	// Validate fields.
+	var errs []error
+
+	if req.MetricName == "" {
+		errs = append(errs, fmt.Errorf("metric_name is required"))
+	} else if !prom.IsValidMetricName(prom.LabelValue(req.MetricName)) {
+		errs = append(errs, fmt.Errorf("metric_name %q must match %s", req.MetricName, prom.MetricNameRE.String()))
+	}
+
+	if req.PrometheusDataSource == "" {
+		errs = append(errs, fmt.Errorf("prometheus_data_source is required"))
+	}
+
+	return errors.Join(errs...)
+}
+
+func validateDelete(req *settingsv1.DeleteRecordingRuleRequest) error {
+	// Format fields.
+	req.Id = strings.TrimSpace(req.Id)
+
+	// Validate fields.
+	var errs []error
+
+	if req.Id == "" {
+		errs = append(errs, fmt.Errorf("id is required"))
+	}
+
+	return errors.Join(errs...)
+}
+
 func convertRuleToAPI(rule *settingsv1.RecordingRule_Store) *settingsv1.RecordingRule_API {
 	apiRule := &settingsv1.RecordingRule_API{
 		Id:                   rule.Id,
 		MetricName:           rule.MetricName,
-		ServiceName:          "unknown", // TODO(bryan) parse out service name from matchers if possible
-		ProfileType:          "unknown", // TODO(bryan) parse out profile type from matchers if possible
+		ProfileType:          "unknown",
 		Matchers:             rule.Matchers,
 		GroupBy:              rule.GroupBy,
 		ExternalLabels:       rule.ExternalLabels,
-		PrometheusDataSource: rule.DataSourceName,
+		PrometheusDataSource: rule.PrometheusDataSource,
+	}
+
+	// Try find the profile type from the matchers.
+Loop:
+	for _, m := range rule.Matchers {
+		s, err := parser.ParseMetricSelector(m)
+		if err != nil {
+			// Since this value is loaded from the tenant settings database and
+			// we validate selectors before saving, we should theoretically
+			// always have valid selectors. If there's an error parsing a
+			// selector, we'll just skip it.
+			continue
+		}
+
+		for _, label := range s {
+			if label.Name != model.LabelNameProfileType {
+				continue
+			}
+
+			if label.Type != labels.MatchEqual {
+				continue
+			}
+
+			apiRule.ProfileType = label.Value
+			break Loop
+		}
 	}
 
 	return apiRule
+}
+
+func generateID(length int) string {
+	const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+	if length < 1 {
+		return ""
+	}
+
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = alphabet[rand.Intn(len(alphabet))]
+	}
+	return string(b)
 }

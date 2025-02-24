@@ -45,11 +45,15 @@ func (b *bucketStore) List(ctx context.Context) (*settingsv1.RecordingRules_Stor
 	return rules, nil
 }
 
-func (b *bucketStore) insert(ctx context.Context, newRule *settingsv1.RecordingRule_Store) (*settingsv1.RecordingRule_Store, error) {
+func (b *bucketStore) Insert(ctx context.Context, newRule *settingsv1.RecordingRule_Store) (*settingsv1.RecordingRule_Store, error) {
 	err := b.store.Update(ctx, func(ctx context.Context, c *store.Collection[*settingsv1.RecordingRule_Store]) error {
 		for _, rule := range c.Elements {
 			if rule.Id == newRule.Id {
-				return fmt.Errorf("rule %s already exists", newRule.Id)
+				return fmt.Errorf("recording rule %s already exists", newRule.Id)
+			}
+
+			if rule.MetricName == newRule.MetricName {
+				return fmt.Errorf("recording rule with name %s already exists", newRule.MetricName)
 			}
 		}
 
@@ -63,7 +67,7 @@ func (b *bucketStore) insert(ctx context.Context, newRule *settingsv1.RecordingR
 	return newRule, nil
 }
 
-func (b *bucketStore) delete(ctx context.Context, ruleID string) error {
+func (b *bucketStore) Delete(ctx context.Context, ruleID string) error {
 	return b.store.Delete(ctx, ruleID)
 }
 

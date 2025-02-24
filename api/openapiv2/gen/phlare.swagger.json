@@ -1929,9 +1929,6 @@
         "metricName": {
           "type": "string"
         },
-        "serviceName": {
-          "type": "string"
-        },
         "profileType": {
           "type": "string"
         },

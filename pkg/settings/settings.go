@@ -53,6 +53,10 @@ func New(cfg Config, bucket objstore.Bucket, logger log.Logger) (*TenantSettings
 		ts.CollectionRulesServiceHandler = collection.New(cfg.Collection, bucket, logger)
 	}
 
+	if cfg.Recording.Enabled {
+		ts.RecordingRulesServiceHandler = recording.New(cfg.Recording, bucket, logger)
+	}
+
 	ts.Service = services.NewBasicService(ts.starting, ts.running, ts.stopping)
 
 	return ts, nil
@@ -61,6 +65,7 @@ func New(cfg Config, bucket objstore.Bucket, logger log.Logger) (*TenantSettings
 type TenantSettings struct {
 	services.Service
 	settingsv1connect.CollectionRulesServiceHandler
+	settingsv1connect.RecordingRulesServiceHandler
 
 	store  store
 	logger log.Logger

@@ -68,9 +68,7 @@ func (m *InsertRecordingRuleRequest) CloneVT() *InsertRecordingRuleRequest {
 		return (*InsertRecordingRuleRequest)(nil)
 	}
 	r := new(InsertRecordingRuleRequest)
-	r.Id = m.Id
 	r.MetricName = m.MetricName
-	r.ProfileType = m.ProfileType
 	r.PrometheusDataSource = m.PrometheusDataSource
 	if rhs := m.Matchers; rhs != nil {
 		tmpContainer := make([]string, len(rhs))
@@ -161,7 +159,6 @@ func (m *RecordingRule_API) CloneVT() *RecordingRule_API {
 	r := new(RecordingRule_API)
 	r.Id = m.Id
 	r.MetricName = m.MetricName
-	r.ServiceName = m.ServiceName
 	r.ProfileType = m.ProfileType
 	r.PrometheusDataSource = m.PrometheusDataSource
 	if rhs := m.Matchers; rhs != nil {
@@ -203,7 +200,7 @@ func (m *RecordingRule_Store) CloneVT() *RecordingRule_Store {
 	r := new(RecordingRule_Store)
 	r.Id = m.Id
 	r.MetricName = m.MetricName
-	r.DataSourceName = m.DataSourceName
+	r.PrometheusDataSource = m.PrometheusDataSource
 	r.Generation = m.Generation
 	if rhs := m.Matchers; rhs != nil {
 		tmpContainer := make([]string, len(rhs))
@@ -355,13 +352,7 @@ func (this *InsertRecordingRuleRequest) EqualVT(that *InsertRecordingRuleRequest
 	} else if this == nil || that == nil {
 		return false
 	}
-	if this.Id != that.Id {
-		return false
-	}
 	if this.MetricName != that.MetricName {
-		return false
-	}
-	if this.ProfileType != that.ProfileType {
 		return false
 	}
 	if len(this.Matchers) != len(that.Matchers) {
@@ -482,9 +473,6 @@ func (this *RecordingRule_API) EqualVT(that *RecordingRule_API) bool {
 	if this.MetricName != that.MetricName {
 		return false
 	}
-	if this.ServiceName != that.ServiceName {
-		return false
-	}
 	if this.ProfileType != that.ProfileType {
 		return false
 	}
@@ -552,7 +540,7 @@ func (this *RecordingRule_Store) EqualVT(that *RecordingRule_Store) bool {
 	if this.MetricName != that.MetricName {
 		return false
 	}
-	if this.DataSourceName != that.DataSourceName {
+	if this.PrometheusDataSource != that.PrometheusDataSource {
 		return false
 	}
 	if len(this.Matchers) != len(that.Matchers) {
@@ -981,7 +969,7 @@ func (m *InsertRecordingRuleRequest) MarshalToSizedBufferVT(dAtA []byte) (int, e
 		copy(dAtA[i:], m.PrometheusDataSource)
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.PrometheusDataSource)))
 		i--
-		dAtA[i] = 0x42
+		dAtA[i] = 0x2a
 	}
 	if len(m.ExternalLabels) > 0 {
 		for iNdEx := len(m.ExternalLabels) - 1; iNdEx >= 0; iNdEx-- {
@@ -1004,7 +992,7 @@ func (m *InsertRecordingRuleRequest) MarshalToSizedBufferVT(dAtA []byte) (int, e
 				i = protohelpers.EncodeVarint(dAtA, i, uint64(len(encoded)))
 			}
 			i--
-			dAtA[i] = 0x3a
+			dAtA[i] = 0x22
 		}
 	}
 	if len(m.GroupBy) > 0 {
@@ -1013,7 +1001,7 @@ func (m *InsertRecordingRuleRequest) MarshalToSizedBufferVT(dAtA []byte) (int, e
 			copy(dAtA[i:], m.GroupBy[iNdEx])
 			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.GroupBy[iNdEx])))
 			i--
-			dAtA[i] = 0x32
+			dAtA[i] = 0x1a
 		}
 	}
 	if len(m.Matchers) > 0 {
@@ -1022,27 +1010,13 @@ func (m *InsertRecordingRuleRequest) MarshalToSizedBufferVT(dAtA []byte) (int, e
 			copy(dAtA[i:], m.Matchers[iNdEx])
 			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Matchers[iNdEx])))
 			i--
-			dAtA[i] = 0x2a
+			dAtA[i] = 0x12
 		}
-	}
-	if len(m.ProfileType) > 0 {
-		i -= len(m.ProfileType)
-		copy(dAtA[i:], m.ProfileType)
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.ProfileType)))
-		i--
-		dAtA[i] = 0x1a
 	}
 	if len(m.MetricName) > 0 {
 		i -= len(m.MetricName)
 		copy(dAtA[i:], m.MetricName)
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.MetricName)))
-		i--
-		dAtA[i] = 0x12
-	}
-	if len(m.Id) > 0 {
-		i -= len(m.Id)
-		copy(dAtA[i:], m.Id)
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Id)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -1200,7 +1174,7 @@ func (m *RecordingRule_API) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		copy(dAtA[i:], m.PrometheusDataSource)
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.PrometheusDataSource)))
 		i--
-		dAtA[i] = 0x42
+		dAtA[i] = 0x3a
 	}
 	if len(m.ExternalLabels) > 0 {
 		for iNdEx := len(m.ExternalLabels) - 1; iNdEx >= 0; iNdEx-- {
@@ -1223,7 +1197,7 @@ func (m *RecordingRule_API) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 				i = protohelpers.EncodeVarint(dAtA, i, uint64(len(encoded)))
 			}
 			i--
-			dAtA[i] = 0x3a
+			dAtA[i] = 0x32
 		}
 	}
 	if len(m.GroupBy) > 0 {
@@ -1232,7 +1206,7 @@ func (m *RecordingRule_API) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 			copy(dAtA[i:], m.GroupBy[iNdEx])
 			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.GroupBy[iNdEx])))
 			i--
-			dAtA[i] = 0x32
+			dAtA[i] = 0x2a
 		}
 	}
 	if len(m.Matchers) > 0 {
@@ -1241,20 +1215,13 @@ func (m *RecordingRule_API) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 			copy(dAtA[i:], m.Matchers[iNdEx])
 			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Matchers[iNdEx])))
 			i--
-			dAtA[i] = 0x2a
+			dAtA[i] = 0x22
 		}
 	}
 	if len(m.ProfileType) > 0 {
 		i -= len(m.ProfileType)
 		copy(dAtA[i:], m.ProfileType)
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.ProfileType)))
-		i--
-		dAtA[i] = 0x22
-	}
-	if len(m.ServiceName) > 0 {
-		i -= len(m.ServiceName)
-		copy(dAtA[i:], m.ServiceName)
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.ServiceName)))
 		i--
 		dAtA[i] = 0x1a
 	}
@@ -1352,10 +1319,10 @@ func (m *RecordingRule_Store) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 			dAtA[i] = 0x22
 		}
 	}
-	if len(m.DataSourceName) > 0 {
-		i -= len(m.DataSourceName)
-		copy(dAtA[i:], m.DataSourceName)
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.DataSourceName)))
+	if len(m.PrometheusDataSource) > 0 {
+		i -= len(m.PrometheusDataSource)
+		copy(dAtA[i:], m.PrometheusDataSource)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.PrometheusDataSource)))
 		i--
 		dAtA[i] = 0x1a
 	}
@@ -1547,15 +1514,7 @@ func (m *InsertRecordingRuleRequest) SizeVT() (n int) {
 	}
 	var l int
 	_ = l
-	l = len(m.Id)
-	if l > 0 {
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-	}
 	l = len(m.MetricName)
-	if l > 0 {
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-	}
-	l = len(m.ProfileType)
 	if l > 0 {
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
@@ -1643,10 +1602,6 @@ func (m *RecordingRule_API) SizeVT() (n int) {
 	if l > 0 {
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
-	l = len(m.ServiceName)
-	if l > 0 {
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-	}
 	l = len(m.ProfileType)
 	if l > 0 {
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
@@ -1697,7 +1652,7 @@ func (m *RecordingRule_Store) SizeVT() (n int) {
 	if l > 0 {
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
-	l = len(m.DataSourceName)
+	l = len(m.PrometheusDataSource)
 	if l > 0 {
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
@@ -1960,38 +1915,6 @@ func (m *InsertRecordingRuleRequest) UnmarshalVT(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Id = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field MetricName", wireType)
 			}
 			var stringLen uint64
@@ -2022,39 +1945,7 @@ func (m *InsertRecordingRuleRequest) UnmarshalVT(dAtA []byte) error {
 			}
 			m.MetricName = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ProfileType", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.ProfileType = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 5:
+		case 2:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Matchers", wireType)
 			}
@@ -2086,7 +1977,7 @@ func (m *InsertRecordingRuleRequest) UnmarshalVT(dAtA []byte) error {
 			}
 			m.Matchers = append(m.Matchers, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
-		case 6:
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field GroupBy", wireType)
 			}
@@ -2118,7 +2009,7 @@ func (m *InsertRecordingRuleRequest) UnmarshalVT(dAtA []byte) error {
 			}
 			m.GroupBy = append(m.GroupBy, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
-		case 7:
+		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ExternalLabels", wireType)
 			}
@@ -2160,7 +2051,7 @@ func (m *InsertRecordingRuleRequest) UnmarshalVT(dAtA []byte) error {
 				}
 			}
 			iNdEx = postIndex
-		case 8:
+		case 5:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field PrometheusDataSource", wireType)
 			}
@@ -2530,38 +2421,6 @@ func (m *RecordingRule_API) UnmarshalVT(dAtA []byte) error {
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ServiceName", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.ServiceName = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 4:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ProfileType", wireType)
 			}
 			var stringLen uint64
@@ -2592,7 +2451,7 @@ func (m *RecordingRule_API) UnmarshalVT(dAtA []byte) error {
 			}
 			m.ProfileType = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 5:
+		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Matchers", wireType)
 			}
@@ -2624,7 +2483,7 @@ func (m *RecordingRule_API) UnmarshalVT(dAtA []byte) error {
 			}
 			m.Matchers = append(m.Matchers, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
-		case 6:
+		case 5:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field GroupBy", wireType)
 			}
@@ -2656,7 +2515,7 @@ func (m *RecordingRule_API) UnmarshalVT(dAtA []byte) error {
 			}
 			m.GroupBy = append(m.GroupBy, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
-		case 7:
+		case 6:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ExternalLabels", wireType)
 			}
@@ -2698,7 +2557,7 @@ func (m *RecordingRule_API) UnmarshalVT(dAtA []byte) error {
 				}
 			}
 			iNdEx = postIndex
-		case 8:
+		case 7:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field PrometheusDataSource", wireType)
 			}
@@ -2847,7 +2706,7 @@ func (m *RecordingRule_Store) UnmarshalVT(dAtA []byte) error {
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field DataSourceName", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field PrometheusDataSource", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -2875,7 +2734,7 @@ func (m *RecordingRule_Store) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.DataSourceName = string(dAtA[iNdEx:postIndex])
+			m.PrometheusDataSource = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {

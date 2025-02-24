@@ -5,13 +5,12 @@ import (
 )
 
 type Config struct {
-	Enabled bool `yaml:"enabled"             category:"experimental"`
+	Enabled bool `yaml:"enabled" category:"experimental"`
 }
 
 const (
-	flagPrefix       = "tenant-settings.recording-rules."
-	flagEnabled      = flagPrefix + "enabled"
-	flagPyroscopeURL = flagPrefix + "pyroscope-url"
+	flagPrefix  = "tenant-settings.recording-rules."
+	flagEnabled = flagPrefix + "enabled"
 )
 
 func (cfg *Config) RegisterFlags(fs *flag.FlagSet) {
