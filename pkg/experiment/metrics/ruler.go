@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sync"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -14,6 +16,7 @@ import (
 
 const (
 	envVarRecordingRules = "PYROSCOPE_RECORDING_RULES"
+	rulesExpiryTime      = time.Minute
 )
 
 type StaticRuler struct {
@@ -50,4 +53,75 @@ func NewStaticRulerFromEnvVars(logger log.Logger) (Ruler, error) {
 
 func (r StaticRuler) RecordingRules(tenant string) []*model.RecordingRule {
 	return r.rules[tenant]
+}
+
+type TenantSettingsRuler struct {
+	rulesPerTenant map[string]*tenantCache
+	mu             sync.RWMutex
+
+	client settingsv1.SettingsServiceClient
+}
+
+func NewTenantSettingsRuler(client settingsv1.SettingsServiceClient) (Ruler, error) {
+	return &TenantSettingsRuler{
+		rulesPerTenant: make(map[string]*tenantCache),
+		client:         client,
+	}, nil
+}
+
+func (r *TenantSettingsRuler) RecordingRules(tenant string) []*model.RecordingRule {
+	// get the per-tenant cache
+	r.mu.RLock()
+	rules, ok := r.rulesPerTenant[tenant]
+	r.mu.RUnlock()
+
+	// There's no cache for given tenant: init it
+	if !ok {
+		r.mu.Lock()
+		defer r.mu.Unlock()
+
+		// only race-winner will initialize the per-tenant cache
+		rules, ok = r.rulesPerTenant[tenant]
+		if !ok {
+			rules = &tenantCache{
+				initFunc: func() []*model.RecordingRule {
+					return r.fetchRecordingRules(tenant)
+				},
+			}
+			r.rulesPerTenant[tenant] = rules
+		}
+	}
+
+	// get data from cache:
+	return rules.get()
+}
+
+func (r *TenantSettingsRuler) fetchRecordingRules(tenant string) []*model.RecordingRule {
+	// TODO missing client func
+	// get and parse rules from r.client.GetRecordingRules()
+	return []*model.RecordingRule{}
+}
+
+type tenantCache struct {
+	value    []*model.RecordingRule
+	ttl      time.Time
+	initFunc func() []*model.RecordingRule
+	mu       sync.Mutex
+}
+
+func (c *tenantCache) get() []*model.RecordingRule {
+	if c.value != nil && time.Now().Before(c.ttl) {
+		// value exists and didn't expired
+		return c.value
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// only race-winner will fetch the data
+	if c.value == nil || time.Now().After(c.ttl) {
+		c.value = c.initFunc()
+		c.ttl = time.Now().Add(rulesExpiryTime)
+	}
+	return c.value
 }
