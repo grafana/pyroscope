@@ -6,30 +6,63 @@ import "types/v1/types.proto";
 
 service RecordingRulesService {
   rpc ListRecordingRules(ListRecordingRulesRequest) returns (ListRecordingRulesResponse) {}
+  rpc InsertRecordingRule(InsertRecordingRuleRequest) returns (InsertRecordingRuleResponse) {}
+  rpc DeleteRecordingRule(DeleteRecordingRuleRequest) returns (DeleteRecordingRuleResponse) {}
 }
 
-message RecordingRule2 {
+message ListRecordingRulesRequest {}
+
+message ListRecordingRulesResponse {
+  repeated RecordingRule_API rules = 1;
+}
+
+message InsertRecordingRuleRequest {
+  string id = 1;
+  string metric_name = 2;
+  string profile_type = 3;
+  repeated string matchers = 5;
+  repeated string group_by = 6;
+  repeated types.v1.LabelPair external_labels = 7;
+  string prometheus_data_source = 8;
+}
+
+message InsertRecordingRuleResponse {
+  RecordingRule_API rule = 1;
+}
+
+message DeleteRecordingRuleRequest {
+  string id = 1;
+}
+
+message DeleteRecordingRuleResponse {}
+
+message RecordingRule_API {
   string id = 1;
   string metric_name = 2;
   string service_name = 3;
   string profile_type = 4;
   repeated string matchers = 5;
   repeated string group_by = 6;
-  repeated string external_labels = 7;
+  repeated types.v1.LabelPair external_labels = 7;
   string prometheus_data_source = 8;
-  int64 last_updated = 9;
 }
 
-message ListRecordingRulesRequest {}
-
-message ListRecordingRulesResponse {
-  repeated RecordingRule2 rules = 1;
+message RecordingRule_Store {
+  string id = 1;
+  string metric_name = 2;
+  string data_source_name = 3;
+  repeated string matchers = 4;
+  repeated string group_by = 5;
+  repeated types.v1.LabelPair external_labels = 6;
+  int64 generation = 7;
 }
 
-message RecordingRuleSetting {
-  repeated RecordingRule2 rules = 1;
+message RecordingRules_Store {
+  repeated RecordingRule_Store rules = 1;
+  int64 generation = 2;
 }
 
+// Old RecordingRule definition, this is replaced by RecordingRule_Store
 message RecordingRule {
   // Unique id of the recording rule within the tenant.
   string id = 1;

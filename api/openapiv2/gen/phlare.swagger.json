@@ -891,6 +891,9 @@
     "v1DeleteCollectionRuleResponse": {
       "type": "object"
     },
+    "v1DeleteRecordingRuleResponse": {
+      "type": "object"
+    },
     "v1DeleteTenantResponse": {
       "type": "object"
     },
@@ -1271,6 +1274,14 @@
       },
       "title": "Hints are used to propagate information about querying"
     },
+    "v1InsertRecordingRuleResponse": {
+      "type": "object",
+      "properties": {
+        "rule": {
+          "$ref": "#/definitions/v1RecordingRule_API"
+        }
+      }
+    },
     "v1InvokeOptions": {
       "type": "object",
       "description": "Query workers might not have access to the tenant\n overrides, therefore all the necessary options should\n be listed in the request explicitly."
@@ -1434,7 +1445,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/v1RecordingRule2"
+            "$ref": "#/definitions/v1RecordingRule_API"
           }
         }
       }
@@ -1909,7 +1920,7 @@
       },
       "title": "RawSample is the set of bytes that correspond to a pprof profile"
     },
-    "v1RecordingRule2": {
+    "v1RecordingRule_API": {
       "type": "object",
       "properties": {
         "id": {
@@ -1939,15 +1950,12 @@
         "externalLabels": {
           "type": "array",
           "items": {
-            "type": "string"
+            "type": "object",
+            "$ref": "#/definitions/v1LabelPair"
           }
         },
         "prometheusDataSource": {
           "type": "string"
-        },
-        "lastUpdated": {
-          "type": "string",
-          "format": "int64"
         }
       }
     },

@@ -36,17 +36,27 @@ const (
 	// RecordingRulesServiceListRecordingRulesProcedure is the fully-qualified name of the
 	// RecordingRulesService's ListRecordingRules RPC.
 	RecordingRulesServiceListRecordingRulesProcedure = "/settings.v1.RecordingRulesService/ListRecordingRules"
+	// RecordingRulesServiceInsertRecordingRuleProcedure is the fully-qualified name of the
+	// RecordingRulesService's InsertRecordingRule RPC.
+	RecordingRulesServiceInsertRecordingRuleProcedure = "/settings.v1.RecordingRulesService/InsertRecordingRule"
+	// RecordingRulesServiceDeleteRecordingRuleProcedure is the fully-qualified name of the
+	// RecordingRulesService's DeleteRecordingRule RPC.
+	RecordingRulesServiceDeleteRecordingRuleProcedure = "/settings.v1.RecordingRulesService/DeleteRecordingRule"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
 var (
-	recordingRulesServiceServiceDescriptor                  = v1.File_settings_v1_metrics_proto.Services().ByName("RecordingRulesService")
-	recordingRulesServiceListRecordingRulesMethodDescriptor = recordingRulesServiceServiceDescriptor.Methods().ByName("ListRecordingRules")
+	recordingRulesServiceServiceDescriptor                   = v1.File_settings_v1_metrics_proto.Services().ByName("RecordingRulesService")
+	recordingRulesServiceListRecordingRulesMethodDescriptor  = recordingRulesServiceServiceDescriptor.Methods().ByName("ListRecordingRules")
+	recordingRulesServiceInsertRecordingRuleMethodDescriptor = recordingRulesServiceServiceDescriptor.Methods().ByName("InsertRecordingRule")
+	recordingRulesServiceDeleteRecordingRuleMethodDescriptor = recordingRulesServiceServiceDescriptor.Methods().ByName("DeleteRecordingRule")
 )
 
 // RecordingRulesServiceClient is a client for the settings.v1.RecordingRulesService service.
 type RecordingRulesServiceClient interface {
 	ListRecordingRules(context.Context, *connect.Request[v1.ListRecordingRulesRequest]) (*connect.Response[v1.ListRecordingRulesResponse], error)
+	InsertRecordingRule(context.Context, *connect.Request[v1.InsertRecordingRuleRequest]) (*connect.Response[v1.InsertRecordingRuleResponse], error)
+	DeleteRecordingRule(context.Context, *connect.Request[v1.DeleteRecordingRuleRequest]) (*connect.Response[v1.DeleteRecordingRuleResponse], error)
 }
 
 // NewRecordingRulesServiceClient constructs a client for the settings.v1.RecordingRulesService
@@ -65,12 +75,26 @@ func NewRecordingRulesServiceClient(httpClient connect.HTTPClient, baseURL strin
 			connect.WithSchema(recordingRulesServiceListRecordingRulesMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		insertRecordingRule: connect.NewClient[v1.InsertRecordingRuleRequest, v1.InsertRecordingRuleResponse](
+			httpClient,
+			baseURL+RecordingRulesServiceInsertRecordingRuleProcedure,
+			connect.WithSchema(recordingRulesServiceInsertRecordingRuleMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		deleteRecordingRule: connect.NewClient[v1.DeleteRecordingRuleRequest, v1.DeleteRecordingRuleResponse](
+			httpClient,
+			baseURL+RecordingRulesServiceDeleteRecordingRuleProcedure,
+			connect.WithSchema(recordingRulesServiceDeleteRecordingRuleMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // recordingRulesServiceClient implements RecordingRulesServiceClient.
 type recordingRulesServiceClient struct {
-	listRecordingRules *connect.Client[v1.ListRecordingRulesRequest, v1.ListRecordingRulesResponse]
+	listRecordingRules  *connect.Client[v1.ListRecordingRulesRequest, v1.ListRecordingRulesResponse]
+	insertRecordingRule *connect.Client[v1.InsertRecordingRuleRequest, v1.InsertRecordingRuleResponse]
+	deleteRecordingRule *connect.Client[v1.DeleteRecordingRuleRequest, v1.DeleteRecordingRuleResponse]
 }
 
 // ListRecordingRules calls settings.v1.RecordingRulesService.ListRecordingRules.
@@ -78,10 +102,22 @@ func (c *recordingRulesServiceClient) ListRecordingRules(ctx context.Context, re
 	return c.listRecordingRules.CallUnary(ctx, req)
 }
 
+// InsertRecordingRule calls settings.v1.RecordingRulesService.InsertRecordingRule.
+func (c *recordingRulesServiceClient) InsertRecordingRule(ctx context.Context, req *connect.Request[v1.InsertRecordingRuleRequest]) (*connect.Response[v1.InsertRecordingRuleResponse], error) {
+	return c.insertRecordingRule.CallUnary(ctx, req)
+}
+
+// DeleteRecordingRule calls settings.v1.RecordingRulesService.DeleteRecordingRule.
+func (c *recordingRulesServiceClient) DeleteRecordingRule(ctx context.Context, req *connect.Request[v1.DeleteRecordingRuleRequest]) (*connect.Response[v1.DeleteRecordingRuleResponse], error) {
+	return c.deleteRecordingRule.CallUnary(ctx, req)
+}
+
 // RecordingRulesServiceHandler is an implementation of the settings.v1.RecordingRulesService
 // service.
 type RecordingRulesServiceHandler interface {
 	ListRecordingRules(context.Context, *connect.Request[v1.ListRecordingRulesRequest]) (*connect.Response[v1.ListRecordingRulesResponse], error)
+	InsertRecordingRule(context.Context, *connect.Request[v1.InsertRecordingRuleRequest]) (*connect.Response[v1.InsertRecordingRuleResponse], error)
+	DeleteRecordingRule(context.Context, *connect.Request[v1.DeleteRecordingRuleRequest]) (*connect.Response[v1.DeleteRecordingRuleResponse], error)
 }
 
 // NewRecordingRulesServiceHandler builds an HTTP handler from the service implementation. It
@@ -96,10 +132,26 @@ func NewRecordingRulesServiceHandler(svc RecordingRulesServiceHandler, opts ...c
 		connect.WithSchema(recordingRulesServiceListRecordingRulesMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	recordingRulesServiceInsertRecordingRuleHandler := connect.NewUnaryHandler(
+		RecordingRulesServiceInsertRecordingRuleProcedure,
+		svc.InsertRecordingRule,
+		connect.WithSchema(recordingRulesServiceInsertRecordingRuleMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	recordingRulesServiceDeleteRecordingRuleHandler := connect.NewUnaryHandler(
+		RecordingRulesServiceDeleteRecordingRuleProcedure,
+		svc.DeleteRecordingRule,
+		connect.WithSchema(recordingRulesServiceDeleteRecordingRuleMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/settings.v1.RecordingRulesService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case RecordingRulesServiceListRecordingRulesProcedure:
 			recordingRulesServiceListRecordingRulesHandler.ServeHTTP(w, r)
+		case RecordingRulesServiceInsertRecordingRuleProcedure:
+			recordingRulesServiceInsertRecordingRuleHandler.ServeHTTP(w, r)
+		case RecordingRulesServiceDeleteRecordingRuleProcedure:
+			recordingRulesServiceDeleteRecordingRuleHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -111,4 +163,12 @@ type UnimplementedRecordingRulesServiceHandler struct{}
 
 func (UnimplementedRecordingRulesServiceHandler) ListRecordingRules(context.Context, *connect.Request[v1.ListRecordingRulesRequest]) (*connect.Response[v1.ListRecordingRulesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("settings.v1.RecordingRulesService.ListRecordingRules is not implemented"))
+}
+
+func (UnimplementedRecordingRulesServiceHandler) InsertRecordingRule(context.Context, *connect.Request[v1.InsertRecordingRuleRequest]) (*connect.Response[v1.InsertRecordingRuleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("settings.v1.RecordingRulesService.InsertRecordingRule is not implemented"))
+}
+
+func (UnimplementedRecordingRulesServiceHandler) DeleteRecordingRule(context.Context, *connect.Request[v1.DeleteRecordingRuleRequest]) (*connect.Response[v1.DeleteRecordingRuleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("settings.v1.RecordingRulesService.DeleteRecordingRule is not implemented"))
 }
