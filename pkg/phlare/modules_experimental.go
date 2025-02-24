@@ -24,6 +24,7 @@ import (
 	metastoreadmin "github.com/grafana/pyroscope/pkg/experiment/metastore/admin"
 	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
+	"github.com/grafana/pyroscope/pkg/experiment/metrics"
 	querybackend "github.com/grafana/pyroscope/pkg/experiment/query_backend"
 	querybackendclient "github.com/grafana/pyroscope/pkg/experiment/query_backend/client"
 	"github.com/grafana/pyroscope/pkg/util"
@@ -97,12 +98,28 @@ func (f *Phlare) initSegmentWriterClient() (_ services.Service, err error) {
 func (f *Phlare) initCompactionWorker() (svc services.Service, err error) {
 	logger := log.With(f.logger, "component", "compaction-worker")
 	registerer := prometheus.WrapRegistererWithPrefix("pyroscope_compaction_worker_", f.reg)
+
+	var ruler metrics.Ruler
+	var exporter metrics.Exporter
+	if f.Cfg.CompactionWorker.MetricsExporterEnabled {
+		ruler, err = metrics.NewStaticRulerFromEnvVars(f.logger)
+		if err != nil {
+			return nil, err
+		}
+		exporter, err = metrics.NewStaticExporterFromEnvVars(f.logger, f.reg)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	w, err := compactionworker.New(
 		logger,
 		f.Cfg.CompactionWorker,
 		f.metastoreClient,
 		f.storageBucket,
 		registerer,
+		ruler,
+		exporter,
 	)
 	if err != nil {
 		return nil, err
