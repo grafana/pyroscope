@@ -109,17 +109,20 @@ type tenantCache struct {
 	value    []*model.RecordingRule
 	ttl      time.Time
 	initFunc func() []*model.RecordingRule
-	mu       sync.Mutex
+	mu       sync.RWMutex
 }
 
 // get returns the stored value if present and not expired.
 // Otherwise, a single call to initFunc will be performed to retrieve the value and hold it for future calls within
 // the ttl.
 func (c *tenantCache) get() []*model.RecordingRule {
+	c.mu.RLock()
 	if c.value != nil && time.Now().Before(c.ttl) {
+		defer c.mu.Unlock()
 		// value exists and didn't expired
 		return c.value
 	}
+	c.mu.RUnlock()
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
