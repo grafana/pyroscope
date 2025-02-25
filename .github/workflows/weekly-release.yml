@@ -61,6 +61,7 @@ jobs:
 
       - name: Push per architecture images and create multi-arch manifest
         run: |
+          set -eu -o pipefail
           set +x
           IMAGE_AMMENDS=()
 
