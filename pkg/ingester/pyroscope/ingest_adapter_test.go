@@ -5,14 +5,15 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
-	"github.com/go-kit/log"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/api/model/labelset"
 	"github.com/grafana/pyroscope/pkg/distributor/model"
 	"github.com/grafana/pyroscope/pkg/og/storage"
 	"github.com/grafana/pyroscope/pkg/og/storage/tree"
+
+	"connectrpc.com/connect"
+	"github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
