@@ -66,6 +66,7 @@ dockers:
   - use: buildx
     goos: linux
     goarch: amd64
+    goamd64: v2
     dockerfile: ./cmd/pyroscope/Dockerfile
     ids:
       - pyroscope
@@ -119,6 +120,7 @@ nfpms:
     vendor: Grafana Labs Inc
     homepage: https://grafana.com/pyroscope
     license: AGPL-3.0
+    file_name_template: '{{ .PackageName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v2") }}{{ .Amd64 }}{{ end }}'
     contents:
       - src: ./tools/packaging/pyroscope.service
         dst: /etc/systemd/system/pyroscope.service
@@ -130,19 +132,20 @@ nfpms:
 
 archives:
   - id: pyroscope
+    name_template: '{{.ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v2") }}{{ .Amd64 }}{{ end }}'
     builds:
       - pyroscope
   - id: profilecli
-    name_template: 'profilecli_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v1") }}{{ .Amd64 }}{{ end }}'
+    name_template: 'profilecli_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v2") }}{{ .Amd64 }}{{ end }}'
     builds:
       - profilecli
     format_overrides:
       - goos: windows
-        format: zip
+        formats: [zip]
 checksum:
   name_template: "checksums.txt"
 snapshot:
-  name_template: "{{ incpatch .Version }}-next"
+  version_template: "{{ incpatch .Version }}-next"
 changelog:
   sort: asc
   filters:
