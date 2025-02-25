@@ -14,6 +14,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
@@ -326,8 +327,8 @@ func (c *Config) Clone() flagext.Registerer {
 
 type Phlare struct {
 	Cfg    Config
-	logger log.Logger
 	reg    prometheus.Registerer
+	logger *logger
 	tracer io.Closer
 
 	ModuleManager *modules.Manager
@@ -726,19 +727,40 @@ func (f *Phlare) stopped() {
 			level.Error(f.logger).Log("msg", "error closing tracing", "err", err)
 		}
 	}
+	if err := f.logger.buf.Flush(); err != nil {
+		fmt.Println("error flushing logs:", err)
+	}
 }
 
-func initLogger(logFormat string, logLevel dslog.Level) log.Logger {
-	writer := log.NewSyncWriter(os.Stderr)
-	logger := dslog.NewGoKitWithWriter(logFormat, writer)
+func initLogger(logFormat string, logLevel dslog.Level) *logger {
+	buf := dslog.NewBufferedLogger(
+		// There's no particular reason to explicitly synchronise stdout/err writes:
+		// writes less than 4K (pipe buffer size) are already synchronous, and large
+		// outputs such as goroutine dump are not directed to the writer. However,
+		// since we're buffering writes, it's required.
+		log.NewSyncWriter(os.Stderr),
+		256, // Max number of entries.
+		dslog.WithFlushPeriod(100*time.Millisecond),
+		dslog.WithPrellocatedBuffer(64<<10),
+	)
+
+	l := dslog.NewGoKitWithWriter(logFormat, buf)
 
 	// use UTC timestamps and skip 5 stack frames.
-	logger = log.With(logger, "ts", log.DefaultTimestampUTC, "caller", log.Caller(5))
+	l = log.With(l, "ts", log.DefaultTimestampUTC, "caller", log.Caller(5))
 
 	// Must put the level filter last for efficiency.
-	logger = level.NewFilter(logger, logLevel.Option)
+	l = level.NewFilter(l, logLevel.Option)
 
-	return logger
+	return &logger{
+		buf:    buf,
+		Logger: l,
+	}
+}
+
+type logger struct {
+	buf *dslog.BufferedLogger
+	log.Logger
 }
 
 func (f *Phlare) initAPI() (services.Service, error) {
