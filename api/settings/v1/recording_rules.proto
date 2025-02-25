@@ -13,7 +13,7 @@ service RecordingRulesService {
 message ListRecordingRulesRequest {}
 
 message ListRecordingRulesResponse {
-  repeated RecordingRule_API rules = 1;
+  repeated RecordingRule rules = 1;
 }
 
 message InsertRecordingRuleRequest {
@@ -25,7 +25,7 @@ message InsertRecordingRuleRequest {
 }
 
 message InsertRecordingRuleResponse {
-  RecordingRule_API rule = 1;
+  RecordingRule rule = 1;
 }
 
 message DeleteRecordingRuleRequest {
@@ -34,7 +34,7 @@ message DeleteRecordingRuleRequest {
 
 message DeleteRecordingRuleResponse {}
 
-message RecordingRule_API {
+message RecordingRule {
   string id = 1;
   string metric_name = 2;
   string profile_type = 3;
@@ -44,7 +44,7 @@ message RecordingRule_API {
   string prometheus_data_source = 7;
 }
 
-message RecordingRule_Store {
+message RecordingRuleStore {
   string id = 1;
   string metric_name = 2;
   string prometheus_data_source = 3;
@@ -54,7 +54,7 @@ message RecordingRule_Store {
   int64 generation = 7;
 }
 
-message RecordingRules_Store {
-  repeated RecordingRule_Store rules = 1;
+message RecordingRulesStore {
+  repeated RecordingRuleStore rules = 1;
   int64 generation = 2;
 }

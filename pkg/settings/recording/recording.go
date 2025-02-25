@@ -55,7 +55,7 @@ func (r *RecordingRules) ListRecordingRules(ctx context.Context, req *connect.Re
 	}
 
 	res := &settingsv1.ListRecordingRulesResponse{
-		Rules: make([]*settingsv1.RecordingRule_API, 0, len(rules.Rules)),
+		Rules: make([]*settingsv1.RecordingRule, 0, len(rules.Rules)),
 	}
 	for _, rule := range rules.Rules {
 		res.Rules = append(res.Rules, convertRuleToAPI(rule))
@@ -75,7 +75,7 @@ func (r *RecordingRules) InsertRecordingRule(ctx context.Context, req *connect.R
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	newRule := &settingsv1.RecordingRule_Store{
+	newRule := &settingsv1.RecordingRuleStore{
 		Id:                   generateID(10),
 		MetricName:           req.Msg.MetricName,
 		Matchers:             req.Msg.Matchers,
@@ -177,8 +177,8 @@ func validateDelete(req *settingsv1.DeleteRecordingRuleRequest) error {
 	return errors.Join(errs...)
 }
 
-func convertRuleToAPI(rule *settingsv1.RecordingRule_Store) *settingsv1.RecordingRule_API {
-	apiRule := &settingsv1.RecordingRule_API{
+func convertRuleToAPI(rule *settingsv1.RecordingRuleStore) *settingsv1.RecordingRule {
+	apiRule := &settingsv1.RecordingRule{
 		Id:                   rule.Id,
 		MetricName:           rule.MetricName,
 		ProfileType:          "unknown",

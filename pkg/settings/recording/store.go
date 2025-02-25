@@ -26,13 +26,13 @@ func newBucketStore(logger log.Logger, bucket objstore.Bucket, key store.Key) *b
 
 type bucketStore struct {
 	logger log.Logger
-	store  *store.GenericStore[*settingsv1.RecordingRule_Store, *storeHelper]
+	store  *store.GenericStore[*settingsv1.RecordingRuleStore, *storeHelper]
 }
 
-func (b *bucketStore) List(ctx context.Context) (*settingsv1.RecordingRules_Store, error) {
-	var rules *settingsv1.RecordingRules_Store
-	err := b.store.Read(ctx, func(ctx context.Context, c *store.Collection[*settingsv1.RecordingRule_Store]) error {
-		rules = &settingsv1.RecordingRules_Store{
+func (b *bucketStore) List(ctx context.Context) (*settingsv1.RecordingRulesStore, error) {
+	var rules *settingsv1.RecordingRulesStore
+	err := b.store.Read(ctx, func(ctx context.Context, c *store.Collection[*settingsv1.RecordingRuleStore]) error {
+		rules = &settingsv1.RecordingRulesStore{
 			Rules:      c.Elements,
 			Generation: c.Generation,
 		}
@@ -45,8 +45,8 @@ func (b *bucketStore) List(ctx context.Context) (*settingsv1.RecordingRules_Stor
 	return rules, nil
 }
 
-func (b *bucketStore) Insert(ctx context.Context, newRule *settingsv1.RecordingRule_Store) (*settingsv1.RecordingRule_Store, error) {
-	err := b.store.Update(ctx, func(ctx context.Context, c *store.Collection[*settingsv1.RecordingRule_Store]) error {
+func (b *bucketStore) Insert(ctx context.Context, newRule *settingsv1.RecordingRuleStore) (*settingsv1.RecordingRuleStore, error) {
+	err := b.store.Update(ctx, func(ctx context.Context, c *store.Collection[*settingsv1.RecordingRuleStore]) error {
 		for _, rule := range c.Elements {
 			if rule.Id == newRule.Id {
 				return fmt.Errorf("recording rule %s already exists", newRule.Id)
@@ -75,16 +75,16 @@ type storeHelper struct {
 	b *bucketStore
 }
 
-func (_ *storeHelper) SetGeneration(rule *settingsv1.RecordingRule_Store, generation int64) {
+func (_ *storeHelper) SetGeneration(rule *settingsv1.RecordingRuleStore, generation int64) {
 	rule.Generation = generation
 }
 
-func (_ *storeHelper) GetGeneration(rule *settingsv1.RecordingRule_Store) int64 {
+func (_ *storeHelper) GetGeneration(rule *settingsv1.RecordingRuleStore) int64 {
 	return rule.Generation
 }
 
-func (_ *storeHelper) FromStore(storeBytes json.RawMessage) (*settingsv1.RecordingRule_Store, error) {
-	var store settingsv1.RecordingRule_Store
+func (_ *storeHelper) FromStore(storeBytes json.RawMessage) (*settingsv1.RecordingRuleStore, error) {
+	var store settingsv1.RecordingRuleStore
 	err := protojson.Unmarshal(storeBytes, &store)
 	if err != nil {
 		return nil, fmt.Errorf("error unmarshaling json from store: %w", err)
@@ -93,11 +93,11 @@ func (_ *storeHelper) FromStore(storeBytes json.RawMessage) (*settingsv1.Recordi
 	return &store, nil
 }
 
-func (_ *storeHelper) ToStore(rule *settingsv1.RecordingRule_Store) (json.RawMessage, error) {
+func (_ *storeHelper) ToStore(rule *settingsv1.RecordingRuleStore) (json.RawMessage, error) {
 	return protojson.Marshal(rule)
 }
 
-func (_ *storeHelper) ID(rule *settingsv1.RecordingRule_Store) string {
+func (_ *storeHelper) ID(rule *settingsv1.RecordingRuleStore) string {
 	return rule.Id
 }
 

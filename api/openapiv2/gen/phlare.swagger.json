@@ -1278,7 +1278,7 @@
       "type": "object",
       "properties": {
         "rule": {
-          "$ref": "#/definitions/v1RecordingRule_API"
+          "$ref": "#/definitions/v1RecordingRule"
         }
       }
     },
@@ -1445,7 +1445,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/v1RecordingRule_API"
+            "$ref": "#/definitions/v1RecordingRule"
           }
         }
       }
@@ -1920,7 +1920,7 @@
       },
       "title": "RawSample is the set of bytes that correspond to a pprof profile"
     },
-    "v1RecordingRule_API": {
+    "v1RecordingRule": {
       "type": "object",
       "properties": {
         "id": {

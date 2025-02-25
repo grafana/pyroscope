@@ -46,7 +46,7 @@ func (m *ListRecordingRulesResponse) CloneVT() *ListRecordingRulesResponse {
 	}
 	r := new(ListRecordingRulesResponse)
 	if rhs := m.Rules; rhs != nil {
-		tmpContainer := make([]*RecordingRule_API, len(rhs))
+		tmpContainer := make([]*RecordingRule, len(rhs))
 		for k, v := range rhs {
 			tmpContainer[k] = v.CloneVT()
 		}
@@ -152,11 +152,11 @@ func (m *DeleteRecordingRuleResponse) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
-func (m *RecordingRule_API) CloneVT() *RecordingRule_API {
+func (m *RecordingRule) CloneVT() *RecordingRule {
 	if m == nil {
-		return (*RecordingRule_API)(nil)
+		return (*RecordingRule)(nil)
 	}
-	r := new(RecordingRule_API)
+	r := new(RecordingRule)
 	r.Id = m.Id
 	r.MetricName = m.MetricName
 	r.ProfileType = m.ProfileType
@@ -189,15 +189,15 @@ func (m *RecordingRule_API) CloneVT() *RecordingRule_API {
 	return r
 }
 
-func (m *RecordingRule_API) CloneMessageVT() proto.Message {
+func (m *RecordingRule) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
-func (m *RecordingRule_Store) CloneVT() *RecordingRule_Store {
+func (m *RecordingRuleStore) CloneVT() *RecordingRuleStore {
 	if m == nil {
-		return (*RecordingRule_Store)(nil)
+		return (*RecordingRuleStore)(nil)
 	}
-	r := new(RecordingRule_Store)
+	r := new(RecordingRuleStore)
 	r.Id = m.Id
 	r.MetricName = m.MetricName
 	r.PrometheusDataSource = m.PrometheusDataSource
@@ -230,18 +230,18 @@ func (m *RecordingRule_Store) CloneVT() *RecordingRule_Store {
 	return r
 }
 
-func (m *RecordingRule_Store) CloneMessageVT() proto.Message {
+func (m *RecordingRuleStore) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
-func (m *RecordingRules_Store) CloneVT() *RecordingRules_Store {
+func (m *RecordingRulesStore) CloneVT() *RecordingRulesStore {
 	if m == nil {
-		return (*RecordingRules_Store)(nil)
+		return (*RecordingRulesStore)(nil)
 	}
-	r := new(RecordingRules_Store)
+	r := new(RecordingRulesStore)
 	r.Generation = m.Generation
 	if rhs := m.Rules; rhs != nil {
-		tmpContainer := make([]*RecordingRule_Store, len(rhs))
+		tmpContainer := make([]*RecordingRuleStore, len(rhs))
 		for k, v := range rhs {
 			tmpContainer[k] = v.CloneVT()
 		}
@@ -254,7 +254,7 @@ func (m *RecordingRules_Store) CloneVT() *RecordingRules_Store {
 	return r
 }
 
-func (m *RecordingRules_Store) CloneMessageVT() proto.Message {
+func (m *RecordingRulesStore) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
@@ -287,10 +287,10 @@ func (this *ListRecordingRulesResponse) EqualVT(that *ListRecordingRulesResponse
 		vy := that.Rules[i]
 		if p, q := vx, vy; p != q {
 			if p == nil {
-				p = &RecordingRule_API{}
+				p = &RecordingRule{}
 			}
 			if q == nil {
-				q = &RecordingRule_API{}
+				q = &RecordingRule{}
 			}
 			if !p.EqualVT(q) {
 				return false
@@ -422,7 +422,7 @@ func (this *DeleteRecordingRuleResponse) EqualMessageVT(thatMsg proto.Message) b
 	}
 	return this.EqualVT(that)
 }
-func (this *RecordingRule_API) EqualVT(that *RecordingRule_API) bool {
+func (this *RecordingRule) EqualVT(that *RecordingRule) bool {
 	if this == that {
 		return true
 	} else if this == nil || that == nil {
@@ -482,14 +482,14 @@ func (this *RecordingRule_API) EqualVT(that *RecordingRule_API) bool {
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
-func (this *RecordingRule_API) EqualMessageVT(thatMsg proto.Message) bool {
-	that, ok := thatMsg.(*RecordingRule_API)
+func (this *RecordingRule) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*RecordingRule)
 	if !ok {
 		return false
 	}
 	return this.EqualVT(that)
 }
-func (this *RecordingRule_Store) EqualVT(that *RecordingRule_Store) bool {
+func (this *RecordingRuleStore) EqualVT(that *RecordingRuleStore) bool {
 	if this == that {
 		return true
 	} else if this == nil || that == nil {
@@ -549,14 +549,14 @@ func (this *RecordingRule_Store) EqualVT(that *RecordingRule_Store) bool {
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
-func (this *RecordingRule_Store) EqualMessageVT(thatMsg proto.Message) bool {
-	that, ok := thatMsg.(*RecordingRule_Store)
+func (this *RecordingRuleStore) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*RecordingRuleStore)
 	if !ok {
 		return false
 	}
 	return this.EqualVT(that)
 }
-func (this *RecordingRules_Store) EqualVT(that *RecordingRules_Store) bool {
+func (this *RecordingRulesStore) EqualVT(that *RecordingRulesStore) bool {
 	if this == that {
 		return true
 	} else if this == nil || that == nil {
@@ -569,10 +569,10 @@ func (this *RecordingRules_Store) EqualVT(that *RecordingRules_Store) bool {
 		vy := that.Rules[i]
 		if p, q := vx, vy; p != q {
 			if p == nil {
-				p = &RecordingRule_Store{}
+				p = &RecordingRuleStore{}
 			}
 			if q == nil {
-				q = &RecordingRule_Store{}
+				q = &RecordingRuleStore{}
 			}
 			if !p.EqualVT(q) {
 				return false
@@ -585,8 +585,8 @@ func (this *RecordingRules_Store) EqualVT(that *RecordingRules_Store) bool {
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
-func (this *RecordingRules_Store) EqualMessageVT(thatMsg proto.Message) bool {
-	that, ok := thatMsg.(*RecordingRules_Store)
+func (this *RecordingRulesStore) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*RecordingRulesStore)
 	if !ok {
 		return false
 	}
@@ -1039,7 +1039,7 @@ func (m *DeleteRecordingRuleResponse) MarshalToSizedBufferVT(dAtA []byte) (int, 
 	return len(dAtA) - i, nil
 }
 
-func (m *RecordingRule_API) MarshalVT() (dAtA []byte, err error) {
+func (m *RecordingRule) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -1052,12 +1052,12 @@ func (m *RecordingRule_API) MarshalVT() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *RecordingRule_API) MarshalToVT(dAtA []byte) (int, error) {
+func (m *RecordingRule) MarshalToVT(dAtA []byte) (int, error) {
 	size := m.SizeVT()
 	return m.MarshalToSizedBufferVT(dAtA[:size])
 }
 
-func (m *RecordingRule_API) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+func (m *RecordingRule) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m == nil {
 		return 0, nil
 	}
@@ -1142,7 +1142,7 @@ func (m *RecordingRule_API) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *RecordingRule_Store) MarshalVT() (dAtA []byte, err error) {
+func (m *RecordingRuleStore) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -1155,12 +1155,12 @@ func (m *RecordingRule_Store) MarshalVT() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *RecordingRule_Store) MarshalToVT(dAtA []byte) (int, error) {
+func (m *RecordingRuleStore) MarshalToVT(dAtA []byte) (int, error) {
 	size := m.SizeVT()
 	return m.MarshalToSizedBufferVT(dAtA[:size])
 }
 
-func (m *RecordingRule_Store) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+func (m *RecordingRuleStore) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m == nil {
 		return 0, nil
 	}
@@ -1243,7 +1243,7 @@ func (m *RecordingRule_Store) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *RecordingRules_Store) MarshalVT() (dAtA []byte, err error) {
+func (m *RecordingRulesStore) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -1256,12 +1256,12 @@ func (m *RecordingRules_Store) MarshalVT() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *RecordingRules_Store) MarshalToVT(dAtA []byte) (int, error) {
+func (m *RecordingRulesStore) MarshalToVT(dAtA []byte) (int, error) {
 	size := m.SizeVT()
 	return m.MarshalToSizedBufferVT(dAtA[:size])
 }
 
-func (m *RecordingRules_Store) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+func (m *RecordingRulesStore) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m == nil {
 		return 0, nil
 	}
@@ -1399,7 +1399,7 @@ func (m *DeleteRecordingRuleResponse) SizeVT() (n int) {
 	return n
 }
 
-func (m *RecordingRule_API) SizeVT() (n int) {
+func (m *RecordingRule) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1449,7 +1449,7 @@ func (m *RecordingRule_API) SizeVT() (n int) {
 	return n
 }
 
-func (m *RecordingRule_Store) SizeVT() (n int) {
+func (m *RecordingRuleStore) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1498,7 +1498,7 @@ func (m *RecordingRule_Store) SizeVT() (n int) {
 	return n
 }
 
-func (m *RecordingRules_Store) SizeVT() (n int) {
+func (m *RecordingRulesStore) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1626,7 +1626,7 @@ func (m *ListRecordingRulesResponse) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Rules = append(m.Rules, &RecordingRule_API{})
+			m.Rules = append(m.Rules, &RecordingRule{})
 			if err := m.Rules[len(m.Rules)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -1933,7 +1933,7 @@ func (m *InsertRecordingRuleResponse) UnmarshalVT(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Rule == nil {
-				m.Rule = &RecordingRule_API{}
+				m.Rule = &RecordingRule{}
 			}
 			if err := m.Rule.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -2095,7 +2095,7 @@ func (m *DeleteRecordingRuleResponse) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *RecordingRule_API) UnmarshalVT(dAtA []byte) error {
+func (m *RecordingRule) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2118,10 +2118,10 @@ func (m *RecordingRule_API) UnmarshalVT(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: RecordingRule_API: wiretype end group for non-group")
+			return fmt.Errorf("proto: RecordingRule: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: RecordingRule_API: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: RecordingRule: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -2380,7 +2380,7 @@ func (m *RecordingRule_API) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *RecordingRule_Store) UnmarshalVT(dAtA []byte) error {
+func (m *RecordingRuleStore) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2403,10 +2403,10 @@ func (m *RecordingRule_Store) UnmarshalVT(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: RecordingRule_Store: wiretype end group for non-group")
+			return fmt.Errorf("proto: RecordingRuleStore: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: RecordingRule_Store: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: RecordingRuleStore: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -2652,7 +2652,7 @@ func (m *RecordingRule_Store) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *RecordingRules_Store) UnmarshalVT(dAtA []byte) error {
+func (m *RecordingRulesStore) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2675,10 +2675,10 @@ func (m *RecordingRules_Store) UnmarshalVT(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: RecordingRules_Store: wiretype end group for non-group")
+			return fmt.Errorf("proto: RecordingRulesStore: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: RecordingRules_Store: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: RecordingRulesStore: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -2710,7 +2710,7 @@ func (m *RecordingRules_Store) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Rules = append(m.Rules, &RecordingRule_Store{})
+			m.Rules = append(m.Rules, &RecordingRuleStore{})
 			if err := m.Rules[len(m.Rules)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
