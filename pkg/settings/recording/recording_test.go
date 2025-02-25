@@ -9,6 +9,48 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
+func Test_validateGet(t *testing.T) {
+	tests := []struct {
+		Name    string
+		Req     *settingsv1.GetRecordingRuleRequest
+		WantErr string
+	}{
+		{
+			Name: "valid",
+			Req: &settingsv1.GetRecordingRuleRequest{
+				Id: "random",
+			},
+			WantErr: "",
+		},
+		{
+			Name: "valid_with_formatted_fields",
+			Req: &settingsv1.GetRecordingRuleRequest{
+				Id: "  random	",
+			},
+			WantErr: "",
+		},
+		{
+			Name: "empty_id",
+			Req: &settingsv1.GetRecordingRuleRequest{
+				Id: "",
+			},
+			WantErr: "id is required",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			err := validateGet(tt.Req)
+			if tt.WantErr != "" {
+				require.Error(t, err)
+				require.EqualError(t, err, tt.WantErr)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
 func Test_validateInsert(t *testing.T) {
 	tests := []struct {
 		Name    string

@@ -5,9 +5,18 @@ package settings.v1;
 import "types/v1/types.proto";
 
 service RecordingRulesService {
+  rpc GetRecordingRule(GetRecordingRuleRequest) returns (GetRecordingRuleResponse) {}
   rpc ListRecordingRules(ListRecordingRulesRequest) returns (ListRecordingRulesResponse) {}
   rpc InsertRecordingRule(InsertRecordingRuleRequest) returns (InsertRecordingRuleResponse) {}
   rpc DeleteRecordingRule(DeleteRecordingRuleRequest) returns (DeleteRecordingRuleResponse) {}
+}
+
+message GetRecordingRuleRequest {
+  string id = 1;
+}
+
+message GetRecordingRuleResponse {
+  RecordingRule rule = 1;
 }
 
 message ListRecordingRulesRequest {}

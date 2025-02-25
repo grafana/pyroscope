@@ -29,6 +29,29 @@ type bucketStore struct {
 	store  *store.GenericStore[*settingsv1.RecordingRuleStore, *storeHelper]
 }
 
+func (b *bucketStore) Get(ctx context.Context, id string) (*settingsv1.RecordingRuleStore, error) {
+	var rule *settingsv1.RecordingRuleStore
+	err := b.store.Read(ctx, func(ctx context.Context, c *store.Collection[*settingsv1.RecordingRuleStore]) error {
+		for _, r := range c.Elements {
+			if r.Id != id {
+				continue
+			}
+
+			rule = r
+			break
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if rule == nil {
+		return nil, fmt.Errorf("rule %s not found", id)
+	}
+	return rule, nil
+}
+
 func (b *bucketStore) List(ctx context.Context) (*settingsv1.RecordingRulesStore, error) {
 	var rules *settingsv1.RecordingRulesStore
 	err := b.store.Read(ctx, func(ctx context.Context, c *store.Collection[*settingsv1.RecordingRuleStore]) error {

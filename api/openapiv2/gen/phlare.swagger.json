@@ -1177,6 +1177,14 @@
         }
       }
     },
+    "v1GetRecordingRuleResponse": {
+      "type": "object",
+      "properties": {
+        "rule": {
+          "$ref": "#/definitions/v1RecordingRule"
+        }
+      }
+    },
     "v1GetSettingsResponse": {
       "type": "object",
       "properties": {

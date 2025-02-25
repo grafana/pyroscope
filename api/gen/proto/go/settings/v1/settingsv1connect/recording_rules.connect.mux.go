@@ -19,6 +19,11 @@ const _ = connect.IsAtLeastVersion0_1_0
 // RegisterRecordingRulesServiceHandler register an HTTP handler to a mux.Router from the service
 // implementation.
 func RegisterRecordingRulesServiceHandler(mux *mux.Router, svc RecordingRulesServiceHandler, opts ...connect.HandlerOption) {
+	mux.Handle("/settings.v1.RecordingRulesService/GetRecordingRule", connect.NewUnaryHandler(
+		"/settings.v1.RecordingRulesService/GetRecordingRule",
+		svc.GetRecordingRule,
+		opts...,
+	))
 	mux.Handle("/settings.v1.RecordingRulesService/ListRecordingRules", connect.NewUnaryHandler(
 		"/settings.v1.RecordingRulesService/ListRecordingRules",
 		svc.ListRecordingRules,

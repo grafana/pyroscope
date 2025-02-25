@@ -43,6 +43,28 @@ type RecordingRules struct {
 	stores map[store.Key]*bucketStore
 }
 
+func (r *RecordingRules) GetRecordingRule(ctx context.Context, req *connect.Request[settingsv1.GetRecordingRuleRequest]) (*connect.Response[settingsv1.GetRecordingRuleResponse], error) {
+	err := validateGet(req.Msg)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	s, err := r.storeForTenant(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	rule, err := s.Get(ctx, req.Msg.Id)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	res := &settingsv1.GetRecordingRuleResponse{
+		Rule: convertRuleToAPI(rule),
+	}
+	return connect.NewResponse(res), nil
+}
+
 func (r *RecordingRules) ListRecordingRules(ctx context.Context, req *connect.Request[settingsv1.ListRecordingRulesRequest]) (*connect.Response[settingsv1.ListRecordingRulesResponse], error) {
 	s, err := r.storeForTenant(ctx)
 	if err != nil {
@@ -140,6 +162,20 @@ func (r *RecordingRules) storeForTenant(ctx context.Context) (*bucketStore, erro
 	tenantStore = newBucketStore(r.logger, r.bucket, key)
 	r.stores[key] = tenantStore
 	return tenantStore, nil
+}
+
+func validateGet(req *settingsv1.GetRecordingRuleRequest) error {
+	// Format fields.
+	req.Id = strings.TrimSpace(req.Id)
+
+	// Validate fields.
+	var errs []error
+
+	if req.Id == "" {
+		errs = append(errs, fmt.Errorf("id is required"))
+	}
+
+	return errors.Join(errs...)
 }
 
 func validateInsert(req *settingsv1.InsertRecordingRuleRequest) error {

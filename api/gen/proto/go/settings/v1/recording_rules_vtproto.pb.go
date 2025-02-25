@@ -24,6 +24,40 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+func (m *GetRecordingRuleRequest) CloneVT() *GetRecordingRuleRequest {
+	if m == nil {
+		return (*GetRecordingRuleRequest)(nil)
+	}
+	r := new(GetRecordingRuleRequest)
+	r.Id = m.Id
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *GetRecordingRuleRequest) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *GetRecordingRuleResponse) CloneVT() *GetRecordingRuleResponse {
+	if m == nil {
+		return (*GetRecordingRuleResponse)(nil)
+	}
+	r := new(GetRecordingRuleResponse)
+	r.Rule = m.Rule.CloneVT()
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *GetRecordingRuleResponse) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
 func (m *ListRecordingRulesRequest) CloneVT() *ListRecordingRulesRequest {
 	if m == nil {
 		return (*ListRecordingRulesRequest)(nil)
@@ -258,6 +292,44 @@ func (m *RecordingRulesStore) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
+func (this *GetRecordingRuleRequest) EqualVT(that *GetRecordingRuleRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.Id != that.Id {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *GetRecordingRuleRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*GetRecordingRuleRequest)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *GetRecordingRuleResponse) EqualVT(that *GetRecordingRuleResponse) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if !this.Rule.EqualVT(that.Rule) {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *GetRecordingRuleResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*GetRecordingRuleResponse)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
 func (this *ListRecordingRulesRequest) EqualVT(that *ListRecordingRulesRequest) bool {
 	if this == that {
 		return true
@@ -602,6 +674,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type RecordingRulesServiceClient interface {
+	GetRecordingRule(ctx context.Context, in *GetRecordingRuleRequest, opts ...grpc.CallOption) (*GetRecordingRuleResponse, error)
 	ListRecordingRules(ctx context.Context, in *ListRecordingRulesRequest, opts ...grpc.CallOption) (*ListRecordingRulesResponse, error)
 	InsertRecordingRule(ctx context.Context, in *InsertRecordingRuleRequest, opts ...grpc.CallOption) (*InsertRecordingRuleResponse, error)
 	DeleteRecordingRule(ctx context.Context, in *DeleteRecordingRuleRequest, opts ...grpc.CallOption) (*DeleteRecordingRuleResponse, error)
@@ -613,6 +686,15 @@ type recordingRulesServiceClient struct {
 
 func NewRecordingRulesServiceClient(cc grpc.ClientConnInterface) RecordingRulesServiceClient {
 	return &recordingRulesServiceClient{cc}
+}
+
+func (c *recordingRulesServiceClient) GetRecordingRule(ctx context.Context, in *GetRecordingRuleRequest, opts ...grpc.CallOption) (*GetRecordingRuleResponse, error) {
+	out := new(GetRecordingRuleResponse)
+	err := c.cc.Invoke(ctx, "/settings.v1.RecordingRulesService/GetRecordingRule", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *recordingRulesServiceClient) ListRecordingRules(ctx context.Context, in *ListRecordingRulesRequest, opts ...grpc.CallOption) (*ListRecordingRulesResponse, error) {
@@ -646,6 +728,7 @@ func (c *recordingRulesServiceClient) DeleteRecordingRule(ctx context.Context, i
 // All implementations must embed UnimplementedRecordingRulesServiceServer
 // for forward compatibility
 type RecordingRulesServiceServer interface {
+	GetRecordingRule(context.Context, *GetRecordingRuleRequest) (*GetRecordingRuleResponse, error)
 	ListRecordingRules(context.Context, *ListRecordingRulesRequest) (*ListRecordingRulesResponse, error)
 	InsertRecordingRule(context.Context, *InsertRecordingRuleRequest) (*InsertRecordingRuleResponse, error)
 	DeleteRecordingRule(context.Context, *DeleteRecordingRuleRequest) (*DeleteRecordingRuleResponse, error)
@@ -656,6 +739,9 @@ type RecordingRulesServiceServer interface {
 type UnimplementedRecordingRulesServiceServer struct {
 }
 
+func (UnimplementedRecordingRulesServiceServer) GetRecordingRule(context.Context, *GetRecordingRuleRequest) (*GetRecordingRuleResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetRecordingRule not implemented")
+}
 func (UnimplementedRecordingRulesServiceServer) ListRecordingRules(context.Context, *ListRecordingRulesRequest) (*ListRecordingRulesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListRecordingRules not implemented")
 }
@@ -676,6 +762,24 @@ type UnsafeRecordingRulesServiceServer interface {
 
 func RegisterRecordingRulesServiceServer(s grpc.ServiceRegistrar, srv RecordingRulesServiceServer) {
 	s.RegisterService(&RecordingRulesService_ServiceDesc, srv)
+}
+
+func _RecordingRulesService_GetRecordingRule_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRecordingRuleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RecordingRulesServiceServer).GetRecordingRule(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/settings.v1.RecordingRulesService/GetRecordingRule",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RecordingRulesServiceServer).GetRecordingRule(ctx, req.(*GetRecordingRuleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _RecordingRulesService_ListRecordingRules_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -740,6 +844,10 @@ var RecordingRulesService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*RecordingRulesServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
+			MethodName: "GetRecordingRule",
+			Handler:    _RecordingRulesService_GetRecordingRule_Handler,
+		},
+		{
 			MethodName: "ListRecordingRules",
 			Handler:    _RecordingRulesService_ListRecordingRules_Handler,
 		},
@@ -754,6 +862,89 @@ var RecordingRulesService_ServiceDesc = grpc.ServiceDesc{
 	},
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "settings/v1/recording_rules.proto",
+}
+
+func (m *GetRecordingRuleRequest) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *GetRecordingRuleRequest) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *GetRecordingRuleRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.Id) > 0 {
+		i -= len(m.Id)
+		copy(dAtA[i:], m.Id)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Id)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *GetRecordingRuleResponse) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *GetRecordingRuleResponse) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *GetRecordingRuleResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.Rule != nil {
+		size, err := m.Rule.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *ListRecordingRulesRequest) MarshalVT() (dAtA []byte, err error) {
@@ -1293,6 +1484,34 @@ func (m *RecordingRulesStore) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *GetRecordingRuleRequest) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Id)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *GetRecordingRuleResponse) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Rule != nil {
+		l = m.Rule.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
 func (m *ListRecordingRulesRequest) SizeVT() (n int) {
 	if m == nil {
 		return 0
@@ -1517,6 +1736,176 @@ func (m *RecordingRulesStore) SizeVT() (n int) {
 	return n
 }
 
+func (m *GetRecordingRuleRequest) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: GetRecordingRuleRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: GetRecordingRuleRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Id = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *GetRecordingRuleResponse) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: GetRecordingRuleResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: GetRecordingRuleResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Rule", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Rule == nil {
+				m.Rule = &RecordingRule{}
+			}
+			if err := m.Rule.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func (m *ListRecordingRulesRequest) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
