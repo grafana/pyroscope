@@ -16,8 +16,6 @@ builds:
     goarch:
       - amd64
       - arm64
-    goamd64:
-      - v2
     main: ./cmd/pyroscope
     mod_timestamp: "{{ .CommitTimestamp }}"
     flags:
@@ -51,8 +49,6 @@ builds:
     goarch:
       - amd64
       - arm64
-    goamd64:
-      - v2
     ignore:
       - goos: windows
         goarch: arm
