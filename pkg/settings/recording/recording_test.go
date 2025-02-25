@@ -1,0 +1,159 @@
+package recording
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+)
+
+func Test_validateInsert(t *testing.T) {
+	type args struct {
+	}
+	tests := []struct {
+		Name    string
+		Req     *settingsv1.InsertRecordingRuleRequest
+		WantErr string
+	}{
+		{
+			Name: "valid",
+			Req: &settingsv1.InsertRecordingRuleRequest{
+				MetricName: "my_metric",
+				Matchers: []string{
+					`{ label_a = "A" }`,
+					`{ label_b =~ "B" }`,
+				},
+				GroupBy: []string{
+					"label_c",
+				},
+				ExternalLabels: []*typesv1.LabelPair{
+					{Name: "label_a", Value: "A"},
+					{Name: "label_b", Value: "B"},
+				},
+				PrometheusDataSource: "my-cortex",
+			},
+		},
+		{
+			Name: "minimal_valid",
+			Req: &settingsv1.InsertRecordingRuleRequest{
+				MetricName:           "my_metric",
+				Matchers:             []string{},
+				GroupBy:              []string{},
+				ExternalLabels:       []*typesv1.LabelPair{},
+				PrometheusDataSource: "my-cortex",
+			},
+			WantErr: "",
+		},
+		{
+			Name: "valid_with_formatted_fields",
+			Req: &settingsv1.InsertRecordingRuleRequest{
+				MetricName:           "  my_metric	",
+				Matchers:             []string{},
+				GroupBy:              []string{},
+				ExternalLabels:       []*typesv1.LabelPair{},
+				PrometheusDataSource: "  my-cortex	",
+			},
+			WantErr: "",
+		},
+		{
+			Name: "empty_metric_name",
+			Req: &settingsv1.InsertRecordingRuleRequest{
+				MetricName:           "",
+				Matchers:             []string{},
+				GroupBy:              []string{},
+				ExternalLabels:       []*typesv1.LabelPair{},
+				PrometheusDataSource: "my-cortex",
+			},
+			WantErr: "metric_name is required",
+		},
+		{
+			Name: "invalid_metric_name",
+			Req: &settingsv1.InsertRecordingRuleRequest{
+				MetricName:           string([]byte{0xC0, 0xAF}), // invalid utf-8
+				Matchers:             []string{},
+				GroupBy:              []string{},
+				ExternalLabels:       []*typesv1.LabelPair{},
+				PrometheusDataSource: "my-cortex",
+			},
+			WantErr: `metric_name "\xc0\xaf" must be a valid utf-8 string`,
+		},
+		{
+			Name: "invalid_matchers",
+			Req: &settingsv1.InsertRecordingRuleRequest{
+				MetricName: "my_metric",
+				Matchers: []string{
+					"",
+				},
+				GroupBy:              []string{},
+				ExternalLabels:       []*typesv1.LabelPair{},
+				PrometheusDataSource: "my-cortex",
+			},
+			WantErr: `matcher "" is invalid: unknown position: parse error: unexpected end of input`,
+		},
+		{
+			Name: "invalid_group_by",
+			Req: &settingsv1.InsertRecordingRuleRequest{
+				MetricName: "my_metric",
+				Matchers:   []string{},
+				GroupBy: []string{
+					"",
+				},
+				ExternalLabels:       []*typesv1.LabelPair{},
+				PrometheusDataSource: "my-cortex",
+			},
+			WantErr: `group_by label "" must match ^[a-zA-Z_][a-zA-Z0-9_]*$`,
+		},
+		{
+			Name: "invalid_external_label",
+			Req: &settingsv1.InsertRecordingRuleRequest{
+				MetricName: "my_metric",
+				Matchers:   []string{},
+				GroupBy:    []string{},
+				ExternalLabels: []*typesv1.LabelPair{
+					{
+						Name:  string([]byte{0xC0, 0xAF}), // invalid utf-8
+						Value: string([]byte{0xC0, 0xAF}), // invalid utf-8
+					},
+				},
+				PrometheusDataSource: "my-cortex",
+			},
+			WantErr: "external_labels name \"\\xc0\\xaf\" must be a valid utf-8 string\nexternal_labels value \"\\xc0\\xaf\" must be a valid utf-8 string",
+		},
+		{
+			Name: "empty_prometheus_data_source",
+			Req: &settingsv1.InsertRecordingRuleRequest{
+				MetricName:           "my_metric",
+				Matchers:             []string{},
+				GroupBy:              []string{},
+				ExternalLabels:       []*typesv1.LabelPair{},
+				PrometheusDataSource: "",
+			},
+			WantErr: "prometheus_data_source is required",
+		},
+		{
+			Name: "multiple_errors",
+			Req: &settingsv1.InsertRecordingRuleRequest{
+				MetricName:           "",
+				Matchers:             []string{},
+				GroupBy:              []string{},
+				ExternalLabels:       []*typesv1.LabelPair{},
+				PrometheusDataSource: "",
+			},
+			WantErr: "metric_name is required\nprometheus_data_source is required",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			err := validateInsert(tt.Req)
+			if tt.WantErr != "" {
+				require.Error(t, err)
+				require.EqualError(t, err, tt.WantErr)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}

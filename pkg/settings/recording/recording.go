@@ -153,7 +153,33 @@ func validateInsert(req *settingsv1.InsertRecordingRuleRequest) error {
 	if req.MetricName == "" {
 		errs = append(errs, fmt.Errorf("metric_name is required"))
 	} else if !prom.IsValidMetricName(prom.LabelValue(req.MetricName)) {
-		errs = append(errs, fmt.Errorf("metric_name %q must match %s", req.MetricName, prom.MetricNameRE.String()))
+		errs = append(errs, fmt.Errorf("metric_name %q must be a valid utf-8 string", req.MetricName))
+	}
+
+	for _, m := range req.Matchers {
+		_, err := parser.ParseMetricSelector(m)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("matcher %q is invalid: %v", m, err))
+		}
+	}
+
+	for _, l := range req.GroupBy {
+		name := prom.LabelName(l)
+		if !name.IsValid() {
+			errs = append(errs, fmt.Errorf("group_by label %q must match %s", l, prom.LabelNameRE.String()))
+		}
+	}
+
+	for _, l := range req.ExternalLabels {
+		name := prom.LabelName(l.Name)
+		if !name.IsValid() {
+			errs = append(errs, fmt.Errorf("external_labels name %q must be a valid utf-8 string", l.Name))
+		}
+
+		value := prom.LabelValue(l.Value)
+		if !value.IsValid() {
+			errs = append(errs, fmt.Errorf("external_labels value %q must be a valid utf-8 string", l.Value))
+		}
 	}
 
 	if req.PrometheusDataSource == "" {
