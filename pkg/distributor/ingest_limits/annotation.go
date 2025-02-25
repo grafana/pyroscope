@@ -1,0 +1,54 @@
+package ingest_limits
+
+import (
+	"encoding/json"
+)
+
+func CreateTenantAnnotation(c *Config) ([]byte, error) {
+	annotation := &ProfileAnnotation{
+		Type: ProfileAnnotationTypeThrottled,
+		Body: ThrottledAnnotation{
+			PeriodType:        c.PeriodType,
+			PeriodLimitMb:     c.PeriodLimitMb,
+			LimitResetTime:    c.LimitResetTime,
+			SamplingPeriodSec: int(c.Sampling.Period.Seconds()),
+			SamplingRequests:  c.Sampling.NumRequests,
+		},
+	}
+	return json.Marshal(annotation)
+}
+
+func CreateUsageGroupAnnotation(c *Config, usageGroup string) ([]byte, error) {
+	annotation := &ProfileAnnotation{
+		Type: ProfileAnnotationTypeThrottled,
+		Body: ThrottledAnnotation{
+			PeriodType:        c.PeriodType,
+			PeriodLimitMb:     c.PeriodLimitMb,
+			LimitResetTime:    c.LimitResetTime,
+			SamplingPeriodSec: int(c.Sampling.Period.Seconds()),
+			SamplingRequests:  c.Sampling.NumRequests,
+			UsageGroup:        usageGroup,
+		},
+	}
+	return json.Marshal(annotation)
+}
+
+type ProfileAnnotation struct {
+	Type ProfileAnnotationType `json:"type"`
+	Body interface{}           `json:"body"`
+}
+
+type ProfileAnnotationType string
+
+const (
+	ProfileAnnotationTypeThrottled ProfileAnnotationType = "throttled"
+)
+
+type ThrottledAnnotation struct {
+	PeriodType        string `json:"periodType"`
+	PeriodLimitMb     int    `json:"periodLimitMb"`
+	LimitResetTime    int64  `json:"limitResetTime"`
+	SamplingPeriodSec int    `json:"samplingPeriodSec"`
+	SamplingRequests  int    `yaml:"samplingRequests"`
+	UsageGroup        string `json:"usageGroup"`
+}

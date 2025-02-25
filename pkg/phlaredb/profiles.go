@@ -333,6 +333,10 @@ func (p ProfileWithLabels) Total() int64 {
 	return int64(p.profile.TotalValue)
 }
 
+func (p ProfileWithLabels) Annotations() []string {
+	return p.profile.Annotations
+}
+
 type SeriesIterator struct {
 	iter.Iterator[*schemav1.InMemoryProfile]
 	curr ProfileWithLabels

@@ -225,6 +225,7 @@ func mergeByLabelsWithStackTraceSelector[T Profile](
 		if err = r.CallSiteValuesParquet(&v, h.StacktracePartition(), row.Values[0], row.Values[1]); err != nil {
 			return nil, err
 		}
+		// TODO aleks-p: add annotation support
 		seriesBuilder.Add(h.Fingerprint(), h.Labels(), int64(h.Timestamp()), float64(v.Total), nil)
 	}
 
