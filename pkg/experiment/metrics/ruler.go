@@ -55,26 +55,33 @@ func (r StaticRuler) RecordingRules(tenant string) []*model.RecordingRule {
 	return r.rules[tenant]
 }
 
-// TenantSettingsRuler is a thread-safe ruler that retrieves rules from tenant-settings service.
+// CachedRemoteRuler is a thread-safe ruler that retrieves rules from an external service.
 // It has a per-tenant cache: rulesPerTenant
-type TenantSettingsRuler struct {
+type CachedRemoteRuler struct {
 	rulesPerTenant map[string]*tenantCache
 	mu             sync.RWMutex
 
-	client settingsv1.SettingsServiceClient
+	client RecordingRulesClient
+
+	logger log.Logger
 }
 
-func NewTenantSettingsRuler(client settingsv1.SettingsServiceClient) (Ruler, error) {
-	return &TenantSettingsRuler{
+type RecordingRulesClient interface {
+	RecordingRules(tenant string) ([]*model.RecordingRule, error)
+}
+
+func NewCachedRemoteRuler(client RecordingRulesClient, logger log.Logger) (Ruler, error) {
+	return &CachedRemoteRuler{
 		rulesPerTenant: make(map[string]*tenantCache),
 		client:         client,
+		logger:         logger,
 	}, nil
 }
 
-func (r *TenantSettingsRuler) RecordingRules(tenant string) []*model.RecordingRule {
+func (r *CachedRemoteRuler) RecordingRules(tenant string) []*model.RecordingRule {
 	// get the per-tenant cache
 	r.mu.RLock()
-	rules, ok := r.rulesPerTenant[tenant]
+	cache, ok := r.rulesPerTenant[tenant]
 	r.mu.RUnlock()
 
 	// There's no cache for given tenant: init it
@@ -83,33 +90,29 @@ func (r *TenantSettingsRuler) RecordingRules(tenant string) []*model.RecordingRu
 		defer r.mu.Unlock()
 
 		// only race-winner will initialize the per-tenant cache
-		rules, ok = r.rulesPerTenant[tenant]
+		cache, ok = r.rulesPerTenant[tenant]
 		if !ok {
-			rules = &tenantCache{
-				initFunc: func() []*model.RecordingRule {
-					return r.fetchRecordingRules(tenant)
+			cache = &tenantCache{
+				initFunc: func() ([]*model.RecordingRule, error) {
+					return r.client.RecordingRules(tenant)
 				},
+				logger: r.logger,
 			}
-			r.rulesPerTenant[tenant] = rules
+			r.rulesPerTenant[tenant] = cache
 		}
 	}
 
 	// get data from cache:
-	return rules.get()
-}
-
-func (r *TenantSettingsRuler) fetchRecordingRules(tenant string) []*model.RecordingRule {
-	// TODO missing client func
-	// get and parse rules from r.client.GetRecordingRules()
-	return []*model.RecordingRule{}
+	return cache.get()
 }
 
 // tenantCache is a thread-safe cache that holds an expirable array of rules.
 type tenantCache struct {
 	value    []*model.RecordingRule
 	ttl      time.Time
-	initFunc func() []*model.RecordingRule
+	initFunc func() ([]*model.RecordingRule, error)
 	mu       sync.RWMutex
+	logger   log.Logger
 }
 
 // get returns the stored value if present and not expired.
@@ -118,7 +121,7 @@ type tenantCache struct {
 func (c *tenantCache) get() []*model.RecordingRule {
 	c.mu.RLock()
 	if c.value != nil && time.Now().Before(c.ttl) {
-		defer c.mu.Unlock()
+		defer c.mu.RUnlock()
 		// value exists and didn't expired
 		return c.value
 	}
@@ -129,8 +132,14 @@ func (c *tenantCache) get() []*model.RecordingRule {
 
 	// only race-winner will fetch the data
 	if c.value == nil || time.Now().After(c.ttl) {
-		c.value = c.initFunc()
-		c.ttl = time.Now().Add(rulesExpiryTime)
+		value, err := c.initFunc()
+		if err != nil {
+			// keep old value and ttl, just log an error
+			level.Error(c.logger).Log("msg", "failed to fetch recording rules", "err", err)
+		} else {
+			c.value = value
+			c.ttl = time.Now().Add(rulesExpiryTime)
+		}
 	}
 	return c.value
 }

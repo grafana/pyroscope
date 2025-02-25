@@ -68,6 +68,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/scheduler"
 	"github.com/grafana/pyroscope/pkg/scheduler/schedulerdiscovery"
 	"github.com/grafana/pyroscope/pkg/settings"
+	recordingrulesclient "github.com/grafana/pyroscope/pkg/settings/recording/client"
 	"github.com/grafana/pyroscope/pkg/storegateway"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/tracing"
@@ -359,17 +360,18 @@ type Phlare struct {
 	frontend *frontend.Frontend
 
 	// Experimental modules.
-	segmentWriter       *segmentwriter.SegmentWriterService
-	segmentWriterClient *segmentwriterclient.Client
-	segmentWriterRing   *ring.Ring
-	placementAgent      *adaptiveplacement.Agent
-	placementManager    *adaptiveplacement.Manager
-	metastore           *metastore.Metastore
-	metastoreClient     *metastoreclient.Client
-	metastoreAdmin      *metastoreadmin.Admin
-	queryBackendClient  *querybackendclient.Client
-	compactionWorker    *compactionworker.Worker
-	healthServer        *health.Server
+	segmentWriter        *segmentwriter.SegmentWriterService
+	segmentWriterClient  *segmentwriterclient.Client
+	segmentWriterRing    *ring.Ring
+	placementAgent       *adaptiveplacement.Agent
+	placementManager     *adaptiveplacement.Manager
+	metastore            *metastore.Metastore
+	metastoreClient      *metastoreclient.Client
+	metastoreAdmin       *metastoreadmin.Admin
+	queryBackendClient   *querybackendclient.Client
+	compactionWorker     *compactionworker.Worker
+	healthServer         *health.Server
+	recordingRulesClient *recordingrulesclient.Client
 }
 
 func New(cfg Config) (*Phlare, error) {
@@ -485,7 +487,7 @@ func (f *Phlare) setupModuleManager() error {
 			SegmentWriter:       {Overrides, API, MemberlistKV, Storage, UsageReport, MetastoreClient},
 			Metastore:           {Overrides, API, MetastoreClient, Storage, PlacementManager},
 			MetastoreAdmin:      {API, MetastoreClient},
-			CompactionWorker:    {Overrides, API, Storage, MetastoreClient},
+			CompactionWorker:    {Overrides, API, Storage, MetastoreClient, RecordingRulesClient},
 			QueryBackend:        {Overrides, API, Storage, QueryBackendClient},
 			SegmentWriterRing:   {Overrides, API, MemberlistKV},
 			SegmentWriterClient: {Overrides, API, SegmentWriterRing, PlacementAgent},
@@ -515,6 +517,7 @@ func (f *Phlare) setupModuleManager() error {
 		mm.RegisterModule(PlacementAgent, f.initPlacementAgent, modules.UserInvisibleModule)
 		mm.RegisterModule(PlacementManager, f.initPlacementManager, modules.UserInvisibleModule)
 		mm.RegisterModule(HealthServer, f.initHealthServer, modules.UserInvisibleModule)
+		mm.RegisterModule(RecordingRulesClient, f.initTenantSettingsClient, modules.UserInvisibleModule)
 	}
 
 	for mod, targets := range deps {
