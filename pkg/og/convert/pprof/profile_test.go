@@ -1,12 +1,16 @@
 package pprof
 
 import (
-	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
-	"github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/stretchr/testify/assert"
 	"testing"
 
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
+	"github.com/grafana/pyroscope/pkg/og/storage/tree"
+	"github.com/grafana/pyroscope/pkg/pprof"
+	"github.com/stretchr/testify/assert"
+
+	"github.com/grafana/pyroscope/api/model/labelset"
 	"github.com/grafana/pyroscope/pkg/og/ingestion"
 	"github.com/stretchr/testify/require"
 )
@@ -78,4 +82,52 @@ func TestFixFunctionNamesForScriptingLanguages(t *testing.T) {
 	assert.Equal(t, "qwe.py:242 - main", functionNameFromLocation(profile.Location[0].Id))
 	assert.Equal(t, "qwe.py:50 - func1", functionNameFromLocation(profile.Location[1].Id))
 	assert.Equal(t, "qwe.py:8 - func2", functionNameFromLocation(profile.Location[2].Id))
+}
+
+func TestCreateLabelsWithExistingServiceName(t *testing.T) {
+	p := RawProfile{
+		SampleTypeConfig: map[string]*tree.SampleTypeConfig{
+			"samples": {
+				DisplayName: "samples",
+				Units:       "count",
+			},
+		},
+	}
+
+	// Create a proper pprof.Profile with sample types
+	profile := &pprof.Profile{
+		Profile: &profilev1.Profile{
+			SampleType: []*profilev1.ValueType{
+				{
+					Type: 1,
+					Unit: 2,
+				},
+			},
+			StringTable: []string{"", "samples", "count"},
+		},
+	}
+
+	// Create a LabelSet with service_name
+	labelMap := map[string]string{
+		"service_name": "existing-service",
+		"region":       "us-west",
+	}
+
+	md := ingestion.Metadata{
+		LabelSet: labelset.New(labelMap),
+	}
+	labels := p.createLabels(profile, md)
+
+	// Check for the service_name label
+	serviceNameLabel := &v1.LabelPair{Name: "service_name", Value: "existing-service"}
+	assert.Contains(t, labels, serviceNameLabel, "Should contain the service_name label with correct value")
+
+	// Filter all service_name labels to verify there's only one
+	serviceNameLabels := []*v1.LabelPair{}
+	for _, label := range labels {
+		if label.Name == "service_name" {
+			serviceNameLabels = append(serviceNameLabels, label)
+		}
+	}
+	assert.Len(t, serviceNameLabels, 1, "Should have exactly one service_name label")
 }
