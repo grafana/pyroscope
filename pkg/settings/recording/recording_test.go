@@ -10,8 +10,6 @@ import (
 )
 
 func Test_validateInsert(t *testing.T) {
-	type args struct {
-	}
 	tests := []struct {
 		Name    string
 		Req     *settingsv1.InsertRecordingRuleRequest
@@ -34,6 +32,7 @@ func Test_validateInsert(t *testing.T) {
 				},
 				PrometheusDataSource: "my-cortex",
 			},
+			WantErr: "",
 		},
 		{
 			Name: "minimal_valid",
@@ -148,6 +147,48 @@ func Test_validateInsert(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.Name, func(t *testing.T) {
 			err := validateInsert(tt.Req)
+			if tt.WantErr != "" {
+				require.Error(t, err)
+				require.EqualError(t, err, tt.WantErr)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func Test_validateDelete(t *testing.T) {
+	tests := []struct {
+		Name    string
+		Req     *settingsv1.DeleteRecordingRuleRequest
+		WantErr string
+	}{
+		{
+			Name: "valid",
+			Req: &settingsv1.DeleteRecordingRuleRequest{
+				Id: "random",
+			},
+			WantErr: "",
+		},
+		{
+			Name: "valid_with_formatted_fields",
+			Req: &settingsv1.DeleteRecordingRuleRequest{
+				Id: "  random	",
+			},
+			WantErr: "",
+		},
+		{
+			Name: "empty_id",
+			Req: &settingsv1.DeleteRecordingRuleRequest{
+				Id: "",
+			},
+			WantErr: "id is required",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			err := validateDelete(tt.Req)
 			if tt.WantErr != "" {
 				require.Error(t, err)
 				require.EqualError(t, err, tt.WantErr)
