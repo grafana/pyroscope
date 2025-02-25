@@ -27,6 +27,13 @@ GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 GIT_LAST_COMMIT_DATE := $(shell git log -1 --date=iso-strict --format=%cd)
 EMBEDASSETS ?= embedassets
 
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+	NPROC := $(shell sysctl -n hw.physicalcpu)
+else
+	NPROC := $(shell nproc)
+endif
+
 # Build flags
 VPREFIX := github.com/grafana/pyroscope/pkg/util/build
 GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH) -X $(VPREFIX).Version=$(IMAGE_TAG) -X $(VPREFIX).Revision=$(GIT_REVISION) -X $(VPREFIX).BuildDate=$(GIT_LAST_COMMIT_DATE)
@@ -113,19 +120,19 @@ release/prereq: $(BIN)/goreleaser ## Ensure release pre requesites are met
 
 .PHONY: release
 release: release/prereq ## Create a release
-	$(BIN)/goreleaser release -p=$(shell nproc) --rm-dist
+	$(BIN)/goreleaser release -p=$(NPROC) --clean
 
 .PHONY: release/prepare
 release/prepare: release/prereq ## Prepare a release
-	$(BIN)/goreleaser release -p=$(shell nproc) --rm-dist --snapshot
+	$(BIN)/goreleaser release -p=$(NPROC) --clean --snapshot
 
 .PHONY: release/build/all
 release/build/all: release/prereq ## Build all release binaries
-	$(BIN)/goreleaser build -p=$(shell nproc) --rm-dist --snapshot
+	$(BIN)/goreleaser build -p=$(NPROC) --clean --snapshot
 
 .PHONY: release/build
 release/build: release/prereq ## Build current platform release binaries
-	$(BIN)/goreleaser build -p=$(shell nproc) --rm-dist --snapshot --single-target
+	$(BIN)/goreleaser build -p=$(NPROC) --clean --snapshot --single-target
 
 .PHONY: go/deps
 go/deps:
@@ -400,7 +407,7 @@ $(BIN)/updater: Makefile
 # Note: When updating the goreleaser version also update .github/workflow/release.yml and .git/workflow/weekly-release.yaml
 $(BIN)/goreleaser: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/goreleaser/goreleaser/v2@v2.0.0
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/goreleaser/goreleaser/v2@v2.7.0
 
 $(BIN)/gotestsum: Makefile go.mod
 	@mkdir -p $(@D)

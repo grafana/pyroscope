@@ -55,7 +55,7 @@ jobs:
       - uses: goreleaser/goreleaser-action@v6
         with:
           # ensure this aligns with the version specified in the /Makefile
-          version: v2.0.1
+          version: v2.7.0
           args: release --clean --timeout 60m
         env:
           GITHUB_TOKEN: ${{ steps.app-goreleaser.outputs.token }}
