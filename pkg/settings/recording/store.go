@@ -51,10 +51,6 @@ func (b *bucketStore) Insert(ctx context.Context, newRule *settingsv1.RecordingR
 			if rule.Id == newRule.Id {
 				return fmt.Errorf("recording rule %s already exists", newRule.Id)
 			}
-
-			if rule.MetricName == newRule.MetricName {
-				return fmt.Errorf("recording rule with name %s already exists", newRule.MetricName)
-			}
 		}
 
 		c.Elements = append(c.Elements, newRule)
