@@ -73,6 +73,10 @@ jobs:
             IMAGE_AMMENDS+=( "--amend" "${new_image}" )
           done
 
+          if (( ${#IMAGE_AMMENDS[@]} < 2 )); then
+            echo "expected at least two architectures for multi-arch docker images"
+          fi
+
           docker manifest create "grafana/pyroscope:${WEEKLY_IMAGE_TAG}" "${IMAGE_AMMENDS[@]}"
           docker manifest push "grafana/pyroscope:${WEEKLY_IMAGE_TAG}"
       - name: Get github app token (valid for an hour)
