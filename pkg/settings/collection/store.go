@@ -63,7 +63,7 @@ func (_ *storeHelper) ID(v *settingsv1.GetCollectionRuleResponse) string {
 	return v.Name
 }
 
-func (_ storeHelper) TypePath() string { return "settings/collection.v1" }
+func (_ *storeHelper) TypePath() string { return "settings/collection.v1" }
 
 // write through cache for the bucket
 type bucketStore struct {

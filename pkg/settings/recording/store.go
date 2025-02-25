@@ -97,6 +97,6 @@ func (_ *storeHelper) ID(rule *settingsv1.RecordingRuleStore) string {
 	return rule.Id
 }
 
-func (_ storeHelper) TypePath() string {
+func (_ *storeHelper) TypePath() string {
 	return "settings/recording_rule.v1"
 }
