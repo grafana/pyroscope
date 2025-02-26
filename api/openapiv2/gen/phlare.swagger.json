@@ -1958,9 +1958,6 @@
             "type": "object",
             "$ref": "#/definitions/v1LabelPair"
           }
-        },
-        "prometheusDataSource": {
-          "type": "string"
         }
       }
     },

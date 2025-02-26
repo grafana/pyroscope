@@ -98,12 +98,11 @@ func (r *RecordingRules) InsertRecordingRule(ctx context.Context, req *connect.R
 	}
 
 	newRule := &settingsv1.RecordingRuleStore{
-		Id:                   generateID(10),
-		MetricName:           req.Msg.MetricName,
-		Matchers:             req.Msg.Matchers,
-		GroupBy:              req.Msg.GroupBy,
-		ExternalLabels:       req.Msg.ExternalLabels,
-		PrometheusDataSource: req.Msg.PrometheusDataSource,
+		Id:             generateID(10),
+		MetricName:     req.Msg.MetricName,
+		Matchers:       req.Msg.Matchers,
+		GroupBy:        req.Msg.GroupBy,
+		ExternalLabels: req.Msg.ExternalLabels,
 	}
 	newRule, err = s.Insert(ctx, newRule)
 	if err != nil {
@@ -181,7 +180,6 @@ func validateGet(req *settingsv1.GetRecordingRuleRequest) error {
 func validateInsert(req *settingsv1.InsertRecordingRuleRequest) error {
 	// Format fields.
 	req.MetricName = strings.TrimSpace(req.MetricName)
-	req.PrometheusDataSource = strings.TrimSpace(req.PrometheusDataSource)
 
 	// Validate fields.
 	var errs []error
@@ -218,10 +216,6 @@ func validateInsert(req *settingsv1.InsertRecordingRuleRequest) error {
 		}
 	}
 
-	if req.PrometheusDataSource == "" {
-		errs = append(errs, fmt.Errorf("prometheus_data_source is required"))
-	}
-
 	return errors.Join(errs...)
 }
 
@@ -241,13 +235,12 @@ func validateDelete(req *settingsv1.DeleteRecordingRuleRequest) error {
 
 func convertRuleToAPI(rule *settingsv1.RecordingRuleStore) *settingsv1.RecordingRule {
 	apiRule := &settingsv1.RecordingRule{
-		Id:                   rule.Id,
-		MetricName:           rule.MetricName,
-		ProfileType:          "unknown",
-		Matchers:             rule.Matchers,
-		GroupBy:              rule.GroupBy,
-		ExternalLabels:       rule.ExternalLabels,
-		PrometheusDataSource: rule.PrometheusDataSource,
+		Id:             rule.Id,
+		MetricName:     rule.MetricName,
+		ProfileType:    "unknown",
+		Matchers:       rule.Matchers,
+		GroupBy:        rule.GroupBy,
+		ExternalLabels: rule.ExternalLabels,
 	}
 
 	// Try find the profile type from the matchers.

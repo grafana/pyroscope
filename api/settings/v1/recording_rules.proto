@@ -30,7 +30,6 @@ message InsertRecordingRuleRequest {
   repeated string matchers = 2;
   repeated string group_by = 3;
   repeated types.v1.LabelPair external_labels = 4;
-  string prometheus_data_source = 5;
 }
 
 message InsertRecordingRuleResponse {
@@ -50,7 +49,6 @@ message RecordingRule {
   repeated string matchers = 4;
   repeated string group_by = 5;
   repeated types.v1.LabelPair external_labels = 6;
-  string prometheus_data_source = 7;
 }
 
 message RecordingRuleStore {
