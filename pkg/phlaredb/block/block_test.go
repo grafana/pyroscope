@@ -145,7 +145,7 @@ func objects(t *testing.T, bkt objstore.Bucket, id ulid.ULID) (objects []string)
 			}
 			objects = append(objects, name)
 			return nil
-		}, objstore.WithRecursiveIter))
+		}, objstore.WithRecursiveIter()))
 	return
 }
 
