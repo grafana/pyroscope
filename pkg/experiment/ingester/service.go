@@ -71,7 +71,7 @@ func (cfg *UploadConfig) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet)
 	f.IntVar(&cfg.MaxRetries, prefix+".max-retries", 3, "Number of times to backoff and retry before failing.")
 	f.DurationVar(&cfg.MinBackoff, prefix+".retry-min-period", 50*time.Millisecond, "Minimum delay when backing off.")
 	f.DurationVar(&cfg.MaxBackoff, prefix+".retry-max-period", defaultSegmentDuration, "Maximum delay when backing off.")
-	f.DurationVar(&cfg.HedgeUploadAfter, prefix+".hedge-upload-after", 2*defaultSegmentDuration, "Time after which to hedge the upload request.")
+	f.DurationVar(&cfg.HedgeUploadAfter, prefix+".hedge-upload-after", defaultSegmentDuration, "Time after which to hedge the upload request.")
 	f.Float64Var(&cfg.HedgeRateMax, prefix+".hedge-rate-max", defaultHedgedRequestMaxRate, "Maximum number of hedged requests per second.")
 	f.UintVar(&cfg.HedgeRateBurst, prefix+".hedge-rate-burst", defaultHedgedRequestBurst, "Maximum number of hedged requests in a burst.")
 }
