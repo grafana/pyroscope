@@ -205,12 +205,17 @@ type UpsertRecordingRuleRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// The unique id of the recording rule. If an id is not provided, this will
+	// create a new recording rule. If an id is provided, it will replace the
+	// existing recording rule.
 	Id             string          `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	MetricName     string          `protobuf:"bytes,2,opt,name=metric_name,json=metricName,proto3" json:"metric_name,omitempty"`
 	Matchers       []string        `protobuf:"bytes,3,rep,name=matchers,proto3" json:"matchers,omitempty"`
 	GroupBy        []string        `protobuf:"bytes,4,rep,name=group_by,json=groupBy,proto3" json:"group_by,omitempty"`
 	ExternalLabels []*v1.LabelPair `protobuf:"bytes,5,rep,name=external_labels,json=externalLabels,proto3" json:"external_labels,omitempty"`
-	Generation     int64           `protobuf:"varint,6,opt,name=generation,proto3" json:"generation,omitempty"`
+	// The observed generation of this recording rule. If this value does not
+	// match the generation stored in the database, this upsert will be rejected.
+	Generation int64 `protobuf:"varint,6,opt,name=generation,proto3" json:"generation,omitempty"`
 }
 
 func (x *UpsertRecordingRuleRequest) Reset() {
@@ -424,13 +429,29 @@ type RecordingRule struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id             string          `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	MetricName     string          `protobuf:"bytes,2,opt,name=metric_name,json=metricName,proto3" json:"metric_name,omitempty"`
+	// The unique id of the recording rule.
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// The name of the recording rule, this does not necessarily need to be
+	// unique.
+	MetricName string `protobuf:"bytes,2,opt,name=metric_name,json=metricName,proto3" json:"metric_name,omitempty"`
+	// Used in the UI to display what type of profile type this recording rule is
+	// generated from.
+	//
+	// This should be the standard format of:
+	//
+	//	<name>:<sample-type>:<sample-unit>:<period-type>:<period-unit>
+	//
+	// For example:
+	//
+	//	process_cpu:cpu:nanoseconds:cpu:nanoseconds
 	ProfileType    string          `protobuf:"bytes,3,opt,name=profile_type,json=profileType,proto3" json:"profile_type,omitempty"`
 	Matchers       []string        `protobuf:"bytes,4,rep,name=matchers,proto3" json:"matchers,omitempty"`
 	GroupBy        []string        `protobuf:"bytes,5,rep,name=group_by,json=groupBy,proto3" json:"group_by,omitempty"`
 	ExternalLabels []*v1.LabelPair `protobuf:"bytes,6,rep,name=external_labels,json=externalLabels,proto3" json:"external_labels,omitempty"`
-	Generation     int64           `protobuf:"varint,7,opt,name=generation,proto3" json:"generation,omitempty"`
+	// The observed generation of this recording rule. This value should be
+	// provided when making updates to this record, to avoid conflicting
+	// concurrent updates.
+	Generation int64 `protobuf:"varint,7,opt,name=generation,proto3" json:"generation,omitempty"`
 }
 
 func (x *RecordingRule) Reset() {

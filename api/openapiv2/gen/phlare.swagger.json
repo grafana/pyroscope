@@ -1924,13 +1924,16 @@
       "type": "object",
       "properties": {
         "id": {
-          "type": "string"
+          "type": "string",
+          "description": "The unique id of the recording rule."
         },
         "metricName": {
-          "type": "string"
+          "type": "string",
+          "description": "The name of the recording rule, this does not necessarily need to be\nunique."
         },
         "profileType": {
-          "type": "string"
+          "type": "string",
+          "description": "Used in the UI to display what type of profile type this recording rule is\ngenerated from.\n\nThis should be the standard format of:\n\n  \u003cname\u003e:\u003csample-type\u003e:\u003csample-unit\u003e:\u003cperiod-type\u003e:\u003cperiod-unit\u003e\n\nFor example:\n\n  process_cpu:cpu:nanoseconds:cpu:nanoseconds"
         },
         "matchers": {
           "type": "array",
@@ -1953,7 +1956,8 @@
         },
         "generation": {
           "type": "string",
-          "format": "int64"
+          "format": "int64",
+          "description": "The observed generation of this recording rule. This value should be\nprovided when making updates to this record, to avoid conflicting\nconcurrent updates."
         }
       }
     },
