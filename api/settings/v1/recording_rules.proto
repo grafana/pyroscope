@@ -7,7 +7,7 @@ import "types/v1/types.proto";
 service RecordingRulesService {
   rpc GetRecordingRule(GetRecordingRuleRequest) returns (GetRecordingRuleResponse) {}
   rpc ListRecordingRules(ListRecordingRulesRequest) returns (ListRecordingRulesResponse) {}
-  rpc InsertRecordingRule(InsertRecordingRuleRequest) returns (InsertRecordingRuleResponse) {}
+  rpc UpsertRecordingRule(UpsertRecordingRuleRequest) returns (UpsertRecordingRuleResponse) {}
   rpc DeleteRecordingRule(DeleteRecordingRuleRequest) returns (DeleteRecordingRuleResponse) {}
 }
 
@@ -25,14 +25,16 @@ message ListRecordingRulesResponse {
   repeated RecordingRule rules = 1;
 }
 
-message InsertRecordingRuleRequest {
-  string metric_name = 1;
-  repeated string matchers = 2;
-  repeated string group_by = 3;
-  repeated types.v1.LabelPair external_labels = 4;
+message UpsertRecordingRuleRequest {
+  string id = 1;
+  string metric_name = 2;
+  repeated string matchers = 3;
+  repeated string group_by = 4;
+  repeated types.v1.LabelPair external_labels = 5;
+  int64 generation = 6;
 }
 
-message InsertRecordingRuleResponse {
+message UpsertRecordingRuleResponse {
   RecordingRule rule = 1;
 }
 
@@ -49,6 +51,7 @@ message RecordingRule {
   repeated string matchers = 4;
   repeated string group_by = 5;
   repeated types.v1.LabelPair external_labels = 6;
+  int64 generation = 7;
 }
 
 message RecordingRuleStore {

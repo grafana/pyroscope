@@ -1282,14 +1282,6 @@
       },
       "title": "Hints are used to propagate information about querying"
     },
-    "v1InsertRecordingRuleResponse": {
-      "type": "object",
-      "properties": {
-        "rule": {
-          "$ref": "#/definitions/v1RecordingRule"
-        }
-      }
-    },
     "v1InvokeOptions": {
       "type": "object",
       "description": "Query workers might not have access to the tenant\n overrides, therefore all the necessary options should\n be listed in the request explicitly."
@@ -1958,6 +1950,10 @@
             "type": "object",
             "$ref": "#/definitions/v1LabelPair"
           }
+        },
+        "generation": {
+          "type": "string",
+          "format": "int64"
         }
       }
     },
@@ -2392,6 +2388,14 @@
         "tree": {
           "type": "string",
           "format": "byte"
+        }
+      }
+    },
+    "v1UpsertRecordingRuleResponse": {
+      "type": "object",
+      "properties": {
+        "rule": {
+          "$ref": "#/definitions/v1RecordingRule"
         }
       }
     },

@@ -51,15 +51,16 @@ func Test_validateGet(t *testing.T) {
 	}
 }
 
-func Test_validateInsert(t *testing.T) {
+func Test_validateUpsert(t *testing.T) {
 	tests := []struct {
 		Name    string
-		Req     *settingsv1.InsertRecordingRuleRequest
+		Req     *settingsv1.UpsertRecordingRuleRequest
 		WantErr string
 	}{
 		{
 			Name: "valid",
-			Req: &settingsv1.InsertRecordingRuleRequest{
+			Req: &settingsv1.UpsertRecordingRuleRequest{
+				Id:         "abcdef",
 				MetricName: "my_metric",
 				Matchers: []string{
 					`{ label_a = "A" }`,
@@ -72,12 +73,14 @@ func Test_validateInsert(t *testing.T) {
 					{Name: "label_a", Value: "A"},
 					{Name: "label_b", Value: "B"},
 				},
+				Generation: 1,
 			},
 			WantErr: "",
 		},
 		{
 			Name: "minimal_valid",
-			Req: &settingsv1.InsertRecordingRuleRequest{
+			Req: &settingsv1.UpsertRecordingRuleRequest{
+				Id:             "",
 				MetricName:     "my_metric",
 				Matchers:       []string{},
 				GroupBy:        []string{},
@@ -87,7 +90,8 @@ func Test_validateInsert(t *testing.T) {
 		},
 		{
 			Name: "valid_with_formatted_fields",
-			Req: &settingsv1.InsertRecordingRuleRequest{
+			Req: &settingsv1.UpsertRecordingRuleRequest{
+				Id:             "abcdef",
 				MetricName:     "  my_metric	",
 				Matchers:       []string{},
 				GroupBy:        []string{},
@@ -96,8 +100,41 @@ func Test_validateInsert(t *testing.T) {
 			WantErr: "",
 		},
 		{
+			Name: "empty_id",
+			Req: &settingsv1.UpsertRecordingRuleRequest{
+				Id:             "",
+				MetricName:     "my_metric",
+				Matchers:       []string{},
+				GroupBy:        []string{},
+				ExternalLabels: []*typesv1.LabelPair{},
+			},
+			WantErr: "",
+		},
+		{
+			Name: "whitespace_only_id",
+			Req: &settingsv1.UpsertRecordingRuleRequest{
+				Id:             "  ",
+				MetricName:     "my_metric",
+				Matchers:       []string{},
+				GroupBy:        []string{},
+				ExternalLabels: []*typesv1.LabelPair{},
+			},
+			WantErr: `id "  " must match ^[a-zA-Z]+$`,
+		},
+		{
+			Name: "invalid_id",
+			Req: &settingsv1.UpsertRecordingRuleRequest{
+				Id:             "?",
+				MetricName:     "my_metric",
+				Matchers:       []string{},
+				GroupBy:        []string{},
+				ExternalLabels: []*typesv1.LabelPair{},
+			},
+			WantErr: `id "?" must match ^[a-zA-Z]+$`,
+		},
+		{
 			Name: "empty_metric_name",
-			Req: &settingsv1.InsertRecordingRuleRequest{
+			Req: &settingsv1.UpsertRecordingRuleRequest{
 				MetricName:     "",
 				Matchers:       []string{},
 				GroupBy:        []string{},
@@ -107,7 +144,7 @@ func Test_validateInsert(t *testing.T) {
 		},
 		{
 			Name: "invalid_metric_name",
-			Req: &settingsv1.InsertRecordingRuleRequest{
+			Req: &settingsv1.UpsertRecordingRuleRequest{
 				MetricName:     string([]byte{0xC0, 0xAF}), // invalid utf-8
 				Matchers:       []string{},
 				GroupBy:        []string{},
@@ -117,7 +154,7 @@ func Test_validateInsert(t *testing.T) {
 		},
 		{
 			Name: "invalid_matchers",
-			Req: &settingsv1.InsertRecordingRuleRequest{
+			Req: &settingsv1.UpsertRecordingRuleRequest{
 				MetricName: "my_metric",
 				Matchers: []string{
 					"",
@@ -129,7 +166,7 @@ func Test_validateInsert(t *testing.T) {
 		},
 		{
 			Name: "invalid_group_by",
-			Req: &settingsv1.InsertRecordingRuleRequest{
+			Req: &settingsv1.UpsertRecordingRuleRequest{
 				MetricName: "my_metric",
 				Matchers:   []string{},
 				GroupBy: []string{
@@ -141,7 +178,7 @@ func Test_validateInsert(t *testing.T) {
 		},
 		{
 			Name: "invalid_external_label",
-			Req: &settingsv1.InsertRecordingRuleRequest{
+			Req: &settingsv1.UpsertRecordingRuleRequest{
 				MetricName: "my_metric",
 				Matchers:   []string{},
 				GroupBy:    []string{},
@@ -155,8 +192,20 @@ func Test_validateInsert(t *testing.T) {
 			WantErr: "external_labels name \"\\xc0\\xaf\" must be a valid utf-8 string\nexternal_labels value \"\\xc0\\xaf\" must be a valid utf-8 string",
 		},
 		{
+			Name: "invalid_generation",
+			Req: &settingsv1.UpsertRecordingRuleRequest{
+				Id:             "abcdef",
+				MetricName:     "my_metric",
+				Matchers:       []string{},
+				GroupBy:        []string{},
+				ExternalLabels: []*typesv1.LabelPair{},
+				Generation:     -1,
+			},
+			WantErr: "generation must be positive",
+		},
+		{
 			Name: "multiple_errors",
-			Req: &settingsv1.InsertRecordingRuleRequest{
+			Req: &settingsv1.UpsertRecordingRuleRequest{
 				MetricName: "",
 				Matchers: []string{
 					"",
@@ -170,7 +219,7 @@ func Test_validateInsert(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.Name, func(t *testing.T) {
-			err := validateInsert(tt.Req)
+			err := validateUpsert(tt.Req)
 			if tt.WantErr != "" {
 				require.Error(t, err)
 				require.EqualError(t, err, tt.WantErr)

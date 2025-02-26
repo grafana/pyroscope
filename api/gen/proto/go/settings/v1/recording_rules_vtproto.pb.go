@@ -97,12 +97,14 @@ func (m *ListRecordingRulesResponse) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
-func (m *InsertRecordingRuleRequest) CloneVT() *InsertRecordingRuleRequest {
+func (m *UpsertRecordingRuleRequest) CloneVT() *UpsertRecordingRuleRequest {
 	if m == nil {
-		return (*InsertRecordingRuleRequest)(nil)
+		return (*UpsertRecordingRuleRequest)(nil)
 	}
-	r := new(InsertRecordingRuleRequest)
+	r := new(UpsertRecordingRuleRequest)
+	r.Id = m.Id
 	r.MetricName = m.MetricName
+	r.Generation = m.Generation
 	if rhs := m.Matchers; rhs != nil {
 		tmpContainer := make([]string, len(rhs))
 		copy(tmpContainer, rhs)
@@ -131,15 +133,15 @@ func (m *InsertRecordingRuleRequest) CloneVT() *InsertRecordingRuleRequest {
 	return r
 }
 
-func (m *InsertRecordingRuleRequest) CloneMessageVT() proto.Message {
+func (m *UpsertRecordingRuleRequest) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
-func (m *InsertRecordingRuleResponse) CloneVT() *InsertRecordingRuleResponse {
+func (m *UpsertRecordingRuleResponse) CloneVT() *UpsertRecordingRuleResponse {
 	if m == nil {
-		return (*InsertRecordingRuleResponse)(nil)
+		return (*UpsertRecordingRuleResponse)(nil)
 	}
-	r := new(InsertRecordingRuleResponse)
+	r := new(UpsertRecordingRuleResponse)
 	r.Rule = m.Rule.CloneVT()
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -148,7 +150,7 @@ func (m *InsertRecordingRuleResponse) CloneVT() *InsertRecordingRuleResponse {
 	return r
 }
 
-func (m *InsertRecordingRuleResponse) CloneMessageVT() proto.Message {
+func (m *UpsertRecordingRuleResponse) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
@@ -193,6 +195,7 @@ func (m *RecordingRule) CloneVT() *RecordingRule {
 	r.Id = m.Id
 	r.MetricName = m.MetricName
 	r.ProfileType = m.ProfileType
+	r.Generation = m.Generation
 	if rhs := m.Matchers; rhs != nil {
 		tmpContainer := make([]string, len(rhs))
 		copy(tmpContainer, rhs)
@@ -377,10 +380,13 @@ func (this *ListRecordingRulesResponse) EqualMessageVT(thatMsg proto.Message) bo
 	}
 	return this.EqualVT(that)
 }
-func (this *InsertRecordingRuleRequest) EqualVT(that *InsertRecordingRuleRequest) bool {
+func (this *UpsertRecordingRuleRequest) EqualVT(that *UpsertRecordingRuleRequest) bool {
 	if this == that {
 		return true
 	} else if this == nil || that == nil {
+		return false
+	}
+	if this.Id != that.Id {
 		return false
 	}
 	if this.MetricName != that.MetricName {
@@ -425,17 +431,20 @@ func (this *InsertRecordingRuleRequest) EqualVT(that *InsertRecordingRuleRequest
 			}
 		}
 	}
+	if this.Generation != that.Generation {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
-func (this *InsertRecordingRuleRequest) EqualMessageVT(thatMsg proto.Message) bool {
-	that, ok := thatMsg.(*InsertRecordingRuleRequest)
+func (this *UpsertRecordingRuleRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*UpsertRecordingRuleRequest)
 	if !ok {
 		return false
 	}
 	return this.EqualVT(that)
 }
-func (this *InsertRecordingRuleResponse) EqualVT(that *InsertRecordingRuleResponse) bool {
+func (this *UpsertRecordingRuleResponse) EqualVT(that *UpsertRecordingRuleResponse) bool {
 	if this == that {
 		return true
 	} else if this == nil || that == nil {
@@ -447,8 +456,8 @@ func (this *InsertRecordingRuleResponse) EqualVT(that *InsertRecordingRuleRespon
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
-func (this *InsertRecordingRuleResponse) EqualMessageVT(thatMsg proto.Message) bool {
-	that, ok := thatMsg.(*InsertRecordingRuleResponse)
+func (this *UpsertRecordingRuleResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*UpsertRecordingRuleResponse)
 	if !ok {
 		return false
 	}
@@ -542,6 +551,9 @@ func (this *RecordingRule) EqualVT(that *RecordingRule) bool {
 				return false
 			}
 		}
+	}
+	if this.Generation != that.Generation {
+		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
@@ -668,7 +680,7 @@ const _ = grpc.SupportPackageIsVersion7
 type RecordingRulesServiceClient interface {
 	GetRecordingRule(ctx context.Context, in *GetRecordingRuleRequest, opts ...grpc.CallOption) (*GetRecordingRuleResponse, error)
 	ListRecordingRules(ctx context.Context, in *ListRecordingRulesRequest, opts ...grpc.CallOption) (*ListRecordingRulesResponse, error)
-	InsertRecordingRule(ctx context.Context, in *InsertRecordingRuleRequest, opts ...grpc.CallOption) (*InsertRecordingRuleResponse, error)
+	UpsertRecordingRule(ctx context.Context, in *UpsertRecordingRuleRequest, opts ...grpc.CallOption) (*UpsertRecordingRuleResponse, error)
 	DeleteRecordingRule(ctx context.Context, in *DeleteRecordingRuleRequest, opts ...grpc.CallOption) (*DeleteRecordingRuleResponse, error)
 }
 
@@ -698,9 +710,9 @@ func (c *recordingRulesServiceClient) ListRecordingRules(ctx context.Context, in
 	return out, nil
 }
 
-func (c *recordingRulesServiceClient) InsertRecordingRule(ctx context.Context, in *InsertRecordingRuleRequest, opts ...grpc.CallOption) (*InsertRecordingRuleResponse, error) {
-	out := new(InsertRecordingRuleResponse)
-	err := c.cc.Invoke(ctx, "/settings.v1.RecordingRulesService/InsertRecordingRule", in, out, opts...)
+func (c *recordingRulesServiceClient) UpsertRecordingRule(ctx context.Context, in *UpsertRecordingRuleRequest, opts ...grpc.CallOption) (*UpsertRecordingRuleResponse, error) {
+	out := new(UpsertRecordingRuleResponse)
+	err := c.cc.Invoke(ctx, "/settings.v1.RecordingRulesService/UpsertRecordingRule", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -722,7 +734,7 @@ func (c *recordingRulesServiceClient) DeleteRecordingRule(ctx context.Context, i
 type RecordingRulesServiceServer interface {
 	GetRecordingRule(context.Context, *GetRecordingRuleRequest) (*GetRecordingRuleResponse, error)
 	ListRecordingRules(context.Context, *ListRecordingRulesRequest) (*ListRecordingRulesResponse, error)
-	InsertRecordingRule(context.Context, *InsertRecordingRuleRequest) (*InsertRecordingRuleResponse, error)
+	UpsertRecordingRule(context.Context, *UpsertRecordingRuleRequest) (*UpsertRecordingRuleResponse, error)
 	DeleteRecordingRule(context.Context, *DeleteRecordingRuleRequest) (*DeleteRecordingRuleResponse, error)
 	mustEmbedUnimplementedRecordingRulesServiceServer()
 }
@@ -737,8 +749,8 @@ func (UnimplementedRecordingRulesServiceServer) GetRecordingRule(context.Context
 func (UnimplementedRecordingRulesServiceServer) ListRecordingRules(context.Context, *ListRecordingRulesRequest) (*ListRecordingRulesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListRecordingRules not implemented")
 }
-func (UnimplementedRecordingRulesServiceServer) InsertRecordingRule(context.Context, *InsertRecordingRuleRequest) (*InsertRecordingRuleResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method InsertRecordingRule not implemented")
+func (UnimplementedRecordingRulesServiceServer) UpsertRecordingRule(context.Context, *UpsertRecordingRuleRequest) (*UpsertRecordingRuleResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpsertRecordingRule not implemented")
 }
 func (UnimplementedRecordingRulesServiceServer) DeleteRecordingRule(context.Context, *DeleteRecordingRuleRequest) (*DeleteRecordingRuleResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteRecordingRule not implemented")
@@ -792,20 +804,20 @@ func _RecordingRulesService_ListRecordingRules_Handler(srv interface{}, ctx cont
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RecordingRulesService_InsertRecordingRule_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(InsertRecordingRuleRequest)
+func _RecordingRulesService_UpsertRecordingRule_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpsertRecordingRuleRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RecordingRulesServiceServer).InsertRecordingRule(ctx, in)
+		return srv.(RecordingRulesServiceServer).UpsertRecordingRule(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/settings.v1.RecordingRulesService/InsertRecordingRule",
+		FullMethod: "/settings.v1.RecordingRulesService/UpsertRecordingRule",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RecordingRulesServiceServer).InsertRecordingRule(ctx, req.(*InsertRecordingRuleRequest))
+		return srv.(RecordingRulesServiceServer).UpsertRecordingRule(ctx, req.(*UpsertRecordingRuleRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -844,8 +856,8 @@ var RecordingRulesService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _RecordingRulesService_ListRecordingRules_Handler,
 		},
 		{
-			MethodName: "InsertRecordingRule",
-			Handler:    _RecordingRulesService_InsertRecordingRule_Handler,
+			MethodName: "UpsertRecordingRule",
+			Handler:    _RecordingRulesService_UpsertRecordingRule_Handler,
 		},
 		{
 			MethodName: "DeleteRecordingRule",
@@ -1017,7 +1029,7 @@ func (m *ListRecordingRulesResponse) MarshalToSizedBufferVT(dAtA []byte) (int, e
 	return len(dAtA) - i, nil
 }
 
-func (m *InsertRecordingRuleRequest) MarshalVT() (dAtA []byte, err error) {
+func (m *UpsertRecordingRuleRequest) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -1030,12 +1042,12 @@ func (m *InsertRecordingRuleRequest) MarshalVT() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *InsertRecordingRuleRequest) MarshalToVT(dAtA []byte) (int, error) {
+func (m *UpsertRecordingRuleRequest) MarshalToVT(dAtA []byte) (int, error) {
 	size := m.SizeVT()
 	return m.MarshalToSizedBufferVT(dAtA[:size])
 }
 
-func (m *InsertRecordingRuleRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+func (m *UpsertRecordingRuleRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m == nil {
 		return 0, nil
 	}
@@ -1046,6 +1058,11 @@ func (m *InsertRecordingRuleRequest) MarshalToSizedBufferVT(dAtA []byte) (int, e
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.Generation != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Generation))
+		i--
+		dAtA[i] = 0x30
 	}
 	if len(m.ExternalLabels) > 0 {
 		for iNdEx := len(m.ExternalLabels) - 1; iNdEx >= 0; iNdEx-- {
@@ -1068,7 +1085,7 @@ func (m *InsertRecordingRuleRequest) MarshalToSizedBufferVT(dAtA []byte) (int, e
 				i = protohelpers.EncodeVarint(dAtA, i, uint64(len(encoded)))
 			}
 			i--
-			dAtA[i] = 0x22
+			dAtA[i] = 0x2a
 		}
 	}
 	if len(m.GroupBy) > 0 {
@@ -1077,7 +1094,7 @@ func (m *InsertRecordingRuleRequest) MarshalToSizedBufferVT(dAtA []byte) (int, e
 			copy(dAtA[i:], m.GroupBy[iNdEx])
 			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.GroupBy[iNdEx])))
 			i--
-			dAtA[i] = 0x1a
+			dAtA[i] = 0x22
 		}
 	}
 	if len(m.Matchers) > 0 {
@@ -1086,7 +1103,7 @@ func (m *InsertRecordingRuleRequest) MarshalToSizedBufferVT(dAtA []byte) (int, e
 			copy(dAtA[i:], m.Matchers[iNdEx])
 			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Matchers[iNdEx])))
 			i--
-			dAtA[i] = 0x12
+			dAtA[i] = 0x1a
 		}
 	}
 	if len(m.MetricName) > 0 {
@@ -1094,12 +1111,19 @@ func (m *InsertRecordingRuleRequest) MarshalToSizedBufferVT(dAtA []byte) (int, e
 		copy(dAtA[i:], m.MetricName)
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.MetricName)))
 		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Id) > 0 {
+		i -= len(m.Id)
+		copy(dAtA[i:], m.Id)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Id)))
+		i--
 		dAtA[i] = 0xa
 	}
 	return len(dAtA) - i, nil
 }
 
-func (m *InsertRecordingRuleResponse) MarshalVT() (dAtA []byte, err error) {
+func (m *UpsertRecordingRuleResponse) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -1112,12 +1136,12 @@ func (m *InsertRecordingRuleResponse) MarshalVT() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *InsertRecordingRuleResponse) MarshalToVT(dAtA []byte) (int, error) {
+func (m *UpsertRecordingRuleResponse) MarshalToVT(dAtA []byte) (int, error) {
 	size := m.SizeVT()
 	return m.MarshalToSizedBufferVT(dAtA[:size])
 }
 
-func (m *InsertRecordingRuleResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+func (m *UpsertRecordingRuleResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m == nil {
 		return 0, nil
 	}
@@ -1244,6 +1268,11 @@ func (m *RecordingRule) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.Generation != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Generation))
+		i--
+		dAtA[i] = 0x38
 	}
 	if len(m.ExternalLabels) > 0 {
 		for iNdEx := len(m.ExternalLabels) - 1; iNdEx >= 0; iNdEx-- {
@@ -1516,12 +1545,16 @@ func (m *ListRecordingRulesResponse) SizeVT() (n int) {
 	return n
 }
 
-func (m *InsertRecordingRuleRequest) SizeVT() (n int) {
+func (m *UpsertRecordingRuleRequest) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
+	l = len(m.Id)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
 	l = len(m.MetricName)
 	if l > 0 {
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
@@ -1550,11 +1583,14 @@ func (m *InsertRecordingRuleRequest) SizeVT() (n int) {
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
 	}
+	if m.Generation != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.Generation))
+	}
 	n += len(m.unknownFields)
 	return n
 }
 
-func (m *InsertRecordingRuleResponse) SizeVT() (n int) {
+func (m *UpsertRecordingRuleResponse) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1633,6 +1669,9 @@ func (m *RecordingRule) SizeVT() (n int) {
 			}
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
+	}
+	if m.Generation != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.Generation))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -2012,7 +2051,7 @@ func (m *ListRecordingRulesResponse) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *InsertRecordingRuleRequest) UnmarshalVT(dAtA []byte) error {
+func (m *UpsertRecordingRuleRequest) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2035,13 +2074,45 @@ func (m *InsertRecordingRuleRequest) UnmarshalVT(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: InsertRecordingRuleRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: UpsertRecordingRuleRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: InsertRecordingRuleRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: UpsertRecordingRuleRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Id = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field MetricName", wireType)
 			}
@@ -2073,7 +2144,7 @@ func (m *InsertRecordingRuleRequest) UnmarshalVT(dAtA []byte) error {
 			}
 			m.MetricName = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 2:
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Matchers", wireType)
 			}
@@ -2105,7 +2176,7 @@ func (m *InsertRecordingRuleRequest) UnmarshalVT(dAtA []byte) error {
 			}
 			m.Matchers = append(m.Matchers, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
-		case 3:
+		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field GroupBy", wireType)
 			}
@@ -2137,7 +2208,7 @@ func (m *InsertRecordingRuleRequest) UnmarshalVT(dAtA []byte) error {
 			}
 			m.GroupBy = append(m.GroupBy, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
-		case 4:
+		case 5:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ExternalLabels", wireType)
 			}
@@ -2179,6 +2250,25 @@ func (m *InsertRecordingRuleRequest) UnmarshalVT(dAtA []byte) error {
 				}
 			}
 			iNdEx = postIndex
+		case 6:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Generation", wireType)
+			}
+			m.Generation = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Generation |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
@@ -2201,7 +2291,7 @@ func (m *InsertRecordingRuleRequest) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *InsertRecordingRuleResponse) UnmarshalVT(dAtA []byte) error {
+func (m *UpsertRecordingRuleResponse) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2224,10 +2314,10 @@ func (m *InsertRecordingRuleResponse) UnmarshalVT(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: InsertRecordingRuleResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: UpsertRecordingRuleResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: InsertRecordingRuleResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: UpsertRecordingRuleResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -2653,6 +2743,25 @@ func (m *RecordingRule) UnmarshalVT(dAtA []byte) error {
 				}
 			}
 			iNdEx = postIndex
+		case 7:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Generation", wireType)
+			}
+			m.Generation = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Generation |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

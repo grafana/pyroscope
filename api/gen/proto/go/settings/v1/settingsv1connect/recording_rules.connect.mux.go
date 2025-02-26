@@ -29,9 +29,9 @@ func RegisterRecordingRulesServiceHandler(mux *mux.Router, svc RecordingRulesSer
 		svc.ListRecordingRules,
 		opts...,
 	))
-	mux.Handle("/settings.v1.RecordingRulesService/InsertRecordingRule", connect.NewUnaryHandler(
-		"/settings.v1.RecordingRulesService/InsertRecordingRule",
-		svc.InsertRecordingRule,
+	mux.Handle("/settings.v1.RecordingRulesService/UpsertRecordingRule", connect.NewUnaryHandler(
+		"/settings.v1.RecordingRulesService/UpsertRecordingRule",
+		svc.UpsertRecordingRule,
 		opts...,
 	))
 	mux.Handle("/settings.v1.RecordingRulesService/DeleteRecordingRule", connect.NewUnaryHandler(

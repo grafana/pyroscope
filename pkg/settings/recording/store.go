@@ -68,17 +68,8 @@ func (b *bucketStore) List(ctx context.Context) (*settingsv1.RecordingRulesStore
 	return rules, nil
 }
 
-func (b *bucketStore) Insert(ctx context.Context, newRule *settingsv1.RecordingRuleStore) (*settingsv1.RecordingRuleStore, error) {
-	err := b.store.Update(ctx, func(ctx context.Context, c *store.Collection[*settingsv1.RecordingRuleStore]) error {
-		for _, rule := range c.Elements {
-			if rule.Id == newRule.Id {
-				return fmt.Errorf("recording rule %s already exists", newRule.Id)
-			}
-		}
-
-		c.Elements = append(c.Elements, newRule)
-		return nil
-	})
+func (b *bucketStore) Upsert(ctx context.Context, newRule *settingsv1.RecordingRuleStore) (*settingsv1.RecordingRuleStore, error) {
+	err := b.store.Upsert(ctx, newRule, &newRule.Generation)
 	if err != nil {
 		return nil, err
 	}

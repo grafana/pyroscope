@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -15,7 +17,6 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/thanos-io/objstore"
-	"golang.org/x/exp/rand"
 
 	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/settings/v1/settingsv1connect"
@@ -86,8 +87,8 @@ func (r *RecordingRules) ListRecordingRules(ctx context.Context, req *connect.Re
 	return connect.NewResponse(res), nil
 }
 
-func (r *RecordingRules) InsertRecordingRule(ctx context.Context, req *connect.Request[settingsv1.InsertRecordingRuleRequest]) (*connect.Response[settingsv1.InsertRecordingRuleResponse], error) {
-	err := validateInsert(req.Msg)
+func (r *RecordingRules) UpsertRecordingRule(ctx context.Context, req *connect.Request[settingsv1.UpsertRecordingRuleRequest]) (*connect.Response[settingsv1.UpsertRecordingRuleResponse], error) {
+	err := validateUpsert(req.Msg)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid request: %v", err))
 	}
@@ -98,18 +99,23 @@ func (r *RecordingRules) InsertRecordingRule(ctx context.Context, req *connect.R
 	}
 
 	newRule := &settingsv1.RecordingRuleStore{
-		Id:             generateID(10),
+		Id:             req.Msg.Id,
 		MetricName:     req.Msg.MetricName,
 		Matchers:       req.Msg.Matchers,
 		GroupBy:        req.Msg.GroupBy,
 		ExternalLabels: req.Msg.ExternalLabels,
+		Generation:     req.Msg.Generation,
 	}
-	newRule, err = s.Insert(ctx, newRule)
+	newRule, err = s.Upsert(ctx, newRule)
 	if err != nil {
+		var cErr *store.ErrConflictGeneration
+		if errors.As(err, &cErr) {
+			return nil, connect.NewError(connect.CodeAlreadyExists, fmt.Errorf("Conflicting update, please try again"))
+		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	res := &settingsv1.InsertRecordingRuleResponse{
+	res := &settingsv1.UpsertRecordingRuleResponse{
 		Rule: convertRuleToAPI(newRule),
 	}
 	return connect.NewResponse(res), nil
@@ -177,12 +183,24 @@ func validateGet(req *settingsv1.GetRecordingRuleRequest) error {
 	return errors.Join(errs...)
 }
 
-func validateInsert(req *settingsv1.InsertRecordingRuleRequest) error {
+var (
+	upsertIdRE = regexp.MustCompile(`^[a-zA-Z]+$`)
+)
+
+func validateUpsert(req *settingsv1.UpsertRecordingRuleRequest) error {
 	// Format fields.
+	if req.Id == "" {
+		req.Id = generateID(10)
+		req.Generation = 1
+	}
 	req.MetricName = strings.TrimSpace(req.MetricName)
 
 	// Validate fields.
 	var errs []error
+
+	if !upsertIdRE.MatchString(req.Id) {
+		errs = append(errs, fmt.Errorf("id %q must match %s", req.Id, upsertIdRE.String()))
+	}
 
 	if req.MetricName == "" {
 		errs = append(errs, fmt.Errorf("metric_name is required"))
@@ -216,6 +234,10 @@ func validateInsert(req *settingsv1.InsertRecordingRuleRequest) error {
 		}
 	}
 
+	if req.Generation < 0 {
+		errs = append(errs, fmt.Errorf("generation must be positive"))
+	}
+
 	return errors.Join(errs...)
 }
 
@@ -241,6 +263,7 @@ func convertRuleToAPI(rule *settingsv1.RecordingRuleStore) *settingsv1.Recording
 		Matchers:       rule.Matchers,
 		GroupBy:        rule.GroupBy,
 		ExternalLabels: rule.ExternalLabels,
+		Generation:     rule.Generation,
 	}
 
 	// Try find the profile type from the matchers.
