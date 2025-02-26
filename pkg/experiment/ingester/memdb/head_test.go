@@ -2,11 +2,22 @@ package memdb
 
 import (
 	"bytes"
-	"connectrpc.com/connect"
 	"context"
 	"fmt"
+	"strconv"
+	"sync"
+	"testing"
+	"time"
+
+	"connectrpc.com/connect"
 	"github.com/google/pprof/profile"
 	"github.com/google/uuid"
+	"github.com/parquet-go/parquet-go"
+	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
+
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -18,15 +29,6 @@ import (
 	testutil2 "github.com/grafana/pyroscope/pkg/phlaredb/block/testutil"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
-	"github.com/parquet-go/parquet-go"
-	"github.com/prometheus/common/model"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/goleak"
-	"strconv"
-	"sync"
-	"testing"
-	"time"
 )
 
 func TestHeadLabelValues(t *testing.T) {
@@ -741,7 +743,7 @@ func newProfileBar() *profilev1.Profile {
 
 var streams = []string{"stream-a", "stream-b", "stream-c"}
 
-func ingestThreeProfileStreams(i int, ingest func(*profilev1.Profile, uuid.UUID, []*typesv1.LabelPair)) {
+func ingestThreeProfileStreams(i int, ingest func(*profilev1.Profile, uuid.UUID, []*typesv1.LabelPair, []*typesv1.ProfileAnnotation)) {
 	p := testhelper.NewProfileBuilder(time.Second.Nanoseconds() * int64(i))
 	p.CPUProfile()
 	p.WithLabels(
@@ -752,7 +754,7 @@ func ingestThreeProfileStreams(i int, ingest func(*profilev1.Profile, uuid.UUID,
 	p.ForStacktraceString("func1", "func2").AddSamples(10)
 	p.ForStacktraceString("func1").AddSamples(20)
 
-	ingest(p.Profile, p.UUID, p.Labels)
+	ingest(p.Profile, p.UUID, p.Labels, nil)
 }
 
 func profileTypeFromProfile(p *profilev1.Profile, stIndex int) *typesv1.ProfileType {
