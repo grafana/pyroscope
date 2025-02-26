@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func Test_SpeculativeRetry(t *testing.T) {
+func Test_Hedging(t *testing.T) {
 	delay := time.Millisecond * 100 // Might be flaky.
 	ctx := context.Background()
 	e1 := errors.New("e1")
@@ -149,7 +149,7 @@ func Test_SpeculativeRetry(t *testing.T) {
 	}
 }
 
-func Test_SpeculativeRetry_Runner(t *testing.T) {
+func Test_Hedging_Limiter(t *testing.T) {
 	type testCase struct {
 		description string
 		runner      Throttler
