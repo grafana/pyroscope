@@ -10,6 +10,7 @@ import (
 	"os"
 	"runtime/pprof"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -300,71 +301,6 @@ func Test_Limits(t *testing.T) {
 			expectedCode:             connect.CodeInvalidArgument,
 			expectedValidationReason: validation.LabelNameTooLong,
 		},
-		{
-			description: "ingest_limit_reached",
-			pushReq:     &pushv1.PushRequest{},
-			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
-				l := validation.MockDefaultLimits()
-				l.IngestionLimit = &ingest_limits.Config{
-					PeriodType:     "hour",
-					PeriodLimitMb:  128,
-					LimitResetTime: 1737721086,
-					LimitReached:   true,
-					Sampling: ingest_limits.SamplingConfig{
-						NumRequests: 0,
-						Period:      time.Minute,
-					},
-				}
-				tenantLimits["user-1"] = l
-			}),
-			expectedCode:             connect.CodeResourceExhausted,
-			expectedValidationReason: validation.IngestLimitReached,
-		},
-		{
-			description: "ingest_limit_reached_for_usage_group",
-			pushReq: &pushv1.PushRequest{
-				Series: []*pushv1.RawProfileSeries{
-					{
-						Labels: []*typesv1.LabelPair{
-							{Name: "__name__", Value: "cpu"},
-							{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
-						},
-						Samples: []*pushv1.RawSample{
-							{
-								RawProfile: collectTestProfileBytes(t),
-							},
-						},
-					},
-				},
-			},
-			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
-				l := validation.MockDefaultLimits()
-				l.IngestionLimit = &ingest_limits.Config{
-					PeriodType:     "hour",
-					PeriodLimitMb:  128,
-					LimitResetTime: 1737721086,
-					LimitReached:   false,
-					Sampling: ingest_limits.SamplingConfig{
-						NumRequests: 0,
-						Period:      time.Minute,
-					},
-					UsageGroups: map[string]ingest_limits.UsageGroup{
-						"group-1": {
-							PeriodLimitMb: 64,
-							LimitReached:  true,
-						},
-					},
-				}
-				usageGroupCfg, err := validation.NewUsageGroupConfig(map[string]string{
-					"group-1": "{service_name=\"svc\"}",
-				})
-				require.NoError(t, err)
-				l.DistributorUsageGroups = &usageGroupCfg
-				tenantLimits["user-1"] = l
-			}),
-			expectedCode:             connect.CodeResourceExhausted,
-			expectedValidationReason: validation.IngestLimitReached,
-		},
 	}
 
 	for _, tc := range testCases {
@@ -475,6 +411,172 @@ func Test_Sessions_Limit(t *testing.T) {
 			require.NoError(t, err)
 			limit := d.limits.MaxSessionsPerSeries("user-1")
 			assert.Equal(t, tc.expectedLabels, d.limitMaxSessionsPerSeries(limit, tc.seriesLabels))
+		})
+	}
+}
+
+func Test_IngestLimits(t *testing.T) {
+	type testCase struct {
+		description        string
+		pushReq            *distributormodel.PushRequest
+		overrides          *validation.Overrides
+		verifyExpectations func(err error, req *distributormodel.PushRequest, res *connect.Response[pushv1.PushResponse])
+	}
+
+	testCases := []testCase{
+		{
+			description: "ingest_limit_reached",
+			pushReq:     &distributormodel.PushRequest{},
+			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+				l := validation.MockDefaultLimits()
+				l.IngestionLimit = &ingest_limits.Config{
+					PeriodType:     "hour",
+					PeriodLimitMb:  128,
+					LimitResetTime: 1737721086,
+					LimitReached:   true,
+					Sampling: ingest_limits.SamplingConfig{
+						NumRequests: 0,
+						Period:      time.Minute,
+					},
+				}
+				tenantLimits["user-1"] = l
+			}),
+			verifyExpectations: func(err error, req *distributormodel.PushRequest, res *connect.Response[pushv1.PushResponse]) {
+				require.Error(t, err)
+				require.Nil(t, res)
+				require.Equal(t, connect.CodeResourceExhausted, connect.CodeOf(err))
+			},
+		},
+		{
+			description: "ingest_limit_reached_sampling",
+			pushReq: &distributormodel.PushRequest{
+				Series: []*distributormodel.ProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "__name__", Value: "cpu"},
+							{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+						},
+						Samples: []*distributormodel.ProfileSample{
+							{
+								RawProfile: collectTestProfileBytes(t),
+								Profile: pprof2.RawFromProto(&profilev1.Profile{
+									Sample: []*profilev1.Sample{{
+										Value: []int64{1},
+									}},
+									StringTable: []string{""},
+								}),
+							},
+						},
+					},
+				},
+			},
+			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+				l := validation.MockDefaultLimits()
+				l.IngestionLimit = &ingest_limits.Config{
+					PeriodType:     "hour",
+					PeriodLimitMb:  128,
+					LimitResetTime: 1737721086,
+					LimitReached:   true,
+					Sampling: ingest_limits.SamplingConfig{
+						NumRequests: 1,
+						Period:      time.Minute,
+					},
+				}
+				tenantLimits["user-1"] = l
+			}),
+			verifyExpectations: func(err error, req *distributormodel.PushRequest, res *connect.Response[pushv1.PushResponse]) {
+				require.NoError(t, err)
+				require.NotNil(t, res)
+				require.Equal(t, 1, len(req.Series[0].Annotations))
+				// annotations are json encoded and contain some of the limit config fields
+				require.True(t, strings.Contains(req.Series[0].Annotations[0].Body, "\"periodLimitMb\":128"))
+			},
+		},
+		{
+			description: "ingest_limit_reached",
+			pushReq:     &distributormodel.PushRequest{},
+			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+				l := validation.MockDefaultLimits()
+				l.IngestionLimit = &ingest_limits.Config{
+					PeriodType:     "hour",
+					PeriodLimitMb:  128,
+					LimitResetTime: 1737721086,
+					LimitReached:   true,
+					Sampling: ingest_limits.SamplingConfig{
+						NumRequests: 0,
+						Period:      time.Minute,
+					},
+				}
+				tenantLimits["user-1"] = l
+			}),
+			verifyExpectations: func(err error, req *distributormodel.PushRequest, res *connect.Response[pushv1.PushResponse]) {
+				require.Error(t, err)
+				require.Nil(t, res)
+				require.Equal(t, connect.CodeResourceExhausted, connect.CodeOf(err))
+			},
+		},
+		{
+			description: "ingest_limit_reached_for_usage_group",
+			pushReq: &distributormodel.PushRequest{
+				Series: []*distributormodel.ProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "__name__", Value: "cpu"},
+							{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+						},
+						Samples: []*distributormodel.ProfileSample{
+							{
+								RawProfile: collectTestProfileBytes(t),
+							},
+						},
+					},
+				},
+			},
+			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+				l := validation.MockDefaultLimits()
+				l.IngestionLimit = &ingest_limits.Config{
+					PeriodType:     "hour",
+					PeriodLimitMb:  128,
+					LimitResetTime: 1737721086,
+					LimitReached:   false,
+					Sampling: ingest_limits.SamplingConfig{
+						NumRequests: 0,
+						Period:      time.Minute,
+					},
+					UsageGroups: map[string]ingest_limits.UsageGroup{
+						"group-1": {
+							PeriodLimitMb: 64,
+							LimitReached:  true,
+						},
+					},
+				}
+				usageGroupCfg, err := validation.NewUsageGroupConfig(map[string]string{
+					"group-1": "{service_name=\"svc\"}",
+				})
+				require.NoError(t, err)
+				l.DistributorUsageGroups = &usageGroupCfg
+				tenantLimits["user-1"] = l
+			}),
+			verifyExpectations: func(err error, req *distributormodel.PushRequest, res *connect.Response[pushv1.PushResponse]) {
+				require.Error(t, err)
+				require.Nil(t, res)
+				require.Equal(t, connect.CodeResourceExhausted, connect.CodeOf(err))
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			ing := newFakeIngester(t, false)
+			d, err := New(Config{
+				DistributorRing: ringConfig,
+			}, testhelper.NewMockRing([]ring.InstanceDesc{
+				{Addr: "foo"},
+			}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
+				return ing, nil
+			}}, tc.overrides, nil, log.NewLogfmtLogger(os.Stdout), nil)
+
+			resp, err := d.PushParsed(tenant.InjectTenantID(context.Background(), "user-1"), tc.pushReq)
+			tc.verifyExpectations(err, tc.pushReq, resp)
 		})
 	}
 }
