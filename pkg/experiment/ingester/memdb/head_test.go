@@ -46,6 +46,7 @@ func TestHeadLabelValues(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []string{"bar", "foo"}, res.Msg.Names)
 }
+
 func TestHeadLabelNames(t *testing.T) {
 	head := newTestHead()
 	head.Ingest(newProfileFoo(), uuid.New(), []*typesv1.LabelPair{{Name: "job", Value: "foo"}, {Name: "namespace", Value: "phlare"}}, nil)
@@ -438,6 +439,70 @@ func TestMergeProfilesStacktraces(t *testing.T) {
 	})
 }
 
+func TestMergeProfilesLabels(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	// ingest some sample data
+	var (
+		end   = time.Unix(0, int64(time.Hour))
+		start = end.Add(-time.Minute)
+		step  = 15 * time.Second
+	)
+
+	db := newTestHead()
+
+	ingestProfiles(t, db, cpuProfileGenerator, start.UnixNano(), end.UnixNano(), step,
+		&typesv1.LabelPair{Name: "namespace", Value: "my-namespace"},
+		&typesv1.LabelPair{Name: "pod", Value: "my-pod"},
+	)
+
+	q := flushTestHead(t, db)
+
+	// create client
+	client, cleanup := testutil.IngesterClientForTest(t, []phlaredb.Querier{q})
+	defer cleanup()
+
+	t.Run("request the one existing series", func(t *testing.T) {
+		bidi := client.MergeProfilesLabels(context.Background())
+
+		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesLabelsRequest{
+			Request: &ingestv1.SelectProfilesRequest{
+				LabelSelector: `{pod="my-pod"}`,
+				Type:          mustParseProfileSelector(t, "process_cpu:cpu:nanoseconds:cpu:nanoseconds"),
+				Start:         start.UnixMilli(),
+				End:           end.UnixMilli(),
+			},
+		}))
+
+		resp, err := bidi.Receive()
+		require.NoError(t, err)
+		require.Nil(t, resp.Series)
+		require.Len(t, resp.SelectedProfiles.Fingerprints, 1)
+		require.Len(t, resp.SelectedProfiles.Profiles, 5)
+
+		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesLabelsRequest{
+			Profiles: []bool{true},
+		}))
+
+		// expect empty response
+		resp, err = bidi.Receive()
+		require.NoError(t, err)
+		require.Nil(t, resp.Series)
+
+		// received result
+		resp, err = bidi.Receive()
+		require.NoError(t, err)
+		require.NotNil(t, resp.Series)
+
+		require.NoError(t, err)
+		require.Equal(t, 1, len(resp.Series))
+		point := resp.Series[0].Points[0]
+		require.Equal(t, int64(3540000), point.Timestamp)
+		require.Equal(t, float64(500000000), point.Value)
+		require.Equal(t, "test annotation", point.Annotations[0].Body)
+	})
+}
+
 func TestMergeProfilesPprof(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
@@ -802,7 +867,8 @@ func ingestProfiles(b testing.TB, db *Head, generator func(tsNano int64, t testi
 	b.Helper()
 	for i := from; i <= to; i += int64(step) {
 		p, name := generator(i, b)
-		db.Ingest(p, uuid.New(), append(externalLabels, &typesv1.LabelPair{Name: model.MetricNameLabel, Value: name}), nil)
+		db.Ingest(p, uuid.New(), append(externalLabels, &typesv1.LabelPair{Name: model.MetricNameLabel, Value: name}),
+			[]*typesv1.ProfileAnnotation{{Body: "test annotation"}})
 	}
 }
 
