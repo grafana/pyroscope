@@ -416,6 +416,34 @@
         }
       }
     },
+    "queryv1Query": {
+      "type": "object",
+      "properties": {
+        "queryType": {
+          "$ref": "#/definitions/v1QueryType"
+        },
+        "labelNames": {
+          "$ref": "#/definitions/v1LabelNamesQuery",
+          "description": "Exactly one of the following fields should be set,\ndepending on the query type."
+        },
+        "labelValues": {
+          "$ref": "#/definitions/v1LabelValuesQuery"
+        },
+        "seriesLabels": {
+          "$ref": "#/definitions/v1SeriesLabelsQuery"
+        },
+        "timeSeries": {
+          "$ref": "#/definitions/v1TimeSeriesQuery"
+        },
+        "tree": {
+          "$ref": "#/definitions/v1TreeQuery"
+        },
+        "pprof": {
+          "$ref": "#/definitions/v1PprofQuery",
+          "description": "function_details\n call_graph\n top_table\n ..."
+        }
+      }
+    },
     "rpcStatus": {
       "type": "object",
       "properties": {
@@ -443,6 +471,25 @@
       "properties": {
         "name": {
           "type": "string"
+        }
+      }
+    },
+    "typesv1Series": {
+      "type": "object",
+      "properties": {
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1LabelPair"
+          }
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Point"
+          }
         }
       }
     },
@@ -1512,7 +1559,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/v1Series"
+            "$ref": "#/definitions/typesv1Series"
           },
           "title": "The list of series for the profile with their respective value"
         }
@@ -1708,34 +1755,6 @@
         },
         "periodUnit": {
           "type": "string"
-        }
-      }
-    },
-    "v1Query": {
-      "type": "object",
-      "properties": {
-        "queryType": {
-          "$ref": "#/definitions/v1QueryType"
-        },
-        "labelNames": {
-          "$ref": "#/definitions/v1LabelNamesQuery",
-          "description": "Exactly one of the following fields should be set,\ndepending on the query type."
-        },
-        "labelValues": {
-          "$ref": "#/definitions/v1LabelValuesQuery"
-        },
-        "seriesLabels": {
-          "$ref": "#/definitions/v1SeriesLabelsQuery"
-        },
-        "timeSeries": {
-          "$ref": "#/definitions/v1TimeSeriesQuery"
-        },
-        "tree": {
-          "$ref": "#/definitions/v1TreeQuery"
-        },
-        "pprof": {
-          "$ref": "#/definitions/v1PprofQuery",
-          "description": "function_details\n call_graph\n top_table\n ..."
         }
       }
     },
@@ -2126,7 +2145,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/v1Series"
+            "$ref": "#/definitions/typesv1Series"
           }
         }
       }
@@ -2160,25 +2179,6 @@
         "hints": {
           "$ref": "#/definitions/v1Hints",
           "title": "Optional: Hints for querying"
-        }
-      }
-    },
-    "v1Series": {
-      "type": "object",
-      "properties": {
-        "labels": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1LabelPair"
-          }
-        },
-        "points": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1Point"
-          }
         }
       }
     },
@@ -2356,7 +2356,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/v1Series"
+            "$ref": "#/definitions/typesv1Series"
           }
         }
       }
