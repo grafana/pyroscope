@@ -276,7 +276,7 @@ func convertRequest(req *distributormodel.PushRequest) []*segmentwriterv1.PushRe
 	r := make([]*segmentwriterv1.PushRequest, 0, len(req.Series)*2)
 	for _, s := range req.Series {
 		for _, p := range s.Samples {
-			r = append(r, convertProfile(p, s.Labels, req.TenantID))
+			r = append(r, convertProfile(p, s.Labels, req.TenantID, s.Annotations))
 		}
 	}
 	return r
@@ -286,6 +286,7 @@ func convertProfile(
 	sample *distributormodel.ProfileSample,
 	labels []*typesv1.LabelPair,
 	tenantID string,
+	annotations []*typesv1.ProfileAnnotation,
 ) *segmentwriterv1.PushRequest {
 	buf, err := pprof.Marshal(sample.Profile.Profile, true)
 	if err != nil {
@@ -293,9 +294,10 @@ func convertProfile(
 	}
 	profileID := uuid.New()
 	return &segmentwriterv1.PushRequest{
-		TenantId:  tenantID,
-		Labels:    labels,
-		Profile:   buf,
-		ProfileId: profileID[:],
+		TenantId:    tenantID,
+		Labels:      labels,
+		Profile:     buf,
+		ProfileId:   profileID[:],
+		Annotations: annotations,
 	}
 }

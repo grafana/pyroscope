@@ -31,8 +31,8 @@ import (
 
 func TestHeadLabelValues(t *testing.T) {
 	head := newTestHead()
-	head.Ingest(newProfileFoo(), uuid.New(), []*typesv1.LabelPair{{Name: "job", Value: "foo"}, {Name: "namespace", Value: "phlare"}})
-	head.Ingest(newProfileBar(), uuid.New(), []*typesv1.LabelPair{{Name: "job", Value: "bar"}, {Name: "namespace", Value: "phlare"}})
+	head.Ingest(newProfileFoo(), uuid.New(), []*typesv1.LabelPair{{Name: "job", Value: "foo"}, {Name: "namespace", Value: "phlare"}}, nil)
+	head.Ingest(newProfileBar(), uuid.New(), []*typesv1.LabelPair{{Name: "job", Value: "bar"}, {Name: "namespace", Value: "phlare"}}, nil)
 
 	q := flushTestHead(t, head)
 
@@ -46,8 +46,8 @@ func TestHeadLabelValues(t *testing.T) {
 }
 func TestHeadLabelNames(t *testing.T) {
 	head := newTestHead()
-	head.Ingest(newProfileFoo(), uuid.New(), []*typesv1.LabelPair{{Name: "job", Value: "foo"}, {Name: "namespace", Value: "phlare"}})
-	head.Ingest(newProfileBar(), uuid.New(), []*typesv1.LabelPair{{Name: "job", Value: "bar"}, {Name: "namespace", Value: "phlare"}})
+	head.Ingest(newProfileFoo(), uuid.New(), []*typesv1.LabelPair{{Name: "job", Value: "foo"}, {Name: "namespace", Value: "phlare"}}, nil)
+	head.Ingest(newProfileBar(), uuid.New(), []*typesv1.LabelPair{{Name: "job", Value: "bar"}, {Name: "namespace", Value: "phlare"}}, nil)
 
 	q := flushTestHead(t, head)
 
@@ -60,8 +60,8 @@ func TestHeadSeries(t *testing.T) {
 	head := newTestHead()
 	fooLabels := phlaremodel.NewLabelsBuilder(nil).Set("namespace", "phlare").Set("job", "foo").Labels()
 	barLabels := phlaremodel.NewLabelsBuilder(nil).Set("namespace", "phlare").Set("job", "bar").Labels()
-	head.Ingest(newProfileFoo(), uuid.New(), fooLabels)
-	head.Ingest(newProfileBar(), uuid.New(), barLabels)
+	head.Ingest(newProfileFoo(), uuid.New(), fooLabels, nil)
+	head.Ingest(newProfileBar(), uuid.New(), barLabels, nil)
 
 	lblBuilder := phlaremodel.NewLabelsBuilder(nil).
 		Set("namespace", "phlare").
@@ -93,8 +93,8 @@ func TestHeadSeries(t *testing.T) {
 
 func TestHeadProfileTypes(t *testing.T) {
 	head := newTestHead()
-	head.Ingest(newProfileFoo(), uuid.New(), []*typesv1.LabelPair{{Name: "__name__", Value: "foo"}, {Name: "job", Value: "foo"}, {Name: "namespace", Value: "phlare"}})
-	head.Ingest(newProfileBar(), uuid.New(), []*typesv1.LabelPair{{Name: "__name__", Value: "bar"}, {Name: "namespace", Value: "phlare"}})
+	head.Ingest(newProfileFoo(), uuid.New(), []*typesv1.LabelPair{{Name: "__name__", Value: "foo"}, {Name: "job", Value: "foo"}, {Name: "namespace", Value: "phlare"}}, nil)
+	head.Ingest(newProfileBar(), uuid.New(), []*typesv1.LabelPair{{Name: "__name__", Value: "bar"}, {Name: "namespace", Value: "phlare"}}, nil)
 
 	q := flushTestHead(t, head)
 
@@ -118,7 +118,7 @@ func TestHead_SelectMatchingProfiles_Order(t *testing.T) {
 		head.Ingest(x, uuid.UUID{}, []*typesv1.LabelPair{
 			{Name: "job", Value: "foo"},
 			{Name: "x", Value: strconv.Itoa(i)},
-		})
+		}, nil)
 	}
 
 	q := flushTestHead(t, head)
@@ -172,7 +172,7 @@ func TestHeadFlushQuery(t *testing.T) {
 	for pos := range testdata {
 		head.Ingest(testdata[pos].profile.CloneVT(), uuid.New(), []*typesv1.LabelPair{
 			{Name: phlaremodel.LabelNameServiceName, Value: testdata[pos].svc},
-		})
+		}, nil)
 	}
 
 	flushed, err := head.Flush(ctx)
@@ -248,73 +248,49 @@ func TestHead_ProfileOrder(t *testing.T) {
 	head := newTestHead()
 
 	p, u := profileWithID(1)
-	head.Ingest(
-		p,
-		u,
-		[]*typesv1.LabelPair{
-			{Name: phlaremodel.LabelNameProfileName, Value: "memory"},
-			{Name: phlaremodel.LabelNameOrder, Value: phlaremodel.LabelOrderEnforced},
-			{Name: phlaremodel.LabelNameServiceName, Value: "service-a"},
-		},
-	)
+	head.Ingest(p, u, []*typesv1.LabelPair{
+		{Name: phlaremodel.LabelNameProfileName, Value: "memory"},
+		{Name: phlaremodel.LabelNameOrder, Value: phlaremodel.LabelOrderEnforced},
+		{Name: phlaremodel.LabelNameServiceName, Value: "service-a"},
+	}, nil)
 
 	p, u = profileWithID(2)
-	head.Ingest(
-		p,
-		u,
-		[]*typesv1.LabelPair{
-			{Name: phlaremodel.LabelNameProfileName, Value: "memory"},
-			{Name: phlaremodel.LabelNameOrder, Value: phlaremodel.LabelOrderEnforced},
-			{Name: phlaremodel.LabelNameServiceName, Value: "service-b"},
-			{Name: "____Label", Value: "important"},
-		},
-	)
+	head.Ingest(p, u, []*typesv1.LabelPair{
+		{Name: phlaremodel.LabelNameProfileName, Value: "memory"},
+		{Name: phlaremodel.LabelNameOrder, Value: phlaremodel.LabelOrderEnforced},
+		{Name: phlaremodel.LabelNameServiceName, Value: "service-b"},
+		{Name: "____Label", Value: "important"},
+	}, nil)
 
 	p, u = profileWithID(3)
-	head.Ingest(
-		p,
-		u,
-		[]*typesv1.LabelPair{
-			{Name: phlaremodel.LabelNameProfileName, Value: "memory"},
-			{Name: phlaremodel.LabelNameOrder, Value: phlaremodel.LabelOrderEnforced},
-			{Name: phlaremodel.LabelNameServiceName, Value: "service-c"},
-			{Name: "AAALabel", Value: "important"},
-		},
-	)
+	head.Ingest(p, u, []*typesv1.LabelPair{
+		{Name: phlaremodel.LabelNameProfileName, Value: "memory"},
+		{Name: phlaremodel.LabelNameOrder, Value: phlaremodel.LabelOrderEnforced},
+		{Name: phlaremodel.LabelNameServiceName, Value: "service-c"},
+		{Name: "AAALabel", Value: "important"},
+	}, nil)
 
 	p, u = profileWithID(4)
-	head.Ingest(
-		p,
-		u,
-		[]*typesv1.LabelPair{
-			{Name: phlaremodel.LabelNameProfileName, Value: "cpu"},
-			{Name: phlaremodel.LabelNameOrder, Value: phlaremodel.LabelOrderEnforced},
-			{Name: phlaremodel.LabelNameServiceName, Value: "service-a"},
-			{Name: "000Label", Value: "important"},
-		},
-	)
+	head.Ingest(p, u, []*typesv1.LabelPair{
+		{Name: phlaremodel.LabelNameProfileName, Value: "cpu"},
+		{Name: phlaremodel.LabelNameOrder, Value: phlaremodel.LabelOrderEnforced},
+		{Name: phlaremodel.LabelNameServiceName, Value: "service-a"},
+		{Name: "000Label", Value: "important"},
+	}, nil)
 
 	p, u = profileWithID(5)
-	head.Ingest(
-		p,
-		u,
-		[]*typesv1.LabelPair{
-			{Name: phlaremodel.LabelNameProfileName, Value: "cpu"},
-			{Name: phlaremodel.LabelNameOrder, Value: phlaremodel.LabelOrderEnforced},
-			{Name: phlaremodel.LabelNameServiceName, Value: "service-b"},
-		},
-	)
+	head.Ingest(p, u, []*typesv1.LabelPair{
+		{Name: phlaremodel.LabelNameProfileName, Value: "cpu"},
+		{Name: phlaremodel.LabelNameOrder, Value: phlaremodel.LabelOrderEnforced},
+		{Name: phlaremodel.LabelNameServiceName, Value: "service-b"},
+	}, nil)
 
 	p, u = profileWithID(6)
-	head.Ingest(
-		p,
-		u,
-		[]*typesv1.LabelPair{
-			{Name: phlaremodel.LabelNameProfileName, Value: "cpu"},
-			{Name: phlaremodel.LabelNameOrder, Value: phlaremodel.LabelOrderEnforced},
-			{Name: phlaremodel.LabelNameServiceName, Value: "service-b"},
-		},
-	)
+	head.Ingest(p, u, []*typesv1.LabelPair{
+		{Name: phlaremodel.LabelNameProfileName, Value: "cpu"},
+		{Name: phlaremodel.LabelNameOrder, Value: phlaremodel.LabelOrderEnforced},
+		{Name: phlaremodel.LabelNameServiceName, Value: "service-b"},
+	}, nil)
 
 	flushed, err := head.Flush(context.Background())
 	require.NoError(t, err)
@@ -637,7 +613,7 @@ func BenchmarkHeadIngestProfiles(t *testing.B) {
 	for n := 0; n < t.N; n++ {
 		for pos := range profilePaths {
 			p := parseProfile(t, profilePaths[pos])
-			head.Ingest(p, uuid.New(), []*typesv1.LabelPair{})
+			head.Ingest(p, uuid.New(), []*typesv1.LabelPair{}, nil)
 			profileCount++
 		}
 	}
@@ -824,8 +800,7 @@ func ingestProfiles(b testing.TB, db *Head, generator func(tsNano int64, t testi
 	b.Helper()
 	for i := from; i <= to; i += int64(step) {
 		p, name := generator(i, b)
-		db.Ingest(
-			p, uuid.New(), append(externalLabels, &typesv1.LabelPair{Name: model.MetricNameLabel, Value: name}))
+		db.Ingest(p, uuid.New(), append(externalLabels, &typesv1.LabelPair{Name: model.MetricNameLabel, Value: name}), nil)
 	}
 }
 

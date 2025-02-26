@@ -661,16 +661,10 @@ func (d *Distributor) sendProfilesErr(ctx context.Context, ingester ring.Instanc
 	})
 
 	for _, p := range profileTrackers {
-		annotations := make([]*typesv1.ProfileAnnotation, 0, len(p.profile.Annotations))
-		for _, a := range p.profile.Annotations {
-			annotations = append(annotations, &typesv1.ProfileAnnotation{
-				Body: a,
-			})
-		}
 		series := &pushv1.RawProfileSeries{
 			Labels:      p.profile.Labels,
 			Samples:     make([]*pushv1.RawSample, 0, len(p.profile.Samples)),
-			Annotations: annotations,
+			Annotations: p.profile.Annotations,
 		}
 		for _, sample := range p.profile.Samples {
 			series.Samples = append(series.Samples, &pushv1.RawSample{
