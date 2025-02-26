@@ -61,6 +61,7 @@ jobs:
 
       - name: Push per architecture images and create multi-arch manifest
         run: |
+          set -eu -o pipefail
           set +x
           IMAGE_AMMENDS=()
 
@@ -71,6 +72,15 @@ jobs:
             docker push "${new_image}"
             IMAGE_AMMENDS+=( "--amend" "${new_image}" )
           done
+
+          if [[ ! " ${IMAGE_AMMENDS[*]} " =~ -amd64 ]]; then
+            echo "expected to contain an amd64 image"
+            exit 1
+          fi
+          if [[ ! " ${IMAGE_AMMENDS[*]} " =~ -arm64 ]]; then
+            echo "expected to contain an arm64 image"
+            exit 1
+          fi
 
           docker manifest create "grafana/pyroscope:${WEEKLY_IMAGE_TAG}" "${IMAGE_AMMENDS[@]}"
           docker manifest push "grafana/pyroscope:${WEEKLY_IMAGE_TAG}"
