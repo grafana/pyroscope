@@ -38,12 +38,6 @@ const (
 	CompactionServicePollCompactionJobsProcedure = "/metastore.v1.CompactionService/PollCompactionJobs"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	compactionServiceServiceDescriptor                  = v1.File_metastore_v1_compactor_proto.Services().ByName("CompactionService")
-	compactionServicePollCompactionJobsMethodDescriptor = compactionServiceServiceDescriptor.Methods().ByName("PollCompactionJobs")
-)
-
 // CompactionServiceClient is a client for the metastore.v1.CompactionService service.
 type CompactionServiceClient interface {
 	// Used to both retrieve jobs and update the jobs status at the same time.
@@ -59,11 +53,12 @@ type CompactionServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewCompactionServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) CompactionServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	compactionServiceMethods := v1.File_metastore_v1_compactor_proto.Services().ByName("CompactionService").Methods()
 	return &compactionServiceClient{
 		pollCompactionJobs: connect.NewClient[v1.PollCompactionJobsRequest, v1.PollCompactionJobsResponse](
 			httpClient,
 			baseURL+CompactionServicePollCompactionJobsProcedure,
-			connect.WithSchema(compactionServicePollCompactionJobsMethodDescriptor),
+			connect.WithSchema(compactionServiceMethods.ByName("PollCompactionJobs")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -91,10 +86,11 @@ type CompactionServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewCompactionServiceHandler(svc CompactionServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	compactionServiceMethods := v1.File_metastore_v1_compactor_proto.Services().ByName("CompactionService").Methods()
 	compactionServicePollCompactionJobsHandler := connect.NewUnaryHandler(
 		CompactionServicePollCompactionJobsProcedure,
 		svc.PollCompactionJobs,
-		connect.WithSchema(compactionServicePollCompactionJobsMethodDescriptor),
+		connect.WithSchema(compactionServiceMethods.ByName("PollCompactionJobs")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/metastore.v1.CompactionService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

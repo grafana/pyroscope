@@ -43,14 +43,6 @@ const (
 	AdHocProfileServiceListProcedure = "/adhocprofiles.v1.AdHocProfileService/List"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	adHocProfileServiceServiceDescriptor      = v1.File_adhocprofiles_v1_adhocprofiles_proto.Services().ByName("AdHocProfileService")
-	adHocProfileServiceUploadMethodDescriptor = adHocProfileServiceServiceDescriptor.Methods().ByName("Upload")
-	adHocProfileServiceGetMethodDescriptor    = adHocProfileServiceServiceDescriptor.Methods().ByName("Get")
-	adHocProfileServiceListMethodDescriptor   = adHocProfileServiceServiceDescriptor.Methods().ByName("List")
-)
-
 // AdHocProfileServiceClient is a client for the adhocprofiles.v1.AdHocProfileService service.
 type AdHocProfileServiceClient interface {
 	// Upload a profile to the underlying store. The request contains a name and a base64 encoded pprof file. The response
@@ -72,23 +64,24 @@ type AdHocProfileServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewAdHocProfileServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) AdHocProfileServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	adHocProfileServiceMethods := v1.File_adhocprofiles_v1_adhocprofiles_proto.Services().ByName("AdHocProfileService").Methods()
 	return &adHocProfileServiceClient{
 		upload: connect.NewClient[v1.AdHocProfilesUploadRequest, v1.AdHocProfilesGetResponse](
 			httpClient,
 			baseURL+AdHocProfileServiceUploadProcedure,
-			connect.WithSchema(adHocProfileServiceUploadMethodDescriptor),
+			connect.WithSchema(adHocProfileServiceMethods.ByName("Upload")),
 			connect.WithClientOptions(opts...),
 		),
 		get: connect.NewClient[v1.AdHocProfilesGetRequest, v1.AdHocProfilesGetResponse](
 			httpClient,
 			baseURL+AdHocProfileServiceGetProcedure,
-			connect.WithSchema(adHocProfileServiceGetMethodDescriptor),
+			connect.WithSchema(adHocProfileServiceMethods.ByName("Get")),
 			connect.WithClientOptions(opts...),
 		),
 		list: connect.NewClient[v1.AdHocProfilesListRequest, v1.AdHocProfilesListResponse](
 			httpClient,
 			baseURL+AdHocProfileServiceListProcedure,
-			connect.WithSchema(adHocProfileServiceListMethodDescriptor),
+			connect.WithSchema(adHocProfileServiceMethods.ByName("List")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -135,22 +128,23 @@ type AdHocProfileServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewAdHocProfileServiceHandler(svc AdHocProfileServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	adHocProfileServiceMethods := v1.File_adhocprofiles_v1_adhocprofiles_proto.Services().ByName("AdHocProfileService").Methods()
 	adHocProfileServiceUploadHandler := connect.NewUnaryHandler(
 		AdHocProfileServiceUploadProcedure,
 		svc.Upload,
-		connect.WithSchema(adHocProfileServiceUploadMethodDescriptor),
+		connect.WithSchema(adHocProfileServiceMethods.ByName("Upload")),
 		connect.WithHandlerOptions(opts...),
 	)
 	adHocProfileServiceGetHandler := connect.NewUnaryHandler(
 		AdHocProfileServiceGetProcedure,
 		svc.Get,
-		connect.WithSchema(adHocProfileServiceGetMethodDescriptor),
+		connect.WithSchema(adHocProfileServiceMethods.ByName("Get")),
 		connect.WithHandlerOptions(opts...),
 	)
 	adHocProfileServiceListHandler := connect.NewUnaryHandler(
 		AdHocProfileServiceListProcedure,
 		svc.List,
-		connect.WithSchema(adHocProfileServiceListMethodDescriptor),
+		connect.WithSchema(adHocProfileServiceMethods.ByName("List")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/adhocprofiles.v1.AdHocProfileService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
