@@ -37,12 +37,6 @@ const (
 	VersionVersionProcedure = "/version.v1.Version/Version"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	versionServiceDescriptor       = v1.File_version_v1_version_proto.Services().ByName("Version")
-	versionVersionMethodDescriptor = versionServiceDescriptor.Methods().ByName("Version")
-)
-
 // VersionClient is a client for the version.v1.Version service.
 type VersionClient interface {
 	Version(context.Context, *connect.Request[v1.VersionRequest]) (*connect.Response[v1.VersionResponse], error)
@@ -57,11 +51,12 @@ type VersionClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewVersionClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) VersionClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	versionMethods := v1.File_version_v1_version_proto.Services().ByName("Version").Methods()
 	return &versionClient{
 		version: connect.NewClient[v1.VersionRequest, v1.VersionResponse](
 			httpClient,
 			baseURL+VersionVersionProcedure,
-			connect.WithSchema(versionVersionMethodDescriptor),
+			connect.WithSchema(versionMethods.ByName("Version")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -88,10 +83,11 @@ type VersionHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewVersionHandler(svc VersionHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	versionMethods := v1.File_version_v1_version_proto.Services().ByName("Version").Methods()
 	versionVersionHandler := connect.NewUnaryHandler(
 		VersionVersionProcedure,
 		svc.Version,
-		connect.WithSchema(versionVersionMethodDescriptor),
+		connect.WithSchema(versionMethods.ByName("Version")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/version.v1.Version/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
