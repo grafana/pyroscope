@@ -35,7 +35,7 @@ type ProfileSeries struct {
 	Samples  []*ProfileSample
 	Language string
 
-	Annotations []string
+	Annotations []*v1.ProfileAnnotation
 }
 
 func (p *ProfileSeries) GetLanguage() string {
@@ -104,7 +104,7 @@ func (req *PushRequest) MarkThrottledTenant(l *ingest_limits.Config) error {
 		return err
 	}
 	for _, series := range req.Series {
-		series.Annotations = append(series.Annotations, string(annotation))
+		series.Annotations = append(series.Annotations, &v1.ProfileAnnotation{Body: string(annotation)})
 	}
 	return nil
 }
@@ -115,7 +115,7 @@ func (req *PushRequest) MarkThrottledUsageGroup(l *ingest_limits.Config, usageGr
 		return err
 	}
 	for _, series := range req.Series {
-		series.Annotations = append(series.Annotations, string(annotation))
+		series.Annotations = append(series.Annotations, &v1.ProfileAnnotation{Body: string(annotation)})
 	}
 	return nil
 }

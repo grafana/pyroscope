@@ -212,7 +212,7 @@ func (i *SegmentWriterService) Push(ctx context.Context, req *segmentwriterv1.Pu
 	}
 
 	wait := i.segmentWriter.ingest(shardKey(req.Shard), func(segment segmentIngest) {
-		segment.ingest(req.TenantId, p.Profile, id, req.Labels)
+		segment.ingest(req.TenantId, p.Profile, id, req.Labels, req.Annotations)
 	})
 
 	flushStarted := time.Now()

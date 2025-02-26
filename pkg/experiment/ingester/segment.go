@@ -473,7 +473,7 @@ type segment struct {
 }
 
 type segmentIngest interface {
-	ingest(tenantID string, p *profilev1.Profile, id uuid.UUID, labels []*typesv1.LabelPair)
+	ingest(tenantID string, p *profilev1.Profile, id uuid.UUID, labels []*typesv1.LabelPair, annotations []*typesv1.ProfileAnnotation)
 }
 
 type segmentWaitFlushed interface {
@@ -492,7 +492,7 @@ func (s *segment) waitFlushed(ctx context.Context) error {
 	}
 }
 
-func (s *segment) ingest(tenantID string, p *profilev1.Profile, id uuid.UUID, labels []*typesv1.LabelPair) {
+func (s *segment) ingest(tenantID string, p *profilev1.Profile, id uuid.UUID, labels []*typesv1.LabelPair, annotations []*typesv1.ProfileAnnotation) {
 	k := datasetKey{
 		tenant:  tenantID,
 		service: model.Labels(labels).Get(model.LabelNameServiceName),
@@ -501,9 +501,10 @@ func (s *segment) ingest(tenantID string, p *profilev1.Profile, id uuid.UUID, la
 	rules := s.sw.limits.IngestionRelabelingRules(tenantID)
 	usage := s.sw.limits.DistributorUsageGroups(tenantID).GetUsageGroups(tenantID, labels)
 	appender := &sampleAppender{
-		head:    s.headForIngest(k),
-		profile: p,
-		id:      id,
+		head:        s.headForIngest(k),
+		profile:     p,
+		id:          id,
+		annotations: annotations,
 	}
 	pprofsplit.VisitSampleSeries(p, labels, rules, appender)
 	size -= appender.discardedBytes
@@ -513,17 +514,18 @@ func (s *segment) ingest(tenantID string, p *profilev1.Profile, id uuid.UUID, la
 }
 
 type sampleAppender struct {
-	id       uuid.UUID
-	head     *memdb.Head
-	profile  *profilev1.Profile
-	exporter *pprofmodel.SampleExporter
+	id          uuid.UUID
+	head        *memdb.Head
+	profile     *profilev1.Profile
+	exporter    *pprofmodel.SampleExporter
+	annotations []*typesv1.ProfileAnnotation
 
 	discardedProfiles int
 	discardedBytes    int
 }
 
 func (v *sampleAppender) VisitProfile(labels []*typesv1.LabelPair) {
-	v.head.Ingest(v.profile, v.id, labels)
+	v.head.Ingest(v.profile, v.id, labels, v.annotations)
 }
 
 func (v *sampleAppender) VisitSampleSeries(labels []*typesv1.LabelPair, samples []*profilev1.Sample) {
@@ -532,7 +534,7 @@ func (v *sampleAppender) VisitSampleSeries(labels []*typesv1.LabelPair, samples 
 	}
 	var n profilev1.Profile
 	v.exporter.ExportSamples(&n, samples)
-	v.head.Ingest(&n, v.id, labels)
+	v.head.Ingest(&n, v.id, labels, v.annotations)
 }
 
 func (v *sampleAppender) Discarded(profiles, bytes int) {
