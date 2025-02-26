@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"os"
 	"sync"
 	"time"
 
@@ -84,6 +85,7 @@ type AsyncWriter struct {
 	closeOnce     sync.Once
 	close         chan struct{}
 	done          chan error
+	closed        bool
 }
 
 func NewAsyncWriter(w io.Writer, bufSize, maxBuffers, maxWrites int, flushInterval time.Duration) *AsyncWriter {
@@ -108,6 +110,9 @@ func NewAsyncWriter(w io.Writer, bufSize, maxBuffers, maxWrites int, flushInterv
 func (aw *AsyncWriter) Write(p []byte) (int, error) {
 	aw.mu.Lock()
 	defer aw.mu.Unlock()
+	if aw.closed {
+		return 0, os.ErrClosed
+	}
 	if aw.overflows(len(p)) {
 		aw.enqueueFlush()
 	}
@@ -136,6 +141,7 @@ func (aw *AsyncWriter) Close() error {
 		for buf := range aw.flushQueue {
 			aw.flushSync(buf)
 		}
+		aw.closed = true
 	})
 	return nil
 }
@@ -147,7 +153,10 @@ func (aw *AsyncWriter) enqueueFlush() {
 	}
 	aw.buffer = nil
 	aw.writes = 0
-	aw.flushQueue <- buf
+	select {
+	case aw.flushQueue <- buf:
+	default:
+	}
 }
 
 func (aw *AsyncWriter) loop() {
