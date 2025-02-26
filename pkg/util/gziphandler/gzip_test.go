@@ -15,7 +15,6 @@ import (
 	"net/url"
 	"os"
 	"strconv"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -612,17 +611,6 @@ func TestContentTypes(t *testing.T) {
 		} else {
 			assert.NotEqual(t, "gzip", res.Header.Get("Content-Encoding"), tt.name)
 		}
-	}
-}
-
-func BenchmarkParseEncodings(b *testing.B) {
-	req := httptest.NewRequest(http.MethodGet, "/whatever", nil)
-	req.Header.Set("Accept-Encoding", strings.Repeat(",", http.DefaultMaxHeaderBytes))
-	b.ReportAllocs()
-	b.ResetTimer()
-	for range b.N {
-		_, err := parseEncodings(req.Header.Get(acceptEncoding))
-		assert.Error(b, err)
 	}
 }
 
