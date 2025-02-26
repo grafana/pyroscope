@@ -2,7 +2,6 @@ package retry
 
 import (
 	"context"
-	"sync"
 	"sync/atomic"
 
 	"golang.org/x/time/rate"
@@ -12,7 +11,6 @@ import (
 // with the given rate (ops per second) and burst size.
 type RateLimiter struct {
 	limiter *rate.Limiter
-	mu      sync.Mutex
 }
 
 func NewRateLimiter(ratePerSec float64, burst int) *RateLimiter {
