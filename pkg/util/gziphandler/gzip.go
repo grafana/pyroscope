@@ -520,14 +520,21 @@ func handleContentType(contentTypes []parsedContentType, ct string) bool {
 func parseEncodings(s string) (codings, error) {
 	c := make(codings)
 	var e []string
+	var ss string
+	var found bool
 
-	for _, ss := range strings.Split(s, ",") {
+	for {
+		ss, s, found = strings.Cut(s, ",")
 		coding, qvalue, err := parseCoding(ss)
 
 		if err != nil {
 			e = append(e, err.Error())
 		} else {
 			c[coding] = qvalue
+		}
+
+		if !found {
+			break
 		}
 	}
 
