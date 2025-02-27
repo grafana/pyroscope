@@ -82,7 +82,6 @@ var (
 	totalValueColIndex          int
 
 	AnnotationsColumnPath = strings.Split("Annotations.list.element.Body", ".")
-	annotationsColIndex   int
 
 	downsampledValueColIndex int
 
@@ -124,12 +123,6 @@ func init() {
 		panic(fmt.Errorf("TotalValue column not found"))
 	}
 	totalValueColIndex = totalValueCol.ColumnIndex
-
-	annotationsCol, ok := ProfilesSchema.Lookup(AnnotationsColumnPath...)
-	if !ok {
-		panic(fmt.Errorf("annotations column not found"))
-	}
-	annotationsColIndex = annotationsCol.ColumnIndex
 
 	downsampledValueCol, ok := DownsampledProfilesSchema.Lookup(SampleValueColumnPath...)
 	if !ok {

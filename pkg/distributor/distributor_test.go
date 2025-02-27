@@ -580,6 +580,7 @@ func Test_IngestLimits(t *testing.T) {
 			}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 				return ing, nil
 			}}, tc.overrides, nil, log.NewLogfmtLogger(os.Stdout), nil)
+			require.NoError(t, err)
 
 			resp, err := d.PushParsed(tenant.InjectTenantID(context.Background(), "user-1"), tc.pushReq)
 			tc.verifyExpectations(err, tc.pushReq, resp)
