@@ -3,7 +3,8 @@
 package schedulerdiscovery
 
 import (
-	"fmt"
+	"net"
+	"strconv"
 	"testing"
 	"time"
 
@@ -22,7 +23,7 @@ func TestRingConfig_DefaultConfigToBasicLifecyclerConfig(t *testing.T) {
 
 	expected := ring.BasicLifecyclerConfig{
 		ID:                              cfg.SchedulerRing.InstanceID,
-		Addr:                            fmt.Sprintf("%s:%d", cfg.SchedulerRing.InstanceAddr, cfg.SchedulerRing.InstancePort),
+		Addr:                            net.JoinHostPort(cfg.SchedulerRing.InstanceAddr, strconv.Itoa(cfg.SchedulerRing.InstancePort)),
 		HeartbeatPeriod:                 cfg.SchedulerRing.HeartbeatPeriod,
 		HeartbeatTimeout:                cfg.SchedulerRing.HeartbeatTimeout,
 		TokensObservePeriod:             0,
@@ -50,7 +51,7 @@ func TestRingConfig_CustomConfigToBasicLifecyclerConfig(t *testing.T) {
 	// ring config
 	expected := ring.BasicLifecyclerConfig{
 		ID:                              "test",
-		Addr:                            "1.2.3.4:10",
+		Addr:                            net.JoinHostPort(cfg.SchedulerRing.InstanceAddr, strconv.Itoa(cfg.SchedulerRing.InstancePort)),
 		HeartbeatPeriod:                 1 * time.Second,
 		HeartbeatTimeout:                10 * time.Second,
 		TokensObservePeriod:             0,
@@ -61,4 +62,26 @@ func TestRingConfig_CustomConfigToBasicLifecyclerConfig(t *testing.T) {
 	actual, err := toBasicLifecyclerConfig(cfg.SchedulerRing, log.NewNopLogger())
 	require.NoError(t, err)
 	assert.Equal(t, expected, actual)
+}
+
+func TestRingConfig_AddressFamilies(t *testing.T) {
+	cfg := Config{}
+	flagext.DefaultValues(&cfg)
+
+	t.Run("IPv4", func(t *testing.T) {
+		cfg.SchedulerRing.InstanceAddr = "1.2.3.4"
+		cfg.SchedulerRing.InstancePort = 10
+		actual, err := toBasicLifecyclerConfig(cfg.SchedulerRing, log.NewNopLogger())
+		require.NoError(t, err)
+		assert.Equal(t, "1.2.3.4:10", actual.Addr)
+	})
+
+	t.Run("IPv6", func(t *testing.T) {
+		cfg.SchedulerRing.InstanceAddr = "::1"
+		cfg.SchedulerRing.InstancePort = 10
+		cfg.SchedulerRing.EnableIPv6 = true
+		actual, err := toBasicLifecyclerConfig(cfg.SchedulerRing, log.NewNopLogger())
+		require.NoError(t, err)
+		assert.Equal(t, "[::1]:10", actual.Addr)
+	})
 }

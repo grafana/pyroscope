@@ -322,6 +322,51 @@ func Test_Limits(t *testing.T) {
 			expectedCode:             connect.CodeResourceExhausted,
 			expectedValidationReason: validation.IngestLimitReached,
 		},
+		{
+			description: "ingest_limit_reached_for_usage_group",
+			pushReq: &pushv1.PushRequest{
+				Series: []*pushv1.RawProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "__name__", Value: "cpu"},
+							{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+						},
+						Samples: []*pushv1.RawSample{
+							{
+								RawProfile: collectTestProfileBytes(t),
+							},
+						},
+					},
+				},
+			},
+			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+				l := validation.MockDefaultLimits()
+				l.IngestionLimit = &ingest_limits.Config{
+					PeriodType:     "hour",
+					PeriodLimitMb:  128,
+					LimitResetTime: 1737721086,
+					LimitReached:   false,
+					Sampling: ingest_limits.SamplingConfig{
+						NumRequests: 0,
+						Period:      time.Minute,
+					},
+					UsageGroups: map[string]ingest_limits.UsageGroup{
+						"group-1": {
+							PeriodLimitMb: 64,
+							LimitReached:  true,
+						},
+					},
+				}
+				usageGroupCfg, err := validation.NewUsageGroupConfig(map[string]string{
+					"group-1": "{service_name=\"svc\"}",
+				})
+				require.NoError(t, err)
+				l.DistributorUsageGroups = &usageGroupCfg
+				tenantLimits["user-1"] = l
+			}),
+			expectedCode:             connect.CodeResourceExhausted,
+			expectedValidationReason: validation.IngestLimitReached,
+		},
 	}
 
 	for _, tc := range testCases {

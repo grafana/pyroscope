@@ -168,6 +168,11 @@ tenant_settings:
     # CLI flag: -tenant-settings.collection-rules.alloy-template-path
     [alloy_template_path: <string> | default = ""]
 
+  recording_rules:
+    # Enable the storing of recording rules in tenant settings.
+    # CLI flag: -tenant-settings.recording-rules.enabled
+    [enabled: <boolean> | default = false]
+
 storage:
   # Backend storage to use. Supported backends are: s3, gcs, azure, swift,
   # filesystem, cos.

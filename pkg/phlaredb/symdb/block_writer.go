@@ -43,15 +43,8 @@ func (f *fileWriter) Write(p []byte) (n int, err error) {
 	return f.w.Write(p)
 }
 
-func (f *fileWriter) Flush() (err error) {
-	if err = f.buf.Flush(); err != nil {
-		return err
-	}
-	return f.f.Sync()
-}
-
 func (f *fileWriter) Close() (err error) {
-	if err = f.Flush(); err != nil {
+	if err = f.buf.Flush(); err != nil {
 		return err
 	}
 	return f.f.Close()

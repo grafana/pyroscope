@@ -2,6 +2,7 @@ package compactor
 
 import (
 	"context"
+	"encoding/binary"
 	"flag"
 	"fmt"
 	"os"
@@ -13,18 +14,22 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/cespare/xxhash/v2"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/services"
+	"github.com/oklog/ulid"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/prometheus/model/labels"
 	_ "go.uber.org/automaxprocs"
 	"golang.org/x/sync/errgroup"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block"
 	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
+	"github.com/grafana/pyroscope/pkg/experiment/metrics"
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/util"
 )
@@ -36,7 +41,7 @@ type Worker struct {
 	config  Config
 	client  MetastoreClient
 	storage objstore.Bucket
-	metrics *metrics
+	metrics *compactionWorkerMetrics
 
 	jobs     map[string]*compactionJob
 	queue    chan *compactionJob
@@ -46,14 +51,18 @@ type Worker struct {
 	stopped   atomic.Bool
 	closeOnce sync.Once
 	wg        sync.WaitGroup
+
+	exporter metrics.Exporter
+	ruler    metrics.Ruler
 }
 
 type Config struct {
-	JobConcurrency  int           `yaml:"job_capacity"`
-	JobPollInterval time.Duration `yaml:"job_poll_interval"`
-	SmallObjectSize int           `yaml:"small_object_size_bytes"`
-	TempDir         string        `yaml:"temp_dir"`
-	RequestTimeout  time.Duration `yaml:"request_timeout"`
+	JobConcurrency         int           `yaml:"job_capacity"`
+	JobPollInterval        time.Duration `yaml:"job_poll_interval"`
+	SmallObjectSize        int           `yaml:"small_object_size_bytes"`
+	TempDir                string        `yaml:"temp_dir"`
+	RequestTimeout         time.Duration `yaml:"request_timeout"`
+	MetricsExporterEnabled bool          `yaml:"metrics_exporter_enabled"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
@@ -63,6 +72,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.DurationVar(&cfg.RequestTimeout, prefix+"request-timeout", 5*time.Second, "Job request timeout.")
 	f.IntVar(&cfg.SmallObjectSize, prefix+"small-object-size-bytes", 8<<20, "Size of the object that can be loaded in memory.")
 	f.StringVar(&cfg.TempDir, prefix+"temp-dir", os.TempDir(), "Temporary directory for compaction jobs.")
+	f.BoolVar(&cfg.MetricsExporterEnabled, prefix+"metrics-exporter.enabled", false, "This parameter specifies whether the metrics exporter is enabled.")
 }
 
 type compactionJob struct {
@@ -100,6 +110,8 @@ func New(
 	client MetastoreClient,
 	storage objstore.Bucket,
 	reg prometheus.Registerer,
+	ruler metrics.Ruler,
+	exporter metrics.Exporter,
 ) (*Worker, error) {
 	config.TempDir = filepath.Join(filepath.Clean(config.TempDir), "pyroscope-compactor")
 	_ = os.RemoveAll(config.TempDir)
@@ -107,11 +119,13 @@ func New(
 		return nil, fmt.Errorf("failed to create compactor directory: %w", err)
 	}
 	w := &Worker{
-		config:  config,
-		logger:  logger,
-		client:  client,
-		storage: storage,
-		metrics: newMetrics(reg),
+		config:   config,
+		logger:   logger,
+		client:   client,
+		storage:  storage,
+		metrics:  newMetrics(reg),
+		ruler:    ruler,
+		exporter: exporter,
 	}
 	w.threads = config.JobConcurrency
 	if w.threads < 1 {
@@ -176,6 +190,11 @@ func (w *Worker) running(ctx context.Context) error {
 	ticker.Stop()
 	close(stopPolling)
 	<-pollingDone
+	// Force exporter to send all staged samples (depends on the implementation)
+	// Must be a blocking call.
+	if w.exporter != nil {
+		w.exporter.Flush()
+	}
 	return nil
 }
 
@@ -394,12 +413,20 @@ func (w *Worker) runCompaction(job *compactionJob) {
 
 	tempdir := filepath.Join(w.config.TempDir, job.Name)
 	sourcedir := filepath.Join(tempdir, "source")
-	compacted, err := block.Compact(ctx, job.blocks, w.storage,
+	options := []block.CompactionOption{
 		block.WithCompactionTempDir(tempdir),
 		block.WithCompactionObjectOptions(
 			block.WithObjectMaxSizeLoadInMemory(w.config.SmallObjectSize),
 			block.WithObjectDownload(sourcedir),
-		))
+		),
+	}
+
+	if observer := w.buildSampleObserver(job.blocks[0]); observer != nil {
+		defer observer.Close()
+		options = append(options, block.WithSampleObserver(observer))
+	}
+
+	compacted, err := block.Compact(ctx, job.blocks, w.storage, options...)
 	defer func() {
 		if err = os.RemoveAll(tempdir); err != nil {
 			level.Warn(logger).Log("msg", "failed to remove compaction directory", "path", tempdir, "err", err)
@@ -443,7 +470,7 @@ func (w *Worker) runCompaction(job *compactionJob) {
 		level.Warn(logger).Log("msg", "compaction cancelled")
 		statusName = statusCancelled
 
-	case w.storage.IsObjNotFoundErr(err):
+	case objstore.IsNotExist(w.storage, err):
 		level.Error(logger).Log("msg", "failed to find blocks", "err", err)
 		job.compacted = &metastorev1.CompactedBlocks{SourceBlocks: new(metastorev1.BlockList)}
 		statusName = statusNoBlocks
@@ -456,6 +483,25 @@ func (w *Worker) runCompaction(job *compactionJob) {
 	// The only error returned by Wait is the context
 	// cancellation error handled above.
 	_ = deleteGroup.Wait()
+}
+
+func (w *Worker) buildSampleObserver(md *metastorev1.BlockMeta) *metrics.SampleObserver {
+	if !w.config.MetricsExporterEnabled || md.CompactionLevel > 0 {
+		return nil
+	}
+	recordingTime := int64(ulid.MustParse(md.Id).Time())
+	pyroscopeInstanceLabel := labels.Label{
+		Name:  "pyroscope_instance",
+		Value: pyroscopeInstanceHash(md.Shard, uint32(md.CreatedBy)),
+	}
+	return metrics.NewSampleObserver(recordingTime, w.exporter, w.ruler, pyroscopeInstanceLabel)
+}
+
+func pyroscopeInstanceHash(shard uint32, createdBy uint32) string {
+	buf := make([]byte, 8)
+	binary.BigEndian.PutUint32(buf[0:4], shard)
+	binary.BigEndian.PutUint32(buf[4:8], createdBy)
+	return fmt.Sprintf("%x", xxhash.Sum64(buf))
 }
 
 func (w *Worker) getBlockMetadata(logger log.Logger, job *compactionJob) error {
@@ -496,7 +542,7 @@ func (w *Worker) deleteBlocks(ctx context.Context, logger log.Logger, t *metasto
 		path := block.BuildObjectPath(t.Tenant, t.Shard, t.CompactionLevel, b)
 		if err := w.storage.Delete(ctx, path); err != nil {
 			if objstore.IsNotExist(w.storage, err) {
-				level.Warn(logger).Log("msg", "block not found", "path", path, "err", err)
+				level.Warn(logger).Log("msg", "failed to delete block", "path", path, "err", err)
 				continue
 			}
 			level.Warn(logger).Log("msg", "failed to delete block", "path", path, "err", err)

@@ -19,6 +19,7 @@ import (
 
 	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/settings/v1/settingsv1connect"
+	"github.com/grafana/pyroscope/pkg/settings/store"
 )
 
 // allow to overide time for testing
@@ -92,7 +93,7 @@ type Collection struct {
 	logger log.Logger
 
 	lck    sync.RWMutex
-	stores map[storeKey]*bucketStore
+	stores map[store.Key]*bucketStore
 }
 
 func New(cfg Config, bucket objstore.Bucket, logger log.Logger) *Collection {
@@ -100,7 +101,7 @@ func New(cfg Config, bucket objstore.Bucket, logger log.Logger) *Collection {
 		cfg:    cfg,
 		bucket: bucket,
 		logger: logger,
-		stores: make(map[storeKey]*bucketStore),
+		stores: make(map[store.Key]*bucketStore),
 	}
 }
 
@@ -130,7 +131,7 @@ func (c *Collection) storeForTenant(ctx context.Context) (*bucketStore, error) {
 		level.Error(c.logger).Log("error getting tenant ID", "err", err)
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	k := storeKey{tenantID}
+	k := store.Key{TenantID: tenantID}
 
 	c.lck.RLock()
 	s, ok := c.stores[k]
@@ -197,7 +198,7 @@ func (c *Collection) GetCollectionRule(
 
 	resp, err := s.get(ctx, req.Msg.Name)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, err
 	}
 
 	return connect.NewResponse(resp), nil
@@ -218,11 +219,15 @@ func (c *Collection) UpsertCollectionRule(
 	}
 
 	if err := s.upsertRule(ctx, req.Msg); err != nil {
+		var cErr *store.ErrConflictGeneration
+		if errors.As(err, &cErr) {
+			return nil, connect.NewError(connect.CodeAlreadyExists, fmt.Errorf("Conflicting update, please try again"))
+		}
 		return nil, err
 	}
 	resp, err := s.get(ctx, req.Msg.Name)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, err
 	}
 
 	return connect.NewResponse(resp), nil
@@ -260,8 +265,11 @@ func (c *Collection) DeleteCollectionRule(
 		return nil, err
 	}
 
-	if err := s.deleteRule(ctx, req.Msg.Name); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+	if err := s.store.Delete(ctx, req.Msg.Name); err != nil {
+		if err == store.ErrElementNotFound {
+			return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("no rule with name='%s' found", req.Msg.Name))
+		}
+		return nil, err
 	}
 
 	return connect.NewResponse(&settingsv1.DeleteCollectionRuleResponse{}), nil

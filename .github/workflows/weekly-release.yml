@@ -27,7 +27,7 @@ jobs:
           git tag "$WEEKLY_IMAGE_TAG"
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.22.11"
+          go-version: "1.23.6"
           cache: true
       # setup docker buildx
       - name: Set up QEMU
@@ -54,13 +54,14 @@ jobs:
       - uses: goreleaser/goreleaser-action@v6
         with:
           # ensure this aligns with the version specified in the /Makefile
-          version: v2.0.1
+          version: v2.7.0
           args: release --clean --skip=publish --timeout 60m
         env:
           GITHUB_TOKEN: ${{ steps.app-releaser.outputs.token }}
 
       - name: Push per architecture images and create multi-arch manifest
         run: |
+          set -eu -o pipefail
           set +x
           IMAGE_AMMENDS=()
 
@@ -71,6 +72,15 @@ jobs:
             docker push "${new_image}"
             IMAGE_AMMENDS+=( "--amend" "${new_image}" )
           done
+
+          if [[ ! " ${IMAGE_AMMENDS[*]} " =~ -amd64 ]]; then
+            echo "expected to contain an amd64 image"
+            exit 1
+          fi
+          if [[ ! " ${IMAGE_AMMENDS[*]} " =~ -arm64 ]]; then
+            echo "expected to contain an arm64 image"
+            exit 1
+          fi
 
           docker manifest create "grafana/pyroscope:${WEEKLY_IMAGE_TAG}" "${IMAGE_AMMENDS[@]}"
           docker manifest push "grafana/pyroscope:${WEEKLY_IMAGE_TAG}"

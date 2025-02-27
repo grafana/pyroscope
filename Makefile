@@ -27,6 +27,13 @@ GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 GIT_LAST_COMMIT_DATE := $(shell git log -1 --date=iso-strict --format=%cd)
 EMBEDASSETS ?= embedassets
 
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+	NPROC := $(shell sysctl -n hw.physicalcpu)
+else
+	NPROC := $(shell nproc)
+endif
+
 # Build flags
 VPREFIX := github.com/grafana/pyroscope/pkg/util/build
 GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH) -X $(VPREFIX).Version=$(IMAGE_TAG) -X $(VPREFIX).Revision=$(GIT_REVISION) -X $(VPREFIX).BuildDate=$(GIT_LAST_COMMIT_DATE)
@@ -73,9 +80,9 @@ EBPF_TESTS='^TestEBPF.*'
 .PHONY: go/test
 go/test: $(BIN)/gotestsum
 ifeq ($(GOOS),darwin)
-	$(BIN)/gotestsum -- $(GO_TEST_FLAGS) ./...
+	$(BIN)/gotestsum --rerun-fails=2 --packages './...' -- $(GO_TEST_FLAGS)
 else
-	$(BIN)/gotestsum -- $(GO_TEST_FLAGS) -skip $(EBPF_TESTS) ./... ./ebpf/...
+	$(BIN)/gotestsum --rerun-fails=2 --packages './... ./ebpf/...' -- $(GO_TEST_FLAGS) -skip $(EBPF_TESTS)
 endif
 
 # Run test on examples
@@ -113,30 +120,30 @@ release/prereq: $(BIN)/goreleaser ## Ensure release pre requesites are met
 
 .PHONY: release
 release: release/prereq ## Create a release
-	$(BIN)/goreleaser release -p=$(shell nproc) --rm-dist
+	$(BIN)/goreleaser release -p=$(NPROC) --clean
 
 .PHONY: release/prepare
 release/prepare: release/prereq ## Prepare a release
-	$(BIN)/goreleaser release -p=$(shell nproc) --rm-dist --snapshot
+	$(BIN)/goreleaser release -p=$(NPROC) --clean --snapshot
 
 .PHONY: release/build/all
 release/build/all: release/prereq ## Build all release binaries
-	$(BIN)/goreleaser build -p=$(shell nproc) --rm-dist --snapshot
+	$(BIN)/goreleaser build -p=$(NPROC) --clean --snapshot
 
 .PHONY: release/build
 release/build: release/prereq ## Build current platform release binaries
-	$(BIN)/goreleaser build -p=$(shell nproc) --rm-dist --snapshot --single-target
+	$(BIN)/goreleaser build -p=$(NPROC) --clean --snapshot --single-target
 
 .PHONY: go/deps
 go/deps:
 	$(GO) mod tidy
 
 define go_build_pyroscope
-	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 $(GO) build -tags "netgo $(EMBEDASSETS)" -ldflags "-extldflags \"-static\" $(1)" -gcflags=$(2) ./cmd/pyroscope
+	GOOS=$(GOOS) GOARCH=$(GOARCH) GOAMD64=v2 CGO_ENABLED=0 $(GO) build -tags "netgo $(EMBEDASSETS)" -ldflags "-extldflags \"-static\" $(1)" -gcflags=$(2) ./cmd/pyroscope
 endef
 
 define go_build_profilecli
-	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 $(GO) build -ldflags "-extldflags \"-static\" $(1)" -gcflags=$(2) ./cmd/profilecli
+	GOOS=$(GOOS) GOARCH=$(GOARCH) GOAMD64=v2 CGO_ENABLED=0 $(GO) build -ldflags "-extldflags \"-static\" $(1)" -gcflags=$(2) ./cmd/profilecli
 endef
 
 .PHONY: go/bin-debug
@@ -275,7 +282,7 @@ docker-image/pyroscope/dlv:
 	# dlv is not intended for local use and is to be installed in the
 	# platform-specific docker image together with the main Pyroscope binary.
 	@mkdir -p $(@D)
-	GOPATH=$(CURDIR)/.tmp CGO_ENABLED=0 $(GO) install -ldflags "-s -w -extldflags '-static'" github.com/go-delve/delve/cmd/dlv@v1.23.0
+	GOPATH=$(CURDIR)/.tmp GOAMD64=v2 CGO_ENABLED=0 $(GO) install -ldflags "-s -w -extldflags '-static'" github.com/go-delve/delve/cmd/dlv@v1.23.0
 	mv $(CURDIR)/.tmp/bin/$(GOOS)_$(GOARCH)/dlv $(CURDIR)/.tmp/bin/dlv
 
 define UPDATER_CONFIG_JSON
@@ -400,7 +407,7 @@ $(BIN)/updater: Makefile
 # Note: When updating the goreleaser version also update .github/workflow/release.yml and .git/workflow/weekly-release.yaml
 $(BIN)/goreleaser: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/goreleaser/goreleaser/v2@v2.0.0
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/goreleaser/goreleaser/v2@v2.7.0
 
 $(BIN)/gotestsum: Makefile go.mod
 	@mkdir -p $(@D)

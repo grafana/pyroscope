@@ -8,15 +8,15 @@ import (
 	"github.com/grafana/pyroscope/pkg/util"
 )
 
-type metrics struct {
+type compactionWorkerMetrics struct {
 	jobsInProgress   *prometheus.GaugeVec
 	jobsCompleted    *prometheus.CounterVec
 	jobDuration      *prometheus.HistogramVec
 	timeToCompaction *prometheus.HistogramVec
 }
 
-func newMetrics(r prometheus.Registerer) *metrics {
-	m := &metrics{
+func newMetrics(r prometheus.Registerer) *compactionWorkerMetrics {
+	m := &compactionWorkerMetrics{
 		jobsInProgress: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Name: "jobs_in_progress",
 			Help: "The number of active compaction jobs currently running.",

@@ -35,28 +35,3 @@ func RegisterSettingsServiceHandler(mux *mux.Router, svc SettingsServiceHandler,
 		opts...,
 	))
 }
-
-// RegisterCollectionRulesServiceHandler register an HTTP handler to a mux.Router from the service
-// implementation.
-func RegisterCollectionRulesServiceHandler(mux *mux.Router, svc CollectionRulesServiceHandler, opts ...connect.HandlerOption) {
-	mux.Handle("/settings.v1.CollectionRulesService/GetCollectionRule", connect.NewUnaryHandler(
-		"/settings.v1.CollectionRulesService/GetCollectionRule",
-		svc.GetCollectionRule,
-		opts...,
-	))
-	mux.Handle("/settings.v1.CollectionRulesService/UpsertCollectionRule", connect.NewUnaryHandler(
-		"/settings.v1.CollectionRulesService/UpsertCollectionRule",
-		svc.UpsertCollectionRule,
-		opts...,
-	))
-	mux.Handle("/settings.v1.CollectionRulesService/ListCollectionRules", connect.NewUnaryHandler(
-		"/settings.v1.CollectionRulesService/ListCollectionRules",
-		svc.ListCollectionRules,
-		opts...,
-	))
-	mux.Handle("/settings.v1.CollectionRulesService/DeleteCollectionRule", connect.NewUnaryHandler(
-		"/settings.v1.CollectionRulesService/DeleteCollectionRule",
-		svc.DeleteCollectionRule,
-		opts...,
-	))
-}
