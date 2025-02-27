@@ -367,15 +367,30 @@ func (p *Profile) Normalize() {
 		})
 	}
 
+	// Remove samples.
+	var removedSamples []*profilev1.Sample
+	p.Sample = slices.RemoveInPlace(p.Sample, func(s *profilev1.Sample, i int) bool {
+		for j := 0; j < len(s.Value); j++ {
+			if s.Value[j] < 0 {
+				removedSamples = append(removedSamples, s)
+				return true
+			}
+		}
+		for j := 0; j < len(s.Value); j++ {
+			if s.Value[j] > 0 {
+				return false
+			}
+		}
+		removedSamples = append(removedSamples, s)
+		return true
+	})
+
 	// first we sort the samples.
 	hashes := p.hasher.Hashes(p.Sample)
 	ss := &sortedSample{samples: p.Sample, hashes: hashes}
 	sort.Sort(ss)
 	p.Sample = ss.samples
 	hashes = ss.hashes
-
-	// Remove samples.
-	var removedSamples []*profilev1.Sample
 
 	p.Sample = slices.RemoveInPlace(p.Sample, func(s *profilev1.Sample, i int) bool {
 		// if the next sample has the same hash and labels, we can remove this sample but add the value to the next sample.
@@ -387,15 +402,7 @@ func (p *Profile) Normalize() {
 			removedSamples = append(removedSamples, s)
 			return true
 		}
-		for j := 0; j < len(s.Value); j++ {
-			if s.Value[j] > 0 {
-				// we found a non-zero value, so we can keep this sample.
-				return false
-			}
-		}
-		// all values are 0, remove the sample.
-		removedSamples = append(removedSamples, s)
-		return true
+		return false
 	})
 
 	// Remove references to removed samples.
