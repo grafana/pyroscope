@@ -13,6 +13,9 @@ type store interface {
 	// Set a setting for a tenant.
 	Set(ctx context.Context, tenantID string, setting *settingsv1.Setting) (*settingsv1.Setting, error)
 
+	// Delete a setting for a tenant.
+	Delete(ctx context.Context, tenantID string, name string, modifiedAtMs int64) error
+
 	// Flush the store to disk.
 	Flush(ctx context.Context) error
 
