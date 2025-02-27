@@ -37,6 +37,8 @@ func (cfg *Config) Validate() error {
 	)
 }
 
+var _ settingsv1connect.SettingsServiceHandler = (*TenantSettings)(nil)
+
 func New(cfg Config, bucket objstore.Bucket, logger log.Logger) (*TenantSettings, error) {
 	if bucket == nil {
 		bucket = objstore.NewInMemBucket()
@@ -161,4 +163,26 @@ func (ts *TenantSettings) Set(
 	return connect.NewResponse(&settingsv1.SetSettingsResponse{
 		Setting: setting,
 	}), nil
+}
+
+func (ts *TenantSettings) Delete(ctx context.Context, req *connect.Request[settingsv1.DeleteSettingsRequest]) (*connect.Response[settingsv1.DeleteSettingsResponse], error) {
+	tenantID, err := tenant.TenantID(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	if req.Msg == nil || req.Msg.Name == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("no setting name provided"))
+	}
+
+	modifiedAt := time.Now().UnixMilli()
+	err = ts.store.Delete(ctx, tenantID, req.Msg.Name, modifiedAt)
+	if err != nil {
+		if errors.Is(err, oldSettingErr) {
+			return nil, connect.NewError(connect.CodeAlreadyExists, err)
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(&settingsv1.DeleteSettingsResponse{}), nil
 }

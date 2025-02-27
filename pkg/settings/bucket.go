@@ -92,6 +92,39 @@ func (s *bucketStore) Set(ctx context.Context, tenantID string, setting *setting
 	return setting, nil
 }
 
+func (s *bucketStore) Delete(ctx context.Context, tenantID string, name string, modifiedAtMs int64) error {
+	s.rw.Lock()
+	defer s.rw.Unlock()
+
+	err := s.unsafeLoad(ctx)
+	if err != nil {
+		return err
+	}
+
+	tenantSettings, ok := s.store[tenantID]
+	if !ok {
+		return nil
+	}
+
+	setting, ok := tenantSettings[name]
+	if !ok {
+		return nil
+	}
+
+	if setting.ModifiedAt > modifiedAtMs {
+		return errors.Wrapf(oldSettingErr, "failed to delete %s", name)
+	}
+
+	delete(tenantSettings, name)
+
+	err = s.unsafeFlush(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *bucketStore) Flush(ctx context.Context) error {
 	s.rw.Lock()
 	defer s.rw.Unlock()

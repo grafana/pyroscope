@@ -894,6 +894,9 @@
     "v1DeleteRecordingRuleResponse": {
       "type": "object"
     },
+    "v1DeleteSettingsResponse": {
+      "type": "object"
+    },
     "v1DeleteTenantResponse": {
       "type": "object"
     },
