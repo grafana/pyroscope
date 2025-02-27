@@ -529,6 +529,12 @@ func Test_IngestLimits(t *testing.T) {
 						Samples: []*distributormodel.ProfileSample{
 							{
 								RawProfile: collectTestProfileBytes(t),
+								Profile: pprof2.RawFromProto(&profilev1.Profile{
+									Sample: []*profilev1.Sample{{
+										Value: []int64{1},
+									}},
+									StringTable: []string{""},
+								}),
 							},
 						},
 					},
