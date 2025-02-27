@@ -6,41 +6,23 @@ import (
 	"time"
 
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/api/model/labelset"
-	"github.com/grafana/pyroscope/pkg/distributor/model"
 	"github.com/grafana/pyroscope/pkg/og/storage"
 	"github.com/grafana/pyroscope/pkg/og/storage/tree"
+	"github.com/grafana/pyroscope/pkg/test/mocks/mockpyroscope"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
-
-type MockLabelCapturingPushService struct {
-	Labels []*typesv1.LabelPair
-}
-
-func (m *MockLabelCapturingPushService) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
-	if len(req.Msg.Series) > 0 {
-		m.Labels = req.Msg.Series[0].Labels
-	}
-	return connect.NewResponse(&pushv1.PushResponse{}), nil
-}
-
-func (m *MockLabelCapturingPushService) PushParsed(ctx context.Context, req *model.PushRequest) (*connect.Response[pushv1.PushResponse], error) {
-	if len(req.Series) > 0 {
-		m.Labels = req.Series[0].Labels
-	}
-	return connect.NewResponse(&pushv1.PushResponse{}), nil
-}
 
 func TestPutLabelHandling(t *testing.T) {
 	tests := []struct {
 		name           string
-		labels         map[string]string // Initial labels to set
-		expectedLabels map[string]string // Expected labels after processing
+		labels         map[string]string
+		expectedLabels map[string]string
 	}{
 		{
 			name: "No service_name adds service_name",
@@ -78,14 +60,37 @@ func TestPutLabelHandling(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Setup mock service
-			mockService := &MockLabelCapturingPushService{}
+			mockService := mockpyroscope.NewMockPushService(t)
 			adapter := &pyroscopeIngesterAdapter{
 				svc: mockService,
 				log: log.NewNopLogger(),
 			}
 
-			// Create a minimal PutInput
+			mockService.On("Push", mock.Anything, mock.MatchedBy(func(req *connect.Request[pushv1.PushRequest]) bool {
+				if len(req.Msg.Series) > 0 {
+					labels := req.Msg.Series[0].Labels
+
+					// Check expected labels
+					labelMap := make(map[string]string)
+					labelCounts := make(map[string]int)
+					for _, label := range labels {
+						labelMap[label.Name] = label.Value
+						labelCounts[label.Name]++
+					}
+
+					// Verify expected values
+					for key, val := range tt.expectedLabels {
+						assert.Equal(t, val, labelMap[key], "Label %s should have value %s", key, val)
+					}
+
+					// Verify no duplicates
+					for name, count := range labelCounts {
+						assert.Equal(t, 1, count, "Label %s appears %d times, should appear exactly once", name, count)
+					}
+				}
+				return true
+			})).Return(&connect.Response[pushv1.PushResponse]{}, nil)
+
 			ls := labelset.New(tt.labels)
 			putInput := &storage.PutInput{
 				LabelSet:   ls,
@@ -97,25 +102,6 @@ func TestPutLabelHandling(t *testing.T) {
 
 			err := adapter.Put(context.Background(), putInput)
 			require.NoError(t, err)
-
-			labelMap := make(map[string]string)
-			for _, label := range mockService.Labels {
-				labelMap[label.Name] = label.Value
-			}
-
-			// Check expected labels exist with correct values
-			for key, val := range tt.expectedLabels {
-				assert.Equal(t, val, labelMap[key], "Label %s should have value %s", key, val)
-			}
-
-			// Check for duplicates
-			labelCounts := make(map[string]int)
-			for _, label := range mockService.Labels {
-				labelCounts[label.Name]++
-			}
-			for name, count := range labelCounts {
-				assert.Equal(t, 1, count, "Label %s appears %d times, should appear exactly once", name, count)
-			}
 		})
 	}
 }

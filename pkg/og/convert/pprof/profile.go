@@ -202,7 +202,7 @@ func (p *RawProfile) metricName(profile *pprof.Profile) string {
 func (p *RawProfile) createLabels(profile *pprof.Profile, md ingestion.Metadata) []*v1.LabelPair {
 	hasServiceName := false
 	for k := range md.LabelSet.Labels() {
-		if k == "service_name" {
+		if k == phlaremodel.LabelNameServiceName {
 			hasServiceName = true
 			break
 		}
@@ -220,10 +220,10 @@ func (p *RawProfile) createLabels(profile *pprof.Profile, md ingestion.Metadata)
 		Value: md.SpyName,
 	})
 
-	// Only add service_name if it doesn't exist in md.LabelSet.Labels()
+	// Only add service_name if it doesn't exist
 	if !hasServiceName {
 		ls = append(ls, &v1.LabelPair{
-			Name:  "service_name",
+			Name:  phlaremodel.LabelNameServiceName,
 			Value: md.LabelSet.ServiceName(),
 		})
 	}

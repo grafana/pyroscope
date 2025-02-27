@@ -4,14 +4,14 @@ import (
 	"testing"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/api/model/labelset"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
+	"github.com/grafana/pyroscope/pkg/og/ingestion"
 	"github.com/grafana/pyroscope/pkg/og/storage/tree"
 	"github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/stretchr/testify/assert"
 
-	"github.com/grafana/pyroscope/api/model/labelset"
-	"github.com/grafana/pyroscope/pkg/og/ingestion"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -84,50 +84,76 @@ func TestFixFunctionNamesForScriptingLanguages(t *testing.T) {
 	assert.Equal(t, "qwe.py:8 - func2", functionNameFromLocation(profile.Location[2].Id))
 }
 
-func TestCreateLabelsWithExistingServiceName(t *testing.T) {
-	p := RawProfile{
-		SampleTypeConfig: map[string]*tree.SampleTypeConfig{
-			"samples": {
-				DisplayName: "samples",
-				Units:       "count",
+func TestCreateLabels(t *testing.T) {
+	testCases := []struct {
+		name                string
+		labelMap            map[string]string
+		expectedServiceName string
+	}{
+		{
+			name: "with existing service_name",
+			labelMap: map[string]string{
+				"service_name": "existing-service",
+				"region":       "us-west",
 			},
+			expectedServiceName: "existing-service",
+		},
+		{
+			name: "without service_name uses __name__ value",
+			labelMap: map[string]string{
+				"region":   "us-west",
+				"__name__": "test-service",
+			},
+			expectedServiceName: "test-service",
 		},
 	}
 
-	// Create a proper pprof.Profile with sample types
-	profile := &pprof.Profile{
-		Profile: &profilev1.Profile{
-			SampleType: []*profilev1.ValueType{
-				{
-					Type: 1,
-					Unit: 2,
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			p := RawProfile{
+				SampleTypeConfig: map[string]*tree.SampleTypeConfig{
+					"samples": {
+						DisplayName: "samples",
+						Units:       "count",
+					},
 				},
-			},
-			StringTable: []string{"", "samples", "count"},
-		},
-	}
+			}
 
-	// Create a LabelSet with service_name
-	labelMap := map[string]string{
-		"service_name": "existing-service",
-		"region":       "us-west",
-	}
+			// Create a proper pprof.Profile with sample types
+			profile := &pprof.Profile{
+				Profile: &profilev1.Profile{
+					SampleType: []*profilev1.ValueType{
+						{
+							Type: 1,
+							Unit: 2,
+						},
+					},
+					StringTable: []string{"", "samples", "count"},
+				},
+			}
 
-	md := ingestion.Metadata{
-		LabelSet: labelset.New(labelMap),
-	}
-	labels := p.createLabels(profile, md)
+			// Create metadata with LabelSet
+			md := ingestion.Metadata{
+				LabelSet: labelset.New(tc.labelMap),
+				SpyName:  "test-spy",
+			}
 
-	// Check for the service_name label
-	serviceNameLabel := &v1.LabelPair{Name: "service_name", Value: "existing-service"}
-	assert.Contains(t, labels, serviceNameLabel, "Should contain the service_name label with correct value")
+			// Call createLabels
+			labels := p.createLabels(profile, md)
 
-	// Filter all service_name labels to verify there's only one
-	serviceNameLabels := []*v1.LabelPair{}
-	for _, label := range labels {
-		if label.Name == "service_name" {
-			serviceNameLabels = append(serviceNameLabels, label)
-		}
+			// Convert labels to a map for easier checking
+			labelMap := make(map[string]string)
+			for _, label := range labels {
+				labelMap[label.Name] = label.Value
+			}
+
+			// Check that service_name has the expected value
+			assert.Equal(t, tc.expectedServiceName, labelMap["service_name"], "service_name should have the expected value")
+
+			// Check that required labels are present
+			assert.Contains(t, labelMap, "__name__", "Should contain __name__ label")
+			assert.Contains(t, labelMap, phlaremodel.LabelNameDelta, "Should contain delta label")
+			assert.Contains(t, labelMap, phlaremodel.LabelNamePyroscopeSpy, "Should contain spy label")
+		})
 	}
-	assert.Len(t, serviceNameLabels, 1, "Should have exactly one service_name label")
 }
