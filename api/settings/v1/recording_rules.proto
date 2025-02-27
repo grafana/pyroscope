@@ -1,0 +1,97 @@
+syntax = "proto3";
+
+package settings.v1;
+
+import "types/v1/types.proto";
+
+service RecordingRulesService {
+  rpc GetRecordingRule(GetRecordingRuleRequest) returns (GetRecordingRuleResponse) {}
+  rpc ListRecordingRules(ListRecordingRulesRequest) returns (ListRecordingRulesResponse) {}
+  rpc UpsertRecordingRule(UpsertRecordingRuleRequest) returns (UpsertRecordingRuleResponse) {}
+  rpc DeleteRecordingRule(DeleteRecordingRuleRequest) returns (DeleteRecordingRuleResponse) {}
+}
+
+message GetRecordingRuleRequest {
+  string id = 1;
+}
+
+message GetRecordingRuleResponse {
+  RecordingRule rule = 1;
+}
+
+message ListRecordingRulesRequest {}
+
+message ListRecordingRulesResponse {
+  repeated RecordingRule rules = 1;
+}
+
+message UpsertRecordingRuleRequest {
+  // The unique id of the recording rule. If an id is not provided, this will
+  // create a new recording rule. If an id is provided, it will replace the
+  // existing recording rule.
+  string id = 1;
+
+  string metric_name = 2;
+  repeated string matchers = 3;
+  repeated string group_by = 4;
+  repeated types.v1.LabelPair external_labels = 5;
+
+  // The observed generation of this recording rule. If this value does not
+  // match the generation stored in the database, this upsert will be rejected.
+  int64 generation = 6;
+}
+
+message UpsertRecordingRuleResponse {
+  RecordingRule rule = 1;
+}
+
+message DeleteRecordingRuleRequest {
+  string id = 1;
+}
+
+message DeleteRecordingRuleResponse {}
+
+message RecordingRule {
+  // The unique id of the recording rule.
+  string id = 1;
+
+  // The name of the recording rule, this does not necessarily need to be
+  // unique.
+  string metric_name = 2;
+
+  // Used in the UI to display what type of profile type this recording rule is
+  // generated from.
+  //
+  // This should be the standard format of:
+  //
+  //   <name>:<sample-type>:<sample-unit>:<period-type>:<period-unit>
+  //
+  // For example:
+  //
+  //   process_cpu:cpu:nanoseconds:cpu:nanoseconds
+  string profile_type = 3;
+
+  repeated string matchers = 4;
+  repeated string group_by = 5;
+  repeated types.v1.LabelPair external_labels = 6;
+
+  // The observed generation of this recording rule. This value should be
+  // provided when making updates to this record, to avoid conflicting
+  // concurrent updates.
+  int64 generation = 7;
+}
+
+message RecordingRuleStore {
+  string id = 1;
+  string metric_name = 2;
+  string prometheus_data_source = 3;
+  repeated string matchers = 4;
+  repeated string group_by = 5;
+  repeated types.v1.LabelPair external_labels = 6;
+  int64 generation = 7;
+}
+
+message RecordingRulesStore {
+  repeated RecordingRuleStore rules = 1;
+  int64 generation = 2;
+}

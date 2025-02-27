@@ -2,6 +2,7 @@ package settings
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"time"
@@ -11,24 +12,29 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/tenant"
-	"github.com/pkg/errors"
 	"github.com/thanos-io/objstore"
 
 	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/settings/v1/settingsv1connect"
 	"github.com/grafana/pyroscope/pkg/settings/collection"
+	"github.com/grafana/pyroscope/pkg/settings/recording"
 )
 
 type Config struct {
 	Collection collection.Config `yaml:"collection_rules"`
+	Recording  recording.Config  `yaml:"recording_rules"`
 }
 
 func (cfg *Config) RegisterFlags(fs *flag.FlagSet) {
 	cfg.Collection.RegisterFlags(fs)
+	cfg.Recording.RegisterFlags(fs)
 }
 
 func (cfg *Config) Validate() error {
-	return cfg.Collection.Validate()
+	return errors.Join(
+		cfg.Collection.Validate(),
+		cfg.Recording.Validate(),
+	)
 }
 
 func New(cfg Config, bucket objstore.Bucket, logger log.Logger) (*TenantSettings, error) {
@@ -47,6 +53,10 @@ func New(cfg Config, bucket objstore.Bucket, logger log.Logger) (*TenantSettings
 		ts.CollectionRulesServiceHandler = collection.New(cfg.Collection, bucket, logger)
 	}
 
+	if cfg.Recording.Enabled {
+		ts.RecordingRulesServiceHandler = recording.New(cfg.Recording, bucket, logger)
+	}
+
 	ts.Service = services.NewBasicService(ts.starting, ts.running, ts.stopping)
 
 	return ts, nil
@@ -55,6 +65,7 @@ func New(cfg Config, bucket objstore.Bucket, logger log.Logger) (*TenantSettings
 type TenantSettings struct {
 	services.Service
 	settingsv1connect.CollectionRulesServiceHandler
+	settingsv1connect.RecordingRulesServiceHandler
 
 	store  store
 	logger log.Logger
