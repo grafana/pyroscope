@@ -507,6 +507,69 @@ func (_c *MockBucket_Iter_Call) RunAndReturn(run func(context.Context, string, f
 	return _c
 }
 
+// IterWithAttributes provides a mock function with given fields: ctx, dir, f, options
+func (_m *MockBucket) IterWithAttributes(ctx context.Context, dir string, f func(objstore.IterObjectAttributes) error, options ...objstore.IterOption) error {
+	_va := make([]interface{}, len(options))
+	for _i := range options {
+		_va[_i] = options[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, dir, f)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for IterWithAttributes")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, func(objstore.IterObjectAttributes) error, ...objstore.IterOption) error); ok {
+		r0 = rf(ctx, dir, f, options...)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockBucket_IterWithAttributes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IterWithAttributes'
+type MockBucket_IterWithAttributes_Call struct {
+	*mock.Call
+}
+
+// IterWithAttributes is a helper method to define mock.On call
+//   - ctx context.Context
+//   - dir string
+//   - f func(objstore.IterObjectAttributes) error
+//   - options ...objstore.IterOption
+func (_e *MockBucket_Expecter) IterWithAttributes(ctx interface{}, dir interface{}, f interface{}, options ...interface{}) *MockBucket_IterWithAttributes_Call {
+	return &MockBucket_IterWithAttributes_Call{Call: _e.mock.On("IterWithAttributes",
+		append([]interface{}{ctx, dir, f}, options...)...)}
+}
+
+func (_c *MockBucket_IterWithAttributes_Call) Run(run func(ctx context.Context, dir string, f func(objstore.IterObjectAttributes) error, options ...objstore.IterOption)) *MockBucket_IterWithAttributes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]objstore.IterOption, len(args)-3)
+		for i, a := range args[3:] {
+			if a != nil {
+				variadicArgs[i] = a.(objstore.IterOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(string), args[2].(func(objstore.IterObjectAttributes) error), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockBucket_IterWithAttributes_Call) Return(_a0 error) *MockBucket_IterWithAttributes_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockBucket_IterWithAttributes_Call) RunAndReturn(run func(context.Context, string, func(objstore.IterObjectAttributes) error, ...objstore.IterOption) error) *MockBucket_IterWithAttributes_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Name provides a mock function with given fields:
 func (_m *MockBucket) Name() string {
 	ret := _m.Called()
@@ -548,6 +611,51 @@ func (_c *MockBucket_Name_Call) Return(_a0 string) *MockBucket_Name_Call {
 }
 
 func (_c *MockBucket_Name_Call) RunAndReturn(run func() string) *MockBucket_Name_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Provider provides a mock function with given fields:
+func (_m *MockBucket) Provider() objstore.ObjProvider {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Provider")
+	}
+
+	var r0 objstore.ObjProvider
+	if rf, ok := ret.Get(0).(func() objstore.ObjProvider); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(objstore.ObjProvider)
+	}
+
+	return r0
+}
+
+// MockBucket_Provider_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Provider'
+type MockBucket_Provider_Call struct {
+	*mock.Call
+}
+
+// Provider is a helper method to define mock.On call
+func (_e *MockBucket_Expecter) Provider() *MockBucket_Provider_Call {
+	return &MockBucket_Provider_Call{Call: _e.mock.On("Provider")}
+}
+
+func (_c *MockBucket_Provider_Call) Run(run func()) *MockBucket_Provider_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockBucket_Provider_Call) Return(_a0 objstore.ObjProvider) *MockBucket_Provider_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockBucket_Provider_Call) RunAndReturn(run func() objstore.ObjProvider) *MockBucket_Provider_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -607,6 +715,53 @@ func (_c *MockBucket_ReaderAt_Call) Return(_a0 pkgobjstore.ReaderAtCloser, _a1 e
 }
 
 func (_c *MockBucket_ReaderAt_Call) RunAndReturn(run func(context.Context, string) (pkgobjstore.ReaderAtCloser, error)) *MockBucket_ReaderAt_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SupportedIterOptions provides a mock function with given fields:
+func (_m *MockBucket) SupportedIterOptions() []objstore.IterOptionType {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for SupportedIterOptions")
+	}
+
+	var r0 []objstore.IterOptionType
+	if rf, ok := ret.Get(0).(func() []objstore.IterOptionType); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]objstore.IterOptionType)
+		}
+	}
+
+	return r0
+}
+
+// MockBucket_SupportedIterOptions_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SupportedIterOptions'
+type MockBucket_SupportedIterOptions_Call struct {
+	*mock.Call
+}
+
+// SupportedIterOptions is a helper method to define mock.On call
+func (_e *MockBucket_Expecter) SupportedIterOptions() *MockBucket_SupportedIterOptions_Call {
+	return &MockBucket_SupportedIterOptions_Call{Call: _e.mock.On("SupportedIterOptions")}
+}
+
+func (_c *MockBucket_SupportedIterOptions_Call) Run(run func()) *MockBucket_SupportedIterOptions_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockBucket_SupportedIterOptions_Call) Return(_a0 []objstore.IterOptionType) *MockBucket_SupportedIterOptions_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockBucket_SupportedIterOptions_Call) RunAndReturn(run func() []objstore.IterOptionType) *MockBucket_SupportedIterOptions_Call {
 	_c.Call.Return(run)
 	return _c
 }

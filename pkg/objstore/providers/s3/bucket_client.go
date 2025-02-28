@@ -22,7 +22,7 @@ func NewBucketClient(cfg Config, name string, logger log.Logger) (objstore.Bucke
 
 	warnForDeprecatedConfigFields(cfg, logger)
 
-	return s3.NewBucketWithConfig(logger, s3Cfg, name)
+	return s3.NewBucketWithConfig(logger, s3Cfg, name, nil)
 }
 
 // NewBucketReaderClient creates a new S3 bucket client
@@ -34,7 +34,7 @@ func NewBucketReaderClient(cfg Config, name string, logger log.Logger) (objstore
 
 	warnForDeprecatedConfigFields(cfg, logger)
 
-	return s3.NewBucketWithConfig(logger, s3Cfg, name)
+	return s3.NewBucketWithConfig(logger, s3Cfg, name, nil)
 }
 
 func newS3Config(cfg Config) (s3.Config, error) {

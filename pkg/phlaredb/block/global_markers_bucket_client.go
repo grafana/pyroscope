@@ -99,6 +99,14 @@ func (b *globalMarkersBucket) Iter(ctx context.Context, dir string, f func(strin
 	return b.parent.Iter(ctx, dir, f, options...)
 }
 
+func (b *globalMarkersBucket) IterWithAttributes(ctx context.Context, dir string, f func(attrs thanosobjstore.IterObjectAttributes) error, options ...thanosobjstore.IterOption) error {
+	return b.parent.IterWithAttributes(ctx, dir, f, options...)
+}
+
+func (b *globalMarkersBucket) SupportedIterOptions() []thanosobjstore.IterOptionType {
+	return b.parent.SupportedIterOptions()
+}
+
 // Get implements objstore.Bucket.
 func (b *globalMarkersBucket) Get(ctx context.Context, name string) (io.ReadCloser, error) {
 	return b.parent.Get(ctx, name)
@@ -162,6 +170,10 @@ func (b *globalMarkersBucket) WithExpectedErrs(fn objstore.IsOpFailureExpectedFu
 	}
 
 	return b
+}
+
+func (b *globalMarkersBucket) Provider() thanosobjstore.ObjProvider {
+	return b.parent.Provider()
 }
 
 // getGlobalMarkPathFromBlockMark returns path to global mark, if name points to a block-local mark file. If name
