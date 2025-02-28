@@ -209,11 +209,13 @@ func (a *API) RegisterRuntimeConfig(runtimeConfigHandler http.HandlerFunc, userL
 func (a *API) RegisterTenantSettings(ts *settings.TenantSettings) {
 	settingsv1connect.RegisterSettingsServiceHandler(a.server.HTTP, ts, a.connectOptionsAuthRecovery()...)
 
-	if ts.CollectionRulesServiceHandler != nil {
+	_, isUnimplemented := ts.CollectionRulesServiceHandler.(*settingsv1connect.UnimplementedCollectionRulesServiceHandler)
+	if !isUnimplemented {
 		settingsv1connect.RegisterCollectionRulesServiceHandler(a.server.HTTP, ts, a.connectOptionsAuthRecovery()...)
 	}
 
-	if ts.RecordingRulesServiceHandler != nil {
+	_, isUnimplemented = ts.RecordingRulesServiceHandler.(*settingsv1connect.UnimplementedRecordingRulesServiceHandler)
+	if !isUnimplemented {
 		settingsv1connect.RegisterRecordingRulesServiceHandler(a.server.HTTP, ts, a.connectOptionsAuthRecovery()...)
 	}
 }

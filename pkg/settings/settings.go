@@ -47,6 +47,7 @@ func New(cfg Config, bucket objstore.Bucket, logger log.Logger) (*TenantSettings
 
 	ts := &TenantSettings{
 		CollectionRulesServiceHandler: &settingsv1connect.UnimplementedCollectionRulesServiceHandler{},
+		RecordingRulesServiceHandler:  &settingsv1connect.UnimplementedRecordingRulesServiceHandler{},
 		store:                         newBucketStore(bucket),
 		logger:                        logger,
 	}
