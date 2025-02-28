@@ -18,6 +18,8 @@ import (
 
 var errNotFound = errors.New("inmem: object not found")
 
+var _ objstore.Bucket = &InMemBucket{}
+
 // InMemBucket implements the objstore.Bucket interfaces against local memory.
 // Methods from Bucket interface are thread-safe. Objects are assumed to be immutable.
 type InMemBucket struct {
@@ -34,6 +36,8 @@ func NewInMemBucket() *InMemBucket {
 		attrs:   map[string]objstore.ObjectAttributes{},
 	}
 }
+
+func (b *InMemBucket) Provider() objstore.ObjProvider { return objstore.MEMORY }
 
 // Objects returns a copy of the internally stored objects.
 // NOTE: For assert purposes.
@@ -105,6 +109,21 @@ func (b *InMemBucket) Iter(_ context.Context, dir string, f func(string) error, 
 		}
 	}
 	return nil
+}
+
+func (i *InMemBucket) SupportedIterOptions() []objstore.IterOptionType {
+	return []objstore.IterOptionType{objstore.Recursive}
+}
+
+func (b *InMemBucket) IterWithAttributes(ctx context.Context, dir string, f func(attrs objstore.IterObjectAttributes) error, options ...objstore.IterOption) error {
+	if err := objstore.ValidateIterOptions(b.SupportedIterOptions(), options...); err != nil {
+		return err
+	}
+
+	return b.Iter(ctx, dir, func(name string) error {
+		return f(objstore.IterObjectAttributes{Name: name})
+
+	}, options...)
 }
 
 // Get returns a reader for the given object name.
