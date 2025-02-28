@@ -35,21 +35,21 @@ func TestIter(t *testing.T) {
 		{
 			prefix:   "foo/",
 			expected: []string{"foo/ba/buzz3", "foo/bar/buz1", "foo/bar/buz2", "foo/buzz4", "foo/buzz5"},
-			options:  []objstore.IterOption{objstore.WithRecursiveIter},
+			options:  []objstore.IterOption{objstore.WithRecursiveIter()},
 		},
 		{
 			prefix:   "foo/ba",
 			expected: []string{"foo/ba/buzz3"},
-			options:  []objstore.IterOption{objstore.WithRecursiveIter},
+			options:  []objstore.IterOption{objstore.WithRecursiveIter()},
 		},
 		{
 			prefix:   "foo/ba/",
 			expected: []string{"foo/ba/buzz3"},
-			options:  []objstore.IterOption{objstore.WithRecursiveIter},
+			options:  []objstore.IterOption{objstore.WithRecursiveIter()},
 		},
 		{
 			prefix:  "foo/b",
-			options: []objstore.IterOption{objstore.WithRecursiveIter},
+			options: []objstore.IterOption{objstore.WithRecursiveIter()},
 		},
 		{
 			prefix:   "foo",
@@ -59,7 +59,7 @@ func TestIter(t *testing.T) {
 		{
 			prefix:   "foo",
 			expected: []string{"foo/ba/buzz3", "foo/bar/buz1", "foo/bar/buz2", "foo/buzz4", "foo/buzz5"},
-			options:  []objstore.IterOption{objstore.WithRecursiveIter},
+			options:  []objstore.IterOption{objstore.WithRecursiveIter()},
 		},
 		{
 			prefix:  "fo",
@@ -67,7 +67,7 @@ func TestIter(t *testing.T) {
 		},
 		{
 			prefix:  "fo",
-			options: []objstore.IterOption{objstore.WithRecursiveIter},
+			options: []objstore.IterOption{objstore.WithRecursiveIter()},
 		},
 		{
 			prefix:   "",
@@ -77,7 +77,7 @@ func TestIter(t *testing.T) {
 		{
 			prefix:   "",
 			expected: []string{"foo/ba/buzz3", "foo/bar/buz1", "foo/bar/buz2", "foo/buzz4", "foo/buzz5", "foo6"},
-			options:  []objstore.IterOption{objstore.WithRecursiveIter},
+			options:  []objstore.IterOption{objstore.WithRecursiveIter()},
 		},
 	} {
 		tc := tc

@@ -28,5 +28,5 @@ func NewBucketClient(ctx context.Context, cfg Config, name string, logger log.Lo
 		return nil, err
 	}
 
-	return gcs.NewBucket(ctx, logger, serialized, name)
+	return gcs.NewBucket(ctx, logger, serialized, name, nil)
 }

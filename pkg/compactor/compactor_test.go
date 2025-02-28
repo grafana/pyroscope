@@ -44,6 +44,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/phlaredb/block/testutil"
 	"github.com/grafana/pyroscope/pkg/phlaredb/bucket"
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
+	"github.com/grafana/pyroscope/pkg/test/mocks/mockobjstore"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
@@ -155,7 +156,7 @@ func TestMultitenantCompactor_ShouldDoNothingOnNoUserBlocks(t *testing.T) {
 	t.Parallel()
 
 	// No user blocks stored in the bucket.
-	bucketClient := &pyroscope_objstore.ClientMock{}
+	bucketClient := mockobjstore.NewMockBucketWithHelper(t)
 	bucketClient.MockIter("", []string{}, nil)
 	cfg := prepareConfig(t)
 	c, _, _, logs, registry := prepare(t, cfg, bucketClient)
@@ -290,7 +291,7 @@ func TestMultitenantCompactor_ShouldRetryCompactionOnFailureWhileDiscoveringUser
 	t.Parallel()
 
 	// Fail to iterate over the bucket while discovering users.
-	bucketClient := &pyroscope_objstore.ClientMock{}
+	bucketClient := mockobjstore.NewMockBucketWithHelper(t)
 	bucketClient.MockIter("", nil, errors.New("failed to iterate the bucket"))
 
 	c, _, _, logs, registry := prepare(t, prepareConfig(t), bucketClient)
@@ -429,7 +430,7 @@ func TestMultitenantCompactor_ShouldIncrementCompactionErrorIfFailedToCompactASi
 	t.Parallel()
 
 	userID := "test-user"
-	bucketClient := &pyroscope_objstore.ClientMock{}
+	bucketClient := mockobjstore.NewMockBucketWithHelper(t)
 	bucketClient.MockIter("", []string{userID}, nil)
 	bucketClient.MockIter(userID+"/phlaredb/", []string{userID + "/phlaredb/01DTVP434PA9VFXSW2JKB3392D", userID + "/phlaredb/01DTW0ZCPDDNV4BV83Q2SV4QAZ"}, nil)
 	bucketClient.MockIter(userID+"/phlaredb/markers/", nil, nil)
@@ -478,7 +479,7 @@ func TestMultitenantCompactor_ShouldIncrementCompactionShutdownIfTheContextIsCan
 	t.Parallel()
 
 	userID := "test-user"
-	bucketClient := &pyroscope_objstore.ClientMock{}
+	bucketClient := mockobjstore.NewMockBucketWithHelper(t)
 	bucketClient.MockIter("", []string{userID}, nil)
 	bucketClient.MockIter(userID+"/phlaredb/markers/", nil, nil)
 	bucketClient.MockIter(userID+"/phlaredb/", []string{userID + "/phlaredb/01DTVP434PA9VFXSW2JKB3392D", userID + "/phlaredb/01DTW0ZCPDDNV4BV83Q2SV4QAZ"}, nil)
@@ -531,7 +532,7 @@ func TestMultitenantCompactor_ShouldIterateOverUsersAndRunCompaction(t *testing.
 	t.Parallel()
 
 	// Mock the bucket to contain two users, each one with two blocks (to make sure that grouper doesn't skip them).
-	bucketClient := &pyroscope_objstore.ClientMock{}
+	bucketClient := mockobjstore.NewMockBucketWithHelper(t)
 	bucketClient.MockIter("", []string{"user-1", "user-2"}, nil)
 	bucketClient.MockExists(path.Join("user-1", "phlaredb/", bucket.TenantDeletionMarkPath), false, nil)
 	bucketClient.MockExists(path.Join("user-2", "phlaredb/", bucket.TenantDeletionMarkPath), false, nil)
@@ -676,7 +677,7 @@ func TestMultitenantCompactor_ShouldStopCompactingTenantOnReachingMaxCompactionT
 
 	// By using blocks with different labels, we get two compaction jobs. Only one of these jobs will be started,
 	// and since its planning will take longer than maxCompactionTime, we stop compactions early.
-	bucketClient := &pyroscope_objstore.ClientMock{}
+	bucketClient := mockobjstore.NewMockBucketWithHelper(t)
 	bucketClient.MockIter("", []string{"user-1"}, nil)
 	bucketClient.MockExists(path.Join("user-1", "phlaredb/", bucket.TenantDeletionMarkPath), false, nil)
 	bucketClient.MockIter("user-1/phlaredb/", []string{"user-1/phlaredb/01DTVP434PA9VFXSW2JKB3392D", "user-1/phlaredb/01FN3VCQV5X342W2ZKMQQXAZRX", "user-1/phlaredb/01FS51A7GQ1RQWV35DBVYQM4KF", "user-1/phlaredb/01FRQGQB7RWQ2TS0VWA82QTPXE"}, nil)
@@ -746,7 +747,7 @@ func TestMultitenantCompactor_ShouldNotCompactBlocksMarkedForDeletion(t *testing
 	cfg.DeletionDelay = 10 * time.Minute // Delete block after 10 minutes
 
 	// Mock the bucket to contain two users, each one with one block.
-	bucketClient := &pyroscope_objstore.ClientMock{}
+	bucketClient := mockobjstore.NewMockBucketWithHelper(t)
 	bucketClient.MockIter("", []string{"user-1"}, nil)
 	bucketClient.MockIter("user-1/phlaredb/", []string{"user-1/phlaredb/01DTVP434PA9VFXSW2JKB3392D", "user-1/phlaredb/01DTW0ZCPDDNV4BV83Q2SV4QAZ"}, nil)
 	bucketClient.MockExists(path.Join("user-1", "phlaredb/", bucket.TenantDeletionMarkPath), false, nil)
@@ -864,7 +865,7 @@ func TestMultitenantCompactor_ShouldNotCompactBlocksMarkedForNoCompaction(t *tes
 	cfg.DeletionDelay = 10 * time.Minute // Delete block after 10 minutes
 
 	// Mock the bucket to contain one user with a block marked for no-compaction.
-	bucketClient := &pyroscope_objstore.ClientMock{}
+	bucketClient := mockobjstore.NewMockBucketWithHelper(t)
 	bucketClient.MockIter("", []string{"user-1"}, nil)
 	bucketClient.MockIter("user-1/phlaredb/", []string{"user-1/phlaredb/01DTVP434PA9VFXSW2JKB3392D"}, nil)
 	bucketClient.MockExists(path.Join("user-1", "phlaredb/", bucket.TenantDeletionMarkPath), false, nil)
@@ -918,7 +919,7 @@ func TestMultitenantCompactor_ShouldNotCompactBlocksForUsersMarkedForDeletion(t 
 	cfg.TenantCleanupDelay = 10 * time.Minute // To make sure it's not 0.
 
 	// Mock the bucket to contain two users, each one with one block.
-	bucketClient := &pyroscope_objstore.ClientMock{}
+	bucketClient := mockobjstore.NewMockBucketWithHelper(t)
 	bucketClient.MockIter("", []string{"user-1"}, nil)
 	bucketClient.MockIter("user-1/phlaredb/", []string{"user-1/phlaredb/01DTVP434PA9VFXSW2JKB3392D"}, nil)
 	bucketClient.MockGet(path.Join("user-1", "phlaredb/", bucket.TenantDeletionMarkPath), `{"deletion_time": 1}`, nil)
@@ -1019,7 +1020,7 @@ func TestMultitenantCompactor_ShouldCompactAllUsersOnShardingEnabledButOnlyOneIn
 	t.Parallel()
 
 	// Mock the bucket to contain two users, each one with one block.
-	bucketClient := &pyroscope_objstore.ClientMock{}
+	bucketClient := mockobjstore.NewMockBucketWithHelper(t)
 	bucketClient.MockIter("", []string{"user-1", "user-2"}, nil)
 	bucketClient.MockExists(path.Join("user-1", "phlaredb", bucket.TenantDeletionMarkPath), false, nil)
 	bucketClient.MockExists(path.Join("user-2", "phlaredb", bucket.TenantDeletionMarkPath), false, nil)
@@ -1156,7 +1157,7 @@ func TestMultitenantCompactor_ShouldCompactOnlyUsersOwnedByTheInstanceOnSharding
 	}
 
 	// Mock the bucket to contain all users, each one with one block.
-	bucketClient := &pyroscope_objstore.ClientMock{}
+	bucketClient := mockobjstore.NewMockBucketWithHelper(t)
 	bucketClient.MockIter("", userIDs, nil)
 	for _, userID := range userIDs {
 		bucketClient.MockIter(userID+"/phlaredb/", []string{userID + "/phlaredb/01DTVP434PA9VFXSW2JKB3392D"}, nil)
@@ -1232,7 +1233,7 @@ func TestMultitenantCompactor_ShouldSkipCompactionForJobsNoMoreOwnedAfterPlannin
 
 	// Mock the bucket to contain one user with two non-overlapping blocks (we expect two compaction jobs to be scheduled
 	// for the splitting stage).
-	bucketClient := &pyroscope_objstore.ClientMock{}
+	bucketClient := mockobjstore.NewMockBucketWithHelper(t)
 	bucketClient.MockIter("", []string{"user-1"}, nil)
 	bucketClient.MockExists(path.Join("user-1", "phlaredb", bucket.TenantDeletionMarkPath), false, nil)
 	bucketClient.MockIter("user-1/phlaredb/", []string{"user-1/phlaredb/01DTVP434PA9VFXSW2JK000001", "user-1/phlaredb/01DTVP434PA9VFXSW2JK000002"}, nil)
@@ -1861,7 +1862,7 @@ func TestMultitenantCompactor_ShouldFailCompactionOnTimeout(t *testing.T) {
 	t.Parallel()
 
 	// Mock the bucket
-	bucketClient := &pyroscope_objstore.ClientMock{}
+	bucketClient := mockobjstore.NewMockBucketWithHelper(t)
 	bucketClient.MockIter("", []string{}, nil)
 
 	ringStore, closer := consul.NewInMemoryClient(ring.GetCodec(), log.NewNopLogger(), nil)

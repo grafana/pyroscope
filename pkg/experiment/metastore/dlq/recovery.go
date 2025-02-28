@@ -93,7 +93,7 @@ func (r *Recovery) recoverLoop(ctx context.Context) {
 func (r *Recovery) recoverTick(ctx context.Context) {
 	err := r.bucket.Iter(ctx, block.DirNameDLQ, func(path string) error {
 		return r.recover(ctx, path)
-	}, objstore.WithRecursiveIter)
+	}, objstore.WithRecursiveIter())
 	if err != nil {
 		level.Error(r.logger).Log("msg", "failed to recover block metadata", "err", err)
 	}

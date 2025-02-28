@@ -18,8 +18,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/thanos-io/objstore"
 
-	pyroscope_objstore "github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/pkg/test/mocks/mockobjstore"
 )
 
 func TestJob_MinCompactionLevel(t *testing.T) {
@@ -113,7 +113,7 @@ func TestJobWaitPeriodElapsed(t *testing.T) {
 				require.NoError(t, job.AppendMeta(b.meta))
 			}
 
-			userBucket := &pyroscope_objstore.ClientMock{}
+			userBucket := &mockobjstore.MockBucket{}
 			for _, b := range testData.jobBlocks {
 				userBucket.MockAttributes(path.Join(b.meta.ULID.String(), block.MetaFilename), b.attrs, b.attrsErr)
 			}

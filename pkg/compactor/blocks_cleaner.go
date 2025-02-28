@@ -626,7 +626,7 @@ func stalePartialBlockLastModifiedTime(ctx context.Context, blockID ulid.ULID, u
 			lastModified = attrib.LastModified
 		}
 		return nil
-	}, thanos_objstore.WithRecursiveIter)
+	}, thanos_objstore.WithRecursiveIter())
 
 	if errors.Is(err, errStopIter) {
 		return time.Time{}, nil

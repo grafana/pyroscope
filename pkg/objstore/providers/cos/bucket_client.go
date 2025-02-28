@@ -36,5 +36,5 @@ func NewBucketClient(cfg Config, name string, logger log.Logger) (objstore.Bucke
 		return nil, err
 	}
 
-	return cos.NewBucket(logger, serializedConfig, name)
+	return cos.NewBucket(logger, serializedConfig, name, nil)
 }

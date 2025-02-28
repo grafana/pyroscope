@@ -57,6 +57,16 @@ func (m *DelayedBucketClient) Iter(ctx context.Context, dir string, f func(strin
 	return m.wrapped.Iter(ctx, dir, f, options...)
 }
 
+func (m *DelayedBucketClient) IterWithAttributes(ctx context.Context, dir string, f func(attrs objstore.IterObjectAttributes) error, options ...objstore.IterOption) error {
+	m.delay()
+	defer m.delay()
+	return m.wrapped.IterWithAttributes(ctx, dir, f, options...)
+}
+
+func (m *DelayedBucketClient) SupportedIterOptions() []objstore.IterOptionType {
+	return m.wrapped.SupportedIterOptions()
+}
+
 func (m *DelayedBucketClient) Get(ctx context.Context, name string) (io.ReadCloser, error) {
 	m.delay()
 	defer m.delay()
@@ -95,6 +105,10 @@ func (m *DelayedBucketClient) Attributes(ctx context.Context, name string) (objs
 
 func (m *DelayedBucketClient) Close() error {
 	return m.wrapped.Close()
+}
+
+func (m *DelayedBucketClient) Provider() objstore.ObjProvider {
+	return m.wrapped.Provider()
 }
 
 func (m *DelayedBucketClient) delay() {

@@ -47,5 +47,5 @@ func NewBucketClient(cfg Config, name string, logger log.Logger) (objstore.Bucke
 		return nil, err
 	}
 
-	return swift.NewContainer(logger, serialized)
+	return swift.NewContainer(logger, serialized, nil)
 }

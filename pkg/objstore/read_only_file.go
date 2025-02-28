@@ -15,6 +15,8 @@ import (
 	"github.com/grafana/pyroscope/pkg/util/bufferpool"
 )
 
+var _ objstore.BucketReader = &ReadOnlyFile{}
+
 type ReadOnlyFile struct {
 	size    int64
 	name    string
@@ -79,6 +81,14 @@ func (f *ReadOnlyFile) Close() error {
 }
 
 func (f *ReadOnlyFile) Iter(context.Context, string, func(string) error, ...objstore.IterOption) error {
+	return nil
+}
+
+func (f *ReadOnlyFile) IterWithAttributes(context.Context, string, func(attrs objstore.IterObjectAttributes) error, ...objstore.IterOption) error {
+	return nil
+}
+
+func (f *ReadOnlyFile) SupportedIterOptions() []objstore.IterOptionType {
 	return nil
 }
 
@@ -179,4 +189,8 @@ func (r *fileReader) Close() error {
 
 func (r *fileReader) Read(p []byte) (int, error) {
 	return r.reader.Read(p)
+}
+
+func (r *fileReader) Provider(p []byte) objstore.ObjProvider {
+	return objstore.ObjProvider("READONLYFILE")
 }

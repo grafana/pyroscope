@@ -108,6 +108,14 @@ func (b *SSEBucketClient) Iter(ctx context.Context, dir string, f func(string) e
 	return b.bucket.Iter(ctx, dir, f, options...)
 }
 
+func (b *SSEBucketClient) IterWithAttributes(ctx context.Context, dir string, f func(attrs objstore.IterObjectAttributes) error, options ...objstore.IterOption) error {
+	return b.bucket.IterWithAttributes(ctx, dir, f, options...)
+}
+
+func (b *SSEBucketClient) SupportedIterOptions() []objstore.IterOptionType {
+	return b.bucket.SupportedIterOptions()
+}
+
 // Get implements objstore.Bucket.
 func (b *SSEBucketClient) Get(ctx context.Context, name string) (io.ReadCloser, error) {
 	return b.bucket.Get(ctx, name)
@@ -154,4 +162,8 @@ func (b *SSEBucketClient) WithExpectedErrs(fn IsOpFailureExpectedFunc) Bucket {
 	}
 
 	return b
+}
+
+func (b *SSEBucketClient) Provider() objstore.ObjProvider {
+	return b.bucket.Provider()
 }
