@@ -208,8 +208,14 @@ func (a *API) RegisterRuntimeConfig(runtimeConfigHandler http.HandlerFunc, userL
 
 func (a *API) RegisterTenantSettings(ts *settings.TenantSettings) {
 	settingsv1connect.RegisterSettingsServiceHandler(a.server.HTTP, ts, a.connectOptionsAuthRecovery()...)
-	settingsv1connect.RegisterCollectionRulesServiceHandler(a.server.HTTP, ts, a.connectOptionsAuthRecovery()...)
-	settingsv1connect.RegisterRecordingRulesServiceHandler(a.server.HTTP, ts, a.connectOptionsAuthRecovery()...)
+
+	if ts.CollectionRulesServiceHandler != nil {
+		settingsv1connect.RegisterCollectionRulesServiceHandler(a.server.HTTP, ts, a.connectOptionsAuthRecovery()...)
+	}
+
+	if ts.RecordingRulesServiceHandler != nil {
+		settingsv1connect.RegisterRecordingRulesServiceHandler(a.server.HTTP, ts, a.connectOptionsAuthRecovery()...)
+	}
 }
 
 // RegisterOverridesExporter registers the endpoints associated with the overrides exporter.
