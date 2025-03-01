@@ -10,6 +10,7 @@ package statusv1
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 
@@ -24,100 +25,101 @@ import (
 )
 
 // Suppress "imported and not used" errors
-var _ codes.Code
-var _ io.Reader
-var _ status.Status
-var _ = runtime.String
-var _ = utilities.NewDoubleArray
-var _ = metadata.Join
+var (
+	_ codes.Code
+	_ io.Reader
+	_ status.Status
+	_ = errors.New
+	_ = runtime.String
+	_ = utilities.NewDoubleArray
+	_ = metadata.Join
+)
 
 func request_StatusService_GetBuildInfo_0(ctx context.Context, marshaler runtime.Marshaler, client StatusServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetBuildInfoRequest
-	var metadata runtime.ServerMetadata
-
+	var (
+		protoReq GetBuildInfoRequest
+		metadata runtime.ServerMetadata
+	)
 	msg, err := client.GetBuildInfo(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_StatusService_GetBuildInfo_0(ctx context.Context, marshaler runtime.Marshaler, server StatusServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetBuildInfoRequest
-	var metadata runtime.ServerMetadata
-
+	var (
+		protoReq GetBuildInfoRequest
+		metadata runtime.ServerMetadata
+	)
 	msg, err := server.GetBuildInfo(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_StatusService_GetConfig_0(ctx context.Context, marshaler runtime.Marshaler, client StatusServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetConfigRequest
-	var metadata runtime.ServerMetadata
-
+	var (
+		protoReq GetConfigRequest
+		metadata runtime.ServerMetadata
+	)
 	msg, err := client.GetConfig(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_StatusService_GetConfig_0(ctx context.Context, marshaler runtime.Marshaler, server StatusServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetConfigRequest
-	var metadata runtime.ServerMetadata
-
+	var (
+		protoReq GetConfigRequest
+		metadata runtime.ServerMetadata
+	)
 	msg, err := server.GetConfig(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_StatusService_GetDiffConfig_0(ctx context.Context, marshaler runtime.Marshaler, client StatusServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetConfigRequest
-	var metadata runtime.ServerMetadata
-
+	var (
+		protoReq GetConfigRequest
+		metadata runtime.ServerMetadata
+	)
 	msg, err := client.GetDiffConfig(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_StatusService_GetDiffConfig_0(ctx context.Context, marshaler runtime.Marshaler, server StatusServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetConfigRequest
-	var metadata runtime.ServerMetadata
-
+	var (
+		protoReq GetConfigRequest
+		metadata runtime.ServerMetadata
+	)
 	msg, err := server.GetDiffConfig(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_StatusService_GetDefaultConfig_0(ctx context.Context, marshaler runtime.Marshaler, client StatusServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetConfigRequest
-	var metadata runtime.ServerMetadata
-
+	var (
+		protoReq GetConfigRequest
+		metadata runtime.ServerMetadata
+	)
 	msg, err := client.GetDefaultConfig(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_StatusService_GetDefaultConfig_0(ctx context.Context, marshaler runtime.Marshaler, server StatusServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetConfigRequest
-	var metadata runtime.ServerMetadata
-
+	var (
+		protoReq GetConfigRequest
+		metadata runtime.ServerMetadata
+	)
 	msg, err := server.GetDefaultConfig(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 // RegisterStatusServiceHandlerServer registers the http handlers for service StatusService to "mux".
 // UnaryRPC     :call StatusServiceServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterStatusServiceHandlerFromEndpoint instead.
+// GRPC interceptors will not work for this type of registration. To use interceptors, you must use the "runtime.WithMiddlewares" option in the "runtime.NewServeMux" call.
 func RegisterStatusServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server StatusServiceServer) error {
-
-	mux.Handle("GET", pattern_StatusService_GetBuildInfo_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_StatusService_GetBuildInfo_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/status.v1.StatusService/GetBuildInfo", runtime.WithHTTPPathPattern("/api/v1/status/buildinfo"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/status.v1.StatusService/GetBuildInfo", runtime.WithHTTPPathPattern("/api/v1/status/buildinfo"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -129,20 +131,15 @@ func RegisterStatusServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_StatusService_GetBuildInfo_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("GET", pattern_StatusService_GetConfig_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_StatusService_GetConfig_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/status.v1.StatusService/GetConfig", runtime.WithHTTPPathPattern("/api/v1/status/config"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/status.v1.StatusService/GetConfig", runtime.WithHTTPPathPattern("/api/v1/status/config"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -154,20 +151,15 @@ func RegisterStatusServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_StatusService_GetConfig_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("GET", pattern_StatusService_GetDiffConfig_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_StatusService_GetDiffConfig_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/status.v1.StatusService/GetDiffConfig", runtime.WithHTTPPathPattern("/api/v1/status/config/diff"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/status.v1.StatusService/GetDiffConfig", runtime.WithHTTPPathPattern("/api/v1/status/config/diff"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -179,20 +171,15 @@ func RegisterStatusServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_StatusService_GetDiffConfig_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("GET", pattern_StatusService_GetDefaultConfig_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_StatusService_GetDefaultConfig_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/status.v1.StatusService/GetDefaultConfig", runtime.WithHTTPPathPattern("/api/v1/status/config/default"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/status.v1.StatusService/GetDefaultConfig", runtime.WithHTTPPathPattern("/api/v1/status/config/default"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -204,9 +191,7 @@ func RegisterStatusServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_StatusService_GetDefaultConfig_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
 
 	return nil
@@ -215,25 +200,24 @@ func RegisterStatusServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 // RegisterStatusServiceHandlerFromEndpoint is same as RegisterStatusServiceHandler but
 // automatically dials to "endpoint" and closes the connection when "ctx" gets done.
 func RegisterStatusServiceHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
-	conn, err := grpc.DialContext(ctx, endpoint, opts...)
+	conn, err := grpc.NewClient(endpoint, opts...)
 	if err != nil {
 		return err
 	}
 	defer func() {
 		if err != nil {
 			if cerr := conn.Close(); cerr != nil {
-				grpclog.Infof("Failed to close conn to %s: %v", endpoint, cerr)
+				grpclog.Errorf("Failed to close conn to %s: %v", endpoint, cerr)
 			}
 			return
 		}
 		go func() {
 			<-ctx.Done()
 			if cerr := conn.Close(); cerr != nil {
-				grpclog.Infof("Failed to close conn to %s: %v", endpoint, cerr)
+				grpclog.Errorf("Failed to close conn to %s: %v", endpoint, cerr)
 			}
 		}()
 	}()
-
 	return RegisterStatusServiceHandler(ctx, mux, conn)
 }
 
@@ -247,16 +231,13 @@ func RegisterStatusServiceHandler(ctx context.Context, mux *runtime.ServeMux, co
 // to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "StatusServiceClient".
 // Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "StatusServiceClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "StatusServiceClient" to call the correct interceptors.
+// "StatusServiceClient" to call the correct interceptors. This client ignores the HTTP middlewares.
 func RegisterStatusServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client StatusServiceClient) error {
-
-	mux.Handle("GET", pattern_StatusService_GetBuildInfo_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_StatusService_GetBuildInfo_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/status.v1.StatusService/GetBuildInfo", runtime.WithHTTPPathPattern("/api/v1/status/buildinfo"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/status.v1.StatusService/GetBuildInfo", runtime.WithHTTPPathPattern("/api/v1/status/buildinfo"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -267,18 +248,13 @@ func RegisterStatusServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_StatusService_GetBuildInfo_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("GET", pattern_StatusService_GetConfig_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_StatusService_GetConfig_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/status.v1.StatusService/GetConfig", runtime.WithHTTPPathPattern("/api/v1/status/config"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/status.v1.StatusService/GetConfig", runtime.WithHTTPPathPattern("/api/v1/status/config"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -289,18 +265,13 @@ func RegisterStatusServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_StatusService_GetConfig_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("GET", pattern_StatusService_GetDiffConfig_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_StatusService_GetDiffConfig_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/status.v1.StatusService/GetDiffConfig", runtime.WithHTTPPathPattern("/api/v1/status/config/diff"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/status.v1.StatusService/GetDiffConfig", runtime.WithHTTPPathPattern("/api/v1/status/config/diff"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -311,18 +282,13 @@ func RegisterStatusServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_StatusService_GetDiffConfig_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("GET", pattern_StatusService_GetDefaultConfig_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_StatusService_GetDefaultConfig_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/status.v1.StatusService/GetDefaultConfig", runtime.WithHTTPPathPattern("/api/v1/status/config/default"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/status.v1.StatusService/GetDefaultConfig", runtime.WithHTTPPathPattern("/api/v1/status/config/default"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -333,30 +299,21 @@ func RegisterStatusServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_StatusService_GetDefaultConfig_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
 	return nil
 }
 
 var (
-	pattern_StatusService_GetBuildInfo_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "status", "buildinfo"}, ""))
-
-	pattern_StatusService_GetConfig_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "status", "config"}, ""))
-
-	pattern_StatusService_GetDiffConfig_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 2, 4}, []string{"api", "v1", "status", "config", "diff"}, ""))
-
+	pattern_StatusService_GetBuildInfo_0     = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "status", "buildinfo"}, ""))
+	pattern_StatusService_GetConfig_0        = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "status", "config"}, ""))
+	pattern_StatusService_GetDiffConfig_0    = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 2, 4}, []string{"api", "v1", "status", "config", "diff"}, ""))
 	pattern_StatusService_GetDefaultConfig_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 2, 4}, []string{"api", "v1", "status", "config", "default"}, ""))
 )
 
 var (
-	forward_StatusService_GetBuildInfo_0 = runtime.ForwardResponseMessage
-
-	forward_StatusService_GetConfig_0 = runtime.ForwardResponseMessage
-
-	forward_StatusService_GetDiffConfig_0 = runtime.ForwardResponseMessage
-
+	forward_StatusService_GetBuildInfo_0     = runtime.ForwardResponseMessage
+	forward_StatusService_GetConfig_0        = runtime.ForwardResponseMessage
+	forward_StatusService_GetDiffConfig_0    = runtime.ForwardResponseMessage
 	forward_StatusService_GetDefaultConfig_0 = runtime.ForwardResponseMessage
 )

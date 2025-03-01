@@ -1,6 +1,6 @@
 module pushsimple
 
-go 1.22
+go 1.22.0
 
 toolchain go1.22.9
 
