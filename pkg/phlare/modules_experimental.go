@@ -27,6 +27,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/metrics"
 	querybackend "github.com/grafana/pyroscope/pkg/experiment/query_backend"
 	querybackendclient "github.com/grafana/pyroscope/pkg/experiment/query_backend/client"
+	recordingrulesclient "github.com/grafana/pyroscope/pkg/settings/recording/client"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/health"
 )
@@ -102,7 +103,7 @@ func (f *Phlare) initCompactionWorker() (svc services.Service, err error) {
 	var ruler metrics.Ruler
 	var exporter metrics.Exporter
 	if f.Cfg.CompactionWorker.MetricsExporterEnabled {
-		ruler, err = metrics.NewStaticRulerFromEnvVars(f.logger)
+		ruler, err = metrics.NewCachedRemoteRuler(f.recordingRulesClient, f.logger)
 		if err != nil {
 			return nil, err
 		}
@@ -221,6 +222,18 @@ func (f *Phlare) initQueryBackendClient() (services.Service, error) {
 		return nil, err
 	}
 	f.queryBackendClient = c
+	return c.Service(), nil
+}
+
+func (f *Phlare) initTenantSettingsClient() (services.Service, error) {
+	if err := f.Cfg.TenantSettings.Validate(); err != nil {
+		return nil, err
+	}
+	c, err := recordingrulesclient.New(f.Cfg.TenantSettings.Recording, f.logger, f.auth)
+	if err != nil {
+		return nil, err
+	}
+	f.recordingRulesClient = c
 	return c.Service(), nil
 }
 
