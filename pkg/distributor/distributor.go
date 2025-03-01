@@ -289,10 +289,7 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 
 	req.TenantID = tenantID
 	for _, series := range req.Series {
-		serviceName := phlaremodel.Labels(series.Labels).Get(phlaremodel.LabelNameServiceName)
-		if serviceName == "" {
-			series.Labels = append(series.Labels, &typesv1.LabelPair{Name: phlaremodel.LabelNameServiceName, Value: "unspecified"})
-		}
+		series.Labels = processServiceNameLabels(series.Labels)
 		sort.Sort(phlaremodel.Labels(series.Labels))
 	}
 
@@ -898,6 +895,64 @@ func extractSampleSeries(
 		}
 	}
 	return result, bytesRelabelDropped, profilesRelabelDropped
+}
+
+func processServiceNameLabels(labels []*typesv1.LabelPair) []*typesv1.LabelPair {
+	hasServiceName := false
+	hasDotServiceName := false
+	var serviceDotNameIndices []int
+	var serviceDotNameValue string
+	var serviceNameIndex int
+
+	for j, label := range labels {
+		if label.Name == phlaremodel.LabelNameServiceName {
+			hasServiceName = true
+			serviceNameIndex = j
+		} else if label.Name == "service.name" {
+			hasDotServiceName = true
+			serviceDotNameIndices = append(serviceDotNameIndices, j)
+			serviceDotNameValue = label.Value
+		}
+	}
+
+	if hasDotServiceName {
+		if hasServiceName && serviceDotNameValue != "" {
+			labels[serviceNameIndex].Value = serviceDotNameValue
+		} else if !hasServiceName && serviceDotNameValue != "" {
+			// If only service.name exists, add service_name with the same value
+			labels = append(labels, &typesv1.LabelPair{
+				Name:  phlaremodel.LabelNameServiceName,
+				Value: serviceDotNameValue,
+			})
+			hasServiceName = true
+		}
+
+		// Remove service.name labels
+		filtered := make([]*typesv1.LabelPair, 0, len(labels)-len(serviceDotNameIndices))
+		for j, label := range labels {
+			isServiceDotName := false
+			for _, idx := range serviceDotNameIndices {
+				if j == idx {
+					isServiceDotName = true
+					break
+				}
+			}
+			if !isServiceDotName {
+				filtered = append(filtered, label)
+			}
+		}
+		labels = filtered
+	}
+
+	// If no service_name label exists after processing, add a default one
+	if !hasServiceName {
+		labels = append(labels, &typesv1.LabelPair{
+			Name:  phlaremodel.LabelNameServiceName,
+			Value: "unspecified",
+		})
+	}
+
+	return labels
 }
 
 type sampleSeriesVisitor struct {
