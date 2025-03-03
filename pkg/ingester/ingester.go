@@ -62,8 +62,7 @@ type Ingester struct {
 	localBucket   phlareobj.Bucket
 	storageBucket phlareobj.Bucket
 
-	instances    map[string]*instance
-	instancesMtx sync.RWMutex
+	instances    sync.Map
 
 	limits Limits
 	reg    prometheus.Registerer
@@ -86,7 +85,6 @@ func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storag
 		phlarectx:     phlarectx,
 		logger:        phlarecontext.Logger(phlarectx),
 		reg:           phlarecontext.Registry(phlarectx),
-		instances:     map[string]*instance{},
 		dbConfig:      dbConfig,
 		storageBucket: storageBucket,
 		limits:        limits,
@@ -162,42 +160,35 @@ func (i *Ingester) stopping(_ error) error {
 	errs := multierror.New()
 	errs.Add(services.StopManagerAndAwaitStopped(context.Background(), i.subservices))
 	// stop all instances
-	i.instancesMtx.RLock()
-	defer i.instancesMtx.RUnlock()
-	for _, inst := range i.instances {
+	i.instances.Range(func(key, value interface{}) bool {
+		inst := value.(instance)
 		errs.Add(inst.Stop())
-	}
+		return true
+	})
 	return errs.Err()
 }
 
-func (i *Ingester) GetOrCreateInstance(tenantID string) (*instance, error) { //nolint:revive
+func (i *Ingester) GetOrCreateInstance(tenantID string) (*instance, error) {
 	inst, ok := i.getInstanceByID(tenantID)
 	if ok {
 		return inst, nil
 	}
 
-	i.instancesMtx.Lock()
-	defer i.instancesMtx.Unlock()
-	inst, ok = i.instances[tenantID]
-	if !ok {
-		var err error
-
-		inst, err = newInstance(i.phlarectx, i.dbConfig, tenantID, i.localBucket, i.storageBucket, NewLimiter(tenantID, i.limits, i.lifecycler, i.cfg.LifecyclerConfig.RingConfig.ReplicationFactor))
-		if err != nil {
-			return nil, err
-		}
-		i.instances[tenantID] = inst
-		activeTenantsStats.Set(int64(len(i.instances)))
+	inst, err := newInstance(i.phlarectx, i.dbConfig, tenantID, i.localBucket, i.storageBucket, NewLimiter(tenantID, i.limits, i.lifecycler, i.cfg.LifecyclerConfig.RingConfig.ReplicationFactor))
+	if err != nil {
+		return nil, err
 	}
+	i.instances.Store(tenantID, inst)
+	activeTenantsStats.Set(int64(i.activeTenantsCount()))
 	return inst, nil
 }
 
 func (i *Ingester) getInstanceByID(id string) (*instance, bool) {
-	i.instancesMtx.RLock()
-	defer i.instancesMtx.RUnlock()
-
-	inst, ok := i.instances[id]
-	return inst, ok
+	val, ok := i.instances.Load(id)
+	if !ok {
+		return nil, false
+	}
+	return val.(*instance), true
 }
 
 // forInstanceUnary executes the given function for the instance with the given tenant ID in the context.
@@ -227,72 +218,95 @@ func (i *Ingester) forInstance(ctx context.Context, f func(*instance) error) err
 }
 
 func (i *Ingester) evictBlock(tenantID string, b ulid.ULID, fn func() error) (err error) {
-	// We lock instances map for writes to ensure that no new instances are
-	// created during the procedure. Otherwise, during initialization, the
-	// new PhlareDB instance may try to load a block that has already been
-	// deleted, or is being deleted.
-	i.instancesMtx.RLock()
-	defer i.instancesMtx.RUnlock()
-	// The map only contains PhlareDB instances that has been initialized since
-	// the process start, therefore there is no guarantee that we will find the
-	// discovered candidate block there. If it is the case, we have to ensure that
-	// the block won't be accessed, before and during deleting it from the disk.
-	var evicted bool
-	if tenantInstance, ok := i.instances[tenantID]; ok {
-		if evicted, err = tenantInstance.Evict(b, fn); err != nil {
-			return fmt.Errorf("failed to evict block %s/%s: %w", tenantID, b, err)
-		}
-	}
-	// If the instance is not found, or the querier is not aware of the block,
-	// and thus the callback has not been invoked, do it now.
-	if !evicted {
+	inst, ok := i.getInstanceByID(tenantID)
+	if !ok {
 		return fn()
 	}
-	return nil
+	return inst.Evict(b, fn)
 }
 
 func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
 	return forInstanceUnary(ctx, i, func(instance *instance) (*connect.Response[pushv1.PushResponse], error) {
 		usageGroups := i.limits.DistributorUsageGroups(instance.tenantID)
+		
+		// Create error channel and wait group
+		errCh := make(chan error, 100)
+		var wg sync.WaitGroup
 
 		for _, series := range req.Msg.Series {
 			groups := usageGroups.GetUsageGroups(instance.tenantID, series.Labels)
-
+			
 			for _, sample := range series.Samples {
-				err := pprof.FromBytes(sample.RawProfile, func(p *profilev1.Profile, size int) error {
-					id, err := uuid.Parse(sample.ID)
-					if err != nil {
-						return err
-					}
-					if err = instance.Ingest(ctx, p, id, series.Labels...); err != nil {
-						reason := validation.ReasonOf(err)
-						if reason != validation.Unknown {
-							validation.DiscardedProfiles.WithLabelValues(string(reason), instance.tenantID).Add(float64(1))
-							validation.DiscardedBytes.WithLabelValues(string(reason), instance.tenantID).Add(float64(size))
-							groups.CountDiscardedBytes(string(reason), int64(size))
+				sample := sample   // Create new variable for goroutine
+				series := series   // Create new variable for goroutine
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					
+					err := pprof.FromBytes(sample.RawProfile, func(p *profilev1.Profile, size int) error {
+						id, err := uuid.Parse(sample.ID)
+						if err != nil {
+							return err
+						}
+						if err = instance.Ingest(ctx, p, id, series.Labels...); err != nil {
+							reason := validation.ReasonOf(err)
+							if reason != validation.Unknown {
+								validation.DiscardedProfiles.WithLabelValues(string(reason), instance.tenantID).Add(float64(1))
+								validation.DiscardedBytes.WithLabelValues(string(reason), instance.tenantID).Add(float64(size))
+								groups.CountDiscardedBytes(string(reason), int64(size))
 
-							switch validation.ReasonOf(err) {
-							case validation.SeriesLimit:
-								return connect.NewError(connect.CodeResourceExhausted, err)
+								switch validation.ReasonOf(err) {
+								case validation.SeriesLimit:
+									return connect.NewError(connect.CodeResourceExhausted, err)
+								}
 							}
 						}
+						return err
+					})
+					if err != nil {
+						errCh <- err
 					}
-					return err
-				})
-				if err != nil {
-					return nil, err
-				}
+				}()
 			}
 		}
+
+		// Wait for all goroutines to complete
+		wg.Wait()
+		close(errCh)
+
+		// Check for any errors
+		for err := range errCh {
+			if err != nil {
+				return nil, err
+			}
+		}
+
 		return connect.NewResponse(&pushv1.PushResponse{}), nil
 	})
 }
 
 func (i *Ingester) Flush(ctx context.Context, req *connect.Request[ingesterv1.FlushRequest]) (*connect.Response[ingesterv1.FlushResponse], error) {
-	i.instancesMtx.RLock()
-	defer i.instancesMtx.RUnlock()
-	for _, inst := range i.instances {
-		if err := inst.Flush(ctx, true, "api"); err != nil {
+	errCh := make(chan error, 100)
+	var wg sync.WaitGroup
+
+	i.instances.Range(func(key, value interface{}) bool {
+		inst := value.(*instance)  // Fixed type assertion
+		wg.Add(1)
+		go func(inst *instance) {  // Pass instance as parameter
+			defer wg.Done()
+			if err := inst.Flush(ctx, true, "api"); err != nil {
+				errCh <- err
+			}
+		}(inst)
+		return true
+	})
+
+	wg.Wait()
+	close(errCh)
+
+	// Check for any errors
+	for err := range errCh {
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -312,4 +326,13 @@ func (i *Ingester) CheckReady(ctx context.Context) error {
 		return fmt.Errorf("ingester not ready: %v", s)
 	}
 	return i.lifecycler.CheckReady(ctx)
+}
+
+func (i *Ingester) activeTenantsCount() int {
+	count := 0
+	i.instances.Range(func(_, _ interface{}) bool {
+		count++
+		return true
+	})
+	return count
 }
