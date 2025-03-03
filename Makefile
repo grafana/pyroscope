@@ -495,3 +495,11 @@ mockery: $(BIN)/mockery
 
 # OTLP Protobuf generation
 include api/otlp/Makefile
+
+.PHONY: bench
+bench: $(BIN)/gotestsum ## Run all benchmarks
+	$(BIN)/gotestsum --format testname -- -bench=. -run=^$$ ./...
+
+.PHONY: bench/%
+bench/%: $(BIN)/gotestsum ## Run benchmarks matching a pattern (e.g., make bench/Parser)
+	$(BIN)/gotestsum --format testname -- -bench=$* -run=^$$ ./...
