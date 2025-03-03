@@ -11,6 +11,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/colega/zeropool v0.0.0-20230505084239-6fb4a4f75381
 	github.com/dennwc/varint v1.0.0
+	github.com/dgraph-io/ristretto v0.2.0
 	github.com/dgryski/go-groupvarint v0.0.0-20230630160417-2bfb7969fb3c
 	github.com/dolthub/swiss v0.2.1
 	github.com/drone/envsubst v1.0.3

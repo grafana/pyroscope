@@ -21,7 +21,7 @@ func main() {
 	// Alternatively, use a local debug info file:
 	//client := &localDebuginfodClient{debugFilePath: "/path/to/your/debug/file"}
 
-	s := symbolizer.NewProfileSymbolizer(client, nil, symbolizer.NewMetrics(nil))
+	s := symbolizer.NewProfileSymbolizer(client, nil, symbolizer.NewMetrics(nil), 0)
 	ctx := context.Background()
 
 	_, err := client.FetchDebuginfo(ctx, buildID)
