@@ -103,10 +103,15 @@ func (f *Phlare) initCompactionWorker() (svc services.Service, err error) {
 	var ruler metrics.Ruler
 	var exporter metrics.Exporter
 	if f.Cfg.CompactionWorker.MetricsExporterEnabled {
-		ruler, err = metrics.NewCachedRemoteRuler(f.recordingRulesClient, f.logger)
+		if f.recordingRulesClient != nil {
+			ruler, err = metrics.NewCachedRemoteRuler(f.recordingRulesClient, f.logger)
+		} else {
+			ruler, err = metrics.NewStaticRulerFromEnvVars(f.logger)
+		}
 		if err != nil {
 			return nil, err
 		}
+
 		exporter, err = metrics.NewStaticExporterFromEnvVars(f.logger, f.reg)
 		if err != nil {
 			return nil, err
@@ -228,6 +233,9 @@ func (f *Phlare) initQueryBackendClient() (services.Service, error) {
 func (f *Phlare) initTenantSettingsClient() (services.Service, error) {
 	if err := f.Cfg.TenantSettings.Validate(); err != nil {
 		return nil, err
+	}
+	if !f.Cfg.TenantSettings.Recording.Enabled {
+		return nil, nil
 	}
 	c, err := recordingrulesclient.New(f.Cfg.TenantSettings.Recording, f.logger, f.auth)
 	if err != nil {
