@@ -631,6 +631,8 @@ Usage of ./pyroscope:
     	Maximum age of cached debug info (default 168h0m0s)
   -query-frontend.symbolizer.debuginfod-url string
     	URL of the debuginfod server (default "https://debuginfod.elfutils.org")
+  -query-frontend.symbolizer.symbol-cache-size int
+    	Maximum number of entries in the symbol cache (default 100000)
   -query-scheduler.grpc-client-config.backoff-max-period duration
     	Maximum delay when backing off. (default 10s)
   -query-scheduler.grpc-client-config.backoff-min-period duration
