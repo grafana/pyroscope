@@ -9,20 +9,25 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"os"
 	"time"
 
 	pprof "github.com/google/pprof/profile"
-	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/prometheus/client_golang/prometheus"
 
+	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
 )
 
+const (
+	DefaultSymbolCacheSize = 100_000
+)
+
 type Config struct {
-	DebuginfodURL string                `yaml:"debuginfod_url"`
-	Cache         CacheConfig           `yaml:"cache"`
-	Storage       objstoreclient.Config `yaml:"storage"`
+	DebuginfodURL   string                `yaml:"debuginfod_url"`
+	Cache           CacheConfig           `yaml:"cache"`
+	Storage         objstoreclient.Config `yaml:"storage"`
+	SymbolCacheSize int                   `yaml:"symbol_cache_size"`
 }
 
 type Symbolizer interface {
@@ -34,6 +39,8 @@ type ProfileSymbolizer struct {
 	client  DebuginfodClient
 	cache   DebugInfoCache
 	metrics *Metrics
+
+	symbolCache *lru.Cache[string, []SymbolLocation]
 }
 
 func NewFromConfig(ctx context.Context, cfg Config, reg prometheus.Registerer) (*ProfileSymbolizer, error) {
@@ -53,18 +60,36 @@ func NewFromConfig(ctx context.Context, cfg Config, reg prometheus.Registerer) (
 	}
 
 	client := NewDebuginfodClient(cfg.DebuginfodURL, metrics)
-	return NewProfileSymbolizer(client, cache, metrics), nil
+
+	// Use configured cache size or default
+	symbolCacheSize := DefaultSymbolCacheSize
+	if cfg.SymbolCacheSize > 0 {
+		symbolCacheSize = cfg.SymbolCacheSize
+	}
+
+	return NewProfileSymbolizer(client, cache, metrics, symbolCacheSize), nil
 }
 
-func NewProfileSymbolizer(client DebuginfodClient, cache DebugInfoCache, metrics *Metrics) *ProfileSymbolizer {
+func NewProfileSymbolizer(client DebuginfodClient, cache DebugInfoCache, metrics *Metrics, symbolCacheSize int) *ProfileSymbolizer {
 	if cache == nil {
 		cache = NewNullCache()
 	}
 
+	// Default to DefaultSymbolCacheSize if not specified
+	if symbolCacheSize <= 0 {
+		symbolCacheSize = DefaultSymbolCacheSize
+	}
+
+	symbolCache, err := lru.New[string, []SymbolLocation](symbolCacheSize)
+	if err != nil {
+		symbolCache = nil
+	}
+
 	return &ProfileSymbolizer{
-		client:  client,
-		cache:   cache,
-		metrics: metrics,
+		client:      client,
+		cache:       cache,
+		metrics:     metrics,
+		symbolCache: symbolCache,
 	}
 }
 
@@ -213,41 +238,81 @@ func (s *ProfileSymbolizer) Symbolize(ctx context.Context, req *Request) error {
 		s.metrics.debugSymbolResolutionDuration.Observe(time.Since(start).Seconds())
 	}()
 
-	//debugReader, err := s.cache.Get(ctx, req.BuildID)
-	//if err == nil {
-	//	defer debugReader.Close()
-	//	return s.symbolizeFromReader(ctx, debugReader, req)
-	//}
+	// Check if we need to fetch debug info at all
+	if s.symbolCache != nil {
+		allCached := true
+		// Check each location in the Ristretto cache
+		for _, loc := range req.Locations {
+			// Create a cache key that combines buildID and address
+			cacheKey := fmt.Sprintf("%s:%x", req.BuildID, loc.Address)
 
-	// Cache miss - fetch from debuginfod
-	filepath, err := s.client.FetchDebuginfo(ctx, req.BuildID)
+			if symbols, found := s.symbolCache.Get(cacheKey); found {
+				// We've already symbolized this address
+				loc.Lines = symbols
+				s.metrics.debugSymbolResolutionsTotal.WithLabelValues("cache_hit").Inc()
+			} else {
+				// We need to fetch at least one address
+				allCached = false
+				break
+			}
+		}
+
+		// If all addresses were in cache, we're done
+		if allCached {
+			return nil
+		}
+	}
+
+	// Try to get from ObjstoreCache first
+	objstoreReader, err := s.cache.Get(ctx, req.BuildID)
+	if err == nil {
+		// ObjstoreCache hit
+		defer objstoreReader.Close()
+		err := s.symbolizeFromReader(ctx, objstoreReader, req)
+		if err != nil {
+			return err
+		}
+
+		s.updateSymbolCache(req)
+		return nil
+	}
+
+	// ObjstoreCache miss - try to get from debuginfod client
+	debugReader, err := s.client.FetchDebuginfo(ctx, req.BuildID)
 	if err != nil {
 		s.metrics.debugSymbolResolutionErrors.WithLabelValues("debuginfod_error").Inc()
 		return fmt.Errorf("fetch debuginfo: %w", err)
 	}
+	defer debugReader.Close()
 
-	// Open for symbolization
-	f, err := os.Open(filepath)
-	if err != nil {
-		s.metrics.debugSymbolResolutionErrors.WithLabelValues("file_error").Inc()
-		return fmt.Errorf("open debug file: %w", err)
+	// Store in ObjstoreCache for future use
+	if s.cache != nil {
+		var buf bytes.Buffer
+		teeReader := io.TeeReader(debugReader, &buf)
+
+		// Symbolize from the tee reader
+		err := s.symbolizeFromReader(ctx, io.NopCloser(teeReader), req)
+		if err != nil {
+			return err
+		}
+
+		// Put the buffered data into the ObjstoreCache
+		if cacheErr := s.cache.Put(ctx, req.BuildID, bytes.NewReader(buf.Bytes())); cacheErr != nil {
+			// TODO: Add logging
+		}
+
+		s.updateSymbolCache(req)
+		return nil
 	}
-	defer f.Close()
 
-	// Cache it for future use
-	//if _, err := f.Seek(0, 0); err != nil {
-	//	return fmt.Errorf("seek file: %w", err)
-	//}
-	//if err := s.cache.Put(ctx, req.BuildID, f); err != nil {
-	//	// TODO: Log it but don't fail?
-	//}
+	// If we don't have an ObjstoreCache, just symbolize directly
+	err = s.symbolizeFromReader(ctx, debugReader, req)
+	if err != nil {
+		return err
+	}
 
-	// Seek back to start for symbolization
-	//if _, err := f.Seek(0, 0); err != nil {
-	//	return fmt.Errorf("seek file: %w", err)
-	//}
-
-	return s.symbolizeFromReader(ctx, f, req)
+	s.updateSymbolCache(req)
+	return nil
 }
 
 func (s *ProfileSymbolizer) symbolizeFromReader(ctx context.Context, r io.ReadCloser, req *Request) error {
@@ -311,6 +376,38 @@ func (s *ProfileSymbolizer) symbolizeFromReader(ctx context.Context, r io.ReadCl
 	return nil
 }
 
+// updateSymbolCache updates the symbol cache with newly symbolized addresses
+func (s *ProfileSymbolizer) updateSymbolCache(req *Request) {
+	if s.symbolCache == nil {
+		return
+	}
+
+	for _, loc := range req.Locations {
+		if len(loc.Lines) > 0 {
+			// Create a cache key that combines buildID and address
+			cacheKey := fmt.Sprintf("%s:%x", req.BuildID, loc.Address)
+			s.symbolCache.Add(cacheKey, loc.Lines)
+		}
+	}
+}
+
+// lookupSymbolCache checks if an address is already in the symbol cache
+func (s *ProfileSymbolizer) lookupSymbolCache(buildID string, addr uint64) ([]SymbolLocation, bool) {
+	if s.symbolCache == nil {
+		return nil, false
+	}
+
+	cacheKey := fmt.Sprintf("%s:%x", buildID, addr)
+	lines, found := s.symbolCache.Get(cacheKey)
+	if !found {
+		// s.metrics.symbolCacheMissesTotal.Inc()
+		return nil, false
+	}
+
+	// s.metrics.symbolCacheHitsTotal.Inc()
+	return lines, true
+}
+
 func hasValidSymbols(loc *googlev1.Location, profile *googlev1.Profile) bool {
 	if len(loc.Line) == 0 {
 		return false
@@ -335,6 +432,7 @@ func hasValidSymbols(loc *googlev1.Location, profile *googlev1.Profile) bool {
 
 func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.StringVar(&cfg.DebuginfodURL, prefix+".debuginfod-url", "https://debuginfod.elfutils.org", "URL of the debuginfod server")
+	f.IntVar(&cfg.SymbolCacheSize, prefix+".symbol-cache-size", DefaultSymbolCacheSize, "Maximum number of entries in the symbol cache")
 
 	cachePrefix := prefix + ".cache"
 	f.BoolVar(&cfg.Cache.Enabled, cachePrefix+".enabled", false, "Enable debug info caching")

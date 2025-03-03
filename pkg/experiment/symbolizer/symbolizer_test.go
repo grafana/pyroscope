@@ -3,16 +3,22 @@ package symbolizer
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 	"testing"
+	"time"
 
+	pprof "github.com/google/pprof/profile"
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	mocksymbolizer "github.com/grafana/pyroscope/pkg/test/mocks/mocksymbolizer"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
-// TestSymbolizeTree tests symbolization using testdata/symbols.debug which contains:
+// TestSymbolizePprof tests symbolization using testdata/symbols.debug which contains:
 //
 // 0x1500 ->
 //
@@ -21,13 +27,13 @@ import (
 //
 // 0x3c5a -> atoll_b (/usr/src/stress-1.0.7-1/src/stress.c:632)
 // 0x2745 -> main (/usr/src/stress-1.0.7-1/src/stress.c:87)
-func TestSymbolizeTree(t *testing.T) {
+func TestSymbolizePprof(t *testing.T) {
 	tests := []struct {
-		name     string
-		profile  *googlev1.Profile
-		buildID  string
-		wantErr  bool
-		validate func(*testing.T, *googlev1.Profile)
+		name      string
+		profile   *googlev1.Profile
+		setupMock func(*mocksymbolizer.MockDebuginfodClient)
+		wantErr   bool
+		validate  func(*testing.T, *googlev1.Profile)
 	}{
 		{
 			name: "already symbolized mapping",
@@ -50,6 +56,7 @@ func TestSymbolizeTree(t *testing.T) {
 				}},
 				StringTable: []string{"", "main", "main.go"},
 			},
+			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient) {},
 			validate: func(t *testing.T, p *googlev1.Profile) {
 				require.True(t, p.Mapping[0].HasFunctions)
 				require.True(t, p.Mapping[0].HasFilenames)
@@ -71,7 +78,9 @@ func TestSymbolizeTree(t *testing.T) {
 				}},
 				StringTable: []string{"", "build-id"},
 			},
-			buildID: "build-id",
+			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient) {
+				mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(openTestFile(t), nil).Once()
+			},
 			validate: func(t *testing.T, p *googlev1.Profile) {
 				require.True(t, p.Mapping[0].HasFunctions)
 				require.True(t, p.Mapping[0].HasFilenames)
@@ -110,7 +119,9 @@ func TestSymbolizeTree(t *testing.T) {
 				}},
 				StringTable: []string{"", "build-id"},
 			},
-			buildID: "build-id",
+			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient) {
+				mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(openTestFile(t), nil).Maybe()
+			},
 			validate: func(t *testing.T, p *googlev1.Profile) {
 				// Should detect invalid function reference and fix mapping flags
 				require.False(t, p.Mapping[0].HasFunctions)
@@ -124,6 +135,7 @@ func TestSymbolizeTree(t *testing.T) {
 				}},
 				StringTable: []string{"", ""},
 			},
+			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient) {},
 			validate: func(t *testing.T, p *googlev1.Profile) {
 				require.False(t, p.Mapping[0].HasFunctions)
 			},
@@ -144,7 +156,9 @@ func TestSymbolizeTree(t *testing.T) {
 				},
 				StringTable: []string{"", "build-id"},
 			},
-			buildID: "build-id",
+			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient) {
+				mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(openTestFile(t), nil).Once()
+			},
 			validate: func(t *testing.T, p *googlev1.Profile) {
 				require.True(t, p.Mapping[0].HasFunctions)
 
@@ -170,10 +184,11 @@ func TestSymbolizeTree(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockClient := &mockDebuginfodClient{buildID: tt.buildID}
-			s := NewProfileSymbolizer(mockClient, NewNullCache(), NewMetrics(nil))
+			mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
+			tt.setupMock(mockClient)
 
-			// Run symbolization
+			s := NewProfileSymbolizer(mockClient, NewNullCache(), NewMetrics(nil), 0)
+
 			err := s.SymbolizePprof(context.Background(), tt.profile)
 			if tt.wantErr {
 				require.Error(t, err)
@@ -182,6 +197,7 @@ func TestSymbolizeTree(t *testing.T) {
 			require.NoError(t, err)
 
 			tt.validate(t, tt.profile)
+			mockClient.AssertExpectations(t)
 		})
 	}
 }
@@ -189,13 +205,17 @@ func TestSymbolizeTree(t *testing.T) {
 func TestSymbolizerMetrics(t *testing.T) {
 	tests := []struct {
 		name        string
-		setup       func(*ProfileSymbolizer, context.Context) error
+		setupMock   func(*mocksymbolizer.MockDebuginfodClient)
+		setupTest   func(*ProfileSymbolizer, context.Context) error
 		expected    string
 		metricNames []string
 	}{
 		{
 			name: "successful symbolization",
-			setup: func(s *ProfileSymbolizer, ctx context.Context) error {
+			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient) {
+				mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(openTestFile(t), nil).Once()
+			},
+			setupTest: func(s *ProfileSymbolizer, ctx context.Context) error {
 				profile := &googlev1.Profile{
 					Mapping: []*googlev1.Mapping{{
 						BuildId:     1,
@@ -227,7 +247,11 @@ func TestSymbolizerMetrics(t *testing.T) {
 		},
 		{
 			name: "debuginfod error",
-			setup: func(s *ProfileSymbolizer, ctx context.Context) error {
+			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient) {
+				mockClient.On("FetchDebuginfo", mock.Anything, "unknown-build-id").
+					Return(nil, fmt.Errorf("unknown build ID")).Once()
+			},
+			setupTest: func(s *ProfileSymbolizer, ctx context.Context) error {
 				profile := &googlev1.Profile{
 					Mapping: []*googlev1.Mapping{{
 						BuildId: 1,
@@ -260,27 +284,110 @@ func TestSymbolizerMetrics(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			reg := prometheus.NewRegistry()
 			metrics := NewMetrics(reg)
-			s := NewProfileSymbolizer(&mockDebuginfodClient{buildID: "build-id"}, NewNullCache(), metrics)
 
-			err := tt.setup(s, context.Background())
+			mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
+			tt.setupMock(mockClient)
+
+			s := NewProfileSymbolizer(mockClient, NewNullCache(), metrics, 0)
+
+			err := tt.setupTest(s, context.Background())
 			if err != nil {
 				t.Log("Setup error:", err)
 			}
 
 			err = testutil.GatherAndCompare(reg, strings.NewReader(tt.expected), tt.metricNames...)
 			require.NoError(t, err)
+
+			mockClient.AssertExpectations(t)
 		})
 	}
 }
 
-type mockDebuginfodClient struct {
-	buildID string
-}
+func TestSymbolizeWithCache(t *testing.T) {
+	mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
 
-func (m *mockDebuginfodClient) FetchDebuginfo(_ context.Context, buildID string) (string, error) {
-	if buildID != m.buildID {
-		return "", fmt.Errorf("unknown build ID")
+	// First call should return the test file
+	mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(openTestFile(t), nil).Once()
+
+	reg := prometheus.NewRegistry()
+	metrics := NewMetrics(reg)
+
+	// Create a symbolizer with LRU cache
+	s := NewProfileSymbolizer(mockClient, NewNullCache(), metrics, 100)
+
+	// First request - should be a cache miss
+	req1 := &Request{
+		BuildID: "build-id",
+		Locations: []*Location{
+			{
+				Address: 0x1500,
+				Mapping: &pprof.Mapping{
+					Start:   0x0,
+					Limit:   0x1000000,
+					Offset:  0x0,
+					BuildID: "build-id",
+				},
+			},
+		},
+	}
+	err := s.Symbolize(context.Background(), req1)
+	require.NoError(t, err)
+	require.NotEmpty(t, req1.Locations[0].Lines)
+
+	time.Sleep(10 * time.Millisecond)
+
+	// Second request with same address - should be a cache hit
+	req2 := &Request{
+		BuildID: "build-id",
+		Locations: []*Location{
+			{
+				Address: 0x1500,
+				Mapping: &pprof.Mapping{
+					Start:   0x0,
+					Limit:   0x1000000,
+					Offset:  0x0,
+					BuildID: "build-id",
+				},
+			},
+		},
 	}
 
-	return "testdata/symbols.debug", nil
+	// No additional calls expected for the second request
+
+	err = s.Symbolize(context.Background(), req2)
+	require.NoError(t, err)
+	require.NotEmpty(t, req2.Locations[0].Lines)
+
+	// Third request with different address - should be a cache miss
+	req3 := &Request{
+		BuildID: "build-id",
+		Locations: []*Location{
+			{
+				Address: 0x3c5a,
+				Mapping: &pprof.Mapping{
+					Start:   0x0,
+					Limit:   0x1000000,
+					Offset:  0x0,
+					BuildID: "build-id",
+				},
+			},
+		},
+	}
+
+	// Should call FetchDebuginfo again for the new address
+	mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(openTestFile(t), nil).Once()
+
+	err = s.Symbolize(context.Background(), req3)
+	require.NoError(t, err)
+	require.NotEmpty(t, req3.Locations[0].Lines)
+
+	mockClient.AssertExpectations(t)
+}
+
+// Helper function to open the test file
+func openTestFile(t *testing.T) io.ReadCloser {
+	t.Helper()
+	f, err := os.Open("testdata/symbols.debug")
+	require.NoError(t, err)
+	return f
 }

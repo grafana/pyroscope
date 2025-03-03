@@ -243,6 +243,10 @@ query_frontend:
 
       [storage_prefix: <string> | default = ""]
 
+    # Maximum number of entries in the symbol cache
+    # CLI flag: -query-frontend.symbolizer.symbol-cache-size
+    [symbol_cache_size: <int> | default = 100000]
+
 storage:
   # Backend storage to use. Supported backends are: s3, gcs, azure, swift,
   # filesystem, cos.

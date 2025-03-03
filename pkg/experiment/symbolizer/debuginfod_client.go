@@ -1,6 +1,7 @@
 package symbolizer
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -8,14 +9,16 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/dgraph-io/ristretto"
 )
 
 type DebuginfodClient interface {
-	FetchDebuginfo(ctx context.Context, buildID string) (string, error)
+	FetchDebuginfo(ctx context.Context, buildID string) (io.ReadCloser, error)
 }
 
 type debuginfodClientConfig struct {
@@ -25,10 +28,23 @@ type debuginfodClientConfig struct {
 	// userAgent   string
 	httpClient *http.Client
 }
-
 type debuginfodClient struct {
 	cfg     debuginfodClientConfig
 	metrics *Metrics
+
+	// In-memory cache of build IDs to file paths
+	cache *ristretto.Cache
+
+	// Track in-flight requests to prevent duplicate fetches
+	inFlightRequests      map[string]*inFlightRequest
+	inFlightRequestsMutex sync.Mutex
+}
+
+// inFlightRequest represents an ongoing fetch operation
+type inFlightRequest struct {
+	done chan struct{}
+	data []byte
+	err  error
 }
 
 func NewDebuginfodClient(baseURL string, metrics *Metrics) DebuginfodClient {
@@ -36,6 +52,16 @@ func NewDebuginfodClient(baseURL string, metrics *Metrics) DebuginfodClient {
 		MaxIdleConnsPerHost: 10,
 		IdleConnTimeout:     90 * time.Second,
 		TLSHandshakeTimeout: 10 * time.Second,
+	}
+
+	cache, err := ristretto.NewCache(&ristretto.Config{
+		NumCounters: 1e7,     // number of keys to track frequency of (10M)
+		MaxCost:     2 << 30, // maximum cost of cache (2GB)
+		BufferItems: 64,      // number of keys per Get buffer
+	})
+
+	if err != nil {
+		cache = nil
 	}
 
 	return &debuginfodClient{
@@ -55,12 +81,14 @@ func NewDebuginfodClient(baseURL string, metrics *Metrics) DebuginfodClient {
 				},
 			},
 		},
-		metrics: metrics,
+		metrics:          metrics,
+		cache:            cache,
+		inFlightRequests: make(map[string]*inFlightRequest),
 	}
 }
 
 // FetchDebuginfo fetches the debuginfo file for a specific build ID.
-func (c *debuginfodClient) FetchDebuginfo(ctx context.Context, buildID string) (string, error) {
+func (c *debuginfodClient) FetchDebuginfo(ctx context.Context, buildID string) (io.ReadCloser, error) {
 	start := time.Now()
 	var lastErr error
 	c.metrics.debuginfodRequestsTotal.Inc()
@@ -76,23 +104,67 @@ func (c *debuginfodClient) FetchDebuginfo(ctx context.Context, buildID string) (
 	sanitizedBuildID, err := sanitizeBuildID(buildID)
 	if err != nil {
 		c.metrics.debuginfodRequestErrorsTotal.WithLabelValues("invalid_id").Inc()
-		return "", err
+		return nil, err
 	}
 
+	// Check in-memory cache first
+	if c.cache != nil {
+		if data, found := c.cache.Get(sanitizedBuildID); found {
+			return io.NopCloser(bytes.NewReader(data.([]byte))), nil
+		}
+	}
+
+	// Check if there's already a request in flight for this build ID
+	c.inFlightRequestsMutex.Lock()
+	req, inFlight := c.inFlightRequests[sanitizedBuildID]
+	if inFlight {
+		// There's already a request in flight, wait for it to complete
+		done := req.done
+		c.inFlightRequestsMutex.Unlock()
+
+		select {
+		case <-done:
+			if req.err != nil {
+				lastErr = req.err
+				return nil, req.err
+			}
+			return io.NopCloser(bytes.NewReader(req.data)), nil
+		case <-ctx.Done():
+			lastErr = ctx.Err()
+			return nil, ctx.Err()
+		}
+	}
+
+	// Create a new in-flight request
+	req = &inFlightRequest{
+		done: make(chan struct{}),
+	}
+	c.inFlightRequests[sanitizedBuildID] = req
+	c.inFlightRequestsMutex.Unlock()
+
+	// Ensure we clean up the in-flight request when we're done
+	defer func() {
+		c.inFlightRequestsMutex.Lock()
+		delete(c.inFlightRequests, sanitizedBuildID)
+		close(req.done)
+		c.inFlightRequestsMutex.Unlock()
+	}()
+
 	url := fmt.Sprintf("%s/buildid/%s/debuginfo", c.cfg.baseURL, sanitizedBuildID)
+	var data []byte
 
 	// Implement retries with exponential backoff
 	for attempt := 0; attempt < c.cfg.maxRetries; attempt++ {
 		if attempt > 0 {
 			if ctx.Err() != nil {
-				return "", ctx.Err()
+				return nil, ctx.Err()
 			}
 			time.Sleep(c.cfg.backoffTime * time.Duration(attempt))
 		}
 
-		filePath, err := c.doRequest(ctx, url, sanitizedBuildID)
+		data, err = c.doRequest(ctx, url)
 		if err == nil {
-			return filePath, nil
+			break
 		}
 
 		lastErr = err
@@ -101,50 +173,52 @@ func (c *debuginfodClient) FetchDebuginfo(ctx context.Context, buildID string) (
 		}
 	}
 
-	return "", fmt.Errorf("failed to fetch debuginfo after %d attempts: %w", c.cfg.maxRetries, lastErr)
+	if lastErr != nil {
+		req.err = fmt.Errorf("failed to fetch debuginfo after %d attempts: %w", c.cfg.maxRetries, lastErr)
+		return nil, req.err
+	}
+
+	// Store in cache
+	if c.cache != nil {
+		// The cost is the size of the data in bytes
+		c.cache.Set(sanitizedBuildID, data, int64(len(data)))
+	}
+
+	req.data = data
+	return io.NopCloser(bytes.NewReader(data)), nil
 }
 
-func (c *debuginfodClient) doRequest(ctx context.Context, url, buildID string) (string, error) {
+func (c *debuginfodClient) doRequest(ctx context.Context, url string) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	req.Header.Set("Accept-Encoding", "gzip, deflate")
 
 	resp, err := c.cfg.httpClient.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("failed to execute request: %w", err)
+		return nil, fmt.Errorf("failed to execute request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("unexpected HTTP status: %d %s", resp.StatusCode, resp.Status)
+		return nil, fmt.Errorf("unexpected HTTP status: %d %s", resp.StatusCode, resp.Status)
 	}
 
-	return c.saveDebugInfo(resp.Body, buildID, resp.ContentLength)
-}
-
-func (c *debuginfodClient) saveDebugInfo(body io.Reader, buildID string, contentLength int64) (string, error) {
-	if contentLength > 0 {
-		c.metrics.debuginfodFileSize.Observe(float64(contentLength))
-	}
-
-	tempDir := os.TempDir()
-	filePath := filepath.Join(tempDir, fmt.Sprintf("%s.elf", buildID))
-
-	outFile, err := os.Create(filePath)
+	// Read the entire response body into memory
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("failed to create temp file: %w", err)
-	}
-	defer outFile.Close()
-
-	if _, err := io.Copy(outFile, body); err != nil {
-		os.Remove(filePath) // Clean up on error
-		return "", fmt.Errorf("failed to write debug info: %w", err)
+		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	return filePath, nil
+	if resp.ContentLength > 0 {
+		c.metrics.debuginfodFileSize.Observe(float64(resp.ContentLength))
+	} else {
+		c.metrics.debuginfodFileSize.Observe(float64(len(data)))
+	}
+
+	return data, nil
 }
 
 func isRetryableError(err error) bool {
