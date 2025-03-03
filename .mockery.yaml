@@ -63,3 +63,6 @@ packages:
   github.com/grafana/pyroscope/pkg/frontend/vcs/client:
     interfaces:
       repositoryService:
+  github.com/grafana/pyroscope/pkg/experiment/symbolizer:
+    interfaces:
+      DebuginfodClient:
