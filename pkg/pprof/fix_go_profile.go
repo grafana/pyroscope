@@ -71,7 +71,7 @@ func dropGoTypeParameters(input string) string {
 	prevEnd := 0
 	for _, indices := range matchesIndices {
 		start, end := indices[0], indices[1]
-		modified.WriteString(input[prevEnd:start] + "[...]")
+		modified.WriteString(input[prevEnd:start])
 		prevEnd = end
 	}
 	modified.WriteString(input[prevEnd:])
