@@ -496,10 +496,26 @@ mockery: $(BIN)/mockery
 # OTLP Protobuf generation
 include api/otlp/Makefile
 
-.PHONY: bench
+.PHONY: go/bench
 bench: $(BIN)/gotestsum ## Run all benchmarks
 	$(BIN)/gotestsum --format testname -- -bench=. -run=^$$ ./...
 
-.PHONY: bench/%
+.PHONY: go/bench/%
 bench/%: $(BIN)/gotestsum ## Run benchmarks matching a pattern (e.g., make bench/Parser)
 	$(BIN)/gotestsum --format testname -- -bench=$* -run=^$$ ./...
+
+profile:
+	go test -bench=. -run=XXX -p=8 -short ./pkg/ingester \
+		-memprofile=./main_mem.prof \
+		-cpuprofile=./main_cpu.prof
+
+profile_deltas:
+	@go tool pprof -top -ignore="runtime" \
+		-diff_base=./main_mem.prof \
+		./branch_mem.prof \
+		> ./prof_delta_mem.txt
+
+	@go tool pprof -top -ignore="runtime" \
+		-diff_base=./main_cpu.prof \
+		./branch_cpu.prof \
+		> ./prof_delta_cpu.txt

@@ -1,0 +1,78 @@
+name: Differential Benchmarks
+
+on:
+  pull_request:
+    paths:
+    - '.github/workflows/**'
+    - 'pkg/ingester/**'
+
+jobs:
+  bench-branch:
+    runs-on: ubuntu-latest-8-cores
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache: false
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Benchmark
+        run: |
+          for i in {1..6}; do
+            make profile | tee -a branch.txt
+          done
+      - name: Upload Benchmark
+        uses: actions/upload-artifact@v4
+        with:
+          name: branch
+          path: branch.txt
+  bench-main:
+    runs-on: ubuntu-latest-8-cores
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache: false
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Benchmark
+        run: |
+          for i in {1..6}; do
+            make profile | tee -a main.txt
+          done
+      - name: Upload Benchmark
+        uses: actions/upload-artifact@v4
+        with:
+          name: main
+          path: main.txt
+  diff:
+    needs: [bench-branch, bench-main]
+    if: ${{ success() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache: false
+      - name: Install benchstat
+        run: go install golang.org/x/perf/cmd/benchstat@latest
+      - name: Download branch results
+        uses: actions/download-artifact@v4
+        with:
+          name: branch
+      - name: Download main results
+        uses: actions/download-artifact@v4
+        with:
+          name: main
+      - name: Benchstat Results
+        run: benchstat main.txt branch.txt | tee benchstat.txt
+      - name: Upload benchstat results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchstat
+          path: benchstat.txt
