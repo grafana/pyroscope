@@ -102,7 +102,7 @@ func (f *Phlare) initCompactionWorker() (svc services.Service, err error) {
 
 	var ruler metrics.Ruler
 	var exporter metrics.Exporter
-	if f.Cfg.CompactionWorker.MetricsExporterConfig.Enabled {
+	if f.Cfg.CompactionWorker.MetricsExporter.Enabled {
 		if f.recordingRulesClient != nil {
 			ruler, err = metrics.NewCachedRemoteRuler(f.recordingRulesClient, f.logger)
 		} else {
@@ -231,14 +231,14 @@ func (f *Phlare) initQueryBackendClient() (services.Service, error) {
 }
 
 func (f *Phlare) initRecordingRulesClient() (services.Service, error) {
-	if err := f.Cfg.CompactionWorker.MetricsExporterConfig.Validate(); err != nil {
+	if err := f.Cfg.CompactionWorker.MetricsExporter.Validate(); err != nil {
 		return nil, err
 	}
-	if !f.Cfg.CompactionWorker.MetricsExporterConfig.Enabled ||
-		f.Cfg.CompactionWorker.MetricsExporterConfig.RulesSource.ClientAddress == "" {
+	if !f.Cfg.CompactionWorker.MetricsExporter.Enabled ||
+		f.Cfg.CompactionWorker.MetricsExporter.RulesSource.ClientAddress == "" {
 		return nil, nil
 	}
-	c, err := recordingrulesclient.NewClient(f.Cfg.CompactionWorker.MetricsExporterConfig.RulesSource.ClientAddress, f.logger, f.auth)
+	c, err := recordingrulesclient.NewClient(f.Cfg.CompactionWorker.MetricsExporter.RulesSource.ClientAddress, f.logger, f.auth)
 	if err != nil {
 		return nil, err
 	}
