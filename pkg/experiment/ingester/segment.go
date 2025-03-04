@@ -17,6 +17,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
+	"github.com/grafana/dskit/backoff"
 	"github.com/oklog/ulid"
 	"github.com/opentracing/opentracing-go"
 	"github.com/thanos-io/objstore"
@@ -31,6 +32,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/model"
 	pprofsplit "github.com/grafana/pyroscope/pkg/model/pprof_split"
 	pprofmodel "github.com/grafana/pyroscope/pkg/pprof"
+	"github.com/grafana/pyroscope/pkg/util/retry"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
@@ -52,8 +54,9 @@ type segmentsWriter struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	metrics     *segmentMetrics
-	headMetrics *memdb.HeadMetrics
+	metrics      *segmentMetrics
+	headMetrics  *memdb.HeadMetrics
+	retryLimiter *retry.RateLimiter
 }
 
 type shard struct {
@@ -129,6 +132,7 @@ func newSegmentWriter(l log.Logger, metrics *segmentMetrics, hm *memdb.HeadMetri
 		shards:      make(map[shardKey]*shard),
 		metastore:   metastoreClient,
 	}
+	sw.retryLimiter = retry.NewRateLimiter(sw.config.Upload.HedgeRateMax, int(sw.config.Upload.HedgeRateBurst))
 	sw.ctx, sw.cancel = context.WithCancel(context.Background())
 	flushWorkers := runtime.GOMAXPROCS(-1)
 	if config.FlushConcurrency > 0 {
@@ -236,12 +240,8 @@ func (s *segment) flush(ctx context.Context) (err error) {
 	if err = s.sw.uploadBlock(ctx, blockData, blockMeta, s); err != nil {
 		return fmt.Errorf("failed to upload block %s: %w", s.ulid.String(), err)
 	}
-	if err = s.sw.storeMeta(ctx, blockMeta, s); err != nil {
-		level.Error(s.logger).Log("msg", "failed to store meta in metastore", "err", err)
-		if dlqErr := s.sw.storeMetaDLQ(ctx, blockMeta, s); dlqErr != nil {
-			level.Error(s.logger).Log("msg", "metastore fallback failed", "err", dlqErr)
-			return fmt.Errorf("failed to store meta %s: %w", s.ulid.String(), dlqErr)
-		}
+	if err = s.sw.storeMetadata(ctx, blockMeta, s); err != nil {
+		return fmt.Errorf("failed to store meta %s: %w", s.ulid.String(), err)
 	}
 
 	return nil
@@ -567,47 +567,98 @@ func (s *segment) headForIngest(k datasetKey) *memdb.Head {
 }
 
 func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockData []byte, meta *metastorev1.BlockMeta, s *segment) error {
-	t1 := time.Now()
+	uploadStart := time.Now()
+	var err error
 	defer func() {
-		sw.metrics.blockUploadDuration.WithLabelValues(s.sshard).Observe(time.Since(t1).Seconds())
+		sw.metrics.segmentUploadDuration.
+			WithLabelValues(statusLabelValue(err)).
+			Observe(time.Since(uploadStart).Seconds())
 	}()
-	sw.metrics.segmentBlockSizeBytes.WithLabelValues(s.sshard).Observe(float64(len(blockData)))
 
-	blockPath := block.ObjectPath(meta)
+	path := block.ObjectPath(meta)
+	sw.metrics.segmentSizeBytes.
+		WithLabelValues(s.sshard).
+		Observe(float64(len(blockData)))
 
-	if err := sw.bucket.Upload(ctx, blockPath, bytes.NewReader(blockData)); err != nil {
+	// To mitigate tail latency issues, we use a hedged upload strategy:
+	// if the request is not completed within a certain time, we trigger
+	// a second upload attempt. Upload errors are retried explicitly and
+	// are included into the call duration.
+	uploadWithRetry := func(ctx context.Context, hedge bool) (any, error) {
+		retryConfig := backoff.Config{
+			MinBackoff: sw.config.Upload.MinBackoff,
+			MaxBackoff: sw.config.Upload.MaxBackoff,
+			MaxRetries: sw.config.Upload.MaxRetries,
+		}
+		var attemptErr error
+		if hedge {
+			// Hedged requests are not retried.
+			retryConfig.MaxRetries = 1
+			attemptStart := time.Now()
+			defer func() {
+				sw.metrics.segmentHedgedUploadDuration.
+					WithLabelValues(statusLabelValue(attemptErr)).
+					Observe(time.Since(attemptStart).Seconds())
+			}()
+		}
+		// Retry on all errors.
+		retries := backoff.New(ctx, retryConfig)
+		for retries.Ongoing() {
+			if attemptErr = sw.bucket.Upload(ctx, path, bytes.NewReader(blockData)); attemptErr == nil {
+				break
+			}
+			retries.Wait()
+		}
+		return nil, attemptErr
+	}
+
+	hedgedUpload := retry.Hedged[any]{
+		Call:      uploadWithRetry,
+		Trigger:   time.After(sw.config.Upload.HedgeUploadAfter),
+		Throttler: sw.retryLimiter,
+		FailFast:  true,
+	}
+
+	if _, err = hedgedUpload.Do(ctx); err != nil {
 		return err
 	}
-	sw.logger.Log("msg", "uploaded block", "path", blockPath, "upload_duration", time.Since(t1))
+
+	level.Debug(sw.logger).Log("msg", "uploaded block", "path", path, "upload_duration", time.Since(uploadStart))
 	return nil
 }
 
-func (sw *segmentsWriter) storeMeta(ctx context.Context, meta *metastorev1.BlockMeta, s *segment) error {
-	t1 := time.Now()
+func (sw *segmentsWriter) storeMetadata(ctx context.Context, meta *metastorev1.BlockMeta, s *segment) error {
+	start := time.Now()
+	var err error
 	defer func() {
-		sw.metrics.storeMetaDuration.WithLabelValues(s.sshard).Observe(time.Since(t1).Seconds())
-		s.debuginfo.storeMetaDuration = time.Since(t1)
+		sw.metrics.storeMetadataDuration.
+			WithLabelValues(statusLabelValue(err)).
+			Observe(time.Since(start).Seconds())
+		s.debuginfo.storeMetaDuration = time.Since(start)
 	}()
-	_, err := sw.metastore.AddBlock(ctx, &metastorev1.AddBlockRequest{Block: meta})
-	if err != nil {
-		sw.metrics.storeMetaErrors.WithLabelValues(s.sshard).Inc()
+	if _, err = sw.metastore.AddBlock(ctx, &metastorev1.AddBlockRequest{Block: meta}); err == nil {
+		return nil
 	}
+
+	level.Error(s.logger).Log("msg", "failed to store meta in metastore", "err", err)
+	defer func() {
+		sw.metrics.storeMetadataDLQ.WithLabelValues(statusLabelValue(err)).Inc()
+	}()
+
+	if err = s.sw.storeMetadataDLQ(ctx, meta); err == nil {
+		return nil
+	}
+
+	level.Error(s.logger).Log("msg", "metastore fallback failed", "err", err)
 	return err
 }
 
-func (sw *segmentsWriter) storeMetaDLQ(ctx context.Context, meta *metastorev1.BlockMeta, s *segment) error {
-	metaBlob, err := meta.MarshalVT()
+func (sw *segmentsWriter) storeMetadataDLQ(ctx context.Context, meta *metastorev1.BlockMeta) error {
+	metadataBytes, err := meta.MarshalVT()
 	if err != nil {
-		sw.metrics.storeMetaDLQ.WithLabelValues(s.sshard, "err").Inc()
 		return err
 	}
-	fullPath := block.MetadataDLQObjectPath(meta)
-	if err = sw.bucket.Upload(ctx, fullPath, bytes.NewReader(metaBlob)); err != nil {
-		sw.metrics.storeMetaDLQ.WithLabelValues(s.sshard, "err").Inc()
-		return fmt.Errorf("%w, %w", ErrMetastoreDLQFailed, err)
-	}
-	sw.metrics.storeMetaDLQ.WithLabelValues(s.sshard, "OK").Inc()
-	return nil
+	return sw.bucket.Upload(ctx, block.MetadataDLQObjectPath(meta), bytes.NewReader(metadataBytes))
 }
 
 type workerPool struct {
