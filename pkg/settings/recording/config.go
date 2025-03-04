@@ -26,6 +26,5 @@ func (cfg *Config) Validate() error {
 	if !cfg.Enabled {
 		return nil
 	}
-
 	return nil
 }
