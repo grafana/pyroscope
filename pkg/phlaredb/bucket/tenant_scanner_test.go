@@ -15,11 +15,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/test/mocks/mockobjstore"
 )
 
 func TestUsersScanner_ScanUsers_ShouldReturnedOwnedUsersOnly(t *testing.T) {
-	bucketClient := &objstore.ClientMock{}
+	bucketClient := mockobjstore.NewMockBucketWithHelper(t)
 	bucketClient.MockIter("", []string{"user-1", "user-2", "user-3", "user-4"}, nil)
 	bucketClient.MockExists(path.Join("user-1", "phlaredb/", TenantDeletionMarkPath), false, nil)
 	bucketClient.MockExists(path.Join("user-3", "phlaredb/", TenantDeletionMarkPath), true, nil)
@@ -38,7 +38,7 @@ func TestUsersScanner_ScanUsers_ShouldReturnedOwnedUsersOnly(t *testing.T) {
 func TestUsersScanner_ScanUsers_ShouldReturnUsersForWhichOwnerCheckOrTenantDeletionCheckFailed(t *testing.T) {
 	expected := []string{"user-1", "user-2"}
 
-	bucketClient := &objstore.ClientMock{}
+	bucketClient := mockobjstore.NewMockBucketWithHelper(t)
 	bucketClient.MockIter("", expected, nil)
 	bucketClient.MockExists(path.Join("user-1", "phlaredb/", TenantDeletionMarkPath), false, nil)
 	bucketClient.MockExists(path.Join("user-2", "phlaredb/", TenantDeletionMarkPath), false, errors.New("fail"))
@@ -55,7 +55,7 @@ func TestUsersScanner_ScanUsers_ShouldReturnUsersForWhichOwnerCheckOrTenantDelet
 }
 
 func TestUsersScanner_ScanUsers_ShouldNotReturnPrefixedUsedByPyroscopeInternals(t *testing.T) {
-	bucketClient := &objstore.ClientMock{}
+	bucketClient := mockobjstore.NewMockBucketWithHelper(t)
 	bucketClient.MockIter("", []string{"user-1", "user-2", PyroscopeInternalsPrefix}, nil)
 	bucketClient.MockExists(path.Join("user-1", "phlaredb/", TenantDeletionMarkPath), false, nil)
 	bucketClient.MockExists(path.Join("user-2", "phlaredb/", TenantDeletionMarkPath), false, nil)
