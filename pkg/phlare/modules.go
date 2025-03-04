@@ -92,18 +92,19 @@ const (
 
 	// Experimental modules
 
-	Metastore           string = "metastore"
-	MetastoreClient     string = "metastore-client"
-	MetastoreAdmin      string = "metastore-admin"
-	SegmentWriter       string = "segment-writer"
-	SegmentWriterRing   string = "segment-writer-ring"
-	SegmentWriterClient string = "segment-writer-client"
-	QueryBackend        string = "query-backend"
-	QueryBackendClient  string = "query-backend-client"
-	CompactionWorker    string = "compaction-worker"
-	PlacementAgent      string = "placement-agent"
-	PlacementManager    string = "placement-manager"
-	HealthServer        string = "health-server"
+	Metastore            string = "metastore"
+	MetastoreClient      string = "metastore-client"
+	MetastoreAdmin       string = "metastore-admin"
+	SegmentWriter        string = "segment-writer"
+	SegmentWriterRing    string = "segment-writer-ring"
+	SegmentWriterClient  string = "segment-writer-client"
+	QueryBackend         string = "query-backend"
+	QueryBackendClient   string = "query-backend-client"
+	CompactionWorker     string = "compaction-worker"
+	PlacementAgent       string = "placement-agent"
+	PlacementManager     string = "placement-manager"
+	HealthServer         string = "health-server"
+	RecordingRulesClient string = "recording-rules-client"
 )
 
 var objectStoreTypeStats = usagestats.NewString("store_object_type")
