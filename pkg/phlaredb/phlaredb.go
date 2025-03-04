@@ -117,6 +117,9 @@ type PhlareDB struct {
 
 func New(phlarectx context.Context, cfg Config, limiter TenantLimiter, fs phlareobj.Bucket) (*PhlareDB, error) {
 	reg := phlarecontext.Registry(phlarectx)
+	// Estimate initial heads capacity based on max block duration
+	initialHeadsCapacity := 10 // or some other reasonable default
+	
 	f := &PhlareDB{
 		cfg:     cfg,
 		logger:  phlarecontext.Logger(phlarectx),
@@ -124,7 +127,7 @@ func New(phlarectx context.Context, cfg Config, limiter TenantLimiter, fs phlare
 		evictCh: make(chan *blockEviction),
 		metrics: newHeadMetrics(reg),
 		limiter: limiter,
-		heads:   make(map[int64]*Head),
+		heads:   make(map[int64]*Head, initialHeadsCapacity),
 		maxBlockDurationNanos: cfg.MaxBlockDuration.Nanoseconds(),
 	}
 
