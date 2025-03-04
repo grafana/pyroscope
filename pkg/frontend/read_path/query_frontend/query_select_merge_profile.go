@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"connectrpc.com/connect"
+	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/tenant"
 	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/common/model"
@@ -68,5 +69,11 @@ func (q *QueryFrontend) SelectMergeProfile(
 	if err = pprof.Unmarshal(report.Pprof.Pprof, &p); err != nil {
 		return nil, err
 	}
+
+	// Symbolize the profile before returning
+	if err := q.symbolizer.SymbolizePprof(ctx, &p); err != nil {
+		level.Warn(q.logger).Log("msg", "failed to symbolize profile", "err", err)
+	}
+
 	return connect.NewResponse(&p), nil
 }
