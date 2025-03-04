@@ -1,4 +1,4 @@
-package recordingrulesclient
+package recording
 
 import (
 	"context"
@@ -12,7 +12,6 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/settings/v1/settingsv1connect"
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/settings/recording"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/util"
 )
@@ -23,12 +22,12 @@ type Client struct {
 	logger  log.Logger
 }
 
-func New(cfg recording.Config, logger log.Logger, auth connect.Option) (*Client, error) {
+func NewClient(address string, logger log.Logger, auth connect.Option) (*Client, error) {
 	httpClient := util.InstrumentedDefaultHTTPClient()
 	opts := connectapi.DefaultClientOptions()
 	opts = append(opts, auth)
 	c := Client{
-		client: settingsv1connect.NewRecordingRulesServiceClient(httpClient, "http://"+cfg.Address, opts...),
+		client: settingsv1connect.NewRecordingRulesServiceClient(httpClient, "http://"+address, opts...),
 		logger: logger,
 	}
 	c.service = services.NewIdleService(c.starting, c.stopping)

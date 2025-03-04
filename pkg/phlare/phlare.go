@@ -517,7 +517,7 @@ func (f *Phlare) setupModuleManager() error {
 		mm.RegisterModule(PlacementAgent, f.initPlacementAgent, modules.UserInvisibleModule)
 		mm.RegisterModule(PlacementManager, f.initPlacementManager, modules.UserInvisibleModule)
 		mm.RegisterModule(HealthServer, f.initHealthServer, modules.UserInvisibleModule)
-		mm.RegisterModule(RecordingRulesClient, f.initTenantSettingsClient, modules.UserInvisibleModule)
+		mm.RegisterModule(RecordingRulesClient, f.initRecordingRulesClient, modules.UserInvisibleModule)
 	}
 
 	for mod, targets := range deps {

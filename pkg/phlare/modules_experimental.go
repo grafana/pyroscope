@@ -102,7 +102,7 @@ func (f *Phlare) initCompactionWorker() (svc services.Service, err error) {
 
 	var ruler metrics.Ruler
 	var exporter metrics.Exporter
-	if f.Cfg.CompactionWorker.MetricsExporterEnabled {
+	if f.Cfg.CompactionWorker.MetricsExporterConfig.Enabled {
 		if f.recordingRulesClient != nil {
 			ruler, err = metrics.NewCachedRemoteRuler(f.recordingRulesClient, f.logger)
 		} else {
@@ -230,14 +230,14 @@ func (f *Phlare) initQueryBackendClient() (services.Service, error) {
 	return c.Service(), nil
 }
 
-func (f *Phlare) initTenantSettingsClient() (services.Service, error) {
-	if err := f.Cfg.TenantSettings.Validate(); err != nil {
+func (f *Phlare) initRecordingRulesClient() (services.Service, error) {
+	if err := f.Cfg.CompactionWorker.MetricsExporterConfig.Validate(); err != nil {
 		return nil, err
 	}
-	if !f.Cfg.TenantSettings.Recording.Enabled {
+	if !f.Cfg.CompactionWorker.MetricsExporterConfig.Enabled || f.Cfg.CompactionWorker.MetricsExporterConfig.ClientAddress == "" {
 		return nil, nil
 	}
-	c, err := recordingrulesclient.New(f.Cfg.TenantSettings.Recording, f.logger, f.auth)
+	c, err := recordingrulesclient.NewClient(f.Cfg.CompactionWorker.MetricsExporterConfig.ClientAddress, f.logger, f.auth)
 	if err != nil {
 		return nil, err
 	}
