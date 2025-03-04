@@ -512,10 +512,18 @@ func deconstructMemoryProfile(imp InMemoryProfile, row parquet.Row) parquet.Row 
 		totalCols = profileColumnCount(imp)
 	)
 
-	if cap(row) < totalCols {
+	// Create a new row if the input is nil or too small
+	if row == nil {
 		row = make(parquet.Row, 0, totalCols)
+	} else if cap(row) < totalCols {
+		// Create new row with sufficient capacity
+		newRow := make(parquet.Row, 0, totalCols)
+		row = newRow
+	} else {
+		// Reuse existing slice
+		row = row[:0]
 	}
-	row = row[:0]
+
 	row = append(row, parquet.FixedLenByteArrayValue(imp.ID[:]).Level(0, 0, newCol()))
 	row = append(row, parquet.Int32Value(int32(imp.SeriesIndex)).Level(0, 0, newCol()))
 	row = append(row, parquet.Int64Value(int64(imp.StacktracePartition)).Level(0, 0, newCol()))
@@ -621,15 +629,23 @@ func deconstructMemoryProfile(imp InMemoryProfile, row parquet.Row) parquet.Row 
 	return row
 }
 
+// Helper function to calculate total columns needed
 func profileColumnCount(imp InMemoryProfile) int {
-	var totalCols = 10 + (7 * len(imp.Samples.StacktraceIDs)) + len(imp.Comments)
-	if len(imp.Comments) == 0 {
-		totalCols++
-	}
-	if len(imp.Samples.StacktraceIDs) == 0 {
-		totalCols += 7
-	}
-	return totalCols
+	// Base columns (ID, SeriesIndex, StacktracePartition, TotalValue)
+	count := 4
+	// Samples columns (StacktraceIDs, Values)
+	count += 2
+	// Empty label columns
+	count += 4
+	// Spans column
+	count += 1
+	// Optional fields (DropFrames, KeepFrames, TimeNanos, DurationNanos, Period)
+	count += 5
+	// Comments column
+	count += 1
+	// DefaultSampleType
+	count += 1
+	return count
 }
 
 func NewMergeProfilesRowReader(rowGroups []parquet.RowReader) parquet.RowReader {
