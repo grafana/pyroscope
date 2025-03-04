@@ -234,10 +234,11 @@ func (f *Phlare) initRecordingRulesClient() (services.Service, error) {
 	if err := f.Cfg.CompactionWorker.MetricsExporterConfig.Validate(); err != nil {
 		return nil, err
 	}
-	if !f.Cfg.CompactionWorker.MetricsExporterConfig.Enabled || f.Cfg.CompactionWorker.MetricsExporterConfig.ClientAddress == "" {
+	if !f.Cfg.CompactionWorker.MetricsExporterConfig.Enabled ||
+		f.Cfg.CompactionWorker.MetricsExporterConfig.RulesSource.ClientAddress == "" {
 		return nil, nil
 	}
-	c, err := recordingrulesclient.NewClient(f.Cfg.CompactionWorker.MetricsExporterConfig.ClientAddress, f.logger, f.auth)
+	c, err := recordingrulesclient.NewClient(f.Cfg.CompactionWorker.MetricsExporterConfig.RulesSource.ClientAddress, f.logger, f.auth)
 	if err != nil {
 		return nil, err
 	}
