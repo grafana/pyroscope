@@ -112,6 +112,7 @@ type PhlareDB struct {
 	blockQuerier *BlockQuerier
 	limiter      TenantLimiter
 	evictCh      chan *blockEviction
+	maxBlockDurationNanos int64  // Cache the nanoseconds value
 }
 
 func New(phlarectx context.Context, cfg Config, limiter TenantLimiter, fs phlareobj.Bucket) (*PhlareDB, error) {
@@ -124,6 +125,7 @@ func New(phlarectx context.Context, cfg Config, limiter TenantLimiter, fs phlare
 		metrics: newHeadMetrics(reg),
 		limiter: limiter,
 		heads:   make(map[int64]*Head),
+		maxBlockDurationNanos: cfg.MaxBlockDuration.Nanoseconds(),
 	}
 
 	if err := os.MkdirAll(f.LocalDataPath(), 0o777); err != nil {
@@ -330,7 +332,11 @@ func (f *PhlareDB) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUI
 	})
 }
 
-func endRangeForTimestamp(t, width int64) (maxt int64) {
+func endRangeForTimestamp(t, width int64) int64 {
+	// Use bit operations if width is power of 2
+	if width&(width-1) == 0 {
+		return (t & ^(width - 1)) + width
+	}
 	return (t/width)*width + width
 }
 
