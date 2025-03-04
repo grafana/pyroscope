@@ -411,7 +411,7 @@ $(BIN)/goreleaser: Makefile go.mod
 
 $(BIN)/gotestsum: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install gotest.tools/gotestsum@v1.9.0
+	GOBIN=$(abspath $(@D)) $(GO) install gotest.tools/gotestsum@v1.12.0
 
 .PHONY: cve/check
 cve/check:
