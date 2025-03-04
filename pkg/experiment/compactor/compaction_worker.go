@@ -57,12 +57,12 @@ type Worker struct {
 }
 
 type Config struct {
-	JobConcurrency        int            `yaml:"job_capacity"`
-	JobPollInterval       time.Duration  `yaml:"job_poll_interval"`
-	SmallObjectSize       int            `yaml:"small_object_size_bytes"`
-	TempDir               string         `yaml:"temp_dir"`
-	RequestTimeout        time.Duration  `yaml:"request_timeout"`
-	MetricsExporterConfig metrics.Config `yaml:"metrics_exporter_config"`
+	JobConcurrency  int            `yaml:"job_capacity"`
+	JobPollInterval time.Duration  `yaml:"job_poll_interval"`
+	SmallObjectSize int            `yaml:"small_object_size_bytes"`
+	TempDir         string         `yaml:"temp_dir"`
+	RequestTimeout  time.Duration  `yaml:"request_timeout"`
+	MetricsExporter metrics.Config `yaml:"metrics_exporter"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
@@ -72,7 +72,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.DurationVar(&cfg.RequestTimeout, prefix+"request-timeout", 5*time.Second, "Job request timeout.")
 	f.IntVar(&cfg.SmallObjectSize, prefix+"small-object-size-bytes", 8<<20, "Size of the object that can be loaded in memory.")
 	f.StringVar(&cfg.TempDir, prefix+"temp-dir", os.TempDir(), "Temporary directory for compaction jobs.")
-	cfg.MetricsExporterConfig.RegisterFlags(f)
+	cfg.MetricsExporter.RegisterFlags(f)
 }
 
 type compactionJob struct {
@@ -486,7 +486,7 @@ func (w *Worker) runCompaction(job *compactionJob) {
 }
 
 func (w *Worker) buildSampleObserver(md *metastorev1.BlockMeta) *metrics.SampleObserver {
-	if !w.config.MetricsExporterConfig.Enabled || md.CompactionLevel > 0 {
+	if !w.config.MetricsExporter.Enabled || md.CompactionLevel > 0 {
 		return nil
 	}
 	recordingTime := int64(ulid.MustParse(md.Id).Time())
