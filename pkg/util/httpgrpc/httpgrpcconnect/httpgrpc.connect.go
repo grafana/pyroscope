@@ -37,12 +37,6 @@ const (
 	HTTPHandleProcedure = "/httpgrpc.HTTP/Handle"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	hTTPServiceDescriptor      = httpgrpc.File_util_httpgrpc_httpgrpc_proto.Services().ByName("HTTP")
-	hTTPHandleMethodDescriptor = hTTPServiceDescriptor.Methods().ByName("Handle")
-)
-
 // HTTPClient is a client for the httpgrpc.HTTP service.
 type HTTPClient interface {
 	Handle(context.Context, *connect.Request[httpgrpc.HTTPRequest]) (*connect.Response[httpgrpc.HTTPResponse], error)
@@ -57,11 +51,12 @@ type HTTPClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewHTTPClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) HTTPClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	hTTPMethods := httpgrpc.File_util_httpgrpc_httpgrpc_proto.Services().ByName("HTTP").Methods()
 	return &hTTPClient{
 		handle: connect.NewClient[httpgrpc.HTTPRequest, httpgrpc.HTTPResponse](
 			httpClient,
 			baseURL+HTTPHandleProcedure,
-			connect.WithSchema(hTTPHandleMethodDescriptor),
+			connect.WithSchema(hTTPMethods.ByName("Handle")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -88,10 +83,11 @@ type HTTPHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewHTTPHandler(svc HTTPHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	hTTPMethods := httpgrpc.File_util_httpgrpc_httpgrpc_proto.Services().ByName("HTTP").Methods()
 	hTTPHandleHandler := connect.NewUnaryHandler(
 		HTTPHandleProcedure,
 		svc.Handle,
-		connect.WithSchema(hTTPHandleMethodDescriptor),
+		connect.WithSchema(hTTPMethods.ByName("Handle")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/httpgrpc.HTTP/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

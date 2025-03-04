@@ -43,14 +43,6 @@ const (
 	QueryBackendServiceInvokeProcedure = "/query.v1.QueryBackendService/Invoke"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	queryFrontendServiceServiceDescriptor     = v1.File_query_v1_query_proto.Services().ByName("QueryFrontendService")
-	queryFrontendServiceQueryMethodDescriptor = queryFrontendServiceServiceDescriptor.Methods().ByName("Query")
-	queryBackendServiceServiceDescriptor      = v1.File_query_v1_query_proto.Services().ByName("QueryBackendService")
-	queryBackendServiceInvokeMethodDescriptor = queryBackendServiceServiceDescriptor.Methods().ByName("Invoke")
-)
-
 // QueryFrontendServiceClient is a client for the query.v1.QueryFrontendService service.
 type QueryFrontendServiceClient interface {
 	Query(context.Context, *connect.Request[v1.QueryRequest]) (*connect.Response[v1.QueryResponse], error)
@@ -65,11 +57,12 @@ type QueryFrontendServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewQueryFrontendServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) QueryFrontendServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	queryFrontendServiceMethods := v1.File_query_v1_query_proto.Services().ByName("QueryFrontendService").Methods()
 	return &queryFrontendServiceClient{
 		query: connect.NewClient[v1.QueryRequest, v1.QueryResponse](
 			httpClient,
 			baseURL+QueryFrontendServiceQueryProcedure,
-			connect.WithSchema(queryFrontendServiceQueryMethodDescriptor),
+			connect.WithSchema(queryFrontendServiceMethods.ByName("Query")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -96,10 +89,11 @@ type QueryFrontendServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewQueryFrontendServiceHandler(svc QueryFrontendServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	queryFrontendServiceMethods := v1.File_query_v1_query_proto.Services().ByName("QueryFrontendService").Methods()
 	queryFrontendServiceQueryHandler := connect.NewUnaryHandler(
 		QueryFrontendServiceQueryProcedure,
 		svc.Query,
-		connect.WithSchema(queryFrontendServiceQueryMethodDescriptor),
+		connect.WithSchema(queryFrontendServiceMethods.ByName("Query")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/query.v1.QueryFrontendService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -133,11 +127,12 @@ type QueryBackendServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewQueryBackendServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) QueryBackendServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	queryBackendServiceMethods := v1.File_query_v1_query_proto.Services().ByName("QueryBackendService").Methods()
 	return &queryBackendServiceClient{
 		invoke: connect.NewClient[v1.InvokeRequest, v1.InvokeResponse](
 			httpClient,
 			baseURL+QueryBackendServiceInvokeProcedure,
-			connect.WithSchema(queryBackendServiceInvokeMethodDescriptor),
+			connect.WithSchema(queryBackendServiceMethods.ByName("Invoke")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -164,10 +159,11 @@ type QueryBackendServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewQueryBackendServiceHandler(svc QueryBackendServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	queryBackendServiceMethods := v1.File_query_v1_query_proto.Services().ByName("QueryBackendService").Methods()
 	queryBackendServiceInvokeHandler := connect.NewUnaryHandler(
 		QueryBackendServiceInvokeProcedure,
 		svc.Invoke,
-		connect.WithSchema(queryBackendServiceInvokeMethodDescriptor),
+		connect.WithSchema(queryBackendServiceMethods.ByName("Invoke")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/query.v1.QueryBackendService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
