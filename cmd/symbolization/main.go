@@ -16,15 +16,22 @@ const (
 )
 
 func main() {
-	client := symbolizer.NewDebuginfodClient(debuginfodBaseURL, symbolizer.NewMetrics(nil))
+	client, err := symbolizer.NewDebuginfodClient(debuginfodBaseURL, symbolizer.NewMetrics(nil))
+	if err != nil {
+		log.Fatalf("Failed to create debuginfod client: %v", err)
+	}
 
 	// Alternatively, use a local debug info file:
 	//client := &localDebuginfodClient{debugFilePath: "/path/to/your/debug/file"}
 
-	s := symbolizer.NewProfileSymbolizer(client, nil, symbolizer.NewMetrics(nil), 0)
+	s, err := symbolizer.NewProfileSymbolizer(nil, client, nil, symbolizer.NewMetrics(nil), 10, 10)
+	if err != nil {
+		log.Fatalf("Failed to create symbolizer: %v", err)
+	}
+
 	ctx := context.Background()
 
-	_, err := client.FetchDebuginfo(ctx, buildID)
+	_, err = client.FetchDebuginfo(ctx, buildID)
 	if err != nil {
 		log.Fatalf("Failed to fetch debug info: %v", err)
 	}
@@ -42,22 +49,7 @@ func main() {
 	// 	Mapping: &pprof.Mapping{},
 	// },
 
-	// Create a profile with the address we want to symbolize
-	// c047672cae7964324658491e7dee26748ae5d2f8
-	// profile := &googlev1.Profile{
-	// 	Mapping: []*googlev1.Mapping{{
-	// 		BuildId:     1,
-	// 		MemoryStart: 0x0,
-	// 		MemoryLimit: 0x1000000,
-	// 		FileOffset:  0x0,
-	// 	}},
-	// 	Location: []*googlev1.Location{{
-	// 		MappingId: 1,
-	// 		Address:   0x11a230,
-	// 	}},
-	// 	StringTable: []string{"", buildID},
-	// }
-
+	// 	buildID = "2fa2055ef20fabc972d5751147e093275514b142"
 	profile := &googlev1.Profile{
 		Mapping: []*googlev1.Mapping{{
 			BuildId:     1,
@@ -81,6 +73,22 @@ func main() {
 		},
 		StringTable: []string{"", buildID},
 	}
+
+	// Create a profile with the address we want to symbolize
+	// buildID = "c047672cae7964324658491e7dee26748ae5d2f8"
+	// profile := &googlev1.Profile{
+	// 	Mapping: []*googlev1.Mapping{{
+	// 		BuildId:     1,
+	// 		MemoryStart: 0x0,
+	// 		MemoryLimit: 0x1000000,
+	// 		FileOffset:  0x0,
+	// 	}},
+	// 	Location: []*googlev1.Location{{
+	// 		MappingId: 1,
+	// 		Address:   0x11a230,
+	// 	}},
+	// 	StringTable: []string{"", buildID},
+	// }
 
 	// Run symbolization
 	if err := s.SymbolizePprof(ctx, profile); err != nil {
