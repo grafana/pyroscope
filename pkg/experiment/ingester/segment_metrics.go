@@ -1,23 +1,25 @@
 package ingester
 
 import (
+	"time"
+
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 type segmentMetrics struct {
-	segmentIngestBytes       *prometheus.HistogramVec
-	segmentBlockSizeBytes    *prometheus.HistogramVec
-	headSizeBytes            *prometheus.HistogramVec
-	storeMetaDuration        *prometheus.HistogramVec
-	segmentFlushWaitDuration *prometheus.HistogramVec
-	segmentFlushTimeouts     *prometheus.CounterVec
-	storeMetaErrors          *prometheus.CounterVec
-	storeMetaDLQ             *prometheus.CounterVec
-	blockUploadDuration      *prometheus.HistogramVec
-	flushSegmentDuration     *prometheus.HistogramVec
-	flushHeadsDuration       *prometheus.HistogramVec
-	flushServiceHeadDuration *prometheus.HistogramVec
-	flushServiceHeadError    *prometheus.CounterVec
+	segmentIngestBytes          *prometheus.HistogramVec
+	segmentSizeBytes            *prometheus.HistogramVec
+	headSizeBytes               *prometheus.HistogramVec
+	segmentFlushWaitDuration    *prometheus.HistogramVec
+	segmentFlushTimeouts        *prometheus.CounterVec
+	storeMetadataDuration       *prometheus.HistogramVec
+	storeMetadataDLQ            *prometheus.CounterVec
+	segmentUploadDuration       *prometheus.HistogramVec
+	segmentHedgedUploadDuration *prometheus.HistogramVec
+	flushSegmentDuration        *prometheus.HistogramVec
+	flushHeadsDuration          *prometheus.HistogramVec
+	flushServiceHeadDuration    *prometheus.HistogramVec
+	flushServiceHeadError       *prometheus.CounterVec
 }
 
 var (
@@ -27,43 +29,69 @@ var (
 )
 
 func newSegmentMetrics(reg prometheus.Registerer) *segmentMetrics {
-
+	// TODO(kolesnikovae):
+	//  - Use native histograms for all metrics
+	//  - Remove unnecessary labels (e.g. shard)
+	//  - Remove/merge/replace metrics
+	//  - Rename to pyroscope_segment_writer_*
+	//  - Add Help.
 	m := &segmentMetrics{
 		segmentIngestBytes: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
 				Namespace: "pyroscope",
+				Subsystem: "segment_writer",
 				Name:      "segment_ingest_bytes",
 				Buckets:   prometheus.ExponentialBucketsRange(10*1024, 15*1024*1024, 20),
 			},
 			[]string{"shard", "tenant"}),
-		segmentBlockSizeBytes: prometheus.NewHistogramVec(
+		segmentSizeBytes: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
 				Namespace: "pyroscope",
-				Name:      "segment_block_size_bytes",
+				Subsystem: "segment_writer",
+				Name:      "segment_size_bytes",
 				Buckets:   prometheus.ExponentialBucketsRange(100*1024, 100*1024*1024, 20),
 			},
 			[]string{"shard"}),
-		storeMetaDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Namespace: "pyroscope",
-			Name:      "segment_store_meta_duration_seconds",
-			Buckets:   networkTimingBuckets,
-		}, []string{"shard"}),
-		blockUploadDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Namespace: "pyroscope",
-			Name:      "segment_block_upload_duration_seconds",
-			Buckets:   networkTimingBuckets,
-		}, []string{"shard"}),
 
-		storeMetaErrors: prometheus.NewCounterVec(
-			prometheus.CounterOpts{
-				Namespace: "pyroscope",
-				Name:      "segment_store_meta_errors",
-			}, []string{"shard"}),
-		storeMetaDLQ: prometheus.NewCounterVec(
-			prometheus.CounterOpts{
-				Namespace: "pyroscope",
-				Name:      "segment_store_meta_dlq",
-			}, []string{"shard", "status"}),
+		segmentUploadDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
+			Namespace:                       "pyroscope",
+			Subsystem:                       "segment_writer",
+			Name:                            "upload_duration_seconds",
+			Help:                            "Duration of segment upload requests.",
+			Buckets:                         prometheus.ExponentialBucketsRange(0.001, 10, 30),
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  32,
+			NativeHistogramMinResetDuration: time.Minute * 15,
+		}, []string{"status"}),
+
+		segmentHedgedUploadDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
+			Namespace:                       "pyroscope",
+			Subsystem:                       "segment_writer",
+			Name:                            "hedged_upload_duration_seconds",
+			Help:                            "Duration of hedged segment upload requests.",
+			Buckets:                         prometheus.ExponentialBucketsRange(0.001, 10, 30),
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  32,
+			NativeHistogramMinResetDuration: time.Minute * 15,
+		}, []string{"status"}),
+
+		storeMetadataDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
+			Namespace:                       "pyroscope",
+			Subsystem:                       "segment_writer",
+			Name:                            "store_metadata_duration_seconds",
+			Help:                            "Duration of store metadata requests.",
+			Buckets:                         prometheus.ExponentialBucketsRange(0.001, 10, 30),
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  32,
+			NativeHistogramMinResetDuration: time.Minute * 15,
+		}, []string{"status"}),
+
+		storeMetadataDLQ: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "pyroscope",
+			Subsystem: "segment_writer",
+			Name:      "store_metadata_dlq",
+			Help:      "Number of store metadata entries that were sent to the DLQ.",
+		}, []string{"status"}),
 
 		segmentFlushWaitDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Namespace: "pyroscope",
@@ -106,13 +134,13 @@ func newSegmentMetrics(reg prometheus.Registerer) *segmentMetrics {
 
 	if reg != nil {
 		reg.MustRegister(m.segmentIngestBytes)
-		reg.MustRegister(m.segmentBlockSizeBytes)
-		reg.MustRegister(m.storeMetaDuration)
+		reg.MustRegister(m.segmentSizeBytes)
+		reg.MustRegister(m.storeMetadataDuration)
 		reg.MustRegister(m.segmentFlushWaitDuration)
 		reg.MustRegister(m.segmentFlushTimeouts)
-		reg.MustRegister(m.storeMetaErrors)
-		reg.MustRegister(m.storeMetaDLQ)
-		reg.MustRegister(m.blockUploadDuration)
+		reg.MustRegister(m.storeMetadataDLQ)
+		reg.MustRegister(m.segmentUploadDuration)
+		reg.MustRegister(m.segmentHedgedUploadDuration)
 		reg.MustRegister(m.flushHeadsDuration)
 		reg.MustRegister(m.flushServiceHeadDuration)
 		reg.MustRegister(m.flushServiceHeadError)
@@ -120,4 +148,11 @@ func newSegmentMetrics(reg prometheus.Registerer) *segmentMetrics {
 		reg.MustRegister(m.headSizeBytes)
 	}
 	return m
+}
+
+func statusLabelValue(err error) string {
+	if err == nil {
+		return "success"
+	}
+	return "error"
 }

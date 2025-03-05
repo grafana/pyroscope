@@ -68,6 +68,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/scheduler"
 	"github.com/grafana/pyroscope/pkg/scheduler/schedulerdiscovery"
 	"github.com/grafana/pyroscope/pkg/settings"
+	recordingrulesclient "github.com/grafana/pyroscope/pkg/settings/recording/client"
 	"github.com/grafana/pyroscope/pkg/storegateway"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/tracing"
@@ -359,17 +360,18 @@ type Phlare struct {
 	frontend *frontend.Frontend
 
 	// Experimental modules.
-	segmentWriter       *segmentwriter.SegmentWriterService
-	segmentWriterClient *segmentwriterclient.Client
-	segmentWriterRing   *ring.Ring
-	placementAgent      *adaptiveplacement.Agent
-	placementManager    *adaptiveplacement.Manager
-	metastore           *metastore.Metastore
-	metastoreClient     *metastoreclient.Client
-	metastoreAdmin      *metastoreadmin.Admin
-	queryBackendClient  *querybackendclient.Client
-	compactionWorker    *compactionworker.Worker
-	healthServer        *health.Server
+	segmentWriter        *segmentwriter.SegmentWriterService
+	segmentWriterClient  *segmentwriterclient.Client
+	segmentWriterRing    *ring.Ring
+	placementAgent       *adaptiveplacement.Agent
+	placementManager     *adaptiveplacement.Manager
+	metastore            *metastore.Metastore
+	metastoreClient      *metastoreclient.Client
+	metastoreAdmin       *metastoreadmin.Admin
+	queryBackendClient   *querybackendclient.Client
+	compactionWorker     *compactionworker.Worker
+	healthServer         *health.Server
+	recordingRulesClient *recordingrulesclient.Client
 }
 
 func New(cfg Config) (*Phlare, error) {
@@ -485,7 +487,7 @@ func (f *Phlare) setupModuleManager() error {
 			SegmentWriter:       {Overrides, API, MemberlistKV, Storage, UsageReport, MetastoreClient},
 			Metastore:           {Overrides, API, MetastoreClient, Storage, PlacementManager},
 			MetastoreAdmin:      {API, MetastoreClient},
-			CompactionWorker:    {Overrides, API, Storage, MetastoreClient},
+			CompactionWorker:    {Overrides, API, Storage, MetastoreClient, RecordingRulesClient},
 			QueryBackend:        {Overrides, API, Storage, QueryBackendClient},
 			SegmentWriterRing:   {Overrides, API, MemberlistKV},
 			SegmentWriterClient: {Overrides, API, SegmentWriterRing, PlacementAgent},
@@ -515,6 +517,7 @@ func (f *Phlare) setupModuleManager() error {
 		mm.RegisterModule(PlacementAgent, f.initPlacementAgent, modules.UserInvisibleModule)
 		mm.RegisterModule(PlacementManager, f.initPlacementManager, modules.UserInvisibleModule)
 		mm.RegisterModule(HealthServer, f.initHealthServer, modules.UserInvisibleModule)
+		mm.RegisterModule(RecordingRulesClient, f.initRecordingRulesClient, modules.UserInvisibleModule)
 	}
 
 	for mod, targets := range deps {
@@ -727,39 +730,30 @@ func (f *Phlare) stopped() {
 			level.Error(f.logger).Log("msg", "error closing tracing", "err", err)
 		}
 	}
-	if err := f.logger.buf.Flush(); err != nil {
-		fmt.Println("error flushing logs:", err)
+	if err := f.logger.w.Close(); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "error closing log writer: %v\n", err)
 	}
 }
 
 func initLogger(logFormat string, logLevel dslog.Level) *logger {
-	buf := dslog.NewBufferedLogger(
-		// There's no particular reason to explicitly synchronise stdout/err writes:
-		// writes less than 4K (pipe buffer size) are already synchronous, and large
-		// outputs such as goroutine dump are not directed to the writer. However,
-		// since we're buffering writes, it's required.
-		log.NewSyncWriter(os.Stderr),
-		256, // Max number of entries.
-		dslog.WithFlushPeriod(100*time.Millisecond),
-		dslog.WithPrellocatedBuffer(64<<10),
+	w := util.NewAsyncWriter(os.Stderr, // Flush after:
+		256<<10, 20, // 256KiB buffer is full (keep 20 buffers).
+		1<<10, // 1K writes or 100ms.
+		100*time.Millisecond,
 	)
 
-	l := dslog.NewGoKitWithWriter(logFormat, buf)
-
-	// use UTC timestamps and skip 5 stack frames.
+	// Use UTC timestamps and skip 5 stack frames.
+	l := dslog.NewGoKitWithWriter(logFormat, w)
 	l = log.With(l, "ts", log.DefaultTimestampUTC, "caller", log.Caller(5))
 
 	// Must put the level filter last for efficiency.
 	l = level.NewFilter(l, logLevel.Option)
 
-	return &logger{
-		buf:    buf,
-		Logger: l,
-	}
+	return &logger{w: w, Logger: l}
 }
 
 type logger struct {
-	buf *dslog.BufferedLogger
+	w io.WriteCloser
 	log.Logger
 }
 
