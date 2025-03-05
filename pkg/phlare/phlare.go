@@ -58,7 +58,6 @@ import (
 	querybackendclient "github.com/grafana/pyroscope/pkg/experiment/query_backend/client"
 	"github.com/grafana/pyroscope/pkg/experiment/symbolizer"
 	"github.com/grafana/pyroscope/pkg/frontend"
-	"github.com/grafana/pyroscope/pkg/frontend/read_path/query_frontend"
 	"github.com/grafana/pyroscope/pkg/ingester"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
@@ -99,7 +98,7 @@ type Config struct {
 	RuntimeConfig     runtimeconfig.Config   `yaml:"runtime_config"`
 	Compactor         compactor.Config       `yaml:"compactor"`
 	TenantSettings    settings.Config        `yaml:"tenant_settings"`
-	QueryFrontend     query_frontend.Config  `yaml:"query_frontend,omitempty"`
+	Symbolizer        symbolizer.Config      `yaml:"symbolizer,omitempty"`
 
 	Storage       StorageConfig       `yaml:"storage"`
 	SelfProfiling SelfProfilingConfig `yaml:"self_profiling,omitempty"`
@@ -203,7 +202,7 @@ func (c *Config) RegisterFlagsWithContext(f *flag.FlagSet) {
 	c.API.RegisterFlags(f)
 	c.EmbeddedGrafana.RegisterFlags(f)
 	c.TenantSettings.RegisterFlags(f)
-	c.QueryFrontend.RegisterFlags(f)
+	c.Symbolizer.RegisterFlagsWithContext(ctx, f)
 }
 
 // registerServerFlagsWithChangedDefaultValues registers *Config.Server flags, but overrides some defaults set by the dskit package.

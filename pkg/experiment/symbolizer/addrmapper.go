@@ -171,7 +171,15 @@ func (ei *BinaryLayout) FindProgramHeader(m Mapping, addr uint64) (*MemoryRegion
 
 func calculateExecBase(m Mapping, h *MemoryRegion) (uint64, error) {
 	if h == nil {
-		return 0, nil
+		// Check if this is likely a PIE executable or shared library
+		if m.Start > 0 {
+			// This is likely a PIE executable or shared library loaded at m.Start
+			result := m.Start - m.Offset
+			return result, nil
+		}
+
+		result := m.Start - m.Offset
+		return result, nil
 	}
 	return m.Start - m.Offset + h.Off - h.Vaddr, nil
 }

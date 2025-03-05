@@ -10,44 +10,30 @@ import (
 	"net/url"
 	"os"
 	"regexp"
-	"strings"
-	"sync"
 	"time"
 
 	"github.com/dgraph-io/ristretto"
+	"github.com/grafana/dskit/backoff"
+	"golang.org/x/sync/singleflight"
 )
 
-type DebuginfodClient interface {
-	FetchDebuginfo(ctx context.Context, buildID string) (io.ReadCloser, error)
-}
-
 type debuginfodClientConfig struct {
-	baseURL     string
-	maxRetries  int
-	backoffTime time.Duration
-	// userAgent   string
+	baseURL    string
+	maxRetries int
 	httpClient *http.Client
+	backoffCfg backoff.Config
 }
-type debuginfodClient struct {
+type DebuginfodHTTPClient struct {
 	cfg     debuginfodClientConfig
 	metrics *Metrics
 
 	// In-memory cache of build IDs to file paths
 	cache *ristretto.Cache
 
-	// Track in-flight requests to prevent duplicate fetches
-	inFlightRequests      map[string]*inFlightRequest
-	inFlightRequestsMutex sync.Mutex
+	group singleflight.Group
 }
 
-// inFlightRequest represents an ongoing fetch operation
-type inFlightRequest struct {
-	done chan struct{}
-	data []byte
-	err  error
-}
-
-func NewDebuginfodClient(baseURL string, metrics *Metrics) DebuginfodClient {
+func NewDebuginfodClient(baseURL string, metrics *Metrics) (*DebuginfodHTTPClient, error) {
 	transport := &http.Transport{
 		MaxIdleConnsPerHost: 10,
 		IdleConnTimeout:     90 * time.Second,
@@ -61,14 +47,13 @@ func NewDebuginfodClient(baseURL string, metrics *Metrics) DebuginfodClient {
 	})
 
 	if err != nil {
-		cache = nil
+		return nil, fmt.Errorf("failed to create debuginfod cache: %w", err)
 	}
 
-	return &debuginfodClient{
+	return &DebuginfodHTTPClient{
 		cfg: debuginfodClientConfig{
-			baseURL:     baseURL,
-			maxRetries:  3,
-			backoffTime: time.Second,
+			baseURL:    baseURL,
+			maxRetries: 3,
 			// userAgent:   "Pyroscope-Symbolizer/1.0",
 			httpClient: &http.Client{
 				Transport: transport,
@@ -80,115 +65,66 @@ func NewDebuginfodClient(baseURL string, metrics *Metrics) DebuginfodClient {
 					return nil
 				},
 			},
+			backoffCfg: backoff.Config{
+				MinBackoff: 1 * time.Second,
+				MaxBackoff: 10 * time.Second,
+				MaxRetries: 3,
+			},
 		},
-		metrics:          metrics,
-		cache:            cache,
-		inFlightRequests: make(map[string]*inFlightRequest),
-	}
+		metrics: metrics,
+		cache:   cache,
+	}, nil
 }
 
 // FetchDebuginfo fetches the debuginfo file for a specific build ID.
-func (c *debuginfodClient) FetchDebuginfo(ctx context.Context, buildID string) (io.ReadCloser, error) {
+func (c *DebuginfodHTTPClient) FetchDebuginfo(ctx context.Context, buildID string) (io.ReadCloser, error) {
 	start := time.Now()
-	var lastErr error
-	c.metrics.debuginfodRequestsTotal.Inc()
+	status := StatusSuccess
 	defer func() {
-		status := "success"
-		if lastErr != nil {
-			status = "error"
-			c.metrics.debuginfodRequestErrorsTotal.WithLabelValues("http").Inc()
-		}
 		c.metrics.debuginfodRequestDuration.WithLabelValues(status).Observe(time.Since(start).Seconds())
 	}()
 
 	sanitizedBuildID, err := sanitizeBuildID(buildID)
 	if err != nil {
-		c.metrics.debuginfodRequestErrorsTotal.WithLabelValues("invalid_id").Inc()
+		status = StatusErrorInvalidID
 		return nil, err
 	}
 
 	// Check in-memory cache first
 	if c.cache != nil {
 		if data, found := c.cache.Get(sanitizedBuildID); found {
+			status = StatusCacheHit
 			return io.NopCloser(bytes.NewReader(data.([]byte))), nil
 		}
 	}
 
 	// Check if there's already a request in flight for this build ID
-	c.inFlightRequestsMutex.Lock()
-	req, inFlight := c.inFlightRequests[sanitizedBuildID]
-	if inFlight {
-		// There's already a request in flight, wait for it to complete
-		done := req.done
-		c.inFlightRequestsMutex.Unlock()
+	v, err, _ := c.group.Do(sanitizedBuildID, func() (interface{}, error) {
+		return c.fetchDebugInfoWithRetries(ctx, sanitizedBuildID)
+	})
 
-		select {
-		case <-done:
-			if req.err != nil {
-				lastErr = req.err
-				return nil, req.err
-			}
-			return io.NopCloser(bytes.NewReader(req.data)), nil
-		case <-ctx.Done():
-			lastErr = ctx.Err()
-			return nil, ctx.Err()
+	if err != nil {
+		// Categorize errors based on type
+		if errors.Is(err, context.Canceled) {
+			status = StatusErrorCanceled
+		} else if errors.Is(err, context.DeadlineExceeded) {
+			status = StatusErrorTimeout
+		} else if isInvalidBuildIDError(err) {
+			status = StatusErrorInvalidID
+		} else if statusCode, ok := isHTTPStatusError(err); ok {
+			status = categorizeHTTPStatusCode(statusCode)
+		} else {
+			status = StatusErrorOther
 		}
+		return nil, err
 	}
 
-	// Create a new in-flight request
-	req = &inFlightRequest{
-		done: make(chan struct{}),
-	}
-	c.inFlightRequests[sanitizedBuildID] = req
-	c.inFlightRequestsMutex.Unlock()
-
-	// Ensure we clean up the in-flight request when we're done
-	defer func() {
-		c.inFlightRequestsMutex.Lock()
-		delete(c.inFlightRequests, sanitizedBuildID)
-		close(req.done)
-		c.inFlightRequestsMutex.Unlock()
-	}()
-
-	url := fmt.Sprintf("%s/buildid/%s/debuginfo", c.cfg.baseURL, sanitizedBuildID)
-	var data []byte
-
-	// Implement retries with exponential backoff
-	for attempt := 0; attempt < c.cfg.maxRetries; attempt++ {
-		if attempt > 0 {
-			if ctx.Err() != nil {
-				return nil, ctx.Err()
-			}
-			time.Sleep(c.cfg.backoffTime * time.Duration(attempt))
-		}
-
-		data, err = c.doRequest(ctx, url)
-		if err == nil {
-			break
-		}
-
-		lastErr = err
-		if !isRetryableError(err) {
-			break
-		}
-	}
-
-	if lastErr != nil {
-		req.err = fmt.Errorf("failed to fetch debuginfo after %d attempts: %w", c.cfg.maxRetries, lastErr)
-		return nil, req.err
-	}
-
-	// Store in cache
-	if c.cache != nil {
-		// The cost is the size of the data in bytes
-		c.cache.Set(sanitizedBuildID, data, int64(len(data)))
-	}
-
-	req.data = data
+	data := v.([]byte)
+	c.metrics.debuginfodFileSize.Observe(float64(len(data)))
 	return io.NopCloser(bytes.NewReader(data)), nil
 }
 
-func (c *debuginfodClient) doRequest(ctx context.Context, url string) ([]byte, error) {
+func (c *DebuginfodHTTPClient) doRequest(ctx context.Context, url string) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -203,7 +139,10 @@ func (c *debuginfodClient) doRequest(ctx context.Context, url string) ([]byte, e
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected HTTP status: %d %s", resp.StatusCode, resp.Status)
+		return nil, httpStatusError{
+			statusCode: resp.StatusCode,
+			status:     resp.Status,
+		}
 	}
 
 	// Read the entire response body into memory
@@ -212,13 +151,65 @@ func (c *debuginfodClient) doRequest(ctx context.Context, url string) ([]byte, e
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	if resp.ContentLength > 0 {
-		c.metrics.debuginfodFileSize.Observe(float64(resp.ContentLength))
-	} else {
-		c.metrics.debuginfodFileSize.Observe(float64(len(data)))
+	c.metrics.debuginfodFileSize.Observe(float64(len(data)))
+
+	return data, nil
+}
+
+func (c *DebuginfodHTTPClient) fetchDebugInfoWithRetries(ctx context.Context, buildID string) ([]byte, error) {
+	url := fmt.Sprintf("%s/buildid/%s/debuginfo", c.cfg.baseURL, buildID)
+	var data []byte
+	var lastErr error
+
+	// Use dskit backoff for retries
+	backOff := backoff.New(ctx, c.cfg.backoffCfg)
+
+	attempt := func() bool {
+		var err error
+		data, err = c.doRequest(ctx, url)
+		if err == nil {
+			return true
+		}
+
+		lastErr = buildIDNotFoundError{buildID: buildID}
+		return isRetryableError(err)
+	}
+
+	for backOff.Ongoing() {
+		if attempt() {
+			break
+		}
+		backOff.Wait()
+	}
+
+	if lastErr != nil {
+		return nil, fmt.Errorf("failed to fetch debuginfo after %d attempts: %w", backOff.NumRetries(), lastErr)
+	}
+
+	// Store in cache
+	if c.cache != nil {
+		// The cost is the size of the data in bytes
+		c.cache.Set(buildID, data, int64(len(data)))
 	}
 
 	return data, nil
+}
+
+func categorizeHTTPStatusCode(statusCode int) string {
+	switch {
+	case statusCode == http.StatusNotFound:
+		return StatusErrorNotFound
+	case statusCode == http.StatusUnauthorized || statusCode == http.StatusForbidden:
+		return StatusErrorUnauthorized
+	case statusCode == http.StatusTooManyRequests:
+		return StatusErrorRateLimited
+	case statusCode >= 400 && statusCode < 500:
+		return StatusErrorClientError
+	case statusCode >= 500:
+		return StatusErrorServerError
+	default:
+		return StatusErrorHTTPOther
+	}
 }
 
 func isRetryableError(err error) bool {
@@ -226,10 +217,35 @@ func isRetryableError(err error) bool {
 		return false
 	}
 
+	// Don't retry on context cancellation or deadline exceeded
 	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 		return false
 	}
 
+	// Don't retry on invalid build ID
+	if isInvalidBuildIDError(err) {
+		return false
+	}
+
+	// Don't retry on not found errors
+	if _, ok := err.(buildIDNotFoundError); ok {
+		return false
+	}
+
+	// Check HTTP status errors
+	if statusCode, ok := isHTTPStatusError(err); ok {
+		// Don't retry 4xx client errors except for 429 (too many requests)
+		if statusCode == http.StatusTooManyRequests {
+			return true
+		}
+		if statusCode >= 400 && statusCode < 500 {
+			return false
+		}
+		// Retry on 5xx server errors
+		return statusCode >= 500
+	}
+
+	// Retry on network timeouts
 	if os.IsTimeout(err) {
 		return true
 	}
@@ -239,17 +255,11 @@ func isRetryableError(err error) bool {
 		return urlErr.Temporary()
 	}
 
-	// All 5xx errors are retryable
-	if strings.Contains(err.Error(), "status: 5") {
-		return true
-	}
-
 	return false
 }
 
 // sanitizeBuildID ensures that the buildID is a safe and valid string for use in file paths.
 func sanitizeBuildID(buildID string) (string, error) {
-	// Allow only alphanumeric characters, dashes, and underscores.
 	validBuildID := regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 	if !validBuildID.MatchString(buildID) {
 		return "", fmt.Errorf("invalid build ID: %s", buildID)

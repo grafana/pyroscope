@@ -74,7 +74,7 @@ var otlpTestDatas = []otlpTestData{
 			{
 				"process_cpu:cpu:nanoseconds:cpu:nanoseconds",
 				map[string]string{"service_name": "otel-ebpf-docker//loving_robinson"},
-				"testdata/otel-ebpf-profiler-pyrosymbolized-docker.json",
+				"testdata/otel-ebpf-profiler-pyrosymbolized-docker.json.bin",
 			},
 		},
 		assertMetrics: func(t *testing.T, p *PyroscopeTest) {
