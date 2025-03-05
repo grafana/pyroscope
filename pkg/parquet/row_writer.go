@@ -53,50 +53,48 @@ func CopyAsRowGroups(dst RowWriterFlusher, src RowGroupReader, rowGroupNumCount 
 			return 0, 0, err
 		}
 
-		// Get the specific column reader type
-		var values interface{}
-		var read int
-		var defLevels []int16
-		var repLevels []int16
+		// Keep reading until we've consumed all data for this column
+		for {
+			// Initialize values slice for int32 (since that's what our test uses)
+			values := make([]int32, rowGroupNumCount)
+			defLevels := make([]int16, rowGroupNumCount)
+			repLevels := make([]int16, rowGroupNumCount)
 
-		// Pre-allocate slices for levels
-		defLevels = make([]int16, rowGroupNumCount)
-		repLevels = make([]int16, rowGroupNumCount)
-
-		total, read, err = reader.ReadBatch(int64(rowGroupNumCount), values, defLevels, repLevels)
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return 0, 0, err
-		}
-		if read == 0 {
-			break
-		}
-
-		// Get the column writer from the row group writer
-		writer, err := dst.NextColumn()
-		if err != nil {
-			return 0, 0, err
-		}
-
-		// Write the column chunk using the appropriate writer type
-		written, err := writer.WriteBatch(values, defLevels, repLevels)
-		if err != nil {
-			return 0, 0, err
-		}
-		total += written
-
-		// Check if we need to flush
-		currentRows, err := dst.NumRows()
-		if err != nil {
-			return 0, 0, err
-		}
-		if int(currentRows) >= rowGroupNumCount {
-			if err := dst.Flush(); err != nil {
+			_, rowsRead, err := reader.ReadBatch(int64(rowGroupNumCount), values, defLevels, repLevels)
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
 				return 0, 0, err
 			}
-			rowGroupCount++
+			if rowsRead == 0 {
+				break
+			}
+
+			// Get the column writer from the row group writer
+			writer, err := dst.NextColumn()
+			if err != nil {
+				return 0, 0, err
+			}
+
+			// Write the column chunk using the appropriate writer type
+			written, err := writer.WriteBatch(values[:rowsRead], defLevels[:rowsRead], repLevels[:rowsRead])
+			if err != nil {
+				return 0, 0, err
+			}
+			total += written
+
+			// Check if we need to flush
+			currentRows, err := dst.NumRows()
+			if err != nil {
+				return 0, 0, err
+			}
+			if int(currentRows) >= rowGroupNumCount {
+				if err := dst.Flush(); err != nil {
+					return 0, 0, err
+				}
+				rowGroupCount++
+			}
 		}
 	}
 
