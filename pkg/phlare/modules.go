@@ -42,6 +42,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/embedded/grafana"
 	"github.com/grafana/pyroscope/pkg/experiment/query_backend"
+	"github.com/grafana/pyroscope/pkg/experiment/symbolizer"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	readpath "github.com/grafana/pyroscope/pkg/frontend/read_path"
 	queryfrontend "github.com/grafana/pyroscope/pkg/frontend/read_path/query_frontend"
@@ -154,14 +155,25 @@ func (f *Phlare) initReadPathRouter() error {
 		f.reg,
 	)
 
+	var sym *symbolizer.ProfileSymbolizer
+	if f.Cfg.Symbolizer.Enabled {
+		s, err := symbolizer.NewFromConfig(
+			context.Background(),
+			log.With(f.logger, "component", "symbolizer"),
+			f.Cfg.Symbolizer, f.reg)
+		if err != nil {
+			return fmt.Errorf("failed to initialize symbolizer: %w", err)
+		}
+		sym = s
+	}
+
 	newFrontend, err := queryfrontend.NewQueryFrontend(
 		log.With(f.logger, "component", "query-frontend"),
 		f.Overrides,
 		f.metastoreClient,
 		f.metastoreClient,
 		f.queryBackendClient,
-		f.Cfg.QueryFrontend,
-		f.reg,
+		sym,
 	)
 	if err != nil {
 		return err
