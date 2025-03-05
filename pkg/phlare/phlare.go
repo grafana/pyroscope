@@ -200,7 +200,11 @@ func (c *Config) RegisterFlagsWithContext(f *flag.FlagSet) {
 	c.API.RegisterFlags(f)
 	c.EmbeddedGrafana.RegisterFlags(f)
 	c.TenantSettings.RegisterFlags(f)
-	c.Symbolizer.RegisterFlagsWithContext(ctx, f)
+
+	c.v2Experiment = os.Getenv("PYROSCOPE_V2_EXPERIMENT") != ""
+	if c.v2Experiment {
+		c.Symbolizer.RegisterFlagsWithContext(ctx, f)
+	}
 }
 
 // registerServerFlagsWithChangedDefaultValues registers *Config.Server flags, but overrides some defaults set by the dskit package.
