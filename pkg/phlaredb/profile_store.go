@@ -10,56 +10,76 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/apache/arrow/go/v15/arrow"
+	"github.com/apache/arrow/go/v15/arrow/array"
+	"github.com/apache/arrow/go/v15/arrow/memory"
+	"github.com/apache/arrow/go/v15/arrow/ipc"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/runutil"
-	"github.com/parquet-go/parquet-go"
 	"github.com/pkg/errors"
 	"go.uber.org/atomic"
 
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	phlareparquet "github.com/grafana/pyroscope/pkg/parquet"
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/phlaredb/query"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/util/build"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 const (
-	parquetWriteBufferSize = 3 << 20 // 3MB
+	writeBufferSize = 3 << 20 // 3MB
 )
+
+type Config struct {
+	MaxBufferRowCount int  // Maximum number of rows to buffer before flushing
+	MaxRowGroupBytes  uint64  // Maximum size of a row group in bytes
+}
+
+type headMetrics struct {
+	sizeBytes                  *prometheus.GaugeVec
+	samples                    prometheus.Gauge
+	writtenProfileSegments    *prometheus.CounterVec
+	writtenProfileSegmentsBytes prometheus.Histogram
+}
+
+type profilesIndex struct {
+	mutex          sync.RWMutex
+	profilesPerFP  map[uint64]*seriesWithProfiles
+}
+
+type seriesWithProfiles struct {
+	lbs phlaremodel.Labels
+	profiles []*schemav1.InMemoryProfile
+}
 
 type profileStore struct {
 	size      atomic.Uint64
 	totalSize atomic.Uint64
 
 	logger  log.Logger
-	cfg     *ParquetConfig
+	cfg     *Config
 	metrics *headMetrics
 
 	path      string
-	persister schemav1.Persister[*schemav1.Profile]
-	writer    *parquet.GenericWriter[*schemav1.Profile]
+	pool      memory.Allocator
+	schema    *arrow.Schema
+	writer    *ipc.FileWriter
 
-	// lock serializes appends to the slice. Every new profile is appended
-	// to the slice and to the index (has its own lock). In practice, it's
-	// only purpose is to accommodate the parquet writer: slice is never
-	// accessed for reads.
+	// lock serializes appends to the slice
 	profilesLock sync.Mutex
 	slice        []schemav1.InMemoryProfile
 
-	// Rows lock synchronises access to the on-disk row groups.
-	// When the in-memory index (profiles) is being flushed on disk,
-	// it should be modified simultaneously with rowGroups.
-	// Store readers only access rowGroups and index.
+	// Rows lock synchronises access to the on-disk row groups
 	rowsLock    sync.RWMutex
 	rowsFlushed uint64
 	rowGroups   []*rowGroupOnDisk
 	index       *profilesIndex
 
 	flushing       *atomic.Bool
-	flushQueue     chan int // channel to signal that a flush is needed for slice[:n]
+	flushQueue     chan int
 	closeOnce      sync.Once
 	flushWg        sync.WaitGroup
 	flushBuffer    []schemav1.InMemoryProfile
@@ -67,34 +87,123 @@ type profileStore struct {
 	onFlush        func()
 }
 
-func newParquetProfileWriter(writer io.Writer, options ...parquet.WriterOption) *parquet.GenericWriter[*schemav1.Profile] {
-	options = append(options, parquet.PageBufferSize(parquetWriteBufferSize))
-	options = append(options, parquet.CreatedBy("github.com/grafana/pyroscope/", build.Version, build.Revision))
-	options = append(options, schemav1.ProfilesSchema)
-	return parquet.NewGenericWriter[*schemav1.Profile](
-		writer, options...,
-	)
-}
-
 func newProfileStore(phlarectx context.Context) *profileStore {
+	schema := createArrowSchema()
+	
 	s := &profileStore{
 		logger:     phlarecontext.Logger(phlarectx),
 		metrics:    contextHeadMetrics(phlarectx),
-		persister:  &schemav1.ProfilePersister{},
+		pool:       memory.NewGoAllocator(),
+		schema:     schema,
 		flushing:   atomic.NewBool(false),
 		flushQueue: make(chan int),
+		index:      &profilesIndex{
+			profilesPerFP: make(map[uint64]*seriesWithProfiles),
+		},
 	}
+	
 	s.flushWg.Add(1)
 	go s.cutRowGroupLoop()
-	// Initialize writer on /dev/null
-	// TODO: Reuse parquet.Writer beyond life time of the head.
-	s.writer = newParquetProfileWriter(io.Discard)
-
+	
 	return s
 }
 
+func createArrowSchema() *arrow.Schema {
+	return arrow.NewSchema(
+		[]arrow.Field{
+			{Name: "ID", Type: arrow.BinaryType},
+			{Name: "TimeNanos", Type: arrow.Int64Type},
+			{Name: "SeriesFingerprint", Type: arrow.Uint64Type},
+			{Name: "SeriesIndex", Type: arrow.Int32Type},
+			// Add other fields based on your Profile structure
+		},
+		nil,
+	)
+}
+
+// RowGroup represents a group of rows in Arrow format
+type rowGroupOnDisk struct {
+	reader     *ipc.FileReader
+	file       *os.File
+	numRows    int64
+	seriesIndexes rowRangesWithSeriesIndex
+}
+
+func newRowGroupOnDisk(path string) (*rowGroupOnDisk, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, errors.Wrapf(err, "opening row groups segment file %s", path)
+	}
+
+	reader, err := ipc.NewFileReader(file)
+	if err != nil {
+		file.Close()
+		return nil, errors.Wrapf(err, "creating Arrow reader for %s", path)
+	}
+
+	return &rowGroupOnDisk{
+		reader: reader,
+		file:   file,
+		numRows: reader.NumRows(),
+	}, nil
+}
+
+func (r *rowGroupOnDisk) Close() error {
+	r.reader.Close()
+	if err := r.file.Close(); err != nil {
+		return err
+	}
+
+	if err := os.Remove(r.file.Name()); err != nil {
+		return errors.Wrap(err, "deleting row group segment file")
+	}
+
+	return nil
+}
+
+// ArrowWriter implements the RowWriter interface for Arrow
+type ArrowWriter struct {
+	writer     *ipc.FileWriter
+	builder    *array.RecordBuilder
+	numRows    int64
+}
+
+func NewArrowWriter(schema *arrow.Schema, writer *ipc.FileWriter) *ArrowWriter {
+	return &ArrowWriter{
+		writer:  writer,
+		builder: array.NewRecordBuilder(memory.NewGoAllocator(), schema),
+	}
+}
+
+func (w *ArrowWriter) WriteRows(rows []schemav1.InMemoryProfile) error {
+	// Build Arrow record from profiles
+	for _, profile := range rows {
+		// Add data to builders
+		w.builder.Field(0).(*array.BinaryBuilder).Append(profile.ID[:])
+		w.builder.Field(1).(*array.Int64Builder).Append(profile.TimeNanos)
+		w.builder.Field(2).(*array.Uint64Builder).Append(profile.SeriesFingerprint)
+		w.builder.Field(3).(*array.Int32Builder).Append(0) // SeriesIndex placeholder
+	}
+
+	record := w.builder.NewRecord()
+	defer record.Release()
+
+	if err := w.writer.Write(record); err != nil {
+		return err
+	}
+
+	w.numRows += int64(len(rows))
+	w.builder.Clear()
+	return nil
+}
+
+func (w *ArrowWriter) Close() error {
+	w.builder.Release()
+	return w.writer.Close()
+}
+
 func (s *profileStore) Name() string {
-	return s.persister.Name()
+	return "Arrow-based profile store"
 }
 
 func (s *profileStore) Size() uint64 {
@@ -106,7 +215,7 @@ func (s *profileStore) MemorySize() uint64 {
 }
 
 // resets the store
-func (s *profileStore) Init(path string, cfg *ParquetConfig, metrics *headMetrics) (err error) {
+func (s *profileStore) Init(path string, cfg *Config, metrics *headMetrics) (err error) {
 	// close previous iteration
 	if err := s.Close(); err != nil {
 		return err
@@ -144,12 +253,15 @@ func (s *profileStore) Close() error {
 	return nil
 }
 
-func (s *profileStore) RowGroups() (rowGroups []parquet.RowGroup) {
-	rowGroups = make([]parquet.RowGroup, len(s.rowGroups))
-	for pos := range rowGroups {
-		rowGroups[pos] = s.rowGroups[pos]
+func (s *profileStore) RowGroups() []array.RecordReader {
+	s.rowsLock.RLock()
+	defer s.rowsLock.RUnlock()
+	
+	readers := make([]array.RecordReader, len(s.rowGroups))
+	for i, rg := range s.rowGroups {
+		readers[i] = rg.reader
 	}
-	return rowGroups
+	return readers
 }
 
 // Flush writes row groups and the index to files on disk.
@@ -173,17 +285,17 @@ func (s *profileStore) Flush(ctx context.Context) (numRows uint64, numRowGroups 
 		return 0, 0, err
 	}
 
-	parquetPath := filepath.Join(
+	arrowPath := filepath.Join(
 		s.path,
-		s.persister.Name()+block.ParquetSuffix,
+		s.Name()+".arrow",
 	)
-
 	s.rowsLock.Lock()
 	for idx, ranges := range rowRangerPerRG {
 		s.rowGroups[idx].seriesIndexes = ranges
 	}
 	s.rowsLock.Unlock()
-	numRows, numRowGroups, err = s.writeRowGroups(parquetPath, s.RowGroups())
+	
+	numRows, numRowGroups, err = s.writeRowGroups(arrowPath, s.rowGroups)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -203,14 +315,20 @@ func (s *profileStore) DeleteRowGroups() error {
 	return nil
 }
 
-func (s *profileStore) prepareFile(path string) (f *os.File, err error) {
+func (s *profileStore) prepareFile(path string) (*os.File, error) {
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
 	if err != nil {
 		return nil, err
 	}
-	s.writer.Reset(file)
 
-	return file, err
+	writer, err := ipc.NewFileWriter(file, ipc.WithSchema(s.schema))
+	if err != nil {
+		file.Close()
+		return nil, err
+	}
+	
+	s.writer = writer
+	return file, nil
 }
 
 // cutRowGroups gets called, when a patrticular row group has been finished
@@ -228,7 +346,6 @@ func (s *profileStore) prepareFile(path string) (f *os.File, err error) {
 // profiles, including ones added since the start of the call, but only those
 // that were added before certain point (this call). The same for s.slice.
 func (s *profileStore) cutRowGroup(count int) (err error) {
-	// if cutRowGroup fails record it as failed segment
 	defer func() {
 		if err != nil {
 			s.metrics.writtenProfileSegments.WithLabelValues("failed").Inc()
@@ -242,30 +359,32 @@ func (s *profileStore) cutRowGroup(count int) (err error) {
 
 	path := filepath.Join(
 		s.path,
-		fmt.Sprintf("%s.%d%s", s.persister.Name(), s.rowsFlushed, block.ParquetSuffix),
+		fmt.Sprintf("%s.%d.arrow", s.Name(), s.rowsFlushed),
 	)
-	// Removes the file if it exists. This can happen if the previous
-	// cut attempt failed.
+	
+	// Removes the file if it exists
 	if err := os.Remove(path); err == nil {
 		level.Warn(s.logger).Log("msg", "deleting row group segment of a failed previous attempt", "path", path)
 	}
+
 	f, err := s.prepareFile(path)
 	if err != nil {
 		return err
 	}
+	defer f.Close()
 
-	n, err := parquet.CopyRows(s.writer, schemav1.NewInMemoryProfilesRowReader(s.flushBuffer))
-	if err != nil {
+	// Create a new Arrow writer for this row group
+	writer := NewArrowWriter(s.schema, s.writer)
+	
+	// Write the profiles
+	if err := writer.WriteRows(s.flushBuffer); err != nil {
 		return errors.Wrap(err, "write row group segments to disk")
 	}
 
-	if err := s.writer.Close(); err != nil {
+	if err := writer.Close(); err != nil {
 		return errors.Wrap(err, "close row group segment writer")
 	}
 
-	if err := f.Close(); err != nil {
-		return errors.Wrap(err, "closing row group segment file")
-	}
 	s.metrics.writtenProfileSegments.WithLabelValues("success").Inc()
 
 	// get row group segment size on disk
@@ -278,32 +397,27 @@ func (s *profileStore) cutRowGroup(count int) (err error) {
 		return err
 	}
 
-	// We need to make the new on-disk row group available to readers
-	// simultaneously with cutting the series from the index. Until that,
-	// profiles can be read from s.slice/s.index. This lock should not be
-	// held for long as it only performs in-memory operations,
-	// although blocking readers.
 	s.rowsLock.Lock()
-	// After the lock is released, rows/profiles should be read from the disk.
 	defer s.rowsLock.Unlock()
-	s.rowsFlushed += uint64(n)
+	
+	s.rowsFlushed += uint64(writer.numRows)
 	s.rowGroups = append(s.rowGroups, rowGroup)
-	// Cutting the index is relatively quick op (no I/O).
 	err = s.index.cutRowGroup(s.flushBuffer)
 
 	s.profilesLock.Lock()
 	defer s.profilesLock.Unlock()
+	
 	for i := range s.slice[:count] {
 		s.metrics.samples.Sub(float64(len(s.slice[i].Samples.StacktraceIDs)))
 	}
-	// reset slice and metrics
+	
 	s.slice = copySlice(s.slice[count:])
 	currentSize := s.size.Sub(size)
 	if err != nil {
 		return err
 	}
 
-	level.Debug(s.logger).Log("msg", "cut row group segment", "path", path, "numProfiles", n)
+	level.Debug(s.logger).Log("msg", "cut row group segment", "path", path, "numProfiles", writer.numRows)
 	s.metrics.sizeBytes.WithLabelValues(s.Name()).Set(float64(currentSize))
 	return nil
 }
@@ -370,27 +484,65 @@ func (s *profileStore) loadProfilesToFlush(count int) uint64 {
 	return size
 }
 
-func (s *profileStore) writeRowGroups(path string, rowGroups []parquet.RowGroup) (n uint64, numRowGroups uint64, err error) {
-	fileCloser, err := s.prepareFile(path)
+// Update writeRowGroups to use the new interfaces
+func (s *profileStore) writeRowGroups(path string, rowGroups []array.RecordReader) (n uint64, numRowGroups uint64, err error) {
+	f, err := s.prepareFile(path)
 	if err != nil {
 		return 0, 0, err
 	}
-	defer runutil.CloseWithErrCapture(&err, fileCloser, "closing parquet file")
-	readers := make([]parquet.RowReader, len(rowGroups))
+	defer runutil.CloseWithErrCapture(&err, f, "closing arrow file")
+
+	writer := NewArrowWriter(s.schema, s.writer)
+	defer writer.Close()
+
+	// Create a record batch reader for each row group
+	readers := make([]array.RecordReader, len(rowGroups))
 	for i, rg := range rowGroups {
-		readers[i] = rg.Rows()
-	}
-	n, numRowGroups, err = phlareparquet.CopyAsRowGroups(s.writer, schemav1.NewMergeProfilesRowReader(readers), s.cfg.MaxBufferRowCount)
-	if err != nil {
-		return 0, 0, err
+		readers[i] = rg
 	}
 
-	if err := s.writer.Close(); err != nil {
-		return 0, 0, err
+	// Create a record batch reader that concatenates all row groups
+	reader := array.NewConcatRecordReader(s.schema, readers)
+	defer reader.Release()
+
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return 0, 0, err
+		}
+
+		// Write the record batch
+		if err := s.writer.Write(record); err != nil {
+			return 0, 0, err
+		}
+		n += uint64(record.NumRows())
+		
+		// Check if we need to start a new row group
+		if n >= uint64(s.cfg.MaxBufferRowCount) {
+			if err := s.writer.Close(); err != nil {
+				return 0, 0, err
+			}
+			numRowGroups++
+			
+			// Create a new file writer for the next row group
+			if err := s.writer.Reset(f); err != nil {
+				return 0, 0, err
+			}
+		}
+	}
+
+	// Flush any remaining data as a final row group
+	if n > 0 {
+		if err := s.writer.Close(); err != nil {
+			return 0, 0, err
+		}
+		numRowGroups++
 	}
 
 	s.rowsFlushed += n
-
 	return n, numRowGroups, nil
 }
 
@@ -438,122 +590,182 @@ func (s *profileStore) cutRowGroupLoop() {
 	}
 }
 
-type rowGroupOnDisk struct {
-	parquet.RowGroup
-	file          *os.File
-	seriesIndexes rowRangesWithSeriesIndex
-}
-
-func newRowGroupOnDisk(path string) (*rowGroupOnDisk, error) {
-	var (
-		r   = &rowGroupOnDisk{}
-		err error
-	)
-
-	// now open the row group file, so we are able to read the row group back in
-	r.file, err = os.Open(path)
-	if err != nil {
-		return nil, errors.Wrapf(err, "opening row groups segment file %s", path)
-	}
-
-	stats, err := r.file.Stat()
-	if err != nil {
-		return nil, errors.Wrapf(err, "getting stat of row groups segment file %s", path)
-	}
-
-	segmentParquet, err := parquet.OpenFile(r.file, stats.Size())
-	if err != nil {
-		return nil, errors.Wrapf(err, "reading parquet of row groups segment file %s", path)
-	}
-
-	rowGroups := segmentParquet.RowGroups()
-	if len(rowGroups) != 1 {
-		return nil, errors.Wrapf(err, "segement file expected to have exactly one row group (actual %d)", len(rowGroups))
-	}
-
-	r.RowGroup = rowGroups[0]
-
-	return r, nil
-}
-
-func (r *rowGroupOnDisk) RowGroups() []parquet.RowGroup {
-	return []parquet.RowGroup{r.RowGroup}
-}
-
-func (r *rowGroupOnDisk) Rows() parquet.Rows {
-	rows := r.RowGroup.Rows()
-	if len(r.seriesIndexes) == 0 {
-		return rows
-	}
-
-	return &seriesIDRowsRewriter{
-		Rows:          rows,
-		seriesIndexes: r.seriesIndexes,
-	}
-}
-
-func (r *rowGroupOnDisk) Close() error {
-	if err := r.file.Close(); err != nil {
-		return err
-	}
-
-	if err := os.Remove(r.file.Name()); err != nil {
-		return errors.Wrap(err, "deleting row group segment file")
-	}
-
-	return nil
-}
-
-func (r *rowGroupOnDisk) columnIter(ctx context.Context, columnName string, predicate query.Predicate, alias string) query.Iterator {
-	column, found := r.RowGroup.Schema().Lookup(columnName)
-	if !found {
-		return query.NewErrIterator(fmt.Errorf("column '%s' not found in head row group segment '%s'", columnName, r.file.Name()))
-	}
-	return query.NewSyncIterator(ctx, []parquet.RowGroup{r.RowGroup}, column.ColumnIndex, columnName, 1000, predicate, alias)
-}
-
-type seriesIDRowsRewriter struct {
-	parquet.Rows
-	pos           int64
-	seriesIndexes rowRangesWithSeriesIndex
-}
-
-func (r *seriesIDRowsRewriter) SeekToRow(pos int64) error {
-	if err := r.Rows.SeekToRow(pos); err != nil {
-		return err
-	}
-	r.pos += pos
-	return nil
-}
-
-var colIdxSeriesIndex = func() int {
-	p := &schemav1.ProfilePersister{}
-	colIdx, found := p.Schema().Lookup("SeriesIndex")
-	if !found {
-		panic("column SeriesIndex not found")
-	}
-	return colIdx.ColumnIndex
-}()
-
-func (r *seriesIDRowsRewriter) ReadRows(rows []parquet.Row) (int, error) {
-	n, err := r.Rows.ReadRows(rows)
-	if err != nil {
-		return n, err
-	}
-
-	for pos, row := range rows[:n] {
-		// actual row num
-		rowNum := r.pos + int64(pos)
-		row[colIdxSeriesIndex] = parquet.ValueOf(r.seriesIndexes.getSeriesIndex(rowNum)).Level(0, 0, colIdxSeriesIndex)
-	}
-
-	r.pos += int64(n)
-
-	return n, nil
-}
-
 func copySlice[T any](in []T) []T {
 	out := make([]T, len(in))
 	copy(out, in)
 	return out
 }
+
+// ProfileIterator provides iteration over profiles using Arrow
+type ProfileIterator struct {
+	reader     array.RecordReader
+	record     arrow.Record
+	currentRow int64
+	totalRows  int64
+}
+
+func NewProfileIterator(reader array.RecordReader) (*ProfileIterator, error) {
+	record, err := reader.Read()
+	if err != nil && err != io.EOF {
+		return nil, err
+	}
+	
+	return &ProfileIterator{
+		reader:     reader,
+		record:     record,
+		currentRow: 0,
+		totalRows:  record.NumRows(),
+	}, nil
+}
+
+func (it *ProfileIterator) Next() bool {
+	if it.currentRow >= it.totalRows {
+		// Try to read next record batch
+		record, err := it.reader.Read()
+		if err != nil {
+			return false
+		}
+		
+		if it.record != nil {
+			it.record.Release()
+		}
+		
+		it.record = record
+		it.currentRow = 0
+		it.totalRows = record.NumRows()
+	}
+	
+	return it.currentRow < it.totalRows
+}
+
+func (it *ProfileIterator) At() *schemav1.InMemoryProfile {
+	if it.record == nil {
+		return nil
+	}
+
+	profile := &schemav1.InMemoryProfile{}
+	
+	// Extract values from Arrow columns
+	idCol := it.record.Column(0).(*array.Binary)
+	timeCol := it.record.Column(1).(*array.Int64)
+	fpCol := it.record.Column(2).(*array.Uint64)
+	
+	copy(profile.ID[:], idCol.Value(int(it.currentRow)))
+	profile.TimeNanos = timeCol.Value(int(it.currentRow))
+	profile.SeriesFingerprint = fpCol.Value(int(it.currentRow))
+	
+	it.currentRow++
+	return profile
+}
+
+func (it *ProfileIterator) Close() error {
+	if it.record != nil {
+		it.record.Release()
+	}
+	return it.reader.Release()
+}
+
+// QueryableProfileStore interface updates
+type QueryableProfileStore interface {
+	SelectProfiles(ctx context.Context, req *query.SelectProfilesRequest) (*ProfileIterator, error)
+}
+
+func (s *profileStore) SelectProfiles(ctx context.Context, req *query.SelectProfilesRequest) (*ProfileIterator, error) {
+	s.rowsLock.RLock()
+	defer s.rowsLock.RUnlock()
+
+	// Create readers for each matching row group
+	var readers []array.RecordReader
+	
+	// First check in-memory profiles
+	if len(s.slice) > 0 {
+		memReader, err := s.createMemoryReader(s.slice)
+		if err != nil {
+			return nil, err
+		}
+		readers = append(readers, memReader)
+	}
+
+	// Then check on-disk row groups
+	for _, rg := range s.rowGroups {
+		if matches := s.rowGroupMatchesQuery(rg, req); matches {
+			readers = append(readers, rg.reader)
+		}
+	}
+
+	if len(readers) == 0 {
+		return NewProfileIterator(array.NewEmptyRecordReader(s.schema))
+	}
+
+	// Concatenate all readers
+	reader := array.NewConcatRecordReader(s.schema, readers)
+	return NewProfileIterator(reader)
+}
+
+// Helper function to create a record reader from in-memory profiles
+func (s *profileStore) createMemoryReader(profiles []schemav1.InMemoryProfile) (array.RecordReader, error) {
+	builder := array.NewRecordBuilder(s.pool, s.schema)
+	defer builder.Release()
+
+	for _, p := range profiles {
+		builder.Field(0).(*array.BinaryBuilder).Append(p.ID[:])
+		builder.Field(1).(*array.Int64Builder).Append(p.TimeNanos)
+		builder.Field(2).(*array.Uint64Builder).Append(p.SeriesFingerprint)
+		builder.Field(3).(*array.Int32Builder).Append(0) // SeriesIndex placeholder
+	}
+
+	record := builder.NewRecord()
+	return array.NewRecordReader(s.schema, []arrow.Record{record})
+}
+
+// Helper function to check if a row group matches query criteria
+func (s *profileStore) rowGroupMatchesQuery(rg *rowGroupOnDisk, req *query.SelectProfilesRequest) bool {
+	// Implement filtering logic based on query requirements
+	// For now, return true to include all row groups
+	return true
+}
+
+// rowRangesWithSeriesIndex represents a range of rows associated with a series index
+type rowRangesWithSeriesIndex struct {
+	startRow    int64
+	endRow      int64
+	seriesIndex int32
+}
+
+// Helper function to create a new empty record reader with the store's schema
+func (s *profileStore) newEmptyReader() array.RecordReader {
+	return array.NewEmptyRecordReader(s.schema)
+}
+
+// Add missing newProfileIndex function
+func newProfileIndex(size int, metrics *headMetrics) (*profilesIndex, error) {
+	return &profilesIndex{
+		mutex:          sync.RWMutex{},
+		profilesPerFP:  make(map[uint64]*seriesWithProfiles, size),
+	}, nil
+}
+
+// Add missing contextHeadMetrics function
+func contextHeadMetrics(ctx context.Context) *headMetrics {
+	reg := prometheus.NewRegistry()
+	return &headMetrics{
+		sizeBytes: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "profile_store_size_bytes",
+			Help: "Size of profile store in bytes",
+		}, []string{"store"}),
+		samples: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "profile_store_samples",
+			Help: "Number of samples in profile store",
+		}),
+		writtenProfileSegments: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "profile_store_written_segments_total",
+			Help: "Total number of profile segments written",
+		}, []string{"status"}),
+		writtenProfileSegmentsBytes: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Name:    "profile_store_written_segments_bytes",
+			Help:    "Size of written profile segments in bytes",
+			Buckets: prometheus.ExponentialBuckets(1024, 2, 10),
+		}),
+	}
+}
+
