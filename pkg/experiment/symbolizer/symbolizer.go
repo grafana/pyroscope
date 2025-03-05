@@ -11,17 +11,16 @@ import (
 	"io"
 	"time"
 
+	"github.com/dgraph-io/ristretto"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-
-	"github.com/dgraph-io/ristretto"
 	pprof "github.com/google/pprof/profile"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/prometheus/client_golang/prometheus"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
-	"github.com/grafana/pyroscope/pkg/util"
+	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 )
 
 const (
@@ -512,7 +511,10 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 
 func (cfg *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) {
 	cfg.RegisterFlags(f)
-	cfg.PersistentDebugInfoStore.Storage.RegisterFlagsWithPrefix("symbolizer.persistent-debuginfo-store.storage.", f, util.Logger)
+	// Only register storage flags if they're needed
+	if cfg.PersistentDebugInfoStore.Enabled {
+		cfg.PersistentDebugInfoStore.Storage.RegisterFlagsWithPrefix("symbolizer.persistent-debuginfo-store.storage.", f, phlarecontext.Logger(ctx))
+	}
 }
 
 type DwarfResolver struct {
