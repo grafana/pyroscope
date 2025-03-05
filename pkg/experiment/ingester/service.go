@@ -35,24 +35,45 @@ const (
 	RingName = "segment-writer"
 	RingKey  = "segment-writer-ring"
 
-	minFlushConcurrency    = 8
-	defaultSegmentDuration = 500 * time.Millisecond
+	minFlushConcurrency         = 8
+	defaultSegmentDuration      = 500 * time.Millisecond
+	defaultHedgedRequestMaxRate = 2  // 2 hedged requests per second
+	defaultHedgedRequestBurst   = 10 // allow bursts of 10 hedged requests
 )
 
 type Config struct {
 	GRPCClientConfig grpcclient.Config     `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with the segment writer."`
 	LifecyclerConfig ring.LifecyclerConfig `yaml:"lifecycler,omitempty"`
-	SegmentDuration  time.Duration         `yaml:"segment_duration,omitempty"`
-	FlushConcurrency uint                  `yaml:"flush_concurrency,omitempty"`
+	SegmentDuration  time.Duration         `yaml:"segment_duration,omitempty" category:"advanced"`
+	FlushConcurrency uint                  `yaml:"flush_concurrency,omitempty" category:"advanced"`
+	Upload           UploadConfig          `yaml:"upload,omitempty" category:"advanced"`
 }
 
-// RegisterFlags registers the flags.
+type UploadConfig struct {
+	MaxRetries       int           `yaml:"retry_max_retries,omitempty" category:"advanced"`
+	MinBackoff       time.Duration `yaml:"retry_min_period,omitempty" category:"advanced"`
+	MaxBackoff       time.Duration `yaml:"retry_max_period,omitempty" category:"advanced"`
+	HedgeUploadAfter time.Duration `yaml:"hedge_upload_after,omitempty" category:"advanced"`
+	HedgeRateMax     float64       `yaml:"hedge_rate_max,omitempty" category:"advanced"`
+	HedgeRateBurst   uint          `yaml:"hedge_rate_burst,omitempty" category:"advanced"`
+}
+
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	const prefix = "segment-writer"
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix(prefix, f)
 	cfg.LifecyclerConfig.RegisterFlagsWithPrefix(prefix+".", f, util.Logger)
+	cfg.Upload.RegisterFlagsWithPrefix(prefix+".upload.", f)
 	f.DurationVar(&cfg.SegmentDuration, prefix+".segment-duration", defaultSegmentDuration, "Timeout when flushing segments to bucket.")
 	f.UintVar(&cfg.FlushConcurrency, prefix+".flush-concurrency", 0, "Number of concurrent flushes. Defaults to the number of CPUs, but not less than 8.")
+}
+
+func (cfg *UploadConfig) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
+	f.IntVar(&cfg.MaxRetries, prefix+".max-retries", 3, "Number of times to backoff and retry before failing.")
+	f.DurationVar(&cfg.MinBackoff, prefix+".retry-min-period", 50*time.Millisecond, "Minimum delay when backing off.")
+	f.DurationVar(&cfg.MaxBackoff, prefix+".retry-max-period", defaultSegmentDuration, "Maximum delay when backing off.")
+	f.DurationVar(&cfg.HedgeUploadAfter, prefix+".hedge-upload-after", defaultSegmentDuration, "Time after which to hedge the upload request.")
+	f.Float64Var(&cfg.HedgeRateMax, prefix+".hedge-rate-max", defaultHedgedRequestMaxRate, "Maximum number of hedged requests per second.")
+	f.UintVar(&cfg.HedgeRateBurst, prefix+".hedge-rate-burst", defaultHedgedRequestBurst, "Maximum number of hedged requests in a burst.")
 }
 
 func (cfg *Config) Validate() error {
