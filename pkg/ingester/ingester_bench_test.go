@@ -282,7 +282,7 @@ func BenchmarkIngester_Flush(b *testing.B) {
 // 2. High cardinality can impact memory usage and indexing performance
 // 3. Many production environments use extensive labeling for better observability
 func BenchmarkIngester_Push_LabelCardinality(b *testing.B) {
-	cardinalities := []int{1, 5, 10, 20, 50}
+	cardinalities := []int{1, 100, 1000, 10000, 100000, 1000000, 10000000}
 	
 	for _, cardinality := range cardinalities {
 		b.Run(fmt.Sprintf("labels_%d", cardinality), func(b *testing.B) {
@@ -345,7 +345,7 @@ func BenchmarkIngester_Push_LabelCardinality(b *testing.B) {
 // 2. Higher cardinalities can lead to larger flush operations
 // 3. Understanding this relationship helps in capacity planning and setting limits
 func BenchmarkIngester_Flush_LabelCardinality(b *testing.B) {
-	cardinalities := []int{1, 5, 10, 20, 50}
+	cardinalities := []int{1, 10, 100, 1000, 10000, 100000, 1000000, 10000000}
 	
 	for _, cardinality := range cardinalities {
 		b.Run(fmt.Sprintf("labels_%d", cardinality), func(b *testing.B) {
@@ -402,6 +402,154 @@ func BenchmarkIngester_Flush_LabelCardinality(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				_, err := ing.Flush(ctx, flushReq)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+// generateTestProfileWithSize creates a profile with approximately the target size in bytes
+func generateTestProfileWithSize(targetSizeBytes int) []byte {
+	// Create base profile structure
+	profile := &profilev1.Profile{
+		StringTable: []string{"", "samples", "count", "function"},
+		SampleType: []*profilev1.ValueType{
+			{
+				Type: 1,
+				Unit: 2,
+			},
+		},
+		TimeNanos:     time.Now().UnixNano(),
+		DurationNanos: int64(time.Second),
+		PeriodType: &profilev1.ValueType{
+			Type: 1,
+			Unit: 2,
+		},
+		Period: 100000000, // 100ms in nanoseconds
+	}
+
+	// Add samples until we reach approximately the target size
+	// Each sample is roughly 100 bytes
+	numSamples := targetSizeBytes / 100
+	samples := make([]*profilev1.Sample, 0, numSamples)
+	locations := make([]*profilev1.Location, 0, numSamples)
+	functions := make([]*profilev1.Function, 0, numSamples)
+
+	for i := 0; i < numSamples; i++ {
+		// Add unique strings to string table to increase size
+		funcName := fmt.Sprintf("function_%d", i)
+		fileName := fmt.Sprintf("file_%d.go", i)
+		profile.StringTable = append(profile.StringTable, funcName, fileName)
+		strTableIdx := len(profile.StringTable) - 2 // Index of funcName
+
+		// Create function
+		functions = append(functions, &profilev1.Function{
+			Id:         uint64(i + 1),
+			Name:       int64(strTableIdx),
+			SystemName: int64(strTableIdx),
+			Filename:   int64(strTableIdx + 1),
+		})
+
+		// Create location
+		locations = append(locations, &profilev1.Location{
+			Id: uint64(i + 1),
+			Line: []*profilev1.Line{
+				{
+					FunctionId: uint64(i + 1),
+					Line:      int64(i + 1),
+				},
+			},
+		})
+
+		// Create sample
+		samples = append(samples, &profilev1.Sample{
+			Value:      []int64{int64(i)},
+			LocationId: []uint64{uint64(i + 1)},
+			Label: []*profilev1.Label{
+				{
+					Key: int64(strTableIdx),
+					Str: int64(strTableIdx),
+				},
+			},
+		})
+	}
+
+	profile.Sample = samples
+	profile.Location = locations
+	profile.Function = functions
+
+	data, _ := profile.MarshalVT()
+	return data
+}
+
+// BenchmarkIngester_Push_ProfileSize measures how ingestion performance scales
+// with increasing profile sizes (1KB to 100MB).
+// This is important because:
+// 1. Profile sizes can vary significantly based on application complexity
+// 2. Large profiles can impact memory usage and processing time
+// 3. Understanding size-based performance helps in capacity planning
+func BenchmarkIngester_Push_ProfileSize(b *testing.B) {
+	sizes := []int{
+		1 * 1024,        // 1KB
+		10 * 1024,       // 10KB
+		100 * 1024,      // 100KB
+		1 * 1024 * 1024, // 1MB
+		10 * 1024 * 1024, // 10MB
+	}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("size_%dB", size), func(b *testing.B) {
+			ctx := user.InjectOrgID(context.Background(), "test")
+			ing, err := setupTestIngester(b, ctx)
+			if err != nil {
+				b.Fatal(err)
+			}
+
+			if err := services.StartAndAwaitRunning(ctx, ing); err != nil {
+				b.Fatal(err)
+			}
+
+			defer func() {
+				if err := services.StopAndAwaitTerminated(ctx, ing); err != nil {
+					b.Logf("failed to stop ingester: %v", err)
+				}
+			}()
+
+			profile := generateTestProfileWithSize(size)
+			actualSize := len(profile)
+			b.Logf("Generated profile size: %d bytes", actualSize)
+
+			req := connect.NewRequest(&pushv1.PushRequest{
+				Series: []*pushv1.RawProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{
+								Name:  "service",
+								Value: "test",
+							},
+						},
+						Samples: []*pushv1.RawSample{
+							{
+								ID:         uuid.New().String(),
+								RawProfile: profile,
+							},
+						},
+					},
+				},
+			})
+
+			// Warm up
+			_, err = ing.Push(ctx, req)
+			if err != nil {
+				b.Fatal(err)
+			}
+
+			b.ResetTimer()
+			b.SetBytes(int64(actualSize))
+			for i := 0; i < b.N; i++ {
+				_, err := ing.Push(ctx, req)
 				if err != nil {
 					b.Fatal(err)
 				}
