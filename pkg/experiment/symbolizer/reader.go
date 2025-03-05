@@ -1,73 +1,68 @@
 package symbolizer
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
+	"io"
+
 	"github.com/klauspost/compress/gzip"
 	"github.com/klauspost/compress/zstd"
-	"io"
 )
 
-type readerAt struct {
-	reader io.Reader
-	buf    []byte
-}
-
-func newReaderAt(r io.Reader) *readerAt {
-	return &readerAt{
-		reader: r,
-		buf:    make([]byte, 0),
-	}
-}
-
-func (r *readerAt) ReadAt(p []byte, off int64) (n int, err error) {
-	if off < 0 {
-		return 0, fmt.Errorf("negative offset")
-	}
-
-	// Read and buffer data if needed
-	if int64(len(r.buf)) < off+int64(len(p)) {
-		newData, err := io.ReadAll(r.reader)
-		if err != nil && err != io.EOF {
-			return 0, err
-		}
-		r.buf = append(r.buf, newData...)
-	}
-
-	if off > int64(len(r.buf)) {
-		return 0, io.EOF
-	}
-
-	n = copy(p, r.buf[off:])
-	return n, nil
-}
-
+// detectCompression reads the beginning of the input to determine if it's compressed,
+// and if so, returns a ReaderAt that decompresses the data.
 func detectCompression(r io.Reader) (io.ReaderAt, error) {
-	// Read enough to detect compression type
-	buf := make([]byte, 512)
-	n, err := io.ReadFull(r, buf)
-	if err != nil && err != io.ErrUnexpectedEOF {
-		return nil, err
+	// Use bufio.Reader to peek at the first few bytes without consuming them
+	br := bufio.NewReader(r)
+
+	// Peek at the first 4 bytes to check compression signatures
+	header, err := br.Peek(4)
+	if err != nil && err != io.EOF && err != bufio.ErrBufferFull {
+		return nil, fmt.Errorf("peek header: %w", err)
 	}
-	buf = buf[:n]
 
 	// Check compression signatures
-	switch {
-	case len(buf) > 2 && buf[0] == 0x1f && buf[1] == 0x8b: // gzip
-		gr, err := gzip.NewReader(io.MultiReader(bytes.NewReader(buf), r))
+	if len(header) >= 2 && header[0] == 0x1f && header[1] == 0x8b { // gzip
+		// Create a gzip reader that reads from the bufio.Reader
+		gr, err := gzip.NewReader(br)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("create gzip reader: %w", err)
 		}
-		return newReaderAt(gr), nil
 
-	case len(buf) > 3 && buf[0] == 0x28 && buf[1] == 0xb5 && buf[2] == 0x2f && buf[3] == 0xfd: // zstd
-		zr, err := zstd.NewReader(io.MultiReader(bytes.NewReader(buf), r))
-		if err != nil {
-			return nil, err
+		// Read all decompressed data
+		var decompressed bytes.Buffer
+		if _, err := decompressed.ReadFrom(gr); err != nil {
+			gr.Close()
+			return nil, fmt.Errorf("decompress gzip data: %w", err)
 		}
-		return newReaderAt(zr), nil
+		gr.Close()
+
+		return bytes.NewReader(decompressed.Bytes()), nil
+	} else if len(header) >= 4 && header[0] == 0x28 && header[1] == 0xb5 && header[2] == 0x2f && header[3] == 0xfd { // zstd
+		// Create a zstd reader
+		zr, err := zstd.NewReader(br)
+		if err != nil {
+			return nil, fmt.Errorf("create zstd reader: %w", err)
+		}
+
+		// Read all decompressed data
+		var decompressed bytes.Buffer
+		if _, err := decompressed.ReadFrom(zr); err != nil {
+			zr.Close()
+			return nil, fmt.Errorf("decompress zstd data: %w", err)
+		}
+		zr.Close()
+
+		return bytes.NewReader(decompressed.Bytes()), nil
 	}
 
-	// Not compressed
-	return newReaderAt(io.MultiReader(bytes.NewReader(buf), r)), nil
+	// Not compressed or unknown format
+	// Read all data into memory since we need to return an io.ReaderAt
+	var buf bytes.Buffer
+	if _, err := buf.ReadFrom(br); err != nil {
+		return nil, fmt.Errorf("read data: %w", err)
+	}
+
+	return bytes.NewReader(buf.Bytes()), nil
 }

@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 	"testing"
-	"time"
 
 	pprof "github.com/google/pprof/profile"
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -187,9 +185,10 @@ func TestSymbolizePprof(t *testing.T) {
 			mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
 			tt.setupMock(mockClient)
 
-			s := NewProfileSymbolizer(mockClient, NewNullCache(), NewMetrics(nil), 0)
+			s, err := NewProfileSymbolizer(nil, mockClient, NewNullDebugInfoStore(), NewMetrics(nil), 1, 1)
+			require.NoError(t, err)
 
-			err := s.SymbolizePprof(context.Background(), tt.profile)
+			err = s.SymbolizePprof(context.Background(), tt.profile)
 			if tt.wantErr {
 				require.Error(t, err)
 				return
@@ -202,120 +201,29 @@ func TestSymbolizePprof(t *testing.T) {
 	}
 }
 
-func TestSymbolizerMetrics(t *testing.T) {
-	tests := []struct {
-		name        string
-		setupMock   func(*mocksymbolizer.MockDebuginfodClient)
-		setupTest   func(*ProfileSymbolizer, context.Context) error
-		expected    string
-		metricNames []string
-	}{
-		{
-			name: "successful symbolization",
-			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient) {
-				mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(openTestFile(t), nil).Once()
-			},
-			setupTest: func(s *ProfileSymbolizer, ctx context.Context) error {
-				profile := &googlev1.Profile{
-					Mapping: []*googlev1.Mapping{{
-						BuildId:     1,
-						MemoryStart: 0x0,
-						MemoryLimit: 0x1000000,
-					}},
-					Location: []*googlev1.Location{{
-						MappingId: 1,
-						Address:   0x1500,
-					}},
-					StringTable: []string{"", "build-id"},
-				}
-				return s.SymbolizePprof(ctx, profile)
-			},
-			expected: `
-				# HELP pyroscope_profile_symbolization_total Total number of profiles processed for symbolization
-				# TYPE pyroscope_profile_symbolization_total counter
-				pyroscope_profile_symbolization_total 1
-
-				# HELP pyroscope_debug_symbol_resolutions_total Total number of debug symbol resolutions attempted by status
-				# TYPE pyroscope_debug_symbol_resolutions_total counter
-				pyroscope_debug_symbol_resolutions_total{status="success"} 1
-
-		    `,
-			metricNames: []string{
-				"pyroscope_profile_symbolization_total",
-				"pyroscope_debug_symbol_resolutions_total",
-			},
-		},
-		{
-			name: "debuginfod error",
-			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient) {
-				mockClient.On("FetchDebuginfo", mock.Anything, "unknown-build-id").
-					Return(nil, fmt.Errorf("unknown build ID")).Once()
-			},
-			setupTest: func(s *ProfileSymbolizer, ctx context.Context) error {
-				profile := &googlev1.Profile{
-					Mapping: []*googlev1.Mapping{{
-						BuildId: 1,
-					}},
-					Location: []*googlev1.Location{{
-						MappingId: 1,
-						Address:   0x1500,
-					}},
-					StringTable: []string{"", "unknown-build-id"},
-				}
-				return s.SymbolizePprof(ctx, profile)
-			},
-			expected: `
-				# HELP pyroscope_profile_symbolization_errors_total Total number of profile symbolization errors
-				# TYPE pyroscope_profile_symbolization_errors_total counter
-				pyroscope_profile_symbolization_errors_total{reason="symbolization_error"} 1
-
-				# HELP pyroscope_debug_symbol_resolution_errors_total Total number of debug symbol resolution errors by reason
-				# TYPE pyroscope_debug_symbol_resolution_errors_total counter
-				pyroscope_debug_symbol_resolution_errors_total{reason="debuginfod_error"} 1
-			`,
-			metricNames: []string{
-				"pyroscope_profile_symbolization_errors_total",
-				"pyroscope_debug_symbol_resolution_errors_total",
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			reg := prometheus.NewRegistry()
-			metrics := NewMetrics(reg)
-
-			mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
-			tt.setupMock(mockClient)
-
-			s := NewProfileSymbolizer(mockClient, NewNullCache(), metrics, 0)
-
-			err := tt.setupTest(s, context.Background())
-			if err != nil {
-				t.Log("Setup error:", err)
-			}
-
-			err = testutil.GatherAndCompare(reg, strings.NewReader(tt.expected), tt.metricNames...)
-			require.NoError(t, err)
-
-			mockClient.AssertExpectations(t)
-		})
-	}
-}
-
 func TestSymbolizeWithCache(t *testing.T) {
 	mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
 
-	// First call should return the test file
-	mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(openTestFile(t), nil).Once()
+	openNewTestFile := func() io.ReadCloser {
+		f, err := os.Open("testdata/symbols.debug")
+		require.NoError(t, err)
+		return f
+	}
+
+	// We expect exactly two calls to FetchDebuginfo:
+	// 1. For the first request (build-id)
+	// 2. For the fourth request (different-build-id)
+	mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(openNewTestFile(), nil).Once()
+	mockClient.On("FetchDebuginfo", mock.Anything, "different-build-id").Return(openNewTestFile(), nil).Once()
 
 	reg := prometheus.NewRegistry()
 	metrics := NewMetrics(reg)
 
 	// Create a symbolizer with LRU cache
-	s := NewProfileSymbolizer(mockClient, NewNullCache(), metrics, 100)
+	s, err := NewProfileSymbolizer(nil, mockClient, NewNullDebugInfoStore(), metrics, 100000, 100000)
+	require.NoError(t, err)
 
-	// First request - should be a cache miss
+	// Request 1: First request - should be a cache miss for both symbol and debug info
 	req1 := &Request{
 		BuildID: "build-id",
 		Locations: []*Location{
@@ -330,11 +238,12 @@ func TestSymbolizeWithCache(t *testing.T) {
 			},
 		},
 	}
-	err := s.Symbolize(context.Background(), req1)
+	err = s.Symbolize(context.Background(), req1)
 	require.NoError(t, err)
 	require.NotEmpty(t, req1.Locations[0].Lines)
 
-	time.Sleep(10 * time.Millisecond)
+	// Wait for Ristretto to finish processing
+	s.debugInfoCache.Wait()
 
 	// Second request with same address - should be a cache hit
 	req2 := &Request{
@@ -358,7 +267,7 @@ func TestSymbolizeWithCache(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, req2.Locations[0].Lines)
 
-	// Third request with different address - should be a cache miss
+	// Request 3: Same build-id, different address - should be a debug info cache hit
 	req3 := &Request{
 		BuildID: "build-id",
 		Locations: []*Location{
@@ -374,14 +283,154 @@ func TestSymbolizeWithCache(t *testing.T) {
 		},
 	}
 
-	// Should call FetchDebuginfo again for the new address
-	mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(openTestFile(t), nil).Once()
+	s.debugInfoCache.Wait()
+
+	// Should NOT call FetchDebuginfo again for the new address
+	// because the debug info is already in the Ristretto cache
 
 	err = s.Symbolize(context.Background(), req3)
 	require.NoError(t, err)
 	require.NotEmpty(t, req3.Locations[0].Lines)
 
+	// Fourth request with a different build ID - should be a complete cache miss
+	req4 := &Request{
+		BuildID: "different-build-id",
+		Locations: []*Location{
+			{
+				Address: 0x1500,
+				Mapping: &pprof.Mapping{
+					Start:   0x0,
+					Limit:   0x1000000,
+					Offset:  0x0,
+					BuildID: "different-build-id",
+				},
+			},
+		},
+	}
+
+	err = s.Symbolize(context.Background(), req4)
+	require.NoError(t, err)
+	require.NotEmpty(t, req4.Locations[0].Lines)
+
 	mockClient.AssertExpectations(t)
+}
+
+func TestSymbolizerMetrics(t *testing.T) {
+	tests := []struct {
+		name      string
+		setupMock func(*mocksymbolizer.MockDebuginfodClient)
+		setupTest func(*ProfileSymbolizer, context.Context) error
+		expected  map[string]int
+	}{
+		{
+			name: "successful symbolization with cache layers",
+			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient) {
+				mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(openTestFile(t), nil).Once()
+			},
+			setupTest: func(s *ProfileSymbolizer, ctx context.Context) error {
+				// First request - should miss all caches
+				req1 := &Request{
+					BuildID: "build-id",
+					Locations: []*Location{
+						{
+							Address: 0x1500,
+							Mapping: &pprof.Mapping{
+								Start:   0x0,
+								Limit:   0x1000000,
+								Offset:  0x0,
+								BuildID: "build-id",
+							},
+						},
+					},
+				}
+				err := s.Symbolize(ctx, req1)
+				if err != nil {
+					return err
+				}
+
+				// Second request with same address - should hit symbol cache
+				req2 := &Request{
+					BuildID: "build-id",
+					Locations: []*Location{
+						{
+							Address: 0x1500,
+							Mapping: &pprof.Mapping{
+								Start:   0x0,
+								Limit:   0x1000000,
+								Offset:  0x0,
+								BuildID: "build-id",
+							},
+						},
+					},
+				}
+				return s.Symbolize(ctx, req2)
+			},
+			expected: map[string]int{
+				"pyroscope_profile_symbolization_duration_seconds":         1,
+				"pyroscope_debug_symbol_resolution_duration_seconds":       2,
+				"pyroscope_symbolizer_debuginfod_request_duration_seconds": 1,
+				"pyroscope_symbolizer_cache_operation_duration_seconds":    5,
+			},
+		},
+		{
+			name: "debuginfod error",
+			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient) {
+				mockClient.On("FetchDebuginfo", mock.Anything, "unknown-build-id").
+					Return(nil, fmt.Errorf("unknown build ID")).Once()
+			},
+			setupTest: func(s *ProfileSymbolizer, ctx context.Context) error {
+				req := &Request{
+					BuildID: "unknown-build-id",
+					Locations: []*Location{
+						{
+							Address: 0x1500,
+							Mapping: &pprof.Mapping{
+								Start:   0x0,
+								Limit:   0x1000000,
+								Offset:  0x0,
+								BuildID: "unknown-build-id",
+							},
+						},
+					},
+				}
+				_ = s.Symbolize(ctx, req)
+				return nil
+			},
+			expected: map[string]int{
+				"pyroscope_profile_symbolization_duration_seconds":         1,
+				"pyroscope_debug_symbol_resolution_duration_seconds":       1,
+				"pyroscope_symbolizer_debuginfod_request_duration_seconds": 1,
+				"pyroscope_symbolizer_cache_operation_duration_seconds":    2,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reg := prometheus.NewRegistry()
+			metrics := NewMetrics(reg)
+
+			mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
+			tt.setupMock(mockClient)
+
+			s, err := NewProfileSymbolizer(nil, mockClient, NewNullDebugInfoStore(), metrics, 100, 100)
+			require.NoError(t, err)
+
+			err = tt.setupTest(s, context.Background())
+			if err != nil {
+				t.Log("Setup error:", err)
+			}
+
+			// Use testutil.GatherAndCount to check metric counts
+			for metricName, expectedCount := range tt.expected {
+				count, err := testutil.GatherAndCount(reg, metricName)
+				require.NoError(t, err, "Error gathering metric %s", metricName)
+				require.Equal(t, expectedCount, count, "Metric %s count mismatch", metricName)
+			}
+
+			mockClient.AssertExpectations(t)
+		})
+	}
 }
 
 // Helper function to open the test file

@@ -11,94 +11,118 @@ import (
 	"io"
 	"time"
 
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
+
+	"github.com/dgraph-io/ristretto"
 	pprof "github.com/google/pprof/profile"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/prometheus/client_golang/prometheus"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 const (
-	DefaultSymbolCacheSize = 100_000
+	DefaultInMemorySymbolCacheSize    = 100_000
+	DefaultInMemoryDebuginfoCacheSize = 2 << 30 // 2GB default
 )
 
-type Config struct {
-	DebuginfodURL   string                `yaml:"debuginfod_url"`
-	Cache           CacheConfig           `yaml:"cache"`
-	Storage         objstoreclient.Config `yaml:"storage"`
-	SymbolCacheSize int                   `yaml:"symbol_cache_size"`
+type DebuginfodClient interface {
+	FetchDebuginfo(ctx context.Context, buildID string) (io.ReadCloser, error)
 }
 
-type Symbolizer interface {
-	SymbolizePprof(ctx context.Context, profile *googlev1.Profile) error
+type Config struct {
+	Enabled                    bool                 `yaml:"enabled"`
+	DebuginfodURL              string               `yaml:"debuginfod_url"`
+	InMemorySymbolCacheSize    int                  `yaml:"in_memory_symbol_cache_size"`
+	InMemoryDebuginfoCacheSize int                  `yaml:"in_memory_debuginfo_cache_size"`
+	PersistentDebugInfoStore   DebugInfoStoreConfig `yaml:"persistent_debuginfo_store"`
 }
 
 // ProfileSymbolizer implements Symbolizer
 type ProfileSymbolizer struct {
+	logger  log.Logger
 	client  DebuginfodClient
-	cache   DebugInfoCache
+	store   DebugInfoStore
 	metrics *Metrics
 
-	symbolCache *lru.Cache[string, []SymbolLocation]
+	symbolCache    *lru.Cache[string, []SymbolLocation]
+	debugInfoCache *ristretto.Cache
 }
 
-func NewFromConfig(ctx context.Context, cfg Config, reg prometheus.Registerer) (*ProfileSymbolizer, error) {
-	var cache DebugInfoCache = NewNullCache()
+func NewFromConfig(ctx context.Context, logger log.Logger, cfg Config, reg prometheus.Registerer) (*ProfileSymbolizer, error) {
+	var store DebugInfoStore = NewNullDebugInfoStore()
 
 	metrics := NewMetrics(reg)
 
-	if cfg.Cache.Enabled {
-		if cfg.Storage.Backend == "" {
-			return nil, fmt.Errorf("storage configuration required when cache is enabled")
+	if cfg.PersistentDebugInfoStore.Enabled {
+		if cfg.PersistentDebugInfoStore.Storage.Backend == "" {
+			return nil, fmt.Errorf("storage configuration required when persistent debug info store is enabled")
 		}
-		bucket, err := objstoreclient.NewBucket(ctx, cfg.Storage, "debuginfo")
+		bucket, err := objstoreclient.NewBucket(ctx, cfg.PersistentDebugInfoStore.Storage, "debuginfo")
 		if err != nil {
 			return nil, fmt.Errorf("create debug info storage: %w", err)
 		}
-		cache = NewObjstoreCache(bucket, cfg.Cache.MaxAge, metrics)
+		store = NewObjstoreDebugInfoStore(bucket, cfg.PersistentDebugInfoStore.MaxAge, metrics)
 	}
 
-	client := NewDebuginfodClient(cfg.DebuginfodURL, metrics)
-
-	// Use configured cache size or default
-	symbolCacheSize := DefaultSymbolCacheSize
-	if cfg.SymbolCacheSize > 0 {
-		symbolCacheSize = cfg.SymbolCacheSize
+	client, err := NewDebuginfodClient(cfg.DebuginfodURL, metrics)
+	if err != nil {
+		return nil, err
 	}
 
-	return NewProfileSymbolizer(client, cache, metrics, symbolCacheSize), nil
+	// Use configured cache sizes or defaults
+	symbolCacheSize := DefaultInMemorySymbolCacheSize
+	if cfg.InMemorySymbolCacheSize > 0 {
+		symbolCacheSize = cfg.InMemorySymbolCacheSize
+	}
+
+	debuginfoCacheSize := DefaultInMemoryDebuginfoCacheSize
+	if cfg.InMemoryDebuginfoCacheSize > 0 {
+		debuginfoCacheSize = cfg.InMemoryDebuginfoCacheSize
+	}
+
+	return NewProfileSymbolizer(logger, client, store, metrics, symbolCacheSize, debuginfoCacheSize)
 }
 
-func NewProfileSymbolizer(client DebuginfodClient, cache DebugInfoCache, metrics *Metrics, symbolCacheSize int) *ProfileSymbolizer {
-	if cache == nil {
-		cache = NewNullCache()
-	}
-
-	// Default to DefaultSymbolCacheSize if not specified
-	if symbolCacheSize <= 0 {
-		symbolCacheSize = DefaultSymbolCacheSize
+func NewProfileSymbolizer(logger log.Logger, client DebuginfodClient, store DebugInfoStore, metrics *Metrics, symbolCacheSize int, debuginfoCacheSize int) (*ProfileSymbolizer, error) {
+	if store == nil {
+		store = NewNullDebugInfoStore()
 	}
 
 	symbolCache, err := lru.New[string, []SymbolLocation](symbolCacheSize)
 	if err != nil {
-		symbolCache = nil
+		return nil, fmt.Errorf("failed to create symbol cache: %w", err)
+	}
+
+	// Create Ristretto cache for debug info
+	debugInfoCache, err := ristretto.NewCache(&ristretto.Config{
+		NumCounters: 1e7,                       // number of keys to track frequency of (10M)
+		MaxCost:     int64(debuginfoCacheSize), // maximum cost of cache
+		BufferItems: 64,                        // number of keys per Get buffer
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create debug info cache: %w", err)
 	}
 
 	return &ProfileSymbolizer{
-		client:      client,
-		cache:       cache,
-		metrics:     metrics,
-		symbolCache: symbolCache,
-	}
+		logger:         logger,
+		client:         client,
+		store:          store,
+		metrics:        metrics,
+		symbolCache:    symbolCache,
+		debugInfoCache: debugInfoCache,
+	}, nil
 }
 
 func (s *ProfileSymbolizer) SymbolizePprof(ctx context.Context, profile *googlev1.Profile) error {
 	start := time.Now()
+	status := StatusSuccess
 	defer func() {
-		s.metrics.profileSymbolizationDuration.Observe(time.Since(start).Seconds())
+		s.metrics.profileSymbolization.WithLabelValues(status).Observe(time.Since(start).Seconds())
 	}()
-	s.metrics.profileSymbolizationTotal.Inc()
 
 	// Group locations by mapping ID
 	type locToSymbolize struct {
@@ -225,7 +249,8 @@ func (s *ProfileSymbolizer) SymbolizePprof(ctx context.Context, profile *googlev
 	}
 
 	if len(errs) > 0 {
-		s.metrics.profileSymbolizationErrors.WithLabelValues("symbolization_error").Inc()
+		status = StatusErrorOther
+		s.metrics.profileSymbolization.WithLabelValues(status).Observe(time.Since(start).Seconds())
 		return fmt.Errorf("symbolization errors: %v", errs)
 	}
 
@@ -234,27 +259,27 @@ func (s *ProfileSymbolizer) SymbolizePprof(ctx context.Context, profile *googlev
 
 func (s *ProfileSymbolizer) Symbolize(ctx context.Context, req *Request) error {
 	start := time.Now()
+	status := StatusSuccess
 	defer func() {
-		s.metrics.debugSymbolResolutionDuration.Observe(time.Since(start).Seconds())
+		s.metrics.profileSymbolization.WithLabelValues(status).Observe(time.Since(start).Seconds())
 	}()
 
 	// Check if we need to fetch debug info at all
 	if s.symbolCache != nil {
 		allCached := true
-		// Check each location in the Ristretto cache
 		for _, loc := range req.Locations {
-			// Create a cache key that combines buildID and address
 			cacheKey := fmt.Sprintf("%s:%x", req.BuildID, loc.Address)
-
+			symbolStart := time.Now()
+			symbolStatus := StatusCacheMiss
 			if symbols, found := s.symbolCache.Get(cacheKey); found {
-				// We've already symbolized this address
 				loc.Lines = symbols
-				s.metrics.debugSymbolResolutionsTotal.WithLabelValues("cache_hit").Inc()
+				symbolStatus = StatusCacheHit
+				s.metrics.debugSymbolResolution.WithLabelValues(StatusCacheHit).Observe(time.Since(symbolStart).Seconds())
 			} else {
-				// We need to fetch at least one address
 				allCached = false
 				break
 			}
+			s.metrics.cacheOperations.WithLabelValues("symbol_cache", "get", symbolStatus).Observe(time.Since(symbolStart).Seconds())
 		}
 
 		// If all addresses were in cache, we're done
@@ -263,55 +288,117 @@ func (s *ProfileSymbolizer) Symbolize(ctx context.Context, req *Request) error {
 		}
 	}
 
-	// Try to get from ObjstoreCache first
-	objstoreReader, err := s.cache.Get(ctx, req.BuildID)
-	if err == nil {
-		// ObjstoreCache hit
-		defer objstoreReader.Close()
-		err := s.symbolizeFromReader(ctx, objstoreReader, req)
-		if err != nil {
-			return err
-		}
+	// Check in-memory Ristretto cache for debug info
+	debugInfoStart := time.Now()
+	debugInfoStatus := StatusCacheMiss
+	if s.debugInfoCache != nil {
+		if data, found := s.debugInfoCache.Get(req.BuildID); found {
+			debugInfoStatus = StatusCacheHit
+			debugReader := io.NopCloser(bytes.NewReader(data.([]byte)))
+			err := s.symbolizeFromReader(ctx, debugReader, req)
+			if err != nil {
+				return err
+			}
 
-		s.updateSymbolCache(req)
-		return nil
+			s.metrics.cacheOperations.WithLabelValues("debuginfo_cache", "get", debugInfoStatus).Observe(time.Since(debugInfoStart).Seconds())
+
+			s.updateSymbolCache(req)
+			return nil
+		}
+		s.metrics.cacheOperations.WithLabelValues("debuginfo_cache", "get", debugInfoStatus).Observe(time.Since(debugInfoStart).Seconds())
 	}
 
-	// ObjstoreCache miss - try to get from debuginfod client
+	// Try to get from ObjstoreCache
+	if s.store != nil {
+		objstoreStart := time.Now()
+		objstoreStatus := StatusCacheMiss
+		objstoreReader, err := s.store.Get(ctx, req.BuildID)
+		if err == nil {
+			objstoreStatus = StatusCacheHit
+			s.metrics.cacheOperations.WithLabelValues("objstore_cache", "get", objstoreStatus).Observe(time.Since(objstoreStart).Seconds())
+			defer objstoreReader.Close()
+
+			// Read the entire content to store in Ristretto cache
+			var buf bytes.Buffer
+			teeReader := io.TeeReader(objstoreReader, &buf)
+			err := s.symbolizeFromReader(ctx, io.NopCloser(teeReader), req)
+			if err != nil {
+				return err
+			}
+
+			// Update in ristretto cache
+			if s.debugInfoCache != nil {
+				data := buf.Bytes()
+				cacheStart := time.Now()
+				success := s.debugInfoCache.Set(req.BuildID, data, int64(len(data)))
+				s.metrics.cacheOperations.WithLabelValues("debuginfo_cache", "set", StatusSuccess).Observe(time.Since(cacheStart).Seconds())
+				if !success {
+					level.Warn(s.logger).Log("msg", "Failed to store debug info in cache", "buildID", req.BuildID, "size", len(data))
+				}
+				s.metrics.cacheSizeBytes.WithLabelValues("debuginfo_cache").Set(float64(len(data)))
+			}
+
+			s.updateSymbolCache(req)
+			return nil
+		} else {
+			s.metrics.cacheOperations.WithLabelValues("objstore_cache", "get", objstoreStatus).Observe(time.Since(objstoreStart).Seconds())
+		}
+	}
+
+	// Try to get from debuginfod client
+	if s.client == nil {
+		status = StatusErrorDebuginfod
+		return fmt.Errorf("no debuginfod client configured")
+	}
+
+	debuginfodStart := time.Now()
 	debugReader, err := s.client.FetchDebuginfo(ctx, req.BuildID)
 	if err != nil {
-		s.metrics.debugSymbolResolutionErrors.WithLabelValues("debuginfod_error").Inc()
+		status = StatusErrorDebuginfod
+		s.metrics.debuginfodRequestDuration.WithLabelValues(StatusErrorDebuginfod).Observe(time.Since(debuginfodStart).Seconds())
+		s.metrics.debugSymbolResolution.WithLabelValues(StatusErrorDebuginfod).Observe(0)
 		return fmt.Errorf("fetch debuginfo: %w", err)
 	}
+	s.metrics.debuginfodRequestDuration.WithLabelValues(StatusSuccess).Observe(time.Since(debuginfodStart).Seconds())
 	defer debugReader.Close()
 
-	// Store in ObjstoreCache for future use
-	if s.cache != nil {
-		var buf bytes.Buffer
-		teeReader := io.TeeReader(debugReader, &buf)
+	// Read the entire content to store in caches
+	var buf bytes.Buffer
+	teeReader := io.TeeReader(debugReader, &buf)
 
-		// Symbolize from the tee reader
-		err := s.symbolizeFromReader(ctx, io.NopCloser(teeReader), req)
-		if err != nil {
-			return err
-		}
-
-		// Put the buffered data into the ObjstoreCache
-		if cacheErr := s.cache.Put(ctx, req.BuildID, bytes.NewReader(buf.Bytes())); cacheErr != nil {
-			// TODO: Add logging
-		}
-
-		s.updateSymbolCache(req)
-		return nil
-	}
-
-	// If we don't have an ObjstoreCache, just symbolize directly
-	err = s.symbolizeFromReader(ctx, debugReader, req)
+	err = s.symbolizeFromReader(ctx, io.NopCloser(teeReader), req)
 	if err != nil {
 		return err
 	}
 
+	// Update caches
+	data := buf.Bytes()
+	s.metrics.debuginfodFileSize.Observe(float64(len(data)))
 	s.updateSymbolCache(req)
+
+	// Store in Ristretto cache
+	if s.debugInfoCache != nil {
+		cacheStart := time.Now()
+		success := s.debugInfoCache.Set(req.BuildID, data, int64(len(data)))
+		s.metrics.cacheOperations.WithLabelValues("debuginfo_cache", "set", StatusSuccess).Observe(time.Since(cacheStart).Seconds())
+		if !success {
+			level.Warn(s.logger).Log("msg", "Failed to store debug info in cache", "buildID", req.BuildID, "size", len(data))
+		}
+		s.metrics.cacheSizeBytes.WithLabelValues("debuginfo_cache").Set(float64(len(data)))
+	}
+
+	// Store in ObjstoreCache
+	if s.store != nil && s.store.IsEnabled() {
+		cacheStart := time.Now()
+		if cacheErr := s.store.Put(ctx, req.BuildID, bytes.NewReader(data)); cacheErr != nil {
+			s.metrics.cacheOperations.WithLabelValues("objstore_cache", "put", StatusErrorUpload).Observe(time.Since(cacheStart).Seconds())
+			level.Warn(s.logger).Log("msg", "Failed to store debug info in objstore", "buildID", req.BuildID, "err", cacheErr)
+		} else {
+			s.metrics.cacheOperations.WithLabelValues("objstore_cache", "put", StatusSuccess).Observe(time.Since(cacheStart).Seconds())
+			s.metrics.cacheSizeBytes.WithLabelValues("objstore_cache").Add(float64(len(data)))
+		}
+	}
+
 	return nil
 }
 
@@ -332,7 +419,7 @@ func (s *ProfileSymbolizer) symbolizeFromReader(ctx context.Context, r io.ReadCl
 	sr := io.NewSectionReader(reader, 0, 1<<63-1)
 	elfFile, err := elf.NewFile(sr)
 	if err != nil {
-		s.metrics.debugSymbolResolutionErrors.WithLabelValues("elf_error").Inc()
+		s.metrics.debugSymbolResolution.WithLabelValues("elf_error").Observe(0)
 		return fmt.Errorf("create ELF file from reader: %w", err)
 	}
 	defer elfFile.Close()
@@ -340,37 +427,37 @@ func (s *ProfileSymbolizer) symbolizeFromReader(ctx context.Context, r io.ReadCl
 	// Get executable info for address normalization
 	ei, err := ExecutableInfoFromELF(elfFile)
 	if err != nil {
-		s.metrics.debugSymbolResolutionErrors.WithLabelValues("elf_info_error").Inc()
+		s.metrics.debugSymbolResolution.WithLabelValues("elf_info_error").Observe(0)
 		return fmt.Errorf("executable info from ELF: %w", err)
 	}
 
 	// Create liner
 	liner, err := NewDwarfResolver(elfFile)
 	if err != nil {
-		s.metrics.debugSymbolResolutionErrors.WithLabelValues("dwarf_error").Inc()
+		s.metrics.debugSymbolResolution.WithLabelValues("dwarf_error").Observe(0)
 		return fmt.Errorf("create DWARF resolver: %w", err)
 	}
 
 	for _, loc := range req.Locations {
+		resolveStart := time.Now()
+
 		addr, err := MapRuntimeAddress(loc.Address, ei, Mapping{
 			Start:  loc.Mapping.Start,
 			Limit:  loc.Mapping.Limit,
 			Offset: loc.Mapping.Offset,
 		})
 		if err != nil {
-			s.metrics.debugSymbolResolutionErrors.WithLabelValues("error").Inc()
 			return fmt.Errorf("normalize address: %w", err)
 		}
 
 		// Get source lines for the address
 		lines, err := liner.ResolveAddress(ctx, addr)
 		if err != nil {
-			s.metrics.debugSymbolResolutionErrors.WithLabelValues("error").Inc()
 			return fmt.Errorf("resolve address: %w", err)
 		}
 
 		loc.Lines = lines
-		s.metrics.debugSymbolResolutionsTotal.WithLabelValues("success").Inc()
+		s.metrics.debugSymbolResolution.WithLabelValues(StatusSuccess).Observe(time.Since(resolveStart).Seconds())
 	}
 
 	return nil
@@ -384,28 +471,12 @@ func (s *ProfileSymbolizer) updateSymbolCache(req *Request) {
 
 	for _, loc := range req.Locations {
 		if len(loc.Lines) > 0 {
-			// Create a cache key that combines buildID and address
 			cacheKey := fmt.Sprintf("%s:%x", req.BuildID, loc.Address)
+			cacheStart := time.Now()
 			s.symbolCache.Add(cacheKey, loc.Lines)
+			s.metrics.cacheOperations.WithLabelValues("symbol_cache", "set", StatusSuccess).Observe(time.Since(cacheStart).Seconds())
 		}
 	}
-}
-
-// lookupSymbolCache checks if an address is already in the symbol cache
-func (s *ProfileSymbolizer) lookupSymbolCache(buildID string, addr uint64) ([]SymbolLocation, bool) {
-	if s.symbolCache == nil {
-		return nil, false
-	}
-
-	cacheKey := fmt.Sprintf("%s:%x", buildID, addr)
-	lines, found := s.symbolCache.Get(cacheKey)
-	if !found {
-		// s.metrics.symbolCacheMissesTotal.Inc()
-		return nil, false
-	}
-
-	// s.metrics.symbolCacheHitsTotal.Inc()
-	return lines, true
 }
 
 func hasValidSymbols(loc *googlev1.Location, profile *googlev1.Profile) bool {
@@ -430,13 +501,18 @@ func hasValidSymbols(loc *googlev1.Location, profile *googlev1.Profile) bool {
 	return true
 }
 
-func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
-	f.StringVar(&cfg.DebuginfodURL, prefix+".debuginfod-url", "https://debuginfod.elfutils.org", "URL of the debuginfod server")
-	f.IntVar(&cfg.SymbolCacheSize, prefix+".symbol-cache-size", DefaultSymbolCacheSize, "Maximum number of entries in the symbol cache")
+func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
+	f.BoolVar(&cfg.Enabled, "symbolizer.enabled", false, "Enable symbolization for unsymbolized profiles")
+	f.StringVar(&cfg.DebuginfodURL, "symbolizer.debuginfod-url", "https://debuginfod.elfutils.org", "URL of the debuginfod server")
+	f.IntVar(&cfg.InMemorySymbolCacheSize, "symbolizer.in-memory-symbol-cache-size", DefaultInMemorySymbolCacheSize, "Maximum number of entries in the in-memory symbol cache")
+	f.IntVar(&cfg.InMemoryDebuginfoCacheSize, "symbolizer.in-memory-debuginfo-cache-size", DefaultInMemoryDebuginfoCacheSize, "Maximum size in bytes for the in-memory debug info cache")
+	f.BoolVar(&cfg.PersistentDebugInfoStore.Enabled, "symbolizer.persistent-debuginfo-store.enabled", false, "Enable persistent debug info storage")
+	f.DurationVar(&cfg.PersistentDebugInfoStore.MaxAge, "symbolizer.persistent-debuginfo-store.max-age", 7*24*time.Hour, "Maximum age of stored debug info")
+}
 
-	cachePrefix := prefix + ".cache"
-	f.BoolVar(&cfg.Cache.Enabled, cachePrefix+".enabled", false, "Enable debug info caching")
-	f.DurationVar(&cfg.Cache.MaxAge, cachePrefix+".max-age", 7*24*time.Hour, "Maximum age of cached debug info")
+func (cfg *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) {
+	cfg.RegisterFlags(f)
+	cfg.PersistentDebugInfoStore.Storage.RegisterFlagsWithPrefix("symbolizer.persistent-debuginfo-store.storage.", f, util.Logger)
 }
 
 type DwarfResolver struct {

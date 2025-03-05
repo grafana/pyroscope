@@ -2,19 +2,17 @@ package query_frontend
 
 import (
 	"context"
-	"flag"
-	"fmt"
 	"math/rand"
 	"slices"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/tenant"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
@@ -27,12 +25,12 @@ import (
 
 var _ querierv1connect.QuerierServiceClient = (*QueryFrontend)(nil)
 
-type Config struct {
-	Symbolizer symbolizer.Config `yaml:"symbolizer"`
-}
-
 type QueryBackend interface {
 	Invoke(ctx context.Context, req *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error)
+}
+
+type Symbolizer interface {
+	SymbolizePprof(ctx context.Context, profile *googlev1.Profile) error
 }
 
 type QueryFrontend struct {
@@ -42,7 +40,7 @@ type QueryFrontend struct {
 	metadataQueryClient metastorev1.MetadataQueryServiceClient
 	tenantServiceClient metastorev1.TenantServiceClient
 	querybackend        QueryBackend
-	symbolizer          symbolizer.ProfileSymbolizer
+	symbolizer          *symbolizer.ProfileSymbolizer
 }
 
 func NewQueryFrontend(
@@ -51,18 +49,8 @@ func NewQueryFrontend(
 	metadataQueryClient metastorev1.MetadataQueryServiceClient,
 	tenantServiceClient metastorev1.TenantServiceClient,
 	querybackendClient QueryBackend,
-	cfg Config,
-	reg prometheus.Registerer,
+	sym *symbolizer.ProfileSymbolizer,
 ) (*QueryFrontend, error) {
-	var sym symbolizer.ProfileSymbolizer
-	if cfg.Symbolizer.DebuginfodURL != "" {
-		s, err := symbolizer.NewFromConfig(context.Background(), cfg.Symbolizer, reg)
-		if err != nil {
-			return nil, fmt.Errorf("failed to initialize symbolizer: %w", err)
-		}
-		sym = *s
-	}
-
 	return &QueryFrontend{
 		logger:              logger,
 		limits:              limits,
@@ -166,8 +154,4 @@ func (q *QueryFrontend) QueryMetadata(
 	}
 
 	return md.Blocks, nil
-}
-
-func (c *Config) RegisterFlags(f *flag.FlagSet) {
-	c.Symbolizer.RegisterFlagsWithPrefix("query-frontend.symbolizer", f)
 }
