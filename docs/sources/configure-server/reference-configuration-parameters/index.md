@@ -173,79 +173,136 @@ tenant_settings:
     # CLI flag: -tenant-settings.recording-rules.enabled
     [enabled: <boolean> | default = false]
 
-query_frontend:
-  symbolizer:
-    # URL of the debuginfod server
-    # CLI flag: -query-frontend.symbolizer.debuginfod-url
-    [debuginfod_url: <string> | default = "https://debuginfod.elfutils.org"]
+symbolizer:
+  # Enable symbolization for unsymbolized profiles
+  # CLI flag: -symbolizer.enabled
+  [enabled: <boolean> | default = false]
 
-    cache:
-      # Enable debug info caching
-      # CLI flag: -query-frontend.symbolizer.cache.enabled
-      [enabled: <boolean> | default = false]
+  # URL of the debuginfod server
+  # CLI flag: -symbolizer.debuginfod-url
+  [debuginfod_url: <string> | default = "https://debuginfod.elfutils.org"]
 
-      # Maximum age of cached debug info
-      # CLI flag: -query-frontend.symbolizer.cache.max-age
-      [max_age: <duration> | default = 168h]
+  # Maximum number of entries in the in-memory symbol cache
+  # CLI flag: -symbolizer.in-memory-symbol-cache-size
+  [in_memory_symbol_cache_size: <int> | default = 100000]
+
+  # Maximum size in bytes for the in-memory debug info cache
+  # CLI flag: -symbolizer.in-memory-debuginfo-cache-size
+  [in_memory_debuginfo_cache_size: <int> | default = 2147483648]
+
+  persistent_debuginfo_store:
+    # Enable persistent debug info storage
+    # CLI flag: -symbolizer.persistent-debuginfo-store.enabled
+    [enabled: <boolean> | default = false]
+
+    # Maximum age of stored debug info
+    # CLI flag: -symbolizer.persistent-debuginfo-store.max-age
+    [max_age: <duration> | default = 168h]
 
     storage:
+      # Backend storage to use. Supported backends are: s3, gcs, azure, swift,
+      # filesystem, cos.
+      # CLI flag: -symbolizer.persistent-debuginfo-store.storage.backend
       [backend: <string> | default = ""]
 
       # The s3_backend block configures the connection to Amazon S3 object
       # storage backend.
+      # The CLI flags prefix for this block configuration is:
+      # symbolizer.persistent-debuginfo-store
       [s3: <s3_storage_backend>]
 
       # The gcs_backend block configures the connection to Google Cloud Storage
       # object storage backend.
+      # The CLI flags prefix for this block configuration is:
+      # symbolizer.persistent-debuginfo-store
       [gcs: <gcs_storage_backend>]
 
       # The azure_storage_backend block configures the connection to Azure
       # object storage backend.
+      # The CLI flags prefix for this block configuration is:
+      # symbolizer.persistent-debuginfo-store
       [azure: <azure_storage_backend>]
 
       # The swift_storage_backend block configures the connection to OpenStack
       # Object Storage (Swift) object storage backend.
+      # The CLI flags prefix for this block configuration is:
+      # symbolizer.persistent-debuginfo-store
       [swift: <swift_storage_backend>]
 
       cos:
+        # COS bucket name
+        # CLI flag: -symbolizer.persistent-debuginfo-store.storage.cos.bucket
         [bucket: <string> | default = ""]
 
+        # COS region name
+        # CLI flag: -symbolizer.persistent-debuginfo-store.storage.cos.region
         [region: <string> | default = ""]
 
+        # COS app id
+        # CLI flag: -symbolizer.persistent-debuginfo-store.storage.cos.app-id
         [app_id: <string> | default = ""]
 
+        # COS storage endpoint
+        # CLI flag: -symbolizer.persistent-debuginfo-store.storage.cos.endpoint
         [endpoint: <string> | default = ""]
 
+        # COS secret key
+        # CLI flag: -symbolizer.persistent-debuginfo-store.storage.cos.secret-key
         [secret_key: <string> | default = ""]
 
+        # COS secret id
+        # CLI flag: -symbolizer.persistent-debuginfo-store.storage.cos.secret-id
         [secret_id: <string> | default = ""]
 
         http:
-          [idle_conn_timeout: <duration> | default = ]
+          # The time an idle connection will remain idle before closing.
+          # CLI flag: -symbolizer.persistent-debuginfo-store.storage.cos.http.idle-conn-timeout
+          [idle_conn_timeout: <duration> | default = 1m30s]
 
-          [response_header_timeout: <duration> | default = ]
+          # The amount of time the client will wait for a servers response
+          # headers.
+          # CLI flag: -symbolizer.persistent-debuginfo-store.storage.cos.http.response-header-timeout
+          [response_header_timeout: <duration> | default = 2m]
 
-          [insecure_skip_verify: <boolean> | default = ]
+          # If the client connects to COS via HTTPS and this option is enabled,
+          # the client will accept any certificate and hostname.
+          # CLI flag: -symbolizer.persistent-debuginfo-store.storage.cos.http.insecure-skip-verify
+          [insecure_skip_verify: <boolean> | default = false]
 
-          [tls_handshake_timeout: <duration> | default = ]
+          # Maximum time to wait for a TLS handshake. 0 means no limit.
+          # CLI flag: -symbolizer.persistent-debuginfo-store.storage.cos.tls-handshake-timeout
+          [tls_handshake_timeout: <duration> | default = 10s]
 
-          [expect_continue_timeout: <duration> | default = ]
+          # The time to wait for a server's first response headers after fully
+          # writing the request headers if the request has an Expect header. 0
+          # to send the request body immediately.
+          # CLI flag: -symbolizer.persistent-debuginfo-store.storage.cos.expect-continue-timeout
+          [expect_continue_timeout: <duration> | default = 1s]
 
-          [max_idle_connections: <int> | default = ]
+          # Maximum number of idle (keep-alive) connections across all hosts. 0
+          # means no limit.
+          # CLI flag: -symbolizer.persistent-debuginfo-store.storage.cos.max-idle-connections
+          [max_idle_connections: <int> | default = 100]
 
-          [max_idle_connections_per_host: <int> | default = ]
+          # Maximum number of idle (keep-alive) connections to keep per-host. If
+          # 0, a built-in default value is used.
+          # CLI flag: -symbolizer.persistent-debuginfo-store.storage.cos.max-idle-connections-per-host
+          [max_idle_connections_per_host: <int> | default = 100]
 
-          [max_connections_per_host: <int> | default = ]
+          # Maximum number of connections per host. 0 means no limit.
+          # CLI flag: -symbolizer.persistent-debuginfo-store.storage.cos.max-connections-per-host
+          [max_connections_per_host: <int> | default = 0]
 
       # The filesystem_storage_backend block configures the usage of local file
       # system as object storage backend.
+      # The CLI flags prefix for this block configuration is:
+      # symbolizer.persistent-debuginfo-store
       [filesystem: <filesystem_storage_backend>]
 
+      # Prefix for all objects stored in the backend storage. For simplicity, it
+      # may only contain digits and English alphabet letters.
+      # CLI flag: -symbolizer.persistent-debuginfo-store.storage.storage-prefix
       [storage_prefix: <string> | default = ""]
-
-    # Maximum number of entries in the symbol cache
-    # CLI flag: -query-frontend.symbolizer.symbol-cache-size
-    [symbol_cache_size: <int> | default = 100000]
 
 storage:
   # Backend storage to use. Supported backends are: s3, gcs, azure, swift,
@@ -255,25 +312,18 @@ storage:
 
   # The s3_backend block configures the connection to Amazon S3 object storage
   # backend.
-  # The CLI flags prefix for this block configuration is: storage.s3.endpoint
   [s3: <s3_storage_backend>]
 
   # The gcs_backend block configures the connection to Google Cloud Storage
   # object storage backend.
-  # The CLI flags prefix for this block configuration is:
-  # storage.gcs.bucket-name
   [gcs: <gcs_storage_backend>]
 
   # The azure_storage_backend block configures the connection to Azure object
   # storage backend.
-  # The CLI flags prefix for this block configuration is:
-  # storage.azure.account-name
   [azure: <azure_storage_backend>]
 
   # The swift_storage_backend block configures the connection to OpenStack
   # Object Storage (Swift) object storage backend.
-  # The CLI flags prefix for this block configuration is:
-  # storage.swift.auth-version
   [swift: <swift_storage_backend>]
 
   cos:
@@ -341,7 +391,6 @@ storage:
 
   # The filesystem_storage_backend block configures the usage of local file
   # system as object storage backend.
-  # The CLI flags prefix for this block configuration is: storage.filesystem.dir
   [filesystem: <filesystem_storage_backend>]
 
   # Prefix for all objects stored in the backend storage. For simplicity, it may
@@ -2331,7 +2380,7 @@ distributor_usage_groups:
 The s3_backend block configures the connection to Amazon S3 object storage backend. The supported CLI flags `<prefix>` used to reference this configuration block are:
 
 - _no prefix_
-- `storage.s3.endpoint`
+- `symbolizer.persistent-debuginfo-store`
 
 &nbsp;
 
@@ -2339,7 +2388,7 @@ The s3_backend block configures the connection to Amazon S3 object storage backe
 # The S3 bucket endpoint. It could be an AWS S3 endpoint listed at
 # https://docs.aws.amazon.com/general/latest/gr/s3.html or the address of an
 # S3-compatible service in hostname:port format.
-# CLI flag: -<prefix>
+# CLI flag: -storage.s3.endpoint
 [endpoint: <string> | default = ""]
 
 # S3 region. If unset, the client will issue a S3 GetBucketLocation API call to
@@ -2437,13 +2486,13 @@ http:
 The gcs_backend block configures the connection to Google Cloud Storage object storage backend. The supported CLI flags `<prefix>` used to reference this configuration block are:
 
 - _no prefix_
-- `storage.gcs.bucket-name`
+- `symbolizer.persistent-debuginfo-store`
 
 &nbsp;
 
 ```yaml
 # GCS bucket name
-# CLI flag: -<prefix>
+# CLI flag: -storage.gcs.bucket-name
 [bucket_name: <string> | default = ""]
 
 # JSON either from a Google Developers Console client_credentials.json file, or
@@ -2504,13 +2553,13 @@ http:
 The `azure_storage_backend` block configures the connection to Azure object storage backend. The supported CLI flags `<prefix>` used to reference this configuration block are:
 
 - _no prefix_
-- `storage.azure.account-name`
+- `symbolizer.persistent-debuginfo-store`
 
 &nbsp;
 
 ```yaml
 # Azure storage account name
-# CLI flag: -<prefix>
+# CLI flag: -storage.azure.account-name
 [account_name: <string> | default = ""]
 
 # Azure storage account key. If unset, Azure managed identities will be used for
@@ -2549,13 +2598,13 @@ The `azure_storage_backend` block configures the connection to Azure object stor
 The `swift_storage_backend` block configures the connection to OpenStack Object Storage (Swift) object storage backend. The supported CLI flags `<prefix>` used to reference this configuration block are:
 
 - _no prefix_
-- `storage.swift.auth-version`
+- `symbolizer.persistent-debuginfo-store`
 
 &nbsp;
 
 ```yaml
 # OpenStack Swift authentication API version. 0 to autodetect.
-# CLI flag: -<prefix>
+# CLI flag: -storage.swift.auth-version
 [auth_version: <int> | default = 0]
 
 # OpenStack Swift authentication URL
@@ -2636,13 +2685,13 @@ The `swift_storage_backend` block configures the connection to OpenStack Object 
 The `filesystem_storage_backend` block configures the usage of local file system as object storage backend. The supported CLI flags `<prefix>` used to reference this configuration block are:
 
 - _no prefix_
-- `storage.filesystem.dir`
+- `symbolizer.persistent-debuginfo-store`
 
 &nbsp;
 
 ```yaml
 # Local filesystem storage directory.
-# CLI flag: -<prefix>
+# CLI flag: -storage.filesystem.dir
 [dir: <string> | default = "./data-shared"]
 ```
 
