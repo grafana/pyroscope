@@ -5,32 +5,50 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+const (
+	// Status values for metrics
+	StatusSuccess   = "success"
+	StatusCacheHit  = "cache_hit"
+	StatusCacheMiss = "miss"
+
+	// Error status prefixes
+	StatusErrorPrefix = "error:"
+
+	// HTTP error statuses
+	StatusErrorNotFound     = StatusErrorPrefix + "not_found"
+	StatusErrorUnauthorized = StatusErrorPrefix + "unauthorized"
+	StatusErrorRateLimited  = StatusErrorPrefix + "rate_limited"
+	StatusErrorClientError  = StatusErrorPrefix + "client_error"
+	StatusErrorServerError  = StatusErrorPrefix + "server_error"
+	StatusErrorHTTPOther    = StatusErrorPrefix + "http_other"
+
+	// General error statuses
+	StatusErrorCanceled   = StatusErrorPrefix + "canceled"
+	StatusErrorTimeout    = StatusErrorPrefix + "timeout"
+	StatusErrorInvalidID  = StatusErrorPrefix + "invalid_id"
+	StatusErrorOther      = StatusErrorPrefix + "other"
+	StatusErrorRead       = StatusErrorPrefix + "read_error"
+	StatusErrorUpload     = StatusErrorPrefix + "upload_error"
+	StatusErrorDebuginfod = StatusErrorPrefix + "debuginfod_error"
+	StatusErrorResolve    = StatusErrorPrefix + "resolve_error"
+)
+
 type Metrics struct {
 	registerer prometheus.Registerer
 
 	// Debuginfod metrics
-	debuginfodRequestDuration    *prometheus.HistogramVec
-	debuginfodFileSize           prometheus.Histogram
-	debuginfodRequestsTotal      prometheus.Counter
-	debuginfodRequestErrorsTotal *prometheus.CounterVec
+	debuginfodRequestDuration *prometheus.HistogramVec
+	debuginfodFileSize        prometheus.Histogram
 
 	// Cache metrics
-	cacheRequestsTotal      *prometheus.CounterVec
-	cacheRequestErrorsTotal *prometheus.CounterVec
-	cacheHitsTotal          prometheus.Counter
-	cacheMissesTotal        prometheus.Counter
-	cacheOperationDuration  *prometheus.HistogramVec
-	cacheExpiredTotal       prometheus.Counter
+	cacheOperations *prometheus.HistogramVec
+	cacheSizeBytes  *prometheus.GaugeVec
 
-	// Symbolization pprof level metrics
-	profileSymbolizationTotal    prometheus.Counter
-	profileSymbolizationErrors   *prometheus.CounterVec
-	profileSymbolizationDuration prometheus.Histogram
+	// Profile symbolization metrics
+	profileSymbolization *prometheus.HistogramVec
 
-	// Internal symbolization metrics
-	debugSymbolResolutionsTotal   *prometheus.CounterVec
-	debugSymbolResolutionErrors   *prometheus.CounterVec
-	debugSymbolResolutionDuration prometheus.Histogram
+	// Debug symbol resolution metrics
+	debugSymbolResolution *prometheus.HistogramVec
 }
 
 func NewMetrics(reg prometheus.Registerer) *Metrics {
@@ -38,10 +56,9 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 		registerer: reg,
 		debuginfodRequestDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Name:    "pyroscope_symbolizer_debuginfod_request_duration_seconds",
-			Help:    "Time spent performing debuginfod requests",
+			Help:    "Time spent performing debuginfod requests by status",
 			Buckets: []float64{0.1, 0.5, 1, 5, 10, 30, 60, 120, 300},
-		}, []string{"status"},
-		),
+		}, []string{"status"}),
 		debuginfodFileSize: prometheus.NewHistogram(
 			prometheus.HistogramOpts{
 				Name: "pyroscope_symbolizer_debuginfo_file_size_bytes",
@@ -50,69 +67,31 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 				Buckets: prometheus.ExponentialBuckets(1024*1024, 2, 12),
 			},
 		),
-		debuginfodRequestsTotal: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: "pyroscope_symbolizer_debuginfod_requests_total",
-			Help: "Total number of debuginfod requests attempted",
-		}),
-		debuginfodRequestErrorsTotal: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "pyroscope_symbolizer_debuginfod_request_errors_total",
-			Help: "Total number of debuginfod request errors",
-		}, []string{"reason"}),
-		cacheRequestsTotal: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "pyroscope_symbolizer_cache_requests_total",
-			Help: "Total number of cache requests",
-		}, []string{"operation"}),
-		cacheRequestErrorsTotal: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "pyroscope_symbolizer_cache_request_errors_total",
-			Help: "Total number of cache request errors",
-		}, []string{"operation", "reason"}), // get/put, and specific error reasons
-		cacheHitsTotal: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: "pyroscope_symbolizer_cache_hits_total",
-			Help: "Total number of cache hits",
-		}),
-		cacheMissesTotal: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: "pyroscope_symbolizer_cache_misses_total",
-			Help: "Total number of cache misses",
-		}),
-		cacheOperationDuration: prometheus.NewHistogramVec(
+		// cache metrics
+		cacheOperations: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
 				Name:    "pyroscope_symbolizer_cache_operation_duration_seconds",
-				Help:    "Time spent performing cache operations",
-				Buckets: []float64{.01, .05, .1, .5, 1, 5, 10, 30, 60},
+				Help:    "Time spent performing cache operations by cache type, operation and status",
+				Buckets: []float64{.001, .005, .01, .05, .1, .5, 1, 5, 10},
 			},
-			[]string{"operation"},
+			[]string{"cache_type", "operation", "status"},
 		),
-		cacheExpiredTotal: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: "pyroscope_symbolizer_cache_expired_total",
-			Help: "Total number of expired items removed from cache",
-		}),
-		profileSymbolizationTotal: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: "pyroscope_profile_symbolization_total",
-			Help: "Total number of profiles processed for symbolization",
-		}),
-		profileSymbolizationErrors: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "pyroscope_profile_symbolization_errors_total",
-			Help: "Total number of profile symbolization errors",
-		}, []string{"reason"}),
-
-		profileSymbolizationDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
+		cacheSizeBytes: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "pyroscope_symbolizer_cache_size_bytes",
+			Help: "Current size of cache in bytes by cache type",
+		}, []string{"cache_type"}),
+		// profile symbolization metrics
+		profileSymbolization: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Name:    "pyroscope_profile_symbolization_duration_seconds",
-			Help:    "Time spent performing profile symbolization",
+			Help:    "Time spent performing profile symbolization by status",
 			Buckets: []float64{.01, .05, .1, .5, 1, 5, 10, 30},
-		}),
-		debugSymbolResolutionsTotal: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "pyroscope_debug_symbol_resolutions_total",
-			Help: "Total number of debug symbol resolutions attempted by status",
 		}, []string{"status"}),
-		debugSymbolResolutionErrors: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "pyroscope_debug_symbol_resolution_errors_total",
-			Help: "Total number of debug symbol resolution errors by reason",
-		}, []string{"reason"}),
-		debugSymbolResolutionDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
+		// debug symbol resolution metrics
+		debugSymbolResolution: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Name:    "pyroscope_debug_symbol_resolution_duration_seconds",
-			Help:    "Time spent resolving debug symbols from ELF files",
-			Buckets: []float64{.01, .05, .1, .5, 1, 5, 10, 30},
-		}),
+			Help:    "Time spent resolving debug symbols from ELF files by status",
+			Buckets: []float64{.001, .005, .01, .05, .1, .5, 1, 5, 10},
+		}, []string{"status"}),
 	}
 
 	if reg != nil {
@@ -130,20 +109,10 @@ func (m *Metrics) register() {
 	collectors := []prometheus.Collector{
 		m.debuginfodRequestDuration,
 		m.debuginfodFileSize,
-		m.debuginfodRequestErrorsTotal,
-		m.debuginfodRequestsTotal,
-		m.cacheRequestsTotal,
-		m.cacheRequestErrorsTotal,
-		m.cacheHitsTotal,
-		m.cacheMissesTotal,
-		m.cacheOperationDuration,
-		m.cacheExpiredTotal,
-		m.profileSymbolizationTotal,
-		m.profileSymbolizationErrors,
-		m.profileSymbolizationDuration,
-		m.debugSymbolResolutionsTotal,
-		m.debugSymbolResolutionErrors,
-		m.debugSymbolResolutionDuration,
+		m.cacheOperations,
+		m.cacheSizeBytes,
+		m.profileSymbolization,
+		m.debugSymbolResolution,
 	}
 
 	for _, collector := range collectors {
@@ -159,20 +128,10 @@ func (m *Metrics) Unregister() {
 	collectors := []prometheus.Collector{
 		m.debuginfodRequestDuration,
 		m.debuginfodFileSize,
-		m.debuginfodRequestErrorsTotal,
-		m.debuginfodRequestsTotal,
-		m.cacheRequestsTotal,
-		m.cacheRequestErrorsTotal,
-		m.cacheHitsTotal,
-		m.cacheMissesTotal,
-		m.cacheOperationDuration,
-		m.cacheExpiredTotal,
-		m.profileSymbolizationTotal,
-		m.profileSymbolizationErrors,
-		m.profileSymbolizationDuration,
-		m.debugSymbolResolutionsTotal,
-		m.debugSymbolResolutionErrors,
-		m.debugSymbolResolutionDuration,
+		m.cacheOperations,
+		m.cacheSizeBytes,
+		m.profileSymbolization,
+		m.debugSymbolResolution,
 	}
 
 	for _, collector := range collectors {
