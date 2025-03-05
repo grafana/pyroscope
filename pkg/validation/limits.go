@@ -8,12 +8,14 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/model/labels"
 	"gopkg.in/yaml.v3"
 
 	"github.com/grafana/pyroscope/pkg/distributor/ingest_limits"
 	writepath "github.com/grafana/pyroscope/pkg/distributor/write_path"
 	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
 	readpath "github.com/grafana/pyroscope/pkg/frontend/read_path"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 )
 
@@ -113,6 +115,10 @@ type Limits struct {
 	// Distributors use these limits to determine how many shards to allocate
 	// to a tenant dataset by default, if no placement rules defined.
 	AdaptivePlacementLimits adaptive_placement.PlacementLimits `yaml:",inline" json:",inline"`
+
+	// RecordingRules allow to specify static recording rules. This is not compatible with recording rules
+	// coming from a RecordingRulesClient, that will replace any static rules defined.
+	RecordingRules RecordingRules `yaml:"recording_rules" json:"recording_rules"`
 }
 
 // LimitError are errors that do not comply with the limits specified.
@@ -185,6 +191,9 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.Var(&l.IngestionRelabelingDefaultRulesPosition, "distributor.ingestion-relabeling-default-rules-position", "Position of the default ingestion relabeling rules in relation to relabel rules from overrides. Valid values are 'first', 'last' or 'disabled'.")
 	_ = l.IngestionRelabelingRules.Set("[]")
 	f.Var(&l.IngestionRelabelingRules, "distributor.ingestion-relabeling-rules", "List of ingestion relabel configurations. The relabeling rules work the same way, as those of [Prometheus](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config). All rules are applied in the order they are specified. Note: In most situations, it is more effective to use relabeling directly in Grafana Alloy.")
+
+	_ = l.RecordingRules.Set("[]")
+	f.Var(&l.RecordingRules, "compaction-worker.metrics-exporter.rules-source.static", "List of static recording rules of the type settingsv1.RecordingRule. Will only be use in the absence of a recording rules client.")
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
@@ -213,6 +222,20 @@ func (l *Limits) Validate() error {
 	if l.IngestionRelabelingDefaultRulesPosition != "" {
 		if err := l.IngestionRelabelingDefaultRulesPosition.Set(string(l.IngestionRelabelingDefaultRulesPosition)); err != nil {
 			return err
+		}
+	}
+
+	for idx, rule := range l.RecordingRules {
+		externalLabels := make(labels.Labels, 0, len(rule.ExternalLabels))
+		for _, labelset := range rule.ExternalLabels {
+			externalLabels = append(externalLabels, labels.Label{
+				Name:  labelset["name"],
+				Value: labelset["value"],
+			})
+		}
+		_, err := phlaremodel.NewRecordingRule(rule.MetricName, rule.Matchers, rule.GroupBy, externalLabels)
+		if err != nil {
+			return fmt.Errorf("rule at pos %d is not valid: %v", idx, err)
 		}
 	}
 
