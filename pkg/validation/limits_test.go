@@ -75,6 +75,13 @@ shard_streams:
 blocked_queries:
   - pattern: ".*foo.*"
     regex: true
+recording_rules:
+  - metric_name: 'any-name'
+    matchers: ['any-matcher']
+    group_by: ['any-group-by']
+    external_labels:
+      - name: 'any-label-name'
+        value: 'any-label-value'
 `
 	inputJSON := `
  {
@@ -120,10 +127,23 @@ blocked_queries:
     "logging_enabled": true
   },
   "blocked_queries": [
-	{
-		"pattern": ".*foo.*",
-		"regex": true
-	}
+  {
+    "pattern": ".*foo.*",
+    "regex": true
+  }
+  ],
+  "recording_rules": [
+  {
+    "metric_name": "any-name",
+    "matchers": ["any-matcher"],
+    "group_by": ["any-group-by"],
+    "external_labels": [
+    {
+      "name" : "any-label-name",
+      "value" : "any-label-value"
+    }
+    ]
+  }
   ]
  }
 `
