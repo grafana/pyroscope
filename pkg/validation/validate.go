@@ -112,6 +112,20 @@ func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1
 	if len(ls) == 0 {
 		return NewErrorf(MissingLabels, MissingLabelsErrorMsg)
 	}
+
+	sanitizedNames := make(map[string]bool)
+	//Check if we only have service.name label before sanitization
+	serviceNameValue := phlaremodel.Labels(ls).Get(phlaremodel.LabelNameServiceName)
+	serviceDotNameValue := phlaremodel.Labels(ls).Get("service.name")
+	if serviceDotNameValue != "" && serviceNameValue == "" {
+		ls = append(ls, &typesv1.LabelPair{
+			Name:  phlaremodel.LabelNameServiceName,
+			Value: serviceDotNameValue,
+		})
+		serviceNameValue = serviceDotNameValue
+		sanitizedNames[phlaremodel.LabelNameServiceName] = true
+	}
+
 	sort.Sort(phlaremodel.Labels(ls))
 	numLabelNames := len(ls)
 	maxLabels := limits.MaxLabelNamesPerSeries(tenantID)
@@ -122,8 +136,8 @@ func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1
 	if !model.IsValidMetricName(model.LabelValue(metricNameValue)) {
 		return NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "invalid metric name")
 	}
-	serviceNameValue := phlaremodel.Labels(ls).Get(phlaremodel.LabelNameServiceName)
 	if !isValidServiceName(serviceNameValue) {
+		fmt.Println(">> OUT 1")
 		return NewErrorf(MissingLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "service name is not provided")
 	}
 	lastLabelName := ""
@@ -135,11 +149,23 @@ func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1
 		if len(l.Value) > limits.MaxLabelValueLength(tenantID) {
 			return NewErrorf(LabelValueTooLong, LabelValueTooLongErrorMsg, phlaremodel.LabelPairsString(ls), l.Value)
 		}
-		var origName string
+		var origName, sanitized string
 		var ok bool
-		if origName, l.Name, ok = SanitizeLabelName(l.Name); !ok {
+		if origName, sanitized, ok = SanitizeLabelName(l.Name); !ok {
 			return NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "invalid label name '"+origName+"'")
 		}
+
+		// Check if a dup would be created because of sanitization
+		if origName != sanitized {
+			if sanitizedNames[sanitized] {
+				// Add "_dup" suffix to the conflicting sanitized label name
+				sanitized = sanitized + "_dup"
+			} else {
+				sanitizedNames[sanitized] = true
+			}
+		}
+		l.Name = sanitized
+
 		if !model.LabelValue(l.Value).IsValid() {
 			return NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "invalid label value '"+l.Value+"'")
 		}
