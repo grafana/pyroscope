@@ -8,7 +8,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/model/labels"
 	"gopkg.in/yaml.v3"
 
 	"github.com/grafana/pyroscope/pkg/distributor/ingest_limits"
@@ -218,7 +217,6 @@ func (l *Limits) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // Validate validates that this limits config is valid.
 func (l *Limits) Validate() error {
-
 	if l.IngestionRelabelingDefaultRulesPosition != "" {
 		if err := l.IngestionRelabelingDefaultRulesPosition.Set(string(l.IngestionRelabelingDefaultRulesPosition)); err != nil {
 			return err
@@ -226,14 +224,7 @@ func (l *Limits) Validate() error {
 	}
 
 	for idx, rule := range l.RecordingRules {
-		externalLabels := make(labels.Labels, 0, len(rule.ExternalLabels))
-		for _, labelset := range rule.ExternalLabels {
-			externalLabels = append(externalLabels, labels.Label{
-				Name:  labelset["name"],
-				Value: labelset["value"],
-			})
-		}
-		_, err := phlaremodel.NewRecordingRule(rule.MetricName, rule.Matchers, rule.GroupBy, externalLabels)
+		_, err := phlaremodel.NewRecordingRule(rule)
 		if err != nil {
 			return fmt.Errorf("rule at pos %d is not valid: %v", idx, err)
 		}

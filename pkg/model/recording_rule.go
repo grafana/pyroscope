@@ -6,6 +6,8 @@ import (
 	prometheusmodel "github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
+
+	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
 )
 
 type RecordingRule struct {
@@ -14,19 +16,19 @@ type RecordingRule struct {
 	ExternalLabels labels.Labels
 }
 
-func NewRecordingRule(metricName string, matchers []string, groupBy []string, externalLabels labels.Labels) (*RecordingRule, error) {
+func NewRecordingRule(rule *settingsv1.RecordingRule) (*RecordingRule, error) {
 	// validate metric name
-	if !prometheusmodel.IsValidMetricName(prometheusmodel.LabelValue(metricName)) {
-		return nil, fmt.Errorf("invalid metric name: %s", metricName)
+	if !prometheusmodel.IsValidMetricName(prometheusmodel.LabelValue(rule.MetricName)) {
+		return nil, fmt.Errorf("invalid metric name: %s", rule.MetricName)
 	}
 
 	// ensure __profile_type__ matcher is present
-	ms, err := parseMatchers(matchers)
+	matchers, err := parseMatchers(rule.Matchers)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse matchers: %w", err)
 	}
 	var profileTypePresent bool
-	for _, matcher := range ms {
+	for _, matcher := range matchers {
 		if matcher.Name == LabelNameProfileType {
 			profileTypePresent = true
 			break
@@ -37,13 +39,13 @@ func NewRecordingRule(metricName string, matchers []string, groupBy []string, ex
 	}
 
 	r := &RecordingRule{
-		Matchers:       ms,
-		GroupBy:        groupBy,
-		ExternalLabels: make(labels.Labels, 0, len(externalLabels)+1),
+		Matchers:       matchers,
+		GroupBy:        rule.GroupBy,
+		ExternalLabels: make(labels.Labels, 0, len(rule.ExternalLabels)+1),
 	}
 
 	// ensure __name__ is unique
-	for _, lbl := range externalLabels {
+	for _, lbl := range rule.ExternalLabels {
 		if lbl.Name == prometheusmodel.MetricNameLabel {
 			// skip __name__
 			continue
@@ -56,7 +58,7 @@ func NewRecordingRule(metricName string, matchers []string, groupBy []string, ex
 	// trust rule.MetricName
 	r.ExternalLabels = append(r.ExternalLabels, labels.Label{
 		Name:  prometheusmodel.MetricNameLabel,
-		Value: metricName,
+		Value: rule.MetricName,
 	})
 	return r, nil
 }

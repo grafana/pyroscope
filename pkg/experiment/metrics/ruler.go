@@ -6,7 +6,6 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/prometheus/prometheus/model/labels"
 
 	"github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/validation"
@@ -31,15 +30,8 @@ func (ruler StaticRuler) RecordingRules(tenant string) []*model.RecordingRule {
 	rules := ruler.overrides.RecordingRules(tenant)
 	rs := make([]*model.RecordingRule, 0, len(rules))
 	for _, rule := range rules {
-		externalLabels := make(labels.Labels, 0, len(rule.ExternalLabels))
-		for _, labelset := range rule.ExternalLabels {
-			externalLabels = append(externalLabels, labels.Label{
-				Name:  labelset["name"],
-				Value: labelset["value"],
-			})
-		}
 		// should never fail, overrides already validated
-		r, _ := model.NewRecordingRule(rule.MetricName, rule.Matchers, rule.GroupBy, externalLabels)
+		r, _ := model.NewRecordingRule(rule)
 		rs = append(rs, r)
 	}
 	return rs

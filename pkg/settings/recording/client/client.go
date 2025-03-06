@@ -7,7 +7,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/services"
-	"github.com/prometheus/prometheus/model/labels"
 
 	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/settings/v1/settingsv1connect"
@@ -43,14 +42,7 @@ func (b *Client) RecordingRules(tenantId string) ([]*phlaremodel.RecordingRule, 
 	}
 	rules := make([]*phlaremodel.RecordingRule, 0, len(resp.Msg.Rules))
 	for _, rule := range resp.Msg.Rules {
-		externalLabels := make(labels.Labels, 0, len(rule.ExternalLabels))
-		for _, label := range rule.ExternalLabels {
-			externalLabels = append(externalLabels, labels.Label{
-				Name:  label.Name,
-				Value: label.Value,
-			})
-		}
-		r, err := phlaremodel.NewRecordingRule(rule.MetricName, rule.Matchers, rule.GroupBy, externalLabels)
+		r, err := phlaremodel.NewRecordingRule(rule)
 		if err == nil {
 			rules = append(rules, r)
 		} else {
