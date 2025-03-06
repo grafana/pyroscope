@@ -2,6 +2,7 @@ package symdb
 
 import (
 	"bytes"
+	"fmt"
 	"math/rand"
 	"testing"
 
@@ -217,12 +218,16 @@ func Benchmark_stacktrace_tree_insert(b *testing.B) {
 	require.NoError(b, err)
 
 	b.ResetTimer()
-	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
-		x := newStacktraceTree(0)
-		for j := range p.Sample {
-			x.insert(p.Sample[j].LocationId)
-		}
+	for _, size := range []int{0, 256, 512, 1024} {
+		b.Run(fmt.Sprintf("size=%d", size), func(b *testing.B) {
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				x := newStacktraceTree(size)
+				for j := range p.Sample {
+					x.insert(p.Sample[j].LocationId)
+				}
+			}
+		})
 	}
 }
