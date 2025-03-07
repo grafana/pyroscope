@@ -30,8 +30,12 @@ func (s *TimeSeriesBuilder) Init(by ...string) {
 	s.by = by
 }
 
-func (s *TimeSeriesBuilder) Add(fp model.Fingerprint, lbs Labels, ts int64, value float64) {
+func (s *TimeSeriesBuilder) Add(fp model.Fingerprint, lbs Labels, ts int64, value float64, annotations []string) {
 	labelsByString, ok := s.labelsByFingerprint[fp]
+	v1Annotations := make([]*typesv1.ProfileAnnotation, 0, len(annotations))
+	for _, a := range annotations {
+		v1Annotations = append(v1Annotations, &typesv1.ProfileAnnotation{Body: a})
+	}
 	if !ok {
 		s.labelBuf = lbs.BytesWithLabels(s.labelBuf, s.by...)
 		labelsByString = string(s.labelBuf)
@@ -41,8 +45,9 @@ func (s *TimeSeriesBuilder) Add(fp model.Fingerprint, lbs Labels, ts int64, valu
 				Labels: lbs.WithLabels(s.by...),
 				Points: []*typesv1.Point{
 					{
-						Timestamp: ts,
-						Value:     value,
+						Timestamp:   ts,
+						Value:       value,
+						Annotations: v1Annotations,
 					},
 				},
 			}
@@ -51,8 +56,9 @@ func (s *TimeSeriesBuilder) Add(fp model.Fingerprint, lbs Labels, ts int64, valu
 	}
 	series := s.series[labelsByString]
 	series.Points = append(series.Points, &typesv1.Point{
-		Timestamp: ts,
-		Value:     value,
+		Timestamp:   ts,
+		Value:       value,
+		Annotations: v1Annotations,
 	})
 }
 
