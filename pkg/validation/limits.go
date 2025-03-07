@@ -117,7 +117,7 @@ type Limits struct {
 
 	// RecordingRules allow to specify static recording rules. This is not compatible with recording rules
 	// coming from a RecordingRulesClient, that will replace any static rules defined.
-	RecordingRules RecordingRules `yaml:"recording_rules" json:"recording_rules"`
+	RecordingRules RecordingRules `yaml:"recording_rules" json:"recording_rules" category:"experimental" doc:"hidden"`
 }
 
 // LimitError are errors that do not comply with the limits specified.
@@ -190,9 +190,6 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.Var(&l.IngestionRelabelingDefaultRulesPosition, "distributor.ingestion-relabeling-default-rules-position", "Position of the default ingestion relabeling rules in relation to relabel rules from overrides. Valid values are 'first', 'last' or 'disabled'.")
 	_ = l.IngestionRelabelingRules.Set("[]")
 	f.Var(&l.IngestionRelabelingRules, "distributor.ingestion-relabeling-rules", "List of ingestion relabel configurations. The relabeling rules work the same way, as those of [Prometheus](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config). All rules are applied in the order they are specified. Note: In most situations, it is more effective to use relabeling directly in Grafana Alloy.")
-
-	_ = l.RecordingRules.Set("[]")
-	f.Var(&l.RecordingRules, "compaction-worker.metrics-exporter.rules-source.static", "List of static recording rules of the type settingsv1.RecordingRule. Will only be use in the absence of a recording rules client.")
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.

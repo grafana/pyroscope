@@ -2,6 +2,7 @@ package validation
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 
 	"gopkg.in/yaml.v3"
@@ -10,6 +11,10 @@ import (
 )
 
 type RecordingRules []*settingsv1.RecordingRule
+
+func (r *RecordingRules) RegisterFlags(f *flag.FlagSet) {
+	f.Var(r, "compaction-worker.metrics-exporter.rules-source.static", "List of static recording rules of the type settingsv1.RecordingRule. Will only be use in the absence of a recording rules client.")
+}
 
 func (r *RecordingRules) Set(s string) error {
 	var rules []*settingsv1.RecordingRule
