@@ -142,10 +142,21 @@ func (p *pyroscopeIngesterAdapter) Put(ctx context.Context, pi *storage.PutInput
 			Value: app,
 		})
 	} else {
-		series.Labels = append(series.Labels, &typesv1.LabelPair{
-			Name:  "app_name",
-			Value: app,
-		})
+		// Check if app_name already exists
+		hasAppName := false
+		for _, label := range series.Labels {
+			if label.Name == "app_name" {
+				hasAppName = true
+				break
+			}
+		}
+
+		if !hasAppName {
+			series.Labels = append(series.Labels, &typesv1.LabelPair{
+				Name:  "app_name",
+				Value: app,
+			})
+		}
 	}
 	series.Samples = []*pushv1.RawSample{{
 		RawProfile: b,

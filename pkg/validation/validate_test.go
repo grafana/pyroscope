@@ -50,8 +50,9 @@ func TestValidateLabels(t *testing.T) {
 				{Name: "foo2", Value: "bar"},
 				{Name: "foo3", Value: "bar"},
 				{Name: "foo4", Value: "bar"},
+				{Name: "foo5", Value: "bar"},
 			},
-			expectedErr:    `profile series '{foo1="bar", foo2="bar", foo3="bar", foo4="bar", service_name="svc"}' has 5 label names; limit 4`,
+			expectedErr:    `profile series '{foo1="bar", foo2="bar", foo3="bar", foo4="bar", foo5="bar", service_name="svc"}' has 6 label names; limit 5`,
 			expectedReason: MaxLabelNamesPerSeries,
 		},
 		{
@@ -115,20 +116,37 @@ func TestValidateLabels(t *testing.T) {
 		},
 
 		{
-			name: "dupe sanitized",
+			name: "dupe sanitized", // Now, we support 1 level of duplicated labels because of sanitization
 			lbs: []*typesv1.LabelPair{
 				{Name: model.MetricNameLabel, Value: "qux"},
 				{Name: "label.name", Value: "foo"},
 				{Name: "label.name", Value: "bar"},
 				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
 			},
+		},
+		{
+			name: "service.name conversion",
+			lbs: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "qux"},
+				{Name: "service.name", Value: "my-service"},
+			},
+		},
+		{
+			name: "more than sanitized dupe",
+			lbs: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "qux"},
+				{Name: "label.name", Value: "foo"},
+				{Name: "label.name", Value: "bar"},
+				{Name: "label.name", Value: "bar"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+			},
 			expectedReason: DuplicateLabelNames,
-			expectedErr:    "profile with labels '{__name__=\"qux\", label_name=\"foo\", label_name=\"bar\", service_name=\"svc\"}' has duplicate label name: 'label.name'",
+			expectedErr:    "profile with labels '{__name__=\"qux\", label_name=\"foo\", label_name_dup=\"bar\", label_name_dup=\"bar\", service_name=\"svc\"}' has duplicate label name: 'label.name'",
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			err := ValidateLabels(MockLimits{
-				MaxLabelNamesPerSeriesValue: 4,
+				MaxLabelNamesPerSeriesValue: 5,
 				MaxLabelNameLengthValue:     12,
 				MaxLabelValueLengthValue:    10,
 			}, "foo", tt.lbs)
