@@ -11,6 +11,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/colega/zeropool v0.0.0-20230505084239-6fb4a4f75381
 	github.com/dennwc/varint v1.0.0
+	github.com/dgraph-io/ristretto v0.2.0
 	github.com/dgryski/go-groupvarint v0.0.0-20230630160417-2bfb7969fb3c
 	github.com/dolthub/swiss v0.2.1
 	github.com/drone/envsubst v1.0.3
@@ -19,6 +20,7 @@ require (
 	github.com/felixge/fgprof v0.9.4-0.20221116204635-ececf7638e93
 	github.com/felixge/httpsnoop v1.0.4
 	github.com/fsnotify/fsnotify v1.7.0
+	github.com/go-delve/delve v1.23.1
 	github.com/go-kit/log v0.2.1
 	github.com/gogo/protobuf v1.3.2
 	github.com/gogo/status v1.1.1
