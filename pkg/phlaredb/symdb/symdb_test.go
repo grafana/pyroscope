@@ -227,3 +227,20 @@ func TestWritePartition(t *testing.T) {
 `
 	require.Equal(t, expected, resolved.String())
 }
+
+func BenchmarkPartitionWriter_WriteProfileSymbols(b *testing.B) {
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		p, err := pprof.OpenFile("testdata/profile.pb.gz")
+		require.NoError(b, err)
+		p.Normalize()
+		cfg := DefaultConfig().WithDirectory(b.TempDir())
+		db := NewSymDB(cfg)
+		pw := db.PartitionWriter(0)
+		b.StartTimer()
+
+		pw.WriteProfileSymbols(p.Profile)
+	}
+}
