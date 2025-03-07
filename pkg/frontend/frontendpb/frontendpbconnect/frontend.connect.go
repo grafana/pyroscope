@@ -43,12 +43,6 @@ const (
 	FrontendForQuerierQueryResultProcedure = "/frontendpb.FrontendForQuerier/QueryResult"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	frontendForQuerierServiceDescriptor           = frontendpb.File_frontend_frontendpb_frontend_proto.Services().ByName("FrontendForQuerier")
-	frontendForQuerierQueryResultMethodDescriptor = frontendForQuerierServiceDescriptor.Methods().ByName("QueryResult")
-)
-
 // FrontendForQuerierClient is a client for the frontendpb.FrontendForQuerier service.
 type FrontendForQuerierClient interface {
 	QueryResult(context.Context, *connect.Request[frontendpb.QueryResultRequest]) (*connect.Response[frontendpb.QueryResultResponse], error)
@@ -63,11 +57,12 @@ type FrontendForQuerierClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewFrontendForQuerierClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) FrontendForQuerierClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	frontendForQuerierMethods := frontendpb.File_frontend_frontendpb_frontend_proto.Services().ByName("FrontendForQuerier").Methods()
 	return &frontendForQuerierClient{
 		queryResult: connect.NewClient[frontendpb.QueryResultRequest, frontendpb.QueryResultResponse](
 			httpClient,
 			baseURL+FrontendForQuerierQueryResultProcedure,
-			connect.WithSchema(frontendForQuerierQueryResultMethodDescriptor),
+			connect.WithSchema(frontendForQuerierMethods.ByName("QueryResult")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -94,10 +89,11 @@ type FrontendForQuerierHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewFrontendForQuerierHandler(svc FrontendForQuerierHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	frontendForQuerierMethods := frontendpb.File_frontend_frontendpb_frontend_proto.Services().ByName("FrontendForQuerier").Methods()
 	frontendForQuerierQueryResultHandler := connect.NewUnaryHandler(
 		FrontendForQuerierQueryResultProcedure,
 		svc.QueryResult,
-		connect.WithSchema(frontendForQuerierQueryResultMethodDescriptor),
+		connect.WithSchema(frontendForQuerierMethods.ByName("QueryResult")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/frontendpb.FrontendForQuerier/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

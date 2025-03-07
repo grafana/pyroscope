@@ -52,17 +52,6 @@ const (
 	RaftNodeServicePromoteToLeaderProcedure = "/raft_node.RaftNodeService/PromoteToLeader"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	raftNodeServiceServiceDescriptor               = raftnodepb.File_experiment_metastore_raftnode_raftnodepb_raft_node_proto.Services().ByName("RaftNodeService")
-	raftNodeServiceReadIndexMethodDescriptor       = raftNodeServiceServiceDescriptor.Methods().ByName("ReadIndex")
-	raftNodeServiceNodeInfoMethodDescriptor        = raftNodeServiceServiceDescriptor.Methods().ByName("NodeInfo")
-	raftNodeServiceRemoveNodeMethodDescriptor      = raftNodeServiceServiceDescriptor.Methods().ByName("RemoveNode")
-	raftNodeServiceAddNodeMethodDescriptor         = raftNodeServiceServiceDescriptor.Methods().ByName("AddNode")
-	raftNodeServiceDemoteLeaderMethodDescriptor    = raftNodeServiceServiceDescriptor.Methods().ByName("DemoteLeader")
-	raftNodeServicePromoteToLeaderMethodDescriptor = raftNodeServiceServiceDescriptor.Methods().ByName("PromoteToLeader")
-)
-
 // RaftNodeServiceClient is a client for the raft_node.RaftNodeService service.
 type RaftNodeServiceClient interface {
 	ReadIndex(context.Context, *connect.Request[raftnodepb.ReadIndexRequest]) (*connect.Response[raftnodepb.ReadIndexResponse], error)
@@ -82,41 +71,42 @@ type RaftNodeServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewRaftNodeServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) RaftNodeServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	raftNodeServiceMethods := raftnodepb.File_experiment_metastore_raftnode_raftnodepb_raft_node_proto.Services().ByName("RaftNodeService").Methods()
 	return &raftNodeServiceClient{
 		readIndex: connect.NewClient[raftnodepb.ReadIndexRequest, raftnodepb.ReadIndexResponse](
 			httpClient,
 			baseURL+RaftNodeServiceReadIndexProcedure,
-			connect.WithSchema(raftNodeServiceReadIndexMethodDescriptor),
+			connect.WithSchema(raftNodeServiceMethods.ByName("ReadIndex")),
 			connect.WithClientOptions(opts...),
 		),
 		nodeInfo: connect.NewClient[raftnodepb.NodeInfoRequest, raftnodepb.NodeInfoResponse](
 			httpClient,
 			baseURL+RaftNodeServiceNodeInfoProcedure,
-			connect.WithSchema(raftNodeServiceNodeInfoMethodDescriptor),
+			connect.WithSchema(raftNodeServiceMethods.ByName("NodeInfo")),
 			connect.WithClientOptions(opts...),
 		),
 		removeNode: connect.NewClient[raftnodepb.RemoveNodeRequest, raftnodepb.RemoveNodeResponse](
 			httpClient,
 			baseURL+RaftNodeServiceRemoveNodeProcedure,
-			connect.WithSchema(raftNodeServiceRemoveNodeMethodDescriptor),
+			connect.WithSchema(raftNodeServiceMethods.ByName("RemoveNode")),
 			connect.WithClientOptions(opts...),
 		),
 		addNode: connect.NewClient[raftnodepb.AddNodeRequest, raftnodepb.AddNodeResponse](
 			httpClient,
 			baseURL+RaftNodeServiceAddNodeProcedure,
-			connect.WithSchema(raftNodeServiceAddNodeMethodDescriptor),
+			connect.WithSchema(raftNodeServiceMethods.ByName("AddNode")),
 			connect.WithClientOptions(opts...),
 		),
 		demoteLeader: connect.NewClient[raftnodepb.DemoteLeaderRequest, raftnodepb.DemoteLeaderResponse](
 			httpClient,
 			baseURL+RaftNodeServiceDemoteLeaderProcedure,
-			connect.WithSchema(raftNodeServiceDemoteLeaderMethodDescriptor),
+			connect.WithSchema(raftNodeServiceMethods.ByName("DemoteLeader")),
 			connect.WithClientOptions(opts...),
 		),
 		promoteToLeader: connect.NewClient[raftnodepb.PromoteToLeaderRequest, raftnodepb.PromoteToLeaderResponse](
 			httpClient,
 			baseURL+RaftNodeServicePromoteToLeaderProcedure,
-			connect.WithSchema(raftNodeServicePromoteToLeaderMethodDescriptor),
+			connect.WithSchema(raftNodeServiceMethods.ByName("PromoteToLeader")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -178,40 +168,41 @@ type RaftNodeServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewRaftNodeServiceHandler(svc RaftNodeServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	raftNodeServiceMethods := raftnodepb.File_experiment_metastore_raftnode_raftnodepb_raft_node_proto.Services().ByName("RaftNodeService").Methods()
 	raftNodeServiceReadIndexHandler := connect.NewUnaryHandler(
 		RaftNodeServiceReadIndexProcedure,
 		svc.ReadIndex,
-		connect.WithSchema(raftNodeServiceReadIndexMethodDescriptor),
+		connect.WithSchema(raftNodeServiceMethods.ByName("ReadIndex")),
 		connect.WithHandlerOptions(opts...),
 	)
 	raftNodeServiceNodeInfoHandler := connect.NewUnaryHandler(
 		RaftNodeServiceNodeInfoProcedure,
 		svc.NodeInfo,
-		connect.WithSchema(raftNodeServiceNodeInfoMethodDescriptor),
+		connect.WithSchema(raftNodeServiceMethods.ByName("NodeInfo")),
 		connect.WithHandlerOptions(opts...),
 	)
 	raftNodeServiceRemoveNodeHandler := connect.NewUnaryHandler(
 		RaftNodeServiceRemoveNodeProcedure,
 		svc.RemoveNode,
-		connect.WithSchema(raftNodeServiceRemoveNodeMethodDescriptor),
+		connect.WithSchema(raftNodeServiceMethods.ByName("RemoveNode")),
 		connect.WithHandlerOptions(opts...),
 	)
 	raftNodeServiceAddNodeHandler := connect.NewUnaryHandler(
 		RaftNodeServiceAddNodeProcedure,
 		svc.AddNode,
-		connect.WithSchema(raftNodeServiceAddNodeMethodDescriptor),
+		connect.WithSchema(raftNodeServiceMethods.ByName("AddNode")),
 		connect.WithHandlerOptions(opts...),
 	)
 	raftNodeServiceDemoteLeaderHandler := connect.NewUnaryHandler(
 		RaftNodeServiceDemoteLeaderProcedure,
 		svc.DemoteLeader,
-		connect.WithSchema(raftNodeServiceDemoteLeaderMethodDescriptor),
+		connect.WithSchema(raftNodeServiceMethods.ByName("DemoteLeader")),
 		connect.WithHandlerOptions(opts...),
 	)
 	raftNodeServicePromoteToLeaderHandler := connect.NewUnaryHandler(
 		RaftNodeServicePromoteToLeaderProcedure,
 		svc.PromoteToLeader,
-		connect.WithSchema(raftNodeServicePromoteToLeaderMethodDescriptor),
+		connect.WithSchema(raftNodeServiceMethods.ByName("PromoteToLeader")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/raft_node.RaftNodeService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

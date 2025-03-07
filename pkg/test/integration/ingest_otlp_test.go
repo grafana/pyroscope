@@ -8,9 +8,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	profilesv1 "go.opentelemetry.io/proto/otlp/collector/profiles/v1development"
+	commonv1 "go.opentelemetry.io/proto/otlp/common/v1"
+	"google.golang.org/protobuf/proto"
 
-	profilesv1 "github.com/grafana/pyroscope/api/otlp/collector/profiles/v1development"
-	commonv1 "github.com/grafana/pyroscope/api/otlp/common/v1"
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/strprofile"
 )
 
@@ -99,13 +100,13 @@ func TestIngestOTLP(t *testing.T) {
 			profileBytes, err := os.ReadFile(td.profilePath)
 			require.NoError(t, err)
 			var profile = new(profilesv1.ExportProfilesServiceRequest)
-			err = profile.Unmarshal(profileBytes)
+			err = proto.Unmarshal(profileBytes, profile)
 			require.NoError(t, err)
 
 			for _, rp := range profile.ResourceProfiles {
 				for _, sp := range rp.ScopeProfiles {
-					sp.Scope.Attributes = append(sp.Scope.Attributes, commonv1.KeyValue{
-						Key: "test_run_no", Value: commonv1.AnyValue{Value: &commonv1.AnyValue_StringValue{StringValue: runNo}},
+					sp.Scope.Attributes = append(sp.Scope.Attributes, &commonv1.KeyValue{
+						Key: "test_run_no", Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_StringValue{StringValue: runNo}},
 					})
 				}
 			}
