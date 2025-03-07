@@ -1,17 +1,14 @@
 package metrics
 
 import (
-	"encoding/json"
-	"fmt"
-	"os"
 	"sync"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 
-	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
 	"github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 const (
@@ -20,39 +17,24 @@ const (
 )
 
 type StaticRuler struct {
-	rules  map[string][]*model.RecordingRule
-	logger log.Logger
+	overrides *validation.Overrides
 }
 
-func NewStaticRulerFromEnvVars(logger log.Logger) (Ruler, error) {
-	jsonRules := os.Getenv(envVarRecordingRules)
-
-	var rulesByTenant map[string][]*settingsv1.RecordingRule
-	if err := json.Unmarshal([]byte(jsonRules), &rulesByTenant); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal recording rules: %w", err)
+func NewStaticRulerFromOverrides(overrides *validation.Overrides) Ruler {
+	return &StaticRuler{
+		overrides: overrides,
 	}
-
-	ruler := &StaticRuler{
-		rules:  make(map[string][]*model.RecordingRule, len(rulesByTenant)),
-		logger: logger,
-	}
-	for tenant, rules := range rulesByTenant {
-		rs := make([]*model.RecordingRule, 0, len(rules))
-		for _, rule := range rules {
-			r, err := model.NewRecordingRule(rule)
-			if err == nil {
-				rs = append(rs, r)
-			} else {
-				level.Error(logger).Log("msg", "failed to parse recording rule", "rule", rule, "err", err)
-			}
-		}
-		ruler.rules[tenant] = rs
-	}
-	return ruler, nil
 }
 
-func (r StaticRuler) RecordingRules(tenant string) []*model.RecordingRule {
-	return r.rules[tenant]
+func (ruler StaticRuler) RecordingRules(tenant string) []*model.RecordingRule {
+	rules := ruler.overrides.RecordingRules(tenant)
+	rs := make([]*model.RecordingRule, 0, len(rules))
+	for _, rule := range rules {
+		// should never fail, overrides already validated
+		r, _ := model.NewRecordingRule(rule)
+		rs = append(rs, r)
+	}
+	return rs
 }
 
 // CachedRemoteRuler is a thread-safe ruler that retrieves rules from an external service.

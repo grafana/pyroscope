@@ -225,14 +225,15 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 	c.v2Experiment = os.Getenv("PYROSCOPE_V2_EXPERIMENT") != ""
 	if c.v2Experiment {
 		for k, v := range map[string]string{
-			"server.grpc-max-recv-msg-size-bytes":               "104857600",
-			"server.grpc-max-send-msg-size-bytes":               "104857600",
-			"server.grpc.keepalive.min-time-between-pings":      "1s",
-			"segment-writer.grpc-client-config.connect-timeout": "1s",
-			"segment-writer.num-tokens":                         "4",
-			"segment-writer.heartbeat-timeout":                  "1m",
-			"segment-writer.unregister-on-shutdown":             "false",
-			"segment-writer.min-ready-duration":                 "30s",
+			"server.grpc-max-recv-msg-size-bytes":                    "104857600",
+			"server.grpc-max-send-msg-size-bytes":                    "104857600",
+			"server.grpc.keepalive.min-time-between-pings":           "1s",
+			"segment-writer.grpc-client-config.connect-timeout":      "1s",
+			"segment-writer.num-tokens":                              "4",
+			"segment-writer.heartbeat-timeout":                       "1m",
+			"segment-writer.unregister-on-shutdown":                  "false",
+			"segment-writer.min-ready-duration":                      "30s",
+			"compaction-worker.metrics-exporter.rules-source.static": "[]",
 		} {
 			overrides[k] = v
 		}
@@ -245,6 +246,7 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 		c.LimitsConfig.WritePathOverrides.RegisterFlags(throwaway)
 		c.LimitsConfig.ReadPathOverrides.RegisterFlags(throwaway)
 		c.LimitsConfig.AdaptivePlacementLimits.RegisterFlags(throwaway)
+		c.LimitsConfig.RecordingRules.RegisterFlags(throwaway)
 	}
 
 	throwaway.VisitAll(func(f *flag.Flag) {

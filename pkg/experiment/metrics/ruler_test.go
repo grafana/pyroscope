@@ -1,95 +1,73 @@
 package metrics
 
 import (
-	"bytes"
-	"os"
-	"strings"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/assert"
 
+	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
-func Test_Ruler_missconfigured(t *testing.T) {
-	_, err := NewStaticRulerFromEnvVars(log.NewNopLogger())
-	assert.EqualError(t, err, "failed to unmarshal recording rules: unexpected end of JSON input", "Empty env var should result in error at creating ruler")
-}
+var (
+	defaultRecordingRulesProto = []*settingsv1.RecordingRule{{
+		MetricName: "default_recording_rule",
+		Matchers:   []string{"{__profile_type__=\"any-profile-type\"}"},
+	}}
+
+	defaultRecordingRules = []*model.RecordingRule{{
+		ExternalLabels: labels.Labels{{
+			Name:  "__name__",
+			Value: "default_recording_rule",
+		}},
+		Matchers: []*labels.Matcher{{
+			Type:  labels.MatchEqual,
+			Name:  "__profile_type__",
+			Value: "any-profile-type",
+		}},
+	}}
+
+	overriddenRecordingRulesProto = []*settingsv1.RecordingRule{{
+		MetricName:     "rule",
+		Matchers:       []string{"{__profile_type__=\"any-profile-type\", matcher1!=\"value\"}"},
+		GroupBy:        []string{"group_by_label"},
+		ExternalLabels: []*typesv1.LabelPair{{Name: "foo", Value: "bar"}},
+	}}
+
+	overriddenRecordingRules = []*model.RecordingRule{{
+		Matchers: []*labels.Matcher{
+			{Type: labels.MatchEqual, Name: "__profile_type__", Value: "any-profile-type"},
+			{Type: labels.MatchNotEqual, Name: "matcher1", Value: "value"},
+		},
+		GroupBy: []string{"group_by_label"},
+		ExternalLabels: labels.Labels{
+			{Name: "foo", Value: "bar"},
+			{Name: "__name__", Value: "rule"},
+		},
+	}}
+)
 
 func Test_Ruler_happyPath(t *testing.T) {
-	jsonRecordingRules :=
-		`{
-					"tenant1": [{
-            "metric_name": "metric1",
-            "matchers": ["{__profile_type__=\"profile_type\", pod=\"foo\"}"],
-            "group_by": ["bar"],
-            "external_labels": [{"name":"__name__", "value":"metric1"}]
-          }],
-          "tenant2": [{
-            "metric_name": "metric2",
-            "matchers": ["{__profile_type__=\"profile_type\"}"],
-            "group_by": [],
-            "external_labels": [{"name":"__name__", "value":"should be ignored"}]
-          },
-          {
-            "metric_name": "no_profile_type",
-            "matchers": ["{}"],
-            "group_by": [],
-            "external_labels": []
-          },
-          {
-            "metric_name": "Wrong metric name",
-            "matchers": ["{__profile_type__=\"profile_type\"}"],
-            "group_by": [],
-            "external_labels": []
-          },
-          {
-            "metric_name": "wrong_matcher",
-            "matchers": ["{foo==\"bar\"}"],
-            "group_by": [],
-            "external_labels": []
-          }]
-	      }`
-	_ = os.Setenv(envVarRecordingRules, jsonRecordingRules)
-	loggerBuffer := &bytes.Buffer{}
-	logger := log.NewJSONLogger(loggerBuffer)
-	ruler, err := NewStaticRulerFromEnvVars(logger)
-	assert.NoError(t, err)
+	overrides := newOverrides(t)
 
-	rules := ruler.RecordingRules("tenant1")
-	assert.Equal(t, []*model.RecordingRule{{
-		Matchers: []*labels.Matcher{{
-			Type:  labels.MatchEqual,
-			Name:  "__profile_type__",
-			Value: "profile_type",
-		}, {
-			Type:  labels.MatchEqual,
-			Name:  "pod",
-			Value: "foo",
-		}},
-		GroupBy: []string{"bar"},
-		ExternalLabels: labels.Labels{
-			{Name: "__name__", Value: "metric1"},
-		},
-	}}, rules)
+	ruler := NewStaticRulerFromOverrides(overrides)
 
-	rules = ruler.RecordingRules("tenant2")
-	assert.Equal(t, []*model.RecordingRule{{
-		Matchers: []*labels.Matcher{{
-			Type:  labels.MatchEqual,
-			Name:  "__profile_type__",
-			Value: "profile_type",
-		}},
-		GroupBy: []string{},
-		ExternalLabels: labels.Labels{
-			{Name: "__name__", Value: "metric2"},
-		},
-	}}, rules)
+	rules := ruler.RecordingRules("non-configured-tenant")
+	assert.Equal(t, defaultRecordingRules, rules)
 
-	loggedLines := strings.Split(loggerBuffer.String(), "\n")
-	assert.True(t, strings.Contains(loggedLines[0], "no __profile_type__ matcher present"))
-	assert.True(t, strings.Contains(loggedLines[1], "invalid metric name: Wrong metric name"))
-	assert.True(t, strings.Contains(loggedLines[2], "failed to parse matchers: 1:6: parse error: unexpected \\\"=\\\" in label matching, expected string"))
+	rules = ruler.RecordingRules("tenant-override")
+	assert.Equal(t, overriddenRecordingRules, rules)
+}
+
+func newOverrides(t *testing.T) *validation.Overrides {
+	t.Helper()
+	return validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+		defaults.RecordingRules = defaultRecordingRulesProto
+		l := validation.MockDefaultLimits()
+		l.RecordingRules = overriddenRecordingRulesProto
+		tenantLimits["tenant-override"] = l
+	})
 }
