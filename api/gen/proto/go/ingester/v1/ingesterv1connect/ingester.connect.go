@@ -8,9 +8,9 @@ import (
 	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
-	v1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
-	v11 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
-	v12 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	v12 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
+	v1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
+	v11 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	http "net/http"
 	strings "strings"
 )
@@ -73,42 +73,24 @@ const (
 	IngesterServiceGetBlockStatsProcedure = "/ingester.v1.IngesterService/GetBlockStats"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	ingesterServiceServiceDescriptor                        = v1.File_ingester_v1_ingester_proto.Services().ByName("IngesterService")
-	ingesterServicePushMethodDescriptor                     = ingesterServiceServiceDescriptor.Methods().ByName("Push")
-	ingesterServiceLabelValuesMethodDescriptor              = ingesterServiceServiceDescriptor.Methods().ByName("LabelValues")
-	ingesterServiceLabelNamesMethodDescriptor               = ingesterServiceServiceDescriptor.Methods().ByName("LabelNames")
-	ingesterServiceProfileTypesMethodDescriptor             = ingesterServiceServiceDescriptor.Methods().ByName("ProfileTypes")
-	ingesterServiceSeriesMethodDescriptor                   = ingesterServiceServiceDescriptor.Methods().ByName("Series")
-	ingesterServiceFlushMethodDescriptor                    = ingesterServiceServiceDescriptor.Methods().ByName("Flush")
-	ingesterServiceMergeProfilesStacktracesMethodDescriptor = ingesterServiceServiceDescriptor.Methods().ByName("MergeProfilesStacktraces")
-	ingesterServiceMergeProfilesLabelsMethodDescriptor      = ingesterServiceServiceDescriptor.Methods().ByName("MergeProfilesLabels")
-	ingesterServiceMergeProfilesPprofMethodDescriptor       = ingesterServiceServiceDescriptor.Methods().ByName("MergeProfilesPprof")
-	ingesterServiceMergeSpanProfileMethodDescriptor         = ingesterServiceServiceDescriptor.Methods().ByName("MergeSpanProfile")
-	ingesterServiceBlockMetadataMethodDescriptor            = ingesterServiceServiceDescriptor.Methods().ByName("BlockMetadata")
-	ingesterServiceGetProfileStatsMethodDescriptor          = ingesterServiceServiceDescriptor.Methods().ByName("GetProfileStats")
-	ingesterServiceGetBlockStatsMethodDescriptor            = ingesterServiceServiceDescriptor.Methods().ByName("GetBlockStats")
-)
-
 // IngesterServiceClient is a client for the ingester.v1.IngesterService service.
 type IngesterServiceClient interface {
-	Push(context.Context, *connect.Request[v11.PushRequest]) (*connect.Response[v11.PushResponse], error)
-	LabelValues(context.Context, *connect.Request[v12.LabelValuesRequest]) (*connect.Response[v12.LabelValuesResponse], error)
-	LabelNames(context.Context, *connect.Request[v12.LabelNamesRequest]) (*connect.Response[v12.LabelNamesResponse], error)
+	Push(context.Context, *connect.Request[v1.PushRequest]) (*connect.Response[v1.PushResponse], error)
+	LabelValues(context.Context, *connect.Request[v11.LabelValuesRequest]) (*connect.Response[v11.LabelValuesResponse], error)
+	LabelNames(context.Context, *connect.Request[v11.LabelNamesRequest]) (*connect.Response[v11.LabelNamesResponse], error)
 	// Deprecated: ProfileType call is deprecated in the store components
 	// TODO: Remove this call in release v1.4
-	ProfileTypes(context.Context, *connect.Request[v1.ProfileTypesRequest]) (*connect.Response[v1.ProfileTypesResponse], error)
-	Series(context.Context, *connect.Request[v1.SeriesRequest]) (*connect.Response[v1.SeriesResponse], error)
-	Flush(context.Context, *connect.Request[v1.FlushRequest]) (*connect.Response[v1.FlushResponse], error)
-	MergeProfilesStacktraces(context.Context) *connect.BidiStreamForClient[v1.MergeProfilesStacktracesRequest, v1.MergeProfilesStacktracesResponse]
-	MergeProfilesLabels(context.Context) *connect.BidiStreamForClient[v1.MergeProfilesLabelsRequest, v1.MergeProfilesLabelsResponse]
-	MergeProfilesPprof(context.Context) *connect.BidiStreamForClient[v1.MergeProfilesPprofRequest, v1.MergeProfilesPprofResponse]
-	MergeSpanProfile(context.Context) *connect.BidiStreamForClient[v1.MergeSpanProfileRequest, v1.MergeSpanProfileResponse]
-	BlockMetadata(context.Context, *connect.Request[v1.BlockMetadataRequest]) (*connect.Response[v1.BlockMetadataResponse], error)
+	ProfileTypes(context.Context, *connect.Request[v12.ProfileTypesRequest]) (*connect.Response[v12.ProfileTypesResponse], error)
+	Series(context.Context, *connect.Request[v12.SeriesRequest]) (*connect.Response[v12.SeriesResponse], error)
+	Flush(context.Context, *connect.Request[v12.FlushRequest]) (*connect.Response[v12.FlushResponse], error)
+	MergeProfilesStacktraces(context.Context) *connect.BidiStreamForClient[v12.MergeProfilesStacktracesRequest, v12.MergeProfilesStacktracesResponse]
+	MergeProfilesLabels(context.Context) *connect.BidiStreamForClient[v12.MergeProfilesLabelsRequest, v12.MergeProfilesLabelsResponse]
+	MergeProfilesPprof(context.Context) *connect.BidiStreamForClient[v12.MergeProfilesPprofRequest, v12.MergeProfilesPprofResponse]
+	MergeSpanProfile(context.Context) *connect.BidiStreamForClient[v12.MergeSpanProfileRequest, v12.MergeSpanProfileResponse]
+	BlockMetadata(context.Context, *connect.Request[v12.BlockMetadataRequest]) (*connect.Response[v12.BlockMetadataResponse], error)
 	// GetProfileStats returns profile stats for the current tenant.
-	GetProfileStats(context.Context, *connect.Request[v12.GetProfileStatsRequest]) (*connect.Response[v12.GetProfileStatsResponse], error)
-	GetBlockStats(context.Context, *connect.Request[v1.GetBlockStatsRequest]) (*connect.Response[v1.GetBlockStatsResponse], error)
+	GetProfileStats(context.Context, *connect.Request[v11.GetProfileStatsRequest]) (*connect.Response[v11.GetProfileStatsResponse], error)
+	GetBlockStats(context.Context, *connect.Request[v12.GetBlockStatsRequest]) (*connect.Response[v12.GetBlockStatsResponse], error)
 }
 
 // NewIngesterServiceClient constructs a client for the ingester.v1.IngesterService service. By
@@ -120,83 +102,84 @@ type IngesterServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewIngesterServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) IngesterServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	ingesterServiceMethods := v12.File_ingester_v1_ingester_proto.Services().ByName("IngesterService").Methods()
 	return &ingesterServiceClient{
-		push: connect.NewClient[v11.PushRequest, v11.PushResponse](
+		push: connect.NewClient[v1.PushRequest, v1.PushResponse](
 			httpClient,
 			baseURL+IngesterServicePushProcedure,
-			connect.WithSchema(ingesterServicePushMethodDescriptor),
+			connect.WithSchema(ingesterServiceMethods.ByName("Push")),
 			connect.WithClientOptions(opts...),
 		),
-		labelValues: connect.NewClient[v12.LabelValuesRequest, v12.LabelValuesResponse](
+		labelValues: connect.NewClient[v11.LabelValuesRequest, v11.LabelValuesResponse](
 			httpClient,
 			baseURL+IngesterServiceLabelValuesProcedure,
-			connect.WithSchema(ingesterServiceLabelValuesMethodDescriptor),
+			connect.WithSchema(ingesterServiceMethods.ByName("LabelValues")),
 			connect.WithClientOptions(opts...),
 		),
-		labelNames: connect.NewClient[v12.LabelNamesRequest, v12.LabelNamesResponse](
+		labelNames: connect.NewClient[v11.LabelNamesRequest, v11.LabelNamesResponse](
 			httpClient,
 			baseURL+IngesterServiceLabelNamesProcedure,
-			connect.WithSchema(ingesterServiceLabelNamesMethodDescriptor),
+			connect.WithSchema(ingesterServiceMethods.ByName("LabelNames")),
 			connect.WithClientOptions(opts...),
 		),
-		profileTypes: connect.NewClient[v1.ProfileTypesRequest, v1.ProfileTypesResponse](
+		profileTypes: connect.NewClient[v12.ProfileTypesRequest, v12.ProfileTypesResponse](
 			httpClient,
 			baseURL+IngesterServiceProfileTypesProcedure,
-			connect.WithSchema(ingesterServiceProfileTypesMethodDescriptor),
+			connect.WithSchema(ingesterServiceMethods.ByName("ProfileTypes")),
 			connect.WithClientOptions(opts...),
 		),
-		series: connect.NewClient[v1.SeriesRequest, v1.SeriesResponse](
+		series: connect.NewClient[v12.SeriesRequest, v12.SeriesResponse](
 			httpClient,
 			baseURL+IngesterServiceSeriesProcedure,
-			connect.WithSchema(ingesterServiceSeriesMethodDescriptor),
+			connect.WithSchema(ingesterServiceMethods.ByName("Series")),
 			connect.WithClientOptions(opts...),
 		),
-		flush: connect.NewClient[v1.FlushRequest, v1.FlushResponse](
+		flush: connect.NewClient[v12.FlushRequest, v12.FlushResponse](
 			httpClient,
 			baseURL+IngesterServiceFlushProcedure,
-			connect.WithSchema(ingesterServiceFlushMethodDescriptor),
+			connect.WithSchema(ingesterServiceMethods.ByName("Flush")),
 			connect.WithClientOptions(opts...),
 		),
-		mergeProfilesStacktraces: connect.NewClient[v1.MergeProfilesStacktracesRequest, v1.MergeProfilesStacktracesResponse](
+		mergeProfilesStacktraces: connect.NewClient[v12.MergeProfilesStacktracesRequest, v12.MergeProfilesStacktracesResponse](
 			httpClient,
 			baseURL+IngesterServiceMergeProfilesStacktracesProcedure,
-			connect.WithSchema(ingesterServiceMergeProfilesStacktracesMethodDescriptor),
+			connect.WithSchema(ingesterServiceMethods.ByName("MergeProfilesStacktraces")),
 			connect.WithClientOptions(opts...),
 		),
-		mergeProfilesLabels: connect.NewClient[v1.MergeProfilesLabelsRequest, v1.MergeProfilesLabelsResponse](
+		mergeProfilesLabels: connect.NewClient[v12.MergeProfilesLabelsRequest, v12.MergeProfilesLabelsResponse](
 			httpClient,
 			baseURL+IngesterServiceMergeProfilesLabelsProcedure,
-			connect.WithSchema(ingesterServiceMergeProfilesLabelsMethodDescriptor),
+			connect.WithSchema(ingesterServiceMethods.ByName("MergeProfilesLabels")),
 			connect.WithClientOptions(opts...),
 		),
-		mergeProfilesPprof: connect.NewClient[v1.MergeProfilesPprofRequest, v1.MergeProfilesPprofResponse](
+		mergeProfilesPprof: connect.NewClient[v12.MergeProfilesPprofRequest, v12.MergeProfilesPprofResponse](
 			httpClient,
 			baseURL+IngesterServiceMergeProfilesPprofProcedure,
-			connect.WithSchema(ingesterServiceMergeProfilesPprofMethodDescriptor),
+			connect.WithSchema(ingesterServiceMethods.ByName("MergeProfilesPprof")),
 			connect.WithClientOptions(opts...),
 		),
-		mergeSpanProfile: connect.NewClient[v1.MergeSpanProfileRequest, v1.MergeSpanProfileResponse](
+		mergeSpanProfile: connect.NewClient[v12.MergeSpanProfileRequest, v12.MergeSpanProfileResponse](
 			httpClient,
 			baseURL+IngesterServiceMergeSpanProfileProcedure,
-			connect.WithSchema(ingesterServiceMergeSpanProfileMethodDescriptor),
+			connect.WithSchema(ingesterServiceMethods.ByName("MergeSpanProfile")),
 			connect.WithClientOptions(opts...),
 		),
-		blockMetadata: connect.NewClient[v1.BlockMetadataRequest, v1.BlockMetadataResponse](
+		blockMetadata: connect.NewClient[v12.BlockMetadataRequest, v12.BlockMetadataResponse](
 			httpClient,
 			baseURL+IngesterServiceBlockMetadataProcedure,
-			connect.WithSchema(ingesterServiceBlockMetadataMethodDescriptor),
+			connect.WithSchema(ingesterServiceMethods.ByName("BlockMetadata")),
 			connect.WithClientOptions(opts...),
 		),
-		getProfileStats: connect.NewClient[v12.GetProfileStatsRequest, v12.GetProfileStatsResponse](
+		getProfileStats: connect.NewClient[v11.GetProfileStatsRequest, v11.GetProfileStatsResponse](
 			httpClient,
 			baseURL+IngesterServiceGetProfileStatsProcedure,
-			connect.WithSchema(ingesterServiceGetProfileStatsMethodDescriptor),
+			connect.WithSchema(ingesterServiceMethods.ByName("GetProfileStats")),
 			connect.WithClientOptions(opts...),
 		),
-		getBlockStats: connect.NewClient[v1.GetBlockStatsRequest, v1.GetBlockStatsResponse](
+		getBlockStats: connect.NewClient[v12.GetBlockStatsRequest, v12.GetBlockStatsResponse](
 			httpClient,
 			baseURL+IngesterServiceGetBlockStatsProcedure,
-			connect.WithSchema(ingesterServiceGetBlockStatsMethodDescriptor),
+			connect.WithSchema(ingesterServiceMethods.ByName("GetBlockStats")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -204,104 +187,104 @@ func NewIngesterServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 
 // ingesterServiceClient implements IngesterServiceClient.
 type ingesterServiceClient struct {
-	push                     *connect.Client[v11.PushRequest, v11.PushResponse]
-	labelValues              *connect.Client[v12.LabelValuesRequest, v12.LabelValuesResponse]
-	labelNames               *connect.Client[v12.LabelNamesRequest, v12.LabelNamesResponse]
-	profileTypes             *connect.Client[v1.ProfileTypesRequest, v1.ProfileTypesResponse]
-	series                   *connect.Client[v1.SeriesRequest, v1.SeriesResponse]
-	flush                    *connect.Client[v1.FlushRequest, v1.FlushResponse]
-	mergeProfilesStacktraces *connect.Client[v1.MergeProfilesStacktracesRequest, v1.MergeProfilesStacktracesResponse]
-	mergeProfilesLabels      *connect.Client[v1.MergeProfilesLabelsRequest, v1.MergeProfilesLabelsResponse]
-	mergeProfilesPprof       *connect.Client[v1.MergeProfilesPprofRequest, v1.MergeProfilesPprofResponse]
-	mergeSpanProfile         *connect.Client[v1.MergeSpanProfileRequest, v1.MergeSpanProfileResponse]
-	blockMetadata            *connect.Client[v1.BlockMetadataRequest, v1.BlockMetadataResponse]
-	getProfileStats          *connect.Client[v12.GetProfileStatsRequest, v12.GetProfileStatsResponse]
-	getBlockStats            *connect.Client[v1.GetBlockStatsRequest, v1.GetBlockStatsResponse]
+	push                     *connect.Client[v1.PushRequest, v1.PushResponse]
+	labelValues              *connect.Client[v11.LabelValuesRequest, v11.LabelValuesResponse]
+	labelNames               *connect.Client[v11.LabelNamesRequest, v11.LabelNamesResponse]
+	profileTypes             *connect.Client[v12.ProfileTypesRequest, v12.ProfileTypesResponse]
+	series                   *connect.Client[v12.SeriesRequest, v12.SeriesResponse]
+	flush                    *connect.Client[v12.FlushRequest, v12.FlushResponse]
+	mergeProfilesStacktraces *connect.Client[v12.MergeProfilesStacktracesRequest, v12.MergeProfilesStacktracesResponse]
+	mergeProfilesLabels      *connect.Client[v12.MergeProfilesLabelsRequest, v12.MergeProfilesLabelsResponse]
+	mergeProfilesPprof       *connect.Client[v12.MergeProfilesPprofRequest, v12.MergeProfilesPprofResponse]
+	mergeSpanProfile         *connect.Client[v12.MergeSpanProfileRequest, v12.MergeSpanProfileResponse]
+	blockMetadata            *connect.Client[v12.BlockMetadataRequest, v12.BlockMetadataResponse]
+	getProfileStats          *connect.Client[v11.GetProfileStatsRequest, v11.GetProfileStatsResponse]
+	getBlockStats            *connect.Client[v12.GetBlockStatsRequest, v12.GetBlockStatsResponse]
 }
 
 // Push calls ingester.v1.IngesterService.Push.
-func (c *ingesterServiceClient) Push(ctx context.Context, req *connect.Request[v11.PushRequest]) (*connect.Response[v11.PushResponse], error) {
+func (c *ingesterServiceClient) Push(ctx context.Context, req *connect.Request[v1.PushRequest]) (*connect.Response[v1.PushResponse], error) {
 	return c.push.CallUnary(ctx, req)
 }
 
 // LabelValues calls ingester.v1.IngesterService.LabelValues.
-func (c *ingesterServiceClient) LabelValues(ctx context.Context, req *connect.Request[v12.LabelValuesRequest]) (*connect.Response[v12.LabelValuesResponse], error) {
+func (c *ingesterServiceClient) LabelValues(ctx context.Context, req *connect.Request[v11.LabelValuesRequest]) (*connect.Response[v11.LabelValuesResponse], error) {
 	return c.labelValues.CallUnary(ctx, req)
 }
 
 // LabelNames calls ingester.v1.IngesterService.LabelNames.
-func (c *ingesterServiceClient) LabelNames(ctx context.Context, req *connect.Request[v12.LabelNamesRequest]) (*connect.Response[v12.LabelNamesResponse], error) {
+func (c *ingesterServiceClient) LabelNames(ctx context.Context, req *connect.Request[v11.LabelNamesRequest]) (*connect.Response[v11.LabelNamesResponse], error) {
 	return c.labelNames.CallUnary(ctx, req)
 }
 
 // ProfileTypes calls ingester.v1.IngesterService.ProfileTypes.
-func (c *ingesterServiceClient) ProfileTypes(ctx context.Context, req *connect.Request[v1.ProfileTypesRequest]) (*connect.Response[v1.ProfileTypesResponse], error) {
+func (c *ingesterServiceClient) ProfileTypes(ctx context.Context, req *connect.Request[v12.ProfileTypesRequest]) (*connect.Response[v12.ProfileTypesResponse], error) {
 	return c.profileTypes.CallUnary(ctx, req)
 }
 
 // Series calls ingester.v1.IngesterService.Series.
-func (c *ingesterServiceClient) Series(ctx context.Context, req *connect.Request[v1.SeriesRequest]) (*connect.Response[v1.SeriesResponse], error) {
+func (c *ingesterServiceClient) Series(ctx context.Context, req *connect.Request[v12.SeriesRequest]) (*connect.Response[v12.SeriesResponse], error) {
 	return c.series.CallUnary(ctx, req)
 }
 
 // Flush calls ingester.v1.IngesterService.Flush.
-func (c *ingesterServiceClient) Flush(ctx context.Context, req *connect.Request[v1.FlushRequest]) (*connect.Response[v1.FlushResponse], error) {
+func (c *ingesterServiceClient) Flush(ctx context.Context, req *connect.Request[v12.FlushRequest]) (*connect.Response[v12.FlushResponse], error) {
 	return c.flush.CallUnary(ctx, req)
 }
 
 // MergeProfilesStacktraces calls ingester.v1.IngesterService.MergeProfilesStacktraces.
-func (c *ingesterServiceClient) MergeProfilesStacktraces(ctx context.Context) *connect.BidiStreamForClient[v1.MergeProfilesStacktracesRequest, v1.MergeProfilesStacktracesResponse] {
+func (c *ingesterServiceClient) MergeProfilesStacktraces(ctx context.Context) *connect.BidiStreamForClient[v12.MergeProfilesStacktracesRequest, v12.MergeProfilesStacktracesResponse] {
 	return c.mergeProfilesStacktraces.CallBidiStream(ctx)
 }
 
 // MergeProfilesLabels calls ingester.v1.IngesterService.MergeProfilesLabels.
-func (c *ingesterServiceClient) MergeProfilesLabels(ctx context.Context) *connect.BidiStreamForClient[v1.MergeProfilesLabelsRequest, v1.MergeProfilesLabelsResponse] {
+func (c *ingesterServiceClient) MergeProfilesLabels(ctx context.Context) *connect.BidiStreamForClient[v12.MergeProfilesLabelsRequest, v12.MergeProfilesLabelsResponse] {
 	return c.mergeProfilesLabels.CallBidiStream(ctx)
 }
 
 // MergeProfilesPprof calls ingester.v1.IngesterService.MergeProfilesPprof.
-func (c *ingesterServiceClient) MergeProfilesPprof(ctx context.Context) *connect.BidiStreamForClient[v1.MergeProfilesPprofRequest, v1.MergeProfilesPprofResponse] {
+func (c *ingesterServiceClient) MergeProfilesPprof(ctx context.Context) *connect.BidiStreamForClient[v12.MergeProfilesPprofRequest, v12.MergeProfilesPprofResponse] {
 	return c.mergeProfilesPprof.CallBidiStream(ctx)
 }
 
 // MergeSpanProfile calls ingester.v1.IngesterService.MergeSpanProfile.
-func (c *ingesterServiceClient) MergeSpanProfile(ctx context.Context) *connect.BidiStreamForClient[v1.MergeSpanProfileRequest, v1.MergeSpanProfileResponse] {
+func (c *ingesterServiceClient) MergeSpanProfile(ctx context.Context) *connect.BidiStreamForClient[v12.MergeSpanProfileRequest, v12.MergeSpanProfileResponse] {
 	return c.mergeSpanProfile.CallBidiStream(ctx)
 }
 
 // BlockMetadata calls ingester.v1.IngesterService.BlockMetadata.
-func (c *ingesterServiceClient) BlockMetadata(ctx context.Context, req *connect.Request[v1.BlockMetadataRequest]) (*connect.Response[v1.BlockMetadataResponse], error) {
+func (c *ingesterServiceClient) BlockMetadata(ctx context.Context, req *connect.Request[v12.BlockMetadataRequest]) (*connect.Response[v12.BlockMetadataResponse], error) {
 	return c.blockMetadata.CallUnary(ctx, req)
 }
 
 // GetProfileStats calls ingester.v1.IngesterService.GetProfileStats.
-func (c *ingesterServiceClient) GetProfileStats(ctx context.Context, req *connect.Request[v12.GetProfileStatsRequest]) (*connect.Response[v12.GetProfileStatsResponse], error) {
+func (c *ingesterServiceClient) GetProfileStats(ctx context.Context, req *connect.Request[v11.GetProfileStatsRequest]) (*connect.Response[v11.GetProfileStatsResponse], error) {
 	return c.getProfileStats.CallUnary(ctx, req)
 }
 
 // GetBlockStats calls ingester.v1.IngesterService.GetBlockStats.
-func (c *ingesterServiceClient) GetBlockStats(ctx context.Context, req *connect.Request[v1.GetBlockStatsRequest]) (*connect.Response[v1.GetBlockStatsResponse], error) {
+func (c *ingesterServiceClient) GetBlockStats(ctx context.Context, req *connect.Request[v12.GetBlockStatsRequest]) (*connect.Response[v12.GetBlockStatsResponse], error) {
 	return c.getBlockStats.CallUnary(ctx, req)
 }
 
 // IngesterServiceHandler is an implementation of the ingester.v1.IngesterService service.
 type IngesterServiceHandler interface {
-	Push(context.Context, *connect.Request[v11.PushRequest]) (*connect.Response[v11.PushResponse], error)
-	LabelValues(context.Context, *connect.Request[v12.LabelValuesRequest]) (*connect.Response[v12.LabelValuesResponse], error)
-	LabelNames(context.Context, *connect.Request[v12.LabelNamesRequest]) (*connect.Response[v12.LabelNamesResponse], error)
+	Push(context.Context, *connect.Request[v1.PushRequest]) (*connect.Response[v1.PushResponse], error)
+	LabelValues(context.Context, *connect.Request[v11.LabelValuesRequest]) (*connect.Response[v11.LabelValuesResponse], error)
+	LabelNames(context.Context, *connect.Request[v11.LabelNamesRequest]) (*connect.Response[v11.LabelNamesResponse], error)
 	// Deprecated: ProfileType call is deprecated in the store components
 	// TODO: Remove this call in release v1.4
-	ProfileTypes(context.Context, *connect.Request[v1.ProfileTypesRequest]) (*connect.Response[v1.ProfileTypesResponse], error)
-	Series(context.Context, *connect.Request[v1.SeriesRequest]) (*connect.Response[v1.SeriesResponse], error)
-	Flush(context.Context, *connect.Request[v1.FlushRequest]) (*connect.Response[v1.FlushResponse], error)
-	MergeProfilesStacktraces(context.Context, *connect.BidiStream[v1.MergeProfilesStacktracesRequest, v1.MergeProfilesStacktracesResponse]) error
-	MergeProfilesLabels(context.Context, *connect.BidiStream[v1.MergeProfilesLabelsRequest, v1.MergeProfilesLabelsResponse]) error
-	MergeProfilesPprof(context.Context, *connect.BidiStream[v1.MergeProfilesPprofRequest, v1.MergeProfilesPprofResponse]) error
-	MergeSpanProfile(context.Context, *connect.BidiStream[v1.MergeSpanProfileRequest, v1.MergeSpanProfileResponse]) error
-	BlockMetadata(context.Context, *connect.Request[v1.BlockMetadataRequest]) (*connect.Response[v1.BlockMetadataResponse], error)
+	ProfileTypes(context.Context, *connect.Request[v12.ProfileTypesRequest]) (*connect.Response[v12.ProfileTypesResponse], error)
+	Series(context.Context, *connect.Request[v12.SeriesRequest]) (*connect.Response[v12.SeriesResponse], error)
+	Flush(context.Context, *connect.Request[v12.FlushRequest]) (*connect.Response[v12.FlushResponse], error)
+	MergeProfilesStacktraces(context.Context, *connect.BidiStream[v12.MergeProfilesStacktracesRequest, v12.MergeProfilesStacktracesResponse]) error
+	MergeProfilesLabels(context.Context, *connect.BidiStream[v12.MergeProfilesLabelsRequest, v12.MergeProfilesLabelsResponse]) error
+	MergeProfilesPprof(context.Context, *connect.BidiStream[v12.MergeProfilesPprofRequest, v12.MergeProfilesPprofResponse]) error
+	MergeSpanProfile(context.Context, *connect.BidiStream[v12.MergeSpanProfileRequest, v12.MergeSpanProfileResponse]) error
+	BlockMetadata(context.Context, *connect.Request[v12.BlockMetadataRequest]) (*connect.Response[v12.BlockMetadataResponse], error)
 	// GetProfileStats returns profile stats for the current tenant.
-	GetProfileStats(context.Context, *connect.Request[v12.GetProfileStatsRequest]) (*connect.Response[v12.GetProfileStatsResponse], error)
-	GetBlockStats(context.Context, *connect.Request[v1.GetBlockStatsRequest]) (*connect.Response[v1.GetBlockStatsResponse], error)
+	GetProfileStats(context.Context, *connect.Request[v11.GetProfileStatsRequest]) (*connect.Response[v11.GetProfileStatsResponse], error)
+	GetBlockStats(context.Context, *connect.Request[v12.GetBlockStatsRequest]) (*connect.Response[v12.GetBlockStatsResponse], error)
 }
 
 // NewIngesterServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -310,82 +293,83 @@ type IngesterServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewIngesterServiceHandler(svc IngesterServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	ingesterServiceMethods := v12.File_ingester_v1_ingester_proto.Services().ByName("IngesterService").Methods()
 	ingesterServicePushHandler := connect.NewUnaryHandler(
 		IngesterServicePushProcedure,
 		svc.Push,
-		connect.WithSchema(ingesterServicePushMethodDescriptor),
+		connect.WithSchema(ingesterServiceMethods.ByName("Push")),
 		connect.WithHandlerOptions(opts...),
 	)
 	ingesterServiceLabelValuesHandler := connect.NewUnaryHandler(
 		IngesterServiceLabelValuesProcedure,
 		svc.LabelValues,
-		connect.WithSchema(ingesterServiceLabelValuesMethodDescriptor),
+		connect.WithSchema(ingesterServiceMethods.ByName("LabelValues")),
 		connect.WithHandlerOptions(opts...),
 	)
 	ingesterServiceLabelNamesHandler := connect.NewUnaryHandler(
 		IngesterServiceLabelNamesProcedure,
 		svc.LabelNames,
-		connect.WithSchema(ingesterServiceLabelNamesMethodDescriptor),
+		connect.WithSchema(ingesterServiceMethods.ByName("LabelNames")),
 		connect.WithHandlerOptions(opts...),
 	)
 	ingesterServiceProfileTypesHandler := connect.NewUnaryHandler(
 		IngesterServiceProfileTypesProcedure,
 		svc.ProfileTypes,
-		connect.WithSchema(ingesterServiceProfileTypesMethodDescriptor),
+		connect.WithSchema(ingesterServiceMethods.ByName("ProfileTypes")),
 		connect.WithHandlerOptions(opts...),
 	)
 	ingesterServiceSeriesHandler := connect.NewUnaryHandler(
 		IngesterServiceSeriesProcedure,
 		svc.Series,
-		connect.WithSchema(ingesterServiceSeriesMethodDescriptor),
+		connect.WithSchema(ingesterServiceMethods.ByName("Series")),
 		connect.WithHandlerOptions(opts...),
 	)
 	ingesterServiceFlushHandler := connect.NewUnaryHandler(
 		IngesterServiceFlushProcedure,
 		svc.Flush,
-		connect.WithSchema(ingesterServiceFlushMethodDescriptor),
+		connect.WithSchema(ingesterServiceMethods.ByName("Flush")),
 		connect.WithHandlerOptions(opts...),
 	)
 	ingesterServiceMergeProfilesStacktracesHandler := connect.NewBidiStreamHandler(
 		IngesterServiceMergeProfilesStacktracesProcedure,
 		svc.MergeProfilesStacktraces,
-		connect.WithSchema(ingesterServiceMergeProfilesStacktracesMethodDescriptor),
+		connect.WithSchema(ingesterServiceMethods.ByName("MergeProfilesStacktraces")),
 		connect.WithHandlerOptions(opts...),
 	)
 	ingesterServiceMergeProfilesLabelsHandler := connect.NewBidiStreamHandler(
 		IngesterServiceMergeProfilesLabelsProcedure,
 		svc.MergeProfilesLabels,
-		connect.WithSchema(ingesterServiceMergeProfilesLabelsMethodDescriptor),
+		connect.WithSchema(ingesterServiceMethods.ByName("MergeProfilesLabels")),
 		connect.WithHandlerOptions(opts...),
 	)
 	ingesterServiceMergeProfilesPprofHandler := connect.NewBidiStreamHandler(
 		IngesterServiceMergeProfilesPprofProcedure,
 		svc.MergeProfilesPprof,
-		connect.WithSchema(ingesterServiceMergeProfilesPprofMethodDescriptor),
+		connect.WithSchema(ingesterServiceMethods.ByName("MergeProfilesPprof")),
 		connect.WithHandlerOptions(opts...),
 	)
 	ingesterServiceMergeSpanProfileHandler := connect.NewBidiStreamHandler(
 		IngesterServiceMergeSpanProfileProcedure,
 		svc.MergeSpanProfile,
-		connect.WithSchema(ingesterServiceMergeSpanProfileMethodDescriptor),
+		connect.WithSchema(ingesterServiceMethods.ByName("MergeSpanProfile")),
 		connect.WithHandlerOptions(opts...),
 	)
 	ingesterServiceBlockMetadataHandler := connect.NewUnaryHandler(
 		IngesterServiceBlockMetadataProcedure,
 		svc.BlockMetadata,
-		connect.WithSchema(ingesterServiceBlockMetadataMethodDescriptor),
+		connect.WithSchema(ingesterServiceMethods.ByName("BlockMetadata")),
 		connect.WithHandlerOptions(opts...),
 	)
 	ingesterServiceGetProfileStatsHandler := connect.NewUnaryHandler(
 		IngesterServiceGetProfileStatsProcedure,
 		svc.GetProfileStats,
-		connect.WithSchema(ingesterServiceGetProfileStatsMethodDescriptor),
+		connect.WithSchema(ingesterServiceMethods.ByName("GetProfileStats")),
 		connect.WithHandlerOptions(opts...),
 	)
 	ingesterServiceGetBlockStatsHandler := connect.NewUnaryHandler(
 		IngesterServiceGetBlockStatsProcedure,
 		svc.GetBlockStats,
-		connect.WithSchema(ingesterServiceGetBlockStatsMethodDescriptor),
+		connect.WithSchema(ingesterServiceMethods.ByName("GetBlockStats")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/ingester.v1.IngesterService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -425,54 +409,54 @@ func NewIngesterServiceHandler(svc IngesterServiceHandler, opts ...connect.Handl
 // UnimplementedIngesterServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedIngesterServiceHandler struct{}
 
-func (UnimplementedIngesterServiceHandler) Push(context.Context, *connect.Request[v11.PushRequest]) (*connect.Response[v11.PushResponse], error) {
+func (UnimplementedIngesterServiceHandler) Push(context.Context, *connect.Request[v1.PushRequest]) (*connect.Response[v1.PushResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ingester.v1.IngesterService.Push is not implemented"))
 }
 
-func (UnimplementedIngesterServiceHandler) LabelValues(context.Context, *connect.Request[v12.LabelValuesRequest]) (*connect.Response[v12.LabelValuesResponse], error) {
+func (UnimplementedIngesterServiceHandler) LabelValues(context.Context, *connect.Request[v11.LabelValuesRequest]) (*connect.Response[v11.LabelValuesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ingester.v1.IngesterService.LabelValues is not implemented"))
 }
 
-func (UnimplementedIngesterServiceHandler) LabelNames(context.Context, *connect.Request[v12.LabelNamesRequest]) (*connect.Response[v12.LabelNamesResponse], error) {
+func (UnimplementedIngesterServiceHandler) LabelNames(context.Context, *connect.Request[v11.LabelNamesRequest]) (*connect.Response[v11.LabelNamesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ingester.v1.IngesterService.LabelNames is not implemented"))
 }
 
-func (UnimplementedIngesterServiceHandler) ProfileTypes(context.Context, *connect.Request[v1.ProfileTypesRequest]) (*connect.Response[v1.ProfileTypesResponse], error) {
+func (UnimplementedIngesterServiceHandler) ProfileTypes(context.Context, *connect.Request[v12.ProfileTypesRequest]) (*connect.Response[v12.ProfileTypesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ingester.v1.IngesterService.ProfileTypes is not implemented"))
 }
 
-func (UnimplementedIngesterServiceHandler) Series(context.Context, *connect.Request[v1.SeriesRequest]) (*connect.Response[v1.SeriesResponse], error) {
+func (UnimplementedIngesterServiceHandler) Series(context.Context, *connect.Request[v12.SeriesRequest]) (*connect.Response[v12.SeriesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ingester.v1.IngesterService.Series is not implemented"))
 }
 
-func (UnimplementedIngesterServiceHandler) Flush(context.Context, *connect.Request[v1.FlushRequest]) (*connect.Response[v1.FlushResponse], error) {
+func (UnimplementedIngesterServiceHandler) Flush(context.Context, *connect.Request[v12.FlushRequest]) (*connect.Response[v12.FlushResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ingester.v1.IngesterService.Flush is not implemented"))
 }
 
-func (UnimplementedIngesterServiceHandler) MergeProfilesStacktraces(context.Context, *connect.BidiStream[v1.MergeProfilesStacktracesRequest, v1.MergeProfilesStacktracesResponse]) error {
+func (UnimplementedIngesterServiceHandler) MergeProfilesStacktraces(context.Context, *connect.BidiStream[v12.MergeProfilesStacktracesRequest, v12.MergeProfilesStacktracesResponse]) error {
 	return connect.NewError(connect.CodeUnimplemented, errors.New("ingester.v1.IngesterService.MergeProfilesStacktraces is not implemented"))
 }
 
-func (UnimplementedIngesterServiceHandler) MergeProfilesLabels(context.Context, *connect.BidiStream[v1.MergeProfilesLabelsRequest, v1.MergeProfilesLabelsResponse]) error {
+func (UnimplementedIngesterServiceHandler) MergeProfilesLabels(context.Context, *connect.BidiStream[v12.MergeProfilesLabelsRequest, v12.MergeProfilesLabelsResponse]) error {
 	return connect.NewError(connect.CodeUnimplemented, errors.New("ingester.v1.IngesterService.MergeProfilesLabels is not implemented"))
 }
 
-func (UnimplementedIngesterServiceHandler) MergeProfilesPprof(context.Context, *connect.BidiStream[v1.MergeProfilesPprofRequest, v1.MergeProfilesPprofResponse]) error {
+func (UnimplementedIngesterServiceHandler) MergeProfilesPprof(context.Context, *connect.BidiStream[v12.MergeProfilesPprofRequest, v12.MergeProfilesPprofResponse]) error {
 	return connect.NewError(connect.CodeUnimplemented, errors.New("ingester.v1.IngesterService.MergeProfilesPprof is not implemented"))
 }
 
-func (UnimplementedIngesterServiceHandler) MergeSpanProfile(context.Context, *connect.BidiStream[v1.MergeSpanProfileRequest, v1.MergeSpanProfileResponse]) error {
+func (UnimplementedIngesterServiceHandler) MergeSpanProfile(context.Context, *connect.BidiStream[v12.MergeSpanProfileRequest, v12.MergeSpanProfileResponse]) error {
 	return connect.NewError(connect.CodeUnimplemented, errors.New("ingester.v1.IngesterService.MergeSpanProfile is not implemented"))
 }
 
-func (UnimplementedIngesterServiceHandler) BlockMetadata(context.Context, *connect.Request[v1.BlockMetadataRequest]) (*connect.Response[v1.BlockMetadataResponse], error) {
+func (UnimplementedIngesterServiceHandler) BlockMetadata(context.Context, *connect.Request[v12.BlockMetadataRequest]) (*connect.Response[v12.BlockMetadataResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ingester.v1.IngesterService.BlockMetadata is not implemented"))
 }
 
-func (UnimplementedIngesterServiceHandler) GetProfileStats(context.Context, *connect.Request[v12.GetProfileStatsRequest]) (*connect.Response[v12.GetProfileStatsResponse], error) {
+func (UnimplementedIngesterServiceHandler) GetProfileStats(context.Context, *connect.Request[v11.GetProfileStatsRequest]) (*connect.Response[v11.GetProfileStatsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ingester.v1.IngesterService.GetProfileStats is not implemented"))
 }
 
-func (UnimplementedIngesterServiceHandler) GetBlockStats(context.Context, *connect.Request[v1.GetBlockStatsRequest]) (*connect.Response[v1.GetBlockStatsResponse], error) {
+func (UnimplementedIngesterServiceHandler) GetBlockStats(context.Context, *connect.Request[v12.GetBlockStatsRequest]) (*connect.Response[v12.GetBlockStatsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ingester.v1.IngesterService.GetBlockStats is not implemented"))
 }

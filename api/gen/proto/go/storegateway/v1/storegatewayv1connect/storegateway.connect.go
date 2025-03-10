@@ -8,9 +8,9 @@ import (
 	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
-	v11 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
-	v1 "github.com/grafana/pyroscope/api/gen/proto/go/storegateway/v1"
-	v12 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	v1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
+	v12 "github.com/grafana/pyroscope/api/gen/proto/go/storegateway/v1"
+	v11 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	http "net/http"
 	strings "strings"
 )
@@ -67,35 +67,20 @@ const (
 	StoreGatewayServiceGetBlockStatsProcedure = "/storegateway.v1.StoreGatewayService/GetBlockStats"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	storeGatewayServiceServiceDescriptor                        = v1.File_storegateway_v1_storegateway_proto.Services().ByName("StoreGatewayService")
-	storeGatewayServiceMergeProfilesStacktracesMethodDescriptor = storeGatewayServiceServiceDescriptor.Methods().ByName("MergeProfilesStacktraces")
-	storeGatewayServiceMergeProfilesLabelsMethodDescriptor      = storeGatewayServiceServiceDescriptor.Methods().ByName("MergeProfilesLabels")
-	storeGatewayServiceMergeProfilesPprofMethodDescriptor       = storeGatewayServiceServiceDescriptor.Methods().ByName("MergeProfilesPprof")
-	storeGatewayServiceMergeSpanProfileMethodDescriptor         = storeGatewayServiceServiceDescriptor.Methods().ByName("MergeSpanProfile")
-	storeGatewayServiceProfileTypesMethodDescriptor             = storeGatewayServiceServiceDescriptor.Methods().ByName("ProfileTypes")
-	storeGatewayServiceLabelValuesMethodDescriptor              = storeGatewayServiceServiceDescriptor.Methods().ByName("LabelValues")
-	storeGatewayServiceLabelNamesMethodDescriptor               = storeGatewayServiceServiceDescriptor.Methods().ByName("LabelNames")
-	storeGatewayServiceSeriesMethodDescriptor                   = storeGatewayServiceServiceDescriptor.Methods().ByName("Series")
-	storeGatewayServiceBlockMetadataMethodDescriptor            = storeGatewayServiceServiceDescriptor.Methods().ByName("BlockMetadata")
-	storeGatewayServiceGetBlockStatsMethodDescriptor            = storeGatewayServiceServiceDescriptor.Methods().ByName("GetBlockStats")
-)
-
 // StoreGatewayServiceClient is a client for the storegateway.v1.StoreGatewayService service.
 type StoreGatewayServiceClient interface {
-	MergeProfilesStacktraces(context.Context) *connect.BidiStreamForClient[v11.MergeProfilesStacktracesRequest, v11.MergeProfilesStacktracesResponse]
-	MergeProfilesLabels(context.Context) *connect.BidiStreamForClient[v11.MergeProfilesLabelsRequest, v11.MergeProfilesLabelsResponse]
-	MergeProfilesPprof(context.Context) *connect.BidiStreamForClient[v11.MergeProfilesPprofRequest, v11.MergeProfilesPprofResponse]
-	MergeSpanProfile(context.Context) *connect.BidiStreamForClient[v11.MergeSpanProfileRequest, v11.MergeSpanProfileResponse]
+	MergeProfilesStacktraces(context.Context) *connect.BidiStreamForClient[v1.MergeProfilesStacktracesRequest, v1.MergeProfilesStacktracesResponse]
+	MergeProfilesLabels(context.Context) *connect.BidiStreamForClient[v1.MergeProfilesLabelsRequest, v1.MergeProfilesLabelsResponse]
+	MergeProfilesPprof(context.Context) *connect.BidiStreamForClient[v1.MergeProfilesPprofRequest, v1.MergeProfilesPprofResponse]
+	MergeSpanProfile(context.Context) *connect.BidiStreamForClient[v1.MergeSpanProfileRequest, v1.MergeSpanProfileResponse]
 	// Deprecated: ProfileType call is deprecated in the store components
 	// TODO: Remove this call in release v1.4
-	ProfileTypes(context.Context, *connect.Request[v11.ProfileTypesRequest]) (*connect.Response[v11.ProfileTypesResponse], error)
-	LabelValues(context.Context, *connect.Request[v12.LabelValuesRequest]) (*connect.Response[v12.LabelValuesResponse], error)
-	LabelNames(context.Context, *connect.Request[v12.LabelNamesRequest]) (*connect.Response[v12.LabelNamesResponse], error)
-	Series(context.Context, *connect.Request[v11.SeriesRequest]) (*connect.Response[v11.SeriesResponse], error)
-	BlockMetadata(context.Context, *connect.Request[v11.BlockMetadataRequest]) (*connect.Response[v11.BlockMetadataResponse], error)
-	GetBlockStats(context.Context, *connect.Request[v11.GetBlockStatsRequest]) (*connect.Response[v11.GetBlockStatsResponse], error)
+	ProfileTypes(context.Context, *connect.Request[v1.ProfileTypesRequest]) (*connect.Response[v1.ProfileTypesResponse], error)
+	LabelValues(context.Context, *connect.Request[v11.LabelValuesRequest]) (*connect.Response[v11.LabelValuesResponse], error)
+	LabelNames(context.Context, *connect.Request[v11.LabelNamesRequest]) (*connect.Response[v11.LabelNamesResponse], error)
+	Series(context.Context, *connect.Request[v1.SeriesRequest]) (*connect.Response[v1.SeriesResponse], error)
+	BlockMetadata(context.Context, *connect.Request[v1.BlockMetadataRequest]) (*connect.Response[v1.BlockMetadataResponse], error)
+	GetBlockStats(context.Context, *connect.Request[v1.GetBlockStatsRequest]) (*connect.Response[v1.GetBlockStatsResponse], error)
 }
 
 // NewStoreGatewayServiceClient constructs a client for the storegateway.v1.StoreGatewayService
@@ -107,65 +92,66 @@ type StoreGatewayServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewStoreGatewayServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) StoreGatewayServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	storeGatewayServiceMethods := v12.File_storegateway_v1_storegateway_proto.Services().ByName("StoreGatewayService").Methods()
 	return &storeGatewayServiceClient{
-		mergeProfilesStacktraces: connect.NewClient[v11.MergeProfilesStacktracesRequest, v11.MergeProfilesStacktracesResponse](
+		mergeProfilesStacktraces: connect.NewClient[v1.MergeProfilesStacktracesRequest, v1.MergeProfilesStacktracesResponse](
 			httpClient,
 			baseURL+StoreGatewayServiceMergeProfilesStacktracesProcedure,
-			connect.WithSchema(storeGatewayServiceMergeProfilesStacktracesMethodDescriptor),
+			connect.WithSchema(storeGatewayServiceMethods.ByName("MergeProfilesStacktraces")),
 			connect.WithClientOptions(opts...),
 		),
-		mergeProfilesLabels: connect.NewClient[v11.MergeProfilesLabelsRequest, v11.MergeProfilesLabelsResponse](
+		mergeProfilesLabels: connect.NewClient[v1.MergeProfilesLabelsRequest, v1.MergeProfilesLabelsResponse](
 			httpClient,
 			baseURL+StoreGatewayServiceMergeProfilesLabelsProcedure,
-			connect.WithSchema(storeGatewayServiceMergeProfilesLabelsMethodDescriptor),
+			connect.WithSchema(storeGatewayServiceMethods.ByName("MergeProfilesLabels")),
 			connect.WithClientOptions(opts...),
 		),
-		mergeProfilesPprof: connect.NewClient[v11.MergeProfilesPprofRequest, v11.MergeProfilesPprofResponse](
+		mergeProfilesPprof: connect.NewClient[v1.MergeProfilesPprofRequest, v1.MergeProfilesPprofResponse](
 			httpClient,
 			baseURL+StoreGatewayServiceMergeProfilesPprofProcedure,
-			connect.WithSchema(storeGatewayServiceMergeProfilesPprofMethodDescriptor),
+			connect.WithSchema(storeGatewayServiceMethods.ByName("MergeProfilesPprof")),
 			connect.WithClientOptions(opts...),
 		),
-		mergeSpanProfile: connect.NewClient[v11.MergeSpanProfileRequest, v11.MergeSpanProfileResponse](
+		mergeSpanProfile: connect.NewClient[v1.MergeSpanProfileRequest, v1.MergeSpanProfileResponse](
 			httpClient,
 			baseURL+StoreGatewayServiceMergeSpanProfileProcedure,
-			connect.WithSchema(storeGatewayServiceMergeSpanProfileMethodDescriptor),
+			connect.WithSchema(storeGatewayServiceMethods.ByName("MergeSpanProfile")),
 			connect.WithClientOptions(opts...),
 		),
-		profileTypes: connect.NewClient[v11.ProfileTypesRequest, v11.ProfileTypesResponse](
+		profileTypes: connect.NewClient[v1.ProfileTypesRequest, v1.ProfileTypesResponse](
 			httpClient,
 			baseURL+StoreGatewayServiceProfileTypesProcedure,
-			connect.WithSchema(storeGatewayServiceProfileTypesMethodDescriptor),
+			connect.WithSchema(storeGatewayServiceMethods.ByName("ProfileTypes")),
 			connect.WithClientOptions(opts...),
 		),
-		labelValues: connect.NewClient[v12.LabelValuesRequest, v12.LabelValuesResponse](
+		labelValues: connect.NewClient[v11.LabelValuesRequest, v11.LabelValuesResponse](
 			httpClient,
 			baseURL+StoreGatewayServiceLabelValuesProcedure,
-			connect.WithSchema(storeGatewayServiceLabelValuesMethodDescriptor),
+			connect.WithSchema(storeGatewayServiceMethods.ByName("LabelValues")),
 			connect.WithClientOptions(opts...),
 		),
-		labelNames: connect.NewClient[v12.LabelNamesRequest, v12.LabelNamesResponse](
+		labelNames: connect.NewClient[v11.LabelNamesRequest, v11.LabelNamesResponse](
 			httpClient,
 			baseURL+StoreGatewayServiceLabelNamesProcedure,
-			connect.WithSchema(storeGatewayServiceLabelNamesMethodDescriptor),
+			connect.WithSchema(storeGatewayServiceMethods.ByName("LabelNames")),
 			connect.WithClientOptions(opts...),
 		),
-		series: connect.NewClient[v11.SeriesRequest, v11.SeriesResponse](
+		series: connect.NewClient[v1.SeriesRequest, v1.SeriesResponse](
 			httpClient,
 			baseURL+StoreGatewayServiceSeriesProcedure,
-			connect.WithSchema(storeGatewayServiceSeriesMethodDescriptor),
+			connect.WithSchema(storeGatewayServiceMethods.ByName("Series")),
 			connect.WithClientOptions(opts...),
 		),
-		blockMetadata: connect.NewClient[v11.BlockMetadataRequest, v11.BlockMetadataResponse](
+		blockMetadata: connect.NewClient[v1.BlockMetadataRequest, v1.BlockMetadataResponse](
 			httpClient,
 			baseURL+StoreGatewayServiceBlockMetadataProcedure,
-			connect.WithSchema(storeGatewayServiceBlockMetadataMethodDescriptor),
+			connect.WithSchema(storeGatewayServiceMethods.ByName("BlockMetadata")),
 			connect.WithClientOptions(opts...),
 		),
-		getBlockStats: connect.NewClient[v11.GetBlockStatsRequest, v11.GetBlockStatsResponse](
+		getBlockStats: connect.NewClient[v1.GetBlockStatsRequest, v1.GetBlockStatsResponse](
 			httpClient,
 			baseURL+StoreGatewayServiceGetBlockStatsProcedure,
-			connect.WithSchema(storeGatewayServiceGetBlockStatsMethodDescriptor),
+			connect.WithSchema(storeGatewayServiceMethods.ByName("GetBlockStats")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -173,83 +159,83 @@ func NewStoreGatewayServiceClient(httpClient connect.HTTPClient, baseURL string,
 
 // storeGatewayServiceClient implements StoreGatewayServiceClient.
 type storeGatewayServiceClient struct {
-	mergeProfilesStacktraces *connect.Client[v11.MergeProfilesStacktracesRequest, v11.MergeProfilesStacktracesResponse]
-	mergeProfilesLabels      *connect.Client[v11.MergeProfilesLabelsRequest, v11.MergeProfilesLabelsResponse]
-	mergeProfilesPprof       *connect.Client[v11.MergeProfilesPprofRequest, v11.MergeProfilesPprofResponse]
-	mergeSpanProfile         *connect.Client[v11.MergeSpanProfileRequest, v11.MergeSpanProfileResponse]
-	profileTypes             *connect.Client[v11.ProfileTypesRequest, v11.ProfileTypesResponse]
-	labelValues              *connect.Client[v12.LabelValuesRequest, v12.LabelValuesResponse]
-	labelNames               *connect.Client[v12.LabelNamesRequest, v12.LabelNamesResponse]
-	series                   *connect.Client[v11.SeriesRequest, v11.SeriesResponse]
-	blockMetadata            *connect.Client[v11.BlockMetadataRequest, v11.BlockMetadataResponse]
-	getBlockStats            *connect.Client[v11.GetBlockStatsRequest, v11.GetBlockStatsResponse]
+	mergeProfilesStacktraces *connect.Client[v1.MergeProfilesStacktracesRequest, v1.MergeProfilesStacktracesResponse]
+	mergeProfilesLabels      *connect.Client[v1.MergeProfilesLabelsRequest, v1.MergeProfilesLabelsResponse]
+	mergeProfilesPprof       *connect.Client[v1.MergeProfilesPprofRequest, v1.MergeProfilesPprofResponse]
+	mergeSpanProfile         *connect.Client[v1.MergeSpanProfileRequest, v1.MergeSpanProfileResponse]
+	profileTypes             *connect.Client[v1.ProfileTypesRequest, v1.ProfileTypesResponse]
+	labelValues              *connect.Client[v11.LabelValuesRequest, v11.LabelValuesResponse]
+	labelNames               *connect.Client[v11.LabelNamesRequest, v11.LabelNamesResponse]
+	series                   *connect.Client[v1.SeriesRequest, v1.SeriesResponse]
+	blockMetadata            *connect.Client[v1.BlockMetadataRequest, v1.BlockMetadataResponse]
+	getBlockStats            *connect.Client[v1.GetBlockStatsRequest, v1.GetBlockStatsResponse]
 }
 
 // MergeProfilesStacktraces calls storegateway.v1.StoreGatewayService.MergeProfilesStacktraces.
-func (c *storeGatewayServiceClient) MergeProfilesStacktraces(ctx context.Context) *connect.BidiStreamForClient[v11.MergeProfilesStacktracesRequest, v11.MergeProfilesStacktracesResponse] {
+func (c *storeGatewayServiceClient) MergeProfilesStacktraces(ctx context.Context) *connect.BidiStreamForClient[v1.MergeProfilesStacktracesRequest, v1.MergeProfilesStacktracesResponse] {
 	return c.mergeProfilesStacktraces.CallBidiStream(ctx)
 }
 
 // MergeProfilesLabels calls storegateway.v1.StoreGatewayService.MergeProfilesLabels.
-func (c *storeGatewayServiceClient) MergeProfilesLabels(ctx context.Context) *connect.BidiStreamForClient[v11.MergeProfilesLabelsRequest, v11.MergeProfilesLabelsResponse] {
+func (c *storeGatewayServiceClient) MergeProfilesLabels(ctx context.Context) *connect.BidiStreamForClient[v1.MergeProfilesLabelsRequest, v1.MergeProfilesLabelsResponse] {
 	return c.mergeProfilesLabels.CallBidiStream(ctx)
 }
 
 // MergeProfilesPprof calls storegateway.v1.StoreGatewayService.MergeProfilesPprof.
-func (c *storeGatewayServiceClient) MergeProfilesPprof(ctx context.Context) *connect.BidiStreamForClient[v11.MergeProfilesPprofRequest, v11.MergeProfilesPprofResponse] {
+func (c *storeGatewayServiceClient) MergeProfilesPprof(ctx context.Context) *connect.BidiStreamForClient[v1.MergeProfilesPprofRequest, v1.MergeProfilesPprofResponse] {
 	return c.mergeProfilesPprof.CallBidiStream(ctx)
 }
 
 // MergeSpanProfile calls storegateway.v1.StoreGatewayService.MergeSpanProfile.
-func (c *storeGatewayServiceClient) MergeSpanProfile(ctx context.Context) *connect.BidiStreamForClient[v11.MergeSpanProfileRequest, v11.MergeSpanProfileResponse] {
+func (c *storeGatewayServiceClient) MergeSpanProfile(ctx context.Context) *connect.BidiStreamForClient[v1.MergeSpanProfileRequest, v1.MergeSpanProfileResponse] {
 	return c.mergeSpanProfile.CallBidiStream(ctx)
 }
 
 // ProfileTypes calls storegateway.v1.StoreGatewayService.ProfileTypes.
-func (c *storeGatewayServiceClient) ProfileTypes(ctx context.Context, req *connect.Request[v11.ProfileTypesRequest]) (*connect.Response[v11.ProfileTypesResponse], error) {
+func (c *storeGatewayServiceClient) ProfileTypes(ctx context.Context, req *connect.Request[v1.ProfileTypesRequest]) (*connect.Response[v1.ProfileTypesResponse], error) {
 	return c.profileTypes.CallUnary(ctx, req)
 }
 
 // LabelValues calls storegateway.v1.StoreGatewayService.LabelValues.
-func (c *storeGatewayServiceClient) LabelValues(ctx context.Context, req *connect.Request[v12.LabelValuesRequest]) (*connect.Response[v12.LabelValuesResponse], error) {
+func (c *storeGatewayServiceClient) LabelValues(ctx context.Context, req *connect.Request[v11.LabelValuesRequest]) (*connect.Response[v11.LabelValuesResponse], error) {
 	return c.labelValues.CallUnary(ctx, req)
 }
 
 // LabelNames calls storegateway.v1.StoreGatewayService.LabelNames.
-func (c *storeGatewayServiceClient) LabelNames(ctx context.Context, req *connect.Request[v12.LabelNamesRequest]) (*connect.Response[v12.LabelNamesResponse], error) {
+func (c *storeGatewayServiceClient) LabelNames(ctx context.Context, req *connect.Request[v11.LabelNamesRequest]) (*connect.Response[v11.LabelNamesResponse], error) {
 	return c.labelNames.CallUnary(ctx, req)
 }
 
 // Series calls storegateway.v1.StoreGatewayService.Series.
-func (c *storeGatewayServiceClient) Series(ctx context.Context, req *connect.Request[v11.SeriesRequest]) (*connect.Response[v11.SeriesResponse], error) {
+func (c *storeGatewayServiceClient) Series(ctx context.Context, req *connect.Request[v1.SeriesRequest]) (*connect.Response[v1.SeriesResponse], error) {
 	return c.series.CallUnary(ctx, req)
 }
 
 // BlockMetadata calls storegateway.v1.StoreGatewayService.BlockMetadata.
-func (c *storeGatewayServiceClient) BlockMetadata(ctx context.Context, req *connect.Request[v11.BlockMetadataRequest]) (*connect.Response[v11.BlockMetadataResponse], error) {
+func (c *storeGatewayServiceClient) BlockMetadata(ctx context.Context, req *connect.Request[v1.BlockMetadataRequest]) (*connect.Response[v1.BlockMetadataResponse], error) {
 	return c.blockMetadata.CallUnary(ctx, req)
 }
 
 // GetBlockStats calls storegateway.v1.StoreGatewayService.GetBlockStats.
-func (c *storeGatewayServiceClient) GetBlockStats(ctx context.Context, req *connect.Request[v11.GetBlockStatsRequest]) (*connect.Response[v11.GetBlockStatsResponse], error) {
+func (c *storeGatewayServiceClient) GetBlockStats(ctx context.Context, req *connect.Request[v1.GetBlockStatsRequest]) (*connect.Response[v1.GetBlockStatsResponse], error) {
 	return c.getBlockStats.CallUnary(ctx, req)
 }
 
 // StoreGatewayServiceHandler is an implementation of the storegateway.v1.StoreGatewayService
 // service.
 type StoreGatewayServiceHandler interface {
-	MergeProfilesStacktraces(context.Context, *connect.BidiStream[v11.MergeProfilesStacktracesRequest, v11.MergeProfilesStacktracesResponse]) error
-	MergeProfilesLabels(context.Context, *connect.BidiStream[v11.MergeProfilesLabelsRequest, v11.MergeProfilesLabelsResponse]) error
-	MergeProfilesPprof(context.Context, *connect.BidiStream[v11.MergeProfilesPprofRequest, v11.MergeProfilesPprofResponse]) error
-	MergeSpanProfile(context.Context, *connect.BidiStream[v11.MergeSpanProfileRequest, v11.MergeSpanProfileResponse]) error
+	MergeProfilesStacktraces(context.Context, *connect.BidiStream[v1.MergeProfilesStacktracesRequest, v1.MergeProfilesStacktracesResponse]) error
+	MergeProfilesLabels(context.Context, *connect.BidiStream[v1.MergeProfilesLabelsRequest, v1.MergeProfilesLabelsResponse]) error
+	MergeProfilesPprof(context.Context, *connect.BidiStream[v1.MergeProfilesPprofRequest, v1.MergeProfilesPprofResponse]) error
+	MergeSpanProfile(context.Context, *connect.BidiStream[v1.MergeSpanProfileRequest, v1.MergeSpanProfileResponse]) error
 	// Deprecated: ProfileType call is deprecated in the store components
 	// TODO: Remove this call in release v1.4
-	ProfileTypes(context.Context, *connect.Request[v11.ProfileTypesRequest]) (*connect.Response[v11.ProfileTypesResponse], error)
-	LabelValues(context.Context, *connect.Request[v12.LabelValuesRequest]) (*connect.Response[v12.LabelValuesResponse], error)
-	LabelNames(context.Context, *connect.Request[v12.LabelNamesRequest]) (*connect.Response[v12.LabelNamesResponse], error)
-	Series(context.Context, *connect.Request[v11.SeriesRequest]) (*connect.Response[v11.SeriesResponse], error)
-	BlockMetadata(context.Context, *connect.Request[v11.BlockMetadataRequest]) (*connect.Response[v11.BlockMetadataResponse], error)
-	GetBlockStats(context.Context, *connect.Request[v11.GetBlockStatsRequest]) (*connect.Response[v11.GetBlockStatsResponse], error)
+	ProfileTypes(context.Context, *connect.Request[v1.ProfileTypesRequest]) (*connect.Response[v1.ProfileTypesResponse], error)
+	LabelValues(context.Context, *connect.Request[v11.LabelValuesRequest]) (*connect.Response[v11.LabelValuesResponse], error)
+	LabelNames(context.Context, *connect.Request[v11.LabelNamesRequest]) (*connect.Response[v11.LabelNamesResponse], error)
+	Series(context.Context, *connect.Request[v1.SeriesRequest]) (*connect.Response[v1.SeriesResponse], error)
+	BlockMetadata(context.Context, *connect.Request[v1.BlockMetadataRequest]) (*connect.Response[v1.BlockMetadataResponse], error)
+	GetBlockStats(context.Context, *connect.Request[v1.GetBlockStatsRequest]) (*connect.Response[v1.GetBlockStatsResponse], error)
 }
 
 // NewStoreGatewayServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -258,64 +244,65 @@ type StoreGatewayServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewStoreGatewayServiceHandler(svc StoreGatewayServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	storeGatewayServiceMethods := v12.File_storegateway_v1_storegateway_proto.Services().ByName("StoreGatewayService").Methods()
 	storeGatewayServiceMergeProfilesStacktracesHandler := connect.NewBidiStreamHandler(
 		StoreGatewayServiceMergeProfilesStacktracesProcedure,
 		svc.MergeProfilesStacktraces,
-		connect.WithSchema(storeGatewayServiceMergeProfilesStacktracesMethodDescriptor),
+		connect.WithSchema(storeGatewayServiceMethods.ByName("MergeProfilesStacktraces")),
 		connect.WithHandlerOptions(opts...),
 	)
 	storeGatewayServiceMergeProfilesLabelsHandler := connect.NewBidiStreamHandler(
 		StoreGatewayServiceMergeProfilesLabelsProcedure,
 		svc.MergeProfilesLabels,
-		connect.WithSchema(storeGatewayServiceMergeProfilesLabelsMethodDescriptor),
+		connect.WithSchema(storeGatewayServiceMethods.ByName("MergeProfilesLabels")),
 		connect.WithHandlerOptions(opts...),
 	)
 	storeGatewayServiceMergeProfilesPprofHandler := connect.NewBidiStreamHandler(
 		StoreGatewayServiceMergeProfilesPprofProcedure,
 		svc.MergeProfilesPprof,
-		connect.WithSchema(storeGatewayServiceMergeProfilesPprofMethodDescriptor),
+		connect.WithSchema(storeGatewayServiceMethods.ByName("MergeProfilesPprof")),
 		connect.WithHandlerOptions(opts...),
 	)
 	storeGatewayServiceMergeSpanProfileHandler := connect.NewBidiStreamHandler(
 		StoreGatewayServiceMergeSpanProfileProcedure,
 		svc.MergeSpanProfile,
-		connect.WithSchema(storeGatewayServiceMergeSpanProfileMethodDescriptor),
+		connect.WithSchema(storeGatewayServiceMethods.ByName("MergeSpanProfile")),
 		connect.WithHandlerOptions(opts...),
 	)
 	storeGatewayServiceProfileTypesHandler := connect.NewUnaryHandler(
 		StoreGatewayServiceProfileTypesProcedure,
 		svc.ProfileTypes,
-		connect.WithSchema(storeGatewayServiceProfileTypesMethodDescriptor),
+		connect.WithSchema(storeGatewayServiceMethods.ByName("ProfileTypes")),
 		connect.WithHandlerOptions(opts...),
 	)
 	storeGatewayServiceLabelValuesHandler := connect.NewUnaryHandler(
 		StoreGatewayServiceLabelValuesProcedure,
 		svc.LabelValues,
-		connect.WithSchema(storeGatewayServiceLabelValuesMethodDescriptor),
+		connect.WithSchema(storeGatewayServiceMethods.ByName("LabelValues")),
 		connect.WithHandlerOptions(opts...),
 	)
 	storeGatewayServiceLabelNamesHandler := connect.NewUnaryHandler(
 		StoreGatewayServiceLabelNamesProcedure,
 		svc.LabelNames,
-		connect.WithSchema(storeGatewayServiceLabelNamesMethodDescriptor),
+		connect.WithSchema(storeGatewayServiceMethods.ByName("LabelNames")),
 		connect.WithHandlerOptions(opts...),
 	)
 	storeGatewayServiceSeriesHandler := connect.NewUnaryHandler(
 		StoreGatewayServiceSeriesProcedure,
 		svc.Series,
-		connect.WithSchema(storeGatewayServiceSeriesMethodDescriptor),
+		connect.WithSchema(storeGatewayServiceMethods.ByName("Series")),
 		connect.WithHandlerOptions(opts...),
 	)
 	storeGatewayServiceBlockMetadataHandler := connect.NewUnaryHandler(
 		StoreGatewayServiceBlockMetadataProcedure,
 		svc.BlockMetadata,
-		connect.WithSchema(storeGatewayServiceBlockMetadataMethodDescriptor),
+		connect.WithSchema(storeGatewayServiceMethods.ByName("BlockMetadata")),
 		connect.WithHandlerOptions(opts...),
 	)
 	storeGatewayServiceGetBlockStatsHandler := connect.NewUnaryHandler(
 		StoreGatewayServiceGetBlockStatsProcedure,
 		svc.GetBlockStats,
-		connect.WithSchema(storeGatewayServiceGetBlockStatsMethodDescriptor),
+		connect.WithSchema(storeGatewayServiceMethods.ByName("GetBlockStats")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/storegateway.v1.StoreGatewayService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -349,42 +336,42 @@ func NewStoreGatewayServiceHandler(svc StoreGatewayServiceHandler, opts ...conne
 // UnimplementedStoreGatewayServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedStoreGatewayServiceHandler struct{}
 
-func (UnimplementedStoreGatewayServiceHandler) MergeProfilesStacktraces(context.Context, *connect.BidiStream[v11.MergeProfilesStacktracesRequest, v11.MergeProfilesStacktracesResponse]) error {
+func (UnimplementedStoreGatewayServiceHandler) MergeProfilesStacktraces(context.Context, *connect.BidiStream[v1.MergeProfilesStacktracesRequest, v1.MergeProfilesStacktracesResponse]) error {
 	return connect.NewError(connect.CodeUnimplemented, errors.New("storegateway.v1.StoreGatewayService.MergeProfilesStacktraces is not implemented"))
 }
 
-func (UnimplementedStoreGatewayServiceHandler) MergeProfilesLabels(context.Context, *connect.BidiStream[v11.MergeProfilesLabelsRequest, v11.MergeProfilesLabelsResponse]) error {
+func (UnimplementedStoreGatewayServiceHandler) MergeProfilesLabels(context.Context, *connect.BidiStream[v1.MergeProfilesLabelsRequest, v1.MergeProfilesLabelsResponse]) error {
 	return connect.NewError(connect.CodeUnimplemented, errors.New("storegateway.v1.StoreGatewayService.MergeProfilesLabels is not implemented"))
 }
 
-func (UnimplementedStoreGatewayServiceHandler) MergeProfilesPprof(context.Context, *connect.BidiStream[v11.MergeProfilesPprofRequest, v11.MergeProfilesPprofResponse]) error {
+func (UnimplementedStoreGatewayServiceHandler) MergeProfilesPprof(context.Context, *connect.BidiStream[v1.MergeProfilesPprofRequest, v1.MergeProfilesPprofResponse]) error {
 	return connect.NewError(connect.CodeUnimplemented, errors.New("storegateway.v1.StoreGatewayService.MergeProfilesPprof is not implemented"))
 }
 
-func (UnimplementedStoreGatewayServiceHandler) MergeSpanProfile(context.Context, *connect.BidiStream[v11.MergeSpanProfileRequest, v11.MergeSpanProfileResponse]) error {
+func (UnimplementedStoreGatewayServiceHandler) MergeSpanProfile(context.Context, *connect.BidiStream[v1.MergeSpanProfileRequest, v1.MergeSpanProfileResponse]) error {
 	return connect.NewError(connect.CodeUnimplemented, errors.New("storegateway.v1.StoreGatewayService.MergeSpanProfile is not implemented"))
 }
 
-func (UnimplementedStoreGatewayServiceHandler) ProfileTypes(context.Context, *connect.Request[v11.ProfileTypesRequest]) (*connect.Response[v11.ProfileTypesResponse], error) {
+func (UnimplementedStoreGatewayServiceHandler) ProfileTypes(context.Context, *connect.Request[v1.ProfileTypesRequest]) (*connect.Response[v1.ProfileTypesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("storegateway.v1.StoreGatewayService.ProfileTypes is not implemented"))
 }
 
-func (UnimplementedStoreGatewayServiceHandler) LabelValues(context.Context, *connect.Request[v12.LabelValuesRequest]) (*connect.Response[v12.LabelValuesResponse], error) {
+func (UnimplementedStoreGatewayServiceHandler) LabelValues(context.Context, *connect.Request[v11.LabelValuesRequest]) (*connect.Response[v11.LabelValuesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("storegateway.v1.StoreGatewayService.LabelValues is not implemented"))
 }
 
-func (UnimplementedStoreGatewayServiceHandler) LabelNames(context.Context, *connect.Request[v12.LabelNamesRequest]) (*connect.Response[v12.LabelNamesResponse], error) {
+func (UnimplementedStoreGatewayServiceHandler) LabelNames(context.Context, *connect.Request[v11.LabelNamesRequest]) (*connect.Response[v11.LabelNamesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("storegateway.v1.StoreGatewayService.LabelNames is not implemented"))
 }
 
-func (UnimplementedStoreGatewayServiceHandler) Series(context.Context, *connect.Request[v11.SeriesRequest]) (*connect.Response[v11.SeriesResponse], error) {
+func (UnimplementedStoreGatewayServiceHandler) Series(context.Context, *connect.Request[v1.SeriesRequest]) (*connect.Response[v1.SeriesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("storegateway.v1.StoreGatewayService.Series is not implemented"))
 }
 
-func (UnimplementedStoreGatewayServiceHandler) BlockMetadata(context.Context, *connect.Request[v11.BlockMetadataRequest]) (*connect.Response[v11.BlockMetadataResponse], error) {
+func (UnimplementedStoreGatewayServiceHandler) BlockMetadata(context.Context, *connect.Request[v1.BlockMetadataRequest]) (*connect.Response[v1.BlockMetadataResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("storegateway.v1.StoreGatewayService.BlockMetadata is not implemented"))
 }
 
-func (UnimplementedStoreGatewayServiceHandler) GetBlockStats(context.Context, *connect.Request[v11.GetBlockStatsRequest]) (*connect.Response[v11.GetBlockStatsResponse], error) {
+func (UnimplementedStoreGatewayServiceHandler) GetBlockStats(context.Context, *connect.Request[v1.GetBlockStatsRequest]) (*connect.Response[v1.GetBlockStatsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("storegateway.v1.StoreGatewayService.GetBlockStats is not implemented"))
 }

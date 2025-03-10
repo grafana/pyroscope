@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"time"
 
+	otelProfile "go.opentelemetry.io/proto/otlp/profiles/v1development"
+
 	googleProfile "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	otelProfile "github.com/grafana/pyroscope/api/otlp/profiles/v1development"
 	pyromodel "github.com/grafana/pyroscope/pkg/model"
 )
 
@@ -202,8 +203,11 @@ func (p *profileBuilder) convertLocationBack(ol *otelProfile.Location) uint64 {
 	if i, ok := p.locationMap[ol]; ok {
 		return i
 	}
-	lmi := ol.MappingIndex_.(*otelProfile.Location_MappingIndex)
-	om := p.src.MappingTable[lmi.MappingIndex]
+	var lmi int32 = 0
+	if ol.MappingIndex != nil {
+		lmi = *ol.MappingIndex
+	}
+	om := p.src.MappingTable[lmi]
 	gl := &googleProfile.Location{
 		MappingId: p.convertMappingBack(om),
 		Address:   ol.Address,
