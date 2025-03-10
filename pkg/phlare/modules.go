@@ -530,12 +530,15 @@ func (f *Phlare) initServer() (services.Service, error) {
 	f.Cfg.Server.ExcludeRequestInLog = true // gRPC-specific.
 	f.Cfg.Server.GRPCMiddleware = append(f.Cfg.Server.GRPCMiddleware, util.RecoveryInterceptorGRPC)
 
-	if f.Cfg.v2Experiment && slices.Contains(f.Cfg.Target, QueryBackend) {
-		concurrencyInterceptor, err := query_backend.CreateConcurrencyInterceptor(f.logger)
-		if err != nil {
-			return nil, err
+	if f.Cfg.v2Experiment {
+		f.Cfg.Server.MetricsNativeHistogramFactor = 1.1 // 10% increase from bucket to bucket
+		if slices.Contains(f.Cfg.Target, QueryBackend) {
+			concurrencyInterceptor, err := query_backend.CreateConcurrencyInterceptor(f.logger)
+			if err != nil {
+				return nil, err
+			}
+			f.Cfg.Server.GRPCMiddleware = append(f.Cfg.Server.GRPCMiddleware, concurrencyInterceptor)
 		}
-		f.Cfg.Server.GRPCMiddleware = append(f.Cfg.Server.GRPCMiddleware, concurrencyInterceptor)
 	}
 
 	f.setupWorkerTimeout()
@@ -544,13 +547,13 @@ func (f *Phlare) initServer() (services.Service, error) {
 		f.Cfg.Server.HTTPServerReadTimeout = 2 * f.Cfg.Server.HTTPServerReadTimeout
 		f.Cfg.Server.HTTPServerWriteTimeout = 2 * f.Cfg.Server.HTTPServerWriteTimeout
 	}
-	serv, err := server.New(f.Cfg.Server)
-	if err != nil {
+
+	var err error
+	if f.Server, err = server.New(f.Cfg.Server); err != nil {
 		return nil, err
 	}
 
-	f.Server = serv
-	if f.Cfg.v2Experiment {
+	if f.healthServer != nil {
 		grpc_health_v1.RegisterHealthServer(f.Server.GRPC, f.healthServer)
 	}
 
