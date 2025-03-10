@@ -10,16 +10,10 @@
       "locations": [
         {
           "address": "0x1e",
-          "lines": [
-            "firefox.so 0x1e[]@:0"
-          ],
           "mapping": "0x1000-0x1000@0x0 firefox.so()"
         },
         {
           "address": "0x2e",
-          "lines": [
-            "firefox.so 0x2e[]@:0"
-          ],
           "mapping": "0x1000-0x1000@0x0 firefox.so()"
         }
       ],
@@ -30,16 +24,10 @@
       "locations": [
         {
           "address": "0x3e",
-          "lines": [
-            "chrome.so 0x3e[]@:0"
-          ],
           "mapping": "0x1000-0x1000@0x0 chrome.so()"
         },
         {
           "address": "0x4e",
-          "lines": [
-            "chrome.so 0x4e[]@:0"
-          ],
           "mapping": "0x1000-0x1000@0x0 chrome.so()"
         }
       ],
