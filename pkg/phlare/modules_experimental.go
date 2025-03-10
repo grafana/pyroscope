@@ -105,11 +105,11 @@ func (f *Phlare) initCompactionWorker() (svc services.Service, err error) {
 	if f.Cfg.CompactionWorker.MetricsExporter.Enabled {
 		if f.recordingRulesClient != nil {
 			ruler, err = metrics.NewCachedRemoteRuler(f.recordingRulesClient, f.logger)
+			if err != nil {
+				return nil, err
+			}
 		} else {
-			ruler, err = metrics.NewStaticRulerFromEnvVars(f.logger)
-		}
-		if err != nil {
-			return nil, err
+			ruler = metrics.NewStaticRulerFromOverrides(f.Overrides)
 		}
 
 		exporter, err = metrics.NewStaticExporterFromEnvVars(f.logger, f.reg)
