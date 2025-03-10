@@ -531,7 +531,7 @@ func (f *Phlare) initServer() (services.Service, error) {
 	f.Cfg.Server.GRPCMiddleware = append(f.Cfg.Server.GRPCMiddleware, util.RecoveryInterceptorGRPC)
 
 	if f.Cfg.v2Experiment {
-		f.Cfg.Server.MetricsNativeHistogramFactor = 1.1
+		f.Cfg.Server.MetricsNativeHistogramFactor = 1.1 // 10% increase from bucket to bucket
 		if slices.Contains(f.Cfg.Target, QueryBackend) {
 			concurrencyInterceptor, err := query_backend.CreateConcurrencyInterceptor(f.logger)
 			if err != nil {
