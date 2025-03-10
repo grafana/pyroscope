@@ -59,7 +59,7 @@ func NewHead(metrics *HeadMetrics) *Head {
 	return h
 }
 
-func (h *Head) Ingest(p *profilev1.Profile, id uuid.UUID, externalLabels []*typesv1.LabelPair) {
+func (h *Head) Ingest(p *profilev1.Profile, id uuid.UUID, externalLabels []*typesv1.LabelPair, annotations []*typesv1.ProfileAnnotation) {
 	if len(p.Sample) == 0 {
 		return
 	}
@@ -83,6 +83,12 @@ func (h *Head) Ingest(p *profilev1.Profile, id uuid.UUID, externalLabels []*type
 		profile.Samples = profile.Samples.Compact(false)
 
 		profile.TotalValue = profile.Samples.Sum()
+
+		annotationBodies := make([]string, 0, len(annotations))
+		for _, annotation := range annotations {
+			annotationBodies = append(annotationBodies, annotation.Body)
+		}
+		profile.Annotations = annotationBodies
 
 		if profile.Samples.Len() == 0 {
 			continue

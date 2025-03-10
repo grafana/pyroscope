@@ -1287,8 +1287,9 @@ func genPoints(count int) []*typesv1.Point {
 	points := make([]*typesv1.Point, 0, count)
 	for i := 1; i < count+1; i++ {
 		points = append(points, &typesv1.Point{
-			Timestamp: int64(model.TimeFromUnixNano(int64(time.Second * time.Duration(i)))),
-			Value:     1,
+			Timestamp:   int64(model.TimeFromUnixNano(int64(time.Second * time.Duration(i)))),
+			Value:       1,
+			Annotations: []*typesv1.ProfileAnnotation{},
 		})
 	}
 	return points
