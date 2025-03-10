@@ -6,7 +6,7 @@ require (
 	connectrpc.com/connect v1.16.2
 	github.com/avvmoto/buf-readerat v0.0.0-20171115124131-a17c8cb89270
 	github.com/cespare/xxhash/v2 v2.3.0
-	github.com/cilium/ebpf v0.16.0
+	github.com/cilium/ebpf v0.17.3
 	github.com/go-kit/log v0.2.1
 	github.com/google/pprof v0.0.0-20240727154555-813a5fbdbec8
 	github.com/grafana/pyroscope/api v0.4.0
@@ -20,7 +20,7 @@ require (
 	github.com/samber/lo v1.38.1
 	github.com/stretchr/testify v1.9.0
 	github.com/ulikunitz/xz v0.5.12
-	golang.org/x/sys v0.28.0
+	golang.org/x/sys v0.30.0
 )
 
 require (

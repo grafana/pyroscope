@@ -45,7 +45,7 @@ type SessionOptions struct {
 	SymbolOptions             symtab.SymbolOptions
 	Metrics                   *metrics.Metrics
 	SampleRate                int
-	VerifierLogSize           int
+	VerifierLogSize           uint32
 	PythonBPFErrorLogEnabled  bool
 	PythonBPFDebugLogEnabled  bool
 	BPFMapsOptions            BPFMapsOptions
@@ -857,9 +857,9 @@ func (s *session) logVerifierError(err error) {
 func (s *session) progOptions() ebpf.ProgramOptions {
 	if s.options.VerifierLogSize > 0 {
 		return ebpf.ProgramOptions{
-			LogDisabled: false,
-			LogSize:     s.options.VerifierLogSize,
-			LogLevel:    ebpf.LogLevelInstruction | ebpf.LogLevelBranch | ebpf.LogLevelStats,
+			LogDisabled:  false,
+			LogSizeStart: s.options.VerifierLogSize,
+			LogLevel:     ebpf.LogLevelInstruction | ebpf.LogLevelBranch | ebpf.LogLevelStats,
 		}
 	} else {
 		return ebpf.ProgramOptions{
