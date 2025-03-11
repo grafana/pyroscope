@@ -13,13 +13,13 @@ weight: 250
 
 Choose one of the following options to get started with Pyroscope:
 
-The **written tutorial** below provides a series of imperative commands to start a single Pyroscope process, or [monolith]({{< relref "../reference-pyroscope-architecture/deployment-modes/index.md#monolithic-mode" >}}), which is designed for users getting started with the project.
+The **written tutorial** below provides a series of imperative commands to start a single Pyroscope process, or [monolith](../reference-pyroscope-architecture/deployment-modes/#monolithic-mode), which is designed for users getting started with the project.
 
 You can also use [`multiple examples`](https://github.com/grafana/pyroscope/tree/main/examples) to help you quickly get started using Pyroscope and Grafana.
 
 Every example has a `docker-compose.yml` manifest that includes all of the options needed to explore profiling data in Grafana, including resource configuration and profiling data generation.
 
-For more information on the different ways to deploy Pyroscope, see [Pyroscope deployment modes]({{< relref "../reference-pyroscope-architecture/deployment-modes/index.md" >}}).
+For more information on the different ways to deploy Pyroscope, see [Pyroscope deployment modes](../reference-pyroscope-architecture/deployment-modes/).
 
 {{< youtube id="XL2yTCPy2e0" >}}
 
@@ -78,7 +78,7 @@ Verify that you have installed [Docker](https://docs.docker.com/engine/install/)
     By default, Pyroscope is configured to scrape itself.
     To collect more profiles, you must either instrument your application with an SDK or use Grafana Alloy.
 
-    To learn more about language integrations and the Pyroscope agent, refer to [Pyroscope Agent]({{< relref "../configure-client/_index.md" >}}).
+    To learn more about language integrations and the Pyroscope agent, refer to [Pyroscope Agent](../configure-client/).
 
 ## Add a Pyroscope data source and query data
 
