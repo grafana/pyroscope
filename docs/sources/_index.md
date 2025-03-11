@@ -1,8 +1,6 @@
 ---
 title: "Grafana Pyroscope"
 weight: 1
-cascade:
-  GRAFANA_VERSION: latest
 description: Grafana Pyroscope is an open source software project for aggregating continuous profiling data.
 keywords:
   - Grafana Pyroscope

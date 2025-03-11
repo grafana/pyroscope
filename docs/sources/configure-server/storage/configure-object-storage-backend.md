@@ -29,7 +29,7 @@ To use an AWS S3 or S3-compatible bucket for long term storage, you can find Pyr
 
 At a minimum, you will need to provide values for the `bucket_name`, `endpoint`, `access_key_id`, and `secret_access_key` keys.
 
-[aws_ref]: {{< relref "../reference-configuration-parameters/#s3_storage_backend" >}}
+[aws_ref]: ../../reference-configuration-parameters/#s3_storage_backend
 [aws_enf]: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html
 
 ### Example using an AWS Bucket
@@ -68,7 +68,7 @@ storage:
 
 To use a Google Cloud Storage (GCS) bucket for long term storage, you can find Pyroscope's configuration parameters [in the reference config][gcs_ref].
 
-[gcs_ref]: {{< relref "../reference-configuration-parameters#gcs_storage_backend" >}}
+[gcs_ref]: ../../reference-configuration-parameters/#gcs_storage_backend
 
 At a minimum, you will need to provide a values for the `bucket_name` and a service account. To supply the service account there are two ways:
 
@@ -103,7 +103,7 @@ storage:
 
 To use an Azure Blob Storage bucket for long term storage, you can find Pyroscope's configuration parameters [in the reference config][azure_ref].
 
-[azure_ref]: {{< relref "../reference-configuration-parameters#azure_storage_backend" >}}
+[azure_ref]: ../../reference-configuration-parameters/#azure_storage_backend
 
 If `user_assigned_id` is used, authentication is done via user-assigned managed identity.
 
@@ -113,7 +113,7 @@ If `user_assigned_id` is used, authentication is done via user-assigned managed 
 
 To use a Swift (OpenStack Object Storage) bucket for long term storage, you can find Pyroscope's configuration parameters [in the reference config][swift_ref].
 
-[swift_ref]: {{< relref "../reference-configuration-parameters#swift_storage_backend" >}}
+[swift_ref]: ../../reference-configuration-parameters/#swift_storage_backend
 
 >If the `name` of a user, project or tenant is used one must also specify its domain by ID or name. Various examples for OpenStack authentication can be found in the [official documentation](https://developer.openstack.org/api-ref/identity/v3/index.html?expanded=password-authentication-with-scoped-authorization-detail#password-authentication-with-unscoped-authorization).
 

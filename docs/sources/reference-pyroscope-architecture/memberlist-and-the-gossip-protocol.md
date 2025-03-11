@@ -10,13 +10,13 @@ weight: 80
 [Memberlist](https://github.com/hashicorp/memberlist) is a Go library that manages cluster membership, node failure detection, and message passing using a gossip-based protocol.
 Memberlist is eventually consistent and network partitions are partially tolerated by attempting to communicate to potentially dead nodes through multiple routes.
 
-Pyroscope uses memberlist to implement the [hash ring]({{< relref "./hash-ring" >}}) data structures between instances.
+Pyroscope uses memberlist to implement the [hash ring](../hash-ring/) data structures between instances.
 
 Each instance maintains a copy of the hash rings.
 Each Pyroscope instance updates a hash ring locally and uses memberlist to propagate the changes to other instances.
 Updates generated locally and updates received from other instances are merged together to form the current state of the ring on the instance.
 
-To configure memberlist, refer to [configuring memberlist]({{< relref "../configure-server/configuring-memberlist.md" >}}).
+To configure memberlist, refer to [configuring memberlist](../../configure-server/configuring-memberlist/).
 
 ## How memberlist propagates hash ring changes
 

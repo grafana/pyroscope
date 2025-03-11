@@ -19,7 +19,7 @@ This value is called _token_ and used as the ID of the data.
 The token determines the location on the hash ring deterministically.
 This allows independent determination of what instance of Pyroscope is the authoritative owner of any specific data.
 
-For example, profiles are sharded across [ingesters]({{< relref "../components/ingester.md" >}}).
+For example, profiles are sharded across [ingesters](../components/ingester/).
 The token of a given profile is computed by hashing all of the profile’s labels and the tenant ID: the result of which is an unsigned 32-bit integer within the space of the tokens.
 The ingester that owns that series is the instance that owns the range of the tokens, including the profile token.
 
@@ -72,8 +72,8 @@ On average, the number of tokens that need to move to a different instance is on
 There are several Pyroscope components that need a hash ring.
 Each of the following components builds an independent hash ring:
 
-- [Ingesters]({{< relref "../components/ingester.md" >}}) shard and replicate series.
-- [Distributors]({{< relref "../components/distributor.md" >}}) enforce rate limits.
+- [Ingesters](../components/ingester/) shard and replicate series.
+- [Distributors](../components/distributor/) enforce rate limits.
 
 ## How the hash ring is shared between Pyroscope instances
 
@@ -81,7 +81,7 @@ Hash ring data structures need to be shared between Pyroscope instances.
 To propagate changes to the hash ring, Pyroscope uses a key-value store.
 The key-value store is required and can be configured independently for the hash rings of different components.
 
-For more information, see the [memberlist documentation]({{< relref "../memberlist-and-the-gossip-protocol.md" >}}).
+For more information, see the [memberlist documentation](../memberlist-and-the-gossip-protocol/).
 
 ## Features that are built using the hash ring
 
