@@ -7,13 +7,13 @@ weight: 60
 
 # Pyroscope query-frontend
 
-The query-frontend is a stateless component that provides the same API as the [querier]({{< relref "../querier.md" >}}) and can be used to accelerate the read path and ensure fair scheduling between tenants using the [query-scheduler]({{< relref "../query-scheduler/index.md" >}}).
+The query-frontend is a stateless component that provides the same API as the [querier](../querier/) and can be used to accelerate the read path and ensure fair scheduling between tenants using the [query-scheduler](../query-scheduler/).
 
 In this situation, queriers act as workers that pull jobs from the queue, execute them, and return the results to the query-frontend for aggregation.
 
 We recommend that you run at least two query-frontend replicas for high-availability reasons.
 
-> Because the [query-scheduler]({{< relref "../query-scheduler" >}}) is a mandatory component when using the query-frontend, you must run at least one query-scheduler replica.
+> Because the [query-scheduler](../query-scheduler/) is a mandatory component when using the query-frontend, you must run at least one query-scheduler replica.
 
 The following steps describe how a query moves through the query-frontend.
 

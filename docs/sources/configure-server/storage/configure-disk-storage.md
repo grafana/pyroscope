@@ -47,7 +47,7 @@ The deletion is logged like this:
 level=warn caller=pyroscopedb.go:231 ts=2022-10-05T13:19:09.770693308Z msg="disk utilization is high, deleted oldest block" path=data/anonymous/local/01GDZYHKKKY2ANY6PCJJZGT1N8
 ```
 
-[block format]: {{< relref "../../reference-pyroscope-architecture/block-format/" >}}
-[object-store]: {{< relref "./configure-object-storage-backend.md" >}}
+[block format]: ../../../reference-pyroscope-architecture/block-format/
+[object-store]: ../configure-object-storage-backend/
 [ULID]: https://github.com/ulid/spec
-[ingester]: {{< relref "../../reference-pyroscope-architecture/components/ingester.md" >}}
+[ingester]: ../../../reference-pyroscope-architecture/components/ingester/

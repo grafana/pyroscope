@@ -13,7 +13,7 @@ The bucket index is a per-tenant file that contains the list of blocks and block
 
 ## Benefits
 
-The [store-gateway]({{< relref "../components/store-gateway" >}}) must have an almost[^1] up-to-date view of the storage bucket, in order to find the right blocks to look up at query time and to load a block.
+The [store-gateway](../components/store-gateway/) must have an almost[^1] up-to-date view of the storage bucket, in order to find the right blocks to look up at query time and to load a block.
 
 Because of this, they need to periodically scan the bucket to look for new blocks uploaded by ingesters or compactors, and blocks deleted (or marked for deletion) by compactors.
 
@@ -37,7 +37,7 @@ The `bucket-index.json.gz` contains:
 
 ## How it gets updated
 
-The [compactor]({{< relref "../components/compactor" >}}) periodically scans the bucket and uploads an updated bucket index to the storage.
+The [compactor](../components/compactor/) periodically scans the bucket and uploads an updated bucket index to the storage.
 You can configure the frequency with which the bucket index is updated via `-compactor.cleanup-interval`.
 
 The use of the bucket index is optional, but the index is built and updated by the compactor even if `-blocks-storage.bucket-store.bucket-index.enabled=false`.
@@ -46,7 +46,7 @@ The overhead introduced by keeping the bucket index updated is not significant.
 
 ## How it's used by the store-gateway
 
-The [store-gateway]({{< relref "../components/store-gateway" >}}), at startup and periodically, fetches the bucket index for each tenant that belongs to its shard, and uses it as the source of truth for the blocks and deletion marks in the storage. This removes the need to periodically scan the bucket to discover blocks belonging to its shard.
+The [store-gateway](../components/store-gateway/), at startup and periodically, fetches the bucket index for each tenant that belongs to its shard, and uses it as the source of truth for the blocks and deletion marks in the storage. This removes the need to periodically scan the bucket to discover blocks belonging to its shard.
 
 [^1]:
     Ingesters regularly add new blocks to the bucket as they offload data to long-term storage,
