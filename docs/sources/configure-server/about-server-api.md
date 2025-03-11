@@ -13,7 +13,7 @@ Pyroscope server exposes an HTTP API for querying profiling data and ingesting p
 
 Grafana Pyroscope doesn't include an authentication layer. Operators should use an authenticating reverse proxy for security.
 
-In multi-tenant mode, Pyroscope requires the X-Scope-OrgID HTTP header set to a string identifying the tenant. This responsibility should be handled by the authenticating reverse proxy. For more information, refer to the [multi-tenancy documentation]({{< relref "./about-tenant-ids" >}}).
+In multi-tenant mode, Pyroscope requires the X-Scope-OrgID HTTP header set to a string identifying the tenant. This responsibility should be handled by the authenticating reverse proxy. For more information, refer to the [multi-tenancy documentation](../about-tenant-ids/).
 
 ## Ingestion
 
@@ -285,7 +285,7 @@ Note that a single offset has to be provided, values such as `now-3h30m` will no
 **Validation**
 
 The `from` and `until` parameters are subject to validation rules related to `max_query_lookback` and `max_query_length` server parameters.
-You can find more details on these parameters in the [limits section]({{< relref "./reference-configuration-parameters#limits" >}}) of the server configuration docs.
+You can find more details on these parameters in the [limits section](../reference-configuration-parameters/#limits) of the server configuration docs.
 
 - If `max_query_lookback` is configured and`from` is before `now - max_query_lookback`, `from` will be set to `now - max_query_lookback`.
 - If `max_query_lookback` is configured and `until` is before `now - max_query_lookback` the query will not be executed.
@@ -419,4 +419,4 @@ See [this Python script](https://github.com/grafana/pyroscope/tree/main/examples
 
 The `profilecli` tool can also be used to interact with the Pyroscope server API.
 The tool supports operations such as ingesting profiles, querying for existing profiles, and more.
-Refer to the [Profile CLI]({{< relref "../view-and-analyze-profile-data/profile-cli" >}}) page for more information.
+Refer to the [Profile CLI](../../view-and-analyze-profile-data/profile-cli/) page for more information.

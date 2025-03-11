@@ -18,7 +18,7 @@ keywords:
 
 Pyroscope's UI is designed to make it easy to visualize and analyze profiling data.
 There are several different modes for viewing, analyzing, uploading, and comparing profiling data.
-These modes are discussed in the [Pyroscope UI documentation]({{< relref "../pyroscope-ui" >}}).
+These modes are discussed in the [Pyroscope UI documentation](../pyroscope-ui/).
 
 ![Screenshots of Pyroscope's UI](https://grafana.com/static/img/pyroscope/pyroscope-ui-diff-2023-11-30.png)
 

@@ -36,7 +36,7 @@ Options for visualizing data in Grafana:
 - **Explore tab**: In Grafana, **Explore** is suited for making targeted queries on your profiling data. This is useful for in-depth analysis of specific aspects of your application's performance.
 - **Dashboard**: Grafana dashboards are excellent for integrating profiling data with other metrics. You can display Pyroscope data alongside other dashboard items, creating a unified view of your application’s overall health and performance.
 
-For more information on using profiles in Grafana, refer to [Pyroscope and profiles in Grafana]({{< relref "../introduction/pyroscope-in-grafana#pyroscope-and-profiling-in-grafana" >}}).
+For more information on using profiles in Grafana, refer to [Pyroscope and profiles in Grafana](../introduction/pyroscope-in-grafana/#pyroscope-and-profiling-in-grafana).
 
 The Pyroscope app plugin works for Grafana Cloud.
 
