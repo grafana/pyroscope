@@ -114,34 +114,32 @@ func TestValidateLabels(t *testing.T) {
 			expectedReason: DuplicateLabelNames,
 			expectedErr:    "profile with labels '{__name__=\"qux\", service_name=\"svc\", service_name=\"svc\"}' has duplicate label name: 'service_name'",
 		},
-
-		{
-			name: "dupe sanitized", // Now, we support 1 level of duplicated labels because of sanitization
-			lbs: []*typesv1.LabelPair{
-				{Name: model.MetricNameLabel, Value: "qux"},
-				{Name: "label.name", Value: "foo"},
-				{Name: "label.name", Value: "bar"},
-				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
-			},
-		},
 		{
 			name: "service.name conversion",
 			lbs: []*typesv1.LabelPair{
 				{Name: model.MetricNameLabel, Value: "qux"},
 				{Name: "service.name", Value: "my-service"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
 			},
 		},
 		{
-			name: "more than sanitized dupe",
+			name: "single sanitized dupe",
 			lbs: []*typesv1.LabelPair{
 				{Name: model.MetricNameLabel, Value: "qux"},
 				{Name: "label.name", Value: "foo"},
 				{Name: "label.name", Value: "bar"},
-				{Name: "label.name", Value: "bar"},
 				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
 			},
-			expectedReason: DuplicateLabelNames,
-			expectedErr:    "profile with labels '{__name__=\"qux\", label_name=\"foo\", label_name_dup=\"bar\", label_name_dup=\"bar\", service_name=\"svc\"}' has duplicate label name: 'label.name'",
+		},
+		{
+			name: "more than one sanitized dupe label are being replaced",
+			lbs: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "qux"},
+				{Name: "label.name", Value: "foo"},
+				{Name: "label.name", Value: "bar"},
+				{Name: "label.name", Value: "test"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+			},
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
