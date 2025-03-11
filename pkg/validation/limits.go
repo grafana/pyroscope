@@ -14,6 +14,7 @@ import (
 	writepath "github.com/grafana/pyroscope/pkg/distributor/write_path"
 	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
 	readpath "github.com/grafana/pyroscope/pkg/frontend/read_path"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 )
 
@@ -113,6 +114,10 @@ type Limits struct {
 	// Distributors use these limits to determine how many shards to allocate
 	// to a tenant dataset by default, if no placement rules defined.
 	AdaptivePlacementLimits adaptive_placement.PlacementLimits `yaml:",inline" json:",inline"`
+
+	// RecordingRules allow to specify static recording rules. This is not compatible with recording rules
+	// coming from a RecordingRulesClient, that will replace any static rules defined.
+	RecordingRules RecordingRules `yaml:"recording_rules" json:"recording_rules" category:"experimental" doc:"hidden"`
 }
 
 // LimitError are errors that do not comply with the limits specified.
@@ -209,10 +214,16 @@ func (l *Limits) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // Validate validates that this limits config is valid.
 func (l *Limits) Validate() error {
-
 	if l.IngestionRelabelingDefaultRulesPosition != "" {
 		if err := l.IngestionRelabelingDefaultRulesPosition.Set(string(l.IngestionRelabelingDefaultRulesPosition)); err != nil {
 			return err
+		}
+	}
+
+	for idx, rule := range l.RecordingRules {
+		_, err := phlaremodel.NewRecordingRule(rule)
+		if err != nil {
+			return fmt.Errorf("rule at pos %d is not valid: %v", idx, err)
 		}
 	}
 
