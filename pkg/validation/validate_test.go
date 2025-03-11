@@ -50,9 +50,8 @@ func TestValidateLabels(t *testing.T) {
 				{Name: "foo2", Value: "bar"},
 				{Name: "foo3", Value: "bar"},
 				{Name: "foo4", Value: "bar"},
-				{Name: "foo5", Value: "bar"},
 			},
-			expectedErr:    `profile series '{foo1="bar", foo2="bar", foo3="bar", foo4="bar", foo5="bar", service_name="svc"}' has 6 label names; limit 5`,
+			expectedErr:    `profile series '{foo1="bar", foo2="bar", foo3="bar", foo4="bar", service_name="svc"}' has 5 label names; limit 4`,
 			expectedReason: MaxLabelNamesPerSeries,
 		},
 		{
@@ -114,37 +113,22 @@ func TestValidateLabels(t *testing.T) {
 			expectedReason: DuplicateLabelNames,
 			expectedErr:    "profile with labels '{__name__=\"qux\", service_name=\"svc\", service_name=\"svc\"}' has duplicate label name: 'service_name'",
 		},
+
 		{
-			name: "service.name conversion",
-			lbs: []*typesv1.LabelPair{
-				{Name: model.MetricNameLabel, Value: "qux"},
-				{Name: "service.name", Value: "my-service"},
-				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
-			},
-		},
-		{
-			name: "single sanitized dupe",
+			name: "dupe sanitized",
 			lbs: []*typesv1.LabelPair{
 				{Name: model.MetricNameLabel, Value: "qux"},
 				{Name: "label.name", Value: "foo"},
 				{Name: "label.name", Value: "bar"},
 				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
 			},
-		},
-		{
-			name: "more than one sanitized dupe label are being replaced",
-			lbs: []*typesv1.LabelPair{
-				{Name: model.MetricNameLabel, Value: "qux"},
-				{Name: "label.name", Value: "foo"},
-				{Name: "label.name", Value: "bar"},
-				{Name: "label.name", Value: "test"},
-				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
-			},
+			expectedReason: DuplicateLabelNames,
+			expectedErr:    "profile with labels '{__name__=\"qux\", label_name=\"foo\", label_name=\"bar\", service_name=\"svc\"}' has duplicate label name: 'label.name'",
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			err := ValidateLabels(MockLimits{
-				MaxLabelNamesPerSeriesValue: 5,
+				MaxLabelNamesPerSeriesValue: 4,
 				MaxLabelNameLengthValue:     12,
 				MaxLabelValueLengthValue:    10,
 			}, "foo", tt.lbs)

@@ -112,7 +112,6 @@ func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1
 	if len(ls) == 0 {
 		return NewErrorf(MissingLabels, MissingLabelsErrorMsg)
 	}
-
 	sort.Sort(phlaremodel.Labels(ls))
 	numLabelNames := len(ls)
 	maxLabels := limits.MaxLabelNamesPerSeries(tenantID)
@@ -129,46 +128,25 @@ func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1
 	}
 	lastLabelName := ""
 
-	for i := 0; i < len(ls); {
-		l := ls[i]
-
+	for _, l := range ls {
 		if len(l.Name) > limits.MaxLabelNameLength(tenantID) {
 			return NewErrorf(LabelNameTooLong, LabelNameTooLongErrorMsg, phlaremodel.LabelPairsString(ls), l.Name)
 		}
 		if len(l.Value) > limits.MaxLabelValueLength(tenantID) {
 			return NewErrorf(LabelValueTooLong, LabelValueTooLongErrorMsg, phlaremodel.LabelPairsString(ls), l.Value)
 		}
-		origName, sanitized, ok := SanitizeLabelName(l.Name)
-		if !ok {
+		var origName string
+		var ok bool
+		if origName, l.Name, ok = SanitizeLabelName(l.Name); !ok {
 			return NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "invalid label name '"+origName+"'")
 		}
-
-		// Check if a dup would be created because of sanitization
-		if origName != sanitized {
-			// Remove the original label from the slice
-			ls = phlaremodel.Labels(ls).Delete(origName)
-			// Insert the sanitized label in the correct sorted position
-			ls = phlaremodel.Labels(ls).InsertSorted(sanitized, l.Value)
-
-			// We "continue" here specifically to re-check the updated label at index i.
-			// Because the label set is sorted, if the newly inserted label belonged before i,
-			// InsertSorted would have already placed or merged it there, preventing any duplicates
-			// behind us. By continuing instead of incrementing i, we ensure the label at i is
-			// immediately validated again. This also lets us handle multiple consecutive labels
-			// needing sanitization or insertion, so we don’t accidentally skip any if they appear
-			// back-to-back.
-			continue
-		}
-		// If no label was removed and re-inserted, then we move to the next index.
-		i++
-
 		if !model.LabelValue(l.Value).IsValid() {
 			return NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "invalid label value '"+l.Value+"'")
 		}
-		if cmp := strings.Compare(lastLabelName, sanitized); cmp == 0 {
+		if cmp := strings.Compare(lastLabelName, l.Name); cmp == 0 {
 			return NewErrorf(DuplicateLabelNames, DuplicateLabelNamesErrorMsg, phlaremodel.LabelPairsString(ls), origName)
 		}
-		lastLabelName = sanitized
+		lastLabelName = l.Name
 	}
 
 	return nil
