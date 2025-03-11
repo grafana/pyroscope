@@ -54,7 +54,7 @@ The new local storage format is entirely new, optimized for object storage. We d
 
 #### Configuration file changes
 
-The configuration file parameters as well as the default location for the configuration file have changed. The old config file is usually located at `/etc/pyroscope/server.yml` and the new config file is at `/etc/pyroscope/config.yaml`. You can find detailed descriptions of all configuration parameters [here]({{< relref "../configure-server/reference-configuration-parameters" >}}).
+The configuration file parameters as well as the default location for the configuration file have changed. The old config file is usually located at `/etc/pyroscope/server.yml` and the new config file is at `/etc/pyroscope/config.yaml`. You can find detailed descriptions of all configuration parameters [here](../configure-server/reference-configuration-parameters/).
 
 #### Dropping support for certain subcommands
 
@@ -92,7 +92,7 @@ We provide the following checklists to help you upgrade to v1.0.
 #### Upgrade Checklist for Docker deployments
 
 When upgrading to v1.0, we suggest that you follow this checklist:
-* Migrate your configuration from the old format to the new format (old config is usually located at `/etc/pyroscope/server.yml` and the new config is at `/etc/pyroscope/config.yaml`). There's a detailed description of all configuration parameters [here]({{< relref "../configure-server/reference-configuration-parameters" >}}).
+* Migrate your configuration from the old format to the new format (old config is usually located at `/etc/pyroscope/server.yml` and the new config is at `/etc/pyroscope/config.yaml`). There's a detailed description of all configuration parameters [here](../configure-server/reference-configuration-parameters/).
 * Upgrade docker image from `pyroscope/pyroscope` to `grafana/pyroscope`. Link to the new docker image is [here](https://hub.docker.com/r/grafana/pyroscope).
 * Delete old data (typically found at `/var/lib/pyroscope`).
 
@@ -100,7 +100,7 @@ When upgrading to v1.0, we suggest that you follow this checklist:
 
 When upgrading to v1.0, we suggest that you follow this checklist:
 
-* Migrate your configuration from the old format to the new format (old config is usually located at `/etc/pyroscope/server.yml` and the new config is at `/etc/pyroscope/config.yaml`). There's a detailed description of all configuration parameters [here]({{< relref "../configure-server/reference-configuration-parameters" >}}).
+* Migrate your configuration from the old format to the new format (old config is usually located at `/etc/pyroscope/server.yml` and the new config is at `/etc/pyroscope/config.yaml`). There's a detailed description of all configuration parameters [here](../configure-server/reference-configuration-parameters/).
 * Delete the old Helm chart:
   ```bash
   helm delete pyroscope # replace pyroscope with the name you used when installing the chart
@@ -112,4 +112,4 @@ When upgrading to v1.0, we suggest that you follow this checklist:
   helm repo update
   helm -n pyroscope install pyroscope grafana/pyroscope
   ```
-  For more information on how to install the Helm chart, see our Helm documentation [here]({{< relref "../deploy-kubernetes" >}}).
+  For more information on how to install the Helm chart, see our Helm documentation [here](../deploy-kubernetes/).
