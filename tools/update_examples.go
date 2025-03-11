@@ -24,12 +24,16 @@ func main() {
 
 	updateGolang()
 	updateGodeltaprof()
+	updateJfrParser()
+	s.sh("make go/mod")
+
 	updateJava()
 	updateRuby()
 	updatePython()
 	updateDotnet()
 	updateNodeJS()
 	updateRust()
+
 }
 
 func getGHToken() {
@@ -224,6 +228,18 @@ func extractRSVersion(module string) func(tag Tag) *version {
 		}
 		return nil
 	}
+}
+
+func updateJfrParser() {
+	pprofVersions := getTagsV("grafana/jfr-parser", extractGoVersion("pprof"))
+	parserVersions := getTagsV("grafana/jfr-parser", extractGoVersion(""))
+	pprofVersion := pprofVersions[len(pprofVersions)-1]
+	parserVersion := parserVersions[len(parserVersions)-1]
+	fmt.Printf("jfr-parer pprof %+v\n", pprofVersion)
+	fmt.Printf("jfr-parer  %+v\n", parserVersion)
+
+	s.sh(" go get github.com/grafana/jfr-parser@" + parserVersion.versionV())
+	s.sh(" go get github.com/grafana/jfr-parser/pprof@" + pprofVersion.versionV())
 }
 
 func extractDotnetVersion() func(tag Tag) *version {
