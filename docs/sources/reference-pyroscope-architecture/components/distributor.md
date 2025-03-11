@@ -10,7 +10,7 @@ aliases:
 # Pyroscope distributor
 
 The distributor is a stateless component that receives profiling data from the agent.
-The distributor then divides the data into batches and sends it to multiple [ingesters]({{< relref "./ingester.md" >}}) in parallel, shards the series among ingesters, and replicates each series by the configured replication factor. By default, the configured replication factor is three.
+The distributor then divides the data into batches and sends it to multiple [ingesters](../ingester/) in parallel, shards the series among ingesters, and replicates each series by the configured replication factor. By default, the configured replication factor is three.
 
 ## Validation
 
@@ -35,7 +35,7 @@ For each incoming series, the distributor computes a hash using the profile name
 The computed hash is called a _token_.
 The distributor looks up the token in the hash ring to determine which ingesters to write a series to.
 
-For more information, see [hash ring]({{< relref "../hash-ring/index.md" >}}).
+For more information, see [hash ring](../../hash-ring/).
 
 #### Quorum consistency
 
