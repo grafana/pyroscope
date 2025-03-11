@@ -167,7 +167,7 @@ You must set this flag on the store-gateway and querier.
 
 You can override the store-gateway shard size on a per-tenant basis by setting `store_gateway_tenant_shard_size` in the overrides section of the runtime configuration.
 
-For more information about the store-gateway, refer to [store-gateway]({{< relref "../../reference-pyroscope-architecture/components/store-gateway" >}}).
+For more information about the store-gateway, refer to [store-gateway](../../reference-pyroscope-architecture/components/store-gateway/).
 
 ### Compactor shuffle sharding
 
