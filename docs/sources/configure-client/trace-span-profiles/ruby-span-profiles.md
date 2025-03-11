@@ -27,7 +27,7 @@ This integration lets you link traces with the profiling data and find resource 
 
 To use Span Profiles, you need to:
 
-* [Configure Pyroscope to send profiling data]({{< relref "../../configure-client" >}})
+* [Configure Pyroscope to send profiling data](../../)
 * Configure a client-side package to link traces and profiles: [Ruby](https://github.com/grafana/otel-profiling-ruby)
 * [Configure the Tempo data source in Grafana or Grafana Cloud to discover linked traces and profiles](/docs/grafana-cloud/connect-externally-hosted/data-sources/tempo/configure-tempo-data-source/)
 
@@ -35,7 +35,7 @@ To use Span Profiles, you need to:
 
 Your applications must be instrumented for profiling and tracing before you can use span profiles.
 
-* Profiling: Your application must be instrumented with Pyroscope's Ruby SDK. Refer to the [Ruby]({{< relref "../language-sdks/ruby" >}}) guide for instructions.
+* Profiling: Your application must be instrumented with Pyroscope's Ruby SDK. Refer to the [Ruby](../../language-sdks/ruby/) guide for instructions.
 * Tracing: Your application must be instrumented with OpenTelemetry traces. Refer to the [OpenTelemetry](https://opentelemetry.io/docs/languages/ruby/getting-started/) guide for instructions.
 
 ## Configure the otel-profiling-ruby package

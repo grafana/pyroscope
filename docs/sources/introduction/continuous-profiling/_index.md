@@ -21,7 +21,7 @@ This is great for debugging but not so great for production.
 ![example flame graph](https://grafana.com/static/img/pyroscope/pyroscope-ui-single-2023-11-30.png)
 
 {{% admonition type="note" %}}
-To learn more about flame graphs, refer to [Flame graphs: Visualizing performance data]({{< relref "../../view-and-analyze-profile-data/flamegraphs" >}}).
+To learn more about flame graphs, refer to [Flame graphs: Visualizing performance data](../../view-and-analyze-profile-data/flamegraphs/).
 {{% /admonition %}}
 
 Continuous profiling is a modern approach which is safer and more scalable for production environments.
@@ -54,7 +54,7 @@ Pyroscope's low-overhead profiling enables precise optimization of resource usag
 By providing in-depth insights into application performance, Pyroscope allows teams to identify and eliminate inefficiencies, leading to significant savings in areas like observability, incident management, messaging/queuing, deployment tools, and infrastructure.
 
 By using sampling profilers, Pyroscope is able to collect data with minimal overhead (~2-5% depending on a few factors).
-The [custom storage engine]({{< relref "../../reference-pyroscope-architecture/about-grafana-pyroscope-architecture" >}}) compresses and stores the data efficiently.
+The [custom storage engine](../../reference-pyroscope-architecture/about-grafana-pyroscope-architecture/) compresses and stores the data efficiently.
 Some advantages of this are:
 
 - Low CPU overhead thanks to sampling profiler technology
