@@ -39,7 +39,7 @@ To use Span Profiles, you need to:
 
 Your applications must be instrumented for profiling and tracing before you can use span profiles.
 
-* Profiling: Your application must be instrumented with Pyroscope's .NET instrumentation library. Refer to the [.NET]({{< relref "../language-sdks/dotnet" >}}) guide for instructions.
+* Profiling: Your application must be instrumented with Pyroscope's .NET instrumentation library. Refer to the [.NET](../../language-sdks/dotnet/) guide for instructions.
 * Tracing: Your application must be instrumented with OpenTelemetry traces. Refer to the [OpenTelemetry](https://opentelemetry.io/docs/languages/net/getting-started/) guide for instructions.
 
 {{< admonition type="note" >}}
