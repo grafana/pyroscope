@@ -1,6 +1,7 @@
 package tree
 
 import (
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"time"
 
 	"github.com/grafana/pyroscope/pkg/og/storage/metadata"
@@ -84,7 +85,7 @@ type pprof struct {
 	locations map[string]uint64
 	functions map[string]uint64
 	strings   map[string]int64
-	profile   *Profile
+	profile   *profilev1.Profile
 }
 
 type PprofMetadata struct {
@@ -99,7 +100,7 @@ type PprofMetadata struct {
 
 const fakeMappingID = 1
 
-func (t *Tree) Pprof(mdata *PprofMetadata) *Profile {
+func (t *Tree) Pprof(mdata *PprofMetadata) *profilev1.Profile {
 	t.RLock()
 	defer t.RUnlock()
 
@@ -107,18 +108,18 @@ func (t *Tree) Pprof(mdata *PprofMetadata) *Profile {
 		locations: make(map[string]uint64),
 		functions: make(map[string]uint64),
 		strings:   make(map[string]int64),
-		profile: &Profile{
+		profile: &profilev1.Profile{
 			StringTable: []string{""},
 		},
 	}
 
-	p.profile.Mapping = []*Mapping{{Id: fakeMappingID}} // a fake mapping
-	p.profile.SampleType = []*ValueType{{Type: p.newString(mdata.Type), Unit: p.newString(mdata.Unit)}}
+	p.profile.Mapping = []*profilev1.Mapping{{Id: fakeMappingID}} // a fake mapping
+	p.profile.SampleType = []*profilev1.ValueType{{Type: p.newString(mdata.Type), Unit: p.newString(mdata.Unit)}}
 	p.profile.TimeNanos = mdata.StartTime.UnixNano()
 	p.profile.DurationNanos = mdata.Duration.Nanoseconds()
 	if mdata.Period != 0 && mdata.PeriodType != "" && mdata.PeriodUnit != "" {
 		p.profile.Period = mdata.Period
-		p.profile.PeriodType = &ValueType{
+		p.profile.PeriodType = &profilev1.ValueType{
 			Type: p.newString(mdata.PeriodType),
 			Unit: p.newString(mdata.PeriodUnit),
 		}
@@ -130,7 +131,7 @@ func (t *Tree) Pprof(mdata *PprofMetadata) *Profile {
 		for _, l := range stack {
 			loc = append(loc, p.newLocation(l))
 		}
-		sample := &Sample{LocationId: loc, Value: value}
+		sample := &profilev1.Sample{LocationId: loc, Value: value}
 		p.profile.Sample = append(p.profile.Sample, sample)
 	})
 
@@ -151,9 +152,9 @@ func (p *pprof) newLocation(location string) uint64 {
 	id, ok := p.locations[location]
 	if !ok {
 		id = uint64(len(p.profile.Location) + 1)
-		newLoc := &Location{
+		newLoc := &profilev1.Location{
 			Id:        id,
-			Line:      []*Line{{FunctionId: p.newFunction(location)}},
+			Line:      []*profilev1.Line{{FunctionId: p.newFunction(location)}},
 			MappingId: fakeMappingID,
 		}
 		p.profile.Location = append(p.profile.Location, newLoc)
@@ -167,7 +168,7 @@ func (p *pprof) newFunction(function string) uint64 {
 	if !ok {
 		id = uint64(len(p.profile.Function) + 1)
 		name := p.newString(function)
-		newFn := &Function{
+		newFn := &profilev1.Function{
 			Id:         id,
 			Name:       name,
 			SystemName: name,

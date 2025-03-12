@@ -3,10 +3,9 @@ package tree
 // These functions are kept separately as profile.pb.go is a generated file
 
 import (
-	"encoding/binary"
 	"sort"
 
-	"github.com/cespare/xxhash/v2"
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"github.com/grafana/pyroscope/pkg/og/agent/spy"
 	"github.com/valyala/bytebufferpool"
 )
@@ -27,7 +26,7 @@ func newCache() *cache {
 	}
 }
 
-func getCacheKey(l []*Label) cacheKey {
+func getCacheKey(l []*profilev1.Label) cacheKey {
 	r := []int64{}
 	for _, x := range l {
 		if x.Str != 0 {
@@ -49,7 +48,7 @@ func eq(a, b []int64) bool {
 	return true
 }
 
-func (c *cache) pprofLabelsToSpyLabels(x *Profile, pprofLabels []*Label) *spy.Labels {
+func (c *cache) pprofLabelsToSpyLabels(x *profilev1.Profile, pprofLabels []*profilev1.Label) *spy.Labels {
 	k := getCacheKey(pprofLabels)
 	for _, e := range c.data {
 		if eq(e.key, k) {
@@ -71,7 +70,7 @@ func (c *cache) pprofLabelsToSpyLabels(x *Profile, pprofLabels []*Label) *spy.La
 	return l
 }
 
-func (x *Profile) Get(sampleType string, cb func(labels *spy.Labels, name []byte, val int) error) error {
+func Get(x *profilev1.Profile, sampleType string, cb func(labels *spy.Labels, name []byte, val int) error) error {
 	valueIndex := 0
 	if sampleType != "" {
 		for i, v := range x.SampleType {
@@ -110,7 +109,7 @@ func (x *Profile) Get(sampleType string, cb func(labels *spy.Labels, name []byte
 	return nil
 }
 
-func (x *Profile) SampleTypes() []string {
+func SampleTypes(x *profilev1.Profile) []string {
 	r := []string{}
 	for _, v := range x.SampleType {
 		r = append(r, x.StringTable[v.Type])
@@ -118,7 +117,7 @@ func (x *Profile) SampleTypes() []string {
 	return r
 }
 
-func FindFunctionName(x *Profile, locID uint64) (string, bool) {
+func FindFunctionName(x *profilev1.Profile, locID uint64) (string, bool) {
 	if loc, ok := FindLocation(x, locID); ok {
 		if len(loc.Line) <= 0 {
 			return "", false
@@ -131,7 +130,7 @@ func FindFunctionName(x *Profile, locID uint64) (string, bool) {
 	return "", false
 }
 
-func FindLocation(x *Profile, lid uint64) (*Location, bool) {
+func FindLocation(x *profilev1.Profile, lid uint64) (*profilev1.Location, bool) {
 	idx := sort.Search(len(x.Location), func(i int) bool {
 		return x.Location[i].Id >= lid
 	})
@@ -143,7 +142,7 @@ func FindLocation(x *Profile, lid uint64) (*Location, bool) {
 	return nil, false
 }
 
-func FindFunction(x *Profile, fid uint64) (*Function, bool) {
+func FindFunction(x *profilev1.Profile, fid uint64) (*profilev1.Function, bool) {
 	idx := sort.Search(len(x.Function), func(i int) bool {
 		return x.Function[i].Id >= fid
 	})
@@ -153,51 +152,4 @@ func FindFunction(x *Profile, fid uint64) (*Function, bool) {
 		}
 	}
 	return nil, false
-}
-
-func (x *Profile) ResolveLabels(l Labels) map[string]string {
-	m := make(map[string]string, len(l))
-	for _, label := range l {
-		if label.Str != 0 {
-			m[x.StringTable[label.Key]] = x.StringTable[label.Str]
-		}
-	}
-	return m
-}
-
-func (x *Profile) ResolveLabelName(l *Label) (string, bool) {
-	if l.Str > 0 && l.Key < int64(len(x.StringTable)) {
-		return x.StringTable[l.Key], true
-	}
-	return "", false
-}
-
-func (x *Profile) ResolveSampleType(v int64) (*ValueType, bool) {
-	for _, vt := range x.SampleType {
-		if vt.Type == v {
-			return vt, true
-		}
-	}
-	return nil, false
-}
-
-type Labels []*Label
-
-func (l Labels) Len() int           { return len(l) }
-func (l Labels) Less(i, j int) bool { return l[i].Key < l[j].Key }
-func (l Labels) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
-
-func (l Labels) Hash() uint64 {
-	h := xxhash.New()
-	t := make([]byte, 16)
-	sort.Sort(l)
-	for _, x := range l {
-		if x.Str == 0 {
-			continue
-		}
-		binary.LittleEndian.PutUint64(t[0:8], uint64(x.Key))
-		binary.LittleEndian.PutUint64(t[8:16], uint64(x.Str))
-		_, _ = h.Write(t)
-	}
-	return h.Sum64()
 }

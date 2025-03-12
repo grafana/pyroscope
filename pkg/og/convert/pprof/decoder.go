@@ -4,16 +4,15 @@ import (
 	"bufio"
 	"compress/gzip"
 	"fmt"
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"io"
 
 	"github.com/valyala/bytebufferpool"
-
-	"github.com/grafana/pyroscope/pkg/og/storage/tree"
 )
 
 var bufPool = bytebufferpool.Pool{}
 
-func Decode(r io.Reader, p *tree.Profile) error {
+func Decode(r io.Reader, p *profilev1.Profile) error {
 	br := bufio.NewReader(r)
 	header, err := br.Peek(2)
 	if err != nil {
@@ -35,14 +34,4 @@ func Decode(r io.Reader, p *tree.Profile) error {
 		return err
 	}
 	return p.UnmarshalVT(buf.Bytes())
-}
-
-func DecodePool(r io.Reader, fn func(*tree.Profile) error) error {
-	p := tree.ProfileFromVTPool()
-	defer p.ReturnToVTPool()
-	p.Reset()
-	if err := Decode(r, p); err != nil {
-		return err
-	}
-	return fn(p)
 }
