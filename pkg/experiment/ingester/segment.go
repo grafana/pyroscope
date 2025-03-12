@@ -604,7 +604,7 @@ func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockData []byte, met
 		// Retry on all errors.
 		retries := backoff.New(ctx, retryConfig)
 		for retries.Ongoing() {
-			if attemptErr = sw.bucket.Upload(ctx, path, bytes.NewReader(blockData)); attemptErr == nil {
+			if attemptErr = sw.uploadWithTimeout(ctx, path, bytes.NewReader(blockData)); attemptErr == nil {
 				break
 			}
 			retries.Wait()
@@ -616,7 +616,7 @@ func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockData []byte, met
 		Call:      uploadWithRetry,
 		Trigger:   time.After(sw.config.Upload.HedgeUploadAfter),
 		Throttler: sw.retryLimiter,
-		FailFast:  true,
+		FailFast:  false,
 	}
 
 	if _, err = hedgedUpload.Do(ctx); err != nil {
@@ -625,6 +625,12 @@ func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockData []byte, met
 
 	level.Debug(sw.logger).Log("msg", "uploaded block", "path", path, "upload_duration", time.Since(uploadStart))
 	return nil
+}
+
+func (sw *segmentsWriter) uploadWithTimeout(ctx context.Context, path string, r io.Reader) error {
+	ctx, cancel := context.WithTimeout(ctx, sw.config.Upload.Timeout)
+	defer cancel()
+	return sw.bucket.Upload(ctx, path, r)
 }
 
 func (sw *segmentsWriter) storeMetadata(ctx context.Context, meta *metastorev1.BlockMeta, s *segment) error {
