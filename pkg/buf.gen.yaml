@@ -16,7 +16,6 @@ plugins:
     opt:
       - paths=source_relative
       - features=marshal+unmarshal+size+pool+grpc+pool
-      - pool=github.com/grafana/pyroscope/pkg/og/storage/tree.Profile
 
   - name: connect-go
     out: .
