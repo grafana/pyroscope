@@ -1,44 +1,6 @@
-# Pyroscope data distribution
+# Data Distribution Algorithm 
 
 ## Background
-
-Data distribution and replication approach we adhere to (consistent hashing and shard shuffling) assume that each
-profile is stored on N ingesters from the set S, where N is the replication factor, and S is the shard size for the
-given tenant. The exact location is determined based on the profile labels (so called fingerprint – a hash of the labels
-sorted in a deterministic order) that form the series the profile belongs to. Essentially, this means that profiles of
-the same program will be likely distributed across all the nodes of the set of ingesters S evenly. Hereby, instead of
-the configured replication factor N, a stack trace and associated symbolic information is stored up to S times. A very
-noticeable side effect of this placement is increased resource consumption (S/N is the upper limit).
-
-After a certain point, adding ingester nodes to the cluster (or increasing the replica set size for a specific tenant)
-may not be increasing its capacity to the expected extent. To overcome this limitation, *all* nodes would need to be
-scaled up vertically.
-
-In order to address this and some other problems, we propose a new data distribution algorithm.
-
-### Access Patterns
-
-It’s crucial to ensure that the write path aligns with post-processing requirements and doesn't hinder the creation
-of read-optimized representations of ingested data. This explains why this paragraph exists.
-
-In Pyroscope, we have a concept called "tenant service" – a set of profile series collected for the same program.
-While it's not strictly prohibited, profiling data is typically queried for a specific service.
-
-Additionally, a profile usually encompasses multiple sample types, representing various measurements associated with
-a particular stack trace sample. For example, in a Go heap profile, each sample may contain four values:
-`alloc_object`, `alloc_space`, `inuse_objects`, and `inuse_space`. A profile (a flame graph or a call graph) is always
-generated for a specific sample type.
-
-Historically, the distribution algorithm used in Pyroscope ignores both tenant service and sample types. This results in
-redundant duplication of symbolic information associated with profiles and leads to suboptimal distribution of data
-across ingesters, blocks, and shards. By "suboptimal," I mean that although uniform distribution is usually achieved,
-it badly affects data locality, query selectivity, and read amplification factor: more data needs to be retrieved and
-processed during read time. This ultimately poses unavoidable challenges during deduplication at query time and
-deduplication at compaction, making both processes very hard to scale and maintain.
-
-## New distribution algorithm
-
-### Requirements
 
 The **main requirement** for a distribution algorithm is that profile series of the same tenant service should be
 co-located, as spatial locality is crucial for compaction and query performance. The distribution algorithm should
@@ -56,28 +18,9 @@ data written to a shard remains there until it is compacted or deleted. The only
 is to optimize data locality; this concerns both data in transit, as segment writers are sensitive to the variance of
 the datasets, and data at rest, as this is crucial for compaction efficiency and query performance in the end.
 
-### Overview
+# Overview
 
-#### Write Path
-
-Profiles are written through the existing gRPC Push API and `/ingest` HTTP API. The requests are randomly distributed
-among `distributor` instances that then *redistribute* them among `segment-writer` instances to co-locate profiles of
-the same tenant service.
-
-The segment writer service accumulates profiles in small blocks, and writes them to object storage while updating the
-block index with metadata of newly added objects. Each writer produces a *single* block containing data of *all tenant
-services* per shard; this approach minimizes the number of write operations to the object storage, thereby optimizing
-the cost of the solution.
-
-Further block compaction and tenant split takes place in the background until the block reaches a certain size.
-To achieve optimal query performance, heavy parallelization of processing is crucial. For easier parallelization,
-it is preferable to maintain blocks with a predictable size that can be processed independently within a predictable
-time frame. Note that processing a single larger block using multiple workers in parallel may be less efficient due
-to the overhead caused by profile symbolization.
-
-#### Algorithm
-
-* Profiles are *redistributed* among segment writers based on the profile labels.
+* Profiles are *distributed* among segment-writers based on the profile labels.
 * Profile labels _must_ include `service_name` label, which denotes the dataset the profile belongs to.
 * Each profile belongs to a tenant.
 
@@ -114,7 +57,7 @@ maintain data locality in case of transient failures and rollouts.
 The proposed approach assumes that two requests with the same distribution key may end up in different shards.
 This should be a rare occurrence, but such placement is expected.
 
-### Implementation
+# Implementation
 
 The existing ring implementation is used for discovery: the underlying [memberlist](https://github.com/hashicorp/memberlist)
 library is used to maintain the list of the segment-writer service instances:
@@ -331,7 +274,7 @@ ones that overlap the parent ring boundaries are affected the most, and it is ex
 mapping entirely. However, such impact is preferable over the alternative, where larger number of datasets is affected
 in a more subtle way.
 
-#### Placement management
+## Placement management
 
 Placement is managed by the Placement Manager, which resides in the metastore. The Placement Manager is a singleton and
 runs only on the Raft leader node.
