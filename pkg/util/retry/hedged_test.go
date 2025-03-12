@@ -133,9 +133,16 @@ func Test_Hedging(t *testing.T) {
 		c := c
 		t.Run(c.description, func(t *testing.T) {
 			t.Parallel()
+			// With FailFast, it's expected the call returns
+			// immediately after the first response. Increasing
+			// the delay to make sure the test doesn't flake.
+			d := delay
+			if c.failFast {
+				d = time.Second * 10
+			}
 			a := Hedged[bool]{
 				Call:     createCall(c),
-				Trigger:  time.After(delay),
+				Trigger:  time.After(d),
 				FailFast: c.failFast,
 			}
 			r, err := a.Do(ctx)
