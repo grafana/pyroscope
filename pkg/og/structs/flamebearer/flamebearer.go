@@ -1,7 +1,6 @@
 package flamebearer
 
 import (
-	"errors"
 	"fmt"
 	"sort"
 
@@ -162,49 +161,6 @@ func convertGroups(v map[string]*segment.Timeline) map[string]*FlamebearerTimeli
 	return res
 }
 
-func NewCombinedProfile(base, diff ProfileConfig) (FlamebearerProfile, error) {
-	if base.Metadata.Units != diff.Metadata.Units {
-		// if one of them is empty, it still makes sense merging the profiles
-		if base.Metadata.Units != "" && diff.Metadata.Units != "" {
-			msg := fmt.Sprintf("left units (%s) does not match right units (%s)", base.Metadata.Units, diff.Metadata.Units)
-			return FlamebearerProfile{}, errors.New(msg)
-		}
-	}
-
-	if base.Metadata.SampleRate != diff.Metadata.SampleRate {
-		// if one of them is empty, it still makes sense merging the profiles
-		if base.Metadata.SampleRate != 0 && diff.Metadata.SampleRate != 0 {
-			msg := fmt.Sprintf("left sample rate (%d) does not match right sample rate (%d)", base.Metadata.SampleRate, diff.Metadata.SampleRate)
-			return FlamebearerProfile{}, errors.New(msg)
-		}
-	}
-
-	// Figure out the non empty one, since we will use its attributes
-	// Notice that this does not handle when both are empty, since there's nothing todo
-	output := base
-	if isEmpty(base) {
-		output = diff
-	}
-
-	lt, rt := tree.CombineTree(base.Tree, diff.Tree)
-	fb := tree.CombineToFlamebearerStruct(lt, rt, base.MaxNodes)
-	return FlamebearerProfile{
-		Version: 1,
-		FlamebearerProfileV1: FlamebearerProfileV1{
-			Flamebearer: newFlambearer(fb),
-			Timeline:    nil,
-			LeftTicks:   lt.Samples(),
-			RightTicks:  rt.Samples(),
-			Metadata: newMetadata(base.Name, fb.Format, metadata.Metadata{
-				SpyName:         output.Metadata.SpyName,
-				SampleRate:      output.Metadata.SampleRate,
-				Units:           output.Metadata.Units,
-				AggregationType: output.Metadata.AggregationType,
-			}),
-		},
-	}, nil
-}
-
 func newFlambearer(fb *tree.Flamebearer) FlamebearerV1 {
 	return FlamebearerV1{
 		Names:    fb.Names,
@@ -297,44 +253,6 @@ func (fb FlamebearerProfileV1) Validate() error {
 		}
 	}
 	return nil
-}
-
-func isEmpty(p ProfileConfig) bool {
-	return p.Metadata.SampleRate == 0 || p.Tree == nil || p.Tree.Samples() == 0
-}
-
-// Diff takes two single profiles and generates a diff profile
-func Diff(name string, base, diff *FlamebearerProfile, maxNodes int) (FlamebearerProfile, error) {
-	var fb FlamebearerProfile
-	bt, err := ProfileToTree(*base)
-	if err != nil {
-		return fb, fmt.Errorf("unable to convert base profile to tree: %w", err)
-	}
-	dt, err := ProfileToTree(*diff)
-	if err != nil {
-		return fb, fmt.Errorf("unable to convert diff profile to tree: %w", err)
-	}
-	baseProfile := ProfileConfig{
-		Name:     name,
-		Tree:     bt,
-		MaxNodes: maxNodes,
-		Metadata: metadata.Metadata{
-			SpyName:    base.Metadata.SpyName,
-			SampleRate: base.Metadata.SampleRate,
-			Units:      base.Metadata.Units,
-		},
-	}
-	diffProfile := ProfileConfig{
-		Name:     name,
-		Tree:     dt,
-		MaxNodes: maxNodes,
-		Metadata: metadata.Metadata{
-			SpyName:    diff.Metadata.SpyName,
-			SampleRate: diff.Metadata.SampleRate,
-			Units:      diff.Metadata.Units,
-		},
-	}
-	return NewCombinedProfile(baseProfile, diffProfile)
 }
 
 // ProfileToTree converts a FlamebearerProfile into a Tree

@@ -1,6 +1,7 @@
 package tree
 
 import (
+	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2/dsl/core"
@@ -10,7 +11,7 @@ import (
 
 var _ = Describe("tree", func() {
 	var tree *Tree
-	var profile *Profile
+	var profile *googlev1.Profile
 	var fnNames []string
 
 	Describe("pprof", func() {
@@ -121,7 +122,7 @@ var _ = Describe("tree", func() {
 				}
 			})
 			It("Should have corresponding functions", func() {
-				fnMap := make(map[uint64]*Function)
+				fnMap := make(map[uint64]*googlev1.Function)
 				for _, fn := range profile.Function {
 					fnMap[fn.Id] = fn
 				}
@@ -141,7 +142,7 @@ var _ = Describe("tree", func() {
 				}
 			})
 			It("Should have corresponding locations", func() {
-				lMap := make(map[uint64]*Location)
+				lMap := make(map[uint64]*googlev1.Location)
 				for _, l := range profile.Location {
 					lMap[l.Id] = l
 				}

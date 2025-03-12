@@ -10,17 +10,6 @@ import (
 var serializationExample = []byte("\x00\x00\x01\x01a\x00\x02\x01b\x01\x00\x01c\x02\x00")
 
 var _ = Describe("tree package", func() {
-	Describe("SerializeNoDict", func() {
-		It("returns correct results", func() {
-			tree := New()
-			tree.Insert([]byte("a;b"), uint64(1))
-			tree.Insert([]byte("a;c"), uint64(2))
-
-			var buf bytes.Buffer
-			tree.SerializeTruncateNoDict(1024, &buf)
-			Expect(buf.Bytes()).To(Equal(serializationExample))
-		})
-	})
 
 	Describe("DeserializeNoDict", func() {
 		It("returns correct results", func() {
