@@ -1,0 +1,30 @@
+# HELP compaction_scheduler_queue_added_jobs_total The total number of jobs added to the queue.
+# TYPE compaction_scheduler_queue_added_jobs_total counter
+compaction_scheduler_queue_added_jobs_total{level="0"} 1
+compaction_scheduler_queue_added_jobs_total{level="2"} 1
+# HELP compaction_scheduler_queue_assigned_jobs_total The total number of jobs assigned.
+# TYPE compaction_scheduler_queue_assigned_jobs_total counter
+compaction_scheduler_queue_assigned_jobs_total{level="0"} 0
+compaction_scheduler_queue_assigned_jobs_total{level="2"} 0
+# HELP compaction_scheduler_queue_completed_jobs_total The total number of jobs completed.
+# TYPE compaction_scheduler_queue_completed_jobs_total counter
+compaction_scheduler_queue_completed_jobs_total{level="0"} 1
+compaction_scheduler_queue_completed_jobs_total{level="2"} 0
+# HELP compaction_scheduler_queue_evicted_jobs_total The total number of jobs evicted.
+# TYPE compaction_scheduler_queue_evicted_jobs_total counter
+compaction_scheduler_queue_evicted_jobs_total{level="0"} 0
+compaction_scheduler_queue_evicted_jobs_total{level="2"} 0
+# HELP compaction_scheduler_queue_jobs The total number of jobs in the queue.
+# TYPE compaction_scheduler_queue_jobs gauge
+compaction_scheduler_queue_jobs{level="0",status="assigned"} 0
+compaction_scheduler_queue_jobs{level="0",status="failed"} 0
+compaction_scheduler_queue_jobs{level="0",status="reassigned"} 0
+compaction_scheduler_queue_jobs{level="0",status="unassigned"} 0
+compaction_scheduler_queue_jobs{level="2",status="assigned"} 0
+compaction_scheduler_queue_jobs{level="2",status="failed"} 0
+compaction_scheduler_queue_jobs{level="2",status="reassigned"} 0
+compaction_scheduler_queue_jobs{level="2",status="unassigned"} 1
+# HELP compaction_scheduler_queue_reassigned_jobs_total The total number of jobs reassigned.
+# TYPE compaction_scheduler_queue_reassigned_jobs_total counter
+compaction_scheduler_queue_reassigned_jobs_total{level="0"} 0
+compaction_scheduler_queue_reassigned_jobs_total{level="2"} 0

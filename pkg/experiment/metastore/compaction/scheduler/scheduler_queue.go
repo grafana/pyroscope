@@ -9,7 +9,8 @@ import (
 )
 
 type schedulerQueue struct {
-	jobs   map[string]*jobEntry
+	jobs map[string]*jobEntry
+	// Sparse array of job queues, indexed by compaction level.
 	levels []*jobQueue
 }
 

@@ -81,6 +81,10 @@ func (c *statsCollector) collectStats(fn func(level int, stats queueStats)) {
 	defer c.s.mu.Unlock()
 
 	for i, q := range c.s.queue.levels {
+		// Note that some levels may be empty.
+		if q == nil || q.jobs == nil {
+			continue
+		}
 		var stats queueStats
 		for _, e := range *q.jobs {
 			switch {
