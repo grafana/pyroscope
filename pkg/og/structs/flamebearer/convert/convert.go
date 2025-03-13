@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"path"
 	"reflect"
 	"strconv"
@@ -187,12 +188,12 @@ func JSONToProfile(b []byte, name string, maxNodes int) ([]*flamebearer.Flamebea
 }
 
 func PprofToProfile(b []byte, name string, maxNodes int) ([]*flamebearer.FlamebearerProfile, error) {
-	var p tree.Profile
-	if err := pprof.Decode(bytes.NewReader(b), &p); err != nil {
+	p := new(profilev1.Profile)
+	if err := pprof.Decode(bytes.NewReader(b), p); err != nil {
 		return nil, fmt.Errorf("parsing pprof: %w", err)
 	}
 	fbs := make([]*flamebearer.FlamebearerProfile, 0)
-	for _, stype := range p.SampleTypes() {
+	for _, stype := range tree.SampleTypes(p) {
 		sampleRate := uint32(100)
 		units := metadata.SamplesUnits
 		if c, ok := tree.DefaultSampleTypeMapping[stype]; ok {
@@ -202,7 +203,7 @@ func PprofToProfile(b []byte, name string, maxNodes int) ([]*flamebearer.Flamebe
 			}
 		}
 		t := tree.New()
-		p.Get(stype, func(_labels *spy.Labels, name []byte, val int) error {
+		tree.Get(p, stype, func(_labels *spy.Labels, name []byte, val int) error {
 			t.Insert(name, uint64(val))
 			return nil
 		})

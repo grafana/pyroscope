@@ -50,6 +50,7 @@ type Config struct {
 }
 
 type UploadConfig struct {
+	Timeout          time.Duration `yaml:"timeout,omitempty" category:"advanced"`
 	MaxRetries       int           `yaml:"retry_max_retries,omitempty" category:"advanced"`
 	MinBackoff       time.Duration `yaml:"retry_min_period,omitempty" category:"advanced"`
 	MaxBackoff       time.Duration `yaml:"retry_max_period,omitempty" category:"advanced"`
@@ -68,6 +69,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 }
 
 func (cfg *UploadConfig) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
+	f.DurationVar(&cfg.Timeout, prefix+".timeout", time.Second, "Timeout for upload requests.")
 	f.IntVar(&cfg.MaxRetries, prefix+".max-retries", 3, "Number of times to backoff and retry before failing.")
 	f.DurationVar(&cfg.MinBackoff, prefix+".retry-min-period", 50*time.Millisecond, "Minimum delay when backing off.")
 	f.DurationVar(&cfg.MaxBackoff, prefix+".retry-max-period", defaultSegmentDuration, "Maximum delay when backing off.")

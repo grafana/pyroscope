@@ -9,7 +9,7 @@ weight: 50
 
 The querier is a stateless component that evaluates query expressions by fetching profiles series and labels on the read path.
 
-The querier uses the [ingesters]({{< relref "./ingester.md" >}}) for gathering recently written data and the [store-gateways] for the [long-term storage]({{< relref "../about-grafana-pyroscope-architecture/index.md#long-term-storage" >}}).
+The querier uses the [ingesters](../ingester/) for gathering recently written data and the [store-gateways] for the [long-term storage](../../about-grafana-pyroscope-architecture/#long-term-storage).
 
 ### Connecting to ingesters
 
@@ -17,4 +17,4 @@ You must configure the querier with the same `-ingester.ring.*` flags (or their 
 
 ## Querier configuration
 
-For details about querier configuration, refer to [querier]({{< relref "../../configure-server/reference-configuration-parameters/index.md#querier" >}}).
+For details about querier configuration, refer to [querier](../../../configure-server/reference-configuration-parameters/#querier).

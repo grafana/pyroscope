@@ -7,9 +7,9 @@ weight: 120
 
 # Pyroscope query-scheduler
 
-The query-scheduler is a stateless component that retains a queue of queries to execute, and distributes the workload to available [queriers]({{< relref "../querier.md" >}}).
+The query-scheduler is a stateless component that retains a queue of queries to execute, and distributes the workload to available [queriers](../querier/).
 
-The query-scheduler is a required component when using the [query-frontend]({{< relref "../query-frontend/index.md" >}}).
+The query-scheduler is a required component when using the [query-frontend](../query-frontend/).
 
 ![Query-scheduler architecture](query-scheduler-architecture.png)
 
@@ -17,7 +17,7 @@ The query-scheduler is a required component when using the [query-frontend]({{< 
 
 The following flow describes how a query moves through a Pyroscope cluster:
 
-1. The [query-frontend]({{< relref "../query-frontend/index.md" >}}) receives queries, and then either splits and shards them, or serves them from the cache.
+1. The [query-frontend](../query-frontend/) receives queries, and then either splits and shards them, or serves them from the cache.
 1. The query-frontend enqueues the queries into a query-scheduler.
 1. The query-scheduler stores the queries in an in-memory queue where they wait for a querier to pick them up.
 1. Queriers pick up the queries, and executes them.
@@ -30,7 +30,7 @@ Query-scheduler enables the scaling of query-frontends. To learn more, see Mimir
 ## Configuration
 
 To use the query-scheduler, query-frontends and queriers need to discover the addresses of query-scheduler instances.
-To advertise itself, the query-scheduler uses Ring-based service discovery which is configured via the [memberlist configuration]({{< relref "../../../configure-server/configuring-memberlist.md" >}}).
+To advertise itself, the query-scheduler uses Ring-based service discovery which is configured via the [memberlist configuration](../../../configure-server/configuring-memberlist/).
 
 ## Operational considerations
 
