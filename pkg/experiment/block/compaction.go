@@ -250,10 +250,9 @@ func (b *CompactionPlan) writeDatasetIndex(w *Writer) error {
 	// We annotate the dataset with the
 	// __tenant_dataset__ = "dataset_tsdb_index" label,
 	// so the dataset index metadata can be queried.
-	labels := metadata.NewLabelBuilder(b.strings).BuildPairs(
-		metadata.LabelNameTenantDataset,
-		metadata.LabelValueDatasetTSDBIndex,
-	)
+	labels := metadata.NewLabelBuilder(b.strings).
+		WithLabelSet(metadata.LabelNameTenantDataset, metadata.LabelValueDatasetTSDBIndex).
+		Build()
 	b.meta.Datasets = append(b.meta.Datasets, &metastorev1.Dataset{
 		Format:          1,
 		Tenant:          b.meta.Tenant,

@@ -334,12 +334,13 @@ func concatSegmentHead(f *headFlush, w *writerOffset, s *metadata.StringTable) (
 		Labels:          nil,
 	}
 
-	lb := metadata.NewLabelBuilder(s).
-		WithConstantPairs(model.LabelNameServiceName, f.head.key.service).
-		WithLabelNames(model.LabelNameProfileType)
+	lb := metadata.NewLabelBuilder(s)
 	for _, profileType := range ptypes {
-		lb.CreateLabels(profileType)
+		lb.WithLabelSet(model.LabelNameServiceName, f.head.key.service, model.LabelNameProfileType, profileType)
 	}
+
+	// Other optional labels:
+	// lb.WithLabelSet("label_name", "label_value", ...)
 	ds.Labels = lb.Build()
 
 	return ds, nil

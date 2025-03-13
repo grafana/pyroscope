@@ -40,10 +40,8 @@ func TestMetadata_New(t *testing.T) {
 				Size:            567,
 				Labels:          nil,
 			}
-
-			b.WithConstantPairs("service_name", dataset).WithLabelNames("__profile_type__")
 			for _, n := range []string{"cpu", "memory"} {
-				b.CreateLabels(n)
+				b.WithLabelSet("service_name", dataset, "__profile_type__", n)
 			}
 			ds.Labels = b.Build()
 			md.Datasets = append(md.Datasets, ds)

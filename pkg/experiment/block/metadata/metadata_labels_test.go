@@ -10,56 +10,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/model"
 )
 
-func TestLabelBuilder_CreateLabels(t *testing.T) {
-	strings := NewStringTable()
-	b := NewLabelBuilder(strings).
-		WithConstantPairs("foo", "0").
-		WithLabelNames("bar", "baz")
-
-	b.CreateLabels("1", "2")
-	b.CreateLabels("1", "2")
-	b.CreateLabels("3", "4")
-
-	assert.Equal(t, []int32{
-		3, 1, 2, 3, 5, 4, 6, // foo=0, bar=1, baz=2
-		3, 1, 2, 3, 5, 4, 6, // foo=0, bar=1, baz=2
-		3, 1, 2, 3, 7, 4, 8, // foo=0, bar=3, baz=4
-	}, b.Build())
-
-	assert.EqualValues(t, 5, strings.LookupString("1"))
-	assert.EqualValues(t, 6, strings.LookupString("2"))
-	assert.EqualValues(t, 7, strings.LookupString("3"))
-	assert.EqualValues(t, 8, strings.LookupString("4"))
-}
-
-func TestLabelBuilder_Reuse(t *testing.T) {
-	strings := NewStringTable()
-	b := NewLabelBuilder(strings).
-		WithConstantPairs("service_name", "service_a").
-		WithLabelNames("__profile_type__")
-
-	b.CreateLabels("cpu:a")
-	b.CreateLabels("cpu:b")
-	b.CreateLabels("memory")
-	assert.Equal(t, []string{
-		"service_name=service_a;__profile_type__=cpu:a;",
-		"service_name=service_a;__profile_type__=cpu:b;",
-		"service_name=service_a;__profile_type__=memory;",
-	}, labelStrings(b.Build(), strings))
-
-	b.WithConstantPairs("service_name", "service_b")
-	assert.True(t, b.CreateLabels("cpu:a"))
-	assert.Equal(t, []string{
-		"service_name=service_b;__profile_type__=cpu:a;",
-	}, labelStrings(b.Build(), strings))
-
-	b = b.WithLabelNames("another_label")
-	b.CreateLabels("another_value")
-	assert.Equal(t, []string{
-		"service_name=service_b;another_label=another_value;",
-	}, labelStrings(b.Build(), strings))
-}
-
 func TestLabelBuilder_Put(t *testing.T) {
 	strings := NewStringTable()
 	b := NewLabelBuilder(strings)
@@ -95,24 +45,21 @@ func labelStrings(v []int32, s *StringTable) []string {
 
 func TestLabelMatcher_Matches(t *testing.T) {
 	strings := NewStringTable()
-	b := NewLabelBuilder(strings)
-
-	b.WithConstantPairs("service_name", "service_a")
-	b.WithLabelNames("__profile_type__")
-	b.CreateLabels("cpu:a")
-	b.CreateLabels("cpu:b")
-	b.CreateLabels("memory")
-	setA := b.Build()
+	setA := NewLabelBuilder(strings).
+		WithLabelSet("service_name", "service_a", "__profile_type__", "cpu:a").
+		WithLabelSet("service_name", "service_a", "__profile_type__", "cpu:b").
+		WithLabelSet("service_name", "service_a", "__profile_type__", "memory").
+		Build()
 	assert.Equal(t, []string{
 		"service_name=service_a;__profile_type__=cpu:a;",
 		"service_name=service_a;__profile_type__=cpu:b;",
 		"service_name=service_a;__profile_type__=memory;",
 	}, labelStrings(setA, strings))
 
-	b.WithConstantPairs("service_name", "service_b")
-	b.CreateLabels("cpu:a")
-	b.CreateLabels("cpu:b")
-	setB := b.Build()
+	setB := NewLabelBuilder(strings).
+		WithLabelSet("service_name", "service_b", "__profile_type__", "cpu:a").
+		WithLabelSet("service_name", "service_b", "__profile_type__", "cpu:b").
+		Build()
 	assert.Equal(t, []string{
 		"service_name=service_b;__profile_type__=cpu:a;",
 		"service_name=service_b;__profile_type__=cpu:b;",
@@ -149,10 +96,9 @@ func TestLabelMatcher_Matches(t *testing.T) {
 
 func Test_LabelMatcher_All(t *testing.T) {
 	strings := NewStringTable()
-	x := NewLabelBuilder(strings).BuildPairs(
-		LabelNameTenantDataset,
-		LabelValueDatasetTSDBIndex,
-	)
+	x := NewLabelBuilder(strings).
+		WithLabelSet(LabelNameTenantDataset, LabelValueDatasetTSDBIndex).
+		Build()
 
 	m := NewLabelMatcher(strings,
 		[]*labels.Matcher{},
@@ -170,28 +116,16 @@ func Test_LabelMatcher_All(t *testing.T) {
 
 func TestLabelMatcher_Collect(t *testing.T) {
 	strings := NewStringTable()
-	b := NewLabelBuilder(strings)
+	setA := NewLabelBuilder(strings).
+		WithLabelSet("service_name", "service_a", "__profile_type__", "cpu:a").
+		WithLabelSet("service_name", "service_a", "__profile_type__", "cpu:b").
+		WithLabelSet("service_name", "service_a", "__profile_type__", "memory").
+		Build()
 
-	b.WithConstantPairs("service_name", "service_a")
-	b.WithLabelNames("__profile_type__")
-	b.CreateLabels("cpu:a")
-	b.CreateLabels("cpu:b")
-	b.CreateLabels("memory")
-	setA := b.Build()
-	assert.Equal(t, []string{
-		"service_name=service_a;__profile_type__=cpu:a;",
-		"service_name=service_a;__profile_type__=cpu:b;",
-		"service_name=service_a;__profile_type__=memory;",
-	}, labelStrings(setA, strings))
-
-	b.WithConstantPairs("service_name", "service_b")
-	b.CreateLabels("cpu:a")
-	b.CreateLabels("cpu:b")
-	setB := b.Build()
-	assert.Equal(t, []string{
-		"service_name=service_b;__profile_type__=cpu:a;",
-		"service_name=service_b;__profile_type__=cpu:b;",
-	}, labelStrings(setB, strings))
+	setB := NewLabelBuilder(strings).
+		WithLabelSet("service_name", "service_b", "__profile_type__", "cpu:a").
+		WithLabelSet("service_name", "service_b", "__profile_type__", "cpu:b").
+		Build()
 
 	m := NewLabelMatcher(strings, []*labels.Matcher{
 		labels.MustNewMatcher(labels.MatchEqual, "service_name", "service_a"),
@@ -216,11 +150,9 @@ func TestLabelMatcher_Collect(t *testing.T) {
 func Benchmark_LabelMatcher_Matches(b *testing.B) {
 	strings := NewStringTable()
 
-	lb := NewLabelBuilder(strings).
-		WithConstantPairs("service_name", "service_a").
-		WithLabelNames("__profile_type__")
-	lb.CreateLabels("cpu")
-	ls := lb.Build()
+	ls := NewLabelBuilder(strings).
+		WithLabelSet("service_name", "service_a", "__profile_type__", "cpu").
+		Build()
 
 	m := NewLabelMatcher(strings,
 		[]*labels.Matcher{labels.MustNewMatcher(labels.MatchEqual, "service_name", "service_a")},

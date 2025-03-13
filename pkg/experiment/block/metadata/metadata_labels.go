@@ -21,51 +21,26 @@ const (
 )
 
 type LabelBuilder struct {
-	strings  *StringTable
-	labels   []int32
-	constant []int32
-	keys     []int32
-	seen     map[string]struct{}
+	strings *StringTable
+	labels  []int32
+	seen    map[string]struct{}
 }
 
 func NewLabelBuilder(strings *StringTable) *LabelBuilder {
 	return &LabelBuilder{strings: strings}
 }
 
-func (lb *LabelBuilder) WithConstantPairs(pairs ...string) *LabelBuilder {
+func (lb *LabelBuilder) WithLabelSet(pairs ...string) *LabelBuilder {
 	if len(pairs)%2 == 1 {
-		return lb
+		panic("expected even number of values")
 	}
-	lb.constant = slices.Grow(lb.constant[:0], len(pairs))[:len(pairs)]
-	for i := 0; i < len(pairs); i++ {
-		lb.constant[i] = lb.strings.Put(pairs[i])
-	}
-	return lb
-}
-
-func (lb *LabelBuilder) WithLabelNames(names ...string) *LabelBuilder {
-	lb.keys = slices.Grow(lb.keys[:0], len(names))[:len(names)]
-	for i, n := range names {
-		lb.keys[i] = lb.strings.Put(n)
+	s := len(lb.labels)
+	lb.labels = slices.Grow(lb.labels, len(pairs)+1)[:s+len(pairs)+1]
+	lb.labels[s] = int32(len(pairs) / 2)
+	for i := range pairs {
+		lb.labels[s+i+1] = lb.strings.Put(pairs[i])
 	}
 	return lb
-}
-
-func (lb *LabelBuilder) CreateLabels(values ...string) bool {
-	if len(values) != len(lb.keys) {
-		return false
-	}
-	// We're going to add the length of pairs, the constant pairs,
-	// and then the variadic key-value pairs: p pairs total.
-	p := len(lb.constant)/2 + len(lb.keys)
-	n := 1 + p*2 // n elems total.
-	lb.labels = slices.Grow(lb.labels, n)
-	lb.labels = append(lb.labels, int32(p))
-	lb.labels = append(lb.labels, lb.constant...)
-	for i := 0; i < len(values); i++ {
-		lb.labels = append(lb.labels, lb.keys[i], lb.strings.Put(values[i]))
-	}
-	return true
 }
 
 func (lb *LabelBuilder) Put(x []int32, strings []string) {
@@ -111,13 +86,8 @@ func (lb *LabelBuilder) Build() []int32 {
 	c := make([]int32, len(lb.labels))
 	copy(c, lb.labels)
 	lb.labels = lb.labels[:0]
+	clear(lb.seen)
 	return c
-}
-
-func (lb *LabelBuilder) BuildPairs(pairs ...string) []int32 {
-	lb.WithConstantPairs(pairs...)
-	lb.CreateLabels()
-	return lb.Build()
 }
 
 func LabelPairs(ls []int32) iter.Iterator[[]int32] { return &labelPairs{labels: ls} }
