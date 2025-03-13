@@ -8,6 +8,7 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"golang.org/x/exp/maps"
 
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/iter"
 	"github.com/grafana/pyroscope/pkg/model"
@@ -90,6 +91,28 @@ func (lb *LabelBuilder) Build() []int32 {
 	return c
 }
 
+func FindDatasets(md *metastorev1.BlockMeta, matchers ...*labels.Matcher) (fn func(yield func(*metastorev1.Dataset) bool)) {
+	st := NewStringTable()
+	st.Import(md)
+	lm := NewLabelMatcher(st, matchers)
+	if !lm.IsValid() {
+		return func(func(*metastorev1.Dataset) bool) {
+			return
+		}
+	}
+	return func(yield func(*metastorev1.Dataset) bool) {
+		for i := range md.Datasets {
+			ds := md.Datasets[i]
+			if !lm.Matches(ds.Labels) {
+				continue
+			}
+			if !yield(ds) {
+				return
+			}
+		}
+	}
+}
+
 func LabelPairs(ls []int32) iter.Iterator[[]int32] { return &labelPairs{labels: ls} }
 
 type labelPairs struct {
@@ -166,6 +189,10 @@ func NewLabelMatcher(strings *StringTable, matchers []*labels.Matcher, keep ...s
 
 func (lm *LabelMatcher) IsValid() bool { return !lm.nomatch }
 
+// Matches reports whether the given set of labels matches the matchers.
+// Note that at least one labels set must satisfy matchers to return true.
+// For negations, all labels sets must satisfy the matchers to return true.
+// TODO(kolesnikovae): This might be really confusing; it's worth relaxing it.
 func (lm *LabelMatcher) Matches(labels []int32) bool {
 	pairs := LabelPairs(labels)
 	var matches bool
