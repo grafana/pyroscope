@@ -61,7 +61,6 @@ import (
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/operations"
-	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/querier"
 	"github.com/grafana/pyroscope/pkg/querier/worker"
@@ -131,8 +130,8 @@ type StorageConfig struct {
 	Bucket objstoreclient.Config `yaml:",inline"`
 }
 
-func (c *StorageConfig) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) {
-	c.Bucket.RegisterFlagsWithPrefix("storage.", f, phlarecontext.Logger(ctx))
+func (c *StorageConfig) RegisterFlags(f *flag.FlagSet) {
+	c.Bucket.RegisterFlagsWithPrefix("storage.", f)
 }
 
 type SelfProfilingConfig struct {
@@ -161,11 +160,11 @@ func (c *SelfProfilingConfig) RegisterFlags(f *flag.FlagSet) {
 }
 
 func (c *Config) RegisterFlags(f *flag.FlagSet) {
-	c.RegisterFlagsWithContext(context.Background(), f)
+	c.RegisterFlagsWithContext(f)
 }
 
 // RegisterFlagsWithContext registers flag.
-func (c *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) {
+func (c *Config) RegisterFlagsWithContext(f *flag.FlagSet) {
 	// Set the default module list to 'all'
 	c.Target = []string{All}
 	f.StringVar(&c.ConfigFile, "config.file", "", "yaml file to load")
@@ -191,7 +190,6 @@ func (c *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) 
 	c.StoreGateway.RegisterFlags(f, util.Logger)
 	c.PhlareDB.RegisterFlags(f)
 	c.Tracing.RegisterFlags(f)
-	c.Storage.RegisterFlagsWithContext(ctx, f)
 	c.SelfProfiling.RegisterFlags(f)
 	c.RuntimeConfig.RegisterFlags(f)
 	c.Analytics.RegisterFlags(f)
@@ -208,6 +206,7 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 
 	// Register to throwaway flags first. Default values are remembered during registration and cannot be changed,
 	// but we can take values from throwaway flag set and reregister into supplied flags with new default values.
+	c.Storage.RegisterFlags(throwaway)
 	c.Server.RegisterFlags(throwaway)
 	c.Ingester.RegisterFlags(throwaway)
 	c.Distributor.RegisterFlags(throwaway, log.NewLogfmtLogger(os.Stderr))
@@ -233,6 +232,10 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 			"segment-writer.heartbeat-timeout":                       "1m",
 			"segment-writer.unregister-on-shutdown":                  "false",
 			"segment-writer.min-ready-duration":                      "30s",
+			"storage.s3.http.idle-conn-timeout":                      "10m",
+			"storage.s3.max-idle-connections-per-host":               "1000",
+			"storage.gcs.http.idle-conn-timeout":                     "10m",
+			"storage.gcs.max-idle-connections-per-host":              "1000",
 			"compaction-worker.metrics-exporter.rules-source.static": "[]",
 		} {
 			overrides[k] = v

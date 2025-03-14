@@ -7,6 +7,7 @@ package gcs
 
 import (
 	"flag"
+	"time"
 
 	"github.com/grafana/dskit/flagext"
 )
@@ -15,6 +16,7 @@ import (
 type Config struct {
 	BucketName     string         `yaml:"bucket_name"`
 	ServiceAccount flagext.Secret `yaml:"service_account" doc:"description_method=GCSServiceAccountLongDescription"`
+	HTTP           HTTPConfig     `yaml:"http"`
 }
 
 // RegisterFlags registers the flags for GCS storage
@@ -26,6 +28,30 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.StringVar(&cfg.BucketName, prefix+"gcs.bucket-name", "", "GCS bucket name")
 	f.Var(&cfg.ServiceAccount, prefix+"gcs.service-account", cfg.GCSServiceAccountShortDescription())
+	cfg.HTTP.RegisterFlagsWithPrefix(prefix, f)
+}
+
+type HTTPConfig struct {
+	IdleConnTimeout       time.Duration `yaml:"idle_conn_timeout"`
+	ResponseHeaderTimeout time.Duration `yaml:"response_header_timeout"`
+	InsecureSkipVerify    bool          `yaml:"insecure_skip_verify"`
+	TLSHandshakeTimeout   time.Duration `yaml:"tls_handshake_timeout"`
+	ExpectContinueTimeout time.Duration `yaml:"expect_continue_timeout"`
+	MaxIdleConns          int           `yaml:"max_idle_conns"`
+	MaxIdleConnsPerHost   int           `yaml:"max_idle_conns_per_host"`
+	MaxConnsPerHost       int           `yaml:"max_conns_per_host"`
+}
+
+// RegisterFlagsWithPrefix registers the flags for s3 storage with the provided prefix
+func (cfg *HTTPConfig) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
+	f.DurationVar(&cfg.IdleConnTimeout, prefix+"gcs.http.idle-conn-timeout", 90*time.Second, "The time an idle connection will remain idle before closing.")
+	f.DurationVar(&cfg.ResponseHeaderTimeout, prefix+"gcs.http.response-header-timeout", 2*time.Minute, "The amount of time the client will wait for a servers response headers.")
+	f.BoolVar(&cfg.InsecureSkipVerify, prefix+"gcs.http.insecure-skip-verify", false, "If the client connects to GCS via HTTPS and this option is enabled, the client will accept any certificate and hostname.")
+	f.DurationVar(&cfg.TLSHandshakeTimeout, prefix+"gcs.tls-handshake-timeout", 10*time.Second, "Maximum time to wait for a TLS handshake. 0 means no limit.")
+	f.DurationVar(&cfg.ExpectContinueTimeout, prefix+"gcs.expect-continue-timeout", 1*time.Second, "The time to wait for a server's first response headers after fully writing the request headers if the request has an Expect header. 0 to send the request body immediately.")
+	f.IntVar(&cfg.MaxIdleConns, prefix+"gcs.max-idle-connections", 0, "Maximum number of idle (keep-alive) connections across all hosts. 0 means no limit.")
+	f.IntVar(&cfg.MaxIdleConnsPerHost, prefix+"gcs.max-idle-connections-per-host", 100, "Maximum number of idle (keep-alive) connections to keep per-host. If 0, a built-in default value is used.")
+	f.IntVar(&cfg.MaxConnsPerHost, prefix+"gcs.max-connections-per-host", 0, "Maximum number of connections per host. 0 means no limit.")
 }
 
 func (cfg *Config) GCSServiceAccountShortDescription() string {

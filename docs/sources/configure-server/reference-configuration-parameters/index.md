@@ -2356,6 +2356,44 @@ The gcs_backend block configures the connection to Google Cloud Storage object s
 # 3. On Google Compute Engine it fetches credentials from the metadata server.
 # CLI flag: -storage.gcs.service-account
 [service_account: <string> | default = ""]
+
+http:
+  # The time an idle connection will remain idle before closing.
+  # CLI flag: -storage.gcs.http.idle-conn-timeout
+  [idle_conn_timeout: <duration> | default = 1m30s]
+
+  # The amount of time the client will wait for a servers response headers.
+  # CLI flag: -storage.gcs.http.response-header-timeout
+  [response_header_timeout: <duration> | default = 2m]
+
+  # If the client connects to GCS via HTTPS and this option is enabled, the
+  # client will accept any certificate and hostname.
+  # CLI flag: -storage.gcs.http.insecure-skip-verify
+  [insecure_skip_verify: <boolean> | default = false]
+
+  # Maximum time to wait for a TLS handshake. 0 means no limit.
+  # CLI flag: -storage.gcs.tls-handshake-timeout
+  [tls_handshake_timeout: <duration> | default = 10s]
+
+  # The time to wait for a server's first response headers after fully writing
+  # the request headers if the request has an Expect header. 0 to send the
+  # request body immediately.
+  # CLI flag: -storage.gcs.expect-continue-timeout
+  [expect_continue_timeout: <duration> | default = 1s]
+
+  # Maximum number of idle (keep-alive) connections across all hosts. 0 means no
+  # limit.
+  # CLI flag: -storage.gcs.max-idle-connections
+  [max_idle_conns: <int> | default = 0]
+
+  # Maximum number of idle (keep-alive) connections to keep per-host. If 0, a
+  # built-in default value is used.
+  # CLI flag: -storage.gcs.max-idle-connections-per-host
+  [max_idle_conns_per_host: <int> | default = 100]
+
+  # Maximum number of connections per host. 0 means no limit.
+  # CLI flag: -storage.gcs.max-connections-per-host
+  [max_conns_per_host: <int> | default = 0]
 ```
 
 ### azure_storage_backend
