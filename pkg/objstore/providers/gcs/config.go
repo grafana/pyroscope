@@ -32,14 +32,14 @@ func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 }
 
 type HTTPConfig struct {
-	IdleConnTimeout       time.Duration `yaml:"idle_conn_timeout"`
-	ResponseHeaderTimeout time.Duration `yaml:"response_header_timeout"`
-	InsecureSkipVerify    bool          `yaml:"insecure_skip_verify"`
-	TLSHandshakeTimeout   time.Duration `yaml:"tls_handshake_timeout"`
-	ExpectContinueTimeout time.Duration `yaml:"expect_continue_timeout"`
-	MaxIdleConns          int           `yaml:"max_idle_conns"`
-	MaxIdleConnsPerHost   int           `yaml:"max_idle_conns_per_host"`
-	MaxConnsPerHost       int           `yaml:"max_conns_per_host"`
+	IdleConnTimeout       time.Duration `yaml:"idle_conn_timeout" category:"advanced"`
+	ResponseHeaderTimeout time.Duration `yaml:"response_header_timeout" category:"advanced"`
+	InsecureSkipVerify    bool          `yaml:"insecure_skip_verify" category:"advanced"`
+	TLSHandshakeTimeout   time.Duration `yaml:"tls_handshake_timeout" category:"advanced"`
+	ExpectContinueTimeout time.Duration `yaml:"expect_continue_timeout" category:"advanced"`
+	MaxIdleConns          int           `yaml:"max_idle_conns" category:"advanced"`
+	MaxIdleConnsPerHost   int           `yaml:"max_idle_conns_per_host" category:"advanced"`
+	MaxConnsPerHost       int           `yaml:"max_conns_per_host" category:"advanced"`
 }
 
 // RegisterFlagsWithPrefix registers the flags for s3 storage with the provided prefix
