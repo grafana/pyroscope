@@ -30,6 +30,14 @@ pyroscope.relabel "filter_profiles" {
         replacement = "apac"
     }
 
+    rule {
+       action = "replace"
+       source_labels = ["service_name"]
+       target_label = "tier"
+       regex = "^load-generator$"
+       replacement = "testing"
+    }
+
     // Example: Sample profiles by service_name (drop 30% of services)
     // rule {
     //     action = "hashmod"
