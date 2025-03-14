@@ -42,6 +42,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/embedded/grafana"
 	"github.com/grafana/pyroscope/pkg/experiment/query_backend"
+	"github.com/grafana/pyroscope/pkg/experiment/symbolizer"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	readpath "github.com/grafana/pyroscope/pkg/frontend/read_path"
 	queryfrontend "github.com/grafana/pyroscope/pkg/frontend/read_path/query_frontend"
@@ -129,7 +130,9 @@ func (f *Phlare) initQueryFrontend() (services.Service, error) {
 		f.API.RegisterPyroscopeHandlers(frontendSvc)
 		f.API.RegisterVCSServiceHandler(frontendSvc)
 	} else {
-		f.initReadPathRouter()
+		if err := f.initReadPathRouter(); err != nil {
+			return nil, err
+		}
 	}
 
 	return frontendSvc, nil
@@ -146,19 +149,35 @@ func (f *Phlare) getFrontendAddress() (addr string, err error) {
 	return netutil.GetFirstAddressOf(f.Cfg.Frontend.InfNames, f.logger, f.Cfg.Frontend.EnableIPv6)
 }
 
-func (f *Phlare) initReadPathRouter() {
+func (f *Phlare) initReadPathRouter() error {
 	vcsService := vcs.New(
 		log.With(f.logger, "component", "vcs-service"),
 		f.reg,
 	)
 
-	newFrontend := queryfrontend.NewQueryFrontend(
+	var sym *symbolizer.ProfileSymbolizer
+	if f.Cfg.Symbolizer.Enabled {
+		s, err := symbolizer.NewFromConfig(
+			context.Background(),
+			log.With(f.logger, "component", "symbolizer"),
+			f.Cfg.Symbolizer, f.reg)
+		if err != nil {
+			return fmt.Errorf("failed to initialize symbolizer: %w", err)
+		}
+		sym = s
+	}
+
+	newFrontend, err := queryfrontend.NewQueryFrontend(
 		log.With(f.logger, "component", "query-frontend"),
 		f.Overrides,
 		f.metastoreClient,
 		f.metastoreClient,
 		f.queryBackendClient,
+		sym,
 	)
+	if err != nil {
+		return err
+	}
 
 	router := readpath.NewRouter(
 		log.With(f.logger, "component", "read-path-router"),
@@ -170,6 +189,8 @@ func (f *Phlare) initReadPathRouter() {
 	f.API.RegisterQuerierServiceHandler(router)
 	f.API.RegisterPyroscopeHandlers(router)
 	f.API.RegisterVCSServiceHandler(vcsService)
+
+	return nil
 }
 
 func (f *Phlare) initRuntimeConfig() (services.Service, error) {

@@ -56,6 +56,7 @@ import (
 	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
 	querybackend "github.com/grafana/pyroscope/pkg/experiment/query_backend"
 	querybackendclient "github.com/grafana/pyroscope/pkg/experiment/query_backend/client"
+	"github.com/grafana/pyroscope/pkg/experiment/symbolizer"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/ingester"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
@@ -97,6 +98,7 @@ type Config struct {
 	RuntimeConfig     runtimeconfig.Config   `yaml:"runtime_config"`
 	Compactor         compactor.Config       `yaml:"compactor"`
 	TenantSettings    settings.Config        `yaml:"tenant_settings"`
+	Symbolizer        symbolizer.Config      `yaml:"symbolizer,omitempty"`
 
 	Storage       StorageConfig       `yaml:"storage"`
 	SelfProfiling SelfProfilingConfig `yaml:"self_profiling,omitempty"`
@@ -198,6 +200,11 @@ func (c *Config) RegisterFlagsWithContext(f *flag.FlagSet) {
 	c.API.RegisterFlags(f)
 	c.EmbeddedGrafana.RegisterFlags(f)
 	c.TenantSettings.RegisterFlags(f)
+
+	c.v2Experiment = os.Getenv("PYROSCOPE_V2_EXPERIMENT") != ""
+	if c.v2Experiment {
+		c.Symbolizer.RegisterFlagsWithContext(ctx, f)
+	}
 }
 
 // registerServerFlagsWithChangedDefaultValues registers *Config.Server flags, but overrides some defaults set by the dskit package.
@@ -363,6 +370,8 @@ type Phlare struct {
 	auth     connect.Option
 	ingester *ingester.Ingester
 	frontend *frontend.Frontend
+
+	Symbolizer symbolizer.Config
 
 	// Experimental modules.
 	segmentWriter        *segmentwriter.SegmentWriterService

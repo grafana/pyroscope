@@ -12,11 +12,13 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
 	queryplan "github.com/grafana/pyroscope/pkg/experiment/query_backend/query_plan"
+	"github.com/grafana/pyroscope/pkg/experiment/symbolizer"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 )
@@ -27,6 +29,10 @@ type QueryBackend interface {
 	Invoke(ctx context.Context, req *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error)
 }
 
+type Symbolizer interface {
+	SymbolizePprof(ctx context.Context, profile *googlev1.Profile) error
+}
+
 type QueryFrontend struct {
 	logger log.Logger
 	limits frontend.Limits
@@ -34,6 +40,7 @@ type QueryFrontend struct {
 	metadataQueryClient metastorev1.MetadataQueryServiceClient
 	tenantServiceClient metastorev1.TenantServiceClient
 	querybackend        QueryBackend
+	symbolizer          *symbolizer.ProfileSymbolizer
 }
 
 func NewQueryFrontend(
@@ -42,14 +49,16 @@ func NewQueryFrontend(
 	metadataQueryClient metastorev1.MetadataQueryServiceClient,
 	tenantServiceClient metastorev1.TenantServiceClient,
 	querybackendClient QueryBackend,
-) *QueryFrontend {
+	sym *symbolizer.ProfileSymbolizer,
+) (*QueryFrontend, error) {
 	return &QueryFrontend{
 		logger:              logger,
 		limits:              limits,
 		metadataQueryClient: metadataQueryClient,
 		tenantServiceClient: tenantServiceClient,
 		querybackend:        querybackendClient,
-	}
+		symbolizer:          sym,
+	}, nil
 }
 
 var xrand = rand.New(rand.NewSource(4349676827832284783))
@@ -97,6 +106,7 @@ func (q *QueryFrontend) Query(
 	if resp.Diagnostics == nil {
 		resp.Diagnostics = new(queryv1.Diagnostics)
 	}
+
 	resp.Diagnostics.QueryPlan = p
 	return &queryv1.QueryResponse{Reports: resp.Reports}, nil
 }
