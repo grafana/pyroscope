@@ -100,6 +100,6 @@ func (o *Config) RegisterFlags(f *flag.FlagSet) {
 	f.Float64Var(&o.SegmentWriterWeight, "write-path.segment-writer-weight", 0,
 		"Specifies the fraction [0:1] that should be send to segment-writer in combined mode. 0 means no traffics is sent to segment-writer. 1 means 100% of requests are sent to segment-writer.")
 	f.DurationVar(&o.SegmentWriterTimeout, "write-path.segment-writer-timeout", 5*time.Second, "Timeout for segment writer requests.")
-	f.Var(&o.Compression, "write-path.compression", "Compression algorithm to use for segment writer requests.")
+	f.Var(&o.Compression, "write-path.compression", "Compression algorithm to use for segment writer requests; "+validCompressionOptionsString+".")
 	f.BoolVar(&o.AsyncIngest, "async-ingest", false, "If true, the write path will not wait for the segment-writer to finish processing the request. Writes to ingester always synchronous.")
 }
