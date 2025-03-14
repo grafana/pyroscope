@@ -7,7 +7,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/go-kit/log"
 	"github.com/samber/lo"
 	"github.com/thanos-io/objstore"
 
@@ -70,11 +69,11 @@ func (cfg *StorageBackendConfig) supportedBackends() []string {
 }
 
 // RegisterFlags registers the backend storage config.
-func (cfg *StorageBackendConfig) RegisterFlags(f *flag.FlagSet, logger log.Logger) {
-	cfg.RegisterFlagsWithPrefix("", f, logger)
+func (cfg *StorageBackendConfig) RegisterFlags(f *flag.FlagSet) {
+	cfg.RegisterFlagsWithPrefix("", f)
 }
 
-func (cfg *StorageBackendConfig) RegisterFlagsWithPrefixAndDefaultDirectory(prefix, dir string, f *flag.FlagSet, logger log.Logger) {
+func (cfg *StorageBackendConfig) RegisterFlagsWithPrefixAndDefaultDirectory(prefix, dir string, f *flag.FlagSet) {
 	cfg.S3.RegisterFlagsWithPrefix(prefix, f)
 	cfg.GCS.RegisterFlagsWithPrefix(prefix, f)
 	cfg.Azure.RegisterFlagsWithPrefix(prefix, f)
@@ -84,8 +83,8 @@ func (cfg *StorageBackendConfig) RegisterFlagsWithPrefixAndDefaultDirectory(pref
 	f.StringVar(&cfg.Backend, prefix+"backend", None, fmt.Sprintf("Backend storage to use. Supported backends are: %s.", strings.Join(cfg.supportedBackends(), ", ")))
 }
 
-func (cfg *StorageBackendConfig) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet, logger log.Logger) {
-	cfg.RegisterFlagsWithPrefixAndDefaultDirectory(prefix, "", f, logger)
+func (cfg *StorageBackendConfig) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
+	cfg.RegisterFlagsWithPrefixAndDefaultDirectory(prefix, "", f)
 }
 
 func (cfg *StorageBackendConfig) Validate() error {
@@ -119,17 +118,17 @@ type Config struct {
 }
 
 // RegisterFlags registers the backend storage config.
-func (cfg *Config) RegisterFlags(f *flag.FlagSet, logger log.Logger) {
-	cfg.RegisterFlagsWithPrefix("", f, logger)
+func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
+	cfg.RegisterFlagsWithPrefix("", f)
 }
 
-func (cfg *Config) RegisterFlagsWithPrefixAndDefaultDirectory(prefix, dir string, f *flag.FlagSet, logger log.Logger) {
-	cfg.StorageBackendConfig.RegisterFlagsWithPrefixAndDefaultDirectory(prefix, dir, f, logger)
+func (cfg *Config) RegisterFlagsWithPrefixAndDefaultDirectory(prefix, dir string, f *flag.FlagSet) {
+	cfg.StorageBackendConfig.RegisterFlagsWithPrefixAndDefaultDirectory(prefix, dir, f)
 	f.StringVar(&cfg.StoragePrefix, prefix+"storage-prefix", "", "Prefix for all objects stored in the backend storage. For simplicity, it may only contain digits and English alphabet letters.")
 }
 
-func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet, logger log.Logger) {
-	cfg.RegisterFlagsWithPrefixAndDefaultDirectory(prefix, "./data-shared", f, logger)
+func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
+	cfg.RegisterFlagsWithPrefixAndDefaultDirectory(prefix, "./data-shared", f)
 }
 
 func (cfg *Config) Validate() error {
