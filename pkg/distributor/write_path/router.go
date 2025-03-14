@@ -101,9 +101,9 @@ func (m *Router) Send(ctx context.Context, req *distributormodel.PushRequest) er
 	config := m.overrides.WritePathOverrides(req.TenantID)
 	switch config.WritePath {
 	case SegmentWriterPath:
-		return m.send(m.segwriterRoute(true))(ctx, req)
+		return m.send(m.segwriterRoute(true, &config))(ctx, req)
 	case CombinedPath:
-		return m.sendToBoth(ctx, req, config)
+		return m.sendToBoth(ctx, req, &config)
 	default:
 		return m.send(m.ingesterRoute())(ctx, req)
 	}
@@ -120,17 +120,17 @@ func (m *Router) ingesterRoute() *route {
 	}
 }
 
-func (m *Router) segwriterRoute(primary bool) *route {
+func (m *Router) segwriterRoute(primary bool, config *Config) *route {
 	return &route{
 		path:    SegmentWriterPath,
 		primary: primary,
 		send: func(ctx context.Context, req *distributormodel.PushRequest) error {
-			return m.sendRequestsToSegmentWriter(ctx, convertRequest(req))
+			return m.sendRequestsToSegmentWriter(ctx, convertRequest(req, config.Compression))
 		},
 	}
 }
 
-func (m *Router) sendToBoth(ctx context.Context, req *distributormodel.PushRequest, config Config) error {
+func (m *Router) sendToBoth(ctx context.Context, req *distributormodel.PushRequest, config *Config) error {
 	r := rand.Float64() // [0.0, 1.0)
 	shouldIngester := config.IngesterWeight > 0.0 && config.IngesterWeight >= r
 	shouldSegwriter := config.SegmentWriterWeight > 0.0 && config.SegmentWriterWeight >= r
@@ -149,7 +149,7 @@ func (m *Router) sendToBoth(ctx context.Context, req *distributormodel.PushReque
 		}
 	}
 	if shouldSegwriter {
-		segwriter = m.segwriterRoute(!shouldIngester)
+		segwriter = m.segwriterRoute(!shouldIngester, config)
 		if segwriter.primary && !config.AsyncIngest {
 			// The request is sent to segment-writer exclusively, and the client
 			// must block until the response returns.
@@ -272,11 +272,11 @@ func (m *Router) sendRequestsToSegmentWriter(ctx context.Context, requests []*se
 	return g.Wait()
 }
 
-func convertRequest(req *distributormodel.PushRequest) []*segmentwriterv1.PushRequest {
+func convertRequest(req *distributormodel.PushRequest, compression Compression) []*segmentwriterv1.PushRequest {
 	r := make([]*segmentwriterv1.PushRequest, 0, len(req.Series)*2)
 	for _, s := range req.Series {
 		for _, p := range s.Samples {
-			r = append(r, convertProfile(p, s.Labels, req.TenantID))
+			r = append(r, convertProfile(p, s.Labels, req.TenantID, compression))
 		}
 	}
 	return r
@@ -286,8 +286,9 @@ func convertProfile(
 	sample *distributormodel.ProfileSample,
 	labels []*typesv1.LabelPair,
 	tenantID string,
+	compression Compression,
 ) *segmentwriterv1.PushRequest {
-	buf, err := pprof.Marshal(sample.Profile.Profile, true)
+	buf, err := pprof.Marshal(sample.Profile.Profile, compression == CompressionGzip)
 	if err != nil {
 		panic(fmt.Sprintf("failed to marshal profile: %v", err))
 	}
