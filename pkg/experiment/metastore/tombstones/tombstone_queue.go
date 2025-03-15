@@ -55,21 +55,24 @@ func (q *tombstoneQueue) delete(e *tombstones) *tombstones {
 }
 
 type tombstoneIter struct {
-	head   *tombstones
-	before int64
+	head    *tombstones
+	current *tombstones
+	before  int64
 }
 
 func (t *tombstoneIter) Next() bool {
 	if t.head == nil {
 		return false
 	}
-	if t.head = t.head.next; t.head == nil {
-		return false
+	if t.current == nil {
+		t.current = t.head
+	} else {
+		t.current = t.current.next
 	}
-	return t.head.AppendedAt < t.before
+	return t.current != nil && t.current.AppendedAt < t.before
 }
 
-func (t *tombstoneIter) At() *metastorev1.Tombstones { return t.head.Tombstones }
+func (t *tombstoneIter) At() *metastorev1.Tombstones { return t.current.Tombstones }
 
 func (t *tombstoneIter) Err() error   { return nil }
 func (t *tombstoneIter) Close() error { return nil }
