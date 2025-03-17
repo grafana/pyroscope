@@ -7,6 +7,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/go-kit/log"
 	pprof "github.com/google/pprof/profile"
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	mocksymbolizer "github.com/grafana/pyroscope/pkg/test/mocks/mocksymbolizer"
@@ -185,7 +186,7 @@ func TestSymbolizePprof(t *testing.T) {
 			mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
 			tt.setupMock(mockClient)
 
-			s, err := NewProfileSymbolizer(nil, mockClient, NewNullDebugInfoStore(), NewMetrics(nil), 1, 1)
+			s, err := NewProfileSymbolizer(log.NewNopLogger(), mockClient, NewNullDebugInfoStore(), NewMetrics(nil), 1, 1)
 			require.NoError(t, err)
 
 			err = s.SymbolizePprof(context.Background(), tt.profile)
@@ -369,7 +370,7 @@ func TestSymbolizerMetrics(t *testing.T) {
 				"pyroscope_profile_symbolization_duration_seconds":         1,
 				"pyroscope_debug_symbol_resolution_duration_seconds":       2,
 				"pyroscope_symbolizer_debuginfod_request_duration_seconds": 1,
-				"pyroscope_symbolizer_cache_operation_duration_seconds":    5,
+				"pyroscope_symbolizer_cache_operation_duration_seconds":    6,
 			},
 		},
 		{
