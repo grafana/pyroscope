@@ -33,6 +33,7 @@ import (
 	readpath "github.com/grafana/pyroscope/pkg/frontend/read_path"
 	queryfrontend "github.com/grafana/pyroscope/pkg/frontend/read_path/query_frontend"
 	"github.com/grafana/pyroscope/pkg/frontend/vcs"
+	"github.com/grafana/pyroscope/pkg/experiment/symbolizer"
 	recordingrulesclient "github.com/grafana/pyroscope/pkg/settings/recording/client"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/util"
@@ -368,6 +369,33 @@ func (f *Phlare) initRecordingRulesClient() (services.Service, error) {
 	}
 	f.recordingRulesClient = c
 	return c.Service(), nil
+}
+
+func (f *Phlare) initSymbolizer() (services.Service, error) {
+	level.Info(f.logger).Log("msg", "Initializing Symbolizer")
+	if !f.Cfg.Symbolizer.Enabled {
+		level.Info(f.logger).Log("msg", "Symbolizer is disabled")
+		return nil, nil
+	}
+
+	if f.storageBucket == nil {
+		return nil, fmt.Errorf("storage bucket is required for symbolizer")
+	}
+
+	sym, err := symbolizer.NewFromConfig(
+		f.context(),
+		f.logger,
+		f.Cfg.Symbolizer,
+		f.reg,
+		f.storageBucket,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create symbolizer: %w", err)
+	}
+
+	f.symbolizer = sym
+
+	return nil, nil
 }
 
 func (f *Phlare) initPlacementAgent() (services.Service, error) {

@@ -19,7 +19,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
+	"github.com/grafana/pyroscope/pkg/objstore"
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 )
 
@@ -51,21 +51,16 @@ type ProfileSymbolizer struct {
 	debugInfoCache *ristretto.Cache
 }
 
-func NewFromConfig(ctx context.Context, logger log.Logger, cfg Config, reg prometheus.Registerer) (*ProfileSymbolizer, error) {
-	var store DebugInfoStore = NewNullDebugInfoStore()
-
+func NewFromConfig(_ context.Context, logger log.Logger, cfg Config, reg prometheus.Registerer, bucket objstore.Bucket) (*ProfileSymbolizer, error) {
 	metrics := NewMetrics(reg)
 
-	if cfg.PersistentDebugInfoStore.Enabled {
-		if cfg.PersistentDebugInfoStore.Storage.Backend == "" {
-			return nil, fmt.Errorf("storage configuration required when persistent debug info store is enabled")
-		}
-		bucket, err := objstoreclient.NewBucket(ctx, cfg.PersistentDebugInfoStore.Storage, "debuginfo")
-		if err != nil {
-			return nil, fmt.Errorf("create debug info storage: %w", err)
-		}
-		store = NewObjstoreDebugInfoStore(bucket, cfg.PersistentDebugInfoStore.MaxAge, metrics)
+	if bucket == nil {
+		return nil, fmt.Errorf("storage bucket is required for symbolizer")
 	}
+
+	prefixedBucket := objstore.NewPrefixedBucket(bucket, "symbolizer")
+
+	store := NewObjstoreDebugInfoStore(prefixedBucket, cfg.PersistentDebugInfoStore.MaxAge, metrics)
 
 	client, err := NewDebuginfodClient(cfg.DebuginfodURL, metrics)
 	if err != nil {
@@ -87,10 +82,6 @@ func NewFromConfig(ctx context.Context, logger log.Logger, cfg Config, reg prome
 }
 
 func NewProfileSymbolizer(logger log.Logger, client DebuginfodClient, store DebugInfoStore, metrics *Metrics, symbolCacheSize int, debuginfoCacheSize int) (*ProfileSymbolizer, error) {
-	if store == nil {
-		store = NewNullDebugInfoStore()
-	}
-
 	symbolCache, err := lru.New[string, []SymbolLocation](symbolCacheSize)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create symbol cache: %w", err)
@@ -122,6 +113,12 @@ func (s *ProfileSymbolizer) SymbolizePprof(ctx context.Context, profile *googlev
 	defer func() {
 		s.metrics.profileSymbolization.WithLabelValues(status).Observe(time.Since(start).Seconds())
 	}()
+
+	if !s.NeedsSymbolization(profile) {
+		status = "already_symbolized"
+		level.Error(s.logger).Log("msg", "Symbolizer exited since profile don't need symbolization")
+		return nil
+	}
 
 	// Group locations by mapping ID
 	type locToSymbolize struct {
@@ -161,7 +158,11 @@ func (s *ProfileSymbolizer) SymbolizePprof(ctx context.Context, profile *googlev
 		}
 
 		buildID := profile.StringTable[mapping.BuildId]
-		if buildID == "" {
+
+		buildID, err := sanitizeBuildID(buildID)
+		if err != nil {
+			status = StatusErrorInvalidID
+			level.Error(s.logger).Log("msg", "Invalid buildID", buildID)
 			continue
 		}
 
@@ -387,7 +388,7 @@ func (s *ProfileSymbolizer) Symbolize(ctx context.Context, req *Request) error {
 	}
 
 	// Store in ObjstoreCache
-	if s.store != nil && s.store.IsEnabled() {
+	if s.store != nil {
 		cacheStart := time.Now()
 		if cacheErr := s.store.Put(ctx, req.BuildID, bytes.NewReader(data)); cacheErr != nil {
 			s.metrics.cacheOperations.WithLabelValues("objstore_cache", "put", StatusErrorUpload).Observe(time.Since(cacheStart).Seconds())
@@ -500,21 +501,96 @@ func hasValidSymbols(loc *googlev1.Location, profile *googlev1.Profile) bool {
 	return true
 }
 
+// NeedsSymbolization checks if a profile needs symbolization.
+// It returns true if any mapping in the profile needs symbolization.
+// This function also marks mappings with JSON build IDs as already symbolized.
+func (s *ProfileSymbolizer) NeedsSymbolization(profile *googlev1.Profile) bool {
+	if profile == nil || len(profile.Mapping) == 0 {
+		level.Info(s.logger).Log("msg", "Symbolize check: Profile has no mappings, skipping symbolization")
+		return false
+	}
+
+	for i, mapping := range profile.Mapping {
+		if mapping == nil {
+			level.Info(s.logger).Log("msg", "Symbolize check: Skipping nil mapping")
+			continue
+		}
+
+		// Skip if mapping already has symbols
+		if mapping.HasFunctions && mapping.HasFilenames && mapping.HasLineNumbers {
+			level.Info(s.logger).Log("msg", "Symbolize check: Mapping already has symbols",
+				"mapping_index", i,
+				"has_functions", mapping.HasFunctions,
+				"has_filenames", mapping.HasFilenames,
+				"has_line_numbers", mapping.HasLineNumbers)
+			continue
+		}
+
+		// Check if build ID is valid
+		if mapping.BuildId < 0 || mapping.BuildId >= int64(len(profile.StringTable)) {
+			level.Info(s.logger).Log("msg", "Symbolize check: Invalid build ID index",
+				"mapping_index", i,
+				"build_id", mapping.BuildId,
+				"build_id_index", mapping.BuildId,
+				"string_table_size", len(profile.StringTable))
+			// Invalid build ID, can't determine if it needs symbolization
+			continue
+		}
+
+		buildID := profile.StringTable[mapping.BuildId]
+
+		level.Info(s.logger).Log("msg", "Symbolize check: Examining build ID",
+			"mapping_index", i,
+			"build_id", buildID,
+			"has_functions", mapping.HasFunctions,
+			"has_filenames", mapping.HasFilenames,
+			"has_line_numbers", mapping.HasLineNumbers)
+
+		sanitizedBuildID, err := sanitizeBuildID(buildID)
+		if err != nil {
+			level.Info(s.logger).Log("msg", "Symbolize check: BuildID sanitization failed, marking as already symbolized",
+				"mapping_index", i,
+				"build_id", buildID,
+				"error", err)
+			// If we can't sanitize the build ID (e.g., it's a JSON object), mark the mapping as already symbolized
+			// {"repository":"https://github.com/grafana/pyroscope","git_ref":"whatever_ref"}
+			// mapping.HasFunctions = true
+			// mapping.HasFilenames = true
+			// mapping.HasLineNumbers = true
+			continue
+		}
+
+		// If sanitization resulted in an empty build ID, skip this mapping
+		if sanitizedBuildID == "" {
+			level.Info(s.logger).Log("msg", "Symbolize check: Empty sanitized build ID, skipping mapping",
+				"mapping_index", i,
+				"original_build_id", buildID)
+			continue
+		}
+
+		// At this point, we have a valid build ID that needs symbolization
+		level.Info(s.logger).Log("msg", "Symbolize check: Mapping needs symbolization",
+			"mapping_index", i,
+			"build_id", buildID,
+			"sanitized_build_id", sanitizedBuildID)
+		return true
+	}
+
+	return false
+}
+
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
-	f.BoolVar(&cfg.Enabled, "symbolizer.enabled", false, "Enable symbolization for unsymbolized profiles")
+	// TODO: change me back to false!
+	f.BoolVar(&cfg.Enabled, "symbolizer.enabled", true, "Enable symbolization for unsymbolized profiles")
 	f.StringVar(&cfg.DebuginfodURL, "symbolizer.debuginfod-url", "https://debuginfod.elfutils.org", "URL of the debuginfod server")
 	f.IntVar(&cfg.InMemorySymbolCacheSize, "symbolizer.in-memory-symbol-cache-size", DefaultInMemorySymbolCacheSize, "Maximum number of entries in the in-memory symbol cache")
 	f.IntVar(&cfg.InMemoryDebuginfoCacheSize, "symbolizer.in-memory-debuginfo-cache-size", DefaultInMemoryDebuginfoCacheSize, "Maximum size in bytes for the in-memory debug info cache")
-	f.BoolVar(&cfg.PersistentDebugInfoStore.Enabled, "symbolizer.persistent-debuginfo-store.enabled", false, "Enable persistent debug info storage")
 	f.DurationVar(&cfg.PersistentDebugInfoStore.MaxAge, "symbolizer.persistent-debuginfo-store.max-age", 7*24*time.Hour, "Maximum age of stored debug info")
 }
 
 func (cfg *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) {
 	cfg.RegisterFlags(f)
-	// Only register storage flags if they're needed
-	if cfg.PersistentDebugInfoStore.Enabled {
-		cfg.PersistentDebugInfoStore.Storage.RegisterFlagsWithPrefix("symbolizer.persistent-debuginfo-store.storage.", f, phlarecontext.Logger(ctx))
-	}
+	cfg.PersistentDebugInfoStore.Storage.RegisterFlagsWithPrefix("symbolizer.persistent-debuginfo-store.storage.", f, phlarecontext.Logger(ctx))
 }
 
 type DwarfResolver struct {
