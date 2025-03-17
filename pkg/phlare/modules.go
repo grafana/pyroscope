@@ -43,7 +43,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/embedded/grafana"
 	"github.com/grafana/pyroscope/pkg/experiment/query_backend"
-	"github.com/grafana/pyroscope/pkg/experiment/symbolizer"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	readpath "github.com/grafana/pyroscope/pkg/frontend/read_path"
 	queryfrontend "github.com/grafana/pyroscope/pkg/frontend/read_path/query_frontend"
@@ -108,6 +107,7 @@ const (
 	PlacementManager     string = "placement-manager"
 	HealthServer         string = "health-server"
 	RecordingRulesClient string = "recording-rules-client"
+	Symbolizer           string = "symbolizer"
 )
 
 var objectStoreTypeStats = usagestats.NewString("store_object_type")
@@ -141,25 +141,13 @@ func (f *Phlare) initQueryFrontendV2() (services.Service, error) {
 		f.reg,
 	)
 
-	var sym *symbolizer.ProfileSymbolizer
-	if f.Cfg.Symbolizer.Enabled {
-		s, err := symbolizer.NewFromConfig(
-			context.Background(),
-			log.With(f.logger, "component", "symbolizer"),
-			f.Cfg.Symbolizer, f.reg)
-		if err != nil {
-			return fmt.Errorf("failed to initialize symbolizer: %w", err)
-		}
-		sym = s
-	}
-
 	newFrontend, err := queryfrontend.NewQueryFrontend(
 		log.With(f.logger, "component", "query-frontend"),
 		f.Overrides,
 		f.metastoreClient,
 		f.metastoreClient,
 		f.queryBackendClient,
-		sym,
+		f.symbolizer,
 	)
 	if err != nil {
 		return nil, err
