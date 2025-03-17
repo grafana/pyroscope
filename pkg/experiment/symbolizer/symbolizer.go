@@ -61,8 +61,15 @@ type SymbolCacheKey struct {
 func NewFromConfig(_ context.Context, logger log.Logger, cfg Config, reg prometheus.Registerer, bucket objstore.Bucket) (*ProfileSymbolizer, error) {
 	metrics := NewMetrics(reg)
 
-	if bucket == nil {
-		return nil, fmt.Errorf("storage bucket is required for symbolizer")
+	if cfg.PersistentDebugInfoStore.Enabled {
+		if cfg.PersistentDebugInfoStore.Storage.Backend == "" {
+			return nil, fmt.Errorf("storage configuration required when persistent debug info store is enabled")
+		}
+		bucket, err := objstoreclient.NewBucket(ctx, cfg.PersistentDebugInfoStore.Storage, "debuginfo")
+		if err != nil {
+			return nil, fmt.Errorf("create debug info storage: %w", err)
+		}
+		store = NewObjstoreDebugInfoStore(bucket, cfg.PersistentDebugInfoStore.MaxAge, metrics)
 	}
 
 	prefixedBucket := objstore.NewPrefixedBucket(bucket, "symbolizer")
