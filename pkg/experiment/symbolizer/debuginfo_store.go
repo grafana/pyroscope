@@ -12,7 +12,6 @@ import (
 
 // DebugInfoStoreConfig holds configuration for the debug info cache
 type DebugInfoStoreConfig struct {
-	Enabled bool                  `yaml:"enabled"`
 	MaxAge  time.Duration         `yaml:"max_age"`
 	Storage objstoreclient.Config `yaml:"storage"`
 }
@@ -87,12 +86,11 @@ func (c *ObjstoreDebugInfoStore) Put(ctx context.Context, buildID string, reader
 	return nil
 }
 
-// ObjstoreDebugInfoStore implementation
 func (o *ObjstoreDebugInfoStore) IsEnabled() bool {
 	return true
 }
 
-// NullCache implements DebugInfoStore but performs no caching
+// NullDebugInfoStore implements DebugInfoStore but performs no caching
 type NullDebugInfoStore struct{}
 
 // NewNullDebugInfoStore creates a new null debug info store
