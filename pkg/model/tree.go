@@ -7,6 +7,8 @@ import (
 	"sort"
 	"strings"
 
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+
 	dvarint "github.com/dennwc/varint"
 	"github.com/xlab/treeprint"
 
@@ -441,4 +443,88 @@ func UnmarshalTree(b []byte) (*Tree, error) {
 	t.root = root.children[0].children
 
 	return t, nil
+}
+
+// ConvertProfileToTree converts a pprof profile to a tree format with maxNodes limit
+func ConvertProfileToTree(profile *profilev1.Profile, maxNodes int64) ([]byte, error) {
+	// Create a new tree
+	tree := &Tree{}
+
+	// Build a map of location IDs to locations for faster lookup
+	locationMap := make(map[uint64]*profilev1.Location, len(profile.Location))
+	for _, loc := range profile.Location {
+		locationMap[loc.Id] = loc
+	}
+
+	// Build a map of function IDs to functions for faster lookup
+	functionMap := make(map[uint64]*profilev1.Function, len(profile.Function))
+	for _, fn := range profile.Function {
+		functionMap[fn.Id] = fn
+	}
+
+	// TODO: not sure about this
+	// Default to the last sample value as per pprof spec
+	valueType := len(profile.SampleType) - 1
+
+	// If DefaultSampleType is specified, find the corresponding sample type
+	if profile.DefaultSampleType >= 0 && int(profile.DefaultSampleType) < len(profile.StringTable) {
+		// In pprof, string_table[0] is always empty. If DefaultSampleType is 0,
+		// it's considered "unset" and we should use the last sample value.
+		if profile.DefaultSampleType > 0 || profile.StringTable[0] != "" {
+			defaultTypeName := profile.StringTable[profile.DefaultSampleType]
+
+			// Find the sample type index that matches the default type name
+			for i, st := range profile.SampleType {
+				if st.Type >= 0 && int(st.Type) < len(profile.StringTable) {
+					if profile.StringTable[st.Type] == defaultTypeName {
+						valueType = i
+						break
+					}
+				}
+			}
+		}
+	}
+
+	for _, sample := range profile.Sample {
+		// Skip samples with no value
+		if len(sample.Value) <= valueType {
+			continue
+		}
+
+		// Get the value from the sample
+		value := sample.Value[valueType]
+
+		// Build the stack from the locations
+		stack := make([]string, 0, len(sample.LocationId))
+
+		// Process locations in reverse order (root to leaf)
+		for i := len(sample.LocationId) - 1; i >= 0; i-- {
+			locID := sample.LocationId[i]
+			loc, exists := locationMap[locID]
+			if !exists {
+				continue
+			}
+
+			// Get function name from the location
+			funcName := fmt.Sprintf("0x%x", loc.Address)
+			if len(loc.Line) > 0 && loc.Line[0].FunctionId != 0 {
+				if fn, exists := functionMap[loc.Line[0].FunctionId]; exists {
+					// Get the function name from the string table
+					if fn.Name >= 0 && int(fn.Name) < len(profile.StringTable) {
+						funcName = profile.StringTable[fn.Name]
+					}
+				}
+			}
+
+			stack = append(stack, funcName)
+		}
+
+		// Insert the stack into the tree
+		if len(stack) > 0 {
+			tree.InsertStack(value, stack...)
+		}
+	}
+
+	// Serialize the tree with maxNodes limit
+	return tree.Bytes(maxNodes), nil
 }
