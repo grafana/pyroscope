@@ -203,7 +203,7 @@ func (c *Config) RegisterFlagsWithContext(f *flag.FlagSet) {
 
 	c.v2Experiment = os.Getenv("PYROSCOPE_V2_EXPERIMENT") != ""
 	if c.v2Experiment {
-		c.Symbolizer.RegisterFlagsWithContext(ctx, f)
+		c.Symbolizer.RegisterFlags(f)
 	}
 }
 
