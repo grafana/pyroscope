@@ -20,7 +20,6 @@ import (
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"github.com/grafana/pyroscope/pkg/objstore"
-	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 )
 
 const (
@@ -586,11 +585,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.IntVar(&cfg.InMemorySymbolCacheSize, "symbolizer.in-memory-symbol-cache-size", DefaultInMemorySymbolCacheSize, "Maximum number of entries in the in-memory symbol cache")
 	f.IntVar(&cfg.InMemoryDebuginfoCacheSize, "symbolizer.in-memory-debuginfo-cache-size", DefaultInMemoryDebuginfoCacheSize, "Maximum size in bytes for the in-memory debug info cache")
 	f.DurationVar(&cfg.PersistentDebugInfoStore.MaxAge, "symbolizer.persistent-debuginfo-store.max-age", 7*24*time.Hour, "Maximum age of stored debug info")
-}
-
-func (cfg *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) {
-	cfg.RegisterFlags(f)
-	cfg.PersistentDebugInfoStore.Storage.RegisterFlagsWithPrefix("symbolizer.persistent-debuginfo-store.storage.", f, phlarecontext.Logger(ctx))
+	cfg.PersistentDebugInfoStore.Storage.RegisterFlagsWithPrefix("symbolizer.persistent-debuginfo-store.storage.", f)
 }
 
 type DwarfResolver struct {
