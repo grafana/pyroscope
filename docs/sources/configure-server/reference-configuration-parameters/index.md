@@ -297,6 +297,10 @@ analytics:
 # CLI flag: -config.show_banner
 [show_banner: <boolean> | default = true]
 
+# Wait time before shutting down after a termination signal.
+# CLI flag: -config.shutdown-delay
+[shutdown_delay: <duration> | default = 0s]
+
 embedded_grafana:
   # The directory where the Grafana data will be stored.
   # CLI flag: -embedded-grafana.data-path
