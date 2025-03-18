@@ -298,7 +298,7 @@ analytics:
 [show_banner: <boolean> | default = true]
 
 # Wait time before shutting down after a termination signal.
-# CLI flag: -config.shutdown-delay
+# CLI flag: -shutdown-delay
 [shutdown_delay: <duration> | default = 0s]
 
 embedded_grafana:

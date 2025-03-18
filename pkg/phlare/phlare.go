@@ -184,7 +184,7 @@ func (c *Config) RegisterFlagsWithContext(f *flag.FlagSet) {
 		"Expands ${var} in config according to the values of the environment variables.",
 	)
 	f.BoolVar(&c.ShowBanner, "config.show_banner", true, "Prints the application banner at startup.")
-	f.DurationVar(&c.ShutdownDelay, "config.shutdown-delay", 0, "Wait time before shutting down after a termination signal.")
+	f.DurationVar(&c.ShutdownDelay, "shutdown-delay", 0, "Wait time before shutting down after a termination signal.")
 
 	c.registerServerFlagsWithChangedDefaultValues(f)
 	c.MemberlistKV.RegisterFlags(f)
