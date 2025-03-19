@@ -261,8 +261,7 @@ func staticList(input []string) func() string {
 }
 
 func init() {
-	// This can be removed when the default validation scheme in common is updated.
-	model.NameValidationScheme = model.UTF8Validation
+	// Configure Prometheus to use UTF-8 validation for metric names
 	model.NameEscapingScheme = model.ValueEncodingEscaping
 }
 
@@ -381,9 +380,7 @@ func Profiler(c Config) (*pyroscope.Profiler, error) {
 		Logger:          pyroscope.StandardLogger,
 		Tags:            c.Tags,
 	}
-	if c.PyroscopeAuthToken != "" {
-		config.AuthToken = c.PyroscopeAuthToken
-	} else if c.PyroscopeBasicAuthUser != "" {
+	if c.PyroscopeBasicAuthUser != "" {
 		config.BasicAuthUser = c.PyroscopeBasicAuthUser
 		config.BasicAuthPassword = c.PyroscopeBasicAuthPassword
 	}
