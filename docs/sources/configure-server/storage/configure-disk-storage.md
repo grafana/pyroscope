@@ -12,7 +12,7 @@ aliases:
 The [ingester] component in Grafana Pyroscope processes the received profiling data.
 First it keeps the data organized in memory, in the so-called "head block".
 Once the size of the head block exceeds a threshold or the head block is older than
-`-pyroscopedb.max-block-duration` (by default 3 hours), the ingester writes
+`-pyroscopedb.max-block-duration` (by default 1 hour), the ingester writes
 the block to the local persistent disk.
 Refer to [block format] for more detail about the block's layout.
 
