@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"math/rand"
 	"os"
 	"strconv"
 	"time"
@@ -14,6 +15,9 @@ import (
 	"github.com/agoda-com/opentelemetry-logs-go/logs"
 	sdklogs "github.com/agoda-com/opentelemetry-logs-go/sdk/logs"
 	"github.com/grafana/pyroscope-go"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/common/model"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
@@ -244,9 +248,101 @@ func debugTracerProvider() (*sdktrace.TracerProvider, error) {
 	return sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(sdktrace.NewSimpleSpanProcessor(exp))), nil
 }
 
+type dimension struct {
+	label        string
+	getNextValue func() string
+}
+
+func staticList(input []string) func() string {
+	return func() string {
+		i := rand.Intn(len(input))
+		return input[i]
+	}
+}
+
+func init() {
+	// This can be removed when the default validation scheme in common is updated.
+	model.NameValidationScheme = model.UTF8Validation
+	model.NameEscapingScheme = model.ValueEncodingEscaping
+}
+
 func MeterProvider(c Config) (*sdkmetric.MeterProvider, error) {
 	// Default is 1m. Set to 3s for demonstrative purposes.
 	interval := 3 * time.Second
+
+	// Setup Prometheus metrics
+	fakeUtf8Metrics := []dimension{
+		{
+			label:        "a_legacy_label",
+			getNextValue: staticList([]string{"legacy"}),
+		},
+		{
+			label:        "label with space",
+			getNextValue: staticList([]string{"space"}),
+		},
+		{
+			label:        "label with 📈",
+			getNextValue: staticList([]string{"metrics"}),
+		},
+		{
+			label:        "label.with.spaß",
+			getNextValue: staticList([]string{"this_is_fun"}),
+		},
+		{
+			label:        "instance",
+			getNextValue: staticList([]string{"instance"}),
+		},
+		{
+			label:        "job",
+			getNextValue: staticList([]string{"job"}),
+		},
+		{
+			label:        "site",
+			getNextValue: staticList([]string{"LA-EPI"}),
+		},
+		{
+			label:        "room",
+			getNextValue: staticList([]string{`"Friends Don't Lie"`}),
+		},
+	}
+
+	dimensions := []string{}
+	for _, dim := range fakeUtf8Metrics {
+		dimensions = append(dimensions, dim.label)
+	}
+
+	utf8Metric := promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "a.utf8.metric 🤘",
+		Help: "a utf8 metric with utf8 labels",
+	}, dimensions)
+
+	opsProcessed := promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "a_utf8_http_requests_total",
+		Help: "a metric with utf8 labels",
+	}, dimensions)
+
+	target_info := promauto.NewGauge(prometheus.GaugeOpts{
+		Name:        "target_info",
+		Help:        "an info metric model for otel",
+		ConstLabels: map[string]string{"job": "job", "instance": "instance", "resource 1": "1", "resource 2": "2", "resource ę": "e", "deployment_environment": "prod"},
+	})
+
+	// Start the metrics update goroutine
+	go func() {
+		for {
+			labels := []string{}
+			for _, dim := range fakeUtf8Metrics {
+				value := dim.getNextValue()
+				labels = append(labels, value)
+			}
+
+			utf8Metric.WithLabelValues(labels...).Inc()
+			opsProcessed.WithLabelValues(labels...).Inc()
+			target_info.Set(1)
+
+			time.Sleep(time.Second * 5)
+		}
+	}()
 
 	if c.UseDebugMeterer {
 		// create stdout exporter, when no OTLP url is set
