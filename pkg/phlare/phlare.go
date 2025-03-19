@@ -104,6 +104,7 @@ type Config struct {
 	MultitenancyEnabled bool              `yaml:"multitenancy_enabled,omitempty"`
 	Analytics           usagestats.Config `yaml:"analytics"`
 	ShowBanner          bool              `yaml:"show_banner,omitempty"`
+	ShutdownDelay       time.Duration     `yaml:"shutdown_delay,omitempty"`
 
 	EmbeddedGrafana grafana.Config `yaml:"embedded_grafana,omitempty"`
 
@@ -183,6 +184,7 @@ func (c *Config) RegisterFlagsWithContext(f *flag.FlagSet) {
 		"Expands ${var} in config according to the values of the environment variables.",
 	)
 	f.BoolVar(&c.ShowBanner, "config.show_banner", true, "Prints the application banner at startup.")
+	f.DurationVar(&c.ShutdownDelay, "shutdown-delay", 0, "Wait time before shutting down after a termination signal.")
 
 	c.registerServerFlagsWithChangedDefaultValues(f)
 	c.MemberlistKV.RegisterFlags(f)
@@ -640,6 +642,10 @@ func (f *Phlare) Run() error {
 	f.SignalHandler = signals.NewHandler(f.Server.Log)
 	go func() {
 		f.SignalHandler.Loop()
+		if f.Cfg.ShutdownDelay > 0 {
+			level.Info(f.logger).Log("msg", "shutdown delayed", "delay", f.Cfg.ShutdownDelay)
+			time.Sleep(f.Cfg.ShutdownDelay)
+		}
 		sm.StopAsync()
 	}()
 
