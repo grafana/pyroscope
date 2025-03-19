@@ -77,7 +77,7 @@ pyroscope.receive_http "default" {
         listen_address = "0.0.0.0"
         listen_port = 9090
     }
-    forward_to = [pyroscope.write.backend.receiver]
+    forward_to = [pyroscope.write.production.receiver]
 }
 
 pyroscope.write "production" {
