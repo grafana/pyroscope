@@ -107,6 +107,7 @@
     "webpack-merge": "^5.8.0"
   },
   "dependencies": {
+    "@cypress/request": "3.0.0",
     "@fortawesome/fontawesome-svg-core": "~1.2.30",
     "@fortawesome/free-brands-svg-icons": "~5.15.1",
     "@fortawesome/free-regular-svg-icons": "~5.15.2",
@@ -183,6 +184,7 @@
     "yargs-parser": ">18.1.1",
     "path-to-regexp": "^1.9.0",
     "nanoid": "^3.3.8",
-    "uplot": "^1.6.31"
+    "uplot": "^1.6.31",
+    "@cypress/request": "^3.0.0"
   }
 }
