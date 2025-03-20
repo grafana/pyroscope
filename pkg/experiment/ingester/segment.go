@@ -505,7 +505,10 @@ func (s *segment) ingest(tenantID string, p *profilev1.Profile, id uuid.UUID, la
 		service: model.Labels(labels).Get(model.LabelNameServiceName),
 	}
 	ds := s.datasetForIngest(k)
-	ds.needsSymbolization = !hasSymbols(p)
+	if !ds.needsSymbolization {
+		ds.needsSymbolization = !hasSymbols(p)
+	}
+
 	size := p.SizeVT()
 	rules := s.sw.limits.IngestionRelabelingRules(tenantID)
 	usage := s.sw.limits.DistributorUsageGroups(tenantID).GetUsageGroups(tenantID, labels)

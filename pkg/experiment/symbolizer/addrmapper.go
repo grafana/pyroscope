@@ -195,5 +195,24 @@ func calculateDynamicBase(m Mapping, h *MemoryRegion) (uint64, error) {
 	if h == nil {
 		return m.Start - m.Offset, nil
 	}
+
+	var base uint64
+	if h.Off == 0 {
+		// Simple case: The segment starts at the beginning of the file
+		base = m.Start - h.Vaddr
+	} else {
+		// Complex case: The segment starts at some offset in the file
+		// Adjust for both the segment offset in the file and the virtual address
+		base = m.Start - m.Offset - (h.Vaddr - h.Off)
+		//base = m.Start - m.Offset + h.Off - h.Vaddr
+	}
+
+	return base, nil
+}
+
+func calculateDynamicBaseBACKUP(m Mapping, h *MemoryRegion) (uint64, error) {
+	if h == nil {
+		return m.Start - m.Offset, nil
+	}
 	return m.Start - m.Offset + h.Off - h.Vaddr, nil
 }
