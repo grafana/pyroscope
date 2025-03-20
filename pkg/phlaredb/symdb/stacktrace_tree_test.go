@@ -220,7 +220,7 @@ func Benchmark_stacktrace_tree_insert(b *testing.B) {
 	b.ReportAllocs()
 
 	for i := 0; i < b.N; i++ {
-		x := newStacktraceTree(0)
+		x := newStacktraceTree(defaultStacktraceTreeSize)
 		for j := range p.Sample {
 			x.insert(p.Sample[j].LocationId)
 		}
