@@ -47,15 +47,6 @@ const (
 	RecordingRulesServiceDeleteRecordingRuleProcedure = "/settings.v1.RecordingRulesService/DeleteRecordingRule"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	recordingRulesServiceServiceDescriptor                   = v1.File_settings_v1_recording_rules_proto.Services().ByName("RecordingRulesService")
-	recordingRulesServiceGetRecordingRuleMethodDescriptor    = recordingRulesServiceServiceDescriptor.Methods().ByName("GetRecordingRule")
-	recordingRulesServiceListRecordingRulesMethodDescriptor  = recordingRulesServiceServiceDescriptor.Methods().ByName("ListRecordingRules")
-	recordingRulesServiceUpsertRecordingRuleMethodDescriptor = recordingRulesServiceServiceDescriptor.Methods().ByName("UpsertRecordingRule")
-	recordingRulesServiceDeleteRecordingRuleMethodDescriptor = recordingRulesServiceServiceDescriptor.Methods().ByName("DeleteRecordingRule")
-)
-
 // RecordingRulesServiceClient is a client for the settings.v1.RecordingRulesService service.
 type RecordingRulesServiceClient interface {
 	GetRecordingRule(context.Context, *connect.Request[v1.GetRecordingRuleRequest]) (*connect.Response[v1.GetRecordingRuleResponse], error)
@@ -73,29 +64,30 @@ type RecordingRulesServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewRecordingRulesServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) RecordingRulesServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	recordingRulesServiceMethods := v1.File_settings_v1_recording_rules_proto.Services().ByName("RecordingRulesService").Methods()
 	return &recordingRulesServiceClient{
 		getRecordingRule: connect.NewClient[v1.GetRecordingRuleRequest, v1.GetRecordingRuleResponse](
 			httpClient,
 			baseURL+RecordingRulesServiceGetRecordingRuleProcedure,
-			connect.WithSchema(recordingRulesServiceGetRecordingRuleMethodDescriptor),
+			connect.WithSchema(recordingRulesServiceMethods.ByName("GetRecordingRule")),
 			connect.WithClientOptions(opts...),
 		),
 		listRecordingRules: connect.NewClient[v1.ListRecordingRulesRequest, v1.ListRecordingRulesResponse](
 			httpClient,
 			baseURL+RecordingRulesServiceListRecordingRulesProcedure,
-			connect.WithSchema(recordingRulesServiceListRecordingRulesMethodDescriptor),
+			connect.WithSchema(recordingRulesServiceMethods.ByName("ListRecordingRules")),
 			connect.WithClientOptions(opts...),
 		),
 		upsertRecordingRule: connect.NewClient[v1.UpsertRecordingRuleRequest, v1.UpsertRecordingRuleResponse](
 			httpClient,
 			baseURL+RecordingRulesServiceUpsertRecordingRuleProcedure,
-			connect.WithSchema(recordingRulesServiceUpsertRecordingRuleMethodDescriptor),
+			connect.WithSchema(recordingRulesServiceMethods.ByName("UpsertRecordingRule")),
 			connect.WithClientOptions(opts...),
 		),
 		deleteRecordingRule: connect.NewClient[v1.DeleteRecordingRuleRequest, v1.DeleteRecordingRuleResponse](
 			httpClient,
 			baseURL+RecordingRulesServiceDeleteRecordingRuleProcedure,
-			connect.WithSchema(recordingRulesServiceDeleteRecordingRuleMethodDescriptor),
+			connect.WithSchema(recordingRulesServiceMethods.ByName("DeleteRecordingRule")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -144,28 +136,29 @@ type RecordingRulesServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewRecordingRulesServiceHandler(svc RecordingRulesServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	recordingRulesServiceMethods := v1.File_settings_v1_recording_rules_proto.Services().ByName("RecordingRulesService").Methods()
 	recordingRulesServiceGetRecordingRuleHandler := connect.NewUnaryHandler(
 		RecordingRulesServiceGetRecordingRuleProcedure,
 		svc.GetRecordingRule,
-		connect.WithSchema(recordingRulesServiceGetRecordingRuleMethodDescriptor),
+		connect.WithSchema(recordingRulesServiceMethods.ByName("GetRecordingRule")),
 		connect.WithHandlerOptions(opts...),
 	)
 	recordingRulesServiceListRecordingRulesHandler := connect.NewUnaryHandler(
 		RecordingRulesServiceListRecordingRulesProcedure,
 		svc.ListRecordingRules,
-		connect.WithSchema(recordingRulesServiceListRecordingRulesMethodDescriptor),
+		connect.WithSchema(recordingRulesServiceMethods.ByName("ListRecordingRules")),
 		connect.WithHandlerOptions(opts...),
 	)
 	recordingRulesServiceUpsertRecordingRuleHandler := connect.NewUnaryHandler(
 		RecordingRulesServiceUpsertRecordingRuleProcedure,
 		svc.UpsertRecordingRule,
-		connect.WithSchema(recordingRulesServiceUpsertRecordingRuleMethodDescriptor),
+		connect.WithSchema(recordingRulesServiceMethods.ByName("UpsertRecordingRule")),
 		connect.WithHandlerOptions(opts...),
 	)
 	recordingRulesServiceDeleteRecordingRuleHandler := connect.NewUnaryHandler(
 		RecordingRulesServiceDeleteRecordingRuleProcedure,
 		svc.DeleteRecordingRule,
-		connect.WithSchema(recordingRulesServiceDeleteRecordingRuleMethodDescriptor),
+		connect.WithSchema(recordingRulesServiceMethods.ByName("DeleteRecordingRule")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/settings.v1.RecordingRulesService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

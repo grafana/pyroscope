@@ -38,12 +38,6 @@ const (
 	SegmentWriterServicePushProcedure = "/segmentwriter.v1.SegmentWriterService/Push"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	segmentWriterServiceServiceDescriptor    = v1.File_segmentwriter_v1_push_proto.Services().ByName("SegmentWriterService")
-	segmentWriterServicePushMethodDescriptor = segmentWriterServiceServiceDescriptor.Methods().ByName("Push")
-)
-
 // SegmentWriterServiceClient is a client for the segmentwriter.v1.SegmentWriterService service.
 type SegmentWriterServiceClient interface {
 	Push(context.Context, *connect.Request[v1.PushRequest]) (*connect.Response[v1.PushResponse], error)
@@ -58,11 +52,12 @@ type SegmentWriterServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewSegmentWriterServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) SegmentWriterServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	segmentWriterServiceMethods := v1.File_segmentwriter_v1_push_proto.Services().ByName("SegmentWriterService").Methods()
 	return &segmentWriterServiceClient{
 		push: connect.NewClient[v1.PushRequest, v1.PushResponse](
 			httpClient,
 			baseURL+SegmentWriterServicePushProcedure,
-			connect.WithSchema(segmentWriterServicePushMethodDescriptor),
+			connect.WithSchema(segmentWriterServiceMethods.ByName("Push")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -90,10 +85,11 @@ type SegmentWriterServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewSegmentWriterServiceHandler(svc SegmentWriterServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	segmentWriterServiceMethods := v1.File_segmentwriter_v1_push_proto.Services().ByName("SegmentWriterService").Methods()
 	segmentWriterServicePushHandler := connect.NewUnaryHandler(
 		SegmentWriterServicePushProcedure,
 		svc.Push,
-		connect.WithSchema(segmentWriterServicePushMethodDescriptor),
+		connect.WithSchema(segmentWriterServiceMethods.ByName("Push")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/segmentwriter.v1.SegmentWriterService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

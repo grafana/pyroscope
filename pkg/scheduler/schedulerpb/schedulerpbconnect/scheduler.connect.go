@@ -51,15 +51,6 @@ const (
 	SchedulerForFrontendFrontendLoopProcedure = "/schedulerpb.SchedulerForFrontend/FrontendLoop"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	schedulerForQuerierServiceDescriptor                     = schedulerpb.File_scheduler_schedulerpb_scheduler_proto.Services().ByName("SchedulerForQuerier")
-	schedulerForQuerierQuerierLoopMethodDescriptor           = schedulerForQuerierServiceDescriptor.Methods().ByName("QuerierLoop")
-	schedulerForQuerierNotifyQuerierShutdownMethodDescriptor = schedulerForQuerierServiceDescriptor.Methods().ByName("NotifyQuerierShutdown")
-	schedulerForFrontendServiceDescriptor                    = schedulerpb.File_scheduler_schedulerpb_scheduler_proto.Services().ByName("SchedulerForFrontend")
-	schedulerForFrontendFrontendLoopMethodDescriptor         = schedulerForFrontendServiceDescriptor.Methods().ByName("FrontendLoop")
-)
-
 // SchedulerForQuerierClient is a client for the schedulerpb.SchedulerForQuerier service.
 type SchedulerForQuerierClient interface {
 	// After calling this method, both Querier and Scheduler enter a loop, in which querier waits for
@@ -82,17 +73,18 @@ type SchedulerForQuerierClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewSchedulerForQuerierClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) SchedulerForQuerierClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	schedulerForQuerierMethods := schedulerpb.File_scheduler_schedulerpb_scheduler_proto.Services().ByName("SchedulerForQuerier").Methods()
 	return &schedulerForQuerierClient{
 		querierLoop: connect.NewClient[schedulerpb.QuerierToScheduler, schedulerpb.SchedulerToQuerier](
 			httpClient,
 			baseURL+SchedulerForQuerierQuerierLoopProcedure,
-			connect.WithSchema(schedulerForQuerierQuerierLoopMethodDescriptor),
+			connect.WithSchema(schedulerForQuerierMethods.ByName("QuerierLoop")),
 			connect.WithClientOptions(opts...),
 		),
 		notifyQuerierShutdown: connect.NewClient[schedulerpb.NotifyQuerierShutdownRequest, schedulerpb.NotifyQuerierShutdownResponse](
 			httpClient,
 			baseURL+SchedulerForQuerierNotifyQuerierShutdownProcedure,
-			connect.WithSchema(schedulerForQuerierNotifyQuerierShutdownMethodDescriptor),
+			connect.WithSchema(schedulerForQuerierMethods.ByName("NotifyQuerierShutdown")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -133,16 +125,17 @@ type SchedulerForQuerierHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewSchedulerForQuerierHandler(svc SchedulerForQuerierHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	schedulerForQuerierMethods := schedulerpb.File_scheduler_schedulerpb_scheduler_proto.Services().ByName("SchedulerForQuerier").Methods()
 	schedulerForQuerierQuerierLoopHandler := connect.NewBidiStreamHandler(
 		SchedulerForQuerierQuerierLoopProcedure,
 		svc.QuerierLoop,
-		connect.WithSchema(schedulerForQuerierQuerierLoopMethodDescriptor),
+		connect.WithSchema(schedulerForQuerierMethods.ByName("QuerierLoop")),
 		connect.WithHandlerOptions(opts...),
 	)
 	schedulerForQuerierNotifyQuerierShutdownHandler := connect.NewUnaryHandler(
 		SchedulerForQuerierNotifyQuerierShutdownProcedure,
 		svc.NotifyQuerierShutdown,
-		connect.WithSchema(schedulerForQuerierNotifyQuerierShutdownMethodDescriptor),
+		connect.WithSchema(schedulerForQuerierMethods.ByName("NotifyQuerierShutdown")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/schedulerpb.SchedulerForQuerier/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -188,11 +181,12 @@ type SchedulerForFrontendClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewSchedulerForFrontendClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) SchedulerForFrontendClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	schedulerForFrontendMethods := schedulerpb.File_scheduler_schedulerpb_scheduler_proto.Services().ByName("SchedulerForFrontend").Methods()
 	return &schedulerForFrontendClient{
 		frontendLoop: connect.NewClient[schedulerpb.FrontendToScheduler, schedulerpb.SchedulerToFrontend](
 			httpClient,
 			baseURL+SchedulerForFrontendFrontendLoopProcedure,
-			connect.WithSchema(schedulerForFrontendFrontendLoopMethodDescriptor),
+			connect.WithSchema(schedulerForFrontendMethods.ByName("FrontendLoop")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -225,10 +219,11 @@ type SchedulerForFrontendHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewSchedulerForFrontendHandler(svc SchedulerForFrontendHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	schedulerForFrontendMethods := schedulerpb.File_scheduler_schedulerpb_scheduler_proto.Services().ByName("SchedulerForFrontend").Methods()
 	schedulerForFrontendFrontendLoopHandler := connect.NewBidiStreamHandler(
 		SchedulerForFrontendFrontendLoopProcedure,
 		svc.FrontendLoop,
-		connect.WithSchema(schedulerForFrontendFrontendLoopMethodDescriptor),
+		connect.WithSchema(schedulerForFrontendMethods.ByName("FrontendLoop")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/schedulerpb.SchedulerForFrontend/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

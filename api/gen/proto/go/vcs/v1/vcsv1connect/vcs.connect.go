@@ -48,17 +48,6 @@ const (
 	VCSServiceGetCommitsProcedure = "/vcs.v1.VCSService/GetCommits"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	vCSServiceServiceDescriptor             = v1.File_vcs_v1_vcs_proto.Services().ByName("VCSService")
-	vCSServiceGithubAppMethodDescriptor     = vCSServiceServiceDescriptor.Methods().ByName("GithubApp")
-	vCSServiceGithubLoginMethodDescriptor   = vCSServiceServiceDescriptor.Methods().ByName("GithubLogin")
-	vCSServiceGithubRefreshMethodDescriptor = vCSServiceServiceDescriptor.Methods().ByName("GithubRefresh")
-	vCSServiceGetFileMethodDescriptor       = vCSServiceServiceDescriptor.Methods().ByName("GetFile")
-	vCSServiceGetCommitMethodDescriptor     = vCSServiceServiceDescriptor.Methods().ByName("GetCommit")
-	vCSServiceGetCommitsMethodDescriptor    = vCSServiceServiceDescriptor.Methods().ByName("GetCommits")
-)
-
 // VCSServiceClient is a client for the vcs.v1.VCSService service.
 type VCSServiceClient interface {
 	GithubApp(context.Context, *connect.Request[v1.GithubAppRequest]) (*connect.Response[v1.GithubAppResponse], error)
@@ -78,41 +67,42 @@ type VCSServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewVCSServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) VCSServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	vCSServiceMethods := v1.File_vcs_v1_vcs_proto.Services().ByName("VCSService").Methods()
 	return &vCSServiceClient{
 		githubApp: connect.NewClient[v1.GithubAppRequest, v1.GithubAppResponse](
 			httpClient,
 			baseURL+VCSServiceGithubAppProcedure,
-			connect.WithSchema(vCSServiceGithubAppMethodDescriptor),
+			connect.WithSchema(vCSServiceMethods.ByName("GithubApp")),
 			connect.WithClientOptions(opts...),
 		),
 		githubLogin: connect.NewClient[v1.GithubLoginRequest, v1.GithubLoginResponse](
 			httpClient,
 			baseURL+VCSServiceGithubLoginProcedure,
-			connect.WithSchema(vCSServiceGithubLoginMethodDescriptor),
+			connect.WithSchema(vCSServiceMethods.ByName("GithubLogin")),
 			connect.WithClientOptions(opts...),
 		),
 		githubRefresh: connect.NewClient[v1.GithubRefreshRequest, v1.GithubRefreshResponse](
 			httpClient,
 			baseURL+VCSServiceGithubRefreshProcedure,
-			connect.WithSchema(vCSServiceGithubRefreshMethodDescriptor),
+			connect.WithSchema(vCSServiceMethods.ByName("GithubRefresh")),
 			connect.WithClientOptions(opts...),
 		),
 		getFile: connect.NewClient[v1.GetFileRequest, v1.GetFileResponse](
 			httpClient,
 			baseURL+VCSServiceGetFileProcedure,
-			connect.WithSchema(vCSServiceGetFileMethodDescriptor),
+			connect.WithSchema(vCSServiceMethods.ByName("GetFile")),
 			connect.WithClientOptions(opts...),
 		),
 		getCommit: connect.NewClient[v1.GetCommitRequest, v1.GetCommitResponse](
 			httpClient,
 			baseURL+VCSServiceGetCommitProcedure,
-			connect.WithSchema(vCSServiceGetCommitMethodDescriptor),
+			connect.WithSchema(vCSServiceMethods.ByName("GetCommit")),
 			connect.WithClientOptions(opts...),
 		),
 		getCommits: connect.NewClient[v1.GetCommitsRequest, v1.GetCommitsResponse](
 			httpClient,
 			baseURL+VCSServiceGetCommitsProcedure,
-			connect.WithSchema(vCSServiceGetCommitsMethodDescriptor),
+			connect.WithSchema(vCSServiceMethods.ByName("GetCommits")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -174,40 +164,41 @@ type VCSServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewVCSServiceHandler(svc VCSServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	vCSServiceMethods := v1.File_vcs_v1_vcs_proto.Services().ByName("VCSService").Methods()
 	vCSServiceGithubAppHandler := connect.NewUnaryHandler(
 		VCSServiceGithubAppProcedure,
 		svc.GithubApp,
-		connect.WithSchema(vCSServiceGithubAppMethodDescriptor),
+		connect.WithSchema(vCSServiceMethods.ByName("GithubApp")),
 		connect.WithHandlerOptions(opts...),
 	)
 	vCSServiceGithubLoginHandler := connect.NewUnaryHandler(
 		VCSServiceGithubLoginProcedure,
 		svc.GithubLogin,
-		connect.WithSchema(vCSServiceGithubLoginMethodDescriptor),
+		connect.WithSchema(vCSServiceMethods.ByName("GithubLogin")),
 		connect.WithHandlerOptions(opts...),
 	)
 	vCSServiceGithubRefreshHandler := connect.NewUnaryHandler(
 		VCSServiceGithubRefreshProcedure,
 		svc.GithubRefresh,
-		connect.WithSchema(vCSServiceGithubRefreshMethodDescriptor),
+		connect.WithSchema(vCSServiceMethods.ByName("GithubRefresh")),
 		connect.WithHandlerOptions(opts...),
 	)
 	vCSServiceGetFileHandler := connect.NewUnaryHandler(
 		VCSServiceGetFileProcedure,
 		svc.GetFile,
-		connect.WithSchema(vCSServiceGetFileMethodDescriptor),
+		connect.WithSchema(vCSServiceMethods.ByName("GetFile")),
 		connect.WithHandlerOptions(opts...),
 	)
 	vCSServiceGetCommitHandler := connect.NewUnaryHandler(
 		VCSServiceGetCommitProcedure,
 		svc.GetCommit,
-		connect.WithSchema(vCSServiceGetCommitMethodDescriptor),
+		connect.WithSchema(vCSServiceMethods.ByName("GetCommit")),
 		connect.WithHandlerOptions(opts...),
 	)
 	vCSServiceGetCommitsHandler := connect.NewUnaryHandler(
 		VCSServiceGetCommitsProcedure,
 		svc.GetCommits,
-		connect.WithSchema(vCSServiceGetCommitsMethodDescriptor),
+		connect.WithSchema(vCSServiceMethods.ByName("GetCommits")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/vcs.v1.VCSService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
