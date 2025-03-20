@@ -3,6 +3,8 @@ package symdb
 import (
 	"bytes"
 	"math/rand"
+	"os"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -223,6 +225,45 @@ func Benchmark_stacktrace_tree_insert(b *testing.B) {
 		x := newStacktraceTree(defaultStacktraceTreeSize)
 		for j := range p.Sample {
 			x.insert(p.Sample[j].LocationId)
+		}
+	}
+}
+
+func Benchmark_stacktrace_tree_insert_default_sizes(b *testing.B) {
+	if os.Getenv("COMPARE_STACKTRACETREE_INSERT_DEFAULT_SIZES") != "true" {
+		b.Skip("This benchmark is only used for comparing different initial tree sizes")
+	}
+
+	p, err := pprof.OpenFile("testdata/profile.pb.gz")
+	require.NoError(b, err)
+
+	b.ResetTimer()
+
+	for _, size := range []int{0, 10, 1024, 2048, 4096, 8192} {
+		b.Run("size="+strconv.Itoa(size), func(b *testing.B) {
+			b.ReportAllocs()
+
+			for i := 0; i < b.N; i++ {
+				x := newStacktraceTree(size)
+				for j := range p.Sample {
+					x.insert(p.Sample[j].LocationId)
+				}
+				// nodes = max(nodes, x.len())
+			}
+
+		})
+
+		if testing.Verbose() {
+			var nodes uint32
+			b.Logf("init: %d nodes ~ %d bytes", size, size*stacktraceTreeNodeSize)
+
+			x := newStacktraceTree(size)
+			for j := range p.Sample {
+				x.insert(p.Sample[j].LocationId)
+			}
+			nodes = max(nodes, x.len())
+
+			b.Logf("max: %d nodes ~ %d bytes", nodes, nodes*uint32(stacktraceTreeNodeSize))
 		}
 	}
 }
