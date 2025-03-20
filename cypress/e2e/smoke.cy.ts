@@ -22,6 +22,11 @@ describe('smoke', () => {
     cy.wait(`@profileTypes`);
   });
 
+  it('loads diff view (/comparison-diff)', () => {
+    cy.visit('/comparison-diff');
+    cy.wait(`@profileTypes`);
+  });
+
   it('changes path when navigating', () => {
     const clickSidebar = (name: string) => {
       cy.get('nav.pro-menu .pro-item-content')
