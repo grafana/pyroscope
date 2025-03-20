@@ -2,8 +2,6 @@ module github.com/grafana/pyroscope/ebpf
 
 go 1.22.0
 
-toolchain go1.22.9
-
 require (
 	connectrpc.com/connect v1.18.1
 	github.com/avvmoto/buf-readerat v0.0.0-20171115124131-a17c8cb89270

@@ -2,8 +2,6 @@ module github.com/grafana/pyroscope/api
 
 go 1.22.0
 
-toolchain go1.22.9
-
 require (
 	connectrpc.com/connect v1.18.1
 	github.com/gorilla/mux v1.8.0
