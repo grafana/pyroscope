@@ -11,12 +11,13 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
 	"github.com/grafana/dskit/user"
+	pprofileotlp "go.opentelemetry.io/proto/otlp/collector/profiles/v1development"
+	v1 "go.opentelemetry.io/proto/otlp/common/v1"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	pprofileotlp "github.com/grafana/pyroscope/api/otlp/collector/profiles/v1development"
-	v1 "github.com/grafana/pyroscope/api/otlp/common/v1"
 	distirbutormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	pyromodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
@@ -102,7 +103,7 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 				}
 
 				req := &distirbutormodel.PushRequest{
-					RawProfileSize: p.Size(),
+					RawProfileSize: proto.Size(p),
 					RawProfileType: distirbutormodel.RawProfileTypeOTEL,
 				}
 
@@ -150,7 +151,7 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 
 // getServiceNameFromAttributes extracts service name from OTLP resource attributes.
 // Returns "unknown" if service name is not found or empty.
-func getServiceNameFromAttributes(attrs []v1.KeyValue) string {
+func getServiceNameFromAttributes(attrs []*v1.KeyValue) string {
 	for _, attr := range attrs {
 		if attr.Key == "service.name" {
 			val := attr.GetValue()
@@ -177,7 +178,7 @@ func getDefaultLabels() []*typesv1.LabelPair {
 	}
 }
 
-func appendAttributesUnique(labels []*typesv1.LabelPair, attrs []v1.KeyValue, processedKeys map[string]bool) []*typesv1.LabelPair {
+func appendAttributesUnique(labels []*typesv1.LabelPair, attrs []*v1.KeyValue, processedKeys map[string]bool) []*typesv1.LabelPair {
 	for _, attr := range attrs {
 		// Skip if we've already seen this key at any level
 		if processedKeys[attr.Key] {

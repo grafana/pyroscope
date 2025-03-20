@@ -7,42 +7,38 @@ import (
 	"strings"
 	"testing"
 
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/distributor/model"
-
-	"github.com/prometheus/prometheus/util/testutil"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
-
-	v1experimental2 "github.com/grafana/pyroscope/api/otlp/collector/profiles/v1development"
-	v1experimental "github.com/grafana/pyroscope/api/otlp/profiles/v1development"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/strprofile"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockotlp"
 
+	"github.com/prometheus/prometheus/util/testutil"
 	"github.com/stretchr/testify/assert"
-
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	v1 "github.com/grafana/pyroscope/api/otlp/common/v1"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+	v1experimental2 "go.opentelemetry.io/proto/otlp/collector/profiles/v1development"
+	v1 "go.opentelemetry.io/proto/otlp/common/v1"
+	v1experimental "go.opentelemetry.io/proto/otlp/profiles/v1development"
 )
 
 func TestGetServiceNameFromAttributes(t *testing.T) {
 	tests := []struct {
 		name     string
-		attrs    []v1.KeyValue
+		attrs    []*v1.KeyValue
 		expected string
 	}{
 		{
 			name:     "empty attributes",
-			attrs:    []v1.KeyValue{},
+			attrs:    []*v1.KeyValue{},
 			expected: "unknown",
 		},
 		{
 			name: "service name present",
-			attrs: []v1.KeyValue{
+			attrs: []*v1.KeyValue{
 				{
 					Key: "service.name",
-					Value: v1.AnyValue{
+					Value: &v1.AnyValue{
 						Value: &v1.AnyValue_StringValue{
 							StringValue: "test-service",
 						},
@@ -53,10 +49,10 @@ func TestGetServiceNameFromAttributes(t *testing.T) {
 		},
 		{
 			name: "service name empty",
-			attrs: []v1.KeyValue{
+			attrs: []*v1.KeyValue{
 				{
 					Key: "service.name",
-					Value: v1.AnyValue{
+					Value: &v1.AnyValue{
 						Value: &v1.AnyValue_StringValue{
 							StringValue: "",
 						},
@@ -67,10 +63,10 @@ func TestGetServiceNameFromAttributes(t *testing.T) {
 		},
 		{
 			name: "service name among other attributes",
-			attrs: []v1.KeyValue{
+			attrs: []*v1.KeyValue{
 				{
 					Key: "host.name",
-					Value: v1.AnyValue{
+					Value: &v1.AnyValue{
 						Value: &v1.AnyValue_StringValue{
 							StringValue: "host1",
 						},
@@ -78,7 +74,7 @@ func TestGetServiceNameFromAttributes(t *testing.T) {
 				},
 				{
 					Key: "service.name",
-					Value: v1.AnyValue{
+					Value: &v1.AnyValue{
 						Value: &v1.AnyValue_StringValue{
 							StringValue: "test-service",
 						},
@@ -101,14 +97,14 @@ func TestAppendAttributesUnique(t *testing.T) {
 	tests := []struct {
 		name          string
 		existingAttrs []*typesv1.LabelPair
-		newAttrs      []v1.KeyValue
+		newAttrs      []*v1.KeyValue
 		processedKeys map[string]bool
 		expected      []*typesv1.LabelPair
 	}{
 		{
 			name:          "empty attributes",
 			existingAttrs: []*typesv1.LabelPair{},
-			newAttrs:      []v1.KeyValue{},
+			newAttrs:      []*v1.KeyValue{},
 			processedKeys: make(map[string]bool),
 			expected:      []*typesv1.LabelPair{},
 		},
@@ -117,10 +113,10 @@ func TestAppendAttributesUnique(t *testing.T) {
 			existingAttrs: []*typesv1.LabelPair{
 				{Name: "existing", Value: "value"},
 			},
-			newAttrs: []v1.KeyValue{
+			newAttrs: []*v1.KeyValue{
 				{
 					Key: "new",
-					Value: v1.AnyValue{
+					Value: &v1.AnyValue{
 						Value: &v1.AnyValue_StringValue{
 							StringValue: "newvalue",
 						},
@@ -138,10 +134,10 @@ func TestAppendAttributesUnique(t *testing.T) {
 			existingAttrs: []*typesv1.LabelPair{
 				{Name: "key1", Value: "value1"},
 			},
-			newAttrs: []v1.KeyValue{
+			newAttrs: []*v1.KeyValue{
 				{
 					Key: "key1",
-					Value: v1.AnyValue{
+					Value: &v1.AnyValue{
 						Value: &v1.AnyValue_StringValue{
 							StringValue: "value2",
 						},
@@ -188,13 +184,13 @@ func TestConversion(t *testing.T) {
 					FilenameStrindex: b.addstr("file1.so"),
 				}}
 				b.profile.LocationTable = []*v1experimental.Location{{
-					MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 0},
-					Address:       0x1e0,
-					Line:          nil,
+					MappingIndex: int32ptr(0),
+					Address:      0x1e0,
+					Line:         nil,
 				}, {
-					MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 0},
-					Address:       0x2f0,
-					Line:          nil,
+					MappingIndex: int32ptr(0),
+					Address:      0x2f0,
+					Line:         nil,
 				}}
 				b.profile.LocationIndices = []int32{0, 1}
 				b.profile.Sample = []*v1experimental.Sample{{
@@ -220,14 +216,14 @@ func TestConversion(t *testing.T) {
 					FilenameStrindex: b.addstr("file1.so"),
 				}}
 				b.profile.LocationTable = []*v1experimental.Location{{
-					MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 0},
-					Address:       0x1e0,
+					MappingIndex: int32ptr(0),
+					Address:      0x1e0,
 				}, {
-					MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 0},
-					Address:       0x2f0,
+					MappingIndex: int32ptr(0),
+					Address:      0x2f0,
 				}, {
-					MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 0},
-					Address:       0x3f0,
+					MappingIndex: int32ptr(0),
+					Address:      0x3f0,
 				}}
 				b.profile.LocationIndices = []int32{0, 1, 2}
 				b.profile.Sample = []*v1experimental.Sample{{
@@ -256,15 +252,16 @@ func TestConversion(t *testing.T) {
 					MemoryLimit:      0x1000,
 					FilenameStrindex: b.addstr("file1.so"),
 				}}
+				var mappingIndex int32
 				b.profile.LocationTable = []*v1experimental.Location{{
-					MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 0},
-					Address:       0x1e0,
+					MappingIndex: &mappingIndex,
+					Address:      0x1e0,
 				}, {
-					MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 0},
-					Address:       0x2f0,
+					MappingIndex: &mappingIndex,
+					Address:      0x2f0,
 				}, {
-					MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 0},
-					Address:       0x3f0,
+					MappingIndex: &mappingIndex,
+					Address:      0x3f0,
 				}}
 				b.profile.LocationIndices = []int32{0, 1, 2}
 				b.profile.PeriodType = &v1experimental.ValueType{
@@ -328,6 +325,8 @@ func TestConversion(t *testing.T) {
 
 }
 
+func int32ptr(i int32) *int32 { return &i }
+
 func TestSampleAttributes(t *testing.T) {
 	// Create a profile with two samples, with different sample attributes
 	// one process=firefox, the other process=chrome
@@ -351,17 +350,17 @@ func TestSampleAttributes(t *testing.T) {
 	}}
 
 	otlpb.profile.LocationTable = []*v1experimental.Location{{
-		MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 0},
-		Address:       0x1e,
+		MappingIndex: int32ptr(0),
+		Address:      0x1e,
 	}, {
-		MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 0},
-		Address:       0x2e,
+		MappingIndex: int32ptr(0),
+		Address:      0x2e,
 	}, {
-		MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 1},
-		Address:       0x3e,
+		MappingIndex: int32ptr(1),
+		Address:      0x3e,
 	}, {
-		MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 1},
-		Address:       0x4e,
+		MappingIndex: int32ptr(1),
+		Address:      0x4e,
 	}}
 	otlpb.profile.LocationIndices = []int32{0, 1, 2, 3}
 	otlpb.profile.Sample = []*v1experimental.Sample{{
@@ -375,16 +374,16 @@ func TestSampleAttributes(t *testing.T) {
 		Value:               []int64{0xefef},
 		AttributeIndices:    []int32{1},
 	}}
-	otlpb.profile.AttributeTable = []v1.KeyValue{{
+	otlpb.profile.AttributeTable = []*v1.KeyValue{{
 		Key: "process",
-		Value: v1.AnyValue{
+		Value: &v1.AnyValue{
 			Value: &v1.AnyValue_StringValue{
 				StringValue: "firefox",
 			},
 		},
 	}, {
 		Key: "process",
-		Value: v1.AnyValue{
+		Value: &v1.AnyValue{
 			Value: &v1.AnyValue_StringValue{
 				StringValue: "chrome",
 			},
@@ -450,36 +449,36 @@ func TestDifferentServiceNames(t *testing.T) {
 	}}
 
 	otlpb.profile.LocationTable = []*v1experimental.Location{{
-		MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 0}, // service-a.so
-		Address:       0x1100,
+		MappingIndex: int32ptr(0), // service-a.so
+		Address:      0x1100,
 		Line: []*v1experimental.Line{{
 			FunctionIndex: 0,
 			Line:          10,
 		}},
 	}, {
-		MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 0}, // service-a.so
-		Address:       0x1200,
+		MappingIndex: int32ptr(0), // service-a.so
+		Address:      0x1200,
 		Line: []*v1experimental.Line{{
 			FunctionIndex: 1,
 			Line:          20,
 		}},
 	}, {
-		MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 1}, // service-b.so
-		Address:       0x2100,
+		MappingIndex: int32ptr(1), // service-b.so
+		Address:      0x2100,
 		Line: []*v1experimental.Line{{
 			FunctionIndex: 2,
 			Line:          30,
 		}},
 	}, {
-		MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 1}, // service-b.so
-		Address:       0x2200,
+		MappingIndex: int32ptr(1), // service-b.so
+		Address:      0x2200,
 		Line: []*v1experimental.Line{{
 			FunctionIndex: 3,
 			Line:          40,
 		}},
 	}, {
-		MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 2}, // service-c.so
-		Address:       0xef0,
+		MappingIndex: int32ptr(2), // service-c.so
+		Address:      0xef0,
 		Line: []*v1experimental.Line{{
 			FunctionIndex: 4,
 			Line:          50,
@@ -527,16 +526,16 @@ func TestDifferentServiceNames(t *testing.T) {
 		AttributeIndices:    []int32{},
 	}}
 
-	otlpb.profile.AttributeTable = []v1.KeyValue{{
+	otlpb.profile.AttributeTable = []*v1.KeyValue{{
 		Key: "service.name",
-		Value: v1.AnyValue{
+		Value: &v1.AnyValue{
 			Value: &v1.AnyValue_StringValue{
 				StringValue: "service-a",
 			},
 		},
 	}, {
 		Key: "service.name",
-		Value: v1.AnyValue{
+		Value: &v1.AnyValue{
 			Value: &v1.AnyValue_StringValue{
 				StringValue: "service-b",
 			},

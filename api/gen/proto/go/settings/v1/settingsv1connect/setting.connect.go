@@ -41,14 +41,6 @@ const (
 	SettingsServiceDeleteProcedure = "/settings.v1.SettingsService/Delete"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	settingsServiceServiceDescriptor      = v1.File_settings_v1_setting_proto.Services().ByName("SettingsService")
-	settingsServiceGetMethodDescriptor    = settingsServiceServiceDescriptor.Methods().ByName("Get")
-	settingsServiceSetMethodDescriptor    = settingsServiceServiceDescriptor.Methods().ByName("Set")
-	settingsServiceDeleteMethodDescriptor = settingsServiceServiceDescriptor.Methods().ByName("Delete")
-)
-
 // SettingsServiceClient is a client for the settings.v1.SettingsService service.
 type SettingsServiceClient interface {
 	Get(context.Context, *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.GetSettingsResponse], error)
@@ -65,23 +57,24 @@ type SettingsServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewSettingsServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) SettingsServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	settingsServiceMethods := v1.File_settings_v1_setting_proto.Services().ByName("SettingsService").Methods()
 	return &settingsServiceClient{
 		get: connect.NewClient[v1.GetSettingsRequest, v1.GetSettingsResponse](
 			httpClient,
 			baseURL+SettingsServiceGetProcedure,
-			connect.WithSchema(settingsServiceGetMethodDescriptor),
+			connect.WithSchema(settingsServiceMethods.ByName("Get")),
 			connect.WithClientOptions(opts...),
 		),
 		set: connect.NewClient[v1.SetSettingsRequest, v1.SetSettingsResponse](
 			httpClient,
 			baseURL+SettingsServiceSetProcedure,
-			connect.WithSchema(settingsServiceSetMethodDescriptor),
+			connect.WithSchema(settingsServiceMethods.ByName("Set")),
 			connect.WithClientOptions(opts...),
 		),
 		delete: connect.NewClient[v1.DeleteSettingsRequest, v1.DeleteSettingsResponse](
 			httpClient,
 			baseURL+SettingsServiceDeleteProcedure,
-			connect.WithSchema(settingsServiceDeleteMethodDescriptor),
+			connect.WithSchema(settingsServiceMethods.ByName("Delete")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -122,22 +115,23 @@ type SettingsServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewSettingsServiceHandler(svc SettingsServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	settingsServiceMethods := v1.File_settings_v1_setting_proto.Services().ByName("SettingsService").Methods()
 	settingsServiceGetHandler := connect.NewUnaryHandler(
 		SettingsServiceGetProcedure,
 		svc.Get,
-		connect.WithSchema(settingsServiceGetMethodDescriptor),
+		connect.WithSchema(settingsServiceMethods.ByName("Get")),
 		connect.WithHandlerOptions(opts...),
 	)
 	settingsServiceSetHandler := connect.NewUnaryHandler(
 		SettingsServiceSetProcedure,
 		svc.Set,
-		connect.WithSchema(settingsServiceSetMethodDescriptor),
+		connect.WithSchema(settingsServiceMethods.ByName("Set")),
 		connect.WithHandlerOptions(opts...),
 	)
 	settingsServiceDeleteHandler := connect.NewUnaryHandler(
 		SettingsServiceDeleteProcedure,
 		svc.Delete,
-		connect.WithSchema(settingsServiceDeleteMethodDescriptor),
+		connect.WithSchema(settingsServiceMethods.ByName("Delete")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/settings.v1.SettingsService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

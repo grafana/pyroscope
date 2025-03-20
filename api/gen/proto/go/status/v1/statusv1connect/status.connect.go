@@ -47,15 +47,6 @@ const (
 	StatusServiceGetDefaultConfigProcedure = "/status.v1.StatusService/GetDefaultConfig"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	statusServiceServiceDescriptor                = v1.File_status_v1_status_proto.Services().ByName("StatusService")
-	statusServiceGetBuildInfoMethodDescriptor     = statusServiceServiceDescriptor.Methods().ByName("GetBuildInfo")
-	statusServiceGetConfigMethodDescriptor        = statusServiceServiceDescriptor.Methods().ByName("GetConfig")
-	statusServiceGetDiffConfigMethodDescriptor    = statusServiceServiceDescriptor.Methods().ByName("GetDiffConfig")
-	statusServiceGetDefaultConfigMethodDescriptor = statusServiceServiceDescriptor.Methods().ByName("GetDefaultConfig")
-)
-
 // StatusServiceClient is a client for the status.v1.StatusService service.
 type StatusServiceClient interface {
 	// Retrieve build information about the binary
@@ -76,29 +67,30 @@ type StatusServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewStatusServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) StatusServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	statusServiceMethods := v1.File_status_v1_status_proto.Services().ByName("StatusService").Methods()
 	return &statusServiceClient{
 		getBuildInfo: connect.NewClient[v1.GetBuildInfoRequest, v1.GetBuildInfoResponse](
 			httpClient,
 			baseURL+StatusServiceGetBuildInfoProcedure,
-			connect.WithSchema(statusServiceGetBuildInfoMethodDescriptor),
+			connect.WithSchema(statusServiceMethods.ByName("GetBuildInfo")),
 			connect.WithClientOptions(opts...),
 		),
 		getConfig: connect.NewClient[v1.GetConfigRequest, httpbody.HttpBody](
 			httpClient,
 			baseURL+StatusServiceGetConfigProcedure,
-			connect.WithSchema(statusServiceGetConfigMethodDescriptor),
+			connect.WithSchema(statusServiceMethods.ByName("GetConfig")),
 			connect.WithClientOptions(opts...),
 		),
 		getDiffConfig: connect.NewClient[v1.GetConfigRequest, httpbody.HttpBody](
 			httpClient,
 			baseURL+StatusServiceGetDiffConfigProcedure,
-			connect.WithSchema(statusServiceGetDiffConfigMethodDescriptor),
+			connect.WithSchema(statusServiceMethods.ByName("GetDiffConfig")),
 			connect.WithClientOptions(opts...),
 		),
 		getDefaultConfig: connect.NewClient[v1.GetConfigRequest, httpbody.HttpBody](
 			httpClient,
 			baseURL+StatusServiceGetDefaultConfigProcedure,
-			connect.WithSchema(statusServiceGetDefaultConfigMethodDescriptor),
+			connect.WithSchema(statusServiceMethods.ByName("GetDefaultConfig")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -149,28 +141,29 @@ type StatusServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewStatusServiceHandler(svc StatusServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	statusServiceMethods := v1.File_status_v1_status_proto.Services().ByName("StatusService").Methods()
 	statusServiceGetBuildInfoHandler := connect.NewUnaryHandler(
 		StatusServiceGetBuildInfoProcedure,
 		svc.GetBuildInfo,
-		connect.WithSchema(statusServiceGetBuildInfoMethodDescriptor),
+		connect.WithSchema(statusServiceMethods.ByName("GetBuildInfo")),
 		connect.WithHandlerOptions(opts...),
 	)
 	statusServiceGetConfigHandler := connect.NewUnaryHandler(
 		StatusServiceGetConfigProcedure,
 		svc.GetConfig,
-		connect.WithSchema(statusServiceGetConfigMethodDescriptor),
+		connect.WithSchema(statusServiceMethods.ByName("GetConfig")),
 		connect.WithHandlerOptions(opts...),
 	)
 	statusServiceGetDiffConfigHandler := connect.NewUnaryHandler(
 		StatusServiceGetDiffConfigProcedure,
 		svc.GetDiffConfig,
-		connect.WithSchema(statusServiceGetDiffConfigMethodDescriptor),
+		connect.WithSchema(statusServiceMethods.ByName("GetDiffConfig")),
 		connect.WithHandlerOptions(opts...),
 	)
 	statusServiceGetDefaultConfigHandler := connect.NewUnaryHandler(
 		StatusServiceGetDefaultConfigProcedure,
 		svc.GetDefaultConfig,
-		connect.WithSchema(statusServiceGetDefaultConfigMethodDescriptor),
+		connect.WithSchema(statusServiceMethods.ByName("GetDefaultConfig")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/status.v1.StatusService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

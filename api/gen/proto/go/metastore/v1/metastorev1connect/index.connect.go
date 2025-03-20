@@ -40,13 +40,6 @@ const (
 	IndexServiceGetBlockMetadataProcedure = "/metastore.v1.IndexService/GetBlockMetadata"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	indexServiceServiceDescriptor                = v1.File_metastore_v1_index_proto.Services().ByName("IndexService")
-	indexServiceAddBlockMethodDescriptor         = indexServiceServiceDescriptor.Methods().ByName("AddBlock")
-	indexServiceGetBlockMetadataMethodDescriptor = indexServiceServiceDescriptor.Methods().ByName("GetBlockMetadata")
-)
-
 // IndexServiceClient is a client for the metastore.v1.IndexService service.
 type IndexServiceClient interface {
 	AddBlock(context.Context, *connect.Request[v1.AddBlockRequest]) (*connect.Response[v1.AddBlockResponse], error)
@@ -62,17 +55,18 @@ type IndexServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewIndexServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) IndexServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	indexServiceMethods := v1.File_metastore_v1_index_proto.Services().ByName("IndexService").Methods()
 	return &indexServiceClient{
 		addBlock: connect.NewClient[v1.AddBlockRequest, v1.AddBlockResponse](
 			httpClient,
 			baseURL+IndexServiceAddBlockProcedure,
-			connect.WithSchema(indexServiceAddBlockMethodDescriptor),
+			connect.WithSchema(indexServiceMethods.ByName("AddBlock")),
 			connect.WithClientOptions(opts...),
 		),
 		getBlockMetadata: connect.NewClient[v1.GetBlockMetadataRequest, v1.GetBlockMetadataResponse](
 			httpClient,
 			baseURL+IndexServiceGetBlockMetadataProcedure,
-			connect.WithSchema(indexServiceGetBlockMetadataMethodDescriptor),
+			connect.WithSchema(indexServiceMethods.ByName("GetBlockMetadata")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -106,16 +100,17 @@ type IndexServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewIndexServiceHandler(svc IndexServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	indexServiceMethods := v1.File_metastore_v1_index_proto.Services().ByName("IndexService").Methods()
 	indexServiceAddBlockHandler := connect.NewUnaryHandler(
 		IndexServiceAddBlockProcedure,
 		svc.AddBlock,
-		connect.WithSchema(indexServiceAddBlockMethodDescriptor),
+		connect.WithSchema(indexServiceMethods.ByName("AddBlock")),
 		connect.WithHandlerOptions(opts...),
 	)
 	indexServiceGetBlockMetadataHandler := connect.NewUnaryHandler(
 		IndexServiceGetBlockMetadataProcedure,
 		svc.GetBlockMetadata,
-		connect.WithSchema(indexServiceGetBlockMetadataMethodDescriptor),
+		connect.WithSchema(indexServiceMethods.ByName("GetBlockMetadata")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/metastore.v1.IndexService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -47,15 +47,6 @@ const (
 	CollectionRulesServiceDeleteCollectionRuleProcedure = "/settings.v1.CollectionRulesService/DeleteCollectionRule"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	collectionRulesServiceServiceDescriptor                    = v1.File_settings_v1_collection_rules_proto.Services().ByName("CollectionRulesService")
-	collectionRulesServiceGetCollectionRuleMethodDescriptor    = collectionRulesServiceServiceDescriptor.Methods().ByName("GetCollectionRule")
-	collectionRulesServiceUpsertCollectionRuleMethodDescriptor = collectionRulesServiceServiceDescriptor.Methods().ByName("UpsertCollectionRule")
-	collectionRulesServiceListCollectionRulesMethodDescriptor  = collectionRulesServiceServiceDescriptor.Methods().ByName("ListCollectionRules")
-	collectionRulesServiceDeleteCollectionRuleMethodDescriptor = collectionRulesServiceServiceDescriptor.Methods().ByName("DeleteCollectionRule")
-)
-
 // CollectionRulesServiceClient is a client for the settings.v1.CollectionRulesService service.
 type CollectionRulesServiceClient interface {
 	GetCollectionRule(context.Context, *connect.Request[v1.GetCollectionRuleRequest]) (*connect.Response[v1.GetCollectionRuleResponse], error)
@@ -73,29 +64,30 @@ type CollectionRulesServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewCollectionRulesServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) CollectionRulesServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	collectionRulesServiceMethods := v1.File_settings_v1_collection_rules_proto.Services().ByName("CollectionRulesService").Methods()
 	return &collectionRulesServiceClient{
 		getCollectionRule: connect.NewClient[v1.GetCollectionRuleRequest, v1.GetCollectionRuleResponse](
 			httpClient,
 			baseURL+CollectionRulesServiceGetCollectionRuleProcedure,
-			connect.WithSchema(collectionRulesServiceGetCollectionRuleMethodDescriptor),
+			connect.WithSchema(collectionRulesServiceMethods.ByName("GetCollectionRule")),
 			connect.WithClientOptions(opts...),
 		),
 		upsertCollectionRule: connect.NewClient[v1.UpsertCollectionRuleRequest, v1.GetCollectionRuleResponse](
 			httpClient,
 			baseURL+CollectionRulesServiceUpsertCollectionRuleProcedure,
-			connect.WithSchema(collectionRulesServiceUpsertCollectionRuleMethodDescriptor),
+			connect.WithSchema(collectionRulesServiceMethods.ByName("UpsertCollectionRule")),
 			connect.WithClientOptions(opts...),
 		),
 		listCollectionRules: connect.NewClient[v1.ListCollectionRulesRequest, v1.ListCollectionRulesResponse](
 			httpClient,
 			baseURL+CollectionRulesServiceListCollectionRulesProcedure,
-			connect.WithSchema(collectionRulesServiceListCollectionRulesMethodDescriptor),
+			connect.WithSchema(collectionRulesServiceMethods.ByName("ListCollectionRules")),
 			connect.WithClientOptions(opts...),
 		),
 		deleteCollectionRule: connect.NewClient[v1.DeleteCollectionRuleRequest, v1.DeleteCollectionRuleResponse](
 			httpClient,
 			baseURL+CollectionRulesServiceDeleteCollectionRuleProcedure,
-			connect.WithSchema(collectionRulesServiceDeleteCollectionRuleMethodDescriptor),
+			connect.WithSchema(collectionRulesServiceMethods.ByName("DeleteCollectionRule")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -144,28 +136,29 @@ type CollectionRulesServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewCollectionRulesServiceHandler(svc CollectionRulesServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	collectionRulesServiceMethods := v1.File_settings_v1_collection_rules_proto.Services().ByName("CollectionRulesService").Methods()
 	collectionRulesServiceGetCollectionRuleHandler := connect.NewUnaryHandler(
 		CollectionRulesServiceGetCollectionRuleProcedure,
 		svc.GetCollectionRule,
-		connect.WithSchema(collectionRulesServiceGetCollectionRuleMethodDescriptor),
+		connect.WithSchema(collectionRulesServiceMethods.ByName("GetCollectionRule")),
 		connect.WithHandlerOptions(opts...),
 	)
 	collectionRulesServiceUpsertCollectionRuleHandler := connect.NewUnaryHandler(
 		CollectionRulesServiceUpsertCollectionRuleProcedure,
 		svc.UpsertCollectionRule,
-		connect.WithSchema(collectionRulesServiceUpsertCollectionRuleMethodDescriptor),
+		connect.WithSchema(collectionRulesServiceMethods.ByName("UpsertCollectionRule")),
 		connect.WithHandlerOptions(opts...),
 	)
 	collectionRulesServiceListCollectionRulesHandler := connect.NewUnaryHandler(
 		CollectionRulesServiceListCollectionRulesProcedure,
 		svc.ListCollectionRules,
-		connect.WithSchema(collectionRulesServiceListCollectionRulesMethodDescriptor),
+		connect.WithSchema(collectionRulesServiceMethods.ByName("ListCollectionRules")),
 		connect.WithHandlerOptions(opts...),
 	)
 	collectionRulesServiceDeleteCollectionRuleHandler := connect.NewUnaryHandler(
 		CollectionRulesServiceDeleteCollectionRuleProcedure,
 		svc.DeleteCollectionRule,
-		connect.WithSchema(collectionRulesServiceDeleteCollectionRuleMethodDescriptor),
+		connect.WithSchema(collectionRulesServiceMethods.ByName("DeleteCollectionRule")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/settings.v1.CollectionRulesService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

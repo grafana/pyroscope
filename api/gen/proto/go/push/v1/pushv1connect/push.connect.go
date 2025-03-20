@@ -37,12 +37,6 @@ const (
 	PusherServicePushProcedure = "/push.v1.PusherService/Push"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	pusherServiceServiceDescriptor    = v1.File_push_v1_push_proto.Services().ByName("PusherService")
-	pusherServicePushMethodDescriptor = pusherServiceServiceDescriptor.Methods().ByName("Push")
-)
-
 // PusherServiceClient is a client for the push.v1.PusherService service.
 type PusherServiceClient interface {
 	Push(context.Context, *connect.Request[v1.PushRequest]) (*connect.Response[v1.PushResponse], error)
@@ -57,11 +51,12 @@ type PusherServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewPusherServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) PusherServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	pusherServiceMethods := v1.File_push_v1_push_proto.Services().ByName("PusherService").Methods()
 	return &pusherServiceClient{
 		push: connect.NewClient[v1.PushRequest, v1.PushResponse](
 			httpClient,
 			baseURL+PusherServicePushProcedure,
-			connect.WithSchema(pusherServicePushMethodDescriptor),
+			connect.WithSchema(pusherServiceMethods.ByName("Push")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -88,10 +83,11 @@ type PusherServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewPusherServiceHandler(svc PusherServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	pusherServiceMethods := v1.File_push_v1_push_proto.Services().ByName("PusherService").Methods()
 	pusherServicePushHandler := connect.NewUnaryHandler(
 		PusherServicePushProcedure,
 		svc.Push,
-		connect.WithSchema(pusherServicePushMethodDescriptor),
+		connect.WithSchema(pusherServiceMethods.ByName("Push")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/push.v1.PusherService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
