@@ -458,32 +458,36 @@ func ConvertProfileToTree(profile *profilev1.Profile, maxNodes int64) ([]byte, e
 
 	// Build a map of function IDs to functions for faster lookup
 	functionMap := make(map[uint64]*profilev1.Function, len(profile.Function))
-	for _, fn := range profile.Function {
+	for i, fn := range profile.Function {
+		// Map by the function's own ID
 		functionMap[fn.Id] = fn
+		// ALSO map by position+1 (common pprof convention)
+		functionMap[uint64(i+1)] = fn
 	}
 
-	// TODO: not sure about this
-	// Default to the last sample value as per pprof spec
+	// Default to the last sample value (usually "samples" in CPU profiles)
 	valueType := len(profile.SampleType) - 1
+	if valueType < 0 {
+		valueType = 0
+	}
 
 	// If DefaultSampleType is specified, find the corresponding sample type
-	if profile.DefaultSampleType >= 0 && int(profile.DefaultSampleType) < len(profile.StringTable) {
-		// In pprof, string_table[0] is always empty. If DefaultSampleType is 0,
-		// it's considered "unset" and we should use the last sample value.
-		if profile.DefaultSampleType > 0 || profile.StringTable[0] != "" {
-			defaultTypeName := profile.StringTable[profile.DefaultSampleType]
-
-			// Find the sample type index that matches the default type name
-			for i, st := range profile.SampleType {
-				if st.Type >= 0 && int(st.Type) < len(profile.StringTable) {
-					if profile.StringTable[st.Type] == defaultTypeName {
-						valueType = i
-						break
-					}
+	if profile.DefaultSampleType > 0 && int(profile.DefaultSampleType) < len(profile.StringTable) {
+		defaultTypeName := profile.StringTable[profile.DefaultSampleType]
+		// Find the sample type index that matches the default type name
+		for i, st := range profile.SampleType {
+			if st.Type >= 0 && int(st.Type) < len(profile.StringTable) {
+				if profile.StringTable[st.Type] == defaultTypeName {
+					valueType = i
+					break
 				}
 			}
 		}
 	}
+
+	validSamples := 0
+	totalValue := int64(0)
+	validStacks := 0
 
 	for _, sample := range profile.Sample {
 		// Skip samples with no value
@@ -493,6 +497,12 @@ func ConvertProfileToTree(profile *profilev1.Profile, maxNodes int64) ([]byte, e
 
 		// Get the value from the sample
 		value := sample.Value[valueType]
+		if value <= 0 {
+			continue
+		}
+
+		validSamples++
+		totalValue += value
 
 		// Build the stack from the locations
 		stack := make([]string, 0, len(sample.LocationId))
@@ -521,7 +531,9 @@ func ConvertProfileToTree(profile *profilev1.Profile, maxNodes int64) ([]byte, e
 
 		// Insert the stack into the tree
 		if len(stack) > 0 {
+			//slices.Reverse(stack)
 			tree.InsertStack(value, stack...)
+			validStacks++
 		}
 	}
 

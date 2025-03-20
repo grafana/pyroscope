@@ -101,8 +101,7 @@ func (q *QueryFrontend) Query(
 	needsSymbolization := false
 	if q.symbolizer != nil {
 		for _, block := range blocks {
-			// Check if the block is marked as unsymbolized
-			if symbolizationNeeded(block) {
+			if q.symbolizationNeeded(block) {
 				needsSymbolization = true
 				break
 			}
@@ -118,7 +117,7 @@ func (q *QueryFrontend) Query(
 		if needsSymbolization && originalQuery.QueryType == queryv1.QueryType_QUERY_TREE {
 			modifiedQueries[i].QueryType = queryv1.QueryType_QUERY_PPROF
 			modifiedQueries[i].Pprof = &queryv1.PprofQuery{
-				MaxNodes: originalQuery.Tree.MaxNodes,
+				MaxNodes: 0,
 			}
 			modifiedQueries[i].Tree = nil
 		}
@@ -148,7 +147,7 @@ func (q *QueryFrontend) Query(
 
 				if err := q.symbolizer.SymbolizePprof(ctx, &prof); err != nil {
 					level.Error(q.logger).Log("msg", "SymbolizePprof needsSymbolization", "error", err)
-					continue
+					continue // TODO: THIS!!!
 				}
 
 				// 3. Convert back to TREE if the *original* was TREE
@@ -158,16 +157,13 @@ func (q *QueryFrontend) Query(
 					if err == nil {
 						// Store the tree result
 						r.Tree = &queryv1.TreeReport{Tree: treeBytes}
-						// r.Pprof = nil
-					} else {
-						level.Error(q.logger).Log("msg", "ConvertProfileToTree needsSymbolization", "error", err)
+						r.ReportType = queryv1.ReportType_REPORT_TREE
+						r.Pprof = nil
 					}
 				} else {
 					symbolizedBytes, err := pprof.Marshal(&prof, true)
 					if err == nil {
 						r.Pprof.Pprof = symbolizedBytes
-					} else {
-						level.Error(q.logger).Log("msg", "pprof.Marshal needsSymbolization", "error", err)
 					}
 				}
 			}
@@ -230,7 +226,7 @@ func (q *QueryFrontend) QueryMetadata(
 }
 
 // symbolizationNeeded checks if a block needs symbolization
-func symbolizationNeeded(block *metastorev1.BlockMeta) bool {
+func (q *QueryFrontend) symbolizationNeeded(block *metastorev1.BlockMeta) bool {
 	matcher, err := labels.NewMatcher(labels.MatchEqual, metadata.LabelNameNeedsSymbolization, "true")
 	if err != nil {
 		return false
