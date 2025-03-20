@@ -334,18 +334,24 @@ func concatSegmentHead(f *headFlush, w *writerOffset, s *metadata.StringTable) (
 		Labels:          nil,
 	}
 
+	var allLabels []int32
 	lb := metadata.NewLabelBuilder(s)
 	for _, profileType := range ptypes {
 		lb.WithLabelSet(model.LabelNameServiceName, f.head.key.service, model.LabelNameProfileType, profileType)
+		labelSet := lb.Build() // This creates one complete label set with count prefix
+		allLabels = append(allLabels, labelSet...)
 	}
 
 	if f.head.needsSymbolization {
-		lb.WithLabelSet(metadata.LabelNameNeedsSymbolization, "true")
+		// lb.WithLabelSet(metadata.LabelNameNeedsSymbolization, "true")
+		lb.WithLabelSet(model.LabelNameServiceName, f.head.key.service, metadata.LabelNameNeedsSymbolization, "true")
+		labelSet := lb.Build()
+		allLabels = append(allLabels, labelSet...)
 	}
 
 	// Other optional labels:
 	// lb.WithLabelSet("label_name", "label_value", ...)
-	ds.Labels = lb.Build()
+	ds.Labels = allLabels
 
 	return ds, nil
 }
@@ -507,7 +513,10 @@ func (s *segment) ingest(tenantID string, p *profilev1.Profile, id uuid.UUID, la
 		service: model.Labels(labels).Get(model.LabelNameServiceName),
 	}
 	ds := s.datasetForIngest(k)
-	ds.needsSymbolization = !hasSymbols(p)
+	if !ds.needsSymbolization {
+		ds.needsSymbolization = !hasSymbols(p)
+	}
+
 	size := p.SizeVT()
 	rules := s.sw.limits.IngestionRelabelingRules(tenantID)
 	usage := s.sw.limits.DistributorUsageGroups(tenantID).GetUsageGroups(tenantID, labels)
@@ -551,7 +560,11 @@ func hasSymbols(p *profilev1.Profile) bool {
 
 			// Verify the function exists and has a name
 			fn, exists := getFunctionById(p, line.FunctionId)
-			if !exists || fn.Name == 0 || int(fn.Name) >= len(p.StringTable) {
+			if !exists {
+				return false
+			}
+
+			if fn.Name == 0 || int(fn.Name) >= len(p.StringTable) {
 				return false
 			}
 
@@ -721,6 +734,7 @@ func (sw *segmentsWriter) storeMetadata(ctx context.Context, meta *metastorev1.B
 			Observe(time.Since(start).Seconds())
 		s.debuginfo.storeMetaDuration = time.Since(start)
 	}()
+	fmt.Printf(">>> Full block metadata before storing: %+v\n", meta)
 	if _, err = sw.metastore.AddBlock(ctx, &metastorev1.AddBlockRequest{Block: meta}); err == nil {
 		return nil
 	}
