@@ -199,14 +199,14 @@ func (p *profileBuilder) convertValueTypeBack(ovt *otelProfile.ValueType) *googl
 	}
 }
 
-func (p *profileBuilder) convertLocationBack(ol *otelProfile.Location) uint64 {
+func (p *profileBuilder) convertLocationBack(ol *otelProfile.Location) (uint64, error) {
 	if i, ok := p.locationMap[ol]; ok {
-		return i
+		return i, nil
 	}
-	var lmi int32 = 0
-	if ol.MappingIndex != nil {
-		lmi = *ol.MappingIndex
+	if ol.MappingIndex == nil {
+		return 0, fmt.Errorf("invalid location address=%x: mapping index is required", ol.Address)
 	}
+	lmi := *ol.MappingIndex
 	om := p.src.MappingTable[lmi]
 	gl := &googleProfile.Location{
 		MappingId: p.convertMappingBack(om),
@@ -227,7 +227,7 @@ func (p *profileBuilder) convertLocationBack(ol *otelProfile.Location) uint64 {
 	p.dst.Location = append(p.dst.Location, gl)
 	gl.Id = uint64(len(p.dst.Location))
 	p.locationMap[ol] = gl.Id
-	return gl.Id
+	return gl.Id, nil
 }
 
 // convertLineBack converts an OpenTelemetry Line to a Google Line.
@@ -283,7 +283,11 @@ func (p *profileBuilder) convertSampleBack(os *otelProfile.Sample) (*googleProfi
 	p.convertSampleAttributesToLabelsBack(os, gs)
 
 	for i := os.LocationsStartIndex; i < os.LocationsStartIndex+os.LocationsLength; i++ {
-		gs.LocationId = append(gs.LocationId, p.convertLocationBack(p.src.LocationTable[p.src.LocationIndices[i]]))
+		loc, err := p.convertLocationBack(p.src.LocationTable[p.src.LocationIndices[i]])
+		if err != nil {
+			return nil, err
+		}
+		gs.LocationId = append(gs.LocationId, loc)
 	}
 
 	p.dst.Sample = append(p.dst.Sample, gs)
