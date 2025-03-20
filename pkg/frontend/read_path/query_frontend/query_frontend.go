@@ -144,7 +144,7 @@ func (q *QueryFrontend) Query(
 
 				if err := q.symbolizer.SymbolizePprof(ctx, &prof); err != nil {
 					level.Error(q.logger).Log("msg", "SymbolizePprof needsSymbolization", "error", err)
-					continue // TODO: THIS!!!
+					//continue // TODO: THIS!!!
 				}
 
 				// 3. Convert back to TREE if the *original* was TREE

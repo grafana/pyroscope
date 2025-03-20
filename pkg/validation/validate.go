@@ -231,14 +231,14 @@ func ValidateProfile(limits ProfileValidationLimits, tenantID string, prof *goog
 		return nil
 	}
 
-	if prof.TimeNanos > 0 {
-		// check profile timestamp within ingestion window
-		if err := newIngestionWindow(limits, tenantID, now).valid(model.TimeFromUnixNano(prof.TimeNanos), ls); err != nil {
-			return err
-		}
-	} else {
-		prof.TimeNanos = now.UnixNano()
-	}
+	//if prof.TimeNanos > 0 {
+	//	// check profile timestamp within ingestion window
+	//	if err := newIngestionWindow(limits, tenantID, now).valid(model.TimeFromUnixNano(prof.TimeNanos), ls); err != nil {
+	//		return err
+	//	}
+	//} else {
+	prof.TimeNanos = now.UnixNano()
+	//}
 
 	if limit := limits.MaxProfileSizeBytes(tenantID); limit != 0 && uncompressedSize > limit {
 		return NewErrorf(ProfileSizeLimit, ProfileTooBigErrorMsg, phlaremodel.LabelPairsString(ls), uncompressedSize, limit)

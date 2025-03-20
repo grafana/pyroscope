@@ -61,7 +61,7 @@ func NewFromConfig(_ context.Context, logger log.Logger, cfg Config, reg prometh
 
 	store := NewObjstoreDebugInfoStore(prefixedBucket, cfg.PersistentDebugInfoStore.MaxAge, metrics)
 
-	client, err := NewDebuginfodClient(cfg.DebuginfodURL, metrics)
+	client, err := NewDebuginfodClient(logger, cfg.DebuginfodURL, metrics)
 	if err != nil {
 		return nil, err
 	}
@@ -199,6 +199,7 @@ func (s *ProfileSymbolizer) SymbolizePprof(ctx context.Context, profile *googlev
 					// Create or find function name in string table
 					nameIdx := int64(-1)
 					filenameIdx := int64(-1)
+					maxFuncId := uint64(0)
 					for i, s := range profile.StringTable {
 						if s == line.Function.Name {
 							nameIdx = int64(i)
@@ -217,16 +218,18 @@ func (s *ProfileSymbolizer) SymbolizePprof(ctx context.Context, profile *googlev
 					}
 
 					// Create or find function
-					funcIdx := -1
-					for k, f := range profile.Function {
+					funcId := uint64(0)
+					for _, f := range profile.Function {
+						maxFuncId = max(maxFuncId, f.Id)
 						if f.Name == nameIdx && f.Filename == filenameIdx {
-							funcIdx = k
+							funcId = f.Id
 							break
 						}
 					}
-					if funcIdx == -1 {
-						funcIdx = len(profile.Function)
+					if funcId == 0 {
+						funcId = uint64(maxFuncId + 1)
 						profile.Function = append(profile.Function, &googlev1.Function{
+							Id:        uint64(funcId),
 							Name:      nameIdx,
 							Filename:  filenameIdx,
 							StartLine: line.Function.StartLine,
@@ -234,7 +237,7 @@ func (s *ProfileSymbolizer) SymbolizePprof(ctx context.Context, profile *googlev
 					}
 
 					profile.Location[locIdx].Line[j] = &googlev1.Line{
-						FunctionId: uint64(funcIdx),
+						FunctionId: uint64(funcId),
 						Line:       line.Line,
 					}
 				}
@@ -451,8 +454,14 @@ func (s *ProfileSymbolizer) symbolizeFromReader(ctx context.Context, r io.ReadCl
 
 		// Get source lines for the address
 		lines, err := liner.ResolveAddress(ctx, addr)
+		fmt.Printf("        +++>>> %s %x %+v\n", loc.Mapping.BuildID, addr, len(lines))
+		for _, line := range lines {
+			fmt.Printf("                 | - %s\n", line.Function.Name)
+		}
 		if err != nil {
-			return fmt.Errorf("resolve address: %w", err)
+			//return fmt.Errorf("resolve address: %w", err)
+			//todo
+			continue
 		}
 
 		loc.Lines = lines

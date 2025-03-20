@@ -3,28 +3,24 @@ package main
 import (
 	"context"
 	"fmt"
+	log2 "github.com/go-kit/log"
+	"io"
 	"log"
+	"os"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/symbolizer"
 )
 
 const (
-	debuginfodBaseURL = "https://debuginfod.elfutils.org"
-	// buildID           = "c047672cae7964324658491e7dee26748ae5d2f8"
-	buildID = "2fa2055ef20fabc972d5751147e093275514b142"
+	buildID = "6d64b17fbac799e68da7ebd9985ddf9b5cb375e6"
 )
 
 func main() {
-	client, err := symbolizer.NewDebuginfodClient(debuginfodBaseURL, symbolizer.NewMetrics(nil))
-	if err != nil {
-		log.Fatalf("Failed to create debuginfod client: %v", err)
-	}
 
-	// Alternatively, use a local debug info file:
-	//client := &localDebuginfodClient{debugFilePath: "/path/to/your/debug/file"}
-
-	s, err := symbolizer.NewProfileSymbolizer(nil, client, nil, symbolizer.NewMetrics(nil), 10, 10)
+	client := &localDebuginfodClient{debugFilePath: "/usr/lib/debug/.build-id/6d/64b17fbac799e68da7ebd9985ddf9b5cb375e6.debug"}
+	logger := log2.NewLogfmtLogger(os.Stdout)
+	s, err := symbolizer.NewProfileSymbolizer(logger, client, nil, symbolizer.NewMetrics(nil), 10, 10)
 	if err != nil {
 		log.Fatalf("Failed to create symbolizer: %v", err)
 	}
@@ -36,61 +32,29 @@ func main() {
 		log.Fatalf("Failed to fetch debug info: %v", err)
 	}
 
-	// {
-	// 	Address: 0x1500,
-	// 	Mapping: &pprof.Mapping{},
-	// },
-	// {
-	// 	Address: 0x3c5a,
-	// 	Mapping: &pprof.Mapping{},
-	// },
-	// {
-	// 	Address: 0x2745,
-	// 	Mapping: &pprof.Mapping{},
-	// },
-
-	// 	buildID = "2fa2055ef20fabc972d5751147e093275514b142"
 	profile := &googlev1.Profile{
 		Mapping: []*googlev1.Mapping{{
 			BuildId:     1,
-			MemoryStart: 0x0,
-			MemoryLimit: 0x1000000,
-			FileOffset:  0x0,
+			MemoryStart: 0x28000,
+			MemoryLimit: 0x1b0000,
+			FileOffset:  0x28000,
 		}},
 		Location: []*googlev1.Location{
 			{
 				MappingId: 1,
-				Address:   0x1500,
+				Address:   0x2a28a,
 			},
 			{
 				MappingId: 1,
-				Address:   0x3c5a,
-			},
-			{
+				Address:   0x124dec,
+			}, {
 				MappingId: 1,
-				Address:   0x2745,
+				Address:   0x2a1c9,
 			},
 		},
 		StringTable: []string{"", buildID},
 	}
 
-	// Create a profile with the address we want to symbolize
-	// buildID = "c047672cae7964324658491e7dee26748ae5d2f8"
-	// profile := &googlev1.Profile{
-	// 	Mapping: []*googlev1.Mapping{{
-	// 		BuildId:     1,
-	// 		MemoryStart: 0x0,
-	// 		MemoryLimit: 0x1000000,
-	// 		FileOffset:  0x0,
-	// 	}},
-	// 	Location: []*googlev1.Location{{
-	// 		MappingId: 1,
-	// 		Address:   0x11a230,
-	// 	}},
-	// 	StringTable: []string{"", buildID},
-	// }
-
-	// Run symbolization
 	if err := s.SymbolizePprof(ctx, profile); err != nil {
 		log.Fatalf("Failed to symbolize: %v", err)
 	}
@@ -120,14 +84,10 @@ func printResults(p *googlev1.Profile) {
 	fmt.Println("\nSymbolization completed successfully.")
 }
 
-// localDebuginfodClient provides a way to use local debug info files instead of fetching from a server
-//
-//nolint:all
 type localDebuginfodClient struct {
 	debugFilePath string
 }
 
-//nolint:all
-func (c *localDebuginfodClient) FetchDebuginfo(buildID string) (string, error) {
-	return c.debugFilePath, nil
+func (c *localDebuginfodClient) FetchDebuginfo(ctx context.Context, buildID string) (io.ReadCloser, error) {
+	return os.Open(c.debugFilePath)
 }

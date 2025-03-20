@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/go-kit/log"
 	"io"
 	"net/http"
 	"net/url"
@@ -31,9 +32,10 @@ type DebuginfodHTTPClient struct {
 	cache *ristretto.Cache
 
 	group singleflight.Group
+	l     log.Logger
 }
 
-func NewDebuginfodClient(baseURL string, metrics *Metrics) (*DebuginfodHTTPClient, error) {
+func NewDebuginfodClient(l log.Logger, baseURL string, metrics *Metrics) (*DebuginfodHTTPClient, error) {
 	transport := &http.Transport{
 		MaxIdleConnsPerHost: 10,
 		IdleConnTimeout:     90 * time.Second,
@@ -73,11 +75,13 @@ func NewDebuginfodClient(baseURL string, metrics *Metrics) (*DebuginfodHTTPClien
 		},
 		metrics: metrics,
 		cache:   cache,
+		l:       l,
 	}, nil
 }
 
 // FetchDebuginfo fetches the debuginfo file for a specific build ID.
 func (c *DebuginfodHTTPClient) FetchDebuginfo(ctx context.Context, buildID string) (io.ReadCloser, error) {
+
 	start := time.Now()
 	status := StatusSuccess
 	defer func() {
@@ -125,6 +129,7 @@ func (c *DebuginfodHTTPClient) FetchDebuginfo(ctx context.Context, buildID strin
 }
 
 func (c *DebuginfodHTTPClient) doRequest(ctx context.Context, url string) ([]byte, error) {
+	c.l.Log("msg", "DebuginfodHTTPClient request", "url", url)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -157,6 +162,15 @@ func (c *DebuginfodHTTPClient) doRequest(ctx context.Context, url string) ([]byt
 }
 
 func (c *DebuginfodHTTPClient) fetchDebugInfoWithRetries(ctx context.Context, buildID string) ([]byte, error) {
+	negatives := map[string]struct{}{
+		"ac4b93431d98e6d7cc5252984fc9b290775e7f52": struct{}{},
+		"3d74e386e213e2ccd35e1a021237438f2a736b50": struct{}{},
+		"d6083d174aa863fd0d0fdb054bc45eecb6df7242": struct{}{},
+		//"4087c9f785a98f4f4b70b189a2ff61d1de2d03c7": struct{}{},
+	}
+	if _, ok := negatives[buildID]; ok {
+		return nil, fmt.Errorf("ignoring build ID %s for faster dev experience TODO should we cache negative responses somehow?", buildID)
+	}
 	url := fmt.Sprintf("%s/buildid/%s/debuginfo", c.cfg.baseURL, buildID)
 	var data []byte
 	var lastErr error
