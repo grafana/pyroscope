@@ -243,21 +243,14 @@ func Benchmark_stacktrace_tree_insert_default_sizes(b *testing.B) {
 				for j := range p.Sample {
 					x.insert(p.Sample[j].LocationId)
 				}
-			}
 
+				if testing.Verbose() {
+					c := float64(cap(x.nodes))
+					b.ReportMetric(c, "cap")
+					b.ReportMetric(c*float64(stacktraceTreeNodeSize), "size")
+					b.ReportMetric(float64(x.len())/float64(c)*100, "fill")
+				}
+			}
 		})
-
-		if testing.Verbose() {
-			var nodes uint32
-			b.Logf("init: %d nodes ~ %d bytes", size, size*stacktraceTreeNodeSize)
-
-			x := newStacktraceTree(size)
-			for j := range p.Sample {
-				x.insert(p.Sample[j].LocationId)
-			}
-			nodes = max(nodes, x.len())
-
-			b.Logf("max: %d nodes ~ %d bytes", nodes, nodes*uint32(stacktraceTreeNodeSize))
-		}
 	}
 }
