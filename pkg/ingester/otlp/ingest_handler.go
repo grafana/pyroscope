@@ -19,6 +19,7 @@ import (
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	distirbutormodel "github.com/grafana/pyroscope/pkg/distributor/model"
+	"github.com/grafana/pyroscope/pkg/model"
 	pyromodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/tenant"
@@ -150,18 +151,27 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 }
 
 // getServiceNameFromAttributes extracts service name from OTLP resource attributes.
-// Returns "unknown" if service name is not found or empty.
+// according to otel spec https://github.com/open-telemetry/opentelemetry-go/blob/ecfb73581f1b05af85fc393c3ce996a90cf2a5e2/semconv/v1.30.0/attribute_group.go#L10011-L10025
+// Returns "unknown_service:$process_name" if no service.name, but there is a process.executable.name
+// Returns "unknown_service" if no service.name and no process.executable.name
 func getServiceNameFromAttributes(attrs []*v1.KeyValue) string {
+	fallback := model.AttrServiceNameFallback
 	for _, attr := range attrs {
-		if attr.Key == "service.name" {
+		if attr.Key == string(model.AttrServiceName) {
 			val := attr.GetValue()
 			if sv := val.GetStringValue(); sv != "" {
 				return sv
 			}
-			break
 		}
+		if attr.Key == string(model.AttrProcessExecutableName) {
+			val := attr.GetValue()
+			if sv := val.GetStringValue(); sv != "" {
+				fallback += ":" + sv
+			}
+		}
+
 	}
-	return "unknown"
+	return fallback
 }
 
 // getDefaultLabels returns the required base labels for Pyroscope profiles

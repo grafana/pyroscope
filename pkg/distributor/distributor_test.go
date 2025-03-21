@@ -27,22 +27,20 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/pyroscope/pkg/distributor/ingest_limits"
-	testhelper2 "github.com/grafana/pyroscope/pkg/pprof/testhelper"
-
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	pprof2 "github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/grafana/pyroscope/pkg/util"
-
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/clientpool"
+	"github.com/grafana/pyroscope/pkg/distributor/ingest_limits"
+	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	pprof2 "github.com/grafana/pyroscope/pkg/pprof"
+	pproftesthelper "github.com/grafana/pyroscope/pkg/pprof/testhelper"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/testhelper"
+	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
@@ -181,7 +179,7 @@ func collectTestProfileBytes(t *testing.T) []byte {
 
 func hugeProfileBytes(t *testing.T) []byte {
 	t.Helper()
-	b := testhelper2.NewProfileBuilderWithLabels(time.Now().UnixNano(), nil)
+	b := pproftesthelper.NewProfileBuilderWithLabels(time.Now().UnixNano(), nil)
 	p := b.CPUProfile()
 	for i := 0; i < 10_000; i++ {
 		p.ForStacktraceString(fmt.Sprintf("my_%d", i), "other").AddSamples(1)
@@ -1533,5 +1531,72 @@ func expectMetricsChange(t *testing.T, m1, m2, expectedChange map[prometheus.Col
 	for counter, expectedDelta := range expectedChange {
 		delta := m2[counter] - m1[counter]
 		assert.Equal(t, expectedDelta, delta, "metric %s", counter)
+	}
+}
+
+func TestPush_LabelRewrites(t *testing.T) {
+	ing := newFakeIngester(t, false)
+	d, err := New(Config{
+		DistributorRing: ringConfig,
+	}, testhelper.NewMockRing([]ring.InstanceDesc{
+		{Addr: "mock"},
+		{Addr: "mock"},
+		{Addr: "mock"},
+	}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
+		return ing, nil
+	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout), nil)
+	require.NoError(t, err)
+
+	ctx := tenant.InjectTenantID(context.Background(), "user-1")
+
+	for idx, tc := range []struct {
+		name           string
+		series         []*typesv1.LabelPair
+		expectedSeries string
+	}{
+		{
+			name:           "empty series",
+			series:         []*typesv1.LabelPair{},
+			expectedSeries: `{__name__="process_cpu", service_name="unknown_service"}`,
+		},
+		{
+			name: "series with service_name labels",
+			series: []*typesv1.LabelPair{
+				{Name: "service_name", Value: "my-service"},
+				{Name: "cloud_region", Value: "my-region"},
+			},
+			expectedSeries: `{__name__="process_cpu", cloud_region="my-region", service_name="my-service"}`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ing.mtx.Lock()
+			ing.requests = ing.requests[:0]
+			ing.mtx.Unlock()
+
+			p := pproftesthelper.NewProfileBuilderWithLabels(1000*int64(idx), tc.series).CPUProfile()
+			p.ForStacktraceString("world", "hello").AddSamples(1)
+
+			data, err := p.Profile.MarshalVT()
+			require.NoError(t, err)
+
+			_, err = d.Push(ctx, connect.NewRequest(&pushv1.PushRequest{
+				Series: []*pushv1.RawProfileSeries{
+					{
+						Labels: p.Labels,
+						Samples: []*pushv1.RawSample{
+							{RawProfile: data},
+						},
+					},
+				},
+			}))
+			require.NoError(t, err)
+
+			ing.mtx.Lock()
+			require.Len(t, ing.requests, 1)
+			require.Greater(t, len(ing.requests[0].Series), 1)
+			actualSeries := phlaremodel.LabelPairsString(ing.requests[0].Series[0].Labels)
+			assert.Equal(t, tc.expectedSeries, actualSeries)
+			ing.mtx.Unlock()
+		})
 	}
 }

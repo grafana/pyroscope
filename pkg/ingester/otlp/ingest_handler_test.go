@@ -31,7 +31,21 @@ func TestGetServiceNameFromAttributes(t *testing.T) {
 		{
 			name:     "empty attributes",
 			attrs:    []*v1.KeyValue{},
-			expected: "unknown",
+			expected: "unknown_service",
+		},
+		{
+			name: "empty attributes",
+			attrs: []*v1.KeyValue{
+				{
+					Key: "process.executable.name",
+					Value: &v1.AnyValue{
+						Value: &v1.AnyValue_StringValue{
+							StringValue: "bash",
+						},
+					},
+				},
+			},
+			expected: "unknown_service:bash",
 		},
 		{
 			name: "service name present",
@@ -41,6 +55,14 @@ func TestGetServiceNameFromAttributes(t *testing.T) {
 					Value: &v1.AnyValue{
 						Value: &v1.AnyValue_StringValue{
 							StringValue: "test-service",
+						},
+					},
+				},
+				{
+					Key: "process.executable.name",
+					Value: &v1.AnyValue{
+						Value: &v1.AnyValue_StringValue{
+							StringValue: "test-executable",
 						},
 					},
 				},
@@ -58,8 +80,16 @@ func TestGetServiceNameFromAttributes(t *testing.T) {
 						},
 					},
 				},
+				{
+					Key: "process.executable.name",
+					Value: &v1.AnyValue{
+						Value: &v1.AnyValue_StringValue{
+							StringValue: "",
+						},
+					},
+				},
 			},
-			expected: "unknown",
+			expected: "unknown_service",
 		},
 		{
 			name: "service name among other attributes",
@@ -568,9 +598,9 @@ func TestDifferentServiceNames(t *testing.T) {
 	require.Equal(t, 3, len(profiles[0].Series))
 
 	expectedProfiles := map[string]string{
-		"{__delta__=\"false\", __name__=\"process_cpu\", __otel__=\"true\", service_name=\"service-a\"}": "testdata/TestDifferentServiceNames_service_a_profile.json",
-		"{__delta__=\"false\", __name__=\"process_cpu\", __otel__=\"true\", service_name=\"service-b\"}": "testdata/TestDifferentServiceNames_service_b_profile.json",
-		"{__delta__=\"false\", __name__=\"process_cpu\", __otel__=\"true\", service_name=\"unknown\"}":   "testdata/TestDifferentServiceNames_unknown_profile.json",
+		"{__delta__=\"false\", __name__=\"process_cpu\", __otel__=\"true\", service_name=\"service-a\"}":       "testdata/TestDifferentServiceNames_service_a_profile.json",
+		"{__delta__=\"false\", __name__=\"process_cpu\", __otel__=\"true\", service_name=\"service-b\"}":       "testdata/TestDifferentServiceNames_service_b_profile.json",
+		"{__delta__=\"false\", __name__=\"process_cpu\", __otel__=\"true\", service_name=\"unknown_service\"}": "testdata/TestDifferentServiceNames_unknown_profile.json",
 	}
 
 	for _, s := range profiles[0].Series {
