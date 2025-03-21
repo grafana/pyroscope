@@ -3,6 +3,7 @@ package symdb
 import (
 	"bytes"
 	"math/rand"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -220,9 +221,36 @@ func Benchmark_stacktrace_tree_insert(b *testing.B) {
 	b.ReportAllocs()
 
 	for i := 0; i < b.N; i++ {
-		x := newStacktraceTree(0)
+		x := newStacktraceTree(defaultStacktraceTreeSize)
 		for j := range p.Sample {
 			x.insert(p.Sample[j].LocationId)
 		}
+	}
+}
+
+func Benchmark_stacktrace_tree_insert_default_sizes(b *testing.B) {
+	p, err := pprof.OpenFile("testdata/profile.pb.gz")
+	require.NoError(b, err)
+
+	b.ResetTimer()
+
+	for _, size := range []int{0, 10, 1024, 2048, 4096, 8192} {
+		b.Run("size="+strconv.Itoa(size), func(b *testing.B) {
+			b.ReportAllocs()
+
+			for i := 0; i < b.N; i++ {
+				x := newStacktraceTree(size)
+				for j := range p.Sample {
+					x.insert(p.Sample[j].LocationId)
+				}
+
+				if testing.Verbose() {
+					c := float64(cap(x.nodes))
+					b.ReportMetric(c, "cap")
+					b.ReportMetric(c*float64(stacktraceTreeNodeSize), "size")
+					b.ReportMetric(float64(x.len())/float64(c)*100, "fill")
+				}
+			}
+		})
 	}
 }
