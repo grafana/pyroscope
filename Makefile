@@ -10,7 +10,7 @@ BIN := $(CURDIR)/.tmp/bin
 COPYRIGHT_YEARS := 2021-2022
 LICENSE_IGNORE := -e /testdata/
 GO_TEST_FLAGS ?= -v -race -cover
-GO_VERSION := 1.23.0
+GO_MOD_VERSION := 1.23.0
 
 GOOS ?= $(shell go env GOOS)
 GOARCH ?= $(shell go env GOARCH)
@@ -183,12 +183,12 @@ go/mod_tidy_root:
 	# doesn't work for go workspace
 	# GO111MODULE=on go mod verify
 	go work sync
-	GO111MODULE=on go mod tidy -go $(GO_VERSION)
+	GO111MODULE=on go mod tidy -go $(GO_MOD_VERSION)
 
 .PHONY: go/mod_tidy/%
 go/mod_tidy/%: go/mod_tidy_root
 	cd "$*" && GO111MODULE=on go mod download
-	cd "$*" && GO111MODULE=on go mod tidy -go $(GO_VERSION)
+	cd "$*" && GO111MODULE=on go mod tidy -go $(GO_MOD_VERSION)
 
 .PHONY: fmt
 fmt: $(BIN)/golangci-lint $(BIN)/buf $(BIN)/tk ## Automatically fix some lint errors
