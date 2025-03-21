@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"math/rand"
 	"os"
 	"strconv"
 	"time"
@@ -14,10 +15,16 @@ import (
 	"github.com/agoda-com/opentelemetry-logs-go/logs"
 	sdklogs "github.com/agoda-com/opentelemetry-logs-go/sdk/logs"
 	"github.com/grafana/pyroscope-go"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/common/model"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.20.0"
@@ -67,9 +74,10 @@ type Config struct {
 	OTLPBasicAuthPassword string
 	OTLPTracesUrlPath     string
 
-	UseDebugTracer bool
-	UseDebugLogger bool
-	Tags           map[string]string
+	UseDebugTracer  bool
+	UseDebugLogger  bool
+	UseDebugMeterer bool
+	Tags            map[string]string
 
 	ParametersPoolSize       int
 	ParametersPoolBufferSize int
@@ -97,8 +105,9 @@ func ReadConfig() Config {
 		OTLPBasicAuthPassword: os.Getenv("OTLP_BASIC_AUTH_PASSWORD"),
 		OTLPTracesUrlPath:     os.Getenv("OTLP_TRACES_URL_PATH"),
 
-		UseDebugTracer: os.Getenv("DEBUG_TRACER") == "1",
-		UseDebugLogger: os.Getenv("DEBUG_LOGGER") == "1",
+		UseDebugTracer:  os.Getenv("DEBUG_TRACER") == "1",
+		UseDebugLogger:  os.Getenv("DEBUG_LOGGER") == "1",
+		UseDebugMeterer: os.Getenv("DEBUG_METERER") == "1",
 		Tags: map[string]string{
 			"region":             os.Getenv("REGION"),
 			"hostname":           hostname,
@@ -239,6 +248,131 @@ func debugTracerProvider() (*sdktrace.TracerProvider, error) {
 	return sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(sdktrace.NewSimpleSpanProcessor(exp))), nil
 }
 
+type dimension struct {
+	label        string
+	getNextValue func() string
+}
+
+func staticList(input []string) func() string {
+	return func() string {
+		i := rand.Intn(len(input))
+		return input[i]
+	}
+}
+
+func init() {
+	// Configure Prometheus to use UTF-8 validation for metric names
+	model.NameEscapingScheme = model.ValueEncodingEscaping
+}
+
+func MeterProvider(c Config) (*sdkmetric.MeterProvider, error) {
+	// Default is 1m. Set to 3s for demonstrative purposes.
+	interval := 3 * time.Second
+
+	// Setup Prometheus metrics
+	fakeUtf8Metrics := []dimension{
+		{
+			label:        "a_legacy_label",
+			getNextValue: staticList([]string{"legacy"}),
+		},
+		{
+			label:        "label with space",
+			getNextValue: staticList([]string{"space"}),
+		},
+		{
+			label:        "label with 📈",
+			getNextValue: staticList([]string{"metrics"}),
+		},
+		{
+			label:        "label.with.spaß",
+			getNextValue: staticList([]string{"this_is_fun"}),
+		},
+		{
+			label:        "instance",
+			getNextValue: staticList([]string{"instance"}),
+		},
+		{
+			label:        "job",
+			getNextValue: staticList([]string{"job"}),
+		},
+		{
+			label:        "site",
+			getNextValue: staticList([]string{"LA-EPI"}),
+		},
+		{
+			label:        "room",
+			getNextValue: staticList([]string{`"Friends Don't Lie"`}),
+		},
+	}
+
+	dimensions := []string{}
+	for _, dim := range fakeUtf8Metrics {
+		dimensions = append(dimensions, dim.label)
+	}
+
+	utf8Metric := promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "a.utf8.metric 🤘",
+		Help: "a utf8 metric with utf8 labels",
+	}, dimensions)
+
+	opsProcessed := promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "a_utf8_http_requests_total",
+		Help: "a metric with utf8 labels",
+	}, dimensions)
+
+	target_info := promauto.NewGauge(prometheus.GaugeOpts{
+		Name:        "target_info",
+		Help:        "an info metric model for otel",
+		ConstLabels: map[string]string{"job": "job", "instance": "instance", "resource 1": "1", "resource 2": "2", "resource ę": "e", "deployment_environment": "prod"},
+	})
+
+	// Start the metrics update goroutine
+	go func() {
+		for {
+			labels := []string{}
+			for _, dim := range fakeUtf8Metrics {
+				value := dim.getNextValue()
+				labels = append(labels, value)
+			}
+
+			utf8Metric.WithLabelValues(labels...).Inc()
+			opsProcessed.WithLabelValues(labels...).Inc()
+			target_info.Set(1)
+
+			time.Sleep(time.Second * 5)
+		}
+	}()
+
+	if c.UseDebugMeterer {
+		// create stdout exporter, when no OTLP url is set
+		exp, err := stdoutmetric.New()
+		if err != nil {
+			return nil, err
+		}
+
+		return sdkmetric.NewMeterProvider(
+			sdkmetric.WithResource(newResource(c)),
+			sdkmetric.WithReader(sdkmetric.NewPeriodicReader(exp,
+				sdkmetric.WithInterval(interval))),
+		), nil
+	}
+
+	ctx := context.Background()
+	exp, err := otlpmetrichttp.New(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a new tracer provider with a batch span processor and the otlp exporter.
+	mp := sdkmetric.NewMeterProvider(
+		sdkmetric.WithResource(newResource(c)),
+		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(exp,
+			sdkmetric.WithInterval(interval))),
+	)
+
+	return mp, nil
+}
+
 func Profiler(c Config) (*pyroscope.Profiler, error) {
 	config := pyroscope.Config{
 		ApplicationName: c.AppName,
@@ -246,9 +380,7 @@ func Profiler(c Config) (*pyroscope.Profiler, error) {
 		Logger:          pyroscope.StandardLogger,
 		Tags:            c.Tags,
 	}
-	if c.PyroscopeAuthToken != "" {
-		config.AuthToken = c.PyroscopeAuthToken
-	} else if c.PyroscopeBasicAuthUser != "" {
+	if c.PyroscopeBasicAuthUser != "" {
 		config.BasicAuthUser = c.PyroscopeBasicAuthUser
 		config.BasicAuthPassword = c.PyroscopeBasicAuthPassword
 	}
