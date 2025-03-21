@@ -248,7 +248,6 @@ func Benchmark_stacktrace_tree_insert_default_sizes(b *testing.B) {
 				for j := range p.Sample {
 					x.insert(p.Sample[j].LocationId)
 				}
-				// nodes = max(nodes, x.len())
 			}
 
 		})
