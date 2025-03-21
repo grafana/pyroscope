@@ -3,7 +3,6 @@ package symdb
 import (
 	"bytes"
 	"math/rand"
-	"os"
 	"strconv"
 	"testing"
 
@@ -230,10 +229,6 @@ func Benchmark_stacktrace_tree_insert(b *testing.B) {
 }
 
 func Benchmark_stacktrace_tree_insert_default_sizes(b *testing.B) {
-	if os.Getenv("COMPARE_STACKTRACETREE_INSERT_DEFAULT_SIZES") != "true" {
-		b.Skip("This benchmark is only used for comparing different initial tree sizes")
-	}
-
 	p, err := pprof.OpenFile("testdata/profile.pb.gz")
 	require.NoError(b, err)
 
