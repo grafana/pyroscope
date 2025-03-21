@@ -254,7 +254,7 @@ func (s *deduplicatingSlice[M, K, H]) Size() uint64 {
 
 func (s *deduplicatingSlice[M, K, H]) ingest(elems []M, rewriter *rewriter) {
 	var (
-		rewritingMap = make(map[int64]int64)
+		rewritingMap = make(map[int64]int64, len(elems))
 		missing      = int64SlicePool.Get()
 	)
 	missing = missing[:0]
