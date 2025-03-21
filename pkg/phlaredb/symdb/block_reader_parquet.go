@@ -153,7 +153,7 @@ func openParquetFiles(ctx context.Context, r *Reader) error {
 				return err
 			}
 			if err = fp.Open(ctx, r.bucket, fm, options...); err != nil {
-				return fmt.Errorf("openning file %q: %w", n, err)
+				return fmt.Errorf("opening file %q: %w", n, err)
 			}
 			return nil
 		})
