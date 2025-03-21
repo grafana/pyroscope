@@ -62,7 +62,7 @@
     "clean-webpack-plugin": "^3.0.0",
     "conventional-changelog-cli": "^2.1.1",
     "copy-webpack-plugin": "^11.0.0",
-    "cypress": "^12.11.0",
+    "cypress": "13.0.0",
     "esbuild-loader": "^3.0.1",
     "eslint": "^8.40.0",
     "eslint-config-airbnb": "18.2.1",
