@@ -231,19 +231,19 @@ func TestWritePartition(t *testing.T) {
 func BenchmarkPartitionWriter_WriteProfileSymbols(b *testing.B) {
 	b.ReportAllocs()
 
+	p, err := pprof.OpenFile("testdata/profile.pb.gz")
+	require.NoError(b, err)
+	p.Normalize()
+	cfg := DefaultConfig().WithDirectory(b.TempDir())
+
+	db := NewSymDB(cfg)
+
 	for i := 0; i < b.N; i++ {
-		// If opening the profile or creating the config, db, or
-		// partition writer outside the loop it always results in a
-		// panic.
 		b.StopTimer()
-		p, err := pprof.OpenFile("testdata/profile.pb.gz")
-		require.NoError(b, err)
-		p.Normalize()
-		cfg := DefaultConfig().WithDirectory(b.TempDir())
-		db := NewSymDB(cfg)
-		pw := db.PartitionWriter(0)
+		newP := p.CloneVT()
+		pw := db.PartitionWriter(uint64(i))
 		b.StartTimer()
 
-		pw.WriteProfileSymbols(p.Profile)
+		pw.WriteProfileSymbols(newP)
 	}
 }
