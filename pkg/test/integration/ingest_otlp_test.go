@@ -35,7 +35,7 @@ var otlpTestDatas = []otlpTestData{
 		expectedProfiles: []expectedProfile{
 			{
 				"process_cpu:cpu:nanoseconds:cpu:nanoseconds",
-				map[string]string{"service_name": "unknown"},
+				map[string]string{"service_name": "unknown_service"},
 				"testdata/otel-ebpf-profiler-unsymbolized.json",
 			},
 		},
