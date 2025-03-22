@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-kit/log"
@@ -339,6 +340,8 @@ func concatSegmentHead(f *headFlush, w *writerOffset, s *metadata.StringTable) (
 
 	if f.head.needsSymbolization {
 		lb.WithLabelSet(metadata.LabelNameNeedsSymbolization, "true")
+	if f.head.needsSymbolization.Load() {
+		lb.WithLabelSet(model.LabelNameServiceName, f.head.key.service, metadata.LabelNameNeedsSymbolization, "true")
 	}
 
 	// Other optional labels:
@@ -441,7 +444,7 @@ func (k datasetKey) compare(x datasetKey) int {
 type dataset struct {
 	key                datasetKey
 	head               *memdb.Head
-	needsSymbolization bool
+	needsSymbolization atomic.Bool
 }
 
 type headFlush struct {
@@ -505,8 +508,8 @@ func (s *segment) ingest(tenantID string, p *profilev1.Profile, id uuid.UUID, la
 		service: model.Labels(labels).Get(model.LabelNameServiceName),
 	}
 	ds := s.datasetForIngest(k)
-	if !ds.needsSymbolization {
-		ds.needsSymbolization = !hasSymbols(p)
+	if !ds.needsSymbolization.Load() && !hasSymbols(p) {
+		ds.needsSymbolization.Store(true)
 	}
 
 	size := p.SizeVT()
