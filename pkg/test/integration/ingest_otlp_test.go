@@ -36,7 +36,7 @@ var otlpTestDatas = []otlpTestData{
 			{
 				"process_cpu:cpu:nanoseconds:cpu:nanoseconds",
 				map[string]string{"service_name": "unknown"},
-				"testdata/otel-ebpf-profiler-unsymbolized.json",
+				"testdata/otel-ebpf-profiler-unsymbolized.json.bin",
 			},
 		},
 		assertMetrics: func(t *testing.T, p *PyroscopeTest) {
@@ -50,12 +50,12 @@ var otlpTestDatas = []otlpTestData{
 			{
 				"process_cpu:cpu:nanoseconds:cpu:nanoseconds",
 				map[string]string{"service_name": "unknown"},
-				"testdata/otel-ebpf-profiler-offcpu-cpu.json",
+				"testdata/otel-ebpf-profiler-offcpu-cpu.json.bin",
 			},
 			{
 				"off_cpu:events:nanoseconds::",
 				map[string]string{"service_name": "unknown"},
-				"testdata/otel-ebpf-profiler-offcpu.json",
+				"testdata/otel-ebpf-profiler-offcpu.json.bin",
 			},
 		},
 		assertMetrics: func(t *testing.T, p *PyroscopeTest) {
@@ -69,12 +69,12 @@ var otlpTestDatas = []otlpTestData{
 			{
 				"process_cpu:cpu:nanoseconds:cpu:nanoseconds",
 				map[string]string{"service_name": "unknown"},
-				"testdata/otel-ebpf-profiler-pyrosymbolized-unknown.json",
+				"testdata/otel-ebpf-profiler-pyrosymbolized-unknown.json.bin",
 			},
 			{
 				"process_cpu:cpu:nanoseconds:cpu:nanoseconds",
 				map[string]string{"service_name": "otel-ebpf-docker//loving_robinson"},
-				"testdata/otel-ebpf-profiler-pyrosymbolized-docker.json",
+				"testdata/otel-ebpf-profiler-pyrosymbolized-docker.json.bin",
 			},
 		},
 		assertMetrics: func(t *testing.T, p *PyroscopeTest) {
@@ -136,7 +136,7 @@ func TestIngestOTLP(t *testing.T) {
 				})
 				assert.NoError(t, err)
 
-				pprofDumpFileName := strings.ReplaceAll(metric.expectedJsonPath, ".json", ".pprof.pb.bin") // for debugging
+				pprofDumpFileName := strings.ReplaceAll(metric.expectedJsonPath, ".json.bin", ".pprof.pb.bin") // for debugging
 				pprof, err := resp.Msg.MarshalVT()
 				assert.NoError(t, err)
 				err = os.WriteFile(pprofDumpFileName, pprof, 0644)

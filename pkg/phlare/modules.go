@@ -105,6 +105,7 @@ const (
 	PlacementManager     string = "placement-manager"
 	HealthServer         string = "health-server"
 	RecordingRulesClient string = "recording-rules-client"
+	Symbolizer           string = "symbolizer"
 )
 
 var objectStoreTypeStats = usagestats.NewString("store_object_type")
@@ -129,7 +130,9 @@ func (f *Phlare) initQueryFrontend() (services.Service, error) {
 		f.API.RegisterPyroscopeHandlers(frontendSvc)
 		f.API.RegisterVCSServiceHandler(frontendSvc)
 	} else {
-		f.initReadPathRouter()
+		if err := f.initReadPathRouter(); err != nil {
+			return nil, err
+		}
 	}
 
 	return frontendSvc, nil
@@ -146,19 +149,23 @@ func (f *Phlare) getFrontendAddress() (addr string, err error) {
 	return netutil.GetFirstAddressOf(f.Cfg.Frontend.InfNames, f.logger, f.Cfg.Frontend.EnableIPv6)
 }
 
-func (f *Phlare) initReadPathRouter() {
+func (f *Phlare) initReadPathRouter() error {
 	vcsService := vcs.New(
 		log.With(f.logger, "component", "vcs-service"),
 		f.reg,
 	)
 
-	newFrontend := queryfrontend.NewQueryFrontend(
+	newFrontend, err := queryfrontend.NewQueryFrontend(
 		log.With(f.logger, "component", "query-frontend"),
 		f.Overrides,
 		f.metastoreClient,
 		f.metastoreClient,
 		f.queryBackendClient,
+		f.symbolizer,
 	)
+	if err != nil {
+		return err
+	}
 
 	router := readpath.NewRouter(
 		log.With(f.logger, "component", "read-path-router"),
@@ -170,6 +177,8 @@ func (f *Phlare) initReadPathRouter() {
 	f.API.RegisterQuerierServiceHandler(router)
 	f.API.RegisterPyroscopeHandlers(router)
 	f.API.RegisterVCSServiceHandler(vcsService)
+
+	return nil
 }
 
 func (f *Phlare) initRuntimeConfig() (services.Service, error) {
