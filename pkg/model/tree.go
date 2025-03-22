@@ -456,6 +456,11 @@ func ConvertProfileToTree(profile *profilev1.Profile, maxNodes int64) ([]byte, e
 		locationMap[loc.Id] = loc
 	}
 
+	mappingMap := make(map[uint64]*profilev1.Mapping, len(profile.Mapping))
+	for _, mapping := range profile.Mapping {
+		mappingMap[mapping.Id] = mapping
+	}
+
 	// Build a map of function IDs to functions for faster lookup
 	functionMap := make(map[uint64]*profilev1.Function, len(profile.Function))
 	for i, fn := range profile.Function {
@@ -517,6 +522,9 @@ func ConvertProfileToTree(profile *profilev1.Profile, maxNodes int64) ([]byte, e
 
 			// Get function name from the location
 			funcName := fmt.Sprintf("0x%x", loc.Address)
+			if m, ok := mappingMap[loc.MappingId]; ok {
+				funcName = profile.StringTable[m.Filename] + "!" + funcName
+			}
 			if len(loc.Line) > 0 && loc.Line[0].FunctionId != 0 {
 				if fn, exists := functionMap[loc.Line[0].FunctionId]; exists {
 					// Get the function name from the string table

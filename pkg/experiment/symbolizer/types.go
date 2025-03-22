@@ -22,8 +22,9 @@ type Location struct {
 
 // Request represents a symbolization request for multiple addresses
 type Request struct {
-	BuildID   string
-	Locations []*Location
+	BuildID    string
+	BinaryName string
+	Locations  []*Location
 }
 
 // Mapping describes how a binary section is mapped in memory

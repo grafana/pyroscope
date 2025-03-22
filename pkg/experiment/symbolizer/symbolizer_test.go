@@ -19,10 +19,9 @@ import (
 
 // TestSymbolizePprof tests symbolization using testdata/symbols.debug which contains:
 //
-// 0x1500 ->
-//
-//	 main (/usr/src/stress-1.0.7-1/src/stress.c:87)
-//		fprintf (/usr/include/x86_64-linux-gnu/bits/stdio2.h:77)
+// 0x1500 -> (contains both functions)
+//   - main (/usr/src/stress-1.0.7-1/src/stress.c:87)
+//   - fprintf (/usr/include/x86_64-linux-gnu/bits/stdio2.h:77)
 //
 // 0x3c5a -> atoll_b (/usr/src/stress-1.0.7-1/src/stress.c:632)
 // 0x2745 -> main (/usr/src/stress-1.0.7-1/src/stress.c:87)
@@ -89,18 +88,14 @@ func TestSymbolizePprof(t *testing.T) {
 				require.Len(t, p.Location[0].Line, 2)
 
 				// Check main function
-				mainFunc := p.Function[p.Location[0].Line[0].FunctionId]
-				require.Equal(t, "main", p.StringTable[mainFunc.Name])
-				require.Equal(t, "/usr/src/stress-1.0.7-1/src/stress.c", p.StringTable[mainFunc.Filename])
-				require.Equal(t, int64(87), p.Location[0].Line[0].Line)
-				require.Equal(t, int64(86), mainFunc.StartLine)
+				mainFunc := assertLocationHasFunction(t, p, p.Location[0], "main",
+					"/usr/src/stress-1.0.7-1/src/stress.c", 87)
+				require.Equal(t, int64(86), mainFunc.StartLine, "main function start line mismatch")
 
 				// Check fprintf function
-				fprintfFunc := p.Function[p.Location[0].Line[1].FunctionId]
-				require.Equal(t, "fprintf", p.StringTable[fprintfFunc.Name])
-				require.Equal(t, "/usr/include/x86_64-linux-gnu/bits/stdio2.h", p.StringTable[fprintfFunc.Filename])
-				require.Equal(t, int64(77), p.Location[0].Line[1].Line)
-				require.Equal(t, int64(77), fprintfFunc.StartLine)
+				fprintfFunc := assertLocationHasFunction(t, p, p.Location[0], "fprintf",
+					"/usr/include/x86_64-linux-gnu/bits/stdio2.h", 77)
+				require.Equal(t, int64(77), fprintfFunc.StartLine, "fprintf function start line mismatch")
 			},
 		},
 		{
@@ -163,20 +158,20 @@ func TestSymbolizePprof(t *testing.T) {
 
 				// First location (0x1500) - main and fprintf
 				require.Len(t, p.Location[0].Line, 2)
-				mainFunc := p.Function[p.Location[0].Line[0].FunctionId]
-				require.Equal(t, "main", p.StringTable[mainFunc.Name])
+				assertLocationHasFunction(t, p, p.Location[0], "main",
+					"/usr/src/stress-1.0.7-1/src/stress.c", 87)
+				assertLocationHasFunction(t, p, p.Location[0], "fprintf",
+					"/usr/include/x86_64-linux-gnu/bits/stdio2.h", 77)
 
 				// Second location (0x3c5a) - atoll_b
 				require.Len(t, p.Location[1].Line, 1)
-				atollFunc := p.Function[p.Location[1].Line[0].FunctionId]
-				require.Equal(t, "atoll_b", p.StringTable[atollFunc.Name])
-				require.Equal(t, int64(632), p.Location[1].Line[0].Line)
+				assertLocationHasFunction(t, p, p.Location[1], "atoll_b",
+					"/usr/src/stress-1.0.7-1/src/stress.c", 632)
 
 				// Third location (0x2745) - main
 				require.Len(t, p.Location[2].Line, 1)
-				mainFunc2 := p.Function[p.Location[2].Line[0].FunctionId]
-				require.Equal(t, "main", p.StringTable[mainFunc2.Name])
-				require.Equal(t, int64(87), p.Location[2].Line[0].Line)
+				assertLocationHasFunction(t, p, p.Location[2], "main",
+					"/usr/src/stress-1.0.7-1/src/stress.c", 87)
 			},
 		},
 	}
@@ -432,6 +427,45 @@ func TestSymbolizerMetrics(t *testing.T) {
 			mockClient.AssertExpectations(t)
 		})
 	}
+}
+
+func assertLocationHasFunction(t *testing.T, profile *googlev1.Profile, loc *googlev1.Location,
+	functionName, fileName string, expectedLine int64) *googlev1.Function {
+	t.Helper()
+
+	found := false
+	var targetFunction *googlev1.Function
+	var actualLine int64
+
+	for _, line := range loc.Line {
+		// Find the function with this ID in the function table
+		for _, fn := range profile.Function {
+			if fn.Id == line.FunctionId {
+				name := "<invalid>"
+				if fn.Name >= 0 && int(fn.Name) < len(profile.StringTable) {
+					name = profile.StringTable[fn.Name]
+				}
+				if name == functionName {
+					found = true
+					targetFunction = fn
+					actualLine = line.Line
+				}
+			}
+		}
+	}
+
+	require.True(t, found, "Function %q not found in location", functionName)
+
+	if found {
+		require.True(t, targetFunction.Filename >= 0 && int(targetFunction.Filename) < len(profile.StringTable),
+			"Invalid filename index for function %q", functionName)
+		require.Equal(t, fileName, profile.StringTable[targetFunction.Filename],
+			"Wrong filename for function %q", functionName)
+		require.Equal(t, expectedLine, actualLine,
+			"Incorrect line number for function %q", functionName)
+	}
+
+	return targetFunction
 }
 
 // Helper function to open the test file
