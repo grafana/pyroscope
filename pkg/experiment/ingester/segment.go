@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-kit/log"
@@ -334,24 +335,18 @@ func concatSegmentHead(f *headFlush, w *writerOffset, s *metadata.StringTable) (
 		Labels:          nil,
 	}
 
-	var allLabels []int32
 	lb := metadata.NewLabelBuilder(s)
 	for _, profileType := range ptypes {
 		lb.WithLabelSet(model.LabelNameServiceName, f.head.key.service, model.LabelNameProfileType, profileType)
-		labelSet := lb.Build() // This creates one complete label set with count prefix
-		allLabels = append(allLabels, labelSet...)
 	}
 
-	if f.head.needsSymbolization {
-		// lb.WithLabelSet(metadata.LabelNameNeedsSymbolization, "true")
+	if f.head.needsSymbolization.Load() {
 		lb.WithLabelSet(model.LabelNameServiceName, f.head.key.service, metadata.LabelNameNeedsSymbolization, "true")
-		labelSet := lb.Build()
-		allLabels = append(allLabels, labelSet...)
 	}
 
 	// Other optional labels:
 	// lb.WithLabelSet("label_name", "label_value", ...)
-	ds.Labels = allLabels
+	ds.Labels = lb.Build()
 
 	return ds, nil
 }
@@ -449,7 +444,7 @@ func (k datasetKey) compare(x datasetKey) int {
 type dataset struct {
 	key                datasetKey
 	head               *memdb.Head
-	needsSymbolization bool
+	needsSymbolization atomic.Bool
 }
 
 type headFlush struct {
@@ -513,8 +508,8 @@ func (s *segment) ingest(tenantID string, p *profilev1.Profile, id uuid.UUID, la
 		service: model.Labels(labels).Get(model.LabelNameServiceName),
 	}
 	ds := s.datasetForIngest(k)
-	if !ds.needsSymbolization {
-		ds.needsSymbolization = !hasSymbols(p)
+	if !ds.needsSymbolization.Load() && !hasSymbols(p) {
+		ds.needsSymbolization.Store(true)
 	}
 
 	size := p.SizeVT()
