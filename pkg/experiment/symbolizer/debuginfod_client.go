@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/dgraph-io/ristretto"
+	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
 	"golang.org/x/sync/singleflight"
 )
@@ -31,9 +32,10 @@ type DebuginfodHTTPClient struct {
 	cache *ristretto.Cache
 
 	group singleflight.Group
+	l     log.Logger
 }
 
-func NewDebuginfodClient(baseURL string, metrics *Metrics) (*DebuginfodHTTPClient, error) {
+func NewDebuginfodClient(l log.Logger, baseURL string, metrics *Metrics) (*DebuginfodHTTPClient, error) {
 	transport := &http.Transport{
 		MaxIdleConnsPerHost: 10,
 		IdleConnTimeout:     90 * time.Second,
@@ -73,6 +75,7 @@ func NewDebuginfodClient(baseURL string, metrics *Metrics) (*DebuginfodHTTPClien
 		},
 		metrics: metrics,
 		cache:   cache,
+		l:       l,
 	}, nil
 }
 
@@ -171,7 +174,13 @@ func (c *DebuginfodHTTPClient) fetchDebugInfoWithRetries(ctx context.Context, bu
 			return true
 		}
 
-		lastErr = buildIDNotFoundError{buildID: buildID}
+		statusCode, isHTTPErr := isHTTPStatusError(err)
+		if isHTTPErr && statusCode == http.StatusNotFound {
+			lastErr = buildIDNotFoundError{buildID: buildID}
+			return true
+		}
+
+		lastErr = err
 		return isRetryableError(err)
 	}
 
