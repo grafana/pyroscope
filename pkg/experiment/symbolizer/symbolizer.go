@@ -9,6 +9,8 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/dgraph-io/ristretto"
@@ -61,7 +63,7 @@ func NewFromConfig(_ context.Context, logger log.Logger, cfg Config, reg prometh
 
 	store := NewObjstoreDebugInfoStore(prefixedBucket, cfg.PersistentDebugInfoStore.MaxAge, metrics)
 
-	client, err := NewDebuginfodClient(cfg.DebuginfodURL, metrics)
+	client, err := NewDebuginfodClient(logger, cfg.DebuginfodURL, metrics)
 	if err != nil {
 		return nil, err
 	}
@@ -156,8 +158,17 @@ func (s *ProfileSymbolizer) SymbolizePprof(ctx context.Context, profile *googlev
 			continue
 		}
 
-		buildID := profile.StringTable[mapping.BuildId]
+		binaryName := "unknown"
+		if mapping.Filename >= 0 && int(mapping.Filename) < len(profile.StringTable) {
+			fullPath := profile.StringTable[mapping.Filename]
+			if lastSlash := strings.LastIndex(fullPath, "/"); lastSlash >= 0 {
+				binaryName = fullPath[lastSlash+1:]
+			} else {
+				binaryName = fullPath
+			}
+		}
 
+		buildID := profile.StringTable[mapping.BuildId]
 		buildID, err := sanitizeBuildID(buildID)
 		if err != nil {
 			status = StatusErrorInvalidID
@@ -167,8 +178,9 @@ func (s *ProfileSymbolizer) SymbolizePprof(ctx context.Context, profile *googlev
 
 		// Create symbolization request for this mapping group
 		req := Request{
-			BuildID:   buildID,
-			Locations: make([]*Location, len(locs)),
+			BuildID:    buildID,
+			BinaryName: binaryName,
+			Locations:  make([]*Location, len(locs)),
 		}
 
 		// Prepare locations for symbolization
@@ -199,6 +211,7 @@ func (s *ProfileSymbolizer) SymbolizePprof(ctx context.Context, profile *googlev
 					// Create or find function name in string table
 					nameIdx := int64(-1)
 					filenameIdx := int64(-1)
+					maxFuncId := uint64(0)
 					for i, s := range profile.StringTable {
 						if s == line.Function.Name {
 							nameIdx = int64(i)
@@ -217,16 +230,18 @@ func (s *ProfileSymbolizer) SymbolizePprof(ctx context.Context, profile *googlev
 					}
 
 					// Create or find function
-					funcIdx := -1
-					for k, f := range profile.Function {
+					funcId := uint64(0)
+					for _, f := range profile.Function {
+						maxFuncId = max(maxFuncId, f.Id)
 						if f.Name == nameIdx && f.Filename == filenameIdx {
-							funcIdx = k
+							funcId = f.Id
 							break
 						}
 					}
-					if funcIdx == -1 {
-						funcIdx = len(profile.Function)
+					if funcId == 0 {
+						funcId = maxFuncId + 1
 						profile.Function = append(profile.Function, &googlev1.Function{
+							Id:        funcId,
 							Name:      nameIdx,
 							Filename:  filenameIdx,
 							StartLine: line.Function.StartLine,
@@ -234,14 +249,13 @@ func (s *ProfileSymbolizer) SymbolizePprof(ctx context.Context, profile *googlev
 					}
 
 					profile.Location[locIdx].Line[j] = &googlev1.Line{
-						FunctionId: uint64(funcIdx),
+						FunctionId: funcId,
 						Line:       line.Line,
 					}
 				}
 			}
 		}
 
-		// Update mapping flags
 		mapping.HasFunctions = true
 		mapping.HasFilenames = true
 		mapping.HasLineNumbers = true
@@ -267,7 +281,7 @@ func (s *ProfileSymbolizer) Symbolize(ctx context.Context, req *Request) error {
 	if s.symbolCache != nil {
 		allCached := true
 		for _, loc := range req.Locations {
-			cacheKey := fmt.Sprintf("%s:%x", req.BuildID, loc.Address)
+			cacheKey := s.createSymbolCacheKey(req.BuildID, loc.Address)
 			symbolStart := time.Now()
 			symbolStatus := StatusCacheMiss
 			if symbols, found := s.symbolCache.Get(cacheKey); found {
@@ -353,6 +367,33 @@ func (s *ProfileSymbolizer) Symbolize(ctx context.Context, req *Request) error {
 	debuginfodStart := time.Now()
 	debugReader, err := s.client.FetchDebuginfo(ctx, req.BuildID)
 	if err != nil {
+		var bnfErr buildIDNotFoundError
+		statusCode, isHTTPError := isHTTPStatusError(err)
+		if errors.As(err, &bnfErr) || (isHTTPError && statusCode == http.StatusNotFound) {
+			status = StatusErrorNotFound
+			s.metrics.debuginfodRequestDuration.WithLabelValues(StatusErrorNotFound).Observe(time.Since(debuginfodStart).Seconds())
+
+			level.Info(s.logger).Log("msg", "Build ID not found, caching placeholder symbols",
+				"build_id", req.BuildID,
+				"binary", req.BinaryName)
+
+			cacheStart := time.Now()
+			for _, loc := range req.Locations {
+				symbols := s.createNotFoundSymbols(req.BinaryName, loc, loc.Address)
+				if s.symbolCache != nil {
+					cacheKey := s.createSymbolCacheKey(req.BuildID, loc.Address)
+					s.symbolCache.Add(cacheKey, symbols)
+				}
+				loc.Lines = symbols
+			}
+
+			if s.symbolCache != nil {
+				s.metrics.cacheOperations.WithLabelValues("symbol_cache", "set", StatusErrorNotFound).Observe(time.Since(cacheStart).Seconds())
+			}
+
+			return nil
+		}
+
 		status = StatusErrorDebuginfod
 		s.metrics.debuginfodRequestDuration.WithLabelValues(StatusErrorDebuginfod).Observe(time.Since(debuginfodStart).Seconds())
 		s.metrics.debugSymbolResolution.WithLabelValues(StatusErrorDebuginfod).Observe(0)
@@ -452,7 +493,10 @@ func (s *ProfileSymbolizer) symbolizeFromReader(ctx context.Context, r io.ReadCl
 		// Get source lines for the address
 		lines, err := liner.ResolveAddress(ctx, addr)
 		if err != nil {
-			return fmt.Errorf("resolve address: %w", err)
+			level.Error(s.logger).Log("msg", "Failed to resolve address", "addr", fmt.Sprintf("0x%x", addr), "binary", req.BinaryName, "build_id", req.BuildID, "error", err)
+			loc.Lines = s.createNotFoundSymbols(req.BinaryName, loc, addr)
+			s.metrics.debugSymbolResolution.WithLabelValues(StatusErrorServerError).Observe(time.Since(resolveStart).Seconds())
+			continue
 		}
 
 		loc.Lines = lines
@@ -470,7 +514,7 @@ func (s *ProfileSymbolizer) updateSymbolCache(req *Request) {
 
 	for _, loc := range req.Locations {
 		if len(loc.Lines) > 0 {
-			cacheKey := fmt.Sprintf("%s:%x", req.BuildID, loc.Address)
+			cacheKey := s.createSymbolCacheKey(req.BuildID, loc.Address)
 			cacheStart := time.Now()
 			s.symbolCache.Add(cacheKey, loc.Lines)
 			s.metrics.cacheOperations.WithLabelValues("symbol_cache", "set", StatusSuccess).Observe(time.Since(cacheStart).Seconds())
@@ -529,53 +573,53 @@ func (s *ProfileSymbolizer) NeedsSymbolization(profile *googlev1.Profile) bool {
 		if mapping.BuildId < 0 || mapping.BuildId >= int64(len(profile.StringTable)) {
 			level.Info(s.logger).Log("msg", "Symbolize check: Invalid build ID index",
 				"mapping_index", i,
-				"build_id", mapping.BuildId,
-				"build_id_index", mapping.BuildId,
-				"string_table_size", len(profile.StringTable))
-			// Invalid build ID, can't determine if it needs symbolization
+				"build_id", mapping.BuildId)
 			continue
 		}
 
 		buildID := profile.StringTable[mapping.BuildId]
 
-		level.Info(s.logger).Log("msg", "Symbolize check: Examining build ID",
-			"mapping_index", i,
-			"build_id", buildID,
-			"has_functions", mapping.HasFunctions,
-			"has_filenames", mapping.HasFilenames,
-			"has_line_numbers", mapping.HasLineNumbers)
-
 		sanitizedBuildID, err := sanitizeBuildID(buildID)
 		if err != nil {
-			level.Info(s.logger).Log("msg", "Symbolize check: BuildID sanitization failed, marking as already symbolized",
+			level.Warn(s.logger).Log("msg", "Symbolize check: BuildID sanitization failed, marking as already symbolized",
 				"mapping_index", i,
 				"build_id", buildID,
 				"error", err)
-			// If we can't sanitize the build ID (e.g., it's a JSON object), mark the mapping as already symbolized
-			// {"repository":"https://github.com/grafana/pyroscope","git_ref":"whatever_ref"}
-			// mapping.HasFunctions = true
-			// mapping.HasFilenames = true
-			// mapping.HasLineNumbers = true
 			continue
 		}
 
 		// If sanitization resulted in an empty build ID, skip this mapping
 		if sanitizedBuildID == "" {
-			level.Info(s.logger).Log("msg", "Symbolize check: Empty sanitized build ID, skipping mapping",
+			level.Warn(s.logger).Log("msg", "Symbolize check: Empty sanitized build ID, skipping mapping",
 				"mapping_index", i,
 				"original_build_id", buildID)
 			continue
 		}
 
-		// At this point, we have a valid build ID that needs symbolization
-		level.Info(s.logger).Log("msg", "Symbolize check: Mapping needs symbolization",
-			"mapping_index", i,
-			"build_id", buildID,
-			"sanitized_build_id", sanitizedBuildID)
 		return true
 	}
 
 	return false
+}
+
+func (s *ProfileSymbolizer) createNotFoundSymbols(binaryName string, loc *Location, addr uint64) []SymbolLocation {
+	prefix := "unknown"
+	if binaryName != "" {
+		prefix = binaryName
+	}
+
+	return []SymbolLocation{{
+		Function: &pprof.Function{
+			Name:      fmt.Sprintf("%s!0x%x", prefix, loc.Address),
+			Filename:  fmt.Sprintf("mapped_0x%x", addr),
+			StartLine: 0,
+		},
+		Line: 0,
+	}}
+}
+
+func (s *ProfileSymbolizer) createSymbolCacheKey(buildID string, address uint64) string {
+	return fmt.Sprintf("%s:%x", buildID, address)
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
