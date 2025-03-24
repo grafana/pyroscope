@@ -153,7 +153,7 @@ func (s *Dataset) open(ctx context.Context, sections ...Section) (err error) {
 		sc := sc
 		g.Go(util.RecoverPanic(func() error {
 			if openErr := sc.open(ctx, s); openErr != nil {
-				return fmt.Errorf("openning section %v: %w", s.section(sc).name, openErr)
+				return fmt.Errorf("opening section %v: %w", s.section(sc).name, openErr)
 			}
 			return nil
 		}))
