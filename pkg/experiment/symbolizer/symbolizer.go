@@ -130,21 +130,23 @@ func (s *ProfileSymbolizer) SymbolizePprof(ctx context.Context, profile *googlev
 
 	for i, loc := range profile.Location {
 		if loc.MappingId > 0 {
-			// Validate symbols if mapping claims to have them
-			if mapping := profile.Mapping[loc.MappingId-1]; mapping.HasFunctions {
-				if !hasValidSymbols(loc, profile) {
-					// Reset flags if validation fails
-					mapping.HasFunctions = false
-					mapping.HasFilenames = false
-					mapping.HasLineNumbers = false
-					continue
+			mapping := profile.Mapping[loc.MappingId-1]
+			needsSymbolization := true
+
+			// If the mapping claims to have symbols, validate this specific location
+			if mapping.HasFunctions {
+				if hasValidSymbols(loc, profile) {
+					needsSymbolization = false
 				}
 			}
 
-			locsByMapping[loc.MappingId] = append(locsByMapping[loc.MappingId], locToSymbolize{
-				idx: i,
-				loc: loc,
-			})
+			// Only add locations that need symbolization
+			if needsSymbolization {
+				locsByMapping[loc.MappingId] = append(locsByMapping[loc.MappingId], locToSymbolize{
+					idx: i,
+					loc: loc,
+				})
+			}
 		}
 	}
 
@@ -197,7 +199,7 @@ func (s *ProfileSymbolizer) SymbolizePprof(ctx context.Context, profile *googlev
 		}
 
 		if err := s.Symbolize(ctx, &req); err != nil {
-			errs = append(errs, fmt.Errorf("symbolize mapping ID %d: %w", mappingID, err))
+			errs = append(errs, fmt.Errorf("symbolizer symbolize mapping ID %d: %w", mappingID, err))
 			continue
 		}
 
