@@ -729,7 +729,6 @@ func (sw *segmentsWriter) storeMetadata(ctx context.Context, meta *metastorev1.B
 			Observe(time.Since(start).Seconds())
 		s.debuginfo.storeMetaDuration = time.Since(start)
 	}()
-	fmt.Printf(">>> Full block metadata before storing: %+v\n", meta)
 	if _, err = sw.metastore.AddBlock(ctx, &metastorev1.AddBlockRequest{Block: meta}); err == nil {
 		return nil
 	}

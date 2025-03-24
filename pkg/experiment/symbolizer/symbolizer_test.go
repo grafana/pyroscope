@@ -117,8 +117,12 @@ func TestSymbolizePprof(t *testing.T) {
 				mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(openTestFile(t), nil).Maybe()
 			},
 			validate: func(t *testing.T, p *googlev1.Profile) {
-				// Should detect invalid function reference and fix mapping flags
-				require.False(t, p.Mapping[0].HasFunctions)
+				// With the new approach, the test should verify that the invalid location gets symbolized
+				// instead of checking if mapping flags are reset
+				require.True(t, p.Mapping[0].HasFunctions, "Mapping flags should stay unchanged")
+				// Verify that we added proper symbols to the location
+				require.NotEmpty(t, p.Location[0].Line)
+				require.Equal(t, p.Location[0].Line[0].FunctionId, uint64(1))
 			},
 		},
 		{
@@ -171,6 +175,102 @@ func TestSymbolizePprof(t *testing.T) {
 				// Third location (0x2745) - main
 				require.Len(t, p.Location[2].Line, 1)
 				assertLocationHasFunction(t, p, p.Location[2], "main",
+					"/usr/src/stress-1.0.7-1/src/stress.c", 87)
+			},
+		},
+		{
+			name: "mixed symbolization - preserves valid symbols",
+			profile: &googlev1.Profile{
+				Mapping: []*googlev1.Mapping{
+					{ // First mapping - already symbolized
+						BuildId:        1, // "already-symbolized-id" in string table
+						HasFunctions:   true,
+						HasFilenames:   true,
+						HasLineNumbers: true,
+						MemoryStart:    0x0,
+						MemoryLimit:    0x1000,
+						FileOffset:     0x0,
+						Filename:       2, // "lib1.so" in string table
+					},
+					{ // Second mapping - needs symbolization
+						BuildId:        3, // "build-id" in string table
+						HasFunctions:   false,
+						HasFilenames:   false,
+						HasLineNumbers: false,
+						MemoryStart:    0x1000,
+						MemoryLimit:    0x2000,
+						FileOffset:     0x0,
+						Filename:       4, // "lib2.so" in string table
+					},
+				},
+				Location: []*googlev1.Location{
+					// Valid, pre-symbolized location
+					{
+						MappingId: 1,
+						Address:   0x1234,
+						Line: []*googlev1.Line{{
+							FunctionId: 1,
+							Line:       42,
+						}},
+					},
+					// Location needing symbolization
+					{
+						MappingId: 2,
+						Address:   0x1500, // This address exists in our test debug file
+					},
+				},
+				Function: []*googlev1.Function{{
+					Id:        1,
+					Name:      5,
+					Filename:  6,
+					StartLine: 40,
+				}},
+				StringTable: []string{
+					"",
+					"already-symbolized-id",
+					"lib1.so",
+					"build-id",
+					"lib2.so",
+					"pre_symbolized_func",
+					"pre_symbolized.c",
+				},
+			},
+			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient) {
+				mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(openTestFile(t), nil).Once()
+			},
+			validate: func(t *testing.T, p *googlev1.Profile) {
+				// The mapping flags should still be set
+				require.True(t, p.Mapping[0].HasFunctions)
+				require.True(t, p.Mapping[0].HasFilenames)
+				require.True(t, p.Mapping[0].HasLineNumbers)
+
+				// Second mapping should now be marked as symbolized
+				require.True(t, p.Mapping[1].HasFunctions)
+				require.True(t, p.Mapping[1].HasFilenames)
+				require.True(t, p.Mapping[1].HasLineNumbers)
+
+				// First location should be unchanged
+				require.Len(t, p.Location[0].Line, 1)
+				require.Equal(t, uint64(1), p.Location[0].Line[0].FunctionId)
+				require.Equal(t, int64(42), p.Location[0].Line[0].Line)
+
+				// Pre-symbolized function should still exist and be unchanged
+				foundOriginalFunc := false
+				for _, fn := range p.Function {
+					if fn.Id == 1 {
+						foundOriginalFunc = true
+						require.Equal(t, int64(5), fn.Name)
+						require.Equal(t, int64(6), fn.Filename)
+						require.Equal(t, int64(40), fn.StartLine)
+					}
+				}
+				require.True(t, foundOriginalFunc, "Original function should be preserved")
+
+				// Second location should now be symbolized
+				require.NotEmpty(t, p.Location[1].Line)
+
+				// The second location should have correct symbols from the debug file
+				assertLocationHasFunction(t, p, p.Location[1], "main",
 					"/usr/src/stress-1.0.7-1/src/stress.c", 87)
 			},
 		},
