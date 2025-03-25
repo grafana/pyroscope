@@ -27,6 +27,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/metrics"
 	querybackend "github.com/grafana/pyroscope/pkg/experiment/query_backend"
 	querybackendclient "github.com/grafana/pyroscope/pkg/experiment/query_backend/client"
+	"github.com/grafana/pyroscope/pkg/experiment/symbolizer"
 	recordingrulesclient "github.com/grafana/pyroscope/pkg/settings/recording/client"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/health"
@@ -244,6 +245,34 @@ func (f *Phlare) initRecordingRulesClient() (services.Service, error) {
 	}
 	f.recordingRulesClient = c
 	return c.Service(), nil
+}
+
+func (f *Phlare) initSymbolizer() (services.Service, error) {
+	level.Info(f.logger).Log("msg", "Initializing Symbolizer")
+	if !f.Cfg.Symbolizer.Enabled {
+		level.Info(f.logger).Log("msg", "Symbolizer is disabled")
+		return nil, nil
+	}
+
+	if f.storageBucket == nil {
+		return nil, fmt.Errorf("storage bucket is required for symbolizer")
+	}
+
+	sym, err := symbolizer.NewFromConfig(
+		f.context(),
+		f.logger,
+		f.Cfg.Symbolizer,
+		f.reg,
+		f.storageBucket,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create symbolizer: %w", err)
+	}
+
+	f.symbolizer = sym
+
+	// Return a no-op service since the symbolizer doesn't need to be a service
+	return nil, nil
 }
 
 func (f *Phlare) initPlacementAgent() (services.Service, error) {

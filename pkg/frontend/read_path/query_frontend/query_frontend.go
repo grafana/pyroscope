@@ -6,25 +6,36 @@ import (
 	"slices"
 
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/tenant"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 
+	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
 	queryplan "github.com/grafana/pyroscope/pkg/experiment/query_backend/query_plan"
+	"github.com/grafana/pyroscope/pkg/experiment/symbolizer"
 	"github.com/grafana/pyroscope/pkg/frontend"
+	"github.com/grafana/pyroscope/pkg/model"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/pprof"
 )
 
 var _ querierv1connect.QuerierServiceClient = (*QueryFrontend)(nil)
 
 type QueryBackend interface {
 	Invoke(ctx context.Context, req *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error)
+}
+
+type Symbolizer interface {
+	SymbolizePprof(ctx context.Context, profile *googlev1.Profile) error
 }
 
 type QueryFrontend struct {
@@ -34,6 +45,7 @@ type QueryFrontend struct {
 	metadataQueryClient metastorev1.MetadataQueryServiceClient
 	tenantServiceClient metastorev1.TenantServiceClient
 	querybackend        QueryBackend
+	symbolizer          *symbolizer.ProfileSymbolizer
 }
 
 func NewQueryFrontend(
@@ -42,14 +54,16 @@ func NewQueryFrontend(
 	metadataQueryClient metastorev1.MetadataQueryServiceClient,
 	tenantServiceClient metastorev1.TenantServiceClient,
 	querybackendClient QueryBackend,
-) *QueryFrontend {
+	sym *symbolizer.ProfileSymbolizer,
+) (*QueryFrontend, error) {
 	return &QueryFrontend{
 		logger:              logger,
 		limits:              limits,
 		metadataQueryClient: metadataQueryClient,
 		tenantServiceClient: tenantServiceClient,
 		querybackend:        querybackendClient,
-	}
+		symbolizer:          sym,
+	}, nil
 }
 
 var xrand = rand.New(rand.NewSource(4349676827832284783))
@@ -81,6 +95,31 @@ func (q *QueryFrontend) Query(
 	// TODO(kolesnikovae): Should be dynamic.
 	p := queryplan.Build(blocks, 4, 20)
 
+	needsSymbolization := false
+	if q.symbolizer != nil {
+		for _, block := range blocks {
+			if q.symbolizationNeeded(block) {
+				needsSymbolization = true
+				break
+			}
+		}
+	}
+
+	// Modify queries based on symbolization needs
+	modifiedQueries := make([]*queryv1.Query, len(req.Query))
+	for i, originalQuery := range req.Query {
+		modifiedQueries[i] = proto.Clone(originalQuery).(*queryv1.Query)
+
+		// If we need symbolization and this is a TREE query, convert it to PPROF
+		if needsSymbolization && originalQuery.QueryType == queryv1.QueryType_QUERY_TREE {
+			modifiedQueries[i].QueryType = queryv1.QueryType_QUERY_PPROF
+			modifiedQueries[i].Pprof = &queryv1.PprofQuery{
+				MaxNodes: 0,
+			}
+			modifiedQueries[i].Tree = nil
+		}
+	}
+
 	resp, err := q.querybackend.Invoke(ctx, &queryv1.InvokeRequest{
 		Tenant:        tenants,
 		StartTime:     req.StartTime,
@@ -88,15 +127,49 @@ func (q *QueryFrontend) Query(
 		LabelSelector: req.LabelSelector,
 		Options:       &queryv1.InvokeOptions{},
 		QueryPlan:     p,
-		Query:         req.Query,
+		Query:         modifiedQueries,
 	})
 	if err != nil {
 		return nil, err
 	}
+
+	if needsSymbolization && q.symbolizer != nil {
+		for i, r := range resp.Reports {
+			if r.Pprof != nil && r.Pprof.Pprof != nil {
+				var prof profilev1.Profile
+				if err := pprof.Unmarshal(r.Pprof.Pprof, &prof); err != nil {
+					level.Error(q.logger).Log("msg", "Unmarshal needsSymbolization", "error", err)
+					continue
+				}
+
+				if err := q.symbolizer.SymbolizePprof(ctx, &prof); err != nil {
+					level.Error(q.logger).Log("msg", "SymbolizePprof needsSymbolization", "error", err)
+				}
+
+				// Convert back to tree if originally a tree
+				if i < len(req.Query) && req.Query[i].QueryType == queryv1.QueryType_QUERY_TREE {
+					treeBytes, err := model.ConvertProfileToTree(&prof, req.Query[i].Tree.MaxNodes)
+					if err == nil {
+						// Store the tree result
+						r.Tree = &queryv1.TreeReport{Tree: treeBytes}
+						r.ReportType = queryv1.ReportType_REPORT_TREE
+						r.Pprof = nil
+					}
+				} else {
+					symbolizedBytes, err := pprof.Marshal(&prof, true)
+					if err == nil {
+						r.Pprof.Pprof = symbolizedBytes
+					}
+				}
+			}
+		}
+	}
+
 	// TODO(kolesnikovae): Extend diagnostics
 	if resp.Diagnostics == nil {
 		resp.Diagnostics = new(queryv1.Diagnostics)
 	}
+
 	resp.Diagnostics.QueryPlan = p
 	return &queryv1.QueryResponse{Reports: resp.Reports}, nil
 }
@@ -117,6 +190,7 @@ func (q *QueryFrontend) QueryMetadata(
 		TenantId:  tenants,
 		StartTime: req.StartTime,
 		EndTime:   req.EndTime,
+		Labels:    []string{metadata.LabelNameNeedsSymbolization},
 	}
 
 	// Delete all matchers but service_name with strict match. If no matchers
@@ -129,7 +203,7 @@ func (q *QueryFrontend) QueryMetadata(
 		// We preserve the __tenant_dataset__= label: this is needed for the
 		// query backend to identify that the dataset is the tenant-wide index,
 		// and a dataset lookup is needed.
-		query.Labels = []string{metadata.LabelNameTenantDataset}
+		query.Labels = append(query.Labels, metadata.LabelNameTenantDataset)
 		matchers = []*labels.Matcher{{
 			Name:  metadata.LabelNameTenantDataset,
 			Value: metadata.LabelValueDatasetTSDBIndex,
@@ -144,4 +218,23 @@ func (q *QueryFrontend) QueryMetadata(
 	}
 
 	return md.Blocks, nil
+}
+
+// symbolizationNeeded checks if a block needs symbolization
+func (q *QueryFrontend) symbolizationNeeded(block *metastorev1.BlockMeta) bool {
+	matcher, err := labels.NewMatcher(labels.MatchEqual, metadata.LabelNameNeedsSymbolization, "true")
+	if err != nil {
+		return false
+	}
+
+	datasetFinder := metadata.FindDatasets(block, matcher)
+
+	// Check if any dataset matches
+	needsSymbolization := false
+	datasetFinder(func(ds *metastorev1.Dataset) bool {
+		needsSymbolization = true
+		return false
+	})
+
+	return needsSymbolization
 }
