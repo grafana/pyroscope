@@ -138,28 +138,51 @@ func TestClient_ConfigValidation(t *testing.T) {
 		expectedError error
 	}{
 		{
-			name: "valid storage_prefix",
-			cfg:  Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, StoragePrefix: "helloworld"},
+			name: "storage_prefix/valid",
+			cfg:  Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, StoragePrefix: "helloWORLD123"},
 		},
 		{
-			name:          "storage_prefix non-alphanumeric characters",
-			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, StoragePrefix: "hello-world!"},
-			expectedError: ErrInvalidCharactersInStoragePrefix,
+			name: "storage_prefix/valid-subdir",
+			cfg:  Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, StoragePrefix: "hello/world/env"},
 		},
 		{
-			name:          "storage_prefix suffixed with a slash (non-alphanumeric)",
-			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, StoragePrefix: "helloworld/"},
-			expectedError: ErrInvalidCharactersInStoragePrefix,
+			name: "storage_prefix/valid-subdir-trailing-slash",
+			cfg:  Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, StoragePrefix: "hello/world/env/"},
 		},
 		{
-			name:          "storage_prefix that has some character strings that have a meaning in unix paths (..)",
+			name:          "storage_prefix/invalid-directory-up",
 			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, StoragePrefix: ".."},
-			expectedError: ErrInvalidCharactersInStoragePrefix,
+			expectedError: ErrStoragePrefixInvalidCharacters,
 		},
 		{
-			name:          "storage_prefix that has some character strings that have a meaning in unix paths (.)",
+			name:          "storage_prefix/invalid-directory",
 			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, StoragePrefix: "."},
-			expectedError: ErrInvalidCharactersInStoragePrefix,
+			expectedError: ErrStoragePrefixInvalidCharacters,
+		},
+		{
+			name:          "storage_prefix/invalid-absolute-path",
+			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, StoragePrefix: "/hello/world"},
+			expectedError: ErrStoragePrefixStartsWithSlash,
+		},
+		{
+			name:          "storage_prefix/invalid-..-in-a-path-segement",
+			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, StoragePrefix: "hello/../test"},
+			expectedError: ErrStoragePrefixInvalidCharacters,
+		},
+		{
+			name:          "storage_prefix/invalid-empty-path-segement",
+			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, StoragePrefix: "hello//test"},
+			expectedError: ErrStoragePrefixEmptyPathSegment,
+		},
+		{
+			name:          "storage_prefix/invalid-emoji",
+			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, StoragePrefix: "👋"},
+			expectedError: ErrStoragePrefixInvalidCharacters,
+		},
+		{
+			name:          "storage_prefix/invalid-emoji",
+			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, StoragePrefix: "hello!world"},
+			expectedError: ErrStoragePrefixInvalidCharacters,
 		},
 		{
 			name:          "unsupported backend",
@@ -172,7 +195,11 @@ func TestClient_ConfigValidation(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			actualErr := tc.cfg.Validate()
-			assert.ErrorIs(t, actualErr, tc.expectedError)
+			if tc.expectedError != nil {
+				assert.Equal(t, actualErr, tc.expectedError)
+			} else {
+				assert.NoError(t, actualErr)
+			}
 		})
 	}
 }
