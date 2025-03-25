@@ -39,7 +39,7 @@ func buildPprof(
 	// limit on the number of the nodes in the profile, or
 	// if stack traces should be filtered by the call site.
 	case maxNodes > 0 || len(selection.callSite) > 0:
-		b = &pprofTree{maxNodes: maxNodes, selection: selection}
+		b = &pprofFunctionTree{maxNodes: maxNodes, selection: selection}
 	}
 	b.init(symbols, samples)
 	if err := symbols.Stacktraces.ResolveStacktraceLocations(ctx, b, samples.StacktraceIDs); err != nil {
