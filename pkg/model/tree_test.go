@@ -7,6 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/pyroscope/pkg/pprof"
 )
 
 func Test_Tree(t *testing.T) {
@@ -389,4 +391,39 @@ func stackToTree(stack stacktraces) *Tree {
 	}
 	t.root = []*node{current}
 	return t
+}
+
+// Benchmark_ConvertProfileToTree-10    	       2	 535810875 ns/op	1437912624 B/op	   70493 allocs/op
+// Benchmark_ConvertBackendProfileToTree-10    	       3	 355 624 139 ns/op	302894528 B/op	      34 allocs/op
+func Benchmark_ConvertBackendProfileToTree(b *testing.B) {
+	p, err := pprof.OpenFile("testdata/big-profile.pb.gz")
+	require.NoError(b, err)
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	x := len(p.StringTable)
+	for i := 0; i < b.N; i++ {
+		// tree, err := (
+		ConvertBackendProfileToTree(p.Profile, 16<<10, 0)
+		p.StringTable = p.StringTable[:x]
+		//require.NoError(b, err)
+		// _ = tree
+	}
+}
+
+// Benchmark_ConvertBackendProfileToTree-10    	    3706	    332860 ns/op	  226736 B/op	    5194 allocs/op
+// Benchmark_ConvertProfileToTree-10    	       1	4 186 363 416 ns/op	858009560 B/op	60836605 allocs/op
+func Benchmark_ConvertProfileToTree(b *testing.B) {
+	p, err := pprof.OpenFile("testdata/big-profile.pb.gz")
+	require.NoError(b, err)
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		// buf, err :=
+		ConvertProfileToTree(p.Profile, 16<<10)
+		// require.NoError(b, err)
+		// tree, err := UnmarshalTree(buf)
+		// require.NoError(b, err)
+		// _ = tree
+	}
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strconv"
 	"strings"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -547,4 +548,39 @@ func ConvertProfileToTree(profile *profilev1.Profile, maxNodes int64) ([]byte, e
 
 	// Serialize the tree with maxNodes limit
 	return tree.Bytes(maxNodes), nil
+}
+
+func ConvertBackendProfileToTree(profile *profilev1.Profile, maxNodes int64, sampleType int) []byte {
+	t := NewStacktraceTree(int(maxNodes * 2))
+
+	stack := make([]int32, 0, 64)
+	m := make(map[uint64]int32)
+
+	for i := range profile.Sample {
+		stack = stack[:0]
+		for j := range profile.Sample[i].LocationId {
+			loc := profile.Location[profile.Sample[i].LocationId[j]-1]
+			if len(loc.Line) >= 0 {
+				for l := range loc.Line {
+					stack = append(stack, int32(profile.Function[loc.Line[l].FunctionId-1].Name))
+				}
+				continue
+			}
+			addr, ok := m[loc.Address]
+			if !ok {
+				// We assume that the string table does not contain the address string.
+				// We do not want to check all the values.
+				addr = int32(len(profile.StringTable))
+				profile.StringTable = append(profile.StringTable, strconv.FormatInt(int64(loc.Address), 16))
+				m[loc.Address] = addr
+			}
+			stack = append(stack, addr)
+		}
+		t.Insert(stack, profile.Sample[i].Value[sampleType])
+	}
+
+	b := bytes.NewBuffer(nil)
+	b.Grow(100 << 10)
+	t.Bytes(b, maxNodes, profile.StringTable)
+	return b.Bytes()
 }
