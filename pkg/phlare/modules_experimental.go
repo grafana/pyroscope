@@ -112,7 +112,7 @@ func (f *Phlare) initCompactionWorker() (svc services.Service, err error) {
 			ruler = metrics.NewStaticRulerFromOverrides(f.Overrides)
 		}
 
-		exporter, err = metrics.NewStaticExporterFromEnvVars(f.logger, f.reg)
+		exporter, err = metrics.NewExporter(f.Cfg.CompactionWorker.MetricsExporter.RemoteWriteAddress, f.logger, f.reg)
 		if err != nil {
 			return nil, err
 		}
