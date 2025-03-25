@@ -4,7 +4,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/samber/lo"
@@ -39,17 +38,24 @@ const (
 
 	// Filesystem is the value for the filesystem storage backend.
 	Filesystem = "filesystem"
-
-	// validPrefixCharactersRegex allows only alphanumeric characters to prevent subtle bugs and simplify validation
-	validPrefixCharactersRegex = `^[\da-zA-Z]+$`
 )
 
 var (
 	SupportedBackends = []string{S3, GCS, Azure, Swift, Filesystem, COS}
 
-	ErrUnsupportedStorageBackend        = errors.New("unsupported storage backend")
-	ErrInvalidCharactersInStoragePrefix = errors.New("storage prefix contains invalid characters, it may only contain digits and English alphabet letters")
+	ErrUnsupportedStorageBackend      = errors.New("unsupported storage backend")
+	ErrStoragePrefixStartsWithSlash   = errors.New("storage prefix starts with a slash")
+	ErrStoragePrefixEmptyPathSegment  = errors.New("storage prefix contains an empty path segment")
+	ErrStoragePrefixInvalidCharacters = errors.New("storage prefix contains invalid characters: only alphanumeric, hyphen, underscore, dot, and no segement should be . or ..")
 )
+
+type ErrInvalidCharactersInStoragePrefix struct {
+	Prefix string
+}
+
+func (e *ErrInvalidCharactersInStoragePrefix) Error() string {
+	return fmt.Sprintf("storage prefix '%s' contains invalid characters", e.Prefix)
+}
 
 type StorageBackendConfig struct {
 	Backend string `yaml:"backend"`
@@ -131,12 +137,48 @@ func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	cfg.RegisterFlagsWithPrefixAndDefaultDirectory(prefix, "./data-shared", f)
 }
 
-func (cfg *Config) Validate() error {
-	if cfg.StoragePrefix != "" {
-		acceptablePrefixCharacters := regexp.MustCompile(validPrefixCharactersRegex)
-		if !acceptablePrefixCharacters.MatchString(cfg.StoragePrefix) {
-			return ErrInvalidCharactersInStoragePrefix
+// alphanumeric, hyphen, underscore, dot, and must not be . or ..
+func validStoragePrefixPart(part string) bool {
+	if part == "." || part == ".." {
+		return false
+	}
+	for i, b := range part {
+		if !((b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || b == '_' || b == '-' || b == '.' || (b >= '0' && b <= '9' && i > 0)) {
+			return false
 		}
+	}
+	return true
+}
+
+func validStoragePrefix(prefix string) error {
+	// without a prefix exit quickly
+	if prefix == "" {
+		return nil
+	}
+
+	parts := strings.Split(prefix, "/")
+
+	for idx, part := range parts {
+		if part == "" {
+			if idx == 0 {
+				return ErrStoragePrefixStartsWithSlash
+			}
+			if idx != len(parts)-1 {
+				return ErrStoragePrefixEmptyPathSegment
+			}
+			// slash at the end is fine
+		}
+		if !validStoragePrefixPart(part) {
+			return ErrStoragePrefixInvalidCharacters
+		}
+	}
+
+	return nil
+}
+
+func (cfg *Config) Validate() error {
+	if err := validStoragePrefix(cfg.StoragePrefix); err != nil {
+		return err
 	}
 
 	return cfg.StorageBackendConfig.Validate()
