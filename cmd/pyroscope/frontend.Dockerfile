@@ -1,4 +1,4 @@
-FROM node:18 AS builder
+FROM node:20 AS builder
 RUN apt-get update && apt-get install -y libpango1.0-dev libcairo2-dev
 WORKDIR /pyroscope
 COPY yarn.lock package.json tsconfig.json ./
