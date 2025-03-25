@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@v4
       - uses: actions/setup-node@v3
         with:
-          node-version: lts/hydrogen
+          node-version: 20
           cache: yarn
       - name: Install Go
         uses: actions/setup-go@v5
@@ -58,7 +58,7 @@ jobs:
         uses: actions/checkout@v4
       - uses: actions/setup-node@v3
         with:
-          node-version: lts/hydrogen
+          node-version: 20
           cache: yarn
       - name: Install Go
         uses: actions/setup-go@v5
