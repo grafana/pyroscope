@@ -42,7 +42,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - uses: actions/setup-node@v3
         with:
-          node-version: lts/hydrogen
+          node-version: 20
           cache: yarn
       - run: make frontend/build
       - name: Get github app token (valid for an hour)

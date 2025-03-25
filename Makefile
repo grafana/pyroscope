@@ -94,6 +94,11 @@ build-dev: ## Do a dev build (without requiring the frontend)
 frontend/build:
 	docker build -f cmd/pyroscope/frontend.Dockerfile --output=public/build .
 
+.PHONY: frontend/shell
+frontend/shell:
+	docker build -f cmd/pyroscope/frontend.Dockerfile --iidfile .docker-image-id-frontend --target builder .
+	docker run -t -i $$(cat .docker-image-id-frontend) /bin/bash
+
 .PHONY: profilecli/build
 profilecli/build: go/bin-profilecli ## Build the profilecli binary
 
