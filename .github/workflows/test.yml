@@ -94,7 +94,7 @@ jobs:
           go-version: 1.23.6
       - uses: actions/setup-node@v3
         with:
-          node-version: lts/hydrogen
+          node-version: 20
           cache: yarn
       - name: Build image Pyroscope
         run: make docker-image/pyroscope/build-multiarch "BUILDX_ARGS=--cache-from=type=gha --cache-to=type=gha"

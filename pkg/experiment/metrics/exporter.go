@@ -3,8 +3,9 @@ package metrics
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/url"
-	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -14,11 +15,12 @@ import (
 	"github.com/grafana/dskit/instrument"
 	"github.com/klauspost/compress/snappy"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/prompb"
 	"github.com/prometheus/prometheus/storage/remote"
+
+	"github.com/grafana/pyroscope/pkg/tenant"
 )
 
 type StaticExporter struct {
@@ -31,28 +33,15 @@ type StaticExporter struct {
 }
 
 const (
-	envVarRemoteUrl      = "PYROSCOPE_METRICS_EXPORTER_REMOTE_URL"
-	envVarRemoteUser     = "PYROSCOPE_METRICS_EXPORTER_REMOTE_USER"
-	envVarRemotePassword = "PYROSCOPE_METRICS_EXPORTER_REMOTE_PASSWORD"
-
 	metricsExporterUserAgent = "pyroscope-metrics-exporter"
 )
 
-func NewStaticExporterFromEnvVars(logger log.Logger, reg prometheus.Registerer) (Exporter, error) {
-	remoteUrl := os.Getenv(envVarRemoteUrl)
-	user := os.Getenv(envVarRemoteUser)
-	password := os.Getenv(envVarRemotePassword)
-	if remoteUrl == "" || user == "" || password == "" {
-		return nil, fmt.Errorf("unable to load metrics exporter configuration, %s, %s and %s must be defined",
-			envVarRemoteUrl, envVarRemoteUser, envVarRemotePassword)
-	}
-	metrics := newMetrics(reg, remoteUrl)
-
-	client, err := newClient(remoteUrl, user, password, metrics)
+func NewExporter(remoteWriteAddress string, logger log.Logger, reg prometheus.Registerer) (Exporter, error) {
+	metrics := newMetrics(reg, remoteWriteAddress)
+	client, err := newClient(remoteWriteAddress, metrics)
 	if err != nil {
 		return nil, err
 	}
-
 	return &StaticExporter{
 		client:  client,
 		wg:      sync.WaitGroup{},
@@ -61,7 +50,7 @@ func NewStaticExporterFromEnvVars(logger log.Logger, reg prometheus.Registerer) 
 	}, nil
 }
 
-func (e *StaticExporter) Send(tenant string, data []prompb.TimeSeries) error {
+func (e *StaticExporter) Send(tenantId string, data []prompb.TimeSeries) error {
 	e.wg.Add(1)
 	go func(data []prompb.TimeSeries) {
 		defer e.wg.Done()
@@ -71,7 +60,9 @@ func (e *StaticExporter) Send(tenant string, data []prompb.TimeSeries) error {
 			level.Error(e.logger).Log("msg", "unable to marshal prompb.WriteRequest", "err", err)
 			return
 		}
-		err := e.client.Store(context.Background(), snappy.Encode(nil, buf.Bytes()), 0)
+
+		ctx := tenant.InjectTenantID(context.Background(), tenantId)
+		err := e.client.Store(ctx, snappy.Encode(nil, buf.Bytes()), 0)
 		if err != nil {
 			level.Error(e.logger).Log("msg", "unable to store prompb.WriteRequest", "err", err)
 			return
@@ -84,7 +75,7 @@ func (e *StaticExporter) Flush() {
 	e.wg.Wait()
 }
 
-func newClient(remoteUrl, user, password string, m *clientMetrics) (remote.WriteClient, error) {
+func newClient(remoteUrl string, m *clientMetrics) (remote.WriteClient, error) {
 	wURL, err := url.Parse(remoteUrl)
 	if err != nil {
 		return nil, err
@@ -93,12 +84,6 @@ func newClient(remoteUrl, user, password string, m *clientMetrics) (remote.Write
 	client, err := remote.NewWriteClient("exporter", &remote.ClientConfig{
 		URL:     &config.URL{URL: wURL},
 		Timeout: model.Duration(time.Second * 10),
-		HTTPClientConfig: config.HTTPClientConfig{
-			BasicAuth: &config.BasicAuth{
-				Username: user,
-				Password: config.Secret(password),
-			},
-		},
 		Headers: map[string]string{
 			"User-Agent": metricsExporterUserAgent,
 		},
@@ -108,7 +93,7 @@ func newClient(remoteUrl, user, password string, m *clientMetrics) (remote.Write
 		return nil, err
 	}
 	t := client.(*remote.Client).Client.Transport
-	client.(*remote.Client).Client.Transport = promhttp.InstrumentRoundTripperDuration(m.requestDuration, t)
+	client.(*remote.Client).Client.Transport = &RoundTripper{m, t}
 	return client, nil
 }
 
@@ -124,14 +109,38 @@ func newMetrics(reg prometheus.Registerer, remoteUrl string) *clientMetrics {
 			Name:      "client_request_duration_seconds",
 			Help:      "Time (in seconds) spent on remote_write",
 			Buckets:   instrument.DefBuckets,
-		}, []string{}),
+		}, []string{"route", "status_code", "tenant"}),
 	}
 	if reg != nil {
-		// TODO(alsoba13): include tenant label once we have a client per tenant/datasource in place
 		remoteUrlReg := prometheus.WrapRegistererWith(prometheus.Labels{"url": remoteUrl}, reg)
 		remoteUrlReg.MustRegister(
 			m.requestDuration,
 		)
 	}
 	return m
+}
+
+type RoundTripper struct {
+	metrics *clientMetrics
+	next    http.RoundTripper
+}
+
+func (m *RoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	tenantId, err := tenant.ExtractTenantIDFromContext(req.Context())
+	if err != nil {
+		return nil, fmt.Errorf("unable to get tenant ID from context: %w", err)
+	}
+	req.Header.Set("X-Scope-OrgId", tenantId)
+
+	start := time.Now()
+	resp, err := m.next.RoundTrip(req)
+	duration := time.Since(start)
+
+	statusCode := ""
+	if resp != nil {
+		statusCode = strconv.Itoa(resp.StatusCode)
+	}
+
+	m.metrics.requestDuration.WithLabelValues(req.RequestURI, statusCode, tenantId).Observe(duration.Seconds())
+	return resp, err
 }

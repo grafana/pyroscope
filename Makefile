@@ -10,6 +10,7 @@ BIN := $(CURDIR)/.tmp/bin
 COPYRIGHT_YEARS := 2021-2022
 LICENSE_IGNORE := -e /testdata/
 GO_TEST_FLAGS ?= -v -race -cover
+GO_MOD_VERSION := 1.23.0
 
 GOOS ?= $(shell go env GOOS)
 GOARCH ?= $(shell go env GOARCH)
@@ -104,6 +105,11 @@ build-dev: ## Do a dev build (without requiring the frontend)
 frontend/build:
 	docker build -f cmd/pyroscope/frontend.Dockerfile --output=public/build .
 
+.PHONY: frontend/shell
+frontend/shell:
+	docker build -f cmd/pyroscope/frontend.Dockerfile --iidfile .docker-image-id-frontend --target builder .
+	docker run -t -i $$(cat .docker-image-id-frontend) /bin/bash
+
 .PHONY: profilecli/build
 profilecli/build: go/bin-profilecli ## Build the profilecli binary
 
@@ -182,12 +188,12 @@ go/mod_tidy_root:
 	# doesn't work for go workspace
 	# GO111MODULE=on go mod verify
 	go work sync
-	GO111MODULE=on go mod tidy -go 1.22.0
+	GO111MODULE=on go mod tidy -go $(GO_MOD_VERSION)
 
 .PHONY: go/mod_tidy/%
 go/mod_tidy/%: go/mod_tidy_root
 	cd "$*" && GO111MODULE=on go mod download
-	cd "$*" && GO111MODULE=on go mod tidy -go 1.22.0
+	cd "$*" && GO111MODULE=on go mod tidy -go $(GO_MOD_VERSION)
 
 .PHONY: fmt
 fmt: $(BIN)/golangci-lint $(BIN)/buf $(BIN)/tk ## Automatically fix some lint errors
