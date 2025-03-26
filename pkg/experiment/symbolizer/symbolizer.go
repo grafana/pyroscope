@@ -135,7 +135,7 @@ func (s *ProfileSymbolizer) SymbolizePprof(ctx context.Context, profile *googlev
 
 			// If the mapping claims to have symbols, validate this specific location
 			if mapping.HasFunctions {
-				if hasValidSymbols(loc, profile) {
+				if mapping.HasFunctions && len(loc.Line) > 0 {
 					needsSymbolization = false
 				}
 			}
@@ -522,28 +522,6 @@ func (s *ProfileSymbolizer) updateSymbolCache(req *Request) {
 			s.metrics.cacheOperations.WithLabelValues("symbol_cache", "set", StatusSuccess).Observe(time.Since(cacheStart).Seconds())
 		}
 	}
-}
-
-func hasValidSymbols(loc *googlev1.Location, profile *googlev1.Profile) bool {
-	if len(loc.Line) == 0 {
-		return false
-	}
-
-	// Quick bounds check for better performance
-	funcLen := uint64(len(profile.Function))
-	strLen := int64(len(profile.StringTable))
-
-	for _, line := range loc.Line {
-		if line.FunctionId >= funcLen {
-			return false
-		}
-		fn := profile.Function[line.FunctionId]
-		// Avoid multiple bounds checks
-		if fn.Name <= 0 || fn.Filename <= 0 || fn.Name >= strLen || fn.Filename >= strLen {
-			return false
-		}
-	}
-	return true
 }
 
 // NeedsSymbolization checks if a profile needs symbolization.

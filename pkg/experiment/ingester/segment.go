@@ -528,42 +528,14 @@ func (s *segment) ingest(tenantID string, p *profilev1.Profile, id uuid.UUID, la
 }
 
 func hasSymbols(p *profilev1.Profile) bool {
-	if p == nil {
-		return false
-	}
-
-	// If there are no functions or locations, the profile can't be symbolized
-	if len(p.Function) == 0 || len(p.Location) == 0 {
-		return false
-	}
-
-	if len(p.StringTable) <= 1 {
+	if p == nil || len(p.Function) == 0 || len(p.Location) == 0 {
 		return false
 	}
 
 	for _, loc := range p.Location {
-		// If a location has no line information, it's missing symbols
 		if len(loc.Line) == 0 {
+			// If any location lacks symbols, the profile needs symbolization
 			return false
-		}
-
-		// Check if all lines have valid function references
-		for _, line := range loc.Line {
-			if line.FunctionId == 0 {
-				return false
-			}
-
-			// Verify the function exists and has a name
-			fn, exists := getFunctionById(p, line.FunctionId)
-			if !exists || fn.Name == 0 || int(fn.Name) >= len(p.StringTable) {
-				return false
-			}
-
-			// Check if the function name is just a hex address (unsymbolized)
-			name := p.StringTable[fn.Name]
-			if isHexAddress(name) {
-				return false
-			}
 		}
 	}
 
