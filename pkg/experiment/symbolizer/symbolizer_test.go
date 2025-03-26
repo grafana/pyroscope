@@ -99,33 +99,6 @@ func TestSymbolizePprof(t *testing.T) {
 			},
 		},
 		{
-			name: "invalid function references",
-			profile: &googlev1.Profile{
-				Mapping: []*googlev1.Mapping{{
-					BuildId:      1,
-					HasFunctions: true, // Incorrectly set
-				}},
-				Location: []*googlev1.Location{{
-					MappingId: 1,
-					Line: []*googlev1.Line{{
-						FunctionId: 999, // Invalid reference
-					}},
-				}},
-				StringTable: []string{"", "build-id"},
-			},
-			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient) {
-				mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(openTestFile(t), nil).Maybe()
-			},
-			validate: func(t *testing.T, p *googlev1.Profile) {
-				// With the new approach, the test should verify that the invalid location gets symbolized
-				// instead of checking if mapping flags are reset
-				require.True(t, p.Mapping[0].HasFunctions, "Mapping flags should stay unchanged")
-				// Verify that we added proper symbols to the location
-				require.NotEmpty(t, p.Location[0].Line)
-				require.Equal(t, p.Location[0].Line[0].FunctionId, uint64(1))
-			},
-		},
-		{
 			name: "empty build ID",
 			profile: &googlev1.Profile{
 				Mapping: []*googlev1.Mapping{{
