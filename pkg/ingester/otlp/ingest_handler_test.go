@@ -31,7 +31,7 @@ func TestGetServiceNameFromAttributes(t *testing.T) {
 		{
 			name:     "empty attributes",
 			attrs:    []*v1.KeyValue{},
-			expected: "unknown_service",
+			expected: phlaremodel.AttrServiceNameFallback,
 		},
 		{
 			name: "empty attributes",
@@ -45,7 +45,7 @@ func TestGetServiceNameFromAttributes(t *testing.T) {
 					},
 				},
 			},
-			expected: "unknown_service:bash",
+			expected: phlaremodel.AttrServiceNameFallback + ":bash",
 		},
 		{
 			name: "service name present",
@@ -89,7 +89,7 @@ func TestGetServiceNameFromAttributes(t *testing.T) {
 					},
 				},
 			},
-			expected: "unknown_service",
+			expected: phlaremodel.AttrServiceNameFallback,
 		},
 		{
 			name: "service name among other attributes",
