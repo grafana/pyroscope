@@ -75,7 +75,7 @@ func (s *snapshot) Release() {
 }
 
 type snapshotReader struct {
-	io.Reader
+	io.ReadCloser
 }
 
 var zstdMagic = []byte{0xFD, 0x2F, 0xB5, 0x28}
@@ -87,13 +87,13 @@ func newSnapshotReader(snapshot io.ReadCloser) (*snapshotReader, error) {
 		return nil, err
 	}
 
-	s := snapshotReader{Reader: io.NopCloser(b)}
+	s := snapshotReader{ReadCloser: io.NopCloser(b)}
 	if bytes.Equal(magic, zstdMagic) {
 		var dec *zstd.Decoder
 		if dec, err = zstd.NewReader(b); err != nil {
 			return nil, err
 		}
-		s.Reader = dec
+		s.ReadCloser = dec.IOReadCloser()
 	}
 
 	return &s, nil

@@ -145,6 +145,8 @@ func (fsm *FSM) Restore(snapshot io.ReadCloser) (err error) {
 		level.Error(fsm.logger).Log("msg", "failed to create snapshot reader", "err", err)
 		return err
 	}
+	// The wrapper never returns errors on Close.
+	defer r.Close()
 
 	// Block all new transactions until we restore the snapshot.
 	// TODO(kolesnikovae): set not-serving service status to not
