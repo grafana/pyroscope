@@ -133,29 +133,40 @@ func (fsm *FSM) restore() error {
 // Restore restores the FSM state from a snapshot.
 func (fsm *FSM) Restore(snapshot io.ReadCloser) (err error) {
 	start := time.Now()
-	_ = level.Info(fsm.logger).Log("msg", "restoring snapshot")
+	level.Info(fsm.logger).Log("msg", "restoring snapshot")
 	defer func() {
 		_ = snapshot.Close()
 		fsm.db.metrics.fsmRestoreSnapshotDuration.Observe(time.Since(start).Seconds())
 	}()
+
+	level.Info(fsm.logger).Log("msg", "restoring snapshot")
+	var r *snapshotReader
+	if r, err = newSnapshotReader(snapshot); err != nil {
+		level.Error(fsm.logger).Log("msg", "failed to create snapshot reader", "err", err)
+		return err
+	}
+
 	// Block all new transactions until we restore the snapshot.
 	// TODO(kolesnikovae): set not-serving service status to not
 	//  block incoming requests.
 	fsm.mu.Lock()
 	defer fsm.mu.Unlock()
 	fsm.txns.Wait()
-	if err = fsm.db.restore(snapshot); err != nil {
-		return fmt.Errorf("failed to restore database from snapshot: %w", err)
+	if err = fsm.db.restore(r); err != nil {
+		level.Error(fsm.logger).Log("msg", "failed to restore database from snapshot", "err", err)
+		return err
 	}
 	// First we need to initialize the state: each restorer is called
 	// synchronously and has exclusive access to the database.
 	if err = fsm.init(); err != nil {
-		return fmt.Errorf("failed to init state at restore: %w", err)
+		level.Error(fsm.logger).Log("msg", "failed to init state at restore", "err", err)
+		return err
 	}
 	// Then we restore the state: each restorer is given its own
 	// transaction and run concurrently with others.
 	if err = fsm.restore(); err != nil {
-		return fmt.Errorf("failed to restore state from snapshot: %w", err)
+		level.Error(fsm.logger).Log("msg", "failed to restore state from snapshot", "err", err)
+		return err
 	}
 	return nil
 }

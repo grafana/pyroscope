@@ -1,13 +1,17 @@
 package fsm
 
 import (
+	"bufio"
+	"bytes"
 	"context"
+	"io"
 	"runtime/pprof"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/hashicorp/raft"
+	"github.com/klauspost/compress/zstd"
 	"go.etcd.io/bbolt"
 )
 
@@ -39,9 +43,23 @@ func (s *snapshot) Persist(sink raft.SnapshotSink) (err error) {
 		}
 	}()
 
+	// We do not want to bog down the CPU with compression: we are fine with
+	// slowing down the snapshotting process, as it potentially may affect the
+	// WAL writes if they are located on the same disk.
 	level.Info(s.logger).Log("msg", "persisting snapshot")
+	var enc *zstd.Encoder
+	if enc, err = zstd.NewWriter(sink, zstd.WithEncoderConcurrency(1)); err != nil {
+		level.Error(s.logger).Log("msg", "failed to create zstd encoder", "err", err)
+		return err
+	}
+	defer func() {
+		if err = enc.Close(); err != nil {
+			level.Error(s.logger).Log("msg", "zstd compression failed", "err", err)
+		}
+	}()
+
 	var n int64
-	n, err = s.tx.WriteTo(sink)
+	n, err = s.tx.WriteTo(enc)
 	s.metrics.boltDBPersistSnapshotSize.Set(float64(n))
 	if err != nil {
 		level.Error(s.logger).Log("msg", "failed to write snapshot", "err", err)
@@ -54,4 +72,29 @@ func (s *snapshot) Release() {
 		// This is an in-memory rollback, no error expected.
 		_ = s.tx.Rollback()
 	}
+}
+
+type snapshotReader struct {
+	io.Reader
+}
+
+var zstdMagic = []byte{0xFD, 0x2F, 0xB5, 0x28}
+
+func newSnapshotReader(snapshot io.ReadCloser) (*snapshotReader, error) {
+	b := bufio.NewReader(snapshot)
+	magic, err := b.Peek(4)
+	if err != nil {
+		return nil, err
+	}
+
+	s := snapshotReader{Reader: io.NopCloser(b)}
+	if bytes.Equal(magic, zstdMagic) {
+		var dec *zstd.Decoder
+		if dec, err = zstd.NewReader(b); err != nil {
+			return nil, err
+		}
+		s.Reader = dec
+	}
+
+	return &s, nil
 }
