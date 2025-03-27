@@ -92,7 +92,7 @@ endif
 .PHONY: examples/test
 examples/test: RUN := .*
 examples/test: $(BIN)/gotestsum
-	$(BIN)/gotestsum --format testname --rerun-fails=2 -- --count 1 --timeout 1h --tags examples -run "$(RUN)" ./examples
+	$(BIN)/gotestsum --format testname --rerun-fails=2 -- --count 1 --parallel 2 --timeout 1h --tags examples -run "$(RUN)" ./examples
 
 .PHONY: build
 build: frontend/build go/bin ## Do a production build (requiring the frontend build to be present)
