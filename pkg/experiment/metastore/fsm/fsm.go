@@ -280,7 +280,7 @@ func (fsm *FSM) Read(fn func(*bbolt.Tx)) error {
 func (fsm *FSM) Snapshot() (raft.FSMSnapshot, error) {
 	// Snapshot should only capture a pointer to the state, and any
 	// expensive IO should happen as part of FSMSnapshot.Persist.
-	s := snapshot{logger: fsm.logger, metrics: fsm.metrics}
+	s := snapshotWriter{logger: fsm.logger, metrics: fsm.metrics}
 	tx, err := fsm.db.boltdb.Begin(false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open a transaction for snapshot: %w", err)

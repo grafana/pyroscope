@@ -15,13 +15,13 @@ import (
 	"go.etcd.io/bbolt"
 )
 
-type snapshot struct {
+type snapshotWriter struct {
 	logger  log.Logger
 	tx      *bbolt.Tx
 	metrics *metrics
 }
 
-func (s *snapshot) Persist(sink raft.SnapshotSink) (err error) {
+func (s *snapshotWriter) Persist(sink raft.SnapshotSink) (err error) {
 	ctx := context.Background()
 	pprof.SetGoroutineLabels(pprof.WithLabels(ctx, pprof.Labels("metastore_op", "persist")))
 	defer pprof.SetGoroutineLabels(ctx)
@@ -67,7 +67,7 @@ func (s *snapshot) Persist(sink raft.SnapshotSink) (err error) {
 	return err
 }
 
-func (s *snapshot) Release() {
+func (s *snapshotWriter) Release() {
 	if s.tx != nil {
 		// This is an in-memory rollback, no error expected.
 		_ = s.tx.Rollback()
@@ -78,7 +78,7 @@ type snapshotReader struct {
 	io.ReadCloser
 }
 
-var zstdMagic = []byte{0xFD, 0x2F, 0xB5, 0x28}
+var zstdMagic = []byte{0x28, 0xB5, 0x2F, 0xFD}
 
 func newSnapshotReader(snapshot io.ReadCloser) (*snapshotReader, error) {
 	b := bufio.NewReader(snapshot)

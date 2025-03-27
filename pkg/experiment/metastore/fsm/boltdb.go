@@ -127,7 +127,7 @@ func (db *boltdb) restore(snapshot io.Reader) error {
 			}
 		}
 		restored.shutdown()
-		err = os.RemoveAll(restored.path)
+		_ = os.RemoveAll(restored.path)
 	}
 	if err != nil {
 		return fmt.Errorf("failed to restore snapshot: %w", err)
