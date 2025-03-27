@@ -96,11 +96,11 @@ func (q *QueryFrontend) Query(
 	// TODO(kolesnikovae): Should be dynamic.
 	p := queryplan.Build(blocks, 4, 20)
 
-	needsSymbolization := false
+	hasNativeProfiles := false
 	if q.symbolizer != nil {
 		for _, block := range blocks {
-			if q.symbolizationNeeded(block) {
-				needsSymbolization = true
+			if q.hasNativeProfiles(block) {
+				hasNativeProfiles = true
 				break
 			}
 		}
@@ -112,7 +112,7 @@ func (q *QueryFrontend) Query(
 		modifiedQueries[i] = proto.Clone(originalQuery).(*queryv1.Query)
 
 		// If we need symbolization and this is a TREE query, convert it to PPROF
-		if needsSymbolization && originalQuery.QueryType == queryv1.QueryType_QUERY_TREE {
+		if hasNativeProfiles && originalQuery.QueryType == queryv1.QueryType_QUERY_TREE {
 			modifiedQueries[i].QueryType = queryv1.QueryType_QUERY_PPROF
 			modifiedQueries[i].Pprof = &queryv1.PprofQuery{
 				MaxNodes: 0,
@@ -134,17 +134,17 @@ func (q *QueryFrontend) Query(
 		return nil, err
 	}
 
-	if needsSymbolization && q.symbolizer != nil {
+	if hasNativeProfiles && q.symbolizer != nil {
 		for i, r := range resp.Reports {
 			if r.Pprof != nil && r.Pprof.Pprof != nil {
 				var prof profilev1.Profile
 				if err := pprof.Unmarshal(r.Pprof.Pprof, &prof); err != nil {
-					level.Error(q.logger).Log("msg", "Unmarshal needsSymbolization", "error", err)
+					level.Error(q.logger).Log("msg", "unmarshal pprof", "err", err)
 					continue
 				}
 
 				if err := q.symbolizer.SymbolizePprof(ctx, &prof); err != nil {
-					level.Error(q.logger).Log("msg", "SymbolizePprof needsSymbolization", "error", err)
+					level.Error(q.logger).Log("msg", "symbolize pprof", "err", err)
 				}
 
 				// Convert back to tree if originally a tree
@@ -192,7 +192,7 @@ func (q *QueryFrontend) QueryMetadata(
 		TenantId:  tenants,
 		StartTime: req.StartTime,
 		EndTime:   req.EndTime,
-		Labels:    []string{metadata.LabelNameNeedsSymbolization},
+		Labels:    []string{metadata.LabelNameHasNativeProfiles},
 	}
 
 	// Delete all matchers but service_name with strict match. If no matchers
@@ -222,21 +222,20 @@ func (q *QueryFrontend) QueryMetadata(
 	return md.Blocks, nil
 }
 
-// symbolizationNeeded checks if a block needs symbolization
-func (q *QueryFrontend) symbolizationNeeded(block *metastorev1.BlockMeta) bool {
-	matcher, err := labels.NewMatcher(labels.MatchEqual, metadata.LabelNameNeedsSymbolization, "true")
+// hasNativeProfiles checks if a block has native profiles
+func (q *QueryFrontend) hasNativeProfiles(block *metastorev1.BlockMeta) bool {
+	matcher, err := labels.NewMatcher(labels.MatchEqual, metadata.LabelNameHasNativeProfiles, "true")
 	if err != nil {
 		return false
 	}
 
 	datasetFinder := metadata.FindDatasets(block, matcher)
 
-	// Check if any dataset matches
-	needsSymbolization := false
+	hasNativeProfiles := false
 	datasetFinder(func(ds *metastorev1.Dataset) bool {
-		needsSymbolization = true
+		hasNativeProfiles = true
 		return false
 	})
 
-	return needsSymbolization
+	return hasNativeProfiles
 }
