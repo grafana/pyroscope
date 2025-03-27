@@ -69,7 +69,8 @@ type Index struct {
 	config *Config
 	store  Store
 
-	mu               sync.Mutex
+	global           sync.Mutex
+	replace          sync.RWMutex
 	loadedPartitions map[tenantPartitionKey]*indexPartition
 	partitions       []*store.Partition
 }
@@ -87,6 +88,7 @@ type indexPartition struct {
 }
 
 type indexShard struct {
+	mu     sync.RWMutex
 	blocks map[string]*metastorev1.BlockMeta
 	*store.TenantShard
 }
@@ -126,8 +128,8 @@ func (i *Index) Init(tx *bbolt.Tx) error {
 }
 
 func (i *Index) Restore(tx *bbolt.Tx) error {
-	i.mu.Lock()
-	defer i.mu.Unlock()
+	i.global.Lock()
+	defer i.global.Unlock()
 
 	i.partitions = nil
 	clear(i.loadedPartitions)
@@ -189,19 +191,14 @@ func (i *Index) loadPartition(tx *bbolt.Tx, p *store.Partition) error {
 }
 
 func (i *Index) InsertBlock(tx *bbolt.Tx, b *metastorev1.BlockMeta) error {
-	i.mu.Lock()
-	defer i.mu.Unlock()
-	return i.insertBlock(tx, b)
-}
-
-// insertBlock is the underlying implementation for inserting blocks. It is the caller's responsibility to enforce safe
-// concurrent access. The method will create a new partition if needed.
-func (i *Index) insertBlock(tx *bbolt.Tx, b *metastorev1.BlockMeta) error {
+	i.global.Lock()
 	p := i.getOrCreatePartition(b)
 	shard, err := i.getOrCreateTenantShard(tx, p, metadata.Tenant(b), b.Shard)
 	if err != nil {
+		i.global.Unlock()
 		return err
 	}
+	i.global.Unlock()
 	return shard.insert(tx, i.store, b)
 }
 
@@ -220,6 +217,7 @@ func (i *Index) getOrCreatePartition(b *metastorev1.BlockMeta) *store.Partition 
 
 func (i *Index) findPartition(key store.PartitionKey) *store.Partition {
 	for _, p := range i.partitions {
+		// TODO: Binary search.
 		if p.Key.Equal(key) {
 			return p
 		}
@@ -255,28 +253,33 @@ func (i *Index) getOrCreateTenantShard(tx *bbolt.Tx, p *store.Partition, tenant 
 }
 
 func (i *Index) FindBlocks(tx *bbolt.Tx, list *metastorev1.BlockList) ([]*metastorev1.BlockMeta, error) {
-	i.mu.Lock()
-	defer i.mu.Unlock()
+	partitionedLists := i.partitionedList(list)
 	metas := make([]*metastorev1.BlockMeta, 0, len(list.Blocks))
-	for k, partitioned := range i.partitionedList(list) {
-		p := i.findPartition(k)
-		if p == nil {
-			continue
-		}
-		s, err := i.getOrLoadTenantShard(tx, p, partitioned.Tenant, partitioned.Shard)
+	var err error
+	for k, partitioned := range partitionedLists {
+		var s *indexShard
+		s, err = i.findIndexShard(tx, k, partitioned)
 		if err != nil {
 			return nil, err
 		}
-		if s == nil {
-			continue
-		}
-		for _, b := range partitioned.Blocks {
-			if md := s.getBlock(b); md != nil {
-				metas = append(metas, md)
-			}
+		if s != nil {
+			metas = s.collectBlocks(metas, partitioned.Blocks...)
 		}
 	}
 	return metas, nil
+}
+
+func (i *Index) findIndexShard(
+	tx *bbolt.Tx,
+	key store.PartitionKey,
+	list *metastorev1.BlockList,
+) (*indexShard, error) {
+	i.global.Lock()
+	defer i.global.Unlock()
+	if p := i.findPartition(key); p != nil {
+		return i.getOrLoadTenantShard(tx, p, list.Tenant, list.Shard)
+	}
+	return nil, nil
 }
 
 func (i *Index) partitionedList(list *metastorev1.BlockList) map[store.PartitionKey]*metastorev1.BlockList {
@@ -297,8 +300,8 @@ func (i *Index) partitionedList(list *metastorev1.BlockList) map[store.Partition
 	return partitions
 }
 
+// getOrLoadTenantShard must be called with the global lock held.
 func (i *Index) getOrLoadTenantShard(tx *bbolt.Tx, p *store.Partition, tenant string, shard uint32) (*indexShard, error) {
-	// Check if we've seen any data for the tenant shard at all.
 	shards, ok := p.TenantShards[tenant]
 	if !ok {
 		return nil, nil
@@ -309,7 +312,7 @@ func (i *Index) getOrLoadTenantShard(tx *bbolt.Tx, p *store.Partition, tenant st
 	k := tenantPartitionKey{partition: p.Key, tenant: tenant}
 	partition, ok := i.loadedPartitions[k]
 	if !ok {
-		// Read from store.
+		// Read from the store.
 		partition = newIndexPartition(p, tenant)
 		if err := partition.loadTenant(tx, i.store, tenant); err != nil {
 			return nil, err
@@ -327,21 +330,29 @@ func (i *Index) getOrLoadTenantShard(tx *bbolt.Tx, p *store.Partition, tenant st
 // ReplaceBlocks removes source blocks from the index and inserts replacement blocks into the index. The intended usage
 // is for block compaction. The replacement blocks could be added to the same or a different partition.
 func (i *Index) ReplaceBlocks(tx *bbolt.Tx, compacted *metastorev1.CompactedBlocks) error {
-	i.mu.Lock()
-	defer i.mu.Unlock()
+	// We need to ensure that the replacement is atomic, but it spans multiple
+	// partitions (and, thus, shards), therefore we need to ensure that the
+	// call is synchronous with queries that also span multiple partitions.
+	i.replace.Lock()
+	defer i.replace.Unlock()
+	// This is meant to be a relatively rare (tens per second) and not very slow
+	// operation, therefore taking a lock here should not affect insertion.
+	i.global.Lock()
+	defer i.global.Unlock()
 	for _, b := range compacted.NewBlocks {
-		if err := i.insertBlock(tx, b); err != nil {
-			if errors.Is(err, ErrBlockExists) {
-				continue
-			}
+		p := i.getOrCreatePartition(b)
+		shard, err := i.getOrCreateTenantShard(tx, p, metadata.Tenant(b), b.Shard)
+		if err != nil {
+			return err
+		}
+		switch err = shard.insert(tx, i.store, b); {
+		case err == nil:
+		case errors.Is(err, ErrBlockExists):
+		default:
 			return err
 		}
 	}
-	return i.deleteBlockList(tx, compacted.SourceBlocks)
-}
-
-func (i *Index) deleteBlockList(tx *bbolt.Tx, list *metastorev1.BlockList) error {
-	for k, partitioned := range i.partitionedList(list) {
+	for k, partitioned := range i.partitionedList(compacted.SourceBlocks) {
 		if err := i.store.DeleteBlockList(tx, k, partitioned); err != nil {
 			return err
 		}
@@ -356,9 +367,9 @@ func (i *Index) deleteBlockList(tx *bbolt.Tx, list *metastorev1.BlockList) error
 		if s == nil {
 			continue
 		}
-		for _, b := range partitioned.Blocks {
-			delete(s.blocks, b)
-		}
+		// Shards might be accessed without the global lock,
+		// therefore we need to synchronize the access here.
+		s.delete(partitioned.Blocks...)
 	}
 	return nil
 }
@@ -407,8 +418,8 @@ func (i *Index) GetTenantStats(tenant string) *metastorev1.TenantStats {
 		NewestProfileTime: math.MinInt64,
 	}
 
-	i.mu.Lock()
-	defer i.mu.Unlock()
+	i.global.Lock()
+	defer i.global.Unlock()
 
 	for _, p := range i.partitions {
 		if !p.HasTenant(tenant) {
@@ -431,18 +442,14 @@ func (i *Index) GetTenantStats(tenant string) *metastorev1.TenantStats {
 	return stats
 }
 
-// TODO(kolesnikovae): We query meta with the mutex held, which
-//  will cause contention and latency issues. Fix it once we make
-//  locks more granular (partition-tenant-shard level).
-
 func (i *Index) QueryMetadata(tx *bbolt.Tx, query MetadataQuery) iter.Iterator[*metastorev1.BlockMeta] {
 	q, err := newMetadataQuery(i, query)
 	if err != nil {
 		return iter.NewErrIterator[*metastorev1.BlockMeta](err)
 	}
-	i.mu.Lock()
+	i.replace.RLock()
 	metas, err := iter.Slice[*metastorev1.BlockMeta](newBlockMetadataIterator(tx, q))
-	i.mu.Unlock()
+	i.replace.RUnlock()
 	if err != nil {
 		return iter.NewErrIterator[*metastorev1.BlockMeta](err)
 	}
@@ -454,9 +461,9 @@ func (i *Index) QueryMetadataLabels(tx *bbolt.Tx, query MetadataQuery) ([]*types
 	if err != nil {
 		return nil, err
 	}
-	i.mu.Lock()
+	i.replace.RLock()
 	r, err := newMetadataLabelQuerier(tx, q).queryLabels()
-	i.mu.Unlock()
+	i.replace.RUnlock()
 	if err != nil {
 		return nil, err
 	}
@@ -497,6 +504,8 @@ func newIndexShard(s *store.TenantShard) *indexShard {
 }
 
 func (s *indexShard) insert(tx *bbolt.Tx, x Store, md *metastorev1.BlockMeta) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if _, ok := s.blocks[md.Id]; ok {
 		return ErrBlockExists
 	}
@@ -504,12 +513,25 @@ func (s *indexShard) insert(tx *bbolt.Tx, x Store, md *metastorev1.BlockMeta) er
 	return x.StoreBlock(tx, s.TenantShard, md)
 }
 
-func (s *indexShard) getBlock(blockID string) *metastorev1.BlockMeta {
-	md, ok := s.blocks[blockID]
-	if !ok {
-		return nil
+func (s *indexShard) delete(blocks ...string) {
+	s.mu.Lock()
+	for _, b := range blocks {
+		delete(s.blocks, b)
 	}
-	mdCopy := md.CloneVT()
-	s.TenantShard.StringTable.Export(mdCopy)
-	return mdCopy
+	s.mu.Unlock()
+}
+
+func (s *indexShard) collectBlocks(dst []*metastorev1.BlockMeta, blocks ...string) []*metastorev1.BlockMeta {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for _, b := range blocks {
+		md, ok := s.blocks[b]
+		if !ok {
+			continue
+		}
+		mdCopy := md.CloneVT()
+		s.TenantShard.StringTable.Export(mdCopy)
+		dst = append(dst, mdCopy)
+	}
+	return dst
 }
