@@ -23,7 +23,7 @@ type PlacementStats interface {
 }
 
 type IndexBlockFinder interface {
-	FindBlocks(*bbolt.Tx, *metastorev1.BlockList) ([]*metastorev1.BlockMeta, error)
+	GetBlocks(*bbolt.Tx, *metastorev1.BlockList) ([]*metastorev1.BlockMeta, error)
 }
 
 func NewIndexService(
@@ -104,7 +104,7 @@ func (svc *IndexService) GetBlockMetadata(
 }
 
 func (svc *IndexService) getBlockMetadata(tx *bbolt.Tx, list *metastorev1.BlockList) (*metastorev1.GetBlockMetadataResponse, error) {
-	found, err := svc.index.FindBlocks(tx, list)
+	found, err := svc.index.GetBlocks(tx, list)
 	if err != nil {
 		return nil, err
 	}
