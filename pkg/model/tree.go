@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strconv"
 	"strings"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -445,106 +446,56 @@ func UnmarshalTree(b []byte) (*Tree, error) {
 	return t, nil
 }
 
-// ConvertProfileToTree converts a pprof profile to a tree format with maxNodes limit
-func ConvertProfileToTree(profile *profilev1.Profile, maxNodes int64) ([]byte, error) {
-	// Create a new tree
-	tree := &Tree{}
+// TreeFromBackendProfile is a wrapper...
+func TreeFromBackendProfile(profile *profilev1.Profile, maxNodes int64) []byte {
+	return TreeFromBackendProfileSampleType(profile, maxNodes, 0)
+}
 
-	// Build a map of location IDs to locations for faster lookup
-	locationMap := make(map[uint64]*profilev1.Location, len(profile.Location))
-	for _, loc := range profile.Location {
-		locationMap[loc.Id] = loc
-	}
+// TreeFromBackendProfileSampleType converts a pprof profile to a tree format with maxNodes limit
+func TreeFromBackendProfileSampleType(profile *profilev1.Profile, maxNodes int64, sampleType int) []byte {
+	t := NewStacktraceTree(int(maxNodes * 2))
 
-	mappingMap := make(map[uint64]*profilev1.Mapping, len(profile.Mapping))
-	for _, mapping := range profile.Mapping {
-		mappingMap[mapping.Id] = mapping
-	}
+	stack := make([]int32, 0, 64)
+	m := make(map[uint64]int32)
 
-	// Build a map of function IDs to functions for faster lookup
-	functionMap := make(map[uint64]*profilev1.Function, len(profile.Function))
-	for i, fn := range profile.Function {
-		// Map by the function's own ID
-		functionMap[fn.Id] = fn
-		// ALSO map by position+1 (common pprof convention)
-		functionMap[uint64(i+1)] = fn
-	}
-
-	// Default to the last sample value (usually "samples" in CPU profiles)
-	valueType := len(profile.SampleType) - 1
-	if valueType < 0 {
-		valueType = 0
-	}
-
-	// If DefaultSampleType is specified, find the corresponding sample type
-	if profile.DefaultSampleType > 0 && int(profile.DefaultSampleType) < len(profile.StringTable) {
-		defaultTypeName := profile.StringTable[profile.DefaultSampleType]
-		// Find the sample type index that matches the default type name
-		for i, st := range profile.SampleType {
-			if st.Type >= 0 && int(st.Type) < len(profile.StringTable) {
-				if profile.StringTable[st.Type] == defaultTypeName {
-					valueType = i
-					break
-				}
-			}
-		}
-	}
-
-	validSamples := 0
-	totalValue := int64(0)
-	validStacks := 0
-
-	for _, sample := range profile.Sample {
-		// Skip samples with no value
-		if len(sample.Value) <= valueType {
-			continue
-		}
-
-		// Get the value from the sample
-		value := sample.Value[valueType]
-		if value <= 0 {
-			continue
-		}
-
-		validSamples++
-		totalValue += value
-
-		// Build the stack from the locations
-		stack := make([]string, 0, len(sample.LocationId))
-
-		// Process locations in reverse order (root to leaf)
-		for i := len(sample.LocationId) - 1; i >= 0; i-- {
-			locID := sample.LocationId[i]
-			loc, exists := locationMap[locID]
-			if !exists {
+	for i := range profile.Sample {
+		stack = stack[:0]
+		for j := range profile.Sample[i].LocationId {
+			// Check if location ID is valid and Location slice exists
+			locIdx := int(profile.Sample[i].LocationId[j]) - 1
+			if locIdx < 0 || len(profile.Location) <= locIdx {
 				continue
 			}
 
-			// Get function name from the location
-			funcName := fmt.Sprintf("0x%x", loc.Address)
-			if m, ok := mappingMap[loc.MappingId]; ok {
-				funcName = profile.StringTable[m.Filename] + "!" + funcName
-			}
-			if len(loc.Line) > 0 && loc.Line[0].FunctionId != 0 {
-				if fn, exists := functionMap[loc.Line[0].FunctionId]; exists {
-					// Get the function name from the string table
-					if fn.Name >= 0 && int(fn.Name) < len(profile.StringTable) {
-						funcName = profile.StringTable[fn.Name]
-					}
+			loc := profile.Location[locIdx]
+			if len(loc.Line) > 0 {
+				//if len(loc.Line) >= 0 {
+				for l := range loc.Line {
+					stack = append(stack, int32(profile.Function[loc.Line[l].FunctionId-1].Name))
 				}
+				continue
 			}
-
-			stack = append(stack, funcName)
+			addr, ok := m[loc.Address]
+			if !ok {
+				// We assume that the string table does not contain the address string.
+				// We do not want to check all the values.
+				addr = int32(len(profile.StringTable))
+				profile.StringTable = append(profile.StringTable, strconv.FormatInt(int64(loc.Address), 16))
+				m[loc.Address] = addr
+			}
+			stack = append(stack, addr)
 		}
-
-		// Insert the stack into the tree
-		if len(stack) > 0 {
-			//slices.Reverse(stack)
-			tree.InsertStack(value, stack...)
-			validStacks++
+		// Bounds check for sample Value
+		if sampleType < len(profile.Sample[i].Value) {
+			t.Insert(stack, profile.Sample[i].Value[sampleType])
+		} else {
+			// Use 0 as fallback
+			t.Insert(stack, 0)
 		}
 	}
 
-	// Serialize the tree with maxNodes limit
-	return tree.Bytes(maxNodes), nil
+	b := bytes.NewBuffer(nil)
+	b.Grow(100 << 10)
+	t.Bytes(b, maxNodes, profile.StringTable)
+	return b.Bytes()
 }
