@@ -16,9 +16,11 @@ import (
 )
 
 type snapshotWriter struct {
-	logger  log.Logger
-	tx      *bbolt.Tx
-	metrics *metrics
+	logger      log.Logger
+	tx          *bbolt.Tx
+	metrics     *metrics
+	compression string
+	written     int64
 }
 
 func (s *snapshotWriter) Persist(sink raft.SnapshotSink) (err error) {
@@ -43,28 +45,45 @@ func (s *snapshotWriter) Persist(sink raft.SnapshotSink) (err error) {
 		}
 	}()
 
-	// We do not want to bog down the CPU with compression: we are fine with
-	// slowing down the snapshotting process, as it potentially may affect the
-	// WAL writes if they are located on the same disk.
-	level.Info(s.logger).Log("msg", "persisting snapshot")
-	var enc *zstd.Encoder
-	if enc, err = zstd.NewWriter(sink, zstd.WithEncoderConcurrency(1)); err != nil {
-		level.Error(s.logger).Log("msg", "failed to create zstd encoder", "err", err)
+	var dst io.Writer
+	// Needed to measure the actual snapshot size written to the sink.
+	w := &writeCounter{Writer: sink}
+	if s.compression == "zstd" {
+		// We do not want to bog down the CPU with compression: we are fine with
+		// slowing down the snapshotting process, as it potentially may affect the
+		// WAL writes if they are located on the same disk.
+		var enc *zstd.Encoder
+		if enc, err = zstd.NewWriter(w, zstd.WithEncoderConcurrency(1)); err != nil {
+			level.Error(s.logger).Log("msg", "failed to create zstd encoder", "err", err)
+			return err
+		}
+		dst = enc
+		defer func() {
+			if err = enc.Close(); err != nil {
+				level.Error(s.logger).Log("msg", "zstd compression failed", "err", err)
+			}
+		}()
+	}
+
+	level.Info(s.logger).Log("msg", "persisting snapshot", "compression", s.compression)
+	if _, err = s.tx.WriteTo(dst); err != nil {
+		level.Error(s.logger).Log("msg", "failed to write snapshot", "err", err)
 		return err
 	}
-	defer func() {
-		if err = enc.Close(); err != nil {
-			level.Error(s.logger).Log("msg", "zstd compression failed", "err", err)
-		}
-	}()
 
-	var n int64
-	n, err = s.tx.WriteTo(enc)
-	s.metrics.boltDBPersistSnapshotSize.Set(float64(n))
-	if err != nil {
-		level.Error(s.logger).Log("msg", "failed to write snapshot", "err", err)
-	}
-	return err
+	s.metrics.boltDBPersistSnapshotSize.Set(float64(w.written))
+	return nil
+}
+
+type writeCounter struct {
+	io.Writer
+	written int64
+}
+
+func (w *writeCounter) Write(p []byte) (int, error) {
+	n, err := w.Writer.Write(p)
+	w.written += int64(n)
+	return n, err
 }
 
 func (s *snapshotWriter) Release() {

@@ -19,7 +19,7 @@ const (
 	boltDBCompactedName   = "metastore_compacted.boltdb"
 	boltDBInitialMmapSize = 1 << 30
 
-	boltDBCompactionMaxTxnSize = 64 << 10
+	boltDBCompactionMaxTxnSize = 1 << 20
 )
 
 type boltdb struct {

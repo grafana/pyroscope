@@ -3,6 +3,7 @@ package fsm
 import (
 	"context"
 	"encoding/binary"
+	"flag"
 	"fmt"
 	"io"
 	"strconv"
@@ -36,9 +37,22 @@ type StateRestorer interface {
 	Restore(*bbolt.Tx) error
 }
 
+type Config struct {
+	SnapshotCompression string `yaml:"snapshot_compression"`
+	// Where the FSM BoltDB data is located.
+	// Does not have to be a persistent volume.
+	DataDir string `yaml:"data_dir"`
+}
+
+func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
+	f.StringVar(&cfg.SnapshotCompression, prefix+"snapshot-compression", "zstd", "Compression algorithm to use for snapshots. Supported compressions: zstd.")
+	f.StringVar(&cfg.DataDir, prefix+"data-dir", "./data-metastore/data", "Directory to store the data.")
+}
+
 // FSM implements the raft.FSM interface.
 type FSM struct {
 	logger  log.Logger
+	config  Config
 	metrics *metrics
 
 	mu   sync.RWMutex
@@ -54,13 +68,14 @@ type FSM struct {
 
 type handler func(tx *bbolt.Tx, cmd *raft.Log, raw []byte) (proto.Message, error)
 
-func New(logger log.Logger, reg prometheus.Registerer, dir string) (*FSM, error) {
+func New(logger log.Logger, reg prometheus.Registerer, config Config) (*FSM, error) {
 	fsm := FSM{
 		logger:   logger,
+		config:   config,
 		metrics:  newMetrics(reg),
 		handlers: make(map[RaftLogEntryType]handler),
 	}
-	db := newDB(logger, fsm.metrics, dir)
+	db := newDB(logger, fsm.metrics, config.DataDir)
 	if err := db.open(false); err != nil {
 		return nil, err
 	}
@@ -280,7 +295,11 @@ func (fsm *FSM) Read(fn func(*bbolt.Tx)) error {
 func (fsm *FSM) Snapshot() (raft.FSMSnapshot, error) {
 	// Snapshot should only capture a pointer to the state, and any
 	// expensive IO should happen as part of FSMSnapshot.Persist.
-	s := snapshotWriter{logger: fsm.logger, metrics: fsm.metrics}
+	s := snapshotWriter{
+		logger:      fsm.logger,
+		metrics:     fsm.metrics,
+		compression: fsm.config.SnapshotCompression,
+	}
 	tx, err := fsm.db.boltdb.Begin(false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open a transaction for snapshot: %w", err)
