@@ -214,6 +214,9 @@ func TestDockerComposeBuildRun(t *testing.T) {
 
 	for i := range envs {
 		t.Run(envs[i].dir, func(t *testing.T) {
+			if envs[i].dir == "grafana-alloy-auto-instrumentation/ebpf-otel/docker" {
+				t.Skip("skipping test for grafana-alloy-auto-instrumentation/ebpf-otel/docker, as it uses more disk than the machine has")
+			}
 			e := envs[i]
 			t.Parallel()
 			ctx, cancel := context.WithTimeout(ctx, timeoutPerExample)
