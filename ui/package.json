@@ -9,6 +9,8 @@
     "format": "eslint . --fix"
   },
   "dependencies": {
+    "@grafana/data": "^11.6.0",
+    "@grafana/ui": "^11.6.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
