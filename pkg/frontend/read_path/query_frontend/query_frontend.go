@@ -2,6 +2,7 @@ package query_frontend
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"slices"
 
@@ -147,13 +148,14 @@ func (q *QueryFrontend) Query(
 
 				// Convert back to tree if originally a tree
 				if i < len(req.Query) && req.Query[i].QueryType == queryv1.QueryType_QUERY_TREE {
-					treeBytes, err := model.ConvertProfileToTree(&prof, req.Query[i].Tree.MaxNodes)
-					if err == nil {
-						// Store the tree result
-						r.Tree = &queryv1.TreeReport{Tree: treeBytes}
-						r.ReportType = queryv1.ReportType_REPORT_TREE
-						r.Pprof = nil
+					if len(prof.SampleType) > 1 {
+						return nil, fmt.Errorf("multiple sample types not supported")
 					}
+					treeBytes := model.TreeFromBackendProfile(&prof, req.Query[i].Tree.MaxNodes)
+					// Store the tree result
+					r.Tree = &queryv1.TreeReport{Tree: treeBytes}
+					r.ReportType = queryv1.ReportType_REPORT_TREE
+					r.Pprof = nil
 				} else {
 					symbolizedBytes, err := pprof.Marshal(&prof, true)
 					if err == nil {
