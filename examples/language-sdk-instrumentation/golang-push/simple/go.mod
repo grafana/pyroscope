@@ -1,8 +1,7 @@
 module pushsimple
 
-go 1.22
+go 1.23.0
 
-toolchain go1.22.9
 
 require github.com/grafana/pyroscope-go v1.2.0
 
