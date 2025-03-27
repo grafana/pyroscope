@@ -243,7 +243,7 @@ func TestAWSSTSWebIdentity(t *testing.T) {
 			case "https://eu-central-1.amazonaws.com/pyroscope-test-bucket/test":
 				assert.Equal(t, "GET", r.Method)
 				assert.Contains(t, r.Header.Get("Authorization"), "AWS4-HMAC-SHA256 Credential=test-key")
-				w.Header().Set("Last-Modified", time.Now().Format(time.RFC1123))
+				w.Header().Set("Last-Modified", time.Now().Format("Mon, 2 Jan 2006 15:04:05 GMT"))
 				w.WriteHeader(200)
 				_, err := w.Write([]byte("test"))
 				require.NoError(t, err)
