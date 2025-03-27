@@ -19,7 +19,7 @@ const (
 	boltDBCompactedName   = "metastore_compacted.boltdb"
 	boltDBInitialMmapSize = 1 << 30
 
-	boltDBCompactionMaxTxnSize = 64 << 10
+	boltDBCompactionMaxTxnSize = 1 << 20
 )
 
 type boltdb struct {
@@ -127,7 +127,7 @@ func (db *boltdb) restore(snapshot io.Reader) error {
 			}
 		}
 		restored.shutdown()
-		err = os.RemoveAll(restored.path)
+		_ = os.RemoveAll(restored.path)
 	}
 	if err != nil {
 		return fmt.Errorf("failed to restore snapshot: %w", err)

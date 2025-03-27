@@ -53,7 +53,7 @@ func NewMetastoreSet(t *testing.T, cfg *metastore.Config, n int, bucket objstore
 		icfg := *cfg
 		icfg.MinReadyDuration = 0
 		icfg.Address = grpcAddresses[i]
-		icfg.DataDir = t.TempDir()
+		icfg.FSM.DataDir = t.TempDir()
 		icfg.Raft.ServerID = raftIds[i]
 		icfg.Raft.Dir = t.TempDir()
 		icfg.Raft.AdvertiseAddress = raftAddresses[i]
