@@ -14,7 +14,6 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/store"
-	"github.com/grafana/pyroscope/pkg/iter"
 	"github.com/grafana/pyroscope/pkg/model"
 )
 
@@ -104,7 +103,7 @@ func newBlockMetadataIterator(tx *bbolt.Tx, q *metadataQuery) *blockMetadataIter
 
 type blockMetadataIterator struct {
 	query  *metadataQuery
-	shards iter.Iterator[*indexShard]
+	shards *shardIterator
 	metas  []*metastorev1.BlockMeta
 	cur    int
 }
@@ -137,6 +136,9 @@ func (mi *blockMetadataIterator) collectBlockMetadata(shard *indexShard) bool {
 	if !matcher.IsValid() {
 		return false
 	}
+	// TODO: move block iterator to the shard implementation.
+	shard.mu.RLock()
+	defer shard.mu.RUnlock()
 	for _, md := range shard.blocks {
 		if m := blockMetadataMatches(mi.query, shard.StringTable, matcher, md); m != nil {
 			mi.metas = append(mi.metas, m)
@@ -214,7 +216,7 @@ func newMetadataLabelQuerier(tx *bbolt.Tx, q *metadataQuery) *metadataLabelQueri
 
 type metadataLabelQuerier struct {
 	query  *metadataQuery
-	shards iter.Iterator[*indexShard]
+	shards *shardIterator
 	labels *model.LabelMerger
 }
 
@@ -240,6 +242,9 @@ func (mi *metadataLabelQuerier) collectLabels(shard *indexShard) {
 	if !m.IsValid() {
 		return
 	}
+	// TODO: move block iterator to the shard implementation.
+	shard.mu.RLock()
+	defer shard.mu.RUnlock()
 	for _, md := range shard.blocks {
 		if !mi.query.overlapsUnixMilli(md.MinTime, md.MaxTime) {
 			continue
@@ -267,9 +272,12 @@ type shardIterator struct {
 	err        error
 }
 
-func newShardIterator(tx *bbolt.Tx, index *Index, startTime, endTime time.Time, tenants ...string) iter.Iterator[*indexShard] {
+func newShardIterator(tx *bbolt.Tx, index *Index, startTime, endTime time.Time, tenants ...string) *shardIterator {
 	startTime = startTime.Add(-index.config.QueryLookaroundPeriod)
 	endTime = endTime.Add(index.config.QueryLookaroundPeriod)
+	// We collect matching shards under a global lock.
+	index.global.Lock()
+	defer index.global.Unlock()
 	si := shardIterator{
 		tx:         tx,
 		partitions: make([]*store.Partition, 0, len(index.partitions)),
@@ -317,7 +325,10 @@ func (si *shardIterator) loadShards(p *store.Partition) {
 			continue
 		}
 		for s := range shards {
+			// Acquiring the shard requires the global lock.
+			si.index.global.Lock()
 			shard, err := si.index.getOrLoadTenantShard(si.tx, p, t, s)
+			si.index.global.Unlock()
 			if err != nil {
 				si.err = err
 				return
