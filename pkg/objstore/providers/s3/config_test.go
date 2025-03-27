@@ -183,7 +183,7 @@ func handleSTSRequest(t *testing.T, r *http.Request, w http.ResponseWriter) {
 	require.Contains(t, string(body), "Action=AssumeRoleWithWebIdentity")
 
 	w.WriteHeader(200)
-	w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
+	_, err = w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
 				<AssumeRoleWithWebIdentityResponse xmlns="https://sts.amazonaws.com/doc/2011-06-15/">
 				  <AssumeRoleWithWebIdentityResult>
 				    <Credentials>
@@ -197,6 +197,7 @@ func handleSTSRequest(t *testing.T, r *http.Request, w http.ResponseWriter) {
 				    <RequestId>test-request-id</RequestId>
 				  </ResponseMetadata>
 				</AssumeRoleWithWebIdentityResponse>`))
+	require.NoError(t, err)
 
 }
 
@@ -244,10 +245,12 @@ func TestAWSSTSWebIdentity(t *testing.T) {
 				assert.Contains(t, r.Header.Get("Authorization"), "AWS4-HMAC-SHA256 Credential=test-key")
 				w.Header().Set("Last-Modified", time.Now().Format(time.RFC1123))
 				w.WriteHeader(200)
-				_, _ = w.Write([]byte("test"))
+				_, err := w.Write([]byte("test"))
+				require.NoError(t, err)
 			default:
 				w.WriteHeader(404)
-				_, _ = w.Write([]byte("unexpected"))
+				_, err := w.Write([]byte("unexpected"))
+				require.NoError(t, err)
 				t.Errorf("unexpected request: %s", r.URL.Host)
 				t.FailNow()
 			}
