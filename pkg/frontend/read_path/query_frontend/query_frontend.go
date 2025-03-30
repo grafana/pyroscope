@@ -146,24 +146,28 @@ func (q *QueryFrontend) Query(
 					continue
 				}
 
-				if err := q.symbolizer.SymbolizePprof(ctx, &prof); err != nil {
-					level.Error(q.logger).Log("msg", "symbolize pprof", "err", err)
-				}
-
-				// Convert back to tree if originally a tree
-				if i < len(req.Query) && req.Query[i].QueryType == queryv1.QueryType_QUERY_TREE {
-					if len(prof.SampleType) > 1 {
-						return nil, fmt.Errorf("multiple sample types not supported")
+				// TODO: check if whether it comes from OTEL!
+				isOTEL := isProfileFromOTEL(&prof)
+				if isOTEL {
+					if err := q.symbolizer.SymbolizePprof(ctx, &prof); err != nil {
+						level.Error(q.logger).Log("msg", "symbolize pprof", "err", err)
 					}
-					treeBytes := model.TreeFromBackendProfile(&prof, req.Query[i].Tree.MaxNodes)
-					// Store the tree result
-					r.Tree = &queryv1.TreeReport{Tree: treeBytes}
-					r.ReportType = queryv1.ReportType_REPORT_TREE
-					r.Pprof = nil
-				} else {
-					symbolizedBytes, err := pprof.Marshal(&prof, true)
-					if err == nil {
-						r.Pprof.Pprof = symbolizedBytes
+
+					// Convert back to tree if originally a tree
+					if i < len(req.Query) && req.Query[i].QueryType == queryv1.QueryType_QUERY_TREE {
+						if len(prof.SampleType) > 1 {
+							return nil, fmt.Errorf("multiple sample types not supported")
+						}
+						treeBytes := model.TreeFromBackendProfile(&prof, req.Query[i].Tree.MaxNodes)
+						// Store the tree result
+						r.Tree = &queryv1.TreeReport{Tree: treeBytes}
+						r.ReportType = queryv1.ReportType_REPORT_TREE
+						r.Pprof = nil
+					} else {
+						symbolizedBytes, err := pprof.Marshal(&prof, true)
+						if err == nil {
+							r.Pprof.Pprof = symbolizedBytes
+						}
 					}
 				}
 			}
@@ -241,4 +245,19 @@ func (q *QueryFrontend) hasNativeProfiles(block *metastorev1.BlockMeta) bool {
 	})
 
 	return hasNativeProfiles
+}
+
+func isProfileFromOTEL(prof *profilev1.Profile) bool {
+	// Check sample labels
+	for _, sample := range prof.Sample {
+		for _, label := range sample.Label {
+			// Get the key and value from string table
+			keyStr := prof.StringTable[label.Key]
+			valStr := prof.StringTable[label.Str]
+			if keyStr == phlaremodel.LabelNameOTEL && valStr == "true" {
+				return true
+			}
+		}
+	}
+	return false
 }
