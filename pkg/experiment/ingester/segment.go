@@ -520,21 +520,6 @@ func (s *segment) ingest(tenantID string, p *profilev1.Profile, id uuid.UUID, la
 	// CountReceivedBytes is tracked in distributors.
 }
 
-func hasSymbols(p *profilev1.Profile) bool {
-	if p == nil || len(p.Function) == 0 || len(p.Location) == 0 {
-		return false
-	}
-
-	for _, loc := range p.Location {
-		if len(loc.Line) == 0 {
-			// If any location lacks symbols, the profile needs symbolization
-			return false
-		}
-	}
-
-	return true
-}
-
 // getFunctionById returns a function by its ID
 func getFunctionById(p *profilev1.Profile, id uint64) (*profilev1.Function, bool) {
 	for _, fn := range p.Function {
