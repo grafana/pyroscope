@@ -24,7 +24,7 @@ func Test_QueryFrontend_QueryMetadata(t *testing.T) {
 			request: &metastorev1.QueryMetadataRequest{
 				TenantId: []string{"org"},
 				Query:    `{service_name="service-a"}`,
-				Labels:   []string{"__needs_symbolization__"},
+				Labels:   []string{"__has_native_profiles__"},
 			},
 			response: &metastorev1.QueryMetadataResponse{
 				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_a"}},
@@ -35,7 +35,7 @@ func Test_QueryFrontend_QueryMetadata(t *testing.T) {
 			request: &metastorev1.QueryMetadataRequest{
 				TenantId: []string{"org"},
 				Query:    `{__tenant_dataset__="dataset_tsdb_index"}`,
-				Labels:   []string{"__needs_symbolization__", "__tenant_dataset__"},
+				Labels:   []string{"__has_native_profiles__", "__tenant_dataset__"},
 			},
 			response: &metastorev1.QueryMetadataResponse{
 				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_a"}},
@@ -46,7 +46,7 @@ func Test_QueryFrontend_QueryMetadata(t *testing.T) {
 			request: &metastorev1.QueryMetadataRequest{
 				TenantId: []string{"org"},
 				Query:    `{__tenant_dataset__="dataset_tsdb_index"}`,
-				Labels:   []string{"__needs_symbolization__", "__tenant_dataset__"},
+				Labels:   []string{"__has_native_profiles__", "__tenant_dataset__"},
 			},
 			response: &metastorev1.QueryMetadataResponse{
 				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_c"}},
@@ -57,7 +57,7 @@ func Test_QueryFrontend_QueryMetadata(t *testing.T) {
 			request: &metastorev1.QueryMetadataRequest{
 				TenantId: []string{"org"},
 				Query:    `{__tenant_dataset__="dataset_tsdb_index"}`,
-				Labels:   []string{"__needs_symbolization__", "__tenant_dataset__"},
+				Labels:   []string{"__has_native_profiles__", "__tenant_dataset__"},
 			},
 			response: &metastorev1.QueryMetadataResponse{
 				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_b"}},
@@ -68,7 +68,7 @@ func Test_QueryFrontend_QueryMetadata(t *testing.T) {
 			request: &metastorev1.QueryMetadataRequest{
 				TenantId: []string{"org"},
 				Query:    `{__tenant_dataset__="dataset_tsdb_index"}`,
-				Labels:   []string{"__needs_symbolization__", "__tenant_dataset__"},
+				Labels:   []string{"__has_native_profiles__", "__tenant_dataset__"},
 			},
 			response: &metastorev1.QueryMetadataResponse{
 				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_d"}},
