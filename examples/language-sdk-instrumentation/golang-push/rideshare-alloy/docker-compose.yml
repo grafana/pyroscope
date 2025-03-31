@@ -27,7 +27,7 @@ services:
       context: .
 
   alloy:
-    image: simonswine/alloy:content-type-only
+    image: grafana/alloy:latest
     command:
       - run
       - /etc/alloy/config.alloy
@@ -39,7 +39,7 @@ services:
       - "12345:12345"
 
   pyroscope:
-    image: grafana/pyroscope:weekly-f110-32faf96b1
+    image: grafana/pyroscope:latest
     ports:
     - 4040:4040
 
