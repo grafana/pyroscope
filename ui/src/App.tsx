@@ -1,6 +1,8 @@
 import { css } from '@emotion/css';
 import { GrafanaTheme2 } from '@grafana/data';
-import { Button, useStyles2 } from '@grafana/ui';
+import { useStyles2 } from '@grafana/ui';
+
+import { SinglePage } from './pages/single/page';
 
 function App() {
   const styles = useStyles2(getStyles);
@@ -8,9 +10,7 @@ function App() {
   return (
     <main>
       <div className={styles.body}>
-        <Button>
-          Click me
-        </Button>
+        <SinglePage />
       </div>
     </main>
   );

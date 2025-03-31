@@ -1,24 +1,16 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { GlobalStyles, ThemeContext, useTheme2 } from '@grafana/ui';
 
-import App from './App.tsx';
-
-function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const newTheme = useTheme2();
-
-  return (
-    <ThemeContext.Provider value={newTheme}>
-      <GlobalStyles />
-      {children}
-    </ThemeContext.Provider>
-  );
-}
+import App from './App';
+import ThemeProvider from './provider/ThemeProvider';
+import QueryProvider from './provider/QueryProvider';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider>
-      <App />
+      <QueryProvider>
+        <App />
+      </QueryProvider>
     </ThemeProvider>
   </StrictMode>,
 );

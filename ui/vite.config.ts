@@ -11,6 +11,10 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
+      '/public/fonts': {
+        target: 'http://localhost:5173',
+        rewrite: (path) => path.replace(/^\/public\/fonts/, '/fonts'),
+      },
     },
   },
 });
