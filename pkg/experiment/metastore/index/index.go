@@ -292,7 +292,9 @@ func (i *Index) getOrLoadTenantShard(tx *bbolt.Tx, p *store.Partition, tenant st
 	s := partition.shards[shard]
 	partition.accessedAt = time.Now()
 	partition.modifyTxn = tx.ID()
-	i.unloadPartitions(tx)
+	// Read transactions are not allowed to unload partitions
+	// due to the potential inconsistency with the data read.
+	// i.unloadPartitions(tx)
 	return s, nil
 }
 
@@ -532,7 +534,7 @@ func (p *indexPartition) load(tx *bbolt.Tx, store Store, tenant string) error {
 	if p.loaded {
 		return nil
 	}
-	if tx.ID() <= p.modifyTxn {
+	if tx.ID() < p.modifyTxn {
 		// That would mean that we try to load partitions that have been
 		// modified and unloaded after the current transaction has begun:
 		// an inevitable invalidation of the in-memory state.
