@@ -13,6 +13,7 @@ import (
 	"github.com/cespare/xxhash/v2"
 	pmodel "github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
+	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/util"
@@ -41,6 +42,11 @@ const (
 	LabelOrderEnforced = "enforced"
 
 	LabelNamePyroscopeSpy = "pyroscope_spy"
+
+	AttrProcessExecutableName = semconv.ProcessExecutableNameKey
+
+	AttrServiceName         = semconv.ServiceNameKey
+	AttrServiceNameFallback = "unknown_service"
 
 	labelSep = '\xfe'
 

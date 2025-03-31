@@ -165,7 +165,7 @@
     "zod": "^3.22.3"
   },
   "optionalDependencies": {
-    "@pyroscope/nodejs": "^0.2.9"
+    "@pyroscope/nodejs": "0.4.5"
   },
   "resolutions": {
     "jquery": "^3.6.4",
@@ -183,6 +183,10 @@
     "yargs-parser": ">18.1.1",
     "path-to-regexp": "^1.9.0",
     "nanoid": "^3.3.8",
-    "uplot": "^1.6.31"
+    "uplot": "^1.6.31",
+    "prismjs": "^1.30.0",
+    "micromatch": "^4.0.8",
+    "@babel/helpers": "^7.26.10",
+    "esbuild": "^0.25.0"
   }
 }
