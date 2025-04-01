@@ -67,6 +67,7 @@ func (e *StaticExporter) Send(tenantId string, data []prompb.TimeSeries) error {
 			level.Error(e.logger).Log("msg", "unable to store prompb.WriteRequest", "err", err)
 			return
 		}
+		e.metrics.seriesSent.WithLabelValues(tenantId).Add(float64(len(data)))
 	}(data)
 	return nil
 }
@@ -99,6 +100,8 @@ func newClient(remoteUrl string, m *clientMetrics) (remote.WriteClient, error) {
 
 type clientMetrics struct {
 	requestDuration *prometheus.HistogramVec
+	requestBodySize *prometheus.CounterVec
+	seriesSent      *prometheus.CounterVec
 }
 
 func newMetrics(reg prometheus.Registerer, remoteUrl string) *clientMetrics {
@@ -110,11 +113,25 @@ func newMetrics(reg prometheus.Registerer, remoteUrl string) *clientMetrics {
 			Help:      "Time (in seconds) spent on remote_write",
 			Buckets:   instrument.DefBuckets,
 		}, []string{"route", "status_code", "tenant"}),
+		requestBodySize: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "pyroscope",
+			Subsystem: "metrics_exporter",
+			Name:      "request_message_bytes_total",
+			Help:      "Size (in bytes) of messages sent on remote_write.",
+		}, []string{"route", "status_code", "tenant"}),
+		seriesSent: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "pyroscope",
+			Subsystem: "metrics_exporter",
+			Name:      "series_sent_total",
+			Help:      "Number of series sent on remote_write.",
+		}, []string{"tenant"}),
 	}
 	if reg != nil {
 		remoteUrlReg := prometheus.WrapRegistererWith(prometheus.Labels{"url": remoteUrl}, reg)
 		remoteUrlReg.MustRegister(
 			m.requestDuration,
+			m.requestBodySize,
+			m.seriesSent,
 		)
 	}
 	return m
@@ -142,5 +159,6 @@ func (m *RoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	m.metrics.requestDuration.WithLabelValues(req.RequestURI, statusCode, tenantId).Observe(duration.Seconds())
+	m.metrics.requestBodySize.WithLabelValues(req.RequestURI, statusCode, tenantId).Add(float64(req.ContentLength))
 	return resp, err
 }
