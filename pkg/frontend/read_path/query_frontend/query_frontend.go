@@ -146,30 +146,29 @@ func (q *QueryFrontend) Query(
 					continue
 				}
 
-				// TODO: check if whether it comes from OTEL!
-				isOTEL := isProfileFromOTEL(&prof)
-				if isOTEL {
-					if err := q.symbolizer.SymbolizePprof(ctx, &prof); err != nil {
-						level.Error(q.logger).Log("msg", "symbolize pprof", "err", err)
-					}
+				//isOTEL := isProfileFromOTEL(&prof)
+				//if isOTEL {
+				if err := q.symbolizer.SymbolizePprof(ctx, &prof); err != nil {
+					level.Error(q.logger).Log("msg", "symbolize pprof", "err", err)
+				}
 
-					// Convert back to tree if originally a tree
-					if i < len(req.Query) && req.Query[i].QueryType == queryv1.QueryType_QUERY_TREE {
-						if len(prof.SampleType) > 1 {
-							return nil, fmt.Errorf("multiple sample types not supported")
-						}
-						treeBytes := model.TreeFromBackendProfile(&prof, req.Query[i].Tree.MaxNodes)
-						// Store the tree result
-						r.Tree = &queryv1.TreeReport{Tree: treeBytes}
-						r.ReportType = queryv1.ReportType_REPORT_TREE
-						r.Pprof = nil
-					} else {
-						symbolizedBytes, err := pprof.Marshal(&prof, true)
-						if err == nil {
-							r.Pprof.Pprof = symbolizedBytes
-						}
+				// Convert back to tree if originally a tree
+				if i < len(req.Query) && req.Query[i].QueryType == queryv1.QueryType_QUERY_TREE {
+					if len(prof.SampleType) > 1 {
+						return nil, fmt.Errorf("multiple sample types not supported")
+					}
+					treeBytes := model.TreeFromBackendProfile(&prof, req.Query[i].Tree.MaxNodes)
+					// Store the tree result
+					r.Tree = &queryv1.TreeReport{Tree: treeBytes}
+					r.ReportType = queryv1.ReportType_REPORT_TREE
+					r.Pprof = nil
+				} else {
+					symbolizedBytes, err := pprof.Marshal(&prof, true)
+					if err == nil {
+						r.Pprof.Pprof = symbolizedBytes
 					}
 				}
+				//}
 			}
 		}
 	}
