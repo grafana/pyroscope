@@ -32,12 +32,17 @@ type InlineInfo struct {
 
 // DWARFInfo implements the liner interface
 type DWARFInfo struct {
-	debugData           *dwarf.Data
-	lineEntries         map[dwarf.Offset][]dwarf.LineEntry
-	subprograms         map[dwarf.Offset][]*godwarf.Tree
-	abstractSubprograms map[dwarf.Offset]*dwarf.Entry
-	addressMap          map[uint64]*FunctionInfo  // Quick address lookups
-	functionMap         map[string]*FunctionRange // Function name lookups
+	debugData                  *dwarf.Data
+	lineEntries                map[dwarf.Offset][]dwarf.LineEntry
+	subprograms                map[dwarf.Offset][]*godwarf.Tree
+	abstractSubprograms        map[dwarf.Offset]*dwarf.Entry
+	addressMap                 map[uint64]*FunctionInfo  // Quick address lookups
+	functionMap                map[string]*FunctionRange // Function name lookups
+	lineEntriesSorted          map[dwarf.Offset]bool
+	scannedAbstractSubprograms bool
+	lastRangeInfo              *FunctionInfo
+	lastRangeStart             uint64
+	lastRangeEnd               uint64
 }
 
 // NewDWARFInfo creates a new liner using DWARF debug info
@@ -49,6 +54,7 @@ func NewDWARFInfo(debugData *dwarf.Data) *DWARFInfo {
 		abstractSubprograms: make(map[dwarf.Offset]*dwarf.Entry),
 		addressMap:          make(map[uint64]*FunctionInfo),
 		functionMap:         make(map[string]*FunctionRange),
+		lineEntriesSorted:   make(map[dwarf.Offset]bool),
 	}
 }
 
@@ -94,7 +100,7 @@ func (d *DWARFInfo) ResolveAddress(_ context.Context, addr uint64) ([]SymbolLoca
 		declLine = 0
 	}
 
-	file, line := d.findLineInfo(d.lineEntries[cu.Offset], targetTree.Ranges)
+	file, line := d.findLineInfo(d.lineEntries[cu.Offset], targetTree.Ranges, cu.Offset)
 	lines = append(lines, SymbolLocation{
 		Function: &pprof.Function{
 			Name:      functionName,
@@ -247,12 +253,16 @@ func (d *DWARFInfo) processSubprogramEntries(cu *dwarf.Entry) error {
 	return nil
 }
 
-func (d *DWARFInfo) findLineInfo(entries []dwarf.LineEntry, ranges [][2]uint64) (string, int64) {
-	sort.Slice(entries, func(i, j int) bool {
-		return entries[i].Address < entries[j].Address
-	})
+func (d *DWARFInfo) findLineInfo(entries []dwarf.LineEntry, ranges [][2]uint64, cuOffset dwarf.Offset) (string, int64) {
+	// Sort only once per compilation unit
+	if !d.lineEntriesSorted[cuOffset] {
+		sort.Slice(entries, func(i, j int) bool {
+			return entries[i].Address < entries[j].Address
+		})
+		d.lineEntriesSorted[cuOffset] = true
+	}
 
-	// Try to find an entry that contains our target address
+	// Try to find an entry that contains the target address
 	targetAddr := ranges[0][0]
 	for _, entry := range entries {
 		if entry.Address >= targetAddr && entry.Address < ranges[0][1] {
@@ -279,30 +289,48 @@ func (d *DWARFInfo) findLineInfo(entries []dwarf.LineEntry, ranges [][2]uint64) 
 }
 
 func (d *DWARFInfo) scanAbstractSubprograms() error {
+	if d.scannedAbstractSubprograms {
+		return nil
+	}
+
 	reader := d.debugData.Reader()
-	// Scan from the start, don't stop at first CU
 	for {
 		entry, err := reader.Next()
 		if err != nil || entry == nil {
 			break
 		}
-
 		if entry.Tag == dwarf.TagSubprogram {
 			// Store ALL subprograms, not just inline ones
 			d.abstractSubprograms[entry.Offset] = entry
 		}
 	}
+
+	d.scannedAbstractSubprograms = true
 	return nil
 }
 
 func (d *DWARFInfo) resolveFromOptimizedMaps(addr uint64) ([]SymbolLocation, bool) {
+	if info, found := d.addressMap[addr]; found {
+		return info.Locations, true
+	}
+
+	// Use a simple caching mechanism for the last successful range lookup
+	if d.lastRangeInfo != nil &&
+		addr >= d.lastRangeStart && addr < d.lastRangeEnd {
+		return d.lastRangeInfo.Locations, true
+	}
+
 	for _, info := range d.addressMap {
 		for _, rang := range info.Ranges {
 			if addr >= rang.StartAddr && addr < rang.EndAddr {
+				d.lastRangeInfo = info
+				d.lastRangeStart = rang.StartAddr
+				d.lastRangeEnd = rang.EndAddr
 				return info.Locations, true
 			}
 		}
 	}
+
 	return nil, false
 }
 
@@ -317,7 +345,7 @@ func (d *DWARFInfo) buildOptimizedMaps(cuOffset dwarf.Offset) error {
 			continue
 		}
 
-		filename, line := d.findLineInfo(d.lineEntries[cuOffset], tree.Ranges)
+		filename, line := d.findLineInfo(d.lineEntries[cuOffset], tree.Ranges, cuOffset)
 
 		// Build locations once
 		locations := []SymbolLocation{{
@@ -375,7 +403,7 @@ func (d *DWARFInfo) processInlineFunctions(tree *godwarf.Tree, addr uint64, cuOf
 			continue
 		}
 
-		filename, line := d.findLineInfo(d.lineEntries[cuOffset], inline.Ranges)
+		filename, line := d.findLineInfo(d.lineEntries[cuOffset], inline.Ranges, cuOffset)
 		inlines = append(inlines, InlineInfo{
 			Name:      inlineName,
 			File:      filename,

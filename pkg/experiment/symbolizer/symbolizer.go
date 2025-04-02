@@ -109,17 +109,25 @@ func NewProfileSymbolizer(logger log.Logger, client DebuginfodClient, store Debu
 }
 
 func (s *ProfileSymbolizer) SymbolizePprof(ctx context.Context, profile *googlev1.Profile) error {
+	level.Info(s.logger).Log("msg", ">> starting SymbolizePprof")
 	start := time.Now()
 	status := StatusSuccess
 	defer func() {
 		s.metrics.profileSymbolization.WithLabelValues(status).Observe(time.Since(start).Seconds())
 	}()
 
-	if !s.NeedsSymbolization(profile) {
+	if profile == nil || len(profile.Mapping) == 0 {
+		level.Info(s.logger).Log("msg", "profile is either nil or has no mappings, skipping symbolization")
 		status = "already_symbolized"
-		level.Error(s.logger).Log("msg", "Symbolizer exited since profile don't need symbolization")
 		return nil
 	}
+
+	// if !s.NeedsSymbolization(profile) {
+	// 	level.Info(s.logger).Log("msg", ">> don't need symbolization")
+	// 	status = "already_symbolized"
+	// 	level.Error(s.logger).Log("msg", "Symbolizer exited since profile don't need symbolization")
+	// 	return nil
+	// }
 
 	// Group locations by mapping ID
 	type locToSymbolize struct {
@@ -171,10 +179,12 @@ func (s *ProfileSymbolizer) SymbolizePprof(ctx context.Context, profile *googlev
 		}
 
 		buildID := profile.StringTable[mapping.BuildId]
+		level.Info(s.logger).Log("msg", ">> mapping build id --> ", "mapping.BuildId", mapping.BuildId)
+		level.Info(s.logger).Log("msg", ">> build id --> ", "buildID", buildID)
 		buildID, err := sanitizeBuildID(buildID)
 		if err != nil {
 			status = StatusErrorInvalidID
-			level.Error(s.logger).Log("msg", "Invalid buildID", buildID)
+			level.Error(s.logger).Log("msg", "Invalid buildID", "buildID", buildID)
 			continue
 		}
 
@@ -495,7 +505,17 @@ func (s *ProfileSymbolizer) symbolizeFromReader(ctx context.Context, r io.ReadCl
 		// Get source lines for the address
 		lines, err := liner.ResolveAddress(ctx, addr)
 		if err != nil {
-			level.Error(s.logger).Log("msg", "Failed to resolve address", "addr", fmt.Sprintf("0x%x", addr), "binary", req.BinaryName, "build_id", req.BuildID, "error", err)
+			level.Error(s.logger).Log(
+				"msg", "Failed to resolve address",
+				"addr", fmt.Sprintf("0x%x", addr),
+				"binary", req.BinaryName,
+				"build_id", req.BuildID,
+				"mapping_start", fmt.Sprintf("0x%x", loc.Mapping.Start),
+				"mapping_limit", fmt.Sprintf("0x%x", loc.Mapping.Limit),
+				"mapping_offset", fmt.Sprintf("0x%x", loc.Mapping.Offset),
+				"normalized_addr", fmt.Sprintf("0x%x", addr),
+				"error", err,
+			)
 			loc.Lines = s.createNotFoundSymbols(req.BinaryName, loc, addr)
 			s.metrics.debugSymbolResolution.WithLabelValues(StatusErrorServerError).Observe(time.Since(resolveStart).Seconds())
 			continue
