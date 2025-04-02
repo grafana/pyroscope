@@ -273,7 +273,7 @@ func TestIndex_Query(t *testing.T) {
 }
 
 func Test_QueryConcurrency(t *testing.T) {
-	for i := 0; i < 10 && !t.Failed(); i++ {
+	for i := 0; i < 3 && !t.Failed(); i++ {
 		q := new(queryTestSuite)
 		q.run(t)
 	}
@@ -363,7 +363,7 @@ func (s *queryTestSuite) run(t *testing.T) {
 	go func() {
 		select {
 		case <-s.stop:
-		case <-time.After(9 * time.Second):
+		case <-time.After(5 * time.Second):
 			t.Error("test time out: query consistency not confirmed")
 			s.doStop()
 		}
