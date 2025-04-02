@@ -26,7 +26,7 @@ const (
 	// Indicates that partitions within this window are "protected" from being unloaded.
 	partitionProtectionWindow = 24 * time.Hour
 	// Maximum number of shards to keep in memory
-	defaultMaxShards = 50000
+	defaultMaxShards = 10000
 )
 
 var (
