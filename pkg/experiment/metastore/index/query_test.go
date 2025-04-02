@@ -328,8 +328,8 @@ func (s *queryTestSuite) setup(t *testing.T) {
 	s.idx = NewIndex(util.Logger, NewStore(), DefaultConfig)
 	// Enforce aggressive index cache evictions.
 	s.idx.config.PartitionDuration = time.Minute * 30
-	s.idx.config.PartitionCacheSize = 3
-	s.idx.keep = func(*store.Partition) bool { return false }
+	s.idx.config.CacheSize = 3
+	s.idx.keep = func(store.PartitionKey) bool { return false }
 	require.NoError(t, s.db.Update(s.idx.Init))
 }
 

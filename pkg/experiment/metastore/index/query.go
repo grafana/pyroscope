@@ -2,7 +2,6 @@ package index
 
 import (
 	"fmt"
-	"runtime"
 	"slices"
 	"sort"
 	"strings"
@@ -109,31 +108,34 @@ type blockMetadataQuerier struct {
 	cur    int
 }
 
-func (mi *blockMetadataQuerier) queryBlocks() ([]*metastorev1.BlockMeta, error) {
-	for mi.shards.Next() {
-		mi.collectBlockMetadata(mi.shards.At())
-	}
-	return mi.metas, mi.shards.Err()
-}
-
-func (mi *blockMetadataQuerier) collectBlockMetadata(shard *indexShard) {
-	shard.mu.RLock()
-	defer shard.mu.RUnlock()
-	matcher := metadata.NewLabelMatcher(
-		shard.StringTable,
-		mi.query.matchers,
-		mi.query.labels...,
-	)
-	if !matcher.IsValid() {
-		return
-	}
-	for _, md := range shard.blocks {
-		if m := blockMetadataMatches(mi.query, shard.StringTable, matcher, md); m != nil {
-			mi.metas = append(mi.metas, m)
+func (q *blockMetadataQuerier) queryBlocks() ([]*metastorev1.BlockMeta, error) {
+	for q.shards.Next() {
+		if err := q.collectBlockMetadata(q.shards.At()); err != nil {
+			return nil, err
 		}
 	}
-	slices.SortFunc(mi.metas, func(a, b *metastorev1.BlockMeta) int {
+	slices.SortFunc(q.metas, func(a, b *metastorev1.BlockMeta) int {
 		return strings.Compare(a.Id, b.Id)
+	})
+	return q.metas, q.shards.Err()
+}
+
+func (q *blockMetadataQuerier) collectBlockMetadata(s *indexShard) error {
+	return s.view(q.shards.tx, func(shard *indexShard) error {
+		matcher := metadata.NewLabelMatcher(
+			shard.StringTable,
+			q.query.matchers,
+			q.query.labels...,
+		)
+		if !matcher.IsValid() {
+			return nil
+		}
+		for _, md := range shard.blocks {
+			if m := blockMetadataMatches(q.query, shard.StringTable, matcher, md); m != nil {
+				q.metas = append(q.metas, m)
+			}
+		}
+		return nil
 	})
 }
 
@@ -220,43 +222,45 @@ type metadataLabelQuerier struct {
 	labels *model.LabelMerger
 }
 
-func (mi *metadataLabelQuerier) queryLabels() (*model.LabelMerger, error) {
-	if len(mi.query.labels) == 0 {
-		return mi.labels, nil
+func (q *metadataLabelQuerier) queryLabels() (*model.LabelMerger, error) {
+	if len(q.query.labels) == 0 {
+		return q.labels, nil
 	}
-	for mi.shards.Next() {
-		mi.collectLabels(mi.shards.At())
+	for q.shards.Next() {
+		if err := q.collectLabels(q.shards.At()); err != nil {
+			return nil, err
+		}
 	}
-	return mi.labels, mi.shards.Err()
+	return q.labels, q.shards.Err()
 }
 
-func (mi *metadataLabelQuerier) collectLabels(shard *indexShard) {
-	shard.mu.RLock()
-	defer shard.mu.RUnlock()
-	// TODO: Reset matcher.
-	m := metadata.NewLabelMatcher(
-		shard.StringTable,
-		mi.query.matchers,
-		mi.query.labels...,
-	)
-	if !m.IsValid() {
-		return
-	}
-	for _, md := range shard.blocks {
-		if !mi.query.overlapsUnixMilli(md.MinTime, md.MaxTime) {
-			continue
+func (q *metadataLabelQuerier) collectLabels(s *indexShard) error {
+	return s.view(q.shards.tx, func(shard *indexShard) error {
+		m := metadata.NewLabelMatcher(
+			shard.StringTable,
+			q.query.matchers,
+			q.query.labels...,
+		)
+		if !m.IsValid() {
+			return nil
 		}
-		for _, ds := range md.Datasets {
-			if _, ok := mi.query.tenantMap[shard.StringTable.Lookup(ds.Tenant)]; !ok {
+		for _, md := range shard.blocks {
+			if !q.query.overlapsUnixMilli(md.MinTime, md.MaxTime) {
 				continue
 			}
-			if !mi.query.overlapsUnixMilli(ds.MinTime, ds.MaxTime) {
-				continue
+			for _, ds := range md.Datasets {
+				if _, ok := q.query.tenantMap[shard.StringTable.Lookup(ds.Tenant)]; !ok {
+					continue
+				}
+				if !q.query.overlapsUnixMilli(ds.MinTime, ds.MaxTime) {
+					continue
+				}
+				m.Matches(ds.Labels)
 			}
-			m.Matches(ds.Labels)
 		}
-	}
-	mi.labels.MergeLabels(m.AllMatches())
+		q.labels.MergeLabels(m.AllMatches())
+		return nil
+	})
 }
 
 type shardIterator struct {
@@ -322,34 +326,11 @@ func (si *shardIterator) loadPartition(p *store.Partition) {
 }
 
 func (si *shardIterator) loadTenantShards(p *store.Partition, tenant string) {
-	// Quick lock to collect tenant shards in the partition.
 	si.index.global.Lock()
-	shards := p.TenantShards[tenant]
-	if shards == nil {
-		si.index.global.Unlock()
-		return
-	}
-	shardsCopy := make([]uint32, 0, len(shards))
-	for s := range shards {
-		shardsCopy = append(shardsCopy, s)
-	}
-	si.index.global.Unlock()
-
-	for _, s := range shardsCopy {
-		// Another quick lock to acquiring the shard requires the global lock.
-		si.index.global.Lock()
-		shard, err := si.index.getOrLoadTenantShard(si.tx, p, tenant, s)
-		si.index.global.Unlock()
-		if err != nil {
-			si.err = err
-			return
-		}
-		if shard != nil {
-			si.shards = append(si.shards, shard)
-		}
-		// If there are goroutines blocked on the global lock,
-		// we want to get them change to acquire it.
-		runtime.Gosched()
+	defer si.index.global.Unlock()
+	for shard := range p.TenantShards[tenant] {
+		s := si.index.getOrCreateIndexShard(p, tenant, shard)
+		si.shards = append(si.shards, s)
 	}
 }
 
