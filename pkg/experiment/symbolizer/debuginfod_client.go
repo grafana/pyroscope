@@ -59,7 +59,7 @@ func NewDebuginfodClient(l log.Logger, baseURL string, metrics *Metrics) (*Debug
 			// userAgent:   "Pyroscope-Symbolizer/1.0",
 			httpClient: &http.Client{
 				Transport: transport,
-				Timeout:   30 * time.Second,
+				Timeout:   120 * time.Second,
 				CheckRedirect: func(req *http.Request, via []*http.Request) error {
 					if len(via) >= 3 {
 						return fmt.Errorf("stopped after 3 redirects")
