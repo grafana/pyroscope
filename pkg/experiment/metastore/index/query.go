@@ -110,13 +110,15 @@ type blockMetadataQuerier struct {
 
 func (q *blockMetadataQuerier) queryBlocks() ([]*metastorev1.BlockMeta, error) {
 	for q.shards.Next() {
+		offset := len(q.metas)
 		if err := q.collectBlockMetadata(q.shards.At()); err != nil {
 			return nil, err
 		}
+		// Sort outside the view to avoid holding the shard lock.
+		slices.SortFunc(q.metas[offset:], func(a, b *metastorev1.BlockMeta) int {
+			return strings.Compare(a.Id, b.Id)
+		})
 	}
-	slices.SortFunc(q.metas, func(a, b *metastorev1.BlockMeta) int {
-		return strings.Compare(a.Id, b.Id)
-	})
 	return q.metas, q.shards.Err()
 }
 
