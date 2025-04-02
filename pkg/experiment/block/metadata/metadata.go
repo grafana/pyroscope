@@ -65,6 +65,18 @@ func (t *StringTable) Reset() {
 	t.Strings = t.Strings[:1]
 }
 
+func (t *StringTable) Clone() *StringTable {
+	n := &StringTable{
+		Dict:    make(map[string]int32, len(t.Dict)),
+		Strings: make([]string, len(t.Strings)),
+	}
+	for k, v := range t.Dict {
+		n.Dict[k] = v
+	}
+	copy(n.Strings, t.Strings)
+	return n
+}
+
 func (t *StringTable) Put(s string) int32 {
 	if i, ok := t.Dict[s]; ok {
 		return i

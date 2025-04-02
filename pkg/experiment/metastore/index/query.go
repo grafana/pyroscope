@@ -105,6 +105,7 @@ type blockMetadataQuerier struct {
 	query  *metadataQuery
 	shards *shardIterator
 	metas  []*metastorev1.BlockMeta
+	buf    []*metastorev1.BlockMeta
 	cur    int
 }
 
@@ -123,22 +124,36 @@ func (q *blockMetadataQuerier) queryBlocks() ([]*metastorev1.BlockMeta, error) {
 }
 
 func (q *blockMetadataQuerier) collectBlockMetadata(s *indexShard) error {
-	return s.view(q.shards.tx, func(shard *indexShard) error {
-		matcher := metadata.NewLabelMatcher(
-			shard.StringTable,
-			q.query.matchers,
-			q.query.labels...,
-		)
+	// Copy string table and blocks: those are immutable
+	// and can be processed without a lock.
+	q.buf = q.buf[:0]
+	var sTable *metadata.StringTable
+	err := s.view(q.shards.tx, func(shard *indexShard) error {
+		matcher := metadata.NewLabelMatcher(shard.StringTable, q.query.matchers, q.query.labels...)
 		if !matcher.IsValid() {
 			return nil
 		}
 		for _, md := range shard.blocks {
-			if m := blockMetadataMatches(q.query, shard.StringTable, matcher, md); m != nil {
-				q.metas = append(q.metas, m)
-			}
+			q.buf = append(q.buf, md)
 		}
+		sTable = shard.StringTable.Clone()
 		return nil
 	})
+	// Return early if possible.
+	if err != nil || sTable == nil || len(q.buf) == 0 {
+		return err
+	}
+	// We have to re-create the matcher with the copied string table.
+	matcher := metadata.NewLabelMatcher(sTable, q.query.matchers, q.query.labels...)
+	if !matcher.IsValid() {
+		return nil
+	}
+	for _, md := range q.buf {
+		if m := blockMetadataMatches(q.query, sTable, matcher, md); m != nil {
+			q.metas = append(q.metas, m)
+		}
+	}
+	return err
 }
 
 func blockMetadataMatches(
@@ -222,6 +237,7 @@ type metadataLabelQuerier struct {
 	query  *metadataQuery
 	shards *shardIterator
 	labels *model.LabelMerger
+	buf    []*metastorev1.BlockMeta
 }
 
 func (q *metadataLabelQuerier) queryLabels() (*model.LabelMerger, error) {
@@ -237,32 +253,42 @@ func (q *metadataLabelQuerier) queryLabels() (*model.LabelMerger, error) {
 }
 
 func (q *metadataLabelQuerier) collectLabels(s *indexShard) error {
-	return s.view(q.shards.tx, func(shard *indexShard) error {
-		m := metadata.NewLabelMatcher(
-			shard.StringTable,
-			q.query.matchers,
-			q.query.labels...,
-		)
-		if !m.IsValid() {
+	// See comments for blockMetadataQuerier.collectBlockMetadata.
+	q.buf = q.buf[:0]
+	var sTable *metadata.StringTable
+	err := s.view(q.shards.tx, func(shard *indexShard) error {
+		matcher := metadata.NewLabelMatcher(shard.StringTable, q.query.matchers, q.query.labels...)
+		if !matcher.IsValid() {
 			return nil
 		}
 		for _, md := range shard.blocks {
 			if !q.query.overlapsUnixMilli(md.MinTime, md.MaxTime) {
 				continue
 			}
-			for _, ds := range md.Datasets {
-				if _, ok := q.query.tenantMap[shard.StringTable.Lookup(ds.Tenant)]; !ok {
-					continue
-				}
-				if !q.query.overlapsUnixMilli(ds.MinTime, ds.MaxTime) {
-					continue
-				}
-				m.Matches(ds.Labels)
-			}
+			q.buf = append(q.buf, md)
 		}
-		q.labels.MergeLabels(m.AllMatches())
+		if len(q.buf) > 0 {
+			sTable = shard.StringTable.Clone()
+		}
 		return nil
 	})
+	if err != nil || sTable == nil || len(q.buf) == 0 {
+		return err
+	}
+	matcher := metadata.NewLabelMatcher(sTable, q.query.matchers, q.query.labels...)
+	if !matcher.IsValid() {
+		return nil
+	}
+	for _, md := range q.buf {
+		for _, ds := range md.Datasets {
+			if !q.query.overlapsUnixMilli(ds.MinTime, ds.MaxTime) {
+				continue
+			}
+			matcher.Matches(ds.Labels)
+		}
+		q.labels.MergeLabels(matcher.AllMatches())
+	}
+	return nil
 }
 
 type shardIterator struct {
