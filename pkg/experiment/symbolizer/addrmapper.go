@@ -54,6 +54,11 @@ func ExecutableInfoFromELF(f *elf.File) (*BinaryLayout, error) {
 // - Different segments might need different adjustments
 // - Various ELF types (EXEC, DYN, REL) handle addressing differently
 func MapRuntimeAddress(runtimeAddr uint64, ei *BinaryLayout, m Mapping) (uint64, error) {
+	if runtimeAddr < m.Start || runtimeAddr >= m.Limit {
+		return 0, fmt.Errorf("address 0x%x out of range for mapping [0x%x-0x%x]",
+			runtimeAddr, m.Start, m.Limit)
+	}
+
 	baseOffset, err := CalculateBase(ei, m, runtimeAddr)
 	if err != nil {
 		return runtimeAddr, fmt.Errorf("calculate base offset: %w", err)
@@ -86,8 +91,6 @@ func CalculateBase(ei *BinaryLayout, m Mapping, addr uint64) (uint64, error) {
 	switch elf.Type(ei.ElfType) {
 	case elf.ET_EXEC:
 		return calculateExecBase(m, segment)
-	case elf.ET_REL:
-		return calculateRelocatableBase(m)
 	case elf.ET_DYN:
 		return calculateDynamicBase(m, segment)
 	}
@@ -170,6 +173,7 @@ func (ei *BinaryLayout) FindProgramHeader(m Mapping, addr uint64) (*MemoryRegion
 }
 
 func calculateExecBase(m Mapping, h *MemoryRegion) (uint64, error) {
+	//return 0, nil
 	if h == nil {
 		// Check if this is likely a PIE executable or shared library
 		if m.Start > 0 {
