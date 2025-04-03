@@ -97,7 +97,6 @@ func Run(urls []string) error {
 	}
 
 	select {}
-	return nil
 }
 
 func groupHosts(hosts []string, groupsOf int) [][]string {
