@@ -550,13 +550,24 @@ func openTestFile(t *testing.T) io.ReadCloser {
 }
 
 func TestSymbolizeAlloy(t *testing.T) {
+	pbf, err := os.ReadFile("/home/korniltsev/alloy.pb")
+	require.NoError(t, err)
+
 	mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
 	f, err := os.Open("/home/korniltsev/alloy.debug")
 	require.NoError(t, err)
-	mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(f, nil).Once()
+	mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(f, nil).Maybe()
 
 	s, err := NewProfileSymbolizer(nil, mockClient, NewNullDebugInfoStore(), NewMetrics(nil), 100, 100)
 	require.NoError(t, err)
-	_ = s
+	p := new(googlev1.Profile)
+	err = p.UnmarshalVT(pbf)
+	require.NoError(t, err)
 
+	for i, location := range p.Location {
+
+	}
+
+	//s.SymbolizePprof(context.Background(), )
+	_ = s
 }
