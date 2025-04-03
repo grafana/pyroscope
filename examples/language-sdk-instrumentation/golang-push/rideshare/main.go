@@ -19,7 +19,6 @@ import (
 	otellogs "github.com/agoda-com/opentelemetry-logs-go"
 	sdklogs "github.com/agoda-com/opentelemetry-logs-go/sdk/logs"
 	otelpyroscope "github.com/grafana/otel-profiling-go"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	mmetric "go.opentelemetry.io/otel/metric"
@@ -87,7 +86,6 @@ func main() {
 	rideshare.Log.Print(context.Background(), "started ride-sharing app")
 
 	http.Handle("/", otelhttp.NewHandler(http.HandlerFunc(index), "IndexHandler"))
-	http.Handle("/metrics", promhttp.Handler())
 
 	http.Handle("/bike", otelhttp.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
