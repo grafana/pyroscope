@@ -548,3 +548,15 @@ func openTestFile(t *testing.T) io.ReadCloser {
 	require.NoError(t, err)
 	return f
 }
+
+func TestSymbolizeAlloy(t *testing.T) {
+	mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
+	f, err := os.Open("/home/korniltsev/alloy.debug")
+	require.NoError(t, err)
+	mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(f, nil).Once()
+
+	s, err := NewProfileSymbolizer(nil, mockClient, NewNullDebugInfoStore(), NewMetrics(nil), 100, 100)
+	require.NoError(t, err)
+	_ = s
+
+}
