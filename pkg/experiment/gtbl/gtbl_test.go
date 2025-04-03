@@ -11,11 +11,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//const alloy = "/home/korniltsev/alloy"
-//const alloyDebug = "/home/korniltsev/alloy.debug"
+const alloy = "/home/korniltsev/alloy"
+const alloyDebug = "/home/korniltsev/alloy.debug"
 
-//const alloy = "/Users/marcsanmi/alloy"
-const alloy = "/Users/marcsanmi/work/96921110873602d0036300b40f9c61e9fad3d69d"
+// const alloy = "/Users/marcsanmi/alloy"
+//const alloy = "/Users/marcsanmi/work/96921110873602d0036300b40f9c61e9fad3d69d"
 
 func TestName(t *testing.T) {
 	e, err := elf.Open(alloy)
@@ -94,7 +94,7 @@ func TestReadGtbl(t *testing.T) {
 func TestCreateRead(t *testing.T) {
 	srcFiles := []string{
 		alloy,
-		//alloyDebug,
+		alloyDebug,
 	}
 	expected := []struct {
 		VA           uint64
@@ -103,6 +103,8 @@ func TestCreateRead(t *testing.T) {
 		{0x48bfff, ""},
 		{0x40b560, "internal/abi.(*IntArgRegBitmap).Get"},
 		{0x408ed0, "_ZN8smallvec17SmallVec$LT$A$GT$21reserve_one_unchecked17h38e8e94dce0a375aE"},
+		{0x408ed0, "_ZN8smallvec17SmallVec$LT$A$GT$21reserve_one_unchecked17h38e8e94dce0a375aE"},
+		{0x8d46d38, "go.opentelemetry.io/ebpf-profiler/process.(*systemProcess).GetMappings"},
 	}
 	for _, file := range srcFiles {
 		gtblPath := t.TempDir() + "/tem.gtbl"
@@ -128,7 +130,7 @@ func TestCreateRead(t *testing.T) {
 
 		t.Run(file, func(t *testing.T) {
 			for _, e := range expected {
-				t.Run(fmt.Sprintf("%x", e.VA), func(t *testing.T) {
+				t.Run(fmt.Sprintf("%x %s", e.VA, e.FunctionName), func(t *testing.T) {
 					res, err := tbl.Lookup(e.VA)
 					fname := ""
 					if len(res) > 0 {
@@ -214,6 +216,7 @@ func TestSymbolizeProfile(t *testing.T) {
 			}
 		}
 	}
+	fmt.Printf("locations %d\n", len(prof.Location))
 
 	var buf bytes.Buffer
 	err = prof.Write(&buf)
