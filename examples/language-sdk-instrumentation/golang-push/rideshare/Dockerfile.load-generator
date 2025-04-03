@@ -2,5 +2,5 @@ FROM golang:1.23.7
 
 WORKDIR /go/src/app
 COPY . .
-RUN go build loadgen.go
+RUN go build -tags loadgen -o loadgen .
 CMD ["./loadgen"]

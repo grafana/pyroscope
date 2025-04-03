@@ -1,9 +1,11 @@
+//go:build loadgen
+// +build loadgen
+
 package main
 
 import (
 	"context"
 	"fmt"
-	"log"
 	"math/rand"
 	"net/http"
 	"os"
@@ -29,10 +31,9 @@ var vehicles = []string{
 
 var client *http.Client
 
-func main() {
+func Run(urls []string) error {
 	c := rideshare.ReadConfig()
 	c.AppName = "load-generator"
-	urls = os.Args[1:]
 	if len(urls) == 0 {
 		urls = []string{
 			"http://us-east:5000",
@@ -46,14 +47,14 @@ func main() {
 		var err error
 		groupByFactor, err = strconv.Atoi(os.Getenv("LOADGEN_GROUP_BY_FACTOR"))
 		if err != nil {
-			log.Fatalf("issue with LOADGEN_GROUP_BY_FACTOR: %v\n", err)
+			return fmt.Errorf("issue with LOADGEN_GROUP_BY_FACTOR: %v", err)
 		}
 	}
 
 	// Configure profiler.
 	p, err := rideshare.Profiler(c)
 	if err != nil {
-		log.Fatalf("failed to initialize profiler: %v\n", err)
+		return fmt.Errorf("failed to initialize profiler: %v", err)
 	}
 	defer func() {
 		_ = p.Stop()
@@ -62,7 +63,7 @@ func main() {
 	// Configure tracing.
 	tp, err := rideshare.TracerProvider(c)
 	if err != nil {
-		log.Fatalf("failed to initialize profiler: %v\n", err)
+		return fmt.Errorf("failed to initialize profiler: %v", err)
 	}
 
 	// Set the Tracer Provider and the W3C Trace Context propagator as globals.
@@ -70,7 +71,7 @@ func main() {
 	// that pprof would add corresponding labels to profiling samples.
 	otel.SetTracerProvider(otelpyroscope.NewTracerProvider(tp))
 
-	// Register the trace c ontext and baggage propagators so data is propagated across services/processes.
+	// Register the trace context and baggage propagators so data is propagated across services/processes.
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
 		propagation.TraceContext{},
 		propagation.Baggage{},
@@ -96,6 +97,7 @@ func main() {
 	}
 
 	select {}
+	return nil
 }
 
 func groupHosts(hosts []string, groupsOf int) [][]string {
