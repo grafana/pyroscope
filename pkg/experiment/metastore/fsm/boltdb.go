@@ -5,10 +5,10 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.etcd.io/bbolt"
 )
 
@@ -98,10 +98,8 @@ func (db *boltdb) shutdown() {
 }
 
 func (db *boltdb) restore(snapshot io.Reader) error {
-	start := time.Now()
-	defer func() {
-		db.metrics.boltDBRestoreSnapshotDuration.Observe(time.Since(start).Seconds())
-	}()
+	timer := prometheus.NewTimer(db.metrics.boltDBRestoreSnapshotDuration)
+	defer timer.ObserveDuration()
 	// Snapshot is a full copy of the database, therefore we copy
 	// it on disk, compact, and use it instead of the current database.
 	// Compacting the snapshot is necessary to reclaim the space

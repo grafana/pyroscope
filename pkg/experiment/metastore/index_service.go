@@ -79,7 +79,7 @@ func (svc *IndexService) addBlockMetadata(
 		level.Warn(svc.logger).Log("invalid metadata", "block", req.Block.Id, "err", err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	_, err := svc.raft.Propose(
+	err := svc.raft.Commit(
 		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_ADD_BLOCK_METADATA),
 		&raft_log.AddBlockMetadataRequest{Metadata: req.Block},
 	)

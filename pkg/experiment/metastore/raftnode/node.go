@@ -271,9 +271,7 @@ func (n *Node) TransferLeadership() (err error) {
 	return err
 }
 
-// Propose makes an attempt to apply the given command to the FSM.
-// The function returns an error if node is not the leader.
-func (n *Node) Propose(t fsm.RaftLogEntryType, m proto.Message) (resp proto.Message, err error) {
+func (n *Node) Apply(t fsm.RaftLogEntryType, m proto.Message) (resp proto.Message, err error) {
 	raw, err := fsm.MarshalEntry(t, m)
 	if err != nil {
 		return nil, err
@@ -289,4 +287,18 @@ func (n *Node) Propose(t fsm.RaftLogEntryType, m proto.Message) (resp proto.Mess
 		resp = r.Data
 	}
 	return resp, r.Err
+}
+
+func (n *Node) Commit(t fsm.RaftLogEntryType, m proto.Message) error {
+	raw, err := fsm.MarshalEntry(t, m)
+	if err != nil {
+		return err
+	}
+	timer := prometheus.NewTimer(n.metrics.apply)
+	defer timer.ObserveDuration()
+	future := n.raft.Apply(raw, n.config.ApplyTimeout)
+	if err = future.WaitCommitted(); err != nil {
+		return WithRaftLeaderStatusDetails(err, n.raft)
+	}
+	return nil
 }
