@@ -19,7 +19,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/common/model"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
@@ -263,51 +262,17 @@ func staticList(input []string) func() string {
 func init() {
 	// Configure Prometheus to use UTF-8 validation for metric names
 	model.NameEscapingScheme = model.ValueEncodingEscaping
-}
 
-func MeterProvider(c Config) (*sdkmetric.MeterProvider, error) {
-	// Default is 1m. Set to 3s for demonstrative purposes.
-	interval := 3 * time.Second
-
-	// Setup Prometheus metrics
-	fakeUtf8Metrics := []dimension{
-		{
-			label:        "a_legacy_label",
-			getNextValue: staticList([]string{"legacy"}),
-		},
-		{
-			label:        "label with space",
-			getNextValue: staticList([]string{"space"}),
-		},
-		{
-			label:        "label with 📈",
-			getNextValue: staticList([]string{"metrics"}),
-		},
-		{
-			label:        "label.with.spaß",
-			getNextValue: staticList([]string{"this_is_fun"}),
-		},
-		{
-			label:        "instance",
-			getNextValue: staticList([]string{"instance"}),
-		},
-		{
-			label:        "job",
-			getNextValue: staticList([]string{"job"}),
-		},
-		{
-			label:        "site",
-			getNextValue: staticList([]string{"LA-EPI"}),
-		},
-		{
-			label:        "room",
-			getNextValue: staticList([]string{`"Friends Don't Lie"`}),
-		},
-	}
-
-	dimensions := []string{}
-	for _, dim := range fakeUtf8Metrics {
-		dimensions = append(dimensions, dim.label)
+	// Initialize metrics
+	dimensions := []string{
+		"a_legacy_label",
+		"label with space",
+		"label with 📈",
+		"label.with.spaß",
+		"instance",
+		"job",
+		"site",
+		"room",
 	}
 
 	utf8Metric := promauto.NewCounterVec(prometheus.CounterOpts{
@@ -329,10 +294,15 @@ func MeterProvider(c Config) (*sdkmetric.MeterProvider, error) {
 	// Start the metrics update goroutine
 	go func() {
 		for {
-			labels := []string{}
-			for _, dim := range fakeUtf8Metrics {
-				value := dim.getNextValue()
-				labels = append(labels, value)
+			labels := []string{
+				"legacy",
+				"space",
+				"metrics",
+				"this_is_fun",
+				"instance",
+				"job",
+				"LA-EPI",
+				`"Friends Don't Lie"`,
 			}
 
 			utf8Metric.WithLabelValues(labels...).Inc()
@@ -342,6 +312,11 @@ func MeterProvider(c Config) (*sdkmetric.MeterProvider, error) {
 			time.Sleep(time.Second * 5)
 		}
 	}()
+}
+
+func MeterProvider(c Config) (*sdkmetric.MeterProvider, error) {
+	// Default is 1m. Set to 3s for demonstrative purposes.
+	interval := 3 * time.Second
 
 	if c.UseDebugMeterer {
 		// create stdout exporter, when no OTLP url is set
@@ -357,20 +332,10 @@ func MeterProvider(c Config) (*sdkmetric.MeterProvider, error) {
 		), nil
 	}
 
-	ctx := context.Background()
-	exp, err := otlpmetrichttp.New(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	// Create a new tracer provider with a batch span processor and the otlp exporter.
-	mp := sdkmetric.NewMeterProvider(
+	// Use Prometheus instead of OTLP for metrics
+	return sdkmetric.NewMeterProvider(
 		sdkmetric.WithResource(newResource(c)),
-		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(exp,
-			sdkmetric.WithInterval(interval))),
-	)
-
-	return mp, nil
+	), nil
 }
 
 func Profiler(c Config) (*pyroscope.Profiler, error) {
