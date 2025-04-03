@@ -170,9 +170,9 @@ func (m *IndexStore) LoadTenantShard(tx *bbolt.Tx, p PartitionKey, tenant string
 }
 
 func (m *IndexStore) loadTenantShard(tx *bbolt.Tx, p PartitionKey, tenant string, shard uint32) (*TenantShard, error) {
-	tenantShard, err := getOrCreateTenantShard(tx, p, tenant, shard)
-	if err != nil {
-		return nil, err
+	tenantShard := getTenantShard(tx, p, tenant, shard)
+	if tenantShard == nil {
+		return nil, nil
 	}
 
 	s := TenantShard{
@@ -190,11 +190,15 @@ func (m *IndexStore) loadTenantShard(tx *bbolt.Tx, p PartitionKey, tenant string
 	defer func() {
 		_ = stringsIter.Close()
 	}()
+	var err error
 	if err = s.StringTable.Load(stringsIter); err != nil {
 		return nil, err
 	}
 
 	err = tenantShard.ForEach(func(k, v []byte) error {
+		if bytes.Equal(k, tenantShardStringsBucketNameBytes) {
+			return nil
+		}
 		var md metastorev1.BlockMeta
 		if err = md.UnmarshalVT(v); err != nil {
 			return fmt.Errorf("failed to unmarshal block %q: %w", string(k), err)

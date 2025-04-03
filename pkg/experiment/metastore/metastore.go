@@ -122,7 +122,7 @@ func New(
 	}
 
 	// Initialization of the base components.
-	m.index = index.NewIndex(m.logger, index.NewStore(), &config.Index)
+	m.index = index.NewIndex(m.logger, index.NewStore(), config.Index)
 	m.tombstones = tombstones.NewTombstones(tombstones.NewStore())
 	m.compactor = compactor.NewCompactor(config.Compactor, compactor.NewStore(), m.tombstones, m.reg)
 	m.scheduler = scheduler.NewScheduler(config.Scheduler, scheduler.NewStore(), m.reg)

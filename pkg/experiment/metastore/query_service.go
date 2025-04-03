@@ -15,11 +15,10 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode"
-	"github.com/grafana/pyroscope/pkg/iter"
 )
 
 type IndexQuerier interface {
-	QueryMetadata(*bbolt.Tx, index.MetadataQuery) iter.Iterator[*metastorev1.BlockMeta]
+	QueryMetadata(*bbolt.Tx, index.MetadataQuery) ([]*metastorev1.BlockMeta, error)
 	QueryMetadataLabels(*bbolt.Tx, index.MetadataQuery) ([]*typesv1.Labels, error)
 }
 
@@ -61,13 +60,13 @@ func (svc *MetadataQueryService) queryMetadata(
 	tx *bbolt.Tx,
 	req *metastorev1.QueryMetadataRequest,
 ) (*metastorev1.QueryMetadataResponse, error) {
-	metas, err := iter.Slice(svc.index.QueryMetadata(tx, index.MetadataQuery{
+	metas, err := svc.index.QueryMetadata(tx, index.MetadataQuery{
 		Tenant:    req.TenantId,
 		StartTime: time.UnixMilli(req.StartTime),
 		EndTime:   time.UnixMilli(req.EndTime),
 		Expr:      req.Query,
 		Labels:    req.Labels,
-	}))
+	})
 	if err == nil {
 		return &metastorev1.QueryMetadataResponse{Blocks: metas}, nil
 	}
