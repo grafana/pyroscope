@@ -11,9 +11,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// const alloy = "/home/korniltsev/alloy"
-// const alloy = "/Users/marcsanmi/alloy"
-const alloy = "/Users/marcsanmi/alloy-amd64"
+//const alloy = "/home/korniltsev/alloy"
+//const alloyDebug = "/home/korniltsev/alloy.debug"
+
+//const alloy = "/Users/marcsanmi/alloy"
+const alloy = "/Users/marcsanmi/work/96921110873602d0036300b40f9c61e9fad3d69d"
 
 func TestName(t *testing.T) {
 	e, err := elf.Open(alloy)
@@ -30,7 +32,7 @@ func TestName(t *testing.T) {
 	}
 }
 
-const gtblfile = "/Users/marcsanmi/work/pyroscope/pkg/experiment/gtbl/alloy.gtbl"
+const gtblfile = "alloy.gtbl"
 
 func TestCreateGtbl(t *testing.T) {
 	executable, err := os.Open(alloy)
@@ -79,14 +81,65 @@ func TestReadGtbl(t *testing.T) {
 	var f ReaderAtCloser = &bufferCloser{bs, 0}
 	path, err := OpenReader(f)
 	require.NoError(t, err)
-	lookup, err := path.Lookup(0x408ed0)
-	//lookup, err := path.Lookup(0x40b560)
+	//lookup, err := path.Lookup(0x408ed0)
+	lookup, err := path.Lookup(0x40b560)
 
 	require.NoError(t, err)
 	require.Len(t, lookup, 1)
 	require.Equal(t, "internal/abi.(*IntArgRegBitmap).Get", lookup[0].FunctionName)
 	defer path.Close()
 
+}
+
+func TestCreateRead(t *testing.T) {
+	srcFiles := []string{
+		alloy,
+		//alloyDebug,
+	}
+	expected := []struct {
+		VA           uint64
+		FunctionName string
+	}{
+		{0x48bfff, ""},
+		{0x40b560, "internal/abi.(*IntArgRegBitmap).Get"},
+		{0x408ed0, "_ZN8smallvec17SmallVec$LT$A$GT$21reserve_one_unchecked17h38e8e94dce0a375aE"},
+	}
+	for _, file := range srcFiles {
+		gtblPath := t.TempDir() + "/tem.gtbl"
+		func() {
+			dstf, err := os.Create(gtblPath)
+			require.NoError(t, err)
+			defer dstf.Close()
+
+			srcf, err := os.Open(file)
+			require.NoError(t, err)
+			defer srcf.Close()
+
+			err = createTable(t, srcf, dstf)
+			require.NoError(t, err)
+		}()
+		tblf, err := os.Open(gtblPath)
+		require.NoError(t, err)
+		tbl, err := OpenReader(tblf)
+		t.Cleanup(func() {
+			tbl.Close()
+		})
+		require.NoError(t, err)
+
+		t.Run(file, func(t *testing.T) {
+			for _, e := range expected {
+				t.Run(fmt.Sprintf("%x", e.VA), func(t *testing.T) {
+					res, err := tbl.Lookup(e.VA)
+					fname := ""
+					if len(res) > 0 {
+						fname = res[0].FunctionName
+					}
+					require.NoError(t, err)
+					require.Equal(t, e.FunctionName, fname)
+				})
+			}
+		})
+	}
 }
 
 func createTable(t *testing.T, executable, output *os.File, opt ...Option) error {
@@ -148,10 +201,13 @@ func TestSymbolizeProfile(t *testing.T) {
 	// Loop through the samples and symbolize addresses
 	for _, sample := range prof.Sample {
 		for _, loc := range sample.Location {
+			if loc.Mapping.File != "alloy" {
+				continue
+			}
 			addr := loc.Address
 			symbols, err := symTable.Lookup(addr)
 			if err == nil && len(symbols) > 0 {
-				t.Logf("Symbolized 0x%x to %s", addr, symbols[0].FunctionName)
+				//t.Logf("Symbolized 0x%x to %s", addr, symbols[0].FunctionName)
 				loc.Line = []profile.Line{{Function: &profile.Function{Name: symbols[0].FunctionName}}}
 			} else {
 				t.Logf("Could not symbolize 0x%x: %v", addr, err)
@@ -163,5 +219,8 @@ func TestSymbolizeProfile(t *testing.T) {
 	err = prof.Write(&buf)
 	require.NoError(t, err)
 	err = os.WriteFile("symbolized_profile.pb", buf.Bytes(), 0644)
+	require.NoError(t, err)
+
+	err = os.WriteFile("symbolized_profile.txt", []byte(prof.String()), 0644)
 	require.NoError(t, err)
 }
