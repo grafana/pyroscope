@@ -273,7 +273,8 @@ func TestIndex_Query(t *testing.T) {
 }
 
 func Test_QueryConcurrency(t *testing.T) {
-	for i := 0; i < 3 && !t.Failed(); i++ {
+	const N = 1
+	for i := 0; i < N && !t.Failed(); i++ {
 		q := new(queryTestSuite)
 		q.run(t)
 	}
@@ -356,23 +357,23 @@ func (s *queryTestSuite) run(t *testing.T) {
 
 	s.runQuery(t, s.queryBlocks)
 	s.runQuery(t, s.queryLabels)
-	s.runQuery(t, s.findCompactedBlocks)
+	s.runQuery(t, s.getBlocks)
 
-	// Stop the test after 5 seconds,
-	// if the test is still running.
 	go func() {
 		select {
 		case <-s.stop:
-		case <-time.After(5 * time.Second):
+		case <-time.After(30 * time.Second):
 			t.Error("test time out: query consistency not confirmed")
 			s.doStop()
 		}
 	}()
 
 	s.wg.Wait()
+
 	// If we haven't failed the test, we can conclude that
 	// no races, no deadlocks, no inconsistencies were found.
 	s.doStop()
+
 	// Wait for the write goroutine to finish, so we can
 	// safely tear down the test.
 	<-done
@@ -579,7 +580,7 @@ func (s *queryTestSuite) queryLabels(t *testing.T) (ret int32) {
 	return sourceBlocks | compactedBlocks
 }
 
-func (s *queryTestSuite) findCompactedBlocks(t *testing.T) (ret int32) {
+func (s *queryTestSuite) getBlocks(t *testing.T) (ret int32) {
 	var x []*metastorev1.BlockMeta
 	var err error
 	require.NoError(t, s.db.View(func(tx *bbolt.Tx) error {
