@@ -3,6 +3,7 @@ package symbolizer
 import (
 	"context"
 	"fmt"
+	"github.com/grafana/pyroscope/ebpf/util"
 	"io"
 	"os"
 	"testing"
@@ -550,24 +551,42 @@ func openTestFile(t *testing.T) io.ReadCloser {
 }
 
 func TestSymbolizeAlloy(t *testing.T) {
+	t.Skip("Skipping test for now")
 	pbf, err := os.ReadFile("/home/korniltsev/alloy.pb")
 	require.NoError(t, err)
 
 	mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
 	f, err := os.Open("/home/korniltsev/alloy.debug")
 	require.NoError(t, err)
-	mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(f, nil).Maybe()
-
-	s, err := NewProfileSymbolizer(nil, mockClient, NewNullDebugInfoStore(), NewMetrics(nil), 100, 100)
+	mockClient.On("FetchDebuginfo", mock.Anything, "96921110873602d0036300b40f9c61e9fad3d69d").Return(f, nil).Maybe()
+	logger := util.TestLogger(t)
+	s, err := NewProfileSymbolizer(logger, mockClient, NewNullDebugInfoStore(), NewMetrics(nil), 100, 100)
 	require.NoError(t, err)
 	p := new(googlev1.Profile)
 	err = p.UnmarshalVT(pbf)
 	require.NoError(t, err)
-
-	for i, location := range p.Location {
-
+	mappingMap := make(map[uint64]*googlev1.Mapping)
+	for _, mapping := range p.Mapping {
+		mappingMap[mapping.Id] = mapping
+		name := p.StringTable[mapping.Filename]
+		fmt.Printf("%d %s\n", mapping.Id, name)
+		if name != "alloy" {
+			continue
+		}
+		mapping.HasFunctions = false
+		mapping.HasFilenames = false
+		mapping.HasLineNumbers = false
+	}
+	for _, location := range p.Location {
+		m := mappingMap[location.MappingId]
+		name := p.StringTable[m.Filename]
+		if name != "alloy" {
+			continue
+		}
+		location.Line = nil
 	}
 
-	//s.SymbolizePprof(context.Background(), )
-	_ = s
+	err = s.SymbolizePprof(context.Background(), p)
+	require.NoError(t, err)
+	fmt.Printf("locations %d\n", len(p.Location))
 }
