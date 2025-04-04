@@ -12,10 +12,11 @@ import (
 )
 
 type TimeSeriesValue struct {
-	Ts         int64
-	Lbs        []*typesv1.LabelPair
-	LabelsHash uint64
-	Value      float64
+	Ts          int64
+	Lbs         []*typesv1.LabelPair
+	LabelsHash  uint64
+	Value       float64
+	Annotations []*typesv1.ProfileAnnotation
 }
 
 func (p TimeSeriesValue) Labels() Labels        { return p.Lbs }
@@ -45,6 +46,7 @@ func (s *TimeSeriesIterator) Next() bool {
 	s.point = s.point[1:]
 	s.curr.Ts = p.Timestamp
 	s.curr.Value = p.Value
+	s.curr.Annotations = p.Annotations
 	return true
 }
 
@@ -61,7 +63,7 @@ func NewTimeSeriesMergeIterator(series []*typesv1.Series) iter.Iterator[TimeSeri
 }
 
 type TimeSeriesAggregator interface {
-	Add(ts int64, value float64)
+	Add(ts int64, point *TimeSeriesValue)
 	GetAndReset() *typesv1.Point
 	IsEmpty() bool
 	GetTimestamp() int64
@@ -78,23 +80,29 @@ func NewTimeSeriesAggregator(aggregation *typesv1.TimeSeriesAggregationType) Tim
 }
 
 type sumTimeSeriesAggregator struct {
-	ts  int64
-	sum float64
+	ts          int64
+	sum         float64
+	annotations []*typesv1.ProfileAnnotation
 }
 
-func (a *sumTimeSeriesAggregator) Add(ts int64, value float64) {
+func (a *sumTimeSeriesAggregator) Add(ts int64, point *TimeSeriesValue) {
 	a.ts = ts
-	a.sum += value
+	a.sum += point.Value
+	a.annotations = append(a.annotations, point.Annotations...)
 }
 
 func (a *sumTimeSeriesAggregator) GetAndReset() *typesv1.Point {
 	tsCopy := a.ts
 	sumCopy := a.sum
+	annotationsCopy := make([]*typesv1.ProfileAnnotation, len(a.annotations))
+	copy(annotationsCopy, a.annotations)
 	a.ts = -1
 	a.sum = 0
+	a.annotations = a.annotations[:0]
 	return &typesv1.Point{
-		Timestamp: tsCopy,
-		Value:     sumCopy,
+		Timestamp:   tsCopy,
+		Value:       sumCopy,
+		Annotations: annotationsCopy,
 	}
 }
 
@@ -102,26 +110,32 @@ func (a *sumTimeSeriesAggregator) IsEmpty() bool       { return a.ts == -1 }
 func (a *sumTimeSeriesAggregator) GetTimestamp() int64 { return a.ts }
 
 type avgTimeSeriesAggregator struct {
-	ts    int64
-	sum   float64
-	count int64
+	ts          int64
+	sum         float64
+	count       int64
+	annotations []*typesv1.ProfileAnnotation
 }
 
-func (a *avgTimeSeriesAggregator) Add(ts int64, value float64) {
+func (a *avgTimeSeriesAggregator) Add(ts int64, point *TimeSeriesValue) {
 	a.ts = ts
-	a.sum += value
+	a.sum += point.Value
 	a.count++
+	a.annotations = append(a.annotations, point.Annotations...)
 }
 
 func (a *avgTimeSeriesAggregator) GetAndReset() *typesv1.Point {
 	avg := a.sum / float64(a.count)
 	tsCopy := a.ts
+	annotationsCopy := make([]*typesv1.ProfileAnnotation, len(a.annotations))
+	copy(annotationsCopy, a.annotations)
 	a.ts = -1
 	a.sum = 0
 	a.count = 0
+	a.annotations = a.annotations[:0]
 	return &typesv1.Point{
-		Timestamp: tsCopy,
-		Value:     avg,
+		Timestamp:   tsCopy,
+		Value:       avg,
+		Annotations: annotationsCopy,
 	}
 }
 
@@ -144,26 +158,27 @@ func RangeSeries(it iter.Iterator[TimeSeriesValue], start, end, step int64, aggr
 Outer:
 	for currentStep := start; currentStep <= end; currentStep += step {
 		for {
-			aggregator, ok := aggregators[it.At().LabelsHash]
+			point := it.At()
+			aggregator, ok := aggregators[point.LabelsHash]
 			if !ok {
 				aggregator = NewTimeSeriesAggregator(aggregation)
-				aggregators[it.At().LabelsHash] = aggregator
+				aggregators[point.LabelsHash] = aggregator
 			}
-			if it.At().Ts > currentStep {
+			if point.Ts > currentStep {
 				if !aggregator.IsEmpty() {
-					series := seriesMap[it.At().LabelsHash]
+					series := seriesMap[point.LabelsHash]
 					series.Points = append(series.Points, aggregator.GetAndReset())
 				}
 				break // no more profiles for the currentStep
 			}
 			// find or create series
-			series, ok := seriesMap[it.At().LabelsHash]
+			series, ok := seriesMap[point.LabelsHash]
 			if !ok {
-				seriesMap[it.At().LabelsHash] = &typesv1.Series{
-					Labels: it.At().Lbs,
+				seriesMap[point.LabelsHash] = &typesv1.Series{
+					Labels: point.Lbs,
 					Points: []*typesv1.Point{},
 				}
-				aggregator.Add(currentStep, it.At().Value)
+				aggregator.Add(currentStep, &point)
 				if !it.Next() {
 					break Outer
 				}
@@ -171,7 +186,7 @@ Outer:
 			}
 			// Aggregate point if it is in the current step.
 			if aggregator.GetTimestamp() == currentStep {
-				aggregator.Add(currentStep, it.At().Value)
+				aggregator.Add(currentStep, &point)
 				if !it.Next() {
 					break Outer
 				}
@@ -181,7 +196,7 @@ Outer:
 			if !aggregator.IsEmpty() {
 				series.Points = append(series.Points, aggregator.GetAndReset())
 			}
-			aggregator.Add(currentStep, it.At().Value)
+			aggregator.Add(currentStep, &point)
 			if !it.Next() {
 				break Outer
 			}

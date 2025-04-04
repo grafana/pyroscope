@@ -23,6 +23,9 @@ message RawProfileSeries {
 
   // samples are the set of profile bytes
   repeated RawSample samples = 2;
+
+  // annotations provide generic metadata for profile series
+  repeated types.v1.ProfileAnnotation annotations = 3;
 }
 
 // RawSample is the set of bytes that correspond to a pprof profile

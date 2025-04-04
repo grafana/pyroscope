@@ -1652,6 +1652,13 @@
           "type": "string",
           "format": "int64",
           "title": "Milliseconds unix timestamp"
+        },
+        "annotations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1ProfileAnnotation"
+          }
         }
       }
     },
@@ -1696,6 +1703,14 @@
         "pprof": {
           "type": "string",
           "format": "byte"
+        }
+      }
+    },
+    "v1ProfileAnnotation": {
+      "type": "object",
+      "properties": {
+        "body": {
+          "type": "string"
         }
       }
     },
@@ -1923,6 +1938,14 @@
             "$ref": "#/definitions/v1RawSample"
           },
           "title": "samples are the set of profile bytes"
+        },
+        "annotations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1ProfileAnnotation"
+          },
+          "title": "annotations provide generic metadata for profile series"
         }
       },
       "title": "RawProfileSeries represents the pprof profile and its associated labels"

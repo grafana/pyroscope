@@ -662,8 +662,9 @@ func (d *Distributor) sendProfilesErr(ctx context.Context, ingester ring.Instanc
 
 	for _, p := range profileTrackers {
 		series := &pushv1.RawProfileSeries{
-			Labels:  p.profile.Labels,
-			Samples: make([]*pushv1.RawSample, 0, len(p.profile.Samples)),
+			Labels:      p.profile.Labels,
+			Samples:     make([]*pushv1.RawSample, 0, len(p.profile.Samples)),
+			Annotations: p.profile.Annotations,
 		}
 		for _, sample := range p.profile.Samples {
 			series.Samples = append(series.Samples, &pushv1.RawSample{
@@ -758,6 +759,9 @@ func (d *Distributor) checkIngestLimit(tenantID string, req *distributormodel.Pu
 	if l.LimitReached {
 		// we want to allow a very small portion of the traffic after reaching the limit
 		if d.ingestionLimitsSampler.AllowRequest(tenantID, l.Sampling) {
+			if err := req.MarkThrottledTenant(l); err != nil {
+				return err
+			}
 			return nil
 		}
 		limitResetTime := time.Unix(l.LimitResetTime, 0).UTC().Format(time.RFC3339)
@@ -782,6 +786,9 @@ func (d *Distributor) checkUsageGroupsIngestLimit(tenantID string, groupsInReque
 			continue
 		}
 		if d.ingestionLimitsSampler.AllowRequest(tenantID, l.Sampling) {
+			if err := req.MarkThrottledUsageGroup(l, group); err != nil {
+				return err
+			}
 			return nil
 		}
 		limitResetTime := time.Unix(l.LimitResetTime, 0).UTC().Format(time.RFC3339)
@@ -890,6 +897,9 @@ func extractSampleSeries(
 				rules,
 				v,
 			)
+			for _, vSer := range v.series {
+				vSer.Annotations = series.Annotations
+			}
 			result = append(result, v.series...)
 			bytesRelabelDropped += float64(v.discardedBytes)
 			profilesRelabelDropped += float64(v.discardedProfiles)
