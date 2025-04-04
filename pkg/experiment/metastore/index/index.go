@@ -25,6 +25,7 @@ const (
 	partitionDuration = 6 * time.Hour
 	// Indicates that partitions within this window are "protected" from being unloaded.
 	partitionProtectionWindow = 24 * time.Hour
+	queryLookaroundPeriod     = 24 * time.Hour
 	// Maximum number of shards to keep in memory
 	defaultMaxShards = 10000
 )
@@ -36,7 +37,7 @@ var (
 
 var DefaultConfig = Config{
 	PartitionDuration:     partitionDuration,
-	QueryLookaroundPeriod: partitionDuration,
+	QueryLookaroundPeriod: queryLookaroundPeriod,
 	CacheSize:             defaultMaxShards,
 }
 
