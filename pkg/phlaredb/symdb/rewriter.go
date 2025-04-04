@@ -128,6 +128,10 @@ func (p *partitionRewriter) populateUnresolved(stacktraceIDs []uint32) error {
 	for unresolvedLocs.Next() {
 		location := p.src.Locations[unresolvedLocs.At()]
 		location.MappingId = p.mappings.tryLookup(location.MappingId)
+		if len(p.src.Functions) == 0 {
+			location.Line = nil
+			continue
+		}
 		for j, line := range location.Line {
 			location.Line[j].FunctionId = p.functions.tryLookup(line.FunctionId)
 		}
