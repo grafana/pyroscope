@@ -157,6 +157,12 @@ func (n *Node) Init() (err error) {
 	raftConfig.SnapshotInterval = n.config.SnapshotInterval
 	raftConfig.LocalID = raft.ServerID(n.config.ServerID)
 
+	// Maximum number of buffered commands (default: 64).
+	// This sets the size of the channel used to queue commands
+	// for the FSM to apply.
+	raftConfig.MaxAppendEntries = 1 << 10
+	raftConfig.BatchApplyCh = true
+
 	n.raft, err = raft.NewRaft(raftConfig, n.fsm, n.logStore, n.stableStore, n.snapshotStore, n.transport)
 	if err != nil {
 		return fmt.Errorf("starting raft node: %w", err)
