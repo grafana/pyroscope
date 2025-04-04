@@ -27,7 +27,7 @@ func NewClient(address string, logger log.Logger, auth connect.Option) (*Client,
 	opts := connectapi.DefaultClientOptions()
 	opts = append(opts, auth)
 	c := Client{
-		client: settingsv1connect.NewRecordingRulesServiceClient(httpClient, "http://"+address, opts...),
+		client: settingsv1connect.NewRecordingRulesServiceClient(httpClient, address, opts...),
 		logger: logger,
 	}
 	c.service = services.NewIdleService(c.starting, c.stopping)

@@ -12,8 +12,7 @@ import (
 )
 
 const (
-	envVarRecordingRules = "PYROSCOPE_RECORDING_RULES"
-	rulesExpiryTime      = time.Minute
+	rulesExpiryTime = time.Minute
 )
 
 type StaticRuler struct {
