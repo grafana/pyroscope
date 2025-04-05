@@ -4,9 +4,11 @@ import (
 	"sync"
 
 	"github.com/grafana/dskit/runutil"
+	"github.com/prometheus/prometheus/model/labels"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	parquetquery "github.com/grafana/pyroscope/pkg/phlaredb/query"
 	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
@@ -66,12 +68,22 @@ func queryPprof(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) 
 		return nil, err
 	}
 
+	for _, m := range q.req.matchers {
+		if m.Name == phlaremodel.LabelNameProfileType && m.Type == labels.MatchEqual {
+			if t, err := phlaremodel.ParseProfileTypeSelector(m.Value); err == nil {
+				pprof.SetProfileMetadata(profile, t, q.req.endTime, 0)
+				break
+			}
+		}
+	}
+
 	resp := &queryv1.Report{
 		Pprof: &queryv1.PprofReport{
 			Query: query.Pprof.CloneVT(),
 			Pprof: pprof.MustMarshal(profile, true),
 		},
 	}
+
 	return resp, nil
 }
 
