@@ -14,8 +14,16 @@ import (
 
 // Raft represents a Raft consensus protocol interface. Any modifications to
 // the state should be proposed through the Raft interface.
+//
+// The methods return an error if node is not the leader.
 type Raft interface {
-	Propose(fsm.RaftLogEntryType, proto.Message) (proto.Message, error)
+	// Apply makes an attempt to apply the given command to the FSM:
+	// it returns when the command is applied to the local FSM.
+	Apply(fsm.RaftLogEntryType, proto.Message) (proto.Message, error)
+
+	// Commit makes an attempt to commit the given command to the raft log:
+	// it returns once the command is replicated to the quorum.
+	Commit(fsm.RaftLogEntryType, proto.Message) error
 }
 
 // State represents a consistent read-only view of the metastore.

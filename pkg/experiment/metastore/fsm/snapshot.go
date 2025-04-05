@@ -6,12 +6,12 @@ import (
 	"context"
 	"io"
 	"runtime/pprof"
-	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/hashicorp/raft"
 	"github.com/klauspost/compress/zstd"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.etcd.io/bbolt"
 )
 
@@ -28,12 +28,11 @@ func (s *snapshotWriter) Persist(sink raft.SnapshotSink) (err error) {
 	pprof.SetGoroutineLabels(pprof.WithLabels(ctx, pprof.Labels("metastore_op", "persist")))
 	defer pprof.SetGoroutineLabels(ctx)
 
-	start := time.Now()
+	timer := prometheus.NewTimer(s.metrics.boltDBPersistSnapshotDuration)
 	level.Debug(s.logger).Log("msg", "persisting snapshot", "sink_id", sink.ID())
 	defer func() {
-		s.metrics.boltDBPersistSnapshotDuration.Observe(time.Since(start).Seconds())
 		if err == nil {
-			level.Info(s.logger).Log("msg", "persisted snapshot", "sink_id", sink.ID(), "duration", time.Since(start))
+			level.Info(s.logger).Log("msg", "persisted snapshot", "sink_id", sink.ID(), "duration", timer.ObserveDuration())
 			if err = sink.Close(); err != nil {
 				level.Error(s.logger).Log("msg", "failed to close sink", "err", err)
 			}

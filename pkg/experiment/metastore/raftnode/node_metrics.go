@@ -9,16 +9,28 @@ import (
 )
 
 type metrics struct {
-	apply prometheus.Histogram
-	read  prometheus.Histogram
-	state *prometheus.GaugeVec
+	apply  prometheus.Histogram
+	commit prometheus.Histogram
+	read   prometheus.Histogram
+	state  *prometheus.GaugeVec
 }
 
 func newMetrics(reg prometheus.Registerer) *metrics {
 	m := &metrics{
 		apply: prometheus.NewHistogram(prometheus.HistogramOpts{
 			Name:                            "raft_apply_command_duration_seconds",
-			Help:                            "Duration of applying a command to the Raft log",
+			Help:                            "Duration of applying a command to the Raft FSM",
+			Buckets:                         prometheus.DefBuckets,
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramZeroThreshold:    0,
+			NativeHistogramMaxBucketNumber:  50,
+			NativeHistogramMinResetDuration: time.Hour,
+			NativeHistogramMaxZeroThreshold: 0,
+		}),
+
+		commit: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Name:                            "raft_commit_command_duration_seconds",
+			Help:                            "Duration of committing a command to the Raft log",
 			Buckets:                         prometheus.DefBuckets,
 			NativeHistogramBucketFactor:     1.1,
 			NativeHistogramZeroThreshold:    0,
@@ -49,6 +61,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 
 	if reg != nil {
 		util.RegisterOrGet(reg, m.apply)
+		util.RegisterOrGet(reg, m.commit)
 		util.RegisterOrGet(reg, m.read)
 		util.RegisterOrGet(reg, m.state)
 	}
