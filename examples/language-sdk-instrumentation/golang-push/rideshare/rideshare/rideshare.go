@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"math/rand"
 	"os"
 	"strconv"
 	"time"
@@ -250,13 +249,6 @@ func debugTracerProvider() (*sdktrace.TracerProvider, error) {
 type dimension struct {
 	label        string
 	getNextValue func() string
-}
-
-func staticList(input []string) func() string {
-	return func() string {
-		i := rand.Intn(len(input))
-		return input[i]
-	}
 }
 
 func init() {
