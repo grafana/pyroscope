@@ -18,6 +18,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/common/model"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
@@ -324,10 +325,30 @@ func MeterProvider(c Config) (*sdkmetric.MeterProvider, error) {
 		), nil
 	}
 
-	// Use Prometheus instead of OTLP for metrics
-	return sdkmetric.NewMeterProvider(
+	ctx := context.Background()
+	opts := []otlpmetrichttp.Option{otlpmetrichttp.WithEndpoint(c.OTLPUrl)}
+	if c.OTLPInsecure {
+		opts = append(opts, otlpmetrichttp.WithInsecure())
+	}
+	if c.OTLPBasicAuthUser != "" {
+		opts = append(opts, otlpmetrichttp.WithHeaders(map[string]string{
+			"Authorization": "Basic " + basicAuth(c.OTLPBasicAuthUser, c.OTLPBasicAuthPassword),
+		}))
+	}
+
+	exp, err := otlpmetrichttp.New(ctx, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a new meter provider with a periodic reader and the otlp exporter
+	mp := sdkmetric.NewMeterProvider(
 		sdkmetric.WithResource(newResource(c)),
-	), nil
+		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(exp,
+			sdkmetric.WithInterval(interval))),
+	)
+
+	return mp, nil
 }
 
 func Profiler(c Config) (*pyroscope.Profiler, error) {
