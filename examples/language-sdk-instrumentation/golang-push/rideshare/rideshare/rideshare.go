@@ -276,7 +276,7 @@ func init() {
 	}
 
 	utf8Metric := promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "a.utf8.metric 🤘",
+		Name: "a.utf8.metric",
 		Help: "a utf8 metric with utf8 labels",
 	}, dimensions)
 
