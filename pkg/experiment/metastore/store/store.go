@@ -14,29 +14,40 @@ type KV struct {
 	Value []byte
 }
 
-func NewCursorIter(prefix []byte, cursor *bbolt.Cursor) *CursorIterator {
-	return &CursorIterator{prefix: prefix, cursor: cursor}
+func NewCursorIter(cursor *bbolt.Cursor) *CursorIterator {
+	return &CursorIterator{cursor: cursor}
 }
 
 type CursorIterator struct {
 	cursor *bbolt.Cursor
 	seek   bool
-	prefix []byte
 	k, v   []byte
+
+	// Prefix that keys must start with.
+	Prefix []byte
+	// Keys that start with this prefix will be skipped.
+	SkipPrefix []byte
 }
 
 func (c *CursorIterator) Next() bool {
 	if !c.seek {
-		c.k, c.v = c.cursor.Seek(c.prefix)
+		c.k, c.v = c.cursor.Seek(c.Prefix)
 		c.seek = true
-	} else {
-		c.k, c.v = c.cursor.Next()
+		return c.valid()
 	}
-	return c.valid()
+	for {
+		c.k, c.v = c.cursor.Next()
+		if !c.valid() {
+			return false
+		}
+		if len(c.SkipPrefix) == 0 || !bytes.HasPrefix(c.k, c.SkipPrefix) {
+			return true
+		}
+	}
 }
 
 func (c *CursorIterator) valid() bool {
-	return c.k != nil && (len(c.prefix) == 0 || bytes.HasPrefix(c.k, c.prefix))
+	return c.k != nil && (len(c.Prefix) == 0 || bytes.HasPrefix(c.k, c.Prefix))
 }
 
 func (c *CursorIterator) At() KV       { return KV{Key: c.k, Value: c.v} }

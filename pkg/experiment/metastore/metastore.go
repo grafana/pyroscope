@@ -36,7 +36,7 @@ type Config struct {
 	MinReadyDuration time.Duration      `yaml:"min_ready_duration" category:"advanced"`
 	Raft             raft.Config        `yaml:"raft"`
 	FSM              fsm.Config         `yaml:",inline" category:"advanced"`
-	Index            index.Config       `yaml:",inline" category:"advanced"`
+	Index            index.Config       `yaml:"index" category:"advanced"`
 	DLQRecovery      dlq.RecoveryConfig `yaml:",inline" category:"advanced"`
 	Compactor        compactor.Config   `yaml:",inline" category:"advanced"`
 	Scheduler        scheduler.Config   `yaml:",inline" category:"advanced"`
@@ -51,7 +51,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	cfg.FSM.RegisterFlagsWithPrefix(prefix, f)
 	cfg.Compactor.RegisterFlagsWithPrefix(prefix, f)
 	cfg.Scheduler.RegisterFlagsWithPrefix(prefix, f)
-	cfg.Index.RegisterFlagsWithPrefix(prefix, f)
+	cfg.Index.RegisterFlagsWithPrefix(prefix+"index.", f)
 	cfg.DLQRecovery.RegisterFlagsWithPrefix(prefix, f)
 }
 
