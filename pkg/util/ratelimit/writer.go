@@ -2,14 +2,11 @@ package ratelimit
 
 import (
 	"io"
-	"time"
 )
 
 type Writer struct {
 	w io.Writer
 	l *Limiter
-
-	sleep func(time.Duration)
 }
 
 func NewWriter(w io.Writer, l *Limiter) *Writer {
