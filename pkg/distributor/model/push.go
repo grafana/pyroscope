@@ -104,7 +104,10 @@ func (req *PushRequest) MarkThrottledTenant(l *ingest_limits.Config) error {
 		return err
 	}
 	for _, series := range req.Series {
-		series.Annotations = append(series.Annotations, &v1.ProfileAnnotation{Body: string(annotation)})
+		series.Annotations = append(series.Annotations, &v1.ProfileAnnotation{
+			Key:   ingest_limits.ProfileAnnotationKeyThrottled,
+			Value: string(annotation),
+		})
 	}
 	return nil
 }
@@ -115,7 +118,10 @@ func (req *PushRequest) MarkThrottledUsageGroup(l *ingest_limits.Config, usageGr
 		return err
 	}
 	for _, series := range req.Series {
-		series.Annotations = append(series.Annotations, &v1.ProfileAnnotation{Body: string(annotation)})
+		series.Annotations = append(series.Annotations, &v1.ProfileAnnotation{
+			Key:   ingest_limits.ProfileAnnotationKeyThrottled,
+			Value: string(annotation),
+		})
 	}
 	return nil
 }

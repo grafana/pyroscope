@@ -1709,7 +1709,10 @@
     "v1ProfileAnnotation": {
       "type": "object",
       "properties": {
-        "body": {
+        "key": {
+          "type": "string"
+        },
+        "value": {
           "type": "string"
         }
       }

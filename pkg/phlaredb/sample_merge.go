@@ -10,6 +10,7 @@ import (
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/distributor/ingest_limits"
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/phlaredb/query"
@@ -169,12 +170,12 @@ func mergeByLabels[T Profile](
 	if err != nil {
 		return nil, err
 	}
-	annotationsColumn, err := v1.ResolveColumnByPath(profileSource.Schema(), v1.AnnotationsColumnPath)
+	annotationValuesColumn, err := v1.ResolveColumnByPath(profileSource.Schema(), v1.AnnotationValueColumnPath)
 	if err != nil {
 		return nil, err
 	}
 
-	profiles := query.NewRepeatedRowIterator(ctx, rows, profileSource.RowGroups(), column.ColumnIndex, annotationsColumn.ColumnIndex)
+	profiles := query.NewRepeatedRowIterator(ctx, rows, profileSource.RowGroups(), column.ColumnIndex, annotationValuesColumn.ColumnIndex)
 	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
 
 	seriesBuilder := phlaremodel.NewTimeSeriesBuilder(by...)
@@ -183,13 +184,18 @@ func mergeByLabels[T Profile](
 		values := profiles.At()
 		p := values.Row
 		var total int64
-		annotations := make([]string, 0)
+		annotations := v1.Annotations{
+			Keys:   make([]string, 0),
+			Values: make([]string, 0),
+		}
 		for _, e := range values.Values {
 			switch e[0].Kind() {
 			case parquet.Int64:
 				total += e[0].Int64()
 			case parquet.ByteArray:
-				annotations = append(annotations, e[0].String())
+				// TODO: Read keys as well
+				annotations.Keys = append(annotations.Keys, ingest_limits.ProfileAnnotationKeyThrottled)
+				annotations.Values = append(annotations.Values, e[0].String())
 			default:
 			}
 		}
@@ -225,8 +231,8 @@ func mergeByLabelsWithStackTraceSelector[T Profile](
 		if err = r.CallSiteValuesParquet(&v, h.StacktracePartition(), row.Values[0], row.Values[1]); err != nil {
 			return nil, err
 		}
-		// TODO aleks-p: add annotation support
-		seriesBuilder.Add(h.Fingerprint(), h.Labels(), int64(h.Timestamp()), float64(v.Total), nil)
+		// TODO aleks-p: add annotation support?
+		seriesBuilder.Add(h.Fingerprint(), h.Labels(), int64(h.Timestamp()), float64(v.Total), v1.Annotations{})
 	}
 
 	return seriesBuilder.Build(), profiles.Err()

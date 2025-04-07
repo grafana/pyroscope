@@ -333,7 +333,7 @@ func (p ProfileWithLabels) Total() int64 {
 	return int64(p.profile.TotalValue)
 }
 
-func (p ProfileWithLabels) Annotations() []string {
+func (p ProfileWithLabels) Annotations() schemav1.Annotations {
 	return p.profile.Annotations
 }
 
