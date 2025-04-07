@@ -84,11 +84,12 @@ func (h *Head) Ingest(p *profilev1.Profile, id uuid.UUID, externalLabels []*type
 
 		profile.TotalValue = profile.Samples.Sum()
 
-		annotationBodies := make([]string, 0, len(annotations))
+		profile.Annotations.Keys = make([]string, 0, len(annotations))
+		profile.Annotations.Values = make([]string, 0, len(annotations))
 		for _, annotation := range annotations {
-			annotationBodies = append(annotationBodies, annotation.Body)
+			profile.Annotations.Keys = append(profile.Annotations.Keys, annotation.Key)
+			profile.Annotations.Values = append(profile.Annotations.Values, annotation.Value)
 		}
-		profile.Annotations = annotationBodies
 
 		if profile.Samples.Len() == 0 {
 			continue

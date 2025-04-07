@@ -136,7 +136,7 @@ func newProfiles() []*Profile {
 				},
 			},
 			Comments:    []int64{},
-			Annotations: []*Annotation{{Body: "test annotation"}},
+			Annotations: []*Annotation{{Key: "key", Value: "test annotation"}},
 		},
 		{
 			ID:          uuid.MustParse("00000000-0000-0000-0000-000000000002"),

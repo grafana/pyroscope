@@ -10,6 +10,7 @@ import (
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/distributor/ingest_limits"
 	"github.com/grafana/pyroscope/pkg/experiment/block"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	parquetquery "github.com/grafana/pyroscope/pkg/phlaredb/query"
@@ -41,24 +42,28 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 		return nil, err
 	}
 
-	annotationsColumn, err := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), schemav1.AnnotationsColumnPath)
+	annotationValuesColumn, err := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), schemav1.AnnotationValueColumnPath)
 	if err != nil {
 		return nil, err
 	}
 
-	rows := parquetquery.NewRepeatedRowIteratorBatchSize(q.ctx, entries, q.ds.Profiles().RowGroups(), bigBatchSize, column.ColumnIndex, annotationsColumn.ColumnIndex)
+	rows := parquetquery.NewRepeatedRowIteratorBatchSize(q.ctx, entries, q.ds.Profiles().RowGroups(), bigBatchSize, column.ColumnIndex, annotationValuesColumn.ColumnIndex)
 	defer runutil.CloseWithErrCapture(&err, rows, "failed to close column iterator")
 
 	builder := phlaremodel.NewTimeSeriesBuilder(query.TimeSeries.GroupBy...)
 	for rows.Next() {
 		row := rows.At()
-		annotations := make([]string, 0)
+		annotations := schemav1.Annotations{
+			Keys:   make([]string, 0),
+			Values: make([]string, 0),
+		}
 		for _, e := range row.Values[1] {
 			if e.Kind() == parquet.ByteArray {
-				annotations = append(annotations, e.String())
+				annotations.Keys = append(annotations.Keys, ingest_limits.ProfileAnnotationKeyThrottled)
+				annotations.Values = append(annotations.Values, e.String())
 			}
 		}
-		builder.Add(row.Row.Fingerprint, row.Row.Labels, int64(row.Row.Timestamp), float64(row.Values[0][0].Int64()), nil)
+		builder.Add(row.Row.Fingerprint, row.Row.Labels, int64(row.Row.Timestamp), float64(row.Values[0][0].Int64()), annotations)
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err

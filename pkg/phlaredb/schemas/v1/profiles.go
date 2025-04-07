@@ -54,7 +54,8 @@ var (
 		phlareparquet.NewGroupField("DefaultSampleType", parquet.Optional(parquet.Int(64))),
 		phlareparquet.NewGroupField(AnnotationsColumnName, parquet.List(
 			phlareparquet.Group{
-				phlareparquet.NewGroupField("Body", parquet.Encoded(parquet.String(), &parquet.DeltaByteArray)),
+				phlareparquet.NewGroupField("Key", parquet.Encoded(parquet.String(), &parquet.DeltaByteArray)),
+				phlareparquet.NewGroupField("Value", parquet.Encoded(parquet.String(), &parquet.DeltaByteArray)),
 			})),
 	})
 	DownsampledProfilesSchema = parquet.NewSchema("DownsampledProfile", phlareparquet.Group{
@@ -81,7 +82,8 @@ var (
 	stacktracePartitionColIndex int
 	totalValueColIndex          int
 
-	AnnotationsColumnPath = strings.Split("Annotations.list.element.Body", ".")
+	AnnotationKeyColumnPath   = strings.Split("Annotations.list.element.Key", ".")
+	AnnotationValueColumnPath = strings.Split("Annotations.list.element.Value", ".")
 
 	downsampledValueColIndex int
 
@@ -214,7 +216,13 @@ type Profile struct {
 }
 
 type Annotation struct {
-	Body string `parquet:",delta"`
+	Key   string `parquet:",delta"`
+	Value string `parquet:",delta"`
+}
+
+type Annotations struct {
+	Keys   []string
+	Values []string
 }
 
 func (p Profile) Timestamp() model.Time {
@@ -326,7 +334,7 @@ type InMemoryProfile struct {
 
 	Samples Samples
 
-	Annotations []string
+	Annotations Annotations
 }
 
 type Samples struct {
@@ -636,30 +644,42 @@ func deconstructMemoryProfile(imp InMemoryProfile, row parquet.Row) parquet.Row 
 	}
 
 	newCol()
-	if len(imp.Annotations) == 0 {
+	if len(imp.Annotations.Keys) == 0 {
 		row = append(row, parquet.Value{}.Level(0, 0, col))
 	}
 	repetition = -1
-	for i := range imp.Annotations {
+	for i := range imp.Annotations.Keys {
 		if repetition < 1 {
 			repetition++
 		}
-		row = append(row, parquet.ByteArrayValue([]byte(imp.Annotations[i])).Level(repetition, 1, col))
+		row = append(row, parquet.ByteArrayValue([]byte(imp.Annotations.Keys[i])).Level(repetition, 1, col))
+	}
+
+	newCol()
+	if len(imp.Annotations.Values) == 0 {
+		row = append(row, parquet.Value{}.Level(0, 0, col))
+	}
+	repetition = -1
+	for i := range imp.Annotations.Values {
+		if repetition < 1 {
+			repetition++
+		}
+		row = append(row, parquet.ByteArrayValue([]byte(imp.Annotations.Values[i])).Level(repetition, 1, col))
 	}
 
 	return row
 }
 
 func profileColumnCount(imp InMemoryProfile) int {
-	var totalCols = 10 + (7 * len(imp.Samples.StacktraceIDs)) + len(imp.Comments) + len(imp.Annotations)
+	var totalCols = 10 + (7 * len(imp.Samples.StacktraceIDs)) + len(imp.Comments) + 2*len(imp.Annotations.Keys)
 	if len(imp.Comments) == 0 {
 		totalCols++
 	}
 	if len(imp.Samples.StacktraceIDs) == 0 {
 		totalCols += 7
 	}
-	if len(imp.Annotations) == 0 {
-		totalCols++
+	if len(imp.Annotations.Keys) == 0 {
+		totalCols += 2
 	}
 	return totalCols
 }

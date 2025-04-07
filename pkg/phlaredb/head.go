@@ -234,11 +234,12 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, a
 			continue
 		}
 
-		annotationBodies := make([]string, 0, len(annotations))
-		for _, annotation := range annotations {
-			annotationBodies = append(annotationBodies, annotation.Body)
+		profile.Annotations.Keys = make([]string, 0, len(annotations))
+		profile.Annotations.Values = make([]string, 0, len(annotations))
+		for i := range annotations {
+			profile.Annotations.Keys = append(profile.Annotations.Keys, annotations[i].Key)
+			profile.Annotations.Values = append(profile.Annotations.Values, annotations[i].Value)
 		}
-		profile.Annotations = annotationBodies
 
 		if err := h.profiles.ingest(ctx, []schemav1.InMemoryProfile{profile}, lbls[idxType], metricName); err != nil {
 			return err

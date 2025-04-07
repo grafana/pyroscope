@@ -34,7 +34,8 @@ message Point {
 }
 
 message ProfileAnnotation {
-  string body = 1;
+  string key = 1;
+  string value = 2;
 }
 
 message LabelValuesRequest {

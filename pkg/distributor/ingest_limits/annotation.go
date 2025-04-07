@@ -6,7 +6,6 @@ import (
 
 func CreateTenantAnnotation(c *Config) ([]byte, error) {
 	annotation := &ProfileAnnotation{
-		Type: ProfileAnnotationTypeThrottled,
 		Body: ThrottledAnnotation{
 			PeriodType:        c.PeriodType,
 			PeriodLimitMb:     c.PeriodLimitMb,
@@ -20,7 +19,6 @@ func CreateTenantAnnotation(c *Config) ([]byte, error) {
 
 func CreateUsageGroupAnnotation(c *Config, usageGroup string) ([]byte, error) {
 	annotation := &ProfileAnnotation{
-		Type: ProfileAnnotationTypeThrottled,
 		Body: ThrottledAnnotation{
 			PeriodType:        c.PeriodType,
 			PeriodLimitMb:     c.PeriodLimitMb,
@@ -34,14 +32,11 @@ func CreateUsageGroupAnnotation(c *Config, usageGroup string) ([]byte, error) {
 }
 
 type ProfileAnnotation struct {
-	Type ProfileAnnotationType `json:"type"`
-	Body interface{}           `json:"body"`
+	Body interface{} `json:"body"`
 }
 
-type ProfileAnnotationType string
-
 const (
-	ProfileAnnotationTypeThrottled ProfileAnnotationType = "throttled"
+	ProfileAnnotationKeyThrottled = "throttled"
 )
 
 type ThrottledAnnotation struct {
