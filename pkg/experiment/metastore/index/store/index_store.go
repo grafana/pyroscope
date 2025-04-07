@@ -147,6 +147,7 @@ func (m *IndexStore) loadTenantShard(tx *bbolt.Tx, p PartitionKey, tenant string
 		Partition:   p,
 		Tenant:      tenant,
 		Shard:       shard,
+		ShardIndex:  ShardIndex{},
 		StringTable: metadata.NewStringTable(),
 	}
 
@@ -164,12 +165,9 @@ func (m *IndexStore) loadTenantShard(tx *bbolt.Tx, p PartitionKey, tenant string
 	}
 
 	if b := tenantShard.Get(tenantShardIndexKeyNameBytes); len(b) > 0 {
-		var tsi ShardIndex
-		if err = tsi.UnmarshalBinary(b); err != nil {
+		if err = s.ShardIndex.UnmarshalBinary(b); err != nil {
 			return nil, err
 		}
-		s.MinTime = tsi.MinTime
-		s.MaxTime = tsi.MaxTime
 	}
 
 	return &s, nil
@@ -225,11 +223,7 @@ func (s *Shard) Store(tx *bbolt.Tx, md *metastorev1.BlockMeta) error {
 		updateIndex = true
 	}
 	if updateIndex {
-		tsi := ShardIndex{
-			MinTime: s.MinTime,
-			MaxTime: s.MaxTime,
-		}
-		if err = bucket.Put(tenantShardIndexKeyNameBytes, tsi.MarshalBinary()); err != nil {
+		if err = bucket.Put(tenantShardIndexKeyNameBytes, s.ShardIndex.MarshalBinary()); err != nil {
 			return err
 		}
 	}
