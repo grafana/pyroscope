@@ -47,6 +47,25 @@ type Config struct {
 	SegmentDuration  time.Duration         `yaml:"segment_duration,omitempty" category:"advanced"`
 	FlushConcurrency uint                  `yaml:"flush_concurrency,omitempty" category:"advanced"`
 	Upload           UploadConfig          `yaml:"upload,omitempty" category:"advanced"`
+	Metadata         MetadataConfig        `yaml:"metadata,omitempty" category:"advanced"`
+}
+
+func (cfg *Config) Validate() error {
+	// TODO(kolesnikovae): implement.
+	if err := cfg.LifecyclerConfig.Validate(); err != nil {
+		return err
+	}
+	return cfg.GRPCClientConfig.Validate()
+}
+
+func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
+	const prefix = "segment-writer"
+	cfg.GRPCClientConfig.RegisterFlagsWithPrefix(prefix, f)
+	cfg.LifecyclerConfig.RegisterFlagsWithPrefix(prefix+".", f, util.Logger)
+	cfg.Upload.RegisterFlagsWithPrefix(prefix+".upload.", f)
+	cfg.Metadata.RegisterFlagsWithPrefix(prefix+".metadata.", f)
+	f.DurationVar(&cfg.SegmentDuration, prefix+".segment-duration", defaultSegmentDuration, "Timeout when flushing segments to bucket.")
+	f.UintVar(&cfg.FlushConcurrency, prefix+".flush-concurrency", 0, "Number of concurrent flushes. Defaults to the number of CPUs, but not less than 8.")
 }
 
 type UploadConfig struct {
@@ -59,15 +78,6 @@ type UploadConfig struct {
 	HedgeRateBurst   uint          `yaml:"hedge_rate_burst,omitempty" category:"advanced"`
 }
 
-func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
-	const prefix = "segment-writer"
-	cfg.GRPCClientConfig.RegisterFlagsWithPrefix(prefix, f)
-	cfg.LifecyclerConfig.RegisterFlagsWithPrefix(prefix+".", f, util.Logger)
-	cfg.Upload.RegisterFlagsWithPrefix(prefix+".upload.", f)
-	f.DurationVar(&cfg.SegmentDuration, prefix+".segment-duration", defaultSegmentDuration, "Timeout when flushing segments to bucket.")
-	f.UintVar(&cfg.FlushConcurrency, prefix+".flush-concurrency", 0, "Number of concurrent flushes. Defaults to the number of CPUs, but not less than 8.")
-}
-
 func (cfg *UploadConfig) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.DurationVar(&cfg.Timeout, prefix+".timeout", time.Second, "Timeout for upload requests.")
 	f.IntVar(&cfg.MaxRetries, prefix+".max-retries", 3, "Number of times to backoff and retry before failing.")
@@ -78,12 +88,14 @@ func (cfg *UploadConfig) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet)
 	f.UintVar(&cfg.HedgeRateBurst, prefix+".hedge-rate-burst", defaultHedgedRequestBurst, "Maximum number of hedged requests in a burst.")
 }
 
-func (cfg *Config) Validate() error {
-	// TODO(kolesnikovae): implement.
-	if err := cfg.LifecyclerConfig.Validate(); err != nil {
-		return err
-	}
-	return cfg.GRPCClientConfig.Validate()
+type MetadataConfig struct {
+	DLQEnabled bool          `yaml:"dlq_enabled,omitempty" category:"advanced"`
+	Timeout    time.Duration `yaml:"timeout,omitempty" category:"advanced"`
+}
+
+func (cfg *MetadataConfig) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
+	f.BoolVar(&cfg.DLQEnabled, prefix+".dlq-enabled", true, "Enables dead letter queue (DLQ) for metadata. If the metadata update fails, it will be stored and updated asynchronously.")
+	f.DurationVar(&cfg.Timeout, prefix+".timeout", time.Second, "Timeout for metadata update requests.")
 }
 
 type Limits interface {
@@ -237,11 +249,6 @@ func (i *SegmentWriterService) Push(ctx context.Context, req *segmentwriterv1.Pu
 		i.segmentWriter.metrics.segmentFlushTimeouts.WithLabelValues(req.TenantId).Inc()
 		level.Error(i.logger).Log("msg", "flush timeout", "err", err)
 		return nil, status.FromContextError(err).Err()
-
-	case errors.Is(err, ErrMetastoreDLQFailed):
-		// This error will cause retry.
-		level.Error(i.logger).Log("msg", "failed to store metadata", "err", err)
-		return nil, status.Error(codes.Unavailable, err.Error())
 
 	default:
 		level.Error(i.logger).Log("msg", "flush err", "err", err)

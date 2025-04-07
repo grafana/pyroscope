@@ -36,8 +36,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
-var ErrMetastoreDLQFailed = fmt.Errorf("failed to store block metadata in DLQ")
-
 type shardKey uint32
 
 type segmentsWriter struct {
@@ -635,6 +633,7 @@ func (sw *segmentsWriter) uploadWithTimeout(ctx context.Context, path string, r 
 }
 
 func (sw *segmentsWriter) storeMetadata(ctx context.Context, meta *metastorev1.BlockMeta, s *segment) error {
+	ctx, cancel := context.WithTimeout(ctx, sw.config.Metadata.Timeout)
 	start := time.Now()
 	var err error
 	defer func() {
@@ -642,12 +641,18 @@ func (sw *segmentsWriter) storeMetadata(ctx context.Context, meta *metastorev1.B
 			WithLabelValues(statusLabelValue(err)).
 			Observe(time.Since(start).Seconds())
 		s.debuginfo.storeMetaDuration = time.Since(start)
+		cancel()
 	}()
+
 	if _, err = sw.metastore.AddBlock(ctx, &metastorev1.AddBlockRequest{Block: meta}); err == nil {
 		return nil
 	}
 
 	level.Error(s.logger).Log("msg", "failed to store meta in metastore", "err", err)
+	if !sw.config.Metadata.DLQEnabled {
+		return err
+	}
+
 	defer func() {
 		sw.metrics.storeMetadataDLQ.WithLabelValues(statusLabelValue(err)).Inc()
 	}()
