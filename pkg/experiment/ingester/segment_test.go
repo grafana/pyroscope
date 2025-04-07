@@ -121,9 +121,7 @@ func ingestWithDLQ(t *testing.T, chunks []inputChunk) {
 }
 
 func TestIngestWait(t *testing.T) {
-	sw := newTestSegmentWriter(t, Config{
-		SegmentDuration: 100 * time.Millisecond,
-	})
+	sw := newTestSegmentWriter(t, defaultTestConfig())
 
 	defer sw.stop()
 	sw.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
@@ -143,9 +141,7 @@ func TestIngestWait(t *testing.T) {
 
 func TestBusyIngestLoop(t *testing.T) {
 
-	sw := newTestSegmentWriter(t, Config{
-		SegmentDuration: 100 * time.Millisecond,
-	})
+	sw := newTestSegmentWriter(t, defaultTestConfig())
 	defer sw.stop()
 
 	writeCtx, writeCancel := context.WithCancel(context.Background())
@@ -244,9 +240,7 @@ func TestDLQFail(t *testing.T) {
 		l,
 		newSegmentMetrics(nil),
 		memdb.NewHeadMetricsWithPrefix(nil, ""),
-		Config{
-			SegmentDuration: 100 * time.Millisecond,
-		},
+		defaultTestConfig(),
 		validation.MockDefaultOverrides(),
 		bucket,
 		client,
@@ -289,9 +283,7 @@ func TestDatasetMinMaxTime(t *testing.T) {
 		l,
 		newSegmentMetrics(nil),
 		memdb.NewHeadMetricsWithPrefix(nil, ""),
-		Config{
-			SegmentDuration: 100 * time.Millisecond,
-		},
+		defaultTestConfig(),
 		validation.MockDefaultOverrides(),
 		bucket,
 		client,
@@ -330,9 +322,7 @@ func TestDatasetMinMaxTime(t *testing.T) {
 func TestQueryMultipleSeriesSingleTenant(t *testing.T) {
 	metas := make(chan *metastorev1.BlockMeta, 1)
 
-	sw := newTestSegmentWriter(t, Config{
-		SegmentDuration: 100 * time.Millisecond,
-	})
+	sw := newTestSegmentWriter(t, defaultTestConfig())
 	defer sw.stop()
 	sw.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
 		Run(func(args mock.Arguments) {
@@ -379,9 +369,7 @@ func TestDLQRecoveryMock(t *testing.T) {
 		{shard: 1, tenant: "tb", profile: cpuProfile(42, 239, "svc1", "kek", "foo", "bar")},
 	})
 
-	sw := newTestSegmentWriter(t, Config{
-		SegmentDuration: 100 * time.Millisecond,
-	})
+	sw := newTestSegmentWriter(t, defaultTestConfig())
 	sw.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
 		Return(nil, fmt.Errorf("mock metastore unavailable"))
 
@@ -419,9 +407,7 @@ func TestDLQRecovery(t *testing.T) {
 		{shard: 1, tenant: tenant, profile: cpuProfile(42, int(ts), "svc1", "kek", "foo", "bar")},
 	})
 
-	sw := newTestSegmentWriter(t, Config{
-		SegmentDuration: 100 * time.Millisecond,
-	})
+	sw := newTestSegmentWriter(t, defaultTestConfig())
 	sw.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
 		Return(nil, fmt.Errorf("mock metastore unavailable"))
 
@@ -491,7 +477,14 @@ func newTestSegmentWriter(t *testing.T, cfg Config) sw {
 
 func defaultTestConfig() Config {
 	return Config{
-		SegmentDuration: 1 * time.Second,
+		SegmentDuration: 100 * time.Millisecond,
+		Upload: UploadConfig{
+			Timeout: time.Second,
+		},
+		Metadata: MetadataConfig{
+			Timeout:    time.Second,
+			DLQEnabled: true,
+		},
 	}
 }
 

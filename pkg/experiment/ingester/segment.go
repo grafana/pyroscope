@@ -627,13 +627,21 @@ func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockData []byte, met
 }
 
 func (sw *segmentsWriter) uploadWithTimeout(ctx context.Context, path string, r io.Reader) error {
-	ctx, cancel := context.WithTimeout(ctx, sw.config.Upload.Timeout)
-	defer cancel()
+	if sw.config.Upload.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, sw.config.Upload.Timeout)
+		defer cancel()
+	}
 	return sw.bucket.Upload(ctx, path, r)
 }
 
 func (sw *segmentsWriter) storeMetadata(ctx context.Context, meta *metastorev1.BlockMeta, s *segment) error {
-	ctx, cancel := context.WithTimeout(ctx, sw.config.Metadata.Timeout)
+	if sw.config.Metadata.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, sw.config.Metadata.Timeout)
+		defer cancel()
+	}
+
 	start := time.Now()
 	var err error
 	defer func() {
@@ -641,7 +649,6 @@ func (sw *segmentsWriter) storeMetadata(ctx context.Context, meta *metastorev1.B
 			WithLabelValues(statusLabelValue(err)).
 			Observe(time.Since(start).Seconds())
 		s.debuginfo.storeMetaDuration = time.Since(start)
-		cancel()
 	}()
 
 	if _, err = sw.metastore.AddBlock(ctx, &metastorev1.AddBlockRequest{Block: meta}); err == nil {
