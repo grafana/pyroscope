@@ -13,6 +13,8 @@ import (
 	"github.com/hashicorp/raft"
 	"github.com/klauspost/compress/zstd"
 	"go.etcd.io/bbolt"
+
+	"github.com/grafana/pyroscope/pkg/util/ratelimit"
 )
 
 type snapshotWriter struct {
@@ -20,6 +22,7 @@ type snapshotWriter struct {
 	tx          *bbolt.Tx
 	metrics     *metrics
 	compression string
+	rate        int
 	written     int64
 }
 
@@ -45,27 +48,42 @@ func (s *snapshotWriter) Persist(sink raft.SnapshotSink) (err error) {
 		}
 	}()
 
-	var dst io.Writer
 	// Needed to measure the actual snapshot size written to the sink.
 	w := &writeCounter{Writer: sink}
+	var dst io.Writer = w
+
+	// Optionally rate limit the snapshot writes to avoid overwhelming the disk.
+	// This is useful when the snapshot is written to the same disk as the WAL.
+	if s.rate > 0 {
+		const minRate = 10 // 10 MB/s
+		if s.rate < minRate {
+			s.rate = minRate
+		}
+		s.rate <<= 20
+		dst = ratelimit.NewWriter(dst, ratelimit.NewLimiter(float64(s.rate)))
+	}
+
 	if s.compression == "zstd" {
 		// We do not want to bog down the CPU with compression: we are fine with
 		// slowing down the snapshotting process, as it potentially may affect the
 		// WAL writes if they are located on the same disk.
 		var enc *zstd.Encoder
-		if enc, err = zstd.NewWriter(w, zstd.WithEncoderConcurrency(1)); err != nil {
+		if enc, err = zstd.NewWriter(dst, zstd.WithEncoderConcurrency(1)); err != nil {
 			level.Error(s.logger).Log("msg", "failed to create zstd encoder", "err", err)
 			return err
 		}
-		dst = enc
 		defer func() {
 			if err = enc.Close(); err != nil {
 				level.Error(s.logger).Log("msg", "zstd compression failed", "err", err)
 			}
 		}()
+		// Wrap the writer with the encoder in the last turn:
+		// we want to apply the rate limiting to the sink, not
+		// the encoder.
+		dst = enc
 	}
 
-	level.Info(s.logger).Log("msg", "persisting snapshot", "compression", s.compression)
+	level.Info(s.logger).Log("msg", "persisting snapshot", "compression", s.compression, "rate_limit_mb", s.rate)
 	if _, err = s.tx.WriteTo(dst); err != nil {
 		level.Error(s.logger).Log("msg", "failed to write snapshot", "err", err)
 		return err
