@@ -1250,7 +1250,7 @@ func Test_GetProfileStats(t *testing.T) {
 				Directory: dbPath,
 			},
 		},
-		StoragePrefix: "testdata",
+		Prefix: "testdata",
 	}, "")
 	require.NoError(t, err)
 

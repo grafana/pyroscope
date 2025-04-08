@@ -917,6 +917,8 @@ Usage of ./pyroscope:
     	JSON either from a Google Developers Console client_credentials.json file, or a Google Developers service account key. Needs to be valid JSON, not a filesystem path.
   -storage.gcs.tls-handshake-timeout duration
     	Maximum time to wait for a TLS handshake. 0 means no limit. (default 10s)
+  -storage.prefix string
+    	Prefix for all objects stored in the backend storage. For simplicity, it may only contain digits and English alphabet characters, hyphens, underscores, dots and forward slashes.
   -storage.s3.access-key-id string
     	S3 access key ID
   -storage.s3.bucket-lookup-type string
@@ -958,7 +960,7 @@ Usage of ./pyroscope:
   -storage.s3.tls-handshake-timeout duration
     	Maximum time to wait for a TLS handshake. 0 means no limit. (default 10s)
   -storage.storage-prefix string
-    	[experimental] Prefix for all objects stored in the backend storage. For simplicity, it may only contain digits and English alphabet letters.
+    	[experimental] Deprecated: Use 'storage..prefix' instead. Prefix for all objects stored in the backend storage. For simplicity, it may only contain digits and English alphabet characters, hyphens, underscores, dots and forward slashes.
   -storage.swift.auth-url string
     	OpenStack Swift authentication URL
   -storage.swift.auth-version int
