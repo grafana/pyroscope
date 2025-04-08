@@ -499,7 +499,7 @@ func TestMergeProfilesLabels(t *testing.T) {
 		point := resp.Series[0].Points[0]
 		require.Equal(t, int64(3540000), point.Timestamp)
 		require.Equal(t, float64(500000000), point.Value)
-		require.Equal(t, "test annotation", point.Annotations[0].Body)
+		require.Equal(t, "test annotation", point.Annotations[0].Value)
 	})
 }
 
@@ -868,7 +868,7 @@ func ingestProfiles(b testing.TB, db *Head, generator func(tsNano int64, t testi
 	for i := from; i <= to; i += int64(step) {
 		p, name := generator(i, b)
 		db.Ingest(p, uuid.New(), append(externalLabels, &typesv1.LabelPair{Name: model.MetricNameLabel, Value: name}),
-			[]*typesv1.ProfileAnnotation{{Body: "test annotation"}})
+			[]*typesv1.ProfileAnnotation{{Value: "test annotation"}})
 	}
 }
 
