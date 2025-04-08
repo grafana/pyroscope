@@ -28,7 +28,7 @@ type shardCacheKey struct {
 
 type blockCache struct {
 	mu    sync.RWMutex
-	reads *lru.TwoQueueCache[blockCacheKey, *metastorev1.BlockMeta]
+	read  *lru.TwoQueueCache[blockCacheKey, *metastorev1.BlockMeta]
 	write *lru.Cache[blockCacheKey, *metastorev1.BlockMeta]
 }
 
@@ -68,7 +68,7 @@ func newBlockCache(rcs, wcs int) *blockCache {
 	reads, _ := lru.New2Q[blockCacheKey, *metastorev1.BlockMeta](rcs)
 	write, _ := lru.New[blockCacheKey, *metastorev1.BlockMeta](wcs)
 	return &blockCache{
-		reads: reads,
+		read:  reads,
 		write: write,
 	}
 }
@@ -80,7 +80,7 @@ func (c *blockCache) getOrCreate(shard *store.Shard, block kvstore.KV) *metastor
 		block:  string(block.Key),
 	}
 	c.mu.RLock()
-	v, ok := c.reads.Get(k)
+	v, ok := c.read.Get(k)
 	if ok {
 		c.mu.RUnlock()
 		return v
@@ -93,7 +93,7 @@ func (c *blockCache) getOrCreate(shard *store.Shard, block kvstore.KV) *metastor
 	c.mu.RUnlock()
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	v, ok = c.reads.Get(k)
+	v, ok = c.read.Get(k)
 	if ok {
 		return v
 	}
@@ -105,7 +105,7 @@ func (c *blockCache) getOrCreate(shard *store.Shard, block kvstore.KV) *metastor
 	if err := md.UnmarshalVT(block.Value); err != nil {
 		return &md
 	}
-	c.reads.Add(k, &md)
+	c.read.Add(k, &md)
 	return &md
 }
 
@@ -118,7 +118,7 @@ func (c *blockCache) put(shard *store.Shard, md *metastorev1.BlockMeta) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if md.CompactionLevel >= 2 {
-		c.reads.Add(k, md)
+		c.read.Add(k, md)
 		return
 	}
 	c.write.Add(k, md)
@@ -131,5 +131,5 @@ func (c *blockCache) delete(shard *store.Shard, block string) {
 		block:  block,
 	}
 	c.write.Remove(k)
-	c.reads.Remove(k)
+	c.read.Remove(k)
 }
