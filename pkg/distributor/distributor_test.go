@@ -489,7 +489,7 @@ func Test_IngestLimits(t *testing.T) {
 				require.NotNil(t, res)
 				require.Equal(t, 1, len(req.Series[0].Annotations))
 				// annotations are json encoded and contain some of the limit config fields
-				require.True(t, strings.Contains(req.Series[0].Annotations[0].Body, "\"periodLimitMb\":128"))
+				require.True(t, strings.Contains(req.Series[0].Annotations[0].Value, "\"periodLimitMb\":128"))
 			},
 		},
 		{
