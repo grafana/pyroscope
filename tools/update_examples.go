@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -16,26 +17,56 @@ import (
 )
 
 var ghToken string
+var all = flag.Bool("all", true, "")
+var golang = flag.Bool("go", false, "")
+var java = flag.Bool("java", false, "")
+var ruby = flag.Bool("ruby", false, "")
+var python = flag.Bool("python", false, "")
+var dotnet = flag.Bool("dotnet", false, "")
+var node = flag.Bool("node", false, "")
+var rust = flag.Bool("rust", false, "")
 
 // this program requires ruby, bundle, yarn, go to be installed
 func main() {
 
 	getGHToken()
+	flag.Parse()
+	if *all {
+		*golang = true
+		*java = true
+		*ruby = true
+		*python = true
+		*dotnet = true
+		*node = true
+		*rust = true
+	}
 
-	updateGolang()
-	updateGodeltaprof()
-	updateJfrParser()
-	s.sh("make go/mod")
+	if *golang {
+		updateGolang()
+		updateGodeltaprof()
+		updateJfrParser()
+		s.sh("make go/mod")
+	}
 
-	updateJava()
-	updateOtelProfilingJava()
-
-	updateRuby()
-	updatePython()
-	updateDotnet()
-	updateNodeJS()
-	updateRust()
-
+	if *java {
+		updateJava()
+		updateOtelProfilingJava()
+	}
+	if *ruby {
+		updateRuby()
+	}
+	if *python {
+		updatePython()
+	}
+	if *dotnet {
+		updateDotnet()
+	}
+	if *node {
+		updateNodeJS()
+	}
+	if *rust {
+		updateRust()
+	}
 }
 
 func getGHToken() {
