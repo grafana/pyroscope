@@ -2,6 +2,7 @@ package phlaredb
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/grafana/dskit/runutil"
@@ -10,7 +11,6 @@ import (
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/distributor/ingest_limits"
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/phlaredb/query"
@@ -170,12 +170,23 @@ func mergeByLabels[T Profile](
 	if err != nil {
 		return nil, err
 	}
+	annotationKeysColumn, err := v1.ResolveColumnByPath(profileSource.Schema(), v1.AnnotationKeyColumnPath)
+	if err != nil {
+		return nil, err
+	}
 	annotationValuesColumn, err := v1.ResolveColumnByPath(profileSource.Schema(), v1.AnnotationValueColumnPath)
 	if err != nil {
 		return nil, err
 	}
 
-	profiles := query.NewRepeatedRowIterator(ctx, rows, profileSource.RowGroups(), column.ColumnIndex, annotationValuesColumn.ColumnIndex)
+	profiles := query.NewRepeatedRowIterator(
+		ctx,
+		rows,
+		profileSource.RowGroups(),
+		column.ColumnIndex,
+		annotationKeysColumn.ColumnIndex,
+		annotationValuesColumn.ColumnIndex,
+	)
 	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
 
 	seriesBuilder := phlaremodel.NewTimeSeriesBuilder(by...)
@@ -189,13 +200,20 @@ func mergeByLabels[T Profile](
 			Values: make([]string, 0),
 		}
 		for _, e := range values.Values {
-			switch e[0].Kind() {
-			case parquet.Int64:
+			switch e[0].Column() {
+			case column.ColumnIndex:
+				if e[0].Kind() != parquet.Int64 {
+					return nil, fmt.Errorf("column index mismatch, kind: %s, column: %s", e[0].Kind(), column.Node.String())
+				}
 				total += e[0].Int64()
-			case parquet.ByteArray:
-				// TODO: Read keys as well
-				annotations.Keys = append(annotations.Keys, ingest_limits.ProfileAnnotationKeyThrottled)
-				annotations.Values = append(annotations.Values, e[0].String())
+			case annotationKeysColumn.ColumnIndex:
+				if e[0].Kind() == parquet.ByteArray {
+					annotations.Keys = append(annotations.Keys, e[0].String())
+				}
+			case annotationValuesColumn.ColumnIndex:
+				if e[0].Kind() == parquet.ByteArray {
+					annotations.Values = append(annotations.Values, e[0].String())
+				}
 			default:
 			}
 		}
