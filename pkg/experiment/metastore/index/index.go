@@ -19,6 +19,7 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/store"
+	"github.com/grafana/pyroscope/pkg/model"
 )
 
 var ErrBlockExists = fmt.Errorf("block already exists")
@@ -259,11 +260,13 @@ func (i *Index) QueryMetadataLabels(tx *bbolt.Tx, query MetadataQuery) ([]*types
 	if err != nil {
 		return nil, err
 	}
-	r, err := newMetadataLabelQuerier(tx, q).queryLabels()
+	c, err := newMetadataLabelQuerier(tx, q).queryLabels()
 	if err != nil {
 		return nil, err
 	}
-	return r.Labels(), nil
+	l := slices.Collect(c.Unique())
+	slices.SortFunc(l, model.CompareLabels)
+	return l, nil
 }
 
 func (i *Index) getOrCreatePartitionForBlock(b *metastorev1.BlockMeta) *store.Partition {

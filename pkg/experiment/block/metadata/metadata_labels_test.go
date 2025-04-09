@@ -1,6 +1,7 @@
 package metadata
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/prometheus/prometheus/model/labels"
@@ -66,15 +67,13 @@ func TestLabelMatcher_Matches(t *testing.T) {
 		"service_name=service_b;__profile_type__=cpu:b;",
 	}, labelStrings(setB, strings))
 
+	keepLabels := []string{"service_name", "__profile_type__", "none"}
 	m := NewLabelMatcher(strings.Strings, []*labels.Matcher{
-		labels.MustNewMatcher(labels.MatchEqual, "service_name", "service_a"),
 		labels.MustNewMatcher(labels.MatchEqual, "__profile_type__", "cpu:a")},
-		"service_name",
-		"__profile_type__",
-		"none")
+		keepLabels...)
 	assert.True(t, m.IsValid())
 
-	expected := []bool{true, false, false, false, false}
+	expected := []bool{true, false, false, true, false}
 	matches := make([]bool, 0, len(expected))
 
 	pairs := LabelPairs(setA)
@@ -86,34 +85,33 @@ func TestLabelMatcher_Matches(t *testing.T) {
 	for pairs.Next() {
 		matches = append(matches, m.MatchesPairs(pairs.At()))
 	}
-
 	assert.Equal(t, expected, matches)
-	assert.Equal(t, []model.Labels{{
-		&typesv1.LabelPair{Name: "service_name", Value: "service_a"},
-		&typesv1.LabelPair{Name: "__profile_type__", Value: "cpu:a"},
-		&typesv1.LabelPair{Name: "none", Value: ""},
-	}}, m.AllMatches())
-}
 
-func Test_LabelMatcher_All(t *testing.T) {
-	strings := NewStringTable()
-	x := NewLabelBuilder(strings).
-		WithLabelSet(LabelNameTenantDataset, LabelValueDatasetTSDBIndex).
-		Build()
+	t.Run("LabelCollector", func(t *testing.T) {
+		c := NewLabelsCollector(keepLabels...)
+		c.CollectMatches(m)
 
-	m := NewLabelMatcher(
-		strings.Strings,
-		[]*labels.Matcher{},
-		"service_name",
-		"__profile_type__",
-	)
+		collected := slices.Collect(c.Unique())
+		slices.SortFunc(collected, model.CompareLabels)
 
-	assert.True(t, m.IsValid())
-	assert.True(t, m.Matches(x))
-	assert.Equal(t, []model.Labels{{
-		&typesv1.LabelPair{Name: "service_name", Value: ""},
-		&typesv1.LabelPair{Name: "__profile_type__", Value: ""},
-	}}, m.AllMatches())
+		// The label order matches the input.
+		assert.Equal(t, []*typesv1.Labels{
+			{
+				Labels: []*typesv1.LabelPair{
+					{Name: "service_name", Value: "service_a"},
+					{Name: "__profile_type__", Value: "cpu:a"},
+					{Name: "none", Value: ""},
+				},
+			},
+			{
+				Labels: []*typesv1.LabelPair{
+					{Name: "service_name", Value: "service_b"},
+					{Name: "__profile_type__", Value: "cpu:a"},
+					{Name: "none", Value: ""},
+				},
+			},
+		}, collected)
+	})
 }
 
 func TestLabelMatcher_Collect(t *testing.T) {

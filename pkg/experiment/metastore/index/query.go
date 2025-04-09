@@ -14,7 +14,6 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/store"
-	"github.com/grafana/pyroscope/pkg/model"
 )
 
 type InvalidQueryError struct {
@@ -214,17 +213,17 @@ func newMetadataLabelQuerier(tx *bbolt.Tx, q *metadataQuery) *metadataLabelQueri
 	return &metadataLabelQuerier{
 		query:  q,
 		shards: newShardIterator(tx, q.index, q.startTime, q.endTime, q.tenants...),
-		labels: model.NewLabelMerger(),
+		labels: metadata.NewLabelsCollector(q.labels...),
 	}
 }
 
 type metadataLabelQuerier struct {
 	query  *metadataQuery
 	shards *shardIterator
-	labels *model.LabelMerger
+	labels *metadata.LabelsCollector
 }
 
-func (q *metadataLabelQuerier) queryLabels() (*model.LabelMerger, error) {
+func (q *metadataLabelQuerier) queryLabels() (*metadata.LabelsCollector, error) {
 	if len(q.query.labels) == 0 {
 		return q.labels, nil
 	}
@@ -258,7 +257,7 @@ func (q *metadataLabelQuerier) collectLabels(s *store.Shard) error {
 				}
 			}
 		}
-		q.labels.MergeLabels(matcher.AllMatches())
 	}
+	q.labels.CollectMatches(matcher)
 	return nil
 }

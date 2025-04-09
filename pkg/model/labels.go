@@ -346,8 +346,8 @@ func CompareLabelPairs(a, b []*typesv1.LabelPair) int {
 	return len(a) - len(b)
 }
 
-func CompareLabels(a, b Labels) int {
-	return CompareLabelPairs(a, b)
+func CompareLabels(a, b *typesv1.Labels) int {
+	return CompareLabelPairs(a.Labels, b.Labels)
 }
 
 // LabelsBuilder allows modifying Labels.
