@@ -11,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block"
@@ -19,6 +20,7 @@ import (
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/memory"
+	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/test"
 )
 
@@ -148,4 +150,32 @@ func (s *testSuite) Test_QueryTree_Filter() {
 	s.Require().NoError(err)
 
 	s.Assert().Equal(string(expected), tree.String())
+}
+
+func (s *testSuite) Test_QueryPprof_Metadata() {
+	selector := `{service_name="test-app",__profile_type__="process_cpu:cpu:nanoseconds:cpu:nanoseconds"}`
+	resp, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
+		EndTime:       time.Now().UnixMilli(),
+		LabelSelector: selector,
+		QueryPlan:     s.plan,
+		Query: []*queryv1.Query{{
+			QueryType: queryv1.QueryType_QUERY_PPROF,
+			Pprof:     &queryv1.PprofQuery{},
+		}},
+	})
+
+	s.Require().NoError(err)
+	s.Require().NotNil(resp)
+	s.Require().Len(resp.Reports, 1)
+
+	var p profilev1.Profile
+	s.Require().NoError(pprof.Unmarshal(resp.Reports[0].Pprof.Pprof, &p))
+
+	s.Assert().Len(p.SampleType, 1)
+	s.Assert().Equal("cpu", p.StringTable[p.SampleType[0].Type])
+	s.Assert().Equal("nanoseconds", p.StringTable[p.SampleType[0].Unit])
+
+	s.Assert().NotNil(p.PeriodType)
+	s.Assert().Equal("cpu", p.StringTable[p.PeriodType.Type])
+	s.Assert().Equal("nanoseconds", p.StringTable[p.PeriodType.Unit])
 }
