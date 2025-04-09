@@ -42,12 +42,19 @@ const (
 )
 
 type Config struct {
-	GRPCClientConfig grpcclient.Config     `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with the segment writer."`
-	LifecyclerConfig ring.LifecyclerConfig `yaml:"lifecycler,omitempty"`
-	SegmentDuration  time.Duration         `yaml:"segment_duration,omitempty" category:"advanced"`
-	FlushConcurrency uint                  `yaml:"flush_concurrency,omitempty" category:"advanced"`
-	Upload           UploadConfig          `yaml:"upload,omitempty" category:"advanced"`
-	Metadata         MetadataConfig        `yaml:"metadata,omitempty" category:"advanced"`
+	GRPCClientConfig       grpcclient.Config     `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with the segment writer."`
+	LifecyclerConfig       ring.LifecyclerConfig `yaml:"lifecycler,omitempty"`
+	SegmentDuration        time.Duration         `yaml:"segment_duration,omitempty" category:"advanced"`
+	FlushConcurrency       uint                  `yaml:"flush_concurrency,omitempty" category:"advanced"`
+	UploadTimeout          time.Duration         `yaml:"upload-timeout,omitempty" category:"advanced"`
+	UploadMaxRetries       int                   `yaml:"upload-retry_max_retries,omitempty" category:"advanced"`
+	UploadMinBackoff       time.Duration         `yaml:"upload-retry_min_period,omitempty" category:"advanced"`
+	UploadMaxBackoff       time.Duration         `yaml:"upload-retry_max_period,omitempty" category:"advanced"`
+	UploadHedgeUploadAfter time.Duration         `yaml:"upload-hedge_upload_after,omitempty" category:"advanced"`
+	UploadHedgeRateMax     float64               `yaml:"upload-hedge_rate_max,omitempty" category:"advanced"`
+	UploadHedgeRateBurst   uint                  `yaml:"upload-hedge_rate_burst,omitempty" category:"advanced"`
+	MetadataDLQEnabled     bool                  `yaml:"metadata_dlq_enabled,omitempty" category:"advanced"`
+	MetadataUpdateTimeout  time.Duration         `yaml:"metadata_update_timeout,omitempty" category:"advanced"`
 }
 
 func (cfg *Config) Validate() error {
@@ -62,40 +69,17 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	const prefix = "segment-writer"
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix(prefix, f)
 	cfg.LifecyclerConfig.RegisterFlagsWithPrefix(prefix+".", f, util.Logger)
-	cfg.Upload.RegisterFlagsWithPrefix(prefix+".upload.", f)
-	cfg.Metadata.RegisterFlagsWithPrefix(prefix+".metadata.", f)
 	f.DurationVar(&cfg.SegmentDuration, prefix+".segment-duration", defaultSegmentDuration, "Timeout when flushing segments to bucket.")
 	f.UintVar(&cfg.FlushConcurrency, prefix+".flush-concurrency", 0, "Number of concurrent flushes. Defaults to the number of CPUs, but not less than 8.")
-}
-
-type UploadConfig struct {
-	Timeout          time.Duration `yaml:"timeout,omitempty" category:"advanced"`
-	MaxRetries       int           `yaml:"retry_max_retries,omitempty" category:"advanced"`
-	MinBackoff       time.Duration `yaml:"retry_min_period,omitempty" category:"advanced"`
-	MaxBackoff       time.Duration `yaml:"retry_max_period,omitempty" category:"advanced"`
-	HedgeUploadAfter time.Duration `yaml:"hedge_upload_after,omitempty" category:"advanced"`
-	HedgeRateMax     float64       `yaml:"hedge_rate_max,omitempty" category:"advanced"`
-	HedgeRateBurst   uint          `yaml:"hedge_rate_burst,omitempty" category:"advanced"`
-}
-
-func (cfg *UploadConfig) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
-	f.DurationVar(&cfg.Timeout, prefix+".timeout", time.Second, "Timeout for upload requests.")
-	f.IntVar(&cfg.MaxRetries, prefix+".max-retries", 3, "Number of times to backoff and retry before failing.")
-	f.DurationVar(&cfg.MinBackoff, prefix+".retry-min-period", 50*time.Millisecond, "Minimum delay when backing off.")
-	f.DurationVar(&cfg.MaxBackoff, prefix+".retry-max-period", defaultSegmentDuration, "Maximum delay when backing off.")
-	f.DurationVar(&cfg.HedgeUploadAfter, prefix+".hedge-upload-after", defaultSegmentDuration, "Time after which to hedge the upload request.")
-	f.Float64Var(&cfg.HedgeRateMax, prefix+".hedge-rate-max", defaultHedgedRequestMaxRate, "Maximum number of hedged requests per second.")
-	f.UintVar(&cfg.HedgeRateBurst, prefix+".hedge-rate-burst", defaultHedgedRequestBurst, "Maximum number of hedged requests in a burst.")
-}
-
-type MetadataConfig struct {
-	DLQEnabled bool          `yaml:"dlq_enabled,omitempty" category:"advanced"`
-	Timeout    time.Duration `yaml:"timeout,omitempty" category:"advanced"`
-}
-
-func (cfg *MetadataConfig) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
-	f.BoolVar(&cfg.DLQEnabled, prefix+".dlq-enabled", true, "Enables dead letter queue (DLQ) for metadata. If the metadata update fails, it will be stored and updated asynchronously.")
-	f.DurationVar(&cfg.Timeout, prefix+".timeout", time.Second, "Timeout for metadata update requests.")
+	f.DurationVar(&cfg.UploadTimeout, prefix+".upload-timeout", time.Second, "Timeout for upload requests.")
+	f.IntVar(&cfg.UploadMaxRetries, prefix+".upload-max-retries", 3, "Number of times to backoff and retry before failing.")
+	f.DurationVar(&cfg.UploadMinBackoff, prefix+".upload-retry-min-period", 50*time.Millisecond, "Minimum delay when backing off.")
+	f.DurationVar(&cfg.UploadMaxBackoff, prefix+".upload-retry-max-period", defaultSegmentDuration, "Maximum delay when backing off.")
+	f.DurationVar(&cfg.UploadHedgeUploadAfter, prefix+".upload-hedge-upload-after", defaultSegmentDuration, "Time after which to hedge the upload request.")
+	f.Float64Var(&cfg.UploadHedgeRateMax, prefix+".upload-hedge-rate-max", defaultHedgedRequestMaxRate, "Maximum number of hedged requests per second.")
+	f.UintVar(&cfg.UploadHedgeRateBurst, prefix+".upload-hedge-rate-burst", defaultHedgedRequestBurst, "Maximum number of hedged requests in a burst.")
+	f.BoolVar(&cfg.MetadataDLQEnabled, prefix+".metadata-dlq-enabled", true, "Enables dead letter queue (DLQ) for metadata. If the metadata update fails, it will be stored and updated asynchronously.")
+	f.DurationVar(&cfg.MetadataUpdateTimeout, prefix+".metadata-update-timeout", time.Second, "Timeout for metadata update requests.")
 }
 
 type Limits interface {

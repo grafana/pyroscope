@@ -130,7 +130,7 @@ func newSegmentWriter(l log.Logger, metrics *segmentMetrics, hm *memdb.HeadMetri
 		shards:      make(map[shardKey]*shard),
 		metastore:   metastoreClient,
 	}
-	sw.retryLimiter = retry.NewRateLimiter(sw.config.Upload.HedgeRateMax, int(sw.config.Upload.HedgeRateBurst))
+	sw.retryLimiter = retry.NewRateLimiter(sw.config.UploadHedgeRateMax, int(sw.config.UploadHedgeRateBurst))
 	sw.ctx, sw.cancel = context.WithCancel(context.Background())
 	flushWorkers := runtime.GOMAXPROCS(-1)
 	if config.FlushConcurrency > 0 {
@@ -585,9 +585,9 @@ func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockData []byte, met
 	// are included into the call duration.
 	uploadWithRetry := func(ctx context.Context, hedge bool) (any, error) {
 		retryConfig := backoff.Config{
-			MinBackoff: sw.config.Upload.MinBackoff,
-			MaxBackoff: sw.config.Upload.MaxBackoff,
-			MaxRetries: sw.config.Upload.MaxRetries,
+			MinBackoff: sw.config.UploadMinBackoff,
+			MaxBackoff: sw.config.UploadMaxBackoff,
+			MaxRetries: sw.config.UploadMaxRetries,
 		}
 		var attemptErr error
 		if hedge {
@@ -613,7 +613,7 @@ func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockData []byte, met
 
 	hedgedUpload := retry.Hedged[any]{
 		Call:      uploadWithRetry,
-		Trigger:   time.After(sw.config.Upload.HedgeUploadAfter),
+		Trigger:   time.After(sw.config.UploadHedgeUploadAfter),
 		Throttler: sw.retryLimiter,
 		FailFast:  false,
 	}
@@ -627,18 +627,18 @@ func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockData []byte, met
 }
 
 func (sw *segmentsWriter) uploadWithTimeout(ctx context.Context, path string, r io.Reader) error {
-	if sw.config.Upload.Timeout > 0 {
+	if sw.config.UploadTimeout > 0 {
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, sw.config.Upload.Timeout)
+		ctx, cancel = context.WithTimeout(ctx, sw.config.UploadTimeout)
 		defer cancel()
 	}
 	return sw.bucket.Upload(ctx, path, r)
 }
 
 func (sw *segmentsWriter) storeMetadata(ctx context.Context, meta *metastorev1.BlockMeta, s *segment) error {
-	if sw.config.Metadata.Timeout > 0 {
+	if sw.config.MetadataUpdateTimeout > 0 {
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, sw.config.Metadata.Timeout)
+		ctx, cancel = context.WithTimeout(ctx, sw.config.MetadataUpdateTimeout)
 		defer cancel()
 	}
 
@@ -656,7 +656,7 @@ func (sw *segmentsWriter) storeMetadata(ctx context.Context, meta *metastorev1.B
 	}
 
 	level.Error(s.logger).Log("msg", "failed to store meta in metastore", "err", err)
-	if !sw.config.Metadata.DLQEnabled {
+	if !sw.config.MetadataDLQEnabled {
 		return err
 	}
 

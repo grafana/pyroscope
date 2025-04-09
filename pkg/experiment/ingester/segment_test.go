@@ -477,14 +477,10 @@ func newTestSegmentWriter(t *testing.T, cfg Config) sw {
 
 func defaultTestConfig() Config {
 	return Config{
-		SegmentDuration: 100 * time.Millisecond,
-		Upload: UploadConfig{
-			Timeout: time.Second,
-		},
-		Metadata: MetadataConfig{
-			Timeout:    time.Second,
-			DLQEnabled: true,
-		},
+		SegmentDuration:       100 * time.Millisecond,
+		UploadTimeout:         time.Second,
+		MetadataUpdateTimeout: time.Second,
+		MetadataDLQEnabled:    true,
 	}
 }
 
