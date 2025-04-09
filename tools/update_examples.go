@@ -195,7 +195,7 @@ func updateOtelProfilingJava() {
 	tags := getTagsV("grafana/otel-profiling-java", extractGoVersion(""))
 	last := tags[len(tags)-1]
 	reJarURL := regexp.MustCompile(`https://github\.com/grafana/otel-profiling-java/releases/download/(v\d+\.\d+\.\d+)/pyroscope-otel\.jar`)
-	lastJarURL := "https://github.com/grafana/otel-profiling-java/releases/download/" + last.versionV() + "/pyroscope.jar"
+	lastJarURL := "https://github.com/grafana/otel-profiling-java/releases/download/" + last.versionV() + "/pyroscope-otel.jar"
 	replaceInplace(reJarURL, "docs/sources/configure-client/trace-span-profiles/java-span-profiles.md", lastJarURL)
 	replaceInplace(reJarURL, "examples/tracing/java/Dockerfile", lastJarURL)
 }
