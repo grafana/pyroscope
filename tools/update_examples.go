@@ -28,6 +28,8 @@ func main() {
 	s.sh("make go/mod")
 
 	updateJava()
+	updateOtelProfilingJava()
+
 	updateRuby()
 	updatePython()
 	updateDotnet()
@@ -144,17 +146,27 @@ func updateJava() {
 	lastJarURL := "https://github.com/grafana/pyroscope-java/releases/download/" + last.versionV() + "/pyroscope.jar"
 	replaceInplace(reJarURL, "examples/language-sdk-instrumentation/java/fib/Dockerfile", lastJarURL)
 	replaceInplace(reJarURL, "examples/language-sdk-instrumentation/java/simple/Dockerfile", lastJarURL)
-	replaceInplace(reJarURL, "examples/language-sdk-instrumentation/java/rideshare/Dockerfile", lastJarURL)
+	replaceInplace(reJarURL, "examples/tracing/java/Dockerfile", lastJarURL)
 
 	reGradelDep := regexp.MustCompile(`implementation\("io\.pyroscope:agent:\d+\.\d+\.\d+"\)`)
 	lastGradleDep := fmt.Sprintf("implementation(\"io.pyroscope:agent:%s\")", last.version())
 	replaceInplace(reGradelDep, "examples/language-sdk-instrumentation/java/rideshare/build.gradle.kts", lastGradleDep)
+	replaceInplace(reGradelDep, "examples/tracing/java/build.gradle.kts", lastGradleDep)
 	replaceInplace(reGradelDep, "docs/sources/configure-client/language-sdks/java.md", lastGradleDep)
 
 	reMaven := regexp.MustCompile(`<version>\d+\.\d+\.\d+</version>`)
 	replMaven := fmt.Sprintf("<version>%s</version>", last.version())
 	replaceInplace(reMaven, "docs/sources/configure-client/language-sdks/java.md", replMaven)
 
+}
+
+func updateOtelProfilingJava() {
+	tags := getTagsV("grafana/otel-profiling-java", extractGoVersion(""))
+	last := tags[len(tags)-1]
+	reJarURL := regexp.MustCompile(`https://github\.com/grafana/otel-profiling-java/releases/download/(v\d+\.\d+\.\d+)/pyroscope-otel\.jar`)
+	lastJarURL := "https://github.com/grafana/otel-profiling-java/releases/download/" + last.versionV() + "/pyroscope.jar"
+	replaceInplace(reJarURL, "docs/sources/configure-client/trace-span-profiles/java-span-profiles.md", lastJarURL)
+	replaceInplace(reJarURL, "examples/tracing/java/Dockerfile", lastJarURL)
 }
 
 func replaceInplace(re *regexp.Regexp, file string, replacement string) {

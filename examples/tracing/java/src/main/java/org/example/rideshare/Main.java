@@ -1,6 +1,6 @@
 package org.example.rideshare;
 
-import io.pyroscope.labels.Pyroscope;
+import io.pyroscope.labels.v2.Pyroscope;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
