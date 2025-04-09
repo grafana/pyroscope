@@ -1,21 +1,13 @@
-# Pyroscope Compaction Process
-
-The document introduces the new compaction process design and outlines its implementation.
+# Block Compaction
 
 ## Background
 
-The compaction approach we currently use assumes that relatively large data blocks are merged into even larger ones,
-and the largest blocks are split into shards based on series fingerprints. This approach can lead to uncontrollably high
-memory consumption and is only suitable for delayed compaction, when the time range the blocks refer to is protected
-from writes ([quiesced](https://en.wikipedia.org/wiki/Quiesce)). Additionally, the compaction algorithm is designed for
-deduplication (replica reconciliation), which is not required in [the new ingestion pipeline](../../distributor/README.md#write-path).
-
-The new Pyroscope ingestion pipeline is designed to gather data in memory as small segments, which are periodically
-flushed to object storage, along with the metadata entries being added to the metastore index. Depending on
-the configuration and deployment scale, the number of segments created per second can increase significantly,
-reaching millions of objects per hour or day. This can lead to performance degradation in the query path due to high
-read amplification caused by the large number of small segments. In addition to read amplification, a high number of
-metadata entries can also lead to performance degradation across the entire cluster, impacting the write path as well.
+The Pyroscope ingestion pipeline is designed to gather data in memory as small segments, which are periodically flushed
+to object storage, along with the metadata entries being added to the metastore index. Depending on the configuration
+and deployment scale, the number of segments created per second can increase significantly, reaching millions of objects
+per hour or day. This can lead to performance degradation in the query path due to high read amplification caused by the
+large number of small segments. In addition to read amplification, a high number of metadata entries can also lead to
+performance degradation across the entire cluster, impacting the write path as well.
 
 The new background compaction process helps mitigate this by merging small segments into larger ones, aiming to reduce
 the number of objects a query needs to fetch from object storage.
@@ -24,7 +16,7 @@ the number of objects a query needs to fetch from object storage.
 
 The compaction service is responsible for planning compaction jobs, scheduling their execution, and updating the
 metastore index with the results. The compaction service resides within the metastore component, while the compaction
-worker is a separate service designed to scale out and in rapidly.
+worker is a separate service designed to scale horizontally.
 
 The compaction service relies on the Raft protocol to guarantee consistency across the replicas. The diagram below
 illustrates the interaction between the compaction worker and the compaction service: workers poll the service on a
