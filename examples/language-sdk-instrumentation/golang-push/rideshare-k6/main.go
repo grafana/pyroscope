@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"rideshare/bike"
 	"rideshare/car"
@@ -18,21 +19,46 @@ import (
 	"github.com/grafana/pyroscope-go/x/k6"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/baggage"
 	"go.opentelemetry.io/otel/propagation"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
+func logK6Baggage(ctx context.Context, r *http.Request) {
+	baggageHeader := r.Header.Get("Baggage")
+	if baggageHeader == "" {
+		rideshare.Log.Print(ctx, "No baggage header found")
+		return
+	}
+
+	b, err := baggage.Parse(baggageHeader)
+	if err != nil {
+		rideshare.Log.Print(ctx, fmt.Sprintf("Error parsing baggage: %v", err))
+		return
+	}
+
+	for _, m := range b.Members() {
+		if strings.HasPrefix(m.Key(), "k6.") {
+			key := strings.ReplaceAll(m.Key(), ".", "_")
+			rideshare.Log.Print(ctx, fmt.Sprintf("K6 Baggage: %s=%s", key, m.Value()))
+		}
+	}
+}
+
 func bikeRoute(w http.ResponseWriter, r *http.Request) {
+	logK6Baggage(r.Context(), r)
 	bike.OrderBike(r.Context(), 1)
 	w.Write([]byte("<h1>Bike ordered</h1>"))
 }
 
 func scooterRoute(w http.ResponseWriter, r *http.Request) {
+	logK6Baggage(r.Context(), r)
 	scooter.OrderScooter(r.Context(), 2)
 	w.Write([]byte("<h1>Scooter ordered</h1>"))
 }
 
 func carRoute(w http.ResponseWriter, r *http.Request) {
+	logK6Baggage(r.Context(), r)
 	car.OrderCar(r.Context(), 3)
 	w.Write([]byte("<h1>Car ordered</h1>"))
 }
@@ -75,8 +101,8 @@ func main() {
 		{"/car", "CarHandler", http.HandlerFunc(carRoute)},
 	}
 
-	routes = applyOtelMiddleware(routes)
 	routes = applyK6Middleware(routes)
+	routes = applyOtelMiddleware(routes)
 	registerRoutes(http.DefaultServeMux, routes)
 
 	addr := fmt.Sprintf(":%s", config.RideshareListenPort)
@@ -127,8 +153,8 @@ func registerRoutes(mux *http.ServeMux, handlers []route) {
 }
 
 func applyOtelMiddleware(routes []route) []route {
-	for i, route := range routes {
-		routes[i].Handler = otelhttp.NewHandler(route.Handler, route.Name)
+	for i := range routes {
+		routes[i].Handler = otelhttp.NewHandler(routes[i].Handler, routes[i].Name)
 	}
 	return routes
 }
@@ -136,8 +162,8 @@ func applyOtelMiddleware(routes []route) []route {
 // applyK6Middleware adds the k6 instrumentation middleware to all routes. This
 // enables the Pyroscope SDK to label the profiles with k6 test metadata.
 func applyK6Middleware(routes []route) []route {
-	for i, route := range routes {
-		routes[i].Handler = k6.LabelsFromBaggageHandler(route.Handler)
+	for i := range routes {
+		routes[i].Handler = k6.LabelsFromBaggageHandler(routes[i].Handler)
 	}
 	return routes
 }

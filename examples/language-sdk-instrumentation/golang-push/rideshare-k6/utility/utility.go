@@ -10,6 +10,7 @@ import (
 	"github.com/grafana/pyroscope-go"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/baggage"
 )
 
 const durationConstant = time.Duration(200 * time.Millisecond)
@@ -34,7 +35,7 @@ func mutexLock(n int64) {
 	}
 }
 
-func checkDriverAvailability(n int64) {
+func checkDriverAvailability(ctx context.Context, n int64) {
 	var i int64 = 0
 
 	// start time is number of seconds since epoch
@@ -46,11 +47,23 @@ func checkDriverAvailability(n int64) {
 		}
 	})
 
-	// Every other minute this will artificially create make requests in eu-north region slow
-	// this is just for demonstration purposes to show how performance impacts show up in the
-	// flamegraph
-	force_mutex_lock := time.Now().Minute()%2 == 0
+	// Get and log all baggage members
+	b := baggage.FromContext(ctx)
+	println("BAGGAGE_DEBUG: All baggage members:")
+	for _, member := range b.Members() {
+		println("BAGGAGE_DEBUG: Key:", member.Key(), "Value:", member.Value())
+	}
+
+	scenario := b.Member("k6.scenario").Value()
+
+	println("BAGGAGE_DEBUG: Scenario value from baggage:", scenario)
+
+	// Check if we should force mutex lock based on region OR high load scenario
+	force_mutex_lock := time.Now().Minute()%2 == 0 || scenario == "high_load"
+	println("BAGGAGE_DEBUG: Force mutex lock:", force_mutex_lock, "Region:", os.Getenv("REGION"), "Scenario:", scenario)
+
 	if os.Getenv("REGION") == "eu-north" && force_mutex_lock {
+		println("BAGGAGE_DEBUG: Triggering mutex lock in eu-north")
 		mutexLock(n)
 	}
 }
@@ -69,7 +82,7 @@ func FindNearestVehicle(ctx context.Context, searchRadius int64, vehicle string)
 		}
 
 		if vehicle == "car" {
-			checkDriverAvailability(searchRadius)
+			checkDriverAvailability(ctx, searchRadius)
 		}
 	})
 }
