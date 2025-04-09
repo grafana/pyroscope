@@ -78,6 +78,9 @@ func (r *Recovery) Stop() {
 }
 
 func (r *Recovery) recoverLoop(ctx context.Context) {
+	if r.config.Period == 0 {
+		return
+	}
 	ticker := time.NewTicker(r.config.Period)
 	defer ticker.Stop()
 	for {

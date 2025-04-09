@@ -94,7 +94,7 @@ func (lb *LabelBuilder) Build() []int32 {
 func FindDatasets(md *metastorev1.BlockMeta, matchers ...*labels.Matcher) (fn func(yield func(*metastorev1.Dataset) bool)) {
 	st := NewStringTable()
 	st.Import(md)
-	lm := NewLabelMatcher(st, matchers)
+	lm := NewLabelMatcher(st.Strings, matchers)
 	if !lm.IsValid() {
 		return func(func(*metastorev1.Dataset) bool) {
 			return
@@ -155,26 +155,43 @@ type matcher struct {
 	name int32
 }
 
-func NewLabelMatcher(strings *StringTable, matchers []*labels.Matcher, keep ...string) *LabelMatcher {
+func NewLabelMatcher(strings []string, matchers []*labels.Matcher, keep ...string) *LabelMatcher {
+	s := make(map[string]int32, len(matchers)*2+len(keep))
+	for _, m := range matchers {
+		s[m.Name] = 0
+		s[m.Value] = 0
+	}
+	for _, k := range keep {
+		s[k] = 0
+	}
+	for i, x := range strings {
+		if v, ok := s[x]; ok && v == 0 {
+			s[x] = int32(i)
+		}
+	}
 	lm := &LabelMatcher{
 		eq:      make([]matcher, 0, len(matchers)),
 		neq:     make([]matcher, 0, len(matchers)),
 		keep:    make([]int32, len(keep)),
 		keepStr: keep,
 		checked: make(map[string]bool),
-		strings: strings.Strings,
+		strings: strings,
 	}
 	for _, m := range matchers {
-		n := strings.LookupString(m.Name)
-		if m.Type == labels.MatchEqual || m.Type == labels.MatchRegexp {
-			if n < 1 {
-				// No matches are possible if a label is not found
-				// in the string table or is an empty string (0).
+		if m.Name == "" {
+			continue
+		}
+		n := s[m.Name]
+		switch m.Type {
+		case labels.MatchEqual:
+			if v := s[m.Value]; m.Value != "" && (n < 1 || v < 1) {
 				lm.nomatch = true
 				return lm
 			}
 			lm.eq = append(lm.eq, matcher{Matcher: m, name: n})
-		} else {
+		case labels.MatchRegexp:
+			lm.eq = append(lm.eq, matcher{Matcher: m, name: n})
+		case labels.MatchNotEqual, labels.MatchNotRegexp:
 			lm.neq = append(lm.neq, matcher{Matcher: m, name: n})
 		}
 	}
@@ -182,7 +199,7 @@ func NewLabelMatcher(strings *StringTable, matchers []*labels.Matcher, keep ...s
 	// If the label is not found or is an empty string,
 	// it will always be an empty string at the output.
 	for i, k := range keep {
-		lm.keep[i] = strings.LookupString(k)
+		lm.keep[i] = s[k]
 	}
 	return lm
 }

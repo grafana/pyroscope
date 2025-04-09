@@ -2,7 +2,6 @@ package index
 
 import (
 	"crypto/rand"
-	"errors"
 	"runtime"
 	"sync"
 	"testing"
@@ -16,7 +15,6 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/store"
 	"github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/test"
 	"github.com/grafana/pyroscope/pkg/util"
@@ -272,8 +270,8 @@ func TestIndex_Query(t *testing.T) {
 	})
 }
 
-func Test_QueryConcurrency(t *testing.T) {
-	const N = 1
+func TestIndex_QueryConcurrency(t *testing.T) {
+	const N = 10
 	for i := 0; i < N && !t.Failed(); i++ {
 		q := new(queryTestSuite)
 		q.run(t)
@@ -295,7 +293,6 @@ type queryTestSuite struct {
 
 	writes  atomic.Int32
 	queries atomic.Int32
-	aborts  atomic.Int32
 }
 
 // Possible invariants:
@@ -327,10 +324,11 @@ func (s *queryTestSuite) setup(t *testing.T) {
 
 	s.db = test.BoltDB(t)
 	s.idx = NewIndex(util.Logger, NewStore(), DefaultConfig)
-	// Enforce aggressive index cache evictions.
-	s.idx.config.PartitionDuration = time.Minute * 30
-	s.idx.config.CacheSize = 3
-	s.idx.keep = func(store.PartitionKey) bool { return false }
+	// Enforce aggressive cache evictions:
+	s.idx.config.partitionDuration = time.Minute * 30
+	s.idx.config.ShardCacheSize = 3
+	s.idx.config.BlockReadCacheSize = 3
+	s.idx.config.BlockWriteCacheSize = 3
 	require.NoError(t, s.db.Update(s.idx.Init))
 }
 
@@ -369,15 +367,13 @@ func (s *queryTestSuite) run(t *testing.T) {
 	}()
 
 	s.wg.Wait()
-
 	// If we haven't failed the test, we can conclude that
 	// no races, no deadlocks, no inconsistencies were found.
 	s.doStop()
-
 	// Wait for the write goroutine to finish, so we can
 	// safely tear down the test.
 	<-done
-	t.Logf("writes: %d, queries: %d, aborts: %d", s.writes.Load(), s.queries.Load(), s.aborts.Load())
+	t.Logf("writes: %d, queries: %d", s.writes.Load(), s.queries.Load())
 }
 
 func (s *queryTestSuite) createBlock(id ulid.ULID, dur time.Duration, tenant string, shard, level uint32) *metastorev1.BlockMeta {
@@ -509,10 +505,6 @@ func (s *queryTestSuite) queryBlocks(t *testing.T) (ret int32) {
 			Tenant:    []string{s.tenant},
 			Labels:    []string{"service_name"},
 		})
-		if errors.Is(err, ErrReadAborted) {
-			s.aborts.Inc()
-			return nil
-		}
 		return err
 	}))
 
@@ -528,8 +520,7 @@ func (s *queryTestSuite) queryBlocks(t *testing.T) (ret int32) {
 
 	if len(x) <= 10 && c == 0 {
 		// All of level 0: note that the source blocks
-		// may be seen while they are being inserted,
-		// since we access the cached version.
+		// may be seen while they are being inserted.
 		return sourceBlocks
 	}
 
@@ -558,10 +549,6 @@ func (s *queryTestSuite) queryLabels(t *testing.T) (ret int32) {
 			Tenant:    []string{s.tenant},
 			Labels:    []string{"service_name"},
 		})
-		if errors.Is(err, ErrReadAborted) {
-			s.aborts.Inc()
-			return nil
-		}
 		return err
 	}))
 
@@ -583,12 +570,13 @@ func (s *queryTestSuite) queryLabels(t *testing.T) (ret int32) {
 func (s *queryTestSuite) getBlocks(t *testing.T) (ret int32) {
 	var x []*metastorev1.BlockMeta
 	var err error
+	// The writer ensures that the list is set after it finished writes.
+	// If we get the list within the transaction, we may observe partial
+	// source blocks [0-9]: this means the read transaction was open while
+	// not all the blocks were written.
+	blocks := s.blocks.Load()
 	require.NoError(t, s.db.View(func(tx *bbolt.Tx) error {
-		x, err = s.idx.GetBlocks(tx, s.blocks.Load())
-		if errors.Is(err, ErrReadAborted) {
-			s.aborts.Inc()
-			return nil
-		}
+		x, err = s.idx.GetBlocks(tx, blocks)
 		return err
 	}))
 
