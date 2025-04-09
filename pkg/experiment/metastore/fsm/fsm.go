@@ -39,6 +39,7 @@ type StateRestorer interface {
 
 type Config struct {
 	SnapshotCompression string `yaml:"snapshot_compression"`
+	SnapshotRateLimit   int    `yaml:"snapshot_rate_limit"`
 	// Where the FSM BoltDB data is located.
 	// Does not have to be a persistent volume.
 	DataDir string `yaml:"data_dir"`
@@ -46,6 +47,7 @@ type Config struct {
 
 func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.StringVar(&cfg.SnapshotCompression, prefix+"snapshot-compression", "zstd", "Compression algorithm to use for snapshots. Supported compressions: zstd.")
+	f.IntVar(&cfg.SnapshotRateLimit, prefix+"snapshot-rate-limit", 15, "Rate limit for snapshot writer in MB/s.")
 	f.StringVar(&cfg.DataDir, prefix+"data-dir", "./data-metastore/data", "Directory to store the data.")
 }
 
@@ -299,6 +301,7 @@ func (fsm *FSM) Snapshot() (raft.FSMSnapshot, error) {
 		logger:      fsm.logger,
 		metrics:     fsm.metrics,
 		compression: fsm.config.SnapshotCompression,
+		rate:        fsm.config.SnapshotRateLimit,
 	}
 	tx, err := fsm.db.boltdb.Begin(false)
 	if err != nil {
