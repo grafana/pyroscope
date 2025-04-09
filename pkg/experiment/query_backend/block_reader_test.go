@@ -3,6 +3,7 @@ package query_backend
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"slices"
@@ -178,4 +179,50 @@ func (s *testSuite) Test_QueryPprof_Metadata() {
 	s.Assert().NotNil(p.PeriodType)
 	s.Assert().Equal("cpu", p.StringTable[p.PeriodType.Type])
 	s.Assert().Equal("nanoseconds", p.StringTable[p.PeriodType.Unit])
+}
+
+func (s *testSuite) Test_DatasetIndex_SeriesLabels_GroupBy() {
+	selector := `{service_repository="https://github.com/grafana/pyroscope"}`
+	resp, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
+		EndTime:       time.Now().UnixMilli(),
+		LabelSelector: selector,
+		QueryPlan:     s.plan,
+		Query: []*queryv1.Query{{
+			QueryType: queryv1.QueryType_QUERY_SERIES_LABELS,
+			SeriesLabels: &queryv1.SeriesLabelsQuery{
+				LabelNames: []string{"service_name", "__profile_type__"},
+			},
+		}},
+	})
+
+	s.Require().NoError(err)
+	s.Require().NotNil(resp)
+	s.Require().Len(resp.Reports, 1)
+
+	expected, err := os.ReadFile("testdata/fixtures/series_labels_by.json")
+	s.Require().NoError(err)
+	actual, _ := json.Marshal(resp.Reports[0].SeriesLabels)
+	s.Assert().JSONEq(string(expected), string(actual))
+}
+
+func (s *testSuite) Test_SeriesLabels() {
+	selector := `{service_name="pyroscope"}`
+	resp, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
+		EndTime:       time.Now().UnixMilli(),
+		LabelSelector: selector,
+		QueryPlan:     s.plan,
+		Query: []*queryv1.Query{{
+			QueryType:    queryv1.QueryType_QUERY_SERIES_LABELS,
+			SeriesLabels: &queryv1.SeriesLabelsQuery{},
+		}},
+	})
+
+	s.Require().NoError(err)
+	s.Require().NotNil(resp)
+	s.Require().Len(resp.Reports, 1)
+
+	expected, err := os.ReadFile("testdata/fixtures/series_labels.json")
+	s.Require().NoError(err)
+	actual, _ := json.Marshal(resp.Reports[0].SeriesLabels)
+	s.Assert().JSONEq(string(expected), string(actual))
 }
