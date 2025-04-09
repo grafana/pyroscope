@@ -42,19 +42,19 @@ const (
 )
 
 type Config struct {
-	GRPCClientConfig       grpcclient.Config     `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with the segment writer."`
-	LifecyclerConfig       ring.LifecyclerConfig `yaml:"lifecycler,omitempty"`
-	SegmentDuration        time.Duration         `yaml:"segment_duration,omitempty" category:"advanced"`
-	FlushConcurrency       uint                  `yaml:"flush_concurrency,omitempty" category:"advanced"`
-	UploadTimeout          time.Duration         `yaml:"upload-timeout,omitempty" category:"advanced"`
-	UploadMaxRetries       int                   `yaml:"upload-retry_max_retries,omitempty" category:"advanced"`
-	UploadMinBackoff       time.Duration         `yaml:"upload-retry_min_period,omitempty" category:"advanced"`
-	UploadMaxBackoff       time.Duration         `yaml:"upload-retry_max_period,omitempty" category:"advanced"`
-	UploadHedgeUploadAfter time.Duration         `yaml:"upload-hedge_upload_after,omitempty" category:"advanced"`
-	UploadHedgeRateMax     float64               `yaml:"upload-hedge_rate_max,omitempty" category:"advanced"`
-	UploadHedgeRateBurst   uint                  `yaml:"upload-hedge_rate_burst,omitempty" category:"advanced"`
-	MetadataDLQEnabled     bool                  `yaml:"metadata_dlq_enabled,omitempty" category:"advanced"`
-	MetadataUpdateTimeout  time.Duration         `yaml:"metadata_update_timeout,omitempty" category:"advanced"`
+	GRPCClientConfig      grpcclient.Config     `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with the segment writer."`
+	LifecyclerConfig      ring.LifecyclerConfig `yaml:"lifecycler,omitempty"`
+	SegmentDuration       time.Duration         `yaml:"segment_duration,omitempty" category:"advanced"`
+	FlushConcurrency      uint                  `yaml:"flush_concurrency,omitempty" category:"advanced"`
+	UploadTimeout         time.Duration         `yaml:"upload-timeout,omitempty" category:"advanced"`
+	UploadMaxRetries      int                   `yaml:"upload-retry_max_retries,omitempty" category:"advanced"`
+	UploadMinBackoff      time.Duration         `yaml:"upload-retry_min_period,omitempty" category:"advanced"`
+	UploadMaxBackoff      time.Duration         `yaml:"upload-retry_max_period,omitempty" category:"advanced"`
+	UploadHedgeAfter      time.Duration         `yaml:"upload-hedge_upload_after,omitempty" category:"advanced"`
+	UploadHedgeRateMax    float64               `yaml:"upload-hedge_rate_max,omitempty" category:"advanced"`
+	UploadHedgeRateBurst  uint                  `yaml:"upload-hedge_rate_burst,omitempty" category:"advanced"`
+	MetadataDLQEnabled    bool                  `yaml:"metadata_dlq_enabled,omitempty" category:"advanced"`
+	MetadataUpdateTimeout time.Duration         `yaml:"metadata_update_timeout,omitempty" category:"advanced"`
 }
 
 func (cfg *Config) Validate() error {
@@ -75,7 +75,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.IntVar(&cfg.UploadMaxRetries, prefix+".upload-max-retries", 3, "Number of times to backoff and retry before failing.")
 	f.DurationVar(&cfg.UploadMinBackoff, prefix+".upload-retry-min-period", 50*time.Millisecond, "Minimum delay when backing off.")
 	f.DurationVar(&cfg.UploadMaxBackoff, prefix+".upload-retry-max-period", defaultSegmentDuration, "Maximum delay when backing off.")
-	f.DurationVar(&cfg.UploadHedgeUploadAfter, prefix+".upload-hedge-upload-after", defaultSegmentDuration, "Time after which to hedge the upload request.")
+	f.DurationVar(&cfg.UploadHedgeAfter, prefix+".upload-hedge-after", defaultSegmentDuration, "Time after which to hedge the upload request.")
 	f.Float64Var(&cfg.UploadHedgeRateMax, prefix+".upload-hedge-rate-max", defaultHedgedRequestMaxRate, "Maximum number of hedged requests per second.")
 	f.UintVar(&cfg.UploadHedgeRateBurst, prefix+".upload-hedge-rate-burst", defaultHedgedRequestBurst, "Maximum number of hedged requests in a burst.")
 	f.BoolVar(&cfg.MetadataDLQEnabled, prefix+".metadata-dlq-enabled", true, "Enables dead letter queue (DLQ) for metadata. If the metadata update fails, it will be stored and updated asynchronously.")

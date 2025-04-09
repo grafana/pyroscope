@@ -613,7 +613,7 @@ func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockData []byte, met
 
 	hedgedUpload := retry.Hedged[any]{
 		Call:      uploadWithRetry,
-		Trigger:   time.After(sw.config.UploadHedgeUploadAfter),
+		Trigger:   time.After(sw.config.UploadHedgeAfter),
 		Throttler: sw.retryLimiter,
 		FailFast:  false,
 	}
