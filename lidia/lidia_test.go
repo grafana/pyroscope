@@ -113,9 +113,11 @@ func TestCreateReadLookup(t *testing.T) {
 		},
 	}
 
+	var results []lidia.SourceInfoFrame
+
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			results, err := table.Lookup(tc.addr)
+			results, err := table.Lookup(results, tc.addr)
 			require.NoError(t, err)
 			if tc.expectFound {
 				require.NotEmpty(t, results, "Expected to find a function at this address")

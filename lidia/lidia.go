@@ -38,8 +38,8 @@ type SourceInfoFrame struct {
 	FilePath     string
 }
 
-// GoRange represents a function range to be added to a lidia file.
-type GoRange struct {
+// Range represents a function range to be added to a lidia file.
+type Range struct {
 	VA        uint64
 	Length    uint32
 	Function  string
@@ -78,9 +78,11 @@ func OpenReader(f ReaderAtCloser, opt ...Option) (*Table, error) {
 		return nil, fmt.Errorf("failed to read header: %w", err)
 	}
 
-	if hdr.magic != magic {
-		res.Close()
-		return nil, fmt.Errorf("invalid magic number: expected 0x%x, got 0x%x", magic, hdr.magic)
+	for i := range magic {
+		if hdr.magic[i] != magic[i] {
+			res.Close()
+			return nil, fmt.Errorf("invalid magic number")
+		}
 	}
 
 	if hdr.version != version {
@@ -166,7 +168,7 @@ func CreateLidiaFromELF(elfFile *elf.File, output io.WriteSeeker, opts ...Option
 	}
 
 	for _, symbol := range symbols {
-		rc.VisitRange(&GoRange{
+		rc.VisitRange(&Range{
 			VA:        symbol.Value,
 			Length:    uint32(symbol.Size),
 			Function:  symbol.Name,
@@ -195,9 +197,13 @@ func CreateLidiaFromELF(elfFile *elf.File, output io.WriteSeeker, opts ...Option
 }
 
 // Lookup performs a symbol lookup by memory address.
-// It returns a slice of SourceInfoFrame representing the symbolization result.
-func (st *Table) Lookup(addr uint64) ([]SourceInfoFrame, error) {
-	var result []SourceInfoFrame
+// It accepts a destination slice 'dst' to store the results, allowing memory reuse
+// between calls. The function returns a slice of SourceInfoFrame representing the
+// symbolization result for the given address. The returned slice may be the same as
+// the input slice 'dst' with updated contents, or a new slice if 'dst' needed to grow.
+// If 'dst' is nil, a new slice will be allocated.
+func (st *Table) Lookup(dst []SourceInfoFrame, addr uint64) ([]SourceInfoFrame, error) {
+	dst = dst[:0]
 
 	idx := sort.Search(int(st.hdr.vaTableHeader.count), func(i int) bool {
 		return st.getEntryVA(i) > addr
@@ -207,7 +213,7 @@ func (st *Table) Lookup(addr uint64) ([]SourceInfoFrame, error) {
 	for idx >= 0 {
 		it, err := st.getEntry(idx)
 		if err != nil {
-			return result[:0], fmt.Errorf("failed to get entry at index %d: %w", idx, err)
+			return dst, fmt.Errorf("failed to get entry at index %d: %w", idx, err)
 		}
 
 		covered := it.va <= addr && addr < it.va+it.length
@@ -225,7 +231,7 @@ func (st *Table) Lookup(addr uint64) ([]SourceInfoFrame, error) {
 			// Line number could be extracted here if implemented
 			//}
 
-			result = append(result, res)
+			dst = append(dst, res)
 		}
 
 		if it.depth == 0 {
@@ -233,7 +239,8 @@ func (st *Table) Lookup(addr uint64) ([]SourceInfoFrame, error) {
 		}
 		idx--
 	}
-	return result, nil
+
+	return dst, nil
 }
 
 // Close releases resources associated with the Table.

@@ -41,7 +41,7 @@ GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH) -X $(VPREFIX).Version=$(IMAGE
 GO_GCFLAGS_DEBUG := all="-N -l"
 
 # Folders with go.mod file
-GO_MOD_PATHS := api/ ebpf/ examples/language-sdk-instrumentation/golang-push/rideshare examples/language-sdk-instrumentation/golang-push/rideshare-alloy examples/language-sdk-instrumentation/golang-push/rideshare-k6 examples/language-sdk-instrumentation/golang-push/simple/ examples/tracing/golang-push/ examples/golang-pgo/
+GO_MOD_PATHS := api/ ebpf/ lidia/ examples/language-sdk-instrumentation/golang-push/rideshare examples/language-sdk-instrumentation/golang-push/rideshare-alloy examples/language-sdk-instrumentation/golang-push/rideshare-k6 examples/language-sdk-instrumentation/golang-push/simple/ examples/tracing/golang-push/ examples/golang-pgo/
 
 # Add extra arguments to helm commands
 HELM_ARGS =
@@ -81,9 +81,9 @@ EBPF_TESTS='^TestEBPF.*'
 .PHONY: go/test
 go/test: $(BIN)/gotestsum
 ifeq ($(GOOS),darwin)
-	$(BIN)/gotestsum --rerun-fails=2 --packages './...' -- $(GO_TEST_FLAGS)
+	$(BIN)/gotestsum --rerun-fails=2 --packages './... ./lidia/...' -- $(GO_TEST_FLAGS)
 else
-	$(BIN)/gotestsum --rerun-fails=2 --packages './... ./ebpf/...' -- $(GO_TEST_FLAGS) -skip $(EBPF_TESTS)
+	$(BIN)/gotestsum --rerun-fails=2 --packages './... ./ebpf/... ./lidia/...' -- $(GO_TEST_FLAGS) -skip $(EBPF_TESTS)
 endif
 
 # Run test on examples
@@ -172,8 +172,8 @@ go/bin-profilecli-debug:
 
 .PHONY: go/lint
 go/lint: $(BIN)/golangci-lint
-	$(BIN)/golangci-lint run
-	$(GO) vet ./...
+	$(BIN)/golangci-lint run ./... ./lidia/...
+	$(GO) vet ./... ./lidia/...
 
 .PHONY: update-contributors
 update-contributors: ## Update the contributors in README.md

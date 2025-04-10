@@ -57,7 +57,7 @@ type lineTablesHeader struct {
 
 type header struct {
 	// 0x0
-	magic   uint32
+	magic   [4]byte
 	version uint32
 	// 0x8
 	vaTableHeader vaTableHeader
@@ -76,7 +76,7 @@ func readHeader(file io.Reader) (header, error) {
 		return header{}, readErr
 	}
 	hdr := header{}
-	hdr.magic = binary.LittleEndian.Uint32(headerBuf[0:])
+	copy(hdr.magic[:], headerBuf[0:4])
 	hdr.version = binary.LittleEndian.Uint32(headerBuf[4:])
 
 	hdr.vaTableHeader.entrySize = binary.LittleEndian.Uint64(headerBuf[8:])
@@ -134,9 +134,10 @@ func readFields8(entryBuf []byte) rangeEntry {
 func (rc *rangeCollector) write(f *os.File) error {
 	buf := bufio.NewWriter(f)
 	hdr := &header{
-		magic:   magic,
 		version: version,
 	}
+
+	copy(hdr.magic[:], magic)
 
 	if err := writeHeader(buf, hdr); err != nil {
 		return err
@@ -178,7 +179,7 @@ func (rc *rangeCollector) write(f *os.File) error {
 
 func writeHeader(output io.Writer, hdr *header) error {
 	headerBuf := make([]byte, headerSize)
-	binary.LittleEndian.PutUint32(headerBuf[0:], hdr.magic)
+	copy(headerBuf[0:4], hdr.magic[:])
 	binary.LittleEndian.PutUint32(headerBuf[4:], hdr.version)
 
 	binary.LittleEndian.PutUint64(headerBuf[0x8:], hdr.vaTableHeader.entrySize)

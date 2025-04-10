@@ -111,7 +111,7 @@ type rangeCollector struct {
 	opt options
 }
 
-func (rc *rangeCollector) VisitRange(r *GoRange) {
+func (rc *rangeCollector) VisitRange(r *Range) {
 	lt := lineTableRef{}
 	funcOffset := rc.sb.add(r.Function)
 	fileOffset := rc.sb.emptystr

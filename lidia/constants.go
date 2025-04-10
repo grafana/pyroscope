@@ -4,8 +4,8 @@ import "hash/crc32"
 
 // File format constants
 const (
-	// Magic number for lidia files ("lidia" in little-endian ASCII)
-	magic uint32 = 0x6169646c
+	// Magic number for lidia files ("ldia" in little-endian ASCII)
+	// magic uint32 = 0x6169646c
 
 	// Current version of the lidia format
 	version uint32 = 1
@@ -27,4 +27,7 @@ const (
 )
 
 // CRC32 table using the Castagnoli polynomial
-var castagnoli = crc32.MakeTable(crc32.Castagnoli)
+var (
+	castagnoli = crc32.MakeTable(crc32.Castagnoli)
+	magic      = []byte{0x2e, 0x64, 0x69, 0x61} // ".dia"
+)
