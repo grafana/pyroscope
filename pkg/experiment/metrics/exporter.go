@@ -62,7 +62,7 @@ func (e *StaticExporter) Send(tenantId string, data []prompb.TimeSeries) error {
 		}
 
 		ctx := tenant.InjectTenantID(context.Background(), tenantId)
-		err := e.client.Store(ctx, snappy.Encode(nil, buf.Bytes()), 0)
+		_, err := e.client.Store(ctx, snappy.Encode(nil, buf.Bytes()), 0)
 		if err != nil {
 			level.Error(e.logger).Log("msg", "unable to store prompb.WriteRequest", "err", err)
 			return
