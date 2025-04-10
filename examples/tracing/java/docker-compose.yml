@@ -1,6 +1,6 @@
 services:
   pyroscope:
-    image: grafana/pyroscope
+    image: grafana/pyroscope:update-java-examples-f42287179
     ports:
     - "4040:4040"
 
