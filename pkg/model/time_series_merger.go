@@ -132,6 +132,9 @@ func (m *TimeSeriesMerger) mergePoints(points []*typesv1.Point) int {
 		}
 		if m.sum {
 			points[j].Value += points[i].Value
+			// Duplicate annotations are semantically correct and provide useful information.
+			// Users of the data can decide whether to discard or make use of duplicates.
+			points[j].Annotations = append(points[j].Annotations, points[i].Annotations...)
 		}
 	}
 	return j + 1

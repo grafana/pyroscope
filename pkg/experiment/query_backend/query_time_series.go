@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/grafana/dskit/runutil"
+	"github.com/parquet-go/parquet-go"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -40,17 +41,42 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 		return nil, err
 	}
 
-	rows := parquetquery.NewRepeatedRowIteratorBatchSize(q.ctx, entries, q.ds.Profiles().RowGroups(), bigBatchSize, column.ColumnIndex)
+	// these columns might not be present
+	annotationKeysColumn, _ := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), schemav1.AnnotationKeyColumnPath)
+	annotationValuesColumn, _ := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), schemav1.AnnotationValueColumnPath)
+
+	rows := parquetquery.NewRepeatedRowIteratorBatchSize(
+		q.ctx,
+		entries,
+		q.ds.Profiles().RowGroups(),
+		bigBatchSize,
+		column.ColumnIndex,
+		annotationKeysColumn.ColumnIndex,
+		annotationValuesColumn.ColumnIndex,
+	)
 	defer runutil.CloseWithErrCapture(&err, rows, "failed to close column iterator")
 
 	builder := phlaremodel.NewTimeSeriesBuilder(query.TimeSeries.GroupBy...)
 	for rows.Next() {
 		row := rows.At()
+		annotations := schemav1.Annotations{
+			Keys:   make([]string, 0),
+			Values: make([]string, 0),
+		}
+		for _, e := range row.Values {
+			if e[0].Column() == annotationKeysColumn.ColumnIndex && e[0].Kind() == parquet.ByteArray {
+				annotations.Keys = append(annotations.Keys, e[0].String())
+			}
+			if e[0].Column() == annotationValuesColumn.ColumnIndex && e[0].Kind() == parquet.ByteArray {
+				annotations.Values = append(annotations.Values, e[0].String())
+			}
+		}
 		builder.Add(
 			row.Row.Fingerprint,
 			row.Row.Labels,
 			int64(row.Row.Timestamp),
 			float64(row.Values[0][0].Int64()),
+			annotations,
 		)
 	}
 	if err = rows.Err(); err != nil {

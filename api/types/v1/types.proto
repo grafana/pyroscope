@@ -30,6 +30,12 @@ message Point {
   double value = 1;
   // Milliseconds unix timestamp
   int64 timestamp = 2;
+  repeated ProfileAnnotation annotations = 3;
+}
+
+message ProfileAnnotation {
+  string key = 1;
+  string value = 2;
 }
 
 message LabelValuesRequest {

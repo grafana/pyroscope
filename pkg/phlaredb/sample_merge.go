@@ -169,7 +169,19 @@ func mergeByLabels[T Profile](
 	if err != nil {
 		return nil, err
 	}
-	profiles := query.NewRepeatedRowIterator(ctx, rows, profileSource.RowGroups(), column.ColumnIndex)
+
+	// these columns might not be present
+	annotationKeysColumn, _ := v1.ResolveColumnByPath(profileSource.Schema(), v1.AnnotationKeyColumnPath)
+	annotationValuesColumn, _ := v1.ResolveColumnByPath(profileSource.Schema(), v1.AnnotationValueColumnPath)
+
+	profiles := query.NewRepeatedRowIterator(
+		ctx,
+		rows,
+		profileSource.RowGroups(),
+		column.ColumnIndex,
+		annotationKeysColumn.ColumnIndex,
+		annotationValuesColumn.ColumnIndex,
+	)
 	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
 
 	seriesBuilder := phlaremodel.NewTimeSeriesBuilder(by...)
@@ -178,11 +190,26 @@ func mergeByLabels[T Profile](
 		values := profiles.At()
 		p := values.Row
 		var total int64
-		for _, e := range values.Values {
-			total += e[0].Int64()
+		annotations := v1.Annotations{
+			Keys:   make([]string, 0),
+			Values: make([]string, 0),
 		}
-		seriesBuilder.Add(p.Fingerprint(), p.Labels(), int64(p.Timestamp()), float64(total))
-
+		for _, e := range values.Values {
+			if e[0].Column() == column.ColumnIndex && e[0].Kind() == parquet.Int64 {
+				total += e[0].Int64()
+			} else if e[0].Column() == annotationKeysColumn.ColumnIndex && e[0].Kind() == parquet.ByteArray {
+				annotations.Keys = append(annotations.Keys, e[0].String())
+			} else if e[0].Column() == annotationValuesColumn.ColumnIndex && e[0].Kind() == parquet.ByteArray {
+				annotations.Values = append(annotations.Values, e[0].String())
+			}
+		}
+		seriesBuilder.Add(
+			p.Fingerprint(),
+			p.Labels(),
+			int64(p.Timestamp()),
+			float64(total),
+			annotations,
+		)
 	}
 	return seriesBuilder.Build(), profiles.Err()
 }
@@ -214,7 +241,8 @@ func mergeByLabelsWithStackTraceSelector[T Profile](
 		if err = r.CallSiteValuesParquet(&v, h.StacktracePartition(), row.Values[0], row.Values[1]); err != nil {
 			return nil, err
 		}
-		seriesBuilder.Add(h.Fingerprint(), h.Labels(), int64(h.Timestamp()), float64(v.Total))
+		// TODO aleks-p: add annotation support?
+		seriesBuilder.Add(h.Fingerprint(), h.Labels(), int64(h.Timestamp()), float64(v.Total), v1.Annotations{})
 	}
 
 	return seriesBuilder.Build(), profiles.Err()

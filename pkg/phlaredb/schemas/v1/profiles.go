@@ -22,6 +22,7 @@ const (
 	StacktracePartitionColumnName = "StacktracePartition"
 	TotalValueColumnName          = "TotalValue"
 	SamplesColumnName             = "Samples"
+	AnnotationsColumnName         = "Annotations"
 )
 
 var (
@@ -51,6 +52,11 @@ var (
 		phlareparquet.NewGroupField("Period", parquet.Optional(parquet.Int(64))),
 		phlareparquet.NewGroupField("Comments", parquet.List(stringRef)),
 		phlareparquet.NewGroupField("DefaultSampleType", parquet.Optional(parquet.Int(64))),
+		phlareparquet.NewGroupField(AnnotationsColumnName, parquet.List(
+			phlareparquet.Group{
+				phlareparquet.NewGroupField("Key", parquet.Encoded(parquet.String(), &parquet.DeltaByteArray)),
+				phlareparquet.NewGroupField("Value", parquet.Encoded(parquet.String(), &parquet.DeltaByteArray)),
+			})),
 	})
 	DownsampledProfilesSchema = parquet.NewSchema("DownsampledProfile", phlareparquet.Group{
 		phlareparquet.NewGroupField(SeriesIndexColumnName, parquet.Encoded(parquet.Uint(32), &parquet.DeltaBinaryPacked)),
@@ -62,6 +68,11 @@ var (
 				phlareparquet.NewGroupField("Value", parquet.Encoded(parquet.Int(64), &parquet.DeltaBinaryPacked)),
 			})),
 		phlareparquet.NewGroupField(TimeNanosColumnName, parquet.Timestamp(parquet.Nanosecond)),
+		phlareparquet.NewGroupField(AnnotationsColumnName, parquet.List(
+			phlareparquet.Group{
+				phlareparquet.NewGroupField("Key", parquet.Encoded(parquet.String(), &parquet.DeltaByteArray)),
+				phlareparquet.NewGroupField("Value", parquet.Encoded(parquet.String(), &parquet.DeltaByteArray)),
+			})),
 	})
 
 	sampleStacktraceIDColumnPath = strings.Split("Samples.list.element.StacktraceID", ".")
@@ -75,6 +86,11 @@ var (
 	timeNanoColIndex            int
 	stacktracePartitionColIndex int
 	totalValueColIndex          int
+
+	AnnotationKeyColumnPath    = strings.Split("Annotations.list.element.Key", ".")
+	AnnotationValueColumnPath  = strings.Split("Annotations.list.element.Value", ".")
+	annotationKeyColumnIndex   int
+	annotationValueColumnIndex int
 
 	downsampledValueColIndex int
 
@@ -122,6 +138,17 @@ func init() {
 		panic(fmt.Errorf("Sample.Value column not found"))
 	}
 	downsampledValueColIndex = downsampledValueCol.ColumnIndex
+
+	annotationKeyColumn, ok := ProfilesSchema.Lookup(AnnotationKeyColumnPath...)
+	if !ok {
+		panic(fmt.Errorf("annotation key column not found"))
+	}
+	annotationValueColumnIndex = annotationKeyColumn.ColumnIndex
+	annotationValueColum, ok := ProfilesSchema.Lookup(AnnotationValueColumnPath...)
+	if !ok {
+		panic(fmt.Errorf("annotation value column not found"))
+	}
+	annotationValueColumnIndex = annotationValueColum.ColumnIndex
 }
 
 type SampleColumns struct {
@@ -201,6 +228,19 @@ type Profile struct {
 	// Index into the string table of the type of the preferred sample
 	// value. If unset, clients should default to the last sample value.
 	DefaultSampleType int64 `parquet:",optional"`
+
+	// Additional metadata about the profile
+	Annotations []*Annotation `parquet:",list"`
+}
+
+type Annotation struct {
+	Key   string `parquet:",delta"`
+	Value string `parquet:",delta"`
+}
+
+type Annotations struct {
+	Keys   []string
+	Values []string
 }
 
 func (p Profile) Timestamp() model.Time {
@@ -311,6 +351,8 @@ type InMemoryProfile struct {
 	DefaultSampleType int64
 
 	Samples Samples
+
+	Annotations Annotations
 }
 
 type Samples struct {
@@ -618,16 +660,44 @@ func deconstructMemoryProfile(imp InMemoryProfile, row parquet.Row) parquet.Row 
 	} else {
 		row = append(row, parquet.Int64Value(imp.DefaultSampleType).Level(0, 1, newCol()))
 	}
+
+	newCol()
+	if len(imp.Annotations.Keys) == 0 {
+		row = append(row, parquet.Value{}.Level(0, 0, col))
+	}
+	repetition = -1
+	for i := range imp.Annotations.Keys {
+		if repetition < 1 {
+			repetition++
+		}
+		row = append(row, parquet.ByteArrayValue([]byte(imp.Annotations.Keys[i])).Level(repetition, 1, col))
+	}
+
+	newCol()
+	if len(imp.Annotations.Values) == 0 {
+		row = append(row, parquet.Value{}.Level(0, 0, col))
+	}
+	repetition = -1
+	for i := range imp.Annotations.Values {
+		if repetition < 1 {
+			repetition++
+		}
+		row = append(row, parquet.ByteArrayValue([]byte(imp.Annotations.Values[i])).Level(repetition, 1, col))
+	}
+
 	return row
 }
 
 func profileColumnCount(imp InMemoryProfile) int {
-	var totalCols = 10 + (7 * len(imp.Samples.StacktraceIDs)) + len(imp.Comments)
+	var totalCols = 10 + (7 * len(imp.Samples.StacktraceIDs)) + len(imp.Comments) + 2*len(imp.Annotations.Keys)
 	if len(imp.Comments) == 0 {
 		totalCols++
 	}
 	if len(imp.Samples.StacktraceIDs) == 0 {
 		totalCols += 7
+	}
+	if len(imp.Annotations.Keys) == 0 {
+		totalCols += 2
 	}
 	return totalCols
 }
@@ -686,6 +756,38 @@ func (p ProfileRow) TimeNanos() int64 {
 		}
 	}
 	return ts
+}
+
+func (p ProfileRow) ForAnnotations(fn func([]parquet.Value, []parquet.Value)) {
+	startKeys := -1
+	endKeys := -1
+	startValues := -1
+	endValues := -1
+	var i int
+	for i = 0; i < len(p); i++ {
+		col := p[i].Column()
+		if col == annotationKeyColumnIndex && p[i].DefinitionLevel() == 1 {
+			if startKeys == -1 {
+				startKeys = i
+			}
+		}
+		if col > annotationKeyColumnIndex && endKeys == -1 {
+			endKeys = i
+		}
+		if col == annotationValueColumnIndex && p[i].DefinitionLevel() == 1 {
+			if startValues == -1 {
+				startValues = i
+			}
+		}
+		if col > annotationValueColumnIndex {
+			endValues = i
+			break
+		}
+	}
+
+	if startKeys != -1 && startValues != -1 {
+		fn(p[startKeys:endKeys], p[startValues:endValues])
+	}
 }
 
 func (p ProfileRow) SetSeriesIndex(v uint32) {
