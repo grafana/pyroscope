@@ -1,0 +1,142 @@
+{
+  "query": {
+    "label_names": [
+      "service_name",
+      "__profile_type__"
+    ]
+  },
+  "series_labels": [
+    {
+      "labels": [
+        {
+          "name": "__profile_type__",
+          "value": "block:contentions:count:contentions:count"
+        },
+        {
+          "name": "service_name",
+          "value": "pyroscope"
+        }
+      ]
+    },
+    {
+      "labels": [
+        {
+          "name": "__profile_type__",
+          "value": "block:delay:nanoseconds:contentions:count"
+        },
+        {
+          "name": "service_name",
+          "value": "pyroscope"
+        }
+      ]
+    },
+    {
+      "labels": [
+        {
+          "name": "__profile_type__",
+          "value": "goroutines:goroutine:count:goroutine:count"
+        },
+        {
+          "name": "service_name",
+          "value": "pyroscope"
+        }
+      ]
+    },
+    {
+      "labels": [
+        {
+          "name": "__profile_type__",
+          "value": "memory:alloc_objects:count:space:bytes"
+        },
+        {
+          "name": "service_name",
+          "value": "pyroscope"
+        }
+      ]
+    },
+    {
+      "labels": [
+        {
+          "name": "__profile_type__",
+          "value": "memory:alloc_space:bytes:space:bytes"
+        },
+        {
+          "name": "service_name",
+          "value": "pyroscope"
+        }
+      ]
+    },
+    {
+      "labels": [
+        {
+          "name": "__profile_type__",
+          "value": "memory:inuse_objects:count:space:bytes"
+        },
+        {
+          "name": "service_name",
+          "value": "pyroscope"
+        }
+      ]
+    },
+    {
+      "labels": [
+        {
+          "name": "__profile_type__",
+          "value": "memory:inuse_space:bytes:space:bytes"
+        },
+        {
+          "name": "service_name",
+          "value": "pyroscope"
+        }
+      ]
+    },
+    {
+      "labels": [
+        {
+          "name": "__profile_type__",
+          "value": "mutex:contentions:count:contentions:count"
+        },
+        {
+          "name": "service_name",
+          "value": "pyroscope"
+        }
+      ]
+    },
+    {
+      "labels": [
+        {
+          "name": "__profile_type__",
+          "value": "mutex:delay:nanoseconds:contentions:count"
+        },
+        {
+          "name": "service_name",
+          "value": "pyroscope"
+        }
+      ]
+    },
+    {
+      "labels": [
+        {
+          "name": "__profile_type__",
+          "value": "process_cpu:cpu:nanoseconds:cpu:nanoseconds"
+        },
+        {
+          "name": "service_name",
+          "value": "pyroscope"
+        }
+      ]
+    },
+    {
+      "labels": [
+        {
+          "name": "__profile_type__",
+          "value": "process_cpu:samples:count:cpu:nanoseconds"
+        },
+        {
+          "name": "service_name",
+          "value": "pyroscope"
+        }
+      ]
+    }
+  ]
+}
