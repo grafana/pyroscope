@@ -319,6 +319,8 @@ Usage of ./pyroscope:
     	GCS bucket name
   -storage.gcs.service-account string
     	JSON either from a Google Developers Console client_credentials.json file, or a Google Developers service account key. Needs to be valid JSON, not a filesystem path.
+  -storage.prefix string
+    	Prefix for all objects stored in the backend storage. For simplicity, it may only contain digits and English alphabet characters, hyphens, underscores, dots and forward slashes.
   -storage.s3.access-key-id string
     	S3 access key ID
   -storage.s3.bucket-name string

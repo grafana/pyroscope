@@ -300,7 +300,7 @@ func (c *Config) Validate() error {
 		return err
 	}
 
-	if err := c.Storage.Bucket.Validate(); err != nil {
+	if err := c.Storage.Bucket.Validate(util.Logger); err != nil {
 		return err
 	}
 

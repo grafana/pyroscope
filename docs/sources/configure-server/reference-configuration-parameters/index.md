@@ -263,7 +263,14 @@ storage:
   [filesystem: <filesystem_storage_backend>]
 
   # Prefix for all objects stored in the backend storage. For simplicity, it may
-  # only contain digits and English alphabet letters.
+  # only contain digits and English alphabet characters, hyphens, underscores,
+  # dots and forward slashes.
+  # CLI flag: -storage.prefix
+  [prefix: <string> | default = ""]
+
+  # Deprecated: Use 'storage..prefix' instead. Prefix for all objects stored in
+  # the backend storage. For simplicity, it may only contain digits and English
+  # alphabet characters, hyphens, underscores, dots and forward slashes.
   # CLI flag: -storage.storage-prefix
   [storage_prefix: <string> | default = ""]
 

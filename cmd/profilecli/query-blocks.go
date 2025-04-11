@@ -178,6 +178,6 @@ func getRemoteBucket(ctx context.Context, params *blocksQueryParams) (objstore.B
 				BucketName: params.BucketName,
 			},
 		},
-		StoragePrefix: fmt.Sprintf("%s/phlaredb", params.TenantID),
+		Prefix: fmt.Sprintf("%s/phlaredb", params.TenantID),
 	}, params.BucketName)
 }

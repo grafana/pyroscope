@@ -667,7 +667,7 @@ func newBlock(t testing.TB, generator func() []*testhelper.ProfileBuilder) *sing
 				Directory: dir,
 			},
 		},
-		StoragePrefix: "local",
+		Prefix: "local",
 	}, "test")
 	require.NoError(t, err)
 	metaMap, err := block.ListBlocks(filepath.Join(dir, PathLocal), time.Time{})
@@ -692,7 +692,7 @@ func blockQuerierFromMeta(t *testing.T, dir string, m block.Meta) *singleBlockQu
 				Directory: dir,
 			},
 		},
-		StoragePrefix: "",
+		Prefix: "",
 	}, "test")
 	require.NoError(t, err)
 	blk := NewSingleBlockQuerierFromMeta(ctx, bkt, &m)
@@ -894,7 +894,7 @@ func Benchmark_CompactSplit(b *testing.B) {
 				Directory: "./testdata/",
 			},
 		},
-		StoragePrefix: "",
+		Prefix: "",
 	}, "test")
 	require.NoError(b, err)
 	meta, err := block.ReadMetaFromDir("./testdata/01HHYG6245NWHZWVP27V8WJRT7")

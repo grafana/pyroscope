@@ -24,6 +24,7 @@ func NewBucket(ctx context.Context, cfg Config, name string) (phlareobj.Bucket, 
 	)
 	logger := phlarecontext.Logger(ctx)
 	reg := phlarecontext.Registry(ctx)
+	prefixPath := cfg.getPrefix()
 
 	switch cfg.Backend {
 	case S3:
@@ -52,10 +53,10 @@ func NewBucket(ctx context.Context, cfg Config, name string) (phlareobj.Bucket, 
 		if err != nil {
 			return nil, err
 		}
-		if cfg.StoragePrefix == "" {
+		if prefixPath == "" {
 			return fs, nil
 		}
-		return phlareobj.NewPrefixedBucket(fs, cfg.StoragePrefix), nil
+		return phlareobj.NewPrefixedBucket(fs, prefixPath), nil
 	default:
 		return nil, ErrUnsupportedStorageBackend
 	}
@@ -73,8 +74,8 @@ func NewBucket(ctx context.Context, cfg Config, name string) (phlareobj.Bucket, 
 	}
 	bkt := phlareobj.NewBucket(objtracing.WrapWithTraces(objstore.WrapWithMetrics(backendClient, reg, name)))
 
-	if cfg.StoragePrefix != "" {
-		bkt = phlareobj.NewPrefixedBucket(bkt, cfg.StoragePrefix)
+	if prefixPath != "" {
+		bkt = phlareobj.NewPrefixedBucket(bkt, prefixPath)
 	}
 	return bkt, nil
 }
