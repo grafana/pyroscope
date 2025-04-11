@@ -68,6 +68,11 @@ var (
 				phlareparquet.NewGroupField("Value", parquet.Encoded(parquet.Int(64), &parquet.DeltaBinaryPacked)),
 			})),
 		phlareparquet.NewGroupField(TimeNanosColumnName, parquet.Timestamp(parquet.Nanosecond)),
+		phlareparquet.NewGroupField(AnnotationsColumnName, parquet.List(
+			phlareparquet.Group{
+				phlareparquet.NewGroupField("Key", parquet.Encoded(parquet.String(), &parquet.DeltaByteArray)),
+				phlareparquet.NewGroupField("Value", parquet.Encoded(parquet.String(), &parquet.DeltaByteArray)),
+			})),
 	})
 
 	sampleStacktraceIDColumnPath = strings.Split("Samples.list.element.StacktraceID", ".")
@@ -82,8 +87,10 @@ var (
 	stacktracePartitionColIndex int
 	totalValueColIndex          int
 
-	AnnotationKeyColumnPath   = strings.Split("Annotations.list.element.Key", ".")
-	AnnotationValueColumnPath = strings.Split("Annotations.list.element.Value", ".")
+	AnnotationKeyColumnPath    = strings.Split("Annotations.list.element.Key", ".")
+	AnnotationValueColumnPath  = strings.Split("Annotations.list.element.Value", ".")
+	annotationKeyColumnIndex   int
+	annotationValueColumnIndex int
 
 	downsampledValueColIndex int
 
@@ -131,6 +138,17 @@ func init() {
 		panic(fmt.Errorf("Sample.Value column not found"))
 	}
 	downsampledValueColIndex = downsampledValueCol.ColumnIndex
+
+	annotationKeyColumn, ok := ProfilesSchema.Lookup(AnnotationKeyColumnPath...)
+	if !ok {
+		panic(fmt.Errorf("annotation key column not found"))
+	}
+	annotationValueColumnIndex = annotationKeyColumn.ColumnIndex
+	annotationValueColum, ok := ProfilesSchema.Lookup(AnnotationValueColumnPath...)
+	if !ok {
+		panic(fmt.Errorf("annotation value column not found"))
+	}
+	annotationValueColumnIndex = annotationValueColum.ColumnIndex
 }
 
 type SampleColumns struct {
@@ -738,6 +756,38 @@ func (p ProfileRow) TimeNanos() int64 {
 		}
 	}
 	return ts
+}
+
+func (p ProfileRow) ForAnnotations(fn func([]parquet.Value, []parquet.Value)) {
+	startKeys := -1
+	endKeys := -1
+	startValues := -1
+	endValues := -1
+	var i int
+	for i = 0; i < len(p); i++ {
+		col := p[i].Column()
+		if col == annotationKeyColumnIndex && p[i].DefinitionLevel() == 1 {
+			if startKeys == -1 {
+				startKeys = i
+			}
+		}
+		if col > annotationKeyColumnIndex && endKeys == -1 {
+			endKeys = i
+		}
+		if col == annotationValueColumnIndex && p[i].DefinitionLevel() == 1 {
+			if startValues == -1 {
+				startValues = i
+			}
+		}
+		if col > annotationValueColumnIndex {
+			endValues = i
+			break
+		}
+	}
+
+	if startKeys != -1 && startValues != -1 {
+		fn(p[startKeys:endKeys], p[startValues:endValues])
+	}
 }
 
 func (p ProfileRow) SetSeriesIndex(v uint32) {

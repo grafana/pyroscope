@@ -31,10 +31,12 @@ import (
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 )
 
+var defaultAnnotations []*typesv1.ProfileAnnotation
+
 func TestHeadLabelValues(t *testing.T) {
 	head := newTestHead()
-	head.Ingest(newProfileFoo(), uuid.New(), []*typesv1.LabelPair{{Name: "job", Value: "foo"}, {Name: "namespace", Value: "phlare"}}, nil)
-	head.Ingest(newProfileBar(), uuid.New(), []*typesv1.LabelPair{{Name: "job", Value: "bar"}, {Name: "namespace", Value: "phlare"}}, nil)
+	head.Ingest(newProfileFoo(), uuid.New(), []*typesv1.LabelPair{{Name: "job", Value: "foo"}, {Name: "namespace", Value: "phlare"}}, defaultAnnotations)
+	head.Ingest(newProfileBar(), uuid.New(), []*typesv1.LabelPair{{Name: "job", Value: "bar"}, {Name: "namespace", Value: "phlare"}}, defaultAnnotations)
 
 	q := flushTestHead(t, head)
 
@@ -49,8 +51,8 @@ func TestHeadLabelValues(t *testing.T) {
 
 func TestHeadLabelNames(t *testing.T) {
 	head := newTestHead()
-	head.Ingest(newProfileFoo(), uuid.New(), []*typesv1.LabelPair{{Name: "job", Value: "foo"}, {Name: "namespace", Value: "phlare"}}, nil)
-	head.Ingest(newProfileBar(), uuid.New(), []*typesv1.LabelPair{{Name: "job", Value: "bar"}, {Name: "namespace", Value: "phlare"}}, nil)
+	head.Ingest(newProfileFoo(), uuid.New(), []*typesv1.LabelPair{{Name: "job", Value: "foo"}, {Name: "namespace", Value: "phlare"}}, defaultAnnotations)
+	head.Ingest(newProfileBar(), uuid.New(), []*typesv1.LabelPair{{Name: "job", Value: "bar"}, {Name: "namespace", Value: "phlare"}}, defaultAnnotations)
 
 	q := flushTestHead(t, head)
 
@@ -63,8 +65,8 @@ func TestHeadSeries(t *testing.T) {
 	head := newTestHead()
 	fooLabels := phlaremodel.NewLabelsBuilder(nil).Set("namespace", "phlare").Set("job", "foo").Labels()
 	barLabels := phlaremodel.NewLabelsBuilder(nil).Set("namespace", "phlare").Set("job", "bar").Labels()
-	head.Ingest(newProfileFoo(), uuid.New(), fooLabels, nil)
-	head.Ingest(newProfileBar(), uuid.New(), barLabels, nil)
+	head.Ingest(newProfileFoo(), uuid.New(), fooLabels, defaultAnnotations)
+	head.Ingest(newProfileBar(), uuid.New(), barLabels, defaultAnnotations)
 
 	lblBuilder := phlaremodel.NewLabelsBuilder(nil).
 		Set("namespace", "phlare").
@@ -96,8 +98,8 @@ func TestHeadSeries(t *testing.T) {
 
 func TestHeadProfileTypes(t *testing.T) {
 	head := newTestHead()
-	head.Ingest(newProfileFoo(), uuid.New(), []*typesv1.LabelPair{{Name: "__name__", Value: "foo"}, {Name: "job", Value: "foo"}, {Name: "namespace", Value: "phlare"}}, nil)
-	head.Ingest(newProfileBar(), uuid.New(), []*typesv1.LabelPair{{Name: "__name__", Value: "bar"}, {Name: "namespace", Value: "phlare"}}, nil)
+	head.Ingest(newProfileFoo(), uuid.New(), []*typesv1.LabelPair{{Name: "__name__", Value: "foo"}, {Name: "job", Value: "foo"}, {Name: "namespace", Value: "phlare"}}, defaultAnnotations)
+	head.Ingest(newProfileBar(), uuid.New(), []*typesv1.LabelPair{{Name: "__name__", Value: "bar"}, {Name: "namespace", Value: "phlare"}}, defaultAnnotations)
 
 	q := flushTestHead(t, head)
 
@@ -121,7 +123,7 @@ func TestHead_SelectMatchingProfiles_Order(t *testing.T) {
 		head.Ingest(x, uuid.UUID{}, []*typesv1.LabelPair{
 			{Name: "job", Value: "foo"},
 			{Name: "x", Value: strconv.Itoa(i)},
-		}, nil)
+		}, defaultAnnotations)
 	}
 
 	q := flushTestHead(t, head)
@@ -175,7 +177,7 @@ func TestHeadFlushQuery(t *testing.T) {
 	for pos := range testdata {
 		head.Ingest(testdata[pos].profile.CloneVT(), uuid.New(), []*typesv1.LabelPair{
 			{Name: phlaremodel.LabelNameServiceName, Value: testdata[pos].svc},
-		}, nil)
+		}, defaultAnnotations)
 	}
 
 	flushed, err := head.Flush(ctx)
@@ -255,7 +257,7 @@ func TestHead_ProfileOrder(t *testing.T) {
 		{Name: phlaremodel.LabelNameProfileName, Value: "memory"},
 		{Name: phlaremodel.LabelNameOrder, Value: phlaremodel.LabelOrderEnforced},
 		{Name: phlaremodel.LabelNameServiceName, Value: "service-a"},
-	}, nil)
+	}, defaultAnnotations)
 
 	p, u = profileWithID(2)
 	head.Ingest(p, u, []*typesv1.LabelPair{
@@ -263,7 +265,7 @@ func TestHead_ProfileOrder(t *testing.T) {
 		{Name: phlaremodel.LabelNameOrder, Value: phlaremodel.LabelOrderEnforced},
 		{Name: phlaremodel.LabelNameServiceName, Value: "service-b"},
 		{Name: "____Label", Value: "important"},
-	}, nil)
+	}, defaultAnnotations)
 
 	p, u = profileWithID(3)
 	head.Ingest(p, u, []*typesv1.LabelPair{
@@ -271,7 +273,7 @@ func TestHead_ProfileOrder(t *testing.T) {
 		{Name: phlaremodel.LabelNameOrder, Value: phlaremodel.LabelOrderEnforced},
 		{Name: phlaremodel.LabelNameServiceName, Value: "service-c"},
 		{Name: "AAALabel", Value: "important"},
-	}, nil)
+	}, defaultAnnotations)
 
 	p, u = profileWithID(4)
 	head.Ingest(p, u, []*typesv1.LabelPair{
@@ -279,21 +281,21 @@ func TestHead_ProfileOrder(t *testing.T) {
 		{Name: phlaremodel.LabelNameOrder, Value: phlaremodel.LabelOrderEnforced},
 		{Name: phlaremodel.LabelNameServiceName, Value: "service-a"},
 		{Name: "000Label", Value: "important"},
-	}, nil)
+	}, defaultAnnotations)
 
 	p, u = profileWithID(5)
 	head.Ingest(p, u, []*typesv1.LabelPair{
 		{Name: phlaremodel.LabelNameProfileName, Value: "cpu"},
 		{Name: phlaremodel.LabelNameOrder, Value: phlaremodel.LabelOrderEnforced},
 		{Name: phlaremodel.LabelNameServiceName, Value: "service-b"},
-	}, nil)
+	}, defaultAnnotations)
 
 	p, u = profileWithID(6)
 	head.Ingest(p, u, []*typesv1.LabelPair{
 		{Name: phlaremodel.LabelNameProfileName, Value: "cpu"},
 		{Name: phlaremodel.LabelNameOrder, Value: phlaremodel.LabelOrderEnforced},
 		{Name: phlaremodel.LabelNameServiceName, Value: "service-b"},
-	}, nil)
+	}, defaultAnnotations)
 
 	flushed, err := head.Flush(context.Background())
 	require.NoError(t, err)
@@ -328,6 +330,7 @@ func TestMergeProfilesStacktraces(t *testing.T) {
 	db := newTestHead()
 
 	ingestProfiles(t, db, cpuProfileGenerator, start.UnixNano(), end.UnixNano(), step,
+		defaultAnnotations,
 		&typesv1.LabelPair{Name: "namespace", Value: "my-namespace"},
 		&typesv1.LabelPair{Name: "pod", Value: "my-pod"},
 	)
@@ -452,6 +455,9 @@ func TestMergeProfilesLabels(t *testing.T) {
 	db := newTestHead()
 
 	ingestProfiles(t, db, cpuProfileGenerator, start.UnixNano(), end.UnixNano(), step,
+		[]*typesv1.ProfileAnnotation{
+			{Key: "foo", Value: "test annotation"},
+		},
 		&typesv1.LabelPair{Name: "namespace", Value: "my-namespace"},
 		&typesv1.LabelPair{Name: "pod", Value: "my-pod"},
 	)
@@ -516,6 +522,7 @@ func TestMergeProfilesPprof(t *testing.T) {
 	db := NewHead(NewHeadMetricsWithPrefix(nil, ""))
 
 	ingestProfiles(t, db, cpuProfileGenerator, start.UnixNano(), end.UnixNano(), step,
+		defaultAnnotations,
 		&typesv1.LabelPair{Name: "namespace", Value: "my-namespace"},
 		&typesv1.LabelPair{Name: "pod", Value: "my-pod"},
 	)
@@ -659,6 +666,7 @@ func Test_HeadFlush_DuplicateLabels(t *testing.T) {
 	head := newTestHead()
 
 	ingestProfiles(t, head, cpuProfileGenerator, start.UnixNano(), end.UnixNano(), step,
+		defaultAnnotations,
 		&typesv1.LabelPair{Name: "namespace", Value: "my-namespace"},
 		&typesv1.LabelPair{Name: "pod", Value: "my-pod"},
 		&typesv1.LabelPair{Name: "pod", Value: "not-my-pod"},
@@ -680,7 +688,7 @@ func BenchmarkHeadIngestProfiles(t *testing.B) {
 	for n := 0; n < t.N; n++ {
 		for pos := range profilePaths {
 			p := parseProfile(t, profilePaths[pos])
-			head.Ingest(p, uuid.New(), []*typesv1.LabelPair{}, nil)
+			head.Ingest(p, uuid.New(), []*typesv1.LabelPair{}, defaultAnnotations)
 			profileCount++
 		}
 	}
@@ -818,8 +826,11 @@ func ingestThreeProfileStreams(i int, ingest func(*profilev1.Profile, uuid.UUID,
 	p.UUID = uuid.MustParse(fmt.Sprintf("00000000-0000-0000-0000-%012d", i))
 	p.ForStacktraceString("func1", "func2").AddSamples(10)
 	p.ForStacktraceString("func1").AddSamples(20)
+	p.Annotations = []*typesv1.ProfileAnnotation{
+		{Key: "foo", Value: "bar"},
+	}
 
-	ingest(p.Profile, p.UUID, p.Labels, nil)
+	ingest(p.Profile, p.UUID, p.Labels, p.Annotations)
 }
 
 func profileTypeFromProfile(p *profilev1.Profile, stIndex int) *typesv1.ProfileType {
@@ -863,12 +874,16 @@ func mustParseProfileSelector(t testing.TB, selector string) *typesv1.ProfileTyp
 	return ps
 }
 
-func ingestProfiles(b testing.TB, db *Head, generator func(tsNano int64, t testing.TB) (*profilev1.Profile, string), from, to int64, step time.Duration, externalLabels ...*typesv1.LabelPair) {
+func ingestProfiles(b testing.TB, db *Head, generator func(tsNano int64, t testing.TB) (*profilev1.Profile, string), from, to int64, step time.Duration, annotations []*typesv1.ProfileAnnotation, externalLabels ...*typesv1.LabelPair) {
 	b.Helper()
 	for i := from; i <= to; i += int64(step) {
 		p, name := generator(i, b)
-		db.Ingest(p, uuid.New(), append(externalLabels, &typesv1.LabelPair{Name: model.MetricNameLabel, Value: name}),
-			[]*typesv1.ProfileAnnotation{{Value: "test annotation"}})
+		db.Ingest(
+			p,
+			uuid.New(),
+			append(externalLabels, &typesv1.LabelPair{Name: model.MetricNameLabel, Value: name}),
+			annotations,
+		)
 	}
 }
 

@@ -41,14 +41,9 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 		return nil, err
 	}
 
-	annotationKeysColumn, err := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), schemav1.AnnotationKeyColumnPath)
-	if err != nil {
-		return nil, err
-	}
-	annotationValuesColumn, err := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), schemav1.AnnotationValueColumnPath)
-	if err != nil {
-		return nil, err
-	}
+	// these columns might not be present
+	annotationKeysColumn, _ := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), schemav1.AnnotationKeyColumnPath)
+	annotationValuesColumn, _ := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), schemav1.AnnotationValueColumnPath)
 
 	rows := parquetquery.NewRepeatedRowIteratorBatchSize(
 		q.ctx,
@@ -69,18 +64,20 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 			Values: make([]string, 0),
 		}
 		for _, e := range row.Values {
-			switch e[0].Column() {
-			case annotationKeysColumn.ColumnIndex:
-				if e[0].Kind() == parquet.ByteArray {
-					annotations.Keys = append(annotations.Keys, e[0].String())
-				}
-			case annotationValuesColumn.ColumnIndex:
-				if e[0].Kind() == parquet.ByteArray {
-					annotations.Values = append(annotations.Values, e[0].String())
-				}
+			if e[0].Column() == annotationKeysColumn.ColumnIndex && e[0].Kind() == parquet.ByteArray {
+				annotations.Keys = append(annotations.Keys, e[0].String())
+			}
+			if e[0].Column() == annotationValuesColumn.ColumnIndex && e[0].Kind() == parquet.ByteArray {
+				annotations.Values = append(annotations.Values, e[0].String())
 			}
 		}
-		builder.Add(row.Row.Fingerprint, row.Row.Labels, int64(row.Row.Timestamp), float64(row.Values[0][0].Int64()), annotations)
+		builder.Add(
+			row.Row.Fingerprint,
+			row.Row.Labels,
+			int64(row.Row.Timestamp),
+			float64(row.Values[0][0].Int64()),
+			annotations,
+		)
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err

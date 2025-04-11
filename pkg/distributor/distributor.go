@@ -451,6 +451,7 @@ func (d *Distributor) aggregate(ctx context.Context, req *distributormodel.PushR
 	// session ID: this is required to ensure fair load distribution.
 	d.asyncRequests.Add(1)
 	labels = phlaremodel.Labels(req.Series[0].Labels).Clone()
+	annotations := req.Series[0].Annotations
 	go func() {
 		defer d.asyncRequests.Done()
 		sendErr := util.RecoverPanic(func() error {
@@ -468,8 +469,9 @@ func (d *Distributor) aggregate(ctx context.Context, req *distributormodel.PushR
 			aggregated := &distributormodel.PushRequest{
 				TenantID: req.TenantID,
 				Series: []*distributormodel.ProfileSeries{{
-					Labels:  labels,
-					Samples: []*distributormodel.ProfileSample{{Profile: pprof.RawFromProto(p.Profile())}},
+					Labels:      labels,
+					Samples:     []*distributormodel.ProfileSample{{Profile: pprof.RawFromProto(p.Profile())}},
+					Annotations: annotations,
 				}},
 			}
 			return d.router.Send(localCtx, aggregated)

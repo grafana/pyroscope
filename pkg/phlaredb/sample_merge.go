@@ -2,7 +2,6 @@ package phlaredb
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/grafana/dskit/runutil"
@@ -170,14 +169,10 @@ func mergeByLabels[T Profile](
 	if err != nil {
 		return nil, err
 	}
-	annotationKeysColumn, err := v1.ResolveColumnByPath(profileSource.Schema(), v1.AnnotationKeyColumnPath)
-	if err != nil {
-		return nil, err
-	}
-	annotationValuesColumn, err := v1.ResolveColumnByPath(profileSource.Schema(), v1.AnnotationValueColumnPath)
-	if err != nil {
-		return nil, err
-	}
+
+	// these columns might not be present
+	annotationKeysColumn, _ := v1.ResolveColumnByPath(profileSource.Schema(), v1.AnnotationKeyColumnPath)
+	annotationValuesColumn, _ := v1.ResolveColumnByPath(profileSource.Schema(), v1.AnnotationValueColumnPath)
 
 	profiles := query.NewRepeatedRowIterator(
 		ctx,
@@ -200,24 +195,21 @@ func mergeByLabels[T Profile](
 			Values: make([]string, 0),
 		}
 		for _, e := range values.Values {
-			switch e[0].Column() {
-			case column.ColumnIndex:
-				if e[0].Kind() != parquet.Int64 {
-					return nil, fmt.Errorf("column index mismatch, kind: %s, column: %s", e[0].Kind(), column.Node.String())
-				}
+			if e[0].Column() == column.ColumnIndex && e[0].Kind() == parquet.Int64 {
 				total += e[0].Int64()
-			case annotationKeysColumn.ColumnIndex:
-				if e[0].Kind() == parquet.ByteArray {
-					annotations.Keys = append(annotations.Keys, e[0].String())
-				}
-			case annotationValuesColumn.ColumnIndex:
-				if e[0].Kind() == parquet.ByteArray {
-					annotations.Values = append(annotations.Values, e[0].String())
-				}
-			default:
+			} else if e[0].Column() == annotationKeysColumn.ColumnIndex && e[0].Kind() == parquet.ByteArray {
+				annotations.Keys = append(annotations.Keys, e[0].String())
+			} else if e[0].Column() == annotationValuesColumn.ColumnIndex && e[0].Kind() == parquet.ByteArray {
+				annotations.Values = append(annotations.Values, e[0].String())
 			}
 		}
-		seriesBuilder.Add(p.Fingerprint(), p.Labels(), int64(p.Timestamp()), float64(total), annotations)
+		seriesBuilder.Add(
+			p.Fingerprint(),
+			p.Labels(),
+			int64(p.Timestamp()),
+			float64(total),
+			annotations,
+		)
 	}
 	return seriesBuilder.Build(), profiles.Err()
 }

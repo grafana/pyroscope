@@ -1,6 +1,8 @@
 package model
 
 import (
+	"fmt"
+
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/distributor/ingest_limits"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
@@ -83,9 +85,10 @@ func (req *PushRequest) Clone() *PushRequest {
 	}
 	for i, s := range req.Series {
 		c.Series[i] = &ProfileSeries{
-			Labels:   phlaremodel.Labels(s.Labels).Clone(),
-			Samples:  make([]*ProfileSample, len(s.Samples)),
-			Language: s.Language,
+			Labels:      phlaremodel.Labels(s.Labels).Clone(),
+			Samples:     make([]*ProfileSample, len(s.Samples)),
+			Language:    s.Language,
+			Annotations: s.Annotations,
 		}
 		for j, p := range s.Samples {
 			c.Series[i].Samples[j] = &ProfileSample{
@@ -99,6 +102,9 @@ func (req *PushRequest) Clone() *PushRequest {
 }
 
 func (req *PushRequest) MarkThrottledTenant(l *ingest_limits.Config) error {
+	if l == nil {
+		return fmt.Errorf("no limit config provided")
+	}
 	annotation, err := ingest_limits.CreateTenantAnnotation(l)
 	if err != nil {
 		return err
@@ -113,6 +119,9 @@ func (req *PushRequest) MarkThrottledTenant(l *ingest_limits.Config) error {
 }
 
 func (req *PushRequest) MarkThrottledUsageGroup(l *ingest_limits.Config, usageGroup string) error {
+	if l == nil {
+		return fmt.Errorf("no limit config provided")
+	}
 	annotation, err := ingest_limits.CreateUsageGroupAnnotation(l, usageGroup)
 	if err != nil {
 		return err

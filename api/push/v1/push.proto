@@ -24,7 +24,7 @@ message RawProfileSeries {
   // samples are the set of profile bytes
   repeated RawSample samples = 2;
 
-  // annotations provide generic metadata for profile series
+  // annotations provide generic metadata for profiles
   repeated types.v1.ProfileAnnotation annotations = 3;
 }
 

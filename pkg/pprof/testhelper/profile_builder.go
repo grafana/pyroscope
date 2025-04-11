@@ -18,7 +18,8 @@ type ProfileBuilder struct {
 	strings map[string]int
 
 	uuid.UUID
-	Labels []*typesv1.LabelPair
+	Labels      []*typesv1.LabelPair
+	Annotations []*typesv1.ProfileAnnotation
 
 	externalFunctionID2LocationId map[uint32]uint64
 	externalSampleID2SampleIndex  map[sampleID]uint32
@@ -106,6 +107,16 @@ Outer:
 		})
 	}
 	sort.Sort(phlaremodel.Labels(m.Labels))
+	return m
+}
+
+func (m *ProfileBuilder) WithAnnotations(annotationValues ...string) *ProfileBuilder {
+	for _, a := range annotationValues {
+		m.Annotations = append(m.Annotations, &typesv1.ProfileAnnotation{
+			Key:   "throttled",
+			Value: a,
+		})
+	}
 	return m
 }
 
