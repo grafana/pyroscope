@@ -1,6 +1,6 @@
 services:
   pyroscope:
-    image: grafana/pyroscope
+    image: korniltsev/pyroscope:update-java-examples-0d5533778 # remove after next release
     ports:
     - "4040:4040"
 
