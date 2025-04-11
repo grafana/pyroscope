@@ -4,4 +4,5 @@ use (
 	.
 	./api
 	./ebpf
+	./lidia
 )
