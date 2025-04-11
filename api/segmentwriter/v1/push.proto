@@ -22,6 +22,6 @@ message PushRequest {
   bytes profile_id = 5;
   // Shard identifier the profile belongs to.
   uint32 shard = 6;
-  // Profile annotations
+  // Profile annotations with additional metadata.
   repeated types.v1.ProfileAnnotation annotations = 7;
 }

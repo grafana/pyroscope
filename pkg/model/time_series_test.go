@@ -24,7 +24,7 @@ func Test_RangeSeriesSum(t *testing.T) {
 				{Ts: 2, Value: 2},
 				{Ts: 3, Value: 3},
 				{Ts: 4, Value: 4},
-				{Ts: 5, Value: 5},
+				{Ts: 5, Value: 5, Annotations: []*typesv1.ProfileAnnotation{{Key: "foo", Value: "bar"}}},
 			},
 			out: []*typesv1.Series{
 				{
@@ -33,7 +33,7 @@ func Test_RangeSeriesSum(t *testing.T) {
 						{Timestamp: 2, Value: 2, Annotations: []*typesv1.ProfileAnnotation{}},
 						{Timestamp: 3, Value: 3, Annotations: []*typesv1.ProfileAnnotation{}},
 						{Timestamp: 4, Value: 4, Annotations: []*typesv1.ProfileAnnotation{}},
-						{Timestamp: 5, Value: 5, Annotations: []*typesv1.ProfileAnnotation{}},
+						{Timestamp: 5, Value: 5, Annotations: []*typesv1.ProfileAnnotation{{Key: "foo", Value: "bar"}}},
 					},
 				},
 			},
@@ -46,8 +46,8 @@ func Test_RangeSeriesSum(t *testing.T) {
 				{Ts: 2, Value: 1, Lbs: seriesA, LabelsHash: seriesA.Hash()},
 				{Ts: 3, Value: 1, Lbs: seriesB, LabelsHash: seriesB.Hash()},
 				{Ts: 3, Value: 1, Lbs: seriesB, LabelsHash: seriesB.Hash()},
-				{Ts: 4, Value: 4, Lbs: seriesB, LabelsHash: seriesB.Hash()},
-				{Ts: 4, Value: 4, Lbs: seriesB, LabelsHash: seriesB.Hash()},
+				{Ts: 4, Value: 4, Lbs: seriesB, LabelsHash: seriesB.Hash(), Annotations: []*typesv1.ProfileAnnotation{{Key: "foo", Value: "bar"}}},
+				{Ts: 4, Value: 4, Lbs: seriesB, LabelsHash: seriesB.Hash(), Annotations: []*typesv1.ProfileAnnotation{{Key: "foo", Value: "buzz"}}},
 				{Ts: 4, Value: 4, Lbs: seriesA, LabelsHash: seriesA.Hash()},
 				{Ts: 5, Value: 5, Lbs: seriesA, LabelsHash: seriesA.Hash()},
 			},
@@ -66,7 +66,9 @@ func Test_RangeSeriesSum(t *testing.T) {
 					Points: []*typesv1.Point{
 						{Timestamp: 1, Value: 1, Annotations: []*typesv1.ProfileAnnotation{}},
 						{Timestamp: 3, Value: 2, Annotations: []*typesv1.ProfileAnnotation{}},
-						{Timestamp: 4, Value: 8, Annotations: []*typesv1.ProfileAnnotation{}},
+						{Timestamp: 4, Value: 8, Annotations: []*typesv1.ProfileAnnotation{
+							{Key: "foo", Value: "bar"},
+							{Key: "foo", Value: "buzz"}}},
 					},
 				},
 			},
@@ -96,7 +98,7 @@ func Test_RangeSeriesAvg(t *testing.T) {
 				{Ts: 2, Value: 2},
 				{Ts: 2, Value: 3},
 				{Ts: 3, Value: 4},
-				{Ts: 4, Value: 5},
+				{Ts: 4, Value: 5, Annotations: []*typesv1.ProfileAnnotation{{Key: "foo", Value: "bar"}}},
 			},
 			out: []*typesv1.Series{
 				{
@@ -104,7 +106,7 @@ func Test_RangeSeriesAvg(t *testing.T) {
 						{Timestamp: 1, Value: 1.5, Annotations: []*typesv1.ProfileAnnotation{}}, // avg of 1 and 2
 						{Timestamp: 2, Value: 2.5, Annotations: []*typesv1.ProfileAnnotation{}}, // avg of 2 and 3
 						{Timestamp: 3, Value: 4, Annotations: []*typesv1.ProfileAnnotation{}},
-						{Timestamp: 4, Value: 5, Annotations: []*typesv1.ProfileAnnotation{}},
+						{Timestamp: 4, Value: 5, Annotations: []*typesv1.ProfileAnnotation{{Key: "foo", Value: "bar"}}},
 					},
 				},
 			},

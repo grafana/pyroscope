@@ -2,6 +2,7 @@ package ingest_limits
 
 import (
 	"encoding/json"
+	"fmt"
 )
 
 func CreateTenantAnnotation(c *Config) ([]byte, error) {
@@ -18,10 +19,14 @@ func CreateTenantAnnotation(c *Config) ([]byte, error) {
 }
 
 func CreateUsageGroupAnnotation(c *Config, usageGroup string) ([]byte, error) {
+	l, ok := c.UsageGroups[usageGroup]
+	if !ok {
+		return nil, fmt.Errorf("usageGroup %s not found", usageGroup)
+	}
 	annotation := &ProfileAnnotation{
 		Body: ThrottledAnnotation{
 			PeriodType:        c.PeriodType,
-			PeriodLimitMb:     c.PeriodLimitMb,
+			PeriodLimitMb:     l.PeriodLimitMb,
 			LimitResetTime:    c.LimitResetTime,
 			SamplingPeriodSec: int(c.Sampling.Period.Seconds()),
 			SamplingRequests:  c.Sampling.NumRequests,
