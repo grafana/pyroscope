@@ -61,29 +61,50 @@ func Test_RepairGoTruncatedStacktraces(t *testing.T) {
 	}
 }
 
+var goTruncatedStacktracesFixtures = []string{
+	"testdata/gotruncatefix/heap_go_truncated_1.pb.gz", // Cortex.
+	"testdata/gotruncatefix/heap_go_truncated_2.pb.gz", // Cortex.
+	"testdata/gotruncatefix/heap_go_truncated_3.pb.gz", // Loki. Pathological.
+	"testdata/gotruncatefix/heap_go_truncated_4.pb.gz", // Pyroscope.
+	"testdata/gotruncatefix/cpu_go_truncated_1.pb.gz",  // Cloudwatch Exporter
+}
+
+func Test_RepairGoTruncatedStacktraces_Fixtures(t *testing.T) {
+	for _, path := range goTruncatedStacktracesFixtures {
+		p, err := OpenFile(path)
+		require.NoError(t, err, path)
+		total := samplesTotal(p.Profile)
+
+		p.Profile = FixGoProfile(p.Profile)
+		assert.Equal(t, total, samplesTotal(p.Profile))
+
+		p.Normalize()
+		assert.Equal(t, total, samplesTotal(p.Profile))
+
+		fixed, err := OpenFile(path + ".fixed")
+		require.NoError(t, err)
+		assert.Equal(t, total, samplesTotal(fixed.Profile))
+	}
+}
+
 func Test_UpdateFixtures_RepairGoTruncatedStacktraces(t *testing.T) {
 	if os.Getenv("UPDATE_FIXTURES") != "true" {
 		t.Skip()
 	}
-	t.Helper()
-	paths := []string{
-		"testdata/gotruncatefix/heap_go_truncated_1.pb.gz", // Cortex.
-		"testdata/gotruncatefix/heap_go_truncated_2.pb.gz", // Cortex.
-		"testdata/gotruncatefix/heap_go_truncated_3.pb.gz", // Loki. Pathological.
-		"testdata/gotruncatefix/heap_go_truncated_4.pb.gz", // Pyroscope.
-		"testdata/gotruncatefix/cpu_go_truncated_1.pb.gz",  // Cloudwatch Exporter
-	}
-	for _, path := range paths {
-		func() {
-			p, err := OpenFile(path)
-			require.NoError(t, err, path)
-			f, err := os.Create(path + ".fixed")
-			require.NoError(t, err, path)
-			defer f.Close()
-			p.Profile = FixGoProfile(p.Profile)
-			RepairGoTruncatedStacktraces(p.Profile)
-			_, err = p.WriteTo(f)
-			require.NoError(t, err, path)
-		}()
+	for _, path := range goTruncatedStacktracesFixtures {
+		p, err := OpenFile(path)
+		require.NoError(t, err, path)
+		total := samplesTotal(p.Profile)
+
+		p.Profile = FixGoProfile(p.Profile)
+		p.Normalize()
+		assert.Equal(t, total, samplesTotal(p.Profile))
+
+		path += ".fixed"
+		fixed, err := os.Create(path)
+		require.NoError(t, err, path)
+		_, err = p.WriteTo(fixed)
+		require.NoError(t, fixed.Close(), path)
+		require.NoError(t, err, path)
 	}
 }
