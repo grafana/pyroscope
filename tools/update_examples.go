@@ -178,6 +178,7 @@ func updateJava() {
 	replaceInplace(reJarURL, "examples/language-sdk-instrumentation/java/fib/Dockerfile", lastJarURL)
 	replaceInplace(reJarURL, "examples/language-sdk-instrumentation/java/simple/Dockerfile", lastJarURL)
 	replaceInplace(reJarURL, "examples/tracing/java/Dockerfile", lastJarURL)
+	replaceInplace(reJarURL, "examples/language-sdk-instrumentation/java/rideshare/Dockerfile", lastJarURL)
 
 	reGradelDep := regexp.MustCompile(`implementation\("io\.pyroscope:agent:\d+\.\d+\.\d+"\)`)
 	lastGradleDep := fmt.Sprintf("implementation(\"io.pyroscope:agent:%s\")", last.version())
