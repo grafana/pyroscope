@@ -157,6 +157,12 @@ func (n *Node) Init() (err error) {
 	raftConfig.SnapshotInterval = n.config.SnapshotInterval
 	raftConfig.LocalID = raft.ServerID(n.config.ServerID)
 
+	// Maximum number of buffered commands (default: 64).
+	// This sets the size of the channel used to queue commands
+	// for the FSM to apply.
+	raftConfig.MaxAppendEntries = 1 << 10
+	raftConfig.BatchApplyCh = true
+
 	n.raft, err = raft.NewRaft(raftConfig, n.fsm, n.logStore, n.stableStore, n.snapshotStore, n.transport)
 	if err != nil {
 		return fmt.Errorf("starting raft node: %w", err)
@@ -271,9 +277,7 @@ func (n *Node) TransferLeadership() (err error) {
 	return err
 }
 
-// Propose makes an attempt to apply the given command to the FSM.
-// The function returns an error if node is not the leader.
-func (n *Node) Propose(t fsm.RaftLogEntryType, m proto.Message) (resp proto.Message, err error) {
+func (n *Node) Apply(t fsm.RaftLogEntryType, m proto.Message) (resp proto.Message, err error) {
 	raw, err := fsm.MarshalEntry(t, m)
 	if err != nil {
 		return nil, err
@@ -289,4 +293,18 @@ func (n *Node) Propose(t fsm.RaftLogEntryType, m proto.Message) (resp proto.Mess
 		resp = r.Data
 	}
 	return resp, r.Err
+}
+
+func (n *Node) Commit(t fsm.RaftLogEntryType, m proto.Message) error {
+	raw, err := fsm.MarshalEntry(t, m)
+	if err != nil {
+		return err
+	}
+	timer := prometheus.NewTimer(n.metrics.apply)
+	defer timer.ObserveDuration()
+	future := n.raft.Apply(raw, n.config.ApplyTimeout)
+	if err = future.WaitCommitted(); err != nil {
+		return WithRaftLeaderStatusDetails(err, n.raft)
+	}
+	return nil
 }

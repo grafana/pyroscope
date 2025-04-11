@@ -8,7 +8,6 @@ import (
 	"io"
 	"strconv"
 	"sync"
-	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -149,11 +148,11 @@ func (fsm *FSM) restore() error {
 
 // Restore restores the FSM state from a snapshot.
 func (fsm *FSM) Restore(snapshot io.ReadCloser) (err error) {
-	start := time.Now()
+	timer := prometheus.NewTimer(fsm.db.metrics.fsmRestoreSnapshotDuration)
 	level.Info(fsm.logger).Log("msg", "restoring snapshot")
 	defer func() {
 		_ = snapshot.Close()
-		fsm.db.metrics.fsmRestoreSnapshotDuration.Observe(time.Since(start).Seconds())
+		timer.ObserveDuration()
 	}()
 
 	level.Info(fsm.logger).Log("msg", "restoring snapshot")
@@ -227,7 +226,6 @@ func (fsm *FSM) Apply(log *raft.Log) any {
 // and calls the corresponding handler on the _local_ FSM, based on
 // the command type.
 func (fsm *FSM) applyCommand(cmd *raft.Log) any {
-	start := time.Now()
 	var e RaftLogEntry
 	if err := e.UnmarshalBinary(cmd.Data); err != nil {
 		return errResponse(cmd, err)
@@ -240,9 +238,8 @@ func (fsm *FSM) applyCommand(cmd *raft.Log) any {
 
 	cmdType := strconv.FormatUint(uint64(e.Type), 10)
 	fsm.db.metrics.fsmApplyCommandSize.WithLabelValues(cmdType).Observe(float64(len(cmd.Data)))
-	defer func() {
-		fsm.db.metrics.fsmApplyCommandDuration.WithLabelValues(cmdType).Observe(time.Since(start).Seconds())
-	}()
+	timer := prometheus.NewTimer(fsm.db.metrics.fsmApplyCommandDuration.WithLabelValues(cmdType))
+	defer timer.ObserveDuration()
 
 	handle, ok := fsm.handlers[e.Type]
 	if !ok {
