@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"math/rand"
 	"os"
 	"strconv"
 	"time"
@@ -253,65 +252,24 @@ type dimension struct {
 	getNextValue func() string
 }
 
-func staticList(input []string) func() string {
-	return func() string {
-		i := rand.Intn(len(input))
-		return input[i]
-	}
-}
-
 func init() {
 	// Configure Prometheus to use UTF-8 validation for metric names
 	model.NameEscapingScheme = model.ValueEncodingEscaping
-}
 
-func MeterProvider(c Config) (*sdkmetric.MeterProvider, error) {
-	// Default is 1m. Set to 3s for demonstrative purposes.
-	interval := 3 * time.Second
-
-	// Setup Prometheus metrics
-	fakeUtf8Metrics := []dimension{
-		{
-			label:        "a_legacy_label",
-			getNextValue: staticList([]string{"legacy"}),
-		},
-		{
-			label:        "label with space",
-			getNextValue: staticList([]string{"space"}),
-		},
-		{
-			label:        "label with 📈",
-			getNextValue: staticList([]string{"metrics"}),
-		},
-		{
-			label:        "label.with.spaß",
-			getNextValue: staticList([]string{"this_is_fun"}),
-		},
-		{
-			label:        "instance",
-			getNextValue: staticList([]string{"instance"}),
-		},
-		{
-			label:        "job",
-			getNextValue: staticList([]string{"job"}),
-		},
-		{
-			label:        "site",
-			getNextValue: staticList([]string{"LA-EPI"}),
-		},
-		{
-			label:        "room",
-			getNextValue: staticList([]string{`"Friends Don't Lie"`}),
-		},
-	}
-
-	dimensions := []string{}
-	for _, dim := range fakeUtf8Metrics {
-		dimensions = append(dimensions, dim.label)
+	// Initialize metrics
+	dimensions := []string{
+		"a_legacy_label",
+		"label with space",
+		"label with 📈",
+		"label.with.spaß",
+		"instance",
+		"job",
+		"site",
+		"room",
 	}
 
 	utf8Metric := promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "a.utf8.metric 🤘",
+		Name: "a.utf8.metric",
 		Help: "a utf8 metric with utf8 labels",
 	}, dimensions)
 
@@ -329,10 +287,15 @@ func MeterProvider(c Config) (*sdkmetric.MeterProvider, error) {
 	// Start the metrics update goroutine
 	go func() {
 		for {
-			labels := []string{}
-			for _, dim := range fakeUtf8Metrics {
-				value := dim.getNextValue()
-				labels = append(labels, value)
+			labels := []string{
+				"legacy",
+				"space",
+				"metrics",
+				"this_is_fun",
+				"instance",
+				"job",
+				"LA-EPI",
+				`"Friends Don't Lie"`,
 			}
 
 			utf8Metric.WithLabelValues(labels...).Inc()
@@ -342,6 +305,11 @@ func MeterProvider(c Config) (*sdkmetric.MeterProvider, error) {
 			time.Sleep(time.Second * 5)
 		}
 	}()
+}
+
+func MeterProvider(c Config) (*sdkmetric.MeterProvider, error) {
+	// Default is 1m. Set to 3s for demonstrative purposes.
+	interval := 3 * time.Second
 
 	if c.UseDebugMeterer {
 		// create stdout exporter, when no OTLP url is set
@@ -358,12 +326,22 @@ func MeterProvider(c Config) (*sdkmetric.MeterProvider, error) {
 	}
 
 	ctx := context.Background()
-	exp, err := otlpmetrichttp.New(ctx)
+	opts := []otlpmetrichttp.Option{otlpmetrichttp.WithEndpoint(c.OTLPUrl)}
+	if c.OTLPInsecure {
+		opts = append(opts, otlpmetrichttp.WithInsecure())
+	}
+	if c.OTLPBasicAuthUser != "" {
+		opts = append(opts, otlpmetrichttp.WithHeaders(map[string]string{
+			"Authorization": "Basic " + basicAuth(c.OTLPBasicAuthUser, c.OTLPBasicAuthPassword),
+		}))
+	}
+
+	exp, err := otlpmetrichttp.New(ctx, opts...)
 	if err != nil {
 		return nil, err
 	}
 
-	// Create a new tracer provider with a batch span processor and the otlp exporter.
+	// Create a new meter provider with a periodic reader and the otlp exporter
 	mp := sdkmetric.NewMeterProvider(
 		sdkmetric.WithResource(newResource(c)),
 		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(exp,
