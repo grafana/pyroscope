@@ -71,7 +71,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	cfg.LifecyclerConfig.RegisterFlagsWithPrefix(prefix+".", f, util.Logger)
 	f.DurationVar(&cfg.SegmentDuration, prefix+".segment-duration", defaultSegmentDuration, "Timeout when flushing segments to bucket.")
 	f.UintVar(&cfg.FlushConcurrency, prefix+".flush-concurrency", 0, "Number of concurrent flushes. Defaults to the number of CPUs, but not less than 8.")
-	f.DurationVar(&cfg.UploadTimeout, prefix+".upload-timeout", time.Second, "Timeout for upload requests.")
+	f.DurationVar(&cfg.UploadTimeout, prefix+".upload-timeout", 2*time.Second, "Timeout for upload requests, including retries.")
 	f.IntVar(&cfg.UploadMaxRetries, prefix+".upload-max-retries", 3, "Number of times to backoff and retry before failing.")
 	f.DurationVar(&cfg.UploadMinBackoff, prefix+".upload-retry-min-period", 50*time.Millisecond, "Minimum delay when backing off.")
 	f.DurationVar(&cfg.UploadMaxBackoff, prefix+".upload-retry-max-period", defaultSegmentDuration, "Maximum delay when backing off.")
