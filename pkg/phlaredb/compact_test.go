@@ -45,7 +45,9 @@ func TestCompact(t *testing.T) {
 				CPUProfile().
 				WithLabels(
 					"job", "b",
-				).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
+				).
+				WithAnnotations("test annotation").
+				ForStacktraceString("foo", "bar", "baz").AddSamples(1),
 			testhelper.NewProfileBuilder(int64(time.Second*3)).
 				CPUProfile().
 				WithLabels(
@@ -74,9 +76,22 @@ func TestCompact(t *testing.T) {
 	series, err := querier.MergeByLabels(ctx, it, nil, "job")
 	require.NoError(t, err)
 	require.Equal(t, []*typesv1.Series{
-		{Labels: phlaremodel.LabelsFromStrings("job", "a"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: int64(1000), Annotations: []*typesv1.ProfileAnnotation{}}}},
-		{Labels: phlaremodel.LabelsFromStrings("job", "b"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: int64(2000), Annotations: []*typesv1.ProfileAnnotation{}}}},
-		{Labels: phlaremodel.LabelsFromStrings("job", "c"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: int64(3000), Annotations: []*typesv1.ProfileAnnotation{}}}},
+		{
+			Labels: phlaremodel.LabelsFromStrings("job", "a"),
+			Points: []*typesv1.Point{{Value: float64(1), Timestamp: int64(1000), Annotations: []*typesv1.ProfileAnnotation{}}},
+		},
+		{
+			Labels: phlaremodel.LabelsFromStrings("job", "b"),
+			Points: []*typesv1.Point{
+				{Value: float64(1), Timestamp: int64(2000), Annotations: []*typesv1.ProfileAnnotation{
+					{Key: "throttled", Value: "test annotation"},
+				}},
+			},
+		},
+		{
+			Labels: phlaremodel.LabelsFromStrings("job", "c"),
+			Points: []*typesv1.Point{{Value: float64(1), Timestamp: int64(3000), Annotations: []*typesv1.ProfileAnnotation{}}},
+		},
 	}, series)
 
 	it, err = querier.SelectMatchingProfiles(ctx, matchAll)
@@ -103,7 +118,8 @@ func TestCompactWithDownsampling(t *testing.T) {
 				CPUProfile().
 				WithLabels(
 					"job", "b",
-				).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
+				).WithAnnotations("test annotation").
+				ForStacktraceString("foo", "bar", "baz").AddSamples(1),
 			testhelper.NewProfileBuilder(int64(time.Hour+6*time.Minute)).
 				CPUProfile().
 				WithLabels(
@@ -141,9 +157,18 @@ func TestCompactWithDownsampling(t *testing.T) {
 	series, err := querier.MergeByLabels(ctx, it, nil, "job")
 	require.NoError(t, err)
 	require.Equal(t, []*typesv1.Series{
-		{Labels: phlaremodel.LabelsFromStrings("job", "a"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: (time.Hour - time.Minute).Milliseconds(), Annotations: []*typesv1.ProfileAnnotation{}}}},
-		{Labels: phlaremodel.LabelsFromStrings("job", "b"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: (time.Hour + time.Minute).Milliseconds(), Annotations: []*typesv1.ProfileAnnotation{}}}},
-		{Labels: phlaremodel.LabelsFromStrings("job", "c"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: (time.Hour + 6*time.Minute).Milliseconds(), Annotations: []*typesv1.ProfileAnnotation{}}}},
+		{
+			Labels: phlaremodel.LabelsFromStrings("job", "a"),
+			Points: []*typesv1.Point{{Value: float64(1), Timestamp: (time.Hour - time.Minute).Milliseconds(), Annotations: []*typesv1.ProfileAnnotation{}}},
+		},
+		{
+			Labels: phlaremodel.LabelsFromStrings("job", "b"),
+			Points: []*typesv1.Point{{Value: float64(1), Timestamp: (time.Hour + time.Minute).Milliseconds(), Annotations: []*typesv1.ProfileAnnotation{{Key: "throttled", Value: "test annotation"}}}},
+		},
+		{
+			Labels: phlaremodel.LabelsFromStrings("job", "c"),
+			Points: []*typesv1.Point{{Value: float64(1), Timestamp: (time.Hour + 6*time.Minute).Milliseconds(), Annotations: []*typesv1.ProfileAnnotation{}}},
+		},
 	}, series)
 
 	it, err = querier.SelectMatchingProfiles(ctx, matchAll)
@@ -654,7 +679,7 @@ func newBlock(t testing.TB, generator func() []*testhelper.ProfileBuilder) *sing
 
 	// ingest.
 	for _, p := range generator() {
-		require.NoError(t, h.Ingest(ctx, p.Profile, p.UUID, nil, p.Labels...))
+		require.NoError(t, h.Ingest(ctx, p.Profile, p.UUID, p.Annotations, p.Labels...))
 	}
 
 	require.NoError(t, h.Flush(ctx))

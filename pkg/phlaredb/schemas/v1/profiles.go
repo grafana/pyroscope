@@ -92,7 +92,8 @@ var (
 	annotationKeyColumnIndex   int
 	annotationValueColumnIndex int
 
-	downsampledValueColIndex int
+	downsampledValueColIndex           int
+	downsampledAnnotationValueColIndex int
 
 	ErrColumnNotFound = fmt.Errorf("column path not found")
 )
@@ -138,12 +139,17 @@ func init() {
 		panic(fmt.Errorf("Sample.Value column not found"))
 	}
 	downsampledValueColIndex = downsampledValueCol.ColumnIndex
+	downsampledAnnotationValueCol, ok := DownsampledProfilesSchema.Lookup(AnnotationValueColumnPath...)
+	if !ok {
+		panic(fmt.Errorf("Annotation.Value column not found"))
+	}
+	downsampledAnnotationValueColIndex = downsampledAnnotationValueCol.ColumnIndex
 
 	annotationKeyColumn, ok := ProfilesSchema.Lookup(AnnotationKeyColumnPath...)
 	if !ok {
 		panic(fmt.Errorf("annotation key column not found"))
 	}
-	annotationValueColumnIndex = annotationKeyColumn.ColumnIndex
+	annotationKeyColumnIndex = annotationKeyColumn.ColumnIndex
 	annotationValueColum, ok := ProfilesSchema.Lookup(AnnotationValueColumnPath...)
 	if !ok {
 		panic(fmt.Errorf("annotation value column not found"))
@@ -762,7 +768,6 @@ func (p ProfileRow) ForAnnotations(fn func([]parquet.Value, []parquet.Value)) {
 	startKeys := -1
 	endKeys := -1
 	startValues := -1
-	endValues := -1
 	var i int
 	for i = 0; i < len(p); i++ {
 		col := p[i].Column()
@@ -780,13 +785,12 @@ func (p ProfileRow) ForAnnotations(fn func([]parquet.Value, []parquet.Value)) {
 			}
 		}
 		if col > annotationValueColumnIndex {
-			endValues = i
 			break
 		}
 	}
 
 	if startKeys != -1 && startValues != -1 {
-		fn(p[startKeys:endKeys], p[startValues:endValues])
+		fn(p[startKeys:endKeys], p[startValues:i])
 	}
 }
 
@@ -861,6 +865,25 @@ func (p DownsampledProfileRow) ForValues(fn func([]parquet.Value)) {
 			}
 		}
 		if col > downsampledValueColIndex {
+			break
+		}
+	}
+	if start != -1 {
+		fn(p[start:i])
+	}
+}
+
+func (p DownsampledProfileRow) ForAnnotationValues(fn func([]parquet.Value)) {
+	start := -1
+	var i int
+	for i = 0; i < len(p); i++ {
+		col := p[i].Column()
+		if col == downsampledAnnotationValueColIndex && p[i].DefinitionLevel() == 1 {
+			if start == -1 {
+				start = i
+			}
+		}
+		if col > downsampledAnnotationValueColIndex {
 			break
 		}
 	}
