@@ -16,6 +16,14 @@ tools/update_examples_pr:
 	gh pr create --head gh_bot_examples_update --title "chore(examples): update examples" --body "make tools/update_examples" --repo $(GITHUB_REPOSITORY) || \
 	   gh pr edit gh_bot_examples_update --title "chore(examples): update examples" --body "make tools/update_examples" --repo $(GITHUB_REPOSITORY)
 
+.PHONY: tools/update_golang_pr
+tools/update_golang_pr:
+	git config --local user.name 'Pyroscope Bot'
+	git config --local user.email 'dmitry+bot@pyroscope.io'
+	git checkout -b gh_bot_golang_update
+	git push -f https://x-access-token:$(GITHUB_TOKEN)@github.com/$(GITHUB_REPOSITORY).git gh_bot_golang_update
+	gh pr create --head gh_bot_golang_update --title "chore: $(git log -1 --pretty=%B)" --body "" --repo $(GITHUB_REPOSITORY) || \
+	   gh pr edit gh_bot_golang_update --title "chore: $(git log -1 --pretty=%B)" --body "" --repo $(GITHUB_REPOSITORY)
 
 .PHONY: rideshare/docker/push
 rideshare/docker/push: IMAGE_PREFIX := us-docker.pkg.dev/grafanalabs-dev/docker-pyroscope-dev/
