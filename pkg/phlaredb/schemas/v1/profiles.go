@@ -54,8 +54,8 @@ var (
 		phlareparquet.NewGroupField("DefaultSampleType", parquet.Optional(parquet.Int(64))),
 		phlareparquet.NewGroupField(AnnotationsColumnName, parquet.List(
 			phlareparquet.Group{
-				phlareparquet.NewGroupField("Key", parquet.Encoded(parquet.String(), &parquet.DeltaByteArray)),
-				phlareparquet.NewGroupField("Value", parquet.Encoded(parquet.String(), &parquet.DeltaByteArray)),
+				phlareparquet.NewGroupField("Key", parquet.String()),
+				phlareparquet.NewGroupField("Value", parquet.String()),
 			})),
 	})
 	DownsampledProfilesSchema = parquet.NewSchema("DownsampledProfile", phlareparquet.Group{
@@ -70,8 +70,8 @@ var (
 		phlareparquet.NewGroupField(TimeNanosColumnName, parquet.Timestamp(parquet.Nanosecond)),
 		phlareparquet.NewGroupField(AnnotationsColumnName, parquet.List(
 			phlareparquet.Group{
-				phlareparquet.NewGroupField("Key", parquet.Encoded(parquet.String(), &parquet.DeltaByteArray)),
-				phlareparquet.NewGroupField("Value", parquet.Encoded(parquet.String(), &parquet.DeltaByteArray)),
+				phlareparquet.NewGroupField("Key", parquet.String()),
+				phlareparquet.NewGroupField("Value", parquet.String()),
 			})),
 	})
 
