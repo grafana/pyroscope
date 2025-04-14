@@ -111,7 +111,7 @@ type RawProfileSeries struct {
 	Labels []*v1.LabelPair `protobuf:"bytes,1,rep,name=labels,proto3" json:"labels,omitempty"`
 	// samples are the set of profile bytes
 	Samples []*RawSample `protobuf:"bytes,2,rep,name=samples,proto3" json:"samples,omitempty"`
-	// annotations provide generic metadata for profile series
+	// annotations provide generic metadata for profiles
 	Annotations   []*v1.ProfileAnnotation `protobuf:"bytes,3,rep,name=annotations,proto3" json:"annotations,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

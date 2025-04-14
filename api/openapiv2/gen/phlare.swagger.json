@@ -1948,7 +1948,7 @@
             "type": "object",
             "$ref": "#/definitions/v1ProfileAnnotation"
           },
-          "title": "annotations provide generic metadata for profile series"
+          "title": "annotations provide generic metadata for profiles"
         }
       },
       "title": "RawProfileSeries represents the pprof profile and its associated labels"

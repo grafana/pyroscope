@@ -70,7 +70,7 @@ type PushRequest struct {
 	ProfileId []byte `protobuf:"bytes,5,opt,name=profile_id,json=profileId,proto3" json:"profile_id,omitempty"`
 	// Shard identifier the profile belongs to.
 	Shard uint32 `protobuf:"varint,6,opt,name=shard,proto3" json:"shard,omitempty"`
-	// Profile annotations
+	// Profile annotations with additional metadata.
 	Annotations   []*v1.ProfileAnnotation `protobuf:"bytes,7,rep,name=annotations,proto3" json:"annotations,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
