@@ -240,8 +240,8 @@ type Profile struct {
 }
 
 type Annotation struct {
-	Key   string `parquet:",delta"`
-	Value string `parquet:",delta"`
+	Key   string `parquet:","`
+	Value string `parquet:","`
 }
 
 type Annotations struct {
