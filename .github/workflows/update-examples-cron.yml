@@ -13,6 +13,10 @@ jobs:
   update-examples-cron:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
       - id: get-secrets
         uses: grafana/shared-workflows/actions/get-vault-secrets@main
         with:
@@ -30,33 +34,11 @@ jobs:
           installation_retrieval_payload: ${{ env.GITHUB_APP_INSTALLATION_ID }}
           private_key: ${{ env.GITHUB_APP_PRIVATE_KEY }}
 
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-          clean: true
-
-      - name: "Update examples"
-        run: |
+      - run: |
           make tools/update_examples
           if ! git diff --exit-code;
           then
             make tools/update_examples_pr
-          fi
-        env:
-          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-          clean: true
-
-      - name: "Upgrade golang"
-        run: |
-          ./tools/upgrade-go-version.sh
-          if ! git diff --exit-code ${{ github.sha }};
-          then
-            make tools/update_golang_pr
           fi
         env:
           GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
