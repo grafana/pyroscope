@@ -11,9 +11,9 @@ import (
 	"github.com/grafana/pyroscope/pkg/distributor/model"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/strprofile"
+	"github.com/grafana/pyroscope/pkg/test"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockotlp"
 
-	"github.com/prometheus/prometheus/util/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -332,7 +332,7 @@ func TestConversion(t *testing.T) {
 						Profiles: []*v1experimental.Profile{
 							&b.profile,
 						}}}}}}
-			logger := testutil.NewLogger(t)
+			logger := test.NewTestingLogger(t)
 			h := NewOTLPIngestHandler(svc, logger, false)
 			_, err := h.Export(context.Background(), req)
 
@@ -426,7 +426,7 @@ func TestSampleAttributes(t *testing.T) {
 				Profiles: []*v1experimental.Profile{
 					&otlpb.profile,
 				}}}}}}
-	logger := testutil.NewLogger(t)
+	logger := test.NewTestingLogger(t)
 	h := NewOTLPIngestHandler(svc, logger, false)
 	_, err := h.Export(context.Background(), req)
 	assert.NoError(t, err)
@@ -589,7 +589,7 @@ func TestDifferentServiceNames(t *testing.T) {
 					&otlpb.profile,
 				}}}}}}
 
-	logger := testutil.NewLogger(t)
+	logger := test.NewTestingLogger(t)
 	h := NewOTLPIngestHandler(svc, logger, false)
 	_, err := h.Export(context.Background(), req)
 	require.NoError(t, err)
