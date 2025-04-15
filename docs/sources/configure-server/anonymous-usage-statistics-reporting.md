@@ -25,9 +25,8 @@ When the usage statistics reporting is enabled, Grafana Pyroscope collects the f
 - Information about the **Pyroscope cluster and version**:
   - A unique, randomly-generated Pyroscope cluster identifier, such as `3749b5e2-b727-4107-95ae-172abac27496`.
   - The timestamp when the anonymous usage statistics reporting was enabled for the first time, and the cluster identifier was created.
-  - The Pyroscope version, such as `2.3.0`.
+  - The Pyroscope version, such as `1.13.1`.
   - The Pyroscope branch, revision, and Golang version that was used to build the binary.
-  - The installation mode used to deploy Pyroscope, such as `helm`.
 - Information about the **environment** where Pyroscope is running:
   - The operating system, such as `linux`.
   - The architecture, such as `amd64`.
@@ -35,26 +34,15 @@ When the usage statistics reporting is enabled, Grafana Pyroscope collects the f
   - The number of logical CPU cores available to the Pyroscope process.
 - Information about the Pyroscope **configuration**:
   - The `-target` parameter value, such as `all` when running Pyroscope in monolithic mode.
-  - The `-blocks-storage.backend` value, such as `s3`.
-  - The `-ingester.ring.replication-factor` value, such as `3`.
-  - The `-ingester.ring.store` value, such as `memberlist`.
-  - The minimum and maximum value of `-ingester.out-of-order-time-window`, which can be overridden on a per-tenant basis (the tenant ID is not shared).
+  - The `-storage.backend` value, such as `s3`.
+  - The `-distributor.replication-factor` value, such as `3`.
 - Information about the Pyroscope **cluster scale**:
+  - Distributor:
+    - Bytes received.
+    - Profiles received with breakdown by profile type and programming language.
+    - Profile sizes with breakdown by programming language.
   - Ingester:
-    - The number of in-memory series.
-    - The number of tenants that have in-memory series.
-    - The number of tenants that have out-of-order ingestion enabled.
-    - The number of samples and exemplars ingested.
-  - Querier, _where no information is tracked about the actual request or query_:
-    - The number of requests to queriers that are split by API endpoint type:
-      - Remote read.
-      - Instant query.
-      - Range query.
-      - Exemplars query.
-      - Labels query.
-      - Series query.
-      - Metadata query.
-      - Cardinality analysis query.
+    - Number of active tenants.
 
 
 {{< admonition type="note" >}}
@@ -67,6 +55,6 @@ If possible, we ask you to keep the usage reporting feature enabled and help us 
 In case you want to opt-out from anonymous usage statistics reporting, set the CLI flag `-usage-stats.enabled=false` or change the following YAML configuration:
 
 ```yaml
-usage_stats:
-  enabled: false
+analytics:
+  reporting_enabled: false
 ```
