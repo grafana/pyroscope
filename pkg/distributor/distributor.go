@@ -309,6 +309,9 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 
 	d.calculateRequestSize(req)
 
+	// We don't support externally provided profile annotations right now.
+	// They are unfortunately part of the Push API so we explicitly clear them here.
+	req.ClearAnnotations()
 	if err := d.checkIngestLimit(tenantID, req); err != nil {
 		return nil, err
 	}

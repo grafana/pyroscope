@@ -101,6 +101,12 @@ func (req *PushRequest) Clone() *PushRequest {
 	return c
 }
 
+func (req *PushRequest) ClearAnnotations() {
+	for _, series := range req.Series {
+		series.Annotations = nil
+	}
+}
+
 func (req *PushRequest) MarkThrottledTenant(l *ingest_limits.Config) error {
 	if l == nil {
 		return fmt.Errorf("no limit config provided")
