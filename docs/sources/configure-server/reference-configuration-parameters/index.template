@@ -60,4 +60,3 @@ where `default_value` is the value to use if the environment variable is undefin
 
 {{ .ConfigFile }}
 
-```
