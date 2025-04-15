@@ -41,7 +41,7 @@ type ProfileAnnotation struct {
 }
 
 const (
-	ProfileAnnotationKeyThrottled = "throttled"
+	ProfileAnnotationKeyThrottled = "pyroscope.ingest.throttled"
 )
 
 type ThrottledAnnotation struct {
