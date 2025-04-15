@@ -79,7 +79,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.Float64Var(&cfg.UploadHedgeRateMax, prefix+".upload-hedge-rate-max", defaultHedgedRequestMaxRate, "Maximum number of hedged requests per second.")
 	f.UintVar(&cfg.UploadHedgeRateBurst, prefix+".upload-hedge-rate-burst", defaultHedgedRequestBurst, "Maximum number of hedged requests in a burst.")
 	f.BoolVar(&cfg.MetadataDLQEnabled, prefix+".metadata-dlq-enabled", true, "Enables dead letter queue (DLQ) for metadata. If the metadata update fails, it will be stored and updated asynchronously.")
-	f.DurationVar(&cfg.MetadataUpdateTimeout, prefix+".metadata-update-timeout", time.Second, "Timeout for metadata update requests.")
+	f.DurationVar(&cfg.MetadataUpdateTimeout, prefix+".metadata-update-timeout", 2*time.Second, "Timeout for metadata update requests.")
 }
 
 type Limits interface {
