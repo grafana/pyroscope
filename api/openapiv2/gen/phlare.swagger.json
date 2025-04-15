@@ -1948,7 +1948,7 @@
             "type": "object",
             "$ref": "#/definitions/v1ProfileAnnotation"
           },
-          "title": "annotations provide generic metadata for profiles"
+          "description": "Annotations provide additional metadata for a profile.\n\nThe main differences between labels and annotations are:\n - annotations cannot be used in query selectors\n - annotation keys don't have to be unique\n\nCurrently annotations are applied internally by distributors,\nany annotation passed via the push API will be dropped."
         }
       },
       "title": "RawProfileSeries represents the pprof profile and its associated labels"
