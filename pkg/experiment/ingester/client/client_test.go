@@ -67,8 +67,9 @@ type segwriterClientSuite struct {
 }
 
 func (s *segwriterClientSuite) SetupTest() {
-	s.listener = bufconn.Listen(256 << 10)
-	s.dialer = func(context.Context, string) (net.Conn, error) { return s.listener.Dial() }
+	listener := bufconn.Listen(256 << 10)
+	s.listener = listener
+	s.dialer = func(context.Context, string) (net.Conn, error) { return listener.Dial() }
 	s.server = grpc.NewServer()
 	s.service = new(segwriterServerMock)
 	segmentwriterv1.RegisterSegmentWriterServiceServer(s.server, s.service)
@@ -93,7 +94,7 @@ func (s *segwriterClientSuite) SetupTest() {
 	s.done = make(chan struct{})
 	go func() {
 		defer close(s.done)
-		s.Require().NoError(s.server.Serve(s.listener))
+		s.Require().NoError(s.server.Serve(listener))
 	}()
 
 	// Wait for the server
