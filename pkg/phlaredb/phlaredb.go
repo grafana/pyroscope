@@ -324,9 +324,9 @@ func (f *PhlareDB) headQueriers() Queriers {
 	return res
 }
 
-func (f *PhlareDB) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, externalLabels ...*typesv1.LabelPair) (err error) {
+func (f *PhlareDB) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, annotations []*typesv1.ProfileAnnotation, externalLabels ...*typesv1.LabelPair) (err error) {
 	return f.headForIngest(p.TimeNanos, func(head *Head) error {
-		return head.Ingest(ctx, p, id, externalLabels...)
+		return head.Ingest(ctx, p, id, annotations, externalLabels...)
 	})
 }
 

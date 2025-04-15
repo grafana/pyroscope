@@ -58,6 +58,9 @@ func (s *routerTestSuite) SetupTest() {
 					{Name: "foo", Value: "bar"},
 					{Name: "qux", Value: "zoo"},
 				},
+				Annotations: []*typesv1.ProfileAnnotation{
+					{Key: "foo", Value: "bar"},
+				},
 			},
 		},
 	}

@@ -530,7 +530,7 @@ func TestSelectSeries(t *testing.T) {
 						{Timestamp: 2, LabelIndex: 0},
 					},
 				},
-			}, &typesv1.Series{Labels: foobarlabels, Points: []*typesv1.Point{{Value: 1, Timestamp: 1}, {Value: 2, Timestamp: 2}}})
+			}, &typesv1.Series{Labels: foobarlabels, Points: []*typesv1.Point{{Value: 1, Timestamp: 1, Annotations: []*typesv1.ProfileAnnotation{}}, {Value: 2, Timestamp: 2, Annotations: []*typesv1.ProfileAnnotation{}}}})
 			bidi2 := newFakeBidiClientSeries([]*ingestv1.ProfileSets{
 				{
 					LabelsSets: []*typesv1.Labels{
@@ -547,7 +547,7 @@ func TestSelectSeries(t *testing.T) {
 						{Timestamp: 2, LabelIndex: 1},
 					},
 				},
-			}, &typesv1.Series{Labels: foobarlabels, Points: []*typesv1.Point{{Value: 1, Timestamp: 1}, {Value: 2, Timestamp: 2}}})
+			}, &typesv1.Series{Labels: foobarlabels, Points: []*typesv1.Point{{Value: 1, Timestamp: 1, Annotations: []*typesv1.ProfileAnnotation{}}, {Value: 2, Timestamp: 2, Annotations: []*typesv1.ProfileAnnotation{}}}})
 			bidi3 := newFakeBidiClientSeries([]*ingestv1.ProfileSets{
 				{
 					LabelsSets: []*typesv1.Labels{
@@ -564,7 +564,7 @@ func TestSelectSeries(t *testing.T) {
 						{Timestamp: 2, LabelIndex: 0},
 					},
 				},
-			}, &typesv1.Series{Labels: foobarlabels, Points: []*typesv1.Point{{Value: 1, Timestamp: 1}, {Value: 2, Timestamp: 2}}})
+			}, &typesv1.Series{Labels: foobarlabels, Points: []*typesv1.Point{{Value: 1, Timestamp: 1, Annotations: []*typesv1.ProfileAnnotation{}}, {Value: 2, Timestamp: 2, Annotations: []*typesv1.ProfileAnnotation{}}}})
 			querier, err := New(&NewQuerierParams{
 				Cfg: Config{
 					PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
@@ -593,7 +593,7 @@ func TestSelectSeries(t *testing.T) {
 			require.NoError(t, err)
 			// Only 2 results are used since the 3rd not required because of replication.
 			testhelper.EqualProto(t, []*typesv1.Series{
-				{Labels: foobarlabels, Points: []*typesv1.Point{{Value: 2, Timestamp: 1}, {Value: 4, Timestamp: 2}}},
+				{Labels: foobarlabels, Points: []*typesv1.Point{{Value: 2, Timestamp: 1, Annotations: []*typesv1.ProfileAnnotation{}}, {Value: 4, Timestamp: 2, Annotations: []*typesv1.ProfileAnnotation{}}}},
 			}, res.Msg.Series)
 			var selected []testProfile
 			selected = append(selected, bidi1.kept...)

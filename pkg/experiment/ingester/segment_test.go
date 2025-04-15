@@ -131,7 +131,7 @@ func TestIngestWait(t *testing.T) {
 	t1 := time.Now()
 	awaiter := sw.ingest(0, func(head segmentIngest) {
 		p := cpuProfile(42, 480, "svc1", "foo", "bar")
-		head.ingest("t1", p.Profile, p.UUID, p.Labels)
+		head.ingest("t1", p.Profile, p.UUID, p.Labels, p.Annotations)
 	})
 	err := awaiter.waitFlushed(context.Background())
 	require.NoError(t, err)
@@ -200,7 +200,7 @@ func TestBusyIngestLoop(t *testing.T) {
 					ts := workerno*1000000000 + len(profiles)
 					awaiter := sw.ingest(1, func(head segmentIngest) {
 						p := cpuProfile(42, ts, "svc1", "foo", "bar")
-						head.ingest("t1", p.CloneVT(), p.UUID, p.Labels)
+						head.ingest("t1", p.CloneVT(), p.UUID, p.Labels, p.Annotations)
 						profiles = append(profiles, p)
 					})
 					awaiters = append(awaiters, awaiter)
@@ -250,7 +250,7 @@ func TestDLQFail(t *testing.T) {
 	ing := func(head segmentIngest) {
 		ts += 420
 		p := cpuProfile(42, ts, "svc1", "foo", "bar")
-		head.ingest("t1", p.Profile, p.UUID, p.Labels)
+		head.ingest("t1", p.Profile, p.UUID, p.Labels, p.Annotations)
 	}
 
 	awaiter1 := res.ingest(0, ing)
@@ -298,7 +298,7 @@ func TestDatasetMinMaxTime(t *testing.T) {
 	}
 	_ = res.ingest(1, func(head segmentIngest) {
 		for _, p := range data {
-			head.ingest(p.tenant, p.profile.Profile, p.profile.UUID, p.profile.Labels)
+			head.ingest(p.tenant, p.profile.Profile, p.profile.UUID, p.profile.Labels, p.profile.Annotations)
 		}
 	})
 	defer res.stop()
@@ -669,7 +669,7 @@ func (sw *sw) ingestChunk(t *testing.T, chunk inputChunk, expectAwaitError bool)
 			defer wg.Done()
 			awaiter := sw.ingest(shardKey(it.shard), func(head segmentIngest) {
 				p := it.profile.CloneVT() // important to not rewrite original profile
-				head.ingest(it.tenant, p, it.profile.UUID, it.profile.Labels)
+				head.ingest(it.tenant, p, it.profile.UUID, it.profile.Labels, it.profile.Annotations)
 			})
 			err := awaiter.waitFlushed(context.Background())
 			if expectAwaitError {
@@ -743,6 +743,7 @@ func cpuProfile(samples int, tsMillis int, svc string, stack ...string) *pprofth
 	return pprofth.NewProfileBuilder(int64(tsMillis*1e6)).
 		CPUProfile().
 		WithLabels(model.LabelNameServiceName, svc).
+		WithAnnotations("test annotation").
 		ForStacktraceString(stack...).
 		AddSamples([]int64{int64(samples)}...)
 }

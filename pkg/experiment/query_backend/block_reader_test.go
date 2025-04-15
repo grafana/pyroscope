@@ -226,3 +226,27 @@ func (s *testSuite) Test_SeriesLabels() {
 	actual, _ := json.Marshal(resp.Reports[0].SeriesLabels)
 	s.Assert().JSONEq(string(expected), string(actual))
 }
+
+func (s *testSuite) Test_QueryTimeSeries() {
+	query := &queryv1.Query{
+		QueryType: queryv1.QueryType_QUERY_TIME_SERIES,
+		TimeSeries: &queryv1.TimeSeriesQuery{
+			GroupBy: []string{"service_name"},
+			Step:    1.0, // 1 second step
+		},
+	}
+
+	req := &queryv1.InvokeRequest{
+		StartTime:     time.Now().Add(-1 * time.Hour).UnixMilli(),
+		EndTime:       time.Now().UnixMilli(),
+		Query:         []*queryv1.Query{query},
+		QueryPlan:     s.plan,
+		LabelSelector: "{}",
+	}
+
+	resp, err := s.reader.Invoke(s.ctx, req)
+	s.Require().NoError(err)
+	s.Require().NotNil(resp)
+	s.Require().Len(resp.Reports, 1)
+	s.Require().NotNil(resp.Reports[0].TimeSeries)
+}
