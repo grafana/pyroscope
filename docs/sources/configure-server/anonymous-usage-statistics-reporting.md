@@ -1,5 +1,4 @@
 ---
-
 description: Learn about Grafana Pyroscope anonymous usage statistics reporting
 menuTitle: Anonymous usage statistics reporting
 title: About Grafana Pyroscope anonymous usage statistics reporting
