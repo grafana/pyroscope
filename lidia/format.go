@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"hash/crc32"
 	"io"
-	"os"
 )
 
 type stringOffset uint64
@@ -131,7 +130,7 @@ func readFields8(entryBuf []byte) rangeEntry {
 	}
 }
 
-func (rc *rangeCollector) write(f *os.File) error {
+func (rc *rangeCollector) write(f io.WriteSeeker) error {
 	buf := bufio.NewWriter(f)
 	hdr := &header{
 		version: version,
