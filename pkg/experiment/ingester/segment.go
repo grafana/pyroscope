@@ -581,6 +581,12 @@ func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockData []byte, met
 		WithLabelValues(s.sshard).
 		Observe(float64(len(blockData)))
 
+	if sw.config.UploadTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, sw.config.UploadTimeout)
+		defer cancel()
+	}
+
 	// To mitigate tail latency issues, we use a hedged upload strategy:
 	// if the request is not completed within a certain time, we trigger
 	// a second upload attempt. Upload errors are retried explicitly and
@@ -604,8 +610,8 @@ func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockData []byte, met
 		}
 		// Retry on all errors.
 		retries := backoff.New(ctx, retryConfig)
-		for retries.Ongoing() {
-			if attemptErr = sw.uploadWithTimeout(ctx, path, bytes.NewReader(blockData)); attemptErr == nil {
+		for retries.Ongoing() && ctx.Err() == nil {
+			if attemptErr = sw.bucket.Upload(ctx, path, bytes.NewReader(blockData)); attemptErr == nil {
 				break
 			}
 			retries.Wait()
@@ -628,22 +634,7 @@ func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockData []byte, met
 	return nil
 }
 
-func (sw *segmentsWriter) uploadWithTimeout(ctx context.Context, path string, r io.Reader) error {
-	if sw.config.UploadTimeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, sw.config.UploadTimeout)
-		defer cancel()
-	}
-	return sw.bucket.Upload(ctx, path, r)
-}
-
 func (sw *segmentsWriter) storeMetadata(ctx context.Context, meta *metastorev1.BlockMeta, s *segment) error {
-	if sw.config.MetadataUpdateTimeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, sw.config.MetadataUpdateTimeout)
-		defer cancel()
-	}
-
 	start := time.Now()
 	var err error
 	defer func() {
@@ -653,7 +644,14 @@ func (sw *segmentsWriter) storeMetadata(ctx context.Context, meta *metastorev1.B
 		s.debuginfo.storeMetaDuration = time.Since(start)
 	}()
 
-	if _, err = sw.metastore.AddBlock(ctx, &metastorev1.AddBlockRequest{Block: meta}); err == nil {
+	mdCtx := ctx
+	if sw.config.MetadataUpdateTimeout > 0 {
+		var cancel context.CancelFunc
+		mdCtx, cancel = context.WithTimeout(mdCtx, sw.config.MetadataUpdateTimeout)
+		defer cancel()
+	}
+
+	if _, err = sw.metastore.AddBlock(mdCtx, &metastorev1.AddBlockRequest{Block: meta}); err == nil {
 		return nil
 	}
 

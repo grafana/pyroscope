@@ -63,12 +63,11 @@ func isClientError(err error) bool {
 	switch status.Code(err) {
 	case codes.InvalidArgument,
 		codes.Canceled,
-		codes.DeadlineExceeded,
 		codes.PermissionDenied,
 		codes.Unauthenticated:
 		return true
 	default:
-		return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
+		return errors.Is(err, context.Canceled)
 	}
 }
 
