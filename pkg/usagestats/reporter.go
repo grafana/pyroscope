@@ -46,7 +46,7 @@ type Config struct {
 
 // RegisterFlags adds the flags required to config this to the given FlagSet
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
-	f.BoolVar(&cfg.Enabled, "usage-stats.enabled", true, "Enable anonymous usage reporting.")
+	f.BoolVar(&cfg.Enabled, "usage-stats.enabled", true, "Enable anonymous usage statistics collection. For more details about usage statistics, refer to https://grafana.com/docs/pyroscope/latest/configure-server/anonymous-usage-statistics-reporting/")
 }
 
 type Reporter struct {
