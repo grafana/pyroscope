@@ -26,15 +26,15 @@ type boltdb struct {
 	logger  log.Logger
 	metrics *metrics
 	boltdb  *bbolt.DB
-	dir     string
+	config  Config
 	path    string
 }
 
-func newDB(logger log.Logger, metrics *metrics, dir string) *boltdb {
+func newDB(logger log.Logger, metrics *metrics, config Config) *boltdb {
 	return &boltdb{
 		logger:  logger,
-		dir:     dir,
 		metrics: metrics,
+		config:  config,
 	}
 }
 
@@ -56,12 +56,12 @@ func (db *boltdb) open(readOnly bool) (err error) {
 		}
 	}()
 
-	if err = os.MkdirAll(db.dir, 0755); err != nil {
+	if err = os.MkdirAll(db.config.DataDir, 0755); err != nil {
 		return fmt.Errorf("db dir: %w", err)
 	}
 
 	if db.path == "" {
-		db.path = filepath.Join(db.dir, boltDBFileName)
+		db.path = filepath.Join(db.config.DataDir, boltDBFileName)
 	}
 
 	opts := *bbolt.DefaultOptions
@@ -102,6 +102,33 @@ func (db *boltdb) restore(snapshot io.Reader) error {
 	defer func() {
 		db.metrics.boltDBRestoreSnapshotDuration.Observe(time.Since(start).Seconds())
 	}()
+
+	path, err := db.copySnapshot(snapshot)
+	if err != nil {
+		_ = os.RemoveAll(path)
+		return fmt.Errorf("failed to copy snapshot: %w", err)
+	}
+
+	// Open in Read-Only mode to ensure the snapshot is not corrupted.
+	restored := &boltdb{
+		logger:  db.logger,
+		metrics: db.metrics,
+		config:  db.config,
+		path:    path,
+	}
+	if err = restored.open(true); err != nil {
+		restored.shutdown()
+		if removeErr := os.RemoveAll(restored.path); removeErr != nil {
+			level.Error(db.logger).Log("msg", "failed to remove compacted snapshot", "err", removeErr)
+		}
+		return fmt.Errorf("failed to open restored snapshot: %w", err)
+	}
+
+	if !db.config.SnapshotCompactOnRestore {
+		restored.shutdown()
+		return db.openPath(path)
+	}
+
 	// Snapshot is a full copy of the database, therefore we copy
 	// it on disk, compact, and use it instead of the current database.
 	// Compacting the snapshot is necessary to reclaim the space
@@ -111,34 +138,34 @@ func (db *boltdb) restore(snapshot io.Reader) error {
 	// Ideally, this should be done in the background, outside the
 	// snapshot-restore path; however, this will require broad locks
 	// and will impact the transactions.
-	path, err := db.copySnapshot(snapshot)
-	if err == nil {
-		restored := &boltdb{
-			logger:  db.logger,
-			metrics: db.metrics,
-			dir:     db.dir,
-			path:    path,
+	compacted, compactErr := restored.compact()
+	// Regardless of the compaction result, we need to close the restored
+	// db as we're going to either remove it (and use the compacted version),
+	// or move it and open for writes.
+	restored.shutdown()
+	if compactErr != nil {
+		// If compaction failed, we want to try the original snapshot.
+		// It's know that it is not corrupted, but it may be larger.
+		// For clarity: this step is not required (path == restored.path).
+		path = restored.path
+		level.Error(db.logger).Log("msg", "failed to compact boltdb; skipping compaction", "err", compactErr)
+		if removeErr := os.RemoveAll(compacted.path); removeErr != nil {
+			level.Error(db.logger).Log("msg", "failed to remove compacted snapshot", "err", removeErr)
 		}
-		// Open in Read-Only mode.
-		if err = restored.open(true); err == nil {
-			var compacted *boltdb
-			if compacted, err = restored.compact(); err == nil {
-				path = compacted.path
-			}
+	} else {
+		// If compaction succeeded, we want to remove the restored snapshot.
+		path = compacted.path
+		if removeErr := os.RemoveAll(restored.path); removeErr != nil {
+			level.Error(db.logger).Log("msg", "failed to remove restored snapshot", "err", removeErr)
 		}
-		restored.shutdown()
-		_ = os.RemoveAll(restored.path)
 	}
-	if err != nil {
-		return fmt.Errorf("failed to restore snapshot: %w", err)
-	}
-	// Note that we do not keep the previous database: in case if the
-	// snapshot is corrupted, we should try another one.
+
 	return db.openPath(path)
 }
 
 func (db *boltdb) copySnapshot(snapshot io.Reader) (path string, err error) {
-	path = filepath.Join(db.dir, boltDBSnapshotName)
+	path = filepath.Join(db.config.DataDir, boltDBSnapshotName)
+	level.Info(db.logger).Log("msg", "copying snapshot", "path", path)
 	snapFile, err := os.Create(path)
 	if err != nil {
 		return "", err
@@ -156,8 +183,11 @@ func (db *boltdb) compact() (compacted *boltdb, err error) {
 	compacted = &boltdb{
 		logger:  db.logger,
 		metrics: db.metrics,
-		dir:     db.dir,
-		path:    filepath.Join(db.dir, boltDBCompactedName),
+		config:  db.config,
+		path:    filepath.Join(db.config.DataDir, boltDBCompactedName),
+	}
+	if err = os.RemoveAll(compacted.path); err != nil {
+		return nil, fmt.Errorf("compacted db path cannot be deleted: %w", err)
 	}
 	if err = compacted.open(false); err != nil {
 		return nil, fmt.Errorf("failed to create db for compaction: %w", err)
