@@ -8,7 +8,7 @@ weight: 30
 
 # About Grafana Pyroscope anonymous usage statistics reporting
 
-Grafana Pyroscope includes a system that optionally and anonymously reports non-sensitive, non-personally identifiable information about the running Pyroscope cluster to a remote statistics server.
+By default, Pyroscope reports anonymous, non-sensitive, non-personally identifiable information about the running cluster to a remote statistics server.
 Pyroscope maintainers use this anonymous information to learn more about how the open source community runs Pyroscope and what the Pyroscope team should focus on when working on the next features and documentation improvements.
 
 The anonymous usage statistics reporting is **enabled by default**.
