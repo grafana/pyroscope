@@ -74,11 +74,34 @@ message RecordingRule {
   repeated string matchers = 4;
   repeated string group_by = 5;
   repeated types.v1.LabelPair external_labels = 6;
+  StacktraceFilter stacktrace_filter = 7;
 
   // The observed generation of this recording rule. This value should be
   // provided when making updates to this record, to avoid conflicting
   // concurrent updates.
-  int64 generation = 7;
+  int64 generation = 8;
+}
+
+message StacktraceFilter {
+  StacktraceFilterType type = 1;
+  StacktraceFilterFunctionName function_name = 2;
+  // StacktraceFilterFunctionNameRegExp functionNameRegExp = 3;
+  // ...
+}
+
+enum StacktraceFilterType {
+  STACKTRACE_FILTER_FUNCTION_NAME = 0;
+  // STACKTRACE_FILTER_FUNCTION_NAME_REGEXP = 1;
+}
+
+enum MetricType {
+  TOTAL = 0;
+  // SELF = 1;
+}
+
+message StacktraceFilterFunctionName {
+  string function_name = 1;
+  MetricType metric_type = 2;
 }
 
 message RecordingRuleStore {
