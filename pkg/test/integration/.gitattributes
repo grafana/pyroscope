@@ -1,1 +1,2 @@
-testdata/* -text
+testdata/*.json binary
+testdata/*.json.bin binary diff=binary -diff -merge -text

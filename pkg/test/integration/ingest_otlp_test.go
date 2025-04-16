@@ -36,7 +36,7 @@ var otlpTestDatas = []otlpTestData{
 			{
 				"process_cpu:cpu:nanoseconds:cpu:nanoseconds",
 				map[string]string{"service_name": "unknown_service"},
-				"testdata/otel-ebpf-profiler-unsymbolized.json",
+				"testdata/otel-ebpf-profiler-unsymbolized.json.bin",
 			},
 		},
 		assertMetrics: func(t *testing.T, p *PyroscopeTest) {
@@ -50,12 +50,12 @@ var otlpTestDatas = []otlpTestData{
 			{
 				"process_cpu:cpu:nanoseconds:cpu:nanoseconds",
 				map[string]string{"service_name": "unknown_service"},
-				"testdata/otel-ebpf-profiler-offcpu-cpu.json",
+				"testdata/otel-ebpf-profiler-offcpu-cpu.json.bin",
 			},
 			{
 				"off_cpu:events:nanoseconds::",
 				map[string]string{"service_name": "unknown_service"},
-				"testdata/otel-ebpf-profiler-offcpu.json",
+				"testdata/otel-ebpf-profiler-offcpu.json.bin",
 			},
 		},
 		assertMetrics: func(t *testing.T, p *PyroscopeTest) {
@@ -69,7 +69,7 @@ var otlpTestDatas = []otlpTestData{
 			{
 				"process_cpu:cpu:nanoseconds:cpu:nanoseconds",
 				map[string]string{"service_name": "unknown_service"},
-				"testdata/otel-ebpf-profiler-pyrosymbolized-unknown.json",
+				"testdata/otel-ebpf-profiler-pyrosymbolized-unknown.json.bin",
 			},
 			{
 				"process_cpu:cpu:nanoseconds:cpu:nanoseconds",
