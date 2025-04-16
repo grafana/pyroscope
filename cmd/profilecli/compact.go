@@ -66,7 +66,7 @@ func compact(ctx context.Context, src, dst string, metas []*block.Meta, shards i
 				Directory: src,
 			},
 		},
-		StoragePrefix: "",
+		Prefix: "",
 	}, "profilecli")
 	if err != nil {
 		return err

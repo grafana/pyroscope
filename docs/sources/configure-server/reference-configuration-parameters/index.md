@@ -263,7 +263,14 @@ storage:
   [filesystem: <filesystem_storage_backend>]
 
   # Prefix for all objects stored in the backend storage. For simplicity, it may
-  # only contain digits and English alphabet letters.
+  # only contain digits and English alphabet characters, hyphens, underscores,
+  # dots and forward slashes.
+  # CLI flag: -storage.prefix
+  [prefix: <string> | default = ""]
+
+  # Deprecated: Use 'storage..prefix' instead. Prefix for all objects stored in
+  # the backend storage. For simplicity, it may only contain digits and English
+  # alphabet characters, hyphens, underscores, dots and forward slashes.
   # CLI flag: -storage.storage-prefix
   [storage_prefix: <string> | default = ""]
 
@@ -288,10 +295,10 @@ self_profiling:
 # CLI flag: -auth.multitenancy-enabled
 [multitenancy_enabled: <boolean> | default = false]
 
-analytics:
-  # Enable anonymous usage reporting.
-  # CLI flag: -usage-stats.enabled
-  [reporting_enabled: <boolean> | default = true]
+# The analytics block configures usage statistics collection. For more details
+# about usage statistics, refer to [Anonymous usage statistics
+# reporting](../anonymous-usage-statistics-reporting)
+[analytics: <analytics>]
 
 # Prints the application banner at startup.
 # CLI flag: -config.show_banner
@@ -2532,4 +2539,15 @@ The `filesystem_storage_backend` block configures the usage of local file system
 [dir: <string> | default = "./data-shared"]
 ```
 
+### analytics
+
+The `analytics` block configures usage statistics collection. For more details about usage statistics, refer to [Anonymous usage statistics reporting](../anonymous-usage-statistics-reporting)
+
+```yaml
+# Enable anonymous usage statistics collection. For more details about usage
+# statistics, refer to
+# https://grafana.com/docs/pyroscope/latest/configure-server/anonymous-usage-statistics-reporting/
+# CLI flag: -usage-stats.enabled
+[reporting_enabled: <boolean> | default = true]
 ```
+

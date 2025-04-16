@@ -67,8 +67,9 @@ type segwriterClientSuite struct {
 }
 
 func (s *segwriterClientSuite) SetupTest() {
-	s.listener = bufconn.Listen(256 << 10)
-	s.dialer = func(context.Context, string) (net.Conn, error) { return s.listener.Dial() }
+	listener := bufconn.Listen(256 << 10)
+	s.listener = listener
+	s.dialer = func(context.Context, string) (net.Conn, error) { return listener.Dial() }
 	s.server = grpc.NewServer()
 	s.service = new(segwriterServerMock)
 	segmentwriterv1.RegisterSegmentWriterServiceServer(s.server, s.service)
@@ -93,7 +94,7 @@ func (s *segwriterClientSuite) SetupTest() {
 	s.done = make(chan struct{})
 	go func() {
 		defer close(s.done)
-		s.Require().NoError(s.server.Serve(s.listener))
+		s.Require().NoError(s.server.Serve(listener))
 	}()
 
 	// Wait for the server
@@ -163,13 +164,24 @@ func (s *segwriterClientSuite) Test_Push_ClientError_Cancellation() {
 	s.Assert().Equal(codes.Canceled.String(), status.Code(err).String())
 }
 
-func (s *segwriterClientSuite) Test_Push_ClientError_Deadline() {
+func (s *segwriterClientSuite) Test_Push_Client_Deadline() {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+	defer cancel()
+	_, err := s.client.Push(ctx, &segmentwriterv1.PushRequest{})
+	s.Assert().ErrorIs(err, context.DeadlineExceeded)
+}
+
+func (s *segwriterClientSuite) Test_Push_NonClient_Deadline() {
 	s.service.On("Push", mock.Anything, mock.Anything).
 		Return(new(segmentwriterv1.PushResponse), context.DeadlineExceeded).
 		Once()
 
+	s.service.On("Push", mock.Anything, mock.Anything).
+		Return(new(segmentwriterv1.PushResponse), nil).
+		Once()
+
 	_, err := s.client.Push(context.Background(), &segmentwriterv1.PushRequest{})
-	s.Assert().Equal(codes.DeadlineExceeded.String(), status.Code(err).String())
+	s.Assert().NoError(err)
 }
 
 func (s *segwriterClientSuite) Test_Push_ClientError_InvalidArgument() {

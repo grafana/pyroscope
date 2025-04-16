@@ -57,7 +57,7 @@ type blockEntriesIterator struct {
 }
 
 func newBlockEntriesIterator(bucket *bbolt.Bucket) *blockEntriesIterator {
-	return &blockEntriesIterator{iter: store.NewCursorIter(nil, bucket.Cursor())}
+	return &blockEntriesIterator{iter: store.NewCursorIter(bucket.Cursor())}
 }
 
 func (x *blockEntriesIterator) Next() bool {

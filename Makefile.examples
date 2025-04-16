@@ -18,6 +18,7 @@ tools/update_examples_pr:
 
 
 .PHONY: rideshare/docker/push
+rideshare/docker/push: IMAGE_PREFIX := us-docker.pkg.dev/grafanalabs-dev/docker-pyroscope-dev/
 rideshare/docker/push: rideshare/docker/push-golang rideshare/docker/push-loadgen rideshare/docker/push-python rideshare/docker/push-ruby rideshare/docker/push-dotnet rideshare/docker/push-java rideshare/docker/push-rust
 
 .PHONY: rideshare/docker/push-golang

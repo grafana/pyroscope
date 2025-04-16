@@ -36,8 +36,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
-var ErrMetastoreDLQFailed = fmt.Errorf("failed to store block metadata in DLQ")
-
 type shardKey uint32
 
 type segmentsWriter struct {
@@ -132,7 +130,7 @@ func newSegmentWriter(l log.Logger, metrics *segmentMetrics, hm *memdb.HeadMetri
 		shards:      make(map[shardKey]*shard),
 		metastore:   metastoreClient,
 	}
-	sw.retryLimiter = retry.NewRateLimiter(sw.config.Upload.HedgeRateMax, int(sw.config.Upload.HedgeRateBurst))
+	sw.retryLimiter = retry.NewRateLimiter(sw.config.UploadHedgeRateMax, int(sw.config.UploadHedgeRateBurst))
 	sw.ctx, sw.cancel = context.WithCancel(context.Background())
 	flushWorkers := runtime.GOMAXPROCS(-1)
 	if config.FlushConcurrency > 0 {
@@ -475,7 +473,7 @@ type segment struct {
 }
 
 type segmentIngest interface {
-	ingest(tenantID string, p *profilev1.Profile, id uuid.UUID, labels []*typesv1.LabelPair)
+	ingest(tenantID string, p *profilev1.Profile, id uuid.UUID, labels []*typesv1.LabelPair, annotations []*typesv1.ProfileAnnotation)
 }
 
 type segmentWaitFlushed interface {
@@ -494,7 +492,7 @@ func (s *segment) waitFlushed(ctx context.Context) error {
 	}
 }
 
-func (s *segment) ingest(tenantID string, p *profilev1.Profile, id uuid.UUID, labels []*typesv1.LabelPair) {
+func (s *segment) ingest(tenantID string, p *profilev1.Profile, id uuid.UUID, labels []*typesv1.LabelPair, annotations []*typesv1.ProfileAnnotation) {
 	k := datasetKey{
 		tenant:  tenantID,
 		service: model.Labels(labels).Get(model.LabelNameServiceName),
@@ -503,9 +501,10 @@ func (s *segment) ingest(tenantID string, p *profilev1.Profile, id uuid.UUID, la
 	rules := s.sw.limits.IngestionRelabelingRules(tenantID)
 	usage := s.sw.limits.DistributorUsageGroups(tenantID).GetUsageGroups(tenantID, labels)
 	appender := &sampleAppender{
-		head:    s.headForIngest(k),
-		profile: p,
-		id:      id,
+		head:        s.headForIngest(k),
+		profile:     p,
+		id:          id,
+		annotations: annotations,
 	}
 	pprofsplit.VisitSampleSeries(p, labels, rules, appender)
 	size -= appender.discardedBytes
@@ -515,17 +514,18 @@ func (s *segment) ingest(tenantID string, p *profilev1.Profile, id uuid.UUID, la
 }
 
 type sampleAppender struct {
-	id       uuid.UUID
-	head     *memdb.Head
-	profile  *profilev1.Profile
-	exporter *pprofmodel.SampleExporter
+	id          uuid.UUID
+	head        *memdb.Head
+	profile     *profilev1.Profile
+	exporter    *pprofmodel.SampleExporter
+	annotations []*typesv1.ProfileAnnotation
 
 	discardedProfiles int
 	discardedBytes    int
 }
 
 func (v *sampleAppender) VisitProfile(labels []*typesv1.LabelPair) {
-	v.head.Ingest(v.profile, v.id, labels)
+	v.head.Ingest(v.profile, v.id, labels, v.annotations)
 }
 
 func (v *sampleAppender) VisitSampleSeries(labels []*typesv1.LabelPair, samples []*profilev1.Sample) {
@@ -534,7 +534,7 @@ func (v *sampleAppender) VisitSampleSeries(labels []*typesv1.LabelPair, samples 
 	}
 	var n profilev1.Profile
 	v.exporter.ExportSamples(&n, samples)
-	v.head.Ingest(&n, v.id, labels)
+	v.head.Ingest(&n, v.id, labels, v.annotations)
 }
 
 func (v *sampleAppender) Discarded(profiles, bytes int) {
@@ -581,15 +581,21 @@ func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockData []byte, met
 		WithLabelValues(s.sshard).
 		Observe(float64(len(blockData)))
 
+	if sw.config.UploadTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, sw.config.UploadTimeout)
+		defer cancel()
+	}
+
 	// To mitigate tail latency issues, we use a hedged upload strategy:
 	// if the request is not completed within a certain time, we trigger
 	// a second upload attempt. Upload errors are retried explicitly and
 	// are included into the call duration.
 	uploadWithRetry := func(ctx context.Context, hedge bool) (any, error) {
 		retryConfig := backoff.Config{
-			MinBackoff: sw.config.Upload.MinBackoff,
-			MaxBackoff: sw.config.Upload.MaxBackoff,
-			MaxRetries: sw.config.Upload.MaxRetries,
+			MinBackoff: sw.config.UploadMinBackoff,
+			MaxBackoff: sw.config.UploadMaxBackoff,
+			MaxRetries: sw.config.UploadMaxRetries,
 		}
 		var attemptErr error
 		if hedge {
@@ -604,8 +610,8 @@ func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockData []byte, met
 		}
 		// Retry on all errors.
 		retries := backoff.New(ctx, retryConfig)
-		for retries.Ongoing() {
-			if attemptErr = sw.uploadWithTimeout(ctx, path, bytes.NewReader(blockData)); attemptErr == nil {
+		for retries.Ongoing() && ctx.Err() == nil {
+			if attemptErr = sw.bucket.Upload(ctx, path, bytes.NewReader(blockData)); attemptErr == nil {
 				break
 			}
 			retries.Wait()
@@ -615,7 +621,7 @@ func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockData []byte, met
 
 	hedgedUpload := retry.Hedged[any]{
 		Call:      uploadWithRetry,
-		Trigger:   time.After(sw.config.Upload.HedgeUploadAfter),
+		Trigger:   time.After(sw.config.UploadHedgeAfter),
 		Throttler: sw.retryLimiter,
 		FailFast:  false,
 	}
@@ -628,12 +634,6 @@ func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockData []byte, met
 	return nil
 }
 
-func (sw *segmentsWriter) uploadWithTimeout(ctx context.Context, path string, r io.Reader) error {
-	ctx, cancel := context.WithTimeout(ctx, sw.config.Upload.Timeout)
-	defer cancel()
-	return sw.bucket.Upload(ctx, path, r)
-}
-
 func (sw *segmentsWriter) storeMetadata(ctx context.Context, meta *metastorev1.BlockMeta, s *segment) error {
 	start := time.Now()
 	var err error
@@ -643,11 +643,23 @@ func (sw *segmentsWriter) storeMetadata(ctx context.Context, meta *metastorev1.B
 			Observe(time.Since(start).Seconds())
 		s.debuginfo.storeMetaDuration = time.Since(start)
 	}()
-	if _, err = sw.metastore.AddBlock(ctx, &metastorev1.AddBlockRequest{Block: meta}); err == nil {
+
+	mdCtx := ctx
+	if sw.config.MetadataUpdateTimeout > 0 {
+		var cancel context.CancelFunc
+		mdCtx, cancel = context.WithTimeout(mdCtx, sw.config.MetadataUpdateTimeout)
+		defer cancel()
+	}
+
+	if _, err = sw.metastore.AddBlock(mdCtx, &metastorev1.AddBlockRequest{Block: meta}); err == nil {
 		return nil
 	}
 
 	level.Error(s.logger).Log("msg", "failed to store meta in metastore", "err", err)
+	if !sw.config.MetadataDLQEnabled {
+		return err
+	}
+
 	defer func() {
 		sw.metrics.storeMetadataDLQ.WithLabelValues(statusLabelValue(err)).Inc()
 	}()

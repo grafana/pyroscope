@@ -1,6 +1,7 @@
 package metadata
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/prometheus/prometheus/model/labels"
@@ -66,15 +67,13 @@ func TestLabelMatcher_Matches(t *testing.T) {
 		"service_name=service_b;__profile_type__=cpu:b;",
 	}, labelStrings(setB, strings))
 
-	m := NewLabelMatcher(strings, []*labels.Matcher{
-		labels.MustNewMatcher(labels.MatchEqual, "service_name", "service_a"),
+	keepLabels := []string{"service_name", "__profile_type__", "none"}
+	m := NewLabelMatcher(strings.Strings, []*labels.Matcher{
 		labels.MustNewMatcher(labels.MatchEqual, "__profile_type__", "cpu:a")},
-		"service_name",
-		"__profile_type__",
-		"none")
+		keepLabels...)
 	assert.True(t, m.IsValid())
 
-	expected := []bool{true, false, false, false, false}
+	expected := []bool{true, false, false, true, false}
 	matches := make([]bool, 0, len(expected))
 
 	pairs := LabelPairs(setA)
@@ -86,33 +85,33 @@ func TestLabelMatcher_Matches(t *testing.T) {
 	for pairs.Next() {
 		matches = append(matches, m.MatchesPairs(pairs.At()))
 	}
-
 	assert.Equal(t, expected, matches)
-	assert.Equal(t, []model.Labels{{
-		&typesv1.LabelPair{Name: "service_name", Value: "service_a"},
-		&typesv1.LabelPair{Name: "__profile_type__", Value: "cpu:a"},
-		&typesv1.LabelPair{Name: "none", Value: ""},
-	}}, m.AllMatches())
-}
 
-func Test_LabelMatcher_All(t *testing.T) {
-	strings := NewStringTable()
-	x := NewLabelBuilder(strings).
-		WithLabelSet(LabelNameTenantDataset, LabelValueDatasetTSDBIndex).
-		Build()
+	t.Run("LabelCollector", func(t *testing.T) {
+		c := NewLabelsCollector(keepLabels...)
+		c.CollectMatches(m)
 
-	m := NewLabelMatcher(strings,
-		[]*labels.Matcher{},
-		"service_name",
-		"__profile_type__",
-	)
+		collected := slices.Collect(c.Unique())
+		slices.SortFunc(collected, model.CompareLabels)
 
-	assert.True(t, m.IsValid())
-	assert.True(t, m.Matches(x))
-	assert.Equal(t, []model.Labels{{
-		&typesv1.LabelPair{Name: "service_name", Value: ""},
-		&typesv1.LabelPair{Name: "__profile_type__", Value: ""},
-	}}, m.AllMatches())
+		// The label order matches the input.
+		assert.Equal(t, []*typesv1.Labels{
+			{
+				Labels: []*typesv1.LabelPair{
+					{Name: "service_name", Value: "service_a"},
+					{Name: "__profile_type__", Value: "cpu:a"},
+					{Name: "none", Value: ""},
+				},
+			},
+			{
+				Labels: []*typesv1.LabelPair{
+					{Name: "service_name", Value: "service_b"},
+					{Name: "__profile_type__", Value: "cpu:a"},
+					{Name: "none", Value: ""},
+				},
+			},
+		}, collected)
+	})
 }
 
 func TestLabelMatcher_Collect(t *testing.T) {
@@ -128,7 +127,7 @@ func TestLabelMatcher_Collect(t *testing.T) {
 		WithLabelSet("service_name", "service_b", "__profile_type__", "cpu:b").
 		Build()
 
-	m := NewLabelMatcher(strings, []*labels.Matcher{
+	m := NewLabelMatcher(strings.Strings, []*labels.Matcher{
 		labels.MustNewMatcher(labels.MatchEqual, "service_name", "service_a"),
 		labels.MustNewMatcher(labels.MatchRegexp, "__profile_type__", "cpu.*")},
 		"service_name",
@@ -155,7 +154,7 @@ func Benchmark_LabelMatcher_Matches(b *testing.B) {
 		WithLabelSet("service_name", "service_a", "__profile_type__", "cpu").
 		Build()
 
-	m := NewLabelMatcher(strings,
+	m := NewLabelMatcher(strings.Strings,
 		[]*labels.Matcher{labels.MustNewMatcher(labels.MatchEqual, "service_name", "service_a")},
 		"service_name", "__profile_type__")
 
@@ -239,5 +238,39 @@ func TestFindDatasets(t *testing.T) {
 			return true
 		})
 		assert.Equal(t, test.expected, actual)
+	}
+}
+
+func Test_LabelMatcher_Skip(t *testing.T) {
+	strings := []string{"", "foo", "bar", "baz", "qux"}
+
+	type testCase struct {
+		valid   bool
+		matches []*labels.Matcher
+	}
+
+	for _, test := range []testCase{
+		{true, []*labels.Matcher{}},
+		{true, []*labels.Matcher{
+			labels.MustNewMatcher(labels.MatchEqual, "foo", "bar"),
+		}},
+		{true, []*labels.Matcher{
+			labels.MustNewMatcher(labels.MatchRegexp, "foo", "b.*"),
+		}},
+		{true, []*labels.Matcher{
+			labels.MustNewMatcher(labels.MatchRegexp, "fee", ""),
+		}},
+		{true, []*labels.Matcher{
+			labels.MustNewMatcher(labels.MatchNotEqual, "foo", ""),
+		}},
+		{true, []*labels.Matcher{
+			labels.MustNewMatcher(labels.MatchNotRegexp, "far", ""),
+		}},
+		{false, []*labels.Matcher{
+			labels.MustNewMatcher(labels.MatchEqual, "foo", "bar"),
+			labels.MustNewMatcher(labels.MatchEqual, "har", "bor"),
+		}},
+	} {
+		assert.Equal(t, test.valid, NewLabelMatcher(strings, test.matches).IsValid())
 	}
 }

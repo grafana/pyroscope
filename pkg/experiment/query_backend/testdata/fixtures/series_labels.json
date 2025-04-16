@@ -1,0 +1,577 @@
+{
+  "query": {},
+  "series_labels": [
+    {
+      "labels": [
+        {
+          "name": "__name__",
+          "value": "block"
+        },
+        {
+          "name": "__period_type__",
+          "value": "contentions"
+        },
+        {
+          "name": "__period_unit__",
+          "value": "count"
+        },
+        {
+          "name": "__profile_type__",
+          "value": "block:contentions:count:contentions:count"
+        },
+        {
+          "name": "__service_name__",
+          "value": "pyroscope"
+        },
+        {
+          "name": "__type__",
+          "value": "contentions"
+        },
+        {
+          "name": "__unit__",
+          "value": "count"
+        },
+        {
+          "name": "pyroscope_spy",
+          "value": "gospy"
+        },
+        {
+          "name": "service_git_ref",
+          "value": "6389652c7"
+        },
+        {
+          "name": "service_name",
+          "value": "pyroscope"
+        },
+        {
+          "name": "service_repository",
+          "value": "https://github.com/grafana/pyroscope"
+        },
+        {
+          "name": "target",
+          "value": "all"
+        }
+      ]
+    },
+    {
+      "labels": [
+        {
+          "name": "__name__",
+          "value": "block"
+        },
+        {
+          "name": "__period_type__",
+          "value": "contentions"
+        },
+        {
+          "name": "__period_unit__",
+          "value": "count"
+        },
+        {
+          "name": "__profile_type__",
+          "value": "block:delay:nanoseconds:contentions:count"
+        },
+        {
+          "name": "__service_name__",
+          "value": "pyroscope"
+        },
+        {
+          "name": "__type__",
+          "value": "delay"
+        },
+        {
+          "name": "__unit__",
+          "value": "nanoseconds"
+        },
+        {
+          "name": "pyroscope_spy",
+          "value": "gospy"
+        },
+        {
+          "name": "service_git_ref",
+          "value": "6389652c7"
+        },
+        {
+          "name": "service_name",
+          "value": "pyroscope"
+        },
+        {
+          "name": "service_repository",
+          "value": "https://github.com/grafana/pyroscope"
+        },
+        {
+          "name": "target",
+          "value": "all"
+        }
+      ]
+    },
+    {
+      "labels": [
+        {
+          "name": "__name__",
+          "value": "goroutines"
+        },
+        {
+          "name": "__period_type__",
+          "value": "goroutine"
+        },
+        {
+          "name": "__period_unit__",
+          "value": "count"
+        },
+        {
+          "name": "__profile_type__",
+          "value": "goroutines:goroutine:count:goroutine:count"
+        },
+        {
+          "name": "__service_name__",
+          "value": "pyroscope"
+        },
+        {
+          "name": "__type__",
+          "value": "goroutine"
+        },
+        {
+          "name": "__unit__",
+          "value": "count"
+        },
+        {
+          "name": "pyroscope_spy",
+          "value": "gospy"
+        },
+        {
+          "name": "service_git_ref",
+          "value": "6389652c7"
+        },
+        {
+          "name": "service_name",
+          "value": "pyroscope"
+        },
+        {
+          "name": "service_repository",
+          "value": "https://github.com/grafana/pyroscope"
+        },
+        {
+          "name": "target",
+          "value": "all"
+        }
+      ]
+    },
+    {
+      "labels": [
+        {
+          "name": "__name__",
+          "value": "memory"
+        },
+        {
+          "name": "__period_type__",
+          "value": "space"
+        },
+        {
+          "name": "__period_unit__",
+          "value": "bytes"
+        },
+        {
+          "name": "__profile_type__",
+          "value": "memory:alloc_objects:count:space:bytes"
+        },
+        {
+          "name": "__service_name__",
+          "value": "pyroscope"
+        },
+        {
+          "name": "__type__",
+          "value": "alloc_objects"
+        },
+        {
+          "name": "__unit__",
+          "value": "count"
+        },
+        {
+          "name": "pyroscope_spy",
+          "value": "gospy"
+        },
+        {
+          "name": "service_git_ref",
+          "value": "6389652c7"
+        },
+        {
+          "name": "service_name",
+          "value": "pyroscope"
+        },
+        {
+          "name": "service_repository",
+          "value": "https://github.com/grafana/pyroscope"
+        },
+        {
+          "name": "target",
+          "value": "all"
+        }
+      ]
+    },
+    {
+      "labels": [
+        {
+          "name": "__name__",
+          "value": "memory"
+        },
+        {
+          "name": "__period_type__",
+          "value": "space"
+        },
+        {
+          "name": "__period_unit__",
+          "value": "bytes"
+        },
+        {
+          "name": "__profile_type__",
+          "value": "memory:alloc_space:bytes:space:bytes"
+        },
+        {
+          "name": "__service_name__",
+          "value": "pyroscope"
+        },
+        {
+          "name": "__type__",
+          "value": "alloc_space"
+        },
+        {
+          "name": "__unit__",
+          "value": "bytes"
+        },
+        {
+          "name": "pyroscope_spy",
+          "value": "gospy"
+        },
+        {
+          "name": "service_git_ref",
+          "value": "6389652c7"
+        },
+        {
+          "name": "service_name",
+          "value": "pyroscope"
+        },
+        {
+          "name": "service_repository",
+          "value": "https://github.com/grafana/pyroscope"
+        },
+        {
+          "name": "target",
+          "value": "all"
+        }
+      ]
+    },
+    {
+      "labels": [
+        {
+          "name": "__name__",
+          "value": "memory"
+        },
+        {
+          "name": "__period_type__",
+          "value": "space"
+        },
+        {
+          "name": "__period_unit__",
+          "value": "bytes"
+        },
+        {
+          "name": "__profile_type__",
+          "value": "memory:inuse_objects:count:space:bytes"
+        },
+        {
+          "name": "__service_name__",
+          "value": "pyroscope"
+        },
+        {
+          "name": "__type__",
+          "value": "inuse_objects"
+        },
+        {
+          "name": "__unit__",
+          "value": "count"
+        },
+        {
+          "name": "pyroscope_spy",
+          "value": "gospy"
+        },
+        {
+          "name": "service_git_ref",
+          "value": "6389652c7"
+        },
+        {
+          "name": "service_name",
+          "value": "pyroscope"
+        },
+        {
+          "name": "service_repository",
+          "value": "https://github.com/grafana/pyroscope"
+        },
+        {
+          "name": "target",
+          "value": "all"
+        }
+      ]
+    },
+    {
+      "labels": [
+        {
+          "name": "__name__",
+          "value": "memory"
+        },
+        {
+          "name": "__period_type__",
+          "value": "space"
+        },
+        {
+          "name": "__period_unit__",
+          "value": "bytes"
+        },
+        {
+          "name": "__profile_type__",
+          "value": "memory:inuse_space:bytes:space:bytes"
+        },
+        {
+          "name": "__service_name__",
+          "value": "pyroscope"
+        },
+        {
+          "name": "__type__",
+          "value": "inuse_space"
+        },
+        {
+          "name": "__unit__",
+          "value": "bytes"
+        },
+        {
+          "name": "pyroscope_spy",
+          "value": "gospy"
+        },
+        {
+          "name": "service_git_ref",
+          "value": "6389652c7"
+        },
+        {
+          "name": "service_name",
+          "value": "pyroscope"
+        },
+        {
+          "name": "service_repository",
+          "value": "https://github.com/grafana/pyroscope"
+        },
+        {
+          "name": "target",
+          "value": "all"
+        }
+      ]
+    },
+    {
+      "labels": [
+        {
+          "name": "__name__",
+          "value": "mutex"
+        },
+        {
+          "name": "__period_type__",
+          "value": "contentions"
+        },
+        {
+          "name": "__period_unit__",
+          "value": "count"
+        },
+        {
+          "name": "__profile_type__",
+          "value": "mutex:contentions:count:contentions:count"
+        },
+        {
+          "name": "__service_name__",
+          "value": "pyroscope"
+        },
+        {
+          "name": "__type__",
+          "value": "contentions"
+        },
+        {
+          "name": "__unit__",
+          "value": "count"
+        },
+        {
+          "name": "pyroscope_spy",
+          "value": "gospy"
+        },
+        {
+          "name": "service_git_ref",
+          "value": "6389652c7"
+        },
+        {
+          "name": "service_name",
+          "value": "pyroscope"
+        },
+        {
+          "name": "service_repository",
+          "value": "https://github.com/grafana/pyroscope"
+        },
+        {
+          "name": "target",
+          "value": "all"
+        }
+      ]
+    },
+    {
+      "labels": [
+        {
+          "name": "__name__",
+          "value": "mutex"
+        },
+        {
+          "name": "__period_type__",
+          "value": "contentions"
+        },
+        {
+          "name": "__period_unit__",
+          "value": "count"
+        },
+        {
+          "name": "__profile_type__",
+          "value": "mutex:delay:nanoseconds:contentions:count"
+        },
+        {
+          "name": "__service_name__",
+          "value": "pyroscope"
+        },
+        {
+          "name": "__type__",
+          "value": "delay"
+        },
+        {
+          "name": "__unit__",
+          "value": "nanoseconds"
+        },
+        {
+          "name": "pyroscope_spy",
+          "value": "gospy"
+        },
+        {
+          "name": "service_git_ref",
+          "value": "6389652c7"
+        },
+        {
+          "name": "service_name",
+          "value": "pyroscope"
+        },
+        {
+          "name": "service_repository",
+          "value": "https://github.com/grafana/pyroscope"
+        },
+        {
+          "name": "target",
+          "value": "all"
+        }
+      ]
+    },
+    {
+      "labels": [
+        {
+          "name": "__name__",
+          "value": "process_cpu"
+        },
+        {
+          "name": "__period_type__",
+          "value": "cpu"
+        },
+        {
+          "name": "__period_unit__",
+          "value": "nanoseconds"
+        },
+        {
+          "name": "__profile_type__",
+          "value": "process_cpu:cpu:nanoseconds:cpu:nanoseconds"
+        },
+        {
+          "name": "__service_name__",
+          "value": "pyroscope"
+        },
+        {
+          "name": "__type__",
+          "value": "cpu"
+        },
+        {
+          "name": "__unit__",
+          "value": "nanoseconds"
+        },
+        {
+          "name": "pyroscope_spy",
+          "value": "gospy"
+        },
+        {
+          "name": "service_git_ref",
+          "value": "6389652c7"
+        },
+        {
+          "name": "service_name",
+          "value": "pyroscope"
+        },
+        {
+          "name": "service_repository",
+          "value": "https://github.com/grafana/pyroscope"
+        },
+        {
+          "name": "target",
+          "value": "all"
+        }
+      ]
+    },
+    {
+      "labels": [
+        {
+          "name": "__name__",
+          "value": "process_cpu"
+        },
+        {
+          "name": "__period_type__",
+          "value": "cpu"
+        },
+        {
+          "name": "__period_unit__",
+          "value": "nanoseconds"
+        },
+        {
+          "name": "__profile_type__",
+          "value": "process_cpu:samples:count:cpu:nanoseconds"
+        },
+        {
+          "name": "__service_name__",
+          "value": "pyroscope"
+        },
+        {
+          "name": "__type__",
+          "value": "samples"
+        },
+        {
+          "name": "__unit__",
+          "value": "count"
+        },
+        {
+          "name": "pyroscope_spy",
+          "value": "gospy"
+        },
+        {
+          "name": "service_git_ref",
+          "value": "6389652c7"
+        },
+        {
+          "name": "service_name",
+          "value": "pyroscope"
+        },
+        {
+          "name": "service_repository",
+          "value": "https://github.com/grafana/pyroscope"
+        },
+        {
+          "name": "target",
+          "value": "all"
+        }
+      ]
+    }
+  ]
+}
