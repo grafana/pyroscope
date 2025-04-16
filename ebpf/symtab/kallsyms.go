@@ -90,7 +90,7 @@ func NewKallsymsFromData(kallsyms []byte) (*SymbolTab, error) {
 		if istart != 0 {
 			allZeros = false
 		}
-		syms = append(syms, Symbol{istart, string(name), string(mod)})
+		syms = append(syms, Symbol{Start: istart, Name: string(name), Module: string(mod)})
 	}
 	if allZeros {
 		return NewSymbolTab(nil), nil

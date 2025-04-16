@@ -17,6 +17,9 @@ type Symbol struct {
 	Start  uint64
 	Name   string
 	Module string
+
+	generation int
+	size       uint64
 }
 
 func NewSymbolTab(symbols []Symbol) *SymbolTab {
