@@ -1,7 +1,6 @@
 package compactor
 
 import (
-	"flag"
 	"time"
 
 	"github.com/hashicorp/raft"
@@ -31,15 +30,6 @@ type BlockQueueStore interface {
 	CreateBuckets(*bbolt.Tx) error
 }
 
-type Config struct {
-	Strategy
-}
-
-func (c *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
-	c.Strategy = DefaultStrategy()
-	// TODO
-}
-
 type Compactor struct {
 	config     Config
 	queue      *compactionQueue
@@ -53,7 +43,7 @@ func NewCompactor(
 	tombstones Tombstones,
 	reg prometheus.Registerer,
 ) *Compactor {
-	queue := newCompactionQueue(config.Strategy, reg)
+	queue := newCompactionQueue(config, reg)
 	return &Compactor{
 		config:     config,
 		queue:      queue,
@@ -67,7 +57,7 @@ func NewStore() *store.BlockQueueStore {
 }
 
 func (c *Compactor) Compact(tx *bbolt.Tx, entry compaction.BlockEntry) error {
-	if uint(entry.Level) >= c.config.MaxLevel {
+	if int(entry.Level) >= len(c.config.Levels) {
 		return nil
 	}
 	if err := c.store.StoreEntry(tx, entry); err != nil {
@@ -82,12 +72,14 @@ func (c *Compactor) enqueue(e compaction.BlockEntry) bool {
 }
 
 func (c *Compactor) NewPlan(cmd *raft.Log) compaction.Plan {
+	now := cmd.AppendedAt.UnixNano()
 	before := cmd.AppendedAt.Add(-c.config.CleanupDelay)
 	tombstones := c.tombstones.ListTombstones(before)
 	return &plan{
 		compactor:  c,
 		tombstones: tombstones,
 		blocks:     newBlockIter(),
+		now:        now,
 	}
 }
 
