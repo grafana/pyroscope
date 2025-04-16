@@ -38,8 +38,9 @@ type StateRestorer interface {
 }
 
 type Config struct {
-	SnapshotCompression string `yaml:"snapshot_compression"`
-	SnapshotRateLimit   int    `yaml:"snapshot_rate_limit"`
+	SnapshotCompression      string `yaml:"snapshot_compression"`
+	SnapshotRateLimit        int    `yaml:"snapshot_rate_limit"`
+	SnapshotCompactOnRestore bool   `yaml:"snapshot_compact_on_restore"`
 	// Where the FSM BoltDB data is located.
 	// Does not have to be a persistent volume.
 	DataDir string `yaml:"data_dir"`
@@ -48,6 +49,7 @@ type Config struct {
 func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.StringVar(&cfg.SnapshotCompression, prefix+"snapshot-compression", "zstd", "Compression algorithm to use for snapshots. Supported compressions: zstd.")
 	f.IntVar(&cfg.SnapshotRateLimit, prefix+"snapshot-rate-limit", 15, "Rate limit for snapshot writer in MB/s.")
+	f.BoolVar(&cfg.SnapshotCompactOnRestore, prefix+"snapshot-compact-on-restore", false, "Compact the database on restore.")
 	f.StringVar(&cfg.DataDir, prefix+"data-dir", "./data-metastore/data", "Directory to store the data.")
 }
 
@@ -77,7 +79,7 @@ func New(logger log.Logger, reg prometheus.Registerer, config Config) (*FSM, err
 		metrics:  newMetrics(reg),
 		handlers: make(map[RaftLogEntryType]handler),
 	}
-	db := newDB(logger, fsm.metrics, config.DataDir)
+	db := newDB(logger, fsm.metrics, config)
 	if err := db.open(false); err != nil {
 		return nil, err
 	}
@@ -156,7 +158,6 @@ func (fsm *FSM) Restore(snapshot io.ReadCloser) (err error) {
 		fsm.db.metrics.fsmRestoreSnapshotDuration.Observe(time.Since(start).Seconds())
 	}()
 
-	level.Info(fsm.logger).Log("msg", "restoring snapshot")
 	var r *snapshotReader
 	if r, err = newSnapshotReader(snapshot); err != nil {
 		level.Error(fsm.logger).Log("msg", "failed to create snapshot reader", "err", err)
