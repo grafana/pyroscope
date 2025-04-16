@@ -22,6 +22,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/querier/worker"
 	"github.com/grafana/pyroscope/pkg/scheduler"
 	"github.com/grafana/pyroscope/pkg/storegateway"
+	"github.com/grafana/pyroscope/pkg/usagestats"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
@@ -112,5 +113,10 @@ var RootBlocks = []RootBlock{
 		Name:       "filesystem_storage_backend",
 		StructType: reflect.TypeOf(filesystem.Config{}),
 		Desc:       "The filesystem_storage_backend block configures the usage of local file system as object storage backend.",
+	},
+	{
+		Name:       "analytics",
+		StructType: reflect.TypeOf(usagestats.Config{}),
+		Desc:       "The analytics block configures usage statistics collection. For more details about usage statistics, refer to [Anonymous usage statistics reporting](../anonymous-usage-statistics-reporting)",
 	},
 }
