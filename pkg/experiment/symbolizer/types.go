@@ -1,22 +1,28 @@
 package symbolizer
 
 import (
-	"context"
+	"github.com/grafana/pyroscope/lidia"
 
 	pprof "github.com/google/pprof/profile"
+	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 )
 
-// SymbolLocation represents a resolved source code location with function information
-type SymbolLocation struct {
-	Function *pprof.Function
-	Line     int64
+type locToSymbolize struct {
+	idx int
+	loc *googlev1.Location
+}
+
+// LidiaTableCacheEntry represents a cached Lidia table with its binary layout information
+type LidiaTableCacheEntry struct {
+	Data []byte        // Processed Lidia table data
+	EI   *BinaryLayout // Binary layout information for address mapping
 }
 
 // Location represents a memory address to be symbolized
 type Location struct {
 	ID      string
 	Address uint64
-	Lines   []SymbolLocation
+	Lines   []lidia.SourceInfoFrame
 	Mapping *pprof.Mapping
 }
 
@@ -33,9 +39,4 @@ type Mapping struct {
 	End    uint64
 	Limit  uint64
 	Offset uint64
-}
-
-// SymbolResolver converts memory addresses to source code locations
-type SymbolResolver interface {
-	ResolveAddress(ctx context.Context, addr uint64) ([]SymbolLocation, error)
 }
