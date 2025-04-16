@@ -90,7 +90,7 @@ func CalculateBase(ei *BinaryLayout, m Mapping, addr uint64) (uint64, error) {
 
 	switch elf.Type(ei.ElfType) {
 	case elf.ET_EXEC:
-		return calculateExecBase(m, segment)
+		return 0, nil
 	case elf.ET_DYN:
 		return calculateDynamicBase(m, segment)
 	}
@@ -172,29 +172,6 @@ func (ei *BinaryLayout) FindProgramHeader(m Mapping, addr uint64) (*MemoryRegion
 	return bestHeader, nil
 }
 
-func calculateExecBase(m Mapping, h *MemoryRegion) (uint64, error) {
-	//return 0, nil
-	if h == nil {
-		// Check if this is likely a PIE executable or shared library
-		if m.Start > 0 {
-			// This is likely a PIE executable or shared library loaded at m.Start
-			result := m.Start - m.Offset
-			return result, nil
-		}
-
-		result := m.Start - m.Offset
-		return result, nil
-	}
-	return m.Start - m.Offset + h.Off - h.Vaddr, nil
-}
-
-func calculateRelocatableBase(m Mapping) (uint64, error) {
-	if m.Offset != 0 {
-		return 0, fmt.Errorf("relocatable files with non-zero offset not supported")
-	}
-	return m.Start, nil
-}
-
 func calculateDynamicBase(m Mapping, h *MemoryRegion) (uint64, error) {
 	if h == nil {
 		return m.Start - m.Offset, nil
@@ -212,11 +189,4 @@ func calculateDynamicBase(m Mapping, h *MemoryRegion) (uint64, error) {
 	}
 
 	return base, nil
-}
-
-func calculateDynamicBaseBACKUP(m Mapping, h *MemoryRegion) (uint64, error) {
-	if h == nil {
-		return m.Start - m.Offset, nil
-	}
-	return m.Start - m.Offset + h.Off - h.Vaddr, nil
 }

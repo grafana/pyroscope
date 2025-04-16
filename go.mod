@@ -21,6 +21,7 @@ require (
 	github.com/felixge/httpsnoop v1.0.4
 	github.com/fsnotify/fsnotify v1.8.0
 	github.com/go-delve/delve v1.23.1
+	github.com/fsnotify/fsnotify v1.7.0
 	github.com/go-kit/log v0.2.1
 	github.com/gogo/protobuf v1.3.2
 	github.com/gogo/status v1.1.1
@@ -39,6 +40,8 @@ require (
 	github.com/grafana/pyroscope/api v0.4.0
 	github.com/grafana/pyroscope/lidia v0.0.0-20250416154336-a5c33510d5ff
 	github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc
+	github.com/grafana/pyroscope/lidia v0.0.0-20250416154336-a5c33510d5ff
+	github.com/grafana/regexp v0.0.0-20221123153739-15dc172cd2db
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.25.1
 	github.com/hashicorp/go-multierror v1.1.1
