@@ -722,6 +722,13 @@ func (f *Phlare) readyHandler(sm *services.Manager) http.HandlerFunc {
 			}
 		}
 
+		if f.metastore != nil {
+			if err := f.metastore.CheckReady(r.Context()); err != nil {
+				http.Error(w, "Metastore not ready: "+err.Error(), http.StatusServiceUnavailable)
+				return
+			}
+		}
+
 		util.WriteTextResponse(w, "ready")
 	}
 }
