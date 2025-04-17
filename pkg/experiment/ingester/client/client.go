@@ -127,16 +127,12 @@ func shouldBeHandledByCaller(err error) bool {
 	return true
 }
 
-// The default gRPC service config is explicitly set to
-// not retry and load balance between instances.
+// The default gRPC service config is explicitly set to balance between
+// instances.
 const grpcServiceConfig = `{
-    "methodConfig": [{
-        "name": [{"service": ""}],
-        "retryPolicy": {}
-    }],
-	"healthCheckConfig": {
-		"serviceName": "pyroscope.segment-writer"
-	}
+    "healthCheckConfig": {
+         "serviceName": "pyroscope.segment-writer"
+    }
 }`
 
 type Client struct {
