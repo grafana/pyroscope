@@ -702,12 +702,20 @@ func (f *Phlare) readyHandler(sm *services.Manager) http.HandlerFunc {
 			return
 		}
 
+		if f.metastore != nil {
+			if err := f.metastore.CheckReady(r.Context()); err != nil {
+				http.Error(w, "Metastore not ready: "+err.Error(), http.StatusServiceUnavailable)
+				return
+			}
+		}
+
 		if f.ingester != nil {
 			if err := f.ingester.CheckReady(r.Context()); err != nil {
 				http.Error(w, "Ingester not ready: "+err.Error(), http.StatusServiceUnavailable)
 				return
 			}
 		}
+
 		if f.segmentWriter != nil {
 			if err := f.segmentWriter.CheckReady(r.Context()); err != nil {
 				http.Error(w, "Segment Writer not ready: "+err.Error(), http.StatusServiceUnavailable)
@@ -718,13 +726,6 @@ func (f *Phlare) readyHandler(sm *services.Manager) http.HandlerFunc {
 		if f.frontend != nil {
 			if err := f.frontend.CheckReady(r.Context()); err != nil {
 				http.Error(w, "Query Frontend not ready: "+err.Error(), http.StatusServiceUnavailable)
-				return
-			}
-		}
-
-		if f.metastore != nil {
-			if err := f.metastore.CheckReady(r.Context()); err != nil {
-				http.Error(w, "Metastore not ready: "+err.Error(), http.StatusServiceUnavailable)
 				return
 			}
 		}
