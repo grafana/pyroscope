@@ -2,7 +2,6 @@ module github.com/grafana/pyroscope
 
 go 1.23.0
 
-
 require (
 	connectrpc.com/connect v1.16.2
 	connectrpc.com/grpchealth v1.3.0

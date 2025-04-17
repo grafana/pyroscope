@@ -2,7 +2,6 @@ module github.com/grafana/pyroscope/api
 
 go 1.23.0
 
-
 require (
 	connectrpc.com/connect v1.16.2
 	github.com/gogo/protobuf v1.3.2
