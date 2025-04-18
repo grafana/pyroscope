@@ -3,6 +3,7 @@ package segmentwriterclient
 import (
 	"context"
 	"flag"
+	"fmt"
 	"io"
 	"net"
 	"os"
@@ -78,9 +79,9 @@ func (s *segwriterClientSuite) SetupTest() {
 	s.config = grpcclient.Config{}
 	s.config.RegisterFlags(flag.NewFlagSet("", flag.PanicOnError))
 	instances := []ring.InstanceDesc{
-		{Id: "a", Tokens: make([]uint32, 1)},
-		{Id: "b", Tokens: make([]uint32, 1)},
-		{Id: "c", Tokens: make([]uint32, 1)},
+		{Id: "a", Addr: "localhost", Tokens: make([]uint32, 1)},
+		{Id: "b", Addr: "localhost", Tokens: make([]uint32, 1)},
+		{Id: "c", Addr: "localhost", Tokens: make([]uint32, 1)},
 	}
 	s.ring = testhelper.NewMockRing(instances, 1)
 
@@ -273,4 +274,29 @@ func (s *segwriterClientSuite) Test_Push_AllInstancesUnavailable() {
 
 	_, err := s.client.Push(context.Background(), &segmentwriterv1.PushRequest{})
 	s.Assert().Equal(codes.Unavailable.String(), status.Code(err).String())
+}
+
+func (s *segwriterClientSuite) Test_Push_ConnTimeout() {
+	dialer := func(ctx context.Context, _ string) (net.Conn, error) {
+		<-ctx.Done()
+		return nil, fmt.Errorf("dial error")
+	}
+
+	// Unfortunately, we can't set arbitrary timeout
+	// here: the minimal allowed value is 1s.
+	s.config.ConnectTimeout = time.Second
+	var err error
+	s.client, err = NewSegmentWriterClient(
+		s.config, s.logger, nil, s.ring,
+		testPlacement{},
+		grpc.WithContextDialer(dialer))
+	s.Require().NoError(err)
+
+	// Note that we use the background context: we do not
+	// want to wait for the context to expire, but fail
+	// fast, once the connection timeout expires.
+	_, err = s.client.Push(context.Background(), &segmentwriterv1.PushRequest{})
+	// The client, however, won't see the underlying error.
+	s.Require().NotNil(err)
+	s.Assert().Contains(err.Error(), errServiceUnavailableMsg)
 }

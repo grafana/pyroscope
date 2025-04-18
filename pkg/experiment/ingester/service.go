@@ -67,8 +67,8 @@ func (cfg *Config) Validate() error {
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	const prefix = "segment-writer"
-	cfg.GRPCClientConfig.RegisterFlagsWithPrefix(prefix, f)
 	cfg.LifecyclerConfig.RegisterFlagsWithPrefix(prefix+".", f, util.Logger)
+	cfg.GRPCClientConfig.RegisterFlagsWithPrefix(prefix+".grpc-client-config", f)
 	f.DurationVar(&cfg.SegmentDuration, prefix+".segment-duration", defaultSegmentDuration, "Timeout when flushing segments to bucket.")
 	f.UintVar(&cfg.FlushConcurrency, prefix+".flush-concurrency", 0, "Number of concurrent flushes. Defaults to the number of CPUs, but not less than 8.")
 	f.DurationVar(&cfg.UploadTimeout, prefix+".upload-timeout", 2*time.Second, "Timeout for upload requests, including retries.")
