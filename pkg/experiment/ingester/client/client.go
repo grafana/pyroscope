@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/go-kit/log"
@@ -29,7 +30,10 @@ import (
 
 var errServiceUnavailableMsg = "service is unavailable"
 
-// TODO(kolesnikovae): Make these configurable (advanced category)?
+// TODO(kolesnikovae):
+//  * Replace the ring service discovery and client pool implementations.
+//  * Make CB options configurable.
+
 const (
 	// Circuit breaker defaults.
 	cbMinSuccess     = 5
@@ -127,22 +131,19 @@ func shouldBeHandledByCaller(err error) bool {
 	return true
 }
 
-// The default gRPC service config is explicitly set to
-// not retry and load balance between instances.
+// The default gRPC service config is explicitly set to balance between
+// instances.
 const grpcServiceConfig = `{
-    "methodConfig": [{
-        "name": [{"service": ""}],
-        "retryPolicy": {}
-    }],
-	"healthCheckConfig": {
-		"serviceName": "pyroscope.segment-writer"
-	}
+    "healthCheckConfig": {
+         "serviceName": "pyroscope.segment-writer"
+    }
 }`
 
 type Client struct {
 	logger  log.Logger
 	metrics *metrics
 
+	ring        ring.ReadRing
 	pool        *connpool.Pool
 	distributor *distributor.Distributor
 
@@ -168,6 +169,7 @@ func NewSegmentWriterClient(
 		metrics:     newMetrics(registry),
 		distributor: distributor.NewDistributor(placement, ring),
 		pool:        pool,
+		ring:        ring,
 	}
 	c.subservices, err = services.NewManager(c.pool)
 	if err != nil {
@@ -182,6 +184,20 @@ func NewSegmentWriterClient(
 func (c *Client) Service() services.Service { return c.service }
 
 func (c *Client) starting(ctx context.Context) error {
+	// Warm up connections. The pool does not do this.
+	instances, err := c.ring.GetAllHealthy(ring.Reporting)
+	if err != nil {
+		return fmt.Errorf("get all healthy instances: %w", err)
+	}
+	var wg sync.WaitGroup
+	for _, x := range instances.Instances {
+		wg.Add(1)
+		go func(x ring.InstanceDesc) {
+			defer wg.Done()
+			_, _ = c.pool.GetClientFor(x.Addr)
+		}(x)
+	}
+	wg.Wait()
 	return services.StartManagerAndAwaitHealthy(ctx, c.subservices)
 }
 
@@ -239,8 +255,8 @@ func (c *Client) Push(
 			return nil, status.Error(codes.Unavailable, errServiceUnavailableMsg)
 		}
 		level.Warn(logger).Log("msg", "failed attempt to push data to segment writer", "err", err)
-		if err = ctx.Err(); err != nil {
-			return nil, err
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, ctxErr
 		}
 	}
 
@@ -297,9 +313,9 @@ func newConnPool(
 	)
 
 	// Note that circuit breaker must be created per client conn.
-	factory := connpool.NewConnPoolFactory(func(desc ring.InstanceDesc) []grpc.DialOption {
-		cb := gobreaker.NewCircuitBreaker[any](circuitBreakerConfig)
-		return append(options, grpc.WithUnaryInterceptor(circuitbreaker.UnaryClientInterceptor(cb)))
+	factory := connpool.NewConnPoolFactory(func(ring.InstanceDesc) []grpc.DialOption {
+		cb := circuitbreaker.UnaryClientInterceptor(gobreaker.NewCircuitBreaker[any](circuitBreakerConfig))
+		return append(options, grpc.WithUnaryInterceptor(cb))
 	})
 
 	p := ring_client.NewPool(

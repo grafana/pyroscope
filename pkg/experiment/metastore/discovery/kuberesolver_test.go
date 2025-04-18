@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/hashicorp/raft"
-	"github.com/prometheus/prometheus/util/testutil"
 	"github.com/stretchr/testify/require"
 
 	kuberesolver2 "github.com/grafana/pyroscope/pkg/experiment/metastore/discovery/kuberesolver"
+	"github.com/grafana/pyroscope/pkg/test"
 )
 
 func TestDebugLocalhost(t *testing.T) {
@@ -17,7 +17,7 @@ func TestDebugLocalhost(t *testing.T) {
 	client := kuberesolver2.NewInsecureK8sClient("http://localhost:8080")
 	target := "kubernetes:///pyroscope-metastore-headless.pyroscope-test:9095"
 
-	discovery, err := NewKubeResolverDiscovery(testutil.NewLogger(t), target, client)
+	discovery, err := NewKubeResolverDiscovery(test.NewTestingLogger(t), target, client)
 	require.NoError(t, err)
 	discovery.Subscribe(UpdateFunc(func(servers []Server) {
 		fmt.Printf("servers: %+v\n", servers)

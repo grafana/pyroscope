@@ -7,7 +7,6 @@ import (
 
 	"github.com/grafana/dskit/flagext"
 	"github.com/grafana/dskit/grpcclient"
-	"github.com/prometheus/prometheus/util/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -22,7 +21,7 @@ const nServers = 3
 func TestUnavailable(t *testing.T) {
 	d := mockdiscovery.NewMockDiscovery(t)
 	d.On("Subscribe", mock.Anything).Return()
-	l := testutil.NewLogger(t)
+	l := test.NewTestingLogger(t)
 	c := New(l, grpcclient.Config{}, d)
 	ports, err := test.GetFreePorts(nServers)
 	assert.NoError(t, err)
@@ -71,7 +70,7 @@ func TestUnavailable_Rediscover_Wrong_Leader(t *testing.T) {
 func testRediscoverWrongLeader(t *testing.T, f func(c *Client)) {
 	d := mockdiscovery.NewMockDiscovery(t)
 	d.On("Subscribe", mock.Anything).Return()
-	l := testutil.NewLogger(t)
+	l := test.NewTestingLogger(t)
 	config := &grpcclient.Config{}
 	flagext.DefaultValues(config)
 	c := New(l, *config, d)
@@ -107,7 +106,7 @@ func testRediscoverWrongLeader(t *testing.T, f func(c *Client)) {
 func TestServerError(t *testing.T) {
 	d := mockdiscovery.NewMockDiscovery(t)
 	d.On("Subscribe", mock.Anything).Return()
-	l := testutil.NewLogger(t)
+	l := test.NewTestingLogger(t)
 	c := New(l, grpcclient.Config{}, d)
 
 	d.On("Rediscover").Run(func(args mock.Arguments) {

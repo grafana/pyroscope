@@ -56,9 +56,9 @@ func Test_RecordingRules(t *testing.T) {
 overrides:
   wrong_name:
     recording_rules:
-    - metric_name: 'any-name'
+    - metric_name: ""
   `)))
-	require.ErrorContains(t, err, "invalid metric name: any-name")
+	require.ErrorContains(t, err, "invalid metric name: ")
 
 	_, err = LoadRuntimeConfig(bytes.NewReader([]byte(`
 overrides:

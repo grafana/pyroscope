@@ -276,6 +276,16 @@ func TestUsageGroupMatch_CountDiscardedBytes(t *testing.T) {
 	}
 }
 
+func (c *UsageGroupConfig) valuesMap() map[string][]string {
+	m := make(map[string][]string)
+	for k, v := range c.config {
+		for _, matcher := range v {
+			m[k] = append(m[k], matcher.String())
+		}
+	}
+	return m
+}
+
 func TestNewUsageGroupConfig(t *testing.T) {
 	tests := []struct {
 		Name      string
@@ -391,7 +401,7 @@ func TestNewUsageGroupConfig(t *testing.T) {
 				require.EqualError(t, err, tt.WantErr)
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, tt.Want, got)
+				require.Equal(t, tt.Want.valuesMap(), got.valuesMap())
 			}
 		})
 	}
@@ -469,7 +479,7 @@ some_other_config:
 				require.EqualError(t, err, tt.WantErr)
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, tt.Want, got.UsageGroups)
+				require.Equal(t, tt.Want.valuesMap(), got.UsageGroups.valuesMap())
 			}
 		})
 	}
@@ -546,7 +556,7 @@ func TestUsageGroupConfig_UnmarshalJSON(t *testing.T) {
 				require.EqualError(t, err, tt.WantErr)
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, tt.Want, got.UsageGroups)
+				require.Equal(t, tt.Want.valuesMap(), got.UsageGroups.valuesMap())
 			}
 		})
 	}

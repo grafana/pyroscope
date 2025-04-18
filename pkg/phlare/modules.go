@@ -35,6 +35,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"gopkg.in/yaml.v3"
 
+	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	statusv1 "github.com/grafana/pyroscope/api/gen/proto/go/status/v1"
 	"github.com/grafana/pyroscope/pkg/adhocprofiles"
 	apiversion "github.com/grafana/pyroscope/pkg/api/version"
@@ -56,6 +57,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/scheduler"
 	"github.com/grafana/pyroscope/pkg/settings"
 	"github.com/grafana/pyroscope/pkg/storegateway"
+	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/usagestats"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/build"
@@ -117,36 +119,22 @@ func (f *Phlare) initQueryFrontend() (services.Service, error) {
 	if f.Cfg.Frontend.Port == 0 {
 		f.Cfg.Frontend.Port = f.Cfg.Server.HTTPListenPort
 	}
-
+	if f.Cfg.v2Experiment {
+		return f.initQueryFrontendV2()
+	}
 	frontendSvc, err := frontend.NewFrontend(f.Cfg.Frontend, f.Overrides, log.With(f.logger, "component", "frontend"), f.reg)
 	if err != nil {
 		return nil, err
 	}
 	f.frontend = frontendSvc
 	f.API.RegisterFrontendForQuerierHandler(frontendSvc)
-	if !f.Cfg.v2Experiment {
-		f.API.RegisterQuerierServiceHandler(frontendSvc)
-		f.API.RegisterPyroscopeHandlers(frontendSvc)
-		f.API.RegisterVCSServiceHandler(frontendSvc)
-	} else {
-		f.initReadPathRouter()
-	}
-
+	f.API.RegisterQuerierServiceHandler(frontendSvc)
+	f.API.RegisterPyroscopeHandlers(frontendSvc)
+	f.API.RegisterVCSServiceHandler(frontendSvc)
 	return frontendSvc, nil
 }
 
-func (f *Phlare) getFrontendAddress() (addr string, err error) {
-	addr = f.Cfg.Frontend.Addr
-	if f.Cfg.Frontend.AddrOld != "" {
-		addr = f.Cfg.Frontend.AddrOld
-	}
-	if addr != "" {
-		return addr, nil
-	}
-	return netutil.GetFirstAddressOf(f.Cfg.Frontend.InfNames, f.logger, f.Cfg.Frontend.EnableIPv6)
-}
-
-func (f *Phlare) initReadPathRouter() {
+func (f *Phlare) initQueryFrontendV2() (services.Service, error) {
 	vcsService := vcs.New(
 		log.With(f.logger, "component", "vcs-service"),
 		f.reg,
@@ -160,16 +148,52 @@ func (f *Phlare) initReadPathRouter() {
 		f.queryBackendClient,
 	)
 
-	router := readpath.NewRouter(
-		log.With(f.logger, "component", "read-path-router"),
-		f.Overrides,
-		f.frontend,
-		newFrontend,
+	// If the new read path is enabled globally by default,
+	// the old query frontend is not used. Tenant-specific overrides
+	// are ignored — all tenants use the new read path.
+	//
+	// If the old read path is still in use, we configure the router
+	// to use both the old and new query frontends.
+
+	var handler querierv1connect.QuerierServiceHandler
+	handler = newFrontend
+	if f.isV1QueryFrontendInUse() {
+		handler = readpath.NewRouter(
+			log.With(f.logger, "component", "read-path-router"),
+			f.Overrides,
+			f.frontend,
+			newFrontend,
+		)
+	}
+
+	f.API.RegisterVCSServiceHandler(vcsService)
+	f.API.RegisterQuerierServiceHandler(handler)
+	f.API.RegisterPyroscopeHandlers(handler)
+
+	// New query frontend does not have any state.
+	// For simplicity, we return a no-op service.
+	svc := services.NewIdleService(
+		func(context.Context) error { return nil },
+		func(error) error { return nil },
 	)
 
-	f.API.RegisterQuerierServiceHandler(router)
-	f.API.RegisterPyroscopeHandlers(router)
-	f.API.RegisterVCSServiceHandler(vcsService)
+	return svc, nil
+}
+
+func (f *Phlare) isV1QueryFrontendInUse() bool {
+	c := f.Overrides.ReadPathOverrides(tenant.DefaultTenantID)
+	return c.EnableQueryBackend && c.EnableQueryBackendFrom.IsZero()
+}
+
+func (f *Phlare) getFrontendAddress() (addr string, err error) {
+	addr = f.Cfg.Frontend.Addr
+	if f.Cfg.Frontend.AddrOld != "" {
+		addr = f.Cfg.Frontend.AddrOld
+	}
+	if addr != "" {
+		return addr, nil
+	}
+	return netutil.GetFirstAddressOf(f.Cfg.Frontend.InfNames, f.logger, f.Cfg.Frontend.EnableIPv6)
 }
 
 func (f *Phlare) initRuntimeConfig() (services.Service, error) {

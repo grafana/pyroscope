@@ -58,7 +58,6 @@ func (q *QueryFrontend) Query(
 	ctx context.Context,
 	req *queryv1.QueryRequest,
 ) (*queryv1.QueryResponse, error) {
-	// TODO(kolesnikovae):
 	// This method is supposed to be the entry point of the read path
 	// in the future versions. Therefore, validation, overrides, and
 	// rest of the request handling should be moved here.

@@ -17,7 +17,6 @@ import (
 	gprofile "github.com/google/pprof/profile"
 	"github.com/grafana/dskit/flagext"
 	model2 "github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/util/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -40,6 +39,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	testutil3 "github.com/grafana/pyroscope/pkg/phlaredb/block/testutil"
 	pprofth "github.com/grafana/pyroscope/pkg/pprof/testhelper"
+	"github.com/grafana/pyroscope/pkg/test"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockdlq"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockmetastorev1"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockobjstore"
@@ -224,7 +224,7 @@ func TestBusyIngestLoop(t *testing.T) {
 }
 
 func TestDLQFail(t *testing.T) {
-	l := testutil.NewLogger(t)
+	l := test.NewTestingLogger(t)
 	bucket := mockobjstore.NewMockBucket(t)
 	bucket.On("Upload", mock.Anything, mock.MatchedBy(func(name string) bool {
 		return isSegmentPath(name)
@@ -270,7 +270,7 @@ func TestDLQFail(t *testing.T) {
 }
 
 func TestDatasetMinMaxTime(t *testing.T) {
-	l := testutil.NewLogger(t)
+	l := test.NewTestingLogger(t)
 	bucket := memory.NewInMemBucket()
 	metas := make(chan *metastorev1.BlockMeta)
 	client := mockmetastorev1.NewMockIndexServiceClient(t)
@@ -386,7 +386,7 @@ func TestDLQRecoveryMock(t *testing.T) {
 			recoveredMetas <- meta
 		}).
 		Return(&metastorev1.AddBlockResponse{}, nil)
-	recovery := dlq.NewRecovery(testutil.NewLogger(t), dlq.RecoveryConfig{
+	recovery := dlq.NewRecovery(test.NewTestingLogger(t), dlq.RecoveryConfig{
 		Period: 100 * time.Millisecond,
 	}, srv, sw.bucket)
 	recovery.Start()
@@ -455,7 +455,7 @@ type sw struct {
 }
 
 func newTestSegmentWriter(t *testing.T, cfg Config) sw {
-	l := testutil.NewLogger(t)
+	l := test.NewTestingLogger(t)
 	bucket := memory.NewInMemBucket()
 	client := mockmetastorev1.NewMockIndexServiceClient(t)
 	res := newSegmentWriter(
