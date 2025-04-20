@@ -187,17 +187,21 @@ func (c *Client) starting(ctx context.Context) error {
 	// Warm up connections. The pool does not do this.
 	instances, err := c.ring.GetAllHealthy(ring.Reporting)
 	if err != nil {
-		return fmt.Errorf("get all healthy instances: %w", err)
+		// The ring might be empty initially if the segment-writer service
+		// is not yet ready. In such cases, we avoid failing the client to
+		// allow for eventual readiness.
+		level.Debug(c.logger).Log("msg", "unable to create connections", "err", err)
+	} else {
+		var wg sync.WaitGroup
+		for _, x := range instances.Instances {
+			wg.Add(1)
+			go func(x ring.InstanceDesc) {
+				defer wg.Done()
+				_, _ = c.pool.GetClientFor(x.Addr)
+			}(x)
+		}
+		wg.Wait()
 	}
-	var wg sync.WaitGroup
-	for _, x := range instances.Instances {
-		wg.Add(1)
-		go func(x ring.InstanceDesc) {
-			defer wg.Done()
-			_, _ = c.pool.GetClientFor(x.Addr)
-		}(x)
-	}
-	wg.Wait()
 	return services.StartManagerAndAwaitHealthy(ctx, c.subservices)
 }
 
