@@ -69,9 +69,11 @@ func (a *shardAllocator) observe(usage uint64, now int64) int {
 			// Reset multiplier if burst window has passed.
 			a.multiplier = 1
 		} else {
-			// Increase multiplier on consecutive
-			// scale-outs within burst window.
-			a.multiplier *= 2
+			// Increase multiplier on consecutive scale-outs within burst window.
+			// Limiting the multiplier here allow us to not worry about overflows.
+			if a.multiplier < 16 {
+				a.multiplier *= 2
+			}
 			scaled := target + int(math.Ceil(float64(delta)*a.multiplier))
 			target = min(2*target, scaled)
 		}

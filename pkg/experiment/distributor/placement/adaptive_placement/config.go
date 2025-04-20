@@ -34,8 +34,8 @@ func (o *PlacementLimits) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet
 	f.Uint64Var(&o.TenantShards, prefix+"tenant-shards", 0, "Number of shards per tenant. If 0, the limit is not applied.")
 	f.Uint64Var(&o.DefaultDatasetShards, prefix+"default-dataset-shards", 1, "Default number of shards per dataset.")
 	f.Uint64Var(&o.MinDatasetShards, prefix+"min-dataset-shards", 1, "Minimum number of shards per dataset.")
-	f.Uint64Var(&o.MaxDatasetShards, prefix+"max-dataset-shards", 32, "Maximum number of shards per dataset.")
-	f.Uint64Var(&o.UnitSizeBytes, prefix+"unit-size-bytes", 64<<10, "Shards are allocated based on the utilisation of units per second. The option specifies the unit size in bytes.")
+	f.Uint64Var(&o.MaxDatasetShards, prefix+"max-dataset-shards", 1<<10, "Maximum number of shards per dataset.")
+	f.Uint64Var(&o.UnitSizeBytes, prefix+"unit-size-bytes", 128<<10, "Shards are allocated based on the utilisation of units per second. The option specifies the unit size in bytes.")
 	f.DurationVar(&o.BurstWindow, prefix+"burst-window", 17*time.Minute, "Duration of the burst window. During this time, scale-outs are more aggressive.")
 	f.DurationVar(&o.DecayWindow, prefix+"decay-window", 19*time.Minute, "Duration of the decay window. During this time, scale-ins are delayed.")
 }
