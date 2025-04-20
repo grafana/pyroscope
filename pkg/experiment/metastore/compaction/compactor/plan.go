@@ -87,44 +87,49 @@ func (p *plan) nextJob() *jobPlan {
 		job.reset(b.staged.key)
 		p.blocks.setBatch(b)
 
-		// Once we finish with the current block batch, the iterator moves
-		// to the next batch–with-the-same-compaction-key, which is not
-		// necessarily the next in-order-batch from the batch iterator.
+		var force bool
 		for {
-			if block, ok := p.blocks.peek(); ok {
-				if job.tryAdd(block) {
-					p.blocks.advance()
-					if !job.isComplete() {
-						// Try to add more blocks.
-						continue
-					}
-				}
-			} else {
+			block, found := p.blocks.peek()
+			if !found {
 				// No more blocks with this compaction key at the level.
 				// We may want to force compaction even if the current job
-				// is incomplete: e.g., if the blocks remain in the
-				// queue for too long. Note that we do not check the block
-				// timestamps: we only care when the batch was created.
-				if !p.compactor.config.exceedsMaxAge(b, p.now) {
-					// The current job plan is to be cancelled, and
-					// we move on to the next in-order batch.
-					break
-				}
+				// is incomplete: e.g., if the blocks remain in the queue for
+				// too long. Note that we do not check the block timestamps:
+				// we only care when the first (oldest) batch was created.
+				force = p.compactor.config.exceedsMaxAge(b, p.now)
+				break
 			}
+			if !job.tryAdd(block) {
+				// We may not want to add a bock to the job if it extends the
+				// compacted block time range beyond the desired limit.
+				// In this case, we need to force compaction of incomplete job.
+				force = true
+				break
+			}
+			p.blocks.advance()
+			if job.isComplete() {
+				break
+			}
+		}
+
+		if len(job.blocks) > 0 && (job.isComplete() || force) {
 			// Typically, we want to proceed to the next compaction key,
 			// but if the batch is not empty (i.e., we could not put all
 			// the blocks into the job), we must finish it first.
 			if p.blocks.more() {
+				// We need to reset the batch iterator to continue from the
+				// oldest batch that still has blocks to process. This ensures
+				// we don't skip blocks or process them out of order.
+				// Block iterator ensures that each block is only accessed once.
 				p.batches.reset(b)
-			}
-			if len(job.blocks) == 0 {
-				// Should not be possible.
-				break
 			}
 			p.getTombstones(job)
 			job.finalize()
 			return job
 		}
+
+		// The job plan is canceled for the compaction key, and we need to
+		// continue with the next compaction key, or level.
 	}
 
 	return nil
@@ -159,8 +164,6 @@ func (job *jobPlan) reset(k compactionKey) {
 	job.maxT = math.MinInt64
 }
 
-// We may not want to add a bock to the job if it extends the
-// compacted block time range beyond the desired limit.
 func (job *jobPlan) tryAdd(block string) bool {
 	t := util.ULIDStringUnixNano(block)
 	if len(job.blocks) > 0 && !job.isInAllowedTimeRange(t) {
