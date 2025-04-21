@@ -87,11 +87,7 @@ type blockContext struct {
 func (b *blockContext) execute() error {
 	var span opentracing.Span
 	span, b.ctx = opentracing.StartSpanFromContext(b.ctx, "blockContext.execute")
-	var wg sync.WaitGroup
-	defer func() {
-		wg.Wait()
-		span.Finish()
-	}()
+	defer span.Finish()
 
 	if idx := b.datasetIndex(); idx != nil {
 		if err := b.lookupDatasets(idx); err != nil {
@@ -104,13 +100,14 @@ func (b *blockContext) execute() error {
 	}
 
 	for _, ds := range b.obj.Metadata().Datasets {
-		q := &queryContext{blockContext: b, ds: block.NewDataset(ds, b.obj)}
+		q := b.newQueryContext(ds)
 		for _, query := range b.req.src.Query {
-			wg.Add(1)
-			b.grp.Go(util.RecoverPanic(func() error {
-				defer wg.Done()
+			q.grp.Go(util.RecoverPanic(func() error {
 				return q.execute(query)
 			}))
+		}
+		if err := q.grp.Wait(); err != nil {
+			return err
 		}
 	}
 
@@ -186,10 +183,17 @@ func (b *blockContext) lookupDatasets(ds *metastorev1.Dataset) error {
 	return nil
 }
 
+func (b *blockContext) newQueryContext(ds *metastorev1.Dataset) *queryContext {
+	q := &queryContext{blockContext: b, ds: block.NewDataset(ds, b.obj)}
+	q.grp, q.ctx = errgroup.WithContext(b.ctx)
+	return q
+}
+
 type queryContext struct {
 	*blockContext
+	ctx context.Context
+	grp *errgroup.Group
 	ds  *block.Dataset
-	err error
 }
 
 func (q *queryContext) execute(query *queryv1.Query) error {
