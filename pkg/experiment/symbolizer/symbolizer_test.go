@@ -535,3 +535,20 @@ func extractGzipFile(t *testing.T, gzipPath string) ([]byte, error) {
 
 	return io.ReadAll(gzipReader)
 }
+
+func extractGzipFile(t *testing.T, gzipPath string) ([]byte, error) {
+	t.Helper()
+	file, err := os.Open(gzipPath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	gzipReader, err := gzip.NewReader(file)
+	if err != nil {
+		return nil, err
+	}
+	defer gzipReader.Close()
+
+	return io.ReadAll(gzipReader)
+}
