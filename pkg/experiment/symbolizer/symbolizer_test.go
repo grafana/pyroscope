@@ -2,6 +2,7 @@ package symbolizer
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"fmt"
 	"io"
@@ -11,7 +12,7 @@ import (
 	"github.com/go-kit/log"
 	pprof "github.com/google/pprof/profile"
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	mocksymbolizer "github.com/grafana/pyroscope/pkg/test/mocks/mocksymbolizer"
+	"github.com/grafana/pyroscope/pkg/test/mocks/mocksymbolizer"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/mock"
@@ -159,6 +160,72 @@ func TestSymbolizePprof(t *testing.T) {
 			mockClient.AssertExpectations(t)
 		})
 	}
+}
+
+func TestSymbolizationWithLidiaData(t *testing.T) {
+	const testLidiaZip = "testdata/test_lidia_file.gz"
+	const buildID = "ffcf60c240417166980a43fbbfde486e0b3718e5"
+
+	lidiaData, err := extractGzipFile(t, testLidiaZip)
+	require.NoError(t, err)
+	require.NotEmpty(t, lidiaData, "Lidia data should not be empty")
+
+	store := mocksymbolizer.NewMockDebugInfoStore(t)
+	store.On("Put", mock.Anything, buildID, mock.Anything).Return(nil).Once()
+	store.On("Get", mock.Anything, buildID).Return(io.NopCloser(bytes.NewReader(lidiaData)), nil).Once()
+
+	// Store the Lidia file
+	err = store.Put(context.Background(), buildID, bytes.NewReader(lidiaData))
+	require.NoError(t, err)
+
+	sym, err := NewProfileSymbolizer(log.NewNopLogger(), nil, store, NewMetrics(nil), 100, 1024*1024)
+	require.NoError(t, err)
+
+	// Create a symbolization request with some addresses to test
+	req := &Request{
+		BuildID:    buildID,
+		BinaryName: "test-binary",
+		Locations: []*Location{
+			{
+				Address: 0x1b743d6,
+				Mapping: &pprof.Mapping{
+					Start:   0x403000,
+					Limit:   0x1d75000,
+					Offset:  0x3000,
+					BuildID: buildID,
+				},
+			},
+		},
+	}
+
+	err = sym.Symbolize(context.Background(), req)
+	require.NoError(t, err)
+	require.NotEmpty(t, req.Locations[0].Lines, "Should have found symbols")
+	for _, line := range req.Locations[0].Lines {
+		t.Logf("Found symbol: %s in %s:%d", line.FunctionName, line.FilePath, line.LineNumber)
+	}
+
+	// For the second request, we don't need to set up expectations again
+	// because the symbolizer should use its internal cache
+	req2 := &Request{
+		BuildID:    buildID,
+		BinaryName: "test-binary",
+		Locations: []*Location{
+			{
+				Address: 0x1b743d6,
+				Mapping: &pprof.Mapping{
+					Start:   0x403000,
+					Limit:   0x1d75000,
+					Offset:  0x3000,
+					BuildID: buildID,
+				},
+			},
+		},
+	}
+
+	err = sym.Symbolize(context.Background(), req2)
+	require.NoError(t, err)
+	require.NotEmpty(t, req2.Locations[0].Lines, "Should have found symbols from cache")
 }
 
 func TestSymbolizeWithCache(t *testing.T) {
@@ -380,7 +447,7 @@ func TestSymbolizerMetrics(t *testing.T) {
 			mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
 			tt.setupMock(mockClient)
 
-			s, err := NewProfileSymbolizer(nil, mockClient, NewNullDebugInfoStore(), metrics, 100, 100)
+			s, err := NewProfileSymbolizer(log.NewNopLogger(), mockClient, NewNullDebugInfoStore(), metrics, 100, 100)
 			require.NoError(t, err)
 
 			err = tt.setupTest(s, context.Background())
@@ -440,7 +507,6 @@ func assertLocationHasFunction(t *testing.T, profile *googlev1.Profile, loc *goo
 	return targetFunction
 }
 
-// Helper function to open the test file
 func openTestFile(t *testing.T) io.ReadCloser {
 	t.Helper()
 	f, err := os.Open("testdata/symbols.debug")
@@ -455,4 +521,21 @@ func openTestFile(t *testing.T) io.ReadCloser {
 		bs:  data,
 		off: 0,
 	}
+}
+
+func extractGzipFile(t *testing.T, gzipPath string) ([]byte, error) {
+	t.Helper()
+	file, err := os.Open(gzipPath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	gzipReader, err := gzip.NewReader(file)
+	if err != nil {
+		return nil, err
+	}
+	defer gzipReader.Close()
+
+	return io.ReadAll(gzipReader)
 }

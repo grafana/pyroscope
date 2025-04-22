@@ -141,7 +141,7 @@ func (f *Phlare) initQueryFrontendV2() (services.Service, error) {
 		f.reg,
 	)
 
-	newFrontend, err := queryfrontend.NewQueryFrontend(
+	newFrontend := queryfrontend.NewQueryFrontend(
 		log.With(f.logger, "component", "query-frontend"),
 		f.Overrides,
 		f.metastoreClient,
@@ -149,9 +149,6 @@ func (f *Phlare) initQueryFrontendV2() (services.Service, error) {
 		f.queryBackendClient,
 		f.symbolizer,
 	)
-	if err != nil {
-		return nil, err
-	}
 
 	// If the new read path is enabled globally by default,
 	// the old query frontend is not used. Tenant-specific overrides

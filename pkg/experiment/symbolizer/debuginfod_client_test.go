@@ -123,47 +123,6 @@ func TestDebuginfodClient(t *testing.T) {
 	}
 }
 
-func TestDebuginfodClientCache(t *testing.T) {
-	// Create a test server that counts requests
-	requestCount := 0
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestCount++
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("mock debug info"))
-	}))
-	defer server.Close()
-
-	// Create a client with the test server URL
-	metrics := NewMetrics(prometheus.NewRegistry())
-	client, err := NewDebuginfodClient(log.NewNopLogger(), server.URL, metrics)
-	require.NoError(t, err)
-
-	// Make multiple requests with the same build ID
-	buildID := "cache-test-id"
-	ctx := context.Background()
-
-	// First request should hit the server
-	reader1, err := client.FetchDebuginfo(ctx, buildID)
-	require.NoError(t, err)
-	data1, err := io.ReadAll(reader1)
-	require.NoError(t, err)
-	reader1.Close()
-	assert.Equal(t, "mock debug info", string(data1))
-	assert.Equal(t, 1, requestCount)
-
-	// Wait for cache operations to complete
-	client.cache.Wait()
-
-	// Second request should use the cache
-	reader2, err := client.FetchDebuginfo(ctx, buildID)
-	require.NoError(t, err)
-	data2, err := io.ReadAll(reader2)
-	require.NoError(t, err)
-	reader2.Close()
-	assert.Equal(t, "mock debug info", string(data2))
-	assert.Equal(t, 1, requestCount, "Expected no additional HTTP requests")
-}
-
 func TestDebuginfodClientSingleflight(t *testing.T) {
 	// Create a test server that sleeps to simulate a slow response
 	requestCount := 0

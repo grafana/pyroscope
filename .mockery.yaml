@@ -63,3 +63,4 @@ packages:
   github.com/grafana/pyroscope/pkg/experiment/symbolizer:
     interfaces:
       DebuginfodClient:
+      DebugInfoStore:

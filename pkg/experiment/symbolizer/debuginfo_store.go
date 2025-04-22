@@ -16,7 +16,7 @@ type DebugInfoStoreConfig struct {
 	Storage objstoreclient.Config `yaml:"storage"`
 }
 
-// DebugInfoCache handles caching of debug info files
+// DebugInfoStore handles caching of debug info files
 type DebugInfoStore interface {
 	Get(ctx context.Context, buildID string) (io.ReadCloser, error)
 	Put(ctx context.Context, buildID string, reader io.Reader) error
