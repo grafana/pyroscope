@@ -13,7 +13,6 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/dgraph-io/ristretto"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/backoff"
@@ -58,9 +57,6 @@ type DebuginfodHTTPClient struct {
 	metrics *Metrics
 	logger  log.Logger
 
-	// In-memory cache of build IDs to debug info data
-	cache *ristretto.Cache
-
 	// Used to deduplicate concurrent requests for the same build ID
 	group singleflight.Group
 }
@@ -76,13 +72,6 @@ func NewDebuginfodClient(logger log.Logger, baseURL string, metrics *Metrics) (*
 			MinBackoff: 1 * time.Second,
 			MaxBackoff: 10 * time.Second,
 			MaxRetries: 3,
-		},
-		CacheConfig: struct {
-			MaxSizeBytes int64
-			NumCounters  int64
-		}{
-			MaxSizeBytes: 2 << 30, // 2GB default
-			NumCounters:  1e7,     // 10M default
 		},
 	}, metrics)
 }
@@ -111,25 +100,6 @@ func NewDebuginfodClientWithConfig(logger log.Logger, cfg DebuginfodClientConfig
 		}
 	}
 
-	// Use default cache config if not specified
-	if cfg.CacheConfig.MaxSizeBytes == 0 {
-		cfg.CacheConfig.MaxSizeBytes = 2 << 30 // 2GB default
-	}
-	if cfg.CacheConfig.NumCounters == 0 {
-		cfg.CacheConfig.NumCounters = 1e7 // 10M default
-	}
-
-	// Create cache
-	cache, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: cfg.CacheConfig.NumCounters,
-		MaxCost:     cfg.CacheConfig.MaxSizeBytes,
-		BufferItems: 64, // number of keys per Get buffer
-	})
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to create debuginfod cache: %w", err)
-	}
-
 	return &DebuginfodHTTPClient{
 		cfg: DebuginfodClientConfig{
 			BaseURL:       cfg.BaseURL,
@@ -140,7 +110,6 @@ func NewDebuginfodClientWithConfig(logger log.Logger, cfg DebuginfodClientConfig
 			CacheConfig:   cfg.CacheConfig,
 		},
 		metrics: metrics,
-		cache:   cache,
 		logger:  logger,
 	}, nil
 }
@@ -155,22 +124,22 @@ func (c *DebuginfodHTTPClient) FetchDebuginfo(ctx context.Context, buildID strin
 		c.metrics.debuginfodRequestDuration.WithLabelValues(status).Observe(time.Since(start).Seconds())
 	}()
 
+	level.Debug(c.logger).Log(
+		"msg", "symbolizer: starting debuginfod fetch",
+		"build_id", buildID,
+	)
+
 	sanitizedBuildID, err := sanitizeBuildID(buildID)
 	if err != nil {
 		status = StatusErrorInvalidID
 		return nil, err
 	}
 
-	// Check in-memory cache first
-	if c.cache != nil {
-		if data, found := c.cache.Get(sanitizedBuildID); found {
-			status = StatusCacheHit
-			return io.NopCloser(bytes.NewReader(data.([]byte))), nil
-		}
-	}
-
 	// Check if there's already a request in flight for this build ID
-	// This prevents duplicate requests for the same build ID
+	level.Debug(c.logger).Log(
+		"msg", "symbolizer: making debuginfod request",
+		"build_id", sanitizedBuildID,
+	)
 	v, err, _ := c.group.Do(sanitizedBuildID, func() (interface{}, error) {
 		return c.fetchDebugInfoWithRetries(ctx, sanitizedBuildID)
 	})
@@ -193,6 +162,11 @@ func (c *DebuginfodHTTPClient) FetchDebuginfo(ctx context.Context, buildID strin
 
 	data := v.([]byte)
 	c.metrics.debuginfodFileSize.Observe(float64(len(data)))
+	level.Debug(c.logger).Log(
+		"msg", "symbolizer: debuginfod fetch successful",
+		"build_id", sanitizedBuildID,
+		"size", len(data),
+	)
 	return io.NopCloser(bytes.NewReader(data)), nil
 }
 
@@ -255,7 +229,7 @@ func (c *DebuginfodHTTPClient) fetchDebugInfoWithRetries(ctx context.Context, sa
 		statusCode, isHTTPErr := isHTTPStatusError(err)
 		if isHTTPErr && statusCode == http.StatusNotFound {
 			lastErr = buildIDNotFoundError{buildID: sanitizedBuildID}
-			return true // Stop retrying on 404
+			return true
 		}
 
 		// Store the error for later reporting
@@ -285,19 +259,6 @@ func (c *DebuginfodHTTPClient) fetchDebugInfoWithRetries(ctx context.Context, sa
 	// If we still have an error after all retries, return it with context
 	if lastErr != nil {
 		return nil, fmt.Errorf("failed to fetch debuginfo after %d attempts: %w", backOff.NumRetries(), lastErr)
-	}
-
-	// Store successful result in cache
-	if c.cache != nil {
-		// The cost is the size of the data in bytes
-		success := c.cache.Set(sanitizedBuildID, data, int64(len(data)))
-		if !success && c.logger != nil {
-			level.Warn(c.logger).Log(
-				"msg", "Failed to store debuginfo in cache",
-				"sanitizedBuildID", sanitizedBuildID,
-				"size", len(data),
-			)
-		}
 	}
 
 	return data, nil
@@ -376,6 +337,10 @@ func isRetryableError(err error) bool {
 // It validates that the build ID contains only alphanumeric characters, underscores, and hyphens.
 // This prevents potential security issues like path traversal attacks.
 func sanitizeBuildID(buildID string) (string, error) {
+	if buildID == "" {
+		return "", invalidBuildIDError{buildID: buildID}
+	}
+
 	// Only allow alphanumeric characters, underscores, and hyphens
 	validBuildID := regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 	if !validBuildID.MatchString(buildID) {

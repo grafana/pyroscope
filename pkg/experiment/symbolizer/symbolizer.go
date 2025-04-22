@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dgraph-io/ristretto"
+	"github.com/dgraph-io/ristretto/v2"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	pprof "github.com/google/pprof/profile"
@@ -48,8 +48,14 @@ type ProfileSymbolizer struct {
 	store   DebugInfoStore
 	metrics *Metrics
 
-	symbolCache     *lru.Cache[string, []lidia.SourceInfoFrame]
-	lidiaTableCache *ristretto.Cache
+	symbolCache     *lru.Cache[SymbolCacheKey, []lidia.SourceInfoFrame]
+	lidiaTableCache *ristretto.Cache[string, LidiaTableCacheEntry]
+}
+
+// SymbolCacheKey represents a key for the symbol cache
+type SymbolCacheKey struct {
+	BuildID string
+	Address uint64
 }
 
 func NewFromConfig(_ context.Context, logger log.Logger, cfg Config, reg prometheus.Registerer, bucket objstore.Bucket) (*ProfileSymbolizer, error) {
@@ -83,13 +89,13 @@ func NewFromConfig(_ context.Context, logger log.Logger, cfg Config, reg prometh
 }
 
 func NewProfileSymbolizer(logger log.Logger, client DebuginfodClient, store DebugInfoStore, metrics *Metrics, symbolCacheSize int, lidiaTableCacheSize int) (*ProfileSymbolizer, error) {
-	symbolCache, err := lru.New[string, []lidia.SourceInfoFrame](symbolCacheSize)
+	symbolCache, err := lru.New[SymbolCacheKey, []lidia.SourceInfoFrame](symbolCacheSize)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create symbol cache: %w", err)
 	}
 
 	// Create Ristretto cache for lidia tables
-	lidiaTableCache, err := ristretto.NewCache(&ristretto.Config{
+	lidiaTableCache, err := ristretto.NewCache(&ristretto.Config[string, LidiaTableCacheEntry]{
 		NumCounters: 1e7,                        // number of keys to track frequency of (10M)
 		MaxCost:     int64(lidiaTableCacheSize), // maximum cost of cache
 		BufferItems: 64,                         // number of keys per Get buffer
@@ -237,9 +243,6 @@ func (s *ProfileSymbolizer) extractBuildID(profile *googlev1.Profile, mapping *g
 		return "", err
 	}
 
-	level.Info(s.logger).Log("msg", ">> mapping build id --> ", "mapping.BuildId", mapping.BuildId)
-	level.Info(s.logger).Log("msg", ">> build id --> ", "buildID", sanitizedBuildID)
-
 	return sanitizedBuildID, nil
 }
 
@@ -348,7 +351,6 @@ func (s *ProfileSymbolizer) Symbolize(ctx context.Context, req *Request) error {
 		return nil
 	}
 
-	// Fetch from debuginfod as last resort
 	return s.fetchAndCacheFromDebuginfod(ctx, req, &status)
 }
 
@@ -372,7 +374,7 @@ func (s *ProfileSymbolizer) symbolizeWithTable(_ context.Context, table *lidia.T
 		frames, err := table.Lookup(framesBuf, addr)
 		if err != nil {
 			level.Error(s.logger).Log(
-				"msg", "Failed to resolve address on Lidia table lookup",
+				"msg", "failed to resolve address on Lidia table lookup",
 				"addr", fmt.Sprintf("0x%x", addr),
 				"binary", req.BinaryName,
 				"build_id", req.BuildID,
@@ -440,13 +442,8 @@ func (s *ProfileSymbolizer) checkLidiaTableCache(ctx context.Context, req *Reque
 
 	if data, found := s.lidiaTableCache.Get(req.BuildID); found {
 		lidiaTableStatus = StatusCacheHit
-
-		// Since this is not in production yet, we can assume the cached data is always a LidiaTableCacheEntry
-		entry := data.(LidiaTableCacheEntry)
-		dataBytes := entry.Data
-		ei := entry.EI
-		level.Debug(s.logger).Log("msg", "Using cached BinaryLayout", "buildID", req.BuildID)
-
+		dataBytes := data.Data
+		ei := data.EI
 		lidiaReader := &memoryReader{
 			bs:  dataBytes,
 			off: 0,
@@ -479,6 +476,10 @@ func (s *ProfileSymbolizer) checkLidiaTableCache(ctx context.Context, req *Reque
 // checkObjectStoreCache checks if the debug info is in the object store cache
 func (s *ProfileSymbolizer) checkObjectStoreCache(ctx context.Context, req *Request) bool {
 	if s.store == nil {
+		level.Debug(s.logger).Log(
+			"msg", "object store is nil, skipping cache check",
+			"build_id", req.BuildID,
+		)
 		return false
 	}
 
@@ -487,6 +488,11 @@ func (s *ProfileSymbolizer) checkObjectStoreCache(ctx context.Context, req *Requ
 	objstoreReader, err := s.store.Get(ctx, req.BuildID)
 
 	if err != nil {
+		level.Debug(s.logger).Log(
+			"msg", "failed to get from object store",
+			"build_id", req.BuildID,
+			"error", err,
+		)
 		s.metrics.cacheOperations.WithLabelValues("objstore_cache", "get", objstoreStatus).Observe(time.Since(objstoreStart).Seconds())
 		return false
 	}
@@ -498,8 +504,13 @@ func (s *ProfileSymbolizer) checkObjectStoreCache(ctx context.Context, req *Requ
 	// Read the entire content to store in Ristretto cache
 	var buf bytes.Buffer
 	teeReader := io.TeeReader(objstoreReader, &buf)
-	err = s.symbolizeFromReader(ctx, io.NopCloser(teeReader), req)
+	err = s.symbolizeFromReader(ctx, io.NopCloser(teeReader), req, true)
 	if err != nil {
+		level.Error(s.logger).Log(
+			"msg", "failed to symbolize from object store data",
+			"build_id", req.BuildID,
+			"error", err,
+		)
 		return false
 	}
 
@@ -508,6 +519,11 @@ func (s *ProfileSymbolizer) checkObjectStoreCache(ctx context.Context, req *Requ
 		data := buf.Bytes()
 		cacheStart := time.Now()
 		if err := s.storeLidiaTableInCache(data, req.BuildID, cacheStart); err != nil {
+			level.Error(s.logger).Log(
+				"msg", "failed to store in lidia table cache",
+				"build_id", req.BuildID,
+				"error", err,
+			)
 			return false
 		}
 	}
@@ -537,7 +553,7 @@ func (s *ProfileSymbolizer) fetchAndCacheFromDebuginfod(ctx context.Context, req
 	var buf bytes.Buffer
 	teeReader := io.TeeReader(debugReader, &buf)
 
-	err = s.symbolizeFromReader(ctx, io.NopCloser(teeReader), req)
+	err = s.symbolizeFromReader(ctx, io.NopCloser(teeReader), req, false)
 	if err != nil {
 		return err
 	}
@@ -612,26 +628,30 @@ func (s *ProfileSymbolizer) updateAllCaches(ctx context.Context, req *Request, d
 	return nil
 }
 
-func (s *ProfileSymbolizer) symbolizeFromReader(ctx context.Context, r io.ReadCloser, req *Request) error {
+func (s *ProfileSymbolizer) symbolizeFromReader(ctx context.Context, r io.ReadCloser, req *Request, isLidia bool) error {
 	// Read the entire content into memory
 	data, err := io.ReadAll(r)
 	if err != nil {
 		return fmt.Errorf("read content: %w", err)
 	}
 
-	// Process the ELF data
-	lidiaData, ei, err := s.processELFData(data)
-	if err != nil {
-		// Handle error or create mock symbols if needed
-		level.Debug(s.logger).Log("msg", "Failed to process ELF data, creating mock symbols", "err", err)
-		for _, loc := range req.Locations {
-			loc.Lines = []lidia.SourceInfoFrame{{
-				FunctionName: fmt.Sprintf("%s!0x%x", req.BinaryName, loc.Address),
-				FilePath:     fmt.Sprintf("unknown_file_0x%x", loc.Address),
-				LineNumber:   0,
-			}}
+	var lidiaData []byte
+	var ei *BinaryLayout
+
+	if isLidia {
+		// Data is already in Lidia format
+		lidiaData = data
+	} else {
+		// Process as ELF data
+		lidiaData, ei, err = s.processELFData(data)
+		if err != nil {
+			level.Error(s.logger).Log(
+				"msg", "symbolizer: Failed to process ELF data",
+				"build_id", req.BuildID,
+				"error", err,
+			)
+			return err
 		}
-		return nil
 	}
 
 	// Create a reader for the Lidia table
@@ -644,19 +664,65 @@ func (s *ProfileSymbolizer) symbolizeFromReader(ctx context.Context, r io.ReadCl
 	table, err := lidia.OpenReader(lidiaReader, lidia.WithCRC())
 	if err != nil {
 		s.metrics.debugSymbolResolution.WithLabelValues("lidia_error").Observe(0)
-		level.Error(s.logger).Log("msg", "Error opening Lidia table", "err", err)
+		level.Error(s.logger).Log("msg", "opening Lidia table", "err", err)
 		return fmt.Errorf("open lidia file: %w", err)
 	}
 	defer table.Close()
+
+	// If we're reading a Lidia file, get the binary layout from the table
+	if isLidia {
+		lidiaLayout, err := table.GetBinaryLayout()
+		if err != nil {
+			level.Error(s.logger).Log(
+				"msg", "failed to get binary layout from Lidia table",
+				"build_id", req.BuildID,
+				"error", err,
+			)
+			return err
+		}
+		ei = convertBinaryLayout(lidiaLayout)
+	}
 
 	return s.symbolizeWithTable(ctx, table, ei, req)
 }
 
 func (s *ProfileSymbolizer) storeLidiaTableInCache(data []byte, buildID string, cacheStart time.Time) error {
-	// Process the ELF data
-	lidiaData, ei, err := s.processELFData(data)
-	if err != nil {
-		return err
+	var lidiaData []byte
+	var ei *BinaryLayout
+	var err error
+
+	// Check if data is already in Lidia format by looking for the magic number
+	if len(data) >= 4 && data[0] == 0x2e && data[1] == 0x64 && data[2] == 0x69 && data[3] == 0x61 {
+		// Data is already in Lidia format
+		lidiaData = data
+
+		// Create a reader for the Lidia table
+		lidiaReader := &memoryReader{
+			bs:  lidiaData,
+			off: 0,
+		}
+
+		// Open the Lidia table to extract binary layout
+		table, err := lidia.OpenReader(lidiaReader, lidia.WithCRC())
+		if err != nil {
+			return fmt.Errorf("open lidia file: %w", err)
+		}
+		defer table.Close()
+
+		// Get binary layout from the Lidia table
+		lidiaLayout, err := table.GetBinaryLayout()
+		if err != nil {
+			return fmt.Errorf("get binary layout from lidia table: %w", err)
+		}
+
+		// Convert to our internal binary layout format
+		ei = convertBinaryLayout(lidiaLayout)
+	} else {
+		// Process as ELF data
+		lidiaData, ei, err = s.processELFData(data)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Store both the processed Lidia table data and the BinaryLayout in the cache
@@ -668,7 +734,7 @@ func (s *ProfileSymbolizer) storeLidiaTableInCache(data []byte, buildID string, 
 	success := s.lidiaTableCache.Set(buildID, entry, int64(len(lidiaData)))
 	s.metrics.cacheOperations.WithLabelValues("debuginfo_cache", "set", StatusSuccess).Observe(time.Since(cacheStart).Seconds())
 	if !success {
-		level.Warn(s.logger).Log("msg", "Failed to store debug info in cache", "buildID", buildID, "size", len(lidiaData))
+		level.Warn(s.logger).Log("msg", "failed to store debug info in cache", "buildID", buildID, "size", len(lidiaData))
 	}
 	s.metrics.cacheSizeBytes.WithLabelValues("debuginfo_cache").Set(float64(len(lidiaData)))
 
@@ -733,13 +799,15 @@ func (s *ProfileSymbolizer) createNotFoundSymbols(binaryName string, loc *Locati
 
 	return []lidia.SourceInfoFrame{{
 		FunctionName: fmt.Sprintf("%s!0x%x", prefix, loc.Address),
-		FilePath:     fmt.Sprintf("mapped_0x%x", addr),
 		LineNumber:   0,
 	}}
 }
 
-func (s *ProfileSymbolizer) createSymbolCacheKey(buildID string, address uint64) string {
-	return fmt.Sprintf("%s:%x", buildID, address)
+func (s *ProfileSymbolizer) createSymbolCacheKey(buildID string, address uint64) SymbolCacheKey {
+	return SymbolCacheKey{
+		BuildID: buildID,
+		Address: address,
+	}
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
@@ -750,4 +818,27 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.IntVar(&cfg.InMemoryLidiaTableCacheSize, "symbolizer.in-memory-debuginfo-cache-size", DefaultInMemoryLidiaTableCacheSize, "Maximum size in bytes for the in-memory debug info cache")
 	f.DurationVar(&cfg.PersistentDebugInfoStore.MaxAge, "symbolizer.persistent-debuginfo-store.max-age", 7*24*time.Hour, "Maximum age of stored debug info")
 	cfg.PersistentDebugInfoStore.Storage.RegisterFlagsWithPrefix("symbolizer.persistent-debuginfo-store.storage.", f)
+}
+
+func convertBinaryLayout(info *lidia.BinaryLayoutInfo) *BinaryLayout {
+	if info == nil {
+		return nil
+	}
+
+	layout := &BinaryLayout{
+		ElfType:        info.Type,
+		ProgramHeaders: make([]MemoryRegion, len(info.ProgramHeaders)),
+	}
+
+	for i, ph := range info.ProgramHeaders {
+		layout.ProgramHeaders[i] = MemoryRegion{
+			Off:    ph.Offset,
+			Vaddr:  ph.VirtualAddr,
+			Filesz: ph.FileSize,
+			Memsz:  ph.MemSize,
+			Type:   ph.Type,
+		}
+	}
+
+	return layout
 }

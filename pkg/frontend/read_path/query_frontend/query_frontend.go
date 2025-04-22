@@ -57,7 +57,7 @@ func NewQueryFrontend(
 	tenantServiceClient metastorev1.TenantServiceClient,
 	querybackendClient QueryBackend,
 	sym *symbolizer.ProfileSymbolizer,
-) (*QueryFrontend, error) {
+) *QueryFrontend {
 	return &QueryFrontend{
 		logger:              logger,
 		limits:              limits,
@@ -65,7 +65,7 @@ func NewQueryFrontend(
 		tenantServiceClient: tenantServiceClient,
 		querybackend:        querybackendClient,
 		symbolizer:          sym,
-	}, nil
+	}
 }
 
 var xrand = rand.New(rand.NewSource(4349676827832284783))
