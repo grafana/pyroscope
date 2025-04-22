@@ -11,10 +11,13 @@ const (
 	version uint32 = 1
 
 	// Size of the file header in bytes
-	headerSize = 0x80
+	headerSize = 0x98
 
 	// Number of fields in a line table entry
 	lineTableFieldsCount = 2
+
+	// Size of each line table entry (2 uint16s or 2 uint32s)
+	lineTableFieldsSize = 4
 
 	// Number of fields in a range entry
 	fieldsCount = 8
