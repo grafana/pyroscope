@@ -16,7 +16,7 @@
 | Repository | Name | Version |
 |------------|------|---------|
 | https://charts.min.io/ | minio(minio) | 4.0.12 |
-| https://grafana.github.io/helm-charts | alloy(alloy) | 0.3.2 |
+| https://grafana.github.io/helm-charts | alloy(alloy) | 1.0.1 |
 | https://grafana.github.io/helm-charts | agent(grafana-agent) | 0.25.0 |
 
 ## Values
@@ -24,7 +24,7 @@
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | agent | object | `{"agent":{"clustering":{"enabled":true},"configMap":{"create":false,"name":"grafana-agent-config-pyroscope"}},"controller":{"podAnnotations":{"profiles.grafana.com/cpu.port_name":"http-metrics","profiles.grafana.com/cpu.scrape":"true","profiles.grafana.com/goroutine.port_name":"http-metrics","profiles.grafana.com/goroutine.scrape":"true","profiles.grafana.com/memory.port_name":"http-metrics","profiles.grafana.com/memory.scrape":"true"},"replicas":1,"type":"statefulset"},"enabled":false}` | ----------------------------------- |
-| alloy | object | `{"alloy":{"clustering":{"enabled":true},"configMap":{"create":false,"name":"alloy-config-pyroscope"},"stabilityLevel":"public-preview"},"controller":{"podAnnotations":{"profiles.grafana.com/cpu.port_name":"http-metrics","profiles.grafana.com/cpu.scrape":"true","profiles.grafana.com/goroutine.port_name":"http-metrics","profiles.grafana.com/goroutine.scrape":"true","profiles.grafana.com/memory.port_name":"http-metrics","profiles.grafana.com/memory.scrape":"true"},"replicas":1,"type":"statefulset"},"enabled":true}` | ----------------------------------- |
+| alloy | object | `{"alloy":{"clustering":{"enabled":true},"configMap":{"create":false,"name":"alloy-config-pyroscope"},"stabilityLevel":"public-preview"},"controller":{"podAnnotations":{"profiles.grafana.com/cpu.port_name":"http-metrics","profiles.grafana.com/cpu.scrape":"true","profiles.grafana.com/goroutine.port_name":"http-metrics","profiles.grafana.com/goroutine.scrape":"true","profiles.grafana.com/memory.port_name":"http-metrics","profiles.grafana.com/memory.scrape":"true","profiles.grafana.com/service_git_ref":"v1.8.1","profiles.grafana.com/service_repository":"https://github.com/grafana/alloy"},"replicas":1,"type":"statefulset"},"enabled":true}` | ----------------------------------- |
 | ingress.className | string | `""` |  |
 | ingress.enabled | bool | `false` |  |
 | minio | object | `{"buckets":[{"name":"grafana-pyroscope-data","policy":"none","purge":false}],"drivesPerNode":2,"enabled":false,"persistence":{"size":"5Gi"},"podAnnotations":{},"replicas":1,"resources":{"requests":{"cpu":"100m","memory":"128Mi"}},"rootPassword":"supersecret","rootUser":"grafana-pyroscope"}` | ----------------------------------- |

@@ -41,7 +41,9 @@
         "profiles.grafana.com/goroutine.port_name": "http-metrics",
         "profiles.grafana.com/goroutine.scrape": "true",
         "profiles.grafana.com/memory.port_name": "http-metrics",
-        "profiles.grafana.com/memory.scrape": "true"
+        "profiles.grafana.com/memory.scrape": "true",
+        "profiles.grafana.com/service_git_ref": "v1.8.1",
+        "profiles.grafana.com/service_repository": "https://github.com/grafana/alloy"
       },
       "replicas": 1,
       "type": "statefulset"
