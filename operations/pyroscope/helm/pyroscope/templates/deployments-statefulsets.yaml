@@ -183,6 +183,9 @@ spec:
       selector:
         {{- toYaml $persistence.selector | nindent 8 }}
       {{- end }}
+  {{- with $persistence.extraVolumeClaimTemplates }}
+  {{- toYaml . | nindent 2 }}
+  {{- end }}
   {{- end }}
 ---
 {{- $pdb := $values.podDisruptionBudget }}
