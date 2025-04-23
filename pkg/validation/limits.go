@@ -492,7 +492,18 @@ func (o *Overrides) ReadPathOverrides(tenantID string) readpath.Config {
 }
 
 func (o *Overrides) PlacementLimits(tenantID string) adaptive_placement.PlacementLimits {
-	return o.getOverridesForTenant(tenantID).AdaptivePlacementLimits
+	// Both limits aimed at the same thing: limit the number of shards tenant's
+	// data is distributed to. The IngestionTenantShardSize specifies the number
+	// of ingester instances (taking into account the replication factor), while
+	// the PlacementLimits.TenantShards specifies the number of shards and it's
+	// not set by default. Each segment writer own very small number of shards
+	// (4, by default) so we can use the same value for both.
+	t := o.getOverridesForTenant(tenantID)
+	l := t.AdaptivePlacementLimits
+	if t.IngestionTenantShardSize > 0 && uint64(t.IngestionTenantShardSize) > l.TenantShards {
+		l.TenantShards = uint64(t.IngestionTenantShardSize)
+	}
+	return l
 }
 
 func (o *Overrides) DefaultLimits() *Limits {
