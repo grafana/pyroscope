@@ -28,6 +28,8 @@ spec:
     metadata:
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
+        profiles.grafana.com/service_git_ref: "v{{ .Chart.AppVersion }}"
         {{- with $values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
