@@ -23,7 +23,7 @@ const (
 func main() {
 	client := &localDebuginfodClient{debugFilePath: "/usr/lib/debug/.build-id/6d/64b17fbac799e68da7ebd9985ddf9b5cb375e6.debug"}
 	logger := log2.NewLogfmtLogger(os.Stdout)
-	s, err := symbolizer.NewProfileSymbolizer(logger, client, nil, symbolizer.NewMetrics(nil), 10, 10)
+	s, err := symbolizer.NewProfileSymbolizer(logger, client, nil, symbolizer.NewMetrics(nil), 10, 10, nil)
 
 	if err != nil {
 		log.Fatalf("Failed to create debuginfod client: %v", err)

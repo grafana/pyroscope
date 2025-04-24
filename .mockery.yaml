@@ -64,3 +64,4 @@ packages:
     interfaces:
       DebuginfodClient:
       DebugInfoStore:
+      Limits:

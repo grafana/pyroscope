@@ -19,6 +19,7 @@ import (
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/prometheus/client_golang/prometheus"
 
+	"github.com/grafana/dskit/tenant"
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"github.com/grafana/pyroscope/lidia"
 	"github.com/grafana/pyroscope/pkg/objstore"
@@ -41,12 +42,17 @@ type Config struct {
 	PersistentDebugInfoStore    DebugInfoStoreConfig `yaml:"persistent_debuginfo_store"`
 }
 
+type Limits interface {
+	SymbolizerEnabled(string) bool
+}
+
 // ProfileSymbolizer implements Symbolizer
 type ProfileSymbolizer struct {
 	logger  log.Logger
 	client  DebuginfodClient
 	store   DebugInfoStore
 	metrics *Metrics
+	limits  Limits
 
 	symbolCache     *lru.Cache[SymbolCacheKey, []lidia.SourceInfoFrame]
 	lidiaTableCache *ristretto.Cache[string, LidiaTableCacheEntry]
@@ -58,7 +64,7 @@ type SymbolCacheKey struct {
 	Address uint64
 }
 
-func NewFromConfig(_ context.Context, logger log.Logger, cfg Config, reg prometheus.Registerer, bucket objstore.Bucket) (*ProfileSymbolizer, error) {
+func NewFromConfig(_ context.Context, logger log.Logger, cfg Config, reg prometheus.Registerer, bucket objstore.Bucket, limits Limits) (*ProfileSymbolizer, error) {
 	metrics := NewMetrics(reg)
 
 	if bucket == nil {
@@ -85,10 +91,10 @@ func NewFromConfig(_ context.Context, logger log.Logger, cfg Config, reg prometh
 		lidiaTableCacheSize = cfg.InMemoryLidiaTableCacheSize
 	}
 
-	return NewProfileSymbolizer(logger, client, store, metrics, symbolCacheSize, lidiaTableCacheSize)
+	return NewProfileSymbolizer(logger, client, store, metrics, symbolCacheSize, lidiaTableCacheSize, limits)
 }
 
-func NewProfileSymbolizer(logger log.Logger, client DebuginfodClient, store DebugInfoStore, metrics *Metrics, symbolCacheSize int, lidiaTableCacheSize int) (*ProfileSymbolizer, error) {
+func NewProfileSymbolizer(logger log.Logger, client DebuginfodClient, store DebugInfoStore, metrics *Metrics, symbolCacheSize int, lidiaTableCacheSize int, limits Limits) (*ProfileSymbolizer, error) {
 	symbolCache, err := lru.New[SymbolCacheKey, []lidia.SourceInfoFrame](symbolCacheSize)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create symbol cache: %w", err)
@@ -109,12 +115,30 @@ func NewProfileSymbolizer(logger log.Logger, client DebuginfodClient, store Debu
 		client:          client,
 		store:           store,
 		metrics:         metrics,
+		limits:          limits,
 		symbolCache:     symbolCache,
 		lidiaTableCache: lidiaTableCache,
 	}, nil
 }
 
 func (s *ProfileSymbolizer) SymbolizePprof(ctx context.Context, profile *googlev1.Profile) error {
+	tenantIDs, err := tenant.TenantIDs(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get tenant ID: %w", err)
+	}
+	if len(tenantIDs) > 1 {
+		return fmt.Errorf("symbolization does not support multi-tenant requests")
+	}
+	tenantID := tenantIDs[0]
+
+	if !s.limits.SymbolizerEnabled(tenantID) {
+		level.Debug(s.logger).Log(
+			"msg", "symbolization disabled for tenant",
+			"tenant", tenantID,
+		)
+		return nil
+	}
+
 	level.Info(s.logger).Log("msg", ">> starting SymbolizePprof")
 	start := time.Now()
 	status := StatusSuccess
@@ -295,7 +319,7 @@ func (s *ProfileSymbolizer) updateProfileWithSymbols(profile *googlev1.Profile, 
 
 	mapping.HasFunctions = true
 	mapping.HasFilenames = true
-	mapping.HasLineNumbers = true
+	//mapping.HasLineNumbers = true
 }
 
 // findOrAddString finds a string in the string table or adds it if not found
@@ -811,7 +835,6 @@ func (s *ProfileSymbolizer) createSymbolCacheKey(buildID string, address uint64)
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
-	// TODO: change me back to false!
 	f.BoolVar(&cfg.Enabled, "symbolizer.enabled", true, "Enable symbolization for unsymbolized profiles")
 	f.StringVar(&cfg.DebuginfodURL, "symbolizer.debuginfod-url", "https://debuginfod.elfutils.org", "URL of the debuginfod server")
 	f.IntVar(&cfg.InMemorySymbolCacheSize, "symbolizer.in-memory-symbol-cache-size", DefaultInMemorySymbolCacheSize, "Maximum number of entries in the in-memory symbol cache")
