@@ -157,7 +157,7 @@ func (f *Phlare) initQueryFrontendV2() (services.Service, error) {
 
 	var handler querierv1connect.QuerierServiceHandler
 	handler = newFrontend
-	if f.isV1QueryFrontendInUse() {
+	if !f.isV2QueryFrontendOnly() {
 		handler = readpath.NewRouter(
 			log.With(f.logger, "component", "read-path-router"),
 			f.Overrides,
@@ -180,7 +180,7 @@ func (f *Phlare) initQueryFrontendV2() (services.Service, error) {
 	return svc, nil
 }
 
-func (f *Phlare) isV1QueryFrontendInUse() bool {
+func (f *Phlare) isV2QueryFrontendOnly() bool {
 	c := f.Overrides.ReadPathOverrides(tenant.DefaultTenantID)
 	return c.EnableQueryBackend && c.EnableQueryBackendFrom.IsZero()
 }
