@@ -148,6 +148,7 @@ func (f *Phlare) initQueryFrontendV2() (services.Service, error) {
 		f.metastoreClient,
 		f.queryBackendClient,
 		f.symbolizer,
+		f.Overrides,
 	)
 
 	// If the new read path is enabled globally by default,

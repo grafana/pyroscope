@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mocksymbolizer"
 
 	"github.com/go-kit/log"
@@ -147,16 +146,10 @@ func TestSymbolizePprof(t *testing.T) {
 			mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
 			tt.setupMock(mockClient)
 
-			tenantID := "test-tenant"
-			mockLimits := mocksymbolizer.NewMockLimits(t)
-			mockLimits.On("SymbolizerEnabled", tenantID).Return(true).Once()
-
-			s, err := NewProfileSymbolizer(log.NewNopLogger(), mockClient, NewNullDebugInfoStore(), NewMetrics(nil), 1, 1, mockLimits)
+			s, err := NewProfileSymbolizer(log.NewNopLogger(), mockClient, NewNullDebugInfoStore(), NewMetrics(nil), 1, 1)
 			require.NoError(t, err)
 
-			ctx := tenant.InjectTenantID(context.Background(), tenantID)
-
-			err = s.SymbolizePprof(ctx, tt.profile)
+			err = s.SymbolizePprof(context.Background(), tt.profile)
 			if tt.wantErr {
 				require.Error(t, err)
 				return
@@ -185,7 +178,7 @@ func TestSymbolizationWithLidiaData(t *testing.T) {
 	err = store.Put(context.Background(), buildID, bytes.NewReader(lidiaData))
 	require.NoError(t, err)
 
-	sym, err := NewProfileSymbolizer(log.NewNopLogger(), nil, store, NewMetrics(nil), 100, 1024*1024, nil)
+	sym, err := NewProfileSymbolizer(log.NewNopLogger(), nil, store, NewMetrics(nil), 100, 1024*1024)
 	require.NoError(t, err)
 
 	// Create a symbolization request with some addresses to test
@@ -261,7 +254,7 @@ func TestSymbolizeWithCache(t *testing.T) {
 	metrics := NewMetrics(reg)
 
 	// Create a symbolizer with LRU cache
-	s, err := NewProfileSymbolizer(log.NewNopLogger(), mockClient, NewNullDebugInfoStore(), metrics, 100000, 100000, nil)
+	s, err := NewProfileSymbolizer(log.NewNopLogger(), mockClient, NewNullDebugInfoStore(), metrics, 100000, 100000)
 	require.NoError(t, err)
 
 	// Request 1: First request - should be a cache miss for both symbol and debug info
@@ -454,7 +447,7 @@ func TestSymbolizerMetrics(t *testing.T) {
 			mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
 			tt.setupMock(mockClient)
 
-			s, err := NewProfileSymbolizer(log.NewNopLogger(), mockClient, NewNullDebugInfoStore(), metrics, 100, 100, nil)
+			s, err := NewProfileSymbolizer(log.NewNopLogger(), mockClient, NewNullDebugInfoStore(), metrics, 100, 100)
 			require.NoError(t, err)
 
 			err = tt.setupTest(s, context.Background())
@@ -470,84 +463,6 @@ func TestSymbolizerMetrics(t *testing.T) {
 			}
 
 			mockClient.AssertExpectations(t)
-		})
-	}
-}
-
-func TestSymbolizerTenantOverrides(t *testing.T) {
-	tests := []struct {
-		name              string
-		tenantID          string
-		wantSymbolization bool
-		setupMocks        func(tenantID string, mockLimits *mocksymbolizer.MockLimits, mockClient *mocksymbolizer.MockDebuginfodClient)
-	}{
-		{
-			name:              "symbolization enabled for tenant",
-			tenantID:          "tenant1",
-			wantSymbolization: true,
-			setupMocks: func(tenantID string, mockLimits *mocksymbolizer.MockLimits, mockClient *mocksymbolizer.MockDebuginfodClient) {
-				mockLimits.On("SymbolizerEnabled", tenantID).Return(true)
-				mockClient.On("FetchDebuginfo", mock.Anything, "build-id").
-					Return(openTestFile(t), nil).Once()
-			},
-		},
-		{
-			name:              "symbolization disabled for tenant",
-			tenantID:          "tenant2",
-			wantSymbolization: false,
-			setupMocks: func(tenantID string, mockLimits *mocksymbolizer.MockLimits, mockClient *mocksymbolizer.MockDebuginfodClient) {
-				mockLimits.On("SymbolizerEnabled", tenantID).Return(false)
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			mockLimits := mocksymbolizer.NewMockLimits(t)
-			mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
-			tt.setupMocks(tt.tenantID, mockLimits, mockClient)
-
-			sym, err := NewProfileSymbolizer(
-				log.NewNopLogger(),
-				mockClient,
-				NewNullDebugInfoStore(),
-				NewMetrics(nil),
-				100,
-				1000,
-				mockLimits,
-			)
-			require.NoError(t, err)
-
-			// Create context with tenant ID
-			ctx := tenant.InjectTenantID(context.Background(), tt.tenantID)
-
-			// Create a profile that would need symbolization
-			profile := &googlev1.Profile{
-				Mapping: []*googlev1.Mapping{{
-					BuildId:     1,
-					MemoryStart: 0x0,
-					MemoryLimit: 0x1000000,
-					FileOffset:  0x0,
-				}},
-				Location: []*googlev1.Location{{
-					MappingId: 1,
-					Address:   0x1500,
-				}},
-				StringTable: []string{"", "build-id"},
-			}
-
-			err = sym.SymbolizePprof(ctx, profile)
-			require.NoError(t, err)
-
-			mockClient.AssertExpectations(t)
-
-			if tt.wantSymbolization {
-				require.True(t, profile.Mapping[0].HasFunctions)
-				require.True(t, profile.Mapping[0].HasFilenames)
-			} else {
-				require.False(t, profile.Mapping[0].HasFunctions)
-				require.False(t, profile.Mapping[0].HasFilenames)
-			}
 		})
 	}
 }

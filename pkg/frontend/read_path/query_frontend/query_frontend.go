@@ -40,13 +40,14 @@ type Symbolizer interface {
 }
 
 type QueryFrontend struct {
-	logger log.Logger
-	limits frontend.Limits
+	logger           log.Logger
+	limits           frontend.Limits
+	symbolizerLimits symbolizer.Limits
 
 	metadataQueryClient metastorev1.MetadataQueryServiceClient
 	tenantServiceClient metastorev1.TenantServiceClient
 	querybackend        QueryBackend
-	symbolizer          *symbolizer.ProfileSymbolizer
+	symbolizer          Symbolizer
 }
 
 func NewQueryFrontend(
@@ -55,7 +56,8 @@ func NewQueryFrontend(
 	metadataQueryClient metastorev1.MetadataQueryServiceClient,
 	tenantServiceClient metastorev1.TenantServiceClient,
 	querybackendClient QueryBackend,
-	sym *symbolizer.ProfileSymbolizer,
+	sym Symbolizer,
+	symbolizerLimits symbolizer.Limits,
 ) *QueryFrontend {
 	return &QueryFrontend{
 		logger:              logger,
@@ -64,6 +66,7 @@ func NewQueryFrontend(
 		tenantServiceClient: tenantServiceClient,
 		querybackend:        querybackendClient,
 		symbolizer:          sym,
+		symbolizerLimits:    symbolizerLimits,
 	}
 }
 
@@ -133,7 +136,16 @@ func (q *QueryFrontend) Query(
 		return nil, err
 	}
 
-	if hasNativeProfiles && q.symbolizer != nil {
+	if len(tenants) == 0 {
+		return nil, fmt.Errorf("no tenant IDs found in context")
+	}
+	if len(tenants) > 1 {
+		return nil, fmt.Errorf("symbolization does not support multi-tenant requests")
+	}
+
+	symbolizationEnabled := q.symbolizerLimits.SymbolizerEnabled(tenants[0])
+
+	if symbolizationEnabled && hasNativeProfiles && q.symbolizer != nil {
 		for i, r := range resp.Reports {
 			if r.Pprof != nil && r.Pprof.Pprof != nil {
 				var prof profilev1.Profile

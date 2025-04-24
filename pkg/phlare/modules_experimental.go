@@ -264,7 +264,6 @@ func (f *Phlare) initSymbolizer() (services.Service, error) {
 		f.Cfg.Symbolizer,
 		f.reg,
 		f.storageBucket,
-		f.Overrides,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create symbolizer: %w", err)
