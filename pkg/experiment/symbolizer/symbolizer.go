@@ -41,10 +41,6 @@ type Config struct {
 	PersistentDebugInfoStore    DebugInfoStoreConfig `yaml:"persistent_debuginfo_store"`
 }
 
-type Limits interface {
-	SymbolizerEnabled(string) bool
-}
-
 // ProfileSymbolizer implements Symbolizer
 type ProfileSymbolizer struct {
 	logger  log.Logger

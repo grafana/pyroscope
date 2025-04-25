@@ -6,14 +6,6 @@ import (
 	"math/rand"
 	"slices"
 
-	"github.com/go-kit/log"
-	"github.com/grafana/dskit/tenant"
-	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/promql/parser"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/proto"
-
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -25,6 +17,13 @@ import (
 	"github.com/grafana/pyroscope/pkg/model"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
+
+	"github.com/go-kit/log"
+	"github.com/grafana/dskit/tenant"
+	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/promql/parser"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var _ querierv1connect.QuerierServiceClient = (*QueryFrontend)(nil)
@@ -99,7 +98,7 @@ func (q *QueryFrontend) Query(
 	// Modify queries based on symbolization needs
 	modifiedQueries := make([]*queryv1.Query, len(req.Query))
 	for i, originalQuery := range req.Query {
-		modifiedQueries[i] = proto.Clone(originalQuery).(*queryv1.Query)
+		modifiedQueries[i] = originalQuery.CloneVT()
 
 		// If we need symbolization and this is a TREE query, convert it to PPROF
 		if shouldSymbolize && originalQuery.QueryType == queryv1.QueryType_QUERY_TREE {
@@ -122,10 +121,6 @@ func (q *QueryFrontend) Query(
 	})
 	if err != nil {
 		return nil, err
-	}
-
-	if len(tenants) > 1 {
-		return nil, fmt.Errorf("symbolization does not support multi-tenant requests")
 	}
 
 	if shouldSymbolize {
@@ -210,14 +205,10 @@ func (q *QueryFrontend) hasNativeProfiles(block *metastorev1.BlockMeta) bool {
 
 // shouldSymbolize determines if we should symbolize profiles based on tenant settings
 func (q *QueryFrontend) shouldSymbolize(tenants []string, blocks []*metastorev1.BlockMeta) bool {
-	if q.symbolizer == nil {
-		return false
-	}
-
 	// Check if all tenants have symbolization enabled
 	// (once we support multi-tenant queries)
 	for _, t := range tenants {
-		if q.limits != nil && !q.limits.SymbolizerEnabled(t) {
+		if !q.limits.SymbolizerEnabled(t) {
 			return false
 		}
 	}
