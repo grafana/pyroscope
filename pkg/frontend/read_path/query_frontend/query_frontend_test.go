@@ -17,9 +17,9 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/tenant"
+	"github.com/grafana/pyroscope/pkg/test/mocks/mockfrontend"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockmetastorev1"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockquery_frontend"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mocksymbolizer"
 )
 
 func Test_QueryFrontend_QueryMetadata(t *testing.T) {
@@ -105,7 +105,7 @@ func TestQueryFrontendSymbolization(t *testing.T) {
 		symbolizerEnabled bool
 		hasNativeProfiles bool
 		profileType       string
-		setupMocks        func(*mocksymbolizer.MockLimits, *mockquery_frontend.MockSymbolizer)
+		setupMocks        func(*mockfrontend.MockLimits, *mockquery_frontend.MockSymbolizer)
 	}{
 		{
 			name:              "symbolization enabled for tenant with native profiles",
@@ -113,7 +113,7 @@ func TestQueryFrontendSymbolization(t *testing.T) {
 			symbolizerEnabled: true,
 			hasNativeProfiles: true,
 			profileType:       "otel",
-			setupMocks: func(mockLimits *mocksymbolizer.MockLimits, mockSymbolizer *mockquery_frontend.MockSymbolizer) {
+			setupMocks: func(mockLimits *mockfrontend.MockLimits, mockSymbolizer *mockquery_frontend.MockSymbolizer) {
 				mockLimits.On("SymbolizerEnabled", "tenant1").Return(true)
 				mockSymbolizer.On("SymbolizePprof", mock.Anything, mock.Anything).Return(nil).Once()
 			},
@@ -124,7 +124,7 @@ func TestQueryFrontendSymbolization(t *testing.T) {
 			symbolizerEnabled: false,
 			hasNativeProfiles: true,
 			profileType:       "otel",
-			setupMocks: func(mockLimits *mocksymbolizer.MockLimits, mockSymbolizer *mockquery_frontend.MockSymbolizer) {
+			setupMocks: func(mockLimits *mockfrontend.MockLimits, mockSymbolizer *mockquery_frontend.MockSymbolizer) {
 				mockLimits.On("SymbolizerEnabled", "tenant2").Return(false)
 				mockSymbolizer.AssertNotCalled(t, "SymbolizePprof")
 			},
@@ -135,7 +135,7 @@ func TestQueryFrontendSymbolization(t *testing.T) {
 			symbolizerEnabled: true,
 			hasNativeProfiles: false,
 			profileType:       "otel",
-			setupMocks: func(mockLimits *mocksymbolizer.MockLimits, mockSymbolizer *mockquery_frontend.MockSymbolizer) {
+			setupMocks: func(mockLimits *mockfrontend.MockLimits, mockSymbolizer *mockquery_frontend.MockSymbolizer) {
 				mockLimits.On("SymbolizerEnabled", "tenant3").Return(true)
 				mockSymbolizer.AssertNotCalled(t, "SymbolizePprof")
 			},
@@ -146,7 +146,7 @@ func TestQueryFrontendSymbolization(t *testing.T) {
 			symbolizerEnabled: true,
 			hasNativeProfiles: true,
 			profileType:       "non-otel",
-			setupMocks: func(mockLimits *mocksymbolizer.MockLimits, mockSymbolizer *mockquery_frontend.MockSymbolizer) {
+			setupMocks: func(mockLimits *mockfrontend.MockLimits, mockSymbolizer *mockquery_frontend.MockSymbolizer) {
 				mockLimits.On("SymbolizerEnabled", "tenant4").Return(true)
 				mockSymbolizer.AssertNotCalled(t, "SymbolizePprof")
 			},
@@ -155,9 +155,9 @@ func TestQueryFrontendSymbolization(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockSymbolizerLimits := mocksymbolizer.NewMockLimits(t)
+			mockLimits := mockfrontend.NewMockLimits(t)
 			mockSymbolizer := mockquery_frontend.NewMockSymbolizer(t)
-			tt.setupMocks(mockSymbolizerLimits, mockSymbolizer)
+			tt.setupMocks(mockLimits, mockSymbolizer)
 
 			mockQueryBackend := mockquery_frontend.NewMockQueryBackend(t)
 			mockQueryBackend.On("Invoke", mock.Anything, mock.Anything).Return(&queryv1.InvokeResponse{
@@ -187,12 +187,11 @@ func TestQueryFrontendSymbolization(t *testing.T) {
 
 			qf := NewQueryFrontend(
 				log.NewNopLogger(),
-				nil,
+				mockLimits,
 				mockMetadataClient,
 				nil,
 				mockQueryBackend,
 				mockSymbolizer,
-				mockSymbolizerLimits,
 			)
 
 			ctx := tenant.InjectTenantID(context.Background(), tt.tenantID)
@@ -207,7 +206,6 @@ func TestQueryFrontendSymbolization(t *testing.T) {
 
 			require.NoError(t, err)
 
-			mockSymbolizerLimits.AssertExpectations(t)
 			mockMetadataClient.AssertExpectations(t)
 			mockQueryBackend.AssertExpectations(t)
 		})

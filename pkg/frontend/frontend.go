@@ -32,6 +32,7 @@ import (
 	"github.com/grafana/dskit/tenant"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1/vcsv1connect"
+	"github.com/grafana/pyroscope/pkg/experiment/symbolizer"
 	"github.com/grafana/pyroscope/pkg/frontend/frontendpb"
 	"github.com/grafana/pyroscope/pkg/frontend/vcs"
 	"github.com/grafana/pyroscope/pkg/querier/stats"
@@ -112,6 +113,7 @@ type Limits interface {
 	MaxQueryLength(tenantID string) time.Duration
 	MaxQueryLookback(tenantID string) time.Duration
 	QueryAnalysisEnabled(string) bool
+	symbolizer.Limits
 	validation.FlameGraphLimits
 }
 
