@@ -203,7 +203,7 @@ func jump(key uint64, buckets int) int {
 }
 
 // Subring is a utility to calculate the subring
-// for a given key withing the available space:
+// for a given key within the available space:
 //
 // Note that this is not a recursive implementation,
 // but a more straightforward one, optimized for the

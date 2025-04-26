@@ -104,7 +104,7 @@ func (m *IndexStore) ListPartitions(tx *bbolt.Tx) ([]*Partition, error) {
 			if err != nil {
 				return err
 			}
-			if bytes.Compare(tenant, emptyTenantBucketNameBytes) == 0 {
+			if bytes.Equal(tenant, emptyTenantBucketNameBytes) {
 				tenant = nil
 			}
 			p.TenantShards[string(tenant)] = shards

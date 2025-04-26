@@ -190,7 +190,9 @@ func TestPlan_deleted_blocks(t *testing.T) {
 	} {
 		e.Index = uint64(i)
 		e.ID = strconv.Itoa(i)
-		c.enqueue(e)
+		if !c.enqueue(e) {
+			t.Errorf("failed to enqueue: %v", e)
+		}
 		i++
 	}
 

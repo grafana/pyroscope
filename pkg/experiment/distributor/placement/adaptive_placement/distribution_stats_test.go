@@ -135,7 +135,7 @@ func Test_StatsTracker(t *testing.T) {
 
 	// See what happens when a stale counter is removed (dataset-a, shard 1).
 	stats.Expire(time.Unix(40, 0))
-	s := stats.build(now.Nanoseconds())
+	stats.build(now.Nanoseconds())
 	expected = &adaptive_placementpb.DistributionStats{
 		Tenants: []*adaptive_placementpb.TenantStats{
 			{TenantId: "tenant-a"},
@@ -171,7 +171,7 @@ func Test_StatsTracker(t *testing.T) {
 
 	// Expire all counters.
 	stats.Expire(time.Now())
-	s = stats.build(now.Nanoseconds())
+	s := stats.build(now.Nanoseconds())
 	assert.Empty(t, s.Tenants)
 	assert.Empty(t, s.Datasets)
 	assert.Empty(t, s.Shards)

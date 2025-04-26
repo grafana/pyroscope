@@ -111,13 +111,8 @@ func (a *Admin) NodeListHandler() http.Handler {
 			}
 		}
 
-		raftState, err := a.fetchRaftState(r.Context())
-		if err != nil {
-			httputil.Error(w, err)
-			return
-		}
-
-		err = pageTemplates.nodesTemplate.Execute(w, nodesPageContent{
+		raftState := a.fetchRaftState(r.Context())
+		err := pageTemplates.nodesTemplate.Execute(w, nodesPageContent{
 			DiscoveredServers: a.servers,
 			Raft:              raftState,
 			Now:               time.Now().UTC(),
@@ -128,7 +123,7 @@ func (a *Admin) NodeListHandler() http.Handler {
 	})
 }
 
-func (a *Admin) fetchRaftState(ctx context.Context) (*raftNodeState, error) {
+func (a *Admin) fetchRaftState(ctx context.Context) *raftNodeState {
 	observedLeaders := make(map[string]int)
 	numRaftNodes := 0
 	nodes := make([]*metastoreNode, 0, len(a.servers))
@@ -184,7 +179,7 @@ func (a *Admin) fetchRaftState(ctx context.Context) (*raftNodeState, error) {
 		ObservedLeaders: observedLeaders,
 		CurrentTerm:     currentTerm,
 		NumNodes:        numRaftNodes,
-	}, nil
+	}
 }
 
 func findCurrentTerm(nodes []*metastoreNode) uint64 {
@@ -248,12 +243,7 @@ func (a *Admin) addFormActionHandlers() {
 
 func (a *Admin) ClientTestHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		raftState, err := a.fetchRaftState(r.Context())
-		if err != nil {
-			httputil.Error(w, err)
-			return
-		}
-
+		raftState := a.fetchRaftState(r.Context())
 		content := clientTestPageContent{
 			Raft: raftState,
 			Now:  time.Now().UTC(),
@@ -270,7 +260,7 @@ func (a *Admin) ClientTestHandler() http.Handler {
 			}
 		}
 
-		err = pageTemplates.clientTestTemplate.Execute(w, content)
+		err := pageTemplates.clientTestTemplate.Execute(w, content)
 		if err != nil {
 			httputil.Error(w, err)
 		}

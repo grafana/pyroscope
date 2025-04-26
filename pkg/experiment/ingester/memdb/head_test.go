@@ -874,6 +874,7 @@ func mustParseProfileSelector(t testing.TB, selector string) *typesv1.ProfileTyp
 	return ps
 }
 
+//nolint:unparam
 func ingestProfiles(b testing.TB, db *Head, generator func(tsNano int64, t testing.TB) (*profilev1.Profile, string), from, to int64, step time.Duration, annotations []*typesv1.ProfileAnnotation, externalLabels ...*typesv1.LabelPair) {
 	b.Helper()
 	for i := from; i <= to; i += int64(step) {

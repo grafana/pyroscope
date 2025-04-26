@@ -246,7 +246,7 @@ func drawPlot(t *testing.T, test testPlot) {
 		allocShards[i] = fmt.Sprint(int(allocatedPoints.XYs[i].Y / float64(test.alloc.unitSize)))
 	}
 
-	allocIndexLabels, err := plotter.NewLabels(plotter.XYLabels{
+	allocIndexLabels, _ := plotter.NewLabels(plotter.XYLabels{
 		XYs:    allocatedPoints.XYs,
 		Labels: allocIndices,
 	})
@@ -255,7 +255,7 @@ func drawPlot(t *testing.T, test testPlot) {
 		allocIndexLabels.TextStyle[i].Font.Size = vg.Points(7)
 	}
 
-	allocShardsLabels, err := plotter.NewLabels(plotter.XYLabels{
+	allocShardsLabels, _ := plotter.NewLabels(plotter.XYLabels{
 		XYs:    allocatedPoints.XYs,
 		Labels: allocShards,
 	})
@@ -342,7 +342,7 @@ func generateData(
 	step *= multiplier
 	ac := len(anchors)
 
-	if weights == nil || len(weights) == 0 {
+	if len(weights) == 0 {
 		weights = make([]float64, ac)
 		for i := range weights {
 			weights[i] = 1.0
