@@ -38,7 +38,7 @@ import styles from './Toolbar.module.scss';
 const cx = classNames.bind(styles);
 
 const DIVIDER_WIDTH = 5;
-const QUERY_INPUT_WIDTH = 175;
+const QUERY_INPUT_WIDTH = 200;
 const LEFT_MARGIN = 2;
 const RIGHT_MARGIN = 2;
 const TOOLBAR_SQUARE_WIDTH = 40 + LEFT_MARGIN + RIGHT_MARGIN;
@@ -393,7 +393,6 @@ const getViewOptions = (
 }> =>
   flamegraphType === 'single'
     ? [
-        { label: 'Table', value: 'table', Icon: TableIcon },
         {
           label: 'Table and Flamegraph',
           value: 'both',

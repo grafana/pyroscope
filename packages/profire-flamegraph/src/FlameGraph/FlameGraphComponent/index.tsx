@@ -32,6 +32,7 @@ interface FlamegraphProps {
   updateFitMode: (f: FitModes) => void;
   highlightQuery: ConstructorParameters<typeof Flamegraph>[4];
   zoom: ConstructorParameters<typeof Flamegraph>[5];
+  isSandwich: boolean;
   showCredit: boolean;
   selectedItem: Maybe<string>;
 
@@ -71,6 +72,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
     headerVisible = true,
     disableClick = false,
     showSingleLevel = false,
+    isSandwich,
     showCredit,
     setActiveItem,
     selectedItem,
@@ -264,17 +266,21 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         );
       };
 
-      return [
-        <MenuItem key="reset" disabled={!dirty} onClick={onReset}>
-          <FontAwesomeIcon icon={faRedo} />
-          Reset View
-        </MenuItem>,
-        CollapseItem(),
-        CopyItem(),
-        HighlightSimilarNodesItem(),
-        OpenInSandwichViewItem(),
-        FitModeItem(),
-      ].filter(Boolean) as JSX.Element[];
+      const inUsedOptions = isSandwich
+        ? [CopyItem(), FitModeItem()]
+        : [
+            <MenuItem key="reset" disabled={!dirty} onClick={onReset}>
+              <FontAwesomeIcon icon={faRedo} />
+              Reset View
+            </MenuItem>,
+            CollapseItem(),
+            CopyItem(),
+            HighlightSimilarNodesItem(),
+            OpenInSandwichViewItem(),
+            FitModeItem(),
+          ];
+
+      return inUsedOptions.filter(Boolean) as JSX.Element[];
     },
     [flamegraph, selectedItem, fitMode]
   );
@@ -346,6 +352,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         <Header
           format={flamebearer.format}
           units={flamebearer.units}
+          titleStr={flamebearer.titleStr}
           palette={palette}
           setPalette={setPalette}
           toolbarVisible={toolbarVisible}
@@ -395,11 +402,12 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
           }
           units={flamebearer.units}
           unitStr={flamebearer.unitStr}
+          unitLevel={flamebearer.unitLevel}
           palette={palette}
         />
       )}
 
-      {!disableClick && flamegraph && canvasRef && (
+      {(!disableClick || isSandwich) && flamegraph && canvasRef && (
         <ContextMenu
           canvasRef={canvasRef}
           xyToMenuItems={xyToContextMenuItems}

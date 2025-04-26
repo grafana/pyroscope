@@ -1,8 +1,6 @@
 import { SpyName } from './spyName';
 import { Units } from './units';
-/**
- * @deprecated one should use the Profile model
- */
+
 export type Flamebearer = {
   /**
    * List of names
@@ -24,8 +22,10 @@ export type Flamebearer = {
    * Sample Rate, used in text information
    */
   sampleRate: number;
+  titleStr: string;
   units: Units;
   unitStr: string;
+  unitLevel: number;
 
   spyName: SpyName;
   // format: 'double' | 'single';

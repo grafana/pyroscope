@@ -34,6 +34,8 @@ export const MetadataSchema = z.object({
 
   units: UnitsSchema,
   unitStr: z.string().optional(),
+  unitLevel: z.number().default(0),
+  titleStr: z.string().optional()
 });
 
 export const FlamebearerProfileSchema = z.object({

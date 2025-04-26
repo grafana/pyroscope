@@ -249,8 +249,8 @@ export default function toGraphviz(p: Profile): string {
   }
 
   const [maxSelf, maxTotal, , sumTotal] = calcMaxAndSumValues(tree, 0, 0, 0, 0);
-  const { sampleRate, units } = p.metadata;
-  const formatter = getFormatter(maxTotal, sampleRate, units);
+  const { sampleRate, units, unitLevel, unitStr } = p.metadata;
+  const formatter = getFormatter(maxTotal, sampleRate, units, unitLevel, unitStr);
 
   const formatFunc = (dur: number): string => {
     return formatter.format(dur, sampleRate, true);

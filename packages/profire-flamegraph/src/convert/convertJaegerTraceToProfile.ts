@@ -90,6 +90,7 @@ export function convertJaegerTraceToProfile(trace: Trace): Profile {
     metadata: {
       format: 'single',
       units: 'trace_samples',
+      unitLevel: 0,
       spyName: 'tracing',
       sampleRate: 1000000,
     },

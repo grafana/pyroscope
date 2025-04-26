@@ -89,6 +89,8 @@ export function calleesFlamebearer(
     levels: [],
     units: f.units,
     unitStr: f.unitStr,
+    unitLevel: f.unitLevel,
+    titleStr: f.titleStr,
     spyName: f.spyName,
   };
 
@@ -130,6 +132,8 @@ export function callersFlamebearer(
     levels: [],
     units: f.units,
     unitStr: f.unitStr,
+    unitLevel: f.unitLevel,
+    titleStr: f.titleStr,
     spyName: f.spyName,
   };
 

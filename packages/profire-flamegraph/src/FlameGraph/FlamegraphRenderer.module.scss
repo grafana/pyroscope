@@ -1,14 +1,20 @@
 .flamegraphContainer {
   width: 100%;
+  display: flex;
 }
 
-/* We take a gamble here and assume only 2 items will exist */
-.flamegraphContainer > *:first-child {
+.flamegraphContainer>*:first-child {
   margin-right: 8px;
+  flex: 1 1 40%;
 }
-.flamegraphContainer > *:nth-child(2) {
+
+.flamegraphContainer>*:nth-child(2) {
   margin-left: 8px;
-  /*  width: 50%; */
+  flex: 0 0 60%;
+}
+
+.flamegraphContainer>* {
+  flex: 1 1 100%;
 }
 
 .createdBy {
@@ -16,6 +22,7 @@
   text-align: center;
   margin: 10px 0;
 }
+
 .createdBy a {
   color: #199bef !important;
 }
@@ -67,8 +74,7 @@
       height: 0;
       border-style: solid;
       border-width: 8px 20px 8px 0;
-      border-color: transparent var(--ps-sandwich-pane-info-bg) transparent
-        transparent;
+      border-color: transparent var(--ps-sandwich-pane-info-bg) transparent transparent;
     }
   }
 

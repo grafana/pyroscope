@@ -7,13 +7,13 @@ import { DiffLegendPaletteDropdown } from './DiffLegendPaletteDropdown';
 interface HeaderProps {
   format: Flamebearer['format'];
   units: Flamebearer['units'];
-
+  titleStr: Flamebearer['titleStr'];
   palette: FlamegraphPalette;
   setPalette: (p: FlamegraphPalette) => void;
   toolbarVisible?: boolean;
 }
 export default function Header(props: HeaderProps) {
-  const { format, units, palette, setPalette, toolbarVisible } = props;
+  const { format, units, titleStr, palette, setPalette, toolbarVisible } = props;
 
   const unitsToFlamegraphTitle = {
     objects: 'number of objects in RAM per function',
@@ -38,7 +38,10 @@ export default function Header(props: HeaderProps) {
               aria-level={2}
             >
               {unitsToFlamegraphTitle[units] && (
-                <>Frame width represents {unitsToFlamegraphTitle[units]}</>
+                <>
+                  {titleStr ||
+                    `Frame width represents ${unitsToFlamegraphTitle[units]}`}
+                </>
               )}
             </div>
           </div>

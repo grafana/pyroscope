@@ -86,6 +86,8 @@ export default class Flamegraph {
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
       units: this.flamebearer.units as Units,
       unitStr: this.flamebearer.unitStr,
+      unitLevel: this.flamebearer.unitLevel,
+      titleStr: this.flamebearer.titleStr,
       maxSelf: this.flamebearer.maxSelf,
 
       rangeMin,

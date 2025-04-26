@@ -60,6 +60,8 @@ function mountFlamebearer(p: { profile?: Profile; flamebearer?: Flamebearer }) {
     names: [],
     units: 'unknown',
     unitStr: '',
+    unitLevel: 0,
+    titleStr: '',
     levels: [[]],
     spyName: 'unknown',
     numTicks: 0,
@@ -342,7 +344,7 @@ class FlameGraphRenderer extends Component<
   updateView = (newView: ViewTypes) => {
     if (newView === 'sandwich') {
       this.setState({
-        searchQuery: '',
+        searchQuery: this.state.searchQuery,
         flamegraphConfigs: this.resetFlamegraphState,
       });
     }
@@ -412,6 +414,7 @@ class FlameGraphRenderer extends Component<
       <Graph
         key="flamegraph-pane"
         // data-testid={flamegraphDataTestId}
+        isSandwich={false}
         showCredit={this.props.showCredit as boolean}
         flamebearer={this.state.flamebearer}
         highlightQuery={this.getHighlightQuery()}
@@ -470,6 +473,7 @@ class FlameGraphRenderer extends Component<
       }) => (
         <Graph
           disableClick
+          isSandwich={true}
           showCredit={this.props.showCredit as boolean}
           highlightQuery=""
           setActiveItem={this.setActiveItem}

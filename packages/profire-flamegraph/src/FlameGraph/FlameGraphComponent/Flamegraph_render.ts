@@ -76,7 +76,7 @@ type CanvasRendererConfig = Flamebearer & {
 };
 
 export default function RenderCanvas(props: CanvasRendererConfig) {
-  const { canvas, fitMode, units, unitStr, tickToX, levels, palette } = props;
+  const { canvas, fitMode, units, unitStr, unitLevel, tickToX, levels, palette } = props;
   const { numTicks, sampleRate, pxPerTick } = props;
   const { rangeMin, rangeMax } = props;
   const { focusedNode, zoom } = props;
@@ -102,7 +102,7 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
     () => 0,
     (z) => z.i
   );
-  const formatter = getFormatter(numTicks, sampleRate, units, unitStr);
+  const formatter = getFormatter(numTicks, sampleRate, units, unitLevel, unitStr);
   const isFocused = focusedNode.isJust;
   const topLevel = focusedNode.mapOrElse(
     () => 0,

@@ -11,7 +11,12 @@ import TableUI, {
   TableBodyType,
 } from '@webapp/ui/Table';
 import TableTooltip from './Tooltip/TableTooltip';
-import { getFormatter, ratioToPercent, diffPercent } from './format/format';
+import {
+  getFormatter,
+  ratioToPercent,
+  diffPercent,
+  getUnitAbbreviation,
+} from './format/format';
 import {
   colorBasedOnPackageName,
   defaultColor,
@@ -126,7 +131,7 @@ function neg(v: number) {
 }
 
 function backgroundImageStyle(a: number, b: number, color: Color) {
-  const w = 148;
+  const w = 110;
   const k = w - (a / b) * w;
   const clr = color.alpha(1.0);
   return {
@@ -148,7 +153,7 @@ export function backgroundImageDiffStyle(
   color: Color,
   side?: 'L' | 'R'
 ): React.CSSProperties {
-  const w = 148;
+  const w = 110;
   const k = w - (Math.min(a, b) / total) * w;
   const kd = w - (Math.max(a, b) / total) * w;
   const clr = color.alpha(1.0);
@@ -183,10 +188,18 @@ const tableFormatSingle: {
   label: string;
   default?: boolean;
 }[] = [
-  { sortable: 1, name: 'name', label: 'Location' },
+  { sortable: 1, name: 'name', label: 'Function' },
   { sortable: 1, name: 'self', label: 'Self', default: true },
   { sortable: 1, name: 'total', label: 'Total' },
 ];
+
+function tableFormatSingleWithUnit(unitStr: string) {
+  return [
+    { sortable: 1, name: 'name', label: 'Function' },
+    { sortable: 1, name: 'self', label: `Self ${unitStr}`, default: true },
+    { sortable: 1, name: 'total', label: `Total ${unitStr}` },
+  ] as typeof tableFormatSingle;
+}
 
 const tableFormatDouble: {
   sortable: number;
@@ -210,7 +223,17 @@ function Table({
   selectedItem,
   palette,
 }: ProfilerTableProps & { isDoubles: boolean }) {
-  const tableFormat = isDoubles ? tableFormatDouble : tableFormatSingle;
+  const unitFormat = getFormatter(
+    flamebearer.numTicks,
+    flamebearer.sampleRate,
+    flamebearer.units,
+    flamebearer.unitLevel,
+    flamebearer.unitStr
+  );
+  const singleTableF = tableFormatSingleWithUnit(
+    getUnitAbbreviation(unitFormat.suffix)
+  );
+  const tableFormat = isDoubles ? tableFormatDouble : singleTableF;
   const tableSortProps = useTableSort(tableFormat);
   const table = {
     headRow: tableFormat,
@@ -258,7 +281,7 @@ const getTableBody = ({
   palette,
   selectedItem,
 }: GetTableBodyRowsProps): TableBodyType => {
-  const { numTicks, maxSelf, sampleRate, spyName, units } = flamebearer;
+  const { numTicks, maxSelf, sampleRate, spyName, units, unitLevel, unitStr } = flamebearer;
 
   const tableBodyCells = generateTable(flamebearer).sort(
     (a, b) => b.total - a.total
@@ -313,7 +336,13 @@ const getTableBody = ({
     }
   }
 
-  const formatter = getFormatter(numTicks, sampleRate, units);
+  const formatter = getFormatter(
+    numTicks,
+    sampleRate,
+    units,
+    unitLevel,
+    unitStr
+  );
   const isRowSelected = (name: string) => {
     if (selectedItem.isJust) {
       return name === selectedItem.value;
@@ -342,11 +371,11 @@ const getTableBody = ({
     cells: [
       { value: nameCell(x, style) },
       {
-        value: formatter.format(x.self, sampleRate),
+        value: formatter.format(x.self, sampleRate, false),
         style: backgroundImageStyle(x.self, maxSelf, color),
       },
       {
-        value: formatter.format(x.total, sampleRate),
+        value: formatter.format(x.total, sampleRate, false),
         style: backgroundImageStyle(x.total, numTicks, color),
       },
     ],
@@ -472,6 +501,7 @@ export default function ProfilerTable({
         sampleRate={flamebearer.sampleRate}
         units={flamebearer.units}
         unitStr={flamebearer.unitStr}
+        unitLevel={flamebearer.unitLevel}
         palette={palette}
       />
     </div>
