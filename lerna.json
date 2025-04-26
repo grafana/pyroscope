@@ -4,7 +4,7 @@
     "webapp"
   ],
   "useWorkspaces": true,
-  "npmClient": "yarn",
+  "npmClient": "npm",
   "version": "independent",
   "command": {
     "version": {
