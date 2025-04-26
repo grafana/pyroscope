@@ -7,9 +7,11 @@ interface FlamebearerData {
   names: string[];
 }
 
+const defaultSelf = 100;
+
 export const treeToFlamebearer = (tree: TreeNode): FlamebearerData => {
   const flamebearerData: FlamebearerData = {
-    maxSelf: 100,
+    maxSelf: defaultSelf,
     names: [],
     levels: [],
   };
@@ -81,8 +83,8 @@ export function calleesFlamebearer(
   const result: Flamebearer = {
     format: 'single',
     numTicks: 0,
-    maxSelf: 100,
-    sampleRate: 100,
+    maxSelf: defaultSelf,
+    sampleRate: f.sampleRate,
     names: [],
     levels: [],
     units: f.units,
@@ -121,8 +123,8 @@ export function callersFlamebearer(
   const tree = flamebearersToTree(f);
   const result: Flamebearer = {
     format: 'single',
-    maxSelf: 100,
-    sampleRate: 100,
+    maxSelf: defaultSelf,
+    sampleRate: f.sampleRate,
     numTicks: 0,
     names: [],
     levels: [],
