@@ -512,15 +512,11 @@ func openTestFile(t *testing.T) io.ReadCloser {
 	f, err := os.Open("testdata/symbols.debug")
 	require.NoError(t, err)
 
-	// Read all data
 	data, err := io.ReadAll(f)
 	require.NoError(t, err)
 	f.Close()
 
-	return &memoryReader{
-		bs:  data,
-		off: 0,
-	}
+	return NewReaderAtCloser(data)
 }
 
 func extractGzipFile(t *testing.T, gzipPath string) ([]byte, error) {

@@ -10,28 +10,18 @@ import (
 	"github.com/klauspost/compress/zstd"
 )
 
-// memoryReader implements io.ReadCloser and io.ReaderAt for reading from an in-memory byte slice
-type memoryReader struct {
-	bs  []byte
-	off int64
-}
-
-func (b *memoryReader) Read(p []byte) (n int, err error) {
-	res, err := b.ReadAt(p, b.off)
-	b.off += int64(res)
-	return res, err
-}
-
-func (b *memoryReader) ReadAt(p []byte, off int64) (n int, err error) {
-	if off >= int64(len(b.bs)) {
-		return 0, io.EOF
+func NewReaderAtCloser(data []byte) interface {
+	io.ReadCloser
+	io.ReaderAt
+} {
+	bytesReader := bytes.NewReader(data)
+	return struct {
+		io.ReadCloser
+		io.ReaderAt
+	}{
+		ReadCloser: io.NopCloser(bytesReader),
+		ReaderAt:   bytesReader,
 	}
-	n = copy(p, b.bs[off:])
-	return n, nil
-}
-
-func (b *memoryReader) Close() error {
-	return nil
 }
 
 // memoryBuffer implements io.WriteSeeker for writing to an in-memory buffer with seeking capabilities

@@ -444,9 +444,14 @@ func (s *ProfileSymbolizer) checkLidiaTableCache(ctx context.Context, req *Reque
 		lidiaTableStatus = StatusCacheHit
 		dataBytes := data.Data
 		ei := data.EI
-		lidiaReader := &memoryReader{
-			bs:  dataBytes,
-			off: 0,
+
+		bytesReader := bytes.NewReader(dataBytes)
+		lidiaReader := struct {
+			io.ReadCloser
+			io.ReaderAt
+		}{
+			ReadCloser: io.NopCloser(bytesReader),
+			ReaderAt:   bytesReader,
 		}
 
 		// Open the Lidia table
@@ -654,11 +659,7 @@ func (s *ProfileSymbolizer) symbolizeFromReader(ctx context.Context, r io.ReadCl
 		}
 	}
 
-	// Create a reader for the Lidia table
-	lidiaReader := &memoryReader{
-		bs:  lidiaData,
-		off: 0,
-	}
+	lidiaReader := NewReaderAtCloser(lidiaData)
 
 	// Open the lidia table from memory
 	table, err := lidia.OpenReader(lidiaReader, lidia.WithCRC())
@@ -695,12 +696,7 @@ func (s *ProfileSymbolizer) storeLidiaTableInCache(data []byte, buildID string, 
 	if len(data) >= 4 && data[0] == 0x2e && data[1] == 0x64 && data[2] == 0x69 && data[3] == 0x61 {
 		// Data is already in Lidia format
 		lidiaData = data
-
-		// Create a reader for the Lidia table
-		lidiaReader := &memoryReader{
-			bs:  lidiaData,
-			off: 0,
-		}
+		lidiaReader := NewReaderAtCloser(lidiaData)
 
 		// Open the Lidia table to extract binary layout
 		table, err := lidia.OpenReader(lidiaReader, lidia.WithCRC())
