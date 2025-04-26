@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"hash/crc32"
 	"io"
-	"os"
 )
 
 type stringOffset uint64
@@ -55,6 +54,13 @@ type lineTablesHeader struct {
 	_         uint32
 }
 
+type binaryLayoutHeader struct {
+	size   uint64
+	offset uint64
+	crc    uint32
+	_      uint32
+}
+
 type header struct {
 	// 0x0
 	magic   [4]byte
@@ -68,6 +74,8 @@ type header struct {
 	// 0x60
 	lineTablesHeader lineTablesHeader
 	// 0x80
+	binaryLayoutHeader binaryLayoutHeader
+	// 0x98
 }
 
 func readHeader(file io.Reader) (header, error) {
@@ -97,6 +105,10 @@ func readHeader(file io.Reader) (header, error) {
 	hdr.lineTablesHeader.count = binary.LittleEndian.Uint64(headerBuf[0x68:])
 	hdr.lineTablesHeader.offset = binary.LittleEndian.Uint64(headerBuf[0x70:])
 	hdr.lineTablesHeader.crc = binary.LittleEndian.Uint32(headerBuf[0x78:])
+
+	hdr.binaryLayoutHeader.size = binary.LittleEndian.Uint64(headerBuf[0x80:])
+	hdr.binaryLayoutHeader.offset = binary.LittleEndian.Uint64(headerBuf[0x88:])
+	hdr.binaryLayoutHeader.crc = binary.LittleEndian.Uint32(headerBuf[0x90:])
 
 	return hdr, nil
 }
@@ -131,7 +143,7 @@ func readFields8(entryBuf []byte) rangeEntry {
 	}
 }
 
-func (rc *rangeCollector) write(f *os.File) error {
+func (rc *rangeCollector) write(f io.WriteSeeker) error {
 	buf := bufio.NewWriter(f)
 	hdr := &header{
 		version: version,
@@ -167,6 +179,26 @@ func (rc *rangeCollector) write(f *os.File) error {
 		return err
 	}
 
+	if err := buf.Flush(); err != nil {
+		return err
+	}
+
+	entrySize := 4 // Default for 2-byte fields (2 fields × 2 bytes)
+	if hdr.lineTablesHeader.fieldSize == 4 {
+		entrySize = 8 // For 4-byte fields (2 fields × 4 bytes)
+	}
+	hdr.binaryLayoutHeader.offset = hdr.lineTablesHeader.offset + uint64(len(rc.lb.entries)*entrySize)
+	hdr.binaryLayoutHeader.size = uint64(len(rc.blb.buf))
+
+	if len(rc.blb.buf) > 0 {
+		if _, err := f.Write(rc.blb.buf); err != nil {
+			return err
+		}
+		crc := crc32.New(castagnoli)
+		_, _ = crc.Write(rc.blb.buf)
+		hdr.binaryLayoutHeader.crc = crc.Sum32()
+	}
+
 	if _, err := f.Seek(0, io.SeekStart); err != nil {
 		return err
 	}
@@ -200,6 +232,10 @@ func writeHeader(output io.Writer, hdr *header) error {
 	binary.LittleEndian.PutUint64(headerBuf[0x68:], hdr.lineTablesHeader.count)
 	binary.LittleEndian.PutUint64(headerBuf[0x70:], hdr.lineTablesHeader.offset)
 	binary.LittleEndian.PutUint32(headerBuf[0x78:], hdr.lineTablesHeader.crc)
+
+	binary.LittleEndian.PutUint64(headerBuf[0x80:], hdr.binaryLayoutHeader.size)
+	binary.LittleEndian.PutUint64(headerBuf[0x88:], hdr.binaryLayoutHeader.offset)
+	binary.LittleEndian.PutUint32(headerBuf[0x90:], hdr.binaryLayoutHeader.crc)
 
 	if _, err := output.Write(headerBuf); err != nil {
 		return err

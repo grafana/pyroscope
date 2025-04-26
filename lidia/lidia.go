@@ -7,7 +7,9 @@ package lidia
 
 import (
 	"debug/elf"
+	"encoding/binary"
 	"fmt"
+	"hash/crc32"
 	"io"
 	"os"
 	"sort"
@@ -156,7 +158,30 @@ func CreateLidiaFromELF(elfFile *elf.File, output io.WriteSeeker, opts ...Option
 	sb := newStringBuilder()
 	rb := newRangesBuilder()
 	lb := newLineTableBuilder()
-	rc := &rangeCollector{sb: sb, rb: rb, lb: lb}
+	blb := newBinaryLayoutBuilder()
+	rc := &rangeCollector{sb: sb, rb: rb, lb: lb, blb: blb}
+
+	layout := &BinaryLayoutInfo{
+		Type:           uint16(elfFile.Type),
+		ProgramHeaders: make([]ProgramHeaderInfo, 0),
+	}
+
+	for _, prog := range elfFile.Progs {
+		if prog.Type == elf.PT_LOAD {
+			layout.ProgramHeaders = append(layout.ProgramHeaders, ProgramHeaderInfo{
+				Type:        uint32(prog.Type),
+				Flags:       uint32(prog.Flags),
+				Offset:      prog.Off,
+				VirtualAddr: prog.Vaddr,
+				PhysAddr:    prog.Paddr,
+				FileSize:    prog.Filesz,
+				MemSize:     prog.Memsz,
+				Align:       prog.Align,
+			})
+		}
+	}
+
+	blb.write(layout)
 
 	for _, o := range opts {
 		o(&rc.opt)
@@ -182,13 +207,7 @@ func CreateLidiaFromELF(elfFile *elf.File, output io.WriteSeeker, opts ...Option
 
 	rb.sort()
 
-	// Cast to *os.File to use the write method
-	outputFile, ok := output.(*os.File)
-	if !ok {
-		return fmt.Errorf("output must be an *os.File")
-	}
-
-	err = rc.write(outputFile)
+	err = rc.write(output)
 	if err != nil {
 		return fmt.Errorf("failed to write lidia file: %w", err)
 	}
@@ -243,6 +262,67 @@ func (st *Table) Lookup(dst []SourceInfoFrame, addr uint64) ([]SourceInfoFrame, 
 	return dst, nil
 }
 
+func (st *Table) GetBinaryLayout() (*BinaryLayoutInfo, error) {
+	if st.hdr.binaryLayoutHeader.size == 0 {
+		return nil, fmt.Errorf("binary layout information not available")
+	}
+
+	// Read binary layout data
+	data := make([]byte, st.hdr.binaryLayoutHeader.size)
+	if _, err := st.file.ReadAt(data, int64(st.hdr.binaryLayoutHeader.offset)); err != nil {
+		return nil, fmt.Errorf("failed to read binary layout: %w", err)
+	}
+
+	if st.opt.crc {
+		crc := crc32.Checksum(data, crc32.MakeTable(crc32.Castagnoli))
+		if crc != st.hdr.binaryLayoutHeader.crc {
+			return nil, fmt.Errorf("binary layout CRC mismatch")
+		}
+	}
+
+	if len(data) < 6 {
+		return nil, fmt.Errorf("binary layout data too short")
+	}
+
+	layout := &BinaryLayoutInfo{
+		Type: binary.LittleEndian.Uint16(data[:2]),
+	}
+
+	count := binary.LittleEndian.Uint32(data[2:6])
+	if count > 1000 {
+		return nil, fmt.Errorf("invalid program header count: %d", count)
+	}
+
+	expectedSize := uint64(6 + count*56)
+	if uint64(len(data)) < expectedSize {
+		return nil, fmt.Errorf("binary layout data truncated")
+	}
+
+	layout.ProgramHeaders = make([]ProgramHeaderInfo, count)
+	offset := 6
+	for i := range layout.ProgramHeaders {
+		ph := &layout.ProgramHeaders[i]
+		ph.Type = binary.LittleEndian.Uint32(data[offset:])
+		offset += 4
+		ph.Flags = binary.LittleEndian.Uint32(data[offset:])
+		offset += 4
+		ph.Offset = binary.LittleEndian.Uint64(data[offset:])
+		offset += 8
+		ph.VirtualAddr = binary.LittleEndian.Uint64(data[offset:])
+		offset += 8
+		ph.PhysAddr = binary.LittleEndian.Uint64(data[offset:])
+		offset += 8
+		ph.FileSize = binary.LittleEndian.Uint64(data[offset:])
+		offset += 8
+		ph.MemSize = binary.LittleEndian.Uint64(data[offset:])
+		offset += 8
+		ph.Align = binary.LittleEndian.Uint64(data[offset:])
+		offset += 8
+	}
+
+	return layout, nil
+}
+
 // Close releases resources associated with the Table.
 func (st *Table) Close() {
 	if st.file != nil {
@@ -263,6 +343,17 @@ func (st *Table) CheckCRC() error {
 	}
 	if err := st.CheckCRCLineTables(); err != nil {
 		return err
+	}
+
+	// Binary layout CRC check
+	if st.hdr.binaryLayoutHeader.size > 0 {
+		if err := checkCRC(st.file,
+			int64(st.hdr.binaryLayoutHeader.offset),
+			int64(st.hdr.binaryLayoutHeader.size),
+			st.hdr.binaryLayoutHeader.crc,
+			"binary layout"); err != nil {
+			return err
+		}
 	}
 	return nil
 }
