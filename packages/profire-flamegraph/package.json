@@ -13,7 +13,7 @@
   "main": "dist/index.node.js",
   "browser": "dist/index.js",
   "_types": "since we are importing stuff from webapp (ui components), tsc ends up generating a weird file tree",
-  "types": "dist/packages/pyroscope-flamegraph/src/index.d.ts",
+  "types": "dist/packages/profire-flamegraph/src/index.d.ts",
   "license": "Apache-2.0",
   "files": [
     "src/**/*",

@@ -1,5 +1,4 @@
-module.exports = [
-  {
+module.exports = [{
     path: ['webapp/public/assets/app.js'],
     // ugly
     limit: '300000ms',
@@ -11,12 +10,12 @@ module.exports = [
     path: ['webapp/public/assets/styles.css'],
   },
   {
-    path: ['packages/pyroscope-flamegraph/dist/index.js'],
+    path: ['packages/profire-flamegraph/dist/index.js'],
   },
   {
-    path: ['packages/pyroscope-flamegraph/dist/index.node.js'],
+    path: ['packages/profire-flamegraph/dist/index.node.js'],
   },
   {
-    path: ['packages/pyroscope-flamegraph/dist/index.css'],
+    path: ['packages/profire-flamegraph/dist/index.css'],
   },
 ];

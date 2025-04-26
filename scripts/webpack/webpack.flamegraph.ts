@@ -77,7 +77,7 @@ export default [
     },
     output: {
       publicPath: '',
-      path: path.resolve(__dirname, '../../packages/pyroscope-flamegraph/dist'),
+      path: path.resolve(__dirname, '../../packages/profire-flamegraph/dist'),
       libraryTarget: 'commonjs',
       filename: 'index.node.js',
     },
@@ -97,7 +97,7 @@ export default [
     },
     output: {
       publicPath: '',
-      path: path.resolve(__dirname, '../../packages/pyroscope-flamegraph/dist'),
+      path: path.resolve(__dirname, '../../packages/profire-flamegraph/dist'),
       libraryTarget: 'umd',
       library: 'pyroscope',
       filename: 'index.js',

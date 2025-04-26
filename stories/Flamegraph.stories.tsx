@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { FlamegraphRenderer, Box } from '@pyroscope/flamegraph';
+import { FlamegraphRenderer, Box } from 'profire-flamegraph';
 import PyroscopeServerCPU from '../cypress/fixtures/pyroscope.server.cpu.json';
 import SimpleGolangCPU from '../cypress/fixtures/simple-golang-app-cpu.json';
 import Button from '@ui/Button';
 import { ComponentStory } from '@storybook/react';
-import '@pyroscope/flamegraph/dist/index.css';
+import 'profire-flamegraph/dist/index.css';
 
 export default {
-  title: '@pyroscope/flamegraph',
+  title: 'profire-flamegraph',
 };
 
 const SimpleTree = {
