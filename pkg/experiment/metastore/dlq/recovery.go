@@ -19,30 +19,30 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode"
 )
 
-type RecoveryConfig struct {
+type Config struct {
 	Period time.Duration `yaml:"dlq_recovery_check_interval"`
 }
 
-func (c *RecoveryConfig) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
+func (c *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.DurationVar(&c.Period, prefix+"dlq-recovery-check-interval", 15*time.Second, "Dead Letter Queue check interval.")
 }
 
-type LocalServer interface {
+type Metastore interface {
 	AddRecoveredBlock(context.Context, *metastorev1.AddBlockRequest) (*metastorev1.AddBlockResponse, error)
 }
 
 type Recovery struct {
-	config    RecoveryConfig
+	config    Config
 	logger    log.Logger
-	metastore LocalServer
+	metastore Metastore
 	bucket    objstore.Bucket
 
-	m       sync.Mutex
 	started bool
 	cancel  func()
+	m       sync.Mutex
 }
 
-func NewRecovery(logger log.Logger, config RecoveryConfig, metastore LocalServer, bucket objstore.Bucket) *Recovery {
+func NewRecovery(logger log.Logger, config Config, metastore Metastore, bucket objstore.Bucket) *Recovery {
 	return &Recovery{
 		config:    config,
 		logger:    logger,
@@ -72,7 +72,9 @@ func (r *Recovery) Stop() {
 		r.logger.Log("msg", "recovery already stopped")
 		return
 	}
-	r.cancel()
+	if r.cancel != nil {
+		r.cancel()
+	}
 	r.started = false
 	r.logger.Log("msg", "recovery stopped")
 }

@@ -32,10 +32,7 @@ message CompactionJob {
 // Tombstones represent objects removed from the index but still stored.
 message Tombstones {
   BlockTombstones blocks = 1;
-  // For now, we only have block tombstones created due to the
-  // compaction process. Later, we may add more types of tombstones,
-  // e.g, deleted tenant (shard), partition, dataset, series etc.
-  // Exactly one member of Tombstones should be present.
+  PartitionTombstone partition = 2;
 }
 
 message BlockTombstones {
@@ -44,6 +41,15 @@ message BlockTombstones {
   string tenant = 3;
   uint32 compaction_level = 4;
   repeated string blocks = 5;
+}
+
+message PartitionTombstone {
+  string name = 1;
+  // Lower time boundary. Unix epoch in nanoseconds.
+  int64  timestamp = 2;
+  int64  duration = 3;
+  uint32 shard = 4;
+  string tenant = 5;
 }
 
 message CompactionJobAssignment {

@@ -12,6 +12,7 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/fsm"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode"
 )
 
 type CompactionService struct {
@@ -78,7 +79,9 @@ func (svc *CompactionService) PollCompactionJobs(
 	cmd := fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_GET_COMPACTION_PLAN_UPDATE)
 	resp, err := svc.raft.Propose(cmd, req)
 	if err != nil {
-		level.Error(svc.logger).Log("msg", "failed to prepare compaction plan", "err", err)
+		if !raftnode.IsRaftLeadershipError(err) {
+			level.Error(svc.logger).Log("msg", "failed to prepare compaction plan", "err", err)
+		}
 		return nil, err
 	}
 	prepared := resp.(*raft_log.GetCompactionPlanUpdateResponse)
@@ -141,7 +144,9 @@ func (svc *CompactionService) PollCompactionJobs(
 	// empty response would indicate that the plan is rejected.
 	proposal := &raft_log.UpdateCompactionPlanRequest{Term: prepared.Term, PlanUpdate: planUpdate}
 	if resp, err = svc.raft.Propose(cmd, proposal); err != nil {
-		level.Error(svc.logger).Log("msg", "failed to update compaction plan", "err", err)
+		if !raftnode.IsRaftLeadershipError(err) {
+			level.Error(svc.logger).Log("msg", "failed to update compaction plan", "err", err)
+		}
 		return nil, err
 	}
 	accepted := resp.(*raft_log.UpdateCompactionPlanResponse).GetPlanUpdate()

@@ -64,6 +64,15 @@ func (c *shardCache) put(s *indexShard) {
 	c.shards.Add(k, s)
 }
 
+func (c *shardCache) delete(p store.PartitionKey, tenant string, shard uint32) {
+	k := shardCacheKey{
+		partition: p,
+		tenant:    tenant,
+		shard:     shard,
+	}
+	c.shards.Remove(k)
+}
+
 func newBlockCache(rcs, wcs int) *blockCache {
 	reads, _ := lru.New2Q[blockCacheKey, *metastorev1.BlockMeta](rcs)
 	write, _ := lru.New[blockCacheKey, *metastorev1.BlockMeta](wcs)

@@ -1,8 +1,10 @@
 package store
 
 import (
+	"cmp"
 	"encoding/binary"
 	"errors"
+	"slices"
 	"time"
 )
 
@@ -64,15 +66,49 @@ func (p *Partition) Compare(other *Partition) int {
 	return p.Key.Timestamp.Compare(other.Key.Timestamp)
 }
 
+func (p *Partition) Shards(dst []Shard) []Shard {
+	dst = dst[:0]
+	for tenant, shards := range p.TenantShards {
+		for shard := range shards {
+			dst = append(dst, Shard{
+				Partition: p.Key,
+				Tenant:    tenant,
+				Shard:     shard,
+			})
+		}
+	}
+	slices.SortFunc(dst, func(a, b Shard) int {
+		t := cmp.Compare(a.Tenant, b.Tenant)
+		if t != 0 {
+			return cmp.Compare(a.Shard, b.Shard)
+		}
+		return t
+	})
+	return dst
+}
+
+func (p *Partition) DeleteTenantShard(tenant string, shard uint32) {
+	if t := p.TenantShards[tenant]; t != nil {
+		delete(t, shard)
+		if len(t) == 0 {
+			delete(p.TenantShards, tenant)
+		}
+	}
+}
+
+func (p *Partition) IsEmpty() bool {
+	return len(p.TenantShards) == 0
+}
+
 func NewPartitionKey(timestamp time.Time, duration time.Duration) PartitionKey {
 	return PartitionKey{Timestamp: timestamp.Truncate(duration), Duration: duration}
 }
 
-func (k PartitionKey) Equal(x PartitionKey) bool {
+func (k *PartitionKey) Equal(x PartitionKey) bool {
 	return k.Timestamp.Equal(x.Timestamp) && k.Duration == x.Duration
 }
 
-func (k PartitionKey) MarshalBinary() ([]byte, error) {
+func (k *PartitionKey) MarshalBinary() ([]byte, error) {
 	b := make([]byte, 12)
 	binary.BigEndian.PutUint64(b[0:8], uint64(k.Timestamp.UnixNano()))
 	binary.BigEndian.PutUint32(b[8:12], uint32(k.Duration/time.Second))
@@ -88,12 +124,12 @@ func (k *PartitionKey) UnmarshalBinary(b []byte) error {
 	return nil
 }
 
-func (k PartitionKey) Bytes() []byte {
+func (k *PartitionKey) Bytes() []byte {
 	b, _ := k.MarshalBinary()
 	return b
 }
 
-func (k PartitionKey) String() string {
+func (k *PartitionKey) String() string {
 	b := make([]byte, 0, 32)
 	b = k.Timestamp.UTC().AppendFormat(b, time.DateTime)
 	b = append(b, ' ')

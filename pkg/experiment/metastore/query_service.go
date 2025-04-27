@@ -22,7 +22,7 @@ type IndexQuerier interface {
 	QueryMetadataLabels(*bbolt.Tx, index.MetadataQuery) ([]*typesv1.Labels, error)
 }
 
-type MetadataQueryService struct {
+type QueryService struct {
 	metastorev1.MetadataQueryServiceServer
 
 	logger log.Logger
@@ -30,19 +30,19 @@ type MetadataQueryService struct {
 	index  IndexQuerier
 }
 
-func NewMetadataQueryService(
+func NewQueryService(
 	logger log.Logger,
 	state State,
 	index IndexQuerier,
-) *MetadataQueryService {
-	return &MetadataQueryService{
+) *QueryService {
+	return &QueryService{
 		logger: logger,
 		state:  state,
 		index:  index,
 	}
 }
 
-func (svc *MetadataQueryService) QueryMetadata(
+func (svc *QueryService) QueryMetadata(
 	ctx context.Context,
 	req *metastorev1.QueryMetadataRequest,
 ) (resp *metastorev1.QueryMetadataResponse, err error) {
@@ -55,7 +55,7 @@ func (svc *MetadataQueryService) QueryMetadata(
 	return resp, err
 }
 
-func (svc *MetadataQueryService) queryMetadata(
+func (svc *QueryService) queryMetadata(
 	_ context.Context,
 	tx *bbolt.Tx,
 	req *metastorev1.QueryMetadataRequest,
@@ -78,7 +78,7 @@ func (svc *MetadataQueryService) queryMetadata(
 	return nil, status.Error(codes.Internal, err.Error())
 }
 
-func (svc *MetadataQueryService) QueryMetadataLabels(
+func (svc *QueryService) QueryMetadataLabels(
 	ctx context.Context,
 	req *metastorev1.QueryMetadataLabelsRequest,
 ) (resp *metastorev1.QueryMetadataLabelsResponse, err error) {
@@ -91,7 +91,7 @@ func (svc *MetadataQueryService) QueryMetadataLabels(
 	return resp, err
 }
 
-func (svc *MetadataQueryService) queryMetadataLabels(
+func (svc *QueryService) queryMetadataLabels(
 	_ context.Context,
 	tx *bbolt.Tx,
 	req *metastorev1.QueryMetadataLabelsRequest,

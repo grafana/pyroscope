@@ -386,7 +386,7 @@ func TestDLQRecoveryMock(t *testing.T) {
 			recoveredMetas <- meta
 		}).
 		Return(&metastorev1.AddBlockResponse{}, nil)
-	recovery := dlq.NewRecovery(test.NewTestingLogger(t), dlq.RecoveryConfig{
+	recovery := dlq.NewRecovery(test.NewTestingLogger(t), dlq.Config{
 		Period: 100 * time.Millisecond,
 	}, srv, sw.bucket)
 	recovery.Start()

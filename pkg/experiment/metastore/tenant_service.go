@@ -14,6 +14,8 @@ import (
 
 type TenantIndex interface {
 	GetTenantStats(tenant string) *metastorev1.TenantStats
+	// TODO(kolesnikovae): Refactor index.GetTenantStats to GetTenant handler.
+	// IndexPartitionLister
 }
 
 type TenantService struct {

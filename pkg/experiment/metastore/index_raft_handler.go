@@ -1,6 +1,8 @@
 package metastore
 
 import (
+	"time"
+
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/hashicorp/raft"
@@ -8,28 +10,41 @@ import (
 	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
+	indexstore "github.com/grafana/pyroscope/pkg/experiment/metastore/index/store"
 )
 
-type Index interface {
+type IndexInserter interface {
 	InsertBlock(*bbolt.Tx, *metastorev1.BlockMeta) error
 }
 
+type IndexDeleter interface {
+	DeletePartition(tx *bbolt.Tx, partition indexstore.PartitionKey, tenant string, shard uint32) error
+}
+
+type IndexWriter interface {
+	IndexInserter
+	IndexDeleter
+}
+
 type Tombstones interface {
+	AddTombstones(*bbolt.Tx, *raft.Log, *metastorev1.Tombstones) error
+	DeleteTombstones(*bbolt.Tx, *raft.Log, ...*metastorev1.Tombstones) error
 	Exists(tenant string, shard uint32, block string) bool
 }
 
 type IndexCommandHandler struct {
 	logger     log.Logger
-	index      Index
+	index      IndexWriter
 	tombstones Tombstones
 	compactor  compaction.Compactor
 }
 
 func NewIndexCommandHandler(
 	logger log.Logger,
-	index Index,
+	index IndexWriter,
 	tombstones Tombstones,
 	compactor compaction.Compactor,
 ) *IndexCommandHandler {
@@ -60,4 +75,34 @@ func (m *IndexCommandHandler) AddBlock(tx *bbolt.Tx, cmd *raft.Log, req *metasto
 		return nil, err
 	}
 	return new(metastorev1.AddBlockResponse), nil
+}
+
+func (m *IndexCommandHandler) TruncateIndex(tx *bbolt.Tx, cmd *raft.Log, req *raft_log.TruncateIndexRequest) (*raft_log.TruncateIndexResponse, error) {
+	if req.Term != cmd.Term {
+		level.Warn(m.logger).Log(
+			"msg", "rejecting index truncation request",
+			"current_term", cmd.Term,
+			"request_term", req.Term,
+		)
+		return new(raft_log.TruncateIndexResponse), nil
+	}
+	for _, tombstone := range req.Tombstones {
+		// Although it's not strictly necessary, we may pass any tombstones
+		// to TruncateIndex, and the Partition member may be missing.
+		if p := tombstone.Partition; p != nil {
+			pk := indexstore.PartitionKey{
+				Timestamp: time.Unix(0, p.Timestamp),
+				Duration:  time.Duration(p.Duration),
+			}
+			if err := m.index.DeletePartition(tx, pk, p.Tenant, p.Shard); err != nil {
+				level.Error(m.logger).Log("msg", "failed to delete partition", "err", err)
+				return nil, err
+			}
+		}
+		if err := m.tombstones.AddTombstones(tx, cmd, tombstone); err != nil {
+			level.Error(m.logger).Log("msg", "failed to add partition tombstone", "err", err)
+			return nil, err
+		}
+	}
+	return new(raft_log.TruncateIndexResponse), nil
 }
