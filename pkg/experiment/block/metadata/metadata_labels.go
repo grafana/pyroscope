@@ -16,8 +16,9 @@ import (
 // TODO(kolesnikovae): LabelBuilder pool.
 
 const (
-	LabelNameTenantDataset     = "__tenant_dataset__"
-	LabelValueDatasetTSDBIndex = "dataset_tsdb_index"
+	LabelNameTenantDataset                 = "__tenant_dataset__"
+	LabelValueDatasetTSDBIndex             = "dataset_tsdb_index"
+	LabelNameHasNativeUnsymbolizedProfiles = "__has_native_unsymbolized_profiles__"
 )
 
 type LabelBuilder struct {

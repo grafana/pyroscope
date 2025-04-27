@@ -21,10 +21,11 @@ import (
 )
 
 type FlushedHead struct {
-	Index    []byte
-	Profiles []byte
-	Symbols  []byte
-	Meta     struct {
+	Index                         []byte
+	Profiles                      []byte
+	Symbols                       []byte
+	HasNativeUnsymbolizedProfiles bool
+	Meta                          struct {
 		ProfileTypeNames []string
 		MinTimeNanos     int64
 		MaxTimeNanos     int64
@@ -152,6 +153,18 @@ func (h *Head) flush(ctx context.Context) (*FlushedHead, error) {
 	if res.Meta.NumSamples == 0 {
 		return res, nil
 	}
+
+	var HasNativeUnsymbolizedProfiles bool
+	mappings := h.symbols.Symbols().Mappings
+	for i := range mappings {
+		HasNativeUnsymbolizedProfiles = HasNativeUnsymbolizedProfiles || !mappings[i].HasFunctions
+	}
+	locations := h.symbols.Symbols().Locations
+	for i := range locations {
+		HasNativeUnsymbolizedProfiles = HasNativeUnsymbolizedProfiles || len(locations[i].Line) == 0
+	}
+
+	res.HasNativeUnsymbolizedProfiles = HasNativeUnsymbolizedProfiles
 
 	symbolsBuffer := bytes.NewBuffer(nil)
 	if err := symdb.WritePartition(h.symbols, symbolsBuffer); err != nil {
