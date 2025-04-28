@@ -348,9 +348,9 @@ func Test_sanitizeReferences(t *testing.T) {
 					{LocationId: []uint64{3, 2, 1}},
 				},
 				Location: []*profilev1.Location{
-					{Id: 1, MappingId: 1},
-					{Id: 3, MappingId: 5},
-					{Id: 2, MappingId: 0},
+					{Id: 1, MappingId: 1, Address: 1},
+					{Id: 3, MappingId: 5, Address: 2},
+					{Id: 2, MappingId: 0, Address: 3},
 				},
 				Mapping: []*profilev1.Mapping{
 					{Id: 1},
@@ -361,8 +361,8 @@ func Test_sanitizeReferences(t *testing.T) {
 					{LocationId: []uint64{2, 1}},
 				},
 				Location: []*profilev1.Location{
-					{Id: 1, MappingId: 1},
-					{Id: 2, MappingId: 2},
+					{Id: 1, MappingId: 1, Address: 1},
+					{Id: 2, MappingId: 2, Address: 3},
 				},
 				Mapping: []*profilev1.Mapping{
 					{Id: 1},
@@ -379,14 +379,14 @@ func Test_sanitizeReferences(t *testing.T) {
 					{LocationId: []uint64{5}},
 				},
 				Location: []*profilev1.Location{
-					{Id: 1, MappingId: 1},
-					{Id: 0, MappingId: 0},
+					{Id: 1, MappingId: 1, Address: 0xa},
+					{Id: 0, MappingId: 0, Address: 0xa},
 				},
 			},
 			expected: &profilev1.Profile{
 				Sample: []*profilev1.Sample{},
 				Location: []*profilev1.Location{
-					{Id: 1, MappingId: 1},
+					{Id: 1, MappingId: 1, Address: 0xa},
 				},
 				Mapping: []*profilev1.Mapping{
 					{Id: 1},
@@ -513,10 +513,13 @@ func Test_sanitize_fixtures(t *testing.T) {
 		case filepath.Ext(path) == ".txt":
 			return nil
 		case d.IsDir():
-			if d.Name() == "fuzz" {
+			switch d.Name() {
+			case "fuzz":
+			case "malformed":
 				return fs.SkipDir
+			default:
+				return nil
 			}
-			return nil
 		}
 
 		t.Run(path, func(t *testing.T) {
@@ -1603,4 +1606,27 @@ func Test_SetProfileMetadata(t *testing.T) {
 		DefaultSampleType: 3, // foo
 	}
 	require.Equal(t, expected.String(), p.String())
+}
+
+func Test_pprof_zero_addr_no_line_locations(t *testing.T) {
+	b, err := OpenFile("testdata/malformed/no_addr_no_line.pb.gz")
+	require.NoError(t, err)
+
+	var found bool
+	for _, loc := range b.Location {
+		if len(loc.Line) == 0 && loc.Address == 0 {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("invalid fixture")
+	}
+
+	b.Normalize()
+	for _, loc := range b.Location {
+		if len(loc.Line) == 0 && loc.Address == 0 {
+			t.Fatal("found location without lines and address")
+		}
+	}
 }
