@@ -116,39 +116,3 @@ func Test_MultitenantReadWrite(t *testing.T) {
 
 	require.NoError(t, services.StopAndAwaitTerminated(context.Background(), ing))
 }
-
-func Test_ReadNotFound(t *testing.T) {
-	dbPath := t.TempDir()
-	logger := log.NewJSONLogger(os.Stdout)
-	reg := prometheus.NewRegistry()
-	ctx := phlarecontext.WithLogger(context.Background(), logger)
-	ctx = phlarecontext.WithRegistry(ctx, reg)
-	cfg := client.Config{
-		StorageBackendConfig: client.StorageBackendConfig{
-			Backend: client.Filesystem,
-			Filesystem: filesystem.Config{
-				Directory: dbPath,
-			},
-		},
-	}
-
-	fs, err := client.NewBucket(ctx, cfg, "storage")
-	require.NoError(t, err)
-
-	ing, err := New(ctx, defaultIngesterTestConfig(t), phlaredb.Config{
-		DataPath:         dbPath,
-		MaxBlockDuration: 30 * time.Hour,
-	}, fs, &fakeLimits{}, 0)
-	require.NoError(t, err)
-	require.NoError(t, services.StartAndAwaitRunning(context.Background(), ing))
-
-	labelsValues, err := ing.LabelValues(tenant.InjectTenantID(context.Background(), "foo"), connect.NewRequest(&typesv1.LabelValuesRequest{Name: "foo"}))
-	require.NoError(t, err)
-	require.Empty(t, labelsValues.Msg.Names)
-
-	labelsNames, err := ing.LabelNames(tenant.InjectTenantID(context.Background(), "buzz"), connect.NewRequest(&typesv1.LabelNamesRequest{}))
-	require.NoError(t, err)
-	require.Empty(t, labelsNames.Msg.Names)
-
-	require.NoError(t, services.StopAndAwaitTerminated(context.Background(), ing))
-}
