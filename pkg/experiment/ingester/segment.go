@@ -332,8 +332,8 @@ func concatSegmentHead(f *headFlush, w *writerOffset, s *metadata.StringTable) *
 		lb.WithLabelSet(model.LabelNameServiceName, f.head.key.service, model.LabelNameProfileType, profileType)
 	}
 
-	if f.flushed.HasNativeUnsymbolizedProfiles {
-		lb.WithLabelSet(model.LabelNameServiceName, f.head.key.service, metadata.LabelNameHasNativeUnsymbolizedProfiles, "true")
+	if f.flushed.HasUnsymbolizedProfiles {
+		lb.WithLabelSet(model.LabelNameServiceName, f.head.key.service, metadata.LabelNameUnsymbolized, "true")
 	}
 
 	// Other optional labels:

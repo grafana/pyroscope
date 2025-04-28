@@ -21,11 +21,11 @@ import (
 )
 
 type FlushedHead struct {
-	Index                         []byte
-	Profiles                      []byte
-	Symbols                       []byte
-	HasNativeUnsymbolizedProfiles bool
-	Meta                          struct {
+	Index                   []byte
+	Profiles                []byte
+	Symbols                 []byte
+	HasUnsymbolizedProfiles bool
+	Meta                    struct {
 		ProfileTypeNames []string
 		MinTimeNanos     int64
 		MaxTimeNanos     int64
@@ -154,17 +154,7 @@ func (h *Head) flush(ctx context.Context) (*FlushedHead, error) {
 		return res, nil
 	}
 
-	var HasNativeUnsymbolizedProfiles bool
-	mappings := h.symbols.Symbols().Mappings
-	for i := range mappings {
-		HasNativeUnsymbolizedProfiles = HasNativeUnsymbolizedProfiles || !mappings[i].HasFunctions
-	}
-	locations := h.symbols.Symbols().Locations
-	for i := range locations {
-		HasNativeUnsymbolizedProfiles = HasNativeUnsymbolizedProfiles || len(locations[i].Line) == 0
-	}
-
-	res.HasNativeUnsymbolizedProfiles = HasNativeUnsymbolizedProfiles
+	res.HasUnsymbolizedProfiles = HasUnsymbolizedProfiles(h.symbols.Symbols())
 
 	symbolsBuffer := bytes.NewBuffer(nil)
 	if err := symdb.WritePartition(h.symbols, symbolsBuffer); err != nil {
@@ -185,4 +175,17 @@ func (h *Head) flush(ctx context.Context) (*FlushedHead, error) {
 		return nil, fmt.Errorf("failed to write profiles parquet: %w", err)
 	}
 	return res, nil
+}
+
+// TODO: move this into the symbolizer package when available
+func HasUnsymbolizedProfiles(symbols *symdb.Symbols) bool {
+	locations := symbols.Locations
+	mappings := symbols.Mappings
+	for _, loc := range locations {
+		if loc.MappingId == 0 || int(loc.MappingId) >= len(mappings) ||
+			!mappings[loc.MappingId].HasFunctions {
+			return true
+		}
+	}
+	return false
 }
