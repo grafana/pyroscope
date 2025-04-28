@@ -161,7 +161,7 @@ func (sw *segmentsWriter) ingest(shard shardKey, fn func(head segmentIngest)) (a
 	return s.ingest(fn)
 }
 
-func (sw *segmentsWriter) stop() error {
+func (sw *segmentsWriter) stop() {
 	sw.logger.Log("msg", "stopping segments writer")
 	sw.cancel()
 	sw.shardsLock.Lock()
@@ -171,7 +171,6 @@ func (sw *segmentsWriter) stop() error {
 	}
 	sw.pool.stop()
 	sw.logger.Log("msg", "segments writer stopped")
-	return nil
 }
 
 func (sw *segmentsWriter) newShard(sk shardKey) *shard {
@@ -269,15 +268,11 @@ func (s *segment) flushBlock(stream flushStream) ([]byte, *metastorev1.BlockMeta
 	w := &writerOffset{Writer: blockFile}
 	for stream.Next() {
 		f := stream.At()
-		svc, err := concatSegmentHead(f, w, stringTable)
-		if err != nil {
-			level.Error(s.logger).Log("msg", "failed to concat segment head", "err", err)
-			continue
-		}
-		meta.MinTime = min(meta.MinTime, svc.MinTime)
-		meta.MaxTime = max(meta.MaxTime, svc.MaxTime)
-		meta.Datasets = append(meta.Datasets, svc)
-		s.sw.metrics.headSizeBytes.WithLabelValues(s.sshard, f.head.key.tenant).Observe(float64(svc.Size))
+		ds := concatSegmentHead(f, w, stringTable)
+		meta.MinTime = min(meta.MinTime, ds.MinTime)
+		meta.MaxTime = max(meta.MaxTime, ds.MaxTime)
+		meta.Datasets = append(meta.Datasets, ds)
+		s.sw.metrics.headSizeBytes.WithLabelValues(s.sshard, f.head.key.tenant).Observe(float64(ds.Size))
 	}
 
 	meta.StringTable = stringTable.Strings
@@ -301,7 +296,7 @@ func (w *writerOffset) Write(p []byte) (n int, err error) {
 	return n, err
 }
 
-func concatSegmentHead(f *headFlush, w *writerOffset, s *metadata.StringTable) (*metastorev1.Dataset, error) {
+func concatSegmentHead(f *headFlush, w *writerOffset, s *metadata.StringTable) *metastorev1.Dataset {
 	tenantServiceOffset := w.offset
 
 	ptypes := f.flushed.Meta.ProfileTypeNames
@@ -341,7 +336,7 @@ func concatSegmentHead(f *headFlush, w *writerOffset, s *metadata.StringTable) (
 	// lb.WithLabelSet("label_name", "label_value", ...)
 	ds.Labels = lb.Build()
 
-	return ds, nil
+	return ds
 }
 
 func (s *segment) flushHeads(ctx context.Context) flushStream {
@@ -468,8 +463,9 @@ type segment struct {
 		flushBlockDuration time.Duration
 		storeMetaDuration  time.Duration
 	}
-	sh      *shard
-	counter int64
+
+	// TODO(kolesnikovae): Naming.
+	sh *shard
 }
 
 type segmentIngest interface {

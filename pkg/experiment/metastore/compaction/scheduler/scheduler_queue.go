@@ -137,12 +137,10 @@ func (q *jobQueue) update(e *jobEntry, state *raft_log.CompactionJobState) {
 	}
 	e.CompactionJobState = state
 	heap.Fix(q.jobs, e.index)
-	return
 }
 
-func (q *jobQueue) delete(e *jobEntry) *raft_log.CompactionJobState {
+func (q *jobQueue) delete(e *jobEntry) {
 	heap.Remove(q.jobs, e.index)
-	return e.CompactionJobState
 }
 
 func (q *jobQueue) clone() priorityJobQueue {

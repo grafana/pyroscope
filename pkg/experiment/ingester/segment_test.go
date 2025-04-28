@@ -87,14 +87,12 @@ func ingestWithMetastoreAvailable(t *testing.T, chunks []inputChunk) {
 		Run(func(args mock.Arguments) {
 			blocks <- args.Get(1).(*metastorev1.AddBlockRequest).Block
 		}).Return(new(metastorev1.AddBlockResponse), nil)
-	allBlocks := make([]*metastorev1.BlockMeta, 0, len(chunks))
 	for _, chunk := range chunks {
 		chunkBlocks := make([]*metastorev1.BlockMeta, 0, len(chunk))
 		waiterSet := sw.ingestChunk(t, chunk, false)
 		for range waiterSet {
 			meta := <-blocks
 			chunkBlocks = append(chunkBlocks, meta)
-			allBlocks = append(allBlocks, meta)
 		}
 		inputs := groupInputs(t, chunk)
 		clients := sw.createBlocksFromMetas(chunkBlocks)
@@ -302,6 +300,7 @@ func TestDatasetMinMaxTime(t *testing.T) {
 		}
 	})
 	defer res.stop()
+
 	block := <-metas
 
 	expected := [][2]int{
@@ -515,8 +514,9 @@ func (sw *sw) createBlocksFromMetas(blocks []*metastorev1.BlockMeta) tenantClien
 			if _, ok := res[tenant]; !ok {
 				// todo consider not using BlockQuerier for tests
 				blockBucket, err := filesystem.NewBucket(filepath.Join(dir, tenant))
-				blockQuerier := phlaredb.NewBlockQuerier(context.Background(), blockBucket)
+				require.NoError(sw.t, err)
 
+				blockQuerier := phlaredb.NewBlockQuerier(context.Background(), blockBucket)
 				err = blockQuerier.Sync(context.Background())
 				require.NoError(sw.t, err)
 
@@ -657,6 +657,7 @@ func (sw *sw) getMetadataDLQ() []*metastorev1.BlockMeta {
 	return metas
 }
 
+// nolint: unparam
 func (sw *sw) ingestChunk(t *testing.T, chunk inputChunk, expectAwaitError bool) map[segmentWaitFlushed]struct{} {
 	wg := sync.WaitGroup{}
 	waiterSet := make(map[segmentWaitFlushed]struct{})
@@ -899,7 +900,6 @@ func (g testDataGenerator) generate() []inputChunk {
 type timestampGenerator struct {
 	m map[int64]struct{}
 	r *rand.Rand
-	l sync.Mutex
 }
 
 func (g *timestampGenerator) next() int {
