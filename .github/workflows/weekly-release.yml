@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - 'weekly/f*'
+
+permissions:
+  contents: read
+
 jobs:
   goreleaser-weekly:
     runs-on: ubuntu-24.04
@@ -11,6 +15,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Set GORELEASER_CURRENT_TAG
         run: echo "GORELEASER_CURRENT_TAG=v0.0.0-$(./tools/image-tag)" >> $GITHUB_ENV
       - name: Set WEEKLY_IMAGE_TAG
@@ -28,7 +33,7 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5
         with:
           go-version: "1.23.8"
-          cache: true
+          cache: false
       # setup docker buildx
       - name: Set up QEMU
         uses: docker/setup-qemu-action@2b82ce82d56a2a04d2637cd93a637ae1b359c0a7 # v2
@@ -43,7 +48,6 @@ jobs:
       - uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # v3
         with:
           node-version: 20
-          cache: yarn
       - run: make frontend/build
       - name: Get github app token (valid for an hour)
         id: app-goreleaser
@@ -91,4 +95,4 @@ jobs:
           app_id: ${{ secrets.APP_ID }}
           private_key: ${{ secrets.APP_PRIVATE_KEY }}
       - name: Push git tag for weekly release
-        run: git push https://x-access-token:${{ steps.app-git-tag.output.token }}@github.com/grafana/pyroscope.git "${WEEKLY_IMAGE_TAG}"
+        run: git push "https://x-access-token:${{ steps.app-git-tag.output.token }}@github.com/grafana/pyroscope.git" "${WEEKLY_IMAGE_TAG}"
