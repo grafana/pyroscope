@@ -117,7 +117,7 @@ func Test_MultitenantReadWrite(t *testing.T) {
 	require.NoError(t, services.StopAndAwaitTerminated(context.Background(), ing))
 }
 
-func Test_ReadNotFound(t *testing.T) {
+func Test_Query_TenantNotFound(t *testing.T) {
 	dbPath := t.TempDir()
 	logger := log.NewJSONLogger(os.Stdout)
 	reg := prometheus.NewRegistry()
@@ -149,6 +149,79 @@ func Test_ReadNotFound(t *testing.T) {
 	labelsNames, err := ing.LabelNames(tenant.InjectTenantID(context.Background(), "buzz"), connect.NewRequest(&typesv1.LabelNamesRequest{}))
 	require.NoError(t, err)
 	require.Empty(t, labelsNames.Msg.Names)
+
+	require.NoError(t, services.StopAndAwaitTerminated(context.Background(), ing))
+}
+
+func Test_Query_TenantFound(t *testing.T) {
+	dbPath := t.TempDir()
+	logger := log.NewJSONLogger(os.Stdout)
+	phlareCtx := phlarecontext.WithLogger(context.Background(), logger)
+
+	cfg := client.Config{
+		StorageBackendConfig: client.StorageBackendConfig{
+			Backend: client.Filesystem,
+			Filesystem: filesystem.Config{
+				Directory: dbPath,
+			},
+		},
+	}
+
+	fs, err := client.NewBucket(phlareCtx, cfg, "storage")
+	require.NoError(t, err)
+
+	ing, err := New(phlareCtx, defaultIngesterTestConfig(t), phlaredb.Config{
+		DataPath:         dbPath,
+		MaxBlockDuration: 30 * time.Hour,
+	}, fs, &fakeLimits{}, 0)
+	require.NoError(t, err)
+	require.NoError(t, services.StartAndAwaitRunning(context.Background(), ing))
+
+	req := &connect.Request[pushv1.PushRequest]{
+		Msg: &pushv1.PushRequest{
+			Series: []*pushv1.RawProfileSeries{
+				{
+					Labels: phlaremodel.LabelsFromStrings("foo", "bar"),
+					Samples: []*pushv1.RawSample{
+						{
+							ID:         uuid.NewString(),
+							RawProfile: testProfile(t),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	ctx := tenant.InjectTenantID(context.Background(), "foo")
+	_, err = ing.Push(ctx, req)
+	require.NoError(t, err)
+
+	query := &typesv1.LabelValuesRequest{
+		Name:  "foo",
+		Start: time.Now().Add(-1 * time.Hour).UnixMilli(),
+		End:   time.Now().Add(time.Hour).UnixMilli(),
+	}
+
+	labelsValues, err := ing.LabelValues(ctx, connect.NewRequest(query))
+	require.NoError(t, err)
+	require.Equal(t, []string{"bar"}, labelsValues.Msg.Names)
+
+	require.NoError(t, services.StopAndAwaitTerminated(context.Background(), ing))
+
+	// Open the ingester again and check if the data is
+	// available for queries before the first push request.
+
+	ing, err = New(phlareCtx, defaultIngesterTestConfig(t), phlaredb.Config{
+		DataPath:         dbPath,
+		MaxBlockDuration: 30 * time.Hour,
+	}, fs, &fakeLimits{}, 0)
+	require.NoError(t, err)
+	require.NoError(t, services.StartAndAwaitRunning(context.Background(), ing))
+
+	labelsValues, err = ing.LabelValues(ctx, connect.NewRequest(query))
+	require.NoError(t, err)
+	require.Equal(t, []string{"bar"}, labelsValues.Msg.Names)
 
 	require.NoError(t, services.StopAndAwaitTerminated(context.Background(), ing))
 }

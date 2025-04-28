@@ -5,6 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -193,6 +195,38 @@ func (i *Ingester) getOrCreateInstance(tenantID string) (*instance, error) {
 	return inst, nil
 }
 
+func (i *Ingester) getOrOpenInstance(tenantID string) (*instance, error) {
+	inst, ok := i.getInstanceByID(tenantID)
+	if ok {
+		return inst, nil
+	}
+
+	i.instancesMtx.Lock()
+	defer i.instancesMtx.Unlock()
+	inst, ok = i.instances[tenantID]
+	if ok {
+		return inst, nil
+	}
+
+	if _, err := os.Stat(filepath.Join(i.dbConfig.DataPath, tenantID)); err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	var err error
+	limiter := NewLimiter(tenantID, i.limits, i.lifecycler, i.cfg.LifecyclerConfig.RingConfig.ReplicationFactor)
+	inst, err = newInstance(i.phlarectx, i.dbConfig, tenantID, i.localBucket, i.storageBucket, limiter)
+	if err != nil {
+		return nil, err
+	}
+
+	i.instances[tenantID] = inst
+	activeTenantsStats.Set(int64(len(i.instances)))
+	return inst, nil
+}
+
 func (i *Ingester) getInstanceByID(id string) (*instance, bool) {
 	i.instancesMtx.RLock()
 	defer i.instancesMtx.RUnlock()
@@ -220,8 +254,11 @@ func forInstanceUnary[T any](ctx context.Context, i *Ingester, f func(*instance)
 	if err != nil {
 		return connect.NewResponse[T](new(T)), connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	instance, ok := i.getInstanceByID(tenantID)
-	if ok {
+	instance, err := i.getOrOpenInstance(tenantID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if instance != nil {
 		return f(instance)
 	}
 	return connect.NewResponse[T](new(T)), nil
@@ -232,8 +269,11 @@ func forInstanceStream[Req, Resp any](ctx context.Context, i *Ingester, stream *
 	if err != nil {
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	instance, ok := i.getInstanceByID(tenantID)
-	if ok {
+	instance, err := i.getOrOpenInstance(tenantID)
+	if err != nil {
+		return connect.NewError(connect.CodeInternal, err)
+	}
+	if instance != nil {
 		return f(instance)
 	}
 	// The client blocks awaiting the response.
