@@ -393,6 +393,7 @@ const getViewOptions = (
 }> =>
   flamegraphType === 'single'
     ? [
+        { label: 'Table', value: 'table', Icon: TableIcon },
         {
           label: 'Table and Flamegraph',
           value: 'both',
