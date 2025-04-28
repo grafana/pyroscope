@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"sync"
 	"time"
 
@@ -170,7 +171,7 @@ func (i *Ingester) stopping(_ error) error {
 	return errs.Err()
 }
 
-func (i *Ingester) GetOrCreateInstance(tenantID string) (*instance, error) { //nolint:revive
+func (i *Ingester) getOrCreateInstance(tenantID string) (*instance, error) {
 	inst, ok := i.getInstanceByID(tenantID)
 	if ok {
 		return inst, nil
@@ -200,30 +201,52 @@ func (i *Ingester) getInstanceByID(id string) (*instance, bool) {
 	return inst, ok
 }
 
-// forInstanceUnary executes the given function for the instance with the given tenant ID in the context.
-func forInstanceUnary[T any](ctx context.Context, i *Ingester, f func(*instance) (T, error)) (T, error) {
+func push[T any](ctx context.Context, i *Ingester, f func(*instance) (T, error)) (T, error) {
 	var res T
-	err := i.forInstance(ctx, func(inst *instance) error {
-		r, err := f(inst)
-		if err == nil {
-			res = r
-		}
-		return err
-	})
-	return res, err
+	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+	if err != nil {
+		return res, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	instance, err := i.getOrCreateInstance(tenantID)
+	if err != nil {
+		return res, connect.NewError(connect.CodeInternal, err)
+	}
+	return f(instance)
 }
 
-// forInstance executes the given function for the instance with the given tenant ID in the context.
-func (i *Ingester) forInstance(ctx context.Context, f func(*instance) error) error {
+// forInstanceUnary executes the given function for the instance with the given tenant ID in the context.
+func forInstanceUnary[T any](ctx context.Context, i *Ingester, f func(*instance) (*connect.Response[T], error)) (*connect.Response[T], error) {
+	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+	if err != nil {
+		return connect.NewResponse[T](new(T)), connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	instance, ok := i.getInstanceByID(tenantID)
+	if ok {
+		return f(instance)
+	}
+	return connect.NewResponse[T](new(T)), nil
+}
+
+func forInstanceStream[Req, Resp any](ctx context.Context, i *Ingester, stream *connect.BidiStream[Req, Resp], f func(*instance) error) error {
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
 	if err != nil {
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	instance, err := i.GetOrCreateInstance(tenantID)
-	if err != nil {
-		return connect.NewError(connect.CodeInternal, err)
+	instance, ok := i.getInstanceByID(tenantID)
+	if ok {
+		return f(instance)
 	}
-	return f(instance)
+	// The client blocks awaiting the response.
+	if _, err = stream.Receive(); err != nil {
+		if errors.Is(err, io.EOF) {
+			return connect.NewError(connect.CodeCanceled, errors.New("client closed stream"))
+		}
+		return err
+	}
+	if err = stream.Send(new(Resp)); err != nil {
+		return err
+	}
+	return stream.Send(new(Resp))
 }
 
 func (i *Ingester) evictBlock(tenantID string, b ulid.ULID, fn func() error) (err error) {
@@ -252,7 +275,7 @@ func (i *Ingester) evictBlock(tenantID string, b ulid.ULID, fn func() error) (er
 }
 
 func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
-	return forInstanceUnary(ctx, i, func(instance *instance) (*connect.Response[pushv1.PushResponse], error) {
+	return push(ctx, i, func(instance *instance) (*connect.Response[pushv1.PushResponse], error) {
 		usageGroups := i.limits.DistributorUsageGroups(instance.tenantID)
 
 		for _, series := range req.Msg.Series {
