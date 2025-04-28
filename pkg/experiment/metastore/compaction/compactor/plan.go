@@ -24,7 +24,18 @@ type plan struct {
 	compactor  *Compactor
 	batches    *batchIter
 	blocks     *blockIter
+	visited    map[compactionKey]struct{}
 	now        int64
+}
+
+func newPlan(c *Compactor, t iter.Iterator[*metastorev1.Tombstones], now int64) *plan {
+	return &plan{
+		compactor:  c,
+		tombstones: t,
+		blocks:     newBlockIter(),
+		visited:    make(map[compactionKey]struct{}),
+		now:        now,
+	}
 }
 
 func (p *plan) CreateJob() (*raft_log.CompactionJobPlan, error) {
@@ -80,6 +91,11 @@ func (p *plan) nextJob() *jobPlan {
 			continue
 		}
 
+		if _, ok = p.visited[b.staged.key]; ok {
+			// We've already checked all the blocks with this compaction key.
+			continue
+		}
+
 		// We've found the oldest batch, it's time to plan a job.
 		// Job levels are zero based: L0 job means that it includes blocks
 		// with compaction level 0. This can be altered (1-based levels):
@@ -130,6 +146,7 @@ func (p *plan) nextJob() *jobPlan {
 
 		// The job plan is canceled for the compaction key, and we need to
 		// continue with the next compaction key, or level.
+		p.visited[job.compactionKey] = struct{}{}
 	}
 
 	return nil
