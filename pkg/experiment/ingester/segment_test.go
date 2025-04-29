@@ -868,7 +868,7 @@ func gprofileFromProtoProfile(t *testing.T, profile *profilev1.Profile) *gprofil
 func staticTestData() []inputChunk {
 	return []inputChunk{
 		{
-			//todo check why it takes 10ms for each dataset
+			//todo check why it takes 10ms for each head
 			{shard: 1, tenant: "t1", profile: cpuProfile(42, 480, "svc1", "foo", "bar")},
 			{shard: 1, tenant: "t1", profile: cpuProfile(13, 233, "svc1", "qwe", "foo", "bar")},
 			{shard: 1, tenant: "t1", profile: cpuProfile(13, 472, "svc1", "qwe", "foo", "bar")},

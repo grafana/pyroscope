@@ -14,8 +14,7 @@ type locToSymbolize struct {
 
 // LidiaTableCacheEntry represents a cached Lidia table with its binary layout information
 type LidiaTableCacheEntry struct {
-	Data []byte        // Processed Lidia table data
-	EI   *BinaryLayout // Binary layout information for address mapping
+	Data []byte // Processed Lidia table data
 }
 
 // Location represents a memory address to be symbolized

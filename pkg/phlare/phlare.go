@@ -203,7 +203,6 @@ func (c *Config) RegisterFlagsWithContext(f *flag.FlagSet) {
 	c.EmbeddedGrafana.RegisterFlags(f)
 	c.TenantSettings.RegisterFlags(f)
 
-	c.v2Experiment = os.Getenv("PYROSCOPE_V2_EXPERIMENT") != ""
 	if c.v2Experiment {
 		c.Symbolizer.RegisterFlags(f)
 	}

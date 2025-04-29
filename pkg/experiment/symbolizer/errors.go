@@ -1,6 +1,9 @@
 package symbolizer
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 type invalidBuildIDError struct {
 	buildID string
@@ -20,16 +23,20 @@ func (e buildIDNotFoundError) Error() string {
 
 type httpStatusError struct {
 	statusCode int
-	status     string
+	body       string
 }
 
 func (e httpStatusError) Error() string {
-	return fmt.Sprintf("unexpected HTTP status: %d %s", e.statusCode, e.status)
+	if e.body != "" {
+		return fmt.Sprintf("HTTP error %d: %s", e.statusCode, e.body)
+	}
+	return fmt.Sprintf("HTTP error %d", e.statusCode)
 }
 
 // Helper function to check if an error is of a specific type
 func isInvalidBuildIDError(err error) bool {
-	_, ok := err.(invalidBuildIDError)
+	var invalidBuildIDError invalidBuildIDError
+	ok := errors.As(err, &invalidBuildIDError)
 	return ok
 }
 

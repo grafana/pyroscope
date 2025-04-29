@@ -11,7 +11,7 @@ const (
 	version uint32 = 1
 
 	// Size of the file header in bytes
-	headerSize = 0x98
+	headerSize = 0x80
 
 	// Number of fields in a line table entry
 	lineTableFieldsCount = 2

@@ -291,6 +291,18 @@ func (s *ProfileSymbolizer) updateProfileWithSymbols(profile *googlev1.Profile, 
 				}
 			}
 		}
+		//else {
+		//	// Create placeholder line with a valid function ID
+		//	notFoundFuncName := fmt.Sprintf("%s!0x%x", s.extractBinaryName(profile, mapping), locs[i].loc.Address)
+		//	nameIdx := s.findOrAddString(profile, notFoundFuncName)
+		//	funcId := s.findOrAddFunction(profile, nameIdx, 0, 0)
+		//
+		//	// Create a line with the function ID
+		//	profile.Location[locs[i].idx].Line = []*googlev1.Line{{
+		//		FunctionId: funcId,
+		//		Line:       0,
+		//	}}
+		//}
 	}
 
 	mapping.HasFunctions = true
@@ -355,32 +367,23 @@ func (s *ProfileSymbolizer) Symbolize(ctx context.Context, req *Request) error {
 }
 
 // symbolizeWithTable processes all locations in a request using a lidia table
-func (s *ProfileSymbolizer) symbolizeWithTable(_ context.Context, table *lidia.Table, ei *BinaryLayout, req *Request) error {
+func (s *ProfileSymbolizer) symbolizeWithTable(_ context.Context, table *lidia.Table, req *Request) error {
 	// Buffer for reusing in symbol lookups
 	var framesBuf []lidia.SourceInfoFrame
 
 	for _, loc := range req.Locations {
 		resolveStart := time.Now()
-		addr, err := MapRuntimeAddress(loc.Address, ei, Mapping{
-			Start:  loc.Mapping.Start,
-			Limit:  loc.Mapping.Limit,
-			Offset: loc.Mapping.Offset,
-		})
-		if err != nil {
-			return fmt.Errorf("normalize address: %w", err)
-		}
 
-		// Look up the address directly in the lidia table
-		frames, err := table.Lookup(framesBuf, addr)
+		frames, err := table.Lookup(framesBuf, loc.Address)
 		if err != nil {
 			level.Error(s.logger).Log(
 				"msg", "failed to resolve address on Lidia table lookup",
-				"addr", fmt.Sprintf("0x%x", addr),
+				"addr", fmt.Sprintf("0x%x", loc.Address),
 				"binary", req.BinaryName,
 				"build_id", req.BuildID,
 				"error", err,
 			)
-			loc.Lines = s.createNotFoundSymbols(req.BinaryName, loc, addr)
+			loc.Lines = s.createNotFoundSymbols(req.BinaryName, loc, loc.Address)
 			s.metrics.debugSymbolResolution.WithLabelValues(StatusErrorServerError).Observe(time.Since(resolveStart).Seconds())
 			continue
 		}
@@ -388,11 +391,11 @@ func (s *ProfileSymbolizer) symbolizeWithTable(_ context.Context, table *lidia.T
 		if len(frames) == 0 {
 			level.Debug(s.logger).Log(
 				"msg", "No symbols found for address",
-				"addr", fmt.Sprintf("0x%x", addr),
+				"addr", fmt.Sprintf("0x%x", loc.Address),
 				"binary", req.BinaryName,
 				"build_id", req.BuildID,
 			)
-			loc.Lines = s.createNotFoundSymbols(req.BinaryName, loc, addr)
+			loc.Lines = s.createNotFoundSymbols(req.BinaryName, loc, loc.Address)
 			s.metrics.debugSymbolResolution.WithLabelValues(StatusErrorOther).Observe(time.Since(resolveStart).Seconds())
 			continue
 		}
@@ -443,7 +446,6 @@ func (s *ProfileSymbolizer) checkLidiaTableCache(ctx context.Context, req *Reque
 	if data, found := s.lidiaTableCache.Get(req.BuildID); found {
 		lidiaTableStatus = StatusCacheHit
 		dataBytes := data.Data
-		ei := data.EI
 
 		bytesReader := bytes.NewReader(dataBytes)
 		lidiaReader := struct {
@@ -462,8 +464,7 @@ func (s *ProfileSymbolizer) checkLidiaTableCache(ctx context.Context, req *Reque
 		}
 		defer table.Close()
 
-		// Use the BinaryLayout from the cache or the one we just extracted
-		err = s.symbolizeWithTable(ctx, table, ei, req)
+		err = s.symbolizeWithTable(ctx, table, req)
 		if err != nil {
 			return false
 		}
@@ -641,14 +642,13 @@ func (s *ProfileSymbolizer) symbolizeFromReader(ctx context.Context, r io.ReadCl
 	}
 
 	var lidiaData []byte
-	var ei *BinaryLayout
 
 	if isLidia {
 		// Data is already in Lidia format
 		lidiaData = data
 	} else {
 		// Process as ELF data
-		lidiaData, ei, err = s.processELFData(data)
+		lidiaData, err = s.processELFData(data)
 		if err != nil {
 			level.Error(s.logger).Log(
 				"msg", "symbolizer: Failed to process ELF data",
@@ -670,61 +670,33 @@ func (s *ProfileSymbolizer) symbolizeFromReader(ctx context.Context, r io.ReadCl
 	}
 	defer table.Close()
 
-	// If we're reading a Lidia file, get the binary layout from the table
-	if isLidia {
-		lidiaLayout, err := table.GetBinaryLayout()
-		if err != nil {
-			level.Error(s.logger).Log(
-				"msg", "failed to get binary layout from Lidia table",
-				"build_id", req.BuildID,
-				"error", err,
-			)
-			return err
-		}
-		ei = convertBinaryLayout(lidiaLayout)
-	}
-
-	return s.symbolizeWithTable(ctx, table, ei, req)
+	return s.symbolizeWithTable(ctx, table, req)
 }
 
 func (s *ProfileSymbolizer) storeLidiaTableInCache(data []byte, buildID string, cacheStart time.Time) error {
 	var lidiaData []byte
-	var ei *BinaryLayout
 	var err error
 
 	// Check if data is already in Lidia format by looking for the magic number
 	if len(data) >= 4 && data[0] == 0x2e && data[1] == 0x64 && data[2] == 0x69 && data[3] == 0x61 {
-		// Data is already in Lidia format
 		lidiaData = data
 		lidiaReader := NewReaderAtCloser(lidiaData)
 
-		// Open the Lidia table to extract binary layout
 		table, err := lidia.OpenReader(lidiaReader, lidia.WithCRC())
 		if err != nil {
 			return fmt.Errorf("open lidia file: %w", err)
 		}
 		defer table.Close()
 
-		// Get binary layout from the Lidia table
-		lidiaLayout, err := table.GetBinaryLayout()
-		if err != nil {
-			return fmt.Errorf("get binary layout from lidia table: %w", err)
-		}
-
-		// Convert to our internal binary layout format
-		ei = convertBinaryLayout(lidiaLayout)
 	} else {
-		// Process as ELF data
-		lidiaData, ei, err = s.processELFData(data)
+		lidiaData, err = s.processELFData(data)
 		if err != nil {
 			return err
 		}
 	}
 
-	// Store both the processed Lidia table data and the BinaryLayout in the cache
 	entry := LidiaTableCacheEntry{
 		Data: lidiaData,
-		EI:   ei,
 	}
 
 	success := s.lidiaTableCache.Set(buildID, entry, int64(len(lidiaData)))
@@ -737,38 +709,31 @@ func (s *ProfileSymbolizer) storeLidiaTableInCache(data []byte, buildID string, 
 	return nil
 }
 
-func (s *ProfileSymbolizer) processELFData(data []byte) (lidiaData []byte, ei *BinaryLayout, err error) {
+func (s *ProfileSymbolizer) processELFData(data []byte) (lidiaData []byte, err error) {
 	// Create a reader from the data
 	reader, err := detectCompression(bytes.NewReader(data))
 	if err != nil {
-		return nil, nil, fmt.Errorf("detect compression: %w", err)
+		return nil, fmt.Errorf("detect compression: %w", err)
 	}
 
 	// Parse the ELF file
 	sr := io.NewSectionReader(reader, 0, 1<<63-1)
 	elfFile, err := elf.NewFile(sr)
 	if err != nil {
-		return nil, nil, fmt.Errorf("parse ELF file: %w", err)
+		return nil, fmt.Errorf("parse ELF file: %w", err)
 	}
 	defer elfFile.Close()
-
-	// Get executable info for address normalization
-	ei, err = ExecutableInfoFromELF(elfFile)
-	if err != nil {
-		return nil, nil, fmt.Errorf("executable info from ELF: %w", err)
-	}
 
 	// Create an in-memory buffer for the lidia format
 	initialSize := len(data) * 2 // A simple heuristic: twice the compressed size
 	memBuffer := newMemoryBuffer(initialSize)
 
-	// Create lidia file from ELF directly in memory
 	err = lidia.CreateLidiaFromELF(elfFile, memBuffer, lidia.WithCRC(), lidia.WithFiles(), lidia.WithLines())
 	if err != nil {
-		return nil, nil, fmt.Errorf("create lidia file: %w", err)
+		return nil, fmt.Errorf("create lidia file: %w", err)
 	}
 
-	return memBuffer.Bytes(), ei, nil
+	return memBuffer.Bytes(), nil
 }
 
 // updateSymbolCache updates the symbol cache with newly symbolized addresses
@@ -814,27 +779,4 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.IntVar(&cfg.InMemoryLidiaTableCacheSize, "symbolizer.in-memory-debuginfo-cache-size", DefaultInMemoryLidiaTableCacheSize, "Maximum size in bytes for the in-memory debug info cache")
 	f.DurationVar(&cfg.PersistentDebugInfoStore.MaxAge, "symbolizer.persistent-debuginfo-store.max-age", 7*24*time.Hour, "Maximum age of stored debug info")
 	cfg.PersistentDebugInfoStore.Storage.RegisterFlagsWithPrefix("symbolizer.persistent-debuginfo-store.storage.", f)
-}
-
-func convertBinaryLayout(info *lidia.BinaryLayoutInfo) *BinaryLayout {
-	if info == nil {
-		return nil
-	}
-
-	layout := &BinaryLayout{
-		ElfType:        info.Type,
-		ProgramHeaders: make([]MemoryRegion, len(info.ProgramHeaders)),
-	}
-
-	for i, ph := range info.ProgramHeaders {
-		layout.ProgramHeaders[i] = MemoryRegion{
-			Off:    ph.Offset,
-			Vaddr:  ph.VirtualAddr,
-			Filesz: ph.FileSize,
-			Memsz:  ph.MemSize,
-			Type:   ph.Type,
-		}
-	}
-
-	return layout
 }
