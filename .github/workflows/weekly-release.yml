@@ -95,4 +95,4 @@ jobs:
           app_id: ${{ secrets.APP_ID }}
           private_key: ${{ secrets.APP_PRIVATE_KEY }}
       - name: Push git tag for weekly release
-        run: git push "https://x-access-token:${{ steps.app-git-tag.output.token }}@github.com/grafana/pyroscope.git" "${WEEKLY_IMAGE_TAG}"
+        run: git push "https://x-access-token:${{ steps.app-git-tag.output.token }}@github.com/grafana/pyroscope.git" "${WEEKLY_IMAGE_TAG}" 2> /dev/null
