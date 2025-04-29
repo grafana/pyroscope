@@ -7,15 +7,6 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
-	"github.com/grafana/dskit/tenant"
-	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/promql/parser"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/proto"
-
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -23,11 +14,17 @@ import (
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
 	queryplan "github.com/grafana/pyroscope/pkg/experiment/query_backend/query_plan"
-	"github.com/grafana/pyroscope/pkg/experiment/symbolizer"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/model"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
+
+	"github.com/go-kit/log"
+	"github.com/grafana/dskit/tenant"
+	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/promql/parser"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var _ querierv1connect.QuerierServiceClient = (*QueryFrontend)(nil)
@@ -47,7 +44,7 @@ type QueryFrontend struct {
 	metadataQueryClient metastorev1.MetadataQueryServiceClient
 	tenantServiceClient metastorev1.TenantServiceClient
 	querybackend        QueryBackend
-	symbolizer          *symbolizer.ProfileSymbolizer
+	symbolizer          Symbolizer
 }
 
 func NewQueryFrontend(
@@ -56,7 +53,7 @@ func NewQueryFrontend(
 	metadataQueryClient metastorev1.MetadataQueryServiceClient,
 	tenantServiceClient metastorev1.TenantServiceClient,
 	querybackendClient QueryBackend,
-	sym *symbolizer.ProfileSymbolizer,
+	sym Symbolizer,
 ) *QueryFrontend {
 	return &QueryFrontend{
 		logger:              logger,
@@ -99,23 +96,16 @@ func (q *QueryFrontend) Query(
 	// TODO(kolesnikovae): Should be dynamic.
 	p := queryplan.Build(blocks, 4, 20)
 
-	hasNativeProfiles := false
-	if q.symbolizer != nil {
-		for _, block := range blocks {
-			if q.hasNativeProfiles(block) {
-				hasNativeProfiles = true
-				break
-			}
-		}
-	}
+	// Only check for symbolization if all tenants have it enabled
+	shouldSymbolize := q.shouldSymbolize(tenants, blocks)
 
 	// Modify queries based on symbolization needs
 	modifiedQueries := make([]*queryv1.Query, len(req.Query))
 	for i, originalQuery := range req.Query {
-		modifiedQueries[i] = proto.Clone(originalQuery).(*queryv1.Query)
+		modifiedQueries[i] = originalQuery.CloneVT()
 
 		// If we need symbolization and this is a TREE query, convert it to PPROF
-		if hasNativeProfiles && originalQuery.QueryType == queryv1.QueryType_QUERY_TREE {
+		if shouldSymbolize && originalQuery.QueryType == queryv1.QueryType_QUERY_TREE {
 			modifiedQueries[i].QueryType = queryv1.QueryType_QUERY_PPROF
 			modifiedQueries[i].Pprof = &queryv1.PprofQuery{
 				MaxNodes: 0,
@@ -137,39 +127,10 @@ func (q *QueryFrontend) Query(
 		return nil, err
 	}
 
-	if hasNativeProfiles && q.symbolizer != nil {
-		for i, r := range resp.Reports {
-			if r.Pprof != nil && r.Pprof.Pprof != nil {
-				var prof profilev1.Profile
-				if err := pprof.Unmarshal(r.Pprof.Pprof, &prof); err != nil {
-					level.Error(q.logger).Log("msg", "unmarshal pprof", "err", err)
-					continue
-				}
-
-				isOTEL := isProfileFromOTEL(&prof)
-				if isOTEL {
-					if err := q.symbolizer.SymbolizePprof(ctx, &prof); err != nil {
-						level.Error(q.logger).Log("msg", "symbolize pprof", "err", err)
-					}
-
-					// Convert back to tree if originally a tree
-					if i < len(req.Query) && req.Query[i].QueryType == queryv1.QueryType_QUERY_TREE {
-						if len(prof.SampleType) > 1 {
-							return nil, fmt.Errorf("multiple sample types not supported")
-						}
-						treeBytes := model.TreeFromBackendProfile(&prof, req.Query[i].Tree.MaxNodes)
-						// Store the tree result
-						r.Tree = &queryv1.TreeReport{Tree: treeBytes}
-						r.ReportType = queryv1.ReportType_REPORT_TREE
-						r.Pprof = nil
-					} else {
-						symbolizedBytes, err := pprof.Marshal(&prof, true)
-						if err == nil {
-							r.Pprof.Pprof = symbolizedBytes
-						}
-					}
-				}
-			}
+	if shouldSymbolize {
+		err = q.processAndSymbolizeProfiles(ctx, resp, req.Query)
+		if err != nil {
+			return nil, status.Error(codes.Internal, fmt.Sprintf("symbolizing profiles: %v", err))
 		}
 	}
 
@@ -244,6 +205,69 @@ func (q *QueryFrontend) hasNativeProfiles(block *metastorev1.BlockMeta) bool {
 	})
 
 	return hasNativeProfiles
+}
+
+// shouldSymbolize determines if we should symbolize profiles based on tenant settings
+func (q *QueryFrontend) shouldSymbolize(tenants []string, blocks []*metastorev1.BlockMeta) bool {
+	// Check if all tenants have symbolization enabled
+	// (once we support multi-tenant queries)
+	for _, t := range tenants {
+		if !q.limits.SymbolizerEnabled(t) {
+			return false
+		}
+	}
+
+	// Check if any block has native profiles
+	for _, block := range blocks {
+		if q.hasNativeProfiles(block) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// processAndSymbolizeProfiles handles the symbolization of profiles from the response
+func (q *QueryFrontend) processAndSymbolizeProfiles(
+	ctx context.Context,
+	resp *queryv1.InvokeResponse,
+	originalQueries []*queryv1.Query,
+) error {
+	for i, r := range resp.Reports {
+		if r.Pprof == nil || r.Pprof.Pprof == nil {
+			continue
+		}
+
+		var prof profilev1.Profile
+		if err := pprof.Unmarshal(r.Pprof.Pprof, &prof); err != nil {
+			return fmt.Errorf("failed to unmarshal profile: %w", err)
+		}
+
+		isOTEL := isProfileFromOTEL(&prof)
+		if !isOTEL {
+			continue
+		}
+
+		if err := q.symbolizer.SymbolizePprof(ctx, &prof); err != nil {
+			return fmt.Errorf("failed to symbolize profile: %w", err)
+		}
+
+		// Convert back to tree if originally a tree
+		if i < len(originalQueries) && originalQueries[i].QueryType == queryv1.QueryType_QUERY_TREE {
+			treeBytes := model.TreeFromBackendProfile(&prof, originalQueries[i].Tree.MaxNodes)
+			r.Tree = &queryv1.TreeReport{Tree: treeBytes}
+			r.ReportType = queryv1.ReportType_REPORT_TREE
+			r.Pprof = nil
+		} else {
+			symbolizedBytes, err := pprof.Marshal(&prof, true)
+			if err != nil {
+				return fmt.Errorf("failed to marshal symbolized profile: %w", err)
+			}
+			r.Pprof.Pprof = symbolizedBytes
+		}
+	}
+
+	return nil
 }
 
 func isProfileFromOTEL(prof *profilev1.Profile) bool {

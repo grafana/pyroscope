@@ -27,6 +27,7 @@ packages:
   github.com/grafana/pyroscope/pkg/frontend/read_path/query_frontend:
     interfaces:
       QueryBackend:
+      Symbolizer:
   github.com/grafana/pyroscope/pkg/ingester/otlp:
     interfaces:
       PushService:

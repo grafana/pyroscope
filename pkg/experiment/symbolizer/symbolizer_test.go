@@ -9,10 +9,11 @@ import (
 	"os"
 	"testing"
 
-	"github.com/go-kit/log"
-	pprof "github.com/google/pprof/profile"
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mocksymbolizer"
+
+	"github.com/go-kit/log"
+	pprof "github.com/google/pprof/profile"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/mock"
@@ -84,7 +85,6 @@ func TestSymbolizePprof(t *testing.T) {
 			validate: func(t *testing.T, p *googlev1.Profile) {
 				require.True(t, p.Mapping[0].HasFunctions)
 				require.True(t, p.Mapping[0].HasFilenames)
-				require.True(t, p.Mapping[0].HasLineNumbers)
 
 				require.Len(t, p.Location[0].Line, 1)
 

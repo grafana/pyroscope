@@ -118,6 +118,9 @@ type Limits struct {
 	// RecordingRules allow to specify static recording rules. This is not compatible with recording rules
 	// coming from a RecordingRulesClient, that will replace any static rules defined.
 	RecordingRules RecordingRules `yaml:"recording_rules" json:"recording_rules" category:"experimental" doc:"hidden"`
+
+	// SymbolizerEnabled enables the symbolizer in the query frontend.
+	SymbolizerEnabled bool `yaml:"symbolizer_enabled" json:"symbolizer_enabled" doc:"hidden"`
 }
 
 // LimitError are errors that do not comply with the limits specified.
@@ -518,6 +521,11 @@ func (o *Overrides) getOverridesForTenant(tenantID string) *Limits {
 		}
 	}
 	return o.defaultLimits
+}
+
+// SymbolizerEnabled returns whether symbolization is enabled for the given tenant.
+func (o *Overrides) SymbolizerEnabled(tenantID string) bool {
+	return o.getOverridesForTenant(tenantID).SymbolizerEnabled
 }
 
 // OverwriteMarshalingStringMap will overwrite the src map when unmarshaling

@@ -314,7 +314,7 @@ func (s *ProfileSymbolizer) updateProfileWithSymbols(profile *googlev1.Profile, 
 
 	mapping.HasFunctions = true
 	mapping.HasFilenames = true
-	mapping.HasLineNumbers = true
+	//mapping.HasLineNumbers = true
 }
 
 // findOrAddString finds a string in the string table or adds it if not found
@@ -779,7 +779,6 @@ func (s *ProfileSymbolizer) createSymbolCacheKey(buildID string, address uint64)
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
-	// TODO: change me back to false!
 	f.BoolVar(&cfg.Enabled, "symbolizer.enabled", true, "Enable symbolization for unsymbolized profiles")
 	f.StringVar(&cfg.DebuginfodURL, "symbolizer.debuginfod-url", "https://debuginfod.elfutils.org", "URL of the debuginfod server")
 	f.IntVar(&cfg.InMemorySymbolCacheSize, "symbolizer.in-memory-symbol-cache-size", DefaultInMemorySymbolCacheSize, "Maximum number of entries in the in-memory symbol cache")
