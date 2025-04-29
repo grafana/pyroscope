@@ -80,6 +80,10 @@ jobs:
         run: make lint
       - name: Check helm manifests
         run: make helm/check check/unstaged-changes
+      - name: Lint github workflows
+        run: make github-workflows/lint
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   test-docs:
     runs-on: ubuntu-latest

@@ -461,6 +461,10 @@ helm/check: $(BIN)/kubeconform $(BIN)/helm
 		| go run ./tools/yaml-to-json \
 		> ./operations/pyroscope/jsonnet/values.json
 
+.PHONY: github-workflows/lint
+github-workflows/lint:
+	docker run -e GH_TOKEN=$(GITHUB_TOKEN) --workdir /dot-github --entrypoint "" --rm --volume "$(CURDIR)/.github:/dot-github:ro" ghcr.io/woodruffw/zizmor:1.6.0 /bin/sh -c "zizmor --format=github ./workflows/*"
+
 .PHONY: deploy
 deploy: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
 	$(call deploy,pyroscope-dev,)
