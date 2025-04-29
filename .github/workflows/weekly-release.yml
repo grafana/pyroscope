@@ -8,6 +8,7 @@ on:
 permissions:
   contents: write
   actions: write
+  id-token: write
 
 jobs:
   goreleaser-weekly:
@@ -41,11 +42,17 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@885d1462b80bc1c1c7f0b00334ad271f09369c55 # v2
       # login to docker hub
+      - id: get-secrets
+        uses: grafana/shared-workflows/actions/get-vault-secrets@28361cdb22223e5f1e34358c86c20908e7248760
+        with:
+          common_secrets: |
+            DOCKERHUB_USERNAME=dockerhub:username
+            DOCKERHUB_PASSWORD=dockerhub:password
       - uses: docker/login-action@465a07811f14bebb1938fbed4728c6a1ff8901fc # v2
         name: Login to Docker Hub
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
       - uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # v3
         with:
           node-version: 20
