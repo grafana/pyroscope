@@ -52,7 +52,7 @@ jobs:
         name: Login to Docker Hub
         with:
           username: ${{ env.DOCKERHUB_USERNAME }}
-          password: ${{ env.DOCKERHUB_TOKEN }}
+          password: ${{ env.DOCKERHUB_PASSWORD }}
       - uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # v3
         with:
           node-version: 20
