@@ -9,9 +9,11 @@ import (
 	"connectrpc.com/connect"
 	"github.com/google/go-github/v58/github"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	vcsv1 "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1"
+	mockclient "github.com/grafana/pyroscope/pkg/test/mocks/mockclient"
 )
 
 func TestGetCommit(t *testing.T) {
@@ -46,7 +48,7 @@ func TestGetCommit(t *testing.T) {
 			},
 		},
 		{
-			name: "exmaple without author",
+			name: "example without author",
 			mockCommit: &github.RepositoryCommit{
 				SHA: github.String("abc123"),
 				Commit: &github.Commit{
@@ -86,14 +88,12 @@ func TestGetCommit(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			mockRepoService := &mockclient.MockrepositoryService{}
 			// Create a mock GitHub client
 			mockClient := &githubClient{
-				repoService: &mockRepositoriesService{
-					commit: tt.mockCommit,
-				},
+				repoService: mockRepoService,
 			}
-
-			// Call GetCommit
+			mockRepoService.EXPECT().GetCommit(mock.Anything, "my-owner", "my-repo", "my-ref", mock.Anything).Return(tt.mockCommit, nil, nil)
 			result, err := mockClient.GetCommit(context.Background(), "my-owner", "my-repo", "my-ref")
 
 			if tt.expectedError != nil {
@@ -106,17 +106,4 @@ func TestGetCommit(t *testing.T) {
 			assert.Equal(t, tt.expected, result)
 		})
 	}
-}
-
-// mockRepositoriesService implements the repositoryService interface
-type mockRepositoriesService struct {
-	commit *github.RepositoryCommit
-}
-
-func (m *mockRepositoriesService) GetCommit(ctx context.Context, owner, repo, sha string, opts *github.ListOptions) (*github.RepositoryCommit, *github.Response, error) {
-	return m.commit, &github.Response{}, nil
-}
-
-func (m *mockRepositoriesService) GetContents(ctx context.Context, owner, repo, path string, opts *github.RepositoryContentGetOptions) (*github.RepositoryContent, []*github.RepositoryContent, *github.Response, error) {
-	return nil, nil, nil, nil
 }
