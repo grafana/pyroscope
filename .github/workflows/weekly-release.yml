@@ -6,7 +6,8 @@ on:
       - 'weekly/f*'
 
 permissions:
-  contents: read
+  contents: write
+  actions: write
 
 jobs:
   goreleaser-weekly:
@@ -49,20 +50,13 @@ jobs:
         with:
           node-version: 20
       - run: make frontend/build
-      - name: Get github app token (valid for an hour)
-        id: app-goreleaser
-        uses: tibdex/github-app-token@32691ba7c9e7063bd457bd8f2a5703138591fa58 # v1
-        with:
-          app_id: ${{ secrets.APP_ID }}
-          private_key: ${{ secrets.APP_PRIVATE_KEY }}
       - uses: goreleaser/goreleaser-action@9c156ee8a17a598857849441385a2041ef570552 # v6
         with:
           # ensure this aligns with the version specified in the /Makefile
           version: v2.7.0
           args: release --clean --skip=publish --timeout 60m
         env:
-          GITHUB_TOKEN: ${{ steps.app-releaser.outputs.token }}
-
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Push per architecture images and create multi-arch manifest
         run: |
           set -eu -o pipefail
@@ -88,11 +82,5 @@ jobs:
 
           docker manifest create "grafana/pyroscope:${WEEKLY_IMAGE_TAG}" "${IMAGE_AMMENDS[@]}"
           docker manifest push "grafana/pyroscope:${WEEKLY_IMAGE_TAG}"
-      - name: Get github app token (valid for an hour)
-        id: app-git-tag
-        uses: tibdex/github-app-token@32691ba7c9e7063bd457bd8f2a5703138591fa58 # v1
-        with:
-          app_id: ${{ secrets.APP_ID }}
-          private_key: ${{ secrets.APP_PRIVATE_KEY }}
       - name: Push git tag for weekly release
-        run: git push "https://x-access-token:${{ steps.app-git-tag.output.token }}@github.com/grafana/pyroscope.git" "${WEEKLY_IMAGE_TAG}" 2> /dev/null
+        run: git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/grafana/pyroscope.git" "${WEEKLY_IMAGE_TAG}" 2> /dev/null
