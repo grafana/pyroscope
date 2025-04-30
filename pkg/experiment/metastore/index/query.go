@@ -252,6 +252,9 @@ func (q *metadataLabelQuerier) collectLabels(s *store.Shard) error {
 		md := q.shards.index.blocks.getOrCreate(s, blocks.At())
 		if q.query.overlapsUnixMilli(md.MinTime, md.MaxTime) {
 			for _, ds := range md.Datasets {
+				if _, ok := q.query.tenantMap[s.Lookup(ds.Tenant)]; !ok {
+					continue
+				}
 				if q.query.overlapsUnixMilli(ds.MinTime, ds.MaxTime) {
 					matcher.Matches(ds.Labels)
 				}
