@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"os"
+	"path/filepath"
 	"runtime/pprof"
 	"testing"
 	"time"
@@ -132,11 +133,19 @@ func Test_Query_TenantNotFound(t *testing.T) {
 		},
 	}
 
+	// set the localPath
+	localPath := t.TempDir()
+
+	// foo has an empty local dir
+	fooLocalPath := filepath.Join(localPath, "foo", "local")
+	require.NoError(t, os.MkdirAll(fooLocalPath, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(fooLocalPath, "shipper.json"), []byte(`{"version":1,"uploaded":null}`), 0o755))
+
 	fs, err := client.NewBucket(ctx, cfg, "storage")
 	require.NoError(t, err)
 
 	ing, err := New(ctx, defaultIngesterTestConfig(t), phlaredb.Config{
-		DataPath:         dbPath,
+		DataPath:         localPath,
 		MaxBlockDuration: 30 * time.Hour,
 	}, fs, &fakeLimits{}, 0)
 	require.NoError(t, err)
@@ -149,6 +158,11 @@ func Test_Query_TenantNotFound(t *testing.T) {
 	labelsNames, err := ing.LabelNames(tenant.InjectTenantID(context.Background(), "buzz"), connect.NewRequest(&typesv1.LabelNamesRequest{}))
 	require.NoError(t, err)
 	require.Empty(t, labelsNames.Msg.Names)
+
+	// check that no tenant are initialized
+	ing.instancesMtx.RLock()
+	require.Len(t, ing.instances, 0)
+	ing.instancesMtx.RUnlock()
 
 	require.NoError(t, services.StopAndAwaitTerminated(context.Background(), ing))
 }

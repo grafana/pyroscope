@@ -195,6 +195,22 @@ func (i *Ingester) getOrCreateInstance(tenantID string) (*instance, error) {
 	return inst, nil
 }
 
+func (i *Ingester) hasLocalBlocks(tenantID string) (bool, error) {
+	entries, err := os.ReadDir(filepath.Join(i.dbConfig.DataPath, tenantID, "local"))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func (i *Ingester) getOrOpenInstance(tenantID string) (*instance, error) {
 	inst, ok := i.getInstanceByID(tenantID)
 	if ok {
@@ -208,14 +224,14 @@ func (i *Ingester) getOrOpenInstance(tenantID string) (*instance, error) {
 		return inst, nil
 	}
 
-	if _, err := os.Stat(filepath.Join(i.dbConfig.DataPath, tenantID)); err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
+	hasLocalBlocks, err := i.hasLocalBlocks(tenantID)
+	if err != nil {
 		return nil, err
 	}
+	if !hasLocalBlocks {
+		return nil, nil
+	}
 
-	var err error
 	limiter := NewLimiter(tenantID, i.limits, i.lifecycler, i.cfg.LifecyclerConfig.RingConfig.ReplicationFactor)
 	inst, err = newInstance(i.phlarectx, i.dbConfig, tenantID, i.localBucket, i.storageBucket, limiter)
 	if err != nil {
