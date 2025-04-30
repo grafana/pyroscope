@@ -48,8 +48,8 @@ jobs:
             DOCKERHUB_USERNAME=dockerhub:username
             DOCKERHUB_PASSWORD=dockerhub:password
           repo_secrets: |
-            GRAFANA_PYROSCOPE_BOT_APP_APP_ID=grafana-pyroscope-bot-app:app-id
-            GRAFANA_PYROSCOPE_BOT_APP_PRIVATE_KEY=grafana-pyroscope-bot-app:app-private-key
+            GRAFANA_PYROSCOPE_BOT_APP_APP_ID=grafana-pyroscope-bot-app2:app-id
+            GRAFANA_PYROSCOPE_BOT_APP_PRIVATE_KEY=grafana-pyroscope-bot-app2:app-private-key
       - name: Get github app token (valid for an hour)
         id: brew-token
         uses: actions/create-github-app-token@3ff1caaa28b64c9cc276ce0a02e2ff584f3900c5 # v2.0.2
