@@ -177,13 +177,12 @@ func (h *Head) flush(ctx context.Context) (*FlushedHead, error) {
 	return res, nil
 }
 
-// TODO: move this into the symbolizer package when available
+// TODO: move into the symbolizer package when available
 func HasUnsymbolizedProfiles(symbols *symdb.Symbols) bool {
 	locations := symbols.Locations
 	mappings := symbols.Mappings
 	for _, loc := range locations {
-		if loc.MappingId == 0 || int(loc.MappingId) >= len(mappings) ||
-			!mappings[loc.MappingId].HasFunctions {
+		if !mappings[loc.MappingId].HasFunctions {
 			return true
 		}
 	}
