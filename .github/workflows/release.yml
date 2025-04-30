@@ -50,7 +50,14 @@ jobs:
           repo_secrets: |
             GRAFANA_PYROSCOPE_BOT_APP_APP_ID=grafana-pyroscope-bot-app:app-id
             GRAFANA_PYROSCOPE_BOT_APP_PRIVATE_KEY=grafana-pyroscope-bot-app:app-private-key
-
+      - name: Get github app token (valid for an hour)
+        id: brew-token
+        uses: actions/create-github-app-token@3ff1caaa28b64c9cc276ce0a02e2ff584f3900c5 # v2.0.2
+        with:
+          app-id: ${{ env.GRAFANA_PYROSCOPE_BOT_APP_APP_ID }}
+          private-key: ${{ env.GRAFANA_PYROSCOPE_BOT_APP_PRIVATE_KEY }}
+          owner: pyroscope-io
+          repositories: homebrew-brew
       - uses: docker/login-action@465a07811f14bebb1938fbed4728c6a1ff8901fc # v2
         name: Login to Docker Hub
         with:
@@ -67,15 +74,6 @@ jobs:
       # make generate-formulas expects PYROSCOPE_TAG to be set
       - name: Set PYROSCOPE_TAG
         run: echo "PYROSCOPE_TAG=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
-      - name: Get github app token (valid for an hour)
-        id: brew-token
-        uses: actions/create-github-app-token@3ff1caaa28b64c9cc276ce0a02e2ff584f3900c5 # v2.0.2
-        with:
-          app-id: ${{ env.GRAFANA_PYROSCOPE_BOT_APP_APP_ID }}
-          private-key: ${{ env.GRAFANA_PYROSCOPE_BOT_APP_PRIVATE_KEY }}
-          owner: pyroscope-io
-          repositories:  |
-            homebrew-brew
       - name: Update homebrew formulas
         run: |
           git config --global url."https://x-access-token:$(echo "${HOMEBREW_GITHUB_TOKEN}" | xargs)@github.com/pyroscope-io/homebrew-brew".insteadOf "https://github.com/pyroscope-io/homebrew-brew"
