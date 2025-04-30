@@ -26,12 +26,13 @@ jobs:
 
       - name: Generate token
         id: generate_token
-        uses: tibdex/github-app-token@3beb63f4bd073e61482598c45c71c1019b59b73a # v2.1.0
+        uses: actions/create-github-app-token@3ff1caaa28b64c9cc276ce0a02e2ff584f3900c5 # v2.0.2
         with:
-          app_id: ${{ env.GITHUB_APP_ID }}
-          installation_retrieval_mode: id
-          installation_retrieval_payload: ${{ env.GITHUB_APP_INSTALLATION_ID }}
-          private_key: ${{ env.GITHUB_APP_PRIVATE_KEY }}
+          app-id: ${{ env.GITHUB_APP_ID }}
+          private-key: ${{ env.GITHUB_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: |
+            pyroscope
 
       - run: |
           make tools/update_examples
