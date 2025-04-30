@@ -85,8 +85,3 @@ jobs:
         env:
           HOMEBREW_GITHUB_TOKEN: ${{ steps.brew-token.outputs.token }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Setup tmate session
-        if: ${{ failure() }}
-        uses: mxschmitt/action-tmate@v3
-        with:
-          limit-access-to-actor: 'true'
