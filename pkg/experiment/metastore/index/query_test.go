@@ -240,6 +240,21 @@ func TestIndex_Query(t *testing.T) {
 				{Name: model.LabelNameServiceName, Value: "dataset-a"},
 			}}}, labels)
 		})
+
+		t.Run("LabelsTenantFilter", func(t *testing.T) {
+			labels, err := index.QueryMetadataLabels(tx, MetadataQuery{
+				Expr:      "{}",
+				StartTime: time.UnixMilli(minT),
+				EndTime:   time.UnixMilli(maxT),
+				Tenant:    []string{"tenant-b"},
+				Labels: []string{
+					model.LabelNameProfileType,
+					model.LabelNameServiceName,
+				},
+			})
+			require.NoError(t, err)
+			require.Empty(t, labels)
+		})
 	}
 
 	idx := NewIndex(util.Logger, NewStore(), DefaultConfig)
