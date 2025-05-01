@@ -326,9 +326,9 @@ define UPDATER_CONFIG_JSON
 }
 endef
 
-.PHONY: docker-image/pyroscope/deploy-dev-001
-docker-image/pyroscope/deploy-dev-001: export CONFIG_JSON:=$(call UPDATER_CONFIG_JSON)
-docker-image/pyroscope/deploy-dev-001: $(BIN)/updater $(BIN)/jb
+.PHONY: docker-image/pyroscope/deploy-dev
+docker-image/pyroscope/deploy-dev: export CONFIG_JSON:=$(call UPDATER_CONFIG_JSON)
+docker-image/pyroscope/deploy-dev: $(BIN)/updater $(BIN)/jb
 	PATH=$(BIN):$(PATH) $(BIN)/updater
 
 .PHONY: clean

@@ -149,3 +149,42 @@ jobs:
         id: build-push
         run: |
           make docker-image/pyroscope/push-multiarch "BUILDX_ARGS=--cache-from=type=gha --cache-to=type=gha"
+
+  deploy-dev:
+    if: github.event_name == 'push' && github.repository == 'grafana/pyroscope' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    needs: [build-push]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          persist-credentials: false
+      - id: get-secrets
+        uses: grafana/shared-workflows/actions/get-vault-secrets@28361cdb22223e5f1e34358c86c20908e7248760
+        with:
+          repo_secrets: |
+            GRAFANA_PYROSCOPE_BOT_APP_APP_ID=grafana-pyroscope-bot:app-id
+            GRAFANA_PYROSCOPE_BOT_APP_PRIVATE_KEY=grafana-pyroscope-bot:app-private-key
+      - name: Get github app token
+        id: dt-token
+        uses: actions/create-github-app-token@3ff1caaa28b64c9cc276ce0a02e2ff584f3900c5 # v2.0.2
+        with:
+          app-id: ${{ env.GRAFANA_PYROSCOPE_BOT_APP_APP_ID }}
+          private-key: ${{ env.GRAFANA_PYROSCOPE_BOT_APP_PRIVATE_KEY }}
+          owner: grafana
+          repositories: deployment_tools
+          permission-pull-requests: write
+          permission-contents: write
+      - name: Deploy to dev
+        run: |
+          git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/grafana/deployment_tools".insteadOf "https://github.com/grafana/deployment_tools"
+          make docker-image/pyroscope/deploy-dev
+        env:
+          GITHUB_TOKEN: ${{ steps.dt-token.outputs.token }} # Note: This is required for the updater run by make target as well as the git config command
+      - name: Cleanup token
+        if: always()
+        run: |
+          git config --global --unset url."https://x-access-token:${{ steps.dt-token.outputs.token }}@github.com/grafana/deployment_tools".insteadOf
