@@ -87,9 +87,9 @@ func Test_Concurrency(t *testing.T) {
 
 	resolver.Register(&multiResolverBuilder{targets: addresses})
 	backendAddress := "multi:///"
-	cl, err := New(backendAddress, grpcClientCfg)
 
-	backends := make([]*querybackend.QueryBackend, 0, nServers)
+	cl, err := New(backendAddress, grpcClientCfg)
+	require.NoError(t, err)
 
 	for i := 0; i < nServers; i++ {
 		gclInterceptor, err := querybackend.CreateConcurrencyInterceptor(log.NewNopLogger())
@@ -108,7 +108,6 @@ func Test_Concurrency(t *testing.T) {
 		require.NoError(t, err)
 
 		queryv1.RegisterQueryBackendServiceServer(serv.GRPC, b)
-		backends = append(backends, b)
 
 		go func() {
 			require.NoError(t, serv.Run())

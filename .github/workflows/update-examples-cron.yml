@@ -13,12 +13,11 @@ jobs:
   update-examples-cron:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          persist-credentials: false
-
+          persist-credentials: 'false'
       - id: get-secrets
-        uses: grafana/shared-workflows/actions/get-vault-secrets@main
+        uses: grafana/shared-workflows/actions/get-vault-secrets@28361cdb22223e5f1e34358c86c20908e7248760
         with:
           repo_secrets: |
             GITHUB_APP_ID=pyroscope-development-app:app-id
@@ -27,12 +26,13 @@ jobs:
 
       - name: Generate token
         id: generate_token
-        uses: tibdex/github-app-token@v2
+        uses: actions/create-github-app-token@3ff1caaa28b64c9cc276ce0a02e2ff584f3900c5 # v2.0.2
         with:
-          app_id: ${{ env.GITHUB_APP_ID }}
-          installation_retrieval_mode: id
-          installation_retrieval_payload: ${{ env.GITHUB_APP_INSTALLATION_ID }}
-          private_key: ${{ env.GITHUB_APP_PRIVATE_KEY }}
+          app-id: ${{ env.GITHUB_APP_ID }}
+          private-key: ${{ env.GITHUB_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: |
+            pyroscope
 
       - run: |
           make tools/update_examples

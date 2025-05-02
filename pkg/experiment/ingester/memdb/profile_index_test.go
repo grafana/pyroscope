@@ -4,13 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
+	"sync"
+	"testing"
+
 	"github.com/google/uuid"
-	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/phlaredb"
-	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -19,9 +17,13 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"sort"
-	"sync"
-	"testing"
+
+	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/phlaredb"
+	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 )
 
 func TestIndex(t *testing.T) {

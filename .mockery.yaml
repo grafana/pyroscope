@@ -60,3 +60,6 @@ packages:
     interfaces:
       Exporter:
       Ruler:
+  github.com/grafana/pyroscope/pkg/frontend/vcs/client:
+    interfaces:
+      repositoryService:

@@ -117,7 +117,7 @@ func openParquetFile(
 	return p, nil
 }
 
-func (f *ParquetFile) RowReader() *parquet.Reader {
+func (f *ParquetFile) RowReader() parquet.RowReader {
 	return parquet.NewReader(f.File, schemav1.ProfilesSchema)
 }
 
