@@ -26,7 +26,7 @@ jobs:
               git add README.md
               git commit -m 'docs: updates the list of contributors in README'
               gh auth status
-              git push --force https://x-access-token:${{ secrets.BOT_GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
+              git push --force https://x-access-token:${{ secrets.BOT_GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main 2> /dev/null
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
