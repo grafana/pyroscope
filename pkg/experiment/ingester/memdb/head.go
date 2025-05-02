@@ -21,11 +21,10 @@ import (
 )
 
 type FlushedHead struct {
-	Index                   []byte
-	Profiles                []byte
-	Symbols                 []byte
-	HasUnsymbolizedProfiles bool
-	Meta                    struct {
+	Index    []byte
+	Profiles []byte
+	Symbols  []byte
+	Meta     struct {
 		ProfileTypeNames []string
 		MinTimeNanos     int64
 		MaxTimeNanos     int64
@@ -154,8 +153,6 @@ func (h *Head) flush(ctx context.Context) (*FlushedHead, error) {
 		return res, nil
 	}
 
-	res.HasUnsymbolizedProfiles = HasUnsymbolizedProfiles(h.symbols.Symbols())
-
 	symbolsBuffer := bytes.NewBuffer(nil)
 	if err := symdb.WritePartition(h.symbols, symbolsBuffer); err != nil {
 		return nil, err
@@ -175,16 +172,4 @@ func (h *Head) flush(ctx context.Context) (*FlushedHead, error) {
 		return nil, fmt.Errorf("failed to write profiles parquet: %w", err)
 	}
 	return res, nil
-}
-
-// TODO: move into the symbolizer package when available
-func HasUnsymbolizedProfiles(symbols *symdb.Symbols) bool {
-	locations := symbols.Locations
-	mappings := symbols.Mappings
-	for _, loc := range locations {
-		if !mappings[loc.MappingId].HasFunctions {
-			return true
-		}
-	}
-	return false
 }
