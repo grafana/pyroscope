@@ -46,27 +46,36 @@ import (
 )
 
 func EachPyroscopeTest(t *testing.T, f func(p *PyroscopeTest, t *testing.T)) {
-	tests := []*PyroscopeTest{
-		(&PyroscopeTest{
-			name: "v1",
-		}).Configure(t, false),
-		(&PyroscopeTest{
-			name: "v2",
-		}).Configure(t, true),
+	tests := []struct {
+		name string
+		f    func(t *testing.T) *PyroscopeTest
+	}{
+		{
+			"v1",
+			func(t *testing.T) *PyroscopeTest {
+				return new(PyroscopeTest).Configure(t, false)
+			},
+		},
+		{
+			"v2",
+			func(t *testing.T) *PyroscopeTest {
+				return new(PyroscopeTest).Configure(t, true)
+			},
+		},
 	}
 	for _, pt := range tests {
 		t.Run(pt.name, func(t *testing.T) {
-			pt.start(t)
+			p := pt.f(t)
+			p.start(t)
 			t.Cleanup(func() {
-				pt.stop()
+				p.stop()
 			})
-			f(pt, t)
+			f(p, t)
 		})
 	}
 }
 
 type PyroscopeTest struct {
-	name           string
 	config         phlare.Config
 	it             *phlare.Phlare
 	wg             sync.WaitGroup
