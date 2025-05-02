@@ -27,7 +27,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	testutil2 "github.com/grafana/pyroscope/pkg/phlaredb/block/testutil"
-	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 )
@@ -673,88 +672,6 @@ func Test_HeadFlush_DuplicateLabels(t *testing.T) {
 		&typesv1.LabelPair{Name: "pod", Value: "not-my-pod"},
 	)
 }
-
-// TODO: move into the symbolizer package when available
-func TestUnsymbolized(t *testing.T) {
-	testCases := []struct {
-		name               string
-		profile            *profilev1.Profile
-		expectUnsymbolized bool
-	}{
-		{
-			name: "fully symbolized profile",
-			profile: &profilev1.Profile{
-				StringTable: []string{"", "a"},
-				Function: []*profilev1.Function{
-					{Id: 4, Name: 1},
-				},
-				Mapping: []*profilev1.Mapping{
-					{Id: 239, HasFunctions: true},
-				},
-				Location: []*profilev1.Location{
-					{Id: 5, MappingId: 239, Line: []*profilev1.Line{{FunctionId: 4, Line: 1}}},
-				},
-				Sample: []*profilev1.Sample{
-					{LocationId: []uint64{5}, Value: []int64{1}},
-				},
-			},
-			expectUnsymbolized: false,
-		},
-		{
-			name: "mapping without functions",
-			profile: &profilev1.Profile{
-				StringTable: []string{"", "a"},
-				Function: []*profilev1.Function{
-					{Id: 4, Name: 1},
-				},
-				Mapping: []*profilev1.Mapping{
-					{Id: 239, HasFunctions: false},
-				},
-				Location: []*profilev1.Location{
-					{Id: 5, MappingId: 239, Line: []*profilev1.Line{{FunctionId: 4, Line: 1}}},
-				},
-				Sample: []*profilev1.Sample{
-					{LocationId: []uint64{5}, Value: []int64{1}},
-				},
-			},
-			expectUnsymbolized: true,
-		},
-		{
-			name: "multiple locations with mixed symbolization",
-			profile: &profilev1.Profile{
-				StringTable: []string{"", "a", "b"},
-				Function: []*profilev1.Function{
-					{Id: 4, Name: 1},
-					{Id: 5, Name: 2},
-				},
-				Mapping: []*profilev1.Mapping{
-					{Id: 239, HasFunctions: true},
-					{Id: 240, HasFunctions: false},
-				},
-				Location: []*profilev1.Location{
-					{Id: 5, MappingId: 239, Line: []*profilev1.Line{{FunctionId: 4, Line: 1}}},
-					{Id: 6, MappingId: 240, Line: nil},
-				},
-				Sample: []*profilev1.Sample{
-					{LocationId: []uint64{5, 6}, Value: []int64{1}},
-				},
-			},
-			expectUnsymbolized: true,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			symbols := symdb.NewPartitionWriter(0, &symdb.Config{
-				Version: symdb.FormatV3,
-			})
-			symbols.WriteProfileSymbols(tc.profile)
-			unsymbolized := HasUnsymbolizedProfiles(symbols.Symbols())
-			assert.Equal(t, tc.expectUnsymbolized, unsymbolized)
-		})
-	}
-}
-
 func BenchmarkHeadIngestProfiles(t *testing.B) {
 	var (
 		profilePaths = []string{
