@@ -82,21 +82,21 @@ func (sh *shard) loop(ctx context.Context) {
 	for {
 		select {
 		case <-ticker.C:
-			sh.flushSegment(context.Background())
+			sh.flushSegment(context.Background(), false)
 		case <-ctx.Done():
-			sh.flushSegment(context.Background())
+			sh.flushSegment(context.Background(), true)
 			return
 		}
 	}
 }
 
-func (sh *shard) flushSegment(ctx context.Context) {
+func (sh *shard) flushSegment(ctx context.Context, lastTick bool) {
 	sh.mu.Lock()
 	s := sh.segment
 	sh.segment = sh.sw.newSegment(sh, s.shard, sh.logger)
 	sh.mu.Unlock()
 
-	go func() { // not blocking next ticks in case metastore/s3 latency is high
+	f := func() {
 		t1 := time.Now()
 		s.inFlightProfiles.Wait()
 		s.debuginfo.waitInflight = time.Since(t1)
@@ -116,7 +116,12 @@ func (sh *shard) flushSegment(ctx context.Context) {
 				"store-meta-duration", s.debuginfo.storeMetaDuration,
 				"total-duration", time.Since(t1))
 		}
-	}()
+	}
+	if lastTick {
+		f()
+	} else {
+		go f() // not blocking next ticks in case metastore/s3 latency is high
+	}
 }
 
 func newSegmentWriter(l log.Logger, metrics *segmentMetrics, hm *memdb.HeadMetrics, config Config, limits Limits, bucket objstore.Bucket, metastoreClient metastorev1.IndexServiceClient) *segmentsWriter {
