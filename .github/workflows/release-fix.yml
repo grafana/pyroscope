@@ -1,0 +1,33 @@
+name: fix docker latest tag
+
+on:
+  push:
+    branches:
+      - fix-doker-latest-tag
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+    steps:
+      # login to docker hub
+      - id: get-secrets
+        uses: grafana/shared-workflows/actions/get-vault-secrets@28361cdb22223e5f1e34358c86c20908e7248760
+        with:
+          common_secrets: |
+            DOCKERHUB_USERNAME=dockerhub:username
+            DOCKERHUB_PASSWORD=dockerhub:password
+      - uses: docker/login-action@465a07811f14bebb1938fbed4728c6a1ff8901fc # v2
+        name: Login to Docker Hub
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_PASSWORD }}
+      - run: |
+          docker pull grafana/pyroscope:1.13.2
+          docker pull grafana/pyroscope:1.13.2
+          docker tag grafana/pyroscope:1.13.2 grafana/pyroscope:latest
+          docker push grafana/pyroscope:latest
