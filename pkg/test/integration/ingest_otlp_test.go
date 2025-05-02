@@ -6,12 +6,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/grafana/pyroscope/pkg/og/convert/pprof/strprofile"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	profilesv1 "go.opentelemetry.io/proto/otlp/collector/profiles/v1development"
 	commonv1 "go.opentelemetry.io/proto/otlp/common/v1"
 	"google.golang.org/protobuf/proto"
+
+	"github.com/grafana/pyroscope/pkg/og/convert/pprof/strprofile"
 )
 
 type otlpTestData struct {
