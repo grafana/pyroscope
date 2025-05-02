@@ -77,26 +77,34 @@ func (sh *shard) ingest(fn func(head segmentIngest)) segmentWaitFlushed {
 }
 
 func (sh *shard) loop(ctx context.Context) {
+	loopWG := new(sync.WaitGroup)
 	ticker := time.NewTicker(sh.sw.config.SegmentDuration)
-	defer ticker.Stop()
+	defer func() {
+		ticker.Stop()
+		// Blocking here to make sure no asynchronous code is executed on this shard once loop exits
+		// This is mostly needed to fix a race in our integration tests
+		loopWG.Wait()
+	}()
 	for {
 		select {
 		case <-ticker.C:
-			sh.flushSegment(context.Background())
+			sh.flushSegment(context.Background(), loopWG)
 		case <-ctx.Done():
-			sh.flushSegment(context.Background())
+			sh.flushSegment(context.Background(), loopWG)
 			return
 		}
 	}
 }
 
-func (sh *shard) flushSegment(ctx context.Context) {
+func (sh *shard) flushSegment(ctx context.Context, wg *sync.WaitGroup) {
 	sh.mu.Lock()
 	s := sh.segment
 	sh.segment = sh.sw.newSegment(sh, s.shard, sh.logger)
 	sh.mu.Unlock()
 
+	wg.Add(1)
 	go func() { // not blocking next ticks in case metastore/s3 latency is high
+		defer wg.Done()
 		t1 := time.Now()
 		s.inFlightProfiles.Wait()
 		s.debuginfo.waitInflight = time.Since(t1)
