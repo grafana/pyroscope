@@ -76,7 +76,7 @@ jobs:
         run: echo "PYROSCOPE_TAG=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
       - name: Update homebrew formulas
         run: |
-          git config --global url."https://x-access-token:$(echo "${HOMEBREW_GITHUB_TOKEN}" | xargs)@github.com/pyroscope-io/homebrew-brew".insteadOf "https://github.com/pyroscope-io/homebrew-brew"
+          git config --global url."https://x-access-token:$(echo "${HOMEBREW_GITHUB_TOKEN}" | xargs)@github.com/pyroscope-io/homebrew-brew".insteadOf "https://github.com/pyroscope-io/homebrew-brew" 2> /dev/null
           git config --global user.email "dmitry+bot@pyroscope.io"
           git config --global user.name "Pyroscope Bot <dmitry+bot@pyroscope.io>"
           git clone https://github.com/pyroscope-io/homebrew-brew ../homebrew-brew
