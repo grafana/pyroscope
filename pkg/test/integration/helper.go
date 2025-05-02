@@ -168,10 +168,10 @@ func (p *PyroscopeTest) Configure(t *testing.T, v2 bool) *PyroscopeTest {
 		p.config.Storage.Bucket.Backend = "filesystem"
 		p.config.LimitsConfig.WritePathOverrides.WritePath = "segment-writer"
 		p.config.LimitsConfig.ReadPathOverrides.EnableQueryBackend = true
-		p.config.SegmentWriter.LifecyclerConfig.MinReadyDuration = 5 * time.Second
+		p.config.SegmentWriter.LifecyclerConfig.MinReadyDuration = 0 * time.Second
 		p.config.SegmentWriter.LifecyclerConfig.Addr = address
-		p.config.SegmentWriter.MetadataUpdateTimeout = 5 * time.Second
-		p.config.Metastore.MinReadyDuration = 5 * time.Second
+		p.config.SegmentWriter.MetadataUpdateTimeout = 0 * time.Second
+		p.config.Metastore.MinReadyDuration = 0 * time.Second
 		p.config.QueryBackend.Address = fmt.Sprintf("%s:%d", address, p.grpcPort)
 		p.config.Metastore.Address = fmt.Sprintf("%s:%d", address, p.grpcPort)
 		p.config.Metastore.Raft.ServerID = fmt.Sprintf("%s:%d", address, p.raftPort)
