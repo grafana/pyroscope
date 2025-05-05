@@ -21,11 +21,11 @@ import (
 )
 
 type FlushedHead struct {
-	Index                   []byte
-	Profiles                []byte
-	Symbols                 []byte
-	HasUnsymbolizedProfiles bool
-	Meta                    struct {
+	Index        []byte
+	Profiles     []byte
+	Symbols      []byte
+	Unsymbolized bool
+	Meta         struct {
 		ProfileTypeNames []string
 		MinTimeNanos     int64
 		MaxTimeNanos     int64
@@ -154,7 +154,7 @@ func (h *Head) flush(ctx context.Context) (*FlushedHead, error) {
 		return res, nil
 	}
 
-	res.HasUnsymbolizedProfiles = HasUnsymbolizedProfiles(h.symbols.Symbols())
+	res.Unsymbolized = HasUnsymbolizedProfiles(h.symbols.Symbols())
 
 	symbolsBuffer := bytes.NewBuffer(nil)
 	if err := symdb.WritePartition(h.symbols, symbolsBuffer); err != nil {

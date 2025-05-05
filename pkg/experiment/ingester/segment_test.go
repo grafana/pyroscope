@@ -472,11 +472,26 @@ func TestUnsymbolizedLabelIsSet(t *testing.T) {
 	}
 	p.Location = append(p.Location, loc)
 
-	sample := &profilev1.Sample{
+	keyIdx := int64(len(p.StringTable))
+	p.StringTable = append(p.StringTable, "foo")
+	valIdx := int64(len(p.StringTable))
+	p.StringTable = append(p.StringTable, "bar")
+
+	sample1 := &profilev1.Sample{
 		LocationId: []uint64{1},
 		Value:      []int64{1},
+		Label: []*profilev1.Label{
+			{Key: keyIdx, Str: valIdx},
+		},
 	}
-	p.Sample = append(p.Sample, sample)
+	p.Sample = append(p.Sample, sample1)
+
+	sample2 := &profilev1.Sample{
+		LocationId: []uint64{1},
+		Value:      []int64{2},
+		Label:      nil,
+	}
+	p.Sample = append(p.Sample, sample2)
 
 	chunk := inputChunk{
 		{shard: 1, tenant: "t1", profile: p},
