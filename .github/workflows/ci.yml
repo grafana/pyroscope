@@ -49,8 +49,13 @@ jobs:
         include:
           - arch: amd64
             runner: ubuntu-24.04
+            gotoolchain: "auto"
+          - arch: amd64
+            runner: ubuntu-24.04
+            gotoolchain: "go1.24.2"
           - arch: arm64
             runner: ubuntu-24.04-arm
+            gotoolchain: "auto"
     runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout code
@@ -64,7 +69,11 @@ jobs:
       - name: Go Mod
         run: make check/go/mod
       - name: Test
-        run: make go/test
+        run: |
+          go version
+          make go/test
+        env:
+          GOTOOLCHAIN=${{ matrix.gotoolchain }}
   lint:
     runs-on: ubuntu-latest
     steps:
