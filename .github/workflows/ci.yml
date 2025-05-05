@@ -73,7 +73,7 @@ jobs:
           go version
           make go/test
         env:
-          GOTOOLCHAIN=${{ matrix.gotoolchain }}
+          GOTOOLCHAIN: ${{ matrix.gotoolchain }}
   lint:
     runs-on: ubuntu-latest
     steps:
