@@ -340,6 +340,10 @@ func concatSegmentHead(f *headFlush, w *writerOffset, s *metadata.StringTable) *
 		lb.WithLabelSet(model.LabelNameServiceName, f.head.key.service, model.LabelNameProfileType, profileType)
 	}
 
+	if f.flushed.Unsymbolized {
+		lb.WithLabelSet(model.LabelNameServiceName, f.head.key.service, metadata.LabelNameUnsymbolized, "true")
+	}
+
 	// Other optional labels:
 	// lb.WithLabelSet("label_name", "label_value", ...)
 	ds.Labels = lb.Build()
@@ -454,10 +458,12 @@ type segment struct {
 	shard            shardKey
 	sshard           string
 	inFlightProfiles sync.WaitGroup
-	heads            map[datasetKey]dataset
-	headsLock        sync.RWMutex
-	logger           log.Logger
-	sw               *segmentsWriter
+
+	headsLock sync.RWMutex
+	heads     map[datasetKey]dataset
+
+	logger log.Logger
+	sw     *segmentsWriter
 
 	// TODO(kolesnikovae): Revisit.
 	doneChan      chan struct{}
