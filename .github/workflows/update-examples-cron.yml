@@ -22,7 +22,7 @@ jobs:
           repo_secrets: |
             GITHUB_APP_ID=pyroscope-development-app:app-id
             GITHUB_APP_INSTALLATION_ID=pyroscope-development-app:app-installation-id
-            GITHUB_APP_PRIVATE_KEY=pyroscope-development-app:app-private-key
+            GITHUB_APP_PRIVATE_KEY=pyroscope-development-app:private-key
 
       - name: Generate token
         id: generate_token
