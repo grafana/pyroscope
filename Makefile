@@ -107,8 +107,8 @@ frontend/build:
 
 .PHONY: frontend/shell
 frontend/shell:
-	docker build -f cmd/pyroscope/frontend.Dockerfile --iidfile .docker-image-id-frontend --target builder .
-	docker run -t -i $$(cat .docker-image-id-frontend) /bin/bash
+	docker build -f cmd/pyroscope/frontend.Dockerfile --iidfile .docker-image-digest-frontend --target builder .
+	docker run -t -i $$(cat .docker-image-digest-frontend) /bin/bash
 
 .PHONY: profilecli/build
 profilecli/build: go/bin-profilecli ## Build the profilecli binary
@@ -224,7 +224,7 @@ define deploy
 	$(BIN)/helm upgrade --install $(1) ./operations/pyroscope/helm/pyroscope $(2) $(HELM_ARGS) \
 		--set pyroscope.image.tag=$(IMAGE_TAG) \
 		--set pyroscope.image.repository=$(IMAGE_PREFIX)pyroscope \
-		--set pyroscope.podAnnotations.image-id=$(shell cat .docker-image-id-pyroscope) \
+		--set pyroscope.podAnnotations.image-digest=$(shell cat .docker-image-digest-pyroscope) \
 		--set pyroscope.service.port_name=http-metrics \
 		--set pyroscope.podAnnotations."profiles\.grafana\.com\/memory\.port_name"=http-metrics \
 		--set pyroscope.podAnnotations."profiles\.grafana\.com\/cpu\.port_name"=http-metrics \
@@ -249,6 +249,8 @@ define multiarch_build
 	GOOS=linux GOARCH=amd64 IMAGE_TAG="$(IMAGE_TAG)-amd64" $(MAKE) $(build_cmd) IMAGE_PLATFORM=linux/amd64
 
 	$(if $(push_image), docker buildx imagetools create --tag "$(image_name)" "$(image_name)-amd64" "$(image_name)-arm64")
+	$(if $(push_image), docker buildx imagetools inspect "$(image_name)" --format "{{json .Manifest.Digest}}" | tr -d '"' > .docker-image-digest-pyroscope)
+	$(if $(push_image), echo "$(image_name)" > .docker-image-name-pyroscope)
 endef
 
 .PHONY: docker-image/pyroscope/build-multiarch
@@ -277,7 +279,7 @@ docker-image/pyroscope/push-debug: frontend/build go/bin-debug docker-image/pyro
 
 .PHONY: docker-image/pyroscope/build
 docker-image/pyroscope/build: frontend/build go/bin
-	$(call docker_buildx,--load --iidfile .docker-image-id-pyroscope,)
+	$(call docker_buildx,--load --iidfile .docker-image-digest-pyroscope,)
 
 .PHONY: docker-image/pyroscope/push
 docker-image/pyroscope/push: frontend/build go/bin
@@ -290,46 +292,6 @@ docker-image/pyroscope/dlv:
 	@mkdir -p $(@D)
 	GOPATH=$(CURDIR)/.tmp GOAMD64=v2 CGO_ENABLED=0 $(GO) install -ldflags "-s -w -extldflags '-static'" github.com/go-delve/delve/cmd/dlv@v1.23.0
 	mv $(CURDIR)/.tmp/bin/$(GOOS)_$(GOARCH)/dlv $(CURDIR)/.tmp/bin/dlv
-
-define UPDATER_CONFIG_JSON
-{
-  "git_author_name": "grafana-pyroscope-bot[bot]",
-  "git_author_email": "140177480+grafana-pyroscope-bot[bot]@users.noreply.github.com",
-  "git_committer_name": "grafana-pyroscope-bot[bot]",
-  "git_committer_email": "140177480+grafana-pyroscope-bot[bot]@users.noreply.github.com",
-  "pull_request_enabled": true,
-  "pull_request_branch_prefix": "auto-merge/grafana-pyroscope-bot",
-  "repo_name": "deployment_tools",
-  "destination_branch": "master",
-  "update_jsonnet_attribute_configs": [
-    {
-      "file_path": "ksonnet/lib/pyroscope/releases/dev/images.libsonnet",
-      "jsonnet_key": "pyroscope",
-      "jsonnet_value": "$(IMAGE_PREFIX)pyroscope:$(IMAGE_TAG)"
-    }
-  ],
-  "update_jsonnet_lib_configs": [
-    {
-      "jsonnet_dir": "ksonnet/lib/pyroscope/releases/dev",
-      "dependencies": [
-        {
-          "owner": "grafana",
-          "name": "pyroscope",
-          "version": "$(GIT_REVISION)",
-          "sub_dirs": [
-            "operations/pyroscope"
-          ]
-        }
-      ]
-    }
-  ]
-}
-endef
-
-.PHONY: docker-image/pyroscope/deploy-dev-001
-docker-image/pyroscope/deploy-dev-001: export CONFIG_JSON:=$(call UPDATER_CONFIG_JSON)
-docker-image/pyroscope/deploy-dev-001: $(BIN)/updater $(BIN)/jb
-	PATH=$(BIN):$(PATH) $(BIN)/updater
 
 .PHONY: clean
 clean: ## Delete intermediate build artifacts
@@ -405,10 +367,6 @@ $(BIN)/mage: Makefile go.mod
 $(BIN)/mockery: Makefile go.mod
 	@mkdir -p $(@D)
 	GOBIN=$(abspath $(@D)) $(GO) install github.com/vektra/mockery/v2@v2.45.0
-
-$(BIN)/updater: Makefile
-	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) GOPRIVATE=github.com/grafana/deployment_tools $(GO) install github.com/grafana/deployment_tools/docker/updater/cmd/updater@bd5794b4e488
 
 # Note: When updating the goreleaser version also update .github/workflow/release.yml and .git/workflow/weekly-release.yaml
 $(BIN)/goreleaser: Makefile go.mod

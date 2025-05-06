@@ -3,7 +3,7 @@ on:
   push:
     branches:
       - main
-      - r[0-9]+ # Trigger builds after a push to weekly branches
+
   pull_request:
 
 permissions:
@@ -120,6 +120,10 @@ jobs:
       contents: read
       id-token: write
     runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.push-metadata.outputs.image }}
+      image-digest: ${{ steps.push-metadata.outputs.image-digest }}
+      image-tag: ${{ steps.push-metadata.outputs.image-tag }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
@@ -149,3 +153,31 @@ jobs:
         id: build-push
         run: |
           make docker-image/pyroscope/push-multiarch "BUILDX_ARGS=--cache-from=type=gha --cache-to=type=gha"
+      - name: Get image, image tag and image digest
+        id: push-metadata
+        run: |
+          image=$(cat ./.docker-image-name-pyroscope)
+          echo "image=${image}" >> "$GITHUB_OUTPUT"
+          echo "image-tag=${image#*:}" >> "$GITHUB_OUTPUT"
+          echo "image-digest=$(cat ./.docker-image-digest-pyroscope)" >> "$GITHUB_OUTPUT"
+
+  deploy-dev:
+    permissions:
+      contents: read
+      id-token: write
+    if: github.event_name == 'push' && github.repository == 'grafana/pyroscope' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs: [build-push]
+    steps:
+    - id: "submit-argowfs-deployment"
+      name: "Submit Argo Workflows deployment"
+      uses: grafana/shared-workflows/actions/trigger-argo-workflow@af9b0c52635d39023136fb9312a354f91d9b2bfd
+      with:
+        namespace: "phlare-cd"
+        workflow_template: "deploy-pyroscope-dev"
+        parameters: |
+          dockertag=${{ needs.build-push.outputs.image-tag }}
+          commit=${{ github.sha }}
+    - name: Print URI
+      run: |
+        echo "URI: ${{ steps.submit-argowfs-deployment.outputs.uri }}"
