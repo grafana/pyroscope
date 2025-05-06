@@ -7,7 +7,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"crypto/tls"
@@ -22,27 +21,22 @@ import (
 	"sync"
 	"time"
 
-	"connectrpc.com/connect"
 	"github.com/go-kit/log/level"
-	"github.com/google/go-cmp/cmp"
-	gprofile "github.com/google/pprof/profile"
-	"github.com/google/uuid"
-	"github.com/pkg/errors"
+	"github.com/grafana/dskit/multierror"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/atomic"
-
-	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
-	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
-	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 )
+
+const profileTypeID = "deadmans_switch:made_up:profilos:made_up:profilos"
 
 type canaryExporterParams struct {
 	*phlareClient
 	ListenAddress string
 	TestFrequency time.Duration
 	TestDelay     time.Duration
+	QueryProbeSet string
 }
 
 func addCanaryExporterParams(ceCmd commander) *canaryExporterParams {
@@ -52,6 +46,7 @@ func addCanaryExporterParams(ceCmd commander) *canaryExporterParams {
 	ceCmd.Flag("listen-address", "Listen address for the canary exporter.").Default(":4101").StringVar(&params.ListenAddress)
 	ceCmd.Flag("test-frequency", "How often the specified Pyroscope cell should be tested.").Default("15s").DurationVar(&params.TestFrequency)
 	ceCmd.Flag("test-delay", "The delay between ingest and query requests.").Default("2s").DurationVar(&params.TestDelay)
+	ceCmd.Flag("query-probe-set", "Which set of probes to use for query requests. Available sets are \"default\" and \"all\".").Default("default").EnumVar(&params.QueryProbeSet, "default", "all")
 	params.phlareClient = addPhlareClient(ceCmd)
 
 	return params
@@ -293,130 +288,47 @@ func (ce *canaryExporter) doTrace(ctx context.Context, probeName string) (rCtx c
 }
 
 func (ce *canaryExporter) testPyroscopeCell(ctx context.Context) error {
-
 	now := time.Now()
-	p := testhelper.NewProfileBuilder(now.UnixNano())
-	p.Labels = p.Labels[:0]
-	p.CustomProfile("deadmans_switch", "made_up", "profilos", "made_up", "profilos")
-	p.WithLabels(
-		"service_name", "pyroscope-canary-exporter",
-		"job", "canary-exporter",
-		"instance", ce.hostname,
-	)
-	p.UUID = uuid.New()
-	p.ForStacktraceString("func1", "func2").AddSamples(10)
-	p.ForStacktraceString("func1").AddSamples(20)
-
-	data, err := p.Profile.MarshalVT()
-	if err != nil {
-		return err
-	}
 
 	// ingest a fake profile
-	err = func() error {
-		rCtx, done := ce.doTrace(ctx, "ingest")
-		result := false
-		defer func() {
-			done(result)
-		}()
-
-		if _, err := ce.params.pusherClient().Push(rCtx, connect.NewRequest(&pushv1.PushRequest{
-			Series: []*pushv1.RawProfileSeries{
-				{
-					Labels: p.Labels,
-					Samples: []*pushv1.RawSample{{
-						ID:         uuid.New().String(),
-						RawProfile: data,
-					}},
-				},
-			},
-		})); err != nil {
-			return err
-		}
-
-		result = true
-		return err
-	}()
+	uuid, err := ce.testIngestProfile(ctx, "ingest", now)
 	if err != nil {
 		return fmt.Errorf("error during ingestion: %w", err)
 	}
 
-	level.Info(logger).Log("msg", "successfully ingested profile", "uuid", p.UUID.String())
+	level.Info(logger).Log("msg", "successfully ingested profile", "uuid", uuid)
 
-	// now try to query it back
+	if ce.params.TestDelay > 0 {
+		level.Info(logger).Log("msg", "waiting before running a query", "delay", ce.params.TestDelay)
+		select {
+		case <-time.After(ce.params.TestDelay):
+		case <-ctx.Done():
+		}
+	}
+
+	// Now try to query the data back
+	var multiError multierror.MultiError
 	err = func() error {
-		rCtx, done := ce.doTrace(ctx, "query-instant")
-		result := false
-		defer func() {
-			done(result)
-		}()
+		multiError.Add(ce.testSelectMergeProfile(ctx, "query-select-merge-profile", now))
 
-		if ce.params.TestDelay > 0 {
-			select {
-			case <-time.After(ce.params.TestDelay):
-			case <-ctx.Done():
-			}
+		if ce.params.QueryProbeSet == "all" {
+			multiError.Add(ce.testProfileTypes(ctx, "query-profile-types", now))
+			multiError.Add(ce.testSeries(ctx, "query-series", now))
+			multiError.Add(ce.testLabelNames(ctx, "query-label-names", now))
+			multiError.Add(ce.testLabelValues(ctx, "query-label-values", now))
+			multiError.Add(ce.testSelectSeries(ctx, "query-select-select-series", now))
+			multiError.Add(ce.testSelectMergeStacktraces(ctx, "query-select-merge-stacktraces", now))
+			multiError.Add(ce.testSelectMergeSpanProfile(ctx, "query-select-merge-span-profile", now))
+			multiError.Add(ce.testDiff(ctx, "query-diff", now))
+			multiError.Add(ce.testGetProfileStats(ctx, "query-get-profile-stats"))
 		}
-
-		respQueryInstant, err := ce.params.queryClient().SelectMergeProfile(rCtx, connect.NewRequest(&querierv1.SelectMergeProfileRequest{
-			Start:         now.UnixMilli(),
-			End:           now.Add(5 * time.Second).UnixMilli(),
-			LabelSelector: fmt.Sprintf(`{service_name="pyroscope-canary-exporter", job="canary-exporter", instance="%s"}`, ce.hostname),
-			ProfileTypeID: "deadmans_switch:made_up:profilos:made_up:profilos",
-		}))
-		if err != nil {
-			return err
-		}
-
-		buf, err := respQueryInstant.Msg.MarshalVT()
-		if err != nil {
-			return errors.Wrap(err, "failed to marshal protobuf")
-		}
-
-		gp, err := gprofile.Parse(bytes.NewReader(buf))
-		if err != nil {
-			return errors.Wrap(err, "failed to parse profile")
-		}
-
-		expected := map[string]int64{
-			"func1>func2": 10,
-			"func1":       20,
-		}
-		actual := make(map[string]int64)
-
-		var sb strings.Builder
-		for _, s := range gp.Sample {
-			sb.Reset()
-			for _, loc := range s.Location {
-				if sb.Len() != 0 {
-					_, err := sb.WriteRune('>')
-					if err != nil {
-						return err
-					}
-				}
-				for _, line := range loc.Line {
-					_, err := sb.WriteString(line.Function.Name)
-					if err != nil {
-						return err
-					}
-				}
-			}
-			actual[sb.String()] = actual[sb.String()] + s.Value[0]
-		}
-
-		if diff := cmp.Diff(expected, actual); diff != "" {
-			return fmt.Errorf("query instantly mismatch (-expected, +actual):\n%s", diff)
-		}
-
-		result = true
-		return nil
+		return multiError.Err()
 	}()
 	if err != nil {
 		return fmt.Errorf("error during instant query probe: %w", err)
 	}
 
 	return nil
-
 }
 
 // roundTripTrace holds timings for a single HTTP roundtrip.
