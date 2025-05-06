@@ -29,8 +29,6 @@ import (
 	"go.uber.org/atomic"
 )
 
-const profileTypeID = "deadmans_switch:made_up:profilos:made_up:profilos"
-
 type canaryExporterParams struct {
 	*phlareClient
 	ListenAddress string

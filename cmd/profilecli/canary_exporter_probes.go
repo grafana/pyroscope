@@ -23,7 +23,10 @@ import (
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 )
 
-const canaryExporterServiceName = "pyroscope-canary-exporter"
+const (
+	profileTypeID             = "deadmans_switch:made_up:profilos:made_up:profilos"
+	canaryExporterServiceName = "pyroscope-canary-exporter"
+)
 
 func (ce *canaryExporter) testIngestProfile(ctx context.Context, probeName string, now time.Time) (string, error) {
 	rCtx, done := ce.doTrace(ctx, probeName)
