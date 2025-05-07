@@ -248,202 +248,197 @@ var (
 )
 
 func TestIngest(t *testing.T) {
-	p := PyroscopeTest{}
-	p.Start(t)
-	defer p.Stop(t)
+	EachPyroscopeTest(t, func(p *PyroscopeTest, t *testing.T) {
+		for _, td := range testdata {
+			t.Run(td.profile, func(t *testing.T) {
+				rb := p.NewRequestBuilder(t).
+					Spy(td.spyName)
+				req := rb.IngestPPROFRequest(td.profile, td.prevProfile, td.sampleTypeConfig)
+				p.Ingest(t, req, td.expectStatusIngest)
 
-	for _, td := range testdata {
-		t.Run(td.profile, func(t *testing.T) {
-			rb := p.NewRequestBuilder(t).
-				Spy(td.spyName)
-			req := rb.IngestPPROFRequest(td.profile, td.prevProfile, td.sampleTypeConfig)
-			p.Ingest(t, req, td.expectStatusIngest)
-
-			if td.expectStatusIngest == 200 {
-				for _, metric := range td.metrics {
-					rb.Render(metric.name)
-					profile := rb.SelectMergeProfile(metric.name, metric.query)
-					assertPPROF(t, profile, metric, td, td.fixAtIngest)
+				if td.expectStatusIngest == 200 {
+					for _, metric := range td.metrics {
+						rb.Render(metric.name)
+						profile := rb.SelectMergeProfile(metric.name, metric.query)
+						assertPPROF(t, profile, metric, td, td.fixAtIngest)
+					}
 				}
-			}
-		})
-	}
+			})
+		}
+	})
 }
 
 func TestIngestPPROFFixPythonLinenumbers(t *testing.T) {
-	p := PyroscopeTest{}
-	p.Start(t)
-	defer p.Stop(t)
-	profile := pprof.RawFromProto(&profilev1.Profile{
-		SampleType: []*profilev1.ValueType{{
-			Type: 5,
-			Unit: 6,
-		}},
-		PeriodType: &profilev1.ValueType{
-			Type: 5, Unit: 6,
-		},
-		StringTable: []string{"", "main", "func1", "func2", "qwe.py", "cpu", "nanoseconds"},
-		Period:      1000000000,
-		Function: []*profilev1.Function{
-			{Id: 1, Name: 1, Filename: 4, SystemName: 1, StartLine: 239},
-			{Id: 2, Name: 2, Filename: 4, SystemName: 2, StartLine: 42},
-			{Id: 3, Name: 3, Filename: 4, SystemName: 3, StartLine: 7},
-		},
-		Location: []*profilev1.Location{
-			{Id: 1, Line: []*profilev1.Line{{FunctionId: 1, Line: 242}}},
-			{Id: 2, Line: []*profilev1.Line{{FunctionId: 2, Line: 50}}},
-			{Id: 3, Line: []*profilev1.Line{{FunctionId: 3, Line: 8}}},
-		},
-		Sample: []*profilev1.Sample{
-			{LocationId: []uint64{2, 1}, Value: []int64{10}},
-			{LocationId: []uint64{3, 1}, Value: []int64{13}},
-		},
+	EachPyroscopeTest(t, func(p *PyroscopeTest, t *testing.T) {
+
+		profile := pprof.RawFromProto(&profilev1.Profile{
+			SampleType: []*profilev1.ValueType{{
+				Type: 5,
+				Unit: 6,
+			}},
+			PeriodType: &profilev1.ValueType{
+				Type: 5, Unit: 6,
+			},
+			StringTable: []string{"", "main", "func1", "func2", "qwe.py", "cpu", "nanoseconds"},
+			Period:      1000000000,
+			Function: []*profilev1.Function{
+				{Id: 1, Name: 1, Filename: 4, SystemName: 1, StartLine: 239},
+				{Id: 2, Name: 2, Filename: 4, SystemName: 2, StartLine: 42},
+				{Id: 3, Name: 3, Filename: 4, SystemName: 3, StartLine: 7},
+			},
+			Location: []*profilev1.Location{
+				{Id: 1, Line: []*profilev1.Line{{FunctionId: 1, Line: 242}}},
+				{Id: 2, Line: []*profilev1.Line{{FunctionId: 2, Line: 50}}},
+				{Id: 3, Line: []*profilev1.Line{{FunctionId: 3, Line: 8}}},
+			},
+			Sample: []*profilev1.Sample{
+				{LocationId: []uint64{2, 1}, Value: []int64{10}},
+				{LocationId: []uint64{3, 1}, Value: []int64{13}},
+			},
+		})
+
+		tempProfileFile, err := os.CreateTemp("", "profile")
+		require.NoError(t, err)
+		_, err = profile.WriteTo(tempProfileFile)
+		assert.NoError(t, err)
+		tempProfileFile.Close()
+		defer os.Remove(tempProfileFile.Name())
+
+		rb := p.NewRequestBuilder(t).
+			Spy("pyspy")
+		req := rb.IngestPPROFRequest(tempProfileFile.Name(), "", "")
+		p.Ingest(t, req, 200)
+
+		renderedProfile := rb.SelectMergeProfile("process_cpu:cpu:nanoseconds:cpu:nanoseconds", nil)
+		actual := bench.StackCollapseProto(renderedProfile.Msg, 0, 1)
+		expected := []string{
+			"qwe.py main;qwe.py func1 10",
+			"qwe.py main;qwe.py func2 13",
+		}
+		assert.Equal(t, expected, actual)
 	})
-
-	tempProfileFile, err := os.CreateTemp("", "profile")
-	require.NoError(t, err)
-	_, err = profile.WriteTo(tempProfileFile)
-	assert.NoError(t, err)
-	tempProfileFile.Close()
-	defer os.Remove(tempProfileFile.Name())
-
-	rb := p.NewRequestBuilder(t).
-		Spy("pyspy")
-	req := rb.IngestPPROFRequest(tempProfileFile.Name(), "", "")
-	p.Ingest(t, req, 200)
-
-	renderedProfile := rb.SelectMergeProfile("process_cpu:cpu:nanoseconds:cpu:nanoseconds", nil)
-	actual := bench.StackCollapseProto(renderedProfile.Msg, 0, 1)
-	expected := []string{
-		"qwe.py main;qwe.py func1 10",
-		"qwe.py main;qwe.py func2 13",
-	}
-	assert.Equal(t, expected, actual)
 }
 
 func TestGodeltaprofRelabelPush(t *testing.T) {
 	const blockSize = 1024
 	const metric = "godeltaprof_memory"
 
-	p := PyroscopeTest{}
-	p.Start(t)
-	defer p.Stop(t)
+	EachPyroscopeTest(t, func(p *PyroscopeTest, t *testing.T) {
 
-	p1, _ := testhelper.NewProfileBuilder(time.Now().Add(-time.Second).UnixNano()).
-		MemoryProfile().
-		ForStacktraceString("my", "other").
-		AddSamples(239, 239*blockSize, 1000, 1000*blockSize).
-		Profile.MarshalVT()
+		p1, _ := testhelper.NewProfileBuilder(time.Now().Add(-time.Second).UnixNano()).
+			MemoryProfile().
+			ForStacktraceString("my", "other").
+			AddSamples(239, 239*blockSize, 1000, 1000*blockSize).
+			Profile.MarshalVT()
 
-	p2, _ := testhelper.NewProfileBuilder(time.Now().UnixNano()).
-		MemoryProfile().
-		ForStacktraceString("my", "other").
-		AddSamples(3, 3*blockSize, 1000, 1000*blockSize).
-		Profile.MarshalVT()
+		p2, _ := testhelper.NewProfileBuilder(time.Now().UnixNano()).
+			MemoryProfile().
+			ForStacktraceString("my", "other").
+			AddSamples(3, 3*blockSize, 1000, 1000*blockSize).
+			Profile.MarshalVT()
 
-	rb := p.NewRequestBuilder(t)
-	rb.Push(rb.PushPPROFRequestFromBytes(p1, metric), 200, "")
-	rb.Push(rb.PushPPROFRequestFromBytes(p2, metric), 200, "")
-	renderedProfile := rb.SelectMergeProfile("memory:alloc_objects:count:space:bytes", nil)
-	actual := bench.StackCollapseProto(renderedProfile.Msg, 0, 1)
-	expected := []string{
-		"other;my 242",
-	}
-	assert.Equal(t, expected, actual)
+		rb := p.NewRequestBuilder(t)
+		rb.Push(rb.PushPPROFRequestFromBytes(p1, metric), 200, "")
+		rb.Push(rb.PushPPROFRequestFromBytes(p2, metric), 200, "")
+		renderedProfile := rb.SelectMergeProfile("memory:alloc_objects:count:space:bytes", nil)
+		actual := bench.StackCollapseProto(renderedProfile.Msg, 0, 1)
+		expected := []string{
+			"other;my 242",
+		}
+		assert.Equal(t, expected, actual)
+	})
 }
 
 func TestPushStringTableOOBSampleType(t *testing.T) {
 	const blockSize = 1024
 	const metric = "godeltaprof_memory"
 
-	p := PyroscopeTest{}
-	p.Start(t)
-	defer p.Stop(t)
+	EachPyroscopeTest(t, func(p *PyroscopeTest, t *testing.T) {
 
-	testdata := []struct {
-		name        string
-		corrupt     func(p *testhelper.ProfileBuilder)
-		expectedErr string
-	}{
-		{
-			name: "sample type",
-			corrupt: func(p *testhelper.ProfileBuilder) {
-				p.SampleType[0].Type = 100500
+		testdata := []struct {
+			name        string
+			corrupt     func(p *testhelper.ProfileBuilder)
+			expectedErr string
+		}{
+			{
+				name: "sample type",
+				corrupt: func(p *testhelper.ProfileBuilder) {
+					p.SampleType[0].Type = 100500
+				},
+				expectedErr: "sample type type string index out of range",
 			},
-			expectedErr: "sample type type string index out of range",
-		},
-		{
-			name: "function name",
-			corrupt: func(p *testhelper.ProfileBuilder) {
-				p.Function[0].Name = 100500
+			{
+				name: "function name",
+				corrupt: func(p *testhelper.ProfileBuilder) {
+					p.Function[0].Name = 100500
+				},
+				expectedErr: "function name string index out of range",
 			},
-			expectedErr: "function name string index out of range",
-		},
-		{
-			name: "mapping",
-			corrupt: func(p *testhelper.ProfileBuilder) {
-				p.Mapping[0].Filename = 100500
+			{
+				name: "mapping",
+				corrupt: func(p *testhelper.ProfileBuilder) {
+					p.Mapping[0].Filename = 100500
+				},
+				expectedErr: "mapping file name string index out of range",
 			},
-			expectedErr: "mapping file name string index out of range",
-		},
-		{
-			name: "Sample label",
-			corrupt: func(p *testhelper.ProfileBuilder) {
-				p.Sample[0].Label = []*profilev1.Label{{
-					Key: 100500,
-				}}
+			{
+				name: "Sample label",
+				corrupt: func(p *testhelper.ProfileBuilder) {
+					p.Sample[0].Label = []*profilev1.Label{{
+						Key: 100500,
+					}}
+				},
+				expectedErr: "sample label string index out of range",
 			},
-			expectedErr: "sample label string index out of range",
-		},
-		{
-			name: "String 0 not empty",
-			corrupt: func(p *testhelper.ProfileBuilder) {
-				p.StringTable[0] = "hmmm"
+			{
+				name: "String 0 not empty",
+				corrupt: func(p *testhelper.ProfileBuilder) {
+					p.StringTable[0] = "hmmm"
+				},
+				expectedErr: "string 0 should be empty string",
 			},
-			expectedErr: "string 0 should be empty string",
-		},
-	}
-	for _, td := range testdata {
-		t.Run(td.name, func(t *testing.T) {
-			p1 := testhelper.NewProfileBuilder(time.Now().Add(-time.Second).UnixNano()).
-				MemoryProfile().
-				ForStacktraceString("my", "other").
-				AddSamples(239, 239*blockSize, 1000, 1000*blockSize)
-			td.corrupt(p1)
-			p1bs, err := p1.Profile.MarshalVT()
-			require.NoError(t, err)
+		}
+		for _, td := range testdata {
+			t.Run(td.name, func(t *testing.T) {
+				p1 := testhelper.NewProfileBuilder(time.Now().Add(-time.Second).UnixNano()).
+					MemoryProfile().
+					ForStacktraceString("my", "other").
+					AddSamples(239, 239*blockSize, 1000, 1000*blockSize)
+				td.corrupt(p1)
+				p1bs, err := p1.Profile.MarshalVT()
+				require.NoError(t, err)
 
-			rb := p.NewRequestBuilder(t)
-			rb.Push(rb.PushPPROFRequestFromBytes(p1bs, metric), 400, td.expectedErr)
-		})
-	}
+				rb := p.NewRequestBuilder(t)
+				rb.Push(rb.PushPPROFRequestFromBytes(p1bs, metric), 400, td.expectedErr)
+			})
+		}
+	})
 }
 
 func TestPush(t *testing.T) {
-	p := new(PyroscopeTest)
-	p.Start(t)
-	defer p.Stop(t)
+	EachPyroscopeTest(t, func(p *PyroscopeTest, t *testing.T) {
 
-	for _, td := range testdata {
-		if td.prevProfile != "" {
-			continue
-		}
-		t.Run(td.profile, func(t *testing.T) {
-			rb := p.NewRequestBuilder(t)
-
-			req := rb.PushPPROFRequestFromFile(td.profile, td.metrics[0].name)
-			rb.Push(req, td.expectStatusPush, td.expectedError)
-
-			if td.expectStatusPush == 200 {
-				for _, metric := range td.metrics {
-					rb.Render(metric.name)
-					profile := rb.SelectMergeProfile(metric.name, metric.query)
-
-					assertPPROF(t, profile, metric, td, td.fixAtPush)
-				}
+		for _, td := range testdata {
+			if td.prevProfile != "" {
+				continue
 			}
-		})
-	}
+			t.Run(td.profile, func(t *testing.T) {
+				rb := p.NewRequestBuilder(t)
+
+				req := rb.PushPPROFRequestFromFile(td.profile, td.metrics[0].name)
+				rb.Push(req, td.expectStatusPush, td.expectedError)
+
+				if td.expectStatusPush == 200 {
+					for _, metric := range td.metrics {
+						rb.Render(metric.name)
+						profile := rb.SelectMergeProfile(metric.name, metric.query)
+
+						assertPPROF(t, profile, metric, td, td.fixAtPush)
+					}
+				}
+			})
+		}
+	})
 }
 
 func assertPPROF(t *testing.T, resp *connect.Response[profilev1.Profile], metric expectedMetric, testdatum pprofTestData, fix func(*pprof.Profile) *pprof.Profile) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/rand"
 	"slices"
+	"sync"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/tenant"
@@ -53,6 +54,7 @@ func NewQueryFrontend(
 }
 
 var xrand = rand.New(rand.NewSource(4349676827832284783))
+var xrandMutex = sync.Mutex{} // todo fix the race properly
 
 func (q *QueryFrontend) Query(
 	ctx context.Context,
@@ -74,9 +76,11 @@ func (q *QueryFrontend) Query(
 		return new(queryv1.QueryResponse), nil
 	}
 	// Randomize the order of blocks to avoid hotspots.
+	xrandMutex.Lock()
 	xrand.Shuffle(len(blocks), func(i, j int) {
 		blocks[i], blocks[j] = blocks[j], blocks[i]
 	})
+	xrandMutex.Unlock()
 	// TODO(kolesnikovae): Should be dynamic.
 	p := queryplan.Build(blocks, 4, 20)
 

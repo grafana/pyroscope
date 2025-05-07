@@ -27,7 +27,7 @@ services:
       context: .
 
   alloy:
-    image: grafana/alloy:latest
+    image: grafana/alloy:v1.7.1
     command:
       - run
       - /etc/alloy/config.alloy

@@ -149,6 +149,40 @@ func TestIndex_Query(t *testing.T) {
 			require.Equal(t, expected, found)
 		})
 
+		t.Run("DatasetTenantFilter", func(t *testing.T) {
+			expected := []*metastorev1.BlockMeta{
+				{
+					Id:          md.Id,
+					Tenant:      0,
+					MinTime:     minT,
+					MaxTime:     maxT,
+					CreatedBy:   1,
+					Datasets:    []*metastorev1.Dataset{{Tenant: 2, Name: 3, MinTime: maxT, MaxTime: maxT}},
+					StringTable: []string{"", "ingester", "tenant-b", "dataset-b"},
+				},
+			}
+
+			found, err := index.QueryMetadata(tx, MetadataQuery{
+				Expr:      `{}`,
+				StartTime: time.UnixMilli(minT),
+				EndTime:   time.UnixMilli(maxT + 1),
+				Tenant:    []string{"tenant-b"},
+			})
+			require.NoError(t, err)
+			require.Equal(t, expected, found)
+		})
+
+		t.Run("DatasetTenantFilterNotExisting", func(t *testing.T) {
+			found, err := index.QueryMetadata(tx, MetadataQuery{
+				Expr:      `{}`,
+				StartTime: time.UnixMilli(minT),
+				EndTime:   time.UnixMilli(maxT + 1),
+				Tenant:    []string{"tenant-not-found"},
+			})
+			require.NoError(t, err)
+			require.Empty(t, found)
+		})
+
 		t.Run("DatasetFilter_KeepLabels", func(t *testing.T) {
 			expected := []*metastorev1.BlockMeta{
 				{
