@@ -1,1 +1,1 @@
-pyroscope-io==0.8.10
+pyroscope-io==0.8.11
