@@ -269,5 +269,5 @@ func (s *testSuite) Test_QueryTree_All_Tenant_Isolation() {
 		Tenant: []string{queryTenant},
 	})
 
-	s.Require().Error(err)
+	s.Require().ErrorContains(err, "querying other tenants' dataset")
 }
