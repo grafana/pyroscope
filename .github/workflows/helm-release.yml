@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - "release-[0-9]+.[0-9]+"
+      - 20250506_helm-release-workflow
 
 jobs:
   call-update-helm-repo:
@@ -18,4 +19,4 @@ jobs:
       cr_configfile: operations/pyroscope/helm/cr.yaml
       ct_configfile: operations/pyroscope/helm/ct.yaml
     secrets:
-      vault_repo_secret_name: grafana-pyroscope-bot
+      vault_repo_secret_name: pyroscope-development-app
