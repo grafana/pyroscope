@@ -118,11 +118,10 @@ func (tc *testCtx) pushProfiles(ctx context.Context, t *testing.T) {
 	g.SetLimit(20)
 	for tenantID, params := range tc.perTenantData {
 		gctx := tenant.InjectTenantID(gctx, tenantID)
-		// for loop range over serviceCount
 		for i := 0; i < params.serviceCount; i++ {
 			var i = i
 			g.Go(func() error {
-				serviceName := fmt.Sprintf("test-service-%d", i)
+				serviceName := fmt.Sprintf("%s/test-service-%d", tenantID, i)
 				builder := testhelper.NewProfileBuilder(int64(1)).
 					CPUProfile().
 					WithLabels(
@@ -166,6 +165,37 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 				}))
 				require.NoError(t, err)
 				require.Len(t, resp.Msg.LabelsSet, params.serviceCount)
+
+				// no services to check
+				if params.serviceCount == 0 {
+					return
+				}
+
+				expectedValues := make([]*typesv1.Labels, params.serviceCount)
+				for i := 0; i < params.serviceCount; i++ {
+					// check if the service name is in the response
+					expectedValues[i] = &typesv1.Labels{
+						Labels: []*typesv1.LabelPair{
+							{
+								Name:  "__profile_type__",
+								Value: "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+							},
+							{
+								Name:  "service_name",
+								Value: fmt.Sprintf("%s/test-service-%d", tenantID, i),
+							},
+						},
+					}
+				}
+
+				// sort the response by service name
+				sort.Slice(resp.Msg.LabelsSet, func(i, j int) bool {
+					return resp.Msg.LabelsSet[i].Labels[1].Value < resp.Msg.LabelsSet[j].Labels[1].Value
+				})
+				sort.Slice(expectedValues, func(i, j int) bool {
+					return expectedValues[i].Labels[1].Value < expectedValues[j].Labels[1].Value
+				})
+				assert.Equal(t, expectedValues, resp.Msg.LabelsSet)
 			})
 		}
 	})
@@ -217,11 +247,10 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 					return
 				}
 
-				// loop over numbers from i too serviceCount
 				expectedValues := make([]string, params.serviceCount)
 				for i := 0; i < params.serviceCount; i++ {
 					// check if the service name is in the response
-					expectedValues[i] = fmt.Sprintf("test-service-%d", i)
+					expectedValues[i] = fmt.Sprintf("%s/test-service-%d", tenantID, i)
 				}
 				sort.Strings(expectedValues)
 				assert.Equal(t, expectedValues, resp.Msg.Names)
