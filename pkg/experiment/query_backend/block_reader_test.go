@@ -37,6 +37,7 @@ type testSuite struct {
 	reader *BlockReader
 	meta   []*metastorev1.BlockMeta
 	plan   *queryv1.QueryPlan
+	tenant []string
 }
 
 func (s *testSuite) SetupSuite() {
@@ -54,6 +55,12 @@ func (s *testSuite) SetupTest() {
 	}
 	s.sanitizeMetadata()
 	s.plan = query_plan.Build(s.meta, 10, 10)
+	s.tenant = make([]string, 0)
+	for _, b := range s.plan.Root.Blocks {
+		for _, d := range b.Datasets {
+			s.tenant = append(s.tenant, b.StringTable[d.Tenant])
+		}
+	}
 }
 
 func (s *testSuite) loadFromDir(dir string) {
@@ -119,6 +126,7 @@ func (s *testSuite) Test_QueryTree_All() {
 			QueryType: queryv1.QueryType_QUERY_TREE,
 			Tree:      &queryv1.TreeQuery{MaxNodes: 16},
 		}},
+		Tenant: s.tenant,
 	})
 
 	s.Require().NoError(err)
@@ -142,6 +150,7 @@ func (s *testSuite) Test_QueryTree_Filter() {
 			QueryType: queryv1.QueryType_QUERY_TREE,
 			Tree:      &queryv1.TreeQuery{MaxNodes: 16},
 		}},
+		Tenant: s.tenant,
 	})
 
 	s.Require().NoError(err)
@@ -163,6 +172,7 @@ func (s *testSuite) Test_QueryPprof_Metadata() {
 			QueryType: queryv1.QueryType_QUERY_PPROF,
 			Pprof:     &queryv1.PprofQuery{},
 		}},
+		Tenant: s.tenant,
 	})
 
 	s.Require().NoError(err)
@@ -193,6 +203,7 @@ func (s *testSuite) Test_DatasetIndex_SeriesLabels_GroupBy() {
 				LabelNames: []string{"service_name", "__profile_type__"},
 			},
 		}},
+		Tenant: s.tenant,
 	})
 
 	s.Require().NoError(err)
@@ -215,6 +226,7 @@ func (s *testSuite) Test_SeriesLabels() {
 			QueryType:    queryv1.QueryType_QUERY_SERIES_LABELS,
 			SeriesLabels: &queryv1.SeriesLabelsQuery{},
 		}},
+		Tenant: s.tenant,
 	})
 
 	s.Require().NoError(err)
@@ -242,6 +254,7 @@ func (s *testSuite) Test_QueryTimeSeries() {
 		Query:         []*queryv1.Query{query},
 		QueryPlan:     s.plan,
 		LabelSelector: "{}",
+		Tenant:        s.tenant,
 	}
 
 	resp, err := s.reader.Invoke(s.ctx, req)
@@ -252,16 +265,14 @@ func (s *testSuite) Test_QueryTimeSeries() {
 }
 
 func (s *testSuite) Test_QueryTree_All_Tenant_Isolation() {
-	plan := s.plan
-	dataTenant := plan.Root.Blocks[0].StringTable[plan.Root.Blocks[0].Datasets[0].Tenant]
-	queryTenant := "not-" + dataTenant
+	queryTenant := "wrong-tenant"
 
-	s.Require().NotEqual(queryTenant, dataTenant)
+	s.Require().NotContains(s.tenant, queryTenant)
 
 	_, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
 		EndTime:       time.Now().UnixMilli(),
 		LabelSelector: "{}",
-		QueryPlan:     plan,
+		QueryPlan:     s.plan,
 		Query: []*queryv1.Query{{
 			QueryType: queryv1.QueryType_QUERY_TREE,
 			Tree:      &queryv1.TreeQuery{MaxNodes: 16},
