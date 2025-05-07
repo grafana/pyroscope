@@ -3,8 +3,12 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"math"
+	"net/http"
+	"net/url"
 	"slices"
 	"strings"
 	"time"
@@ -20,6 +24,7 @@ import (
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 )
 
@@ -393,38 +398,67 @@ func (ce *canaryExporter) testSelectMergeSpanProfile(ctx context.Context, probeN
 	return nil
 }
 
-func (ce *canaryExporter) testDiff(ctx context.Context, probeName string, now time.Time) error {
+func (ce *canaryExporter) testRenderDiff(ctx context.Context, probeName string, now time.Time) error {
 	rCtx, done := ce.doTrace(ctx, probeName)
 	result := false
 	defer func() {
 		done(result)
 	}()
 
-	smsRequest := &querierv1.SelectMergeStacktracesRequest{
-		Start:         now.UnixMilli(),
-		End:           now.Add(5 * time.Second).UnixMilli(),
-		LabelSelector: fmt.Sprintf(`{service_name="%s", job="canary-exporter", instance="%s"}`, canaryExporterServiceName, ce.hostname),
-		ProfileTypeID: profileTypeID,
+	query := fmt.Sprintf(
+		`%s{service_name="%s", job="canary-exporter", instance="%s"}`,
+		profileTypeID,
+		canaryExporterServiceName,
+		ce.hostname,
+	)
+	startTime := now.UnixMilli()
+	endTime := now.Add(5 * time.Second).UnixMilli()
+
+	baseURL, err := url.Parse(ce.params.URL)
+	if err != nil {
+		return err
 	}
+	baseURL.Path = "/pyroscope/render-diff"
 
-	// passing same left and right
-	respQuery, err := ce.params.queryClient().Diff(rCtx, connect.NewRequest(&querierv1.DiffRequest{
-		Left:  smsRequest.CloneVT(),
-		Right: smsRequest.CloneVT(),
-	}))
+	params := url.Values{}
+	params.Add("leftQuery", query)
+	params.Add("leftFrom", fmt.Sprintf("%d", startTime))
+	params.Add("leftUntil", fmt.Sprintf("%d", endTime))
+	params.Add("rightQuery", query)
+	params.Add("rightFrom", fmt.Sprintf("%d", startTime))
+	params.Add("rightUntil", fmt.Sprintf("%d", endTime))
 
+	baseURL.RawQuery = params.Encode()
+	reqURL := baseURL.String()
+	level.Debug(logger).Log("msg", "requesting diff", "url", reqURL)
+
+	req, err := http.NewRequestWithContext(rCtx, "GET", reqURL, nil)
 	if err != nil {
 		return err
 	}
 
-	flamegraph := respQuery.Msg.Flamegraph
+	resp, err := ce.params.httpClient().Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
 
-	if len(flamegraph.Names) != 3 {
-		return fmt.Errorf("expected 3 names in flamegraph, got %d", len(flamegraph.Names))
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(body))
 	}
 
-	if len(flamegraph.Levels) != 3 {
-		return fmt.Errorf("expected 3 levels in flamegraph, got %d", len(flamegraph.Levels))
+	var flamebearerProfile flamebearer.FlamebearerProfile
+	if err := json.NewDecoder(resp.Body).Decode(&flamebearerProfile); err != nil {
+		return err
+	}
+
+	if len(flamebearerProfile.Flamebearer.Names) != 3 {
+		return fmt.Errorf("expected 3 names in flamegraph, got %d", len(flamebearerProfile.Flamebearer.Names))
+	}
+
+	if len(flamebearerProfile.Flamebearer.Levels) != 3 {
+		return fmt.Errorf("expected 3 levels in flamegraph, got %d", len(flamebearerProfile.Flamebearer.Levels))
 	}
 
 	result = true

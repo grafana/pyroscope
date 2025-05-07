@@ -317,8 +317,8 @@ func (ce *canaryExporter) testPyroscopeCell(ctx context.Context) error {
 			multiError.Add(ce.testSelectSeries(ctx, "query-select-select-series", now))
 			multiError.Add(ce.testSelectMergeStacktraces(ctx, "query-select-merge-stacktraces", now))
 			multiError.Add(ce.testSelectMergeSpanProfile(ctx, "query-select-merge-span-profile", now))
-			multiError.Add(ce.testDiff(ctx, "query-diff", now))
 			multiError.Add(ce.testGetProfileStats(ctx, "query-get-profile-stats"))
+			multiError.Add(ce.testRenderDiff(ctx, "render-diff", now))
 		}
 		return multiError.Err()
 	}()
