@@ -76,7 +76,7 @@ func (s *Symbolizer) SymbolizePprof(ctx context.Context, profile *googlev1.Profi
 		if mapping.HasFunctions && mapping.HasFilenames && mapping.HasLineNumbers {
 			continue
 		}
-		mappingsToSymbolize[uint64(i+1)] = true // MappingId is 1-indexed
+		mappingsToSymbolize[uint64(i+1)] = true
 	}
 	if len(mappingsToSymbolize) == 0 {
 		return nil
@@ -110,7 +110,7 @@ func (s *Symbolizer) groupLocationsByMapping(profile *googlev1.Profile, mappings
 			return nil, fmt.Errorf("invalid profile: location at index %d references non-existent mapping %d", i, loc.MappingId)
 		}
 
-		if !mappingsToSymbolize[loc.MappingId] || len(loc.Line) > 0 {
+		if !mappingsToSymbolize[loc.MappingId] {
 			continue
 		}
 
@@ -126,10 +126,6 @@ func (s *Symbolizer) groupLocationsByMapping(profile *googlev1.Profile, mappings
 // symbolizeLocationsForMapping symbolizes a single mapping group
 func (s *Symbolizer) symbolizeLocationsForMapping(ctx context.Context, profile *googlev1.Profile, mappingID uint64, locs []locToSymbolize) error {
 	mapping := profile.Mapping[mappingID-1]
-
-	if mapping.HasFunctions && mapping.HasFilenames && mapping.HasLineNumbers {
-		return nil
-	}
 
 	binaryName, err := s.extractBinaryName(profile, mapping)
 	if err != nil {
@@ -219,10 +215,6 @@ func (s *Symbolizer) updateProfileWithSymbols(profile *googlev1.Profile, mapping
 	}
 
 	for i, symLoc := range symLocs {
-		if len(symLoc.Lines) == 0 {
-			continue
-		}
-
 		locIdx := locs[i].idx
 		profile.Location[locIdx].Line = make([]*googlev1.Line, len(symLoc.Lines))
 
