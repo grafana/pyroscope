@@ -1,0 +1,21 @@
+name: helm-release
+
+on:
+  push:
+    branches:
+      - main
+      - "release-[0-9]+.[0-9]+"
+
+jobs:
+  call-update-helm-repo:
+    permissions:
+      contents: "write"
+      id-token: "write"
+      packages: "write"
+    uses: grafana/helm-charts/.github/workflows/update-helm-repo.yaml@64b1c8260d69a9b1d9a186df25c51358b92f7662
+    with:
+      charts_dir: operations/pyroscope/helm/
+      cr_configfile: operations/pyroscope/helm/cr.yaml
+      ct_configfile: operations/pyroscope/helm/ct.yaml
+    secrets:
+      vault_repo_secret_name: grafana-pyroscope-bot
