@@ -85,7 +85,7 @@ func (ce *canaryExporter) testSelectMergeProfile(ctx context.Context, probeName 
 	respQuery, err := ce.params.queryClient().SelectMergeProfile(rCtx, connect.NewRequest(&querierv1.SelectMergeProfileRequest{
 		Start:         now.UnixMilli(),
 		End:           now.Add(5 * time.Second).UnixMilli(),
-		LabelSelector: fmt.Sprintf(`{service_name="%s", job="canary-exporter", instance="%s"}`, canaryExporterServiceName, ce.hostname),
+		LabelSelector: ce.createLabelSelector(),
 		ProfileTypeID: profileTypeID,
 	}))
 	if err != nil {
@@ -297,7 +297,7 @@ func (ce *canaryExporter) testSelectSeries(ctx context.Context, probeName string
 		Start:         now.UnixMilli(),
 		End:           now.Add(5 * time.Second).UnixMilli(),
 		Step:          1000,
-		LabelSelector: fmt.Sprintf(`{service_name="%s", job="canary-exporter", instance="%s"}`, canaryExporterServiceName, ce.hostname),
+		LabelSelector: ce.createLabelSelector(),
 		ProfileTypeID: profileTypeID,
 		GroupBy:       []string{model.LabelNameServiceName},
 	}))
@@ -344,7 +344,7 @@ func (ce *canaryExporter) testSelectMergeStacktraces(ctx context.Context, probeN
 	respQuery, err := ce.params.queryClient().SelectMergeStacktraces(rCtx, connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
 		Start:         now.UnixMilli(),
 		End:           now.Add(5 * time.Second).UnixMilli(),
-		LabelSelector: fmt.Sprintf(`{service_name="%s", job="canary-exporter", instance="%s"}`, canaryExporterServiceName, ce.hostname),
+		LabelSelector: ce.createLabelSelector(),
 		ProfileTypeID: profileTypeID,
 	}))
 
@@ -376,7 +376,7 @@ func (ce *canaryExporter) testSelectMergeSpanProfile(ctx context.Context, probeN
 	respQuery, err := ce.params.queryClient().SelectMergeSpanProfile(rCtx, connect.NewRequest(&querierv1.SelectMergeSpanProfileRequest{
 		Start:         now.UnixMilli(),
 		End:           now.Add(5 * time.Second).UnixMilli(),
-		LabelSelector: fmt.Sprintf(`{service_name="%s", job="canary-exporter", instance="%s"}`, canaryExporterServiceName, ce.hostname),
+		LabelSelector: ce.createLabelSelector(),
 		ProfileTypeID: profileTypeID,
 	}))
 
@@ -398,6 +398,65 @@ func (ce *canaryExporter) testSelectMergeSpanProfile(ctx context.Context, probeN
 	return nil
 }
 
+func (ce *canaryExporter) testRender(ctx context.Context, probeName string, now time.Time) error {
+	rCtx, done := ce.doTrace(ctx, probeName)
+	result := false
+	defer func() {
+		done(result)
+	}()
+
+	query := profileTypeID + ce.createLabelSelector()
+	startTime := now.UnixMilli()
+	endTime := now.Add(5 * time.Second).UnixMilli()
+
+	baseURL, err := url.Parse(ce.params.URL)
+	if err != nil {
+		return err
+	}
+	baseURL.Path = "/pyroscope/render"
+
+	params := url.Values{}
+	params.Add("query", query)
+	params.Add("from", fmt.Sprintf("%d", startTime))
+	params.Add("until", fmt.Sprintf("%d", endTime))
+
+	baseURL.RawQuery = params.Encode()
+	reqURL := baseURL.String()
+	level.Debug(logger).Log("msg", "requesting render", "url", reqURL)
+
+	req, err := http.NewRequestWithContext(rCtx, "GET", reqURL, nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := ce.params.httpClient().Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(body))
+	}
+
+	var flamebearerProfile flamebearer.FlamebearerProfile
+	if err := json.NewDecoder(resp.Body).Decode(&flamebearerProfile); err != nil {
+		return err
+	}
+
+	if len(flamebearerProfile.Flamebearer.Names) != 3 {
+		return fmt.Errorf("expected 3 names in flamegraph, got %d", len(flamebearerProfile.Flamebearer.Names))
+	}
+
+	if len(flamebearerProfile.Flamebearer.Levels) != 3 {
+		return fmt.Errorf("expected 3 levels in flamegraph, got %d", len(flamebearerProfile.Flamebearer.Levels))
+	}
+
+	result = true
+	return nil
+}
+
 func (ce *canaryExporter) testRenderDiff(ctx context.Context, probeName string, now time.Time) error {
 	rCtx, done := ce.doTrace(ctx, probeName)
 	result := false
@@ -405,12 +464,7 @@ func (ce *canaryExporter) testRenderDiff(ctx context.Context, probeName string, 
 		done(result)
 	}()
 
-	query := fmt.Sprintf(
-		`%s{service_name="%s", job="canary-exporter", instance="%s"}`,
-		profileTypeID,
-		canaryExporterServiceName,
-		ce.hostname,
-	)
+	query := profileTypeID + ce.createLabelSelector()
 	startTime := now.UnixMilli()
 	endTime := now.Add(5 * time.Second).UnixMilli()
 
@@ -492,4 +546,8 @@ func (ce *canaryExporter) testGetProfileStats(ctx context.Context, probeName str
 
 	result = true
 	return nil
+}
+
+func (ce *canaryExporter) createLabelSelector() string {
+	return fmt.Sprintf(`{service_name="%s", job="canary-exporter", instance="%s"}`, canaryExporterServiceName, ce.hostname)
 }
