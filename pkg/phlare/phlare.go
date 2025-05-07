@@ -599,6 +599,7 @@ func (f *Phlare) Run() error {
 					"service_git_ref":    serviceGitRef(),
 					"service_repository": "https://github.com/grafana/pyroscope",
 				},
+				//TenantID: "pyroscope-tenant",
 				ProfileTypes: []pyroscope.ProfileType{
 					pyroscope.ProfileCPU,
 					pyroscope.ProfileAllocObjects,

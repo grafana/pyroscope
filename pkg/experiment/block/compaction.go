@@ -67,6 +67,8 @@ type compactionConfig struct {
 }
 
 type SampleObserver interface {
+	symdb.SymbolsObserver
+
 	// Observe is called before the compactor appends the entry
 	// to the output block. This method must not modify the entry.
 	Observe(ProfileEntry)
@@ -102,6 +104,7 @@ func Compact(
 
 	compacted := make([]*metastorev1.BlockMeta, 0, len(plan))
 	for _, p := range plan {
+		// per cada tenant
 		md, compactionErr := p.Compact(ctx, c.destination, c.tempdir, c.sampleObserver)
 		if compactionErr != nil {
 			return nil, compactionErr
@@ -216,6 +219,7 @@ func (b *CompactionPlan) Compact(
 
 	// Datasets are compacted in a strict order.
 	for i, s := range b.datasets {
+		// per cada service_name
 		b.datasetIndex.setIndex(uint32(i))
 		s.registerSampleObserver(observer)
 		if err = s.compact(ctx, w); err != nil {
@@ -382,7 +386,7 @@ func (m *datasetCompaction) open(ctx context.Context, w io.Writer) (err error) {
 	m.profilesWriter = newProfileWriter(pageBufferSize, w)
 
 	m.indexRewriter = newIndexRewriter()
-	m.symbolsRewriter = newSymbolsRewriter()
+	m.symbolsRewriter = newSymbolsRewriter(m.observer)
 
 	g, ctx := errgroup.WithContext(ctx)
 	for _, s := range m.datasets {
@@ -431,6 +435,10 @@ func (m *datasetCompaction) merge(ctx context.Context) (err error) {
 }
 
 func (m *datasetCompaction) writeRow(r ProfileEntry) (err error) {
+	/*println(r.Dataset.tenant, r.Dataset.name, r.Dataset.obj.path, r.Fingerprint)
+	reader, _ := r.Dataset.Symbols().Partition(context.Background(), r.Row.StacktracePartitionID())
+	symbols := reader.Symbols()
+	println(symbols)*/
 	if err = m.parent.datasetIndex.writeRow(r); err != nil {
 		return err
 	}
@@ -440,6 +448,8 @@ func (m *datasetCompaction) writeRow(r ProfileEntry) (err error) {
 	if err = m.symbolsRewriter.rewriteRow(r); err != nil {
 		return err
 	}
+	/*reader, _ = r.Dataset.Symbols().Partition(context.Background(), r.Row.StacktracePartitionID())
+	symbols = reader.Symbols()*/
 	if m.observer != nil {
 		m.observer.Observe(r)
 	}
@@ -456,6 +466,9 @@ func (m *datasetCompaction) flush() (err error) {
 		m.series = m.indexRewriter.NumSeries()
 		m.profiles = m.profilesWriter.profiles
 		err = merr.Err()
+		if m.observer != nil {
+			m.observer.FlushSymbols()
+		}
 	})
 	return err
 }
@@ -549,15 +562,16 @@ func (rw *indexRewriter) Flush() error {
 }
 
 type symbolsRewriter struct {
-	buf     *bytes.Buffer
-	w       *symdb.SymDB
-	rw      map[*Dataset]*symdb.Rewriter
-	samples uint64
+	buf      *bytes.Buffer
+	w        *symdb.SymDB
+	rw       map[*Dataset]*symdb.Rewriter
+	samples  uint64
+	observer SampleObserver
 
 	stacktraces []uint32
 }
 
-func newSymbolsRewriter() *symbolsRewriter {
+func newSymbolsRewriter(observer SampleObserver) *symbolsRewriter {
 	// TODO(kolesnikovae):
 	//  * Estimate size.
 	//  * Use buffer pool.
@@ -569,6 +583,7 @@ func newSymbolsRewriter() *symbolsRewriter {
 			Version: symdb.FormatV3,
 			Writer:  &nopWriteCloser{buf},
 		}),
+		observer: observer,
 	}
 }
 
@@ -594,7 +609,7 @@ func (s *symbolsRewriter) rewriteRow(e ProfileEntry) (err error) {
 func (s *symbolsRewriter) rewriterFor(x *Dataset) *symdb.Rewriter {
 	rw, ok := s.rw[x]
 	if !ok {
-		rw = symdb.NewRewriter(s.w, x.Symbols())
+		rw = symdb.NewRewriter(s.w, x.Symbols(), s.observer)
 		s.rw[x] = rw
 	}
 	return rw
