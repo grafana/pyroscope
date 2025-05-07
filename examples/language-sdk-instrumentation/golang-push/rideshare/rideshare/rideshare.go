@@ -98,7 +98,7 @@ func ReadConfig() Config {
 		PyroscopeBasicAuthUser:     os.Getenv("PYROSCOPE_BASIC_AUTH_USER"),
 		PyroscopeBasicAuthPassword: os.Getenv("PYROSCOPE_BASIC_AUTH_PASSWORD"),
 
-		OTLPUrl:               os.Getenv("OTLP_URL"),
+		OTLPUrl:               getOTLPUrl(),
 		OTLPInsecure:          os.Getenv("OTLP_INSECURE") == "1",
 		OTLPBasicAuthUser:     os.Getenv("OTLP_BASIC_AUTH_USER"),
 		OTLPBasicAuthPassword: os.Getenv("OTLP_BASIC_AUTH_PASSWORD"),
@@ -134,6 +134,14 @@ func ReadConfig() Config {
 		c.PyroscopeServerAddress = "http://localhost:4040"
 	}
 	return c
+}
+
+// getOTLPUrl returns the OTLP URL from environment variables, with OTEL_EXPORTER_OTLP_METRICS_ENDPOINT taking precedence
+func getOTLPUrl() string {
+	if url := os.Getenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT"); url != "" {
+		return url
+	}
+	return os.Getenv("OTLP_URL")
 }
 
 func basicAuth(username, password string) string {
