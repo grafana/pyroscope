@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"regexp"
 	"time"
@@ -15,37 +15,35 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
 	"golang.org/x/sync/singleflight"
+
+	"github.com/dgraph-io/ristretto/v2"
 )
 
 // DebuginfodClientConfig holds configuration for the debuginfod client.
 type DebuginfodClientConfig struct {
-	// BaseURL is the URL of the debuginfod server
-	BaseURL string
-
-	// HTTPClient is the HTTP client to use for requests
-	// If nil, a default client will be created
-	HTTPClient *http.Client
-
-	// BackoffConfig configures the retry backoff behavior
+	BaseURL       string
+	HTTPClient    *http.Client
 	BackoffConfig backoff.Config
+	UserAgent     string
 
-	// UserAgent is the User-Agent header to use for requests
-	UserAgent string
+	NotFoundCacheMaxItems int64
+	NotFoundCacheTTL      time.Duration
 }
 
 // DebuginfodHTTPClient implements the DebuginfodClient interface using HTTP.
 type DebuginfodHTTPClient struct {
 	cfg     DebuginfodClientConfig
-	metrics *Metrics
+	metrics *metrics
 	logger  log.Logger
 
 	// Used to deduplicate concurrent requests for the same build ID
 	group singleflight.Group
+
+	notFoundCache *ristretto.Cache[string, bool]
 }
 
 // NewDebuginfodClient creates a new client for fetching debug information from a debuginfod server.
-// It sets up an HTTP client, in-memory cache, and configures metrics.
-func NewDebuginfodClient(logger log.Logger, baseURL string, metrics *Metrics) (*DebuginfodHTTPClient, error) {
+func NewDebuginfodClient(logger log.Logger, baseURL string, metrics *metrics) (*DebuginfodHTTPClient, error) {
 	return NewDebuginfodClientWithConfig(logger, DebuginfodClientConfig{
 		BaseURL: baseURL,
 		//UserAgent:  "Pyroscope-Symbolizer/1.0",
@@ -54,11 +52,13 @@ func NewDebuginfodClient(logger log.Logger, baseURL string, metrics *Metrics) (*
 			MaxBackoff: 10 * time.Second,
 			MaxRetries: 3,
 		},
+		NotFoundCacheMaxItems: 100000,
+		NotFoundCacheTTL:      7 * 24 * time.Hour,
 	}, metrics)
 }
 
 // NewDebuginfodClientWithConfig creates a new client with the specified configuration.
-func NewDebuginfodClientWithConfig(logger log.Logger, cfg DebuginfodClientConfig, metrics *Metrics) (*DebuginfodHTTPClient, error) {
+func NewDebuginfodClientWithConfig(logger log.Logger, cfg DebuginfodClientConfig, metrics *metrics) (*DebuginfodHTTPClient, error) {
 	httpClient := cfg.HTTPClient
 	if httpClient == nil {
 		transport := &http.Transport{
@@ -79,30 +79,48 @@ func NewDebuginfodClientWithConfig(logger log.Logger, cfg DebuginfodClientConfig
 		}
 	}
 
-	return &DebuginfodHTTPClient{
+	cache, err := ristretto.NewCache(&ristretto.Config[string, bool]{
+		NumCounters: cfg.NotFoundCacheMaxItems * 10,
+		MaxCost:     cfg.NotFoundCacheMaxItems,
+		BufferItems: 64,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create not-found cache: %w", err)
+	}
+
+	client := &DebuginfodHTTPClient{
 		cfg: DebuginfodClientConfig{
 			BaseURL:       cfg.BaseURL,
 			UserAgent:     cfg.UserAgent,
 			HTTPClient:    httpClient,
 			BackoffConfig: cfg.BackoffConfig,
 		},
-		metrics: metrics,
-		logger:  logger,
-	}, nil
+		metrics:       metrics,
+		logger:        logger,
+		notFoundCache: cache,
+	}
+
+	return client, nil
 }
 
 // FetchDebuginfo fetches the debuginfo file for a specific build ID.
 func (c *DebuginfodHTTPClient) FetchDebuginfo(ctx context.Context, buildID string) (io.ReadCloser, error) {
 	start := time.Now()
-	status := StatusSuccess
+	status := statusSuccess
 	defer func() {
 		c.metrics.debuginfodRequestDuration.WithLabelValues(status).Observe(time.Since(start).Seconds())
 	}()
 
 	sanitizedBuildID, err := sanitizeBuildID(buildID)
 	if err != nil {
-		status = StatusErrorInvalidID
+		status = statusErrorInvalidID
 		return nil, err
+	}
+
+	if found, _ := c.notFoundCache.Get(sanitizedBuildID); found {
+		c.metrics.cacheOperations.WithLabelValues("not_found", "get", statusSuccess).Observe(0)
+		status = statusErrorNotFound
+		return nil, buildIDNotFoundError{buildID: sanitizedBuildID}
 	}
 
 	v, err, _ := c.group.Do(sanitizedBuildID, func() (interface{}, error) {
@@ -112,16 +130,16 @@ func (c *DebuginfodHTTPClient) FetchDebuginfo(ctx context.Context, buildID strin
 	if err != nil {
 		switch {
 		case errors.Is(err, context.Canceled):
-			status = StatusErrorCanceled
+			status = statusErrorCanceled
 		case errors.Is(err, context.DeadlineExceeded):
-			status = StatusErrorTimeout
+			status = statusErrorTimeout
 		case isInvalidBuildIDError(err):
-			status = StatusErrorInvalidID
+			status = statusErrorInvalidID
 		default:
 			if statusCode, ok := isHTTPStatusError(err); ok {
 				status = categorizeHTTPStatusCode(statusCode)
 			} else {
-				status = StatusErrorOther
+				status = statusErrorOther
 			}
 		}
 		return nil, err
@@ -174,7 +192,6 @@ func (c *DebuginfodHTTPClient) doRequest(ctx context.Context, url string) ([]byt
 }
 
 // fetchDebugInfoWithRetries attempts to fetch debug info with retries on transient errors.
-// It uses exponential backoff for retries and handles various error conditions.
 func (c *DebuginfodHTTPClient) fetchDebugInfoWithRetries(ctx context.Context, sanitizedBuildID string) ([]byte, error) {
 	url := fmt.Sprintf("%s/buildid/%s/debuginfo", c.cfg.BaseURL, sanitizedBuildID)
 	var data []byte
@@ -195,6 +212,8 @@ func (c *DebuginfodHTTPClient) fetchDebugInfoWithRetries(ctx context.Context, sa
 
 		// Don't retry on 404 errors
 		if statusCode, isHTTPErr := isHTTPStatusError(err); isHTTPErr && statusCode == http.StatusNotFound {
+			c.notFoundCache.SetWithTTL(sanitizedBuildID, true, 1, c.cfg.NotFoundCacheTTL)
+			c.metrics.cacheSizeBytes.WithLabelValues("not_found").Set(float64(c.notFoundCache.Metrics.CostAdded()))
 			return nil, buildIDNotFoundError{buildID: sanitizedBuildID}
 		}
 
@@ -207,7 +226,6 @@ func (c *DebuginfodHTTPClient) fetchDebugInfoWithRetries(ctx context.Context, sa
 		backOff.Wait()
 	}
 
-	// If we still have an error after all retries, return it with context
 	if lastErr != nil {
 		return nil, fmt.Errorf("failed to fetch debuginfo after %d attempts: %w", backOff.NumRetries(), lastErr)
 	}
@@ -219,17 +237,17 @@ func (c *DebuginfodHTTPClient) fetchDebugInfoWithRetries(ctx context.Context, sa
 func categorizeHTTPStatusCode(statusCode int) string {
 	switch {
 	case statusCode == http.StatusNotFound:
-		return StatusErrorNotFound
+		return statusErrorNotFound
 	case statusCode == http.StatusUnauthorized || statusCode == http.StatusForbidden:
-		return StatusErrorUnauthorized
+		return statusErrorUnauthorized
 	case statusCode == http.StatusTooManyRequests:
-		return StatusErrorRateLimited
+		return statusErrorRateLimited
 	case statusCode >= 400 && statusCode < 500:
-		return StatusErrorClientError
+		return statusErrorClientError
 	case statusCode >= 500:
-		return StatusErrorServerError
+		return statusErrorServerError
 	default:
-		return StatusErrorHTTPOther
+		return statusErrorHTTPOther
 	}
 }
 
@@ -263,15 +281,13 @@ func isRetryableError(err error) bool {
 		return statusCode >= 500
 	}
 
-	// Retry on network timeouts
 	if os.IsTimeout(err) {
 		return true
 	}
 
-	// Check for URL errors that are temporary
-	var urlErr *url.Error
-	if errors.As(err, &urlErr) {
-		return urlErr.Temporary()
+	var netErr net.Error
+	if errors.As(err, &netErr) {
+		return netErr.Timeout()
 	}
 
 	return false

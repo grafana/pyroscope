@@ -24,7 +24,7 @@ func TestDebuginfodClient(t *testing.T) {
 		switch buildID {
 		case "valid-build-id":
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("mock debug info"))
+			_, _ = w.Write([]byte("mock debug info"))
 		case "not-found":
 			w.WriteHeader(http.StatusNotFound)
 		case "server-error":
@@ -38,7 +38,7 @@ func TestDebuginfodClient(t *testing.T) {
 	defer server.Close()
 
 	// Create a client with the test server URL
-	metrics := NewMetrics(prometheus.NewRegistry())
+	metrics := newMetrics(prometheus.NewRegistry())
 	client, err := NewDebuginfodClient(log.NewNopLogger(), server.URL, metrics)
 	require.NoError(t, err)
 
@@ -70,10 +70,9 @@ func TestDebuginfodClient(t *testing.T) {
 			buildID:       "server-error",
 			expectedError: true,
 			errorCheck: func(err error) bool {
-				// Check if the error contains the expected status code
 				return err != nil && err.Error() != "" &&
-					(err.Error() == "unexpected HTTP status: 500 500 Internal Server Error" ||
-						err.Error() == "failed to fetch debuginfo after 0 attempts: unexpected HTTP status: 500 500 Internal Server Error")
+					(err.Error() == "HTTP error 500" ||
+						err.Error() == "failed to fetch debuginfo after 3 attempts: HTTP error 500")
 			},
 		},
 		{
@@ -81,10 +80,9 @@ func TestDebuginfodClient(t *testing.T) {
 			buildID:       "rate-limited",
 			expectedError: true,
 			errorCheck: func(err error) bool {
-				// Check if the error contains the expected status code
 				return err != nil && err.Error() != "" &&
-					(err.Error() == "unexpected HTTP status: 429 429 Too Many Requests" ||
-						err.Error() == "failed to fetch debuginfo after 0 attempts: unexpected HTTP status: 429 429 Too Many Requests")
+					(err.Error() == "HTTP error 429" ||
+						err.Error() == "failed to fetch debuginfo after 3 attempts: HTTP error 429")
 			},
 		},
 		{
@@ -130,12 +128,12 @@ func TestDebuginfodClientSingleflight(t *testing.T) {
 		requestCount++
 		time.Sleep(100 * time.Millisecond)
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("mock debug info"))
+		_, _ = w.Write([]byte("mock debug info"))
 	}))
 	defer server.Close()
 
 	// Create a client with the test server URL
-	metrics := NewMetrics(prometheus.NewRegistry())
+	metrics := newMetrics(prometheus.NewRegistry())
 	client, err := NewDebuginfodClient(log.NewNopLogger(), server.URL, metrics)
 	require.NoError(t, err)
 
@@ -281,17 +279,17 @@ func TestIsRetryableError(t *testing.T) {
 		},
 		{
 			name:     "HTTP 404",
-			err:      httpStatusError{statusCode: http.StatusNotFound, status: "Not Found"},
+			err:      httpStatusError{statusCode: http.StatusNotFound},
 			expected: false,
 		},
 		{
 			name:     "HTTP 429",
-			err:      httpStatusError{statusCode: http.StatusTooManyRequests, status: "Too Many Requests"},
+			err:      httpStatusError{statusCode: http.StatusTooManyRequests},
 			expected: true,
 		},
 		{
 			name:     "HTTP 500",
-			err:      httpStatusError{statusCode: http.StatusInternalServerError, status: "Internal Server Error"},
+			err:      httpStatusError{statusCode: http.StatusInternalServerError},
 			expected: true,
 		},
 	}
@@ -302,4 +300,59 @@ func TestIsRetryableError(t *testing.T) {
 			assert.Equal(t, tc.expected, result)
 		})
 	}
+}
+
+func TestDebuginfodClientNotFoundCache(t *testing.T) {
+	requestCount := 0
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		buildID := r.URL.Path[len("/buildid/"):]
+		buildID = buildID[:len(buildID)-len("/debuginfo")]
+		if buildID == "not-found-cached" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("mock debug info"))
+	}))
+	defer server.Close()
+
+	client, err := NewDebuginfodClientWithConfig(log.NewNopLogger(), DebuginfodClientConfig{
+		BaseURL:               server.URL,
+		NotFoundCacheMaxItems: 100,
+		NotFoundCacheTTL:      10 * time.Second,
+	}, newMetrics(nil))
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	buildID := "not-found-cached"
+
+	// First request should hit the server and get a 404
+	reader, err := client.FetchDebuginfo(ctx, buildID)
+	assert.Error(t, err)
+	assert.Nil(t, reader)
+
+	var notFoundErr buildIDNotFoundError
+	assert.True(t, errors.As(err, &notFoundErr))
+	assert.Equal(t, 1, requestCount)
+
+	// Second request should get 404 from cache without hitting server
+	reader, err = client.FetchDebuginfo(ctx, buildID)
+	assert.Error(t, err)
+	assert.Nil(t, reader)
+	assert.True(t, errors.As(err, &notFoundErr))
+	assert.Equal(t, 1, requestCount)
+
+	// Third request should hit the server
+	reader, err = client.FetchDebuginfo(ctx, "valid-id")
+	assert.NoError(t, err)
+	require.NotNil(t, reader)
+
+	data, err := io.ReadAll(reader)
+	require.NoError(t, err)
+	reader.Close()
+	assert.Equal(t, "mock debug info", string(data))
+
+	assert.Equal(t, 2, requestCount)
 }
