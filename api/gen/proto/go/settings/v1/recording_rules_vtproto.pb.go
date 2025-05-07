@@ -235,11 +235,7 @@ func (m *StacktraceFilter) CloneVT() *StacktraceFilter {
 		return (*StacktraceFilter)(nil)
 	}
 	r := new(StacktraceFilter)
-	if m.Filter != nil {
-		r.Filter = m.Filter.(interface {
-			CloneVT() isStacktraceFilter_Filter
-		}).CloneVT()
-	}
+	r.FunctionName = m.FunctionName.CloneVT()
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -249,15 +245,6 @@ func (m *StacktraceFilter) CloneVT() *StacktraceFilter {
 
 func (m *StacktraceFilter) CloneMessageVT() proto.Message {
 	return m.CloneVT()
-}
-
-func (m *StacktraceFilter_FunctionName) CloneVT() isStacktraceFilter_Filter {
-	if m == nil {
-		return (*StacktraceFilter_FunctionName)(nil)
-	}
-	r := new(StacktraceFilter_FunctionName)
-	r.FunctionName = m.FunctionName.CloneVT()
-	return r
 }
 
 func (m *StacktraceFilterFunctionName) CloneVT() *StacktraceFilterFunctionName {
@@ -628,17 +615,8 @@ func (this *StacktraceFilter) EqualVT(that *StacktraceFilter) bool {
 	} else if this == nil || that == nil {
 		return false
 	}
-	if this.Filter == nil && that.Filter != nil {
+	if !this.FunctionName.EqualVT(that.FunctionName) {
 		return false
-	} else if this.Filter != nil {
-		if that.Filter == nil {
-			return false
-		}
-		if !this.Filter.(interface {
-			EqualVT(isStacktraceFilter_Filter) bool
-		}).EqualVT(that.Filter) {
-			return false
-		}
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
@@ -650,31 +628,6 @@ func (this *StacktraceFilter) EqualMessageVT(thatMsg proto.Message) bool {
 	}
 	return this.EqualVT(that)
 }
-func (this *StacktraceFilter_FunctionName) EqualVT(thatIface isStacktraceFilter_Filter) bool {
-	that, ok := thatIface.(*StacktraceFilter_FunctionName)
-	if !ok {
-		return false
-	}
-	if this == that {
-		return true
-	}
-	if this == nil && that != nil || this != nil && that == nil {
-		return false
-	}
-	if p, q := this.FunctionName, that.FunctionName; p != q {
-		if p == nil {
-			p = &StacktraceFilterFunctionName{}
-		}
-		if q == nil {
-			q = &StacktraceFilterFunctionName{}
-		}
-		if !p.EqualVT(q) {
-			return false
-		}
-	}
-	return true
-}
-
 func (this *StacktraceFilterFunctionName) EqualVT(that *StacktraceFilterFunctionName) bool {
 	if this == that {
 		return true
@@ -1525,25 +1478,6 @@ func (m *StacktraceFilter) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if vtmsg, ok := m.Filter.(interface {
-		MarshalToSizedBufferVT([]byte) (int, error)
-	}); ok {
-		size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *StacktraceFilter_FunctionName) MarshalToVT(dAtA []byte) (int, error) {
-	size := m.SizeVT()
-	return m.MarshalToSizedBufferVT(dAtA[:size])
-}
-
-func (m *StacktraceFilter_FunctionName) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
-	i := len(dAtA)
 	if m.FunctionName != nil {
 		size, err := m.FunctionName.MarshalToSizedBufferVT(dAtA[:i])
 		if err != nil {
@@ -1556,6 +1490,7 @@ func (m *StacktraceFilter_FunctionName) MarshalToSizedBufferVT(dAtA []byte) (int
 	}
 	return len(dAtA) - i, nil
 }
+
 func (m *StacktraceFilterFunctionName) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
@@ -1962,25 +1897,14 @@ func (m *StacktraceFilter) SizeVT() (n int) {
 	}
 	var l int
 	_ = l
-	if vtmsg, ok := m.Filter.(interface{ SizeVT() int }); ok {
-		n += vtmsg.SizeVT()
+	if m.FunctionName != nil {
+		l = m.FunctionName.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	n += len(m.unknownFields)
 	return n
 }
 
-func (m *StacktraceFilter_FunctionName) SizeVT() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.FunctionName != nil {
-		l = m.FunctionName.SizeVT()
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-	}
-	return n
-}
 func (m *StacktraceFilterFunctionName) SizeVT() (n int) {
 	if m == nil {
 		return 0
@@ -3239,16 +3163,11 @@ func (m *StacktraceFilter) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if oneof, ok := m.Filter.(*StacktraceFilter_FunctionName); ok {
-				if err := oneof.FunctionName.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				v := &StacktraceFilterFunctionName{}
-				if err := v.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-				m.Filter = &StacktraceFilter_FunctionName{FunctionName: v}
+			if m.FunctionName == nil {
+				m.FunctionName = &StacktraceFilterFunctionName{}
+			}
+			if err := m.FunctionName.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
 			}
 			iNdEx = postIndex
 		default:

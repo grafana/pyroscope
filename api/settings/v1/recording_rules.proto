@@ -86,11 +86,9 @@ message RecordingRule {
 }
 
 message StacktraceFilter {
-  oneof filter {
-    StacktraceFilterFunctionName function_name = 1;
+  optional StacktraceFilterFunctionName function_name = 1;
 
-    // StacktraceFilterFunctionNameRegExp functionNameRegExp = 2;
-  }
+  // StacktraceFilterFunctionNameRegExp functionNameRegExp = 2;
 }
 
 enum MetricType {
