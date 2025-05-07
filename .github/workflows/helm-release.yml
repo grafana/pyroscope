@@ -18,4 +18,4 @@ jobs:
       cr_configfile: operations/pyroscope/helm/cr.yaml
       ct_configfile: operations/pyroscope/helm/ct.yaml
     secrets:
-      vault_repo_secret_name: grafana-pyroscope-bot
+      vault_repo_secret_name: grafana-pyroscope-releases
