@@ -120,6 +120,10 @@ func validateRequest(req *queryv1.InvokeRequest) (*request, error) {
 	if req.QueryPlan == nil || len(req.QueryPlan.Root.Blocks) == 0 {
 		return nil, fmt.Errorf("no blocks to query")
 	}
+	err := validateTenant(req)
+	if err != nil {
+		return nil, fmt.Errorf("querying other tenants' dataset: %w", err)
+	}
 	matchers, err := parser.ParseMetricSelector(req.LabelSelector)
 	if err != nil {
 		return nil, fmt.Errorf("label selection is invalid: %w", err)
@@ -131,4 +135,20 @@ func validateRequest(req *queryv1.InvokeRequest) (*request, error) {
 		endTime:   model.Time(req.EndTime).UnixNano(),
 	}
 	return &r, nil
+}
+
+func validateTenant(req *queryv1.InvokeRequest) error {
+	tenantMap := make(map[string]struct{})
+	for _, tenant := range req.Tenant {
+		tenantMap[tenant] = struct{}{}
+	}
+	for _, b := range req.QueryPlan.Root.Blocks {
+		for _, dataset := range b.Datasets {
+			_, ok := tenantMap[b.StringTable[dataset.Tenant]]
+			if !ok {
+				return fmt.Errorf("dataset %d doesn't belong to tenant %q", dataset.Name, req.Tenant)
+			}
+		}
+	}
+	return nil
 }

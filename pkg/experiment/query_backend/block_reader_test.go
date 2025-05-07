@@ -250,3 +250,24 @@ func (s *testSuite) Test_QueryTimeSeries() {
 	s.Require().Len(resp.Reports, 1)
 	s.Require().NotNil(resp.Reports[0].TimeSeries)
 }
+
+func (s *testSuite) Test_QueryTree_All_Tenant_Isolation() {
+	plan := s.plan
+	dataTenant := plan.Root.Blocks[0].StringTable[plan.Root.Blocks[0].Datasets[0].Tenant]
+	queryTenant := "not-" + dataTenant
+
+	s.Require().NotEqual(queryTenant, dataTenant)
+
+	_, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
+		EndTime:       time.Now().UnixMilli(),
+		LabelSelector: "{}",
+		QueryPlan:     plan,
+		Query: []*queryv1.Query{{
+			QueryType: queryv1.QueryType_QUERY_TREE,
+			Tree:      &queryv1.TreeQuery{MaxNodes: 16},
+		}},
+		Tenant: []string{queryTenant},
+	})
+
+	s.Require().Error(err)
+}
