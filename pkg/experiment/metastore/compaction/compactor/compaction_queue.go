@@ -12,6 +12,8 @@ import (
 	"github.com/grafana/pyroscope/pkg/util"
 )
 
+const defaultBlockBatchSize = 20
+
 type compactionKey struct {
 	// Order of the fields is not important.
 	// Can be generalized.
@@ -21,14 +23,14 @@ type compactionKey struct {
 }
 
 type compactionQueue struct {
-	strategy   Strategy
+	config     Config
 	registerer prometheus.Registerer
 	levels     []*blockQueue
 }
 
 // blockQueue stages blocks as they are being added. Once a batch of blocks
-// within the compaction key reaches a certain size, it is pushed to the linked
-// list in the arrival order and to the compaction key queue.
+// within the compaction key reaches a certain size or age, it is pushed to
+// the linked list in the arrival order and to the compaction key queue.
 //
 // This allows to iterate over the blocks in the order of arrival within the
 // compaction dimension, while maintaining an ability to remove blocks from the
@@ -38,7 +40,7 @@ type compactionQueue struct {
 // the queue is through explicit removal. Batch and block iterators provide
 // the read access.
 type blockQueue struct {
-	strategy   Strategy
+	config     Config
 	registerer prometheus.Registerer
 	staged     map[compactionKey]*stagedBlocks
 	// Batches ordered by arrival.
@@ -97,11 +99,12 @@ type batch struct {
 	// Links to the local batch queue items:
 	// batches that share the same compaction key.
 	next, prev *batch
+	createdAt  int64
 }
 
-func newCompactionQueue(strategy Strategy, registerer prometheus.Registerer) *compactionQueue {
+func newCompactionQueue(config Config, registerer prometheus.Registerer) *compactionQueue {
 	return &compactionQueue{
-		strategy:   strategy,
+		config:     config,
 		registerer: registerer,
 	}
 }
@@ -125,11 +128,11 @@ func (q *compactionQueue) push(e compaction.BlockEntry) bool {
 		shard:  e.Shard,
 		level:  e.Level,
 	})
+	staged.updatedAt = e.AppendedAt
 	pushed := staged.push(blockEntry{
 		id:    e.ID,
 		index: e.Index,
 	})
-	staged.updatedAt = e.AppendedAt
 	heap.Fix(level.updates, staged.heapIndex)
 	level.flushOldest(e.AppendedAt)
 	return pushed
@@ -142,15 +145,15 @@ func (q *compactionQueue) blockQueue(l uint32) *blockQueue {
 	}
 	level := q.levels[l]
 	if level == nil {
-		level = newBlockQueue(q.strategy, q.registerer)
+		level = newBlockQueue(q.config, q.registerer)
 		q.levels[l] = level
 	}
 	return level
 }
 
-func newBlockQueue(strategy Strategy, registerer prometheus.Registerer) *blockQueue {
+func newBlockQueue(config Config, registerer prometheus.Registerer) *blockQueue {
 	return &blockQueue{
-		strategy:   strategy,
+		config:     config,
 		registerer: registerer,
 		staged:     make(map[compactionKey]*stagedBlocks),
 		updates:    new(priorityBlockQueue),
@@ -201,14 +204,17 @@ func (s *stagedBlocks) push(block blockEntry) bool {
 	}
 	s.refs[block.id] = blockRef{batch: s.batch, index: len(s.batch.blocks)}
 	s.batch.blocks = append(s.batch.blocks, block)
+	if s.batch.size == 0 {
+		s.batch.createdAt = s.updatedAt
+	}
 	s.batch.size++
 	s.stats.blocks.Add(1)
-	if s.queue.strategy.flush(s.batch) && !s.flush() {
-		// An attempt to flush the same batch twice.
-		// Should not be possible.
-		return false
+	if !s.queue.config.exceedsMaxSize(s.batch) &&
+		!s.queue.config.exceedsMaxAge(s.batch, s.updatedAt) {
+		// The batch is still valid.
+		return true
 	}
-	return true
+	return s.flush()
 }
 
 func (s *stagedBlocks) flush() (flushed bool) {
@@ -221,7 +227,6 @@ func (s *stagedBlocks) flush() (flushed bool) {
 }
 
 func (s *stagedBlocks) resetBatch() {
-	// TODO(kolesnikovae): get from pool.
 	s.batch = &batch{
 		blocks: make([]blockEntry, 0, defaultBlockBatchSize),
 		staged: s,
@@ -244,7 +249,6 @@ func (s *stagedBlocks) delete(block string) blockEntry {
 	s.stats.blocks.Add(-1)
 	if ref.batch.size == 0 {
 		s.queue.removeBatch(ref.batch)
-		// TODO(kolesnikovae): return to pool.
 	}
 	delete(s.refs, block)
 	if len(s.refs) == 0 {
@@ -317,7 +321,7 @@ func (q *blockQueue) flushOldest(now int64) {
 		return
 	}
 	oldest := (*q.updates)[0]
-	if !q.strategy.flushByAge(oldest.batch, now) {
+	if !q.config.exceedsMaxAge(oldest.batch, now) {
 		return
 	}
 	heap.Pop(q.updates)
@@ -369,6 +373,8 @@ func (i *batchIter) next() (*batch, bool) {
 	return b, b != nil
 }
 
+func (i *batchIter) reset(b *batch) { i.batch = b }
+
 // batchIter iterates over the batches in the queue, in the order of arrival
 // within the compaction key. It's guaranteed that returned blocks are unique
 // across all batched.
@@ -393,7 +399,14 @@ func (it *blockIter) setBatch(b *batch) {
 	it.i = 0
 }
 
-func (it *blockIter) next() (string, bool) {
+func (it *blockIter) more() bool {
+	if it.batch == nil {
+		return false
+	}
+	return it.i < len(it.batch.blocks)
+}
+
+func (it *blockIter) peek() (string, bool) {
 	for it.batch != nil {
 		if it.i >= len(it.batch.blocks) {
 			it.setBatch(it.batch.next)
@@ -404,9 +417,13 @@ func (it *blockIter) next() (string, bool) {
 			it.i++
 			continue
 		}
-		it.visited[entry.id] = struct{}{}
-		it.i++
 		return entry.id, true
 	}
 	return "", false
+}
+
+func (it *blockIter) advance() {
+	entry := it.batch.blocks[it.i]
+	it.visited[entry.id] = struct{}{}
+	it.i++
 }

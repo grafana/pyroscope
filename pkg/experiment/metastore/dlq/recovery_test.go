@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/prometheus/prometheus/util/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -17,21 +16,22 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/block"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode/raftnodepb"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/memory"
+	"github.com/grafana/pyroscope/pkg/test"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockdlq"
 )
 
 func TestRecoverTick(t *testing.T) {
 	metas := []*metastorev1.BlockMeta{
 		{
-			Id:    "3",
+			Id:    test.ULID("2024-09-23T03:00:00Z"),
 			Shard: 2,
 		},
 		{
-			Id:    "1",
+			Id:    test.ULID("2024-09-23T01:00:00Z"),
 			Shard: 1,
 		},
 		{
-			Id:    "2",
+			Id:    test.ULID("2024-09-23T02:00:00Z"),
 			Shard: 2,
 		},
 	}
@@ -51,7 +51,7 @@ func TestRecoverTick(t *testing.T) {
 		addMeta(bucket, meta)
 	}
 
-	r := NewRecovery(testutil.NewLogger(t), RecoveryConfig{}, srv, bucket)
+	r := NewRecovery(test.NewTestingLogger(t), RecoveryConfig{}, srv, bucket)
 	r.recoverTick(context.Background())
 
 	expected := []*metastorev1.BlockMeta{
@@ -70,7 +70,7 @@ func TestRecoverTick(t *testing.T) {
 func TestNotRaftLeader(t *testing.T) {
 	metas := []*metastorev1.BlockMeta{
 		{
-			Id:    "1",
+			Id:    test.ULID("2024-09-23T01:00:00Z"),
 			Shard: 2,
 		},
 	}
@@ -89,7 +89,7 @@ func TestNotRaftLeader(t *testing.T) {
 		addMeta(bucket, meta)
 	}
 
-	r := NewRecovery(testutil.NewLogger(t), RecoveryConfig{}, srv, bucket)
+	r := NewRecovery(test.NewTestingLogger(t), RecoveryConfig{}, srv, bucket)
 	r.recoverTick(context.Background())
 
 	assert.Equal(t, 1, len(bucket.Objects()))
@@ -98,15 +98,15 @@ func TestNotRaftLeader(t *testing.T) {
 func TestStartStop(t *testing.T) {
 	metas := []*metastorev1.BlockMeta{
 		{
-			Id:    "3",
+			Id:    test.ULID("2024-09-23T03:00:00Z"),
 			Shard: 2,
 		},
 		{
-			Id:    "1",
+			Id:    test.ULID("2024-09-23T01:00:00Z"),
 			Shard: 1,
 		},
 		{
-			Id:    "2",
+			Id:    test.ULID("2024-09-23T02:00:00Z"),
 			Shard: 2,
 		},
 	}
@@ -129,7 +129,7 @@ func TestStartStop(t *testing.T) {
 		addMeta(bucket, meta)
 	}
 
-	r := NewRecovery(testutil.NewLogger(t), RecoveryConfig{Period: time.Millisecond * 10}, srv, bucket)
+	r := NewRecovery(test.NewTestingLogger(t), RecoveryConfig{Period: time.Millisecond * 10}, srv, bucket)
 	r.Start()
 	defer r.Stop()
 

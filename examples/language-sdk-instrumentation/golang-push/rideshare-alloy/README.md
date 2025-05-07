@@ -45,7 +45,7 @@ pyroscope.write "backend" {
 # Pull latest images
 docker pull grafana/pyroscope:latest
 docker pull grafana/grafana:latest
-docker pull grafana/alloy:latest
+docker pull grafana/alloy:v1.7.1
 
 # Run the example
 docker-compose up --build

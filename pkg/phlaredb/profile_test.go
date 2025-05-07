@@ -258,7 +258,7 @@ func TestProfileIndex_Add_OutOfOrder(t *testing.T) {
 				"job", "a",
 			).ForStacktraceString("foo", "bar", "baz", fmt.Sprintf("iteration%d", idx)).AddSamples(1)
 
-		require.NoError(t, head.Ingest(ctx, p.Profile, uuid.New()))
+		require.NoError(t, head.Ingest(ctx, p.Profile, uuid.New(), nil))
 	}
 
 	index := head.profiles.index

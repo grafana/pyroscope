@@ -4,10 +4,10 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/samber/lo"
 	"github.com/thanos-io/objstore"
 
@@ -40,17 +40,25 @@ const (
 
 	// Filesystem is the value for the filesystem storage backend.
 	Filesystem = "filesystem"
-
-	// validPrefixCharactersRegex allows only alphanumeric characters to prevent subtle bugs and simplify validation
-	validPrefixCharactersRegex = `^[\da-zA-Z]+$`
 )
 
 var (
 	SupportedBackends = []string{S3, GCS, Azure, Swift, Filesystem, COS}
 
-	ErrUnsupportedStorageBackend        = errors.New("unsupported storage backend")
-	ErrInvalidCharactersInStoragePrefix = errors.New("storage prefix contains invalid characters, it may only contain digits and English alphabet letters")
+	ErrUnsupportedStorageBackend      = errors.New("unsupported storage backend")
+	ErrStoragePrefixStartsWithSlash   = errors.New("storage prefix starts with a slash")
+	ErrStoragePrefixEmptyPathSegment  = errors.New("storage prefix contains an empty path segment")
+	ErrStoragePrefixInvalidCharacters = errors.New("storage prefix contains invalid characters: only alphanumeric, hyphen, underscore, dot, and no segement should be . or ..")
+	ErrStoragePrefixBothFlagsSet      = errors.New("both storage.prefix and storage.storage-prefix are set, please use only storage.prefix, as storage.storage-prefix is deprecated.")
 )
+
+type ErrInvalidCharactersInStoragePrefix struct {
+	Prefix string
+}
+
+func (e *ErrInvalidCharactersInStoragePrefix) Error() string {
+	return fmt.Sprintf("storage prefix '%s' contains invalid characters", e.Prefix)
+}
 
 type StorageBackendConfig struct {
 	Backend string `yaml:"backend"`
@@ -70,11 +78,11 @@ func (cfg *StorageBackendConfig) supportedBackends() []string {
 }
 
 // RegisterFlags registers the backend storage config.
-func (cfg *StorageBackendConfig) RegisterFlags(f *flag.FlagSet, logger log.Logger) {
-	cfg.RegisterFlagsWithPrefix("", f, logger)
+func (cfg *StorageBackendConfig) RegisterFlags(f *flag.FlagSet) {
+	cfg.RegisterFlagsWithPrefix("", f)
 }
 
-func (cfg *StorageBackendConfig) RegisterFlagsWithPrefixAndDefaultDirectory(prefix, dir string, f *flag.FlagSet, logger log.Logger) {
+func (cfg *StorageBackendConfig) RegisterFlagsWithPrefixAndDefaultDirectory(prefix, dir string, f *flag.FlagSet) {
 	cfg.S3.RegisterFlagsWithPrefix(prefix, f)
 	cfg.GCS.RegisterFlagsWithPrefix(prefix, f)
 	cfg.Azure.RegisterFlagsWithPrefix(prefix, f)
@@ -84,11 +92,15 @@ func (cfg *StorageBackendConfig) RegisterFlagsWithPrefixAndDefaultDirectory(pref
 	f.StringVar(&cfg.Backend, prefix+"backend", None, fmt.Sprintf("Backend storage to use. Supported backends are: %s.", strings.Join(cfg.supportedBackends(), ", ")))
 }
 
-func (cfg *StorageBackendConfig) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet, logger log.Logger) {
-	cfg.RegisterFlagsWithPrefixAndDefaultDirectory(prefix, "", f, logger)
+func (cfg *StorageBackendConfig) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
+	cfg.RegisterFlagsWithPrefixAndDefaultDirectory(prefix, "", f)
 }
 
 func (cfg *StorageBackendConfig) Validate() error {
+	if cfg.Backend == None {
+		return nil
+	}
+
 	if !lo.Contains(cfg.supportedBackends(), cfg.Backend) {
 		return ErrUnsupportedStorageBackend
 	}
@@ -107,7 +119,8 @@ func (cfg *StorageBackendConfig) Validate() error {
 type Config struct {
 	StorageBackendConfig `yaml:",inline"`
 
-	StoragePrefix string `yaml:"storage_prefix" category:"experimental"`
+	Prefix                  string `yaml:"prefix"`
+	DeprecatedStoragePrefix string `yaml:"storage_prefix" category:"experimental"` // Deprecated: use Prefix instead
 
 	// Not used internally, meant to allow callers to wrap Buckets
 	// created using this config
@@ -115,25 +128,76 @@ type Config struct {
 }
 
 // RegisterFlags registers the backend storage config.
-func (cfg *Config) RegisterFlags(f *flag.FlagSet, logger log.Logger) {
-	cfg.RegisterFlagsWithPrefix("", f, logger)
+func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
+	cfg.RegisterFlagsWithPrefix("", f)
 }
 
-func (cfg *Config) RegisterFlagsWithPrefixAndDefaultDirectory(prefix, dir string, f *flag.FlagSet, logger log.Logger) {
-	cfg.StorageBackendConfig.RegisterFlagsWithPrefixAndDefaultDirectory(prefix, dir, f, logger)
-	f.StringVar(&cfg.StoragePrefix, prefix+"storage-prefix", "", "Prefix for all objects stored in the backend storage. For simplicity, it may only contain digits and English alphabet letters.")
+func (cfg *Config) RegisterFlagsWithPrefixAndDefaultDirectory(prefix, dir string, f *flag.FlagSet) {
+	cfg.StorageBackendConfig.RegisterFlagsWithPrefixAndDefaultDirectory(prefix, dir, f)
+	f.StringVar(&cfg.Prefix, prefix+"prefix", "", "Prefix for all objects stored in the backend storage. For simplicity, it may only contain digits and English alphabet characters, hyphens, underscores, dots and forward slashes.")
+	f.StringVar(&cfg.DeprecatedStoragePrefix, prefix+"storage-prefix", "", "Deprecated: Use '"+prefix+".prefix' instead. Prefix for all objects stored in the backend storage. For simplicity, it may only contain digits and English alphabet characters, hyphens, underscores, dots and forward slashes.")
 }
 
-func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet, logger log.Logger) {
-	cfg.RegisterFlagsWithPrefixAndDefaultDirectory(prefix, "./data-shared", f, logger)
+func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
+	cfg.RegisterFlagsWithPrefixAndDefaultDirectory(prefix, "./data-shared", f)
 }
 
-func (cfg *Config) Validate() error {
-	if cfg.StoragePrefix != "" {
-		acceptablePrefixCharacters := regexp.MustCompile(validPrefixCharactersRegex)
-		if !acceptablePrefixCharacters.MatchString(cfg.StoragePrefix) {
-			return ErrInvalidCharactersInStoragePrefix
+// alphanumeric, hyphen, underscore, dot, and must not be . or ..
+func validStoragePrefixPart(part string) bool {
+	if part == "." || part == ".." {
+		return false
+	}
+	for i, b := range part {
+		if !((b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || b == '_' || b == '-' || b == '.' || (b >= '0' && b <= '9' && i > 0)) {
+			return false
 		}
+	}
+	return true
+}
+
+func validStoragePrefix(prefix string) error {
+	// without a prefix exit quickly
+	if prefix == "" {
+		return nil
+	}
+
+	parts := strings.Split(prefix, "/")
+
+	for idx, part := range parts {
+		if part == "" {
+			if idx == 0 {
+				return ErrStoragePrefixStartsWithSlash
+			}
+			if idx != len(parts)-1 {
+				return ErrStoragePrefixEmptyPathSegment
+			}
+			// slash at the end is fine
+		}
+		if !validStoragePrefixPart(part) {
+			return ErrStoragePrefixInvalidCharacters
+		}
+	}
+
+	return nil
+}
+
+func (cfg *Config) getPrefix() string {
+	if cfg.Prefix != "" {
+		return cfg.Prefix
+	}
+
+	return cfg.DeprecatedStoragePrefix
+}
+
+func (cfg *Config) Validate(logger log.Logger) error {
+	if cfg.DeprecatedStoragePrefix != "" {
+		if cfg.Prefix != "" {
+			return ErrStoragePrefixBothFlagsSet
+		}
+		level.Warn(logger).Log("msg", "bucket config has a deprecated storage.storage-prefix flag set. Please, use storage.prefix instead.")
+	}
+	if err := validStoragePrefix(cfg.getPrefix()); err != nil {
+		return err
 	}
 
 	return cfg.StorageBackendConfig.Validate()

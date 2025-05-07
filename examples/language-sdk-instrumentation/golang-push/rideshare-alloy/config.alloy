@@ -3,6 +3,54 @@ pyroscope.receive_http "default" {
         listen_address = "0.0.0.0"
         listen_port = 9999
     }
+    forward_to = [pyroscope.relabel.filter_profiles.receiver]
+}
+
+pyroscope.relabel "filter_profiles" {
+    // Group regions into geographical areas for better aggregation
+    rule {
+        action = "replace"
+        source_labels = ["region"]
+        target_label = "geo_area"
+        regex = "(us-.*)"
+        replacement = "americas"
+    }
+    rule {
+        action = "replace"
+        source_labels = ["region"]
+        target_label = "geo_area"
+        regex = "(eu-.*)"
+        replacement = "emea"
+    }
+    rule {
+        action = "replace"
+        source_labels = ["region"]
+        target_label = "geo_area"
+        regex = "(ap-.*)"
+        replacement = "apac"
+    }
+
+    rule {
+       action = "replace"
+       source_labels = ["service_name"]
+       target_label = "tier"
+       regex = "^load-generator$"
+       replacement = "testing"
+    }
+
+    // Example: Sample profiles by service_name (drop 30% of services)
+    // rule {
+    //     action = "hashmod"
+    //     source_labels = ["service_name"]
+    //     target_label = "__tmp_hash"
+    //     modulus = 10
+    //}
+    // rule {
+    //     action = "drop"
+    //     source_labels = ["__tmp_hash"]
+    //     regex = "^(0|1|2)$"  // Drop profiles from services that hash to 0-2
+    // }
+
     forward_to = [pyroscope.write.backend.receiver]
 }
 

@@ -1,7 +1,10 @@
 package model
 
 import (
+	"fmt"
+
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/distributor/ingest_limits"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
 )
@@ -33,6 +36,8 @@ type ProfileSeries struct {
 	Labels   []*v1.LabelPair
 	Samples  []*ProfileSample
 	Language string
+
+	Annotations []*v1.ProfileAnnotation
 }
 
 func (p *ProfileSeries) GetLanguage() string {
@@ -67,4 +72,71 @@ func getProfileLanguageFromSpy(spyName string) string {
 	case "pyroscope-rs":
 		return "rust"
 	}
+}
+
+func (req *PushRequest) Clone() *PushRequest {
+	c := &PushRequest{
+		TenantID:               req.TenantID,
+		RawProfileSize:         req.RawProfileSize,
+		RawProfileType:         req.RawProfileType,
+		Series:                 make([]*ProfileSeries, len(req.Series)),
+		TotalProfiles:          req.TotalProfiles,
+		TotalBytesUncompressed: req.TotalBytesUncompressed,
+	}
+	for i, s := range req.Series {
+		c.Series[i] = &ProfileSeries{
+			Labels:      phlaremodel.Labels(s.Labels).Clone(),
+			Samples:     make([]*ProfileSample, len(s.Samples)),
+			Language:    s.Language,
+			Annotations: s.Annotations,
+		}
+		for j, p := range s.Samples {
+			c.Series[i].Samples[j] = &ProfileSample{
+				Profile:    &pprof.Profile{Profile: p.Profile.Profile.CloneVT()},
+				RawProfile: nil,
+				ID:         p.ID,
+			}
+		}
+	}
+	return c
+}
+
+func (req *PushRequest) ClearAnnotations() {
+	for _, series := range req.Series {
+		series.Annotations = nil
+	}
+}
+
+func (req *PushRequest) MarkThrottledTenant(l *ingest_limits.Config) error {
+	if l == nil {
+		return fmt.Errorf("no limit config provided")
+	}
+	annotation, err := ingest_limits.CreateTenantAnnotation(l)
+	if err != nil {
+		return err
+	}
+	for _, series := range req.Series {
+		series.Annotations = append(series.Annotations, &v1.ProfileAnnotation{
+			Key:   ingest_limits.ProfileAnnotationKeyThrottled,
+			Value: string(annotation),
+		})
+	}
+	return nil
+}
+
+func (req *PushRequest) MarkThrottledUsageGroup(l *ingest_limits.Config, usageGroup string) error {
+	if l == nil {
+		return fmt.Errorf("no limit config provided")
+	}
+	annotation, err := ingest_limits.CreateUsageGroupAnnotation(l, usageGroup)
+	if err != nil {
+		return err
+	}
+	for _, series := range req.Series {
+		series.Annotations = append(series.Annotations, &v1.ProfileAnnotation{
+			Key:   ingest_limits.ProfileAnnotationKeyThrottled,
+			Value: string(annotation),
+		})
+	}
+	return nil
 }

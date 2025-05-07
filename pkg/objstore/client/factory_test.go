@@ -8,12 +8,11 @@ package client
 import (
 	"bytes"
 	"context"
-	"io"
 	"os"
 	"path"
-	"sync"
 	"testing"
 
+	"github.com/go-kit/log"
 	"github.com/grafana/dskit/flagext"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -103,76 +102,103 @@ func TestNewClient(t *testing.T) {
 	}
 }
 
-func TestClientMock_MockGet(t *testing.T) {
-	expected := "body"
-
-	m := ClientMock{}
-	m.MockGet("test", expected, nil)
-
-	// Run many goroutines all requesting the same mocked object and
-	// ensure there's no race.
-	wg := sync.WaitGroup{}
-	for i := 0; i < 1000; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
-			reader, err := m.Get(context.Background(), "test")
-			require.NoError(t, err)
-
-			actual, err := io.ReadAll(reader)
-			require.NoError(t, err)
-			require.Equal(t, []byte(expected), actual)
-
-			require.NoError(t, reader.Close())
-		}()
-	}
-
-	wg.Wait()
-}
-
 func TestClient_ConfigValidation(t *testing.T) {
 	testCases := []struct {
 		name          string
 		cfg           Config
 		expectedError error
+		expectedLog   string
 	}{
 		{
-			name: "valid storage_prefix",
-			cfg:  Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, StoragePrefix: "helloworld"},
+			name: "prefix/valid",
+			cfg:  Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, Prefix: "helloWORLD123"},
 		},
 		{
-			name:          "storage_prefix non-alphanumeric characters",
-			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, StoragePrefix: "hello-world!"},
-			expectedError: ErrInvalidCharactersInStoragePrefix,
+			name: "prefix/valid-subdir",
+			cfg:  Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, Prefix: "hello/world/env"},
 		},
 		{
-			name:          "storage_prefix suffixed with a slash (non-alphanumeric)",
-			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, StoragePrefix: "helloworld/"},
-			expectedError: ErrInvalidCharactersInStoragePrefix,
+			name: "prefix/valid-subdir-trailing-slash",
+			cfg:  Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, Prefix: "hello/world/env/"},
 		},
 		{
-			name:          "storage_prefix that has some character strings that have a meaning in unix paths (..)",
-			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, StoragePrefix: ".."},
-			expectedError: ErrInvalidCharactersInStoragePrefix,
+			name:          "prefix/invalid-directory-up",
+			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, Prefix: ".."},
+			expectedError: ErrStoragePrefixInvalidCharacters,
 		},
 		{
-			name:          "storage_prefix that has some character strings that have a meaning in unix paths (.)",
-			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, StoragePrefix: "."},
-			expectedError: ErrInvalidCharactersInStoragePrefix,
+			name:          "prefix/invalid-directory",
+			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, Prefix: "."},
+			expectedError: ErrStoragePrefixInvalidCharacters,
+		},
+		{
+			name:          "prefix/invalid-absolute-path",
+			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, Prefix: "/hello/world"},
+			expectedError: ErrStoragePrefixStartsWithSlash,
+		},
+		{
+			name:          "prefix/invalid-..-in-a-path-segement",
+			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, Prefix: "hello/../test"},
+			expectedError: ErrStoragePrefixInvalidCharacters,
+		},
+		{
+			name:          "prefix/invalid-empty-path-segement",
+			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, Prefix: "hello//test"},
+			expectedError: ErrStoragePrefixEmptyPathSegment,
+		},
+		{
+			name:          "prefix/invalid-emoji",
+			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, Prefix: "👋"},
+			expectedError: ErrStoragePrefixInvalidCharacters,
+		},
+		{
+			name:          "prefix/invalid-emoji",
+			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, Prefix: "hello!world"},
+			expectedError: ErrStoragePrefixInvalidCharacters,
 		},
 		{
 			name:          "unsupported backend",
 			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: "flash drive"}},
 			expectedError: ErrUnsupportedStorageBackend,
 		},
+		{
+			name:        "prefix/valid-legacy-subdir-trailing-slash",
+			cfg:         Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, DeprecatedStoragePrefix: "hello/world/env/"},
+			expectedLog: "config has a deprecated storage.storage-prefix flag set",
+		},
+		{
+			name:          "prefix/invalid-emoji",
+			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, DeprecatedStoragePrefix: "hello!world"},
+			expectedError: ErrStoragePrefixInvalidCharacters,
+			expectedLog:   "config has a deprecated storage.storage-prefix flag set",
+		},
+		{
+			name:          "prefix/invalid-both-configs",
+			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, DeprecatedStoragePrefix: "hello-world1", Prefix: "hello-world2"},
+			expectedError: ErrStoragePrefixBothFlagsSet,
+		},
 	}
+
+	logBuf := new(bytes.Buffer)
+	logger := log.NewLogfmtLogger(logBuf)
 
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			actualErr := tc.cfg.Validate()
-			assert.ErrorIs(t, actualErr, tc.expectedError)
+			// Reset log buffer
+			logBuf.Reset()
+
+			actualErr := tc.cfg.Validate(logger)
+			if tc.expectedError != nil {
+				assert.Equal(t, actualErr, tc.expectedError)
+			} else {
+				assert.NoError(t, actualErr)
+			}
+			if tc.expectedLog != "" {
+				assert.Contains(t, logBuf.String(), tc.expectedLog)
+			} else {
+				assert.Empty(t, logBuf.String())
+			}
 		})
 	}
 }
@@ -188,7 +214,7 @@ func TestNewPrefixedBucketClient(t *testing.T) {
 					Directory: tempDir,
 				},
 			},
-			StoragePrefix: "prefix",
+			Prefix: "prefix",
 		}
 
 		client, err := NewBucket(ctx, cfg, "test")

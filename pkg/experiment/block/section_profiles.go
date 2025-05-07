@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"os"
-	"path/filepath"
 
 	"github.com/parquet-go/parquet-go"
 	"github.com/pkg/errors"
@@ -35,6 +33,7 @@ func openProfileTable(_ context.Context, s *Dataset) (err error) {
 			s.inMemoryBucket(buf), s.obj.path, offset, size,
 			0, // Do not prefetch the footer.
 			parquet.SkipBloomFilters(true),
+			parquet.SkipPageIndex(true),
 			parquet.FileReadMode(parquet.ReadModeSync),
 			parquet.ReadBufferSize(4<<10))
 	} else {
@@ -42,6 +41,7 @@ func openProfileTable(_ context.Context, s *Dataset) (err error) {
 			s.obj.storage, s.obj.path, offset, size,
 			estimateFooterSize(size),
 			parquet.SkipBloomFilters(true),
+			parquet.SkipPageIndex(true),
 			parquet.FileReadMode(parquet.ReadModeAsync),
 			parquet.ReadBufferSize(estimateReadBufferSize(size)))
 	}
@@ -117,7 +117,7 @@ func openParquetFile(
 	return p, nil
 }
 
-func (f *ParquetFile) RowReader() *parquet.Reader {
+func (f *ParquetFile) RowReader() parquet.RowReader {
 	return parquet.NewReader(f.File, schemav1.ProfilesSchema)
 }
 
@@ -159,20 +159,14 @@ func (f *ParquetFile) Column(ctx context.Context, columnName string, predicate q
 
 type profilesWriter struct {
 	*parquet.GenericWriter[*schemav1.Profile]
-	file     *os.File
 	buf      []parquet.Row
 	profiles uint64
 }
 
-func newProfileWriter(dst string, pageBufferSize int) (*profilesWriter, error) {
-	f, err := os.Create(filepath.Join(dst, FileNameProfilesParquet))
-	if err != nil {
-		return nil, err
-	}
+func newProfileWriter(pageBufferSize int, w io.Writer) *profilesWriter {
 	return &profilesWriter{
-		file: f,
-		buf:  make([]parquet.Row, 1),
-		GenericWriter: parquet.NewGenericWriter[*schemav1.Profile](f,
+		buf: make([]parquet.Row, 1),
+		GenericWriter: parquet.NewGenericWriter[*schemav1.Profile](w,
 			parquet.CreatedBy("github.com/grafana/pyroscope/", build.Version, build.Revision),
 			parquet.PageBufferSize(pageBufferSize),
 			// Note that parquet keeps ALL RG pages in memory (ColumnPageBuffers).
@@ -180,7 +174,7 @@ func newProfileWriter(dst string, pageBufferSize int) (*profilesWriter, error) {
 			schemav1.ProfilesSchema,
 			// parquet.ColumnPageBuffers(),
 		),
-	}, nil
+	}
 }
 
 func (p *profilesWriter) writeRow(e ProfileEntry) error {
@@ -188,14 +182,6 @@ func (p *profilesWriter) writeRow(e ProfileEntry) error {
 	_, err := p.GenericWriter.WriteRows(p.buf)
 	p.profiles++
 	return err
-}
-
-func (p *profilesWriter) Close() error {
-	err := p.GenericWriter.Close()
-	if err != nil {
-		return err
-	}
-	return p.file.Close()
 }
 
 type readerWithFooter struct {

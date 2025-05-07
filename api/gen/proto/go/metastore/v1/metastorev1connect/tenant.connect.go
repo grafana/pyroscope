@@ -40,13 +40,6 @@ const (
 	TenantServiceDeleteTenantProcedure = "/metastore.v1.TenantService/DeleteTenant"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	tenantServiceServiceDescriptor            = v1.File_metastore_v1_tenant_proto.Services().ByName("TenantService")
-	tenantServiceGetTenantMethodDescriptor    = tenantServiceServiceDescriptor.Methods().ByName("GetTenant")
-	tenantServiceDeleteTenantMethodDescriptor = tenantServiceServiceDescriptor.Methods().ByName("DeleteTenant")
-)
-
 // TenantServiceClient is a client for the metastore.v1.TenantService service.
 type TenantServiceClient interface {
 	GetTenant(context.Context, *connect.Request[v1.GetTenantRequest]) (*connect.Response[v1.GetTenantResponse], error)
@@ -62,17 +55,18 @@ type TenantServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewTenantServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) TenantServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	tenantServiceMethods := v1.File_metastore_v1_tenant_proto.Services().ByName("TenantService").Methods()
 	return &tenantServiceClient{
 		getTenant: connect.NewClient[v1.GetTenantRequest, v1.GetTenantResponse](
 			httpClient,
 			baseURL+TenantServiceGetTenantProcedure,
-			connect.WithSchema(tenantServiceGetTenantMethodDescriptor),
+			connect.WithSchema(tenantServiceMethods.ByName("GetTenant")),
 			connect.WithClientOptions(opts...),
 		),
 		deleteTenant: connect.NewClient[v1.DeleteTenantRequest, v1.DeleteTenantResponse](
 			httpClient,
 			baseURL+TenantServiceDeleteTenantProcedure,
-			connect.WithSchema(tenantServiceDeleteTenantMethodDescriptor),
+			connect.WithSchema(tenantServiceMethods.ByName("DeleteTenant")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -106,16 +100,17 @@ type TenantServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewTenantServiceHandler(svc TenantServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	tenantServiceMethods := v1.File_metastore_v1_tenant_proto.Services().ByName("TenantService").Methods()
 	tenantServiceGetTenantHandler := connect.NewUnaryHandler(
 		TenantServiceGetTenantProcedure,
 		svc.GetTenant,
-		connect.WithSchema(tenantServiceGetTenantMethodDescriptor),
+		connect.WithSchema(tenantServiceMethods.ByName("GetTenant")),
 		connect.WithHandlerOptions(opts...),
 	)
 	tenantServiceDeleteTenantHandler := connect.NewUnaryHandler(
 		TenantServiceDeleteTenantProcedure,
 		svc.DeleteTenant,
-		connect.WithSchema(tenantServiceDeleteTenantMethodDescriptor),
+		connect.WithSchema(tenantServiceMethods.ByName("DeleteTenant")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/metastore.v1.TenantService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -5,5 +5,5 @@ edition = "2021"
 
 [dependencies]
 pyroscope = "^0.5.8"
-pyroscope_pprofrs = "^0.2.8"
+pyroscope_pprofrs = "^0.2.10"
 pretty_env_logger = "0.4"

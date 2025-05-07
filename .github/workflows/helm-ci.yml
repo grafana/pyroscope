@@ -1,7 +1,7 @@
 name: helm-ci
-
 on: pull_request
-
+permissions:
+  contents: read
 jobs:
   call-lint:
     uses: grafana/helm-charts/.github/workflows/linter.yml@main

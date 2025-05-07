@@ -64,6 +64,24 @@ data:
     		source_labels = ["__meta_kubernetes_pod_container_name"]
     		target_label  = "container"
     	}
+
+    	rule {
+    		action        = "replace"
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_service_repository"]
+    		target_label  = "service_repository"
+    	}
+
+    	rule {
+    		action        = "replace"
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_service_git_ref"]
+    		target_label  = "service_git_ref"
+    	}
+
+    	rule {
+    		action        = "replace"
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_service_root_path"]
+    		target_label  = "service_root_path"
+    	}
     }
   {{- $profileTypes := list "memory" "cpu" "goroutine" "block" "mutex" "fgprof" }}
   {{- range $profileTypes }}

@@ -246,7 +246,7 @@ func (r *Reader) readIndexSection(ctx context.Context, offset, size int64) error
 	}
 	r.index, err = OpenIndex(buf)
 	if err != nil {
-		return fmt.Errorf("openning index: %w", err)
+		return fmt.Errorf("opening index: %w", err)
 	}
 	return nil
 }

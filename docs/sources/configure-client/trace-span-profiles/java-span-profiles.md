@@ -27,7 +27,7 @@ This integration lets you link traces with the profiling data and find resource 
 
 To use Span Profiles, you need to:
 
-* [Configure Pyroscope to send profiling data]({{< relref "../../configure-client" >}})
+* [Configure Pyroscope to send profiling data](../../)
 * Configure a client-side package to link traces and profiles: [Java](https://github.com/grafana/otel-profiling-java)
 * [Configure the Tempo data source in Grafana or Grafana Cloud to discover linked traces and profiles](/docs/grafana-cloud/connect-externally-hosted/data-sources/tempo/configure-tempo-data-source/)
 
@@ -35,7 +35,7 @@ To use Span Profiles, you need to:
 
 Your applications must be instrumented for profiling and tracing before you can use span profiles.
 
-* Profiling: Your application must be instrumented with Pyroscope's Java client SDK. Refer to the [Java]({{< relref "../language-sdks/java" >}}) guide for instructions.
+* Profiling: Your application must be instrumented with Pyroscope's Java client SDK. Refer to the [Java](../../language-sdks/java/) guide for instructions.
 * Tracing: Your application must be instrumented with OpenTelemetry traces. Refer to the [OpenTelemetry](https://opentelemetry.io/docs/languages/java/getting-started/) guide for instructions.
 
 ## Configure the otel-profiling-java package
@@ -62,7 +62,7 @@ EXPOSE 5000
 
 ## Add required libararies
 ADD https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v1.17.0/opentelemetry-javaagent.jar opentelemetry-javaagent.jar
-ADD https://repo1.maven.org/maven2/io/pyroscope/otel/0.11.0/otel-0.11.0.jar pyroscope-otel.jar
+ADD https://github.com/grafana/otel-profiling-java/releases/download/v1.0.4/pyroscope-otel.jar pyroscope-otel.jar
 
 ENV PYROSCOPE_APPLICATION_NAME=my-app
 ENV PYROSCOPE_FORMAT=jfr

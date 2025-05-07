@@ -39,6 +39,12 @@
       "name": "SegmentWriterService"
     },
     {
+      "name": "CollectionRulesService"
+    },
+    {
+      "name": "RecordingRulesService"
+    },
+    {
       "name": "SettingsService"
     },
     {
@@ -410,6 +416,34 @@
         }
       }
     },
+    "queryv1Query": {
+      "type": "object",
+      "properties": {
+        "queryType": {
+          "$ref": "#/definitions/v1QueryType"
+        },
+        "labelNames": {
+          "$ref": "#/definitions/v1LabelNamesQuery",
+          "description": "Exactly one of the following fields should be set,\ndepending on the query type."
+        },
+        "labelValues": {
+          "$ref": "#/definitions/v1LabelValuesQuery"
+        },
+        "seriesLabels": {
+          "$ref": "#/definitions/v1SeriesLabelsQuery"
+        },
+        "timeSeries": {
+          "$ref": "#/definitions/v1TimeSeriesQuery"
+        },
+        "tree": {
+          "$ref": "#/definitions/v1TreeQuery"
+        },
+        "pprof": {
+          "$ref": "#/definitions/v1PprofQuery",
+          "description": "function_details\n call_graph\n top_table\n ..."
+        }
+      }
+    },
     "rpcStatus": {
       "type": "object",
       "properties": {
@@ -437,6 +471,25 @@
       "properties": {
         "name": {
           "type": "string"
+        }
+      }
+    },
+    "typesv1Series": {
+      "type": "object",
+      "properties": {
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1LabelPair"
+          }
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Point"
+          }
         }
       }
     },
@@ -633,6 +686,10 @@
         "createdBy": {
           "type": "integer",
           "format": "int32"
+        },
+        "metadataOffset": {
+          "type": "string",
+          "format": "uint64"
         },
         "size": {
           "type": "string",
@@ -835,6 +892,10 @@
     "v1Dataset": {
       "type": "object",
       "properties": {
+        "format": {
+          "type": "integer",
+          "format": "int64"
+        },
         "tenant": {
           "type": "integer",
           "format": "int32"
@@ -857,7 +918,7 @@
             "type": "string",
             "format": "uint64"
           },
-          "description": "Table of contents lists data sections within the tenant\nservice region. The offsets are absolute.\n\nThe interpretation of the table of contents is specific\nto the metadata format version. By default, the sections are:\n - 0: profiles.parquet\n - 1: index.tsdb\n - 2: symbols.symdb"
+          "description": "Table of contents lists data sections within the tenant\nservice region. The offsets are absolute.\n\nThe interpretation of the table of contents is specific\nto the format.\n\nBy default (format 0), the sections are:\n - 0: profiles.parquet\n - 1: index.tsdb\n - 2: symbols.symdb\n\nFormat 1 corresponds to the tenant-wide index:\n - 0: index.tsdb (dataset index)"
         },
         "size": {
           "type": "string",
@@ -873,6 +934,15 @@
           "description": "Length prefixed label key-value pairs.\n\nMultiple label sets can be associated with a dataset to denote relationships\nacross multiple dimensions. For example, each dataset currently stores data\nfor multiple profile types:\n  - service_name=A, profile_type=cpu\n  - service_name=A, profile_type=memory\n\nLabels are primarily used to filter datasets based on their attributes.\nFor instance, labels can be used to select datasets containing a specific\nservice.\n\nThe set of attributes is extensible and can grow over time. For example, a\nnamespace attribute could be added to datasets:\n  - service_name=A, profile_type=cpu\n  - service_name=A, profile_type=memory\n  - service_name=B, namespace=N, profile_type=cpu\n  - service_name=B, namespace=N, profile_type=memory\n  - service_name=C, namespace=N, profile_type=cpu\n  - service_name=C, namespace=N, profile_type=memory\n\nThis organization enables querying datasets by namespace without accessing\nthe block contents, which significantly improves performance.\n\nMetadata labels are not required to be included in the block's TSDB index\nand may be orthogonal to the data dimensions. Generally, attributes serve\ntwo primary purposes:\n  - To create data scopes that span multiple service, reducing the need to\n    scan the entire set of block satisfying the query expression, i.e.,\n    the time range and tenant ID.\n  - To provide additional information about datasets without altering the\n    storage schema or access methods.\n\nFor example, this approach can support cost attribution or similar breakdown\nanalyses. It can also handle data dependencies (e.g., links to external data)\nusing labels.\n\nThe cardinality of the labels is expected to remain relatively low (fewer\nthan a million unique combinations globally). However, this depends on the\nmetadata storage system.\n\nMetadata labels are represented as a slice of `int32` values that refer to\nstrings in the metadata entry's string table. The slice is a sequence of\nlength-prefixed key-value (KV) pairs:\n\nlen(2) | k1 | v1 | k2 | v2 | len(3) | k1 | v3 | k2 | v4 | k3 | v5\n\nThe order of KV pairs is not defined. The format is optimized for indexing\nrather than querying, and it is not intended to be the most space-efficient\nrepresentation. Since entries are supposed to be indexed, the redundancy of\ndenormalized relationships is not a concern."
         }
       }
+    },
+    "v1DeleteCollectionRuleResponse": {
+      "type": "object"
+    },
+    "v1DeleteRecordingRuleResponse": {
+      "type": "object"
+    },
+    "v1DeleteSettingsResponse": {
+      "type": "object"
     },
     "v1DeleteTenantResponse": {
       "type": "object"
@@ -891,6 +961,14 @@
       "properties": {
         "flamegraph": {
           "$ref": "#/definitions/v1FlameGraphDiff"
+        }
+      }
+    },
+    "v1EBPFSettings": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
         }
       }
     },
@@ -1045,6 +1123,41 @@
         }
       }
     },
+    "v1GetCollectionRuleResponse": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "services": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1ServiceData"
+          }
+        },
+        "ebpf": {
+          "$ref": "#/definitions/v1EBPFSettings"
+        },
+        "java": {
+          "$ref": "#/definitions/v1JavaSettings"
+        },
+        "lastUpdated": {
+          "type": "string",
+          "format": "int64",
+          "title": "milliseconds unix time of last update"
+        },
+        "generation": {
+          "type": "string",
+          "format": "int64",
+          "title": "incremented on each update"
+        },
+        "configuration": {
+          "type": "string",
+          "title": "generated configuration block in alloy syntax"
+        }
+      }
+    },
     "v1GetCommitResponse": {
       "type": "object",
       "properties": {
@@ -1111,6 +1224,14 @@
           "type": "string",
           "format": "int64",
           "description": "Milliseconds since epoch."
+        }
+      }
+    },
+    "v1GetRecordingRuleResponse": {
+      "type": "object",
+      "properties": {
+        "rule": {
+          "$ref": "#/definitions/v1RecordingRule"
         }
       }
     },
@@ -1230,6 +1351,14 @@
         }
       }
     },
+    "v1JavaSettings": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      }
+    },
     "v1LabelNamesQuery": {
       "type": "object"
     },
@@ -1342,6 +1471,35 @@
         }
       }
     },
+    "v1ListCollectionRulesResponse": {
+      "type": "object",
+      "properties": {
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1GetCollectionRuleResponse"
+          }
+        },
+        "generation": {
+          "type": "string",
+          "format": "int64",
+          "title": "incremented on each update"
+        }
+      }
+    },
+    "v1ListRecordingRulesResponse": {
+      "type": "object",
+      "properties": {
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1RecordingRule"
+          }
+        }
+      }
+    },
     "v1Mapping": {
       "type": "object",
       "properties": {
@@ -1401,7 +1559,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/v1Series"
+            "$ref": "#/definitions/typesv1Series"
           },
           "title": "The list of series for the profile with their respective value"
         }
@@ -1494,6 +1652,13 @@
           "type": "string",
           "format": "int64",
           "title": "Milliseconds unix timestamp"
+        },
+        "annotations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1ProfileAnnotation"
+          }
         }
       }
     },
@@ -1538,6 +1703,17 @@
         "pprof": {
           "type": "string",
           "format": "byte"
+        }
+      }
+    },
+    "v1ProfileAnnotation": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
         }
       }
     },
@@ -1597,34 +1773,6 @@
         },
         "periodUnit": {
           "type": "string"
-        }
-      }
-    },
-    "v1Query": {
-      "type": "object",
-      "properties": {
-        "queryType": {
-          "$ref": "#/definitions/v1QueryType"
-        },
-        "labelNames": {
-          "$ref": "#/definitions/v1LabelNamesQuery",
-          "description": "Exactly one of the following fields should be set,\ndepending on the query type."
-        },
-        "labelValues": {
-          "$ref": "#/definitions/v1LabelValuesQuery"
-        },
-        "seriesLabels": {
-          "$ref": "#/definitions/v1SeriesLabelsQuery"
-        },
-        "timeSeries": {
-          "$ref": "#/definitions/v1TimeSeriesQuery"
-        },
-        "tree": {
-          "$ref": "#/definitions/v1TreeQuery"
-        },
-        "pprof": {
-          "$ref": "#/definitions/v1PprofQuery",
-          "description": "function_details\n call_graph\n top_table\n ..."
         }
       }
     },
@@ -1793,6 +1941,14 @@
             "$ref": "#/definitions/v1RawSample"
           },
           "title": "samples are the set of profile bytes"
+        },
+        "annotations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1ProfileAnnotation"
+          },
+          "description": "Annotations provide additional metadata for a profile.\n\nThe main differences between labels and annotations are:\n - annotations cannot be used in query selectors\n - annotation keys don't have to be unique\n\nCurrently annotations are applied internally by distributors,\nany annotation passed via the push API will be dropped."
         }
       },
       "title": "RawProfileSeries represents the pprof profile and its associated labels"
@@ -1811,6 +1967,47 @@
         }
       },
       "title": "RawSample is the set of bytes that correspond to a pprof profile"
+    },
+    "v1RecordingRule": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The unique id of the recording rule."
+        },
+        "metricName": {
+          "type": "string",
+          "description": "The name of the recording rule, this does not necessarily need to be\nunique."
+        },
+        "profileType": {
+          "type": "string",
+          "description": "Used in the UI to display what type of profile type this recording rule is\ngenerated from.\n\nThis should be the standard format of:\n\n  \u003cname\u003e:\u003csample-type\u003e:\u003csample-unit\u003e:\u003cperiod-type\u003e:\u003cperiod-unit\u003e\n\nFor example:\n\n  process_cpu:cpu:nanoseconds:cpu:nanoseconds"
+        },
+        "matchers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "groupBy": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "externalLabels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1LabelPair"
+          }
+        },
+        "generation": {
+          "type": "string",
+          "format": "int64",
+          "description": "The observed generation of this recording rule. This value should be\nprovided when making updates to this record, to avoid conflicting\nconcurrent updates."
+        }
+      }
     },
     "v1Report": {
       "type": "object",
@@ -1974,7 +2171,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/v1Series"
+            "$ref": "#/definitions/typesv1Series"
           }
         }
       }
@@ -2008,25 +2205,6 @@
         "hints": {
           "$ref": "#/definitions/v1Hints",
           "title": "Optional: Hints for querying"
-        }
-      }
-    },
-    "v1Series": {
-      "type": "object",
-      "properties": {
-        "labels": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1LabelPair"
-          }
-        },
-        "points": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1Point"
-          }
         }
       }
     },
@@ -2068,6 +2246,17 @@
           "type": "string",
           "format": "int64",
           "title": "timestamp in milliseconds"
+        }
+      }
+    },
+    "v1ServiceData": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
         }
       }
     },
@@ -2193,7 +2382,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/v1Series"
+            "$ref": "#/definitions/typesv1Series"
           }
         }
       }
@@ -2232,6 +2421,14 @@
         "tree": {
           "type": "string",
           "format": "byte"
+        }
+      }
+    },
+    "v1UpsertRecordingRuleResponse": {
+      "type": "object",
+      "properties": {
+        "rule": {
+          "$ref": "#/definitions/v1RecordingRule"
         }
       }
     },

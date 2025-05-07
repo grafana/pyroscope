@@ -13,6 +13,7 @@ import (
 	"github.com/cespare/xxhash/v2"
 	pmodel "github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
+	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/util"
@@ -42,7 +43,14 @@ const (
 
 	LabelNamePyroscopeSpy = "pyroscope_spy"
 
+	AttrProcessExecutableName = semconv.ProcessExecutableNameKey
+
+	AttrServiceName         = semconv.ServiceNameKey
+	AttrServiceNameFallback = "unknown_service"
+
 	labelSep = '\xfe'
+
+	ProfileNameOffCpu = "off_cpu" // todo better name?
 )
 
 // Labels is a sorted set of labels. Order has to be guaranteed upon
@@ -338,8 +346,8 @@ func CompareLabelPairs(a, b []*typesv1.LabelPair) int {
 	return len(a) - len(b)
 }
 
-func CompareLabels(a, b Labels) int {
-	return CompareLabelPairs(a, b)
+func CompareLabels(a, b *typesv1.Labels) int {
+	return CompareLabelPairs(a.Labels, b.Labels)
 }
 
 // LabelsBuilder allows modifying Labels.

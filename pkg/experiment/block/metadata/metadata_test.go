@@ -6,6 +6,7 @@ import (
 
 	"github.com/oklog/ulid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 )
@@ -39,10 +40,8 @@ func TestMetadata_New(t *testing.T) {
 				Size:            567,
 				Labels:          nil,
 			}
-
-			b.WithConstantPairs("service_name", dataset).WithLabelNames("__profile_type__")
 			for _, n := range []string{"cpu", "memory"} {
-				b.CreateLabels(n)
+				b.WithLabelSet("service_name", dataset, "__profile_type__", n)
 			}
 			ds.Labels = b.Build()
 			md.Datasets = append(md.Datasets, ds)
@@ -215,4 +214,29 @@ func TestMetadataStrings_Export(t *testing.T) {
 	}
 
 	assert.Equal(t, expected, md)
+}
+
+func TestMetadata_EncodeDecode(t *testing.T) {
+	md := &metastorev1.BlockMeta{
+		Id:        "1",
+		Tenant:    0,
+		CreatedBy: 1,
+		Datasets: []*metastorev1.Dataset{
+			{Tenant: 2, Name: 3, Labels: []int32{2, 4, 3, 5, 6, 2, 4, 3, 5, 7, 2, 4, 3, 5, 8}},
+			{Tenant: 9, Name: 10, Labels: []int32{2, 4, 10, 5, 7, 2, 4, 10, 5, 8, 2, 4, 10, 5, 11}},
+		},
+		StringTable: []string{
+			"", "ingester",
+			"tenant-a", "dataset-a", "service_name", "__profile_type__", "1", "2", "3",
+			"tenant-b", "dataset-b", "4",
+		},
+	}
+
+	var buf bytes.Buffer
+	require.NoError(t, Encode(&buf, md))
+
+	var d metastorev1.BlockMeta
+	raw := append([]byte("garbage"), buf.Bytes()...)
+	require.NoError(t, Decode(raw, &d))
+	assert.Equal(t, md, &d)
 }

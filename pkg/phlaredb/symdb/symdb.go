@@ -2,6 +2,7 @@ package symdb
 
 import (
 	"context"
+	"io"
 	"math"
 	"sort"
 	"sync"
@@ -96,15 +97,22 @@ type SymDB struct {
 }
 
 type Config struct {
-	Dir         string
-	Version     FormatVersion
+	Version FormatVersion
+	// Output writer. Optional, V3 only.
+	Writer io.WriteCloser
+
+	// DEPRECATED: the parameter is not used and
+	// will be removed in the future versions.
+	Dir string
+	// DEPRECATED: the parameter is not used and
+	// will be removed in the future versions.
 	Stacktraces StacktracesConfig
-	Parquet     ParquetConfig
+	// DEPRECATED: the parameter is not used and
+	// will be removed in the future versions.
+	Parquet ParquetConfig
 }
 
 type StacktracesConfig struct {
-	// DEPRECATED: the parameter is not used and
-	// will be removed in the future versions.
 	MaxNodesPerChunk uint32
 }
 

@@ -12,7 +12,7 @@ VOLUME /data
 VOLUME /data-compactor
 RUN mkdir -p /data-compactor && chown pyroscope:pyroscope /data /data-compactor
 
-COPY .tmp/bin/linux_amd64/dlv /usr/bin/dlv
+COPY .tmp/bin/dlv /usr/bin/dlv
 COPY cmd/pyroscope/pyroscope.yaml /etc/pyroscope/config.yaml
 COPY profilecli /usr/bin/profilecli
 COPY pyroscope /usr/bin/pyroscope

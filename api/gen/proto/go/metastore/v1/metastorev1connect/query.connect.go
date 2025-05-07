@@ -41,13 +41,6 @@ const (
 	MetadataQueryServiceQueryMetadataLabelsProcedure = "/metastore.v1.MetadataQueryService/QueryMetadataLabels"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	metadataQueryServiceServiceDescriptor                   = v1.File_metastore_v1_query_proto.Services().ByName("MetadataQueryService")
-	metadataQueryServiceQueryMetadataMethodDescriptor       = metadataQueryServiceServiceDescriptor.Methods().ByName("QueryMetadata")
-	metadataQueryServiceQueryMetadataLabelsMethodDescriptor = metadataQueryServiceServiceDescriptor.Methods().ByName("QueryMetadataLabels")
-)
-
 // MetadataQueryServiceClient is a client for the metastore.v1.MetadataQueryService service.
 type MetadataQueryServiceClient interface {
 	QueryMetadata(context.Context, *connect.Request[v1.QueryMetadataRequest]) (*connect.Response[v1.QueryMetadataResponse], error)
@@ -63,17 +56,18 @@ type MetadataQueryServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewMetadataQueryServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) MetadataQueryServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	metadataQueryServiceMethods := v1.File_metastore_v1_query_proto.Services().ByName("MetadataQueryService").Methods()
 	return &metadataQueryServiceClient{
 		queryMetadata: connect.NewClient[v1.QueryMetadataRequest, v1.QueryMetadataResponse](
 			httpClient,
 			baseURL+MetadataQueryServiceQueryMetadataProcedure,
-			connect.WithSchema(metadataQueryServiceQueryMetadataMethodDescriptor),
+			connect.WithSchema(metadataQueryServiceMethods.ByName("QueryMetadata")),
 			connect.WithClientOptions(opts...),
 		),
 		queryMetadataLabels: connect.NewClient[v1.QueryMetadataLabelsRequest, v1.QueryMetadataLabelsResponse](
 			httpClient,
 			baseURL+MetadataQueryServiceQueryMetadataLabelsProcedure,
-			connect.WithSchema(metadataQueryServiceQueryMetadataLabelsMethodDescriptor),
+			connect.WithSchema(metadataQueryServiceMethods.ByName("QueryMetadataLabels")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -108,16 +102,17 @@ type MetadataQueryServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewMetadataQueryServiceHandler(svc MetadataQueryServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	metadataQueryServiceMethods := v1.File_metastore_v1_query_proto.Services().ByName("MetadataQueryService").Methods()
 	metadataQueryServiceQueryMetadataHandler := connect.NewUnaryHandler(
 		MetadataQueryServiceQueryMetadataProcedure,
 		svc.QueryMetadata,
-		connect.WithSchema(metadataQueryServiceQueryMetadataMethodDescriptor),
+		connect.WithSchema(metadataQueryServiceMethods.ByName("QueryMetadata")),
 		connect.WithHandlerOptions(opts...),
 	)
 	metadataQueryServiceQueryMetadataLabelsHandler := connect.NewUnaryHandler(
 		MetadataQueryServiceQueryMetadataLabelsProcedure,
 		svc.QueryMetadataLabels,
-		connect.WithSchema(metadataQueryServiceQueryMetadataLabelsMethodDescriptor),
+		connect.WithSchema(metadataQueryServiceMethods.ByName("QueryMetadataLabels")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/metastore.v1.MetadataQueryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

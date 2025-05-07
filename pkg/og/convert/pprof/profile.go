@@ -200,7 +200,15 @@ func (p *RawProfile) metricName(profile *pprof.Profile) string {
 }
 
 func (p *RawProfile) createLabels(profile *pprof.Profile, md ingestion.Metadata) []*v1.LabelPair {
-	ls := make([]*v1.LabelPair, 0, len(md.Key.Labels())+4)
+	hasServiceName := false
+	for k := range md.LabelSet.Labels() {
+		if k == phlaremodel.LabelNameServiceName {
+			hasServiceName = true
+			break
+		}
+	}
+
+	ls := make([]*v1.LabelPair, 0, len(md.LabelSet.Labels())+4)
 	ls = append(ls, &v1.LabelPair{
 		Name:  labels.MetricName,
 		Value: p.metricName(profile),
@@ -208,13 +216,19 @@ func (p *RawProfile) createLabels(profile *pprof.Profile, md ingestion.Metadata)
 		Name:  phlaremodel.LabelNameDelta,
 		Value: "false",
 	}, &v1.LabelPair{
-		Name:  "service_name",
-		Value: md.Key.AppName(),
-	}, &v1.LabelPair{
 		Name:  phlaremodel.LabelNamePyroscopeSpy,
 		Value: md.SpyName,
 	})
-	for k, v := range md.Key.Labels() {
+
+	// Only add service_name if it doesn't exist
+	if !hasServiceName {
+		ls = append(ls, &v1.LabelPair{
+			Name:  phlaremodel.LabelNameServiceName,
+			Value: md.LabelSet.ServiceName(),
+		})
+	}
+
+	for k, v := range md.LabelSet.Labels() {
 		if !phlaremodel.IsLabelAllowedForIngestion(k) {
 			continue
 		}
@@ -275,9 +289,8 @@ func FixFunctionNamesForScriptingLanguages(p *pprof.Profile, md ingestion.Metada
 	for _, location := range p.Location {
 		for _, line := range location.Line {
 			fn := p.Function[funcId2Index[line.FunctionId]]
-			name := fmt.Sprintf("%s:%d - %s",
+			name := fmt.Sprintf("%s %s",
 				p.StringTable[fn.Filename],
-				line.Line,
 				p.StringTable[fn.Name])
 			newFunc, ok := newFunctions[name]
 			if !ok {

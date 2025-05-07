@@ -1,7 +1,8 @@
 package distributor
 
 import (
-	"fmt"
+	"net"
+	"strconv"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/ring"
@@ -26,7 +27,7 @@ func toBasicLifecyclerConfig(cfg util.CommonRingConfig, logger log.Logger) (ring
 
 	return ring.BasicLifecyclerConfig{
 		ID:                              cfg.InstanceID,
-		Addr:                            fmt.Sprintf("%s:%d", instanceAddr, instancePort),
+		Addr:                            net.JoinHostPort(instanceAddr, strconv.Itoa(instancePort)),
 		HeartbeatPeriod:                 cfg.HeartbeatPeriod,
 		HeartbeatTimeout:                cfg.HeartbeatTimeout,
 		TokensObservePeriod:             0,

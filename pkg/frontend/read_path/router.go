@@ -21,35 +21,46 @@ type Overrides interface {
 	ReadPathOverrides(tenantID string) Config
 }
 
-// Router is a proxy that routes queries to the querier frontend
-// or the backend querier service directly, bypassing the scheduler
-// and querier services.
+// Router is a proxy that routes queries to the query frontend.
+//
+// If the query backend is enabled, it routes queries to the new
+// query frontend, otherwise it routes queries to the old query
+// frontend.
+//
+// If the query targets a time range that spans the enablement of
+// the new query backend, it splits the query into two parts and
+// sends them to the old and new query frontends.
 type Router struct {
 	logger    log.Logger
 	overrides Overrides
 
-	frontend querierv1connect.QuerierServiceClient
-	backend  querierv1connect.QuerierServiceClient
+	oldFrontend querierv1connect.QuerierServiceClient
+	newFrontend querierv1connect.QuerierServiceClient
 }
 
 func NewRouter(
 	logger log.Logger,
 	overrides Overrides,
-	frontend querierv1connect.QuerierServiceClient,
-	backend querierv1connect.QuerierServiceClient,
+	oldFrontend querierv1connect.QuerierServiceClient,
+	newFrontend querierv1connect.QuerierServiceClient,
 ) *Router {
 	return &Router{
-		logger:    logger,
-		overrides: overrides,
-		frontend:  frontend,
-		backend:   backend,
+		logger:      logger,
+		overrides:   overrides,
+		oldFrontend: oldFrontend,
+		newFrontend: newFrontend,
 	}
 }
 
+// Query routes a query to the appropriate query frontend.
+// Before the call to the frontend is made, the requests
+// are sanitized: any of the arguments can be nil, but not
+// both. If the query was split, the responses are aggregated.
 func Query[Req, Resp any](
 	ctx context.Context,
 	router *Router,
 	req *connect.Request[Req],
+	sanitize func(a, b *Req),
 	aggregate func(a, b *Resp) (*Resp, error),
 ) (*connect.Response[Resp], error) {
 	tenantIDs, err := tenant.TenantIDs(ctx)
@@ -65,17 +76,20 @@ func Query[Req, Resp any](
 	// are delegated to the callee.
 	overrides := router.overrides.ReadPathOverrides(tenantID)
 	if !overrides.EnableQueryBackend {
-		return query[Req, Resp](ctx, router.frontend, req)
+		sanitize(req.Msg, nil)
+		return query[Req, Resp](ctx, router.oldFrontend, req)
 	}
 	// Note: the old read path includes both start and end: [start, end].
 	// The new read path does not include end: [start, end).
 	split := model.TimeFromUnixNano(overrides.EnableQueryBackendFrom.UnixNano())
 	queryRange := phlaremodel.GetSafeTimeRange(time.Now(), req.Msg)
 	if split.After(queryRange.End) {
-		return query[Req, Resp](ctx, router.frontend, req)
+		sanitize(req.Msg, nil)
+		return query[Req, Resp](ctx, router.oldFrontend, req)
 	}
 	if split.Before(queryRange.Start) {
-		return query[Req, Resp](ctx, router.backend, req)
+		sanitize(nil, req.Msg)
+		return query[Req, Resp](ctx, router.newFrontend, req)
 	}
 
 	// We need to send requests both to the old and new read paths:
@@ -88,17 +102,18 @@ func Query[Req, Resp any](
 	cloned := c.CloneVT()
 	phlaremodel.SetTimeRange(req.Msg, queryRange.Start, split-1)
 	phlaremodel.SetTimeRange(cloned, split, queryRange.End)
+	sanitize(req.Msg, cloned)
 
 	var a, b *connect.Response[Resp]
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
 		var err error
-		a, err = query[Req, Resp](ctx, router.frontend, req)
+		a, err = query[Req, Resp](ctx, router.oldFrontend, req)
 		return err
 	})
 	g.Go(func() error {
 		var err error
-		b, err = query[Req, Resp](ctx, router.backend, connect.NewRequest(cloned))
+		b, err = query[Req, Resp](ctx, router.newFrontend, connect.NewRequest(cloned))
 		return err
 	})
 	if err = g.Wait(); err != nil {
@@ -106,7 +121,7 @@ func Query[Req, Resp any](
 	}
 
 	resp, err := aggregate(a.Msg, b.Msg)
-	if err != nil || resp == nil {
+	if err != nil {
 		return nil, err
 	}
 

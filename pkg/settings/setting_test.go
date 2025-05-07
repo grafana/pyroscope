@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
@@ -260,11 +261,128 @@ func TestTenantSettings_Set(t *testing.T) {
 	})
 }
 
+func TestTenantSettings_Delete(t *testing.T) {
+	t.Run("delete a setting", func(t *testing.T) {
+		const tenantID = "1234"
+		initialSetting := &settingsv1.Setting{
+			Name:       "key1",
+			Value:      "val1",
+			ModifiedAt: 100,
+		}
+
+		ts, cleanup := newTestTenantSettings(t, map[string][]*settingsv1.Setting{
+			tenantID: {
+				initialSetting,
+			},
+		})
+		defer cleanup()
+
+		ctx := tenant.InjectTenantID(context.Background(), tenantID)
+		req := &connect.Request[settingsv1.DeleteSettingsRequest]{
+			Msg: &settingsv1.DeleteSettingsRequest{
+				Name: initialSetting.Name,
+			},
+		}
+
+		got, err := ts.Delete(ctx, req)
+		require.NoError(t, err)
+
+		want := &settingsv1.DeleteSettingsResponse{}
+		require.Equal(t, want, got.Msg)
+	})
+
+	t.Run("missing tenant id", func(t *testing.T) {
+		ts, cleanup := newTestTenantSettings(t, map[string][]*settingsv1.Setting{})
+		defer cleanup()
+
+		ctx := context.Background()
+		req := &connect.Request[settingsv1.DeleteSettingsRequest]{
+			Msg: &settingsv1.DeleteSettingsRequest{
+				Name: "key1",
+			},
+		}
+
+		_, err := ts.Delete(ctx, req)
+		require.EqualError(t, err, "invalid_argument: no org id")
+	})
+
+	t.Run("missing setting name", func(t *testing.T) {
+		const tenantID = "1234"
+
+		ts, cleanup := newTestTenantSettings(t, map[string][]*settingsv1.Setting{})
+		defer cleanup()
+
+		ctx := tenant.InjectTenantID(context.Background(), tenantID)
+		req := &connect.Request[settingsv1.DeleteSettingsRequest]{
+			Msg: &settingsv1.DeleteSettingsRequest{
+				Name: "", // Purposely empty
+			},
+		}
+
+		_, err := ts.Delete(ctx, req)
+		require.EqualError(t, err, "invalid_argument: no setting name provided")
+	})
+
+	t.Run("out of order", func(t *testing.T) {
+		const tenantID = "1234"
+		initialSetting := &settingsv1.Setting{
+			Name:  "key1",
+			Value: "val1",
+
+			// Set to some point in the future to make subsequent deletes come
+			// in out of order.
+			ModifiedAt: time.Now().Add(12 * time.Hour).UnixMilli(),
+		}
+
+		ts, cleanup := newTestTenantSettings(t, map[string][]*settingsv1.Setting{
+			tenantID: {
+				initialSetting,
+			},
+		})
+		defer cleanup()
+
+		ctx := tenant.InjectTenantID(context.Background(), tenantID)
+		req := &connect.Request[settingsv1.DeleteSettingsRequest]{
+			Msg: &settingsv1.DeleteSettingsRequest{
+				Name: initialSetting.Name,
+			},
+		}
+
+		_, err := ts.Delete(ctx, req)
+		require.EqualError(t, err, "already_exists: failed to delete key1: newer update already written")
+	})
+
+	t.Run("settings store returns error", func(t *testing.T) {
+		store := &fakeStore{}
+		wantErr := fmt.Errorf("settings store failed")
+
+		// Get method fails once.
+		store.On("Delete", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+			Return(wantErr).
+			Once()
+
+		ts := &TenantSettings{
+			store:  store,
+			logger: log.NewNopLogger(),
+		}
+
+		ctx := tenant.InjectTenantID(context.Background(), "1234")
+		req := &connect.Request[settingsv1.DeleteSettingsRequest]{
+			Msg: &settingsv1.DeleteSettingsRequest{
+				Name: "key1",
+			},
+		}
+
+		_, err := ts.Delete(ctx, req)
+		require.EqualError(t, err, fmt.Sprintf("internal: %s", wantErr))
+	})
+}
+
 func newTestTenantSettings(t *testing.T, initial map[string][]*settingsv1.Setting) (*TenantSettings, func()) {
 	t.Helper()
 
-	store, err := NewMemoryStore()
-	require.NoError(t, err)
+	store := newMemoryStore()
+	var err error
 
 	for tenant, settings := range initial {
 		for _, setting := range settings {
@@ -305,6 +423,11 @@ func (s *fakeStore) Set(ctx context.Context, tenantID string, setting *settingsv
 	}
 
 	return args.Get(0).(*settingsv1.Setting), args.Error(1)
+}
+
+func (s *fakeStore) Delete(ctx context.Context, tenantID string, name string, modifiedAtMs int64) error {
+	args := s.Called(ctx, tenantID, name, modifiedAtMs)
+	return args.Error(0)
 }
 
 func (s *fakeStore) Flush(ctx context.Context) error {

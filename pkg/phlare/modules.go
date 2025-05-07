@@ -16,7 +16,6 @@ import (
 	"github.com/grafana/dskit/kv/codec"
 	"github.com/grafana/dskit/kv/memberlist"
 	"github.com/grafana/dskit/middleware"
-	"github.com/grafana/dskit/netutil"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/runtimeconfig"
 	"github.com/grafana/dskit/server"
@@ -42,10 +41,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/embedded/grafana"
 	"github.com/grafana/pyroscope/pkg/experiment/query_backend"
-	"github.com/grafana/pyroscope/pkg/frontend"
-	readpath "github.com/grafana/pyroscope/pkg/frontend/read_path"
-	queryfrontend "github.com/grafana/pyroscope/pkg/frontend/read_path/query_frontend"
-	"github.com/grafana/pyroscope/pkg/frontend/vcs"
 	"github.com/grafana/pyroscope/pkg/ingester"
 	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
@@ -92,84 +87,22 @@ const (
 
 	// Experimental modules
 
-	Metastore           string = "metastore"
-	MetastoreClient     string = "metastore-client"
-	MetastoreAdmin      string = "metastore-admin"
-	SegmentWriter       string = "segment-writer"
-	SegmentWriterRing   string = "segment-writer-ring"
-	SegmentWriterClient string = "segment-writer-client"
-	QueryBackend        string = "query-backend"
-	QueryBackendClient  string = "query-backend-client"
-	CompactionWorker    string = "compaction-worker"
-	PlacementAgent      string = "placement-agent"
-	PlacementManager    string = "placement-manager"
-	HealthServer        string = "health-server"
+	Metastore            string = "metastore"
+	MetastoreClient      string = "metastore-client"
+	MetastoreAdmin       string = "metastore-admin"
+	SegmentWriter        string = "segment-writer"
+	SegmentWriterRing    string = "segment-writer-ring"
+	SegmentWriterClient  string = "segment-writer-client"
+	QueryBackend         string = "query-backend"
+	QueryBackendClient   string = "query-backend-client"
+	CompactionWorker     string = "compaction-worker"
+	PlacementAgent       string = "placement-agent"
+	PlacementManager     string = "placement-manager"
+	HealthServer         string = "health-server"
+	RecordingRulesClient string = "recording-rules-client"
 )
 
 var objectStoreTypeStats = usagestats.NewString("store_object_type")
-
-func (f *Phlare) initQueryFrontend() (services.Service, error) {
-	var err error
-	if f.Cfg.Frontend.Addr, err = f.getFrontendAddress(); err != nil {
-		return nil, fmt.Errorf("failed to get frontend address: %w", err)
-	}
-	if f.Cfg.Frontend.Port == 0 {
-		f.Cfg.Frontend.Port = f.Cfg.Server.HTTPListenPort
-	}
-
-	frontendSvc, err := frontend.NewFrontend(f.Cfg.Frontend, f.Overrides, log.With(f.logger, "component", "frontend"), f.reg)
-	if err != nil {
-		return nil, err
-	}
-	f.frontend = frontendSvc
-	f.API.RegisterFrontendForQuerierHandler(frontendSvc)
-	if !f.Cfg.v2Experiment {
-		f.API.RegisterQuerierServiceHandler(frontendSvc)
-		f.API.RegisterPyroscopeHandlers(frontendSvc)
-		f.API.RegisterVCSServiceHandler(frontendSvc)
-	} else {
-		f.initReadPathRouter()
-	}
-
-	return frontendSvc, nil
-}
-
-func (f *Phlare) getFrontendAddress() (addr string, err error) {
-	addr = f.Cfg.Frontend.Addr
-	if f.Cfg.Frontend.AddrOld != "" {
-		addr = f.Cfg.Frontend.AddrOld
-	}
-	if addr != "" {
-		return addr, nil
-	}
-	return netutil.GetFirstAddressOf(f.Cfg.Frontend.InfNames, f.logger, f.Cfg.Frontend.EnableIPv6)
-}
-
-func (f *Phlare) initReadPathRouter() {
-	vcsService := vcs.New(
-		log.With(f.logger, "component", "vcs-service"),
-		f.reg,
-	)
-
-	newFrontend := queryfrontend.NewQueryFrontend(
-		log.With(f.logger, "component", "query-frontend"),
-		f.Overrides,
-		f.metastoreClient,
-		f.metastoreClient,
-		f.queryBackendClient,
-	)
-
-	router := readpath.NewRouter(
-		log.With(f.logger, "component", "read-path-router"),
-		f.Overrides,
-		f.frontend,
-		newFrontend,
-	)
-
-	f.API.RegisterQuerierServiceHandler(router)
-	f.API.RegisterPyroscopeHandlers(router)
-	f.API.RegisterVCSServiceHandler(vcsService)
-}
 
 func (f *Phlare) initRuntimeConfig() (services.Service, error) {
 	if len(f.Cfg.RuntimeConfig.LoadPath) == 0 {
@@ -184,7 +117,12 @@ func (f *Phlare) initRuntimeConfig() (services.Service, error) {
 	// make sure to set default limits before we start loading configuration into memory
 	validation.SetDefaultLimitsForYAMLUnmarshalling(f.Cfg.LimitsConfig)
 
-	serv, err := runtimeconfig.New(f.Cfg.RuntimeConfig, "pyroscope", prometheus.WrapRegistererWithPrefix("pyroscope_", f.reg), log.With(f.logger, "component", "runtime-config"))
+	serv, err := runtimeconfig.New(
+		f.Cfg.RuntimeConfig,
+		"pyroscope",
+		prometheus.WrapRegistererWithPrefix("pyroscope_", f.reg),
+		log.With(f.logger, "component", "runtime-config"),
+	)
 	if err == nil {
 		// TenantLimits just delegates to RuntimeConfig and doesn't have any state or need to do
 		// anything in the start/stopping phase. Thus we can create it as part of runtime config
@@ -193,27 +131,16 @@ func (f *Phlare) initRuntimeConfig() (services.Service, error) {
 	}
 
 	f.RuntimeConfig = serv
-	f.API.RegisterRuntimeConfig(runtimeConfigHandler(f.RuntimeConfig, f.Cfg.LimitsConfig), validation.TenantLimitsHandler(f.Cfg.LimitsConfig, f.TenantLimits))
+	f.API.RegisterRuntimeConfig(
+		runtimeConfigHandler(f.RuntimeConfig, f.Cfg.LimitsConfig),
+		validation.TenantLimitsHandler(f.Cfg.LimitsConfig, f.TenantLimits),
+	)
 
 	return serv, err
 }
 
 func (f *Phlare) initTenantSettings() (services.Service, error) {
-	var store settings.Store
-	var err error
-
-	switch {
-	case f.storageBucket != nil:
-		store, err = settings.NewBucketStore(f.storageBucket)
-	default:
-		store, err = settings.NewMemoryStore()
-		level.Warn(f.logger).Log("msg", "using in-memory settings store, changes will be lost after shutdown")
-	}
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to init settings store")
-	}
-
-	settings, err := settings.New(store, log.With(f.logger, "component", TenantSettings))
+	settings, err := settings.New(f.Cfg.TenantSettings, f.storageBucket, log.With(f.logger, "component", TenantSettings))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to init settings service")
 	}
@@ -280,7 +207,13 @@ func (f *Phlare) initCompactor() (serv services.Service, err error) {
 		return nil, nil
 	}
 
-	f.Compactor, err = compactor.NewMultitenantCompactor(f.Cfg.Compactor, f.storageBucket, f.Overrides, log.With(f.logger, "component", "compactor"), f.reg)
+	f.Compactor, err = compactor.NewMultitenantCompactor(
+		f.Cfg.Compactor,
+		f.storageBucket,
+		f.Overrides,
+		log.With(f.logger, "component", "compactor"),
+		f.reg,
+	)
 	if err != nil {
 		return
 	}
@@ -424,7 +357,13 @@ func (f *Phlare) initMemberlistKV() (services.Service, error) {
 }
 
 func (f *Phlare) initIngesterRing() (_ services.Service, err error) {
-	f.ingesterRing, err = ring.New(f.Cfg.Ingester.LifecyclerConfig.RingConfig, "ingester", "ring", log.With(f.logger, "component", "ring"), prometheus.WrapRegistererWithPrefix("pyroscope_", f.reg))
+	f.ingesterRing, err = ring.New(
+		f.Cfg.Ingester.LifecyclerConfig.RingConfig,
+		"ingester",
+		"ring",
+		log.With(f.logger, "component", "ring"),
+		prometheus.WrapRegistererWithPrefix("pyroscope_", f.reg),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -436,7 +375,8 @@ func (f *Phlare) initStorage() (_ services.Service, err error) {
 	objectStoreTypeStats.Set(f.Cfg.Storage.Bucket.Backend)
 	if cfg := f.Cfg.Storage.Bucket; cfg.Backend != objstoreclient.None {
 		if cfg.Backend == objstoreclient.Filesystem {
-			level.Warn(f.logger).Log("msg", "when running with storage.backend 'filesystem' it is important that all replicas/components share the same filesystem")
+			level.Warn(f.logger).
+				Log("msg", "when running with storage.backend 'filesystem' it is important that all replicas/components share the same filesystem")
 		}
 		b, err := objstoreclient.NewBucket(
 			f.context(),
@@ -465,7 +405,14 @@ func (f *Phlare) context() context.Context {
 func (f *Phlare) initIngester() (_ services.Service, err error) {
 	f.Cfg.Ingester.LifecyclerConfig.ListenPort = f.Cfg.Server.HTTPListenPort
 
-	svc, err := ingester.New(f.context(), f.Cfg.Ingester, f.Cfg.PhlareDB, f.storageBucket, f.Overrides, f.Cfg.Querier.QueryStoreAfter)
+	svc, err := ingester.New(
+		f.context(),
+		f.Cfg.Ingester,
+		f.Cfg.PhlareDB,
+		f.storageBucket,
+		f.Overrides,
+		f.Cfg.Querier.QueryStoreAfter,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -515,12 +462,15 @@ func (f *Phlare) initServer() (services.Service, error) {
 	f.Cfg.Server.ExcludeRequestInLog = true // gRPC-specific.
 	f.Cfg.Server.GRPCMiddleware = append(f.Cfg.Server.GRPCMiddleware, util.RecoveryInterceptorGRPC)
 
-	if f.Cfg.v2Experiment && slices.Contains(f.Cfg.Target, QueryBackend) {
-		concurrencyInterceptor, err := query_backend.CreateConcurrencyInterceptor(f.logger)
-		if err != nil {
-			return nil, err
+	if f.Cfg.v2Experiment {
+		f.Cfg.Server.MetricsNativeHistogramFactor = 1.1 // 10% increase from bucket to bucket
+		if slices.Contains(f.Cfg.Target, QueryBackend) {
+			concurrencyInterceptor, err := query_backend.CreateConcurrencyInterceptor(f.logger)
+			if err != nil {
+				return nil, err
+			}
+			f.Cfg.Server.GRPCMiddleware = append(f.Cfg.Server.GRPCMiddleware, concurrencyInterceptor)
 		}
-		f.Cfg.Server.GRPCMiddleware = append(f.Cfg.Server.GRPCMiddleware, concurrencyInterceptor)
 	}
 
 	f.setupWorkerTimeout()
@@ -529,13 +479,13 @@ func (f *Phlare) initServer() (services.Service, error) {
 		f.Cfg.Server.HTTPServerReadTimeout = 2 * f.Cfg.Server.HTTPServerReadTimeout
 		f.Cfg.Server.HTTPServerWriteTimeout = 2 * f.Cfg.Server.HTTPServerWriteTimeout
 	}
-	serv, err := server.New(f.Cfg.Server)
-	if err != nil {
+
+	var err error
+	if f.Server, err = server.New(f.Cfg.Server); err != nil {
 		return nil, err
 	}
 
-	f.Server = serv
-	if f.Cfg.v2Experiment {
+	if f.healthServer != nil {
 		grpc_health_v1.RegisterHealthServer(f.Server.GRPC, f.healthServer)
 	}
 
@@ -644,7 +594,10 @@ type statusService struct {
 	actualConfig  *Config
 }
 
-func (s *statusService) GetBuildInfo(ctx context.Context, req *statusv1.GetBuildInfoRequest) (*statusv1.GetBuildInfoResponse, error) {
+func (s *statusService) GetBuildInfo(
+	ctx context.Context,
+	req *statusv1.GetBuildInfoRequest,
+) (*statusv1.GetBuildInfoResponse, error) {
 	version := build.GetVersion()
 	return &statusv1.GetBuildInfoResponse{
 		Status: "success",

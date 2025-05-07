@@ -1,0 +1,24 @@
+.
+├── github.com/grafana/dskit/services.(*BasicService).main: self 0 total 15001402250499
+│   └── other: self 15001402250499 total 15001402250499
+├── github.com/grafana/pyroscope/pkg/experiment/ingester.(*workerPool).run.func1: self 0 total 4711233881080
+│   ├── other: self 1376550158 total 1376550158
+│   └── runtime.chanrecv2: self 4709857330602 total 4709857330922
+│       └── other: self 320 total 320
+├── golang.org/x/net/http2.(*serverConn).runHandler: self 0 total 4279149508270
+│   ├── net/http.HandlerFunc.ServeHTTP: self 0 total 4279148683177
+│   │   └── github.com/opentracing-contrib/go-stdlib/nethttp.MiddlewareFunc.func5: self 0 total 4279148683177
+│   │       └── other: self 4279148683177 total 4279148683177
+│   └── other: self 825093 total 825093
+├── other: self 34790486817285 total 34790486817285
+└── runtime.main: self 0 total 3867390386739
+    └── main.main: self 0 total 3867390386739
+        └── github.com/pyroscope-io/client/pyroscope.TagWrapper: self 0 total 3867390386739
+            └── runtime/pprof.Do: self 0 total 3867390386739
+                └── github.com/pyroscope-io/client/pyroscope.TagWrapper.func1: self 0 total 3867390386739
+                    └── main.main.func2: self 0 total 3867390386739
+                        ├── main.slowFunction: self 0 total 3083280308328
+                        │   ├── other: self 93030009303 total 93030009303
+                        │   └── runtime/pprof.Do: self 0 total 2990250299025
+                        │       └── other: self 2990250299025 total 2990250299025
+                        └── other: self 784110078411 total 784110078411

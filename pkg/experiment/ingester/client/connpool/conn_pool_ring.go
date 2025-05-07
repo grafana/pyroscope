@@ -22,9 +22,9 @@ type ConnPool interface {
 	services.Service
 }
 
-type RingConnPool struct{ *ring_client.Pool }
+type Pool struct{ *ring_client.Pool }
 
-func (p *RingConnPool) GetConnFor(addr string) (grpc.ClientConnInterface, error) {
+func (p *Pool) GetConnFor(addr string) (grpc.ClientConnInterface, error) {
 	c, err := p.Pool.GetClientFor(addr)
 	if err != nil {
 		return nil, err
@@ -41,7 +41,7 @@ func NewConnPoolFactory(options func(ring.InstanceDesc) []grpc.DialOption) ring_
 }
 
 func (f *ConnFactory) FromInstance(inst ring.InstanceDesc) (ring_client.PoolClient, error) {
-	conn, err := grpc.Dial(inst.Addr, f.options(inst)...)
+	conn, err := grpc.NewClient(inst.Addr, f.options(inst)...)
 	if err != nil {
 		return nil, err
 	}

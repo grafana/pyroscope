@@ -3,11 +3,12 @@ package discovery
 import (
 	"context"
 	"fmt"
+	"sync"
+
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/dns"
 	"github.com/hashicorp/raft"
-	"sync"
 )
 
 type DNSDiscovery struct {

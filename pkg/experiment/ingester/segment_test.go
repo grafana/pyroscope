@@ -14,10 +14,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
+
 	gprofile "github.com/google/pprof/profile"
 	"github.com/grafana/dskit/flagext"
 	model2 "github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/util/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -40,6 +41,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	testutil3 "github.com/grafana/pyroscope/pkg/phlaredb/block/testutil"
 	pprofth "github.com/grafana/pyroscope/pkg/pprof/testhelper"
+	"github.com/grafana/pyroscope/pkg/test"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockdlq"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockmetastorev1"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockobjstore"
@@ -80,21 +82,19 @@ func TestSegmentIngest(t *testing.T) {
 
 func ingestWithMetastoreAvailable(t *testing.T, chunks []inputChunk) {
 	sw := newTestSegmentWriter(t, defaultTestConfig())
-	defer sw.Stop()
+	defer sw.stop()
 	blocks := make(chan *metastorev1.BlockMeta, 128)
 
 	sw.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
 		Run(func(args mock.Arguments) {
 			blocks <- args.Get(1).(*metastorev1.AddBlockRequest).Block
 		}).Return(new(metastorev1.AddBlockResponse), nil)
-	allBlocks := make([]*metastorev1.BlockMeta, 0, len(chunks))
 	for _, chunk := range chunks {
 		chunkBlocks := make([]*metastorev1.BlockMeta, 0, len(chunk))
 		waiterSet := sw.ingestChunk(t, chunk, false)
 		for range waiterSet {
 			meta := <-blocks
 			chunkBlocks = append(chunkBlocks, meta)
-			allBlocks = append(allBlocks, meta)
 		}
 		inputs := groupInputs(t, chunk)
 		clients := sw.createBlocksFromMetas(chunkBlocks)
@@ -104,7 +104,7 @@ func ingestWithMetastoreAvailable(t *testing.T, chunks []inputChunk) {
 
 func ingestWithDLQ(t *testing.T, chunks []inputChunk) {
 	sw := newTestSegmentWriter(t, defaultTestConfig())
-	defer sw.Stop()
+	defer sw.stop()
 	sw.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
 		Return(nil, fmt.Errorf("metastore unavailable"))
 	ingestedChunks := make([]inputChunk, 0, len(chunks))
@@ -121,11 +121,9 @@ func ingestWithDLQ(t *testing.T, chunks []inputChunk) {
 }
 
 func TestIngestWait(t *testing.T) {
-	sw := newTestSegmentWriter(t, Config{
-		SegmentDuration: 100 * time.Millisecond,
-	})
+	sw := newTestSegmentWriter(t, defaultTestConfig())
 
-	defer sw.Stop()
+	defer sw.stop()
 	sw.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		time.Sleep(1 * time.Second)
 	}).Return(new(metastorev1.AddBlockResponse), nil)
@@ -133,7 +131,7 @@ func TestIngestWait(t *testing.T) {
 	t1 := time.Now()
 	awaiter := sw.ingest(0, func(head segmentIngest) {
 		p := cpuProfile(42, 480, "svc1", "foo", "bar")
-		head.ingest("t1", p.Profile, p.UUID, p.Labels)
+		head.ingest("t1", p.Profile, p.UUID, p.Labels, p.Annotations)
 	})
 	err := awaiter.waitFlushed(context.Background())
 	require.NoError(t, err)
@@ -143,15 +141,13 @@ func TestIngestWait(t *testing.T) {
 
 func TestBusyIngestLoop(t *testing.T) {
 
-	sw := newTestSegmentWriter(t, Config{
-		SegmentDuration: 100 * time.Millisecond,
-	})
-	defer sw.Stop()
+	sw := newTestSegmentWriter(t, defaultTestConfig())
+	defer sw.stop()
 
 	writeCtx, writeCancel := context.WithCancel(context.Background())
 	readCtx, readCancel := context.WithCancel(context.Background())
 	metaChan := make(chan *metastorev1.BlockMeta)
-	defer sw.Stop()
+
 	var cnt atomic.Int32
 	sw.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
 		Run(func(args mock.Arguments) {
@@ -204,7 +200,7 @@ func TestBusyIngestLoop(t *testing.T) {
 					ts := workerno*1000000000 + len(profiles)
 					awaiter := sw.ingest(1, func(head segmentIngest) {
 						p := cpuProfile(42, ts, "svc1", "foo", "bar")
-						head.ingest("t1", p.CloneVT(), p.UUID, p.Labels)
+						head.ingest("t1", p.CloneVT(), p.UUID, p.Labels, p.Annotations)
 						profiles = append(profiles, p)
 					})
 					awaiters = append(awaiters, awaiter)
@@ -228,7 +224,7 @@ func TestBusyIngestLoop(t *testing.T) {
 }
 
 func TestDLQFail(t *testing.T) {
-	l := testutil.NewLogger(t)
+	l := test.NewTestingLogger(t)
 	bucket := mockobjstore.NewMockBucket(t)
 	bucket.On("Upload", mock.Anything, mock.MatchedBy(func(name string) bool {
 		return isSegmentPath(name)
@@ -244,19 +240,17 @@ func TestDLQFail(t *testing.T) {
 		l,
 		newSegmentMetrics(nil),
 		memdb.NewHeadMetricsWithPrefix(nil, ""),
-		Config{
-			SegmentDuration: 100 * time.Millisecond,
-		},
+		defaultTestConfig(),
 		validation.MockDefaultOverrides(),
 		bucket,
 		client,
 	)
-	defer res.Stop()
+	defer res.stop()
 	ts := 420
 	ing := func(head segmentIngest) {
 		ts += 420
 		p := cpuProfile(42, ts, "svc1", "foo", "bar")
-		head.ingest("t1", p.Profile, p.UUID, p.Labels)
+		head.ingest("t1", p.Profile, p.UUID, p.Labels, p.Annotations)
 	}
 
 	awaiter1 := res.ingest(0, ing)
@@ -276,7 +270,7 @@ func TestDLQFail(t *testing.T) {
 }
 
 func TestDatasetMinMaxTime(t *testing.T) {
-	l := testutil.NewLogger(t)
+	l := test.NewTestingLogger(t)
 	bucket := memory.NewInMemBucket()
 	metas := make(chan *metastorev1.BlockMeta)
 	client := mockmetastorev1.NewMockIndexServiceClient(t)
@@ -289,9 +283,7 @@ func TestDatasetMinMaxTime(t *testing.T) {
 		l,
 		newSegmentMetrics(nil),
 		memdb.NewHeadMetricsWithPrefix(nil, ""),
-		Config{
-			SegmentDuration: 100 * time.Millisecond,
-		},
+		defaultTestConfig(),
 		validation.MockDefaultOverrides(),
 		bucket,
 		client,
@@ -306,10 +298,11 @@ func TestDatasetMinMaxTime(t *testing.T) {
 	}
 	_ = res.ingest(1, func(head segmentIngest) {
 		for _, p := range data {
-			head.ingest(p.tenant, p.profile.Profile, p.profile.UUID, p.profile.Labels)
+			head.ingest(p.tenant, p.profile.Profile, p.profile.UUID, p.profile.Labels, p.profile.Annotations)
 		}
 	})
-	defer res.Stop()
+	defer res.stop()
+
 	block := <-metas
 
 	expected := [][2]int{
@@ -330,10 +323,8 @@ func TestDatasetMinMaxTime(t *testing.T) {
 func TestQueryMultipleSeriesSingleTenant(t *testing.T) {
 	metas := make(chan *metastorev1.BlockMeta, 1)
 
-	sw := newTestSegmentWriter(t, Config{
-		SegmentDuration: 100 * time.Millisecond,
-	})
-	defer sw.Stop()
+	sw := newTestSegmentWriter(t, defaultTestConfig())
+	defer sw.stop()
 	sw.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
 		Run(func(args mock.Arguments) {
 			metas <- args.Get(1).(*metastorev1.AddBlockRequest).Block
@@ -379,9 +370,7 @@ func TestDLQRecoveryMock(t *testing.T) {
 		{shard: 1, tenant: "tb", profile: cpuProfile(42, 239, "svc1", "kek", "foo", "bar")},
 	})
 
-	sw := newTestSegmentWriter(t, Config{
-		SegmentDuration: 100 * time.Millisecond,
-	})
+	sw := newTestSegmentWriter(t, defaultTestConfig())
 	sw.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
 		Return(nil, fmt.Errorf("mock metastore unavailable"))
 
@@ -398,7 +387,7 @@ func TestDLQRecoveryMock(t *testing.T) {
 			recoveredMetas <- meta
 		}).
 		Return(&metastorev1.AddBlockResponse{}, nil)
-	recovery := dlq.NewRecovery(testutil.NewLogger(t), dlq.RecoveryConfig{
+	recovery := dlq.NewRecovery(test.NewTestingLogger(t), dlq.RecoveryConfig{
 		Period: 100 * time.Millisecond,
 	}, srv, sw.bucket)
 	recovery.Start()
@@ -419,9 +408,7 @@ func TestDLQRecovery(t *testing.T) {
 		{shard: 1, tenant: tenant, profile: cpuProfile(42, int(ts), "svc1", "kek", "foo", "bar")},
 	})
 
-	sw := newTestSegmentWriter(t, Config{
-		SegmentDuration: 100 * time.Millisecond,
-	})
+	sw := newTestSegmentWriter(t, defaultTestConfig())
 	sw.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
 		Return(nil, fmt.Errorf("mock metastore unavailable"))
 
@@ -460,6 +447,61 @@ func TestDLQRecovery(t *testing.T) {
 	sw.queryInputs(clients, inputs)
 }
 
+func TestUnsymbolizedLabelIsSet(t *testing.T) {
+	sw := newTestSegmentWriter(t, defaultTestConfig())
+	defer sw.stop()
+	blocks := make(chan *metastorev1.BlockMeta, 1)
+
+	sw.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			blocks <- args.Get(1).(*metastorev1.AddBlockRequest).Block
+		}).Return(new(metastorev1.AddBlockResponse), nil)
+
+	p := pprofth.NewProfileBuilder(time.Now().UnixNano()).
+		CPUProfile().
+		WithLabels(model.LabelNameServiceName, "svc1")
+
+	p.Mapping = []*profilev1.Mapping{
+		{Id: 1, HasFunctions: false},
+	}
+
+	loc := &profilev1.Location{
+		Id:        1,
+		MappingId: 1,
+		Line:      nil,
+	}
+	p.Location = append(p.Location, loc)
+
+	keyIdx := int64(len(p.StringTable))
+	p.StringTable = append(p.StringTable, "foo")
+	valIdx := int64(len(p.StringTable))
+	p.StringTable = append(p.StringTable, "bar")
+
+	sample1 := &profilev1.Sample{
+		LocationId: []uint64{1},
+		Value:      []int64{1},
+		Label: []*profilev1.Label{
+			{Key: keyIdx, Str: valIdx},
+		},
+	}
+	p.Sample = append(p.Sample, sample1)
+
+	sample2 := &profilev1.Sample{
+		LocationId: []uint64{1},
+		Value:      []int64{2},
+		Label:      nil,
+	}
+	p.Sample = append(p.Sample, sample2)
+
+	chunk := inputChunk{
+		{shard: 1, tenant: "t1", profile: p},
+	}
+	_ = sw.ingestChunk(t, chunk, false)
+	block := <-blocks
+
+	require.True(t, hasUnsymbolizedLabel(t, block))
+}
+
 type sw struct {
 	*segmentsWriter
 	bucket  *memory.InMemBucket
@@ -469,7 +511,7 @@ type sw struct {
 }
 
 func newTestSegmentWriter(t *testing.T, cfg Config) sw {
-	l := testutil.NewLogger(t)
+	l := test.NewTestingLogger(t)
 	bucket := memory.NewInMemBucket()
 	client := mockmetastorev1.NewMockIndexServiceClient(t)
 	res := newSegmentWriter(
@@ -491,7 +533,10 @@ func newTestSegmentWriter(t *testing.T, cfg Config) sw {
 
 func defaultTestConfig() Config {
 	return Config{
-		SegmentDuration: 1 * time.Second,
+		SegmentDuration:       100 * time.Millisecond,
+		UploadTimeout:         time.Second,
+		MetadataUpdateTimeout: time.Second,
+		MetadataDLQEnabled:    true,
 	}
 }
 
@@ -526,8 +571,9 @@ func (sw *sw) createBlocksFromMetas(blocks []*metastorev1.BlockMeta) tenantClien
 			if _, ok := res[tenant]; !ok {
 				// todo consider not using BlockQuerier for tests
 				blockBucket, err := filesystem.NewBucket(filepath.Join(dir, tenant))
-				blockQuerier := phlaredb.NewBlockQuerier(context.Background(), blockBucket)
+				require.NoError(sw.t, err)
 
+				blockQuerier := phlaredb.NewBlockQuerier(context.Background(), blockBucket)
 				err = blockQuerier.Sync(context.Background())
 				require.NoError(sw.t, err)
 
@@ -668,6 +714,7 @@ func (sw *sw) getMetadataDLQ() []*metastorev1.BlockMeta {
 	return metas
 }
 
+// nolint: unparam
 func (sw *sw) ingestChunk(t *testing.T, chunk inputChunk, expectAwaitError bool) map[segmentWaitFlushed]struct{} {
 	wg := sync.WaitGroup{}
 	waiterSet := make(map[segmentWaitFlushed]struct{})
@@ -680,7 +727,7 @@ func (sw *sw) ingestChunk(t *testing.T, chunk inputChunk, expectAwaitError bool)
 			defer wg.Done()
 			awaiter := sw.ingest(shardKey(it.shard), func(head segmentIngest) {
 				p := it.profile.CloneVT() // important to not rewrite original profile
-				head.ingest(it.tenant, p, it.profile.UUID, it.profile.Labels)
+				head.ingest(it.tenant, p, it.profile.UUID, it.profile.Labels, it.profile.Annotations)
 			})
 			err := awaiter.waitFlushed(context.Background())
 			if expectAwaitError {
@@ -754,6 +801,7 @@ func cpuProfile(samples int, tsMillis int, svc string, stack ...string) *pprofth
 	return pprofth.NewProfileBuilder(int64(tsMillis*1e6)).
 		CPUProfile().
 		WithLabels(model.LabelNameServiceName, svc).
+		WithAnnotations("test annotation").
 		ForStacktraceString(stack...).
 		AddSamples([]int64{int64(samples)}...)
 }
@@ -909,7 +957,6 @@ func (g testDataGenerator) generate() []inputChunk {
 type timestampGenerator struct {
 	m map[int64]struct{}
 	r *rand.Rand
-	l sync.Mutex
 }
 
 func (g *timestampGenerator) next() int {
@@ -936,4 +983,24 @@ func isSegmentPath(p string) bool {
 		fs[0] == block.DirNameSegment &&
 		fs[2] == block.DirNameAnonTenant &&
 		fs[4] == block.FileNameDataObject
+}
+
+func hasUnsymbolizedLabel(t *testing.T, block *metastorev1.BlockMeta) bool {
+	t.Helper()
+	for _, ds := range block.Datasets {
+		i := 0
+		for i < len(ds.Labels) {
+			n := int(ds.Labels[i])
+			i++
+			for j := 0; j < n; j++ {
+				keyIdx := ds.Labels[i]
+				valIdx := ds.Labels[i+1]
+				i += 2
+				if block.StringTable[keyIdx] == metadata.LabelNameUnsymbolized && block.StringTable[valIdx] == "true" {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }

@@ -2,7 +2,7 @@
 description: Describes parameters used to configure Pyroscope.
 menuTitle: Configuration parameters
 title: Pyroscope configuration parameters
-weight: 70
+weight: 300
 aliases:
   - /docs/phlare/latest/operators-guide/configuring/reference-configuration-parameters/
   - /docs/phlare/latest/configure-server/reference-configuration-parameters/
@@ -115,6 +115,11 @@ pyroscopedb:
   # CLI flag: -pyroscopedb.row-group-target-size
   [row_group_target_size: <int> | default = 1342177280]
 
+  # Specifies the dimension by which symbols are partitioned. By default, the
+  # partitioning is determined automatically.
+  # CLI flag: -pyroscopedb.symbols-partition-label
+  [symbols_partition_label: <string> | default = ""]
+
   # How much available disk space to keep in GiB
   # CLI flag: -pyroscopedb.retention-policy-min-free-disk-gb
   [min_free_disk_gb: <int> | default = 10]
@@ -148,6 +153,25 @@ runtime_config:
 
 # The compactor block configures the compactor.
 [compactor: <compactor>]
+
+tenant_settings:
+  collection_rules:
+    # Enable the storing of collection config in tenant settings.
+    # CLI flag: -tenant-settings.collection-rules.enabled
+    [enabled: <boolean> | default = false]
+
+    # The public facing URL of the Pyroscope instance.
+    # CLI flag: -tenant-settings.collection-rules.pyroscope-url
+    [pyroscope_url: <string> | default = ""]
+
+    # Override the default alloy go template.
+    # CLI flag: -tenant-settings.collection-rules.alloy-template-path
+    [alloy_template_path: <string> | default = ""]
+
+  recording_rules:
+    # Enable the storing of recording rules in tenant settings.
+    # CLI flag: -tenant-settings.recording-rules.enabled
+    [enabled: <boolean> | default = false]
 
 storage:
   # Backend storage to use. Supported backends are: s3, gcs, azure, swift,
@@ -239,7 +263,14 @@ storage:
   [filesystem: <filesystem_storage_backend>]
 
   # Prefix for all objects stored in the backend storage. For simplicity, it may
-  # only contain digits and English alphabet letters.
+  # only contain digits and English alphabet characters, hyphens, underscores,
+  # dots and forward slashes.
+  # CLI flag: -storage.prefix
+  [prefix: <string> | default = ""]
+
+  # Deprecated: Use 'storage..prefix' instead. Prefix for all objects stored in
+  # the backend storage. For simplicity, it may only contain digits and English
+  # alphabet characters, hyphens, underscores, dots and forward slashes.
   # CLI flag: -storage.storage-prefix
   [storage_prefix: <string> | default = ""]
 
@@ -264,14 +295,18 @@ self_profiling:
 # CLI flag: -auth.multitenancy-enabled
 [multitenancy_enabled: <boolean> | default = false]
 
-analytics:
-  # Enable anonymous usage reporting.
-  # CLI flag: -usage-stats.enabled
-  [reporting_enabled: <boolean> | default = true]
+# The analytics block configures usage statistics collection. For more details
+# about usage statistics, refer to [Anonymous usage statistics
+# reporting](../anonymous-usage-statistics-reporting)
+[analytics: <analytics>]
 
 # Prints the application banner at startup.
 # CLI flag: -config.show_banner
 [show_banner: <boolean> | default = true]
+
+# Wait time before shutting down after a termination signal.
+# CLI flag: -shutdown-delay
+[shutdown_delay: <duration> | default = 0s]
 
 embedded_grafana:
   # The directory where the Grafana data will be stored.
@@ -2248,9 +2283,14 @@ The s3_backend block configures the connection to Amazon S3 object storage backe
 # CLI flag: -storage.s3.signature-version
 [signature_version: <string> | default = "v4"]
 
-# Set this to `true` to force the bucket lookup to be using path-style.
+# Deprecated, use s3.bucket-lookup-type instead. Set this to `true` to force the
+# bucket lookup to be using path-style.
 # CLI flag: -storage.s3.force-path-style
 [force_path_style: <boolean> | default = false]
+
+# S3 bucket lookup style, use one of: [path-style virtual-hosted-style auto]
+# CLI flag: -storage.s3.bucket-lookup-type
+[bucket_lookup_type: <string> | default = "auto"]
 
 sse:
   # Enable AWS Server Side Encryption. Supported values: SSE-KMS, SSE-S3.
@@ -2327,6 +2367,44 @@ The gcs_backend block configures the connection to Google Cloud Storage object s
 # 3. On Google Compute Engine it fetches credentials from the metadata server.
 # CLI flag: -storage.gcs.service-account
 [service_account: <string> | default = ""]
+
+http:
+  # The time an idle connection will remain idle before closing.
+  # CLI flag: -storage.gcs.http.idle-conn-timeout
+  [idle_conn_timeout: <duration> | default = 1m30s]
+
+  # The amount of time the client will wait for a servers response headers.
+  # CLI flag: -storage.gcs.http.response-header-timeout
+  [response_header_timeout: <duration> | default = 2m]
+
+  # If the client connects to GCS via HTTPS and this option is enabled, the
+  # client will accept any certificate and hostname.
+  # CLI flag: -storage.gcs.http.insecure-skip-verify
+  [insecure_skip_verify: <boolean> | default = false]
+
+  # Maximum time to wait for a TLS handshake. 0 means no limit.
+  # CLI flag: -storage.gcs.tls-handshake-timeout
+  [tls_handshake_timeout: <duration> | default = 10s]
+
+  # The time to wait for a server's first response headers after fully writing
+  # the request headers if the request has an Expect header. 0 to send the
+  # request body immediately.
+  # CLI flag: -storage.gcs.expect-continue-timeout
+  [expect_continue_timeout: <duration> | default = 1s]
+
+  # Maximum number of idle (keep-alive) connections across all hosts. 0 means no
+  # limit.
+  # CLI flag: -storage.gcs.max-idle-connections
+  [max_idle_conns: <int> | default = 0]
+
+  # Maximum number of idle (keep-alive) connections to keep per-host. If 0, a
+  # built-in default value is used.
+  # CLI flag: -storage.gcs.max-idle-connections-per-host
+  [max_idle_conns_per_host: <int> | default = 100]
+
+  # Maximum number of connections per host. 0 means no limit.
+  # CLI flag: -storage.gcs.max-connections-per-host
+  [max_conns_per_host: <int> | default = 0]
 ```
 
 ### azure_storage_backend
@@ -2461,4 +2539,15 @@ The `filesystem_storage_backend` block configures the usage of local file system
 [dir: <string> | default = "./data-shared"]
 ```
 
+### analytics
+
+The `analytics` block configures usage statistics collection. For more details about usage statistics, refer to [Anonymous usage statistics reporting](../anonymous-usage-statistics-reporting)
+
+```yaml
+# Enable anonymous usage statistics collection. For more details about usage
+# statistics, refer to
+# https://grafana.com/docs/pyroscope/latest/configure-server/anonymous-usage-statistics-reporting/
+# CLI flag: -usage-stats.enabled
+[reporting_enabled: <boolean> | default = true]
 ```
+

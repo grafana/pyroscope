@@ -34,9 +34,6 @@ pyroscope:
   nameOverride: ""
   fullnameOverride: ""
 
-  rbac:
-    create: true
-
   serviceAccount:
     # Specifies whether a service account should be created
     create: true
@@ -151,10 +148,10 @@ pyroscope:
   # run specific components separately
   components: {}
 
-  # -- Allows to override Phlare's configuration using structured format.
+  # -- Allows to override Pyroscope's configuration using structured format.
   structuredConfig: {}
 
-  # -- Contains Phlare's configuration as a string.
+  # -- Contains Pyroscope's configuration as a string.
   # @default -- The config depends on other values been set, details can be found in [`values.yaml`](./values.yaml)
   config: |
     {{- if .Values.minio.enabled }}
@@ -191,6 +188,9 @@ alloy:
       profiles.grafana.com/cpu.port_name: "http-metrics"
       profiles.grafana.com/goroutine.scrape: "true"
       profiles.grafana.com/goroutine.port_name: "http-metrics"
+      profiles.grafana.com/service_repository: 'https://github.com/grafana/alloy'
+      profiles.grafana.com/service_git_ref: 'v1.8.1'
+
   alloy:
     stabilityLevel: "public-preview"  # This needs to be set for some of our resources until verison v1.2 is released
     configMap:

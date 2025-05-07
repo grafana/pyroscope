@@ -52,7 +52,7 @@ In this tutorial, you will profile a simple "Ride Share" application. The applic
 - `/car`     : calls the `order_car(search_radius)` function to order a car
 - `/scooter` : calls the `order_scooter(search_radius)` function to order a scooter
 
-To simulate a highly available and distributed system, the app is deployed on three distinct servers in 3 different regions: 
+To simulate a highly available and distributed system, the app is deployed on three distinct servers in 3 different regions:
 - us-east
 - eu-north
 - ap-south
@@ -101,10 +101,10 @@ This may take a few minutes to download the required images and build the demo a
  ✔ Network flask_default  Created
  ✔ Container flask-ap-south-1  Started
  ✔ Container flask-grafana-1  Started
- ✔ Container flask-pyroscope-1  Started     
- ✔ Container flask-load-generator-1 Started 
- ✔ Container flask-eu-north-1 Started       
- ✔ Container flask-us-east-1 Started  
+ ✔ Container flask-pyroscope-1  Started
+ ✔ Container flask-load-generator-1 Started
+ ✔ Container flask-eu-north-1 Started
+ ✔ Container flask-us-east-1 Started
 ```
 
 Optional: To verify the containers are running, run:
@@ -116,14 +116,14 @@ docker ps -a
 
 <!-- INTERACTIVE page step2.md START -->
 
-## Accessing Explore Profiles in Grafana
+## Accessing Profiles Drilldown in Grafana
 
-Grafana includes the [Explore Profiles](https://grafana.com/docs/grafana/<GRAFANA_VERSION>/explore/simplified-exploration/profiles/) app that you can use to view profile data. To access Explore Profiles, open a browser and navigate to [http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer](http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer).
+Grafana includes the [Profiles Drilldown](https://grafana.com/docs/grafana/<GRAFANA_VERSION>/explore/simplified-exploration/profiles/) app that you can use to view profile data. To access Profiles Drilldown, open a browser and navigate to [http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer](http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer).
 
 ### How tagging works
 
 In this example, the application is instrumented with Pyroscope using the Python SDK.
-The SDK allows you to tag functions with metadata that can be used to filter and group the profile data in the Explore Profiles.
+The SDK allows you to tag functions with metadata that can be used to filter and group the profile data in the Profiles Drilldown.
 This example uses static and dynamic tagging.
 
 To start, let's take a look at a static tag use case. Within the `server.py` file, find the Pyroscope configuration:
@@ -143,11 +143,11 @@ This tag is considered static is because the tag is set at the start of the appl
 In this case, it's useful for grouping profiles on a per region basis, which lets you see the performance of the application per region.
 
 1. Open Grafana using the following url: [http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer](http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer).
-1. In the main menu, select **Explore** > **Profiles**. 
+1. In the main menu, select **Explore** > **Profiles**.
 1. Select  **Labels** in the **Exploration** path.
-1. Select the **region** tab in the **Group by labels** section. 
+1. Select the **region** tab in the **Group by labels** section.
 
-You should now see a list of regions that the application is running in. You can see that `eu-north` is experiencing the most load. 
+You should now see a list of regions that the application is running in. You can see that `eu-north` is experiencing the most load.
 
 {{< figure max-width="100%" src="/media/docs/pyroscope/ride-share-tag-region-2.png" caption="Region Tag" alt="Region Tag" >}}
 
@@ -168,12 +168,12 @@ This example uses `tag_wrapper` to tag the function with the vehicle type.
 Notice that the tag is dynamic as it changes based on the vehicle type.
 This is useful for grouping profiles on a per vehicle basis. Allowing us to see the performance of the application per vehicle type being requested.
 
-Use Explore Profiles to see how this tag is used:
-1. Open Explore Profiles using the following url: [http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer](http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer).
+Use Profiles Drilldown to see how this tag is used:
+1. Open Profiles Drilldown using the following url: [http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer](http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer).
 1. Select on **Labels** in the **Exploration** path.
-1. In the **Group by labels** section, select the **vehicle** tab. 
+1. In the **Group by labels** section, select the **vehicle** tab.
 
-You should now see a list of vehicle types that the application is using. You can see that `car` is experiencing the most load. 
+You should now see a list of vehicle types that the application is using. You can see that `car` is experiencing the most load.
 
 <!-- INTERACTIVE page step2.md END -->
 
@@ -184,7 +184,7 @@ You should now see a list of vehicle types that the application is using. You ca
 The first step when analyzing a profile outputted from your application, is to take note of the largest node which is where your application is spending the most resources.
 To discover this, you can use the **Flame graph** view:
 
-1. Open Explore Profiles using the following url: [http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer](http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer).
+1. Open Profiles Drilldown using the following url: [http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer](http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer).
 1. Select **Flame graph** from the **Exploration** path.
 1. Verify that  `ride-sharing-app` is selected in the **Service** drop-down menu and `process_cpu/cpu` in the **Profile type** drop-down menu.
 
@@ -202,7 +202,7 @@ By tagging both `region` and `vehicle` and looking at the [**Labels** view](http
 - Something is wrong with the `/car` endpoint code where `car` vehicle tag is consuming **68% of CPU**
 - Something is wrong with one of our regions where `eu-north` region tag is consuming **54% of CPU**
 
-From the flame graph, you can see that for the `eu-north` tag the biggest performance impact comes from the `find_nearest_vehicle()` function which consumes close to **68% of cpu**. 
+From the flame graph, you can see that for the `eu-north` tag the biggest performance impact comes from the `find_nearest_vehicle()` function which consumes close to **68% of cpu**.
 To analyze this, go directly to the comparison page using the comparison dropdown.
 
 ### Comparing two time periods
@@ -211,12 +211,12 @@ The **Diff flame graph** view lets you compare two time periods side by side.
 This is useful for identifying changes in performance over time.
 This example compares the performance of the `eu-north` region within a given time period against the other regions.
 
-1. Open Explore Profiles in Grafana using the following url: [http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer](http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer).
+1. Open Profiles Drilldown in Grafana using the following url: [http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer](http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer).
 1. Select **Diff flame graph** in the **Exploration** path.
 1. In **Baseline**, filter by `region` and select `!= eu-north`.
 1. In **Comparison**, filter by `region` and select `== eu-north`.
 1. In **Baseline**, select the time period you want to compare against.
-   
+
 Scroll down to compare the two time periods side by side.
 Note that the `eu-north` region (right side) shows an excessive amount of time spent in the `find_nearest_vehicle` function.
 This looks to be caused by a mutex lock that is causing the function to block.
@@ -230,7 +230,7 @@ This looks to be caused by a mutex lock that is causing the function to block.
 ## How was Pyroscope integrated with Grafana in this tutorial?
 
 The `docker-compose.yml` file includes a Grafana container that's pre-configured with the Pyroscope plugin:
-    
+
 ```yaml
   grafana:
     image: grafana/grafana:latest
@@ -245,11 +245,11 @@ The `docker-compose.yml` file includes a Grafana container that's pre-configured
     - 3000:3000
 ```
 
-Grafana is also pre-configured with the Pyroscope data source. 
+Grafana is also pre-configured with the Pyroscope data source.
 
 ### Challenge
 
-As a challenge, see if you can generate a similar comparison with the `vehicle` tag. 
+As a challenge, see if you can generate a similar comparison with the `vehicle` tag.
 
 <!-- INTERACTIVE page step4.md END -->
 
@@ -258,13 +258,13 @@ As a challenge, see if you can generate a similar comparison with the `vehicle` 
 ## Summary
 
 In this tutorial, you learned how to profile a simple "Ride Share" application using Pyroscope.
-You have learned some of the core instrumentation concepts such as tagging and how to use Explore Profiles identify performance bottlenecks.
+You have learned some of the core instrumentation concepts such as tagging and how to use Profiles Drilldown identify performance bottlenecks.
 
 ### Next steps
 
 - Learn more about the Pyroscope SDKs and how to [instrument your application with Pyroscope](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/).
 - Deploy Pyroscope in a production environment using the [Pyroscope Helm chart](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/deploy-kubernetes/).
-- Continue exploring your profile data using [Explore Profiles](https://grafana.com/docs/grafana/<GRAFANA_VERSION>/explore/simplified-exploration/profiles/investigate/) 
+- Continue exploring your profile data using [Profiles Drilldown](https://grafana.com/docs/grafana/<GRAFANA_VERSION>/explore/simplified-exploration/profiles/investigate/)
 <!-- INTERACTIVE page finish.md END -->
 
 

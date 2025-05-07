@@ -100,12 +100,14 @@ func New(cfg Config, s *server.Server, grpcGatewayMux *grpcgw.ServeMux, logger l
 // route is expected to be specific about which HTTP methods are supported.
 func (a *API) RegisterRoute(path string, handler http.Handler, auth, gzipEnabled bool, method string, methods ...string) {
 	methods = append([]string{method}, methods...)
-	level.Debug(a.logger).Log("msg", "api: registering route", "methods", strings.Join(methods, ","), "path", path, "auth", auth, "gzip", gzipEnabled)
+	level.Debug(a.logger).
+		Log("msg", "api: registering route", "methods", strings.Join(methods, ","), "path", path, "auth", auth, "gzip", gzipEnabled)
 	a.newRoute(path, handler, false, auth, gzipEnabled, methods...)
 }
 
 func (a *API) RegisterRoutesWithPrefix(prefix string, handler http.Handler, auth, gzipEnabled bool, methods ...string) {
-	level.Debug(a.logger).Log("msg", "api: registering route", "methods", strings.Join(methods, ","), "prefix", prefix, "auth", auth, "gzip", gzipEnabled)
+	level.Debug(a.logger).
+		Log("msg", "api: registering route", "methods", strings.Join(methods, ","), "prefix", prefix, "auth", auth, "gzip", gzipEnabled)
 	a.newRoute(prefix, handler, true, auth, gzipEnabled, methods...)
 }
 
@@ -206,6 +208,16 @@ func (a *API) RegisterRuntimeConfig(runtimeConfigHandler http.HandlerFunc, userL
 
 func (a *API) RegisterTenantSettings(ts *settings.TenantSettings) {
 	settingsv1connect.RegisterSettingsServiceHandler(a.server.HTTP, ts, a.connectOptionsAuthRecovery()...)
+
+	_, isUnimplemented := ts.CollectionRulesServiceHandler.(*settingsv1connect.UnimplementedCollectionRulesServiceHandler)
+	if !isUnimplemented {
+		settingsv1connect.RegisterCollectionRulesServiceHandler(a.server.HTTP, ts, a.connectOptionsAuthRecovery()...)
+	}
+
+	_, isUnimplemented = ts.RecordingRulesServiceHandler.(*settingsv1connect.UnimplementedRecordingRulesServiceHandler)
+	if !isUnimplemented {
+		settingsv1connect.RegisterRecordingRulesServiceHandler(a.server.HTTP, ts, a.connectOptionsAuthRecovery()...)
+	}
 }
 
 // RegisterOverridesExporter registers the endpoints associated with the overrides exporter.
@@ -229,7 +241,13 @@ func (a *API) RegisterDistributor(d *distributor.Distributor, multitenancyEnable
 		{Desc: "Ring status", Path: "/distributor/ring"},
 	})
 
-	a.RegisterRoute("/opentelemetry.proto.collector.profiles.v1development.ProfilesService/Export", otlpHandler, true, true, "POST")
+	a.RegisterRoute(
+		"/opentelemetry.proto.collector.profiles.v1development.ProfilesService/Export",
+		otlpHandler,
+		true,
+		true,
+		"POST",
+	)
 
 	// TODO(@petethepig): implement http/protobuf and http/json support
 	// a.RegisterRoute("/v1/profiles", otlpHandler, true, true, "POST")
@@ -309,7 +327,12 @@ func (a *API) RegisterQueryScheduler(s *scheduler.Scheduler) {
 
 // RegisterFlags registers api-related flags.
 func (cfg *Config) RegisterFlags(fs *flag.FlagSet) {
-	fs.StringVar(&cfg.BaseURL, "api.base-url", "", "base URL for when the server is behind a reverse proxy with a different path")
+	fs.StringVar(
+		&cfg.BaseURL,
+		"api.base-url",
+		"",
+		"base URL for when the server is behind a reverse proxy with a different path",
+	)
 }
 
 func (a *API) RegisterAdmin(ad *operations.Admin) {
@@ -335,5 +358,7 @@ func (a *API) connectOptionsAuthRecovery() []connect.HandlerOption {
 }
 
 func (a *API) connectOptionsAuthLogRecovery() []connect.HandlerOption {
-	return append(connectapi.DefaultHandlerOptions(), []connect.HandlerOption{a.grpcAuthMiddleware, a.grpcLogMiddleware, a.recoveryMiddleware}...)
+	return append(
+		connectapi.DefaultHandlerOptions(),
+		[]connect.HandlerOption{a.grpcAuthMiddleware, a.grpcLogMiddleware, a.recoveryMiddleware}...)
 }

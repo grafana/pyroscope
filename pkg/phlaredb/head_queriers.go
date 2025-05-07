@@ -605,7 +605,7 @@ func (q *headInMemoryQuerier) MergeByLabels(
 			if !ok {
 				return nil, errors.New("expected ProfileWithLabels")
 			}
-			seriesBuilder.Add(p.Fingerprint(), p.Labels(), int64(p.Timestamp()), float64(p.Total()))
+			seriesBuilder.Add(p.Fingerprint(), p.Labels(), int64(p.Timestamp()), float64(p.Total()), p.Annotations())
 		}
 	} else {
 		r := symdb.NewResolver(ctx, q.head.symdb,
@@ -620,7 +620,7 @@ func (q *headInMemoryQuerier) MergeByLabels(
 			if err := r.CallSiteValues(&v, p.StacktracePartition(), p.Samples()); err != nil {
 				return nil, err
 			}
-			seriesBuilder.Add(p.Fingerprint(), p.Labels(), int64(p.Timestamp()), float64(v.Total))
+			seriesBuilder.Add(p.Fingerprint(), p.Labels(), int64(p.Timestamp()), float64(v.Total), p.Annotations())
 		}
 	}
 
@@ -670,7 +670,7 @@ func (q *headInMemoryQuerier) SelectMergeByLabels(
 				if p.Timestamp() > end {
 					break
 				}
-				seriesBuilder.Add(fp, profileSeries.lbs, int64(p.Timestamp()), float64(p.Total()))
+				seriesBuilder.Add(fp, profileSeries.lbs, int64(p.Timestamp()), float64(p.Total()), p.Annotations)
 			}
 		}
 	} else {
@@ -693,7 +693,7 @@ func (q *headInMemoryQuerier) SelectMergeByLabels(
 				if err = r.CallSiteValues(&v, p.StacktracePartition, p.Samples); err != nil {
 					return nil, err
 				}
-				seriesBuilder.Add(fp, profileSeries.lbs, int64(p.Timestamp()), float64(v.Total))
+				seriesBuilder.Add(fp, profileSeries.lbs, int64(p.Timestamp()), float64(v.Total), p.Annotations)
 			}
 		}
 	}

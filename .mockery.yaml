@@ -24,7 +24,13 @@ packages:
   github.com/grafana/pyroscope/pkg/frontend:
     interfaces:
       Limits:
+  github.com/grafana/pyroscope/pkg/frontend/read_path/query_frontend:
+    interfaces:
+      QueryBackend:
   github.com/grafana/pyroscope/pkg/ingester/otlp:
+    interfaces:
+      PushService:
+  github.com/grafana/pyroscope/pkg/ingester/pyroscope:
     interfaces:
       PushService:
   github.com/grafana/pyroscope/pkg/experiment/metastore/discovery:
@@ -50,3 +56,10 @@ packages:
     interfaces:
       RaftNodeServiceClient:
       RaftNodeServiceServer:
+  github.com/grafana/pyroscope/pkg/experiment/metrics:
+    interfaces:
+      Exporter:
+      Ruler:
+  github.com/grafana/pyroscope/pkg/frontend/vcs/client:
+    interfaces:
+      repositoryService:

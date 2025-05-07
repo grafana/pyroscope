@@ -10,6 +10,7 @@ BIN := $(CURDIR)/.tmp/bin
 COPYRIGHT_YEARS := 2021-2022
 LICENSE_IGNORE := -e /testdata/
 GO_TEST_FLAGS ?= -v -race -cover
+GO_MOD_VERSION := 1.23.0
 
 GOOS ?= $(shell go env GOOS)
 GOARCH ?= $(shell go env GOARCH)
@@ -19,7 +20,7 @@ GOPRIVATE=github.com/grafana/frostdb
 
 # Boiler plate for building Docker containers.
 # All this must go at top of file I'm afraid.
-IMAGE_PREFIX ?= us.gcr.io/kubernetes-dev/
+IMAGE_PREFIX ?= grafana/
 
 IMAGE_TAG ?= $(shell ./tools/image-tag)
 GIT_REVISION := $(shell git rev-parse --short HEAD)
@@ -27,16 +28,26 @@ GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 GIT_LAST_COMMIT_DATE := $(shell git log -1 --date=iso-strict --format=%cd)
 EMBEDASSETS ?= embedassets
 
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+	NPROC := $(shell sysctl -n hw.physicalcpu)
+else
+	NPROC := $(shell nproc)
+endif
+
 # Build flags
 VPREFIX := github.com/grafana/pyroscope/pkg/util/build
 GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH) -X $(VPREFIX).Version=$(IMAGE_TAG) -X $(VPREFIX).Revision=$(GIT_REVISION) -X $(VPREFIX).BuildDate=$(GIT_LAST_COMMIT_DATE)
 GO_GCFLAGS_DEBUG := all="-N -l"
 
 # Folders with go.mod file
-GO_MOD_PATHS := api/ ebpf/ examples/language-sdk-instrumentation/golang-push/rideshare examples/language-sdk-instrumentation/golang-push/rideshare-alloy examples/language-sdk-instrumentation/golang-push/rideshare-k6 examples/language-sdk-instrumentation/golang-push/simple/ examples/tracing/golang-push/ examples/golang-pgo/
+GO_MOD_PATHS := api/ ebpf/ lidia/ examples/language-sdk-instrumentation/golang-push/rideshare examples/language-sdk-instrumentation/golang-push/rideshare-alloy examples/language-sdk-instrumentation/golang-push/rideshare-k6 examples/language-sdk-instrumentation/golang-push/simple/ examples/tracing/golang-push/ examples/golang-pgo/
 
 # Add extra arguments to helm commands
 HELM_ARGS =
+
+# Local deployment params
+KIND_CLUSTER = pyroscope-dev
 
 .PHONY: help
 help: ## Describe useful make targets
@@ -70,9 +81,9 @@ EBPF_TESTS='^TestEBPF.*'
 .PHONY: go/test
 go/test: $(BIN)/gotestsum
 ifeq ($(GOOS),darwin)
-	$(BIN)/gotestsum -- $(GO_TEST_FLAGS) ./...
+	$(BIN)/gotestsum --rerun-fails=2 --packages './... ./lidia/...' -- $(GO_TEST_FLAGS)
 else
-	$(BIN)/gotestsum -- $(GO_TEST_FLAGS) -skip $(EBPF_TESTS) ./... ./ebpf/...
+	$(BIN)/gotestsum --rerun-fails=2 --packages './... ./ebpf/... ./lidia/...' -- $(GO_TEST_FLAGS) -skip $(EBPF_TESTS)
 endif
 
 # Run test on examples
@@ -81,7 +92,7 @@ endif
 .PHONY: examples/test
 examples/test: RUN := .*
 examples/test: $(BIN)/gotestsum
-	$(BIN)/gotestsum --format testname -- --count 1 --timeout 1h --tags examples -run "$(RUN)" ./examples
+	$(BIN)/gotestsum --format testname --rerun-fails=2 --packages ./examples -- --count 1 --parallel 2 --timeout 1h --tags examples -run "$(RUN)"
 
 .PHONY: build
 build: frontend/build go/bin ## Do a production build (requiring the frontend build to be present)
@@ -93,6 +104,11 @@ build-dev: ## Do a dev build (without requiring the frontend)
 .PHONY: frontend/build
 frontend/build:
 	docker build -f cmd/pyroscope/frontend.Dockerfile --output=public/build .
+
+.PHONY: frontend/shell
+frontend/shell:
+	docker build -f cmd/pyroscope/frontend.Dockerfile --iidfile .docker-image-digest-frontend --target builder .
+	docker run -t -i $$(cat .docker-image-digest-frontend) /bin/bash
 
 .PHONY: profilecli/build
 profilecli/build: go/bin-profilecli ## Build the profilecli binary
@@ -110,30 +126,30 @@ release/prereq: $(BIN)/goreleaser ## Ensure release pre requesites are met
 
 .PHONY: release
 release: release/prereq ## Create a release
-	$(BIN)/goreleaser release -p=$(shell nproc) --rm-dist
+	$(BIN)/goreleaser release -p=$(NPROC) --clean
 
 .PHONY: release/prepare
 release/prepare: release/prereq ## Prepare a release
-	$(BIN)/goreleaser release -p=$(shell nproc) --rm-dist --snapshot
+	$(BIN)/goreleaser release -p=$(NPROC) --clean --snapshot
 
 .PHONY: release/build/all
 release/build/all: release/prereq ## Build all release binaries
-	$(BIN)/goreleaser build -p=$(shell nproc) --rm-dist --snapshot
+	$(BIN)/goreleaser build -p=$(NPROC) --clean --snapshot
 
 .PHONY: release/build
 release/build: release/prereq ## Build current platform release binaries
-	$(BIN)/goreleaser build -p=$(shell nproc) --rm-dist --snapshot --single-target
+	$(BIN)/goreleaser build -p=$(NPROC) --clean --snapshot --single-target
 
 .PHONY: go/deps
 go/deps:
 	$(GO) mod tidy
 
 define go_build_pyroscope
-	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 $(GO) build -tags "netgo $(EMBEDASSETS)" -ldflags "-extldflags \"-static\" $(1)" -gcflags=$(2) ./cmd/pyroscope
+	GOOS=$(GOOS) GOARCH=$(GOARCH) GOAMD64=v2 CGO_ENABLED=0 $(GO) build -tags "netgo $(EMBEDASSETS)" -ldflags "-extldflags \"-static\" $(1)" -gcflags=$(2) ./cmd/pyroscope
 endef
 
 define go_build_profilecli
-	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 $(GO) build -ldflags "-extldflags \"-static\" $(1)" -gcflags=$(2) ./cmd/profilecli
+	GOOS=$(GOOS) GOARCH=$(GOARCH) GOAMD64=v2 CGO_ENABLED=0 $(GO) build -ldflags "-extldflags \"-static\" $(1)" -gcflags=$(2) ./cmd/profilecli
 endef
 
 .PHONY: go/bin-debug
@@ -156,8 +172,8 @@ go/bin-profilecli-debug:
 
 .PHONY: go/lint
 go/lint: $(BIN)/golangci-lint
-	$(BIN)/golangci-lint run
-	$(GO) vet ./...
+	$(BIN)/golangci-lint run ./... ./lidia/...
+	$(GO) vet ./... ./lidia/...
 
 .PHONY: update-contributors
 update-contributors: ## Update the contributors in README.md
@@ -172,12 +188,12 @@ go/mod_tidy_root:
 	# doesn't work for go workspace
 	# GO111MODULE=on go mod verify
 	go work sync
-	GO111MODULE=on go mod tidy -go 1.22
+	GO111MODULE=on go mod tidy -go $(GO_MOD_VERSION)
 
 .PHONY: go/mod_tidy/%
 go/mod_tidy/%: go/mod_tidy_root
 	cd "$*" && GO111MODULE=on go mod download
-	cd "$*" && GO111MODULE=on go mod tidy -go 1.22
+	cd "$*" && GO111MODULE=on go mod tidy -go $(GO_MOD_VERSION)
 
 .PHONY: fmt
 fmt: $(BIN)/golangci-lint $(BIN)/buf $(BIN)/tk ## Automatically fix some lint errors
@@ -197,7 +213,7 @@ check/go/mod: go/mod
 
 
 define docker_buildx
-	docker buildx build $(1) --platform $(IMAGE_PLATFORM) $(BUILDX_ARGS) --build-arg=revision=$(GIT_REVISION) -t $(IMAGE_PREFIX)$(shell basename $(@D)):$(2)latest -t $(IMAGE_PREFIX)$(shell basename $(@D)):$(2)$(IMAGE_TAG) -f cmd/$(shell basename $(@D))/$(2)Dockerfile .
+	docker buildx build $(1) --platform $(IMAGE_PLATFORM) $(BUILDX_ARGS) --build-arg=revision=$(GIT_REVISION) -t $(IMAGE_PREFIX)$(shell basename $(@D)):$(2)$(IMAGE_TAG) -f cmd/$(shell basename $(@D))/$(2)Dockerfile .
 endef
 
 define deploy
@@ -208,7 +224,7 @@ define deploy
 	$(BIN)/helm upgrade --install $(1) ./operations/pyroscope/helm/pyroscope $(2) $(HELM_ARGS) \
 		--set pyroscope.image.tag=$(IMAGE_TAG) \
 		--set pyroscope.image.repository=$(IMAGE_PREFIX)pyroscope \
-		--set pyroscope.podAnnotations.image-id=$(shell cat .docker-image-id-pyroscope) \
+		--set pyroscope.podAnnotations.image-digest=$(shell cat .docker-image-digest-pyroscope) \
 		--set pyroscope.service.port_name=http-metrics \
 		--set pyroscope.podAnnotations."profiles\.grafana\.com\/memory\.port_name"=http-metrics \
 		--set pyroscope.podAnnotations."profiles\.grafana\.com\/cpu\.port_name"=http-metrics \
@@ -217,69 +233,65 @@ define deploy
 		--set pyroscope.extraArgs."pyroscopedb\.max-block-duration"=5m
 endef
 
+# Function to handle multiarch image build. Depending on the
+# debug_build and push_image args, we run one of:
+#  - docker-image/pyroscope/build
+#  - docker-image/pyroscope/build-debug
+#  - docker-image/pyroscope/push
+#  - docker-image/pyroscope/push-debug
+define multiarch_build
+	$(eval push_image=$(1))
+	$(eval debug_build=$(2))
+	$(eval build_cmd=docker-image/pyroscope/$(if $(push_image),push,build)$(if $(debug_build),-debug))
+	$(eval image_name=$(IMAGE_PREFIX)$(shell basename $(@D)):$(if $(debug_build),debug.)$(IMAGE_TAG))
+
+	GOOS=linux GOARCH=arm64 IMAGE_TAG="$(IMAGE_TAG)-arm64" $(MAKE) $(build_cmd) IMAGE_PLATFORM=linux/arm64
+	GOOS=linux GOARCH=amd64 IMAGE_TAG="$(IMAGE_TAG)-amd64" $(MAKE) $(build_cmd) IMAGE_PLATFORM=linux/amd64
+
+	$(if $(push_image), docker buildx imagetools create --tag "$(image_name)" "$(image_name)-amd64" "$(image_name)-arm64")
+	$(if $(push_image), docker buildx imagetools inspect "$(image_name)" --format "{{json .Manifest.Digest}}" | tr -d '"' > .docker-image-digest-pyroscope)
+	$(if $(push_image), echo "$(image_name)" > .docker-image-name-pyroscope)
+endef
+
+.PHONY: docker-image/pyroscope/build-multiarch
+docker-image/pyroscope/build-multiarch:
+	$(call multiarch_build,,)
+
+.PHONY: docker-image/pyroscope/build-multiarch-debug
+docker-image/pyroscope/build-multiarch-debug:
+	$(call multiarch_build,,debug)
+
+.PHONY: docker-image/pyroscope/push-multiarch
+docker-image/pyroscope/push-multiarch:
+	$(call multiarch_build,push,)
+
+.PHONY: docker-image/pyroscope/push-multiarch-debug
+docker-image/pyroscope/push-multiarch-debug:
+	$(call multiarch_build,push,debug)
+
 .PHONY: docker-image/pyroscope/build-debug
-docker-image/pyroscope/build-debug: GOOS=linux
-docker-image/pyroscope/build-debug: GOARCH=amd64
-docker-image/pyroscope/build-debug: frontend/build go/bin-debug $(BIN)/linux_amd64/dlv
+docker-image/pyroscope/build-debug: frontend/build go/bin-debug docker-image/pyroscope/dlv
 	$(call docker_buildx,--load,debug.)
 
 .PHONY: docker-image/pyroscope/push-debug
-docker-image/pyroscope/push-debug: GOOS=linux
-docker-image/pyroscope/push-debug: GOARCH=amd64
-docker-image/pyroscope/push-debug: frontend/build go/bin-debug $(BIN)/linux_amd64/dlv
+docker-image/pyroscope/push-debug: frontend/build go/bin-debug docker-image/pyroscope/dlv
 	$(call docker_buildx,--push,debug.)
 
 .PHONY: docker-image/pyroscope/build
-docker-image/pyroscope/build: GOOS=linux
-docker-image/pyroscope/build: GOARCH=amd64
 docker-image/pyroscope/build: frontend/build go/bin
-	$(call docker_buildx,--load --iidfile .docker-image-id-pyroscope,)
+	$(call docker_buildx,--load --iidfile .docker-image-digest-pyroscope,)
 
 .PHONY: docker-image/pyroscope/push
-docker-image/pyroscope/push: GOOS=linux
-docker-image/pyroscope/push: GOARCH=amd64
 docker-image/pyroscope/push: frontend/build go/bin
 	$(call docker_buildx,--push,)
 
-define UPDATER_CONFIG_JSON
-{
-  "git_author_name": "grafana-pyroscope-bot[bot]",
-  "git_author_email": "140177480+grafana-pyroscope-bot[bot]@users.noreply.github.com",
-  "git_committer_name": "grafana-pyroscope-bot[bot]",
-  "git_committer_email": "140177480+grafana-pyroscope-bot[bot]@users.noreply.github.com",
-  "pull_request_enabled": true,
-  "pull_request_branch_prefix": "auto-merge/grafana-pyroscope-bot",
-  "repo_name": "deployment_tools",
-  "destination_branch": "master",
-  "update_jsonnet_attribute_configs": [
-    {
-      "file_path": "ksonnet/lib/pyroscope/releases/dev/images.libsonnet",
-      "jsonnet_key": "pyroscope",
-      "jsonnet_value": "$(IMAGE_PREFIX)pyroscope:$(IMAGE_TAG)"
-    }
-  ],
-  "update_jsonnet_lib_configs": [
-    {
-      "jsonnet_dir": "ksonnet/lib/pyroscope/releases/dev",
-      "dependencies": [
-        {
-          "owner": "grafana",
-          "name": "pyroscope",
-          "version": "$(GIT_REVISION)",
-          "sub_dirs": [
-            "operations/pyroscope"
-          ]
-        }
-      ]
-    }
-  ]
-}
-endef
-
-.PHONY: docker-image/pyroscope/deploy-dev-001
-docker-image/pyroscope/deploy-dev-001: export CONFIG_JSON:=$(call UPDATER_CONFIG_JSON)
-docker-image/pyroscope/deploy-dev-001: $(BIN)/updater $(BIN)/jb
-	PATH=$(BIN):$(PATH) $(BIN)/updater
+.PHONY: docker-image/pyroscope/dlv
+docker-image/pyroscope/dlv:
+	# dlv is not intended for local use and is to be installed in the
+	# platform-specific docker image together with the main Pyroscope binary.
+	@mkdir -p $(@D)
+	GOPATH=$(CURDIR)/.tmp GOAMD64=v2 CGO_ENABLED=0 $(GO) install -ldflags "-s -w -extldflags '-static'" github.com/go-delve/delve/cmd/dlv@v1.23.0
+	mv $(CURDIR)/.tmp/bin/$(GOOS)_$(GOARCH)/dlv $(CURDIR)/.tmp/bin/dlv
 
 .PHONY: clean
 clean: ## Delete intermediate build artifacts
@@ -302,11 +314,11 @@ $(BIN)/golangci-lint: Makefile
 
 $(BIN)/protoc-gen-go: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install google.golang.org/protobuf/cmd/protoc-gen-go@v1.34.2
+	GOBIN=$(abspath $(@D)) $(GO) install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.5
 
 $(BIN)/protoc-gen-connect-go: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install connectrpc.com/connect/cmd/protoc-gen-connect-go@v1.16.2
+	GOBIN=$(abspath $(@D)) $(GO) install connectrpc.com/connect/cmd/protoc-gen-connect-go@v1.18.1
 
 $(BIN)/protoc-gen-connect-go-mux: Makefile go.mod
 	@mkdir -p $(@D)
@@ -318,11 +330,11 @@ $(BIN)/protoc-gen-go-vtproto: Makefile go.mod
 
 $(BIN)/protoc-gen-openapiv2: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@v2.16.0
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@v2.25.1
 
 $(BIN)/protoc-gen-grpc-gateway: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@v2.16.0
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@v2.25.1
 
 $(BIN)/gomodifytags: Makefile go.mod
 	@mkdir -p $(@D)
@@ -356,43 +368,24 @@ $(BIN)/mockery: Makefile go.mod
 	@mkdir -p $(@D)
 	GOBIN=$(abspath $(@D)) $(GO) install github.com/vektra/mockery/v2@v2.45.0
 
-$(BIN)/updater: Makefile
-	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) GOPRIVATE=github.com/grafana/deployment_tools $(GO) install github.com/grafana/deployment_tools/docker/updater/cmd/updater@bd5794b4e488
-
 # Note: When updating the goreleaser version also update .github/workflow/release.yml and .git/workflow/weekly-release.yaml
 $(BIN)/goreleaser: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/goreleaser/goreleaser/v2@v2.0.0
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/goreleaser/goreleaser/v2@v2.7.0
 
 $(BIN)/gotestsum: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install gotest.tools/gotestsum@v1.9.0
-
-DLV_VERSION=v1.23.0
-
-$(BIN)/dlv: Makefile go.mod
-	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) CGO_ENABLED=0 $(GO) install -ldflags "-s -w -extldflags '-static'" github.com/go-delve/delve/cmd/dlv@$(DLV_VERSION)
-
-$(BIN)/linux_amd64/dlv: Makefile go.mod
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 GOPATH=$(CURDIR)/.tmp $(GO) install -ldflags "-s -w -extldflags '-static'" github.com/go-delve/delve/cmd/dlv@$(DLV_VERSION);
-	# Create a hardlink if you are on linux_amd64, so we are able to use the same dockerfile
-	if [[ "$(shell $(GO) env GOOS)" == "linux" && "$(shell $(GO) env GOARCH)" == "amd64" ]]; then \
-		mkdir -p "$(@D)"; \
-		ln -f $(BIN)/dlv "$@"; \
-	fi
+	GOBIN=$(abspath $(@D)) $(GO) install gotest.tools/gotestsum@v1.12.0
 
 .PHONY: cve/check
 cve/check:
 	docker run -t -i --rm --volume "$(CURDIR)/:/repo" -u "$(shell id -u)" aquasec/trivy:0.45.1 filesystem --cache-dir /repo/.cache/trivy --scanners vuln --skip-dirs .tmp/ --skip-dirs node_modules/ --skip-dirs tools/monitoring/vendor/ /repo
 
-KIND_CLUSTER = pyroscope-dev
-
 .PHONY: helm/lint
 helm/lint: $(BIN)/helm
 	$(BIN)/helm lint ./operations/pyroscope/helm/pyroscope/
 
+.PHONY: helm/docs
 helm/docs: $(BIN)/helm
 	docker run --rm --volume "$(CURDIR)/operations/pyroscope/helm:/helm-docs" -u "$(shell id -u)" jnorwood/helm-docs:v1.8.1
 
@@ -463,6 +456,3 @@ run: ## Run the pyroscope binary (pass parameters with 'make run PARAMS=-myparam
 .PHONY: mockery
 mockery: $(BIN)/mockery
 	$(BIN)/mockery
-
-# OTLP Protobuf generation
-include api/otlp/Makefile

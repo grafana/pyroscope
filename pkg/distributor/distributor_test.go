@@ -10,6 +10,7 @@ import (
 	"os"
 	"runtime/pprof"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -27,21 +28,20 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	testhelper2 "github.com/grafana/pyroscope/pkg/pprof/testhelper"
-
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	pprof2 "github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/grafana/pyroscope/pkg/util"
-
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/clientpool"
+	"github.com/grafana/pyroscope/pkg/distributor/ingest_limits"
+	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	pprof2 "github.com/grafana/pyroscope/pkg/pprof"
+	pproftesthelper "github.com/grafana/pyroscope/pkg/pprof/testhelper"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/testhelper"
+	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
@@ -180,7 +180,7 @@ func collectTestProfileBytes(t *testing.T) []byte {
 
 func hugeProfileBytes(t *testing.T) []byte {
 	t.Helper()
-	b := testhelper2.NewProfileBuilderWithLabels(time.Now().UnixNano(), nil)
+	b := pproftesthelper.NewProfileBuilderWithLabels(time.Now().UnixNano(), nil)
 	p := b.CPUProfile()
 	for i := 0; i < 10_000; i++ {
 		p.ForStacktraceString(fmt.Sprintf("my_%d", i), "other").AddSamples(1)
@@ -411,6 +411,277 @@ func Test_Sessions_Limit(t *testing.T) {
 			require.NoError(t, err)
 			limit := d.limits.MaxSessionsPerSeries("user-1")
 			assert.Equal(t, tc.expectedLabels, d.limitMaxSessionsPerSeries(limit, tc.seriesLabels))
+		})
+	}
+}
+
+func Test_IngestLimits(t *testing.T) {
+	type testCase struct {
+		description        string
+		pushReq            *distributormodel.PushRequest
+		overrides          *validation.Overrides
+		verifyExpectations func(err error, req *distributormodel.PushRequest, res *connect.Response[pushv1.PushResponse])
+	}
+
+	testCases := []testCase{
+		{
+			description: "ingest_limit_reached",
+			pushReq:     &distributormodel.PushRequest{},
+			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+				l := validation.MockDefaultLimits()
+				l.IngestionLimit = &ingest_limits.Config{
+					PeriodType:     "hour",
+					PeriodLimitMb:  128,
+					LimitResetTime: 1737721086,
+					LimitReached:   true,
+					Sampling: ingest_limits.SamplingConfig{
+						NumRequests: 0,
+						Period:      time.Minute,
+					},
+				}
+				tenantLimits["user-1"] = l
+			}),
+			verifyExpectations: func(err error, req *distributormodel.PushRequest, res *connect.Response[pushv1.PushResponse]) {
+				require.Error(t, err)
+				require.Nil(t, res)
+				require.Equal(t, connect.CodeResourceExhausted, connect.CodeOf(err))
+			},
+		},
+		{
+			description: "ingest_limit_reached_sampling",
+			pushReq: &distributormodel.PushRequest{
+				Series: []*distributormodel.ProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "__name__", Value: "cpu"},
+							{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+						},
+						Samples: []*distributormodel.ProfileSample{
+							{
+								RawProfile: collectTestProfileBytes(t),
+								Profile: pprof2.RawFromProto(&profilev1.Profile{
+									Sample: []*profilev1.Sample{{
+										Value: []int64{1},
+									}},
+									StringTable: []string{""},
+								}),
+							},
+						},
+					},
+				},
+			},
+			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+				l := validation.MockDefaultLimits()
+				l.IngestionLimit = &ingest_limits.Config{
+					PeriodType:     "hour",
+					PeriodLimitMb:  128,
+					LimitResetTime: 1737721086,
+					LimitReached:   true,
+					Sampling: ingest_limits.SamplingConfig{
+						NumRequests: 1,
+						Period:      time.Minute,
+					},
+				}
+				tenantLimits["user-1"] = l
+			}),
+			verifyExpectations: func(err error, req *distributormodel.PushRequest, res *connect.Response[pushv1.PushResponse]) {
+				require.NoError(t, err)
+				require.NotNil(t, res)
+				require.Equal(t, 1, len(req.Series[0].Annotations))
+				// annotations are json encoded and contain some of the limit config fields
+				require.True(t, strings.Contains(req.Series[0].Annotations[0].Value, "\"periodLimitMb\":128"))
+			},
+		},
+		{
+			description: "ingest_limit_reached_with_sampling_error",
+			pushReq: &distributormodel.PushRequest{
+				Series: []*distributormodel.ProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "__name__", Value: "cpu"},
+							{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+						},
+						Samples: []*distributormodel.ProfileSample{
+							{
+								RawProfile: collectTestProfileBytes(t),
+								Profile: pprof2.RawFromProto(&profilev1.Profile{
+									Sample: []*profilev1.Sample{{
+										Value: []int64{1},
+									}},
+									StringTable: []string{""},
+								}),
+							},
+						},
+					},
+				},
+			},
+			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+				l := validation.MockDefaultLimits()
+				l.IngestionLimit = &ingest_limits.Config{
+					PeriodType:     "hour",
+					PeriodLimitMb:  128,
+					LimitResetTime: 1737721086,
+					LimitReached:   true,
+					Sampling: ingest_limits.SamplingConfig{
+						NumRequests: 0,
+						Period:      time.Minute,
+					},
+				}
+				tenantLimits["user-1"] = l
+			}),
+			verifyExpectations: func(err error, req *distributormodel.PushRequest, res *connect.Response[pushv1.PushResponse]) {
+				require.Error(t, err)
+				require.Nil(t, res)
+				require.Equal(t, connect.CodeResourceExhausted, connect.CodeOf(err))
+				require.Empty(t, req.Series[0].Annotations)
+			},
+		},
+		{
+			description: "ingest_limit_reached_with_multiple_usage_groups",
+			pushReq: &distributormodel.PushRequest{
+				Series: []*distributormodel.ProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "__name__", Value: "cpu"},
+							{Name: phlaremodel.LabelNameServiceName, Value: "svc1"},
+						},
+						Samples: []*distributormodel.ProfileSample{
+							{
+								RawProfile: collectTestProfileBytes(t),
+								Profile: pprof2.RawFromProto(&profilev1.Profile{
+									Sample: []*profilev1.Sample{{
+										Value: []int64{1},
+									}},
+									StringTable: []string{""},
+								}),
+							},
+						},
+					},
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "__name__", Value: "cpu"},
+							{Name: phlaremodel.LabelNameServiceName, Value: "svc2"},
+						},
+						Samples: []*distributormodel.ProfileSample{
+							{
+								RawProfile: collectTestProfileBytes(t),
+								Profile: pprof2.RawFromProto(&profilev1.Profile{
+									Sample: []*profilev1.Sample{{
+										Value: []int64{1},
+									}},
+									StringTable: []string{""},
+								}),
+							},
+						},
+					},
+				},
+			},
+			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+				l := validation.MockDefaultLimits()
+				l.IngestionLimit = &ingest_limits.Config{
+					PeriodType:     "hour",
+					PeriodLimitMb:  128,
+					LimitResetTime: 1737721086,
+					LimitReached:   false,
+					UsageGroups: map[string]ingest_limits.UsageGroup{
+						"group-1": {
+							PeriodLimitMb: 64,
+							LimitReached:  true,
+						},
+						"group-2": {
+							PeriodLimitMb: 32,
+							LimitReached:  true,
+						},
+					},
+				}
+				usageGroupCfg, err := validation.NewUsageGroupConfig(map[string]string{
+					"group-1": "{service_name=\"svc1\"}",
+					"group-2": "{service_name=\"svc2\"}",
+				})
+				require.NoError(t, err)
+				l.DistributorUsageGroups = &usageGroupCfg
+				tenantLimits["user-1"] = l
+			}),
+			verifyExpectations: func(err error, req *distributormodel.PushRequest, res *connect.Response[pushv1.PushResponse]) {
+				require.Error(t, err)
+				require.Nil(t, res)
+				require.Equal(t, connect.CodeResourceExhausted, connect.CodeOf(err))
+				require.Empty(t, req.Series[0].Annotations)
+				require.Empty(t, req.Series[1].Annotations)
+			},
+		},
+		{
+			description: "ingest_limit_reached_with_sampling_and_usage_groups",
+			pushReq: &distributormodel.PushRequest{
+				Series: []*distributormodel.ProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "__name__", Value: "cpu"},
+							{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+						},
+						Samples: []*distributormodel.ProfileSample{
+							{
+								RawProfile: collectTestProfileBytes(t),
+								Profile: pprof2.RawFromProto(&profilev1.Profile{
+									Sample: []*profilev1.Sample{{
+										Value: []int64{1},
+									}},
+									StringTable: []string{""},
+								}),
+							},
+						},
+					},
+				},
+			},
+			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+				l := validation.MockDefaultLimits()
+				l.IngestionLimit = &ingest_limits.Config{
+					PeriodType:     "hour",
+					PeriodLimitMb:  128,
+					LimitResetTime: 1737721086,
+					LimitReached:   true,
+					Sampling: ingest_limits.SamplingConfig{
+						NumRequests: 100,
+						Period:      time.Minute,
+					},
+					UsageGroups: map[string]ingest_limits.UsageGroup{
+						"group-1": {
+							PeriodLimitMb: 64,
+							LimitReached:  true,
+						},
+					},
+				}
+				usageGroupCfg, err := validation.NewUsageGroupConfig(map[string]string{
+					"group-1": "{service_name=\"svc\"}",
+				})
+				require.NoError(t, err)
+				l.DistributorUsageGroups = &usageGroupCfg
+				tenantLimits["user-1"] = l
+			}),
+			verifyExpectations: func(err error, req *distributormodel.PushRequest, res *connect.Response[pushv1.PushResponse]) {
+				require.NoError(t, err)
+				require.NotNil(t, res)
+				require.Len(t, req.Series[0].Annotations, 2)
+				assert.Contains(t, req.Series[0].Annotations[0].Value, "\"periodLimitMb\":128")
+				assert.Contains(t, req.Series[0].Annotations[1].Value, "\"usageGroup\":\"group-1\"")
+				assert.Contains(t, req.Series[0].Annotations[1].Value, "\"periodLimitMb\":64")
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			ing := newFakeIngester(t, false)
+			d, err := New(Config{
+				DistributorRing: ringConfig,
+			}, testhelper.NewMockRing([]ring.InstanceDesc{
+				{Addr: "foo"},
+			}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
+				return ing, nil
+			}}, tc.overrides, nil, log.NewLogfmtLogger(os.Stdout), nil)
+			require.NoError(t, err)
+
+			resp, err := d.PushParsed(tenant.InjectTenantID(context.Background(), "user-1"), tc.pushReq)
+			tc.verifyExpectations(err, tc.pushReq, resp)
 		})
 	}
 }
@@ -1204,6 +1475,16 @@ func TestPush_Aggregation(t *testing.T) {
 			l.DistributorAggregationPeriod = model.Duration(time.Second)
 			l.DistributorAggregationWindow = model.Duration(time.Second)
 			l.MaxSessionsPerSeries = maxSessions
+			l.IngestionLimit = &ingest_limits.Config{
+				PeriodType:     "hour",
+				PeriodLimitMb:  128,
+				LimitResetTime: time.Now().Unix(),
+				LimitReached:   true,
+				Sampling: ingest_limits.SamplingConfig{
+					NumRequests: 100,
+					Period:      time.Minute,
+				},
+			}
 			tenantLimits["user-1"] = l
 		}),
 		nil, log.NewLogfmtLogger(os.Stdout), nil,
@@ -1257,6 +1538,16 @@ func TestPush_Aggregation(t *testing.T) {
 	sessions := make(map[string]struct{})
 	assert.GreaterOrEqual(t, len(ingesterClient.requests), 20)
 	assert.Less(t, len(ingesterClient.requests), 100)
+
+	// Verify that throttled requests have annotations
+	for i, req := range ingesterClient.requests {
+		for _, series := range req.Series {
+			require.Lenf(t, series.Annotations, 1, "failed request %d", i)
+			assert.Equal(t, ingest_limits.ProfileAnnotationKeyThrottled, series.Annotations[0].Key)
+			assert.Contains(t, series.Annotations[0].Value, "\"periodLimitMb\":128")
+		}
+	}
+
 	for _, r := range ingesterClient.requests {
 		for _, s := range r.Series {
 			sessionID := phlaremodel.Labels(s.Labels).Get(phlaremodel.LabelNameSessionID)
@@ -1467,5 +1758,72 @@ func expectMetricsChange(t *testing.T, m1, m2, expectedChange map[prometheus.Col
 	for counter, expectedDelta := range expectedChange {
 		delta := m2[counter] - m1[counter]
 		assert.Equal(t, expectedDelta, delta, "metric %s", counter)
+	}
+}
+
+func TestPush_LabelRewrites(t *testing.T) {
+	ing := newFakeIngester(t, false)
+	d, err := New(Config{
+		DistributorRing: ringConfig,
+	}, testhelper.NewMockRing([]ring.InstanceDesc{
+		{Addr: "mock"},
+		{Addr: "mock"},
+		{Addr: "mock"},
+	}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
+		return ing, nil
+	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout), nil)
+	require.NoError(t, err)
+
+	ctx := tenant.InjectTenantID(context.Background(), "user-1")
+
+	for idx, tc := range []struct {
+		name           string
+		series         []*typesv1.LabelPair
+		expectedSeries string
+	}{
+		{
+			name:           "empty series",
+			series:         []*typesv1.LabelPair{},
+			expectedSeries: `{__name__="process_cpu", service_name="unknown_service"}`,
+		},
+		{
+			name: "series with service_name labels",
+			series: []*typesv1.LabelPair{
+				{Name: "service_name", Value: "my-service"},
+				{Name: "cloud_region", Value: "my-region"},
+			},
+			expectedSeries: `{__name__="process_cpu", cloud_region="my-region", service_name="my-service"}`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ing.mtx.Lock()
+			ing.requests = ing.requests[:0]
+			ing.mtx.Unlock()
+
+			p := pproftesthelper.NewProfileBuilderWithLabels(1000*int64(idx), tc.series).CPUProfile()
+			p.ForStacktraceString("world", "hello").AddSamples(1)
+
+			data, err := p.Profile.MarshalVT()
+			require.NoError(t, err)
+
+			_, err = d.Push(ctx, connect.NewRequest(&pushv1.PushRequest{
+				Series: []*pushv1.RawProfileSeries{
+					{
+						Labels: p.Labels,
+						Samples: []*pushv1.RawSample{
+							{RawProfile: data},
+						},
+					},
+				},
+			}))
+			require.NoError(t, err)
+
+			ing.mtx.Lock()
+			require.Len(t, ing.requests, 1)
+			require.Greater(t, len(ing.requests[0].Series), 1)
+			actualSeries := phlaremodel.LabelPairsString(ing.requests[0].Series[0].Labels)
+			assert.Equal(t, tc.expectedSeries, actualSeries)
+			ing.mtx.Unlock()
+		})
 	}
 }

@@ -39,7 +39,7 @@ To use Span Profiles, you need to:
 
 Your applications must be instrumented for profiling and tracing before you can use span profiles.
 
-* Profiling: Your application must be instrumented with Pyroscope's .NET instrumentation library. Refer to the [.NET]({{< relref "../language-sdks/dotnet" >}}) guide for instructions.
+* Profiling: Your application must be instrumented with Pyroscope's .NET instrumentation library. Refer to the [.NET](../../language-sdks/dotnet/) guide for instructions.
 * Tracing: Your application must be instrumented with OpenTelemetry traces. Refer to the [OpenTelemetry](https://opentelemetry.io/docs/languages/net/getting-started/) guide for instructions.
 
 {{< admonition type="note" >}}
@@ -74,10 +74,12 @@ With the span processor registered, spans created automatically (for example, HT
 
 ## View the span profiles in Grafana
 
-To view the span profiles in Grafana Explore or Grafana Explore Traces, you need to have a Grafana instance running and a Tempo data source configured to link traces and profiles.
+To view the span profiles in Grafana Explore or Grafana Traces Drilldown, you need to have a Grafana instance running and a Tempo data source configured to link traces and profiles.
 
 Refer to the [Tempo data source configuration documentation](https://grafana.com/docs/grafana/<GRAFANA_VERSION>/datasources/tempo/configure-tempo-data-source) to see how to configure the visualization to link traces with profiles.
 
 ## Examples
 
-Check out the [examples](https://github.com/grafana/pyroscope/tree/main/examples/tracing/tempo) directory for a complete demo application of span profiles in multiple languages.
+Check out these demo applications for span profiles:
+- [.NET example](https://github.com/grafana/pyroscope/tree/main/examples/tracing/dotnet)
+- [Other examples](https://github.com/grafana/pyroscope/tree/main/examples/tracing/tempo) in multiple languages

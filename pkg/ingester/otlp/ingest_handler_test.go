@@ -3,46 +3,66 @@ package otlp
 import (
 	"context"
 	"os"
+	"sort"
+	"strings"
 	"testing"
 
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/distributor/model"
-
-	"github.com/prometheus/prometheus/util/testutil"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
-
-	v1experimental2 "github.com/grafana/pyroscope/api/otlp/collector/profiles/v1development"
-	v1experimental "github.com/grafana/pyroscope/api/otlp/profiles/v1development"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/strprofile"
+	"github.com/grafana/pyroscope/pkg/test"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockotlp"
 
 	"github.com/stretchr/testify/assert"
-
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	v1 "github.com/grafana/pyroscope/api/otlp/common/v1"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+	v1experimental2 "go.opentelemetry.io/proto/otlp/collector/profiles/v1development"
+	v1 "go.opentelemetry.io/proto/otlp/common/v1"
+	v1experimental "go.opentelemetry.io/proto/otlp/profiles/v1development"
 )
 
 func TestGetServiceNameFromAttributes(t *testing.T) {
 	tests := []struct {
 		name     string
-		attrs    []v1.KeyValue
+		attrs    []*v1.KeyValue
 		expected string
 	}{
 		{
 			name:     "empty attributes",
-			attrs:    []v1.KeyValue{},
-			expected: "unknown",
+			attrs:    []*v1.KeyValue{},
+			expected: phlaremodel.AttrServiceNameFallback,
+		},
+		{
+			name: "empty attributes",
+			attrs: []*v1.KeyValue{
+				{
+					Key: "process.executable.name",
+					Value: &v1.AnyValue{
+						Value: &v1.AnyValue_StringValue{
+							StringValue: "bash",
+						},
+					},
+				},
+			},
+			expected: phlaremodel.AttrServiceNameFallback + ":bash",
 		},
 		{
 			name: "service name present",
-			attrs: []v1.KeyValue{
+			attrs: []*v1.KeyValue{
 				{
 					Key: "service.name",
-					Value: v1.AnyValue{
+					Value: &v1.AnyValue{
 						Value: &v1.AnyValue_StringValue{
 							StringValue: "test-service",
+						},
+					},
+				},
+				{
+					Key: "process.executable.name",
+					Value: &v1.AnyValue{
+						Value: &v1.AnyValue_StringValue{
+							StringValue: "test-executable",
 						},
 					},
 				},
@@ -51,24 +71,32 @@ func TestGetServiceNameFromAttributes(t *testing.T) {
 		},
 		{
 			name: "service name empty",
-			attrs: []v1.KeyValue{
+			attrs: []*v1.KeyValue{
 				{
 					Key: "service.name",
-					Value: v1.AnyValue{
+					Value: &v1.AnyValue{
+						Value: &v1.AnyValue_StringValue{
+							StringValue: "",
+						},
+					},
+				},
+				{
+					Key: "process.executable.name",
+					Value: &v1.AnyValue{
 						Value: &v1.AnyValue_StringValue{
 							StringValue: "",
 						},
 					},
 				},
 			},
-			expected: "unknown",
+			expected: phlaremodel.AttrServiceNameFallback,
 		},
 		{
 			name: "service name among other attributes",
-			attrs: []v1.KeyValue{
+			attrs: []*v1.KeyValue{
 				{
 					Key: "host.name",
-					Value: v1.AnyValue{
+					Value: &v1.AnyValue{
 						Value: &v1.AnyValue_StringValue{
 							StringValue: "host1",
 						},
@@ -76,7 +104,7 @@ func TestGetServiceNameFromAttributes(t *testing.T) {
 				},
 				{
 					Key: "service.name",
-					Value: v1.AnyValue{
+					Value: &v1.AnyValue{
 						Value: &v1.AnyValue_StringValue{
 							StringValue: "test-service",
 						},
@@ -99,14 +127,14 @@ func TestAppendAttributesUnique(t *testing.T) {
 	tests := []struct {
 		name          string
 		existingAttrs []*typesv1.LabelPair
-		newAttrs      []v1.KeyValue
+		newAttrs      []*v1.KeyValue
 		processedKeys map[string]bool
 		expected      []*typesv1.LabelPair
 	}{
 		{
 			name:          "empty attributes",
 			existingAttrs: []*typesv1.LabelPair{},
-			newAttrs:      []v1.KeyValue{},
+			newAttrs:      []*v1.KeyValue{},
 			processedKeys: make(map[string]bool),
 			expected:      []*typesv1.LabelPair{},
 		},
@@ -115,10 +143,10 @@ func TestAppendAttributesUnique(t *testing.T) {
 			existingAttrs: []*typesv1.LabelPair{
 				{Name: "existing", Value: "value"},
 			},
-			newAttrs: []v1.KeyValue{
+			newAttrs: []*v1.KeyValue{
 				{
 					Key: "new",
-					Value: v1.AnyValue{
+					Value: &v1.AnyValue{
 						Value: &v1.AnyValue_StringValue{
 							StringValue: "newvalue",
 						},
@@ -136,10 +164,10 @@ func TestAppendAttributesUnique(t *testing.T) {
 			existingAttrs: []*typesv1.LabelPair{
 				{Name: "key1", Value: "value1"},
 			},
-			newAttrs: []v1.KeyValue{
+			newAttrs: []*v1.KeyValue{
 				{
 					Key: "key1",
-					Value: v1.AnyValue{
+					Value: &v1.AnyValue{
 						Value: &v1.AnyValue_StringValue{
 							StringValue: "value2",
 						},
@@ -163,62 +191,171 @@ func TestAppendAttributesUnique(t *testing.T) {
 
 func readJSONFile(t *testing.T, filename string) string {
 	data, err := os.ReadFile(filename)
-	require.NoError(t, err)
+	require.NoError(t, err, "filename: "+filename)
 	return string(data)
 }
 
-func TestSymbolizedFunctionNames(t *testing.T) {
-	// Create two unsymbolized locations at 0x1e0 and 0x2f0
-	// Expect both of them to be present in the converted pprof
-	svc := mockotlp.NewMockPushService(t)
-	var profiles []*model.PushRequest
-	svc.On("PushParsed", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
-		c := (args.Get(1)).(*model.PushRequest)
-		profiles = append(profiles, c)
-	}).Return(nil, nil)
+func TestConversion(t *testing.T) {
 
-	otlpb := new(otlpbuilder)
-	otlpb.profile.MappingTable = []*v1experimental.Mapping{{
-		MemoryStart:      0x1000,
-		MemoryLimit:      0x1000,
-		FilenameStrindex: otlpb.addstr("file1.so"),
-	}}
-	otlpb.profile.LocationTable = []*v1experimental.Location{{
-		MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 0},
-		Address:       0x1e0,
-		Line:          nil,
-	}, {
-		MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 0},
-		Address:       0x2f0,
-		Line:          nil,
-	}}
-	otlpb.profile.LocationIndices = []int32{0, 1}
-	otlpb.profile.Sample = []*v1experimental.Sample{{
-		LocationsStartIndex: 0,
-		LocationsLength:     2,
-		Value:               []int64{0xef},
-	}}
-	otlpb.profile.TimeNanos = 239
-	req := &v1experimental2.ExportProfilesServiceRequest{
-		ResourceProfiles: []*v1experimental.ResourceProfiles{{
-			ScopeProfiles: []*v1experimental.ScopeProfiles{{
-				Profiles: []*v1experimental.Profile{
-					&otlpb.profile,
-				}}}}}}
-	logger := testutil.NewLogger(t)
-	h := NewOTLPIngestHandler(svc, logger, false)
-	_, err := h.Export(context.Background(), req)
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(profiles))
+	testdata := []struct {
+		name             string
+		expectedJsonFile string
+		expectedError    string
+		profile          func() *otlpbuilder
+	}{
+		{
+			name:             "symbolized function names",
+			expectedJsonFile: "testdata/TestSymbolizedFunctionNames.json",
+			profile: func() *otlpbuilder {
+				b := new(otlpbuilder)
+				b.profile.MappingTable = []*v1experimental.Mapping{{
+					MemoryStart:      0x1000,
+					MemoryLimit:      0x1000,
+					FilenameStrindex: b.addstr("file1.so"),
+				}}
+				b.profile.LocationTable = []*v1experimental.Location{{
+					MappingIndex: int32ptr(0),
+					Address:      0x1e0,
+					Line:         nil,
+				}, {
+					MappingIndex: int32ptr(0),
+					Address:      0x2f0,
+					Line:         nil,
+				}}
+				b.profile.LocationIndices = []int32{0, 1}
+				b.profile.Sample = []*v1experimental.Sample{{
+					LocationsStartIndex: 0,
+					LocationsLength:     2,
+					Value:               []int64{0xef},
+				}}
+				return b
+			},
+		},
+		{
+			name:             "offcpu",
+			expectedJsonFile: "testdata/TestConversionOffCpu.json",
+			profile: func() *otlpbuilder {
+				b := new(otlpbuilder)
+				b.profile.SampleType = []*v1experimental.ValueType{{
+					TypeStrindex: b.addstr("events"),
+					UnitStrindex: b.addstr("nanoseconds"),
+				}}
+				b.profile.MappingTable = []*v1experimental.Mapping{{
+					MemoryStart:      0x1000,
+					MemoryLimit:      0x1000,
+					FilenameStrindex: b.addstr("file1.so"),
+				}}
+				b.profile.LocationTable = []*v1experimental.Location{{
+					MappingIndex: int32ptr(0),
+					Address:      0x1e0,
+				}, {
+					MappingIndex: int32ptr(0),
+					Address:      0x2f0,
+				}, {
+					MappingIndex: int32ptr(0),
+					Address:      0x3f0,
+				}}
+				b.profile.LocationIndices = []int32{0, 1, 2}
+				b.profile.Sample = []*v1experimental.Sample{{
+					LocationsStartIndex: 0,
+					LocationsLength:     2,
+					Value:               []int64{0xef},
+				}, {
+					LocationsStartIndex: 2,
+					LocationsLength:     1,
+					Value:               []int64{1, 2, 3, 4, 5, 6},
+				}}
+				return b
+			},
+		},
+		{
+			name:          "samples with different value sizes ",
+			expectedError: "sample values length mismatch",
+			profile: func() *otlpbuilder {
+				b := new(otlpbuilder)
+				b.profile.SampleType = []*v1experimental.ValueType{{
+					TypeStrindex: b.addstr("wrote_type"),
+					UnitStrindex: b.addstr("wrong_unit"),
+				}}
+				b.profile.MappingTable = []*v1experimental.Mapping{{
+					MemoryStart:      0x1000,
+					MemoryLimit:      0x1000,
+					FilenameStrindex: b.addstr("file1.so"),
+				}}
+				var mappingIndex int32
+				b.profile.LocationTable = []*v1experimental.Location{{
+					MappingIndex: &mappingIndex,
+					Address:      0x1e0,
+				}, {
+					MappingIndex: &mappingIndex,
+					Address:      0x2f0,
+				}, {
+					MappingIndex: &mappingIndex,
+					Address:      0x3f0,
+				}}
+				b.profile.LocationIndices = []int32{0, 1, 2}
+				b.profile.PeriodType = &v1experimental.ValueType{
+					TypeStrindex:           b.addstr("period_type"),
+					UnitStrindex:           b.addstr("period_unit"),
+					AggregationTemporality: 0,
+				}
+				b.profile.Period = 100
+				b.profile.Sample = []*v1experimental.Sample{{
+					LocationsStartIndex: 0,
+					LocationsLength:     2,
+					Value:               []int64{0xef},
+				}, {
+					LocationsStartIndex: 2,
+					LocationsLength:     1,
+					Value:               []int64{1, 2, 3, 4, 5, 6}, // should be rejected because of that
+				}}
+				return b
+			},
+		},
+	}
 
-	gp := profiles[0].Series[0].Samples[0].Profile.Profile
+	for _, td := range testdata {
+		td := td
 
-	jsonStr, err := strprofile.Stringify(gp, strprofile.Options{})
-	assert.NoError(t, err)
-	expectedJSON := readJSONFile(t, "testdata/TestSymbolizedFunctionNames.json")
-	assert.JSONEq(t, expectedJSON, jsonStr)
+		t.Run(td.name, func(t *testing.T) {
+			svc := mockotlp.NewMockPushService(t)
+			var profiles []*model.PushRequest
+			svc.On("PushParsed", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+				c := (args.Get(1)).(*model.PushRequest)
+				profiles = append(profiles, c)
+			}).Return(nil, nil).Maybe()
+			b := td.profile()
+			b.profile.TimeNanos = 239
+			req := &v1experimental2.ExportProfilesServiceRequest{
+				ResourceProfiles: []*v1experimental.ResourceProfiles{{
+					ScopeProfiles: []*v1experimental.ScopeProfiles{{
+						Profiles: []*v1experimental.Profile{
+							&b.profile,
+						}}}}}}
+			logger := test.NewTestingLogger(t)
+			h := NewOTLPIngestHandler(svc, logger, false)
+			_, err := h.Export(context.Background(), req)
+
+			if td.expectedError == "" {
+				require.NoError(t, err)
+				require.Equal(t, 1, len(profiles))
+
+				gp := profiles[0].Series[0].Samples[0].Profile.Profile
+
+				jsonStr, err := strprofile.Stringify(gp, strprofile.Options{})
+				assert.NoError(t, err)
+				expectedJSON := readJSONFile(t, td.expectedJsonFile)
+				assert.JSONEq(t, expectedJSON, jsonStr)
+			} else {
+				require.Error(t, err)
+				require.True(t, strings.Contains(err.Error(), td.expectedError))
+			}
+		})
+	}
 
 }
+
+func int32ptr(i int32) *int32 { return &i }
 
 func TestSampleAttributes(t *testing.T) {
 	// Create a profile with two samples, with different sample attributes
@@ -243,17 +380,17 @@ func TestSampleAttributes(t *testing.T) {
 	}}
 
 	otlpb.profile.LocationTable = []*v1experimental.Location{{
-		MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 0},
-		Address:       0x1e,
+		MappingIndex: int32ptr(0),
+		Address:      0x1e,
 	}, {
-		MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 0},
-		Address:       0x2e,
+		MappingIndex: int32ptr(0),
+		Address:      0x2e,
 	}, {
-		MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 1},
-		Address:       0x3e,
+		MappingIndex: int32ptr(1),
+		Address:      0x3e,
 	}, {
-		MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 1},
-		Address:       0x4e,
+		MappingIndex: int32ptr(1),
+		Address:      0x4e,
 	}}
 	otlpb.profile.LocationIndices = []int32{0, 1, 2, 3}
 	otlpb.profile.Sample = []*v1experimental.Sample{{
@@ -267,16 +404,16 @@ func TestSampleAttributes(t *testing.T) {
 		Value:               []int64{0xefef},
 		AttributeIndices:    []int32{1},
 	}}
-	otlpb.profile.AttributeTable = []v1.KeyValue{{
+	otlpb.profile.AttributeTable = []*v1.KeyValue{{
 		Key: "process",
-		Value: v1.AnyValue{
+		Value: &v1.AnyValue{
 			Value: &v1.AnyValue_StringValue{
 				StringValue: "firefox",
 			},
 		},
 	}, {
 		Key: "process",
-		Value: v1.AnyValue{
+		Value: &v1.AnyValue{
 			Value: &v1.AnyValue_StringValue{
 				StringValue: "chrome",
 			},
@@ -289,7 +426,7 @@ func TestSampleAttributes(t *testing.T) {
 				Profiles: []*v1experimental.Profile{
 					&otlpb.profile,
 				}}}}}}
-	logger := testutil.NewLogger(t)
+	logger := test.NewTestingLogger(t)
 	h := NewOTLPIngestHandler(svc, logger, false)
 	_, err := h.Export(context.Background(), req)
 	assert.NoError(t, err)
@@ -320,6 +457,9 @@ func TestDifferentServiceNames(t *testing.T) {
 	var profiles []*model.PushRequest
 	svc.On("PushParsed", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		c := (args.Get(1)).(*model.PushRequest)
+		for _, series := range c.Series {
+			sort.Sort(phlaremodel.Labels(series.Labels))
+		}
 		profiles = append(profiles, c)
 	}).Return(nil, nil)
 
@@ -339,36 +479,36 @@ func TestDifferentServiceNames(t *testing.T) {
 	}}
 
 	otlpb.profile.LocationTable = []*v1experimental.Location{{
-		MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 0}, // service-a.so
-		Address:       0x1100,
+		MappingIndex: int32ptr(0), // service-a.so
+		Address:      0x1100,
 		Line: []*v1experimental.Line{{
 			FunctionIndex: 0,
 			Line:          10,
 		}},
 	}, {
-		MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 0}, // service-a.so
-		Address:       0x1200,
+		MappingIndex: int32ptr(0), // service-a.so
+		Address:      0x1200,
 		Line: []*v1experimental.Line{{
 			FunctionIndex: 1,
 			Line:          20,
 		}},
 	}, {
-		MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 1}, // service-b.so
-		Address:       0x2100,
+		MappingIndex: int32ptr(1), // service-b.so
+		Address:      0x2100,
 		Line: []*v1experimental.Line{{
 			FunctionIndex: 2,
 			Line:          30,
 		}},
 	}, {
-		MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 1}, // service-b.so
-		Address:       0x2200,
+		MappingIndex: int32ptr(1), // service-b.so
+		Address:      0x2200,
 		Line: []*v1experimental.Line{{
 			FunctionIndex: 3,
 			Line:          40,
 		}},
 	}, {
-		MappingIndex_: &v1experimental.Location_MappingIndex{MappingIndex: 2}, // service-c.so
-		Address:       0xef0,
+		MappingIndex: int32ptr(2), // service-c.so
+		Address:      0xef0,
 		Line: []*v1experimental.Line{{
 			FunctionIndex: 4,
 			Line:          50,
@@ -416,16 +556,16 @@ func TestDifferentServiceNames(t *testing.T) {
 		AttributeIndices:    []int32{},
 	}}
 
-	otlpb.profile.AttributeTable = []v1.KeyValue{{
+	otlpb.profile.AttributeTable = []*v1.KeyValue{{
 		Key: "service.name",
-		Value: v1.AnyValue{
+		Value: &v1.AnyValue{
 			Value: &v1.AnyValue_StringValue{
 				StringValue: "service-a",
 			},
 		},
 	}, {
 		Key: "service.name",
-		Value: v1.AnyValue{
+		Value: &v1.AnyValue{
 			Value: &v1.AnyValue_StringValue{
 				StringValue: "service-b",
 			},
@@ -449,27 +589,27 @@ func TestDifferentServiceNames(t *testing.T) {
 					&otlpb.profile,
 				}}}}}}
 
-	logger := testutil.NewLogger(t)
+	logger := test.NewTestingLogger(t)
 	h := NewOTLPIngestHandler(svc, logger, false)
 	_, err := h.Export(context.Background(), req)
 	require.NoError(t, err)
 
-	require.Equal(t, 3, len(profiles))
+	require.Equal(t, 1, len(profiles))
+	require.Equal(t, 3, len(profiles[0].Series))
 
 	expectedProfiles := map[string]string{
-		"{__name__=\"process_cpu\", __delta__=\"false\", __otel__=\"true\", pyroscope_spy=\"unknown\", service_name=\"service-a\"}": "testdata/TestDifferentServiceNames_service_a_profile.json",
-		"{__name__=\"process_cpu\", __delta__=\"false\", __otel__=\"true\", pyroscope_spy=\"unknown\", service_name=\"service-b\"}": "testdata/TestDifferentServiceNames_service_b_profile.json",
-		"{__name__=\"process_cpu\", __delta__=\"false\", __otel__=\"true\", pyroscope_spy=\"unknown\", service_name=\"unknown\"}":   "testdata/TestDifferentServiceNames_unknown_profile.json",
+		"{__delta__=\"false\", __name__=\"process_cpu\", __otel__=\"true\", service_name=\"service-a\"}":       "testdata/TestDifferentServiceNames_service_a_profile.json",
+		"{__delta__=\"false\", __name__=\"process_cpu\", __otel__=\"true\", service_name=\"service-b\"}":       "testdata/TestDifferentServiceNames_service_b_profile.json",
+		"{__delta__=\"false\", __name__=\"process_cpu\", __otel__=\"true\", service_name=\"unknown_service\"}": "testdata/TestDifferentServiceNames_unknown_profile.json",
 	}
 
-	for _, p := range profiles {
-		require.Equal(t, 1, len(p.Series))
-		series := phlaremodel.Labels(p.Series[0].Labels).ToPrometheusLabels().String()
+	for _, s := range profiles[0].Series {
+		series := phlaremodel.Labels(s.Labels).ToPrometheusLabels().String()
 		assert.Contains(t, expectedProfiles, series)
 		expectedJsonPath := expectedProfiles[series]
 		expectedJson := readJSONFile(t, expectedJsonPath)
 
-		gp := p.Series[0].Samples[0].Profile.Profile
+		gp := s.Samples[0].Profile.Profile
 
 		require.Equal(t, 1, len(gp.SampleType))
 		assert.Equal(t, "cpu", gp.StringTable[gp.SampleType[0].Type])

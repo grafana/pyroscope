@@ -27,13 +27,16 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	"github.com/prometheus/common/expfmt"
+
+	profilesv1 "go.opentelemetry.io/proto/otlp/collector/profiles/v1development"
+
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	profilesv1 "github.com/grafana/pyroscope/api/otlp/collector/profiles/v1development"
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/cfg"
 	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
@@ -42,28 +45,88 @@ import (
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
 )
 
-type PyroscopeTest struct {
-	config phlare.Config
-	it     *phlare.Phlare
-	wg     sync.WaitGroup
-	reg    prometheus.Registerer
+func EachPyroscopeTest(t *testing.T, f func(p *PyroscopeTest, t *testing.T)) {
+	tests := []struct {
+		name string
+		f    func(t *testing.T) *PyroscopeTest
+	}{
+		{
+			"v1",
+			func(t *testing.T) *PyroscopeTest {
+				return new(PyroscopeTest).Configure(t, false)
+			},
+		},
+		{
+			"v2",
+			func(t *testing.T) *PyroscopeTest {
+				return new(PyroscopeTest).Configure(t, true)
+			},
+		},
+	}
+	for _, pt := range tests {
+		t.Run(pt.name, func(t *testing.T) {
+			p := pt.f(t)
+			p.start(t)
+			t.Cleanup(func() {
+				p.stop()
+			})
+			f(p, t)
+		})
+	}
+}
 
+type PyroscopeTest struct {
+	config         phlare.Config
+	it             *phlare.Phlare
+	wg             sync.WaitGroup
+	prevReg        prometheus.Registerer
+	reg            *prometheus.Registry
 	httpPort       int
 	memberlistPort int
+	grpcPort       int
+	raftPort       int
 }
 
 const address = "127.0.0.1"
 const storeInMemory = "inmemory"
 
-func (p *PyroscopeTest) Start(t *testing.T) {
+func (p *PyroscopeTest) start(t *testing.T) {
+	var err error
 
-	ports, err := test.GetFreePorts(2)
+	p.it, err = phlare.New(p.config)
+
+	require.NoError(t, err)
+
+	p.wg.Add(1)
+	go func() {
+		defer p.wg.Done()
+		err := p.it.Run()
+		require.NoError(t, err)
+	}()
+	require.Eventually(t, func() bool {
+		return p.ringActive() && p.ready()
+	}, 30*time.Second, 100*time.Millisecond)
+}
+
+func (p *PyroscopeTest) Configure(t *testing.T, v2 bool) *PyroscopeTest {
+	ports, err := test.GetFreePorts(4)
 	require.NoError(t, err)
 	p.httpPort = ports[0]
 	p.memberlistPort = ports[1]
+	p.grpcPort = ports[2]
+	p.raftPort = ports[3]
+	t.Logf("ports: http %d memberlist %d grpc %d raft %d", p.httpPort, p.memberlistPort, p.grpcPort, p.raftPort)
 
-	p.reg = prometheus.DefaultRegisterer
-	prometheus.DefaultRegisterer = prometheus.NewRegistry()
+	p.prevReg = prometheus.DefaultRegisterer
+	p.reg = prometheus.NewRegistry()
+	prometheus.DefaultRegisterer = p.reg
+
+	if v2 {
+		err = os.Setenv("PYROSCOPE_V2_EXPERIMENT", "1")
+	} else {
+		err = os.Setenv("PYROSCOPE_V2_EXPERIMENT", "")
+	}
+	require.NoError(t, err)
 
 	err = cfg.DynamicUnmarshal(&p.config, []string{"pyroscope"}, flag.NewFlagSet("pyroscope", flag.ContinueOnError))
 	require.NoError(t, err)
@@ -72,6 +135,7 @@ func (p *PyroscopeTest) Start(t *testing.T) {
 	p.config.Server.HTTPListenAddress = address
 	p.config.Server.HTTPListenPort = p.httpPort
 	p.config.Server.GRPCListenAddress = address
+	p.config.Server.GRPCListenPort = p.grpcPort
 	p.config.Worker.SchedulerAddress = address
 	p.config.MemberlistKV.AdvertisePort = p.memberlistPort
 	p.config.MemberlistKV.TCPTransport.BindPort = p.memberlistPort
@@ -98,24 +162,31 @@ func (p *PyroscopeTest) Start(t *testing.T) {
 	p.config.LimitsConfig.MaxQueryLookback = 0
 	p.config.LimitsConfig.RejectOlderThan = 0
 	_ = p.config.Server.LogLevel.Set("debug")
-	p.it, err = phlare.New(p.config)
 
-	require.NoError(t, err)
-
-	p.wg.Add(1)
-	go func() {
-		defer p.wg.Done()
-		err := p.it.Run()
-		require.NoError(t, err)
-	}()
-	require.Eventually(t, func() bool {
-		return p.ringActive() && p.ready()
-	}, 30*time.Second, 100*time.Millisecond)
+	if v2 {
+		p.config.Storage.Bucket.Filesystem.Directory = t.TempDir()
+		p.config.Storage.Bucket.Backend = "filesystem"
+		p.config.LimitsConfig.WritePathOverrides.WritePath = "segment-writer"
+		p.config.LimitsConfig.ReadPathOverrides.EnableQueryBackend = true
+		p.config.SegmentWriter.LifecyclerConfig.MinReadyDuration = 0 * time.Second
+		p.config.SegmentWriter.LifecyclerConfig.Addr = address
+		p.config.SegmentWriter.MetadataUpdateTimeout = 0 * time.Second
+		p.config.Metastore.MinReadyDuration = 0 * time.Second
+		p.config.QueryBackend.Address = fmt.Sprintf("%s:%d", address, p.grpcPort)
+		p.config.Metastore.Address = fmt.Sprintf("%s:%d", address, p.grpcPort)
+		p.config.Metastore.Raft.ServerID = fmt.Sprintf("%s:%d", address, p.raftPort)
+		p.config.Metastore.Raft.BindAddress = fmt.Sprintf("%s:%d", address, p.raftPort)
+		p.config.Metastore.Raft.AdvertiseAddress = fmt.Sprintf("%s:%d", address, p.raftPort)
+		p.config.Metastore.Raft.Dir = t.TempDir()
+		p.config.Metastore.Raft.SnapshotsDir = t.TempDir()
+		p.config.Metastore.FSM.DataDir = t.TempDir()
+	}
+	return p
 }
 
-func (p *PyroscopeTest) Stop(t *testing.T) {
+func (p *PyroscopeTest) stop() {
 	defer func() {
-		prometheus.DefaultRegisterer = p.reg
+		prometheus.DefaultRegisterer = p.prevReg
 	}()
 	p.it.SignalHandler.Stop()
 	p.wg.Wait()
@@ -129,6 +200,26 @@ func (p *PyroscopeTest) ringActive() bool {
 }
 func (p *PyroscopeTest) URL() string {
 	return fmt.Sprintf("http://%s:%d", address, p.httpPort)
+}
+
+func (p *PyroscopeTest) Metrics(t testing.TB, keep func(string) bool) string {
+	dto, err := p.reg.Gather()
+	require.NoError(t, err)
+	gotBuf := bytes.NewBuffer(nil)
+	enc := expfmt.NewEncoder(gotBuf, expfmt.NewFormat(expfmt.TypeTextPlain))
+	for _, mf := range dto {
+		if err := enc.Encode(mf); err != nil {
+			require.NoError(t, err)
+		}
+	}
+	split := strings.Split(gotBuf.String(), "\n")
+	res := []string{}
+	for _, line := range split {
+		if keep(line) {
+			res = append(res, line)
+		}
+	}
+	return strings.Join(res, "\n")
 }
 
 func httpBodyContains(url string, needle string) bool {

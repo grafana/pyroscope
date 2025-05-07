@@ -14,6 +14,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
@@ -31,13 +32,14 @@ import (
 	"github.com/grafana/dskit/signals"
 	"github.com/grafana/dskit/spanprofiler"
 	wwtracing "github.com/grafana/dskit/tracing"
-	"github.com/grafana/pyroscope-go"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
 	"github.com/samber/lo"
 	"google.golang.org/grpc/health"
+
+	"github.com/grafana/pyroscope-go"
 
 	"github.com/grafana/pyroscope/pkg/api"
 	apiversion "github.com/grafana/pyroscope/pkg/api/version"
@@ -59,12 +61,13 @@ import (
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/operations"
-	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/querier"
 	"github.com/grafana/pyroscope/pkg/querier/worker"
 	"github.com/grafana/pyroscope/pkg/scheduler"
 	"github.com/grafana/pyroscope/pkg/scheduler/schedulerdiscovery"
+	"github.com/grafana/pyroscope/pkg/settings"
+	recordingrulesclient "github.com/grafana/pyroscope/pkg/settings/recording/client"
 	"github.com/grafana/pyroscope/pkg/storegateway"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/tracing"
@@ -90,9 +93,10 @@ type Config struct {
 	MemberlistKV      memberlist.KVConfig    `yaml:"memberlist"`
 	PhlareDB          phlaredb.Config        `yaml:"pyroscopedb,omitempty"`
 	Tracing           tracing.Config         `yaml:"tracing"`
-	OverridesExporter exporter.Config        `yaml:"overrides_exporter" doc:"hidden"`
+	OverridesExporter exporter.Config        `yaml:"overrides_exporter"      doc:"hidden"`
 	RuntimeConfig     runtimeconfig.Config   `yaml:"runtime_config"`
 	Compactor         compactor.Config       `yaml:"compactor"`
+	TenantSettings    settings.Config        `yaml:"tenant_settings"`
 
 	Storage       StorageConfig       `yaml:"storage"`
 	SelfProfiling SelfProfilingConfig `yaml:"self_profiling,omitempty"`
@@ -100,6 +104,7 @@ type Config struct {
 	MultitenancyEnabled bool              `yaml:"multitenancy_enabled,omitempty"`
 	Analytics           usagestats.Config `yaml:"analytics"`
 	ShowBanner          bool              `yaml:"show_banner,omitempty"`
+	ShutdownDelay       time.Duration     `yaml:"shutdown_delay,omitempty"`
 
 	EmbeddedGrafana grafana.Config `yaml:"embedded_grafana,omitempty"`
 
@@ -108,10 +113,10 @@ type Config struct {
 
 	// Experimental modules.
 	v2Experiment      bool
-	SegmentWriter     segmentwriter.Config     `yaml:"segment_writer" doc:"hidden"`
-	Metastore         metastore.Config         `yaml:"metastore" doc:"hidden"`
-	QueryBackend      querybackend.Config      `yaml:"query_backend" doc:"hidden"`
-	CompactionWorker  compactionworker.Config  `yaml:"compaction_worker" doc:"hidden"`
+	SegmentWriter     segmentwriter.Config     `yaml:"segment_writer"     doc:"hidden"`
+	Metastore         metastore.Config         `yaml:"metastore"          doc:"hidden"`
+	QueryBackend      querybackend.Config      `yaml:"query_backend"      doc:"hidden"`
+	CompactionWorker  compactionworker.Config  `yaml:"compaction_worker"  doc:"hidden"`
 	AdaptivePlacement adaptiveplacement.Config `yaml:"adaptive_placement" doc:"hidden"`
 }
 
@@ -126,8 +131,8 @@ type StorageConfig struct {
 	Bucket objstoreclient.Config `yaml:",inline"`
 }
 
-func (c *StorageConfig) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) {
-	c.Bucket.RegisterFlagsWithPrefix("storage.", f, phlarecontext.Logger(ctx))
+func (c *StorageConfig) RegisterFlags(f *flag.FlagSet) {
+	c.Bucket.RegisterFlagsWithPrefix("storage.", f)
 }
 
 type SelfProfilingConfig struct {
@@ -141,24 +146,45 @@ func (c *SelfProfilingConfig) RegisterFlags(f *flag.FlagSet) {
 	// these are values that worked well in OG Pyroscope Cloud without adding much overhead
 	f.IntVar(&c.MutexProfileFraction, "self-profiling.mutex-profile-fraction", 5, "")
 	f.IntVar(&c.BlockProfileRate, "self-profiling.block-profile-rate", 5, "")
-	f.BoolVar(&c.DisablePush, "self-profiling.disable-push", false, "When running in single binary (--target=all) Pyroscope will push (Go SDK) profiles to itself. Set to true to disable self-profiling.")
-	f.BoolVar(&c.UseK6Middleware, "self-profiling.use-k6-middleware", false, "Read k6 labels from request headers and set them as dynamic profile tags.")
+	f.BoolVar(
+		&c.DisablePush,
+		"self-profiling.disable-push",
+		false,
+		"When running in single binary (--target=all) Pyroscope will push (Go SDK) profiles to itself. Set to true to disable self-profiling.",
+	)
+	f.BoolVar(
+		&c.UseK6Middleware,
+		"self-profiling.use-k6-middleware",
+		false,
+		"Read k6 labels from request headers and set them as dynamic profile tags.",
+	)
 }
 
 func (c *Config) RegisterFlags(f *flag.FlagSet) {
-	c.RegisterFlagsWithContext(context.Background(), f)
+	c.RegisterFlagsWithContext(f)
 }
 
 // RegisterFlagsWithContext registers flag.
-func (c *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) {
+func (c *Config) RegisterFlagsWithContext(f *flag.FlagSet) {
 	// Set the default module list to 'all'
 	c.Target = []string{All}
 	f.StringVar(&c.ConfigFile, "config.file", "", "yaml file to load")
 	f.Var(&c.Target, "target", "Comma-separated list of Pyroscope modules to load. "+
 		"The alias 'all' can be used in the list to load a number of core modules and will enable single-binary mode. ")
-	f.BoolVar(&c.MultitenancyEnabled, "auth.multitenancy-enabled", false, "When set to true, incoming HTTP requests must specify tenant ID in HTTP X-Scope-OrgId header. When set to false, tenant ID anonymous is used instead.")
-	f.BoolVar(&c.ConfigExpandEnv, "config.expand-env", false, "Expands ${var} in config according to the values of the environment variables.")
+	f.BoolVar(
+		&c.MultitenancyEnabled,
+		"auth.multitenancy-enabled",
+		false,
+		"When set to true, incoming HTTP requests must specify tenant ID in HTTP X-Scope-OrgId header. When set to false, tenant ID anonymous is used instead.",
+	)
+	f.BoolVar(
+		&c.ConfigExpandEnv,
+		"config.expand-env",
+		false,
+		"Expands ${var} in config according to the values of the environment variables.",
+	)
 	f.BoolVar(&c.ShowBanner, "config.show_banner", true, "Prints the application banner at startup.")
+	f.DurationVar(&c.ShutdownDelay, "shutdown-delay", 0, "Wait time before shutting down after a termination signal.")
 
 	c.registerServerFlagsWithChangedDefaultValues(f)
 	c.MemberlistKV.RegisterFlags(f)
@@ -166,7 +192,6 @@ func (c *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) 
 	c.StoreGateway.RegisterFlags(f, util.Logger)
 	c.PhlareDB.RegisterFlags(f)
 	c.Tracing.RegisterFlags(f)
-	c.Storage.RegisterFlagsWithContext(ctx, f)
 	c.SelfProfiling.RegisterFlags(f)
 	c.RuntimeConfig.RegisterFlags(f)
 	c.Analytics.RegisterFlags(f)
@@ -174,6 +199,7 @@ func (c *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) 
 	c.Compactor.RegisterFlags(f, log.NewLogfmtLogger(os.Stderr))
 	c.API.RegisterFlags(f)
 	c.EmbeddedGrafana.RegisterFlags(f)
+	c.TenantSettings.RegisterFlags(f)
 }
 
 // registerServerFlagsWithChangedDefaultValues registers *Config.Server flags, but overrides some defaults set by the dskit package.
@@ -182,6 +208,7 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 
 	// Register to throwaway flags first. Default values are remembered during registration and cannot be changed,
 	// but we can take values from throwaway flag set and reregister into supplied flags with new default values.
+	c.Storage.RegisterFlags(throwaway)
 	c.Server.RegisterFlags(throwaway)
 	c.Ingester.RegisterFlags(throwaway)
 	c.Distributor.RegisterFlags(throwaway, log.NewLogfmtLogger(os.Stderr))
@@ -199,14 +226,19 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 	c.v2Experiment = os.Getenv("PYROSCOPE_V2_EXPERIMENT") != ""
 	if c.v2Experiment {
 		for k, v := range map[string]string{
-			"server.grpc-max-recv-msg-size-bytes":               "104857600",
-			"server.grpc-max-send-msg-size-bytes":               "104857600",
-			"server.grpc.keepalive.min-time-between-pings":      "1s",
-			"segment-writer.grpc-client-config.connect-timeout": "1s",
-			"segment-writer.num-tokens":                         "4",
-			"segment-writer.heartbeat-timeout":                  "1m",
-			"segment-writer.unregister-on-shutdown":             "false",
-			"segment-writer.min-ready-duration":                 "30s",
+			"server.grpc-max-recv-msg-size-bytes":                    "104857600",
+			"server.grpc-max-send-msg-size-bytes":                    "104857600",
+			"server.grpc.keepalive.min-time-between-pings":           "1s",
+			"segment-writer.grpc-client-config.connect-timeout":      "1s",
+			"segment-writer.num-tokens":                              "4",
+			"segment-writer.heartbeat-timeout":                       "1m",
+			"segment-writer.unregister-on-shutdown":                  "false",
+			"segment-writer.min-ready-duration":                      "30s",
+			"storage.s3.http.idle-conn-timeout":                      "10m",
+			"storage.s3.max-idle-connections-per-host":               "1000",
+			"storage.gcs.http.idle-conn-timeout":                     "10m",
+			"storage.gcs.max-idle-connections-per-host":              "1000",
+			"compaction-worker.metrics-exporter.rules-source.static": "[]",
 		} {
 			overrides[k] = v
 		}
@@ -219,6 +251,7 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 		c.LimitsConfig.WritePathOverrides.RegisterFlags(throwaway)
 		c.LimitsConfig.ReadPathOverrides.RegisterFlags(throwaway)
 		c.LimitsConfig.AdaptivePlacementLimits.RegisterFlags(throwaway)
+		c.LimitsConfig.RecordingRules.RegisterFlags(throwaway)
 	}
 
 	throwaway.VisitAll(func(f *flag.Flag) {
@@ -234,10 +267,48 @@ func (c *Config) Validate() error {
 	if len(c.Target) == 0 {
 		return errors.New("no modules specified")
 	}
+
+	if err := c.Frontend.Validate(); err != nil {
+		return err
+	}
+
+	if err := c.Worker.Validate(util.Logger); err != nil {
+		return err
+	}
+
+	if err := c.LimitsConfig.Validate(); err != nil {
+		return err
+	}
+
+	if err := c.QueryScheduler.Validate(); err != nil {
+		return err
+	}
+
+	if err := c.Ingester.Validate(); err != nil {
+		return err
+	}
+
+	if err := c.StoreGateway.Validate(c.LimitsConfig); err != nil {
+		return err
+	}
+
+	if err := c.OverridesExporter.Validate(); err != nil {
+		return err
+	}
+
 	if err := c.Compactor.Validate(c.PhlareDB.MaxBlockDuration); err != nil {
 		return err
 	}
-	return c.Ingester.Validate()
+
+	if err := c.Storage.Bucket.Validate(util.Logger); err != nil {
+		return err
+	}
+
+	if err := c.TenantSettings.Validate(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c *Config) ApplyDynamicConfig() cfg.Source {
@@ -264,8 +335,8 @@ func (c *Config) Clone() flagext.Registerer {
 
 type Phlare struct {
 	Cfg    Config
-	logger log.Logger
 	reg    prometheus.Registerer
+	logger *logger
 	tracer io.Closer
 
 	ModuleManager *modules.Manager
@@ -296,17 +367,18 @@ type Phlare struct {
 	frontend *frontend.Frontend
 
 	// Experimental modules.
-	segmentWriter       *segmentwriter.SegmentWriterService
-	segmentWriterClient *segmentwriterclient.Client
-	segmentWriterRing   *ring.Ring
-	placementAgent      *adaptiveplacement.Agent
-	placementManager    *adaptiveplacement.Manager
-	metastore           *metastore.Metastore
-	metastoreClient     *metastoreclient.Client
-	metastoreAdmin      *metastoreadmin.Admin
-	queryBackendClient  *querybackendclient.Client
-	compactionWorker    *compactionworker.Worker
-	healthServer        *health.Server
+	segmentWriter        *segmentwriter.SegmentWriterService
+	segmentWriterClient  *segmentwriterclient.Client
+	segmentWriterRing    *ring.Ring
+	placementAgent       *adaptiveplacement.Agent
+	placementManager     *adaptiveplacement.Manager
+	metastore            *metastore.Metastore
+	metastoreClient      *metastoreclient.Client
+	metastoreAdmin       *metastoreadmin.Admin
+	queryBackendClient   *querybackendclient.Client
+	compactionWorker     *compactionworker.Worker
+	healthServer         *health.Server
+	recordingRulesClient *recordingrulesclient.Client
 }
 
 func New(cfg Config) (*Phlare, error) {
@@ -381,7 +453,18 @@ func (f *Phlare) setupModuleManager() error {
 
 	// Add dependencies
 	deps := map[string][]string{
-		All: {Ingester, Distributor, QueryFrontend, QueryScheduler, Querier, StoreGateway, Compactor, Admin, TenantSettings, AdHocProfiles},
+		All: {
+			Ingester,
+			Distributor,
+			QueryFrontend,
+			QueryScheduler,
+			Querier,
+			StoreGateway,
+			Compactor,
+			Admin,
+			TenantSettings,
+			AdHocProfiles,
+		},
 
 		Server:            {GRPCGateway},
 		API:               {Server},
@@ -411,7 +494,7 @@ func (f *Phlare) setupModuleManager() error {
 			SegmentWriter:       {Overrides, API, MemberlistKV, Storage, UsageReport, MetastoreClient},
 			Metastore:           {Overrides, API, MetastoreClient, Storage, PlacementManager},
 			MetastoreAdmin:      {API, MetastoreClient},
-			CompactionWorker:    {Overrides, API, Storage, MetastoreClient},
+			CompactionWorker:    {Overrides, API, Storage, MetastoreClient, RecordingRulesClient},
 			QueryBackend:        {Overrides, API, Storage, QueryBackendClient},
 			SegmentWriterRing:   {Overrides, API, MemberlistKV},
 			SegmentWriterClient: {Overrides, API, SegmentWriterRing, PlacementAgent},
@@ -441,6 +524,7 @@ func (f *Phlare) setupModuleManager() error {
 		mm.RegisterModule(PlacementAgent, f.initPlacementAgent, modules.UserInvisibleModule)
 		mm.RegisterModule(PlacementManager, f.initPlacementManager, modules.UserInvisibleModule)
 		mm.RegisterModule(HealthServer, f.initHealthServer, modules.UserInvisibleModule)
+		mm.RegisterModule(RecordingRulesClient, f.initRecordingRulesClient, modules.UserInvisibleModule)
 	}
 
 	for mod, targets := range deps {
@@ -540,7 +624,8 @@ func (f *Phlare) Run() error {
 		for m, s := range serviceMap {
 			if s == service {
 				if service.FailureCase() == modules.ErrStopProcess {
-					level.Info(f.logger).Log("msg", "received stop signal via return error", "module", m, "error", service.FailureCase())
+					level.Info(f.logger).
+						Log("msg", "received stop signal via return error", "module", m, "error", service.FailureCase())
 				} else {
 					level.Error(f.logger).Log("msg", "module failed", "module", m, "error", service.FailureCase())
 				}
@@ -557,6 +642,10 @@ func (f *Phlare) Run() error {
 	f.SignalHandler = signals.NewHandler(f.Server.Log)
 	go func() {
 		f.SignalHandler.Loop()
+		if f.Cfg.ShutdownDelay > 0 {
+			level.Info(f.logger).Log("msg", "shutdown delayed", "delay", f.Cfg.ShutdownDelay)
+			time.Sleep(f.Cfg.ShutdownDelay)
+		}
 		sm.StopAsync()
 	}()
 
@@ -613,12 +702,20 @@ func (f *Phlare) readyHandler(sm *services.Manager) http.HandlerFunc {
 			return
 		}
 
+		if f.metastore != nil {
+			if err := f.metastore.CheckReady(r.Context()); err != nil {
+				http.Error(w, "Metastore not ready: "+err.Error(), http.StatusServiceUnavailable)
+				return
+			}
+		}
+
 		if f.ingester != nil {
 			if err := f.ingester.CheckReady(r.Context()); err != nil {
 				http.Error(w, "Ingester not ready: "+err.Error(), http.StatusServiceUnavailable)
 				return
 			}
 		}
+
 		if f.segmentWriter != nil {
 			if err := f.segmentWriter.CheckReady(r.Context()); err != nil {
 				http.Error(w, "Segment Writer not ready: "+err.Error(), http.StatusServiceUnavailable)
@@ -652,19 +749,31 @@ func (f *Phlare) stopped() {
 			level.Error(f.logger).Log("msg", "error closing tracing", "err", err)
 		}
 	}
+	if err := f.logger.w.Close(); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "error closing log writer: %v\n", err)
+	}
 }
 
-func initLogger(logFormat string, logLevel dslog.Level) log.Logger {
-	writer := log.NewSyncWriter(os.Stderr)
-	logger := dslog.NewGoKitWithWriter(logFormat, writer)
+func initLogger(logFormat string, logLevel dslog.Level) *logger {
+	w := util.NewAsyncWriter(os.Stderr, // Flush after:
+		256<<10, 20, // 256KiB buffer is full (keep 20 buffers).
+		1<<10, // 1K writes or 100ms.
+		100*time.Millisecond,
+	)
 
-	// use UTC timestamps and skip 5 stack frames.
-	logger = log.With(logger, "ts", log.DefaultTimestampUTC, "caller", log.Caller(5))
+	// Use UTC timestamps and skip 5 stack frames.
+	l := dslog.NewGoKitWithWriter(logFormat, w)
+	l = log.With(l, "ts", log.DefaultTimestampUTC, "caller", log.Caller(5))
 
 	// Must put the level filter last for efficiency.
-	logger = level.NewFilter(logger, logLevel.Option)
+	l = level.NewFilter(l, logLevel.Option)
 
-	return logger
+	return &logger{w: w, Logger: l}
+}
+
+type logger struct {
+	w io.WriteCloser
+	log.Logger
 }
 
 func (f *Phlare) initAPI() (services.Service, error) {

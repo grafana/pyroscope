@@ -19,20 +19,17 @@ var (
 	settingsFilename = "tenant_settings.json"
 )
 
-// NewMemoryStore will create a settings store with an in-memory objstore
-// bucket.
-func NewMemoryStore() (Store, error) {
-	return NewBucketStore(objstore.NewInMemBucket())
+// newMemoryStore will create a settings store with an in-memory bucket.
+func newMemoryStore() store {
+	return newBucketStore(objstore.NewInMemBucket())
 }
 
 // NewBucketStore will create a settings store with an objstore bucket.
-func NewBucketStore(bucket objstore.Bucket) (Store, error) {
-	store := &bucketStore{
+func newBucketStore(bucket objstore.Bucket) store {
+	return &bucketStore{
 		store:  make(map[string]map[string]*settingsv1.Setting),
 		bucket: bucket,
 	}
-
-	return store, nil
 }
 
 type bucketStore struct {
@@ -93,6 +90,39 @@ func (s *bucketStore) Set(ctx context.Context, tenantID string, setting *setting
 	}
 
 	return setting, nil
+}
+
+func (s *bucketStore) Delete(ctx context.Context, tenantID string, name string, modifiedAtMs int64) error {
+	s.rw.Lock()
+	defer s.rw.Unlock()
+
+	err := s.unsafeLoad(ctx)
+	if err != nil {
+		return err
+	}
+
+	tenantSettings, ok := s.store[tenantID]
+	if !ok {
+		return nil
+	}
+
+	setting, ok := tenantSettings[name]
+	if !ok {
+		return nil
+	}
+
+	if setting.ModifiedAt > modifiedAtMs {
+		return errors.Wrapf(oldSettingErr, "failed to delete %s", name)
+	}
+
+	delete(tenantSettings, name)
+
+	err = s.unsafeFlush(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *bucketStore) Flush(ctx context.Context) error {

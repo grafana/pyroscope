@@ -45,25 +45,25 @@ func (i *Ingester) BlockMetadata(ctx context.Context, req *connect.Request[inges
 }
 
 func (i *Ingester) MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesStacktracesRequest, ingestv1.MergeProfilesStacktracesResponse]) error {
-	return i.forInstance(ctx, func(instance *instance) error {
+	return forInstanceStream(ctx, i, stream, func(instance *instance) error {
 		return instance.MergeProfilesStacktraces(ctx, stream)
 	})
 }
 
 func (i *Ingester) MergeProfilesLabels(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesLabelsRequest, ingestv1.MergeProfilesLabelsResponse]) error {
-	return i.forInstance(ctx, func(instance *instance) error {
+	return forInstanceStream(ctx, i, stream, func(instance *instance) error {
 		return instance.MergeProfilesLabels(ctx, stream)
 	})
 }
 
 func (i *Ingester) MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesPprofRequest, ingestv1.MergeProfilesPprofResponse]) error {
-	return i.forInstance(ctx, func(instance *instance) error {
+	return forInstanceStream(ctx, i, stream, func(instance *instance) error {
 		return instance.MergeProfilesPprof(ctx, stream)
 	})
 }
 
 func (i *Ingester) MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeSpanProfileRequest, ingestv1.MergeSpanProfileResponse]) error {
-	return i.forInstance(ctx, func(instance *instance) error {
+	return forInstanceStream(ctx, i, stream, func(instance *instance) error {
 		return instance.MergeSpanProfile(ctx, stream)
 	})
 }

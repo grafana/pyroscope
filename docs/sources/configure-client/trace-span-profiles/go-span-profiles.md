@@ -30,7 +30,7 @@ This integration lets you link traces with the profiling data and find resource 
 
 To use Span Profiles, you need to:
 
-* [Configure Pyroscope to send profiling data]({{< relref "../../configure-client" >}})
+* [Configure Pyroscope to send profiling data](../../)
 * Configure a client-side package to link traces and profiles: [Go](https://github.com/grafana/otel-profiling-go)
 * [Configure the Tempo data source in Grafana or Grafana Cloud to discover linked traces and profiles](/docs/grafana-cloud/connect-externally-hosted/data-sources/tempo/configure-tempo-data-source/)
 
@@ -38,7 +38,7 @@ To use Span Profiles, you need to:
 
 Your applications must be instrumented for profiling and tracing before you can use span profiles.
 
-* Profiling: Your application must be instrumented with Pyroscope's Go SDK. If you haven't done this yet, please refer to the [Go (push mode)]({{< relref "../language-sdks/go_push" >}}) guide.
+* Profiling: Your application must be instrumented with Pyroscope's Go SDK. If you haven't done this yet, please refer to the [Go (push mode)](../../language-sdks/go_push/) guide.
 * Tracing: Your application must be instrumented with OpenTelemetry traces. If you haven't done this yet, please refer to the [OpenTelemetry](https://opentelemetry.io/docs/languages/go/getting-started/) guide.
 
 ## Configure the `otel-profiling-go` package
@@ -92,7 +92,7 @@ defer span.End()
 To view the span profiles in Grafana Tempo, you need to have a Grafana instance with a Tempo data source configured to link trace spans and profiles.
 Refer to the configuration documentation for [Grafana](/docs/grafana/<GRAFANA_VERSION>/datasources/tempo/configure-tempo-data-source) or [Grafana Cloud](/docs/grafana-cloud/connect-externally-hosted/data-sources/tempo/configure-tempo-data-source).
 
-To learn how to set up Traces to profiles and view the span profiles, refer to [Traces to profiles]({{< relref "../../view-and-analyze-profile-data/profile-tracing/traces-to-profiles" >}}).
+To learn how to set up Traces to profiles and view the span profiles, refer to [Traces to profiles](../../../view-and-analyze-profile-data/traces-to-profiles/).
 
 
 ## Examples

@@ -23,7 +23,7 @@ type PlacementStats interface {
 }
 
 type IndexBlockFinder interface {
-	FindBlocks(*bbolt.Tx, *metastorev1.BlockList) ([]*metastorev1.BlockMeta, error)
+	GetBlocks(*bbolt.Tx, *metastorev1.BlockList) ([]*metastorev1.BlockMeta, error)
 }
 
 func NewIndexService(
@@ -77,7 +77,7 @@ func (svc *IndexService) addBlockMetadata(
 ) (*metastorev1.AddBlockResponse, error) {
 	if err := metadata.Sanitize(req.Block); err != nil {
 		level.Warn(svc.logger).Log("invalid metadata", "block", req.Block.Id, "err", err)
-		return nil, err
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	_, err := svc.raft.Propose(
 		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_ADD_BLOCK_METADATA),
@@ -104,7 +104,7 @@ func (svc *IndexService) GetBlockMetadata(
 }
 
 func (svc *IndexService) getBlockMetadata(tx *bbolt.Tx, list *metastorev1.BlockList) (*metastorev1.GetBlockMetadataResponse, error) {
-	found, err := svc.index.FindBlocks(tx, list)
+	found, err := svc.index.GetBlocks(tx, list)
 	if err != nil {
 		return nil, err
 	}

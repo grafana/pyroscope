@@ -1,13 +1,17 @@
 package pprof
 
 import (
-	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
-	"github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/stretchr/testify/assert"
 	"testing"
 
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	"github.com/grafana/pyroscope/api/model/labelset"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
 	"github.com/grafana/pyroscope/pkg/og/ingestion"
+	"github.com/grafana/pyroscope/pkg/og/storage/tree"
+	"github.com/grafana/pyroscope/pkg/pprof"
+
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -70,12 +74,86 @@ func TestFixFunctionNamesForScriptingLanguages(t *testing.T) {
 
 	collapsed := bench.StackCollapseProto(profile.Profile, 0, 1)
 	expected := []string{
-		"qwe.py:242 - main;qwe.py:50 - func1 10",
-		"qwe.py:242 - main;qwe.py:8 - func2 13",
+		"qwe.py main;qwe.py func1 10",
+		"qwe.py main;qwe.py func2 13",
 	}
 	assert.Equal(t, expected, collapsed)
 
-	assert.Equal(t, "qwe.py:242 - main", functionNameFromLocation(profile.Location[0].Id))
-	assert.Equal(t, "qwe.py:50 - func1", functionNameFromLocation(profile.Location[1].Id))
-	assert.Equal(t, "qwe.py:8 - func2", functionNameFromLocation(profile.Location[2].Id))
+	assert.Equal(t, "qwe.py main", functionNameFromLocation(profile.Location[0].Id))
+	assert.Equal(t, "qwe.py func1", functionNameFromLocation(profile.Location[1].Id))
+	assert.Equal(t, "qwe.py func2", functionNameFromLocation(profile.Location[2].Id))
+}
+
+func TestCreateLabels(t *testing.T) {
+	testCases := []struct {
+		name                string
+		labelMap            map[string]string
+		expectedServiceName string
+	}{
+		{
+			name: "with existing service_name",
+			labelMap: map[string]string{
+				"service_name": "existing-service",
+				"region":       "us-west",
+			},
+			expectedServiceName: "existing-service",
+		},
+		{
+			name: "without service_name uses __name__ value",
+			labelMap: map[string]string{
+				"region":   "us-west",
+				"__name__": "test-service",
+			},
+			expectedServiceName: "test-service",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			p := RawProfile{
+				SampleTypeConfig: map[string]*tree.SampleTypeConfig{
+					"samples": {
+						DisplayName: "samples",
+						Units:       "count",
+					},
+				},
+			}
+
+			// Create a proper pprof.Profile with sample types
+			profile := &pprof.Profile{
+				Profile: &profilev1.Profile{
+					SampleType: []*profilev1.ValueType{
+						{
+							Type: 1,
+							Unit: 2,
+						},
+					},
+					StringTable: []string{"", "samples", "count"},
+				},
+			}
+
+			// Create metadata with LabelSet
+			md := ingestion.Metadata{
+				LabelSet: labelset.New(tc.labelMap),
+				SpyName:  "test-spy",
+			}
+
+			// Call createLabels
+			labels := p.createLabels(profile, md)
+
+			// Convert labels to a map for easier checking
+			labelMap := make(map[string]string)
+			for _, label := range labels {
+				labelMap[label.Name] = label.Value
+			}
+
+			// Check that service_name has the expected value
+			assert.Equal(t, tc.expectedServiceName, labelMap["service_name"], "service_name should have the expected value")
+
+			// Check that required labels are present
+			assert.Contains(t, labelMap, "__name__", "Should contain __name__ label")
+			assert.Contains(t, labelMap, phlaremodel.LabelNameDelta, "Should contain delta label")
+			assert.Contains(t, labelMap, phlaremodel.LabelNamePyroscopeSpy, "Should contain spy label")
+		})
+	}
 }

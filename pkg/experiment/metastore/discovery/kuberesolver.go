@@ -2,13 +2,18 @@ package discovery
 
 import (
 	"fmt"
-	"github.com/go-kit/log"
-	kuberesolver2 "github.com/grafana/pyroscope/pkg/experiment/metastore/discovery/kuberesolver"
-	"github.com/hashicorp/raft"
-	"google.golang.org/grpc/resolver"
+	"net"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
+	"github.com/hashicorp/raft"
+	"google.golang.org/grpc/resolver"
+
+	kuberesolver2 "github.com/grafana/pyroscope/pkg/experiment/metastore/discovery/kuberesolver"
 )
 
 type KubeDiscovery struct {
@@ -37,7 +42,7 @@ func NewKubeResolverDiscovery(l log.Logger, target string, client kuberesolver2.
 	if err != nil {
 		return nil, err
 	}
-	l.Log("msg", "parsed target", "target_namespace", ti.namespace, "target_service", ti.service, "target_port", ti.port)
+	level.Info(l).Log("msg", "parsed target", "target_namespace", ti.namespace, "target_service", ti.service, "target_port", ti.port)
 
 	res := &KubeDiscovery{
 		l:  l,
@@ -77,7 +82,7 @@ func (g *KubeDiscovery) Close() {
 func (g *KubeDiscovery) resolved(e kuberesolver2.Endpoints) {
 	for _, subset := range e.Subsets {
 		for _, addr := range subset.Addresses {
-			g.l.Log("msg", "resolved", "ip", addr.IP, "targetRef", fmt.Sprintf("%+v", addr.TargetRef))
+			level.Debug(g.l).Log("msg", "resolved", "ip", addr.IP, "targetRef", fmt.Sprintf("%+v", addr.TargetRef))
 		}
 	}
 	g.updLock.Lock()
@@ -97,10 +102,10 @@ func convertEndpoints(e kuberesolver2.Endpoints, ti targetInfo) []Server {
 					continue
 				}
 				podName := addr.TargetRef.Name
-				raftServerId := fmt.Sprintf("%s.%s.%s:%d", podName, ti.service, ti.namespace, port.Port)
+				raftServerId := fmt.Sprintf("%s.%s.%s.svc.cluster.local.:%d", podName, ti.service, ti.namespace, port.Port)
 
 				servers = append(servers, Server{
-					ResolvedAddress: fmt.Sprintf("%s:%d", addr.IP, port.Port),
+					ResolvedAddress: net.JoinHostPort(addr.IP, strconv.Itoa(port.Port)),
 					Raft: raft.Server{
 						ID:      raft.ServerID(raftServerId),
 						Address: raft.ServerAddress(raftServerId),

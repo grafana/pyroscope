@@ -24,7 +24,9 @@ import (
 )
 
 type Config struct {
-	Dir string `yaml:"dir"`
+	Dir                string `yaml:"dir"`
+	SnapshotsDir       string `yaml:"snapshots_dir" doc:"hidden"`
+	SnapshotsImportDir string `yaml:"snapshots_import_dir" doc:"hidden"`
 
 	BootstrapPeers       []string `yaml:"bootstrap_peers"`
 	BootstrapExpectPeers int      `yaml:"bootstrap_expect_peers"`
@@ -47,6 +49,9 @@ type Config struct {
 }
 
 const (
+	defaultRaftDir      = "./data-metastore/raft"
+	defaultSnapshotsDir = defaultRaftDir
+
 	defaultWALCacheEntries       = 512
 	defaultTrailingLogs          = 18 << 10
 	defaultSnapshotsRetain       = 3
@@ -57,7 +62,9 @@ const (
 )
 
 func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
-	f.StringVar(&cfg.Dir, prefix+"dir", "./data-metastore/raft", "")
+	f.StringVar(&cfg.Dir, prefix+"dir", defaultRaftDir, "Directory to store WAL and raft state. It must be a persistent directory, not a tmpfs or similar.")
+	f.StringVar(&cfg.SnapshotsDir, prefix+"snapshots-dir", defaultSnapshotsDir, "Directory to store FSM snapshots. Raft creates 'snapshots' subdirectory in this directory. It must be a persistent directory, not a tmpfs or similar.")
+	f.StringVar(&cfg.SnapshotsImportDir, prefix+"snapshots-import-dir", "", "Directory to import snapshots from; the directory must contain 'snapshots' subdirectory. If not set, no import will be done.")
 
 	f.Var((*flagext.StringSlice)(&cfg.BootstrapPeers), prefix+"bootstrap-peers", "")
 	f.IntVar(&cfg.BootstrapExpectPeers, prefix+"bootstrap-expect-peers", 1, "Expected number of peers including the local node.")
@@ -188,7 +195,10 @@ func (n *Node) openStore() (err error) {
 	if err != nil {
 		return fmt.Errorf("failed to open WAL: %w", err)
 	}
-	n.snapshots, err = raft.NewFileSnapshotStore(n.config.Dir, int(n.config.SnapshotsRetain), os.Stderr)
+	if err = n.importSnapshots(); err != nil {
+		return fmt.Errorf("failed to copy snapshots: %w", err)
+	}
+	n.snapshots, err = raft.NewFileSnapshotStore(n.config.SnapshotsDir, int(n.config.SnapshotsRetain), os.Stderr)
 	if err != nil {
 		return fmt.Errorf("failed to open shapshot store: %w", err)
 	}
@@ -204,7 +214,8 @@ func (n *Node) createDirs() (err error) {
 	if err = os.MkdirAll(n.walDir, 0755); err != nil {
 		return fmt.Errorf("WAL dir: %w", err)
 	}
-	if err = os.MkdirAll(n.config.Dir, 0755); err != nil {
+	// Raft will create 'snapshots' subdirectory in the SnapshotsDir.
+	if err = os.MkdirAll(n.config.SnapshotsDir, 0755); err != nil {
 		return fmt.Errorf("snapshot directory: %w", err)
 	}
 	return nil

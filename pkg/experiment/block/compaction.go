@@ -1,10 +1,11 @@
 package block
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
-	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
@@ -18,9 +19,9 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
+	memindex "github.com/grafana/pyroscope/pkg/experiment/ingester/memdb/index"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/objstore"
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 	"github.com/grafana/pyroscope/pkg/util"
@@ -51,11 +52,24 @@ func WithCompactionDestination(storage objstore.Bucket) CompactionOption {
 	}
 }
 
+func WithSampleObserver(observer SampleObserver) CompactionOption {
+	return func(p *compactionConfig) {
+		p.sampleObserver = observer
+	}
+}
+
 type compactionConfig struct {
-	objectOptions []ObjectOption
-	tempdir       string
-	source        objstore.BucketReader
-	destination   objstore.Bucket
+	objectOptions  []ObjectOption
+	source         objstore.BucketReader
+	destination    objstore.Bucket
+	tempdir        string
+	sampleObserver SampleObserver
+}
+
+type SampleObserver interface {
+	// Observe is called before the compactor appends the entry
+	// to the output block. This method must not modify the entry.
+	Observe(ProfileEntry)
 }
 
 func Compact(
@@ -65,9 +79,9 @@ func Compact(
 	options ...CompactionOption,
 ) (m []*metastorev1.BlockMeta, err error) {
 	c := &compactionConfig{
-		tempdir:     os.TempDir(),
 		source:      storage,
 		destination: storage,
+		tempdir:     os.TempDir(),
 	}
 	for _, option := range options {
 		option(c)
@@ -80,15 +94,15 @@ func Compact(
 	}
 
 	if err = objects.Open(ctx); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("objects.Open: %w", err)
 	}
 	defer func() {
-		err = multierror.New(err, objects.Close()).Err()
+		_ = objects.Close()
 	}()
 
 	compacted := make([]*metastorev1.BlockMeta, 0, len(plan))
 	for _, p := range plan {
-		md, compactionErr := p.Compact(ctx, c.destination, c.tempdir)
+		md, compactionErr := p.Compact(ctx, c.destination, c.tempdir, c.sampleObserver)
 		if compactionErr != nil {
 			return nil, compactionErr
 		}
@@ -117,20 +131,25 @@ func PlanCompaction(objects Objects) ([]*CompactionPlan, error) {
 	g := NewULIDGenerator(objects)
 	m := make(map[string]*CompactionPlan)
 	for _, obj := range objects {
-		for _, s := range obj.meta.Datasets {
-			tm, ok := m[obj.meta.StringTable[s.Tenant]]
+		for _, ds := range obj.meta.Datasets {
+			if ds.Name == 0 {
+				// Anonymous dataset is never compacted:
+				// it is rebuilt based on the actual block contents.
+				continue
+			}
+			tm, ok := m[obj.meta.StringTable[ds.Tenant]]
 			if !ok {
 				tm = newBlockCompaction(
 					g.ULID().String(),
-					obj.meta.StringTable[s.Tenant],
+					obj.meta.StringTable[ds.Tenant],
 					r.meta.Shard,
 					level,
 				)
-				m[obj.meta.StringTable[s.Tenant]] = tm
+				m[obj.meta.StringTable[ds.Tenant]] = tm
 			}
 			// Bind objects to datasets.
-			sm := tm.addDataset(obj.meta, s)
-			sm.append(NewDataset(s, obj))
+			sm := tm.addDataset(obj.meta, ds)
+			sm.append(NewDataset(ds, obj))
 		}
 	}
 
@@ -149,12 +168,13 @@ func PlanCompaction(objects Objects) ([]*CompactionPlan, error) {
 }
 
 type CompactionPlan struct {
-	tenant     string
-	path       string
-	datasetMap map[int32]*datasetCompaction
-	datasets   []*datasetCompaction
-	meta       *metastorev1.BlockMeta
-	strings    *metadata.StringTable
+	tenant       string
+	path         string
+	datasetMap   map[int32]*datasetCompaction
+	datasets     []*datasetCompaction
+	meta         *metastorev1.BlockMeta
+	strings      *metadata.StringTable
+	datasetIndex *datasetIndexWriter
 }
 
 func newBlockCompaction(
@@ -164,9 +184,10 @@ func newBlockCompaction(
 	compactionLevel uint32,
 ) *CompactionPlan {
 	p := &CompactionPlan{
-		tenant:     tenant,
-		datasetMap: make(map[int32]*datasetCompaction),
-		strings:    metadata.NewStringTable(),
+		tenant:       tenant,
+		datasetMap:   make(map[int32]*datasetCompaction),
+		strings:      metadata.NewStringTable(),
+		datasetIndex: newDatasetIndexWriter(),
 	}
 	p.path = BuildObjectPath(tenant, shard, compactionLevel, id)
 	p.meta = &metastorev1.BlockMeta{
@@ -179,24 +200,70 @@ func newBlockCompaction(
 	return p
 }
 
-func (b *CompactionPlan) Compact(ctx context.Context, dst objstore.Bucket, tmpdir string) (m *metastorev1.BlockMeta, err error) {
-	w := NewBlockWriter(dst, b.path, tmpdir)
+func (b *CompactionPlan) Compact(
+	ctx context.Context,
+	dst objstore.Bucket,
+	tempdir string,
+	observer SampleObserver,
+) (m *metastorev1.BlockMeta, err error) {
+	w, err := NewBlockWriter(tempdir)
+	if err != nil {
+		return nil, fmt.Errorf("creating block writer: %w", err)
+	}
 	defer func() {
-		err = multierror.New(err, w.Close()).Err()
+		_ = w.Close()
 	}()
+
 	// Datasets are compacted in a strict order.
-	for _, s := range b.datasets {
+	for i, s := range b.datasets {
+		b.datasetIndex.setIndex(uint32(i))
+		s.registerSampleObserver(observer)
 		if err = s.compact(ctx, w); err != nil {
 			return nil, fmt.Errorf("compacting block: %w", err)
 		}
 		b.meta.Datasets = append(b.meta.Datasets, s.meta)
 	}
-	if err = w.Flush(ctx); err != nil {
-		return nil, fmt.Errorf("flushing block writer: %w", err)
+	if err = b.writeDatasetIndex(w); err != nil {
+		return nil, fmt.Errorf("writing tenant index: %w", err)
+	}
+	b.meta.StringTable = b.strings.Strings
+	b.meta.MetadataOffset = w.Offset()
+	if err = metadata.Encode(w, b.meta); err != nil {
+		return nil, fmt.Errorf("writing metadata: %w", err)
 	}
 	b.meta.Size = w.Offset()
-	b.meta.StringTable = b.strings.Strings
+	if err = w.Upload(ctx, dst, b.path); err != nil {
+		return nil, fmt.Errorf("uploading block: %w", err)
+	}
 	return b.meta, nil
+}
+
+func (b *CompactionPlan) writeDatasetIndex(w *Writer) error {
+	if err := b.datasetIndex.Flush(); err != nil {
+		return err
+	}
+	off := w.Offset()
+	n, err := io.Copy(w, bytes.NewReader(b.datasetIndex.buf))
+	if err != nil {
+		return err
+	}
+	// We annotate the dataset with the
+	// __tenant_dataset__ = "dataset_tsdb_index" label,
+	// so the dataset index metadata can be queried.
+	labels := metadata.NewLabelBuilder(b.strings).
+		WithLabelSet(metadata.LabelNameTenantDataset, metadata.LabelValueDatasetTSDBIndex).
+		Build()
+	b.meta.Datasets = append(b.meta.Datasets, &metastorev1.Dataset{
+		Format:          1,
+		Tenant:          b.meta.Tenant,
+		Name:            0, // Anonymous.
+		MinTime:         b.meta.MinTime,
+		MaxTime:         b.meta.MaxTime,
+		TableOfContents: []uint64{off},
+		Size:            uint64(n),
+		Labels:          labels,
+	})
+	return nil
 }
 
 func (b *CompactionPlan) addDataset(md *metastorev1.BlockMeta, s *metastorev1.Dataset) *datasetCompaction {
@@ -223,7 +290,6 @@ type datasetCompaction struct {
 	parent *CompactionPlan
 	meta   *metastorev1.Dataset
 	labels *metadata.LabelBuilder
-	path   string // Set at open.
 
 	datasets []*Dataset
 
@@ -236,6 +302,8 @@ type datasetCompaction struct {
 	profiles uint64
 
 	flushOnce sync.Once
+
+	observer SampleObserver
 }
 
 func (b *CompactionPlan) newDatasetCompaction(tenant, name int32) *datasetCompaction {
@@ -269,51 +337,62 @@ func (m *datasetCompaction) append(s *Dataset) {
 }
 
 func (m *datasetCompaction) compact(ctx context.Context, w *Writer) (err error) {
-	if err = m.open(ctx, w.Dir()); err != nil {
+	off := w.Offset()
+	m.meta.TableOfContents = make([]uint64, 0, 3)
+	m.meta.TableOfContents = append(m.meta.TableOfContents, w.Offset())
+
+	if err = m.open(ctx, w); err != nil {
 		return fmt.Errorf("failed to open sections for compaction: %w", err)
 	}
 	defer func() {
-		err = multierror.New(err, m.cleanup()).Err()
+		_ = m.close()
 	}()
-	if err = m.mergeAndClose(ctx); err != nil {
-		return fmt.Errorf("failed to merge profiles: %w", err)
+
+	if err = m.merge(ctx); err != nil {
+		return fmt.Errorf("failed to merge datasets: %w", err)
 	}
-	if err = m.writeTo(w); err != nil {
-		return fmt.Errorf("failed to write sections: %w", err)
+	if err = m.flush(); err != nil {
+		return fmt.Errorf("failed to flush compacted dataset: %w", err)
 	}
+
+	m.meta.TableOfContents = append(m.meta.TableOfContents, w.Offset())
+	if _, err = io.Copy(w, bytes.NewReader(m.indexRewriter.buf)); err != nil {
+		return fmt.Errorf("failed to read index: %w", err)
+	}
+	m.meta.TableOfContents = append(m.meta.TableOfContents, w.Offset())
+	if _, err = io.Copy(w, bytes.NewReader(m.symbolsRewriter.buf.Bytes())); err != nil {
+		return fmt.Errorf("failed to read symbols: %w", err)
+	}
+
+	m.meta.Size = w.Offset() - off
+	m.meta.Labels = m.labels.Build()
 	return nil
 }
 
-func (m *datasetCompaction) open(ctx context.Context, path string) (err error) {
-	m.path = path
-	defer func() {
-		if err != nil {
-			err = multierror.New(err, m.cleanup()).Err()
-		}
-	}()
+func (m *datasetCompaction) registerSampleObserver(observer SampleObserver) {
+	m.observer = observer
+}
 
-	if err = os.MkdirAll(m.path, 0o777); err != nil {
-		return err
-	}
-
+func (m *datasetCompaction) open(ctx context.Context, w io.Writer) (err error) {
 	var estimatedProfileTableSize int64
 	for _, ds := range m.datasets {
 		estimatedProfileTableSize += ds.sectionSize(SectionProfiles)
 	}
 	pageBufferSize := estimatePageBufferSize(estimatedProfileTableSize)
-	m.profilesWriter, err = newProfileWriter(m.path, pageBufferSize)
-	if err != nil {
-		return err
-	}
+	m.profilesWriter = newProfileWriter(pageBufferSize, w)
 
-	m.indexRewriter = newIndexRewriter(m.path)
-	m.symbolsRewriter = newSymbolsRewriter(m.path)
+	m.indexRewriter = newIndexRewriter()
+	m.symbolsRewriter = newSymbolsRewriter()
 
 	g, ctx := errgroup.WithContext(ctx)
 	for _, s := range m.datasets {
 		s := s
 		g.Go(util.RecoverPanic(func() error {
-			if openErr := s.Open(ctx, allSections...); openErr != nil {
+			if openErr := s.Open(ctx,
+				SectionProfiles,
+				SectionTSDB,
+				SectionSymbols,
+			); openErr != nil {
 				return fmt.Errorf("opening tenant dataset (block %s): %w", s.obj.path, openErr)
 			}
 			return nil
@@ -326,15 +405,7 @@ func (m *datasetCompaction) open(ctx context.Context, path string) (err error) {
 		}
 		return merr.Err()
 	}
-
 	return nil
-}
-
-func (m *datasetCompaction) mergeAndClose(ctx context.Context) (err error) {
-	defer func() {
-		err = multierror.New(err, m.close()).Err()
-	}()
-	return m.merge(ctx)
 }
 
 func (m *datasetCompaction) merge(ctx context.Context) (err error) {
@@ -360,16 +431,22 @@ func (m *datasetCompaction) merge(ctx context.Context) (err error) {
 }
 
 func (m *datasetCompaction) writeRow(r ProfileEntry) (err error) {
+	if err = m.parent.datasetIndex.writeRow(r); err != nil {
+		return err
+	}
 	if err = m.indexRewriter.rewriteRow(r); err != nil {
 		return err
 	}
 	if err = m.symbolsRewriter.rewriteRow(r); err != nil {
 		return err
 	}
+	if m.observer != nil {
+		m.observer.Observe(r)
+	}
 	return m.profilesWriter.writeRow(r)
 }
 
-func (m *datasetCompaction) close() (err error) {
+func (m *datasetCompaction) flush() (err error) {
 	m.flushOnce.Do(func() {
 		merr := multierror.New()
 		merr.Add(m.symbolsRewriter.Flush())
@@ -378,42 +455,23 @@ func (m *datasetCompaction) close() (err error) {
 		m.samples = m.symbolsRewriter.samples
 		m.series = m.indexRewriter.NumSeries()
 		m.profiles = m.profilesWriter.profiles
-		m.symbolsRewriter = nil
-		m.indexRewriter = nil
-		m.profilesWriter = nil
-		// Note that m.datasets are closed by merge
-		// iterator as they reach the end of the profile
-		// table. We do it here again just in case.
-		// TODO(kolesnikovae): Double check error handling.
-		m.datasets = nil
 		err = merr.Err()
 	})
 	return err
 }
 
-func (m *datasetCompaction) writeTo(w *Writer) (err error) {
-	off := w.Offset()
-	m.meta.TableOfContents, err = w.ReadFromFiles(
-		FileNameProfilesParquet,
-		block.IndexFilename,
-		symdb.DefaultFileName,
-	)
-	if err != nil {
-		return err
-	}
-	m.meta.Size = w.Offset() - off
-	m.meta.Labels = m.labels.Build()
-	return nil
+func (m *datasetCompaction) close() error {
+	err := m.flush()
+	m.symbolsRewriter = nil
+	m.indexRewriter = nil
+	m.profilesWriter = nil
+	m.datasets = nil
+	return err
 }
 
-func (m *datasetCompaction) cleanup() error {
-	return os.RemoveAll(m.path)
-}
-
-func newIndexRewriter(path string) *indexRewriter {
+func newIndexRewriter() *indexRewriter {
 	return &indexRewriter{
 		symbols: make(map[string]struct{}),
-		path:    path,
 	}
 }
 
@@ -422,8 +480,7 @@ type indexRewriter struct {
 	symbols    map[string]struct{}
 	chunks     []index.ChunkMeta // one chunk per series
 	previousFp model.Fingerprint
-
-	path string
+	buf        []byte
 }
 
 type seriesLabels struct {
@@ -457,11 +514,10 @@ func (rw *indexRewriter) rewriteRow(e ProfileEntry) error {
 func (rw *indexRewriter) NumSeries() uint64 { return uint64(len(rw.series)) }
 
 func (rw *indexRewriter) Flush() error {
-	w, err := index.NewWriterSize(context.Background(),
-		filepath.Join(rw.path, block.IndexFilename),
-		// There is no particular reason to use a buffer (bufio.Writer)
-		// larger than the default one when writing on disk
-		4<<10)
+	// TODO(kolesnikovae):
+	//  * Estimate size.
+	//  * Use buffer pool.
+	w, err := memindex.NewWriter(context.Background(), 256<<10)
 	if err != nil {
 		return err
 	}
@@ -487,10 +543,13 @@ func (rw *indexRewriter) Flush() error {
 		}
 	}
 
-	return w.Close()
+	err = w.Close()
+	rw.buf = w.ReleaseIndex()
+	return err
 }
 
 type symbolsRewriter struct {
+	buf     *bytes.Buffer
 	w       *symdb.SymDB
 	rw      map[*Dataset]*symdb.Rewriter
 	samples uint64
@@ -498,14 +557,24 @@ type symbolsRewriter struct {
 	stacktraces []uint32
 }
 
-func newSymbolsRewriter(path string) *symbolsRewriter {
+func newSymbolsRewriter() *symbolsRewriter {
+	// TODO(kolesnikovae):
+	//  * Estimate size.
+	//  * Use buffer pool.
+	buf := bytes.NewBuffer(make([]byte, 0, 1<<20))
 	return &symbolsRewriter{
-		rw: make(map[*Dataset]*symdb.Rewriter),
-		w: symdb.NewSymDB(symdb.DefaultConfig().
-			WithVersion(symdb.FormatV3).
-			WithDirectory(path)),
+		buf: buf,
+		rw:  make(map[*Dataset]*symdb.Rewriter),
+		w: symdb.NewSymDB(&symdb.Config{
+			Version: symdb.FormatV3,
+			Writer:  &nopWriteCloser{buf},
+		}),
 	}
 }
+
+type nopWriteCloser struct{ io.Writer }
+
+func (*nopWriteCloser) Close() error { return nil }
 
 func (s *symbolsRewriter) rewriteRow(e ProfileEntry) (err error) {
 	rw := s.rewriterFor(e.Dataset)
@@ -539,3 +608,76 @@ func (s *symbolsRewriter) loadStacktraceIDs(values []parquet.Value) {
 }
 
 func (s *symbolsRewriter) Flush() error { return s.w.Flush() }
+
+// datasetIndexWriter is identical with indexRewriter,
+// except it writes dataset ID instead of series ID.
+type datasetIndexWriter struct {
+	series   []seriesLabels
+	chunks   []index.ChunkMeta
+	previous model.Fingerprint
+	symbols  map[string]struct{}
+	idx      uint32
+	buf      []byte
+}
+
+func newDatasetIndexWriter() *datasetIndexWriter {
+	return &datasetIndexWriter{
+		symbols: make(map[string]struct{}),
+	}
+}
+
+func (rw *datasetIndexWriter) setIndex(i uint32) { rw.idx = i }
+
+func (rw *datasetIndexWriter) writeRow(e ProfileEntry) error {
+	if rw.previous != e.Fingerprint || len(rw.series) == 0 {
+		series := e.Labels.Clone()
+		for _, l := range series {
+			rw.symbols[l.Name] = struct{}{}
+			rw.symbols[l.Value] = struct{}{}
+		}
+		rw.series = append(rw.series, seriesLabels{
+			labels:      series,
+			fingerprint: e.Fingerprint,
+		})
+		rw.chunks = append(rw.chunks, index.ChunkMeta{
+			SeriesIndex: rw.idx,
+		})
+		rw.previous = e.Fingerprint
+	}
+	return nil
+}
+
+func (rw *datasetIndexWriter) Flush() error {
+	// TODO(kolesnikovae):
+	//  * Estimate size.
+	//  * Use buffer pool.
+	w, err := memindex.NewWriter(context.Background(), 1<<20)
+	if err != nil {
+		return err
+	}
+
+	// Sort symbols
+	symbols := make([]string, 0, len(rw.symbols))
+	for s := range rw.symbols {
+		symbols = append(symbols, s)
+	}
+	sort.Strings(symbols)
+
+	// Add symbols
+	for _, symbol := range symbols {
+		if err = w.AddSymbol(symbol); err != nil {
+			return err
+		}
+	}
+
+	// Add Series
+	for i, series := range rw.series {
+		if err = w.AddSeries(storage.SeriesRef(i), series.labels, series.fingerprint, rw.chunks[i]); err != nil {
+			return err
+		}
+	}
+
+	err = w.Close()
+	rw.buf = w.ReleaseIndex()
+	return err
+}

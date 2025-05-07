@@ -6,11 +6,16 @@ import (
 	"sync"
 
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/iancoleman/strcase"
 	"github.com/opentracing/opentracing-go"
+	otlog "github.com/opentracing/opentracing-go/log"
+	"golang.org/x/sync/errgroup"
 
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 // TODO(kolesnikovae): We have a procedural definition of our queries,
@@ -70,32 +75,128 @@ func registerQueryType(
 	registerAggregator(rt, a)
 }
 
-type queryContext struct {
+type blockContext struct {
 	ctx context.Context
 	log log.Logger
 	req *request
 	agg *reportAggregator
-	ds  *block.Dataset
-	err error
+	obj *block.Object
+	grp *errgroup.Group
 }
 
-func newQueryContext(
-	ctx context.Context,
-	log log.Logger,
-	req *request,
-	agg *reportAggregator,
-	ds *block.Dataset,
-) *queryContext {
-	return &queryContext{
-		ctx: ctx,
-		log: log,
-		req: req,
-		agg: agg,
-		ds:  ds,
+func (b *blockContext) execute() error {
+	var span opentracing.Span
+	span, b.ctx = opentracing.StartSpanFromContext(b.ctx, "blockContext.execute")
+	defer span.Finish()
+
+	if idx := b.datasetIndex(); idx != nil {
+		if err := b.lookupDatasets(idx); err != nil {
+			if b.obj.IsNotExists(err) {
+				level.Warn(b.log).Log("msg", "object not found", "err", err)
+				return nil
+			}
+			return fmt.Errorf("failed to lookup datasets: %w", err)
+		}
 	}
+
+	for _, ds := range b.obj.Metadata().Datasets {
+		q := b.newQueryContext(ds)
+		for _, query := range b.req.src.Query {
+			q.grp.Go(util.RecoverPanic(func() error {
+				return q.execute(query)
+			}))
+		}
+		if err := q.grp.Wait(); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
-func executeQuery(q *queryContext, query *queryv1.Query) error {
+// datasetIndex returns the dataset index if it is present in
+// the metadata and the query needs to lookup datasets.
+func (b *blockContext) datasetIndex() *metastorev1.Dataset {
+	md := b.obj.Metadata()
+	if len(md.Datasets) != 1 {
+		// The blocks metadata explicitly lists datasets to be queried.
+		return nil
+	}
+	ds := md.Datasets[0]
+	if block.DatasetFormat(ds.Format) != block.DatasetFormat1 {
+		return nil
+	}
+
+	// If the query only requires TSDB data, we can serve
+	// it using the dataset index.
+	s := (&queryContext{blockContext: b}).sections()
+	indexOnly := len(s) == 1 && s[0] == block.SectionTSDB
+	if indexOnly {
+		opentracing.SpanFromContext(b.ctx).SetTag("dataset_index_query_index_only", indexOnly)
+		return nil
+	}
+
+	return ds
+}
+
+func (b *blockContext) lookupDatasets(ds *metastorev1.Dataset) error {
+	opentracing.SpanFromContext(b.ctx).SetTag("dataset_index_query", true)
+
+	// As query execution has not started yet,
+	// we can safely open datasets.
+	idx := block.NewDataset(ds, b.obj)
+	defer func() {
+		_ = idx.Close()
+	}()
+
+	g, ctx := errgroup.WithContext(b.ctx)
+	var md *metastorev1.BlockMeta
+	g.Go(func() (err error) {
+		md, err = b.obj.ReadMetadata(ctx)
+		return err
+	})
+	g.Go(func() error {
+		return idx.Open(ctx, block.SectionDatasetIndex)
+	})
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
+	datasetIDs, err := getSeriesIDs(idx.Index(), b.req.matchers...)
+	if err != nil {
+		return err
+	}
+
+	var j int
+	for i := range md.Datasets {
+		if _, ok := datasetIDs[uint32(i)]; ok {
+			md.Datasets[j] = md.Datasets[i]
+			j++
+		}
+	}
+	md.Datasets = md.Datasets[:j]
+	b.obj.SetMetadata(md)
+
+	opentracing.SpanFromContext(b.ctx).
+		LogFields(otlog.String("msg", "dataset tsdb index lookup complete"))
+
+	return nil
+}
+
+func (b *blockContext) newQueryContext(ds *metastorev1.Dataset) *queryContext {
+	q := &queryContext{blockContext: b, ds: block.NewDataset(ds, b.obj)}
+	q.grp, q.ctx = errgroup.WithContext(b.ctx)
+	return q
+}
+
+type queryContext struct {
+	*blockContext
+	ctx context.Context
+	grp *errgroup.Group
+	ds  *block.Dataset
+}
+
+func (q *queryContext) execute(query *queryv1.Query) error {
 	var span opentracing.Span
 	span, q.ctx = opentracing.StartSpanFromContext(q.ctx, "executeQuery."+strcase.ToCamel(query.QueryType.String()))
 	defer span.Finish()
@@ -103,12 +204,18 @@ func executeQuery(q *queryContext, query *queryv1.Query) error {
 	if err != nil {
 		return err
 	}
-	if err = q.open(); err != nil {
+
+	if err = q.ds.Open(q.ctx, q.sections()...); err != nil {
+		if q.obj.IsNotExists(err) {
+			level.Warn(q.log).Log("msg", "object not found", "err", err)
+			return nil
+		}
 		return fmt.Errorf("failed to initialize query context: %w", err)
 	}
 	defer func() {
-		_ = q.close(err)
+		_ = q.ds.CloseWithError(err)
 	}()
+
 	r, err := handle(q, query)
 	if err != nil {
 		return err
@@ -117,15 +224,8 @@ func executeQuery(q *queryContext, query *queryv1.Query) error {
 		r.ReportType = QueryReportType(query.QueryType)
 		return q.agg.aggregateReport(r)
 	}
+
 	return nil
-}
-
-func (q *queryContext) open() error {
-	return q.ds.Open(q.ctx, q.sections()...)
-}
-
-func (q *queryContext) close(err error) error {
-	return q.ds.CloseWithError(err)
 }
 
 func (q *queryContext) sections() []block.Section {

@@ -1,6 +1,6 @@
 # pyroscope
 
-![Version: 1.11.1](https://img.shields.io/badge/Version-1.11.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.11.0](https://img.shields.io/badge/AppVersion-1.11.0-informational?style=flat-square)
+![Version: 1.13.2](https://img.shields.io/badge/Version-1.13.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.13.2](https://img.shields.io/badge/AppVersion-1.13.2-informational?style=flat-square)
 
 🔥 horizontally-scalable, highly-available, multi-tenant continuous profiling aggregation system
 
@@ -16,7 +16,7 @@
 | Repository | Name | Version |
 |------------|------|---------|
 | https://charts.min.io/ | minio(minio) | 4.0.12 |
-| https://grafana.github.io/helm-charts | alloy(alloy) | 0.3.2 |
+| https://grafana.github.io/helm-charts | alloy(alloy) | 1.0.1 |
 | https://grafana.github.io/helm-charts | agent(grafana-agent) | 0.25.0 |
 
 ## Values
@@ -24,14 +24,14 @@
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | agent | object | `{"agent":{"clustering":{"enabled":true},"configMap":{"create":false,"name":"grafana-agent-config-pyroscope"}},"controller":{"podAnnotations":{"profiles.grafana.com/cpu.port_name":"http-metrics","profiles.grafana.com/cpu.scrape":"true","profiles.grafana.com/goroutine.port_name":"http-metrics","profiles.grafana.com/goroutine.scrape":"true","profiles.grafana.com/memory.port_name":"http-metrics","profiles.grafana.com/memory.scrape":"true"},"replicas":1,"type":"statefulset"},"enabled":false}` | ----------------------------------- |
-| alloy | object | `{"alloy":{"clustering":{"enabled":true},"configMap":{"create":false,"name":"alloy-config-pyroscope"},"stabilityLevel":"public-preview"},"controller":{"podAnnotations":{"profiles.grafana.com/cpu.port_name":"http-metrics","profiles.grafana.com/cpu.scrape":"true","profiles.grafana.com/goroutine.port_name":"http-metrics","profiles.grafana.com/goroutine.scrape":"true","profiles.grafana.com/memory.port_name":"http-metrics","profiles.grafana.com/memory.scrape":"true"},"replicas":1,"type":"statefulset"},"enabled":true}` | ----------------------------------- |
+| alloy | object | `{"alloy":{"clustering":{"enabled":true},"configMap":{"create":false,"name":"alloy-config-pyroscope"},"stabilityLevel":"public-preview"},"controller":{"podAnnotations":{"profiles.grafana.com/cpu.port_name":"http-metrics","profiles.grafana.com/cpu.scrape":"true","profiles.grafana.com/goroutine.port_name":"http-metrics","profiles.grafana.com/goroutine.scrape":"true","profiles.grafana.com/memory.port_name":"http-metrics","profiles.grafana.com/memory.scrape":"true","profiles.grafana.com/service_git_ref":"v1.8.1","profiles.grafana.com/service_repository":"https://github.com/grafana/alloy"},"replicas":1,"type":"statefulset"},"enabled":true}` | ----------------------------------- |
 | ingress.className | string | `""` |  |
 | ingress.enabled | bool | `false` |  |
 | minio | object | `{"buckets":[{"name":"grafana-pyroscope-data","policy":"none","purge":false}],"drivesPerNode":2,"enabled":false,"persistence":{"size":"5Gi"},"podAnnotations":{},"replicas":1,"resources":{"requests":{"cpu":"100m","memory":"128Mi"}},"rootPassword":"supersecret","rootUser":"grafana-pyroscope"}` | ----------------------------------- |
 | pyroscope.affinity | object | `{}` |  |
 | pyroscope.cluster_domain | string | `".cluster.local."` | Kubernetes cluster domain suffix for DNS discovery |
 | pyroscope.components | object | `{}` |  |
-| pyroscope.config | string | The config depends on other values been set, details can be found in [`values.yaml`](./values.yaml) | Contains Phlare's configuration as a string. |
+| pyroscope.config | string | The config depends on other values been set, details can be found in [`values.yaml`](./values.yaml) | Contains Pyroscope's configuration as a string. |
 | pyroscope.dnsPolicy | string | `"ClusterFirst"` |  |
 | pyroscope.extraArgs."log.level" | string | `"debug"` |  |
 | pyroscope.extraEnvFrom | list | `[]` | Environment variables from secrets or configmaps to add to the pods |
@@ -64,7 +64,6 @@
 | pyroscope.podSecurityContext.fsGroup | int | `10001` |  |
 | pyroscope.podSecurityContext.runAsNonRoot | bool | `true` |  |
 | pyroscope.podSecurityContext.runAsUser | int | `10001` |  |
-| pyroscope.rbac.create | bool | `true` |  |
 | pyroscope.replicaCount | int | `1` |  |
 | pyroscope.resources | object | `{}` |  |
 | pyroscope.securityContext | object | `{}` |  |
@@ -76,7 +75,7 @@
 | pyroscope.serviceAccount.annotations | object | `{}` |  |
 | pyroscope.serviceAccount.create | bool | `true` |  |
 | pyroscope.serviceAccount.name | string | `""` |  |
-| pyroscope.structuredConfig | object | `{}` | Allows to override Phlare's configuration using structured format. |
+| pyroscope.structuredConfig | object | `{}` | Allows to override Pyroscope's configuration using structured format. |
 | pyroscope.tenantOverrides | object | `{}` | Allows to add tenant specific overrides to the default limit configuration. |
 | pyroscope.tolerations | list | `[]` |  |
 | pyroscope.topologySpreadConstraints | list | `[]` | Topology Spread Constraints |

@@ -1,16 +1,18 @@
 package query_backend
 
 import (
+	"errors"
+	"slices"
 	"sync"
 
 	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/storage"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block"
-	"github.com/grafana/pyroscope/pkg/model"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
-	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 )
 
 func init() {
@@ -24,28 +26,9 @@ func init() {
 }
 
 func querySeriesLabels(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
-	postings, err := getPostings(q.ds.Index(), q.req.matchers...)
+	series, err := getSeriesLabels(q.ds.Index(), q.req.matchers, query.SeriesLabels.LabelNames...)
 	if err != nil {
 		return nil, err
-	}
-	var tmp model.Labels
-	var c []index.ChunkMeta
-	l := make(map[uint64]model.Labels)
-	for postings.Next() {
-		fp, _ := q.ds.Index().SeriesBy(postings.At(), &tmp, &c, query.SeriesLabels.LabelNames...)
-		if _, ok := l[fp]; ok {
-			continue
-		}
-		l[fp] = tmp.Clone()
-	}
-	if err = postings.Err(); err != nil {
-		return nil, err
-	}
-	series := make([]*typesv1.Labels, len(l))
-	var i int
-	for _, s := range l {
-		series[i] = &typesv1.Labels{Labels: s}
-		i++
 	}
 	resp := &queryv1.Report{
 		SeriesLabels: &queryv1.SeriesLabelsReport{
@@ -56,18 +39,10 @@ func querySeriesLabels(q *queryContext, query *queryv1.Query) (*queryv1.Report, 
 	return resp, nil
 }
 
-func getPostings(reader phlaredb.IndexReader, matchers ...*labels.Matcher) (index.Postings, error) {
-	if len(matchers) == 0 {
-		k, v := index.AllPostingsKey()
-		return reader.Postings(k, nil, v)
-	}
-	return phlaredb.PostingsForMatchers(reader, nil, matchers...)
-}
-
 type seriesLabelsAggregator struct {
 	init   sync.Once
 	query  *queryv1.SeriesLabelsQuery
-	series *model.LabelMerger
+	series *phlaremodel.LabelMerger
 }
 
 func newSeriesLabelsAggregator(*queryv1.InvokeRequest) aggregator {
@@ -78,7 +53,7 @@ func (a *seriesLabelsAggregator) aggregate(report *queryv1.Report) error {
 	r := report.SeriesLabels
 	a.init.Do(func() {
 		a.query = r.Query.CloneVT()
-		a.series = model.NewLabelMerger()
+		a.series = phlaremodel.NewLabelMerger()
 	})
 	a.series.MergeSeries(r.SeriesLabels)
 	return nil
@@ -91,4 +66,63 @@ func (a *seriesLabelsAggregator) build() *queryv1.Report {
 			SeriesLabels: a.series.Labels(),
 		},
 	}
+}
+
+func getSeriesLabels(reader phlaredb.IndexReader, matchers []*labels.Matcher, by ...string) ([]*typesv1.Labels, error) {
+	names, err := reader.LabelNames()
+	if err != nil {
+		return nil, err
+	}
+	if len(by) > 0 {
+		names = slices.DeleteFunc(names, func(n string) bool {
+			for j := 0; j < len(by); j++ {
+				if by[j] == n {
+					return false
+				}
+			}
+			return true
+		})
+		if len(names) == 0 {
+			return nil, nil
+		}
+	}
+
+	postings, err := getPostings(reader, matchers...)
+	if err != nil {
+		return nil, err
+	}
+
+	visited := make(map[uint64]struct{})
+	sets := make([]*typesv1.Labels, 0, 32)
+	ls := make(phlaremodel.Labels, len(names))
+	for i := range names {
+		ls[i] = new(typesv1.LabelPair)
+	}
+
+	for postings.Next() {
+		var j int
+		var v string
+		for i := range names {
+			v, err = reader.LabelValueFor(postings.At(), names[i])
+			switch {
+			case err == nil:
+			case errors.Is(err, storage.ErrNotFound):
+			default:
+				return nil, err
+			}
+			if v != "" {
+				ls[j].Name = names[i]
+				ls[j].Value = v
+				j++
+			}
+		}
+		set := ls[:j]
+		h := set.Hash()
+		if _, ok := visited[h]; !ok {
+			visited[h] = struct{}{}
+			sets = append(sets, &typesv1.Labels{Labels: set.Clone()})
+		}
+	}
+
+	return sets, postings.Err()
 }

@@ -2,7 +2,7 @@ package compactor
 
 import (
 	"fmt"
-	"slices"
+	"math"
 	"strconv"
 	"strings"
 
@@ -11,6 +11,7 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 	"github.com/grafana/pyroscope/pkg/iter"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 // plan should be used to prepare the compaction plan update.
@@ -23,6 +24,7 @@ type plan struct {
 	compactor  *Compactor
 	batches    *batchIter
 	blocks     *blockIter
+	now        int64
 }
 
 func (p *plan) CreateJob() (*raft_log.CompactionJobPlan, error) {
@@ -43,7 +45,10 @@ func (p *plan) CreateJob() (*raft_log.CompactionJobPlan, error) {
 
 type jobPlan struct {
 	compactionKey
+	config     *Config
 	name       string
+	minT       int64
+	maxT       int64
 	tombstones []*metastorev1.Tombstones
 	blocks     []string
 }
@@ -55,7 +60,7 @@ type jobPlan struct {
 //     removed). Therefore, we navigate to the next batch with the same
 //     compaction key in this case.
 func (p *plan) nextJob() *jobPlan {
-	var job jobPlan
+	job := p.newJob()
 	for p.level < uint32(len(p.compactor.queue.levels)) {
 		if p.batches == nil {
 			level := p.compactor.queue.levels[p.level]
@@ -79,32 +84,121 @@ func (p *plan) nextJob() *jobPlan {
 		// Job levels are zero based: L0 job means that it includes blocks
 		// with compaction level 0. This can be altered (1-based levels):
 		// job.level++
-		job.compactionKey = b.staged.key
-		job.blocks = slices.Grow(job.blocks, defaultBlockBatchSize)[:0]
+		job.reset(b.staged.key)
 		p.blocks.setBatch(b)
 
-		// Once we finish with the current batch blocks, the iterator moves
-		// to the next batch–with-the-same-compaction-key, which is not
-		// necessarily the next in-order-batch from the batch iterator.
+		var force bool
 		for {
-			block, ok := p.blocks.next()
-			if !ok {
+			block, found := p.blocks.peek()
+			if !found {
 				// No more blocks with this compaction key at the level.
-				// The current job plan is to be cancelled, and we move
-				// on to the next in-order batch.
+				// We may want to force compaction even if the current job
+				// is incomplete: e.g., if the blocks remain in the queue for
+				// too long. Note that we do not check the block timestamps:
+				// we only care when the first (oldest) batch was created.
+				force = p.compactor.config.exceedsMaxAge(b, p.now)
 				break
 			}
-
-			job.blocks = append(job.blocks, block)
-			if p.compactor.config.complete(&job) {
-				nameJob(&job)
-				p.getTombstones(&job)
-				return &job
+			if !job.tryAdd(block) {
+				// We may not want to add a bock to the job if it extends the
+				// compacted block time range beyond the desired limit.
+				// In this case, we need to force compaction of incomplete job.
+				force = true
+				break
+			}
+			p.blocks.advance()
+			if job.isComplete() {
+				break
 			}
 		}
+
+		if len(job.blocks) > 0 && (job.isComplete() || force) {
+			// Typically, we want to proceed to the next compaction key,
+			// but if the batch is not empty (i.e., we could not put all
+			// the blocks into the job), we must finish it first.
+			if p.blocks.more() {
+				// We need to reset the batch iterator to continue from the
+				// oldest batch that still has blocks to process. This ensures
+				// we don't skip blocks or process them out of order.
+				// Block iterator ensures that each block is only accessed once.
+				p.batches.reset(b)
+			}
+			p.getTombstones(job)
+			job.finalize()
+			return job
+		}
+
+		// The job plan is canceled for the compaction key, and we need to
+		// continue with the next compaction key, or level.
 	}
 
 	return nil
+}
+
+func (p *plan) getTombstones(job *jobPlan) {
+	if int32(p.level) > p.compactor.config.CleanupJobMaxLevel {
+		return
+	}
+	if int32(p.level) < p.compactor.config.CleanupJobMinLevel {
+		return
+	}
+	s := int(p.compactor.config.CleanupBatchSize)
+	for i := 0; i < s && p.tombstones.Next(); i++ {
+		job.tombstones = append(job.tombstones, p.tombstones.At())
+	}
+}
+
+func (p *plan) newJob() *jobPlan {
+	return &jobPlan{
+		config: &p.compactor.config,
+		blocks: make([]string, 0, defaultBlockBatchSize),
+		minT:   math.MaxInt64,
+		maxT:   math.MinInt64,
+	}
+}
+
+func (job *jobPlan) reset(k compactionKey) {
+	job.compactionKey = k
+	job.blocks = job.blocks[:0]
+	job.minT = math.MaxInt64
+	job.maxT = math.MinInt64
+}
+
+func (job *jobPlan) tryAdd(block string) bool {
+	t := util.ULIDStringUnixNano(block)
+	if len(job.blocks) > 0 && !job.isInAllowedTimeRange(t) {
+		return false
+	}
+	job.blocks = append(job.blocks, block)
+	job.maxT = max(job.maxT, t)
+	job.minT = min(job.minT, t)
+	return true
+}
+
+func (job *jobPlan) isInAllowedTimeRange(t int64) bool {
+	if age := job.config.maxAge(job.config.maxLevel()); age > 0 {
+		//          minT        maxT
+		// --t------|===========|------t--
+		//   |      |---------a--------|
+		//   |---------b--------|
+		a := t - job.minT
+		b := job.maxT - t
+		if a > age || b > age {
+			return false
+		}
+	}
+	return true
+}
+
+func (job *jobPlan) isComplete() bool {
+	return uint(len(job.blocks)) >= job.config.maxBlocks(job.level)
+}
+
+func (job *jobPlan) finalize() {
+	nameJob(job)
+	job.minT = 0
+	job.maxT = 0
+	job.config = nil
 }
 
 // Job name is a variable length string that should be globally unique
@@ -127,17 +221,4 @@ func nameJob(plan *jobPlan) {
 	name.WriteByte('L')
 	name.WriteString(strconv.FormatUint(uint64(plan.level), 10))
 	plan.name = name.String()
-}
-
-func (p *plan) getTombstones(job *jobPlan) {
-	if int32(p.level) > p.compactor.config.CleanupJobMaxLevel {
-		return
-	}
-	if int32(p.level) < p.compactor.config.CleanupJobMinLevel {
-		return
-	}
-	s := int(p.compactor.config.CleanupBatchSize)
-	for i := 0; i < s && p.tombstones.Next(); i++ {
-		job.tombstones = append(job.tombstones, p.tombstones.At())
-	}
 }

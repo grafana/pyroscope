@@ -3,23 +3,25 @@ on:
   schedule:
     - cron: '13 1 * * *'
   workflow_dispatch:
-
 concurrency:
   # Cancel any running workflow for the same branch when new commits are pushed.
   # We group both by ref_name (available when CI is triggered by a push to a branch/tag)
   # and head_ref (available when CI is triggered by a PR).
   group: "${{ github.ref_name }}-${{ github.head_ref }}"
   cancel-in-progress: true
-
+permissions:
+  contents: read
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: github-hosted-ubuntu-x64-large
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
-      - name: Install Go
-        uses: actions/setup-go@v5
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          go-version: 1.22.10
+          persist-credentials: 'false'
+      - name: Install Go
+        uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
+        with:
+          go-version: 1.23.8
       - name: Run tests
         run: make examples/test

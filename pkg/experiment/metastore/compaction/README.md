@@ -1,21 +1,13 @@
-# Pyroscope Compaction Process
-
-The document introduces the new compaction process design and outlines its implementation.
+# Block Compaction
 
 ## Background
 
-The compaction approach we currently use assumes that relatively large data blocks are merged into even larger ones,
-and the largest blocks are split into shards based on series fingerprints. This approach can lead to uncontrollably high
-memory consumption and is only suitable for delayed compaction, when the time range the blocks refer to is protected
-from writes ([quiesced](https://en.wikipedia.org/wiki/Quiesce)). Additionally, the compaction algorithm is designed for
-deduplication (replica reconciliation), which is not required in [the new ingestion pipeline](../../distributor/README.md#write-path).
-
-The new Pyroscope ingestion pipeline is designed to gather data in memory as small segments, which are periodically
-flushed to object storage, along with the metadata entries being added to the metastore index. Depending on
-the configuration and deployment scale, the number of segments created per second can increase significantly,
-reaching millions of objects per hour or day. This can lead to performance degradation in the query path due to high
-read amplification caused by the large number of small segments. In addition to read amplification, a high number of
-metadata entries can also lead to performance degradation across the entire cluster, impacting the write path as well.
+The Pyroscope ingestion pipeline is designed to gather data in memory as small segments, which are periodically flushed
+to object storage, along with the metadata entries being added to the metastore index. Depending on the configuration
+and deployment scale, the number of segments created per second can increase significantly, reaching millions of objects
+per hour or day. This can lead to performance degradation in the query path due to high read amplification caused by the
+large number of small segments. In addition to read amplification, a high number of metadata entries can also lead to
+performance degradation across the entire cluster, impacting the write path as well.
 
 The new background compaction process helps mitigate this by merging small segments into larger ones, aiming to reduce
 the number of objects a query needs to fetch from object storage.
@@ -24,7 +16,7 @@ the number of objects a query needs to fetch from object storage.
 
 The compaction service is responsible for planning compaction jobs, scheduling their execution, and updating the
 metastore index with the results. The compaction service resides within the metastore component, while the compaction
-worker is a separate service designed to scale out and in rapidly.
+worker is a separate service designed to scale horizontally.
 
 The compaction service relies on the Raft protocol to guarantee consistency across the replicas. The diagram below
 illustrates the interaction between the compaction worker and the compaction service: workers poll the service on a
@@ -259,7 +251,14 @@ reports from workers, as jobs that cause workers to crash would yield no reports
 
 To avoid infinite reassignment loops, the scheduler keeps track of reassignments (failures) for each job. If the number
 of failures exceeds a set threshold, the job is not reassigned and remains at the bottom of the queue. Once the cause of
-failure is resolved, the limit can be temporarily increased to reprocess these jobs.
+failure is resolved, the error limit can be temporarily increased to reprocess these jobs.
+
+The scheduler queue has a size limit. Typically, the only scenario in which this limit is reached is when the compaction
+process is not functioning correctly (e.g., due to a bug in the compaction procedure), preventing blocks from being
+compacted and resulting in many jobs remaining in a failed state. Once the queue size limit is reached, failed jobs are
+evicted, meaning the corresponding blocks will never be compacted. This may cause read amplification of the data queries
+and bloat the metadata index. Therefore, the limit should be large enough. The recommended course of action is to roll
+back or fix the bug and restart the compaction process, temporarily increasing the error limit if necessary.
 
 ### Job Completion
 

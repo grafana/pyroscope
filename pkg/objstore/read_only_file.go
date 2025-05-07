@@ -15,6 +15,8 @@ import (
 	"github.com/grafana/pyroscope/pkg/util/bufferpool"
 )
 
+var _ objstore.BucketReader = &ReadOnlyFile{}
+
 type ReadOnlyFile struct {
 	size    int64
 	name    string
@@ -31,39 +33,36 @@ func Download(ctx context.Context, name string, src BucketReader, dir string) (*
 	return f, nil
 }
 
-func download(ctx context.Context, name string, src BucketReader, dir string) (f *ReadOnlyFile, err error) {
+func download(ctx context.Context, name string, src BucketReader, dir string) (*ReadOnlyFile, error) {
 	r, err := src.Get(ctx, name)
 	if err != nil {
 		return nil, err
 	}
-	f = &ReadOnlyFile{
-		size: 0,
+	defer r.Close()
+
+	path := filepath.Join(dir, filepath.Base(name))
+	f := &ReadOnlyFile{
 		name: name,
-		path: filepath.Join(dir, filepath.Base(name)),
+		path: path,
 	}
-	defer func() {
-		if err != nil {
-			_ = f.Close()
-		}
-		_ = r.Close()
-	}()
 	if err = os.MkdirAll(dir, 0755); err != nil {
 		return nil, err
 	}
-	dst, err := os.Create(f.path)
+	dst, err := os.Create(path)
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		_ = dst.Close()
-	}()
+	defer dst.Close()
+
 	buf := bufferpool.GetBuffer(32 << 10)
 	defer bufferpool.Put(buf)
 	buf.B = buf.B[:cap(buf.B)]
 	n, err := io.CopyBuffer(dst, r, buf.B)
 	if err != nil {
+		_ = os.RemoveAll(path)
 		return nil, err
 	}
+
 	f.size = n
 	return f, nil
 }
@@ -79,6 +78,14 @@ func (f *ReadOnlyFile) Close() error {
 }
 
 func (f *ReadOnlyFile) Iter(context.Context, string, func(string) error, ...objstore.IterOption) error {
+	return nil
+}
+
+func (f *ReadOnlyFile) IterWithAttributes(context.Context, string, func(attrs objstore.IterObjectAttributes) error, ...objstore.IterOption) error {
+	return nil
+}
+
+func (f *ReadOnlyFile) SupportedIterOptions() []objstore.IterOptionType {
 	return nil
 }
 
@@ -179,4 +186,8 @@ func (r *fileReader) Close() error {
 
 func (r *fileReader) Read(p []byte) (int, error) {
 	return r.reader.Read(p)
+}
+
+func (r *fileReader) Provider(p []byte) objstore.ObjProvider {
+	return objstore.ObjProvider("READONLYFILE")
 }

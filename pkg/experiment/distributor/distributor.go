@@ -203,7 +203,7 @@ func jump(key uint64, buckets int) int {
 }
 
 // Subring is a utility to calculate the subring
-// for a given key withing the available space:
+// for a given key within the available space:
 //
 // Note that this is not a recursive implementation,
 // but a more straightforward one, optimized for the
@@ -326,14 +326,20 @@ func (p *perm) resize(n int) {
 	}
 }
 
-// The value is a random generated with a crypto/rand.Read,
-// and decoded as a little-endian uint64. No fancy math here.
-const randSeed = 4349576827832984783
-
 var steps [4 << 10]uint32
 
 func init() {
-	r := rand.New(rand.NewSource(randSeed))
+	// The seed impacts mapping of shards to nodes.
+	// TODO(kolesnikovae):
+	//  Stochastic approach does not work well
+	//  in all the cases; it should be replaced
+	//  with a deterministic one.
+	const randSeed = -3035313949336265834
+	setSeed(randSeed)
+}
+
+func setSeed(n int64) {
+	r := rand.New(rand.NewSource(n))
 	for i := range steps {
 		steps[i] = uint32(r.Intn(i + 1))
 	}

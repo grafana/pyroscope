@@ -269,7 +269,7 @@ discovery.relabel "java_pods" {
 
 pyroscope.java "java" {
   forward_to = [pyroscope.write.example.receiver]
-  targets = discovery.relabel.java.output
+  targets = discovery.relabel.java_pods.output
 }
 
 pyroscope.write "example" {

@@ -1,64 +1,47 @@
 package metadata
 
 import (
+	goiter "iter"
 	"slices"
+	"strings"
+	"unsafe"
 
 	"github.com/prometheus/prometheus/model/labels"
-	"golang.org/x/exp/maps"
 
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/iter"
-	"github.com/grafana/pyroscope/pkg/model"
 )
 
 // TODO(kolesnikovae): LabelBuilder pool.
 
+const (
+	LabelNameTenantDataset     = "__tenant_dataset__"
+	LabelValueDatasetTSDBIndex = "dataset_tsdb_index"
+	LabelNameUnsymbolized      = "__unsymbolized__"
+)
+
 type LabelBuilder struct {
-	strings  *StringTable
-	labels   []int32
-	constant []int32
-	keys     []int32
-	seen     map[string]struct{}
+	strings *StringTable
+	labels  []int32
+	seen    map[string]struct{}
 }
 
 func NewLabelBuilder(strings *StringTable) *LabelBuilder {
 	return &LabelBuilder{strings: strings}
 }
 
-func (lb *LabelBuilder) WithConstantPairs(pairs ...string) *LabelBuilder {
+func (lb *LabelBuilder) WithLabelSet(pairs ...string) *LabelBuilder {
 	if len(pairs)%2 == 1 {
-		return lb
+		panic("expected even number of values")
 	}
-	lb.constant = slices.Grow(lb.constant[:0], len(pairs))[:len(pairs)]
-	for i := 0; i < len(pairs); i++ {
-		lb.constant[i] = lb.strings.Put(pairs[i])
-	}
-	return lb
-}
-
-func (lb *LabelBuilder) WithLabelNames(names ...string) *LabelBuilder {
-	lb.keys = slices.Grow(lb.keys[:0], len(names))[:len(names)]
-	for i, n := range names {
-		lb.keys[i] = lb.strings.Put(n)
+	s := len(lb.labels)
+	lb.labels = slices.Grow(lb.labels, len(pairs)+1)[:s+len(pairs)+1]
+	lb.labels[s] = int32(len(pairs) / 2)
+	for i := range pairs {
+		lb.labels[s+i+1] = lb.strings.Put(pairs[i])
 	}
 	return lb
-}
-
-func (lb *LabelBuilder) CreateLabels(values ...string) bool {
-	if len(values) != len(lb.keys) {
-		return false
-	}
-	// We're going to add the length of pairs, the constant pairs,
-	// and then the variadic key-value pairs: p pairs total.
-	p := len(lb.constant)/2 + len(lb.keys)
-	n := 1 + p*2 // n elems total.
-	lb.labels = slices.Grow(lb.labels, n)
-	lb.labels = append(lb.labels, int32(p))
-	lb.labels = append(lb.labels, lb.constant...)
-	for i := 0; i < len(values); i++ {
-		lb.labels = append(lb.labels, lb.keys[i], lb.strings.Put(values[i]))
-	}
-	return true
 }
 
 func (lb *LabelBuilder) Put(x []int32, strings []string) {
@@ -91,20 +74,41 @@ func (lb *LabelBuilder) putPairs(p []int32) {
 	// The fact that we assume that the order of labels is the same
 	// across all datasets is a precondition, therefore, we can
 	// use pairs as a key.
-	k := string(p)
+	k := int32string(p)
 	if _, ok := lb.seen[k]; ok {
 		return
 	}
 	lb.labels = append(lb.labels, int32(len(p)/2))
 	lb.labels = append(lb.labels, p...)
-	lb.seen[k] = struct{}{}
+	lb.seen[strings.Clone(k)] = struct{}{}
 }
 
 func (lb *LabelBuilder) Build() []int32 {
 	c := make([]int32, len(lb.labels))
 	copy(c, lb.labels)
 	lb.labels = lb.labels[:0]
+	clear(lb.seen)
 	return c
+}
+
+func FindDatasets(md *metastorev1.BlockMeta, matchers ...*labels.Matcher) goiter.Seq[*metastorev1.Dataset] {
+	st := NewStringTable()
+	st.Import(md)
+	lm := NewLabelMatcher(st.Strings, matchers)
+	if !lm.IsValid() {
+		return func(func(*metastorev1.Dataset) bool) {}
+	}
+	return func(yield func(*metastorev1.Dataset) bool) {
+		for i := range md.Datasets {
+			ds := md.Datasets[i]
+			if !lm.Matches(ds.Labels) {
+				continue
+			}
+			if !yield(ds) {
+				return
+			}
+		}
+	}
 }
 
 func LabelPairs(ls []int32) iter.Iterator[[]int32] { return &labelPairs{labels: ls} }
@@ -149,26 +153,43 @@ type matcher struct {
 	name int32
 }
 
-func NewLabelMatcher(strings *StringTable, matchers []*labels.Matcher, keep ...string) *LabelMatcher {
+func NewLabelMatcher(strings []string, matchers []*labels.Matcher, keep ...string) *LabelMatcher {
+	s := make(map[string]int32, len(matchers)*2+len(keep))
+	for _, m := range matchers {
+		s[m.Name] = 0
+		s[m.Value] = 0
+	}
+	for _, k := range keep {
+		s[k] = 0
+	}
+	for i, x := range strings {
+		if v, ok := s[x]; ok && v == 0 {
+			s[x] = int32(i)
+		}
+	}
 	lm := &LabelMatcher{
 		eq:      make([]matcher, 0, len(matchers)),
 		neq:     make([]matcher, 0, len(matchers)),
 		keep:    make([]int32, len(keep)),
 		keepStr: keep,
 		checked: make(map[string]bool),
-		strings: strings.Strings,
+		strings: strings,
 	}
 	for _, m := range matchers {
-		n := strings.LookupString(m.Name)
-		if m.Type == labels.MatchEqual || m.Type == labels.MatchRegexp {
-			if n < 1 {
-				// No matches are possible if a label is not found
-				// in the string table or is an empty string (0).
+		if m.Name == "" {
+			continue
+		}
+		n := s[m.Name]
+		switch m.Type {
+		case labels.MatchEqual:
+			if v := s[m.Value]; m.Value != "" && (n < 1 || v < 1) {
 				lm.nomatch = true
 				return lm
 			}
 			lm.eq = append(lm.eq, matcher{Matcher: m, name: n})
-		} else {
+		case labels.MatchRegexp:
+			lm.eq = append(lm.eq, matcher{Matcher: m, name: n})
+		case labels.MatchNotEqual, labels.MatchNotRegexp:
 			lm.neq = append(lm.neq, matcher{Matcher: m, name: n})
 		}
 	}
@@ -176,20 +197,89 @@ func NewLabelMatcher(strings *StringTable, matchers []*labels.Matcher, keep ...s
 	// If the label is not found or is an empty string,
 	// it will always be an empty string at the output.
 	for i, k := range keep {
-		lm.keep[i] = strings.LookupString(k)
+		lm.keep[i] = s[k]
 	}
 	return lm
 }
 
 func (lm *LabelMatcher) IsValid() bool { return !lm.nomatch }
 
-func (lm *LabelMatcher) Matches(pairs []int32) bool {
-	k := string(pairs)
+// Matches reports whether the given set of labels matches the matchers.
+// Note that at least one labels set must satisfy matchers to return true.
+// For negations, all labels sets must satisfy the matchers to return true.
+// TODO(kolesnikovae): This might be really confusing; it's worth relaxing it.
+func (lm *LabelMatcher) Matches(labels []int32) bool {
+	pairs := LabelPairs(labels)
+	var matches bool
+	for pairs.Next() {
+		if lm.MatchesPairs(pairs.At()) {
+			matches = true
+			// If no keep labels are specified, we can return early.
+			// Otherwise, we need to scan all the label sets to
+			// collect matching ones.
+			if len(lm.keep) == 0 {
+				return true
+			}
+		}
+	}
+	return matches
+}
+
+// CollectMatches returns a new set of labels with only the labels
+// that satisfy the match expressions and that are in the keep list.
+func (lm *LabelMatcher) CollectMatches(dst, labels []int32) ([]int32, bool) {
+	pairs := LabelPairs(labels)
+	var matches bool
+	for pairs.Next() {
+		p := pairs.At()
+		if lm.MatchesPairs(p) {
+			matches = true
+			// If no keep labels are specified, we can return early.
+			// Otherwise, we need to scan all the label sets to
+			// collect matching ones.
+			if len(lm.keep) == 0 {
+				return dst, true
+			}
+			dst = lm.strip(dst, p)
+		}
+	}
+	return dst, matches
+}
+
+// strip returns a new length-prefixed slice of pairs
+// with only the labels that are in the keep list.
+func (lm *LabelMatcher) strip(dst, pairs []int32) []int32 {
+	// Length-prefix stub: we only know it after we iterate
+	// over the pairs.
+	s := len(dst)
+	c := len(lm.keep) * 2
+	dst = slices.Grow(dst, c+1)
+	dst = append(dst, 0)
+	var m int32
+	for _, n := range lm.keep {
+		if n < 1 {
+			// Ignore not found labels.
+			continue
+		}
+		for k := 0; k < len(pairs); k += 2 {
+			if pairs[k] == n {
+				dst = append(dst, pairs[k], pairs[k+1])
+				m++
+				break
+			}
+		}
+	}
+	// Write the actual number of pairs as a prefix.
+	dst[s] = m
+	return dst
+}
+
+func (lm *LabelMatcher) MatchesPairs(pairs []int32) bool {
+	k := int32string(pairs)
 	m, found := lm.checked[k]
 	if !found {
 		m = lm.checkMatches(pairs)
-		// Copy the key.
-		lm.checked[k] = m
+		lm.checked[strings.Clone(k)] = m
 		if m {
 			lm.matched++
 		}
@@ -232,47 +322,93 @@ func (lm *LabelMatcher) checkMatches(pairs []int32) bool {
 	return true
 }
 
-func (lm *LabelMatcher) Matched() []model.Labels {
-	if len(lm.keep) == 0 || lm.nomatch || len(lm.checked) == 0 {
-		return nil
-	}
-	matched := make(map[string]model.Labels, lm.matched)
-	for k, match := range lm.checked {
-		if match {
-			values := lm.values(k)
-			if _, found := matched[values]; !found {
-				matched[values] = lm.labels([]int32(values))
-			}
-		}
-	}
-	return maps.Values(matched)
+type LabelsCollector struct {
+	strings *StringTable
+	dict    map[string]struct{}
+	tmp     []int32
+	keys    []int32
 }
 
-func (lm *LabelMatcher) values(pairs string) string {
-	p := []int32(pairs)
-	values := make([]int32, len(lm.keep))
-	for i, n := range lm.keep {
-		if n < 1 {
-			// Skip invalid keep labels.
+func NewLabelsCollector(labels ...string) *LabelsCollector {
+	s := &LabelsCollector{
+		dict:    make(map[string]struct{}),
+		strings: NewStringTable(),
+	}
+	s.keys = make([]int32, len(labels))
+	s.tmp = make([]int32, len(labels))
+	for i, k := range labels {
+		s.keys[i] = s.strings.Put(k)
+	}
+	return s
+}
+
+// CollectMatches from the given matcher.
+//
+// The matcher and collect MUST be configured to keep the same
+// set of labels, in the exact order.
+//
+// A single collector may collect labels from multiple matchers.
+func (s *LabelsCollector) CollectMatches(lm *LabelMatcher) {
+	if len(lm.keep) == 0 || lm.nomatch || len(lm.checked) == 0 {
+		return
+	}
+	for set, match := range lm.checked {
+		if !match {
 			continue
 		}
-		for k := 0; k < len(pairs); k += 2 {
-			if p[k] == n {
-				values[i] = p[k+1]
-				break
+		// Project values of the keep labels to tmp,
+		// and resolve their strings.
+		clear(s.tmp)
+		p := int32s(set)
+		// Note that we're using the matcher's keep labels
+		// and not local 'keys'.
+		for i, n := range lm.keep {
+			for k := 0; k < len(p); k += 2 {
+				if p[k] == n {
+					s.tmp[i] = p[k+1]
+					break
+				}
+			}
+		}
+		for i := range s.tmp {
+			s.tmp[i] = s.strings.Put(lm.strings[s.tmp[i]])
+		}
+		// Check if we already saw the label set.
+		x := int32string(s.tmp)
+		if _, ok := s.dict[x]; ok {
+			continue
+		}
+		s.dict[strings.Clone(x)] = struct{}{}
+	}
+}
+
+func (s *LabelsCollector) Unique() goiter.Seq[*typesv1.Labels] {
+	return func(yield func(*typesv1.Labels) bool) {
+		for k := range s.dict {
+			l := &typesv1.Labels{Labels: make([]*typesv1.LabelPair, len(s.keys))}
+			for i, v := range int32s(k) {
+				l.Labels[i] = &typesv1.LabelPair{
+					Name:  s.strings.Strings[s.keys[i]],
+					Value: s.strings.Strings[v],
+				}
+			}
+			if !yield(l) {
+				return
 			}
 		}
 	}
-	return string(values)
 }
 
-func (lm *LabelMatcher) labels(values []int32) model.Labels {
-	ls := make(model.Labels, len(values))
-	for i, v := range values {
-		ls[i] = &typesv1.LabelPair{
-			Name:  lm.keepStr[i],
-			Value: lm.strings[v],
-		}
+func int32string(data []int32) string {
+	if len(data) == 0 {
+		return ""
 	}
-	return ls
+	return unsafe.String((*byte)(unsafe.Pointer(&data[0])), len(data)*4)
+}
+
+func int32s(s string) []int32 {
+	if len(s) == 0 {
+		return nil
+	}
+	return unsafe.Slice((*int32)(unsafe.Pointer(unsafe.StringData(s))), len(s)/4)
 }

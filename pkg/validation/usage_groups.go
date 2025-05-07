@@ -126,6 +126,10 @@ func (m UsageGroupMatch) CountDiscardedBytes(reason string, n int64) {
 	}
 }
 
+func (m UsageGroupMatch) Names() []string {
+	return m.names
+}
+
 func NewUsageGroupConfig(m map[string]string) (UsageGroupConfig, error) {
 	if len(m) > maxUsageGroups {
 		return UsageGroupConfig{}, fmt.Errorf("maximum number of usage groups is %d, got %d", maxUsageGroups, len(m))
@@ -176,10 +180,18 @@ func matchesAll(matchers []*labels.Matcher, lbls phlaremodel.Labels) bool {
 	}
 
 	for _, m := range matchers {
+		matched := false
 		for _, lbl := range lbls {
-			if lbl.Name == m.Name && !m.Matches(lbl.Value) {
-				return false
+			if lbl.Name == m.Name {
+				if !m.Matches(lbl.Value) {
+					return false
+				}
+				matched = true
+				break
 			}
+		}
+		if !matched {
+			return false
 		}
 	}
 	return true

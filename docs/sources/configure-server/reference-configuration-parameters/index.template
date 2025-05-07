@@ -2,7 +2,7 @@
 description: Describes parameters used to configure Pyroscope.
 menuTitle: Configuration parameters
 title: Pyroscope configuration parameters
-weight: 70
+weight: 300
 aliases:
   - /docs/phlare/latest/operators-guide/configuring/reference-configuration-parameters/
   - /docs/phlare/latest/configure-server/reference-configuration-parameters/
@@ -60,4 +60,3 @@ where `default_value` is the value to use if the environment variable is undefin
 
 {{ .ConfigFile }}
 
-```

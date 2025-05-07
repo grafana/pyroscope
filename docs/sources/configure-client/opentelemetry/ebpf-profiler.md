@@ -2,12 +2,10 @@
 title: OpenTelemetry profiling support
 menuTitle: OpenTelemetry profiling
 description: OpenTelemetry profiling support in Pyroscope
-weight: 10
+weight: 150
 ---
 
 # OpenTelemetry profiling support
-
-{{< docs/experimental product="OpenTelemetry profiles" >}}
 
 Pyroscope includes **experimental** support for receiving and visualizing profiles from OpenTelemetry sources. This integration allows you to:
 

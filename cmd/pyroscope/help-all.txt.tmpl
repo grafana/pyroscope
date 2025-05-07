@@ -497,6 +497,8 @@ Usage of ./pyroscope:
     	How much available disk space to keep in GiB (default 10)
   -pyroscopedb.row-group-target-size uint
     	How big should a single row group be uncompressed (default 1342177280)
+  -pyroscopedb.symbols-partition-label string
+    	Specifies the dimension by which symbols are partitioned. By default, the partitioning is determined automatically.
   -querier.client-cleanup-period duration
     	How frequently to clean up clients for ingesters that have gone away. (default 15s)
   -querier.frontend-client.backoff-max-period duration
@@ -847,6 +849,8 @@ Usage of ./pyroscope:
     	Comma-separated list of cipher suites to use. If blank, the default Go cipher suites is used.
   -server.tls-min-version string
     	Minimum TLS version to use. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13. If blank, the Go TLS minimum version is used.
+  -shutdown-delay duration
+    	Wait time before shutting down after a termination signal.
   -storage.azure.account-key string
     	Azure storage account key. If unset, Azure managed identities will be used for authentication instead.
   -storage.azure.account-name string
@@ -895,10 +899,30 @@ Usage of ./pyroscope:
     	Local filesystem storage directory. (default "./data-shared")
   -storage.gcs.bucket-name string
     	GCS bucket name
+  -storage.gcs.expect-continue-timeout duration
+    	The time to wait for a server's first response headers after fully writing the request headers if the request has an Expect header. 0 to send the request body immediately. (default 1s)
+  -storage.gcs.http.idle-conn-timeout duration
+    	The time an idle connection will remain idle before closing. (default 1m30s)
+  -storage.gcs.http.insecure-skip-verify
+    	If the client connects to GCS via HTTPS and this option is enabled, the client will accept any certificate and hostname.
+  -storage.gcs.http.response-header-timeout duration
+    	The amount of time the client will wait for a servers response headers. (default 2m0s)
+  -storage.gcs.max-connections-per-host int
+    	Maximum number of connections per host. 0 means no limit.
+  -storage.gcs.max-idle-connections int
+    	Maximum number of idle (keep-alive) connections across all hosts. 0 means no limit.
+  -storage.gcs.max-idle-connections-per-host int
+    	Maximum number of idle (keep-alive) connections to keep per-host. If 0, a built-in default value is used. (default 100)
   -storage.gcs.service-account string
     	JSON either from a Google Developers Console client_credentials.json file, or a Google Developers service account key. Needs to be valid JSON, not a filesystem path.
+  -storage.gcs.tls-handshake-timeout duration
+    	Maximum time to wait for a TLS handshake. 0 means no limit. (default 10s)
+  -storage.prefix string
+    	Prefix for all objects stored in the backend storage. For simplicity, it may only contain digits and English alphabet characters, hyphens, underscores, dots and forward slashes.
   -storage.s3.access-key-id string
     	S3 access key ID
+  -storage.s3.bucket-lookup-type string
+    	S3 bucket lookup style, use one of: [path-style virtual-hosted-style auto] (default "auto")
   -storage.s3.bucket-name string
     	S3 bucket name
   -storage.s3.endpoint string
@@ -906,7 +930,7 @@ Usage of ./pyroscope:
   -storage.s3.expect-continue-timeout duration
     	The time to wait for a server's first response headers after fully writing the request headers if the request has an Expect header. 0 to send the request body immediately. (default 1s)
   -storage.s3.force-path-style
-    	Set this to `true` to force the bucket lookup to be using path-style.
+    	Deprecated, use s3.bucket-lookup-type instead. Set this to `true` to force the bucket lookup to be using path-style.
   -storage.s3.http.idle-conn-timeout duration
     	The time an idle connection will remain idle before closing. (default 1m30s)
   -storage.s3.http.insecure-skip-verify
@@ -936,7 +960,7 @@ Usage of ./pyroscope:
   -storage.s3.tls-handshake-timeout duration
     	Maximum time to wait for a TLS handshake. 0 means no limit. (default 10s)
   -storage.storage-prefix string
-    	[experimental] Prefix for all objects stored in the backend storage. For simplicity, it may only contain digits and English alphabet letters.
+    	[experimental] Deprecated: Use 'storage..prefix' instead. Prefix for all objects stored in the backend storage. For simplicity, it may only contain digits and English alphabet characters, hyphens, underscores, dots and forward slashes.
   -storage.swift.auth-url string
     	OpenStack Swift authentication URL
   -storage.swift.auth-version int
@@ -1057,12 +1081,20 @@ Usage of ./pyroscope:
     	The tenant's shard size, used when store-gateway sharding is enabled. Value of 0 disables shuffle sharding for the tenant, that is all tenant blocks are sharded across all store-gateway replicas.
   -target comma-separated-list-of-strings
     	Comma-separated list of Pyroscope modules to load. The alias 'all' can be used in the list to load a number of core modules and will enable single-binary mode.  (default all)
+  -tenant-settings.collection-rules.alloy-template-path string
+    	[experimental] Override the default alloy go template.
+  -tenant-settings.collection-rules.enabled
+    	[experimental] Enable the storing of collection config in tenant settings.
+  -tenant-settings.collection-rules.pyroscope-url string
+    	[experimental] The public facing URL of the Pyroscope instance.
+  -tenant-settings.recording-rules.enabled
+    	[experimental] Enable the storing of recording rules in tenant settings.
   -tracing.enabled
     	Set to false to disable tracing. (default true)
   -tracing.profiling-enabled
     	[experimental] Set to true to enable profiling integration.
   -usage-stats.enabled
-    	Enable anonymous usage reporting. (default true)
+    	Enable anonymous usage statistics collection. For more details about usage statistics, refer to https://grafana.com/docs/pyroscope/latest/configure-server/anonymous-usage-statistics-reporting/ (default true)
   -validation.enforce-labels-order
     	Enforce labels order optimization.
   -validation.max-label-names-per-series int

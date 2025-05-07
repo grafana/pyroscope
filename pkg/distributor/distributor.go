@@ -37,6 +37,7 @@ import (
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/clientpool"
 	"github.com/grafana/pyroscope/pkg/distributor/aggregator"
+	"github.com/grafana/pyroscope/pkg/distributor/ingest_limits"
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	writepath "github.com/grafana/pyroscope/pkg/distributor/write_path"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
@@ -99,6 +100,7 @@ type Distributor struct {
 	ingestionRateLimiter   *limiter.RateLimiter
 	aggregator             *aggregator.MultiTenantAggregator[*pprof.ProfileMerge]
 	asyncRequests          sync.WaitGroup
+	ingestionLimitsSampler *ingest_limits.Sampler
 
 	subservices        *services.Manager
 	subservicesWatcher *services.FailureWatcher
@@ -117,6 +119,7 @@ type Distributor struct {
 type Limits interface {
 	IngestionRateBytes(tenantID string) float64
 	IngestionBurstSizeBytes(tenantID string) int
+	IngestionLimit(tenantID string) *ingest_limits.Config
 	IngestionTenantShardSize(tenantID string) int
 	MaxLabelNameLength(tenantID string) int
 	MaxLabelValueLength(tenantID string) int
@@ -187,7 +190,9 @@ func New(
 		return nil, err
 	}
 
-	subservices = append(subservices, distributorsLifecycler, distributorsRing, d.aggregator)
+	d.ingestionLimitsSampler = ingest_limits.NewSampler(distributorsRing)
+
+	subservices = append(subservices, distributorsLifecycler, distributorsRing, d.aggregator, d.ingestionLimitsSampler)
 
 	d.ingestionRateLimiter = limiter.NewRateLimiter(newGlobalRateStrategy(newIngestionRateStrategy(limits), d), 10*time.Second)
 	d.distributorsLifecycler = distributorsLifecycler
@@ -286,7 +291,7 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 	for _, series := range req.Series {
 		serviceName := phlaremodel.Labels(series.Labels).Get(phlaremodel.LabelNameServiceName)
 		if serviceName == "" {
-			series.Labels = append(series.Labels, &typesv1.LabelPair{Name: phlaremodel.LabelNameServiceName, Value: "unspecified"})
+			series.Labels = append(series.Labels, &typesv1.LabelPair{Name: phlaremodel.LabelNameServiceName, Value: phlaremodel.AttrServiceNameFallback})
 		}
 		sort.Sort(phlaremodel.Labels(series.Labels))
 	}
@@ -302,6 +307,15 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		d.metrics.receivedCompressedBytes.WithLabelValues(string(profName), tenantID).Observe(float64(req.RawProfileSize))
 	}
 
+	d.calculateRequestSize(req)
+
+	// We don't support externally provided profile annotations right now.
+	// They are unfortunately part of the Push API so we explicitly clear them here.
+	req.ClearAnnotations()
+	if err := d.checkIngestLimit(tenantID, req); err != nil {
+		return nil, err
+	}
+
 	if err := d.rateLimit(tenantID, req); err != nil {
 		return nil, err
 	}
@@ -310,7 +324,12 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 
 	for _, series := range req.Series {
 		profName := phlaremodel.Labels(series.Labels).Get(ProfileName)
-		groups := usageGroups.GetUsageGroups(tenantID, phlaremodel.Labels(series.Labels))
+
+		groups := usageGroups.GetUsageGroups(tenantID, series.Labels)
+		if err := d.checkUsageGroupsIngestLimit(tenantID, groups.Names(), req); err != nil {
+			return nil, err
+		}
+
 		profLanguage := d.GetProfileLanguage(series)
 
 		for _, raw := range series.Samples {
@@ -435,6 +454,7 @@ func (d *Distributor) aggregate(ctx context.Context, req *distributormodel.PushR
 	// session ID: this is required to ensure fair load distribution.
 	d.asyncRequests.Add(1)
 	labels = phlaremodel.Labels(req.Series[0].Labels).Clone()
+	annotations := req.Series[0].Annotations
 	go func() {
 		defer d.asyncRequests.Done()
 		sendErr := util.RecoverPanic(func() error {
@@ -452,8 +472,9 @@ func (d *Distributor) aggregate(ctx context.Context, req *distributormodel.PushR
 			aggregated := &distributormodel.PushRequest{
 				TenantID: req.TenantID,
 				Series: []*distributormodel.ProfileSeries{{
-					Labels:  labels,
-					Samples: []*distributormodel.ProfileSample{{Profile: pprof.RawFromProto(p.Profile())}},
+					Labels:      labels,
+					Samples:     []*distributormodel.ProfileSample{{Profile: pprof.RawFromProto(p.Profile())}},
+					Annotations: annotations,
 				}},
 			}
 			return d.router.Send(localCtx, aggregated)
@@ -646,8 +667,9 @@ func (d *Distributor) sendProfilesErr(ctx context.Context, ingester ring.Instanc
 
 	for _, p := range profileTrackers {
 		series := &pushv1.RawProfileSeries{
-			Labels:  p.profile.Labels,
-			Samples: make([]*pushv1.RawSample, 0, len(p.profile.Samples)),
+			Labels:      p.profile.Labels,
+			Samples:     make([]*pushv1.RawSample, 0, len(p.profile.Samples)),
+			Annotations: p.profile.Annotations,
 		}
 		for _, sample := range p.profile.Samples {
 			series.Samples = append(series.Samples, &pushv1.RawSample{
@@ -709,6 +731,17 @@ func (d *Distributor) limitMaxSessionsPerSeries(maxSessionsPerSeries int, labels
 }
 
 func (d *Distributor) rateLimit(tenantID string, req *distributormodel.PushRequest) error {
+	if !d.ingestionRateLimiter.AllowN(time.Now(), tenantID, int(req.TotalBytesUncompressed)) {
+		validation.DiscardedProfiles.WithLabelValues(string(validation.RateLimited), tenantID).Add(float64(req.TotalProfiles))
+		validation.DiscardedBytes.WithLabelValues(string(validation.RateLimited), tenantID).Add(float64(req.TotalBytesUncompressed))
+		return connect.NewError(connect.CodeResourceExhausted,
+			fmt.Errorf("push rate limit (%s) exceeded while adding %s", humanize.IBytes(uint64(d.limits.IngestionRateBytes(tenantID))), humanize.IBytes(uint64(req.TotalBytesUncompressed))),
+		)
+	}
+	return nil
+}
+
+func (d *Distributor) calculateRequestSize(req *distributormodel.PushRequest) {
 	for _, series := range req.Series {
 		// include the labels in the size calculation
 		for _, lbs := range series.Labels {
@@ -720,14 +753,56 @@ func (d *Distributor) rateLimit(tenantID string, req *distributormodel.PushReque
 			req.TotalBytesUncompressed += int64(raw.Profile.SizeVT())
 		}
 	}
-	// rate limit the request
-	if !d.ingestionRateLimiter.AllowN(time.Now(), tenantID, int(req.TotalBytesUncompressed)) {
-		validation.DiscardedProfiles.WithLabelValues(string(validation.RateLimited), tenantID).Add(float64(req.TotalProfiles))
-		validation.DiscardedBytes.WithLabelValues(string(validation.RateLimited), tenantID).Add(float64(req.TotalBytesUncompressed))
-		return connect.NewError(connect.CodeResourceExhausted,
-			fmt.Errorf("push rate limit (%s) exceeded while adding %s", humanize.IBytes(uint64(d.limits.IngestionRateBytes(tenantID))), humanize.IBytes(uint64(req.TotalBytesUncompressed))),
-		)
+}
+
+func (d *Distributor) checkIngestLimit(tenantID string, req *distributormodel.PushRequest) error {
+	l := d.limits.IngestionLimit(tenantID)
+	if l == nil {
+		return nil
 	}
+
+	if l.LimitReached {
+		// we want to allow a very small portion of the traffic after reaching the limit
+		if d.ingestionLimitsSampler.AllowRequest(tenantID, l.Sampling) {
+			if err := req.MarkThrottledTenant(l); err != nil {
+				return err
+			}
+			return nil
+		}
+		limitResetTime := time.Unix(l.LimitResetTime, 0).UTC().Format(time.RFC3339)
+		validation.DiscardedProfiles.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalProfiles))
+		validation.DiscardedBytes.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalBytesUncompressed))
+		return connect.NewError(connect.CodeResourceExhausted,
+			fmt.Errorf("limit of %s/%s reached, next reset at %s", humanize.IBytes(uint64(l.PeriodLimitMb*1024*1024)), l.PeriodType, limitResetTime))
+	}
+
+	return nil
+}
+
+func (d *Distributor) checkUsageGroupsIngestLimit(tenantID string, groupsInRequest []string, req *distributormodel.PushRequest) error {
+	l := d.limits.IngestionLimit(tenantID)
+	if l == nil || len(l.UsageGroups) == 0 {
+		return nil
+	}
+
+	for _, group := range groupsInRequest {
+		limit, ok := l.UsageGroups[group]
+		if !ok || !limit.LimitReached {
+			continue
+		}
+		if d.ingestionLimitsSampler.AllowRequest(tenantID, l.Sampling) {
+			if err := req.MarkThrottledUsageGroup(l, group); err != nil {
+				return err
+			}
+			return nil
+		}
+		limitResetTime := time.Unix(l.LimitResetTime, 0).UTC().Format(time.RFC3339)
+		validation.DiscardedProfiles.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalProfiles))
+		validation.DiscardedBytes.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalBytesUncompressed))
+		return connect.NewError(connect.CodeResourceExhausted,
+			fmt.Errorf("limit of %s/%s reached for usage group %s, next reset at %s", humanize.IBytes(uint64(limit.PeriodLimitMb*1024*1024)), l.PeriodType, group, limitResetTime))
+	}
+
 	return nil
 }
 
@@ -827,6 +902,9 @@ func extractSampleSeries(
 				rules,
 				v,
 			)
+			for _, vSer := range v.series {
+				vSer.Annotations = series.Annotations
+			}
 			result = append(result, v.series...)
 			bytesRelabelDropped += float64(v.discardedBytes)
 			profilesRelabelDropped += float64(v.discardedProfiles)

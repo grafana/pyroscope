@@ -356,7 +356,7 @@ func BenchmarkFlush(b *testing.B) {
 	}
 }
 
-func ingestThreeProfileStreams(ctx context.Context, i int, ingest func(context.Context, *profilev1.Profile, uuid.UUID, ...*typesv1.LabelPair) error) error {
+func ingestThreeProfileStreams(ctx context.Context, i int, ingest func(context.Context, *profilev1.Profile, uuid.UUID, []*typesv1.ProfileAnnotation, ...*typesv1.LabelPair) error) error {
 	p := testhelper.NewProfileBuilder(time.Second.Nanoseconds() * int64(i))
 	p.CPUProfile()
 	p.WithLabels(
@@ -367,7 +367,7 @@ func ingestThreeProfileStreams(ctx context.Context, i int, ingest func(context.C
 	p.ForStacktraceString("func1", "func2").AddSamples(10)
 	p.ForStacktraceString("func1").AddSamples(20)
 
-	return ingest(ctx, p.Profile, p.UUID, p.Labels...)
+	return ingest(ctx, p.Profile, p.UUID, nil, p.Labels...)
 }
 
 // TestProfileStore_Querying
@@ -385,7 +385,7 @@ func TestProfileStore_Querying(t *testing.T) {
 	head.profiles.cfg = &ParquetConfig{MaxRowGroupBytes: 128000, MaxBufferRowCount: 3}
 
 	for i := 0; i < 9; i++ {
-		require.NoError(t, ingestThreeProfileStreams(ctx, i, func(ctx context.Context, p *profilev1.Profile, u uuid.UUID, lp ...*typesv1.LabelPair) error {
+		require.NoError(t, ingestThreeProfileStreams(ctx, i, func(ctx context.Context, p *profilev1.Profile, u uuid.UUID, a []*typesv1.ProfileAnnotation, lp ...*typesv1.LabelPair) error {
 			defer func() {
 				// wait for the profile to be flushed
 				// todo(cyriltovena): We shouldn't need this, but when calling head.Queriers(), flushing row group and then querying using the queriers previously returned we will miss the new headDiskQuerier.
@@ -393,7 +393,7 @@ func TestProfileStore_Querying(t *testing.T) {
 					time.Sleep(time.Millisecond)
 				}
 			}()
-			return head.Ingest(ctx, p, u, lp...)
+			return head.Ingest(ctx, p, u, a, lp...)
 		}))
 	}
 

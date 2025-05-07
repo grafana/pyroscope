@@ -150,14 +150,43 @@ func Test_Aggregation_Error(t *testing.T) {
 		assert.NoError(t, err)
 		assert.False(t, ok)
 
-		r3, _, err := a.Aggregate(0, 2, func(i int) (int, error) { return 0, context.Canceled })
-		assert.ErrorIs(t, err, context.Canceled)
-		r2, _, err := a.Aggregate(0, 1, fn)
+		r3, _, err := a.Aggregate(0, 2, func(int) (int, error) {
+			return 0, context.Canceled
+		})
 		assert.ErrorIs(t, err, context.Canceled)
 
+		var results []func() error
+
+		// now a call into the same aggregation bucket is either failing or
+		// succeeding, depending if the aggregation has been removed in the meantime
+		for {
+			result, _, err := a.Aggregate(0, 1, fn)
+			if err == nil {
+				results = append(results, result.Wait)
+				break
+			}
+
+			if err != nil {
+				assert.ErrorIs(t, err, context.Canceled)
+				results = append(results, result.Wait)
+			}
+
+			// slow down
+			<-time.After(1 * time.Millisecond)
+		}
+
 		// Caller does not have to wait, actually.
-		// Testing it to make sure it is not blocking.
-		assert.Error(t, r2.Wait(), context.Canceled)
+		// Testing it backwards to make sure it is not blocking.
+		for idx := range results {
+			wait := results[len(results)-1-idx]
+
+			if idx == 0 {
+				assert.NoError(t, wait(), context.Canceled)
+				continue
+			}
+
+			assert.Error(t, wait(), context.Canceled)
+		}
 		assert.Error(t, r3.Wait(), context.Canceled)
 
 		assert.Equal(t, uint64(1), a.stats.errors.Load())

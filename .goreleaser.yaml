@@ -3,7 +3,7 @@ version: 2
 before:
   hooks:
     # This hook ensures that goreleaser uses the correct go version for a Pyroscope release
-    - sh -euc 'go version | grep "go version go1.22.10 " || { echo "Unexpected go version"; exit 1; }'
+    - sh -euc 'go version | grep "go version go1.23.8 " || { echo "Unexpected go version"; exit 1; }'
 env:
   # Strip debug information from the binary by default, weekly builds will have debug information
   - GORELEASER_DEBUG_INFO_FLAGS={{ if and (index .Env "GORELEASER_STRIP_DEBUG_INFO") (eq .Env.GORELEASER_STRIP_DEBUG_INFO "false")  }}{{ else }}-s -w{{ end }}
@@ -16,9 +16,8 @@ builds:
     goarch:
       - amd64
       - arm64
-      - arm
-    goarm:
-      - "7"
+    goamd64:
+      - v2
     main: ./cmd/pyroscope
     mod_timestamp: "{{ .CommitTimestamp }}"
     flags:
@@ -52,9 +51,8 @@ builds:
     goarch:
       - amd64
       - arm64
-      - arm
-    goarm:
-      - "7"
+    goamd64:
+      - v2
     ignore:
       - goos: windows
         goarch: arm
@@ -68,6 +66,7 @@ dockers:
   - use: buildx
     goos: linux
     goarch: amd64
+    goamd64: v2
     dockerfile: ./cmd/pyroscope/Dockerfile
     ids:
       - pyroscope
@@ -86,30 +85,17 @@ dockers:
   - use: buildx
     goos: linux
     goarch: arm64
+    dockerfile: ./cmd/pyroscope/Dockerfile
+    ids:
+      - pyroscope
+      - profilecli
     extra_files:
       - cmd/pyroscope/pyroscope.yaml
-    dockerfile: ./cmd/pyroscope/Dockerfile
     image_templates:
       - "grafana/{{ .ProjectName }}:{{ .Version }}-arm64v8"
       - "grafana/{{ .ProjectName }}:latest-arm64v8"
     build_flag_templates:
       - "--platform=linux/arm64/v8"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.title={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-  - use: buildx
-    goos: linux
-    goarch: arm
-    goarm: "7"
-    dockerfile: ./cmd/pyroscope/Dockerfile
-    extra_files:
-      - cmd/pyroscope/pyroscope.yaml
-    image_templates:
-      - "grafana/{{ .ProjectName }}:{{ .Version }}-armv7"
-      - "grafana/{{ .ProjectName }}:latest-armv7"
-    build_flag_templates:
-      - "--platform=linux/arm/v7"
       - "--label=org.opencontainers.image.created={{.Date}}"
       - "--label=org.opencontainers.image.title={{.ProjectName}}"
       - "--label=org.opencontainers.image.revision={{.FullCommit}}"
@@ -120,12 +106,10 @@ docker_manifests:
     image_templates:
       - grafana/{{ .ProjectName }}:{{ .Version }}-amd64
       - grafana/{{ .ProjectName }}:{{ .Version }}-arm64v8
-      - grafana/{{ .ProjectName }}:{{ .Version }}-armv7
   - name_template: grafana/{{ .ProjectName }}:latest
     image_templates:
       - grafana/{{ .ProjectName }}:latest-amd64
       - grafana/{{ .ProjectName }}:latest-arm64v8
-      - grafana/{{ .ProjectName }}:latest-armv7
 nfpms:
   - id: pyroscope
     formats:
@@ -136,6 +120,7 @@ nfpms:
     vendor: Grafana Labs Inc
     homepage: https://grafana.com/pyroscope
     license: AGPL-3.0
+    file_name_template: '{{ .PackageName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v2") }}{{ .Amd64 }}{{ end }}'
     contents:
       - src: ./tools/packaging/pyroscope.service
         dst: /etc/systemd/system/pyroscope.service
@@ -147,19 +132,20 @@ nfpms:
 
 archives:
   - id: pyroscope
+    name_template: '{{.ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v2") }}{{ .Amd64 }}{{ end }}'
     builds:
       - pyroscope
   - id: profilecli
-    name_template: 'profilecli_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v1") }}{{ .Amd64 }}{{ end }}'
+    name_template: 'profilecli_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v2") }}{{ .Amd64 }}{{ end }}'
     builds:
       - profilecli
     format_overrides:
       - goos: windows
-        format: zip
+        formats: [zip]
 checksum:
   name_template: "checksums.txt"
 snapshot:
-  name_template: "{{ incpatch .Version }}-next"
+  version_template: "{{ incpatch .Version }}-next"
 changelog:
   sort: asc
   filters:

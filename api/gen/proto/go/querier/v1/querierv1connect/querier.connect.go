@@ -68,22 +68,6 @@ const (
 	QuerierServiceAnalyzeQueryProcedure = "/querier.v1.QuerierService/AnalyzeQuery"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	querierServiceServiceDescriptor                      = v1.File_querier_v1_querier_proto.Services().ByName("QuerierService")
-	querierServiceProfileTypesMethodDescriptor           = querierServiceServiceDescriptor.Methods().ByName("ProfileTypes")
-	querierServiceLabelValuesMethodDescriptor            = querierServiceServiceDescriptor.Methods().ByName("LabelValues")
-	querierServiceLabelNamesMethodDescriptor             = querierServiceServiceDescriptor.Methods().ByName("LabelNames")
-	querierServiceSeriesMethodDescriptor                 = querierServiceServiceDescriptor.Methods().ByName("Series")
-	querierServiceSelectMergeStacktracesMethodDescriptor = querierServiceServiceDescriptor.Methods().ByName("SelectMergeStacktraces")
-	querierServiceSelectMergeSpanProfileMethodDescriptor = querierServiceServiceDescriptor.Methods().ByName("SelectMergeSpanProfile")
-	querierServiceSelectMergeProfileMethodDescriptor     = querierServiceServiceDescriptor.Methods().ByName("SelectMergeProfile")
-	querierServiceSelectSeriesMethodDescriptor           = querierServiceServiceDescriptor.Methods().ByName("SelectSeries")
-	querierServiceDiffMethodDescriptor                   = querierServiceServiceDescriptor.Methods().ByName("Diff")
-	querierServiceGetProfileStatsMethodDescriptor        = querierServiceServiceDescriptor.Methods().ByName("GetProfileStats")
-	querierServiceAnalyzeQueryMethodDescriptor           = querierServiceServiceDescriptor.Methods().ByName("AnalyzeQuery")
-)
-
 // QuerierServiceClient is a client for the querier.v1.QuerierService service.
 type QuerierServiceClient interface {
 	// ProfileType returns a list of the existing profile types.
@@ -118,71 +102,72 @@ type QuerierServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewQuerierServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) QuerierServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	querierServiceMethods := v1.File_querier_v1_querier_proto.Services().ByName("QuerierService").Methods()
 	return &querierServiceClient{
 		profileTypes: connect.NewClient[v1.ProfileTypesRequest, v1.ProfileTypesResponse](
 			httpClient,
 			baseURL+QuerierServiceProfileTypesProcedure,
-			connect.WithSchema(querierServiceProfileTypesMethodDescriptor),
+			connect.WithSchema(querierServiceMethods.ByName("ProfileTypes")),
 			connect.WithClientOptions(opts...),
 		),
 		labelValues: connect.NewClient[v11.LabelValuesRequest, v11.LabelValuesResponse](
 			httpClient,
 			baseURL+QuerierServiceLabelValuesProcedure,
-			connect.WithSchema(querierServiceLabelValuesMethodDescriptor),
+			connect.WithSchema(querierServiceMethods.ByName("LabelValues")),
 			connect.WithClientOptions(opts...),
 		),
 		labelNames: connect.NewClient[v11.LabelNamesRequest, v11.LabelNamesResponse](
 			httpClient,
 			baseURL+QuerierServiceLabelNamesProcedure,
-			connect.WithSchema(querierServiceLabelNamesMethodDescriptor),
+			connect.WithSchema(querierServiceMethods.ByName("LabelNames")),
 			connect.WithClientOptions(opts...),
 		),
 		series: connect.NewClient[v1.SeriesRequest, v1.SeriesResponse](
 			httpClient,
 			baseURL+QuerierServiceSeriesProcedure,
-			connect.WithSchema(querierServiceSeriesMethodDescriptor),
+			connect.WithSchema(querierServiceMethods.ByName("Series")),
 			connect.WithClientOptions(opts...),
 		),
 		selectMergeStacktraces: connect.NewClient[v1.SelectMergeStacktracesRequest, v1.SelectMergeStacktracesResponse](
 			httpClient,
 			baseURL+QuerierServiceSelectMergeStacktracesProcedure,
-			connect.WithSchema(querierServiceSelectMergeStacktracesMethodDescriptor),
+			connect.WithSchema(querierServiceMethods.ByName("SelectMergeStacktraces")),
 			connect.WithClientOptions(opts...),
 		),
 		selectMergeSpanProfile: connect.NewClient[v1.SelectMergeSpanProfileRequest, v1.SelectMergeSpanProfileResponse](
 			httpClient,
 			baseURL+QuerierServiceSelectMergeSpanProfileProcedure,
-			connect.WithSchema(querierServiceSelectMergeSpanProfileMethodDescriptor),
+			connect.WithSchema(querierServiceMethods.ByName("SelectMergeSpanProfile")),
 			connect.WithClientOptions(opts...),
 		),
 		selectMergeProfile: connect.NewClient[v1.SelectMergeProfileRequest, v12.Profile](
 			httpClient,
 			baseURL+QuerierServiceSelectMergeProfileProcedure,
-			connect.WithSchema(querierServiceSelectMergeProfileMethodDescriptor),
+			connect.WithSchema(querierServiceMethods.ByName("SelectMergeProfile")),
 			connect.WithClientOptions(opts...),
 		),
 		selectSeries: connect.NewClient[v1.SelectSeriesRequest, v1.SelectSeriesResponse](
 			httpClient,
 			baseURL+QuerierServiceSelectSeriesProcedure,
-			connect.WithSchema(querierServiceSelectSeriesMethodDescriptor),
+			connect.WithSchema(querierServiceMethods.ByName("SelectSeries")),
 			connect.WithClientOptions(opts...),
 		),
 		diff: connect.NewClient[v1.DiffRequest, v1.DiffResponse](
 			httpClient,
 			baseURL+QuerierServiceDiffProcedure,
-			connect.WithSchema(querierServiceDiffMethodDescriptor),
+			connect.WithSchema(querierServiceMethods.ByName("Diff")),
 			connect.WithClientOptions(opts...),
 		),
 		getProfileStats: connect.NewClient[v11.GetProfileStatsRequest, v11.GetProfileStatsResponse](
 			httpClient,
 			baseURL+QuerierServiceGetProfileStatsProcedure,
-			connect.WithSchema(querierServiceGetProfileStatsMethodDescriptor),
+			connect.WithSchema(querierServiceMethods.ByName("GetProfileStats")),
 			connect.WithClientOptions(opts...),
 		),
 		analyzeQuery: connect.NewClient[v1.AnalyzeQueryRequest, v1.AnalyzeQueryResponse](
 			httpClient,
 			baseURL+QuerierServiceAnalyzeQueryProcedure,
-			connect.WithSchema(querierServiceAnalyzeQueryMethodDescriptor),
+			connect.WithSchema(querierServiceMethods.ByName("AnalyzeQuery")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -289,70 +274,71 @@ type QuerierServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewQuerierServiceHandler(svc QuerierServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	querierServiceMethods := v1.File_querier_v1_querier_proto.Services().ByName("QuerierService").Methods()
 	querierServiceProfileTypesHandler := connect.NewUnaryHandler(
 		QuerierServiceProfileTypesProcedure,
 		svc.ProfileTypes,
-		connect.WithSchema(querierServiceProfileTypesMethodDescriptor),
+		connect.WithSchema(querierServiceMethods.ByName("ProfileTypes")),
 		connect.WithHandlerOptions(opts...),
 	)
 	querierServiceLabelValuesHandler := connect.NewUnaryHandler(
 		QuerierServiceLabelValuesProcedure,
 		svc.LabelValues,
-		connect.WithSchema(querierServiceLabelValuesMethodDescriptor),
+		connect.WithSchema(querierServiceMethods.ByName("LabelValues")),
 		connect.WithHandlerOptions(opts...),
 	)
 	querierServiceLabelNamesHandler := connect.NewUnaryHandler(
 		QuerierServiceLabelNamesProcedure,
 		svc.LabelNames,
-		connect.WithSchema(querierServiceLabelNamesMethodDescriptor),
+		connect.WithSchema(querierServiceMethods.ByName("LabelNames")),
 		connect.WithHandlerOptions(opts...),
 	)
 	querierServiceSeriesHandler := connect.NewUnaryHandler(
 		QuerierServiceSeriesProcedure,
 		svc.Series,
-		connect.WithSchema(querierServiceSeriesMethodDescriptor),
+		connect.WithSchema(querierServiceMethods.ByName("Series")),
 		connect.WithHandlerOptions(opts...),
 	)
 	querierServiceSelectMergeStacktracesHandler := connect.NewUnaryHandler(
 		QuerierServiceSelectMergeStacktracesProcedure,
 		svc.SelectMergeStacktraces,
-		connect.WithSchema(querierServiceSelectMergeStacktracesMethodDescriptor),
+		connect.WithSchema(querierServiceMethods.ByName("SelectMergeStacktraces")),
 		connect.WithHandlerOptions(opts...),
 	)
 	querierServiceSelectMergeSpanProfileHandler := connect.NewUnaryHandler(
 		QuerierServiceSelectMergeSpanProfileProcedure,
 		svc.SelectMergeSpanProfile,
-		connect.WithSchema(querierServiceSelectMergeSpanProfileMethodDescriptor),
+		connect.WithSchema(querierServiceMethods.ByName("SelectMergeSpanProfile")),
 		connect.WithHandlerOptions(opts...),
 	)
 	querierServiceSelectMergeProfileHandler := connect.NewUnaryHandler(
 		QuerierServiceSelectMergeProfileProcedure,
 		svc.SelectMergeProfile,
-		connect.WithSchema(querierServiceSelectMergeProfileMethodDescriptor),
+		connect.WithSchema(querierServiceMethods.ByName("SelectMergeProfile")),
 		connect.WithHandlerOptions(opts...),
 	)
 	querierServiceSelectSeriesHandler := connect.NewUnaryHandler(
 		QuerierServiceSelectSeriesProcedure,
 		svc.SelectSeries,
-		connect.WithSchema(querierServiceSelectSeriesMethodDescriptor),
+		connect.WithSchema(querierServiceMethods.ByName("SelectSeries")),
 		connect.WithHandlerOptions(opts...),
 	)
 	querierServiceDiffHandler := connect.NewUnaryHandler(
 		QuerierServiceDiffProcedure,
 		svc.Diff,
-		connect.WithSchema(querierServiceDiffMethodDescriptor),
+		connect.WithSchema(querierServiceMethods.ByName("Diff")),
 		connect.WithHandlerOptions(opts...),
 	)
 	querierServiceGetProfileStatsHandler := connect.NewUnaryHandler(
 		QuerierServiceGetProfileStatsProcedure,
 		svc.GetProfileStats,
-		connect.WithSchema(querierServiceGetProfileStatsMethodDescriptor),
+		connect.WithSchema(querierServiceMethods.ByName("GetProfileStats")),
 		connect.WithHandlerOptions(opts...),
 	)
 	querierServiceAnalyzeQueryHandler := connect.NewUnaryHandler(
 		QuerierServiceAnalyzeQueryProcedure,
 		svc.AnalyzeQuery,
-		connect.WithSchema(querierServiceAnalyzeQueryMethodDescriptor),
+		connect.WithSchema(querierServiceMethods.ByName("AnalyzeQuery")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/querier.v1.QuerierService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

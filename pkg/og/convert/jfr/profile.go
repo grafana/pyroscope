@@ -49,7 +49,13 @@ func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (*di
 	}
 	res := new(distributormodel.PushRequest)
 	for _, req := range profiles.Profiles {
-		seriesLabels := jfrPprofPyroscope.Labels(md.Key.Labels(), profiles.JFREvent, req.Metric, md.Key.AppName(), md.SpyName)
+		seriesLabels := jfrPprofPyroscope.Labels(
+			md.LabelSet.Labels(),
+			profiles.JFREvent,
+			req.Metric,
+			md.LabelSet.ServiceName(),
+			md.SpyName,
+		)
 		res.Series = append(res.Series, &distributormodel.ProfileSeries{
 			Labels: seriesLabels,
 			Samples: []*distributormodel.ProfileSample{

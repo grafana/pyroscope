@@ -13,6 +13,7 @@ type statsCollector struct {
 	completedTotal  *prometheus.Desc
 	assignedTotal   *prometheus.Desc
 	reassignedTotal *prometheus.Desc
+	evictedTotal    *prometheus.Desc
 
 	// Gauge showing the job queue status breakdown.
 	jobs *prometheus.Desc
@@ -52,6 +53,11 @@ func newStatsCollector(s *Scheduler) *statsCollector {
 			"The total number of jobs reassigned.",
 			variableLabels, nil,
 		),
+		evictedTotal: prometheus.NewDesc(
+			schedulerQueueMetricsPrefix+"evicted_jobs_total",
+			"The total number of jobs evicted.",
+			variableLabels, nil,
+		),
 	}
 }
 
@@ -61,6 +67,7 @@ func (c *statsCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.completedTotal
 	ch <- c.assignedTotal
 	ch <- c.reassignedTotal
+	ch <- c.evictedTotal
 }
 
 func (c *statsCollector) Collect(ch chan<- prometheus.Metric) {
@@ -69,12 +76,15 @@ func (c *statsCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 }
 
-func (c *statsCollector) collectMetrics() []prometheus.Metric {
+func (c *statsCollector) collectStats(fn func(level int, stats queueStats)) {
 	c.s.mu.Lock()
 	defer c.s.mu.Unlock()
 
-	metrics := make([]prometheus.Metric, 0, 8*len(c.s.queue.levels))
 	for i, q := range c.s.queue.levels {
+		// Note that some levels may be empty.
+		if q == nil || q.jobs == nil {
+			continue
+		}
 		var stats queueStats
 		for _, e := range *q.jobs {
 			switch {
@@ -101,8 +111,16 @@ func (c *statsCollector) collectMetrics() []prometheus.Metric {
 		stats.completedTotal = q.stats.completedTotal
 		stats.assignedTotal = q.stats.assignedTotal
 		stats.reassignedTotal = q.stats.reassignedTotal
+		stats.evictedTotal = q.stats.evictedTotal
 
-		level := strconv.Itoa(i)
+		fn(i, stats)
+	}
+}
+
+func (c *statsCollector) collectMetrics() []prometheus.Metric {
+	metrics := make([]prometheus.Metric, 0, 8*len(c.s.queue.levels))
+	c.collectStats(func(l int, stats queueStats) {
+		level := strconv.Itoa(l)
 		metrics = append(metrics,
 			prometheus.MustNewConstMetric(c.jobs, prometheus.GaugeValue, float64(stats.assigned), level, "assigned"),
 			prometheus.MustNewConstMetric(c.jobs, prometheus.GaugeValue, float64(stats.unassigned), level, "unassigned"),
@@ -112,8 +130,8 @@ func (c *statsCollector) collectMetrics() []prometheus.Metric {
 			prometheus.MustNewConstMetric(c.completedTotal, prometheus.CounterValue, float64(stats.completedTotal), level),
 			prometheus.MustNewConstMetric(c.assignedTotal, prometheus.CounterValue, float64(stats.assignedTotal), level),
 			prometheus.MustNewConstMetric(c.reassignedTotal, prometheus.CounterValue, float64(stats.reassignedTotal), level),
+			prometheus.MustNewConstMetric(c.evictedTotal, prometheus.CounterValue, float64(stats.evictedTotal), level),
 		)
-	}
-
+	})
 	return metrics
 }

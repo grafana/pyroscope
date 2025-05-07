@@ -4,23 +4,25 @@ on:
     branches:
       - main
   pull_request:
-
 concurrency:
   # Cancel any running workflow for the same branch when new commits are pushed.
   # We group both by ref_name (available when CI is triggered by a push to a branch/tag)
   # and head_ref (available when CI is triggered by a PR).
   group: "frontend-${{ github.ref_name }}-${{ github.head_ref }}"
   cancel-in-progress: true
-
+permissions:
+  contents: read
 jobs:
   type-check:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          node-version: lts/hydrogen
+          persist-credentials: 'false'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 20
           cache: yarn
       - run: yarn --frozen-lockfile
       - name: Run type-check
@@ -29,10 +31,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          node-version: lts/hydrogen
+          persist-credentials: 'false'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 20
           cache: yarn
       - run: yarn --frozen-lockfile
       - name: Run format
@@ -41,10 +45,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          node-version: lts/hydrogen
+          persist-credentials: 'false'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 20
           cache: yarn
       - run: yarn --frozen-lockfile
       - name: Run lint
@@ -53,10 +59,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          node-version: lts/hydrogen
+          persist-credentials: 'false'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 20
           cache: yarn
       - run: yarn --frozen-lockfile
       - name: Run build
@@ -65,10 +73,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          node-version: lts/hydrogen
+          persist-credentials: 'false'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 20
           cache: yarn
       - run: yarn --frozen-lockfile
       - name: Run tests

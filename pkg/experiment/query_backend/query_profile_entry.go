@@ -28,7 +28,7 @@ type ProfileEntry struct {
 func (e ProfileEntry) RowNumber() int64 { return e.RowNum }
 
 func profileEntryIterator(q *queryContext, groupBy ...string) (iter.Iterator[ProfileEntry], error) {
-	series, err := getSeriesLabels(q.ds.Index(), q.req.matchers, groupBy...)
+	series, err := getSeries(q.ds.Index(), q.req.matchers, groupBy...)
 	if err != nil {
 		return nil, err
 	}
@@ -62,33 +62,62 @@ func profileEntryIterator(q *queryContext, groupBy ...string) (iter.Iterator[Pro
 	return entries, nil
 }
 
-type seriesLabels struct {
+type series struct {
 	fingerprint model.Fingerprint
 	labels      phlaremodel.Labels
 }
 
-func getSeriesLabels(reader phlaredb.IndexReader, matchers []*labels.Matcher, by ...string) (map[uint32]seriesLabels, error) {
+func getSeries(reader phlaredb.IndexReader, matchers []*labels.Matcher, by ...string) (map[uint32]series, error) {
 	postings, err := getPostings(reader, matchers...)
 	if err != nil {
 		return nil, err
 	}
 	chunks := make([]index.ChunkMeta, 1)
-	series := make(map[uint32]seriesLabels)
+	s := make(map[uint32]series)
 	l := make(phlaremodel.Labels, 0, 6)
 	for postings.Next() {
 		fp, err := reader.SeriesBy(postings.At(), &l, &chunks, by...)
 		if err != nil {
 			return nil, err
 		}
-		_, ok := series[chunks[0].SeriesIndex]
+		_, ok := s[chunks[0].SeriesIndex]
 		if ok {
 			continue
 		}
-		series[chunks[0].SeriesIndex] = seriesLabels{
+		s[chunks[0].SeriesIndex] = series{
 			fingerprint: model.Fingerprint(fp),
 			labels:      l.Clone(),
 		}
 	}
+	return s, postings.Err()
+}
 
-	return series, postings.Err()
+func getPostings(reader phlaredb.IndexReader, matchers ...*labels.Matcher) (index.Postings, error) {
+	if len(matchers) == 0 {
+		k, v := index.AllPostingsKey()
+		return reader.Postings(k, nil, v)
+	}
+	return phlaredb.PostingsForMatchers(reader, nil, matchers...)
+}
+
+func getSeriesIDs(reader phlaredb.IndexReader, matchers ...*labels.Matcher) (map[uint32]struct{}, error) {
+	postings, err := getPostings(reader, matchers...)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = postings.Close()
+	}()
+	visited := make(map[uint32]struct{})
+	chunks := make([]index.ChunkMeta, 1)
+	for postings.Next() {
+		if _, err = reader.Series(postings.At(), nil, &chunks); err != nil {
+			return nil, err
+		}
+		visited[chunks[0].SeriesIndex] = struct{}{}
+	}
+	if err = postings.Err(); err != nil {
+		return nil, err
+	}
+	return visited, nil
 }

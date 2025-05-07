@@ -219,7 +219,7 @@ func (l Log) Wrap(next http.Handler) http.Handler {
 					n, err := next(p)
 					headerWritten = true
 					httpErr.Add(err)
-					if httpCode >= 500 && httpCode < 600 {
+					if httpCode >= 400 && httpCode < 600 {
 						bodyLeft = captureResponseBody(p, bodyLeft, &buf)
 					}
 					return n, err
@@ -267,7 +267,8 @@ func (l Log) Wrap(next http.Handler) http.Handler {
 
 			return
 		}
-		if 100 <= statusCode && statusCode < 500 {
+
+		if 100 <= statusCode && statusCode < 400 {
 			if l.LogRequestAtInfoLevel {
 				level.Info(requestLogD).Log("msg", "http request processed")
 			} else {

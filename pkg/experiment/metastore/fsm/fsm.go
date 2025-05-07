@@ -3,6 +3,7 @@ package fsm
 import (
 	"context"
 	"encoding/binary"
+	"flag"
 	"fmt"
 	"io"
 	"strconv"
@@ -36,9 +37,26 @@ type StateRestorer interface {
 	Restore(*bbolt.Tx) error
 }
 
+type Config struct {
+	SnapshotCompression      string `yaml:"snapshot_compression"`
+	SnapshotRateLimit        int    `yaml:"snapshot_rate_limit"`
+	SnapshotCompactOnRestore bool   `yaml:"snapshot_compact_on_restore"`
+	// Where the FSM BoltDB data is located.
+	// Does not have to be a persistent volume.
+	DataDir string `yaml:"data_dir"`
+}
+
+func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
+	f.StringVar(&cfg.SnapshotCompression, prefix+"snapshot-compression", "zstd", "Compression algorithm to use for snapshots. Supported compressions: zstd.")
+	f.IntVar(&cfg.SnapshotRateLimit, prefix+"snapshot-rate-limit", 15, "Rate limit for snapshot writer in MB/s.")
+	f.BoolVar(&cfg.SnapshotCompactOnRestore, prefix+"snapshot-compact-on-restore", false, "Compact the database on restore.")
+	f.StringVar(&cfg.DataDir, prefix+"data-dir", "./data-metastore/data", "Directory to store the data.")
+}
+
 // FSM implements the raft.FSM interface.
 type FSM struct {
 	logger  log.Logger
+	config  Config
 	metrics *metrics
 
 	mu   sync.RWMutex
@@ -54,13 +72,14 @@ type FSM struct {
 
 type handler func(tx *bbolt.Tx, cmd *raft.Log, raw []byte) (proto.Message, error)
 
-func New(logger log.Logger, reg prometheus.Registerer, dir string) (*FSM, error) {
+func New(logger log.Logger, reg prometheus.Registerer, config Config) (*FSM, error) {
 	fsm := FSM{
 		logger:   logger,
+		config:   config,
 		metrics:  newMetrics(reg),
 		handlers: make(map[RaftLogEntryType]handler),
 	}
-	db := newDB(logger, fsm.metrics, dir)
+	db := newDB(logger, fsm.metrics, config)
 	if err := db.open(false); err != nil {
 		return nil, err
 	}
@@ -133,29 +152,41 @@ func (fsm *FSM) restore() error {
 // Restore restores the FSM state from a snapshot.
 func (fsm *FSM) Restore(snapshot io.ReadCloser) (err error) {
 	start := time.Now()
-	_ = level.Info(fsm.logger).Log("msg", "restoring snapshot")
+	level.Info(fsm.logger).Log("msg", "restoring snapshot")
 	defer func() {
 		_ = snapshot.Close()
 		fsm.db.metrics.fsmRestoreSnapshotDuration.Observe(time.Since(start).Seconds())
 	}()
+
+	var r *snapshotReader
+	if r, err = newSnapshotReader(snapshot); err != nil {
+		level.Error(fsm.logger).Log("msg", "failed to create snapshot reader", "err", err)
+		return err
+	}
+	// The wrapper never returns errors on Close.
+	defer r.Close()
+
 	// Block all new transactions until we restore the snapshot.
 	// TODO(kolesnikovae): set not-serving service status to not
 	//  block incoming requests.
 	fsm.mu.Lock()
 	defer fsm.mu.Unlock()
 	fsm.txns.Wait()
-	if err = fsm.db.restore(snapshot); err != nil {
-		return fmt.Errorf("failed to restore database from snapshot: %w", err)
+	if err = fsm.db.restore(r); err != nil {
+		level.Error(fsm.logger).Log("msg", "failed to restore database from snapshot", "err", err)
+		return err
 	}
 	// First we need to initialize the state: each restorer is called
 	// synchronously and has exclusive access to the database.
 	if err = fsm.init(); err != nil {
-		return fmt.Errorf("failed to init state at restore: %w", err)
+		level.Error(fsm.logger).Log("msg", "failed to init state at restore", "err", err)
+		return err
 	}
 	// Then we restore the state: each restorer is given its own
 	// transaction and run concurrently with others.
 	if err = fsm.restore(); err != nil {
-		return fmt.Errorf("failed to restore state from snapshot: %w", err)
+		level.Error(fsm.logger).Log("msg", "failed to restore state from snapshot", "err", err)
+		return err
 	}
 	return nil
 }
@@ -205,7 +236,7 @@ func (fsm *FSM) applyCommand(cmd *raft.Log) any {
 	if cmd.Index <= fsm.appliedIndex {
 		// Skip already applied commands at WAL restore.
 		// Note that the 0 index is a noop and is never applied to FSM.
-		return Response{}
+		return Response{} // todo this may result in nil deref if client does not exepect Response.Data to be nil , for example (svc *CompactionService) PollCompactionJobs
 	}
 
 	cmdType := strconv.FormatUint(uint64(e.Type), 10)
@@ -267,7 +298,12 @@ func (fsm *FSM) Read(fn func(*bbolt.Tx)) error {
 func (fsm *FSM) Snapshot() (raft.FSMSnapshot, error) {
 	// Snapshot should only capture a pointer to the state, and any
 	// expensive IO should happen as part of FSMSnapshot.Persist.
-	s := snapshot{logger: fsm.logger, metrics: fsm.metrics}
+	s := snapshotWriter{
+		logger:      fsm.logger,
+		metrics:     fsm.metrics,
+		compression: fsm.config.SnapshotCompression,
+		rate:        fsm.config.SnapshotRateLimit,
+	}
 	tx, err := fsm.db.boltdb.Begin(false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open a transaction for snapshot: %w", err)

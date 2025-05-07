@@ -13,19 +13,25 @@ weight: 250
 
 Choose one of the following options to get started with Pyroscope:
 
-The **written tutorial** below provides a series of imperative commands to start a single Pyroscope process, or [monolith]({{< relref "../reference-pyroscope-architecture/deployment-modes/index.md#monolithic-mode" >}}), which is designed for users getting started with the project.
+The **written tutorial** below provides a series of imperative commands to start a single Pyroscope process, or [monolith](../reference-pyroscope-architecture/deployment-modes/#monolithic-mode), which is designed for users getting started with the project.
 
 You can also use [`multiple examples`](https://github.com/grafana/pyroscope/tree/main/examples) to help you quickly get started using Pyroscope and Grafana.
 
 Every example has a `docker-compose.yml` manifest that includes all of the options needed to explore profiling data in Grafana, including resource configuration and profiling data generation.
 
-For more information on the different ways to deploy Pyroscope, see [Pyroscope deployment modes]({{< relref "../reference-pyroscope-architecture/deployment-modes/index.md" >}}).
+For more information on the different ways to deploy Pyroscope, see [Pyroscope deployment modes](../reference-pyroscope-architecture/deployment-modes/).
 
 {{< youtube id="XL2yTCPy2e0" >}}
 
 ## Before you begin
 
 Verify that you have installed [Docker](https://docs.docker.com/engine/install/).
+
+{{< admonition type="note" >}}
+By default, Pyroscope reports anonymous, non-sensitive, non-personally identifiable information about the running cluster to a remote statistics server to help Pyroscope maintainers understand how the open source community runs Pyroscope.
+
+To opt out, refer to [Disable the anonymous usage statistics reporting](../configure-server/anonymous-usage-statistics-reporting#disable-the-anonymous-usage-statistics-reporting).
+{{< /admonition >}}
 
 ## Download and configure Pyroscope
 
@@ -78,7 +84,7 @@ Verify that you have installed [Docker](https://docs.docker.com/engine/install/)
     By default, Pyroscope is configured to scrape itself.
     To collect more profiles, you must either instrument your application with an SDK or use Grafana Alloy.
 
-    To learn more about language integrations and the Pyroscope agent, refer to [Pyroscope Agent]({{< relref "../configure-client/_index.md" >}}).
+    To learn more about language integrations and the Pyroscope agent, refer to [Pyroscope Agent](../configure-client/).
 
 ## Add a Pyroscope data source and query data
 
@@ -106,6 +112,6 @@ Verify that you have installed [Docker](https://docs.docker.com/engine/install/)
 
   To learn more about adding data sources, refer to [Add a data source](/docs/grafana/<GRAFANA_VERSION>/datasources/add-a-data-source/).
 
-1. In a browser, go to [Explore Profiles](/docs/grafana/<GRAFANA_VERSION>/explore/simplified-exploration/profiles/) in your Grafana instance at [https://localhost:3000/a/grafana-pyroscope-app/profiles-explorer](https://localhost:3000/a/grafana-pyroscope-app/profiles-explorer). This will let you use an intuitive interface for exploring your profile data.
+1. In a browser, go to [Profiles Drilldown](/docs/grafana/<GRAFANA_VERSION>/explore/simplified-exploration/profiles/) in your Grafana instance at [https://localhost:3000/a/grafana-pyroscope-app/profiles-explorer](https://localhost:3000/a/grafana-pyroscope-app/profiles-explorer). This will let you use an intuitive interface for exploring your profile data.
 
 When you have completed the tasks in this getting started guide, you can create dashboard panels using the newly configured Pyroscope data source. For more information on working with dashboards with Grafana, refer to [Panels and visualizations](/docs/grafana/<GRAFANA_VERSION>/panels-visualizations/) in the Grafana documentation.

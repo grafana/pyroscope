@@ -7,6 +7,7 @@ import (
 	"github.com/samber/lo"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
 type TimeSeriesBuilder struct {
@@ -30,8 +31,15 @@ func (s *TimeSeriesBuilder) Init(by ...string) {
 	s.by = by
 }
 
-func (s *TimeSeriesBuilder) Add(fp model.Fingerprint, lbs Labels, ts int64, value float64) {
+func (s *TimeSeriesBuilder) Add(fp model.Fingerprint, lbs Labels, ts int64, value float64, annotations schemav1.Annotations) {
 	labelsByString, ok := s.labelsByFingerprint[fp]
+	pAnnotations := make([]*typesv1.ProfileAnnotation, 0, len(annotations.Keys))
+	for i := range len(annotations.Keys) {
+		pAnnotations = append(pAnnotations, &typesv1.ProfileAnnotation{
+			Key:   annotations.Keys[i],
+			Value: annotations.Values[i],
+		})
+	}
 	if !ok {
 		s.labelBuf = lbs.BytesWithLabels(s.labelBuf, s.by...)
 		labelsByString = string(s.labelBuf)
@@ -41,8 +49,9 @@ func (s *TimeSeriesBuilder) Add(fp model.Fingerprint, lbs Labels, ts int64, valu
 				Labels: lbs.WithLabels(s.by...),
 				Points: []*typesv1.Point{
 					{
-						Timestamp: ts,
-						Value:     value,
+						Timestamp:   ts,
+						Value:       value,
+						Annotations: pAnnotations,
 					},
 				},
 			}
@@ -51,8 +60,9 @@ func (s *TimeSeriesBuilder) Add(fp model.Fingerprint, lbs Labels, ts int64, valu
 	}
 	series := s.series[labelsByString]
 	series.Points = append(series.Points, &typesv1.Point{
-		Timestamp: ts,
-		Value:     value,
+		Timestamp:   ts,
+		Value:       value,
+		Annotations: pAnnotations,
 	})
 }
 

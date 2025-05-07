@@ -21,10 +21,11 @@ import (
 )
 
 type FlushedHead struct {
-	Index    []byte
-	Profiles []byte
-	Symbols  []byte
-	Meta     struct {
+	Index        []byte
+	Profiles     []byte
+	Symbols      []byte
+	Unsymbolized bool
+	Meta         struct {
 		ProfileTypeNames []string
 		MinTimeNanos     int64
 		MaxTimeNanos     int64
@@ -59,7 +60,7 @@ func NewHead(metrics *HeadMetrics) *Head {
 	return h
 }
 
-func (h *Head) Ingest(p *profilev1.Profile, id uuid.UUID, externalLabels []*typesv1.LabelPair) {
+func (h *Head) Ingest(p *profilev1.Profile, id uuid.UUID, externalLabels []*typesv1.LabelPair, annotations []*typesv1.ProfileAnnotation) {
 	if len(p.Sample) == 0 {
 		return
 	}
@@ -83,6 +84,13 @@ func (h *Head) Ingest(p *profilev1.Profile, id uuid.UUID, externalLabels []*type
 		profile.Samples = profile.Samples.Compact(false)
 
 		profile.TotalValue = profile.Samples.Sum()
+
+		profile.Annotations.Keys = make([]string, 0, len(annotations))
+		profile.Annotations.Values = make([]string, 0, len(annotations))
+		for _, annotation := range annotations {
+			profile.Annotations.Keys = append(profile.Annotations.Keys, annotation.Key)
+			profile.Annotations.Values = append(profile.Annotations.Values, annotation.Value)
+		}
 
 		if profile.Samples.Len() == 0 {
 			continue
@@ -146,6 +154,8 @@ func (h *Head) flush(ctx context.Context) (*FlushedHead, error) {
 		return res, nil
 	}
 
+	res.Unsymbolized = HasUnsymbolizedProfiles(h.symbols.Symbols())
+
 	symbolsBuffer := bytes.NewBuffer(nil)
 	if err := symdb.WritePartition(h.symbols, symbolsBuffer); err != nil {
 		return nil, err
@@ -165,4 +175,16 @@ func (h *Head) flush(ctx context.Context) (*FlushedHead, error) {
 		return nil, fmt.Errorf("failed to write profiles parquet: %w", err)
 	}
 	return res, nil
+}
+
+// TODO: move into the symbolizer package when available
+func HasUnsymbolizedProfiles(symbols *symdb.Symbols) bool {
+	locations := symbols.Locations
+	mappings := symbols.Mappings
+	for _, loc := range locations {
+		if !mappings[loc.MappingId].HasFunctions {
+			return true
+		}
+	}
+	return false
 }

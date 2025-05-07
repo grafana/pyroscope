@@ -2,7 +2,7 @@
 title: Understand 'self' vs. 'total' metrics in profiling with Pyroscope
 menuTitle: Understand 'self' vs. 'total' metrics
 description: Learn the differences between 'self' and 'total' metrics in profiling and their specific applications in CPU and Memory profiling with Pyroscope.
-weight: 42
+weight: 300
 aliases:
   - ../ingest-and-analyze-profile-data/self-vs-total/
 keywords:
