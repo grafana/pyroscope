@@ -3,12 +3,14 @@ package metrics
 import (
 	"sort"
 
+	"github.com/parquet-go/parquet-go"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/prompb"
 
 	"github.com/grafana/pyroscope/pkg/experiment/block"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
 type SampleObserver struct {
@@ -19,6 +21,15 @@ type SampleObserver struct {
 
 	exporter Exporter
 	ruler    Ruler
+
+	targetStrings     map[string]struct{}
+	seenStrings       int
+	targetStringIds   map[uint32]string
+	seenFunctions     int
+	targetFunctions   map[uint32]string
+	seenLocations     int
+	targetLocations   map[uint32]string
+	targetStacktraces map[uint32]string
 }
 
 type observerState struct {
@@ -52,15 +63,36 @@ type Exporter interface {
 
 func NewSampleObserver(recordingTime int64, exporter Exporter, ruler Ruler, labels ...labels.Label) *SampleObserver {
 	return &SampleObserver{
-		recordingTime:  recordingTime,
-		externalLabels: labels,
-		exporter:       exporter,
-		ruler:          ruler,
+		recordingTime:     recordingTime,
+		externalLabels:    labels,
+		exporter:          exporter,
+		ruler:             ruler,
+		targetStrings:     make(map[string]struct{}),
+		targetStringIds:   make(map[uint32]string),
+		targetFunctions:   make(map[uint32]string),
+		targetLocations:   make(map[uint32]string),
+		targetStacktraces: make(map[uint32]string),
 	}
 }
 
 func (o *SampleObserver) initObserver(tenant string) {
 	recordingRules := o.ruler.RecordingRules(tenant)
+	if len(recordingRules) > 0 {
+		recordingRules = append(recordingRules, &phlaremodel.RecordingRule{
+			Matchers: []*labels.Matcher{{
+				Type:  labels.MatchEqual,
+				Name:  "__profile_type__",
+				Value: "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+			},
+			},
+			GroupBy: []string{"service_name"},
+			ExternalLabels: labels.Labels{{
+				Name:  "__name__",
+				Value: "pyroscope_exported_metrics_cpu_gc_nanoseconds",
+			}},
+			FunctionName: "runtime.gcBgMarkWorker",
+		})
+	}
 
 	o.state = &observerState{
 		tenant:     tenant,
@@ -72,6 +104,9 @@ func (o *SampleObserver) initObserver(tenant string) {
 			rule:  rule,
 			data:  make(map[model.Fingerprint]*prompb.TimeSeries),
 			state: &recordingState{},
+		}
+		if rule.FunctionName != "" {
+			o.targetStrings[rule.FunctionName] = struct{}{}
 		}
 	}
 }
@@ -104,9 +139,66 @@ func (o *SampleObserver) Observe(row block.ProfileEntry) {
 			rec.initState(row.Fingerprint, row.Labels, o.externalLabels, o.recordingTime)
 		}
 		if rec.state.matches {
-			rec.state.sample.Value += float64(row.Row.TotalValue())
+			total := row.Row.TotalValue()
+			if rec.rule.FunctionName != "" {
+				total = 0
+				row.Row.ForStacktraceIdsAndValues(func(ids []parquet.Value, values []parquet.Value) {
+					for i, id := range ids {
+						target, hit := o.targetStacktraces[id.Uint32()]
+						if hit && target == rec.rule.FunctionName {
+							total += values[i].Int64()
+						}
+					}
+				})
+			}
+			rec.state.sample.Value += float64(total)
 		}
 	}
+}
+
+func (o *SampleObserver) ObserveSymbols(strings []string, functions []schemav1.InMemoryFunction, mappings []schemav1.InMemoryMapping, locations []schemav1.InMemoryLocation, stacktraceValues [][]int32, stacktraceIds []uint32) {
+	// target := "runtime.gcBgMarkWorker" //"runtime.nanotime" //"rideshare/scooter.OrderScooter"
+
+	// TODO!! ojo pq los mapas se sobreescriben con la string.. no es ideal! habría que tener una segunda capa de map.. o un slice para poder indicar todos los strings que participan
+	for ; o.seenStrings < len(strings); o.seenStrings++ {
+		_, isTarget := o.targetStrings[strings[o.seenStrings]]
+		if isTarget {
+			o.targetStringIds[uint32(o.seenStrings)] = strings[o.seenStrings]
+		}
+	}
+	for ; o.seenFunctions < len(functions); o.seenFunctions++ {
+		target, hasString := o.targetStringIds[functions[o.seenFunctions].Name]
+		if hasString {
+			o.targetFunctions[uint32(o.seenFunctions)] = target
+		}
+	}
+	for ; o.seenLocations < len(locations); o.seenLocations++ {
+		for _, line := range locations[o.seenLocations].Line {
+			target, hasFunction := o.targetFunctions[line.FunctionId]
+			if hasFunction {
+				o.targetLocations[uint32(o.seenLocations)] = target
+			}
+		}
+	}
+	for i, stacktrace := range stacktraceValues {
+		for _, locationId := range stacktrace {
+			target, hasLocation := o.targetLocations[uint32(locationId)]
+			if hasLocation {
+				o.targetStacktraces[stacktraceIds[i]] = target
+			}
+		}
+	}
+	return
+}
+
+func (o *SampleObserver) FlushSymbols() {
+	o.targetStringIds = make(map[uint32]string)
+	o.targetFunctions = make(map[uint32]string)
+	o.targetLocations = make(map[uint32]string)
+	o.targetStacktraces = make(map[uint32]string)
+	o.seenStrings = 0
+	o.seenFunctions = 0
+	o.seenLocations = 0
 }
 
 func (o *SampleObserver) flush() {
