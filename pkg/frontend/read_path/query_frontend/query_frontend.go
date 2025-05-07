@@ -99,7 +99,6 @@ func (q *QueryFrontend) Query(
 	// Only check for symbolization if all tenants have it enabled
 	shouldSymbolize := q.shouldSymbolize(tenants, blocks)
 
-	// Modify queries based on symbolization needs
 	modifiedQueries := make([]*queryv1.Query, len(req.Query))
 	for i, originalQuery := range req.Query {
 		modifiedQueries[i] = originalQuery.CloneVT()
@@ -159,7 +158,7 @@ func (q *QueryFrontend) QueryMetadata(
 		TenantId:  tenants,
 		StartTime: req.StartTime,
 		EndTime:   req.EndTime,
-		Labels:    []string{metadata.LabelNameHasNativeProfiles},
+		Labels:    []string{metadata.LabelNameUnsymbolized},
 	}
 
 	// Delete all matchers but service_name with strict match. If no matchers
@@ -189,37 +188,31 @@ func (q *QueryFrontend) QueryMetadata(
 	return md.Blocks, nil
 }
 
-// hasNativeProfiles checks if a block has native profiles
-func (q *QueryFrontend) hasNativeProfiles(block *metastorev1.BlockMeta) bool {
-	matcher, err := labels.NewMatcher(labels.MatchEqual, metadata.LabelNameHasNativeProfiles, "true")
+// hasUnsymbolizedProfiles checks if a block has unsymbolized profiles
+func (q *QueryFrontend) hasUnsymbolizedProfiles(block *metastorev1.BlockMeta) bool {
+	matcher, err := labels.NewMatcher(labels.MatchEqual, metadata.LabelNameUnsymbolized, "true")
 	if err != nil {
 		return false
 	}
 
-	datasetFinder := metadata.FindDatasets(block, matcher)
-
-	hasNativeProfiles := false
-	datasetFinder(func(ds *metastorev1.Dataset) bool {
-		hasNativeProfiles = true
-		return false
-	})
-
-	return hasNativeProfiles
+	return len(slices.Collect(metadata.FindDatasets(block, matcher))) > 0
 }
 
 // shouldSymbolize determines if we should symbolize profiles based on tenant settings
 func (q *QueryFrontend) shouldSymbolize(tenants []string, blocks []*metastorev1.BlockMeta) bool {
-	// Check if all tenants have symbolization enabled
-	// (once we support multi-tenant queries)
+	if q.symbolizer == nil {
+		return false
+	}
+
+	// Check if all tenants have symbolization enabled (once we support multi-tenant queries)
 	for _, t := range tenants {
 		if !q.limits.SymbolizerEnabled(t) {
 			return false
 		}
 	}
 
-	// Check if any block has native profiles
 	for _, block := range blocks {
-		if q.hasNativeProfiles(block) {
+		if q.hasUnsymbolizedProfiles(block) {
 			return true
 		}
 	}
@@ -254,7 +247,10 @@ func (q *QueryFrontend) processAndSymbolizeProfiles(
 
 		// Convert back to tree if originally a tree
 		if i < len(originalQueries) && originalQueries[i].QueryType == queryv1.QueryType_QUERY_TREE {
-			treeBytes := model.TreeFromBackendProfile(&prof, originalQueries[i].Tree.MaxNodes)
+			treeBytes, err := model.TreeFromBackendProfile(&prof, originalQueries[i].Tree.MaxNodes)
+			if err != nil {
+				return fmt.Errorf("failed to build tree: %w", err)
+			}
 			r.Tree = &queryv1.TreeReport{Tree: treeBytes}
 			r.ReportType = queryv1.ReportType_REPORT_TREE
 			r.Pprof = nil
@@ -271,10 +267,8 @@ func (q *QueryFrontend) processAndSymbolizeProfiles(
 }
 
 func isProfileFromOTEL(prof *profilev1.Profile) bool {
-	// Check sample labels
 	for _, sample := range prof.Sample {
 		for _, label := range sample.Label {
-			// Get the key and value from string table
 			keyStr := prof.StringTable[label.Key]
 			valStr := prof.StringTable[label.Str]
 			if keyStr == phlaremodel.LabelNameOTEL && valStr == "true" {

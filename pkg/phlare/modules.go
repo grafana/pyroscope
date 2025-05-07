@@ -100,6 +100,7 @@ const (
 	PlacementManager     string = "placement-manager"
 	HealthServer         string = "health-server"
 	RecordingRulesClient string = "recording-rules-client"
+	Symbolizer           string = "symbolizer"
 )
 
 var objectStoreTypeStats = usagestats.NewString("store_object_type")

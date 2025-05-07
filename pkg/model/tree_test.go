@@ -412,11 +412,11 @@ func Test_TreeFromBackendProfileSampleType(t *testing.T) {
 		Sample: []*profilev1.Sample{
 			{
 				LocationId: []uint64{1, 2},
-				Value:      []int64{10, 20}, // Values for both sample types
+				Value:      []int64{10, 20},
 			},
 			{
 				LocationId: []uint64{2, 3},
-				Value:      []int64{30, 60}, // Values for both sample types
+				Value:      []int64{30, 60},
 			},
 		},
 		Location: []*profilev1.Location{
@@ -432,25 +432,22 @@ func Test_TreeFromBackendProfileSampleType(t *testing.T) {
 	}
 
 	t.Run("using first sample type (index 0)", func(t *testing.T) {
-		treeBytes := TreeFromBackendProfileSampleType(profile, -1, 0)
+		treeBytes, err := TreeFromBackendProfileSampleType(profile, -1, 0)
+		require.NoError(t, err)
 		tree := MustUnmarshalTree(treeBytes)
-		// The total should be the sum of values from the first sample type: 10 + 30 = 40
-		assert.Equal(t, int64(40), tree.Total(), "Tree total should match sum of values from first sample type")
+		assert.Equal(t, int64(40), tree.Total())
 	})
 
 	t.Run("using second sample type (index 1)", func(t *testing.T) {
-		// Convert profile to tree using second sample type
-		treeBytes := TreeFromBackendProfileSampleType(profile, -1, 1)
+		treeBytes, err := TreeFromBackendProfileSampleType(profile, -1, 1)
+		require.NoError(t, err)
 		tree := MustUnmarshalTree(treeBytes)
-		// The total should be the sum of values from the second sample type: 20 + 60 = 80
-		assert.Equal(t, int64(80), tree.Total(), "Tree total should match sum of values from second sample type")
+		assert.Equal(t, int64(80), tree.Total())
 	})
 
 	t.Run("validates sample type index bounds", func(t *testing.T) {
-		// Using out-of-bounds index
-		treeBytes := TreeFromBackendProfileSampleType(profile, -1, 99)
-		tree := MustUnmarshalTree(treeBytes)
-		assert.NotNil(t, tree, "Should return a non-nil tree even with invalid sample type index")
+		_, err := TreeFromBackendProfileSampleType(profile, -1, 99)
+		require.Error(t, err)
 	})
 
 	t.Run("handles profile with no samples", func(t *testing.T) {
@@ -459,11 +456,12 @@ func Test_TreeFromBackendProfileSampleType(t *testing.T) {
 				{Type: 1, Unit: 2},
 			},
 			StringTable: []string{"", "samples", "count"},
-			Sample:      []*profilev1.Sample{}, // No samples
+			Sample:      []*profilev1.Sample{},
 		}
-		treeBytes := TreeFromBackendProfileSampleType(emptyProfile, -1, 0)
+		treeBytes, err := TreeFromBackendProfileSampleType(emptyProfile, -1, 0)
+		require.NoError(t, err)
 		tree := MustUnmarshalTree(treeBytes)
-		assert.Equal(t, int64(0), tree.Total(), "Tree total should be 0 for profile with no samples")
+		assert.Equal(t, int64(0), tree.Total())
 	})
 
 	t.Run("handles profile with no sample types", func(t *testing.T) {
@@ -473,17 +471,15 @@ func Test_TreeFromBackendProfileSampleType(t *testing.T) {
 			Sample: []*profilev1.Sample{
 				{
 					LocationId: []uint64{1},
-					Value:      []int64{10}, // Value, but no sample type to interpret it
+					Value:      []int64{10},
 				},
 			},
 		}
-		treeBytes := TreeFromBackendProfileSampleType(noSampleTypesProfile, -1, 0)
-		tree := MustUnmarshalTree(treeBytes)
-		assert.NotNil(t, tree, "Should return a non-nil tree even with no sample types")
+		_, err := TreeFromBackendProfileSampleType(noSampleTypesProfile, -1, 0)
+		require.Error(t, err)
 	})
 
 	t.Run("handles locations without line information (using addresses)", func(t *testing.T) {
-		// Create a profile with locations that have no line information
 		addressProfile := &profilev1.Profile{
 			StringTable: []string{
 				"",
@@ -506,16 +502,13 @@ func Test_TreeFromBackendProfileSampleType(t *testing.T) {
 		}
 		originalLen := len(addressProfile.StringTable)
 
-		// Convert profile to tree
-		treeBytes := TreeFromBackendProfileSampleType(addressProfile, -1, 0)
+		treeBytes, err := TreeFromBackendProfileSampleType(addressProfile, -1, 0)
+		require.NoError(t, err)
+
 		tree := MustUnmarshalTree(treeBytes)
+		assert.Equal(t, int64(100), tree.Total())
 
-		// Verify the total value
-		assert.Equal(t, int64(100), tree.Total(), "Tree total should match the sample value")
-
-		// Verify that the string table has been expanded with address entries
-		assert.Greater(t, len(addressProfile.StringTable), originalLen,
-			"String table should have grown to include address strings")
+		assert.Greater(t, len(addressProfile.StringTable), originalLen)
 
 		// Check for specific address strings in the string table
 		foundAddresses := 0
@@ -524,6 +517,6 @@ func Test_TreeFromBackendProfileSampleType(t *testing.T) {
 				foundAddresses++
 			}
 		}
-		assert.Equal(t, 2, foundAddresses, "String table should contain hex strings for both addresses")
+		assert.Equal(t, 2, foundAddresses)
 	})
 }

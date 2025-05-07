@@ -385,7 +385,7 @@ type Phlare struct {
 	compactionWorker     *compactionworker.Worker
 	healthServer         *health.Server
 	recordingRulesClient *recordingrulesclient.Client
-	symbolizer           *symbolizer.ProfileSymbolizer
+	symbolizer           *symbolizer.Symbolizer
 }
 
 func New(cfg Config) (*Phlare, error) {

@@ -226,8 +226,6 @@ github.com/fullstorydev/emulators/storage v0.0.0-20240401123056-edc69752f474 h1:
 github.com/fullstorydev/emulators/storage v0.0.0-20240401123056-edc69752f474/go.mod h1:PQwxF4UU8wuL+srGxr3BOhIW5zXqgucwVlO/nPZLsxw=
 github.com/fxamacker/cbor/v2 v2.7.0 h1:iM5WgngdRBanHcxugY4JySA0nk1wZorNOpTgCMedv5E=
 github.com/fxamacker/cbor/v2 v2.7.0/go.mod h1:pxXPTn3joSm21Gbwsv0w9OSA2y1HFR9qXEeXQVeNoDQ=
-github.com/go-delve/delve v1.23.1 h1:MtZ13ppptttkqSuvVnwJ5CPhIAzDiOwRrYuCk3ES7fU=
-github.com/go-delve/delve v1.23.1/go.mod h1:S3SLuEE2mn7wipKilTvk1p9HdTMnXXElcEpiZ+VcuqU=
 github.com/go-fonts/dejavu v0.3.4 h1:Qqyx9IOs5CQFxyWTdvddeWzrX0VNwUAvbmAzL0fpjbc=
 github.com/go-fonts/dejavu v0.3.4/go.mod h1:D1z0DglIz+lmpeNYMYlxW4r22IhcdOYnt+R3PShU/Kg=
 github.com/go-fonts/latin-modern v0.3.3 h1:g2xNgI8yzdNzIVm+qvbMryB6yGPe0pSMss8QT3QwlJ0=
@@ -385,10 +383,6 @@ github.com/grafana/pyroscope/lidia v0.0.0-20250416154336-a5c33510d5ff h1:9dI8HuA
 github.com/grafana/pyroscope/lidia v0.0.0-20250416154336-a5c33510d5ff/go.mod h1:3f/0/CzhTk1moGlVOp2nJQKCAL+4M5GTnkfDd5hqDIk=
 github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc h1:GN2Lv3MGO7AS6PrRoT6yV5+wkrOpcszoIsO4+4ds248=
 github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc/go.mod h1:+JKpmjMGhpgPL+rXZ5nsZieVzvarn86asRlBg4uNGnk=
-github.com/grafana/pyroscope/lidia v0.0.0-20250416154336-a5c33510d5ff h1:9dI8HuAIA5L/EsPXkk3YqA3Pp5i7ECvQkWMwUepLoCY=
-github.com/grafana/pyroscope/lidia v0.0.0-20250416154336-a5c33510d5ff/go.mod h1:3f/0/CzhTk1moGlVOp2nJQKCAL+4M5GTnkfDd5hqDIk=
-github.com/grafana/regexp v0.0.0-20221123153739-15dc172cd2db h1:7aN5cccjIqCLTzedH7MZzRZt5/lsAHch6Z3L2ZGn5FA=
-github.com/grafana/regexp v0.0.0-20221123153739-15dc172cd2db/go.mod h1:M5qHK+eWfAv8VR/265dIuEpL3fNfeC21tXXp9itM24A=
 github.com/grpc-ecosystem/go-grpc-middleware v1.4.0 h1:UH//fgunKIs4JdUbpDl1VZCDaL56wXCB/5+wF6uHfaI=
 github.com/grpc-ecosystem/go-grpc-middleware v1.4.0/go.mod h1:g5qyo/la0ALbONm6Vbp88Yd8NsDy6rZz+RcrMPxvld8=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.25.1 h1:VNqngBF40hVlDloBruUehVYC3ArSgIyScOAyMRqBxRg=

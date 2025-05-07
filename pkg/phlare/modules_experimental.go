@@ -29,11 +29,12 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/metrics"
 	querybackend "github.com/grafana/pyroscope/pkg/experiment/query_backend"
 	querybackendclient "github.com/grafana/pyroscope/pkg/experiment/query_backend/client"
+	"github.com/grafana/pyroscope/pkg/experiment/symbolizer"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	readpath "github.com/grafana/pyroscope/pkg/frontend/read_path"
 	queryfrontend "github.com/grafana/pyroscope/pkg/frontend/read_path/query_frontend"
 	"github.com/grafana/pyroscope/pkg/frontend/vcs"
-	"github.com/grafana/pyroscope/pkg/experiment/symbolizer"
+	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	recordingrulesclient "github.com/grafana/pyroscope/pkg/settings/recording/client"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/util"
@@ -90,6 +91,7 @@ func (f *Phlare) initQueryFrontendV2() (services.Service, error) {
 		f.metastoreClient,
 		f.metastoreClient,
 		f.queryBackendClient,
+		f.symbolizer,
 	)
 
 	vcsService := vcs.New(
@@ -124,6 +126,7 @@ func (f *Phlare) initQueryFrontendV12() (services.Service, error) {
 		f.metastoreClient,
 		f.metastoreClient,
 		f.queryBackendClient,
+		f.symbolizer,
 	)
 
 	handler := readpath.NewRouter(
@@ -372,22 +375,18 @@ func (f *Phlare) initRecordingRulesClient() (services.Service, error) {
 }
 
 func (f *Phlare) initSymbolizer() (services.Service, error) {
-	level.Info(f.logger).Log("msg", "Initializing Symbolizer")
 	if !f.Cfg.Symbolizer.Enabled {
 		level.Info(f.logger).Log("msg", "Symbolizer is disabled")
 		return nil, nil
 	}
 
-	if f.storageBucket == nil {
-		return nil, fmt.Errorf("storage bucket is required for symbolizer")
-	}
+	prefixedBucket := phlareobj.NewPrefixedBucket(f.storageBucket, "symbolizer")
 
-	sym, err := symbolizer.NewFromConfig(
-		f.context(),
+	sym, err := symbolizer.New(
 		f.logger,
 		f.Cfg.Symbolizer,
 		f.reg,
-		f.storageBucket,
+		prefixedBucket,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create symbolizer: %w", err)

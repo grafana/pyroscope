@@ -41,7 +41,8 @@ func isInvalidBuildIDError(err error) bool {
 }
 
 func isHTTPStatusError(err error) (int, bool) {
-	httpErr, ok := err.(httpStatusError)
+	var httpErr httpStatusError
+	ok := errors.As(err, &httpErr)
 	if ok {
 		return httpErr.statusCode, true
 	}

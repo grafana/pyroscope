@@ -2,38 +2,34 @@ package symbolizer
 
 import (
 	"github.com/grafana/pyroscope/pkg/util"
+
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 const (
 	// Status values for metrics
-	StatusSuccess   = "success"
-	StatusCacheHit  = "cache_hit"
-	StatusCacheMiss = "miss"
+	statusSuccess = "success"
 
 	// Error status prefixes
-	StatusErrorPrefix = "error:"
+	statusErrorPrefix = "error:"
 
 	// HTTP error statuses
-	StatusErrorNotFound     = StatusErrorPrefix + "not_found"
-	StatusErrorUnauthorized = StatusErrorPrefix + "unauthorized"
-	StatusErrorRateLimited  = StatusErrorPrefix + "rate_limited"
-	StatusErrorClientError  = StatusErrorPrefix + "client_error"
-	StatusErrorServerError  = StatusErrorPrefix + "server_error"
-	StatusErrorHTTPOther    = StatusErrorPrefix + "http_other"
+	statusErrorNotFound     = statusErrorPrefix + "not_found"
+	statusErrorUnauthorized = statusErrorPrefix + "unauthorized"
+	statusErrorRateLimited  = statusErrorPrefix + "rate_limited"
+	statusErrorClientError  = statusErrorPrefix + "client_error"
+	statusErrorServerError  = statusErrorPrefix + "server_error"
+	statusErrorHTTPOther    = statusErrorPrefix + "http_other"
 
 	// General error statuses
-	StatusErrorCanceled   = StatusErrorPrefix + "canceled"
-	StatusErrorTimeout    = StatusErrorPrefix + "timeout"
-	StatusErrorInvalidID  = StatusErrorPrefix + "invalid_id"
-	StatusErrorOther      = StatusErrorPrefix + "other"
-	StatusErrorRead       = StatusErrorPrefix + "read_error"
-	StatusErrorUpload     = StatusErrorPrefix + "upload_error"
-	StatusErrorDebuginfod = StatusErrorPrefix + "debuginfod_error"
-	StatusErrorResolve    = StatusErrorPrefix + "resolve_error"
+	statusErrorCanceled   = statusErrorPrefix + "canceled"
+	statusErrorTimeout    = statusErrorPrefix + "timeout"
+	statusErrorInvalidID  = statusErrorPrefix + "invalid_id"
+	statusErrorOther      = statusErrorPrefix + "other"
+	statusErrorDebuginfod = statusErrorPrefix + "debuginfod_error"
 )
 
-type Metrics struct {
+type metrics struct {
 	registerer prometheus.Registerer
 
 	// Debuginfod metrics
@@ -51,8 +47,8 @@ type Metrics struct {
 	debugSymbolResolution *prometheus.HistogramVec
 }
 
-func NewMetrics(reg prometheus.Registerer) *Metrics {
-	m := &Metrics{
+func newMetrics(reg prometheus.Registerer) *metrics {
+	m := &metrics{
 		registerer: reg,
 		debuginfodRequestDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Name:    "pyroscope_symbolizer_debuginfod_request_duration_seconds",
@@ -101,7 +97,7 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 	return m
 }
 
-func (m *Metrics) register() {
+func (m *metrics) register() {
 	if m.registerer == nil {
 		return
 	}
@@ -117,24 +113,5 @@ func (m *Metrics) register() {
 
 	for _, collector := range collectors {
 		util.RegisterOrGet(m.registerer, collector)
-	}
-}
-
-func (m *Metrics) Unregister() {
-	if m.registerer == nil {
-		return
-	}
-
-	collectors := []prometheus.Collector{
-		m.debuginfodRequestDuration,
-		m.debuginfodFileSize,
-		m.cacheOperations,
-		m.cacheSizeBytes,
-		m.profileSymbolization,
-		m.debugSymbolResolution,
-	}
-
-	for _, collector := range collectors {
-		m.registerer.Unregister(collector)
 	}
 }

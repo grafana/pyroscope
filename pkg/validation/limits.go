@@ -120,7 +120,7 @@ type Limits struct {
 	RecordingRules RecordingRules `yaml:"recording_rules" json:"recording_rules" category:"experimental" doc:"hidden"`
 
 	// SymbolizerEnabled enables the symbolizer in the query frontend.
-	SymbolizerEnabled bool `yaml:"symbolizer_enabled" json:"symbolizer_enabled" doc:"hidden"`
+	SymbolizerEnabled bool `yaml:"symbolizer_enabled" json:"symbolizer_enabled" category:"experimental" doc:"hidden"`
 }
 
 // LimitError are errors that do not comply with the limits specified.

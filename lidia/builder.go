@@ -2,7 +2,6 @@ package lidia
 
 import (
 	"encoding/binary"
-	"fmt"
 	"sort"
 )
 
@@ -105,10 +104,9 @@ func (s *sortByVADepth) Swap(i, j int) {
 
 // rangeCollector
 type rangeCollector struct {
-	sb  *stringBuilder
-	rb  *rangesBuilder
-	lb  *lineBuilder
-	blb *binaryLayoutBuilder
+	sb *stringBuilder
+	rb *rangesBuilder
+	lb *lineBuilder
 
 	opt options
 }
@@ -136,44 +134,4 @@ func (rc *rangeCollector) VisitRange(r *Range) {
 		callLine:   uint64(r.CallLine),
 	}
 	rc.rb.add(r.VA, e)
-}
-
-type binaryLayoutBuilder struct {
-	buf []byte
-}
-
-func newBinaryLayoutBuilder() *binaryLayoutBuilder {
-	return &binaryLayoutBuilder{
-		buf: make([]byte, 0, 256),
-	}
-}
-
-func (blb *binaryLayoutBuilder) write(layout *BinaryLayoutInfo) error {
-	if layout == nil {
-		return fmt.Errorf("nil binary layout")
-	}
-
-	// Reset buffer
-	blb.buf = blb.buf[:0]
-
-	// Write ELF type
-	blb.buf = binary.LittleEndian.AppendUint16(blb.buf, layout.Type)
-
-	// Write number of program headers
-	count := uint32(len(layout.ProgramHeaders))
-	blb.buf = binary.LittleEndian.AppendUint32(blb.buf, count)
-
-	// Write each program header
-	for _, ph := range layout.ProgramHeaders {
-		blb.buf = binary.LittleEndian.AppendUint32(blb.buf, ph.Type)
-		blb.buf = binary.LittleEndian.AppendUint32(blb.buf, ph.Flags)
-		blb.buf = binary.LittleEndian.AppendUint64(blb.buf, ph.Offset)
-		blb.buf = binary.LittleEndian.AppendUint64(blb.buf, ph.VirtualAddr)
-		blb.buf = binary.LittleEndian.AppendUint64(blb.buf, ph.PhysAddr)
-		blb.buf = binary.LittleEndian.AppendUint64(blb.buf, ph.FileSize)
-		blb.buf = binary.LittleEndian.AppendUint64(blb.buf, ph.MemSize)
-		blb.buf = binary.LittleEndian.AppendUint64(blb.buf, ph.Align)
-	}
-
-	return nil
 }

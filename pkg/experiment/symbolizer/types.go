@@ -1,10 +1,10 @@
 package symbolizer
 
 import (
+	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"github.com/grafana/pyroscope/lidia"
 
 	pprof "github.com/google/pprof/profile"
-	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 )
 
 type locToSymbolize struct {

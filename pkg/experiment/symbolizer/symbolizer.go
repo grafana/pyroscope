@@ -9,14 +9,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
+	"path/filepath"
 	"time"
 
-	"github.com/dgraph-io/ristretto/v2"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	pprof "github.com/google/pprof/profile"
-	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/prometheus/client_golang/prometheus"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -24,225 +22,149 @@ import (
 	"github.com/grafana/pyroscope/pkg/objstore"
 )
 
-const (
-	DefaultInMemorySymbolCacheSize     = 100_000
-	DefaultInMemoryLidiaTableCacheSize = 2 << 30 // 2GB default
-)
-
 type DebuginfodClient interface {
 	FetchDebuginfo(ctx context.Context, buildID string) (io.ReadCloser, error)
 }
 
 type Config struct {
-	Enabled                     bool                 `yaml:"enabled"`
-	DebuginfodURL               string               `yaml:"debuginfod_url"`
-	InMemorySymbolCacheSize     int                  `yaml:"in_memory_symbol_cache_size"`
-	InMemoryLidiaTableCacheSize int                  `yaml:"in_memory_lidia_table_cache_size"`
-	PersistentDebugInfoStore    DebugInfoStoreConfig `yaml:"persistent_debuginfo_store"`
+	Enabled                  bool                 `yaml:"enabled"`
+	DebuginfodURL            string               `yaml:"debuginfod_url"`
+	PersistentDebugInfoStore DebugInfoStoreConfig `yaml:"persistent_debuginfo_store"`
 }
 
-// ProfileSymbolizer implements Symbolizer
-type ProfileSymbolizer struct {
+func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
+	f.BoolVar(&cfg.Enabled, "symbolizer.enabled", false, "Enable symbolization for unsymbolized profiles")
+	f.StringVar(&cfg.DebuginfodURL, "symbolizer.debuginfod-url", "https://debuginfod.elfutils.org", "URL of the debuginfod server")
+	f.DurationVar(&cfg.PersistentDebugInfoStore.MaxAge, "symbolizer.persistent-debuginfo-store.max-age", 7*24*time.Hour, "Maximum age of stored debug info")
+	cfg.PersistentDebugInfoStore.Storage.RegisterFlagsWithPrefix("symbolizer.persistent-debuginfo-store.storage.", f)
+}
+
+type Symbolizer struct {
 	logger  log.Logger
 	client  DebuginfodClient
 	store   DebugInfoStore
-	metrics *Metrics
-
-	symbolCache     *lru.Cache[SymbolCacheKey, []lidia.SourceInfoFrame]
-	lidiaTableCache *ristretto.Cache[string, LidiaTableCacheEntry]
+	metrics *metrics
 }
 
-// SymbolCacheKey represents a key for the symbol cache
-type SymbolCacheKey struct {
-	BuildID string
-	Address uint64
-}
+func New(logger log.Logger, cfg Config, reg prometheus.Registerer, bucket objstore.Bucket) (*Symbolizer, error) {
+	metrics := newMetrics(reg)
 
-func NewFromConfig(_ context.Context, logger log.Logger, cfg Config, reg prometheus.Registerer, bucket objstore.Bucket) (*ProfileSymbolizer, error) {
-	metrics := NewMetrics(reg)
-
-	if cfg.PersistentDebugInfoStore.Enabled {
-		if cfg.PersistentDebugInfoStore.Storage.Backend == "" {
-			return nil, fmt.Errorf("storage configuration required when persistent debug info store is enabled")
-		}
-		bucket, err := objstoreclient.NewBucket(ctx, cfg.PersistentDebugInfoStore.Storage, "debuginfo")
-		if err != nil {
-			return nil, fmt.Errorf("create debug info storage: %w", err)
-		}
-		store = NewObjstoreDebugInfoStore(bucket, cfg.PersistentDebugInfoStore.MaxAge, metrics)
-	}
-
-	prefixedBucket := objstore.NewPrefixedBucket(bucket, "symbolizer")
-
-	store := NewObjstoreDebugInfoStore(prefixedBucket, cfg.PersistentDebugInfoStore.MaxAge, metrics)
+	store := NewObjstoreDebugInfoStore(bucket, cfg.PersistentDebugInfoStore.MaxAge, metrics)
 
 	client, err := NewDebuginfodClient(logger, cfg.DebuginfodURL, metrics)
 	if err != nil {
 		return nil, err
 	}
 
-	// Use configured cache sizes or defaults
-	symbolCacheSize := DefaultInMemorySymbolCacheSize
-	if cfg.InMemorySymbolCacheSize > 0 {
-		symbolCacheSize = cfg.InMemorySymbolCacheSize
-	}
-
-	lidiaTableCacheSize := DefaultInMemoryLidiaTableCacheSize
-	if cfg.InMemoryLidiaTableCacheSize > 0 {
-		lidiaTableCacheSize = cfg.InMemoryLidiaTableCacheSize
-	}
-
-	return NewProfileSymbolizer(logger, client, store, metrics, symbolCacheSize, lidiaTableCacheSize)
-}
-
-func NewProfileSymbolizer(logger log.Logger, client DebuginfodClient, store DebugInfoStore, metrics *Metrics, symbolCacheSize int, lidiaTableCacheSize int) (*ProfileSymbolizer, error) {
-	symbolCache, err := lru.New[SymbolCacheKey, []lidia.SourceInfoFrame](symbolCacheSize)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create symbol cache: %w", err)
-	}
-
-	// Create Ristretto cache for lidia tables
-	lidiaTableCache, err := ristretto.NewCache(&ristretto.Config[string, LidiaTableCacheEntry]{
-		NumCounters: 1e7,                        // number of keys to track frequency of (10M)
-		MaxCost:     int64(lidiaTableCacheSize), // maximum cost of cache
-		BufferItems: 64,                         // number of keys per Get buffer
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create debug info cache: %w", err)
-	}
-
-	return &ProfileSymbolizer{
-		logger:          logger,
-		client:          client,
-		store:           store,
-		metrics:         metrics,
-		symbolCache:     symbolCache,
-		lidiaTableCache: lidiaTableCache,
+	return &Symbolizer{
+		logger:  logger,
+		client:  client,
+		store:   store,
+		metrics: metrics,
 	}, nil
 }
 
-func (s *ProfileSymbolizer) SymbolizePprof(ctx context.Context, profile *googlev1.Profile) error {
-	level.Info(s.logger).Log("msg", ">> starting SymbolizePprof")
+func (s *Symbolizer) SymbolizePprof(ctx context.Context, profile *googlev1.Profile) error {
 	start := time.Now()
-	status := StatusSuccess
+	status := statusSuccess
 	defer func() {
 		s.metrics.profileSymbolization.WithLabelValues(status).Observe(time.Since(start).Seconds())
 	}()
 
-	if !s.needsSymbolization(profile) {
-		status = "already_symbolized"
+	mappingsToSymbolize := make(map[uint64]bool)
+	for i, mapping := range profile.Mapping {
+		if mapping.HasFunctions && mapping.HasFilenames && mapping.HasLineNumbers {
+			continue
+		}
+		mappingsToSymbolize[uint64(i+1)] = true // MappingId is 1-indexed
+	}
+	if len(mappingsToSymbolize) == 0 {
 		return nil
 	}
 
-	// Group locations by mapping ID
-	locsByMapping := s.groupLocationsByMapping(profile)
+	locationsByMapping, err := s.groupLocationsByMapping(profile, mappingsToSymbolize)
+	if err != nil {
+		return fmt.Errorf("grouping locations by mapping: %w", err)
+	}
 
-	// Process each mapping group
-	errs := s.symbolizeMappingGroups(ctx, profile, locsByMapping)
-
-	// Handle errors
-	if len(errs) > 0 {
-		status = StatusErrorOther
-		return fmt.Errorf("symbolization errors: %v", errs)
+	for mappingID, locations := range locationsByMapping {
+		if err := s.symbolizeLocationsForMapping(ctx, profile, mappingID, locations); err != nil {
+			return fmt.Errorf("failed to symbolize mapping ID %d: %w", mappingID, err)
+		}
 	}
 
 	return nil
 }
 
-// needsSymbolization checks if the profile needs symbolization at all
-func (s *ProfileSymbolizer) needsSymbolization(profile *googlev1.Profile) bool {
-	if profile == nil || len(profile.Mapping) == 0 {
-		level.Info(s.logger).Log("msg", "profile is either nil or has no mappings, skipping symbolization")
-		return false
-	}
-	return true
-}
-
 // groupLocationsByMapping groups locations by their mapping ID
-func (s *ProfileSymbolizer) groupLocationsByMapping(profile *googlev1.Profile) map[uint64][]locToSymbolize {
+func (s *Symbolizer) groupLocationsByMapping(profile *googlev1.Profile, mappingsToSymbolize map[uint64]bool) (map[uint64][]locToSymbolize, error) {
 	locsByMapping := make(map[uint64][]locToSymbolize)
 
 	for i, loc := range profile.Location {
-		if loc.MappingId > 0 {
-			mapping := profile.Mapping[loc.MappingId-1]
-			needsSymbolization := true
-
-			// If the mapping claims to have symbols, validate this specific location
-			if mapping.HasFunctions && len(loc.Line) > 0 {
-				needsSymbolization = false
-			}
-
-			// Only add locations that need symbolization
-			if needsSymbolization {
-				locsByMapping[loc.MappingId] = append(locsByMapping[loc.MappingId], locToSymbolize{
-					idx: i,
-					loc: loc,
-				})
-			}
+		if loc.MappingId == 0 {
+			return nil, fmt.Errorf("invalid profile: location at index %d has MappingId 0", i)
 		}
+
+		mappingIdx := loc.MappingId - 1
+		if int(mappingIdx) >= len(profile.Mapping) {
+			return nil, fmt.Errorf("invalid profile: location at index %d references non-existent mapping %d", i, loc.MappingId)
+		}
+
+		if !mappingsToSymbolize[loc.MappingId] || len(loc.Line) > 0 {
+			continue
+		}
+
+		locsByMapping[loc.MappingId] = append(locsByMapping[loc.MappingId], locToSymbolize{
+			idx: i,
+			loc: loc,
+		})
 	}
 
-	return locsByMapping
+	return locsByMapping, nil
 }
 
-// symbolizeMappingGroups processes each mapping group and symbolizes its locations
-func (s *ProfileSymbolizer) symbolizeMappingGroups(ctx context.Context, profile *googlev1.Profile, locsByMapping map[uint64][]locToSymbolize) []error {
-	var errs []error
-
-	// Process each mapping group
-	for mappingID, locs := range locsByMapping {
-		if err := s.symbolizeMappingGroup(ctx, profile, mappingID, locs); err != nil {
-			errs = append(errs, fmt.Errorf("symbolizer symbolize mapping ID %d: %w", mappingID, err))
-		}
-	}
-
-	return errs
-}
-
-// symbolizeMappingGroup symbolizes a single mapping group
-func (s *ProfileSymbolizer) symbolizeMappingGroup(ctx context.Context, profile *googlev1.Profile, mappingID uint64, locs []locToSymbolize) error {
+// symbolizeLocationsForMapping symbolizes a single mapping group
+func (s *Symbolizer) symbolizeLocationsForMapping(ctx context.Context, profile *googlev1.Profile, mappingID uint64, locs []locToSymbolize) error {
 	mapping := profile.Mapping[mappingID-1]
 
-	// Skip if mapping already has symbols
 	if mapping.HasFunctions && mapping.HasFilenames && mapping.HasLineNumbers {
 		return nil
 	}
 
-	binaryName := s.extractBinaryName(profile, mapping)
+	binaryName, err := s.extractBinaryName(profile, mapping)
+	if err != nil {
+		return err
+	}
+
 	buildID, err := s.extractBuildID(profile, mapping)
 	if err != nil {
 		return err
 	}
 
-	// Create symbolization request for this mapping group
 	req := s.createSymbolizationRequest(binaryName, buildID, mapping, locs)
 
 	if err := s.Symbolize(ctx, &req); err != nil {
 		return err
 	}
 
-	// Store symbolization results back into profile
 	s.updateProfileWithSymbols(profile, mapping, locs, req.Locations)
 
 	return nil
 }
 
 // extractBinaryName extracts the binary name from the mapping
-func (s *ProfileSymbolizer) extractBinaryName(profile *googlev1.Profile, mapping *googlev1.Mapping) string {
-	binaryName := "unknown"
-	if mapping.Filename >= 0 && int(mapping.Filename) < len(profile.StringTable) {
-		fullPath := profile.StringTable[mapping.Filename]
-		if lastSlash := strings.LastIndex(fullPath, "/"); lastSlash >= 0 {
-			binaryName = fullPath[lastSlash+1:]
-		} else {
-			binaryName = fullPath
-		}
+func (s *Symbolizer) extractBinaryName(profile *googlev1.Profile, mapping *googlev1.Mapping) (string, error) {
+	if mapping.Filename < 0 || int(mapping.Filename) >= len(profile.StringTable) {
+		return "", fmt.Errorf("invalid mapping: filename index %d out of range (string table length: %d)",
+			mapping.Filename, len(profile.StringTable))
 	}
-	return binaryName
+
+	fullPath := profile.StringTable[mapping.Filename]
+	return filepath.Base(fullPath), nil
 }
 
 // extractBuildID extracts and sanitizes the build ID from the mapping
-func (s *ProfileSymbolizer) extractBuildID(profile *googlev1.Profile, mapping *googlev1.Mapping) (string, error) {
+func (s *Symbolizer) extractBuildID(profile *googlev1.Profile, mapping *googlev1.Mapping) (string, error) {
 	buildID := profile.StringTable[mapping.BuildId]
 	sanitizedBuildID, err := sanitizeBuildID(buildID)
 	if err != nil {
@@ -254,14 +176,13 @@ func (s *ProfileSymbolizer) extractBuildID(profile *googlev1.Profile, mapping *g
 }
 
 // createSymbolizationRequest creates a symbolization request for a mapping group
-func (s *ProfileSymbolizer) createSymbolizationRequest(binaryName, buildID string, mapping *googlev1.Mapping, locs []locToSymbolize) Request {
+func (s *Symbolizer) createSymbolizationRequest(binaryName, buildID string, mapping *googlev1.Mapping, locs []locToSymbolize) Request {
 	req := Request{
 		BuildID:    buildID,
 		BinaryName: binaryName,
 		Locations:  make([]*Location, len(locs)),
 	}
 
-	// Prepare locations for symbolization
 	for i, loc := range locs {
 		req.Locations[i] = &Location{
 			Address: loc.loc.Address,
@@ -278,93 +199,79 @@ func (s *ProfileSymbolizer) createSymbolizationRequest(binaryName, buildID strin
 }
 
 // updateProfileWithSymbols updates the profile with symbolization results
-func (s *ProfileSymbolizer) updateProfileWithSymbols(profile *googlev1.Profile, mapping *googlev1.Mapping, locs []locToSymbolize, symLocs []*Location) {
+func (s *Symbolizer) updateProfileWithSymbols(profile *googlev1.Profile, mapping *googlev1.Mapping, locs []locToSymbolize, symLocs []*Location) {
+	stringMap := make(map[string]int64, len(profile.StringTable))
+	for i, str := range profile.StringTable {
+		stringMap[str] = int64(i)
+	}
+
+	type funcKey struct {
+		nameIdx, filenameIdx int64
+	}
+	funcMap := make(map[funcKey]uint64)
+	maxFuncID := uint64(0)
+
+	for _, fn := range profile.Function {
+		if fn.Id > maxFuncID {
+			maxFuncID = fn.Id
+		}
+		funcMap[funcKey{fn.Name, fn.Filename}] = fn.Id
+	}
+
 	for i, symLoc := range symLocs {
-		if len(symLoc.Lines) > 0 {
-			locIdx := locs[i].idx
-			profile.Location[locIdx].Line = make([]*googlev1.Line, len(symLoc.Lines))
+		if len(symLoc.Lines) == 0 {
+			continue
+		}
 
-			for j, line := range symLoc.Lines {
-				// Create or find function name in string table
-				nameIdx := s.findOrAddString(profile, line.FunctionName)
-				filenameIdx := s.findOrAddString(profile, line.FilePath)
+		locIdx := locs[i].idx
+		profile.Location[locIdx].Line = make([]*googlev1.Line, len(symLoc.Lines))
 
-				// Create or find function
-				funcId := s.findOrAddFunction(profile, nameIdx, filenameIdx, line.LineNumber)
+		for j, line := range symLoc.Lines {
+			nameIdx, ok := stringMap[line.FunctionName]
+			if !ok {
+				nameIdx = int64(len(profile.StringTable))
+				profile.StringTable = append(profile.StringTable, line.FunctionName)
+				stringMap[line.FunctionName] = nameIdx
+			}
 
-				profile.Location[locIdx].Line[j] = &googlev1.Line{
-					FunctionId: funcId,
-					Line:       int64(line.LineNumber),
-				}
+			filenameIdx, ok := stringMap[line.FilePath]
+			if !ok {
+				filenameIdx = int64(len(profile.StringTable))
+				profile.StringTable = append(profile.StringTable, line.FilePath)
+				stringMap[line.FilePath] = filenameIdx
+			}
+
+			key := funcKey{nameIdx, filenameIdx}
+			funcID, ok := funcMap[key]
+			if !ok {
+				maxFuncID++
+				funcID = maxFuncID
+				profile.Function = append(profile.Function, &googlev1.Function{
+					Id:        funcID,
+					Name:      nameIdx,
+					Filename:  filenameIdx,
+					StartLine: int64(line.LineNumber),
+				})
+				funcMap[key] = funcID
+			}
+
+			profile.Location[locIdx].Line[j] = &googlev1.Line{
+				FunctionId: funcID,
+				Line:       int64(line.LineNumber),
 			}
 		}
-		//else {
-		//	// Create placeholder line with a valid function ID
-		//	notFoundFuncName := fmt.Sprintf("%s!0x%x", s.extractBinaryName(profile, mapping), locs[i].loc.Address)
-		//	nameIdx := s.findOrAddString(profile, notFoundFuncName)
-		//	funcId := s.findOrAddFunction(profile, nameIdx, 0, 0)
-		//
-		//	// Create a line with the function ID
-		//	profile.Location[locs[i].idx].Line = []*googlev1.Line{{
-		//		FunctionId: funcId,
-		//		Line:       0,
-		//	}}
-		//}
 	}
 
 	mapping.HasFunctions = true
 	mapping.HasFilenames = true
-	//mapping.HasLineNumbers = true
 }
 
-// findOrAddString finds a string in the string table or adds it if not found
-func (s *ProfileSymbolizer) findOrAddString(profile *googlev1.Profile, str string) int64 {
-	for i, s := range profile.StringTable {
-		if s == str {
-			return int64(i)
-		}
-	}
-
-	idx := int64(len(profile.StringTable))
-	profile.StringTable = append(profile.StringTable, str)
-	return idx
-}
-
-// findOrAddFunction finds a function in the function table or adds it if not found
-func (s *ProfileSymbolizer) findOrAddFunction(profile *googlev1.Profile, nameIdx, filenameIdx int64, lineNumber uint64) uint64 {
-	maxFuncId := uint64(0)
-	for _, f := range profile.Function {
-		maxFuncId = max(maxFuncId, f.Id)
-		if f.Name == nameIdx && f.Filename == filenameIdx {
-			return f.Id
-		}
-	}
-
-	funcId := maxFuncId + 1
-	profile.Function = append(profile.Function, &googlev1.Function{
-		Id:        funcId,
-		Name:      nameIdx,
-		Filename:  filenameIdx,
-		StartLine: int64(lineNumber),
-	})
-
-	return funcId
-}
-
-func (s *ProfileSymbolizer) Symbolize(ctx context.Context, req *Request) error {
+func (s *Symbolizer) Symbolize(ctx context.Context, req *Request) error {
 	start := time.Now()
-	status := StatusSuccess
+	status := statusSuccess
 	defer func() {
 		s.metrics.profileSymbolization.WithLabelValues(status).Observe(time.Since(start).Seconds())
 	}()
-
-	if s.checkSymbolCache(req) {
-		return nil
-	}
-
-	if s.checkLidiaTableCache(ctx, req) {
-		return nil
-	}
 
 	if s.checkObjectStoreCache(ctx, req) {
 		return nil
@@ -373,151 +280,44 @@ func (s *ProfileSymbolizer) Symbolize(ctx context.Context, req *Request) error {
 	return s.fetchAndCacheFromDebuginfod(ctx, req, &status)
 }
 
-// symbolizeWithTable processes all locations in a request using a lidia table
-func (s *ProfileSymbolizer) symbolizeWithTable(_ context.Context, table *lidia.Table, req *Request) error {
-	// Buffer for reusing in symbol lookups
+func (s *Symbolizer) symbolizeWithTable(_ context.Context, table *lidia.Table, req *Request) {
 	var framesBuf []lidia.SourceInfoFrame
 
-	for _, loc := range req.Locations {
-		resolveStart := time.Now()
+	resolveStart := time.Now()
+	defer func() {
+		s.metrics.debugSymbolResolution.WithLabelValues(statusSuccess).Observe(time.Since(resolveStart).Seconds())
+	}()
 
+	for _, loc := range req.Locations {
 		frames, err := table.Lookup(framesBuf, loc.Address)
 		if err != nil {
-			level.Error(s.logger).Log(
-				"msg", "failed to resolve address on Lidia table lookup",
-				"addr", fmt.Sprintf("0x%x", loc.Address),
-				"binary", req.BinaryName,
-				"build_id", req.BuildID,
-				"error", err,
-			)
-			loc.Lines = s.createNotFoundSymbols(req.BinaryName, loc, loc.Address)
-			s.metrics.debugSymbolResolution.WithLabelValues(StatusErrorServerError).Observe(time.Since(resolveStart).Seconds())
+			loc.Lines = s.createNotFoundSymbols(req.BinaryName, loc)
 			continue
 		}
 
 		if len(frames) == 0 {
-			level.Debug(s.logger).Log(
-				"msg", "No symbols found for address",
-				"addr", fmt.Sprintf("0x%x", loc.Address),
-				"binary", req.BinaryName,
-				"build_id", req.BuildID,
-			)
-			loc.Lines = s.createNotFoundSymbols(req.BinaryName, loc, loc.Address)
-			s.metrics.debugSymbolResolution.WithLabelValues(StatusErrorOther).Observe(time.Since(resolveStart).Seconds())
+			loc.Lines = s.createNotFoundSymbols(req.BinaryName, loc)
 			continue
 		}
 
 		loc.Lines = frames
-		s.metrics.debugSymbolResolution.WithLabelValues(StatusSuccess).Observe(time.Since(resolveStart).Seconds())
 	}
-
-	return nil
-}
-
-// checkSymbolCache checks if all addresses are in the symbol cache
-func (s *ProfileSymbolizer) checkSymbolCache(req *Request) bool {
-	if s.symbolCache == nil {
-		return false
-	}
-
-	allCached := true
-	for _, loc := range req.Locations {
-		cacheKey := s.createSymbolCacheKey(req.BuildID, loc.Address)
-		symbolStart := time.Now()
-		symbolStatus := StatusCacheMiss
-
-		if frames, found := s.symbolCache.Get(cacheKey); found {
-			loc.Lines = frames
-			symbolStatus = StatusCacheHit
-			s.metrics.debugSymbolResolution.WithLabelValues(StatusCacheHit).Observe(time.Since(symbolStart).Seconds())
-		} else {
-			allCached = false
-			break
-		}
-
-		s.metrics.cacheOperations.WithLabelValues("symbol_cache", "get", symbolStatus).Observe(time.Since(symbolStart).Seconds())
-	}
-
-	return allCached
-}
-
-// checkLidiaTableCache checks if the debug info is in the Lidia table cache
-func (s *ProfileSymbolizer) checkLidiaTableCache(ctx context.Context, req *Request) bool {
-	lidiaTableStart := time.Now()
-	lidiaTableStatus := StatusCacheMiss
-
-	if s.lidiaTableCache == nil {
-		return false
-	}
-
-	if data, found := s.lidiaTableCache.Get(req.BuildID); found {
-		lidiaTableStatus = StatusCacheHit
-		dataBytes := data.Data
-
-		bytesReader := bytes.NewReader(dataBytes)
-		lidiaReader := struct {
-			io.ReadCloser
-			io.ReaderAt
-		}{
-			ReadCloser: io.NopCloser(bytesReader),
-			ReaderAt:   bytesReader,
-		}
-
-		// Open the Lidia table
-		table, err := lidia.OpenReader(lidiaReader, lidia.WithCRC())
-		if err != nil {
-			s.metrics.debugSymbolResolution.WithLabelValues("lidia_error").Observe(0)
-			return false
-		}
-		defer table.Close()
-
-		err = s.symbolizeWithTable(ctx, table, req)
-		if err != nil {
-			return false
-		}
-
-		s.metrics.cacheOperations.WithLabelValues("lidia_table_cache", "get", lidiaTableStatus).Observe(time.Since(lidiaTableStart).Seconds())
-
-		s.updateSymbolCache(req)
-		return true
-	}
-
-	s.metrics.cacheOperations.WithLabelValues("lidia_table_cache", "get", lidiaTableStatus).Observe(time.Since(lidiaTableStart).Seconds())
-	return false
 }
 
 // checkObjectStoreCache checks if the debug info is in the object store cache
-func (s *ProfileSymbolizer) checkObjectStoreCache(ctx context.Context, req *Request) bool {
-	if s.store == nil {
-		level.Debug(s.logger).Log(
-			"msg", "object store is nil, skipping cache check",
-			"build_id", req.BuildID,
-		)
-		return false
-	}
-
-	objstoreStart := time.Now()
-	objstoreStatus := StatusCacheMiss
+func (s *Symbolizer) checkObjectStoreCache(ctx context.Context, req *Request) bool {
 	objstoreReader, err := s.store.Get(ctx, req.BuildID)
-
 	if err != nil {
-		level.Debug(s.logger).Log(
+		level.Error(s.logger).Log(
 			"msg", "failed to get from object store",
 			"build_id", req.BuildID,
 			"error", err,
 		)
-		s.metrics.cacheOperations.WithLabelValues("objstore_cache", "get", objstoreStatus).Observe(time.Since(objstoreStart).Seconds())
 		return false
 	}
-
-	objstoreStatus = StatusCacheHit
-	s.metrics.cacheOperations.WithLabelValues("objstore_cache", "get", objstoreStatus).Observe(time.Since(objstoreStart).Seconds())
 	defer objstoreReader.Close()
 
-	// Read the entire content to store in Ristretto cache
-	var buf bytes.Buffer
-	teeReader := io.TeeReader(objstoreReader, &buf)
-	err = s.symbolizeFromReader(ctx, io.NopCloser(teeReader), req, true)
+	err = s.symbolizeFromReader(ctx, objstoreReader, req)
 	if err != nil {
 		level.Error(s.logger).Log(
 			"msg", "failed to symbolize from object store data",
@@ -527,29 +327,40 @@ func (s *ProfileSymbolizer) checkObjectStoreCache(ctx context.Context, req *Requ
 		return false
 	}
 
-	// Update in ristretto cache
-	if s.lidiaTableCache != nil {
-		data := buf.Bytes()
-		cacheStart := time.Now()
-		if err := s.storeLidiaTableInCache(data, req.BuildID, cacheStart); err != nil {
-			level.Error(s.logger).Log(
-				"msg", "failed to store in lidia table cache",
-				"build_id", req.BuildID,
-				"error", err,
-			)
-			return false
-		}
-	}
-
-	s.updateSymbolCache(req)
 	return true
 }
 
-// fetchAndCacheFromDebuginfod fetches debug info from debuginfod and caches it
-func (s *ProfileSymbolizer) fetchAndCacheFromDebuginfod(ctx context.Context, req *Request, status *string) error {
-	// Try to get from debuginfod client
+// handleDebuginfodError handles errors from the debuginfod client
+func (s *Symbolizer) handleDebuginfodError(err error, req *Request, debuginfodStart time.Time, status *string) error {
+	var bnfErr buildIDNotFoundError
+	statusCode, isHTTPError := isHTTPStatusError(err)
+
+	if errors.As(err, &bnfErr) || (isHTTPError && statusCode == http.StatusNotFound) {
+		*status = statusErrorNotFound
+		s.metrics.debuginfodRequestDuration.WithLabelValues(statusErrorNotFound).Observe(time.Since(debuginfodStart).Seconds())
+
+		level.Info(s.logger).Log("msg", "Build ID not found, caching placeholder symbols",
+			"build_id", req.BuildID,
+			"binary", req.BinaryName)
+
+		for _, loc := range req.Locations {
+			loc.Lines = s.createNotFoundSymbols(req.BinaryName, loc)
+		}
+
+		// TODO: Cache the placeholder symbols for 404s?
+
+		return nil
+	}
+
+	*status = statusErrorDebuginfod
+	s.metrics.debuginfodRequestDuration.WithLabelValues(statusErrorDebuginfod).Observe(time.Since(debuginfodStart).Seconds())
+	s.metrics.debugSymbolResolution.WithLabelValues(statusErrorDebuginfod).Observe(0)
+	return fmt.Errorf("fetch debuginfo: %w", err)
+}
+
+func (s *Symbolizer) fetchAndCacheFromDebuginfod(ctx context.Context, req *Request, status *string) error {
 	if s.client == nil {
-		*status = StatusErrorDebuginfod
+		*status = statusErrorDebuginfod
 		return fmt.Errorf("no debuginfod client configured")
 	}
 
@@ -559,116 +370,53 @@ func (s *ProfileSymbolizer) fetchAndCacheFromDebuginfod(ctx context.Context, req
 		return s.handleDebuginfodError(err, req, debuginfodStart, status)
 	}
 
-	s.metrics.debuginfodRequestDuration.WithLabelValues(StatusSuccess).Observe(time.Since(debuginfodStart).Seconds())
+	s.metrics.debuginfodRequestDuration.WithLabelValues(statusSuccess).Observe(time.Since(debuginfodStart).Seconds())
 	defer debugReader.Close()
 
-	// Read the entire content to store in caches
-	var buf bytes.Buffer
-	teeReader := io.TeeReader(debugReader, &buf)
-
-	err = s.symbolizeFromReader(ctx, io.NopCloser(teeReader), req, false)
+	elfData, err := io.ReadAll(debugReader)
 	if err != nil {
+		return fmt.Errorf("read debuginfod data: %w", err)
+	}
+
+	lidiaData, err := s.processELFData(elfData)
+	if err != nil {
+		level.Error(s.logger).Log(
+			"msg", "symbolizer: Failed to process ELF data",
+			"build_id", req.BuildID,
+			"error", err,
+		)
 		return err
 	}
 
-	// Update caches
-	data := buf.Bytes()
-	s.metrics.debuginfodFileSize.Observe(float64(len(data)))
-	s.updateSymbolCache(req)
-
-	// Update all caches with the fetched data
-	return s.updateAllCaches(ctx, req, data)
-}
-
-// handleDebuginfodError handles errors from the debuginfod client
-func (s *ProfileSymbolizer) handleDebuginfodError(err error, req *Request, debuginfodStart time.Time, status *string) error {
-	var bnfErr buildIDNotFoundError
-	statusCode, isHTTPError := isHTTPStatusError(err)
-
-	if errors.As(err, &bnfErr) || (isHTTPError && statusCode == http.StatusNotFound) {
-		*status = StatusErrorNotFound
-		s.metrics.debuginfodRequestDuration.WithLabelValues(StatusErrorNotFound).Observe(time.Since(debuginfodStart).Seconds())
-
-		level.Info(s.logger).Log("msg", "Build ID not found, caching placeholder symbols",
-			"build_id", req.BuildID,
-			"binary", req.BinaryName)
-
-		cacheStart := time.Now()
-		for _, loc := range req.Locations {
-			symbols := s.createNotFoundSymbols(req.BinaryName, loc, loc.Address)
-			if s.symbolCache != nil {
-				cacheKey := s.createSymbolCacheKey(req.BuildID, loc.Address)
-				s.symbolCache.Add(cacheKey, symbols)
-			}
-			loc.Lines = symbols
-		}
-
-		if s.symbolCache != nil {
-			s.metrics.cacheOperations.WithLabelValues("symbol_cache", "set", StatusErrorNotFound).Observe(time.Since(cacheStart).Seconds())
-		}
-
-		return nil
+	lidiaReader := NewReaderAtCloser(lidiaData)
+	table, err := lidia.OpenReader(lidiaReader, lidia.WithCRC())
+	if err != nil {
+		s.metrics.debugSymbolResolution.WithLabelValues("lidia_error").Observe(0)
+		level.Error(s.logger).Log("msg", "opening Lidia table", "err", err)
+		return fmt.Errorf("open lidia file: %w", err)
 	}
 
-	*status = StatusErrorDebuginfod
-	s.metrics.debuginfodRequestDuration.WithLabelValues(StatusErrorDebuginfod).Observe(time.Since(debuginfodStart).Seconds())
-	s.metrics.debugSymbolResolution.WithLabelValues(StatusErrorDebuginfod).Observe(0)
-	return fmt.Errorf("fetch debuginfo: %w", err)
-}
+	s.symbolizeWithTable(ctx, table, req)
 
-// updateAllCaches updates all caches with the fetched data
-func (s *ProfileSymbolizer) updateAllCaches(ctx context.Context, req *Request, data []byte) error {
-	// Store in Ristretto cache
-	if s.lidiaTableCache != nil {
-		cacheStart := time.Now()
-		if err := s.storeLidiaTableInCache(data, req.BuildID, cacheStart); err != nil {
-			return err
-		}
-	}
+	table.Close()
 
-	// Store in ObjstoreCache
-	if s.store != nil {
-		cacheStart := time.Now()
-		if cacheErr := s.store.Put(ctx, req.BuildID, bytes.NewReader(data)); cacheErr != nil {
-			s.metrics.cacheOperations.WithLabelValues("objstore_cache", "put", StatusErrorUpload).Observe(time.Since(cacheStart).Seconds())
-			level.Warn(s.logger).Log("msg", "Failed to store debug info in objstore", "buildID", req.BuildID, "err", cacheErr)
-		} else {
-			s.metrics.cacheOperations.WithLabelValues("objstore_cache", "put", StatusSuccess).Observe(time.Since(cacheStart).Seconds())
-			s.metrics.cacheSizeBytes.WithLabelValues("objstore_cache").Add(float64(len(data)))
-		}
+	s.metrics.debuginfodFileSize.Observe(float64(len(lidiaData)))
+
+	if err := s.store.Put(ctx, req.BuildID, bytes.NewReader(lidiaData)); err != nil {
+		level.Warn(s.logger).Log("msg", "Failed to store debug info in objstore", "buildID", req.BuildID, "err", err)
 	}
 
 	return nil
 }
 
-func (s *ProfileSymbolizer) symbolizeFromReader(ctx context.Context, r io.ReadCloser, req *Request, isLidia bool) error {
-	// Read the entire content into memory
+func (s *Symbolizer) symbolizeFromReader(ctx context.Context, r io.ReadCloser, req *Request) error {
 	data, err := io.ReadAll(r)
 	if err != nil {
 		return fmt.Errorf("read content: %w", err)
 	}
 
-	var lidiaData []byte
+	lidiaReader := NewReaderAtCloser(data)
 
-	if isLidia {
-		// Data is already in Lidia format
-		lidiaData = data
-	} else {
-		// Process as ELF data
-		lidiaData, err = s.processELFData(data)
-		if err != nil {
-			level.Error(s.logger).Log(
-				"msg", "symbolizer: Failed to process ELF data",
-				"build_id", req.BuildID,
-				"error", err,
-			)
-			return err
-		}
-	}
-
-	lidiaReader := NewReaderAtCloser(lidiaData)
-
-	// Open the lidia table from memory
 	table, err := lidia.OpenReader(lidiaReader, lidia.WithCRC())
 	if err != nil {
 		s.metrics.debugSymbolResolution.WithLabelValues("lidia_error").Observe(0)
@@ -677,53 +425,17 @@ func (s *ProfileSymbolizer) symbolizeFromReader(ctx context.Context, r io.ReadCl
 	}
 	defer table.Close()
 
-	return s.symbolizeWithTable(ctx, table, req)
-}
-
-func (s *ProfileSymbolizer) storeLidiaTableInCache(data []byte, buildID string, cacheStart time.Time) error {
-	var lidiaData []byte
-	var err error
-
-	// Check if data is already in Lidia format by looking for the magic number
-	if len(data) >= 4 && data[0] == 0x2e && data[1] == 0x64 && data[2] == 0x69 && data[3] == 0x61 {
-		lidiaData = data
-		lidiaReader := NewReaderAtCloser(lidiaData)
-
-		table, err := lidia.OpenReader(lidiaReader, lidia.WithCRC())
-		if err != nil {
-			return fmt.Errorf("open lidia file: %w", err)
-		}
-		defer table.Close()
-
-	} else {
-		lidiaData, err = s.processELFData(data)
-		if err != nil {
-			return err
-		}
-	}
-
-	entry := LidiaTableCacheEntry{
-		Data: lidiaData,
-	}
-
-	success := s.lidiaTableCache.Set(buildID, entry, int64(len(lidiaData)))
-	s.metrics.cacheOperations.WithLabelValues("debuginfo_cache", "set", StatusSuccess).Observe(time.Since(cacheStart).Seconds())
-	if !success {
-		level.Warn(s.logger).Log("msg", "failed to store debug info in cache", "buildID", buildID, "size", len(lidiaData))
-	}
-	s.metrics.cacheSizeBytes.WithLabelValues("debuginfo_cache").Set(float64(len(lidiaData)))
+	s.symbolizeWithTable(ctx, table, req)
 
 	return nil
 }
 
-func (s *ProfileSymbolizer) processELFData(data []byte) (lidiaData []byte, err error) {
-	// Create a reader from the data
+func (s *Symbolizer) processELFData(data []byte) (lidiaData []byte, err error) {
 	reader, err := detectCompression(bytes.NewReader(data))
 	if err != nil {
 		return nil, fmt.Errorf("detect compression: %w", err)
 	}
 
-	// Parse the ELF file
 	sr := io.NewSectionReader(reader, 0, 1<<63-1)
 	elfFile, err := elf.NewFile(sr)
 	if err != nil {
@@ -731,7 +443,6 @@ func (s *ProfileSymbolizer) processELFData(data []byte) (lidiaData []byte, err e
 	}
 	defer elfFile.Close()
 
-	// Create an in-memory buffer for the lidia format
 	initialSize := len(data) * 2 // A simple heuristic: twice the compressed size
 	memBuffer := newMemoryBuffer(initialSize)
 
@@ -743,23 +454,7 @@ func (s *ProfileSymbolizer) processELFData(data []byte) (lidiaData []byte, err e
 	return memBuffer.Bytes(), nil
 }
 
-// updateSymbolCache updates the symbol cache with newly symbolized addresses
-func (s *ProfileSymbolizer) updateSymbolCache(req *Request) {
-	if s.symbolCache == nil {
-		return
-	}
-
-	for _, loc := range req.Locations {
-		if len(loc.Lines) > 0 {
-			cacheKey := s.createSymbolCacheKey(req.BuildID, loc.Address)
-			cacheStart := time.Now()
-			s.symbolCache.Add(cacheKey, loc.Lines)
-			s.metrics.cacheOperations.WithLabelValues("symbol_cache", "set", StatusSuccess).Observe(time.Since(cacheStart).Seconds())
-		}
-	}
-}
-
-func (s *ProfileSymbolizer) createNotFoundSymbols(binaryName string, loc *Location, addr uint64) []lidia.SourceInfoFrame {
+func (s *Symbolizer) createNotFoundSymbols(binaryName string, loc *Location) []lidia.SourceInfoFrame {
 	prefix := "unknown"
 	if binaryName != "" {
 		prefix = binaryName
@@ -769,20 +464,4 @@ func (s *ProfileSymbolizer) createNotFoundSymbols(binaryName string, loc *Locati
 		FunctionName: fmt.Sprintf("%s!0x%x", prefix, loc.Address),
 		LineNumber:   0,
 	}}
-}
-
-func (s *ProfileSymbolizer) createSymbolCacheKey(buildID string, address uint64) SymbolCacheKey {
-	return SymbolCacheKey{
-		BuildID: buildID,
-		Address: address,
-	}
-}
-
-func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
-	f.BoolVar(&cfg.Enabled, "symbolizer.enabled", true, "Enable symbolization for unsymbolized profiles")
-	f.StringVar(&cfg.DebuginfodURL, "symbolizer.debuginfod-url", "https://debuginfod.elfutils.org", "URL of the debuginfod server")
-	f.IntVar(&cfg.InMemorySymbolCacheSize, "symbolizer.in-memory-symbol-cache-size", DefaultInMemorySymbolCacheSize, "Maximum number of entries in the in-memory symbol cache")
-	f.IntVar(&cfg.InMemoryLidiaTableCacheSize, "symbolizer.in-memory-debuginfo-cache-size", DefaultInMemoryLidiaTableCacheSize, "Maximum size in bytes for the in-memory debug info cache")
-	f.DurationVar(&cfg.PersistentDebugInfoStore.MaxAge, "symbolizer.persistent-debuginfo-store.max-age", 7*24*time.Hour, "Maximum age of stored debug info")
-	cfg.PersistentDebugInfoStore.Storage.RegisterFlagsWithPrefix("symbolizer.persistent-debuginfo-store.storage.", f)
 }

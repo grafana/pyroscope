@@ -337,6 +337,8 @@ func TestDebuginfodClientNotFoundCache(t *testing.T) {
 	assert.True(t, errors.As(err, &notFoundErr))
 	assert.Equal(t, 1, requestCount)
 
+	client.notFoundCache.Wait()
+
 	// Second request should get 404 from cache without hitting server
 	reader, err = client.FetchDebuginfo(ctx, buildID)
 	assert.Error(t, err)

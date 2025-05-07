@@ -447,29 +447,26 @@ func UnmarshalTree(b []byte) (*Tree, error) {
 }
 
 // TreeFromBackendProfile is a wrapper...
-func TreeFromBackendProfile(profile *profilev1.Profile, maxNodes int64) []byte {
+func TreeFromBackendProfile(profile *profilev1.Profile, maxNodes int64) ([]byte, error) {
 	return TreeFromBackendProfileSampleType(profile, maxNodes, 0)
 }
 
 // TreeFromBackendProfileSampleType converts a pprof profile to a tree format with maxNodes limit
-func TreeFromBackendProfileSampleType(profile *profilev1.Profile, maxNodes int64, sampleType int) []byte {
+func TreeFromBackendProfileSampleType(profile *profilev1.Profile, maxNodes int64, sampleType int) ([]byte, error) {
 	t := NewStacktraceTree(int(maxNodes * 2))
-
 	stack := make([]int32, 0, 64)
 	m := make(map[uint64]int32)
 
 	for i := range profile.Sample {
 		stack = stack[:0]
 		for j := range profile.Sample[i].LocationId {
-			// Check if location ID is valid and Location slice exists
 			locIdx := int(profile.Sample[i].LocationId[j]) - 1
 			if locIdx < 0 || len(profile.Location) <= locIdx {
-				continue
+				return nil, fmt.Errorf("invalid location ID %d in sample %d", profile.Sample[i].LocationId[j], i)
 			}
 
 			loc := profile.Location[locIdx]
 			if len(loc.Line) > 0 {
-				//if len(loc.Line) >= 0 {
 				for l := range loc.Line {
 					stack = append(stack, int32(profile.Function[loc.Line[l].FunctionId-1].Name))
 				}
@@ -477,25 +474,22 @@ func TreeFromBackendProfileSampleType(profile *profilev1.Profile, maxNodes int64
 			}
 			addr, ok := m[loc.Address]
 			if !ok {
-				// We assume that the string table does not contain the address string.
-				// We do not want to check all the values.
 				addr = int32(len(profile.StringTable))
 				profile.StringTable = append(profile.StringTable, strconv.FormatInt(int64(loc.Address), 16))
 				m[loc.Address] = addr
 			}
 			stack = append(stack, addr)
 		}
-		// Bounds check for sample Value
-		if sampleType < len(profile.Sample[i].Value) {
-			t.Insert(stack, profile.Sample[i].Value[sampleType])
-		} else {
-			// Use 0 as fallback
-			t.Insert(stack, 0)
+
+		if sampleType < 0 || sampleType >= len(profile.Sample[i].Value) {
+			return nil, fmt.Errorf("invalid sampleType index %d for sample %d (len=%d)", sampleType, i, len(profile.Sample[i].Value))
 		}
+
+		t.Insert(stack, profile.Sample[i].Value[sampleType])
 	}
 
 	b := bytes.NewBuffer(nil)
 	b.Grow(100 << 10)
 	t.Bytes(b, maxNodes, profile.StringTable)
-	return b.Bytes()
+	return b.Bytes(), nil
 }

@@ -146,10 +146,14 @@ func TestSymbolizePprof(t *testing.T) {
 			mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
 			tt.setupMock(mockClient)
 
-			s, err := NewProfileSymbolizer(log.NewNopLogger(), mockClient, NewNullDebugInfoStore(), NewMetrics(nil), 1, 1)
-			require.NoError(t, err)
+			s := &Symbolizer{
+				logger:  log.NewNopLogger(),
+				client:  mockClient,
+				store:   NewNullDebugInfoStore(),
+				metrics: newMetrics(nil),
+			}
 
-			err = s.SymbolizePprof(context.Background(), tt.profile)
+			err := s.SymbolizePprof(context.Background(), tt.profile)
 			if tt.wantErr {
 				require.Error(t, err)
 				return
@@ -168,20 +172,25 @@ func TestSymbolizationWithLidiaData(t *testing.T) {
 
 	lidiaData, err := extractGzipFile(t, testLidiaZip)
 	require.NoError(t, err)
-	require.NotEmpty(t, lidiaData, "Lidia data should not be empty")
+	require.NotEmpty(t, lidiaData)
 
 	store := mocksymbolizer.NewMockDebugInfoStore(t)
-	store.On("Put", mock.Anything, buildID, mock.Anything).Return(nil).Once()
-	store.On("Get", mock.Anything, buildID).Return(io.NopCloser(bytes.NewReader(lidiaData)), nil).Once()
 
-	// Store the Lidia file
-	err = store.Put(context.Background(), buildID, bytes.NewReader(lidiaData))
-	require.NoError(t, err)
+	// Configure the mock to return the same Lidia data for both Get operations
+	getLidiaData := func() io.ReadCloser {
+		return io.NopCloser(bytes.NewReader(lidiaData))
+	}
 
-	sym, err := NewProfileSymbolizer(log.NewNopLogger(), nil, store, NewMetrics(nil), 100, 1024*1024)
-	require.NoError(t, err)
+	store.On("Get", mock.Anything, buildID).Return(getLidiaData(), nil).Once()
+	store.On("Get", mock.Anything, buildID).Return(getLidiaData(), nil).Once()
 
-	// Create a symbolization request with some addresses to test
+	sym := &Symbolizer{
+		logger:  log.NewNopLogger(),
+		client:  nil,
+		store:   store,
+		metrics: newMetrics(prometheus.NewRegistry()),
+	}
+
 	req := &Request{
 		BuildID:    buildID,
 		BinaryName: "test-binary",
@@ -200,13 +209,9 @@ func TestSymbolizationWithLidiaData(t *testing.T) {
 
 	err = sym.Symbolize(context.Background(), req)
 	require.NoError(t, err)
-	require.NotEmpty(t, req.Locations[0].Lines, "Should have found symbols")
-	for _, line := range req.Locations[0].Lines {
-		t.Logf("Found symbol: %s in %s:%d", line.FunctionName, line.FilePath, line.LineNumber)
-	}
+	require.NotEmpty(t, req.Locations[0].Lines)
 
-	// For the second request, we don't need to set up expectations again
-	// because the symbolizer should use its internal cache
+	// Second request should also fetch from store
 	req2 := &Request{
 		BuildID:    buildID,
 		BinaryName: "test-binary",
@@ -225,216 +230,160 @@ func TestSymbolizationWithLidiaData(t *testing.T) {
 
 	err = sym.Symbolize(context.Background(), req2)
 	require.NoError(t, err)
-	require.NotEmpty(t, req2.Locations[0].Lines, "Should have found symbols from cache")
+	require.NotEmpty(t, req2.Locations[0].Lines)
 }
 
-func TestSymbolizeWithCache(t *testing.T) {
+// TestSymbolizeWithObjectStore validates the symbolizer's behavior with the object store:
+// 1. First request: Object store miss → fetch from debuginfod → store Lidia data in object store
+// 2. Second request (same build-id, same address): Object store hit → use cached Lidia data
+// 3. Third request (same build-id, different address): Object store hit → use cached Lidia data
+// 4. Fourth request (different build-id): Object store miss → fetch from debuginfod → store Lidia data
+func TestSymbolizeWithObjectStore(t *testing.T) {
 	mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
+	mockStore := mocksymbolizer.NewMockDebugInfoStore(t)
 
-	openNewTestFile := func() io.ReadCloser {
-		// Read the entire file into memory to avoid issues with file handles
-		f, err := os.Open("testdata/symbols.debug")
-		require.NoError(t, err)
-		defer f.Close()
-
-		data, err := io.ReadAll(f)
-		require.NoError(t, err)
-
-		// Return a reader that reads from the in-memory data
-		return io.NopCloser(bytes.NewReader(data))
+	s := &Symbolizer{
+		logger:  log.NewNopLogger(),
+		client:  mockClient,
+		store:   mockStore,
+		metrics: newMetrics(prometheus.NewRegistry()),
 	}
 
-	// We expect exactly two calls to FetchDebuginfo:
-	// 1. For the first request (build-id)
-	// 2. For the fourth request (different-build-id)
-	mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(openNewTestFile(), nil).Once()
-	mockClient.On("FetchDebuginfo", mock.Anything, "different-build-id").Return(openNewTestFile(), nil).Once()
-
-	reg := prometheus.NewRegistry()
-	metrics := NewMetrics(reg)
-
-	// Create a symbolizer with LRU cache
-	s, err := NewProfileSymbolizer(log.NewNopLogger(), mockClient, NewNullDebugInfoStore(), metrics, 100000, 100000)
+	elfTestFile := openTestFile(t)
+	elfData, err := io.ReadAll(elfTestFile)
+	elfTestFile.Close()
 	require.NoError(t, err)
 
-	// Request 1: First request - should be a cache miss for both symbol and debug info
-	req1 := &Request{
-		BuildID: "build-id",
-		Locations: []*Location{
-			{
-				Address: 0x1500,
-				Mapping: &pprof.Mapping{
-					Start:   0x0,
-					Limit:   0x1000000,
-					Offset:  0x0,
-					BuildID: "build-id",
-				},
-			},
-		},
-	}
+	// request 1
+	var capturedLidiaData []byte
+	mockStore.On("Get", mock.Anything, "build-id").Return(nil, fmt.Errorf("not found")).Once()
+	mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(io.NopCloser(bytes.NewReader(elfData)), nil).Once()
+	mockStore.On("Put", mock.Anything, "build-id", mock.Anything).Run(func(args mock.Arguments) {
+		reader := args.Get(2).(io.Reader)
+		var buf bytes.Buffer
+		teeReader := io.TeeReader(reader, &buf)
+		var err error
+		capturedLidiaData, err = io.ReadAll(teeReader)
+		require.NoError(t, err)
+	}).Return(nil).Once()
+
+	req1 := createRequest(t, "build-id", 0x1500)
 	err = s.Symbolize(context.Background(), req1)
 	require.NoError(t, err)
 	require.NotEmpty(t, req1.Locations[0].Lines)
+	require.NotEmpty(t, capturedLidiaData)
 
-	// Wait for Ristretto to finish processing
-	s.lidiaTableCache.Wait()
+	// request 2
+	mockStore.On("Get", mock.Anything, "build-id").Return(
+		io.NopCloser(bytes.NewReader(capturedLidiaData)), nil,
+	).Once()
 
-	// Second request with same address - should be a cache hit
-	req2 := &Request{
-		BuildID: "build-id",
-		Locations: []*Location{
-			{
-				Address: 0x1500,
-				Mapping: &pprof.Mapping{
-					Start:   0x0,
-					Limit:   0x1000000,
-					Offset:  0x0,
-					BuildID: "build-id",
-				},
-			},
-		},
-	}
-
-	// No additional calls expected for the second request
-
+	req2 := createRequest(t, "build-id", 0x1500)
 	err = s.Symbolize(context.Background(), req2)
 	require.NoError(t, err)
 	require.NotEmpty(t, req2.Locations[0].Lines)
 
-	// Request 3: Same build-id, different address - should be a debug info cache hit
-	req3 := &Request{
-		BuildID: "build-id",
-		Locations: []*Location{
-			{
-				Address: 0x3c5a,
-				Mapping: &pprof.Mapping{
-					Start:   0x0,
-					Limit:   0x1000000,
-					Offset:  0x0,
-					BuildID: "build-id",
-				},
-			},
-		},
-	}
+	// request 3
+	mockStore.On("Get", mock.Anything, "build-id").Return(
+		io.NopCloser(bytes.NewReader(capturedLidiaData)), nil,
+	).Once()
 
-	s.lidiaTableCache.Wait()
-
-	// Should NOT call FetchDebuginfo again for the new address
-	// because the debug info is already in the Ristretto cache
-
+	req3 := createRequest(t, "build-id", 0x3c5a)
 	err = s.Symbolize(context.Background(), req3)
 	require.NoError(t, err)
 	require.NotEmpty(t, req3.Locations[0].Lines)
 
-	// Fourth request with a different build ID - should be a complete cache miss
-	req4 := &Request{
-		BuildID: "different-build-id",
-		Locations: []*Location{
-			{
-				Address: 0x1500,
-				Mapping: &pprof.Mapping{
-					Start:   0x0,
-					Limit:   0x1000000,
-					Offset:  0x0,
-					BuildID: "different-build-id",
-				},
-			},
-		},
-	}
+	// request 4
+	var capturedLidiaData2 []byte
+	mockStore.On("Get", mock.Anything, "different-build-id").Return(nil, fmt.Errorf("not found")).Once()
+	mockClient.On("FetchDebuginfo", mock.Anything, "different-build-id").Return(io.NopCloser(bytes.NewReader(elfData)), nil).Once()
+	mockStore.On("Put", mock.Anything, "different-build-id", mock.Anything).Run(func(args mock.Arguments) {
+		reader := args.Get(2).(io.Reader)
+		var buf bytes.Buffer
+		teeReader := io.TeeReader(reader, &buf)
+		var err error
+		capturedLidiaData2, err = io.ReadAll(teeReader)
+		require.NoError(t, err)
+	}).Return(nil).Once()
 
+	req4 := createRequest(t, "different-build-id", 0x1500)
 	err = s.Symbolize(context.Background(), req4)
 	require.NoError(t, err)
 	require.NotEmpty(t, req4.Locations[0].Lines)
+	require.NotEmpty(t, capturedLidiaData2)
 
 	mockClient.AssertExpectations(t)
+	mockStore.AssertExpectations(t)
 }
 
 func TestSymbolizerMetrics(t *testing.T) {
 	tests := []struct {
 		name      string
-		setupMock func(*mocksymbolizer.MockDebuginfodClient)
-		setupTest func(*ProfileSymbolizer, context.Context) error
+		setupMock func(*mocksymbolizer.MockDebuginfodClient, *mocksymbolizer.MockDebugInfoStore)
+		setupTest func(*Symbolizer, context.Context) error
 		expected  map[string]int
 	}{
 		{
-			name: "successful symbolization with cache layers",
-			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient) {
-				mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(openTestFile(t), nil).Once()
-			},
-			setupTest: func(s *ProfileSymbolizer, ctx context.Context) error {
-				// First request - should miss all caches
-				req1 := &Request{
-					BuildID: "build-id",
-					Locations: []*Location{
-						{
-							Address: 0x1500,
-							Mapping: &pprof.Mapping{
-								Start:   0x0,
-								Limit:   0x1000000,
-								Offset:  0x0,
-								BuildID: "build-id",
-							},
-						},
-					},
+			name: "successful symbolization with cache",
+			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient, mockStore *mocksymbolizer.MockDebugInfoStore) {
+				// Get test data for proper Lidia format
+				elfTestFile := openTestFile(t)
+				elfData, err := io.ReadAll(elfTestFile)
+				elfTestFile.Close()
+				require.NoError(t, err)
+
+				// Process the ELF data to get valid Lidia data for the cache hit
+				preProcessor := &Symbolizer{
+					logger:  log.NewNopLogger(),
+					metrics: newMetrics(nil),
 				}
+				lidiaData, err := preProcessor.processELFData(elfData)
+				require.NoError(t, err)
+				require.NotEmpty(t, lidiaData)
+
+				// First request: Object store miss, fetch from debuginfod
+				mockStore.On("Get", mock.Anything, "build-id").Return(nil, fmt.Errorf("not found")).Once()
+				mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(
+					io.NopCloser(bytes.NewReader(elfData)), nil,
+				).Once()
+				mockStore.On("Put", mock.Anything, "build-id", mock.Anything).Return(nil).Once()
+
+				// Second request: Object store hit using valid Lidia data
+				mockStore.On("Get", mock.Anything, "build-id").Return(
+					io.NopCloser(bytes.NewReader(lidiaData)), nil,
+				).Once()
+			},
+			setupTest: func(s *Symbolizer, ctx context.Context) error {
+				req1 := createRequest(t, "build-id", 0x1500)
 				err := s.Symbolize(ctx, req1)
 				if err != nil {
 					return err
 				}
 
-				// Second request with same address - should hit symbol cache
-				req2 := &Request{
-					BuildID: "build-id",
-					Locations: []*Location{
-						{
-							Address: 0x1500,
-							Mapping: &pprof.Mapping{
-								Start:   0x0,
-								Limit:   0x1000000,
-								Offset:  0x0,
-								BuildID: "build-id",
-							},
-						},
-					},
-				}
+				req2 := createRequest(t, "build-id", 0x1500)
 				return s.Symbolize(ctx, req2)
-			},
-			expected: map[string]int{
-				"pyroscope_profile_symbolization_duration_seconds":         1,
-				"pyroscope_debug_symbol_resolution_duration_seconds":       2,
-				"pyroscope_symbolizer_debuginfod_request_duration_seconds": 1,
-				"pyroscope_symbolizer_cache_operation_duration_seconds":    6,
-			},
-		},
-		{
-			name: "debuginfod error",
-			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient) {
-				mockClient.On("FetchDebuginfo", mock.Anything, "unknown-build-id").
-					Return(nil, fmt.Errorf("unknown build ID")).Once()
-			},
-			setupTest: func(s *ProfileSymbolizer, ctx context.Context) error {
-				req := &Request{
-					BuildID: "unknown-build-id",
-					Locations: []*Location{
-						{
-							Address: 0x1500,
-							Mapping: &pprof.Mapping{
-								Start:   0x0,
-								Limit:   0x1000000,
-								Offset:  0x0,
-								BuildID: "unknown-build-id",
-							},
-						},
-					},
-				}
-				_ = s.Symbolize(ctx, req)
-				return nil
 			},
 			expected: map[string]int{
 				"pyroscope_profile_symbolization_duration_seconds":         1,
 				"pyroscope_debug_symbol_resolution_duration_seconds":       1,
 				"pyroscope_symbolizer_debuginfod_request_duration_seconds": 1,
-				"pyroscope_symbolizer_cache_operation_duration_seconds":    2,
+			},
+		},
+		{
+			name: "debuginfod error",
+			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient, mockStore *mocksymbolizer.MockDebugInfoStore) {
+				mockStore.On("Get", mock.Anything, "unknown-build-id").Return(nil, fmt.Errorf("not found")).Once()
+				mockClient.On("FetchDebuginfo", mock.Anything, "unknown-build-id").
+					Return(nil, buildIDNotFoundError{buildID: "unknown-build-id"}).Once()
+			},
+			setupTest: func(s *Symbolizer, ctx context.Context) error {
+				req := createRequest(t, "unknown-build-id", 0x1500)
+				return s.Symbolize(ctx, req)
+			},
+			expected: map[string]int{
+				"pyroscope_profile_symbolization_duration_seconds":         1,
+				"pyroscope_debug_symbol_resolution_duration_seconds":       0,
+				"pyroscope_symbolizer_debuginfod_request_duration_seconds": 1,
 			},
 		},
 	}
@@ -442,20 +391,23 @@ func TestSymbolizerMetrics(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			reg := prometheus.NewRegistry()
-			metrics := NewMetrics(reg)
 
+			mockStore := mocksymbolizer.NewMockDebugInfoStore(t)
 			mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
-			tt.setupMock(mockClient)
+			tt.setupMock(mockClient, mockStore)
 
-			s, err := NewProfileSymbolizer(log.NewNopLogger(), mockClient, NewNullDebugInfoStore(), metrics, 100, 100)
-			require.NoError(t, err)
+			s := &Symbolizer{
+				logger:  log.NewNopLogger(),
+				client:  mockClient,
+				store:   mockStore,
+				metrics: newMetrics(reg),
+			}
 
-			err = tt.setupTest(s, context.Background())
+			err := tt.setupTest(s, context.Background())
 			if err != nil {
 				t.Log("Setup error:", err)
 			}
 
-			// Use testutil.GatherAndCount to check metric counts
 			for metricName, expectedCount := range tt.expected {
 				count, err := testutil.GatherAndCount(reg, metricName)
 				require.NoError(t, err, "Error gathering metric %s", metricName)
@@ -463,19 +415,18 @@ func TestSymbolizerMetrics(t *testing.T) {
 			}
 
 			mockClient.AssertExpectations(t)
+			mockStore.AssertExpectations(t)
 		})
 	}
 }
 
 func assertLocationHasFunction(t *testing.T, profile *googlev1.Profile, loc *googlev1.Location,
-	functionName, fileName string) *googlev1.Function {
+	functionName, fileName string) {
 	t.Helper()
 
 	found := false
-	var targetFunction *googlev1.Function
 
 	for _, line := range loc.Line {
-		// Find the function with this ID in the function table
 		for _, fn := range profile.Function {
 			if fn.Id == line.FunctionId {
 				name := "<invalid>"
@@ -484,7 +435,6 @@ func assertLocationHasFunction(t *testing.T, profile *googlev1.Profile, loc *goo
 				}
 				if name == functionName {
 					found = true
-					targetFunction = fn
 				}
 			}
 		}
@@ -501,10 +451,8 @@ func assertLocationHasFunction(t *testing.T, profile *googlev1.Profile, loc *goo
 			}
 		}
 		require.True(t, fileNameFound, "Filename %q not found in string table", fileName)
-		// We don't check line numbers until supported
 	}
 
-	return targetFunction
 }
 
 func openTestFile(t *testing.T) io.ReadCloser {
@@ -536,19 +484,20 @@ func extractGzipFile(t *testing.T, gzipPath string) ([]byte, error) {
 	return io.ReadAll(gzipReader)
 }
 
-func extractGzipFile(t *testing.T, gzipPath string) ([]byte, error) {
+func createRequest(t *testing.T, buildID string, address uint64) *Request {
 	t.Helper()
-	file, err := os.Open(gzipPath)
-	if err != nil {
-		return nil, err
+	return &Request{
+		BuildID: buildID,
+		Locations: []*Location{
+			{
+				Address: address,
+				Mapping: &pprof.Mapping{
+					Start:   0x0,
+					Limit:   0x1000000,
+					Offset:  0x0,
+					BuildID: buildID,
+				},
+			},
+		},
 	}
-	defer file.Close()
-
-	gzipReader, err := gzip.NewReader(file)
-	if err != nil {
-		return nil, err
-	}
-	defer gzipReader.Close()
-
-	return io.ReadAll(gzipReader)
 }
