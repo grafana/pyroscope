@@ -7,12 +7,15 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 )
 
 func Test_FixGoProfile(t *testing.T) {
 	p, err := OpenFile("testdata/gotruncatefix/heap_go_truncated_4.pb.gz")
 	require.NoError(t, err)
 
+	total := samplesTotal(p.Profile)
 	f := FixGoProfile(p.Profile)
 	s := make(map[string]struct{})
 	for _, x := range f.StringTable {
@@ -22,6 +25,11 @@ func Test_FixGoProfile(t *testing.T) {
 			t.Fatal("duplicate string found")
 		}
 	}
+
+	// Assert that the total sum of samples does not
+	// change compared to the source profile.
+	assert.Equal(t, total, samplesTotal(p.Profile))
+	assert.Equal(t, total, samplesTotal(f))
 
 	t.Logf(" * Sample:   %6d -> %-6d", len(p.Sample), len(f.Sample))
 	t.Logf(" * Location: %6d -> %-6d", len(p.Location), len(f.Location))
@@ -35,6 +43,20 @@ func Test_FixGoProfile(t *testing.T) {
 	assert.Equal(t, 168, len(p.Location)-len(f.Location))
 	assert.Equal(t, 77, len(p.Function)-len(f.Function))
 	assert.Equal(t, 78, len(p.StringTable)-len(f.StringTable))
+
+	// Now we can normalize the profile aggregate samples.
+	// This must not affect the total sum of values.
+	x := RawFromProto(f)
+	x.Normalize()
+	assert.Equal(t, total, samplesTotal(x.Profile))
+}
+
+func samplesTotal(p *profilev1.Profile) int {
+	var total int
+	for _, s := range p.Sample {
+		total += int(s.Value[0])
+	}
+	return total
 }
 
 func Test_DropGoTypeParameters(t *testing.T) {
