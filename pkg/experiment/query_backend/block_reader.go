@@ -86,10 +86,13 @@ func (b *BlockReader) Invoke(
 	}
 
 	for _, md := range req.QueryPlan.Root.Blocks {
-		if err = validateTenant(md, tenantMap); err != nil {
+		md.Datasets, err = filterInvalidDatasets(md, tenantMap)
+		if err != nil {
 			b.metrics.mismatchingTenantDataset.WithLabelValues(req.Tenant[0]).Inc()
 			traceId, _ := tracing.ExtractTraceID(ctx)
 			level.Error(b.log).Log("msg", "trying to query datasets of other tenants", "valid-tenant", strings.Join(req.Tenant, ","), "block", md.Id, "err", err, "traceId", traceId)
+		}
+		if len(md.Datasets) == 0 {
 			continue
 		}
 		obj := block.NewObject(b.storage, md)
@@ -153,14 +156,17 @@ func validateRequest(req *queryv1.InvokeRequest) (*request, error) {
 	return &r, nil
 }
 
-func validateTenant(b *metastorev1.BlockMeta, tenantMap map[string]struct{}) error {
+func filterInvalidDatasets(b *metastorev1.BlockMeta, tenantMap map[string]struct{}) ([]*metastorev1.Dataset, error) {
 	errs := multierror.New()
+	datasets := make([]*metastorev1.Dataset, 0, len(b.Datasets))
 	for _, dataset := range b.Datasets {
 		datasetTenant := b.StringTable[dataset.Tenant]
 		_, ok := tenantMap[datasetTenant]
-		if !ok {
+		if ok {
+			datasets = append(datasets, dataset)
+		} else {
 			errs.Add(fmt.Errorf(`dataset "%s" belongs to tenant "%s"`, b.StringTable[dataset.Name], datasetTenant))
 		}
 	}
-	return errs.Err()
+	return datasets, errs.Err()
 }
