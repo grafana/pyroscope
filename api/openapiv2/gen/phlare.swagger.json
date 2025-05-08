@@ -1689,7 +1689,10 @@
           "format": "int64"
         },
         "stackTraceSelector": {
-          "$ref": "#/definitions/v1StackTraceSelector",
+          "$ref": "#/definitions/v1StackTraceSelector"
+        },
+        "doOtelCheck": {
+          "type": "boolean",
           "description": "TODO(kolesnikovae): Go PGO options."
         }
       }
@@ -1703,6 +1706,9 @@
         "pprof": {
           "type": "string",
           "format": "byte"
+        },
+        "otel": {
+          "type": "boolean"
         }
       }
     },

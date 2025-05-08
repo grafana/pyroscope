@@ -136,6 +136,9 @@ func (s *Symbolizer) symbolizeLocationsForMapping(ctx context.Context, profile *
 	if err != nil {
 		return err
 	}
+	if buildID == "" {
+		return nil
+	}
 
 	req := s.createSymbolizationRequest(binaryName, buildID, mapping, locs)
 

@@ -30,7 +30,8 @@ func init() {
 }
 
 func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, err error) {
-	entries, err := profileEntryIterator(q, query.TimeSeries.GroupBy...)
+
+	entries, err := profileEntryIterator(q, true, query.TimeSeries.GroupBy...)
 	if err != nil {
 		return nil, err
 	}

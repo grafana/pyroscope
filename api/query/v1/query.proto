@@ -180,10 +180,12 @@ message TreeReport {
 message PprofQuery {
   int64 max_nodes = 1;
   optional types.v1.StackTraceSelector stack_trace_selector = 2;
+  bool do_otel_check = 3;
   // TODO(kolesnikovae): Go PGO options.
 }
 
 message PprofReport {
   PprofQuery query = 1;
   bytes pprof = 2;
+  bool otel = 3;
 }

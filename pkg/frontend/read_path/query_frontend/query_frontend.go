@@ -107,7 +107,8 @@ func (q *QueryFrontend) Query(
 		if shouldSymbolize && originalQuery.QueryType == queryv1.QueryType_QUERY_TREE {
 			modifiedQueries[i].QueryType = queryv1.QueryType_QUERY_PPROF
 			modifiedQueries[i].Pprof = &queryv1.PprofQuery{
-				MaxNodes: 0,
+				MaxNodes:    0,
+				DoOtelCheck: true,
 			}
 			modifiedQueries[i].Tree = nil
 		}
@@ -236,7 +237,7 @@ func (q *QueryFrontend) processAndSymbolizeProfiles(
 			return fmt.Errorf("failed to unmarshal profile: %w", err)
 		}
 
-		isOTEL := isProfileFromOTEL(&prof)
+		isOTEL := r.Pprof.Otel
 		if !isOTEL {
 			continue
 		}

@@ -300,7 +300,7 @@ func (p *profileBuilder) convertMappingBack(om *otelProfile.Mapping) uint64 {
 	buildID := ""
 	for _, attributeIndex := range om.AttributeIndices {
 		attr := p.src.AttributeTable[attributeIndex]
-		if attr.Key == "process.executable.build_id.gnu" {
+		if attr.Key == "process.executable.build_id.gnu" || attr.Key == "process_executable_build_id_gnu" {
 			buildID = attr.Value.GetStringValue()
 		}
 	}

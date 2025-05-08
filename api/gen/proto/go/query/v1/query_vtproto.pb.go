@@ -491,6 +491,7 @@ func (m *PprofQuery) CloneVT() *PprofQuery {
 	}
 	r := new(PprofQuery)
 	r.MaxNodes = m.MaxNodes
+	r.DoOtelCheck = m.DoOtelCheck
 	if rhs := m.StackTraceSelector; rhs != nil {
 		if vtpb, ok := interface{}(rhs).(interface {
 			CloneVT() *v11.StackTraceSelector
@@ -517,6 +518,7 @@ func (m *PprofReport) CloneVT() *PprofReport {
 	}
 	r := new(PprofReport)
 	r.Query = m.Query.CloneVT()
+	r.Otel = m.Otel
 	if rhs := m.Pprof; rhs != nil {
 		tmpBytes := make([]byte, len(rhs))
 		copy(tmpBytes, rhs)
@@ -1181,6 +1183,9 @@ func (this *PprofQuery) EqualVT(that *PprofQuery) bool {
 	} else if !proto.Equal(this.StackTraceSelector, that.StackTraceSelector) {
 		return false
 	}
+	if this.DoOtelCheck != that.DoOtelCheck {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
@@ -1201,6 +1206,9 @@ func (this *PprofReport) EqualVT(that *PprofReport) bool {
 		return false
 	}
 	if string(this.Pprof) != string(that.Pprof) {
+		return false
+	}
+	if this.Otel != that.Otel {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -2566,6 +2574,16 @@ func (m *PprofQuery) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.DoOtelCheck {
+		i--
+		if m.DoOtelCheck {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x18
+	}
 	if m.StackTraceSelector != nil {
 		if vtmsg, ok := interface{}(m.StackTraceSelector).(interface {
 			MarshalToSizedBufferVT([]byte) (int, error)
@@ -2625,6 +2643,16 @@ func (m *PprofReport) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.Otel {
+		i--
+		if m.Otel {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x18
 	}
 	if len(m.Pprof) > 0 {
 		i -= len(m.Pprof)
@@ -3101,6 +3129,9 @@ func (m *PprofQuery) SizeVT() (n int) {
 		}
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
+	if m.DoOtelCheck {
+		n += 2
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -3118,6 +3149,9 @@ func (m *PprofReport) SizeVT() (n int) {
 	l = len(m.Pprof)
 	if l > 0 {
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.Otel {
+		n += 2
 	}
 	n += len(m.unknownFields)
 	return n
@@ -5827,6 +5861,26 @@ func (m *PprofQuery) UnmarshalVT(dAtA []byte) error {
 				}
 			}
 			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DoOtelCheck", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.DoOtelCheck = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
@@ -5948,6 +6002,26 @@ func (m *PprofReport) UnmarshalVT(dAtA []byte) error {
 				m.Pprof = []byte{}
 			}
 			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Otel", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Otel = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

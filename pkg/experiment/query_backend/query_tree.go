@@ -28,7 +28,7 @@ func init() {
 }
 
 func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
-	entries, err := profileEntryIterator(q)
+	entries, err := profileEntryIterator(q, true)
 	if err != nil {
 		return nil, err
 	}

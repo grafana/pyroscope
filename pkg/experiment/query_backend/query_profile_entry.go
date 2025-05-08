@@ -27,8 +27,8 @@ type ProfileEntry struct {
 
 func (e ProfileEntry) RowNumber() int64 { return e.RowNum }
 
-func profileEntryIterator(q *queryContext, groupBy ...string) (iter.Iterator[ProfileEntry], error) {
-	series, err := getSeries(q.ds.Index(), q.req.matchers, groupBy...)
+func profileEntryIterator(q *queryContext, group bool, groupBy ...string) (iter.Iterator[ProfileEntry], error) {
+	series, err := getSeries(q.ds.Index(), q.req.matchers, group, groupBy...)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +67,7 @@ type series struct {
 	labels      phlaremodel.Labels
 }
 
-func getSeries(reader phlaredb.IndexReader, matchers []*labels.Matcher, by ...string) (map[uint32]series, error) {
+func getSeries(reader phlaredb.IndexReader, matchers []*labels.Matcher, group bool, by ...string) (map[uint32]series, error) {
 	postings, err := getPostings(reader, matchers...)
 	if err != nil {
 		return nil, err
@@ -76,7 +76,13 @@ func getSeries(reader phlaredb.IndexReader, matchers []*labels.Matcher, by ...st
 	s := make(map[uint32]series)
 	l := make(phlaremodel.Labels, 0, 6)
 	for postings.Next() {
-		fp, err := reader.SeriesBy(postings.At(), &l, &chunks, by...)
+		var fp uint64
+		var err error
+		if group {
+			fp, err = reader.SeriesBy(postings.At(), &l, &chunks, by...)
+		} else {
+			fp, err = reader.Series(postings.At(), &l, &chunks)
+		}
 		if err != nil {
 			return nil, err
 		}

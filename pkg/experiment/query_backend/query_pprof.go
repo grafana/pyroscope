@@ -30,7 +30,12 @@ func init() {
 }
 
 func queryPprof(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
-	entries, err := profileEntryIterator(q)
+
+	group := true
+	if query.Pprof.DoOtelCheck {
+		group = false
+	}
+	entries, err := profileEntryIterator(q, group)
 	if err != nil {
 		return nil, err
 	}
@@ -55,8 +60,13 @@ func queryPprof(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) 
 	resolver := symdb.NewResolver(q.ctx, q.ds.Symbols(), resolverOptions...)
 	defer resolver.Release()
 
+	otel := false
+
 	for profiles.Next() {
 		p := profiles.At()
+		if query.Pprof.DoOtelCheck && p.Row.Labels.Get("__otel__") == "true" {
+			otel = true
+		}
 		resolver.AddSamplesFromParquetRow(p.Row.Partition, p.Values[0], p.Values[1])
 	}
 	if err = profiles.Err(); err != nil {
@@ -81,6 +91,7 @@ func queryPprof(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) 
 		Pprof: &queryv1.PprofReport{
 			Query: query.Pprof.CloneVT(),
 			Pprof: pprof.MustMarshal(profile, true),
+			Otel:  otel,
 		},
 	}
 
@@ -91,6 +102,7 @@ type pprofAggregator struct {
 	init    sync.Once
 	query   *queryv1.PprofQuery
 	profile pprof.ProfileMerge
+	otel    bool
 }
 
 func newPprofAggregator(*queryv1.InvokeRequest) aggregator { return new(pprofAggregator) }
@@ -100,7 +112,14 @@ func (a *pprofAggregator) aggregate(report *queryv1.Report) error {
 	a.init.Do(func() {
 		a.query = r.Query.CloneVT()
 	})
-	return a.profile.MergeBytes(r.Pprof)
+	err := a.profile.MergeBytes(r.Pprof)
+	if err != nil {
+		return err
+	}
+	if r.Otel {
+		a.otel = true
+	}
+	return err
 }
 
 func (a *pprofAggregator) build() *queryv1.Report {
@@ -108,6 +127,7 @@ func (a *pprofAggregator) build() *queryv1.Report {
 		Pprof: &queryv1.PprofReport{
 			Query: a.query,
 			Pprof: pprof.MustMarshal(a.profile.Profile(), true),
+			Otel:  a.otel,
 		},
 	}
 }

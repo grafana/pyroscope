@@ -298,7 +298,7 @@ func isRetryableError(err error) bool {
 // This prevents potential security issues like path traversal attacks.
 func sanitizeBuildID(buildID string) (string, error) {
 	if buildID == "" {
-		return "", invalidBuildIDError{buildID: buildID}
+		return "", nil
 	}
 
 	validBuildID := regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
