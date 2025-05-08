@@ -154,7 +154,7 @@ func (ce *canaryExporter) testSeries(ctx context.Context, now time.Time) error {
 	}
 	labelSets := respQuery.Msg.LabelsSet
 
-	if len(labelSets) > 1 {
+	if len(labelSets) != 1 {
 		return fmt.Errorf("expected 1 label set, got %d", len(labelSets))
 	}
 
@@ -324,6 +324,10 @@ func (ce *canaryExporter) testSelectMergeSpanProfile(ctx context.Context, now ti
 	}
 
 	flamegraph := respQuery.Msg.Flamegraph
+
+	if flamegraph == nil {
+		return fmt.Errorf("expected flamegraph to be set")
+	}
 
 	if len(flamegraph.Names) != 1 {
 		return fmt.Errorf("expected 1 name in flamegraph, got %d", len(flamegraph.Names))
