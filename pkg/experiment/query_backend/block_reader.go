@@ -3,9 +3,14 @@ package query_backend
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
+	"github.com/grafana/dskit/multierror"
+	"github.com/grafana/dskit/tracing"
 	"github.com/opentracing/opentracing-go"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
@@ -13,6 +18,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block"
 	"github.com/grafana/pyroscope/pkg/objstore"
@@ -41,6 +47,8 @@ type BlockReader struct {
 	log     log.Logger
 	storage objstore.Bucket
 
+	metrics *metrics
+
 	// TODO:
 	//  - Use a worker pool instead of the errgroup.
 	//  - Reusable query context.
@@ -49,10 +57,11 @@ type BlockReader struct {
 	//    Instead, they should share the processing pipeline, if possible.
 }
 
-func NewBlockReader(logger log.Logger, storage objstore.Bucket) *BlockReader {
+func NewBlockReader(logger log.Logger, storage objstore.Bucket, reg prometheus.Registerer) *BlockReader {
 	return &BlockReader{
 		log:     logger,
 		storage: storage,
+		metrics: newMetrics(reg),
 	}
 }
 
@@ -71,7 +80,18 @@ func (b *BlockReader) Invoke(
 	g, ctx := errgroup.WithContext(ctx)
 	agg := newAggregator(req)
 
+	tenantMap := make(map[string]struct{})
+	for _, tenant := range req.Tenant {
+		tenantMap[tenant] = struct{}{}
+	}
+
 	for _, md := range req.QueryPlan.Root.Blocks {
+		if err = validateTenant(md, tenantMap); err != nil {
+			b.metrics.mismatchingTenantDataset.WithLabelValues(req.Tenant[0]).Inc()
+			traceId, _ := tracing.ExtractTraceID(ctx)
+			level.Error(b.log).Log("msg", "trying to query datasets of other tenants", "valid-tenant", strings.Join(req.Tenant, ","), "block", md.Id, "err", err, "traceId", traceId)
+			continue
+		}
 		obj := block.NewObject(b.storage, md)
 		g.Go(util.RecoverPanic((&blockContext{
 			ctx: ctx,
@@ -120,10 +140,6 @@ func validateRequest(req *queryv1.InvokeRequest) (*request, error) {
 	if req.QueryPlan == nil || len(req.QueryPlan.Root.Blocks) == 0 {
 		return nil, fmt.Errorf("no blocks to query")
 	}
-	err := validateTenant(req)
-	if err != nil {
-		return nil, fmt.Errorf("querying other tenants' dataset: %w", err)
-	}
 	matchers, err := parser.ParseMetricSelector(req.LabelSelector)
 	if err != nil {
 		return nil, fmt.Errorf("label selection is invalid: %w", err)
@@ -137,18 +153,14 @@ func validateRequest(req *queryv1.InvokeRequest) (*request, error) {
 	return &r, nil
 }
 
-func validateTenant(req *queryv1.InvokeRequest) error {
-	tenantMap := make(map[string]struct{})
-	for _, tenant := range req.Tenant {
-		tenantMap[tenant] = struct{}{}
-	}
-	for _, b := range req.QueryPlan.Root.Blocks {
-		for _, dataset := range b.Datasets {
-			_, ok := tenantMap[b.StringTable[dataset.Tenant]]
-			if !ok {
-				return fmt.Errorf("dataset %d doesn't belong to tenant %q", dataset.Name, req.Tenant)
-			}
+func validateTenant(b *metastorev1.BlockMeta, tenantMap map[string]struct{}) error {
+	errs := multierror.New()
+	for _, dataset := range b.Datasets {
+		datasetTenant := b.StringTable[dataset.Tenant]
+		_, ok := tenantMap[datasetTenant]
+		if !ok {
+			errs.Add(fmt.Errorf(`dataset "%s" belongs to tenant "%s"`, b.StringTable[dataset.Name], datasetTenant))
 		}
 	}
-	return nil
+	return errs.Err()
 }

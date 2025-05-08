@@ -48,7 +48,7 @@ func (s *testSuite) SetupSuite() {
 func (s *testSuite) SetupTest() {
 	s.ctx = context.Background()
 	s.logger = test.NewTestingLogger(s.T())
-	s.reader = NewBlockReader(s.logger, &objstore.ReaderAtBucket{Bucket: s.bucket})
+	s.reader = NewBlockReader(s.logger, &objstore.ReaderAtBucket{Bucket: s.bucket}, nil)
 	s.meta = make([]*metastorev1.BlockMeta, len(s.blocks))
 	for i, b := range s.blocks {
 		s.meta[i] = b.CloneVT()
@@ -265,11 +265,11 @@ func (s *testSuite) Test_QueryTimeSeries() {
 }
 
 func (s *testSuite) Test_QueryTree_All_Tenant_Isolation() {
-	queryTenant := "wrong-tenant"
+	queryTenant := "some-tenant"
 
 	s.Require().NotContains(s.tenant, queryTenant)
 
-	_, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
+	resp, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
 		EndTime:       time.Now().UnixMilli(),
 		LabelSelector: "{}",
 		QueryPlan:     s.plan,
@@ -280,5 +280,7 @@ func (s *testSuite) Test_QueryTree_All_Tenant_Isolation() {
 		Tenant: []string{queryTenant},
 	})
 
-	s.Require().ErrorContains(err, "querying other tenants' dataset")
+	s.Require().NoError(err)
+	s.Require().NotNil(resp)
+	s.Require().Len(resp.Reports, 0)
 }
