@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"time"
 
 	"github.com/grafana/pyroscope/pkg/objstore"
 	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
@@ -12,7 +11,6 @@ import (
 
 // DebugInfoStoreConfig holds configuration for the debug info cache
 type DebugInfoStoreConfig struct {
-	MaxAge  time.Duration         `yaml:"max_age"`
 	Storage objstoreclient.Config `yaml:"storage"`
 }
 
@@ -24,21 +22,16 @@ type DebugInfoStore interface {
 
 // ObjstoreDebugInfoStore implements DebugInfoStore using object storage
 type ObjstoreDebugInfoStore struct {
-	bucket  objstore.Bucket
-	maxAge  time.Duration
-	metrics *metrics
+	bucket objstore.Bucket
 }
 
-func NewObjstoreDebugInfoStore(bucket objstore.Bucket, maxAge time.Duration, metrics *metrics) *ObjstoreDebugInfoStore {
+func NewObjstoreDebugInfoStore(bucket objstore.Bucket) *ObjstoreDebugInfoStore {
 	return &ObjstoreDebugInfoStore{
-		bucket:  bucket,
-		maxAge:  maxAge,
-		metrics: metrics,
+		bucket: bucket,
 	}
 }
 
 func (c *ObjstoreDebugInfoStore) Get(ctx context.Context, buildID string) (io.ReadCloser, error) {
-	// First check if object exists to avoid unnecessary operations
 	reader, err := c.bucket.Get(ctx, buildID)
 	if err != nil {
 		if c.bucket.IsObjNotFoundErr(err) {
@@ -47,26 +40,9 @@ func (c *ObjstoreDebugInfoStore) Get(ctx context.Context, buildID string) (io.Re
 		return nil, fmt.Errorf("get from cache: %w", err)
 	}
 
-	// TODO: Implement a separate cleanup job for managing debug info storage
 	return reader, nil
 }
 
 func (c *ObjstoreDebugInfoStore) Put(ctx context.Context, buildID string, reader io.Reader) error {
 	return c.bucket.Upload(ctx, buildID, reader)
-}
-
-// NullDebugInfoStore implements DebugInfoStore but performs no caching
-type NullDebugInfoStore struct{}
-
-// NewNullDebugInfoStore creates a new null debug info store
-func NewNullDebugInfoStore() DebugInfoStore {
-	return &NullDebugInfoStore{}
-}
-
-func (n *NullDebugInfoStore) Get(ctx context.Context, buildID string) (io.ReadCloser, error) {
-	return nil, fmt.Errorf("debug info not found")
-}
-
-func (n *NullDebugInfoStore) Put(ctx context.Context, buildID string, reader io.Reader) error {
-	return nil
 }

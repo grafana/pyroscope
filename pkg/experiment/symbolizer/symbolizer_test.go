@@ -32,7 +32,7 @@ func TestSymbolizePprof(t *testing.T) {
 	tests := []struct {
 		name      string
 		profile   *googlev1.Profile
-		setupMock func(*mocksymbolizer.MockDebuginfodClient)
+		setupMock func(*mocksymbolizer.MockDebuginfodClient, *mocksymbolizer.MockDebugInfoStore)
 		wantErr   bool
 		validate  func(*testing.T, *googlev1.Profile)
 	}{
@@ -57,7 +57,7 @@ func TestSymbolizePprof(t *testing.T) {
 				}},
 				StringTable: []string{"", "main", "main.go"},
 			},
-			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient) {},
+			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient, mockStore *mocksymbolizer.MockDebugInfoStore) {},
 			validate: func(t *testing.T, p *googlev1.Profile) {
 				require.True(t, p.Mapping[0].HasFunctions)
 				require.True(t, p.Mapping[0].HasFilenames)
@@ -79,8 +79,10 @@ func TestSymbolizePprof(t *testing.T) {
 				}},
 				StringTable: []string{"", "build-id"},
 			},
-			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient) {
+			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient, mockStore *mocksymbolizer.MockDebugInfoStore) {
 				mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(openTestFile(t), nil).Once()
+				mockStore.On("Get", mock.Anything, "build-id").Return(nil, fmt.Errorf("not found")).Once()
+				mockStore.On("Put", mock.Anything, "build-id", mock.Anything).Return(nil).Once()
 			},
 			validate: func(t *testing.T, p *googlev1.Profile) {
 				require.True(t, p.Mapping[0].HasFunctions)
@@ -99,7 +101,7 @@ func TestSymbolizePprof(t *testing.T) {
 				}},
 				StringTable: []string{"", ""},
 			},
-			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient) {},
+			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient, mockStore *mocksymbolizer.MockDebugInfoStore) {},
 			validate: func(t *testing.T, p *googlev1.Profile) {
 				require.False(t, p.Mapping[0].HasFunctions)
 			},
@@ -120,8 +122,10 @@ func TestSymbolizePprof(t *testing.T) {
 				},
 				StringTable: []string{"", "build-id"},
 			},
-			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient) {
+			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient, mockStore *mocksymbolizer.MockDebugInfoStore) {
 				mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(openTestFile(t), nil).Once()
+				mockStore.On("Get", mock.Anything, "build-id").Return(nil, fmt.Errorf("not found")).Once()
+				mockStore.On("Put", mock.Anything, "build-id", mock.Anything).Return(nil).Once()
 			},
 			validate: func(t *testing.T, p *googlev1.Profile) {
 				require.True(t, p.Mapping[0].HasFunctions)
@@ -144,12 +148,15 @@ func TestSymbolizePprof(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
-			tt.setupMock(mockClient)
+			mockStore := mocksymbolizer.NewMockDebugInfoStore(t)
+			tt.setupMock(mockClient, mockStore)
+			//mockStore.On("Get", mock.Anything, mock.Anything).Return(nil, fmt.Errorf("not found"))
+			//mockStore.On("Put", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 			s := &Symbolizer{
 				logger:  log.NewNopLogger(),
 				client:  mockClient,
-				store:   NewNullDebugInfoStore(),
+				store:   mockStore,
 				metrics: newMetrics(nil),
 			}
 
@@ -191,13 +198,13 @@ func TestSymbolizationWithLidiaData(t *testing.T) {
 		metrics: newMetrics(prometheus.NewRegistry()),
 	}
 
-	req := &Request{
-		BuildID:    buildID,
-		BinaryName: "test-binary",
-		Locations: []*Location{
+	req := &request{
+		buildID:    buildID,
+		binaryName: "test-binary",
+		locations: []*location{
 			{
-				Address: 0x1b743d6,
-				Mapping: &pprof.Mapping{
+				address: 0x1b743d6,
+				mapping: &pprof.Mapping{
 					Start:   0x403000,
 					Limit:   0x1d75000,
 					Offset:  0x3000,
@@ -207,18 +214,18 @@ func TestSymbolizationWithLidiaData(t *testing.T) {
 		},
 	}
 
-	err = sym.Symbolize(context.Background(), req)
+	err = sym.symbolize(context.Background(), req)
 	require.NoError(t, err)
-	require.NotEmpty(t, req.Locations[0].Lines)
+	require.NotEmpty(t, req.locations[0].lines)
 
 	// Second request should also fetch from store
-	req2 := &Request{
-		BuildID:    buildID,
-		BinaryName: "test-binary",
-		Locations: []*Location{
+	req2 := &request{
+		buildID:    buildID,
+		binaryName: "test-binary",
+		locations: []*location{
 			{
-				Address: 0x1b743d6,
-				Mapping: &pprof.Mapping{
+				address: 0x1b743d6,
+				mapping: &pprof.Mapping{
 					Start:   0x403000,
 					Limit:   0x1d75000,
 					Offset:  0x3000,
@@ -228,9 +235,9 @@ func TestSymbolizationWithLidiaData(t *testing.T) {
 		},
 	}
 
-	err = sym.Symbolize(context.Background(), req2)
+	err = sym.symbolize(context.Background(), req2)
 	require.NoError(t, err)
-	require.NotEmpty(t, req2.Locations[0].Lines)
+	require.NotEmpty(t, req2.locations[0].lines)
 }
 
 // TestSymbolizeWithObjectStore validates the symbolizer's behavior with the object store:
@@ -268,9 +275,9 @@ func TestSymbolizeWithObjectStore(t *testing.T) {
 	}).Return(nil).Once()
 
 	req1 := createRequest(t, "build-id", 0x1500)
-	err = s.Symbolize(context.Background(), req1)
+	err = s.symbolize(context.Background(), req1)
 	require.NoError(t, err)
-	require.NotEmpty(t, req1.Locations[0].Lines)
+	require.NotEmpty(t, req1.locations[0].lines)
 	require.NotEmpty(t, capturedLidiaData)
 
 	// request 2
@@ -279,9 +286,9 @@ func TestSymbolizeWithObjectStore(t *testing.T) {
 	).Once()
 
 	req2 := createRequest(t, "build-id", 0x1500)
-	err = s.Symbolize(context.Background(), req2)
+	err = s.symbolize(context.Background(), req2)
 	require.NoError(t, err)
-	require.NotEmpty(t, req2.Locations[0].Lines)
+	require.NotEmpty(t, req2.locations[0].lines)
 
 	// request 3
 	mockStore.On("Get", mock.Anything, "build-id").Return(
@@ -289,9 +296,9 @@ func TestSymbolizeWithObjectStore(t *testing.T) {
 	).Once()
 
 	req3 := createRequest(t, "build-id", 0x3c5a)
-	err = s.Symbolize(context.Background(), req3)
+	err = s.symbolize(context.Background(), req3)
 	require.NoError(t, err)
-	require.NotEmpty(t, req3.Locations[0].Lines)
+	require.NotEmpty(t, req3.locations[0].lines)
 
 	// request 4
 	var capturedLidiaData2 []byte
@@ -307,9 +314,9 @@ func TestSymbolizeWithObjectStore(t *testing.T) {
 	}).Return(nil).Once()
 
 	req4 := createRequest(t, "different-build-id", 0x1500)
-	err = s.Symbolize(context.Background(), req4)
+	err = s.symbolize(context.Background(), req4)
 	require.NoError(t, err)
-	require.NotEmpty(t, req4.Locations[0].Lines)
+	require.NotEmpty(t, req4.locations[0].lines)
 	require.NotEmpty(t, capturedLidiaData2)
 
 	mockClient.AssertExpectations(t)
@@ -355,13 +362,13 @@ func TestSymbolizerMetrics(t *testing.T) {
 			},
 			setupTest: func(s *Symbolizer, ctx context.Context) error {
 				req1 := createRequest(t, "build-id", 0x1500)
-				err := s.Symbolize(ctx, req1)
+				err := s.symbolize(ctx, req1)
 				if err != nil {
 					return err
 				}
 
 				req2 := createRequest(t, "build-id", 0x1500)
-				return s.Symbolize(ctx, req2)
+				return s.symbolize(ctx, req2)
 			},
 			expected: map[string]int{
 				"pyroscope_profile_symbolization_duration_seconds":         1,
@@ -378,7 +385,7 @@ func TestSymbolizerMetrics(t *testing.T) {
 			},
 			setupTest: func(s *Symbolizer, ctx context.Context) error {
 				req := createRequest(t, "unknown-build-id", 0x1500)
-				return s.Symbolize(ctx, req)
+				return s.symbolize(ctx, req)
 			},
 			expected: map[string]int{
 				"pyroscope_profile_symbolization_duration_seconds":         1,
@@ -484,14 +491,14 @@ func extractGzipFile(t *testing.T, gzipPath string) ([]byte, error) {
 	return io.ReadAll(gzipReader)
 }
 
-func createRequest(t *testing.T, buildID string, address uint64) *Request {
+func createRequest(t *testing.T, buildID string, address uint64) *request {
 	t.Helper()
-	return &Request{
-		BuildID: buildID,
-		Locations: []*Location{
+	return &request{
+		buildID: buildID,
+		locations: []*location{
 			{
-				Address: address,
-				Mapping: &pprof.Mapping{
+				address: address,
+				mapping: &pprof.Mapping{
 					Start:   0x0,
 					Limit:   0x1000000,
 					Offset:  0x0,

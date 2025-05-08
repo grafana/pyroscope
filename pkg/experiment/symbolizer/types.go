@@ -17,25 +17,16 @@ type LidiaTableCacheEntry struct {
 	Data []byte // Processed Lidia table data
 }
 
-// Location represents a memory address to be symbolized
-type Location struct {
-	ID      string
-	Address uint64
-	Lines   []lidia.SourceInfoFrame
-	Mapping *pprof.Mapping
+// location represents a memory address to be symbolized
+type location struct {
+	address uint64
+	lines   []lidia.SourceInfoFrame
+	mapping *pprof.Mapping
 }
 
-// Request represents a symbolization request for multiple addresses
-type Request struct {
-	BuildID    string
-	BinaryName string
-	Locations  []*Location
-}
-
-// Mapping describes how a binary section is mapped in memory
-type Mapping struct {
-	Start  uint64
-	End    uint64
-	Limit  uint64
-	Offset uint64
+// request represents a symbolization request for multiple addresses
+type request struct {
+	buildID    string
+	binaryName string
+	locations  []*location
 }

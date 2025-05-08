@@ -37,7 +37,7 @@ type metrics struct {
 	debuginfodFileSize        prometheus.Histogram
 
 	// Cache metrics
-	cacheOperations *prometheus.HistogramVec
+	cacheOperations *prometheus.CounterVec
 	cacheSizeBytes  *prometheus.GaugeVec
 
 	// Profile symbolization metrics
@@ -64,11 +64,10 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			},
 		),
 		// cache metrics
-		cacheOperations: prometheus.NewHistogramVec(
-			prometheus.HistogramOpts{
-				Name:    "pyroscope_symbolizer_cache_operation_duration_seconds",
-				Help:    "Time spent performing cache operations by cache type, operation and status",
-				Buckets: []float64{.001, .005, .01, .05, .1, .5, 1, 5, 10},
+		cacheOperations: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "pyroscope_symbolizer_cache_operations_total",
+				Help: "Total number of cache operations by cache type, operation and status",
 			},
 			[]string{"cache_type", "operation", "status"},
 		),

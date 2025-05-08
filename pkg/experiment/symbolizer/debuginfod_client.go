@@ -118,7 +118,7 @@ func (c *DebuginfodHTTPClient) FetchDebuginfo(ctx context.Context, buildID strin
 	}
 
 	if found, _ := c.notFoundCache.Get(sanitizedBuildID); found {
-		c.metrics.cacheOperations.WithLabelValues("not_found", "get", statusSuccess).Observe(0)
+		c.metrics.cacheOperations.WithLabelValues("not_found", "get", statusSuccess).Inc()
 		status = statusErrorNotFound
 		return nil, buildIDNotFoundError{buildID: sanitizedBuildID}
 	}
@@ -146,7 +146,6 @@ func (c *DebuginfodHTTPClient) FetchDebuginfo(ctx context.Context, buildID strin
 	}
 
 	data := v.([]byte)
-	c.metrics.debuginfodFileSize.Observe(float64(len(data)))
 	return io.NopCloser(bytes.NewReader(data)), nil
 }
 
@@ -298,7 +297,7 @@ func isRetryableError(err error) bool {
 // This prevents potential security issues like path traversal attacks.
 func sanitizeBuildID(buildID string) (string, error) {
 	if buildID == "" {
-		return "", invalidBuildIDError{buildID: buildID}
+		return "", nil
 	}
 
 	validBuildID := regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)

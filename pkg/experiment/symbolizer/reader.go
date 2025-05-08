@@ -31,15 +31,9 @@ type memoryBuffer struct {
 }
 
 func newMemoryBuffer(initialCapacity int) *memoryBuffer {
-	// Use reasonable min/max bounds
-	const minCapacity = 64 * 1024        // 64KB minimum
-	const maxCapacity = 50 * 1024 * 1024 // 50MB maximum to prevent excessive allocation
-
 	capacity := initialCapacity
-	if capacity <= 0 {
-		capacity = minCapacity
-	} else if capacity > maxCapacity {
-		capacity = maxCapacity
+	if capacity < 0 {
+		capacity = 0
 	}
 
 	return &memoryBuffer{
@@ -53,12 +47,10 @@ func (m *memoryBuffer) Write(p []byte) (n int, err error) {
 		m.data = append(m.data, make([]byte, m.pos-int64(len(m.data)))...)
 	}
 
-	// If we're writing beyond the end of the data, extend the slice
 	if m.pos+int64(len(p)) > int64(len(m.data)) {
 		m.data = append(m.data, make([]byte, m.pos+int64(len(p))-int64(len(m.data)))...)
 	}
 
-	// Copy the data at the current position
 	n = copy(m.data[m.pos:], p)
 	m.pos += int64(n)
 	return n, nil
@@ -92,24 +84,19 @@ func (m *memoryBuffer) Bytes() []byte {
 // detectCompression reads the beginning of the input to determine if it's compressed,
 // and if so, returns a ReaderAt that decompresses the data.
 func detectCompression(r io.Reader) (io.ReaderAt, error) {
-	// Use bufio.Reader to peek at the first few bytes without consuming them
 	br := bufio.NewReader(r)
 
-	// Peek at the first 4 bytes to check compression signatures
 	header, err := br.Peek(4)
 	if err != nil && err != io.EOF && err != bufio.ErrBufferFull {
 		return nil, fmt.Errorf("peek header: %w", err)
 	}
 
-	// Check compression signatures
 	if len(header) >= 2 && header[0] == 0x1f && header[1] == 0x8b { // gzip
-		// Create a gzip reader that reads from the bufio.Reader
 		gr, err := gzip.NewReader(br)
 		if err != nil {
 			return nil, fmt.Errorf("create gzip reader: %w", err)
 		}
 
-		// Read all decompressed data
 		var decompressed bytes.Buffer
 		if _, err := decompressed.ReadFrom(gr); err != nil {
 			gr.Close()
@@ -119,13 +106,11 @@ func detectCompression(r io.Reader) (io.ReaderAt, error) {
 
 		return bytes.NewReader(decompressed.Bytes()), nil
 	} else if len(header) >= 4 && header[0] == 0x28 && header[1] == 0xb5 && header[2] == 0x2f && header[3] == 0xfd { // zstd
-		// Create a zstd reader
 		zr, err := zstd.NewReader(br)
 		if err != nil {
 			return nil, fmt.Errorf("create zstd reader: %w", err)
 		}
 
-		// Read all decompressed data
 		var decompressed bytes.Buffer
 		if _, err := decompressed.ReadFrom(zr); err != nil {
 			zr.Close()
@@ -136,8 +121,6 @@ func detectCompression(r io.Reader) (io.ReaderAt, error) {
 		return bytes.NewReader(decompressed.Bytes()), nil
 	}
 
-	// Not compressed or unknown format
-	// Read all data into memory since we need to return an io.ReaderAt
 	var buf bytes.Buffer
 	if _, err := buf.ReadFrom(br); err != nil {
 		return nil, fmt.Errorf("read data: %w", err)

@@ -35,7 +35,6 @@ type Config struct {
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.BoolVar(&cfg.Enabled, "symbolizer.enabled", false, "Enable symbolization for unsymbolized profiles")
 	f.StringVar(&cfg.DebuginfodURL, "symbolizer.debuginfod-url", "https://debuginfod.elfutils.org", "URL of the debuginfod server")
-	f.DurationVar(&cfg.PersistentDebugInfoStore.MaxAge, "symbolizer.persistent-debuginfo-store.max-age", 7*24*time.Hour, "Maximum age of stored debug info")
 	cfg.PersistentDebugInfoStore.Storage.RegisterFlagsWithPrefix("symbolizer.persistent-debuginfo-store.storage.", f)
 }
 
@@ -49,7 +48,7 @@ type Symbolizer struct {
 func New(logger log.Logger, cfg Config, reg prometheus.Registerer, bucket objstore.Bucket) (*Symbolizer, error) {
 	metrics := newMetrics(reg)
 
-	store := NewObjstoreDebugInfoStore(bucket, cfg.PersistentDebugInfoStore.MaxAge, metrics)
+	store := NewObjstoreDebugInfoStore(bucket)
 
 	client, err := NewDebuginfodClient(logger, cfg.DebuginfodURL, metrics)
 	if err != nil {
@@ -137,13 +136,17 @@ func (s *Symbolizer) symbolizeLocationsForMapping(ctx context.Context, profile *
 		return err
 	}
 
+	if buildID == "" {
+		return nil
+	}
+
 	req := s.createSymbolizationRequest(binaryName, buildID, mapping, locs)
 
-	if err := s.Symbolize(ctx, &req); err != nil {
+	if err := s.symbolize(ctx, &req); err != nil {
 		return err
 	}
 
-	s.updateProfileWithSymbols(profile, mapping, locs, req.Locations)
+	s.updateProfileWithSymbols(profile, mapping, locs, req.locations)
 
 	return nil
 }
@@ -172,17 +175,17 @@ func (s *Symbolizer) extractBuildID(profile *googlev1.Profile, mapping *googlev1
 }
 
 // createSymbolizationRequest creates a symbolization request for a mapping group
-func (s *Symbolizer) createSymbolizationRequest(binaryName, buildID string, mapping *googlev1.Mapping, locs []locToSymbolize) Request {
-	req := Request{
-		BuildID:    buildID,
-		BinaryName: binaryName,
-		Locations:  make([]*Location, len(locs)),
+func (s *Symbolizer) createSymbolizationRequest(binaryName, buildID string, mapping *googlev1.Mapping, locs []locToSymbolize) request {
+	req := request{
+		buildID:    buildID,
+		binaryName: binaryName,
+		locations:  make([]*location, len(locs)),
 	}
 
 	for i, loc := range locs {
-		req.Locations[i] = &Location{
-			Address: loc.loc.Address,
-			Mapping: &pprof.Mapping{
+		req.locations[i] = &location{
+			address: loc.loc.Address,
+			mapping: &pprof.Mapping{
 				Start:   mapping.MemoryStart,
 				Limit:   mapping.MemoryLimit,
 				Offset:  mapping.FileOffset,
@@ -195,7 +198,7 @@ func (s *Symbolizer) createSymbolizationRequest(binaryName, buildID string, mapp
 }
 
 // updateProfileWithSymbols updates the profile with symbolization results
-func (s *Symbolizer) updateProfileWithSymbols(profile *googlev1.Profile, mapping *googlev1.Mapping, locs []locToSymbolize, symLocs []*Location) {
+func (s *Symbolizer) updateProfileWithSymbols(profile *googlev1.Profile, mapping *googlev1.Mapping, locs []locToSymbolize, symLocs []*location) {
 	stringMap := make(map[string]int64, len(profile.StringTable))
 	for i, str := range profile.StringTable {
 		stringMap[str] = int64(i)
@@ -216,9 +219,9 @@ func (s *Symbolizer) updateProfileWithSymbols(profile *googlev1.Profile, mapping
 
 	for i, symLoc := range symLocs {
 		locIdx := locs[i].idx
-		profile.Location[locIdx].Line = make([]*googlev1.Line, len(symLoc.Lines))
+		profile.Location[locIdx].Line = make([]*googlev1.Line, len(symLoc.lines))
 
-		for j, line := range symLoc.Lines {
+		for j, line := range symLoc.lines {
 			nameIdx, ok := stringMap[line.FunctionName]
 			if !ok {
 				nameIdx = int64(len(profile.StringTable))
@@ -258,21 +261,44 @@ func (s *Symbolizer) updateProfileWithSymbols(profile *googlev1.Profile, mapping
 	mapping.HasFilenames = true
 }
 
-func (s *Symbolizer) Symbolize(ctx context.Context, req *Request) error {
+func (s *Symbolizer) symbolize(ctx context.Context, req *request) error {
 	start := time.Now()
 	status := statusSuccess
 	defer func() {
 		s.metrics.profileSymbolization.WithLabelValues(status).Observe(time.Since(start).Seconds())
 	}()
 
-	if s.checkObjectStoreCache(ctx, req) {
-		return nil
+	var table *lidia.Table
+	var err error
+
+	lidiaBytes, err := s.getLidiaBytes(ctx, req.buildID)
+	if err != nil {
+		var bnfErr buildIDNotFoundError
+		if errors.As(err, &bnfErr) {
+			for _, loc := range req.locations {
+				loc.lines = s.createNotFoundSymbols(req.binaryName, loc)
+			}
+			return nil
+		}
+
+		status = statusErrorServerError
+		return err
 	}
 
-	return s.fetchAndCacheFromDebuginfod(ctx, req, &status)
+	lidiaReader := NewReaderAtCloser(lidiaBytes)
+	table, err = lidia.OpenReader(lidiaReader, lidia.WithCRC())
+	if err != nil {
+		s.metrics.debugSymbolResolution.WithLabelValues("lidia_error").Observe(0)
+		status = statusErrorServerError
+		return fmt.Errorf("open lidia file: %w", err)
+	}
+	defer table.Close()
+
+	s.symbolizeWithTable(ctx, table, req)
+	return nil
 }
 
-func (s *Symbolizer) symbolizeWithTable(_ context.Context, table *lidia.Table, req *Request) {
+func (s *Symbolizer) symbolizeWithTable(_ context.Context, table *lidia.Table, req *request) {
 	var framesBuf []lidia.SourceInfoFrame
 
 	resolveStart := time.Now()
@@ -280,146 +306,110 @@ func (s *Symbolizer) symbolizeWithTable(_ context.Context, table *lidia.Table, r
 		s.metrics.debugSymbolResolution.WithLabelValues(statusSuccess).Observe(time.Since(resolveStart).Seconds())
 	}()
 
-	for _, loc := range req.Locations {
-		frames, err := table.Lookup(framesBuf, loc.Address)
+	for _, loc := range req.locations {
+		frames, err := table.Lookup(framesBuf, loc.address)
 		if err != nil {
-			loc.Lines = s.createNotFoundSymbols(req.BinaryName, loc)
+			loc.lines = s.createNotFoundSymbols(req.binaryName, loc)
 			continue
 		}
 
 		if len(frames) == 0 {
-			loc.Lines = s.createNotFoundSymbols(req.BinaryName, loc)
+			loc.lines = s.createNotFoundSymbols(req.binaryName, loc)
 			continue
 		}
 
-		loc.Lines = frames
+		loc.lines = frames
 	}
 }
 
-// checkObjectStoreCache checks if the debug info is in the object store cache
-func (s *Symbolizer) checkObjectStoreCache(ctx context.Context, req *Request) bool {
-	objstoreReader, err := s.store.Get(ctx, req.BuildID)
+func (s *Symbolizer) getLidiaBytes(ctx context.Context, buildID string) ([]byte, error) {
+	lidiaBytes, err := s.fetchLidiaFromObjectStore(ctx, buildID)
+	if err == nil {
+		return lidiaBytes, nil
+	}
+
+	level.Error(s.logger).Log(
+		"msg", "failed to get from object store",
+		"build_id", buildID,
+		"error", err,
+	)
+
+	lidiaBytes, err = s.fetchLidiaFromDebuginfod(ctx, buildID)
 	if err != nil {
-		level.Error(s.logger).Log(
-			"msg", "failed to get from object store",
-			"build_id", req.BuildID,
-			"error", err,
-		)
-		return false
+		return nil, err
+	}
+
+	if err := s.store.Put(ctx, buildID, bytes.NewReader(lidiaBytes)); err != nil {
+		level.Warn(s.logger).Log("msg", "Failed to store debug info in objstore", "buildID", buildID, "err", err)
+	}
+
+	return lidiaBytes, nil
+}
+
+// fetchLidiaFromObjectStore retrieves Lidia data from the object store
+func (s *Symbolizer) fetchLidiaFromObjectStore(ctx context.Context, buildID string) ([]byte, error) {
+	objstoreReader, err := s.store.Get(ctx, buildID)
+	if err != nil {
+		return nil, err
 	}
 	defer objstoreReader.Close()
 
-	err = s.symbolizeFromReader(ctx, objstoreReader, req)
+	data, err := io.ReadAll(objstoreReader)
 	if err != nil {
-		level.Error(s.logger).Log(
-			"msg", "failed to symbolize from object store data",
-			"build_id", req.BuildID,
-			"error", err,
-		)
-		return false
+		return nil, fmt.Errorf("read content: %w", err)
 	}
 
-	return true
+	return data, nil
 }
 
-// handleDebuginfodError handles errors from the debuginfod client
-func (s *Symbolizer) handleDebuginfodError(err error, req *Request, debuginfodStart time.Time, status *string) error {
-	var bnfErr buildIDNotFoundError
-	statusCode, isHTTPError := isHTTPStatusError(err)
-
-	if errors.As(err, &bnfErr) || (isHTTPError && statusCode == http.StatusNotFound) {
-		*status = statusErrorNotFound
-		s.metrics.debuginfodRequestDuration.WithLabelValues(statusErrorNotFound).Observe(time.Since(debuginfodStart).Seconds())
-
-		level.Info(s.logger).Log("msg", "Build ID not found, caching placeholder symbols",
-			"build_id", req.BuildID,
-			"binary", req.BinaryName)
-
-		for _, loc := range req.Locations {
-			loc.Lines = s.createNotFoundSymbols(req.BinaryName, loc)
-		}
-
-		// TODO: Cache the placeholder symbols for 404s?
-
-		return nil
-	}
-
-	*status = statusErrorDebuginfod
-	s.metrics.debuginfodRequestDuration.WithLabelValues(statusErrorDebuginfod).Observe(time.Since(debuginfodStart).Seconds())
-	s.metrics.debugSymbolResolution.WithLabelValues(statusErrorDebuginfod).Observe(0)
-	return fmt.Errorf("fetch debuginfo: %w", err)
-}
-
-func (s *Symbolizer) fetchAndCacheFromDebuginfod(ctx context.Context, req *Request, status *string) error {
-	if s.client == nil {
-		*status = statusErrorDebuginfod
-		return fmt.Errorf("no debuginfod client configured")
-	}
-
+// fetchLidiaFromDebuginfod fetches debug info from debuginfod and converts to Lidia format
+func (s *Symbolizer) fetchLidiaFromDebuginfod(ctx context.Context, buildID string) ([]byte, error) {
 	debuginfodStart := time.Now()
-	debugReader, err := s.client.FetchDebuginfo(ctx, req.BuildID)
-	if err != nil {
-		return s.handleDebuginfodError(err, req, debuginfodStart, status)
-	}
+	status := statusSuccess
 
-	s.metrics.debuginfodRequestDuration.WithLabelValues(statusSuccess).Observe(time.Since(debuginfodStart).Seconds())
+	debugReader, err := s.fetchFromDebuginfod(ctx, buildID)
+	if err != nil {
+		var bnfErr buildIDNotFoundError
+		if errors.As(err, &bnfErr) {
+			return nil, err
+		}
+		return nil, err
+	}
+	s.metrics.debuginfodRequestDuration.WithLabelValues(status).Observe(time.Since(debuginfodStart).Seconds())
 	defer debugReader.Close()
 
 	elfData, err := io.ReadAll(debugReader)
 	if err != nil {
-		return fmt.Errorf("read debuginfod data: %w", err)
+		return nil, fmt.Errorf("read debuginfod data: %w", err)
 	}
 
 	lidiaData, err := s.processELFData(elfData)
 	if err != nil {
-		level.Error(s.logger).Log(
-			"msg", "symbolizer: Failed to process ELF data",
-			"build_id", req.BuildID,
-			"error", err,
-		)
-		return err
+		return nil, err
 	}
 
-	lidiaReader := NewReaderAtCloser(lidiaData)
-	table, err := lidia.OpenReader(lidiaReader, lidia.WithCRC())
-	if err != nil {
-		s.metrics.debugSymbolResolution.WithLabelValues("lidia_error").Observe(0)
-		level.Error(s.logger).Log("msg", "opening Lidia table", "err", err)
-		return fmt.Errorf("open lidia file: %w", err)
-	}
-
-	s.symbolizeWithTable(ctx, table, req)
-
-	table.Close()
-
-	s.metrics.debuginfodFileSize.Observe(float64(len(lidiaData)))
-
-	if err := s.store.Put(ctx, req.BuildID, bytes.NewReader(lidiaData)); err != nil {
-		level.Warn(s.logger).Log("msg", "Failed to store debug info in objstore", "buildID", req.BuildID, "err", err)
-	}
-
-	return nil
+	return lidiaData, nil
 }
 
-func (s *Symbolizer) symbolizeFromReader(ctx context.Context, r io.ReadCloser, req *Request) error {
-	data, err := io.ReadAll(r)
+func (s *Symbolizer) fetchFromDebuginfod(ctx context.Context, buildID string) (io.ReadCloser, error) {
+	debuginfodStart := time.Now()
+
+	debugReader, err := s.client.FetchDebuginfo(ctx, buildID)
 	if err != nil {
-		return fmt.Errorf("read content: %w", err)
+		var bnfErr buildIDNotFoundError
+		statusCode, isHTTPError := isHTTPStatusError(err)
+
+		if errors.As(err, &bnfErr) || (isHTTPError && statusCode == http.StatusNotFound) {
+			s.metrics.debuginfodRequestDuration.WithLabelValues(statusErrorNotFound).Observe(time.Since(debuginfodStart).Seconds())
+			return nil, buildIDNotFoundError{buildID: buildID}
+		}
+
+		s.metrics.debuginfodRequestDuration.WithLabelValues(statusErrorDebuginfod).Observe(time.Since(debuginfodStart).Seconds())
+		s.metrics.debugSymbolResolution.WithLabelValues(statusErrorDebuginfod).Observe(0)
+		return nil, fmt.Errorf("fetch debuginfo: %w", err)
 	}
 
-	lidiaReader := NewReaderAtCloser(data)
-
-	table, err := lidia.OpenReader(lidiaReader, lidia.WithCRC())
-	if err != nil {
-		s.metrics.debugSymbolResolution.WithLabelValues("lidia_error").Observe(0)
-		level.Error(s.logger).Log("msg", "opening Lidia table", "err", err)
-		return fmt.Errorf("open lidia file: %w", err)
-	}
-	defer table.Close()
-
-	s.symbolizeWithTable(ctx, table, req)
-
-	return nil
+	return debugReader, nil
 }
 
 func (s *Symbolizer) processELFData(data []byte) (lidiaData []byte, err error) {
@@ -428,8 +418,7 @@ func (s *Symbolizer) processELFData(data []byte) (lidiaData []byte, err error) {
 		return nil, fmt.Errorf("detect compression: %w", err)
 	}
 
-	sr := io.NewSectionReader(reader, 0, 1<<63-1)
-	elfFile, err := elf.NewFile(sr)
+	elfFile, err := elf.NewFile(reader)
 	if err != nil {
 		return nil, fmt.Errorf("parse ELF file: %w", err)
 	}
@@ -446,14 +435,14 @@ func (s *Symbolizer) processELFData(data []byte) (lidiaData []byte, err error) {
 	return memBuffer.Bytes(), nil
 }
 
-func (s *Symbolizer) createNotFoundSymbols(binaryName string, loc *Location) []lidia.SourceInfoFrame {
+func (s *Symbolizer) createNotFoundSymbols(binaryName string, loc *location) []lidia.SourceInfoFrame {
 	prefix := "unknown"
 	if binaryName != "" {
 		prefix = binaryName
 	}
 
 	return []lidia.SourceInfoFrame{{
-		FunctionName: fmt.Sprintf("%s!0x%x", prefix, loc.Address),
+		FunctionName: fmt.Sprintf("%s!0x%x", prefix, loc.address),
 		LineNumber:   0,
 	}}
 }

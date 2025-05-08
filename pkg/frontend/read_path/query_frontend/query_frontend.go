@@ -204,7 +204,6 @@ func (q *QueryFrontend) shouldSymbolize(tenants []string, blocks []*metastorev1.
 		return false
 	}
 
-	// Check if all tenants have symbolization enabled (once we support multi-tenant queries)
 	for _, t := range tenants {
 		if !q.limits.SymbolizerEnabled(t) {
 			return false
@@ -236,11 +235,6 @@ func (q *QueryFrontend) processAndSymbolizeProfiles(
 			return fmt.Errorf("failed to unmarshal profile: %w", err)
 		}
 
-		isOTEL := isProfileFromOTEL(&prof)
-		if !isOTEL {
-			continue
-		}
-
 		if err := q.symbolizer.SymbolizePprof(ctx, &prof); err != nil {
 			return fmt.Errorf("failed to symbolize profile: %w", err)
 		}
@@ -264,17 +258,4 @@ func (q *QueryFrontend) processAndSymbolizeProfiles(
 	}
 
 	return nil
-}
-
-func isProfileFromOTEL(prof *profilev1.Profile) bool {
-	for _, sample := range prof.Sample {
-		for _, label := range sample.Label {
-			keyStr := prof.StringTable[label.Key]
-			valStr := prof.StringTable[label.Str]
-			if keyStr == phlaremodel.LabelNameOTEL && valStr == "true" {
-				return true
-			}
-		}
-	}
-	return false
 }

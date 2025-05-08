@@ -15,7 +15,6 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockfrontend"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockmetastorev1"
@@ -103,16 +102,14 @@ func TestQueryFrontendSymbolization(t *testing.T) {
 		name              string
 		tenantID          string
 		symbolizerEnabled bool
-		hasNativeProfiles bool
-		profileType       string
+		hasUnsymbolized   bool
 		setupMocks        func(*mockfrontend.MockLimits, *mockquery_frontend.MockSymbolizer)
 	}{
 		{
 			name:              "symbolization enabled for tenant with native profiles",
 			tenantID:          "tenant1",
 			symbolizerEnabled: true,
-			hasNativeProfiles: true,
-			profileType:       "otel",
+			hasUnsymbolized:   true,
 			setupMocks: func(mockLimits *mockfrontend.MockLimits, mockSymbolizer *mockquery_frontend.MockSymbolizer) {
 				mockLimits.On("SymbolizerEnabled", "tenant1").Return(true)
 				mockSymbolizer.On("SymbolizePprof", mock.Anything, mock.Anything).Return(nil).Once()
@@ -122,8 +119,7 @@ func TestQueryFrontendSymbolization(t *testing.T) {
 			name:              "symbolization disabled for tenant",
 			tenantID:          "tenant2",
 			symbolizerEnabled: false,
-			hasNativeProfiles: true,
-			profileType:       "otel",
+			hasUnsymbolized:   true,
 			setupMocks: func(mockLimits *mockfrontend.MockLimits, mockSymbolizer *mockquery_frontend.MockSymbolizer) {
 				mockLimits.On("SymbolizerEnabled", "tenant2").Return(false)
 				mockSymbolizer.AssertNotCalled(t, "SymbolizePprof")
@@ -133,21 +129,9 @@ func TestQueryFrontendSymbolization(t *testing.T) {
 			name:              "symbolization enabled but no native profiles",
 			tenantID:          "tenant3",
 			symbolizerEnabled: true,
-			hasNativeProfiles: false,
-			profileType:       "otel",
+			hasUnsymbolized:   false,
 			setupMocks: func(mockLimits *mockfrontend.MockLimits, mockSymbolizer *mockquery_frontend.MockSymbolizer) {
 				mockLimits.On("SymbolizerEnabled", "tenant3").Return(true)
-				mockSymbolizer.AssertNotCalled(t, "SymbolizePprof")
-			},
-		},
-		{
-			name:              "symbolization enabled but non-OTEL profile",
-			tenantID:          "tenant4",
-			symbolizerEnabled: true,
-			hasNativeProfiles: true,
-			profileType:       "non-otel",
-			setupMocks: func(mockLimits *mockfrontend.MockLimits, mockSymbolizer *mockquery_frontend.MockSymbolizer) {
-				mockLimits.On("SymbolizerEnabled", "tenant4").Return(true)
 				mockSymbolizer.AssertNotCalled(t, "SymbolizePprof")
 			},
 		},
@@ -163,7 +147,7 @@ func TestQueryFrontendSymbolization(t *testing.T) {
 			mockQueryBackend.On("Invoke", mock.Anything, mock.Anything).Return(&queryv1.InvokeResponse{
 				Reports: []*queryv1.Report{
 					{
-						Pprof: &queryv1.PprofReport{Pprof: createProfile(t, tt.profileType)},
+						Pprof: &queryv1.PprofReport{Pprof: createProfile(t)},
 					},
 				},
 			}, nil)
@@ -179,7 +163,7 @@ func TestQueryFrontendSymbolization(t *testing.T) {
 						StringTable: []string{
 							"", // First string is always empty by convention
 							metadata.LabelNameUnsymbolized,
-							fmt.Sprintf("%v", tt.hasNativeProfiles),
+							fmt.Sprintf("%v", tt.hasUnsymbolized),
 						},
 					}},
 				}, nil).
@@ -212,36 +196,19 @@ func TestQueryFrontendSymbolization(t *testing.T) {
 	}
 }
 
-func createProfile(t *testing.T, profileType string) []byte {
+func createProfile(t *testing.T) []byte {
 	t.Helper()
 
-	var stringTable []string
-	var labels []*profilev1.Label
-
-	switch profileType {
-	case "otel":
-		stringTable = []string{
-			"",                        // Index 0 is always empty
-			phlaremodel.LabelNameOTEL, // Index 1
-			"true",                    // Index 2
-		}
-		labels = []*profilev1.Label{{
-			Key: 1, // Index of "__otel__"
-			Str: 2, // Index of "true"
-		}}
-	case "non-otel":
-		stringTable = []string{
-			"",           // Index 0 is always empty
-			"some_label", // Index 1
-			"some_value", // Index 2
-		}
-		labels = []*profilev1.Label{{
-			Key: 1,
-			Str: 2,
-		}}
-	default:
-		t.Fatalf("unknown profile type: %s", profileType)
+	stringTable := []string{
+		"",
+		"some_label",
+		"some_value",
 	}
+
+	labels := []*profilev1.Label{{
+		Key: 1,
+		Str: 2,
+	}}
 
 	profile := &profilev1.Profile{
 		StringTable: stringTable,
