@@ -33,13 +33,7 @@ const (
 	canaryExporterServiceName = "pyroscope-canary-exporter"
 )
 
-func (ce *canaryExporter) testIngestProfile(ctx context.Context, probeName string, now time.Time) (string, error) {
-	rCtx, done := ce.doTrace(ctx, probeName)
-	result := false
-	defer func() {
-		done(result)
-	}()
-
+func (ce *canaryExporter) testIngestProfile(ctx context.Context, now time.Time) error {
 	p := testhelper.NewProfileBuilder(now.UnixNano())
 	p.Labels = p.Labels[:0]
 	p.CustomProfile("deadmans_switch", "made_up", "profilos", "made_up", "profilos")
@@ -54,35 +48,29 @@ func (ce *canaryExporter) testIngestProfile(ctx context.Context, probeName strin
 
 	data, err := p.Profile.MarshalVT()
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	if _, err := ce.params.pusherClient().Push(rCtx, connect.NewRequest(&pushv1.PushRequest{
+	if _, err := ce.params.pusherClient().Push(ctx, connect.NewRequest(&pushv1.PushRequest{
 		Series: []*pushv1.RawProfileSeries{
 			{
 				Labels: p.Labels,
 				Samples: []*pushv1.RawSample{{
-					ID:         uuid.New().String(),
+					ID:         p.UUID.String(),
 					RawProfile: data,
 				}},
 			},
 		},
 	})); err != nil {
-		return "", err
+		return err
 	}
 
-	result = true
-	return p.UUID.String(), err
+	level.Info(logger).Log("msg", "successfully ingested profile", "uuid", p.UUID.String())
+	return nil
 }
 
-func (ce *canaryExporter) testSelectMergeProfile(ctx context.Context, probeName string, now time.Time) error {
-	rCtx, done := ce.doTrace(ctx, probeName)
-	result := false
-	defer func() {
-		done(result)
-	}()
-
-	respQuery, err := ce.params.queryClient().SelectMergeProfile(rCtx, connect.NewRequest(&querierv1.SelectMergeProfileRequest{
+func (ce *canaryExporter) testSelectMergeProfile(ctx context.Context, now time.Time) error {
+	respQuery, err := ce.params.queryClient().SelectMergeProfile(ctx, connect.NewRequest(&querierv1.SelectMergeProfileRequest{
 		Start:         now.UnixMilli(),
 		End:           now.Add(5 * time.Second).UnixMilli(),
 		LabelSelector: ce.createLabelSelector(),
@@ -132,18 +120,11 @@ func (ce *canaryExporter) testSelectMergeProfile(ctx context.Context, probeName 
 		return fmt.Errorf("query mismatch (-expected, +actual):\n%s", diff)
 	}
 
-	result = true
 	return nil
 }
 
-func (ce *canaryExporter) testProfileTypes(ctx context.Context, probeName string, now time.Time) error {
-	rCtx, done := ce.doTrace(ctx, probeName)
-	result := false
-	defer func() {
-		done(result)
-	}()
-
-	respQuery, err := ce.params.queryClient().ProfileTypes(rCtx, connect.NewRequest(&querierv1.ProfileTypesRequest{
+func (ce *canaryExporter) testProfileTypes(ctx context.Context, now time.Time) error {
+	respQuery, err := ce.params.queryClient().ProfileTypes(ctx, connect.NewRequest(&querierv1.ProfileTypesRequest{
 		Start: now.UnixMilli(),
 		End:   now.Add(5 * time.Second).UnixMilli(),
 	}))
@@ -159,18 +140,11 @@ func (ce *canaryExporter) testProfileTypes(ctx context.Context, probeName string
 		return fmt.Errorf("expected profile type to be %s, got %s", profileTypeID, respQuery.Msg.ProfileTypes[0].ID)
 	}
 
-	result = true
 	return nil
 }
 
-func (ce *canaryExporter) testSeries(ctx context.Context, probeName string, now time.Time) error {
-	rCtx, done := ce.doTrace(ctx, probeName)
-	result := false
-	defer func() {
-		done(result)
-	}()
-
-	respQuery, err := ce.params.queryClient().Series(rCtx, connect.NewRequest(&querierv1.SeriesRequest{
+func (ce *canaryExporter) testSeries(ctx context.Context, now time.Time) error {
+	respQuery, err := ce.params.queryClient().Series(ctx, connect.NewRequest(&querierv1.SeriesRequest{
 		Start:      now.UnixMilli(),
 		End:        now.Add(5 * time.Second).UnixMilli(),
 		LabelNames: []string{model.LabelNameServiceName, model.LabelNameProfileType},
@@ -206,18 +180,11 @@ func (ce *canaryExporter) testSeries(ctx context.Context, probeName string, now 
 		return fmt.Errorf("expected profile_type label to be %s, got %s", profileTypeID, profileType)
 	}
 
-	result = true
 	return nil
 }
 
-func (ce *canaryExporter) testLabelNames(ctx context.Context, probeName string, now time.Time) error {
-	rCtx, done := ce.doTrace(ctx, probeName)
-	result := false
-	defer func() {
-		done(result)
-	}()
-
-	respQuery, err := ce.params.queryClient().LabelNames(rCtx, connect.NewRequest(&typesv1.LabelNamesRequest{
+func (ce *canaryExporter) testLabelNames(ctx context.Context, now time.Time) error {
+	respQuery, err := ce.params.queryClient().LabelNames(ctx, connect.NewRequest(&typesv1.LabelNamesRequest{
 		Start: now.UnixMilli(),
 		End:   now.Add(5 * time.Second).UnixMilli(),
 	}))
@@ -251,18 +218,11 @@ func (ce *canaryExporter) testLabelNames(ctx context.Context, probeName string, 
 		return fmt.Errorf("expected label names to be %s, got %s", expectedLabelNames, labelNames)
 	}
 
-	result = true
 	return nil
 }
 
-func (ce *canaryExporter) testLabelValues(ctx context.Context, probeName string, now time.Time) error {
-	rCtx, done := ce.doTrace(ctx, probeName)
-	result := false
-	defer func() {
-		done(result)
-	}()
-
-	respQuery, err := ce.params.queryClient().LabelValues(rCtx, connect.NewRequest(&typesv1.LabelValuesRequest{
+func (ce *canaryExporter) testLabelValues(ctx context.Context, now time.Time) error {
+	respQuery, err := ce.params.queryClient().LabelValues(ctx, connect.NewRequest(&typesv1.LabelValuesRequest{
 		Start: now.UnixMilli(),
 		End:   now.Add(5 * time.Second).UnixMilli(),
 		Name:  model.LabelNameServiceName,
@@ -282,18 +242,11 @@ func (ce *canaryExporter) testLabelValues(ctx context.Context, probeName string,
 		return fmt.Errorf("expected service_name label to be %s, got %s", canaryExporterServiceName, serviceName)
 	}
 
-	result = true
 	return nil
 }
 
-func (ce *canaryExporter) testSelectSeries(ctx context.Context, probeName string, now time.Time) error {
-	rCtx, done := ce.doTrace(ctx, probeName)
-	result := false
-	defer func() {
-		done(result)
-	}()
-
-	respQuery, err := ce.params.queryClient().SelectSeries(rCtx, connect.NewRequest(&querierv1.SelectSeriesRequest{
+func (ce *canaryExporter) testSelectSeries(ctx context.Context, now time.Time) error {
+	respQuery, err := ce.params.queryClient().SelectSeries(ctx, connect.NewRequest(&querierv1.SelectSeriesRequest{
 		Start:         now.UnixMilli(),
 		End:           now.Add(5 * time.Second).UnixMilli(),
 		Step:          1000,
@@ -330,18 +283,11 @@ func (ce *canaryExporter) testSelectSeries(ctx context.Context, probeName string
 		return fmt.Errorf("expected service_name label to be %s, got %s", canaryExporterServiceName, serviceName)
 	}
 
-	result = true
 	return nil
 }
 
-func (ce *canaryExporter) testSelectMergeStacktraces(ctx context.Context, probeName string, now time.Time) error {
-	rCtx, done := ce.doTrace(ctx, probeName)
-	result := false
-	defer func() {
-		done(result)
-	}()
-
-	respQuery, err := ce.params.queryClient().SelectMergeStacktraces(rCtx, connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
+func (ce *canaryExporter) testSelectMergeStacktraces(ctx context.Context, now time.Time) error {
+	respQuery, err := ce.params.queryClient().SelectMergeStacktraces(ctx, connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
 		Start:         now.UnixMilli(),
 		End:           now.Add(5 * time.Second).UnixMilli(),
 		LabelSelector: ce.createLabelSelector(),
@@ -362,18 +308,11 @@ func (ce *canaryExporter) testSelectMergeStacktraces(ctx context.Context, probeN
 		return fmt.Errorf("expected 3 levels in flamegraph, got %d", len(flamegraph.Levels))
 	}
 
-	result = true
 	return nil
 }
 
-func (ce *canaryExporter) testSelectMergeSpanProfile(ctx context.Context, probeName string, now time.Time) error {
-	rCtx, done := ce.doTrace(ctx, probeName)
-	result := false
-	defer func() {
-		done(result)
-	}()
-
-	respQuery, err := ce.params.queryClient().SelectMergeSpanProfile(rCtx, connect.NewRequest(&querierv1.SelectMergeSpanProfileRequest{
+func (ce *canaryExporter) testSelectMergeSpanProfile(ctx context.Context, now time.Time) error {
+	respQuery, err := ce.params.queryClient().SelectMergeSpanProfile(ctx, connect.NewRequest(&querierv1.SelectMergeSpanProfileRequest{
 		Start:         now.UnixMilli(),
 		End:           now.Add(5 * time.Second).UnixMilli(),
 		LabelSelector: ce.createLabelSelector(),
@@ -394,17 +333,10 @@ func (ce *canaryExporter) testSelectMergeSpanProfile(ctx context.Context, probeN
 		return fmt.Errorf("expected 1 level in flamegraph, got %d", len(flamegraph.Levels))
 	}
 
-	result = true
 	return nil
 }
 
-func (ce *canaryExporter) testRender(ctx context.Context, probeName string, now time.Time) error {
-	rCtx, done := ce.doTrace(ctx, probeName)
-	result := false
-	defer func() {
-		done(result)
-	}()
-
+func (ce *canaryExporter) testRender(ctx context.Context, now time.Time) error {
 	query := profileTypeID + ce.createLabelSelector()
 	startTime := now.UnixMilli()
 	endTime := now.Add(5 * time.Second).UnixMilli()
@@ -424,7 +356,7 @@ func (ce *canaryExporter) testRender(ctx context.Context, probeName string, now 
 	reqURL := baseURL.String()
 	level.Debug(logger).Log("msg", "requesting render", "url", reqURL)
 
-	req, err := http.NewRequestWithContext(rCtx, "GET", reqURL, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
 	if err != nil {
 		return err
 	}
@@ -453,17 +385,10 @@ func (ce *canaryExporter) testRender(ctx context.Context, probeName string, now 
 		return fmt.Errorf("expected 3 levels in flamegraph, got %d", len(flamebearerProfile.Flamebearer.Levels))
 	}
 
-	result = true
 	return nil
 }
 
-func (ce *canaryExporter) testRenderDiff(ctx context.Context, probeName string, now time.Time) error {
-	rCtx, done := ce.doTrace(ctx, probeName)
-	result := false
-	defer func() {
-		done(result)
-	}()
-
+func (ce *canaryExporter) testRenderDiff(ctx context.Context, now time.Time) error {
 	query := profileTypeID + ce.createLabelSelector()
 	startTime := now.UnixMilli()
 	endTime := now.Add(5 * time.Second).UnixMilli()
@@ -486,7 +411,7 @@ func (ce *canaryExporter) testRenderDiff(ctx context.Context, probeName string, 
 	reqURL := baseURL.String()
 	level.Debug(logger).Log("msg", "requesting diff", "url", reqURL)
 
-	req, err := http.NewRequestWithContext(rCtx, "GET", reqURL, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
 	if err != nil {
 		return err
 	}
@@ -515,18 +440,11 @@ func (ce *canaryExporter) testRenderDiff(ctx context.Context, probeName string, 
 		return fmt.Errorf("expected 3 levels in flamegraph, got %d", len(flamebearerProfile.Flamebearer.Levels))
 	}
 
-	result = true
 	return nil
 }
 
-func (ce *canaryExporter) testGetProfileStats(ctx context.Context, probeName string) error {
-	rCtx, done := ce.doTrace(ctx, probeName)
-	result := false
-	defer func() {
-		done(result)
-	}()
-
-	resp, err := ce.params.queryClient().GetProfileStats(rCtx, connect.NewRequest(&typesv1.GetProfileStatsRequest{}))
+func (ce *canaryExporter) testGetProfileStats(ctx context.Context, now time.Time) error {
+	resp, err := ce.params.queryClient().GetProfileStats(ctx, connect.NewRequest(&typesv1.GetProfileStatsRequest{}))
 
 	if err != nil {
 		return err
@@ -544,7 +462,6 @@ func (ce *canaryExporter) testGetProfileStats(ctx context.Context, probeName str
 		return fmt.Errorf("expected newest profile time to be set")
 	}
 
-	result = true
 	return nil
 }
 

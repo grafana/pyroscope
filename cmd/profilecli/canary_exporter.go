@@ -50,6 +50,11 @@ func addCanaryExporterParams(ceCmd commander) *canaryExporterParams {
 	return params
 }
 
+type queryProbe struct {
+	name string
+	f    func(ctx context.Context, now time.Time) error
+}
+
 type canaryExporter struct {
 	params *canaryExporterParams
 	reg    *prometheus.Registry
@@ -57,6 +62,8 @@ type canaryExporter struct {
 
 	defaultTransport http.RoundTripper
 	metrics          *canaryExporterMetrics
+
+	queryProbes []*queryProbe
 
 	hostname string
 }
@@ -148,6 +155,23 @@ func newCanaryExporter(params *canaryExporterParams) *canaryExporter {
 		defaultTransport: params.httpClient().Transport,
 
 		metrics: newCanaryExporterMetrics(reg),
+
+		queryProbes: make([]*queryProbe, 0),
+	}
+
+	ce.queryProbes = append(ce.queryProbes, &queryProbe{name: "query-select-merge-profile", f: ce.testSelectMergeProfile})
+
+	if params.QueryProbeSet == "all" {
+		ce.queryProbes = append(ce.queryProbes, &queryProbe{"query-profile-types", ce.testProfileTypes})
+		ce.queryProbes = append(ce.queryProbes, &queryProbe{"query-series", ce.testSeries})
+		ce.queryProbes = append(ce.queryProbes, &queryProbe{"query-label-names", ce.testLabelNames})
+		ce.queryProbes = append(ce.queryProbes, &queryProbe{"query-label-values", ce.testLabelValues})
+		ce.queryProbes = append(ce.queryProbes, &queryProbe{"query-select-select-series", ce.testSelectSeries})
+		ce.queryProbes = append(ce.queryProbes, &queryProbe{"query-select-merge-stacktraces", ce.testSelectMergeStacktraces})
+		ce.queryProbes = append(ce.queryProbes, &queryProbe{"query-select-merge-span-profile", ce.testSelectMergeSpanProfile})
+		ce.queryProbes = append(ce.queryProbes, &queryProbe{"query-get-profile-stats", ce.testGetProfileStats})
+		ce.queryProbes = append(ce.queryProbes, &queryProbe{"render", ce.testRender})
+		ce.queryProbes = append(ce.queryProbes, &queryProbe{"render-diff", ce.testRenderDiff})
 	}
 
 	metricsPath := "/metrics"
@@ -214,7 +238,7 @@ func (ce *canaryExporter) run(ctx context.Context) error {
 }
 
 func (ce *canaryExporter) doTrace(ctx context.Context, probeName string) (rCtx context.Context, done func(bool)) {
-	level.Info(logger).Log("msg", "starting probe", "probeName", probeName)
+	level.Info(logger).Log("msg", "starting probe", "probe_name", probeName)
 	tt := newInstrumentedTransport(ce.defaultTransport, ce.metrics, probeName)
 	ce.params.client.Transport = tt
 
@@ -276,10 +300,8 @@ func (ce *canaryExporter) doTrace(ctx context.Context, probeName string) (rCtx c
 		}
 
 		if m := ce.metrics.success.WithLabelValues(probeName); result {
-			level.Info(logger).Log("msg", "probe successful", "probeName", probeName)
 			m.Set(1)
 		} else {
-			level.Info(logger).Log("msg", "probe failed", "probeName", probeName)
 			m.Set(0)
 		}
 	}
@@ -289,12 +311,11 @@ func (ce *canaryExporter) testPyroscopeCell(ctx context.Context) error {
 	now := time.Now()
 
 	// ingest a fake profile
-	uuid, err := ce.testIngestProfile(ctx, "ingest", now)
-	if err != nil {
+	if err := ce.runProbe(ctx, "ingest", func(rCtx context.Context) error {
+		return ce.testIngestProfile(rCtx, now)
+	}); err != nil {
 		return fmt.Errorf("error during ingestion: %w", err)
 	}
-
-	level.Info(logger).Log("msg", "successfully ingested profile", "uuid", uuid)
 
 	if ce.params.TestDelay > 0 {
 		level.Info(logger).Log("msg", "waiting before running a query", "delay", ce.params.TestDelay)
@@ -306,28 +327,33 @@ func (ce *canaryExporter) testPyroscopeCell(ctx context.Context) error {
 
 	// Now try to query the data back
 	var multiError multierror.MultiError
-	err = func() error {
-		multiError.Add(ce.testSelectMergeProfile(ctx, "query-select-merge-profile", now))
-
-		if ce.params.QueryProbeSet == "all" {
-			multiError.Add(ce.testProfileTypes(ctx, "query-profile-types", now))
-			multiError.Add(ce.testSeries(ctx, "query-series", now))
-			multiError.Add(ce.testLabelNames(ctx, "query-label-names", now))
-			multiError.Add(ce.testLabelValues(ctx, "query-label-values", now))
-			multiError.Add(ce.testSelectSeries(ctx, "query-select-select-series", now))
-			multiError.Add(ce.testSelectMergeStacktraces(ctx, "query-select-merge-stacktraces", now))
-			multiError.Add(ce.testSelectMergeSpanProfile(ctx, "query-select-merge-span-profile", now))
-			multiError.Add(ce.testGetProfileStats(ctx, "query-get-profile-stats"))
-			multiError.Add(ce.testRender(ctx, "render", now))
-			multiError.Add(ce.testRenderDiff(ctx, "render-diff", now))
-		}
-		return multiError.Err()
-	}()
-	if err != nil {
-		return fmt.Errorf("error during instant query probe: %w", err)
+	for _, probe := range ce.queryProbes {
+		err := ce.runProbe(ctx, probe.name, func(rCtx context.Context) error {
+			return probe.f(rCtx, now)
+		})
+		multiError.Add(err)
+	}
+	if multiError.Err() != nil {
+		return fmt.Errorf("%d error(s) reported from query probes", len(multiError))
 	}
 
 	return nil
+}
+
+func (ce *canaryExporter) runProbe(ctx context.Context, probeName string, probeFunc func(ctx context.Context) error) error {
+	rCtx, done := ce.doTrace(ctx, probeName)
+	result := false
+	defer func() {
+		done(result)
+	}()
+	err := probeFunc(rCtx)
+	if err != nil {
+		level.Error(logger).Log("msg", "probe failed", "probe_name", probeName, "err", err)
+	} else {
+		level.Info(logger).Log("msg", "probe successful", "probe_name", probeName)
+		result = true
+	}
+	return err
 }
 
 // roundTripTrace holds timings for a single HTTP roundtrip.
