@@ -26,6 +26,7 @@ import (
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/cfg"
 	"github.com/grafana/pyroscope/pkg/phlare"
+	"github.com/grafana/pyroscope/pkg/tenant"
 )
 
 func getFreeTCPPorts(address string, count int) ([]int, error) {
@@ -58,34 +59,64 @@ func newComponent(target string) *Component {
 	}
 }
 
-func NewMicroServiceCluster() *Cluster {
-	// use custom http client to resolve dynamically to healthy components
+type testTransport struct {
+	defaultDialContext func(ctx context.Context, network, addr string) (net.Conn, error)
+	next               http.RoundTripper
+	c                  *Cluster
+}
 
+// use custom http transport to resolve dynamically to healthy components
+func newTestTransport(c *Cluster) http.RoundTripper {
+	defaultTransport := http.DefaultTransport.(*http.Transport)
+	t := &testTransport{
+		defaultDialContext: defaultTransport.DialContext,
+		c:                  c,
+	}
+	t.next = &http.Transport{
+		Proxy:                 defaultTransport.Proxy,
+		TLSClientConfig:       defaultTransport.TLSClientConfig,
+		TLSHandshakeTimeout:   defaultTransport.TLSHandshakeTimeout,
+		ExpectContinueTimeout: defaultTransport.ExpectContinueTimeout,
+		MaxIdleConns:          defaultTransport.MaxIdleConns,
+		IdleConnTimeout:       defaultTransport.IdleConnTimeout,
+		ForceAttemptHTTP2:     defaultTransport.ForceAttemptHTTP2,
+		DialContext:           t.DialContext,
+	}
+	return t
+}
+
+func (t *testTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	tenantID, err := tenant.ExtractTenantIDFromContext(req.Context())
+	if err == nil {
+		req.Header.Set("X-Scope-OrgID", tenantID)
+	}
+	return t.next.RoundTrip(req)
+}
+
+func (t *testTransport) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
+	var err error
+	switch addr {
+	case "push:80":
+		addr, err = t.c.pickHealthyComponent("distributor")
+		if err != nil {
+			return nil, err
+		}
+	case "querier:80":
+		addr, err = t.c.pickHealthyComponent("query-frontend", "querier")
+		if err != nil {
+			return nil, err
+		}
+	default:
+		return nil, fmt.Errorf("unknown addr %s", addr)
+	}
+
+	return t.defaultDialContext(ctx, network, addr)
+}
+
+func NewMicroServiceCluster() *Cluster {
 	c := &Cluster{}
 
-	defaultTransport := http.DefaultTransport.(*http.Transport)
-	transport := &http.Transport{
-		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			var err error
-			switch addr {
-			case "push:80":
-				addr, err = c.pickHealthyComponent("distributor")
-				if err != nil {
-					return nil, err
-				}
-			case "querier:80":
-				addr, err = c.pickHealthyComponent("query-frontend", "querier")
-				if err != nil {
-					return nil, err
-				}
-			default:
-				return nil, fmt.Errorf("unknown addr %s", addr)
-			}
-
-			return defaultTransport.DialContext(ctx, network, addr)
-		},
-	}
-	c.httpClient = &http.Client{Transport: transport}
+	c.httpClient = &http.Client{Transport: newTestTransport(c)}
 	c.Components = []*Component{
 		newComponent("distributor"),
 		newComponent("distributor"),
@@ -205,6 +236,7 @@ func (c *Cluster) Prepare() (err error) {
 			listenAddrFlags("127.0.0.1")...)
 		comp.flags = append(comp.flags,
 			[]string{
+				"-auth.multitenancy-enabled=true",
 				"-tracing.enabled=false", // data race
 				"-distributor.replication-factor=3",
 				"-store-gateway.sharding-ring.replication-factor=3",

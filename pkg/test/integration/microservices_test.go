@@ -19,6 +19,7 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
+	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/test/integration/cluster"
 )
 
@@ -81,57 +82,72 @@ func newTestCtx(x interface {
 	QueryClient() querierv1connect.QuerierServiceClient
 }) *testCtx {
 	return &testCtx{
-		now:          time.Now().Truncate(time.Second),
-		serviceCount: 100,
-		samples:      5,
-		querier:      x.QueryClient(),
-		pusher:       x.PushClient(),
+		now: time.Now().Truncate(time.Second),
+		perTenantData: map[string]tenantParams{
+			"tenant-a": {
+				serviceCount: 100,
+				samples:      5,
+			},
+			"tenant-b": {
+				serviceCount: 1,
+				samples:      1,
+			},
+			"tenant-not-existing": {},
+		},
+		querier: x.QueryClient(),
+		pusher:  x.PushClient(),
 	}
 }
 
-type testCtx struct {
-	now          time.Time
+type tenantParams struct {
 	serviceCount int
 	samples      int
+}
 
-	querier querierv1connect.QuerierServiceClient
-	pusher  pushv1connect.PusherServiceClient
+type testCtx struct {
+	now time.Time
+
+	perTenantData map[string]tenantParams
+	querier       querierv1connect.QuerierServiceClient
+	pusher        pushv1connect.PusherServiceClient
 }
 
 func (tc *testCtx) pushProfiles(ctx context.Context, t *testing.T) {
 	g, gctx := errgroup.WithContext(ctx)
 
 	g.SetLimit(20)
-	// for loop range over serviceCount
-	for i := 0; i < tc.serviceCount; i++ {
-		var i = i
-		g.Go(func() error {
-			serviceName := fmt.Sprintf("test-service-%d", i)
-			builder := testhelper.NewProfileBuilder(int64(1)).
-				CPUProfile().
-				WithLabels(
-					"job", "test",
-					"service_name", serviceName,
-				)
-			builder.ForStacktraceString("foo", "bar", "baz").AddSamples(1)
-			for j := 0; j < tc.samples; j++ {
-				builder.TimeNanos = tc.now.Add(time.Duration(j) * 5 * time.Second).UnixNano()
-				if (i+j)%3 == 0 {
-					builder.ForStacktraceString("foo", "bar", "boz").AddSamples(3)
+	for tenantID, params := range tc.perTenantData {
+		gctx := tenant.InjectTenantID(gctx, tenantID)
+		for i := 0; i < params.serviceCount; i++ {
+			var i = i
+			g.Go(func() error {
+				serviceName := fmt.Sprintf("%s/test-service-%d", tenantID, i)
+				builder := testhelper.NewProfileBuilder(int64(1)).
+					CPUProfile().
+					WithLabels(
+						"job", "test",
+						"service_name", serviceName,
+					)
+				builder.ForStacktraceString("foo", "bar", "baz").AddSamples(1)
+				for j := 0; j < params.samples; j++ {
+					builder.TimeNanos = tc.now.Add(time.Duration(j) * 5 * time.Second).UnixNano()
+					if (i+j)%3 == 0 {
+						builder.ForStacktraceString("foo", "bar", "boz").AddSamples(3)
+					}
 				}
-			}
 
-			rawProfile, err := builder.MarshalVT()
-			require.NoError(t, err)
+				rawProfile, err := builder.MarshalVT()
+				require.NoError(t, err)
 
-			_, err = tc.pusher.Push(gctx, connect.NewRequest(&pushv1.PushRequest{
-				Series: []*pushv1.RawProfileSeries{{
-					Labels:  builder.Labels,
-					Samples: []*pushv1.RawSample{{RawProfile: rawProfile}},
-				}},
-			}))
-			return err
-		})
+				_, err = tc.pusher.Push(gctx, connect.NewRequest(&pushv1.PushRequest{
+					Series: []*pushv1.RawProfileSeries{{
+						Labels:  builder.Labels,
+						Samples: []*pushv1.RawSample{{RawProfile: rawProfile}},
+					}},
+				}))
+				return err
+			})
+		}
 	}
 	require.NoError(t, g.Wait())
 
@@ -139,88 +155,181 @@ func (tc *testCtx) pushProfiles(ctx context.Context, t *testing.T) {
 
 func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 	t.Run("QuerySeries", func(t *testing.T) {
-		resp, err := tc.querier.Series(ctx, connect.NewRequest(&querierv1.SeriesRequest{
-			Start:      tc.now.Add(-time.Hour).UnixMilli(),
-			End:        tc.now.Add(time.Hour).UnixMilli(),
-			LabelNames: []string{"__profile_type__", "job", "service_name"},
-		}))
-		require.NoError(t, err)
-		require.Len(t, resp.Msg.LabelsSet, 100)
+		for tenantID, params := range tc.perTenantData {
+			t.Run(tenantID, func(t *testing.T) {
+				ctx := tenant.InjectTenantID(ctx, tenantID)
+				resp, err := tc.querier.Series(ctx, connect.NewRequest(&querierv1.SeriesRequest{
+					Start:      tc.now.Add(-time.Hour).UnixMilli(),
+					End:        tc.now.Add(time.Hour).UnixMilli(),
+					LabelNames: []string{"__profile_type__", "service_name"},
+				}))
+				require.NoError(t, err)
+				require.Len(t, resp.Msg.LabelsSet, params.serviceCount)
+
+				// no services to check
+				if params.serviceCount == 0 {
+					return
+				}
+
+				expectedValues := make([]*typesv1.Labels, params.serviceCount)
+				for i := 0; i < params.serviceCount; i++ {
+					// check if the service name is in the response
+					expectedValues[i] = &typesv1.Labels{
+						Labels: []*typesv1.LabelPair{
+							{
+								Name:  "__profile_type__",
+								Value: "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+							},
+							{
+								Name:  "service_name",
+								Value: fmt.Sprintf("%s/test-service-%d", tenantID, i),
+							},
+						},
+					}
+				}
+
+				// sort the response by service name
+				sort.Slice(resp.Msg.LabelsSet, func(i, j int) bool {
+					return resp.Msg.LabelsSet[i].Labels[1].Value < resp.Msg.LabelsSet[j].Labels[1].Value
+				})
+				sort.Slice(expectedValues, func(i, j int) bool {
+					return expectedValues[i].Labels[1].Value < expectedValues[j].Labels[1].Value
+				})
+				assert.Equal(t, expectedValues, resp.Msg.LabelsSet)
+			})
+		}
 	})
 	t.Run("QueryLabelNames", func(t *testing.T) {
-		resp, err := tc.querier.LabelNames(ctx, connect.NewRequest(&typesv1.LabelNamesRequest{
-			Start: tc.now.Add(-time.Hour).UnixMilli(),
-			End:   tc.now.Add(time.Hour).UnixMilli(),
-		}))
-		require.NoError(t, err)
-		assert.Equal(t, []string{
-			"__name__",
-			"__period_type__",
-			"__period_unit__",
-			"__profile_type__",
-			"__service_name__",
-			"__type__",
-			"__unit__",
-			"job",
-			"service_name",
-		}, resp.Msg.Names)
+		for tenantID, params := range tc.perTenantData {
+			t.Run(tenantID, func(t *testing.T) {
+				ctx := tenant.InjectTenantID(ctx, tenantID)
+				resp, err := tc.querier.LabelNames(ctx, connect.NewRequest(&typesv1.LabelNamesRequest{
+					Start: tc.now.Add(-time.Hour).UnixMilli(),
+					End:   tc.now.Add(time.Hour).UnixMilli(),
+				}))
+				require.NoError(t, err)
+
+				// no services, no label names
+				if params.serviceCount == 0 {
+					assert.Len(t, resp.Msg.Names, 0)
+					return
+				}
+
+				assert.Equal(t, []string{
+					"__name__",
+					"__period_type__",
+					"__period_unit__",
+					"__profile_type__",
+					"__service_name__",
+					"__type__",
+					"__unit__",
+					"job",
+					"service_name",
+				}, resp.Msg.Names)
+			})
+		}
 	})
 
 	t.Run("QueryLabelValues", func(t *testing.T) {
-		resp, err := tc.querier.LabelValues(ctx, connect.NewRequest(&typesv1.LabelValuesRequest{
-			Start: tc.now.Add(-time.Hour).UnixMilli(),
-			End:   tc.now.Add(time.Hour).UnixMilli(),
-			Name:  "service_name",
-		}))
-		require.NoError(t, err)
-		// loop over numbers from i too serviceCount
-		expectedValues := make([]string, tc.serviceCount)
-		for i := 0; i < tc.serviceCount; i++ {
-			// check if the service name is in the response
-			expectedValues[i] = fmt.Sprintf("test-service-%d", i)
+		for tenantID, params := range tc.perTenantData {
+			t.Run(tenantID, func(t *testing.T) {
+				ctx := tenant.InjectTenantID(ctx, tenantID)
+				resp, err := tc.querier.LabelValues(ctx, connect.NewRequest(&typesv1.LabelValuesRequest{
+					Start: tc.now.Add(-time.Hour).UnixMilli(),
+					End:   tc.now.Add(time.Hour).UnixMilli(),
+					Name:  "service_name",
+				}))
+				require.NoError(t, err)
+
+				// no services, no label values
+				if params.serviceCount == 0 {
+					assert.Len(t, resp.Msg.Names, 0)
+					return
+				}
+
+				expectedValues := make([]string, params.serviceCount)
+				for i := 0; i < params.serviceCount; i++ {
+					// check if the service name is in the response
+					expectedValues[i] = fmt.Sprintf("%s/test-service-%d", tenantID, i)
+				}
+				sort.Strings(expectedValues)
+				assert.Equal(t, expectedValues, resp.Msg.Names)
+			})
 		}
-		sort.Strings(expectedValues)
-		assert.Equal(t, expectedValues, resp.Msg.Names)
 	})
 
 	t.Run("QuerySelectMergeProfile", func(t *testing.T) {
-		req := &querierv1.SelectMergeProfileRequest{
-			ProfileTypeID: "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
-			LabelSelector: "{}",
-			Start:         tc.now.Add(-time.Hour).UnixMilli(),
-			End:           tc.now.Add(time.Hour).UnixMilli(),
-		}
-		resp, err := tc.querier.SelectMergeProfile(ctx, connect.NewRequest(req))
-		require.NoError(t, err)
+		for tenantID, params := range tc.perTenantData {
+			t.Run(tenantID, func(t *testing.T) {
+				ctx := tenant.InjectTenantID(ctx, tenantID)
+				req := &querierv1.SelectMergeProfileRequest{
+					ProfileTypeID: "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+					LabelSelector: "{}",
+					Start:         tc.now.Add(-time.Hour).UnixMilli(),
+					End:           tc.now.Add(time.Hour).UnixMilli(),
+				}
+				resp, err := tc.querier.SelectMergeProfile(ctx, connect.NewRequest(req))
+				require.NoError(t, err)
 
-		expected := &profilev1.Profile{
-			SampleType: []*profilev1.ValueType{
-				{Type: 6, Unit: 5},
-			},
-			Sample: []*profilev1.Sample{
-				{LocationId: []uint64{1, 2, 3}, Value: []int64{100}},
-				{LocationId: []uint64{1, 2, 4}, Value: []int64{501}},
-			},
-			Mapping: []*profilev1.Mapping{{Id: 1, HasFunctions: true}},
-			Location: []*profilev1.Location{
-				{Id: 1, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1}}},
-				{Id: 2, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 2}}},
-				{Id: 3, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 3}}},
-				{Id: 4, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 4}}},
-			},
-			Function: []*profilev1.Function{
-				{Id: 1, Name: 1},
-				{Id: 2, Name: 2},
-				{Id: 3, Name: 3},
-				{Id: 4, Name: 4},
-			},
-			StringTable:       []string{"", "foo", "bar", "baz", "boz", "nanoseconds", "cpu"},
-			TimeNanos:         req.End * 1e6,
-			DurationNanos:     7200000000000,
-			PeriodType:        &profilev1.ValueType{Type: 6, Unit: 5},
-			Period:            1000000000,
-			DefaultSampleType: 6,
+				assert.Equal(t, req.End*1e6, resp.Msg.TimeNanos)
+				assert.Equal(t, int64(7200000000000), resp.Msg.DurationNanos)
+
+				// no services, no samples profile
+				if params.serviceCount == 0 {
+					return
+				}
+
+				assert.Equal(t,
+					[]*profilev1.ValueType{
+						{Type: 6, Unit: 5},
+					}, resp.Msg.SampleType,
+				)
+
+				// boz samples
+				bozSamples := 0
+				for i := 0; i < params.serviceCount; i++ {
+					for j := 0; j < params.samples; j++ {
+						if (i+j)%3 == 0 {
+							bozSamples += 3
+						}
+					}
+				}
+
+				assert.Equal(t,
+					[]*profilev1.Sample{
+						{LocationId: []uint64{1, 2, 3}, Value: []int64{int64(params.serviceCount)}},
+						{LocationId: []uint64{1, 2, 4}, Value: []int64{int64(bozSamples)}},
+					}, resp.Msg.Sample)
+				assert.Equal(t,
+					[]*profilev1.Mapping{
+						{Id: 1, HasFunctions: true},
+					}, resp.Msg.Mapping,
+				)
+				assert.Equal(t,
+					[]*profilev1.Location{
+						{Id: 1, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1}}},
+						{Id: 2, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 2}}},
+						{Id: 3, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 3}}},
+						{Id: 4, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 4}}},
+					}, resp.Msg.Location,
+				)
+				assert.Equal(t,
+					[]*profilev1.Function{
+						{Id: 1, Name: 1},
+						{Id: 2, Name: 2},
+						{Id: 3, Name: 3},
+						{Id: 4, Name: 4},
+					}, resp.Msg.Function,
+				)
+				assert.Equal(t,
+					[]string{"", "foo", "bar", "baz", "boz", "nanoseconds", "cpu"},
+					resp.Msg.StringTable,
+				)
+				assert.Equal(t,
+					&profilev1.ValueType{Type: 6, Unit: 5},
+					resp.Msg.PeriodType,
+				)
+			})
 		}
-		require.Equal(t, expected.String(), resp.Msg.String())
 	})
 }
