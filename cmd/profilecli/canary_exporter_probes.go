@@ -20,6 +20,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 
+	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -45,6 +46,10 @@ func (ce *canaryExporter) testIngestProfile(ctx context.Context, now time.Time) 
 	p.UUID = uuid.New()
 	p.ForStacktraceString("func1", "func2").AddSamples(10)
 	p.ForStacktraceString("func1").AddSamples(20)
+
+	// for testing the span selection
+	p.Profile.StringTable = append(p.Profile.StringTable, "profile_id", "00000bac2a5ab0c7")
+	p.Sample[1].Label = []*googlev1.Label{{Key: int64(len(p.Profile.StringTable) - 2), Str: int64(len(p.Profile.StringTable) - 1)}}
 
 	data, err := p.Profile.MarshalVT()
 	if err != nil {
@@ -187,6 +192,8 @@ func (ce *canaryExporter) testLabelNames(ctx context.Context, now time.Time) err
 	respQuery, err := ce.params.queryClient().LabelNames(ctx, connect.NewRequest(&typesv1.LabelNamesRequest{
 		Start: now.UnixMilli(),
 		End:   now.Add(5 * time.Second).UnixMilli(),
+		// we have to pass this matcher to skip the tenant-wide index in v2 which is not ready until after compaction
+		Matchers: []string{fmt.Sprintf(`{service_name="%s"}`, canaryExporterServiceName)},
 	}))
 
 	if err != nil {
@@ -226,6 +233,8 @@ func (ce *canaryExporter) testLabelValues(ctx context.Context, now time.Time) er
 		Start: now.UnixMilli(),
 		End:   now.Add(5 * time.Second).UnixMilli(),
 		Name:  model.LabelNameServiceName,
+		// we have to pass this matcher to skip the tenant-wide index in v2 which is not ready until after compaction
+		Matchers: []string{fmt.Sprintf(`{service_name="%s"}`, canaryExporterServiceName)},
 	}))
 
 	if err != nil {
@@ -317,6 +326,7 @@ func (ce *canaryExporter) testSelectMergeSpanProfile(ctx context.Context, now ti
 		End:           now.Add(5 * time.Second).UnixMilli(),
 		LabelSelector: ce.createLabelSelector(),
 		ProfileTypeID: profileTypeID,
+		SpanSelector:  []string{"00000bac2a5ab0c7"},
 	}))
 
 	if err != nil {
@@ -329,12 +339,12 @@ func (ce *canaryExporter) testSelectMergeSpanProfile(ctx context.Context, now ti
 		return fmt.Errorf("expected flamegraph to be set")
 	}
 
-	if len(flamegraph.Names) != 1 {
-		return fmt.Errorf("expected 1 name in flamegraph, got %d", len(flamegraph.Names))
+	if len(flamegraph.Names) != 2 {
+		return fmt.Errorf("expected 2 names in flamegraph, got %d", len(flamegraph.Names))
 	}
 
-	if len(flamegraph.Levels) != 1 {
-		return fmt.Errorf("expected 1 level in flamegraph, got %d", len(flamegraph.Levels))
+	if len(flamegraph.Levels) != 2 {
+		return fmt.Errorf("expected 2 levels in flamegraph, got %d", len(flamegraph.Levels))
 	}
 
 	return nil
