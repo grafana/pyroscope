@@ -329,7 +329,7 @@ func (f *Phlare) initQueryBackend() (services.Service, error) {
 		logger,
 		f.reg,
 		f.queryBackendClient,
-		querybackend.NewBlockReader(f.logger, f.storageBucket),
+		querybackend.NewBlockReader(f.logger, f.storageBucket, f.reg),
 	)
 	if err != nil {
 		return nil, err
