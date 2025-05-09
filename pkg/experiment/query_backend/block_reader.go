@@ -88,7 +88,7 @@ func (b *BlockReader) Invoke(
 	for _, md := range req.QueryPlan.Root.Blocks {
 		md.Datasets, err = filterNotOwnedDatasets(md, tenantMap)
 		if err != nil {
-			b.metrics.tenantIsolationViolationAttempt.Inc()
+			b.metrics.datasetTenantIsolationFailure.Inc()
 			traceId, _ := tracing.ExtractTraceID(ctx)
 			level.Error(b.log).Log("msg", "trying to query datasets of other tenants", "valid-tenant", strings.Join(req.Tenant, ","), "block", md.Id, "err", err, "traceId", traceId)
 		}
