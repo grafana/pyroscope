@@ -7,6 +7,8 @@ import (
 	"math"
 	"sync"
 
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -18,6 +20,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/phlaredb/labels"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 type FlushedHead struct {
@@ -43,11 +46,15 @@ type Head struct {
 	totalSamples *atomic.Uint64
 	profiles     *profilesIndex
 	metrics      *HeadMetrics
+	logger       log.Logger
+	limits       validation.LabelValidationLimits
 }
 
-func NewHead(metrics *HeadMetrics) *Head {
+func NewHead(metrics *HeadMetrics, logger log.Logger, limits validation.LabelValidationLimits) *Head {
 	h := &Head{
 		metrics: metrics,
+		logger:  logger,
+		limits:  limits,
 		symbols: symdb.NewPartitionWriter(0, &symdb.Config{
 			Version: symdb.FormatV3,
 		}),
@@ -60,8 +67,14 @@ func NewHead(metrics *HeadMetrics) *Head {
 	return h
 }
 
-func (h *Head) Ingest(p *profilev1.Profile, id uuid.UUID, externalLabels []*typesv1.LabelPair, annotations []*typesv1.ProfileAnnotation) {
+func (h *Head) Ingest(tenantID string, p *profilev1.Profile, id uuid.UUID, externalLabels []*typesv1.LabelPair, annotations []*typesv1.ProfileAnnotation) {
 	if len(p.Sample) == 0 {
+		return
+	}
+
+	if err := validation.ValidateLabels(h.limits, tenantID, externalLabels); err != nil {
+		level.Warn(h.logger).Log("msg", "labels validation failed", "err", err)
+		// TODO aleks-p: propagate the error upward
 		return
 	}
 

@@ -2,10 +2,11 @@ package integration
 
 import (
 	"fmt"
-	"github.com/grafana/pyroscope/pkg/og/convert/pprof/strprofile"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/grafana/pyroscope/pkg/og/convert/pprof/strprofile"
 
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 
@@ -330,7 +331,7 @@ func TestIngestPPROFSanitizeOtelLabels(t *testing.T) {
 		p1.Sample[0].Label = []*profilev1.Label{
 			{
 				Key: p1.AddString("foo.bar"),
-				Str: p1.AddString("qwe.asd"),
+				Str: p1.AddString("qwe-asd"),
 			},
 		}
 		p1bs, err := p1.Profile.MarshalVT()
@@ -340,7 +341,7 @@ func TestIngestPPROFSanitizeOtelLabels(t *testing.T) {
 		rb.Push(rb.PushPPROFRequestFromBytes(p1bs, "process_cpu"), 200, "")
 
 		renderedProfile := rb.SelectMergeProfile("process_cpu:cpu:nanoseconds:cpu:nanoseconds", map[string]string{
-			"foo_bar": "qwe.asd",
+			"foo_bar": "qwe-asd",
 		})
 		actual, err := strprofile.Stringify(renderedProfile.Msg, strprofile.Options{
 			NoTime:     true,
@@ -380,6 +381,7 @@ func TestIngestPPROFSanitizeOtelLabels(t *testing.T) {
 		assert.JSONEq(t, expected, actual)
 	})
 }
+
 func TestGodeltaprofRelabelPush(t *testing.T) {
 	const blockSize = 1024
 	const metric = "godeltaprof_memory"
