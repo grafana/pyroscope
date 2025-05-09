@@ -86,9 +86,9 @@ func (b *BlockReader) Invoke(
 	}
 
 	for _, md := range req.QueryPlan.Root.Blocks {
-		md.Datasets, err = filterInvalidDatasets(md, tenantMap)
+		md.Datasets, err = filterNotOwnedDatasets(md, tenantMap)
 		if err != nil {
-			b.metrics.mismatchingTenantDataset.WithLabelValues(req.Tenant[0]).Inc()
+			b.metrics.tenantIsolationViolationAttempt.Inc()
 			traceId, _ := tracing.ExtractTraceID(ctx)
 			level.Error(b.log).Log("msg", "trying to query datasets of other tenants", "valid-tenant", strings.Join(req.Tenant, ","), "block", md.Id, "err", err, "traceId", traceId)
 		}
@@ -143,6 +143,9 @@ func validateRequest(req *queryv1.InvokeRequest) (*request, error) {
 	if req.QueryPlan == nil || len(req.QueryPlan.Root.Blocks) == 0 {
 		return nil, fmt.Errorf("no blocks to query")
 	}
+	if len(req.Tenant) == 0 {
+		return nil, fmt.Errorf("no tenant provided")
+	}
 	matchers, err := parser.ParseMetricSelector(req.LabelSelector)
 	if err != nil {
 		return nil, fmt.Errorf("label selection is invalid: %w", err)
@@ -156,9 +159,11 @@ func validateRequest(req *queryv1.InvokeRequest) (*request, error) {
 	return &r, nil
 }
 
-func filterInvalidDatasets(b *metastorev1.BlockMeta, tenantMap map[string]struct{}) ([]*metastorev1.Dataset, error) {
+// While the metastore is expected to already filter datasets of other tenants, we do an additional check to avoid
+// processing blocks or datasets belonging to the wrong tenant.
+func filterNotOwnedDatasets(b *metastorev1.BlockMeta, tenantMap map[string]struct{}) ([]*metastorev1.Dataset, error) {
 	errs := multierror.New()
-	datasets := make([]*metastorev1.Dataset, 0, len(b.Datasets))
+	datasets := make([]*metastorev1.Dataset, 0)
 	for _, dataset := range b.Datasets {
 		datasetTenant := b.StringTable[dataset.Tenant]
 		_, ok := tenantMap[datasetTenant]

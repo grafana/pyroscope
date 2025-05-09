@@ -3,20 +3,20 @@ package query_backend
 import "github.com/prometheus/client_golang/prometheus"
 
 type metrics struct {
-	mismatchingTenantDataset *prometheus.CounterVec
+	tenantIsolationViolationAttempt prometheus.Counter
 }
 
 func newMetrics(reg prometheus.Registerer) *metrics {
 	m := &metrics{
-		mismatchingTenantDataset: prometheus.NewCounterVec(
+		tenantIsolationViolationAttempt: prometheus.NewCounter(
 			prometheus.CounterOpts{
 				Namespace: "pyroscope",
 				Subsystem: "query_backend",
-				Name:      "invalid_tenant_query_total",
-			}, []string{"tenant"}),
+				Name:      "tenant_isolation_violation_query_attempt_total",
+			}),
 	}
 	if reg != nil {
-		reg.MustRegister(m.mismatchingTenantDataset)
+		reg.MustRegister(m.tenantIsolationViolationAttempt)
 	}
 	return m
 }
