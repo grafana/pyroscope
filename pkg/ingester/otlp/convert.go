@@ -154,20 +154,6 @@ func (p *profileBuilder) addstr(s string) int64 {
 	return idx
 }
 
-func (p *profileBuilder) addfunc(s string) uint64 {
-	if i, ok := p.unsymbolziedFuncNameMap[s]; ok {
-		return i
-	}
-	idx := uint64(len(p.dst.Function)) + 1
-	p.unsymbolziedFuncNameMap[s] = idx
-	gf := &googleProfile.Function{
-		Id:   idx,
-		Name: p.addstr(s),
-	}
-	p.dst.Function = append(p.dst.Function, gf)
-	return idx
-}
-
 func serviceNameFromSample(p *otelProfile.Profile, sample *otelProfile.Sample) string {
 	for _, attributeIndex := range sample.AttributeIndices {
 		attribute := p.AttributeTable[attributeIndex]
@@ -216,12 +202,6 @@ func (p *profileBuilder) convertLocationBack(ol *otelProfile.Location) (uint64, 
 	}
 	for i, line := range ol.Line {
 		gl.Line[i] = p.convertLineBack(line)
-	}
-
-	if len(gl.Line) == 0 {
-		gl.Line = append(gl.Line, &googleProfile.Line{
-			FunctionId: p.addfunc(fmt.Sprintf("%s 0x%x", p.src.StringTable[om.FilenameStrindex], ol.Address)),
-		})
 	}
 
 	p.dst.Location = append(p.dst.Location, gl)
