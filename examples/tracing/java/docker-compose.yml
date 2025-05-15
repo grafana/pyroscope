@@ -1,6 +1,6 @@
 services:
   pyroscope:
-    image: grafana/pyroscope:1.13.3
+    image: grafana/pyroscope:1.13.4
     ports:
     - "4040:4040"
 
