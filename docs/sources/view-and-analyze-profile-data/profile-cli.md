@@ -41,7 +41,7 @@ For example, for Linux with the AMD64 architecture:
 1. Download and extract the package (archive).
 
     ```bash
-    curl -fL https://github.com/grafana/pyroscope/releases/download/v1.1.5/profilecli_1.1.5_linux_amd64.tar.gz | tar xvz
+    curl -fL https://github.com/grafana/pyroscope/releases/download/v1.13.2/profilecli_1.13.2_linux_amd64.tar.gz | tar xvz
     ```
 
 1. Make `profilecli` executable:
