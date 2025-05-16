@@ -10,6 +10,7 @@ enum RaftCommand {
   RAFT_COMMAND_ADD_BLOCK_METADATA = 1;
   RAFT_COMMAND_GET_COMPACTION_PLAN_UPDATE = 2;
   RAFT_COMMAND_UPDATE_COMPACTION_PLAN = 3;
+  RAFT_COMMAND_TRUNCATE_INDEX = 4;
 }
 
 message AddBlockMetadataRequest {
@@ -108,3 +109,10 @@ message UpdateCompactionPlanRequest {
 message UpdateCompactionPlanResponse {
   CompactionPlanUpdate plan_update = 1;
 }
+
+message TruncateIndexRequest {
+  uint64 term = 1;
+  repeated metastore.v1.Tombstones tombstones = 2;
+}
+
+message TruncateIndexResponse {}
